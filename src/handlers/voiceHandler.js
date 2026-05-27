@@ -168,4 +168,9 @@ function handleVoiceStateUpdate(oldState, newState) {
   }
 }
 
-module.exports = { joinChannel, enqueue, handleVoiceStateUpdate };
+function leaveChannel(guildId) {
+  if (!guilds.has(guildId)) throw new Error('Bot không ở kênh nào cả!');
+  teardown(guildId);
+}
+
+module.exports = { joinChannel, enqueue, leaveChannel, handleVoiceStateUpdate };

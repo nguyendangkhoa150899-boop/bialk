@@ -6,6 +6,10 @@ const commands = [
     .setName('join')
     .setDescription('Gọi bot vào Voice Channel của bạn')
     .toJSON(),
+  new SlashCommandBuilder()
+    .setName('leave')
+    .setDescription('Cho bot rời Voice Channel')
+    .toJSON(),
 ];
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN);

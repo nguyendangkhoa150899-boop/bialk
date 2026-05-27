@@ -1,7 +1,17 @@
-const { joinChannel } = require('./voiceHandler');
+const { joinChannel, leaveChannel } = require('./voiceHandler');
 
 async function handleInteraction(interaction) {
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'leave') {
+    try {
+      leaveChannel(interaction.guildId);
+      await interaction.reply({ content: '✅ Bot đã rời kênh!', ephemeral: true });
+    } catch (err) {
+      await interaction.reply({ content: err.message, ephemeral: true });
+    }
+    return;
+  }
 
   if (interaction.commandName === 'join') {
     const voiceChannel = interaction.member?.voice?.channel;
