@@ -1,6 +1,7 @@
 const { joinChannel, leaveChannel } = require('./voiceHandler');
 
 async function handleInteraction(interaction) {
+  console.log(`[Interaction] type:${interaction.type} name:${interaction.commandName ?? 'n/a'} isChatInput:${interaction.isChatInputCommand()}`);
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'leave') {
