@@ -4,11 +4,15 @@ async function handleInteraction(interaction) {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'leave') {
+    console.log(`[Leave] User: ${interaction.user.tag}`);
+    await interaction.deferReply({ ephemeral: true });
     try {
       leaveChannel(interaction.guildId);
-      await interaction.reply({ content: '✅ Bot đã rời kênh!', ephemeral: true });
+      console.log(`[Leave] Đã rời kênh`);
+      await interaction.editReply('✅ Bot đã rời kênh!');
     } catch (err) {
-      await interaction.reply({ content: err.message, ephemeral: true });
+      console.error(`[Leave] Lỗi:`, err.message);
+      await interaction.editReply(err.message);
     }
     return;
   }
