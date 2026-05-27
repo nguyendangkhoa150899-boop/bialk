@@ -1,4 +1,4 @@
-const { enqueue, leaveChannel } = require('./voiceHandler');
+const { enqueue } = require('./voiceHandler');
 const { filterText } = require('../utils/textFilter');
 
 const PREFIX = '.';
@@ -11,16 +11,6 @@ async function handleMessage(message) {
   if (!message.content.startsWith(PREFIX)) return;
 
   const raw = message.content.slice(PREFIX.length).trim();
-
-  if (raw.toLowerCase() === 'leave') {
-    try {
-      leaveChannel(message.guildId);
-      await message.react('👋');
-    } catch (err) {
-      await message.reply(err.message);
-    }
-    return;
-  }
 
   // Lệnh TTS: .nội dung cần đọc
   const text = filterText(raw);

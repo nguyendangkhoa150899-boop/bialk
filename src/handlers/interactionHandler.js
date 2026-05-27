@@ -1,22 +1,7 @@
-const { joinChannel, leaveChannel } = require('./voiceHandler');
+const { joinChannel } = require('./voiceHandler');
 
 async function handleInteraction(interaction) {
-  console.log(`[Interaction] type:${interaction.type} name:${interaction.commandName ?? 'n/a'} isChatInput:${interaction.isChatInputCommand()}`);
   if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === 'leave') {
-    console.log(`[Leave] User: ${interaction.user.tag}`);
-    await interaction.deferReply({ ephemeral: true });
-    try {
-      leaveChannel(interaction.guildId);
-      console.log(`[Leave] Đã rời kênh`);
-      await interaction.editReply('✅ Bot đã rời kênh!');
-    } catch (err) {
-      console.error(`[Leave] Lỗi:`, err.message);
-      await interaction.editReply(err.message);
-    }
-    return;
-  }
 
   if (interaction.commandName === 'join') {
     const voiceChannel = interaction.member?.voice?.channel;
