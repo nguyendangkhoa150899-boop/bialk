@@ -21,7 +21,7 @@ client.once('clientReady', () => {
 
 client.on('messageCreate', handleMessage);
 client.on('interactionCreate', handleInteraction);
-client.on('voiceStateUpdate', (oldState) => handleVoiceStateUpdate(oldState));
+client.on('voiceStateUpdate', (oldState, newState) => handleVoiceStateUpdate(oldState, newState));
 
 process.on('unhandledRejection', (err) => {
   console.error('[UnhandledRejection]', err?.message || err);

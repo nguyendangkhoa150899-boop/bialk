@@ -146,15 +146,22 @@ async function processNext(guildId) {
 }
 
 // Gọi từ voiceStateUpdate — tự ngắt khi kênh không còn ai (trừ bot)
-function handleVoiceStateUpdate(oldState) {
+function handleVoiceStateUpdate(oldState, newState) {
   const guildId = oldState.guild.id;
   const state = guilds.get(guildId);
   if (!state) return;
 
-  const channel = oldState.guild.channels.cache.get(state.channelId);
-  if (!channel) return;
+  // Chỉ xử lý khi ai đó RỜI kênh của bot
+  const leftBotChannel =
+    oldState.channelId === state.channelId &&
+    newState.channelId !== state.channelId;
+  if (!leftBotChannel) return;
 
-  const humanCount = channel.members.filter(m => !m.user.bot).size;
+  // Đếm số người thật còn trong kênh
+  const humanCount = [...newState.guild.voiceStates.cache.values()]
+    .filter(vs => vs.channelId === state.channelId && vs.member && !vs.member.user.bot)
+    .length;
+
   if (humanCount === 0) {
     console.log(`[VoiceHandler] Kênh trống, ngắt kết nối guild ${guildId}`);
     teardown(guildId);
