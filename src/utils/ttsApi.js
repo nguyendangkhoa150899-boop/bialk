@@ -27,7 +27,7 @@ async function ttsRequest(text) {
       mode: 'async',
       voiceCode,
       outputFormat: 'mp3',
-      speed: 1,
+      speed: parseFloat(process.env.TTS_SPEED) || 1,
       webhookUrl,
     });
   } catch (err) {
