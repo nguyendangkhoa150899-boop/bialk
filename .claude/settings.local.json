@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:studio.vbee.vn)",
+      "WebFetch(domain:documenter.getpostman.com)",
+      "WebFetch(domain:vbee.vn)",
+      "WebFetch(domain:api-docs.vbee.vn)",
+      "PowerShell(C:\\\\Users\\\\nguye\\\\AppData\\\\Local\\\\ngrok\\\\ngrok.exe config add-authtoken 3EIDEKLi5NomEkL9hI29VyyjAQx_5U7rttNWXybHQeq7PvBHc 2>&1)",
+      "Bash(sudo apt-get install -y sshpass)"
+    ]
+  }
+}
