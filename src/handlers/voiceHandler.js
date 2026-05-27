@@ -11,7 +11,7 @@ const { ttsRequest } = require('../utils/ttsApi');
 
 // Map<guildId, GuildState>
 const guilds = new Map();
-const AUTO_DISCONNECT_MS = 6 * 60 * 60 * 1000;
+const AUTO_DISCONNECT_MS = 30 * 60 * 1000;
 
 function createGuildState(connection, channelId) {
   const player = createAudioPlayer();
@@ -145,4 +145,20 @@ async function processNext(guildId) {
   processNext(guildId);
 }
 
-module.exports = { joinChannel, enqueue };
+// Gọi từ voiceStateUpdate — tự ngắt khi kênh không còn ai (trừ bot)
+function handleVoiceStateUpdate(oldState) {
+  const guildId = oldState.guild.id;
+  const state = guilds.get(guildId);
+  if (!state) return;
+
+  const channel = oldState.guild.channels.cache.get(state.channelId);
+  if (!channel) return;
+
+  const humanCount = channel.members.filter(m => !m.user.bot).size;
+  if (humanCount === 0) {
+    console.log(`[VoiceHandler] Kênh trống, ngắt kết nối guild ${guildId}`);
+    teardown(guildId);
+  }
+}
+
+module.exports = { joinChannel, enqueue, handleVoiceStateUpdate };

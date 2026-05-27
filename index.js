@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const { handleMessage } = require('./src/handlers/messageHandler');
 const { handleInteraction } = require('./src/handlers/interactionHandler');
+const { handleVoiceStateUpdate } = require('./src/handlers/voiceHandler');
 const { startWebhookServer } = require('./src/utils/webhookServer');
 const { startNgrok } = require('./src/utils/ngrokManager');
 
@@ -20,6 +21,7 @@ client.once('clientReady', () => {
 
 client.on('messageCreate', handleMessage);
 client.on('interactionCreate', handleInteraction);
+client.on('voiceStateUpdate', (oldState) => handleVoiceStateUpdate(oldState));
 
 process.on('unhandledRejection', (err) => {
   console.error('[UnhandledRejection]', err?.message || err);
