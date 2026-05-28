@@ -1,0 +1,1128 @@
+require('dotenv').config();
+const { 
+    Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, 
+    EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits,
+    ModalBuilder, TextInputBuilder, TextInputStyle 
+} = require('discord.js');
+const fs = require('fs');
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+const TOKEN = process.env.TOKEN;
+const DATA_FILE = './database.json';
+
+// --- HỆ THỐNG GHI LOG CHIA FILE ---
+const LOG_SYSTEM = './log_system.txt'; // lỗi, crash, khởi động bot
+const LOG_RESULT = './log_result.txt'; // kết quả bầu cua + lớn nhỏ + dò mìn
+const LOG_BET = './log_bet.txt';       // cược + kết quả ván, 3 game
+const LOG_ADMIN = './log_admin.txt';   // toàn bộ thao tác admin
+
+const LOG_MAX_LINES = {
+    RESULT: 2000,
+    ADMIN:  1000,
+    BET:    1000,
+    SYSTEM:  500
+};
+
+function writeLog(category, message) {
+    const time = new Date().toLocaleString('vi-VN');
+    const entry = `[${time}] ${message}`;
+
+    let targetFile = LOG_SYSTEM;
+    if (category === 'RESULT') targetFile = LOG_RESULT;
+    else if (category === 'BET') targetFile = LOG_BET;
+    else if (category === 'ADMIN') targetFile = LOG_ADMIN;
+
+    console.log(`[${category}] ${entry}`);
+
+    try {
+        let lines = [];
+        if (fs.existsSync(targetFile)) {
+            const data = fs.readFileSync(targetFile, 'utf8');
+            lines = data.split('\n').filter(line => line.trim() !== '');
+        }
+        lines.push(entry);
+        const maxLines = LOG_MAX_LINES[category] || 1000;
+        if (lines.length > maxLines) {
+            lines = lines.slice(lines.length - maxLines);
+        }
+        fs.writeFileSync(targetFile, lines.join('\n') + '\n');
+    } catch (err) {
+        console.error(`Lỗi ghi log ${category}:`, err);
+    }
+}
+
+// --- HỆ THỐNG DATABASE TỐI ƯU (RAM CACHE) ---
+let dbCache = {};
+
+if (fs.existsSync(DATA_FILE)) {
+    try {
+        dbCache = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    } catch (e) {
+        console.error("Lỗi đọc file database ban đầu, tạo mới.");
+        dbCache = {};
+    }
+} else {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({}));
+}
+
+setInterval(() => {
+    fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
+        if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
+    });
+}, 10000);
+
+function getUserData(userId) {
+    if (!dbCache[userId]) {
+        dbCache[userId] = { points: 50000000000, lastDaily: 0 };
+    } else if (typeof dbCache[userId] === 'number') {
+        dbCache[userId] = { points: dbCache[userId], lastDaily: 0 };
+    }
+    return dbCache[userId];
+}
+
+function updatePoints(userId, amount) {
+    const data = getUserData(userId);
+    data.points += amount;
+}
+
+// --- CONFIG BẦU CUA ---
+const MASCOTS = [
+    { id: 'hu', name: 'Hổ', emoji: '🐯' }, { id: 'cua', name: 'Cua', emoji: '🦀' },
+    { id: 'tom', name: 'Tôm', emoji: '🦞' }, { id: 'ca', name: 'Cá', emoji: '🐟' },
+    { id: 'ga', name: 'Gà', emoji: '🐓' }, { id: 'nai', name: 'Nai', emoji: '🦌' }
+];
+let bcState = {
+    status: 'betting',
+    timeLeft: 60,
+    targetTime: 0,
+    bets: [],
+    message: null,
+    channel: null,
+    gameId: Math.floor(Math.random() * 9999),
+    needsUpdate: false,
+    activeMascot: null,
+    isProcessing: false,
+    processingStart: 0,
+    lastGameInfo: null,
+    msgHistory: [],
+    resultPromise: null
+};
+let userBCSelections = {};
+
+// --- CONFIG TÀI XỈU (LỚN NHỎ) ---
+let txState = {
+    status: 'betting',
+    timeLeft: 60,
+    targetTime: 0,
+    bets: [],
+    message: null,
+    channel: null,
+    gameId: Math.floor(Math.random() * 9999),
+    needsUpdate: false,
+    activeChoice: null,
+    isProcessing: false,
+    processingStart: 0,
+    history: [],
+    lastGameInfo: null,
+    msgHistory: [],
+    resultPromise: null
+};
+let userTXSelections = {};
+
+const DICE_EMOJIS = [
+    '', 
+    '<:1410537564418605146:1493488539642499153>', 
+    '<:1410537562589626368:1493488535934861523>', 
+    '<:1410537554276777994:1493488533468610692>', 
+    '<:1410537560580685866:1493488531274989628>', 
+    '<:1410537558823403675:1493488529219522560>', 
+    '<:1410537557069926470:1493488527013318657>'  
+];
+
+const TX_CHOICES = {
+    'tai': { name: '11-18' },
+    'xiu': { name: '3-10' },
+    'chan': { name: 'CHẴN' },
+    'le': { name: 'LẺ' }
+};
+
+async function manageHistory(state, sessionMsgs) {
+    state.msgHistory.push(sessionMsgs); 
+    if (state.msgHistory.length > 20) {
+        const oldSession = state.msgHistory.shift();
+        for (const msgId of oldSession) {
+            try {
+                const msg = await state.channel.messages.fetch(msgId);
+                if (msg) await msg.delete().catch(() => {});
+            } catch (e) {}
+        }
+    }
+}
+
+// ==========================================
+// --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
+// ==========================================
+const TOTAL_TILES = 24;
+const RTP = 1.0; 
+
+const CUSTOM_START = {
+    6: 4.0, 
+    8: 6.0   
+};
+
+function nCr(n, r) {
+    if (r > n) return 0;
+    if (r === 0 || r === n) return 1;
+    let res = 1;
+    for (let i = 1; i <= r; i++) {
+        res = res * (n - i + 1) / i;
+    }
+    return res;
+}
+
+function calculateMulti(diamonds, numMines) {
+    const waysToWin = nCr(TOTAL_TILES - numMines, diamonds);
+    const totalWays = nCr(TOTAL_TILES, diamonds);
+    if (waysToWin === 0) return 1;
+    const prob = waysToWin / totalWays;
+    let multi = (1 / prob) * RTP;
+    return Math.floor(multi * 100) / 100;
+}
+
+const getInfo = (diamonds, numMines) => {
+    let mathCurrent = calculateMulti(diamonds === 0 ? 1 : diamonds, numMines);
+    let maxDiamonds = TOTAL_TILES - numMines;
+    let mathNext = diamonds < maxDiamonds ? calculateMulti(diamonds + 1, numMines) : mathCurrent;
+    
+    let boostRatio = 1; 
+    if (CUSTOM_START[numMines]) {
+        let mathStart1 = calculateMulti(1, numMines); 
+        boostRatio = CUSTOM_START[numMines] / mathStart1; 
+    }
+
+    if (diamonds === 0) {
+        return { 
+            multi: 1, 
+            nextMulti: Math.floor((mathCurrent * boostRatio) * 100) / 100 
+        };
+    }
+    
+    return { 
+        multi: Math.floor((mathCurrent * boostRatio) * 100) / 100, 
+        nextMulti: Math.floor((mathNext * boostRatio) * 100) / 100 
+    };
+};
+
+const createGame = (numMines) => {
+    let mines = [];
+    while (mines.length < numMines) {
+        let r = Math.floor(Math.random() * TOTAL_TILES);
+        if (!mines.includes(r)) mines.push(r);
+    }
+    return { mines, revealed: [], totalMines: numMines };
+};
+
+// --- ĐĂNG KÝ LỆNH SLASH ---
+const commands = [
+    new SlashCommandBuilder()
+        .setName('domin')
+        .setDescription('Bắt đầu ván dò mìn')
+        .addSubcommand(sub => sub.setName('all').setDescription('Cược toàn bộ số dư')
+            .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
+        )
+        .addSubcommand(sub => sub.setName('point').setDescription('Tùy chọn số point cược')
+            .addIntegerOption(opt => opt.setName('cuoc').setDescription('Số point đặt').setRequired(true))
+            .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
+        ),
+    new SlashCommandBuilder().setName('baucua_start').setDescription('Admin khởi tạo bàn Bầu Cua Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('stopbaucua').setDescription('Admin dừng Bầu Cua Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('lonnho').setDescription('Admin khởi tạo bàn Lớn Nhỏ Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('stoplonnho').setDescription('Admin dừng Lớn Nhỏ Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('deletechat').setDescription('Xóa toàn bộ tin nhắn của bot trong kênh này').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
+    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 5.000 point mỗi 24 giờ'),
+    new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển point')
+        .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận point').setRequired(true))
+        .addIntegerOption(opt => opt.setName('sotien').setDescription('Số point muốn chuyển').setRequired(true)),
+    new SlashCommandBuilder().setName('addtien').setDescription('Admin cộng point')
+        .addUserOption(opt => opt.setName('user').setDescription('Người nhận').setRequired(true))
+        .addIntegerOption(opt => opt.setName('amount').setDescription('Số point cộng').setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ point')
+        .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
+        .addIntegerOption(opt => opt.setName('amount').setDescription('Số point trừ').setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('admin_set_result').setDescription('Portal can thiệp kết quả').setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .addStringOption(o => o.setName('game').setDescription('Game muốn can thiệp').setRequired(true).addChoices({name:'Tài Xỉu', value:'tx'}, {name:'Bầu Cua', value:'baucua'}))
+        .addStringOption(o => o.setName('values').setDescription('Giá trị ép (VD: 1,2,3)').setRequired(true))
+].map(c => c.toJSON());
+
+client.once('ready', async (c) => {
+    writeLog('SYSTEM', `✅ Bot ${c.user.tag} online!`);
+    const rest = new REST({ version: '10' }).setToken(TOKEN);
+    try {
+        await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
+    } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
+    runBầuCuaLoop();
+    runTaiXiuLoop(); 
+});
+
+// --- UI BẦU CUA ---
+function getBCMessageData(customStatus = null) {
+    const lockTime = bcState.targetTime - 6;
+    
+    let desc = `⏳ **Mở bát:** <t:${bcState.targetTime}:R>\n\n`;
+
+    if (bcState.lastGameInfo) {
+        desc += `🔙 **Kết quả vòng trước (#${bcState.lastGameInfo.gameId}):** ${bcState.lastGameInfo.result}\n`;
+        desc += `💸 **Người đặt vòng trước:** ${bcState.lastGameInfo.betDetails}\n\n`;
+    }
+
+    desc += `📝 **Người đặt hiện tại:**\n`;
+    desc += bcState.bets.length > 0 ? bcState.bets.map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} point**`).join('\n') : "*Chưa có ai đặt*";
+    desc += `\n\n${customStatus || "👉 Chọn con vật rồi chọn số point đặt!"}`;
+
+    const embed = new EmbedBuilder()
+        .setTitle(`🎲 BẦU CUA LIVE - Phiên #${bcState.gameId}`)
+        .setColor(bcState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
+        .setDescription(desc);
+
+    const mascotRows1 = MASCOTS.slice(0, 3).map(m => 
+        new ButtonBuilder().setCustomId(`bc_m_${m.id}`).setLabel(m.name).setEmoji(m.emoji)
+        .setStyle(bcState.activeMascot === m.id ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setDisabled(bcState.status !== 'betting')
+    );
+    const mascotRows2 = MASCOTS.slice(3, 6).map(m => 
+        new ButtonBuilder().setCustomId(`bc_m_${m.id}`).setLabel(m.name).setEmoji(m.emoji)
+        .setStyle(bcState.activeMascot === m.id ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setDisabled(bcState.status !== 'betting')
+    );
+
+    const amountBets = [
+        { id: '100', label: '100' },
+        { id: '200', label: '200' },
+        { id: '500', label: '500' },
+        { id: '1000', label: '1000' }
+    ];
+    const amountRows = amountBets.map(v => 
+        new ButtonBuilder().setCustomId(`bc_a_${v.id}`).setLabel(v.label)
+        .setStyle(ButtonStyle.Primary).setDisabled(bcState.status !== 'betting')
+    );
+
+    const rows = [
+        new ActionRowBuilder().addComponents(mascotRows1),
+        new ActionRowBuilder().addComponents(mascotRows2),
+        new ActionRowBuilder().addComponents(amountRows),
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('bc_a_custom').setLabel('💰 Tùy Chọn').setStyle(ButtonStyle.Success).setDisabled(bcState.status !== 'betting'),
+            new ButtonBuilder().setCustomId('bc_a_all').setLabel('💸 All In').setStyle(ButtonStyle.Danger).setDisabled(bcState.status !== 'betting')
+        )
+    ];
+    return { embeds: [embed], components: rows };
+}
+
+async function updateBCMessage(customStatus = null) {
+    if (!bcState.message) return;
+    const data = getBCMessageData(customStatus);
+    await bcState.message.edit(data).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE BC BẢNG CƯỢC] ${e.message}`); });
+}
+
+// --- VÒNG LẶP BẦU CUA ---
+function runBầuCuaLoop() {
+    setInterval(async () => {
+        if (!bcState.message || !bcState.channel) return;
+        if (bcState.isProcessing) {
+            // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
+            if (bcState.processingStart && Date.now() - bcState.processingStart > 120000) {
+                writeLog('SYSTEM', '[WATCHDOG BC] isProcessing kẹt, tự reset');
+                bcState.isProcessing = false;
+                bcState.processingStart = 0;
+                bcState.status = 'betting';
+                bcState.resultPromise = null;
+                bcState.bets = [];
+                bcState.activeMascot = null;
+                bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                const data = getBCMessageData();
+                bcState.channel.send(data).then(msg => { bcState.message = msg; }).catch(() => {});
+            }
+            return;
+        }
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        const lockTime = bcState.targetTime - 5;
+
+        if (nowSec >= bcState.targetTime) {
+            // Mở bát: kết quả đã được tính từ lúc đóng phiên, chỉ cần await
+            bcState.status = 'ending';
+            bcState.isProcessing = true;
+            bcState.processingStart = Date.now();
+            const prevMsgId = bcState.message?.id;
+
+            try {
+                const resultMsg = await (bcState.resultPromise || Promise.resolve(null));
+                if (resultMsg?.id && prevMsgId) {
+                    manageHistory(bcState, [prevMsgId, resultMsg.id]).catch(() => {});
+                }
+                                bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                bcState.status = 'betting';
+                bcState.bets = [];
+                bcState.gameId++;
+                bcState.activeMascot = null;
+                bcState.resultPromise = null;
+                bcState.needsUpdate = false;
+                const data = getBCMessageData();
+                bcState.message = await bcState.channel.send(data).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG MỚI BC] ${e.message}`); return null; });
+            } catch (e) {
+                writeLog('SYSTEM', `[LỖI LOOP BC] ${e.message}`);
+                // Recovery: reset để ván tiếp theo vẫn chạy được
+                bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                bcState.status = 'betting';
+                bcState.bets = [];
+                bcState.activeMascot = null;
+                bcState.resultPromise = null;
+            }
+
+            bcState.isProcessing = false;
+            bcState.processingStart = 0;
+
+        } else if (nowSec >= lockTime && bcState.status === 'betting') {
+            bcState.status = 'ending';
+            bcState.activeMascot = null;
+            const snapGameId = bcState.gameId;
+            const snapBets = bcState.bets.slice();
+            bcState.resultPromise = finishBCGame(snapGameId, snapBets);
+            updateBCMessage().catch(() => {});
+
+        } else if (bcState.status === 'betting' && bcState.needsUpdate) {
+            updateBCMessage().catch(() => {});
+            bcState.needsUpdate = false;
+        }
+    }, 1000);
+}
+
+async function finishBCGame(gameId, bets) {
+    let res = [];
+    if (bcState.forcedResult) {
+        res = bcState.forcedResult.split(',').map(id => MASCOTS.find(m => m.id === id.trim()) || MASCOTS[0]);
+        bcState.forcedResult = null;
+    } else {
+        for (let i = 0; i < 3; i++) res.push(MASCOTS[Math.floor(Math.random() * MASCOTS.length)]);
+    }
+
+    let winLog = "";
+    let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount})`).join(', ');
+
+    bets.forEach(b => {
+        const count = res.filter(r => r.id === b.mascotId).length;
+        if (count > 0) {
+            const win = b.amount * (count + 1);
+            updatePoints(b.userId, win);
+            winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point**\n`;
+        }
+    });
+
+    bcState.lastGameInfo = {
+        gameId,
+        result: res.map(r => r.emoji).join(' '),
+        betDetails: prevBetsDisplay || "Không có ai đặt"
+    };
+
+    const resultNames = res.map(r => r.name).join(', ');
+    writeLog('RESULT', `[KẾT QUẢ BẦU CUA] Phiên #${gameId}: ${resultNames}`);
+
+    if (bets.length > 0) {
+        let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${MASCOTS.find(m => m.id === b.mascotId).name}`).join(' | ');
+        writeLog('BET', `[CƯỢC BẦU CUA] Phiên #${gameId} | Đặt: ${betLogDetails} | KQ: ${resultNames}`);
+    }
+
+    const resEmb = new EmbedBuilder()
+        .setTitle(`🎰 KẾT QUẢ #${gameId}`)
+        .setColor(0xf1c40f)
+        .setDescription(`🎲: ${res.map(r => r.emoji).join(' ')}\n\n🏆 **Thắng:**\n${winLog || "Ván này nhà cái húp sạch!"}`);
+
+    return await bcState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KẾT QUẢ BC] ${e.message}`); return null; });
+}
+
+// --- UI TÀI XỈU (LỚN NHỎ) ---
+function getTXMessageData(customStatus = null) {
+    const lockTime = txState.targetTime - 5;
+
+    let desc = `⏳ **Mở bát:** <t:${txState.targetTime}:R>\n\n`;
+
+    if (txState.lastGameInfo) {
+        desc += `🔙 **Kết quả vòng trước (#${txState.lastGameInfo.gameId}):** ${txState.lastGameInfo.result}\n`;
+        desc += `💸 **Người đặt vòng trước:** ${txState.lastGameInfo.betDetails}\n\n`;
+    }
+
+    desc += `📝 **Người đặt hiện tại:**\n`;
+
+    const groups = { 'tai': [], 'xiu': [], 'chan': [], 'le': [] };
+    txState.bets.forEach(b => groups[b.choice].push(b));
+
+    let hasBets = false;
+    ['tai', 'xiu', 'chan', 'le'].forEach(c => {
+        if (groups[c].length > 0) {
+            hasBets = true;
+            desc += `**${TX_CHOICES[c].name}:**\n`;
+            groups[c].forEach(b => desc += `• **${b.username}**: ${b.amount.toLocaleString()} point\n`);
+        }
+    });
+    if (!hasBets) desc += "*Chưa có ai đặt*";
+
+    desc += `\n\n${customStatus || "👉 Chọn cửa cược rồi chọn số point đặt!"}`;
+
+    const embed = new EmbedBuilder()
+        .setTitle(`🎲 LỚN NHỎ LIVE - Game #${txState.gameId}`)
+        .setColor(txState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
+        .setDescription(desc);
+
+    const choiceRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('tx_c_xiu').setLabel('3-10').setEmoji('🔴').setStyle(txState.activeChoice === 'xiu' ? ButtonStyle.Danger : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('tx_c_tai').setLabel('11-18').setEmoji('🟢').setStyle(txState.activeChoice === 'tai' ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('tx_c_chan').setLabel('CHẴN').setEmoji('🔵').setStyle(txState.activeChoice === 'chan' ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('tx_c_le').setLabel('LẺ').setEmoji('🟣').setStyle(txState.activeChoice === 'le' ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('tx_soicau').setLabel('Soi Cầu').setEmoji('🕵️').setStyle(ButtonStyle.Secondary)
+    );
+
+    const amountRow1 = new ActionRowBuilder().addComponents(
+        ['100', '200', '500', '1000'].map(amt =>
+            new ButtonBuilder().setCustomId(`tx_a_${amt}`).setLabel(amt).setStyle(ButtonStyle.Primary).setDisabled(txState.status !== 'betting')
+        )
+    );
+
+    const amountRow2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('tx_a_custom').setLabel('💰 Tùy Chọn').setStyle(ButtonStyle.Success).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('tx_a_all').setLabel('💸 All In').setStyle(ButtonStyle.Danger).setDisabled(txState.status !== 'betting')
+    );
+
+    return { embeds: [embed], components: [choiceRow, amountRow1, amountRow2] };
+}
+
+async function updateTXMessage(customStatus = null) {
+    if (!txState.message) return;
+    const data = getTXMessageData(customStatus);
+    await txState.message.edit(data).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE TX BẢNG CƯỢC] ${e.message}`); });
+}
+
+// --- VÒNG LẶP TÀI XỈU (LỚN NHỎ) ---
+function runTaiXiuLoop() {
+    setInterval(async () => {
+        if (!txState.message || !txState.channel) return;
+        if (txState.isProcessing) {
+            // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
+            if (txState.processingStart && Date.now() - txState.processingStart > 120000) {
+                writeLog('SYSTEM', '[WATCHDOG TX] isProcessing kẹt, tự reset');
+                txState.isProcessing = false;
+                txState.processingStart = 0;
+                txState.status = 'betting';
+                txState.resultPromise = null;
+                txState.bets = [];
+                txState.activeChoice = null;
+                txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                const data = getTXMessageData();
+                txState.channel.send(data).then(msg => { txState.message = msg; }).catch(() => {});
+            }
+            return;
+        }
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        const lockTime = txState.targetTime - 5;
+
+        if (nowSec >= txState.targetTime) {
+            // Mở bát: kết quả đã được tính từ lúc đóng phiên, chỉ cần await
+            txState.status = 'ending';
+            txState.isProcessing = true;
+            txState.processingStart = Date.now();
+            const prevMsgId = txState.message?.id;
+
+            try {
+                const resultMsg = await (txState.resultPromise || Promise.resolve(null));
+                if (resultMsg?.id && prevMsgId) {
+                    manageHistory(txState, [prevMsgId, resultMsg.id]).catch(() => {});
+                }
+                                txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                txState.status = 'betting';
+                txState.bets = [];
+                txState.gameId++;
+                txState.activeChoice = null;
+                txState.resultPromise = null;
+                txState.needsUpdate = false;
+                const data = getTXMessageData();
+                txState.message = await txState.channel.send(data).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG MỚI TX] ${e.message}`); return null; });
+            } catch (e) {
+                writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
+                // Recovery: reset để ván tiếp theo vẫn chạy được
+                txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                txState.status = 'betting';
+                txState.bets = [];
+                txState.activeChoice = null;
+                txState.resultPromise = null;
+            }
+
+            txState.isProcessing = false;
+            txState.processingStart = 0;
+
+        } else if (nowSec >= lockTime && txState.status === 'betting') {
+            txState.status = 'ending';
+            txState.activeChoice = null;
+            const snapGameId = txState.gameId;
+            const snapBets = txState.bets.slice();
+            txState.resultPromise = finishTXGame(snapGameId, snapBets);
+            updateTXMessage().catch(() => {});
+
+        } else if (txState.status === 'betting' && txState.needsUpdate) {
+            updateTXMessage().catch(() => {});
+            txState.needsUpdate = false;
+        }
+    }, 1000);
+}
+
+async function finishTXGame(gameId, bets) {
+    let d1, d2, d3;
+    if (txState.forcedResult) {
+        [d1, d2, d3] = txState.forcedResult.split(',').map(Number);
+        txState.forcedResult = null;
+    } else {
+        d1 = Math.floor(Math.random() * 6) + 1;
+        d2 = Math.floor(Math.random() * 6) + 1;
+        d3 = Math.floor(Math.random() * 6) + 1;
+    }
+    const sum = d1 + d2 + d3;
+
+    const isTai = sum >= 11;
+    const isChan = sum % 2 === 0;
+
+    const resultTX = isTai ? 'tai' : 'xiu';
+    const resultCL = isChan ? 'chan' : 'le';
+
+    txState.history.unshift({
+        gameId,
+        dice: [d1, d2, d3],
+        sum: sum,
+        tx: isTai ? '11-18' : '3-10',
+        cl: isChan ? 'CHẴN' : 'LẺ'
+    });
+    if (txState.history.length > 10) txState.history.pop();
+
+    let winLog = "";
+    let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount} -> ${TX_CHOICES[b.choice].name})`).join(', ');
+
+    bets.forEach(b => {
+        if (b.choice === resultTX || b.choice === resultCL) {
+            const win = b.amount * 2;
+            updatePoints(b.userId, win);
+            winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point** (${TX_CHOICES[b.choice].name})\n`;
+        }
+    });
+
+    const txIcon = isTai ? '11-18 🔺' : '3-10 🔻';
+    const clIcon = isChan ? 'CHẴN 🔵' : 'LẺ 🟣';
+
+    txState.lastGameInfo = {
+        gameId,
+        result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
+        betDetails: prevBetsDisplay || "Không có ai đặt"
+    };
+
+    const txLogText = isTai ? '11-18' : '3-10';
+    const clLogText = isChan ? 'CHẴN' : 'LẺ';
+    writeLog('RESULT', `[KẾT QUẢ TÀI XỈU] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${txLogText} | ${clLogText})`);
+
+    if (bets.length > 0) {
+        let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${TX_CHOICES[b.choice].name}`).join(' | ');
+        writeLog('BET', `[CƯỢC TÀI XỈU] Game #${gameId} | Đặt: ${betLogDetails} | KQ: ${d1}-${d2}-${d3} (${sum})`);
+    }
+
+    const resEmb = new EmbedBuilder()
+        .setTitle(`🎲 KẾT QUẢ SÒNG LỚN NHỎ`)
+        .setColor(0x2b2d31)
+        .setDescription(`**Game ${gameId}**\n\n` +
+                        `🎲 **Xúc xắc:** ${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]}\n` +
+                        `📊 **Tổng:** ${sum}\n` +
+                        `🎯 **Kết quả:** ${txIcon} | ${clIcon}\n\n` +
+                        `🏆 **Người thắng:**\n${winLog || "🚫 \`Không ai thắng ván này!\`"}`)
+        .setFooter({ text: 'Game tiếp theo sẽ bắt đầu sau 55 giây...' });
+
+    return await txState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
+}
+
+// --- XỬ LÝ TƯƠNG TÁC ---
+client.on('interactionCreate', async interaction => {
+  try {
+    const userId = interaction.user.id;
+
+    if (interaction.isChatInputCommand()) {
+        if (interaction.commandName === 'baucua_start') {
+            if (bcState.message) await bcState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`)); 
+            
+            bcState.channel = interaction.channel;
+            bcState.gameId++;
+            bcState.timeLeft = 55;
+            bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+            bcState.status = 'betting';
+            bcState.bets = [];
+            bcState.needsUpdate = false;
+            bcState.activeMascot = null;
+            
+            await interaction.reply({ content: '✅ Đã khởi tạo bàn Bầu Cua Live.', ephemeral: true });
+            const data = getBCMessageData();
+            bcState.message = await bcState.channel.send(data);
+            writeLog('ADMIN', `[KHỞI TẠO] Bầu cua start by ${interaction.user.tag}`);
+            return;
+        }
+
+        if (interaction.commandName === 'stopbaucua') {
+            if (bcState.message) {
+                await bcState.message.delete().catch(() => {});
+            }
+            bcState.channel = null;
+            bcState.message = null;
+            bcState.status = 'stopped';
+            writeLog('ADMIN', `[DỪNG] Bầu cua stop by ${interaction.user.tag}`);
+            return interaction.reply({ content: '🛑 Đã dừng bàn Bầu Cua Live tại kênh này.', ephemeral: true });
+        }
+
+        if (interaction.commandName === 'lonnho') {
+            if (txState.message) await txState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`)); 
+            
+            txState.channel = interaction.channel;
+            txState.gameId++;
+            txState.timeLeft = 55;
+            txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+            txState.status = 'betting';
+            txState.bets = [];
+            txState.needsUpdate = false;
+            txState.activeChoice = null;
+            
+            await interaction.reply({ content: '✅ Đã khởi tạo bàn Lớn Nhỏ Live.', ephemeral: true });
+            const data = getTXMessageData();
+            txState.message = await txState.channel.send(data);
+            writeLog('ADMIN', `[KHỞI TẠO] Lớn Nhỏ start by ${interaction.user.tag}`);
+            return;
+        }
+
+        if (interaction.commandName === 'stoplonnho') {
+            if (txState.message) {
+                await txState.message.delete().catch(() => {});
+            }
+            txState.channel = null;
+            txState.message = null;
+            txState.status = 'stopped';
+            writeLog('ADMIN', `[DỪNG] Lớn nhỏ stop by ${interaction.user.tag}`);
+            return interaction.reply({ content: '🛑 Đã dừng bàn Lớn Nhỏ Live tại kênh này.', ephemeral: true });
+        }
+
+        if (interaction.commandName === 'deletechat') {
+            await interaction.deferReply({ ephemeral: true });
+            try {
+                const messages = await interaction.channel.messages.fetch({ limit: 100 });
+                const botMessages = messages.filter(m => m.author.id === client.user.id);
+                if (botMessages.size > 0) {
+                    await interaction.channel.bulkDelete(botMessages, true);
+                    writeLog('ADMIN', `[XÓA CHAT] ${interaction.user.tag} xóa ${botMessages.size} tin nhắn bot tại #${interaction.channel.name}`);
+                    return interaction.editReply('✅ Đã dọn dẹp các tin nhắn của bot trong kênh này!');
+                } else {
+                    writeLog('ADMIN', `[XÓA CHAT] ${interaction.user.tag} dùng /deletechat nhưng không có tin nhắn bot nào tại #${interaction.channel.name}`);
+                    return interaction.editReply('⚠️ Không tìm thấy tin nhắn nào của bot ở 100 tin nhắn gần nhất!');
+                }
+            } catch (err) {
+                writeLog('SYSTEM', `[LỖI XÓA CHAT] ${err.message}`);
+                return interaction.editReply('❌ Lỗi khi xóa tin nhắn, có thể do tin nhắn quá cũ (hơn 14 ngày) hoặc bot thiếu quyền!');
+            }
+        }
+
+        if (interaction.commandName === 'admin_set_result') {
+            const game = interaction.options.getString('game');
+            const values = interaction.options.getString('values');
+            if (game === 'tx') {
+                txState.forcedResult = values;
+            } else if (game === 'baucua') {
+                bcState.forcedResult = values;
+            }
+            writeLog('ADMIN', `[CAN THIỆP] Admin ${interaction.user.tag} đã ép kết quả ${game} thành: ${values}`);
+            return interaction.reply({ content: `✅ Đã ép kết quả ${game} ván tới là: ${values}`, ephemeral: true });
+        }
+
+        if (interaction.commandName === 'diemdanh') {
+            const userData = getUserData(userId);
+            const now = Date.now();
+            const cooldown = 24 * 60 * 60 * 1000;
+
+            if (now - userData.lastDaily < cooldown) {
+                const remaining = cooldown - (now - userData.lastDaily);
+                const hours = Math.floor(remaining / (60 * 60 * 1000));
+                const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+                return interaction.reply({ content: `⏳ Bạn đã điểm danh rồi! Hãy quay lại sau **${hours} giờ ${mins} phút**.`, ephemeral: true });
+            }
+
+            updatePoints(userId, 50000000000);
+            userData.lastDaily = now; 
+            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận 5,000 point | Số dư: ${getUserData(userId).points.toLocaleString()}`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **5.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
+        }
+
+        if (interaction.commandName === 'sodu') {
+            const points = getUserData(userId).points;
+            const embed = new EmbedBuilder()
+                .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
+                .setTitle("💳 VÍ POINT CỦA BẠN")
+                .setDescription(`Số dư hiện tại: **${points.toLocaleString()} point**`)
+                .setColor(0x00ff00);
+            return interaction.reply({ embeds: [embed] });
+        }
+
+        if (interaction.commandName === 'addtien') {
+            const target = interaction.options.getUser('user');
+            const amount = interaction.options.getInteger('amount');
+            updatePoints(target.id, amount);
+            writeLog('ADMIN', `[CỘNG TIỀN] Admin ${interaction.user.tag} cộng ${amount} point cho ${target.tag}`);
+            return interaction.reply(`✅ Đã cộng **${amount.toLocaleString()} point** cho <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} point**`);
+        }
+
+        if (interaction.commandName === 'trutien') {
+            const target = interaction.options.getUser('user');
+            const amount = interaction.options.getInteger('amount');
+            updatePoints(target.id, -amount);
+            writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} point của ${target.tag}`);
+            return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()} point** từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} point**`);
+        }
+
+        if (interaction.commandName === 'chuyentien') {
+            const receiver = interaction.options.getUser('nguoi');
+            const amount = interaction.options.getInteger('sotien');
+            if (receiver.id === userId) return interaction.reply({ content: "❌ Không thể tự chuyển cho mình!", ephemeral: true });
+            if (amount <= 0) return interaction.reply({ content: "❌ Số point không hợp lệ!", ephemeral: true });
+            
+            const senderData = getUserData(userId);
+            if (senderData.points < amount) return interaction.reply({ content: `❌ Bạn không đủ point!`, ephemeral: true });
+            
+            updatePoints(userId, -amount); 
+            updatePoints(receiver.id, amount);
+            writeLog('ADMIN', `[CHUYỂN TIỀN] ${interaction.user.tag} → ${receiver.tag} | ${amount.toLocaleString()} point`);
+            return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()} point** cho <@${receiver.id}>!`).setColor(0x00aeef)] });
+        }
+
+        if (interaction.commandName === 'domin') {
+            let userData = getUserData(userId);
+            const subCmd = interaction.options.getSubcommand();
+            let bet = 0;
+            const numMines = interaction.options.getInteger('so_min'); 
+            const maxDiamonds = TOTAL_TILES - numMines;
+
+            if (subCmd === 'all') {
+                bet = userData.points;
+            } else if (subCmd === 'point') {
+                bet = interaction.options.getInteger('cuoc');
+            }
+
+            if (bet <= 0) return interaction.reply({ content: "❌ Đặt ít nhất 1 điểm!", ephemeral: true });
+            if (userData.points < bet) return interaction.reply({ content: `❌ Bạn không đủ point!`, ephemeral: true });
+
+            await interaction.deferReply();
+
+            let game = createGame(numMines);
+            
+            const renderEmbed = (status = "playing") => {
+                const diamonds = game.revealed.length;
+                const { multi, nextMulti } = getInfo(diamonds, game.totalMines);
+                const currentTotalWin = Math.floor(bet * multi);
+                const nextTotalWin = Math.floor(bet * nextMulti);
+                const liveBalance = getUserData(userId).points; 
+
+                let color = status === "won" ? 0x2ecc71 : status === "lost" ? 0xe74c3c : 0x5865F2;
+                
+                let desc = "";
+                if (status === "playing") {
+                    desc = `👤 Người chơi: <@${userId}>\n💣 Số mìn: **${game.totalMines}**\n💰 Mức đặt: **${bet.toLocaleString()} point**\n💳 Số dư: **${liveBalance.toLocaleString()} point**\n\n💎 Kim cương: **${diamonds}/${maxDiamonds}**\n🔥 Hệ số hiện tại: **x${multi}**\n💵 Đang có: **${currentTotalWin.toLocaleString()} point**\n`;
+                    desc += diamonds < maxDiamonds ? `\n👉 Mở ô tiếp theo sẽ đạt: **x${nextMulti}** (*${nextTotalWin.toLocaleString()} point*)` : `\nĐã đạt mức tối đa!`;
+                } else if (status === "won") {
+                    desc = `🎉 **THẮNG RỒI!**\nBạn nhận được **${currentTotalWin.toLocaleString()} point** (Hệ số: **x${multi}**)\n💰 Số dư mới: **${liveBalance.toLocaleString()} point**`;
+                } else if (status === "lost") {
+                    desc = `💥 **BÙM!** Trúng mìn rồi!\nBạn mất **${bet.toLocaleString()} point**\n💰 Số dư còn lại: **${liveBalance.toLocaleString()} point**`;
+                }
+
+                return new EmbedBuilder()
+                    .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
+                    .setTitle("💎 TRÒ CHƠI DÒ MÌN")
+                    .setDescription(desc)
+                    .setColor(color)
+                    .setTimestamp();
+            };
+
+            const renderButtons = (showAll = false) => {
+                const rows = [];
+                for (let i = 0; i < 4; i++) {
+                    const row = new ActionRowBuilder();
+                    for (let j = 0; j < 5; j++) {
+                        const idx = i * 5 + j;
+                        const btn = new ButtonBuilder().setCustomId(`m_${idx}`);
+                        if (game.revealed.includes(idx)) btn.setEmoji('💎').setStyle(ButtonStyle.Success).setDisabled(true);
+                        else if (showAll && game.mines.includes(idx)) btn.setEmoji('💣').setStyle(ButtonStyle.Danger).setDisabled(true);
+                        else btn.setLabel('?').setStyle(ButtonStyle.Secondary).setDisabled(showAll);
+                        row.addComponents(btn);
+                    }
+                    rows.push(row);
+                }
+                const row5 = new ActionRowBuilder();
+                for (let j = 0; j < 4; j++) {
+                    const idx = 20 + j;
+                    const btn = new ButtonBuilder().setCustomId(`m_${idx}`);
+                    if (game.revealed.includes(idx)) btn.setEmoji('💎').setStyle(ButtonStyle.Success).setDisabled(true);
+                    else if (showAll && game.mines.includes(idx)) btn.setEmoji('💣').setStyle(ButtonStyle.Danger).setDisabled(true);
+                    else btn.setLabel('?').setStyle(ButtonStyle.Secondary).setDisabled(showAll);
+                    row5.addComponents(btn);
+                }
+                row5.addComponents(new ButtonBuilder().setCustomId('stop').setLabel('DỪNG').setStyle(ButtonStyle.Primary).setDisabled(showAll || game.revealed.length === 0));
+                rows.push(row5);
+                return rows;
+            };
+
+            const response = await interaction.editReply({ embeds: [renderEmbed()], components: renderButtons() });
+            const collector = response.createMessageComponentCollector({ filter: i => i.user.id === userId, time: 300000 }); 
+
+            let isProcessingClick = false; 
+
+            collector.on('collect', async i => {
+                if (isProcessingClick) return i.deferUpdate().catch(() => {});
+                isProcessingClick = true;
+
+                try {
+                    await i.deferUpdate(); 
+
+                    if (i.customId === 'stop') {
+                        const winProfit = Math.floor(bet * getInfo(game.revealed.length, game.totalMines).multi) - bet;
+                        updatePoints(userId, winProfit);
+                        await i.editReply({ embeds: [renderEmbed("won")], components: renderButtons(true) });
+                        
+                        writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} DỪNG - Số mìn: ${game.totalMines}`);
+                        writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Thắng ${winProfit}`);
+                        
+                        return collector.stop();
+                    }
+
+                    const idx = parseInt(i.customId.split('_')[1]);
+                    if (game.mines.includes(idx)) {
+                        updatePoints(userId, -bet);
+                        await i.editReply({ embeds: [renderEmbed("lost")], components: renderButtons(true) });
+                        
+                        writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} BÙM - Số mìn: ${game.totalMines}`);
+                        writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Thua ${bet}`);
+                        
+                        collector.stop();
+                    } else {
+                        if (!game.revealed.includes(idx)) game.revealed.push(idx);
+                        
+                        if (game.revealed.length === maxDiamonds) {
+                            const jackpotWin = Math.floor(bet * getInfo(maxDiamonds, game.totalMines).multi) - bet;
+                            updatePoints(userId, jackpotWin);
+                            await i.editReply({ embeds: [renderEmbed("won")], components: renderButtons(true) });
+                            
+                            writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} JACKPOT - Số mìn: ${game.totalMines}`);
+                            writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Jackpot ${jackpotWin}`);
+                            
+                            collector.stop();
+                        } else {
+                            await i.editReply({ embeds: [renderEmbed()], components: renderButtons() });
+                        }
+                    }
+                } catch (err) {
+                    console.error("[LỖI DÒ MÌN]", err);
+                } finally {
+                    isProcessingClick = false; 
+                }
+            });
+        }
+    }
+
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId === 'bc_modal_custom') {
+            if (bcState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
+            const sel = userBCSelections[userId];
+            if (!sel) return interaction.reply({ content: "❌ Bạn chưa chọn con vật!", ephemeral: true });
+
+            const amountStr = interaction.fields.getTextInputValue('bc_input_amount');
+            const amt = parseInt(amountStr);
+
+            if (isNaN(amt) || amt <= 0 || getUserData(userId).points < amt) {
+                return interaction.reply({ content: "❌ Số point không hợp lệ hoặc bạn không đủ point!", ephemeral: true });
+            }
+
+            updatePoints(userId, -amt);
+            bcState.bets.push({ userId, username: interaction.user.username, mascotId: sel.mascotId, amount: amt });
+
+            userBCSelections[userId] = null;
+            bcState.activeMascot = null; 
+            bcState.needsUpdate = true;
+            await updateBCMessage();
+
+            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
+        }
+
+        if (interaction.customId === 'tx_modal_custom') {
+            if (txState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
+            const sel = userTXSelections[userId];
+            if (!sel) return interaction.reply({ content: "❌ Bạn chưa chọn cửa cược!", ephemeral: true });
+
+            const amountStr = interaction.fields.getTextInputValue('tx_input_amount');
+            const amt = parseInt(amountStr);
+
+            if (isNaN(amt) || amt <= 0 || getUserData(userId).points < amt) {
+                return interaction.reply({ content: "❌ Số point không hợp lệ hoặc bạn không đủ point!", ephemeral: true });
+            }
+
+            updatePoints(userId, -amt);
+            txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
+
+            userTXSelections[userId] = null;
+            txState.activeChoice = null; 
+            txState.needsUpdate = true;
+            await updateTXMessage();
+
+            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+        }
+    }
+
+    if (!interaction.isButton()) return;
+    
+    // ======== NÚT BẦU CUA ========
+    if (interaction.customId.startsWith('bc_m_')) {
+        const mascotId = interaction.customId.split('_')[2];
+        userBCSelections[userId] = { mascotId };
+        
+        bcState.activeMascot = mascotId;
+        await updateBCMessage();
+
+        return interaction.reply({ content: `✅ Đã chọn **${MASCOTS.find(m => m.id === mascotId).name}**. Nhấn nút số point ở dưới để chốt!`, ephemeral: true });
+    }
+    
+    if (interaction.customId === 'bc_a_custom') {
+        const sel = userBCSelections[userId];
+        if (!sel) return interaction.reply({ content: "❌ Bạn phải bấm chọn con vật trước!", ephemeral: true });
+
+        const modal = new ModalBuilder()
+            .setCustomId('bc_modal_custom')
+            .setTitle('Nhập Số Point Đặt');
+
+        const amountInput = new TextInputBuilder()
+            .setCustomId('bc_input_amount')
+            .setLabel('Ví dụ: 15000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+        await interaction.showModal(modal);
+        return;
+    }
+
+    if (interaction.customId.startsWith('bc_a_')) {
+        if (bcState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
+        const sel = userBCSelections[userId];
+        if (!sel) return interaction.reply({ content: "❌ Chọn con vật trước!", ephemeral: true });
+
+        let amt = interaction.customId === 'bc_a_all' ? getUserData(userId).points : parseInt(interaction.customId.split('_')[2]);
+        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ point để đặt mức này!", ephemeral: true });
+        
+        updatePoints(userId, -amt);
+        bcState.bets.push({ userId, username: interaction.user.username, mascotId: sel.mascotId, amount: amt });
+
+        userBCSelections[userId] = null;
+        bcState.activeMascot = null; 
+        bcState.needsUpdate = true; 
+        await updateBCMessage();
+        
+        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
+    }
+
+    // ======== NÚT TÀI XỈU ========
+    if (interaction.customId.startsWith('tx_c_')) {
+        const choice = interaction.customId.split('_')[2];
+        userTXSelections[userId] = { choice };
+        
+        txState.activeChoice = choice;
+        await updateTXMessage();
+
+        return interaction.reply({ content: `✅ Đã chọn **${TX_CHOICES[choice].name}**. Nhấn nút số point ở dưới để chốt!`, ephemeral: true });
+    }
+
+    if (interaction.customId === 'tx_soicau') {
+        if (txState.history.length === 0) return interaction.reply({ content: "Chưa có lịch sử ván nào!", ephemeral: true });
+        
+        let hisDesc = txState.history.map(h => {
+            return `Game ${h.gameId}: ${DICE_EMOJIS[h.dice[0]]} ${DICE_EMOJIS[h.dice[1]]} ${DICE_EMOJIS[h.dice[2]]} (${h.sum}) - ${h.tx} | ${h.cl}`;
+        }).join('\n');
+
+        const emb = new EmbedBuilder()
+            .setTitle('🔮 Soi Cầu - Lịch sử 10 ván gần nhất')
+            .setDescription(hisDesc)
+            .setFooter({ text: 'Cờ bạc có thể gây nghiện - Chơi có trách nhiệm' })
+            .setColor(0x2b2d31);
+        
+        return interaction.reply({ embeds: [emb], ephemeral: true });
+    }
+
+    if (interaction.customId === 'tx_a_custom') {
+        const sel = userTXSelections[userId];
+        if (!sel) return interaction.reply({ content: "❌ Bạn phải bấm chọn cửa trước!", ephemeral: true });
+
+        const modal = new ModalBuilder()
+            .setCustomId('tx_modal_custom')
+            .setTitle('Nhập Số Point Đặt');
+
+        const amountInput = new TextInputBuilder()
+            .setCustomId('tx_input_amount')
+            .setLabel('Ví dụ: 15000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+        await interaction.showModal(modal);
+        return;
+    }
+
+    if (interaction.customId.startsWith('tx_a_') && interaction.customId !== 'tx_a_custom') {
+        if (txState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
+        const sel = userTXSelections[userId];
+        if (!sel) return interaction.reply({ content: "❌ Chọn cửa trước!", ephemeral: true });
+
+        let amt = interaction.customId === 'tx_a_all' ? getUserData(userId).points : parseInt(interaction.customId.split('_')[2]);
+        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ point để đặt mức này!", ephemeral: true });
+        
+        updatePoints(userId, -amt);
+        txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
+
+        userTXSelections[userId] = null;
+        txState.activeChoice = null; 
+        txState.needsUpdate = true; 
+        await updateTXMessage();
+        
+        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+    }
+  } catch (e) {
+    if (e.code !== 10062) writeLog('SYSTEM', `[LỖI INTERACTION] ${e.message}`);
+  }
+});
+
+// Dọn memory userSelections mỗi 10 phút (tránh leak)
+setInterval(() => {
+    userBCSelections = {};
+    userTXSelections = {};
+}, 10 * 60 * 1000);
+
+client.on('error', (e) => writeLog('SYSTEM', `[DISCORD ERROR] ${e.message}`));
+client.on('warn', (msg) => writeLog('SYSTEM', `[DISCORD WARN] ${msg}`));
+client.on('shardError', (e) => writeLog('SYSTEM', `[SHARD ERROR] ${e.message}`));
+
+process.on('unhandledRejection', (reason, promise) => {
+    writeLog('SYSTEM', `[CRASH] Unhandled Rejection at: ${promise}, reason: ${reason}`);
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+    writeLog('SYSTEM', `[CRASH] Uncaught Exception: ${err.message || err}`);
+    console.error('Uncaught Exception:', err);
+});
+process.on('uncaughtExceptionMonitor', (err, origin) => {
+    writeLog('SYSTEM', `[CRASH] Uncaught Exception Monitor: ${err.message || err}, origin: ${origin}`);
+    console.error('Uncaught Exception Monitor:', err, origin);
+});
+
+client.login(TOKEN);        
