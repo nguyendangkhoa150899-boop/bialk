@@ -1,7 +1,7 @@
 const { enqueue } = require('./voiceHandler');
 const { filterText } = require('../utils/textFilter');
 
-const PREFIX = ',';
+const PREFIX = '?';
 const MAX_CHARS = 250;
 const COOLDOWN_MS = 10_000;
 const cooldowns = new Map();
