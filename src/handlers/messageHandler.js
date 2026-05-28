@@ -8,10 +8,6 @@ const cooldowns = new Map();
 
 async function handleMessage(message) {
   if (message.author.bot) return;
-  if (message.content.length > 0 && !message.content.startsWith('<')) {
-    const code = message.content.charCodeAt(0);
-    console.log(`[MSG] char[0]="${message.content[0]}" code=${code} prefix="${PREFIX}"(${PREFIX.charCodeAt(0)}) match=${message.content.startsWith(PREFIX)}`);
-  }
   if (!message.content.startsWith(PREFIX)) return;
 
   const raw = message.content.slice(PREFIX.length).trim();

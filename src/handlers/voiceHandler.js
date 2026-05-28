@@ -103,7 +103,9 @@ async function enqueue(voiceChannel, text) {
     setupDisconnectHandler(connection, guildId);
   }
 
-  state.queue.push(text);
+  // Gọi Vbee ngay lập tức — không chờ đến lượt
+  const streamPromise = ttsRequest(text);
+  state.queue.push({ text, streamPromise });
   scheduleDisconnect(guildId);
 
   if (!state.isPlaying) {
@@ -124,12 +126,11 @@ async function processNext(guildId) {
   }
 
   state.isPlaying = true;
-  const text = state.queue.shift();
+  const { text, streamPromise } = state.queue.shift();
 
   try {
-    console.log(`[TTS] Gọi Vbee: "${text}"`);
-    const stream = await ttsRequest(text);
-    console.log(`[TTS] Nhận stream, bắt đầu phát...`);
+    const stream = await streamPromise;
+    console.log(`[TTS] Stream sẵn sàng: "${text}"`);
     const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
     state.player.play(resource);
 
