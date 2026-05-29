@@ -57,6 +57,8 @@ let dbCache = {};
 if (fs.existsSync(DATA_FILE)) {
     try {
         dbCache = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+        if (dbCache._txHistory) txState.history = dbCache._txHistory;
+        if (dbCache._bcHistory) bcState.history = dbCache._bcHistory;
     } catch (e) {
         console.error("Lỗi đọc file database ban đầu, tạo mới.");
         dbCache = {};
@@ -66,6 +68,8 @@ if (fs.existsSync(DATA_FILE)) {
 }
 
 setInterval(() => {
+    dbCache._txHistory = txState.history;
+    dbCache._bcHistory = bcState.history;
     fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
         if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
     });
@@ -104,6 +108,7 @@ let bcState = {
     isProcessing: false,
     processingStart: 0,
     lastGameInfo: null,
+    history: [],
     msgHistory: [],
     resultPromise: null
 };
@@ -315,7 +320,8 @@ function getBCMessageData(customStatus = null) {
         new ActionRowBuilder().addComponents(amountRows),
         new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('bc_a_custom').setLabel('💰 Tùy Chọn').setStyle(ButtonStyle.Success).setDisabled(bcState.status !== 'betting'),
-            new ButtonBuilder().setCustomId('bc_a_all').setLabel('💸 All In').setStyle(ButtonStyle.Danger).setDisabled(bcState.status !== 'betting')
+            new ButtonBuilder().setCustomId('bc_a_all').setLabel('💸 All In').setStyle(ButtonStyle.Danger).setDisabled(bcState.status !== 'betting'),
+            new ButtonBuilder().setCustomId('bc_soicau').setLabel('Soi Cầu').setEmoji('🕵️').setStyle(ButtonStyle.Secondary)
         )
     ];
     return { embeds: [embed], components: rows };
@@ -421,12 +427,6 @@ async function finishBCGame(gameId, bets) {
         }
     });
 
-    bcState.lastGameInfo = {
-        gameId,
-        result: res.map(r => r.emoji).join(' '),
-        betDetails: prevBetsDisplay || "Không có ai đặt"
-    };
-
     const resultNames = res.map(r => r.name).join(', ');
     writeLog('RESULT', `[KẾT QUẢ BẦU CUA] Phiên #${gameId}: ${resultNames}`);
 
@@ -440,7 +440,17 @@ async function finishBCGame(gameId, bets) {
         .setColor(0xf1c40f)
         .setDescription(`🎲: ${res.map(r => r.emoji).join(' ')}\n\n🏆 **Thắng:**\n${winLog || "Ván này nhà cái húp sạch!"}`);
 
-    return await bcState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KẾT QUẢ BC] ${e.message}`); return null; });
+    const sentMsg = await bcState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KẾT QUẢ BC] ${e.message}`); return null; });
+
+    bcState.lastGameInfo = {
+        gameId,
+        result: res.map(r => r.emoji).join(' '),
+        betDetails: prevBetsDisplay || "Không có ai đặt"
+    };
+    bcState.history.unshift({ gameId, result: resultNames, resultEmoji: res.map(r => r.emoji).join(' ') });
+    if (bcState.history.length > 10) bcState.history.pop();
+
+    return sentMsg;
 }
 
 // --- UI TÀI XỈU (LỚN NHỎ) ---
@@ -595,15 +605,6 @@ async function finishTXGame(gameId, bets) {
     const resultTX = isTai ? 'tai' : 'xiu';
     const resultCL = isChan ? 'chan' : 'le';
 
-    txState.history.unshift({
-        gameId,
-        dice: [d1, d2, d3],
-        sum: sum,
-        tx: isTai ? '11-18' : '3-10',
-        cl: isChan ? 'CHẴN' : 'LẺ'
-    });
-    if (txState.history.length > 10) txState.history.pop();
-
     let winLog = "";
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount} -> ${TX_CHOICES[b.choice].name})`).join(', ');
 
@@ -617,13 +618,6 @@ async function finishTXGame(gameId, bets) {
 
     const txIcon = isTai ? '11-18 🔺' : '3-10 🔻';
     const clIcon = isChan ? 'CHẴN 🔵' : 'LẺ 🟣';
-
-    txState.lastGameInfo = {
-        gameId,
-        result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
-        betDetails: prevBetsDisplay || "Không có ai đặt"
-    };
-
     const txLogText = isTai ? '11-18' : '3-10';
     const clLogText = isChan ? 'CHẴN' : 'LẺ';
     writeLog('RESULT', `[KẾT QUẢ TÀI XỈU] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${txLogText} | ${clLogText})`);
@@ -643,7 +637,17 @@ async function finishTXGame(gameId, bets) {
                         `🏆 **Người thắng:**\n${winLog || "🚫 \`Không ai thắng ván này!\`"}`)
         .setFooter({ text: 'Game tiếp theo sẽ bắt đầu sau 55 giây...' });
 
-    return await txState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
+    const sentMsg = await txState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
+
+    txState.lastGameInfo = {
+        gameId,
+        result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
+        betDetails: prevBetsDisplay || "Không có ai đặt"
+    };
+    txState.history.unshift({ gameId, dice: [d1, d2, d3], sum, tx: isTai ? '11-18' : '3-10', cl: isChan ? 'CHẴN' : 'LẺ' });
+    if (txState.history.length > 10) txState.history.pop();
+
+    return sentMsg;
 }
 
 // --- XỬ LÝ TƯƠNG TÁC ---
@@ -1031,6 +1035,17 @@ client.on('interactionCreate', async interaction => {
         await updateBCMessage();
         
         return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
+    }
+
+    if (interaction.customId === 'bc_soicau') {
+        if (bcState.history.length === 0) return interaction.reply({ content: "Chưa có lịch sử phiên nào!", ephemeral: true });
+        const hisDesc = bcState.history.map(h => `Phiên ${h.gameId}: ${h.resultEmoji} (${h.result})`).join('\n');
+        const emb = new EmbedBuilder()
+            .setTitle('🔮 Soi Cầu Bầu Cua - Lịch sử 10 phiên gần nhất')
+            .setDescription(hisDesc)
+            .setFooter({ text: 'Cờ bạc có thể gây nghiện - Chơi có trách nhiệm' })
+            .setColor(0x2b2d31);
+        return interaction.reply({ embeds: [emb], ephemeral: true });
     }
 
     // ======== NÚT TÀI XỈU ========
