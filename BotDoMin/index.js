@@ -57,8 +57,6 @@ let dbCache = {};
 if (fs.existsSync(DATA_FILE)) {
     try {
         dbCache = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-        if (dbCache._txHistory) txState.history = dbCache._txHistory;
-        if (dbCache._bcHistory) bcState.history = dbCache._bcHistory;
     } catch (e) {
         console.error("Lỗi đọc file database ban đầu, tạo mới.");
         dbCache = {};
@@ -133,6 +131,10 @@ let txState = {
     resultPromise: null
 };
 let userTXSelections = {};
+
+// Restore history sau khi state đã khai báo xong
+if (dbCache._txHistory) txState.history = dbCache._txHistory;
+if (dbCache._bcHistory) bcState.history = dbCache._bcHistory;
 
 const DICE_EMOJIS = [
     '', 
