@@ -259,6 +259,9 @@ const commands = [
         .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
         .addIntegerOption(opt => opt.setName('amount').setDescription('Số point trừ').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('setall').setDescription('Admin set point tất cả người chơi')
+        .addIntegerOption(opt => opt.setName('amount').setDescription('Số point muốn set').setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     new SlashCommandBuilder().setName('admin_set_result').setDescription('Portal can thiệp kết quả').setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(o => o.setName('game').setDescription('Game muốn can thiệp').setRequired(true).addChoices({name:'Tài Xỉu', value:'tx'}, {name:'Bầu Cua', value:'baucua'}))
         .addStringOption(o => o.setName('values').setDescription('Giá trị ép (VD: 1,2,3)').setRequired(true))
@@ -755,6 +758,16 @@ client.on('interactionCreate', async interaction => {
                 writeLog('SYSTEM', `[LỖI XÓA CHAT] ${err.message}`);
                 return interaction.editReply('❌ Lỗi khi xóa tin nhắn, có thể do tin nhắn quá cũ (hơn 14 ngày) hoặc bot thiếu quyền!');
             }
+        }
+
+        if (interaction.commandName === 'setall') {
+            const amount = interaction.options.getInteger('amount');
+            const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_'));
+            userIds.forEach(id => {
+                if (dbCache[id] && typeof dbCache[id] === 'object') dbCache[id].points = amount;
+            });
+            writeLog('ADMIN', `[SET ALL] Admin ${interaction.user.tag} set ${userIds.length} người về ${amount.toLocaleString()} point`);
+            return interaction.reply({ content: `✅ Đã set **${userIds.length} người chơi** về **${amount.toLocaleString()} point**.`, ephemeral: true });
         }
 
         if (interaction.commandName === 'admin_set_result') {
