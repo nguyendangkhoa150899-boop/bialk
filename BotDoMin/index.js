@@ -338,6 +338,16 @@ async function updateBCMessage(customStatus = null) {
 // --- VÒNG LẶP BẦU CUA ---
 function runBầuCuaLoop() {
     setInterval(async () => {
+        // Auto-recover nếu message bị mất do timeout mạng
+        if (!bcState.message && bcState.channel && !bcState.isProcessing) {
+            bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+            bcState.status = 'betting';
+            bcState.bets = [];
+            bcState.activeMascot = null;
+            bcState.resultPromise = null;
+            bcState.message = await bcState.channel.send(getBCMessageData()).catch(() => null);
+            return;
+        }
         if (!bcState.message || !bcState.channel) return;
         if (bcState.isProcessing) {
             // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
@@ -519,6 +529,16 @@ async function updateTXMessage(customStatus = null) {
 // --- VÒNG LẶP TÀI XỈU (LỚN NHỎ) ---
 function runTaiXiuLoop() {
     setInterval(async () => {
+        // Auto-recover nếu message bị mất do timeout mạng
+        if (!txState.message && txState.channel && !txState.isProcessing) {
+            txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+            txState.status = 'betting';
+            txState.bets = [];
+            txState.activeChoice = null;
+            txState.resultPromise = null;
+            txState.message = await txState.channel.send(getTXMessageData()).catch(() => null);
+            return;
+        }
         if (!txState.message || !txState.channel) return;
         if (txState.isProcessing) {
             // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
