@@ -767,7 +767,7 @@ client.on('interactionCreate', async interaction => {
                 if (dbCache[id] && typeof dbCache[id] === 'object') dbCache[id].points = amount;
             });
             writeLog('ADMIN', `[SET ALL] Admin ${interaction.user.tag} set ${userIds.length} người về ${amount.toLocaleString()} point`);
-            return interaction.reply({ content: `✅ Đã set **${userIds.length} người chơi** về **${amount.toLocaleString()} point**.`, ephemeral: true });
+            return interaction.reply(`✅ Đã set **${userIds.length} người chơi** về **${amount.toLocaleString()} point**.`);
         }
 
         if (interaction.commandName === 'admin_set_result') {
