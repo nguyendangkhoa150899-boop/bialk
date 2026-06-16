@@ -343,17 +343,21 @@ function runBầuCuaLoop() {
     setInterval(async () => {
         // Auto-recover nếu message bị mất do timeout mạng
         if (!bcState.message && bcState.channel && !bcState.isProcessing) {
+            bcState.isProcessing = true;
+            bcState.processingStart = Date.now();
             bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
             bcState.status = 'betting';
             bcState.bets = [];
             bcState.activeMascot = null;
             bcState.resultPromise = null;
             bcState.message = await bcState.channel.send(getBCMessageData()).catch(() => null);
+            bcState.isProcessing = false;
+            bcState.processingStart = 0;
             return;
         }
         if (!bcState.message || !bcState.channel) return;
         if (bcState.isProcessing) {
-            // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
+            // Watchdog: nếu kẹt quá 120 giây thì tự reset, auto-recover sẽ gửi bảng mới
             if (bcState.processingStart && Date.now() - bcState.processingStart > 120000) {
                 writeLog('SYSTEM', '[WATCHDOG BC] isProcessing kẹt, tự reset');
                 bcState.isProcessing = false;
@@ -363,8 +367,7 @@ function runBầuCuaLoop() {
                 bcState.bets = [];
                 bcState.activeMascot = null;
                 bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-                const data = getBCMessageData();
-                bcState.channel.send(data).then(msg => { bcState.message = msg; }).catch(() => {});
+                bcState.message = null;
             }
             return;
         }
@@ -534,17 +537,21 @@ function runTaiXiuLoop() {
     setInterval(async () => {
         // Auto-recover nếu message bị mất do timeout mạng
         if (!txState.message && txState.channel && !txState.isProcessing) {
+            txState.isProcessing = true;
+            txState.processingStart = Date.now();
             txState.targetTime = Math.floor(Date.now() / 1000) + 61;
             txState.status = 'betting';
             txState.bets = [];
             txState.activeChoice = null;
             txState.resultPromise = null;
             txState.message = await txState.channel.send(getTXMessageData()).catch(() => null);
+            txState.isProcessing = false;
+            txState.processingStart = 0;
             return;
         }
         if (!txState.message || !txState.channel) return;
         if (txState.isProcessing) {
-            // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
+            // Watchdog: nếu kẹt quá 120 giây thì tự reset, auto-recover sẽ gửi bảng mới
             if (txState.processingStart && Date.now() - txState.processingStart > 120000) {
                 writeLog('SYSTEM', '[WATCHDOG TX] isProcessing kẹt, tự reset');
                 txState.isProcessing = false;
@@ -554,8 +561,7 @@ function runTaiXiuLoop() {
                 txState.bets = [];
                 txState.activeChoice = null;
                 txState.targetTime = Math.floor(Date.now() / 1000) + 61;
-                const data = getTXMessageData();
-                txState.channel.send(data).then(msg => { txState.message = msg; }).catch(() => {});
+                txState.message = null;
             }
             return;
         }
@@ -682,8 +688,8 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'baucua_start') {
-            if (bcState.message) await bcState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`)); 
-            
+            if (bcState.message) await bcState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`));
+            bcState.message = null;
             bcState.channel = interaction.channel;
             bcState.gameId++;
             bcState.timeLeft = 55;
@@ -692,10 +698,13 @@ client.on('interactionCreate', async interaction => {
             bcState.bets = [];
             bcState.needsUpdate = false;
             bcState.activeMascot = null;
-            
+            bcState.isProcessing = true;
+            bcState.processingStart = Date.now();
             await interaction.reply({ content: '✅ Đã khởi tạo bàn Bầu Cua Live.', ephemeral: true });
             const data = getBCMessageData();
             bcState.message = await bcState.channel.send(data);
+            bcState.isProcessing = false;
+            bcState.processingStart = 0;
             writeLog('ADMIN', `[KHỞI TẠO] Bầu cua start by ${interaction.user.tag}`);
             return;
         }
@@ -712,8 +721,8 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.commandName === 'lonnho') {
-            if (txState.message) await txState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`)); 
-            
+            if (txState.message) await txState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`));
+            txState.message = null;
             txState.channel = interaction.channel;
             txState.gameId++;
             txState.timeLeft = 55;
@@ -722,10 +731,13 @@ client.on('interactionCreate', async interaction => {
             txState.bets = [];
             txState.needsUpdate = false;
             txState.activeChoice = null;
-            
+            txState.isProcessing = true;
+            txState.processingStart = Date.now();
             await interaction.reply({ content: '✅ Đã khởi tạo bàn Lớn Nhỏ Live.', ephemeral: true });
             const data = getTXMessageData();
             txState.message = await txState.channel.send(data);
+            txState.isProcessing = false;
+            txState.processingStart = 0;
             writeLog('ADMIN', `[KHỞI TẠO] Lớn Nhỏ start by ${interaction.user.tag}`);
             return;
         }
