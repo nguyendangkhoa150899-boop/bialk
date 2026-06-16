@@ -94,7 +94,7 @@ function startPanel(ctx) {
             if (path.startsWith('/api/')) {
                 if (!isAuthed(req)) return sendJSON(res, 401, { ok: false, error: 'Chưa đăng nhập' });
 
-                if (req.method === 'GET' && path === '/api/state') {
+                if (path === '/api/state') {
                     return sendJSON(res, 200, { ok: true, state: buildState() });
                 }
 
