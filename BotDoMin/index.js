@@ -5,6 +5,7 @@ const {
     ModalBuilder, TextInputBuilder, TextInputStyle 
 } = require('discord.js');
 const fs = require('fs');
+const { startPanel } = require('./panel');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
@@ -220,8 +221,30 @@ const getInfo = (diamonds, numMines) => {
     };
 };
 
-const createGame = (numMines) => {
+// Mìn bị ép bởi admin (qua web panel). Key = userId, hoặc '_any' cho người tiếp theo bất kỳ.
+// Value = mảng vị trí ô (0-23) sẽ chắc chắn là mìn ở ván dò mìn kế tiếp.
+let forcedMines = {};
+
+const createGame = (numMines, userId) => {
     let mines = [];
+
+    // Ưu tiên layout ép riêng cho user, rồi tới layout ép chung (_any)
+    let forced = null, forcedKey = null;
+    if (userId && Array.isArray(forcedMines[userId]) && forcedMines[userId].length) {
+        forced = forcedMines[userId]; forcedKey = userId;
+    } else if (Array.isArray(forcedMines['_any']) && forcedMines['_any'].length) {
+        forced = forcedMines['_any']; forcedKey = '_any';
+    }
+
+    if (forced) {
+        for (const p of forced) {
+            if (mines.length >= numMines) break;
+            if (Number.isInteger(p) && p >= 0 && p < TOTAL_TILES && !mines.includes(p)) mines.push(p);
+        }
+        delete forcedMines[forcedKey];
+        writeLog('ADMIN', `[ÉP DÒ MÌN] ${forcedKey === '_any' ? 'Người tiếp theo' : 'User ' + userId} - ván tới mìn ép tại: [${forced.join(',')}] (numMines=${numMines})`);
+    }
+
     while (mines.length < numMines) {
         let r = Math.floor(Math.random() * TOTAL_TILES);
         if (!mines.includes(r)) mines.push(r);
@@ -274,7 +297,31 @@ client.once('ready', async (c) => {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     runBầuCuaLoop();
-    runTaiXiuLoop(); 
+    runTaiXiuLoop();
+
+    // Khởi động web panel can thiệp kết quả
+    try {
+        startPanel({
+            port: parseInt(process.env.PANEL_PORT) || 3001,
+            password: process.env.PANEL_PASSWORD || 'doimatkhau',
+            mascots: MASCOTS,
+            txChoices: TX_CHOICES,
+            diceEmojis: DICE_EMOJIS,
+            totalTiles: TOTAL_TILES,
+            getTX: () => txState,
+            getBC: () => bcState,
+            getDb: () => dbCache,
+            getForcedMines: () => forcedMines,
+            setForcedMines: (key, positions) => { forcedMines[key] = positions; },
+            clearForcedMines: (key) => { delete forcedMines[key]; },
+            getUserData,
+            updatePoints,
+            writeLog,
+        });
+        writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 3001}`);
+    } catch (e) {
+        writeLog('SYSTEM', `[LỖI PANEL] ${e.message}`);
+    }
 });
 
 // --- UI BẦU CUA ---
@@ -685,6 +732,10 @@ async function finishTXGame(gameId, bets) {
 client.on('interactionCreate', async interaction => {
   try {
     const userId = interaction.user.id;
+    // Ghi lại tên hiển thị cho ví đã tồn tại (để web panel show tên thay vì ID)
+    if (dbCache[userId] && typeof dbCache[userId] === 'object') {
+        dbCache[userId].name = interaction.user.username;
+    }
 
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'baucua_start') {
@@ -871,7 +922,7 @@ client.on('interactionCreate', async interaction => {
 
             await interaction.deferReply();
 
-            let game = createGame(numMines);
+            let game = createGame(numMines, userId);
             
             const renderEmbed = (status = "playing") => {
                 const diamonds = game.revealed.length;
