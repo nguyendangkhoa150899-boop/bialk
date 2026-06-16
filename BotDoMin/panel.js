@@ -44,6 +44,7 @@ function startPanel(ctx) {
     const buildState = () => {
         const tx = ctx.getTX();
         const bc = ctx.getBC();
+        const db = ctx.getDb();
         return {
             tx: {
                 gameId: tx.gameId,
@@ -52,6 +53,7 @@ function startPanel(ctx) {
                 betsCount: tx.bets ? tx.bets.length : 0,
                 forced: tx.forcedResult || null,
                 live: !!tx.message,
+                channelId: (tx.channel && tx.channel.id) || db._txChannelId || '',
             },
             bc: {
                 gameId: bc.gameId,
@@ -60,6 +62,7 @@ function startPanel(ctx) {
                 betsCount: bc.bets ? bc.bets.length : 0,
                 forced: bc.forcedResult || null,
                 live: !!bc.message,
+                channelId: (bc.channel && bc.channel.id) || db._bcChannelId || '',
             },
             forcedMines: ctx.getForcedMines(),
             players: buildPlayers(),
@@ -136,6 +139,45 @@ function startPanel(ctx) {
                     ctx.getBC().forcedResult = null;
                     ctx.writeLog('ADMIN', `[PANEL ÉP BC] Hủy ép kết quả Bầu Cua`);
                     return sendJSON(res, 200, { ok: true });
+                }
+
+                // ---- ĐIỀU KHIỂN BÀN CHƠI ----
+                if (path === '/api/bc/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    try {
+                        const name = await ctx.startBC(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Bầu Cua tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                if (path === '/api/bc/stop') {
+                    ctx.stopBC();
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng Bầu Cua`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/tx/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    try {
+                        const name = await ctx.startTX(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Lớn Nhỏ tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                if (path === '/api/tx/stop') {
+                    ctx.stopTX();
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng Lớn Nhỏ`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/chat/delete') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    try {
+                        const n = await ctx.deleteChat(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Xóa ${n} tin nhắn bot ở kênh ${channelId}`);
+                        return sendJSON(res, 200, { ok: true, count: n });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không xóa được (sai ID, tin quá cũ >14 ngày, hoặc thiếu quyền)' }); }
                 }
 
                 // ---- DÒ MÌN ----
@@ -296,6 +338,17 @@ const HTML = `<!DOCTYPE html>
     <!-- TÀI XỈU -->
     <div id="tab-tx">
       <div class="card">
+        <h3>🎛️ Điều khiển bàn Lớn Nhỏ</h3>
+        <label>Channel ID (kênh đăng bàn chơi)</label>
+        <input id="txChannel" placeholder="vd: 123456789012345678">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="txStart()">▶️ Bật / Tạo bàn mới</button>
+          <button class="btn-red" onclick="txStop()">⏹️ Tắt bàn</button>
+          <button class="btn-grey" onclick="chatDelete('txChannel')">🧹 Xóa chat bot</button>
+        </div>
+        <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> (Cài đặt Discord → Advanced) → chuột phải kênh → <b>Copy Channel ID</b>. "Bật" sẽ tạo bàn mới ngay trong kênh đó.</div>
+      </div>
+      <div class="card">
         <h2>🎲 Lớn Nhỏ (Tài Xỉu)</h2>
         <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
         <div class="row">
@@ -324,6 +377,17 @@ const HTML = `<!DOCTYPE html>
 
     <!-- BẦU CUA -->
     <div id="tab-bc" class="hidden">
+      <div class="card">
+        <h3>🎛️ Điều khiển bàn Bầu Cua</h3>
+        <label>Channel ID (kênh đăng bàn chơi)</label>
+        <input id="bcChannel" placeholder="vd: 123456789012345678">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="bcStart()">▶️ Bật / Tạo bàn mới</button>
+          <button class="btn-red" onclick="bcStop()">⏹️ Tắt bàn</button>
+          <button class="btn-grey" onclick="chatDelete('bcChannel')">🧹 Xóa chat bot</button>
+        </div>
+        <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> → chuột phải kênh → <b>Copy Channel ID</b>.</div>
+      </div>
       <div class="card">
         <h2>🦀 Bầu Cua</h2>
         <div class="muted" id="bcInfo" style="font-size:13px;margin-bottom:10px"></div>
@@ -489,6 +553,12 @@ function bcForce(){
   api('/api/bc/force',{values:v}).then(()=>{toast('⚡ Đã ép Bầu Cua');refresh();});
 }
 
+function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
+function txStop(){if(!confirm('Tắt bàn Lớn Nhỏ?'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Lớn Nhỏ');refresh();});}
+function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
+function bcStop(){if(!confirm('Tắt bàn Bầu Cua?'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
+function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!confirm('Xóa tin nhắn của bot trong kênh này?'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
+
 function renderMineTarget(){
   const any=document.getElementById('mineAny').checked;
   document.getElementById('mineUser').disabled=any;
@@ -562,6 +632,9 @@ async function refresh(){
   bcPreview();
   // status line
   document.getElementById('statusLine').textContent='TX #'+STATE.tx.gameId+' • BC #'+STATE.bc.gameId+' • '+STATE.players.length+' người chơi';
+  // prefill channel id (chỉ khi ô đang trống, không đè lúc admin đang gõ)
+  const txC=document.getElementById('txChannel'); if(txC&&!txC.value&&STATE.tx.channelId) txC.value=STATE.tx.channelId;
+  const bcC=document.getElementById('bcChannel'); if(bcC&&!bcC.value&&STATE.bc.channelId) bcC.value=STATE.bc.channelId;
   // tx info
   document.getElementById('txInfo').innerHTML='Game #'+STATE.tx.gameId+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
   document.getElementById('bcInfo').innerHTML='Phiên #'+STATE.bc.gameId+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');

@@ -273,13 +273,8 @@ const commands = [
             .addIntegerOption(opt => opt.setName('cuoc').setDescription('Số point đặt').setRequired(true))
             .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
         ),
-    new SlashCommandBuilder().setName('baucua_start').setDescription('Admin khởi tạo bàn Bầu Cua Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('stopbaucua').setDescription('Admin dừng Bầu Cua Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('lonnho').setDescription('Admin khởi tạo bàn Lớn Nhỏ Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('stoplonnho').setDescription('Admin dừng Lớn Nhỏ Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('deletechat').setDescription('Xóa toàn bộ tin nhắn của bot trong kênh này').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
-    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 5.000 point mỗi 24 giờ'),
+    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 5.000.000.000 point mỗi 24 giờ'),
     new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển point')
         .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận point').setRequired(true))
         .addIntegerOption(opt => opt.setName('sotien').setDescription('Số point muốn chuyển').setRequired(true)),
@@ -290,13 +285,7 @@ const commands = [
     new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ point')
         .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
         .addIntegerOption(opt => opt.setName('amount').setDescription('Số point trừ').setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('setall').setDescription('Admin set point tất cả người chơi')
-        .addIntegerOption(opt => opt.setName('amount').setDescription('Số point muốn set').setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('admin_set_result').setDescription('Portal can thiệp kết quả').setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addStringOption(o => o.setName('game').setDescription('Game muốn can thiệp').setRequired(true).addChoices({name:'Tài Xỉu', value:'tx'}, {name:'Bầu Cua', value:'baucua'}))
-        .addStringOption(o => o.setName('values').setDescription('Giá trị ép (VD: 1,2,3)').setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 ].map(c => c.toJSON());
 
 client.once('ready', async (c) => {
@@ -327,6 +316,11 @@ client.once('ready', async (c) => {
             getUserData,
             updatePoints,
             writeLog,
+            startBC: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBaucua(ch); return ch.name; },
+            stopBC: () => stopBaucua(),
+            startTX: async (channelId) => { const ch = await client.channels.fetch(channelId); await startLonnho(ch); return ch.name; },
+            stopTX: () => stopLonnho(),
+            deleteChat: async (channelId) => { const ch = await client.channels.fetch(channelId); return await deleteBotChat(ch); },
         });
         writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 3001}`);
     } catch (e) {
@@ -813,6 +807,75 @@ async function finishTXGame(gameId, bets) {
     return sentMsg;
 }
 
+// ==========================================
+// --- ĐIỀU KHIỂN BÀN CHƠI (gọi từ web panel) ---
+// ==========================================
+async function startBaucua(channel) {
+    if (bcState.message) await bcState.message.delete().catch(() => {});
+    bcState.message = null;
+    bcState.channel = channel;
+    bcState.gameId++;
+    bcState.timeLeft = 55;
+    bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+    bcState.status = 'betting';
+    bcState.bets = [];
+    bcState.needsUpdate = false;
+    bcState.activeMascot = null;
+    bcState.isProcessing = true;
+    bcState.processingStart = Date.now();
+    try {
+        bcState.message = await bcState.channel.send(getBCMessageData());
+        dbCache._bcChannelId = channel.id;
+    } finally {
+        bcState.isProcessing = false;
+        bcState.processingStart = 0;
+    }
+}
+
+function stopBaucua() {
+    if (bcState.message) bcState.message.delete().catch(() => {});
+    bcState.channel = null;
+    bcState.message = null;
+    bcState.status = 'stopped';
+}
+
+async function startLonnho(channel) {
+    if (txState.message) await txState.message.delete().catch(() => {});
+    txState.message = null;
+    txState.channel = channel;
+    txState.gameId++;
+    txState.timeLeft = 55;
+    txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+    txState.status = 'betting';
+    txState.bets = [];
+    txState.needsUpdate = false;
+    txState.activeChoice = null;
+    txState.isProcessing = true;
+    txState.processingStart = Date.now();
+    try {
+        txState.message = await txState.channel.send(getTXMessageData());
+        dbCache._txChannelId = channel.id;
+    } finally {
+        txState.isProcessing = false;
+        txState.processingStart = 0;
+    }
+}
+
+function stopLonnho() {
+    if (txState.message) txState.message.delete().catch(() => {});
+    txState.channel = null;
+    txState.message = null;
+    txState.status = 'stopped';
+}
+
+async function deleteBotChat(channel) {
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const botMessages = messages.filter(m => m.author.id === client.user.id);
+    if (botMessages.size === 0) return 0;
+    await channel.bulkDelete(botMessages, true);
+    return botMessages.size;
+}
+
 // --- XỬ LÝ TƯƠNG TÁC ---
 client.on('interactionCreate', async interaction => {
   try {
@@ -823,113 +886,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === 'baucua_start') {
-            if (bcState.message) await bcState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`));
-            bcState.message = null;
-            bcState.channel = interaction.channel;
-            bcState.gameId++;
-            bcState.timeLeft = 55;
-            bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-            bcState.status = 'betting';
-            bcState.bets = [];
-            bcState.needsUpdate = false;
-            bcState.activeMascot = null;
-            bcState.isProcessing = true;
-            bcState.processingStart = Date.now();
-            await interaction.reply({ content: '✅ Đã khởi tạo bàn Bầu Cua Live.', ephemeral: true });
-            const data = getBCMessageData();
-            bcState.message = await bcState.channel.send(data);
-            bcState.isProcessing = false;
-            bcState.processingStart = 0;
-            writeLog('ADMIN', `[KHỞI TẠO] Bầu cua start by ${interaction.user.tag}`);
-            return;
-        }
-
-        if (interaction.commandName === 'stopbaucua') {
-            if (bcState.message) {
-                await bcState.message.delete().catch(() => {});
-            }
-            bcState.channel = null;
-            bcState.message = null;
-            bcState.status = 'stopped';
-            writeLog('ADMIN', `[DỪNG] Bầu cua stop by ${interaction.user.tag}`);
-            return interaction.reply({ content: '🛑 Đã dừng bàn Bầu Cua Live tại kênh này.', ephemeral: true });
-        }
-
-        if (interaction.commandName === 'lonnho') {
-            if (txState.message) await txState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`));
-            txState.message = null;
-            txState.channel = interaction.channel;
-            txState.gameId++;
-            txState.timeLeft = 55;
-            txState.targetTime = Math.floor(Date.now() / 1000) + 61;
-            txState.status = 'betting';
-            txState.bets = [];
-            txState.needsUpdate = false;
-            txState.activeChoice = null;
-            txState.isProcessing = true;
-            txState.processingStart = Date.now();
-            await interaction.reply({ content: '✅ Đã khởi tạo bàn Lớn Nhỏ Live.', ephemeral: true });
-            const data = getTXMessageData();
-            txState.message = await txState.channel.send(data);
-            txState.isProcessing = false;
-            txState.processingStart = 0;
-            writeLog('ADMIN', `[KHỞI TẠO] Lớn Nhỏ start by ${interaction.user.tag}`);
-            return;
-        }
-
-        if (interaction.commandName === 'stoplonnho') {
-            if (txState.message) {
-                await txState.message.delete().catch(() => {});
-            }
-            txState.channel = null;
-            txState.message = null;
-            txState.status = 'stopped';
-            writeLog('ADMIN', `[DỪNG] Lớn nhỏ stop by ${interaction.user.tag}`);
-            return interaction.reply({ content: '🛑 Đã dừng bàn Lớn Nhỏ Live tại kênh này.', ephemeral: true });
-        }
-
-        if (interaction.commandName === 'deletechat') {
-            await interaction.deferReply({ ephemeral: true });
-            try {
-                const messages = await interaction.channel.messages.fetch({ limit: 100 });
-                const botMessages = messages.filter(m => m.author.id === client.user.id);
-                if (botMessages.size > 0) {
-                    await interaction.channel.bulkDelete(botMessages, true);
-                    writeLog('ADMIN', `[XÓA CHAT] ${interaction.user.tag} xóa ${botMessages.size} tin nhắn bot tại #${interaction.channel.name}`);
-                    return interaction.editReply('✅ Đã dọn dẹp các tin nhắn của bot trong kênh này!');
-                } else {
-                    writeLog('ADMIN', `[XÓA CHAT] ${interaction.user.tag} dùng /deletechat nhưng không có tin nhắn bot nào tại #${interaction.channel.name}`);
-                    return interaction.editReply('⚠️ Không tìm thấy tin nhắn nào của bot ở 100 tin nhắn gần nhất!');
-                }
-            } catch (err) {
-                writeLog('SYSTEM', `[LỖI XÓA CHAT] ${err.message}`);
-                return interaction.editReply('❌ Lỗi khi xóa tin nhắn, có thể do tin nhắn quá cũ (hơn 14 ngày) hoặc bot thiếu quyền!');
-            }
-        }
-
-        if (interaction.commandName === 'setall') {
-            const amount = interaction.options.getInteger('amount');
-            const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_'));
-            userIds.forEach(id => {
-                if (dbCache[id] && typeof dbCache[id] === 'object') dbCache[id].points = amount;
-            });
-            writeLog('ADMIN', `[SET ALL] Admin ${interaction.user.tag} set ${userIds.length} người về ${amount.toLocaleString()} point`);
-            return interaction.reply(`✅ Đã set **${userIds.length} người chơi** về **${amount.toLocaleString()} point**.`);
-        }
-
-        if (interaction.commandName === 'admin_set_result') {
-            const game = interaction.options.getString('game');
-            const values = interaction.options.getString('values');
-            if (game === 'tx') {
-                txState.forcedResult = values;
-            } else if (game === 'baucua') {
-                bcState.forcedResult = values;
-            }
-            writeLog('ADMIN', `[CAN THIỆP] Admin ${interaction.user.tag} đã ép kết quả ${game} thành: ${values}`);
-            return interaction.reply({ content: `✅ Đã ép kết quả ${game} ván tới là: ${values}`, ephemeral: true });
-        }
-
         if (interaction.commandName === 'diemdanh') {
             const userData = getUserData(userId);
             const now = Date.now();
@@ -945,7 +901,7 @@ client.on('interactionCreate', async interaction => {
             updatePoints(userId, 50000000000);
             userData.lastDaily = now; 
             writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận 5,000 point | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **5.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **5.000.0000.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
         }
 
         if (interaction.commandName === 'sodu') {
