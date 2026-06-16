@@ -303,7 +303,7 @@ client.once('ready', async (c) => {
     try {
         startPanel({
             port: parseInt(process.env.PANEL_PORT) || 3001,
-            password: process.env.PANEL_PASSWORD || 'doimatkhau',
+            password: process.env.PANEL_PASSWORD || 'Aa123456789!@',
             mascots: MASCOTS,
             txChoices: TX_CHOICES,
             diceEmojis: DICE_EMOJIS,
