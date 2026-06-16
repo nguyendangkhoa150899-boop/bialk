@@ -563,7 +563,7 @@ async function finishBCGame(gameId, bets) {
             winners,
             time: new Date().toLocaleTimeString('vi-VN')
         });
-        if (bcState.history.length > 15) bcState.history.pop();
+        if (bcState.history.length > 20) bcState.history.pop();
     }
 
     return sentMsg;
@@ -801,7 +801,7 @@ async function finishTXGame(gameId, bets) {
             winners,
             time: new Date().toLocaleTimeString('vi-VN')
         });
-        if (txState.history.length > 15) txState.history.pop();
+        if (txState.history.length > 20) txState.history.pop();
     }
 
     return sentMsg;
@@ -1284,5 +1284,25 @@ process.on('uncaughtExceptionMonitor', (err, origin) => {
     writeLog('SYSTEM', `[CRASH] Uncaught Exception Monitor: ${err.message || err}, origin: ${origin}`);
     console.error('Uncaught Exception Monitor:', err, origin);
 });
+
+// Lưu database NGAY khi bot bị tắt/restart (PM2 restart, max_memory_restart, stop...)
+// để không mất 20 kết quả cuối khi process bị kill giữa 2 lần lưu định kỳ.
+let isShuttingDown = false;
+function flushAndExit(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    try {
+        dbCache._txHistory = txState.history;
+        dbCache._bcHistory = bcState.history;
+        dbCache._minesHistory = minesHistory;
+        fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
+        writeLog('SYSTEM', `[SHUTDOWN] ${signal} - đã lưu database trước khi thoát`);
+    } catch (e) {
+        console.error('[SHUTDOWN] Lỗi lưu database:', e.message);
+    }
+    process.exit(0);
+}
+process.on('SIGINT', () => flushAndExit('SIGINT'));
+process.on('SIGTERM', () => flushAndExit('SIGTERM'));
 
 client.login(TOKEN);        
