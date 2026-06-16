@@ -142,6 +142,10 @@ if (dbCache._txHistory) txState.history = dbCache._txHistory;
 if (dbCache._bcHistory) bcState.history = dbCache._bcHistory;
 if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
 
+// Dọn lịch sử cũ: chỉ giữ các ván thực sự có người đặt
+txState.history = txState.history.filter(h => Array.isArray(h.bets) && h.bets.length > 0);
+bcState.history = bcState.history.filter(h => Array.isArray(h.bets) && h.bets.length > 0);
+
 const DICE_EMOJIS = [
     '', 
     '<:1410537564418605146:1493488539642499153>', 
