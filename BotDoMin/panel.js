@@ -70,6 +70,7 @@ function startPanel(ctx) {
             txHistory: ctx.getTX().history || [],
             bcHistory: ctx.getBC().history || [],
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
+            savedChannels: db._savedChannels || [],
         };
     };
 
@@ -170,6 +171,27 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Dừng Lớn Nhỏ`);
                     return sendJSON(res, 200, { ok: true });
                 }
+                // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
+                if (path === '/api/channels/add') {
+                    const channelId = String(body.channelId || '').trim();
+                    const note = String(body.note || '').trim().slice(0, 80);
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    const db = ctx.getDb();
+                    if (!Array.isArray(db._savedChannels)) db._savedChannels = [];
+                    const existing = db._savedChannels.find(c => c.id === channelId);
+                    if (existing) existing.note = note;
+                    else db._savedChannels.push({ id: channelId, note });
+                    ctx.writeLog('ADMIN', `[PANEL] Lưu kênh ${channelId} (${note})`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/channels/delete') {
+                    const channelId = String(body.channelId || '').trim();
+                    const db = ctx.getDb();
+                    if (Array.isArray(db._savedChannels)) db._savedChannels = db._savedChannels.filter(c => c.id !== channelId);
+                    ctx.writeLog('ADMIN', `[PANEL] Xóa kênh đã lưu ${channelId}`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+
                 if (path === '/api/chat/delete') {
                     const channelId = String(body.channelId || '').trim();
                     if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
@@ -306,6 +328,12 @@ const HTML = `<!DOCTYPE html>
   .hist .win{color:#3ce078} .hist .lose{color:#ff7a7a}
   .hist .b{color:var(--mut)}
   .hist .empty{color:var(--mut);font-size:13px;padding:8px 2px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chips .chip{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:6px 6px 6px 12px;font-size:13px}
+  .chips .chip .lbl{cursor:pointer}
+  .chips .chip .lbl b{color:var(--txt)} .chips .chip .lbl span{color:var(--mut);font-size:11px;margin-left:4px}
+  .chips .chip .x{cursor:pointer;background:#4e5058;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1}
+  .chips .empty{color:var(--mut);font-size:12px}
 </style>
 </head>
 <body>
@@ -341,6 +369,12 @@ const HTML = `<!DOCTYPE html>
         <h3>🎛️ Điều khiển bàn Lớn Nhỏ</h3>
         <label>Channel ID (kênh đăng bàn chơi)</label>
         <input id="txChannel" placeholder="vd: 123456789012345678">
+        <div class="chips" id="txSaved"></div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:2"><input id="txSaveId" placeholder="Channel ID"></div>
+          <div style="flex:3"><input id="txSaveNote" placeholder="Ghi chú (vd: Server A · sảnh chính)"></div>
+          <button class="btn-blue" onclick="saveChannel('tx')">💾 Lưu kênh</button>
+        </div>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="txStart()">▶️ Bật / Tạo bàn mới</button>
           <button class="btn-red" onclick="txStop()">⏹️ Tắt bàn</button>
@@ -381,6 +415,12 @@ const HTML = `<!DOCTYPE html>
         <h3>🎛️ Điều khiển bàn Bầu Cua</h3>
         <label>Channel ID (kênh đăng bàn chơi)</label>
         <input id="bcChannel" placeholder="vd: 123456789012345678">
+        <div class="chips" id="bcSaved"></div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:2"><input id="bcSaveId" placeholder="Channel ID"></div>
+          <div style="flex:3"><input id="bcSaveNote" placeholder="Ghi chú (vd: Server A · sảnh chính)"></div>
+          <button class="btn-blue" onclick="saveChannel('bc')">💾 Lưu kênh</button>
+        </div>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="bcStart()">▶️ Bật / Tạo bàn mới</button>
           <button class="btn-red" onclick="bcStop()">⏹️ Tắt bàn</button>
@@ -559,6 +599,30 @@ function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(
 function bcStop(){if(!confirm('Tắt bàn Bầu Cua?'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
 function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!confirm('Xóa tin nhắn của bot trong kênh này?'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
 
+function saveChannel(prefix){
+  const id=document.getElementById(prefix+'SaveId').value.trim();
+  const note=document.getElementById(prefix+'SaveNote').value.trim();
+  if(!id)return toast('Nhập Channel ID');
+  api('/api/channels/add',{channelId:id,note}).then(()=>{
+    document.getElementById(prefix+'SaveId').value='';
+    document.getElementById(prefix+'SaveNote').value='';
+    toast('💾 Đã lưu kênh');refresh();
+  });
+}
+function delChannel(id){if(!confirm('Xóa kênh đã lưu này?'))return;api('/api/channels/delete',{channelId:id}).then(()=>{toast('Đã xóa');refresh();});}
+function useChannel(prefix,id){document.getElementById(prefix+'Channel').value=id;toast('Đã điền Channel ID');}
+function renderSavedChannels(){
+  if(!STATE)return;
+  const list=STATE.savedChannels||[];
+  ['tx','bc'].forEach(prefix=>{
+    const el=document.getElementById(prefix+'Saved');if(!el)return;
+    if(!list.length){el.innerHTML='<span class="empty">Chưa lưu kênh nào. Nhập ID + ghi chú rồi bấm 💾 Lưu kênh.</span>';return;}
+    el.innerHTML=list.map(c=>
+      '<div class="chip"><span class="lbl" onclick="useChannel(\\''+prefix+'\\',\\''+c.id+'\\')"><b>'+esc(c.note||'(không ghi chú)')+'</b><span>'+c.id+'</span></span><span class="x" onclick="delChannel(\\''+c.id+'\\')">✕</span></div>'
+    ).join('');
+  });
+}
+
 function renderMineTarget(){
   const any=document.getElementById('mineAny').checked;
   document.getElementById('mineUser').disabled=any;
@@ -661,6 +725,8 @@ async function refresh(){
   renderPlayers();
   // lịch sử các trò
   renderHistories();
+  // kênh đã lưu
+  renderSavedChannels();
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
 
