@@ -548,22 +548,25 @@ async function finishBCGame(gameId, bets) {
         result: res.map(r => r.emoji).join(' '),
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    // Gộp cược trùng để lưu lịch sử gọn
-    const betAgg = {};
-    bets.forEach(b => {
-        const k = `${b.userId}_${b.mascotId}`;
-        if (!betAgg[k]) betAgg[k] = { name: b.username, mascot: MASCOTS.find(m => m.id === b.mascotId).name, emoji: MASCOTS.find(m => m.id === b.mascotId).emoji, amount: 0 };
-        betAgg[k].amount += b.amount;
-    });
-    bcState.history.unshift({
-        gameId,
-        result: resultNames,
-        resultEmoji: res.map(r => r.emoji).join(' '),
-        bets: Object.values(betAgg),
-        winners,
-        time: new Date().toLocaleTimeString('vi-VN')
-    });
-    if (bcState.history.length > 15) bcState.history.pop();
+    // Chỉ lưu lịch sử khi có người đặt
+    if (bets.length > 0) {
+        // Gộp cược trùng để lưu lịch sử gọn
+        const betAgg = {};
+        bets.forEach(b => {
+            const k = `${b.userId}_${b.mascotId}`;
+            if (!betAgg[k]) betAgg[k] = { name: b.username, mascot: MASCOTS.find(m => m.id === b.mascotId).name, emoji: MASCOTS.find(m => m.id === b.mascotId).emoji, amount: 0 };
+            betAgg[k].amount += b.amount;
+        });
+        bcState.history.unshift({
+            gameId,
+            result: resultNames,
+            resultEmoji: res.map(r => r.emoji).join(' '),
+            bets: Object.values(betAgg),
+            winners,
+            time: new Date().toLocaleTimeString('vi-VN')
+        });
+        if (bcState.history.length > 15) bcState.history.pop();
+    }
 
     return sentMsg;
 }
@@ -781,24 +784,27 @@ async function finishTXGame(gameId, bets) {
         result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    // Gộp cược trùng để lưu lịch sử gọn
-    const betAgg = {};
-    bets.forEach(b => {
-        const k = `${b.userId}_${b.choice}`;
-        if (!betAgg[k]) betAgg[k] = { name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
-        betAgg[k].amount += b.amount;
-    });
-    txState.history.unshift({
-        gameId,
-        dice: [d1, d2, d3],
-        sum,
-        tx: isTai ? '11-18' : '3-10',
-        cl: isChan ? 'CHẴN' : 'LẺ',
-        bets: Object.values(betAgg),
-        winners,
-        time: new Date().toLocaleTimeString('vi-VN')
-    });
-    if (txState.history.length > 15) txState.history.pop();
+    // Chỉ lưu lịch sử khi có người đặt
+    if (bets.length > 0) {
+        // Gộp cược trùng để lưu lịch sử gọn
+        const betAgg = {};
+        bets.forEach(b => {
+            const k = `${b.userId}_${b.choice}`;
+            if (!betAgg[k]) betAgg[k] = { name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
+            betAgg[k].amount += b.amount;
+        });
+        txState.history.unshift({
+            gameId,
+            dice: [d1, d2, d3],
+            sum,
+            tx: isTai ? '11-18' : '3-10',
+            cl: isChan ? 'CHẴN' : 'LẺ',
+            bets: Object.values(betAgg),
+            winners,
+            time: new Date().toLocaleTimeString('vi-VN')
+        });
+        if (txState.history.length > 15) txState.history.pop();
+    }
 
     return sentMsg;
 }
