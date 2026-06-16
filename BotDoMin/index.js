@@ -322,6 +322,20 @@ client.once('ready', async (c) => {
     } catch (e) {
         writeLog('SYSTEM', `[LỖI PANEL] ${e.message}`);
     }
+
+    // Backfill tên cho các ví cũ chưa có tên (kéo từ Discord)
+    (async () => {
+        const ids = Object.keys(dbCache).filter(k =>
+            !k.startsWith('_') && dbCache[k] && typeof dbCache[k] === 'object' && !dbCache[k].name);
+        let done = 0;
+        for (const id of ids) {
+            try {
+                const u = await client.users.fetch(id);
+                if (u) { dbCache[id].name = u.username; done++; }
+            } catch {}
+        }
+        if (done) writeLog('SYSTEM', `[BACKFILL TÊN] Đã lấy tên cho ${done}/${ids.length} ví`);
+    })();
 });
 
 // --- UI BẦU CUA ---
