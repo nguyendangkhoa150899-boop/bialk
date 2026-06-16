@@ -64,6 +64,9 @@ function startPanel(ctx) {
             forcedMines: ctx.getForcedMines(),
             players: buildPlayers(),
             mascots: ctx.mascots.map(m => ({ id: m.id, name: m.name, emoji: m.emoji })),
+            txHistory: ctx.getTX().history || [],
+            bcHistory: ctx.getBC().history || [],
+            minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
         };
     };
 
@@ -255,6 +258,12 @@ const HTML = `<!DOCTYPE html>
   .flist{margin-top:10px}
   .flist .item{display:flex;justify-content:space-between;align-items:center;background:var(--card2);padding:8px 12px;border-radius:8px;margin-top:6px;font-size:13px}
   .muted{color:var(--mut)}
+  .hist .h{background:var(--card2);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px;line-height:1.55}
+  .hist .h .top{display:flex;justify-content:space-between;font-weight:600;margin-bottom:4px}
+  .hist .h .top .t{color:var(--mut);font-weight:400;font-size:12px}
+  .hist .win{color:#3ce078} .hist .lose{color:#ff7a7a}
+  .hist .b{color:var(--mut)}
+  .hist .empty{color:var(--mut);font-size:13px;padding:8px 2px}
 </style>
 </head>
 <body>
@@ -307,6 +316,10 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 xúc xắc này. Nên ép trong lúc trạng thái còn <b>betting</b>.</div>
       </div>
+      <div class="card">
+        <h3>📜 Lịch sử Lớn Nhỏ</h3>
+        <div id="txHist" class="hist"></div>
+      </div>
     </div>
 
     <!-- BẦU CUA -->
@@ -326,6 +339,10 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="api('/api/bc/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
         </div>
         <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 con vật này.</div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử Bầu Cua</h3>
+        <div id="bcHist" class="hist"></div>
       </div>
     </div>
 
@@ -351,6 +368,10 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">⚠️ Mìn ẩn, người chơi tự bấm — đặt mìn chỉ <b>tăng xác suất</b> trúng, không ép cứng 100%. Số ô đánh dấu sẽ là mìn chắc chắn; nếu họ chọn số mìn ít hơn thì chỉ lấy bấy nhiêu ô đầu. Muốn dễ thua: đặt mìn ở các ô trên-trái (hay bấm trước).</div>
         <div class="flist" id="mineList"></div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử Dò Mìn</h3>
+        <div id="mineHist" class="hist"></div>
       </div>
     </div>
 
@@ -494,6 +515,35 @@ function renderPlayers(){
   });
 }
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function fmtAmt(n){return (n>0?'+':'')+Number(n).toLocaleString();}
+
+function renderHistories(){
+  if(!STATE)return;
+  // Lớn Nhỏ
+  const tx=STATE.txHistory||[];
+  document.getElementById('txHist').innerHTML = tx.length? tx.map(g=>{
+    const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' ('+b.choice+')').join(' • ')||'không ai đặt';
+    const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
+    return '<div class="h"><div class="top"><span>Game #'+g.gameId+' — 🎲 '+g.dice.join('-')+' (Tổng '+g.sum+') · '+g.tx+' | '+g.cl+'</span><span class="t">'+(g.time||'')+'</span></div>'+
+      '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai thắng</div>')+'</div>';
+  }).join('') : '<div class="empty">Chưa có ván nào.</div>';
+  // Bầu Cua
+  const bc=STATE.bcHistory||[];
+  document.getElementById('bcHist').innerHTML = bc.length? bc.map(g=>{
+    const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' '+(b.emoji||b.mascot||'')).join(' • ')||'không ai đặt';
+    const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
+    return '<div class="h"><div class="top"><span>Phiên #'+g.gameId+' — '+(g.resultEmoji||'')+' ('+esc(g.result||'')+')</span><span class="t">'+(g.time||'')+'</span></div>'+
+      '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 nhà cái húp sạch</div>')+'</div>';
+  }).join('') : '<div class="empty">Chưa có phiên nào.</div>';
+  // Dò Mìn
+  const mn=STATE.minesHistory||[];
+  document.getElementById('mineHist').innerHTML = mn.length? mn.map(g=>{
+    const win=g.amount>=0;
+    return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
+      '<div class="b">💣 '+g.mines+' mìn · 💎 '+(g.diamonds||0)+' kim cương · cược '+Number(g.bet).toLocaleString()+'</div>'+
+      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' point</div></div>';
+  }).join('') : '<div class="empty">Chưa có ván nào.</div>';
+}
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');refresh();});}
 function setAll(){const v=document.getElementById('setAllAmount').value;if(v==='')return toast('Nhập số');if(!confirm('Set TẤT CẢ người chơi về '+(+v).toLocaleString()+' điểm?'))return;api('/api/points/setall',{amount:+v}).then(j=>{toast('✅ Đã set '+j.count+' người');refresh();});}
@@ -536,6 +586,8 @@ async function refresh(){
   }
   // players table
   renderPlayers();
+  // lịch sử các trò
+  renderHistories();
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
 

@@ -69,6 +69,7 @@ if (fs.existsSync(DATA_FILE)) {
 setInterval(() => {
     dbCache._txHistory = txState.history;
     dbCache._bcHistory = bcState.history;
+    dbCache._minesHistory = minesHistory;
     fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
         if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
     });
@@ -133,9 +134,13 @@ let txState = {
 };
 let userTXSelections = {};
 
+// Lịch sử các ván dò mìn (để hiển thị trên web panel)
+let minesHistory = [];
+
 // Restore history sau khi state đã khai báo xong
 if (dbCache._txHistory) txState.history = dbCache._txHistory;
 if (dbCache._bcHistory) bcState.history = dbCache._bcHistory;
+if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
 
 const DICE_EMOJIS = [
     '', 
@@ -314,6 +319,7 @@ client.once('ready', async (c) => {
             getForcedMines: () => forcedMines,
             setForcedMines: (key, positions) => { forcedMines[key] = positions; },
             clearForcedMines: (key) => { delete forcedMines[key]; },
+            getMinesHistory: () => minesHistory,
             getUserData,
             updatePoints,
             writeLog,
@@ -350,7 +356,21 @@ function getBCMessageData(customStatus = null) {
     }
 
     desc += `📝 **Người đặt hiện tại:**\n`;
-    desc += bcState.bets.length > 0 ? bcState.bets.map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} point**`).join('\n') : "*Chưa có ai đặt*";
+    if (bcState.bets.length > 0) {
+        // Gộp cược trùng của cùng 1 người vào cùng 1 con vật
+        const byUser = {};
+        bcState.bets.forEach(b => {
+            const k = `${b.userId}_${b.mascotId}`;
+            if (!byUser[k]) byUser[k] = { username: b.username, mascotId: b.mascotId, amount: 0 };
+            byUser[k].amount += b.amount;
+        });
+        desc += Object.values(byUser)
+            .map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} point**`)
+            .join('\n');
+    } else {
+        desc += "*Chưa có ai đặt*";
+    }
+    desc = desc.trimEnd();
     desc += `\n\n${customStatus || "👉 Chọn con vật rồi chọn số point đặt!"}`;
 
     const embed = new EmbedBuilder()
@@ -497,12 +517,14 @@ async function finishBCGame(gameId, bets) {
     let winLog = "";
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount})`).join(', ');
 
+    const winners = [];
     bets.forEach(b => {
         const count = res.filter(r => r.id === b.mascotId).length;
         if (count > 0) {
             const win = b.amount * (count + 1);
             updatePoints(b.userId, win);
             winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point**\n`;
+            winners.push({ name: b.username, amount: win });
         }
     });
 
@@ -526,8 +548,22 @@ async function finishBCGame(gameId, bets) {
         result: res.map(r => r.emoji).join(' '),
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    bcState.history.unshift({ gameId, result: resultNames, resultEmoji: res.map(r => r.emoji).join(' ') });
-    if (bcState.history.length > 10) bcState.history.pop();
+    // Gộp cược trùng để lưu lịch sử gọn
+    const betAgg = {};
+    bets.forEach(b => {
+        const k = `${b.userId}_${b.mascotId}`;
+        if (!betAgg[k]) betAgg[k] = { name: b.username, mascot: MASCOTS.find(m => m.id === b.mascotId).name, emoji: MASCOTS.find(m => m.id === b.mascotId).emoji, amount: 0 };
+        betAgg[k].amount += b.amount;
+    });
+    bcState.history.unshift({
+        gameId,
+        result: resultNames,
+        resultEmoji: res.map(r => r.emoji).join(' '),
+        bets: Object.values(betAgg),
+        winners,
+        time: new Date().toLocaleTimeString('vi-VN')
+    });
+    if (bcState.history.length > 15) bcState.history.pop();
 
     return sentMsg;
 }
@@ -553,11 +589,18 @@ function getTXMessageData(customStatus = null) {
         if (groups[c].length > 0) {
             hasBets = true;
             desc += `**${TX_CHOICES[c].name}:**\n`;
-            groups[c].forEach(b => desc += `• **${b.username}**: ${b.amount.toLocaleString()} point\n`);
+            // Gộp cược trùng của cùng 1 người vào cùng 1 cửa
+            const byUser = {};
+            groups[c].forEach(b => {
+                if (!byUser[b.userId]) byUser[b.userId] = { username: b.username, amount: 0 };
+                byUser[b.userId].amount += b.amount;
+            });
+            Object.values(byUser).forEach(u => desc += `• **${u.username}**: ${u.amount.toLocaleString()} point\n`);
         }
     });
     if (!hasBets) desc += "*Chưa có ai đặt*";
 
+    desc = desc.trimEnd();
     desc += `\n\n${customStatus || "👉 Chọn cửa cược rồi chọn số point đặt!"}`;
 
     const embed = new EmbedBuilder()
@@ -700,11 +743,13 @@ async function finishTXGame(gameId, bets) {
     let winLog = "";
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount} -> ${TX_CHOICES[b.choice].name})`).join(', ');
 
+    const winners = [];
     bets.forEach(b => {
         if (b.choice === resultTX || b.choice === resultCL) {
             const win = b.amount * 2;
             updatePoints(b.userId, win);
             winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point** (${TX_CHOICES[b.choice].name})\n`;
+            winners.push({ name: b.username, amount: win, choice: TX_CHOICES[b.choice].name });
         }
     });
 
@@ -736,8 +781,24 @@ async function finishTXGame(gameId, bets) {
         result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    txState.history.unshift({ gameId, dice: [d1, d2, d3], sum, tx: isTai ? '11-18' : '3-10', cl: isChan ? 'CHẴN' : 'LẺ' });
-    if (txState.history.length > 10) txState.history.pop();
+    // Gộp cược trùng để lưu lịch sử gọn
+    const betAgg = {};
+    bets.forEach(b => {
+        const k = `${b.userId}_${b.choice}`;
+        if (!betAgg[k]) betAgg[k] = { name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
+        betAgg[k].amount += b.amount;
+    });
+    txState.history.unshift({
+        gameId,
+        dice: [d1, d2, d3],
+        sum,
+        tx: isTai ? '11-18' : '3-10',
+        cl: isChan ? 'CHẴN' : 'LẺ',
+        bets: Object.values(betAgg),
+        winners,
+        time: new Date().toLocaleTimeString('vi-VN')
+    });
+    if (txState.history.length > 15) txState.history.pop();
 
     return sentMsg;
 }
@@ -1012,7 +1073,9 @@ client.on('interactionCreate', async interaction => {
                         
                         writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} DỪNG - Số mìn: ${game.totalMines}`);
                         writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Thắng ${winProfit}`);
-                        
+                        minesHistory.unshift({ name: interaction.user.username, bet, mines: game.totalMines, diamonds: game.revealed.length, result: 'Dừng (Thắng)', amount: winProfit, time: new Date().toLocaleTimeString('vi-VN') });
+                        if (minesHistory.length > 20) minesHistory.pop();
+
                         return collector.stop();
                     }
 
@@ -1023,7 +1086,9 @@ client.on('interactionCreate', async interaction => {
                         
                         writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} BÙM - Số mìn: ${game.totalMines}`);
                         writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Thua ${bet}`);
-                        
+                        minesHistory.unshift({ name: interaction.user.username, bet, mines: game.totalMines, diamonds: game.revealed.length, result: 'Trúng mìn (Thua)', amount: -bet, time: new Date().toLocaleTimeString('vi-VN') });
+                        if (minesHistory.length > 20) minesHistory.pop();
+
                         collector.stop();
                     } else {
                         if (!game.revealed.includes(idx)) game.revealed.push(idx);
@@ -1035,7 +1100,9 @@ client.on('interactionCreate', async interaction => {
                             
                             writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} JACKPOT - Số mìn: ${game.totalMines}`);
                             writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Jackpot ${jackpotWin}`);
-                            
+                            minesHistory.unshift({ name: interaction.user.username, bet, mines: game.totalMines, diamonds: game.revealed.length, result: 'Jackpot', amount: jackpotWin, time: new Date().toLocaleTimeString('vi-VN') });
+                            if (minesHistory.length > 20) minesHistory.pop();
+
                             collector.stop();
                         } else {
                             await i.editReply({ embeds: [renderEmbed()], components: renderButtons() });
