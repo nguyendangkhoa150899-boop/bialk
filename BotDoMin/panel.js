@@ -321,8 +321,14 @@ const HTML = `<!DOCTYPE html>
   td .mini{padding:6px 8px;font-size:13px}
   .mini-in{width:110px;padding:6px 8px;margin:0}
   .note{font-size:13px;color:var(--mut);background:var(--card2);padding:10px 12px;border-radius:8px;margin-top:10px;line-height:1.5}
-  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:10px 18px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none;z-index:60}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:10px 18px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none;z-index:80}
   #toast.show{opacity:1}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:70;padding:16px}
+  .modal-box{background:var(--card);border-radius:14px;padding:24px;width:360px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:pop .15s ease}
+  @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal-msg{font-size:15px;line-height:1.55;margin-bottom:22px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+  .modal-actions button{min-width:96px}
   .flist{margin-top:10px}
   .flist .item{display:flex;justify-content:space-between;align-items:center;background:var(--card2);padding:8px 12px;border-radius:8px;margin-top:6px;font-size:13px}
   .muted{color:var(--mut)}
@@ -506,12 +512,40 @@ const HTML = `<!DOCTYPE html>
 
 <div id="toast"></div>
 
+<div id="modal" class="modal-overlay hidden" onclick="if(event.target===this)modalClose(false)">
+  <div class="modal-box">
+    <div id="modalMsg" class="modal-msg"></div>
+    <div class="modal-actions">
+      <button id="modalCancel" class="btn-grey" onclick="modalClose(false)">Hủy</button>
+      <button id="modalOk" class="btn-green" onclick="modalClose(true)">Đồng ý</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let TOKEN = localStorage.getItem('panel_token') || '';
 let STATE = null;
 let mineSel = new Set();
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+
+// Hộp xác nhận tự vẽ — hiện giữa màn hình, đúng theme web (thay confirm() của trình duyệt)
+let modalResolve=null;
+function uiConfirm(msg,okLabel,okClass){
+  return new Promise(resolve=>{
+    modalResolve=resolve;
+    document.getElementById('modalMsg').textContent=msg;
+    const ok=document.getElementById('modalOk');
+    ok.textContent=okLabel||'Đồng ý';
+    ok.className=okClass||'btn-green';
+    document.getElementById('modal').classList.remove('hidden');
+  });
+}
+function modalClose(ok){
+  document.getElementById('modal').classList.add('hidden');
+  if(modalResolve){const r=modalResolve;modalResolve=null;r(ok);}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('modal').classList.contains('hidden'))modalClose(false);});
 
 async function api(path, body){
   const opt={method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}};
@@ -600,10 +634,10 @@ function bcForce(){
 }
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
-function txStop(){if(!confirm('Tắt bàn Lớn Nhỏ?'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Lớn Nhỏ');refresh();});}
+async function txStop(){if(!await uiConfirm('Tắt bàn Lớn Nhỏ?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Lớn Nhỏ');refresh();});}
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
-function bcStop(){if(!confirm('Tắt bàn Bầu Cua?'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
-function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!confirm('Xóa tin nhắn của bot trong kênh này?'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
+async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
+async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
 
 function saveChannel(prefix){
   const id=document.getElementById(prefix+'SaveId').value.trim();
@@ -615,7 +649,7 @@ function saveChannel(prefix){
     toast('💾 Đã lưu kênh');refresh();
   });
 }
-function delChannel(id){if(!confirm('Xóa kênh đã lưu này?'))return;api('/api/channels/delete',{channelId:id}).then(()=>{toast('Đã xóa');refresh();});}
+async function delChannel(id){if(!await uiConfirm('Xóa kênh đã lưu này?','Xóa','btn-red'))return;api('/api/channels/delete',{channelId:id}).then(()=>{toast('Đã xóa');refresh();});}
 function useChannel(prefix,id){document.getElementById(prefix+'Channel').value=id;toast('Đã điền Channel ID');}
 function renderSavedChannels(){
   if(!STATE)return;
@@ -689,7 +723,7 @@ function renderHistories(){
 }
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');refresh();});}
-function setAll(){const v=document.getElementById('setAllAmount').value;if(v==='')return toast('Nhập số');if(!confirm('Set TẤT CẢ người chơi về '+(+v).toLocaleString()+' điểm?'))return;api('/api/points/setall',{amount:+v}).then(j=>{toast('✅ Đã set '+j.count+' người');refresh();});}
+async function setAll(){const v=document.getElementById('setAllAmount').value;if(v==='')return toast('Nhập số');if(!await uiConfirm('Set TẤT CẢ người chơi về '+(+v).toLocaleString()+' điểm?','Set tất cả','btn-red'))return;api('/api/points/setall',{amount:+v}).then(j=>{toast('✅ Đã set '+j.count+' người');refresh();});}
 
 function fmtTime(target){
   const left=target-Math.floor(Date.now()/1000);

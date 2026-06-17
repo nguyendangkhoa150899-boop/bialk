@@ -512,19 +512,21 @@ async function finishBCGame(gameId, bets) {
         for (let i = 0; i < 3; i++) res.push(MASCOTS[Math.floor(Math.random() * MASCOTS.length)]);
     }
 
-    let winLog = "";
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount})`).join(', ');
 
-    const winners = [];
+    // Gộp tiền thắng theo người (1 người đặt nhiều lần -> 1 dòng)
+    const winAgg = {};
     bets.forEach(b => {
         const count = res.filter(r => r.id === b.mascotId).length;
         if (count > 0) {
             const win = b.amount * (count + 1);
             updatePoints(b.userId, win);
-            winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point**\n`;
-            winners.push({ name: b.username, amount: win });
+            if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
+            winAgg[b.userId].amount += win;
         }
     });
+    const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} point**`).join('\n');
 
     const resultNames = res.map(r => r.name).join(', ');
     writeLog('RESULT', `[KẾT QUẢ BẦU CUA] Phiên #${gameId}: ${resultNames}`);
@@ -741,18 +743,20 @@ async function finishTXGame(gameId, bets) {
     const resultTX = isTai ? 'tai' : 'xiu';
     const resultCL = isChan ? 'chan' : 'le';
 
-    let winLog = "";
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount} -> ${TX_CHOICES[b.choice].name})`).join(', ');
 
-    const winners = [];
+    // Gộp tiền thắng theo người (1 người đặt nhiều lần / nhiều cửa -> 1 dòng)
+    const winAgg = {};
     bets.forEach(b => {
         if (b.choice === resultTX || b.choice === resultCL) {
             const win = b.amount * 2;
             updatePoints(b.userId, win);
-            winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point** (${TX_CHOICES[b.choice].name})\n`;
-            winners.push({ name: b.username, amount: win, choice: TX_CHOICES[b.choice].name });
+            if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
+            winAgg[b.userId].amount += win;
         }
     });
+    const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} point**`).join('\n');
 
     const txIcon = isTai ? '11-18 🔺' : '3-10 🔻';
     const clIcon = isChan ? 'CHẴN 🔵' : 'LẺ 🟣';
