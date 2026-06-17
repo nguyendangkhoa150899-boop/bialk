@@ -293,6 +293,10 @@ const HTML = `<!DOCTYPE html>
   /* layout */
   header{background:var(--card);padding:14px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
   header .dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  header .dot.down{background:var(--red);box-shadow:0 0 8px var(--red);animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.3}}
+  .run{display:inline-block;padding:4px 12px;border-radius:8px;font-size:14px;font-weight:700}
+  .run.on{background:var(--green);color:#fff} .run.off{background:#4e5058;color:#dbdee1}
   .wrap{max-width:840px;margin:0 auto;padding:16px}
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
   .tabs button{background:var(--card);color:var(--mut)}
@@ -350,8 +354,9 @@ const HTML = `<!DOCTYPE html>
 
 <div id="app" class="hidden">
   <header>
-    <div class="dot"></div>
+    <div class="dot" id="connDot"></div>
     <strong>Bảng Điều Khiển Casino</strong>
+    <span id="connText" style="font-size:13px;font-weight:600"></span>
     <span id="statusLine" class="muted" style="margin-left:auto;font-size:13px"></span>
   </header>
 
@@ -691,9 +696,16 @@ function fmtTime(target){
   return 'mở bát sau '+left+'s';
 }
 
+function setConn(ok){
+  const dot=document.getElementById('connDot'), txt=document.getElementById('connText');
+  if(ok){dot.classList.remove('down');txt.style.color='var(--green)';txt.textContent='Online · cập nhật '+new Date().toLocaleTimeString('vi-VN');}
+  else{dot.classList.add('down');txt.style.color='var(--red)';txt.textContent='🔴 MẤT KẾT NỐI — bot có thể đã sập';}
+}
+
 async function refresh(){
   let j;
-  try{j=await api('/api/state');}catch(e){return;}
+  try{j=await api('/api/state');}catch(e){ if(e.message!=='401') setConn(false); return; }
+  setConn(true);
   STATE=j.state;
   mascotOptions();
   bcPreview();
@@ -703,8 +715,10 @@ async function refresh(){
   const txC=document.getElementById('txChannel'); if(txC&&!txC.value&&STATE.tx.channelId) txC.value=STATE.tx.channelId;
   const bcC=document.getElementById('bcChannel'); if(bcC&&!bcC.value&&STATE.bc.channelId) bcC.value=STATE.bc.channelId;
   // tx info
-  document.getElementById('txInfo').innerHTML='Game #'+STATE.tx.gameId+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
-  document.getElementById('bcInfo').innerHTML='Phiên #'+STATE.bc.gameId+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
+  const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
+  const bcRun=STATE.bc.live&&STATE.bc.status!=='stopped';
+  document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+STATE.tx.gameId+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
+  document.getElementById('bcInfo').innerHTML='<span class="run '+(bcRun?'on':'off')+'">'+(bcRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Phiên #'+STATE.bc.gameId+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';
