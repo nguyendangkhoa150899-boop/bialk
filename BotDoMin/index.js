@@ -87,8 +87,8 @@ function updatePoints(userId, amount) {
     data.points += amount;
 }
 
-// Hiển thị số ván dạng 4 chữ số: 1 -> #0001
-const padId = (n) => String(n).padStart(4, '0');
+// Hiển thị số ván dạng 5 chữ số: 1 -> #00001
+const padId = (n) => String(n).padStart(5, '0');
 
 // --- CONFIG BẦU CUA ---
 const MASCOTS = [
@@ -550,8 +550,8 @@ async function finishBCGame(gameId, bets) {
         result: res.map(r => r.emoji).join(' '),
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    // Lưu lịch sử MỌI ván (kể cả không ai đặt) để soi cầu xem được cầu liền mạch.
-    // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
+    // Lưu lịch sử MỌI ván cho soi cầu Discord (cầu liền mạch). Web tự lọc chỉ ván có người đặt.
+    // Giữ 1000 ván gần nhất (mất khi restart/deploy).
     const betAgg = {};
     bets.forEach(b => {
         const k = `${b.userId}_${b.mascotId}`;
@@ -566,7 +566,7 @@ async function finishBCGame(gameId, bets) {
         winners,
         time: new Date().toLocaleTimeString('vi-VN')
     });
-    if (bcState.history.length > 20) bcState.history.pop();
+    if (bcState.history.length > 1000) bcState.history.pop();
 
     return sentMsg;
 }
@@ -786,8 +786,8 @@ async function finishTXGame(gameId, bets) {
         result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    // Lưu lịch sử MỌI ván (kể cả không ai đặt) để soi cầu xem được cầu liền mạch.
-    // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
+    // Lưu lịch sử MỌI ván cho soi cầu Discord (cầu liền mạch). Web tự lọc chỉ ván có người đặt.
+    // Giữ 1000 ván gần nhất (mất khi restart/deploy).
     const betAgg = {};
     bets.forEach(b => {
         const k = `${b.userId}_${b.choice}`;
@@ -804,7 +804,7 @@ async function finishTXGame(gameId, bets) {
         winners,
         time: new Date().toLocaleTimeString('vi-VN')
     });
-    if (txState.history.length > 20) txState.history.pop();
+    if (txState.history.length > 1000) txState.history.pop();
 
     return sentMsg;
 }

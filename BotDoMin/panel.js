@@ -67,8 +67,8 @@ function startPanel(ctx) {
             forcedMines: ctx.getForcedMines(),
             players: buildPlayers(),
             mascots: ctx.mascots.map(m => ({ id: m.id, name: m.name, emoji: m.emoji })),
-            txHistory: ctx.getTX().history || [],
-            bcHistory: ctx.getBC().history || [],
+            txHistory: (ctx.getTX().history || []).filter(g => g.bets && g.bets.length > 0),
+            bcHistory: (ctx.getBC().history || []).filter(g => g.bets && g.bets.length > 0),
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             savedChannels: db._savedChannels || [],
         };
@@ -693,7 +693,7 @@ function renderPlayers(){
 }
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function fmtAmt(n){return (n>0?'+':'')+Number(n).toLocaleString();}
-function padId(n){return String(n).padStart(4,'0');}
+function padId(n){return String(n).padStart(5,'0');}
 
 function renderHistories(){
   if(!STATE)return;
