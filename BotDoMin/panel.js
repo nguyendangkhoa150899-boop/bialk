@@ -305,7 +305,7 @@ const HTML = `<!DOCTYPE html>
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
   .row>div{flex:1;min-width:90px}
   label{font-size:13px;color:var(--mut)}
-  .badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:12px;font-weight:600;background:var(--card2)}
+  .badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:12px;font-weight:600;background:var(--card2);color:#fff}
   .badge.on{background:var(--green)} .badge.off{background:#4e5058}
   .preview{font-size:18px;font-weight:700;padding:10px;background:var(--card2);border-radius:8px;text-align:center;margin-top:8px}
   .quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -377,7 +377,7 @@ const HTML = `<!DOCTYPE html>
         <div class="chips" id="txSaved"></div>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><input id="txSaveId" placeholder="Channel ID"></div>
-          <div style="flex:3"><input id="txSaveNote" placeholder="Ghi chú (vd: Server A · sảnh chính)"></div>
+          <div style="flex:3"><input id="txSaveNote" placeholder="Ghi chú"></div>
           <button class="btn-blue" onclick="saveChannel('tx')">💾 Lưu kênh</button>
         </div>
         <div class="row" style="margin-top:12px">
@@ -423,7 +423,7 @@ const HTML = `<!DOCTYPE html>
         <div class="chips" id="bcSaved"></div>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><input id="bcSaveId" placeholder="Channel ID"></div>
-          <div style="flex:3"><input id="bcSaveNote" placeholder="Ghi chú (vd: Server A · sảnh chính)"></div>
+          <div style="flex:3"><input id="bcSaveNote" placeholder="Ghi chú"></div>
           <button class="btn-blue" onclick="saveChannel('bc')">💾 Lưu kênh</button>
         </div>
         <div class="row" style="margin-top:12px">
@@ -466,7 +466,7 @@ const HTML = `<!DOCTYPE html>
           </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
-          <input type="checkbox" id="mineAny" style="width:auto;margin:0" onchange="renderMineTarget()">
+          <input type="checkbox" id="mineAny" checked style="width:auto;margin:0" onchange="renderMineTarget()">
           Áp dụng cho người tiếp theo bất kỳ (ai chơi /domin trước thì dính)
         </label>
         <div class="grid" id="mineGrid"></div>
@@ -559,6 +559,7 @@ function initSelects(){
     d.onclick=()=>{if(mineSel.has(i)){mineSel.delete(i);d.classList.remove('mine');d.textContent=i+1;}else{mineSel.add(i);d.classList.add('mine');d.textContent='💣';}document.getElementById('mineCount').textContent=mineSel.size;};
     g.appendChild(d);
   }
+  renderMineTarget(); // áp dụng trạng thái checkbox "người tiếp theo" mặc định
 }
 function clearGrid(){mineSel.clear();document.querySelectorAll('#mineGrid .tile').forEach((d,i)=>{d.classList.remove('mine');d.textContent=i+1;});document.getElementById('mineCount').textContent=0;}
 

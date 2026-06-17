@@ -274,7 +274,7 @@ const commands = [
             .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
         ),
     new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
-    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 5.000.000.000 point mỗi 24 giờ'),
+    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 50.000.000.000 point mỗi 24 giờ'),
     new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển point')
         .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận point').setRequired(true))
         .addIntegerOption(opt => opt.setName('sotien').setDescription('Số point muốn chuyển').setRequired(true)),
@@ -900,8 +900,8 @@ client.on('interactionCreate', async interaction => {
 
             updatePoints(userId, 50000000000);
             userData.lastDaily = now; 
-            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận 5,000 point | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **5.000.0000.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
+            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận 50.000.000.000 point | Số dư: ${getUserData(userId).points.toLocaleString()}`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **50.000.000.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
         }
 
         if (interaction.commandName === 'sodu') {
