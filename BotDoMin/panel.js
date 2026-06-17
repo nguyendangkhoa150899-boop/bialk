@@ -637,6 +637,9 @@ function mineForce(){
 
 function renderPlayers(){
   if(!STATE)return;
+  // Đừng vẽ lại bảng khi admin đang gõ vào ô nhập số (tránh mất focus + reset số)
+  const af=document.activeElement;
+  if(af&&af.id&&af.id.indexOf('amt_')===0)return;
   const q=(document.getElementById('search').value||'').toLowerCase();
   const tb=document.getElementById('playerBody');tb.innerHTML='';
   STATE.players.filter(p=>p.name.toLowerCase().includes(q)||p.id.includes(q)).forEach(p=>{
