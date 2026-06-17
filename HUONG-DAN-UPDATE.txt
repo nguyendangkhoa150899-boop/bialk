@@ -1,16 +1,31 @@
 ================================================================
-   HƯỚNG DẪN UPDATE BOT TỪ MÁY KHÁC (Ở NHÀ / MÁY MỚI)
+   TÀI LIỆU BÀN GIAO + HƯỚNG DẪN UPDATE BOT TỪ MÁY KHÁC
 ================================================================
 Cập nhật lần cuối: 17/06/2026
-Dự án: 2 bot Discord
-  - BotDoMin : game Dò Mìn / Lớn Nhỏ / Bầu Cua + web dashboard
-  - BotNoi   : bot đọc chữ (TTS bằng giọng Vbee)
+
+>>> CÁCH DÙNG TÀI LIỆU NÀY VỚI CLAUDE Ở NHÀ <<<
+  1. Ở nhà, clone repo:
+        git clone https://github.com/nguyendangkhoa150899-boop/bialk.git
+  2. Mở Claude Code / Cursor NGAY TRONG thư mục vừa clone.
+     -> Claude sẽ tự đọc được TOÀN BỘ code (đó mới là context chính).
+  3. File .txt này nằm sẵn trong repo, là phần "bối cảnh" mà code
+     không tự nói ra. KHÔNG cần paste gì thêm — Claude đọc cả repo + file này là đủ.
+  * Chỉ paste mỗi file này (không có repo) thì Claude KHÔNG sửa code được.
 
 
 ----------------------------------------------------------------
-0. MÔ HÌNH HOẠT ĐỘNG (hiểu cái này là làm được hết)
+0. DỰ ÁN LÀ GÌ
 ----------------------------------------------------------------
+  2 bot Discord chạy chung 1 repo, deploy trên cùng 1 VPS qua PM2:
+   - BotDoMin : casino ảo — Dò Mìn, Lớn Nhỏ (Tài Xỉu), Bầu Cua
+                + web dashboard điều khiển/can thiệp kết quả.
+   - BotNoi   : bot đọc chữ (TTS) bằng giọng Vbee (Huế - Duy Phương).
+  Điểm chơi là ảo (point), không phải tiền thật.
 
+
+----------------------------------------------------------------
+1. MÔ HÌNH HOẠT ĐỘNG
+----------------------------------------------------------------
    Máy của bạn (gõ code)
         │  git push
         ▼
@@ -20,117 +35,180 @@ Dự án: 2 bot Discord
    VPS 103.72.98.37  <-- chạy bot 24/7, giữ file .env (token/key)
 
   - Code nằm trên GitHub. Máy nào cũng clone về sửa được.
-  - File .env (chứa token Discord, key Vbee, mật khẩu panel) KHÔNG
-    nằm trên GitHub. Nó chỉ có trên VPS. Bạn KHÔNG cần .env nếu chỉ
-    sửa code rồi deploy lên VPS (không chạy bot dưới máy mình).
-  - Máy của bạn chỉ là "chỗ gõ code", hỏng/mất cũng không sao.
+  - File .env (token Discord, key Vbee, mật khẩu panel) KHÔNG nằm
+    trên GitHub. Chỉ có trên VPS. KHÔNG cần .env nếu chỉ sửa code
+    rồi deploy lên VPS (không chạy bot dưới máy mình).
+  - Bot KHÔNG tự cập nhật. Mỗi lần sửa phải git pull + pm2 restart.
 
 
 ----------------------------------------------------------------
-1. CẦN ĐĂNG NHẬP ĐƯỢC 3 THỨ (KIỂM TRA TRƯỚC KHI RỜI MÁY CÔNG TY)
+2. KIẾN TRÚC & BẢN ĐỒ FILE
 ----------------------------------------------------------------
-   [ ] GitHub            -> để push/pull code (repo bialk)
-   [ ] OneDash / VPS     -> web terminal điều khiển server (deploy)
-   [ ] Discord Dev Portal-> chỉ cần khi đổi token bot
+  bialk/
+   ├─ BotDoMin/
+   │   ├─ index.js   : toàn bộ bot casino (1 file lớn)
+   │   ├─ panel.js   : web dashboard (HTTP server thuần Node, 0 thư viện)
+   │   ├─ database.json : dữ liệu người chơi + lịch sử (TỰ SINH, gitignore)
+   │   └─ package.json
+   ├─ BotNoi/
+   │   ├─ index.js
+   │   ├─ src/handlers/messageHandler.js   : prefix ',' -> đọc chữ
+   │   ├─ src/handlers/interactionHandler.js: lệnh /join
+   │   ├─ src/handlers/voiceHandler.js      : vào voice, hàng đợi, phát audio
+   │   ├─ src/utils/ttsApi.js               : gọi API Vbee + cache audio
+   │   ├─ src/utils/textFilter.js           : lọc url/emoji khỏi câu đọc
+   │   ├─ src/utils/webhookServer.js  *** CODE CHẾT, không dùng ***
+   │   └─ src/utils/ngrokManager.js   *** CODE CHẾT, không dùng ***
+   └─ HUONG-DAN-UPDATE.txt  (file này)
 
-   *** QUAN TRỌNG: nếu các tài khoản này chỉ đang "tự đăng nhập sẵn"
-   trên trình duyệt máy công ty, về nhà bạn sẽ KẸT. Hãy chắc chắn
-   bạn nhớ/lưu được mật khẩu của cả 3 nơi trên. ***
+  BotDoMin/index.js — điểm chính:
+   - dbCache: bản RAM của database.json. Tự lưu mỗi 10 giây + lưu ngay
+     khi bot tắt (SIGINT/SIGTERM).
+   - Key bắt đầu bằng "_" là metadata, KHÔNG phải người chơi:
+       _txHistory, _bcHistory, _minesHistory (lịch sử 15-20 ván)
+       _bcChannelId, _txChannelId (kênh dùng lần cuối)
+       _savedChannels (danh sách kênh đã lưu cho dashboard)
+     Key còn lại = userId -> { points, lastDaily, name }
+   - Lớn Nhỏ (txState) & Bầu Cua (bcState): vòng lặp setInterval 1 giây,
+     khóa cược ở (targetTime - 5s), mở bát ở targetTime. Có cờ
+     isProcessing chống chạy chồng, watchdog 120s, tự hồi phục nếu mất
+     message do timeout mạng.
+   - Dò Mìn (/domin): game tương tác bằng nút bấm (collector).
+   - forcedMines: admin đặt vị trí mìn cho ván /domin kế tiếp (theo user
+     hoặc '_any' = người tiếp theo bất kỳ). Đặt từ dashboard.
+   - Lệnh slash CÒN LẠI: /domin /sodu /diemdanh /chuyentien (người chơi)
+     + /addtien /trutien (admin). Mọi lệnh admin khác đã chuyển lên web.
+
+  BotDoMin/panel.js — web dashboard:
+   - HTTP server bằng module 'http' built-in (CỐ Ý không dùng express
+     để khỏi cài thêm gì trên VPS).
+   - Đăng nhập bằng mật khẩu -> cấp token (lưu trong RAM).
+   - Chức năng: ép kết quả Lớn Nhỏ/Bầu Cua, ép vị trí mìn, bật/tắt bàn,
+     xóa chat bot, quản lý điểm (set/cộng/set tất cả), kênh đã lưu,
+     xem lịch sử, trạng thái bot trực tiếp (online/mất kết nối).
+
+  BotNoi — điểm chính:
+   - Prefix đọc chữ là dấu PHẨY ',' (vd: ,xin chào). Cooldown 10s,
+     tối đa 250 ký tự.
+   - 2 cách vào voice: gõ ",..." hoặc lệnh /join.
+   - Tự rời kênh sau 30 phút không dùng HOẶC khi kênh trống.
+   - ttsApi.js gọi Vbee chế độ async rồi POLL lấy link audio (KHÔNG
+     dùng webhook nữa -> nên webhookServer.js/ngrokManager.js là code chết).
+   - Cache audio vào tts-cache.json (base64) để câu lặp lại đọc nhanh.
 
 
 ----------------------------------------------------------------
-2. DỰNG MÁY Ở NHÀ (LÀM 1 LẦN)
+3. QUY ƯỚC & QUYẾT ĐỊNH KỸ THUẬT (giữ đúng để code đồng nhất)
 ----------------------------------------------------------------
-  Bước 1: Cài phần mềm
-    - Git        : https://git-scm.com
-    - Node.js    : https://nodejs.org  (bản LTS)
-    - VS Code    : https://code.visualstudio.com  (hoặc trình soạn nào cũng được)
-
-  Bước 2: Tải code về
-    git clone https://github.com/nguyendangkhoa150899-boop/bialk.git
-    cd bialk
-
-  Bước 3: Đăng nhập GitHub để push được
-    - Cách dễ nhất: cài GitHub CLI (https://cli.github.com) rồi chạy:
-        gh auth login
-    - Hoặc dùng Personal Access Token:
-        GitHub -> Settings -> Developer settings -> Personal access tokens
-        -> tạo token (tick quyền "repo") -> khi git hỏi password thì dán token.
+  - Comment & tin nhắn cho người dùng: tiếng Việt.
+  - Ưu tiên KHÔNG thêm thư viện npm mới (deploy chỉ git pull, không
+    npm install). Panel dùng http thuần là vì vậy.
+  - Deploy = git pull + pm2 restart. Không có watch/auto-reload.
+  - Commit message kết thúc bằng dòng:
+      Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+  - Bug kinh điển đã gặp: hàm async trong setInterval gây chạy chồng
+    -> luôn dùng cờ isProcessing trước khi await send() (đã có sẵn).
 
 
 ----------------------------------------------------------------
-3. QUY TRÌNH UPDATE HẰNG NGÀY (3 bước)
+4. VẤN ĐỀ ĐÃ BIẾT / CỐ Ý ĐỂ VẬY (đừng tưởng là bug)
 ----------------------------------------------------------------
-  B1. Sửa code trên máy. (nên kiểm tra cú pháp trước khi push)
+  - tts-cache.json (BotNoi) phình vô hạn theo thời gian (nạp hết vào
+    RAM). ĐÃ chặn tạm bằng max_memory_restart + swap. Fix gốc (nếu cần)
+    là giới hạn số mục cache theo LRU.
+  - webhookServer.js & ngrokManager.js: code chết, không import ở đâu.
+    Giữ lại cho gọn lịch sử, không ảnh hưởng gì (0 RAM, ~3KB đĩa).
+  - Mật khẩu panel đang để mặc định trong code (process.env.PANEL_PASSWORD
+    || '...'). Nên tách hẳn ra .env trên VPS để không lộ trong repo.
+  - Điểm mặc định / điểm danh là 50 tỷ -> lạm phát, nhưng là chủ ý.
+
+
+----------------------------------------------------------------
+5. CẦN ĐĂNG NHẬP ĐƯỢC 3 THỨ (KIỂM TRA KHI CÒN Ở MÁY CÔNG TY)
+----------------------------------------------------------------
+   [ ] GitHub             -> push/pull code (repo bialk)
+   [ ] OneDash / VPS      -> web terminal điều khiển server (deploy)
+   [ ] Discord Dev Portal -> chỉ cần khi đổi token bot
+   *** Đừng tin vào "trình duyệt tự điền". Mở chế độ ẩn danh thử đăng
+       nhập cả 3 nơi để chắc bạn NHỚ mật khẩu, trước khi rời máy. ***
+
+
+----------------------------------------------------------------
+6. DỰNG MÁY Ở NHÀ (LÀM 1 LẦN)
+----------------------------------------------------------------
+  - Cài: Git (git-scm.com), Node.js LTS (nodejs.org), VS Code, Claude Code.
+  - Tải code:
+        git clone https://github.com/nguyendangkhoa150899-boop/bialk.git
+        cd bialk
+  - Đăng nhập GitHub để push:
+        cài GitHub CLI rồi: gh auth login
+        (hoặc tạo Personal Access Token, tick quyền "repo", dùng làm password)
+
+
+----------------------------------------------------------------
+7. QUY TRÌNH UPDATE HẰNG NGÀY (3 BƯỚC)
+----------------------------------------------------------------
+  B1. Sửa code + kiểm tra cú pháp:
         node --check BotDoMin/index.js
         node --check BotDoMin/panel.js
-
-  B2. Đẩy code lên GitHub:
+  B2. Đẩy lên GitHub:
         git add .
         git commit -m "mô tả thay đổi"
         git push origin main
-
-  B3. Mở OneDash (trình duyệt) -> Terminal -> chạy:
+  B3. Mở OneDash (trình duyệt) -> Terminal:
         cd /root/tts-bot && git pull origin main && pm2 restart BotDoMin
-
-      (Nếu sửa BotNoi thì restart tts-bot thay vì BotDoMin:)
-        cd /root/tts-bot && git pull origin main && pm2 restart tts-bot
+      (Sửa BotNoi thì restart tts-bot thay vì BotDoMin.)
 
 
 ----------------------------------------------------------------
-4. KIỂM TRA ĐÃ DEPLOY ĐẦY ĐỦ CHƯA
+8. KIỂM TRA ĐÃ DEPLOY ĐẦY ĐỦ CHƯA
 ----------------------------------------------------------------
-  So commit đang chạy với commit mới nhất:
-    cd /root/tts-bot && git fetch origin -q && [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] && echo "DA DEPLOY DAY DU" || echo "CHUA - can git pull + pm2 restart"
+  cd /root/tts-bot && git fetch origin -q && [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] && echo "DA DEPLOY DAY DU" || echo "CHUA - can git pull + pm2 restart"
 
-  Xem trạng thái bot:
-    pm2 show BotDoMin | grep -iE "status|uptime|restart"
-
-  Nhìn bằng mắt: mở web panel, bấm 1 nút có xác nhận -> hộp xác nhận
-  hiện GIỮA màn hình là panel mới đã chạy.
+  pm2 show BotDoMin | grep -iE "status|uptime|restart"
 
 
 ----------------------------------------------------------------
-5. LỆNH HỮU ÍCH TRÊN VPS
+9. LỆNH HỮU ÍCH TRÊN VPS
 ----------------------------------------------------------------
-  Xem danh sách bot + RAM:        pm2 list
-  Xem log lỗi BotDoMin:           pm2 logs BotDoMin --lines 30 --nostream
-  Xem log BotNoi:                 pm2 logs tts-bot --lines 30 --nostream
-  Khởi động lại 1 bot:            pm2 restart BotDoMin   (hoặc tts-bot)
-  Xem RAM + swap:                 free -h
-  Xem chi tiết 1 bot:             pm2 show BotDoMin
+  pm2 list                              (danh sách bot + RAM)
+  pm2 logs BotDoMin --lines 30 --nostream
+  pm2 logs tts-bot  --lines 30 --nostream
+  pm2 restart BotDoMin                  (hoặc tts-bot)
+  pm2 restart BotDoMin --update-env     (khi vừa đổi biến trong .env)
+  free -h                               (RAM + swap)
+  pm2 show BotDoMin                      (chi tiết)
 
 
 ----------------------------------------------------------------
-6. THÔNG TIN HỆ THỐNG
+10. THÔNG TIN HỆ THỐNG
 ----------------------------------------------------------------
   GitHub repo   : https://github.com/nguyendangkhoa150899-boop/bialk
   Nhánh chính   : main
-  VPS IP        : 103.72.98.37
-  Thư mục VPS   : /root/tts-bot           (repo gốc, chứa cả 2 bot)
-                  /root/tts-bot/BotDoMin   (cwd của bot dò mìn)
-                  /root/tts-bot/BotNoi     (cwd của bot đọc chữ)
+  VPS IP        : 103.72.98.37   (terminal qua OneDash trên trình duyệt)
+  Thư mục VPS   : /root/tts-bot           (repo gốc, cả 2 bot)
+                  /root/tts-bot/BotDoMin   (cwd bot dò mìn)
+                  /root/tts-bot/BotNoi     (cwd bot đọc chữ)
   Tên PM2       : BotDoMin , tts-bot
   Web dashboard : http://103.72.98.37:3001
-  (mật khẩu panel: đã lưu riêng / hỏi admin — KHÔNG ghi vào file này)
+  Cấu hình VPS  : 1 CPU / 1GB RAM (+swap 2GB) / 20GB đĩa
+  Bảo vệ đã set : max_memory_restart 300MB (BotDoMin) / 350MB (tts-bot);
+                  swap 2GB; tự lưu DB khi restart.
+  Vbee voice    : hue_male_duyphuong_full_48k-fhg , tốc độ 1.0
 
-  Bảo vệ đã cấu hình sẵn trên VPS:
-   - max_memory_restart 300MB (BotDoMin) / 350MB (tts-bot)
-   - swap 2GB
-   - tự lưu 20 kết quả mỗi game khi restart
+  (Mật khẩu panel & token: KHÔNG ghi trong file này. Mật khẩu panel
+   xem trong BotDoMin/index.js dòng startPanel; token nằm trong .env
+   trên VPS. Đừng commit chúng ra repo công khai.)
 
 
 ----------------------------------------------------------------
-7. LƯU Ý QUAN TRỌNG
+11. LƯU Ý QUAN TRỌNG
 ----------------------------------------------------------------
-  - TUYỆT ĐỐI KHÔNG commit file .env lên GitHub (nó đã được .gitignore
-    chặn sẵn, đừng gỡ).
-  - .env chỉ sống trên VPS. Nếu muốn CHẠY THỬ bot dưới máy mình thì
-    phải tự tạo .env và copy giá trị từ VPS qua (xem .env.example của
-    BotNoi để biết cần biến gì).
-  - Mỗi lần sửa code BẮT BUỘC phải git pull + pm2 restart trên VPS,
-    code mới KHÔNG tự lên.
-  - Nếu sửa biến trong .env trên VPS, restart phải thêm --update-env:
-        pm2 restart BotDoMin --update-env
+  - TUYỆT ĐỐI KHÔNG commit .env lên GitHub (đã .gitignore, đừng gỡ).
+  - Muốn chạy thử bot dưới máy mình thì tự tạo .env (xem
+    BotNoi/.env.example). BotDoMin cần biến TOKEN, PANEL_PASSWORD,
+    PANEL_PORT trong .env của nó.
+  - Code mới KHÔNG tự lên VPS — luôn phải git pull + pm2 restart.
+  - Đổi biến .env trên VPS -> restart kèm --update-env.
 
 ================================================================
