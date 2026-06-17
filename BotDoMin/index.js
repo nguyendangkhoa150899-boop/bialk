@@ -67,8 +67,6 @@ if (fs.existsSync(DATA_FILE)) {
 }
 
 setInterval(() => {
-    dbCache._txHistory = txState.history;
-    dbCache._bcHistory = bcState.history;
     dbCache._minesHistory = minesHistory;
     fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
         if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
@@ -88,6 +86,9 @@ function updatePoints(userId, amount) {
     const data = getUserData(userId);
     data.points += amount;
 }
+
+// Hiển thị số ván dạng 4 chữ số: 1 -> #0001
+const padId = (n) => String(n).padStart(4, '0');
 
 // --- CONFIG BẦU CUA ---
 const MASCOTS = [
@@ -137,14 +138,15 @@ let userTXSelections = {};
 // Lịch sử các ván dò mìn (để hiển thị trên web panel)
 let minesHistory = [];
 
-// Restore history sau khi state đã khai báo xong
-if (dbCache._txHistory) txState.history = dbCache._txHistory;
-if (dbCache._bcHistory) bcState.history = dbCache._bcHistory;
+// Lịch sử dò mìn giữ qua mỗi lần restart (kết quả người chơi).
 if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
 
-// Dọn lịch sử cũ: chỉ giữ các ván thực sự có người đặt
-txState.history = txState.history.filter(h => Array.isArray(h.bets) && h.bets.length > 0);
-bcState.history = bcState.history.filter(h => Array.isArray(h.bets) && h.bets.length > 0);
+// Lớn Nhỏ & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới soi cầu.
+// (Trước đây gameId random mỗi lần restart -> soi cầu loạn số. Giờ reset gọn gàng.)
+bcState.gameId = 0;
+txState.gameId = 0;
+bcState.history = [];
+txState.history = [];
 
 const DICE_EMOJIS = [
     '', 
@@ -349,7 +351,7 @@ function getBCMessageData(customStatus = null) {
     let desc = `⏳ **Mở bát:** <t:${bcState.targetTime}:R>\n\n`;
 
     if (bcState.lastGameInfo) {
-        desc += `🔙 **Kết quả vòng trước (#${bcState.lastGameInfo.gameId}):** ${bcState.lastGameInfo.result}\n`;
+        desc += `🔙 **Kết quả vòng trước (#${padId(bcState.lastGameInfo.gameId)}):** ${bcState.lastGameInfo.result}\n`;
         desc += `💸 **Người đặt vòng trước:** ${bcState.lastGameInfo.betDetails}\n\n`;
     }
 
@@ -372,7 +374,7 @@ function getBCMessageData(customStatus = null) {
     desc += `\n\n${customStatus || "👉 Chọn con vật rồi chọn số point đặt!"}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🎲 BẦU CUA LIVE - Phiên #${bcState.gameId}`)
+        .setTitle(`🎲 BẦU CUA LIVE - Phiên #${padId(bcState.gameId)}`)
         .setColor(bcState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
         .setDescription(desc);
 
@@ -537,7 +539,7 @@ async function finishBCGame(gameId, bets) {
     }
 
     const resEmb = new EmbedBuilder()
-        .setTitle(`🎰 KẾT QUẢ #${gameId}`)
+        .setTitle(`🎰 KẾT QUẢ #${padId(gameId)}`)
         .setColor(0xf1c40f)
         .setDescription(`🎲: ${res.map(r => r.emoji).join(' ')}\n\n🏆 **Thắng:**\n${winLog || "Ván này nhà cái húp sạch!"}`);
 
@@ -578,7 +580,7 @@ function getTXMessageData(customStatus = null) {
     let desc = `⏳ **Mở bát:** <t:${txState.targetTime}:R>\n\n`;
 
     if (txState.lastGameInfo) {
-        desc += `🔙 **Kết quả vòng trước (#${txState.lastGameInfo.gameId}):** ${txState.lastGameInfo.result}\n`;
+        desc += `🔙 **Kết quả vòng trước (#${padId(txState.lastGameInfo.gameId)}):** ${txState.lastGameInfo.result}\n`;
         desc += `💸 **Người đặt vòng trước:** ${txState.lastGameInfo.betDetails}\n\n`;
     }
 
@@ -607,7 +609,7 @@ function getTXMessageData(customStatus = null) {
     desc += `\n\n${customStatus || "👉 Chọn cửa cược rồi chọn số point đặt!"}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🎲 LỚN NHỎ LIVE - Game #${txState.gameId}`)
+        .setTitle(`🎲 LỚN NHỎ LIVE - Game #${padId(txState.gameId)}`)
         .setColor(txState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
         .setDescription(desc);
 
@@ -772,7 +774,7 @@ async function finishTXGame(gameId, bets) {
     const resEmb = new EmbedBuilder()
         .setTitle(`🎲 KẾT QUẢ SÒNG LỚN NHỎ`)
         .setColor(0x2b2d31)
-        .setDescription(`**Game ${gameId}**\n\n` +
+        .setDescription(`**Game #${padId(gameId)}**\n\n` +
                         `🎲 **Xúc xắc:** ${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]}\n` +
                         `📊 **Tổng:** ${sum}\n` +
                         `🎯 **Kết quả:** ${txIcon} | ${clIcon}\n\n` +
@@ -1296,8 +1298,6 @@ function flushAndExit(signal) {
     if (isShuttingDown) return;
     isShuttingDown = true;
     try {
-        dbCache._txHistory = txState.history;
-        dbCache._bcHistory = bcState.history;
         dbCache._minesHistory = minesHistory;
         fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
         writeLog('SYSTEM', `[SHUTDOWN] ${signal} - đã lưu database trước khi thoát`);

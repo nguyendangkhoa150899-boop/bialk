@@ -693,6 +693,7 @@ function renderPlayers(){
 }
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function fmtAmt(n){return (n>0?'+':'')+Number(n).toLocaleString();}
+function padId(n){return String(n).padStart(4,'0');}
 
 function renderHistories(){
   if(!STATE)return;
@@ -701,7 +702,7 @@ function renderHistories(){
   document.getElementById('txHist').innerHTML = tx.length? tx.map(g=>{
     const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' ('+b.choice+')').join(' • ')||'không ai đặt';
     const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
-    return '<div class="h"><div class="top"><span>Game #'+g.gameId+' — 🎲 '+g.dice.join('-')+' (Tổng '+g.sum+') · '+g.tx+' | '+g.cl+'</span><span class="t">'+(g.time||'')+'</span></div>'+
+    return '<div class="h"><div class="top"><span>Game #'+padId(g.gameId)+' — 🎲 '+g.dice.join('-')+' (Tổng '+g.sum+') · '+g.tx+' | '+g.cl+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai thắng</div>')+'</div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
   // Bầu Cua
@@ -709,7 +710,7 @@ function renderHistories(){
   document.getElementById('bcHist').innerHTML = bc.length? bc.map(g=>{
     const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' '+(b.emoji||b.mascot||'')).join(' • ')||'không ai đặt';
     const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
-    return '<div class="h"><div class="top"><span>Phiên #'+g.gameId+' — '+(g.resultEmoji||'')+' ('+esc(g.result||'')+')</span><span class="t">'+(g.time||'')+'</span></div>'+
+    return '<div class="h"><div class="top"><span>Phiên #'+padId(g.gameId)+' — '+(g.resultEmoji||'')+' ('+esc(g.result||'')+')</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 nhà cái húp sạch</div>')+'</div>';
   }).join('') : '<div class="empty">Chưa có phiên nào.</div>';
   // Dò Mìn
@@ -745,15 +746,15 @@ async function refresh(){
   mascotOptions();
   bcPreview();
   // status line
-  document.getElementById('statusLine').textContent='TX #'+STATE.tx.gameId+' • BC #'+STATE.bc.gameId+' • '+STATE.players.length+' người chơi';
+  document.getElementById('statusLine').textContent='TX #'+padId(STATE.tx.gameId)+' • BC #'+padId(STATE.bc.gameId)+' • '+STATE.players.length+' người chơi';
   // prefill channel id (chỉ khi ô đang trống, không đè lúc admin đang gõ)
   const txC=document.getElementById('txChannel'); if(txC&&!txC.value&&STATE.tx.channelId) txC.value=STATE.tx.channelId;
   const bcC=document.getElementById('bcChannel'); if(bcC&&!bcC.value&&STATE.bc.channelId) bcC.value=STATE.bc.channelId;
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
   const bcRun=STATE.bc.live&&STATE.bc.status!=='stopped';
-  document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+STATE.tx.gameId+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
-  document.getElementById('bcInfo').innerHTML='<span class="run '+(bcRun?'on':'off')+'">'+(bcRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Phiên #'+STATE.bc.gameId+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
+  document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
+  document.getElementById('bcInfo').innerHTML='<span class="run '+(bcRun?'on':'off')+'">'+(bcRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Phiên #'+padId(STATE.bc.gameId)+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';
