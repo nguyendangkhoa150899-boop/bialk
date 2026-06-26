@@ -68,6 +68,8 @@ if (fs.existsSync(DATA_FILE)) {
 
 setInterval(() => {
     dbCache._minesHistory = minesHistory;
+    dbCache._txDashHistory = txDashHistory;
+    dbCache._bcDashHistory = bcDashHistory;
     fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
         if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
     });
@@ -141,8 +143,14 @@ let minesHistory = [];
 // Lịch sử dò mìn giữ qua mỗi lần restart (kết quả người chơi).
 if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
 
-// Lớn Nhỏ & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới soi cầu.
+// Lịch sử DASHBOARD (web): CHỈ ván có người đặt, LƯU VĨNH VIỄN vào database.json
+// (giữ qua restart/deploy, KHÔNG tự xóa). Khác với soi cầu Discord ở RAM bên dưới.
+let txDashHistory = Array.isArray(dbCache._txDashHistory) ? dbCache._txDashHistory : [];
+let bcDashHistory = Array.isArray(dbCache._bcDashHistory) ? dbCache._bcDashHistory : [];
+
+// Lớn Nhỏ & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
 // (Trước đây gameId random mỗi lần restart -> soi cầu loạn số. Giờ reset gọn gàng.)
+// Lưu ý: chỉ reset soi cầu Discord (txState/bcState.history), KHÔNG đụng lịch sử dashboard.
 bcState.gameId = 0;
 txState.gameId = 0;
 bcState.history = [];
@@ -315,6 +323,8 @@ client.once('ready', async (c) => {
             setForcedMines: (key, positions) => { forcedMines[key] = positions; },
             clearForcedMines: (key) => { delete forcedMines[key]; },
             getMinesHistory: () => minesHistory,
+            getTXDash: () => txDashHistory,
+            getBCDash: () => bcDashHistory,
             getUserData,
             updatePoints,
             writeLog,
@@ -550,23 +560,26 @@ async function finishBCGame(gameId, bets) {
         result: res.map(r => r.emoji).join(' '),
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    // Lưu lịch sử MỌI ván cho soi cầu Discord (cầu liền mạch). Web tự lọc chỉ ván có người đặt.
-    // Giữ 1000 ván gần nhất (mất khi restart/deploy).
+    // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
     const betAgg = {};
     bets.forEach(b => {
         const k = `${b.userId}_${b.mascotId}`;
         if (!betAgg[k]) betAgg[k] = { name: b.username, mascot: MASCOTS.find(m => m.id === b.mascotId).name, emoji: MASCOTS.find(m => m.id === b.mascotId).emoji, amount: 0 };
         betAgg[k].amount += b.amount;
     });
-    bcState.history.unshift({
+    const histEntry = {
         gameId,
         result: resultNames,
         resultEmoji: res.map(r => r.emoji).join(' '),
         bets: Object.values(betAgg),
         winners,
         time: new Date().toLocaleTimeString('vi-VN')
-    });
+    };
+    // Soi cầu Discord: lưu MỌI ván (cầu liền mạch), RAM, giữ 1000 ván, mất khi restart.
+    bcState.history.unshift(histEntry);
     if (bcState.history.length > 1000) bcState.history.pop();
+    // Dashboard web: CHỈ ván có người đặt, lưu vĩnh viễn vào database.json, KHÔNG xóa.
+    if (bets.length > 0) bcDashHistory.unshift(histEntry);
 
     return sentMsg;
 }
@@ -786,15 +799,14 @@ async function finishTXGame(gameId, bets) {
         result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    // Lưu lịch sử MỌI ván cho soi cầu Discord (cầu liền mạch). Web tự lọc chỉ ván có người đặt.
-    // Giữ 1000 ván gần nhất (mất khi restart/deploy).
+    // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
     const betAgg = {};
     bets.forEach(b => {
         const k = `${b.userId}_${b.choice}`;
         if (!betAgg[k]) betAgg[k] = { name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
         betAgg[k].amount += b.amount;
     });
-    txState.history.unshift({
+    const histEntry = {
         gameId,
         dice: [d1, d2, d3],
         sum,
@@ -803,8 +815,12 @@ async function finishTXGame(gameId, bets) {
         bets: Object.values(betAgg),
         winners,
         time: new Date().toLocaleTimeString('vi-VN')
-    });
+    };
+    // Soi cầu Discord: lưu MỌI ván (cầu liền mạch), RAM, giữ 1000 ván, mất khi restart.
+    txState.history.unshift(histEntry);
     if (txState.history.length > 1000) txState.history.pop();
+    // Dashboard web: CHỈ ván có người đặt, lưu vĩnh viễn vào database.json, KHÔNG xóa.
+    if (bets.length > 0) txDashHistory.unshift(histEntry);
 
     return sentMsg;
 }
@@ -1295,6 +1311,8 @@ function flushAndExit(signal) {
     isShuttingDown = true;
     try {
         dbCache._minesHistory = minesHistory;
+        dbCache._txDashHistory = txDashHistory;
+        dbCache._bcDashHistory = bcDashHistory;
         fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
         writeLog('SYSTEM', `[SHUTDOWN] ${signal} - đã lưu database trước khi thoát`);
     } catch (e) {

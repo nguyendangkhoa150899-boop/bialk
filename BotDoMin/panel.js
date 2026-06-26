@@ -67,8 +67,8 @@ function startPanel(ctx) {
             forcedMines: ctx.getForcedMines(),
             players: buildPlayers(),
             mascots: ctx.mascots.map(m => ({ id: m.id, name: m.name, emoji: m.emoji })),
-            txHistory: (ctx.getTX().history || []).filter(g => g.bets && g.bets.length > 0),
-            bcHistory: (ctx.getBC().history || []).filter(g => g.bets && g.bets.length > 0),
+            txHistory: (ctx.getTXDash ? ctx.getTXDash() : []),
+            bcHistory: (ctx.getBCDash ? ctx.getBCDash() : []),
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             savedChannels: db._savedChannels || [],
         };
