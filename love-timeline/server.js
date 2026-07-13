@@ -1,9 +1,8 @@
 /* =============================================================
    SERVER — phục vụ web + Dashboard upload ảnh (chạy: node server.js)
-   - Web (cần mật khẩu chung):  http://localhost:8080
-   - Dashboard (mật khẩu riêng): http://localhost:8080/admin
-   - Đổi mật khẩu web:     đặt biến môi trường SITE_PASS (mặc định "chopper").
-   - Đổi mật khẩu admin:   đặt biến môi trường DASH_PASS (mặc định "yeu-nhau").
+   - Web:       http://localhost:8080
+   - Dashboard: http://localhost:8080/admin
+   - Không mật khẩu — chỉ chia sẻ link cho người thân.
    ============================================================= */
 const express = require("express");
 const multer = require("multer");
@@ -12,21 +11,10 @@ const path = require("path");
 
 const ROOT = __dirname;
 const PORT = process.env.PORT || 8080;
-const MAT_KHAU = process.env.DASH_PASS || "yeu-nhau";
-const SITE_PASS = process.env.SITE_PASS || "chopper";
 const DATA_FILE = path.join(ROOT, "du-lieu.json");
 
 const app = express();
 app.use(express.json());
-
-/* ---------- Mật khẩu cho CẢ TRANG (khác mật khẩu /admin) ---------- */
-app.use((req, res, next) => {
-  const h = req.headers.authorization || "";
-  const [, b64] = h.split(" ");
-  const pw = Buffer.from(b64 || "", "base64").toString().split(":")[1];
-  if (pw === SITE_PASS) return next();
-  res.set("WWW-Authenticate", 'Basic realm="Chuyen tinh minh"').status(401).send("Cần đăng nhập");
-});
 
 /* ---------- Dữ liệu ---------- */
 // Dữ liệu khởi tạo khi VPS chưa có du-lieu.json (file này KHÔNG đẩy lên git)
@@ -53,15 +41,6 @@ function timAlbum(d, id) { return (d.kyNiem || []).find(a => a.id === id); }
 
 // Lần đầu chạy trên máy mới (VPS): tạo du-lieu.json từ SEED
 if (!fs.existsSync(DATA_FILE)) { try { ghiData(SEED); } catch {} }
-
-/* ---------- Đăng nhập (Basic Auth, chỉ cần đúng mật khẩu) ---------- */
-function auth(req, res, next) {
-  const h = req.headers.authorization || "";
-  const [, b64] = h.split(" ");
-  const pw = Buffer.from(b64 || "", "base64").toString().split(":")[1];
-  if (pw === MAT_KHAU) return next();
-  res.set("WWW-Authenticate", 'Basic realm="Dashboard"').status(401).send("Cần đăng nhập");
-}
 
 /* ---------- Chặn truy cập trực tiếp file nhạy cảm ---------- */
 app.use((req, res, next) => {
@@ -92,11 +71,11 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 200 * 1024 * 1024 } });
 
-/* ---------- Dashboard (trang + API, cần mật khẩu) ---------- */
-app.get("/admin", auth, (req, res) => res.sendFile(path.join(ROOT, "admin.html")));
+/* ---------- Dashboard (trang + API) ---------- */
+app.get("/admin", (req, res) => res.sendFile(path.join(ROOT, "admin.html")));
 
 // tạo album
-app.post("/api/album", auth, (req, res) => {
+app.post("/api/album", (req, res) => {
   const d = docData();
   const album = { id: "a" + Date.now(), tieuDe: (req.body.tieuDe || "Kỷ niệm mới").trim(), ke: "", anh: [] };
   d.kyNiem = d.kyNiem || [];
@@ -106,7 +85,7 @@ app.post("/api/album", auth, (req, res) => {
 });
 
 // sửa tên/mô tả album
-app.patch("/api/album/:id", auth, (req, res) => {
+app.patch("/api/album/:id", (req, res) => {
   const d = docData(); const a = timAlbum(d, req.params.id);
   if (!a) return res.status(404).json({ loi: "Không thấy album" });
   if (req.body.tieuDe !== undefined) a.tieuDe = req.body.tieuDe;
@@ -115,14 +94,14 @@ app.patch("/api/album/:id", auth, (req, res) => {
 });
 
 // xoá album
-app.delete("/api/album/:id", auth, (req, res) => {
+app.delete("/api/album/:id", (req, res) => {
   const d = docData();
   d.kyNiem = (d.kyNiem || []).filter(a => a.id !== req.params.id);
   ghiData(d); res.json({ ok: true });
 });
 
 // upload nhiều file vào 1 album
-app.post("/api/upload", auth, upload.array("files", 50), (req, res) => {
+app.post("/api/upload", upload.array("files", 50), (req, res) => {
   const d = docData(); const a = timAlbum(d, req.body.albumId);
   if (!a) return res.status(404).json({ loi: "Không thấy album" });
   const ghi = req.body.ghi || "";
@@ -134,7 +113,7 @@ app.post("/api/upload", auth, upload.array("files", 50), (req, res) => {
 });
 
 // sửa note 1 tấm
-app.patch("/api/photo", auth, (req, res) => {
+app.patch("/api/photo", (req, res) => {
   const d = docData(); const a = timAlbum(d, req.body.albumId);
   if (!a || !a.anh[req.body.index]) return res.status(404).json({ loi: "Không thấy ảnh" });
   a.anh[req.body.index].ghi = req.body.ghi || "";
@@ -142,7 +121,7 @@ app.patch("/api/photo", auth, (req, res) => {
 });
 
 // xoá 1 tấm (xoá cả file trên đĩa)
-app.delete("/api/photo", auth, (req, res) => {
+app.delete("/api/photo", (req, res) => {
   const d = docData(); const a = timAlbum(d, req.body.albumId);
   if (!a || !a.anh[req.body.index]) return res.status(404).json({ loi: "Không thấy ảnh" });
   const [removed] = a.anh.splice(req.body.index, 1);
@@ -152,7 +131,7 @@ app.delete("/api/photo", auth, (req, res) => {
 });
 
 // đổi thứ tự (di chuyển 1 tấm từ from -> to)
-app.post("/api/reorder", auth, (req, res) => {
+app.post("/api/reorder", (req, res) => {
   const d = docData(); const a = timAlbum(d, req.body.albumId);
   if (!a) return res.status(404).json({ loi: "Không thấy album" });
   const { from, to } = req.body;
@@ -168,7 +147,7 @@ function tlList(d, key) {
   d.timeline[key] = d.timeline[key] || [];
   return d.timeline[key];
 }
-app.post("/api/tl-upload", auth, upload.array("files", 50), (req, res) => {
+app.post("/api/tl-upload", upload.array("files", 50), (req, res) => {
   const key = req.body.key;
   if (!key) return res.status(400).json({ loi: "Thiếu mốc" });
   const d = docData(); const arr = tlList(d, key); const ghi = req.body.ghi || "";
@@ -178,19 +157,19 @@ app.post("/api/tl-upload", auth, upload.array("files", 50), (req, res) => {
   });
   ghiData(d); res.json(arr);
 });
-app.patch("/api/tl-photo", auth, (req, res) => {
+app.patch("/api/tl-photo", (req, res) => {
   const d = docData(); const arr = (d.timeline || {})[req.body.key];
   if (!arr || !arr[req.body.index]) return res.status(404).json({ loi: "Không thấy ảnh" });
   arr[req.body.index].ghi = req.body.ghi || ""; ghiData(d); res.json(arr);
 });
-app.delete("/api/tl-photo", auth, (req, res) => {
+app.delete("/api/tl-photo", (req, res) => {
   const d = docData(); const arr = (d.timeline || {})[req.body.key];
   if (!arr || !arr[req.body.index]) return res.status(404).json({ loi: "Không thấy ảnh" });
   const [r] = arr.splice(req.body.index, 1); ghiData(d);
   try { if (r && r.src) fs.unlinkSync(path.join(ROOT, r.src)); } catch {}
   res.json(arr);
 });
-app.post("/api/tl-reorder", auth, (req, res) => {
+app.post("/api/tl-reorder", (req, res) => {
   const d = docData(); const arr = (d.timeline || {})[req.body.key];
   if (!arr) return res.status(404).json({ loi: "Không thấy mốc" });
   const { from, to } = req.body;
@@ -205,7 +184,7 @@ const storageSticker = multer.diskStorage({
 });
 const uploadSticker = multer({ storage: storageSticker, limits: { fileSize: 50 * 1024 * 1024 } });
 
-app.post("/api/sticker-upload", auth, uploadSticker.single("file"), (req, res) => {
+app.post("/api/sticker-upload", uploadSticker.single("file"), (req, res) => {
   const slot = req.body.slot;
   if (!slot || !req.file) return res.status(400).json({ loi: "Thiếu slot/file" });
   const d = docData(); d.sticker = d.sticker || {};
@@ -215,7 +194,7 @@ app.post("/api/sticker-upload", auth, uploadSticker.single("file"), (req, res) =
   if (old && old !== d.sticker[slot]) { try { fs.unlinkSync(path.join(ROOT, old)); } catch {} }
   res.json({ slot, src: d.sticker[slot] });
 });
-app.delete("/api/sticker", auth, (req, res) => {
+app.delete("/api/sticker", (req, res) => {
   const d = docData(); d.sticker = d.sticker || {};
   const old = d.sticker[req.body.slot];
   delete d.sticker[req.body.slot]; ghiData(d);
@@ -224,7 +203,7 @@ app.delete("/api/sticker", auth, (req, res) => {
 });
 
 /* ---------- Sở thích (danh sách "thích" của mỗi người) ---------- */
-app.post("/api/sothich", auth, (req, res) => {
+app.post("/api/sothich", (req, res) => {
   const who = req.body.who; // "khoa" | "hanh"
   if (!who) return res.status(400).json({ loi: "Thiếu who" });
   const d = docData(); d.soThich = d.soThich || {};
@@ -237,6 +216,6 @@ app.post("/api/sothich", auth, (req, res) => {
 app.use(express.static(ROOT));
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log("Web:        http://localhost:" + PORT + "   (mật khẩu: " + SITE_PASS + ")");
-  console.log("Dashboard:  http://localhost:" + PORT + "/admin   (mật khẩu: " + MAT_KHAU + ")");
+  console.log("Web:        http://localhost:" + PORT);
+  console.log("Dashboard:  http://localhost:" + PORT + "/admin");
 });

@@ -52,16 +52,17 @@ tieuDeBia.textContent = THONG_TIN.ten1 + " & " + THONG_TIN.ten2;
 })();
 
 function dinhDangNgay(chuoi) {
-  const d = new Date(chuoi);
-  if (isNaN(d)) return chuoi;
-  const nn = String(d.getDate()).padStart(2, "0");
-  const tt = String(d.getMonth() + 1).padStart(2, "0");
-  return nn + "/" + tt + "/" + d.getFullYear();
+  // Ghép chuỗi trực tiếp (không qua Date) để tránh lệch ngày do timezone
+  // khi người xem ở nước ngoài (vd Mỹ) — Date("YYYY-MM-DD") bị hiểu là giờ UTC.
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(chuoi);
+  if (!m) return chuoi;
+  return m[3] + "/" + m[2] + "/" + m[1];
 }
 
 (function demNgay() {
   const el = document.getElementById("counterNum");
-  const batDau = new Date(THONG_TIN.ngayQuen);
+  // +07:00 ép mốc "bắt đầu" luôn là nửa đêm giờ Việt Nam, dù người xem ở đâu.
+  const batDau = new Date(THONG_TIN.ngayQuen + "T00:00:00+07:00");
   if (isNaN(batDau)) { el.textContent = "?"; return; }
   const soNgay = Math.floor((Date.now() - batDau.getTime()) / 86400000);
   // đếm nhảy số cho vui
