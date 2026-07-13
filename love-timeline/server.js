@@ -16,6 +16,15 @@ const DATA_FILE = path.join(ROOT, "du-lieu.json");
 const app = express();
 app.use(express.json());
 
+/* ---------- Log tạm để soi request /api/* (theo dõi qua pm2 logs) ---------- */
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/")) return next();
+  const t0 = Date.now();
+  console.log(`[api] ${req.method} ${req.path} <- START`);
+  res.on("finish", () => console.log(`[api] ${req.method} ${req.path} -> ${res.statusCode} (${Date.now() - t0}ms)`));
+  next();
+});
+
 /* ---------- Dữ liệu ---------- */
 // Dữ liệu khởi tạo khi VPS chưa có du-lieu.json (file này KHÔNG đẩy lên git)
 const SEED = {
