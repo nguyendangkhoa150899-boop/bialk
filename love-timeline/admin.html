@@ -266,14 +266,14 @@
     if (b.classList.contains("btnUp")) {
       const c = ctxOf(b);
       const files = c.card.querySelector(".fileInp").files;
-      if (!files.length) { setTT("Chưa chọn file."); return; }
+      if (!files.length) { setTT("Chưa chọn file."); alert("Chưa chọn ảnh/video nào — bấm ô chọn file trước khi bấm Tải lên."); return; }
       const fd = new FormData();
       fd.append(c.ep.idKey, c.idVal);
       fd.append("ghi", c.card.querySelector(".noteInp").value);
       for (const f of files) fd.append("files", f);
       setTT("Đang tải " + files.length + " file...");
       try { await api(c.ep.upload, { method: "POST", body: fd }); setTT("Tải lên xong ✓"); await taiData(); }
-      catch (err) { setTT("Lỗi: " + err.message); }
+      catch (err) { setTT("Lỗi: " + err.message); alert("Tải lên lỗi: " + err.message); }
       return;
     }
     if (b.classList.contains("btnXoaAlbum")) {
