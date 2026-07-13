@@ -1,0 +1,66 @@
+<!-- ============================================================
+     CHUYỆN TÌNH MÌNH — trang timeline
+     Bạn KHÔNG cần sửa file này.
+     Muốn đổi nội dung / thêm ảnh: mở file  noi-dung.js
+     ============================================================ -->
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Chuyện tình mình</title>
+
+  <!-- PWA: thêm vào Màn hình chính -> chạy như app trên iPhone/iPad/Android -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#ff6b6b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Chuyện tình mình" />
+  <link rel="apple-touch-icon" href="Lib/Icon/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Patrick+Hand&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== Bìa đầu trang ===== -->
+  <header class="hero">
+    <div class="hero-emoji">💛</div>
+    <p class="hero-kicker" id="heroKicker">Chuyện của tụi mình</p>
+    <h1 class="hero-title" id="heroTitle">Tên anh &amp; Tên em</h1>
+    <div class="counter" id="counter">
+      <span class="counter-num" id="counterNum">—</span>
+      <span class="counter-label">ngày bên nhau</span>
+    </div>
+    <p class="hero-scroll">cuộn xuống để đọc nha 👇</p>
+  </header>
+
+  <!-- ===== Timeline (tự sinh từ noi-dung.js) ===== -->
+  <main class="timeline" id="timeline"></main>
+
+  <!-- ===== Luật của tụi mình (tự sinh từ noi-dung.js) ===== -->
+  <section class="quytac" id="quytac"></section>
+
+  <!-- ===== Sở thích / Về hai đứa (tự sinh từ noi-dung.js) ===== -->
+  <section class="sothich" id="sothich"></section>
+
+  <!-- ===== Chopper — bé cưng (tự sinh từ noi-dung.js) ===== -->
+  <section class="chopper" id="chopper"></section>
+
+  <!-- ===== Những kỷ niệm đáng nhớ (tự sinh từ noi-dung.js) ===== -->
+  <section class="kyniem-lon" id="kyniem"></section>
+
+  <!-- ===== Wishlist của tụi mình (tự sinh từ noi-dung.js) ===== -->
+  <section class="wishlist" id="wishlist"></section>
+
+  <!-- ===== Kết ===== -->
+  <footer class="ending" id="ending"></footer>
+
+  <!-- Firebase (cho Wishlist đồng bộ) — cần có mạng; offline thì wishlist báo lỗi nhẹ -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="noi-dung.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

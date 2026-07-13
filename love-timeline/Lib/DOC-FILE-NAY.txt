@@ -1,0 +1,37 @@
+THƯ MỤC Lib — NƠI ĐỂ TẤT CẢ FILE
+==================================
+
+Chia làm 3 thư mục con cho dễ quản lý:
+
+  Lib/Sticker/    -> ảnh đã tách nền (PNG trong suốt), vd chopper-sticker.png
+  Lib/HinhAnh/    -> ảnh thường (jpg, png)
+  Lib/Video/      -> video (nên dùng .mp4)
+
+
+CÁCH DÙNG
+=========
+
+1. Copy file vào đúng thư mục con ở trên.
+
+2. Nên đặt tên KHÔNG DẤU, KHÔNG KHOẢNG TRẮNG (dùng gạch ngang), ví dụ:
+      01-lan-dau-gap.jpg
+      cau-hon.mp4
+      mat-khoa.jpg
+
+3. Mở file  noi-dung.js  (ở thư mục cha), tìm mốc tương ứng
+   rồi ghi ĐƯỜNG DẪN ĐẦY ĐỦ (gồm cả thư mục con), ví dụ:
+
+      anh: ["Lib/HinhAnh/01-lan-dau-gap.jpg"],
+
+   Nhiều file cho một mốc thì cách nhau bằng dấu phẩy:
+
+      anh: ["Lib/HinhAnh/a.jpg", "Lib/Video/b.mp4"],
+
+4. Lưu lại, mở index.html và nhấn Ctrl+F5.
+
+
+LƯU Ý
+=====
+- Ảnh chụp màn hình tin nhắn: để mốc đó  kieu: "chat"
+- Video: dùng .mp4 cho chắc (chạy cả iPhone/iPad). Tránh .mov.
+- File điện thoại thường rất nặng. Nếu web tải chậm, báo mình nén nhẹ lại giúp.

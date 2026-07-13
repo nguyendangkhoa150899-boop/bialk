@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard — Chuyện tình mình</title>
+<link rel="stylesheet" href="/style.css" />
+<style>
+  body { padding: 0; }
+  .ad-top {
+    position: sticky; top: 0; z-index: 20; background: #fffdfa;
+    border-bottom: 3px solid #3a3230; padding: 12px 18px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .ad-top h1 { font-size: 20px; margin: 0; }
+  .ad-top a { color: #ff6b6b; font-weight: 800; text-decoration: none; }
+  .ad-tt { color: #8a7f79; font-size: 13px; margin-left: auto; }
+  .ad-boc { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  .ad-chuong { font-family: "Patrick Hand", cursive; font-size: 22px; margin: 28px 0 12px; color: #3a3230; }
+  .ad-card {
+    background: #fffdfa; border: 3px solid #3a3230; border-radius: 16px;
+    padding: 16px 18px; margin-bottom: 16px; box-shadow: 5px 5px 0 rgba(58,50,48,.15);
+  }
+  .ad-date { font-family: "Patrick Hand", cursive; font-size: 14px; color: #fff; background: #4ecdc4; border: 2px solid #3a3230; border-radius: 20px; padding: 2px 12px; }
+  .ad-title { font-size: 20px; font-weight: 800; margin: 8px 0 2px; }
+  .ad-title[contenteditable] { outline: none; border-bottom: 2px dashed transparent; }
+  .ad-title[contenteditable]:focus { border-bottom-color: #ffd166; }
+  .ad-ke { color: #8a7f79; font-size: 14px; margin: 0 0 6px; }
+  .ad-anh { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+  .ad-thumb { width: 120px; }
+  .ad-thumb .wrap { position: relative; width: 120px; }
+  .ad-thumb .pic { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; background: #eee; display: block; border: 2px solid #efe4d6; }
+  .ad-thumb .rank { position: absolute; top: 5px; left: 5px; background: rgba(58,50,48,.82); color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; }
+  .ad-thumb .rank.bia { background: #ff6b6b; }
+  .ad-thumb .wrap { cursor: grab; position: relative; }
+  .ad-thumb .wrap:active { cursor: grabbing; }
+  .ad-thumb.dragging { opacity: .4; }
+  .ad-thumb.drop-truoc .wrap { box-shadow: -4px 0 0 #ff6b6b; }
+  .drag-tay { position: absolute; bottom: 4px; right: 4px; background: rgba(58,50,48,.7); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 8px; pointer-events: none; }
+  .ad-thumb textarea { width: 120px; border: 2px solid #efe4d6; border-radius: 8px; font-family: inherit; font-size: 12px; padding: 4px 6px; margin-top: 4px; resize: vertical; }
+  .ad-thumb .row { display: flex; gap: 4px; margin-top: 4px; }
+  .mini { border: none; background: #efe4d6; border-radius: 6px; padding: 3px 7px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .mini:hover { background: #e0d3c2; }
+  .mini.xoa { background: #ffd3d3; }
+  .ad-up { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff8e6; border: 2px dashed #ffd166; border-radius: 10px; padding: 10px; }
+  .ad-up input[type=text] { flex: 1; min-width: 130px; padding: 7px 9px; border: 2px solid #efe4d6; border-radius: 8px; font-family: inherit; }
+  .btn { border: 2px solid #3a3230; background: #fff; border-radius: 10px; padding: 8px 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .btn-do { background: #ff6b6b; color: #fff; border-color: #ff6b6b; }
+  .btn-do:hover { background: #ff5252; }
+  .ad-none { color: #8a7f79; font-style: italic; font-size: 13px; }
+  .ad-album-head { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .ad-album-head input { font-size: 18px; font-weight: 800; border: 2px solid #efe4d6; border-radius: 8px; padding: 5px 9px; flex: 1; font-family: inherit; }
+  .ad-stickers { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px; }
+  .ad-sticker { text-align: center; width: 140px; }
+  .st-circle { width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; border: 3px dashed #ff6b6b; background: #fffdfa; display: flex; align-items: center; justify-content: center; font-size: 34px; color: #ff6b6b; overflow: hidden; }
+  .st-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .st-label { font-size: 13px; color: #8a7f79; margin: 6px 0 4px; }
+  .ad-sticker label.mini { display: inline-block; }
+  #stBox { display: flex; flex-wrap: wrap; gap: 16px; }
+  .ad-sothich { flex: 1; min-width: 260px; }
+  .ad-sothich .ad-sticker { margin: 0 auto 6px; }
+  .st-ten-lbl { text-align: center; font-weight: 800; font-size: 18px; margin-bottom: 8px; }
+  .thichList { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .st-item { display: flex; gap: 6px; }
+  .st-item input { flex: 1; border: 2px solid #efe4d6; border-radius: 8px; padding: 6px 9px; font-family: inherit; font-size: 14px; }
+  /* Cropper */
+  .crop-overlay { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(20,16,14,.75); align-items: center; justify-content: center; padding: 16px; }
+  .crop-overlay.mo { display: flex; }
+  .crop-box { background: #2b2622; color: #f5efe6; border-radius: 16px; padding: 16px; width: 340px; max-width: 100%; }
+  .crop-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; margin-bottom: 10px; }
+  .crop-x { background: none; border: none; color: #f5efe6; font-size: 18px; cursor: pointer; }
+  #cropCanvas { width: 300px; height: 300px; max-width: 100%; border-radius: 10px; background: #000; touch-action: none; cursor: grab; display: block; margin: 0 auto; }
+  #cropCanvas:active { cursor: grabbing; }
+  .crop-zoom { display: flex; align-items: center; gap: 10px; margin: 12px 4px; }
+  .crop-zoom input { flex: 1; }
+  .crop-actions { display: flex; justify-content: flex-end; gap: 8px; }
+</style>
+</head>
+<body>
+  <div class="ad-top">
+    <h1>🛠️ Dashboard</h1>
+    <a href="/" target="_blank">Xem trang chính ↗</a>
+    <span class="ad-tt" id="tt"></span>
+  </div>
+  <div class="ad-boc">
+    <div class="ad-chuong">💛 Bìa — ảnh mặt hai đứa</div>
+    <div id="biaBox" class="ad-stickers"></div>
+
+    <div class="ad-chuong">🕐 Timeline — ảnh từng mốc</div>
+    <div id="tlBox"></div>
+
+    <div class="ad-chuong">✦ Sở thích — sticker hai đứa</div>
+    <div id="stBox" class="ad-stickers"></div>
+
+    <div class="ad-chuong">🐩 Chopper</div>
+    <div id="chopperStickerBox" class="ad-stickers"></div>
+    <div id="chopperAlbumBox"></div>
+
+    <div class="ad-chuong">✦ Những kỷ niệm đáng nhớ</div>
+    <div id="knBox"></div>
+    <button class="btn" id="btnTaoAlbum" style="margin-top:6px">＋ Tạo album mới</button>
+
+    <div style="text-align:center;margin:40px 0 10px">
+      <button class="btn btn-do" id="btnXong" style="font-size:17px;padding:14px 40px">✓ Xong — Xem trang chính</button>
+    </div>
+  </div>
+
+  <!-- Cropper tròn (giống Discord đổi avatar) -->
+  <div id="cropper" class="crop-overlay">
+    <div class="crop-box">
+      <div class="crop-head">✂️ Canh ảnh sticker <button class="crop-x" id="cropX">✕</button></div>
+      <canvas id="cropCanvas" width="300" height="300"></canvas>
+      <div class="crop-zoom">🏞️<input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1">🔍</div>
+      <div class="crop-actions">
+        <button class="btn" id="cropCancel">Huỷ</button>
+        <button class="btn btn-do" id="cropSave">Lưu 💾</button>
+      </div>
+    </div>
+  </div>
+
+<script src="/noi-dung.js"></script>
+<script>
+  let data = { kyNiem: [], timeline: {} };
+  const $ = s => document.querySelector(s);
+  const escH = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const laVideo = s => /\.(mp4|webm|ogg|mov|m4v)$/i.test(s || "");
+  const setTT = m => { $("#tt").textContent = m || ""; };
+
+  async function api(url, opt) {
+    const r = await fetch(url, opt);
+    if (!r.ok) throw new Error((await r.text()) || r.status);
+    return r.json();
+  }
+  async function taiData() {
+    data = await (await fetch("/api/data", { cache: "no-store" })).json();
+    data.kyNiem = data.kyNiem || []; data.timeline = data.timeline || {}; data.sticker = data.sticker || {};
+    ve();
+  }
+
+  function stickerHTML(slot, label) {
+    const src = data.sticker[slot];
+    return `<div class="ad-sticker" data-slot="${slot}">` +
+      `<div class="st-circle">${src ? `<img src="${src}">` : "＋"}</div>` +
+      `<div class="st-label">${label}</div>` +
+      `<label class="mini">${src ? "Đổi ảnh" : "Chọn ảnh"}<input type="file" class="stFile" accept="image/*" hidden></label> ` +
+      (src ? `<button class="mini xoa stXoa">Xoá</button>` : "") +
+      `</div>`;
+  }
+
+  function soThichCardHTML(who, slot, ten) {
+    const list = ((data.soThich || {})[who] || {}).thich || [];
+    const items = list.length
+      ? list.map((t, i) => `<div class="st-item"><input type="text" class="thichInp" value="${escH(t)}" placeholder="sở thích..."><button class="mini xoa thichXoa" data-i="${i}">✕</button></div>`).join("")
+      : '<div class="ad-none">Chưa có sở thích.</div>';
+    return `<div class="ad-card ad-sothich" data-who="${who}">` +
+      stickerHTML(slot, "Sticker " + ten) +
+      `<div class="st-ten-lbl">${escH(ten)}</div>` +
+      `<div class="thichList">${items}</div>` +
+      `<button class="mini btnThemThich">＋ Thêm sở thích</button>` +
+      `</div>`;
+  }
+  async function luuThich(card, extra) {
+    const who = card.dataset.who;
+    let thich = [...card.querySelectorAll(".thichInp")].map(i => i.value);
+    if (extra === "add") thich.push("");
+    if (typeof extra === "number") thich.splice(extra, 1);
+    await api("/api/sothich", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ who, thich }) });
+  }
+
+  // endpoint theo loại (tl = mốc timeline, album = kỷ niệm)
+  function EP(kind) {
+    return kind === "album"
+      ? { upload: "/api/upload", idKey: "albumId", photo: "/api/photo", reorder: "/api/reorder" }
+      : { upload: "/api/tl-upload", idKey: "key", photo: "/api/tl-photo", reorder: "/api/tl-reorder" };
+  }
+
+  function thumbHTML(x, i) {
+    const media = laVideo(x.src)
+      ? `<video class="pic" src="${x.src}" muted></video>`
+      : `<img class="pic" src="${x.src}">`;
+    const rank = i === 0 ? `<span class="rank bia">★ Bìa</span>` : `<span class="rank">#${i + 1}</span>`;
+    return `<div class="ad-thumb" data-i="${i}">` +
+      `<div class="wrap" draggable="true" title="Kéo để sắp xếp">${rank}${media}<span class="drag-tay">✥ kéo</span></div>` +
+      `<textarea rows="2" data-note="${i}" placeholder="note...">${escH(x.ghi || "")}</textarea>` +
+      `<div class="row"><button class="mini xoa" data-del="${i}">✕ xoá</button></div>` +
+      `</div>`;
+  }
+  function anhHTML(photos) {
+    return '<div class="ad-anh">' + (photos.length ? photos.map(thumbHTML).join("") : '<span class="ad-none">Chưa có ảnh.</span>') + '</div>';
+  }
+  function upHTML() {
+    return '<div class="ad-up"><input type="file" class="fileInp" accept="image/*,video/*" multiple>' +
+      '<input type="text" class="noteInp" placeholder="note áp cho các tấm vừa chọn (tuỳ chọn)">' +
+      '<button class="btn btn-do btnUp">⬆ Tải lên</button></div>';
+  }
+
+  function ve() {
+    // Bìa (2 sticker mặt)
+    $("#biaBox").innerHTML = stickerHTML("heroKhoa", "Ảnh mặt Khoa") + stickerHTML("heroHanh", "Ảnh mặt Hạnh");
+    // Sở thích (sticker + danh sách sở thích, có nút Thêm)
+    const so = (typeof SO_THICH !== "undefined") ? SO_THICH : { nguoi1: { ten: "Khoa" }, nguoi2: { ten: "Hạnh" } };
+    $("#stBox").innerHTML =
+      soThichCardHTML("khoa", "soThichKhoa", (so.nguoi1 && so.nguoi1.ten) || "Khoa") +
+      soThichCardHTML("hanh", "soThichHanh", (so.nguoi2 && so.nguoi2.ten) || "Hạnh");
+    // Chopper: 1 sticker + album (key "chopper")
+    $("#chopperStickerBox").innerHTML = stickerHTML("chopper", "Sticker Chopper");
+    $("#chopperAlbumBox").innerHTML =
+      `<div class="ad-card" data-kind="tl" data-key="chopper">` + anhHTML(data.timeline["chopper"] || []) + upHTML() + `</div>`;
+
+    // Timeline
+    const tl = (typeof TIMELINE !== "undefined") ? TIMELINE : [];
+    $("#tlBox").innerHTML = tl.map((m, idx) => {
+      const key = "m" + idx;
+      const photos = data.timeline[key] || [];
+      return `<div class="ad-card" data-kind="tl" data-key="${key}">` +
+        (m.ngay ? `<span class="ad-date">${escH(m.ngay)}</span>` : "") +
+        `<div class="ad-title">${escH(m.tieuDe || "")}</div>` +
+        (m.ke ? `<div class="ad-ke">${escH(m.ke).slice(0, 120)}${m.ke.length > 120 ? "…" : ""}</div>` : "") +
+        anhHTML(photos) + upHTML() +
+        `</div>`;
+    }).join("");
+
+    // Kỷ niệm
+    $("#knBox").innerHTML = data.kyNiem.length
+      ? data.kyNiem.map(a => {
+          return `<div class="ad-card" data-kind="album" data-id="${a.id}">` +
+            `<div class="ad-album-head"><input class="tenAlbum" value="${escH(a.tieuDe || "")}" placeholder="Tên album"><button class="mini xoa btnXoaAlbum">🗑 Xoá</button></div>` +
+            anhHTML(a.anh) + upHTML() +
+            `</div>`;
+        }).join("")
+      : '<div class="ad-none">Chưa có album — bấm “Tạo album mới”.</div>';
+  }
+
+  function ctxCard(card) {
+    const kind = card.dataset.kind;
+    return { card, kind, idVal: kind === "album" ? card.dataset.id : card.dataset.key, ep: EP(kind) };
+  }
+  function ctxOf(el) { return ctxCard(el.closest(".ad-card")); }
+  function photosOf(c) {
+    if (c.kind === "album") { const a = data.kyNiem.find(x => x.id === c.idVal); return a ? a.anh : []; }
+    return data.timeline[c.idVal] || [];
+  }
+
+  // Tạo album
+  $("#btnTaoAlbum").addEventListener("click", async () => {
+    const ten = prompt("Tên album:", ""); if (ten === null) return;
+    await api("/api/album", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tieuDe: ten }) });
+    await taiData(); setTT("Đã tạo album ✓");
+  });
+
+  // Click chung (upload, xoá ảnh, thứ tự, xoá album)
+  document.addEventListener("click", async e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.classList.contains("stXoa")) {
+      const slot = b.closest(".ad-sticker").dataset.slot;
+      if (!confirm("Xoá sticker này?")) return;
+      await api("/api/sticker", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot }) });
+      setTT("Đã xoá ✓"); await taiData(); return;
+    }
+    if (b.classList.contains("btnThemThich")) {
+      await luuThich(b.closest(".ad-sothich"), "add"); setTT("Đã thêm ✓"); await taiData(); return;
+    }
+    if (b.classList.contains("thichXoa")) {
+      await luuThich(b.closest(".ad-sothich"), +b.dataset.i); await taiData(); return;
+    }
+    if (b.classList.contains("btnUp")) {
+      const c = ctxOf(b);
+      const files = c.card.querySelector(".fileInp").files;
+      if (!files.length) { setTT("Chưa chọn file."); return; }
+      const fd = new FormData();
+      fd.append(c.ep.idKey, c.idVal);
+      fd.append("ghi", c.card.querySelector(".noteInp").value);
+      for (const f of files) fd.append("files", f);
+      setTT("Đang tải " + files.length + " file...");
+      try { await api(c.ep.upload, { method: "POST", body: fd }); setTT("Tải lên xong ✓"); await taiData(); }
+      catch (err) { setTT("Lỗi: " + err.message); }
+      return;
+    }
+    if (b.classList.contains("btnXoaAlbum")) {
+      if (!confirm("Xoá album này? (ảnh trong Lib/ vẫn còn)")) return;
+      const c = ctxOf(b);
+      await api("/api/album/" + c.idVal, { method: "DELETE" }); await taiData(); return;
+    }
+    if (b.dataset.del !== undefined) {
+      const c = ctxOf(b);
+      if (!confirm("Xoá tấm này?")) return;
+      await api(c.ep.photo, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [c.ep.idKey]: c.idVal, index: +b.dataset.del }) });
+      setTT("Đã xoá ✓"); await taiData();
+    }
+  });
+
+  // Chọn ảnh sticker -> mở cropper canh vùng tròn rồi mới lưu
+  document.addEventListener("change", e => {
+    const inp = e.target.closest(".stFile");
+    if (!inp || !inp.files.length) return;
+    const slot = inp.closest(".ad-sticker").dataset.slot;
+    moCropper(inp.files[0], slot);
+    inp.value = "";
+  });
+
+  /* ===== Cropper tròn ===== */
+  const CC = $("#cropCanvas"), cx = CC.getContext("2d");
+  const CW = 300, R = 130;
+  const crop = { img: null, slot: null, scale: 1, minScale: 1, ox: 0, oy: 0 };
+
+  function drawCrop() {
+    if (!crop.img) return;
+    cx.clearRect(0, 0, CW, CW);
+    cx.drawImage(crop.img, crop.ox, crop.oy, crop.img.naturalWidth * crop.scale, crop.img.naturalHeight * crop.scale);
+    cx.fillStyle = "rgba(0,0,0,.55)";
+    cx.beginPath();
+    cx.rect(0, 0, CW, CW);
+    cx.arc(CW / 2, CW / 2, R, 0, Math.PI * 2, true); // lỗ tròn (ngược chiều)
+    cx.fill("evenodd");
+    cx.beginPath(); cx.arc(CW / 2, CW / 2, R, 0, Math.PI * 2); cx.lineWidth = 2; cx.strokeStyle = "#fff"; cx.stroke();
+  }
+  function setScale(ns) {
+    const relX = (CW / 2 - crop.ox) / crop.scale, relY = (CW / 2 - crop.oy) / crop.scale;
+    crop.scale = ns; crop.ox = CW / 2 - relX * ns; crop.oy = CW / 2 - relY * ns; drawCrop();
+  }
+  function moCropper(file, slot) {
+    const img = new Image();
+    img.onload = () => {
+      crop.img = img; crop.slot = slot;
+      crop.minScale = (2 * R) / Math.min(img.naturalWidth, img.naturalHeight);
+      crop.scale = crop.minScale;
+      crop.ox = CW / 2 - img.naturalWidth * crop.scale / 2;
+      crop.oy = CW / 2 - img.naturalHeight * crop.scale / 2;
+      $("#cropZoom").value = 1;
+      drawCrop();
+      $("#cropper").classList.add("mo");
+    };
+    img.src = URL.createObjectURL(file);
+  }
+  function dongCropper() { $("#cropper").classList.remove("mo"); crop.img = null; }
+  $("#cropZoom").addEventListener("input", e => setScale(crop.minScale * parseFloat(e.target.value)));
+  $("#cropX").addEventListener("click", dongCropper);
+  $("#cropCancel").addEventListener("click", dongCropper);
+
+  // kéo để di chuyển ảnh trong cropper
+  let cropDrag = false, lx = 0, ly = 0;
+  CC.addEventListener("pointerdown", e => { cropDrag = true; lx = e.clientX; ly = e.clientY; CC.setPointerCapture(e.pointerId); });
+  CC.addEventListener("pointermove", e => {
+    if (!cropDrag) return;
+    const k = CC.width / CC.getBoundingClientRect().width; // tỉ lệ hiển thị -> canvas
+    crop.ox += (e.clientX - lx) * k; crop.oy += (e.clientY - ly) * k; lx = e.clientX; ly = e.clientY; drawCrop();
+  });
+  CC.addEventListener("pointerup", () => cropDrag = false);
+
+  $("#cropSave").addEventListener("click", () => {
+    const S = 512, out = document.createElement("canvas"); out.width = S; out.height = S;
+    const octx = out.getContext("2d");
+    const f = S / (2 * R), x0 = CW / 2 - R, y0 = CW / 2 - R;
+    octx.drawImage(crop.img, (crop.ox - x0) * f, (crop.oy - y0) * f, crop.img.naturalWidth * crop.scale * f, crop.img.naturalHeight * crop.scale * f);
+    octx.globalCompositeOperation = "destination-in";
+    octx.beginPath(); octx.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); octx.fill();
+    out.toBlob(async blob => {
+      const fd = new FormData(); fd.append("slot", crop.slot); fd.append("file", blob, "sticker.png");
+      setTT("Đang lưu sticker...");
+      try { await api("/api/sticker-upload", { method: "POST", body: fd }); dongCropper(); setTT("Đã lưu sticker ✓"); await taiData(); }
+      catch (err) { setTT("Lỗi: " + err.message); }
+    }, "image/png");
+  });
+
+  /* ===== Kéo-thả sắp xếp ảnh ===== */
+  let dragSrc = null;
+  document.addEventListener("dragstart", e => {
+    const w = e.target.closest(".ad-thumb .wrap"); if (!w) return;
+    const th = w.closest(".ad-thumb");
+    dragSrc = { card: th.closest(".ad-card"), index: +th.dataset.i };
+    th.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+  });
+  document.addEventListener("dragend", () => {
+    document.querySelectorAll(".ad-thumb.dragging, .ad-thumb.drop-truoc").forEach(t => t.classList.remove("dragging", "drop-truoc"));
+    dragSrc = null;
+  });
+  document.addEventListener("dragover", e => {
+    const th = e.target.closest(".ad-thumb"); if (!th || !dragSrc) return;
+    if (th.closest(".ad-card") !== dragSrc.card) return;
+    e.preventDefault();
+    document.querySelectorAll(".ad-thumb.drop-truoc").forEach(t => t.classList.remove("drop-truoc"));
+    th.classList.add("drop-truoc");
+  });
+  document.addEventListener("drop", async e => {
+    const th = e.target.closest(".ad-thumb"); if (!th || !dragSrc) return;
+    const card = th.closest(".ad-card");
+    if (card !== dragSrc.card) return;
+    e.preventDefault();
+    const from = dragSrc.index, to = +th.dataset.i;
+    if (from === to) return;
+    const c = ctxCard(card);
+    await api(c.ep.reorder, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [c.ep.idKey]: c.idVal, from, to }) });
+    setTT("Đã sắp xếp ✓"); await taiData();
+  });
+
+  // Nút Xong
+  $("#btnXong").addEventListener("click", () => { window.location.href = "/"; });
+
+  // Lưu note ảnh + tên album khi rời ô
+  document.addEventListener("blur", async e => {
+    const ta = e.target.closest("textarea[data-note]");
+    if (ta) {
+      const c = ctxOf(ta);
+      await api(c.ep.photo, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [c.ep.idKey]: c.idVal, index: +ta.dataset.note, ghi: ta.value }) });
+      setTT("Đã lưu note ✓"); return;
+    }
+    const ten = e.target.closest(".tenAlbum");
+    if (ten) {
+      const c = ctxOf(ten);
+      await api("/api/album/" + c.idVal, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tieuDe: ten.value }) });
+      setTT("Đã lưu tên album ✓"); return;
+    }
+    const thichInp = e.target.closest(".thichInp");
+    if (thichInp) {
+      await luuThich(thichInp.closest(".ad-sothich")); setTT("Đã lưu sở thích ✓");
+    }
+  }, true);
+
+  taiData();
+</script>
+</body>
+</html>

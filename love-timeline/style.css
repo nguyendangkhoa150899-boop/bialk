@@ -1,0 +1,642 @@
+/* ============ Chuyện tình mình — giao diện ============ */
+
+:root {
+  --kem:      #fff8ef;   /* nền kem */
+  --giay:     #fffdfa;   /* nền thẻ */
+  --muc:      #3a3230;   /* chữ chính */
+  --nhat:     #8a7f79;   /* chữ phụ */
+  --tim:      #ff6b6b;   /* nhấn 1 (đỏ san hô) */
+  --vang:     #ffd166;   /* nhấn 2 (vàng) */
+  --xanh:     #4ecdc4;   /* nhấn 3 (xanh mint) */
+  --bang-keo: rgba(255, 209, 102, .55);
+  --vien:     #efe4d6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Baloo 2", system-ui, "Segoe UI", sans-serif;
+  color: var(--muc);
+  background:
+    radial-gradient(circle at 15% 10%, #ffe9d6 0, transparent 40%),
+    radial-gradient(circle at 85% 20%, #d9f7f3 0, transparent 42%),
+    var(--kem);
+  background-attachment: fixed;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;   /* iOS không tự phóng to chữ */
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;  /* bỏ nháy xám khi chạm */
+}
+
+.hand { font-family: "Patrick Hand", cursive; }
+
+/* ---------- Bìa ---------- */
+.hero {
+  min-height: 100vh;
+  min-height: 100dvh;              /* iOS: không nhảy khi thanh Safari ẩn/hiện */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  position: relative;
+}
+.hero-emoji { font-size: clamp(48px, 12vw, 90px); animation: nhun 2.6s ease-in-out infinite; }
+@keyframes nhun { 0%,100%{ transform: translateY(0) rotate(-4deg);} 50%{ transform: translateY(-14px) rotate(4deg);} }
+
+/* ảnh mặt kiểu sticker */
+.hero-sticker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 14px 0 6px;
+}
+.sticker {
+  width: clamp(78px, 20vw, 116px);
+  height: clamp(78px, 20vw, 116px);
+  border-radius: 50%;
+  background: #fff;
+  border: 5px solid #fff;
+  box-shadow: 3px 5px 14px rgba(0,0,0,.22);
+  overflow: hidden;
+  transform: rotate(var(--xoay, 0deg));
+  transition: transform .2s ease;
+  flex-shrink: 0;
+}
+.sticker:hover { transform: rotate(0) scale(1.06); }
+.sticker img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sticker.trong {
+  border-style: dashed;
+  border-color: var(--tim);
+  background: var(--giay);
+  display: flex; align-items: center; justify-content: center;
+}
+.sticker-cho {
+  font-size: 30px; font-weight: 800; color: var(--tim);
+  display: flex; flex-direction: column; align-items: center; line-height: 1;
+}
+.sticker-cho small {
+  font-family: "Patrick Hand", cursive;
+  font-size: 13px; font-weight: 400; color: var(--nhat); margin-top: 4px;
+}
+.sticker-tim { font-size: clamp(24px, 6vw, 38px); }
+
+.hero-kicker {
+  font-family: "Patrick Hand", cursive;
+  font-size: clamp(18px, 4vw, 26px);
+  color: var(--nhat);
+  margin: 8px 0 0;
+  transform: rotate(-2deg);
+}
+.hero-title {
+  font-size: clamp(38px, 9vw, 82px);
+  font-weight: 800;
+  margin: 6px 0 22px;
+  line-height: 1.05;
+  background: linear-gradient(120deg, var(--tim), #ff9e6b 55%, var(--vang));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.counter {
+  background: var(--giay);
+  border: 3px solid var(--muc);
+  border-radius: 20px;
+  padding: 14px 30px;
+  box-shadow: 6px 6px 0 var(--muc);
+  transform: rotate(-1.5deg);
+}
+.counter-num { display: block; font-size: clamp(36px, 8vw, 64px); font-weight: 800; color: var(--tim); line-height: 1; }
+.counter-label { font-family: "Patrick Hand", cursive; font-size: 18px; color: var(--nhat); }
+.hero-sinhnhat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: center;
+  margin: 18px 0 0;
+  font-family: "Patrick Hand", cursive;
+  font-size: 16px;
+  color: var(--nhat);
+}
+.hero-sinhnhat span {
+  background: var(--giay);
+  border: 2px solid var(--vien);
+  border-radius: 20px;
+  padding: 4px 14px;
+}
+.hero-scroll { margin-top: 40px; color: var(--nhat); font-family: "Patrick Hand", cursive; font-size: 20px; animation: nhun 2s ease-in-out infinite; }
+
+/* ---------- Timeline ---------- */
+.timeline {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 30px 20px 60px;
+  position: relative;
+}
+/* đường kẻ giữa */
+.timeline::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 4px;
+  background: repeating-linear-gradient(var(--muc) 0 10px, transparent 10px 20px);
+  transform: translateX(-50%);
+  opacity: .35;
+}
+
+.chuong-badge {
+  display: block;
+  width: fit-content;
+  margin: 40px auto 26px;
+  background: var(--muc);
+  color: #fff;
+  font-family: "Patrick Hand", cursive;
+  font-size: 20px;
+  padding: 6px 22px;
+  border-radius: 30px;
+  position: relative; z-index: 2;
+  transform: rotate(-1.5deg);
+}
+
+.moc {
+  position: relative;
+  width: 50%;
+  padding: 14px 42px;
+  z-index: 1;
+}
+.moc.trai  { left: 0; text-align: right; }
+.moc.phai  { left: 50%; text-align: left; }
+
+/* chấm tròn trên trục */
+.moc::after {
+  content: "";
+  position: absolute;
+  top: 30px;
+  width: 20px; height: 20px;
+  background: var(--vang);
+  border: 4px solid var(--muc);
+  border-radius: 50%;
+  z-index: 3;
+}
+.moc.trai::after  { right: -10px; }
+.moc.phai::after  { left: -10px; }
+
+.the {
+  background: var(--giay);
+  border: 3px solid var(--muc);
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 5px 5px 0 rgba(58,50,48,.18);
+  display: inline-block;
+  text-align: left;
+  max-width: 100%;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.the:hover { transform: translateY(-4px); box-shadow: 8px 10px 0 rgba(58,50,48,.22); }
+
+.the-ngay {
+  font-family: "Patrick Hand", cursive;
+  font-size: 15px;
+  color: #fff;
+  background: var(--xanh);
+  padding: 2px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  border: 2px solid var(--muc);
+}
+.the-tieude { font-size: clamp(20px, 3.4vw, 26px); font-weight: 800; margin: 12px 0 6px; }
+.the-noi {
+  display: inline-block;
+  font-family: "Patrick Hand", cursive;
+  font-size: 14px;
+  color: var(--muc);
+  background: var(--bang-keo);
+  border: 2px dashed rgba(58,50,48,.25);
+  border-radius: 14px;
+  padding: 2px 12px;
+  margin: 0 0 10px;
+}
+.the-ke { color: var(--muc); font-size: 16px; margin: 0; }
+
+/* ---------- Ảnh polaroid ---------- */
+/* Timeline: luôn 1 hàng, chia đều theo số tấm (tối đa 3) */
+.anh-wrap {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), 1fr);
+  gap: 10px;
+  margin-top: 16px;
+  align-items: start;
+  max-width: 420px;
+}
+.polaroid {
+  background: #fff;
+  padding: 9px 9px 24px;
+  border-radius: 4px;
+  box-shadow: 3px 5px 12px rgba(0,0,0,.18);
+  position: relative;
+  max-width: 220px;
+  transform: rotate(var(--goc, -3deg));
+  transition: transform .2s ease;
+}
+/* trong lưới timeline: mỗi tấm lấp đầy 1 cột */
+.anh-wrap .polaroid { width: 100%; max-width: 100%; }
+/* Album Chopper: hiện hết, tự xuống hàng */
+.chopper-album {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.chopper-album .polaroid { width: clamp(120px, 40%, 170px); max-width: 170px; }
+.polaroid:nth-child(even) { --goc: 3deg; }
+.polaroid:hover { transform: rotate(0) scale(1.04); z-index: 5; }
+.polaroid img,
+.polaroid video { display: block; width: 100%; border-radius: 2px; background: #eee; }
+.polaroid video { background: #000; }
+.polaroid.mo-lightbox { cursor: pointer; }
+/* nút play trên video thumbnail */
+.video-badge {
+  position: absolute;
+  top: 9px; left: 9px; right: 9px; bottom: 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  pointer-events: none;
+}
+.video-badge::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 54px; height: 54px;
+  background: rgba(0,0,0,.45);
+  border: 2px solid rgba(255,255,255,.85);
+  border-radius: 50%;
+  z-index: -1;
+}
+/* badge "+N" ảnh còn lại */
+.anh-them {
+  position: absolute;
+  inset: 9px 9px 24px;
+  background: rgba(58,50,48,.62);
+  color: #fff;
+  border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 800;
+  pointer-events: none;
+}
+.polaroid::before {          /* băng keo */
+  content: "";
+  position: absolute;
+  top: -12px; left: 50%; transform: translateX(-50%) rotate(-4deg);
+  width: 70px; height: 26px;
+  background: var(--bang-keo);
+  border: 1px dashed rgba(0,0,0,.15);
+}
+/* băng keo tự đổi màu theo thứ tự ảnh */
+.polaroid:nth-child(5n+1)::before { background: rgba(255, 209, 102, .60); }  /* vàng */
+.polaroid:nth-child(5n+2)::before { background: rgba(255, 107, 107, .48); }  /* hồng san hô */
+.polaroid:nth-child(5n+3)::before { background: rgba(78, 205, 196, .55); }   /* mint */
+.polaroid:nth-child(5n+4)::before { background: rgba(180, 150, 235, .52); }  /* tím */
+.polaroid:nth-child(5n+5)::before { background: rgba(130, 190, 245, .52); }  /* xanh dương */
+.polaroid:nth-child(even)::before { transform: translateX(-50%) rotate(4deg); }
+/* hoặc chọn màu băng keo bằng tay: keo: "hong" | "vang" | "mint" | "tim" | "xanh" */
+.polaroid.keo-vang::before { background: rgba(255, 209, 102, .60); }
+.polaroid.keo-hong::before { background: rgba(255, 107, 107, .48); }
+.polaroid.keo-mint::before { background: rgba(78, 205, 196, .55); }
+.polaroid.keo-tim::before  { background: rgba(180, 150, 235, .52); }
+.polaroid.keo-xanh::before { background: rgba(130, 190, 245, .52); }
+.polaroid .ghi { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-family: "Patrick Hand", cursive; color: #777; font-size: 14px; }
+
+/* ---------- Kiểu chat ---------- */
+.chat-phone {
+  margin-top: 16px;
+  background: #e9f6ff;
+  border: 3px solid var(--muc);
+  border-radius: 22px;
+  padding: 14px;
+  max-width: 260px;
+}
+.chat-phone img { width: 100%; border-radius: 12px; display: block; }
+.chat-phone img.mo-lightbox { cursor: pointer; }
+.chat-empty { font-family:"Patrick Hand",cursive; color: var(--nhat); text-align:center; padding: 20px; }
+
+/* ---------- Lightbox (xem ảnh toàn màn hình) ---------- */
+.lb {
+  position: fixed; inset: 0; z-index: 100;
+  display: none;
+  align-items: center; justify-content: center;
+  background: rgba(28, 22, 20, .92);
+  padding: 20px;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  -webkit-backdrop-filter: blur(4px);   /* iOS Safari cần tiền tố này */
+  backdrop-filter: blur(4px);
+}
+.lb.mo { display: flex; animation: lbNen .25s ease; }
+@keyframes lbNen { from { opacity: 0; } to { opacity: 1; } }
+
+.lb-khung { margin: 0; max-width: 92vw; max-height: 82vh; text-align: center; }
+.lb-anh {
+  max-width: 92vw; max-height: 74vh;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  display: block; margin: 0 auto;
+}
+video.lb-anh { background: #000; width: auto; }
+.lb-anh.vao.phai { animation: lbPhai .35s ease; }
+.lb-anh.vao.trai { animation: lbTrai .35s ease; }
+@keyframes lbPhai { from { opacity: 0; transform: translateX(40px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes lbTrai { from { opacity: 0; transform: translateX(-40px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.lb-ghi {
+  margin: 14px auto 0;
+  color: #fff;
+  font-family: "Patrick Hand", cursive;
+  font-size: clamp(16px, 3.5vw, 22px);
+  max-width: 640px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.5);
+}
+
+.lb-nut {
+  position: absolute;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,.5);
+  border-radius: 50%;
+  width: 52px; height: 52px;
+  font-size: 30px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s ease, transform .15s ease;
+}
+.lb-nut:hover { background: rgba(255,255,255,.3); transform: scale(1.08); }
+.lb-dong  { top: max(18px, env(safe-area-inset-top)); right: max(18px, env(safe-area-inset-right)); width: 46px; height: 46px; font-size: 22px; }
+.lb-truoc { left: 14px;  top: 50%; transform: translateY(-50%); }
+.lb-sau   { right: 14px; top: 50%; transform: translateY(-50%); }
+.lb-truoc:hover, .lb-sau:hover { transform: translateY(-50%) scale(1.08); }
+
+.lb-cham {
+  position: absolute; bottom: 22px; left: 0; right: 0;
+  display: flex; gap: 9px; justify-content: center;
+}
+.lb-cham span {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,.4);
+  cursor: pointer; transition: background .15s ease, transform .15s ease;
+}
+.lb-cham span.on { background: var(--vang); transform: scale(1.25); }
+
+@media (max-width: 720px) {
+  .lb-truoc { left: 6px; }
+  .lb-sau   { right: 6px; }
+  .lb-nut   { width: 44px; height: 44px; font-size: 26px; }
+}
+
+/* ---------- Luật của tụi mình ---------- */
+.quytac, .sothich, .chopper, .kyniem-lon, .wishlist {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  text-align: center;
+}
+
+/* ---------- Wishlist ---------- */
+.wl-the {
+  background: var(--giay);
+  border: 3px solid var(--muc);
+  border-radius: 18px;
+  padding: 22px 20px;
+  box-shadow: 6px 6px 0 rgba(58,50,48,.18);
+  max-width: 560px;
+  margin: 0 auto;
+  text-align: left;
+}
+.wl-them { display: flex; gap: 8px; margin-bottom: 14px; }
+.wl-them input {
+  flex: 1; min-width: 0; padding: 10px 12px; font-size: 15px; font-family: inherit;
+  border: 2px solid var(--vien); border-radius: 10px; background: #fff;
+}
+.wl-them button {
+  border: none; background: var(--tim); color: #fff; font-weight: 800;
+  border-radius: 10px; padding: 0 16px; cursor: pointer; white-space: nowrap; font-family: inherit;
+}
+.wl-them button:hover { background: #ff5252; }
+.wl-ds { list-style: none; margin: 0; padding: 0; }
+.wl-ds li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px; border-bottom: 1px dashed var(--vien);
+}
+.wl-ds li:last-child { border-bottom: none; }
+.wl-tick { border: none; background: none; cursor: pointer; font-size: 20px; line-height: 1; flex-shrink: 0; }
+.wl-text { flex: 1; font-size: 16px; word-break: break-word; }
+.wl-ds li.xong .wl-text { text-decoration: line-through; color: var(--nhat); }
+.wl-xoa {
+  border: none; background: none; color: var(--nhat); cursor: pointer;
+  font-size: 16px; flex-shrink: 0; opacity: .55;
+}
+.wl-xoa:hover { opacity: 1; color: var(--tim); }
+.wl-rong, .wl-trangthai { color: var(--nhat); font-family: "Patrick Hand", cursive; text-align: center; padding: 10px; }
+.wl-cho {
+  font-family: "Patrick Hand", cursive; color: var(--nhat);
+  border: 2px dashed var(--vien); border-radius: 12px; padding: 22px 16px; text-align: center; line-height: 1.6;
+}
+.wl-cho b { color: var(--muc); }
+
+/* ---------- Những kỷ niệm đáng nhớ ---------- */
+.knm-luoi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+.knm-the {
+  background: var(--giay);
+  border: 3px solid var(--muc);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 5px 5px 0 rgba(58,50,48,.18);
+  transition: transform .18s ease, box-shadow .18s ease;
+  text-align: left;
+}
+.knm-the.mo-lightbox { cursor: pointer; }
+.knm-the:hover { transform: translateY(-4px); box-shadow: 8px 10px 0 rgba(58,50,48,.22); }
+.knm-the.knm-trong { border-style: dashed; }
+.knm-cover {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #eee;
+}
+.knm-cover img, .knm-cover video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.knm-cover .video-badge { inset: 0; bottom: 0; }
+.knm-count {
+  position: absolute; bottom: 8px; right: 8px;
+  background: rgba(58,50,48,.78); color: #fff;
+  font-family: "Patrick Hand", cursive; font-size: 13px;
+  padding: 3px 10px; border-radius: 14px;
+}
+.knm-cho {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--tim); font-size: 34px; font-weight: 800;
+  background: var(--kem);
+}
+.knm-cho small { font-family: "Patrick Hand", cursive; font-size: 13px; font-weight: 400; color: var(--nhat); margin-top: 4px; }
+.knm-title { font-weight: 800; font-size: 17px; padding: 12px 14px 14px; }
+.knm-ke { font-family: "Patrick Hand", cursive; color: var(--nhat); font-size: 14px; padding: 0 14px 14px; margin-top: -8px; }
+
+/* ---------- Chopper 🐩 ---------- */
+.chopper-the {
+  background: var(--giay);
+  border: 3px solid var(--muc);
+  border-radius: 20px;
+  padding: 26px 22px;
+  box-shadow: 6px 6px 0 rgba(58,50,48,.18);
+}
+.chopper-giong {
+  display: inline-block;
+  font-family: "Patrick Hand", cursive;
+  font-size: 15px; color: #fff;
+  background: var(--xanh);
+  border: 2px solid var(--muc);
+  border-radius: 20px;
+  padding: 3px 14px;
+  margin-bottom: 12px;
+}
+.chopper-ke {
+  font-size: 16px; color: var(--muc);
+  max-width: 640px; margin: 0 auto;
+}
+/* sticker Chopper đã tách nền */
+.sticker-cut {
+  filter:
+    drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+    drop-shadow(0 6px 8px rgba(0,0,0,.28));
+}
+.chopper-sticker {
+  display: block;
+  width: clamp(120px, 32vw, 180px);
+  height: auto;
+  margin: 0 auto 6px;
+  transform: rotate(-4deg);
+  transition: transform .2s ease;
+}
+.chopper-sticker:hover { transform: rotate(0) scale(1.05); }
+/* ảnh nhỏ thay icon trong badge */
+.qt-badge-sticker {
+  width: 30px; height: 30px; border-radius: 50%;
+  object-fit: cover; background: #fff;
+  vertical-align: middle; margin-left: 2px;
+}
+.chopper-giong-sticker {
+  width: 22px; height: 22px; border-radius: 50%;
+  object-fit: cover; background: #fff;
+  vertical-align: middle; margin-right: 2px;
+}
+.chopper-cho {
+  margin-top: 18px;
+  font-family: "Patrick Hand", cursive;
+  color: var(--nhat);
+  border: 2px dashed var(--vien);
+  border-radius: 14px;
+  padding: 22px 16px;
+}
+.qt-badge {
+  display: inline-block;
+  background: var(--muc);
+  color: #fff;
+  font-family: "Patrick Hand", cursive;
+  font-size: 22px;
+  padding: 8px 26px;
+  border-radius: 30px;
+  transform: rotate(-1.5deg);
+  margin-bottom: 30px;
+}
+.qt-luoi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+.qt-the {
+  background: var(--giay);
+  border: 3px solid var(--muc);
+  border-radius: 16px;
+  padding: 22px 18px;
+  box-shadow: 5px 5px 0 rgba(58,50,48,.18);
+  text-align: center;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.qt-the:hover { transform: translateY(-4px); box-shadow: 8px 10px 0 rgba(58,50,48,.22); }
+.qt-icon { font-size: 40px; line-height: 1; margin-bottom: 8px; }
+.qt-tieude { font-size: 19px; font-weight: 800; margin: 6px 0 8px; color: var(--tim); }
+.qt-ke { font-size: 15px; color: var(--muc); margin: 0; line-height: 1.55; }
+
+/* ---------- Sở thích ---------- */
+.st-luoi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+.st-the {
+  background: var(--giay);
+  border: 3px solid var(--muc);
+  border-radius: 16px;
+  padding: 22px 20px;
+  box-shadow: 5px 5px 0 rgba(58,50,48,.18);
+}
+.st-emoji { font-size: 44px; line-height: 1; }
+.st-sticker {
+  width: clamp(90px, 24vw, 120px);
+  height: auto;
+  display: block;
+  margin: 0 auto 4px;
+  transform: rotate(-3deg);
+  transition: transform .2s ease;
+}
+.st-sticker:hover { transform: rotate(0) scale(1.05); }
+.st-ten {
+  font-size: 22px; font-weight: 800; margin: 6px 0 12px;
+  background: linear-gradient(120deg, var(--tim), var(--vang));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.st-ds { list-style: none; padding: 0; margin: 0; text-align: left; display: inline-block; }
+.st-ds li {
+  font-family: "Patrick Hand", cursive;
+  font-size: 17px; color: var(--muc);
+  padding: 6px 0 6px 26px; position: relative;
+}
+.st-ds li::before { content: "💛"; position: absolute; left: 0; font-size: 14px; }
+
+/* ---------- Kết ---------- */
+.ending {
+  text-align: center;
+  padding: 70px 24px 100px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.ending-heart { font-size: 60px; animation: nhun 2.6s ease-in-out infinite; }
+.ending-text {
+  font-family: "Patrick Hand", cursive;
+  font-size: clamp(22px, 5vw, 32px);
+  color: var(--muc);
+  margin-top: 14px;
+}
+
+/* ---------- Xuất hiện khi cuộn ---------- */
+.moc, .chuong-badge, .qt-the, .st-the, .qt-badge, .chopper-the, .knm-the, .wl-the { opacity: 0; transform: translateY(30px); }
+.moc.trai { transform: translate(-30px, 30px); }
+.moc.phai { transform: translate(30px, 30px); }
+.hienra { opacity: 1 !important; transform: translate(0,0) !important; transition: opacity .6s ease, transform .6s ease; }
+
+/* ---------- Điện thoại ---------- */
+@media (max-width: 720px) {
+  body { background-attachment: scroll; }   /* iOS: fixed hay giật/lỗi -> để scroll */
+  .timeline::before { left: 22px; }
+  .moc { width: 100%; left: 0 !important; text-align: left !important; padding: 12px 12px 12px 50px; }
+  .moc::after { left: 12px !important; right: auto !important; }
+  .chuong-badge { margin-left: 0; }
+  .polaroid { max-width: 100%; }         /* ảnh không tràn viền trên màn nhỏ */
+  .anh-wrap { gap: 12px; }
+}
