@@ -321,6 +321,9 @@
   function moCropper(file, slot) {
     const img = new Image();
     img.onload = () => {
+      if (!img.naturalWidth || !img.naturalHeight) {
+        setTT("Lỗi: ảnh không đọc được kích thước."); alert("Ảnh này không mở được, thử chọn ảnh khác."); return;
+      }
       crop.img = img; crop.slot = slot;
       crop.minScale = (2 * R) / Math.min(img.naturalWidth, img.naturalHeight);
       crop.scale = crop.minScale;
@@ -330,6 +333,7 @@
       drawCrop();
       $("#cropper").classList.add("mo");
     };
+    img.onerror = () => { setTT("Lỗi: không đọc được ảnh này."); alert("Không đọc được ảnh này, thử chọn ảnh khác (chụp màn hình rồi chọn lại nếu vẫn lỗi)."); };
     img.src = URL.createObjectURL(file);
   }
   function dongCropper() { $("#cropper").classList.remove("mo"); crop.img = null; }
@@ -347,19 +351,27 @@
   });
   CC.addEventListener("pointerup", () => cropDrag = false);
 
-  $("#cropSave").addEventListener("click", () => {
-    const S = 512, out = document.createElement("canvas"); out.width = S; out.height = S;
-    const octx = out.getContext("2d");
-    const f = S / (2 * R), x0 = CW / 2 - R, y0 = CW / 2 - R;
-    octx.drawImage(crop.img, (crop.ox - x0) * f, (crop.oy - y0) * f, crop.img.naturalWidth * crop.scale * f, crop.img.naturalHeight * crop.scale * f);
-    octx.globalCompositeOperation = "destination-in";
-    octx.beginPath(); octx.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); octx.fill();
-    out.toBlob(async blob => {
+  $("#cropSave").addEventListener("click", async () => {
+    try {
+      setTT("Đang xử lý ảnh...");
+      if (!crop.img || !crop.img.naturalWidth) throw new Error("Ảnh chưa sẵn sàng, đóng khung này rồi chọn lại ảnh.");
+      const S = 512, out = document.createElement("canvas"); out.width = S; out.height = S;
+      const octx = out.getContext("2d");
+      const f = S / (2 * R), x0 = CW / 2 - R, y0 = CW / 2 - R;
+      octx.drawImage(crop.img, (crop.ox - x0) * f, (crop.oy - y0) * f, crop.img.naturalWidth * crop.scale * f, crop.img.naturalHeight * crop.scale * f);
+      octx.globalCompositeOperation = "destination-in";
+      octx.beginPath(); octx.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); octx.fill();
+      const blob = await new Promise((resolve, reject) =>
+        out.toBlob(b => (b ? resolve(b) : reject(new Error("Không tạo được ảnh từ khung canh."))), "image/png")
+      );
       const fd = new FormData(); fd.append("slot", crop.slot); fd.append("file", blob, "sticker.png");
       setTT("Đang lưu sticker...");
-      try { await api("/api/sticker-upload", { method: "POST", body: fd }); dongCropper(); setTT("Đã lưu sticker ✓"); await taiData(); }
-      catch (err) { setTT("Lỗi: " + err.message); }
-    }, "image/png");
+      await api("/api/sticker-upload", { method: "POST", body: fd });
+      dongCropper(); setTT("Đã lưu sticker ✓"); await taiData();
+    } catch (err) {
+      setTT("Lỗi: " + err.message);
+      alert("Lưu sticker lỗi: " + err.message);
+    }
   });
 
   /* ===== Kéo-thả sắp xếp ảnh ===== */
