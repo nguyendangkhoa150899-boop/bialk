@@ -5,6 +5,7 @@ const {
     ModalBuilder, TextInputBuilder, TextInputStyle 
 } = require('discord.js');
 const fs = require('fs');
+const { startPanel } = require('./panel');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
@@ -57,8 +58,6 @@ let dbCache = {};
 if (fs.existsSync(DATA_FILE)) {
     try {
         dbCache = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-        if (dbCache._txHistory) txState.history = dbCache._txHistory;
-        if (dbCache._bcHistory) bcState.history = dbCache._bcHistory;
     } catch (e) {
         console.error("Lỗi đọc file database ban đầu, tạo mới.");
         dbCache = {};
@@ -68,8 +67,9 @@ if (fs.existsSync(DATA_FILE)) {
 }
 
 setInterval(() => {
-    dbCache._txHistory = txState.history;
-    dbCache._bcHistory = bcState.history;
+    dbCache._minesHistory = minesHistory;
+    dbCache._txDashHistory = txDashHistory;
+    dbCache._bcDashHistory = bcDashHistory;
     fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
         if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
     });
@@ -88,6 +88,9 @@ function updatePoints(userId, amount) {
     const data = getUserData(userId);
     data.points += amount;
 }
+
+// Hiển thị số ván dạng 5 chữ số: 1 -> #00001
+const padId = (n) => String(n).padStart(5, '0');
 
 // --- CONFIG BẦU CUA ---
 const MASCOTS = [
@@ -133,6 +136,25 @@ let txState = {
     resultPromise: null
 };
 let userTXSelections = {};
+
+// Lịch sử các ván dò mìn (để hiển thị trên web panel)
+let minesHistory = [];
+
+// Lịch sử dò mìn giữ qua mỗi lần restart (kết quả người chơi).
+if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
+
+// Lịch sử DASHBOARD (web): CHỈ ván có người đặt, LƯU VĨNH VIỄN vào database.json
+// (giữ qua restart/deploy, KHÔNG tự xóa). Khác với soi cầu Discord ở RAM bên dưới.
+let txDashHistory = Array.isArray(dbCache._txDashHistory) ? dbCache._txDashHistory : [];
+let bcDashHistory = Array.isArray(dbCache._bcDashHistory) ? dbCache._bcDashHistory : [];
+
+// Lớn Nhỏ & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
+// (Trước đây gameId random mỗi lần restart -> soi cầu loạn số. Giờ reset gọn gàng.)
+// Lưu ý: chỉ reset soi cầu Discord (txState/bcState.history), KHÔNG đụng lịch sử dashboard.
+bcState.gameId = 0;
+txState.gameId = 0;
+bcState.history = [];
+txState.history = [];
 
 const DICE_EMOJIS = [
     '', 
@@ -218,8 +240,30 @@ const getInfo = (diamonds, numMines) => {
     };
 };
 
-const createGame = (numMines) => {
+// Mìn bị ép bởi admin (qua web panel). Key = userId, hoặc '_any' cho người tiếp theo bất kỳ.
+// Value = mảng vị trí ô (0-23) sẽ chắc chắn là mìn ở ván dò mìn kế tiếp.
+let forcedMines = {};
+
+const createGame = (numMines, userId) => {
     let mines = [];
+
+    // Ưu tiên layout ép riêng cho user, rồi tới layout ép chung (_any)
+    let forced = null, forcedKey = null;
+    if (userId && Array.isArray(forcedMines[userId]) && forcedMines[userId].length) {
+        forced = forcedMines[userId]; forcedKey = userId;
+    } else if (Array.isArray(forcedMines['_any']) && forcedMines['_any'].length) {
+        forced = forcedMines['_any']; forcedKey = '_any';
+    }
+
+    if (forced) {
+        for (const p of forced) {
+            if (mines.length >= numMines) break;
+            if (Number.isInteger(p) && p >= 0 && p < TOTAL_TILES && !mines.includes(p)) mines.push(p);
+        }
+        delete forcedMines[forcedKey];
+        writeLog('ADMIN', `[ÉP DÒ MÌN] ${forcedKey === '_any' ? 'Người tiếp theo' : 'User ' + userId} - ván tới mìn ép tại: [${forced.join(',')}] (numMines=${numMines})`);
+    }
+
     while (mines.length < numMines) {
         let r = Math.floor(Math.random() * TOTAL_TILES);
         if (!mines.includes(r)) mines.push(r);
@@ -239,13 +283,8 @@ const commands = [
             .addIntegerOption(opt => opt.setName('cuoc').setDescription('Số point đặt').setRequired(true))
             .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
         ),
-    new SlashCommandBuilder().setName('baucua_start').setDescription('Admin khởi tạo bàn Bầu Cua Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('stopbaucua').setDescription('Admin dừng Bầu Cua Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('lonnho').setDescription('Admin khởi tạo bàn Lớn Nhỏ Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('stoplonnho').setDescription('Admin dừng Lớn Nhỏ Live').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('deletechat').setDescription('Xóa toàn bộ tin nhắn của bot trong kênh này').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
-    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 5.000 point mỗi 24 giờ'),
+    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 50.000.000.000 point mỗi 24 giờ'),
     new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển point')
         .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận point').setRequired(true))
         .addIntegerOption(opt => opt.setName('sotien').setDescription('Số point muốn chuyển').setRequired(true)),
@@ -256,10 +295,7 @@ const commands = [
     new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ point')
         .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
         .addIntegerOption(opt => opt.setName('amount').setDescription('Số point trừ').setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('admin_set_result').setDescription('Portal can thiệp kết quả').setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addStringOption(o => o.setName('game').setDescription('Game muốn can thiệp').setRequired(true).addChoices({name:'Tài Xỉu', value:'tx'}, {name:'Bầu Cua', value:'baucua'}))
-        .addStringOption(o => o.setName('values').setDescription('Giá trị ép (VD: 1,2,3)').setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 ].map(c => c.toJSON());
 
 client.once('ready', async (c) => {
@@ -269,7 +305,53 @@ client.once('ready', async (c) => {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     runBầuCuaLoop();
-    runTaiXiuLoop(); 
+    runTaiXiuLoop();
+
+    // Khởi động web panel can thiệp kết quả
+    try {
+        startPanel({
+            port: parseInt(process.env.PANEL_PORT) || 3001,
+            password: process.env.PANEL_PASSWORD || 'Aa123456789!@',
+            mascots: MASCOTS,
+            txChoices: TX_CHOICES,
+            diceEmojis: DICE_EMOJIS,
+            totalTiles: TOTAL_TILES,
+            getTX: () => txState,
+            getBC: () => bcState,
+            getDb: () => dbCache,
+            getForcedMines: () => forcedMines,
+            setForcedMines: (key, positions) => { forcedMines[key] = positions; },
+            clearForcedMines: (key) => { delete forcedMines[key]; },
+            getMinesHistory: () => minesHistory,
+            getTXDash: () => txDashHistory,
+            getBCDash: () => bcDashHistory,
+            getUserData,
+            updatePoints,
+            writeLog,
+            startBC: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBaucua(ch); return ch.name; },
+            stopBC: () => stopBaucua(),
+            startTX: async (channelId) => { const ch = await client.channels.fetch(channelId); await startLonnho(ch); return ch.name; },
+            stopTX: () => stopLonnho(),
+            deleteChat: async (channelId) => { const ch = await client.channels.fetch(channelId); return await deleteBotChat(ch); },
+        });
+        writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 3001}`);
+    } catch (e) {
+        writeLog('SYSTEM', `[LỖI PANEL] ${e.message}`);
+    }
+
+    // Backfill tên cho các ví cũ chưa có tên (kéo từ Discord)
+    (async () => {
+        const ids = Object.keys(dbCache).filter(k =>
+            !k.startsWith('_') && dbCache[k] && typeof dbCache[k] === 'object' && !dbCache[k].name);
+        let done = 0;
+        for (const id of ids) {
+            try {
+                const u = await client.users.fetch(id);
+                if (u) { dbCache[id].name = u.username; done++; }
+            } catch {}
+        }
+        if (done) writeLog('SYSTEM', `[BACKFILL TÊN] Đã lấy tên cho ${done}/${ids.length} ví`);
+    })();
 });
 
 // --- UI BẦU CUA ---
@@ -279,16 +361,30 @@ function getBCMessageData(customStatus = null) {
     let desc = `⏳ **Mở bát:** <t:${bcState.targetTime}:R>\n\n`;
 
     if (bcState.lastGameInfo) {
-        desc += `🔙 **Kết quả vòng trước (#${bcState.lastGameInfo.gameId}):** ${bcState.lastGameInfo.result}\n`;
+        desc += `🔙 **Kết quả vòng trước (#${padId(bcState.lastGameInfo.gameId)}):** ${bcState.lastGameInfo.result}\n`;
         desc += `💸 **Người đặt vòng trước:** ${bcState.lastGameInfo.betDetails}\n\n`;
     }
 
     desc += `📝 **Người đặt hiện tại:**\n`;
-    desc += bcState.bets.length > 0 ? bcState.bets.map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} point**`).join('\n') : "*Chưa có ai đặt*";
+    if (bcState.bets.length > 0) {
+        // Gộp cược trùng của cùng 1 người vào cùng 1 con vật
+        const byUser = {};
+        bcState.bets.forEach(b => {
+            const k = `${b.userId}_${b.mascotId}`;
+            if (!byUser[k]) byUser[k] = { username: b.username, mascotId: b.mascotId, amount: 0 };
+            byUser[k].amount += b.amount;
+        });
+        desc += Object.values(byUser)
+            .map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} point**`)
+            .join('\n');
+    } else {
+        desc += "*Chưa có ai đặt*";
+    }
+    desc = desc.trimEnd();
     desc += `\n\n${customStatus || "👉 Chọn con vật rồi chọn số point đặt!"}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🎲 BẦU CUA LIVE - Phiên #${bcState.gameId}`)
+        .setTitle(`🎲 BẦU CUA LIVE - Phiên #${padId(bcState.gameId)}`)
         .setColor(bcState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
         .setDescription(desc);
 
@@ -336,9 +432,23 @@ async function updateBCMessage(customStatus = null) {
 // --- VÒNG LẶP BẦU CUA ---
 function runBầuCuaLoop() {
     setInterval(async () => {
+        // Auto-recover nếu message bị mất do timeout mạng
+        if (!bcState.message && bcState.channel && !bcState.isProcessing) {
+            bcState.isProcessing = true;
+            bcState.processingStart = Date.now();
+            bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+            bcState.status = 'betting';
+            bcState.bets = [];
+            bcState.activeMascot = null;
+            bcState.resultPromise = null;
+            bcState.message = await bcState.channel.send(getBCMessageData()).catch(() => null);
+            bcState.isProcessing = false;
+            bcState.processingStart = 0;
+            return;
+        }
         if (!bcState.message || !bcState.channel) return;
         if (bcState.isProcessing) {
-            // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
+            // Watchdog: nếu kẹt quá 120 giây thì tự reset, auto-recover sẽ gửi bảng mới
             if (bcState.processingStart && Date.now() - bcState.processingStart > 120000) {
                 writeLog('SYSTEM', '[WATCHDOG BC] isProcessing kẹt, tự reset');
                 bcState.isProcessing = false;
@@ -348,8 +458,7 @@ function runBầuCuaLoop() {
                 bcState.bets = [];
                 bcState.activeMascot = null;
                 bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-                const data = getBCMessageData();
-                bcState.channel.send(data).then(msg => { bcState.message = msg; }).catch(() => {});
+                bcState.message = null;
             }
             return;
         }
@@ -415,17 +524,21 @@ async function finishBCGame(gameId, bets) {
         for (let i = 0; i < 3; i++) res.push(MASCOTS[Math.floor(Math.random() * MASCOTS.length)]);
     }
 
-    let winLog = "";
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount})`).join(', ');
 
+    // Gộp tiền thắng theo người (1 người đặt nhiều lần -> 1 dòng)
+    const winAgg = {};
     bets.forEach(b => {
         const count = res.filter(r => r.id === b.mascotId).length;
         if (count > 0) {
             const win = b.amount * (count + 1);
             updatePoints(b.userId, win);
-            winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point**\n`;
+            if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
+            winAgg[b.userId].amount += win;
         }
     });
+    const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} point**`).join('\n');
 
     const resultNames = res.map(r => r.name).join(', ');
     writeLog('RESULT', `[KẾT QUẢ BẦU CUA] Phiên #${gameId}: ${resultNames}`);
@@ -436,7 +549,7 @@ async function finishBCGame(gameId, bets) {
     }
 
     const resEmb = new EmbedBuilder()
-        .setTitle(`🎰 KẾT QUẢ #${gameId}`)
+        .setTitle(`🎰 KẾT QUẢ #${padId(gameId)}`)
         .setColor(0xf1c40f)
         .setDescription(`🎲: ${res.map(r => r.emoji).join(' ')}\n\n🏆 **Thắng:**\n${winLog || "Ván này nhà cái húp sạch!"}`);
 
@@ -447,8 +560,26 @@ async function finishBCGame(gameId, bets) {
         result: res.map(r => r.emoji).join(' '),
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    bcState.history.unshift({ gameId, result: resultNames, resultEmoji: res.map(r => r.emoji).join(' ') });
-    if (bcState.history.length > 10) bcState.history.pop();
+    // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
+    const betAgg = {};
+    bets.forEach(b => {
+        const k = `${b.userId}_${b.mascotId}`;
+        if (!betAgg[k]) betAgg[k] = { name: b.username, mascot: MASCOTS.find(m => m.id === b.mascotId).name, emoji: MASCOTS.find(m => m.id === b.mascotId).emoji, amount: 0 };
+        betAgg[k].amount += b.amount;
+    });
+    const histEntry = {
+        gameId,
+        result: resultNames,
+        resultEmoji: res.map(r => r.emoji).join(' '),
+        bets: Object.values(betAgg),
+        winners,
+        time: new Date().toLocaleTimeString('vi-VN')
+    };
+    // Soi cầu Discord: lưu MỌI ván (cầu liền mạch), RAM, giữ 1000 ván, mất khi restart.
+    bcState.history.unshift(histEntry);
+    if (bcState.history.length > 1000) bcState.history.pop();
+    // Dashboard web: CHỈ ván có người đặt, lưu vĩnh viễn vào database.json, KHÔNG xóa.
+    if (bets.length > 0) bcDashHistory.unshift(histEntry);
 
     return sentMsg;
 }
@@ -460,7 +591,7 @@ function getTXMessageData(customStatus = null) {
     let desc = `⏳ **Mở bát:** <t:${txState.targetTime}:R>\n\n`;
 
     if (txState.lastGameInfo) {
-        desc += `🔙 **Kết quả vòng trước (#${txState.lastGameInfo.gameId}):** ${txState.lastGameInfo.result}\n`;
+        desc += `🔙 **Kết quả vòng trước (#${padId(txState.lastGameInfo.gameId)}):** ${txState.lastGameInfo.result}\n`;
         desc += `💸 **Người đặt vòng trước:** ${txState.lastGameInfo.betDetails}\n\n`;
     }
 
@@ -474,15 +605,22 @@ function getTXMessageData(customStatus = null) {
         if (groups[c].length > 0) {
             hasBets = true;
             desc += `**${TX_CHOICES[c].name}:**\n`;
-            groups[c].forEach(b => desc += `• **${b.username}**: ${b.amount.toLocaleString()} point\n`);
+            // Gộp cược trùng của cùng 1 người vào cùng 1 cửa
+            const byUser = {};
+            groups[c].forEach(b => {
+                if (!byUser[b.userId]) byUser[b.userId] = { username: b.username, amount: 0 };
+                byUser[b.userId].amount += b.amount;
+            });
+            Object.values(byUser).forEach(u => desc += `• **${u.username}**: ${u.amount.toLocaleString()} point\n`);
         }
     });
     if (!hasBets) desc += "*Chưa có ai đặt*";
 
+    desc = desc.trimEnd();
     desc += `\n\n${customStatus || "👉 Chọn cửa cược rồi chọn số point đặt!"}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🎲 LỚN NHỎ LIVE - Game #${txState.gameId}`)
+        .setTitle(`🎲 LỚN NHỎ LIVE - Game #${padId(txState.gameId)}`)
         .setColor(txState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
         .setDescription(desc);
 
@@ -517,9 +655,23 @@ async function updateTXMessage(customStatus = null) {
 // --- VÒNG LẶP TÀI XỈU (LỚN NHỎ) ---
 function runTaiXiuLoop() {
     setInterval(async () => {
+        // Auto-recover nếu message bị mất do timeout mạng
+        if (!txState.message && txState.channel && !txState.isProcessing) {
+            txState.isProcessing = true;
+            txState.processingStart = Date.now();
+            txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+            txState.status = 'betting';
+            txState.bets = [];
+            txState.activeChoice = null;
+            txState.resultPromise = null;
+            txState.message = await txState.channel.send(getTXMessageData()).catch(() => null);
+            txState.isProcessing = false;
+            txState.processingStart = 0;
+            return;
+        }
         if (!txState.message || !txState.channel) return;
         if (txState.isProcessing) {
-            // Watchdog: nếu kẹt quá 120 giây thì tự reset và gửi bảng mới
+            // Watchdog: nếu kẹt quá 120 giây thì tự reset, auto-recover sẽ gửi bảng mới
             if (txState.processingStart && Date.now() - txState.processingStart > 120000) {
                 writeLog('SYSTEM', '[WATCHDOG TX] isProcessing kẹt, tự reset');
                 txState.isProcessing = false;
@@ -529,8 +681,7 @@ function runTaiXiuLoop() {
                 txState.bets = [];
                 txState.activeChoice = null;
                 txState.targetTime = Math.floor(Date.now() / 1000) + 61;
-                const data = getTXMessageData();
-                txState.channel.send(data).then(msg => { txState.message = msg; }).catch(() => {});
+                txState.message = null;
             }
             return;
         }
@@ -605,16 +756,20 @@ async function finishTXGame(gameId, bets) {
     const resultTX = isTai ? 'tai' : 'xiu';
     const resultCL = isChan ? 'chan' : 'le';
 
-    let winLog = "";
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount} -> ${TX_CHOICES[b.choice].name})`).join(', ');
 
+    // Gộp tiền thắng theo người (1 người đặt nhiều lần / nhiều cửa -> 1 dòng)
+    const winAgg = {};
     bets.forEach(b => {
         if (b.choice === resultTX || b.choice === resultCL) {
             const win = b.amount * 2;
             updatePoints(b.userId, win);
-            winLog += `• <@${b.userId}> thắng **${win.toLocaleString()} point** (${TX_CHOICES[b.choice].name})\n`;
+            if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
+            winAgg[b.userId].amount += win;
         }
     });
+    const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} point**`).join('\n');
 
     const txIcon = isTai ? '11-18 🔺' : '3-10 🔻';
     const clIcon = isChan ? 'CHẴN 🔵' : 'LẺ 🟣';
@@ -630,7 +785,7 @@ async function finishTXGame(gameId, bets) {
     const resEmb = new EmbedBuilder()
         .setTitle(`🎲 KẾT QUẢ SÒNG LỚN NHỎ`)
         .setColor(0x2b2d31)
-        .setDescription(`**Game ${gameId}**\n\n` +
+        .setDescription(`**Game #${padId(gameId)}**\n\n` +
                         `🎲 **Xúc xắc:** ${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]}\n` +
                         `📊 **Tổng:** ${sum}\n` +
                         `🎯 **Kết quả:** ${txIcon} | ${clIcon}\n\n` +
@@ -644,109 +799,111 @@ async function finishTXGame(gameId, bets) {
         result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
         betDetails: prevBetsDisplay || "Không có ai đặt"
     };
-    txState.history.unshift({ gameId, dice: [d1, d2, d3], sum, tx: isTai ? '11-18' : '3-10', cl: isChan ? 'CHẴN' : 'LẺ' });
-    if (txState.history.length > 10) txState.history.pop();
+    // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
+    const betAgg = {};
+    bets.forEach(b => {
+        const k = `${b.userId}_${b.choice}`;
+        if (!betAgg[k]) betAgg[k] = { name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
+        betAgg[k].amount += b.amount;
+    });
+    const histEntry = {
+        gameId,
+        dice: [d1, d2, d3],
+        sum,
+        tx: isTai ? '11-18' : '3-10',
+        cl: isChan ? 'CHẴN' : 'LẺ',
+        bets: Object.values(betAgg),
+        winners,
+        time: new Date().toLocaleTimeString('vi-VN')
+    };
+    // Soi cầu Discord: lưu MỌI ván (cầu liền mạch), RAM, giữ 1000 ván, mất khi restart.
+    txState.history.unshift(histEntry);
+    if (txState.history.length > 1000) txState.history.pop();
+    // Dashboard web: CHỈ ván có người đặt, lưu vĩnh viễn vào database.json, KHÔNG xóa.
+    if (bets.length > 0) txDashHistory.unshift(histEntry);
 
     return sentMsg;
+}
+
+// ==========================================
+// --- ĐIỀU KHIỂN BÀN CHƠI (gọi từ web panel) ---
+// ==========================================
+async function startBaucua(channel) {
+    if (bcState.message) await bcState.message.delete().catch(() => {});
+    bcState.message = null;
+    bcState.channel = channel;
+    bcState.gameId++;
+    bcState.timeLeft = 55;
+    bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
+    bcState.status = 'betting';
+    bcState.bets = [];
+    bcState.needsUpdate = false;
+    bcState.activeMascot = null;
+    bcState.isProcessing = true;
+    bcState.processingStart = Date.now();
+    try {
+        bcState.message = await bcState.channel.send(getBCMessageData());
+        dbCache._bcChannelId = channel.id;
+    } finally {
+        bcState.isProcessing = false;
+        bcState.processingStart = 0;
+    }
+}
+
+function stopBaucua() {
+    if (bcState.message) bcState.message.delete().catch(() => {});
+    bcState.channel = null;
+    bcState.message = null;
+    bcState.status = 'stopped';
+}
+
+async function startLonnho(channel) {
+    if (txState.message) await txState.message.delete().catch(() => {});
+    txState.message = null;
+    txState.channel = channel;
+    txState.gameId++;
+    txState.timeLeft = 55;
+    txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+    txState.status = 'betting';
+    txState.bets = [];
+    txState.needsUpdate = false;
+    txState.activeChoice = null;
+    txState.isProcessing = true;
+    txState.processingStart = Date.now();
+    try {
+        txState.message = await txState.channel.send(getTXMessageData());
+        dbCache._txChannelId = channel.id;
+    } finally {
+        txState.isProcessing = false;
+        txState.processingStart = 0;
+    }
+}
+
+function stopLonnho() {
+    if (txState.message) txState.message.delete().catch(() => {});
+    txState.channel = null;
+    txState.message = null;
+    txState.status = 'stopped';
+}
+
+async function deleteBotChat(channel) {
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const botMessages = messages.filter(m => m.author.id === client.user.id);
+    if (botMessages.size === 0) return 0;
+    await channel.bulkDelete(botMessages, true);
+    return botMessages.size;
 }
 
 // --- XỬ LÝ TƯƠNG TÁC ---
 client.on('interactionCreate', async interaction => {
   try {
     const userId = interaction.user.id;
+    // Ghi lại tên hiển thị cho ví đã tồn tại (để web panel show tên thay vì ID)
+    if (dbCache[userId] && typeof dbCache[userId] === 'object') {
+        dbCache[userId].name = interaction.user.username;
+    }
 
     if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === 'baucua_start') {
-            if (bcState.message) await bcState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`)); 
-            
-            bcState.channel = interaction.channel;
-            bcState.gameId++;
-            bcState.timeLeft = 55;
-            bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-            bcState.status = 'betting';
-            bcState.bets = [];
-            bcState.needsUpdate = false;
-            bcState.activeMascot = null;
-            
-            await interaction.reply({ content: '✅ Đã khởi tạo bàn Bầu Cua Live.', ephemeral: true });
-            const data = getBCMessageData();
-            bcState.message = await bcState.channel.send(data);
-            writeLog('ADMIN', `[KHỞI TẠO] Bầu cua start by ${interaction.user.tag}`);
-            return;
-        }
-
-        if (interaction.commandName === 'stopbaucua') {
-            if (bcState.message) {
-                await bcState.message.delete().catch(() => {});
-            }
-            bcState.channel = null;
-            bcState.message = null;
-            bcState.status = 'stopped';
-            writeLog('ADMIN', `[DỪNG] Bầu cua stop by ${interaction.user.tag}`);
-            return interaction.reply({ content: '🛑 Đã dừng bàn Bầu Cua Live tại kênh này.', ephemeral: true });
-        }
-
-        if (interaction.commandName === 'lonnho') {
-            if (txState.message) await txState.message.delete().catch((e) => writeLog('SYSTEM', `[LỖI BỎ QUA] ${e.message}`)); 
-            
-            txState.channel = interaction.channel;
-            txState.gameId++;
-            txState.timeLeft = 55;
-            txState.targetTime = Math.floor(Date.now() / 1000) + 61;
-            txState.status = 'betting';
-            txState.bets = [];
-            txState.needsUpdate = false;
-            txState.activeChoice = null;
-            
-            await interaction.reply({ content: '✅ Đã khởi tạo bàn Lớn Nhỏ Live.', ephemeral: true });
-            const data = getTXMessageData();
-            txState.message = await txState.channel.send(data);
-            writeLog('ADMIN', `[KHỞI TẠO] Lớn Nhỏ start by ${interaction.user.tag}`);
-            return;
-        }
-
-        if (interaction.commandName === 'stoplonnho') {
-            if (txState.message) {
-                await txState.message.delete().catch(() => {});
-            }
-            txState.channel = null;
-            txState.message = null;
-            txState.status = 'stopped';
-            writeLog('ADMIN', `[DỪNG] Lớn nhỏ stop by ${interaction.user.tag}`);
-            return interaction.reply({ content: '🛑 Đã dừng bàn Lớn Nhỏ Live tại kênh này.', ephemeral: true });
-        }
-
-        if (interaction.commandName === 'deletechat') {
-            await interaction.deferReply({ ephemeral: true });
-            try {
-                const messages = await interaction.channel.messages.fetch({ limit: 100 });
-                const botMessages = messages.filter(m => m.author.id === client.user.id);
-                if (botMessages.size > 0) {
-                    await interaction.channel.bulkDelete(botMessages, true);
-                    writeLog('ADMIN', `[XÓA CHAT] ${interaction.user.tag} xóa ${botMessages.size} tin nhắn bot tại #${interaction.channel.name}`);
-                    return interaction.editReply('✅ Đã dọn dẹp các tin nhắn của bot trong kênh này!');
-                } else {
-                    writeLog('ADMIN', `[XÓA CHAT] ${interaction.user.tag} dùng /deletechat nhưng không có tin nhắn bot nào tại #${interaction.channel.name}`);
-                    return interaction.editReply('⚠️ Không tìm thấy tin nhắn nào của bot ở 100 tin nhắn gần nhất!');
-                }
-            } catch (err) {
-                writeLog('SYSTEM', `[LỖI XÓA CHAT] ${err.message}`);
-                return interaction.editReply('❌ Lỗi khi xóa tin nhắn, có thể do tin nhắn quá cũ (hơn 14 ngày) hoặc bot thiếu quyền!');
-            }
-        }
-
-        if (interaction.commandName === 'admin_set_result') {
-            const game = interaction.options.getString('game');
-            const values = interaction.options.getString('values');
-            if (game === 'tx') {
-                txState.forcedResult = values;
-            } else if (game === 'baucua') {
-                bcState.forcedResult = values;
-            }
-            writeLog('ADMIN', `[CAN THIỆP] Admin ${interaction.user.tag} đã ép kết quả ${game} thành: ${values}`);
-            return interaction.reply({ content: `✅ Đã ép kết quả ${game} ván tới là: ${values}`, ephemeral: true });
-        }
-
         if (interaction.commandName === 'diemdanh') {
             const userData = getUserData(userId);
             const now = Date.now();
@@ -761,8 +918,8 @@ client.on('interactionCreate', async interaction => {
 
             updatePoints(userId, 50000000000);
             userData.lastDaily = now; 
-            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận 5,000 point | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **5.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
+            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận 50.000.000.000 point | Số dư: ${getUserData(userId).points.toLocaleString()}`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **50.000.000.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
         }
 
         if (interaction.commandName === 'sodu') {
@@ -824,7 +981,7 @@ client.on('interactionCreate', async interaction => {
 
             await interaction.deferReply();
 
-            let game = createGame(numMines);
+            let game = createGame(numMines, userId);
             
             const renderEmbed = (status = "playing") => {
                 const diamonds = game.revealed.length;
@@ -900,7 +1057,9 @@ client.on('interactionCreate', async interaction => {
                         
                         writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} DỪNG - Số mìn: ${game.totalMines}`);
                         writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Thắng ${winProfit}`);
-                        
+                        minesHistory.unshift({ name: interaction.user.username, bet, mines: game.totalMines, diamonds: game.revealed.length, result: 'Dừng (Thắng)', amount: winProfit, time: new Date().toLocaleTimeString('vi-VN') });
+                        if (minesHistory.length > 20) minesHistory.pop();
+
                         return collector.stop();
                     }
 
@@ -911,7 +1070,9 @@ client.on('interactionCreate', async interaction => {
                         
                         writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} BÙM - Số mìn: ${game.totalMines}`);
                         writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Thua ${bet}`);
-                        
+                        minesHistory.unshift({ name: interaction.user.username, bet, mines: game.totalMines, diamonds: game.revealed.length, result: 'Trúng mìn (Thua)', amount: -bet, time: new Date().toLocaleTimeString('vi-VN') });
+                        if (minesHistory.length > 20) minesHistory.pop();
+
                         collector.stop();
                     } else {
                         if (!game.revealed.includes(idx)) game.revealed.push(idx);
@@ -923,7 +1084,9 @@ client.on('interactionCreate', async interaction => {
                             
                             writeLog('RESULT', `[KẾT QUẢ DÒ MÌN] ${interaction.user.tag} JACKPOT - Số mìn: ${game.totalMines}`);
                             writeLog('BET', `[CƯỢC DÒ MÌN] ${interaction.user.tag} cược ${bet} (Mìn: ${game.totalMines}) | KQ: Jackpot ${jackpotWin}`);
-                            
+                            minesHistory.unshift({ name: interaction.user.username, bet, mines: game.totalMines, diamonds: game.revealed.length, result: 'Jackpot', amount: jackpotWin, time: new Date().toLocaleTimeString('vi-VN') });
+                            if (minesHistory.length > 20) minesHistory.pop();
+
                             collector.stop();
                         } else {
                             await i.editReply({ embeds: [renderEmbed()], components: renderButtons() });
@@ -1039,7 +1202,7 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.customId === 'bc_soicau') {
         if (bcState.history.length === 0) return interaction.reply({ content: "Chưa có lịch sử phiên nào!", ephemeral: true });
-        const hisDesc = bcState.history.map(h => `Phiên ${h.gameId}: ${h.resultEmoji} (${h.result})`).join('\n');
+        const hisDesc = bcState.history.slice(0, 10).map(h => `Phiên ${padId(h.gameId)}: ${h.resultEmoji} (${h.result})`).join('\n');
         const emb = new EmbedBuilder()
             .setTitle('🔮 Soi Cầu Bầu Cua - Lịch sử 10 phiên gần nhất')
             .setDescription(hisDesc)
@@ -1062,8 +1225,8 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId === 'tx_soicau') {
         if (txState.history.length === 0) return interaction.reply({ content: "Chưa có lịch sử ván nào!", ephemeral: true });
         
-        let hisDesc = txState.history.map(h => {
-            return `Game ${h.gameId}: ${DICE_EMOJIS[h.dice[0]]} ${DICE_EMOJIS[h.dice[1]]} ${DICE_EMOJIS[h.dice[2]]} (${h.sum}) - ${h.tx} | ${h.cl}`;
+        let hisDesc = txState.history.slice(0, 10).map(h => {
+            return `Game ${padId(h.gameId)}: ${DICE_EMOJIS[h.dice[0]]} ${DICE_EMOJIS[h.dice[1]]} ${DICE_EMOJIS[h.dice[2]]} (${h.sum}) - ${h.tx} | ${h.cl}`;
         }).join('\n');
 
         const emb = new EmbedBuilder()
@@ -1139,5 +1302,25 @@ process.on('uncaughtExceptionMonitor', (err, origin) => {
     writeLog('SYSTEM', `[CRASH] Uncaught Exception Monitor: ${err.message || err}, origin: ${origin}`);
     console.error('Uncaught Exception Monitor:', err, origin);
 });
+
+// Lưu database NGAY khi bot bị tắt/restart (PM2 restart, max_memory_restart, stop...)
+// để không mất 20 kết quả cuối khi process bị kill giữa 2 lần lưu định kỳ.
+let isShuttingDown = false;
+function flushAndExit(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    try {
+        dbCache._minesHistory = minesHistory;
+        dbCache._txDashHistory = txDashHistory;
+        dbCache._bcDashHistory = bcDashHistory;
+        fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
+        writeLog('SYSTEM', `[SHUTDOWN] ${signal} - đã lưu database trước khi thoát`);
+    } catch (e) {
+        console.error('[SHUTDOWN] Lỗi lưu database:', e.message);
+    }
+    process.exit(0);
+}
+process.on('SIGINT', () => flushAndExit('SIGINT'));
+process.on('SIGTERM', () => flushAndExit('SIGTERM'));
 
 client.login(TOKEN);        

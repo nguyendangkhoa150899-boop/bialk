@@ -131,6 +131,15 @@ async function processNext(guildId) {
   try {
     const stream = await streamPromise;
     console.log(`[TTS] Stream sẵn sàng: "${text}"`);
+
+    // Chờ voice connection thật sự Ready trước khi phát — nếu không, các gói
+    // audio đầu tiên bị Discord vứt bỏ và mất chữ đầu (rõ nhất khi stream từ cache về nhanh)
+    try {
+      await entersState(state.connection, VoiceConnectionStatus.Ready, 10_000);
+    } catch {
+      console.warn('[TTS] Connection chưa Ready sau 10s, vẫn thử phát');
+    }
+
     const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
     state.player.play(resource);
 
