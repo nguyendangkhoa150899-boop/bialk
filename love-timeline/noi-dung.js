@@ -193,7 +193,7 @@ const TIMELINE = [
     ngay: "01 · 03 · 2026",
     chuong: "Về chung một nhà",
     tieuDe: "Ngày cưới",
-    ke: "👉 Mốc này để dành cho ngày cưới. Về nhà điền thêm: cưới ở đâu, chuyện đáng nhớ nhất (ai khóc, ai say, cái gì suýt hỏng).",
+    ke: "👉 .",
     anh: [],
     kieu: "polaroid"
   },
@@ -201,7 +201,7 @@ const TIMELINE = [
     ngay: "17 · 04 · 2026",
     chuong: "Về chung một nhà",
     tieuDe: "Lễ cưới trong nhà thờ ⛪",
-    ke: "👉 Mốc này để dành cho lễ cưới trong nhà thờ. Về nhà điền thêm cảm xúc của hai đứa ngày hôm đó.",
+    ke: "👉 ",
     anh: [],
     kieu: "polaroid"
   }

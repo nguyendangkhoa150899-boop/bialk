@@ -1,8 +1,9 @@
 /* =============================================================
    SERVER — phục vụ web + Dashboard upload ảnh (chạy: node server.js)
-   - Web công khai:      http://localhost:8080
-   - Dashboard (mật khẩu): http://localhost:8080/admin
-   - Đổi mật khẩu: đặt biến môi trường DASH_PASS (mặc định "yeu-nhau").
+   - Web (cần mật khẩu chung):  http://localhost:8080
+   - Dashboard (mật khẩu riêng): http://localhost:8080/admin
+   - Đổi mật khẩu web:     đặt biến môi trường SITE_PASS (mặc định "chopper").
+   - Đổi mật khẩu admin:   đặt biến môi trường DASH_PASS (mặc định "yeu-nhau").
    ============================================================= */
 const express = require("express");
 const multer = require("multer");
@@ -12,10 +13,20 @@ const path = require("path");
 const ROOT = __dirname;
 const PORT = process.env.PORT || 8080;
 const MAT_KHAU = process.env.DASH_PASS || "yeu-nhau";
+const SITE_PASS = process.env.SITE_PASS || "chopper";
 const DATA_FILE = path.join(ROOT, "du-lieu.json");
 
 const app = express();
 app.use(express.json());
+
+/* ---------- Mật khẩu cho CẢ TRANG (khác mật khẩu /admin) ---------- */
+app.use((req, res, next) => {
+  const h = req.headers.authorization || "";
+  const [, b64] = h.split(" ");
+  const pw = Buffer.from(b64 || "", "base64").toString().split(":")[1];
+  if (pw === SITE_PASS) return next();
+  res.set("WWW-Authenticate", 'Basic realm="Chuyen tinh minh"').status(401).send("Cần đăng nhập");
+});
 
 /* ---------- Dữ liệu ---------- */
 // Dữ liệu khởi tạo khi VPS chưa có du-lieu.json (file này KHÔNG đẩy lên git)
@@ -226,6 +237,6 @@ app.post("/api/sothich", auth, (req, res) => {
 app.use(express.static(ROOT));
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log("Web:        http://localhost:" + PORT);
+  console.log("Web:        http://localhost:" + PORT + "   (mật khẩu: " + SITE_PASS + ")");
   console.log("Dashboard:  http://localhost:" + PORT + "/admin   (mật khẩu: " + MAT_KHAU + ")");
 });
