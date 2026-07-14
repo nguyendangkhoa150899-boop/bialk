@@ -14,6 +14,9 @@
 
 * { box-sizing: border-box; }
 
+/* Chặn cuộn ngang (iOS) — chỉ cho lướt dọc, không lòi mép trái/phải */
+html { overflow-x: hidden; overscroll-behavior-x: none; }
+
 /* Nút tải lại trang — tròn, nằm gọn góc dưới phải, tông vẽ tay */
 .reload-btn {
   position: fixed;
@@ -34,6 +37,9 @@
 }
 .reload-btn:hover { transform: translateY(-2px) rotate(-25deg); }
 .reload-btn:active { transform: translateY(1px) rotate(-140deg); box-shadow: 1px 1px 0 rgba(58, 50, 48, .18); }
+/* Khi có ảnh (thú cưng) thay cho mũi tên ↻ */
+.reload-btn.co-anh { padding: 0; overflow: hidden; background: #fffdfa; }
+.reload-btn.co-anh img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 
 body {
   margin: 0;
@@ -660,4 +666,6 @@ video.lb-anh { background: #000; width: auto; }
   .chuong-badge { margin-left: 0; }
   .polaroid { max-width: 100%; }         /* ảnh không tràn viền trên màn nhỏ */
   .anh-wrap { gap: 12px; }
+  /* Hiệu ứng hiện dần: chỉ lệch dọc, bỏ lệch ngang để không tràn mép phải */
+  .moc.trai, .moc.phai { transform: translateY(30px); }
 }

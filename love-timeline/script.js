@@ -13,6 +13,17 @@ const taiDash = (async () => {
 const tieuDeBia = document.getElementById("heroTitle");
 tieuDeBia.textContent = THONG_TIN.ten1 + " & " + THONG_TIN.ten2;
 
+// --- Nút tải lại: nếu Dashboard có up ảnh (thú cưng...) thì dùng ảnh đó ---
+(async function nutTaiLai() {
+  await taiDash;
+  const anh = (DASH && DASH.sticker && DASH.sticker.reloadIcon) || "";
+  const btn = document.querySelector(".reload-btn");
+  if (btn && anh) {
+    btn.innerHTML = `<img src="${anh}" alt="tải lại">`;
+    btn.classList.add("co-anh");
+  }
+})();
+
 // --- Sticker ảnh mặt 2 đứa (trên tên) — ưu tiên dashboard ---
 (async function dungSticker() {
   await taiDash;

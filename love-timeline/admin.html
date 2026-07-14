@@ -86,6 +86,9 @@
     <div class="ad-chuong">💛 Bìa — ảnh mặt hai đứa</div>
     <div id="biaBox" class="ad-stickers"></div>
 
+    <div class="ad-chuong">🔄 Ảnh cho nút Tải lại (nằm góc màn hình)</div>
+    <div id="reloadIconBox" class="ad-stickers"></div>
+
     <div class="ad-chuong">🕐 Timeline — ảnh từng mốc</div>
     <div id="tlBox"></div>
 
@@ -202,6 +205,8 @@
   function ve() {
     // Bìa (2 sticker mặt)
     $("#biaBox").innerHTML = stickerHTML("heroKhoa", "Ảnh mặt Khoa") + stickerHTML("heroHanh", "Ảnh mặt Hạnh");
+    // Ảnh cho nút tải lại (thú cưng...)
+    $("#reloadIconBox").innerHTML = stickerHTML("reloadIcon", "Ảnh nút tải lại");
     // Sở thích (sticker + danh sách sở thích, có nút Thêm)
     const so = (typeof SO_THICH !== "undefined") ? SO_THICH : { nguoi1: { ten: "Khoa" }, nguoi2: { ten: "Hạnh" } };
     $("#stBox").innerHTML =
