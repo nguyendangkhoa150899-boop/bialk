@@ -25,7 +25,7 @@ const THONG_TIN = {
   sinhNhat1: "1999-08-15",   // Khoa
   sinhNhat2: "2002-07-01",   // Hạnh
 
-  loiKet: "Giữa rất nhiều lựa chọn của cuộc đời, mình vẫn chọn quay về với nhau. Đi tiếp nha, Hạnh 💍"
+  loiKet: "Giữa rất nhiều lựa chọn của cuộc đời, mình vẫn chọn ở lại với nhau. Cùng nhau đi tiếp chặn đường tiếp theo nha bebe 💍"
 };
 
 /* Mỗi mốc:
@@ -59,7 +59,7 @@ const TIMELINE = [
     ngay: "Ngày đầu",
     chuong: "Lúc quen",
     tieuDe: "Ấn tượng đầu tiên",
-    ke: "Khoa nhớ mãi hình ảnh Hạnh ôm theo một chú heo gấu bông. Còn Hạnh ấn tượng Khoa là một anh chàng cao ráo và… hơi “ẹo” một chút. Ấn tượng ban đầu có thể chỉ thoáng qua, nhưng điều giữ hai đứa ở lại là cách tụi mình quan tâm yêu thương với nhau sau đó.",
+    ke: "Anh nhớ mãi hình ảnh em ôm theo một con heo gấu bông cũ quắc xấu xí. Còn em ấn tượng anh là một anh chàng cao ráo và… hơi “ẹo” một chút. Ấn tượng ban đầu có thể chỉ thoáng qua, nhưng điều giữ hai đứa ở lại là cách tụi mình quan tâm yêu thương với nhau sau đó.",
     anh: [],   // gợi ý: ảnh chú heo gấu bông / ảnh Hạnh
     kieu: "polaroid"
   },
@@ -67,7 +67,7 @@ const TIMELINE = [
     ngay: "Vũng Tàu",
     chuong: "Lúc quen",
     tieuDe: "Lời tỏ tình ở Vũng Tàu",
-    ke: "Ở Vũng Tàu, Khoa nói ra lời tỏ tình. Nơi này về sau sẽ còn quay lại trong câu chuyện của tụi mình, theo một cách chẳng ai ngờ.",
+    ke: "Ở Vũng Tàu, anh nói ra lời tỏ tình. Nơi này về sau sẽ còn quay lại trong câu chuyện của tụi mình, theo một cách chẳng ai ngờ.",
     noi: "Vũng Tàu",
     anh: [],   // gợi ý: ảnh ở Vũng Tàu lần đầu
     kieu: "polaroid"
@@ -126,7 +126,7 @@ const TIMELINE = [
     ngay: "Đà Lạt",
     chuong: "Cùng nhau đi",
     tieuDe: "Đà Lạt",
-    ke: "👉 Kể kỷ niệm chuyến Đà Lạt của tụi mình ở đây.",
+    ke: "Đây là nơi mỗi lần về Việt Nam em đều siêu thích đi.",
     noi: "Đà Lạt",
     anh: [],
     kieu: "polaroid"
@@ -135,7 +135,7 @@ const TIMELINE = [
     ngay: "Singapore",
     chuong: "Cùng nhau đi",
     tieuDe: "Singapore",
-    ke: "👉 Kể kỷ niệm chuyến Singapore.",
+    ke: "Lần đi chơi mà tụi mình cãi nhau nhiều nhất.",
     noi: "Singapore",
     anh: [],
     kieu: "polaroid"
@@ -144,7 +144,7 @@ const TIMELINE = [
     ngay: "Hàn Quốc",
     chuong: "Cùng nhau đi",
     tieuDe: "Hàn Quốc (Jeju)",
-    ke: "👉 Kể kỷ niệm chuyến Hàn Quốc (Jeju).",
+    ke: "Cãi nhau từ Singapore qua tới Hàn Quốc (Jeju) nhưng cũng đã có nhiều khoảnh khắc đáng nhớ.",
     noi: "Hàn Quốc (Jeju)",
     anh: [],
     kieu: "polaroid"
@@ -153,7 +153,7 @@ const TIMELINE = [
     ngay: "Nha Trang",
     chuong: "Cùng nhau đi",
     tieuDe: "Nha Trang",
-    ke: "👉 Kể kỷ niệm chuyến Nha Trang.",
+    ke: "Cũng cãi nhau những cũng biết bắt đầu hạ được cái tôi xuống.",
     noi: "Nha Trang",
     anh: [],
     kieu: "polaroid"
@@ -162,7 +162,7 @@ const TIMELINE = [
     ngay: "Hà Nội",
     chuong: "Cùng nhau đi",
     tieuDe: "Hà Nội",
-    ke: "👉 Kể kỷ niệm chuyến Hà Nội.",
+    ke: "Yahhh tuần trăng mật với cam kết du lịch không được cãi nhau cho dù có chuyện gì.",
     noi: "Hà Nội",
     anh: [],
     kieu: "polaroid"
@@ -171,7 +171,7 @@ const TIMELINE = [
     ngay: "Hạ Long",
     chuong: "Cùng nhau đi",
     tieuDe: "Hạ Long",
-    ke: "👉 Kể kỷ niệm chuyến Hạ Long.",
+    ke: "Cũng nằm trong tuần trăng mật của tụi mình với cái view từ du thuyền nhìn ra Vịnh siêu đẹp siêu đáng giá.",
     noi: "Hạ Long",
     anh: [],
     kieu: "polaroid"
@@ -193,7 +193,7 @@ const TIMELINE = [
     ngay: "01 · 03 · 2026",
     chuong: "Về chung một nhà",
     tieuDe: "Ngày cưới",
-    ke: "👉 .",
+    ke: "Cám ơn vợ đã chọn anh làm bạn đời của em.",
     anh: [],
     kieu: "polaroid"
   },
@@ -201,7 +201,7 @@ const TIMELINE = [
     ngay: "17 · 04 · 2026",
     chuong: "Về chung một nhà",
     tieuDe: "Lễ cưới trong nhà thờ ⛪",
-    ke: "👉 ",
+    ke: "Đây là ngày thiên liêng nhất với anh. Dù có già, lú lẫn anh vẫn luôn nhớ về ngày anh và em đọc lời thề đó. Cám ơn em vợ anh ",
     anh: [],
     kieu: "polaroid"
   }
