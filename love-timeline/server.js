@@ -9,9 +9,35 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 
+// jimp để tạo ảnh thu nhỏ (thumbnail). Nếu chưa cài (chưa npm install) thì bỏ qua, web vẫn chạy.
+let Jimp = null;
+try { Jimp = require("jimp").Jimp; }
+catch { console.log("(Chưa có jimp — tạm bỏ qua thumbnail, chạy 'npm install' để bật.)"); }
+
 const ROOT = __dirname;
 const PORT = process.env.PORT || 8080;
 const DATA_FILE = path.join(ROOT, "du-lieu.json");
+const THUMB_DIR = path.join(ROOT, "Lib", "Thumb");
+const LA_VIDEO = /\.(mp4|webm|ogg|mov|m4v)$/i;
+
+/* ---------- Tạo thumbnail (~400px) từ 1 ảnh; trả đường dẫn thumb hoặc null ---------- */
+async function taoThumb(srcRel) {
+  if (!Jimp || !srcRel || LA_VIDEO.test(srcRel)) return null;
+  try {
+    const absSrc = path.join(ROOT, srcRel);
+    if (!fs.existsSync(absSrc)) return null;
+    fs.mkdirSync(THUMB_DIR, { recursive: true });
+    const thumbRel = "Lib/Thumb/" + path.basename(srcRel).replace(/\.[^.]+$/, "") + ".jpg";
+    const absThumb = path.join(ROOT, thumbRel);
+    if (fs.existsSync(absThumb)) return thumbRel; // đã có rồi
+    const img = await Jimp.read(absSrc);
+    const scale = 400 / Math.max(img.width, img.height);
+    if (scale < 1) img.resize({ w: Math.round(img.width * scale), h: Math.round(img.height * scale) });
+    const buf = await img.getBuffer("image/jpeg", { quality: 72 });
+    fs.writeFileSync(absThumb, buf);
+    return thumbRel;
+  } catch (e) { console.log("Thumb lỗi:", srcRel, "-", e.message); return null; }
+}
 
 const app = express();
 app.use(express.json());
@@ -110,14 +136,18 @@ app.delete("/api/album/:id", (req, res) => {
 });
 
 // upload nhiều file vào 1 album
-app.post("/api/upload", upload.array("files", 50), (req, res) => {
+app.post("/api/upload", upload.array("files", 50), async (req, res) => {
   const d = docData(); const a = timAlbum(d, req.body.albumId);
   if (!a) return res.status(404).json({ loi: "Không thấy album" });
   const ghi = req.body.ghi || "";
-  (req.files || []).forEach(f => {
+  for (const f of (req.files || [])) {
     const laVideo = /^video\//.test(f.mimetype);
-    a.anh.push({ src: "Lib/" + (laVideo ? "Video" : "HinhAnh") + "/" + f.filename, ghi });
-  });
+    const src = "Lib/" + (laVideo ? "Video" : "HinhAnh") + "/" + f.filename;
+    const photo = { src, ghi };
+    const thumb = await taoThumb(src);
+    if (thumb) photo.thumb = thumb;
+    a.anh.push(photo);
+  }
   ghiData(d); res.json(a);
 });
 
@@ -136,6 +166,7 @@ app.delete("/api/photo", (req, res) => {
   const [removed] = a.anh.splice(req.body.index, 1);
   ghiData(d);
   try { if (removed && removed.src) fs.unlinkSync(path.join(ROOT, removed.src)); } catch {}
+  try { if (removed && removed.thumb) fs.unlinkSync(path.join(ROOT, removed.thumb)); } catch {}
   res.json(a);
 });
 
@@ -156,14 +187,18 @@ function tlList(d, key) {
   d.timeline[key] = d.timeline[key] || [];
   return d.timeline[key];
 }
-app.post("/api/tl-upload", upload.array("files", 50), (req, res) => {
+app.post("/api/tl-upload", upload.array("files", 50), async (req, res) => {
   const key = req.body.key;
   if (!key) return res.status(400).json({ loi: "Thiếu mốc" });
   const d = docData(); const arr = tlList(d, key); const ghi = req.body.ghi || "";
-  (req.files || []).forEach(f => {
+  for (const f of (req.files || [])) {
     const v = /^video\//.test(f.mimetype);
-    arr.push({ src: "Lib/" + (v ? "Video" : "HinhAnh") + "/" + f.filename, ghi });
-  });
+    const src = "Lib/" + (v ? "Video" : "HinhAnh") + "/" + f.filename;
+    const photo = { src, ghi };
+    const thumb = await taoThumb(src);
+    if (thumb) photo.thumb = thumb;
+    arr.push(photo);
+  }
   ghiData(d); res.json(arr);
 });
 app.patch("/api/tl-photo", (req, res) => {
@@ -176,6 +211,7 @@ app.delete("/api/tl-photo", (req, res) => {
   if (!arr || !arr[req.body.index]) return res.status(404).json({ loi: "Không thấy ảnh" });
   const [r] = arr.splice(req.body.index, 1); ghiData(d);
   try { if (r && r.src) fs.unlinkSync(path.join(ROOT, r.src)); } catch {}
+  try { if (r && r.thumb) fs.unlinkSync(path.join(ROOT, r.thumb)); } catch {}
   res.json(arr);
 });
 app.post("/api/tl-reorder", (req, res) => {
@@ -224,7 +260,29 @@ app.post("/api/sothich", (req, res) => {
 /* ---------- Web tĩnh (đặt cuối) ---------- */
 app.use(express.static(ROOT));
 
+/* ---------- Tạo thumbnail cho ảnh CŨ (đã up trước khi có tính năng này) ---------- */
+async function taoThumbConThieu() {
+  if (!Jimp) return;
+  try {
+    const d = docData();
+    const lists = [];
+    Object.values(d.timeline || {}).forEach(arr => { if (Array.isArray(arr)) lists.push(arr); });
+    (d.kyNiem || []).forEach(a => { if (a && Array.isArray(a.anh)) lists.push(a.anh); });
+    let dem = 0;
+    for (const arr of lists) {
+      for (const p of arr) {
+        if (p && p.src && !p.thumb && !LA_VIDEO.test(p.src)) {
+          const t = await taoThumb(p.src);
+          if (t) { p.thumb = t; dem++; }
+        }
+      }
+    }
+    if (dem) { ghiData(d); console.log("Đã tạo " + dem + " thumbnail cho ảnh cũ."); }
+  } catch (e) { console.log("Tạo thumbnail ảnh cũ lỗi:", e.message); }
+}
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Web:        http://localhost:" + PORT);
   console.log("Dashboard:  http://localhost:" + PORT + "/admin");
+  taoThumbConThieu();
 });

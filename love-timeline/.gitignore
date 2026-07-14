@@ -6,6 +6,7 @@ du-lieu.json
 Lib/HinhAnh/
 Lib/Video/
 Lib/Sticker/
+Lib/Thumb/
 
 # Rác
 *.log

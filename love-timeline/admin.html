@@ -177,7 +177,7 @@
   function thumbHTML(x, i) {
     const media = laVideo(x.src)
       ? `<video class="pic" src="${x.src}" muted preload="metadata"></video>`
-      : `<img class="pic" src="${x.src}" loading="lazy" decoding="async">`;
+      : `<img class="pic" src="${x.thumb || x.src}" loading="lazy" decoding="async">`;
     const rank = i === 0 ? `<span class="rank bia">★ Bìa</span>` : `<span class="rank">#${i + 1}</span>`;
     return `<div class="ad-thumb" data-i="${i}">` +
       `<div class="wrap" draggable="true" title="Kéo để sắp xếp">${rank}${media}<span class="drag-tay">✥ kéo</span></div>` +
