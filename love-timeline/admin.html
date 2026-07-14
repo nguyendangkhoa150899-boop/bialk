@@ -128,7 +128,12 @@
 
   async function api(url, opt) {
     const r = await fetch(url, opt);
-    if (!r.ok) throw new Error((await r.text()) || r.status);
+    if (!r.ok) {
+      const t = await r.text();
+      let msg = t;
+      try { msg = JSON.parse(t).loi || t; } catch {}
+      throw new Error(msg || ("Mã lỗi " + r.status));
+    }
     return r.json();
   }
   async function taiData() {

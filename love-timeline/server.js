@@ -260,6 +260,17 @@ app.post("/api/sothich", (req, res) => {
 /* ---------- Web tĩnh (đặt cuối) ---------- */
 app.use(express.static(ROOT));
 
+/* ---------- Bắt lỗi upload (multer) — trả thông báo rõ thay vì treo ---------- */
+app.use((err, req, res, next) => {
+  if (!err) return next();
+  console.log("Upload lỗi:", err.code || "", err.message);
+  const msg = err.code === "LIMIT_FILE_SIZE"
+    ? "File quá lớn (ảnh/video tối đa 200MB, sticker 50MB). Chọn file nhẹ hơn nha."
+    : "Lỗi tải lên: " + err.message;
+  if (!res.headersSent) return res.status(413).json({ loi: msg });
+  next(err);
+});
+
 /* ---------- Tạo thumbnail cho ảnh CŨ (đã up trước khi có tính năng này) ---------- */
 async function taoThumbConThieu() {
   if (!Jimp) return;
