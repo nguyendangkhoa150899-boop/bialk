@@ -14,6 +14,27 @@
 
 * { box-sizing: border-box; }
 
+/* Nút tải lại trang — tròn, nằm gọn góc dưới phải, tông vẽ tay */
+.reload-btn {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 60;
+  width: 46px; height: 46px;
+  display: flex; align-items: center; justify-content: center;
+  border: 3px solid #3a3230;
+  border-radius: 50%;
+  background: #fffdfa;
+  color: #ff6b6b;
+  font-size: 26px; line-height: 1; font-weight: 700;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(58, 50, 48, .18);
+  transition: transform .15s ease, box-shadow .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.reload-btn:hover { transform: translateY(-2px) rotate(-25deg); }
+.reload-btn:active { transform: translateY(1px) rotate(-140deg); box-shadow: 1px 1px 0 rgba(58, 50, 48, .18); }
+
 body {
   margin: 0;
   font-family: "Baloo 2", system-ui, "Segoe UI", sans-serif;
