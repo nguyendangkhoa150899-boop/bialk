@@ -3,6 +3,7 @@ node_modules/
 
 # DỮ LIỆU NGƯỜI DÙNG — sống trên VPS, KHÔNG đẩy lên git (tránh git pull đè mất)
 du-lieu.json
+database.json
 Lib/HinhAnh/
 Lib/Video/
 Lib/Sticker/

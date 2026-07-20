@@ -1,72 +1,86 @@
-# Đưa lên GitHub + chạy trên VPS
+# Hướng dẫn Deploy — love-timeline (GitHub + VPS)
 
-## Nguyên tắc (quan trọng)
-- **Đẩy lên git**: code (html/js/css, server.js, admin.html, package.json, Lib/Icon...).
-- **KHÔNG đẩy** (đã để trong `.gitignore`): `node_modules/`, `du-lieu.json`, `Lib/HinhAnh`, `Lib/Video`, `Lib/Sticker`.
-  → Ảnh + nội dung vợ chồng up **sống trên VPS**, git pull không đè mất. Server tự tạo `du-lieu.json` (từ SEED) khi chưa có.
+> File DUY NHẤT về deploy. Bàn giao tổng thể dự án xem `CHO-CLAUDE-O-NHA.md`; tạo Firebase cho wishlist xem `WISHLIST-HUONG-DAN.md`.
 
 ---
 
-## A. Đẩy code lên GitHub (làm ở máy tính)
+## ⚡ Cập nhật web (việc làm thường xuyên nhất)
 
-### Nếu tạo repo RIÊNG cho web này
+**Chỉ sửa code ở máy Windows → đẩy GitHub → VPS kéo về.**
+TUYỆT ĐỐI không sửa code trực tiếp trên VPS (sẽ làm git rẽ nhánh, kéo không vào file, mất công gỡ — đã dính rồi).
+
+### 1) Trên máy Windows (thư mục `Desktop/bialk/bialk`)
 ```bash
-cd "đường-dẫn/love-timeline"
-git init
 git add .
-git commit -m "Web chuyện tình mình + dashboard"
-git branch -M main
-git remote add origin https://github.com/<user>/<ten-repo>.git
-git push -u origin main
+git commit -m "mô tả thay đổi"
+git push origin main
 ```
+> ⚠ Nếu vừa sửa `style.css` hoặc `script.js`: **tăng số `?v=` trong `index.html`** (dòng link css và dòng script) TRƯỚC khi commit. Không làm thì điện thoại dùng lại bản cũ trong cache → "deploy xong mở lên y như cũ". Hiện đang `?v=3`.
 
-### Nếu gộp CHUNG repo với bot Discord (monorepo)
-- Copy nguyên thư mục `love-timeline` vào trong repo bot.
-- Trong thư mục repo bot:
+### 2) Trên VPS (SSH vào rồi)
 ```bash
-git add love-timeline
-git commit -m "Thêm web love-timeline"
-git push
+cd /root/tts-bot
+git checkout -- .        # bỏ thay đổi "ảo" do CRLF (xem Bẫy 1)
+git pull
+git log --oneline -1     # xem đã đúng commit mới nhất chưa
 ```
-- Lưu ý: `.gitignore` của love-timeline dùng đường dẫn tương đối nên vẫn đúng khi nằm trong repo con.
+- Sửa file tĩnh (html/js/css) → xong luôn, **KHÔNG cần restart**.
+- Chỉ khi sửa `server.js` mới cần: `pm2 restart love-timeline`.
 
 ---
 
-## B. Chạy trên VPS (SSH vào VPS)
+## 📍 Sự thật về VPS (nhớ để khỏi lạc)
+- Repo trên VPS ở **`/root/tts-bot`** (KHÔNG phải `/root/bialk`). love-timeline là thư mục con.
+- GitHub: `github.com/nguyendangkhoa150899-boop/bialk` — **monorepo** chung với bot Discord.
+- Branch trên VPS tên **`master`**, GitHub là **`main`** (master đã track `origin/main` → `git pull` chạy đúng).
+- Chạy bằng **pm2**, tên tiến trình `love-timeline`, chung máy với `BotDoMin` và `tts-bot`.
+- Thông tin SSH (IP / port / user / mật khẩu): **Khoa giữ riêng, KHÔNG ghi vào file trong git.**
 
+---
+
+## ⚠️ 3 cái bẫy đã vấp
+
+**Bẫy 1 — CRLF (Windows ↔ Linux).** File sửa trên Windows lưu kiểu xuống dòng CRLF, VPS Linux dùng LF → `git pull` báo *"Your local changes would be overwritten"* DÙ `git diff` trống (không có nội dung khác thật). Chữa: chạy **một lần** `git config core.autocrlf input`, và luôn `git checkout -- .` trước khi pull.
+
+**Bẫy 2 — Cache trình duyệt điện thoại.** css/js là file tĩnh, không có version → điện thoại giữ bản cũ. Mỗi lần sửa css/js phải **tăng `?v=` trong `index.html`**.
+
+**Bẫy 3 — Token GitHub.** Đừng bao giờ dán `git remote -v` (kèm token `ghp_…`) hay lệnh chứa token ra ngoài. Lộ token = người khác ghi được vào repo. Token nên để credential helper, không nhúng thẳng vào URL remote.
+
+**Không nên `git reset --hard` trên VPS.** Dữ liệu sống (`du-lieu.json`, `database.json`, ảnh/video) đã gitignore nên reset không xoá chúng — nhưng reset --hard vứt luôn mọi thứ khác không đáng. Cần bỏ thay đổi 1 file thì dùng `git checkout -- <đúng file đó>`.
+
+---
+
+## 📦 Nguyên tắc đẩy git
+- **Đẩy**: code (html / js / css, `server.js`, `admin.html`, `package.json`, `Lib/Icon`…).
+- **KHÔNG đẩy** (đã `.gitignore`): `node_modules/`, `du-lieu.json`, `database.json`, `Lib/HinhAnh`, `Lib/Video`, `Lib/Sticker`, `Lib/Thumb`.
+  → Ảnh + nội dung vợ chồng up **sống trên VPS**, `git pull` không đè mất. Server tự tạo `du-lieu.json` từ SEED khi chưa có.
+
+---
+
+## 🚀 Lần đầu cài trên VPS (chỉ làm 1 lần)
 ```bash
-# 1. Lấy code về (lần đầu clone; sau này chỉ cần git pull)
-git clone https://github.com/<user>/<ten-repo>.git
-cd <ten-repo>            # hoặc cd <ten-repo>/love-timeline nếu monorepo
-
-# 2. Cài thư viện
+git clone https://github.com/nguyendangkhoa150899-boop/bialk.git
+cd bialk/love-timeline          # (hiện repo đang nằm ở /root/tts-bot)
 npm install
-
-# 3. Chạy bằng pm2 (giống 2 con bot), đặt mật khẩu dashboard + cổng riêng
 DASH_PASS="mat-khau-cua-khoa" PORT=8090 pm2 start server.js --name love-timeline
 pm2 save
 ```
+- **PORT**: nếu trùng bot thì đổi số khác (vd 8090). Mở cổng firewall nếu vào thẳng bằng IP.
+- Test nhanh: `http://<IP-VPS>:8090` → web; `/admin` → dashboard.
 
-- **PORT**: nếu 8080 đang bị bot/khác dùng, đổi số khác (vd 8090). Nhớ mở cổng ở firewall nếu vào thẳng bằng IP.
-- Test nhanh: `http://<IP-VPS>:8090`  → web; `/admin` → dashboard.
-- Cập nhật sau này: `git pull && npm install && pm2 restart love-timeline`
-
----
-
-## C. Tên miền + HTTPS (nên có — PWA & bảo mật mật khẩu cần HTTPS)
-Dùng **Caddy** (tự xin SSL). Ví dụ `/etc/caddy/Caddyfile`:
+## 🔒 Tên miền + HTTPS (nên có — PWA & mật khẩu cần HTTPS)
+Dùng **Caddy** (tự xin SSL). `/etc/caddy/Caddyfile`:
 ```
 chuyentinh.tenmien.com {
     reverse_proxy localhost:8090
 }
 ```
-Rồi `sudo systemctl reload caddy`. Xong có `https://chuyentinh.tenmien.com`.
-(Trỏ DNS bản ghi A của `chuyentinh` về IP VPS trước.)
+Rồi `sudo systemctl reload caddy`. (Trỏ DNS bản ghi A của `chuyentinh` về IP VPS trước.)
 
 ---
 
-## Kiểm tra "work không"
+## ✅ Kiểm tra chạy được chưa
 1. `pm2 logs love-timeline` → thấy dòng "Web: http://localhost:PORT".
-2. Mở web bằng IP/tên miền → cuộn xem timeline, mục.
+2. Mở web bằng IP/tên miền → cuộn xem timeline.
 3. `/admin` → đăng nhập (DASH_PASS) → up thử 1 ảnh → F5 web thấy ảnh.
-4. File ảnh nằm trong `Lib/HinhAnh` trên VPS; `du-lieu.json` trên VPS cập nhật.
+4. File ảnh nằm trong `Lib/HinhAnh` trên VPS; `du-lieu.json` cập nhật.
