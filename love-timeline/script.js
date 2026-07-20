@@ -460,17 +460,34 @@ document.querySelectorAll(".moc, .chuong-badge, .qt-the, .st-the, .qt-badge, .ch
     hienAnh(delta);
   }
 
+  // Khoá cuộn nền kiểu chắc ăn cho iOS: ghim body bằng position:fixed
+  // (overflow:hidden trên Safari mobile không chặn được cuộn).
+  let scrollDaLuu = 0;
   function mo(g, i) {
     gHienTai = g; iHienTai = i;
+    scrollDaLuu = window.scrollY || window.pageYOffset || 0;
     lb.classList.add("mo");
-    document.body.style.overflow = "hidden";
+    const b = document.body.style;
+    b.position = "fixed";
+    b.top = `-${scrollDaLuu}px`;
+    b.left = "0";
+    b.right = "0";
+    b.width = "100%";
+    b.overflow = "hidden";
     hienAnh(1);
   }
 
   function dong() {
     lb.classList.remove("mo");
-    document.body.style.overflow = "";
-    mediaEl.innerHTML = "";   // dừng video đang phát
+    const b = document.body.style;
+    b.position = "";
+    b.top = "";
+    b.left = "";
+    b.right = "";
+    b.width = "";
+    b.overflow = "";
+    window.scrollTo(0, scrollDaLuu);   // trả lại đúng chỗ đang xem
+    mediaEl.innerHTML = "";            // dừng video đang phát
   }
 
   // Bấm vào ảnh trong thẻ -> mở lightbox (dùng delegation để nội dung sinh sau vẫn chạy)
