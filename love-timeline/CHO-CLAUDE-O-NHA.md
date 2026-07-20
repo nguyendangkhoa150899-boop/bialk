@@ -1,7 +1,7 @@
 # BÀN GIAO DỰ ÁN — "Chuyện tình mình" (love-timeline)
 
 > Dán / mở nguyên file này cho Claude để nắm bối cảnh và làm tiếp ĐÚNG HƯỚNG.
-> Cập nhật lần cuối: sau khi đã có backend + dashboard đầy đủ + cropper + kéo-thả.
+> Cập nhật lần cuối: 20/07/2026 — đã deploy lên VPS thật; thêm **mục 13** ghi lại quy trình deploy đúng + các bẫy (CRLF, cache, token). ĐỌC MỤC 13 trước khi động tới deploy.
 
 ---
 
@@ -135,3 +135,46 @@ node server.js         # web + dashboard ở :8080  (đổi PORT/DASH_PASS bằn
 - Web: http://localhost:8080 · Dashboard: http://localhost:8080/admin (mật khẩu yeu-nhau khi test).
 - Cú pháp: `node -c noi-dung.js && node --check script.js && node --check server.js`.
 - Sửa noi-dung.js/style.css/script.js → chỉ cần F5 (file tĩnh). Sửa server.js → phải restart node.
+
+---
+
+## 13. ⚠️ DEPLOY VPS — THỰC TẾ + BÀI HỌC (buổi 20/07/2026)
+> Buổi này mất RẤT nhiều thời gian vì code bị sửa ở 2 nơi + cache điện thoại. Đọc kỹ để không lặp lại.
+
+### Sự thật về VPS (đúng hiện trạng)
+- **Repo trên VPS ở: `/root/tts-bot`** — KHÔNG phải `/root/bialk`. Đây là git root. love-timeline là thư mục con `/root/tts-bot/love-timeline`.
+- Repo GitHub: `github.com/nguyendangkhoa150899-boop/bialk` — **monorepo** chung với bot Discord.
+- **Branch trên VPS tên `master`, còn GitHub là `main`.** Đã set `master` theo dõi (`track`) `origin/main`. Từ nay đứng ở `/root/tts-bot` gõ `git pull` là đúng.
+- Chạy bằng **pm2**, tên tiến trình `love-timeline` (chung máy với `BotDoMin`, `tts-bot`).
+- Thông tin kết nối VPS (IP / port SSH / user / mật khẩu): **Khoa giữ riêng — KHÔNG ghi vào file này** vì file nằm trong git, lỡ lộ là chỉ đường cho người lạ.
+
+### Quy trình deploy ĐÚNG (theo đúng thứ tự)
+1. **Chỉ sửa code ở máy Windows** (`Desktop/bialk/bialk`). Xong: `git add … && git commit && git push origin main`.
+2. Trên VPS:
+   ```bash
+   cd /root/tts-bot
+   git checkout -- .          # bỏ thay đổi "ảo" do CRLF (xem Bẫy 1)
+   git pull
+   git log --oneline -1       # kiểm tra đúng commit mới nhất chưa
+   ```
+3. File tĩnh (html/js/css) → KHÔNG cần restart. Chỉ khi sửa `server.js` mới `pm2 restart love-timeline`.
+
+### ⚠️ TUYỆT ĐỐI KHÔNG
+- **KHÔNG sửa code trực tiếp trên VPS.** Buổi này lỗi kéo dài vì code từng bị sửa ở cả 2 nơi → git rẽ nhánh, pull không vào file, restart hoài vẫn chạy code cũ.
+- **KHÔNG `git reset --hard` trên VPS** — sẽ đè mất `du-lieu.json` / `database.json` (dữ liệu SỐNG: ảnh vợ chồng up, lịch sử dashboard). Cần bỏ thay đổi 1 file thì `git checkout -- <đúng file đó>`.
+
+### Bẫy 1 — CRLF (Windows ↔ Linux)  ← thủ phạm chính buổi này
+File sửa trên Windows lưu kiểu xuống dòng CRLF, VPS Linux dùng LF → `git pull`/`merge`/`checkout` báo **"Your local changes would be overwritten"** DÙ `git diff` trống (không có nội dung khác thật). Chữa: chạy 1 lần `git config core.autocrlf input`, và luôn `git checkout -- .` trước khi pull. (Bền hơn: thêm file `.gitattributes` nội dung `* text=auto eol=lf`.)
+
+### Bẫy 2 — Cache trình duyệt điện thoại  ← lý do "deploy xong mở lên y như cũ"
+`style.css`/`script.js` là file tĩnh, không có service worker, nhưng cũng không tự đổi version → điện thoại giữ bản cũ đã lưu.
+→ **Mỗi lần sửa css/js: tăng số `?v=` trong index.html** (dòng `<link … style.css?v=N>` và `<script src="script.js?v=N">`). Hiện đang **`?v=3`**. Đây là cách chắc ăn ép điện thoại tải bản mới, khỏi phải xoá cache tay.
+
+### Bẫy 3 — Bảo mật token GitHub
+Buổi này Khoa lỡ dán output `git remote -v` (có kèm token `ghp_…`) vào chat → **lộ token**, đã dặn revoke + tạo mới.
+→ **Đừng bao giờ dán `git remote -v` hay lệnh chứa token ra ngoài.** Token nên để credential helper của git, không nhúng thẳng vào URL remote.
+
+### Việc lightbox (đang làm dở)
+- **Bug:** mở ảnh trên điện thoại, vuốt qua ảnh khác thì **trang nền phía sau cuộn theo**.
+- **Đã sửa:** (a) chặn `touchmove` mọi hướng trong lightbox (`preventDefault`, listener `passive:false`); (b) `touch-action:none` cho `.lb` + ảnh con; (c) **khoá body bằng `position:fixed` + lưu/trả `scrollY`** (chuẩn iOS, thay `overflow:hidden` vốn vô dụng trên Safari mobile); (d) thêm hiệu ứng vuốt theo ngón tay; (e) `?v=3` chống cache. Commit mới nhất liên quan: `70bf243`.
+- **CHƯA xác nhận chạy được trên máy thật.** Nếu Khoa báo vẫn cuộn: **HỎI BẰNG ĐƯỢC — iPhone hay Android? Trình duyệt gì (Safari / Chrome / hay mở trong app Zalo/Messenger)?** Mở trong app là môi trường webview khác, phải xử lý cách khác. Đừng sửa mù tiếp khi chưa có thông tin này.
