@@ -497,13 +497,53 @@ document.querySelectorAll(".moc, .chuong-badge, .qt-the, .st-the, .qt-badge, .ch
     else if (e.key === "ArrowRight") di(1);
   });
 
-  // vuốt trên điện thoại
-  let x0 = null;
-  lb.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive: true });
-  lb.addEventListener("touchend", e => {
+  // vuốt trên điện thoại — theo ngón tay, mượt, và chặn trang nền cuộn theo
+  let x0 = null, y0 = null, dxHienTai = 0, dangKeo = false, ngang = null;
+
+  function anhDang() { return mediaEl.querySelector(".lb-anh"); }
+
+  lb.addEventListener("touchstart", e => {
+    if (e.touches.length !== 1) return;
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    dxHienTai = 0; ngang = null; dangKeo = false;
+    const anh = anhDang();
+    if (anh) anh.style.transition = "none";   // tắt animation để kéo theo tay
+  }, { passive: true });
+
+  lb.addEventListener("touchmove", e => {
     if (x0 === null) return;
-    const dx = e.changedTouches[0].clientX - x0;
-    if (Math.abs(dx) > 45) di(dx < 0 ? 1 : -1);
-    x0 = null;
+    const dx = e.touches[0].clientX - x0;
+    const dy = e.touches[0].clientY - y0;
+
+    // quyết định hướng vuốt ngay lần di chuyển đầu
+    if (ngang === null) ngang = Math.abs(dx) > Math.abs(dy);
+
+    if (!ngang) return;                 // vuốt dọc: bỏ qua
+    e.preventDefault();                 // chặn trang nền cuộn theo (cần passive:false)
+    dangKeo = true;
+    dxHienTai = dx;
+    const anh = anhDang();
+    if (anh) {
+      anh.style.transform = `translateX(${dx}px)`;
+      anh.style.opacity = String(Math.max(0.4, 1 - Math.abs(dx) / 600));
+    }
+  }, { passive: false });
+
+  lb.addEventListener("touchend", () => {
+    if (x0 === null) return;
+    const dx = dxHienTai;
+    const anh = anhDang();
+    x0 = y0 = null;
+
+    if (dangKeo && Math.abs(dx) > 60) {
+      di(dx < 0 ? 1 : -1);              // đủ xa -> qua ảnh khác (hienAnh sẽ tạo thẻ mới có hiệu ứng)
+    } else if (anh) {
+      // chưa đủ xa -> trượt về chỗ cũ mượt mà
+      anh.style.transition = "transform .25s ease, opacity .25s ease";
+      anh.style.transform = "translateX(0)";
+      anh.style.opacity = "1";
+    }
+    dangKeo = false;
   }, { passive: true });
 })();

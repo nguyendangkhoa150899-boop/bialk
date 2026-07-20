@@ -361,6 +361,8 @@ body {
   padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
   -webkit-backdrop-filter: blur(4px);   /* iOS Safari cần tiền tố này */
   backdrop-filter: blur(4px);
+  touch-action: none;             /* không cho trang nền cuộn khi vuốt trong lightbox */
+  overscroll-behavior: contain;   /* chặn hiệu ứng "kéo giãn" lan ra ngoài */
 }
 .lb.mo { display: flex; animation: lbNen .25s ease; }
 @keyframes lbNen { from { opacity: 0; } to { opacity: 1; } }
