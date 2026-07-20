@@ -79,7 +79,7 @@ if (!fs.existsSync(DATA_FILE)) { try { ghiData(SEED); } catch {} }
 
 /* ---------- Chặn truy cập trực tiếp file nhạy cảm ---------- */
 app.use((req, res, next) => {
-  if (/^\/(admin\.html|server\.js|package.*|du-lieu\.json$|\.firebaserc|firebase\.json|node_modules|CHO-CLAUDE|WISHLIST-HUONG)/i.test(req.path))
+  if (/^\/(admin\.html|server\.js|package.*|du-lieu\.json$|database\.json$|\.firebaserc|firebase\.json|node_modules|docs)/i.test(req.path))
     return res.status(403).send("403");
   next();
 });

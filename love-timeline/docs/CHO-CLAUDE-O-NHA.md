@@ -32,18 +32,22 @@ love-timeline/
 ├── server.js       # BACKEND Express: phục vụ web + /admin + API upload. Chạy: node server.js
 ├── admin.html      # DASHBOARD (mật khẩu) — self-contained (inline CSS+JS)
 ├── du-lieu.json    # DỮ LIỆU động (dashboard ghi). GITIGNORED. Server tự tạo từ SEED nếu thiếu.
+├── database.json   # DỮ LIỆU dashboard (gitignored) — sống trên VPS
 ├── package.json    # deps: express, multer
 ├── manifest.json   # PWA "Thêm vào Màn hình chính"
 ├── firebase.json + .firebaserc  # (tuỳ chọn) deploy Firebase Hosting — giờ ưu tiên VPS
 ├── _server.js      # server test tĩnh cũ (không có dashboard) — có thể bỏ
-├── .gitignore      # chặn node_modules + du-lieu.json + Lib/HinhAnh|Video|Sticker
-├── DEPLOY.md       # hướng dẫn GitHub + VPS (pm2 + Caddy)
-├── WISHLIST-HUONG-DAN.md  # hướng dẫn tạo Firebase cho wishlist
+├── .gitignore      # chặn node_modules + du-lieu.json + database.json + Lib/HinhAnh|Video|Sticker|Thumb
+├── docs/           # TÀI LIỆU (không phải file chạy; server chặn không cho tải công khai)
+│   ├── CHO-CLAUDE-O-NHA.md   # file này — bàn giao dự án
+│   ├── DEPLOY.md             # hướng dẫn GitHub + VPS (pm2 + Caddy)
+│   └── WISHLIST-HUONG-DAN.md # hướng dẫn tạo Firebase cho wishlist
 └── Lib/
     ├── Icon/       # icon PWA (icon-192/512, apple-touch-icon) — CÓ trong git
     ├── Sticker/    # sticker đã tách nền (gitignored)
     ├── HinhAnh/    # ảnh thường (gitignored)
     ├── Video/      # video .mp4 (gitignored)
+    ├── Thumb/      # thumbnail tự sinh (gitignored)
     └── DOC-FILE-NAY.txt
 ```
 **Quy ước:** đường dẫn luôn đầy đủ `Lib/HinhAnh/...`, `Lib/Video/...`, `Lib/Sticker/...`. Tên file **không dấu, không khoảng trắng** (server tự đổi tên an toàn khi upload).
