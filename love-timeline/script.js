@@ -512,6 +512,8 @@ document.querySelectorAll(".moc, .chuong-badge, .qt-the, .st-the, .qt-badge, .ch
   }, { passive: true });
 
   lb.addEventListener("touchmove", e => {
+    // chặn trang nền cuộn theo cho MỌI hướng khi lightbox mở (cần passive:false)
+    if (e.cancelable) e.preventDefault();
     if (x0 === null) return;
     const dx = e.touches[0].clientX - x0;
     const dy = e.touches[0].clientY - y0;
@@ -519,8 +521,7 @@ document.querySelectorAll(".moc, .chuong-badge, .qt-the, .st-the, .qt-badge, .ch
     // quyết định hướng vuốt ngay lần di chuyển đầu
     if (ngang === null) ngang = Math.abs(dx) > Math.abs(dy);
 
-    if (!ngang) return;                 // vuốt dọc: bỏ qua
-    e.preventDefault();                 // chặn trang nền cuộn theo (cần passive:false)
+    if (!ngang) return;                 // vuốt dọc: chỉ chặn cuộn, không kéo ảnh
     dangKeo = true;
     dxHienTai = dx;
     const anh = anhDang();

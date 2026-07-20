@@ -375,7 +375,9 @@ body {
   box-shadow: 0 20px 60px rgba(0,0,0,.55);
   display: block; margin: 0 auto;
 }
-video.lb-anh { background: #000; width: auto; }
+/* Ảnh và khung cũng không cho cuộn nền (chạm vào ảnh mà vuốt) */
+.lb-khung, .lb-media, .lb-anh, .lb-ghi { touch-action: none; }
+video.lb-anh { background: #000; width: auto; touch-action: auto; }  /* video giữ điều khiển gốc */
 .lb-anh.vao.phai { animation: lbPhai .35s ease; }
 .lb-anh.vao.trai { animation: lbTrai .35s ease; }
 @keyframes lbPhai { from { opacity: 0; transform: translateX(40px) scale(.97); } to { opacity: 1; transform: none; } }
