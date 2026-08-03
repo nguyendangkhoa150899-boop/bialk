@@ -371,6 +371,12 @@ const HTML = `<!DOCTYPE html>
   .modal-actions button{min-width:96px}
   .flist{margin-top:10px}
   .flist .item{display:flex;justify-content:space-between;align-items:center;background:var(--card2);padding:8px 12px;border-radius:8px;margin-top:6px;font-size:13px}
+  .wd-row{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card2);border:1px solid var(--line);padding:12px 14px;border-radius:10px;margin-top:10px}
+  .wd-row .info{display:flex;flex-direction:column;gap:3px;font-size:14px;min-width:0}
+  .wd-row .info .amt{font-size:15px}
+  .wd-row .info .meta{color:var(--mut);font-size:12px}
+  .wd-row .acts{display:flex;gap:8px;flex-shrink:0}
+  .wd-row .acts button{padding:8px 14px}
   .muted{color:var(--mut)}
   .hist .h{background:var(--card2);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px;line-height:1.55}
   .hist .h .top{display:flex;justify-content:space-between;font-weight:600;margin-bottom:4px}
@@ -808,9 +814,14 @@ function renderWithdraw(){
   // danh sách chờ duyệt
   const p=document.getElementById('wdPending');
   p.innerHTML=pending.length?pending.map(r=>
-    '<div class="item"><span><b>#'+r.id+'</b> '+esc(r.username)+' — <b>'+r.amount.toLocaleString()+' Dogcoin</b> <span class="muted" style="font-size:12px">'+esc(r.time||'')+'</span></span>'+
-    '<span><button class="mini btn-green" onclick="wdApprove('+r.id+')">✅ Duyệt</button> <button class="mini btn-red" onclick="wdReject('+r.id+')">❌ Từ chối</button></span></div>'
-  ).join(''):'<div class="empty">Không có yêu cầu nào đang chờ.</div>';
+    '<div class="wd-row"><div class="info">'+
+      '<span class="amt">'+esc(r.username)+' — <b>'+r.amount.toLocaleString()+' Dogcoin</b></span>'+
+      '<span class="meta">Mã #'+r.id+' · '+esc(r.time||'')+'</span>'+
+    '</div><div class="acts">'+
+      '<button class="btn-green" onclick="wdApprove('+r.id+')">✅ Duyệt</button>'+
+      '<button class="btn-red" onclick="wdReject('+r.id+')">❌ Từ chối</button>'+
+    '</div></div>'
+  ).join(''):'<div class="empty" style="color:var(--mut);font-size:13px;padding:8px 2px">Không có yêu cầu nào đang chờ.</div>';
   // lịch sử đã xử lý
   const d=document.getElementById('wdDone');
   d.innerHTML=done.length?done.slice(0,30).map(r=>

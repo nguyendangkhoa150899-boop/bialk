@@ -385,7 +385,7 @@ function getBCMessageData(customStatus = null) {
             byUser[k].amount += b.amount;
         });
         desc += Object.values(byUser)
-            .map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} Dogcoin**`)
+            .map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`)
             .join('\n');
     } else {
         desc += "*Chưa có ai đặt*";
@@ -548,7 +548,7 @@ async function finishBCGame(gameId, bets) {
         }
     });
     const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
-    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} Dogcoin**`).join('\n');
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
 
     const resultNames = res.map(r => r.name).join(', ');
     writeLog('RESULT', `[KẾT QUẢ BẦU CUA] Phiên #${gameId}: ${resultNames}`);
@@ -621,7 +621,7 @@ function getTXMessageData(customStatus = null) {
                 if (!byUser[b.userId]) byUser[b.userId] = { username: b.username, amount: 0 };
                 byUser[b.userId].amount += b.amount;
             });
-            Object.values(byUser).forEach(u => desc += `• **${u.username}**: ${u.amount.toLocaleString()} Dogcoin\n`);
+            Object.values(byUser).forEach(u => desc += `• **${u.username}**: ${u.amount.toLocaleString()} ${DOGCOIN_EMOJI}\n`);
         }
     });
     if (!hasBets) desc += "*Chưa có ai đặt*";
@@ -779,7 +779,7 @@ async function finishTXGame(gameId, bets) {
         }
     });
     const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
-    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} Dogcoin**`).join('\n');
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
 
     const txIcon = isTai ? 'TÀI 🔺' : 'XỈU 🔻';
     const clIcon = isChan ? 'CHẴN 🔵' : 'LẺ 🟣';
@@ -899,7 +899,7 @@ function stopLonnho() {
 // --- UI RÚT DOGCOIN ---
 function getWithdrawMessageData() {
     const embed = new EmbedBuilder()
-        .setTitle(`${DOGCOIN_EMOJI} RÚT DOGCOIN`)
+        .setTitle('🏧 RÚT DOGCOIN')
         .setColor(0xf1c40f)
         .setDescription(
             `Bấm nút bên dưới để gửi yêu cầu rút ${DOGCOIN_EMOJI} **Dogcoin** trong ví Discord ra Dog Coin thật trong game.\n\n` +
@@ -978,7 +978,7 @@ client.on('interactionCreate', async interaction => {
             updatePoints(userId, DAILY_DOGCOIN);
             userData.lastDaily = now;
             writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được ${DOGCOIN_EMOJI} **${DAILY_DOGCOIN.toLocaleString()} Dogcoin**. Số dư mới: ${DOGCOIN_EMOJI} **${userData.points.toLocaleString()} Dogcoin**`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${DAILY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
 
         if (interaction.commandName === 'sodu') {
@@ -986,7 +986,7 @@ client.on('interactionCreate', async interaction => {
             const embed = new EmbedBuilder()
                 .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
                 .setTitle("💳 VÍ DOGCOIN CỦA BẠN")
-                .setDescription(`Số dư hiện tại: ${DOGCOIN_EMOJI} **${points.toLocaleString()} Dogcoin**`)
+                .setDescription(`Số dư hiện tại: **${points.toLocaleString()}** ${DOGCOIN_EMOJI}`)
                 .setColor(0x00ff00);
             return interaction.reply({ embeds: [embed] });
         }
@@ -996,7 +996,7 @@ client.on('interactionCreate', async interaction => {
             const amount = interaction.options.getInteger('amount');
             updatePoints(target.id, amount);
             writeLog('ADMIN', `[CỘNG TIỀN] Admin ${interaction.user.tag} cộng ${amount} Dogcoin cho ${target.tag}`);
-            return interaction.reply(`✅ Đã cộng **${amount.toLocaleString()} Dogcoin** cho <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} Dogcoin**`);
+            return interaction.reply(`✅ Đã cộng **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
 
         if (interaction.commandName === 'trutien') {
@@ -1004,7 +1004,7 @@ client.on('interactionCreate', async interaction => {
             const amount = interaction.options.getInteger('amount');
             updatePoints(target.id, -amount);
             writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} Dogcoin của ${target.tag}`);
-            return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()} Dogcoin** từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} Dogcoin**`);
+            return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
 
         if (interaction.commandName === 'chuyentien') {
@@ -1019,7 +1019,7 @@ client.on('interactionCreate', async interaction => {
             updatePoints(userId, -amount); 
             updatePoints(receiver.id, amount);
             writeLog('ADMIN', `[CHUYỂN TIỀN] ${interaction.user.tag} → ${receiver.tag} | ${amount.toLocaleString()} Dogcoin`);
-            return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()} Dogcoin** cho <@${receiver.id}>!`).setColor(0x00aeef)] });
+            return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${receiver.id}>!`).setColor(0x00aeef)] });
         }
 
         if (interaction.commandName === 'domin') {
@@ -1053,12 +1053,12 @@ client.on('interactionCreate', async interaction => {
                 
                 let desc = "";
                 if (status === "playing") {
-                    desc = `👤 Người chơi: <@${userId}>\n💣 Số mìn: **${game.totalMines}**\n💰 Mức đặt: **${bet.toLocaleString()} Dogcoin**\n💳 Số dư: **${liveBalance.toLocaleString()} Dogcoin**\n\n💎 Kim cương: **${diamonds}/${maxDiamonds}**\n🔥 Hệ số hiện tại: **x${multi}**\n💵 Đang có: **${currentTotalWin.toLocaleString()} Dogcoin**\n`;
-                    desc += diamonds < maxDiamonds ? `\n👉 Mở ô tiếp theo sẽ đạt: **x${nextMulti}** (*${nextTotalWin.toLocaleString()} Dogcoin*)` : `\nĐã đạt mức tối đa!`;
+                    desc = `👤 Người chơi: <@${userId}>\n💣 Số mìn: **${game.totalMines}**\n💰 Mức đặt: **${bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n💳 Số dư: **${liveBalance.toLocaleString()}** ${DOGCOIN_EMOJI}\n\n${DOGCOIN_EMOJI} Dogcoin đào được: **${diamonds}/${maxDiamonds}**\n🔥 Hệ số hiện tại: **x${multi}**\n💵 Đang có: **${currentTotalWin.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
+                    desc += diamonds < maxDiamonds ? `\n👉 Mở ô tiếp theo sẽ đạt: **x${nextMulti}** (*${nextTotalWin.toLocaleString()}* ${DOGCOIN_EMOJI})` : `\nĐã đạt mức tối đa!`;
                 } else if (status === "won") {
-                    desc = `🎉 **THẮNG RỒI!**\nBạn nhận được **${currentTotalWin.toLocaleString()} Dogcoin** (Hệ số: **x${multi}**)\n💰 Số dư mới: **${liveBalance.toLocaleString()} Dogcoin**`;
+                    desc = `🎉 **THẮNG RỒI!**\nBạn nhận được **${currentTotalWin.toLocaleString()}** ${DOGCOIN_EMOJI} (Hệ số: **x${multi}**)\n💰 Số dư mới: **${liveBalance.toLocaleString()}** ${DOGCOIN_EMOJI}`;
                 } else if (status === "lost") {
-                    desc = `💥 **BÙM!** Trúng mìn rồi!\nBạn mất **${bet.toLocaleString()} Dogcoin**\n💰 Số dư còn lại: **${liveBalance.toLocaleString()} Dogcoin**`;
+                    desc = `💥 **BÙM!** Trúng mìn rồi!\nBạn mất **${bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n💰 Số dư còn lại: **${liveBalance.toLocaleString()}** ${DOGCOIN_EMOJI}`;
                 }
 
                 return new EmbedBuilder()
@@ -1076,7 +1076,7 @@ client.on('interactionCreate', async interaction => {
                     for (let j = 0; j < 5; j++) {
                         const idx = i * 5 + j;
                         const btn = new ButtonBuilder().setCustomId(`m_${idx}`);
-                        if (game.revealed.includes(idx)) btn.setEmoji('💎').setStyle(ButtonStyle.Success).setDisabled(true);
+                        if (game.revealed.includes(idx)) btn.setEmoji(DOGCOIN_EMOJI_ID).setStyle(ButtonStyle.Success).setDisabled(true);
                         else if (showAll && game.mines.includes(idx)) btn.setEmoji('💣').setStyle(ButtonStyle.Danger).setDisabled(true);
                         else btn.setLabel('?').setStyle(ButtonStyle.Secondary).setDisabled(showAll);
                         row.addComponents(btn);
@@ -1087,7 +1087,7 @@ client.on('interactionCreate', async interaction => {
                 for (let j = 0; j < 4; j++) {
                     const idx = 20 + j;
                     const btn = new ButtonBuilder().setCustomId(`m_${idx}`);
-                    if (game.revealed.includes(idx)) btn.setEmoji('💎').setStyle(ButtonStyle.Success).setDisabled(true);
+                    if (game.revealed.includes(idx)) btn.setEmoji(DOGCOIN_EMOJI_ID).setStyle(ButtonStyle.Success).setDisabled(true);
                     else if (showAll && game.mines.includes(idx)) btn.setEmoji('💣').setStyle(ButtonStyle.Danger).setDisabled(true);
                     else btn.setLabel('?').setStyle(ButtonStyle.Secondary).setDisabled(showAll);
                     row5.addComponents(btn);
@@ -1181,7 +1181,7 @@ client.on('interactionCreate', async interaction => {
             bcState.needsUpdate = true;
             await updateBCMessage();
 
-            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
+            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
         }
 
         if (interaction.customId === 'tx_modal_custom') {
@@ -1204,7 +1204,7 @@ client.on('interactionCreate', async interaction => {
             txState.needsUpdate = true;
             await updateTXMessage();
 
-            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
         }
 
         if (interaction.customId === 'rut_modal') {
@@ -1216,7 +1216,7 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ!", ephemeral: true });
             }
             if (userData.points < amt) {
-                return interaction.reply({ content: `❌ Bạn không đủ Dogcoin! Số dư hiện tại: **${userData.points.toLocaleString()} Dogcoin**`, ephemeral: true });
+                return interaction.reply({ content: `❌ Bạn không đủ Dogcoin! Số dư hiện tại: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`, ephemeral: true });
             }
 
             updatePoints(userId, -amt);
@@ -1231,7 +1231,7 @@ client.on('interactionCreate', async interaction => {
             });
 
             writeLog('ADMIN', `[YÊU CẦU RÚT] #${reqId} ${interaction.user.tag} xin rút ${amt.toLocaleString()} Dogcoin | Chờ duyệt`);
-            return interaction.reply({ content: `🏧 Đã gửi yêu cầu rút ${DOGCOIN_EMOJI} **${amt.toLocaleString()} Dogcoin** (mã #${reqId}). Chờ admin vào game đưa Dog Coin thật rồi duyệt trên dashboard.`, ephemeral: true });
+            return interaction.reply({ content: `🏧 Đã gửi yêu cầu rút **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} (mã #${reqId}). Chờ admin vào game đưa Dog Coin thật rồi duyệt trên dashboard.`, ephemeral: true });
         }
     }
 
@@ -1301,7 +1301,7 @@ client.on('interactionCreate', async interaction => {
         bcState.needsUpdate = true; 
         await updateBCMessage();
         
-        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
+        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
     }
 
     if (interaction.customId === 'bc_soicau') {
@@ -1377,7 +1377,7 @@ client.on('interactionCreate', async interaction => {
         txState.needsUpdate = true; 
         await updateTXMessage();
         
-        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
     }
   } catch (e) {
     if (e.code !== 10062) writeLog('SYSTEM', `[LỖI INTERACTION] ${e.message}`);
