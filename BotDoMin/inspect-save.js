@@ -62,9 +62,6 @@ function convertSavToJson(savPath) {
             password: process.env.SFTP_PASS,
         });
 
-        console.log('--- Thư mục gốc SFTP ---');
-        console.log((await sftp.list('/')).map(f => f.name).join(', '));
-
         const saveGamesRoot = 'Pal/Saved/SaveGames/0';
         console.log(`--- ${saveGamesRoot} ---`);
         const worldDirs = await sftp.list(saveGamesRoot);
