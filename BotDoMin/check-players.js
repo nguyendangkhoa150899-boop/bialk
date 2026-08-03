@@ -10,5 +10,6 @@ const { getOnlinePlayers } = require('./palworldBridge');
         console.log(JSON.stringify(players, null, 2));
     } catch (e) {
         console.error('LỖI:', e.message);
+        if (e.cause) console.error('NGUYÊN NHÂN:', e.cause);
     }
 })();
