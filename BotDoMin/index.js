@@ -10,8 +10,10 @@ const { startPanel } = require('./panel');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
-const STARTING_DOGCOIN = 50;
-const DAILY_DOGCOIN = 50;
+const STARTING_DOGCOIN = 20;
+const DAILY_DOGCOIN = 20;
+const DOGCOIN_EMOJI = '<:dogcoin:1533903243028205579>';
+const DOGCOIN_EMOJI_ID = '1533903243028205579';
 
 // --- HỆ THỐNG GHI LOG CHIA FILE ---
 const LOG_SYSTEM = './log_system.txt'; // lỗi, crash, khởi động bot
@@ -72,6 +74,8 @@ setInterval(() => {
     dbCache._minesHistory = minesHistory;
     dbCache._txDashHistory = txDashHistory;
     dbCache._bcDashHistory = bcDashHistory;
+    dbCache._withdrawRequests = withdrawRequests;
+    dbCache._withdrawSeq = withdrawSeq;
     fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
         if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
     });
@@ -150,6 +154,17 @@ if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
 let txDashHistory = Array.isArray(dbCache._txDashHistory) ? dbCache._txDashHistory : [];
 let bcDashHistory = Array.isArray(dbCache._bcDashHistory) ? dbCache._bcDashHistory : [];
 
+// Yêu cầu rút Dogcoin (người chơi bấm nút -> chờ admin duyệt trên dashboard).
+// Trừ Dogcoin NGAY khi tạo yêu cầu (khoá số dư lại, tránh vừa xin rút vừa đem đi cược tiếp).
+// "approve" = admin đã đưa Dog Coin thật trong game, chỉ đánh dấu xong (không trừ thêm).
+// "reject" = hoàn lại Dogcoin đã trừ.
+let withdrawRequests = Array.isArray(dbCache._withdrawRequests) ? dbCache._withdrawRequests : [];
+let withdrawSeq = dbCache._withdrawSeq || 1;
+
+// Kênh riêng để người chơi bấm nút xin rút Dogcoin (giống cơ chế kênh Bầu Cua/Tài Xỉu,
+// nhưng chỉ 1 tin nhắn tĩnh, không có vòng lặp đếm giờ).
+let withdrawState = { channel: null, message: null };
+
 // Tài Xỉu & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
 // (Trước đây gameId random mỗi lần restart -> soi cầu loạn số. Giờ reset gọn gàng.)
 // Lưu ý: chỉ reset soi cầu Discord (txState/bcState.history), KHÔNG đụng lịch sử dashboard.
@@ -192,12 +207,7 @@ async function manageHistory(state, sessionMsgs) {
 // --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
 // ==========================================
 const TOTAL_TILES = 24;
-const RTP = 1.0; 
-
-const CUSTOM_START = {
-    6: 4.0, 
-    8: 6.0   
-};
+const RTP = 1.0;
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -219,26 +229,18 @@ function calculateMulti(diamonds, numMines) {
 }
 
 const getInfo = (diamonds, numMines) => {
-    let mathCurrent = calculateMulti(diamonds === 0 ? 1 : diamonds, numMines);
-    let maxDiamonds = TOTAL_TILES - numMines;
-    let mathNext = diamonds < maxDiamonds ? calculateMulti(diamonds + 1, numMines) : mathCurrent;
-    
-    let boostRatio = 1; 
-    if (CUSTOM_START[numMines]) {
-        let mathStart1 = calculateMulti(1, numMines); 
-        boostRatio = CUSTOM_START[numMines] / mathStart1; 
-    }
+    const maxDiamonds = TOTAL_TILES - numMines;
 
     if (diamonds === 0) {
-        return { 
-            multi: 1, 
-            nextMulti: Math.floor((mathCurrent * boostRatio) * 100) / 100 
+        return {
+            multi: 1,
+            nextMulti: calculateMulti(1, numMines)
         };
     }
-    
-    return { 
-        multi: Math.floor((mathCurrent * boostRatio) * 100) / 100, 
-        nextMulti: Math.floor((mathNext * boostRatio) * 100) / 100 
+
+    return {
+        multi: calculateMulti(diamonds, numMines),
+        nextMulti: diamonds < maxDiamonds ? calculateMulti(diamonds + 1, numMines) : calculateMulti(diamonds, numMines)
     };
 };
 
@@ -335,6 +337,12 @@ client.once('ready', async (c) => {
             startTX: async (channelId) => { const ch = await client.channels.fetch(channelId); await startLonnho(ch); return ch.name; },
             stopTX: () => stopLonnho(),
             deleteChat: async (channelId) => { const ch = await client.channels.fetch(channelId); return await deleteBotChat(ch); },
+            getWithdraw: () => withdrawState,
+            startWithdraw: async (channelId) => { const ch = await client.channels.fetch(channelId); await startWithdraw(ch); return ch.name; },
+            stopWithdraw: () => stopWithdraw(),
+            getWithdrawRequests: () => withdrawRequests,
+            approveWithdraw,
+            rejectWithdraw,
         });
         writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 3001}`);
     } catch (e) {
@@ -402,10 +410,10 @@ function getBCMessageData(customStatus = null) {
     );
 
     const amountBets = [
-        { id: '100', label: '100' },
-        { id: '200', label: '200' },
-        { id: '500', label: '500' },
-        { id: '1000', label: '1000' }
+        { id: '10', label: '10' },
+        { id: '20', label: '20' },
+        { id: '50', label: '50' },
+        { id: '100', label: '100' }
     ];
     const amountRows = amountBets.map(v => 
         new ButtonBuilder().setCustomId(`bc_a_${v.id}`).setLabel(v.label)
@@ -635,7 +643,7 @@ function getTXMessageData(customStatus = null) {
     );
 
     const amountRow1 = new ActionRowBuilder().addComponents(
-        ['100', '200', '500', '1000'].map(amt =>
+        ['10', '20', '50', '100'].map(amt =>
             new ButtonBuilder().setCustomId(`tx_a_${amt}`).setLabel(amt).setStyle(ButtonStyle.Primary).setDisabled(txState.status !== 'betting')
         )
     );
@@ -888,6 +896,55 @@ function stopLonnho() {
     txState.status = 'stopped';
 }
 
+// --- UI RÚT DOGCOIN ---
+function getWithdrawMessageData() {
+    const embed = new EmbedBuilder()
+        .setTitle(`${DOGCOIN_EMOJI} RÚT DOGCOIN`)
+        .setColor(0xf1c40f)
+        .setDescription(
+            `Bấm nút bên dưới để gửi yêu cầu rút ${DOGCOIN_EMOJI} **Dogcoin** trong ví Discord ra Dog Coin thật trong game.\n\n` +
+            '• Số Dogcoin sẽ bị **trừ ngay** khi gửi yêu cầu (khoá lại, không cược được nữa).\n' +
+            '• Admin sẽ vào game đưa Dog Coin thật cho bạn rồi duyệt yêu cầu.\n' +
+            '• Nếu yêu cầu bị từ chối, số Dogcoin sẽ được hoàn lại đầy đủ.'
+        );
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('rut_open').setLabel('Rút Dogcoin').setEmoji(DOGCOIN_EMOJI_ID).setStyle(ButtonStyle.Primary)
+    );
+    return { embeds: [embed], components: [row] };
+}
+
+async function startWithdraw(channel) {
+    if (withdrawState.message) await withdrawState.message.delete().catch(() => {});
+    withdrawState.channel = channel;
+    withdrawState.message = await channel.send(getWithdrawMessageData());
+    dbCache._withdrawChannelId = channel.id;
+}
+
+function stopWithdraw() {
+    if (withdrawState.message) withdrawState.message.delete().catch(() => {});
+    withdrawState.channel = null;
+    withdrawState.message = null;
+}
+
+// admin đã đưa Dog Coin thật trong game -> chỉ đánh dấu xong, Dogcoin đã trừ từ lúc tạo yêu cầu.
+function approveWithdraw(id) {
+    const req = withdrawRequests.find(r => r.id === id);
+    if (!req || req.status !== 'pending') return false;
+    req.status = 'approved';
+    writeLog('ADMIN', `[DUYỆT RÚT] #${id} ${req.username} - đã đưa ${req.amount.toLocaleString()} Dog Coin thật trong game`);
+    return true;
+}
+
+// admin từ chối -> hoàn lại Dogcoin đã trừ lúc tạo yêu cầu.
+function rejectWithdraw(id) {
+    const req = withdrawRequests.find(r => r.id === id);
+    if (!req || req.status !== 'pending') return false;
+    req.status = 'rejected';
+    updatePoints(req.userId, req.amount);
+    writeLog('ADMIN', `[TỪ CHỐI RÚT] #${id} ${req.username} - đã hoàn lại ${req.amount.toLocaleString()} Dogcoin`);
+    return true;
+}
+
 async function deleteBotChat(channel) {
     const messages = await channel.messages.fetch({ limit: 100 });
     const botMessages = messages.filter(m => m.author.id === client.user.id);
@@ -921,7 +978,7 @@ client.on('interactionCreate', async interaction => {
             updatePoints(userId, DAILY_DOGCOIN);
             userData.lastDaily = now;
             writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${DAILY_DOGCOIN.toLocaleString()} Dogcoin**. Số dư mới: **${userData.points.toLocaleString()} Dogcoin**`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được ${DOGCOIN_EMOJI} **${DAILY_DOGCOIN.toLocaleString()} Dogcoin**. Số dư mới: ${DOGCOIN_EMOJI} **${userData.points.toLocaleString()} Dogcoin**`);
         }
 
         if (interaction.commandName === 'sodu') {
@@ -929,7 +986,7 @@ client.on('interactionCreate', async interaction => {
             const embed = new EmbedBuilder()
                 .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
                 .setTitle("💳 VÍ DOGCOIN CỦA BẠN")
-                .setDescription(`Số dư hiện tại: **${points.toLocaleString()} Dogcoin**`)
+                .setDescription(`Số dư hiện tại: ${DOGCOIN_EMOJI} **${points.toLocaleString()} Dogcoin**`)
                 .setColor(0x00ff00);
             return interaction.reply({ embeds: [embed] });
         }
@@ -1149,10 +1206,55 @@ client.on('interactionCreate', async interaction => {
 
             return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
         }
+
+        if (interaction.customId === 'rut_modal') {
+            const amountStr = interaction.fields.getTextInputValue('rut_input_amount');
+            const amt = parseInt(amountStr);
+            const userData = getUserData(userId);
+
+            if (isNaN(amt) || amt <= 0) {
+                return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ!", ephemeral: true });
+            }
+            if (userData.points < amt) {
+                return interaction.reply({ content: `❌ Bạn không đủ Dogcoin! Số dư hiện tại: **${userData.points.toLocaleString()} Dogcoin**`, ephemeral: true });
+            }
+
+            updatePoints(userId, -amt);
+            const reqId = withdrawSeq++;
+            withdrawRequests.unshift({
+                id: reqId,
+                userId,
+                username: interaction.user.username,
+                amount: amt,
+                time: new Date().toLocaleString('vi-VN'),
+                status: 'pending',
+            });
+
+            writeLog('ADMIN', `[YÊU CẦU RÚT] #${reqId} ${interaction.user.tag} xin rút ${amt.toLocaleString()} Dogcoin | Chờ duyệt`);
+            return interaction.reply({ content: `🏧 Đã gửi yêu cầu rút ${DOGCOIN_EMOJI} **${amt.toLocaleString()} Dogcoin** (mã #${reqId}). Chờ admin vào game đưa Dog Coin thật rồi duyệt trên dashboard.`, ephemeral: true });
+        }
     }
 
     if (!interaction.isButton()) return;
-    
+
+    // ======== NÚT RÚT DOGCOIN ========
+    if (interaction.customId === 'rut_open') {
+        const modal = new ModalBuilder()
+            .setCustomId('rut_modal')
+            .setTitle('Rút Dogcoin');
+
+        const amountInput = new TextInputBuilder()
+            .setCustomId('rut_input_amount')
+            .setLabel(`Số dư hiện tại: ${getUserData(userId).points.toLocaleString()} Dogcoin`)
+            .setPlaceholder('Ví dụ: 20')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+        await interaction.showModal(modal);
+        return;
+    }
+
     // ======== NÚT BẦU CUA ========
     if (interaction.customId.startsWith('bc_m_')) {
         const mascotId = interaction.customId.split('_')[2];
@@ -1315,6 +1417,8 @@ function flushAndExit(signal) {
         dbCache._minesHistory = minesHistory;
         dbCache._txDashHistory = txDashHistory;
         dbCache._bcDashHistory = bcDashHistory;
+        dbCache._withdrawRequests = withdrawRequests;
+        dbCache._withdrawSeq = withdrawSeq;
         fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
         writeLog('SYSTEM', `[SHUTDOWN] ${signal} - đã lưu database trước khi thoát`);
     } catch (e) {

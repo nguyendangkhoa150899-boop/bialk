@@ -45,6 +45,7 @@ function startPanel(ctx) {
         const tx = ctx.getTX();
         const bc = ctx.getBC();
         const db = ctx.getDb();
+        const wd = ctx.getWithdraw ? ctx.getWithdraw() : {};
         return {
             tx: {
                 gameId: tx.gameId,
@@ -65,6 +66,11 @@ function startPanel(ctx) {
                 channelId: (bc.channel && bc.channel.id) || db._bcChannelId || '',
             },
             forcedMines: ctx.getForcedMines(),
+            withdraw: {
+                live: !!wd.message,
+                channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
+            },
+            withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
             mascots: ctx.mascots.map(m => ({ id: m.id, name: m.name, emoji: m.emoji })),
             txHistory: (ctx.getTXDash ? ctx.getTXDash() : []),
@@ -237,6 +243,32 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Cộng ${amount} cho ${uid}`);
                     return sendJSON(res, 200, { ok: true });
                 }
+                // ---- RÚT DOGCOIN ----
+                if (path === '/api/withdraw/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    try {
+                        const name = await ctx.startWithdraw(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo kênh Rút Dogcoin tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                if (path === '/api/withdraw/stop') {
+                    ctx.stopWithdraw();
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng kênh Rút Dogcoin`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/withdraw/approve') {
+                    const id = parseInt(body.id);
+                    if (!ctx.approveWithdraw(id)) return sendJSON(res, 400, { ok: false, error: 'Yêu cầu không tồn tại hoặc đã xử lý' });
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/withdraw/reject') {
+                    const id = parseInt(body.id);
+                    if (!ctx.rejectWithdraw(id)) return sendJSON(res, 400, { ok: false, error: 'Yêu cầu không tồn tại hoặc đã xử lý' });
+                    return sendJSON(res, 200, { ok: true });
+                }
+
                 if (path === '/api/points/subtract') {
                     const uid = String(body.userId || '').trim();
                     const amount = parseInt(body.amount);
@@ -380,6 +412,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="mine" onclick="tab('mine')">💎 Dò Mìn</button>
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
+      <button data-tab="withdraw" onclick="tab('withdraw')">🏧 Rút Dogcoin<span id="wdBadge" class="hidden"></span></button>
     </div>
 
     <!-- TÀI XỈU -->
@@ -499,6 +532,29 @@ const HTML = `<!DOCTYPE html>
     </div>
 
     <!-- NGƯỜI CHƠI -->
+    <!-- RÚT DOGCOIN -->
+    <div id="tab-withdraw" class="hidden">
+      <div class="card">
+        <h3>🎛️ Kênh Rút Dogcoin</h3>
+        <label>Channel ID (kênh đăng nút rút)</label>
+        <input id="wdChannel" placeholder="vd: 123456789012345678">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="wdStart()">▶️ Bật / Tạo bảng rút</button>
+          <button class="btn-red" onclick="wdStop()">⏹️ Tắt</button>
+        </div>
+        <div class="note">Bot đăng 1 tin nhắn có nút <b>🏧 Rút Dogcoin</b> trong kênh. Người chơi bấm nút → nhập số → Dogcoin bị trừ ngay và yêu cầu hiện ở danh sách dưới chờ duyệt.</div>
+      </div>
+      <div class="card">
+        <h3>📋 Yêu cầu chờ duyệt</h3>
+        <div class="note">✅ Duyệt = bạn ĐÃ vào game đưa Dog Coin thật cho người chơi (Dogcoin đã trừ sẵn, không trừ thêm). ❌ Từ chối = hoàn lại Dogcoin cho họ.</div>
+        <div id="wdPending"></div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử đã xử lý</h3>
+        <div id="wdDone" class="hist"></div>
+      </div>
+    </div>
+
     <div id="tab-user" class="hidden">
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
@@ -583,7 +639,7 @@ function showApp(){
 }
 
 function tab(t){
-  ['tx','bc','mine','user'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','user','withdraw'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
 }
 
@@ -734,6 +790,36 @@ function renderHistories(){
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');refresh();});}
 function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');refresh();}).catch(()=>toast('❌ Lỗi'));}
+
+function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng rút ở #'+j.name);refresh();});}
+async function wdStop(){if(!await uiConfirm('Tắt bảng Rút Dogcoin?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
+async function wdApprove(id){if(!await uiConfirm('Xác nhận ĐÃ đưa Dog Coin thật trong game cho người này?','✅ Đã đưa, duyệt','btn-green'))return;api('/api/withdraw/approve',{id}).then(()=>{toast('✅ Đã duyệt');refresh();});}
+async function wdReject(id){if(!await uiConfirm('Từ chối và HOÀN LẠI Dogcoin cho người chơi?','❌ Từ chối','btn-red'))return;api('/api/withdraw/reject',{id}).then(()=>{toast('↩️ Đã từ chối + hoàn Dogcoin');refresh();});}
+
+function renderWithdraw(){
+  if(!STATE)return;
+  const reqs=STATE.withdrawRequests||[];
+  const pending=reqs.filter(r=>r.status==='pending');
+  const done=reqs.filter(r=>r.status!=='pending');
+  // badge số yêu cầu chờ trên tab
+  const badge=document.getElementById('wdBadge');
+  if(pending.length){badge.textContent=' 🔴'+pending.length;badge.classList.remove('hidden');}
+  else badge.classList.add('hidden');
+  // danh sách chờ duyệt
+  const p=document.getElementById('wdPending');
+  p.innerHTML=pending.length?pending.map(r=>
+    '<div class="item"><span><b>#'+r.id+'</b> '+esc(r.username)+' — <b>'+r.amount.toLocaleString()+' Dogcoin</b> <span class="muted" style="font-size:12px">'+esc(r.time||'')+'</span></span>'+
+    '<span><button class="mini btn-green" onclick="wdApprove('+r.id+')">✅ Duyệt</button> <button class="mini btn-red" onclick="wdReject('+r.id+')">❌ Từ chối</button></span></div>'
+  ).join(''):'<div class="empty">Không có yêu cầu nào đang chờ.</div>';
+  // lịch sử đã xử lý
+  const d=document.getElementById('wdDone');
+  d.innerHTML=done.length?done.slice(0,30).map(r=>
+    '<div class="h"><div class="top"><span>#'+r.id+' '+esc(r.username)+' — '+r.amount.toLocaleString()+' Dogcoin</span><span class="t">'+esc(r.time||'')+'</span></div>'+
+    '<div class="'+(r.status==='approved'?'win':'lose')+'">'+(r.status==='approved'?'✅ Đã duyệt (đã đưa Dog Coin trong game)':'❌ Đã từ chối (đã hoàn Dogcoin)')+'</div></div>'
+  ).join(''):'<div class="empty">Chưa xử lý yêu cầu nào.</div>';
+  // prefill channel id
+  const wc=document.getElementById('wdChannel'); if(wc&&!wc.value&&STATE.withdraw&&STATE.withdraw.channelId) wc.value=STATE.withdraw.channelId;
+}
 async function setAll(){const v=document.getElementById('setAllAmount').value;if(v==='')return toast('Nhập số');if(!await uiConfirm('Set TẤT CẢ người chơi về '+(+v).toLocaleString()+' điểm?','Set tất cả','btn-red'))return;api('/api/points/setall',{amount:+v}).then(j=>{toast('✅ Đã set '+j.count+' người');refresh();});}
 
 function fmtTime(target){
@@ -790,6 +876,8 @@ async function refresh(){
   renderHistories();
   // kênh đã lưu
   renderSavedChannels();
+  // yêu cầu rút Dogcoin
+  renderWithdraw();
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
 
