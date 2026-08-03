@@ -115,12 +115,12 @@ function startPanel(ctx) {
                         return sendJSON(res, 400, { ok: false, error: 'Cần 3 số xúc xắc 1-6, vd: 6,5,4' });
                     }
                     ctx.getTX().forcedResult = parts.join(',');
-                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Ép kết quả Lớn Nhỏ ván tới: ${parts.join(',')}`);
+                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Ép kết quả Tài Xỉu ván tới: ${parts.join(',')}`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 if (path === '/api/tx/clear') {
                     ctx.getTX().forcedResult = null;
-                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Lớn Nhỏ`);
+                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Tài Xỉu`);
                     return sendJSON(res, 200, { ok: true });
                 }
 
@@ -162,13 +162,13 @@ function startPanel(ctx) {
                     if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
                     try {
                         const name = await ctx.startTX(channelId);
-                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Lớn Nhỏ tại #${name}`);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Tài Xỉu tại #${name}`);
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
                 }
                 if (path === '/api/tx/stop') {
                     ctx.stopTX();
-                    ctx.writeLog('ADMIN', `[PANEL] Dừng Lớn Nhỏ`);
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng Tài Xỉu`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
@@ -368,7 +368,7 @@ const HTML = `<!DOCTYPE html>
 
   <div class="wrap">
     <div class="tabs">
-      <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Lớn Nhỏ</button>
+      <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="mine" onclick="tab('mine')">💎 Dò Mìn</button>
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
@@ -377,7 +377,7 @@ const HTML = `<!DOCTYPE html>
     <!-- TÀI XỈU -->
     <div id="tab-tx">
       <div class="card">
-        <h3>🎛️ Điều khiển bàn Lớn Nhỏ</h3>
+        <h3>🎛️ Điều khiển bàn Tài Xỉu</h3>
         <label>Channel ID (kênh đăng bàn chơi)</label>
         <input id="txChannel" placeholder="vd: 123456789012345678">
         <div class="chips" id="txSaved"></div>
@@ -394,7 +394,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> (Cài đặt Discord → Advanced) → chuột phải kênh → <b>Copy Channel ID</b>. "Bật" sẽ tạo bàn mới ngay trong kênh đó.</div>
       </div>
       <div class="card">
-        <h2>🎲 Lớn Nhỏ (Tài Xỉu)</h2>
+        <h2>🎲 Tài Xỉu</h2>
         <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
         <div class="row">
           <div><label>Xúc xắc 1</label><select id="d1"></select></div>
@@ -415,7 +415,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 xúc xắc này. Nên ép trong lúc trạng thái còn <b>betting</b>.</div>
       </div>
       <div class="card">
-        <h3>📜 Lịch sử Lớn Nhỏ</h3>
+        <h3>📜 Lịch sử Tài Xỉu</h3>
         <div id="txHist" class="hist"></div>
       </div>
     </div>
@@ -601,11 +601,11 @@ function setDice(a,b,c){document.getElementById('d1').value=a;document.getElemen
 function txPreview(){
   const a=+document.getElementById('d1').value,b=+document.getElementById('d2').value,c=+document.getElementById('d3').value;
   const sum=a+b+c;const tai=sum>=11;const chan=sum%2===0;
-  document.getElementById('txPrev').textContent='Tổng '+sum+' → '+(tai?'11-18 🟢':'3-10 🔴')+' | '+(chan?'CHẴN 🔵':'LẺ 🟣');
+  document.getElementById('txPrev').textContent='Tổng '+sum+' → '+(tai?'TÀI 🟢':'XỈU 🔴')+' | '+(chan?'CHẴN 🔵':'LẺ 🟣');
 }
 function txForce(){
   const v=[document.getElementById('d1').value,document.getElementById('d2').value,document.getElementById('d3').value].join(',');
-  api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Lớn Nhỏ: '+v);refresh();});
+  api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Tài Xỉu: '+v);refresh();});
 }
 
 function mascotOptions(sel){
@@ -634,7 +634,7 @@ function bcForce(){
 }
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
-async function txStop(){if(!await uiConfirm('Tắt bàn Lớn Nhỏ?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Lớn Nhỏ');refresh();});}
+async function txStop(){if(!await uiConfirm('Tắt bàn Tài Xỉu?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Tài Xỉu');refresh();});}
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
 async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
@@ -697,7 +697,7 @@ function padId(n){return String(n).padStart(5,'0');}
 
 function renderHistories(){
   if(!STATE)return;
-  // Lớn Nhỏ
+  // Tài Xỉu
   const tx=STATE.txHistory||[];
   document.getElementById('txHist').innerHTML = tx.length? tx.map(g=>{
     const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' ('+b.choice+')').join(' • ')||'không ai đặt';
@@ -719,7 +719,7 @@ function renderHistories(){
     const win=g.amount>=0;
     return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">💣 '+g.mines+' mìn · 💎 '+(g.diamonds||0)+' kim cương · cược '+Number(g.bet).toLocaleString()+'</div>'+
-      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' point</div></div>';
+      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
 }
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');refresh();});}

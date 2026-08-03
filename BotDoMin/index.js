@@ -10,6 +10,8 @@ const { startPanel } = require('./panel');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
+const STARTING_DOGCOIN = 100;
+const DAILY_DOGCOIN = 200;
 
 // --- HỆ THỐNG GHI LOG CHIA FILE ---
 const LOG_SYSTEM = './log_system.txt'; // lỗi, crash, khởi động bot
@@ -77,7 +79,7 @@ setInterval(() => {
 
 function getUserData(userId) {
     if (!dbCache[userId]) {
-        dbCache[userId] = { points: 50000000000, lastDaily: 0 };
+        dbCache[userId] = { points: STARTING_DOGCOIN, lastDaily: 0 };
     } else if (typeof dbCache[userId] === 'number') {
         dbCache[userId] = { points: dbCache[userId], lastDaily: 0 };
     }
@@ -117,7 +119,7 @@ let bcState = {
 };
 let userBCSelections = {};
 
-// --- CONFIG TÀI XỈU (LỚN NHỎ) ---
+// --- CONFIG TÀI XỈU ---
 let txState = {
     status: 'betting',
     timeLeft: 60,
@@ -148,7 +150,7 @@ if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
 let txDashHistory = Array.isArray(dbCache._txDashHistory) ? dbCache._txDashHistory : [];
 let bcDashHistory = Array.isArray(dbCache._bcDashHistory) ? dbCache._bcDashHistory : [];
 
-// Lớn Nhỏ & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
+// Tài Xỉu & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
 // (Trước đây gameId random mỗi lần restart -> soi cầu loạn số. Giờ reset gọn gàng.)
 // Lưu ý: chỉ reset soi cầu Discord (txState/bcState.history), KHÔNG đụng lịch sử dashboard.
 bcState.gameId = 0;
@@ -167,8 +169,8 @@ const DICE_EMOJIS = [
 ];
 
 const TX_CHOICES = {
-    'tai': { name: '11-18' },
-    'xiu': { name: '3-10' },
+    'tai': { name: 'TÀI' },
+    'xiu': { name: 'XỈU' },
     'chan': { name: 'CHẴN' },
     'le': { name: 'LẺ' }
 };
@@ -279,22 +281,22 @@ const commands = [
         .addSubcommand(sub => sub.setName('all').setDescription('Cược toàn bộ số dư')
             .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
         )
-        .addSubcommand(sub => sub.setName('point').setDescription('Tùy chọn số point cược')
-            .addIntegerOption(opt => opt.setName('cuoc').setDescription('Số point đặt').setRequired(true))
+        .addSubcommand(sub => sub.setName('point').setDescription('Tùy chọn số Dogcoin cược')
+            .addIntegerOption(opt => opt.setName('cuoc').setDescription('Số Dogcoin đặt').setRequired(true))
             .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
         ),
     new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
-    new SlashCommandBuilder().setName('diemdanh').setDescription('Nhận 50.000.000.000 point mỗi 24 giờ'),
-    new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển point')
-        .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận point').setRequired(true))
-        .addIntegerOption(opt => opt.setName('sotien').setDescription('Số point muốn chuyển').setRequired(true)),
-    new SlashCommandBuilder().setName('addtien').setDescription('Admin cộng point')
+    new SlashCommandBuilder().setName('diemdanh').setDescription(`Nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin mỗi 24 giờ`),
+    new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển Dogcoin')
+        .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận Dogcoin').setRequired(true))
+        .addIntegerOption(opt => opt.setName('sotien').setDescription('Số Dogcoin muốn chuyển').setRequired(true)),
+    new SlashCommandBuilder().setName('addtien').setDescription('Admin cộng Dogcoin')
         .addUserOption(opt => opt.setName('user').setDescription('Người nhận').setRequired(true))
-        .addIntegerOption(opt => opt.setName('amount').setDescription('Số point cộng').setRequired(true))
+        .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin cộng').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ point')
+    new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ Dogcoin')
         .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
-        .addIntegerOption(opt => opt.setName('amount').setDescription('Số point trừ').setRequired(true))
+        .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin trừ').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 ].map(c => c.toJSON());
 
@@ -375,13 +377,13 @@ function getBCMessageData(customStatus = null) {
             byUser[k].amount += b.amount;
         });
         desc += Object.values(byUser)
-            .map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} point**`)
+            .map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()} Dogcoin**`)
             .join('\n');
     } else {
         desc += "*Chưa có ai đặt*";
     }
     desc = desc.trimEnd();
-    desc += `\n\n${customStatus || "👉 Chọn con vật rồi chọn số point đặt!"}`;
+    desc += `\n\n${customStatus || "👉 Chọn con vật rồi chọn số Dogcoin đặt!"}`;
 
     const embed = new EmbedBuilder()
         .setTitle(`🎲 BẦU CUA LIVE - Phiên #${padId(bcState.gameId)}`)
@@ -538,7 +540,7 @@ async function finishBCGame(gameId, bets) {
         }
     });
     const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
-    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} point**`).join('\n');
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} Dogcoin**`).join('\n');
 
     const resultNames = res.map(r => r.name).join(', ');
     writeLog('RESULT', `[KẾT QUẢ BẦU CUA] Phiên #${gameId}: ${resultNames}`);
@@ -584,7 +586,7 @@ async function finishBCGame(gameId, bets) {
     return sentMsg;
 }
 
-// --- UI TÀI XỈU (LỚN NHỎ) ---
+// --- UI TÀI XỈU ---
 function getTXMessageData(customStatus = null) {
     const lockTime = txState.targetTime - 5;
 
@@ -611,22 +613,22 @@ function getTXMessageData(customStatus = null) {
                 if (!byUser[b.userId]) byUser[b.userId] = { username: b.username, amount: 0 };
                 byUser[b.userId].amount += b.amount;
             });
-            Object.values(byUser).forEach(u => desc += `• **${u.username}**: ${u.amount.toLocaleString()} point\n`);
+            Object.values(byUser).forEach(u => desc += `• **${u.username}**: ${u.amount.toLocaleString()} Dogcoin\n`);
         }
     });
     if (!hasBets) desc += "*Chưa có ai đặt*";
 
     desc = desc.trimEnd();
-    desc += `\n\n${customStatus || "👉 Chọn cửa cược rồi chọn số point đặt!"}`;
+    desc += `\n\n${customStatus || "👉 Chọn cửa cược rồi chọn số Dogcoin đặt!"}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🎲 LỚN NHỎ LIVE - Game #${padId(txState.gameId)}`)
+        .setTitle(`🎲 TÀI XỈU LIVE - Game #${padId(txState.gameId)}`)
         .setColor(txState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
         .setDescription(desc);
 
     const choiceRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('tx_c_xiu').setLabel('3-10').setEmoji('🔴').setStyle(txState.activeChoice === 'xiu' ? ButtonStyle.Danger : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
-        new ButtonBuilder().setCustomId('tx_c_tai').setLabel('11-18').setEmoji('🟢').setStyle(txState.activeChoice === 'tai' ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('tx_c_xiu').setLabel('XỈU').setEmoji('🔴').setStyle(txState.activeChoice === 'xiu' ? ButtonStyle.Danger : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('tx_c_tai').setLabel('TÀI').setEmoji('🟢').setStyle(txState.activeChoice === 'tai' ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
         new ButtonBuilder().setCustomId('tx_c_chan').setLabel('CHẴN').setEmoji('🔵').setStyle(txState.activeChoice === 'chan' ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
         new ButtonBuilder().setCustomId('tx_c_le').setLabel('LẺ').setEmoji('🟣').setStyle(txState.activeChoice === 'le' ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(txState.status !== 'betting'),
         new ButtonBuilder().setCustomId('tx_soicau').setLabel('Soi Cầu').setEmoji('🕵️').setStyle(ButtonStyle.Secondary)
@@ -652,7 +654,7 @@ async function updateTXMessage(customStatus = null) {
     await txState.message.edit(data).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE TX BẢNG CƯỢC] ${e.message}`); });
 }
 
-// --- VÒNG LẶP TÀI XỈU (LỚN NHỎ) ---
+// --- VÒNG LẶP TÀI XỈU ---
 function runTaiXiuLoop() {
     setInterval(async () => {
         // Auto-recover nếu message bị mất do timeout mạng
@@ -769,11 +771,11 @@ async function finishTXGame(gameId, bets) {
         }
     });
     const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
-    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} point**`).join('\n');
+    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()} Dogcoin**`).join('\n');
 
-    const txIcon = isTai ? '11-18 🔺' : '3-10 🔻';
+    const txIcon = isTai ? 'TÀI 🔺' : 'XỈU 🔻';
     const clIcon = isChan ? 'CHẴN 🔵' : 'LẺ 🟣';
-    const txLogText = isTai ? '11-18' : '3-10';
+    const txLogText = isTai ? 'TÀI' : 'XỈU';
     const clLogText = isChan ? 'CHẴN' : 'LẺ';
     writeLog('RESULT', `[KẾT QUẢ TÀI XỈU] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${txLogText} | ${clLogText})`);
 
@@ -783,7 +785,7 @@ async function finishTXGame(gameId, bets) {
     }
 
     const resEmb = new EmbedBuilder()
-        .setTitle(`🎲 KẾT QUẢ SÒNG LỚN NHỎ`)
+        .setTitle(`🎲 KẾT QUẢ SÒNG TÀI XỈU`)
         .setColor(0x2b2d31)
         .setDescription(`**Game #${padId(gameId)}**\n\n` +
                         `🎲 **Xúc xắc:** ${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]}\n` +
@@ -810,7 +812,7 @@ async function finishTXGame(gameId, bets) {
         gameId,
         dice: [d1, d2, d3],
         sum,
-        tx: isTai ? '11-18' : '3-10',
+        tx: isTai ? 'TÀI' : 'XỈU',
         cl: isChan ? 'CHẴN' : 'LẺ',
         bets: Object.values(betAgg),
         winners,
@@ -916,18 +918,18 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: `⏳ Bạn đã điểm danh rồi! Hãy quay lại sau **${hours} giờ ${mins} phút**.`, ephemeral: true });
             }
 
-            updatePoints(userId, 50000000000);
-            userData.lastDaily = now; 
-            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận 50.000.000.000 point | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **50.000.000.000 point**. Số dư mới: **${userData.points.toLocaleString()} point**`);
+            updatePoints(userId, DAILY_DOGCOIN);
+            userData.lastDaily = now;
+            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${getUserData(userId).points.toLocaleString()}`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${DAILY_DOGCOIN.toLocaleString()} Dogcoin**. Số dư mới: **${userData.points.toLocaleString()} Dogcoin**`);
         }
 
         if (interaction.commandName === 'sodu') {
             const points = getUserData(userId).points;
             const embed = new EmbedBuilder()
                 .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
-                .setTitle("💳 VÍ POINT CỦA BẠN")
-                .setDescription(`Số dư hiện tại: **${points.toLocaleString()} point**`)
+                .setTitle("💳 VÍ DOGCOIN CỦA BẠN")
+                .setDescription(`Số dư hiện tại: **${points.toLocaleString()} Dogcoin**`)
                 .setColor(0x00ff00);
             return interaction.reply({ embeds: [embed] });
         }
@@ -936,31 +938,31 @@ client.on('interactionCreate', async interaction => {
             const target = interaction.options.getUser('user');
             const amount = interaction.options.getInteger('amount');
             updatePoints(target.id, amount);
-            writeLog('ADMIN', `[CỘNG TIỀN] Admin ${interaction.user.tag} cộng ${amount} point cho ${target.tag}`);
-            return interaction.reply(`✅ Đã cộng **${amount.toLocaleString()} point** cho <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} point**`);
+            writeLog('ADMIN', `[CỘNG TIỀN] Admin ${interaction.user.tag} cộng ${amount} Dogcoin cho ${target.tag}`);
+            return interaction.reply(`✅ Đã cộng **${amount.toLocaleString()} Dogcoin** cho <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} Dogcoin**`);
         }
 
         if (interaction.commandName === 'trutien') {
             const target = interaction.options.getUser('user');
             const amount = interaction.options.getInteger('amount');
             updatePoints(target.id, -amount);
-            writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} point của ${target.tag}`);
-            return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()} point** từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} point**`);
+            writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} Dogcoin của ${target.tag}`);
+            return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()} Dogcoin** từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()} Dogcoin**`);
         }
 
         if (interaction.commandName === 'chuyentien') {
             const receiver = interaction.options.getUser('nguoi');
             const amount = interaction.options.getInteger('sotien');
             if (receiver.id === userId) return interaction.reply({ content: "❌ Không thể tự chuyển cho mình!", ephemeral: true });
-            if (amount <= 0) return interaction.reply({ content: "❌ Số point không hợp lệ!", ephemeral: true });
+            if (amount <= 0) return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ!", ephemeral: true });
             
             const senderData = getUserData(userId);
-            if (senderData.points < amount) return interaction.reply({ content: `❌ Bạn không đủ point!`, ephemeral: true });
+            if (senderData.points < amount) return interaction.reply({ content: `❌ Bạn không đủ Dogcoin!`, ephemeral: true });
             
             updatePoints(userId, -amount); 
             updatePoints(receiver.id, amount);
-            writeLog('ADMIN', `[CHUYỂN TIỀN] ${interaction.user.tag} → ${receiver.tag} | ${amount.toLocaleString()} point`);
-            return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()} point** cho <@${receiver.id}>!`).setColor(0x00aeef)] });
+            writeLog('ADMIN', `[CHUYỂN TIỀN] ${interaction.user.tag} → ${receiver.tag} | ${amount.toLocaleString()} Dogcoin`);
+            return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()} Dogcoin** cho <@${receiver.id}>!`).setColor(0x00aeef)] });
         }
 
         if (interaction.commandName === 'domin') {
@@ -977,7 +979,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (bet <= 0) return interaction.reply({ content: "❌ Đặt ít nhất 1 điểm!", ephemeral: true });
-            if (userData.points < bet) return interaction.reply({ content: `❌ Bạn không đủ point!`, ephemeral: true });
+            if (userData.points < bet) return interaction.reply({ content: `❌ Bạn không đủ Dogcoin!`, ephemeral: true });
 
             await interaction.deferReply();
 
@@ -994,12 +996,12 @@ client.on('interactionCreate', async interaction => {
                 
                 let desc = "";
                 if (status === "playing") {
-                    desc = `👤 Người chơi: <@${userId}>\n💣 Số mìn: **${game.totalMines}**\n💰 Mức đặt: **${bet.toLocaleString()} point**\n💳 Số dư: **${liveBalance.toLocaleString()} point**\n\n💎 Kim cương: **${diamonds}/${maxDiamonds}**\n🔥 Hệ số hiện tại: **x${multi}**\n💵 Đang có: **${currentTotalWin.toLocaleString()} point**\n`;
-                    desc += diamonds < maxDiamonds ? `\n👉 Mở ô tiếp theo sẽ đạt: **x${nextMulti}** (*${nextTotalWin.toLocaleString()} point*)` : `\nĐã đạt mức tối đa!`;
+                    desc = `👤 Người chơi: <@${userId}>\n💣 Số mìn: **${game.totalMines}**\n💰 Mức đặt: **${bet.toLocaleString()} Dogcoin**\n💳 Số dư: **${liveBalance.toLocaleString()} Dogcoin**\n\n💎 Kim cương: **${diamonds}/${maxDiamonds}**\n🔥 Hệ số hiện tại: **x${multi}**\n💵 Đang có: **${currentTotalWin.toLocaleString()} Dogcoin**\n`;
+                    desc += diamonds < maxDiamonds ? `\n👉 Mở ô tiếp theo sẽ đạt: **x${nextMulti}** (*${nextTotalWin.toLocaleString()} Dogcoin*)` : `\nĐã đạt mức tối đa!`;
                 } else if (status === "won") {
-                    desc = `🎉 **THẮNG RỒI!**\nBạn nhận được **${currentTotalWin.toLocaleString()} point** (Hệ số: **x${multi}**)\n💰 Số dư mới: **${liveBalance.toLocaleString()} point**`;
+                    desc = `🎉 **THẮNG RỒI!**\nBạn nhận được **${currentTotalWin.toLocaleString()} Dogcoin** (Hệ số: **x${multi}**)\n💰 Số dư mới: **${liveBalance.toLocaleString()} Dogcoin**`;
                 } else if (status === "lost") {
-                    desc = `💥 **BÙM!** Trúng mìn rồi!\nBạn mất **${bet.toLocaleString()} point**\n💰 Số dư còn lại: **${liveBalance.toLocaleString()} point**`;
+                    desc = `💥 **BÙM!** Trúng mìn rồi!\nBạn mất **${bet.toLocaleString()} Dogcoin**\n💰 Số dư còn lại: **${liveBalance.toLocaleString()} Dogcoin**`;
                 }
 
                 return new EmbedBuilder()
@@ -1111,7 +1113,7 @@ client.on('interactionCreate', async interaction => {
             const amt = parseInt(amountStr);
 
             if (isNaN(amt) || amt <= 0 || getUserData(userId).points < amt) {
-                return interaction.reply({ content: "❌ Số point không hợp lệ hoặc bạn không đủ point!", ephemeral: true });
+                return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ hoặc bạn không đủ Dogcoin!", ephemeral: true });
             }
 
             updatePoints(userId, -amt);
@@ -1122,7 +1124,7 @@ client.on('interactionCreate', async interaction => {
             bcState.needsUpdate = true;
             await updateBCMessage();
 
-            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
+            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
         }
 
         if (interaction.customId === 'tx_modal_custom') {
@@ -1134,7 +1136,7 @@ client.on('interactionCreate', async interaction => {
             const amt = parseInt(amountStr);
 
             if (isNaN(amt) || amt <= 0 || getUserData(userId).points < amt) {
-                return interaction.reply({ content: "❌ Số point không hợp lệ hoặc bạn không đủ point!", ephemeral: true });
+                return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ hoặc bạn không đủ Dogcoin!", ephemeral: true });
             }
 
             updatePoints(userId, -amt);
@@ -1145,7 +1147,7 @@ client.on('interactionCreate', async interaction => {
             txState.needsUpdate = true;
             await updateTXMessage();
 
-            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
         }
     }
 
@@ -1159,7 +1161,7 @@ client.on('interactionCreate', async interaction => {
         bcState.activeMascot = mascotId;
         await updateBCMessage();
 
-        return interaction.reply({ content: `✅ Đã chọn **${MASCOTS.find(m => m.id === mascotId).name}**. Nhấn nút số point ở dưới để chốt!`, ephemeral: true });
+        return interaction.reply({ content: `✅ Đã chọn **${MASCOTS.find(m => m.id === mascotId).name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
     }
     
     if (interaction.customId === 'bc_a_custom') {
@@ -1168,7 +1170,7 @@ client.on('interactionCreate', async interaction => {
 
         const modal = new ModalBuilder()
             .setCustomId('bc_modal_custom')
-            .setTitle('Nhập Số Point Đặt');
+            .setTitle('Nhập Số Dogcoin Đặt');
 
         const amountInput = new TextInputBuilder()
             .setCustomId('bc_input_amount')
@@ -1187,7 +1189,7 @@ client.on('interactionCreate', async interaction => {
         if (!sel) return interaction.reply({ content: "❌ Chọn con vật trước!", ephemeral: true });
 
         let amt = interaction.customId === 'bc_a_all' ? getUserData(userId).points : parseInt(interaction.customId.split('_')[2]);
-        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ point để đặt mức này!", ephemeral: true });
+        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ Dogcoin để đặt mức này!", ephemeral: true });
         
         updatePoints(userId, -amt);
         bcState.bets.push({ userId, username: interaction.user.username, mascotId: sel.mascotId, amount: amt });
@@ -1197,7 +1199,7 @@ client.on('interactionCreate', async interaction => {
         bcState.needsUpdate = true; 
         await updateBCMessage();
         
-        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
+        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
     }
 
     if (interaction.customId === 'bc_soicau') {
@@ -1219,7 +1221,7 @@ client.on('interactionCreate', async interaction => {
         txState.activeChoice = choice;
         await updateTXMessage();
 
-        return interaction.reply({ content: `✅ Đã chọn **${TX_CHOICES[choice].name}**. Nhấn nút số point ở dưới để chốt!`, ephemeral: true });
+        return interaction.reply({ content: `✅ Đã chọn **${TX_CHOICES[choice].name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
     }
 
     if (interaction.customId === 'tx_soicau') {
@@ -1244,7 +1246,7 @@ client.on('interactionCreate', async interaction => {
 
         const modal = new ModalBuilder()
             .setCustomId('tx_modal_custom')
-            .setTitle('Nhập Số Point Đặt');
+            .setTitle('Nhập Số Dogcoin Đặt');
 
         const amountInput = new TextInputBuilder()
             .setCustomId('tx_input_amount')
@@ -1263,7 +1265,7 @@ client.on('interactionCreate', async interaction => {
         if (!sel) return interaction.reply({ content: "❌ Chọn cửa trước!", ephemeral: true });
 
         let amt = interaction.customId === 'tx_a_all' ? getUserData(userId).points : parseInt(interaction.customId.split('_')[2]);
-        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ point để đặt mức này!", ephemeral: true });
+        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ Dogcoin để đặt mức này!", ephemeral: true });
         
         updatePoints(userId, -amt);
         txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
@@ -1273,7 +1275,7 @@ client.on('interactionCreate', async interaction => {
         txState.needsUpdate = true; 
         await updateTXMessage();
         
-        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} point** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()} Dogcoin** vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
     }
   } catch (e) {
     if (e.code !== 10062) writeLog('SYSTEM', `[LỖI INTERACTION] ${e.message}`);
