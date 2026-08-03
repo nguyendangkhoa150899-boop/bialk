@@ -10,8 +10,8 @@ const { startPanel } = require('./panel');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
-const STARTING_DOGCOIN = 100;
-const DAILY_DOGCOIN = 200;
+const STARTING_DOGCOIN = 50;
+const DAILY_DOGCOIN = 50;
 
 // --- HỆ THỐNG GHI LOG CHIA FILE ---
 const LOG_SYSTEM = './log_system.txt'; // lỗi, crash, khởi động bot

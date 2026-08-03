@@ -237,6 +237,14 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Cộng ${amount} cho ${uid}`);
                     return sendJSON(res, 200, { ok: true });
                 }
+                if (path === '/api/points/subtract') {
+                    const uid = String(body.userId || '').trim();
+                    const amount = parseInt(body.amount);
+                    if (!uid || isNaN(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
+                    ctx.updatePoints(uid, -amount);
+                    ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Trừ ${amount} của ${uid} (rút Dogcoin ra ngoài game)`);
+                    return sendJSON(res, 200, { ok: true });
+                }
                 if (path === '/api/points/setall') {
                     const amount = parseInt(body.amount);
                     if (isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Số không hợp lệ' });
@@ -687,7 +695,8 @@ function renderPlayers(){
     tr.innerHTML='<td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
       '<td><input class="mini-in" type="number" placeholder="số" id="amt_'+p.id+'">'+
       ' <button class="mini btn-blue" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
-      ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button></td>';
+      ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button>'+
+      ' <button class="mini btn-red" onclick="pSub(\\''+p.id+'\\')">Trừ</button></td>';
     tb.appendChild(tr);
   });
 }
@@ -724,6 +733,7 @@ function renderHistories(){
 }
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');refresh();});}
+function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');refresh();}).catch(()=>toast('❌ Lỗi'));}
 async function setAll(){const v=document.getElementById('setAllAmount').value;if(v==='')return toast('Nhập số');if(!await uiConfirm('Set TẤT CẢ người chơi về '+(+v).toLocaleString()+' điểm?','Set tất cả','btn-red'))return;api('/api/points/setall',{amount:+v}).then(j=>{toast('✅ Đã set '+j.count+' người');refresh();});}
 
 function fmtTime(target){
