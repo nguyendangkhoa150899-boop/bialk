@@ -70,12 +70,27 @@ if (fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify({}));
 }
 
-setInterval(() => {
+// Gom các mảng đang giữ ở RAM vào dbCache trước khi ghi ra file.
+function syncCache() {
     dbCache._minesHistory = minesHistory;
     dbCache._txDashHistory = txDashHistory;
     dbCache._bcDashHistory = bcDashHistory;
     dbCache._withdrawRequests = withdrawRequests;
     dbCache._withdrawSeq = withdrawSeq;
+}
+
+// Ghi thẳng xuống file ngay (dùng cho thao tác quan trọng như xóa ví, không đợi 10s).
+function saveDbNow() {
+    syncCache();
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
+    } catch (err) {
+        writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
+    }
+}
+
+setInterval(() => {
+    syncCache();
     fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
         if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
     });
@@ -331,6 +346,9 @@ client.once('ready', async (c) => {
             getBCDash: () => bcDashHistory,
             getUserData,
             updatePoints,
+            deletePlayer,
+            resetAllPlayers,
+            saveDbNow,
             writeLog,
             startBC: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBaucua(ch); return ch.name; },
             stopBC: () => stopBaucua(),
@@ -945,6 +963,57 @@ function rejectWithdraw(id) {
     return true;
 }
 
+// --- XÓA / RESET VÍ NGƯỜI CHƠI (từ dashboard) ---
+// Khi mở mùa mới (vd: đổi sang Dog Coin của Palworld) thì xóa sạch ví cũ để mọi người
+// chơi lại từ đầu. Xóa ví thì phải xóa luôn thứ bám theo userId, nếu không sẽ thành rác:
+//   - yêu cầu rút đang chờ (duyệt/từ chối sau này sẽ cộng tiền cho ví đã xóa)
+//   - lệnh ép mìn đang treo cho user đó
+function backupDb(tag) {
+    try {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const file = `./database.backup-${tag}-${stamp}.json`;
+        fs.writeFileSync(file, JSON.stringify(dbCache, null, 2));
+        return file;
+    } catch (e) {
+        writeLog('SYSTEM', `[LỖI BACKUP DB] ${e.message}`);
+        return null;
+    }
+}
+
+function deletePlayer(userId) {
+    if (!userId || userId.startsWith('_')) return false;
+    if (!dbCache[userId] || typeof dbCache[userId] !== 'object') return false;
+    const name = dbCache[userId].name || userId;
+    delete dbCache[userId];
+    delete forcedMines[userId];
+    withdrawRequests = withdrawRequests.filter(r => !(r.userId === userId && r.status === 'pending'));
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL VÍ] Xóa ví ${name} (${userId})`);
+    return true;
+}
+
+function resetAllPlayers(alsoHistory) {
+    const ids = Object.keys(dbCache).filter(k => !k.startsWith('_') && dbCache[k] && typeof dbCache[k] === 'object');
+    const backup = ids.length ? backupDb('reset') : null;
+    ids.forEach(id => { delete dbCache[id]; });
+    forcedMines = {};
+    const pending = withdrawRequests.filter(r => r.status === 'pending').length;
+    // Yêu cầu đang chờ luôn bị hủy (ví chủ nhân không còn tồn tại).
+    withdrawRequests = alsoHistory ? [] : withdrawRequests.filter(r => r.status !== 'pending');
+    if (alsoHistory) {
+        withdrawSeq = 1;
+        minesHistory = [];
+        txDashHistory = [];
+        bcDashHistory = [];
+    }
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL RESET] Xóa toàn bộ ${ids.length} ví`
+        + (pending ? `, hủy ${pending} yêu cầu rút đang chờ` : '')
+        + (alsoHistory ? ', xóa lịch sử ván + lịch sử rút' : '')
+        + (backup ? ` | backup: ${backup}` : ''));
+    return { count: ids.length, pending, backup };
+}
+
 async function deleteBotChat(channel) {
     const messages = await channel.messages.fetch({ limit: 100 });
     const botMessages = messages.filter(m => m.author.id === client.user.id);
@@ -1414,11 +1483,7 @@ function flushAndExit(signal) {
     if (isShuttingDown) return;
     isShuttingDown = true;
     try {
-        dbCache._minesHistory = minesHistory;
-        dbCache._txDashHistory = txDashHistory;
-        dbCache._bcDashHistory = bcDashHistory;
-        dbCache._withdrawRequests = withdrawRequests;
-        dbCache._withdrawSeq = withdrawSeq;
+        syncCache();
         fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
         writeLog('SYSTEM', `[SHUTDOWN] ${signal} - đã lưu database trước khi thoát`);
     } catch (e) {

@@ -277,6 +277,21 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Trừ ${amount} của ${uid} (rút Dogcoin ra ngoài game)`);
                     return sendJSON(res, 200, { ok: true });
                 }
+                // Xóa 1 ví
+                if (path === '/api/points/delete') {
+                    const uid = String(body.userId || '').trim();
+                    if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu User ID' });
+                    if (!ctx.deletePlayer) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ xóa ví (bản cũ)' });
+                    if (!ctx.deletePlayer(uid)) return sendJSON(res, 400, { ok: false, error: 'Không tìm thấy ví này' });
+                    return sendJSON(res, 200, { ok: true });
+                }
+                // Reset mùa mới: xóa sạch ví người chơi cũ
+                if (path === '/api/points/resetall') {
+                    if (!ctx.resetAllPlayers) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ reset (bản cũ)' });
+                    const alsoHistory = body.alsoHistory === true;
+                    const r = ctx.resetAllPlayers(alsoHistory);
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 if (path === '/api/points/setall') {
                     const amount = parseInt(body.amount);
                     if (isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Số không hợp lệ' });
@@ -390,6 +405,9 @@ const HTML = `<!DOCTYPE html>
   .chips .chip .lbl b{color:var(--txt)} .chips .chip .lbl span{color:var(--mut);font-size:11px;margin-left:4px}
   .chips .chip .x{cursor:pointer;background:#4e5058;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1}
   .chips .empty{color:var(--mut);font-size:12px}
+  .card.danger{border:1px solid #6b2326}
+  .card.danger h3{color:#ff7a7a}
+  #modalInput{margin-top:0;margin-bottom:18px}
 </style>
 </head>
 <body>
@@ -576,6 +594,18 @@ const HTML = `<!DOCTYPE html>
           </table>
         </div>
       </div>
+
+      <div class="card danger">
+        <h3>🧨 Reset mùa mới — xóa sạch ví người chơi cũ</h3>
+        <div class="note">Dùng khi mở lại mini game (vd: chuyển sang Dog Coin của Palworld). Toàn bộ ví hiện tại bị <b>xóa khỏi database</b>, ai chơi lại sẽ được tạo ví mới với số dư khởi điểm mặc định. Yêu cầu rút đang chờ sẽ bị hủy và lệnh ép mìn bị gỡ. Bot tự lưu 1 file <b>database.backup-reset-*.json</b> cạnh database trước khi xóa.</div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
+          <input type="checkbox" id="resetHistory" style="width:auto;margin:0">
+          Xóa luôn lịch sử Tài Xỉu / Bầu Cua / Dò Mìn + lịch sử rút Dogcoin
+        </label>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-red" style="flex:1" onclick="resetAllPlayers()">🗑️ Xóa toàn bộ ví (<span id="resetCount">0</span> người)</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -585,6 +615,7 @@ const HTML = `<!DOCTYPE html>
 <div id="modal" class="modal-overlay hidden" onclick="if(event.target===this)modalClose(false)">
   <div class="modal-box">
     <div id="modalMsg" class="modal-msg"></div>
+    <input id="modalInput" class="hidden" autocomplete="off">
     <div class="modal-actions">
       <button id="modalCancel" class="btn-grey" onclick="modalClose(false)">Hủy</button>
       <button id="modalOk" class="btn-green" onclick="modalClose(true)">Đồng ý</button>
@@ -600,21 +631,34 @@ let mineSel = new Set();
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 
 // Hộp xác nhận tự vẽ — hiện giữa màn hình, đúng theme web (thay confirm() của trình duyệt)
-let modalResolve=null;
-function uiConfirm(msg,okLabel,okClass){
+let modalResolve=null,modalRequire='';
+// requireText: bắt admin gõ đúng 1 từ khóa mới cho bấm Đồng ý (dùng cho thao tác xóa sạch)
+function uiConfirm(msg,okLabel,okClass,requireText){
   return new Promise(resolve=>{
     modalResolve=resolve;
+    modalRequire=requireText||'';
     document.getElementById('modalMsg').textContent=msg;
     const ok=document.getElementById('modalOk');
     ok.textContent=okLabel||'Đồng ý';
     ok.className=okClass||'btn-green';
+    const inp=document.getElementById('modalInput');
+    inp.value='';
+    inp.placeholder=modalRequire?('Gõ '+modalRequire+' để xác nhận'):'';
+    inp.classList.toggle('hidden',!modalRequire);
     document.getElementById('modal').classList.remove('hidden');
+    if(modalRequire)setTimeout(()=>inp.focus(),50);
   });
 }
 function modalClose(ok){
+  const inp=document.getElementById('modalInput');
+  if(ok&&modalRequire&&inp.value.trim().toUpperCase()!==modalRequire.toUpperCase()){
+    toast('❌ Gõ đúng "'+modalRequire+'" để xác nhận');return;
+  }
   document.getElementById('modal').classList.add('hidden');
+  modalRequire='';
   if(modalResolve){const r=modalResolve;modalResolve=null;r(ok);}
 }
+document.getElementById('modalInput').addEventListener('keydown',e=>{if(e.key==='Enter')modalClose(true);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('modal').classList.contains('hidden'))modalClose(false);});
 
 async function api(path, body){
@@ -758,7 +802,8 @@ function renderPlayers(){
       '<td><input class="mini-in" type="number" placeholder="số" id="amt_'+p.id+'">'+
       ' <button class="mini btn-blue" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
       ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button>'+
-      ' <button class="mini btn-red" onclick="pSub(\\''+p.id+'\\')">Trừ</button></td>';
+      ' <button class="mini btn-red" onclick="pSub(\\''+p.id+'\\')">Trừ</button>'+
+      ' <button class="mini btn-grey" onclick="pDel(\\''+p.id+'\\')">🗑️ Xóa ví</button></td>';
     tb.appendChild(tr);
   });
 }
@@ -831,6 +876,26 @@ function renderWithdraw(){
   // prefill channel id
   const wc=document.getElementById('wdChannel'); if(wc&&!wc.value&&STATE.withdraw&&STATE.withdraw.channelId) wc.value=STATE.withdraw.channelId;
 }
+async function pDel(id){
+  const p=(STATE&&STATE.players||[]).find(x=>x.id===id);
+  const who=p?(p.name+' — '+p.points.toLocaleString()+' Dogcoin'):id;
+  if(!await uiConfirm('Xóa ví của '+who+'? Ví bị xóa khỏi database, lần chơi sau họ được tạo ví mới từ số dư khởi điểm.','🗑️ Xóa ví','btn-red'))return;
+  api('/api/points/delete',{userId:id}).then(()=>{toast('🗑️ Đã xóa ví');refresh();});
+}
+
+async function resetAllPlayers(){
+  const n=(STATE&&STATE.players||[]).length;
+  if(!n)return toast('Không còn ví nào để xóa');
+  const alsoHistory=document.getElementById('resetHistory').checked;
+  if(!await uiConfirm('Xóa TOÀN BỘ '+n+' ví người chơi'+(alsoHistory?' + toàn bộ lịch sử ván và lịch sử rút':'')+'? Không thể hoàn tác trên dashboard (chỉ khôi phục được từ file backup trên VPS).','Tiếp tục','btn-red'))return;
+  if(!await uiConfirm('Xác nhận lần cuối: xóa sạch '+n+' ví để mở mùa mới.','🧨 XÓA SẠCH','btn-red','XOA'))return;
+  api('/api/points/resetall',{alsoHistory}).then(j=>{
+    toast('🧨 Đã xóa '+j.count+' ví'+(j.pending?' · hủy '+j.pending+' yêu cầu rút':''));
+    document.getElementById('resetHistory').checked=false;
+    refresh();
+  });
+}
+
 async function setAll(){const v=document.getElementById('setAllAmount').value;if(v==='')return toast('Nhập số');if(!await uiConfirm('Set TẤT CẢ người chơi về '+(+v).toLocaleString()+' điểm?','Set tất cả','btn-red'))return;api('/api/points/setall',{amount:+v}).then(j=>{toast('✅ Đã set '+j.count+' người');refresh();});}
 
 function fmtTime(target){
@@ -883,6 +948,7 @@ async function refresh(){
   }
   // players table
   renderPlayers();
+  document.getElementById('resetCount').textContent=STATE.players.length;
   // lịch sử các trò
   renderHistories();
   // kênh đã lưu

@@ -1,2 +1,5 @@
 .env
 node_modules/
+database.json
+database.backup-*.json
+log_*.txt
