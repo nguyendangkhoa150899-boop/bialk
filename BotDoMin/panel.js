@@ -92,10 +92,12 @@ function startPanel(ctx) {
             const url = new URL(req.url, 'http://localhost');
             const path = url.pathname;
 
-            // Trang chủ
+            // Trang chủ. Nhúng thẳng trạng thái auth vào HTML thay vì để client tự dò
+            // — client dò bằng fetch dễ hỏng khi trình duyệt còn cache bản JS cũ.
+            // no-store để lần sau sửa panel là thấy ngay, không phải xóa cache.
             if (req.method === 'GET' && path === '/') {
-                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-                return res.end(HTML);
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+                return res.end(HTML.replace('__AUTH_OFF__', AUTH_OFF ? 'true' : 'false'));
             }
 
             // Đăng nhập
@@ -709,6 +711,9 @@ const HTML = `<!DOCTYPE html>
 </div>
 
 <script>
+// Server nhúng giá trị này vào trang (xem handler GET '/'). true = panel không có
+// mật khẩu, vào thẳng, không hiện bảng đăng nhập.
+const AUTH_OFF = __AUTH_OFF__;
 let TOKEN = localStorage.getItem('panel_token') || '';
 let STATE = null;
 let mineSel = new Set();
@@ -1152,12 +1157,17 @@ async function refresh(){
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
 
-// auto-login nếu có token
 document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
-if(TOKEN){ fetch('/api/state',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout()); }
-// Nếu server đang TẮT mật khẩu (PANEL_PASSWORD trống) thì bỏ qua màn đăng nhập.
-// Thử gọi /api/state không kèm token: chỉ khi auth tắt thì nó mới trả 200.
-else { fetch('/api/state').then(r=>{ if(r.ok){ TOKEN='no-auth'; localStorage.setItem('panel_token',TOKEN); showApp(); } }).catch(()=>{}); }
+
+if(AUTH_OFF){
+  // Không có mật khẩu: vào thẳng, không hiện bảng đăng nhập.
+  TOKEN='no-auth';
+  localStorage.setItem('panel_token',TOKEN);
+  showApp();
+} else if(TOKEN){
+  // auto-login nếu token cũ còn hiệu lực
+  fetch('/api/state',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
+}
 </script>
 </body>
 </html>`;
