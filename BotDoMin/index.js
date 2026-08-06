@@ -345,10 +345,9 @@ client.once('ready', async (c) => {
     try {
         startPanel({
             port: parseInt(process.env.PANEL_PORT) || 3001,
-            // Dùng !== undefined chứ KHÔNG dùng `||`: đặt PANEL_PASSWORD= (rỗng) là
-            // cách chủ động TẮT đăng nhập panel. Với `||` thì chuỗi rỗng bị coi là
-            // falsy nên rơi về mật khẩu mặc định, tắt auth không có tác dụng.
-            password: process.env.PANEL_PASSWORD !== undefined ? process.env.PANEL_PASSWORD : 'Aa123456789!@',
+            // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.
+            // Muốn bật lại thì đặt PANEL_PASSWORD=<mật khẩu> trong .env.
+            password: process.env.PANEL_PASSWORD || '',
             mascots: MASCOTS,
             txChoices: TX_CHOICES,
             diceEmojis: DICE_EMOJIS,
