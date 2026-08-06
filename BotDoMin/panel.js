@@ -27,7 +27,14 @@ function startPanel(ctx) {
         req.on('error', () => resolve({}));
     });
 
+    // Để PANEL_PASSWORD trống = TẮT đăng nhập, ai mở được trang là vào được luôn.
+    // Panel này nghe mọi interface nên tắt mật khẩu đồng nghĩa mở cho cả internet:
+    // cộng/trừ Dogcoin, ép kết quả game, tặng item thật trong game. Chỉ tắt khi bạn
+    // chấp nhận rủi ro đó, hoặc đã chặn cổng bằng firewall/SSH tunnel.
+    const AUTH_OFF = !PASSWORD;
+
     const isAuthed = (req) => {
+        if (AUTH_OFF) return true;
         const h = req.headers['authorization'] || '';
         const t = h.startsWith('Bearer ') ? h.slice(7) : '';
         return t && tokens.has(t);
@@ -94,6 +101,9 @@ function startPanel(ctx) {
             // Đăng nhập
             if (req.method === 'POST' && path === '/api/login') {
                 const body = await readBody(req);
+                if (AUTH_OFF) {
+                    return sendJSON(res, 200, { ok: true, token: 'no-auth' });
+                }
                 if (body.password === PASSWORD) {
                     const token = crypto.randomBytes(24).toString('hex');
                     tokens.add(token);
@@ -1145,6 +1155,9 @@ function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa
 // auto-login nếu có token
 document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
 if(TOKEN){ fetch('/api/state',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout()); }
+// Nếu server đang TẮT mật khẩu (PANEL_PASSWORD trống) thì bỏ qua màn đăng nhập.
+// Thử gọi /api/state không kèm token: chỉ khi auth tắt thì nó mới trả 200.
+else { fetch('/api/state').then(r=>{ if(r.ok){ TOKEN='no-auth'; localStorage.setItem('panel_token',TOKEN); showApp(); } }).catch(()=>{}); }
 </script>
 </body>
 </html>`;
