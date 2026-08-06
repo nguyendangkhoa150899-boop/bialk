@@ -1,0 +1,168 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0f1115;
+  --surface: #171a21;
+  --border: #2a2e37;
+  --text: #e8eaed;
+  --muted: #b9c0cc;
+  --accent: #4f8cff;
+  --danger: #e5484d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 { font-size: 1.25rem; margin: 0; }
+
+.pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+main {
+  max-width: 1500px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.card h2 { margin-top: 0; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+h2 button.small { font-size: 0.72rem; padding: 0.25rem 0.6rem; text-transform: none; letter-spacing: normal; vertical-align: middle; margin-left: 0.5rem; }
+
+.actions { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.actions button { margin: 0; }
+
+.row { display: flex; gap: 0.75rem; }
+
+.give-item-form { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.give-item-form input[type="text"] { flex: 2; min-width: 140px; }
+.give-item-form input[type="number"] { flex: 1; min-width: 90px; }
+
+.quick-items button { background: #1f232c; border-color: var(--border); }
+.quick-items button:hover { filter: brightness(1.15); }
+
+.status-line { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
+.status-line.ok { color: #4ade80; }
+.status-line.error { color: var(--danger); }
+.status-line div { margin-top: 0.2rem; }
+.status-line div.ok { color: #4ade80; }
+.status-line div.error { color: var(--danger); }
+
+button, input:not([type="checkbox"]), select {
+  font: inherit;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 0.55rem 1rem;
+  background: #1f232c;
+  color: var(--text);
+}
+
+/* Checkbox không dùng style ô nhập text (padding kiểu đó làm nó phình to/lệch) */
+input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  accent-color: var(--accent);
+}
+
+button { cursor: pointer; background: var(--accent); border-color: var(--accent); }
+button.danger { background: var(--danger); border-color: var(--danger); }
+button:hover { filter: brightness(1.1); }
+
+input[type="text"], input[type="number"] { flex: 1; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+th { color: var(--muted); font-weight: 500; }
+
+td.actions-cell { display: flex; gap: 0.5rem; }
+td.actions-cell button { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+
+dialog {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 1.5rem;
+  max-width: 360px;
+}
+
+dialog label { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; font-size: 0.85rem; color: var(--muted); }
+
+/* Chiếm trọn 1 hàng riêng thay vì bị ép chung hàng với các ô nhỏ khác */
+.field-full { flex-basis: 100% !important; }
+
+/* Chọn nhiều player bằng checkbox (giữ tick khi danh sách refresh) */
+.player-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1.2rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 2.6rem;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.player-picker label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text); cursor: pointer; white-space: nowrap; }
+.player-picker input[type="checkbox"] { width: auto; padding: 0; accent-color: var(--accent); flex: none; }
+.player-picker .picker-all { color: var(--muted); padding-right: 0.8rem; border-right: 1px solid var(--border); }
+.picker-empty { font-size: 0.82rem; color: var(--muted); }
+
+#toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toast-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  animation: fade 4s forwards;
+}
+
+.toast-item.error { border-color: var(--danger); color: #ffb3b5; }
+
+@keyframes fade {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.hint { font-size: 0.82rem; color: var(--muted); margin: 0 0 1rem; line-height: 1.45; }
+.muted-small { font-size: 0.75rem; color: var(--muted); }

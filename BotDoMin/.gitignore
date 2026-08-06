@@ -1,2 +1,11 @@
 .env
 node_modules/
+
+# Du lieu nguoi choi (so du dogcoin, lich su) — KHONG commit
+database.json
+
+# Log runtime
+log_system.txt
+log_result.txt
+log_bet.txt
+log_admin.txt

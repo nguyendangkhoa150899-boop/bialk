@@ -1,0 +1,676 @@
+-- Tự dò thư mục mod thay vì hardcode đường dẫn tuyệt đối (Z:\server\... chỉ đúng
+-- với host Wine cũ). Thử lần lượt các đường dẫn ứng viên, chọn cái đầu tiên mà
+-- thư mục tồn tại (mở được file để ghi). Nhờ vậy chuyển host (Shockbyte → host khác,
+-- Wine prefix khác) không cần sửa mod.
+local candidateBases = {
+    "ue4ss\\Mods\\GiveGoldCommand\\",                                      -- cwd = Pal\Binaries\Win64 (thường gặp)
+    "Mods\\GiveGoldCommand\\",                                             -- cwd = ...\Win64\ue4ss (UE4SS bản mới)
+    "Pal\\Binaries\\Win64\\ue4ss\\Mods\\GiveGoldCommand\\",                -- cwd = thư mục gốc server
+    "Z:\\server\\Pal\\Binaries\\Win64\\ue4ss\\Mods\\GiveGoldCommand\\",    -- host Wine cũ (Shockbyte)
+}
+
+local baseDir = nil
+for _, candidate in ipairs(candidateBases) do
+    local f = io.open(candidate .. "results.log", "a")
+    if f then
+        f:close()
+        baseDir = candidate
+        break
+    end
+end
+baseDir = baseDir or candidateBases[1]
+
+local queueFile = baseDir .. "queue.txt"
+local resultFile = baseDir .. "results.log"
+
+local firstTick = true
+
+local function appendResult(line)
+    local f = io.open(resultFile, "a")
+    if f then
+        f:write(line .. "\n")
+        f:close()
+    end
+end
+
+-- Mọi dòng kết quả liên quan tới 1 lệnh give-item/give-pal PHẢI bắt đầu bằng
+-- "[playerName] " để dashboard (sftpBridge.js) ghép đúng kết quả với đúng người
+-- gửi lệnh — không được đoán theo nội dung câu chữ (một số lỗi như "spawn failed"
+-- không tự nhiên chứa tên player trong câu).
+local function appendPlayerResult(playerName, message)
+    appendResult("[" .. playerName .. "] " .. message)
+end
+
+-- Exp tích lũy của PAL ứng với từng level (field PalTotalEXP trong DT exp table của game,
+-- KHÁC TotalEXP là của người chơi). Nguồn: data/json/exp.json của oMaN-Rod/palworld-save-pal.
+-- Cần bảng này vì level hiển thị trong game được tính TỪ Exp — ghi SaveParameter.Level
+-- một mình không đủ (đã test thực tế: pal ra "Cấp 2" dù gửi Lv50).
+local PAL_EXP_BY_LEVEL = {
+    [1]=0, [2]=25, [3]=56, [4]=93, [5]=138, [6]=207, [7]=306, [8]=440,
+    [9]=616, [10]=843, [11]=1131, [12]=1492, [13]=1941, [14]=2495, [15]=3175, [16]=4007,
+    [17]=5021, [18]=6253, [19]=7747, [20]=9555, [21]=11740, [22]=14378, [23]=17559, [24]=21392,
+    [25]=26007, [26]=31561, [27]=38241, [28]=46272, [29]=55925, [30]=67524, [31]=81458, [32]=98195,
+    [33]=118294, [34]=142429, [35]=171406, [36]=206194, [37]=247955, [38]=298084, [39]=358255, [40]=430475,
+    [41]=517155, [42]=621186, [43]=746039, [44]=895878, [45]=1075701, [46]=1291504, [47]=1550483, [48]=1861273,
+    [49]=2234236, [50]=2681807, [51]=3218908, [52]=3863445, [53]=4636905, [54]=5565072, [55]=6678888, [56]=8015483,
+    [57]=9619412, [58]=11544143, [59]=13853835, [60]=16625481, [61]=19951472, [62]=23942677, [63]=28732138, [64]=34479507,
+    [65]=41376365, [66]=48273223, [67]=55170081, [68]=62066939, [69]=68963797, [70]=75860655, [71]=82757513, [72]=89654371,
+    [73]=96551229, [74]=103448087, [75]=110344945, [76]=117241803, [77]=124138661, [78]=131035519, [79]=137932377, [80]=144829235,
+    [81]=151726093, [82]=158622951, [83]=165519809, [84]=172416667, [85]=179313525, [86]=186210383, [87]=193107241, [88]=200004099,
+    [89]=206900957, [90]=213797815, [91]=220694673, [92]=227591531, [93]=234488389, [94]=241385247, [95]=248282105, [96]=255178963,
+    [97]=262075821, [98]=268972679, [99]=275869537, [100]=282766395,
+}
+
+-- Dashboard cho nhập level tới 255 nhưng bảng exp của game chỉ tới 100 —
+-- level > 100 dùng exp của level 100 (giá trị cao nhất biết chắc).
+local function expForLevel(level)
+    if not level or level < 1 then return nil end
+    return PAL_EXP_BY_LEVEL[level] or PAL_EXP_BY_LEVEL[100]
+end
+
+-- Ghi cả Level lẫn Exp (game tính level hiển thị từ Exp) vào cả SaveParameter và
+-- SaveParameterMirror, rồi replicate. Phải gọi cả TRƯỚC và SAU capture vì
+-- PalCaptureSuccess tạo lại pal từ bản copy (giống trường hợp passive).
+local function applyLevelExp(parameter, level)
+    local exp = expForLevel(level)
+    for _, propName in ipairs({ "SaveParameter", "SaveParameterMirror" }) do
+        local sp = parameter[propName]
+        if sp then
+            pcall(function() sp.Level = level end)
+            if exp then
+                pcall(function() sp.Exp = exp end)
+            end
+        end
+    end
+    pcall(function() parameter:OnRep_SaveParameter() end)
+end
+
+-- Clears a pal's existing passive list and sets exactly the given passive IDs,
+-- so the admin-chosen passives land in the visible 4 slots (not pushed out by random rolls).
+-- Writes both SaveParameter and SaveParameterMirror, then replicates via OnRep_SaveParameter.
+local function applyPassives(parameter, passiveIds)
+    for _, propName in ipairs({ "SaveParameter", "SaveParameterMirror" }) do
+        local sp = parameter[propName]
+        if sp then
+            local list = sp.PassiveSkillList
+            if list then
+                pcall(function() list:Empty() end)
+                for _, id in ipairs(passiveIds) do
+                    list[list:GetArrayNum() + 1] = FName(id)
+                end
+            end
+        end
+    end
+    pcall(function() parameter:OnRep_SaveParameter() end)
+end
+
+-- Gender (EPalGenderType: 1 = Male, 2 = Female) và Lucky (IsRarePal = true).
+-- CHƯA kiểm chứng in-game — nếu không ăn, dòng WARN sẽ xuất hiện trong results.log.
+local function applyGenderLucky(parameter, gender, lucky)
+    for _, propName in ipairs({ "SaveParameter", "SaveParameterMirror" }) do
+        local sp = parameter[propName]
+        if sp then
+            if gender and gender > 0 then
+                pcall(function() sp.Gender = gender end)
+            end
+            if lucky and lucky > 0 then
+                pcall(function() sp.IsRarePal = true end)
+            end
+        end
+    end
+    pcall(function() parameter:OnRep_SaveParameter() end)
+end
+
+-- ===== Công cụ chẩn đoán: dump tên hàm/property thật của class trong game =====
+-- Dùng để tìm đúng API thêm pal vào storage (thay vì đoán tên hàm). Ghi ra file
+-- riêng dump.log để không lẫn với results.log.
+local dumpFile = baseDir .. "dump.log"
+
+local function appendDump(line)
+    local f = io.open(dumpFile, "a")
+    if f then
+        f:write(line .. "\n")
+        f:close()
+    end
+end
+
+-- Duyệt cả class lẫn các class cha (nhiều hàm nằm ở lớp cha).
+local function dumpStruct(structPath, withProperties)
+    local cls = StaticFindObject(structPath)
+    if not cls or not cls:IsValid() then
+        appendDump("KHONG TIM THAY: " .. structPath)
+        return false
+    end
+
+    appendDump("")
+    appendDump("=========== DUMP " .. structPath .. " ===========")
+    local current, depth = cls, 0
+    while current and current:IsValid() and depth < 8 do
+        local okName, fullName = pcall(function() return current:GetFullName() end)
+        appendDump("---- class: " .. tostring(okName and fullName or "?") .. " ----")
+
+        pcall(function()
+            current:ForEachFunction(function(fn)
+                local ok, n = pcall(function() return fn:GetFullName() end)
+                appendDump("  FN  " .. tostring(ok and n or "?"))
+            end)
+        end)
+
+        if withProperties then
+            pcall(function()
+                current:ForEachProperty(function(prop)
+                    local ok, n = pcall(function() return prop:GetFullName() end)
+                    appendDump("  PROP " .. tostring(ok and n or "?"))
+                end)
+            end)
+        end
+
+        local okSuper, super = pcall(function() return current:GetSuperStruct() end)
+        if not okSuper or not super or not super:IsValid() then break end
+        current = super
+        depth = depth + 1
+    end
+    appendDump("=========== HET " .. structPath .. " ===========")
+    return true
+end
+
+local function parsePassives(csv)
+    local ids = {}
+    if csv and csv ~= "" and csv ~= "-" then
+        for id in csv:gmatch("[^,]+") do
+            table.insert(ids, id)
+        end
+    end
+    return ids
+end
+
+-- Bỏ mọi ký tự không phải ASCII in được: tên trong engine hay dính ký tự ẩn ở đầu
+-- hoặc cuối tùy platform (đã thấy cả "​biabia" và "biabia᲼", "bbb 1᲼").
+local function normalizeName(s)
+    return (s:gsub("[^\32-\126]", ""))
+end
+
+-- So khớp theo thứ tự CHẶT → LỎNG. Không dùng substring làm cách chính vì nó cực
+-- nguy hiểm: tên "1" khớp được vào "bbb 1", tức người chơi khác có thể nhận quà
+-- của người khác. Substring chỉ dùng khi không có ai khớp chuẩn, và phải khớp
+-- DUY NHẤT một người (nhiều người khớp thì coi như không tìm thấy, an toàn hơn).
+local function findPlayerState(playerName)
+    local players = FindAllOf("PalPlayerState") or {}
+    local names = {}
+    local states = {}
+    for _, playerState in ipairs(players) do
+        local ok, name = pcall(function()
+            if not playerState:IsValid() then return nil end
+            return playerState.PlayerNamePrivate:ToString()
+        end)
+        if ok and name then
+            table.insert(names, name)
+            table.insert(states, { state = playerState, name = name })
+        end
+    end
+
+    local target = normalizeName(playerName)
+
+    for _, entry in ipairs(states) do
+        if entry.name == playerName then return entry.state, names end
+    end
+    for _, entry in ipairs(states) do
+        if normalizeName(entry.name) == target then return entry.state, names end
+    end
+
+    local found, count = nil, 0
+    for _, entry in ipairs(states) do
+        if normalizeName(entry.name):find(target, 1, true) then
+            found = entry.state
+            count = count + 1
+        end
+    end
+    if count == 1 then return found, names end
+
+    return nil, names
+end
+
+-- ===== Thử nghiệm: tặng pal qua đường CHÍNH THỨC của game =====
+-- Debug_CaptureNewMonster_ToServer(CharacterID) là RPC server có sẵn trong
+-- PalPlayerState (tìm được bằng lệnh DUMP). Khác hẳn cách hiện tại (spawn pal ra
+-- world rồi PalCaptureSuccess) — cách đó khiến pal không thao tác được cho tới khi
+-- restart. Hàm này để game tự lo việc đăng ký pal vào storage.
+local function debugGivePal(playerName, speciesId)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, "ERROR player not found (DBGPAL) | names=[" .. table.concat(names, ", ") .. "]")
+        return
+    end
+    local ok, err = pcall(function()
+        playerState:Debug_CaptureNewMonster_ToServer(FName(speciesId))
+    end)
+    appendPlayerResult(playerName, "DBGPAL " .. speciesId .. ": ok=" .. tostring(ok) .. " err=" .. tostring(err))
+end
+
+-- Tặng pal "TRẦN": spawn + bắt, KHÔNG ghi bất kỳ chỉ số nào (không level/exp, sao,
+-- IV, soul, passive, gender). Dùng để kiểm tra xem bug "không thao tác được pal"
+-- đến từ cách spawn-rồi-bắt, hay từ việc ghi vào SaveParameter.
+local function giveRawPal(playerName, speciesId)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, "ERROR player not found (RAWPAL) | names=[" .. table.concat(names, ", ") .. "]")
+        return
+    end
+    local pc = playerState:GetPlayerController()
+    if not pc or not pc:IsValid() then
+        appendPlayerResult(playerName, "ERROR no PlayerController (RAWPAL)")
+        return
+    end
+    local playerChar = pc.Pawn
+    if not playerChar or not playerChar:IsValid() then
+        appendPlayerResult(playerName, "ERROR no Pawn (RAWPAL)")
+        return
+    end
+    local palUtil = StaticFindObject("/Script/Pal.Default__PalUtility")
+    local npc_manager = palUtil and palUtil:GetNPCManager(pc)
+    if not npc_manager or not npc_manager:IsValid() then
+        appendPlayerResult(playerName, "ERROR no NPC manager (RAWPAL)")
+        return
+    end
+    local locOk, location = pcall(function() return playerChar:K2_GetActorLocation() end)
+    if not locOk then
+        appendPlayerResult(playerName, "ERROR no location (RAWPAL)")
+        return
+    end
+
+    local spawnOk, handle = pcall(function()
+        return npc_manager:SpawnNPCForServer({
+            ControllerClass = npc_manager.NPCAIControllerBaseClass,
+            CharacterID = FName(speciesId),
+            Level = 5,
+            Location = { X = location.X + 300, Y = location.Y, Z = location.Z + 100 },
+            Yaw = 0.0,
+            Squad = nil,
+        }, nil)
+    end)
+    if not spawnOk or not handle or not handle:IsValid() then
+        appendPlayerResult(playerName, "ERROR spawn failed (RAWPAL) " .. speciesId)
+        return
+    end
+
+    local attempts = 0
+    local function tryCapture()
+        attempts = attempts + 1
+        local actorOk, spawned = pcall(function() return handle:TryGetIndividualActor() end)
+        if actorOk and spawned and spawned:IsValid() then
+            local ok, err = pcall(function() palUtil:PalCaptureSuccess(playerChar, spawned) end)
+            appendPlayerResult(playerName, "RAWPAL " .. speciesId .. " (khong ghi chi so nao): ok=" .. tostring(ok) .. " err=" .. tostring(err))
+            return
+        end
+        if attempts < 30 then
+            ExecuteWithDelay(100, tryCapture)
+        else
+            appendPlayerResult(playerName, "ERROR RAWPAL pal never valid: " .. speciesId)
+        end
+    end
+    ExecuteWithDelay(150, tryCapture)
+end
+
+-- In ra class thật của các object liên quan tới pal storage (chỉ biết được lúc chạy).
+local function inspectPlayer(playerName)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, "ERROR player not found (INSPECT) | names=[" .. table.concat(names, ", ") .. "]")
+        return
+    end
+
+    local function classOf(obj)
+        if not obj then return "nil" end
+        local ok, n = pcall(function() return obj:GetClass():GetFullName() end)
+        return tostring(ok and n or "?")
+    end
+
+    appendDump("")
+    appendDump("=========== INSPECT player: " .. playerName .. " ===========")
+    appendDump("PlayerState class = " .. classOf(playerState))
+    pcall(function() appendDump("GetPalStorage()        -> " .. classOf(playerState:GetPalStorage())) end)
+    pcall(function() appendDump("GetPalPlayerOtomoData()-> " .. classOf(playerState:GetPalPlayerOtomoData())) end)
+    pcall(function() appendDump("GetInventoryData()     -> " .. classOf(playerState:GetInventoryData())) end)
+    appendDump("=========== HET INSPECT ===========")
+    appendPlayerResult(playerName, "INSPECT done (xem dump.log)")
+end
+
+local function giveItem(playerName, itemId, quantity)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, string.format(
+            "ERROR player not found (item %s x%d) | names=[%s]",
+            itemId, quantity, table.concat(names, ", ")
+        ))
+        return
+    end
+
+    local callOk, callErr = pcall(function()
+        playerState:GetInventoryData():AddItem_ServerInternal(FName(itemId), quantity, false, 0.0, true)
+    end)
+    if callOk then
+        appendPlayerResult(playerName, string.format("OK gave %s x%d", itemId, quantity))
+    else
+        appendPlayerResult(playerName, string.format("LUA ERROR giving item: %s", tostring(callErr)))
+    end
+end
+
+local function givePal(playerName, speciesId, level, rank, ivHp, ivMelee, ivShot, ivDefense, passivesCsv,
+                       soulHp, soulAttack, soulDefense, soulWorkSpeed, gender, lucky)
+    local passiveList = parsePassives(passivesCsv)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, string.format(
+            "ERROR player not found (pal %s Lv%d) | names=[%s]",
+            speciesId, level, table.concat(names, ", ")
+        ))
+        return
+    end
+
+    local pc = playerState:GetPlayerController()
+    if not pc or not pc:IsValid() then
+        appendPlayerResult(playerName, "ERROR no PlayerController")
+        return
+    end
+
+    local playerChar = pc.Pawn
+    if not playerChar or not playerChar:IsValid() then
+        appendPlayerResult(playerName, "ERROR no Pawn")
+        return
+    end
+
+    local palUtil = StaticFindObject("/Script/Pal.Default__PalUtility")
+    if not palUtil or not palUtil:IsValid() then
+        appendPlayerResult(playerName, "ERROR PalUtility not ready")
+        return
+    end
+
+    local npc_manager = palUtil:GetNPCManager(pc)
+    if not npc_manager or not npc_manager:IsValid() then
+        appendPlayerResult(playerName, "ERROR NPC manager unavailable")
+        return
+    end
+
+    local controller_class = npc_manager.NPCAIControllerBaseClass
+    if not controller_class or not controller_class:IsValid() then
+        appendPlayerResult(playerName, "ERROR AI controller class unavailable")
+        return
+    end
+
+    local locOk, location = pcall(function() return playerChar:K2_GetActorLocation() end)
+    if not locOk then
+        appendPlayerResult(playerName, "ERROR could not get location: " .. tostring(location))
+        return
+    end
+
+    local spawn_info = {
+        ControllerClass = controller_class,
+        CharacterID = FName(speciesId),
+        Level = level,
+        Location = { X = location.X + 300, Y = location.Y, Z = location.Z + 100 },
+        Yaw = 0.0,
+        Squad = nil,
+    }
+
+    local spawnOk, handle = pcall(function() return npc_manager:SpawnNPCForServer(spawn_info, nil) end)
+    if not spawnOk or not handle or not handle:IsValid() then
+        appendPlayerResult(playerName, string.format("ERROR spawn failed for pal %s (sai Species ID?): %s", speciesId, tostring(handle)))
+        return
+    end
+
+    local attempts = 0
+    local function tryCapture()
+        attempts = attempts + 1
+        local actorOk, spawned = pcall(function() return handle:TryGetIndividualActor() end)
+        if actorOk and spawned and spawned:IsValid() then
+            local hasPassives = #passiveList > 0
+            local hasSoul = soulHp or soulAttack or soulDefense or soulWorkSpeed
+            local hasGenderLucky = (gender and gender > 0) or (lucky and lucky > 0)
+            local needsParamEdit = (level and level > 0) or (rank and rank > 0) or ivHp or ivMelee or ivShot or ivDefense
+                or hasPassives or hasSoul or hasGenderLucky
+            if needsParamEdit then
+                local paramOk, parameter = pcall(function() return handle:TryGetIndividualParameter() end)
+                if paramOk and parameter and parameter:IsValid() then
+                    if level and level > 0 then
+                        pcall(function() applyLevelExp(parameter, level) end)
+                    end
+
+                    pcall(function()
+                        if rank and rank > 0 then
+                            parameter.SaveParameter.Rank = rank
+                            parameter.SaveParameterMirror.Rank = rank
+                        end
+                        if ivHp then
+                            parameter.SaveParameter.Talent_HP = ivHp
+                            parameter.SaveParameterMirror.Talent_HP = ivHp
+                        end
+                        if ivMelee then
+                            parameter.SaveParameter.Talent_Melee = ivMelee
+                            parameter.SaveParameterMirror.Talent_Melee = ivMelee
+                        end
+                        if ivShot then
+                            parameter.SaveParameter.Talent_Shot = ivShot
+                            parameter.SaveParameterMirror.Talent_Shot = ivShot
+                        end
+                        if ivDefense then
+                            parameter.SaveParameter.Talent_Defense = ivDefense
+                            parameter.SaveParameterMirror.Talent_Defense = ivDefense
+                        end
+                        -- Soul enhancement ranks (each rank = +3% in-game; 255 rank = +765%).
+                        if soulHp then
+                            parameter.SaveParameter.Rank_HP = soulHp
+                            parameter.SaveParameterMirror.Rank_HP = soulHp
+                        end
+                        if soulAttack then
+                            parameter.SaveParameter.Rank_Attack = soulAttack
+                            parameter.SaveParameterMirror.Rank_Attack = soulAttack
+                        end
+                        if soulDefense then
+                            parameter.SaveParameter.Rank_Defence = soulDefense
+                            parameter.SaveParameterMirror.Rank_Defence = soulDefense
+                        end
+                        if soulWorkSpeed then
+                            parameter.SaveParameter.Rank_CraftSpeed = soulWorkSpeed
+                            parameter.SaveParameterMirror.Rank_CraftSpeed = soulWorkSpeed
+                        end
+                        parameter:OnRep_SaveParameter()
+                    end)
+
+                    if hasGenderLucky then
+                        pcall(function() applyGenderLucky(parameter, gender, lucky) end)
+                    end
+                    if hasPassives then
+                        pcall(function() applyPassives(parameter, passiveList) end)
+                    end
+                else
+                    appendPlayerResult(playerName, string.format("WARN could not set rank/IV/passives (pal %s)", speciesId))
+                end
+            end
+
+            local captureOk, captureErr = pcall(function()
+                palUtil:PalCaptureSuccess(playerChar, spawned)
+            end)
+            if captureOk then
+                appendPlayerResult(playerName, string.format(
+                    "OK gave pal %s (Lv %d, Rank %d, IV hp=%s melee=%s shot=%s def=%s, gender=%s, lucky=%s, passives=[%s])",
+                    speciesId, level, rank or 0,
+                    tostring(ivHp), tostring(ivMelee), tostring(ivShot), tostring(ivDefense),
+                    tostring(gender or 0), tostring(lucky or 0),
+                    passivesCsv or ""
+                ))
+
+                -- Bug "không triệu hồi được pal cho tới khi restart server": đã loại trừ
+                -- khối re-apply bên dưới (test không passive vẫn lỗi). Giả thuyết hiện tại:
+                -- actor pal spawn ngoài world KHÔNG bị hủy sau PalCaptureSuccess, nên game
+                -- vẫn coi con đó đang ở ngoài. Kiểm tra + thử hủy, có log để kết luận.
+                ExecuteWithDelay(500, function()
+                    local stillValid = false
+                    pcall(function() stillValid = (spawned and spawned:IsValid()) == true end)
+                    appendPlayerResult(playerName, "DEBUG sau capture: spawned actor con valid = " .. tostring(stillValid))
+                    if stillValid then
+                        local okDestroy, errDestroy = pcall(function() spawned:K2_DestroyActor() end)
+                        appendPlayerResult(playerName, "DEBUG huy actor: ok=" .. tostring(okDestroy) .. " err=" .. tostring(errDestroy))
+                    end
+                end)
+
+                -- PalCaptureSuccess tạo lại pal trong túi từ bản copy, nên passive/gender
+                -- phải ghi lại sau một nhịp delay mới ăn. Level/Exp ghi trước capture là đủ
+                -- (readback đã xác nhận giá trị ăn).
+                local needsReapply = hasPassives or hasGenderLucky
+                if needsReapply then
+                    ExecuteWithDelay(1000, function()
+                        local paramOk, parameter = pcall(function() return handle:TryGetIndividualParameter() end)
+                        if paramOk and parameter and parameter:IsValid() then
+                            if hasGenderLucky then
+                                pcall(function() applyGenderLucky(parameter, gender, lucky) end)
+                            end
+                            if hasPassives then
+                                pcall(function() applyPassives(parameter, passiveList) end)
+                            end
+
+                            -- Đọc lại giá trị thật sau khi ghi để biết ghi có "ăn" hay không
+                            -- (phân biệt: write thất bại âm thầm vs write thành công nhưng
+                            -- game hiển thị level từ nguồn khác). Chỉ để debug.
+                            if level and level > 0 then
+                                pcall(function()
+                                    local sp = parameter.SaveParameter
+                                    appendPlayerResult(playerName, string.format(
+                                        "DEBUG readback: Level=%s Exp=%s (mong doi Level=%d Exp=%s)",
+                                        tostring(sp.Level), tostring(sp.Exp), level, tostring(expForLevel(level))
+                                    ))
+                                end)
+                            end
+                        end
+                    end)
+                end
+            else
+                appendPlayerResult(playerName, "LUA ERROR capturing pal: " .. tostring(captureErr))
+            end
+            return
+        end
+        if attempts < 30 then
+            ExecuteWithDelay(100, tryCapture)
+        else
+            appendPlayerResult(playerName, string.format("ERROR pal %s never became valid for capture", speciesId))
+        end
+    end
+    ExecuteWithDelay(150, tryCapture)
+end
+
+local function processLine(line)
+    -- DUMP <duong dan class>        vd: DUMP /Script/Pal.PalPlayerState
+    -- DUMPP <duong dan class>       (kem ca property)
+    -- Chi de chan doan, ghi ra dump.log.
+    local dumpPath = line:match("^DUMP%s+(.+)$")
+    if dumpPath then
+        local ok = dumpStruct(dumpPath, false)
+        appendResult("DUMP " .. (ok and "OK" or "FAILED") .. ": " .. dumpPath)
+        return
+    end
+    local dumpPPath = line:match("^DUMPP%s+(.+)$")
+    if dumpPPath then
+        local ok = dumpStruct(dumpPPath, true)
+        appendResult("DUMPP " .. (ok and "OK" or "FAILED") .. ": " .. dumpPPath)
+        return
+    end
+
+    -- DBGPAL <species> <playerName>   thu tang pal qua Debug_CaptureNewMonster_ToServer
+    local dbgSpecies, dbgPlayer = line:match("^DBGPAL%s+(%S+)%s+(.+)$")
+    if dbgSpecies then
+        debugGivePal(dbgPlayer, dbgSpecies)
+        return
+    end
+
+    -- RAWPAL <species> <playerName>  spawn+bat, KHONG ghi bat ky chi so nao
+    local rawSpecies, rawPlayer = line:match("^RAWPAL%s+(%S+)%s+(.+)$")
+    if rawSpecies then
+        giveRawPal(rawPlayer, rawSpecies)
+        return
+    end
+
+    -- INSPECT <playerName>            in class thuc te cua pal storage ra dump.log
+    local inspectName = line:match("^INSPECT%s+(.+)$")
+    if inspectName then
+        inspectPlayer(inspectName)
+        return
+    end
+
+    -- ITEM <itemId> <quantity> <playerName>
+    -- playerName nằm CUỐI dòng (bắt hết phần còn lại) để chịu được tên có dấu cách
+    -- (tên hiển thị trong game nhiều khi có 2+ từ, vd "Anh Hai").
+    local itemId, quantityStr, itemPlayerName = line:match("^ITEM%s+(%S+)%s+(%d+)%s+(.+)$")
+    if itemId then
+        giveItem(itemPlayerName, itemId, tonumber(quantityStr))
+        return
+    end
+
+    -- PAL2 <species> <level> <rank> <ivHp> <ivMelee> <ivShot> <ivDef>
+    --      <soulHp> <soulAtk> <soulDef> <soulWork> <gender> <lucky> <passivesCsv> <playerName>
+    -- Mọi field số đều bắt buộc có mặt; "-" nghĩa là không đặt (giữ random của game).
+    -- gender: 0 = random, 1 = đực, 2 = cái. lucky: 0/1. playerName luôn ở CUỐI dòng
+    -- (cùng lý do như ITEM — chịu được tên có dấu cách).
+    local p2Species, p2Level, p2Rank, p2Hp, p2Melee, p2Shot, p2Def,
+          p2SoulHp, p2SoulAtk, p2SoulDef, p2SoulWork, p2Gender, p2Lucky, p2Passives, p2Name =
+        line:match("^PAL2%s+(%S+)%s+(%d+)%s+(%d+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%d+)%s+(%d+)%s+(%S+)%s+(.+)$")
+    if p2Species then
+        givePal(
+            p2Name, p2Species, tonumber(p2Level), tonumber(p2Rank) or 0,
+            tonumber(p2Hp), tonumber(p2Melee), tonumber(p2Shot), tonumber(p2Def), p2Passives,
+            tonumber(p2SoulHp), tonumber(p2SoulAtk), tonumber(p2SoulDef), tonumber(p2SoulWork),
+            tonumber(p2Gender) or 0, tonumber(p2Lucky) or 0
+        )
+        return
+    end
+
+    -- PAL (format cũ, giữ để tools/givepal.js và dashboard bản cũ vẫn chạy):
+    -- PAL <player> <species> <level> <rank> <ivHp> <ivMelee> <ivShot> <ivDef> <soulHp> <soulAtk> <soulDef> <soulWork> <passivesCsv>
+    local palPlayerName, speciesId, levelStr, rankStr, hpStr, meleeStr, shotStr, defStr,
+          soulHpStr, soulAtkStr, soulDefStr, soulWorkStr, passivesCsv =
+        line:match("^PAL%s+(%S+)%s+(%S+)%s+(%d+)%s+(%d+)%s*(%d*)%s*(%d*)%s*(%d*)%s*(%d*)%s*(%d*)%s*(%d*)%s*(%d*)%s*(%d*)%s*(.*)$")
+    if palPlayerName then
+        givePal(
+            palPlayerName, speciesId, tonumber(levelStr), tonumber(rankStr) or 0,
+            tonumber(hpStr), tonumber(meleeStr), tonumber(shotStr), tonumber(defStr), passivesCsv,
+            tonumber(soulHpStr), tonumber(soulAtkStr), tonumber(soulDefStr), tonumber(soulWorkStr),
+            0, 0
+        )
+        return
+    end
+
+    appendResult("ERROR bad line: " .. line)
+end
+
+local function processQueue()
+    local f = io.open(queueFile, "r")
+    if not f then
+        if firstTick then
+            appendResult("DEBUG: could not open queue file for read: " .. queueFile)
+        end
+        return
+    end
+    local content = f:read("*a")
+    f:close()
+
+    if content and content ~= "" then
+        local clear = io.open(queueFile, "w")
+        if clear then clear:close() end
+
+        for line in content:gmatch("[^\r\n]+") do
+            processLine(line)
+        end
+    end
+end
+
+LoopAsync(2000, function()
+    local ok, err = pcall(processQueue)
+    if not ok then
+        appendResult("LUA ERROR in processQueue: " .. tostring(err))
+    end
+    if firstTick then
+        appendResult("DEBUG: first tick executed, baseDir=" .. baseDir)
+        firstTick = false
+    end
+    return false
+end)
+
+print("[GiveGoldCommand] mod loaded, polling queue.txt every 2s (baseDir=" .. baseDir .. ")\n")

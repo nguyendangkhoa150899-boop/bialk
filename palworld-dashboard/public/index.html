@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Palworld Server Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Palworld Server Dashboard</h1>
+    <div id="server-info" class="pill">Đang tải...</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Điều khiển server</h2>
+      <div class="actions">
+        <button id="btn-save">Save world</button>
+        <button id="btn-shutdown" class="danger">Shutdown</button>
+      </div>
+      <form id="announce-form" class="row">
+        <input type="text" id="announce-message" placeholder="Nội dung thông báo (broadcast)" required />
+        <button type="submit">Gửi broadcast</button>
+      </form>
+      <form id="unban-form" class="row">
+        <input type="text" id="unban-userid" placeholder="UserID cần unban (ví dụ: steam_7656...)" required />
+        <button type="submit">Unban</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Người chơi online (<span id="player-count">0</span>)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Tên</th>
+            <th>UserID</th>
+            <th>Level</th>
+            <th>Ping</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="player-rows"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Tặng vật phẩm</h2>
+      <form id="give-item-form" class="give-item-form">
+        <div class="player-picker field-full" id="give-item-players" data-empty="Chưa có người chơi online"></div>
+        <input type="text" id="give-item-id" placeholder="Item ID (ví dụ: Money, DogCoin)" required />
+        <input type="number" id="give-item-quantity" placeholder="Số lượng" value="100" min="1" step="1" required />
+        <button type="submit">Tặng</button>
+      </form>
+      <div class="actions quick-items">
+        <button type="button" data-item="Money">Gold Coin</button>
+        <button type="button" data-item="DogCoin">Dog Coin</button>
+      </div>
+      <div id="give-item-status" class="status-line"></div>
+    </section>
+
+    <section class="card">
+      <h2>Liên kết Discord ↔ Palworld <button type="button" id="btn-links-refresh" class="small">Làm mới</button></h2>
+      <p class="hint">
+        Dùng để bot Discord tự tặng Dog Coin khi người chơi rút tiền. Liên kết theo SteamID nên
+        người chơi đổi tên nhân vật vẫn không hỏng. Người chơi phải <strong>đang online</strong> mới lấy được SteamID.
+      </p>
+      <form id="link-form" class="give-item-form">
+        <label class="field">Discord ID
+          <input type="text" id="link-discord-id" placeholder="ví dụ: 123456789012345678" required />
+        </label>
+        <label class="field">Tên Discord (không bắt buộc)
+          <input type="text" id="link-discord-name" placeholder="ví dụ: khoa#1234" />
+        </label>
+        <label class="field">Nhân vật đang online
+          <select id="link-player"></select>
+        </label>
+        <button type="submit">Liên kết</button>
+      </form>
+      <div id="link-status" class="status-line"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Discord</th>
+            <th>Nhân vật</th>
+            <th>SteamID</th>
+            <th>Liên kết lúc</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="link-rows"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Lịch sử tặng quà <button type="button" id="btn-history-refresh" class="small">Làm mới</button></h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Loại</th>
+            <th>Người nhận</th>
+            <th>Chi tiết</th>
+            <th>Kết quả</th>
+          </tr>
+        </thead>
+        <tbody id="history-rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <dialog id="shutdown-dialog">
+    <form id="shutdown-form">
+      <h3>Shutdown server</h3>
+      <label>Đợi bao nhiêu giây trước khi tắt<input type="number" id="shutdown-wait" value="30" min="0" max="3600" step="1" required /></label>
+      <label>Thông báo cho player<input type="text" id="shutdown-message" value="Server sắp tắt để bảo trì" /></label>
+      <div class="actions">
+        <button type="button" value="cancel" onclick="document.getElementById('shutdown-dialog').close()">Hủy</button>
+        <button type="submit" class="danger">Xác nhận tắt server</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

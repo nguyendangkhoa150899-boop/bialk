@@ -1,0 +1,14 @@
+# QUAN TRỌNG: .env chứa mật khẩu server thật — KHÔNG BAO GIỜ commit lên GitHub
+.env
+server/.env
+tools/.env
+
+# Dependencies
+node_modules/
+
+# Logs / temp
+*.log
+npm-debug.log*
+
+# Dữ liệu runtime của dashboard (lịch sử tặng quà — chứa tên người chơi)
+server/data/

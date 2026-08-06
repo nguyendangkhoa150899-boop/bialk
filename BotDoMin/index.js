@@ -6,6 +6,7 @@ const {
 } = require('discord.js');
 const fs = require('fs');
 const { startPanel } = require('./panel');
+const palworld = require('./palworld');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
@@ -94,6 +95,12 @@ function updatePoints(userId, amount) {
     const data = getUserData(userId);
     data.points += amount;
 }
+
+// --- LIÊN KẾT DISCORD <-> NHÂN VẬT PALWORLD ---
+// Dữ liệu liên kết do DASHBOARD Palworld giữ (server/data/links.json), bot đọc qua
+// API. Cố tình KHÔNG lưu bản sao trong database.json: hai nơi cùng giữ sẽ lệch nhau.
+// Liên kết theo SteamID vì tên nhân vật đổi được, SteamID thì không.
+const WITHDRAW_MAX_PER_REQUEST = 2000; // trần mỗi lần rút, chặn thiệt hại nếu có lỗi
 
 // Hiển thị số ván dạng 5 chữ số: 1 -> #00001
 const padId = (n) => String(n).padStart(5, '0');
@@ -299,6 +306,14 @@ const commands = [
     new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ Dogcoin')
         .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
         .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin trừ').setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+    // --- LIÊN KẾT NHÂN VẬT PALWORLD (admin làm tay — server ít người) ---
+    // Dữ liệu liên kết do DASHBOARD Palworld giữ (một nguồn sự thật duy nhất),
+    // lệnh này chỉ là cách tạo nhanh từ Discord. Xem/xóa liên kết làm trên dashboard.
+    new SlashCommandBuilder().setName('link').setDescription('Admin liên kết tài khoản Discord với nhân vật Palworld')
+        .addUserOption(opt => opt.setName('user').setDescription('Tài khoản Discord').setRequired(true))
+        .addStringOption(opt => opt.setName('nhanvat').setDescription('Tên nhân vật đang online, hoặc dán steam_7656...').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 ].map(c => c.toJSON());
 
@@ -345,6 +360,13 @@ client.once('ready', async (c) => {
             rejectWithdraw,
         });
         writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 3001}`);
+
+        // Quét lại các yêu cầu rút còn 'pending' (lúc xin rút thì người chơi offline).
+        // 60s/lần là đủ: mỗi lần chỉ gọi 1 request nhẹ tới dashboard để xem ai online.
+        setInterval(() => {
+            retryPendingWithdraws().catch((e) => writeLog('SYSTEM', `[RÚT] lỗi vòng quét: ${e.message}`));
+        }, 60000);
+        writeLog('SYSTEM', `🔁 Bật tự động giao Dogcoin (quét mỗi 60s) — dashboard: ${palworld.DASHBOARD_URL}`);
     } catch (e) {
         writeLog('SYSTEM', `[LỖI PANEL] ${e.message}`);
     }
@@ -927,6 +949,121 @@ function stopWithdraw() {
 }
 
 // admin đã đưa Dog Coin thật trong game -> chỉ đánh dấu xong, Dogcoin đã trừ từ lúc tạo yêu cầu.
+// ===== GIAO DOGCOIN TỰ ĐỘNG VÀO GAME =====
+// Nguyên tắc an toàn (đây là tiền thật của server, làm sai là mất):
+//
+// 1. CHỐNG GIAO 2 LẦN: đánh dấu 'processing' TRƯỚC khi gọi dashboard. Nếu bot
+//    crash giữa lúc gọi, yêu cầu đó nằm lại ở 'processing' và KHÔNG được tự động
+//    thử lại — đẩy cho admin quyết trên panel. Thà chậm hơn là nhân đôi tiền.
+// 2. KHÔNG tự hoàn tiền khi lỗi: lỗi phổ biến nhất là người chơi offline. Giữ
+//    'pending' để thử lại; muốn hoàn thì admin bấm Từ chối (đã có sẵn).
+// 3. Timeout KHÔNG có nghĩa là thất bại: mod có thể đã đưa item sau khi dashboard
+//    hết kiên nhẫn chờ. Nên timeout cũng đưa về 'processing' cho admin xem, chứ
+//    không tự thử lại.
+const DELIVER_ITEM_ID = 'DogCoin';
+
+async function deliverWithdraw(req) {
+    if (!req || req.status !== 'pending') return { ok: false, reason: 'không ở trạng thái chờ' };
+
+    let link = null;
+    let target = null;
+    try {
+        link = await palworld.getLink(req.userId);
+        if (!link) {
+            req.lastError = 'Chưa liên kết nhân vật — admin dùng /link hoặc làm trên dashboard';
+            return { ok: false, reason: req.lastError };
+        }
+        target = await palworld.findOnlineBySteamId(link.steamId);
+    } catch (e) {
+        req.lastError = 'Không gọi được dashboard: ' + e.message;
+        writeLog('SYSTEM', `[RÚT #${req.id}] lỗi gọi dashboard: ${e.message}`);
+        return { ok: false, reason: req.lastError };
+    }
+
+    if (!target) {
+        req.lastError = 'Người chơi đang offline — sẽ giao khi vào game';
+        return { ok: false, reason: req.lastError };
+    }
+
+    // Chốt trạng thái TRƯỚC khi gọi: từ đây không có đường tự động thử lại nữa.
+    req.status = 'processing';
+    req.processingAt = Date.now();
+    req.ingameName = target.cleanName;
+
+    let result;
+    try {
+        result = await palworld.giveItem(target.cleanName, DELIVER_ITEM_ID, req.amount);
+    } catch (e) {
+        req.lastError = 'Lỗi khi giao: ' + e.message;
+        writeLog('ADMIN', `[RÚT #${req.id}] TREO ở processing (lỗi gọi give-item: ${e.message}) — cần admin kiểm tra trong game`);
+        return { ok: false, reason: req.lastError, stuck: true };
+    }
+
+    if (result.ok) {
+        req.status = 'approved';
+        req.deliveredAt = Date.now();
+        req.lastError = null;
+        writeLog('ADMIN', `[RÚT #${req.id}] TỰ ĐỘNG giao ${req.amount.toLocaleString()} Dog Coin cho ${target.cleanName} (${link.steamId}) — ${req.username}`);
+        return { ok: true, ingameName: target.cleanName };
+    }
+
+    // Mod không xác nhận thành công. Có thể thật sự lỗi, cũng có thể đã giao rồi
+    // mà phản hồi về muộn → KHÔNG tự thử lại, để admin kiểm tra trong game.
+    req.lastError = result.message;
+    writeLog('ADMIN', `[RÚT #${req.id}] TREO ở processing — mod báo: ${result.message}. Admin cần kiểm tra người chơi đã nhận chưa.`);
+    return { ok: false, reason: result.message, stuck: true };
+}
+
+// Quét lại các yêu cầu đang chờ (người chơi lúc xin rút thì offline).
+// Chỉ xử lý 'pending' — 'processing' cố tình bỏ qua để không giao 2 lần.
+let retryRunning = false;
+
+async function retryPendingWithdraws() {
+    if (retryRunning) return;
+    retryRunning = true;
+    try {
+        const pendings = withdrawRequests.filter((r) => r.status === 'pending');
+        if (pendings.length === 0) return;
+
+        let online = [];
+        try {
+            online = await palworld.getOnlinePlayers();
+        } catch {
+            return; // dashboard chưa sẵn sàng, để lần sau
+        }
+        if (online.length === 0) return;
+        const onlineIds = new Set(online.map((p) => p.userId));
+
+        for (const req of pendings) {
+            let link = null;
+            try {
+                link = await palworld.getLink(req.userId);
+            } catch {
+                continue;
+            }
+            if (!link || !onlineIds.has(link.steamId)) continue; // chưa liên kết / còn offline
+            const res = await deliverWithdraw(req);
+            if (res.ok) {
+                notifyWithdrawDone(req, res.ingameName).catch(() => {});
+            }
+        }
+    } finally {
+        retryRunning = false;
+    }
+}
+
+// Nhắn riêng cho người chơi trên Discord khi đã giao xong.
+async function notifyWithdrawDone(req, ingameName) {
+    try {
+        const user = await client.users.fetch(req.userId);
+        await user.send(
+            `✅ Đã chuyển **${req.amount.toLocaleString()}** ${DOGCOIN_EMOJI} vào game cho nhân vật **${ingameName}** (mã rút #${req.id}).`
+        );
+    } catch {
+        // người chơi tắt DM — bỏ qua, panel vẫn thấy trạng thái
+    }
+}
+
 function approveWithdraw(id) {
     const req = withdrawRequests.find(r => r.id === id);
     if (!req || req.status !== 'pending') return false;
@@ -1005,6 +1142,29 @@ client.on('interactionCreate', async interaction => {
             updatePoints(target.id, -amount);
             writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} Dogcoin của ${target.tag}`);
             return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
+        }
+
+        // Admin liên kết Discord với nhân vật Palworld. Nhân vật phải ĐANG ONLINE
+        // để dashboard tra ra SteamID (hoặc dán trực tiếp steam_7656... nếu đã biết).
+        if (interaction.commandName === 'link') {
+            const target = interaction.options.getUser('user');
+            const nhanvat = interaction.options.getString('nhanvat').trim();
+            await interaction.deferReply({ ephemeral: true });
+            try {
+                const payload = { discordId: target.id, discordName: target.tag };
+                if (/^steam_\d+$/i.test(nhanvat)) payload.steamId = nhanvat;
+                else payload.ingameName = nhanvat;
+
+                const link = await palworld.saveLink(payload);
+                writeLog('ADMIN', `[LIÊN KẾT] Admin ${interaction.user.tag} liên kết ${target.tag} -> ${link.ingameName || ''} (${link.steamId})`);
+                return interaction.editReply(
+                    `✅ Đã liên kết <@${target.id}> với nhân vật **${link.ingameName || '(không rõ tên)'}**\n` +
+                    `SteamID: \`${link.steamId}\`\n` +
+                    `Từ giờ khi người này rút Dogcoin, bot sẽ tự đưa Dog Coin vào game cho nhân vật đó.`
+                );
+            } catch (e) {
+                return interaction.editReply(`❌ Không liên kết được: ${e.message}`);
+            }
         }
 
         if (interaction.commandName === 'chuyentien') {
@@ -1215,23 +1375,54 @@ client.on('interactionCreate', async interaction => {
             if (isNaN(amt) || amt <= 0) {
                 return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ!", ephemeral: true });
             }
+            if (amt > WITHDRAW_MAX_PER_REQUEST) {
+                return interaction.reply({ content: `❌ Mỗi lần chỉ rút tối đa **${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}** ${DOGCOIN_EMOJI}. Muốn rút nhiều hơn thì rút nhiều lần.`, ephemeral: true });
+            }
             if (userData.points < amt) {
                 return interaction.reply({ content: `❌ Bạn không đủ Dogcoin! Số dư hiện tại: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`, ephemeral: true });
             }
 
             updatePoints(userId, -amt);
             const reqId = withdrawSeq++;
-            withdrawRequests.unshift({
+            const req = {
                 id: reqId,
                 userId,
                 username: interaction.user.username,
                 amount: amt,
                 time: new Date().toLocaleString('vi-VN'),
                 status: 'pending',
+            };
+            withdrawRequests.unshift(req);
+            writeLog('ADMIN', `[YÊU CẦU RÚT] #${reqId} ${interaction.user.tag} xin rút ${amt.toLocaleString()} Dogcoin`);
+
+            // Thử giao ngay. Trả lời Discord trước (tránh hết 3s timeout của interaction)
+            // vì giao hàng phải chờ mod trong game, có thể mất chục giây.
+            await interaction.reply({
+                content: `🏧 Đã nhận yêu cầu rút **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} (mã #${reqId}). Đang chuyển vào game...`,
+                ephemeral: true,
             });
 
-            writeLog('ADMIN', `[YÊU CẦU RÚT] #${reqId} ${interaction.user.tag} xin rút ${amt.toLocaleString()} Dogcoin | Chờ duyệt`);
-            return interaction.reply({ content: `🏧 Đã gửi yêu cầu rút **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} (mã #${reqId}). Chờ admin vào game đưa Dog Coin thật rồi duyệt trên dashboard.`, ephemeral: true });
+            deliverWithdraw(req)
+                .then(async (res) => {
+                    if (res.ok) {
+                        await interaction.followUp({
+                            content: `✅ Xong! Đã đưa **${amt.toLocaleString()}** Dog Coin vào game cho nhân vật **${res.ingameName}**.`,
+                            ephemeral: true,
+                        }).catch(() => {});
+                    } else if (res.stuck) {
+                        await interaction.followUp({
+                            content: `⚠️ Yêu cầu #${reqId} cần admin kiểm tra: ${res.reason}\nDogcoin đã bị trừ, admin sẽ xử lý.`,
+                            ephemeral: true,
+                        }).catch(() => {});
+                    } else {
+                        await interaction.followUp({
+                            content: `⏳ Chưa giao được: ${res.reason}\nBot sẽ tự giao khi bạn vào game (Dogcoin đã trừ, giữ nguyên yêu cầu #${reqId}).`,
+                            ephemeral: true,
+                        }).catch(() => {});
+                    }
+                })
+                .catch((e) => writeLog('SYSTEM', `[RÚT #${reqId}] lỗi không mong đợi: ${e.message}`));
+            return;
         }
     }
 

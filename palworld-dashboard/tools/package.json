@@ -1,0 +1,11 @@
+{
+  "name": "palworld-dashboard-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SFTP helper scripts for deploying/testing the GiveGoldCommand UE4SS Lua mod",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ssh2": "^1.17.0"
+  }
+}
