@@ -111,6 +111,25 @@ function updatePoints(userId, amount) {
     data.points += amount;
 }
 
+// ===== SỔ GHI BIẾN ĐỘNG DOGCOIN =====
+// Chỉ ghi các khoản ĐIỀU CHỈNH và CHUYỂN ĐỔI (admin cộng/trừ, chuyển giữa người chơi,
+// chuyển vào/ra game, mua pal). CỐ TÌNH không ghi tiền cược thắng/thua của mini game —
+// mỗi ván 3 game đều sinh giao dịch, ghi hết thì sổ thành rác không tra được gì.
+function logDog(type, userId, username, amount, note) {
+    if (!Array.isArray(dbCache._dogLedger)) dbCache._dogLedger = [];
+    dbCache._dogLedger.unshift({
+        time: new Date().toLocaleString('vi-VN'),
+        ts: Date.now(),
+        type,                 // 'admin+' | 'admin-' | 'transfer' | 'to-game' | 'from-game' | 'shop' | 'refund'
+        userId,
+        username: username || userId,
+        amount,               // dương = cộng vào ví Discord, âm = trừ
+        balance: getUserData(userId).points || 0,
+        note: note || '',
+    });
+    if (dbCache._dogLedger.length > 500) dbCache._dogLedger.length = 500;
+}
+
 // --- LIÊN KẾT DISCORD <-> NHÂN VẬT PALWORLD ---
 // Dữ liệu liên kết do DASHBOARD Palworld giữ (server/data/links.json), bot đọc qua
 // API. Cố tình KHÔNG lưu bản sao trong database.json: hai nơi cùng giữ sẽ lệch nhau.
@@ -410,6 +429,9 @@ client.once('ready', async (c) => {
             getBCDash: () => bcDashHistory,
             getUserData,
             updatePoints,
+            logDog,
+            getDogLedger: () => dbCache._dogLedger || [],
+            getPalOrders: () => dbCache._palOrders || [],
             deletePlayer,
             resetAllPlayers,
             saveDbNow,
@@ -1323,6 +1345,7 @@ function rejectWithdraw(id) {
     if (!req || req.status !== 'pending') return false;
     req.status = 'rejected';
     updatePoints(req.userId, req.amount);
+    logDog('refund', req.userId, req.username, req.amount, `admin từ chối yêu cầu #${id}`);
     writeLog('ADMIN', `[TỪ CHỐI RÚT] #${id} ${req.username} - đã hoàn lại ${req.amount.toLocaleString()} Dogcoin`);
     return true;
 }
@@ -1428,6 +1451,7 @@ client.on('interactionCreate', async interaction => {
             const target = interaction.options.getUser('user');
             const amount = interaction.options.getInteger('amount');
             updatePoints(target.id, amount);
+            logDog('admin+', target.id, target.tag, amount, `admin ${interaction.user.tag} cộng tay`);
             writeLog('ADMIN', `[CỘNG TIỀN] Admin ${interaction.user.tag} cộng ${amount} Dogcoin cho ${target.tag}`);
             return interaction.reply(`✅ Đã cộng **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
@@ -1436,6 +1460,7 @@ client.on('interactionCreate', async interaction => {
             const target = interaction.options.getUser('user');
             const amount = interaction.options.getInteger('amount');
             updatePoints(target.id, -amount);
+            logDog('admin-', target.id, target.tag, -amount, `admin ${interaction.user.tag} trừ tay`);
             writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} Dogcoin của ${target.tag}`);
             return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
@@ -1474,6 +1499,8 @@ client.on('interactionCreate', async interaction => {
             
             updatePoints(userId, -amount); 
             updatePoints(receiver.id, amount);
+            logDog('transfer', userId, interaction.user.tag, -amount, `chuyển cho ${receiver.tag}`);
+            logDog('transfer', receiver.id, receiver.tag, amount, `nhận từ ${interaction.user.tag}`);
             writeLog('ADMIN', `[CHUYỂN TIỀN] ${interaction.user.tag} → ${receiver.tag} | ${amount.toLocaleString()} Dogcoin`);
             return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${receiver.id}>!`).setColor(0x00aeef)] });
         }
@@ -1719,6 +1746,7 @@ client.on('interactionCreate', async interaction => {
             const sent = await sendPalOrderToAdmin(order);
             if (!sent) {
                 updatePoints(userId, price); // hoàn tiền vì admin không nhận được đơn
+                logDog('refund', userId, interaction.user.tag, price, `hoàn đơn pal #${order.id} (không gửi được cho admin)`);
                 return interaction.editReply(
                     '❌ Không gửi được đơn cho admin (admin chặn tin nhắn riêng?). ' +
                     `Đã **hoàn lại ${price.toLocaleString()}** ${DOGCOIN_EMOJI} cho bạn. Nhờ admin kiểm tra cài đặt tin nhắn riêng.`
@@ -1729,6 +1757,7 @@ client.on('interactionCreate', async interaction => {
             dbCache._palOrders.unshift(order);
             if (dbCache._palOrders.length > 200) dbCache._palOrders.length = 200;
 
+            logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (${isRandom ? 'ngẫu nhiên' : 'tự chọn'}) — đơn #${order.id}`);
             writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} mua ${order.palName} (${order.kind}, ${price} Dogcoin) | linh hon: ${souls} | passive: ${passives}`);
 
             return interaction.editReply(
@@ -1785,6 +1814,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             updatePoints(userId, amt);
+            logDog('from-game', userId, interaction.user.tag, amt, `chuyển từ game (${target.cleanName}): trong game ${res.before} → ${res.after}`);
             writeLog('ADMIN', `[NẠP] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dog Coin tu game (${target.cleanName}) -> Dogcoin Discord | trong game ${res.before} -> ${res.after}`);
 
             return interaction.editReply(
@@ -1811,6 +1841,7 @@ client.on('interactionCreate', async interaction => {
 
             updatePoints(userId, -amt);
             const reqId = withdrawSeq++;
+            logDog('to-game', userId, interaction.user.tag, -amt, `xin chuyển vào game — yêu cầu #${reqId}`);
             const req = {
                 id: reqId,
                 userId,

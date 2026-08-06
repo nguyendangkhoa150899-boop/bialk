@@ -84,6 +84,8 @@ function startPanel(ctx) {
             bcHistory: (ctx.getBCDash ? ctx.getBCDash() : []),
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             savedChannels: db._savedChannels || [],
+            dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
+            palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
         };
     };
 
@@ -270,6 +272,7 @@ function startPanel(ctx) {
                     const amount = parseInt(body.amount);
                     if (!uid || isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
                     ctx.updatePoints(uid, amount);
+                    if (ctx.logDog) ctx.logDog(amount >= 0 ? 'admin+' : 'admin-', uid, (ctx.getDb()[uid]||{}).name || uid, amount, 'panel: cong/tru tay');
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Cộng ${amount} cho ${uid}`);
                     return sendJSON(res, 200, { ok: true });
                 }
@@ -335,6 +338,7 @@ function startPanel(ctx) {
                     const amount = parseInt(body.amount);
                     if (!uid || isNaN(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
                     ctx.updatePoints(uid, -amount);
+                    if (ctx.logDog) ctx.logDog('admin-', uid, (ctx.getDb()[uid]||{}).name || uid, -amount, 'panel: tru tay');
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Trừ ${amount} của ${uid} (rút Dogcoin ra ngoài game)`);
                     return sendJSON(res, 200, { ok: true });
                 }
@@ -497,8 +501,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="mine" onclick="tab('mine')">💎 Dò Mìn</button>
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-      <button data-tab="withdraw" onclick="tab('withdraw')">🏧 Rút Dogcoin<span id="wdBadge" class="hidden"></span></button>
-      <button data-tab="pal" onclick="tab('pal')">🎮 Palworld</button>
+      <button data-tab="pal" onclick="tab('pal')">🎮 Palworld & Dogcoin<span id="wdBadge" class="hidden"></span></button>
     </div>
 
     <!-- TÀI XỈU -->
@@ -619,30 +622,38 @@ const HTML = `<!DOCTYPE html>
 
     <!-- NGƯỜI CHƠI -->
     <!-- RÚT DOGCOIN -->
-    <div id="tab-withdraw" class="hidden">
+    <!-- PALWORLD -->
+    <div id="tab-pal" class="hidden">
       <div class="card">
-        <h3>🎛️ Kênh Rút Dogcoin</h3>
-        <label>Channel ID (kênh đăng nút rút)</label>
+        <h3>🎛️ Kênh chuyển Dogcoin & Shop Pal</h3>
+        <label>Channel ID (kênh đăng bảng)</label>
         <input id="wdChannel" placeholder="vd: 123456789012345678">
         <div class="row" style="margin-top:12px">
-          <button class="btn-green" onclick="wdStart()">▶️ Bật / Tạo bảng rút</button>
+          <button class="btn-green" onclick="wdStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="wdStop()">⏹️ Tắt</button>
         </div>
-        <div class="note">Bot đăng 1 tin nhắn có nút <b>🏧 Rút Dogcoin</b> trong kênh. Người chơi bấm nút → nhập số → Dogcoin bị trừ ngay và yêu cầu hiện ở danh sách dưới chờ duyệt.</div>
+        <div class="note">Bot đăng 1 tin nhắn có <b>4 nút</b>: Chuyển vào game, Chuyển ra Discord, Chọn pal, Pal ngẫu nhiên. Kèm bảng số dư tự cập nhật mỗi 60 giây. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
       </div>
       <div class="card">
-        <h3>📋 Yêu cầu chờ duyệt</h3>
-        <div class="note">✅ Duyệt = bạn ĐÃ vào game đưa Dog Coin thật cho người chơi (Dogcoin đã trừ sẵn, không trừ thêm). ❌ Từ chối = hoàn lại Dogcoin cho họ.</div>
+        <h3>📋 Yêu cầu chuyển vào game đang chờ</h3>
+        <div class="note">🎮 <b>Giao ngay</b> = bot tự đưa Dog Coin vào game (cần người chơi online + đã liên kết). ✅ <b>Đánh dấu xong</b> = bạn tự đưa trong game rồi. ❌ <b>Từ chối</b> = hoàn Dogcoin.</div>
         <div id="wdPending"></div>
       </div>
       <div class="card">
-        <h3>📜 Lịch sử đã xử lý</h3>
+        <h3>📜 Yêu cầu đã xử lý</h3>
         <div id="wdDone" class="hist"></div>
       </div>
-    </div>
+      <div class="card">
+        <h3>🐾 Đơn mua Pal</h3>
+        <div class="note">Người chơi mua ở Discord, bot gửi đơn cho admin qua tin nhắn riêng. Bạn dùng CreativeMenu tạo pal rồi giao trong game.</div>
+        <div id="palOrders" class="hist"></div>
+      </div>
+      <div class="card">
+        <h3>💰 Sổ biến động Dogcoin</h3>
+        <div class="note">Ghi mọi khoản <b>điều chỉnh và chuyển đổi</b>: admin cộng/trừ tay, chuyển giữa người chơi, chuyển vào/ra game, mua pal, hoàn tiền. <b>Không</b> ghi tiền cược thắng/thua mini game (mỗi ván đều sinh giao dịch, ghi hết thì không tra được gì).</div>
+        <div id="dogLedger" class="hist"></div>
+      </div>
 
-    <!-- PALWORLD -->
-    <div id="tab-pal" class="hidden">
       <div class="card">
         <h3>🎮 Người chơi đang online trong game <button class="btn-blue" style="padding:4px 10px;font-size:12px" onclick="palRefresh()">🔄 Tải lại</button></h3>
         <div class="note">Cần dashboard Palworld đang chạy cùng máy. Người chơi phải <b>đang online</b> mới lấy được SteamID để liên kết.</div>
@@ -779,7 +790,7 @@ function showApp(){
 }
 
 function tab(t){
-  ['tx','bc','mine','user','withdraw','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   // Dữ liệu Palworld phải gọi sang dashboard qua mạng nên chỉ tải khi mở tab.
   if(t==='pal') palRefresh();
@@ -872,6 +883,43 @@ async function palLink(){
     toast('🔗 Đã liên kết');
     palRefresh();
   }catch(e){err.style.color='var(--red)';err.textContent='❌ '+e.message;}
+}
+
+// Sổ biến động Dogcoin — dữ liệu đến từ STATE (poll mỗi 3s) nên không cần gọi riêng.
+const DOG_TYPE_LABEL = {
+  'admin+':'➕ Admin cộng', 'admin-':'➖ Admin trừ', 'transfer':'🔁 Chuyển',
+  'to-game':'🎮 Vào game', 'from-game':'💬 Ra Discord', 'shop':'🐾 Mua pal', 'refund':'↩️ Hoàn tiền',
+};
+
+function renderDogLedger(){
+  const box=document.getElementById('dogLedger');
+  if(!box||!STATE) return;
+  const rows=STATE.dogLedger||[];
+  if(rows.length===0){ box.innerHTML='<div class="muted">Chưa có biến động nào.</div>'; return; }
+  box.innerHTML=rows.map(r=>{
+    const sign=r.amount>=0?'win':'lose';
+    const amt=(r.amount>0?'+':'')+Number(r.amount).toLocaleString();
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--line)">'+
+      '<span class="'+sign+'"><b>'+amt+'</b></span> · '+esc(DOG_TYPE_LABEL[r.type]||r.type)+
+      ' · <b>'+esc(r.username||r.userId)+'</b>'+
+      '<br><span class="muted" style="font-size:12px">'+esc(r.time||'')+' · còn '+Number(r.balance||0).toLocaleString()+
+      (r.note?' · '+esc(r.note):'')+'</span></div>';
+  }).join('');
+}
+
+function renderPalOrders(){
+  const box=document.getElementById('palOrders');
+  if(!box||!STATE) return;
+  const rows=STATE.palOrders||[];
+  if(rows.length===0){ box.innerHTML='<div class="muted">Chưa có đơn nào.</div>'; return; }
+  box.innerHTML=rows.map(o=>
+    '<div style="padding:6px 0;border-bottom:1px solid var(--line)">'+
+      '<b>#'+o.id+' '+esc(o.palName)+'</b> <span class="muted" style="font-size:12px">'+esc(o.palCode)+'</span>'+
+      ' · '+(o.kind==='random'?'🎲':'🎯')+' '+Number(o.price||0).toLocaleString()+
+      '<br><span class="muted" style="font-size:12px">'+esc(o.username||o.userId)+' · '+esc(o.time||'')+'</span>'+
+      '<br><span style="font-size:12px">Linh hồn: '+esc(o.souls||'-')+' | Passive: '+esc(o.passives||'-')+'</span>'+
+    '</div>'
+  ).join('');
 }
 
 async function palUnlink(discordId){
@@ -1154,6 +1202,8 @@ async function refresh(){
   renderSavedChannels();
   // yêu cầu rút Dogcoin
   renderWithdraw();
+  renderDogLedger();
+  renderPalOrders();
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
 
