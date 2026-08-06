@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { palworld, PalworldApiError } from "./palworldClient.js";
 import { dashboardAuth } from "./dashboardAuth.js";
-import { giveItem } from "./sftpBridge.js";
+import { giveItem, countItem, countItemAll, takeItem } from "./sftpBridge.js";
 import { recordGive, readHistory } from "./history.js";
 import { listLinks, getLinkByDiscordId, findBySteamId, saveLink, deleteLink } from "./links.js";
 import { intInRange, nonEmptyString, ValidationError } from "./validate.js";
@@ -94,6 +94,48 @@ app.post(
   })
 );
 
+
+// ===== Đọc / trừ item trong game (cho luồng nạp: game -> Discord) =====
+// Đếm số dư trong game — chỉ đọc, an toàn.
+app.get(
+  "/api/item-count",
+  handle(async (req) => {
+    const playerName = nonEmptyString(req.query.playerName, "Tên người chơi");
+    const itemId = nonEmptyString(req.query.itemId, "Item ID");
+    return await countItem(playerName, itemId);
+  })
+);
+
+// Đếm cho tất cả người đang online trong 1 lượt — dùng cho bảng số dư tự cập nhật.
+app.get(
+  "/api/item-count-all",
+  handle(async (req) => {
+    const itemId = nonEmptyString(req.query.itemId, "Item ID");
+    return { counts: await countItemAll(itemId) };
+  })
+);
+
+// TRỪ item trong túi người chơi. Bên gọi phải kiểm tra `took` đúng bằng số yêu cầu
+// trước khi cộng tiền ở hệ thống ngoài — chỉ tin cờ ok là chưa đủ.
+app.post(
+  "/api/take-item",
+  handle(async (req) => {
+    const playerName = nonEmptyString(req.body.playerName, "Tên người chơi");
+    const itemId = nonEmptyString(req.body.itemId, "Item ID");
+    if (!/^[A-Za-z0-9_]+$/.test(itemId)) {
+      throw new ValidationError("Item ID chỉ cho phép chữ, số, gạch dưới");
+    }
+    const quantity = intInRange(req.body.quantity, { min: 1, max: 100000, label: "Số lượng" });
+
+    const result = await takeItem(playerName, itemId, quantity);
+    recordGive({
+      action: "take",
+      detail: { itemId, quantity, before: result.before, after: result.after },
+      results: [{ player: playerName, ok: result.ok, message: result.message }],
+    });
+    return result;
+  })
+);
 
 app.get("/api/history", handle((req) => ({ history: readHistory(Number(req.query.limit) || 100) })));
 

@@ -115,7 +115,10 @@ function updatePoints(userId, amount) {
 // Dữ liệu liên kết do DASHBOARD Palworld giữ (server/data/links.json), bot đọc qua
 // API. Cố tình KHÔNG lưu bản sao trong database.json: hai nơi cùng giữ sẽ lệch nhau.
 // Liên kết theo SteamID vì tên nhân vật đổi được, SteamID thì không.
-const WITHDRAW_MAX_PER_REQUEST = 2000; // trần mỗi lần rút, chặn thiệt hại nếu có lỗi
+const WITHDRAW_MAX_PER_REQUEST = 2000; // trần mỗi lần chuyển vào game, chặn thiệt hại nếu có lỗi
+const DELIVER_ITEM_ID = 'DogCoin';     // item id thật của Dog Coin trong game
+// Chiều game -> Discord KHÔNG giới hạn: người chơi chỉ lấy ra được số Dog Coin họ
+// thật sự đang có trong túi, nên không có đường lợi dụng.
 
 // Hiển thị số ván dạng 5 chữ số: 1 -> #00001
 const padId = (n) => String(n).padStart(5, '0');
@@ -404,6 +407,12 @@ client.once('ready', async (c) => {
             retryPendingWithdraws().catch((e) => writeLog('SYSTEM', `[RÚT] lỗi vòng quét: ${e.message}`));
         }, 60000);
         writeLog('SYSTEM', `🔁 Bật tự động giao Dogcoin (quét mỗi 60s) — dashboard: ${palworld.DASHBOARD_URL}`);
+
+        // Bảng số dư trong tin nhắn chuyển Dogcoin, cập nhật mỗi 60 giây.
+        refreshPalBalances().catch(() => {});
+        setInterval(() => {
+            refreshPalBalances().catch((e) => writeLog('SYSTEM', `[SỐ DƯ] lỗi cập nhật: ${e.message}`));
+        }, 60000);
     } catch (e) {
         writeLog('SYSTEM', `[LỖI PANEL] ${e.message}`);
     }
@@ -956,20 +965,96 @@ function stopLonnho() {
 }
 
 // --- UI RÚT DOGCOIN ---
+// Bảng số dư của người chơi, được vòng lặp 60s cập nhật (xem refreshPalBalances).
+// rows: [{ discordId, discordName, ingameName, inGame, wallet, online }]
+let palBalanceCache = { rows: [], updatedAt: 0, nextAt: 0, error: null };
+
 function getWithdrawMessageData() {
+    const lines = [
+        `Chuyển ${DOGCOIN_EMOJI} **Dogcoin** qua lại giữa ví Discord (chơi mini game) và Dog Coin thật trong game.`,
+        '',
+        `**🎮 Chuyển vào game** — tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần. Đang offline vẫn gửi được, bot tự giao khi bạn vào game.`,
+        `**💬 Chuyển ra Discord** — phải **đang ở trong game**, và Dog Coin phải **nằm trong túi** (để trong hòm/kho sẽ không tính).`,
+        '',
+        '⚠️ Chưa được admin liên kết nhân vật thì cả hai nút đều không dùng được.',
+    ];
+
+    // Bảng số dư
+    const rows = palBalanceCache.rows || [];
+    if (palBalanceCache.error) {
+        lines.push('', `📊 *Không đọc được số dư: ${palBalanceCache.error}*`);
+    } else if (rows.length === 0) {
+        lines.push('', '📊 *Chưa có ai được liên kết nhân vật.*');
+    } else {
+        lines.push('', '📊 **Số dư**  (ví Discord · trong game)');
+        for (const r of rows.slice(0, 15)) {
+            const inGame = r.online ? `${r.inGame.toLocaleString()}` : 'offline';
+            lines.push(`${r.online ? '🟢' : '⚫'} **${r.ingameName || r.discordName}** — ${r.wallet.toLocaleString()} · ${inGame}`);
+        }
+    }
+
+    if (palBalanceCache.nextAt) {
+        // Dùng timestamp Discord để chính client tự đếm ngược, không cần bot sửa liên tục.
+        lines.push('', `🔄 Làm mới <t:${Math.floor(palBalanceCache.nextAt / 1000)}:R>`);
+    }
+
     const embed = new EmbedBuilder()
-        .setTitle('🏧 RÚT DOGCOIN')
+        .setTitle('🔄 CHUYỂN DOGCOIN GIỮA GAME VÀ DISCORD')
         .setColor(0xf1c40f)
-        .setDescription(
-            `Bấm nút bên dưới để gửi yêu cầu rút ${DOGCOIN_EMOJI} **Dogcoin** trong ví Discord ra Dog Coin thật trong game.\n\n` +
-            '• Số Dogcoin sẽ bị **trừ ngay** khi gửi yêu cầu (khoá lại, không cược được nữa).\n' +
-            '• Admin sẽ vào game đưa Dog Coin thật cho bạn rồi duyệt yêu cầu.\n' +
-            '• Nếu yêu cầu bị từ chối, số Dogcoin sẽ được hoàn lại đầy đủ.'
-        );
+        .setDescription(lines.join('\n'));
+
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('rut_open').setLabel('Rút Dogcoin').setEmoji(DOGCOIN_EMOJI_ID).setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId('rut_open').setLabel('Chuyển vào game').setEmoji('🎮').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Success)
     );
     return { embeds: [embed], components: [row] };
+}
+
+// Đọc số dư (ví Discord + trong game) rồi cập nhật lại tin nhắn. Chạy mỗi 60 giây.
+// Gộp tất cả người online vào MỘT lệnh COUNTALL vì mỗi lượt SFTP mất ~6 giây.
+let palBalanceRunning = false;
+
+async function refreshPalBalances() {
+    if (palBalanceRunning) return;
+    palBalanceRunning = true;
+    try {
+        let links = [], counts = [], online = [];
+        try {
+            links = await palworld.listLinks();
+            online = await palworld.getOnlinePlayers();
+            if (online.length > 0) counts = await palworld.countItemAll(DELIVER_ITEM_ID);
+            palBalanceCache.error = null;
+        } catch (e) {
+            palBalanceCache.error = e.message;
+        }
+
+        const onlineIds = new Set(online.map((p) => p.userId));
+        const countByName = new Map(counts.map((c) => [palworld.cleanName(c.player), c.count]));
+
+        palBalanceCache.rows = links.map((l) => {
+            const isOnline = onlineIds.has(l.steamId);
+            const nameInGame = isOnline
+                ? (online.find((p) => p.userId === l.steamId) || {}).cleanName || l.ingameName
+                : l.ingameName;
+            return {
+                discordId: l.discordId,
+                discordName: l.discordName || l.discordId,
+                ingameName: nameInGame,
+                online: isOnline,
+                inGame: countByName.get(palworld.cleanName(nameInGame)) || 0,
+                wallet: getUserData(l.discordId).points || 0,
+            };
+        });
+
+        palBalanceCache.updatedAt = Date.now();
+        palBalanceCache.nextAt = Date.now() + 60000;
+
+        if (withdrawState.message) {
+            await withdrawState.message.edit(getWithdrawMessageData()).catch(() => {});
+        }
+    } finally {
+        palBalanceRunning = false;
+    }
 }
 
 async function startWithdraw(channel) {
@@ -997,7 +1082,6 @@ function stopWithdraw() {
 // 3. Timeout KHÔNG có nghĩa là thất bại: mod có thể đã đưa item sau khi dashboard
 //    hết kiên nhẫn chờ. Nên timeout cũng đưa về 'processing' cho admin xem, chứ
 //    không tự thử lại.
-const DELIVER_ITEM_ID = 'DogCoin';
 
 async function deliverWithdraw(req) {
     if (!req || req.status !== 'pending') return { ok: false, reason: 'không ở trạng thái chờ' };
@@ -1455,6 +1539,59 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
         }
 
+        // ===== CHUYỂN DOG COIN TỪ GAME RA DISCORD =====
+        // Thứ tự cố ý: TRỪ TRONG GAME TRƯỚC, chỉ cộng Dogcoin khi mod xác nhận đã trừ
+        // đúng số. Nếu trừ thất bại thì không cộng gì — người chơi giữ nguyên tiền
+        // trong game, server không mất gì. Chiều này an toàn hơn cộng trước rồi trừ sau.
+        if (interaction.customId === 'nap_modal') {
+            const amt = parseInt(interaction.fields.getTextInputValue('nap_input_amount'));
+            if (isNaN(amt) || amt <= 0) {
+                return interaction.reply({ content: '❌ Số Dog Coin không hợp lệ!', ephemeral: true });
+            }
+
+            await interaction.deferReply({ ephemeral: true });
+
+            let link, target;
+            try {
+                link = await palworld.getLink(userId);
+                if (!link) {
+                    return interaction.editReply('❌ Tài khoản Discord của bạn chưa được liên kết với nhân vật trong game. Nhờ admin liên kết trước.');
+                }
+                target = await palworld.findOnlineBySteamId(link.steamId);
+                if (!target) {
+                    return interaction.editReply('❌ Bạn đang không ở trong game. Chiều này bắt buộc phải online để trừ Dog Coin trong túi.');
+                }
+            } catch (e) {
+                return interaction.editReply(`❌ Không kết nối được tới server game: ${e.message}`);
+            }
+
+            let res;
+            try {
+                res = await palworld.takeItem(target.cleanName, DELIVER_ITEM_ID, amt);
+            } catch (e) {
+                writeLog('ADMIN', `[NẠP] ${interaction.user.tag} lỗi khi trừ trong game: ${e.message} — CHƯA cộng Dogcoin`);
+                return interaction.editReply(`❌ Lỗi khi trừ Dog Coin trong game: ${e.message}\nDogcoin của bạn KHÔNG bị thay đổi.`);
+            }
+
+            // Chỉ cộng khi số thực tế trừ được ĐÚNG bằng số yêu cầu.
+            if (!res || res.took !== amt) {
+                writeLog('ADMIN', `[NẠP] ${interaction.user.tag} trừ không đủ: yeu cau ${amt}, thuc te ${res && res.took}. Mod: ${res && res.message}`);
+                const detail = res && res.before !== null && res.before !== undefined
+                    ? `\nTrong game bạn có **${res.before}** Dog Coin.`
+                    : '';
+                return interaction.editReply(`❌ Không chuyển được: ${(res && res.message) || 'không rõ lý do'}${detail}\nDogcoin của bạn KHÔNG bị thay đổi.`);
+            }
+
+            updatePoints(userId, amt);
+            writeLog('ADMIN', `[NẠP] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dog Coin tu game (${target.cleanName}) -> Dogcoin Discord | trong game ${res.before} -> ${res.after}`);
+
+            return interaction.editReply(
+                `✅ Đã chuyển **${amt.toLocaleString()}** Dog Coin từ game ra Discord.\n` +
+                `Trong game: ${res.before} → **${res.after}** Dog Coin\n` +
+                `Ví Discord: **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`
+            );
+        }
+
         if (interaction.customId === 'rut_modal') {
             const amountStr = interaction.fields.getTextInputValue('rut_input_amount');
             const amt = parseInt(amountStr);
@@ -1530,6 +1667,40 @@ client.on('interactionCreate', async interaction => {
             .setRequired(true);
 
         modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+        await interaction.showModal(modal);
+        return;
+    }
+
+    // ======== NÚT CHUYỂN DOG COIN TỪ GAME RA DISCORD ========
+    if (interaction.customId === 'nap_open') {
+        // Hiện số Dog Coin đang có TRONG GAME lên nhãn cho người chơi khỏi phải đoán.
+        // Không lấy được (offline / dashboard lỗi) thì vẫn cho mở modal, lúc bấm gửi
+        // mới báo lỗi cụ thể — đỡ chặn oan.
+        let label = 'Số Dog Coin muốn chuyển ra Discord';
+        try {
+            const link = await palworld.getLink(userId);
+            if (link) {
+                const target = await palworld.findOnlineBySteamId(link.steamId);
+                if (target) {
+                    const c = await palworld.countItem(target.cleanName, DELIVER_ITEM_ID);
+                    if (c && c.count !== null && c.count !== undefined) {
+                        label = `Trong game đang có: ${c.count.toLocaleString()} Dog Coin`;
+                    }
+                }
+            }
+        } catch {
+            // bỏ qua, chỉ là nhãn hiển thị
+        }
+
+        const modal = new ModalBuilder().setCustomId('nap_modal').setTitle('Chuyển Dog Coin ra Discord');
+        modal.addComponents(new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+                .setCustomId('nap_input_amount')
+                .setLabel(label.slice(0, 45))
+                .setPlaceholder('Ví dụ: 20')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+        ));
         await interaction.showModal(modal);
         return;
     }

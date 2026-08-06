@@ -119,3 +119,40 @@ export async function giveItem(playerNames, itemId, quantity) {
   const result = await queueAndWait(lines, playerNames.length, 6 + 2 * playerNames.length);
   return splitResultsByPlayer(result, playerNames);
 }
+
+// Đếm số lượng item người chơi đang có TRONG GAME (chỉ đọc).
+// Trả { ok, count, message }.
+export async function countItem(playerName, itemId) {
+  const result = await queueAndWait([`COUNT ${itemId} ${playerName}`], 1, 6);
+  const [r] = splitResultsByPlayer(result, [playerName]);
+  const m = r.message && r.message.match(/COUNT\s+\S+=(\d+)/);
+  return { ok: r.ok && !!m, count: m ? Number(m[1]) : null, message: r.message };
+}
+
+// Đếm item cho TẤT CẢ người đang online trong 1 lượt gửi lệnh.
+// Dùng cho bảng số dư tự cập nhật — đếm từng người sẽ mất ~6 giây mỗi người.
+// Trả [{ player, count }].
+export async function countItemAll(itemId) {
+  const lines = await queueAndWait([`COUNTALL ${itemId}`], 1, 8);
+  const out = [];
+  for (const line of lines) {
+    // Mỗi người một dòng: "[tên] OK COUNT DogCoin=53"
+    const m = line.match(/^\[(.+?)\]\s+OK COUNT\s+\S+=(\d+)$/);
+    if (m) out.push({ player: m[1], count: Number(m[2]) });
+  }
+  return out;
+}
+
+// TRỪ item trong túi người chơi (cho luồng nạp: game -> Discord).
+// Mod tự kiểm tra số dư trước, thiếu thì không sửa gì và trả ERROR.
+// Trả { ok, before, after, took, message } — bên gọi PHẢI dựa vào `took` để cộng
+// Dogcoin, đừng tin mỗi cờ ok, vì lệch số là mất tiền thật.
+export async function takeItem(playerName, itemId, quantity) {
+  const result = await queueAndWait([`TAKE ${itemId} ${quantity} ${playerName}`], 1, 8);
+  const [r] = splitResultsByPlayer(result, [playerName]);
+  const m = r.message && r.message.match(/truoc=(\d+)\s+sau=(\d+)/);
+  const before = m ? Number(m[1]) : null;
+  const after = m ? Number(m[2]) : null;
+  const took = before !== null && after !== null ? before - after : null;
+  return { ok: r.ok && took === quantity, before, after, took, message: r.message };
+}

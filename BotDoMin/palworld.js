@@ -84,6 +84,30 @@ async function giveItem(playerName, itemId, quantity) {
     };
 }
 
+// Đếm item người chơi đang có TRONG GAME. Trả { ok, count, message }.
+async function countItem(playerName, itemId) {
+    const params = new URLSearchParams({ playerName, itemId });
+    return await call(`/api/item-count?${params}`, { timeoutMs: GIVE_TIMEOUT_MS });
+}
+
+// Đếm item cho TẤT CẢ người đang online trong 1 lượt. Trả [{ player, count }].
+async function countItemAll(itemId) {
+    const params = new URLSearchParams({ itemId });
+    const data = await call(`/api/item-count-all?${params}`, { timeoutMs: GIVE_TIMEOUT_MS });
+    return (data && data.counts) || [];
+}
+
+// TRỪ item trong túi người chơi (game -> Discord). Trả { ok, before, after, took, message }.
+//
+// QUAN TRỌNG: bên gọi phải kiểm tra `took` đúng bằng số yêu cầu rồi mới cộng Dogcoin.
+// Chỉ tin cờ ok là chưa đủ — lệch số ở đây là mất tiền thật của server hoặc người chơi.
+async function takeItem(playerName, itemId, quantity) {
+    return await call('/api/take-item', {
+        method: 'POST',
+        body: JSON.stringify({ playerName, itemId, quantity }),
+    });
+}
+
 // ===== Liên kết Discord ↔ nhân vật (dashboard giữ dữ liệu) =====
 // Cố tình KHÔNG lưu bản sao trong database.json của bot: hai nơi cùng giữ sẽ lệch nhau.
 
@@ -121,6 +145,9 @@ module.exports = {
     getOnlinePlayers,
     findOnlineBySteamId,
     giveItem,
+    countItem,
+    countItemAll,
+    takeItem,
     getLink,
     saveLink,
     listLinks,

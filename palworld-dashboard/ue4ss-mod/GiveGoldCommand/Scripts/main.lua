@@ -311,6 +311,294 @@ local function giveRawPal(playerName, speciesId)
     ExecuteWithDelay(150, tryCapture)
 end
 
+-- ===== CHẨN ĐOÁN TÚI ĐỒ (cho luồng nạp: game -> Discord) =====
+-- Game KHÔNG expose hàm trừ item nào ra Blueprint/Lua (đã dò PalItemContainer,
+-- PalItemSlot, PalItemUtility, PalPlayerInventoryData — chỉ có hàm đọc). Nhưng
+-- PalItemSlot có property StackCount ghi được + hàm OnRep_StackCount, nên cách trừ
+-- là ghi thẳng StackCount giống kỹ thuật đã dùng cho chỉ số pal.
+--
+-- Lệnh này CHỈ ĐỌC, không sửa gì. Mục đích: biết chính xác
+--   - CountItemNum64 trả về kiểu gì
+--   - TryGetContainerFromStaticItemID trả out-param theo hình dạng nào
+--   - mỗi ô đồ đọc ItemId / StackCount ra sao
+-- Biết xong mới viết lệnh trừ thật, tránh đoán sai.
+local function inventoryDebug(playerName, itemId)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, "ERROR player not found (INVDBG) | names=[" .. table.concat(names, ", ") .. "]")
+        return
+    end
+
+    local inv = nil
+    pcall(function() inv = playerState:GetInventoryData() end)
+    if not inv then
+        appendPlayerResult(playerName, "ERROR khong lay duoc InventoryData")
+        return
+    end
+
+    local okCount, cnt = pcall(function() return inv:CountItemNum64(FName(itemId)) end)
+    appendPlayerResult(playerName, string.format(
+        "INVDBG count(%s): ok=%s value=%s type=%s",
+        itemId, tostring(okCount), tostring(cnt), type(cnt)))
+
+    -- UE4SS bắt truyền ĐỦ tham số kể cả out-param ("expected 3 parameters, received 1"),
+    -- nhưng không rõ nó nhận hình dạng nào — thử vài kiểu rồi xem kiểu nào chạy.
+    local function shortErr(v)
+        local s = tostring(v)
+        if #s > 110 then s = s:sub(1, 110) .. "..." end
+        return (s:gsub("[\r\n]+", " "))
+    end
+
+    local attempts = {
+        { "3 args (nil,false)", function() return inv:TryGetContainerFromStaticItemID(FName(itemId), nil, false) end },
+        { "3 args ({},false)",  function() return inv:TryGetContainerFromStaticItemID(FName(itemId), {}, false) end },
+        { "2 args (nil)",       function() return inv:TryGetContainerFromStaticItemID(FName(itemId), nil) end },
+        { "2 args ({})",        function() return inv:TryGetContainerFromStaticItemID(FName(itemId), {}) end },
+    }
+
+    local container = nil
+    for _, a in ipairs(attempts) do
+        local okC, r1, r2, r3 = pcall(a[2])
+        appendPlayerResult(playerName, string.format(
+            "INVDBG try[%s]: ok=%s r1=%s(%s) r2=%s(%s) r3=%s(%s)",
+            a[1], tostring(okC), shortErr(r1), type(r1), shortErr(r2), type(r2), shortErr(r3), type(r3)))
+        if okC then
+            for _, cand in ipairs({ r1, r2, r3 }) do
+                if cand ~= nil and type(cand) ~= "boolean" and type(cand) ~= "string" then
+                    local okNum, n = pcall(function() return cand:Num() end)
+                    if okNum and type(n) == "number" then
+                        container = cand
+                        appendPlayerResult(playerName, "INVDBG => container lay duoc bang cach: " .. a[1])
+                        break
+                    end
+                end
+            end
+        end
+        if container then break end
+    end
+
+    -- Cách gọi (FName, {}) chạy được và trả true, nghĩa là out-param được ghi vào
+    -- BẢNG mình truyền vào. Xem bảng đó có gì.
+    do
+        local out = {}
+        local okT, ret = pcall(function() return inv:TryGetContainerFromStaticItemID(FName(itemId), out) end)
+        appendPlayerResult(playerName, string.format(
+            "INVDBG out-table: callOk=%s ret=%s | type(out)=%s", tostring(okT), tostring(ret), type(out)))
+        if type(out) == "table" then
+            local keys = {}
+            for k, v in pairs(out) do
+                table.insert(keys, tostring(k) .. "=" .. tostring(v) .. "(" .. type(v) .. ")")
+            end
+            appendPlayerResult(playerName, "INVDBG out-table keys: " .. (#keys > 0 and table.concat(keys, " , ") or "(BANG RONG)"))
+            if not container then
+                for _, v in pairs(out) do
+                    local okNum, n = pcall(function() return v:Num() end)
+                    if okNum and type(n) == "number" then
+                        container = v
+                        appendPlayerResult(playerName, "INVDBG => container lay duoc tu out-table")
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    -- Học hình dạng ItemId: in thô vài ô đồ đang có item để biết so sánh thế nào.
+    if not container then
+        local all = FindAllOf("PalItemContainer") or {}
+        appendPlayerResult(playerName, string.format("INVDBG FindAllOf(PalItemContainer) = %d cai", #all))
+        local shown = 0
+        for _, c in ipairs(all) do
+            if shown >= 6 then break end
+            local okNum, n = pcall(function() return c:Num() end)
+            if okNum and type(n) == "number" and n > 0 then
+                for i = 0, math.min(n - 1, 40) do
+                    if shown >= 6 then break end
+                    pcall(function()
+                        local slot = c:Get(i)
+                        if slot and slot:IsValid() then
+                            local stack = tonumber(tostring(slot.StackCount)) or 0
+                            if stack > 0 then
+                                shown = shown + 1
+                                local raw, viaFn, staticId = "?", "?", "?"
+                                pcall(function() raw = tostring(slot.ItemId) end)
+                                pcall(function() viaFn = tostring(slot:GetItemId()) end)
+                                pcall(function() staticId = tostring(slot.ItemId.StaticId) end)
+                                appendPlayerResult(playerName, string.format(
+                                    "INVDBG mau o: stack=%d | ItemId=%s | GetItemId()=%s | ItemId.StaticId=%s",
+                                    stack, raw, viaFn, staticId))
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
+    if not container then
+        appendPlayerResult(playerName, "INVDBG: KHONG tim duoc container tu ham nay")
+        return
+    end
+
+    local okNum, num = pcall(function() return container:Num() end)
+    appendPlayerResult(playerName, string.format("INVDBG container.Num() = %s", tostring(num)))
+
+    -- In THÔ mọi ô có hàng (không lọc theo tên) để học đúng hình dạng ItemId.
+    -- Vòng trước lọc bằng tostring nên không khớp gì — nên lần này thử nhiều đường
+    -- đọc: property ItemId, các field con thường gặp của FPalItemId, và hàm GetItemId.
+    local found = 0
+    for i = 0, (tonumber(num) or 0) - 1 do
+        pcall(function()
+            local slot = container:Get(i)
+            if slot and slot:IsValid() then
+                local stack = tonumber(tostring(slot.StackCount)) or 0
+                if stack > 0 and found < 8 then
+                    found = found + 1
+                    -- StaticId là FName (FNameUserdata) nên phải gọi :ToString() —
+                    -- tostring() chỉ ra địa chỉ bộ nhớ, không so sánh được.
+                    local name = "?"
+                    pcall(function() name = slot.ItemId.StaticId:ToString() end)
+                    appendPlayerResult(playerName, string.format(
+                        "INVDBG o[%d] stack=%d | item=%s", i, stack, name))
+                end
+            end
+        end)
+    end
+    appendPlayerResult(playerName, string.format("INVDBG so o co hang da in: %d (tong %s o)", found, tostring(num)))
+end
+
+-- Lấy container đang giữ item của người chơi. UE4SS ghi out-param vào BẢNG truyền
+-- vào (đã kiểm chứng: out.OutContainer), và bắt buộc truyền đủ tham số.
+local function getItemContainer(inv, itemId)
+    local out = {}
+    local ok, found = pcall(function() return inv:TryGetContainerFromStaticItemID(FName(itemId), out) end)
+    if not ok or not found then return nil end
+    return out.OutContainer
+end
+
+-- Tên item của 1 ô. StaticId là FName nên phải :ToString().
+local function slotItemName(slot)
+    local name = nil
+    pcall(function() name = slot.ItemId.StaticId:ToString() end)
+    return name
+end
+
+-- Đếm số lượng item người chơi đang có trong game. Dùng để hiện số dư cho họ trước
+-- khi chuyển ra Discord (chỉ đọc, không sửa gì).
+local function countItem(playerName, itemId)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, "ERROR player not found (COUNT) | names=[" .. table.concat(names, ", ") .. "]")
+        return
+    end
+    local ok, n = pcall(function()
+        return tonumber(tostring(playerState:GetInventoryData():CountItemNum64(FName(itemId)))) or 0
+    end)
+    if ok then
+        appendPlayerResult(playerName, string.format("OK COUNT %s=%d", itemId, n))
+    else
+        appendPlayerResult(playerName, string.format("ERROR COUNT %s: %s", itemId, tostring(n)))
+    end
+end
+
+-- Đếm item cho TẤT CẢ người đang online trong MỘT lệnh. Cần thiết vì mỗi lượt gửi
+-- lệnh qua SFTP mất khoảng 6 giây — đếm từng người sẽ chậm không dùng được.
+-- Lưu ý: chỉ đếm TÚI ĐỒ của người chơi, KHÔNG tính hòm/kho ở căn cứ (container khác,
+-- và hàm đếm hòm mà game expose chỉ chạy phía client).
+local function countItemAll(itemId)
+    local players = FindAllOf("PalPlayerState") or {}
+    local reported = 0
+    for _, playerState in ipairs(players) do
+        pcall(function()
+            if not playerState:IsValid() then return end
+            local name = playerState.PlayerNamePrivate:ToString()
+            local n = tonumber(tostring(playerState:GetInventoryData():CountItemNum64(FName(itemId)))) or 0
+            appendPlayerResult(name, string.format("OK COUNT %s=%d", itemId, n))
+            reported = reported + 1
+        end)
+    end
+    appendResult(string.format("OK COUNTALL %s: %d nguoi online", itemId, reported))
+end
+
+-- ===== TRỪ ITEM TRONG TÚI (cho luồng nạp: game -> Discord) =====
+-- Game không có hàm trừ item nào expose ra Lua, nên ghi thẳng StackCount của từng ô
+-- rồi gọi OnRep_StackCount để đồng bộ — cùng kỹ thuật đã dùng cho chỉ số pal.
+--
+-- An toàn: đếm TRƯỚC, thiếu thì không sửa gì cả; đếm LẠI sau khi sửa và báo cả hai
+-- số để bên gọi (bot) đối chiếu, tránh cộng Dogcoin khi thực tế chưa trừ được.
+local function takeItem(playerName, itemId, quantity)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, "ERROR player not found (TAKE) | names=[" .. table.concat(names, ", ") .. "]")
+        return
+    end
+
+    local inv = nil
+    pcall(function() inv = playerState:GetInventoryData() end)
+    if not inv then
+        appendPlayerResult(playerName, "ERROR khong lay duoc InventoryData (TAKE)")
+        return
+    end
+
+    local function countNow()
+        local n = 0
+        pcall(function() n = tonumber(tostring(inv:CountItemNum64(FName(itemId)))) or 0 end)
+        return n
+    end
+
+    local before = countNow()
+    if before < quantity then
+        appendPlayerResult(playerName, string.format(
+            "ERROR khong du %s: trong game co %d, can %d", itemId, before, quantity))
+        return
+    end
+
+    local container = getItemContainer(inv, itemId)
+    if not container then
+        appendPlayerResult(playerName, string.format("ERROR khong lay duoc container cho %s", itemId))
+        return
+    end
+
+    local num = 0
+    pcall(function() num = tonumber(tostring(container:Num())) or 0 end)
+
+    local remaining = quantity
+    for i = 0, num - 1 do
+        if remaining <= 0 then break end
+        pcall(function()
+            local slot = container:Get(i)
+            if not (slot and slot:IsValid()) then return end
+            local stack = tonumber(tostring(slot.StackCount)) or 0
+            if stack <= 0 then return end
+            if slotItemName(slot) ~= itemId then return end
+
+            local take = math.min(stack, remaining)
+            slot.StackCount = stack - take
+            remaining = remaining - take
+            pcall(function() slot:OnRep_StackCount() end)
+        end)
+    end
+
+    pcall(function() container:OnRep_ItemSlotArray() end)
+    pcall(function() inv:OnUpdateInventoryContainer() end)
+
+    local after = countNow()
+    local took = before - after
+
+    if remaining > 0 then
+        appendPlayerResult(playerName, string.format(
+            "WARN chi tru duoc %d/%d %s (truoc=%d sau=%d)", quantity - remaining, quantity, itemId, before, after))
+    end
+
+    if took == quantity then
+        appendPlayerResult(playerName, string.format(
+            "OK TAKE %s x%d (truoc=%d sau=%d)", itemId, quantity, before, after))
+    else
+        appendPlayerResult(playerName, string.format(
+            "ERROR TAKE %s: yeu cau %d nhung thuc te tru %d (truoc=%d sau=%d)", itemId, quantity, took, before, after))
+    end
+end
+
 -- In ra class thật của các object liên quan tới pal storage (chỉ biết được lúc chạy).
 local function inspectPlayer(playerName)
     local playerState, names = findPlayerState(playerName)
@@ -585,6 +873,27 @@ local function processLine(line)
     local rawSpecies, rawPlayer = line:match("^RAWPAL%s+(%S+)%s+(.+)$")
     if rawSpecies then
         giveRawPal(rawPlayer, rawSpecies)
+        return
+    end
+
+    -- COUNT <itemId> <playerName>   CHI DOC: dem so luong item trong tui
+    local cntId, cntPlayer = line:match("^COUNT%s+(%S+)%s+(.+)$")
+    if cntId then
+        countItem(cntPlayer, cntId)
+        return
+    end
+
+    -- TAKE <itemId> <quantity> <playerName>   TRU item trong tui nguoi choi
+    local takeId, takeQty, takePlayer = line:match("^TAKE%s+(%S+)%s+(%d+)%s+(.+)$")
+    if takeId then
+        takeItem(takePlayer, takeId, tonumber(takeQty))
+        return
+    end
+
+    -- INVDBG <itemId> <playerName>   CHI DOC: xem tui do cua nguoi choi co gi
+    local invItem, invPlayer = line:match("^INVDBG%s+(%S+)%s+(.+)$")
+    if invItem then
+        inventoryDebug(invPlayer, invItem)
         return
     end
 
