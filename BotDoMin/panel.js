@@ -833,7 +833,7 @@ function renderPalLinks(){
       '<div><b>'+esc(l.discordName||l.discordId)+'</b> → <b>'+esc(l.ingameName||'?')+'</b>'+
       '<br><span class="muted" style="font-size:12px">'+esc(l.discordId)+' · '+esc(l.steamId)+'</span></div>'+
       '<div class="row">'+(online?'<span style="color:var(--green);font-size:12px">● online</span>':'<span class="muted" style="font-size:12px">○ offline</span>')+
-      '<button class="btn-red" style="padding:4px 10px;font-size:12px" onclick="palUnlink(\''+escA(l.discordId)+'\')">Hủy</button></div>'+
+      '<button class="btn-red" style="padding:4px 10px;font-size:12px" onclick="palUnlink(\\''+escA(l.discordId)+'\\')">Hủy</button></div>'+
     '</div>';
   }).join('');
 }
