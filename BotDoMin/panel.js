@@ -323,6 +323,14 @@ function startPanel(ctx) {
                         return sendJSON(res, 200, { ok: true, link });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: e.message }); }
                 }
+                // Admin đã tạo pal trong game xong -> đóng đơn + nhắn cho người mua
+                if (path === '/api/pal/order-done') {
+                    const id = parseInt(body.id);
+                    if (!ctx.completePalOrder) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    const r = await ctx.completePalOrder(id);
+                    return sendJSON(res, r.ok ? 200 : 400, r);
+                }
+
                 if (path === '/api/pal/unlink') {
                     const discordId = String(body.discordId || '').trim();
                     if (!discordId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Discord ID' });
@@ -634,17 +642,17 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Bot đăng 1 tin nhắn có <b>4 nút</b>: Chuyển vào game, Chuyển ra Discord, Chọn pal, Pal ngẫu nhiên. Kèm bảng số dư tự cập nhật mỗi 60 giây. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
       </div>
-      <div class="card">
-        <h3>📋 Yêu cầu chuyển vào game đang chờ</h3>
-        <div class="note">🎮 <b>Giao ngay</b> = bot tự đưa Dog Coin vào game (cần người chơi online + đã liên kết). ✅ <b>Đánh dấu xong</b> = bạn tự đưa trong game rồi. ❌ <b>Từ chối</b> = hoàn Dogcoin.</div>
+      <!-- Chỉ hiện khi CÓ việc cần xử lý: người chơi offline lúc bấm, hoặc yêu cầu
+           bị treo vì bot crash giữa lúc giao. Bình thường tự động chạy xong nên khung
+           này ẩn. Đừng bỏ hẳn — đây là chỗ duy nhất nhìn thấy tiền đang bị treo. -->
+      <div class="card hidden" id="wdPendingCard">
+        <h3>⚠️ Yêu cầu chuyển vào game cần xử lý</h3>
+        <div class="note">Bình thường bot tự giao. Yêu cầu nằm ở đây là do người chơi <b>offline</b> lúc bấm (bot sẽ tự giao khi họ vào game), hoặc <b>bị treo</b> giữa lúc giao. 🎮 <b>Giao ngay</b> = thử giao lại. ✅ <b>Đánh dấu xong</b> = bạn tự đưa trong game rồi. ❌ <b>Từ chối</b> = hoàn Dogcoin.</div>
         <div id="wdPending"></div>
       </div>
+      <div id="wdDone" class="hidden"></div>
       <div class="card">
-        <h3>📜 Yêu cầu đã xử lý</h3>
-        <div id="wdDone" class="hist"></div>
-      </div>
-      <div class="card">
-        <h3>🐾 Đơn mua Pal</h3>
+        <h3>🐾 Đơn mua Pal<span id="palOrderBadge" class="hidden"></span></h3>
         <div class="note">Người chơi mua ở Discord, bot gửi đơn cho admin qua tin nhắn riêng. Bạn dùng CreativeMenu tạo pal rồi giao trong game.</div>
         <div id="palOrders" class="hist"></div>
       </div>
@@ -911,15 +919,42 @@ function renderPalOrders(){
   const box=document.getElementById('palOrders');
   if(!box||!STATE) return;
   const rows=STATE.palOrders||[];
+  // Đơn chưa làm lên trước — đó là việc cần làm; đơn xong hiện mờ bên dưới.
+  const todo=rows.filter(o=>o.status!=='done');
+  const done=rows.filter(o=>o.status==='done');
+
+  const badge=document.getElementById('palOrderBadge');
+  if(badge){
+    if(todo.length){ badge.textContent=' 🔴'+todo.length; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+  }
+
   if(rows.length===0){ box.innerHTML='<div class="muted">Chưa có đơn nào.</div>'; return; }
-  box.innerHTML=rows.map(o=>
-    '<div style="padding:6px 0;border-bottom:1px solid var(--line)">'+
-      '<b>#'+o.id+' '+esc(o.palName)+'</b> <span class="muted" style="font-size:12px">'+esc(o.palCode)+'</span>'+
-      ' · '+(o.kind==='random'?'🎲':'🎯')+' '+Number(o.price||0).toLocaleString()+
-      '<br><span class="muted" style="font-size:12px">'+esc(o.username||o.userId)+' · '+esc(o.time||'')+'</span>'+
-      '<br><span style="font-size:12px">Linh hồn: '+esc(o.souls||'-')+' | Passive: '+esc(o.passives||'-')+'</span>'+
-    '</div>'
-  ).join('');
+
+  const line=(o,isDone)=>
+    '<div style="padding:8px 0;border-bottom:1px solid var(--line)'+(isDone?';opacity:.55':'')+'">'+
+      '<div class="row" style="justify-content:space-between;align-items:flex-start">'+
+        '<div>'+
+          '<b>#'+o.id+' '+esc(o.palName)+'</b> <span class="muted" style="font-size:12px">'+esc(o.palCode)+'</span>'+
+          ' · '+(o.kind==='random'?'🎲':'🎯')+' '+Number(o.price||0).toLocaleString()+
+          '<br><span class="muted" style="font-size:12px">'+esc(o.username||o.userId)+' · '+esc(o.time||'')+
+            (isDone&&o.doneAt?' · xong '+esc(o.doneAt):'')+'</span>'+
+          '<br><span style="font-size:12px">Linh hồn: <b>'+esc(o.souls||'-')+'</b> | Passive: <b>'+esc(o.passives||'-')+'</b></span>'+
+        '</div>'+
+        (isDone
+          ? '<span class="win" style="font-size:12px;white-space:nowrap">✅ Đã giao</span>'
+          : '<button class="btn-green" style="padding:4px 10px;font-size:12px;white-space:nowrap" onclick="palOrderDone('+o.id+')">✅ Hoàn thành</button>')+
+      '</div>'+
+    '</div>';
+
+  box.innerHTML =
+    (todo.length? todo.map(o=>line(o,false)).join('') : '<div class="muted">Không có đơn nào đang chờ.</div>') +
+    (done.length? '<div class="muted" style="margin-top:10px;font-size:12px">Đã giao ('+done.length+'):</div>'+done.slice(0,15).map(o=>line(o,true)).join('') : '');
+}
+
+async function palOrderDone(id){
+  if(!await uiConfirm('Xác nhận ĐÃ tạo pal và giao cho người này trong game?','✅ Hoàn thành','btn-green'))return;
+  try{ await api('/api/pal/order-done',{id}); toast('✅ Đã đóng đơn #'+id); refresh(); }catch(e){}
 }
 
 async function palUnlink(discordId){
@@ -1101,6 +1136,9 @@ function renderWithdraw(){
   const badge=document.getElementById('wdBadge');
   if(pending.length){badge.textContent=' 🔴'+pending.length;badge.classList.remove('hidden');}
   else badge.classList.add('hidden');
+  // Khung chỉ hiện khi có việc cần xử lý (offline / bị treo).
+  const card=document.getElementById('wdPendingCard');
+  if(card) card.classList.toggle('hidden', pending.length===0);
   // danh sách chờ duyệt
   const p=document.getElementById('wdPending');
   p.innerHTML=pending.length?pending.map(r=>

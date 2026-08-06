@@ -432,6 +432,7 @@ client.once('ready', async (c) => {
             logDog,
             getDogLedger: () => dbCache._dogLedger || [],
             getPalOrders: () => dbCache._palOrders || [],
+            completePalOrder,
             deletePlayer,
             resetAllPlayers,
             saveDbNow,
@@ -1156,6 +1157,26 @@ async function sendPalOrderToAdmin(order) {
     }
 }
 
+// Admin đã tạo pal trong game xong -> đánh dấu đơn hoàn thành và nhắn cho người mua.
+async function completePalOrder(id) {
+    const orders = dbCache._palOrders || [];
+    const order = orders.find((o) => o.id === id);
+    if (!order) return { ok: false, error: 'Không tìm thấy đơn' };
+    if (order.status === 'done') return { ok: false, error: 'Đơn này đã hoàn thành rồi' };
+
+    order.status = 'done';
+    order.doneAt = new Date().toLocaleString('vi-VN');
+    writeLog('ADMIN', `[SHOP PAL] Hoan thanh don #${order.id} — ${order.palName} cho ${order.username}`);
+
+    // Nhắn cho người mua; DM thất bại thì vẫn coi là xong (pal đã giao trong game rồi).
+    try {
+        const user = await client.users.fetch(order.userId);
+        await user.send(`🐾 Đơn pal **#${order.id}** đã xong! Admin đã giao **${order.palName}** cho bạn trong game.`);
+    } catch { /* người chơi tắt DM */ }
+
+    return { ok: true };
+}
+
 // Đọc số dư (ví Discord + trong game) rồi cập nhật lại tin nhắn. Chạy mỗi 60 giây.
 // Gộp tất cả người online vào MỘT lệnh COUNTALL vì mỗi lượt SFTP mất ~6 giây.
 let palBalanceRunning = false;
@@ -1740,6 +1761,7 @@ client.on('interactionCreate', async interaction => {
                 palCode: pal.code,
                 souls,
                 passives,
+                status: 'pending',   // admin bấm "Hoàn thành" trên panel sau khi đã tạo pal trong game
                 time: new Date().toLocaleString('vi-VN'),
             };
 
