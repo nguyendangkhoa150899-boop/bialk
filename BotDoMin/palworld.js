@@ -104,12 +104,27 @@ async function saveLink({ discordId, discordName, ingameName, steamId }) {
     return (data && data.link) || null;
 }
 
+async function listLinks() {
+    const data = await call('/api/links', { timeoutMs: READ_TIMEOUT_MS });
+    return (data && data.links) || [];
+}
+
+async function deleteLink(discordId) {
+    await call(`/api/links/${encodeURIComponent(discordId)}`, {
+        method: 'DELETE',
+        timeoutMs: READ_TIMEOUT_MS,
+    });
+    return true;
+}
+
 module.exports = {
     getOnlinePlayers,
     findOnlineBySteamId,
     giveItem,
     getLink,
     saveLink,
+    listLinks,
+    deleteLink,
     cleanName,
     DASHBOARD_URL,
 };

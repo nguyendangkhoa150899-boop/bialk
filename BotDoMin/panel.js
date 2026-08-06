@@ -111,6 +111,24 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, state: buildState() });
                 }
 
+                // Dữ liệu Palworld để riêng, KHÔNG nhét vào /api/state: nó phải gọi
+                // sang dashboard Palworld qua mạng, chậm và có thể lỗi — không nên
+                // làm cả panel chậm/vỡ theo. Chỉ tải khi mở tab Palworld.
+                if (path === '/api/pal/state') {
+                    if (!ctx.palGetOnlinePlayers) {
+                        return sendJSON(res, 200, { ok: false, error: 'Bot chưa nối với dashboard Palworld' });
+                    }
+                    try {
+                        const [players, links] = await Promise.all([
+                            ctx.palGetOnlinePlayers(),
+                            ctx.palListLinks(),
+                        ]);
+                        return sendJSON(res, 200, { ok: true, players, links });
+                    } catch (e) {
+                        return sendJSON(res, 200, { ok: false, error: e.message });
+                    }
+                }
+
                 const body = req.method === 'POST' ? await readBody(req) : {};
 
                 // ---- TÀI XỈU ----
@@ -267,6 +285,37 @@ function startPanel(ctx) {
                     const id = parseInt(body.id);
                     if (!ctx.rejectWithdraw(id)) return sendJSON(res, 400, { ok: false, error: 'Yêu cầu không tồn tại hoặc đã xử lý' });
                     return sendJSON(res, 200, { ok: true });
+                }
+                // Giao tay 1 yêu cầu đang chờ (khi người chơi đã vào game, không muốn đợi vòng quét 60s)
+                if (path === '/api/withdraw/deliver') {
+                    const id = parseInt(body.id);
+                    if (!ctx.deliverWithdrawById) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ giao tự động' });
+                    const r = await ctx.deliverWithdrawById(id);
+                    return sendJSON(res, r.ok ? 200 : 400, r);
+                }
+
+                // ---- LIÊN KẾT PALWORLD ----
+                // Dữ liệu liên kết do dashboard Palworld giữ; panel này chỉ gọi qua.
+                if (path === '/api/pal/link') {
+                    const discordId = String(body.discordId || '').trim();
+                    const ingameName = String(body.ingameName || '').trim();
+                    const steamId = String(body.steamId || '').trim();
+                    if (!discordId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Discord ID' });
+                    if (!ingameName && !steamId) return sendJSON(res, 400, { ok: false, error: 'Chưa chọn nhân vật' });
+                    try {
+                        const link = await ctx.palSaveLink({ discordId, discordName: String(body.discordName || ''), ingameName, steamId });
+                        ctx.writeLog('ADMIN', `[PANEL LIÊN KẾT] ${discordId} -> ${link.ingameName || ''} (${link.steamId})`);
+                        return sendJSON(res, 200, { ok: true, link });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: e.message }); }
+                }
+                if (path === '/api/pal/unlink') {
+                    const discordId = String(body.discordId || '').trim();
+                    if (!discordId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Discord ID' });
+                    try {
+                        await ctx.palDeleteLink(discordId);
+                        ctx.writeLog('ADMIN', `[PANEL LIÊN KẾT] Hủy liên kết ${discordId}`);
+                        return sendJSON(res, 200, { ok: true });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: e.message }); }
                 }
 
                 if (path === '/api/points/subtract') {
@@ -437,6 +486,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="mine" onclick="tab('mine')">💎 Dò Mìn</button>
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
       <button data-tab="withdraw" onclick="tab('withdraw')">🏧 Rút Dogcoin<span id="wdBadge" class="hidden"></span></button>
+      <button data-tab="pal" onclick="tab('pal')">🎮 Palworld</button>
     </div>
 
     <!-- TÀI XỈU -->
@@ -579,6 +629,31 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- PALWORLD -->
+    <div id="tab-pal" class="hidden">
+      <div class="card">
+        <h3>🎮 Người chơi đang online trong game <button class="btn-blue" style="padding:4px 10px;font-size:12px" onclick="palRefresh()">🔄 Tải lại</button></h3>
+        <div class="note">Cần dashboard Palworld đang chạy cùng máy. Người chơi phải <b>đang online</b> mới lấy được SteamID để liên kết.</div>
+        <div id="palOnline"></div>
+      </div>
+      <div class="card">
+        <h3>🔗 Liên kết Discord ↔ nhân vật Palworld</h3>
+        <div class="note">Liên kết theo <b>SteamID</b> nên người chơi đổi tên nhân vật vẫn không hỏng. Khi họ rút Dogcoin, bot tự đưa Dog Coin vào game cho nhân vật đã liên kết.</div>
+        <label>Tài khoản Discord</label>
+        <select id="palDiscord"></select>
+        <label style="margin-top:10px">Nhân vật đang online</label>
+        <select id="palPlayer"></select>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="palLink()">🔗 Liên kết</button>
+        </div>
+        <div id="palLinkErr" class="muted" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h3>📋 Danh sách đã liên kết</h3>
+        <div id="palLinks"></div>
+      </div>
+    </div>
+
     <div id="tab-user" class="hidden">
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
@@ -689,8 +764,104 @@ function showApp(){
 }
 
 function tab(t){
-  ['tx','bc','mine','user','withdraw'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','user','withdraw','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  // Dữ liệu Palworld phải gọi sang dashboard qua mạng nên chỉ tải khi mở tab.
+  if(t==='pal') palRefresh();
+}
+
+// ===== TAB PALWORLD =====
+let PAL={players:[],links:[]};
+
+// esc() của panel chỉ escape &<> nên không an toàn khi nhét vào trong thuộc tính
+// HTML (tên nhân vật có dấu " sẽ làm hỏng thẻ). Dùng hàm này cho value/data-*.
+function escA(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function palRefresh(){
+  const onlineBox=document.getElementById('palOnline');
+  onlineBox.innerHTML='<div class="muted">Đang tải...</div>';
+  try{
+    const r=await fetch('/api/pal/state',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}});
+    const j=await r.json().catch(()=>({}));
+    if(!j.ok){
+      onlineBox.innerHTML='<div class="muted" style="color:var(--red)">❌ '+(j.error||'Không gọi được dashboard Palworld')+'</div>';
+      document.getElementById('palLinks').innerHTML='';
+      return;
+    }
+    PAL={players:j.players||[],links:j.links||[]};
+    renderPalOnline();
+    renderPalLinks();
+    fillPalSelects();
+  }catch(e){
+    onlineBox.innerHTML='<div class="muted" style="color:var(--red)">❌ '+e.message+'</div>';
+  }
+}
+
+function renderPalOnline(){
+  const box=document.getElementById('palOnline');
+  if(PAL.players.length===0){box.innerHTML='<div class="muted">Chưa có ai online trong game</div>';return;}
+  box.innerHTML=PAL.players.map(p=>{
+    const linked=PAL.links.find(l=>l.steamId===p.userId);
+    return '<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">'+
+      '<div><b>'+esc(p.cleanName||p.name)+'</b> <span class="muted" style="font-size:12px">Lv'+(p.level||'?')+' · '+esc(p.userId)+'</span></div>'+
+      '<div>'+(linked?'<span style="color:var(--green)">🔗 '+esc(linked.discordName||linked.discordId)+'</span>':'<span class="muted">chưa liên kết</span>')+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderPalLinks(){
+  const box=document.getElementById('palLinks');
+  if(PAL.links.length===0){box.innerHTML='<div class="muted">Chưa có liên kết nào</div>';return;}
+  box.innerHTML=PAL.links.map(l=>{
+    const online=PAL.players.some(p=>p.userId===l.steamId);
+    return '<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">'+
+      '<div><b>'+esc(l.discordName||l.discordId)+'</b> → <b>'+esc(l.ingameName||'?')+'</b>'+
+      '<br><span class="muted" style="font-size:12px">'+esc(l.discordId)+' · '+esc(l.steamId)+'</span></div>'+
+      '<div class="row">'+(online?'<span style="color:var(--green);font-size:12px">● online</span>':'<span class="muted" style="font-size:12px">○ offline</span>')+
+      '<button class="btn-red" style="padding:4px 10px;font-size:12px" onclick="palUnlink(\''+escA(l.discordId)+'\')">Hủy</button></div>'+
+    '</div>';
+  }).join('');
+}
+
+// Danh sách Discord lấy từ ví người chơi (STATE.players) — khỏi phải copy ID tay.
+function fillPalSelects(){
+  const ds=document.getElementById('palDiscord');
+  const wallets=(STATE.players||[]);
+  const cur=ds.value;
+  ds.innerHTML=wallets.length
+    ? wallets.map(p=>'<option value="'+escA(p.id)+'">'+esc(p.name)+' — '+esc(p.id)+'</option>').join('')
+    : '<option value="">-- chưa có ví nào --</option>';
+  if([...ds.options].some(o=>o.value===cur)) ds.value=cur;
+
+  const ps=document.getElementById('palPlayer');
+  const curP=ps.value;
+  ps.innerHTML=PAL.players.length
+    ? PAL.players.map(p=>'<option value="'+escA(p.userId)+'" data-name="'+escA(p.cleanName||p.name)+'">'+esc(p.cleanName||p.name)+' — '+esc(p.userId)+'</option>').join('')
+    : '<option value="">-- chưa có ai online --</option>';
+  if([...ps.options].some(o=>o.value===curP)) ps.value=curP;
+}
+
+async function palLink(){
+  const ds=document.getElementById('palDiscord');
+  const ps=document.getElementById('palPlayer');
+  const err=document.getElementById('palLinkErr');
+  const discordId=ds.value;
+  const steamId=ps.value;
+  if(!discordId){err.style.color='var(--red)';err.textContent='Chưa chọn tài khoản Discord';return;}
+  if(!steamId){err.style.color='var(--red)';err.textContent='Người chơi phải đang online mới lấy được SteamID';return;}
+  const discordName=(ds.selectedOptions[0]?ds.selectedOptions[0].textContent.split(' — ')[0]:'');
+  const ingameName=(ps.selectedOptions[0]?ps.selectedOptions[0].dataset.name:'');
+  try{
+    await api('/api/pal/link',{discordId,discordName,steamId,ingameName});
+    err.style.color='var(--green)';err.textContent='✅ Đã liên kết '+ingameName;
+    toast('🔗 Đã liên kết');
+    palRefresh();
+  }catch(e){err.style.color='var(--red)';err.textContent='❌ '+e.message;}
+}
+
+async function palUnlink(discordId){
+  if(!await uiConfirm('Hủy liên kết của '+discordId+'?','Hủy liên kết','btn-red'))return;
+  try{await api('/api/pal/unlink',{discordId});toast('↩️ Đã hủy liên kết');palRefresh();}catch(e){}
 }
 
 function initSelects(){
@@ -844,7 +1015,18 @@ function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')ret
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng rút ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng Rút Dogcoin?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
-async function wdApprove(id){if(!await uiConfirm('Xác nhận ĐÃ đưa Dog Coin thật trong game cho người này?','✅ Đã đưa, duyệt','btn-green'))return;api('/api/withdraw/approve',{id}).then(()=>{toast('✅ Đã duyệt');refresh();});}
+// Giao TỰ ĐỘNG qua dashboard Palworld (không cần admin vào game). Người chơi phải
+// đang online và đã liên kết nhân vật ở tab Palworld.
+async function wdDeliver(id){
+  if(!await uiConfirm('Bot sẽ tự đưa Dog Coin vào game cho người này. Tiếp tục?','🎮 Giao ngay','btn-blue'))return;
+  toast('⏳ Đang đưa vào game, chờ vài giây...');
+  try{
+    const j=await api('/api/withdraw/deliver',{id});
+    toast('✅ Đã giao cho '+(j.ingameName||'nhân vật'));
+    refresh();
+  }catch(e){refresh();}
+}
+async function wdApprove(id){if(!await uiConfirm('Đánh dấu yêu cầu này ĐÃ xử lý xong? (dùng khi bạn tự đưa Dog Coin trong game)','✅ Đánh dấu xong','btn-green'))return;api('/api/withdraw/approve',{id}).then(()=>{toast('✅ Đã duyệt');refresh();});}
 async function wdReject(id){if(!await uiConfirm('Từ chối và HOÀN LẠI Dogcoin cho người chơi?','❌ Từ chối','btn-red'))return;api('/api/withdraw/reject',{id}).then(()=>{toast('↩️ Đã từ chối + hoàn Dogcoin');refresh();});}
 
 function renderWithdraw(){
@@ -861,9 +1043,11 @@ function renderWithdraw(){
   p.innerHTML=pending.length?pending.map(r=>
     '<div class="wd-row"><div class="info">'+
       '<span class="amt">'+esc(r.username)+' — <b>'+r.amount.toLocaleString()+' Dogcoin</b></span>'+
-      '<span class="meta">Mã #'+r.id+' · '+esc(r.time||'')+'</span>'+
+      '<span class="meta">Mã #'+r.id+' · '+esc(r.time||'')+
+        (r.lastError?' · <span style="color:var(--red)">'+esc(r.lastError)+'</span>':'')+'</span>'+
     '</div><div class="acts">'+
-      '<button class="btn-green" onclick="wdApprove('+r.id+')">✅ Duyệt</button>'+
+      '<button class="btn-blue" onclick="wdDeliver('+r.id+')">🎮 Giao ngay</button>'+
+      '<button class="btn-green" onclick="wdApprove('+r.id+')">✅ Đánh dấu xong</button>'+
       '<button class="btn-red" onclick="wdReject('+r.id+')">❌ Từ chối</button>'+
     '</div></div>'
   ).join(''):'<div class="empty" style="color:var(--mut);font-size:13px;padding:8px 2px">Không có yêu cầu nào đang chờ.</div>';

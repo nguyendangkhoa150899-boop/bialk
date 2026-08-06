@@ -376,6 +376,23 @@ client.once('ready', async (c) => {
             getWithdrawRequests: () => withdrawRequests,
             approveWithdraw,
             rejectWithdraw,
+
+            // --- Palworld: panel quản lý liên kết + giao tay khi cần ---
+            palGetOnlinePlayers: () => palworld.getOnlinePlayers(),
+            palListLinks: () => palworld.listLinks(),
+            palSaveLink: (payload) => palworld.saveLink(payload),
+            palDeleteLink: (discordId) => palworld.deleteLink(discordId),
+            deliverWithdrawById: async (id) => {
+                const req = withdrawRequests.find((r) => r.id === id);
+                if (!req) return { ok: false, error: 'Không tìm thấy yêu cầu' };
+                if (req.status !== 'pending') return { ok: false, error: `Yêu cầu đang ở trạng thái "${req.status}", không giao lại được` };
+                const res = await deliverWithdraw(req);
+                if (res.ok) {
+                    notifyWithdrawDone(req, res.ingameName).catch(() => {});
+                    return { ok: true, ingameName: res.ingameName };
+                }
+                return { ok: false, error: res.reason };
+            },
         });
         writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 3001}`);
 
