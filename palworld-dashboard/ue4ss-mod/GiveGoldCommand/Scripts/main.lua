@@ -876,6 +876,14 @@ local function processLine(line)
         return
     end
 
+    -- COUNTALL <itemId>   CHI DOC: dem cho MOI nguoi dang online (1 lenh, nhanh)
+    -- Phai dat TRUOC COUNT vi "COUNTALL" cung bat dau bang "COUNT".
+    local cntAllId = line:match("^COUNTALL%s+(%S+)$")
+    if cntAllId then
+        countItemAll(cntAllId)
+        return
+    end
+
     -- COUNT <itemId> <playerName>   CHI DOC: dem so luong item trong tui
     local cntId, cntPlayer = line:match("^COUNT%s+(%S+)%s+(.+)$")
     if cntId then
