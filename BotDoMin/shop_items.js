@@ -43,7 +43,9 @@ const IMPLANTS = [
 ].map((x) => ({ ...x, itemId: IMPLANT_PREFIX + x.passive }));
 
 // Item khác bán theo số lượng
-const CORE_ITEM_ID = 'AncientCivilizationCore';
+// ⚠️ ID nội bộ của "Ancient Civilization Core" là AncientParts2 (tra palmods.gg/paldb) —
+// KHÔNG phải AncientCivilizationCore. ID sai thì mod vẫn báo OK nhưng game không give gì.
+const CORE_ITEM_ID = 'AncientParts2';
 const GOLD_ITEM_ID = 'Money'; // Gold Coin trong game
 
 function findImplant(passiveId) {
