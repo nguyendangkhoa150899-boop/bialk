@@ -9,7 +9,7 @@
 **Chỉ sửa code ở máy Windows → đẩy GitHub → VPS kéo về.**
 TUYỆT ĐỐI không sửa code trực tiếp trên VPS (sẽ làm git rẽ nhánh, kéo không vào file, mất công gỡ — đã dính rồi).
 
-### 1) Trên máy Windows (thư mục `Desktop/bialk/bialk`)
+### 1) Trên máy Windows (thư mục `Desktop/bialk-main/bialk-main` — từ 07/08/2026, folder cũ `Desktop/bialk/bialk` không dùng nữa)
 ```bash
 git add .
 git commit -m "mô tả thay đổi"
