@@ -1019,13 +1019,14 @@ function getWithdrawMessageData() {
         .setColor(0xf1c40f)
         .setDescription(lines.join('\n'));
 
+    // Màu theo HÀNG cho dễ nhìn: hàng chuyển tiền xanh dương, hàng shop pal xanh lá.
     const rowTransfer = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('rut_open').setLabel('Chuyển vào game').setEmoji('🎮').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Success)
+        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary)
     );
     const rowPal = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('shop_random').setLabel(`Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('shop_custom').setLabel(`Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()}`).setEmoji('🎯').setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId('shop_custom').setLabel(`Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()}`).setEmoji('🎯').setStyle(ButtonStyle.Success)
     );
     return { embeds: [embed], components: [rowTransfer, rowPal] };
 }
