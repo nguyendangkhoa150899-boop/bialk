@@ -640,7 +640,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="wdStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="wdStop()">⏹️ Tắt</button>
         </div>
-        <div class="note">Bot đăng 1 tin nhắn có <b>4 nút</b>: Chuyển vào game, Chuyển ra Discord, Chọn pal, Pal ngẫu nhiên. Kèm bảng số dư tự cập nhật mỗi 60 giây. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
+        <div class="note">Bot đăng <b>2 tin nhắn</b> vào kênh: bảng <b>Chuyển Dogcoin</b> (Chuyển vào game, Chuyển ra Discord, Đổi vàng — kèm bảng số dư tự cập nhật mỗi 60 giây) và bảng <b>Shop Pal</b> (Chọn pal, Ngẫu nhiên, Lõi Văn Minh, Cấy ghép). <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
       </div>
       <!-- Chỉ hiện khi CÓ việc cần xử lý: người chơi offline lúc bấm, hoặc yêu cầu
            bị treo vì bot crash giữa lúc giao. Bình thường tự động chạy xong nên khung

@@ -1261,12 +1261,15 @@ async function startWithdraw(channel) {
     withdrawState.channel = channel;
     withdrawState.message = await channel.send(getWithdrawMessageData());
     dbCache._withdrawChannelId = channel.id;
+    // Bảng shop pal đăng kèm ngay dưới, cùng kênh — panel chỉ có 1 nút bật cho cả hai.
+    await startPalShop(channel);
 }
 
 function stopWithdraw() {
     if (withdrawState.message) withdrawState.message.delete().catch(() => {});
     withdrawState.channel = null;
     withdrawState.message = null;
+    stopPalShop();
 }
 
 // admin đã đưa Dog Coin thật trong game -> chỉ đánh dấu xong, Dogcoin đã trừ từ lúc tạo yêu cầu.
