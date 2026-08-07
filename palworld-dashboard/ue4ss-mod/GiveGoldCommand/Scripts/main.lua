@@ -174,6 +174,190 @@ local function dumpStruct(structPath, withProperties)
     return true
 end
 
+-- Tìm INSTANCE đang sống của một class truy cập DataTable, rồi in ra:
+--   - tên/đường dẫn thật của DataTable nó trỏ tới (property DataTable ở lớp cha)
+--   - toàn bộ tên dòng trong bảng (hàm GetRowNames ở lớp cha)
+-- Dùng để biết chính xác tên bảng cần sửa bằng PalSchema, thay vì đoán.
+local function dumpDataTableInfo(className)
+    local objs = FindAllOf(className) or {}
+    appendDump("")
+    appendDump("=========== DTINFO " .. className .. " (" .. tostring(#objs) .. " instance) ===========")
+
+    for i, obj in ipairs(objs) do
+        pcall(function()
+            if not obj:IsValid() then return end
+            appendDump("-- instance " .. i .. ": " .. tostring(obj:GetFullName()))
+
+            -- Đường dẫn thật của DataTable
+            local okDt, dt = pcall(function() return obj.DataTable end)
+            if okDt and dt and dt:IsValid() then
+                appendDump("   DataTable = " .. tostring(dt:GetFullName()))
+            else
+                appendDump("   DataTable = (khong doc duoc)")
+            end
+
+            -- Danh sách tên dòng. UE4SS có thể trả thẳng, hoặc qua tham số out.
+            local rows = nil
+            pcall(function() rows = obj:GetRowNames() end)
+            if not rows then
+                pcall(function()
+                    local out = {}
+                    obj:GetRowNames(out)
+                    rows = out.OutRowNames or out[1]
+                end)
+            end
+
+            if rows then
+                -- Kieu tra ve khong chac chan: co the la TArray cua UE4SS, co the la bang Lua.
+                local n = 0
+                pcall(function() n = rows:GetArrayNum() end)
+                if n == 0 then pcall(function() n = #rows end) end
+                appendDump("   kieu=" .. type(rows) .. "  So dong: " .. tostring(n))
+
+                -- Neu van 0, thu duyet bang ForEach (mot so ban UE4SS chi ho tro cach nay)
+                if n == 0 then
+                    local cnt = 0
+                    local okEach = pcall(function()
+                        rows:ForEach(function(_, v)
+                            cnt = cnt + 1
+                            local s = v
+                            pcall(function() s = v:get():ToString() end)
+                            appendDump("   ROW " .. tostring(s))
+                        end)
+                    end)
+                    appendDump("   ForEach " .. (okEach and "ok" or "loi") .. ", dem duoc " .. cnt)
+                else
+                    for j = 1, n do
+                        pcall(function()
+                            local v = rows[j]
+                            -- UE4SS boc phan tu trong RemoteUnrealParam -> phai :get() truoc.
+                            local s = nil
+                            pcall(function() s = v:get():ToString() end)
+                            if not s then pcall(function() s = v:ToString() end) end
+                            if not s then pcall(function() s = tostring(v:get()) end) end
+                            appendDump("   ROW " .. tostring(s or v))
+                        end)
+                    end
+                end
+            else
+                appendDump("   GetRowNames: khong lay duoc")
+            end
+        end)
+    end
+
+    appendDump("=========== HET DTINFO " .. className .. " ===========")
+    return #objs > 0
+end
+
+-- Hoi thang bang bàn phẫu thuật: passive nay CO dong trong DataTable khong?
+-- Dung chinh ham game dung (BP_FindRowByPassiveSkill). Tra ve gia tri cac field neu tim thay.
+-- Muc dich: xac dinh 7 passive bi "Drop disabled" (Legend, Rare/Lucky...) bi khoa vi THIEU DONG
+-- hay vi ly do khac. Neu thieu dong -> them dong bang PalSchema la cuu duoc.
+local function checkOperatingPassive(passiveId)
+    local objs = FindAllOf("PalMasterDataTableAccess_OperatingTablePassiveSkillData") or {}
+    appendDump("")
+    appendDump("--- PASSCHK " .. tostring(passiveId) .. " ---")
+    if #objs == 0 then
+        appendDump("   khong tim thay instance")
+        return false
+    end
+
+    local obj = objs[1]
+    local r1, r2, r3
+    local ok = pcall(function()
+        r1, r2, r3 = obj:BP_FindRowByPassiveSkill(FName(passiveId))
+    end)
+    if not ok then
+        appendDump("   goi ham LOI")
+        return false
+    end
+
+    appendDump("   tra ve: " .. type(r1) .. " / " .. type(r2) .. " / " .. type(r3))
+    for idx, r in ipairs({ r1, r2, r3 }) do
+        if type(r) == "boolean" then
+            appendDump("   [" .. idx .. "] bResult = " .. tostring(r))
+        elseif type(r) == "userdata" or type(r) == "table" then
+            -- Doc cac field cua FPalOperatingTablePassiveSkillData
+            for _, f in ipairs({ "PassiveSkill", "Price", "RequireItemId" }) do
+                pcall(function()
+                    local v = r[f]
+                    local s = v
+                    pcall(function() s = v:ToString() end)
+                    appendDump("   [" .. idx .. "] " .. f .. " = " .. tostring(s))
+                end)
+            end
+        end
+    end
+    return true
+end
+
+-- Doc GIA TRI cua mot dong trong DataTable, qua ham BP_FindRow cua class truy cap.
+-- Ham co tham so out (bool& bResult) nen phai thu nhieu cach goi.
+-- Dung de biet chinh xac slot nao chua gi (vd doi chieu % voi palpedia).
+local DTROW_FIELDS = {
+    -- FieldLotteryName (bang xo so)
+    "ItemSlot1_ProbabilityPercent", "ItemSlot2_ProbabilityPercent", "ItemSlot3_ProbabilityPercent",
+    "ItemSlot4_ProbabilityPercent", "ItemSlot5_ProbabilityPercent", "ItemSlot6_ProbabilityPercent",
+    "ItemSlot7_ProbabilityPercent", "ItemSlot8_ProbabilityPercent", "ItemSlot9_ProbabilityPercent",
+    "ItemSlot10_ProbabilityPercent", "ItemSlot11_ProbabilityPercent", "ItemSlot12_ProbabilityPercent",
+    "ItemSlot13_ProbabilityPercent", "ItemSlot14_ProbabilityPercent", "ItemSlot15_ProbabilityPercent",
+    -- ItemLotteryData
+    "FieldName", "SlotNo", "WeightInSlot", "StaticItemId", "MinNum", "MaxNum", "NumUnit",
+    -- OperatingTablePassiveSkillData
+    "PassiveSkill", "Price", "RequireItemId",
+    -- DropItem
+    "CharacterID", "Level",
+    "ItemId1", "Rate1", "Min1", "Max1", "ItemId2", "Rate2", "Min2", "Max2",
+    "ItemId3", "Rate3", "Min3", "Max3", "ItemId4", "Rate4", "Min4", "Max4",
+    "ItemId5", "Rate5", "Min5", "Max5",
+}
+
+local function dumpDataTableRow(className, rowName)
+    local objs = FindAllOf(className) or {}
+    appendDump("")
+    appendDump("=========== DTROW " .. className .. " / " .. rowName .. " ===========")
+    if #objs == 0 then
+        appendDump("   khong tim thay instance")
+        return false
+    end
+    local obj = objs[#objs]  -- instance cuoi thuong la cai dang dung
+
+    -- Thu cac cach goi khac nhau vi ham co tham so out.
+    local row = nil
+    local tries = {
+        function() return obj:BP_FindRow(FName(rowName), false) end,
+        function() return obj:BP_FindRow(FName(rowName)) end,
+        function() return obj:BP_FindRow(rowName, false) end,
+    }
+    for i, fn in ipairs(tries) do
+        if row then break end
+        local ok, r = pcall(fn)
+        if ok and r ~= nil then
+            row = r
+            appendDump("   goi duoc bang cach " .. i .. " (kieu tra ve: " .. type(r) .. ")")
+        end
+    end
+    if not row then
+        appendDump("   BP_FindRow: khong goi duoc bang ca 3 cach")
+        return false
+    end
+
+    local found = 0
+    for _, f in ipairs(DTROW_FIELDS) do
+        pcall(function()
+            local v = row[f]
+            if v ~= nil then
+                local s = v
+                pcall(function() s = v:ToString() end)
+                appendDump("   " .. f .. " = " .. tostring(s))
+                found = found + 1
+            end
+        end)
+    end
+    appendDump("   (doc duoc " .. found .. " field)")
+    return true
+end
+
 local function parsePassives(csv)
     local ids = {}
     if csv and csv ~= "" and csv ~= "-" then
@@ -585,17 +769,34 @@ local function takeItem(playerName, itemId, quantity)
     local after = countNow()
     local took = before - after
 
-    if remaining > 0 then
-        appendPlayerResult(playerName, string.format(
-            "WARN chi tru duoc %d/%d %s (truoc=%d sau=%d)", quantity - remaining, quantity, itemId, before, after))
-    end
-
     if took == quantity then
         appendPlayerResult(playerName, string.format(
             "OK TAKE %s x%d (truoc=%d sau=%d)", itemId, quantity, before, after))
+        return
+    end
+
+    -- ===== TRU DO DANG -> HOAN LAI NGAY =====
+    -- Ben goi (bot) chi cong Dogcoin khi took == quantity. Neu tru duoc mot phan roi dung,
+    -- ma khong hoan lai thi nguoi choi MAT DO ma khong nhan duoc gi. Do la mat tien that.
+    if took > 0 then
+        local backOk = pcall(function()
+            inv:AddItem_ServerInternal(FName(itemId), took, false, 0.0, true)
+        end)
+        local afterBack = countNow()
+        if backOk and afterBack >= before then
+            appendPlayerResult(playerName, string.format(
+                "ERROR TAKE %s: yeu cau %d, tru duoc %d -> DA HOAN LAI DU (truoc=%d gio=%d)",
+                itemId, quantity, took, before, afterBack))
+        else
+            -- Hoan that bai: canh bao that to, admin phai den bu tay.
+            appendPlayerResult(playerName, string.format(
+                "NGHIEM TRONG TAKE %s: tru %d nhung HOAN LAI THAT BAI (truoc=%d gio=%d) - CAN DEN BU TAY",
+                itemId, took, before, afterBack))
+        end
     else
         appendPlayerResult(playerName, string.format(
-            "ERROR TAKE %s: yeu cau %d nhung thuc te tru %d (truoc=%d sau=%d)", itemId, quantity, took, before, after))
+            "ERROR TAKE %s: yeu cau %d nhung khong tru duoc gi (truoc=%d sau=%d)",
+            itemId, quantity, before, after))
     end
 end
 
@@ -859,6 +1060,34 @@ local function processLine(line)
     if dumpPPath then
         local ok = dumpStruct(dumpPPath, true)
         appendResult("DUMPP " .. (ok and "OK" or "FAILED") .. ": " .. dumpPPath)
+        return
+    end
+
+    -- DTINFO <ten class>   vd: DTINFO PalMasterDataTableAccess_OperatingTablePassiveSkillData
+    -- In ra duong dan DataTable that + TOAN BO ten dong. Ghi vao dump.log.
+    local dtInfoName = line:match("^DTINFO%s+(.+)$")
+    if dtInfoName then
+        local ok = dumpDataTableInfo(dtInfoName)
+        appendResult("DTINFO " .. (ok and "OK" or "KHONG TIM THAY INSTANCE") .. ": " .. dtInfoName)
+        return
+    end
+
+    -- DTROW <ten class> <ten dong>
+    -- vd: DTROW PalMasterDataTableAccess_FieldLotteryNameData AncientRelicRecycler_WorldTreeRelic_05
+    -- In gia tri cac field cua dong do ra dump.log.
+    local dtRowClass, dtRowName = line:match("^DTROW%s+(%S+)%s+(%S+)$")
+    if dtRowClass then
+        local ok = dumpDataTableRow(dtRowClass, dtRowName)
+        appendResult("DTROW " .. (ok and "OK" or "FAILED") .. ": " .. dtRowClass .. " / " .. dtRowName)
+        return
+    end
+
+    -- PASSCHK <passiveId>   vd: PASSCHK Legend
+    -- Kiem tra passive co dong trong bang ban phau thuat khong. Ket qua vao dump.log.
+    local passChk = line:match("^PASSCHK%s+(%S+)$")
+    if passChk then
+        local ok = checkOperatingPassive(passChk)
+        appendResult("PASSCHK " .. (ok and "OK" or "FAILED") .. ": " .. passChk)
         return
     end
 

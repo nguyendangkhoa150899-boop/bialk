@@ -1,18 +1,19 @@
 require('dotenv').config();
-const { 
-    Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, 
+const {
+    Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder,
     EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits,
-    ModalBuilder, TextInputBuilder, TextInputStyle 
+    ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder
 } = require('discord.js');
 const fs = require('fs');
 const { startPanel } = require('./panel');
 const palworld = require('./palworld');
+const { IMPLANTS, findImplant, CORE_ITEM_ID, GOLD_ITEM_ID } = require('./shop_items');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
 const STARTING_DOGCOIN = 20;
-const DAILY_DOGCOIN = 20;
+const DAILY_DOGCOIN = 50;
 const DOGCOIN_EMOJI = '<:dogcoin:1533903243028205579>';
 const DOGCOIN_EMOJI_ID = '1533903243028205579';
 
@@ -177,6 +178,27 @@ function findPalByName(input) {
         null
     );
 }
+
+// --- SHOP VẬT PHẨM (Lõi Văn Minh + Cấy ghép) và ĐỔI VÀNG ---
+// Giá để ở một chỗ cho dễ chỉnh. Sau này chuyển sang đọc từ dashboard thì chỉ cần thay
+// hàm lấy giá, phần còn lại giữ nguyên.
+const ITEM_SHOP = {
+    corePrice: 50,            // Dogcoin cho 1 Lõi Văn Minh Cổ Đại
+    implantPrice: {
+        kimcuong: 50,         // 14 chiêu cao cấp
+        worldtree: 100,       // 7 chiêu Cây Thế Giới
+    },
+    coreMaxPerRequest: 100,   // trần mỗi lần mua, chặn thiệt hại nếu có lỗi
+    implantMaxPerRequest: 20,
+};
+
+// Đổi VÀNG trong game -> Dogcoin Discord.
+// Trừ vàng trong game (dùng TAKE), nên phải online và cầm đủ vàng trong TÚI.
+const GOLD_EXCHANGE = {
+    goldPerUnit: 1000000,     // 1 triệu vàng
+    dogcoinPerUnit: 50,       // đổi được 50 Dogcoin
+    maxUnitsPerRequest: 20,   // trần mỗi lần đổi
+};
 
 const WITHDRAW_MAX_PER_REQUEST = 2000; // trần mỗi lần chuyển vào game, chặn thiệt hại nếu có lỗi
 const DELIVER_ITEM_ID = 'DogCoin';     // item id thật của Dog Coin trong game
@@ -1060,15 +1082,12 @@ function getWithdrawMessageData() {
         }
     }
 
-    // Shop pal gộp luôn vào đây để người chơi không phải đi tìm kênh khác.
+    // Đổi vàng cũng là chuyện chuyển tiền nên để chung bảng này.
     lines.push(
         '',
-        '━━━━━━━━━━━━━━━━━━',
-        `🐾 **SHOP PAL** — pal nào cũng là bản **Boss**, **${PAL_SHOP.stars} sao**, **IV ${PAL_SHOP.ivs}**, ` +
-            `**${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** và **${PAL_SHOP.passiveSlots} passive** do bạn chọn.`,
-        `🎯 **Chọn pal — ${PAL_SHOP.customPrice.toLocaleString()}**: tự chọn 1 trong ${shopBuyableList().length} pal (không có pal raid)`,
-        `🎲 **Ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()}**: random toàn bộ ${(PAL_DATA.all || []).length} pal, **có cả pal raid**`,
-        '*Admin sẽ tạo pal và giao cho bạn trong game sau khi nhận đơn.*'
+        `🪙 **Đổi vàng → Dogcoin** — ${GOLD_EXCHANGE.goldPerUnit.toLocaleString()} vàng ` +
+            `= ${GOLD_EXCHANGE.dogcoinPerUnit} Dogcoin. Phải **đang ở trong game**, và vàng phải ` +
+            `**nằm trong túi** (để trong hòm/kho sẽ không tính).`
     );
 
     if (palBalanceCache.nextAt) {
@@ -1085,11 +1104,10 @@ function getWithdrawMessageData() {
         new ButtonBuilder().setCustomId('rut_open').setLabel('Chuyển vào game').setEmoji('🎮').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Success)
     );
-    const rowShop = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('shop_custom').setLabel(`Chọn pal — ${PAL_SHOP.customPrice.toLocaleString()}`).setEmoji('🎯').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('shop_random').setLabel(`Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Secondary)
+    const rowGold = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('gold_open').setLabel(`Đổi vàng → ${GOLD_EXCHANGE.dogcoinPerUnit} Dogcoin`).setEmoji('🪙').setStyle(ButtonStyle.Secondary)
     );
-    return { embeds: [embed], components: [rowTransfer, rowShop] };
+    return { embeds: [embed], components: [rowTransfer, rowGold] };
 }
 
 // ===== BẢNG SHOP PAL (đăng ở kênh riêng) =====
@@ -1098,10 +1116,10 @@ let palShopState = { channel: null, message: null };
 function getPalShopMessageData() {
     const buyable = shopBuyableList().length;
     const embed = new EmbedBuilder()
-        .setTitle('🐾 SHOP PAL')
+        .setTitle('🐾 SHOP PAL & VẬT PHẨM')
         .setColor(0x9b59b6)
         .setDescription(
-            `Đặt pal bằng ${DOGCOIN_EMOJI} **Dogcoin**. Admin sẽ tạo pal và giao cho bạn trong game.\n\n` +
+            `Mua bằng ${DOGCOIN_EMOJI} **Dogcoin** trong ví Discord.\n\n` +
             `**🎯 Chọn pal — ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin**\n` +
             `Tự chọn 1 trong **${buyable}** pal (không có pal raid: ${(PAL_DATA.raidOnly || []).join(', ')})\n\n` +
             `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin**\n` +
@@ -1111,13 +1129,27 @@ function getPalShopMessageData() {
             `• **${PAL_SHOP.stars} sao** ⭐\n` +
             `• **IV ${PAL_SHOP.ivs}** cả 3 chỉ số\n` +
             `• **${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** — bạn tự chọn\n` +
-            `• **${PAL_SHOP.passiveSlots} passive skill** — bạn tự chọn`
+            `• **${PAL_SHOP.passiveSlots} passive skill** — bạn tự chọn\n` +
+            `*Admin sẽ tạo pal và giao cho bạn trong game sau khi nhận đơn.*\n\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `**💠 Lõi Văn Minh Cổ Đại — ${ITEM_SHOP.corePrice} Dogcoin/cái**\n` +
+            `Bấm nút, nhập số lượng — trừ ví Discord, giao **thẳng vào game** (phải đang online).\n\n` +
+            `**🧬 Cấy ghép dùng một lần** — dùng ở Bàn Phẫu Thuật Pal, cấy xong là mất.\n` +
+            `🌳 **Cây Thế Giới — ${ITEM_SHOP.implantPrice.worldtree} Dogcoin**: 7 chiêu mạnh nhất ` +
+            `(Thánh Kiếm Hai Lưỡi, Thần Hủy Diệt, Bàn Tay Ác Quỷ...)\n` +
+            `💎 **Kim cương — ${ITEM_SHOP.implantPrice.kimcuong} Dogcoin**: 14 chiêu cao cấp ` +
+            `(Thân Thể Bất Tử, Quỷ Thần, Ma Cà Rồng, Thần Tốc...)`
         );
-    const row = new ActionRowBuilder().addComponents(
+    const rowPal = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('shop_custom').setLabel(`Chọn pal — ${PAL_SHOP.customPrice.toLocaleString()}`).setEmoji('🎯').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('shop_random').setLabel(`Ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Success)
     );
-    return { embeds: [embed], components: [row] };
+    const rowItem = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('shop_core').setLabel(`Lõi Văn Minh — ${ITEM_SHOP.corePrice}/cái`).setEmoji('💠').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('shop_implant_wt').setLabel(`Cấy ghép Cây Thế Giới — ${ITEM_SHOP.implantPrice.worldtree}`).setEmoji('🌳').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('shop_implant_kc').setLabel(`Cấy ghép Kim Cương — ${ITEM_SHOP.implantPrice.kimcuong}`).setEmoji('💎').setStyle(ButtonStyle.Secondary)
+    );
+    return { embeds: [embed], components: [rowPal, rowItem] };
 }
 
 async function startPalShop(channel) {
@@ -1249,6 +1281,72 @@ function stopWithdraw() {
 // 3. Timeout KHÔNG có nghĩa là thất bại: mod có thể đã đưa item sau khi dashboard
 //    hết kiên nhẫn chờ. Nên timeout cũng đưa về 'processing' cho admin xem, chứ
 //    không tự thử lại.
+
+// ===== MUA VẬT PHẨM SHOP: trừ ví Discord -> giao thẳng vào game =====
+// Nguyên tắc tiền bạc (giống deliverWithdraw):
+//  - Lỗi TRƯỚC khi gọi give (chưa liên kết / offline / thiếu tiền / không gọi được dashboard)
+//    -> an toàn: hoàn lại đủ, báo người chơi.
+//  - Đã gọi give mà không xác nhận được kết quả -> KHÔNG tự hoàn (có thể đã giao rồi mà
+//    phản hồi về muộn). Ghi log ADMIN để kiểm tra tay. Tự hoàn ở đây = mở đường nhận đôi.
+async function purchaseAndDeliver(interaction, { itemId, displayName, qty, totalCost }) {
+    const userId = interaction.user.id;
+    await interaction.deferReply({ ephemeral: true });
+
+    let link, target;
+    try {
+        link = await palworld.getLink(userId);
+        if (!link) {
+            return interaction.editReply('❌ Tài khoản Discord của bạn chưa được liên kết với nhân vật trong game. Nhờ admin liên kết trước.');
+        }
+        target = await palworld.findOnlineBySteamId(link.steamId);
+        if (!target) {
+            return interaction.editReply('❌ Bạn phải **đang ở trong game** thì mới nhận được đồ. Vào game rồi bấm mua lại nhé.');
+        }
+    } catch (e) {
+        return interaction.editReply(`❌ Không kết nối được tới server game: ${e.message}\nDogcoin của bạn KHÔNG bị trừ.`);
+    }
+
+    const userData = getUserData(userId);
+    if ((userData.points || 0) < totalCost) {
+        return interaction.editReply(
+            `❌ Không đủ Dogcoin! Cần **${totalCost.toLocaleString()}**, ví của bạn có **${(userData.points || 0).toLocaleString()}** ${DOGCOIN_EMOJI}`);
+    }
+
+    // Trừ trước rồi giao — nếu giao thất bại CHẮC CHẮN (mod xác nhận) thì hoàn.
+    updatePoints(userId, -totalCost);
+
+    let result;
+    try {
+        result = await palworld.giveItem(target.cleanName, itemId, qty);
+    } catch (e) {
+        // Không rõ item đã vào game chưa -> không tự hoàn, admin kiểm tra.
+        writeLog('ADMIN', `[SHOP] NGHIEM TRONG: ${interaction.user.tag} mua ${displayName} x${qty} (${totalCost} Dogcoin) — lỗi gọi give-item: ${e.message}. KIỂM TRA người chơi đã nhận chưa rồi hoàn tay nếu cần.`);
+        return interaction.editReply(
+            `⚠️ Không xác nhận được kết quả giao đồ (${e.message}).\n` +
+            `Dogcoin đã bị trừ. **Liên hệ admin** để kiểm tra — nếu chưa nhận được đồ sẽ được hoàn lại.`);
+    }
+
+    if (!result.ok) {
+        const msg = String(result.message || '');
+        // Mod xác nhận rõ "không tìm thấy người chơi" = chưa giao gì -> hoàn an toàn.
+        if (/player not found/i.test(msg)) {
+            updatePoints(userId, totalCost);
+            return interaction.editReply(
+                `❌ Không tìm thấy nhân vật trong game (${msg}).\nDogcoin đã **hoàn lại đủ**.`);
+        }
+        // Còn lại (timeout...) -> có thể đã giao rồi, không tự hoàn.
+        writeLog('ADMIN', `[SHOP] NGHIEM TRONG: ${interaction.user.tag} mua ${displayName} x${qty} (${totalCost} Dogcoin) — mod báo: ${msg}. KIỂM TRA đã nhận chưa rồi hoàn tay nếu cần.`);
+        return interaction.editReply(
+            `⚠️ Chưa xác nhận được việc giao đồ: ${msg}\n` +
+            `Dogcoin đã bị trừ. **Liên hệ admin** để kiểm tra — nếu chưa nhận được đồ sẽ được hoàn lại.`);
+    }
+
+    logDog('shop', userId, interaction.user.tag, -totalCost, `mua ${displayName} x${qty} — giao cho ${target.cleanName}`);
+    writeLog('ADMIN', `[SHOP] ${interaction.user.tag} mua ${displayName} x${qty} = ${totalCost.toLocaleString()} Dogcoin -> giao cho ${target.cleanName}`);
+    return interaction.editReply(
+        `✅ Đã giao **${displayName} x${qty}** vào túi **${target.cleanName}** trong game!\n` +
+        `Ví Discord: **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI} (−${totalCost.toLocaleString()})`);
+}
 
 async function deliverWithdraw(req) {
     if (!req || req.status !== 'pending') return { ok: false, reason: 'không ở trạng thái chờ' };
@@ -1846,6 +1944,101 @@ client.on('interactionCreate', async interaction => {
             );
         }
 
+        // ======== MODAL: MUA LÕI VĂN MINH ========
+        if (interaction.customId === 'core_modal') {
+            const qty = parseInt(interaction.fields.getTextInputValue('core_input_qty'));
+            if (isNaN(qty) || qty <= 0) {
+                return interaction.reply({ content: '❌ Số lượng không hợp lệ!', ephemeral: true });
+            }
+            if (qty > ITEM_SHOP.coreMaxPerRequest) {
+                return interaction.reply({ content: `❌ Mỗi lần mua tối đa **${ITEM_SHOP.coreMaxPerRequest}** cái. Muốn nhiều hơn thì mua nhiều lần.`, ephemeral: true });
+            }
+            return purchaseAndDeliver(interaction, {
+                itemId: CORE_ITEM_ID,
+                displayName: 'Lõi Văn Minh Cổ Đại',
+                qty,
+                totalCost: qty * ITEM_SHOP.corePrice,
+            });
+        }
+
+        // ======== MODAL: MUA CẤY GHÉP ========
+        if (interaction.customId.startsWith('implant_modal_')) {
+            const passive = interaction.customId.slice('implant_modal_'.length);
+            const item = findImplant(passive);
+            if (!item) {
+                return interaction.reply({ content: '❌ Không tìm thấy loại cấy ghép này.', ephemeral: true });
+            }
+            const qty = parseInt(interaction.fields.getTextInputValue('implant_input_qty'));
+            if (isNaN(qty) || qty <= 0) {
+                return interaction.reply({ content: '❌ Số lượng không hợp lệ!', ephemeral: true });
+            }
+            if (qty > ITEM_SHOP.implantMaxPerRequest) {
+                return interaction.reply({ content: `❌ Mỗi lần mua tối đa **${ITEM_SHOP.implantMaxPerRequest}** cái.`, ephemeral: true });
+            }
+            return purchaseAndDeliver(interaction, {
+                itemId: item.itemId,
+                displayName: `Cấy ghép: ${item.name}`,
+                qty,
+                totalCost: qty * ITEM_SHOP.implantPrice[item.tier],
+            });
+        }
+
+        // ======== MODAL: ĐỔI VÀNG -> DOGCOIN ========
+        // Trừ vàng trong game bằng TAKE (đếm trước, thiếu thì mod từ chối; trừ dở dang thì
+        // mod tự hoàn lại — đã vá trong main.lua). Chỉ cộng Dogcoin khi took == số yêu cầu.
+        if (interaction.customId === 'gold_modal') {
+            const units = parseInt(interaction.fields.getTextInputValue('gold_input_units'));
+            if (isNaN(units) || units <= 0) {
+                return interaction.reply({ content: '❌ Số lượt không hợp lệ!', ephemeral: true });
+            }
+            if (units > GOLD_EXCHANGE.maxUnitsPerRequest) {
+                return interaction.reply({ content: `❌ Mỗi lần đổi tối đa **${GOLD_EXCHANGE.maxUnitsPerRequest}** lượt.`, ephemeral: true });
+            }
+            const goldNeeded = units * GOLD_EXCHANGE.goldPerUnit;
+            const dogcoinOut = units * GOLD_EXCHANGE.dogcoinPerUnit;
+
+            await interaction.deferReply({ ephemeral: true });
+
+            let link, target;
+            try {
+                link = await palworld.getLink(userId);
+                if (!link) {
+                    return interaction.editReply('❌ Tài khoản Discord của bạn chưa được liên kết với nhân vật trong game. Nhờ admin liên kết trước.');
+                }
+                target = await palworld.findOnlineBySteamId(link.steamId);
+                if (!target) {
+                    return interaction.editReply('❌ Bạn phải **đang ở trong game** để trừ vàng trong túi.');
+                }
+            } catch (e) {
+                return interaction.editReply(`❌ Không kết nối được tới server game: ${e.message}`);
+            }
+
+            let res;
+            try {
+                res = await palworld.takeItem(target.cleanName, GOLD_ITEM_ID, goldNeeded);
+            } catch (e) {
+                writeLog('ADMIN', `[ĐỔI VÀNG] ${interaction.user.tag} lỗi khi trừ vàng: ${e.message} — CHƯA cộng Dogcoin`);
+                return interaction.editReply(`❌ Lỗi khi trừ vàng trong game: ${e.message}\nChưa có gì bị trừ hay cộng.`);
+            }
+
+            // Chỉ cộng khi trừ được ĐÚNG số vàng yêu cầu (mod tự hoàn nếu trừ dở dang).
+            if (!res || res.took !== goldNeeded) {
+                writeLog('ADMIN', `[ĐỔI VÀNG] ${interaction.user.tag} trừ không đủ: cần ${goldNeeded}, thực tế ${res && res.took}. Mod: ${res && res.message}`);
+                const detail = res && res.before !== null && res.before !== undefined
+                    ? `\nTrong túi bạn có **${Number(res.before).toLocaleString()}** vàng (cần ${goldNeeded.toLocaleString()}).`
+                    : '';
+                return interaction.editReply(`❌ Không đổi được: ${(res && res.message) || 'không rõ lý do'}${detail}\nDogcoin của bạn KHÔNG thay đổi.`);
+            }
+
+            updatePoints(userId, dogcoinOut);
+            logDog('gold-exchange', userId, interaction.user.tag, dogcoinOut, `đổi ${goldNeeded.toLocaleString()} vàng (${target.cleanName}): trong game ${res.before} → ${res.after}`);
+            writeLog('ADMIN', `[ĐỔI VÀNG] ${interaction.user.tag} đổi ${goldNeeded.toLocaleString()} vàng -> ${dogcoinOut.toLocaleString()} Dogcoin (${target.cleanName})`);
+            return interaction.editReply(
+                `✅ Đã đổi **${goldNeeded.toLocaleString()}** vàng lấy **${dogcoinOut.toLocaleString()}** ${DOGCOIN_EMOJI}\n` +
+                `Vàng trong game: ${Number(res.before).toLocaleString()} → **${Number(res.after).toLocaleString()}**\n` +
+                `Ví Discord: **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
+        }
+
         if (interaction.customId === 'rut_modal') {
             const amountStr = interaction.fields.getTextInputValue('rut_input_amount');
             const amt = parseInt(amountStr);
@@ -1906,6 +2099,31 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
+    // ======== MENU CHỌN CHIÊU CẤY GHÉP ========
+    if (interaction.isStringSelectMenu() &&
+        (interaction.customId === 'implant_select_worldtree' || interaction.customId === 'implant_select_kimcuong')) {
+        const passive = interaction.values[0];
+        const item = findImplant(passive);
+        if (!item) {
+            return interaction.reply({ content: '❌ Không tìm thấy loại cấy ghép này.', ephemeral: true });
+        }
+        const price = ITEM_SHOP.implantPrice[item.tier];
+        // Không gọi API trước showModal (Discord chỉ cho 3 giây).
+        const modal = new ModalBuilder()
+            .setCustomId(`implant_modal_${passive}`)
+            .setTitle(`Mua: ${item.name}`.slice(0, 45));
+        modal.addComponents(new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+                .setCustomId('implant_input_qty')
+                .setLabel(`${price} Dogcoin/cái — nhập số lượng`)
+                .setPlaceholder(`Tối đa ${ITEM_SHOP.implantMaxPerRequest}/lần`)
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+        ));
+        await interaction.showModal(modal);
+        return;
+    }
+
     if (!interaction.isButton()) return;
 
     // ======== NÚT RÚT DOGCOIN ========
@@ -1938,6 +2156,65 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('nap_input_amount')
                 .setLabel('Số Dog Coin muốn chuyển ra Discord')
                 .setPlaceholder('Ví dụ: 20')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+        ));
+        await interaction.showModal(modal);
+        return;
+    }
+
+    // ======== SHOP VẬT PHẨM: LÕI VĂN MINH ========
+    // Không gọi API nào trước showModal (Discord chỉ cho 3 giây, dashboard mất ~6 giây).
+    if (interaction.customId === 'shop_core') {
+        const balance = getUserData(userId).points || 0;
+        const modal = new ModalBuilder().setCustomId('core_modal').setTitle('Mua Lõi Văn Minh Cổ Đại');
+        modal.addComponents(new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+                .setCustomId('core_input_qty')
+                .setLabel(`${ITEM_SHOP.corePrice} Dogcoin/cái · Ví: ${balance.toLocaleString()}`)
+                .setPlaceholder(`Số lượng (tối đa ${ITEM_SHOP.coreMaxPerRequest}/lần)`)
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+        ));
+        await interaction.showModal(modal);
+        return;
+    }
+
+    // ======== SHOP VẬT PHẨM: CẤY GHÉP (tách 2 nút theo tier) ========
+    // Mỗi tier một menu chọn — 7 hoặc 14 loại, dưới trần 25 option của Discord.
+    if (interaction.customId === 'shop_implant_wt' || interaction.customId === 'shop_implant_kc') {
+        const tier = interaction.customId === 'shop_implant_wt' ? 'worldtree' : 'kimcuong';
+        const tierLabel = tier === 'worldtree' ? '🌳 Cây Thế Giới' : '💎 Kim Cương';
+        const price = ITEM_SHOP.implantPrice[tier];
+        const balance = getUserData(userId).points || 0;
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId(`implant_select_${tier}`)
+            .setPlaceholder('Chọn chiêu muốn mua')
+            .addOptions(
+                IMPLANTS.filter((x) => x.tier === tier).map((x) => ({
+                    label: x.name,
+                    value: x.passive,
+                    description: `${price} Dogcoin`,
+                }))
+            );
+        await interaction.reply({
+            content:
+                `🧬 **Cấy ghép ${tierLabel} — ${price} Dogcoin/cái** · ví của bạn: **${balance.toLocaleString()}** ${DOGCOIN_EMOJI}\n` +
+                `*Cấy xong là mất. Muốn đổi passive lần nữa thì phải mua lại.*`,
+            components: [new ActionRowBuilder().addComponents(menu)],
+            ephemeral: true,
+        });
+        return;
+    }
+
+    // ======== ĐỔI VÀNG TRONG GAME -> DOGCOIN ========
+    if (interaction.customId === 'gold_open') {
+        const modal = new ModalBuilder().setCustomId('gold_modal').setTitle('Đổi vàng lấy Dogcoin');
+        modal.addComponents(new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+                .setCustomId('gold_input_units')
+                .setLabel(`1 lượt = ${GOLD_EXCHANGE.goldPerUnit.toLocaleString()} vàng → ${GOLD_EXCHANGE.dogcoinPerUnit} Dogcoin`)
+                .setPlaceholder(`Số lượt (tối đa ${GOLD_EXCHANGE.maxUnitsPerRequest}/lần)`)
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
         ));

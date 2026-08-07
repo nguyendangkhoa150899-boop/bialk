@@ -1,0 +1,29 @@
+{
+    "DT_FieldLotteryNameDataTable": {
+        "AncientRelicRecycler_WorldTreeRelic_01": {
+            "ItemSlot8_ProbabilityPercent": 0.0,
+            "ItemSlot9_ProbabilityPercent": 0.0,
+            "ItemSlot14_ProbabilityPercent": 0.0
+        },
+        "AncientRelicRecycler_WorldTreeRelic_02": {
+            "ItemSlot8_ProbabilityPercent": 0.0,
+            "ItemSlot9_ProbabilityPercent": 0.0,
+            "ItemSlot14_ProbabilityPercent": 0.0
+        },
+        "AncientRelicRecycler_WorldTreeRelic_03": {
+            "ItemSlot8_ProbabilityPercent": 0.0,
+            "ItemSlot9_ProbabilityPercent": 0.0,
+            "ItemSlot14_ProbabilityPercent": 0.0
+        },
+        "AncientRelicRecycler_WorldTreeRelic_04": {
+            "ItemSlot8_ProbabilityPercent": 0.0,
+            "ItemSlot9_ProbabilityPercent": 0.0,
+            "ItemSlot14_ProbabilityPercent": 0.0
+        },
+        "AncientRelicRecycler_WorldTreeRelic_05": {
+            "ItemSlot8_ProbabilityPercent": 0.0,
+            "ItemSlot9_ProbabilityPercent": 0.0,
+            "ItemSlot14_ProbabilityPercent": 0.0
+        }
+    }
+}
