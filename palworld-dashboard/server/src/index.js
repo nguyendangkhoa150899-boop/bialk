@@ -125,7 +125,9 @@ app.post(
     if (!/^[A-Za-z0-9_]+$/.test(itemId)) {
       throw new ValidationError("Item ID chỉ cho phép chữ, số, gạch dưới");
     }
-    const quantity = intInRange(req.body.quantity, { min: 1, max: 100000, label: "Số lượng" });
+    // Trần cao vì bot Discord dùng endpoint này cho Đổi vàng → Dogcoin:
+    // hiện tối đa 20 lượt × 1.000.000 vàng = 20 triệu/lần (GOLD_EXCHANGE bên BotDoMin).
+    const quantity = intInRange(req.body.quantity, { min: 1, max: 100000000, label: "Số lượng" });
 
     const result = await takeItem(playerName, itemId, quantity);
     recordGive({
