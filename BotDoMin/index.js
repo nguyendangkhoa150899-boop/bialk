@@ -470,6 +470,10 @@ client.once('ready', async (c) => {
             getWithdrawRequests: () => withdrawRequests,
             approveWithdraw,
             rejectWithdraw,
+            // Bảng shop pal ở kênh riêng, bật/tắt độc lập với bảng chuyển Dogcoin.
+            getPalShop: () => palShopState,
+            startPalShop: async (channelId) => { const ch = await client.channels.fetch(channelId); await startPalShop(ch); return ch.name; },
+            stopPalShop: () => stopPalShop(),
 
             // --- Palworld: panel quản lý liên kết + giao tay khi cần ---
             palGetOnlinePlayers: () => palworld.getOnlinePlayers(),
@@ -1096,7 +1100,7 @@ function getWithdrawMessageData() {
     }
 
     const embed = new EmbedBuilder()
-        .setTitle('🔄 CHUYỂN DOGCOIN & SHOP PAL')
+        .setTitle('🔄 CHUYỂN DOGCOIN')
         .setColor(0xf1c40f)
         .setDescription(lines.join('\n'));
 
@@ -1261,15 +1265,12 @@ async function startWithdraw(channel) {
     withdrawState.channel = channel;
     withdrawState.message = await channel.send(getWithdrawMessageData());
     dbCache._withdrawChannelId = channel.id;
-    // Bảng shop pal đăng kèm ngay dưới, cùng kênh — panel chỉ có 1 nút bật cho cả hai.
-    await startPalShop(channel);
 }
 
 function stopWithdraw() {
     if (withdrawState.message) withdrawState.message.delete().catch(() => {});
     withdrawState.channel = null;
     withdrawState.message = null;
-    stopPalShop();
 }
 
 // admin đã đưa Dog Coin thật trong game -> chỉ đánh dấu xong, Dogcoin đã trừ từ lúc tạo yêu cầu.

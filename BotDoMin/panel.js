@@ -53,6 +53,7 @@ function startPanel(ctx) {
         const bc = ctx.getBC();
         const db = ctx.getDb();
         const wd = ctx.getWithdraw ? ctx.getWithdraw() : {};
+        const ps = ctx.getPalShop ? ctx.getPalShop() : {};
         return {
             tx: {
                 gameId: tx.gameId,
@@ -76,6 +77,10 @@ function startPanel(ctx) {
             withdraw: {
                 live: !!wd.message,
                 channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
+            },
+            palShop: {
+                live: !!ps.message,
+                channelId: (ps.channel && ps.channel.id) || db._palShopChannelId || '',
             },
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
@@ -289,6 +294,21 @@ function startPanel(ctx) {
                 if (path === '/api/withdraw/stop') {
                     ctx.stopWithdraw();
                     ctx.writeLog('ADMIN', `[PANEL] Dừng kênh Rút Dogcoin`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                // ---- SHOP PAL (kênh riêng, tách khỏi kênh chuyển Dogcoin) ----
+                if (path === '/api/palshop/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    try {
+                        const name = await ctx.startPalShop(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo kênh Shop Pal tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                if (path === '/api/palshop/stop') {
+                    ctx.stopPalShop();
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng kênh Shop Pal`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 if (path === '/api/withdraw/approve') {
@@ -633,14 +653,24 @@ const HTML = `<!DOCTYPE html>
     <!-- PALWORLD -->
     <div id="tab-pal" class="hidden">
       <div class="card">
-        <h3>🎛️ Kênh chuyển Dogcoin & Shop Pal</h3>
-        <label>Channel ID (kênh đăng bảng)</label>
+        <h3>🎛️ Kênh chuyển Dogcoin</h3>
+        <label>Channel ID (kênh đăng bảng chuyển)</label>
         <input id="wdChannel" placeholder="vd: 123456789012345678">
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="wdStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="wdStop()">⏹️ Tắt</button>
         </div>
-        <div class="note">Bot đăng <b>2 tin nhắn</b> vào kênh: bảng <b>Chuyển Dogcoin</b> (Chuyển vào game, Chuyển ra Discord, Đổi vàng — kèm bảng số dư tự cập nhật mỗi 60 giây) và bảng <b>Shop Pal</b> (Chọn pal, Ngẫu nhiên, Lõi Văn Minh, Cấy ghép). <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
+        <div class="note">Bot đăng bảng <b>Chuyển Dogcoin</b>: Chuyển vào game, Chuyển ra Discord, Đổi vàng — kèm bảng số dư tự cập nhật mỗi 60 giây. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
+      </div>
+      <div class="card">
+        <h3>🐾 Kênh Shop Pal & Vật phẩm</h3>
+        <label>Channel ID (kênh đăng bảng shop)</label>
+        <input id="shopChannel" placeholder="vd: 123456789012345678">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="shopStart()">▶️ Bật / Đăng lại bảng</button>
+          <button class="btn-red" onclick="shopStop()">⏹️ Tắt</button>
+        </div>
+        <div class="note">Bot đăng bảng <b>Shop Pal & Vật phẩm</b>: Chọn pal, Pal ngẫu nhiên, Lõi Văn Minh, Cấy ghép Cây Thế Giới / Kim Cương. Nên dùng kênh <b>khác</b> với kênh chuyển Dogcoin. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
       </div>
       <!-- Chỉ hiện khi CÓ việc cần xử lý: người chơi offline lúc bấm, hoặc yêu cầu
            bị treo vì bot crash giữa lúc giao. Bình thường tự động chạy xong nên khung
@@ -1113,6 +1143,8 @@ function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')ret
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng rút ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng Rút Dogcoin?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
+function shopStart(){const c=document.getElementById('shopChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/palshop/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng shop ở #'+j.name);refresh();});}
+async function shopStop(){if(!await uiConfirm('Tắt bảng Shop Pal?','Tắt','btn-red'))return;api('/api/palshop/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
 // Giao TỰ ĐỘNG qua dashboard Palworld (không cần admin vào game). Người chơi phải
 // đang online và đã liên kết nhân vật ở tab Palworld.
 async function wdDeliver(id){
@@ -1160,6 +1192,7 @@ function renderWithdraw(){
   ).join(''):'<div class="empty">Chưa xử lý yêu cầu nào.</div>';
   // prefill channel id
   const wc=document.getElementById('wdChannel'); if(wc&&!wc.value&&STATE.withdraw&&STATE.withdraw.channelId) wc.value=STATE.withdraw.channelId;
+  const sc=document.getElementById('shopChannel'); if(sc&&!sc.value&&STATE.palShop&&STATE.palShop.channelId) sc.value=STATE.palShop.channelId;
 }
 async function pDel(id){
   const p=(STATE&&STATE.players||[]).find(x=>x.id===id);
