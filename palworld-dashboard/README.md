@@ -213,10 +213,11 @@ chạy**, và nghi làm **gãy chat** của server. Đã gỡ. Đừng hook hàm
 ### 3. "Bug Level" pal ra Cấp 2
 **Không phải bug.** Server bật **Level Sync**, hạ pal xuống bằng cấp nhân vật.
 
-### 4. Silvance vẫn rớt lõi ở Lv70+
+### 4. Silvance vẫn rớt lõi ở Lv70+ — ĐÃ TÌM RA NGUYÊN NHÂN (08/08/2026)
 Đã thử `Rate=0`, `ItemId="None"`, thêm dòng `BOSS_Mothman000` — đều không chặn được pal
-Lv70+. Chủ server chấp nhận bỏ qua (phải breed + nuôi lên 70 nên là công sức thật).
-Nếu muốn làm bằng được: dùng **FModel** export `DT_PalDropItem` xem chính xác dòng/ô.
+Lv70+. **Nguyên nhân:** bảng drop có riêng 2 dòng `Mothman070`/`BOSS_Mothman070` cho pal
+cấp ≥ 70 mà bản PalSchema không vá tới. Đã giải bằng pak `BialkSilvanceNoDrop_P.pak`
+(vá đủ 4 dòng) — xem `pak-mods/README.md`.
 
 ---
 
@@ -263,16 +264,14 @@ Chủ server muốn chuyển vì **Linux chạy mượt hơn Windows/Wine** (đa
 - ❌ **Toàn bộ mod PalSchema** → máy nghiền rớt lõi trở lại như mặc định
 - ✅ Vẫn chạy: shop pal, quản lý người chơi, kick/ban, broadcast, các mini game Discord
 
-**Cách giữ lại thay đổi máy nghiền:** đóng gói thành `.pak` (pak là cơ chế của Unreal Engine,
-không cần UE4SS). Quy trình:
-1. **FModel** (UE 5.1) mở Paks của game → export `DT_FieldLotteryNameDataTable` bằng
-   **Export Raw Data (.uasset)**, ghi lại đường dẫn đầy đủ trong cây thư mục
-2. **UAssetGUI** sửa 5 dòng `AncientRelicRecycler_WorldTreeRelic_01..05`, đặt
-   `ItemSlot8/9/14_ProbabilityPercent = 0`
-3. Dựng lại đúng cây thư mục, đóng gói bằng **repak**, tên phải có hậu tố **`_P`**
-4. Chép vào `Pal/Content/Paks/~mods/` (cùng chỗ `CreativeMenu_P.pak` đang chạy)
+**Cách giữ lại thay đổi máy nghiền: ĐÃ LÀM XONG (08/08/2026)** — xem `pak-mods/README.md`:
+- `pak-mods/BialkServer_P.pak` — máy nghiền không rớt implant + lõi. **Đã test trong game, chạy đúng.**
+- `pak-mods/BialkSilvanceNoDrop_P.pak` — Silvance không rớt gì (mọi cấp, cả boss; giải luôn
+  vấn đề Lv70+ mà PalSchema chịu thua). Đã upload lên `~mods/` của server hiện tại,
+  chờ restart để test.
 
-Chưa làm tới đâu — mới ở bước cài FModel.
+Quy trình dựng lại, công cụ (UAssetCLI + repak + Mappings.usmap) và các bẫy đã dính
+ghi đủ trong `pak-mods/README.md`. Pak chạy được cả trên Windows/Wine lẫn Linux native.
 
 **Trước khi chuyển, nên làm:** thêm công tắc `PAL_TRANSFER_ENABLED=false` để ẩn 2 nút chuyển
 Dogcoin, tránh người chơi bấm rồi bị trừ tiền mà không nhận được gì.
