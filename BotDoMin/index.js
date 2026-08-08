@@ -385,7 +385,7 @@ const commands = [
             .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
         ),
     new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
-    new SlashCommandBuilder().setName('diemdanh').setDescription(`Nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin mỗi 24 giờ`),
+    new SlashCommandBuilder().setName('diemdanh').setDescription(`Nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin mỗi ngày (reset 00:00)`),
     new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển Dogcoin')
         .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận Dogcoin').setRequired(true))
         .addIntegerOption(opt => opt.setName('sotien').setDescription('Số Dogcoin muốn chuyển').setRequired(true)),
@@ -1279,18 +1279,26 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'diemdanh') {
             const userData = getUserData(userId);
-            const now = Date.now();
-            const cooldown = 24 * 60 * 60 * 1000;
+            // Reset theo NGÀY LỊCH (giờ Việt Nam) chứ không phải đủ 24 tiếng:
+            // hôm nay điểm danh 23h thì 00:00 hôm sau là điểm danh được luôn.
+            // So sánh bằng chuỗi ngày (vd "08/08/2026") — VPS đặt múi giờ nào
+            // cũng ra đúng ngày VN nhờ timeZone cố định.
+            const todayVN = new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+            const lastDayVN = userData.lastDaily
+                ? new Date(userData.lastDaily).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+                : '';
 
-            if (now - userData.lastDaily < cooldown) {
-                const remaining = cooldown - (now - userData.lastDaily);
-                const hours = Math.floor(remaining / (60 * 60 * 1000));
-                const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-                return interaction.reply({ content: `⏳ Bạn đã điểm danh rồi! Hãy quay lại sau **${hours} giờ ${mins} phút**.`, ephemeral: true });
+            if (lastDayVN === todayVN) {
+                // Còn bao lâu tới 00:00 VN — tính từ giờ VN hiện tại.
+                const nowVN = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+                const minsLeft = (24 * 60) - (nowVN.getHours() * 60 + nowVN.getMinutes());
+                const hours = Math.floor(minsLeft / 60);
+                const mins = minsLeft % 60;
+                return interaction.reply({ content: `⏳ Hôm nay bạn điểm danh rồi! Qua **00:00** (còn **${hours} giờ ${mins} phút**) là điểm danh tiếp được.`, ephemeral: true });
             }
 
             updatePoints(userId, DAILY_DOGCOIN);
-            userData.lastDaily = now;
+            userData.lastDaily = Date.now();
             writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${getUserData(userId).points.toLocaleString()}`);
             return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${DAILY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
