@@ -135,15 +135,28 @@ function logDog(type, userId, username, amount, note) {
 // Lua không có cách thêm pal vào túi cho đúng (pal bị treo tới khi restart server).
 const PAL_SHOP = {
     customPrice: 3000,   // tự chọn pal
-    randomPrice: 1000,   // random pal
+    randomPrice: 1000,   // random pal — quay TRƯỚC, biết trúng con gì rồi mới chọn passive/linh hồn
     adminDiscordId: '456136500011335698',
     // Chỉ số mặc định cho mọi pal mua ở shop
     stars: 4,
     ivs: 100,
     soulPercent: 60,
-    soulSlots: 2,        // số dòng linh hồn người chơi được chọn
+    soulSlots: 1,        // số dòng linh hồn người chơi được chọn (cả 2 loại đều 1 dòng)
     passiveSlots: 4,
 };
+
+// Passive Cây Thế Giới KHÔNG bán kèm pal shop — muốn thì mua cấy ghép ở sạp trong game.
+// So khớp sau khi bỏ dấu tiếng Việt để "Thần Hủy Diệt" hay "than huy diet" đều bắt được.
+const BANNED_PASSIVES = [
+    'Thánh Kiếm Hai Lưỡi', 'Thành Trì Thịt Sống', 'Thần Hủy Diệt', 'Bàn Tay Ác Quỷ',
+    'Cú Nhảy Không Gian', 'Tiên Nhân', 'Vườn Ươm Cây Thần',
+];
+const stripAccents = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+function findBannedPassive(text) {
+    const t = stripAccents(text);
+    if (/world\s*tree/.test(t)) return 'World Tree';
+    return BANNED_PASSIVES.find((n) => t.includes(stripAccents(n))) || null;
+}
 
 let PAL_DATA = { all: [], raidOnly: [] };
 try {
@@ -1006,10 +1019,11 @@ function getWithdrawMessageData() {
         `**🎮 Chuyển vào game** — trừ ví Discord ngay khi gửi đơn, admin vào game đưa Dog Coin cho bạn. Admin từ chối thì hoàn lại đủ.`,
         `**💬 Chuyển ra Discord** — gửi đơn xong, bạn đưa Dog Coin cho admin trong game; admin xác nhận thì ví Discord mới được cộng.`,
         '',
-        `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — random từ toàn bộ ${(PAL_DATA.all || []).length} pal, có cả pal raid.`,
+        `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — quay từ toàn bộ ${(PAL_DATA.all || []).length} pal (có cả pal raid). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
         `**🎯 Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin** — tự chọn 1 trong ${buyable} pal (không có pal raid).`,
         `Pal nào cũng là bản **Boss (Alpha)** 👑, **${PAL_SHOP.stars} sao** ⭐, **IV ${PAL_SHOP.ivs}**, ` +
             `**${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** + **${PAL_SHOP.passiveSlots} passive** bạn tự chọn.`,
+        `🚫 Passive nhóm **Cây Thế Giới** không bán kèm pal — mua cấy ghép ở sạp trong game.`,
         '',
         `🏪 Lõi Văn Minh, cấy ghép, đổi vàng... mua ở **sạp trong game**.`,
     ];
@@ -1044,8 +1058,8 @@ async function sendPalOrderToAdmin(order) {
         `Giá: **${order.price.toLocaleString()}** Dogcoin (${order.kind === 'random' ? '🎲 ngẫu nhiên' : '🎯 tự chọn'})\n\n` +
         `**Pal: ${order.palName}** \`${order.palCode}\`\n` +
         `• Boss (Alpha), ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
-        `• Linh hồn ${PAL_SHOP.soulPercent}%: ${order.souls || '(không ghi)'}\n` +
-        `• Passive: ${order.passives || '(không ghi)'}\n\n` +
+        `• Linh hồn ${PAL_SHOP.soulPercent}%: ${order.souls || '(đang chọn — sẽ có tin bổ sung)'}\n` +
+        `• Passive: ${order.passives || '(đang chọn — sẽ có tin bổ sung)'}\n\n` +
         `Lúc: ${order.time}`;
 
     try {
@@ -1511,15 +1525,23 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
         }
 
-        // ===== SHOP PAL: nhận đơn =====
-        // Thứ tự: kiểm tra số dư -> chọn/random pal -> TRỪ TIỀN -> gửi đơn cho admin.
+        // ===== SHOP PAL TỰ CHỌN: nhận đơn =====
+        // Thứ tự: kiểm tra passive cấm + số dư + tên pal -> TRỪ TIỀN -> gửi đơn cho admin.
         // Nếu gửi DM cho admin thất bại thì HOÀN TIỀN ngay, vì không có đơn thì người
         // chơi sẽ không bao giờ nhận được pal.
-        if (interaction.customId === 'shop_modal_custom' || interaction.customId === 'shop_modal_random') {
-            const isRandom = interaction.customId === 'shop_modal_random';
-            const price = isRandom ? PAL_SHOP.randomPrice : PAL_SHOP.customPrice;
+        if (interaction.customId === 'shop_modal_custom') {
+            const price = PAL_SHOP.customPrice;
             const souls = interaction.fields.getTextInputValue('shop_souls').trim().slice(0, 200);
             const passives = interaction.fields.getTextInputValue('shop_passives').trim().slice(0, 400);
+
+            // Chặn TRƯỚC khi trừ tiền — người chơi sửa lại rồi mua tiếp, không mất gì.
+            const banned = findBannedPassive(passives);
+            if (banned) {
+                return interaction.reply({
+                    content: `🚫 Passive **${banned}** thuộc nhóm Cây Thế Giới — không bán kèm pal.\nMuốn passive đó thì mua **cấy ghép ở sạp trong game**. Chọn passive khác rồi mua lại nhé (chưa bị trừ tiền).`,
+                    ephemeral: true,
+                });
+            }
 
             const balance = getUserData(userId).points || 0;
             if (balance < price) {
@@ -1529,23 +1551,14 @@ client.on('interactionCreate', async interaction => {
                 });
             }
 
-            let pal;
-            if (isRandom) {
-                const pool = PAL_DATA.all || [];
-                if (pool.length === 0) {
-                    return interaction.reply({ content: '❌ Danh sách pal chưa nạp được, báo admin.', ephemeral: true });
-                }
-                pal = pool[Math.floor(Math.random() * pool.length)];
-            } else {
-                const input = interaction.fields.getTextInputValue('shop_pal');
-                pal = findPalByName(input);
-                if (!pal) {
-                    return interaction.reply({
-                        content: `❌ Không tìm thấy pal **${input}**. Gõ tên tiếng Anh (vd: Anubis, Jetragon, Lamball).\n` +
-                                 `Nếu là pal raid (${(PAL_DATA.raidOnly || []).join(', ')}) thì không mua được — chỉ có thể trúng ở nút ngẫu nhiên.`,
-                        ephemeral: true,
-                    });
-                }
+            const input = interaction.fields.getTextInputValue('shop_pal');
+            const pal = findPalByName(input);
+            if (!pal) {
+                return interaction.reply({
+                    content: `❌ Không tìm thấy pal **${input}**. Gõ tên tiếng Anh (vd: Anubis, Jetragon, Lamball).\n` +
+                             `Nếu là pal raid (${(PAL_DATA.raidOnly || []).join(', ')}) thì không mua được — chỉ có thể trúng ở nút ngẫu nhiên.`,
+                    ephemeral: true,
+                });
             }
 
             await interaction.deferReply({ ephemeral: true });
@@ -1555,7 +1568,7 @@ client.on('interactionCreate', async interaction => {
                 id: dbCache._palOrderSeq = (dbCache._palOrderSeq || 0) + 1,
                 userId,
                 username: interaction.user.tag,
-                kind: isRandom ? 'random' : 'custom',
+                kind: 'custom',
                 price,
                 palName: pal.name,
                 palCode: pal.code,
@@ -1579,17 +1592,68 @@ client.on('interactionCreate', async interaction => {
             dbCache._palOrders.unshift(order);
             if (dbCache._palOrders.length > 200) dbCache._palOrders.length = 200;
 
-            logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (${isRandom ? 'ngẫu nhiên' : 'tự chọn'}) — đơn #${order.id}`);
-            writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} mua ${order.palName} (${order.kind}, ${price} Dogcoin) | linh hon: ${souls} | passive: ${passives}`);
+            logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (tự chọn) — đơn #${order.id}`);
+            writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} mua ${order.palName} (custom, ${price} Dogcoin) | linh hon: ${souls} | passive: ${passives}`);
 
             return interaction.editReply(
-                `${isRandom ? '🎲 Bạn trúng' : '🎯 Đã đặt'}: **${pal.name}** 👑\n` +
+                `🎯 Đã đặt: **${pal.name}** 👑\n` +
                 `• Bản Boss, ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
                 `• Linh hồn ${PAL_SHOP.soulPercent}%: ${souls}\n` +
                 `• Passive: ${passives}\n\n` +
                 `Đã trừ **${price.toLocaleString()}** ${DOGCOIN_EMOJI} (còn **${getUserData(userId).points.toLocaleString()}**).\n` +
                 `Mã đơn **#${order.id}** đã gửi cho admin — chờ admin tạo pal và giao trong game.`
             );
+        }
+
+        // ===== SHOP PAL NGẪU NHIÊN: người chơi điền passive/linh hồn cho đơn đã quay =====
+        // Tiền đã trừ từ lúc quay; ở đây chỉ bổ sung lựa chọn rồi báo admin.
+        if (interaction.customId.startsWith('shop_fill_modal_')) {
+            const oid = parseInt(interaction.customId.slice('shop_fill_modal_'.length));
+            const order = (dbCache._palOrders || []).find((o) => o.id === oid);
+            if (!order) return interaction.reply({ content: '❌ Không tìm thấy đơn này.', ephemeral: true });
+            if (order.userId !== userId) return interaction.reply({ content: '❌ Đơn này không phải của bạn.', ephemeral: true });
+            if (order.souls || order.passives) {
+                return interaction.reply({ content: `✅ Đơn #${oid} đã chọn rồi: linh hồn **${order.souls}** | passive **${order.passives}**`, ephemeral: true });
+            }
+
+            const souls = interaction.fields.getTextInputValue('shop_souls').trim().slice(0, 200);
+            const passives = interaction.fields.getTextInputValue('shop_passives').trim().slice(0, 400);
+
+            const banned = findBannedPassive(passives);
+            if (banned) {
+                // Không lưu gì — nút "Chọn passive & linh hồn" vẫn dùng lại được.
+                return interaction.reply({
+                    content: `🚫 Passive **${banned}** thuộc nhóm Cây Thế Giới — không bán kèm pal.\nMuốn passive đó thì mua **cấy ghép ở sạp trong game**. Bấm lại nút và chọn passive khác nhé.`,
+                    ephemeral: true,
+                });
+            }
+
+            order.souls = souls;
+            order.passives = passives;
+            writeLog('ADMIN', `[SHOP PAL] #${oid} ${order.username} chot lua chon cho ${order.palName}: linh hon ${souls} | passive ${passives}`);
+
+            // Báo admin phần bổ sung. DM hỏng không sao — panel đã có đủ thông tin.
+            (async () => {
+                try {
+                    const admin = await client.users.fetch(PAL_SHOP.adminDiscordId);
+                    await admin.send(
+                        `📝 **BỔ SUNG ĐƠN PAL** #${oid} — **${order.palName}** (\`${order.palCode}\`) của \`${order.username}\`\n` +
+                        `• Linh hồn ${PAL_SHOP.soulPercent}%: ${souls}\n` +
+                        `• Passive: ${passives}`
+                    );
+                } catch (e) {
+                    writeLog('ADMIN', `[SHOP PAL] Khong DM duoc phan bo sung don #${oid}: ${e.message} — xem tren panel`);
+                }
+            })();
+
+            return interaction.reply({
+                content:
+                    `✅ Đã chốt cho **${order.palName}** (đơn #${oid}):\n` +
+                    `• Linh hồn ${PAL_SHOP.soulPercent}%: ${souls}\n` +
+                    `• Passive: ${passives}\n` +
+                    `Chờ admin tạo pal và giao trong game.`,
+                ephemeral: true,
+            });
         }
 
         // ===== CHUYỂN DOG COIN TỪ GAME RA DISCORD (ticket) =====
@@ -1695,10 +1759,9 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
-    // ======== SHOP PAL ========
-    if (interaction.customId === 'shop_custom' || interaction.customId === 'shop_random') {
-        const isRandom = interaction.customId === 'shop_random';
-        const price = isRandom ? PAL_SHOP.randomPrice : PAL_SHOP.customPrice;
+    // ======== SHOP PAL: TỰ CHỌN (3000) — modal chọn pal + passive + linh hồn ========
+    if (interaction.customId === 'shop_custom') {
+        const price = PAL_SHOP.customPrice;
         const balance = getUserData(userId).points || 0;
 
         if (balance < price) {
@@ -1709,41 +1772,136 @@ client.on('interactionCreate', async interaction => {
         }
 
         const modal = new ModalBuilder()
-            .setCustomId(isRandom ? 'shop_modal_random' : 'shop_modal_custom')
-            .setTitle(isRandom ? `Pal ngẫu nhiên — ${price.toLocaleString()}` : `Chọn pal — ${price.toLocaleString()}`);
+            .setCustomId('shop_modal_custom')
+            .setTitle(`Chọn pal — ${price.toLocaleString()}`);
 
         // Chọn pal bằng ô nhập chứ không dùng menu: Discord chỉ cho 25 lựa chọn mỗi
         // menu, mà danh sách có gần 300 pal.
-        if (!isRandom) {
-            modal.addComponents(new ActionRowBuilder().addComponents(
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId('shop_pal')
                     .setLabel('Tên pal (vd: Anubis, Jetragon)')
                     .setPlaceholder('Gõ tên tiếng Anh của pal')
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true)
-            ));
-        }
-
-        modal.addComponents(
+            ),
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId('shop_souls')
                     .setLabel(`${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%`)
-                    .setPlaceholder('vd: Tấn công, Phòng thủ')
+                    .setPlaceholder('vd: Tấn công')
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true)
             ),
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId('shop_passives')
-                    .setLabel(`${PAL_SHOP.passiveSlots} passive skill`)
+                    .setLabel(`${PAL_SHOP.passiveSlots} passive (không nhận Cây Thế Giới)`)
                     .setPlaceholder('vd: Huyền Thoại, Quỷ Thần, Ma Cà Rồng, Thân Thể Kim Cương')
                     .setStyle(TextInputStyle.Paragraph)
                     .setRequired(true)
             )
         );
 
+        await interaction.showModal(modal);
+        return;
+    }
+
+    // ======== SHOP PAL: NGẪU NHIÊN (1000) — quay TRƯỚC, chọn passive/linh hồn SAU ========
+    // Trừ tiền + quay ngay khi bấm. Người chơi thấy trúng con gì rồi mới bấm nút
+    // "Chọn passive & linh hồn" để điền (shop_fill_<id> bên dưới).
+    if (interaction.customId === 'shop_random') {
+        const price = PAL_SHOP.randomPrice;
+        const balance = getUserData(userId).points || 0;
+
+        if (balance < price) {
+            return interaction.reply({
+                content: `❌ Không đủ Dogcoin! Cần **${price.toLocaleString()}**, bạn có **${balance.toLocaleString()}** ${DOGCOIN_EMOJI}`,
+                ephemeral: true,
+            });
+        }
+        const pool = PAL_DATA.all || [];
+        if (pool.length === 0) {
+            return interaction.reply({ content: '❌ Danh sách pal chưa nạp được, báo admin.', ephemeral: true });
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        const pal = pool[Math.floor(Math.random() * pool.length)];
+        updatePoints(userId, -price);
+        const order = {
+            id: dbCache._palOrderSeq = (dbCache._palOrderSeq || 0) + 1,
+            userId,
+            username: interaction.user.tag,
+            kind: 'random',
+            price,
+            palName: pal.name,
+            palCode: pal.code,
+            souls: '',
+            passives: '',
+            status: 'pending',
+            time: new Date().toLocaleString('vi-VN'),
+        };
+
+        const sent = await sendPalOrderToAdmin(order);
+        if (!sent) {
+            updatePoints(userId, price); // hoàn tiền vì admin không nhận được đơn
+            logDog('refund', userId, interaction.user.tag, price, `hoàn đơn pal #${order.id} (không gửi được cho admin)`);
+            return interaction.editReply(
+                '❌ Không gửi được đơn cho admin (admin chặn tin nhắn riêng?). ' +
+                `Đã **hoàn lại ${price.toLocaleString()}** ${DOGCOIN_EMOJI} cho bạn.`
+            );
+        }
+
+        if (!Array.isArray(dbCache._palOrders)) dbCache._palOrders = [];
+        dbCache._palOrders.unshift(order);
+        if (dbCache._palOrders.length > 200) dbCache._palOrders.length = 200;
+
+        logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) — đơn #${order.id}`);
+        writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) — cho chon passive/linh hon`);
+
+        return interaction.editReply({
+            content:
+                `🎲 Bạn trúng: **${pal.name}** 👑\n` +
+                `• Bản Boss, ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
+                `Đã trừ **${price.toLocaleString()}** ${DOGCOIN_EMOJI} (còn **${getUserData(userId).points.toLocaleString()}**) — mã đơn **#${order.id}**.\n\n` +
+                `👇 Bấm nút để chọn **${PAL_SHOP.passiveSlots} passive + ${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** cho nó.`,
+            components: [new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId(`shop_fill_${order.id}`).setLabel('Chọn passive & linh hồn').setEmoji('📝').setStyle(ButtonStyle.Primary)
+            )],
+        });
+    }
+
+    // ======== SHOP PAL: điền passive/linh hồn cho đơn random đã quay ========
+    if (interaction.customId.startsWith('shop_fill_')) {
+        const oid = parseInt(interaction.customId.slice('shop_fill_'.length));
+        const order = (dbCache._palOrders || []).find((o) => o.id === oid);
+        if (!order) return interaction.reply({ content: '❌ Không tìm thấy đơn này.', ephemeral: true });
+        if (order.userId !== userId) return interaction.reply({ content: '❌ Đơn này không phải của bạn.', ephemeral: true });
+        if (order.souls || order.passives) return interaction.reply({ content: `✅ Đơn #${oid} đã chọn rồi: linh hồn **${order.souls}** | passive **${order.passives}**`, ephemeral: true });
+
+        const modal = new ModalBuilder()
+            .setCustomId(`shop_fill_modal_${oid}`)
+            .setTitle(`${order.palName} — đơn #${oid}`.slice(0, 45));
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                    .setCustomId('shop_souls')
+                    .setLabel(`${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%`)
+                    .setPlaceholder('vd: Tấn công')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true)
+            ),
+            new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                    .setCustomId('shop_passives')
+                    .setLabel(`${PAL_SHOP.passiveSlots} passive (không nhận Cây Thế Giới)`)
+                    .setPlaceholder('vd: Huyền Thoại, Quỷ Thần, Ma Cà Rồng, Thân Thể Kim Cương')
+                    .setStyle(TextInputStyle.Paragraph)
+                    .setRequired(true)
+            )
+        );
         await interaction.showModal(modal);
         return;
     }
