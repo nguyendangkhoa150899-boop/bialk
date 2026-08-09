@@ -132,6 +132,32 @@ function logDog(type, userId, username, amount, note) {
     if (dbCache._dogLedger.length > 500) dbCache._dogLedger.length = 500;
 }
 
+// ===== PHÁT DOGCOIN TOÀN SERVER (gọi từ dashboard) =====
+// Cộng `amount` cho MỌI ví đang tồn tại rồi đăng thông báo tag role vào kênh thông báo.
+// Chỉ cộng ví đã có (ai từng chơi); người mới vào sau vẫn nhận STARTING_DOGCOIN như thường.
+async function addAllPlayersAndAnnounce(amount) {
+    // Khóa _ là dữ liệu nội bộ (lịch sử, đơn rút...), không phải ví người chơi.
+    const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_'));
+    userIds.forEach(id => updatePoints(id, amount));
+    saveDbNow();
+    writeLog('ADMIN', `[CỘNG TIỀN ALL] Dashboard cộng ${amount.toLocaleString()} Dogcoin cho ${userIds.length} người chơi`);
+
+    let announced = false;
+    try {
+        const ch = await client.channels.fetch(GIVEAWAY_ANNOUNCE_CHANNEL_ID);
+        if (ch) {
+            await ch.send({
+                content: `<@&${GIVEAWAY_PING_ROLE_ID}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi — gõ \`/sodu\` mà xem)`,
+                allowedMentions: { roles: [GIVEAWAY_PING_ROLE_ID] },
+            });
+            announced = true;
+        }
+    } catch (e) {
+        writeLog('SYSTEM', `[LỖI THÔNG BÁO CỘNG TIỀN ALL] Không gửi được vào kênh ${GIVEAWAY_ANNOUNCE_CHANNEL_ID}: ${e.message}`);
+    }
+    return { count: userIds.length, announced };
+}
+
 // ===== SHOP PAL =====
 // Người chơi trả Dogcoin để đặt 1 con pal; bot gửi đơn cho admin, admin dùng
 // CreativeMenu tạo pal trong game. Cố tình KHÔNG tự spawn pal: đã kiểm chứng là mod
@@ -400,9 +426,6 @@ const commands = [
         .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
         .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin trừ').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('addtienall').setDescription('Admin cộng Dogcoin cho TOÀN BỘ người chơi có ví')
-        .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin cộng cho MỖI người').setMinValue(1).setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
 ].map(c => c.toJSON());
 
@@ -443,6 +466,7 @@ client.once('ready', async (c) => {
             completePalOrder,
             deletePlayer,
             resetAllPlayers,
+            addAllPlayers: addAllPlayersAndAnnounce,
             saveDbNow,
             writeLog,
             startBC: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBaucua(ch); return ch.name; },
@@ -1335,35 +1359,6 @@ client.on('interactionCreate', async interaction => {
             logDog('admin-', target.id, target.tag, -amount, `admin ${interaction.user.tag} trừ tay`);
             writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} Dogcoin của ${target.tag}`);
             return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
-        }
-
-        // Cộng Dogcoin cho TOÀN BỘ ví đang tồn tại + đăng thông báo tag role vào kênh thông báo.
-        // Chỉ cộng ví đã có (ai từng chơi); người mới vào sau vẫn nhận STARTING_DOGCOIN như thường.
-        if (interaction.commandName === 'addtienall') {
-            const amount = interaction.options.getInteger('amount');
-            // Khóa _ là dữ liệu nội bộ (lịch sử, đơn rút...), không phải ví người chơi.
-            const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_'));
-            userIds.forEach(id => updatePoints(id, amount));
-            saveDbNow();
-            writeLog('ADMIN', `[CỘNG TIỀN ALL] Admin ${interaction.user.tag} cộng ${amount.toLocaleString()} Dogcoin cho ${userIds.length} người chơi`);
-
-            const announce = {
-                content: `<@&${GIVEAWAY_PING_ROLE_ID}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi — gõ \`/sodu\` mà xem)`,
-                allowedMentions: { roles: [GIVEAWAY_PING_ROLE_ID] },
-            };
-            let announced = false;
-            try {
-                const ch = await client.channels.fetch(GIVEAWAY_ANNOUNCE_CHANNEL_ID);
-                if (ch) { await ch.send(announce); announced = true; }
-            } catch (e) {
-                writeLog('SYSTEM', `[LỖI THÔNG BÁO ADDTIENALL] Không gửi được vào kênh ${GIVEAWAY_ANNOUNCE_CHANNEL_ID}: ${e.message}`);
-            }
-            return interaction.reply({
-                content: announced
-                    ? `✅ Đã cộng **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho **${userIds.length}** người chơi và đăng thông báo vào <#${GIVEAWAY_ANNOUNCE_CHANNEL_ID}>.`
-                    : `✅ Đã cộng **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho **${userIds.length}** người chơi.\n⚠️ Nhưng KHÔNG đăng được thông báo vào <#${GIVEAWAY_ANNOUNCE_CHANNEL_ID}> — kiểm tra quyền bot ở kênh đó.`,
-                ephemeral: true,
-            });
         }
 
         if (interaction.commandName === 'chuyentien') {

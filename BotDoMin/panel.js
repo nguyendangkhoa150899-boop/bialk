@@ -326,6 +326,14 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Set tất cả ${ids.length} người = ${amount}`);
                     return sendJSON(res, 200, { ok: true, count: ids.length });
                 }
+                // Phát Dogcoin cho TẤT CẢ ví + bot đăng thông báo tag role vào kênh thông báo
+                if (path === '/api/points/addall') {
+                    const amount = parseInt(body.amount);
+                    if (isNaN(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Số không hợp lệ' });
+                    if (!ctx.addAllPlayers) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    const r = await ctx.addAllPlayers(amount);
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
 
                 return sendJSON(res, 404, { ok: false, error: 'API không tồn tại' });
             }
@@ -618,6 +626,10 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
         <div class="row">
+          <div style="flex:3"><label>🎁 Phát Dogcoin cho TẤT CẢ (bot thông báo + tag role)</label><input id="addAllAmount" type="number" placeholder="vd: 500"></div>
+          <button class="btn-green" onclick="addAllCoins()">Phát tất cả</button>
+        </div>
+        <div class="row" style="margin-top:12px">
           <div style="flex:3"><label>Set tất cả người chơi về</label><input id="setAllAmount" type="number" placeholder="vd: 50000"></div>
           <button class="btn-red" onclick="setAll()">Set tất cả</button>
         </div>
@@ -904,6 +916,10 @@ function renderPlayers(){
   // Đừng vẽ lại bảng khi admin đang gõ vào ô nhập số (tránh mất focus + reset số)
   const af=document.activeElement;
   if(af&&af.id&&af.id.indexOf('amt_')===0)return;
+  // Giữ lại số đã gõ nhưng chưa bấm nút: refresh 3s/lần vẽ lại bảng không được xóa nó
+  // (guard focus ở trên không đủ — admin gõ xong rê chuột/bấm chỗ khác là mất focus).
+  const kept={};
+  document.querySelectorAll('input[id^="amt_"]').forEach(i=>{if(i.value!=='')kept[i.id]=i.value;});
   const q=(document.getElementById('search').value||'').toLowerCase();
   const tb=document.getElementById('playerBody');tb.innerHTML='';
   STATE.players.filter(p=>p.name.toLowerCase().includes(q)||p.id.includes(q)).forEach(p=>{
@@ -916,6 +932,7 @@ function renderPlayers(){
       ' <button class="mini btn-grey" onclick="pDel(\\''+p.id+'\\')">🗑️ Xóa ví</button></td>';
     tb.appendChild(tr);
   });
+  Object.keys(kept).forEach(id=>{const i=document.getElementById(id);if(i)i.value=kept[id];});
 }
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function fmtAmt(n){return (n>0?'+':'')+Number(n).toLocaleString();}
@@ -948,9 +965,12 @@ function renderHistories(){
       '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
 }
-function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');refresh();});}
-function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');refresh();});}
-function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');refresh();}).catch(()=>toast('❌ Lỗi'));}
+// Xóa số trong ô sau khi thao tác xong — renderPlayers giờ GIỮ số chưa dùng qua các lần
+// refresh, nên không xóa ở đây là số cũ nằm lại, dễ bấm nhầm cộng/trừ 2 lần.
+function pClear(id){const i=document.getElementById('amt_'+id);if(i)i.value='';}
+function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');pClear(id);refresh();});}
+function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');pClear(id);refresh();});}
+function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');pClear(id);refresh();}).catch(()=>toast('❌ Lỗi'));}
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng Dogcoin & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
@@ -1029,6 +1049,17 @@ async function resetAllPlayers(){
 }
 
 async function setAll(){const v=document.getElementById('setAllAmount').value;if(v==='')return toast('Nhập số');if(!await uiConfirm('Set TẤT CẢ người chơi về '+(+v).toLocaleString()+' điểm?','Set tất cả','btn-red'))return;api('/api/points/setall',{amount:+v}).then(j=>{toast('✅ Đã set '+j.count+' người');refresh();});}
+
+async function addAllCoins(){
+  const v=document.getElementById('addAllAmount').value;
+  if(v===''||+v<=0)return toast('Nhập số dương');
+  if(!await uiConfirm('Phát '+(+v).toLocaleString()+' Dogcoin cho TẤT CẢ người chơi và đăng thông báo tag role?','Phát tất cả','btn-green'))return;
+  api('/api/points/addall',{amount:+v}).then(j=>{
+    toast(j.announced?('✅ Đã phát cho '+j.count+' người + đã thông báo'):('✅ Đã phát cho '+j.count+' người — ⚠️ KHÔNG đăng được thông báo (kiểm tra quyền bot ở kênh)'));
+    document.getElementById('addAllAmount').value='';
+    refresh();
+  }).catch(()=>toast('❌ Lỗi'));
+}
 
 function fmtTime(target){
   const left=target-Math.floor(Date.now()/1000);
