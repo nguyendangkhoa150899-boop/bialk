@@ -1189,18 +1189,24 @@ async function xsDraw(trigger) {
         for (const e of board) { const n = e.value.slice(-2); loCount[n] = (loCount[n] || 0) + 1; }
 
         const winners = [];
+        const betDetails = []; // từng lệnh cược để soi lại trên panel
         let totalStake = 0, totalPaid = 0;
         for (const [uid, b] of Object.entries(xsState.bets)) {
             let win = 0;
             const details = [];
             for (const [num, amt] of Object.entries(b.de || {})) {
                 totalStake += amt;
-                if (num === de) { const w = amt * XS_DE_RATE; win += w; details.push(`đề **${num}** +${w.toLocaleString()}`); }
+                const hit = num === de ? 1 : 0;
+                const w = hit ? amt * XS_DE_RATE : 0;
+                betDetails.push({ name: b.name, kind: 'đề', num, amt, hits: hit, win: w });
+                if (w > 0) { win += w; details.push(`đề **${num}** +${w.toLocaleString()}`); }
             }
             for (const [num, amt] of Object.entries(b.lo || {})) {
                 totalStake += amt;
                 const c = loCount[num] || 0;
-                if (c > 0) { const w = Math.floor(amt * XS_LO_RATE * c); win += w; details.push(`lô **${num}** ×${c} nháy +${w.toLocaleString()}`); }
+                const w = c > 0 ? Math.floor(amt * XS_LO_RATE * c) : 0;
+                betDetails.push({ name: b.name, kind: 'lô', num, amt, hits: c, win: w });
+                if (w > 0) { win += w; details.push(`lô **${num}** ×${c} nháy +${w.toLocaleString()}`); }
             }
             if (win > 0) {
                 updatePoints(uid, win);
@@ -1218,6 +1224,7 @@ async function xsDraw(trigger) {
             forced: (forced.de || (forced.mustHit || []).length || (forced.mustMiss || []).length) ? forced : null,
             totalStake, totalPaid,
             winners: winners.map(w => ({ name: w.name, amount: w.amount })),
+            bets: betDetails,
         };
         xsState.history.unshift(entry);
         if (xsState.history.length > 30) xsState.history.length = 30;
@@ -2011,7 +2018,7 @@ client.on('interactionCreate', async interaction => {
             const bucket = my[kind];
             const existing = bucket[num] || 0;
             if (existing + amt > XS_MAX_PER_NUMBER) {
-                return interaction.reply({ content: `❌ Mỗi số tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI} (số ${num} bạn đã đặt ${existing.toLocaleString()}).`, ephemeral: true });
+                return interaction.reply({ content: `❌ Tiền cược tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI} mỗi số (số ${num} bạn đã đặt ${existing.toLocaleString()}, số dư ${userData.points.toLocaleString()} ${DOGCOIN_EMOJI}).`, ephemeral: true });
             }
             if (!existing && Object.keys(bucket).length >= XS_MAX_NUMBERS_PER_TYPE) {
                 return interaction.reply({ content: `❌ Mỗi kỳ tối đa **${XS_MAX_NUMBERS_PER_TYPE} số ${kindLabel}**. Bạn đã đặt: ${Object.keys(bucket).map(n => `**${n}**`).join(', ')}.`, ephemeral: true });
@@ -2110,7 +2117,7 @@ client.on('interactionCreate', async interaction => {
             new ActionRowBuilder().addComponents(
                 // label Discord tối đa 45 ký tự — format gọn + cắt cho chắc
                 new TextInputBuilder().setCustomId('xs_amt')
-                    .setLabel(`Tiền cược (dư ${balance.toLocaleString('vi-VN')}, max ${XS_MAX_PER_NUMBER})`.slice(0, 45))
+                    .setLabel(`Tiền cược tối đa ${XS_MAX_PER_NUMBER.toLocaleString('vi-VN')} Dogcoin (dư ${balance.toLocaleString('vi-VN')})`.slice(0, 45))
                     .setPlaceholder('Ví dụ: 100')
                     .setStyle(TextInputStyle.Short).setRequired(true)
             ),

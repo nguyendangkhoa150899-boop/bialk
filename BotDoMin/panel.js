@@ -882,11 +882,18 @@ function renderXS(){
   document.getElementById('xsHist').innerHTML = hist.length? hist.map(h=>{
     const wins=(h.winners||[]).map(w=>esc(w.name)+' +'+Number(w.amount).toLocaleString()).join(' • ');
     const board=(h.board||[]).map(x=>x.v).join(' ');
+    // từng lệnh cược của ván: ai đặt bao nhiêu vào số nào, trúng mấy nháy, thưởng bao nhiêu
+    const betLines=(h.bets||[]).map(b=>{
+      const hit=b.win>0;
+      const result=hit?('trúng'+(b.kind==='lô'?' '+b.hits+' nháy':'')+' <b>+'+Number(b.win).toLocaleString()+'</b>'):'không trúng';
+      return '<div class="'+(hit?'win':'lose')+'" style="font-size:12px;padding:1px 0">• '+esc(b.name)+' đặt '+Number(b.amt).toLocaleString()+' vào '+b.kind+' <b>'+b.num+'</b> → '+result+'</div>';
+    }).join('');
     return '<div class="h"><div class="top"><span>Ván #'+padId(h.round)+' • 🎯 đề về <b>'+h.de+'</b>'+(h.forced?' <span class="badge on">CÓ ÉP</span>':'')+'</span><span class="t">'+esc(h.time||'')+'</span></div>'+
       '<div class="b" style="font-size:12px">'+esc(board)+'</div>'+
       '<div class="b">💰 cược '+Number(h.totalStake).toLocaleString()+' → trả '+Number(h.totalPaid).toLocaleString()+'</div>'+
-      (wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai trúng</div>')+'</div>';
-  }).join('') : '<div class="empty">Chưa có kỳ nào.</div>';
+      (betLines||'<div class="muted" style="font-size:12px">ván trống, không ai đặt</div>')+
+      (wins?'<div class="win">🏆 '+wins+'</div>':'')+'</div>';
+  }).join('') : '<div class="empty">Chưa có ván nào.</div>';
 }
 
 // ===== TAB PALWORLD =====
