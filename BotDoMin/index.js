@@ -1257,8 +1257,13 @@ async function xsDraw(trigger) {
                     xsState.channel.messages.delete(oldId).catch(() => {});
                 }
             }
+            // Xóa bảng cũ, mở bảng ván MỚI ngay DƯỚI kết quả (không edit tại chỗ —
+            // edit thì bảng nằm kẹt phía trên, nhìn như ván cũ vẫn chạy)
+            if (xsState.message) { await xsState.message.delete().catch(() => {}); xsState.message = null; }
+            xsState.status = vnNow().getMinutes() >= XS_LOCK_MINUTE ? 'locked' : 'betting';
+            xsState.message = await xsState.channel.send(getXSMessageData()).catch(() => null);
         }
-        xsState.needsUpdate = true;
+        xsState.needsUpdate = false;
         return entry;
     } finally {
         xsState.isProcessing = false;
@@ -2093,6 +2098,7 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: `🔒 Đã khóa sổ (từ phút ${XS_LOCK_MINUTE}). Chờ kỳ sau nhé!`, ephemeral: true });
         }
         const kind = interaction.customId === 'xs_de' ? 'de' : 'lo';
+        const balance = getUserData(userId).points || 0;
         const modal = new ModalBuilder()
             .setCustomId(kind === 'de' ? 'xs_modal_de' : 'xs_modal_lo')
             .setTitle(kind === 'de' ? `🎯 Đánh Đề (1 ăn ${XS_DE_RATE})` : `🎰 Đánh Lô (1 ăn ${XS_LO_RATE}/nháy)`);
@@ -2102,7 +2108,10 @@ client.on('interactionCreate', async interaction => {
                     .setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(2).setRequired(true)
             ),
             new ActionRowBuilder().addComponents(
-                new TextInputBuilder().setCustomId('xs_amt').setLabel(`Tiền cược (tối đa ${XS_MAX_PER_NUMBER}/số)`).setPlaceholder('Ví dụ: 100')
+                // label Discord tối đa 45 ký tự — format gọn + cắt cho chắc
+                new TextInputBuilder().setCustomId('xs_amt')
+                    .setLabel(`Tiền cược (dư ${balance.toLocaleString('vi-VN')}, max ${XS_MAX_PER_NUMBER})`.slice(0, 45))
+                    .setPlaceholder('Ví dụ: 100')
                     .setStyle(TextInputStyle.Short).setRequired(true)
             ),
         );
