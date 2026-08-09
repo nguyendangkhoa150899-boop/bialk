@@ -14,6 +14,9 @@ const STARTING_DOGCOIN = 20;
 const DAILY_DOGCOIN = 50;
 const DOGCOIN_EMOJI = '<:dogcoin:1533903243028205579>';
 const DOGCOIN_EMOJI_ID = '1533903243028205579';
+// /addtienall: role được tag + kênh đăng thông báo phát Dogcoin toàn server
+const GIVEAWAY_PING_ROLE_ID = '1535223682857705522';
+const GIVEAWAY_ANNOUNCE_CHANNEL_ID = '1535224374897016862';
 
 // --- HỆ THỐNG GHI LOG CHIA FILE ---
 const LOG_SYSTEM = './log_system.txt'; // lỗi, crash, khởi động bot
@@ -396,6 +399,9 @@ const commands = [
     new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ Dogcoin')
         .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
         .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin trừ').setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    new SlashCommandBuilder().setName('addtienall').setDescription('Admin cộng Dogcoin cho TOÀN BỘ người chơi có ví')
+        .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin cộng cho MỖI người').setMinValue(1).setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
 ].map(c => c.toJSON());
@@ -1331,6 +1337,35 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
 
+        // Cộng Dogcoin cho TOÀN BỘ ví đang tồn tại + đăng thông báo tag role vào kênh thông báo.
+        // Chỉ cộng ví đã có (ai từng chơi); người mới vào sau vẫn nhận STARTING_DOGCOIN như thường.
+        if (interaction.commandName === 'addtienall') {
+            const amount = interaction.options.getInteger('amount');
+            // Khóa _ là dữ liệu nội bộ (lịch sử, đơn rút...), không phải ví người chơi.
+            const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_'));
+            userIds.forEach(id => updatePoints(id, amount));
+            saveDbNow();
+            writeLog('ADMIN', `[CỘNG TIỀN ALL] Admin ${interaction.user.tag} cộng ${amount.toLocaleString()} Dogcoin cho ${userIds.length} người chơi`);
+
+            const announce = {
+                content: `<@&${GIVEAWAY_PING_ROLE_ID}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi — gõ \`/sodu\` mà xem)`,
+                allowedMentions: { roles: [GIVEAWAY_PING_ROLE_ID] },
+            };
+            let announced = false;
+            try {
+                const ch = await client.channels.fetch(GIVEAWAY_ANNOUNCE_CHANNEL_ID);
+                if (ch) { await ch.send(announce); announced = true; }
+            } catch (e) {
+                writeLog('SYSTEM', `[LỖI THÔNG BÁO ADDTIENALL] Không gửi được vào kênh ${GIVEAWAY_ANNOUNCE_CHANNEL_ID}: ${e.message}`);
+            }
+            return interaction.reply({
+                content: announced
+                    ? `✅ Đã cộng **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho **${userIds.length}** người chơi và đăng thông báo vào <#${GIVEAWAY_ANNOUNCE_CHANNEL_ID}>.`
+                    : `✅ Đã cộng **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho **${userIds.length}** người chơi.\n⚠️ Nhưng KHÔNG đăng được thông báo vào <#${GIVEAWAY_ANNOUNCE_CHANNEL_ID}> — kiểm tra quyền bot ở kênh đó.`,
+                ephemeral: true,
+            });
+        }
+
         if (interaction.commandName === 'chuyentien') {
             const receiver = interaction.options.getUser('nguoi');
             const amount = interaction.options.getInteger('sotien');
@@ -1503,9 +1538,11 @@ client.on('interactionCreate', async interaction => {
             bcState.bets.push({ userId, username: interaction.user.username, mascotId: sel.mascotId, amount: amt });
 
             userBCSelections[userId] = null;
-            bcState.activeMascot = null; 
+            bcState.activeMascot = null;
+            // KHÔNG await edit bảng ở đây: edit message bị Discord rate-limit, đông người
+            // cược là chờ quá 3 giây -> interaction chết (10062) -> người chơi không thấy
+            // phản hồi gì. Reply ngay, vòng lặp 1s thấy needsUpdate sẽ tự vẽ lại bảng.
             bcState.needsUpdate = true;
-            await updateBCMessage();
 
             return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
         }
@@ -1526,9 +1563,9 @@ client.on('interactionCreate', async interaction => {
             txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
 
             userTXSelections[userId] = null;
-            txState.activeChoice = null; 
+            txState.activeChoice = null;
+            // Reply ngay, không await edit bảng (lý do: xem chú thích ở bc_modal_custom).
             txState.needsUpdate = true;
-            await updateTXMessage();
 
             return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
         }
@@ -1918,9 +1955,9 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId.startsWith('bc_m_')) {
         const mascotId = interaction.customId.split('_')[2];
         userBCSelections[userId] = { mascotId };
-        
+
         bcState.activeMascot = mascotId;
-        await updateBCMessage();
+        bcState.needsUpdate = true; // vòng lặp 1s tự vẽ lại — không await edit kẻo trễ 3s
 
         return interaction.reply({ content: `✅ Đã chọn **${MASCOTS.find(m => m.id === mascotId).name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
     }
@@ -1956,10 +1993,9 @@ client.on('interactionCreate', async interaction => {
         bcState.bets.push({ userId, username: interaction.user.username, mascotId: sel.mascotId, amount: amt });
 
         userBCSelections[userId] = null;
-        bcState.activeMascot = null; 
-        bcState.needsUpdate = true; 
-        await updateBCMessage();
-        
+        bcState.activeMascot = null;
+        bcState.needsUpdate = true; // reply ngay, vòng lặp 1s vẽ lại bảng
+
         return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
     }
 
@@ -1978,9 +2014,9 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId.startsWith('tx_c_')) {
         const choice = interaction.customId.split('_')[2];
         userTXSelections[userId] = { choice };
-        
+
         txState.activeChoice = choice;
-        await updateTXMessage();
+        txState.needsUpdate = true; // vòng lặp 1s tự vẽ lại — không await edit kẻo trễ 3s
 
         return interaction.reply({ content: `✅ Đã chọn **${TX_CHOICES[choice].name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
     }
@@ -2032,10 +2068,9 @@ client.on('interactionCreate', async interaction => {
         txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
 
         userTXSelections[userId] = null;
-        txState.activeChoice = null; 
-        txState.needsUpdate = true; 
-        await updateTXMessage();
-        
+        txState.activeChoice = null;
+        txState.needsUpdate = true; // reply ngay, vòng lặp 1s vẽ lại bảng
+
         return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
     }
   } catch (e) {

@@ -722,6 +722,9 @@ function showApp(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   initSelects();
+  // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
+  const saved=localStorage.getItem('panel_tab');
+  if(['tx','bc','mine','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
@@ -729,6 +732,7 @@ function showApp(){
 function tab(t){
   ['tx','bc','mine','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  localStorage.setItem('panel_tab',t);
 }
 
 // ===== TAB PALWORLD =====
