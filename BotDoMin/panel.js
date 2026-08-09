@@ -73,6 +73,27 @@ function startPanel(ctx) {
                 channelId: (bc.channel && bc.channel.id) || db._bcChannelId || '',
             },
             forcedMines: ctx.getForcedMines(),
+            xs: (() => {
+                if (!ctx.getXS) return null;
+                const xs = ctx.getXS();
+                let stake = 0, users = 0;
+                for (const b of Object.values(xs.bets || {})) {
+                    users++;
+                    for (const v of Object.values(b.de || {})) stake += v;
+                    for (const v of Object.values(b.lo || {})) stake += v;
+                }
+                return {
+                    live: !!xs.message,
+                    status: xs.status,
+                    round: xs.round,
+                    channelId: (xs.channel && xs.channel.id) || db._xsChannelId || '',
+                    usersCount: users,
+                    totalStake: stake,
+                    forced: xs.forced,
+                    bets: Object.entries(xs.bets || {}).map(([id, b]) => ({ id, name: b.name, de: b.de || {}, lo: b.lo || {} })),
+                    history: (xs.history || []).slice(0, 10),
+                };
+            })(),
             withdraw: {
                 live: !!wd.message,
                 channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
@@ -159,6 +180,47 @@ function startPanel(ctx) {
                 if (path === '/api/bc/clear') {
                     ctx.getBC().forcedResult = null;
                     ctx.writeLog('ADMIN', `[PANEL ÉP BC] Hủy ép kết quả Bầu Cua`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+
+                // ---- XỔ SỐ MIỀN BẮC ----
+                if (path === '/api/xs/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    try {
+                        const name = await ctx.startXS(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Xổ Số tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                if (path === '/api/xs/stop') {
+                    ctx.stopXS();
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng Xổ Số`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/xs/draw') {
+                    const r = await ctx.xsDrawNow();
+                    if (!r) return sendJSON(res, 400, { ok: false, error: 'Đang quay dở, thử lại sau vài giây' });
+                    ctx.writeLog('ADMIN', `[PANEL XS] QUAY NGAY kỳ #${r.round} — đề về ${r.de}`);
+                    return sendJSON(res, 200, { ok: true, de: r.de, round: r.round });
+                }
+                if (path === '/api/xs/force') {
+                    const de = String(body.de || '').trim();
+                    const parse2 = (s) => String(s || '').split(',').map(x => x.trim()).filter(Boolean).map(x => x.padStart(2, '0'));
+                    const mustHit = parse2(body.mustHit);
+                    const mustMiss = parse2(body.mustMiss);
+                    if (de && !/^\d{1,2}$/.test(de)) return sendJSON(res, 400, { ok: false, error: 'Đề phải là số 00-99' });
+                    if ([...mustHit, ...mustMiss].some(n => !/^\d{2}$/.test(n))) return sendJSON(res, 400, { ok: false, error: 'Danh sách lô phải là các số 00-99, cách nhau dấu phẩy' });
+                    const overlap = mustHit.filter(n => mustMiss.includes(n));
+                    if (overlap.length) return sendJSON(res, 400, { ok: false, error: 'Số vừa ép về vừa cấm về: ' + overlap.join(', ') });
+                    if (!de && !mustHit.length && !mustMiss.length) return sendJSON(res, 400, { ok: false, error: 'Chưa nhập gì để ép' });
+                    ctx.xsSetForce(de ? de.padStart(2, '0') : null, mustHit, mustMiss);
+                    ctx.writeLog('ADMIN', `[PANEL XS] ÉP kỳ tới: đề=${de || '-'} lô về=[${mustHit.join(',')}] cấm=[${mustMiss.join(',')}]`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/xs/clear') {
+                    ctx.xsClearForce();
+                    ctx.writeLog('ADMIN', `[PANEL XS] Hủy ép kết quả`);
                     return sendJSON(res, 200, { ok: true });
                 }
 
@@ -468,8 +530,49 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="mine" onclick="tab('mine')">💎 Dò Mìn</button>
+      <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
       <button data-tab="pal" onclick="tab('pal')">🎮 Palworld & Dogcoin<span id="wdBadge" class="hidden"></span></button>
+    </div>
+
+    <!-- XỔ SỐ MIỀN BẮC -->
+    <div id="tab-xs" class="hidden">
+      <div class="card">
+        <h3>🎛️ Điều khiển Xổ Số Miền Bắc</h3>
+        <label>Channel ID (kênh đăng bảng xổ số)</label>
+        <input id="xsChannel" placeholder="vd: 123456789012345678">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="xsStart()">▶️ Bật / Tạo bảng mới</button>
+          <button class="btn-red" onclick="xsStop()">⏹️ Tắt bảng</button>
+        </div>
+        <div class="note">Quay tự động <b>mỗi giờ đúng đầu giờ</b> (giờ VN), khóa sổ từ <b>phút 50</b>. Đề 1 ăn 70 · Lô 1 ăn 3.5/nháy · tối đa 5 số/kiểu, 1.000/số. Bot restart tự nối lại kênh, cược đang treo không mất.</div>
+      </div>
+      <div class="card">
+        <h2>🎰 Kỳ hiện tại</h2>
+        <div class="muted" id="xsInfo" style="font-size:13px;margin-bottom:10px"></div>
+        <div id="xsBets" style="font-size:13px;margin-bottom:10px"></div>
+        <div class="row">
+          <button class="btn-green" style="flex:1" onclick="xsDrawNow()">🎲 QUAY NGAY LẬP TỨC</button>
+        </div>
+        <div class="note">Quay ngay = chốt kỳ hiện tại với cược đang có, trả thưởng, đăng kết quả, mở kỳ mới luôn. Kỳ tự động đầu giờ kế vẫn chạy bình thường.</div>
+      </div>
+      <div class="card">
+        <h2>⚡ Ép kết quả kỳ tới</h2>
+        <div class="row">
+          <div style="flex:1"><label>Đề về (2 số cuối ĐB)</label><input id="xsForceDe" placeholder="vd: 27" maxlength="2"></div>
+          <div style="flex:2"><label>Lô PHẢI về (cách nhau phẩy)</label><input id="xsForceHit" placeholder="vd: 11,22"></div>
+          <div style="flex:2"><label>Lô CẤM về</label><input id="xsForceMiss" placeholder="vd: 68,86"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" style="flex:2" onclick="xsForce()">⚡ Ép kỳ tới</button>
+          <button class="btn-grey" onclick="api('/api/xs/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
+        </div>
+        <div class="note">Bỏ trống ô nào thì phần đó quay ngẫu nhiên. Ép chỉ áp dụng <b>một kỳ</b> rồi tự xóa. Ô "đề về" cũng quyết định luôn 2 số cuối giải ĐB trên bảng lô.</div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử xổ số</h3>
+        <div id="xsHist" class="hist"></div>
+      </div>
     </div>
 
     <!-- TÀI XỈU -->
@@ -736,15 +839,56 @@ function showApp(){
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
-  if(['tx','bc','mine','user','pal'].includes(saved)) tab(saved);
+  if(['tx','bc','mine','xs','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
 
 function tab(t){
-  ['tx','bc','mine','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
+}
+
+// ===== XỔ SỐ =====
+function xsStart(){const id=document.getElementById('xsChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/xs/start',{channelId:id}).then(j=>{toast('✅ Đã bật xổ số tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
+async function xsStop(){if(!await uiConfirm('Tắt bảng Xổ Số? Cược đang treo vẫn được giữ trong database.','Tắt','btn-red'))return;api('/api/xs/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
+async function xsDrawNow(){if(!await uiConfirm('QUAY NGAY kỳ hiện tại? Chốt cược đang có, trả thưởng và mở kỳ mới.','Quay ngay','btn-green'))return;api('/api/xs/draw',{}).then(j=>{toast('🎲 Đã quay kỳ #'+j.round+' — đề về '+j.de);refresh();}).catch(e=>toast('❌ '+e.message));}
+function xsForce(){
+  const de=document.getElementById('xsForceDe').value.trim();
+  const mustHit=document.getElementById('xsForceHit').value.trim();
+  const mustMiss=document.getElementById('xsForceMiss').value.trim();
+  api('/api/xs/force',{de,mustHit,mustMiss}).then(()=>{toast('⚡ Đã ép kỳ tới');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function renderXS(){
+  const xs=STATE.xs; if(!xs) return;
+  const c=document.getElementById('xsChannel'); if(c&&!c.value&&xs.channelId) c.value=xs.channelId;
+  const run=xs.live&&xs.status!=='stopped';
+  const f=xs.forced||{};
+  const fParts=[];
+  if(f.de)fParts.push('đề='+f.de);
+  if(f.mustHit&&f.mustHit.length)fParts.push('lô về '+f.mustHit.join(','));
+  if(f.mustMiss&&f.mustMiss.length)fParts.push('cấm '+f.mustMiss.join(','));
+  document.getElementById('xsInfo').innerHTML='<span class="run '+(run?'on':'off')+'">'+(run?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Kỳ #'+padId(xs.round)+' • <span class="badge '+(xs.status==='betting'?'on':'off')+'">'+xs.status+'</span> • '+xs.usersCount+' người • tổng cược '+Number(xs.totalStake).toLocaleString()+(fParts.length?' • <span class="badge on">ĐANG ÉP: '+esc(fParts.join(' | '))+'</span>':'');
+  const box=document.getElementById('xsBets');
+  if(!xs.bets||!xs.bets.length){box.innerHTML='<div class="muted">Kỳ này chưa ai đặt.</div>';}
+  else{
+    box.innerHTML=xs.bets.map(b=>{
+      const fmt=o=>Object.entries(o).map(([n,a])=>n+' ('+Number(a).toLocaleString()+')').join(', ');
+      const de=Object.keys(b.de).length?('🎯 đề: '+fmt(b.de)):'';
+      const lo=Object.keys(b.lo).length?('🎰 lô: '+fmt(b.lo)):'';
+      return '<div style="padding:4px 0;border-bottom:1px solid var(--line)"><b>'+esc(b.name)+'</b> — '+[de,lo].filter(Boolean).join(' · ')+'</div>';
+    }).join('');
+  }
+  const hist=xs.history||[];
+  document.getElementById('xsHist').innerHTML = hist.length? hist.map(h=>{
+    const wins=(h.winners||[]).map(w=>esc(w.name)+' +'+Number(w.amount).toLocaleString()).join(' • ');
+    const board=(h.board||[]).map(x=>x.v).join(' ');
+    return '<div class="h"><div class="top"><span>Kỳ #'+padId(h.round)+' — 🎯 đề về <b>'+h.de+'</b>'+(h.forced?' <span class="badge on">CÓ ÉP</span>':'')+'</span><span class="t">'+esc(h.time||'')+'</span></div>'+
+      '<div class="b" style="font-size:12px">'+esc(board)+'</div>'+
+      '<div class="b">💰 cược '+Number(h.totalStake).toLocaleString()+' → trả '+Number(h.totalPaid).toLocaleString()+'</div>'+
+      (wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai trúng</div>')+'</div>';
+  }).join('') : '<div class="empty">Chưa có kỳ nào.</div>';
 }
 
 // ===== TAB PALWORLD =====
@@ -1109,6 +1253,8 @@ async function refresh(){
       fl.appendChild(item);
     });
   }
+  // xổ số
+  renderXS();
   // players table
   renderPlayers();
   document.getElementById('resetCount').textContent=STATE.players.length;

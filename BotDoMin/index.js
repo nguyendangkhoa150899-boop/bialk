@@ -80,6 +80,12 @@ function syncCache() {
     dbCache._bcDashHistory = bcDashHistory;
     dbCache._withdrawRequests = withdrawRequests;
     dbCache._withdrawSeq = withdrawSeq;
+    // Xổ số: cược đang treo là TIỀN THẬT đã trừ ví -> bắt buộc giữ qua restart
+    dbCache._xsBets = xsState.bets;
+    dbCache._xsRound = xsState.round;
+    dbCache._xsForced = xsState.forced;
+    dbCache._xsHistory = xsState.history;
+    dbCache._xsResultMsgIds = xsState.resultMsgIds;
 }
 
 // Ghi thẳng xuống file ngay (dùng cho thao tác quan trọng như xóa ví, không đợi 10s).
@@ -269,6 +275,37 @@ let txState = {
 };
 let userTXSelections = {};
 
+// --- CONFIG XỔ SỐ MIỀN BẮC ---
+// Bot tự quay đủ bảng 27 lô như XSMB thật, mỗi giờ 1 kỳ vào ĐÚNG ĐẦU GIỜ (giờ VN),
+// khóa sổ từ phút 50. Đề = 2 số cuối giải Đặc Biệt (1 ăn XS_DE_RATE).
+// Lô = số về trong bất kỳ lô nào của 27 lô, mỗi nháy ăn XS_LO_RATE lần tiền.
+const XS_DE_RATE = 70;
+const XS_LO_RATE = 3.5;
+const XS_MAX_NUMBERS_PER_TYPE = 5;   // mỗi người tối đa 5 số đề + 5 số lô mỗi kỳ
+const XS_MAX_PER_NUMBER = 1000;      // tối đa 1000 Dogcoin mỗi số
+const XS_LOCK_MINUTE = 50;           // phút 50 trở đi: khóa sổ
+const XS_RESULT_KEEP = 5;            // giữ 5 tin kết quả gần nhất trong kênh
+// Cơ cấu giải XSMB: [tên giải, số lượng, số chữ số]
+const XS_PRIZE_SPEC = [
+    ['ĐB', 1, 5], ['G1', 1, 5], ['G2', 2, 5], ['G3', 6, 5],
+    ['G4', 4, 4], ['G5', 6, 4], ['G6', 3, 3], ['G7', 4, 2],
+];
+
+let xsState = {
+    channel: null,
+    message: null,          // bảng cược (edit tại chỗ)
+    status: 'stopped',      // 'betting' | 'locked' | 'stopped'
+    round: dbCache._xsRound || 1,
+    // bets: { userId: { name, de: {'27': 500}, lo: {'27': 300} } } — tiền đã trừ ví
+    bets: (dbCache._xsBets && typeof dbCache._xsBets === 'object') ? dbCache._xsBets : {},
+    // forced.de: '27' | null; mustHit/mustMiss: các số lô ép về / cấm về (một-kỳ, quay xong tự xóa)
+    forced: dbCache._xsForced || { de: null, mustHit: [], mustMiss: [] },
+    history: Array.isArray(dbCache._xsHistory) ? dbCache._xsHistory : [],
+    resultMsgIds: Array.isArray(dbCache._xsResultMsgIds) ? dbCache._xsResultMsgIds : [],
+    needsUpdate: false,
+    isProcessing: false,
+};
+
 // Lịch sử các ván dò mìn (để hiển thị trên web panel)
 let minesHistory = [];
 
@@ -437,6 +474,8 @@ client.once('ready', async (c) => {
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     runBầuCuaLoop();
     runTaiXiuLoop();
+    runXoSoLoop();
+    resumeXosoAfterRestart().catch(() => {});
 
     // Khởi động web panel can thiệp kết quả
     try {
@@ -477,6 +516,13 @@ client.once('ready', async (c) => {
             getWithdraw: () => withdrawState,
             startWithdraw: async (channelId) => { const ch = await client.channels.fetch(channelId); await startWithdraw(ch); return ch.name; },
             stopWithdraw: () => stopWithdraw(),
+            // Xổ số miền Bắc
+            getXS: () => xsState,
+            startXS: async (channelId) => { const ch = await client.channels.fetch(channelId); await startXoso(ch); return ch.name; },
+            stopXS: () => stopXoso(),
+            xsDrawNow: () => xsDraw('panel'),
+            xsSetForce: (de, mustHit, mustMiss) => { xsState.forced = { de: de || null, mustHit: mustHit || [], mustMiss: mustMiss || [] }; saveDbNow(); },
+            xsClearForce: () => { xsState.forced = { de: null, mustHit: [], mustMiss: [] }; saveDbNow(); },
             getWithdrawRequests: () => withdrawRequests,
             approveWithdraw,
             rejectWithdraw,
@@ -1033,6 +1079,232 @@ function stopLonnho() {
     txState.channel = null;
     txState.message = null;
     txState.status = 'stopped';
+}
+
+// ===== XỔ SỐ MIỀN BẮC =====
+
+function vnNow() {
+    return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+}
+
+// Epoch (giây) của đầu giờ kế tiếp — múi giờ VN lệch UTC đúng số giờ chẵn nên đầu giờ trùng nhau.
+function xsNextDrawEpoch() {
+    return (Math.floor(Date.now() / 3600000) + 1) * 3600;
+}
+
+function xsRandDigits(n) {
+    let s = '';
+    for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 10);
+    return s;
+}
+
+// Quay đủ bảng 27 giải. forced = {de, mustHit[], mustMiss[]} — áp một kỳ rồi xóa.
+function xsGenerateBoard(forced) {
+    const board = []; // [{prize, value}]
+    for (const [prize, count, digits] of XS_PRIZE_SPEC) {
+        for (let i = 0; i < count; i++) board.push({ prize, value: xsRandDigits(digits) });
+    }
+    const last2 = (v) => v.slice(-2);
+    const setLast2 = (entry, two) => { entry.value = entry.value.slice(0, -2) + two; };
+    const miss = new Set((forced.mustMiss || []).filter(n => !(forced.mustHit || []).includes(n)));
+
+    // 1) cấm về lô: re-roll 2 số cuối của giải nào dính số cấm (trừ ĐB nếu đang ép đề)
+    for (const entry of board) {
+        if (forced.de && entry.prize === 'ĐB') continue;
+        let guard = 0;
+        while (miss.has(last2(entry.value)) && guard++ < 50) {
+            setLast2(entry, xsRandDigits(2));
+        }
+    }
+    // 2) ép đề: gán 2 số cuối giải ĐB
+    if (forced.de) setLast2(board[0], forced.de);
+    // 3) ép lô phải về: mỗi số gán vào 1 giải ngẫu nhiên (không đụng ĐB, không đè lên nhau).
+    // Số "tự về" sẵn cũng phải GIỮ CHỖ vị trí đó, không thì số ép sau bốc trúng
+    // đúng vị trí đó và đè mất (bug đã bắt được khi test 500 lần).
+    const used = new Set();
+    for (const num of (forced.mustHit || [])) {
+        const existing = board.findIndex((e, i) => last2(e.value) === num && !used.has(i));
+        if (existing >= 0) { used.add(existing); continue; }
+        let idx, guard = 0;
+        do { idx = 1 + Math.floor(Math.random() * (board.length - 1)); } while (used.has(idx) && guard++ < 50);
+        used.add(idx);
+        setLast2(board[idx], num);
+    }
+    return board;
+}
+
+function getXSMessageData() {
+    const locked = xsState.status === 'locked';
+    const nextDraw = xsNextDrawEpoch();
+    const users = Object.keys(xsState.bets).length;
+    let stake = 0;
+    for (const b of Object.values(xsState.bets)) {
+        for (const v of Object.values(b.de || {})) stake += v;
+        for (const v of Object.values(b.lo || {})) stake += v;
+    }
+    const embed = new EmbedBuilder()
+        .setTitle(`🎰 XỔ SỐ MIỀN BẮC — Kỳ #${padId(xsState.round)}`)
+        .setColor(locked ? 0xe67e22 : 0x9b59b6)
+        .setDescription(
+            `Quay **mỗi giờ một kỳ** vào đúng đầu giờ — kỳ này mở thưởng <t:${nextDraw}:t> (<t:${nextDraw}:R>).\n` +
+            `⛔ **Khóa sổ từ phút ${XS_LOCK_MINUTE}** (10 phút cuối không nhận cược).\n\n` +
+            `🎯 **ĐỀ** — đoán 2 số cuối giải Đặc Biệt. Trúng **1 ăn ${XS_DE_RATE}**.\n` +
+            `🎰 **LÔ** — số về trong bất kỳ giải nào của bảng 27 lô. Mỗi nháy **1 ăn ${XS_LO_RATE}** (về nhiều nháy ăn nhiều lần).\n` +
+            `Giới hạn: tối đa **${XS_MAX_NUMBERS_PER_TYPE} số mỗi kiểu**, mỗi số tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI}.\n\n` +
+            (locked
+                ? `🔒 **ĐÃ KHÓA SỔ** — chờ mở thưởng <t:${nextDraw}:R>.`
+                : `🟢 **ĐANG NHẬN CƯỢC** — bấm nút bên dưới để đánh!`) +
+            `\n\n📝 Kỳ này: **${users}** người chơi — tổng cược **${stake.toLocaleString()}** ${DOGCOIN_EMOJI}`
+        );
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('xs_de').setLabel('🎯 Đánh Đề').setStyle(ButtonStyle.Danger).setDisabled(locked),
+        new ButtonBuilder().setCustomId('xs_lo').setLabel('🎰 Đánh Lô').setStyle(ButtonStyle.Primary).setDisabled(locked),
+        new ButtonBuilder().setCustomId('xs_mybets').setLabel('🧾 Cược của tôi').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('xs_help').setLabel('📖 Cách chơi').setStyle(ButtonStyle.Secondary),
+    );
+    return { embeds: [embed], components: [row] };
+}
+
+async function updateXSMessage() {
+    if (!xsState.message) return;
+    await xsState.message.edit(getXSMessageData()).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE BẢNG XS] ${e.message}`); });
+}
+
+function xsBoardText(board) {
+    const byPrize = {};
+    for (const e of board) (byPrize[e.prize] = byPrize[e.prize] || []).push(e.value);
+    const label = { 'ĐB': '💎 ĐB', 'G1': 'G.1', 'G2': 'G.2', 'G3': 'G.3', 'G4': 'G.4', 'G5': 'G.5', 'G6': 'G.6', 'G7': 'G.7' };
+    return Object.keys(byPrize).map(p => `**${label[p]}**: \`${byPrize[p].join('` `')}\``).join('\n');
+}
+
+// Quay + trả thưởng + đăng kết quả. trigger: 'auto' | 'panel'
+async function xsDraw(trigger) {
+    if (xsState.isProcessing) return null;
+    xsState.isProcessing = true;
+    try {
+        const forced = xsState.forced || { de: null, mustHit: [], mustMiss: [] };
+        const board = xsGenerateBoard(forced);
+        const de = board[0].value.slice(-2);
+        const loCount = {};
+        for (const e of board) { const n = e.value.slice(-2); loCount[n] = (loCount[n] || 0) + 1; }
+
+        const winners = [];
+        let totalStake = 0, totalPaid = 0;
+        for (const [uid, b] of Object.entries(xsState.bets)) {
+            let win = 0;
+            const details = [];
+            for (const [num, amt] of Object.entries(b.de || {})) {
+                totalStake += amt;
+                if (num === de) { const w = amt * XS_DE_RATE; win += w; details.push(`đề **${num}** +${w.toLocaleString()}`); }
+            }
+            for (const [num, amt] of Object.entries(b.lo || {})) {
+                totalStake += amt;
+                const c = loCount[num] || 0;
+                if (c > 0) { const w = Math.floor(amt * XS_LO_RATE * c); win += w; details.push(`lô **${num}** ×${c} nháy +${w.toLocaleString()}`); }
+            }
+            if (win > 0) {
+                updatePoints(uid, win);
+                totalPaid += win;
+                winners.push({ userId: uid, name: b.name, amount: win, details });
+            }
+        }
+
+        const entry = {
+            round: xsState.round,
+            time: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+            de,
+            board: board.map(e => ({ p: e.prize, v: e.value })),
+            trigger,
+            forced: (forced.de || (forced.mustHit || []).length || (forced.mustMiss || []).length) ? forced : null,
+            totalStake, totalPaid,
+            winners: winners.map(w => ({ name: w.name, amount: w.amount })),
+        };
+        xsState.history.unshift(entry);
+        if (xsState.history.length > 30) xsState.history.length = 30;
+
+        writeLog('RESULT', `[XỔ SỐ] Kỳ #${padId(xsState.round)} (${trigger}) ĐB=${board[0].value} đề=${de} | cược ${totalStake} | trả ${totalPaid}${entry.forced ? ' | CÓ ÉP' : ''}`);
+
+        // reset kỳ: ép chỉ áp 1 kỳ
+        const drawnRound = xsState.round;
+        xsState.bets = {};
+        xsState.forced = { de: null, mustHit: [], mustMiss: [] };
+        xsState.round++;
+        saveDbNow();
+
+        // đăng kết quả + dọn còn XS_RESULT_KEEP tin gần nhất
+        if (xsState.channel) {
+            const winText = winners.length
+                ? winners.map(w => `• <@${w.userId}> **+${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI} (${w.details.join(', ')})`).join('\n')
+                : '🚫 Không ai trúng — nhà cái húp sạch.';
+            const resEmbed = new EmbedBuilder()
+                .setTitle(`🧧 KẾT QUẢ XỔ SỐ — Kỳ #${padId(drawnRound)}`)
+                .setColor(0xf1c40f)
+                .setDescription(`${xsBoardText(board)}\n\n🎯 **Đề về: ${de}**\n\n${winText}`)
+                .setFooter({ text: `Quay lúc ${entry.time} • Cờ bạc có thể gây nghiện` });
+            const msg = await xsState.channel.send({ embeds: [resEmbed] }).catch(() => null);
+            if (msg) {
+                xsState.resultMsgIds.push(msg.id);
+                while (xsState.resultMsgIds.length > XS_RESULT_KEEP) {
+                    const oldId = xsState.resultMsgIds.shift();
+                    xsState.channel.messages.delete(oldId).catch(() => {});
+                }
+            }
+        }
+        xsState.needsUpdate = true;
+        return entry;
+    } finally {
+        xsState.isProcessing = false;
+    }
+}
+
+// Vòng lặp: tự quay khi sang giờ mới, tự khóa sổ từ phút 50.
+// Bot restart giữa lúc offline qua đầu giờ: kỳ đó sẽ quay ở đầu giờ kế tiếp
+// (hoặc admin bấm QUAY NGAY trên panel) — cược không mất vì đã lưu database.
+let xsLastHourKey = null;
+function runXoSoLoop() {
+    setInterval(async () => {
+        if (!xsState.channel || xsState.status === 'stopped') return;
+        const now = vnNow();
+        const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
+        if (xsLastHourKey === null) xsLastHourKey = hourKey;
+        if (hourKey !== xsLastHourKey) {
+            xsLastHourKey = hourKey;
+            try { await xsDraw('auto'); } catch (e) { writeLog('SYSTEM', `[LỖI QUAY XS] ${e.message}`); }
+        }
+        const want = now.getMinutes() >= XS_LOCK_MINUTE ? 'locked' : 'betting';
+        if (xsState.status !== want) { xsState.status = want; xsState.needsUpdate = true; }
+        if (xsState.needsUpdate) { xsState.needsUpdate = false; updateXSMessage().catch(() => {}); }
+    }, 5000);
+}
+
+async function startXoso(channel) {
+    if (xsState.message) await xsState.message.delete().catch(() => {});
+    xsState.channel = channel;
+    xsState.status = vnNow().getMinutes() >= XS_LOCK_MINUTE ? 'locked' : 'betting';
+    xsState.message = await channel.send(getXSMessageData());
+    dbCache._xsChannelId = channel.id;
+    saveDbNow();
+}
+
+function stopXoso() {
+    if (xsState.message) xsState.message.delete().catch(() => {});
+    xsState.channel = null;
+    xsState.message = null;
+    xsState.status = 'stopped';
+    dbCache._xsChannelId = null;
+    saveDbNow();
+}
+
+// Bot restart: tự nối lại kênh xổ số (cược đang treo là tiền thật, không chờ admin bật tay).
+async function resumeXosoAfterRestart() {
+    const chId = dbCache._xsChannelId;
+    if (!chId) return;
+    try {
+        const ch = await client.channels.fetch(chId);
+        if (ch) { await startXoso(ch); writeLog('SYSTEM', `[XỔ SỐ] Nối lại kênh sau restart: #${ch.name}`); }
+    } catch (e) {
+        writeLog('SYSTEM', `[XỔ SỐ] Không nối lại được kênh ${chId}: ${e.message}`);
+    }
 }
 
 // --- UI RÚT DOGCOIN ---
@@ -1699,6 +1971,48 @@ client.on('interactionCreate', async interaction => {
         // ===== CHUYỂN DOG COIN TỪ GAME RA DISCORD (ticket) =====
         // KHÔNG cộng ví ở đây. Người chơi đưa Dog Coin cho admin trong game;
         // admin duyệt đơn trên panel thì ví mới được cộng (xem approveWithdraw).
+        // ===== XỔ SỐ: nhận cược đề / lô =====
+        if (interaction.customId === 'xs_modal_de' || interaction.customId === 'xs_modal_lo') {
+            const kind = interaction.customId === 'xs_modal_de' ? 'de' : 'lo';
+            const kindLabel = kind === 'de' ? 'ĐỀ' : 'LÔ';
+            if (xsState.status !== 'betting') {
+                return interaction.reply({ content: `🔒 Đã khóa sổ (từ phút ${XS_LOCK_MINUTE}). Chờ kỳ sau nhé!`, ephemeral: true });
+            }
+            const numRaw = interaction.fields.getTextInputValue('xs_num').trim();
+            const amtRaw = interaction.fields.getTextInputValue('xs_amt').trim();
+            if (!/^\d{1,2}$/.test(numRaw)) {
+                return interaction.reply({ content: '❌ Số phải từ **00** đến **99** (ví dụ: 07, 27, 68).', ephemeral: true });
+            }
+            const num = numRaw.padStart(2, '0');
+            const amt = parseInt(amtRaw);
+            if (isNaN(amt) || amt <= 0) {
+                return interaction.reply({ content: '❌ Tiền cược không hợp lệ!', ephemeral: true });
+            }
+            const userData = getUserData(userId);
+            if (userData.points < amt) {
+                return interaction.reply({ content: `❌ Không đủ Dogcoin! Số dư: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`, ephemeral: true });
+            }
+            if (!xsState.bets[userId]) xsState.bets[userId] = { name: interaction.user.username, de: {}, lo: {} };
+            const my = xsState.bets[userId];
+            my.name = interaction.user.username;
+            const bucket = my[kind];
+            const existing = bucket[num] || 0;
+            if (existing + amt > XS_MAX_PER_NUMBER) {
+                return interaction.reply({ content: `❌ Mỗi số tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI} (số ${num} bạn đã đặt ${existing.toLocaleString()}).`, ephemeral: true });
+            }
+            if (!existing && Object.keys(bucket).length >= XS_MAX_NUMBERS_PER_TYPE) {
+                return interaction.reply({ content: `❌ Mỗi kỳ tối đa **${XS_MAX_NUMBERS_PER_TYPE} số ${kindLabel}**. Bạn đã đặt: ${Object.keys(bucket).map(n => `**${n}**`).join(', ')}.`, ephemeral: true });
+            }
+            updatePoints(userId, -amt);
+            bucket[num] = existing + amt;
+            xsState.needsUpdate = true; // vòng lặp 5s vẽ lại bảng — không await edit kẻo trễ 3s
+            const rate = kind === 'de' ? `trúng ăn ×${XS_DE_RATE}` : `mỗi nháy ăn ×${XS_LO_RATE}`;
+            return interaction.reply({
+                content: `💸 Đã đánh ${kindLabel} số **${num}** — **${bucket[num].toLocaleString()}** ${DOGCOIN_EMOJI} (${rate}). Số dư còn **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`,
+                ephemeral: true,
+            });
+        }
+
         if (interaction.customId === 'nap_modal') {
             const amt = parseInt(interaction.fields.getTextInputValue('nap_input_amount'));
             if (isNaN(amt) || amt <= 0) {
@@ -1764,6 +2078,58 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (!interaction.isButton()) return;
+
+    // ======== NÚT XỔ SỐ ========
+    if (interaction.customId === 'xs_de' || interaction.customId === 'xs_lo') {
+        if (xsState.status !== 'betting') {
+            return interaction.reply({ content: `🔒 Đã khóa sổ (từ phút ${XS_LOCK_MINUTE}). Chờ kỳ sau nhé!`, ephemeral: true });
+        }
+        const kind = interaction.customId === 'xs_de' ? 'de' : 'lo';
+        const modal = new ModalBuilder()
+            .setCustomId(kind === 'de' ? 'xs_modal_de' : 'xs_modal_lo')
+            .setTitle(kind === 'de' ? `🎯 Đánh Đề (1 ăn ${XS_DE_RATE})` : `🎰 Đánh Lô (1 ăn ${XS_LO_RATE}/nháy)`);
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(
+                new TextInputBuilder().setCustomId('xs_num').setLabel('Số muốn đánh (00-99)').setPlaceholder('Ví dụ: 27')
+                    .setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(2).setRequired(true)
+            ),
+            new ActionRowBuilder().addComponents(
+                new TextInputBuilder().setCustomId('xs_amt').setLabel(`Tiền cược (tối đa ${XS_MAX_PER_NUMBER}/số)`).setPlaceholder('Ví dụ: 100')
+                    .setStyle(TextInputStyle.Short).setRequired(true)
+            ),
+        );
+        await interaction.showModal(modal);
+        return;
+    }
+
+    if (interaction.customId === 'xs_mybets') {
+        const my = xsState.bets[userId];
+        const deList = my ? Object.entries(my.de || {}) : [];
+        const loList = my ? Object.entries(my.lo || {}) : [];
+        if (!deList.length && !loList.length) {
+            return interaction.reply({ content: `🧾 Kỳ #${padId(xsState.round)}: bạn chưa đặt số nào.`, ephemeral: true });
+        }
+        const fmt = (list) => list.map(([n, a]) => `**${n}** — ${a.toLocaleString()} ${DOGCOIN_EMOJI}`).join('\n');
+        let text = `🧾 **Cược của bạn — Kỳ #${padId(xsState.round)}**\n`;
+        if (deList.length) text += `\n🎯 **Đề:**\n${fmt(deList)}`;
+        if (loList.length) text += `\n🎰 **Lô:**\n${fmt(loList)}`;
+        return interaction.reply({ content: text, ephemeral: true });
+    }
+
+    if (interaction.customId === 'xs_help') {
+        return interaction.reply({
+            content:
+                `📖 **CÁCH CHƠI XỔ SỐ MIỀN BẮC**\n\n` +
+                `Mỗi giờ bot quay 1 kỳ vào **đúng đầu giờ** (bảng 27 lô như XSMB thật). **Phút ${XS_LOCK_MINUTE} khóa sổ.**\n\n` +
+                `🎯 **ĐỀ** — đoán 2 số cuối của **giải Đặc Biệt**. Trúng ăn **×${XS_DE_RATE}** tiền cược.\n` +
+                `   Ví dụ: đánh đề 27 hết 100 ${DOGCOIN_EMOJI}, ĐB về ...27 → nhận **7.000** ${DOGCOIN_EMOJI}.\n\n` +
+                `🎰 **LÔ** — số của bạn về trong **bất kỳ giải nào** của bảng 27 lô. Mỗi nháy ăn **×${XS_LO_RATE}**.\n` +
+                `   Ví dụ: đánh lô 27 hết 100 ${DOGCOIN_EMOJI}, số 27 về 2 nháy → nhận **700** ${DOGCOIN_EMOJI}.\n\n` +
+                `Giới hạn mỗi kỳ: **${XS_MAX_NUMBERS_PER_TYPE} số đề + ${XS_MAX_NUMBERS_PER_TYPE} số lô**, mỗi số tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI}.\n` +
+                `Tiền trừ ngay khi đặt, trúng tự cộng vào ví khi mở thưởng. Kết quả 5 kỳ gần nhất nằm ngay trong kênh.`,
+            ephemeral: true,
+        });
+    }
 
     // ======== NÚT RÚT DOGCOIN ========
     if (interaction.customId === 'rut_open') {
