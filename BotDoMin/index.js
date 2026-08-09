@@ -1143,18 +1143,18 @@ function getXSMessageData() {
         for (const v of Object.values(b.lo || {})) stake += v;
     }
     const embed = new EmbedBuilder()
-        .setTitle(`🎰 XỔ SỐ MIỀN BẮC — Kỳ #${padId(xsState.round)}`)
+        .setTitle(`🎰 XỔ SỐ MIỀN BẮC #${padId(xsState.round)}`)
         .setColor(locked ? 0xe67e22 : 0x9b59b6)
         .setDescription(
-            `Quay **mỗi giờ một kỳ** vào đúng đầu giờ — kỳ này mở thưởng <t:${nextDraw}:t> (<t:${nextDraw}:R>).\n` +
+            `Quay **mỗi giờ một ván** vào đúng đầu giờ, ván này mở thưởng <t:${nextDraw}:t> (<t:${nextDraw}:R>).\n` +
             `⛔ **Khóa sổ từ phút ${XS_LOCK_MINUTE}** (10 phút cuối không nhận cược).\n\n` +
-            `🎯 **ĐỀ** — đoán 2 số cuối giải Đặc Biệt. Trúng **1 ăn ${XS_DE_RATE}**.\n` +
-            `🎰 **LÔ** — số về trong bất kỳ giải nào của bảng 27 lô. Mỗi nháy **1 ăn ${XS_LO_RATE}** (về nhiều nháy ăn nhiều lần).\n` +
+            `🎯 **ĐỀ**: đoán 2 số cuối giải Đặc Biệt. Trúng **1 ăn ${XS_DE_RATE}**.\n` +
+            `🎰 **LÔ**: số về trong bất kỳ giải nào của bảng 27 lô. Mỗi nháy **1 ăn ${XS_LO_RATE}** (về nhiều nháy ăn nhiều lần).\n` +
             `Giới hạn: tối đa **${XS_MAX_NUMBERS_PER_TYPE} số mỗi kiểu**, mỗi số tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI}.\n\n` +
             (locked
-                ? `🔒 **ĐÃ KHÓA SỔ** — chờ mở thưởng <t:${nextDraw}:R>.`
-                : `🟢 **ĐANG NHẬN CƯỢC** — bấm nút bên dưới để đánh!`) +
-            `\n\n📝 Kỳ này: **${users}** người chơi — tổng cược **${stake.toLocaleString()}** ${DOGCOIN_EMOJI}`
+                ? `🔒 **ĐÃ KHÓA SỔ**, chờ mở thưởng <t:${nextDraw}:R>.`
+                : `🟢 **ĐANG NHẬN CƯỢC**, bấm nút bên dưới để đánh!`) +
+            `\n\n📝 Ván này: **${users}** người chơi, tổng cược **${stake.toLocaleString()}** ${DOGCOIN_EMOJI}`
         );
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('xs_de').setLabel('🎯 Đánh Đề').setStyle(ButtonStyle.Danger).setDisabled(locked),
@@ -1235,9 +1235,9 @@ async function xsDraw(trigger) {
         if (xsState.channel) {
             const winText = winners.length
                 ? winners.map(w => `• <@${w.userId}> **+${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI} (${w.details.join(', ')})`).join('\n')
-                : '🚫 Không ai trúng — nhà cái húp sạch.';
+                : '🚫 Không ai trúng, nhà cái húp sạch.';
             const resEmbed = new EmbedBuilder()
-                .setTitle(`🧧 KẾT QUẢ XỔ SỐ — Kỳ #${padId(drawnRound)}`)
+                .setTitle(`🧧 KẾT QUẢ XỔ SỐ MIỀN BẮC #${padId(drawnRound)}`)
                 .setColor(0xf1c40f)
                 .setDescription(`${xsBoardText(board)}\n\n🎯 **Đề về: ${de}**\n\n${winText}`)
                 .setFooter({ text: `Quay lúc ${entry.time} • Cờ bạc có thể gây nghiện` });
@@ -1245,7 +1245,7 @@ async function xsDraw(trigger) {
             const winnerIds = winners.map(w => w.userId);
             const msg = await xsState.channel.send({
                 content: winnerIds.length
-                    ? `🏆 Chúc mừng ${winnerIds.map(id => `<@${id}>`).join(' ')} trúng kỳ #${padId(drawnRound)}! Tiền đã vào ví 💰`
+                    ? `🏆 Chúc mừng ${winnerIds.map(id => `<@${id}>`).join(' ')} trúng ván #${padId(drawnRound)}! Tiền đã vào ví 💰`
                     : undefined,
                 embeds: [resEmbed],
                 allowedMentions: { users: winnerIds },
@@ -2115,10 +2115,10 @@ client.on('interactionCreate', async interaction => {
         const deList = my ? Object.entries(my.de || {}) : [];
         const loList = my ? Object.entries(my.lo || {}) : [];
         if (!deList.length && !loList.length) {
-            return interaction.reply({ content: `🧾 Kỳ #${padId(xsState.round)}: bạn chưa đặt số nào.`, ephemeral: true });
+            return interaction.reply({ content: `🧾 Ván #${padId(xsState.round)}: bạn chưa đặt số nào.`, ephemeral: true });
         }
-        const fmt = (list) => list.map(([n, a]) => `**${n}** — ${a.toLocaleString()} ${DOGCOIN_EMOJI}`).join('\n');
-        let text = `🧾 **Cược của bạn — Kỳ #${padId(xsState.round)}**\n`;
+        const fmt = (list) => list.map(([n, a]) => `**${n}**: ${a.toLocaleString()} ${DOGCOIN_EMOJI}`).join('\n');
+        let text = `🧾 **Cược của bạn, ván #${padId(xsState.round)}**\n`;
         if (deList.length) text += `\n🎯 **Đề:**\n${fmt(deList)}`;
         if (loList.length) text += `\n🎰 **Lô:**\n${fmt(loList)}`;
         return interaction.reply({ content: text, ephemeral: true });
@@ -2128,13 +2128,13 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({
             content:
                 `📖 **CÁCH CHƠI XỔ SỐ MIỀN BẮC**\n\n` +
-                `Mỗi giờ bot quay 1 kỳ vào **đúng đầu giờ** (bảng 27 lô như XSMB thật). **Phút ${XS_LOCK_MINUTE} khóa sổ.**\n\n` +
-                `🎯 **ĐỀ** — đoán 2 số cuối của **giải Đặc Biệt**. Trúng ăn **×${XS_DE_RATE}** tiền cược.\n` +
+                `Mỗi giờ bot quay 1 ván vào **đúng đầu giờ** (bảng 27 lô như XSMB thật). **Phút ${XS_LOCK_MINUTE} khóa sổ.**\n\n` +
+                `🎯 **ĐỀ**: đoán 2 số cuối của **giải Đặc Biệt**. Trúng ăn **×${XS_DE_RATE}** tiền cược.\n` +
                 `   Ví dụ: đánh đề 27 hết 100 ${DOGCOIN_EMOJI}, ĐB về ...27 → nhận **7.000** ${DOGCOIN_EMOJI}.\n\n` +
-                `🎰 **LÔ** — số của bạn về trong **bất kỳ giải nào** của bảng 27 lô. Mỗi nháy ăn **×${XS_LO_RATE}**.\n` +
+                `🎰 **LÔ**: số của bạn về trong **bất kỳ giải nào** của bảng 27 lô. Mỗi nháy ăn **×${XS_LO_RATE}**.\n` +
                 `   Ví dụ: đánh lô 27 hết 100 ${DOGCOIN_EMOJI}, số 27 về 2 nháy → nhận **700** ${DOGCOIN_EMOJI}.\n\n` +
-                `Giới hạn mỗi kỳ: **${XS_MAX_NUMBERS_PER_TYPE} số đề + ${XS_MAX_NUMBERS_PER_TYPE} số lô**, mỗi số tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI}.\n` +
-                `Tiền trừ ngay khi đặt, trúng tự cộng vào ví khi mở thưởng. Kết quả 5 kỳ gần nhất nằm ngay trong kênh.`,
+                `Giới hạn mỗi ván: **${XS_MAX_NUMBERS_PER_TYPE} số đề + ${XS_MAX_NUMBERS_PER_TYPE} số lô**, mỗi số tối đa **${XS_MAX_PER_NUMBER.toLocaleString()}** ${DOGCOIN_EMOJI}.\n` +
+                `Tiền trừ ngay khi đặt, trúng tự cộng vào ví khi mở thưởng. Kết quả 5 ván gần nhất nằm ngay trong kênh.`,
             ephemeral: true,
         });
     }

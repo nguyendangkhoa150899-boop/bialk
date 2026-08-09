@@ -204,6 +204,7 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL XS] QUAY NGAY kỳ #${r.round} — đề về ${r.de}`);
                     return sendJSON(res, 200, { ok: true, de: r.de, round: r.round });
                 }
+                // Ép = áp kết quả cho VÁN HIỆN TẠI và quay luôn (không chờ đầu giờ)
                 if (path === '/api/xs/force') {
                     const de = String(body.de || '').trim();
                     const parse2 = (s) => String(s || '').split(',').map(x => x.trim()).filter(Boolean).map(x => x.padStart(2, '0'));
@@ -215,13 +216,10 @@ function startPanel(ctx) {
                     if (overlap.length) return sendJSON(res, 400, { ok: false, error: 'Số vừa ép về vừa cấm về: ' + overlap.join(', ') });
                     if (!de && !mustHit.length && !mustMiss.length) return sendJSON(res, 400, { ok: false, error: 'Chưa nhập gì để ép' });
                     ctx.xsSetForce(de ? de.padStart(2, '0') : null, mustHit, mustMiss);
-                    ctx.writeLog('ADMIN', `[PANEL XS] ÉP kỳ tới: đề=${de || '-'} lô về=[${mustHit.join(',')}] cấm=[${mustMiss.join(',')}]`);
-                    return sendJSON(res, 200, { ok: true });
-                }
-                if (path === '/api/xs/clear') {
-                    ctx.xsClearForce();
-                    ctx.writeLog('ADMIN', `[PANEL XS] Hủy ép kết quả`);
-                    return sendJSON(res, 200, { ok: true });
+                    const r = await ctx.xsDrawNow();
+                    if (!r) return sendJSON(res, 400, { ok: false, error: 'Đang quay dở, thử lại sau vài giây' });
+                    ctx.writeLog('ADMIN', `[PANEL XS] ÉP + QUAY ván #${r.round}: đề=${r.de} lô về=[${mustHit.join(',')}] cấm=[${mustMiss.join(',')}]`);
+                    return sendJSON(res, 200, { ok: true, de: r.de, round: r.round });
                 }
 
                 // ---- ĐIỀU KHIỂN BÀN CHƠI ----
@@ -557,17 +555,16 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Quay ngay = chốt kỳ hiện tại với cược đang có, trả thưởng, đăng kết quả, mở kỳ mới luôn. Kỳ tự động đầu giờ kế vẫn chạy bình thường.</div>
       </div>
       <div class="card">
-        <h2>⚡ Ép kết quả kỳ tới</h2>
+        <h2>⚡ Ép kết quả ván HIỆN TẠI</h2>
         <div class="row">
           <div style="flex:1"><label>Đề về (2 số cuối ĐB)</label><input id="xsForceDe" placeholder="vd: 27" maxlength="2"></div>
           <div style="flex:2"><label>Lô PHẢI về (cách nhau phẩy)</label><input id="xsForceHit" placeholder="vd: 11,22"></div>
           <div style="flex:2"><label>Lô CẤM về</label><input id="xsForceMiss" placeholder="vd: 68,86"></div>
         </div>
         <div class="row" style="margin-top:12px">
-          <button class="btn-green" style="flex:2" onclick="xsForce()">⚡ Ép kỳ tới</button>
-          <button class="btn-grey" onclick="api('/api/xs/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
+          <button class="btn-green" style="flex:1" onclick="xsForce()">⚡ ÉP VÀ CHỐT VÁN NGAY</button>
         </div>
-        <div class="note">Bỏ trống ô nào thì phần đó quay ngẫu nhiên. Ép chỉ áp dụng <b>một kỳ</b> rồi tự xóa. Ô "đề về" cũng quyết định luôn 2 số cuối giải ĐB trên bảng lô.</div>
+        <div class="note">Bấm là <b>chốt ván đang chạy NGAY LẬP TỨC</b> với kết quả này (trả thưởng, đăng kết quả, mở ván mới luôn). Bỏ trống ô nào thì phần đó quay ngẫu nhiên. Ô "đề về" cũng quyết định 2 số cuối giải ĐB trên bảng lô.</div>
       </div>
       <div class="card">
         <h3>📜 Lịch sử xổ số</h3>
@@ -854,11 +851,12 @@ function tab(t){
 function xsStart(){const id=document.getElementById('xsChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/xs/start',{channelId:id}).then(j=>{toast('✅ Đã bật xổ số tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
 async function xsStop(){if(!await uiConfirm('Tắt bảng Xổ Số? Cược đang treo vẫn được giữ trong database.','Tắt','btn-red'))return;api('/api/xs/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
 async function xsDrawNow(){if(!await uiConfirm('QUAY NGAY kỳ hiện tại? Chốt cược đang có, trả thưởng và mở kỳ mới.','Quay ngay','btn-green'))return;api('/api/xs/draw',{}).then(j=>{toast('🎲 Đã quay kỳ #'+j.round+' — đề về '+j.de);refresh();}).catch(e=>toast('❌ '+e.message));}
-function xsForce(){
+async function xsForce(){
   const de=document.getElementById('xsForceDe').value.trim();
   const mustHit=document.getElementById('xsForceHit').value.trim();
   const mustMiss=document.getElementById('xsForceMiss').value.trim();
-  api('/api/xs/force',{de,mustHit,mustMiss}).then(()=>{toast('⚡ Đã ép kỳ tới');refresh();}).catch(e=>toast('❌ '+e.message));
+  if(!await uiConfirm('CHỐT VÁN NGAY với kết quả ép này? Trả thưởng và mở ván mới lập tức.','Ép và chốt','btn-green'))return;
+  api('/api/xs/force',{de,mustHit,mustMiss}).then(j=>{toast('⚡ Đã chốt ván #'+j.round+': đề về '+j.de);refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function renderXS(){
   const xs=STATE.xs; if(!xs) return;
@@ -869,7 +867,7 @@ function renderXS(){
   if(f.de)fParts.push('đề='+f.de);
   if(f.mustHit&&f.mustHit.length)fParts.push('lô về '+f.mustHit.join(','));
   if(f.mustMiss&&f.mustMiss.length)fParts.push('cấm '+f.mustMiss.join(','));
-  document.getElementById('xsInfo').innerHTML='<span class="run '+(run?'on':'off')+'">'+(run?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Kỳ #'+padId(xs.round)+' • <span class="badge '+(xs.status==='betting'?'on':'off')+'">'+xs.status+'</span> • '+xs.usersCount+' người • tổng cược '+Number(xs.totalStake).toLocaleString()+(fParts.length?' • <span class="badge on">ĐANG ÉP: '+esc(fParts.join(' | '))+'</span>':'');
+  document.getElementById('xsInfo').innerHTML='<span class="run '+(run?'on':'off')+'">'+(run?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Ván #'+padId(xs.round)+' • <span class="badge '+(xs.status==='betting'?'on':'off')+'">'+xs.status+'</span> • '+xs.usersCount+' người • tổng cược '+Number(xs.totalStake).toLocaleString()+(fParts.length?' • <span class="badge on">ĐANG ÉP: '+esc(fParts.join(' | '))+'</span>':'');
   const box=document.getElementById('xsBets');
   if(!xs.bets||!xs.bets.length){box.innerHTML='<div class="muted">Kỳ này chưa ai đặt.</div>';}
   else{
@@ -884,7 +882,7 @@ function renderXS(){
   document.getElementById('xsHist').innerHTML = hist.length? hist.map(h=>{
     const wins=(h.winners||[]).map(w=>esc(w.name)+' +'+Number(w.amount).toLocaleString()).join(' • ');
     const board=(h.board||[]).map(x=>x.v).join(' ');
-    return '<div class="h"><div class="top"><span>Kỳ #'+padId(h.round)+' — 🎯 đề về <b>'+h.de+'</b>'+(h.forced?' <span class="badge on">CÓ ÉP</span>':'')+'</span><span class="t">'+esc(h.time||'')+'</span></div>'+
+    return '<div class="h"><div class="top"><span>Ván #'+padId(h.round)+' • 🎯 đề về <b>'+h.de+'</b>'+(h.forced?' <span class="badge on">CÓ ÉP</span>':'')+'</span><span class="t">'+esc(h.time||'')+'</span></div>'+
       '<div class="b" style="font-size:12px">'+esc(board)+'</div>'+
       '<div class="b">💰 cược '+Number(h.totalStake).toLocaleString()+' → trả '+Number(h.totalPaid).toLocaleString()+'</div>'+
       (wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai trúng</div>')+'</div>';
