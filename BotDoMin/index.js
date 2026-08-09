@@ -1241,7 +1241,15 @@ async function xsDraw(trigger) {
                 .setColor(0xf1c40f)
                 .setDescription(`${xsBoardText(board)}\n\n🎯 **Đề về: ${de}**\n\n${winText}`)
                 .setFooter({ text: `Quay lúc ${entry.time} • Cờ bạc có thể gây nghiện` });
-            const msg = await xsState.channel.send({ embeds: [resEmbed] }).catch(() => null);
+            // Tag người trúng ở content (mention trong embed KHÔNG ping) — phải khai allowedMentions
+            const winnerIds = winners.map(w => w.userId);
+            const msg = await xsState.channel.send({
+                content: winnerIds.length
+                    ? `🏆 Chúc mừng ${winnerIds.map(id => `<@${id}>`).join(' ')} trúng kỳ #${padId(drawnRound)}! Tiền đã vào ví 💰`
+                    : undefined,
+                embeds: [resEmbed],
+                allowedMentions: { users: winnerIds },
+            }).catch(() => null);
             if (msg) {
                 xsState.resultMsgIds.push(msg.id);
                 while (xsState.resultMsgIds.length > XS_RESULT_KEEP) {
