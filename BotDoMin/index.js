@@ -223,6 +223,17 @@ function findPalByName(input) {
 
 // (Shop vật phẩm + đổi vàng đã bỏ khỏi Discord — bán ở sạp trong game.)
 
+// ===== QUAY PAL NGẪU NHIÊN (gacha) =====
+// Kênh đăng công khai kết quả quay (ĐIỀN ID KÊNH VÀO ĐÂY; để trống = không đăng)
+const GACHA_ANNOUNCE_CHANNEL_ID = '';
+// Pool quay: chỉ pal từ paldex #80 (Helzephyr) trở lên; loại Xenolord + Hartalis.
+// Boltmane/Dragostrophe (pal Predator, không có số paldex) cũng bị loại theo luật này.
+const GACHA_MIN_DEX = 80;
+const GACHA_EXCLUDE_CODES = ['DarkMechaDragon', 'LegendDeer']; // Xenolord, Hartalis
+function gachaPool() {
+    return (PAL_DATA.all || []).filter(p => (p.dex || 0) >= GACHA_MIN_DEX && !GACHA_EXCLUDE_CODES.includes(p.code));
+}
+
 const WITHDRAW_MAX_PER_REQUEST = 2000; // trần mỗi lần chuyển vào game, chặn thiệt hại nếu có lỗi
 // Chiều game -> Discord KHÔNG giới hạn: admin cầm đồ thật trong tay rồi mới duyệt,
 // không có đường lợi dụng.
@@ -1341,7 +1352,7 @@ function getWithdrawMessageData() {
         `**🎮 Chuyển vào game** — trừ ví Discord ngay khi gửi đơn, admin vào game đưa Dog Coin cho bạn. Admin từ chối thì hoàn lại đủ.`,
         `**💬 Chuyển ra Discord** — gửi đơn xong, bạn đưa Dog Coin cho admin trong game; admin xác nhận thì ví Discord mới được cộng.`,
         '',
-        `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — quay từ toàn bộ ${(PAL_DATA.all || []).length} pal (có cả pal raid). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
+        `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — quay từ ${gachaPool().length} pal MẠNH (paldex #${GACHA_MIN_DEX} Helzephyr trở lên, có cả pal raid, trừ Xenolord & Hartalis). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
         `**🎯 Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin** — tự chọn 1 trong ${buyable} pal (không có pal raid).`,
         `Pal nào cũng là bản **Boss (Alpha)** 👑, **${PAL_SHOP.stars} sao** ⭐, **IV ${PAL_SHOP.ivs}**, ` +
             `**${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** + **${PAL_SHOP.passiveSlots} passive** bạn tự chọn.`,
@@ -2251,7 +2262,7 @@ client.on('interactionCreate', async interaction => {
                 ephemeral: true,
             });
         }
-        const pool = PAL_DATA.all || [];
+        const pool = gachaPool();
         if (pool.length === 0) {
             return interaction.reply({ content: '❌ Danh sách pal chưa nạp được, báo admin.', ephemeral: true });
         }
@@ -2290,6 +2301,16 @@ client.on('interactionCreate', async interaction => {
 
         logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) — đơn #${order.id}`);
         writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) — cho chon passive/linh hon`);
+
+        // Đăng công khai kết quả quay cho cả server thấy (không chặn luồng trả lời)
+        if (GACHA_ANNOUNCE_CHANNEL_ID) {
+            client.channels.fetch(GACHA_ANNOUNCE_CHANNEL_ID)
+                .then(ch => ch && ch.send({
+                    content: `🎲 <@${userId}> vừa chi **${price.toLocaleString()}** ${DOGCOIN_EMOJI} quay Pal ngẫu nhiên và trúng **${pal.name}** 👑${pal.dex ? ` (paldex #${pal.dex})` : ''}!`,
+                    allowedMentions: { users: [userId] },
+                }))
+                .catch(e => writeLog('SYSTEM', `[SHOP PAL] Khong dang duoc thong bao quay random vao kenh ${GACHA_ANNOUNCE_CHANNEL_ID}: ${e.message}`));
+        }
 
         return interaction.editReply({
             content:

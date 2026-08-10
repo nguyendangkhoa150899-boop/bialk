@@ -11,83 +11,103 @@
  "all": [
   {
    "code": "DomeArmorDragon",
-   "name": "Aegidron"
+   "name": "Aegidron",
+   "dex": 184
   },
   {
    "code": "ClioneTwins",
-   "name": "Amione"
+   "name": "Amione",
+   "dex": 47
   },
   {
    "code": "Anubis",
-   "name": "Anubis"
+   "name": "Anubis",
+   "dex": 139
   },
   {
    "code": "FlameBuffalo",
-   "name": "Arsox"
+   "name": "Arsox",
+   "dex": 58
   },
   {
    "code": "BlackMetalDragon",
-   "name": "Astegon"
+   "name": "Astegon",
+   "dex": 158
   },
   {
    "code": "WorldTreeDragon",
-   "name": "Astralym"
+   "name": "Astralym",
+   "dex": 204
   },
   {
    "code": "BlueThunderHorse",
-   "name": "Azurmane"
+   "name": "Azurmane",
+   "dex": 161
   },
   {
    "code": "BlueDragon",
-   "name": "Azurobe"
+   "name": "Azurobe",
+   "dex": 41
   },
   {
    "code": "BlueDragon_Ice",
-   "name": "Azurobe Cryst"
+   "name": "Azurobe Cryst",
+   "dex": 41
   },
   {
    "code": "OniGhostGirl",
-   "name": "Bakemi"
+   "name": "Bakemi",
+   "dex": 168
   },
   {
    "code": "SnowTigerBeastman",
-   "name": "Bastigor"
+   "name": "Bastigor",
+   "dex": 191
   },
   {
    "code": "ThunderBird",
-   "name": "Beakon"
+   "name": "Beakon",
+   "dex": 96
   },
   {
    "code": "ThunderBird_Ice",
-   "name": "Beakon Cryst"
+   "name": "Beakon Cryst",
+   "dex": 96
   },
   {
    "code": "SoldierBee",
-   "name": "Beegarde"
+   "name": "Beegarde",
+   "dex": 67
   },
   {
    "code": "NightLady",
-   "name": "Bellanoir"
+   "name": "Bellanoir",
+   "dex": 195
   },
   {
    "code": "NightLady_Dark",
-   "name": "Bellanoir Libero"
+   "name": "Bellanoir Libero",
+   "dex": 195
   },
   {
    "code": "KingBahamut",
-   "name": "Blazamut"
+   "name": "Blazamut",
+   "dex": 137
   },
   {
    "code": "KingBahamut_Dragon",
-   "name": "Blazamut Ryu"
+   "name": "Blazamut Ryu",
+   "dex": 137
   },
   {
    "code": "Manticore",
-   "name": "Blazehowl"
+   "name": "Blazehowl",
+   "dex": 112
   },
   {
    "code": "Manticore_Dark",
-   "name": "Blazehowl Noct"
+   "name": "Blazehowl Noct",
+   "dex": 112
   },
   {
    "code": "ElecLion",
@@ -95,151 +115,188 @@
   },
   {
    "code": "Plesiosaur",
-   "name": "Braloha"
+   "name": "Braloha",
+   "dex": 110
   },
   {
    "code": "LittleBriarRose",
-   "name": "Bristla"
+   "name": "Bristla",
+   "dex": 60
   },
   {
    "code": "SakuraSaurus",
-   "name": "Broncherry"
+   "name": "Broncherry",
+   "dex": 108
   },
   {
    "code": "SakuraSaurus_Water",
-   "name": "Broncherry Aqua"
+   "name": "Broncherry Aqua",
+   "dex": 108
   },
   {
    "code": "SumoDog",
-   "name": "Bulldosu"
+   "name": "Bulldosu",
+   "dex": 156
   },
   {
    "code": "Ronin",
-   "name": "Bushi"
+   "name": "Bushi",
+   "dex": 85
   },
   {
    "code": "Ronin_Dark",
-   "name": "Bushi Noct"
+   "name": "Bushi Noct",
+   "dex": 85
   },
   {
    "code": "BerryGoat",
-   "name": "Caprity"
+   "name": "Caprity",
+   "dex": 34
   },
   {
    "code": "BerryGoat_Dark",
-   "name": "Caprity Noct"
+   "name": "Caprity Noct",
+   "dex": 34
   },
   {
    "code": "VenusFlytrap",
-   "name": "Carnibora"
+   "name": "Carnibora",
+   "dex": 136
   },
   {
    "code": "PinkCat",
-   "name": "Cattiva"
+   "name": "Cattiva",
+   "dex": 2
   },
   {
    "code": "DarkCrow",
-   "name": "Cawgnito"
+   "name": "Cawgnito",
+   "dex": 57
   },
   {
    "code": "FlyingManta",
-   "name": "Celaray"
+   "name": "Celaray",
+   "dex": 7
   },
   {
    "code": "FlyingManta_Thunder",
-   "name": "Celaray Lux"
+   "name": "Celaray Lux",
+   "dex": 7
   },
   {
    "code": "WhiteDeer",
-   "name": "Celesdir"
+   "name": "Celesdir",
+   "dex": 157
   },
   {
    "code": "WhiteDeer_Dark",
-   "name": "Celesdir Noct"
+   "name": "Celesdir Noct",
+   "dex": 157
   },
   {
    "code": "ChickenPal",
-   "name": "Chikipi"
+   "name": "Chikipi",
+   "dex": 3
   },
   {
    "code": "WeaselDragon",
-   "name": "Chillet"
+   "name": "Chillet",
+   "dex": 103
   },
   {
    "code": "WeaselDragon_Fire",
-   "name": "Chillet Ignis"
+   "name": "Chillet Ignis",
+   "dex": 103
   },
   {
    "code": "CuteButterfly",
-   "name": "Cinnamoth"
+   "name": "Cinnamoth",
+   "dex": 61
   },
   {
    "code": "CloverFairy",
-   "name": "Clovee"
+   "name": "Clovee",
+   "dex": 14
   },
   {
    "code": "WoolFox",
-   "name": "Cremis"
+   "name": "Cremis",
+   "dex": 8
   },
   {
    "code": "KendoFrog",
-   "name": "Croajiro"
+   "name": "Croajiro",
+   "dex": 9
   },
   {
    "code": "KendoFrog_Dark",
-   "name": "Croajiro Noct"
+   "name": "Croajiro Noct",
+   "dex": 9
   },
   {
    "code": "WhiteTiger",
-   "name": "Cryolinx"
+   "name": "Cryolinx",
+   "dex": 132
   },
   {
    "code": "WhiteTiger_Ground",
-   "name": "Cryolinx Terra"
+   "name": "Cryolinx Terra",
+   "dex": 132
   },
   {
    "code": "DreamDemon",
-   "name": "Daedream"
+   "name": "Daedream",
+   "dex": 22
   },
   {
    "code": "FlowerPrince",
-   "name": "Dandilord"
+   "name": "Dandilord",
+   "dex": 194
   },
   {
    "code": "FeatherOstrich",
-   "name": "Dazemu"
+   "name": "Dazemu",
+   "dex": 123
   },
   {
    "code": "RaijinDaughter",
-   "name": "Dazzi"
+   "name": "Dazzi",
+   "dex": 92
   },
   {
    "code": "RaijinDaughter_Water",
-   "name": "Dazzi Noct"
+   "name": "Dazzi Noct",
+   "dex": 92
   },
   {
    "code": "NegativeKoala",
-   "name": "Depresso"
+   "name": "Depresso",
+   "dex": 16
   },
   {
    "code": "DrillGame",
-   "name": "Digtoise"
+   "name": "Digtoise",
+   "dex": 107
   },
   {
    "code": "FlowerDinosaur",
-   "name": "Dinossom"
+   "name": "Dinossom",
+   "dex": 84
   },
   {
    "code": "FlowerDinosaur_Electric",
-   "name": "Dinossom Lux"
+   "name": "Dinossom Lux",
+   "dex": 84
   },
   {
    "code": "Garm",
-   "name": "Direhowl"
+   "name": "Direhowl",
+   "dex": 33
   },
   {
    "code": "SifuDog",
-   "name": "Dogen"
+   "name": "Dogen",
+   "dex": 155
   },
   {
    "code": "BlackFurDragon",
@@ -247,927 +304,1158 @@
   },
   {
    "code": "GrassGolem",
-   "name": "Dualith"
+   "name": "Dualith",
+   "dex": 138
   },
   {
    "code": "GrassGolem_Dark",
-   "name": "Dualith Noct"
+   "name": "Dualith Noct",
+   "dex": 138
   },
   {
    "code": "LazyCatfish",
-   "name": "Dumud"
+   "name": "Dumud",
+   "dex": 109
   },
   {
    "code": "LazyCatfish_Gold",
-   "name": "Dumud Gild"
+   "name": "Dumud Gild",
+   "dex": 109
   },
   {
    "code": "ClownRabbit",
-   "name": "Dupin"
+   "name": "Dupin",
+   "dex": 176
   },
   {
    "code": "ThunderFluffyBird",
-   "name": "Dynamoff"
+   "name": "Dynamoff",
+   "dex": 172
   },
   {
    "code": "GhostDragon",
-   "name": "Eidrolon"
+   "name": "Eidrolon",
+   "dex": 171
   },
   {
    "code": "GhostDragon_Fire",
-   "name": "Eidrolon Ignis"
+   "name": "Eidrolon Ignis",
+   "dex": 171
   },
   {
    "code": "Deer",
-   "name": "Eikthyrdeer"
+   "name": "Eikthyrdeer",
+   "dex": 32
   },
   {
    "code": "Deer_Ground",
-   "name": "Eikthyrdeer Terra"
+   "name": "Eikthyrdeer Terra",
+   "dex": 32
   },
   {
    "code": "GrassMinotaur",
-   "name": "Elgrove"
+   "name": "Elgrove",
+   "dex": 81
   },
   {
    "code": "GrassMinotaur_Ice",
-   "name": "Elgrove Cryst"
+   "name": "Elgrove Cryst",
+   "dex": 81
   },
   {
    "code": "QueenBee",
-   "name": "Elizabee"
+   "name": "Elizabee",
+   "dex": 68
   },
   {
    "code": "FairyDragon",
-   "name": "Elphidran"
+   "name": "Elphidran",
+   "dex": 63
   },
   {
    "code": "FairyDragon_Water",
-   "name": "Elphidran Aqua"
+   "name": "Elphidran Aqua",
+   "dex": 63
   },
   {
    "code": "Horus",
-   "name": "Faleris"
+   "name": "Faleris",
+   "dex": 188
   },
   {
    "code": "Horus_Water",
-   "name": "Faleris Aqua"
+   "name": "Faleris Aqua",
+   "dex": 188
   },
   {
    "code": "CatVampire",
-   "name": "Felbat"
+   "name": "Felbat",
+   "dex": 65
   },
   {
    "code": "FengyunDeeper",
-   "name": "Fenglope"
+   "name": "Fenglope",
+   "dex": 83
   },
   {
    "code": "FengyunDeeper_Electric",
-   "name": "Fenglope Lux"
+   "name": "Fenglope Lux",
+   "dex": 83
   },
   {
    "code": "StuffedShark",
-   "name": "Finsider"
+   "name": "Finsider",
+   "dex": 88
   },
   {
    "code": "StuffedShark_Fire",
-   "name": "Finsider Ignis"
+   "name": "Finsider Ignis",
+   "dex": 88
   },
   {
    "code": "LavaGirl",
-   "name": "Flambelle"
+   "name": "Flambelle",
+   "dex": 25
   },
   {
    "code": "FoxExorcist",
-   "name": "Flaracle"
+   "name": "Flaracle",
+   "dex": 174
   },
   {
    "code": "FlowerRabbit",
-   "name": "Flopie"
+   "name": "Flopie",
+   "dex": 77
   },
   {
    "code": "IceFox",
-   "name": "Foxcicle"
+   "name": "Foxcicle",
+   "dex": 95
   },
   {
    "code": "Kitsunebi",
-   "name": "Foxparks"
+   "name": "Foxparks",
+   "dex": 29
   },
   {
    "code": "Kitsunebi_Ice",
-   "name": "Foxparks Cryst"
+   "name": "Foxparks Cryst",
+   "dex": 29
   },
   {
    "code": "IceHorse",
-   "name": "Frostallion"
+   "name": "Frostallion",
+   "dex": 200
   },
   {
    "code": "IceHorse_Dark",
-   "name": "Frostallion Noct"
+   "name": "Frostallion Noct",
+   "dex": 200
   },
   {
    "code": "SnowPeafowl",
-   "name": "Frostplume"
+   "name": "Frostplume",
+   "dex": 114
   },
   {
    "code": "BluePlatypus",
-   "name": "Fuack"
+   "name": "Fuack",
+   "dex": 5
   },
   {
    "code": "BluePlatypus_Fire",
-   "name": "Fuack Ignis"
+   "name": "Fuack Ignis",
+   "dex": 5
   },
   {
    "code": "CuteMole",
-   "name": "Fuddler"
+   "name": "Fuddler",
+   "dex": 31
   },
   {
    "code": "Eagle",
-   "name": "Galeclaw"
+   "name": "Galeclaw",
+   "dex": 49
   },
   {
    "code": "GhostAnglerfish",
-   "name": "Ghangler"
+   "name": "Ghangler",
+   "dex": 97
   },
   {
    "code": "GhostAnglerfish_Fire",
-   "name": "Ghangler Ignis"
+   "name": "Ghangler Ignis",
+   "dex": 97
   },
   {
    "code": "GoldenHorse",
-   "name": "Gildane"
+   "name": "Gildane",
+   "dex": 154
   },
   {
    "code": "MummyPal",
-   "name": "Gildra"
+   "name": "Gildra",
+   "dex": 120
   },
   {
    "code": "OctopusGirl",
-   "name": "Gloopie"
+   "name": "Gloopie",
+   "dex": 48
   },
   {
    "code": "OctopusGirl_Neutral",
-   "name": "Gloopie Primo"
+   "name": "Gloopie Primo",
+   "dex": 48
   },
   {
    "code": "SharkKid",
-   "name": "Gobfin"
+   "name": "Gobfin",
+   "dex": 55
   },
   {
    "code": "SharkKid_Fire",
-   "name": "Gobfin Ignis"
+   "name": "Gobfin Ignis",
+   "dex": 55
   },
   {
    "code": "Gorilla",
-   "name": "Gorirat"
+   "name": "Gorirat",
+   "dex": 74
   },
   {
    "code": "Gorilla_Ground",
-   "name": "Gorirat Terra"
+   "name": "Gorirat Terra",
+   "dex": 74
   },
   {
    "code": "NaughtyCat",
-   "name": "Grintale"
+   "name": "Grintale",
+   "dex": 70
   },
   {
    "code": "ElecPanda",
-   "name": "Grizzbolt"
+   "name": "Grizzbolt",
+   "dex": 185
   },
   {
    "code": "PlantSlime",
-   "name": "Gumoss"
+   "name": "Gumoss",
+   "dex": 12
   },
   {
    "code": "WindChimes",
-   "name": "Hangyu"
+   "name": "Hangyu",
+   "dex": 38
   },
   {
    "code": "WindChimes_Ice",
-   "name": "Hangyu Cryst"
+   "name": "Hangyu Cryst",
+   "dex": 38
   },
   {
    "code": "LegendDeer",
-   "name": "Hartalis"
+   "name": "Hartalis",
+   "dex": 197
   },
   {
    "code": "HadesBird",
-   "name": "Helzephyr"
+   "name": "Helzephyr",
+   "dex": 80
   },
   {
    "code": "HadesBird_Electric",
-   "name": "Helzephyr Lux"
+   "name": "Helzephyr Lux",
+   "dex": 80
   },
   {
    "code": "LeafMomonga",
-   "name": "Herbil"
+   "name": "Herbil",
+   "dex": 10
   },
   {
    "code": "WizardOwl",
-   "name": "Hoocrates"
+   "name": "Hoocrates",
+   "dex": 19
   },
   {
    "code": "HoodGhost",
-   "name": "Hoodle"
+   "name": "Hoodle",
+   "dex": 166
   },
   {
    "code": "IceWitch",
-   "name": "Icelyn"
+   "name": "Icelyn",
+   "dex": 119
   },
   {
    "code": "Baphomet",
-   "name": "Incineram"
+   "name": "Incineram",
+   "dex": 91
   },
   {
    "code": "Baphomet_Dark",
-   "name": "Incineram Noct"
+   "name": "Incineram Noct",
+   "dex": 91
   },
   {
    "code": "JellyfishFairy",
-   "name": "Jelliette"
+   "name": "Jelliette",
+   "dex": 45
   },
   {
    "code": "JellyfishGhost",
-   "name": "Jellroy"
+   "name": "Jellroy",
+   "dex": 46
   },
   {
    "code": "JetDragon",
-   "name": "Jetragon"
+   "name": "Jetragon",
+   "dex": 202
   },
   {
    "code": "Hedgehog",
-   "name": "Jolthog"
+   "name": "Jolthog",
+   "dex": 15
   },
   {
    "code": "Hedgehog_Ice",
-   "name": "Jolthog Cryst"
+   "name": "Jolthog Cryst",
+   "dex": 15
   },
   {
    "code": "Umihebi",
-   "name": "Jormuntide"
+   "name": "Jormuntide",
+   "dex": 121
   },
   {
    "code": "Umihebi_Fire",
-   "name": "Jormuntide Ignis"
+   "name": "Jormuntide Ignis",
+   "dex": 121
   },
   {
    "code": "CatMage",
-   "name": "Katress"
+   "name": "Katress",
+   "dex": 79
   },
   {
    "code": "CatMage_Fire",
-   "name": "Katress Ignis"
+   "name": "Katress Ignis",
+   "dex": 79
   },
   {
    "code": "Kelpie",
-   "name": "Kelpsea"
+   "name": "Kelpsea",
+   "dex": 43
   },
   {
    "code": "Kelpie_Fire",
-   "name": "Kelpsea Ignis"
+   "name": "Kelpsea Ignis",
+   "dex": 43
   },
   {
    "code": "SmallArmadillo",
-   "name": "Kikit"
+   "name": "Kikit",
+   "dex": 126
   },
   {
    "code": "NegativeOctopus",
-   "name": "Killamari"
+   "name": "Killamari",
+   "dex": 30
   },
   {
    "code": "NegativeOctopus_Neutral",
-   "name": "Killamari Primo"
+   "name": "Killamari Primo",
+   "dex": 30
   },
   {
    "code": "KingAlpaca",
-   "name": "Kingpaca"
+   "name": "Kingpaca",
+   "dex": 21
   },
   {
    "code": "KingAlpaca_Ice",
-   "name": "Kingpaca Cryst"
+   "name": "Kingpaca Cryst",
+   "dex": 21
   },
   {
    "code": "AmaterasuWolf",
-   "name": "Kitsun"
+   "name": "Kitsun",
+   "dex": 111
   },
   {
    "code": "AmaterasuWolf_Dark",
-   "name": "Kitsun Noct"
+   "name": "Kitsun Noct",
+   "dex": 111
   },
   {
    "code": "WingGolem",
-   "name": "Knocklem"
+   "name": "Knocklem",
+   "dex": 159
   },
   {
    "code": "WingGolem_Fire",
-   "name": "Knocklem Ignis"
+   "name": "Knocklem Ignis",
+   "dex": 159
   },
   {
    "code": "Sheepball",
-   "name": "Lamball"
+   "name": "Lamball",
+   "dex": 1
   },
   {
    "code": "BrownRabbit",
-   "name": "Lapiron"
+   "name": "Lapiron",
+   "dex": 165
   },
   {
    "code": "SleeveRabbit",
-   "name": "Lapure"
+   "name": "Lapure",
+   "dex": 170
   },
   {
    "code": "PandaGirl",
-   "name": "Leafan"
+   "name": "Leafan",
+   "dex": 90
   },
   {
    "code": "LizardMan",
-   "name": "Leezpunk"
+   "name": "Leezpunk",
+   "dex": 73
   },
   {
    "code": "LizardMan_Fire",
-   "name": "Leezpunk Ignis"
+   "name": "Leezpunk Ignis",
+   "dex": 73
   },
   {
    "code": "Carbunclo",
-   "name": "Lifmunk"
+   "name": "Lifmunk",
+   "dex": 4
   },
   {
    "code": "LanternButler",
-   "name": "Loomen"
+   "name": "Loomen",
+   "dex": 180
   },
   {
    "code": "Werewolf",
-   "name": "Loupmoon"
+   "name": "Loupmoon",
+   "dex": 56
   },
   {
    "code": "Werewolf_Ice",
-   "name": "Loupmoon Cryst"
+   "name": "Loupmoon Cryst",
+   "dex": 56
   },
   {
    "code": "PinkLizard",
-   "name": "Lovander"
+   "name": "Lovander",
+   "dex": 69
   },
   {
    "code": "LeafPrincess",
-   "name": "Lullu"
+   "name": "Lullu",
+   "dex": 125
   },
   {
    "code": "Mutant",
-   "name": "Lunaris"
+   "name": "Lunaris",
+   "dex": 82
   },
   {
    "code": "LilyQueen",
-   "name": "Lyleen"
+   "name": "Lyleen",
+   "dex": 186
   },
   {
    "code": "LilyQueen_Dark",
-   "name": "Lyleen Noct"
+   "name": "Lyleen Noct",
+   "dex": 186
   },
   {
    "code": "DarkFlameFox",
-   "name": "Majex"
+   "name": "Majex",
+   "dex": 115
   },
   {
    "code": "GrassMammoth",
-   "name": "Mammorest"
+   "name": "Mammorest",
+   "dex": 87
   },
   {
    "code": "GrassMammoth_Ice",
-   "name": "Mammorest Cryst"
+   "name": "Mammorest Cryst",
+   "dex": 87
   },
   {
    "code": "GhostBeast",
-   "name": "Maraith"
+   "name": "Maraith",
+   "dex": 117
   },
   {
    "code": "Bastet",
-   "name": "Mau"
+   "name": "Mau",
+   "dex": 27
   },
   {
    "code": "Bastet_Ice",
-   "name": "Mau Cryst"
+   "name": "Mau Cryst",
+   "dex": 27
   },
   {
    "code": "Alpaca",
-   "name": "Melpaca"
+   "name": "Melpaca",
+   "dex": 20
   },
   {
    "code": "DarkScorpion",
-   "name": "Menasting"
+   "name": "Menasting",
+   "dex": 99
   },
   {
    "code": "DarkScorpion_Ground",
-   "name": "Menasting Terra"
+   "name": "Menasting Terra",
+   "dex": 99
   },
   {
    "code": "MimicDog",
-   "name": "Mimog"
+   "name": "Mimog",
+   "dex": 144
   },
   {
    "code": "VolcanoDragon",
-   "name": "Moldron"
+   "name": "Moldron",
+   "dex": 105
   },
   {
    "code": "VolcanoDragon_Ice",
-   "name": "Moldron Cryst"
+   "name": "Moldron Cryst",
+   "dex": 105
   },
   {
    "code": "GrassPanda",
-   "name": "Mossanda"
+   "name": "Mossanda",
+   "dex": 102
   },
   {
    "code": "GrassPanda_Electric",
-   "name": "Mossanda Lux"
+   "name": "Mossanda Lux",
+   "dex": 102
   },
   {
    "code": "CowPal",
-   "name": "Mozzarina"
+   "name": "Mozzarina",
+   "dex": 40
   },
   {
    "code": "FluffyBird",
-   "name": "Muffly"
+   "name": "Muffly",
+   "dex": 59
   },
   {
    "code": "IceCrocodile",
-   "name": "Munchill"
+   "name": "Munchill",
+   "dex": 86
   },
   {
    "code": "MushroomLady",
-   "name": "Mycora"
+   "name": "Mycora",
+   "dex": 179
   },
   {
    "code": "BlackCentaur",
-   "name": "Necromus"
+   "name": "Necromus",
+   "dex": 199
   },
   {
    "code": "CactusDoll",
-   "name": "Needoll"
+   "name": "Needoll",
+   "dex": 100
   },
   {
    "code": "CactusDoll_Dark",
-   "name": "Needoll Noct"
+   "name": "Needoll Noct",
+   "dex": 100
   },
   {
    "code": "PoseidonOrca",
-   "name": "Neptilius"
+   "name": "Neptilius",
+   "dex": 201
   },
   {
    "code": "GhostRabbit",
-   "name": "Nitemary"
+   "name": "Nitemary",
+   "dex": 148
   },
   {
    "code": "GhostRabbit_Grass",
-   "name": "Nitemary Botan"
+   "name": "Nitemary Botan",
+   "dex": 148
   },
   {
    "code": "HawkBird",
-   "name": "Nitewing"
+   "name": "Nitewing",
+   "dex": 51
   },
   {
    "code": "NightFox",
-   "name": "Nox"
+   "name": "Nox",
+   "dex": 24
   },
   {
    "code": "BadCatgirl",
-   "name": "Nyafia"
+   "name": "Nyafia",
+   "dex": 143
   },
   {
    "code": "MysteryMask",
-   "name": "Omascul"
+   "name": "Omascul",
+   "dex": 150
   },
   {
    "code": "LotusDragon",
-   "name": "Ophydia"
+   "name": "Ophydia",
+   "dex": 175
   },
   {
    "code": "ThunderDragonMan",
-   "name": "Orserk"
+   "name": "Orserk",
+   "dex": 187
   },
   {
    "code": "SaintCentaur",
-   "name": "Paladius"
+   "name": "Paladius",
+   "dex": 198
   },
   {
    "code": "TropicalOstrich",
-   "name": "Palumba"
+   "name": "Palumba",
+   "dex": 106
   },
   {
    "code": "KingWhale",
-   "name": "Panthalus"
+   "name": "Panthalus",
+   "dex": 203
   },
   {
    "code": "Penguin",
-   "name": "Pengullet"
+   "name": "Pengullet",
+   "dex": 17
   },
   {
    "code": "Penguin_Electric",
-   "name": "Pengullet Lux"
+   "name": "Pengullet Lux",
+   "dex": 17
   },
   {
    "code": "CaptainPenguin",
-   "name": "Penking"
+   "name": "Penking",
+   "dex": 18
   },
   {
    "code": "CaptainPenguin_Black",
-   "name": "Penking Lux"
+   "name": "Penking Lux",
+   "dex": 18
   },
   {
    "code": "FlowerDoll",
-   "name": "Petallia"
+   "name": "Petallia",
+   "dex": 89
   },
   {
    "code": "FlowerDoll_Fire",
-   "name": "Petallia Ignis"
+   "name": "Petallia Ignis",
+   "dex": 89
   },
   {
    "code": "RockBeast",
-   "name": "Pierdon"
+   "name": "Pierdon",
+   "dex": 131
   },
   {
    "code": "RockBeast_Ice",
-   "name": "Pierdon Cryst"
+   "name": "Pierdon Cryst",
+   "dex": 131
   },
   {
    "code": "IceSeal",
-   "name": "Polapup"
+   "name": "Polapup",
+   "dex": 72
   },
   {
    "code": "IceSeal_Ground",
-   "name": "Polapup Terra"
+   "name": "Polapup Terra",
+   "dex": 72
   },
   {
    "code": "ScorpionMan",
-   "name": "Prixter"
+   "name": "Prixter",
+   "dex": 141
   },
   {
    "code": "ScorpionMan_Electric",
-   "name": "Prixter Lux"
+   "name": "Prixter Lux",
+   "dex": 141
   },
   {
    "code": "BlueberryFairy",
-   "name": "Prunelia"
+   "name": "Prunelia",
+   "dex": 147
   },
   {
    "code": "ElecPomeranian",
-   "name": "Puffolt"
+   "name": "Puffolt",
+   "dex": 62
   },
   {
    "code": "SamuraiDog",
-   "name": "Pupperai"
+   "name": "Pupperai",
+   "dex": 13
   },
   {
    "code": "FireKirin",
-   "name": "Pyrin"
+   "name": "Pyrin",
+   "dex": 93
   },
   {
    "code": "FireKirin_Dark",
-   "name": "Pyrin Noct"
+   "name": "Pyrin Noct",
+   "dex": 93
   },
   {
    "code": "SkyDragon",
-   "name": "Quivern"
+   "name": "Quivern",
+   "dex": 124
   },
   {
    "code": "SkyDragon_Grass",
-   "name": "Quivern Botan"
+   "name": "Quivern Botan",
+   "dex": 124
   },
   {
    "code": "RedArmorBird",
-   "name": "Ragnahawk"
+   "name": "Ragnahawk",
+   "dex": 104
   },
   {
    "code": "ThunderDog",
-   "name": "Rayhound"
+   "name": "Rayhound",
+   "dex": 98
   },
   {
    "code": "ThunderDog_Ice",
-   "name": "Rayhound Cryst"
+   "name": "Rayhound Cryst",
+   "dex": 98
   },
   {
    "code": "IceDeer",
-   "name": "Reindrix"
+   "name": "Reindrix",
+   "dex": 101
   },
   {
    "code": "LazyDragon",
-   "name": "Relaxaurus"
+   "name": "Relaxaurus",
+   "dex": 94
   },
   {
    "code": "LazyDragon_Electric",
-   "name": "Relaxaurus Lux"
+   "name": "Relaxaurus Lux",
+   "dex": 94
   },
   {
    "code": "KabukiMan",
-   "name": "Renjishi"
+   "name": "Renjishi",
+   "dex": 183
   },
   {
    "code": "VolcanicMonster",
-   "name": "Reptyro"
+   "name": "Reptyro",
+   "dex": 129
   },
   {
    "code": "VolcanicMonster_Ice",
-   "name": "Reptyro Cryst"
+   "name": "Reptyro Cryst",
+   "dex": 129
   },
   {
    "code": "PinkRabbit",
-   "name": "Ribbuny"
+   "name": "Ribbuny",
+   "dex": 44
   },
   {
    "code": "PinkRabbit_Grass",
-   "name": "Ribbuny Botan"
+   "name": "Ribbuny Botan",
+   "dex": 44
   },
   {
    "code": "RobinHood",
-   "name": "Robinquill"
+   "name": "Robinquill",
+   "dex": 76
   },
   {
    "code": "RobinHood_Ground",
-   "name": "Robinquill Terra"
+   "name": "Robinquill Terra",
+   "dex": 76
   },
   {
    "code": "FlameBambi",
-   "name": "Rooby"
+   "name": "Rooby",
+   "dex": 26
   },
   {
    "code": "ThiefBird",
-   "name": "Roujay"
+   "name": "Roujay",
+   "dex": 177
   },
   {
    "code": "Boar",
-   "name": "Rushoar"
+   "name": "Rushoar",
+   "dex": 28
   },
   {
    "code": "Sekhmet",
-   "name": "Sekhmet"
+   "name": "Sekhmet",
+   "dex": 140
   },
   {
    "code": "MoonQueen",
-   "name": "Selyne"
+   "name": "Selyne",
+   "dex": 190
   },
   {
    "code": "BlackGriffon",
-   "name": "Shadowbeak"
+   "name": "Shadowbeak",
+   "dex": 189
   },
   {
    "code": "BlueSkyDragon",
-   "name": "Shaolong"
+   "name": "Shaolong",
+   "dex": 192
   },
   {
    "code": "MushroomDragon",
-   "name": "Shroomer"
+   "name": "Shroomer",
+   "dex": 118
   },
   {
    "code": "MushroomDragon_Dark",
-   "name": "Shroomer Noct"
+   "name": "Shroomer Noct",
+   "dex": 118
   },
   {
    "code": "WhiteMoth",
-   "name": "Sibelyx"
+   "name": "Sibelyx",
+   "dex": 116
   },
   {
    "code": "WhiteMoth_Neutral",
-   "name": "Sibelyx Primo"
+   "name": "Sibelyx Primo",
+   "dex": 116
   },
   {
    "code": "Mothman",
-   "name": "Silvance"
+   "name": "Silvance",
+   "dex": 193
   },
   {
    "code": "WhiteShieldDragon",
-   "name": "Silvegis"
+   "name": "Silvegis",
+   "dex": 160
   },
   {
    "code": "SwordCutlassfish",
-   "name": "Skutlass"
+   "name": "Skutlass",
+   "dex": 128
   },
   {
    "code": "SwordCutlassfish_Fire",
-   "name": "Skutlass Ignis"
+   "name": "Skutlass Ignis",
+   "dex": 128
   },
   {
    "code": "ElecLizard",
-   "name": "Slowatt"
+   "name": "Slowatt",
+   "dex": 167
   },
   {
    "code": "BlackPuppy",
-   "name": "Smokie"
+   "name": "Smokie",
+   "dex": 149
   },
   {
    "code": "BlackPuppy_Ice",
-   "name": "Smokie Cryst"
+   "name": "Smokie Cryst",
+   "dex": 149
   },
   {
    "code": "ElecSnail",
-   "name": "Snock"
+   "name": "Snock",
+   "dex": 163
   },
   {
    "code": "ElecSnail_Ground",
-   "name": "Snock Lux"
+   "name": "Snock Lux",
+   "dex": 163
   },
   {
    "code": "SmallYeti",
-   "name": "Snugloo"
+   "name": "Snugloo",
+   "dex": 133
   },
   {
    "code": "MonochromeQueen",
-   "name": "Solenne"
+   "name": "Solenne",
+   "dex": 182
   },
   {
    "code": "KingSunfish",
-   "name": "Solmora"
+   "name": "Solmora",
+   "dex": 169
   },
   {
    "code": "KingSunfish_Thunder",
-   "name": "Solmora Lux"
+   "name": "Solmora Lux",
+   "dex": 169
   },
   {
    "code": "CandleGhost",
-   "name": "Sootseer"
+   "name": "Sootseer",
+   "dex": 135
   },
   {
    "code": "DandelionGirl",
-   "name": "Souffline"
+   "name": "Souffline",
+   "dex": 164
   },
   {
    "code": "ElecCat",
-   "name": "Sparkit"
+   "name": "Sparkit",
+   "dex": 42
   },
   {
    "code": "GrimGirl",
-   "name": "Splatterina"
+   "name": "Splatterina",
+   "dex": 153
   },
   {
    "code": "NightBlueHorse",
-   "name": "Starryon"
+   "name": "Starryon",
+   "dex": 130
   },
   {
    "code": "NightBlueHorse_Neutral",
-   "name": "Starryon Primo"
+   "name": "Starryon Primo",
+   "dex": 130
   },
   {
    "code": "Serpent",
-   "name": "Surfent"
+   "name": "Surfent",
+   "dex": 75
   },
   {
    "code": "Serpent_Ground",
-   "name": "Surfent Terra"
+   "name": "Surfent Terra",
+   "dex": 75
   },
   {
    "code": "Suzaku",
-   "name": "Suzaku"
+   "name": "Suzaku",
+   "dex": 122
   },
   {
    "code": "Suzaku_Water",
-   "name": "Suzaku Aqua"
+   "name": "Suzaku Aqua",
+   "dex": 122
   },
   {
    "code": "MopBaby",
-   "name": "Swee"
+   "name": "Swee",
+   "dex": 35
   },
   {
    "code": "MopKing",
-   "name": "Sweepa"
+   "name": "Sweepa",
+   "dex": 36
   },
   {
    "code": "Monkey",
-   "name": "Tanzee"
+   "name": "Tanzee",
+   "dex": 23
   },
   {
    "code": "Monkey_Fire",
-   "name": "Tanzee Ignis"
+   "name": "Tanzee Ignis",
+   "dex": 23
   },
   {
    "code": "PurpleSpider",
-   "name": "Tarantriss"
+   "name": "Tarantriss",
+   "dex": 71
   },
   {
    "code": "Ganesha",
-   "name": "Teafant"
+   "name": "Teafant",
+   "dex": 11
   },
   {
    "code": "CubeTurtle",
-   "name": "Tetroise"
+   "name": "Tetroise",
+   "dex": 142
   },
   {
    "code": "CubeTurtle_Neutral",
-   "name": "Tetroise Primo"
+   "name": "Tetroise Primo",
+   "dex": 142
   },
   {
    "code": "ColorfulBird",
-   "name": "Tocotoco"
+   "name": "Tocotoco",
+   "dex": 53
   },
   {
    "code": "CatBat",
-   "name": "Tombat"
+   "name": "Tombat",
+   "dex": 52
   },
   {
    "code": "RedFlowerBird",
-   "name": "Tropicaw"
+   "name": "Tropicaw",
+   "dex": 173
   },
   {
    "code": "TentacleTurtle",
-   "name": "Turtacle"
+   "name": "Turtacle",
+   "dex": 37
   },
   {
    "code": "TentacleTurtle_Ground",
-   "name": "Turtacle Terra"
+   "name": "Turtacle Terra",
+   "dex": 37
   },
   {
    "code": "Kirin",
-   "name": "Univolt"
+   "name": "Univolt",
+   "dex": 54
   },
   {
    "code": "Kirin_Ice",
-   "name": "Univolt Cryst"
+   "name": "Univolt Cryst",
+   "dex": 54
   },
   {
    "code": "VioletFairy",
-   "name": "Vaelet"
+   "name": "Vaelet",
+   "dex": 66
   },
   {
    "code": "LongCat",
-   "name": "Valentail"
+   "name": "Valentail",
+   "dex": 162
   },
   {
    "code": "BirdDragon",
-   "name": "Vanwyrm"
+   "name": "Vanwyrm",
+   "dex": 64
   },
   {
    "code": "BirdDragon_Ice",
-   "name": "Vanwyrm Cryst"
+   "name": "Vanwyrm Cryst",
+   "dex": 64
   },
   {
    "code": "SnakeGirl",
-   "name": "Venusa"
+   "name": "Venusa",
+   "dex": 178
   },
   {
    "code": "GrassRabbitMan",
-   "name": "Verdash"
+   "name": "Verdash",
+   "dex": 152
   },
   {
    "code": "CuteFox",
-   "name": "Vixy"
+   "name": "Vixy",
+   "dex": 6
   },
   {
    "code": "HerculesBeetle",
-   "name": "Warsect"
+   "name": "Warsect",
+   "dex": 113
   },
   {
    "code": "HerculesBeetle_Ground",
-   "name": "Warsect Terra"
+   "name": "Warsect Terra",
+   "dex": 113
   },
   {
    "code": "IceNarwhal",
-   "name": "Whalaska"
+   "name": "Whalaska",
+   "dex": 151
   },
   {
    "code": "IceNarwhal_Fire",
-   "name": "Whalaska Ignis"
+   "name": "Whalaska Ignis",
+   "dex": 151
   },
   {
    "code": "GhostBlackCat",
-   "name": "Wispaw"
+   "name": "Wispaw",
+   "dex": 50
   },
   {
    "code": "MoonChild",
-   "name": "Wistella"
+   "name": "Wistella",
+   "dex": 181
   },
   {
    "code": "FoxMage",
-   "name": "Wixen"
+   "name": "Wixen",
+   "dex": 78
   },
   {
    "code": "FoxMage_Dark",
-   "name": "Wixen Noct"
+   "name": "Wixen Noct",
+   "dex": 78
   },
   {
    "code": "SweetsSheep",
-   "name": "Woolipop"
+   "name": "Woolipop",
+   "dex": 39
   },
   {
    "code": "SweetsSheep_Ground",
-   "name": "Woolipop Terra"
+   "name": "Woolipop Terra",
+   "dex": 39
   },
   {
    "code": "Yeti",
-   "name": "Wumpo"
+   "name": "Wumpo",
+   "dex": 134
   },
   {
    "code": "Yeti_Grass",
-   "name": "Wumpo Botan"
+   "name": "Wumpo Botan",
+   "dex": 134
   },
   {
    "code": "WhiteAlienDragon",
-   "name": "Xenogard"
+   "name": "Xenogard",
+   "dex": 146
   },
   {
    "code": "DarkMechaDragon",
-   "name": "Xenolord"
+   "name": "Xenolord",
+   "dex": 196
   },
   {
    "code": "DarkAlien",
-   "name": "Xenovader"
+   "name": "Xenovader",
+   "dex": 145
   },
   {
    "code": "GuardianDog",
-   "name": "Yakumo"
+   "name": "Yakumo",
+   "dex": 127
   }
  ]
 }
