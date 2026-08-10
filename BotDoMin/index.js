@@ -722,6 +722,13 @@ function runBầuCuaLoop() {
 }
 
 async function finishBCGame(gameId, bets) {
+    // Hàm này được gọi từ lúc KHÓA BÁT (T-5s). Ngủ chờ tới đúng giờ mở bát rồi mới
+    // tính kết quả + trả thưởng + đăng — không thì kết quả lòi ra sớm 5-7 giây so
+    // với đồng hồ đếm ngược người chơi đang nhìn.
+    const revealAtMs = bcState.targetTime * 1000;
+    const waitMs = revealAtMs - Date.now();
+    if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs));
+
     let res = [];
     if (bcState.forcedResult) {
         res = bcState.forcedResult.split(',').map(id => MASCOTS.find(m => m.id === id.trim()) || MASCOTS[0]);
@@ -945,6 +952,11 @@ function runTaiXiuLoop() {
 }
 
 async function finishTXGame(gameId, bets) {
+    // Như finishBCGame: ngủ chờ tới đúng giờ mở bát rồi mới tính + trả thưởng + đăng.
+    const revealAtMs = txState.targetTime * 1000;
+    const waitMs = revealAtMs - Date.now();
+    if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs));
+
     let d1, d2, d3;
     if (txState.forcedResult) {
         [d1, d2, d3] = txState.forcedResult.split(',').map(Number);
