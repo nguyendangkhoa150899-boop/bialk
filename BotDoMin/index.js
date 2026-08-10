@@ -224,8 +224,8 @@ function findPalByName(input) {
 // (Shop vật phẩm + đổi vàng đã bỏ khỏi Discord — bán ở sạp trong game.)
 
 // ===== QUAY PAL NGẪU NHIÊN (gacha) =====
-// Kênh đăng công khai kết quả quay (ĐIỀN ID KÊNH VÀO ĐÂY; để trống = không đăng)
-const GACHA_ANNOUNCE_CHANNEL_ID = '';
+// Kênh đăng công khai kết quả quay: cấu hình trên dashboard (tab Palworld & Dogcoin),
+// lưu ở dbCache._gachaChannelId. Không có thì không đăng.
 // Pool quay: chỉ pal từ paldex #80 (Helzephyr) trở lên; loại Xenolord + Hartalis.
 // Boltmane/Dragostrophe (pal Predator, không có số paldex) cũng bị loại theo luật này.
 const GACHA_MIN_DEX = 80;
@@ -527,6 +527,15 @@ client.once('ready', async (c) => {
             getWithdraw: () => withdrawState,
             startWithdraw: async (channelId) => { const ch = await client.channels.fetch(channelId); await startWithdraw(ch); return ch.name; },
             stopWithdraw: () => stopWithdraw(),
+            // Kênh khoe kết quả quay pal ngẫu nhiên (gacha)
+            setGachaChannel: async (channelId) => {
+                if (!channelId) { dbCache._gachaChannelId = null; saveDbNow(); return null; }
+                const ch = await client.channels.fetch(channelId);
+                await ch.send('🎲 Kênh này sẽ hiện kết quả **quay Pal ngẫu nhiên** của mọi người!');
+                dbCache._gachaChannelId = ch.id;
+                saveDbNow();
+                return ch.name;
+            },
             // Xổ số miền Bắc
             getXS: () => xsState,
             startXS: async (channelId) => { const ch = await client.channels.fetch(channelId); await startXoso(ch); return ch.name; },
@@ -2315,13 +2324,14 @@ client.on('interactionCreate', async interaction => {
         writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) — cho chon passive/linh hon`);
 
         // Đăng công khai kết quả quay cho cả server thấy (không chặn luồng trả lời)
-        if (GACHA_ANNOUNCE_CHANNEL_ID) {
-            client.channels.fetch(GACHA_ANNOUNCE_CHANNEL_ID)
+        const gachaCh = dbCache._gachaChannelId;
+        if (gachaCh) {
+            client.channels.fetch(gachaCh)
                 .then(ch => ch && ch.send({
                     content: `🎲 <@${userId}> vừa chi **${price.toLocaleString()}** ${DOGCOIN_EMOJI} quay Pal ngẫu nhiên và trúng **${pal.name}** 👑${pal.dex ? ` (paldex #${pal.dex})` : ''}!`,
                     allowedMentions: { users: [userId] },
                 }))
-                .catch(e => writeLog('SYSTEM', `[SHOP PAL] Khong dang duoc thong bao quay random vao kenh ${GACHA_ANNOUNCE_CHANNEL_ID}: ${e.message}`));
+                .catch(e => writeLog('SYSTEM', `[SHOP PAL] Khong dang duoc thong bao quay random vao kenh ${gachaCh}: ${e.message}`));
         }
 
         return interaction.editReply({

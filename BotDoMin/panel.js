@@ -98,6 +98,7 @@ function startPanel(ctx) {
                 live: !!wd.message,
                 channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
             },
+            gachaChannelId: db._gachaChannelId || '',
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
             mascots: ctx.mascots.map(m => ({ id: m.id, name: m.name, emoji: m.emoji })),
@@ -332,6 +333,16 @@ function startPanel(ctx) {
                     ctx.stopWithdraw();
                     ctx.writeLog('ADMIN', `[PANEL] Dừng kênh Rút Dogcoin`);
                     return sendJSON(res, 200, { ok: true });
+                }
+                // Kênh khoe kết quả quay pal ngẫu nhiên (channelId rỗng = tắt)
+                if (path === '/api/gacha/channel') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!ctx.setGachaChannel) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    try {
+                        const name = await ctx.setGachaChannel(channelId);
+                        ctx.writeLog('ADMIN', channelId ? `[PANEL] Kênh khoe quay pal: #${name}` : '[PANEL] Tắt kênh khoe quay pal');
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
                 }
                 // (Bảng Shop Pal riêng đã gộp vào bảng Rút Dogcoin — không còn API riêng.)
                 if (path === '/api/withdraw/approve') {
@@ -702,6 +713,17 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">MỘT bảng duy nhất với 4 nút: <b>Chuyển vào game</b>, <b>Chuyển ra Discord</b>, <b>Pal ngẫu nhiên 1.000</b>, <b>Pal tùy chọn 3.000</b>. Lõi Văn Minh / cấy ghép / đổi vàng bán ở <b>sạp trong game</b>, không qua Discord. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
       </div>
+      <div class="card">
+        <h3>🎲 Kênh khoe kết quả quay Pal</h3>
+        <div class="muted" id="gachaInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <label>Channel ID (kênh đăng công khai ai quay trúng con gì)</label>
+        <input id="gachaChannel" placeholder="vd: 123456789012345678">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="gachaSave()">💾 Lưu kênh</button>
+          <button class="btn-red" onclick="gachaOff()">⏹️ Tắt khoe</button>
+        </div>
+        <div class="note">Lưu xong bot gửi 1 tin xác nhận vào kênh đó. Từ đó mỗi lượt quay Pal ngẫu nhiên 1.000 sẽ đăng công khai: <b>ai quay, trúng con gì</b> (tag người quay). Tắt = chỉ người quay tự thấy như cũ.</div>
+      </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
       <div class="card hidden" id="wdPendingCard">
@@ -845,6 +867,16 @@ function tab(t){
   ['tx','bc','mine','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
+}
+
+// ===== KÊNH KHOE QUAY PAL =====
+function gachaSave(){const id=document.getElementById('gachaChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/gacha/channel',{channelId:id}).then(j=>{toast('✅ Đã bật khoe tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
+async function gachaOff(){if(!await uiConfirm('Tắt đăng công khai kết quả quay Pal?','Tắt','btn-red'))return;api('/api/gacha/channel',{channelId:''}).then(()=>{toast('⏹️ Đã tắt');document.getElementById('gachaChannel').value='';refresh();});}
+function renderGacha(){
+  if(!STATE)return;
+  const on=!!STATE.gachaChannelId;
+  const c=document.getElementById('gachaChannel'); if(c&&!c.value&&STATE.gachaChannelId) c.value=STATE.gachaChannelId;
+  document.getElementById('gachaInfo').innerHTML='<span class="run '+(on?'on':'off')+'">'+(on?'🟢 ĐANG KHOE công khai':'🔴 ĐANG TẮT (chỉ người quay tự thấy)')+'</span>';
 }
 
 // ===== XỔ SỐ =====
@@ -1260,6 +1292,8 @@ async function refresh(){
   }
   // xổ số
   renderXS();
+  // kênh khoe quay pal
+  renderGacha();
   // players table
   renderPlayers();
   document.getElementById('resetCount').textContent=STATE.players.length;
