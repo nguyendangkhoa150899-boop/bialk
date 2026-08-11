@@ -348,14 +348,24 @@ bcState.history = [];
 txState.history = [];
 
 const DICE_EMOJIS = [
-    '', 
-    '<:1410537564418605146:1493488539642499153>', 
-    '<:1410537562589626368:1493488535934861523>', 
-    '<:1410537554276777994:1493488533468610692>', 
-    '<:1410537560580685866:1493488531274989628>', 
-    '<:1410537558823403675:1493488529219522560>', 
-    '<:1410537557069926470:1493488527013318657>'  
+    '',
+    '<:1410537564418605146:1493488539642499153>',
+    '<:1410537562589626368:1493488535934861523>',
+    '<:1410537554276777994:1493488533468610692>',
+    '<:1410537560580685866:1493488531274989628>',
+    '<:1410537558823403675:1493488529219522560>',
+    '<:1410537557069926470:1493488527013318657>'
 ];
+
+// ===== NẶN XÍ NGẦU (Tài Xỉu) =====
+// Hết giờ cược: kết quả chốt ngầm, đăng bảng 3 viên úp. Người cược to nhất ván được
+// độc quyền nặn TX_REVEAL_PRIORITY_S giây đầu, sau đó ai có cược ván đó đều bấm được.
+// Lật đủ 3 viên -> trả thưởng ngay; không ai nặn -> hết TX_REVEAL_WINDOW_S giây tự mở.
+// Ván mới vẫn nhận cược song song, không chờ nặn xong.
+const TX_HIDDEN_DICE_EMOJI = '1536643662132281375'; // emoji xí ngầu úp (dấu ?)
+const TX_REVEAL_WINDOW_S = 30;   // hạn chót tự mở + trả thưởng
+const TX_REVEAL_PRIORITY_S = 15; // độc quyền của người cược to nhất
+let txRevealState = null; // { gameId, bets, dice, revealed, settled, biggestBettorId, openAt, deadlineEpoch, message, timer }
 
 const TX_CHOICES = {
     'tai': { name: 'TÀI' },
@@ -960,12 +970,7 @@ function runTaiXiuLoop() {
     }, 1000);
 }
 
-async function finishTXGame(gameId, bets) {
-    // Như finishBCGame: ngủ chờ tới đúng giờ mở bát rồi mới tính + trả thưởng + đăng.
-    const revealAtMs = txState.targetTime * 1000;
-    const waitMs = revealAtMs - Date.now();
-    if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs));
-
+function rollTXDice() {
     let d1, d2, d3;
     if (txState.forcedResult) {
         [d1, d2, d3] = txState.forcedResult.split(',').map(Number);
@@ -975,6 +980,12 @@ async function finishTXGame(gameId, bets) {
         d2 = Math.floor(Math.random() * 6) + 1;
         d3 = Math.floor(Math.random() * 6) + 1;
     }
+    return [d1, d2, d3];
+}
+
+// Tính kết quả + TRẢ thưởng + ghi log/lịch sử/soi cầu. Với ván có nặn, hàm này chỉ được
+// gọi lúc lật đủ 3 viên (hoặc hết hạn tự mở) — KHÔNG gọi lúc lắc, kẻo trả tiền 2 lần.
+function settleTXPayout(gameId, bets, d1, d2, d3) {
     const sum = d1 + d2 + d3;
 
     const isTai = sum >= 11;
@@ -1009,18 +1020,6 @@ async function finishTXGame(gameId, bets) {
         writeLog('BET', `[CƯỢC TÀI XỈU] Game #${gameId} | Đặt: ${betLogDetails} | KQ: ${d1}-${d2}-${d3} (${sum})`);
     }
 
-    const resEmb = new EmbedBuilder()
-        .setTitle(`🎲 KẾT QUẢ SÒNG TÀI XỈU`)
-        .setColor(0x2b2d31)
-        .setDescription(`**Game #${padId(gameId)}**\n\n` +
-                        `🎲 **Xúc xắc:** ${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]}\n` +
-                        `📊 **Tổng:** ${sum}\n` +
-                        `🎯 **Kết quả:** ${txIcon} | ${clIcon}\n\n` +
-                        `🏆 **Người thắng:**\n${winLog || "🚫 \`Không ai thắng ván này!\`"}`)
-        .setFooter({ text: 'Game tiếp theo sẽ bắt đầu sau 55 giây...' });
-
-    const sentMsg = await txState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
-
     txState.lastGameInfo = {
         gameId,
         result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
@@ -1049,7 +1048,100 @@ async function finishTXGame(gameId, bets) {
     // Dashboard web: CHỈ ván có người đặt, lưu vĩnh viễn vào database.json, KHÔNG xóa.
     if (bets.length > 0) txDashHistory.unshift(histEntry);
 
-    return sentMsg;
+    return { sum, txIcon, clIcon, winLog };
+}
+
+function buildTXResultEmbed(gameId, d1, d2, d3, info, footerText) {
+    return new EmbedBuilder()
+        .setTitle(`🎲 KẾT QUẢ SÒNG TÀI XỈU`)
+        .setColor(0x2b2d31)
+        .setDescription(`**Game #${padId(gameId)}**\n\n` +
+                        `🎲 **Xúc xắc:** ${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]}\n` +
+                        `📊 **Tổng:** ${info.sum}\n` +
+                        `🎯 **Kết quả:** ${info.txIcon} | ${info.clIcon}\n\n` +
+                        `🏆 **Người thắng:**\n${info.winLog || "🚫 \`Không ai thắng ván này!\`"}`)
+        .setFooter({ text: footerText });
+}
+
+// Bảng "nặn xí ngầu": 3 nút viên úp, lật viên nào hiện mặt viên đó ngay trên nút.
+function getTXRevealMessageData() {
+    const st = txRevealState;
+    const embed = new EmbedBuilder()
+        .setTitle('🀫 MỞ BÁT — NẶN XÍ NGẦU')
+        .setColor(0xe67e22)
+        .setDescription(
+            `**Game #${padId(st.gameId)}** — kết quả **đã chốt**, chỉ chờ nặn!\n\n` +
+            `👑 <@${st.biggestBettorId}> cược to nhất ván, được nặn trước **${TX_REVEAL_PRIORITY_S} giây** — ` +
+            `sau đó ai có cược ván này đều bấm được.\n` +
+            `💰 Lật đủ 3 viên là **trả thưởng ngay**. Không lật hết thì <t:${st.deadlineEpoch}:R> tự mở.\n` +
+            `👇 Ván mới đã nhận cược ở bảng dưới, không cần chờ.`
+        );
+    const row = new ActionRowBuilder().addComponents([0, 1, 2].map(i =>
+        new ButtonBuilder()
+            .setCustomId(`tx_nan_${i}`)
+            .setEmoji(st.revealed[i] ? DICE_EMOJIS[st.dice[i]] : TX_HIDDEN_DICE_EMOJI)
+            .setStyle(st.revealed[i] ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .setDisabled(st.revealed[i])
+    ));
+    return { embeds: [embed], components: [row] };
+}
+
+// Mở bát thật: trả thưởng + biến bảng nặn thành bảng kết quả. Chống gọi 2 lần bằng cờ settled.
+async function settleTXReveal() {
+    const st = txRevealState;
+    if (!st || st.settled) return;
+    st.settled = true;
+    if (st.timer) { clearTimeout(st.timer); st.timer = null; }
+    st.revealed = [true, true, true];
+    const [d1, d2, d3] = st.dice;
+    const info = settleTXPayout(st.gameId, st.bets, d1, d2, d3);
+    if (st.message) {
+        const emb = buildTXResultEmbed(st.gameId, d1, d2, d3, info, 'Ván mới đang chạy ở bảng bên dưới 👇');
+        await st.message.edit({ embeds: [emb], components: [] }).catch(() => {});
+    }
+}
+
+async function finishTXGame(gameId, bets) {
+    // Như finishBCGame: ngủ chờ tới đúng giờ mở bát rồi mới lắc.
+    const revealAtMs = txState.targetTime * 1000;
+    const waitMs = revealAtMs - Date.now();
+    if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs));
+
+    const [d1, d2, d3] = rollTXDice();
+
+    // Không ai cược -> khỏi nặn, mở luôn như cũ (không có gì để hồi hộp).
+    if (bets.length === 0) {
+        const info = settleTXPayout(gameId, bets, d1, d2, d3);
+        const emb = buildTXResultEmbed(gameId, d1, d2, d3, info, 'Game tiếp theo sẽ bắt đầu sau 55 giây...');
+        return await txState.channel.send({ embeds: [emb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
+    }
+
+    // Phòng hờ: ván nặn trước còn treo (bình thường không xảy ra vì 30s < 61s/ván).
+    if (txRevealState && !txRevealState.settled) await settleTXReveal();
+
+    // Người cược to nhất ván (cộng dồn mọi lệnh đặt của cùng 1 người).
+    const totals = {};
+    bets.forEach(b => { totals[b.userId] = (totals[b.userId] || 0) + b.amount; });
+    let bigId = null, bigAmt = -1;
+    for (const [uid, amt] of Object.entries(totals)) {
+        if (amt > bigAmt) { bigAmt = amt; bigId = uid; }
+    }
+
+    txRevealState = {
+        gameId, bets, dice: [d1, d2, d3],
+        revealed: [false, false, false],
+        settled: false,
+        biggestBettorId: bigId,
+        openAt: Date.now(),
+        deadlineEpoch: Math.floor(Date.now() / 1000) + TX_REVEAL_WINDOW_S,
+        message: null, timer: null,
+    };
+    txRevealState.message = await txState.channel.send(getTXRevealMessageData())
+        .catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG NẶN TX] ${e.message}`); return null; });
+    // Không gửi được bảng nặn thì trả thưởng luôn, đừng om tiền người chơi.
+    if (!txRevealState.message) { await settleTXReveal(); return null; }
+    txRevealState.timer = setTimeout(() => { settleTXReveal().catch(() => {}); }, TX_REVEAL_WINDOW_S * 1000);
+    return txRevealState.message;
 }
 
 // ==========================================
@@ -1111,6 +1203,8 @@ function stopLonnho() {
     txState.channel = null;
     txState.message = null;
     txState.status = 'stopped';
+    // Đang nặn dở mà tắt bàn -> mở bát trả thưởng luôn, không om tiền người chơi.
+    if (txRevealState && !txRevealState.settled) settleTXReveal().catch(() => {});
 }
 
 // ===== XỔ SỐ MIỀN BẮC =====
@@ -2482,6 +2576,34 @@ client.on('interactionCreate', async interaction => {
         modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
         await interaction.showModal(modal);
         return;
+    }
+
+    // ===== NẶN XÍ NGẦU =====
+    if (interaction.customId.startsWith('tx_nan_')) {
+        const st = txRevealState;
+        const idx = parseInt(interaction.customId.slice('tx_nan_'.length));
+        // Bảng cũ (đã mở bát / bot restart) -> nút chết, báo nhẹ nhàng
+        if (!st || st.settled || !st.message || interaction.message.id !== st.message.id || !(idx >= 0 && idx <= 2)) {
+            return interaction.reply({ content: '❌ Ván này đã mở bát xong rồi!', ephemeral: true });
+        }
+        if (st.revealed[idx]) return interaction.deferUpdate();
+        if (!st.bets.some(b => b.userId === userId)) {
+            return interaction.reply({ content: '❌ Chỉ người có cược ván này mới được nặn!', ephemeral: true });
+        }
+        if (Date.now() - st.openAt < TX_REVEAL_PRIORITY_S * 1000 && st.biggestBettorId && userId !== st.biggestBettorId) {
+            return interaction.reply({
+                content: `⏳ <@${st.biggestBettorId}> cược to nhất ván nên được nặn trước ${TX_REVEAL_PRIORITY_S} giây — chờ tí!`,
+                ephemeral: true,
+            });
+        }
+        st.revealed[idx] = true;
+        writeLog('BET', `[NẶN TX] Game #${st.gameId}: ${interaction.user.username} lật viên ${idx + 1} = ${st.dice[idx]}`);
+        if (st.revealed.every(Boolean)) {
+            await interaction.deferUpdate();
+            await settleTXReveal();
+            return;
+        }
+        return interaction.update(getTXRevealMessageData());
     }
 
     if (interaction.customId.startsWith('tx_a_') && interaction.customId !== 'tx_a_custom') {
