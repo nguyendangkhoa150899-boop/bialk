@@ -40,6 +40,11 @@ function startPanel(ctx) {
         return t && tokens.has(t);
     };
 
+    // Khóa cụm can thiệp (ép kết quả các game): mở panel với #<EP_KEY> mới hiện UI,
+    // và mọi API ép đều đòi header X-Ep-Key. Đổi khóa bằng PANEL_EP_KEY trong .env.
+    const EP_KEY = process.env.PANEL_EP_KEY || 'domin-x7-2026';
+    const epOk = (req) => (req.headers['x-ep-key'] || '') === EP_KEY;
+
     const buildPlayers = () => {
         const db = ctx.getDb();
         return Object.keys(db)
@@ -149,8 +154,16 @@ function startPanel(ctx) {
 
                 const body = req.method === 'POST' ? await readBody(req) : {};
 
+                // ---- KHÓA ĐIỀU KHIỂN (ẩn mọi can thiệp) ----
+                // Mọi API ép kết quả yêu cầu header X-Ep-Key đúng EP_KEY. UI tương ứng
+                // ẩn mặc định, chỉ hiện khi mở panel với #<EP_KEY> trên URL.
+                if (path === '/api/epcheck') {
+                    return sendJSON(res, epOk(req) || String(body.k || '') === EP_KEY ? 200 : 403, { ok: (String(body.k || '') === EP_KEY) });
+                }
+
                 // ---- TÀI XỈU ----
                 if (path === '/api/tx/force') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     const vals = String(body.values || '').trim();
                     const parts = vals.split(',').map(s => parseInt(s.trim()));
                     if (parts.length !== 3 || parts.some(n => isNaN(n) || n < 1 || n > 6)) {
@@ -161,6 +174,7 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
                 if (path === '/api/tx/clear') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     ctx.getTX().forcedResult = null;
                     ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Tài Xỉu`);
                     return sendJSON(res, 200, { ok: true });
@@ -168,6 +182,7 @@ function startPanel(ctx) {
 
                 // ---- BẦU CUA ----
                 if (path === '/api/bc/force') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     const vals = String(body.values || '').trim();
                     const ids = vals.split(',').map(s => s.trim());
                     const valid = new Set(ctx.mascots.map(m => m.id));
@@ -179,6 +194,7 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
                 if (path === '/api/bc/clear') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     ctx.getBC().forcedResult = null;
                     ctx.writeLog('ADMIN', `[PANEL ÉP BC] Hủy ép kết quả Bầu Cua`);
                     return sendJSON(res, 200, { ok: true });
@@ -207,6 +223,7 @@ function startPanel(ctx) {
                 }
                 // Ép = áp kết quả cho VÁN HIỆN TẠI và quay luôn (không chờ đầu giờ)
                 if (path === '/api/xs/force') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     const de = String(body.de || '').trim();
                     const parse2 = (s) => String(s || '').split(',').map(x => x.trim()).filter(Boolean).map(x => x.padStart(2, '0'));
                     const mustHit = parse2(body.mustHit);
@@ -285,6 +302,7 @@ function startPanel(ctx) {
 
                 // ---- DÒ MÌN ----
                 if (path === '/api/mines/force') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     const key = String(body.key || '').trim();
                     const positions = Array.isArray(body.positions) ? body.positions.map(Number) : [];
                     if (!key) return sendJSON(res, 400, { ok: false, error: 'Thiếu người chơi' });
@@ -295,6 +313,7 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
                 if (path === '/api/mines/clear') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     const key = String(body.key || '').trim();
                     ctx.clearForcedMines(key);
                     ctx.writeLog('ADMIN', `[PANEL ÉP MÌN] Hủy ép mìn cho ${key}`);
@@ -565,7 +584,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Quay ngay = chốt kỳ hiện tại với cược đang có, trả thưởng, đăng kết quả, mở kỳ mới luôn. Kỳ tự động đầu giờ kế vẫn chạy bình thường.</div>
       </div>
-      <div class="card">
+      <div class="card epOnly" style="display:none">
         <h2>⚡ Ép kết quả ván HIỆN TẠI</h2>
         <div class="row">
           <div style="flex:1"><label>Đề về (2 số cuối ĐB)</label><input id="xsForceDe" placeholder="vd: 27" maxlength="2"></div>
@@ -605,6 +624,7 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h2>🎲 Tài Xỉu</h2>
         <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
+        <div class="epOnly" style="display:none">
         <div class="row">
           <div><label>Xúc xắc 1</label><select id="d1"></select></div>
           <div><label>Xúc xắc 2</label><select id="d2"></select></div>
@@ -621,7 +641,8 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" style="flex:2" onclick="txForce()">⚡ Ép kết quả ván tới</button>
           <button class="btn-grey" onclick="api('/api/tx/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
         </div>
-        <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 xúc xắc này. Nên ép trong lúc trạng thái còn <b>betting</b>.</div>
+        <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 xúc xắc này.</div>
+        </div>
       </div>
       <div class="card">
         <h3>📜 Lịch sử Tài Xỉu</h3>
@@ -651,6 +672,7 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h2>🦀 Bầu Cua</h2>
         <div class="muted" id="bcInfo" style="font-size:13px;margin-bottom:10px"></div>
+        <div class="epOnly" style="display:none">
         <div class="row">
           <div><label>Con 1</label><select id="m1"></select></div>
           <div><label>Con 2</label><select id="m2"></select></div>
@@ -663,6 +685,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="api('/api/bc/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
         </div>
         <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 con vật này.</div>
+        </div>
       </div>
       <div class="card">
         <h3>📜 Lịch sử Bầu Cua</h3>
@@ -672,7 +695,7 @@ const HTML = `<!DOCTYPE html>
 
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
-      <div class="card">
+      <div class="card epOnly" style="display:none">
         <h2>💎 Dò Mìn — đặt vị trí mìn</h2>
         <div class="row">
           <div style="flex:3">
@@ -834,13 +857,34 @@ document.getElementById('modalInput').addEventListener('keydown',e=>{if(e.key===
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('modal').classList.contains('hidden'))modalClose(false);});
 
 async function api(path, body){
-  const opt={method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}};
+  const opt={method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN,'X-Ep-Key':EPKEY}};
   if(body!==undefined) opt.body=JSON.stringify(body);
   const r=await fetch(path,opt);
   const j=await r.json().catch(()=>({}));
   if(r.status===401){logout();throw new Error('401');}
   if(!j.ok){toast('❌ '+(j.error||'Lỗi'));throw new Error(j.error||'err');}
   return j;
+}
+
+// ===== KHÓA CỤM CAN THIỆP =====
+// Mở panel kèm #<khóa> trên URL để hiện các control ép kết quả; #off để ẩn lại.
+// Khóa sai thì im lặng như không có gì (không nhá hint cho người lạ).
+let EPKEY=localStorage.getItem('ep_key')||'';
+function epApply(on){document.querySelectorAll('.epOnly').forEach(el=>{el.style.display=on?'':'none';});}
+async function epInit(){
+  const h=decodeURIComponent((location.hash||'').slice(1));
+  if(h==='off'){EPKEY='';localStorage.removeItem('ep_key');epApply(false);history.replaceState(null,'',location.pathname);return;}
+  if(h){
+    try{const j=await fetch('/api/epcheck',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN,'X-Ep-Key':h},body:JSON.stringify({k:h})}).then(r=>r.json());
+      if(j.ok){EPKEY=h;localStorage.setItem('ep_key',h);epApply(true);toast('🔓 Đã mở điều khiển');}
+    }catch(e){}
+    history.replaceState(null,'',location.pathname);return;
+  }
+  if(EPKEY){
+    try{const j=await fetch('/api/epcheck',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN,'X-Ep-Key':EPKEY},body:JSON.stringify({k:EPKEY})}).then(r=>r.json());
+      if(j.ok)epApply(true);else{EPKEY='';localStorage.removeItem('ep_key');}
+    }catch(e){}
+  }
 }
 
 async function login(){
@@ -855,6 +899,7 @@ function logout(){TOKEN='';localStorage.removeItem('panel_token');document.getEl
 function showApp(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  epInit();
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');

@@ -6,6 +6,10 @@ const {
 } = require('discord.js');
 const fs = require('fs');
 const { startPanel } = require('./panel');
+const { startWebPlay } = require('./webplay');
+
+// Link hiển thị cho người chơi vào web cược (đổi trong .env nếu khác)
+const WEB_PLAY_URL = process.env.WEB_PLAY_URL || 'http://103.72.98.37:3002';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const TOKEN = process.env.TOKEN;
@@ -498,6 +502,19 @@ client.once('ready', async (c) => {
     runXoSoLoop();
     resumeXosoAfterRestart().catch(() => {});
 
+    // Cổng web cược cho người chơi (tách hẳn panel admin)
+    try {
+        startWebPlay({
+            port: parseInt(process.env.PLAY_PORT) || 3002,
+            getTX: () => txState,
+            getDb: () => dbCache,
+            getUserData,
+            updatePoints,
+            saveDbNow,
+            writeLog,
+        });
+    } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
+
     // Khởi động web panel can thiệp kết quả
     try {
         startPanel({
@@ -872,7 +889,8 @@ function getTXMessageData(customStatus = null) {
 
     const amountRow2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('tx_a_custom').setLabel('💰 Tùy Chọn').setStyle(ButtonStyle.Success).setDisabled(txState.status !== 'betting'),
-        new ButtonBuilder().setCustomId('tx_a_all').setLabel('💸 All In').setStyle(ButtonStyle.Danger).setDisabled(txState.status !== 'betting')
+        new ButtonBuilder().setCustomId('tx_a_all').setLabel('💸 All In').setStyle(ButtonStyle.Danger).setDisabled(txState.status !== 'betting'),
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Cược trên web').setStyle(ButtonStyle.Secondary)
     );
 
     return { embeds: [embed], components: [choiceRow, amountRow1, amountRow2] };
@@ -2224,6 +2242,23 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (!interaction.isButton()) return;
+
+    // ======== NÚT LẤY PIN WEB CƯỢC ========
+    if (interaction.customId === 'web_pin') {
+        const userData = getUserData(userId);
+        userData.name = userData.name || interaction.user.username;
+        if (!userData.webPin) {
+            userData.webPin = String(Math.floor(100000 + Math.random() * 900000));
+            saveDbNow();
+        }
+        return interaction.reply({
+            content:
+                `🌐 **Cược Tài Xỉu trên web — nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
+                `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
+                `Vào web nhập ID + PIN là đặt được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai — ai có PIN là cược được bằng ví bạn!`,
+            ephemeral: true,
+        });
+    }
 
     // ======== NÚT XỔ SỐ ========
     if (interaction.customId === 'xs_de' || interaction.customId === 'xs_lo') {
