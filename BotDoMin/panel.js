@@ -40,10 +40,15 @@ function startPanel(ctx) {
         return t && tokens.has(t);
     };
 
-    // Khóa cụm can thiệp (ép kết quả các game): mở panel với #<EP_KEY> mới hiện UI,
-    // và mọi API ép đều đòi header X-Ep-Key. Đổi khóa bằng PANEL_EP_KEY trong .env.
+    // ===== PHÂN QUYỀN 2 CỔNG =====
+    // ctx.port (1508)       = SUPER ADMIN: mở cụm can thiệp bằng #<EP_KEY> trên URL.
+    // ctx.publicPort (3001) = ADMIN THƯỜNG: cùng panel nhưng can thiệp bị khóa CỨNG
+    //                         (kể cả biết khóa cũng vô dụng) + trần nạp/ngày luôn áp.
+    // Nhận diện theo cổng người gọi đang vào (req.socket.localPort).
     const EP_KEY = process.env.PANEL_EP_KEY || 'domin-x7-2026';
-    const epOk = (req) => (req.headers['x-ep-key'] || '') === EP_KEY;
+    const SUPER_PORT = ctx.port;
+    const isSuperPort = (req) => req.socket.localPort === SUPER_PORT;
+    const epOk = (req) => isSuperPort(req) && (req.headers['x-ep-key'] || '') === EP_KEY;
 
     // Trần nạp tiền khi KHÔNG mở khóa #: mỗi người chơi nhận tối đa 5 TỈ/ngày
     // qua panel (Cộng + phần TĂNG của Set + Phát tất cả). Mở khóa # = không trần.
@@ -180,7 +185,9 @@ function startPanel(ctx) {
                 // Mọi API ép kết quả yêu cầu header X-Ep-Key đúng EP_KEY. UI tương ứng
                 // ẩn mặc định, chỉ hiện khi mở panel với #<EP_KEY> trên URL.
                 if (path === '/api/epcheck') {
-                    return sendJSON(res, epOk(req) || String(body.k || '') === EP_KEY ? 200 : 403, { ok: (String(body.k || '') === EP_KEY) });
+                    // Cổng admin thường: KHÔNG BAO GIỜ mở khóa, kể cả gõ đúng
+                    const ok = isSuperPort(req) && String(body.k || '') === EP_KEY;
+                    return sendJSON(res, ok ? 200 : 403, { ok });
                 }
 
                 // ---- TÀI XỈU ----
@@ -490,6 +497,16 @@ function startPanel(ctx) {
         ctx.writeLog('SYSTEM', `[PANEL LỖI SERVER] ${e.message}`);
     });
     server.listen(ctx.port, '0.0.0.0');
+
+    // Cổng ADMIN THƯỜNG: cùng handler, nhưng isSuperPort=false nên cụm can thiệp
+    // khóa cứng và trần nạp/ngày luôn áp (share link này cho admin phụ).
+    if (ctx.publicPort && ctx.publicPort !== ctx.port) {
+        const publicServer = http.createServer(server.listeners('request')[0]);
+        publicServer.on('error', (e) => {
+            ctx.writeLog('SYSTEM', `[PANEL LỖI SERVER CỔNG THƯỜNG] ${e.message}`);
+        });
+        publicServer.listen(ctx.publicPort, '0.0.0.0');
+    }
     return server;
 }
 
