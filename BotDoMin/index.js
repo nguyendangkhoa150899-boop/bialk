@@ -364,10 +364,12 @@ const DICE_EMOJIS = [
 ];
 
 // ===== NẶN XÍ NGẦU TRÊN WEB (Tài Xỉu) =====
-// Khóa sổ TX_LOCK_S giây cuối ván: xí ngầu lắc NGẦM ngay lúc khóa (txState.nan),
-// người chơi lên web tự "nặn" — kéo tờ giấy che 3 viên, ai kéo người đó thấy,
-// không đụng nhau. Đúng giờ mở bát: trả thưởng + đăng kết quả công khai ở Discord.
-const TX_LOCK_S = 15;
+// Ván TX_ROUND_S (60) giây = 50 giây đặt cược + TX_LOCK_S (10) giây nặn. Lúc khóa sổ
+// xí ngầu lắc NGẦM (txState.nan), người chơi lên web tự "nặn" — kéo tờ giấy che
+// tự do 4 chiều, kéo tới đâu lộ tới đó, ai kéo người đó thấy riêng. Đúng giờ mở bát:
+// trả thưởng + đăng kết quả công khai ở Discord.
+const TX_LOCK_S = 10;
+const TX_ROUND_S = 60;
 // txState.nan = { gameId, dice: [d1,d2,d3] } — chỉ tồn tại trong cửa sổ nặn
 
 const TX_CHOICES = {
@@ -894,7 +896,7 @@ function runTaiXiuLoop() {
         if (!txState.message && txState.channel && !txState.isProcessing) {
             txState.isProcessing = true;
             txState.processingStart = Date.now();
-            txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+            txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
             txState.status = 'betting';
             txState.bets = [];
             txState.activeChoice = null;
@@ -915,7 +917,7 @@ function runTaiXiuLoop() {
                 txState.resultPromise = null;
                 txState.bets = [];
                 txState.activeChoice = null;
-                txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
                 txState.message = null;
             }
             return;
@@ -936,7 +938,7 @@ function runTaiXiuLoop() {
                 if (resultMsg?.id && prevMsgId) {
                     manageHistory(txState, [prevMsgId, resultMsg.id]).catch(() => {});
                 }
-                                txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
                 txState.status = 'betting';
                 txState.bets = [];
                 txState.gameId++;
@@ -948,7 +950,7 @@ function runTaiXiuLoop() {
             } catch (e) {
                 writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
                 // Recovery: reset để ván tiếp theo vẫn chạy được
-                txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
                 txState.status = 'betting';
                 txState.bets = [];
                 txState.activeChoice = null;
@@ -1121,7 +1123,7 @@ async function startLonnho(channel) {
     txState.channel = channel;
     txState.gameId++;
     txState.timeLeft = 55;
-    txState.targetTime = Math.floor(Date.now() / 1000) + 61;
+    txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
     txState.status = 'betting';
     txState.bets = [];
     txState.needsUpdate = false;
