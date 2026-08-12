@@ -45,6 +45,28 @@ function startPanel(ctx) {
     const EP_KEY = process.env.PANEL_EP_KEY || 'domin-x7-2026';
     const epOk = (req) => (req.headers['x-ep-key'] || '') === EP_KEY;
 
+    // Trần nạp tiền khi KHÔNG mở khóa #: mỗi người chơi nhận tối đa 5 TỈ/ngày
+    // qua panel (Cộng + phần TĂNG của Set + Phát tất cả). Mở khóa # = không trần.
+    // Sổ theo ngày VN, lưu database để restart không mất. Muốn đổi trần: sửa số dưới.
+    const DAILY_ADD_CAP = 5000000000;
+    const vnToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const dailyBook = () => {
+        const db = ctx.getDb();
+        if (!db._panelAddDaily || db._panelAddDaily.date !== vnToday()) {
+            db._panelAddDaily = { date: vnToday(), added: {} };
+        }
+        return db._panelAddDaily;
+    };
+    // Trả về null nếu được phép (và GHI SỔ), hoặc số còn lại nếu vượt trần.
+    const takeDailyQuota = (uid, delta) => {
+        if (delta <= 0) return null;
+        const book = dailyBook();
+        const used = book.added[uid] || 0;
+        if (used + delta > DAILY_ADD_CAP) return DAILY_ADD_CAP - used;
+        book.added[uid] = used + delta;
+        return null;
+    };
+
     const buildPlayers = () => {
         const db = ctx.getDb();
         return Object.keys(db)
@@ -325,6 +347,12 @@ function startPanel(ctx) {
                     const uid = String(body.userId || '').trim();
                     const amount = parseInt(body.amount);
                     if (!uid || isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
+                    // Set tăng số dư cũng là "thêm tiền" — tính vào trần ngày (nếu chưa mở khóa #)
+                    if (!epOk(req)) {
+                        const delta = amount - (ctx.getUserData(uid).points || 0);
+                        const rem = takeDailyQuota(uid, delta);
+                        if (rem !== null) return sendJSON(res, 400, { ok: false, error: `Vượt trần ${DAILY_ADD_CAP.toLocaleString()}/người/ngày — hôm nay còn thêm được ${rem.toLocaleString()} cho người này` });
+                    }
                     ctx.getUserData(uid).points = amount;
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Set ${uid} = ${amount}`);
                     return sendJSON(res, 200, { ok: true });
@@ -333,6 +361,10 @@ function startPanel(ctx) {
                     const uid = String(body.userId || '').trim();
                     const amount = parseInt(body.amount);
                     if (!uid || isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
+                    if (!epOk(req)) {
+                        const rem = takeDailyQuota(uid, amount);
+                        if (rem !== null) return sendJSON(res, 400, { ok: false, error: `Vượt trần ${DAILY_ADD_CAP.toLocaleString()}/người/ngày — hôm nay còn thêm được ${rem.toLocaleString()} cho người này` });
+                    }
                     ctx.updatePoints(uid, amount);
                     if (ctx.logDog) ctx.logDog(amount >= 0 ? 'admin+' : 'admin-', uid, (ctx.getDb()[uid]||{}).name || uid, amount, 'panel: cong/tru tay');
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Cộng ${amount} cho ${uid}`);
@@ -412,17 +444,35 @@ function startPanel(ctx) {
                     if (isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Số không hợp lệ' });
                     const db = ctx.getDb();
                     const ids = Object.keys(db).filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object');
-                    ids.forEach(id => { db[id].points = amount; });
-                    ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Set tất cả ${ids.length} người = ${amount}`);
-                    return sendJSON(res, 200, { ok: true, count: ids.length });
+                    let skipped = 0;
+                    ids.forEach(id => {
+                        // Không mở khóa #: phần TĂNG so với số dư hiện tại tính vào trần ngày,
+                        // ai hết hạn mức thì BỎ QUA người đó (không set), không chặn cả lệnh.
+                        if (!epOk(req)) {
+                            const delta = amount - (db[id].points || 0);
+                            if (takeDailyQuota(id, delta) !== null) { skipped++; return; }
+                        }
+                        db[id].points = amount;
+                    });
+                    ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Set tất cả ${ids.length - skipped} người = ${amount}${skipped ? ` (bỏ qua ${skipped} người vượt trần ngày)` : ''}`);
+                    return sendJSON(res, 200, { ok: true, count: ids.length - skipped, skipped });
                 }
                 // Phát Dogcoin cho TẤT CẢ ví + bot đăng thông báo tag role vào kênh thông báo
                 if (path === '/api/points/addall') {
                     const amount = parseInt(body.amount);
                     if (isNaN(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Số không hợp lệ' });
                     if (!ctx.addAllPlayers) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
-                    const r = await ctx.addAllPlayers(amount);
-                    return sendJSON(res, 200, { ok: true, ...r });
+                    let onlyIds = null, skipped = 0;
+                    if (!epOk(req)) {
+                        // Trần ngày: chỉ phát cho người còn hạn mức, người vượt thì bỏ qua
+                        const db = ctx.getDb();
+                        const ids = Object.keys(db).filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object');
+                        onlyIds = ids.filter(id => takeDailyQuota(id, amount) === null);
+                        skipped = ids.length - onlyIds.length;
+                        if (onlyIds.length === 0) return sendJSON(res, 400, { ok: false, error: `Tất cả người chơi đều vượt trần ${DAILY_ADD_CAP.toLocaleString()}/ngày rồi` });
+                    }
+                    const r = await ctx.addAllPlayers(amount, onlyIds);
+                    return sendJSON(res, 200, { ok: true, ...r, skipped });
                 }
 
                 return sendJSON(res, 404, { ok: false, error: 'API không tồn tại' });
