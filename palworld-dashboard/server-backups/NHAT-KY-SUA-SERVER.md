@@ -101,6 +101,26 @@ PalSchema **tự nạp lại ngay**, không cần restart (nhờ `enableAutoRelo
 
 ---
 
+## 2026-08-12 — Chặn drop của Dandilord (`drop_dandilord.json`)
+
+**File trên server:**
+`.../Pal/Binaries/Win64/ue4ss/Mods/PalSchema/mods/BialkServer/raw/drop_dandilord.json`
+
+**Nguồn trong project:** `palschema-mods/BialkServer/raw/drop_dandilord.json`
+
+Giống hệt cách làm với Silvance: `DT_PalDropItem` → `FlowerPrince` (Dandilord #194, ID nội bộ
+xác nhận từ palworlddb.com / palpedia / palworld.th.gl) và `BOSS_FlowerPrince`, đặt `Rate1..5 = 0`.
+
+⚠️ **Kế thừa nguyên cảnh báo của drop_silvance:** với Silvance, pal **Lv70+ VẪN rơi đồ** dù
+Rate = 0 (chưa rõ vì sao — xem mục drop_silvance ở trên). Dandilord là boss World Tree, level
+cao, nên **phải test thực tế**: giết/xẻ 1 con Dandilord rồi xem còn rơi không. Nếu còn thì đây
+là giới hạn đã biết của cách Rate=0, đừng tốn công thử lại các cách đã fail (ItemId=None,
+DT_PalDropItem_Common...).
+
+**Cách gỡ:** xoá file `drop_dandilord.json` trên server rồi restart.
+
+---
+
 ## (chưa có) Các thay đổi DataTable qua PalSchema
 
 Khi thêm mod JSON vào `PalSchema/mods/`, ghi vào đây:
