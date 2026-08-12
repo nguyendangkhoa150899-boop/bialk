@@ -520,7 +520,7 @@ client.once('ready', async (c) => {
     // Khởi động web panel can thiệp kết quả
     try {
         startPanel({
-            port: parseInt(process.env.PANEL_PORT) || 3001,
+            port: parseInt(process.env.PANEL_PORT) || 1508,
             // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.
             // Muốn bật lại thì đặt PANEL_PASSWORD=<mật khẩu> trong .env.
             password: process.env.PANEL_PASSWORD || '',
@@ -577,7 +577,7 @@ client.once('ready', async (c) => {
             rejectWithdraw,
 
         });
-        writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 3001}`);
+        writeLog('SYSTEM', `🌐 Web panel chạy ở cổng ${parseInt(process.env.PANEL_PORT) || 1508}`);
         // Không còn vòng quét tự động nào: mọi giao dịch với game là ticket, admin xử lý tay.
     } catch (e) {
         writeLog('SYSTEM', `[LỖI PANEL] ${e.message}`);
