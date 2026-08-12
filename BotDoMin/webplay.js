@@ -112,6 +112,7 @@ function startWebPlay(ctx) {
                     if (live) phase = tx.status === 'betting' ? 'bet' : (tx.nan ? 'nan' : 'wait');
                     return sendJSON(res, 200, {
                         ok: true,
+                        me: userId,
                         balance: me.points || 0,
                         live, phase,
                         gameId: tx.gameId,
@@ -125,7 +126,8 @@ function startWebPlay(ctx) {
                         // biết trước vài giây cũng không đặt thêm được gì.
                         nan: (phase === 'nan' && tx.nan) ? { gameId: tx.nan.gameId, dice: tx.nan.dice } : null,
                         betsList: Object.values(whoAgg),
-                        history: (tx.history || []).slice(0, 15).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm })),
+                        // kèm bets/winners (có u) để client tính thắng/thua CÁ NHÂN từng ván
+                        history: (tx.history || []).slice(0, 15).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [] })),
                         chat: chatLog().slice(-30),
                     });
                 }
@@ -197,8 +199,21 @@ const PAGE = [
     '.cbtn small{display:block;font-size:14px;font-weight:800;letter-spacing:1px;color:#3d3418;margin-top:1px}',
     '.cbtn .muted{color:#8a7c55;font-size:12px;font-weight:700}',
     '.cbtn.tai small{color:#a32626}.cbtn.xiu small{color:#1d4f8f}.cbtn.chan small{color:#1d6f4f}.cbtn.le small{color:#6b3fa0}',
-    '.cbtn.bao{margin:10px 0;font-size:19px;background:linear-gradient(180deg,#f9ecc0 0%,#eeda96 55%,#d8bd6c 100%);border-color:#ab8f4a;border-bottom-color:#8a7238}',
+    '.cbtn.bao{margin:10px 0;font-size:23px;letter-spacing:3px;background:linear-gradient(180deg,#ffe9a8 0%,#f2d071 55%,#d3ab45 100%);border:2px solid #a8842f;border-bottom:6px solid #7d5f1e;color:#3d2c05;animation:baoPulse 2.2s ease-in-out infinite}',
     '.cbtn.bao small{color:#8a4a12;font-size:12px;letter-spacing:0}',
+    '@keyframes baoPulse{0%,100%{box-shadow:0 0 0 0 #ffcf5c00}50%{box-shadow:0 0 16px 3px #ffcf5c77}}',
+    // popup +/- tiền sau mỗi ván mình có đặt
+    '#winpop{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-size:46px;font-weight:900;pointer-events:none;opacity:0;z-index:98;text-shadow:0 2px 14px #000c}',
+    '#winpop.show{animation:winfloat 3.4s ease-out forwards}',
+    '@keyframes winfloat{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}25%{transform:translate(-50%,-52%) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) scale(.9)}}',
+    // hiệu ứng BÃO: rung màn hình + mưa emoji
+    '@keyframes shakeX{0%,100%{transform:translate(0,0)}20%{transform:translate(-9px,4px)}40%{transform:translate(8px,-5px)}60%{transform:translate(-7px,3px)}80%{transform:translate(6px,-2px)}}',
+    'body.storm{animation:shakeX .65s ease-in-out 2}',
+    '.fx{position:fixed;top:-50px;z-index:97;pointer-events:none;animation-name:fxfall;animation-timing-function:linear;animation-fill-mode:forwards}',
+    '@keyframes fxfall{to{transform:translateY(115vh) rotate(680deg)}}',
+    // lịch sử cá nhân
+    '.mh{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}',
+    '.mh .win{color:var(--green);font-weight:800}.mh .lose{color:var(--red);font-weight:800}',
     '.cbtn.sel{border-color:var(--gold);border-bottom-width:2px;transform:translateY(3px);box-shadow:0 0 0 3px var(--gold),0 0 16px #ffcf5c88}',
     '.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}',
     '.chip{flex:1;background:#232735;padding:9px 0;font-size:13px;min-width:56px}',
@@ -282,12 +297,16 @@ const PAGE = [
     '<input id="chatIn" maxlength="200" placeholder="Chém gió..." style="margin-top:0;flex:1">',
     '<button style="background:var(--blue);min-width:64px" onclick="sendChat()">Gửi</button>',
     '</div></div>',
+
+    '<div class="card"><h2>📒 10 ván gần nhất của bạn</h2><div id="myHist" class="muted" style="font-size:13px">Chưa có ván nào bạn đặt.</div></div>',
     '</div>',
 
+    '<div id="winpop"></div>',
     '<div id="toast"></div>',
     '<script>',
     'var TOKEN=localStorage.getItem("play_token")||"";var SEL="";var TT=0;var LOCKS=10;var PHASE="off";var BAL=0;',
     'var NAN=null;var revealedGame=0;var dragging=false;var paperX=0,paperY=0,baseX=0,baseY=0,dragX0=0,dragY0=0;',
+    'var MYID="";var lastSettled=-1;',
     // đồng hồ máy người chơi có thể lệch server vài giây -> đếm giờ theo GIỜ SERVER
     'var CLOCK_OFF=0;function srvNow(){return Math.floor(Date.now()/1000)+CLOCK_OFF}',
     'function toast(m){var t=document.getElementById("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2500)}',
@@ -313,7 +332,24 @@ const PAGE = [
     // lộ đủ cả 3 viên (giấy không còn đè lên viên nào) mới tính là nặn xong
     'function rectOverlap(a,b){return !(a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom)}',
     'function checkReveal(){if(!NAN||revealedGame===NAN.gameId)return;var pr=document.getElementById("paper").getBoundingClientRect();var dies=document.querySelectorAll("#diceRow .die");if(dies.length<3)return;for(var i=0;i<dies.length;i++){if(rectOverlap(pr,dies[i].getBoundingClientRect()))return}revealDone()}',
-    'function revealDone(){if(!NAN||revealedGame===NAN.gameId)return;revealedGame=NAN.gameId;var p=document.getElementById("paper");p.classList.add("hidden");showDice(NAN.dice,true);toast("🀫 Bạn nặn xong — giữ kín tới giờ mở bát 😏")}',
+    'function revealDone(){if(!NAN||revealedGame===NAN.gameId)return;revealedGame=NAN.gameId;var p=document.getElementById("paper");p.classList.add("hidden");showDice(NAN.dice,true);',
+    'if(NAN.dice[0]===NAN.dice[1]&&NAN.dice[1]===NAN.dice[2])stormFx(NAN.gameId);else toast("🀫 Bạn nặn xong — giữ kín tới giờ mở bát 😏")}',
+    // BÃO: rung màn hình + mưa emoji (mỗi ván chỉ nổ 1 lần)
+    'var stormFor=0;',
+    'function stormFx(gid){if(gid&&stormFor===gid)return;if(gid)stormFor=gid;',
+    'document.body.classList.remove("storm");void document.body.offsetWidth;document.body.classList.add("storm");',
+    'toast("🌪️🌪️ BÃOOOO !!! 🌪️🌪️");',
+    'var EM=["🌪️","💥","🪙","💰","⚡"];',
+    'for(var i=0;i<26;i++){var s=document.createElement("div");s.className="fx";s.textContent=EM[i%EM.length];',
+    's.style.left=(Math.random()*96)+"vw";s.style.fontSize=(18+Math.random()*28)+"px";',
+    's.style.animationDuration=(1.2+Math.random()*1.6)+"s";s.style.animationDelay=(Math.random()*0.7)+"s";',
+    'document.body.appendChild(s);(function(el){setTimeout(function(){el.remove()},3800)})(s)}',
+    'setTimeout(function(){document.body.classList.remove("storm")},1600)}',
+    // popup +X xanh / -X đỏ sau ván mình có đặt, hiện rồi trôi lên mờ dần
+    'function showNet(net){var el=document.getElementById("winpop");',
+    'el.textContent=(net>=0?"+":"")+net.toLocaleString("vi-VN")+" 🐕";',
+    'el.style.color=net>=0?"#3ddc84":"#ff5d5d";',
+    'el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}',
     'function resetPaper(){paperX=0;paperY=0;dragging=false;var p=document.getElementById("paper");p.style.transition="";p.style.transform="translate(0,0)"}',
     'function tick(){var now=srvNow();var el=document.getElementById("clock");',
     'if(PHASE==="bet"){var s=TT-LOCKS-now;el.textContent=(s>0?s:0)+"s";el.style.color=""}',
@@ -329,7 +365,15 @@ const PAGE = [
     'function bet(){if(PHASE!=="bet")return toast("Đang khóa sổ — chờ ván sau!");if(!SEL)return toast("Chọn cửa trước!");var v=parseInt(document.getElementById("amt").value);if(!v||v<=0)return toast("Nhập số Dogcoin");api("/api/bet",{choice:SEL,amount:v}).then(function(j){BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");document.getElementById("amt").value="";toast("💸 Đã đặt "+v.toLocaleString("vi-VN")+" vào "+SEL.toUpperCase());refresh()}).catch(function(e){toast("❌ "+e.message)})}',
     'var NAMES={tai:"TÀI",xiu:"XỈU",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
     'function refresh(){api("/api/state").then(function(j){',
+    'MYID=j.me||MYID;',
     'BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");',
+    // ván vừa chốt: tính thắng/thua CÁ NHÂN -> popup; ra bão -> hiệu ứng
+    'var h0s=j.history[0];',
+    'if(h0s){if(lastSettled===-1)lastSettled=h0s.gameId;',
+    'else if(h0s.gameId>lastSettled){lastSettled=h0s.gameId;',
+    'var stake=0,winAmt=0;(h0s.bets||[]).forEach(function(b){if(b.u===MYID)stake+=b.amount});(h0s.winners||[]).forEach(function(w){if(w.u===MYID)winAmt+=w.amount});',
+    'if(stake>0)showNet(winAmt-stake);',
+    'if(h0s.storm)stormFx(h0s.gameId)}}',
     'document.getElementById("round").textContent="Ván #"+String(j.gameId).padStart(5,"0");',
     'if(j.now)CLOCK_OFF=j.now-Math.floor(Date.now()/1000);',
     'TT=j.targetTime;LOCKS=j.lockSeconds;var prevPhase=PHASE;PHASE=j.phase;NAN=j.nan;',
@@ -355,8 +399,17 @@ const PAGE = [
     'document.getElementById("mine").textContent=m?("🧾 Ván này bạn đặt — "+m):"";',
     'renderWho(j.betsList||[]);',
     'document.getElementById("hist").innerHTML=j.history.map(function(h){var cls=h.storm?"b":((h.tx==="TÀI"||h.tx==="TAI")?"t":"x");return \'<div class="dot \'+cls+\'" title="#\'+h.gameId+(h.storm?" BÃO":"")+\'">\'+(h.storm?"🌪️":h.sum)+"</div>"}).join("");',
+    'renderMyHist(j.history||[]);',
     'renderChat(j.chat||[]);',
     '}).catch(function(e){if(String(e.message).indexOf("unauth")>=0)logout()})}',
+    // 10 ván gần nhất MÌNH có đặt: id ván + kết quả + ăn/thua bao nhiêu
+    'function renderMyHist(list){var box=document.getElementById("myHist");',
+    'var mine=list.filter(function(h){return (h.bets||[]).some(function(b){return b.u===MYID})}).slice(0,10);',
+    'if(!mine.length){box.innerHTML="Chưa có ván nào bạn đặt.";return}',
+    'box.innerHTML=mine.map(function(h){var stake=0,winAmt=0;',
+    'h.bets.forEach(function(b){if(b.u===MYID)stake+=b.amount});h.winners.forEach(function(w){if(w.u===MYID)winAmt+=w.amount});',
+    'var net=winAmt-stake;var kq=h.storm?("🌪️ BÃO "+h.dice.join("-")):(h.dice.join("-")+" = "+h.sum+" ("+h.tx+" · "+h.cl+")");',
+    'return \'<div class="mh"><span>#\'+String(h.gameId).padStart(5,"0")+" · "+kq+\'</span><span class="\'+(net>=0?"win":"lose")+\'">\'+(net>=0?"+":"")+net.toLocaleString("vi-VN")+"</span></div>"}).join("")}',
     // danh sách ai đang đặt ván này, gộp theo cửa, tên tô màu riêng từng người
     'var CHOICE_COLOR={tai:"#ff7b86",xiu:"#7db4ff",chan:"#6fd3b8",le:"#c39bf0",bao:"#ffcf5c"};',
     'function renderWho(list){var box=document.getElementById("whoBox");if(!list.length){box.innerHTML="Chưa ai đặt.";return}',

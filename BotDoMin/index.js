@@ -1023,7 +1023,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
             winAgg[b.userId].amount += win;
         }
     });
-    const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
+    const winners = Object.values(winAgg).map(w => ({ u: w.userId, name: w.name, amount: w.amount }));
     const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
 
     const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? 'TÀI 🔺' : 'XỈU 🔻');
@@ -1044,7 +1044,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     const betAgg = {};
     bets.forEach(b => {
         const k = `${b.userId}_${b.choice}`;
-        if (!betAgg[k]) betAgg[k] = { name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
+        if (!betAgg[k]) betAgg[k] = { u: b.userId, name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
         betAgg[k].amount += b.amount;
     });
     const histEntry = {
