@@ -370,13 +370,16 @@ const DICE_EMOJIS = [
 // trả thưởng + đăng kết quả công khai ở Discord.
 const TX_LOCK_S = 15;
 const TX_ROUND_S = 50;
+// BÃO = 3 viên giống nhau: chỉ cửa Bão ăn (×TX_BAO_RATE), mọi cửa thường thua sạch.
+const TX_BAO_RATE = 30;
 // txState.nan = { gameId, dice: [d1,d2,d3] } — chỉ tồn tại trong cửa sổ nặn
 
 const TX_CHOICES = {
     'tai': { name: 'TÀI' },
     'xiu': { name: 'XỈU' },
     'chan': { name: 'CHẴN' },
-    'le': { name: 'LẺ' }
+    'le': { name: 'LẺ' },
+    'bao': { name: 'BÃO' }
 };
 
 async function manageHistory(state, sessionMsgs) {
@@ -849,11 +852,11 @@ function getTXMessageData(customStatus = null) {
 
     desc += `📝 **Người đặt hiện tại:**\n`;
 
-    const groups = { 'tai': [], 'xiu': [], 'chan': [], 'le': [] };
-    txState.bets.forEach(b => groups[b.choice].push(b));
+    const groups = { 'tai': [], 'xiu': [], 'chan': [], 'le': [], 'bao': [] };
+    txState.bets.forEach(b => (groups[b.choice] || (groups[b.choice] = [])).push(b));
 
     let hasBets = false;
-    ['tai', 'xiu', 'chan', 'le'].forEach(c => {
+    ['tai', 'xiu', 'chan', 'le', 'bao'].forEach(c => {
         if (groups[c].length > 0) {
             hasBets = true;
             desc += `**${TX_CHOICES[c].name}:**\n`;
@@ -994,6 +997,7 @@ function rollTXDice() {
 function settleTXPayout(gameId, bets, d1, d2, d3) {
     const sum = d1 + d2 + d3;
 
+    const isStorm = d1 === d2 && d2 === d3; // BÃO: 3 viên giống nhau
     const isTai = sum >= 11;
     const isChan = sum % 2 === 0;
 
@@ -1003,10 +1007,17 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount} -> ${TX_CHOICES[b.choice].name})`).join(', ');
 
     // Gộp tiền thắng theo người (1 người đặt nhiều lần / nhiều cửa -> 1 dòng)
+    // Luật BÃO: ra 3 viên giống nhau thì CHỈ cửa Bão ăn ×TX_BAO_RATE, mọi cửa
+    // thường (tài/xỉu/chẵn/lẻ) thua sạch. Không bão thì cửa Bão thua, cửa thường ×2.
     const winAgg = {};
     bets.forEach(b => {
-        if (b.choice === resultTX || b.choice === resultCL) {
-            const win = b.amount * 2;
+        let win = 0;
+        if (isStorm) {
+            if (b.choice === 'bao') win = b.amount * TX_BAO_RATE;
+        } else if (b.choice === resultTX || b.choice === resultCL) {
+            win = b.amount * 2;
+        }
+        if (win > 0) {
             updatePoints(b.userId, win);
             if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
             winAgg[b.userId].amount += win;
@@ -1015,11 +1026,9 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
     const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
 
-    const txIcon = isTai ? 'TÀI 🔺' : 'XỈU 🔻';
-    const clIcon = isChan ? 'CHẴN 🔵' : 'LẺ 🟣';
-    const txLogText = isTai ? 'TÀI' : 'XỈU';
-    const clLogText = isChan ? 'CHẴN' : 'LẺ';
-    writeLog('RESULT', `[KẾT QUẢ TÀI XỈU] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${txLogText} | ${clLogText})`);
+    const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? 'TÀI 🔺' : 'XỈU 🔻');
+    const clIcon = isStorm ? 'cửa thường thua hết' : (isChan ? 'CHẴN 🔵' : 'LẺ 🟣');
+    writeLog('RESULT', `[KẾT QUẢ TÀI XỈU] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? 'TÀI' : 'XỈU')} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
 
     if (bets.length > 0) {
         let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${TX_CHOICES[b.choice].name}`).join(' | ');
@@ -1042,8 +1051,9 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         gameId,
         dice: [d1, d2, d3],
         sum,
-        tx: isTai ? 'TÀI' : 'XỈU',
-        cl: isChan ? 'CHẴN' : 'LẺ',
+        storm: isStorm,
+        tx: isStorm ? 'BÃO' : (isTai ? 'TÀI' : 'XỈU'),
+        cl: isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ'),
         bets: Object.values(betAgg),
         winners,
         time: new Date().toLocaleTimeString('vi-VN')
