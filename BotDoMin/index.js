@@ -364,12 +364,12 @@ const DICE_EMOJIS = [
 ];
 
 // ===== NẶN XÍ NGẦU TRÊN WEB (Tài Xỉu) =====
-// Ván TX_ROUND_S (60) giây = 50 giây đặt cược + TX_LOCK_S (10) giây nặn. Lúc khóa sổ
+// Ván TX_ROUND_S (50) giây = 40 giây đặt cược + TX_LOCK_S (10) giây nặn. Lúc khóa sổ
 // xí ngầu lắc NGẦM (txState.nan), người chơi lên web tự "nặn" — kéo tờ giấy che
 // tự do 4 chiều, kéo tới đâu lộ tới đó, ai kéo người đó thấy riêng. Đúng giờ mở bát:
 // trả thưởng + đăng kết quả công khai ở Discord.
 const TX_LOCK_S = 10;
-const TX_ROUND_S = 60;
+const TX_ROUND_S = 50;
 // txState.nan = { gameId, dice: [d1,d2,d3] } — chỉ tồn tại trong cửa sổ nặn
 
 const TX_CHOICES = {

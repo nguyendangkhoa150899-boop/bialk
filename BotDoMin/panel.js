@@ -41,14 +41,13 @@ function startPanel(ctx) {
     };
 
     // ===== PHÂN QUYỀN 2 CỔNG =====
-    // ctx.port (1508)       = SUPER ADMIN: mở cụm can thiệp bằng #<EP_KEY> trên URL.
+    // ctx.port (1508)       = SUPER ADMIN: vào là full quyền — hiện cụm can thiệp,
+    //                         nạp tiền không trần. Cổng này KHÔNG share cho ai.
     // ctx.publicPort (3001) = ADMIN THƯỜNG: cùng panel nhưng can thiệp bị khóa CỨNG
-    //                         (kể cả biết khóa cũng vô dụng) + trần nạp/ngày luôn áp.
+    //                         + trần nạp/ngày luôn áp.
     // Nhận diện theo cổng người gọi đang vào (req.socket.localPort).
-    const EP_KEY = process.env.PANEL_EP_KEY || 'domin-x7-2026';
     const SUPER_PORT = ctx.port;
-    const isSuperPort = (req) => req.socket.localPort === SUPER_PORT;
-    const epOk = (req) => isSuperPort(req) && (req.headers['x-ep-key'] || '') === EP_KEY;
+    const epOk = (req) => req.socket.localPort === SUPER_PORT;
 
     // Trần nạp tiền khi KHÔNG mở khóa #: mỗi người chơi nhận tối đa 5 TỈ/ngày
     // qua panel (Cộng + phần TĂNG của Set + Phát tất cả). Mở khóa # = không trần.
@@ -176,7 +175,9 @@ function startPanel(ctx) {
                 if (!isAuthed(req)) return sendJSON(res, 401, { ok: false, error: 'Chưa đăng nhập' });
 
                 if (path === '/api/state') {
-                    return sendJSON(res, 200, { ok: true, state: buildState() });
+                    const st = buildState();
+                    st.superAdmin = epOk(req); // cổng SUPER thì client tự hiện cụm can thiệp
+                    return sendJSON(res, 200, { ok: true, state: st });
                 }
 
                 const body = req.method === 'POST' ? await readBody(req) : {};
@@ -185,8 +186,8 @@ function startPanel(ctx) {
                 // Mọi API ép kết quả yêu cầu header X-Ep-Key đúng EP_KEY. UI tương ứng
                 // ẩn mặc định, chỉ hiện khi mở panel với #<EP_KEY> trên URL.
                 if (path === '/api/epcheck') {
-                    // Cổng admin thường: KHÔNG BAO GIỜ mở khóa, kể cả gõ đúng
-                    const ok = isSuperPort(req) && String(body.k || '') === EP_KEY;
+                    // Quyền theo cổng: cổng SUPER = true, cổng thường = false
+                    const ok = epOk(req);
                     return sendJSON(res, ok ? 200 : 403, { ok });
                 }
 
@@ -924,7 +925,7 @@ document.getElementById('modalInput').addEventListener('keydown',e=>{if(e.key===
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('modal').classList.contains('hidden'))modalClose(false);});
 
 async function api(path, body){
-  const opt={method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN,'X-Ep-Key':EPKEY}};
+  const opt={method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}};
   if(body!==undefined) opt.body=JSON.stringify(body);
   const r=await fetch(path,opt);
   const j=await r.json().catch(()=>({}));
@@ -933,26 +934,10 @@ async function api(path, body){
   return j;
 }
 
-// ===== KHÓA CỤM CAN THIỆP =====
-// Mở panel kèm #<khóa> trên URL để hiện các control ép kết quả; #off để ẩn lại.
-// Khóa sai thì im lặng như không có gì (không nhá hint cho người lạ).
-let EPKEY=localStorage.getItem('ep_key')||'';
+// ===== CỤM CAN THIỆP =====
+// Quyền theo CỔNG đang vào (server trả state.superAdmin): cổng SUPER thấy hết,
+// cổng admin thường ẩn + server chặn cứng.
 function epApply(on){document.querySelectorAll('.epOnly').forEach(el=>{el.style.display=on?'':'none';});}
-async function epInit(){
-  const h=decodeURIComponent((location.hash||'').slice(1));
-  if(h==='off'){EPKEY='';localStorage.removeItem('ep_key');epApply(false);history.replaceState(null,'',location.pathname);return;}
-  if(h){
-    try{const j=await fetch('/api/epcheck',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN,'X-Ep-Key':h},body:JSON.stringify({k:h})}).then(r=>r.json());
-      if(j.ok){EPKEY=h;localStorage.setItem('ep_key',h);epApply(true);toast('🔓 Đã mở điều khiển');}
-    }catch(e){}
-    history.replaceState(null,'',location.pathname);return;
-  }
-  if(EPKEY){
-    try{const j=await fetch('/api/epcheck',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN,'X-Ep-Key':EPKEY},body:JSON.stringify({k:EPKEY})}).then(r=>r.json());
-      if(j.ok)epApply(true);else{EPKEY='';localStorage.removeItem('ep_key');}
-    }catch(e){}
-  }
-}
 
 async function login(){
   const pw=document.getElementById('pw').value;
@@ -966,7 +951,6 @@ function logout(){TOKEN='';localStorage.removeItem('panel_token');document.getEl
 function showApp(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  epInit();
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
@@ -1371,6 +1355,7 @@ async function refresh(){
   try{j=await api('/api/state');}catch(e){ if(e.message!=='401') setConn(false); return; }
   setConn(true);
   STATE=j.state;
+  epApply(!!STATE.superAdmin); // cổng SUPER hiện cụm can thiệp, cổng thường ẩn
   mascotOptions();
   bcPreview();
   // status line
