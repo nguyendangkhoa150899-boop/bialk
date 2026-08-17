@@ -239,12 +239,22 @@ function startWebPlay(ctx) {
 // ===== TRANG WEB (mobile-first, tiếng Việt) =====
 const PAGE = [
     '<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">',
-    '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">',
     '<title>Tài Xỉu — Cược nhanh</title>',
     '<style>',
     ':root{--bg:#12141a;--card:#1b1e27;--line:#2a2e3b;--tx:#e8eaf0;--muted:#8a90a3;--green:#3ddc84;--red:#ff5d5d;--blue:#4da3ff;--gold:#ffcf5c}',
     '*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}',
-    'body{background:var(--bg);color:var(--tx);min-height:100vh;padding:14px;max-width:520px;margin:0 auto}',
+    // KHÓA ZOOM TRÊN ĐIỆN THOẠI. iOS Safari bỏ qua user-scalable=no ở thẻ meta từ iOS 10,
+    // nên phải chặn ở đây: pan-x pan-y = vẫn cuộn được nhưng CẤM chụm 2 ngón và
+    // CẤM chạm 2 lần để phóng (trước đây bấm nhanh 2 ô là màn hình nhảy zoom).
+    // Ô nhập chữ đều để font >= 16px, dưới mức đó iOS tự phóng khi bấm vào ô.
+    'html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y}',
+    'body{background:var(--bg);color:var(--tx);min-height:100vh;padding:14px;max-width:520px;margin:0 auto;',
+    'touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent}',
+    // nút/ô bấm: tắt hẳn double-tap zoom + không bôi đen chữ khi bấm nhanh
+    'button,.mtile,.mstep,.cbtn,.chip,.dot{touch-action:manipulation;-webkit-user-select:none;user-select:none}',
+    // thanh kéo phải nuốt trọn cử chỉ, không thì kéo ngang bị hiểu là cuộn trang
+    '#mSlide{touch-action:none}',
     '.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}',
     'h1{font-size:19px;margin-bottom:4px}h2{font-size:15px;margin-bottom:10px}',
     '.muted{color:var(--muted);font-size:13px}',
@@ -708,6 +718,12 @@ const PAGE = [
     '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
     'function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=v.toLocaleString("vi-VN")}',
     '',
+    // Safari trên iPhone vẫn cho chụm 2 ngón dù CSS đã cấm — nó dùng sự kiện riêng
+    // (gesture*), phải chặn thêm ở đây. Không đụng tới touchend/click nên bấm nhanh
+    // nhiều ô liên tiếp vẫn ăn đủ, không bị nuốt cú chạm nào.
+    '["gesturestart","gesturechange","gestureend"].forEach(function(ev){',
+    'document.addEventListener(ev,function(e){e.preventDefault()},{passive:false})});',
+    'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
     'if(TOKEN){show("")}',
     'document.getElementById("pin").addEventListener("keydown",function(e){if(e.key==="Enter")login()});',
     '</script></body></html>',
