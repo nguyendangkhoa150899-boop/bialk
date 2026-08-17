@@ -334,7 +334,8 @@ function drawCards(container,cards,pfx,stag){
   });
 }
 
-// ---- nhà cái lật/rút TỪNG LÁ cách nhau 0.5s (server kết toán 1 phát, client canh nhịp hiển thị) ----
+// ---- nhà cái lật/rút TỪNG LÁ cách nhau 1 giây (server kết toán 1 phát, client canh nhịp hiển thị) ----
+var DEALER_STEP_MS=1000; // nhịp rút của nhà cái — chậm cho dễ theo dõi
 var dReveal={sig:"",n:0,cards:[],timer:0,done:true};
 var pendingPop=null;                 // popup ăn/thua giữ tới khi nhà cái lật xong mới bung
 function flushPop(){if(!pendingPop)return;var m=pendingPop;pendingPop=null;
@@ -347,7 +348,7 @@ function dStep(){
     flushPop();return}
   dReveal.n++;
   drawCards($("dealerCards"),dReveal.cards.slice(0,dReveal.n),"D",0);
-  dReveal.timer=setTimeout(dStep,500);
+  dReveal.timer=setTimeout(dStep,DEALER_STEP_MS);
 }
 function paintDealer(m){
   var t=m.table;
@@ -355,10 +356,10 @@ function paintDealer(m){
   var d=t.dealer;
   if(m.phase==="result"&&!d.hidden&&d.cards.length>2){
     var sig=(m.lastResult?m.lastResult.at:0)+"|"+d.cards.join(",");
-    if(sig!==dReveal.sig){            // kết quả MỚI: lật lá úp trước, rồi 0.5s/lá tới hết
+    if(sig!==dReveal.sig){            // kết quả MỚI: lật lá úp trước, rồi 1s/lá tới hết
       dStop();dReveal={sig:sig,n:2,cards:d.cards,timer:0,done:false};
       drawCards($("dealerCards"),d.cards.slice(0,2),"D",0);$("dtot").textContent="";
-      dReveal.timer=setTimeout(dStep,500);
+      dReveal.timer=setTimeout(dStep,DEALER_STEP_MS);
     }else if(dReveal.done){drawCards($("dealerCards"),d.cards,"D",0);$("dtot").textContent="• "+d.total}
     else if($("dealerCards").children.length!==dReveal.n){drawCards($("dealerCards"),d.cards.slice(0,dReveal.n),"D",0)}
   }else{
