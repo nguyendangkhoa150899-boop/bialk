@@ -7,6 +7,13 @@
 // vẫn hiển thị như thường, không dính deadline 3 giây / rate limit của Discord.
 const http = require('http');
 const crypto = require('crypto');
+const fs = require('fs');
+const pathmod = require('path');
+
+// Icon Dog Coin (ảnh lấy từ game, đã tách nền). Đọc 1 lần lúc khởi động cho nhẹ.
+// Thiếu file thì trang vẫn chạy — chỗ nào có icon sẽ trống, không vỡ giao diện.
+let COIN_PNG = null;
+try { COIN_PNG = fs.readFileSync(pathmod.join(__dirname, 'dogcoin.png')); } catch { }
 
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
@@ -65,6 +72,12 @@ function startWebPlay(ctx) {
             if (req.method === 'GET' && path === '/') {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
                 return res.end(PAGE);
+            }
+
+            if (req.method === 'GET' && path === '/dogcoin.png') {
+                if (!COIN_PNG) { res.writeHead(404); return res.end(); }
+                res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' });
+                return res.end(COIN_PNG);
             }
 
             if (req.method === 'POST' && path === '/api/login') {
@@ -277,6 +290,9 @@ const PAGE = [
     '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:15px;padding:13px 0}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
     // ---- dò mìn (bố cục theo sòng: thanh hệ số trên, 2 cột đếm kẹp lưới) ----
+    // icon Dog Coin thật (ảnh trong game) — thay cho emoji 🐕 ở mọi chỗ
+    '.dc{width:1.05em;height:1.05em;vertical-align:-.16em;object-fit:contain;display:inline-block}',
+    '.dc.big{width:1.5em;height:1.5em;vertical-align:-.3em}',
     '#mine{background:linear-gradient(180deg,#1b2440,#141a2e);border:1px solid #2b3557}',
     // thanh mốc hệ số cuộn ngang: mốc đã ăn sáng vàng, mốc kế tiếp nhấp nháy xanh
     '#mbar{display:flex;gap:4px;overflow-x:auto;padding:6px;background:#0d1226;border:1px solid #2b3557;border-radius:10px;scrollbar-width:none}',
@@ -338,7 +354,9 @@ const PAGE = [
     '</div>',
 
     '<div id="app" class="hidden">',
-    '<div class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div><div class="big" id="bal">0</div></div><button style="background:#232735" onclick="logout()">Thoát</button></div>',
+    '<div class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div>',
+    '<div class="big"><img class="dc" src="/dogcoin.png" alt=""> <span id="bal">0</span></div></div>',
+    '<button style="background:#232735" onclick="logout()">Thoát</button></div>',
 
     '<div id="nav">',
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
@@ -400,7 +418,7 @@ const PAGE = [
     '<div id="mbar"></div>',
 
     '<div id="mstage">',
-    '<div class="mside coin"><div class="ic">🐕</div><div class="n" id="mLeft">–</div></div>',
+    '<div class="mside coin"><img class="dc big" src="/dogcoin.png" alt=""><div class="n" id="mLeft">–</div></div>',
     '<div class="mgrid" id="mGrid"></div>',
     '<div class="mside bomb"><div class="ic">💣</div><div class="n" id="mBombN">–</div></div>',
     '</div>',
@@ -474,7 +492,7 @@ const PAGE = [
     'setTimeout(function(){document.body.classList.remove("storm")},1600)}',
     // popup +X xanh / -X đỏ sau ván mình có đặt, hiện rồi trôi lên mờ dần
     'function showNet(net){var el=document.getElementById("winpop");',
-    'el.textContent=(net>=0?"+":"")+net.toLocaleString("vi-VN")+" 🐕";',
+    'el.innerHTML=(net>=0?"+":"")+net.toLocaleString("vi-VN")+\' <img class="dc" src="/dogcoin.png" alt="">\';',
     'el.style.color=net>=0?"#3ddc84":"#ff5d5d";',
     'el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}',
     'function resetPaper(){paperX=0;paperY=0;dragging=false;var p=document.getElementById("paper");p.style.transition="";p.style.transform="translate(0,0)"}',
@@ -556,6 +574,7 @@ const PAGE = [
     '',
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
+    'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
     'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;',
     'function $(id){return document.getElementById(id)}',
     'function go(p){var tx=p==="tx";',
@@ -585,7 +604,7 @@ const PAGE = [
     '$("mBombN").textContent=MG.totalMines;',
     '$("mStat").textContent=MG.totalMines+" mìn · cược "+MG.bet.toLocaleString("vi-VN")+" · x"+MG.multi.toFixed(2);',
     'go.className="mgo cash";',
-    'go.textContent=MG.revealed.length?("💰 NHẬN TIỀN  "+MG.cashout.toLocaleString("vi-VN")):"⛏️ MỞ 1 Ô ĐỂ BẮT ĐẦU ĂN";',
+    'go.innerHTML=MG.revealed.length?("NHẬN TIỀN "+MG.cashout.toLocaleString("vi-VN")+\' <img class="dc" src="/dogcoin.png" alt="">\'):"⛏️ MỞ 1 Ô ĐỂ BẮT ĐẦU ĂN";',
     'go.disabled=!MG.revealed.length;',
     '}else{',
     'var n=Math.min(Math.max(mNum("mMines"),1),MT-1);',
@@ -602,7 +621,7 @@ const PAGE = [
     'mTable();mBar();mBand()}).catch(function(){})}',
     'function mDrawGrid(){var g=$("mGrid");g.innerHTML="";',
     'for(var i=0;i<MT;i++){var t=document.createElement("div");t.id="mk"+i;t.dataset.i=i;',
-    'if(MG&&MG.revealed.indexOf(i)>=0){t.className="mtile coin";t.textContent="🐕"}',
+    'if(MG&&MG.revealed.indexOf(i)>=0){t.className="mtile coin";t.innerHTML=COINIMG}',
     'else if(MG){t.className="mtile can";t.textContent="?";t.onclick=function(){mDig(parseInt(this.dataset.i))}}',
     'else{t.className="mtile dead";t.textContent="?"}',
     'g.appendChild(t)}}',
@@ -621,7 +640,7 @@ const PAGE = [
     'if(j.hit){t.className="mtile boom";t.textContent="💣";',
     'toast("💥 BÙM! Mất "+stake.toLocaleString("vi-VN")+" Dogcoin");',
     'return mEnd("💥 Trúng mìn — thua "+stake.toLocaleString("vi-VN"),-stake,j.mines)}',
-    't.className="mtile coin";t.textContent="🐕";t.onclick=null;',
+    't.className="mtile coin";t.innerHTML=COINIMG;t.onclick=null;',
     'if(j.jackpot){toast("🎉 JACKPOT! Nhận "+j.win.toLocaleString("vi-VN"));',
     'return mEnd("🎉 Jackpot — nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines)}',
     'MG=j.state;mBar();mBand()}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
