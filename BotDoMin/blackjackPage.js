@@ -21,10 +21,12 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .btn-gold{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05}
 .full{width:100%;margin-top:10px;padding:12px}
 /* ---- bàn nỉ ---- */
-#felt{flex:1;position:relative;margin:8px;border-radius:120px/80px;
-  background:radial-gradient(120% 100% at 50% 8%,#2f8fd6 0%,#1f6fb0 30%,#124a7d 62%,#0c3358 100%);
-  border:6px solid #0a2740;box-shadow:inset 0 0 80px #0007,0 6px 24px #0008;padding:12px 10px 8px;overflow:hidden}
-.rail{position:absolute;inset:0;border-radius:120px/80px;border:2px solid #ffffff22;pointer-events:none}
+/* border-radius vừa phải + KHÔNG overflow:hidden để hàng ghế (bài của người chơi)
+   ở đáy không bị bo tròn cắt mất. min-height cho bàn luôn đủ cao dù ít nội dung. */
+#felt{flex:1;position:relative;margin:8px;border-radius:28px;min-height:360px;
+  background:radial-gradient(130% 110% at 50% 6%,#2f8fd6 0%,#1f6fb0 30%,#124a7d 62%,#0c3358 100%);
+  border:6px solid #0a2740;box-shadow:inset 0 0 80px #0007,0 6px 24px #0008;padding:12px 10px 14px}
+.rail{position:absolute;inset:0;border-radius:28px;border:2px solid #ffffff22;pointer-events:none}
 .topbar{display:flex;justify-content:space-between;font-size:11px;color:#cfe7ff;opacity:.85;padding:2px 8px}
 .dealer{display:flex;flex-direction:column;align-items:center;margin-top:2px;min-height:96px}
 .dealerlbl{font-size:11px;letter-spacing:2px;color:#dbeeff;opacity:.8}
@@ -236,32 +238,42 @@ function renderSeats(m){
 }
 function outClass(o){if(o==="thắng")return{c:"win",t:"THẮNG"};if(o==="thua")return{c:"lose",t:"THUA"};if(o==="hoà")return{c:"push",t:"HOÀ"};if(o==="blackjack")return{c:"bj",t:"BLACKJACK"};return null}
 
+// Thanh điều khiển CHỈ dựng lại khi chế độ/nội dung thực sự đổi (so bằng chữ ký).
+// Server phát trạng thái mỗi giây — nếu cứ thế innerHTML lại thì ô nhập cược bị dựng
+// mới và chữ đang gõ mất sạch. Chữ ký CỐ TÌNH không chứa giá trị ô nhập.
+var lastBarSig="";
 function renderBar(m){
-  var bar=$("bar");
-  if(m.mySeat<0){
-    var h='<div class="waiting">Chọn ghế để vào bàn</div><div class="seatpick">';
-    for(var i=0;i<m.seats.length;i++)h+='<button data-sit="'+i+'"'+(m.seats[i].empty?"":" disabled")+'>Ghế '+(i+1)+(m.seats[i].empty?"":" ✕")+'</button>';
-    bar.innerHTML=h+'</div>';return;
-  }
+  var bar=$("bar"), sig, html;
+  var seat=m.mySeat>=0?m.seats[m.mySeat]:null;
   var myTurn=m.table&&m.table.turn&&m.table.turn.userId===MYID;
-  var seat=m.seats[m.mySeat];
-  if(myTurn){
+  if(m.mySeat<0){
+    sig="pick|"+m.seats.map(function(s){return s.empty?1:0}).join("");
+    if(sig===lastBarSig)return;
+    html='<div class="waiting">Chọn ghế để vào bàn</div><div class="seatpick">';
+    for(var i=0;i<m.seats.length;i++)html+='<button data-sit="'+i+'"'+(m.seats[i].empty?"":" disabled")+'>Ghế '+(i+1)+(m.seats[i].empty?"":" ✕")+'</button>';
+    html+='</div>';
+  }else if(myTurn){
     var o=m.table.turn.options;
-    bar.innerHTML='<div class="acts">'+
-      ab("hit","🃏 Rút",o)+ab("stand","✋ Dừng",o)+ab("double","💰 Nhân đôi",o)+ab("split","✂️ Tách",o)+'</div>';
-    return;
-  }
-  if(m.phase==="idle"||m.phase==="betting"){
+    sig="acts|"+o.join(",")+"|"+m.table.turn.handIdx;
+    if(sig===lastBarSig)return;
+    html='<div class="acts">'+ab("hit","🃏 Rút",o)+ab("stand","✋ Dừng",o)+ab("double","💰 Nhân đôi",o)+ab("split","✂️ Tách",o)+'</div>';
+  }else if(m.phase==="idle"||m.phase==="betting"){
     var placed=seat&&seat.bet>0;
-    bar.innerHTML=
-      '<div class="betbox"><input id="betInput" inputmode="numeric" placeholder="Số Dogcoin cược" value="'+(placed?seat.bet:"")+'">'+
+    sig="bet|"+(placed?seat.bet:0);          // đổi khi ĐẶT xong, không đổi khi đang gõ
+    if(sig===lastBarSig)return;
+    html='<div class="betbox"><input id="betInput" inputmode="numeric" placeholder="Số Dogcoin cược" value="'+(placed?seat.bet:"")+'">'+
       '<button class="chip" data-leave="1" style="flex:0 0 auto;padding:12px 14px">Rời</button></div>'+
       '<div class="chips"><button class="chip" data-add="50">+50</button><button class="chip" data-add="100">+100</button>'+
       '<button class="chip" data-add="500">+500</button><button class="chip" data-add="1000">+1k</button><button class="chip" data-max="1">MAX</button></div>'+
       '<button class="btn-gold full" data-place="1">'+(placed?"ĐỔI CƯỢC":"ĐẶT CƯỢC")+'</button>';
-    return;
+  }else{
+    var txt=m.phase==="result"?"Ván kết thúc — chờ ván mới":(seat&&seat.bet>0?"Đang trong ván — chờ tới lượt bạn":"Bạn không đặt ván này — chờ ván sau");
+    sig="wait|"+txt;
+    if(sig===lastBarSig)return;
+    html='<div class="waiting">'+txt+'</div>';
   }
-  bar.innerHTML='<div class="waiting">'+(m.phase==="result"?"Ván kết thúc — chờ ván mới":(seat&&seat.bet>0?"Đang trong ván — chờ tới lượt bạn":"Bạn không đặt ván này — chờ ván sau"))+'</div>';
+  lastBarSig=sig;
+  bar.innerHTML=html;
 }
 function ab(a,label,opts){var on=opts.indexOf(a)>=0;return '<button class="a-'+a+'"'+(on?"":" disabled")+' data-act="'+a+'">'+label+'</button>'}
 
