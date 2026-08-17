@@ -75,8 +75,11 @@ const cardStr = (c) => RANK_NAME[c.r] + SUITS[c.s];
 // Trả về round state; caller đã trừ `bet` của mỗi người TRƯỚC khi gọi (an toàn kiểu
 // 3 game kia). Split/Double sẽ trừ THÊM và trả về trong `extraCharge` để caller trừ tiếp.
 function startRound(players, shoe) {
+    // GIỮ ĐÚNG số ghế thật (p.seat) — KHÔNG đánh số lại theo thứ tự mảng. Giao diện dò
+    // bài theo số ghế 0..4; nếu ở đây đổi thành i thì người ngồi Ghế 2 (chơi một mình)
+    // bị gán seat=0 -> web không khớp được bài với ghế -> không thấy bài của mình.
     const seats = players.map((p, i) => ({
-        seat: i, userId: p.userId, name: p.name, baseBet: p.bet,
+        seat: (p.seat !== undefined ? p.seat : i), userId: p.userId, name: p.name, baseBet: p.bet,
         hands: [{ cards: [], bet: p.bet, done: false, doubled: false, fromSplit: false, splitAces: false }],
         hi: 0, // tay đang chơi
     }));
