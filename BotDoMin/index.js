@@ -480,6 +480,18 @@ const createGame = (numMines, userId) => {
 // nếu để client tự tính thưởng thì sửa JS là tự cộng tiền.
 const webMines = new Map(); // userId -> { mines, revealed[], totalMines, bet, name }
 
+// Ván VỪA XONG của mỗi người, giữ lại để màn kết thúc (lộ hết mìn) không biến mất:
+// người chơi xem bao lâu tùy thích, thoát ra vào lại vẫn thấy, tới khi bấm "VÁN MỚI".
+const webMinesLast = new Map();
+function setMinesLast(userId, g, result, amount, hitIdx) {
+    webMinesLast.set(userId, {
+        result, amount, bet: g.bet, totalMines: g.totalMines,
+        revealed: g.revealed.slice(), mines: g.mines.slice(),
+        hit: (hitIdx === undefined ? -1 : hitIdx),
+        multi: calculateMulti(g.revealed.length, g.totalMines),
+    });
+}
+
 // ⚠️ HAI CÁI TRẦN NÀY ĐANG TẮT (= 0) theo yêu cầu chủ server: hệ số y hệt sòng thật,
 // không cắt gì. Đặt số > 0 là bật lại ngay, không cần sửa chỗ nào khác.
 //
@@ -546,8 +558,11 @@ const webMinesApi = {
         for (let d = 1; d <= max; d++) rows.push(calculateMulti(d, numMines));
         return rows;
     },
+    last: (userId) => webMinesLast.get(userId) || null,
+    dismiss: (userId) => { webMinesLast.delete(userId); return { ok: true }; },
     current: (userId) => {
         const g = webMines.get(userId);
+        // (bản dò mìn)
         if (!g) return null;
         const info = getInfo(g.revealed.length, g.totalMines);
         const raw = Math.floor(g.bet * info.multi);
@@ -573,6 +588,7 @@ const webMinesApi = {
         const g = createGame(numMines, userId);
         g.bet = bet; g.name = name; g.startedAt = Date.now();
         webMines.set(userId, g);
+        webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
         writeLog('BET', `[WEB DÒ MÌN] ${name} cược ${bet} | ${numMines} mìn`);
         return { ok: true, balance: getUserData(userId).points || 0, state: webMinesApi.current(userId) };
@@ -586,6 +602,7 @@ const webMinesApi = {
         if (g.mines.includes(idx)) {
             webMines.delete(userId);
             webMinesLog(g, 'Trúng mìn (Thua)', -g.bet, idx);
+            setMinesLast(userId, g, 'Trúng mìn (Thua)', -g.bet, idx);
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} BÙM ở ô ${idx} — mất ${g.bet}`);
             // Tiền đã trừ từ lúc bắt đầu, thua thì không trừ thêm lần nữa.
             return { ok: true, hit: true, mines: g.mines, balance: getUserData(userId).points || 0 };
@@ -598,6 +615,7 @@ const webMinesApi = {
             webMines.delete(userId);
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
+            setMinesLast(userId, g, 'Jackpot', win - g.bet);
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT — nhận ${win}`);
             return { ok: true, hit: false, jackpot: true, win, mines: g.mines, balance: getUserData(userId).points || 0 };
         }
@@ -612,6 +630,7 @@ const webMinesApi = {
         webMines.delete(userId);
         updatePoints(userId, win);
         webMinesLog(g, 'Dừng (Thắng)', win - g.bet);
+        setMinesLast(userId, g, 'Dừng (Thắng)', win - g.bet);
         writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô — nhận ${win}`);
         return { ok: true, win, mines: g.mines, balance: getUserData(userId).points || 0 };
     },
@@ -630,6 +649,18 @@ const STAIRS_RTP = 0.95;    // nhà cái ăn 5%, cùng mức các sòng thật h
 const STAIRS_MAX_FIRE = 5;  // nhiều lửa nhất mỗi tầng (phải nhỏ hơn số ô)
 
 const webStairs = new Map(); // userId -> { bet, fire, floor, traps[][], name, startedAt }
+
+// Ván vừa xong: giữ để màn kết thúc (lộ hết cầu lửa) không tự biến mất.
+const webStairsLast = new Map();
+function setStairsLast(userId, g, result, amount, hitFloor, hitCol) {
+    webStairsLast.set(userId, {
+        result, amount, bet: g.bet, fire: g.fire, floor: g.floor,
+        safe: g.safe.slice(), traps: g.traps.map(r => r.slice()),
+        hitFloor: (hitFloor === undefined ? -1 : hitFloor),
+        hitCol: (hitCol === undefined ? -1 : hitCol),
+        multi: stairsMulti(g.floor, g.fire),
+    });
+}
 
 function stairsMulti(cleared, fire) {
     if (cleared <= 0) return 1;
@@ -670,6 +701,8 @@ const webStairsApi = {
     floors: STAIRS_FLOORS,
     cols: STAIRS_COLS,
     maxFire: STAIRS_MAX_FIRE,
+    last: (userId) => webStairsLast.get(userId) || null,
+    dismiss: (userId) => { webStairsLast.delete(userId); return { ok: true }; },
     table: (fire) => {
         const rows = [];
         for (let k = 1; k <= STAIRS_FLOORS; k++) rows.push(stairsMulti(k, fire));
@@ -708,6 +741,7 @@ const webStairsApi = {
         }
         const g = { bet, fire, floor: 0, traps, safe: [], name, startedAt: Date.now() };
         webStairs.set(userId, g);
+        webStairsLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
         writeLog('BET', `[LEO THANG] ${name} cược ${bet} | ${fire} lửa/tầng`);
         return { ok: true, balance: getUserData(userId).points || 0, state: webStairsApi.current(userId) };
@@ -722,6 +756,7 @@ const webStairsApi = {
             const hitFloor = g.floor;
             webStairs.delete(userId);
             const entry = stairsLog(g, 'Trúng lửa (Thua)', -g.bet);
+            setStairsLast(userId, g, 'Trúng lửa (Thua)', -g.bet, hitFloor, col);
             writeLog('RESULT', `[LEO THANG] ${g.name} CHÁY ở tầng ${hitFloor + 1} — mất ${g.bet}`);
             stairsBoardPush(entry, { hitFloor, hitCol: col, traps: g.traps, safe: g.safe.slice() });
             // tiền đã trừ lúc bắt đầu, thua thì không trừ thêm
@@ -735,6 +770,7 @@ const webStairsApi = {
             webStairs.delete(userId);
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
+            setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
             writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH — nhận ${win}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return { ok: true, burn: false, top: true, win, balance: getUserData(userId).points || 0 };
@@ -749,6 +785,7 @@ const webStairsApi = {
         webStairs.delete(userId);
         updatePoints(userId, win);
         const entry = stairsLog(g, 'Dừng (Thắng)', win - g.bet);
+        setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet);
         writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} — nhận ${win}`);
         stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
         return { ok: true, win, balance: getUserData(userId).points || 0 };
@@ -919,10 +956,13 @@ async function resumeMinesBoard() {
 // Cùng cách làm với bảng dò mìn: kênh riêng, gom hàng đợi cho khỏi ngập, tự dọn tin cũ.
 const stairsBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0, queue: [], msgIds: [] };
 
+// Chủ server không muốn đăng kết quả từng ván leo thang ra kênh (mỗi người một ván
+// nên spam nhanh hơn Tài Xỉu nhiều). Chỉ cập nhật lại bảng mời chơi — bảng đó đã có
+// mục "vài ván gần đây" rồi. Muốn bật lại thì bỏ comment dòng đẩy hàng đợi bên dưới.
 function stairsBoardPush(entry, view) {
     stairsBoard.needsUpdate = true;
-    stairsBoard.queue.push({ ...entry, view });
-    if (stairsBoard.queue.length > 40) stairsBoard.queue.shift();
+    // stairsBoard.queue.push({ ...entry, view });
+    // if (stairsBoard.queue.length > 40) stairsBoard.queue.shift();
 }
 
 function stairsHistory() {

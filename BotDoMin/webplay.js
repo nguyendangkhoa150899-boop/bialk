@@ -196,7 +196,13 @@ function startWebPlay(ctx) {
                             maxWin: mines.maxWin, maxBet: mines.maxBet,
                             balance: me.points || 0,
                             game: mines.current(userId),
+                            last: mines.last ? mines.last(userId) : null, // ván vừa xong, để vẽ lại màn kết thúc
                         });
+                    }
+                    // người chơi bấm "VÁN MỚI" -> bỏ màn kết thúc đang giữ
+                    if (req.method === 'POST' && path === '/api/mines/dismiss') {
+                        if (mines.dismiss) mines.dismiss(userId);
+                        return sendJSON(res, 200, { ok: true });
                     }
 
                     if (req.method === 'POST' && path === '/api/mines/table') {
@@ -237,7 +243,12 @@ function startWebPlay(ctx) {
                         return sendJSON(res, 200, {
                             ok: true, floors: stairs.floors, cols: stairs.cols, maxFire: stairs.maxFire,
                             balance: me.points || 0, game: stairs.current(userId),
+                            last: stairs.last ? stairs.last(userId) : null,
                         });
+                    }
+                    if (req.method === 'POST' && path === '/api/stairs/dismiss') {
+                        if (stairs.dismiss) stairs.dismiss(userId);
+                        return sendJSON(res, 200, { ok: true });
                     }
                     if (req.method === 'POST' && path === '/api/stairs/table') {
                         const body = await readBody(req);
@@ -713,7 +724,7 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
-    'var MT=24;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MAXWIN=0;var MAXBET=0;',
+    'var MT=24;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
     'function $(id){return document.getElementById(id)}',
     // Rút gọn y như sòng Mines thật: x798.37 · x2.07k · x114.16k · x1.02M
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
@@ -775,22 +786,37 @@ const PAGE = [
     'go.className="mgo cash";',
     'go.innerHTML=MG.revealed.length?("NHẬN TIỀN "+vnd(MG.cashout)+\' <img class="dc" src="/dogcoin.png" alt="">\'):"⛏️ MỞ 1 Ô ĐỂ BẮT ĐẦU ĂN";',
     'go.disabled=!MG.revealed.length;',
+    '}else if(MOVER){',                                   // ván vừa xong, đang xem lại bàn
+    'go.className="mgo start";go.textContent="🔄 VÁN MỚI";go.disabled=false;',
     '}else{',
     'var n=Math.min(Math.max(mNum("mMines"),1),MT-1);',
     '$("mLeft").textContent=(MT-n);$("mBombN").textContent=n;',
-    'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=MOVER;',
-    'if(!MOVER)$("mStat").textContent=MTAB.length?("mở 1 ô "+fx(MTAB[0])+" · mở hết "+fx(MTAB[MTAB.length-1])):"Chọn số mìn và tiền cược";}',
+    'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=false;',
+    '$("mStat").textContent=MTAB.length?("mở 1 ô "+fx(MTAB[0])+" · mở hết "+fx(MTAB[MTAB.length-1])):"Chọn số mìn và tiền cược";}',
     '["mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
     '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mBar()}',
-    'function mGoClick(){if(MG)mCashout();else mStartGame()}',
+    'function mGoClick(){if(MG)mCashout();else if(MOVER)mNewGame();else mStartGame()}',
+    'function mNewGame(){MOVER=false;MLAST=null;api("/api/mines/dismiss",{}).catch(function(){});',
+    'mDrawGrid();mTable();mBar();mBand()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
     'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||24;setBal(j.balance);',
     '$("mMinesLab").textContent="Số mìn (1–"+(MT-1)+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
-    'MG=j.game||null;MOVER=false;mDrawGrid();',
+    'MG=j.game||null;MLAST=(!MG&&j.last)?j.last:null;MOVER=!!MLAST;mDrawGrid();',
     'if(MG){$("mMines").value=MG.totalMines;$("mBet").value=MG.bet}',
+    'else if(MLAST){$("mMines").value=MLAST.totalMines;$("mBet").value=MLAST.bet;mPaintLast()}',
     'if(MAXBET)$("mNote").textContent="Cược tối đa "+vnd(MAXBET)+" · nhận tối đa "+vnd(MAXWIN)+" mỗi ván";',
     'mTable();mBar();mBand()}).catch(function(){})}',
+    // Vẽ lại màn kết thúc ván vừa xong (server còn giữ) — thoát ra vào lại vẫn thấy.
+    'function mPaintLast(){if(!MLAST)return;',
+    'for(var i=0;i<MT;i++){var t=$("mk"+i);if(!t)continue;t.onclick=null;',
+    'if(i===MLAST.hit){t.className="mtile boom";t.innerHTML="💣"}',
+    'else if(MLAST.revealed.indexOf(i)>=0){t.className="mtile coin";t.innerHTML=COINIMG}',
+    'else if(MLAST.mines.indexOf(i)>=0){t.className="mtile shown";t.innerHTML="💣"}',
+    'else{t.className="mtile dead";t.textContent="?"}}',
+    'var w=MLAST.amount>=0;',
+    '$("mStat").textContent=(w?(MLAST.result==="Jackpot"?"🎉 Jackpot — nhận ":"✅ Đã dừng — nhận "):"💥 Trúng mìn — thua ")+',
+    'vnd(Math.abs(w?MLAST.amount+MLAST.bet:MLAST.bet))}',
     'function mDrawGrid(){var g=$("mGrid");g.innerHTML="";',
     'for(var i=0;i<MT;i++){var t=document.createElement("div");t.id="mk"+i;t.dataset.i=i;',
     'if(MG&&MG.revealed.indexOf(i)>=0){t.className="mtile coin";t.innerHTML=COINIMG}',
@@ -800,10 +826,12 @@ const PAGE = [
     'function mRevealAll(mines){for(var i=0;i<MT;i++){var t=$("mk"+i);if(!t)continue;t.onclick=null;',
     'if(t.classList.contains("coin")||t.classList.contains("boom"))continue;',
     'if(mines&&mines.indexOf(i)>=0){t.className="mtile shown";t.textContent="💣"}else{t.className="mtile dead"}}}',
+    // Ván xong thì GIỮ NGUYÊN màn hình (đã lộ hết mìn) cho tới khi người chơi bấm
+    // VÁN MỚI — trước đây tự xoá sau 2 giây, chưa kịp nhìn đã mất.
     'function mEnd(msg,net,mines){mRevealAll(mines);MG=null;MOVER=true;',
-    '$("mStat").textContent=msg;$("mGo").disabled=true;',
+    '$("mStat").textContent=msg;',
     'if(net!==null)showNet(net);',
-    'setTimeout(function(){MOVER=false;mDrawGrid();mTable();mBar();mBand()},2200)}',
+    'mBand()}',
     'function mDig(i){if(!MG||mBusy)return;var t=$("mk"+i);',
     'if(!t||!t.classList.contains("can"))return;mBusy=true;',
     'var stake=MG.bet;',
@@ -832,7 +860,7 @@ const PAGE = [
     '',
     // ===== LEO THANG =====
     // Cùng nguyên tắc với dò mìn: client không tự tính tiền, mọi hệ số lấy từ server.
-    'var SF=10,SC=8,SMAXF=5,SG=null,sBusy=false,STAB=[],SOVER=false;',
+    'var SF=10,SC=8,SMAXF=5,SG=null,sBusy=false,STAB=[],SOVER=false,SLAST=null;',
     'function sNum(id){return parseInt($(id).value)||0}',
     'function sMul(k){if(SG)return;var b=Math.floor(sNum("sBet")*k);if(b<1)b=1;if(b>BAL)b=BAL;$("sBet").value=b;sBand()}',
     'function sAllIn(){if(SG)return;$("sBet").value=BAL;sBand()}',
@@ -840,7 +868,8 @@ const PAGE = [
     'var sTimer=0;',
     'function sTable(){clearTimeout(sTimer);sTimer=setTimeout(function(){',
     'var f=sNum("sFire");if(f<1||f>SMAXF){f=Math.min(Math.max(f,1),SMAXF);$("sFire").value=f}',
-    'api("/api/stairs/table",{fire:f}).then(function(j){STAB=j.table||[];sTower();sBand()}).catch(function(){})},150)}',
+    'api("/api/stairs/table",{fire:f}).then(function(j){STAB=j.table||[];sTower();',
+    'if(SLAST)sPaintLast();sBand()}).catch(function(){})},150)}',
     // Tháp vẽ từ TẦNG CAO xuống thấp cho giống hình leo lên.
     'var HEROIMG=\'<img class="hero" src="/hero.png" alt="">\';',
     'var COINCELL=\'<img class="dc" src="/dogcoin.png" alt="">\';',
@@ -869,26 +898,44 @@ const PAGE = [
     'go.className="mgo cash";',
     'go.innerHTML=SG.floor?("NHẬN TIỀN "+vnd(SG.cashout)+\' <img class="dc" src="/dogcoin.png" alt="">\'):"🪜 BƯỚC LÊN TẦNG 1 ĐI";',
     'go.disabled=!SG.floor;',
+    '}else if(SOVER){',
+    'go.className="mgo start";go.textContent="🔄 VÁN MỚI";go.disabled=false;',
     '}else{',
-    'go.className="mgo start";go.textContent="🪜 BẮT ĐẦU LEO";go.disabled=SOVER;',
-    'if(!SOVER)$("sStat").textContent=STAB.length?("tầng 1 "+fx(STAB[0])+" · lên đỉnh "+fx(STAB[STAB.length-1])):"Chọn số cầu lửa và tiền cược";}',
+    'go.className="mgo start";go.textContent="🪜 BẮT ĐẦU LEO";go.disabled=false;',
+    '$("sStat").textContent=STAB.length?("tầng 1 "+fx(STAB[0])+" · lên đỉnh "+fx(STAB[STAB.length-1])):"Chọn số cầu lửa và tiền cược";}',
     '["sDouble","sMax","sMinus","sPlus"].forEach(function(id){$(id).disabled=!!SG});',
     '$("sBet").disabled=!!SG;$("sFire").disabled=!!SG}',
-    'function sGoClick(){if(SG)sCashout();else sStart()}',
+    'function sGoClick(){if(SG)sCashout();else if(SOVER)sNewGame();else sStart()}',
+    'function sNewGame(){SOVER=false;SLAST=null;api("/api/stairs/dismiss",{}).catch(function(){});',
+    'sTower();sBand()}',
     'function sSync(){api("/api/stairs/state").then(function(j){',
     'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;setBal(j.balance);',
-    'SG=j.game||null;SOVER=false;',
+    'SG=j.game||null;SLAST=(!SG&&j.last)?j.last:null;SOVER=!!SLAST;',
     '$("sFireLab").textContent="Cầu lửa mỗi tầng (1–"+SMAXF+")";',
     'if(SG){$("sFire").value=SG.fire;$("sBet").value=SG.bet}',
+    'else if(SLAST){$("sFire").value=SLAST.fire;$("sBet").value=SLAST.bet}',
     'sTable()}).catch(function(){})}',
+    // Vẽ lại tháp của ván vừa xong: lộ hết cầu lửa, đánh dấu chỗ cháy.
+    'function sPaintLast(){if(!SLAST)return;',
+    'for(var f=0;f<SF;f++){var row=$("sr"+f);if(row)row.classList.remove("now","far");',
+    'for(var c=0;c<SC;c++){var el=$("sc_"+f+"_"+c);if(!el)continue;el.onclick=null;',
+    'if(f===SLAST.hitFloor&&c===SLAST.hitCol){el.className="scell boom";el.innerHTML="💥"}',
+    'else if(f<SLAST.safe.length&&SLAST.safe[f]===c){el.className="scell step";',
+    'el.innerHTML=(f===SLAST.safe.length-1)?HEROIMG:COINCELL}',
+    'else if(SLAST.traps[f]&&SLAST.traps[f].indexOf(c)>=0){el.className="scell fire";el.innerHTML="🔥"}',
+    'else{el.className="scell";el.innerHTML=""}}}',
+    '$("heroBase").style.display="none";',
+    'var w=SLAST.amount>=0;',
+    '$("sStat").textContent=(w?(SLAST.result==="Lên đỉnh"?"🏆 Lên đỉnh — nhận ":"✅ Đã dừng — nhận "):"🔥 Trúng cầu lửa — thua ")+',
+    'vnd(Math.abs(w?SLAST.amount+SLAST.bet:SLAST.bet))}',
     // lộ hết bẫy của tầng vừa cháy rồi khóa tháp
     'function sBurn(floor,traps,col){var row=$("sr"+floor);if(row)row.classList.remove("now");',
     'for(var c=0;c<SC;c++){var el=$("sc_"+floor+"_"+c);if(!el)continue;el.onclick=null;',
     'if(c===col){el.className="scell boom";el.textContent="💥"}',
     'else if(traps.indexOf(c)>=0){el.className="scell fire";el.textContent="🔥"}}}',
-    'function sEnd(msg,net){SG=null;SOVER=true;$("sStat").textContent=msg;$("sGo").disabled=true;',
-    'if(net!==null)showNet(net);',
-    'setTimeout(function(){SOVER=false;sTower();sBand()},2200)}',
+    // Giữ nguyên tháp đã lộ lửa cho tới khi bấm VÁN MỚI (trước tự xoá sau 2 giây).
+    'function sEnd(msg,net){SG=null;SOVER=true;$("sStat").textContent=msg;',
+    'if(net!==null)showNet(net);sBand()}',
     'function sTap(c){if(!SG||sBusy)return;sBusy=true;var stake=SG.bet,f=SG.floor;',
     'api("/api/stairs/step",{col:c}).then(function(j){sBusy=false;',
     'if(typeof j.balance==="number")setBal(j.balance);',
