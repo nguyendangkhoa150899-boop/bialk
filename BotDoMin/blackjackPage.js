@@ -11,7 +11,7 @@ const PAGE = `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">
 :root{--gold:#ffcf5c;--tx:#f2f6f3;--muted:#a9c2b4;--red:#e0474b;--green:#2ec26a}
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
-body{background:#06121a;color:var(--tx);min-height:100vh;max-width:820px;margin:0 auto;display:flex;flex-direction:column;touch-action:pan-x pan-y}
+body{background:#06121a;color:var(--tx);min-height:100vh;max-width:1000px;margin:0 auto;display:flex;flex-direction:column;touch-action:pan-x pan-y}
 button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 /* ---- đăng nhập ---- */
 #login{background:#0e2018;border:1px solid #1f4a34;border-radius:16px;padding:18px;margin:auto;max-width:360px}
@@ -38,6 +38,11 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 /* ---- ghế ---- */
 #seatRow{display:flex;gap:6px;justify-content:center;align-items:flex-end;margin-top:6px;flex-wrap:wrap}
 .seat{flex:1 1 130px;min-width:120px;max-width:156px;display:flex;flex-direction:column;align-items:center;gap:3px}
+/* ghế đang tách nhiều tay: chiếm trọn hàng + cuộn ngang cho khỏi tràn/chồng lộn */
+.seat.multi{flex:1 1 100%;max-width:100%}
+.seat.multi .handzone{overflow-x:auto;justify-content:flex-start;max-width:100%;padding-bottom:6px}
+.tulbl{font-size:10px;font-weight:800;color:#cfe7ff;background:#0007;border-radius:8px;padding:1px 7px;margin-bottom:2px}
+.hand.active .tulbl{background:var(--gold);color:#3d2c05}
 .seat.turn .ava{box-shadow:0 0 0 3px var(--gold),0 0 18px #ffcf5c99}
 .handzone{display:flex;gap:6px;justify-content:center;min-height:88px;align-items:flex-end}
 .hand{display:flex;flex-direction:column;align-items:center}
@@ -63,7 +68,7 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .card.back,.card.peek{background:repeating-linear-gradient(45deg,#b6362a,#b6362a 6px,#8f281f 6px,#8f281f 12px);border:2px solid #ffce6b;color:transparent}
 .card.peek{cursor:pointer;animation:wob 1.4s ease-in-out infinite}
 @keyframes wob{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
-.card.fly{animation:deal .42s cubic-bezier(.2,.8,.25,1) both}
+.card.fly{animation:deal .72s cubic-bezier(.2,.75,.3,1) both}
 @keyframes deal{0%{transform:translate(220px,-180px) rotate(26deg);opacity:0}55%{opacity:1}100%{transform:none;opacity:1}}
 .card.flip{animation:flip .4s ease both}
 @keyframes flip{0%{transform:rotateY(0)}49%{transform:rotateY(90deg)}50%{transform:rotateY(-90deg)}100%{transform:rotateY(0)}}
@@ -184,7 +189,7 @@ function drawCards(container,cards,pfx,opt){
     var isDoubleCard=opt.doubled && i===cards.length-1 && cards.length===3;
     var peek=isDoubleCard && !opt.resultPhase && !flipped[key];
     var el=cardEl(c,isNew,peek,key);
-    if(isNew)el.style.animationDelay=(i*0.09)+"s";
+    if(isNew)el.style.animationDelay=(i*0.14)+"s";  // chia chậm hơn, dễ nhìn lá bay tới đâu
     container.appendChild(el);
   });
 }
@@ -199,7 +204,10 @@ function render(m){
   var s=$("status"),clk=m.timeLeft>0?'<span class="clock">'+m.timeLeft+'s</span>':"";
   if(m.phase==="idle")s.innerHTML="Chờ người đặt cược để mở ván...";
   else if(m.phase==="betting")s.innerHTML="🟢 Đặt cược — chia sau "+clk;
-  else if(m.phase==="playing"){var tn=t&&t.turn;s.innerHTML=tn?("Lượt: <b>"+esc(seatName(tn.seat))+"</b> "+clk):"Nhà cái đang rút...";}
+  else if(m.phase==="playing"){var tn=t&&t.turn;
+    var tuTxt="";
+    if(tn){var ts=t.seats.find(function(x){return x.seat===tn.seat});if(ts&&ts.hands&&ts.hands.length>1)tuTxt=" · Tụ "+((tn.handIdx|0)+1);}
+    s.innerHTML=tn?("Lượt: <b>"+esc(seatName(tn.seat))+"</b>"+tuTxt+" "+clk):"Nhà cái đang rút...";}
   else if(m.phase==="result")s.innerHTML="Kết quả — ván mới sau "+clk;
   if(m.phase==="idle"||m.phase==="betting"){seenCards={};flipped={}}
   renderSeats(m);renderBar(m);
@@ -215,20 +223,28 @@ function renderSeats(m){
     var isTurn=tbl&&tbl.turn&&tbl.turn.seat===i;if(isTurn)div.className+=" turn";
     if(seat.empty){div.innerHTML='<div class="emptyseat">Ghế '+(i+1)+'<br>trống</div>';box.appendChild(div);continue}
     var tseat=tbl?tbl.seats.find(function(x){return x.seat===i}):null;
+    var nHands=tseat&&tseat.hands?tseat.hands.length:0;
+    if(nHands>1)div.className+=" multi";   // tách nhiều tay -> ghế trải rộng + cuộn ngang
     // bài (trên)
     var hz=document.createElement("div");hz.className="handzone";
+    var activeEl=null;
     if(tseat&&tseat.hands){
       tseat.hands.forEach(function(h,hi){
         var hd=document.createElement("div");hd.className="hand"+(h.active?" active":"");
+        // Nhãn "Tụ N" khi có từ 2 tay trở lên, cho khỏi nhìn lộn giữa các tay đã tách.
+        if(nHands>1){var lb=document.createElement("div");lb.className="tulbl";lb.textContent=(h.active?"▶ ":"")+"Tụ "+(hi+1);hd.appendChild(lb)}
         var cc=document.createElement("div");cc.className="cards";
         drawCards(cc,h.cards,"S"+i+"H"+hi,{doubled:h.doubled,resultPhase:m.phase==="result"});
         hd.appendChild(cc);
         var tot=document.createElement("div");tot.className="tot"+(h.bust?" bust":"");tot.textContent=h.total+(h.soft?"ˢ":"");hd.appendChild(tot);
         if(m.lastResult){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
+        if(h.active)activeEl=hd;
         hz.appendChild(hd);
       });
     }
     div.appendChild(hz);
+    // cuộn tới tụ đang chơi cho khỏi lạc khi có nhiều tay
+    if(activeEl)setTimeout(function(){try{activeEl.scrollIntoView({inline:"center",block:"nearest"})}catch(e){}},0);
     // avatar + tên + số dư/cược (dưới)
     var ava=document.createElement("div");ava.className="ava";ava.style.background=avaColor(seat.userId);ava.textContent=(seat.name||"?").slice(0,2).toUpperCase();div.appendChild(ava);
     var nm=document.createElement("div");nm.className="pname";nm.textContent=(seat.userId===MYID?"★ ":"")+seat.name;div.appendChild(nm);

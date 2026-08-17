@@ -19,7 +19,7 @@
 
 const RANK_NAME = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const SUITS = ['♠', '♥', '♦', '♣'];
-const NUM_DECKS = 4;
+const NUM_DECKS = 2;   // 2 bộ (16 -> 8 con mỗi hạng): bớt chuỗi tách dài làm rối bàn
 const RESHUFFLE_AT = 0.5;   // còn dưới 50% shoe thì xáo lại
 const BLACKJACK_PAYS = 1.5; // 3:2
 
@@ -123,7 +123,10 @@ function actorAt(round) {
     return cur;
 }
 
-const MAX_SPLIT_HANDS = 4; // mỗi ghế tối đa 4 tay (tách được 3 lần)
+// Mỗi ghế tối đa mấy tay khi tách. Chuẩn casino là 4. Để 'let' + có hàm chỉnh để
+// harness test có thể nâng tạm (vd 16) mà xem UI khi tách nhiều; bot thật giữ 4.
+let MAX_SPLIT_HANDS = 4;
+function setMaxSplitHands(n) { MAX_SPLIT_HANDS = n; }
 
 // Các nước được phép cho tay đang tới lượt.
 function options(round) {
@@ -286,6 +289,6 @@ function view(round) {
 
 module.exports = {
     createShoe, startRound, act, actorAt, options, view, settle,
-    handValue, isBlackjack, cardStr,
+    handValue, isBlackjack, cardStr, setMaxSplitHands,
     NUM_DECKS, BLACKJACK_PAYS, RESHUFFLE_AT,
 };

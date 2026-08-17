@@ -19,7 +19,8 @@ function createTable(deps) {
         MIN_BET = 1, MAX_BET = 0, // MAX_BET=0 = không giới hạn
     } = deps;
 
-    const shoe = BJ.createShoe();
+    // Cho phép bơm shoe từ ngoài (test: bộ bài xếp sẵn). Mặc định 4 bộ xáo ngẫu nhiên.
+    const shoe = deps.shoe || BJ.createShoe();
     const seats = Array.from({ length: SEATS }, () => null); // {userId, name, bet}
     let phase = 'idle';           // idle | betting | playing | result
     let deadline = 0;             // mốc ms cho betting / turn / result
@@ -27,6 +28,7 @@ function createTable(deps) {
     let charged = {};             // userId -> tổng đã trừ ván này (để hoàn khi restart)
     let extraCharged = {};        // userId -> phần double/split đã trừ (để chỉ trừ phần tăng thêm)
     let lastResult = null;        // giữ để hiện màn kết quả
+    let roundsSinceShuffle = 0;   // xáo lại sau mỗi 10 ván
 
     const seatOf = (userId) => seats.findIndex(s => s && s.userId === userId);
     const now = () => clock();
@@ -78,7 +80,13 @@ function createTable(deps) {
         if (!players.length) { phase = 'idle'; deadline = 0; return; }
 
         // Xáo bài nếu shoe mỏng — báo cho mọi người biết trước khi chia.
-        if (shoe.lowBeforeRound()) { shoe.reshuffle(); announce('🔀 Bàn xáo lại bài (4 bộ)'); }
+        // Xáo lại sau mỗi 10 ván (2 bộ bài), hoặc sớm hơn nếu shoe mỏng (an toàn, không
+        // để cạn bài giữa ván). Chỉ xáo GIỮA các ván, không bao giờ xáo đang chia dở.
+        roundsSinceShuffle++;
+        if (roundsSinceShuffle > 10 || shoe.lowBeforeRound()) {
+            shoe.reshuffle(); roundsSinceShuffle = 1;
+            announce('🔀 Bàn xáo lại bài (2 bộ)');
+        }
 
         // Trừ cược ngay khi chia (giống 3 game kia). Ghi lại để hoàn nếu bot tắt giữa ván.
         charged = {}; extraCharged = {};
