@@ -464,7 +464,7 @@ const PAGE = [
 
     '<div class="mctl">',
     '<button id="mMinus" onclick="mStep(-1)">−</button>',
-    '<div class="box"><div class="lab">Số mìn (1–24)</div><input id="mMines" inputmode="numeric" value="3" oninput="mTable()"></div>',
+    '<div class="box"><div class="lab" id="mMinesLab">Số mìn</div><input id="mMines" inputmode="numeric" value="3" oninput="mTable()"></div>',
     '<button id="mPlus" onclick="mStep(1)">+</button>',
     '</div>',
 
@@ -608,7 +608,7 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
-    'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MAXWIN=0;var MAXBET=0;',
+    'var MT=24;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MAXWIN=0;var MAXBET=0;',
     'function $(id){return document.getElementById(id)}',
     // Rút gọn y như sòng Mines thật: x798.37 · x2.07k · x114.16k · x1.02M
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
@@ -683,7 +683,8 @@ const PAGE = [
     '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mBar();mPreview()}',
     'function mGoClick(){if(MG)mCashout();else mStartGame()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
-    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;setBal(j.balance);',
+    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||24;setBal(j.balance);',
+    '$("mMinesLab").textContent="Số mìn (1–"+(MT-1)+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
     'MG=j.game||null;MOVER=false;mDrawGrid();',
     'if(MG){$("mMines").value=MG.totalMines;$("mBet").value=MG.bet}',

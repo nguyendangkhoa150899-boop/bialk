@@ -398,13 +398,14 @@ async function manageHistory(state, sessionMsgs) {
 // ==========================================
 // --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
 // ==========================================
-// 25 ô (lưới 5×5) từ khi dò mìn chuyển lên web.
-// RTP 0.95 = nhà cái ăn 5%, đúng bằng mức các sòng Mines thật đang dùng
-// (đã dò ngược từ bảng hệ số của turbo-games/mines: 8 mìn mở 10 ô ra đúng x159.67,
-// 10 mìn mở 14 ô ra đúng x282.3k — khớp tới 2 số lẻ). Cũng là mức hút Dogcoin
-// hợp lý hơn RTP 1.0 cũ (hòa vốn, không hút được gì).
-const TOTAL_TILES = 25;
-const RTP = 0.95;
+// 24 ô + RTP 1.0 — giữ nguyên như bản dò mìn chạy trong Discord trước đây,
+// người chơi đã quen bảng hệ số này (từng đổi sang 25 ô/RTP 0.95 rồi trả lại).
+//
+// ⚠️ RTP 1.0 = nhà cái KHÔNG ăn đồng nào: dài hạn dò mìn không hút được chút
+// Dogcoin nào ra khỏi server, chỉ làm tổng cung dao động. Muốn nó thành chỗ
+// tiêu tiền thì hạ xuống 0.97 (ăn 3%) hoặc 0.95 (ăn 5%, mức sòng thật hay dùng).
+const TOTAL_TILES = 24;
+const RTP = 1.0;
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -422,8 +423,8 @@ function calculateMulti(diamonds, numMines) {
     if (waysToWin === 0) return 1;
     const prob = waysToWin / totalWays;
     let multi = (1 / prob) * RTP;
-    // Làm TRÒN chứ không cắt — sòng thật làm vậy (x342.16 chứ không phải x342.15).
-    return Math.round(multi * 100) / 100;
+    // Cắt xuống 2 số lẻ — đúng như bản Discord cũ, để hệ số khớp cái người chơi đã quen.
+    return Math.floor(multi * 100) / 100;
 }
 
 const getInfo = (diamonds, numMines) => {
@@ -515,12 +516,15 @@ function webMinesRefundStale() {
 setInterval(webMinesRefundStale, 10 * 60 * 1000);
 
 function webMinesLog(g, result, amount) {
-    minesHistory.unshift({
+    const entry = {
         name: g.name, bet: g.bet, mines: g.totalMines, diamonds: g.revealed.length,
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
-    });
+    };
+    minesHistory.unshift(entry);
     if (minesHistory.length > 20) minesHistory.pop();
-    minesBoard.needsUpdate = true; // bảng Discord tự vẽ lại (tối đa 15s/lần)
+    minesBoard.needsUpdate = true;        // bảng mời chơi vẽ lại (tối đa 15s/lần)
+    minesBoard.queue.push(entry);         // và đăng kết quả ván này ra kênh
+    if (minesBoard.queue.length > 40) minesBoard.queue.shift(); // kênh chết thì không dồn vô hạn
     // Trần đang tắt nên một ván có thể trả rất lớn — hú còi để admin biết ngay.
     if (amount >= MINES_BIG_WIN_ALERT) {
         writeLog('ADMIN', `[⚠️ DÒ MÌN TRẢ LỚN] ${g.name} +${amount.toLocaleString()} Dogcoin ` +
@@ -615,7 +619,47 @@ const webMinesApi = {
 // Khác Tài Xỉu: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
 // Nên bảng này chỉ là chỗ mời chơi + khoe ai vừa ăn đậm, KHÔNG có nút đặt cược.
 // Vẽ lại tối đa 15 giây/lần để không dính rate limit của Discord.
-const minesBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
+const minesBoard = {
+    channel: null, message: null, needsUpdate: false, lastEdit: 0,
+    queue: [],      // ván vừa xong, chờ đăng
+    msgIds: [],     // id các tin kết quả đã đăng, để dọn bớt cho đỡ ngập kênh
+};
+
+// Ván nào xong cũng đăng ra Discord (giống Tài Xỉu), nhưng dò mìn mỗi người một ván
+// nên có lúc 5-10 ván xong trong vài giây. Đăng từng tin là ngập kênh + dính rate
+// limit ngay. Vì vậy: gom vào hàng đợi, 6 giây gửi một lần, nhiều ván thì gộp 1 tin.
+const MINES_POST_EVERY_MS = 6000;
+const MINES_KEEP_MSGS = 12; // giữ 12 tin kết quả gần nhất, cũ hơn thì xóa
+
+function minesResultLine(h) {
+    const win = h.amount >= 0;
+    const head = h.result === 'Jackpot' ? '🏆' : (win ? '💰' : '💥');
+    const money = `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
+    return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · cược ${h.bet.toLocaleString()} → ${money}`;
+}
+
+async function flushMinesQueue() {
+    if (!minesBoard.channel || !minesBoard.queue.length) return;
+    const batch = minesBoard.queue.splice(0, 10);
+    const embed = new EmbedBuilder()
+        .setColor(batch.some(h => h.amount >= 0) ? 0x2ecc71 : 0xe74c3c)
+        .setTitle(batch.length > 1 ? `💣 KẾT QUẢ DÒ MÌN — ${batch.length} ván` : '💣 KẾT QUẢ DÒ MÌN')
+        .setDescription(batch.map(minesResultLine).join('\n'))
+        .setTimestamp();
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Dò Mìn trên web').setStyle(ButtonStyle.Success)
+    );
+
+    const sent = await minesBoard.channel.send({ embeds: [embed], components: [row] })
+        .catch(e => { writeLog('SYSTEM', `[DÒ MÌN] Không gửi được kết quả: ${e.message}`); return null; });
+    if (!sent) return;
+
+    minesBoard.msgIds.push(sent.id);
+    while (minesBoard.msgIds.length > MINES_KEEP_MSGS) {
+        const old = minesBoard.msgIds.shift();
+        minesBoard.channel.messages.fetch(old).then(m => m.delete()).catch(() => { });
+    }
+}
 
 function getMinesBoardData() {
     const recent = minesHistory.slice(0, 6);
@@ -687,6 +731,10 @@ async function resumeMinesBoard() {
 }
 
 function runMinesBoardLoop() {
+    // đăng kết quả các ván vừa xong
+    setInterval(() => { flushMinesQueue().catch(() => { }); }, MINES_POST_EVERY_MS);
+
+    // và vẽ lại bảng mời chơi (chậm hơn, chỉ để cập nhật danh sách ván gần đây)
     setInterval(() => {
         if (!minesBoard.message || !minesBoard.needsUpdate) return;
         if (Date.now() - minesBoard.lastEdit < 15000) return; // Discord rate limit
@@ -699,10 +747,12 @@ function runMinesBoardLoop() {
 
 // --- ĐĂNG KÝ LỆNH SLASH ---
 const commands = [
-    // DÒ MÌN đã chuyển hẳn lên web (WEB_PLAY_URL, trang 💎 Dò Mìn).
-    // KHÔNG bật lại lệnh /domin dưới đây khi TOTAL_TILES = 25: Discord chỉ cho tối đa
-    // 25 nút / tin nhắn, 25 ô + nút DỪNG là 26 → tràn, ván không bao giờ mở hết được.
-    // Muốn dùng lại trên Discord thì phải hạ TOTAL_TILES về 24.
+    // DÒ MÌN đã chuyển hẳn lên web (WEB_PLAY_URL, trang 💣 Dò Mìn), kết quả từng ván
+    // vẫn được đăng về kênh Discord kèm nút vào web.
+    // Khối lệnh /domin dưới đây chạy được với TOTAL_TILES = 24 (24 ô + nút DỪNG = 25,
+    // vừa đúng giới hạn 25 nút/tin nhắn của Discord). Bỏ comment cả khối này lẫn khối
+    // xử lý ở phần interaction là dùng lại được — nhưng đang cố tình tắt vì chơi trên
+    // web mượt hơn, không dính deadline 3 giây của Discord.
     // new SlashCommandBuilder()
     //     .setName('domin')
     //     .setDescription('Bắt đầu ván dò mìn')

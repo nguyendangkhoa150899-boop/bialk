@@ -136,7 +136,7 @@ function startPanel(ctx) {
             txHistory: (ctx.getTXDash ? ctx.getTXDash() : []),
             bcHistory: (ctx.getBCDash ? ctx.getBCDash() : []),
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
-            totalTiles: ctx.totalTiles || 25, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
+            totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
@@ -1136,9 +1136,9 @@ function initSelects(){
     s.onchange=txPreview;
   });
   setDice(1,1,1);
-  // lưới dò mìn — PHẢI khớp TOTAL_TILES của bot (25 từ khi dò mìn lên web)
+  // lưới dò mìn — lấy số ô từ bot (STATE.totalTiles) để khỏi phải sửa 2 nơi
   const g=document.getElementById('mineGrid');g.innerHTML='';
-  for(let i=0;i<(STATE&&STATE.totalTiles?STATE.totalTiles:25);i++){
+  for(let i=0;i<(STATE&&STATE.totalTiles?STATE.totalTiles:24);i++){
     const d=document.createElement('div');d.className='tile';d.textContent=i+1;d.dataset.idx=i;
     d.onclick=()=>{if(mineSel.has(i)){mineSel.delete(i);d.classList.remove('mine');d.textContent=i+1;}else{mineSel.add(i);d.classList.add('mine');d.textContent='💣';}document.getElementById('mineCount').textContent=mineSel.size;};
     g.appendChild(d);
