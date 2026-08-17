@@ -88,9 +88,11 @@ từng không chứa tên player nên dashboard báo nhầm "timeout" dù mod đ
 
 ## Luồng tiền Dogcoin (đang chạy — làm lại 17/08/2026, TỰ ĐỘNG cả 2 chiều)
 
-Người chơi tự đặt **tên nhân vật** bằng nút 📛 trên bảng Discord (lưu
-`userData.ingameName` trong `database.json` của bot). Mod so tên sau khi bỏ ký tự ẩn
-(`normalizeName`) nên gõ tên thường là khớp. KHÔNG dùng hệ liên kết SteamID/REST nữa.
+**ADMIN liên kết tên nhân vật** với Discord ID ở panel bot (cổng 3001, tab
+🎮 Palworld & Dogcoin, card "🔗 Liên kết tên trong game") — lưu `userData.ingameName`
+trong `database.json` của bot, API `/api/pal/set-name`. Người chơi KHÔNG tự đặt được:
+tự đặt là tự nhận tên nhân vật người khác rồi bấm 💬 rút trộm túi họ. Tên được lọc về
+ASCII in được, khớp với `normalizeName` của mod. KHÔNG dùng hệ liên kết SteamID/REST nữa.
 
 ### Discord → game ("Chuyển vào game", `rut_modal`)
 Bấm nút → trừ ví Discord **ngay** → gọi `/api/give-item`.
@@ -124,9 +126,9 @@ Bấm nút → gọi `/api/take-item` **trừ item trong game TRƯỚC** → ch�
 ## Liên kết Discord ↔ nhân vật — ĐÃ NGƯNG (17/08/2026)
 
 Hệ liên kết SteamID cần REST API (`/api/players`) mà server test hiện **không bật REST**
-→ toàn bộ đường này ngưng. Thay bằng nút 📛 trên bảng Discord: người chơi tự đặt tên
-nhân vật, bot lưu trong `database.json`. Code links.js/endpoints vẫn còn nhưng các
-endpoint cần REST giờ trả 503 rõ ràng (xem guard trong `palworldClient.js`).
+→ toàn bộ đường này ngưng. Thay bằng: **admin liên kết tên ở panel bot** (tab 🎮,
+card 🔗), bot lưu `ingameName` trong `database.json`. Code links.js/endpoints vẫn còn
+nhưng các endpoint cần REST giờ trả 503 rõ ràng (xem guard trong `palworldClient.js`).
 
 ---
 

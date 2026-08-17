@@ -75,7 +75,7 @@ function startPanel(ctx) {
         const db = ctx.getDb();
         return Object.keys(db)
             .filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object')
-            .map(id => ({ id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0 }))
+            .map(id => ({ id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '' }))
             .sort((a, b) => b.points - a.points);
     };
 
@@ -477,6 +477,23 @@ function startPanel(ctx) {
                     if (!ctx.completePalOrder) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
                     const r = await ctx.completePalOrder(id);
                     return sendJSON(res, r.ok ? 200 : 400, r);
+                }
+
+                // Liên kết Discord ↔ tên nhân vật trong game. Cầu Dogcoin TỰ ĐỘNG
+                // give/take theo ingameName này — CHỈ admin đặt được (người chơi tự
+                // đặt là lỗ hổng: đặt tên nhân vật người khác rồi rút túi họ về ví mình).
+                // Tên rỗng = hủy liên kết. Lọc về ASCII in được cho khớp normalizeName
+                // của mod trong game.
+                if (path === '/api/pal/set-name') {
+                    const uid = String(body.userId || '').trim();
+                    if (!uid || !ctx.getDb()[uid]) return sendJSON(res, 400, { ok: false, error: 'Không tìm thấy ví này' });
+                    const name = String(body.name || '').replace(/[^\x20-\x7E]/g, '').trim().slice(0, 50);
+                    ctx.getUserData(uid).ingameName = name;
+                    ctx.saveDbNow();
+                    ctx.writeLog('ADMIN', name
+                        ? `[PANEL PAL] Liên kết ${uid} ↔ nhân vật "${name}"`
+                        : `[PANEL PAL] Hủy liên kết tên nhân vật của ${uid}`);
+                    return sendJSON(res, 200, { ok: true, name });
                 }
 
                 if (path === '/api/points/subtract') {
@@ -917,6 +934,11 @@ const HTML = `<!DOCTYPE html>
         <div class="note">MỘT bảng duy nhất với 4 nút: <b>Chuyển vào game</b>, <b>Chuyển ra Discord</b>, <b>Pal ngẫu nhiên 1.000</b>, <b>Pal tùy chọn 3.000</b>. Lõi Văn Minh / cấy ghép / đổi vàng bán ở <b>sạp trong game</b>, không qua Discord. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
       </div>
       <div class="card">
+        <h3>🔗 Liên kết tên trong game</h3>
+        <div class="note">Cầu chuyển Dogcoin <b>tự động</b> give/take theo bảng này: người chơi bấm 🎮/💬 là bot giao/trừ Dog Coin cho đúng nhân vật đã liên kết. Người chơi <b>không tự đặt tên được</b> — chỉ admin sửa ở đây (chống giả tên rút trộm túi người khác). Gõ <b>ĐÚNG tên nhân vật trong game</b> (không dấu, bỏ ký tự lạ cũng khớp); để trống rồi 💾 = hủy liên kết.</div>
+        <div id="palLinks"></div>
+      </div>
+      <div class="card">
         <h3>🎲 Kênh khoe kết quả quay Pal</h3>
         <div class="muted" id="gachaInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Channel ID (kênh đăng công khai ai quay trúng con gì)</label>
@@ -1203,6 +1225,29 @@ function renderPalOrders(){
 async function palOrderDone(id){
   if(!await uiConfirm('Xác nhận ĐÃ tạo pal và giao cho người này trong game?','✅ Hoàn thành','btn-green'))return;
   try{ await api('/api/pal/order-done',{id}); toast('✅ Đã đóng đơn #'+id); refresh(); }catch(e){}
+}
+
+// Bảng liên kết Discord ↔ tên nhân vật (cầu Dogcoin tự động đọc ingameName này)
+function renderPalLinks(){
+  if(!STATE)return;
+  const box=document.getElementById('palLinks');
+  if(!box)return;
+  // Đang gõ trong ô tên thì đừng vẽ lại (poll 3s sẽ nuốt chữ đang gõ)
+  const af=document.activeElement;
+  if(af&&af.id&&af.id.indexOf('pn_')===0)return;
+  // Ví đã liên kết lên trước, trong nhóm thì giàu trước
+  const rows=(STATE.players||[]).slice().sort((a,b)=>((b.ingameName?1:0)-(a.ingameName?1:0))||(b.points-a.points));
+  if(!rows.length){box.innerHTML='<div class="muted">Chưa có ví nào.</div>';return;}
+  box.innerHTML='<table><tr><th>Discord</th><th>Ví</th><th>Tên nhân vật trong game</th><th></th></tr>'+
+    rows.map(p=>'<tr><td>'+esc(p.name)+'<br><span class="muted" style="font-size:11px">'+p.id+'</span></td>'+
+      '<td>'+Number(p.points||0).toLocaleString()+'</td>'+
+      '<td><input class="mini-in" style="width:150px" placeholder="(chưa liên kết)" id="pn_'+p.id+'" value="'+esc(p.ingameName||'').replace(/"/g,'&quot;')+'"></td>'+
+      '<td><button class="mini btn-green" onclick="palSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
+    '</table>';
+}
+function palSetName(id){
+  const v=document.getElementById('pn_'+id).value;
+  api('/api/pal/set-name',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>toast('❌ Lỗi'));
 }
 
 function initSelects(){
@@ -1543,6 +1588,7 @@ async function refresh(){
   renderWithdraw();
   renderDogLedger();
   renderPalOrders();
+  renderPalLinks();
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
 

@@ -2192,15 +2192,16 @@ async function resumeXosoAfterRestart() {
 // Server test Windows (Shockbyte, 17/08/2026) có UE4SS nên cầu tự động chạy lại.
 // Hai nút chuyển xử lý NGAY (~5-20 giây), không cần admin. Chỉ khi KHÔNG CHẮC
 // kết quả (timeout/mất kết nối) mới rơi về đơn cho admin kiểm tra results.log.
-// Tên nhân vật do người chơi tự đặt bằng nút 📛 (lưu userData.ingameName) —
-// không dùng hệ liên kết SteamID/REST cũ nữa (REST đã tắt, chỉ còn SFTP).
+// Tên nhân vật do ADMIN liên kết ở panel (tab 🎮 Palworld & Dogcoin, ghi vào
+// userData.ingameName) — người chơi không tự đặt được (chống giả tên rút trộm).
+// Không dùng hệ liên kết SteamID/REST cũ nữa (REST đã tắt, chỉ còn SFTP).
 
 function getWithdrawMessageData() {
     const buyable = shopBuyableList().length;
     const lines = [
         `Chuyển Dogcoin **tự động** giữa ví Discord và Dog Coin trong game — xử lý ngay trong ~10 giây, không cần chờ admin.`,
         '',
-        `**📛 Tên trong game** — đặt đúng TÊN NHÂN VẬT của bạn trước (bắt buộc, chỉ cần 1 lần).`,
+        `Lần đầu dùng: nhắn **admin liên kết tên nhân vật** với Discord của bạn (chỉ cần 1 lần).`,
         `**🎮 Chuyển vào game** — trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
         `**💬 Chuyển ra Discord** — trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
         '',
@@ -2221,8 +2222,7 @@ function getWithdrawMessageData() {
     // Màu theo HÀNG cho dễ nhìn: hàng chuyển tiền xanh dương, hàng shop pal xanh lá.
     const rowTransfer = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('rut_open').setLabel('Chuyển vào game').setEmoji('🎮').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('ten_open').setLabel('Tên trong game').setEmoji('📛').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary)
     );
     const rowPal = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('shop_random').setLabel(`Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Success),
@@ -2912,17 +2912,9 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
-        if (interaction.customId === 'ten_modal') {
-            // Mod trong game so tên sau khi bỏ ký tự ẩn (normalizeName trong main.lua),
-            // nên ở đây cũng lọc về ASCII in được cho khớp cả hai đầu.
-            const name = pal.cleanName(interaction.fields.getTextInputValue('ten_input_name'));
-            if (!name) {
-                return interaction.reply({ content: '❌ Tên không hợp lệ (chỉ nhận chữ/số/ký tự thường trên bàn phím, không dấu).', ephemeral: true });
-            }
-            getUserData(userId).ingameName = name;
-            saveDbNow();
-            return interaction.reply({ content: `📛 Đã lưu tên trong game: **${name}**\nGiờ bấm 🎮 Chuyển vào game hoặc 💬 Chuyển ra Discord là tiền tự đi.`, ephemeral: true });
-        }
+        // (Nút 📛 tự đặt tên đã bỏ: người chơi tự đặt được tên là tự nhận tên nhân
+        //  vật NGƯỜI KHÁC rồi bấm 💬 rút trộm túi họ. Giờ CHỈ admin liên kết tên
+        //  ở panel, tab 🎮 Palworld & Dogcoin — ghi vào userData.ingameName.)
 
         // ===== NẠP (game -> Discord) TỰ ĐỘNG qua cầu SFTP =====
         // Luật tiền (README): TRỪ ITEM TRONG GAME TRƯỚC, mod xác nhận trừ đủ đúng số
@@ -2937,7 +2929,7 @@ client.on('interactionCreate', async interaction => {
             }
             const gameName = (getUserData(userId).ingameName || '').trim();
             if (!gameName) {
-                return interaction.reply({ content: '📛 Chưa biết tên nhân vật của bạn — bấm nút **📛 Tên trong game** trên bảng để đặt trước đã.', ephemeral: true });
+                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
             }
 
             await interaction.deferReply({ ephemeral: true }); // take mất 5-20s, quá deadline 3s của Discord
@@ -2955,7 +2947,7 @@ client.on('interactionCreate', async interaction => {
 
             const msg = (r && r.message) || (err && err.message) || '';
             if (/player not found/i.test(msg)) {
-                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — chưa trừ gì cả.\nVào game rồi bấm lại; sai tên thì bấm **📛 Tên trong game** sửa.`);
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — chưa trừ gì cả.\nVào game rồi bấm lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
             }
             const thieu = /khong du/i.test(msg) && msg.match(/trong game co (\d+)/);
             if (thieu) {
@@ -2994,7 +2986,7 @@ client.on('interactionCreate', async interaction => {
             }
             const gameName = (userData.ingameName || '').trim();
             if (!gameName) {
-                return interaction.reply({ content: '📛 Chưa biết tên nhân vật của bạn — bấm nút **📛 Tên trong game** trên bảng để đặt trước đã.', ephemeral: true });
+                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
             }
 
             await interaction.deferReply({ ephemeral: true }); // give mất 5-20s, quá deadline 3s của Discord
@@ -3014,7 +3006,7 @@ client.on('interactionCreate', async interaction => {
                 // Mod xác nhận CHƯA giao -> hoàn ngay, an toàn
                 updatePoints(userId, amt);
                 logDog('refund', userId, interaction.user.tag, amt, 'hoàn rút tự động: chưa vào game / sai tên');
-                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — đã hoàn **${amt.toLocaleString()}** ${DOGCOIN_EMOJI}.\nVào game rồi bấm rút lại; sai tên thì bấm **📛 Tên trong game** sửa.`);
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — đã hoàn **${amt.toLocaleString()}** ${DOGCOIN_EMOJI}.\nVào game rồi bấm rút lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
             }
             // Không rõ đã giao hay chưa -> đơn cho admin, KHÔNG tự hoàn
             const req = createTicket({ kind: 'to-game', userId, username: interaction.user.username, ingameName: gameName, amount: amt });
@@ -3113,27 +3105,10 @@ client.on('interactionCreate', async interaction => {
         });
     }
 
-    // ======== NÚT ĐẶT TÊN TRONG GAME ========
-    if (interaction.customId === 'ten_open') {
-        const cur = (getUserData(userId).ingameName || '').trim();
-        const nameInput = new TextInputBuilder()
-            .setCustomId('ten_input_name')
-            .setLabel('Gõ ĐÚNG tên nhân vật Palworld của bạn')
-            .setPlaceholder('Ví dụ: BiaLK')
-            .setStyle(TextInputStyle.Short)
-            .setMaxLength(50)
-            .setRequired(true);
-        if (cur) nameInput.setValue(cur); // Discord không nhận setValue('')
-        const modal = new ModalBuilder().setCustomId('ten_modal').setTitle('Tên nhân vật trong game');
-        modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
-        await interaction.showModal(modal);
-        return;
-    }
-
     // ======== NÚT RÚT DOGCOIN ========
     if (interaction.customId === 'rut_open') {
         if (!(getUserData(userId).ingameName || '').trim()) {
-            return interaction.reply({ content: '📛 Bấm nút **📛 Tên trong game** đặt tên nhân vật trước đã (chỉ cần 1 lần).', ephemeral: true });
+            return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
         }
         const modal = new ModalBuilder()
             .setCustomId('rut_modal')
@@ -3155,7 +3130,7 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId === 'nap_open') {
         // KHÔNG gọi API nào trước showModal (Discord chỉ cho 3 giây, SFTP mất ~6s).
         if (!(getUserData(userId).ingameName || '').trim()) {
-            return interaction.reply({ content: '📛 Bấm nút **📛 Tên trong game** đặt tên nhân vật trước đã (chỉ cần 1 lần).', ephemeral: true });
+            return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
         }
         const modal = new ModalBuilder().setCustomId('nap_modal').setTitle('Chuyển Dog Coin ra Discord');
         modal.addComponents(new ActionRowBuilder().addComponents(
