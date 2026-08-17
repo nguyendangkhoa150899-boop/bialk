@@ -120,6 +120,8 @@ function actorAt(round) {
     return cur;
 }
 
+const MAX_SPLIT_HANDS = 4; // mỗi ghế tối đa 4 tay (tách được 3 lần)
+
 // Các nước được phép cho tay đang tới lượt.
 function options(round) {
     const cur = actorAt(round);
@@ -127,16 +129,16 @@ function options(round) {
     const hand = cur.s.hands[cur.h];
     const opts = ['hit', 'stand'];
     const twoCards = hand.cards.length === 2;
-    if (twoCards && !hand.fromSplit) opts.push('double'); // double chỉ ở tay gốc, 2 lá đầu
-    if (twoCards && hand.fromSplit) opts.push('double');  // vẫn cho double sau split (phổ biến)
+    // Double: 2 lá đầu, cả tay gốc lẫn tay sau khi tách. Tách Át (chỉ 1 lá) không double.
+    if (twoCards && !hand.splitAces) opts.push('double');
     if (twoCards && s2Splittable(cur.s, hand)) opts.push('split');
     return opts;
 }
 function s2Splittable(seat, hand) {
     return hand.cards.length === 2
-        && !hand.fromSplit                                  // không cho tách lần 2
+        && !hand.splitAces                                       // không tách lại Át
         && cardValue(hand.cards[0]) === cardValue(hand.cards[1]) // cùng giá trị (10=J=Q=K)
-        && seat.hands.length < 2;                            // mỗi ghế tối đa 2 tay
+        && seat.hands.length < MAX_SPLIT_HANDS;                  // còn được tách tiếp
 }
 
 // Thực hiện một nước. Trả {ok} hoặc {error}. Với double/split, ghi thêm tiền cần trừ
