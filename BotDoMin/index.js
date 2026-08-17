@@ -759,8 +759,14 @@ const webStairsApi = {
             setStairsLast(userId, g, 'Trúng lửa (Thua)', -g.bet, hitFloor, col);
             writeLog('RESULT', `[LEO THANG] ${g.name} CHÁY ở tầng ${hitFloor + 1} — mất ${g.bet}`);
             stairsBoardPush(entry, { hitFloor, hitCol: col, traps: g.traps, safe: g.safe.slice() });
+            // Trả BẢN ĐỒ ĐẦY ĐỦ để web lộ hết cầu lửa mọi tầng ngay lúc thua,
+            // không phải chỉ tầng vừa cháy (trước phải F5 mới thấy hết).
             // tiền đã trừ lúc bắt đầu, thua thì không trừ thêm
-            return { ok: true, burn: true, floor: hitFloor, traps: row, balance: getUserData(userId).points || 0 };
+            return {
+                ok: true, burn: true, floor: hitFloor, hitCol: col,
+                traps: g.traps, safe: g.safe.slice(),
+                balance: getUserData(userId).points || 0,
+            };
         }
 
         g.safe.push(col);
@@ -773,7 +779,11 @@ const webStairsApi = {
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
             writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH — nhận ${win}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
-            return { ok: true, burn: false, top: true, win, balance: getUserData(userId).points || 0 };
+            return {
+                ok: true, burn: false, top: true, win,
+                traps: g.traps, safe: g.safe.slice(),
+                balance: getUserData(userId).points || 0,
+            };
         }
         return { ok: true, burn: false, state: webStairsApi.current(userId) };
     },
@@ -788,7 +798,10 @@ const webStairsApi = {
         setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet);
         writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} — nhận ${win}`);
         stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
-        return { ok: true, win, balance: getUserData(userId).points || 0 };
+        return {
+            ok: true, win, traps: g.traps, safe: g.safe.slice(),
+            balance: getUserData(userId).points || 0,
+        };
     },
 };
 
