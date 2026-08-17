@@ -167,7 +167,10 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 <div id="toast"></div>
 
 <script>
-var TOKEN=localStorage.getItem("bj_token")||"";
+// Khi nhúng làm tab thứ 4 trong trang chính, token được truyền qua #tok=... để
+// KHỎI đăng nhập lại. Ưu tiên token trên URL, sau đó mới tới localStorage.
+var EMBED=/[#&]tok=/.test(location.hash);
+var TOKEN=(location.hash.match(/tok=([a-f0-9]+)/)||[])[1]||localStorage.getItem("bj_token")||"";
 var WS=null, ST=null, MYID="", BAL=0, seenCards={};
 // Bong bóng chat nổi trên đầu: hàng đợi TUẦN TỰ để không đè/nhấp nháy.
 // Mỗi câu hiện 3s -> biến mất -> trống 3s -> mới tới câu kế.
@@ -213,9 +216,12 @@ function connect(){
     else if(m.type==="balance")setBal(m.balance);
     else if(m.type==="toast")toast(m.msg);
     else if(m.type==="denied")toast("❌ "+(m.error||"không được"));
-    else if(m.type==="result"){if(typeof m.net==="number"&&m.net!==0)pop((m.net>0?"+":"")+fmt(m.net)+" "+COIN,m.net>0?"#4fe38a":"#ff6b6b")}
+    else if(m.type==="result"){pendingPop=m;                      // giữ tới khi nhà cái lật xong
+      if(ST&&ST.phase==="result"&&dReveal.done)flushPop()}        // (lật xong rồi mới tới thì bung luôn)
     else if(m.type==="authok"){MYID=m.userId;if(typeof m.balance==="number")setBal(m.balance)}
-    else if(m.type==="authfail"){localStorage.removeItem("bj_token");location.reload()}
+    else if(m.type==="authfail"){localStorage.removeItem("bj_token");
+      // token hỏng: xoá luôn #tok trên URL kẻo reload đọc lại token hỏng -> lặp vô hạn
+      if(EMBED)location.hash="";location.reload()}
     else if(m.type==="chat"){chatList=m.list||[];renderChat()}
     else if(m.type==="say"){chatList.push(m.line);if(chatList.length>60)chatList.shift();renderChat();
       // Vào hàng đợi bong bóng; giữ tối đa 5 câu chờ để khỏi tồn đọng quá xa thực tế.
@@ -236,24 +242,58 @@ function cardEl(str){
   d.innerHTML='<div>'+rank+'</div><div class="c">'+suit+'</div><div class="s">'+suit+'</div>';
   return d;
 }
-function drawCards(container,cards,pfx){
+function drawCards(container,cards,pfx,stag){
   container.innerHTML="";
   cards.forEach(function(c,i){
     var key=pfx+"|"+i+"|"+c;
     var isNew=!seenCards[key];seenCards[key]=1;
     var el=cardEl(c);
-    // lá MỚI: bay tới + tự lật (nặn). Giãn thời gian giữa các lá cho dễ nhìn.
-    if(isNew){el.className+=" reveal";el.style.animationDelay=(i*0.22)+"s"}
+    // lá MỚI: bay tới. Giãn thời gian giữa các lá cho dễ nhìn (stag=0 khi tự canh nhịp ngoài).
+    if(isNew){el.className+=" reveal";el.style.animationDelay=(i*(typeof stag==="number"?stag:0.22))+"s"}
     container.appendChild(el);
   });
+}
+
+// ---- nhà cái lật/rút TỪNG LÁ cách nhau 0.5s (server kết toán 1 phát, client canh nhịp hiển thị) ----
+var dReveal={sig:"",n:0,cards:[],timer:0,done:true};
+var pendingPop=null;                 // popup ăn/thua giữ tới khi nhà cái lật xong mới bung
+function flushPop(){if(!pendingPop)return;var m=pendingPop;pendingPop=null;
+  if(typeof m.net==="number"&&m.net!==0)pop((m.net>0?"+":"")+fmt(m.net)+" "+COIN,m.net>0?"#4fe38a":"#ff6b6b")}
+function dStop(){if(dReveal.timer){clearTimeout(dReveal.timer);dReveal.timer=0}dReveal.done=true}
+function dStep(){
+  if(dReveal.n>=dReveal.cards.length){dReveal.done=true;
+    if(ST&&ST.table&&ST.table.dealer)$("dtot").textContent="• "+ST.table.dealer.total;
+    if(ST)renderSeats(ST);           // giờ mới hiện THẮNG/THUA từng tụ
+    flushPop();return}
+  dReveal.n++;
+  drawCards($("dealerCards"),dReveal.cards.slice(0,dReveal.n),"D",0);
+  dReveal.timer=setTimeout(dStep,500);
+}
+function paintDealer(m){
+  var t=m.table;
+  if(!t||!t.dealer){$("dealerCards").innerHTML="";$("dtot").textContent="";dStop();return}
+  var d=t.dealer;
+  if(m.phase==="result"&&!d.hidden&&d.cards.length>2){
+    var sig=(m.lastResult?m.lastResult.at:0)+"|"+d.cards.join(",");
+    if(sig!==dReveal.sig){            // kết quả MỚI: lật lá úp trước, rồi 0.5s/lá tới hết
+      dStop();dReveal={sig:sig,n:2,cards:d.cards,timer:0,done:false};
+      drawCards($("dealerCards"),d.cards.slice(0,2),"D",0);$("dtot").textContent="";
+      dReveal.timer=setTimeout(dStep,500);
+    }else if(dReveal.done){drawCards($("dealerCards"),d.cards,"D",0);$("dtot").textContent="• "+d.total}
+    else if($("dealerCards").children.length!==dReveal.n){drawCards($("dealerCards"),d.cards.slice(0,dReveal.n),"D",0)}
+  }else{
+    dStop();
+    drawCards($("dealerCards"),d.cards,"D");
+    $("dtot").textContent=d.hidden?"":("• "+d.total);
+    if(m.phase==="result")setTimeout(flushPop,500); // không rút thêm: chỉ chờ lá úp lật xong
+  }
 }
 
 function render(m){
   ST=m;
   if(typeof m.balance==="number")setBal(m.balance);
   var t=m.table;
-  if(t&&t.dealer){drawCards($("dealerCards"),t.dealer.cards,"D",{});$("dtot").textContent=t.dealer.hidden?"":("• "+t.dealer.total)}
-  else{$("dealerCards").innerHTML="";$("dtot").textContent=""}
+  paintDealer(m);
   // trạng thái + đồng hồ
   var s=$("status"),clk=m.timeLeft>0?'<span class="clock">'+m.timeLeft+'s</span>':"";
   if(m.phase==="idle")s.innerHTML="Chờ người đặt cược để mở ván...";
@@ -294,7 +334,8 @@ function renderSeats(m){
         var tot=document.createElement("div");tot.className="tot"+(h.bust?" bust":"");tot.textContent=h.total+(h.soft?"ˢ":"");hd.appendChild(tot);
         // QUẮC: hiện trái bom + số Dogcoin mất ngay tại tụ đó
         if(h.bust){var bo=document.createElement("div");bo.className="bomb";bo.innerHTML="💣 -"+fmt(h.bet)+" "+COIN;hd.appendChild(bo)}
-        if(m.lastResult){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
+        // THẮNG/THUA chỉ hiện khi nhà cái đã lật xong hết bài (đang rút từng lá thì chưa)
+        if(m.lastResult&&dReveal.done){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
         hz.appendChild(hd);
       });
     }

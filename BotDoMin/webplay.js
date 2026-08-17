@@ -571,7 +571,7 @@ const PAGE = [
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
     '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
-    '<button onclick="location.href=\'/blackjack\'">🂡 Blackjack</button>',   // trang riêng
+    '<button id="navBj" onclick="go(\'bj\')">🂡 Blackjack</button>',
     '</div>',
 
     // ================= TRANG TÀI XỈU =================
@@ -664,9 +664,17 @@ const PAGE = [
     '</div>',
     '</div>', // hết #pageStair
 
+    // ================= TRANG BLACKJACK (tab thứ 4) =================
+    // Nhúng nguyên trang /blackjack bằng iframe cho gọn & CÁCH LY hoàn toàn (hai bên
+    // đều xài .card/$/render/WS... trộn chung là vỡ). Token đăng nhập truyền qua #tok
+    // để KHỎI đăng nhập lại. Chỉ nạp src lần đầu mở tab (lazy) — xem go().
+    '<div id="pageBj" class="hidden">',
+    '<iframe id="bjFrame" title="Blackjack" style="display:block;width:100%;height:82vh;min-height:540px;border:0;border-radius:12px;background:#0a1f14"></iframe>',
+    '</div>',
+
     // Chat nằm NGOÀI cả ba trang -> mọi game dùng chung một phòng, đổi tab vẫn thấy
     // nguyên cuộc trò chuyện. Đặt TRÊN bảng lịch sử để khỏi phải cuộn xa mới tới ô chat.
-    '<div class="card"><h2>💬 Chat sòng</h2>',
+    '<div class="card" id="chatCard"><h2>💬 Chat sòng</h2>',
     '<div id="chatBox"></div>',
     '<div style="display:flex;gap:8px;margin-top:8px">',
     '<input id="chatIn" maxlength="200" placeholder="Chém gió..." style="margin-top:0;flex:1">',
@@ -696,7 +704,7 @@ const PAGE = [
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
     'mBarDrag();mSync();sSync();',
     'var saved=localStorage.getItem("play_page");',
-    'go(saved==="mine"||saved==="stair"?saved:"tx")}',
+    'go(saved==="mine"||saved==="stair"||saved==="bj"?saved:"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
     'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
     'function allIn(){document.getElementById("amt").value=BAL}',
@@ -835,12 +843,17 @@ const PAGE = [
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
     '$("pageMine").classList.toggle("hidden",p!=="mine");',
     '$("pageStair").classList.toggle("hidden",p!=="stair");',
+    '$("pageBj").classList.toggle("hidden",p!=="bj");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
+    '$("chatCard")&&$("chatCard").classList.toggle("hidden",p==="bj");', // blackjack có chat riêng bên trong
     '$("navTx").classList.toggle("on",p==="tx");',
     '$("navMine").classList.toggle("on",p==="mine");',
     '$("navStair").classList.toggle("on",p==="stair");',
+    '$("navBj").classList.toggle("on",p==="bj");',
+    // Mở tab blackjack: nạp iframe LẦN ĐẦU, kèm token để tự đăng nhập (không nhập lại).
+    'if(p==="bj"){var _f=$("bjFrame");if(_f&&!_f.src&&TOKEN)_f.src="/blackjack#tok="+encodeURIComponent(TOKEN)}',
     'localStorage.setItem("play_page",p);',
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p!=="bj")refresh()}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',

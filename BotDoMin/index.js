@@ -2996,9 +2996,9 @@ client.on('interactionCreate', async interaction => {
         if (!userData.webPin) { userData.webPin = String(Math.floor(100000 + Math.random() * 900000)); saveDbNow(); }
         return interaction.reply({
             content:
-                `🂡 **Blackjack (Xì Dách) — chơi trên web, xoay ngang cho dễ:**\n${WEB_PLAY_URL}/blackjack\n\n` +
+                `🂡 **Blackjack (Xì Dách) — vào sòng web rồi bấm tab 🂡 Blackjack (xoay ngang cho dễ):**\n${WEB_PLAY_URL}\n\n` +
                 `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
-                `Vào nhập ID + PIN là ngồi bàn được (PIN dùng chung với các game khác). ĐỪNG đưa PIN cho ai!`,
+                `Đăng nhập 1 lần là chơi được hết các game (PIN dùng chung). ĐỪNG đưa PIN cho ai!`,
             ephemeral: true,
         });
     }
