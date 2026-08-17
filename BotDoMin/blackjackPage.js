@@ -125,7 +125,9 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .chatIn button{padding:10px 16px}
 /* Xoay ngang: overlay nhắc khi cầm dọc trên điện thoại nhỏ */
 #rotate{display:none}
-@media (orientation:portrait) and (max-width:820px){
+/* pointer:coarse = màn cảm ứng thật. Máy tính (chuột) dù khung hẹp/nhúng iframe dọc
+   vẫn KHÔNG che — cho chơi luôn, chỉ điện thoại cầm dọc mới nhắc xoay ngang. */
+@media (orientation:portrait) and (max-width:820px) and (pointer:coarse){
   #rotate{display:flex;position:fixed;inset:0;z-index:200;background:#06121a;color:var(--gold);
     flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:20px;font-weight:900;gap:10px;padding:24px;line-height:1.5}
   #app{filter:blur(2px)}

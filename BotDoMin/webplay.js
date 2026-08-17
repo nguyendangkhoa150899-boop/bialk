@@ -405,6 +405,8 @@ const PAGE = [
     'html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y}',
     'body{background:var(--bg);color:var(--tx);min-height:100vh;padding:14px;max-width:520px;margin:0 auto;',
     'touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent}',
+    // Tab Blackjack trên MÀN RỘNG (máy tính): bung ra khỏi cột 520px cho bàn 5 ghế đủ chỗ.
+    '@media (min-width:900px){#pageBj{width:min(96vw,1100px);margin-left:calc(50% - min(48vw,550px))}}',
     // nút/ô bấm: tắt hẳn double-tap zoom + không bôi đen chữ khi bấm nhanh
     'button,.mtile,.mstep,.cbtn,.chip{touch-action:manipulation;-webkit-user-select:none;user-select:none}',
     '.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}',
