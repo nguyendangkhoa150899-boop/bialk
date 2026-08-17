@@ -37,41 +37,41 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .clock{display:inline-block;min-width:24px;font-weight:900;color:var(--gold)}
 /* ---- ghế ---- */
 #seatRow{display:flex;gap:6px;justify-content:center;align-items:flex-end;margin-top:6px;flex-wrap:wrap}
-.seat{flex:1 1 130px;min-width:120px;max-width:156px;display:flex;flex-direction:column;align-items:center;gap:3px}
-/* ghế đang tách nhiều tay: chiếm trọn hàng + cuộn ngang cho khỏi tràn/chồng lộn */
-.seat.multi{flex:1 1 100%;max-width:100%}
-.seat.multi .handzone{overflow-x:auto;justify-content:flex-start;max-width:100%;padding-bottom:6px}
+.seat{flex:1 1 150px;min-width:132px;max-width:184px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.seat.turn .ava{box-shadow:0 0 0 3px var(--gold),0 0 18px #ffcf5c99}
+/* Nhiều tay CUỘN NGANG TRONG GHẾ — ghế GIỮ NGUYÊN vị trí, không dời layout ra giữa. */
+.handzone{display:flex;gap:8px;justify-content:center;align-items:flex-start;min-height:96px;max-width:100%;overflow-x:auto;overflow-y:visible;padding-bottom:2px}
+.hand{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
+.hand.active .cards{filter:drop-shadow(0 0 8px #ffcf5ccc)}
 .tulbl{font-size:10px;font-weight:800;color:#cfe7ff;background:#0007;border-radius:8px;padding:1px 7px;margin-bottom:2px}
 .hand.active .tulbl{background:var(--gold);color:#3d2c05}
-.seat.turn .ava{box-shadow:0 0 0 3px var(--gold),0 0 18px #ffcf5c99}
-.handzone{display:flex;gap:6px;justify-content:center;min-height:88px;align-items:flex-end}
-.hand{display:flex;flex-direction:column;align-items:center}
-.hand.active .cards{filter:drop-shadow(0 0 8px #ffcf5ccc)}
 .tot{margin-top:3px;font-size:12px;font-weight:900;background:#0009;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;color:#fff}
 .tot.bust{background:#5c1616;border-color:#e0474b}
+.bomb{margin-top:2px;font-size:12px;font-weight:900;color:#ff8a8a}
 .out{font-size:11px;font-weight:900;padding:2px 8px;border-radius:8px;margin-top:3px}
 .out.win{background:#12351f;color:#4fe38a}.out.lose{background:#3a1616;color:#ff8a8a}.out.push{background:#2b2b2b;color:#ddd}.out.bj{background:#4a3a10;color:var(--gold)}
+/* Nút thao tác NẰM DƯỚI lá bài của tụ đang chơi (không phải thanh đáy). */
+.handacts{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;width:150px;max-width:150px}
+.handacts button{padding:11px 2px;font-size:12px;border-radius:8px}
+.handacts button:disabled{background:#16281d;color:#4a6152}
 .ava{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#08120b;border:2px solid #ffffffcc;box-shadow:0 2px 6px #0007;margin-top:2px}
 .pname{font-size:12px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pbal{font-size:11px;color:#bfeac0}
 .pbet{font-size:11px;color:var(--gold);font-weight:800;background:#0007;border-radius:10px;padding:1px 7px}
 .emptyseat{opacity:.5;font-size:12px;color:#dbeeff;text-align:center;padding:24px 0}
-/* ---- lá bài (to hơn) ---- */
+/* ---- lá bài ---- */
 .cards{display:flex}
-.card{width:52px;height:74px;border-radius:7px;background:#fbfbf7;color:#16202a;border:1px solid #0003;
+.card{width:54px;height:78px;border-radius:7px;background:#fbfbf7;color:#16202a;border:1px solid #0003;
   box-shadow:0 2px 5px #0007;margin-left:-20px;display:flex;flex-direction:column;justify-content:space-between;
-  padding:5px 6px;font-weight:900;font-size:17px;position:relative}
+  padding:5px 6px;font-weight:900;font-size:18px;position:relative}
 .card:first-child{margin-left:0}
 .card.red{color:#c0392b}
-.card .s{align-self:flex-end;font-size:21px;line-height:1}
-.card .c{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);font-size:24px;opacity:.9}
-.card.back,.card.peek{background:repeating-linear-gradient(45deg,#b6362a,#b6362a 6px,#8f281f 6px,#8f281f 12px);border:2px solid #ffce6b;color:transparent}
-.card.peek{cursor:pointer;animation:wob 1.4s ease-in-out infinite}
-@keyframes wob{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
-.card.fly{animation:deal .72s cubic-bezier(.2,.75,.3,1) both}
-@keyframes deal{0%{transform:translate(220px,-180px) rotate(26deg);opacity:0}55%{opacity:1}100%{transform:none;opacity:1}}
-.card.flip{animation:flip .4s ease both}
-@keyframes flip{0%{transform:rotateY(0)}49%{transform:rotateY(90deg)}50%{transform:rotateY(-90deg)}100%{transform:rotateY(0)}}
+.card .s{align-self:flex-end;font-size:22px;line-height:1}
+.card .c{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);font-size:25px;opacity:.9}
+.card.back{background:repeating-linear-gradient(45deg,#b6362a,#b6362a 6px,#8f281f 6px,#8f281f 12px);border:2px solid #ffce6b;color:transparent}
+/* NẶN: lá bay tới rồi TỰ LẬT từ từ mở mặt (không cần bấm). Chưa "nặn" thì cũng tự hiện. */
+.card.reveal{animation:reveal .8s cubic-bezier(.2,.7,.3,1) both}
+@keyframes reveal{0%{transform:translate(200px,-160px) rotateY(90deg) rotate(16deg);opacity:0}
+  45%{opacity:1;transform:translateY(0) rotateY(90deg)}75%{transform:rotateY(55deg)}100%{transform:none;opacity:1}}
 /* ---- thanh điều khiển đáy ---- */
 #bar{padding:8px 10px 12px;background:#081a12;border-top:1px solid #14361f}
 .betbox{display:flex;gap:8px;align-items:center}
@@ -130,7 +130,7 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 
 <script>
 var TOKEN=localStorage.getItem("bj_token")||"";
-var WS=null, ST=null, MYID="", BAL=0, seenCards={}, flipped={};
+var WS=null, ST=null, MYID="", BAL=0, seenCards={};
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2400)}
 function pop(txt,color){var e=$("pop");e.textContent=txt;e.style.color=color;e.classList.remove("show");void e.offsetWidth;e.classList.add("show")}
@@ -170,26 +170,22 @@ function cmd(c,extra){send(Object.assign({type:"bj",cmd:c},extra||{}))}
 
 // ---- vẽ bài ----
 var SUIT_RED={"♥":1,"♦":1};
-function cardEl(str,fly,peek,key){
+function cardEl(str){
   var d=document.createElement("div");
-  if(peek){d.className="card peek"+(fly?" fly":"");d.dataset.peek=key;d.innerHTML='<div style="font-size:11px;color:#ffce6b;position:absolute;left:0;right:0;top:28px;text-align:center">NẶN</div>';return d}
-  if(str==="🂠"){d.className="card back"+(fly?" fly":"");return d}
+  if(str==="🂠"){d.className="card back";return d}
   var suit=str.slice(-1), rank=str.slice(0,-1);
-  d.className="card"+(SUIT_RED[suit]?" red":"")+(fly?" fly":"");
+  d.className="card"+(SUIT_RED[suit]?" red":"");
   d.innerHTML='<div>'+rank+'</div><div class="c">'+suit+'</div><div class="s">'+suit+'</div>';
   return d;
 }
-// opt: {doubled:bool, resultPhase:bool}
-function drawCards(container,cards,pfx,opt){
-  opt=opt||{};container.innerHTML="";
+function drawCards(container,cards,pfx){
+  container.innerHTML="";
   cards.forEach(function(c,i){
     var key=pfx+"|"+i+"|"+c;
     var isNew=!seenCards[key];seenCards[key]=1;
-    // lá thứ 3 của tay đã NHÂN ĐÔI: úp lại cho nặn tới khi bấm lật hoặc hết ván
-    var isDoubleCard=opt.doubled && i===cards.length-1 && cards.length===3;
-    var peek=isDoubleCard && !opt.resultPhase && !flipped[key];
-    var el=cardEl(c,isNew,peek,key);
-    if(isNew)el.style.animationDelay=(i*0.14)+"s";  // chia chậm hơn, dễ nhìn lá bay tới đâu
+    var el=cardEl(c);
+    // lá MỚI: bay tới + tự lật (nặn). Giãn thời gian giữa các lá cho dễ nhìn.
+    if(isNew){el.className+=" reveal";el.style.animationDelay=(i*0.22)+"s"}
     container.appendChild(el);
   });
 }
@@ -209,7 +205,7 @@ function render(m){
     if(tn){var ts=t.seats.find(function(x){return x.seat===tn.seat});if(ts&&ts.hands&&ts.hands.length>1)tuTxt=" · Tụ "+((tn.handIdx|0)+1);}
     s.innerHTML=tn?("Lượt: <b>"+esc(seatName(tn.seat))+"</b>"+tuTxt+" "+clk):"Nhà cái đang rút...";}
   else if(m.phase==="result")s.innerHTML="Kết quả — ván mới sau "+clk;
-  if(m.phase==="idle"||m.phase==="betting"){seenCards={};flipped={}}
+  if(m.phase==="idle"||m.phase==="betting"){seenCards={}}
   renderSeats(m);renderBar(m);
 }
 function seatName(i){if(!ST)return "#"+(i+1);var s=ST.seats[i];return s&&!s.empty?s.name:("Ghế "+(i+1))}
@@ -224,8 +220,9 @@ function renderSeats(m){
     if(seat.empty){div.innerHTML='<div class="emptyseat">Ghế '+(i+1)+'<br>trống</div>';box.appendChild(div);continue}
     var tseat=tbl?tbl.seats.find(function(x){return x.seat===i}):null;
     var nHands=tseat&&tseat.hands?tseat.hands.length:0;
-    if(nHands>1)div.className+=" multi";   // tách nhiều tay -> ghế trải rộng + cuộn ngang
-    // bài (trên)
+    var myTurn=tbl&&tbl.turn&&tbl.turn.userId===MYID;
+    var turnOpts=(tbl&&tbl.turn&&tbl.turn.options)||[];
+    // bài (trên) — nhiều tay thì CUỘN NGANG trong ghế, ghế không đổi vị trí
     var hz=document.createElement("div");hz.className="handzone";
     var activeEl=null;
     if(tseat&&tseat.hands){
@@ -234,10 +231,16 @@ function renderSeats(m){
         // Nhãn "Tụ N" khi có từ 2 tay trở lên, cho khỏi nhìn lộn giữa các tay đã tách.
         if(nHands>1){var lb=document.createElement("div");lb.className="tulbl";lb.textContent=(h.active?"▶ ":"")+"Tụ "+(hi+1);hd.appendChild(lb)}
         var cc=document.createElement("div");cc.className="cards";
-        drawCards(cc,h.cards,"S"+i+"H"+hi,{doubled:h.doubled,resultPhase:m.phase==="result"});
+        drawCards(cc,h.cards,"S"+i+"H"+hi);
         hd.appendChild(cc);
         var tot=document.createElement("div");tot.className="tot"+(h.bust?" bust":"");tot.textContent=h.total+(h.soft?"ˢ":"");hd.appendChild(tot);
+        // QUẮC: hiện trái bom + số Dogcoin mất ngay tại tụ đó
+        if(h.bust){var bo=document.createElement("div");bo.className="bomb";bo.textContent="💣 -"+fmt(h.bet);hd.appendChild(bo)}
         if(m.lastResult){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
+        // NÚT thao tác ngay DƯỚI lá bài của tụ đang chơi (chỉ ghế mình, đúng lượt)
+        if(h.active&&myTurn){var acts=document.createElement("div");acts.className="handacts";
+          acts.innerHTML=ab("hit","🃏 Rút",turnOpts)+ab("stand","✋ Dừng",turnOpts)+ab("double","💰 Nhân đôi",turnOpts)+ab("split","✂️ Tách",turnOpts);
+          hd.appendChild(acts);}
         if(h.active)activeEl=hd;
         hz.appendChild(hd);
       });
@@ -269,10 +272,10 @@ function renderBar(m){
     for(var i=0;i<m.seats.length;i++)html+='<button data-sit="'+i+'"'+(m.seats[i].empty?"":" disabled")+'>Ghế '+(i+1)+(m.seats[i].empty?"":" ✕")+'</button>';
     html+='</div>';
   }else if(myTurn){
-    var o=m.table.turn.options;
-    sig="acts|"+o.join(",")+"|"+m.table.turn.handIdx;
+    // Nút thao tác giờ nằm DƯỚI lá bài của tụ (trong bàn), không ở thanh đáy nữa.
+    sig="acts|"+m.table.turn.handIdx;
     if(sig===lastBarSig)return;
-    html='<div class="acts">'+ab("hit","🃏 Rút",o)+ab("stand","✋ Dừng",o)+ab("double","💰 Nhân đôi",o)+ab("split","✂️ Tách",o)+'</div>';
+    html='<div class="waiting">👆 Tới lượt bạn — bấm nút ngay dưới lá bài của tụ đang chơi</div>';
   }else if(m.phase==="idle"||m.phase==="betting"){
     var placed=seat&&seat.bet>0;
     sig="bet|"+(placed?seat.bet:0);          // đổi khi ĐẶT xong, không đổi khi đang gõ
@@ -295,7 +298,7 @@ function ab(a,label,opts){var on=opts.indexOf(a)>=0;return '<button class="a-'+a
 
 // ---- uỷ quyền sự kiện (không onclick inline) ----
 document.addEventListener("click",function(e){
-  var el=e.target.closest("[data-sit],[data-act],[data-add],[data-max],[data-place],[data-leave],[data-peek]");
+  var el=e.target.closest("[data-sit],[data-act],[data-add],[data-max],[data-place],[data-leave]");
   if(!el)return;
   if(el.id==="loginBtn")return;
   if(el.dataset.sit!==undefined)cmd("sit",{seat:+el.dataset.sit});
@@ -304,7 +307,6 @@ document.addEventListener("click",function(e){
   else if(el.dataset.max!==undefined){var b2=$("betInput");if(b2)b2.value=BAL}
   else if(el.dataset.place!==undefined){var v=parseInt(($("betInput")||{}).value);if(!v||v<=0)return toast("Nhập số Dogcoin");cmd("bet",{amount:v})}
   else if(el.dataset.leave!==undefined)cmd("leave");
-  else if(el.dataset.peek!==undefined){flipped[el.dataset.peek]=1;el.classList.add("flip");if(ST)render(ST)} // lật lá nặn
 });
 $("loginBtn").addEventListener("click",doLogin);
 $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});
