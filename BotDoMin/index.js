@@ -515,10 +515,12 @@ function webMinesRefundStale() {
 }
 setInterval(webMinesRefundStale, 10 * 60 * 1000);
 
-function webMinesLog(g, result, amount) {
+function webMinesLog(g, result, amount, hitIdx) {
     const entry = {
         name: g.name, bet: g.bet, mines: g.totalMines, diamonds: g.revealed.length,
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
+        // giữ lại bàn cờ để vẽ lại y như bảng dò mìn cũ trong Discord
+        board: { open: g.revealed.slice(), bombs: g.mines.slice(), hit: (hitIdx === undefined ? -1 : hitIdx) },
     };
     minesHistory.unshift(entry);
     if (minesHistory.length > 20) minesHistory.pop();
@@ -583,7 +585,7 @@ const webMinesApi = {
 
         if (g.mines.includes(idx)) {
             webMines.delete(userId);
-            webMinesLog(g, 'Trúng mìn (Thua)', -g.bet);
+            webMinesLog(g, 'Trúng mìn (Thua)', -g.bet, idx);
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} BÙM ở ô ${idx} — mất ${g.bet}`);
             // Tiền đã trừ từ lúc bắt đầu, thua thì không trừ thêm lần nữa.
             return { ok: true, hit: true, mines: g.mines, balance: getUserData(userId).points || 0 };
@@ -638,14 +640,59 @@ function minesResultLine(h) {
     return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · cược ${h.bet.toLocaleString()} → ${money}`;
 }
 
+// Vẽ lại bàn cờ y như bảng dò mìn cũ trong Discord: 5 ô mỗi hàng, lộ hết mìn.
+// Ô đã đào = Dog Coin, ô nổ = 💥, mìn chưa đụng = 💣, còn lại = ô trống.
+function minesBoardText(b) {
+    const rows = [];
+    for (let i = 0; i < TOTAL_TILES; i += 5) {
+        const line = [];
+        for (let c = i; c < Math.min(i + 5, TOTAL_TILES); c++) {
+            if (c === b.hit) line.push('💥');
+            else if (b.open.includes(c)) line.push(DOGCOIN_EMOJI);
+            else if (b.bombs.includes(c)) line.push('💣');
+            else line.push('⬛');
+        }
+        rows.push(line.join(' '));
+    }
+    return rows.join('\n');
+}
+
+function minesSoloEmbed(h) {
+    const win = h.amount >= 0;
+    let desc = `👤 **${h.name}**\n`;
+    desc += win
+        ? (h.result === 'Jackpot'
+            ? `🏆 **JACKPOT!** Đào sạch ô an toàn!\n`
+            : `✅ **Dừng đúng lúc!**\n`)
+        : `💥 **BÙM!** Trúng mìn rồi!\n`;
+    desc += `💣 Số mìn: **${h.mines}** · ${DOGCOIN_EMOJI} Đào được: **${h.diamonds}** ô\n`;
+    desc += `💰 Mức đặt: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
+    desc += win
+        ? `🎉 Ăn về: **+${h.amount.toLocaleString()}** ${DOGCOIN_EMOJI}\n`
+        : `📉 Mất: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
+    if (h.board) desc += `\n${minesBoardText(h.board)}`;
+
+    return new EmbedBuilder()
+        .setTitle('💣 TRÒ CHƠI DÒ MÌN')
+        .setColor(win ? 0x2ecc71 : 0xe74c3c)
+        .setDescription(desc)
+        .setTimestamp();
+}
+
 async function flushMinesQueue() {
     if (!minesBoard.channel || !minesBoard.queue.length) return;
     const batch = minesBoard.queue.splice(0, 10);
-    const embed = new EmbedBuilder()
-        .setColor(batch.some(h => h.amount >= 0) ? 0x2ecc71 : 0xe74c3c)
-        .setTitle(batch.length > 1 ? `💣 KẾT QUẢ DÒ MÌN — ${batch.length} ván` : '💣 KẾT QUẢ DÒ MÌN')
-        .setDescription(batch.map(minesResultLine).join('\n'))
-        .setTimestamp();
+
+    // Một ván thì vẽ cả bàn cờ cho đã mắt. Nhiều ván dồn trong 6 giây thì chỉ liệt kê
+    // — 10 bàn cờ trong một tin vừa dài vừa vượt giới hạn ký tự của embed.
+    const embed = batch.length === 1
+        ? minesSoloEmbed(batch[0])
+        : new EmbedBuilder()
+            .setColor(batch.some(h => h.amount >= 0) ? 0x2ecc71 : 0xe74c3c)
+            .setTitle(`💣 KẾT QUẢ DÒ MÌN — ${batch.length} ván`)
+            .setDescription(batch.map(minesResultLine).join('\n'))
+            .setTimestamp();
+
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Dò Mìn trên web').setStyle(ButtonStyle.Success)
     );

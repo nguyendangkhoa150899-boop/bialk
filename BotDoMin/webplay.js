@@ -433,13 +433,6 @@ const PAGE = [
 
     '<div class="card"><h2>👥 Ai đang đặt ván này</h2><div id="whoBox" class="muted" style="font-size:13px">Chưa ai đặt.</div></div>',
 
-    '<div class="card"><h2>💬 Chat sòng</h2>',
-    '<div id="chatBox"></div>',
-    '<div style="display:flex;gap:8px;margin-top:8px">',
-    '<input id="chatIn" maxlength="200" placeholder="Chém gió..." style="margin-top:0;flex:1">',
-    '<button style="background:var(--blue);min-width:64px" onclick="sendChat()">Gửi</button>',
-    '</div></div>',
-
     // Một bảng duy nhất thay cho "soi cầu" + "10 ván của bạn": kiểu bảng soi cầu
     // trong Discord, ván nào mình có đặt thì hiện luôn ăn/thua ở cột phải.
     '<div class="card"><h2>🔮 Lịch sử 20 ván gần nhất</h2>',
@@ -482,6 +475,15 @@ const PAGE = [
     '<div class="muted" id="mNote" style="font-size:12px;margin-top:3px;text-align:center;color:#ff9a5c"></div>',
     '</div>',
     '</div>', // hết #pageMine
+
+    // Chat nằm NGOÀI hai trang -> Tài Xỉu và Dò Mìn dùng chung một phòng chat,
+    // đổi tab vẫn thấy nguyên cuộc trò chuyện.
+    '<div class="card"><h2>💬 Chat sòng</h2>',
+    '<div id="chatBox"></div>',
+    '<div style="display:flex;gap:8px;margin-top:8px">',
+    '<input id="chatIn" maxlength="200" placeholder="Chém gió..." style="margin-top:0;flex:1">',
+    '<button style="background:var(--blue);min-width:64px" onclick="sendChat()">Gửi</button>',
+    '</div></div>',
 
     '<div id="winpop"></div>',
     '<div id="toast"></div>',
