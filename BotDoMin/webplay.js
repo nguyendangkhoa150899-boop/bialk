@@ -312,6 +312,10 @@ const PAGE = [
     '.mstep.hit{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
     '.mstep.now{background:linear-gradient(180deg,#4da3ff,#2c6fd0);color:#fff;border-color:#7dc0ff;animation:stepGlow 1.4s ease-in-out infinite}',
     '.mstep.capped{background:#3a2415;color:#ff9a5c;border-color:#7d4a1e;font-size:11px}',
+    '.mstep.last{border-color:#c39bf0;box-shadow:inset 0 0 0 1px #c39bf055}',
+    '.mstep.last .tag{display:block;font-size:9px;letter-spacing:.5px;color:#c39bf0;font-weight:700}',
+    '.mstep.last.hit .tag{color:#7d5f1e}',
+    '#mbar{cursor:grab}#mbar.drag{cursor:grabbing}',
     '@keyframes stepGlow{0%,100%{box-shadow:0 0 0 0 #4da3ff00}50%{box-shadow:0 0 12px 2px #4da3ff88}}',
     // sân: cột đếm Dogcoin còn lại | lưới 5×5 | cột đếm mìn
     '#mstage{display:grid;grid-template-columns:46px 1fr 46px;gap:8px;margin-top:10px}',
@@ -459,13 +463,9 @@ const PAGE = [
     '</div>',
 
     '<div class="mctl">',
-    '<button class="mp" id="mp3" onclick="mSet(3)">3</button>',
-    '<button class="mp" id="mp5" onclick="mSet(5)">5</button>',
     '<button id="mMinus" onclick="mStep(-1)">−</button>',
-    '<div class="box"><div class="lab">Số mìn</div><input id="mMines" inputmode="numeric" value="3" oninput="mTable()"></div>',
+    '<div class="box"><div class="lab">Số mìn (1–24)</div><input id="mMines" inputmode="numeric" value="3" oninput="mTable()"></div>',
     '<button id="mPlus" onclick="mStep(1)">+</button>',
-    '<button class="mp" id="mp10" onclick="mSet(10)">10</button>',
-    '<button class="mp" id="mp20" onclick="mSet(20)">20</button>',
     '</div>',
 
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
@@ -491,7 +491,7 @@ const PAGE = [
     // Tài Xỉu vẫn tự làm mới ngầm kể cả khi đang ở trang Dò Mìn (số dư luôn đúng,
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
-    'mSync();go(localStorage.getItem("play_page")==="mine"?"mine":"tx")}',
+    'mBarDrag();mSync();go(localStorage.getItem("play_page")==="mine"?"mine":"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
     'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
     'function allIn(){document.getElementById("amt").value=BAL}',
@@ -624,9 +624,6 @@ const PAGE = [
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
     'function mAllIn(){if(MG)return;$("mBet").value=mCap();mBand()}',
     'function mStep(d){if(MG)return;var n=mNum("mMines")+d;if(n<1)n=1;if(n>MT-1)n=MT-1;$("mMines").value=n;mTable()}',
-    'function mSet(n){if(MG)return;$("mMines").value=n;mTable()}',
-    'function mPresets(){var n=MG?MG.totalMines:mNum("mMines");',
-    '[3,5,10,20].forEach(function(k){var b=$("mp"+k);if(b){b.classList.toggle("on",n===k);b.disabled=!!MG}})}',
     // Kéo thanh dưới để xem mở N ô thì ăn bao nhiêu — không phải chơi thử mới biết.
     'function mPreview(){var s=$("mSlide");var d=parseInt(s.value)||1;',
     'if(!MTAB.length){$("mPvWin").textContent="—";return}',
@@ -652,9 +649,22 @@ const PAGE = [
     '$("mbar").innerHTML=MTAB.map(function(m,i){var k=i+1;',
     'var c=k<=done?"hit":(k===done+1?"now":"");',
     'var cap=MAXWIN&&bet>0&&Math.floor(bet*m)>MAXWIN;if(cap)c+=" capped";',
-    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'" onclick="mJump(\'+k+\')">\'+(cap?"TRẦN":fx(m))+"</div>"}).join("");',
+    // Mốc cuối = mở hết ô an toàn. Đánh dấu hẳn để không ai tưởng bảng bị thiếu
+    // (trang sigma cắt mất mốc này vì thanh của họ chỉ có 7 ô cố định).
+    'if(k===MTAB.length)c+=" last";',
+    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'" onclick="mJump(\'+k+\')">\'+(cap?"TRẦN":fx(m))+',
+    '(k===MTAB.length?\'<span class="tag">MỞ HẾT</span>\':"")+"</div>"}).join("");',
     'var cur=$("ms"+(done+1));if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:"nearest",inline:"center"})}',
     'function mJump(k){var s=$("mSlide");s.value=k;mPreview()}',
+    // Trên máy tính không vuốt được như điện thoại -> cho giữ chuột kéo ngang thanh hệ số.
+    // Kéo quá 4px thì coi là đang cuộn, không tính là bấm chọn mốc.
+    'function mBarDrag(){var b=$("mbar");var down=false,x0=0,sl=0,moved=0;',
+    'b.addEventListener("mousedown",function(e){down=true;moved=0;x0=e.pageX;sl=b.scrollLeft;b.classList.add("drag");e.preventDefault()});',
+    'window.addEventListener("mousemove",function(e){if(!down)return;var d=e.pageX-x0;moved=Math.max(moved,Math.abs(d));b.scrollLeft=sl-d});',
+    'window.addEventListener("mouseup",function(){down=false;b.classList.remove("drag")});',
+    'b.addEventListener("click",function(e){if(moved>4){e.stopPropagation();e.preventDefault()}},true);',
+    // lăn chuột dọc cũng cuộn ngang được cho tiện
+    'b.addEventListener("wheel",function(e){if(!e.deltaY)return;b.scrollLeft+=e.deltaY;e.preventDefault()},{passive:false})}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
     'if(MG){',
@@ -670,7 +680,7 @@ const PAGE = [
     'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=MOVER;',
     'if(!MOVER)$("mStat").textContent=MTAB.length?("mở 1 ô "+fx(MTAB[0])+" · mở hết "+fx(MTAB[MTAB.length-1])):"Chọn số mìn và tiền cược";}',
     '["mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
-    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mPresets();mBar();mPreview()}',
+    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mBar();mPreview()}',
     'function mGoClick(){if(MG)mCashout();else mStartGame()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
     'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;setBal(j.balance);',
