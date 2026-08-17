@@ -7,6 +7,7 @@ const {
 const fs = require('fs');
 const { startPanel } = require('./panel');
 const { startWebPlay } = require('./webplay');
+const { createTable: createBlackjackTable } = require('./blackjackTable');
 
 // Link hiển thị cho người chơi vào web cược (đổi trong .env nếu khác)
 const WEB_PLAY_URL = process.env.WEB_PLAY_URL || 'http://103.72.98.37:3002';
@@ -109,12 +110,21 @@ setInterval(() => {
     });
 }, 10000);
 
+// Tên hiển thị ép cứng cho vài ID quen (cho dễ nhìn trên bàn game). ID khác chạy như cũ.
+const NAME_OVERRIDE = {
+    '456136500011335698': 'BiaLK',
+    '875643315733790740': 'HoangFour',
+    '464666163591249934': 'Anh Vinh Q',
+    '537485304819351552': 'Hân Z',
+};
+
 function getUserData(userId) {
     if (!dbCache[userId]) {
         dbCache[userId] = { points: STARTING_DOGCOIN, lastDaily: 0 };
     } else if (typeof dbCache[userId] === 'number') {
         dbCache[userId] = { points: dbCache[userId], lastDaily: 0 };
     }
+    if (NAME_OVERRIDE[userId]) dbCache[userId].name = NAME_OVERRIDE[userId]; // ép tên quen
     return dbCache[userId];
 }
 
@@ -809,6 +819,71 @@ const webStairsApi = {
     },
 };
 
+// ===== BLACKJACK — bàn chung (logic ở blackjack.js/blackjackTable.js) =====
+// Tiền dùng ví thật (getUserData/updatePoints). webplay.js lo WebSocket + trang riêng.
+const blackjackTable = createBlackjackTable({
+    clock: () => Date.now(),
+    getPoints: (u) => (getUserData(u).points || 0),
+    addPoints: (u, a) => updatePoints(u, a),
+    announce: (m) => writeLog('SYSTEM', `[BLACKJACK] ${m}`),
+    log: (cat, msg) => writeLog(cat, msg),
+    SEATS: 5, BET_WINDOW_MS: 7000, TURN_MS: 15000, RESULT_MS: 6000,
+    MIN_BET: 1, MAX_BET: 0,
+});
+
+// ===== BẢNG MỜI CHƠI BLACKJACK TRÊN DISCORD (để lấy link) =====
+const blackjackBoard = { channel: null, message: null, lastEdit: 0 };
+function getBlackjackBoardData() {
+    const v = blackjackTable.view('_');
+    const nSeated = (v.seats || []).filter(s => !s.empty).length;
+    const phaseTxt = v.phase === 'playing' ? '🟢 đang chơi' : v.phase === 'betting' ? '🟢 đang đặt cược' : v.phase === 'result' ? 'đang trả thưởng' : 'bàn trống';
+    const desc =
+        `Xì Dách 5 ghế · **ăn 1.5 (3:2)** · nhà cái dừng ở mọi 17 · 2 bộ bài.\n` +
+        `Có **Rút / Dừng / Nhân đôi / Tách** (tách được nhiều tay). Chơi trên web, xoay ngang cho dễ.\n\n` +
+        `👥 Đang ngồi: **${nSeated}/5** · ${phaseTxt}`;
+    const embed = new EmbedBuilder()
+        .setTitle('🂡 BLACKJACK — chơi trên web')
+        .setColor(0x2e8b57)
+        .setDescription(desc)
+        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('bj_link').setLabel('🂡 Chơi Blackjack trên web').setStyle(ButtonStyle.Success)
+    );
+    return { embeds: [embed], components: [row] };
+}
+async function startBlackjackBoard(channel) {
+    if (blackjackBoard.message) await blackjackBoard.message.delete().catch(() => { });
+    blackjackBoard.channel = channel;
+    blackjackBoard.message = await channel.send(getBlackjackBoardData());
+    blackjackBoard.lastEdit = Date.now();
+    dbCache._bjChannelId = channel.id;
+    dbCache._bjMsgId = blackjackBoard.message.id;
+    saveDbNow();
+}
+function stopBlackjackBoard() {
+    if (blackjackBoard.message) blackjackBoard.message.delete().catch(() => { });
+    blackjackBoard.channel = null; blackjackBoard.message = null;
+    dbCache._bjChannelId = null; dbCache._bjMsgId = null;
+    saveDbNow();
+}
+async function resumeBlackjackBoard() {
+    const chId = dbCache._bjChannelId;
+    if (!chId) return;
+    const ch = await client.channels.fetch(chId);
+    const old = dbCache._bjMsgId ? await ch.messages.fetch(dbCache._bjMsgId).catch(() => null) : null;
+    if (old) { blackjackBoard.channel = ch; blackjackBoard.message = old; blackjackBoard.lastEdit = Date.now(); await old.edit(getBlackjackBoardData()).catch(() => { }); return; }
+    await startBlackjackBoard(ch);
+}
+function runBlackjackBoardLoop() {
+    // cập nhật nhẹ mỗi 15s (số người ngồi / trạng thái), không dính rate limit
+    setInterval(() => {
+        if (!blackjackBoard.message) return;
+        if (Date.now() - blackjackBoard.lastEdit < 15000) return;
+        blackjackBoard.lastEdit = Date.now();
+        blackjackBoard.message.edit(getBlackjackBoardData()).catch(e => writeLog('SYSTEM', `[BẢNG BLACKJACK] ${e.message}`));
+    }, 5000);
+}
+
 // ===== BẢNG DÒ MÌN TRÊN DISCORD =====
 // Khác Tài Xỉu: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
 // Nên bảng này chỉ là chỗ mời chơi + khoe ai vừa ăn đậm, KHÔNG có nút đặt cược.
@@ -1190,6 +1265,8 @@ client.once('ready', async (c) => {
     // resumeXosoAfterRestart().catch(() => {});
     runMinesBoardLoop();
     resumeMinesBoard().catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không nối lại được: ${e.message}`));
+    runBlackjackBoardLoop();
+    resumeBlackjackBoard().catch(e => writeLog('SYSTEM', `[BẢNG BLACKJACK] Không nối lại được: ${e.message}`));
     runStairsBoardLoop();
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
 
@@ -1206,6 +1283,8 @@ client.once('ready', async (c) => {
             writeLog,
             mines: webMinesApi,
             stairs: webStairsApi,
+            blackjack: blackjackTable,
+            webPlayUrl: WEB_PLAY_URL,
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -1249,6 +1328,9 @@ client.once('ready', async (c) => {
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
+            getBJBoard: () => ({ on: !!blackjackBoard.message, channelId: dbCache._bjChannelId || '' }),
+            startBJBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBlackjackBoard(ch); return ch.name; },
+            stopBJBoard: () => stopBlackjackBoard(),
             // Bảng mời chơi Leo Thang
             getStairs: () => ({ on: !!stairsBoard.message, channelId: dbCache._stairsChannelId || '' }),
             startStairs: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStairsBoard(ch); return ch.name; },
@@ -2908,6 +2990,19 @@ client.on('interactionCreate', async interaction => {
         });
     }
 
+    if (interaction.customId === 'bj_link') {
+        const userData = getUserData(userId);
+        userData.name = userData.name || interaction.user.username;
+        if (!userData.webPin) { userData.webPin = String(Math.floor(100000 + Math.random() * 900000)); saveDbNow(); }
+        return interaction.reply({
+            content:
+                `🂡 **Blackjack (Xì Dách) — chơi trên web, xoay ngang cho dễ:**\n${WEB_PLAY_URL}/blackjack\n\n` +
+                `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
+                `Vào nhập ID + PIN là ngồi bàn được (PIN dùng chung với các game khác). ĐỪNG đưa PIN cho ai!`,
+            ephemeral: true,
+        });
+    }
+
     // ======== NÚT XỔ SỐ ========
     if (interaction.customId === 'xs_de' || interaction.customId === 'xs_lo') {
         if (xsState.status !== 'betting') {
@@ -3314,6 +3409,9 @@ let isShuttingDown = false;
 function flushAndExit(signal) {
     if (isShuttingDown) return;
     isShuttingDown = true;
+    try {
+        blackjackTable.refundOnShutdown(); // hoàn cược ván blackjack đang chơi trước khi lưu
+    } catch (e) { }
     try {
         syncCache();
         fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));

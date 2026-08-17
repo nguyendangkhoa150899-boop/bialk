@@ -9,6 +9,8 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const pathmod = require('path');
+const { attachWebSocket } = require('./wsserver');
+const BLACKJACK_PAGE = require('./blackjackPage').PAGE;
 
 // Icon Dog Coin (ảnh lấy từ game, đã tách nền). Đọc 1 lần lúc khởi động cho nhẹ.
 // Thiếu file thì trang vẫn chạy — chỗ nào có icon sẽ trống, không vỡ giao diện.
@@ -90,6 +92,13 @@ function startWebPlay(ctx) {
             if (req.method === 'GET' && path === '/') {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
                 return res.end(PAGE);
+            }
+
+            // Blackjack = TRANG RIÊNG (yêu cầu xoay ngang điện thoại). Đăng nhập dùng chung
+            // /api/login; chơi qua WebSocket /ws.
+            if (req.method === 'GET' && path === '/blackjack') {
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+                return res.end(BLACKJACK_PAGE);
             }
 
             if (req.method === 'GET' && (path === '/dogcoin.png' || path === '/hero.png')) {
@@ -304,6 +313,79 @@ function startWebPlay(ctx) {
         }
     });
 
+    // ===== BLACKJACK QUA WEBSOCKET =====
+    const bj = ctx.blackjack;
+    if (bj) {
+        // chat riêng của bàn blackjack (giữ 60 tin gần nhất, mỗi người 1 tin / 2 giây)
+        const bjChat = () => { const db = ctx.getDb(); if (!Array.isArray(db._bjChat)) db._bjChat = []; return db._bjChat; };
+        const bjChatAt = new Map();
+
+        const wss = attachWebSocket(server, {
+            path: '/ws',
+            onMessage: (client, msg) => {
+                if (!msg || typeof msg !== 'object') return;
+                if (msg.type === 'auth') {
+                    const s = sessions()[msg.token];
+                    const uid = s && (Date.now() - (s.ts || 0) <= SESSION_TTL) ? s.u : null;
+                    if (!uid) { client.send({ type: 'authfail' }); return; }
+                    client.meta.userId = uid;
+                    const me = ctx.getUserData(uid);
+                    client.send({ type: 'authok', userId: uid, balance: me.points || 0 });
+                    client.send({ type: 'chat', list: bjChat().slice(-40) });
+                    client.send(bjStateFor(uid));
+                    return;
+                }
+                const uid = client.meta.userId;
+                if (!uid) return;
+                if (msg.type === 'chat') {
+                    const text = String(msg.text || '').trim().slice(0, 200);
+                    if (!text) return;
+                    const last = bjChatAt.get(uid) || 0;
+                    if (Date.now() - last < 2000) { client.send({ type: 'denied', error: 'Chậm thôi, 2 giây 1 tin' }); return; }
+                    bjChatAt.set(uid, Date.now());
+                    const me = ctx.getUserData(uid);
+                    const line = { u: uid, name: me.name || ('web_' + uid.slice(-4)), text, ts: Date.now() };
+                    const log = bjChat(); log.push(line); while (log.length > 60) log.shift();
+                    // gửi cho mọi người: vừa vào khung chat, vừa bong bóng nổi trên đầu người nói
+                    for (const c of wss.clients) c.send({ type: 'say', line });
+                    return;
+                }
+                if (msg.type === 'bj') {
+                    const me = ctx.getUserData(uid);
+                    const name = me.name || ('web_' + uid.slice(-4));
+                    let r;
+                    if (msg.cmd === 'sit') r = bj.sit(uid, name, msg.seat | 0);
+                    else if (msg.cmd === 'leave') r = bj.leave(uid);
+                    else if (msg.cmd === 'bet') r = bj.bet(uid, msg.amount);
+                    else if (msg.cmd === 'act') r = bj.act(uid, msg.action);
+                    if (r && r.error) client.send({ type: 'denied', error: r.error });
+                    bjBroadcast();
+                }
+            },
+        });
+
+        const bjStateFor = (uid) => {
+            const v = bj.view(uid);
+            v.type = 'state'; v.balance = ctx.getUserData(uid).points || 0;
+            return v;
+        };
+        let bjLastPhase = 'idle';
+        function bjBroadcast() {
+            const v = bj.view('_');
+            // vừa sang kết quả -> bắn popup ăn/thua riêng từng người (bắt cả khi kết thúc do bấm Dừng)
+            if (bjLastPhase !== 'result' && v.phase === 'result' && v.lastResult) {
+                for (const c of wss.clients) {
+                    const uid = c.meta.userId; if (!uid) continue;
+                    const d = v.lastResult.result.find(x => x.userId === uid);
+                    if (d) { const staked = d.hands.reduce((a, h) => a + h.bet, 0); c.send({ type: 'result', net: d.totalPayout - staked }); }
+                }
+            }
+            bjLastPhase = v.phase;
+            for (const c of wss.clients) if (c.meta.userId) c.send(bjStateFor(c.meta.userId));
+        }
+        setInterval(() => { try { bj.tick(); bjBroadcast(); } catch (e) { ctx.writeLog('SYSTEM', `[BLACKJACK] loop lỗi: ${e.message}`); } }, 1000);
+    }
+
     server.listen(PORT, '0.0.0.0', () => ctx.writeLog('SYSTEM', `[WEB CƯỢC] Cổng web cược chạy ở cổng ${PORT}`));
     return server;
 }
@@ -489,6 +571,7 @@ const PAGE = [
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
     '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
+    '<button onclick="location.href=\'/blackjack\'">🂡 Blackjack</button>',   // trang riêng
     '</div>',
 
     // ================= TRANG TÀI XỈU =================

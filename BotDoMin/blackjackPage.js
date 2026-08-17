@@ -106,6 +106,28 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 #pop.show{animation:pf 2.8s ease-out forwards}
 @keyframes pf{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) scale(.9)}}
 .hidden{display:none}
+.btn-blue{background:linear-gradient(180deg,#5aa9ff,#2c6fd0);color:#fff}
+.dc{width:1.05em;height:1.05em;vertical-align:-.16em;object-fit:contain;display:inline-block}
+/* bong bóng chat nổi trên đầu avatar */
+.bubble{max-width:120px;margin:0 auto 3px;background:#fff;color:#12202a;font-size:12px;font-weight:700;
+  padding:4px 9px;border-radius:12px;position:relative;box-shadow:0 2px 6px #0007;animation:bubIn .2s ease-out;
+  white-space:normal;word-break:break-word;line-height:1.2}
+.bubble:after{content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff;border-bottom:0}
+@keyframes bubIn{0%{opacity:0;transform:translateY(6px) scale(.8)}100%{opacity:1;transform:none}}
+/* chat dưới cùng */
+#chatBar{padding:6px 10px 10px;background:#081a12;border-top:1px solid #14361f}
+#chatLog{height:64px;overflow-y:auto;font-size:13px;margin-bottom:6px}
+.cmsg{padding:2px 0;word-break:break-word}
+.chatIn{display:flex;gap:8px}
+.chatIn input{flex:1;background:#0a1712;border:1px solid #1f4a34;border-radius:10px;color:var(--tx);padding:10px;font-size:16px}
+.chatIn button{padding:10px 16px}
+/* Xoay ngang: overlay nhắc khi cầm dọc trên điện thoại nhỏ */
+#rotate{display:none}
+@media (orientation:portrait) and (max-width:820px){
+  #rotate{display:flex;position:fixed;inset:0;z-index:200;background:#06121a;color:var(--gold);
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:20px;font-weight:900;gap:10px;padding:24px;line-height:1.5}
+  #app{filter:blur(2px)}
+}
 </style></head><body>
 
 <div id="login">
@@ -121,7 +143,7 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 <div id="app" class="hidden">
   <div class="hbar">
     <div><span class="conn" id="conn">•</span> <b>Blackjack</b></div>
-    <div class="bal"><span id="bal">0</span> 🐕</div>
+    <div class="bal"><span id="bal">0</span> <img class="dc" src="/dogcoin.png" alt=""></div>
   </div>
   <div id="felt">
     <div class="rail"></div>
@@ -132,17 +154,25 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
     <div id="seatRow"></div>
   </div>
   <div id="bar"></div>
+  <div id="chatBar">
+    <div id="chatLog"></div>
+    <div class="chatIn"><input id="chatIn" maxlength="200" placeholder="Chat...">
+      <button id="chatSend" class="btn-blue">Gửi</button></div>
+  </div>
 </div>
 
+<div id="rotate">📱↻<br>Xoay ngang điện thoại để chơi Blackjack cho dễ</div>
 <div id="pop"></div>
 <div id="toast"></div>
 
 <script>
 var TOKEN=localStorage.getItem("bj_token")||"";
 var WS=null, ST=null, MYID="", BAL=0, seenCards={};
+var chatList=[], bubbles={};   // bubbles: userId -> {text, until} (bong bóng nổi trên đầu)
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2400)}
-function pop(txt,color){var e=$("pop");e.textContent=txt;e.style.color=color;e.classList.remove("show");void e.offsetWidth;e.classList.add("show")}
+var COIN='<img class="dc" src="/dogcoin.png" alt="">';
+function pop(txt,color){var e=$("pop");e.innerHTML=txt;e.style.color=color;e.classList.remove("show");void e.offsetWidth;e.classList.add("show")}
 function esc(s){return String(s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;"})}
 function fmt(n){return Number(n||0).toLocaleString("vi-VN")}
 function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=fmt(v)}
@@ -151,7 +181,7 @@ function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=fmt(
 function doLogin(){
   var u=$("uid").value.trim(), p=$("pin").value.trim();
   if(!u||!p){$("loginErr").textContent="Nhập đủ ID và PIN";return}
-  fetch("/bj/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})})
+  fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})})
     .then(function(r){return r.json()}).then(function(j){
       if(!j.ok){$("loginErr").textContent=j.error||"Sai thông tin";return}
       TOKEN=j.token;localStorage.setItem("bj_token",TOKEN);enter(j.balance);
@@ -169,9 +199,13 @@ function connect(){
     else if(m.type==="balance")setBal(m.balance);
     else if(m.type==="toast")toast(m.msg);
     else if(m.type==="denied")toast("❌ "+(m.error||"không được"));
-    else if(m.type==="result"){if(typeof m.net==="number"&&m.net!==0)pop((m.net>0?"+":"")+fmt(m.net)+" 🐕",m.net>0?"#4fe38a":"#ff6b6b")}
+    else if(m.type==="result"){if(typeof m.net==="number"&&m.net!==0)pop((m.net>0?"+":"")+fmt(m.net)+" "+COIN,m.net>0?"#4fe38a":"#ff6b6b")}
     else if(m.type==="authok"){MYID=m.userId;if(typeof m.balance==="number")setBal(m.balance)}
     else if(m.type==="authfail"){localStorage.removeItem("bj_token");location.reload()}
+    else if(m.type==="chat"){chatList=m.list||[];renderChat()}
+    else if(m.type==="say"){chatList.push(m.line);if(chatList.length>60)chatList.shift();renderChat();
+      bubbles[m.line.u]={text:m.line.text,until:Date.now()+4500};if(ST)renderSeats(ST);
+      setTimeout(function(){if(ST)renderSeats(ST)},4600)}
   };
 }
 function send(o){if(WS&&WS.readyState===1)WS.send(JSON.stringify(o))}
@@ -244,7 +278,7 @@ function renderSeats(m){
         hd.appendChild(cc);
         var tot=document.createElement("div");tot.className="tot"+(h.bust?" bust":"");tot.textContent=h.total+(h.soft?"ˢ":"");hd.appendChild(tot);
         // QUẮC: hiện trái bom + số Dogcoin mất ngay tại tụ đó
-        if(h.bust){var bo=document.createElement("div");bo.className="bomb";bo.textContent="💣 -"+fmt(h.bet);hd.appendChild(bo)}
+        if(h.bust){var bo=document.createElement("div");bo.className="bomb";bo.innerHTML="💣 -"+fmt(h.bet)+" "+COIN;hd.appendChild(bo)}
         if(m.lastResult){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
         hz.appendChild(hd);
       });
@@ -255,9 +289,12 @@ function renderSeats(m){
       acts.innerHTML=ab("hit","🃏 Rút",turnOpts)+ab("stand","✋ Dừng",turnOpts)+ab("double","💰 Nhân đôi",turnOpts)+ab("split","✂️ Tách",turnOpts);
       div.appendChild(acts);}
     // avatar + tên + số dư/cược (dưới)
+    // bong bóng chat nổi trên đầu người này (nếu vừa chat, còn hạn)
+    var bub=bubbles[seat.userId];
+    if(bub&&bub.until>Date.now()){var sb=document.createElement("div");sb.className="bubble";sb.textContent=bub.text;div.appendChild(sb)}
     var ava=document.createElement("div");ava.className="ava";ava.style.background=avaColor(seat.userId);ava.textContent=(seat.name||"?").slice(0,2).toUpperCase();div.appendChild(ava);
     var nm=document.createElement("div");nm.className="pname";nm.textContent=(seat.userId===MYID?"★ ":"")+seat.name;div.appendChild(nm);
-    if(seat.bet>0){var bt=document.createElement("div");bt.className="pbet";bt.textContent="🐕 "+fmt(seat.bet);div.appendChild(bt)}
+    if(seat.bet>0){var bt=document.createElement("div");bt.className="pbet";bt.innerHTML=COIN+" "+fmt(seat.bet);div.appendChild(bt)}
     box.appendChild(div);
   }
 }
@@ -316,6 +353,16 @@ document.addEventListener("click",function(e){
 });
 $("loginBtn").addEventListener("click",doLogin);
 $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});
+// ---- chat ----
+function renderChat(){var box=$("chatLog");if(!box)return;
+  box.innerHTML=chatList.slice(-40).map(function(m){
+    return '<div class="cmsg"><b style="color:'+avaColor(m.u)+'">'+esc(m.name)+'</b>: '+esc(m.text)+'</div>';
+  }).join("");
+  box.scrollTop=box.scrollHeight;
+}
+function sendChat(){var i=$("chatIn");if(!i)return;var v=i.value.trim();if(!v)return;send({type:"chat",text:v});i.value=""}
+$("chatSend")&&$("chatSend").addEventListener("click",sendChat);
+$("chatIn")&&$("chatIn").addEventListener("keydown",function(e){if(e.key==="Enter")sendChat()});
 if(TOKEN)enter();
 </script></body></html>`;
 

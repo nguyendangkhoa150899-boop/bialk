@@ -139,6 +139,7 @@ function startPanel(ctx) {
             totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
             stairsBoard: ctx.getStairs ? ctx.getStairs() : { on: false, channelId: '' },
+            bjBoard: ctx.getBJBoard ? ctx.getBJBoard() : { on: false, channelId: '' },
             stairsHistory: ctx.getStairsHistory ? ctx.getStairsHistory() : [],
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
@@ -337,6 +338,21 @@ function startPanel(ctx) {
                 if (path === '/api/stairs/board/stop') {
                     if (ctx.stopStairs) ctx.stopStairs();
                     ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Leo Thang`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/bj/board/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    if (!ctx.startBJBoard) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    try {
+                        const name = await ctx.startBJBoard(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Đăng bảng Blackjack tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: e.message }); }
+                }
+                if (path === '/api/bj/board/stop') {
+                    if (ctx.stopBJBoard) ctx.stopBJBoard();
+                    ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Blackjack`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
@@ -666,6 +682,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
       <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
       <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
+      <button data-tab="bj" onclick="tab('bj')">🂡 Blackjack</button>
       <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
@@ -868,6 +885,23 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- BLACKJACK -->
+    <div id="tab-bj" class="hidden">
+      <div class="card">
+        <h3>🂡 Bảng mời chơi Blackjack trên Discord</h3>
+        <div class="muted" id="bjBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <label>Channel ID (kênh đăng bảng)</label>
+        <input id="bjChannel" placeholder="vd: 123456789012345678">
+        <div class="chips" id="bjSaved"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="bjBoardStart()">▶️ Bật / Đăng lại bảng</button>
+          <button class="btn-red" onclick="bjBoardStop()">⏹️ Gỡ bảng</button>
+          <button class="btn-grey" onclick="chatDelete('bjChannel')">🧹 Xóa chat bot</button>
+        </div>
+        <div class="note">Xì Dách 5 ghế · ăn 1.5 (3:2) · nhà cái dừng ở mọi 17 · 2 bộ bài. Chơi trên <b>trang riêng</b> (xoay ngang điện thoại). Bảng có nút phát <b>link + mã PIN</b>. Bot restart tự nối lại bảng cũ.</div>
+      </div>
+    </div>
+
     <!-- NGƯỜI CHƠI -->
     <!-- RÚT DOGCOIN -->
     <!-- PALWORLD -->
@@ -1033,13 +1067,13 @@ function showApp(){
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Tài Xỉu
-  if(['tx','mine','stair','user','pal'].includes(saved)) tab(saved);
+  if(['tx','mine','stair','bj','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
 
 function tab(t){
-  ['tx','bc','mine','stair','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','stair','bj','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -1231,6 +1265,8 @@ function mineBoardStart(){const c=document.getElementById('mineChannel').value.t
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
 function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
 async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stairs/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Leo Thang');refresh();});}
+function bjBoardStart(){const c=document.getElementById('bjChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bj/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Blackjack ở #'+j.name);refresh();});}
+async function bjBoardStop(){if(!await uiConfirm('Gỡ bảng Blackjack khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/bj/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Blackjack');refresh();});}
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
 async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
@@ -1250,7 +1286,7 @@ function useChannel(prefix,id){document.getElementById(prefix+'Channel').value=i
 function renderSavedChannels(){
   if(!STATE)return;
   const list=STATE.savedChannels||[];
-  ['tx','bc','mine','stair'].forEach(prefix=>{
+  ['tx','bc','mine','stair','bj'].forEach(prefix=>{
     const el=document.getElementById(prefix+'Saved');if(!el)return;
     if(!list.length){el.innerHTML='<span class="empty">Chưa lưu kênh nào. Nhập ID + ghi chú rồi bấm 💾 Lưu kênh.</span>';return;}
     el.innerHTML=list.map(c=>
@@ -1469,6 +1505,10 @@ async function refresh(){
   document.getElementById('stairBoardInfo').innerHTML='<span class="run '+(sb2.on?'on':'off')+'">'+(sb2.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(sb2.channelId?' &nbsp; kênh <code>'+esc(sb2.channelId)+'</code>':'');
   const sch=document.getElementById('stairChannel');
   if(sb2.channelId&&!sch.value)sch.value=sb2.channelId;
+  const bjb=STATE.bjBoard||{on:false,channelId:''};
+  document.getElementById('bjBoardInfo').innerHTML='<span class="run '+(bjb.on?'on':'off')+'">'+(bjb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(bjb.channelId?' &nbsp; kênh <code>'+esc(bjb.channelId)+'</code>':'');
+  const bjc=document.getElementById('bjChannel');
+  if(bjb.channelId&&!bjc.value)bjc.value=bjb.channelId;
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';
