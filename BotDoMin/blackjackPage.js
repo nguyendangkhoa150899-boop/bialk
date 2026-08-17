@@ -1,105 +1,121 @@
-// ===== TRANG BLACKJACK (dùng chung cho harness test lẫn bot thật) =====
-// Không nội suy dữ liệu server (${}) — mọi thứ động đến qua WebSocket. Nhờ vậy trang
-// là hằng số tĩnh, không lo XSS server-side, và require() được ở cả hai nơi.
-// Hiệu ứng: lá bài BAY từ shoe (góc phải trên) về đúng chỗ khi chia.
+// ===== TRANG BLACKJACK (giao diện kiểu casino) — dùng chung harness test lẫn bot thật =====
+// Trang tĩnh, không nội suy dữ liệu server (${}) -> không lo XSS. Mọi thứ động qua WebSocket.
+// Nút bấm dùng data-attribute + uỷ quyền sự kiện (không có onclick inline dính dấu nháy) —
+// tránh hẳn cái bẫy escape dấu nháy trong template literal mà README đã cảnh báo.
+// Hiệu ứng: lá bài BAY từ shoe về chỗ khi chia. Lá NHÂN ĐÔI úp lại cho người chơi tự nặn.
 
 const PAGE = `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Blackjack — Xì Dách</title>
 <style>
-:root{--bg:#0d1a12;--felt:#0f5132;--felt2:#0b3d26;--gold:#ffcf5c;--tx:#eaf2ec;--muted:#9fb3a6;--red:#e0474b;--line:#1f4a34}
+:root{--gold:#ffcf5c;--tx:#f2f6f3;--muted:#a9c2b4;--red:#e0474b;--green:#2ec26a}
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
-body{background:radial-gradient(120% 90% at 50% 0%,#143a26 0%,#0c2418 55%,#07130c 100%);color:var(--tx);min-height:100vh;padding:10px;max-width:760px;margin:0 auto;touch-action:pan-x pan-y}
-.hbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.hbar h1{font-size:18px;letter-spacing:1px}.hbar .bal{font-weight:900;color:var(--gold)}
-#login{background:#12261a;border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:40px}
-#login input{width:100%;background:#0c1c13;border:1px solid var(--line);border-radius:10px;color:var(--tx);padding:12px;font-size:16px;margin-top:8px}
-button{border:0;border-radius:10px;padding:11px 14px;font-size:15px;font-weight:800;cursor:pointer;color:#08120b}
+body{background:#06121a;color:var(--tx);min-height:100vh;max-width:820px;margin:0 auto;display:flex;flex-direction:column;touch-action:pan-x pan-y}
+button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
+/* ---- đăng nhập ---- */
+#login{background:#0e2018;border:1px solid #1f4a34;border-radius:16px;padding:18px;margin:auto;max-width:360px}
+#login h1{font-size:20px;margin-bottom:6px}
+#login .sub{font-size:13px;color:var(--muted);margin-bottom:6px}
+#login input{width:100%;background:#0a1712;border:1px solid #1f4a34;border-radius:10px;color:var(--tx);padding:12px;font-size:16px;margin-top:8px}
 .btn-gold{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05}
-.btn-blue{background:linear-gradient(180deg,#5aa9ff,#2c6fd0);color:#fff}
-.btn-grey{background:#22402e;color:#cfe0d4}
-.full{width:100%;margin-top:10px}
-/* ---- bàn ---- */
-#table{background:linear-gradient(180deg,var(--felt),var(--felt2));border:2px solid #093;border-radius:18px;padding:12px;position:relative;overflow:hidden;box-shadow:inset 0 0 60px #0006}
-#shoe{position:absolute;top:8px;right:10px;width:34px;height:46px;border-radius:5px;background:linear-gradient(135deg,#c0392b,#7d1f16);border:2px solid #ffce6b;box-shadow:0 2px 5px #0007}
-.status{text-align:center;font-size:13px;color:#d6ffe4;min-height:18px;margin:2px 0 8px}
-.clock{display:inline-block;min-width:26px;font-weight:900;color:var(--gold)}
-/* nhà cái */
-.dealer{text-align:center;margin-bottom:10px}
-.dealer .lbl{font-size:12px;color:var(--muted);letter-spacing:1px}
-/* hàng ghế */
-.seats{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-.seat{flex:1 1 128px;min-width:118px;max-width:150px;background:#0c2417cc;border:1px solid var(--line);border-radius:12px;padding:7px;min-height:150px;display:flex;flex-direction:column;align-items:center;gap:4px}
-.seat.turn{border-color:var(--gold);box-shadow:0 0 0 2px #ffcf5c55,0 0 16px #ffcf5c44}
-.seat.mine{background:#0e3020cc}
-.seat .who{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.seat .bet{font-size:11px;color:var(--gold)}
-.seat .empty{color:var(--muted);font-size:12px;margin-top:30px}
-.hands{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
-.hand{display:flex;flex-direction:column;align-items:center;padding:3px;border-radius:8px}
-.hand.active{background:#ffcf5c22;outline:1px dashed #ffcf5c88}
-.hand .tot{font-size:12px;font-weight:800;margin-top:2px}
-.hand .out{font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-top:2px}
-.out.win{background:#173423;color:#3ddc84}.out.lose{background:#3a1d1d;color:#ff7b7b}.out.push{background:#333;color:#ddd}.out.bj{background:#4a3a10;color:var(--gold)}
-/* lá bài */
+.full{width:100%;margin-top:10px;padding:12px}
+/* ---- bàn nỉ ---- */
+#felt{flex:1;position:relative;margin:8px;border-radius:120px/80px;
+  background:radial-gradient(120% 100% at 50% 8%,#2f8fd6 0%,#1f6fb0 30%,#124a7d 62%,#0c3358 100%);
+  border:6px solid #0a2740;box-shadow:inset 0 0 80px #0007,0 6px 24px #0008;padding:12px 10px 8px;overflow:hidden}
+.rail{position:absolute;inset:0;border-radius:120px/80px;border:2px solid #ffffff22;pointer-events:none}
+.topbar{display:flex;justify-content:space-between;font-size:11px;color:#cfe7ff;opacity:.85;padding:2px 8px}
+.dealer{display:flex;flex-direction:column;align-items:center;margin-top:2px;min-height:96px}
+.dealerlbl{font-size:11px;letter-spacing:2px;color:#dbeeff;opacity:.8}
+.banner{text-align:center;margin:8px 0 4px}
+.banner .b1{font-family:Georgia,serif;font-weight:900;color:var(--gold);letter-spacing:1px;font-size:15px;text-shadow:0 1px 0 #0008}
+.banner .b2{font-size:11px;color:#dbeeff;opacity:.85;letter-spacing:.5px}
+#status{text-align:center;font-size:13px;color:#eafff2;min-height:18px;margin:2px 0}
+.clock{display:inline-block;min-width:24px;font-weight:900;color:var(--gold)}
+/* ---- ghế ---- */
+#seatRow{display:flex;gap:6px;justify-content:center;align-items:flex-end;margin-top:6px;flex-wrap:wrap}
+.seat{flex:1 1 130px;min-width:120px;max-width:156px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.seat.turn .ava{box-shadow:0 0 0 3px var(--gold),0 0 18px #ffcf5c99}
+.handzone{display:flex;gap:6px;justify-content:center;min-height:88px;align-items:flex-end}
+.hand{display:flex;flex-direction:column;align-items:center}
+.hand.active .cards{filter:drop-shadow(0 0 8px #ffcf5ccc)}
+.tot{margin-top:3px;font-size:12px;font-weight:900;background:#0009;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;color:#fff}
+.tot.bust{background:#5c1616;border-color:#e0474b}
+.out{font-size:11px;font-weight:900;padding:2px 8px;border-radius:8px;margin-top:3px}
+.out.win{background:#12351f;color:#4fe38a}.out.lose{background:#3a1616;color:#ff8a8a}.out.push{background:#2b2b2b;color:#ddd}.out.bj{background:#4a3a10;color:var(--gold)}
+.ava{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#08120b;border:2px solid #ffffffcc;box-shadow:0 2px 6px #0007;margin-top:2px}
+.pname{font-size:12px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbal{font-size:11px;color:#bfeac0}
+.pbet{font-size:11px;color:var(--gold);font-weight:800;background:#0007;border-radius:10px;padding:1px 7px}
+.emptyseat{opacity:.5;font-size:12px;color:#dbeeff;text-align:center;padding:24px 0}
+/* ---- lá bài (to hơn) ---- */
 .cards{display:flex}
-.card{width:38px;height:54px;border-radius:6px;background:#fbfbf7;color:#111;border:1px solid #0002;box-shadow:0 1px 3px #0006;
-  margin-left:-14px;display:flex;flex-direction:column;justify-content:space-between;padding:3px 4px;font-weight:900;font-size:13px;position:relative}
+.card{width:52px;height:74px;border-radius:7px;background:#fbfbf7;color:#16202a;border:1px solid #0003;
+  box-shadow:0 2px 5px #0007;margin-left:-20px;display:flex;flex-direction:column;justify-content:space-between;
+  padding:5px 6px;font-weight:900;font-size:17px;position:relative}
 .card:first-child{margin-left:0}
 .card.red{color:#c0392b}
-.card .s{align-self:flex-end;font-size:15px;line-height:1}
-.card.back{background:repeating-linear-gradient(45deg,#7d1f16,#7d1f16 5px,#a5342a 5px,#a5342a 10px);border:2px solid #ffce6b;color:transparent}
+.card .s{align-self:flex-end;font-size:21px;line-height:1}
+.card .c{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);font-size:24px;opacity:.9}
+.card.back,.card.peek{background:repeating-linear-gradient(45deg,#b6362a,#b6362a 6px,#8f281f 6px,#8f281f 12px);border:2px solid #ffce6b;color:transparent}
+.card.peek{cursor:pointer;animation:wob 1.4s ease-in-out infinite}
+@keyframes wob{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
 .card.fly{animation:deal .42s cubic-bezier(.2,.8,.25,1) both}
-@keyframes deal{0%{transform:translate(200px,-160px) rotate(24deg);opacity:0}60%{opacity:1}100%{transform:none;opacity:1}}
-/* khu điều khiển */
-#ctl{margin-top:12px;background:#0c2417;border:1px solid var(--line);border-radius:12px;padding:10px}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.chip{flex:1;min-width:56px;background:#22402e;color:#cfe0d4}
-.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-.acts button{padding:14px 4px;font-size:14px}
-.act-hit{background:linear-gradient(180deg,#5aa9ff,#2c6fd0);color:#fff}
-.act-stand{background:linear-gradient(180deg,#ff9a5c,#d9541e);color:#fff}
-.act-double{background:linear-gradient(180deg,#b98cff,#7b3fd0);color:#fff}
-.act-split{background:linear-gradient(180deg,#4dd07a,#249a52);color:#04240f}
-.acts button:disabled{background:#22402e;color:#5a7264}
-#betInput{width:100%;background:#0c1c13;border:1px solid var(--line);border-radius:10px;color:var(--tx);padding:11px;font-size:16px;text-align:center;font-weight:800}
-.seatbtns{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
-.seatbtns button{padding:10px 2px;font-size:12px;background:#22402e;color:#cfe0d4}
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000d;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;max-width:90%}
-#pop{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);font-size:40px;font-weight:900;opacity:0;pointer-events:none;z-index:98;text-shadow:0 2px 12px #000c}
-#pop.show{animation:pf 2.6s ease-out forwards}
-@keyframes pf{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-95%) scale(.9)}}
+@keyframes deal{0%{transform:translate(220px,-180px) rotate(26deg);opacity:0}55%{opacity:1}100%{transform:none;opacity:1}}
+.card.flip{animation:flip .4s ease both}
+@keyframes flip{0%{transform:rotateY(0)}49%{transform:rotateY(90deg)}50%{transform:rotateY(-90deg)}100%{transform:rotateY(0)}}
+/* ---- thanh điều khiển đáy ---- */
+#bar{padding:8px 10px 12px;background:#081a12;border-top:1px solid #14361f}
+.betbox{display:flex;gap:8px;align-items:center}
+#betInput{flex:1;background:#0a1712;border:1px solid #1f4a34;border-radius:10px;color:var(--tx);padding:12px;font-size:17px;text-align:center;font-weight:900}
+.chips{display:flex;gap:6px;margin-top:8px}
+.chip{flex:1;min-width:52px;background:#1a3a28;color:#d6f0dd;padding:10px 0;font-size:13px}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.acts button{padding:16px 4px;font-size:15px;letter-spacing:.5px}
+.a-hit{background:linear-gradient(180deg,#4fd07a,#1f9a4e);color:#04240f}
+.a-stand{background:linear-gradient(180deg,#ff6b6b,#c0392b);color:#fff}
+.a-double{background:linear-gradient(180deg,#7db4ff,#2c6fd0);color:#fff}
+.a-split{background:linear-gradient(180deg,#c79bff,#7b3fd0);color:#fff}
+.acts button:disabled{background:#16281d;color:#4a6152}
+.seatpick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.seatpick button{padding:12px 2px;font-size:13px;background:#1a3a28;color:#d6f0dd}
+.seatpick button:disabled{background:#132018;color:#3d5346}
+.waiting{text-align:center;color:var(--muted);font-size:13px;padding:12px 0}
+.hbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px}
+.hbar .bal{font-weight:900;color:var(--gold)}
+.conn{font-size:12px}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#000e;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;max-width:90%}
+#pop{position:fixed;left:50%;top:32%;transform:translate(-50%,-50%);font-size:44px;font-weight:900;opacity:0;pointer-events:none;z-index:98;text-shadow:0 2px 14px #000d}
+#pop.show{animation:pf 2.8s ease-out forwards}
+@keyframes pf{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) scale(.9)}}
 .hidden{display:none}
-.conn{font-size:11px;color:var(--muted)}
 </style></head><body>
 
 <div id="login">
-<h1>🂡 Blackjack — Xì Dách</h1>
-<div class="conn" style="margin-top:6px">Nhập Discord ID + mã PIN (lấy bằng nút 🌐 trên bảng trong Discord).</div>
-<input id="uid" inputmode="numeric" placeholder="Discord ID">
-<input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số">
-<button class="btn-gold full" onclick="doLogin()">Vào bàn</button>
-<div id="loginErr" class="conn" style="color:var(--red);margin-top:8px"></div>
+  <h1>🂡 Blackjack — Xì Dách</h1>
+  <div class="sub">Ăn 1.5 (3:2) · Nhà cái dừng ở mọi 17 · 4 bộ bài</div>
+  <div class="sub">Nhập Discord ID + mã PIN (lấy bằng nút 🌐 trên bảng trong Discord).</div>
+  <input id="uid" inputmode="numeric" placeholder="Discord ID">
+  <input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số">
+  <button class="btn-gold full" id="loginBtn">Vào bàn</button>
+  <div id="loginErr" class="sub" style="color:var(--red)"></div>
 </div>
 
 <div id="app" class="hidden">
   <div class="hbar">
-    <h1>🂡 Blackjack</h1>
-    <div><span class="conn" id="conn">•</span> &nbsp; <span class="bal"><span id="bal">0</span> 🐕</span></div>
+    <div><span class="conn" id="conn">•</span> <b>Blackjack</b></div>
+    <div class="bal"><span id="bal">0</span> 🐕</div>
   </div>
-
-  <div id="table">
-    <div id="shoe"></div>
-    <div class="dealer">
-      <div class="lbl">NHÀ CÁI <span id="dtot"></span></div>
-      <div class="cards" id="dealerCards" style="justify-content:center"></div>
-    </div>
-    <div class="status" id="status"></div>
-    <div class="seats" id="seats"></div>
+  <div id="felt">
+    <div class="rail"></div>
+    <div class="topbar"><span>4 BỘ BÀI</span><span id="shoeInfo"></span></div>
+    <div class="dealer"><div class="dealerlbl">NHÀ CÁI <span id="dtot"></span></div><div class="cards" id="dealerCards"></div></div>
+    <div class="banner"><div class="b1">BLACKJACK ĂN 1.5 (3 : 2)</div><div class="b2">Nhà cái dừng ở mọi 17</div></div>
+    <div id="status"></div>
+    <div id="seatRow"></div>
   </div>
-
-  <div id="ctl"></div>
+  <div id="bar"></div>
 </div>
 
 <div id="pop"></div>
@@ -107,11 +123,15 @@ button{border:0;border-radius:10px;padding:11px 14px;font-size:15px;font-weight:
 
 <script>
 var TOKEN=localStorage.getItem("bj_token")||"";
-var WS=null, ST=null, MYID="", BAL=0, seenCards={};
+var WS=null, ST=null, MYID="", BAL=0, seenCards={}, flipped={};
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2400)}
 function pop(txt,color){var e=$("pop");e.textContent=txt;e.style.color=color;e.classList.remove("show");void e.offsetWidth;e.classList.add("show")}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;"})}
+function fmt(n){return Number(n||0).toLocaleString("vi-VN")}
+function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=fmt(v)}
 
+// ---- đăng nhập ----
 function doLogin(){
   var u=$("uid").value.trim(), p=$("pin").value.trim();
   if(!u||!p){$("loginErr").textContent="Nhập đủ ID và PIN";return}
@@ -121,12 +141,7 @@ function doLogin(){
       TOKEN=j.token;localStorage.setItem("bj_token",TOKEN);enter(j.balance);
     }).catch(function(){$("loginErr").textContent="Lỗi mạng"});
 }
-function enter(bal){
-  $("login").classList.add("hidden");$("app").classList.remove("hidden");
-  if(typeof bal==="number")setBal(bal);
-  connect();
-}
-function setBal(v){BAL=v;$("bal").textContent=Number(v).toLocaleString("vi-VN")}
+function enter(bal){$("login").classList.add("hidden");$("app").classList.remove("hidden");if(typeof bal==="number")setBal(bal);connect()}
 
 function connect(){
   var proto=location.protocol==="https:"?"wss":"ws";
@@ -134,11 +149,11 @@ function connect(){
   WS.onopen=function(){$("conn").textContent="🟢";WS.send(JSON.stringify({type:"auth",token:TOKEN}))};
   WS.onclose=function(){$("conn").textContent="🔴";setTimeout(connect,1500)};
   WS.onmessage=function(ev){var m;try{m=JSON.parse(ev.data)}catch(e){return}
-    if(m.type==="state"){render(m)}
-    else if(m.type==="balance"){setBal(m.balance)}
-    else if(m.type==="toast"){toast(m.msg)}
-    else if(m.type==="denied"){toast("❌ "+(m.error||"không được"))}
-    else if(m.type==="result"){/* nhấn mạnh ăn/thua của mình */ if(typeof m.net==="number"&&m.net!==0)pop((m.net>0?"+":"")+Number(m.net).toLocaleString("vi-VN")+" 🐕",m.net>0?"#3ddc84":"#ff5d5d")}
+    if(m.type==="state")render(m);
+    else if(m.type==="balance")setBal(m.balance);
+    else if(m.type==="toast")toast(m.msg);
+    else if(m.type==="denied")toast("❌ "+(m.error||"không được"));
+    else if(m.type==="result"){if(typeof m.net==="number"&&m.net!==0)pop((m.net>0?"+":"")+fmt(m.net)+" 🐕",m.net>0?"#4fe38a":"#ff6b6b")}
     else if(m.type==="authok"){MYID=m.userId;if(typeof m.balance==="number")setBal(m.balance)}
     else if(m.type==="authfail"){localStorage.removeItem("bj_token");location.reload()}
   };
@@ -146,24 +161,28 @@ function connect(){
 function send(o){if(WS&&WS.readyState===1)WS.send(JSON.stringify(o))}
 function cmd(c,extra){send(Object.assign({type:"bj",cmd:c},extra||{}))}
 
-// ---- vẽ 1 lá bài ----
+// ---- vẽ bài ----
 var SUIT_RED={"♥":1,"♦":1};
-function cardEl(str,key,fly){
+function cardEl(str,fly,peek,key){
   var d=document.createElement("div");
-  if(str==="🂠"){d.className="card back";if(fly)d.classList.add("fly");return d}
+  if(peek){d.className="card peek"+(fly?" fly":"");d.dataset.peek=key;d.innerHTML='<div style="font-size:11px;color:#ffce6b;position:absolute;left:0;right:0;top:28px;text-align:center">NẶN</div>';return d}
+  if(str==="🂠"){d.className="card back"+(fly?" fly":"");return d}
   var suit=str.slice(-1), rank=str.slice(0,-1);
   d.className="card"+(SUIT_RED[suit]?" red":"")+(fly?" fly":"");
-  d.innerHTML='<div>'+rank+'</div><div class="s">'+suit+'</div>';
+  d.innerHTML='<div>'+rank+'</div><div class="c">'+suit+'</div><div class="s">'+suit+'</div>';
   return d;
 }
-function drawCards(container,cards,idpfx){
-  container.innerHTML="";
+// opt: {doubled:bool, resultPhase:bool}
+function drawCards(container,cards,pfx,opt){
+  opt=opt||{};container.innerHTML="";
   cards.forEach(function(c,i){
-    var key=idpfx+"|"+i+"|"+c;
-    var isNew=!seenCards[key];
-    seenCards[key]=1;
-    var el=cardEl(c,key,isNew);
-    if(isNew)el.style.animationDelay=(i*0.08)+"s";
+    var key=pfx+"|"+i+"|"+c;
+    var isNew=!seenCards[key];seenCards[key]=1;
+    // lá thứ 3 của tay đã NHÂN ĐÔI: úp lại cho nặn tới khi bấm lật hoặc hết ván
+    var isDoubleCard=opt.doubled && i===cards.length-1 && cards.length===3;
+    var peek=isDoubleCard && !opt.resultPhase && !flipped[key];
+    var el=cardEl(c,isNew,peek,key);
+    if(isNew)el.style.animationDelay=(i*0.09)+"s";
     container.appendChild(el);
   });
 }
@@ -171,114 +190,97 @@ function drawCards(container,cards,idpfx){
 function render(m){
   ST=m;
   if(typeof m.balance==="number")setBal(m.balance);
-  // nhà cái
   var t=m.table;
-  if(t&&t.dealer){drawCards($("dealerCards"),t.dealer.cards,"D");$("dtot").textContent=t.dealer.hidden?"":("• "+t.dealer.total)}
+  if(t&&t.dealer){drawCards($("dealerCards"),t.dealer.cards,"D",{});$("dtot").textContent=t.dealer.hidden?"":("• "+t.dealer.total)}
   else{$("dealerCards").innerHTML="";$("dtot").textContent=""}
   // trạng thái + đồng hồ
-  var s=$("status");
-  var clk=m.timeLeft>0?'<span class="clock">'+m.timeLeft+'s</span>':"";
+  var s=$("status"),clk=m.timeLeft>0?'<span class="clock">'+m.timeLeft+'s</span>':"";
   if(m.phase==="idle")s.innerHTML="Chờ người đặt cược để mở ván...";
   else if(m.phase==="betting")s.innerHTML="🟢 Đặt cược — chia sau "+clk;
-  else if(m.phase==="playing"){var tn=t&&t.turn;s.innerHTML=tn?("Lượt: <b>"+seatName(tn.seat)+"</b> "+clk):"Nhà cái đang rút...";}
+  else if(m.phase==="playing"){var tn=t&&t.turn;s.innerHTML=tn?("Lượt: <b>"+esc(seatName(tn.seat))+"</b> "+clk):"Nhà cái đang rút...";}
   else if(m.phase==="result")s.innerHTML="Kết quả — ván mới sau "+clk;
-  // ghế
-  renderSeats(m);
-  // reset seenCards khi bắt đầu ván mới (không còn bài trên bàn)
-  if(m.phase==="idle"||m.phase==="betting")seenCards={};
-  // điều khiển
-  renderCtl(m);
+  if(m.phase==="idle"||m.phase==="betting"){seenCards={};flipped={}}
+  renderSeats(m);renderBar(m);
 }
 function seatName(i){if(!ST)return "#"+(i+1);var s=ST.seats[i];return s&&!s.empty?s.name:("Ghế "+(i+1))}
+function avaColor(u){var h=0;u=String(u||"");for(var i=0;i<u.length;i++)h=(h*31+u.charCodeAt(i))>>>0;return "hsl("+(h%360)+",70%,62%)"}
 
 function renderSeats(m){
-  var box=$("seats");box.innerHTML="";
-  var tbl=m.table;
+  var box=$("seatRow");box.innerHTML="";var tbl=m.table;
   for(var i=0;i<m.seats.length;i++){
     var seat=m.seats[i];
-    var div=document.createElement("div");
-    div.className="seat"+(i===m.mySeat?" mine":"");
+    var div=document.createElement("div");div.className="seat";
+    var isTurn=tbl&&tbl.turn&&tbl.turn.seat===i;if(isTurn)div.className+=" turn";
+    if(seat.empty){div.innerHTML='<div class="emptyseat">Ghế '+(i+1)+'<br>trống</div>';box.appendChild(div);continue}
     var tseat=tbl?tbl.seats.find(function(x){return x.seat===i}):null;
-    var isTurn=tbl&&tbl.turn&&tbl.turn.seat===i;
-    if(isTurn)div.className+=" turn";
-    if(seat.empty){
-      div.innerHTML='<div class="empty">Ghế '+(i+1)+'<br>(trống)</div>';
-    }else{
-      var html='<div class="who">'+esc(seat.name)+(seat.userId===MYID?" (bạn)":"")+'</div>';
-      if(seat.bet>0)html+='<div class="bet">cược '+Number(seat.bet).toLocaleString("vi-VN")+'</div>';
-      div.innerHTML=html;
-      var hwrap=document.createElement("div");hwrap.className="hands";
-      if(tseat&&tseat.hands){
-        tseat.hands.forEach(function(h,hi){
-          var hd=document.createElement("div");hd.className="hand"+(h.active?" active":"");
-          var cc=document.createElement("div");cc.className="cards";
-          drawCards(cc,h.cards,"S"+i+"H"+hi);
-          hd.appendChild(cc);
-          var tot=document.createElement("div");tot.className="tot";tot.textContent=h.total+(h.soft?" (mềm)":"")+(h.bust?" QUẮC":"");hd.appendChild(tot);
-          if(m.lastResult){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
-          hwrap.appendChild(hd);
-        });
-      }
-      div.appendChild(hwrap);
+    // bài (trên)
+    var hz=document.createElement("div");hz.className="handzone";
+    if(tseat&&tseat.hands){
+      tseat.hands.forEach(function(h,hi){
+        var hd=document.createElement("div");hd.className="hand"+(h.active?" active":"");
+        var cc=document.createElement("div");cc.className="cards";
+        drawCards(cc,h.cards,"S"+i+"H"+hi,{doubled:h.doubled,resultPhase:m.phase==="result"});
+        hd.appendChild(cc);
+        var tot=document.createElement("div");tot.className="tot"+(h.bust?" bust":"");tot.textContent=h.total+(h.soft?"ˢ":"");hd.appendChild(tot);
+        if(m.lastResult){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
+        hz.appendChild(hd);
+      });
     }
+    div.appendChild(hz);
+    // avatar + tên + số dư/cược (dưới)
+    var ava=document.createElement("div");ava.className="ava";ava.style.background=avaColor(seat.userId);ava.textContent=(seat.name||"?").slice(0,2).toUpperCase();div.appendChild(ava);
+    var nm=document.createElement("div");nm.className="pname";nm.textContent=(seat.userId===MYID?"★ ":"")+seat.name;div.appendChild(nm);
+    if(seat.bet>0){var bt=document.createElement("div");bt.className="pbet";bt.textContent="🐕 "+fmt(seat.bet);div.appendChild(bt)}
     box.appendChild(div);
   }
-  // gắn kết quả từng tay vào (result phase)
-  if(m.lastResult&&m.lastResult.result){
-    m.lastResult.result.forEach(function(d){ /* outcome đã vẽ qua tseat.hands ở trên nếu có */ });
-  }
 }
-function outClass(o){if(!o)return null;if(o==="thắng")return{c:"win",t:"THẮNG"};if(o==="thua")return{c:"lose",t:"THUA"};if(o==="hoà")return{c:"push",t:"HOÀ"};if(o==="blackjack")return{c:"bj",t:"BLACKJACK"};return null}
+function outClass(o){if(o==="thắng")return{c:"win",t:"THẮNG"};if(o==="thua")return{c:"lose",t:"THUA"};if(o==="hoà")return{c:"push",t:"HOÀ"};if(o==="blackjack")return{c:"bj",t:"BLACKJACK"};return null}
 
-function renderCtl(m){
-  var c=$("ctl");
-  // chưa ngồi -> nút chọn ghế
+function renderBar(m){
+  var bar=$("bar");
   if(m.mySeat<0){
-    var h='<div style="font-size:13px;color:var(--muted)">Chọn một ghế để ngồi vào bàn:</div><div class="seatbtns">';
-    for(var i=0;i<m.seats.length;i++){
-      var e=m.seats[i].empty;
-      h+='<button onclick="cmd(\\'sit\\',{seat:'+i+'})"'+(e?"":" disabled")+'>Ghế '+(i+1)+(e?"":" ✕")+'</button>';
-    }
-    h+='</div>';c.innerHTML=h;return;
+    var h='<div class="waiting">Chọn ghế để vào bàn</div><div class="seatpick">';
+    for(var i=0;i<m.seats.length;i++)h+='<button data-sit="'+i+'"'+(m.seats[i].empty?"":" disabled")+'>Ghế '+(i+1)+(m.seats[i].empty?"":" ✕")+'</button>';
+    bar.innerHTML=h+'</div>';return;
   }
-  // đã ngồi
   var myTurn=m.table&&m.table.turn&&m.table.turn.userId===MYID;
   var seat=m.seats[m.mySeat];
   if(myTurn){
-    var opts=m.table.turn.options;
-    c.innerHTML='<div style="font-size:13px;color:var(--gold);text-align:center">TỚI LƯỢT BẠN</div>'+
-      '<div class="acts">'+
-      actBtn("hit","Rút",opts)+actBtn("stand","Dừng",opts)+
-      actBtn("double","Nhân đôi",opts)+actBtn("split","Tách",opts)+'</div>';
+    var o=m.table.turn.options;
+    bar.innerHTML='<div class="acts">'+
+      ab("hit","🃏 Rút",o)+ab("stand","✋ Dừng",o)+ab("double","💰 Nhân đôi",o)+ab("split","✂️ Tách",o)+'</div>';
     return;
   }
   if(m.phase==="idle"||m.phase==="betting"){
     var placed=seat&&seat.bet>0;
-    c.innerHTML=
-      '<div style="display:flex;gap:8px;align-items:center">'+
-      '<input id="betInput" inputmode="numeric" placeholder="Số Dogcoin cược" value="'+(placed?seat.bet:"")+'">'+
-      '<button class="btn-grey" onclick="cmd(\\'leave\\')">Rời ghế</button></div>'+
-      '<div class="chips">'+
-      chip(50)+chip(100)+chip(500)+chip(1000)+'<button class="chip" onclick="betAll()">MAX</button></div>'+
-      '<button class="btn-gold full" onclick="placeBet()">'+(placed?"Đổi cược":"ĐẶT CƯỢC")+'</button>'+
-      (placed?'<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px">Đã đặt — chờ chia bài</div>':"");
+    bar.innerHTML=
+      '<div class="betbox"><input id="betInput" inputmode="numeric" placeholder="Số Dogcoin cược" value="'+(placed?seat.bet:"")+'">'+
+      '<button class="chip" data-leave="1" style="flex:0 0 auto;padding:12px 14px">Rời</button></div>'+
+      '<div class="chips"><button class="chip" data-add="50">+50</button><button class="chip" data-add="100">+100</button>'+
+      '<button class="chip" data-add="500">+500</button><button class="chip" data-add="1000">+1k</button><button class="chip" data-max="1">MAX</button></div>'+
+      '<button class="btn-gold full" data-place="1">'+(placed?"ĐỔI CƯỢC":"ĐẶT CƯỢC")+'</button>';
     return;
   }
-  // đang chơi nhưng không phải lượt mình / đang result
-  c.innerHTML='<div style="text-align:center;color:var(--muted);font-size:13px">'+
-    (m.phase==="result"?"Ván kết thúc — chờ ván mới":(seat&&seat.bet>0?"Đang trong ván — chờ tới lượt bạn":"Bạn không đặt ván này — chờ ván sau"))+
-    '</div>';
+  bar.innerHTML='<div class="waiting">'+(m.phase==="result"?"Ván kết thúc — chờ ván mới":(seat&&seat.bet>0?"Đang trong ván — chờ tới lượt bạn":"Bạn không đặt ván này — chờ ván sau"))+'</div>';
 }
-function actBtn(a,label,opts){var on=opts.indexOf(a)>=0;return '<button class="act-'+a+'" '+(on?"":"disabled")+' onclick="cmd(\\'act\\',{action:\\''+a+'\\'})">'+label+'</button>'}
-function chip(n){return '<button class="chip" onclick="addBet('+n+')">+'+n+'</button>'}
-function addBet(n){var b=$("betInput");b.value=(parseInt(b.value||"0")||0)+n}
-function betAll(){$("betInput").value=BAL}
-function placeBet(){var v=parseInt($("betInput").value);if(!v||v<=0)return toast("Nhập số Dogcoin");cmd("bet",{amount:v})}
+function ab(a,label,opts){var on=opts.indexOf(a)>=0;return '<button class="a-'+a+'"'+(on?"":" disabled")+' data-act="'+a+'">'+label+'</button>'}
 
-function esc(s){return String(s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;"})}
-
+// ---- uỷ quyền sự kiện (không onclick inline) ----
+document.addEventListener("click",function(e){
+  var el=e.target.closest("[data-sit],[data-act],[data-add],[data-max],[data-place],[data-leave],[data-peek]");
+  if(!el)return;
+  if(el.id==="loginBtn")return;
+  if(el.dataset.sit!==undefined)cmd("sit",{seat:+el.dataset.sit});
+  else if(el.dataset.act!==undefined)cmd("act",{action:el.dataset.act});
+  else if(el.dataset.add!==undefined){var b=$("betInput");if(b)b.value=(parseInt(b.value||"0")||0)+(+el.dataset.add)}
+  else if(el.dataset.max!==undefined){var b2=$("betInput");if(b2)b2.value=BAL}
+  else if(el.dataset.place!==undefined){var v=parseInt(($("betInput")||{}).value);if(!v||v<=0)return toast("Nhập số Dogcoin");cmd("bet",{amount:v})}
+  else if(el.dataset.leave!==undefined)cmd("leave");
+  else if(el.dataset.peek!==undefined){flipped[el.dataset.peek]=1;el.classList.add("flip");if(ST)render(ST)} // lật lá nặn
+});
+$("loginBtn").addEventListener("click",doLogin);
+$("pin").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});
 if(TOKEN)enter();
-$("pin")&&$("pin").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});
 </script></body></html>`;
 
 module.exports = { PAGE };

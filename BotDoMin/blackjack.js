@@ -173,8 +173,10 @@ function act(round, userId, action, shoe) {
         const newHand = { cards: [moved], bet: seat.baseBet, done: false, doubled: false, fromSplit: true, splitAces: acesSplit };
         hand.fromSplit = true; hand.splitAces = acesSplit;
         round.extraCharge[userId] = (round.extraCharge[userId] || 0) + seat.baseBet; // tay thứ 2 = thêm 1 cược gốc
-        // chèn tay mới ngay sau tay hiện tại
-        seat.hands.splice(cur.h + 1, 0, newHand);
+        // Tay mới xuống CUỐI danh sách (không chèn ngay sau tay hiện tại). Nhờ vậy khi
+        // tách lại nhiều lần, thứ tự chơi là trái→phải A,B,C,D đúng như hình người chơi vẽ:
+        // xong tay đang chơi thì sang tay kế bên, tay tách-lại chờ ở cuối.
+        seat.hands.push(newHand);
         // mỗi tay rút thêm 1 lá cho đủ 2 lá
         hand.cards.push(shoe.draw());
         newHand.cards.push(shoe.draw());
