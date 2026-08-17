@@ -138,6 +138,8 @@ function startPanel(ctx) {
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
+            stairsBoard: ctx.getStairs ? ctx.getStairs() : { on: false, channelId: '' },
+            stairsHistory: ctx.getStairsHistory ? ctx.getStairsHistory() : [],
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
             palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
@@ -317,6 +319,24 @@ function startPanel(ctx) {
                 if (path === '/api/mines/board/stop') {
                     if (ctx.stopMines) ctx.stopMines();
                     ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Dò Mìn`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                // ---- BẢNG MỜI CHƠI LEO THANG ----
+                if (path === '/api/stairs/board/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    if (!ctx.startStairs) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    try {
+                        const name = await ctx.startStairs(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Đăng bảng Leo Thang tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) {
+                        return sendJSON(res, 400, { ok: false, error: e.message });
+                    }
+                }
+                if (path === '/api/stairs/board/stop') {
+                    if (ctx.stopStairs) ctx.stopStairs();
+                    ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Leo Thang`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
@@ -645,6 +665,7 @@ const HTML = `<!DOCTYPE html>
     <div class="tabs">
       <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
       <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
+      <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
       <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
@@ -826,6 +847,27 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- LEO THANG -->
+    <div id="tab-stair" class="hidden">
+      <div class="card">
+        <h3>🎛️ Bảng mời chơi Leo Thang trên Discord</h3>
+        <div class="muted" id="stairBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <label>Channel ID (kênh đăng bảng)</label>
+        <input id="stairChannel" placeholder="vd: 123456789012345678">
+        <div class="chips" id="stairSaved"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="stairBoardStart()">▶️ Bật / Đăng lại bảng</button>
+          <button class="btn-red" onclick="stairBoardStop()">⏹️ Gỡ bảng</button>
+          <button class="btn-grey" onclick="chatDelete('stairChannel')">🧹 Xóa chat bot</button>
+        </div>
+        <div class="note">Leo <b>10 tầng</b>, mỗi tầng <b>8 ô</b>, người chơi chọn <b>1–5 cầu lửa</b> mỗi tầng. Bấm trúng ô trống thì lên tầng, hệ số nhân thêm; trúng lửa là mất cược. Chơi trên web, mỗi ván xong bot đăng kết quả kèm bản đồ tháp về kênh này. Bot restart sẽ tự nối lại bảng cũ.</div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử Leo Thang</h3>
+        <div id="stairHist" class="hist"></div>
+      </div>
+    </div>
+
     <!-- NGƯỜI CHƠI -->
     <!-- RÚT DOGCOIN -->
     <!-- PALWORLD -->
@@ -991,13 +1033,13 @@ function showApp(){
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Tài Xỉu
-  if(['tx','mine','user','pal'].includes(saved)) tab(saved);
+  if(['tx','mine','stair','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
 
 function tab(t){
-  ['tx','bc','mine','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','stair','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -1187,6 +1229,8 @@ function txStart(){const c=document.getElementById('txChannel').value.trim();if(
 async function txStop(){if(!await uiConfirm('Tắt bàn Tài Xỉu?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Tài Xỉu');refresh();});}
 function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
+function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
+async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stairs/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Leo Thang');refresh();});}
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
 async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
@@ -1206,7 +1250,7 @@ function useChannel(prefix,id){document.getElementById(prefix+'Channel').value=i
 function renderSavedChannels(){
   if(!STATE)return;
   const list=STATE.savedChannels||[];
-  ['tx','bc','mine'].forEach(prefix=>{
+  ['tx','bc','mine','stair'].forEach(prefix=>{
     const el=document.getElementById(prefix+'Saved');if(!el)return;
     if(!list.length){el.innerHTML='<span class="empty">Chưa lưu kênh nào. Nhập ID + ghi chú rồi bấm 💾 Lưu kênh.</span>';return;}
     el.innerHTML=list.map(c=>
@@ -1279,6 +1323,14 @@ function renderHistories(){
     return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">💣 '+g.mines+' mìn · 💎 '+(g.diamonds||0)+' kim cương · cược '+Number(g.bet).toLocaleString()+'</div>'+
       '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
+  }).join('') : '<div class="empty">Chưa có ván nào.</div>';
+
+  const sh=STATE.stairsHistory||[];
+  document.getElementById('stairHist').innerHTML = sh.length? sh.map(g=>{
+    const win=g.amount>=0;
+    return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
+      '<div class="b">🔥 '+g.fire+' lửa/tầng · 🪜 lên '+(g.floor||0)+' tầng · cược '+Number(g.bet).toLocaleString()+'</div>'+
+      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'🔥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
 }
 // Xóa số trong ô sau khi thao tác xong — renderPlayers giờ GIỮ số chưa dùng qua các lần
@@ -1412,6 +1464,11 @@ async function refresh(){
   document.getElementById('mineBoardInfo').innerHTML='<span class="run '+(mb.on?'on':'off')+'">'+(mb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(mb.channelId?' &nbsp; kênh <code>'+esc(mb.channelId)+'</code>':'');
   const mch=document.getElementById('mineChannel');
   if(mb.channelId&&!mch.value)mch.value=mb.channelId; // điền sẵn kênh đang dùng
+  // trang thai bang Leo Thang
+  const sb2=STATE.stairsBoard||{on:false,channelId:''};
+  document.getElementById('stairBoardInfo').innerHTML='<span class="run '+(sb2.on?'on':'off')+'">'+(sb2.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(sb2.channelId?' &nbsp; kênh <code>'+esc(sb2.channelId)+'</code>':'');
+  const sch=document.getElementById('stairChannel');
+  if(sb2.channelId&&!sch.value)sch.value=sb2.channelId;
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';

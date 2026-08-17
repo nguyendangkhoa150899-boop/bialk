@@ -18,7 +18,8 @@ try { COIN_PNG = fs.readFileSync(pathmod.join(__dirname, 'dogcoin.png')); } catc
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
     const LOCK_S = ctx.lockSeconds || 15;
-    const mines = ctx.mines; // toàn bộ logic + tiền của dò mìn nằm ở index.js
+    const mines = ctx.mines;   // toàn bộ logic + tiền của dò mìn nằm ở index.js
+    const stairs = ctx.stairs; // leo thang cũng vậy
 
     const sendJSON = (res, code, obj) => {
         res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -222,6 +223,43 @@ function startWebPlay(ctx) {
                     }
                 }
 
+                // ===== LEO THANG ===== (giống dò mìn: tiền và hệ số tính ở index.js)
+                if (path.startsWith('/api/stairs/')) {
+                    if (!stairs) return sendJSON(res, 503, { ok: false, error: 'Leo thang chưa sẵn sàng' });
+                    const me = ctx.getUserData(userId);
+
+                    if (path === '/api/stairs/state') {
+                        return sendJSON(res, 200, {
+                            ok: true, floors: stairs.floors, cols: stairs.cols, maxFire: stairs.maxFire,
+                            balance: me.points || 0, game: stairs.current(userId),
+                        });
+                    }
+                    if (req.method === 'POST' && path === '/api/stairs/table') {
+                        const body = await readBody(req);
+                        const f = Math.floor(Number(body.fire));
+                        if (!Number.isFinite(f) || f < 1 || f > stairs.maxFire) return sendJSON(res, 400, { ok: false, error: 'Số cầu lửa không hợp lệ' });
+                        return sendJSON(res, 200, { ok: true, table: stairs.table(f) });
+                    }
+                    if (req.method === 'POST' && path === '/api/stairs/start') {
+                        const body = await readBody(req);
+                        const r = stairs.start(userId, me.name || ('web_' + userId.slice(-4)),
+                            Math.floor(Number(body.fire)), Math.floor(Number(body.bet)));
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+                    if (req.method === 'POST' && path === '/api/stairs/step') {
+                        const body = await readBody(req);
+                        const r = stairs.step(userId, Math.floor(Number(body.col)));
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+                    if (req.method === 'POST' && path === '/api/stairs/cashout') {
+                        const r = stairs.cashout(userId);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+                }
+
                 return sendJSON(res, 404, { ok: false, error: 'not found' });
             }
 
@@ -304,7 +342,7 @@ const PAGE = [
     '.mine{font-size:13px;margin-top:6px;color:var(--gold)}',
     // ---- thanh chuyển trang (Tài Xỉu | Dò Mìn) ----
     '#nav{display:flex;gap:8px;margin-bottom:12px}',
-    '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:15px;padding:13px 0}',
+    '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:14px;padding:13px 2px}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
     // ---- dò mìn (bố cục theo sòng: thanh hệ số trên, 2 cột đếm kẹp lưới) ----
     // icon Dog Coin thật (ảnh trong game) — thay cho emoji 🐕 ở mọi chỗ
@@ -351,6 +389,23 @@ const PAGE = [
     '.mgo.start{background:linear-gradient(180deg,#4dd07a,#249a52);color:#04240f}',
     '.mgo.cash{background:linear-gradient(180deg,#ffe9a8,#e8bf58);color:#3d2c05}',
     '.mgo:disabled{background:#232a3d;color:#5a6480}',
+    // ---- leo thang: tháp 10 tầng, tầng trên cùng ở trên ----
+    '#stair{background:linear-gradient(180deg,#2a1a1a,#1a1214);border:1px solid #4a2c2c}',
+    '#tower{display:flex;flex-direction:column;gap:5px;margin-top:10px}',
+    '.srow{display:flex;align-items:center;gap:5px}',
+    '.srow .cells{display:flex;gap:4px;flex:1}',
+    '.srow .mx{flex:0 0 54px;text-align:center;font-size:11px;font-weight:800;padding:5px 2px;border-radius:7px;',
+    'background:#241820;color:#8a6a72;border:1px solid #3d2830}',
+    '.srow.done .mx{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
+    '.srow.now .mx{background:linear-gradient(180deg,#ff8a5c,#d9541e);color:#fff;border-color:#ffb08a;animation:sGlow 1.4s ease-in-out infinite}',
+    '@keyframes sGlow{0%,100%{box-shadow:0 0 0 0 #ff8a5c00}50%{box-shadow:0 0 12px 2px #ff8a5c88}}',
+    '.scell{flex:1;aspect-ratio:1.7;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;',
+    'background:linear-gradient(180deg,#3a2a30,#2a1e24);border:1px solid #4a3640;border-bottom:3px solid #1c1418;color:#6b5560}',
+    '.srow.now .scell{background:linear-gradient(180deg,#5a3a3a,#3f2626);border-color:#8a5a5a;cursor:pointer}',
+    '.srow.now .scell:active{transform:translateY(2px);border-bottom-width:1px}',
+    '.scell.step{background:linear-gradient(180deg,#4dd07a,#249a52);border-color:#7de8a4;border-bottom-color:#12401f;color:#04240f}',
+    '.scell.fire{background:linear-gradient(180deg,#e05555,#8e2020);border-color:#ff9a9a;color:#fff}',
+    '.scell.boom{background:linear-gradient(180deg,#ff7b3a,#c23c10);border-color:#ffb08a;color:#fff;animation:boomPop .32s ease-out}',
     // ---- sân khấu xí ngầu + tờ giấy ----
     '#stage{position:relative;height:150px;border-radius:12px;background:radial-gradient(ellipse at center,#1e3d2b 0%,#152a1e 100%);border:1px solid #2b4a37;overflow:hidden;margin-top:10px;touch-action:none}',
     '#diceRow{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px}',
@@ -384,7 +439,8 @@ const PAGE = [
 
     '<div id="nav">',
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
-    '<button id="navMine" onclick="go(\'mine\')">💎 Dò Mìn</button>',
+    '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
+    '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
     '</div>',
 
     // ================= TRANG TÀI XỈU =================
@@ -459,6 +515,27 @@ const PAGE = [
     '</div>',
     '</div>', // hết #pageMine
 
+    // ================= TRANG LEO THANG =================
+    '<div id="pageStair" class="hidden">',
+    '<div class="card" id="stair">',
+    '<div class="row" style="margin-bottom:6px"><h2 style="margin:0">🪜 Leo Thang</h2><div class="muted" id="sStat">Chọn số cầu lửa và tiền cược</div></div>',
+    '<div id="tower"></div>',
+
+    '<div class="mctl">',
+    '<div class="box"><div class="lab">Tiền cược</div><input id="sBet" inputmode="numeric" value="100" oninput="sBand()"></div>',
+    '<button id="sDouble" onclick="sMul(2)">x2</button>',
+    '<button id="sMax" onclick="sAllIn()">MAX</button>',
+    '</div>',
+    '<div class="mctl">',
+    '<button id="sMinus" onclick="sStep(-1)">−</button>',
+    '<div class="box"><div class="lab" id="sFireLab">Cầu lửa mỗi tầng</div><input id="sFire" inputmode="numeric" value="2" oninput="sTable()"></div>',
+    '<button id="sPlus" onclick="sStep(1)">+</button>',
+    '</div>',
+    '<button class="mgo start" id="sGo" onclick="sGoClick()">🪜 BẮT ĐẦU LEO</button>',
+    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Càng nhiều cầu lửa hệ số càng cao — đạp trúng lửa là mất tiền cược ván đó.</div>',
+    '</div>',
+    '</div>', // hết #pageStair
+
     // Chat nằm NGOÀI hai trang -> Tài Xỉu và Dò Mìn dùng chung một phòng chat,
     // đổi tab vẫn thấy nguyên cuộc trò chuyện.
     '<div class="card"><h2>💬 Chat sòng</h2>',
@@ -485,7 +562,9 @@ const PAGE = [
     // Tài Xỉu vẫn tự làm mới ngầm kể cả khi đang ở trang Dò Mìn (số dư luôn đúng,
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
-    'mBarDrag();mSync();go(localStorage.getItem("play_page")==="mine"?"mine":"tx")}',
+    'mBarDrag();mSync();sSync();',
+    'var saved=localStorage.getItem("play_page");',
+    'go(saved==="mine"||saved==="stair"?saved:"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
     'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
     'function allIn(){document.getElementById("amt").value=BAL}',
@@ -620,11 +699,15 @@ const PAGE = [
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
-    'function go(p){var tx=p==="tx";',
-    '$("pageTx").classList.toggle("hidden",!tx);$("pageMine").classList.toggle("hidden",tx);',
-    '$("navTx").classList.toggle("on",tx);$("navMine").classList.toggle("on",!tx);',
+    'function go(p){',
+    '$("pageTx").classList.toggle("hidden",p!=="tx");',
+    '$("pageMine").classList.toggle("hidden",p!=="mine");',
+    '$("pageStair").classList.toggle("hidden",p!=="stair");',
+    '$("navTx").classList.toggle("on",p==="tx");',
+    '$("navMine").classList.toggle("on",p==="mine");',
+    '$("navStair").classList.toggle("on",p==="stair");',
     'localStorage.setItem("play_page",p);',
-    'if(!tx){mSync()}else{refresh()}}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else refresh()}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
@@ -725,6 +808,77 @@ const PAGE = [
     'mEnd("✅ Đã dừng — nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines)',
     '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
     'function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=v.toLocaleString("vi-VN")}',
+    '',
+    // ===== LEO THANG =====
+    // Cùng nguyên tắc với dò mìn: client không tự tính tiền, mọi hệ số lấy từ server.
+    'var SF=10,SC=8,SMAXF=5,SG=null,sBusy=false,STAB=[],SOVER=false;',
+    'function sNum(id){return parseInt($(id).value)||0}',
+    'function sMul(k){if(SG)return;var b=Math.floor(sNum("sBet")*k);if(b<1)b=1;if(b>BAL)b=BAL;$("sBet").value=b;sBand()}',
+    'function sAllIn(){if(SG)return;$("sBet").value=BAL;sBand()}',
+    'function sStep(d){if(SG)return;var f=sNum("sFire")+d;if(f<1)f=1;if(f>SMAXF)f=SMAXF;$("sFire").value=f;sTable()}',
+    'var sTimer=0;',
+    'function sTable(){clearTimeout(sTimer);sTimer=setTimeout(function(){',
+    'var f=sNum("sFire");if(f<1||f>SMAXF){f=Math.min(Math.max(f,1),SMAXF);$("sFire").value=f}',
+    'api("/api/stairs/table",{fire:f}).then(function(j){STAB=j.table||[];sTower();sBand()}).catch(function(){})},150)}',
+    // Tháp vẽ từ TẦNG CAO xuống thấp cho giống hình leo lên.
+    'function sTower(){var box=$("tower");if(!STAB.length){box.innerHTML="";return}',
+    'var done=SG?SG.floor:0;var html="";',
+    'for(var f=SF-1;f>=0;f--){',
+    'var cls=f<done?"done":(SG&&f===done?"now":"");',
+    'var cells="";',
+    'for(var c=0;c<SC;c++){',
+    'var cc="scell",txt="";',
+    'if(SG&&f<done&&SG.safe[f]===c){cc+=" step";txt="🟢"}',
+    'cells+=\'<div class="\'+cc+\'" id="sc_\'+f+"_"+c+\'" data-f="\'+f+\'" data-c="\'+c+\'">\'+txt+"</div>"}',
+    'html+=\'<div class="srow \'+cls+\'" id="sr\'+f+\'"><div class="cells">\'+cells+\'</div><div class="mx">\'+fx(STAB[f])+"</div></div>"}',
+    'box.innerHTML=html;',
+    'if(SG){var row=$("sr"+done);if(row)row.querySelectorAll(".scell").forEach(function(el){',
+    'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
+    'function sBand(){var go=$("sGo");',
+    'if(SG){',
+    '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi);',
+    'go.className="mgo cash";',
+    'go.innerHTML=SG.floor?("NHẬN TIỀN "+vnd(SG.cashout)+\' <img class="dc" src="/dogcoin.png" alt="">\'):"🪜 BƯỚC LÊN TẦNG 1 ĐI";',
+    'go.disabled=!SG.floor;',
+    '}else{',
+    'go.className="mgo start";go.textContent="🪜 BẮT ĐẦU LEO";go.disabled=SOVER;',
+    'if(!SOVER)$("sStat").textContent=STAB.length?("tầng 1 "+fx(STAB[0])+" · lên đỉnh "+fx(STAB[STAB.length-1])):"Chọn số cầu lửa và tiền cược";}',
+    '["sDouble","sMax","sMinus","sPlus"].forEach(function(id){$(id).disabled=!!SG});',
+    '$("sBet").disabled=!!SG;$("sFire").disabled=!!SG}',
+    'function sGoClick(){if(SG)sCashout();else sStart()}',
+    'function sSync(){api("/api/stairs/state").then(function(j){',
+    'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;setBal(j.balance);',
+    'SG=j.game||null;SOVER=false;',
+    '$("sFireLab").textContent="Cầu lửa mỗi tầng (1–"+SMAXF+")";',
+    'if(SG){$("sFire").value=SG.fire;$("sBet").value=SG.bet}',
+    'sTable()}).catch(function(){})}',
+    // lộ hết bẫy của tầng vừa cháy rồi khóa tháp
+    'function sBurn(floor,traps,col){var row=$("sr"+floor);if(row)row.classList.remove("now");',
+    'for(var c=0;c<SC;c++){var el=$("sc_"+floor+"_"+c);if(!el)continue;el.onclick=null;',
+    'if(c===col){el.className="scell boom";el.textContent="💥"}',
+    'else if(traps.indexOf(c)>=0){el.className="scell fire";el.textContent="🔥"}}}',
+    'function sEnd(msg,net){SG=null;SOVER=true;$("sStat").textContent=msg;$("sGo").disabled=true;',
+    'if(net!==null)showNet(net);',
+    'setTimeout(function(){SOVER=false;sTower();sBand()},2200)}',
+    'function sTap(c){if(!SG||sBusy)return;sBusy=true;var stake=SG.bet,f=SG.floor;',
+    'api("/api/stairs/step",{col:c}).then(function(j){sBusy=false;',
+    'if(typeof j.balance==="number")setBal(j.balance);',
+    'if(j.burn){sBurn(f,j.traps||[],c);toast("🔥 CHÁY! Mất "+vnd(stake)+" Dogcoin");',
+    'return sEnd("🔥 Trúng cầu lửa ở tầng "+(f+1)+" — thua "+vnd(stake),-stake)}',
+    'var el=$("sc_"+f+"_"+c);if(el){el.className="scell step";el.textContent="🟢"}',
+    'if(j.top){toast("🏆 LÊN ĐỈNH! Nhận "+vnd(j.win));return sEnd("🏆 Lên đỉnh — nhận "+vnd(j.win),j.win-stake)}',
+    'SG=j.state;sTower();sBand()}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
+    'function sStart(){if(sBusy||SOVER)return;var f=sNum("sFire"),b=sNum("sBet");',
+    'if(f<1||f>SMAXF)return toast("❌ Cầu lửa từ 1 đến "+SMAXF);',
+    'if(b<=0)return toast("❌ Nhập số Dogcoin");',
+    'if(b>BAL)return toast("❌ Không đủ Dogcoin!");',
+    'sBusy=true;api("/api/stairs/start",{fire:f,bet:b}).then(function(j){sBusy=false;',
+    'setBal(j.balance);SG=j.state;sTower();sBand()',
+    '}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
+    'function sCashout(){if(!SG||sBusy)return;sBusy=true;var stake=SG.bet;',
+    'api("/api/stairs/cashout",{}).then(function(j){sBusy=false;setBal(j.balance);',
+    'toast("✅ Nhận "+vnd(j.win)+" Dogcoin");sEnd("✅ Đã dừng — nhận "+vnd(j.win),j.win-stake)',
+    '}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
     '',
     // Safari trên iPhone vẫn cho chụm 2 ngón dù CSS đã cấm — nó dùng sự kiện riêng
     // (gesture*), phải chặn thêm ở đây. Không đụng tới touchend/click nên bấm nhanh

@@ -617,6 +617,144 @@ const webMinesApi = {
     },
 };
 
+// ==========================================
+// --- LEO THANG (Fury Stairs) ---
+// ==========================================
+// Leo 10 tầng, mỗi tầng 8 ô, người chơi chọn trước mỗi tầng có mấy quả cầu lửa (1–5).
+// Mỗi tầng bấm 1 ô: trúng ô trống thì lên tầng trên và hệ số nhân thêm, trúng lửa là
+// mất tiền cược. Dừng lúc nào cũng được. Toàn bộ bẫy sinh sẵn lúc bắt đầu ván nên
+// server không thể "đổi ý" giữa chừng, và tiền tính hết ở đây — web chỉ vẽ lại.
+const STAIRS_FLOORS = 10;
+const STAIRS_COLS = 8;
+const STAIRS_RTP = 0.95;    // nhà cái ăn 5%, cùng mức các sòng thật hay dùng
+const STAIRS_MAX_FIRE = 5;  // nhiều lửa nhất mỗi tầng (phải nhỏ hơn số ô)
+
+const webStairs = new Map(); // userId -> { bet, fire, floor, traps[][], name, startedAt }
+
+function stairsMulti(cleared, fire) {
+    if (cleared <= 0) return 1;
+    const m = STAIRS_RTP * Math.pow(STAIRS_COLS / (STAIRS_COLS - fire), cleared);
+    return Math.floor(m * 100) / 100;
+}
+
+function stairsWin(bet, cleared, fire) {
+    return Math.floor(bet * stairsMulti(cleared, fire));
+}
+
+function stairsLog(g, result, amount) {
+    const entry = {
+        name: g.name, bet: g.bet, fire: g.fire, floor: g.floor,
+        result, amount, time: new Date().toLocaleTimeString('vi-VN'),
+    };
+    if (!Array.isArray(dbCache._stairsHistory)) dbCache._stairsHistory = [];
+    dbCache._stairsHistory.unshift(entry);
+    if (dbCache._stairsHistory.length > 20) dbCache._stairsHistory.pop();
+    return entry;
+}
+
+// Ván treo quá 2 tiếng (bot restart / người chơi bỏ ngang) thì hoàn tiền cược,
+// không im lặng nuốt như trước.
+function stairsRefundStale() {
+    const now = Date.now();
+    for (const [uid, g] of webStairs) {
+        if (now - (g.startedAt || 0) > 2 * 3600 * 1000) {
+            updatePoints(uid, g.bet);
+            webStairs.delete(uid);
+            writeLog('SYSTEM', `[LEO THANG] Hoàn ${g.bet} cho ${g.name || uid} — ván treo quá 2 tiếng`);
+        }
+    }
+}
+setInterval(stairsRefundStale, 10 * 60 * 1000);
+
+const webStairsApi = {
+    floors: STAIRS_FLOORS,
+    cols: STAIRS_COLS,
+    maxFire: STAIRS_MAX_FIRE,
+    table: (fire) => {
+        const rows = [];
+        for (let k = 1; k <= STAIRS_FLOORS; k++) rows.push(stairsMulti(k, fire));
+        return rows;
+    },
+    current: (userId) => {
+        const g = webStairs.get(userId);
+        if (!g) return null;
+        return {
+            bet: g.bet, fire: g.fire, floor: g.floor,
+            floors: STAIRS_FLOORS, cols: STAIRS_COLS,
+            multi: stairsMulti(g.floor, g.fire),
+            nextMulti: stairsMulti(g.floor + 1, g.fire),
+            cashout: stairsWin(g.bet, g.floor, g.fire),
+            safe: g.safe.slice(0, g.floor), // ô đã bấm đúng ở các tầng đã qua
+        };
+    },
+    start: (userId, name, fire, bet) => {
+        if (webStairs.has(userId)) return { error: 'Bạn đang có ván dở — leo tiếp hoặc bấm DỪNG đã.' };
+        if (!Number.isInteger(fire) || fire < 1 || fire > STAIRS_MAX_FIRE) {
+            return { error: `Số cầu lửa phải từ 1 đến ${STAIRS_MAX_FIRE}` };
+        }
+        if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
+        const me = getUserData(userId);
+        if ((me.points || 0) < bet) return { error: `Không đủ Dogcoin! Số dư: ${(me.points || 0).toLocaleString()}` };
+
+        // Bẫy sinh sẵn cho cả 10 tầng ngay từ đầu ván.
+        const traps = [];
+        for (let f = 0; f < STAIRS_FLOORS; f++) {
+            const row = [];
+            while (row.length < fire) {
+                const c = Math.floor(Math.random() * STAIRS_COLS);
+                if (!row.includes(c)) row.push(c);
+            }
+            traps.push(row);
+        }
+        const g = { bet, fire, floor: 0, traps, safe: [], name, startedAt: Date.now() };
+        webStairs.set(userId, g);
+        updatePoints(userId, -bet);
+        writeLog('BET', `[LEO THANG] ${name} cược ${bet} | ${fire} lửa/tầng`);
+        return { ok: true, balance: getUserData(userId).points || 0, state: webStairsApi.current(userId) };
+    },
+    step: (userId, col) => {
+        const g = webStairs.get(userId);
+        if (!g) return { error: 'Chưa có ván nào đang chơi' };
+        if (!Number.isInteger(col) || col < 0 || col >= STAIRS_COLS) return { error: 'Ô không hợp lệ' };
+
+        const row = g.traps[g.floor];
+        if (row.includes(col)) {
+            const hitFloor = g.floor;
+            webStairs.delete(userId);
+            const entry = stairsLog(g, 'Trúng lửa (Thua)', -g.bet);
+            writeLog('RESULT', `[LEO THANG] ${g.name} CHÁY ở tầng ${hitFloor + 1} — mất ${g.bet}`);
+            stairsBoardPush(entry, { hitFloor, hitCol: col, traps: g.traps, safe: g.safe.slice() });
+            // tiền đã trừ lúc bắt đầu, thua thì không trừ thêm
+            return { ok: true, burn: true, floor: hitFloor, traps: row, balance: getUserData(userId).points || 0 };
+        }
+
+        g.safe.push(col);
+        g.floor++;
+        if (g.floor >= STAIRS_FLOORS) {
+            const win = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
+            webStairs.delete(userId);
+            updatePoints(userId, win);
+            const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH — nhận ${win}`);
+            stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
+            return { ok: true, burn: false, top: true, win, balance: getUserData(userId).points || 0 };
+        }
+        return { ok: true, burn: false, state: webStairsApi.current(userId) };
+    },
+    cashout: (userId) => {
+        const g = webStairs.get(userId);
+        if (!g) return { error: 'Chưa có ván nào đang chơi' };
+        if (!g.floor) return { error: 'Leo ít nhất 1 tầng rồi mới dừng được' };
+        const win = stairsWin(g.bet, g.floor, g.fire);
+        webStairs.delete(userId);
+        updatePoints(userId, win);
+        const entry = stairsLog(g, 'Dừng (Thắng)', win - g.bet);
+        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} — nhận ${win}`);
+        stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
+        return { ok: true, win, balance: getUserData(userId).points || 0 };
+    },
+};
+
 // ===== BẢNG DÒ MÌN TRÊN DISCORD =====
 // Khác Tài Xỉu: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
 // Nên bảng này chỉ là chỗ mời chơi + khoe ai vừa ăn đậm, KHÔNG có nút đặt cược.
@@ -777,6 +915,162 @@ async function resumeMinesBoard() {
     writeLog('SYSTEM', `[BẢNG DÒ MÌN] Bảng cũ mất, đã đăng bảng mới ở #${ch.name}`);
 }
 
+// ===== BẢNG LEO THANG TRÊN DISCORD =====
+// Cùng cách làm với bảng dò mìn: kênh riêng, gom hàng đợi cho khỏi ngập, tự dọn tin cũ.
+const stairsBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0, queue: [], msgIds: [] };
+
+function stairsBoardPush(entry, view) {
+    stairsBoard.needsUpdate = true;
+    stairsBoard.queue.push({ ...entry, view });
+    if (stairsBoard.queue.length > 40) stairsBoard.queue.shift();
+}
+
+function stairsHistory() {
+    return Array.isArray(dbCache._stairsHistory) ? dbCache._stairsHistory : [];
+}
+
+function getStairsBoardData() {
+    const recent = stairsHistory().slice(0, 6);
+    let desc =
+        `Leo **${STAIRS_FLOORS} tầng**, mỗi tầng **${STAIRS_COLS} ô**. Bạn chọn mỗi tầng có mấy **cầu lửa** (1–${STAIRS_MAX_FIRE}).\n` +
+        `Mỗi tầng bấm 1 ô: trúng ô trống thì lên tầng trên, hệ số nhân thêm — **dừng lúc nào cũng được**.\n` +
+        `Trúng cầu lửa 🔥 là mất tiền cược ván đó.\n\n` +
+        `🔥 Càng nhiều lửa mỗi tầng, hệ số càng cao (1 lửa lên đỉnh x3.61 · 5 lửa lên đỉnh x17k).\n\n`;
+    if (recent.length) {
+        desc += `**🪜 Vài ván gần đây:**\n` + recent.map(h => {
+            const win = h.amount >= 0;
+            return `${win ? (h.result === 'Lên đỉnh' ? '🏆' : '💰') : '🔥'} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · ` +
+                `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
+        }).join('\n');
+    } else {
+        desc += `*Chưa có ai leo. Mở hàng đi!*`;
+    }
+
+    const embed = new EmbedBuilder()
+        .setTitle('🪜 LEO THANG — chơi trên web')
+        .setColor(0xe67e22)
+        .setDescription(desc)
+        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Leo Thang trên web').setStyle(ButtonStyle.Success)
+    );
+    return { embeds: [embed], components: [row] };
+}
+
+// Vẽ lại tháp: tầng trên cùng ở trên. Tầng đã qua hiện ô người chơi bước lên,
+// tầng cháy lộ hết lửa, tầng chưa tới để trống.
+function stairsTowerText(h) {
+    const v = h.view;
+    if (!v) return '';
+    const lines = [];
+    for (let f = STAIRS_FLOORS - 1; f >= 0; f--) {
+        const cells = [];
+        for (let c = 0; c < STAIRS_COLS; c++) {
+            if (f === v.hitFloor) cells.push(c === v.hitCol ? '💥' : (v.traps[f].includes(c) ? '🔥' : '⬛'));
+            else if (f < v.safe.length) cells.push(c === v.safe[f] ? '🟩' : (v.traps[f].includes(c) ? '🔥' : '⬛'));
+            else cells.push('⬜');
+        }
+        lines.push(cells.join(''));
+    }
+    return lines.join('\n');
+}
+
+function stairsSoloEmbed(h) {
+    const win = h.amount >= 0;
+    let desc = `👤 **${h.name}**\n`;
+    desc += win
+        ? (h.result === 'Lên đỉnh' ? `🏆 **LÊN ĐỈNH!** Qua sạch ${STAIRS_FLOORS} tầng!\n` : `✅ **Dừng đúng lúc!**\n`)
+        : `🔥 **CHÁY!** Đạp trúng cầu lửa!\n`;
+    desc += `🔥 Cầu lửa mỗi tầng: **${h.fire}** · 🪜 Lên được: **${h.floor}/${STAIRS_FLOORS}** tầng\n`;
+    desc += `💰 Mức đặt: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
+    desc += win
+        ? `🎉 Ăn về: **+${h.amount.toLocaleString()}** ${DOGCOIN_EMOJI}\n`
+        : `📉 Mất: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
+    const tower = stairsTowerText(h);
+    if (tower) desc += `\n${tower}`;
+    return new EmbedBuilder()
+        .setTitle('🪜 LEO THANG')
+        .setColor(win ? 0x2ecc71 : 0xe74c3c)
+        .setDescription(desc)
+        .setTimestamp();
+}
+
+async function flushStairsQueue() {
+    if (!stairsBoard.channel || !stairsBoard.queue.length) return;
+    const batch = stairsBoard.queue.splice(0, 10);
+    const embed = batch.length === 1
+        ? stairsSoloEmbed(batch[0])
+        : new EmbedBuilder()
+            .setColor(batch.some(h => h.amount >= 0) ? 0x2ecc71 : 0xe74c3c)
+            .setTitle(`🪜 KẾT QUẢ LEO THANG — ${batch.length} ván`)
+            .setDescription(batch.map(h => {
+                const win = h.amount >= 0;
+                const head = h.result === 'Lên đỉnh' ? '🏆' : (win ? '💰' : '🔥');
+                return `${head} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · cược ${h.bet.toLocaleString()} → ` +
+                    `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
+            }).join('\n'))
+            .setTimestamp();
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Leo Thang trên web').setStyle(ButtonStyle.Success)
+    );
+    const sent = await stairsBoard.channel.send({ embeds: [embed], components: [row] })
+        .catch(e => { writeLog('SYSTEM', `[LEO THANG] Không gửi được kết quả: ${e.message}`); return null; });
+    if (!sent) return;
+    stairsBoard.msgIds.push(sent.id);
+    while (stairsBoard.msgIds.length > MINES_KEEP_MSGS) {
+        const old = stairsBoard.msgIds.shift();
+        stairsBoard.channel.messages.fetch(old).then(m => m.delete()).catch(() => { });
+    }
+}
+
+async function startStairsBoard(channel) {
+    if (stairsBoard.message) await stairsBoard.message.delete().catch(() => { });
+    stairsBoard.channel = channel;
+    stairsBoard.message = await channel.send(getStairsBoardData());
+    stairsBoard.needsUpdate = false;
+    stairsBoard.lastEdit = Date.now();
+    dbCache._stairsChannelId = channel.id;
+    dbCache._stairsMsgId = stairsBoard.message.id;
+    saveDbNow();
+}
+
+function stopStairsBoard() {
+    if (stairsBoard.message) stairsBoard.message.delete().catch(() => { });
+    stairsBoard.channel = null;
+    stairsBoard.message = null;
+    dbCache._stairsChannelId = null;
+    dbCache._stairsMsgId = null;
+    saveDbNow();
+}
+
+async function resumeStairsBoard() {
+    const chId = dbCache._stairsChannelId;
+    if (!chId) return;
+    const ch = await client.channels.fetch(chId);
+    const old = dbCache._stairsMsgId ? await ch.messages.fetch(dbCache._stairsMsgId).catch(() => null) : null;
+    if (old) {
+        stairsBoard.channel = ch;
+        stairsBoard.message = old;
+        stairsBoard.lastEdit = Date.now();
+        await old.edit(getStairsBoardData()).catch(() => { });
+        writeLog('SYSTEM', `[BẢNG LEO THANG] Nối lại bảng cũ ở #${ch.name}`);
+        return;
+    }
+    await startStairsBoard(ch);
+}
+
+function runStairsBoardLoop() {
+    setInterval(() => { flushStairsQueue().catch(() => { }); }, MINES_POST_EVERY_MS);
+    setInterval(() => {
+        if (!stairsBoard.message || !stairsBoard.needsUpdate) return;
+        if (Date.now() - stairsBoard.lastEdit < 15000) return;
+        stairsBoard.needsUpdate = false;
+        stairsBoard.lastEdit = Date.now();
+        stairsBoard.message.edit(getStairsBoardData())
+            .catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không sửa được tin nhắn: ${e.message}`));
+    }, 5000);
+}
+
 function runMinesBoardLoop() {
     // đăng kết quả các ván vừa xong
     setInterval(() => { flushMinesQueue().catch(() => { }); }, MINES_POST_EVERY_MS);
@@ -839,6 +1133,8 @@ client.once('ready', async (c) => {
     // resumeXosoAfterRestart().catch(() => {});
     runMinesBoardLoop();
     resumeMinesBoard().catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không nối lại được: ${e.message}`));
+    runStairsBoardLoop();
+    resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
 
     // Cổng web cược cho người chơi (tách hẳn panel admin)
     try {
@@ -852,6 +1148,7 @@ client.once('ready', async (c) => {
             saveDbNow,
             writeLog,
             mines: webMinesApi,
+            stairs: webStairsApi,
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -895,6 +1192,11 @@ client.once('ready', async (c) => {
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
+            // Bảng mời chơi Leo Thang
+            getStairs: () => ({ on: !!stairsBoard.message, channelId: dbCache._stairsChannelId || '' }),
+            startStairs: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStairsBoard(ch); return ch.name; },
+            stopStairs: () => stopStairsBoard(),
+            getStairsHistory: () => stairsHistory(),
             deleteChat: async (channelId) => { const ch = await client.channels.fetch(channelId); return await deleteBotChat(ch); },
             getWithdraw: () => withdrawState,
             startWithdraw: async (channelId) => { const ch = await client.channels.fetch(channelId); await startWithdraw(ch); return ch.name; },
