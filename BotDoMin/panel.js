@@ -764,7 +764,8 @@ const HTML = `<!DOCTYPE html>
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
       <div class="card epOnly" style="display:none">
-        <h2>💎 Dò Mìn — đặt vị trí mìn</h2>
+        <h2>💎 Dò Mìn — Ép vị trí mìn (Web 25 ô)</h2>
+        <div class="note">🌐 Dò mìn chính thức đã chuyển lên web cược (http://103.72.98.37:3002/). Phần này dùng để <b>ép vị trí mìn</b> cho ván web tiếp theo (25 ô grid 5×5).</div>
         <div class="row">
           <div style="flex:3">
             <label>Người chơi mục tiêu</label>
@@ -773,7 +774,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
           <input type="checkbox" id="mineAny" checked style="width:auto;margin:0" onchange="renderMineTarget()">
-          Áp dụng cho người tiếp theo bất kỳ (ai chơi /domin trước thì dính)
+          Áp dụng cho người tiếp theo bất kỳ (ai chơi trên web trước thì dính)
         </label>
         <div class="grid" id="mineGrid"></div>
         <div class="row" style="margin-top:12px">
@@ -781,7 +782,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="clearGrid()">Xóa lưới</button>
           <button class="btn-green" style="flex:2" onclick="mineForce()">💣 Đặt mìn cho ván tới</button>
         </div>
-        <div class="note">⚠️ Mìn ẩn, người chơi tự bấm — đặt mìn chỉ <b>tăng xác suất</b> trúng, không ép cứng 100%. Số ô đánh dấu sẽ là mìn chắc chắn; nếu họ chọn số mìn ít hơn thì chỉ lấy bấy nhiêu ô đầu. Muốn dễ thua: đặt mìn ở các ô trên-trái (hay bấm trước).</div>
+        <div class="note">⚠️ <b>25 ô grid (5×5):</b> Mìn ẩn, người chơi tự click trên web — đặt mìn chỉ <b>tăng xác suất</b> trúng, không ép 100%. Số ô đánh dấu (💣) sẽ là mìn chắc chắn; nếu họ chọn số mìn ít hơn thì chỉ lấy bấy nhiêu ô đầu tiên. Muốn dễ thua: đặt mìn ở các ô trên-trái (hay bấm trước).</div>
         <div class="flist" id="mineList"></div>
       </div>
       <div class="card">
