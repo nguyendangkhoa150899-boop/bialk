@@ -29,10 +29,16 @@ function startWebPlay(ctx) {
         res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(obj));
     };
+    // Phải resolve ở MỌI lối ra. req.destroy() không phát 'end', nếu chỉ nghe 'end' thì
+    // gửi body quá cỡ sẽ treo Promise vĩnh viễn — mỗi lần như vậy rò một request + closure,
+    // spam vài phút là hết RAM.
     const readBody = (req) => new Promise((resolve) => {
-        let raw = '';
-        req.on('data', (d) => { raw += d; if (raw.length > 10000) req.destroy(); });
-        req.on('end', () => { try { resolve(JSON.parse(raw || '{}')); } catch { resolve({}); } });
+        let raw = '', done = false;
+        const finish = (v) => { if (!done) { done = true; resolve(v); } };
+        req.on('data', (d) => { raw += d; if (raw.length > 10000) { req.destroy(); finish({}); } });
+        req.on('end', () => { try { finish(JSON.parse(raw || '{}')); } catch { finish({}); } });
+        req.on('aborted', () => finish({}));
+        req.on('error', () => finish({}));
     });
 
     // Chống dò PIN: mỗi IP tối đa 10 lần đăng nhập sai / 10 phút
@@ -62,11 +68,18 @@ function startWebPlay(ctx) {
         return db._webChat;
     };
     const lastChatAt = new Map();
+    // Hạn 30 ngày phải kiểm ở ĐÂY. Trước chỉ dọn lúc có người đăng nhập, nên token cũ
+    // vẫn dùng được vô thời hạn nếu không ai đăng nhập để kích hoạt vòng dọn.
+    const SESSION_TTL = 30 * 24 * 3600 * 1000;
     const getSessionUser = (req) => {
         const h = req.headers['authorization'] || '';
         const t = h.startsWith('Bearer ') ? h.slice(7) : '';
-        const s = t && sessions()[t];
-        return s ? s.u : null;
+        if (!t) return null;
+        const ss = sessions();
+        const s = ss[t];
+        if (!s) return null;
+        if (Date.now() - (s.ts || 0) > SESSION_TTL) { delete ss[t]; return null; }
+        return s.u;
     };
 
     const server = http.createServer(async (req, res) => {
@@ -101,9 +114,14 @@ function startWebPlay(ctx) {
                 const token = crypto.randomBytes(24).toString('hex');
                 const ss = sessions();
                 const now = Date.now();
-                for (const [t, s] of Object.entries(ss)) if (now - (s.ts || 0) > 30 * 24 * 3600 * 1000) delete ss[t];
+                // dọn phiên quá hạn + phiên cũ của chính người này (đăng nhập lại = thu hồi máy cũ)
+                for (const [t, s] of Object.entries(ss)) {
+                    if (now - (s.ts || 0) > 30 * 24 * 3600 * 1000 || s.u === userId) delete ss[t];
+                }
                 ss[token] = { u: userId, ts: now };
-                ctx.saveDbNow();
+                // CỐ TÌNH không gọi saveDbNow ở đây: hàm đó ghi ĐỒNG BỘ cả database, ai spam
+                // đăng nhập là chặn đứng cả bot. Phiên nằm trong dbCache nên vòng lưu tự động
+                // (10 giây/lần) vẫn giữ được qua restart.
                 ctx.writeLog('ADMIN', `[WEB CƯỢC] ${rec.name || userId} đăng nhập web`);
                 return sendJSON(res, 200, { ok: true, token, name: rec.name || '', balance: rec.points || 0 });
             }
@@ -364,7 +382,7 @@ const PAGE = [
     // icon Dog Coin thật (ảnh trong game) — thay cho emoji 🐕 ở mọi chỗ
     '.dc{width:1.05em;height:1.05em;vertical-align:-.16em;object-fit:contain;display:inline-block}',
     '.dc.big{width:1.5em;height:1.5em;vertical-align:-.3em}',
-    '#mine{background:linear-gradient(180deg,#1b2440,#141a2e);border:1px solid #2b3557}',
+    '#mineCard{background:linear-gradient(180deg,#1b2440,#141a2e);border:1px solid #2b3557}',
     // thanh mốc hệ số cuộn ngang: mốc đã ăn sáng vàng, mốc kế tiếp nhấp nháy xanh
     '#mbar{display:flex;gap:4px;overflow-x:auto;padding:6px;background:#0d1226;border:1px solid #2b3557;border-radius:10px;scrollbar-width:none}',
     '#mbar::-webkit-scrollbar{display:none}',
@@ -512,7 +530,7 @@ const PAGE = [
 
     // ================= TRANG DÒ MÌN =================
     '<div id="pageMine" class="hidden">',
-    '<div class="card" id="mine">',
+    '<div class="card" id="mineCard">', // KHÔNG đặt id="mine": trùng với dòng cược ở trang Tài Xỉu
     '<div class="row" style="margin-bottom:8px"><h2 style="margin:0">💣 Dò Mìn</h2><div class="muted" id="mStat">Chọn số mìn và tiền cược</div></div>',
 
     '<div id="mbar"></div>',

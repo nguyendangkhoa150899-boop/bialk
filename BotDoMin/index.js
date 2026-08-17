@@ -254,7 +254,11 @@ const MASCOTS = [
     { id: 'ga', name: 'Gà', emoji: '🐓' }, { id: 'nai', name: 'Nai', emoji: '🦌' }
 ];
 let bcState = {
-    status: 'betting',
+    // 'stopped' chứ KHÔNG phải 'betting': Bầu Cua đang tắt (không chạy vòng lặp mở bát).
+    // Nếu để 'betting' thì bảng cũ còn sót trong Discord vẫn nhận cược, trừ tiền thật rồi
+    // không bao giờ trả — tiền bốc hơi im lặng. startBaucua() sẽ tự đặt lại 'betting'
+    // khi admin bật bàn, nên không ảnh hưởng lúc mở lại game.
+    status: 'stopped',
     timeLeft: 60,
     targetTime: 0,
     bets: [],
