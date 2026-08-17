@@ -15,6 +15,10 @@ const pathmod = require('path');
 let COIN_PNG = null;
 try { COIN_PNG = fs.readFileSync(pathmod.join(__dirname, 'dogcoin.png')); } catch { }
 
+// Nhân vật leo thang (ảnh đã tách nền). Thiếu file thì trang vẫn chạy, chỉ mất hình.
+let HERO_PNG = null;
+try { HERO_PNG = fs.readFileSync(pathmod.join(__dirname, 'hero.png')); } catch { }
+
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
     const LOCK_S = ctx.lockSeconds || 15;
@@ -75,10 +79,11 @@ function startWebPlay(ctx) {
                 return res.end(PAGE);
             }
 
-            if (req.method === 'GET' && path === '/dogcoin.png') {
-                if (!COIN_PNG) { res.writeHead(404); return res.end(); }
+            if (req.method === 'GET' && (path === '/dogcoin.png' || path === '/hero.png')) {
+                const img = path === '/hero.png' ? HERO_PNG : COIN_PNG;
+                if (!img) { res.writeHead(404); return res.end(); }
                 res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' });
-                return res.end(COIN_PNG);
+                return res.end(img);
             }
 
             if (req.method === 'POST' && path === '/api/login') {
@@ -390,22 +395,36 @@ const PAGE = [
     '.mgo.cash{background:linear-gradient(180deg,#ffe9a8,#e8bf58);color:#3d2c05}',
     '.mgo:disabled{background:#232a3d;color:#5a6480}',
     // ---- leo thang: tháp 10 tầng, tầng trên cùng ở trên ----
-    '#stair{background:linear-gradient(180deg,#2a1a1a,#1a1214);border:1px solid #4a2c2c}',
+    '#stair{background:radial-gradient(120% 80% at 50% 0%,#3a2020 0%,#22161a 55%,#170f12 100%);border:1px solid #4a2c2c}',
     '#tower{display:flex;flex-direction:column;gap:5px;margin-top:10px}',
-    '.srow{display:flex;align-items:center;gap:5px}',
+    '.srow{display:flex;align-items:center;gap:5px;transition:opacity .2s}',
+    '.srow.far{opacity:.45}',                       // tầng còn xa thì mờ đi cho đỡ rối
     '.srow .cells{display:flex;gap:4px;flex:1}',
-    '.srow .mx{flex:0 0 54px;text-align:center;font-size:11px;font-weight:800;padding:5px 2px;border-radius:7px;',
+    '.srow .mx{flex:0 0 56px;text-align:center;font-size:11px;font-weight:800;padding:5px 2px;border-radius:7px;',
     'background:#241820;color:#8a6a72;border:1px solid #3d2830}',
     '.srow.done .mx{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
     '.srow.now .mx{background:linear-gradient(180deg,#ff8a5c,#d9541e);color:#fff;border-color:#ffb08a;animation:sGlow 1.4s ease-in-out infinite}',
     '@keyframes sGlow{0%,100%{box-shadow:0 0 0 0 #ff8a5c00}50%{box-shadow:0 0 12px 2px #ff8a5c88}}',
-    '.scell{flex:1;aspect-ratio:1.7;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;',
+    '.scell{flex:1;aspect-ratio:1.6;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;',
     'background:linear-gradient(180deg,#3a2a30,#2a1e24);border:1px solid #4a3640;border-bottom:3px solid #1c1418;color:#6b5560}',
-    '.srow.now .scell{background:linear-gradient(180deg,#5a3a3a,#3f2626);border-color:#8a5a5a;cursor:pointer}',
+    // tầng đang đứng: bậc sáng lên, mời gọi bấm
+    '.srow.now .scell{background:linear-gradient(180deg,#6b4038,#472823);border-color:#a5675a;cursor:pointer}',
+    '.srow.now .scell:hover{background:linear-gradient(180deg,#875046,#5a322b);border-color:#d18a76}',
     '.srow.now .scell:active{transform:translateY(2px);border-bottom-width:1px}',
-    '.scell.step{background:linear-gradient(180deg,#4dd07a,#249a52);border-color:#7de8a4;border-bottom-color:#12401f;color:#04240f}',
+    // ô đã bước qua: sáng vàng, có đồng Dogcoin
+    '.scell.step{background:linear-gradient(180deg,#ffe9a8,#e8bf58);border-color:#a8842f;border-bottom-color:#7d5f1e}',
     '.scell.fire{background:linear-gradient(180deg,#e05555,#8e2020);border-color:#ff9a9a;color:#fff}',
     '.scell.boom{background:linear-gradient(180deg,#ff7b3a,#c23c10);border-color:#ffb08a;color:#fff;animation:boomPop .32s ease-out}',
+    '.scell img.dc{width:20px;height:20px}',
+    // nhân vật đứng trên bậc vừa leo tới
+    '.hero{position:absolute;bottom:2px;left:50%;width:auto;height:38px;transform:translateX(-50%);',
+    'pointer-events:none;filter:drop-shadow(0 3px 4px #000a);animation:heroHop .45s ease-out;z-index:2}',
+    '@keyframes heroHop{0%{transform:translate(-50%,26px) scale(.7)}55%{transform:translate(-50%,-7px) scale(1.08)}100%{transform:translate(-50%,0) scale(1)}}',
+    '.hero.idle{animation:heroIdle 2.2s ease-in-out infinite}',
+    '@keyframes heroIdle{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-3px)}}',
+    // nhân vật lúc chưa vào ván: đứng dưới chân tháp
+    '#heroBase{display:flex;align-items:flex-end;justify-content:center;height:44px;margin-top:6px}',
+    '#heroBase img{height:42px;filter:drop-shadow(0 3px 4px #000a);animation:heroIdle 2.2s ease-in-out infinite}',
     // ---- sân khấu xí ngầu + tờ giấy ----
     '#stage{position:relative;height:150px;border-radius:12px;background:radial-gradient(ellipse at center,#1e3d2b 0%,#152a1e 100%);border:1px solid #2b4a37;overflow:hidden;margin-top:10px;touch-action:none}',
     '#diceRow{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px}',
@@ -516,6 +535,7 @@ const PAGE = [
     '<div class="card" id="stair">',
     '<div class="row" style="margin-bottom:6px"><h2 style="margin:0">🪜 Leo Thang</h2><div class="muted" id="sStat">Chọn số cầu lửa và tiền cược</div></div>',
     '<div id="tower"></div>',
+    '<div id="heroBase"><img src="/hero.png" alt=""></div>',
 
     '<div class="mctl">',
     '<div class="box"><div class="lab">Tiền cược</div><input id="sBet" inputmode="numeric" value="100" oninput="sBand()"></div>',
@@ -822,17 +842,25 @@ const PAGE = [
     'var f=sNum("sFire");if(f<1||f>SMAXF){f=Math.min(Math.max(f,1),SMAXF);$("sFire").value=f}',
     'api("/api/stairs/table",{fire:f}).then(function(j){STAB=j.table||[];sTower();sBand()}).catch(function(){})},150)}',
     // Tháp vẽ từ TẦNG CAO xuống thấp cho giống hình leo lên.
+    'var HEROIMG=\'<img class="hero" src="/hero.png" alt="">\';',
+    'var COINCELL=\'<img class="dc" src="/dogcoin.png" alt="">\';',
     'function sTower(){var box=$("tower");if(!STAB.length){box.innerHTML="";return}',
     'var done=SG?SG.floor:0;var html="";',
     'for(var f=SF-1;f>=0;f--){',
     'var cls=f<done?"done":(SG&&f===done?"now":"");',
+    // tầng cách chỗ đang đứng hơn 3 bậc thì làm mờ, mắt đỡ rối
+    'if(SG&&f>done+3)cls+=" far";',
     'var cells="";',
     'for(var c=0;c<SC;c++){',
-    'var cc="scell",txt="";',
-    'if(SG&&f<done&&SG.safe[f]===c){cc+=" step";txt="🟢"}',
-    'cells+=\'<div class="\'+cc+\'" id="sc_\'+f+"_"+c+\'" data-f="\'+f+\'" data-c="\'+c+\'">\'+txt+"</div>"}',
+    'var cc="scell",inner="";',
+    'if(SG&&f<done&&SG.safe[f]===c){cc+=" step";',
+    // nhân vật đứng ở bậc vừa leo tới, các bậc dưới để lại đồng Dogcoin
+    'inner=(f===done-1)?HEROIMG:COINCELL}',
+    'cells+=\'<div class="\'+cc+\'" id="sc_\'+f+"_"+c+\'" data-c="\'+c+\'">\'+inner+"</div>"}',
     'html+=\'<div class="srow \'+cls+\'" id="sr\'+f+\'"><div class="cells">\'+cells+\'</div><div class="mx">\'+fx(STAB[f])+"</div></div>"}',
     'box.innerHTML=html;',
+    // chưa vào ván thì nhân vật đứng dưới chân tháp
+    '$("heroBase").style.display=SG?"none":"flex";',
     'if(SG){var row=$("sr"+done);if(row)row.querySelectorAll(".scell").forEach(function(el){',
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
     'function sBand(){var go=$("sGo");',
@@ -866,7 +894,7 @@ const PAGE = [
     'if(typeof j.balance==="number")setBal(j.balance);',
     'if(j.burn){sBurn(f,j.traps||[],c);toast("🔥 CHÁY! Mất "+vnd(stake)+" Dogcoin");',
     'return sEnd("🔥 Trúng cầu lửa ở tầng "+(f+1)+" — thua "+vnd(stake),-stake)}',
-    'var el=$("sc_"+f+"_"+c);if(el){el.className="scell step";el.textContent="🟢"}',
+    'var el=$("sc_"+f+"_"+c);if(el){el.className="scell step";el.innerHTML=HEROIMG}',
     'if(j.top){toast("🏆 LÊN ĐỈNH! Nhận "+vnd(j.win));return sEnd("🏆 Lên đỉnh — nhận "+vnd(j.win),j.win-stake)}',
     'SG=j.state;sTower();sBand()}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
     'function sStart(){if(sBusy||SOVER)return;var f=sNum("sFire"),b=sNum("sBet");',
