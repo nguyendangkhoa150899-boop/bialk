@@ -475,6 +475,22 @@ const createGame = (numMines, userId) => {
 // nếu để client tự tính thưởng thì sửa JS là tự cộng tiền.
 const webMines = new Map(); // userId -> { mines, revealed[], totalMines, bet, name }
 
+// ⚠️ HAI CÁI TRẦN NÀY GIỮ CHO KINH TẾ SERVER KHÔNG VỠ — đừng bỏ nếu chưa hiểu vì sao.
+// Hệ số theo xác suất là đúng toán, nhưng có những mốc rất dễ chạm mà trả cực đậm:
+//   5 mìn mở 15 ô  = tỉ lệ 1/211   -> x204
+//   12 mìn mở 8 ô  = tỉ lệ 1/840   -> x815
+// Chơi vài trăm ván là có người trúng. Không chặn thì một ván ALL IN ăn x200 đủ bơm
+// vào server số Dogcoin bằng hàng trăm giờ cày của tất cả mọi người.
+// RTP 0.97 chỉ đảm bảo nhà cái lãi sau HÀNG CHỤC NGHÌN ván — server nhỏ chết vì
+// phương sai trước khi tới đó. Chỉnh 2 số này để siết/nới độ đậm của dò mìn.
+const MINES_MAX_WIN = 100000; // tiền nhận tối đa 1 ván (~25-33 giờ cày)
+const MINES_MAX_BET = 10000;  // cược tối đa 1 ván
+
+// Thưởng thực nhận = bet × hệ số, nhưng không vượt trần.
+function minesWin(bet, diamonds, numMines) {
+    return Math.min(Math.floor(bet * calculateMulti(diamonds, numMines)), MINES_MAX_WIN);
+}
+
 // Bot restart là mất ván đang chơi (RAM). Tiền cược đã trừ lúc bắt đầu nên phải HOÀN
 // khi khôi phục lại, chứ không được im lặng nuốt. Ván treo quá 2 tiếng cũng tự hoàn.
 function webMinesRefundStale() {
@@ -499,6 +515,8 @@ function webMinesLog(g, result, amount) {
 
 const webMinesApi = {
     tiles: TOTAL_TILES,
+    maxWin: MINES_MAX_WIN,
+    maxBet: MINES_MAX_BET,
     // Bảng hệ số để client hiện trước khi đặt — tính ở server nên client không bịa được.
     table: (numMines) => {
         const max = TOTAL_TILES - numMines;
@@ -510,11 +528,13 @@ const webMinesApi = {
         const g = webMines.get(userId);
         if (!g) return null;
         const info = getInfo(g.revealed.length, g.totalMines);
+        const raw = Math.floor(g.bet * info.multi);
         return {
             bet: g.bet, totalMines: g.totalMines, revealed: g.revealed.slice(),
             maxDiamonds: TOTAL_TILES - g.totalMines,
             multi: info.multi, nextMulti: info.nextMulti,
-            cashout: Math.floor(g.bet * info.multi),
+            cashout: Math.min(raw, MINES_MAX_WIN),
+            capped: raw > MINES_MAX_WIN, // để web nói rõ "đã chạm trần", đỡ tưởng bị ăn bớt
         };
     },
     start: (userId, name, numMines, bet) => {
@@ -523,6 +543,7 @@ const webMinesApi = {
             return { error: `Số mìn phải từ 1 đến ${TOTAL_TILES - 1}` };
         }
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
+        if (bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} Dogcoin mỗi ván` };
         const me = getUserData(userId);
         if ((me.points || 0) < bet) return { error: `Không đủ Dogcoin! Số dư: ${(me.points || 0).toLocaleString()}` };
 
@@ -551,7 +572,7 @@ const webMinesApi = {
         g.revealed.push(idx);
         const maxDiamonds = TOTAL_TILES - g.totalMines;
         if (g.revealed.length >= maxDiamonds) {
-            const win = Math.floor(g.bet * calculateMulti(maxDiamonds, g.totalMines));
+            const win = minesWin(g.bet, maxDiamonds, g.totalMines);
             webMines.delete(userId);
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
@@ -564,7 +585,7 @@ const webMinesApi = {
         const g = webMines.get(userId);
         if (!g) return { error: 'Chưa có ván nào đang chơi' };
         if (!g.revealed.length) return { error: 'Mở ít nhất 1 ô rồi mới dừng được' };
-        const win = Math.floor(g.bet * calculateMulti(g.revealed.length, g.totalMines));
+        const win = minesWin(g.bet, g.revealed.length, g.totalMines);
         webMines.delete(userId);
         updatePoints(userId, win);
         webMinesLog(g, 'Dừng (Thắng)', win - g.bet);

@@ -187,6 +187,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/mines/state') {
                         return sendJSON(res, 200, {
                             ok: true, tiles: mines.tiles,
+                            maxWin: mines.maxWin, maxBet: mines.maxBet,
                             balance: me.points || 0,
                             game: mines.current(userId),
                         });
@@ -316,6 +317,15 @@ const PAGE = [
     '.mtile.boom{background:linear-gradient(180deg,#e05555,#8e2020);border-color:#ff9a9a;border-bottom-color:#5d1414;color:#fff;cursor:default;animation:boomPop .32s ease-out}',
     '@keyframes boomPop{0%{transform:scale(.5) rotate(-20deg)}70%{transform:scale(1.28) rotate(8deg)}100%{transform:scale(1)}}',
     '.mtile.shown{background:linear-gradient(180deg,#3a2030,#2a1622);border-color:#6b3a4a;border-bottom-color:#1e1017;color:#c46b7b;cursor:default}',
+    // thanh kéo xem trước thưởng (chuột kéo dễ hơn cuộn ngang thanh hệ số)
+    '.mprev{background:#0d1226;border:1px solid #2b3557;border-radius:10px;padding:9px 11px;margin-top:10px}',
+    '.mprev .lab{font-size:12px;color:var(--muted)}.mprev .lab b{color:#cfe0ff}',
+    '.mprev .pv{font-size:15px;font-weight:900;color:var(--gold)}',
+    '.mprev .pv.cap{color:#ff9a5c}',
+    '#mSlide{width:100%;margin-top:7px;-webkit-appearance:none;appearance:none;height:6px;border-radius:5px;background:#243055;outline:none}',
+    '#mSlide::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;cursor:grab;',
+    'background:radial-gradient(circle at 35% 30%,#ffe9a8,#d9a93c);border:2px solid #7d5f1e;box-shadow:0 2px 6px #0008}',
+    '#mSlide::-moz-range-thumb{width:20px;height:20px;border-radius:50%;cursor:grab;background:#e8bf58;border:2px solid #7d5f1e}',
     // hàng chỉnh tiền cược / số mìn
     '.mctl{display:flex;align-items:center;gap:6px;margin-top:10px}',
     '.mctl .box{flex:1;background:#0d1226;border:1px solid #2b3557;border-radius:10px;padding:5px 8px;text-align:center}',
@@ -423,8 +433,13 @@ const PAGE = [
     '<div class="mside bomb"><div class="ic">💣</div><div class="n" id="mBombN">–</div></div>',
     '</div>',
 
+    // thanh kéo xem trước: kéo tới ô thứ N thì biết ăn bao nhiêu, không cần chơi thử
+    '<div class="mprev">',
+    '<div class="row"><span class="lab">🔎 Kéo xem thử: mở <b id="mPvN">1</b> ô</span><b class="pv" id="mPvWin">—</b></div>',
+    '<input type="range" id="mSlide" min="1" max="22" value="1" oninput="mPreview()">',
+    '</div>',
+
     '<div class="mctl">',
-    '<button id="mHalf" onclick="mMul(.5)">½</button>',
     '<div class="box"><div class="lab">Tiền cược</div><input id="mBet" inputmode="numeric" value="100" oninput="mBand()"></div>',
     '<button id="mDouble" onclick="mMul(2)">x2</button>',
     '<button id="mMax" onclick="mAllIn()">MAX</button>',
@@ -438,6 +453,7 @@ const PAGE = [
 
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
     '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao — trúng mìn là mất tiền cược ván đó.</div>',
+    '<div class="muted" id="mNote" style="font-size:12px;margin-top:3px;text-align:center;color:#ff9a5c"></div>',
     '</div>',
     '</div>', // hết #pageMine
 
@@ -575,49 +591,69 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
-    'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;',
+    'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MAXWIN=0;var MAXBET=0;',
     'function $(id){return document.getElementById(id)}',
+    // x3170697.20 làm vỡ layout -> rút gọn. Số nhỏ vẫn để 2 số lẻ cho chính xác.
+    'function fx(m){if(m>=1e6)return "x"+(m/1e6).toFixed(m>=1e7?0:1)+"M";if(m>=1e4)return "x"+Math.round(m/1e3)+"K";if(m>=1e3)return "x"+(m/1e3).toFixed(1)+"K";return "x"+m.toFixed(2)}',
+    'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
     'function go(p){var tx=p==="tx";',
     '$("pageTx").classList.toggle("hidden",!tx);$("pageMine").classList.toggle("hidden",tx);',
     '$("navTx").classList.toggle("on",tx);$("navMine").classList.toggle("on",!tx);',
     'localStorage.setItem("play_page",p);',
     'if(!tx){mSync()}else{refresh()}}',
     'function mNum(id){return parseInt($(id).value)||0}',
-    'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>BAL)b=BAL;$("mBet").value=b;mBand()}',
-    'function mAllIn(){if(MG)return;$("mBet").value=BAL;mBand()}',
+    'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
+    'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
+    'function mAllIn(){if(MG)return;$("mBet").value=mCap();mBand()}',
     'function mStep(d){if(MG)return;var n=mNum("mMines")+d;if(n<1)n=1;if(n>MT-1)n=MT-1;$("mMines").value=n;mTable()}',
+    // Kéo thanh dưới để xem mở N ô thì ăn bao nhiêu — không phải chơi thử mới biết.
+    'function mPreview(){var s=$("mSlide");var d=parseInt(s.value)||1;',
+    'if(!MTAB.length){$("mPvWin").textContent="—";return}',
+    'if(d>MTAB.length){d=MTAB.length;s.value=d}',
+    'var bet=MG?MG.bet:mNum("mBet");var raw=Math.floor(bet*MTAB[d-1]);',
+    'var win=MAXWIN&&raw>MAXWIN?MAXWIN:raw;var hitCap=MAXWIN&&raw>MAXWIN;',
+    '$("mPvN").textContent=d;',
+    'var el=$("mPvWin");el.className="pv"+(hitCap?" cap":"");',
+    'el.textContent=fx(MTAB[d-1])+" = "+vnd(win)+(hitCap?" (chạm trần)":"");',
+    'var st=$("ms"+d);if(st&&st.scrollIntoView)st.scrollIntoView({block:"nearest",inline:"center"})}',
+    'function mSlideSetup(){var s=$("mSlide");var max=MTAB.length||1;s.max=max;',
+    'var d=MG?Math.min(MG.revealed.length+1,max):parseInt(s.value)||1;',
+    'if(d<1)d=1;if(d>max)d=max;s.value=d;mPreview()}',
     // Bảng hệ số lấy TỪ SERVER (client không tự tính, để không lệch với tiền thật khi trả).
     'var mTimer=0;',
     'function mTable(){clearTimeout(mTimer);mTimer=setTimeout(function(){',
     'var n=mNum("mMines");if(n<1||n>MT-1){n=Math.min(Math.max(n,1),MT-1);$("mMines").value=n}',
-    'api("/api/mines/table",{numMines:n}).then(function(j){MTAB=j.table||[];mBar();mBand()}).catch(function(){})},150)}',
+    'api("/api/mines/table",{numMines:n}).then(function(j){MTAB=j.table||[];mBar();mSlideSetup();mBand()}).catch(function(){})},150)}',
     // thanh mốc hệ số: đã ăn = vàng, mốc kế tiếp = xanh nhấp nháy, tự cuộn theo
     'function mBar(){var done=MG?MG.revealed.length:0;',
     '$("mbar").innerHTML=MTAB.map(function(m,i){var k=i+1;',
     'var c=k<=done?"hit":(k===done+1?"now":"");',
-    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">x\'+m.toFixed(2)+"</div>"}).join("");',
+    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'" onclick="mJump(\'+k+\')">\'+fx(m)+"</div>"}).join("");',
     'var cur=$("ms"+(done+1));if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:"nearest",inline:"center"})}',
+    'function mJump(k){var s=$("mSlide");s.value=k;mPreview()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
     '$("mBombN").textContent=MG.totalMines;',
-    '$("mStat").textContent=MG.totalMines+" mìn · cược "+MG.bet.toLocaleString("vi-VN")+" · x"+MG.multi.toFixed(2);',
+    '$("mStat").textContent=MG.totalMines+" mìn · cược "+vnd(MG.bet)+" · "+fx(MG.multi)+(MG.capped?" · chạm trần":"");',
     'go.className="mgo cash";',
-    'go.innerHTML=MG.revealed.length?("NHẬN TIỀN "+MG.cashout.toLocaleString("vi-VN")+\' <img class="dc" src="/dogcoin.png" alt="">\'):"⛏️ MỞ 1 Ô ĐỂ BẮT ĐẦU ĂN";',
+    'go.innerHTML=MG.revealed.length?("NHẬN TIỀN "+vnd(MG.cashout)+\' <img class="dc" src="/dogcoin.png" alt="">\'):"⛏️ MỞ 1 Ô ĐỂ BẮT ĐẦU ĂN";',
     'go.disabled=!MG.revealed.length;',
     '}else{',
     'var n=Math.min(Math.max(mNum("mMines"),1),MT-1);',
     '$("mLeft").textContent=(MT-n);$("mBombN").textContent=n;',
     'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=MOVER;',
-    'if(!MOVER)$("mStat").textContent=MTAB.length?("mở 1 ô ăn x"+MTAB[0].toFixed(2)+" · mở hết x"+MTAB[MTAB.length-1].toFixed(2)):"Chọn số mìn và tiền cược";}',
-    '["mHalf","mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
-    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG}',
+    'if(!MOVER)$("mStat").textContent=MTAB.length?("mở 1 ô "+fx(MTAB[0])+" · mở hết "+fx(MTAB[MTAB.length-1])):"Chọn số mìn và tiền cược";}',
+    '["mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
+    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mPreview()}',
     'function mGoClick(){if(MG)mCashout();else mStartGame()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
     'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;setBal(j.balance);',
+    'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
     'MG=j.game||null;MOVER=false;mDrawGrid();',
     'if(MG){$("mMines").value=MG.totalMines;$("mBet").value=MG.bet}',
+    'if(MAXBET)$("mNote").textContent="Cược tối đa "+vnd(MAXBET)+" · nhận tối đa "+vnd(MAXWIN)+" mỗi ván";',
     'mTable();mBar();mBand()}).catch(function(){})}',
     'function mDrawGrid(){var g=$("mGrid");g.innerHTML="";',
     'for(var i=0;i<MT;i++){var t=document.createElement("div");t.id="mk"+i;t.dataset.i=i;',
