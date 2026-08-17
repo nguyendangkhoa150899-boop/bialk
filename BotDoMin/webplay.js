@@ -301,6 +301,7 @@ const PAGE = [
     '.mstep{flex:0 0 auto;min-width:54px;text-align:center;padding:6px 8px;border-radius:7px;font-size:12px;font-weight:800;background:#1a2340;color:#5f6c96;border:1px solid #263159}',
     '.mstep.hit{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
     '.mstep.now{background:linear-gradient(180deg,#4da3ff,#2c6fd0);color:#fff;border-color:#7dc0ff;animation:stepGlow 1.4s ease-in-out infinite}',
+    '.mstep.capped{background:#3a2415;color:#ff9a5c;border-color:#7d4a1e;font-size:11px}',
     '@keyframes stepGlow{0%,100%{box-shadow:0 0 0 0 #4da3ff00}50%{box-shadow:0 0 12px 2px #4da3ff88}}',
     // sân: cột đếm Dogcoin còn lại | lưới 5×5 | cột đếm mìn
     '#mstage{display:grid;grid-template-columns:46px 1fr 46px;gap:8px;margin-top:10px}',
@@ -332,6 +333,8 @@ const PAGE = [
     '.mctl .lab{font-size:11px;color:var(--muted)}',
     '.mctl button{background:#1a2340;border:1px solid #2b3557;color:#cfe0ff;min-width:44px;padding:12px 8px;font-size:14px}',
     '.mctl button:disabled{opacity:.35}',
+    '.mctl button.mp{min-width:38px;padding:12px 4px;color:#8fa6d8}',
+    '.mctl button.mp.on{background:linear-gradient(180deg,#2f7fd6,#215aa8);border-color:#4b9ae8;color:#fff}',
     '#mBet,#mMines{width:100%;background:transparent;border:0;text-align:center;font-size:17px;font-weight:900;color:var(--gold);padding:0;margin:0}',
     '.mgo{width:100%;margin-top:10px;font-size:16px;font-weight:900;padding:14px 0}',
     '.mgo.start{background:linear-gradient(180deg,#4dd07a,#249a52);color:#04240f}',
@@ -446,9 +449,13 @@ const PAGE = [
     '</div>',
 
     '<div class="mctl">',
+    '<button class="mp" id="mp3" onclick="mSet(3)">3</button>',
+    '<button class="mp" id="mp5" onclick="mSet(5)">5</button>',
     '<button id="mMinus" onclick="mStep(-1)">−</button>',
     '<div class="box"><div class="lab">Số mìn</div><input id="mMines" inputmode="numeric" value="3" oninput="mTable()"></div>',
     '<button id="mPlus" onclick="mStep(1)">+</button>',
+    '<button class="mp" id="mp10" onclick="mSet(10)">10</button>',
+    '<button class="mp" id="mp20" onclick="mSet(20)">20</button>',
     '</div>',
 
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
@@ -593,8 +600,9 @@ const PAGE = [
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
     'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MAXWIN=0;var MAXBET=0;',
     'function $(id){return document.getElementById(id)}',
-    // x3170697.20 làm vỡ layout -> rút gọn. Số nhỏ vẫn để 2 số lẻ cho chính xác.
-    'function fx(m){if(m>=1e6)return "x"+(m/1e6).toFixed(m>=1e7?0:1)+"M";if(m>=1e4)return "x"+Math.round(m/1e3)+"K";if(m>=1e3)return "x"+(m/1e3).toFixed(1)+"K";return "x"+m.toFixed(2)}',
+    // Rút gọn y như sòng Mines thật: x798.37 · x2.07k · x114.16k · x1.02M
+    // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
+    'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
     'function go(p){var tx=p==="tx";',
     '$("pageTx").classList.toggle("hidden",!tx);$("pageMine").classList.toggle("hidden",tx);',
@@ -606,6 +614,9 @@ const PAGE = [
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
     'function mAllIn(){if(MG)return;$("mBet").value=mCap();mBand()}',
     'function mStep(d){if(MG)return;var n=mNum("mMines")+d;if(n<1)n=1;if(n>MT-1)n=MT-1;$("mMines").value=n;mTable()}',
+    'function mSet(n){if(MG)return;$("mMines").value=n;mTable()}',
+    'function mPresets(){var n=MG?MG.totalMines:mNum("mMines");',
+    '[3,5,10,20].forEach(function(k){var b=$("mp"+k);if(b){b.classList.toggle("on",n===k);b.disabled=!!MG}})}',
     // Kéo thanh dưới để xem mở N ô thì ăn bao nhiêu — không phải chơi thử mới biết.
     'function mPreview(){var s=$("mSlide");var d=parseInt(s.value)||1;',
     'if(!MTAB.length){$("mPvWin").textContent="—";return}',
@@ -625,10 +636,13 @@ const PAGE = [
     'var n=mNum("mMines");if(n<1||n>MT-1){n=Math.min(Math.max(n,1),MT-1);$("mMines").value=n}',
     'api("/api/mines/table",{numMines:n}).then(function(j){MTAB=j.table||[];mBar();mSlideSetup();mBand()}).catch(function(){})},150)}',
     // thanh mốc hệ số: đã ăn = vàng, mốc kế tiếp = xanh nhấp nháy, tự cuộn theo
-    'function mBar(){var done=MG?MG.revealed.length:0;',
+    // Mốc nào cược hiện tại đã vượt trần thì hiện thẳng "TRẦN" — người chơi thấy ngay
+    // đào tới đâu là hết ăn thêm, thay vì đào tiếp rồi mới biết bị cắt.
+    'function mBar(){var done=MG?MG.revealed.length:0;var bet=MG?MG.bet:mNum("mBet");',
     '$("mbar").innerHTML=MTAB.map(function(m,i){var k=i+1;',
     'var c=k<=done?"hit":(k===done+1?"now":"");',
-    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'" onclick="mJump(\'+k+\')">\'+fx(m)+"</div>"}).join("");',
+    'var cap=MAXWIN&&bet>0&&Math.floor(bet*m)>MAXWIN;if(cap)c+=" capped";',
+    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'" onclick="mJump(\'+k+\')">\'+(cap?"TRẦN":fx(m))+"</div>"}).join("");',
     'var cur=$("ms"+(done+1));if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:"nearest",inline:"center"})}',
     'function mJump(k){var s=$("mSlide");s.value=k;mPreview()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
@@ -646,7 +660,7 @@ const PAGE = [
     'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=MOVER;',
     'if(!MOVER)$("mStat").textContent=MTAB.length?("mở 1 ô "+fx(MTAB[0])+" · mở hết "+fx(MTAB[MTAB.length-1])):"Chọn số mìn và tiền cược";}',
     '["mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
-    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mPreview()}',
+    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mPresets();mBar();mPreview()}',
     'function mGoClick(){if(MG)mCashout();else mStartGame()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
     'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;setBal(j.balance);',

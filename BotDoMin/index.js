@@ -398,10 +398,13 @@ async function manageHistory(state, sessionMsgs) {
 // ==========================================
 // --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
 // ==========================================
-// 25 ô (lưới 5×5) từ khi dò mìn chuyển lên web. RTP 0.97 = nhà cái ăn 3% dài hạn,
-// vừa đủ để dò mìn là chỗ TIÊU Dogcoin chứ không phải máy in tiền (RTP 1.0 cũ là hòa vốn).
+// 25 ô (lưới 5×5) từ khi dò mìn chuyển lên web.
+// RTP 0.95 = nhà cái ăn 5%, đúng bằng mức các sòng Mines thật đang dùng
+// (đã dò ngược từ bảng hệ số của turbo-games/mines: 8 mìn mở 10 ô ra đúng x159.67,
+// 10 mìn mở 14 ô ra đúng x282.3k — khớp tới 2 số lẻ). Cũng là mức hút Dogcoin
+// hợp lý hơn RTP 1.0 cũ (hòa vốn, không hút được gì).
 const TOTAL_TILES = 25;
-const RTP = 0.97;
+const RTP = 0.95;
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -419,7 +422,8 @@ function calculateMulti(diamonds, numMines) {
     if (waysToWin === 0) return 1;
     const prob = waysToWin / totalWays;
     let multi = (1 / prob) * RTP;
-    return Math.floor(multi * 100) / 100;
+    // Làm TRÒN chứ không cắt — sòng thật làm vậy (x342.16 chứ không phải x342.15).
+    return Math.round(multi * 100) / 100;
 }
 
 const getInfo = (diamonds, numMines) => {
