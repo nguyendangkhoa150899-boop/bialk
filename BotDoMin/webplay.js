@@ -253,8 +253,6 @@ const PAGE = [
     'touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent}',
     // nút/ô bấm: tắt hẳn double-tap zoom + không bôi đen chữ khi bấm nhanh
     'button,.mtile,.mstep,.cbtn,.chip{touch-action:manipulation;-webkit-user-select:none;user-select:none}',
-    // thanh kéo phải nuốt trọn cử chỉ, không thì kéo ngang bị hiểu là cuộn trang
-    '#mSlide{touch-action:none}',
     '.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}',
     'h1{font-size:19px;margin-bottom:4px}h2{font-size:15px;margin-bottom:10px}',
     '.muted{color:var(--muted);font-size:13px}',
@@ -340,15 +338,6 @@ const PAGE = [
     '.mtile.boom{background:linear-gradient(180deg,#e05555,#8e2020);border-color:#ff9a9a;border-bottom-color:#5d1414;color:#fff;cursor:default;animation:boomPop .32s ease-out}',
     '@keyframes boomPop{0%{transform:scale(.5) rotate(-20deg)}70%{transform:scale(1.28) rotate(8deg)}100%{transform:scale(1)}}',
     '.mtile.shown{background:linear-gradient(180deg,#3a2030,#2a1622);border-color:#6b3a4a;border-bottom-color:#1e1017;color:#c46b7b;cursor:default}',
-    // thanh kéo xem trước thưởng (chuột kéo dễ hơn cuộn ngang thanh hệ số)
-    '.mprev{background:#0d1226;border:1px solid #2b3557;border-radius:10px;padding:9px 11px;margin-top:10px}',
-    '.mprev .lab{font-size:12px;color:var(--muted)}.mprev .lab b{color:#cfe0ff}',
-    '.mprev .pv{font-size:15px;font-weight:900;color:var(--gold)}',
-    '.mprev .pv.cap{color:#ff9a5c}',
-    '#mSlide{width:100%;margin-top:7px;-webkit-appearance:none;appearance:none;height:6px;border-radius:5px;background:#243055;outline:none}',
-    '#mSlide::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;cursor:grab;',
-    'background:radial-gradient(circle at 35% 30%,#ffe9a8,#d9a93c);border:2px solid #7d5f1e;box-shadow:0 2px 6px #0008}',
-    '#mSlide::-moz-range-thumb{width:20px;height:20px;border-radius:50%;cursor:grab;background:#e8bf58;border:2px solid #7d5f1e}',
     // hàng chỉnh tiền cược / số mìn
     '.mctl{display:flex;align-items:center;gap:6px;margin-top:10px}',
     '.mctl .box{flex:1;background:#0d1226;border:1px solid #2b3557;border-radius:10px;padding:5px 8px;text-align:center}',
@@ -450,12 +439,6 @@ const PAGE = [
     '<div class="mside coin"><img class="dc big" src="/dogcoin.png" alt=""><div class="n" id="mLeft">–</div></div>',
     '<div class="mgrid" id="mGrid"></div>',
     '<div class="mside bomb"><div class="ic">💣</div><div class="n" id="mBombN">–</div></div>',
-    '</div>',
-
-    // thanh kéo xem trước: kéo tới ô thứ N thì biết ăn bao nhiêu, không cần chơi thử
-    '<div class="mprev">',
-    '<div class="row"><span class="lab">🔎 Kéo xem thử: mở <b id="mPvN">1</b> ô</span><b class="pv" id="mPvWin">—</b></div>',
-    '<input type="range" id="mSlide" min="1" max="22" value="1" oninput="mPreview()">',
     '</div>',
 
     '<div class="mctl">',
@@ -647,24 +630,11 @@ const PAGE = [
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
     'function mAllIn(){if(MG)return;$("mBet").value=mCap();mBand()}',
     'function mStep(d){if(MG)return;var n=mNum("mMines")+d;if(n<1)n=1;if(n>MT-1)n=MT-1;$("mMines").value=n;mTable()}',
-    // Kéo thanh dưới để xem mở N ô thì ăn bao nhiêu — không phải chơi thử mới biết.
-    'function mPreview(){var s=$("mSlide");var d=parseInt(s.value)||1;',
-    'if(!MTAB.length){$("mPvWin").textContent="—";return}',
-    'if(d>MTAB.length){d=MTAB.length;s.value=d}',
-    'var bet=MG?MG.bet:mNum("mBet");var raw=Math.floor(bet*MTAB[d-1]);',
-    'var win=MAXWIN&&raw>MAXWIN?MAXWIN:raw;var hitCap=MAXWIN&&raw>MAXWIN;',
-    '$("mPvN").textContent=d;',
-    'var el=$("mPvWin");el.className="pv"+(hitCap?" cap":"");',
-    'el.textContent=fx(MTAB[d-1])+" = "+vnd(win)+(hitCap?" (chạm trần)":"");',
-    'var st=$("ms"+d);if(st&&st.scrollIntoView)st.scrollIntoView({block:"nearest",inline:"center"})}',
-    'function mSlideSetup(){var s=$("mSlide");var max=MTAB.length||1;s.max=max;',
-    'var d=MG?Math.min(MG.revealed.length+1,max):parseInt(s.value)||1;',
-    'if(d<1)d=1;if(d>max)d=max;s.value=d;mPreview()}',
     // Bảng hệ số lấy TỪ SERVER (client không tự tính, để không lệch với tiền thật khi trả).
     'var mTimer=0;',
     'function mTable(){clearTimeout(mTimer);mTimer=setTimeout(function(){',
     'var n=mNum("mMines");if(n<1||n>MT-1){n=Math.min(Math.max(n,1),MT-1);$("mMines").value=n}',
-    'api("/api/mines/table",{numMines:n}).then(function(j){MTAB=j.table||[];mBar();mSlideSetup();mBand()}).catch(function(){})},150)}',
+    'api("/api/mines/table",{numMines:n}).then(function(j){MTAB=j.table||[];mBar();mBand()}).catch(function(){})},150)}',
     // thanh mốc hệ số: đã ăn = vàng, mốc kế tiếp = xanh nhấp nháy, tự cuộn theo
     // Mốc nào cược hiện tại đã vượt trần thì hiện thẳng "TRẦN" — người chơi thấy ngay
     // đào tới đâu là hết ăn thêm, thay vì đào tiếp rồi mới biết bị cắt.
@@ -672,13 +642,17 @@ const PAGE = [
     '$("mbar").innerHTML=MTAB.map(function(m,i){var k=i+1;',
     'var c=k<=done?"hit":(k===done+1?"now":"");',
     'var cap=MAXWIN&&bet>0&&Math.floor(bet*m)>MAXWIN;if(cap)c+=" capped";',
-    // Mốc cuối = mở hết ô an toàn. Đánh dấu hẳn để không ai tưởng bảng bị thiếu
-    // (trang sigma cắt mất mốc này vì thanh của họ chỉ có 7 ô cố định).
+    // Mốc cuối = mở hết ô an toàn. Đánh dấu hẳn để không ai tưởng bảng bị thiếu.
     'if(k===MTAB.length)c+=" last";',
-    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'" onclick="mJump(\'+k+\')">\'+(cap?"TRẦN":fx(m))+',
+    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">\'+(cap?"TRẦN":fx(m))+',
     '(k===MTAB.length?\'<span class="tag">MỞ HẾT</span>\':"")+"</div>"}).join("");',
-    'var cur=$("ms"+(done+1));if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:"nearest",inline:"center"})}',
-    'function mJump(k){var s=$("mSlide");s.value=k;mPreview()}',
+    'mBarScroll(done)}',
+    // Đào tới đâu thanh hệ số chạy theo tới đó, luôn giữ mốc kế tiếp ở giữa.
+    // Tự tính scrollLeft chứ không dùng scrollIntoView — hàm đó có thể kéo trôi cả trang.
+    'function mBarScroll(done){var bar=$("mbar");var el=$("ms"+(done+1))||$("ms"+done);if(!bar||!el)return;',
+    'var to=el.offsetLeft-(bar.clientWidth/2)+(el.offsetWidth/2);',
+    'if(to<0)to=0;var max=bar.scrollWidth-bar.clientWidth;if(to>max)to=max;',
+    'if(bar.scrollTo)bar.scrollTo({left:to,behavior:"smooth"});else bar.scrollLeft=to}',
     // Trên máy tính không vuốt được như điện thoại -> cho giữ chuột kéo ngang thanh hệ số.
     // Kéo quá 4px thì coi là đang cuộn, không tính là bấm chọn mốc.
     'function mBarDrag(){var b=$("mbar");var down=false,x0=0,sl=0,moved=0;',
@@ -703,7 +677,7 @@ const PAGE = [
     'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=MOVER;',
     'if(!MOVER)$("mStat").textContent=MTAB.length?("mở 1 ô "+fx(MTAB[0])+" · mở hết "+fx(MTAB[MTAB.length-1])):"Chọn số mìn và tiền cược";}',
     '["mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
-    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mBar();mPreview()}',
+    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mBar()}',
     'function mGoClick(){if(MG)mCashout();else mStartGame()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
     'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||24;setBal(j.balance);',
