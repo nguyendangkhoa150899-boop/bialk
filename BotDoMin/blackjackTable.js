@@ -17,6 +17,7 @@ function createTable(deps) {
         clock, addPoints, getPoints, announce = () => { }, log = () => { },
         SEATS = 5, BET_WINDOW_MS = 7000, TURN_MS = 15000, RESULT_MS = 6000,
         MIN_BET = 1, MAX_BET = 0, // MAX_BET=0 = không giới hạn
+        AFK_ROUNDS = 5, // ngồi ghế mà không cược đủ N ván liên tiếp -> tự rời bàn
     } = deps;
 
     // Cho phép bơm shoe từ ngoài (test: bộ bài xếp sẵn). Mặc định 4 bộ xáo ngẫu nhiên.
@@ -78,6 +79,20 @@ function createTable(deps) {
             .map((s, idx) => s && s.bet > 0 ? { seat: idx, userId: s.userId, name: s.name, bet: s.bet } : null)
             .filter(Boolean); // đã đúng thứ tự ghế vì duyệt theo index
         if (!players.length) { phase = 'idle'; deadline = 0; return; }
+
+        // AFK: ngồi ghế mà không cược trong khi bàn vẫn chạy ván — đếm; đủ AFK_ROUNDS
+        // ván liên tiếp thì tự rời (chỉ đếm khi ván THẬT SỰ mở, bàn vắng không tính).
+        for (let i = 0; i < seats.length; i++) {
+            const s = seats[i];
+            if (!s) continue;
+            if (s.bet > 0) { s.idle = 0; continue; }
+            s.idle = (s.idle || 0) + 1;
+            if (s.idle >= AFK_ROUNDS) {
+                announce(`🪑 ${s.name} treo máy ${AFK_ROUNDS} ván — tự rời bàn`);
+                log('SYSTEM', `[BLACKJACK] Đá AFK: ${s.name} (${AFK_ROUNDS} ván không cược)`);
+                seats[i] = null;
+            }
+        }
 
         // Xáo bài nếu shoe mỏng — báo cho mọi người biết trước khi chia.
         // Xáo lại sau mỗi 10 ván (2 bộ bài), hoặc sớm hơn nếu shoe mỏng (an toàn, không

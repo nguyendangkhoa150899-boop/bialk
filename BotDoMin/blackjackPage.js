@@ -56,8 +56,30 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .handacts button:disabled{background:#16281d;color:#4a6152}
 .ava{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#08120b;border:2px solid #ffffffcc;box-shadow:0 2px 6px #0007;margin-top:2px}
 .pname{font-size:12px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pbet{font-size:11px;color:var(--gold);font-weight:800;background:#0007;border-radius:10px;padding:1px 7px}
-.emptyseat{opacity:.5;font-size:12px;color:#dbeeff;text-align:center;padding:24px 0}
+/* ---- Ô CƯỢC TRÒN trên mặt bàn: bấm để ngồi, chip cược nằm ngay trong ô ---- */
+.betspot{width:58px;height:58px;border-radius:50%;border:2px dashed #ffcf5c99;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:4px auto 2px;background:#ffffff0d;cursor:pointer;transition:box-shadow .2s,transform .1s}
+.betspot.open:hover{box-shadow:0 0 16px #ffcf5c99;transform:scale(1.06)}
+.betspot .bs-plus{font-size:20px;font-weight:900;color:var(--gold);line-height:1}
+.betspot .bs-lbl{font-size:9px;color:#ffe9a8;letter-spacing:1px;font-weight:800;margin-top:1px}
+.betspot.mine{border-style:solid;border-color:var(--gold)}
+.betspot.haschip{border-style:solid;cursor:default}
+.chipv{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#ffe08a,#e0a92f 62%,#a87613 100%);border:4px dashed #fff;box-shadow:0 3px 8px #0009,inset 0 0 6px #0006;display:flex;align-items:center;justify-content:center;font-weight:900;color:#3d2c05;font-size:11px;text-shadow:0 1px 0 #fff8}
+/* ---- overlay QUYẾT ĐỊNH giữa bàn (kiểu live casino) + vòng đếm ngược ---- */
+#decide{position:absolute;left:50%;top:31%;transform:translateX(-50%);z-index:6;text-align:center;background:#00000059;border-radius:18px;padding:10px 16px 12px;backdrop-filter:blur(2px)}
+.dec-title{font-size:13px;font-weight:900;letter-spacing:2px;color:#fff;text-shadow:0 1px 6px #000;margin-bottom:8px}
+.dec-row{display:flex;gap:14px;align-items:flex-start;justify-content:center}
+.rb-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;width:62px}
+.rb{width:56px;height:56px;border-radius:50%;font-size:24px;font-weight:900;color:#fff;border:3px solid #ffffffcc;box-shadow:0 3px 10px #000a;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.rb:disabled{background:#3a4a42!important;color:#7a8a80;border-color:#ffffff44;box-shadow:none}
+.rb-hit{background:radial-gradient(circle at 50% 35%,#4fd07a,#1f9a4e)}
+.rb-stand{background:radial-gradient(circle at 50% 35%,#ff6b6b,#c0392b)}
+.rb-double{background:radial-gradient(circle at 50% 35%,#ffb35c,#d06a1a);font-size:19px}
+.rb-split{background:radial-gradient(circle at 50% 35%,#7db4ff,#2c6fd0);font-size:16px;letter-spacing:-2px}
+.rbl{font-size:10px;font-weight:800;letter-spacing:1px;color:#fff;text-shadow:0 1px 4px #000}
+.ringwrap{display:flex;justify-content:center;margin-top:8px}
+#ring{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}
+#ring:before{content:"";position:absolute;inset:5px;border-radius:50%;background:#0b2038}
+#ring span{position:relative;font-weight:900;font-size:16px;color:#fff}
 /* ---- lá bài ---- */
 .cards{display:flex}
 .card{width:54px;height:78px;border-radius:7px;background:#fbfbf7;color:#16202a;border:1px solid #0003;
@@ -155,6 +177,16 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
     <div class="banner"><div class="b1">BLACKJACK ĂN 1.5 (3 : 2)</div><div class="b2">Nhà cái dừng ở mọi 17</div></div>
     <div id="status"></div>
     <div id="seatRow"></div>
+    <div id="decide" class="hidden">
+      <div class="dec-title">QUYẾT ĐỊNH ĐI!</div>
+      <div class="dec-row">
+        <div class="rb-wrap"><button class="rb rb-double" id="rbDouble" data-act="double">2x</button><div class="rbl">NHÂN ĐÔI</div></div>
+        <div class="rb-wrap"><button class="rb rb-hit" id="rbHit" data-act="hit">＋</button><div class="rbl">RÚT</div></div>
+        <div class="rb-wrap"><button class="rb rb-stand" id="rbStand" data-act="stand">－</button><div class="rbl">NGƯNG</div></div>
+        <div class="rb-wrap"><button class="rb rb-split" id="rbSplit" data-act="split">◄►</button><div class="rbl">TÁCH</div></div>
+      </div>
+      <div class="ringwrap"><div id="ring"><span id="ringNum"></span></div></div>
+    </div>
   </div>
   <div id="bar"></div>
   <div id="chatBar">
@@ -306,7 +338,20 @@ function render(m){
     s.innerHTML=tn?("Lượt: <b>"+esc(seatName(tn.seat))+"</b>"+tuTxt+" "+clk):"Nhà cái đang rút...";}
   else if(m.phase==="result")s.innerHTML="Kết quả — ván mới sau "+clk;
   if(m.phase==="idle"||m.phase==="betting"){seenCards={}}
-  renderSeats(m);renderBar(m);
+  renderSeats(m);renderBar(m);updateDecide(m);
+}
+// Overlay quyết định giữa bàn: 4 nút tròn + vòng đếm ngược (xanh -> đỏ 5s cuối)
+function updateDecide(m){
+  var d=$("decide");
+  var myTurn=m.phase==="playing"&&m.table&&m.table.turn&&m.table.turn.userId===MYID;
+  if(!myTurn){d.classList.add("hidden");return}
+  d.classList.remove("hidden");
+  var opts=(m.table.turn.options)||[];
+  [["rbHit","hit"],["rbStand","stand"],["rbDouble","double"],["rbSplit","split"]].forEach(function(p){$(p[0]).disabled=opts.indexOf(p[1])<0});
+  var left=m.timeLeft||0,pct=Math.max(0,Math.min(100,left/15*100));
+  var col=left<=5?"#ff6b6b":"#2ec26a";
+  $("ring").style.background="conic-gradient("+col+" "+pct+"%, #ffffff22 0)";
+  $("ringNum").textContent=left;
 }
 function seatName(i){if(!ST)return "#"+(i+1);var s=ST.seats[i];return s&&!s.empty?s.name:("Ghế "+(i+1))}
 function avaColor(u){var h=0;u=String(u||"");for(var i=0;i<u.length;i++)h=(h*31+u.charCodeAt(i))>>>0;return "hsl("+(h%360)+",70%,62%)"}
@@ -317,7 +362,11 @@ function renderSeats(m){
     var seat=m.seats[i];
     var div=document.createElement("div");div.className="seat";
     var isTurn=tbl&&tbl.turn&&tbl.turn.seat===i;if(isTurn)div.className+=" turn";
-    if(seat.empty){div.innerHTML='<div class="emptyseat">Ghế '+(i+1)+'<br>trống</div>';box.appendChild(div);continue}
+    // Ghế trống = Ô TRÒN trên bàn, bấm thẳng vào ô để ngồi (kiểu bàn casino thật)
+    if(seat.empty){div.innerHTML='<div class="handzone"></div>'+
+      '<div class="betspot open" data-sit="'+i+'"><div class="bs-plus">＋</div><div class="bs-lbl">NGỒI</div></div>'+
+      '<div class="pname" style="opacity:.5">Ghế '+(i+1)+'</div>';
+      box.appendChild(div);continue}
     var tseat=tbl?tbl.seats.find(function(x){return x.seat===i}):null;
     var nHands=tseat&&tseat.hands?tseat.hands.length:0;
     var myTurn=tbl&&tbl.turn&&tbl.turn.userId===MYID;
@@ -342,18 +391,19 @@ function renderSeats(m){
       });
     }
     div.appendChild(hz);
-    // NÚT thao tác ngay DƯỚI khu bài của ghế mình khi tới lượt (tụ đang chơi có ▶ + viền vàng)
-    if(seat.userId===MYID&&myTurn){var acts=document.createElement("div");acts.className="handacts";
-      acts.innerHTML=ab("hit","🃏 Rút",turnOpts)+ab("stand","✋ Dừng",turnOpts)+ab("double","💰 Nhân đôi",turnOpts)+ab("split","✂️ Tách",turnOpts);
-      div.appendChild(acts);}
-    // avatar + tên + số dư/cược (dưới)
+    // Ô CƯỢC TRÒN của ghế: có cược thì CHIP nằm trong ô, chưa cược thì ô mờ chờ
+    // (nút hành động giờ là cụm nút tròn giữa bàn — overlay #decide)
+    var spot=document.createElement("div");
+    spot.className="betspot"+(seat.userId===MYID?" mine":"")+(seat.bet>0?" haschip":"");
+    if(seat.bet>0){var ch=document.createElement("div");ch.className="chipv";ch.textContent=fmt(seat.bet);spot.appendChild(ch)}
+    else{spot.innerHTML='<div class="bs-lbl">CƯỢC</div>'}
+    div.appendChild(spot);
     // bong bóng chat nổi trên đầu người này (nếu vừa chat, còn hạn)
     if(bubCur&&bubCur.u===seat.userId){var sb=document.createElement("div");
       sb.className="bubble"+(bubCur.shown?"":" fresh");   // .fresh chỉ ở lần vẽ đầu -> pop 1 lần, không nhấp nháy
       sb.textContent=bubCur.text;div.appendChild(sb);bubCur.shown=true;}
     var ava=document.createElement("div");ava.className="ava";ava.style.background=avaColor(seat.userId);ava.textContent=(seat.name||"?").slice(0,2).toUpperCase();div.appendChild(ava);
     var nm=document.createElement("div");nm.className="pname";nm.textContent=(seat.userId===MYID?"★ ":"")+seat.name;div.appendChild(nm);
-    if(seat.bet>0){var bt=document.createElement("div");bt.className="pbet";bt.innerHTML=COIN+" "+fmt(seat.bet);div.appendChild(bt)}
     box.appendChild(div);
   }
 }
@@ -368,16 +418,14 @@ function renderBar(m){
   var seat=m.mySeat>=0?m.seats[m.mySeat]:null;
   var myTurn=m.table&&m.table.turn&&m.table.turn.userId===MYID;
   if(m.mySeat<0){
-    sig="pick|"+m.seats.map(function(s){return s.empty?1:0}).join("");
+    sig="pick";
     if(sig===lastBarSig)return;
-    html='<div class="waiting">Chọn ghế để vào bàn</div><div class="seatpick">';
-    for(var i=0;i<m.seats.length;i++)html+='<button data-sit="'+i+'"'+(m.seats[i].empty?"":" disabled")+'>Ghế '+(i+1)+(m.seats[i].empty?"":" ✕")+'</button>';
-    html+='</div>';
+    html='<div class="waiting">👆 Bấm vào <b style="color:var(--gold)">Ô TRÒN vàng</b> trên bàn để ngồi vào ghế</div>';
   }else if(myTurn){
-    // Nút thao tác giờ nằm DƯỚI lá bài của tụ (trong bàn), không ở thanh đáy nữa.
+    // Nút thao tác là CỤM NÚT TRÒN giữa bàn (overlay #decide), thanh đáy chỉ nhắc.
     sig="acts|"+m.table.turn.handIdx;
     if(sig===lastBarSig)return;
-    html='<div class="waiting">👆 Tới lượt bạn — bấm nút ngay dưới lá bài của tụ đang chơi</div>';
+    html='<div class="waiting">👆 Tới lượt bạn — bấm nút tròn giữa bàn</div>';
   }else if(m.phase==="idle"||m.phase==="betting"){
     var placed=seat&&seat.bet>0;
     sig="bet|"+(placed?seat.bet:0);          // đổi khi ĐẶT xong, không đổi khi đang gõ
