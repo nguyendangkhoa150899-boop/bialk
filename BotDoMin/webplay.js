@@ -141,7 +141,7 @@ function startWebPlay(ctx) {
                         nan: (phase === 'nan' && tx.nan) ? { gameId: tx.nan.gameId, dice: tx.nan.dice } : null,
                         betsList: Object.values(whoAgg),
                         // kèm bets/winners (có u) để client tính thắng/thua CÁ NHÂN từng ván
-                        history: (tx.history || []).slice(0, 15).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [] })),
+                        history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [] })),
                         chat: chatLog().slice(-30),
                     });
                 }
@@ -252,7 +252,7 @@ const PAGE = [
     'body{background:var(--bg);color:var(--tx);min-height:100vh;padding:14px;max-width:520px;margin:0 auto;',
     'touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent}',
     // nút/ô bấm: tắt hẳn double-tap zoom + không bôi đen chữ khi bấm nhanh
-    'button,.mtile,.mstep,.cbtn,.chip,.dot{touch-action:manipulation;-webkit-user-select:none;user-select:none}',
+    'button,.mtile,.mstep,.cbtn,.chip{touch-action:manipulation;-webkit-user-select:none;user-select:none}',
     // thanh kéo phải nuốt trọn cử chỉ, không thì kéo ngang bị hiểu là cuộn trang
     '#mSlide{touch-action:none}',
     '.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}',
@@ -280,18 +280,26 @@ const PAGE = [
     'body.storm{animation:shakeX .65s ease-in-out 2}',
     '.fx{position:fixed;top:-50px;z-index:97;pointer-events:none;animation-name:fxfall;animation-timing-function:linear;animation-fill-mode:forwards}',
     '@keyframes fxfall{to{transform:translateY(115vh) rotate(680deg)}}',
-    // lịch sử cá nhân
-    '.mh{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}',
-    '.mh .win{color:var(--green);font-weight:800}.mh .lose{color:var(--red);font-weight:800}',
+    // bảng 20 ván gần nhất (kiểu soi cầu trong Discord: mã ván · 3 viên · tổng · kết quả)
+    '.hrow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}',
+    '.hrow:last-child{border-bottom:0}',
+    '.hrow .gid{color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}',
+    '.hrow .dd{display:flex;gap:3px;flex:0 0 auto}',
+    '.mdie{width:17px;height:17px;background:#f4f1e8;border-radius:4px;position:relative;flex:0 0 auto}',
+    '.mdie .p{position:absolute;width:3.4px;height:3.4px;border-radius:50%;background:#c0392b;transform:translate(-50%,-50%)}',
+    '.hrow .sum{font-weight:800;flex:0 0 auto}',
+    '.hrow .kq{font-weight:700;flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.hrow .kq .t{color:#ff7b86}.hrow .kq .x{color:#7db4ff}.hrow .kq .sep{color:var(--muted);font-weight:400}',
+    '.hrow .net{flex:0 0 auto;font-weight:800;font-variant-numeric:tabular-nums}',
+    '.hrow .net.w{color:var(--green)}.hrow .net.l{color:var(--red)}',
+    '.hrow.storm{background:linear-gradient(90deg,#4a3a1033,transparent);border-radius:6px;padding-left:5px}',
+    '.hrow.storm .kq{color:var(--gold)}',
     '.cbtn.sel{border-color:var(--gold);border-bottom-width:2px;transform:translateY(3px);box-shadow:0 0 0 3px var(--gold),0 0 16px #ffcf5c88}',
     '.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}',
     '.chip{flex:1;background:#232735;padding:9px 0;font-size:13px;min-width:56px}',
     '.bet-btn{width:100%;margin-top:10px;background:var(--green);color:#0c2417;font-size:17px}',
     '.bet-btn:disabled{background:#2a2e3b;color:var(--muted)}',
     '.row{display:flex;justify-content:space-between;align-items:center}',
-    '.hist{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}',
-    '.dot{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}',
-    '.dot.t{background:#173423;color:var(--green)}.dot.x{background:#3a1d1d;color:var(--red)}.dot.b{background:#4a3a10;color:var(--gold)}',
     '#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000c;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;z-index:99}',
     '.big{font-size:26px;font-weight:800}',
     '.hidden{display:none}',
@@ -425,8 +433,6 @@ const PAGE = [
 
     '<div class="card"><h2>👥 Ai đang đặt ván này</h2><div id="whoBox" class="muted" style="font-size:13px">Chưa ai đặt.</div></div>',
 
-    '<div class="card"><h2>🕵️ Soi cầu 15 ván</h2><div class="hist" id="hist"></div></div>',
-
     '<div class="card"><h2>💬 Chat sòng</h2>',
     '<div id="chatBox"></div>',
     '<div style="display:flex;gap:8px;margin-top:8px">',
@@ -434,7 +440,10 @@ const PAGE = [
     '<button style="background:var(--blue);min-width:64px" onclick="sendChat()">Gửi</button>',
     '</div></div>',
 
-    '<div class="card"><h2>📒 10 ván gần nhất của bạn</h2><div id="myHist" class="muted" style="font-size:13px">Chưa có ván nào bạn đặt.</div></div>',
+    // Một bảng duy nhất thay cho "soi cầu" + "10 ván của bạn": kiểu bảng soi cầu
+    // trong Discord, ván nào mình có đặt thì hiện luôn ăn/thua ở cột phải.
+    '<div class="card"><h2>🔮 Lịch sử 20 ván gần nhất</h2>',
+    '<div id="hist20" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
     '</div>', // hết #pageTx
 
     // ================= TRANG DÒ MÌN =================
@@ -576,18 +585,30 @@ const PAGE = [
     'var m=j.myBets.map(function(b){return NAMES[b.choice]+": "+b.amount.toLocaleString("vi-VN")}).join(" · ");',
     'document.getElementById("mine").textContent=m?("🧾 Ván này bạn đặt — "+m):"";',
     'renderWho(j.betsList||[]);',
-    'document.getElementById("hist").innerHTML=j.history.map(function(h){var cls=h.storm?"b":((h.tx==="TÀI"||h.tx==="TAI")?"t":"x");return \'<div class="dot \'+cls+\'" title="#\'+h.gameId+(h.storm?" BÃO":"")+\'">\'+(h.storm?"🌪️":h.sum)+"</div>"}).join("");',
-    'renderMyHist(j.history||[]);',
+    'renderHist20(j.history||[]);',
     'renderChat(j.chat||[]);',
     '}).catch(function(e){if(String(e.message).indexOf("unauth")>=0)logout()})}',
-    // 10 ván gần nhất MÌNH có đặt: id ván + kết quả + ăn/thua bao nhiêu
-    'function renderMyHist(list){var box=document.getElementById("myHist");',
-    'var mine=list.filter(function(h){return (h.bets||[]).some(function(b){return b.u===MYID})}).slice(0,10);',
-    'if(!mine.length){box.innerHTML="Chưa có ván nào bạn đặt.";return}',
-    'box.innerHTML=mine.map(function(h){var stake=0,winAmt=0;',
-    'h.bets.forEach(function(b){if(b.u===MYID)stake+=b.amount});h.winners.forEach(function(w){if(w.u===MYID)winAmt+=w.amount});',
-    'var net=winAmt-stake;var kq=h.storm?("🌪️ BÃO "+h.dice.join("-")):(h.dice.join("-")+" = "+h.sum+" ("+h.tx+" · "+h.cl+")");',
-    'return \'<div class="mh"><span>#\'+String(h.gameId).padStart(5,"0")+" · "+kq+\'</span><span class="\'+(net>=0?"win":"lose")+\'">\'+(net>=0?"+":"")+net.toLocaleString("vi-VN")+"</span></div>"}).join("")}',
+    // Bảng 20 ván gần nhất — bố cục như bảng soi cầu trong Discord:
+    // mã ván · 3 viên xí ngầu · tổng · TÀI/XỈU | CHẴN/LẺ. Ván nào mình có đặt thì
+    // hiện thêm ăn/thua ở cuối dòng (thay cho card "10 ván của bạn" đã bỏ).
+    'function mdie(v){var s=\'<div class="mdie">\';(PIPS[v]||[]).forEach(function(p){',
+    's+=\'<div class="p" style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></div>\'});return s+"</div>"}',
+    'function renderHist20(list){var box=document.getElementById("hist20");',
+    'if(!list.length){box.innerHTML="Chưa có ván nào.";return}',
+    'box.innerHTML=list.slice(0,20).map(function(h){',
+    'var stake=0,winAmt=0,joined=false;',
+    '(h.bets||[]).forEach(function(b){if(b.u===MYID){stake+=b.amount;joined=true}});',
+    '(h.winners||[]).forEach(function(w){if(w.u===MYID)winAmt+=w.amount});',
+    'var net=winAmt-stake;',
+    'var tai=(h.tx==="TÀI"||h.tx==="TAI");',
+    'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span>\'+h.cl);',
+    'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
+    '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
+    '\'<span class="dd">\'+h.dice.map(mdie).join("")+"</span>"+',
+    '\'<span class="sum">(\'+h.sum+")</span>"+',
+    '\'<span class="kq">\'+kq+"</span>"+',
+    '(joined?\'<span class="net \'+(net>=0?"w":"l")+\'">\'+(net>=0?"+":"")+net.toLocaleString("vi-VN")+"</span>":"")+',
+    '"</div>"}).join("")}',
     // danh sách ai đang đặt ván này, gộp theo cửa, tên tô màu riêng từng người
     'var CHOICE_COLOR={tai:"#ff7b86",xiu:"#7db4ff",chan:"#6fd3b8",le:"#c39bf0",bao:"#ffcf5c"};',
     'function renderWho(list){var box=document.getElementById("whoBox");if(!list.length){box.innerHTML="Chưa ai đặt.";return}',
