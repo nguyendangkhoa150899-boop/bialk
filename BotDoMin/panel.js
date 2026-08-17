@@ -130,6 +130,7 @@ function startPanel(ctx) {
                 channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
             },
             gachaChannelId: db._gachaChannelId || '',
+            giveaway: { channelId: db._giveawayChannelId || '', roleId: db._giveawayRoleId || '' },
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
             mascots: ctx.mascots.map(m => ({ id: m.id, name: m.name, emoji: m.emoji })),
@@ -458,6 +459,26 @@ function startPanel(ctx) {
                         ctx.writeLog('ADMIN', channelId ? `[PANEL] Kênh khoe quay pal: #${name}` : '[PANEL] Tắt kênh khoe quay pal');
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                // Kênh + role thông báo khi phát Dogcoin toàn server (đổi Discord mới
+                // chỉ cần lưu lại ở đây, không phải sửa code)
+                if (path === '/api/giveaway/config') {
+                    const channelId = String(body.channelId || '').trim();
+                    const roleId = String(body.roleId || '').replace(/\D/g, '');
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    if (!ctx.setGiveawayConfig) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    try {
+                        const name = await ctx.setGiveawayConfig(channelId, roleId);
+                        ctx.writeLog('ADMIN', `[PANEL] Kênh thông báo phát Dogcoin: #${name}${roleId ? ` + tag role ${roleId}` : ' (không tag role)'}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                // Reset điểm danh cả danh sách — ai cũng /diemdanh nhận thưởng lại được ngay
+                if (path === '/api/points/reset-daily') {
+                    if (!ctx.resetAllDaily) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    const count = ctx.resetAllDaily();
+                    ctx.writeLog('ADMIN', `[PANEL] Reset điểm danh cho ${count} ví`);
+                    return sendJSON(res, 200, { ok: true, count });
                 }
                 // (Bảng Shop Pal riêng đã gộp vào bảng Rút Dogcoin — không còn API riêng.)
                 if (path === '/api/withdraw/approve') {
@@ -977,6 +998,15 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="addAllCoins()">Phát tất cả</button>
         </div>
         <div class="row" style="margin-top:12px">
+          <div style="flex:2"><label>📢 Kênh thông báo phát (Channel ID)</label><input id="gaChannel" placeholder="vd: 123456789012345678"></div>
+          <div style="flex:2"><label>🔔 Role được tag (Role ID, trống = không tag)</label><input id="gaRole" placeholder="vd: 123456789012345678"></div>
+          <button class="btn-blue" onclick="gaSave()">💾 Lưu</button>
+        </div>
+        <div class="note">Đổi qua Discord khác chỉ cần lưu lại <b>kênh + role</b> ở đây (bot gửi 1 tin xác nhận vào kênh, không tag ai). Chưa lưu thì bot vẫn dùng kênh/role của server cũ.</div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-blue" style="flex:1" onclick="resetDaily()">🔄 Reset điểm danh cả danh sách — ai cũng /diemdanh nhận lại được ngay</button>
+        </div>
+        <div class="row" style="margin-top:12px">
           <div style="flex:3"><label>Set tất cả người chơi về</label><input id="setAllAmount" type="number" placeholder="vd: 50000"></div>
           <button class="btn-red" onclick="setAll()">Set tất cả</button>
         </div>
@@ -1103,6 +1133,23 @@ function tab(t){
 // ===== KÊNH KHOE QUAY PAL =====
 function gachaSave(){const id=document.getElementById('gachaChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/gacha/channel',{channelId:id}).then(j=>{toast('✅ Đã bật khoe tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
 async function gachaOff(){if(!await uiConfirm('Tắt đăng công khai kết quả quay Pal?','Tắt','btn-red'))return;api('/api/gacha/channel',{channelId:''}).then(()=>{toast('⏹️ Đã tắt');document.getElementById('gachaChannel').value='';refresh();});}
+
+// Kênh + role thông báo phát Dogcoin toàn server (đổi Discord mới chỉ cần lưu lại ở đây)
+function gaSave(){
+  const c=document.getElementById('gaChannel').value.trim();
+  const r=document.getElementById('gaRole').value.trim();
+  if(!c)return toast('Nhập Channel ID');
+  api('/api/giveaway/config',{channelId:c,roleId:r}).then(j=>{toast('✅ Thông báo phát sẽ vào #'+j.name);refresh();}).catch(()=>toast('❌ Lỗi'));
+}
+function renderGiveaway(){
+  if(!STATE||!STATE.giveaway)return;
+  const c=document.getElementById('gaChannel'); if(c&&!c.value&&STATE.giveaway.channelId)c.value=STATE.giveaway.channelId;
+  const r=document.getElementById('gaRole'); if(r&&!r.value&&STATE.giveaway.roleId)r.value=STATE.giveaway.roleId;
+}
+async function resetDaily(){
+  if(!await uiConfirm('Reset điểm danh cho CẢ danh sách? Mọi người /diemdanh nhận thưởng lại được ngay hôm nay.','🔄 Reset','btn-blue'))return;
+  api('/api/points/reset-daily',{}).then(j=>{toast('🔄 Đã reset điểm danh cho '+j.count+' ví');refresh();}).catch(()=>toast('❌ Lỗi'));
+}
 function renderGacha(){
   if(!STATE)return;
   const on=!!STATE.gachaChannelId;
@@ -1577,6 +1624,8 @@ async function refresh(){
   renderXS();
   // kênh khoe quay pal
   renderGacha();
+  // kênh + role thông báo phát Dogcoin
+  renderGiveaway();
   // players table
   renderPlayers();
   document.getElementById('resetCount').textContent=STATE.players.length;

@@ -19,7 +19,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
 const STARTING_DOGCOIN = 20;
-const DAILY_DOGCOIN = 50;
+const DAILY_DOGCOIN = 200;
 const DOGCOIN_EMOJI = '<:dogcoin:1533903243028205579>';
 const DOGCOIN_EMOJI_ID = '1533903243028205579';
 // /addtienall: role được tag + kênh đăng thông báo phát Dogcoin toàn server
@@ -167,18 +167,22 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null) {
     saveDbNow();
     writeLog('ADMIN', `[CỘNG TIỀN ALL] Dashboard cộng ${amount.toLocaleString()} Dogcoin cho ${userIds.length} người chơi`);
 
+    // Kênh + role đặt ở panel (tab 👥, lưu database) — đổi Discord server không phải
+    // sửa code. Chưa đặt thì rơi về ID hardcode của server cũ.
+    const announceChannelId = dbCache._giveawayChannelId || GIVEAWAY_ANNOUNCE_CHANNEL_ID;
+    const pingRoleId = dbCache._giveawayRoleId || GIVEAWAY_PING_ROLE_ID;
     let announced = false;
     try {
-        const ch = await client.channels.fetch(GIVEAWAY_ANNOUNCE_CHANNEL_ID);
+        const ch = await client.channels.fetch(announceChannelId);
         if (ch) {
             await ch.send({
-                content: `<@&${GIVEAWAY_PING_ROLE_ID}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi — gõ \`/sodu\` mà xem)`,
-                allowedMentions: { roles: [GIVEAWAY_PING_ROLE_ID] },
+                content: `<@&${pingRoleId}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi — gõ \`/sodu\` mà xem)`,
+                allowedMentions: { roles: [pingRoleId] },
             });
             announced = true;
         }
     } catch (e) {
-        writeLog('SYSTEM', `[LỖI THÔNG BÁO CỘNG TIỀN ALL] Không gửi được vào kênh ${GIVEAWAY_ANNOUNCE_CHANNEL_ID}: ${e.message}`);
+        writeLog('SYSTEM', `[LỖI THÔNG BÁO CỘNG TIỀN ALL] Không gửi được vào kênh ${announceChannelId}: ${e.message}`);
     }
     return { count: userIds.length, announced };
 }
@@ -1351,6 +1355,23 @@ client.once('ready', async (c) => {
                 dbCache._gachaChannelId = ch.id;
                 saveDbNow();
                 return ch.name;
+            },
+            // Kênh + role thông báo phát Dogcoin toàn server (đổi được từ panel,
+            // tin xác nhận không tag ai — allowedMentions rỗng)
+            setGiveawayConfig: async (channelId, roleId) => {
+                const ch = await client.channels.fetch(channelId);
+                await ch.send({ content: '🎁 Kênh này sẽ nhận thông báo **phát Dogcoin toàn server**.', allowedMentions: { parse: [] } });
+                dbCache._giveawayChannelId = ch.id;
+                dbCache._giveawayRoleId = roleId || null;
+                saveDbNow();
+                return ch.name;
+            },
+            // Reset điểm danh: xóa lastDaily của MỌI ví — ai cũng /diemdanh lại được ngay
+            resetAllDaily: () => {
+                const ids = Object.keys(dbCache).filter(k => !k.startsWith('_') && dbCache[k] && typeof dbCache[k] === 'object' && dbCache[k].lastDaily);
+                ids.forEach(id => { delete dbCache[id].lastDaily; });
+                saveDbNow();
+                return ids.length;
             },
             // Xổ số miền Bắc
             getXS: () => xsState,
