@@ -19,7 +19,8 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
 const STARTING_DOGCOIN = 20;
-const DAILY_DOGCOIN = 200;
+const DAILY_DOGCOIN = 400;
+const HOURLY_DOGCOIN = 100; // /nghien — điểm danh con nghiện, 1 tiếng/lần
 const DOGCOIN_EMOJI = '<:dogcoin:1533903243028205579>';
 const DOGCOIN_EMOJI_ID = '1533903243028205579';
 // /addtienall: role được tag + kênh đăng thông báo phát Dogcoin toàn server
@@ -192,8 +193,8 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null) {
 // CreativeMenu tạo pal trong game. Cố tình KHÔNG tự spawn pal: đã kiểm chứng là mod
 // Lua không có cách thêm pal vào túi cho đúng (pal bị treo tới khi restart server).
 const PAL_SHOP = {
-    customPrice: 3000,   // tự chọn pal
-    randomPrice: 1000,   // random pal — quay TRƯỚC, biết trúng con gì rồi mới chọn passive/linh hồn
+    customPrice: 6000,   // tự chọn pal
+    randomPrice: 2000,   // random pal — quay TRƯỚC, biết trúng con gì rồi mới chọn passive/linh hồn
     adminDiscordId: '456136500011335698',
     // Chỉ số mặc định cho mọi pal mua ở shop
     stars: 4,
@@ -1245,17 +1246,13 @@ const commands = [
     //     ),
     new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
     new SlashCommandBuilder().setName('diemdanh').setDescription(`Nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin mỗi ngày (reset 00:00)`),
+    new SlashCommandBuilder().setName('nghien').setDescription(`Điểm danh con nghiện: nhận ${HOURLY_DOGCOIN.toLocaleString()} Dogcoin, 1 tiếng/lần`),
     new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển Dogcoin')
         .addUserOption(opt => opt.setName('nguoi').setDescription('Người nhận Dogcoin').setRequired(true))
         .addIntegerOption(opt => opt.setName('sotien').setDescription('Số Dogcoin muốn chuyển').setRequired(true)),
-    new SlashCommandBuilder().setName('addtien').setDescription('Admin cộng Dogcoin')
-        .addUserOption(opt => opt.setName('user').setDescription('Người nhận').setRequired(true))
-        .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin cộng').setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-    new SlashCommandBuilder().setName('trutien').setDescription('Admin trừ Dogcoin')
-        .addUserOption(opt => opt.setName('user').setDescription('Người bị trừ').setRequired(true))
-        .addIntegerOption(opt => opt.setName('amount').setDescription('Số Dogcoin trừ').setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    // (/addtien /trutien đã XÓA: nhiều người cầm key admin Discord, quyền
+    //  Administrator không còn đồng nghĩa "được đụng ví". Cộng/trừ tay giờ
+    //  CHỈ làm ở web panel.)
 
 ].map(c => c.toJSON());
 
@@ -2510,6 +2507,22 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${DAILY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
 
+        if (interaction.commandName === 'nghien') {
+            const userData = getUserData(userId);
+            // Cooldown LĂN 60 phút tính từ lần nhận trước (khác /diemdanh reset theo
+            // ngày lịch) — nhận 10h30 thì 11h30 mới nhận tiếp, không phải mốc giờ tròn.
+            const COOLDOWN_MS = 60 * 60 * 1000;
+            const passed = Date.now() - (userData.lastNghien || 0);
+            if (passed < COOLDOWN_MS) {
+                const minsLeft = Math.ceil((COOLDOWN_MS - passed) / 60000);
+                return interaction.reply({ content: `⏳ Nghiện vừa thôi! Còn **${minsLeft} phút** nữa mới điểm danh tiếp được.`, ephemeral: true });
+            }
+            updatePoints(userId, HOURLY_DOGCOIN);
+            userData.lastNghien = Date.now();
+            writeLog('ADMIN', `[NGHIỆN] ${interaction.user.tag} nhận ${HOURLY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${getUserData(userId).points.toLocaleString()}`);
+            return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI} — quay lại sau 1 tiếng nhé.`);
+        }
+
         if (interaction.commandName === 'sodu') {
             const points = getUserData(userId).points;
             const embed = new EmbedBuilder()
@@ -2518,24 +2531,6 @@ client.on('interactionCreate', async interaction => {
                 .setDescription(`Số dư hiện tại: **${points.toLocaleString()}** ${DOGCOIN_EMOJI}`)
                 .setColor(0x00ff00);
             return interaction.reply({ embeds: [embed] });
-        }
-
-        if (interaction.commandName === 'addtien') {
-            const target = interaction.options.getUser('user');
-            const amount = interaction.options.getInteger('amount');
-            updatePoints(target.id, amount);
-            logDog('admin+', target.id, target.tag, amount, `admin ${interaction.user.tag} cộng tay`);
-            writeLog('ADMIN', `[CỘNG TIỀN] Admin ${interaction.user.tag} cộng ${amount} Dogcoin cho ${target.tag}`);
-            return interaction.reply(`✅ Đã cộng **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
-        }
-
-        if (interaction.commandName === 'trutien') {
-            const target = interaction.options.getUser('user');
-            const amount = interaction.options.getInteger('amount');
-            updatePoints(target.id, -amount);
-            logDog('admin-', target.id, target.tag, -amount, `admin ${interaction.user.tag} trừ tay`);
-            writeLog('ADMIN', `[TRỪ TIỀN] Admin ${interaction.user.tag} trừ ${amount} Dogcoin của ${target.tag}`);
-            return interaction.reply(`⚠️ Đã trừ **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} từ <@${target.id}>. Số dư mới: **${getUserData(target.id).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
         }
 
         if (interaction.commandName === 'chuyentien') {
