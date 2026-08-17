@@ -357,6 +357,7 @@ function startWebPlay(ctx) {
                     if (msg.cmd === 'sit') r = bj.sit(uid, name, msg.seat | 0);
                     else if (msg.cmd === 'leave') r = bj.leave(uid);
                     else if (msg.cmd === 'bet') r = bj.bet(uid, msg.amount);
+                    else if (msg.cmd === 'clearbet') r = bj.clearBet(uid);
                     else if (msg.cmd === 'act') r = bj.act(uid, msg.action);
                     if (r && r.error) client.send({ type: 'denied', error: r.error });
                     bjBroadcast();

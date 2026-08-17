@@ -90,14 +90,18 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .card .s{align-self:flex-end;font-size:22px;line-height:1}
 .card .c{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);font-size:25px;opacity:.9}
 .card.back{background:repeating-linear-gradient(45deg,#b6362a,#b6362a 6px,#8f281f 6px,#8f281f 12px);border:2px solid #ffce6b;color:transparent}
-/* Tách nhiều tay -> lá NHỎ DẦN cho vừa ghế, không cuộn. */
-.handzone.n2 .card{width:44px;height:64px;font-size:15px;margin-left:-16px}
-.handzone.n2 .card .s{font-size:18px}.handzone.n2 .card .c{font-size:20px}
-.handzone.n3 .card{width:37px;height:54px;font-size:12px;margin-left:-13px}
-.handzone.n3 .card .s{font-size:14px}.handzone.n3 .card .c{font-size:16px}
-.handzone.nx{gap:4px}
-.handzone.nx .card{width:28px;height:41px;font-size:10px;margin-left:-9px;padding:3px 3px}
-.handzone.nx .card .s{font-size:11px}.handzone.nx .card .c{font-size:12px}
+/* Tách nhiều tay -> lá NHỎ DẦN cho vừa ghế, không cuộn.
+   Mỗi tụ có Ô NỀN MỜ riêng + giãn cách rộng để nhìn rõ tụ nào ra tụ đó. */
+.handzone.n2{gap:16px}
+.handzone.n2 .hand,.handzone.n3 .hand,.handzone.nx .hand{background:#00000033;border:1px solid #ffffff1c;border-radius:10px;padding:4px 7px 5px}
+.handzone.n2 .card{width:40px;height:58px;font-size:13px;margin-left:-14px}
+.handzone.n2 .card .s{font-size:16px}.handzone.n2 .card .c{font-size:18px}
+.handzone.n3{gap:11px}
+.handzone.n3 .card{width:33px;height:48px;font-size:11px;margin-left:-11px}
+.handzone.n3 .card .s{font-size:13px}.handzone.n3 .card .c{font-size:14px}
+.handzone.nx{gap:8px}
+.handzone.nx .card{width:26px;height:38px;font-size:9px;margin-left:-8px;padding:3px 3px}
+.handzone.nx .card .s{font-size:10px}.handzone.nx .card .c{font-size:11px}
 .handzone.nx .tulbl{font-size:8px;padding:0 4px}.handzone.nx .tot{font-size:10px;padding:1px 5px}
 /* Chia bài: lá BAY TỪ CHỖ NHÀ CÁI (trên) xuống người chơi, từng lá một. Không lật. */
 .card.reveal{animation:reveal .55s cubic-bezier(.25,.8,.3,1) both}
@@ -108,6 +112,37 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 #betInput{flex:1;background:#0a1712;border:1px solid #1f4a34;border-radius:10px;color:var(--tx);padding:12px;font-size:17px;text-align:center;font-weight:900}
 .chips{display:flex;gap:6px;margin-top:8px}
 .chip{flex:1;min-width:52px;background:#1a3a28;color:#d6f0dd;padding:10px 0;font-size:13px}
+/* ---- CHIP MỆNH GIÁ kiểu phỉnh casino: bấm là cộng dồn + bay vào ô cược ---- */
+.betrow{display:flex;gap:10px;align-items:center;justify-content:center;font-size:13px;margin-bottom:8px;flex-wrap:wrap}
+.betrow .binfo{background:#0a1712;border:1px solid #1f4a34;border-radius:10px;padding:7px 12px;font-weight:700;color:var(--muted)}
+.betrow .binfo b{color:var(--gold);font-size:15px}
+.betrow button{padding:8px 14px;font-size:13px;background:#1a3a28;color:#d6f0dd}
+.chiprow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.pchip{width:52px;height:52px;border-radius:50%;border:4px dashed #fff;box-shadow:0 3px 8px #0009,inset 0 0 6px #0007;
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#fff;text-shadow:0 1px 2px #000a;cursor:pointer;padding:0;transition:transform .1s}
+.pchip:active{transform:scale(.9)}
+.pchip.fly{position:fixed;z-index:120;margin:0;transition:transform .55s cubic-bezier(.3,.7,.4,1),opacity .55s;pointer-events:none}
+/* ---- điện thoại XOAY NGANG: dồn hết màn hình cho BÀN, giấu phần phụ ---- */
+@media (orientation:landscape) and (pointer:coarse) and (max-height:540px){
+  .hbar{display:none}
+  #chatBar{display:none}
+  .banner{display:none}
+  body{max-width:none}
+  #felt{margin:4px;min-height:0;padding:6px 8px 8px;border-width:4px}
+  .dealer{min-height:64px}
+  #decide{top:24%;padding:6px 12px 8px}
+  .rb{width:46px;height:46px;font-size:19px}
+  .rbl{font-size:9px}
+  #ring{width:38px;height:38px}#ring span{font-size:13px}
+  .card{width:42px;height:60px;font-size:14px;margin-left:-15px}
+  .card .s{font-size:17px}.card .c{font-size:19px}
+  .handzone{min-height:70px}
+  .betspot{width:48px;height:48px}.chipv{width:40px;height:40px;font-size:10px}
+  .ava{width:32px;height:32px;font-size:13px}
+  #bar{padding:4px 8px 6px}
+  .pchip{width:44px;height:44px;font-size:11px}
+  .betrow{margin-bottom:5px}.betrow .binfo{padding:4px 9px}
+}
 .acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .acts button{padding:16px 4px;font-size:15px;letter-spacing:.5px}
 .a-hit{background:linear-gradient(180deg,#4fd07a,#1f9a4e);color:#04240f}
@@ -427,14 +462,18 @@ function renderBar(m){
     if(sig===lastBarSig)return;
     html='<div class="waiting">👆 Tới lượt bạn — bấm nút tròn giữa bàn</div>';
   }else if(m.phase==="idle"||m.phase==="betting"){
+    // CHIP MỆNH GIÁ: bấm chip = CỘNG DỒN vào cược + chip bay vào ô. Hiện số dư kế bên.
     var placed=seat&&seat.bet>0;
-    sig="bet|"+(placed?seat.bet:0);          // đổi khi ĐẶT xong, không đổi khi đang gõ
+    sig="bet|"+(placed?seat.bet:0)+"|"+BAL;   // vẽ lại khi cược hoặc số dư đổi
     if(sig===lastBarSig)return;
-    html='<div class="betbox"><input id="betInput" inputmode="numeric" placeholder="Số Dogcoin cược" value="'+(placed?seat.bet:"")+'">'+
-      '<button class="chip" data-leave="1" style="flex:0 0 auto;padding:12px 14px">Rời</button></div>'+
-      '<div class="chips"><button class="chip" data-add="50">+50</button><button class="chip" data-add="100">+100</button>'+
-      '<button class="chip" data-add="500">+500</button><button class="chip" data-add="1000">+1k</button><button class="chip" data-max="1">MAX</button></div>'+
-      '<button class="btn-gold full" data-place="1">'+(placed?"ĐỔI CƯỢC":"ĐẶT CƯỢC")+'</button>';
+    html='<div class="betrow">'+
+      '<span class="binfo">💰 Dư: <b>'+fmt(BAL)+'</b></span>'+
+      '<span class="binfo">🎯 Cược: <b>'+fmt(placed?seat.bet:0)+'</b></span>'+
+      (placed?'<button data-clear="1">Xoá cược</button>':'')+
+      '<button data-leave="1">Rời bàn</button></div>'+
+      '<div class="chiprow">'+CHIP_DENOMS.map(function(d){
+        return '<button class="pchip" data-chip="'+d.v+'" style="background:radial-gradient(circle at 50% 38%,'+d.c1+','+d.c2+')">'+d.t+'</button>';
+      }).join("")+'</div>';
   }else{
     var txt=m.phase==="result"?"Ván kết thúc — chờ ván mới":(seat&&seat.bet>0?"Đang trong ván — chờ tới lượt bạn":"Bạn không đặt ván này — chờ ván sau");
     sig="wait|"+txt;
@@ -446,16 +485,51 @@ function renderBar(m){
 }
 function ab(a,label,opts){var on=opts.indexOf(a)>=0;return '<button class="a-'+a+'"'+(on?"":" disabled")+' data-act="'+a+'">'+label+'</button>'}
 
+// ---- chip mệnh giá: màu kiểu phỉnh casino ----
+var CHIP_DENOMS=[
+  {v:100,t:"100",c1:"#6fb7ff",c2:"#1d5fa8"},
+  {v:200,t:"200",c1:"#63d68c",c2:"#1d7a44"},
+  {v:500,t:"500",c1:"#c79bff",c2:"#6b32b0"},
+  {v:1000,t:"1K",c1:"#ffd977",c2:"#b8860b"},
+  {v:5000,t:"5K",c1:"#ff9b6a",c2:"#c2531d"},
+  {v:10000,t:"10K",c1:"#ff6b8a",c2:"#b02545"}
+];
+// Bấm chip: cộng dồn cược (server thay bằng tổng mới) + hiệu ứng chip BAY vào ô của mình
+function addChip(denom,fromEl){
+  if(!ST)return;
+  var seat=ST.mySeat>=0?ST.seats[ST.mySeat]:null;
+  if(!seat)return toast("Ngồi vào ghế trước đã");
+  if(ST.phase!=="idle"&&ST.phase!=="betting")return toast("Đang trong ván — chờ ván sau");
+  var total=(seat.bet||0)+denom;
+  if(total>BAL)return toast("Không đủ Dogcoin (dư "+fmt(BAL)+")");
+  cmd("bet",{amount:total});
+  flyChip(fromEl,denom);
+}
+function flyChip(fromEl,denom){
+  var spot=document.querySelector(".betspot.mine");
+  if(!spot||!fromEl)return;
+  var a=fromEl.getBoundingClientRect(),b=spot.getBoundingClientRect();
+  var d=CHIP_DENOMS.find(function(x){return x.v===denom})||CHIP_DENOMS[0];
+  var c=document.createElement("div");c.className="pchip fly";c.textContent=d.t;
+  c.style.background="radial-gradient(circle at 50% 38%,"+d.c1+","+d.c2+")";
+  c.style.left=(a.left+a.width/2-26)+"px";c.style.top=(a.top+a.height/2-26)+"px";
+  document.body.appendChild(c);
+  requestAnimationFrame(function(){
+    c.style.transform="translate("+(b.left+b.width/2-(a.left+a.width/2))+"px,"+(b.top+b.height/2-(a.top+a.height/2))+"px) scale(.72)";
+    c.style.opacity="0.92";
+  });
+  setTimeout(function(){c.remove()},640);
+}
+
 // ---- uỷ quyền sự kiện (không onclick inline) ----
 document.addEventListener("click",function(e){
-  var el=e.target.closest("[data-sit],[data-act],[data-add],[data-max],[data-place],[data-leave]");
+  var el=e.target.closest("[data-sit],[data-act],[data-chip],[data-clear],[data-leave]");
   if(!el)return;
   if(el.id==="loginBtn")return;
   if(el.dataset.sit!==undefined)cmd("sit",{seat:+el.dataset.sit});
   else if(el.dataset.act!==undefined)cmd("act",{action:el.dataset.act});
-  else if(el.dataset.add!==undefined){var b=$("betInput");if(b)b.value=(parseInt(b.value||"0")||0)+(+el.dataset.add)}
-  else if(el.dataset.max!==undefined){var b2=$("betInput");if(b2)b2.value=BAL}
-  else if(el.dataset.place!==undefined){var v=parseInt(($("betInput")||{}).value);if(!v||v<=0)return toast("Nhập số Dogcoin");cmd("bet",{amount:v})}
+  else if(el.dataset.chip!==undefined)addChip(+el.dataset.chip,el);
+  else if(el.dataset.clear!==undefined)cmd("clearbet");
   else if(el.dataset.leave!==undefined)cmd("leave");
 });
 $("loginBtn").addEventListener("click",doLogin);
