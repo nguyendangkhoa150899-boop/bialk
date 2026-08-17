@@ -137,6 +137,7 @@ function startPanel(ctx) {
             bcHistory: (ctx.getBCDash ? ctx.getBCDash() : []),
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             totalTiles: ctx.totalTiles || 25, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
+            minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
             palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
@@ -298,6 +299,24 @@ function startPanel(ctx) {
                 if (path === '/api/tx/stop') {
                     ctx.stopTX();
                     ctx.writeLog('ADMIN', `[PANEL] Dừng Tài Xỉu`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                // ---- BẢNG MỜI CHƠI DÒ MÌN (không có ván chung, chỉ nút vào web) ----
+                if (path === '/api/mines/board/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    if (!ctx.startMines) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    try {
+                        const name = await ctx.startMines(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Đăng bảng Dò Mìn tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) {
+                        return sendJSON(res, 400, { ok: false, error: e.message });
+                    }
+                }
+                if (path === '/api/mines/board/stop') {
+                    if (ctx.stopMines) ctx.stopMines();
+                    ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Dò Mìn`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
@@ -766,6 +785,19 @@ const HTML = `<!DOCTYPE html>
 
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
+      <div class="card">
+        <h3>🎛️ Bảng mời chơi Dò Mìn trên Discord</h3>
+        <div class="muted" id="mineBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <label>Channel ID (kênh đăng bảng)</label>
+        <input id="mineChannel" placeholder="vd: 123456789012345678">
+        <div class="chips" id="mineSaved"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="mineBoardStart()">▶️ Bật / Đăng lại bảng</button>
+          <button class="btn-red" onclick="mineBoardStop()">⏹️ Gỡ bảng</button>
+          <button class="btn-grey" onclick="chatDelete('mineChannel')">🧹 Xóa chat bot</button>
+        </div>
+        <div class="note">Dò mìn <b>không có ván chung theo giờ</b> như Tài Xỉu — mỗi người chơi ván riêng trên web. Bảng này chỉ để mời chơi: có nút <b>🌐 Chơi Dò Mìn trên web</b> phát link + mã PIN, và tự khoe 6 ván gần nhất (ai ăn bao nhiêu, ai dính mìn). Bảng tự vẽ lại tối đa 15 giây/lần. Bot restart sẽ tự nối lại bảng cũ.</div>
+      </div>
       <div class="card epOnly" style="display:none">
         <h2>💎 Dò Mìn — Ép vị trí mìn (Web 25 ô)</h2>
         <div class="note">🌐 Dò mìn chính thức đã chuyển lên web cược (http://103.72.98.37:3002/). Phần này dùng để <b>ép vị trí mìn</b> cho ván web tiếp theo (25 ô grid 5×5).</div>
@@ -1153,6 +1185,8 @@ function bcForce(){
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function txStop(){if(!await uiConfirm('Tắt bàn Tài Xỉu?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Tài Xỉu');refresh();});}
+function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
+async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
 async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
@@ -1172,7 +1206,7 @@ function useChannel(prefix,id){document.getElementById(prefix+'Channel').value=i
 function renderSavedChannels(){
   if(!STATE)return;
   const list=STATE.savedChannels||[];
-  ['tx','bc'].forEach(prefix=>{
+  ['tx','bc','mine'].forEach(prefix=>{
     const el=document.getElementById(prefix+'Saved');if(!el)return;
     if(!list.length){el.innerHTML='<span class="empty">Chưa lưu kênh nào. Nhập ID + ghi chú rồi bấm 💾 Lưu kênh.</span>';return;}
     el.innerHTML=list.map(c=>
@@ -1373,6 +1407,11 @@ async function refresh(){
   const bcRun=STATE.bc.live&&STATE.bc.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
   document.getElementById('bcInfo').innerHTML='<span class="run '+(bcRun?'on':'off')+'">'+(bcRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Phiên #'+padId(STATE.bc.gameId)+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
+  // trang thai bang moi choi Do Min
+  const mb=STATE.minesBoard||{on:false,channelId:''};
+  document.getElementById('mineBoardInfo').innerHTML='<span class="run '+(mb.on?'on':'off')+'">'+(mb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(mb.channelId?' &nbsp; kênh <code>'+esc(mb.channelId)+'</code>':'');
+  const mch=document.getElementById('mineChannel');
+  if(mb.channelId&&!mch.value)mch.value=mb.channelId; // điền sẵn kênh đang dùng
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';

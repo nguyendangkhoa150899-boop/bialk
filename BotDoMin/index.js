@@ -520,6 +520,7 @@ function webMinesLog(g, result, amount) {
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
     });
     if (minesHistory.length > 20) minesHistory.pop();
+    minesBoard.needsUpdate = true; // bảng Discord tự vẽ lại (tối đa 15s/lần)
     // Trần đang tắt nên một ván có thể trả rất lớn — hú còi để admin biết ngay.
     if (amount >= MINES_BIG_WIN_ALERT) {
         writeLog('ADMIN', `[⚠️ DÒ MÌN TRẢ LỚN] ${g.name} +${amount.toLocaleString()} Dogcoin ` +
@@ -599,6 +600,7 @@ const webMinesApi = {
     cashout: (userId) => {
         const g = webMines.get(userId);
         if (!g) return { error: 'Chưa có ván nào đang chơi' };
+        // (đánh dấu để bảng Discord vẽ lại — xem minesBoard bên dưới)
         if (!g.revealed.length) return { error: 'Mở ít nhất 1 ô rồi mới dừng được' };
         const win = minesWin(g.bet, g.revealed.length, g.totalMines);
         webMines.delete(userId);
@@ -608,6 +610,92 @@ const webMinesApi = {
         return { ok: true, win, mines: g.mines, balance: getUserData(userId).points || 0 };
     },
 };
+
+// ===== BẢNG DÒ MÌN TRÊN DISCORD =====
+// Khác Tài Xỉu: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
+// Nên bảng này chỉ là chỗ mời chơi + khoe ai vừa ăn đậm, KHÔNG có nút đặt cược.
+// Vẽ lại tối đa 15 giây/lần để không dính rate limit của Discord.
+const minesBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
+
+function getMinesBoardData() {
+    const recent = minesHistory.slice(0, 6);
+    let desc =
+        `Lưới **${TOTAL_TILES} ô**, bạn chọn **số mìn** và **tiền cược**, rồi đào từng ô.\n` +
+        `Mỗi ô an toàn hệ số tăng thêm — **dừng lúc nào cũng được**, trúng mìn là mất tiền cược ván đó.\n\n` +
+        `🎯 Càng nhiều mìn, hệ số càng cao. Kéo thanh bên dưới lưới để xem trước ăn bao nhiêu.\n\n`;
+
+    if (recent.length) {
+        desc += `**🔥 Vài ván gần đây:**\n`;
+        desc += recent.map(h => {
+            const win = h.amount >= 0;
+            return `${win ? '💰' : '💥'} **${h.name}** · ${h.mines} mìn · mở ${h.diamonds} ô · ` +
+                `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
+        }).join('\n');
+    } else {
+        desc += `*Chưa có ai chơi ván nào. Mở hàng đi!*`;
+    }
+
+    const embed = new EmbedBuilder()
+        .setTitle('💣 DÒ MÌN — chơi trên web')
+        .setColor(0x8b5cf6)
+        .setDescription(desc)
+        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Dò Mìn trên web').setStyle(ButtonStyle.Success)
+    );
+    return { embeds: [embed], components: [row] };
+}
+
+async function startMinesBoard(channel) {
+    if (minesBoard.message) await minesBoard.message.delete().catch(() => { });
+    minesBoard.channel = channel;
+    minesBoard.message = await channel.send(getMinesBoardData());
+    minesBoard.needsUpdate = false;
+    minesBoard.lastEdit = Date.now();
+    dbCache._minesChannelId = channel.id;
+    dbCache._minesMsgId = minesBoard.message.id;
+    saveDbNow();
+}
+
+function stopMinesBoard() {
+    if (minesBoard.message) minesBoard.message.delete().catch(() => { });
+    minesBoard.channel = null;
+    minesBoard.message = null;
+    dbCache._minesChannelId = null;
+    dbCache._minesMsgId = null;
+    saveDbNow();
+}
+
+// Bot restart thì nối lại bảng cũ thay vì đăng bảng mới — đỡ rác kênh và người chơi
+// không phải đi tìm bảng khác. Bảng dò mìn không có ván chung nên nối lại là an toàn.
+async function resumeMinesBoard() {
+    const chId = dbCache._minesChannelId;
+    if (!chId) return;
+    const ch = await client.channels.fetch(chId);
+    const old = dbCache._minesMsgId ? await ch.messages.fetch(dbCache._minesMsgId).catch(() => null) : null;
+    if (old) {
+        minesBoard.channel = ch;
+        minesBoard.message = old;
+        minesBoard.lastEdit = Date.now();
+        await old.edit(getMinesBoardData()).catch(() => { });
+        writeLog('SYSTEM', `[BẢNG DÒ MÌN] Nối lại bảng cũ ở #${ch.name}`);
+        return;
+    }
+    await startMinesBoard(ch);
+    writeLog('SYSTEM', `[BẢNG DÒ MÌN] Bảng cũ mất, đã đăng bảng mới ở #${ch.name}`);
+}
+
+function runMinesBoardLoop() {
+    setInterval(() => {
+        if (!minesBoard.message || !minesBoard.needsUpdate) return;
+        if (Date.now() - minesBoard.lastEdit < 15000) return; // Discord rate limit
+        minesBoard.needsUpdate = false;
+        minesBoard.lastEdit = Date.now();
+        minesBoard.message.edit(getMinesBoardData())
+            .catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không sửa được tin nhắn: ${e.message}`));
+    }, 5000);
+}
 
 // --- ĐĂNG KÝ LỆNH SLASH ---
 const commands = [
@@ -652,6 +740,8 @@ client.once('ready', async (c) => {
     runTaiXiuLoop(); // TÀI XỈU vẫn chạy
     // runXoSoLoop();
     // resumeXosoAfterRestart().catch(() => {});
+    runMinesBoardLoop();
+    resumeMinesBoard().catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không nối lại được: ${e.message}`));
 
     // Cổng web cược cho người chơi (tách hẳn panel admin)
     try {
@@ -704,6 +794,10 @@ client.once('ready', async (c) => {
             stopBC: () => stopBaucua(),
             startTX: async (channelId) => { const ch = await client.channels.fetch(channelId); await startLonnho(ch); return ch.name; },
             stopTX: () => stopLonnho(),
+            // Bảng mời chơi Dò Mìn (không có ván chung, chỉ khoe kết quả + nút vào web)
+            getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
+            startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
+            stopMines: () => stopMinesBoard(),
             deleteChat: async (channelId) => { const ch = await client.channels.fetch(channelId); return await deleteBotChat(ch); },
             getWithdraw: () => withdrawState,
             startWithdraw: async (channelId) => { const ch = await client.channels.fetch(channelId); await startWithdraw(ch); return ch.name; },
