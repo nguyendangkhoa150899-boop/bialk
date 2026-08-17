@@ -2,6 +2,15 @@ const baseUrl = `${process.env.PALWORLD_PROTOCOL || "http"}://${process.env.PALW
 const authHeader = "Basic " + Buffer.from(`admin:${process.env.PALWORLD_ADMIN_PASSWORD}`).toString("base64");
 
 async function call(method, path, body) {
+  // Server test 17/08/2026: chỉ chạy cầu SFTP Dogcoin, .env không khai REST.
+  // Chặn tường minh ở đây để mọi endpoint REST (players/kick/ban/announce/links
+  // theo tên...) trả lỗi rõ ràng thay vì fetch tới http://undefined.
+  if (!process.env.PALWORLD_HOST) {
+    throw new PalworldApiError(
+      "REST API đã tắt — server này chỉ chạy chuyển Dogcoin qua SFTP. Muốn bật lại: khai PALWORLD_HOST/PORT/ADMIN_PASSWORD trong server/.env.",
+      503
+    );
+  }
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {

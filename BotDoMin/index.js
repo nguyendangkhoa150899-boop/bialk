@@ -7,6 +7,9 @@ const {
 const fs = require('fs');
 const { startPanel } = require('./panel');
 const { startWebPlay } = require('./webplay');
+// Cầu nối tự động nạp/rút Dogcoin với game (qua dashboard -> SFTP -> mod UE4SS).
+// CHỈ dùng giveItem/takeItem (không REST, không polling) để nhẹ VPS.
+const pal = require('./palworld');
 const { createTable: createBlackjackTable } = require('./blackjackTable');
 
 // Link hiển thị cho người chơi vào web cược (đổi trong .env nếu khác)
@@ -2185,19 +2188,21 @@ async function resumeXosoAfterRestart() {
     }
 }
 
-// --- UI RÚT DOGCOIN ---
-// TOÀN BỘ giao dịch với game chạy bằng TICKET: bot gửi đơn cho admin (DM + panel),
-// admin vào game giao/nhận tay rồi bấm duyệt. Server chuyển sang Linux native nên
-// cầu nối tự động cũ (UE4SS + queue.txt) không còn — và với server <4 người thì
-// giao tay đơn giản, an toàn hơn nhiều so với nuôi cả hệ thống tự động.
+// --- UI CHUYỂN DOGCOIN (TỰ ĐỘNG qua cầu SFTP -> mod UE4SS trong game) ---
+// Server test Windows (Shockbyte, 17/08/2026) có UE4SS nên cầu tự động chạy lại.
+// Hai nút chuyển xử lý NGAY (~5-20 giây), không cần admin. Chỉ khi KHÔNG CHẮC
+// kết quả (timeout/mất kết nối) mới rơi về đơn cho admin kiểm tra results.log.
+// Tên nhân vật do người chơi tự đặt bằng nút 📛 (lưu userData.ingameName) —
+// không dùng hệ liên kết SteamID/REST cũ nữa (REST đã tắt, chỉ còn SFTP).
 
 function getWithdrawMessageData() {
     const buyable = shopBuyableList().length;
     const lines = [
-        `Mọi giao dịch đều tạo **đơn gửi cho admin** — admin vào game giao/nhận trực tiếp với bạn.`,
+        `Chuyển Dogcoin **tự động** giữa ví Discord và Dog Coin trong game — xử lý ngay trong ~10 giây, không cần chờ admin.`,
         '',
-        `**🎮 Chuyển vào game** — trừ ví Discord ngay khi gửi đơn, admin vào game đưa Dog Coin cho bạn. Admin từ chối thì hoàn lại đủ.`,
-        `**💬 Chuyển ra Discord** — gửi đơn xong, bạn đưa Dog Coin cho admin trong game; admin xác nhận thì ví Discord mới được cộng.`,
+        `**📛 Tên trong game** — đặt đúng TÊN NHÂN VẬT của bạn trước (bắt buộc, chỉ cần 1 lần).`,
+        `**🎮 Chuyển vào game** — trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
+        `**💬 Chuyển ra Discord** — trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
         '',
         `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — quay từ ${gachaPool().length} pal MẠNH (paldex #${GACHA_MIN_DEX} Helzephyr trở lên, có cả pal raid, trừ Xenolord & Hartalis). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
         `**🎯 Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin** — tự chọn 1 trong ${buyable} pal (không có pal raid).`,
@@ -2216,7 +2221,8 @@ function getWithdrawMessageData() {
     // Màu theo HÀNG cho dễ nhìn: hàng chuyển tiền xanh dương, hàng shop pal xanh lá.
     const rowTransfer = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('rut_open').setLabel('Chuyển vào game').setEmoji('🎮').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('ten_open').setLabel('Tên trong game').setEmoji('📛').setStyle(ButtonStyle.Secondary)
     );
     const rowPal = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('shop_random').setLabel(`Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Success),
@@ -2906,33 +2912,72 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
+        if (interaction.customId === 'ten_modal') {
+            // Mod trong game so tên sau khi bỏ ký tự ẩn (normalizeName trong main.lua),
+            // nên ở đây cũng lọc về ASCII in được cho khớp cả hai đầu.
+            const name = pal.cleanName(interaction.fields.getTextInputValue('ten_input_name'));
+            if (!name) {
+                return interaction.reply({ content: '❌ Tên không hợp lệ (chỉ nhận chữ/số/ký tự thường trên bàn phím, không dấu).', ephemeral: true });
+            }
+            getUserData(userId).ingameName = name;
+            saveDbNow();
+            return interaction.reply({ content: `📛 Đã lưu tên trong game: **${name}**\nGiờ bấm 🎮 Chuyển vào game hoặc 💬 Chuyển ra Discord là tiền tự đi.`, ephemeral: true });
+        }
+
+        // ===== NẠP (game -> Discord) TỰ ĐỘNG qua cầu SFTP =====
+        // Luật tiền (README): TRỪ ITEM TRONG GAME TRƯỚC, mod xác nhận trừ đủ đúng số
+        // (`took` === amt) rồi mới cộng ví. Mod trả ERROR là CHẮC CHẮN chưa mất gì
+        // (thiếu tiền nó không trừ, trừ lệch nó tự hoàn — xem main.lua) -> chỉ báo
+        // người chơi. Riêng timeout/không phản hồi là KHÔNG CHẮC -> đơn cho admin
+        // đối chiếu results.log, KHÔNG cộng ví trước.
         if (interaction.customId === 'nap_modal') {
             const amt = parseInt(interaction.fields.getTextInputValue('nap_input_amount'));
             if (isNaN(amt) || amt <= 0) {
                 return interaction.reply({ content: '❌ Số Dog Coin không hợp lệ!', ephemeral: true });
             }
+            const gameName = (getUserData(userId).ingameName || '').trim();
+            if (!gameName) {
+                return interaction.reply({ content: '📛 Chưa biết tên nhân vật của bạn — bấm nút **📛 Tên trong game** trên bảng để đặt trước đã.', ephemeral: true });
+            }
 
-            const req = createTicket({
-                kind: 'to-discord',
-                userId,
-                username: interaction.user.username,
-                ingameName: getUserData(userId).ingameName || null,
-                amount: amt,
-            });
-            writeLog('ADMIN', `[ĐƠN NẠP] #${req.id} ${interaction.user.tag} muốn chuyển ${amt.toLocaleString()} Dog Coin từ game ra Discord`);
+            await interaction.deferReply({ ephemeral: true }); // take mất 5-20s, quá deadline 3s của Discord
+            writeLog('ADMIN', `[NẠP TỰ ĐỘNG] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dog Coin từ game ("${gameName}") ra Discord`);
+
+            let r = null, err = null;
+            try { r = await pal.takeItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
+
+            if (r && r.ok && r.took === amt) {
+                updatePoints(userId, amt);
+                logDog('from-game', userId, interaction.user.tag, amt, `nạp từ game (tự động, nhân vật ${gameName})`);
+                saveDbNow();
+                return interaction.editReply(`✅ Đã chuyển **${amt.toLocaleString()}** Dog Coin từ game vào ví Discord! Ví hiện có **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
+            }
+
+            const msg = (r && r.message) || (err && err.message) || '';
+            if (/player not found/i.test(msg)) {
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — chưa trừ gì cả.\nVào game rồi bấm lại; sai tên thì bấm **📛 Tên trong game** sửa.`);
+            }
+            const thieu = /khong du/i.test(msg) && msg.match(/trong game co (\d+)/);
+            if (thieu) {
+                return interaction.editReply(`❌ Trong túi bạn chỉ có **${Number(thieu[1]).toLocaleString()}** Dog Coin, không đủ ${amt.toLocaleString()} — chưa trừ gì cả.\n(Chỉ tính Dog Coin **trong túi** — để trong hòm thì cầm ra túi trước nhé.)`);
+            }
+            if (/ERROR/.test(msg) && !/LUA ERROR/i.test(msg)) {
+                // Mod từ chối rõ ràng -> trong game không mất gì
+                return interaction.editReply(`❌ Không trừ được Dog Coin trong game — chưa mất gì cả. Mod báo: \`${msg.slice(0, 250)}\``);
+            }
+            // Không rõ item đã bị trừ trong game hay chưa -> đơn cho admin, KHÔNG cộng ví
+            const req = createTicket({ kind: 'to-discord', userId, username: interaction.user.username, ingameName: gameName, amount: amt });
+            writeLog('ADMIN', `[NẠP TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dog Coin từ "${gameName}" | ${msg || 'timeout'} — xem results.log: item ĐÃ trừ thì DUYỆT (cộng ví), chưa trừ thì TỪ CHỐI`);
             sendTicketToAdmin(req).catch(() => {});
-
-            return interaction.reply({
-                content:
-                    `📨 Đã tạo đơn **#${req.id}**: chuyển **${amt.toLocaleString()}** Dog Coin từ game ra Discord.\n` +
-                    `Bạn vào game **đưa ${amt.toLocaleString()} Dog Coin cho admin** — admin xác nhận xong thì ví Discord được cộng.\n` +
-                    `(Ví chưa thay đổi cho tới khi admin duyệt.)`,
-                ephemeral: true,
-            });
+            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Admin sẽ đối chiếu: Dog Coin trong game đã bị trừ thì ví Discord được cộng đủ, chưa trừ thì hủy đơn — không mất tiền đâu.`);
         }
 
         // (Mua Lõi Văn Minh / cấy ghép / đổi vàng đã bỏ khỏi Discord — bán ở sạp trong game.)
 
+        // ===== RÚT (Discord -> game) TỰ ĐỘNG qua cầu SFTP =====
+        // Luật tiền (README): trừ ví TRƯỚC; mod báo "player not found" (chưa vào game/
+        // sai tên) là lỗi CHẮC CHẮN chưa giao -> hoàn ngay; timeout/lỗi lạ thì KHÔNG
+        // tự hoàn (có thể đã giao) -> đơn cho admin kiểm tra results.log.
         if (interaction.customId === 'rut_modal') {
             const amountStr = interaction.fields.getTextInputValue('rut_input_amount');
             const amt = parseInt(amountStr);
@@ -2947,26 +2992,35 @@ client.on('interactionCreate', async interaction => {
             if (userData.points < amt) {
                 return interaction.reply({ content: `❌ Bạn không đủ Dogcoin! Số dư hiện tại: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`, ephemeral: true });
             }
+            const gameName = (userData.ingameName || '').trim();
+            if (!gameName) {
+                return interaction.reply({ content: '📛 Chưa biết tên nhân vật của bạn — bấm nút **📛 Tên trong game** trên bảng để đặt trước đã.', ephemeral: true });
+            }
 
-            // Trừ ví NGAY (giữ chỗ) — admin từ chối thì rejectWithdraw hoàn đủ.
-            updatePoints(userId, -amt);
-            const req = createTicket({
-                kind: 'to-game',
-                userId,
-                username: interaction.user.username,
-                ingameName: getUserData(userId).ingameName || null,
-                amount: amt,
-            });
-            logDog('to-game', userId, interaction.user.tag, -amt, `xin chuyển vào game — đơn #${req.id}`);
-            writeLog('ADMIN', `[ĐƠN RÚT] #${req.id} ${interaction.user.tag} xin chuyển ${amt.toLocaleString()} Dogcoin vào game`);
+            await interaction.deferReply({ ephemeral: true }); // give mất 5-20s, quá deadline 3s của Discord
+            updatePoints(userId, -amt); // trừ ví TRƯỚC (giữ chỗ)
+            logDog('to-game', userId, interaction.user.tag, -amt, `rút vào game (tự động, nhân vật ${gameName})`);
+            writeLog('ADMIN', `[RÚT TỰ ĐỘNG] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dogcoin vào game cho "${gameName}"`);
+
+            let r = null, err = null;
+            try { r = await pal.giveItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
+
+            if (r && r.ok) {
+                saveDbNow();
+                return interaction.editReply(`✅ Đã giao **${amt.toLocaleString()}** Dog Coin cho **${gameName}** trong game! Ví còn **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
+            }
+            const msg = (r && r.message) || (err && err.message) || '';
+            if (/player not found/i.test(msg)) {
+                // Mod xác nhận CHƯA giao -> hoàn ngay, an toàn
+                updatePoints(userId, amt);
+                logDog('refund', userId, interaction.user.tag, amt, 'hoàn rút tự động: chưa vào game / sai tên');
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — đã hoàn **${amt.toLocaleString()}** ${DOGCOIN_EMOJI}.\nVào game rồi bấm rút lại; sai tên thì bấm **📛 Tên trong game** sửa.`);
+            }
+            // Không rõ đã giao hay chưa -> đơn cho admin, KHÔNG tự hoàn
+            const req = createTicket({ kind: 'to-game', userId, username: interaction.user.username, ingameName: gameName, amount: amt });
+            writeLog('ADMIN', `[RÚT TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dogcoin -> "${gameName}" | ${msg || 'timeout'} — kiểm tra results.log rồi duyệt/hoàn`);
             sendTicketToAdmin(req).catch(() => {});
-
-            return interaction.reply({
-                content:
-                    `📨 Đã tạo đơn **#${req.id}**: chuyển **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào game (ví đã trừ trước).\n` +
-                    `Admin sẽ vào game đưa Dog Coin tận tay cho bạn. Admin từ chối thì hoàn lại đủ.`,
-                ephemeral: true,
-            });
+            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Ví đã trừ; admin sẽ kiểm tra — nếu chưa nhận được trong game thì admin hoàn lại, đừng lo mất tiền.`);
         }
     }
 
@@ -3059,8 +3113,28 @@ client.on('interactionCreate', async interaction => {
         });
     }
 
+    // ======== NÚT ĐẶT TÊN TRONG GAME ========
+    if (interaction.customId === 'ten_open') {
+        const cur = (getUserData(userId).ingameName || '').trim();
+        const nameInput = new TextInputBuilder()
+            .setCustomId('ten_input_name')
+            .setLabel('Gõ ĐÚNG tên nhân vật Palworld của bạn')
+            .setPlaceholder('Ví dụ: BiaLK')
+            .setStyle(TextInputStyle.Short)
+            .setMaxLength(50)
+            .setRequired(true);
+        if (cur) nameInput.setValue(cur); // Discord không nhận setValue('')
+        const modal = new ModalBuilder().setCustomId('ten_modal').setTitle('Tên nhân vật trong game');
+        modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+        await interaction.showModal(modal);
+        return;
+    }
+
     // ======== NÚT RÚT DOGCOIN ========
     if (interaction.customId === 'rut_open') {
+        if (!(getUserData(userId).ingameName || '').trim()) {
+            return interaction.reply({ content: '📛 Bấm nút **📛 Tên trong game** đặt tên nhân vật trước đã (chỉ cần 1 lần).', ephemeral: true });
+        }
         const modal = new ModalBuilder()
             .setCustomId('rut_modal')
             .setTitle('Rút Dogcoin');
@@ -3079,7 +3153,10 @@ client.on('interactionCreate', async interaction => {
 
     // ======== NÚT CHUYỂN DOG COIN TỪ GAME RA DISCORD ========
     if (interaction.customId === 'nap_open') {
-        // Chỉ tạo đơn — không gọi API nào (Discord chỉ cho 3 giây trước showModal).
+        // KHÔNG gọi API nào trước showModal (Discord chỉ cho 3 giây, SFTP mất ~6s).
+        if (!(getUserData(userId).ingameName || '').trim()) {
+            return interaction.reply({ content: '📛 Bấm nút **📛 Tên trong game** đặt tên nhân vật trước đã (chỉ cần 1 lần).', ephemeral: true });
+        }
         const modal = new ModalBuilder().setCustomId('nap_modal').setTitle('Chuyển Dog Coin ra Discord');
         modal.addComponents(new ActionRowBuilder().addComponents(
             new TextInputBuilder()

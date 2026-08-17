@@ -86,15 +86,25 @@ từng không chứa tên player nên dashboard báo nhầm "timeout" dù mod đ
 
 ---
 
-## Luồng tiền Dogcoin (đang chạy)
+## Luồng tiền Dogcoin (đang chạy — làm lại 17/08/2026, TỰ ĐỘNG cả 2 chiều)
 
-### Discord → game ("Chuyển vào game")
-Người chơi bấm nút → trừ Dogcoin **ngay** → bot tra người đó có online không → gọi
-`/api/give-item`. Offline thì giữ `pending`, vòng quét mỗi 60s tự giao khi họ vào game.
+Người chơi tự đặt **tên nhân vật** bằng nút 📛 trên bảng Discord (lưu
+`userData.ingameName` trong `database.json` của bot). Mod so tên sau khi bỏ ký tự ẩn
+(`normalizeName`) nên gõ tên thường là khớp. KHÔNG dùng hệ liên kết SteamID/REST nữa.
 
-### Game → Discord ("Chuyển ra Discord")
-Người chơi bấm nút → **trừ item trong game TRƯỚC** → chỉ khi mod xác nhận `took` đúng số
-mới cộng Dogcoin. Trừ thất bại thì không cộng gì.
+### Discord → game ("Chuyển vào game", `rut_modal`)
+Bấm nút → trừ ví Discord **ngay** → gọi `/api/give-item`.
+- Mod trả `OK` → xong.
+- Mod trả `player not found` → CHẮC CHẮN chưa giao → **hoàn ví ngay**.
+- Timeout/lỗi lạ → KHÔNG tự hoàn (có thể đã giao) → tạo đơn cho admin đối chiếu `results.log`.
+
+### Game → Discord ("Chuyển ra Discord", `nap_modal`)
+Bấm nút → gọi `/api/take-item` **trừ item trong game TRƯỚC** → chỉ khi mod xác nhận
+`took` đúng số mới cộng ví.
+- Mod trả `ERROR` bất kỳ (not found / `khong du` / trừ lệch tự hoàn) → CHẮC CHẮN trong
+  game không mất gì → chỉ báo người chơi, không tạo đơn.
+- Timeout → không rõ đã trừ chưa → đơn cho admin: item ĐÃ trừ thì duyệt (cộng ví),
+  chưa trừ thì từ chối.
 
 ### Ba nguyên tắc an toàn tiền (đừng sửa nếu chưa hiểu vì sao)
 1. **Chống giao 2 lần:** đánh dấu `processing` TRƯỚC khi gọi. Bot crash giữa chừng thì
@@ -111,32 +121,35 @@ mới cộng Dogcoin. Trừ thất bại thì không cộng gì.
 
 ---
 
-## Liên kết Discord ↔ nhân vật
+## Liên kết Discord ↔ nhân vật — ĐÃ NGƯNG (17/08/2026)
 
-Dashboard giữ dữ liệu (`server/data/links.json`), bot đọc qua API. **Cố tình không lưu bản
-sao ở bot** để hai nơi không lệch nhau.
-
-Liên kết theo **SteamID** (`steam_7656...`) chứ không theo tên — tên trong game đổi được.
-Người chơi phải **đang online** mới lấy được SteamID. Làm ở panel bot, tab 🎮 Palworld & Dogcoin.
+Hệ liên kết SteamID cần REST API (`/api/players`) mà server test hiện **không bật REST**
+→ toàn bộ đường này ngưng. Thay bằng nút 📛 trên bảng Discord: người chơi tự đặt tên
+nhân vật, bot lưu trong `database.json`. Code links.js/endpoints vẫn còn nhưng các
+endpoint cần REST giờ trả 503 rõ ràng (xem guard trong `palworldClient.js`).
 
 ---
 
 ## Cấu hình
 
-`server/.env` (dashboard):
+`server/.env` (dashboard) — cấu hình TỐI THIỂU đang dùng (server test 17/08/2026,
+chỉ chạy cầu SFTP Dogcoin, REST tắt):
 ```
-PALWORLD_HOST=15.235.132.73
-PALWORLD_PORT=21052
+SFTP_HOST=sftp.discord.sgp2.shockbyte.host
+SFTP_PORT=2222
+SFTP_USERNAME=default@<uuid của server trên Shockbyte>
+SFTP_PASSWORD=<mật khẩu SFTP>
+SFTP_MOD_PATH=/1. test mod/Pal/Binaries/Win64/ue4ss/Mods/GiveGoldCommand
+```
+(PORT mặc định 3000, HOST mặc định 127.0.0.1 — GIỮ NGUYÊN, xem phần Xác thực.)
+
+Muốn bật lại REST (quản lý người chơi, kick/ban, links) thì thêm:
+```
+PALWORLD_HOST=<ip>
+PALWORLD_PORT=<port REST>
 PALWORLD_PROTOCOL=http
 PALWORLD_ADMIN_PASSWORD=<AdminPassword trong PalWorldSettings.ini — ĐỔI MỖI LẦN CÀI LẠI SERVER>
 DASHBOARD_PASSWORD=          # để trống = không cần đăng nhập
-PORT=3000
-HOST=127.0.0.1               # GIỮ NGUYÊN, xem phần Xác thực
-SFTP_HOST=sftp.discord.sgp2.shockbyte.host
-SFTP_PORT=2222
-SFTP_USERNAME=default@<uuid>
-SFTP_PASSWORD=<mật khẩu SFTP>
-SFTP_MOD_PATH=/1. MOD PALWORLD TEST/Pal/Binaries/Win64/ue4ss/Mods/GiveGoldCommand
 ```
 
 `BotDoMin/.env` thêm:
