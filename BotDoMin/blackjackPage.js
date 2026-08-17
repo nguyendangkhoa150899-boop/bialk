@@ -5,7 +5,7 @@
 // Hiệu ứng: lá bài BAY từ shoe về chỗ khi chia. Lá NHÂN ĐÔI úp lại cho người chơi tự nặn.
 
 const PAGE = `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Blackjack — Xì Dách</title>
 <style>
 :root{--gold:#ffcf5c;--tx:#f2f6f3;--muted:#a9c2b4;--red:#e0474b;--green:#2ec26a}
@@ -124,25 +124,42 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
   background:url(/dogcoin.png) center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;cursor:pointer;padding:0;transition:transform .1s;position:relative}
 .pchip:active{transform:scale(.9)}
 .pchip.fly{position:fixed;z-index:120;margin:0;transition:transform .55s cubic-bezier(.3,.7,.4,1),opacity .55s;pointer-events:none}
-/* ---- điện thoại XOAY NGANG: dồn hết màn hình cho BÀN, giấu phần phụ ---- */
+/* ---- điện thoại XOAY NGANG: dồn hết màn hình cho BÀN, giấu phần phụ.
+   KHÓA CUỘN (body fixed + overflow hidden, cao 100dvh) — bàn khít đúng khung nhìn,
+   không vuốt lên xuống được. Chừa safe-area né tai thỏ + thanh vuốt iPhone. ---- */
 @media (orientation:landscape) and (pointer:coarse) and (max-height:540px){
+  html,body{height:100dvh;overflow:hidden;overscroll-behavior:none}
+  body{position:fixed;inset:0;width:100%;max-width:none}
   .hbar{display:none}
   #chatBar{display:none}
   .banner{display:none}
-  body{max-width:none}
-  #felt{margin:4px;min-height:0;padding:6px 8px 8px;border-width:4px}
-  .dealer{min-height:64px}
-  .rb{width:46px;height:46px;font-size:19px}
-  .rbl{font-size:9px}
-  #ring{width:40px;height:40px}#ring span{font-size:13px}
-  .card{width:42px;height:60px;font-size:14px;margin-left:-15px}
-  .card .s{font-size:17px}.card .c{font-size:19px}
-  .handzone{min-height:70px}
-  .betspot{width:48px;height:48px}.chipv{width:40px;height:40px;font-size:10px}
-  .ava{width:32px;height:32px;font-size:13px}
-  #bar{padding:4px 8px 6px}
-  .pchip{width:44px;height:44px;font-size:11px}
-  .betrow{margin-bottom:5px}.betrow .binfo{padding:4px 9px}
+  #felt{min-height:0;padding:4px 8px 6px;border-width:4px;
+    margin:3px calc(4px + env(safe-area-inset-right)) 2px calc(4px + env(safe-area-inset-left))}
+  .dealer{min-height:56px;margin-top:0}
+  #status{font-size:11px;min-height:14px;margin:0}
+  .rb{width:44px;height:44px;font-size:18px}
+  .rbl{font-size:8px}
+  #ring{width:38px;height:38px}#ring span{font-size:12px}
+  .bardec{gap:12px}
+  .card{width:40px;height:57px;font-size:13px;margin-left:-14px;padding:4px 5px}
+  .card .s{font-size:16px}.card .c{font-size:18px}
+  .handzone{min-height:62px}
+  .tot{font-size:10px;padding:1px 7px;margin-top:2px}
+  .betspot{width:42px;height:42px;margin:2px auto 1px}
+  .betspot .bs-plus{font-size:15px}.betspot .bs-lbl{font-size:8px}
+  .chipv{width:36px;height:36px}
+  .ava{width:28px;height:28px;font-size:11px}
+  .pname{font-size:10px}
+  .seat{min-width:110px}
+  /* thanh đáy nhỏ gọn + đệm đáy né thanh vuốt iPhone (safe-area) */
+  #bar{padding:2px calc(8px + env(safe-area-inset-right)) calc(3px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
+  .pchip{width:40px;height:40px}
+  .pv{font-size:9px;line-height:13px;padding:0 4px;margin-bottom:-3px}
+  .betrow{gap:6px;margin-bottom:3px}
+  .betrow .binfo{padding:3px 8px;font-size:11px}.betrow .binfo b{font-size:12px}
+  .betrow button{padding:4px 10px;font-size:11px}
+  .chiprow{gap:6px}
+  .waiting{padding:5px 0;font-size:11px}
 }
 .acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .acts button{padding:16px 4px;font-size:15px;letter-spacing:.5px}
