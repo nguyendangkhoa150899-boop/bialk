@@ -133,10 +133,13 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
   .hbar{display:none}
   #chatBar{display:none}
   .banner{display:none}
-  #felt{min-height:0;padding:4px 8px 6px;border-width:4px;
+  #felt{min-height:0;padding:4px 8px 6px;border-width:4px;display:flex;flex-direction:column;
     margin:3px calc(4px + env(safe-area-inset-right)) 2px calc(4px + env(safe-area-inset-left))}
   .dealer{min-height:56px;margin-top:0}
   #status{font-size:11px;min-height:14px;margin:0}
+  /* 5 ghế BẮT BUỘC 1 hàng (không wrap — trước bị Ghế 5 rớt xuống dòng), ghim đáy bàn */
+  #seatRow{flex-wrap:nowrap;gap:4px;margin-top:auto}
+  .seat{flex:1 1 0;min-width:0;max-width:none}
   .rb{width:44px;height:44px;font-size:18px}
   .rbl{font-size:8px}
   #ring{width:38px;height:38px}#ring span{font-size:12px}
