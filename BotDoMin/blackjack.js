@@ -96,7 +96,7 @@ function startRound(players, shoe) {
     // Ai có blackjack tự nhiên thì tay đó xong luôn.
     for (const s of seats) if (isBlackjack(s.hands[0].cards)) s.hands[0].done = true;
 
-    advanceTurn(round);                     // đặt lượt vào tay đầu tiên còn chơi được
+    advance(round, shoe);                   // đặt lượt vào tay đầu tiên còn chơi được (bài chia sẵn 2 lá)
     if (round.turnPtr === -1) finishToDealer(round, shoe); // ai cũng BJ -> nhà cái mở luôn
     return round;
 }
@@ -156,18 +156,18 @@ function act(round, userId, action, shoe) {
     if (action === 'hit') {
         hand.cards.push(shoe.draw());
         const v = handValue(hand.cards);
-        if (v.bust || v.total === 21) { hand.done = true; advanceTurn(round); }
+        if (v.bust || v.total === 21) { hand.done = true; advance(round, shoe); }
         return afterAct(round, shoe);
     }
     if (action === 'stand') {
-        hand.done = true; advanceTurn(round);
+        hand.done = true; advance(round, shoe);
         return afterAct(round, shoe);
     }
     if (action === 'double') {
         hand.bet *= 2; hand.doubled = true;
         round.extraCharge[userId] = (round.extraCharge[userId] || 0) + seat.baseBet; // trừ thêm 1 lần cược gốc
         hand.cards.push(shoe.draw());
-        hand.done = true; advanceTurn(round);
+        hand.done = true; advance(round, shoe);
         return afterAct(round, shoe);
     }
     if (action === 'split') {
@@ -176,21 +176,37 @@ function act(round, userId, action, shoe) {
         const newHand = { cards: [moved], bet: seat.baseBet, done: false, doubled: false, fromSplit: true, splitAces: acesSplit };
         hand.fromSplit = true; hand.splitAces = acesSplit;
         round.extraCharge[userId] = (round.extraCharge[userId] || 0) + seat.baseBet; // tay thứ 2 = thêm 1 cược gốc
-        // Tay mới xuống CUỐI danh sách (không chèn ngay sau tay hiện tại). Nhờ vậy khi
-        // tách lại nhiều lần, thứ tự chơi là trái→phải A,B,C,D đúng như hình người chơi vẽ:
-        // xong tay đang chơi thì sang tay kế bên, tay tách-lại chờ ở cuối.
+        // Tay mới xuống CUỐI danh sách và CHỈ CÓ 1 LÁ — chờ tới lượt mới chia lá thứ hai
+        // (chia lười). Nhờ vậy: xử lý xong tay đang chơi mới lật/chia bên kia, đúng như
+        // bàn thật: một bên đủ bài chơi trước, bên kia còn trơ 1 con.
         seat.hands.push(newHand);
-        // mỗi tay rút thêm 1 lá cho đủ 2 lá
+        // chỉ chia thêm cho TAY HIỆN TẠI để nó đủ 2 lá và chơi ngay
         hand.cards.push(shoe.draw());
-        newHand.cards.push(shoe.draw());
-        // Tách Át: mỗi tay chỉ 1 lá thêm rồi dừng luôn (luật phổ biến)
         if (acesSplit) {
-            hand.done = true; newHand.done = true;
-            advanceTurn(round);
+            // Tách Át: mỗi tay chỉ được 1 lá thêm. Tay hiện tại đã đủ 2 -> xong; tay mới
+            // sẽ được chia 1 lá rồi xong khi tới lượt (activate lo).
+            hand.done = true; advance(round, shoe);
         }
+        // (tách thường: tay hiện tại 2 lá, người chơi tiếp tục; turnPtr giữ nguyên)
         return afterAct(round, shoe);
     }
     return { error: 'Nước đi lạ' };
+}
+
+// Chuyển lượt: dời con trỏ sang tay chưa xong kế tiếp, RỒI đảm bảo tay đó đủ bài.
+function advance(round, shoe) { advanceTurn(round); activate(round, shoe); }
+
+// Chia lười: khi vừa tới lượt một tay tách (mới 1 lá) thì chia lá thứ hai cho nó ngay
+// tại đây. Tách Át chỉ được 1 lá nên chia xong là done, nhảy tiếp.
+function activate(round, shoe) {
+    while (round.turnPtr >= 0) {
+        const cur = actorAt(round); if (!cur) break;
+        const hand = cur.s.hands[cur.h];
+        if (hand.cards.length >= 2) break;      // đủ bài -> chơi được
+        hand.cards.push(shoe.draw());
+        if (hand.splitAces) { hand.done = true; advanceTurn(round); continue; }
+        break;
+    }
 }
 
 function afterAct(round, shoe) {
