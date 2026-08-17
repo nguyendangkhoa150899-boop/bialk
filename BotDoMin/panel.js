@@ -136,6 +136,7 @@ function startPanel(ctx) {
             txHistory: (ctx.getTXDash ? ctx.getTXDash() : []),
             bcHistory: (ctx.getBCDash ? ctx.getBCDash() : []),
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
+            totalTiles: ctx.totalTiles || 25, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
             palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
@@ -624,9 +625,11 @@ const HTML = `<!DOCTYPE html>
   <div class="wrap">
     <div class="tabs">
       <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
+      <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
+      <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
-      <button data-tab="mine" onclick="tab('mine')">💎 Dò Mìn</button>
       <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
+      -->
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
       <button data-tab="pal" onclick="tab('pal')">🎮 Palworld & Dogcoin<span id="wdBadge" class="hidden"></span></button>
     </div>
@@ -955,7 +958,8 @@ function showApp(){
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
-  if(['tx','bc','mine','xs','user','pal'].includes(saved)) tab(saved);
+  // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Tài Xỉu
+  if(['tx','mine','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
@@ -1100,9 +1104,9 @@ function initSelects(){
     s.onchange=txPreview;
   });
   setDice(1,1,1);
-  // lưới dò mìn
+  // lưới dò mìn — PHẢI khớp TOTAL_TILES của bot (25 từ khi dò mìn lên web)
   const g=document.getElementById('mineGrid');g.innerHTML='';
-  for(let i=0;i<24;i++){
+  for(let i=0;i<(STATE&&STATE.totalTiles?STATE.totalTiles:25);i++){
     const d=document.createElement('div');d.className='tile';d.textContent=i+1;d.dataset.idx=i;
     d.onclick=()=>{if(mineSel.has(i)){mineSel.delete(i);d.classList.remove('mine');d.textContent=i+1;}else{mineSel.add(i);d.classList.add('mine');d.textContent='💣';}document.getElementById('mineCount').textContent=mineSel.size;};
     g.appendChild(d);

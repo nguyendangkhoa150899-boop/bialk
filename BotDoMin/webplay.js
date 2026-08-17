@@ -11,12 +11,7 @@ const crypto = require('crypto');
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
     const LOCK_S = ctx.lockSeconds || 15;
-    const TOTAL_TILES = ctx.TOTAL_TILES || 25;
-    const calculateMulti = ctx.calculateMulti;
-    const getInfo = ctx.getInfo;
-    const createMinesGame = ctx.createMinesGame;
-    const revealMine = ctx.revealMine;
-    const finishMinesGame = ctx.finishMinesGame;
+    const mines = ctx.mines; // toàn bộ logic + tiền của dò mìn nằm ở index.js
 
     const sendJSON = (res, code, obj) => {
         res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -169,47 +164,48 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, { ok: true, balance: ctx.getUserData(userId).points || 0 });
                 }
 
-                if (req.method === 'POST' && path === '/api/mines/init') {
-                    const body = await readBody(req);
-                    const numMines = Math.floor(Number(body.numMines));
-                    const amount = Math.floor(Number(body.amount));
+                // ===== DÒ MÌN =====
+                // Mọi phép tính tiền/hệ số nằm ở index.js (ctx.mines). Ở đây chỉ chuyển tiếp,
+                // KHÔNG nhận số tiền thắng do client gửi lên — client sửa được.
+                if (path.startsWith('/api/mines/')) {
+                    if (!mines) return sendJSON(res, 503, { ok: false, error: 'Dò mìn chưa sẵn sàng' });
                     const me = ctx.getUserData(userId);
-                    if (!Number.isFinite(numMines) || numMines < 1 || numMines >= TOTAL_TILES) return sendJSON(res, 400, { ok: false, error: `Số mìn phải từ 1 đến ${TOTAL_TILES - 1}` });
-                    if (!Number.isFinite(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Số tiền không hợp lệ' });
-                    if ((me.points || 0) < amount) return sendJSON(res, 400, { ok: false, error: 'Không đủ Dogcoin! Số dư: ' + (me.points || 0).toLocaleString() });
-                    ctx.updatePoints(userId, -amount);
-                    const game = createMinesGame(numMines, userId);
-                    const maxDiamonds = TOTAL_TILES - numMines;
-                    const multi = getInfo(0, numMines).multi;
-                    ctx.writeLog('BET', `[WEB DÒ MÌN INIT] ${me.name || userId} đặt ${amount} | Mìn: ${numMines} | Multi: ${multi}x`);
-                    return sendJSON(res, 200, { ok: true, gameId: game.gameId, balance: me.points - amount, totalMines: numMines, maxDiamonds });
-                }
 
-                if (req.method === 'POST' && path === '/api/mines/reveal') {
-                    const body = await readBody(req);
-                    const tileIdx = Math.floor(Number(body.tile));
-                    if (!Number.isFinite(tileIdx) || tileIdx < 0 || tileIdx >= TOTAL_TILES) return sendJSON(res, 400, { ok: false, error: 'Ô không hợp lệ' });
-                    const result = revealMine(userId, tileIdx);
-                    if (!result.ok) return sendJSON(res, 400, { ok: false, error: result.error });
-                    const { isMine, revealed, isWin, game } = result;
-                    if (isMine) {
-                        finishMinesGame(userId);
-                        return sendJSON(res, 200, { ok: true, isMine: true, revealed, isWin: false, balance: ctx.getUserData(userId).points || 0 });
+                    if (path === '/api/mines/state') {
+                        return sendJSON(res, 200, {
+                            ok: true, tiles: mines.tiles,
+                            balance: me.points || 0,
+                            game: mines.current(userId),
+                        });
                     }
-                    if (isWin) {
-                        const maxDiamonds = TOTAL_TILES - game.totalMines;
-                        const winAmount = Math.floor(0 * getInfo(maxDiamonds, game.totalMines).multi); // placeholder, tính ở client
-                        finishMinesGame(userId);
-                        return sendJSON(res, 200, { ok: true, isMine: false, revealed, isWin: true, balance: ctx.getUserData(userId).points || 0 });
-                    }
-                    return sendJSON(res, 200, { ok: true, isMine: false, revealed, isWin: false });
-                }
 
-                if (req.method === 'POST' && path === '/api/mines/cashout') {
-                    const game = finishMinesGame(userId);
-                    if (!game) return sendJSON(res, 400, { ok: false, error: 'Không tìm thấy ván' });
-                    // Tính thưởng dựa trên số ô đã mở (bet được tính ở client)
-                    return sendJSON(res, 200, { ok: true, balance: ctx.getUserData(userId).points || 0 });
+                    if (req.method === 'POST' && path === '/api/mines/table') {
+                        const body = await readBody(req);
+                        const n = Math.floor(Number(body.numMines));
+                        if (!Number.isFinite(n) || n < 1 || n > mines.tiles - 1) return sendJSON(res, 400, { ok: false, error: 'Số mìn không hợp lệ' });
+                        return sendJSON(res, 200, { ok: true, table: mines.table(n) });
+                    }
+
+                    if (req.method === 'POST' && path === '/api/mines/start') {
+                        const body = await readBody(req);
+                        const r = mines.start(userId, me.name || ('web_' + userId.slice(-4)),
+                            Math.floor(Number(body.numMines)), Math.floor(Number(body.bet)));
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+
+                    if (req.method === 'POST' && path === '/api/mines/reveal') {
+                        const body = await readBody(req);
+                        const r = mines.reveal(userId, Math.floor(Number(body.tile)));
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+
+                    if (req.method === 'POST' && path === '/api/mines/cashout') {
+                        const r = mines.cashout(userId);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
                 }
 
                 return sendJSON(res, 404, { ok: false, error: 'not found' });
@@ -276,25 +272,45 @@ const PAGE = [
     '.big{font-size:26px;font-weight:800}',
     '.hidden{display:none}',
     '.mine{font-size:13px;margin-top:6px;color:var(--gold)}',
-    // ---- dò mìn ----
-    '#mineCard{display:none}',
-    '#mineCard.active{display:block}',
-    '.mineGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:12px 0}',
-    '.mineTile{aspect-ratio:1;background:#232735;border:1px solid var(--line);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;transition:all .2s}',
-    '.mineTile:hover:not(.disabled){background:#2d3139;border-color:#4da3ff}',
-    '.mineTile.opened{background:var(--green);color:#0c2417;cursor:default}',
-    '.mineTile.mine{background:var(--red);color:#fff;cursor:default}',
-    '.mineTile.disabled{cursor:not-allowed;opacity:.6}',
-    '.mineSetup{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}',
-    '.mineSetup input{margin-top:6px;padding:10px}',
-    '.mineMulti{text-align:center;padding:10px;background:#232735;border-radius:8px;margin:10px 0;font-size:18px;font-weight:800;color:var(--gold)}',
-    '.mineCashout{width:100%;padding:12px;background:var(--blue);color:#fff;border:0;border-radius:10px;font-weight:800;cursor:pointer;margin-top:10px;font-size:15px}',
-    '.mineCashout:disabled{background:#2a2e3b;cursor:not-allowed}',
-    '.mineHist{max-height:150px;overflow-y:auto;font-size:12px}',
-    '.mineEntry{padding:6px 0;border-bottom:1px solid var(--line)}',
-    '.mineEntry .result{font-weight:800}',
-    '.mineEntry .win{color:var(--green)}',
-    '.mineEntry .lose{color:var(--red)}',
+    // ---- thanh chuyển trang (Tài Xỉu | Dò Mìn) ----
+    '#nav{display:flex;gap:8px;margin-bottom:12px}',
+    '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:15px;padding:13px 0}',
+    '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
+    // ---- dò mìn (bố cục theo sòng: thanh hệ số trên, 2 cột đếm kẹp lưới) ----
+    '#mine{background:linear-gradient(180deg,#1b2440,#141a2e);border:1px solid #2b3557}',
+    // thanh mốc hệ số cuộn ngang: mốc đã ăn sáng vàng, mốc kế tiếp nhấp nháy xanh
+    '#mbar{display:flex;gap:4px;overflow-x:auto;padding:6px;background:#0d1226;border:1px solid #2b3557;border-radius:10px;scrollbar-width:none}',
+    '#mbar::-webkit-scrollbar{display:none}',
+    '.mstep{flex:0 0 auto;min-width:54px;text-align:center;padding:6px 8px;border-radius:7px;font-size:12px;font-weight:800;background:#1a2340;color:#5f6c96;border:1px solid #263159}',
+    '.mstep.hit{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
+    '.mstep.now{background:linear-gradient(180deg,#4da3ff,#2c6fd0);color:#fff;border-color:#7dc0ff;animation:stepGlow 1.4s ease-in-out infinite}',
+    '@keyframes stepGlow{0%,100%{box-shadow:0 0 0 0 #4da3ff00}50%{box-shadow:0 0 12px 2px #4da3ff88}}',
+    // sân: cột đếm Dogcoin còn lại | lưới 5×5 | cột đếm mìn
+    '#mstage{display:grid;grid-template-columns:46px 1fr 46px;gap:8px;margin-top:10px}',
+    '.mside{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;background:#0d1226;border:1px solid #2b3557;padding:8px 0}',
+    '.mside .ic{font-size:19px;line-height:1}.mside .n{font-size:20px;font-weight:900}',
+    '.mside.coin .n{color:var(--gold)}.mside.bomb .n{color:#ff8a8a}',
+    '.mgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}',
+    '.mtile{aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;user-select:none;',
+    'background:linear-gradient(180deg,#2f7fd6,#215aa8);border:1px solid #4b9ae8;border-bottom:4px solid #14346a;color:#bcdcff;cursor:pointer;transition:transform .08s}',
+    '.mtile.can:active{transform:translateY(2px);border-bottom-width:2px}',
+    '.mtile.dead{background:linear-gradient(180deg,#232a3d,#1a2030);border-color:#2c3450;border-bottom-color:#141824;color:#4a5372;cursor:default}',
+    '.mtile.coin{background:linear-gradient(180deg,#ffe9a8,#e8bf58);border-color:#a8842f;border-bottom-color:#7d5f1e;cursor:default;animation:coinPop .28s ease-out}',
+    '@keyframes coinPop{0%{transform:scale(.55)}60%{transform:scale(1.14)}100%{transform:scale(1)}}',
+    '.mtile.boom{background:linear-gradient(180deg,#e05555,#8e2020);border-color:#ff9a9a;border-bottom-color:#5d1414;color:#fff;cursor:default;animation:boomPop .32s ease-out}',
+    '@keyframes boomPop{0%{transform:scale(.5) rotate(-20deg)}70%{transform:scale(1.28) rotate(8deg)}100%{transform:scale(1)}}',
+    '.mtile.shown{background:linear-gradient(180deg,#3a2030,#2a1622);border-color:#6b3a4a;border-bottom-color:#1e1017;color:#c46b7b;cursor:default}',
+    // hàng chỉnh tiền cược / số mìn
+    '.mctl{display:flex;align-items:center;gap:6px;margin-top:10px}',
+    '.mctl .box{flex:1;background:#0d1226;border:1px solid #2b3557;border-radius:10px;padding:5px 8px;text-align:center}',
+    '.mctl .lab{font-size:11px;color:var(--muted)}',
+    '.mctl button{background:#1a2340;border:1px solid #2b3557;color:#cfe0ff;min-width:44px;padding:12px 8px;font-size:14px}',
+    '.mctl button:disabled{opacity:.35}',
+    '#mBet,#mMines{width:100%;background:transparent;border:0;text-align:center;font-size:17px;font-weight:900;color:var(--gold);padding:0;margin:0}',
+    '.mgo{width:100%;margin-top:10px;font-size:16px;font-weight:900;padding:14px 0}',
+    '.mgo.start{background:linear-gradient(180deg,#4dd07a,#249a52);color:#04240f}',
+    '.mgo.cash{background:linear-gradient(180deg,#ffe9a8,#e8bf58);color:#3d2c05}',
+    '.mgo:disabled{background:#232a3d;color:#5a6480}',
     // ---- sân khấu xí ngầu + tờ giấy ----
     '#stage{position:relative;height:150px;border-radius:12px;background:radial-gradient(ellipse at center,#1e3d2b 0%,#152a1e 100%);border:1px solid #2b4a37;overflow:hidden;margin-top:10px;touch-action:none}',
     '#diceRow{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px}',
@@ -314,8 +330,8 @@ const PAGE = [
     '</style></head><body>',
 
     '<div id="login" class="card">',
-    '<h1>🎲 Tài Xỉu — Cược trên web</h1>',
-    '<div class="muted">Đặt cược và <b>nặn xí ngầu</b> đều ở đây. Lấy mã PIN bằng nút <b>🌐 Cược trên web</b> ở bảng Tài Xỉu trong Discord.</div>',
+    '<h1>🎰 Sòng Dogcoin — chơi trên web</h1>',
+    '<div class="muted">Có <b>Tài Xỉu</b> (đặt cược + nặn xí ngầu) và <b>Dò Mìn</b>. Lấy mã PIN bằng nút <b>🌐 Cược trên web</b> ở bảng Tài Xỉu trong Discord.</div>',
     '<input id="uid" inputmode="numeric" placeholder="Discord ID của bạn">',
     '<input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số">',
     '<button class="btn-full" onclick="login()">Vào sòng</button>',
@@ -324,6 +340,13 @@ const PAGE = [
     '<div id="app" class="hidden">',
     '<div class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div><div class="big" id="bal">0</div></div><button style="background:#232735" onclick="logout()">Thoát</button></div>',
 
+    '<div id="nav">',
+    '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
+    '<button id="navMine" onclick="go(\'mine\')">💎 Dò Mìn</button>',
+    '</div>',
+
+    // ================= TRANG TÀI XỈU =================
+    '<div id="pageTx">',
     '<div class="card">',
     '<div class="row"><h2 id="round" style="margin:0">Ván #—</h2><div id="clock" class="big">--</div></div>',
     '<div id="stt" class="muted"></div>',
@@ -335,19 +358,6 @@ const PAGE = [
     '<div id="stageCap"></div>',
     '</div>',
 
-    '<div class="card" id="mineCard">',
-    '<h2>💎 DÒ MÌN</h2>',
-    '<div class="mineSetup">',
-    '<div><label>Số mìn (1-24):</label><input id="mineNumMines" type="number" min="1" max="24" value="5" onchange="updateMineMulti()"></div>',
-    '<div><label>Dogcoin đặt:</label><input id="mineBet" type="number" min="1" value="100" onchange="updateMineMulti()"></div>',
-    '</div>',
-    '<div class="mineMulti" id="mineMultiDisplay">Chọn số để xem thưởng</div>',
-    '<button class="bet-btn" id="mineBetBtn" onclick="mineBetStart()">BẮT ĐẦU ĐÒ MÌN</button>',
-    '<div class="mineGrid" id="mineGrid"></div>',
-    '<button class="mineCashout" id="mineCashoutBtn" onclick="mineCashout()" disabled>💰 DỪNG & NHẬN TIỀN</button>',
-    '<div class="mineHist" id="mineHist"></div>',
-    '</div>',
-    '',
     '<div class="card" id="betCard">',
     '<div class="grid2">',
     '<button class="cbtn tai" id="c_tai" onclick="pick(\'tai\')">TÀI<small>11 - 17</small><div class="muted" id="t_tai">0</div></button>',
@@ -380,7 +390,38 @@ const PAGE = [
     '</div></div>',
 
     '<div class="card"><h2>📒 10 ván gần nhất của bạn</h2><div id="myHist" class="muted" style="font-size:13px">Chưa có ván nào bạn đặt.</div></div>',
+    '</div>', // hết #pageTx
+
+    // ================= TRANG DÒ MÌN =================
+    '<div id="pageMine" class="hidden">',
+    '<div class="card" id="mine">',
+    '<div class="row" style="margin-bottom:8px"><h2 style="margin:0">💣 Dò Mìn</h2><div class="muted" id="mStat">Chọn số mìn và tiền cược</div></div>',
+
+    '<div id="mbar"></div>',
+
+    '<div id="mstage">',
+    '<div class="mside coin"><div class="ic">🐕</div><div class="n" id="mLeft">–</div></div>',
+    '<div class="mgrid" id="mGrid"></div>',
+    '<div class="mside bomb"><div class="ic">💣</div><div class="n" id="mBombN">–</div></div>',
     '</div>',
+
+    '<div class="mctl">',
+    '<button id="mHalf" onclick="mMul(.5)">½</button>',
+    '<div class="box"><div class="lab">Tiền cược</div><input id="mBet" inputmode="numeric" value="100" oninput="mBand()"></div>',
+    '<button id="mDouble" onclick="mMul(2)">x2</button>',
+    '<button id="mMax" onclick="mAllIn()">MAX</button>',
+    '</div>',
+
+    '<div class="mctl">',
+    '<button id="mMinus" onclick="mStep(-1)">−</button>',
+    '<div class="box"><div class="lab">Số mìn</div><input id="mMines" inputmode="numeric" value="3" oninput="mTable()"></div>',
+    '<button id="mPlus" onclick="mStep(1)">+</button>',
+    '</div>',
+
+    '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
+    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao — trúng mìn là mất tiền cược ván đó.</div>',
+    '</div>',
+    '</div>', // hết #pageMine
 
     '<div id="winpop"></div>',
     '<div id="toast"></div>',
@@ -394,7 +435,12 @@ const PAGE = [
     'function api(p,body){return fetch(p,{method:body?"POST":"GET",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(j){if(!j.ok)throw new Error(j.error||("HTTP "+r.status));return j})})}',
     'function login(){var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return toast("Nhập đủ ID + PIN");fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})}).then(function(r){return r.json()}).then(function(j){if(!j.ok)return toast(j.error||"Sai thông tin");TOKEN=j.token;localStorage.setItem("play_token",TOKEN);show(j.name)}).catch(function(){toast("Lỗi mạng")})}',
     'function logout(){TOKEN="";localStorage.removeItem("play_token");location.reload()}',
-    'function show(n){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");document.getElementById("mineCard").classList.add("active");if(n)document.getElementById("myName").textContent=n;initPaper();updateMineMulti();refresh();setInterval(refresh,2000);setInterval(tick,250)}',
+    'function show(n){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");',
+    'if(n)document.getElementById("myName").textContent=n;initPaper();',
+    // Tài Xỉu vẫn tự làm mới ngầm kể cả khi đang ở trang Dò Mìn (số dư luôn đúng,
+    // quay lại là thấy ván hiện tại ngay, không phải chờ).
+    'refresh();setInterval(refresh,2000);setInterval(tick,250);',
+    'mSync();go(localStorage.getItem("play_page")==="mine"?"mine":"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
     'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
     'function allIn(){document.getElementById("amt").value=BAL}',
@@ -508,96 +554,90 @@ const PAGE = [
     'function sendChat(){var i=document.getElementById("chatIn");var v=i.value.trim();if(!v)return;api("/api/chat",{text:v}).then(function(){i.value="";lastChatTs=0;refresh()}).catch(function(e){toast("❌ "+e.message)})}',
     'document.getElementById("chatIn").addEventListener("keydown",function(e){if(e.key==="Enter")sendChat()});',
     '',
-    '// ===== DÒ MÌN =====',
-    'var MINE_TOTAL_TILES=25;var MINE_CURRENT_GAME=null;var MINE_BET=0;',
-    'function updateMineMulti(){',
-    'var numMines=parseInt(document.getElementById("mineNumMines").value)||0;',
-    'var bet=parseInt(document.getElementById("mineBet").value)||0;',
-    'if(numMines<1||numMines>=MINE_TOTAL_TILES||bet<=0){document.getElementById("mineMultiDisplay").textContent="⚠️ Số mìn/cược không hợp lệ";return}',
-    'var maxDiamonds=MINE_TOTAL_TILES-numMines;',
-    'var multi=calculateMinesMulti(maxDiamonds,numMines);',
-    'document.getElementById("mineMultiDisplay").textContent="💰 Thưởng tối đa: x"+multi.toFixed(2)+" = "+Math.floor(bet*multi).toLocaleString("vi-VN")+" 🐕";',
-    '}',
-    'function calculateMinesMulti(diamonds,numMines){',
-    'if(diamonds<=0)return 1;',
-    'var prob=nCr(MINE_TOTAL_TILES-numMines,diamonds)/nCr(MINE_TOTAL_TILES,diamonds);',
-    'if(prob<=0)return 1;',
-    'return Math.floor((1/prob)*0.95*100)/100;',
-    '}',
-    'function nCr(n,r){if(r>n)return 0;if(r===0||r===n)return 1;var res=1;for(var i=1;i<=r;i++){res=res*(n-i+1)/i}return res}',
-    'function renderMineGrid(){',
-    'var grid=document.getElementById("mineGrid");grid.innerHTML="";',
-    'for(var i=0;i<MINE_TOTAL_TILES;i++){',
-    'var t=document.createElement("div");t.className="mineTile";t.id="mt_"+i;t.textContent="?";t.dataset.idx=i;',
-    't.onclick=function(){revealMineTile(parseInt(this.dataset.idx))};',
-    'grid.appendChild(t);',
-    '}',
-    '}',
-    'function mineBetStart(){',
-    'var numMines=parseInt(document.getElementById("mineNumMines").value);',
-    'var bet=parseInt(document.getElementById("mineBet").value);',
-    'var bal=parseInt(document.getElementById("bal").textContent.replace(/[^0-9]/g,""));',
-    'if(numMines<1||numMines>=MINE_TOTAL_TILES)return toast("❌ Số mìn từ 1 đến "+(MINE_TOTAL_TILES-1));',
-    'if(bet<=0)return toast("❌ Cược phải > 0");',
-    'if(bal<bet)return toast("❌ Không đủ Dogcoin!");',
-    'api("/api/mines/init",{numMines:numMines,amount:bet}).then(function(j){',
-    'MINE_CURRENT_GAME={gameId:j.gameId,bet:bet,numMines:numMines,maxDiamonds:j.maxDiamonds,revealed:0};',
-    'MINE_BET=bet;',
-    'document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");',
-    'document.getElementById("mineBetBtn").disabled=true;',
-    'document.getElementById("mineNumMines").disabled=true;',
-    'document.getElementById("mineBet").disabled=true;',
-    'document.getElementById("mineCashoutBtn").disabled=false;',
-    'renderMineGrid();',
-    'document.getElementById("mineMultiDisplay").textContent="🎮 Chơi đi — mở càng nhiều ô an toàn càng được!";',
-    '}).catch(function(e){toast("❌ "+e.message);',
-    '})}',
-    'function revealMineTile(idx){',
-    'if(!MINE_CURRENT_GAME)return;',
-    'var t=document.getElementById("mt_"+idx);',
-    'if(!t||t.classList.contains("disabled"))return;',
-    'api("/api/mines/reveal",{tile:idx}).then(function(j){',
-    'if(!j.ok)return toast("❌ "+j.error);',
-    't.classList.add("disabled");',
-    'if(j.isMine){t.textContent="💣";t.classList.add("mine");',
-    'showNet(-MINE_BET);updatePoints(MYID,-MINE_BET);document.getElementById("bal").textContent=(BAL-MINE_BET).toLocaleString("vi-VN");',
-    'disableMineGrid();toast("💥 BÙM! Trúng mìn!");setTimeout(finishMineGame,1500);return}',
-    'MINE_CURRENT_GAME.revealed++;t.textContent="✓";t.classList.add("opened");',
-    'var multi=calculateMinesMulti(MINE_CURRENT_GAME.revealed,MINE_CURRENT_GAME.numMines);',
-    'var currentWin=Math.floor(MINE_BET*multi);',
-    'document.getElementById("mineMultiDisplay").textContent="💰 x"+multi.toFixed(2)+" = "+currentWin.toLocaleString("vi-VN")+" 🐕 ("+MINE_CURRENT_GAME.revealed+"/"+MINE_CURRENT_GAME.maxDiamonds+")";',
-    'if(j.isWin){',
-    'disableMineGrid();toast("🎉 JACKPOT! Mở hết ô an toàn!");setTimeout(finishMineGame,1500);',
-    '}',
-    '}).catch(function(e){toast("❌ "+e.message)})}',
-    'function mineCashout(){',
-    'if(!MINE_CURRENT_GAME)return;',
-    'var multi=calculateMinesMulti(MINE_CURRENT_GAME.revealed,MINE_CURRENT_GAME.numMines);',
-    'var winAmount=Math.floor(MINE_BET*multi);',
-    'var profit=winAmount-MINE_BET;',
-    'updatePoints(MYID,profit);',
-    'showNet(profit);',
-    'document.getElementById("bal").textContent=(BAL+profit).toLocaleString("vi-VN");',
-    'disableMineGrid();toast("✅ Dừng được "+winAmount.toLocaleString("vi-VN")+" Dogcoin!");',
-    'api("/api/mines/cashout",{}).catch(function(e){});',
-    'setTimeout(finishMineGame,1500);',
-    '}',
-    'function disableMineGrid(){',
-    'var grid=document.getElementById("mineGrid");',
-    'for(var i=0;i<MINE_TOTAL_TILES;i++){',
-    'var t=document.getElementById("mt_"+i);',
-    'if(t&&!t.classList.contains("opened")&&!t.classList.contains("mine")){t.classList.add("disabled")}',
-    '}',
-    '}',
-    'function finishMineGame(){',
-    'MINE_CURRENT_GAME=null;',
-    'document.getElementById("mineBetBtn").disabled=false;',
-    'document.getElementById("mineNumMines").disabled=false;',
-    'document.getElementById("mineBet").disabled=false;',
-    'document.getElementById("mineCashoutBtn").disabled=true;',
-    'document.getElementById("mineMultiDisplay").textContent="Chọn số để xem thưởng";',
-    '}',
-    'function updatePoints(userId,amount){BAL+=amount}',
+    // ===== DÒ MÌN =====
+    // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
+    'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;',
+    'function $(id){return document.getElementById(id)}',
+    'function go(p){var tx=p==="tx";',
+    '$("pageTx").classList.toggle("hidden",!tx);$("pageMine").classList.toggle("hidden",tx);',
+    '$("navTx").classList.toggle("on",tx);$("navMine").classList.toggle("on",!tx);',
+    'localStorage.setItem("play_page",p);',
+    'if(!tx){mSync()}else{refresh()}}',
+    'function mNum(id){return parseInt($(id).value)||0}',
+    'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>BAL)b=BAL;$("mBet").value=b;mBand()}',
+    'function mAllIn(){if(MG)return;$("mBet").value=BAL;mBand()}',
+    'function mStep(d){if(MG)return;var n=mNum("mMines")+d;if(n<1)n=1;if(n>MT-1)n=MT-1;$("mMines").value=n;mTable()}',
+    // Bảng hệ số lấy TỪ SERVER (client không tự tính, để không lệch với tiền thật khi trả).
+    'var mTimer=0;',
+    'function mTable(){clearTimeout(mTimer);mTimer=setTimeout(function(){',
+    'var n=mNum("mMines");if(n<1||n>MT-1){n=Math.min(Math.max(n,1),MT-1);$("mMines").value=n}',
+    'api("/api/mines/table",{numMines:n}).then(function(j){MTAB=j.table||[];mBar();mBand()}).catch(function(){})},150)}',
+    // thanh mốc hệ số: đã ăn = vàng, mốc kế tiếp = xanh nhấp nháy, tự cuộn theo
+    'function mBar(){var done=MG?MG.revealed.length:0;',
+    '$("mbar").innerHTML=MTAB.map(function(m,i){var k=i+1;',
+    'var c=k<=done?"hit":(k===done+1?"now":"");',
+    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">x\'+m.toFixed(2)+"</div>"}).join("");',
+    'var cur=$("ms"+(done+1));if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:"nearest",inline:"center"})}',
+    // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
+    'function mBand(){var go=$("mGo");',
+    'if(MG){',
+    '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
+    '$("mBombN").textContent=MG.totalMines;',
+    '$("mStat").textContent=MG.totalMines+" mìn · cược "+MG.bet.toLocaleString("vi-VN")+" · x"+MG.multi.toFixed(2);',
+    'go.className="mgo cash";',
+    'go.textContent=MG.revealed.length?("💰 NHẬN TIỀN  "+MG.cashout.toLocaleString("vi-VN")):"⛏️ MỞ 1 Ô ĐỂ BẮT ĐẦU ĂN";',
+    'go.disabled=!MG.revealed.length;',
+    '}else{',
+    'var n=Math.min(Math.max(mNum("mMines"),1),MT-1);',
+    '$("mLeft").textContent=(MT-n);$("mBombN").textContent=n;',
+    'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=MOVER;',
+    'if(!MOVER)$("mStat").textContent=MTAB.length?("mở 1 ô ăn x"+MTAB[0].toFixed(2)+" · mở hết x"+MTAB[MTAB.length-1].toFixed(2)):"Chọn số mìn và tiền cược";}',
+    '["mHalf","mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
+    '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG}',
+    'function mGoClick(){if(MG)mCashout();else mStartGame()}',
+    // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
+    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;setBal(j.balance);',
+    'MG=j.game||null;MOVER=false;mDrawGrid();',
+    'if(MG){$("mMines").value=MG.totalMines;$("mBet").value=MG.bet}',
+    'mTable();mBar();mBand()}).catch(function(){})}',
+    'function mDrawGrid(){var g=$("mGrid");g.innerHTML="";',
+    'for(var i=0;i<MT;i++){var t=document.createElement("div");t.id="mk"+i;t.dataset.i=i;',
+    'if(MG&&MG.revealed.indexOf(i)>=0){t.className="mtile coin";t.textContent="🐕"}',
+    'else if(MG){t.className="mtile can";t.textContent="?";t.onclick=function(){mDig(parseInt(this.dataset.i))}}',
+    'else{t.className="mtile dead";t.textContent="?"}',
+    'g.appendChild(t)}}',
+    'function mRevealAll(mines){for(var i=0;i<MT;i++){var t=$("mk"+i);if(!t)continue;t.onclick=null;',
+    'if(t.classList.contains("coin")||t.classList.contains("boom"))continue;',
+    'if(mines&&mines.indexOf(i)>=0){t.className="mtile shown";t.textContent="💣"}else{t.className="mtile dead"}}}',
+    'function mEnd(msg,net,mines){mRevealAll(mines);MG=null;MOVER=true;',
+    '$("mStat").textContent=msg;$("mGo").disabled=true;',
+    'if(net!==null)showNet(net);',
+    'setTimeout(function(){MOVER=false;mDrawGrid();mTable();mBar();mBand()},2200)}',
+    'function mDig(i){if(!MG||mBusy)return;var t=$("mk"+i);',
+    'if(!t||!t.classList.contains("can"))return;mBusy=true;',
+    'var stake=MG.bet;',
+    'api("/api/mines/reveal",{tile:i}).then(function(j){mBusy=false;',
+    'if(typeof j.balance==="number")setBal(j.balance);',
+    'if(j.hit){t.className="mtile boom";t.textContent="💣";',
+    'toast("💥 BÙM! Mất "+stake.toLocaleString("vi-VN")+" Dogcoin");',
+    'return mEnd("💥 Trúng mìn — thua "+stake.toLocaleString("vi-VN"),-stake,j.mines)}',
+    't.className="mtile coin";t.textContent="🐕";t.onclick=null;',
+    'if(j.jackpot){toast("🎉 JACKPOT! Nhận "+j.win.toLocaleString("vi-VN"));',
+    'return mEnd("🎉 Jackpot — nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines)}',
+    'MG=j.state;mBar();mBand()}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
+    'function mStartGame(){if(mBusy||MOVER)return;var n=mNum("mMines"),b=mNum("mBet");',
+    'if(n<1||n>MT-1)return toast("❌ Số mìn từ 1 đến "+(MT-1));',
+    'if(b<=0)return toast("❌ Nhập số Dogcoin");',
+    'if(b>BAL)return toast("❌ Không đủ Dogcoin!");',
+    'mBusy=true;api("/api/mines/start",{numMines:n,bet:b}).then(function(j){mBusy=false;',
+    'setBal(j.balance);MG=j.state;mDrawGrid();mBar();mBand()',
+    '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
+    'function mCashout(){if(!MG||mBusy)return;mBusy=true;var stake=MG.bet;',
+    'api("/api/mines/cashout",{}).then(function(j){mBusy=false;setBal(j.balance);',
+    'toast("✅ Nhận "+j.win.toLocaleString("vi-VN")+" Dogcoin");',
+    'mEnd("✅ Đã dừng — nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines)',
+    '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
+    'function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=v.toLocaleString("vi-VN")}',
     '',
     'if(TOKEN){show("")}',
     'document.getElementById("pin").addEventListener("keydown",function(e){if(e.key==="Enter")login()});',

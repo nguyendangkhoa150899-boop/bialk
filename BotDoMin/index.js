@@ -398,8 +398,10 @@ async function manageHistory(state, sessionMsgs) {
 // ==========================================
 // --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
 // ==========================================
-const TOTAL_TILES = 24;
-const RTP = 1.0;
+// 25 ô (lưới 5×5) từ khi dò mìn chuyển lên web. RTP 0.97 = nhà cái ăn 3% dài hạn,
+// vừa đủ để dò mìn là chỗ TIÊU Dogcoin chứ không phải máy in tiền (RTP 1.0 cũ là hòa vốn).
+const TOTAL_TILES = 25;
+const RTP = 0.97;
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -467,18 +469,126 @@ const createGame = (numMines, userId) => {
     return { mines, revealed: [], totalMines: numMines };
 };
 
+// ===== DÒ MÌN TRÊN WEB =====
+// Ván đang chơi giữ trong RAM, mỗi người tối đa 1 ván. TIỀN TÍNH HOÀN TOÀN Ở ĐÂY:
+// client chỉ vẽ lại những gì server trả về. Không bao giờ tin số client gửi lên —
+// nếu để client tự tính thưởng thì sửa JS là tự cộng tiền.
+const webMines = new Map(); // userId -> { mines, revealed[], totalMines, bet, name }
+
+// Bot restart là mất ván đang chơi (RAM). Tiền cược đã trừ lúc bắt đầu nên phải HOÀN
+// khi khôi phục lại, chứ không được im lặng nuốt. Ván treo quá 2 tiếng cũng tự hoàn.
+function webMinesRefundStale() {
+    const now = Date.now();
+    for (const [uid, g] of webMines) {
+        if (now - (g.startedAt || 0) > 2 * 3600 * 1000) {
+            updatePoints(uid, g.bet);
+            webMines.delete(uid);
+            writeLog('SYSTEM', `[WEB DÒ MÌN] Hoàn ${g.bet} cho ${g.name || uid} — ván treo quá 2 tiếng`);
+        }
+    }
+}
+setInterval(webMinesRefundStale, 10 * 60 * 1000);
+
+function webMinesLog(g, result, amount) {
+    minesHistory.unshift({
+        name: g.name, bet: g.bet, mines: g.totalMines, diamonds: g.revealed.length,
+        result, amount, time: new Date().toLocaleTimeString('vi-VN'),
+    });
+    if (minesHistory.length > 20) minesHistory.pop();
+}
+
+const webMinesApi = {
+    tiles: TOTAL_TILES,
+    // Bảng hệ số để client hiện trước khi đặt — tính ở server nên client không bịa được.
+    table: (numMines) => {
+        const max = TOTAL_TILES - numMines;
+        const rows = [];
+        for (let d = 1; d <= max; d++) rows.push(calculateMulti(d, numMines));
+        return rows;
+    },
+    current: (userId) => {
+        const g = webMines.get(userId);
+        if (!g) return null;
+        const info = getInfo(g.revealed.length, g.totalMines);
+        return {
+            bet: g.bet, totalMines: g.totalMines, revealed: g.revealed.slice(),
+            maxDiamonds: TOTAL_TILES - g.totalMines,
+            multi: info.multi, nextMulti: info.nextMulti,
+            cashout: Math.floor(g.bet * info.multi),
+        };
+    },
+    start: (userId, name, numMines, bet) => {
+        if (webMines.has(userId)) return { error: 'Bạn đang có ván dở — chơi nốt hoặc bấm DỪNG đã.' };
+        if (!Number.isInteger(numMines) || numMines < 1 || numMines > TOTAL_TILES - 1) {
+            return { error: `Số mìn phải từ 1 đến ${TOTAL_TILES - 1}` };
+        }
+        if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
+        const me = getUserData(userId);
+        if ((me.points || 0) < bet) return { error: `Không đủ Dogcoin! Số dư: ${(me.points || 0).toLocaleString()}` };
+
+        // Tạo ván TRƯỚC rồi mới trừ tiền: createGame lỗi thì người chơi không mất gì.
+        const g = createGame(numMines, userId);
+        g.bet = bet; g.name = name; g.startedAt = Date.now();
+        webMines.set(userId, g);
+        updatePoints(userId, -bet);
+        writeLog('BET', `[WEB DÒ MÌN] ${name} cược ${bet} | ${numMines} mìn`);
+        return { ok: true, balance: getUserData(userId).points || 0, state: webMinesApi.current(userId) };
+    },
+    reveal: (userId, idx) => {
+        const g = webMines.get(userId);
+        if (!g) return { error: 'Chưa có ván nào đang chơi' };
+        if (!Number.isInteger(idx) || idx < 0 || idx >= TOTAL_TILES) return { error: 'Ô không hợp lệ' };
+        if (g.revealed.includes(idx)) return { error: 'Ô này mở rồi' };
+
+        if (g.mines.includes(idx)) {
+            webMines.delete(userId);
+            webMinesLog(g, 'Trúng mìn (Thua)', -g.bet);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} BÙM ở ô ${idx} — mất ${g.bet}`);
+            // Tiền đã trừ từ lúc bắt đầu, thua thì không trừ thêm lần nữa.
+            return { ok: true, hit: true, mines: g.mines, balance: getUserData(userId).points || 0 };
+        }
+
+        g.revealed.push(idx);
+        const maxDiamonds = TOTAL_TILES - g.totalMines;
+        if (g.revealed.length >= maxDiamonds) {
+            const win = Math.floor(g.bet * calculateMulti(maxDiamonds, g.totalMines));
+            webMines.delete(userId);
+            updatePoints(userId, win);
+            webMinesLog(g, 'Jackpot', win - g.bet);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT — nhận ${win}`);
+            return { ok: true, hit: false, jackpot: true, win, mines: g.mines, balance: getUserData(userId).points || 0 };
+        }
+        return { ok: true, hit: false, state: webMinesApi.current(userId) };
+    },
+    cashout: (userId) => {
+        const g = webMines.get(userId);
+        if (!g) return { error: 'Chưa có ván nào đang chơi' };
+        if (!g.revealed.length) return { error: 'Mở ít nhất 1 ô rồi mới dừng được' };
+        const win = Math.floor(g.bet * calculateMulti(g.revealed.length, g.totalMines));
+        webMines.delete(userId);
+        updatePoints(userId, win);
+        webMinesLog(g, 'Dừng (Thắng)', win - g.bet);
+        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô — nhận ${win}`);
+        return { ok: true, win, mines: g.mines, balance: getUserData(userId).points || 0 };
+    },
+};
+
 // --- ĐĂNG KÝ LỆNH SLASH ---
 const commands = [
-    new SlashCommandBuilder()
-        .setName('domin')
-        .setDescription('Bắt đầu ván dò mìn')
-        .addSubcommand(sub => sub.setName('all').setDescription('Cược toàn bộ số dư')
-            .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
-        )
-        .addSubcommand(sub => sub.setName('point').setDescription('Tùy chọn số Dogcoin cược')
-            .addIntegerOption(opt => opt.setName('cuoc').setDescription('Số Dogcoin đặt').setRequired(true))
-            .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
-        ),
+    // DÒ MÌN đã chuyển hẳn lên web (WEB_PLAY_URL, trang 💎 Dò Mìn).
+    // KHÔNG bật lại lệnh /domin dưới đây khi TOTAL_TILES = 25: Discord chỉ cho tối đa
+    // 25 nút / tin nhắn, 25 ô + nút DỪNG là 26 → tràn, ván không bao giờ mở hết được.
+    // Muốn dùng lại trên Discord thì phải hạ TOTAL_TILES về 24.
+    // new SlashCommandBuilder()
+    //     .setName('domin')
+    //     .setDescription('Bắt đầu ván dò mìn')
+    //     .addSubcommand(sub => sub.setName('all').setDescription('Cược toàn bộ số dư')
+    //         .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
+    //     )
+    //     .addSubcommand(sub => sub.setName('point').setDescription('Tùy chọn số Dogcoin cược')
+    //         .addIntegerOption(opt => opt.setName('cuoc').setDescription('Số Dogcoin đặt').setRequired(true))
+    //         .addIntegerOption(opt => opt.setName('so_min').setDescription('Số mìn (1-23)').setMinValue(1).setMaxValue(23).setRequired(true))
+    //     ),
     new SlashCommandBuilder().setName('sodu').setDescription('Xem số dư ví của bạn'),
     new SlashCommandBuilder().setName('diemdanh').setDescription(`Nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin mỗi ngày (reset 00:00)`),
     new SlashCommandBuilder().setName('chuyentien').setDescription('Chuyển Dogcoin')
@@ -518,6 +628,7 @@ client.once('ready', async (c) => {
             updatePoints,
             saveDbNow,
             writeLog,
+            mines: webMinesApi,
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -881,7 +992,7 @@ function getTXMessageData(customStatus = null) {
         .setDescription(desc);
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Cược trên web').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi trên web (Tài Xỉu + Dò Mìn)').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('tx_soicau').setLabel('Soi Cầu').setEmoji('🕵️').setStyle(ButtonStyle.Secondary)
     );
 
@@ -1749,6 +1860,20 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${receiver.id}>!`).setColor(0x00aeef)] });
         }
 
+        // Lệnh /domin đã gỡ. Discord còn cache lệnh cũ ở máy người chơi một lúc nên vẫn
+        // bắt ở đây để chỉ đường sang web, thay vì để họ bấm rồi không thấy gì.
+        if (interaction.commandName === 'domin') {
+            return interaction.reply({
+                content: `💎 **Dò Mìn đã chuyển lên web** — lưới 25 ô, đào tới đâu ăn tới đó.\n` +
+                         `👉 ${WEB_PLAY_URL} → tab **💎 Dò Mìn**\n` +
+                         `Lấy mã PIN bằng nút **🌐 Cược trên web** ở bảng Tài Xỉu.`,
+                ephemeral: true,
+            });
+        }
+
+        /* ===== BẢN DÒ MÌN CŨ CHẠY TRONG DISCORD — giữ lại, chưa xóa =====
+           Muốn bật lại: đổi TOTAL_TILES về 24 (Discord tối đa 25 nút, 25 ô + nút DỪNG
+           là tràn), bỏ comment khối lệnh /domin ở phần đăng ký slash, rồi bỏ comment khối này.
         if (interaction.commandName === 'domin') {
             let userData = getUserData(userId);
             const subCmd = interaction.options.getSubcommand();
@@ -1881,10 +2006,11 @@ client.on('interactionCreate', async interaction => {
                 } catch (err) {
                     console.error("[LỖI DÒ MÌN]", err);
                 } finally {
-                    isProcessingClick = false; 
+                    isProcessingClick = false;
                 }
             });
         }
+        ===== hết bản dò mìn cũ trên Discord ===== */
     }
 
     if (interaction.isModalSubmit()) {
@@ -2188,9 +2314,10 @@ client.on('interactionCreate', async interaction => {
         }
         return interaction.reply({
             content:
-                `🌐 **Cược Tài Xỉu trên web — nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
+                `🌐 **Chơi trên web — nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
+                `🎲 **Tài Xỉu** — đặt cược + nặn xí ngầu\n💣 **Dò Mìn** — lưới 25 ô, đào tới đâu ăn tới đó\n\n` +
                 `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
-                `Vào web nhập ID + PIN là đặt được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai — ai có PIN là cược được bằng ví bạn!`,
+                `Vào web nhập ID + PIN là chơi được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai — ai có PIN là tiêu được ví bạn!`,
             ephemeral: true,
         });
     }
