@@ -40,7 +40,8 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .seat{flex:1 1 150px;min-width:132px;max-width:184px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .seat.turn .ava{box-shadow:0 0 0 3px var(--gold),0 0 18px #ffcf5c99}
 /* Nhiều tay CUỘN NGANG TRONG GHẾ — ghế GIỮ NGUYÊN vị trí, không dời layout ra giữa. */
-.handzone{display:flex;gap:8px;justify-content:center;align-items:flex-start;min-height:96px;max-width:100%;overflow-x:auto;overflow-y:visible;padding-bottom:2px}
+/* KHÔNG cuộn — tách nhiều tay thì LÁ NHỎ LẠI cho vừa ghế (đẹp hơn thanh cuộn). */
+.handzone{display:flex;gap:8px;justify-content:center;align-items:flex-start;min-height:96px;max-width:100%;padding-bottom:2px}
 .hand{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
 .hand.active .cards{filter:drop-shadow(0 0 8px #ffcf5ccc)}
 .tulbl{font-size:10px;font-weight:800;color:#cfe7ff;background:#0007;border-radius:8px;padding:1px 7px;margin-bottom:2px}
@@ -51,7 +52,7 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .out{font-size:11px;font-weight:900;padding:2px 8px;border-radius:8px;margin-top:3px}
 .out.win{background:#12351f;color:#4fe38a}.out.lose{background:#3a1616;color:#ff8a8a}.out.push{background:#2b2b2b;color:#ddd}.out.bj{background:#4a3a10;color:var(--gold)}
 /* Nút thao tác NẰM DƯỚI lá bài của tụ đang chơi (không phải thanh đáy). */
-.handacts{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;width:150px;max-width:150px}
+.handacts{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;width:100%;max-width:190px}
 .handacts button{padding:11px 2px;font-size:12px;border-radius:8px}
 .handacts button:disabled{background:#16281d;color:#4a6152}
 .ava{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#08120b;border:2px solid #ffffffcc;box-shadow:0 2px 6px #0007;margin-top:2px}
@@ -68,10 +69,18 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .card .s{align-self:flex-end;font-size:22px;line-height:1}
 .card .c{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);font-size:25px;opacity:.9}
 .card.back{background:repeating-linear-gradient(45deg,#b6362a,#b6362a 6px,#8f281f 6px,#8f281f 12px);border:2px solid #ffce6b;color:transparent}
-/* NẶN: lá bay tới rồi TỰ LẬT từ từ mở mặt (không cần bấm). Chưa "nặn" thì cũng tự hiện. */
-.card.reveal{animation:reveal .8s cubic-bezier(.2,.7,.3,1) both}
-@keyframes reveal{0%{transform:translate(200px,-160px) rotateY(90deg) rotate(16deg);opacity:0}
-  45%{opacity:1;transform:translateY(0) rotateY(90deg)}75%{transform:rotateY(55deg)}100%{transform:none;opacity:1}}
+/* Tách nhiều tay -> lá NHỎ DẦN cho vừa ghế, không cuộn. */
+.handzone.n2 .card{width:44px;height:64px;font-size:15px;margin-left:-16px}
+.handzone.n2 .card .s{font-size:18px}.handzone.n2 .card .c{font-size:20px}
+.handzone.n3 .card{width:37px;height:54px;font-size:12px;margin-left:-13px}
+.handzone.n3 .card .s{font-size:14px}.handzone.n3 .card .c{font-size:16px}
+.handzone.nx{gap:4px}
+.handzone.nx .card{width:28px;height:41px;font-size:10px;margin-left:-9px;padding:3px 3px}
+.handzone.nx .card .s{font-size:11px}.handzone.nx .card .c{font-size:12px}
+.handzone.nx .tulbl{font-size:8px;padding:0 4px}.handzone.nx .tot{font-size:10px;padding:1px 5px}
+/* Chia bài: lá BAY TỪ CHỖ NHÀ CÁI (trên) xuống người chơi, từng lá một. Không lật. */
+.card.reveal{animation:reveal .55s cubic-bezier(.25,.8,.3,1) both}
+@keyframes reveal{0%{transform:translate(40px,-230px) rotate(8deg);opacity:0}30%{opacity:1}100%{transform:none;opacity:1}}
 /* ---- thanh điều khiển đáy ---- */
 #bar{padding:8px 10px 12px;background:#081a12;border-top:1px solid #14361f}
 .betbox{display:flex;gap:8px;align-items:center}
@@ -222,9 +231,9 @@ function renderSeats(m){
     var nHands=tseat&&tseat.hands?tseat.hands.length:0;
     var myTurn=tbl&&tbl.turn&&tbl.turn.userId===MYID;
     var turnOpts=(tbl&&tbl.turn&&tbl.turn.options)||[];
-    // bài (trên) — nhiều tay thì CUỘN NGANG trong ghế, ghế không đổi vị trí
-    var hz=document.createElement("div");hz.className="handzone";
-    var activeEl=null;
+    // bài (trên) — nhiều tay thì LÁ NHỎ LẠI cho vừa ghế (không cuộn)
+    var hz=document.createElement("div");
+    hz.className="handzone"+(nHands===2?" n2":nHands===3?" n3":nHands>=4?" nx":"");
     if(tseat&&tseat.hands){
       tseat.hands.forEach(function(h,hi){
         var hd=document.createElement("div");hd.className="hand"+(h.active?" active":"");
@@ -237,17 +246,14 @@ function renderSeats(m){
         // QUẮC: hiện trái bom + số Dogcoin mất ngay tại tụ đó
         if(h.bust){var bo=document.createElement("div");bo.className="bomb";bo.textContent="💣 -"+fmt(h.bet);hd.appendChild(bo)}
         if(m.lastResult){var oc=outClass(h.outcome);if(oc){var ob=document.createElement("div");ob.className="out "+oc.c;ob.textContent=oc.t;hd.appendChild(ob)}}
-        // NÚT thao tác ngay DƯỚI lá bài của tụ đang chơi (chỉ ghế mình, đúng lượt)
-        if(h.active&&myTurn){var acts=document.createElement("div");acts.className="handacts";
-          acts.innerHTML=ab("hit","🃏 Rút",turnOpts)+ab("stand","✋ Dừng",turnOpts)+ab("double","💰 Nhân đôi",turnOpts)+ab("split","✂️ Tách",turnOpts);
-          hd.appendChild(acts);}
-        if(h.active)activeEl=hd;
         hz.appendChild(hd);
       });
     }
     div.appendChild(hz);
-    // cuộn tới tụ đang chơi cho khỏi lạc khi có nhiều tay
-    if(activeEl)setTimeout(function(){try{activeEl.scrollIntoView({inline:"center",block:"nearest"})}catch(e){}},0);
+    // NÚT thao tác ngay DƯỚI khu bài của ghế mình khi tới lượt (tụ đang chơi có ▶ + viền vàng)
+    if(seat.userId===MYID&&myTurn){var acts=document.createElement("div");acts.className="handacts";
+      acts.innerHTML=ab("hit","🃏 Rút",turnOpts)+ab("stand","✋ Dừng",turnOpts)+ab("double","💰 Nhân đôi",turnOpts)+ab("split","✂️ Tách",turnOpts);
+      div.appendChild(acts);}
     // avatar + tên + số dư/cược (dưới)
     var ava=document.createElement("div");ava.className="ava";ava.style.background=avaColor(seat.userId);ava.textContent=(seat.name||"?").slice(0,2).toUpperCase();div.appendChild(ava);
     var nm=document.createElement("div");nm.className="pname";nm.textContent=(seat.userId===MYID?"★ ":"")+seat.name;div.appendChild(nm);
