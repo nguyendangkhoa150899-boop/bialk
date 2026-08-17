@@ -27,7 +27,6 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
   background:radial-gradient(130% 110% at 50% 6%,#2f8fd6 0%,#1f6fb0 30%,#124a7d 62%,#0c3358 100%);
   border:6px solid #0a2740;box-shadow:inset 0 0 80px #0007,0 6px 24px #0008;padding:12px 10px 14px}
 .rail{position:absolute;inset:0;border-radius:28px;border:2px solid #ffffff22;pointer-events:none}
-.topbar{display:flex;justify-content:space-between;font-size:11px;color:#cfe7ff;opacity:.85;padding:2px 8px}
 .dealer{display:flex;flex-direction:column;align-items:center;margin-top:2px;min-height:96px}
 .dealerlbl{font-size:11px;letter-spacing:2px;color:#dbeeff;opacity:.8}
 .banner{text-align:center;margin:8px 0 4px}
@@ -110,8 +109,11 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .dc{width:1.05em;height:1.05em;vertical-align:-.16em;object-fit:contain;display:inline-block}
 /* bong bóng chat nổi trên đầu avatar */
 .bubble{max-width:120px;margin:0 auto 3px;background:#fff;color:#12202a;font-size:12px;font-weight:700;
-  padding:4px 9px;border-radius:12px;position:relative;box-shadow:0 2px 6px #0007;animation:bubIn .2s ease-out;
+  padding:4px 9px;border-radius:12px;position:relative;box-shadow:0 2px 6px #0007;
   white-space:normal;word-break:break-word;line-height:1.2}
+/* animation CHỈ gắn cho bong bóng mới toanh (lớp .fresh). Nếu để mặc định, renderSeats
+   vẽ lại mỗi giây sẽ replay animation -> nhấp nháy. Vẽ lại chỉ giữ .bubble, không .fresh. */
+.bubble.fresh{animation:bubIn .2s ease-out}
 .bubble:after{content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff;border-bottom:0}
 @keyframes bubIn{0%{opacity:0;transform:translateY(6px) scale(.8)}100%{opacity:1;transform:none}}
 /* chat dưới cùng */
@@ -132,7 +134,7 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 
 <div id="login">
   <h1>🂡 Blackjack — Xì Dách</h1>
-  <div class="sub">Ăn 1.5 (3:2) · Nhà cái dừng ở mọi 17 · 4 bộ bài</div>
+  <div class="sub">Ăn 1.5 (3:2) · Nhà cái dừng ở mọi 17</div>
   <div class="sub">Nhập Discord ID + mã PIN (lấy bằng nút 🌐 trên bảng trong Discord).</div>
   <input id="uid" inputmode="numeric" placeholder="Discord ID">
   <input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số">
@@ -147,7 +149,6 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
   </div>
   <div id="felt">
     <div class="rail"></div>
-    <div class="topbar"><span>4 BỘ BÀI</span><span id="shoeInfo"></span></div>
     <div class="dealer"><div class="dealerlbl">NHÀ CÁI <span id="dtot"></span></div><div class="cards" id="dealerCards"></div></div>
     <div class="banner"><div class="b1">BLACKJACK ĂN 1.5 (3 : 2)</div><div class="b2">Nhà cái dừng ở mọi 17</div></div>
     <div id="status"></div>
@@ -168,7 +169,20 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 <script>
 var TOKEN=localStorage.getItem("bj_token")||"";
 var WS=null, ST=null, MYID="", BAL=0, seenCards={};
-var chatList=[], bubbles={};   // bubbles: userId -> {text, until} (bong bóng nổi trên đầu)
+// Bong bóng chat nổi trên đầu: hàng đợi TUẦN TỰ để không đè/nhấp nháy.
+// Mỗi câu hiện 3s -> biến mất -> trống 3s -> mới tới câu kế.
+var chatList=[], bubQ=[], bubCur=null, bubLock=false;   // bubCur:{u,text,shown}
+var BUB_SHOW=3000, BUB_GAP=3000;
+function pumpBub(){
+  if(bubLock||bubCur||!bubQ.length)return;
+  bubCur=bubQ.shift();bubCur.shown=false;
+  if(ST)renderSeats(ST);                       // hiện (lần đầu có .fresh -> pop 1 lần)
+  setTimeout(function(){
+    bubCur=null;if(ST)renderSeats(ST);         // ẩn sau 3s
+    bubLock=true;
+    setTimeout(function(){bubLock=false;pumpBub();},BUB_GAP);  // trống 3s rồi tới câu kế
+  },BUB_SHOW);
+}
 function $(id){return document.getElementById(id)}
 function toast(m){var t=$("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2400)}
 var COIN='<img class="dc" src="/dogcoin.png" alt="">';
@@ -204,7 +218,8 @@ function connect(){
     else if(m.type==="authfail"){localStorage.removeItem("bj_token");location.reload()}
     else if(m.type==="chat"){chatList=m.list||[];renderChat()}
     else if(m.type==="say"){chatList.push(m.line);if(chatList.length>60)chatList.shift();renderChat();
-      bubbles[m.line.u]={text:m.line.text,until:Date.now()+4500};if(ST)renderSeats(ST);
+      // Vào hàng đợi bong bóng; giữ tối đa 5 câu chờ để khỏi tồn đọng quá xa thực tế.
+      bubQ.push({u:m.line.u,text:m.line.text});while(bubQ.length>5)bubQ.shift();pumpBub();
       setTimeout(function(){if(ST)renderSeats(ST)},4600)}
   };
 }
@@ -290,8 +305,9 @@ function renderSeats(m){
       div.appendChild(acts);}
     // avatar + tên + số dư/cược (dưới)
     // bong bóng chat nổi trên đầu người này (nếu vừa chat, còn hạn)
-    var bub=bubbles[seat.userId];
-    if(bub&&bub.until>Date.now()){var sb=document.createElement("div");sb.className="bubble";sb.textContent=bub.text;div.appendChild(sb)}
+    if(bubCur&&bubCur.u===seat.userId){var sb=document.createElement("div");
+      sb.className="bubble"+(bubCur.shown?"":" fresh");   // .fresh chỉ ở lần vẽ đầu -> pop 1 lần, không nhấp nháy
+      sb.textContent=bubCur.text;div.appendChild(sb);bubCur.shown=true;}
     var ava=document.createElement("div");ava.className="ava";ava.style.background=avaColor(seat.userId);ava.textContent=(seat.name||"?").slice(0,2).toUpperCase();div.appendChild(ava);
     var nm=document.createElement("div");nm.className="pname";nm.textContent=(seat.userId===MYID?"★ ":"")+seat.name;div.appendChild(nm);
     if(seat.bet>0){var bt=document.createElement("div");bt.className="pbet";bt.innerHTML=COIN+" "+fmt(seat.bet);div.appendChild(bt)}
