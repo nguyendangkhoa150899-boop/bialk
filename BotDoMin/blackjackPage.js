@@ -63,11 +63,12 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .betspot .bs-lbl{font-size:9px;color:#ffe9a8;letter-spacing:1px;font-weight:800;margin-top:1px}
 .betspot.mine{border-style:solid;border-color:var(--gold)}
 .betspot.haschip{border-style:solid;cursor:default}
-.chipv{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#ffe08a,#e0a92f 62%,#a87613 100%);border:4px dashed #fff;box-shadow:0 3px 8px #0009,inset 0 0 6px #0006;display:flex;align-items:center;justify-content:center;font-weight:900;color:#3d2c05;font-size:11px;text-shadow:0 1px 0 #fff8}
-/* ---- overlay QUYẾT ĐỊNH giữa bàn (kiểu live casino) + vòng đếm ngược ---- */
-#decide{position:absolute;left:50%;top:31%;transform:translateX(-50%);z-index:6;text-align:center;background:#00000059;border-radius:18px;padding:10px 16px 12px;backdrop-filter:blur(2px)}
-.dec-title{font-size:13px;font-weight:900;letter-spacing:2px;color:#fff;text-shadow:0 1px 6px #000;margin-bottom:8px}
+/* chip trong ô cược = ĐỒNG DOGCOIN thật + số tiền đè lên */
+.chipv{width:50px;height:50px;border-radius:50%;background:url(/dogcoin.png) center/cover no-repeat;border:3px solid var(--gold);box-shadow:0 3px 8px #0009;display:flex;align-items:flex-end;justify-content:center;position:relative}
+.pv{background:#000d;color:#ffd977;border-radius:8px;padding:0 6px;font-size:10px;font-weight:900;line-height:15px;margin-bottom:-4px;white-space:nowrap}
+/* ---- cụm QUYẾT ĐỊNH nằm ở THANH ĐÁY (không che bài trên bàn) ---- */
 .dec-row{display:flex;gap:14px;align-items:flex-start;justify-content:center}
+.bardec{display:flex;gap:16px;align-items:center;justify-content:center;padding:2px 0}
 .rb-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;width:62px}
 .rb{width:56px;height:56px;border-radius:50%;font-size:24px;font-weight:900;color:#fff;border:3px solid #ffffffcc;box-shadow:0 3px 10px #000a;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
 .rb:disabled{background:#3a4a42!important;color:#7a8a80;border-color:#ffffff44;box-shadow:none}
@@ -76,10 +77,10 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .rb-double{background:radial-gradient(circle at 50% 35%,#ffb35c,#d06a1a);font-size:19px}
 .rb-split{background:radial-gradient(circle at 50% 35%,#7db4ff,#2c6fd0);font-size:16px;letter-spacing:-2px}
 .rbl{font-size:10px;font-weight:800;letter-spacing:1px;color:#fff;text-shadow:0 1px 4px #000}
-.ringwrap{display:flex;justify-content:center;margin-top:8px}
-#ring{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}
-#ring:before{content:"";position:absolute;inset:5px;border-radius:50%;background:#0b2038}
-#ring span{position:relative;font-weight:900;font-size:16px;color:#fff}
+.ringwrap{display:flex;justify-content:center;align-items:center}
+#ring{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}
+#ring:before{content:"";position:absolute;inset:5px;border-radius:50%;background:#0c1f16}
+#ring span{position:relative;font-weight:900;font-size:17px;color:#fff}
 /* ---- lá bài ---- */
 .cards{display:flex}
 .card{width:54px;height:78px;border-radius:7px;background:#fbfbf7;color:#16202a;border:1px solid #0003;
@@ -118,8 +119,9 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .betrow .binfo b{color:var(--gold);font-size:15px}
 .betrow button{padding:8px 14px;font-size:13px;background:#1a3a28;color:#d6f0dd}
 .chiprow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.pchip{width:52px;height:52px;border-radius:50%;border:4px dashed #fff;box-shadow:0 3px 8px #0009,inset 0 0 6px #0007;
-  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#fff;text-shadow:0 1px 2px #000a;cursor:pointer;padding:0;transition:transform .1s}
+/* chip mệnh giá = ĐỒNG DOGCOIN + số tiền đè dưới */
+.pchip{width:54px;height:54px;border-radius:50%;border:3px solid var(--gold);box-shadow:0 3px 8px #0009;
+  background:url(/dogcoin.png) center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;cursor:pointer;padding:0;transition:transform .1s;position:relative}
 .pchip:active{transform:scale(.9)}
 .pchip.fly{position:fixed;z-index:120;margin:0;transition:transform .55s cubic-bezier(.3,.7,.4,1),opacity .55s;pointer-events:none}
 /* ---- điện thoại XOAY NGANG: dồn hết màn hình cho BÀN, giấu phần phụ ---- */
@@ -130,10 +132,9 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
   body{max-width:none}
   #felt{margin:4px;min-height:0;padding:6px 8px 8px;border-width:4px}
   .dealer{min-height:64px}
-  #decide{top:24%;padding:6px 12px 8px}
   .rb{width:46px;height:46px;font-size:19px}
   .rbl{font-size:9px}
-  #ring{width:38px;height:38px}#ring span{font-size:13px}
+  #ring{width:40px;height:40px}#ring span{font-size:13px}
   .card{width:42px;height:60px;font-size:14px;margin-left:-15px}
   .card .s{font-size:17px}.card .c{font-size:19px}
   .handzone{min-height:70px}
@@ -212,16 +213,6 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
     <div class="banner"><div class="b1">BLACKJACK ĂN 1.5 (3 : 2)</div><div class="b2">Nhà cái dừng ở mọi 17</div></div>
     <div id="status"></div>
     <div id="seatRow"></div>
-    <div id="decide" class="hidden">
-      <div class="dec-title">QUYẾT ĐỊNH ĐI!</div>
-      <div class="dec-row">
-        <div class="rb-wrap"><button class="rb rb-double" id="rbDouble" data-act="double">2x</button><div class="rbl">NHÂN ĐÔI</div></div>
-        <div class="rb-wrap"><button class="rb rb-hit" id="rbHit" data-act="hit">＋</button><div class="rbl">RÚT</div></div>
-        <div class="rb-wrap"><button class="rb rb-stand" id="rbStand" data-act="stand">－</button><div class="rbl">NGƯNG</div></div>
-        <div class="rb-wrap"><button class="rb rb-split" id="rbSplit" data-act="split">◄►</button><div class="rbl">TÁCH</div></div>
-      </div>
-      <div class="ringwrap"><div id="ring"><span id="ringNum"></span></div></div>
-    </div>
   </div>
   <div id="bar"></div>
   <div id="chatBar">
@@ -375,14 +366,13 @@ function render(m){
   if(m.phase==="idle"||m.phase==="betting"){seenCards={}}
   renderSeats(m);renderBar(m);updateDecide(m);
 }
-// Overlay quyết định giữa bàn: 4 nút tròn + vòng đếm ngược (xanh -> đỏ 5s cuối)
+// Cụm quyết định (đang nằm ở thanh đáy): bật/tắt nút theo lượt + vòng đếm xanh -> đỏ 5s cuối
 function updateDecide(m){
-  var d=$("decide");
+  if(!$("ring"))return; // không phải lượt mình -> thanh đáy không có cụm này
   var myTurn=m.phase==="playing"&&m.table&&m.table.turn&&m.table.turn.userId===MYID;
-  if(!myTurn){d.classList.add("hidden");return}
-  d.classList.remove("hidden");
+  if(!myTurn)return;
   var opts=(m.table.turn.options)||[];
-  [["rbHit","hit"],["rbStand","stand"],["rbDouble","double"],["rbSplit","split"]].forEach(function(p){$(p[0]).disabled=opts.indexOf(p[1])<0});
+  [["rbHit","hit"],["rbStand","stand"],["rbDouble","double"],["rbSplit","split"]].forEach(function(p){var b=$(p[0]);if(b)b.disabled=opts.indexOf(p[1])<0});
   var left=m.timeLeft||0,pct=Math.max(0,Math.min(100,left/15*100));
   var col=left<=5?"#ff6b6b":"#2ec26a";
   $("ring").style.background="conic-gradient("+col+" "+pct+"%, #ffffff22 0)";
@@ -430,7 +420,7 @@ function renderSeats(m){
     // (nút hành động giờ là cụm nút tròn giữa bàn — overlay #decide)
     var spot=document.createElement("div");
     spot.className="betspot"+(seat.userId===MYID?" mine":"")+(seat.bet>0?" haschip":"");
-    if(seat.bet>0){var ch=document.createElement("div");ch.className="chipv";ch.textContent=fmt(seat.bet);spot.appendChild(ch)}
+    if(seat.bet>0){var ch=document.createElement("div");ch.className="chipv";ch.innerHTML='<span class="pv">'+fmt(seat.bet)+'</span>';spot.appendChild(ch)}
     else{spot.innerHTML='<div class="bs-lbl">CƯỢC</div>'}
     div.appendChild(spot);
     // bong bóng chat nổi trên đầu người này (nếu vừa chat, còn hạn)
@@ -457,10 +447,15 @@ function renderBar(m){
     if(sig===lastBarSig)return;
     html='<div class="waiting">👆 Bấm vào <b style="color:var(--gold)">Ô TRÒN vàng</b> trên bàn để ngồi vào ghế</div>';
   }else if(myTurn){
-    // Nút thao tác là CỤM NÚT TRÒN giữa bàn (overlay #decide), thanh đáy chỉ nhắc.
+    // CỤM NÚT TRÒN + vòng đếm nằm Ở ĐÂY (thanh đáy) — không che bài trên bàn.
     sig="acts|"+m.table.turn.handIdx;
     if(sig===lastBarSig)return;
-    html='<div class="waiting">👆 Tới lượt bạn — bấm nút tròn giữa bàn</div>';
+    html='<div class="bardec">'+
+      '<div class="rb-wrap"><button class="rb rb-double" id="rbDouble" data-act="double">2x</button><div class="rbl">NHÂN ĐÔI</div></div>'+
+      '<div class="rb-wrap"><button class="rb rb-hit" id="rbHit" data-act="hit">＋</button><div class="rbl">RÚT</div></div>'+
+      '<div class="rb-wrap"><button class="rb rb-stand" id="rbStand" data-act="stand">－</button><div class="rbl">NGƯNG</div></div>'+
+      '<div class="rb-wrap"><button class="rb rb-split" id="rbSplit" data-act="split">◄►</button><div class="rbl">TÁCH</div></div>'+
+      '<div class="ringwrap"><div id="ring"><span id="ringNum"></span></div></div></div>';
   }else if(m.phase==="idle"||m.phase==="betting"){
     // CHIP MỆNH GIÁ: bấm chip = CỘNG DỒN vào cược + chip bay vào ô. Hiện số dư kế bên.
     var placed=seat&&seat.bet>0;
@@ -472,7 +467,7 @@ function renderBar(m){
       (placed?'<button data-clear="1">Xoá cược</button>':'')+
       '<button data-leave="1">Rời bàn</button></div>'+
       '<div class="chiprow">'+CHIP_DENOMS.map(function(d){
-        return '<button class="pchip" data-chip="'+d.v+'" style="background:radial-gradient(circle at 50% 38%,'+d.c1+','+d.c2+')">'+d.t+'</button>';
+        return '<button class="pchip" data-chip="'+d.v+'"><span class="pv">'+d.t+'</span></button>';
       }).join("")+'</div>';
   }else{
     var txt=m.phase==="result"?"Ván kết thúc — chờ ván mới":(seat&&seat.bet>0?"Đang trong ván — chờ tới lượt bạn":"Bạn không đặt ván này — chờ ván sau");
@@ -510,9 +505,8 @@ function flyChip(fromEl,denom){
   if(!spot||!fromEl)return;
   var a=fromEl.getBoundingClientRect(),b=spot.getBoundingClientRect();
   var d=CHIP_DENOMS.find(function(x){return x.v===denom})||CHIP_DENOMS[0];
-  var c=document.createElement("div");c.className="pchip fly";c.textContent=d.t;
-  c.style.background="radial-gradient(circle at 50% 38%,"+d.c1+","+d.c2+")";
-  c.style.left=(a.left+a.width/2-26)+"px";c.style.top=(a.top+a.height/2-26)+"px";
+  var c=document.createElement("div");c.className="pchip fly";c.innerHTML='<span class="pv">'+d.t+'</span>';
+  c.style.left=(a.left+a.width/2-27)+"px";c.style.top=(a.top+a.height/2-27)+"px";
   document.body.appendChild(c);
   requestAnimationFrame(function(){
     c.style.transform="translate("+(b.left+b.width/2-(a.left+a.width/2))+"px,"+(b.top+b.height/2-(a.top+a.height/2))+"px) scale(.72)";
@@ -534,6 +528,22 @@ document.addEventListener("click",function(e){
 });
 $("loginBtn").addEventListener("click",doLogin);
 $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});
+// ---- điện thoại xoay ngang -> TOÀN MÀN HÌNH (trình duyệt bắt phải có cử chỉ chạm,
+// nên vào fullscreen ở lần chạm ĐẦU TIÊN sau khi xoay; xoay dọc lại thì thoát) ----
+var COARSE=window.matchMedia&&matchMedia("(pointer:coarse)").matches;
+function isLand(){return matchMedia("(orientation:landscape)").matches}
+var fsWant=false;
+function fsEnter(){var el=document.documentElement;var f=el.requestFullscreen||el.webkitRequestFullscreen;if(f)try{f.call(el)}catch(e){}}
+function fsExit(){var f=document.exitFullscreen||document.webkitExitFullscreen;if(document.fullscreenElement&&f)try{f.call(document)}catch(e){}}
+if(COARSE&&window.matchMedia){
+  matchMedia("(orientation:landscape)").addEventListener("change",function(ev){
+    if(ev.matches){fsWant=true;toast("📱 Chạm màn hình để chơi TOÀN MÀN HÌNH")}
+    else{fsWant=false;fsExit()}
+  });
+  document.addEventListener("touchend",function(){
+    if(fsWant&&isLand()&&!document.fullscreenElement){fsEnter();fsWant=false}
+  },{passive:true});
+}
 // ---- chat ----
 function renderChat(){var box=$("chatLog");if(!box)return;
   box.innerHTML=chatList.slice(-40).map(function(m){
