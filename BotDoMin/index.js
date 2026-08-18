@@ -2196,16 +2196,23 @@ async function finishBCGame(gameId, bets) {
 // --- UI TÀI XỈU ---
 // Tài Xỉu đã CHUYỂN HẾT LÊN WEB: bảng Discord chỉ hiển thị tình hình + nút lấy link/PIN.
 // Đặt cược + nặn xí ngầu (kéo tờ giấy) đều làm trên web (webplay.js).
-// Tài Xỉu: 🌪️/🔺/🔻 `4-5-6` · Tổng 15 · TÀI · LẺ — 💰 BiaLK +2.000 · 💥 Abc −500
-// Net TỪNG NGƯỜI = tổng thắng − tổng cược của ván đó (giống Thắng/Thua bên Dò Mìn).
+// Tài Xỉu: 🔺 🎲🎲🎲 · Tổng 9 · XỈU · LẺ — 💰 BiaLK đặt xỉu +100 | 💥 Hoang đặt tài −50
+// Xí ngầu dùng icon thật (DICE_EMOJIS); net TỪNG NGƯỜI = tổng thắng − tổng cược.
 function txHistoryLine(h) {
     const head = h.storm ? '🌪️' : (h.tx === 'TÀI' ? '🔺' : '🔻');
-    let line = `${head} \`${(h.dice || []).join('-')}\` · Tổng **${h.sum}** · **${h.tx}${h.storm ? '' : ' · ' + h.cl}**`;
+    const dice = (h.dice || []).map(d => DICE_EMOJIS[d] || d).join(' ');
+    const line = `${head} ${dice} · Tổng **${h.sum}** · **${h.tx}${h.storm ? '' : ' · ' + h.cl}**`;
     const net = {};
-    (h.bets || []).forEach(b => { if (!net[b.u]) net[b.u] = { name: b.name, v: 0 }; net[b.u].v -= b.amount; });
-    (h.winners || []).forEach(w => { if (!net[w.u]) net[w.u] = { name: w.name, v: 0 }; net[w.u].v += w.amount; });
-    const parts = Object.values(net).map(p => `${p.v >= 0 ? '💰' : '💥'} **${p.name}** ${p.v >= 0 ? '+' : '−'}${Math.abs(p.v).toLocaleString()}`);
-    return line + (parts.length ? ` — ${parts.join(' · ')}` : ' — *không ai đặt*');
+    (h.bets || []).forEach(b => {
+        if (!net[b.u]) net[b.u] = { name: b.name, v: 0, cua: [] };
+        net[b.u].v -= b.amount;
+        const c = String(b.choice || '').toLowerCase();
+        if (c && !net[b.u].cua.includes(c)) net[b.u].cua.push(c);
+    });
+    (h.winners || []).forEach(w => { if (!net[w.u]) net[w.u] = { name: w.name, v: 0, cua: [] }; net[w.u].v += w.amount; });
+    const parts = Object.values(net).map(p =>
+        `${p.v >= 0 ? '💰' : '💥'} **${p.name}** đặt ${p.cua.join('+')} ${p.v >= 0 ? '+' : '−'}${Math.abs(p.v).toLocaleString()}`);
+    return line + (parts.length ? ` — ${parts.join(' | ')}` : '');
 }
 
 function getTXMessageData(customStatus = null) {
@@ -2236,7 +2243,9 @@ function getTXMessageData(customStatus = null) {
     // 🎲 Lịch sử ván nằm NGAY TRÊN bảng, mỗi ván 1 dòng trực quan như bảng Dò Mìn /
     // Leo Thang (19/08) — thay cho embed kết quả riêng từng ván (đã bỏ: hết spam
     // "không ai thắng" mỗi 50 giây, đỡ ~nửa số Discord API call của bàn).
-    const recent = (txState.history || []).slice(0, BOARD_HISTORY_N);
+    // Chỉ hiện ván CÓ NGƯỜI ĐẶT — ván trống vẫn nằm trong txState.history cho Soi Cầu,
+    // nhưng lên bảng thì chỉ tổ chiếm chỗ.
+    const recent = (txState.history || []).filter(h => (h.bets || []).length).slice(0, BOARD_HISTORY_N);
     if (recent.length) {
         desc += `\n\n**🎲 ${recent.length} ván gần đây:**\n` + recent.map(txHistoryLine).join('\n');
     }
