@@ -668,19 +668,21 @@ function webMinesLog(g, result, amount, hitIdx) {
 // ⚠️ CẢNH BÁO KINH TẾ: 10% × trần x2000 nghĩa là mỗi lượt mở hộp cõng kỳ vọng
 // tới ~x200 tiền cược ở ván mìn nhiều/lửa cao. Ví cả server SẼ phình nhanh.
 // Muốn hãm lại chỉ cần hạ số 0.10 bên dưới (và nâng 'none' lên tương ứng).
+// Cân theo chủ server chốt: hũ 5% · hụt 30% · lì xì 30%; 35% còn lại chia
+// khiên 20% / đào-tên lửa 15% (quà đẩy tiến độ nặng kinh tế hơn nên hiếm hơn khiên).
 const MINES_LUCKY_WHEEL = [
-    { p: 0.225, prize: 'shield' },  // 🛡️ trúng mìn 1 lần không chết
-    { p: 0.27, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.225, prize: 'cash' },    // 💰 +10% tiền cược tức thì
-    { p: 0.20, prize: 'none' },     // 🍂 hụt
-    { p: 0.08, prize: 'jackpot' },  // 🏆 NỔ HŨ (10% -> 8%, phần dôi dồn vào hụt)
+    { p: 0.20, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết
+    { p: 0.15, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
+    { p: 0.30, prize: 'cash' },     // 💰 +10% tiền cược tức thì
+    { p: 0.30, prize: 'none' },     // 🍂 hụt
+    { p: 0.05, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 const STAIRS_LUCKY_WHEEL = [
-    { p: 0.225, prize: 'rocket' },  // 🚀 thang máy: +2 tầng ngay
-    { p: 0.225, prize: 'shield' },  // 🛡️ đạp lửa 1 lần không cháy
-    { p: 0.225, prize: 'cash' },    // 💰 +10% tiền cược tức thì
-    { p: 0.245, prize: 'none' },    // 🍂 hụt
-    { p: 0.08, prize: 'jackpot' },  // 🏆 NỔ HŨ (10% -> 8%)
+    { p: 0.15, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
+    { p: 0.20, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
+    { p: 0.30, prize: 'cash' },     // 💰 +10% tiền cược tức thì
+    { p: 0.30, prize: 'none' },     // 🍂 hụt
+    { p: 0.05, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 // Ô VÀNG 🌟 Leo Thang: 2% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 — thấy mà
 // thèm, phải sống sót leo tới mới đạp được; đạp là lên thẳng đỉnh. Mọi mức lửa đều
