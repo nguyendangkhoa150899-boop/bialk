@@ -427,7 +427,7 @@ function gachaPool() {
     return (PAL_DATA.all || []).filter(p => (p.dex || 0) >= GACHA_MIN_DEX && !GACHA_EXCLUDE_CODES.includes(p.code));
 }
 
-const WITHDRAW_MAX_PER_REQUEST = 2000; // trần mỗi lần chuyển vào game, chặn thiệt hại nếu có lỗi
+const WITHDRAW_MAX_PER_REQUEST = 20000; // trần mỗi lần chuyển vào game, chặn thiệt hại nếu có lỗi
 // Chiều game -> Discord KHÔNG giới hạn: admin cầm đồ thật trong tay rồi mới duyệt,
 // không có đường lợi dụng.
 
