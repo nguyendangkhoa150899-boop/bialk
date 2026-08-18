@@ -553,14 +553,15 @@ function webMinesLog(g, result, amount, hitIdx) {
     const entry = {
         name: g.name, bet: g.bet, mines: g.totalMines, diamonds: g.revealed.length,
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
+        // Số dư SAU KHI đã trả thưởng (mọi chỗ gọi hàm này đều updatePoints trước) —
+        // chốt lại tại thời điểm đó, không tra lúc vẽ bảng vì số dư sẽ trôi.
+        bal: g.userId ? (getUserData(g.userId).points || 0) : null,
         // giữ lại bàn cờ để vẽ lại y như bảng dò mìn cũ trong Discord
         board: { open: g.revealed.slice(), bombs: g.mines.slice(), hit: (hitIdx === undefined ? -1 : hitIdx) },
     };
     minesHistory.unshift(entry);
     if (minesHistory.length > 20) minesHistory.pop();
-    minesBoard.needsUpdate = true;        // bảng mời chơi vẽ lại (tối đa 15s/lần)
-    minesBoard.queue.push(entry);         // và đăng kết quả ván này ra kênh
-    if (minesBoard.queue.length > 40) minesBoard.queue.shift(); // kênh chết thì không dồn vô hạn
+    minesBoard.needsUpdate = true;        // bảng đăng lại (tối đa 1 phút/lần, xem repostBoard)
     // Trần đang tắt nên một ván có thể trả rất lớn — hú còi để admin biết ngay.
     if (amount >= MINES_BIG_WIN_ALERT) {
         writeLog('ADMIN', `[⚠️ DÒ MÌN TRẢ LỚN] ${g.name} +${amount.toLocaleString()} Dogcoin ` +
@@ -609,6 +610,7 @@ const webMinesApi = {
         // Tạo ván TRƯỚC rồi mới trừ tiền: createGame lỗi thì người chơi không mất gì.
         const g = createGame(numMines, userId);
         g.bet = bet; g.name = name; g.startedAt = Date.now();
+        g.userId = userId;   // để lúc ghi lịch sử tra được số dư còn lại
         webMines.set(userId, g);
         webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
@@ -698,6 +700,8 @@ function stairsLog(g, result, amount) {
     const entry = {
         name: g.name, bet: g.bet, fire: g.fire, floor: g.floor,
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
+        // Số dư SAU KHI đã trả thưởng (mọi chỗ gọi hàm này đều updatePoints trước).
+        bal: g.userId ? (getUserData(g.userId).points || 0) : null,
     };
     if (!Array.isArray(dbCache._stairsHistory)) dbCache._stairsHistory = [];
     dbCache._stairsHistory.unshift(entry);
@@ -761,7 +765,7 @@ const webStairsApi = {
             }
             traps.push(row);
         }
-        const g = { bet, fire, floor: 0, traps, safe: [], name, startedAt: Date.now() };
+        const g = { bet, fire, floor: 0, traps, safe: [], name, userId, startedAt: Date.now() };
         webStairs.set(userId, g);
         webStairsLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
@@ -894,109 +898,57 @@ function runBlackjackBoardLoop() {
 
 // ===== BẢNG DÒ MÌN TRÊN DISCORD =====
 // Khác Tài Xỉu: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
-// Nên bảng này chỉ là chỗ mời chơi + khoe ai vừa ăn đậm, KHÔNG có nút đặt cược.
-// Vẽ lại tối đa 15 giây/lần để không dính rate limit của Discord.
-const minesBoard = {
-    channel: null, message: null, needsUpdate: false, lastEdit: 0,
-    queue: [],      // ván vừa xong, chờ đăng
-    msgIds: [],     // id các tin kết quả đã đăng, để dọn bớt cho đỡ ngập kênh
-};
+// Nên bảng này chỉ là chỗ mời chơi + khoe 10 ván gần nhất, KHÔNG có nút đặt cược.
+// Có ván mới thì XOÁ tin cũ + ĐĂNG lại (tối đa 1 lần/phút) — xem repostBoard.
+const minesBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
 
-// Ván nào xong cũng đăng ra Discord (giống Tài Xỉu), nhưng dò mìn mỗi người một ván
-// nên có lúc 5-10 ván xong trong vài giây. Đăng từng tin là ngập kênh + dính rate
-// limit ngay. Vì vậy: gom vào hàng đợi, 6 giây gửi một lần, nhiều ván thì gộp 1 tin.
-const MINES_POST_EVERY_MS = 6000;
-const MINES_KEEP_MSGS = 12; // giữ 12 tin kết quả gần nhất, cũ hơn thì xóa
+// ===== DÒNG LỊCH SỬ DÙNG CHUNG CHO DÒ MÌN + LEO THANG =====
+// Hai bảng trước đây mỗi bảng một kiểu chữ. Giờ cùng một khuôn:
+//   <emoji> **Tên** · <mô tả ván> · <±tiền> 🐕 · <thắng/thua> · còn <số dư> 🐕
+// Hết tiền thì thay số dư bằng "PHÁ SẢN".
+const BANKRUPT_EMOJI = ['💀', '🪦', '🍜', '🥲', '📉'];   // đổi vòng cho khỏi nhàm
 
-function minesResultLine(h) {
+function historyTail(h, i) {
     const win = h.amount >= 0;
-    const head = h.result === 'Jackpot' ? '🏆' : (win ? '💰' : '💥');
-    const money = `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
-    return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · cược ${h.bet.toLocaleString()} → ${money}`;
-}
-
-// Vẽ lại bàn cờ y như bảng dò mìn cũ trong Discord: 5 ô mỗi hàng, lộ hết mìn.
-// Ô đã đào = Dog Coin, ô nổ = 💥, mìn chưa đụng = 💣, còn lại = ô trống.
-function minesBoardText(b) {
-    const rows = [];
-    for (let i = 0; i < TOTAL_TILES; i += 5) {
-        const line = [];
-        for (let c = i; c < Math.min(i + 5, TOTAL_TILES); c++) {
-            if (c === b.hit) line.push('💥');
-            else if (b.open.includes(c)) line.push(DOGCOIN_EMOJI);
-            else if (b.bombs.includes(c)) line.push('💣');
-            else line.push('⬛');
-        }
-        rows.push(line.join(' '));
+    const money = `**${win ? '+' : '−'}${Math.abs(h.amount).toLocaleString()}** ${DOGCOIN_EMOJI}`;
+    const verdict = win ? 'thắng' : 'thua';
+    // bal có thể thiếu ở các ván ghi từ bản cũ -> bỏ hẳn phần đuôi, đừng in "còn null"
+    let tail = '';
+    if (typeof h.bal === 'number') {
+        tail = h.bal <= 0
+            ? ` · ${BANKRUPT_EMOJI[i % BANKRUPT_EMOJI.length]} **PHÁ SẢN**`
+            : ` · còn ${h.bal.toLocaleString()} ${DOGCOIN_EMOJI}`;
     }
-    return rows.join('\n');
+    return `${money} ${verdict}${tail}`;
 }
 
-function minesSoloEmbed(h) {
-    const win = h.amount >= 0;
-    let desc = `👤 **${h.name}**\n`;
-    desc += win
-        ? (h.result === 'Jackpot'
-            ? `🏆 **JACKPOT!** Đào sạch ô an toàn!\n`
-            : `✅ **Dừng đúng lúc!**\n`)
-        : `💥 **BÙM!** Trúng mìn rồi!\n`;
-    desc += `💣 Số mìn: **${h.mines}** · ${DOGCOIN_EMOJI} Đào được: **${h.diamonds}** ô\n`;
-    desc += `💰 Mức đặt: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
-    desc += win
-        ? `🎉 Ăn về: **+${h.amount.toLocaleString()}** ${DOGCOIN_EMOJI}\n`
-        : `📉 Mất: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
-    if (h.board) desc += `\n${minesBoardText(h.board)}`;
-
-    return new EmbedBuilder()
-        .setTitle('💣 TRÒ CHƠI DÒ MÌN')
-        .setColor(win ? 0x2ecc71 : 0xe74c3c)
-        .setDescription(desc)
-        .setTimestamp();
+// Dò Mìn: 🏆/💰/💥 **Tên** · 8 mìn · mở 4 ô · cược 100 🐕 · +26 🐕 thắng · còn 1.234 🐕
+function minesHistoryLine(h, i) {
+    const head = h.result === 'Jackpot' ? '🏆' : (h.amount >= 0 ? '💰' : '💥');
+    return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · ` +
+        `cược ${h.bet.toLocaleString()} ${DOGCOIN_EMOJI} · ${historyTail(h, i)}`;
 }
 
-async function flushMinesQueue() {
-    if (!minesBoard.channel || !minesBoard.queue.length) return;
-    const batch = minesBoard.queue.splice(0, 10);
-
-    // Một ván thì vẽ cả bàn cờ cho đã mắt. Nhiều ván dồn trong 6 giây thì chỉ liệt kê
-    // — 10 bàn cờ trong một tin vừa dài vừa vượt giới hạn ký tự của embed.
-    const embed = batch.length === 1
-        ? minesSoloEmbed(batch[0])
-        : new EmbedBuilder()
-            .setColor(batch.some(h => h.amount >= 0) ? 0x2ecc71 : 0xe74c3c)
-            .setTitle(`💣 KẾT QUẢ DÒ MÌN — ${batch.length} ván`)
-            .setDescription(batch.map(minesResultLine).join('\n'))
-            .setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Dò Mìn trên web').setStyle(ButtonStyle.Success)
-    );
-
-    const sent = await minesBoard.channel.send({ embeds: [embed], components: [row] })
-        .catch(e => { writeLog('SYSTEM', `[DÒ MÌN] Không gửi được kết quả: ${e.message}`); return null; });
-    if (!sent) return;
-
-    minesBoard.msgIds.push(sent.id);
-    while (minesBoard.msgIds.length > MINES_KEEP_MSGS) {
-        const old = minesBoard.msgIds.shift();
-        minesBoard.channel.messages.fetch(old).then(m => m.delete()).catch(() => { });
-    }
+// Leo Thang: 🏆/💰/🔥 **Tên** · 1 lửa · tầng 7 · cược 100 🐕 · −26 🐕 thua · 💀 PHÁ SẢN
+function stairsHistoryLine(h, i) {
+    const head = h.result === 'Lên đỉnh' ? '🏆' : (h.amount >= 0 ? '💰' : '🔥');
+    return `${head} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · ` +
+        `cược ${h.bet.toLocaleString()} ${DOGCOIN_EMOJI} · ${historyTail(h, i)}`;
 }
+
+
+
+const BOARD_HISTORY_N = 10;   // 10 ván gần nhất của TẤT CẢ người chơi
 
 function getMinesBoardData() {
-    const recent = minesHistory.slice(0, 6);
+    const recent = minesHistory.slice(0, BOARD_HISTORY_N);
     let desc =
         `Lưới **${TOTAL_TILES} ô**, bạn chọn **số mìn** và **tiền cược**, rồi đào từng ô.\n` +
         `Mỗi ô an toàn hệ số tăng thêm — **dừng lúc nào cũng được**, trúng mìn là mất tiền cược ván đó.\n\n` +
         `🎯 Càng nhiều mìn, hệ số càng cao. Kéo thanh bên dưới lưới để xem trước ăn bao nhiêu.\n\n`;
 
     if (recent.length) {
-        desc += `**🔥 Vài ván gần đây:**\n`;
-        desc += recent.map(h => {
-            const win = h.amount >= 0;
-            return `${win ? '💰' : '💥'} **${h.name}** · ${h.mines} mìn · mở ${h.diamonds} ô · ` +
-                `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
-        }).join('\n');
+        desc += `**💣 ${recent.length} ván gần đây:**\n` + recent.map(minesHistoryLine).join('\n');
     } else {
         desc += `*Chưa có ai chơi ván nào. Mở hàng đi!*`;
     }
@@ -1053,16 +1005,12 @@ async function resumeMinesBoard() {
 }
 
 // ===== BẢNG LEO THANG TRÊN DISCORD =====
-// Cùng cách làm với bảng dò mìn: kênh riêng, gom hàng đợi cho khỏi ngập, tự dọn tin cũ.
-const stairsBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0, queue: [], msgIds: [] };
+// Cùng cách làm với bảng dò mìn: KÊNH RIÊNG (admin tự đặt từng bảng ở panel),
+// có ván mới thì xoá tin cũ + đăng lại, tối đa 1 phút/lần — xem repostBoard.
+const stairsBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
 
-// Chủ server không muốn đăng kết quả từng ván leo thang ra kênh (mỗi người một ván
-// nên spam nhanh hơn Tài Xỉu nhiều). Chỉ cập nhật lại bảng mời chơi — bảng đó đã có
-// mục "vài ván gần đây" rồi. Muốn bật lại thì bỏ comment dòng đẩy hàng đợi bên dưới.
 function stairsBoardPush(entry, view) {
     stairsBoard.needsUpdate = true;
-    // stairsBoard.queue.push({ ...entry, view });
-    // if (stairsBoard.queue.length > 40) stairsBoard.queue.shift();
 }
 
 function stairsHistory() {
@@ -1070,18 +1018,14 @@ function stairsHistory() {
 }
 
 function getStairsBoardData() {
-    const recent = stairsHistory().slice(0, 6);
+    const recent = stairsHistory().slice(0, BOARD_HISTORY_N);
     let desc =
         `Leo **${STAIRS_FLOORS} tầng**, mỗi tầng **${STAIRS_COLS} ô**. Bạn chọn mỗi tầng có mấy **cầu lửa** (1–${STAIRS_MAX_FIRE}).\n` +
         `Mỗi tầng bấm 1 ô: trúng ô trống thì lên tầng trên, hệ số nhân thêm — **dừng lúc nào cũng được**.\n` +
         `Trúng cầu lửa 🔥 là mất tiền cược ván đó.\n\n` +
         `🔥 Càng nhiều lửa mỗi tầng, hệ số càng cao (1 lửa lên đỉnh x3.61 · 5 lửa lên đỉnh x17k).\n\n`;
     if (recent.length) {
-        desc += `**🪜 Vài ván gần đây:**\n` + recent.map(h => {
-            const win = h.amount >= 0;
-            return `${win ? (h.result === 'Lên đỉnh' ? '🏆' : '💰') : '🔥'} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · ` +
-                `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
-        }).join('\n');
+        desc += `**🪜 ${recent.length} ván gần đây:**\n` + recent.map(stairsHistoryLine).join('\n');
     } else {
         desc += `*Chưa có ai leo. Mở hàng đi!*`;
     }
@@ -1097,71 +1041,6 @@ function getStairsBoardData() {
     return { embeds: [embed], components: [row] };
 }
 
-// Vẽ lại tháp: tầng trên cùng ở trên. Tầng đã qua hiện ô người chơi bước lên,
-// tầng cháy lộ hết lửa, tầng chưa tới để trống.
-function stairsTowerText(h) {
-    const v = h.view;
-    if (!v) return '';
-    const lines = [];
-    for (let f = STAIRS_FLOORS - 1; f >= 0; f--) {
-        const cells = [];
-        for (let c = 0; c < STAIRS_COLS; c++) {
-            if (f === v.hitFloor) cells.push(c === v.hitCol ? '💥' : (v.traps[f].includes(c) ? '🔥' : '⬛'));
-            else if (f < v.safe.length) cells.push(c === v.safe[f] ? '🟩' : (v.traps[f].includes(c) ? '🔥' : '⬛'));
-            else cells.push('⬜');
-        }
-        lines.push(cells.join(''));
-    }
-    return lines.join('\n');
-}
-
-function stairsSoloEmbed(h) {
-    const win = h.amount >= 0;
-    let desc = `👤 **${h.name}**\n`;
-    desc += win
-        ? (h.result === 'Lên đỉnh' ? `🏆 **LÊN ĐỈNH!** Qua sạch ${STAIRS_FLOORS} tầng!\n` : `✅ **Dừng đúng lúc!**\n`)
-        : `🔥 **CHÁY!** Đạp trúng cầu lửa!\n`;
-    desc += `🔥 Cầu lửa mỗi tầng: **${h.fire}** · 🪜 Lên được: **${h.floor}/${STAIRS_FLOORS}** tầng\n`;
-    desc += `💰 Mức đặt: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
-    desc += win
-        ? `🎉 Ăn về: **+${h.amount.toLocaleString()}** ${DOGCOIN_EMOJI}\n`
-        : `📉 Mất: **${h.bet.toLocaleString()}** ${DOGCOIN_EMOJI}\n`;
-    const tower = stairsTowerText(h);
-    if (tower) desc += `\n${tower}`;
-    return new EmbedBuilder()
-        .setTitle('🪜 LEO THANG')
-        .setColor(win ? 0x2ecc71 : 0xe74c3c)
-        .setDescription(desc)
-        .setTimestamp();
-}
-
-async function flushStairsQueue() {
-    if (!stairsBoard.channel || !stairsBoard.queue.length) return;
-    const batch = stairsBoard.queue.splice(0, 10);
-    const embed = batch.length === 1
-        ? stairsSoloEmbed(batch[0])
-        : new EmbedBuilder()
-            .setColor(batch.some(h => h.amount >= 0) ? 0x2ecc71 : 0xe74c3c)
-            .setTitle(`🪜 KẾT QUẢ LEO THANG — ${batch.length} ván`)
-            .setDescription(batch.map(h => {
-                const win = h.amount >= 0;
-                const head = h.result === 'Lên đỉnh' ? '🏆' : (win ? '💰' : '🔥');
-                return `${head} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · cược ${h.bet.toLocaleString()} → ` +
-                    `${win ? '+' : ''}${h.amount.toLocaleString()} ${DOGCOIN_EMOJI}`;
-            }).join('\n'))
-            .setTimestamp();
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Leo Thang trên web').setStyle(ButtonStyle.Success)
-    );
-    const sent = await stairsBoard.channel.send({ embeds: [embed], components: [row] })
-        .catch(e => { writeLog('SYSTEM', `[LEO THANG] Không gửi được kết quả: ${e.message}`); return null; });
-    if (!sent) return;
-    stairsBoard.msgIds.push(sent.id);
-    while (stairsBoard.msgIds.length > MINES_KEEP_MSGS) {
-        const old = stairsBoard.msgIds.shift();
-        stairsBoard.channel.messages.fetch(old).then(m => m.delete()).catch(() => { });
-    }
-}
 
 async function startStairsBoard(channel) {
     if (stairsBoard.message) await stairsBoard.message.delete().catch(() => { });
@@ -1199,31 +1078,33 @@ async function resumeStairsBoard() {
     await startStairsBoard(ch);
 }
 
+// Có ván mới thì XOÁ tin cũ + ĐĂNG tin mới (không sửa tại chỗ) — bảng luôn nằm cuối
+// kênh như một thông báo mới, người chơi khỏi cuộn lên tìm. Tối đa 1 lần/phút, mọi
+// ván trong phút đó gom chung một lần đăng. GỬI TRƯỚC, XOÁ SAU: lỡ gửi lỗi thì bảng
+// cũ còn đó, kênh không bao giờ trống bảng.
+const BOARD_REPOST_MS = 60 * 1000;
+async function repostBoard(board, getData, msgKey, label) {
+    if (!board.channel || !board.needsUpdate) return;
+    if (Date.now() - board.lastEdit < BOARD_REPOST_MS) return;
+    board.needsUpdate = false;
+    board.lastEdit = Date.now();
+    const old = board.message;
+    try {
+        board.message = await board.channel.send(getData());
+        dbCache[msgKey] = board.message.id;   // để restart nối lại đúng tin mới nhất
+        if (old) old.delete().catch(() => { });
+    } catch (e) {
+        writeLog('SYSTEM', `[${label}] Không đăng lại được bảng: ${e.message}`);
+        board.needsUpdate = true; // giữ cờ, phút sau thử lại
+    }
+}
+
 function runStairsBoardLoop() {
-    setInterval(() => { flushStairsQueue().catch(() => { }); }, MINES_POST_EVERY_MS);
-    setInterval(() => {
-        if (!stairsBoard.message || !stairsBoard.needsUpdate) return;
-        if (Date.now() - stairsBoard.lastEdit < 15000) return;
-        stairsBoard.needsUpdate = false;
-        stairsBoard.lastEdit = Date.now();
-        stairsBoard.message.edit(getStairsBoardData())
-            .catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không sửa được tin nhắn: ${e.message}`));
-    }, 5000);
+    setInterval(() => { repostBoard(stairsBoard, getStairsBoardData, '_stairsMsgId', 'BẢNG LEO THANG').catch(() => { }); }, 5000);
 }
 
 function runMinesBoardLoop() {
-    // đăng kết quả các ván vừa xong
-    setInterval(() => { flushMinesQueue().catch(() => { }); }, MINES_POST_EVERY_MS);
-
-    // và vẽ lại bảng mời chơi (chậm hơn, chỉ để cập nhật danh sách ván gần đây)
-    setInterval(() => {
-        if (!minesBoard.message || !minesBoard.needsUpdate) return;
-        if (Date.now() - minesBoard.lastEdit < 15000) return; // Discord rate limit
-        minesBoard.needsUpdate = false;
-        minesBoard.lastEdit = Date.now();
-        minesBoard.message.edit(getMinesBoardData())
-            .catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không sửa được tin nhắn: ${e.message}`));
-    }, 5000);
+    setInterval(() => { repostBoard(minesBoard, getMinesBoardData, '_minesMsgId', 'BẢNG DÒ MÌN').catch(() => { }); }, 5000);
 }
 
 // --- ĐĂNG KÝ LỆNH SLASH ---
