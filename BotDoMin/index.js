@@ -796,8 +796,13 @@ const webMinesApi = {
         if (!g) return { error: 'Chưa có ván nào đang chơi' };
         if (!g.luckyPending) return { error: 'Không có cỏ 4 lá nào đang chờ' };
         g.luckyPending = false; g.luckySpun = true;
+        box = Math.min(4, Math.max(1, box || 1));
         const prize = spinWheel(MINES_LUCKY_WHEEL);
-        const lucky = { prize };
+        // Lật cả 4 hộp cho người chơi xem: hộp đã chọn = quà thật, 3 hộp kia quay cùng
+        // bàn quay làm hàng mẫu (kết quả thật đã chốt ở dòng trên, không đổi được).
+        const reveal = [];
+        for (let i = 1; i <= 4; i++) reveal.push(i === box ? prize : spinWheel(MINES_LUCKY_WHEEL));
+        const lucky = { prize, box, reveal };
         if (prize === 'shield') { g.shield = true; g.luck.push('🛡️'); }
         else if (prize === 'dig') {
             // mở giúp 1–2 ô an toàn ngẫu nhiên (server chọn — cho tự chọn là quá tay)
@@ -979,9 +984,9 @@ const webStairsApi = {
             traps.push(row);
         }
         const g = { bet, fire, floor: 0, traps, safe: [], name, userId, startedAt: Date.now() };
-        // 2 ô 🍀 GIẤU trên ô trống tầng 1–8 (không rải tầng 9–10: sát đỉnh còn quà là quá tay)
+        // 3 ô 🍀 GIẤU trên ô trống tầng 1–8 (không rải tầng 9–10: sát đỉnh còn quà là quá tay)
         g.lucky = []; g.shield = false; g.burned = []; g.luck = []; g.luckyPending = false;
-        while (g.lucky.length < 2) {
+        while (g.lucky.length < 3) {
             const f = Math.floor(Math.random() * 8);
             const c = Math.floor(Math.random() * STAIRS_COLS);
             if (traps[f].includes(c)) continue;
@@ -1084,8 +1089,12 @@ const webStairsApi = {
         if (!g) return { error: 'Chưa có ván nào đang chơi' };
         if (!g.luckyPending) return { error: 'Không có cỏ 4 lá nào đang chờ' };
         g.luckyPending = false;
+        box = Math.min(4, Math.max(1, box || 1));
         const prize = spinWheel(STAIRS_LUCKY_WHEEL);
-        const lucky = { prize };
+        // Lật cả 4 hộp: hộp đã chọn = quà thật, 3 hộp kia là hàng mẫu (xem chú thích bên Dò Mìn)
+        const reveal = [];
+        for (let i = 1; i <= 4; i++) reveal.push(i === box ? prize : spinWheel(STAIRS_LUCKY_WHEEL));
+        const lucky = { prize, box, reveal };
         if (prize === 'rocket') {
             let up = 2;
             while (up-- > 0 && g.floor < STAIRS_FLOORS) { g.safe.push(-1); g.floor++; }
