@@ -1301,8 +1301,132 @@ const webStairsApi = {
     },
 };
 
-// ===== BLACKJACK — bàn chung (logic ở blackjack.js/blackjackTable.js) =====
-// Tiền dùng ví thật (getUserData/updatePoints). webplay.js lo WebSocket + trang riêng.
+// ===== 🎡 VÒNG QUAY MAY MẮN NHÓM — thay Blackjack (cả server thống nhất 18/08) =====
+// Vé cố định, CHẮC CHẮN thắng (sàn x1.2). 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch nhau
+// 120° (= 8 nan); mỗi người chọn 1 màu, CHỌN TRÙNG thoải mái — cùng màu ăn cùng nan.
+// Đủ N người ready (admin chỉnh ở panel, mặc định 3) là quay MỘT vòng chung.
+// Mỗi người 1 lượt mỗi khung giờ VN: 00:00–11:59 và 12:00–23:59 (reset 00:00 & 12:00).
+const WHEEL_TICKET = 500;
+const WHEEL_COLORS = ['yellow', 'blue', 'green'];
+const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 8, green: 16 };
+// 24 nan: x1.2×7 · x1.4×5 · x1.6×4 · x1.8×3 · x2×2 · x2.2×2 · x10×1 (độc đắc ~4,2%).
+// Kỳ vọng ~x1.9 vé — đây là QUÀ định kỳ đội lốt vòng quay, không phải cửa cược.
+const WHEEL_SEGMENTS = [1.2, 1.6, 1.4, 2.0, 1.2, 1.8, 1.4, 2.2, 1.2, 1.6, 10, 1.4, 1.2, 1.8, 1.6, 2.0, 1.2, 1.4, 2.2, 1.8, 1.2, 1.6, 1.4, 1.2];
+
+const wheelRoom = { status: 'waiting', players: new Map(), spin: null, spinSeq: 0 };
+
+function wheelWindowKey() {
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+    return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${now.getHours() < 12 ? 'AM' : 'PM'}`;
+}
+function wheelNextReset() { // epoch ms của mốc 00:00/12:00 VN kế tiếp (cho đồng hồ đếm ngược)
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+    const next = new Date(now);
+    if (now.getHours() < 12) next.setHours(12, 0, 0, 0);
+    else { next.setDate(next.getDate() + 1); next.setHours(0, 0, 0, 0); }
+    return Date.now() + (next.getTime() - now.getTime());
+}
+function wheelMinPlayers() {
+    const n = parseInt(dbCache._wheelMinPlayers);
+    return Number.isInteger(n) && n >= 1 && n <= 50 ? n : 3;
+}
+// Vé đang treo lưu database — bot restart giữa lúc chờ đủ người thì hoàn lại hết
+function wheelPending() {
+    if (!dbCache._wheelPending || typeof dbCache._wheelPending !== 'object') dbCache._wheelPending = {};
+    return dbCache._wheelPending;
+}
+function wheelRefundPending() {
+    for (const uid of Object.keys(wheelPending())) {
+        updatePoints(uid, WHEEL_TICKET);
+        writeLog('SYSTEM', `[VÒNG QUAY] Hoàn vé ${WHEEL_TICKET} cho ${uid} (bot restart giữa lúc chờ đủ người)`);
+    }
+    dbCache._wheelPending = {};
+}
+
+function wheelState(userId) {
+    const me = getUserData(userId);
+    return {
+        me: userId,
+        ticket: WHEEL_TICKET,
+        segments: WHEEL_SEGMENTS,
+        arrows: WHEEL_ARROW_OFFSET,
+        minPlayers: wheelMinPlayers(),
+        status: wheelRoom.status,
+        players: [...wheelRoom.players.values()].map(p => ({ name: p.name, color: p.color })),
+        myColor: wheelRoom.players.has(userId) ? wheelRoom.players.get(userId).color : null,
+        played: me.lastWheelKey === wheelWindowKey(),
+        spin: wheelRoom.spin,
+        nextReset: wheelNextReset(),
+        now: Date.now(),
+        history: (dbCache._wheelHistory || []).slice(0, 10),
+        balance: me.points || 0,
+    };
+}
+function wheelReady(userId, color) {
+    if (!WHEEL_COLORS.includes(color)) return { error: 'Chọn màu mũi tên 🟡/🔵/🟢 đã' };
+    if (wheelRoom.status !== 'waiting') return { error: 'Vòng đang quay — chờ chút rồi vào ván sau' };
+    const me = getUserData(userId);
+    if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi — reset lúc 00:00 và 12:00' };
+    if (wheelRoom.players.has(userId)) {
+        wheelRoom.players.get(userId).color = color;   // đổi màu khi đang chờ: miễn phí
+        wheelPending()[userId] = { color, ts: Date.now() };
+    } else {
+        if ((me.points || 0) < WHEEL_TICKET) return { error: `Không đủ ${WHEEL_TICKET} Dogcoin mua vé` };
+        updatePoints(userId, -WHEEL_TICKET);
+        wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color });
+        wheelPending()[userId] = { color, ts: Date.now() };
+        writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn, mũi tên ${color} (${wheelRoom.players.size}/${wheelMinPlayers()})`);
+    }
+    saveDbNow();
+    wheelMaybeSpin();
+    return { ok: true, state: wheelState(userId) };
+}
+function wheelUnready(userId) {
+    if (wheelRoom.status !== 'waiting') return { error: 'Đang quay rồi, không rút được' };
+    if (!wheelRoom.players.has(userId)) return { error: 'Bạn chưa vào bàn' };
+    wheelRoom.players.delete(userId);
+    delete wheelPending()[userId];
+    updatePoints(userId, WHEEL_TICKET);
+    saveDbNow();
+    return { ok: true, state: wheelState(userId) };
+}
+function wheelMaybeSpin() {
+    if (wheelRoom.status !== 'waiting' || wheelRoom.players.size < wheelMinPlayers()) return;
+    // Chốt kết quả NGAY tại server; client chỉ diễn hoạt hình quay tới nan idx.
+    const idx = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
+    const key = wheelWindowKey();
+    const results = {};
+    for (const c of WHEEL_COLORS) results[c] = WHEEL_SEGMENTS[(idx + WHEEL_ARROW_OFFSET[c]) % WHEEL_SEGMENTS.length];
+    const players = [];
+    for (const p of wheelRoom.players.values()) {
+        const multi = results[p.color];
+        const win = Math.floor(WHEEL_TICKET * multi);
+        updatePoints(p.userId, win);
+        getUserData(p.userId).lastWheelKey = key;
+        players.push({ userId: p.userId, name: p.name, color: p.color, multi, win });
+        writeLog('RESULT', `[VÒNG QUAY] ${p.name} (${p.color}) trúng x${multi} — +${win}`);
+        if (multi >= 10) {
+            writeLog('ADMIN', `[⚠️ VÒNG QUAY ĐỘC ĐẮC] ${p.name} trúng x10 — +${win.toLocaleString()} Dogcoin`);
+            client.channels.fetch(NGHIEN_ANNOUNCE_CHANNEL_ID)
+                .then(ch => ch.send({ content: `🎡 **${p.name}** quay trúng **ĐỘC ĐẮC x10** — +**${win.toLocaleString()}** ${DOGCOIN_EMOJI}!!!`, allowedMentions: { parse: [] } }))
+                .catch(() => { });
+        }
+    }
+    wheelRoom.spinSeq++;
+    wheelRoom.spin = { seq: wheelRoom.spinSeq, idx, results, players, endsAt: Date.now() + 9000 };
+    wheelRoom.status = 'spinning';
+    dbCache._wheelPending = {};   // tiền đã trả — không còn gì để hoàn
+    if (!Array.isArray(dbCache._wheelHistory)) dbCache._wheelHistory = [];
+    dbCache._wheelHistory.unshift({ time: new Date().toLocaleTimeString('vi-VN'), results, players });
+    if (dbCache._wheelHistory.length > 20) dbCache._wheelHistory.pop();
+    saveDbNow();
+    // giữ spin lại sau khi quay xong để ai vào trễ vẫn thấy kết quả gần nhất
+    setTimeout(() => { wheelRoom.status = 'waiting'; wheelRoom.players.clear(); }, 12000);
+}
+
+// ===== BLACKJACK — ĐÃ HỦY KHỎI GIAO DIỆN (18/08, cả server thống nhất, nhường chỗ
+// cho Vòng Quay). Engine + bàn WS giữ nguyên bên dưới phòng khi muốn bật lại,
+// nhưng web không còn tab, /blackjack không còn link, bảng Discord không nối lại.
 const blackjackTable = createBlackjackTable({
     clock: () => Date.now(),
     getPoints: (u) => (getUserData(u).points || 0),
@@ -1744,8 +1868,20 @@ client.once('ready', async (c) => {
     // resumeXosoAfterRestart().catch(() => {});
     runMinesBoardLoop();
     resumeMinesBoard().catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không nối lại được: ${e.message}`));
-    runBlackjackBoardLoop();
-    resumeBlackjackBoard().catch(e => writeLog('SYSTEM', `[BẢNG BLACKJACK] Không nối lại được: ${e.message}`));
+    // Blackjack ĐÃ HỦY — không nối lại bảng Discord; nếu bảng cũ còn treo thì gỡ luôn.
+    (async () => {
+        try {
+            if (dbCache._bjChannelId && dbCache._bjMsgId) {
+                const ch = await client.channels.fetch(dbCache._bjChannelId);
+                const old = await ch.messages.fetch(dbCache._bjMsgId).catch(() => null);
+                if (old) await old.delete().catch(() => { });
+                writeLog('SYSTEM', '[BẢNG BLACKJACK] Đã gỡ bảng cũ (trò đã hủy)');
+            }
+        } catch (e) { /* kênh cũ mất cũng kệ */ }
+        dbCache._bjChannelId = null; dbCache._bjMsgId = null;
+    })();
+    // 🎡 hoàn vé vòng quay còn treo từ trước khi restart
+    wheelRefundPending();
     runStairsBoardLoop();
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
     runStatsBoardLoop();
@@ -1770,6 +1906,8 @@ client.once('ready', async (c) => {
             transferTargets: listTransferTargets,
             // 📅 điểm danh tháng + 💉 nghiện — cùng logic với /diemdanh, /nghien
             daily: { state: dailyState, claim: claimDaily, nghien: claimNghien },
+            // 🎡 vòng quay may mắn nhóm (thay blackjack)
+            wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -1813,9 +1951,15 @@ client.once('ready', async (c) => {
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
-            getBJBoard: () => ({ on: !!blackjackBoard.message, channelId: dbCache._bjChannelId || '' }),
-            startBJBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBlackjackBoard(ch); return ch.name; },
-            stopBJBoard: () => stopBlackjackBoard(),
+            // (Blackjack đã hủy — panel không còn tab; getBJBoard giữ cho bản panel cũ khỏi vỡ)
+            getBJBoard: () => ({ on: false, channelId: '' }),
+            // 🎡 vòng quay: panel chỉnh số người tối thiểu để khởi động
+            getWheel: () => ({ minPlayers: wheelMinPlayers(), waiting: wheelRoom.players.size, ticket: WHEEL_TICKET }),
+            setWheelMin: (n) => {
+                dbCache._wheelMinPlayers = n;
+                saveDbNow();
+                wheelMaybeSpin();   // hạ số xuống bằng số người đang chờ là quay luôn
+            },
             // Bảng thống kê 📊
             getStatsBoard: () => ({ on: !!statsBoard.message, channelId: dbCache._statsChannelId || '' }),
             startStatsBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStatsBoard(ch); return ch.name; },

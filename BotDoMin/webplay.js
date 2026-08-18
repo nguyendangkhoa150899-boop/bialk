@@ -8,7 +8,6 @@
 const http = require('http');
 const crypto = require('crypto');
 const { attachWebSocket } = require('./wsserver');
-const BLACKJACK_PAGE = require('./blackjackPage').PAGE;
 
 // Toàn bộ ảnh + âm thanh gom ở assets.js (tự quét thư mục assets/) — thêm file mới
 // chỉ cần thả vào thư mục đó, không phải đụng vào file này nữa.
@@ -87,12 +86,7 @@ function startWebPlay(ctx) {
                 return res.end(PAGE);
             }
 
-            // Blackjack = TRANG RIÊNG (yêu cầu xoay ngang điện thoại). Đăng nhập dùng chung
-            // /api/login; chơi qua WebSocket /ws.
-            if (req.method === 'GET' && path === '/blackjack') {
-                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-                return res.end(BLACKJACK_PAGE);
-            }
+            // (Blackjack đã hủy 18/08 — /blackjack không còn; tab thay bằng 🎡 Vòng Quay.)
 
             if (ASSETS.serve(req, res, path)) return;
 
@@ -209,6 +203,22 @@ function startWebPlay(ctx) {
                     const r = ctx.daily.nghien(userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
+                }
+
+                // ===== 🎡 VÒNG QUAY MAY MẮN NHÓM (logic + tiền ở index.js — ctx.wheel) =====
+                if (ctx.wheel && path === '/api/wheel/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.wheel.state(userId) });
+                }
+                if (ctx.wheel && req.method === 'POST' && path === '/api/wheel/ready') {
+                    const body = await readBody(req);
+                    const r = ctx.wheel.ready(userId, String(body.color || ''));
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r.state });
+                }
+                if (ctx.wheel && req.method === 'POST' && path === '/api/wheel/unready') {
+                    const r = ctx.wheel.unready(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r.state });
                 }
 
                 if (req.method === 'POST' && path === '/api/bet') {
@@ -442,7 +452,6 @@ const PAGE = [
     'body{background:var(--bg);color:var(--tx);min-height:100vh;padding:14px;max-width:520px;margin:0 auto;',
     'touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent}',
     // Tab Blackjack trên MÀN RỘNG (máy tính): bung ra khỏi cột 520px cho bàn 5 ghế đủ chỗ.
-    '@media (min-width:900px){#pageBj{width:min(96vw,1100px);margin-left:calc(50% - min(48vw,550px))}}',
     // nút/ô bấm: tắt hẳn double-tap zoom + không bôi đen chữ khi bấm nhanh
     'button,.mtile,.mstep,.cbtn,.chip{touch-action:manipulation;-webkit-user-select:none;user-select:none}',
     '.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}',
@@ -629,6 +638,21 @@ const PAGE = [
     '#paper.locked{background:linear-gradient(175deg,#7e2f2f 0%,#6b2626 60%,#571e1e 100%);color:#ffdfdf;border-color:#b95c5c;cursor:not-allowed}',
     '#paper.open{background:linear-gradient(175deg,#2f7e46 0%,#26663a 60%,#1e5230 100%);color:#e2ffe9;border-color:#6cc287;cursor:grab}',
     '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
+    // ---- 🎡 vòng quay ----
+    '#whWrap{position:relative;max-width:330px;margin:14px auto 0;aspect-ratio:1}',
+    '#whSvg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 18px #0009)}',
+    '#whRot{transform-origin:150px 150px;transform-box:view-box}',
+    // 3 mũi tên gắn quanh vành: 🟡 đỉnh, 🔵 xoay 120°, 🟢 xoay 240°
+    '.warr{position:absolute;inset:0;pointer-events:none}',
+    '.warr .tri{position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:22px solid #f5c518;filter:drop-shadow(0 2px 3px #000b)}',
+    '.warr.b{transform:rotate(120deg)}.warr.g{transform:rotate(240deg)}',
+    '.warr.b .tri{border-top-color:#3b82f6}.warr.g .tri{border-top-color:#22c55e}',
+    '#whPick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}',
+    '#whPick button{padding:11px 0;border-radius:12px;border:2px solid transparent;background:#12141a;font-weight:800;font-size:14px}',
+    '#whPick button.y{color:#f5c518}#whPick button.b{color:#60a5fa}#whPick button.g{color:#4ade80}',
+    '#whPick button.sel{border-color:currentColor;background:#1a1e2a}',
+    '#whRes{display:none;margin-top:10px;font-size:14px;font-weight:700;line-height:1.6;text-align:center;background:#12141a;border:1px solid var(--line);border-radius:12px;padding:10px}',
+    '#whGo:disabled,#whDemo:disabled{opacity:.55}',
     // ---- 📅 điểm danh ----
     '#dChips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}',
     '.dchip{background:#12141a;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}',
@@ -668,7 +692,7 @@ const PAGE = [
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
     '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
-    '<button id="navBj" onclick="go(\'bj\')">🂡 Blackjack</button>',
+    '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
     '<button id="navDaily" onclick="go(\'daily\')">📅 Điểm danh</button>',
     '</div>',
 
@@ -764,13 +788,31 @@ const PAGE = [
     '</div>',
     '</div>', // hết #pageStair
 
-    // ================= TRANG BLACKJACK (tab thứ 4) =================
-    // Nhúng nguyên trang /blackjack bằng iframe cho gọn & CÁCH LY hoàn toàn (hai bên
-    // đều xài .card/$/render/WS... trộn chung là vỡ). Token đăng nhập truyền qua #tok
-    // để KHỎI đăng nhập lại. Chỉ nạp src lần đầu mở tab (lazy) — xem go().
-    '<div id="pageBj" class="hidden">',
-    '<iframe id="bjFrame" title="Blackjack" style="display:block;width:100%;height:82vh;min-height:540px;border:0;border-radius:12px;background:#0a1f14"></iframe>',
+    // ================= TRANG 🎡 VÒNG QUAY (thay Blackjack — đã hủy 18/08) =================
+    // Bánh xe SVG 24 nan + 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch 120°. Server chốt kết
+    // quả trước, client chỉ diễn hoạt hình quay — không gian lận được.
+    '<div id="pageWheel" class="hidden">',
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">🎡 Vòng Quay May Mắn</h2><div class="muted" id="whStat">—</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Vé cố định — <b>chắc chắn thắng</b>, bét x1.2, ĐỘC ĐẮC <b>x10</b> 🏆. Chọn 1 màu mũi tên (trùng nhau thoải mái), đủ người là quay chung 1 vòng. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
+    '<div id="whWrap">',
+    '<svg id="whSvg" viewBox="0 0 300 300"></svg>',
+    '<div class="warr y"><div class="tri"></div></div>',
+    '<div class="warr b"><div class="tri"></div></div>',
+    '<div class="warr g"><div class="tri"></div></div>',
     '</div>',
+    '<div id="whPick">',
+    '<button id="wp_yellow" class="y" onclick="whPickC(\'yellow\')">🟡 VÀNG</button>',
+    '<button id="wp_blue" class="b" onclick="whPickC(\'blue\')">🔵 DƯƠNG</button>',
+    '<button id="wp_green" class="g" onclick="whPickC(\'green\')">🟢 LÁ</button>',
+    '</div>',
+    '<div class="muted" id="whPlayers" style="font-size:13px;margin-top:8px;text-align:center">—</div>',
+    '<div id="whRes"></div>',
+    '<button class="btn-full" id="whGo" onclick="whGoClick()">🎟️ VÀO BÀN</button>',
+    '<button id="whDemo" style="width:100%;margin-top:8px;background:#232735;font-size:13px" onclick="whDemo()">🎠 Quay thử cho biết (không tính tiền, không cần vé)</button>',
+    '</div>',
+    '<div class="card"><h2>🕘 10 vòng gần nhất</h2><div id="whHist" class="muted" style="font-size:13px">Chưa có vòng nào.</div></div>',
+    '</div>', // hết #pageWheel
 
     // ================= TRANG ĐIỂM DANH (dashboard người chơi) =================
     // Lịch tháng kiểu app điểm danh: ngày đã nhận vàng + nhãn CHUỖI, hôm nay viền tím,
@@ -901,7 +943,7 @@ const PAGE = [
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
     'mBarDrag();mSync();sSync();',
     'var saved=localStorage.getItem("play_page");',
-    'go(saved==="mine"||saved==="stair"||saved==="bj"||saved==="daily"?saved:"tx")}',
+    'go(saved==="mine"||saved==="stair"||saved==="wheel"||saved==="daily"?saved:"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
     'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
     'function allIn(){document.getElementById("amt").value=BAL}',
@@ -1044,19 +1086,16 @@ const PAGE = [
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
     '$("pageMine").classList.toggle("hidden",p!=="mine");',
     '$("pageStair").classList.toggle("hidden",p!=="stair");',
-    '$("pageBj").classList.toggle("hidden",p!=="bj");',
+    '$("pageWheel").classList.toggle("hidden",p!=="wheel");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
-    '$("chatCard")&&$("chatCard").classList.toggle("hidden",p==="bj");', // blackjack có chat riêng bên trong
     '$("navTx").classList.toggle("on",p==="tx");',
     '$("navMine").classList.toggle("on",p==="mine");',
     '$("navStair").classList.toggle("on",p==="stair");',
-    '$("navBj").classList.toggle("on",p==="bj");',
+    '$("navWheel").classList.toggle("on",p==="wheel");',
     '$("navDaily").classList.toggle("on",p==="daily");',
-    // Mở tab blackjack: nạp iframe LẦN ĐẦU, kèm token để tự đăng nhập (không nhập lại).
-    'if(p==="bj"){var _f=$("bjFrame");if(_f&&!_f.src&&TOKEN)_f.src="/blackjack#tok="+encodeURIComponent(TOKEN)}',
     'localStorage.setItem("play_page",p);',
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily")dailySync();else if(p!=="bj")refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily")dailySync();else if(p==="wheel")wheelSync();else refresh()}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
@@ -1402,6 +1441,80 @@ const PAGE = [
     'toast("✅ Nhận "+vnd(j.win)+" Dogcoin");',
     'sFinish(j,"Dừng (Thắng)",j.win-stake,stake,fire,floor)',
     '}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
+    '',
+    // ===== 🎡 VÒNG QUAY MAY MẮN =====
+    // Server chốt nan trúng (idx dưới mũi tên 🟡 đỉnh); 🔵 = idx+8, 🟢 = idx+16.
+    // Client chỉ quay bánh xe tới đúng nan — WOFF3 bù lệch đồng hồ như bên nghiện.
+    'var WST=null,WOFF3=0,WBUILT=false,WSEQ0=0,WANIM=false,WROT=0,WSEL=localStorage.getItem("wh_color")||"yellow";',
+    'var WEM={yellow:"🟡",blue:"🔵",green:"🟢"};',
+    'function wheelSync(){api("/api/wheel/state").then(function(j){WST=j;WOFF3=j.now-Date.now();setBal(j.balance);whBuild();whRender();',
+    'if(j.spin&&j.spin.seq!==WSEQ0){WSEQ0=j.spin.seq;',
+    'if(Date.now()+WOFF3<j.spin.endsAt)whAnimate(j.spin);else whShowRes(j.spin,true)}',   // vào trễ quá thì hiện thẳng kết quả
+    '}).catch(function(e){toast("❌ "+e.message)})}',
+    // vẽ bánh xe 1 lần từ segments server đưa (đổi bảng nan chỉ cần sửa server)
+    'function whBuild(){if(!WST||WBUILT)return;WBUILT=true;',
+    'var N=WST.segments.length,step=360/N,R=138,cx=150,cy=150;',
+    'var FILL={"1.2":"#2c3350","1.4":"#274632","1.6":"#4e3a27","1.8":"#432750","2":"#27424e","2.2":"#54283a","10":"#6b5308"};',
+    'var h=\'<circle cx="150" cy="150" r="146" fill="#0e1016"/><g id="whRot">\';',
+    'for(var i=0;i<N;i++){var m=WST.segments[i];',
+    'var a0=(i*step-90)*Math.PI/180,a1=((i+1)*step-90)*Math.PI/180;',
+    'var x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0),x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);',
+    'h+=\'<path d="M150 150L\'+x0.toFixed(1)+" "+y0.toFixed(1)+\'A\'+R+" "+R+\' 0 0 1 \'+x1.toFixed(1)+" "+y1.toFixed(1)+\'Z" fill="\'+(FILL[String(m)]||"#2c3350")+\'" stroke="#0e1016" stroke-width="1.5"/>\';',
+    'var am=(i*step+step/2-90)*Math.PI/180,tx=cx+108*Math.cos(am),ty=cy+108*Math.sin(am);',
+    'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+(m>=10?"#ffd977":"#e8eaf2")+\'" font-size="\'+(m>=10?13:10)+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(i*step+step/2)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+(m>=10?"x10🏆":"x"+m)+"</text>"}',
+    'h+=\'</g><circle cx="150" cy="150" r="30" fill="#161926" stroke="#2a2f42" stroke-width="2"/><text x="150" y="150" font-size="22" text-anchor="middle" dominant-baseline="central">🎡</text>\';',
+    '$("whSvg").innerHTML=h}',
+    // quay bánh xe tới nan idx (thêm 5 vòng cho đã mắt), luôn quay theo một chiều
+    'function whSpinTo(idx,cb){var g=$("whRot");if(!g)return;var N=WST.segments.length,step=360/N;',
+    'var target=((-(idx*step+step/2))%360+360)%360;',
+    'WROT=((WROT%360)+360)%360;',
+    'g.style.transition="none";g.style.transform="rotate("+WROT+"deg)";',
+    'void g.getBoundingClientRect();',
+    'var final=WROT+5*360+((target-WROT)%360+360)%360;',
+    'g.style.transition="transform 6s cubic-bezier(.12,.65,.09,1)";g.style.transform="rotate("+final+"deg)";WROT=final;',
+    'if(cb)setTimeout(cb,6300)}',
+    'function whAnimate(sp){WANIM=true;$("whRes").style.display="none";whBtn();',
+    'whSpinTo(sp.idx,function(){WANIM=false;whShowRes(sp,false);wheelSync()})}',
+    'function whShowRes(sp,quiet){var box=$("whRes");if(!box)return;',
+    'var h="Kết quả: "+["yellow","blue","green"].map(function(c){return WEM[c]+" <b>x"+sp.results[c]+"</b>"}).join(" · ");',
+    'h+="<br>"+sp.players.map(function(p){return WEM[p.color]+" "+esc(p.name)+" <b>+"+p.win.toLocaleString("vi-VN")+"</b>"}).join(" · ");',
+    'box.innerHTML=h;box.style.display="block";',
+    'var mine=null;sp.players.forEach(function(p){if(WST&&p.userId===WST.me)mine=p});',
+    'if(!quiet&&mine){if(mine.multi>=10){celebrate();toast("🏆 ĐỘC ĐẮC x10!!! +"+mine.win.toLocaleString("vi-VN")+" Dogcoin!!!")}',
+    'else toast("🎡 x"+mine.multi+" — +"+mine.win.toLocaleString("vi-VN")+" Dogcoin")}',
+    'whBtn()}',
+    'function whRender(){if(!WST)return;',
+    '$("whStat").textContent=WST.status==="spinning"?"🎡 ĐANG QUAY...":("chờ "+WST.players.length+"/"+WST.minPlayers+" người");',
+    '$("whPlayers").innerHTML=WST.players.length?("Đang chờ: "+WST.players.map(function(p){return WEM[p.color]+" "+esc(p.name)}).join(" · ")):"Chưa ai vào bàn — rủ bạn bè vào cùng!";',
+    'if(WST.myColor)WSEL=WST.myColor;',
+    '["yellow","blue","green"].forEach(function(c){var b=$("wp_"+c);if(b)b.classList.toggle("sel",WSEL===c)});',
+    'var hh=WST.history||[];',
+    '$("whHist").innerHTML=hh.length?hh.map(function(e){return \'<div style="padding:5px 0;border-bottom:1px solid var(--line)">\'+(e.time||"")+" · "+["yellow","blue","green"].map(function(c){return WEM[c]+" x"+(e.results?e.results[c]:"?")}).join(" ")+"<br>"+(e.players||[]).map(function(p){return WEM[p.color]+" "+esc(p.name)+" +"+Number(p.win).toLocaleString("vi-VN")}).join(" · ")+"</div>"}).join(""):"Chưa có vòng nào.";',
+    'whBtn()}',
+    'function whBtn(){var b=$("whGo");if(!b||!WST)return;var d=$("whDemo");if(d)d.disabled=WANIM;',
+    'if(WANIM||WST.status==="spinning"){b.disabled=true;b.textContent="🎡 ĐANG QUAY...";return}',
+    'if(WST.played&&!WST.myColor){b.disabled=true;',
+    'var left=WST.nextReset-(Date.now()+WOFF3);if(left<0)left=0;',
+    'var hh2=Math.floor(left/3600000),mm2=Math.floor(left%3600000/60000);',
+    'b.textContent="⏳ KHUNG NÀY QUAY RỒI — CÒN "+hh2+" GIỜ "+(mm2<10?"0":"")+mm2+" PHÚT";return}',
+    'b.disabled=false;',
+    'b.textContent=WST.myColor?("❌ RÚT KHỎI BÀN (hoàn vé "+WST.ticket.toLocaleString("vi-VN")+")"):("🎟️ VÀO BÀN — VÉ "+WST.ticket.toLocaleString("vi-VN")+" "+WEM[WSEL])}',
+    'function whPickC(c){WSEL=c;localStorage.setItem("wh_color",c);',
+    'if(WST&&WST.myColor&&WST.myColor!==c){api("/api/wheel/ready",{color:c}).then(function(j){WST=j;whRender();toast("Đổi mũi tên sang "+WEM[c])}).catch(function(e){toast("❌ "+e.message)})}',
+    'else whRender()}',
+    'function whGoClick(){if(!WST)return;var b=$("whGo");b.disabled=true;',
+    'var p=WST.myColor?api("/api/wheel/unready",{}):api("/api/wheel/ready",{color:WSEL});',
+    'p.then(function(j){WST=j;setBal(j.balance);whRender();',
+    'if(j.spin&&j.spin.seq!==WSEQ0){WSEQ0=j.spin.seq;whAnimate(j.spin)}',   // mình là người chốt sổ -> quay luôn
+    '}).catch(function(e){toast("❌ "+e.message);wheelSync()})}',
+    // 🎠 quay thử: random tại chỗ, không đụng server, không đụng ví
+    'function whDemo(){if(WANIM||!WST)return;var idx=Math.floor(Math.random()*WST.segments.length);',
+    'WANIM=true;$("whRes").style.display="none";whBtn();',
+    'whSpinTo(idx,function(){WANIM=false;var r={};["yellow","blue","green"].forEach(function(c){r[c]=WST.segments[(idx+WST.arrows[c])%WST.segments.length]});',
+    'var box=$("whRes");box.innerHTML="🎠 QUAY THỬ (không tính tiền): "+["yellow","blue","green"].map(function(c){return WEM[c]+" <b>x"+r[c]+"</b>"}).join(" · ");box.style.display="block";whBtn()})}',
+    // poll khi đang đứng ở tab vòng quay (bắt vòng quay do người khác kích hoạt)
+    'setInterval(function(){if(TOKEN&&!WANIM&&localStorage.getItem("play_page")==="wheel")wheelSync()},2000);',
+    'setInterval(function(){if(localStorage.getItem("play_page")==="wheel")whBtn()},1000);',
     '',
     // ===== 📅 ĐIỂM DANH + 💉 NGHIỆN =====
     // DOFF = lệch giờ máy người chơi so với server — đồng hồ đếm ngược nghiện chạy
