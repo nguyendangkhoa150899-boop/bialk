@@ -1112,7 +1112,7 @@ const PAGE = [
     'var p=$("sPop"),kind,img,ttl,sub;',
     'if(res==="Lên đỉnh"){kind="top";img="/thang100.png";ttl="🏆 LÊN TỚI ĐỈNH!";sub="Leo trọn thang, không dính cầu lửa nào"}',
     'else if(net>=0){kind="win";img="/ngungdungluc.png";ttl="✅ NGƯNG ĐÚNG LÚC!";sub="Dừng ở tầng "+SLAST.floor+"/"+SF+" — khôn đấy"}',
-    'else{kind="lose";img="/thua.png";ttl="🔥 ĐẠP TRÚNG LỬA";sub="Cháy ở tầng "+(SLAST.hitFloor+1)+"/"+SF}',
+    'else{kind="lose";img="/thuahet1.png";ttl="🔥 ĐẠP TRÚNG LỬA";sub="Cháy ở tầng "+(SLAST.hitFloor+1)+"/"+SF}',
     '$("sPopImg").src=img;$("sPopTtl").textContent=ttl;$("sPopSub").textContent=sub;',
     '$("sPopAmt").textContent=(net>=0?"+":"−")+vnd(Math.abs(net))+" Dogcoin";',
     'p.className="show "+kind;',
