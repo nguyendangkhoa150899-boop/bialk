@@ -141,7 +141,6 @@ function startPanel(ctx) {
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
             stairsBoard: ctx.getStairs ? ctx.getStairs() : { on: false, channelId: '' },
             wheel: ctx.getWheel ? ctx.getWheel() : null,
-            statsBoard: ctx.getStatsBoard ? ctx.getStatsBoard() : { on: false, channelId: '' },
             stairsHistory: ctx.getStairsHistory ? ctx.getStairsHistory() : [],
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
@@ -352,34 +351,7 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, minPlayers: n });
                 }
                 // (route bảng Blackjack đã xóa 19/08 cùng cả trò)
-                // ---- BẢNG THỐNG KÊ 📊 ----
-                if (path === '/api/stats/board/start') {
-                    const channelId = String(body.channelId || '').trim();
-                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
-                    if (!ctx.startStatsBoard) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    try {
-                        const name = await ctx.startStatsBoard(channelId);
-                        ctx.writeLog('ADMIN', `[PANEL] Đăng bảng Thống kê tại #${name}`);
-                        return sendJSON(res, 200, { ok: true, name });
-                    } catch (e) { return sendJSON(res, 400, { ok: false, error: e.message }); }
-                }
-                if (path === '/api/stats/board/stop') {
-                    if (ctx.stopStatsBoard) ctx.stopStatsBoard();
-                    ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Thống kê`);
-                    return sendJSON(res, 200, { ok: true });
-                }
-                if (path === '/api/stats/reset') {
-                    if (!ctx.resetStats) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    const r = ctx.resetStats(String(body.key || ''));
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true });
-                }
-                if (path === '/api/stats/addjp') {
-                    if (!ctx.addJackpotStat) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    const r = ctx.addJackpotStat(body.userId, body.count, body.total);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, name: r.name });
-                }
+                // (route bảng/reset thống kê 📊 đã xóa 19/08 cùng tính năng)
                 // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
                 if (path === '/api/channels/add') {
                     const channelId = String(body.channelId || '').trim();
@@ -745,7 +717,6 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
       <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
       <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
-      <button data-tab="st" onclick="tab('st')">📊 Thống kê</button>
       <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
@@ -962,49 +933,7 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- THỐNG KÊ -->
-    <div id="tab-st" class="hidden">
-      <div class="card">
-        <h3>📊 Bảng thống kê người chơi trên Discord</h3>
-        <div class="muted" id="stBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
-        <label>Channel ID (kênh đăng bảng)</label>
-        <input id="stChannel" placeholder="vd: 123456789012345678">
-        <div class="row" style="margin-top:12px">
-          <button class="btn-green" onclick="stBoardStart()">▶️ Bật / Đăng lại bảng</button>
-          <button class="btn-red" onclick="stBoardStop()">⏹️ Gỡ bảng</button>
-        </div>
-        <div class="note">Mỗi người: nhận từ admin · chuyển/nhận giữa người chơi · Discord ↔ game · thắng/thua từng mini game (xanh = thắng, đỏ = thua). Có thay đổi thì tự đăng lại trong 1 phút. <b>Đếm từ lúc bật tính năng</b> — không dựng lại được lịch sử cũ.</div>
-      </div>
-      <div class="card">
-        <h3>🧹 Reset thống kê (toàn bộ người chơi)</h3>
-        <div class="row" style="flex-wrap:wrap;gap:8px">
-          <button class="btn-grey" onclick="stReset('adminIn')">Admin cho</button>
-          <button class="btn-grey" onclick="stReset('sentOut')">Chuyển đi</button>
-          <button class="btn-grey" onclick="stReset('recvIn')">Nhận về</button>
-          <button class="btn-grey" onclick="stReset('toGame')">Discord ➜ game</button>
-          <button class="btn-grey" onclick="stReset('fromGame')">Game ➜ Discord</button>
-          <button class="btn-grey" onclick="stReset('tx')">Tài Xỉu</button>
-          <button class="btn-grey" onclick="stReset('mines')">Dò Mìn</button>
-          <button class="btn-grey" onclick="stReset('stairs')">Leo Thang</button>
-          <button class="btn-grey" onclick="stReset('jackpot')">Nổ hũ 🏆</button>
-          <button class="btn-red" onclick="stReset('all')">💣 RESET TẤT CẢ</button>
-        </div>
-        <div class="note">Reset đưa cột đó của MỌI người chơi về 0 — không đụng tới ví.</div>
-      </div>
-      <div class="card">
-        <h3>✍️ Bù tay Nổ hũ (trúng trước khi có bảng thống kê)</h3>
-        <label>Discord ID người chơi</label>
-        <input id="jpUser" placeholder="vd: 537485304819351552">
-        <div class="row">
-          <div style="flex:1"><label>Cộng thêm SỐ LẦN nổ</label><input id="jpCount" inputmode="numeric" value="1"></div>
-          <div style="flex:1"><label>Cộng thêm TỔNG TIỀN hũ</label><input id="jpTotal" inputmode="numeric" placeholder="vd: 200000"></div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn-green" onclick="jpAdd()">➕ Ghi vào thống kê</button>
-        </div>
-        <div class="note">Chỉ ghi vào BẢNG THỐNG KÊ — <b>không</b> cộng tiền vào ví. Tra số tiền hũ cũ trên VPS: <code>grep "NỔ HŨ" ~/.pm2/logs/BotDoMin-out.log</code></div>
-      </div>
-    </div>
+    <!-- (tab 📊 THỐNG KÊ đã bỏ 19/08) -->
 
     <!-- NGƯỜI CHƠI -->
     <!-- RÚT DOGCOIN -->
@@ -1185,13 +1114,13 @@ function showApp(){
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Tài Xỉu
-  if(['tx','mine','stair','bj','st','user','pal'].includes(saved)) tab(saved);
+  if(['tx','mine','stair','bj','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
 
 function tab(t){
-  ['tx','bc','mine','stair','bj','st','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','stair','bj','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -1424,12 +1353,7 @@ async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi 
 function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
 async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stairs/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Leo Thang');refresh();});}
 function whSaveMin(){const n=parseInt(document.getElementById('whMin').value);if(!n||n<1||n>50)return toast('Nhập số 1–50');api('/api/wheel/min',{minPlayers:n}).then(()=>{toast('💾 Vòng quay cần '+n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
-function stBoardStart(){const c=document.getElementById('stChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stats/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Thống kê ở #'+j.name);refresh();});}
-async function stBoardStop(){if(!await uiConfirm('Gỡ bảng Thống kê khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stats/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Thống kê');refresh();});}
-async function stReset(key){if(!await uiConfirm('Reset thống kê "'+key+'" của MỌI người chơi về 0? (không đụng ví)','Reset','btn-red'))return;api('/api/stats/reset',{key}).then(()=>{toast('🧹 Đã reset '+key);refresh();});}
-function jpAdd(){const u=document.getElementById('jpUser').value.trim();const c=parseInt(document.getElementById('jpCount').value)||0;const t=parseInt(document.getElementById('jpTotal').value)||0;
-if(!u)return toast('Nhập Discord ID');if(!c&&!t)return toast('Nhập số lần hoặc số tiền');
-api('/api/stats/addjp',{userId:u,count:c,total:t}).then(j=>{toast('➕ Đã ghi nổ hũ cho '+(j.name||u));document.getElementById('jpTotal').value='';refresh();});}
+// (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
 async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
@@ -1672,9 +1596,6 @@ async function refresh(){
   const wh=STATE.wheel;
   if(wh){document.getElementById('whInfo').innerHTML='Vé <b>'+Number(wh.ticket||0).toLocaleString()+'</b> · đang chờ <b>'+wh.waiting+'</b>/'+wh.minPlayers+' người';
   const wmi=document.getElementById('whMin');if(wmi&&!wmi.value&&document.activeElement!==wmi)wmi.value=wh.minPlayers;}
-  const stb=STATE.statsBoard||{on:false,channelId:''};
-  document.getElementById('stBoardInfo').innerHTML='<span class="run '+(stb.on?'on':'off')+'">'+(stb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(stb.channelId?' &nbsp; kênh <code>'+esc(stb.channelId)+'</code>':'');
-  if(stb.channelId&&!document.getElementById('stChannel').value)document.getElementById('stChannel').value=stb.channelId;
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';

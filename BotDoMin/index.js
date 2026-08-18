@@ -85,6 +85,17 @@ if (fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify({}));
 }
 
+// ẢNH CHỤP cược đang treo của PHIÊN TRƯỚC — đọc NGAY khi vừa nạp database, trước
+// khi syncCache/vòng lưu 10s kịp ghi đè bằng state rỗng của phiên mới. Hoàn tiền ở
+// refundBootPendingBets() lúc client ready. (Fix 19/08: trước đây TX/BC/Mìn/Thang
+// giữ ván thuần RAM — mỗi lần restart là tiền cược của ván dở mất trắng.)
+const bootPendingBets = {
+    tx: Array.isArray(dbCache._txBets) ? dbCache._txBets : [],
+    bc: Array.isArray(dbCache._bcBets) ? dbCache._bcBets : [],
+    mines: (dbCache._minesPending && typeof dbCache._minesPending === 'object') ? dbCache._minesPending : {},
+    stairs: (dbCache._stairsPending && typeof dbCache._stairsPending === 'object') ? dbCache._stairsPending : {},
+};
+
 // Gom các mảng đang giữ ở RAM vào dbCache trước khi ghi ra file.
 function syncCache() {
     dbCache._minesHistory = minesHistory;
@@ -98,13 +109,64 @@ function syncCache() {
     dbCache._xsForced = xsState.forced;
     dbCache._xsHistory = xsState.history;
     dbCache._xsResultMsgIds = xsState.resultMsgIds;
+    // Tài Xỉu / Bầu Cua: cược ván đang mở cũng là tiền thật đã trừ ví — giữ y như
+    // xổ số để restart còn biết đường hoàn (bảng kết ván bình thường sẽ tự rỗng lại).
+    dbCache._txBets = txState.bets || [];
+    dbCache._bcBets = bcState.bets || [];
+    // (Dò Mìn / Leo Thang ghi thẳng vào dbCache._minesPending/_stairsPending lúc
+    //  vào/kết ván — không cần gom ở đây.)
+}
+
+// Sổ vé đang treo của Dò Mìn / Leo Thang: {userId: tiềnCược} — vào ván ghi, kết ván
+// xóa. Nằm trong dbCache nên đi cùng mọi lần lưu, restart đọc lại hoàn được.
+function minesPending() {
+    if (!dbCache._minesPending || typeof dbCache._minesPending !== 'object') dbCache._minesPending = {};
+    return dbCache._minesPending;
+}
+function stairsPending() {
+    if (!dbCache._stairsPending || typeof dbCache._stairsPending !== 'object') dbCache._stairsPending = {};
+    return dbCache._stairsPending;
+}
+
+// Hoàn tiền cược treo từ phiên trước — gọi 1 lần lúc client ready.
+function refundBootPendingBets() {
+    let count = 0, total = 0;
+    const give = (uid, amount, label) => {
+        if (!uid || !Number.isFinite(amount) || amount <= 0) return;
+        updatePoints(uid, amount);
+        count++; total += amount;
+        writeLog('SYSTEM', `[HOÀN CƯỢC RESTART] ${label}: hoàn ${amount.toLocaleString()} cho ${uid}`);
+    };
+    for (const b of bootPendingBets.tx) give(b && b.userId, b && b.amount, 'Tài Xỉu');
+    for (const b of bootPendingBets.bc) give(b && b.userId, b && b.amount, 'Bầu Cua');
+    for (const [uid, bet] of Object.entries(bootPendingBets.mines)) give(uid, bet, 'Dò Mìn');
+    for (const [uid, bet] of Object.entries(bootPendingBets.stairs)) give(uid, bet, 'Leo Thang');
+    dbCache._minesPending = {};
+    dbCache._stairsPending = {};
+    if (count) {
+        saveDbNow();
+        writeLog('ADMIN', `[HOÀN CƯỢC RESTART] Hoàn ${count} khoản, tổng ${total.toLocaleString()} Dogcoin (ván dở trước restart)`);
+    }
+}
+
+// Ghi ATOMIC: ghi ra file .tmp rồi rename đè lên database.json — process bị kill /
+// mất điện GIỮA lúc ghi thì file cũ vẫn nguyên vẹn (trước đây ghi đè thẳng, đứt giữa
+// chừng là JSON cụt nửa file = mất sạch ví cả server). Bỏ pretty-print: file nhỏ
+// ~2.5 lần, stringify nhanh hơn — trên VPS xem bằng `jq . database.json` khi cần.
+const DATA_TMP = DATA_FILE + '.tmp';
+let lastDbJson = ''; // vòng 10s so chuỗi: không có gì đổi thì khỏi chạm đĩa
+function writeDbAtomicSync() {
+    const json = JSON.stringify(dbCache);
+    fs.writeFileSync(DATA_TMP, json);
+    fs.renameSync(DATA_TMP, DATA_FILE);
+    lastDbJson = json;
 }
 
 // Ghi thẳng xuống file ngay (dùng cho thao tác quan trọng như xóa ví, không đợi 10s).
 function saveDbNow() {
     syncCache();
     try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
+        writeDbAtomicSync();
     } catch (err) {
         writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
     }
@@ -112,9 +174,12 @@ function saveDbNow() {
 
 setInterval(() => {
     syncCache();
-    fs.writeFile(DATA_FILE, JSON.stringify(dbCache, null, 2), (err) => {
-        if (err) writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
-    });
+    try {
+        if (JSON.stringify(dbCache) === lastDbJson) return; // đêm vắng không ai chơi: 0 lần ghi
+        writeDbAtomicSync();
+    } catch (err) {
+        writeLog('SYSTEM', `[LỖI DATABASE] Không thể lưu file database: ${err.message}`);
+    }
 }, 10000);
 
 // Tên hiển thị ép cứng cho vài ID quen (cho dễ nhìn trên bàn game). ID khác chạy như cũ.
@@ -181,7 +246,8 @@ function statsOf(userId) {
 function statAdd(userId, key, delta) {
     if (!userId || !Number.isFinite(delta) || !delta) return;
     statsOf(userId)[key] += delta;
-    statsBoard.needsUpdate = true;   // bảng đăng lại trong vòng 1 phút (repostBoard)
+    // (bảng 📊 hiển thị đã bỏ 19/08 — số liệu vẫn đếm ngầm trong _pstats, muốn xem
+    //  lại thì dựng bảng từ git history là có dữ liệu đầy đủ từ trước tới giờ)
 }
 
 // ===== CHUYỂN DOGCOIN GIỮA NGƯỜI CHƠI — nút 🧧 Lộc lá trên web =====
@@ -717,6 +783,7 @@ function webMinesRefundStale() {
         if (now - (g.startedAt || 0) > 2 * 3600 * 1000) {
             updatePoints(uid, g.bet);
             webMines.delete(uid);
+            delete minesPending()[uid];
             writeLog('SYSTEM', `[WEB DÒ MÌN] Hoàn ${g.bet} cho ${g.name || uid} — ván treo quá 2 tiếng`);
         }
     }
@@ -856,6 +923,7 @@ const webMinesApi = {
         webMines.set(userId, g);
         webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
+        minesPending()[userId] = bet; // restart giữa ván -> hoàn lại khoản này
         writeLog('BET', `[WEB DÒ MÌN] ${name} cược ${bet} | ${numMines} mìn`);
         return { ok: true, balance: getUserData(userId).points || 0, state: webMinesApi.current(userId) };
     },
@@ -878,6 +946,7 @@ const webMinesApi = {
                 return { ok: true, hit: false, defused: idx, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
             }
             webMines.delete(userId);
+            delete minesPending()[userId];
             webMinesLog(g, 'Trúng mìn (Thua)', -g.bet, idx);
             setMinesLast(userId, g, 'Trúng mìn (Thua)', -g.bet, idx);
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} BÙM ở ô ${idx} — mất ${g.bet}`);
@@ -903,6 +972,7 @@ const webMinesApi = {
             const raw = minesWin(g.bet, maxDiamonds, g.totalMines);
             const win = capIfAssisted(g, raw);   // ăn nhờ 🍀 -> trần x2000; tự lực -> đủ
             webMines.delete(userId);
+            delete minesPending()[userId];
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
             setMinesLast(userId, g, 'Jackpot', win - g.bet);
@@ -971,6 +1041,7 @@ const webMinesApi = {
             const raw = minesWin(g.bet, maxDiamonds, g.totalMines);
             const win = capIfAssisted(g, raw);
             webMines.delete(userId);
+            delete minesPending()[userId];
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
             setMinesLast(userId, g, 'Jackpot', win - g.bet);
@@ -988,6 +1059,7 @@ const webMinesApi = {
         const raw = minesWin(g.bet, g.revealed.length, g.totalMines);
         const win = capIfAssisted(g, raw);
         webMines.delete(userId);
+        delete minesPending()[userId];
         updatePoints(userId, win);
         webMinesLog(g, 'Dừng (Thắng)', win - g.bet);
         setMinesLast(userId, g, 'Dừng (Thắng)', win - g.bet);
@@ -1063,6 +1135,7 @@ function stairsRefundStale() {
         if (now - (g.startedAt || 0) > 2 * 3600 * 1000) {
             updatePoints(uid, g.bet);
             webStairs.delete(uid);
+            delete stairsPending()[uid];
             writeLog('SYSTEM', `[LEO THANG] Hoàn ${g.bet} cho ${g.name || uid} — ván treo quá 2 tiếng`);
         }
     }
@@ -1139,6 +1212,7 @@ const webStairsApi = {
         webStairs.set(userId, g);
         webStairsLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
+        stairsPending()[userId] = bet; // restart giữa ván -> hoàn lại khoản này
         writeLog('BET', `[LEO THANG] ${name} cược ${bet} | ${fire} lửa/tầng`);
         return { ok: true, balance: getUserData(userId).points || 0, state: webStairsApi.current(userId) };
     },
@@ -1164,6 +1238,7 @@ const webStairsApi = {
             }
             const hitFloor = g.floor;
             webStairs.delete(userId);
+            delete stairsPending()[userId];
             const entry = stairsLog(g, 'Trúng lửa (Thua)', -g.bet);
             setStairsLast(userId, g, 'Trúng lửa (Thua)', -g.bet, hitFloor, col);
             writeLog('RESULT', `[LEO THANG] ${g.name} CHÁY ở tầng ${hitFloor + 1} — mất ${g.bet}`);
@@ -1202,6 +1277,7 @@ const webStairsApi = {
             const raw = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
             const win = capIfAssisted(g, raw);   // ăn nhờ 🚀/🌟/khiên -> trần x2000; tự lực -> đủ x17k
             webStairs.delete(userId);
+            delete stairsPending()[userId];
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
@@ -1262,6 +1338,7 @@ const webStairsApi = {
             const raw = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
             const win = capIfAssisted(g, raw);
             webStairs.delete(userId);
+            delete stairsPending()[userId];
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
@@ -1284,6 +1361,7 @@ const webStairsApi = {
         const raw = stairsWin(g.bet, g.floor, g.fire);
         const win = capIfAssisted(g, raw);
         webStairs.delete(userId);
+        delete stairsPending()[userId];
         updatePoints(userId, win);
         const entry = stairsLog(g, 'Dừng (Thắng)', win - g.bet);
         setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet);
@@ -1338,9 +1416,11 @@ function wheelPending() {
     return dbCache._wheelPending;
 }
 function wheelRefundPending() {
-    for (const uid of Object.keys(wheelPending())) {
-        updatePoints(uid, WHEEL_TICKET);
-        writeLog('SYSTEM', `[VÒNG QUAY] Hoàn vé ${WHEEL_TICKET} cho ${uid} (bot restart giữa lúc chờ đủ người)`);
+    for (const [uid, e] of Object.entries(wheelPending())) {
+        // vé cũ (trước khi pending có amount) rơi về giá hiện tại
+        const amount = (e && Number.isFinite(e.amount) && e.amount > 0) ? e.amount : WHEEL_TICKET;
+        updatePoints(uid, amount);
+        writeLog('SYSTEM', `[VÒNG QUAY] Hoàn vé ${amount} cho ${uid} (bot restart giữa lúc chờ đủ người)`);
     }
     dbCache._wheelPending = {};
 }
@@ -1373,12 +1453,13 @@ function wheelReady(userId, color) {
     if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi — reset lúc 00:00 và 12:00' };
     if (wheelRoom.players.has(userId)) {
         wheelRoom.players.get(userId).color = color;   // đổi màu khi đang chờ: miễn phí
-        wheelPending()[userId] = { color, ts: Date.now() };
+        if (wheelPending()[userId]) wheelPending()[userId].color = color; // giữ nguyên amount đã trả
     } else {
         if ((me.points || 0) < WHEEL_TICKET) return { error: `Không đủ ${WHEEL_TICKET} Dogcoin mua vé` };
         updatePoints(userId, -WHEEL_TICKET);
         wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color });
-        wheelPending()[userId] = { color, ts: Date.now() };
+        // lưu CẢ số tiền đã trừ: đổi giá vé giữa 2 lần restart thì vẫn hoàn đúng giá cũ
+        wheelPending()[userId] = { color, ts: Date.now(), amount: WHEEL_TICKET };
         writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn, mũi tên ${color} (${wheelRoom.players.size}/${wheelMinPlayers()})`);
     }
     saveDbNow();
@@ -1653,126 +1734,10 @@ function runStairsBoardLoop() {
     setInterval(() => { repostBoard(stairsBoard, getStairsBoardData, '_stairsMsgId', 'BẢNG LEO THANG').catch(() => { }); }, 5000);
 }
 
-// ===== BẢNG THỐNG KÊ 📊 NGƯỜI CHƠI TRÊN DISCORD =====
-// Kênh riêng admin tự đặt ở panel. Có thay đổi thì xoá tin cũ + đăng lại, tối đa
-// 1 phút/lần (repostBoard). Màu: khối ```diff — dòng "+" Discord tô XANH, "-" tô ĐỎ.
-const statsBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
-
-function getStatsBoardData() {
-    const st = dbCache._pstats || {};
-    const rows = Object.entries(st).map(([id, s]) => {
-        // Chỉ tính DÒNG TIỀN — thắng/thua mini game + nổ hũ đã BỎ khỏi bảng theo
-        // yêu cầu chủ server (dữ liệu vẫn đếm ngầm trong _pstats, muốn là bật lại).
-        const act = Math.abs(s.adminIn) + s.sentOut + s.recvIn + s.toGame + Math.abs(s.fromGame);
-        const name = NAME_OVERRIDE[id] || (dbCache[id] && dbCache[id].name) || ('…' + id.slice(-4));
-        const bal = (dbCache[id] && dbCache[id].points) || 0;   // số dư ví hiện tại
-        return { id, s, act, name, bal };
-    }).filter(r => r.act > 0).sort((a, b) => b.act - a.act);
-
-    const fmt = n => (n || 0).toLocaleString('vi-VN');
-    // Dòng tiền trong khối ```diff: "+" Discord tô XANH = tiền VÀO ví,
-    // "-" tô ĐỎ = tiền RA khỏi ví, 0 thì để trắng cho đỡ rối.
-    const ml = (sign, label, v) => {
-        const n = Math.abs(v || 0);
-        return n ? `${sign} ${label.padEnd(17)}: ${fmt(n)}` : `  ${label.padEnd(17)}: 0`;
-    };
-
-    let desc = '';
-    const shown = rows.slice(0, 12);   // embed tối đa 4096 ký tự — 12 người sôi nổi nhất
-    for (const r of shown) {
-        desc += `👤 **${r.name}** · ví **${fmt(r.bal)}** ${DOGCOIN_EMOJI}\n` + '```diff\n' +
-            ml(r.s.adminIn >= 0 ? '+' : '-', 'Admin cho', r.s.adminIn) + '\n' +
-            ml('+', 'Nhận từ bạn bè', r.s.recvIn) + '\n' +
-            ml('+', 'Game ➜ Discord', r.s.fromGame) + '\n' +
-            ml('-', 'Chuyển cho bạn bè', r.s.sentOut) + '\n' +
-            ml('-', 'Discord ➜ game', r.s.toGame) + '\n' +
-            '```\n';
-    }
-    if (!desc) desc = '*Chưa có dữ liệu — thống kê đếm từ lúc bật tính năng, chuyển tiền vài lần là có số.*';
-    if (rows.length > shown.length) desc += `\n*…và ${rows.length - shown.length} người nữa (chỉ hiện 12 người sôi nổi nhất).*`;
-
-    const embed = new EmbedBuilder()
-        .setTitle('📊 THỐNG KÊ NGƯỜI CHƠI')
-        .setColor(0x00aeef)
-        .setDescription(desc.slice(0, 4000))
-        .setFooter({ text: 'Xanh = tiền vào ví · Đỏ = tiền ra khỏi ví · cập nhật tối đa 1 phút/lần' })
-        .setTimestamp();
-    return { embeds: [embed] };
-}
-
-async function startStatsBoard(channel) {
-    if (statsBoard.message) await statsBoard.message.delete().catch(() => { });
-    statsBoard.channel = channel;
-    statsBoard.message = await channel.send(getStatsBoardData());
-    statsBoard.needsUpdate = false;
-    statsBoard.lastEdit = Date.now();
-    dbCache._statsChannelId = channel.id;
-    dbCache._statsMsgId = statsBoard.message.id;
-    saveDbNow();
-}
-
-function stopStatsBoard() {
-    if (statsBoard.message) statsBoard.message.delete().catch(() => { });
-    statsBoard.channel = null;
-    statsBoard.message = null;
-    dbCache._statsChannelId = null;
-    dbCache._statsMsgId = null;
-    saveDbNow();
-}
-
-async function resumeStatsBoard() {
-    const chId = dbCache._statsChannelId;
-    if (!chId) return;
-    const ch = await client.channels.fetch(chId);
-    const old = dbCache._statsMsgId ? await ch.messages.fetch(dbCache._statsMsgId).catch(() => null) : null;
-    if (old) {
-        statsBoard.channel = ch;
-        statsBoard.message = old;
-        statsBoard.lastEdit = Date.now();
-        await old.edit(getStatsBoardData()).catch(() => { });
-        writeLog('SYSTEM', `[BẢNG THỐNG KÊ] Nối lại bảng cũ ở #${ch.name}`);
-        return;
-    }
-    await startStatsBoard(ch);
-}
-
-function runStatsBoardLoop() {
-    setInterval(() => { repostBoard(statsBoard, getStatsBoardData, '_statsMsgId', 'BẢNG THỐNG KÊ').catch(() => { }); }, 5000);
-}
-
-// Bù tay dữ liệu NỔ HŨ cũ (trúng trước khi bảng thống kê ra đời) — CỘNG THÊM vào
-// thống kê, KHÔNG đụng ví. Tra số tiền hũ cũ trong log: grep "NỔ HŨ" pm2 log.
-function addJackpotStat(userId, count, total) {
-    userId = String(userId || '').trim();
-    count = Math.floor(Number(count) || 0);
-    total = Math.floor(Number(total) || 0);
-    if (!/^\d{15,20}$/.test(userId)) return { error: 'Discord ID không hợp lệ' };
-    if (!dbCache[userId] || typeof dbCache[userId] !== 'object') return { error: 'Người này chưa có ví' };
-    if (count < 0 || total < 0 || (!count && !total)) return { error: 'Nhập số lần hoặc số tiền (≥ 0, không cùng 0)' };
-    if (count) statAdd(userId, 'jpCount', count);
-    if (total) statAdd(userId, 'jpTotal', total);
-    saveDbNow();
-    const name = NAME_OVERRIDE[userId] || (dbCache[userId].name || userId);
-    writeLog('ADMIN', `[THỐNG KÊ] Bù nổ hũ cho ${name}: +${count} lần · +${total.toLocaleString()} Dogcoin`);
-    return { ok: true, name };
-}
-
-// Reset từng loại (admin bấm ở panel): key = 1 trong 9 cột, hoặc 'all' = xoá sạch
-function resetStats(key) {
-    const KEYS = ['adminIn', 'sentOut', 'recvIn', 'toGame', 'fromGame', 'tx', 'mines', 'stairs', 'bj'];
-    if (key === 'all') dbCache._pstats = {};
-    else if (key === 'jackpot') {   // nổ hũ gồm 2 cột (số lần + tổng tiền) — reset chung
-        for (const id of Object.keys(dbCache._pstats || {})) { dbCache._pstats[id].jpCount = 0; dbCache._pstats[id].jpTotal = 0; }
-    }
-    else if (KEYS.includes(key)) {
-        for (const id of Object.keys(dbCache._pstats || {})) dbCache._pstats[id][key] = 0;
-    }
-    else return { error: 'Loại thống kê không hợp lệ' };
-    statsBoard.needsUpdate = true;
-    saveDbNow();
-    writeLog('ADMIN', `[THỐNG KÊ] Reset "${key}"`);
-    return { ok: true };
-}
+// (Bảng 📊 THỐNG KÊ NGƯỜI CHƠI đã BỎ 19/08 theo yêu cầu chủ server — cả bảng
+// Discord lẫn tab panel. Dữ liệu _pstats vẫn được statAdd đếm ngầm; muốn dựng lại
+// thì lục git history: getStatsBoardData/start/stop/resume/runStatsBoardLoop,
+// resetStats, addJackpotStat + tab-st bên panel.js.)
 
 function runMinesBoardLoop() {
     setInterval(() => { repostBoard(minesBoard, getMinesBoardData, '_minesMsgId', 'BẢNG DÒ MÌN').catch(() => { }); }, 5000);
@@ -1835,10 +1800,22 @@ client.once('ready', async (c) => {
     })();
     // 🎡 hoàn vé vòng quay còn treo từ trước khi restart
     wheelRefundPending();
+    // 💸 hoàn tiền cược ván dở (Tài Xỉu / Bầu Cua / Dò Mìn / Leo Thang) của phiên trước
+    refundBootPendingBets();
     runStairsBoardLoop();
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
-    runStatsBoardLoop();
-    resumeStatsBoard().catch(e => writeLog('SYSTEM', `[BẢNG THỐNG KÊ] Không nối lại được: ${e.message}`));
+    // Bảng 📊 THỐNG KÊ ĐÃ BỎ (19/08 theo yêu cầu chủ server) — bảng cũ còn treo thì gỡ.
+    (async () => {
+        try {
+            if (dbCache._statsChannelId && dbCache._statsMsgId) {
+                const ch = await client.channels.fetch(dbCache._statsChannelId);
+                const old = await ch.messages.fetch(dbCache._statsMsgId).catch(() => null);
+                if (old) await old.delete().catch(() => { });
+                writeLog('SYSTEM', '[BẢNG THỐNG KÊ] Đã gỡ bảng cũ (tính năng đã bỏ)');
+            }
+        } catch (e) { /* kênh cũ mất cũng kệ */ }
+        dbCache._statsChannelId = null; dbCache._statsMsgId = null;
+    })();
 
     // Cổng web cược cho người chơi (tách hẳn panel admin)
     try {
@@ -1910,12 +1887,7 @@ client.once('ready', async (c) => {
                 saveDbNow();
                 // hạ số xuống ≤ số người đang chờ thì nút QUAY sáng ngay cho họ tự bấm
             },
-            // Bảng thống kê 📊
-            getStatsBoard: () => ({ on: !!statsBoard.message, channelId: dbCache._statsChannelId || '' }),
-            startStatsBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStatsBoard(ch); return ch.name; },
-            stopStatsBoard: () => stopStatsBoard(),
-            resetStats,
-            addJackpotStat,
+            // (Bảng thống kê 📊 đã bỏ 19/08 — panel không còn tab)
             // Bảng mời chơi Leo Thang
             getStairs: () => ({ on: !!stairsBoard.message, channelId: dbCache._stairsChannelId || '' }),
             startStairs: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStairsBoard(ch); return ch.name; },
@@ -2224,13 +2196,20 @@ async function finishBCGame(gameId, bets) {
 // --- UI TÀI XỈU ---
 // Tài Xỉu đã CHUYỂN HẾT LÊN WEB: bảng Discord chỉ hiển thị tình hình + nút lấy link/PIN.
 // Đặt cược + nặn xí ngầu (kéo tờ giấy) đều làm trên web (webplay.js).
+// Tài Xỉu: 🌪️/🔺/🔻 `4-5-6` · Tổng 15 · TÀI · LẺ — 💰 BiaLK +2.000 · 💥 Abc −500
+// Net TỪNG NGƯỜI = tổng thắng − tổng cược của ván đó (giống Thắng/Thua bên Dò Mìn).
+function txHistoryLine(h) {
+    const head = h.storm ? '🌪️' : (h.tx === 'TÀI' ? '🔺' : '🔻');
+    let line = `${head} \`${(h.dice || []).join('-')}\` · Tổng **${h.sum}** · **${h.tx}${h.storm ? '' : ' · ' + h.cl}**`;
+    const net = {};
+    (h.bets || []).forEach(b => { if (!net[b.u]) net[b.u] = { name: b.name, v: 0 }; net[b.u].v -= b.amount; });
+    (h.winners || []).forEach(w => { if (!net[w.u]) net[w.u] = { name: w.name, v: 0 }; net[w.u].v += w.amount; });
+    const parts = Object.values(net).map(p => `${p.v >= 0 ? '💰' : '💥'} **${p.name}** ${p.v >= 0 ? '+' : '−'}${Math.abs(p.v).toLocaleString()}`);
+    return line + (parts.length ? ` — ${parts.join(' · ')}` : ' — *không ai đặt*');
+}
+
 function getTXMessageData(customStatus = null) {
     let desc = `⏳ **Mở bát:** <t:${txState.targetTime}:R>\n\n`;
-
-    if (txState.lastGameInfo) {
-        desc += `🔙 **Kết quả vòng trước (#${padId(txState.lastGameInfo.gameId)}):** ${txState.lastGameInfo.result}\n`;
-        desc += `💸 **Người đặt vòng trước:** ${txState.lastGameInfo.betDetails}\n\n`;
-    }
 
     desc += `📝 **Người đặt hiện tại:**\n`;
 
@@ -2254,12 +2233,20 @@ function getTXMessageData(customStatus = null) {
     if (!hasBets) desc += "*Chưa có ai đặt*";
 
     desc = desc.trimEnd();
+    // 🎲 Lịch sử ván nằm NGAY TRÊN bảng, mỗi ván 1 dòng trực quan như bảng Dò Mìn /
+    // Leo Thang (19/08) — thay cho embed kết quả riêng từng ván (đã bỏ: hết spam
+    // "không ai thắng" mỗi 50 giây, đỡ ~nửa số Discord API call của bàn).
+    const recent = (txState.history || []).slice(0, BOARD_HISTORY_N);
+    if (recent.length) {
+        desc += `\n\n**🎲 ${recent.length} ván gần đây:**\n` + recent.map(txHistoryLine).join('\n');
+    }
     desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN — đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${TX_LOCK_S} giây cuối khóa sổ để nặn!`}`;
 
     const embed = new EmbedBuilder()
         .setTitle(`🎲 TÀI XỈU LIVE - Game #${padId(txState.gameId)}`)
         .setColor(txState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
-        .setDescription(desc);
+        // slice 4000: đông người đặt + 10 dòng lịch sử có thể chạm trần 4096 của embed
+        .setDescription(desc.slice(0, 4000));
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi trên web (Tài Xỉu + Dò Mìn)').setStyle(ButtonStyle.Success),
@@ -2320,11 +2307,13 @@ function runTaiXiuLoop() {
             const prevMsgId = txState.message?.id;
 
             try {
-                const resultMsg = await (txState.resultPromise || Promise.resolve(null));
-                if (resultMsg?.id && prevMsgId) {
-                    manageHistory(txState, [prevMsgId, resultMsg.id]).catch(() => {});
+                await (txState.resultPromise || Promise.resolve(null));
+                // Bảng cũ xóa NGAY (kết quả đã nằm trong bảng mới) — kênh chỉ còn đúng
+                // 1 bảng live, không giữ 20 phiên cũ như thời còn embed kết quả riêng.
+                if (prevMsgId && txState.channel) {
+                    txState.channel.messages.delete(prevMsgId).catch(() => {});
                 }
-                                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
+                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
                 txState.status = 'betting';
                 txState.bets = [];
                 txState.gameId++;
@@ -2386,8 +2375,6 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     const resultTX = isTai ? 'tai' : 'xiu';
     const resultCL = isChan ? 'chan' : 'le';
 
-    let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount} -> ${TX_CHOICES[b.choice].name})`).join(', ');
-
     // Gộp tiền thắng theo người (1 người đặt nhiều lần / nhiều cửa -> 1 dòng)
     // Luật BÃO: ra 3 viên giống nhau thì CHỈ cửa Bão ăn ×TX_BAO_RATE, mọi cửa
     // thường (tài/xỉu/chẵn/lẻ) thua sạch. Không bão thì cửa Bão thua, cửa thường ×2.
@@ -2418,11 +2405,8 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         writeLog('BET', `[CƯỢC TÀI XỈU] Game #${gameId} | Đặt: ${betLogDetails} | KQ: ${d1}-${d2}-${d3} (${sum})`);
     }
 
-    txState.lastGameInfo = {
-        gameId,
-        result: `${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]} (Tổng: ${sum}) | ${txIcon} ${clIcon}`,
-        betDetails: prevBetsDisplay || "Không có ai đặt"
-    };
+    // (lastGameInfo đã bỏ 19/08 — kết quả vòng trước giờ nằm trong danh sách
+    //  "🎲 ván gần đây" ngay trên bảng, vẽ từ txState.history)
     // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
     const betAgg = {};
     bets.forEach(b => {
@@ -2450,20 +2434,10 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     return { sum, txIcon, clIcon, winLog };
 }
 
-function buildTXResultEmbed(gameId, d1, d2, d3, info, footerText) {
-    return new EmbedBuilder()
-        .setTitle(`🎲 KẾT QUẢ SÒNG TÀI XỈU`)
-        .setColor(0x2b2d31)
-        .setDescription(`**Game #${padId(gameId)}**\n\n` +
-                        `🎲 **Xúc xắc:** ${DICE_EMOJIS[d1]} ${DICE_EMOJIS[d2]} ${DICE_EMOJIS[d3]}\n` +
-                        `📊 **Tổng:** ${info.sum}\n` +
-                        `🎯 **Kết quả:** ${info.txIcon} | ${info.clIcon}\n\n` +
-                        `🏆 **Người thắng:**\n${info.winLog || "🚫 \`Không ai thắng ván này!\`"}`)
-        .setFooter({ text: footerText });
-}
-
 // Ván Tài Xỉu: được gọi NGAY LÚC KHÓA SỔ (T-15s). Lắc ngầm liền để web mở cửa sổ nặn,
-// rồi ngủ tới đúng giờ mở bát mới trả thưởng + đăng kết quả công khai.
+// rồi ngủ tới đúng giờ mở bát mới trả thưởng. KHÔNG còn gửi embed kết quả riêng
+// (bỏ 19/08): kết quả hiện thẳng trên bảng cược dạng dòng 🎲 như bảng Dò Mìn/Leo
+// Thang — hết spam "không ai thắng" mỗi 50 giây, đỡ nửa số Discord API call.
 async function finishTXGame(gameId, bets) {
     const [d1, d2, d3] = rollTXDice();
     // Mở cửa sổ nặn trên web: ai đăng nhập cũng kéo giấy xem riêng được
@@ -2474,13 +2448,9 @@ async function finishTXGame(gameId, bets) {
     if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs));
 
     txState.nan = null; // đóng cửa sổ nặn
-    const info = settleTXPayout(gameId, bets, d1, d2, d3);
-    // Admin có thể bấm Dừng Tài Xỉu NGAY TRONG lúc chờ nặn ở trên -> channel bị gỡ (null).
-    // Tiền đã trả xong ở settleTXPayout, chỉ không gửi được tin kết quả — bỏ qua, đừng sập bot.
-    const ch = txState.channel;
-    if (!ch) { writeLog('SYSTEM', `[TX] Game #${gameId}: bàn đã dừng trước khi gửi kết quả — bỏ qua tin nhắn`); return null; }
-    const emb = buildTXResultEmbed(gameId, d1, d2, d3, info, 'Ván mới bắt đầu ngay — cược trên web!');
-    return await ch.send({ embeds: [emb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
+    // Admin có thể bấm Dừng Tài Xỉu ngay trong lúc chờ nặn — tiền vẫn phải trả đủ.
+    settleTXPayout(gameId, bets, d1, d2, d3);
+    return null;
 }
 
 // ==========================================
@@ -4031,7 +4001,7 @@ function flushAndExit(signal) {
     isShuttingDown = true;
     try {
         syncCache();
-        fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
+        writeDbAtomicSync();
         writeLog('SYSTEM', `[SHUTDOWN] ${signal} - đã lưu database trước khi thoát`);
     } catch (e) {
         console.error('[SHUTDOWN] Lỗi lưu database:', e.message);
