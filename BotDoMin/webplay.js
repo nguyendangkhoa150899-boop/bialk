@@ -1479,15 +1479,16 @@ const PAGE = [
     'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+(m>=10?"#3d2c05":"#fff")+\'" font-size="\'+(m>=10?16:13)+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(mid-90)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+(m>=10?"x10 🏆":"x"+m)+"</text>"}',
     'h+=\'</g><circle cx="150" cy="150" r="30" fill="#161926" stroke="#2a2f42" stroke-width="2"/><text x="150" y="150" font-size="22" text-anchor="middle" dominant-baseline="central">🎡</text>\';',
     '$("whSvg").innerHTML=h}',
-    // quay bánh xe tới nan idx (thêm 5 vòng cho đã mắt), luôn quay theo một chiều
+    // Quay bánh xe tới nan idx: 15 GIÂY, 12 vòng — vọt nhanh lúc đầu rồi chậm
+    // từ từ rất dài về cuối (bezier đuôi sát 1), đứng hẳn mới báo kết quả.
     'function whSpinTo(idx,cb){var g=$("whRot");if(!g)return;var N=WST.segments.length,step=360/N;',
     'var target=((-(idx*step+step/2))%360+360)%360;',
     'WROT=((WROT%360)+360)%360;',
     'g.style.transition="none";g.style.transform="rotate("+WROT+"deg)";',
     'void g.getBoundingClientRect();',
-    'var final=WROT+5*360+((target-WROT)%360+360)%360;',
-    'g.style.transition="transform 6s cubic-bezier(.12,.65,.09,1)";g.style.transform="rotate("+final+"deg)";WROT=final;',
-    'if(cb)setTimeout(cb,6300)}',
+    'var final=WROT+12*360+((target-WROT)%360+360)%360;',
+    'g.style.transition="transform 15s cubic-bezier(.09,.6,.05,1)";g.style.transform="rotate("+final+"deg)";WROT=final;',
+    'if(cb)setTimeout(cb,15300)}',
     'function whAnimate(sp){WANIM=true;$("whRes").style.display="none";whBtn();',
     'whSpinTo(sp.idx,function(){WANIM=false;whShowRes(sp,false);wheelSync()})}',
     'function whShowRes(sp,quiet){var box=$("whRes");if(!box)return;',

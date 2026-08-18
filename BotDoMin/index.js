@@ -1427,7 +1427,8 @@ function wheelDoSpin() {
         }
     }
     wheelRoom.spinSeq++;
-    wheelRoom.spin = { seq: wheelRoom.spinSeq, idx, results, players, endsAt: Date.now() + 9000 };
+    // hoạt hình client 15s — endsAt 16s (ai vào trong lúc quay vẫn kịp xem đoạn cuối)
+    wheelRoom.spin = { seq: wheelRoom.spinSeq, idx, results, players, endsAt: Date.now() + 16000 };
     wheelRoom.status = 'spinning';
     dbCache._wheelPending = {};   // tiền đã trả — không còn gì để hoàn
     if (!Array.isArray(dbCache._wheelHistory)) dbCache._wheelHistory = [];
@@ -1435,7 +1436,8 @@ function wheelDoSpin() {
     if (dbCache._wheelHistory.length > 20) dbCache._wheelHistory.pop();
     saveDbNow();
     // giữ spin lại sau khi quay xong để ai vào trễ vẫn thấy kết quả gần nhất
-    setTimeout(() => { wheelRoom.status = 'waiting'; wheelRoom.players.clear(); }, 12000);
+    // (hoạt hình 15s nên bàn mở lại sau 20s)
+    setTimeout(() => { wheelRoom.status = 'waiting'; wheelRoom.players.clear(); }, 20000);
 }
 
 // ===== BLACKJACK — ĐÃ HỦY KHỎI GIAO DIỆN (18/08, cả server thống nhất, nhường chỗ
