@@ -7,19 +7,12 @@
 // vẫn hiển thị như thường, không dính deadline 3 giây / rate limit của Discord.
 const http = require('http');
 const crypto = require('crypto');
-const fs = require('fs');
-const pathmod = require('path');
 const { attachWebSocket } = require('./wsserver');
 const BLACKJACK_PAGE = require('./blackjackPage').PAGE;
 
-// Icon Dog Coin (ảnh lấy từ game, đã tách nền). Đọc 1 lần lúc khởi động cho nhẹ.
-// Thiếu file thì trang vẫn chạy — chỗ nào có icon sẽ trống, không vỡ giao diện.
-let COIN_PNG = null;
-try { COIN_PNG = fs.readFileSync(pathmod.join(__dirname, 'dogcoin.png')); } catch { }
-
-// Nhân vật leo thang (ảnh đã tách nền). Thiếu file thì trang vẫn chạy, chỉ mất hình.
-let HERO_PNG = null;
-try { HERO_PNG = fs.readFileSync(pathmod.join(__dirname, 'hero.png')); } catch { }
+// Toàn bộ ảnh gom ở images.js — thêm ảnh mới chỉ cần sửa bảng FILES bên đó,
+// không phải đụng vào file này nữa.
+const IMAGES = require('./images');
 
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
@@ -101,12 +94,7 @@ function startWebPlay(ctx) {
                 return res.end(BLACKJACK_PAGE);
             }
 
-            if (req.method === 'GET' && (path === '/dogcoin.png' || path === '/hero.png')) {
-                const img = path === '/hero.png' ? HERO_PNG : COIN_PNG;
-                if (!img) { res.writeHead(404); return res.end(); }
-                res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' });
-                return res.end(img);
-            }
+            if (IMAGES.serve(req, res, path)) return;
 
             if (req.method === 'POST' && path === '/api/login') {
                 const ip = req.socket.remoteAddress || '?';
@@ -437,6 +425,21 @@ const PAGE = [
     '@keyframes shakeX{0%,100%{transform:translate(0,0)}20%{transform:translate(-9px,4px)}40%{transform:translate(8px,-5px)}60%{transform:translate(-7px,3px)}80%{transform:translate(6px,-2px)}}',
     'body.storm{animation:shakeX .65s ease-in-out 2}',
     '.fx{position:fixed;top:-50px;z-index:97;pointer-events:none;animation-name:fxfall;animation-timing-function:linear;animation-fill-mode:forwards}',
+    // ---- Bảng kết quả Leo Thang: ảnh phản ứng theo 3 kết cục (lên đỉnh / dừng đúng lúc / cháy) ----
+    '#sPop{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:#000a;padding:16px}',
+    '#sPop.show{display:flex;animation:popFade .18s ease-out}',
+    '@keyframes popFade{from{opacity:0}to{opacity:1}}',
+    '#sPop .box{background:#161a24;border-radius:18px;padding:14px 14px 16px;max-width:330px;width:100%;text-align:center;border:3px solid #2a3142;box-shadow:0 12px 40px #000c;animation:popIn .32s cubic-bezier(.2,1.3,.5,1)}',
+    '@keyframes popIn{0%{transform:scale(.6) translateY(20px);opacity:0}100%{transform:none;opacity:1}}',
+    '#sPop img{width:100%;max-width:230px;border-radius:12px;display:block;margin:0 auto 10px;background:#fff}',
+    '#sPop .ttl{font-size:21px;font-weight:900;margin-bottom:2px}',
+    '#sPop .amt{font-size:26px;font-weight:900;margin:4px 0 2px}',
+    '#sPop .sub{font-size:13px;color:var(--muted)}',
+    '#sPop .cls{margin-top:12px;width:100%;padding:11px;background:#232735;color:#dfe6f5;font-weight:800;border-radius:10px}',
+    // viền + màu chữ đổi theo kết cục
+    '#sPop.win .box{border-color:#2ec26a}#sPop.win .amt{color:#4fe38a}',
+    '#sPop.top .box{border-color:var(--gold)}#sPop.top .amt{color:var(--gold)}',
+    '#sPop.lose .box{border-color:#e0474b}#sPop.lose .amt{color:#ff8a8a}',
     '@keyframes fxfall{to{transform:translateY(115vh) rotate(680deg)}}',
     // bảng 20 ván gần nhất (kiểu soi cầu trong Discord: mã ván · 3 viên · tổng · kết quả)
     '.hrow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}',
@@ -697,6 +700,14 @@ const PAGE = [
     '<div id="hist20" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
 
     '<div id="winpop"></div>',
+    // Bảng kết quả Leo Thang (ảnh phản ứng). Nằm ngoài mọi trang, chỉ Leo Thang gọi.
+    '<div id="sPop"><div class="box">',
+    '<img id="sPopImg" src="" alt="">',
+    '<div class="ttl" id="sPopTtl"></div>',
+    '<div class="amt" id="sPopAmt"></div>',
+    '<div class="sub" id="sPopSub"></div>',
+    '<button class="cls" onclick="sPopClose()">Đóng</button>',
+    '</div></div>',
     '<div id="toast"></div>',
     '<script>',
     'var TOKEN=localStorage.getItem("play_token")||"";var SEL="";var TT=0;var LOCKS=10;var PHASE="off";var BAL=0;',
@@ -1092,7 +1103,30 @@ const PAGE = [
     'SLAST={result:res,amount:net,bet:stake,fire:fire,floor:floor,',
     'safe:j.safe||[],traps:j.traps||[],',
     'hitFloor:(hitFloor===undefined?-1:hitFloor),hitCol:(hitCol===undefined?-1:hitCol)};',
-    'SG=null;SOVER=true;sTower();sPaintLast();showNet(net);sBand()}',
+    'SG=null;SOVER=true;sTower();sPaintLast();showNet(net);sBand();sPop(res,net,stake)}',
+    // ---- Bảng kết quả kèm ảnh phản ứng theo 3 kết cục ----
+    'function sPopClose(){var p=$("sPop");p.className="";p.style.display=""}',
+    'function sPop(res,net,stake){',
+    'var p=$("sPop"),kind,img,ttl,sub;',
+    'if(res==="Lên đỉnh"){kind="top";img="/thang100.jpg";ttl="🏆 LÊN TỚI ĐỈNH!";sub="Leo trọn thang, không dính cầu lửa nào"}',
+    'else if(net>=0){kind="win";img="/ngungdungluc.jpg";ttl="✅ NGƯNG ĐÚNG LÚC!";sub="Dừng ở tầng "+SLAST.floor+"/"+SF+" — khôn đấy"}',
+    'else{kind="lose";img="/thua.jpg";ttl="🔥 ĐẠP TRÚNG LỬA";sub="Cháy ở tầng "+(SLAST.hitFloor+1)+"/"+SF}',
+    '$("sPopImg").src=img;$("sPopTtl").textContent=ttl;$("sPopSub").textContent=sub;',
+    '$("sPopAmt").textContent=(net>=0?"+":"−")+vnd(Math.abs(net))+" Dogcoin";',
+    'p.className="show "+kind;',
+    // lên đỉnh: mưa emoji + rung màn hình cho ra chất ăn mừng
+    'if(kind==="top"){celebrate()}',
+    'clearTimeout(p._h);p._h=setTimeout(sPopClose,kind==="top"?5200:3600)}',
+    // mưa emoji ăn mừng (dùng lại .fx của hiệu ứng Bão bên Tài Xỉu)
+    'function celebrate(){',
+    'document.body.classList.remove("storm");void document.body.offsetWidth;document.body.classList.add("storm");',
+    'var EM=["🎉","🏆","🪙","💰","✨","🎊"];',
+    'for(var i=0;i<34;i++){var s=document.createElement("div");s.className="fx";s.textContent=EM[i%EM.length];',
+    's.style.left=(Math.random()*96)+"vw";s.style.fontSize=(18+Math.random()*30)+"px";',
+    's.style.zIndex="101";',   // trên cả bảng kết quả, không thì bị che
+    's.style.animationDuration=(1.4+Math.random()*1.8)+"s";s.style.animationDelay=(Math.random()*0.9)+"s";',
+    'document.body.appendChild(s);(function(el){setTimeout(function(){el.remove()},4200)})(s)}',
+    'setTimeout(function(){document.body.classList.remove("storm")},1500)}',
     'function sTap(c){if(!SG||sBusy)return;sBusy=true;',
     'var stake=SG.bet,fire=SG.fire,f=SG.floor;',
     'api("/api/stairs/step",{col:c}).then(function(j){sBusy=false;',
