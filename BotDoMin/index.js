@@ -969,30 +969,25 @@ const BANKRUPT_EMOJI = ['💀', '🪦', '🍜', '🥲', '📉'];   // đổi vò
 
 function historyTail(h, i) {
     const win = h.amount >= 0;
-    const money = `**${win ? '+' : '−'}${Math.abs(h.amount).toLocaleString()}** ${DOGCOIN_EMOJI}`;
-    const verdict = win ? 'thắng' : 'thua';
-    // bal có thể thiếu ở các ván ghi từ bản cũ -> bỏ hẳn phần đuôi, đừng in "còn null"
-    let tail = '';
+    let out = `${win ? 'Thắng' : 'Thua'} **${Math.abs(h.amount).toLocaleString()}** ${DOGCOIN_EMOJI}`;
+    // bal có thể thiếu ở các ván ghi từ bản cũ -> bỏ phần số dư, đừng in "số dư null"
     if (typeof h.bal === 'number') {
-        tail = h.bal <= 0
-            ? ` · ${BANKRUPT_EMOJI[i % BANKRUPT_EMOJI.length]} **PHÁ SẢN**`
-            : ` · còn ${h.bal.toLocaleString()} ${DOGCOIN_EMOJI}`;
+        out += ` · số dư ${h.bal.toLocaleString()} ${DOGCOIN_EMOJI}`;
+        if (h.bal <= 0) out += ` **PHÁ SẢN** ${BANKRUPT_EMOJI[i % BANKRUPT_EMOJI.length]}`;
     }
-    return `${money} ${verdict}${tail}`;
+    return out;
 }
 
-// Dò Mìn: 🏆/💰/💥 **Tên** · 8 mìn · mở 4 ô · cược 100 🐕 · +26 🐕 thắng · còn 1.234 🐕
+// Dò Mìn: 🏆/💰/💥 **Tên** · 8 mìn · mở 4 ô · Thắng 26 🐕 · số dư 1.234 🐕
 function minesHistoryLine(h, i) {
     const head = h.result === 'Jackpot' ? '🏆' : (h.amount >= 0 ? '💰' : '💥');
-    return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · ` +
-        `cược ${h.bet.toLocaleString()} ${DOGCOIN_EMOJI} · ${historyTail(h, i)}`;
+    return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · ${historyTail(h, i)}`;
 }
 
-// Leo Thang: 🏆/💰/🔥 **Tên** · 1 lửa · tầng 7 · cược 100 🐕 · −26 🐕 thua · 💀 PHÁ SẢN
+// Leo Thang: 🏆/💰/🔥 **Tên** · 1 lửa · tầng 7 · Thua 26 🐕 · số dư 0 🐕 PHÁ SẢN 💀
 function stairsHistoryLine(h, i) {
     const head = h.result === 'Lên đỉnh' ? '🏆' : (h.amount >= 0 ? '💰' : '🔥');
-    return `${head} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · ` +
-        `cược ${h.bet.toLocaleString()} ${DOGCOIN_EMOJI} · ${historyTail(h, i)}`;
+    return `${head} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · ${historyTail(h, i)}`;
 }
 
 
