@@ -1099,8 +1099,14 @@ function setStairsLast(userId, g, result, amount, hitFloor, hitCol) {
     });
 }
 
+// Ép tay hệ số vài mốc theo yêu cầu chủ server 19/08 (hạ nhẹ đỉnh 2 lửa):
+// công thức gốc ra tầng 9 = 12.65 · tầng 10 = 16.86 -> hạ còn 11.86 / 14.86.
+// Key 'lửa:tầng'; ảnh hưởng cả tiền trả (stairsWin), bảng hệ số client lẫn hũ 🏆.
+const STAIRS_MULTI_OVERRIDE = { '2:9': 11.86, '2:10': 14.86 };
 function stairsMulti(cleared, fire) {
     if (cleared <= 0) return 1;
+    const ov = STAIRS_MULTI_OVERRIDE[`${fire}:${cleared}`];
+    if (ov) return ov;
     const m = STAIRS_RTP * Math.pow(STAIRS_COLS / (STAIRS_COLS - fire), cleared);
     return Math.floor(m * 100) / 100;
 }
