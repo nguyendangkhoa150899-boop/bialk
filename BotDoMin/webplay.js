@@ -639,9 +639,11 @@ const PAGE = [
     '#paper.open{background:linear-gradient(175deg,#2f7e46 0%,#26663a 60%,#1e5230 100%);color:#e2ffe9;border-color:#6cc287;cursor:grab}',
     '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
     // ---- 🎡 vòng quay ----
-    // bánh xe chiếm gần hết bề ngang điện thoại, máy tính thì trần 520px cho khỏi lố
-    '#whWrap{position:relative;max-width:min(94vw,520px);margin:14px auto 0;aspect-ratio:1}',
-    '#whSvg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 18px #0009)}',
+    // bánh xe chiếm gần hết bề ngang điện thoại, máy tính thì trần 520px cho khỏi lố.
+    // KHÔNG dựa aspect-ratio: svg có viewBox vuông + width 100% tự giữ khung vuông,
+    // trình duyệt cũ không bị vòng tròn teo nhỏ / chữ đè nhau.
+    '#whWrap{position:relative;max-width:min(94vw,520px);margin:14px auto 0}',
+    '#whSvg{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 18px #0009)}',
     '#whRot{transform-origin:150px 150px;transform-box:view-box}',
     // 3 mũi tên gắn quanh vành: 🟡 đỉnh, 🔵 xoay 120°, 🟢 xoay 240°
     '.warr{position:absolute;inset:0;pointer-events:none}',
@@ -1455,14 +1457,16 @@ const PAGE = [
     // vẽ bánh xe 1 lần từ segments server đưa (đổi bảng nan chỉ cần sửa server)
     'function whBuild(){if(!WST||WBUILT)return;WBUILT=true;',
     'var N=WST.segments.length,step=360/N,R=138,cx=150,cy=150;',
-    'var FILL={"1.2":"#2c3350","1.4":"#274632","1.6":"#4e3a27","1.8":"#432750","2":"#27424e","2.2":"#54283a","10":"#6b5308"};',
+    'var FILL={"1.2":"#3949ab","1.4":"#1e8e4d","1.6":"#c96f14","1.8":"#7c3aed","2":"#0e8f9e","2.2":"#d13b55","10":"#f0b90b"};',
     'var h=\'<circle cx="150" cy="150" r="146" fill="#0e1016"/><g id="whRot">\';',
     'for(var i=0;i<N;i++){var m=WST.segments[i];',
     'var a0=(i*step-90)*Math.PI/180,a1=((i+1)*step-90)*Math.PI/180;',
     'var x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0),x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);',
     'h+=\'<path d="M150 150L\'+x0.toFixed(1)+" "+y0.toFixed(1)+\'A\'+R+" "+R+\' 0 0 1 \'+x1.toFixed(1)+" "+y1.toFixed(1)+\'Z" fill="\'+(FILL[String(m)]||"#2c3350")+\'" stroke="#0e1016" stroke-width="1.5"/>\';',
-    'var am=(i*step+step/2-90)*Math.PI/180,tx=cx+108*Math.cos(am),ty=cy+108*Math.sin(am);',
-    'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+(m>=10?"#ffd977":"#e8eaf2")+\'" font-size="\'+(m>=10?15:12)+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(i*step+step/2)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+(m>=10?"x10🏆":"x"+m)+"</text>"}',
+    // Chữ xoay DỌC THEO BÁN KÍNH (đọc từ tâm ra ngoài) như bàn quay thật — 24 nan
+    // chữ nằm ngang theo vành là đè lên nhau, xoay dọc thì mỗi nan một làn riêng.
+    'var mid=i*step+step/2,am=(mid-90)*Math.PI/180,tx=cx+92*Math.cos(am),ty=cy+92*Math.sin(am);',
+    'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+(m>=10?"#3d2c05":"#fff")+\'" font-size="\'+(m>=10?16:13)+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(mid-90)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+(m>=10?"x10 🏆":"x"+m)+"</text>"}',
     'h+=\'</g><circle cx="150" cy="150" r="30" fill="#161926" stroke="#2a2f42" stroke-width="2"/><text x="150" y="150" font-size="22" text-anchor="middle" dominant-baseline="central">🎡</text>\';',
     '$("whSvg").innerHTML=h}',
     // quay bánh xe tới nan idx (thêm 5 vòng cho đã mắt), luôn quay theo một chiều
