@@ -21,6 +21,10 @@ const DATA_FILE = './database.json';
 const STARTING_DOGCOIN = 20;
 const DAILY_DOGCOIN = 400;
 const HOURLY_DOGCOIN = 100; // /nghien — điểm danh con nghiện, 1 tiếng/lần
+const NGHIEN_COOLDOWN_MS = 60 * 60 * 1000;
+const DAILY_MONTH_BONUS = 5000; // điểm danh đủ MỌI ngày trong tháng nhận thêm cục này
+// Kênh đăng công khai mỗi lần có người lụm nghiện (cả /nghien lẫn nút trên web)
+const NGHIEN_ANNOUNCE_CHANNEL_ID = '1538752789499347037';
 const DOGCOIN_EMOJI = '<:dogcoin:1533903243028205579>';
 const DOGCOIN_EMOJI_ID = '1533903243028205579';
 // /addtienall: role được tag + kênh đăng thông báo phát Dogcoin toàn server
@@ -240,6 +244,87 @@ function listTransferTargets() {
     return out;
 }
 
+// ===== 📅 ĐIỂM DANH THÁNG + 💉 NGHIỆN — logic DÙNG CHUNG Discord & web =====
+// Sổ tháng lưu ở userData.dailyMonth ('2026-08') + dailyDays ([1,5,18...]);
+// lastDaily (timestamp) giữ lại để tương thích /diemdanh cũ + chặn double
+// nhận đúng ngày deploy (người đã /diemdanh bản cũ hôm đó có lastDaily nhưng
+// dailyDays còn trống).
+function vnParts() {
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+    return { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
+}
+function dailyBookOf(userData) {
+    const { y, m } = vnParts();
+    const key = `${y}-${String(m).padStart(2, '0')}`;
+    if (userData.dailyMonth !== key || !Array.isArray(userData.dailyDays)) {
+        userData.dailyMonth = key;
+        userData.dailyDays = [];
+    }
+    return userData;
+}
+function dailyState(userId) {
+    const u = dailyBookOf(getUserData(userId));
+    const { y, m, d } = vnParts();
+    const daysInMonth = new Date(y, m, 0).getDate();
+    // chuỗi = số ngày liên tiếp tính đến hôm nay (chưa điểm danh hôm nay thì tính đến hôm qua)
+    const set = new Set(u.dailyDays);
+    let streak = 0;
+    for (let cur = set.has(d) ? d : d - 1; cur >= 1 && set.has(cur); cur--) streak++;
+    return {
+        year: y, month: m, today: d, daysInMonth,
+        days: u.dailyDays.slice().sort((a, b) => a - b),
+        checkedToday: set.has(d),
+        streak,
+        amount: DAILY_DOGCOIN,
+        monthBonus: DAILY_MONTH_BONUS,
+        nghien: { amount: HOURLY_DOGCOIN, nextAt: (u.lastNghien || 0) + NGHIEN_COOLDOWN_MS, now: Date.now() },
+        balance: u.points || 0,
+    };
+}
+function claimDaily(userId) {
+    const u = dailyBookOf(getUserData(userId));
+    const { y, m, d } = vnParts();
+    const todayVN = new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const lastDayVN = u.lastDaily ? new Date(u.lastDaily).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
+    if (u.dailyDays.includes(d) || lastDayVN === todayVN) {
+        if (!u.dailyDays.includes(d)) u.dailyDays.push(d); // đồng bộ lịch cho người /diemdanh bản cũ hôm nay
+        // còn bao lâu tới 00:00 VN
+        const nowVN = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+        const minsLeft = (24 * 60) - (nowVN.getHours() * 60 + nowVN.getMinutes());
+        return { error: `Hôm nay điểm danh rồi! Qua 00:00 (còn ${Math.floor(minsLeft / 60)} giờ ${minsLeft % 60} phút) là điểm danh tiếp được.` };
+    }
+    u.dailyDays.push(d);
+    u.lastDaily = Date.now();
+    updatePoints(userId, DAILY_DOGCOIN);
+    // đủ mọi ngày trong tháng -> thưởng thêm cục bonus (mỗi tháng 1 lần là tự nhiên
+    // vì mỗi ngày chỉ điểm danh được 1 lần, đủ tháng đúng vào ngày cuối)
+    const daysInMonth = new Date(y, m, 0).getDate();
+    let bonus = 0;
+    if (u.dailyDays.length >= daysInMonth) {
+        bonus = DAILY_MONTH_BONUS;
+        updatePoints(userId, bonus);
+    }
+    saveDbNow();
+    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận ${DAILY_DOGCOIN.toLocaleString()}${bonus ? ` + BONUS đủ tháng ${bonus.toLocaleString()}` : ''} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
+    return { ok: true, amount: DAILY_DOGCOIN, bonus, state: dailyState(userId), balance: u.points || 0 };
+}
+function claimNghien(userId) {
+    const u = getUserData(userId);
+    const passed = Date.now() - (u.lastNghien || 0);
+    if (passed < NGHIEN_COOLDOWN_MS) {
+        const msLeft = NGHIEN_COOLDOWN_MS - passed;
+        return { error: `Nghiện vừa thôi! Còn ${Math.ceil(msLeft / 60000)} phút nữa mới lụm tiếp được.`, msLeft };
+    }
+    updatePoints(userId, HOURLY_DOGCOIN);
+    u.lastNghien = Date.now();
+    writeLog('ADMIN', `[NGHIỆN] ${u.name || userId} nhận ${HOURLY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
+    // Đăng công khai vào kênh nghiện — lỗi kênh không được chặn việc nhận tiền
+    client.channels.fetch(NGHIEN_ANNOUNCE_CHANNEL_ID)
+        .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện — gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
+        .catch(() => {});
+    return { ok: true, amount: HOURLY_DOGCOIN, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: u.points || 0 };
+}
+
 // ===== PHÁT DOGCOIN TOÀN SERVER (gọi từ dashboard) =====
 // Cộng `amount` cho MỌI ví đang tồn tại rồi đăng thông báo tag role vào kênh thông báo.
 // Chỉ cộng ví đã có (ai từng chơi); người mới vào sau vẫn nhận STARTING_DOGCOIN như thường.
@@ -337,7 +422,7 @@ function findPalByName(input) {
 // Pool quay: chỉ pal từ paldex #80 (Helzephyr) trở lên; loại Xenolord + Hartalis.
 // Boltmane/Dragostrophe (pal Predator, không có số paldex) cũng bị loại theo luật này.
 const GACHA_MIN_DEX = 80;
-const GACHA_EXCLUDE_CODES = ['DarkMechaDragon', 'LegendDeer']; // Xenolord, Hartalis
+const GACHA_EXCLUDE_CODES = ['DarkMechaDragon', 'LegendDeer', 'KingBahamut_Dragon']; // Xenolord, Hartalis, Blazamut Ryu
 function gachaPool() {
     return (PAL_DATA.all || []).filter(p => (p.dex || 0) >= GACHA_MIN_DEX && !GACHA_EXCLUDE_CODES.includes(p.code));
 }
@@ -1671,6 +1756,8 @@ client.once('ready', async (c) => {
             webPlayUrl: WEB_PLAY_URL,
             transfer: webTransfer,
             transferTargets: listTransferTargets,
+            // 📅 điểm danh tháng + 💉 nghiện — cùng logic với /diemdanh, /nghien
+            daily: { state: dailyState, claim: claimDaily, nghien: claimNghien },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -2616,7 +2703,7 @@ function getWithdrawMessageData() {
         `**🎮 Chuyển vào game** — trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
         `**💬 Chuyển ra Discord** — trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
         '',
-        `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — quay từ ${gachaPool().length} pal MẠNH (paldex #${GACHA_MIN_DEX} Helzephyr trở lên, có cả pal raid, trừ Xenolord & Hartalis). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
+        `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — quay từ ${gachaPool().length} pal MẠNH (paldex #${GACHA_MIN_DEX} Helzephyr trở lên, có cả pal raid, trừ Xenolord, Hartalis & Blazamut Ryu). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
         `**🎯 Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin** — tự chọn 1 trong ${buyable} pal (không có pal raid).`,
         `Pal nào cũng là bản **Boss (Alpha)** 👑, **${PAL_SHOP.stars} sao** ⭐, **IV ${PAL_SHOP.ivs}**, ` +
             `**${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** + **${PAL_SHOP.passiveSlots} passive** bạn tự chọn.`,
@@ -2877,45 +2964,19 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'diemdanh') {
-            const userData = getUserData(userId);
-            // Reset theo NGÀY LỊCH (giờ Việt Nam) chứ không phải đủ 24 tiếng:
-            // hôm nay điểm danh 23h thì 00:00 hôm sau là điểm danh được luôn.
-            // So sánh bằng chuỗi ngày (vd "08/08/2026") — VPS đặt múi giờ nào
-            // cũng ra đúng ngày VN nhờ timeZone cố định.
-            const todayVN = new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-            const lastDayVN = userData.lastDaily
-                ? new Date(userData.lastDaily).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
-                : '';
-
-            if (lastDayVN === todayVN) {
-                // Còn bao lâu tới 00:00 VN — tính từ giờ VN hiện tại.
-                const nowVN = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
-                const minsLeft = (24 * 60) - (nowVN.getHours() * 60 + nowVN.getMinutes());
-                const hours = Math.floor(minsLeft / 60);
-                const mins = minsLeft % 60;
-                return interaction.reply({ content: `⏳ Hôm nay bạn điểm danh rồi! Qua **00:00** (còn **${hours} giờ ${mins} phút**) là điểm danh tiếp được.`, ephemeral: true });
-            }
-
-            updatePoints(userId, DAILY_DOGCOIN);
-            userData.lastDaily = Date.now();
-            writeLog('ADMIN', `[ĐIỂM DANH] ${interaction.user.tag} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${DAILY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
+            // Logic chung với web (claimDaily): reset theo NGÀY LỊCH giờ VN, ghi sổ
+            // tháng cho lịch điểm danh trên web, đủ tháng nhận thêm bonus.
+            const r = claimDaily(userId);
+            if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}${r.bonus ? ` + **${r.bonus.toLocaleString()}** ${DOGCOIN_EMOJI} BONUS đủ tháng 🏆` : ''}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}\nChuỗi: **${r.state.streak} ngày** — xem lịch tháng trên web (tab 📅).`);
         }
 
         if (interaction.commandName === 'nghien') {
-            const userData = getUserData(userId);
-            // Cooldown LĂN 60 phút tính từ lần nhận trước (khác /diemdanh reset theo
-            // ngày lịch) — nhận 10h30 thì 11h30 mới nhận tiếp, không phải mốc giờ tròn.
-            const COOLDOWN_MS = 60 * 60 * 1000;
-            const passed = Date.now() - (userData.lastNghien || 0);
-            if (passed < COOLDOWN_MS) {
-                const minsLeft = Math.ceil((COOLDOWN_MS - passed) / 60000);
-                return interaction.reply({ content: `⏳ Nghiện vừa thôi! Còn **${minsLeft} phút** nữa mới điểm danh tiếp được.`, ephemeral: true });
-            }
-            updatePoints(userId, HOURLY_DOGCOIN);
-            userData.lastNghien = Date.now();
-            writeLog('ADMIN', `[NGHIỆN] ${interaction.user.tag} nhận ${HOURLY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${getUserData(userId).points.toLocaleString()}`);
-            return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI} — quay lại sau 1 tiếng nhé.`);
+            // Cooldown LĂN 60 phút từ lần nhận trước — logic chung với web (claimNghien),
+            // có đăng công khai vào kênh nghiện.
+            const r = claimNghien(userId);
+            if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
+            return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI} — quay lại sau 1 tiếng nhé.`);
         }
 
         if (interaction.commandName === 'sodu') {

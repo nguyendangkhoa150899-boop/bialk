@@ -194,6 +194,23 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, { ok: true, balance: r.balance, toName: r.toName });
                 }
 
+                // ===== 📅 ĐIỂM DANH THÁNG + 💉 NGHIỆN =====
+                // Toàn bộ luật + tiền nằm ở index.js (ctx.daily) — dùng chung với
+                // /diemdanh, /nghien bên Discord nên không bao giờ lệch nhau.
+                if (ctx.daily && path === '/api/daily/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.daily.state(userId) });
+                }
+                if (ctx.daily && req.method === 'POST' && path === '/api/daily/claim') {
+                    const r = ctx.daily.claim(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
+                if (ctx.daily && req.method === 'POST' && path === '/api/daily/nghien') {
+                    const r = ctx.daily.nghien(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
+
                 if (req.method === 'POST' && path === '/api/bet') {
                     const body = await readBody(req);
                     const tx = ctx.getTX();
@@ -612,6 +629,20 @@ const PAGE = [
     '#paper.locked{background:linear-gradient(175deg,#7e2f2f 0%,#6b2626 60%,#571e1e 100%);color:#ffdfdf;border-color:#b95c5c;cursor:not-allowed}',
     '#paper.open{background:linear-gradient(175deg,#2f7e46 0%,#26663a 60%,#1e5230 100%);color:#e2ffe9;border-color:#6cc287;cursor:grab}',
     '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
+    // ---- 📅 điểm danh ----
+    '#dChips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}',
+    '.dchip{background:#12141a;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}',
+    '.dchip .t{font-size:11px;color:var(--muted)}.dchip .v{font-weight:800;font-size:15px;color:var(--gold);margin-top:2px}',
+    '#dcal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}',
+    '.dw{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}',
+    '.dd{border-radius:10px;border:1px solid var(--line);background:#12141a;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#5a6072}',
+    '.dd small{font-size:8px;font-weight:700;letter-spacing:.4px;color:#c98a2b}',
+    '.dd.done{background:linear-gradient(180deg,#3a2c14,#2a1f0e);border-color:#e0b750;color:#ffd977}',
+    '.dd.today{border:2px solid #8b5cf6;color:#cbb6ff;background:#1a1430}',
+    '.dd.today.done{border-color:#e0b750;color:#ffd977;background:linear-gradient(180deg,#3a2c14,#2a1f0e)}',
+    '#dprog{height:10px;background:#12141a;border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-top:8px}',
+    '#dprogIn{height:100%;background:linear-gradient(90deg,#e0b750,#ffd977);width:0%;transition:width .4s}',
+    '#dClaim:disabled,#ngBtn:disabled{opacity:.55}',
     // ---- chat ----
     '#chatBox{height:190px;overflow-y:auto;background:#12141a;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:13px}',
     '.cmsg{padding:3px 0;word-break:break-word}.cmsg b{color:var(--gold)}.cmsg .ct{color:var(--muted);font-size:11px;margin-left:6px}',
@@ -638,6 +669,7 @@ const PAGE = [
     '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
     '<button id="navBj" onclick="go(\'bj\')">🂡 Blackjack</button>',
+    '<button id="navDaily" onclick="go(\'daily\')">📅 Điểm danh</button>',
     '</div>',
 
     // ================= TRANG TÀI XỈU =================
@@ -739,6 +771,30 @@ const PAGE = [
     '<div id="pageBj" class="hidden">',
     '<iframe id="bjFrame" title="Blackjack" style="display:block;width:100%;height:82vh;min-height:540px;border:0;border-radius:12px;background:#0a1f14"></iframe>',
     '</div>',
+
+    // ================= TRANG ĐIỂM DANH (dashboard người chơi) =================
+    // Lịch tháng kiểu app điểm danh: ngày đã nhận vàng + nhãn CHUỖI, hôm nay viền tím,
+    // progress đủ tháng ăn bonus. Nghiện = nút đếm ngược 60 phút theo GIỜ SERVER.
+    '<div id="pageDaily" class="hidden">',
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">📅 Điểm Danh</h2><div class="muted" id="dMonth">Tháng —</div></div>',
+    '<div id="dChips">',
+    '<div class="dchip"><div class="t">🔥 Chuỗi</div><div class="v" id="dStreak">—</div></div>',
+    '<div class="dchip"><div class="t">🎁 Mỗi ngày</div><div class="v" id="dAmt">—</div></div>',
+    '<div class="dchip"><div class="t">🏆 Đủ tháng</div><div class="v" id="dBonus">—</div></div>',
+    '</div>',
+    '<div id="dcal"></div>',
+    '<div class="row" style="margin-top:10px"><div class="muted" id="dCount" style="font-size:13px">—</div><div class="muted" id="dBonusNote" style="font-size:13px"></div></div>',
+    '<div id="dprog"><div id="dprogIn"></div></div>',
+    '<button class="btn-full" id="dClaim" onclick="dailyClaim()">✨ ĐIỂM DANH NGAY</button>',
+    '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center">Điểm danh ở đây hay gõ <b>/diemdanh</b> trong Discord đều tính chung 1 lượt/ngày.</div>',
+    '</div>',
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
+    '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần — bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
+    '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
+    '</div>',
+    '</div>', // hết #pageDaily
 
     // Chat nằm NGOÀI cả ba trang -> mọi game dùng chung một phòng, đổi tab vẫn thấy
     // nguyên cuộc trò chuyện. Đặt TRÊN bảng lịch sử để khỏi phải cuộn xa mới tới ô chat.
@@ -845,7 +901,7 @@ const PAGE = [
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
     'mBarDrag();mSync();sSync();',
     'var saved=localStorage.getItem("play_page");',
-    'go(saved==="mine"||saved==="stair"||saved==="bj"?saved:"tx")}',
+    'go(saved==="mine"||saved==="stair"||saved==="bj"||saved==="daily"?saved:"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
     'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
     'function allIn(){document.getElementById("amt").value=BAL}',
@@ -989,16 +1045,18 @@ const PAGE = [
     '$("pageMine").classList.toggle("hidden",p!=="mine");',
     '$("pageStair").classList.toggle("hidden",p!=="stair");',
     '$("pageBj").classList.toggle("hidden",p!=="bj");',
+    '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
     '$("chatCard")&&$("chatCard").classList.toggle("hidden",p==="bj");', // blackjack có chat riêng bên trong
     '$("navTx").classList.toggle("on",p==="tx");',
     '$("navMine").classList.toggle("on",p==="mine");',
     '$("navStair").classList.toggle("on",p==="stair");',
     '$("navBj").classList.toggle("on",p==="bj");',
+    '$("navDaily").classList.toggle("on",p==="daily");',
     // Mở tab blackjack: nạp iframe LẦN ĐẦU, kèm token để tự đăng nhập (không nhập lại).
     'if(p==="bj"){var _f=$("bjFrame");if(_f&&!_f.src&&TOKEN)_f.src="/blackjack#tok="+encodeURIComponent(TOKEN)}',
     'localStorage.setItem("play_page",p);',
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p!=="bj")refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily")dailySync();else if(p!=="bj")refresh()}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
@@ -1344,6 +1402,46 @@ const PAGE = [
     'toast("✅ Nhận "+vnd(j.win)+" Dogcoin");',
     'sFinish(j,"Dừng (Thắng)",j.win-stake,stake,fire,floor)',
     '}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
+    '',
+    // ===== 📅 ĐIỂM DANH + 💉 NGHIỆN =====
+    // DOFF = lệch giờ máy người chơi so với server — đồng hồ đếm ngược nghiện chạy
+    // theo giờ SERVER, chỉnh đồng hồ máy không ăn gian được.
+    'var DST=null,DOFF=0;',
+    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)})}',
+    'function dRender(){if(!DST)return;',
+    '$("dMonth").textContent="Tháng "+DST.month+" · "+DST.year;',
+    '$("dStreak").textContent=DST.streak+" ngày";',
+    '$("dAmt").textContent="+"+DST.amount.toLocaleString("vi-VN");',
+    '$("dBonus").textContent="+"+DST.monthBonus.toLocaleString("vi-VN");',
+    'var done={};DST.days.forEach(function(d){done[d]=1});',
+    'var first=new Date(DST.year,DST.month-1,1).getDay();', // 0 = Chủ nhật
+    'var html=["CN","T2","T3","T4","T5","T6","T7"].map(function(w){return \'<div class="dw">\'+w+"</div>"}).join("");',
+    'for(var i=0;i<first;i++)html+="<div></div>";',
+    'for(var d=1;d<=DST.daysInMonth;d++){var cls="dd";if(done[d])cls+=" done";if(d===DST.today)cls+=" today";',
+    'html+=\'<div class="\'+cls+\'">\'+d+(done[d]?"<small>CHUỖI</small>":"")+"</div>"}',
+    '$("dcal").innerHTML=html;',
+    '$("dCount").textContent=DST.days.length+"/"+DST.daysInMonth+" ngày";',
+    '$("dBonusNote").textContent="đủ "+DST.daysInMonth+" ngày → +"+DST.monthBonus.toLocaleString("vi-VN")+" 🏆";',
+    '$("dprogIn").style.width=Math.round(DST.days.length*100/DST.daysInMonth)+"%";',
+    'var b=$("dClaim");b.disabled=DST.checkedToday;',
+    'b.textContent=DST.checkedToday?"✅ HÔM NAY ĐIỂM DANH RỒI — MAI QUAY LẠI":"✨ ĐIỂM DANH NGAY (+"+DST.amount.toLocaleString("vi-VN")+")";',
+    '$("ngInfo").textContent="+"+DST.nghien.amount.toLocaleString("vi-VN")+" / tiếng";',
+    'ngTick()}',
+    'function dailyClaim(){var b=$("dClaim");if(b.disabled)return;b.disabled=true;',
+    'api("/api/daily/claim",{}).then(function(j){setBal(j.balance);DST=j.state;DOFF=j.state.nghien.now-Date.now();dRender();',
+    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(j.bonus?" · 🏆 BONUS đủ tháng +"+j.bonus.toLocaleString("vi-VN")+"!":""));',
+    'if(j.bonus)celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
+    'function nghienClaim(){var b=$("ngBtn");if(b.disabled)return;b.disabled=true;',
+    'api("/api/daily/nghien",{}).then(function(j){setBal(j.balance);',
+    'if(DST){DST.nghien.nextAt=j.nextAt;DOFF=j.now-Date.now()}',
+    'toast("💉 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin — hẹn 1 tiếng nữa!");ngTick()',
+    '}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
+    'function ngTick(){var b=$("ngBtn");if(!b||!DST)return;',
+    'var left=DST.nghien.nextAt-(Date.now()+DOFF);',
+    'if(left<=0){b.disabled=false;b.textContent="💉 LỤM "+DST.nghien.amount.toLocaleString("vi-VN")+" NGAY";return}',
+    'b.disabled=true;var mm=Math.floor(left/60000),ss=Math.floor(left%60000/1000);',
+    'b.textContent="⏳ CÒN "+(mm<10?"0":"")+mm+":"+(ss<10?"0":"")+ss+" NỮA MỚI LỤM ĐƯỢC"}',
+    'setInterval(ngTick,1000);',
     '',
     // Safari trên iPhone vẫn cho chụm 2 ngón dù CSS đã cấm — nó dùng sự kiện riêng
     // (gesture*), phải chặn thêm ở đây. Không đụng tới touchend/click nên bấm nhanh
