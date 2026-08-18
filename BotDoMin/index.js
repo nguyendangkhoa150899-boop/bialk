@@ -1560,6 +1560,23 @@ function runStatsBoardLoop() {
     setInterval(() => { repostBoard(statsBoard, getStatsBoardData, '_statsMsgId', 'BẢNG THỐNG KÊ').catch(() => { }); }, 5000);
 }
 
+// Bù tay dữ liệu NỔ HŨ cũ (trúng trước khi bảng thống kê ra đời) — CỘNG THÊM vào
+// thống kê, KHÔNG đụng ví. Tra số tiền hũ cũ trong log: grep "NỔ HŨ" pm2 log.
+function addJackpotStat(userId, count, total) {
+    userId = String(userId || '').trim();
+    count = Math.floor(Number(count) || 0);
+    total = Math.floor(Number(total) || 0);
+    if (!/^\d{15,20}$/.test(userId)) return { error: 'Discord ID không hợp lệ' };
+    if (!dbCache[userId] || typeof dbCache[userId] !== 'object') return { error: 'Người này chưa có ví' };
+    if (count < 0 || total < 0 || (!count && !total)) return { error: 'Nhập số lần hoặc số tiền (≥ 0, không cùng 0)' };
+    if (count) statAdd(userId, 'jpCount', count);
+    if (total) statAdd(userId, 'jpTotal', total);
+    saveDbNow();
+    const name = NAME_OVERRIDE[userId] || (dbCache[userId].name || userId);
+    writeLog('ADMIN', `[THỐNG KÊ] Bù nổ hũ cho ${name}: +${count} lần · +${total.toLocaleString()} Dogcoin`);
+    return { ok: true, name };
+}
+
 // Reset từng loại (admin bấm ở panel): key = 1 trong 9 cột, hoặc 'all' = xoá sạch
 function resetStats(key) {
     const KEYS = ['adminIn', 'sentOut', 'recvIn', 'toGame', 'fromGame', 'tx', 'mines', 'stairs', 'bj'];
@@ -1699,6 +1716,7 @@ client.once('ready', async (c) => {
             startStatsBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStatsBoard(ch); return ch.name; },
             stopStatsBoard: () => stopStatsBoard(),
             resetStats,
+            addJackpotStat,
             // Bảng mời chơi Leo Thang
             getStairs: () => ({ on: !!stairsBoard.message, channelId: dbCache._stairsChannelId || '' }),
             startStairs: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStairsBoard(ch); return ch.name; },

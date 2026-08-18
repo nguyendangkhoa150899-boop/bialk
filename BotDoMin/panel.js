@@ -379,6 +379,12 @@ function startPanel(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true });
                 }
+                if (path === '/api/stats/addjp') {
+                    if (!ctx.addJackpotStat) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.addJackpotStat(body.userId, body.count, body.total);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, name: r.name });
+                }
                 // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
                 if (path === '/api/channels/add') {
                     const channelId = String(body.channelId || '').trim();
@@ -994,6 +1000,19 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Reset đưa cột đó của MỌI người chơi về 0 — không đụng tới ví.</div>
       </div>
+      <div class="card">
+        <h3>✍️ Bù tay Nổ hũ (trúng trước khi có bảng thống kê)</h3>
+        <label>Discord ID người chơi</label>
+        <input id="jpUser" placeholder="vd: 537485304819351552">
+        <div class="row">
+          <div style="flex:1"><label>Cộng thêm SỐ LẦN nổ</label><input id="jpCount" inputmode="numeric" value="1"></div>
+          <div style="flex:1"><label>Cộng thêm TỔNG TIỀN hũ</label><input id="jpTotal" inputmode="numeric" placeholder="vd: 200000"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="jpAdd()">➕ Ghi vào thống kê</button>
+        </div>
+        <div class="note">Chỉ ghi vào BẢNG THỐNG KÊ — <b>không</b> cộng tiền vào ví. Tra số tiền hũ cũ trên VPS: <code>grep "NỔ HŨ" ~/.pm2/logs/BotDoMin-out.log</code></div>
+      </div>
     </div>
 
     <!-- NGƯỜI CHƠI -->
@@ -1417,6 +1436,9 @@ function bjBoardStart(){const c=document.getElementById('bjChannel').value.trim(
 function stBoardStart(){const c=document.getElementById('stChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stats/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Thống kê ở #'+j.name);refresh();});}
 async function stBoardStop(){if(!await uiConfirm('Gỡ bảng Thống kê khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stats/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Thống kê');refresh();});}
 async function stReset(key){if(!await uiConfirm('Reset thống kê "'+key+'" của MỌI người chơi về 0? (không đụng ví)','Reset','btn-red'))return;api('/api/stats/reset',{key}).then(()=>{toast('🧹 Đã reset '+key);refresh();});}
+function jpAdd(){const u=document.getElementById('jpUser').value.trim();const c=parseInt(document.getElementById('jpCount').value)||0;const t=parseInt(document.getElementById('jpTotal').value)||0;
+if(!u)return toast('Nhập Discord ID');if(!c&&!t)return toast('Nhập số lần hoặc số tiền');
+api('/api/stats/addjp',{userId:u,count:c,total:t}).then(j=>{toast('➕ Đã ghi nổ hũ cho '+(j.name||u));document.getElementById('jpTotal').value='';refresh();});}
 async function bjBoardStop(){if(!await uiConfirm('Gỡ bảng Blackjack khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/bj/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Blackjack');refresh();});}
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
