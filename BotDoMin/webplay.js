@@ -260,6 +260,14 @@ function startWebPlay(ctx) {
                         if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                         return sendJSON(res, 200, r);
                     }
+
+                    // 🍀 chọn 1 trong 4 hộp sau khi mở trúng cỏ 4 lá
+                    if (req.method === 'POST' && path === '/api/mines/lucky') {
+                        const body = await readBody(req);
+                        const r = mines.luckyPick(userId, Math.floor(Number(body.box)) || 0);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
                 }
 
                 // ===== LEO THANG ===== (giống dò mìn: tiền và hệ số tính ở index.js)
@@ -299,6 +307,14 @@ function startWebPlay(ctx) {
                     }
                     if (req.method === 'POST' && path === '/api/stairs/cashout') {
                         const r = stairs.cashout(userId);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+
+                    // 🍀 chọn 1 trong 4 hộp sau khi đạp trúng cỏ 4 lá
+                    if (req.method === 'POST' && path === '/api/stairs/lucky') {
+                        const body = await readBody(req);
+                        const r = stairs.luckyPick(userId, Math.floor(Number(body.box)) || 0);
                         if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                         return sendJSON(res, 200, r);
                     }
@@ -507,6 +523,21 @@ const PAGE = [
     '.mtile.boom{background:linear-gradient(180deg,#e05555,#8e2020);border-color:#ff9a9a;border-bottom-color:#5d1414;color:#fff;cursor:default;animation:boomPop .32s ease-out}',
     // 🛡️ ô mìn đã bị khiên đỡ: xịt rồi, hiện khiên, chết cứng
     '.mtile.shieldsave{background:linear-gradient(180deg,#2a3b55,#1d2a40);border-color:#6fa8ff;border-bottom-color:#14213a;color:#fff;cursor:default;animation:boomPop .32s ease-out}',
+    // 🍀 ô cỏ 4 lá (vừa mở trúng / lộ ra cuối ván) — XANH LÁ, khác hẳn ô khiên xanh dương
+    '.mtile.lucky{background:linear-gradient(180deg,#2ec26a,#1a7a40);border-color:#7dffb0;border-bottom-color:#0f4a26;color:#fff;cursor:default;animation:boomPop .32s ease-out}',
+    '.scell.lucky{background:linear-gradient(180deg,#2ec26a,#1a7a40);border-color:#7dffb0;color:#fff}',
+    // hộp chọn quà 🍀
+    '#luckyPick{position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;background:#000c;padding:16px}',
+    '#luckyPick.show{display:flex}',
+    '#luckyPick .box{background:#12241a;border:2px solid #2ec26a;border-radius:18px;padding:20px;max-width:360px;width:100%;text-align:center;box-shadow:0 12px 44px #000d}',
+    '#luckyPick .clover{font-size:52px;animation:cloverPulse 1.4s ease-in-out infinite}',
+    '@keyframes cloverPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}',
+    '#luckyPick h2{color:#7dffb0;font-size:19px;margin:4px 0 2px}',
+    '#luckyPick .sub{font-size:13px;color:#a9c2b4;margin-bottom:14px}',
+    '#luckyPick .gifts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}',
+    '#luckyPick .gifts button{font-size:34px;padding:14px 0;background:#1a3a28;border:1px solid #2ec26a55;border-radius:14px;transition:transform .12s}',
+    '#luckyPick .gifts button:active{transform:scale(.88)}',
+    '#luckyPick .gifts button:disabled{opacity:.4}',
     '@keyframes boomPop{0%{transform:scale(.5) rotate(-20deg)}70%{transform:scale(1.28) rotate(8deg)}100%{transform:scale(1)}}',
     '.mtile.shown{background:linear-gradient(180deg,#3a2030,#2a1622);border-color:#6b3a4a;border-bottom-color:#1e1017;color:#c46b7b;cursor:default}',
     // hàng chỉnh tiền cược / số mìn
@@ -716,6 +747,15 @@ const PAGE = [
     '<div id="hist20" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
 
     '<div id="winpop"></div>',
+    // 🍀 CỎ 4 LÁ: chọn 1 trong 4 hộp quà (phần thưởng do server quay lúc bấm)
+    '<div id="luckyPick"><div class="box">',
+    '<div class="clover">🍀</div>',
+    '<h2>CỎ 4 LÁ MAY MẮN!</h2>',
+    '<div class="sub">Chọn 1 hộp — biết đâu 🏆 NỔ HŨ x2000!</div>',
+    '<div class="gifts">',
+    '<button data-g="1">🎁</button><button data-g="2">🎁</button>',
+    '<button data-g="3">🎁</button><button data-g="4">🎁</button>',
+    '</div></div></div>',
     // 🧧 Lộc lá: chuyển Dogcoin cho người chơi khác. Gõ tên để lọc danh sách ví đã có,
     // hoặc dán thẳng Discord ID (cho người chưa hiện trong danh sách).
     '<div id="lolaPop"><div class="box">',
@@ -1008,6 +1048,7 @@ const PAGE = [
     '$("mMinesLab").textContent="Số mìn (1–"+(MT-1)+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
     'MG=j.game||null;MLAST=(!MG&&j.last)?j.last:null;MOVER=!!MLAST;mDrawGrid();',
+    'if(MG&&MG.luckyPick)luckyOpen("mines");',   // F5 giữa lúc đang chọn hộp -> mở lại
     'if(MG){$("mMines").value=MG.totalMines;$("mBet").value=MG.bet}',
     'else if(MLAST){$("mMines").value=MLAST.totalMines;$("mBet").value=MLAST.bet;mPaintLast()}',
     'if(MAXBET)$("mNote").textContent="Cược tối đa "+vnd(MAXBET)+" · nhận tối đa "+vnd(MAXWIN)+" mỗi ván";',
@@ -1017,19 +1058,48 @@ const PAGE = [
     'for(var i=0;i<MT;i++){var t=$("mk"+i);if(!t)continue;t.onclick=null;',
     'if(i===MLAST.hit){t.className="mtile boom";t.innerHTML="💣"}',
     'else if(MLAST.revealed.indexOf(i)>=0){t.className="mtile coin";t.innerHTML=COINIMG}',
+    'else if(MLAST.defused&&MLAST.defused.indexOf(i)>=0){t.className="mtile shieldsave";t.textContent="🛡️"}',
+    'else if(i===MLAST.lucky){t.className="mtile lucky";t.textContent="🍀"}',   // lộ ô 🍀 chưa mở
     'else if(MLAST.mines.indexOf(i)>=0){t.className="mtile shown";t.innerHTML="💣"}',
     'else{t.className="mtile dead";t.textContent="?"}}',
     'var w=MLAST.amount>=0;',
     '$("mStat").textContent=(w?(MLAST.result==="Jackpot"?"🎉 Jackpot — nhận ":"✅ Đã dừng — nhận "):"💥 Trúng mìn — thua ")+',
     'vnd(Math.abs(w?MLAST.amount+MLAST.bet:MLAST.bet))}',
-    // Thông báo quay thưởng 🍀 (dùng chung Dò Mìn + Leo Thang)
+    // Thông báo mở hộp 🍀 (dùng chung Dò Mìn + Leo Thang)
     'function luckyToast(L){if(!L)return;var m={',
-    'shield:"🍀 Ô MAY MẮN! 🛡️ Nhận KHIÊN — trúng mìn/lửa 1 lần không chết",',
-    'dig:"🍀 Ô MAY MẮN! ⛏️ Mở giúp "+((L.opened||[]).length)+" ô an toàn",',
-    'cash:"🍀 Ô MAY MẮN! 💰 +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin vào ví luôn",',
-    'rocket:"🍀 Ô MAY MẮN! 🚀 Thang máy — vọt lên 2 tầng",',
-    'none:"🍀 Ô may mắn... 🍂 quay hụt, không có gì. Kiếp sau may hơn!"',
-    '}[L.prize]||"🍀 Ô MAY MẮN!";toast(m)}',
+    'shield:"🎁 Trong hộp: 🛡️ KHIÊN — trúng mìn/lửa 1 lần không chết!",',
+    'dig:"🎁 Trong hộp: ⛏️ Mở giúp "+((L.opened||[]).length)+" ô an toàn!",',
+    'cash:"🎁 Trong hộp: 💰 +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin vào ví luôn!",',
+    'rocket:"🎁 Trong hộp: 🚀 Thang máy — vọt lên 2 tầng!",',
+    'jackpot:"🏆🏆 NỔ HŨ!!! +"+(L.bonus||0).toLocaleString("vi-VN")+" DOGCOIN!!! 🏆🏆",',
+    'none:"🎁 Trong hộp... 🍂 trống trơn. Kiếp sau may hơn!"',
+    '}[L.prize]||"🍀";toast(m)}',
+    // ===== 🍀 CHỌN 1 TRONG 4 HỘP =====
+    'var LUCKGAME="";',
+    'function luckyOpen(game){LUCKGAME=game;',
+    'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){b.disabled=false});',
+    '$("luckyPick").classList.add("show")}',
+    'function luckySend(n){if(!LUCKGAME)return;var game=LUCKGAME;LUCKGAME="";',
+    'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){b.disabled=true});',
+    'api("/api/"+game+"/lucky",{box:n}).then(function(j){',
+    '$("luckyPick").classList.remove("show");',
+    'if(typeof j.balance==="number")setBal(j.balance);',
+    'luckyToast(j.lucky);',
+    'if(j.lucky&&j.lucky.prize==="jackpot")celebrate();',
+    'if(game==="mines"){',
+    'if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn — thưởng trần x2000")},2400);',
+    'return mEnd("🎉 Jackpot — nhận "+j.win.toLocaleString("vi-VN"),j.win-(MG?MG.bet:0),j.mines)}',
+    'MG=j.state;mDrawGrid();mBar();mBand()',
+    '}else{',
+    'if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn — thưởng trần x2000")},2400);',
+    'var stk=SG?SG.bet:0,fr=SG?SG.fire:0;',
+    'toast("🏆 LÊN ĐỈNH! Nhận "+vnd(j.win));',
+    'return sFinish(j,"Lên đỉnh",j.win-stk,stk,fr,SF)}',
+    'SG=j.state;sTower();sBand()}',
+    '}).catch(function(e){$("luckyPick").classList.remove("show");toast("❌ "+e.message);',
+    'if(game==="mines")mSync();else sSync()})}',
+    'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){',
+    'b.addEventListener("click",function(){luckySend(parseInt(this.dataset.g))})});',
     'function mDrawGrid(){var g=$("mGrid");g.innerHTML="";',
     'for(var i=0;i<MT;i++){var t=document.createElement("div");t.id="mk"+i;t.dataset.i=i;',
     'if(MG&&MG.revealed.indexOf(i)>=0){t.className="mtile coin";t.innerHTML=COINIMG}',
@@ -1046,7 +1116,10 @@ const PAGE = [
     'if(mines&&mines.indexOf(i)>=0){t.className="mtile shown";t.textContent="💣"}else{t.className="mtile dead"}}}',
     // Ván xong thì GIỮ NGUYÊN màn hình (đã lộ hết mìn) cho tới khi người chơi bấm
     // VÁN MỚI — trước đây tự xoá sau 2 giây, chưa kịp nhìn đã mất.
-    'function mEnd(msg,net,mines){mRevealAll(mines);MG=null;MOVER=true;',
+    'function mEnd(msg,net,mines,luckyAt){mRevealAll(mines);MG=null;MOVER=true;',
+    // lộ ô 🍀 chưa kịp mở — cho người chơi tiếc mà chơi ván nữa 😏
+    'if(typeof luckyAt==="number"&&luckyAt>=0){var lt=$("mk"+luckyAt);',
+    'if(lt&&!lt.classList.contains("coin")){lt.className="mtile lucky";lt.textContent="🍀"}}',
     '$("mStat").textContent=msg;',
     'if(net!==null)showNet(net);',
     'mBand()}',
@@ -1058,11 +1131,13 @@ const PAGE = [
     // 🛡️ khiên đỡ: mìn xịt, hiện 🛡️ tại ô, ĐỨNG YÊN chơi tiếp (không thua, không ăn hệ số)
     'if(j.defused!==undefined){playBoom();toast("🛡️ KHIÊN đỡ quả mìn — sống! Chơi tiếp đi");',
     'MG=j.state;mDrawGrid();mBar();mBand();return}',
+    // 🍀 mở trúng CỎ 4 LÁ: ô hoá xanh lá + bung 4 hộp cho chọn
+    'if(j.luckyPick){t.className="mtile lucky";t.textContent="🍀";t.onclick=null;',
+    'MG=j.state;mBar();mBand();luckyOpen("mines");return}',
     'if(j.hit){t.className="mtile boom";t.textContent="💣";playBoom();',
     'toast("💥 BÙM! Mất "+stake.toLocaleString("vi-VN")+" Dogcoin");',
-    'return mEnd("💥 Trúng mìn — thua "+stake.toLocaleString("vi-VN"),-stake,j.mines)}',
+    'return mEnd("💥 Trúng mìn — thua "+stake.toLocaleString("vi-VN"),-stake,j.mines,j.luckyAt)}',
     't.className="mtile coin";t.innerHTML=COINIMG;t.onclick=null;',
-    'if(j.lucky)luckyToast(j.lucky);',
     'if(j.jackpot){toast("🎉 JACKPOT! Nhận "+j.win.toLocaleString("vi-VN"));',
     'return mEnd("🎉 Jackpot — nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines)}',
     // vẽ lại cả lưới từ state: ô ⛏️ server mở giúp + ô khiên đỡ đều hiện đúng
@@ -1077,7 +1152,8 @@ const PAGE = [
     'function mCashout(){if(!MG||mBusy)return;mBusy=true;var stake=MG.bet;',
     'api("/api/mines/cashout",{}).then(function(j){mBusy=false;setBal(j.balance);',
     'toast("✅ Nhận "+j.win.toLocaleString("vi-VN")+" Dogcoin");',
-    'mEnd("✅ Đã dừng — nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines)',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn — thưởng trần x2000")},2400);',
+    'mEnd("✅ Đã dừng — nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines,j.luckyAt)',
     '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
     'function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=v.toLocaleString("vi-VN")}',
     '',
@@ -1141,6 +1217,7 @@ const PAGE = [
     'function sSync(){api("/api/stairs/state").then(function(j){',
     'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;setBal(j.balance);',
     'SG=j.game||null;SLAST=(!SG&&j.last)?j.last:null;SOVER=!!SLAST;',
+    'if(SG&&SG.luckyPick)luckyOpen("stairs");',   // F5 giữa lúc đang chọn hộp -> mở lại
     '$("sFireLab").textContent="🔥 Cầu lửa mỗi tầng (1–"+SMAXF+")";',
     'if(SG){$("sFire").value=SG.fire;$("sBet").value=SG.bet}',
     'else if(SLAST){$("sFire").value=SLAST.fire;$("sBet").value=SLAST.bet}',
@@ -1163,6 +1240,9 @@ const PAGE = [
     // vị trí và dấu 💥 giữ y như trước.
     'el.innerHTML=(f===heroF)?endHero():COINCELL}',
     'else if(SLAST.traps[f]&&SLAST.traps[f].indexOf(c)>=0){el.className="scell fire";el.innerHTML="🔥"}',
+    // lộ ô 🍀 / 🌟 chưa đạp tới — "nó ở NGAY ĐÓ mà không leo tới, tiếc chưa"
+    'else if(SLAST.luckyCells&&SLAST.luckyCells.some(function(l){return l.f===f&&l.c===c})){el.className="scell lucky";el.innerHTML="🍀"}',
+    'else if(SLAST.goldPos&&SLAST.goldPos.f===f&&SLAST.goldPos.c===c){el.className="scell gold";el.innerHTML="🌟"}',
     'else{el.className="scell";el.innerHTML=""}}}',
     '$("heroBase").style.display="none";',
     'var w=SLAST.amount>=0;',
@@ -1174,6 +1254,7 @@ const PAGE = [
     'function sFinish(j,res,net,stake,fire,floor,hitFloor,hitCol){',
     'SLAST={result:res,amount:net,bet:stake,fire:fire,floor:floor,',
     'safe:j.safe||[],traps:j.traps||[],',
+    'luckyCells:j.luckyCells||[],goldPos:j.goldPos||null,',   // lộ 🍀/🌟 chưa đạp
     'hitFloor:(hitFloor===undefined?-1:hitFloor),hitCol:(hitCol===undefined?-1:hitCol)};',
     // Lên đỉnh thì ăn mừng; thông báo tiền vẫn là showNet + dòng sStat như cũ.
     'SG=null;SOVER=true;sTower();sPaintLast();showNet(net);sBand();',
@@ -1194,8 +1275,10 @@ const PAGE = [
     // 🛡️ khiên đỡ lửa: ĐỨNG YÊN tầng này, ô lửa lộ ra, chọn ô khác
     'if(j.shielded){playBoom();toast("🛡️ KHIÊN đỡ cầu lửa — đứng lại, chọn ô khác!");',
     'SG=j.state;sTower();sBand();return}',
-    'if(j.lucky)luckyToast(j.lucky);',
+    // 🍀 đạp trúng CỎ 4 LÁ: bung 4 hộp cho chọn
+    'if(j.luckyPick){toast("🍀 CỎ 4 LÁ MAY MẮN!");SG=j.state;sTower();sBand();luckyOpen("stairs");return}',
     'if(j.golden){toast("🌟 Ô VÀNG!! BAY THẲNG LÊN ĐỈNH!!");celebrate()}',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn — thưởng trần x2000")},2400);',
     'if(j.burn){playBoom();toast("🔥 CHÁY! Mất "+vnd(stake)+" Dogcoin");',
     'return sFinish(j,"Trúng lửa (Thua)",-stake,stake,fire,f,f,c)}',
     'var el=$("sc_"+f+"_"+c);if(el){el.className="scell step";el.innerHTML=HEROIMG}',
