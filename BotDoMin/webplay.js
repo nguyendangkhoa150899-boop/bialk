@@ -551,7 +551,10 @@ const PAGE = [
     '.scell.gold{background:linear-gradient(180deg,#ffe9a8,#d8a90f);border-color:#ffd977;animation:baoPulse 1.6s ease-in-out infinite;font-size:18px}',
     '.scell img.dc{width:20px;height:20px}',
     // nhân vật đứng trên bậc vừa leo tới
-    '.hero{position:absolute;bottom:2px;left:50%;width:auto;height:38px;transform:translateX(-50%);',
+    // Neo THẤP (bottom âm) + cao 34px: đầu nhân vật nằm gọn trong ô đang đứng,
+    // không thò lên đè ô tầng trên (tầng đang cần bấm) — tràn xuống dưới thì chỉ
+    // đè tầng đã leo qua, không ai bấm nữa.
+    '.hero{position:absolute;bottom:-8px;left:50%;width:auto;height:34px;transform:translateX(-50%);',
     'pointer-events:none;filter:drop-shadow(0 3px 4px #000a);animation:heroHop .45s ease-out;z-index:2}',
     '@keyframes heroHop{0%{transform:translate(-50%,26px) scale(.7)}55%{transform:translate(-50%,-7px) scale(1.08)}100%{transform:translate(-50%,0) scale(1)}}',
     '.hero.idle{animation:heroIdle 2.2s ease-in-out infinite}',
