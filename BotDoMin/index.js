@@ -154,6 +154,29 @@ function logDog(type, userId, username, amount, note) {
         note: note || '',
     });
     if (dbCache._dogLedger.length > 500) dbCache._dogLedger.length = 500;
+
+    // Nuôi bảng THỐNG KÊ 📊 — mọi biến động "hệ thống" đều đi qua logDog nên móc 1 chỗ
+    if (type === 'admin+' || type === 'admin-') statAdd(userId, 'adminIn', amount);
+    else if (type === 'transfer') statAdd(userId, amount < 0 ? 'sentOut' : 'recvIn', Math.abs(amount));
+    else if (type === 'to-game') statAdd(userId, 'toGame', Math.abs(amount));
+    else if (type === 'from-game') statAdd(userId, 'fromGame', amount);
+}
+
+// ===== THỐNG KÊ TÍCH LŨY THEO NGƯỜI CHƠI (bảng 📊 trên Discord) =====
+// Đếm TỪ LÚC TÍNH NĂNG BẬT: sổ cái chỉ giữ 500 dòng gần nhất nên không dựng lại
+// được lịch sử cũ trung thực — thà bắt đầu từ 0 còn hơn số nửa đúng nửa sai.
+// Lưu trong dbCache._pstats nên sống qua restart.
+function statsOf(userId) {
+    if (!dbCache._pstats) dbCache._pstats = {};
+    if (!dbCache._pstats[userId]) {
+        dbCache._pstats[userId] = { adminIn: 0, sentOut: 0, recvIn: 0, toGame: 0, fromGame: 0, tx: 0, mines: 0, stairs: 0, bj: 0 };
+    }
+    return dbCache._pstats[userId];
+}
+function statAdd(userId, key, delta) {
+    if (!userId || !Number.isFinite(delta) || !delta) return;
+    statsOf(userId)[key] += delta;
+    statsBoard.needsUpdate = true;   // bảng đăng lại trong vòng 1 phút (repostBoard)
 }
 
 // ===== CHUYỂN DOGCOIN GIỮA NGƯỜI CHƠI — nút 🧧 Lộc lá trên web =====
@@ -625,6 +648,7 @@ function webMinesLog(g, result, amount, hitIdx) {
     minesHistory.unshift(entry);
     if (minesHistory.length > 20) minesHistory.pop();
     minesBoard.needsUpdate = true;        // bảng đăng lại (tối đa 1 phút/lần, xem repostBoard)
+    statAdd(g.userId, 'mines', amount);   // net ván này cho bảng 📊
     // Trần đang tắt nên một ván có thể trả rất lớn — hú còi để admin biết ngay.
     if (amount >= MINES_BIG_WIN_ALERT) {
         writeLog('ADMIN', `[⚠️ DÒ MÌN TRẢ LỚN] ${g.name} +${amount.toLocaleString()} Dogcoin ` +
@@ -637,22 +661,24 @@ function webMinesLog(g, result, amount, hitIdx) {
 // Chạm ô 🍀 -> quay ngẫu nhiên 1 phần thưởng. Ô 🍀 GIẤU (không hiện trên bàn):
 // hiện là lộ ô an toàn, ai cũng bấm nó đầu tiên thành vòng quay miễn phí mỗi ván.
 // Ô "hụt" 🍂 CỐ TÌNH có: nó là van chỉnh kỳ vọng — sòng chảy máu thì tăng % hụt.
-// 'jackpot' = 💥 NỔ HŨ: ăn ngay x2000 tiền cược. Tỉ lệ 0.05% (1 phần 2000 lượt mở
-// hộp) — nghe keo nhưng phải vậy: 0.5% thôi là mỗi lượt 🍀 đã cõng kỳ vọng x10 cược,
-// sòng sập. Ai trúng là sự kiện cả server, đó mới là giá trị của hũ.
+// 'jackpot' = 🏆 NỔ HŨ: ăn min(giải cao nhất của ván, x2000 cược).
+// Tỉ lệ 10% THEO VOTE CỦA NGƯỜI CHƠI (game vui vẻ) — các giải còn lại giảm đều.
+// ⚠️ CẢNH BÁO KINH TẾ: 10% × trần x2000 nghĩa là mỗi lượt mở hộp cõng kỳ vọng
+// tới ~x200 tiền cược ở ván mìn nhiều/lửa cao. Ví cả server SẼ phình nhanh.
+// Muốn hãm lại chỉ cần hạ số 0.10 bên dưới (và nâng 'none' lên tương ứng).
 const MINES_LUCKY_WHEEL = [
-    { p: 0.25, prize: 'shield' },    // 🛡️ trúng mìn 1 lần không chết
-    { p: 0.30, prize: 'dig' },       // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.25, prize: 'cash' },      // 💰 +10% tiền cược tức thì
-    { p: 0.1995, prize: 'none' },    // 🍂 hụt
-    { p: 0.0005, prize: 'jackpot' }, // 🏆 NỔ HŨ x2000
+    { p: 0.225, prize: 'shield' },  // 🛡️ trúng mìn 1 lần không chết
+    { p: 0.27, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
+    { p: 0.225, prize: 'cash' },    // 💰 +10% tiền cược tức thì
+    { p: 0.18, prize: 'none' },     // 🍂 hụt
+    { p: 0.10, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 const STAIRS_LUCKY_WHEEL = [
-    { p: 0.25, prize: 'rocket' },    // 🚀 thang máy: +2 tầng ngay
-    { p: 0.25, prize: 'shield' },    // 🛡️ đạp lửa 1 lần không cháy
-    { p: 0.25, prize: 'cash' },      // 💰 +10% tiền cược tức thì
-    { p: 0.2495, prize: 'none' },    // 🍂 hụt
-    { p: 0.0005, prize: 'jackpot' }, // 🏆 NỔ HŨ x2000
+    { p: 0.225, prize: 'rocket' },  // 🚀 thang máy: +2 tầng ngay
+    { p: 0.225, prize: 'shield' },  // 🛡️ đạp lửa 1 lần không cháy
+    { p: 0.225, prize: 'cash' },    // 💰 +10% tiền cược tức thì
+    { p: 0.225, prize: 'none' },    // 🍂 hụt
+    { p: 0.10, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 // Ô VÀNG 🌟 Leo Thang: 2% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 — thấy mà
 // thèm, phải sống sót leo tới mới đạp được; đạp là lên thẳng đỉnh. Mọi mức lửa đều
@@ -709,10 +735,14 @@ const webMinesApi = {
             // KHÔNG lộ g.lucky — ô may mắn phải giấu, lộ là lộ luôn ô an toàn
         };
     },
+    // 3–20 mìn: chặn ván 1–2 mìn gần như không rủi ro (khiên thành bất tử) và ván
+    // 21+ mìn toàn cầu may. minMines/maxMines đẩy xuống client để đồng bộ 1 nguồn.
+    minMines: 3,
+    maxMines: 20,
     start: (userId, name, numMines, bet) => {
         if (webMines.has(userId)) return { error: 'Bạn đang có ván dở — chơi nốt hoặc bấm DỪNG đã.' };
-        if (!Number.isInteger(numMines) || numMines < 1 || numMines > TOTAL_TILES - 1) {
-            return { error: `Số mìn phải từ 1 đến ${TOTAL_TILES - 1}` };
+        if (!Number.isInteger(numMines) || numMines < webMinesApi.minMines || numMines > webMinesApi.maxMines) {
+            return { error: `Số mìn phải từ ${webMinesApi.minMines} đến ${webMinesApi.maxMines}` };
         }
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
         if (MINES_MAX_BET > 0 && bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} Dogcoin mỗi ván` };
@@ -919,6 +949,7 @@ function stairsLog(g, result, amount) {
     if (!Array.isArray(dbCache._stairsHistory)) dbCache._stairsHistory = [];
     dbCache._stairsHistory.unshift(entry);
     if (dbCache._stairsHistory.length > 20) dbCache._stairsHistory.pop();
+    statAdd(g.userId, 'stairs', amount);   // net ván này cho bảng 📊
     return entry;
 }
 
@@ -1164,7 +1195,9 @@ const webStairsApi = {
 const blackjackTable = createBlackjackTable({
     clock: () => Date.now(),
     getPoints: (u) => (getUserData(u).points || 0),
-    addPoints: (u, a) => updatePoints(u, a),
+    // Mọi dòng tiền blackjack (trừ cược, trả thưởng, hoàn) đều qua đây -> cộng dồn
+    // là ra net cho bảng 📊, không phải đục vào engine.
+    addPoints: (u, a) => { updatePoints(u, a); statAdd(u, 'bj', a); },
     announce: (m) => writeLog('SYSTEM', `[BLACKJACK] ${m}`),
     log: (cat, msg) => writeLog(cat, msg),
     SEATS: 5, BET_WINDOW_MS: 7000, TURN_MS: 15000, RESULT_MS: 6000,
@@ -1432,6 +1465,104 @@ function runStairsBoardLoop() {
     setInterval(() => { repostBoard(stairsBoard, getStairsBoardData, '_stairsMsgId', 'BẢNG LEO THANG').catch(() => { }); }, 5000);
 }
 
+// ===== BẢNG THỐNG KÊ 📊 NGƯỜI CHƠI TRÊN DISCORD =====
+// Kênh riêng admin tự đặt ở panel. Có thay đổi thì xoá tin cũ + đăng lại, tối đa
+// 1 phút/lần (repostBoard). Màu: khối ```diff — dòng "+" Discord tô XANH, "-" tô ĐỎ.
+const statsBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
+
+function getStatsBoardData() {
+    const st = dbCache._pstats || {};
+    const rows = Object.entries(st).map(([id, s]) => {
+        const act = Math.abs(s.adminIn) + s.sentOut + s.recvIn + s.toGame + Math.abs(s.fromGame)
+            + Math.abs(s.tx) + Math.abs(s.mines) + Math.abs(s.stairs) + Math.abs(s.bj);
+        const name = NAME_OVERRIDE[id] || (dbCache[id] && dbCache[id].name) || ('…' + id.slice(-4));
+        return { id, s, act, name };
+    }).filter(r => r.act > 0).sort((a, b) => b.act - a.act);
+
+    const fmt = n => (n || 0).toLocaleString('vi-VN');
+    // dòng mini game: + thắng (xanh) / - thua (đỏ) / trắng khi chưa chơi
+    const gl = (label, v) => v > 0 ? `+ ${label}: thắng ${fmt(v)}`
+        : v < 0 ? `- ${label}: thua ${fmt(-v)}`
+            : `  ${label}: 0`;
+
+    let desc = '';
+    const shown = rows.slice(0, 12);   // embed tối đa 4096 ký tự — 12 người sôi nổi nhất
+    for (const r of shown) {
+        desc += `👤 **${r.name}**\n` + '```diff\n' +
+            `  Admin cho       : ${fmt(r.s.adminIn)}\n` +
+            `  Chuyển cho bạn  : ${fmt(r.s.sentOut)} · Nhận từ bạn: ${fmt(r.s.recvIn)}\n` +
+            `  Discord ➜ game  : ${fmt(r.s.toGame)} · Game ➜ Discord: ${fmt(r.s.fromGame)}\n` +
+            gl('Tài Xỉu  ', r.s.tx) + '\n' +
+            gl('Dò Mìn   ', r.s.mines) + '\n' +
+            gl('Leo Thang', r.s.stairs) + '\n' +
+            gl('Blackjack', r.s.bj) + '\n' + '```\n';
+    }
+    if (!desc) desc = '*Chưa có dữ liệu — thống kê đếm từ lúc bật tính năng, chơi vài ván là có số.*';
+    if (rows.length > shown.length) desc += `\n*…và ${rows.length - shown.length} người nữa (chỉ hiện 12 người sôi nổi nhất).*`;
+
+    const embed = new EmbedBuilder()
+        .setTitle('📊 THỐNG KÊ NGƯỜI CHƠI')
+        .setColor(0x00aeef)
+        .setDescription(desc.slice(0, 4000))
+        .setFooter({ text: 'Xanh = thắng · Đỏ = thua · cập nhật tối đa 1 phút/lần khi có thay đổi' })
+        .setTimestamp();
+    return { embeds: [embed] };
+}
+
+async function startStatsBoard(channel) {
+    if (statsBoard.message) await statsBoard.message.delete().catch(() => { });
+    statsBoard.channel = channel;
+    statsBoard.message = await channel.send(getStatsBoardData());
+    statsBoard.needsUpdate = false;
+    statsBoard.lastEdit = Date.now();
+    dbCache._statsChannelId = channel.id;
+    dbCache._statsMsgId = statsBoard.message.id;
+    saveDbNow();
+}
+
+function stopStatsBoard() {
+    if (statsBoard.message) statsBoard.message.delete().catch(() => { });
+    statsBoard.channel = null;
+    statsBoard.message = null;
+    dbCache._statsChannelId = null;
+    dbCache._statsMsgId = null;
+    saveDbNow();
+}
+
+async function resumeStatsBoard() {
+    const chId = dbCache._statsChannelId;
+    if (!chId) return;
+    const ch = await client.channels.fetch(chId);
+    const old = dbCache._statsMsgId ? await ch.messages.fetch(dbCache._statsMsgId).catch(() => null) : null;
+    if (old) {
+        statsBoard.channel = ch;
+        statsBoard.message = old;
+        statsBoard.lastEdit = Date.now();
+        await old.edit(getStatsBoardData()).catch(() => { });
+        writeLog('SYSTEM', `[BẢNG THỐNG KÊ] Nối lại bảng cũ ở #${ch.name}`);
+        return;
+    }
+    await startStatsBoard(ch);
+}
+
+function runStatsBoardLoop() {
+    setInterval(() => { repostBoard(statsBoard, getStatsBoardData, '_statsMsgId', 'BẢNG THỐNG KÊ').catch(() => { }); }, 5000);
+}
+
+// Reset từng loại (admin bấm ở panel): key = 1 trong 9 cột, hoặc 'all' = xoá sạch
+function resetStats(key) {
+    const KEYS = ['adminIn', 'sentOut', 'recvIn', 'toGame', 'fromGame', 'tx', 'mines', 'stairs', 'bj'];
+    if (key === 'all') dbCache._pstats = {};
+    else if (KEYS.includes(key)) {
+        for (const id of Object.keys(dbCache._pstats || {})) dbCache._pstats[id][key] = 0;
+    }
+    else return { error: 'Loại thống kê không hợp lệ' };
+    statsBoard.needsUpdate = true;
+    saveDbNow();
+    writeLog('ADMIN', `[THỐNG KÊ] Reset "${key}"`);
+    return { ok: true };
+}
+
 function runMinesBoardLoop() {
     setInterval(() => { repostBoard(minesBoard, getMinesBoardData, '_minesMsgId', 'BẢNG DÒ MÌN').catch(() => { }); }, 5000);
 }
@@ -1483,6 +1614,8 @@ client.once('ready', async (c) => {
     resumeBlackjackBoard().catch(e => writeLog('SYSTEM', `[BẢNG BLACKJACK] Không nối lại được: ${e.message}`));
     runStairsBoardLoop();
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
+    runStatsBoardLoop();
+    resumeStatsBoard().catch(e => writeLog('SYSTEM', `[BẢNG THỐNG KÊ] Không nối lại được: ${e.message}`));
 
     // Cổng web cược cho người chơi (tách hẳn panel admin)
     try {
@@ -1547,6 +1680,11 @@ client.once('ready', async (c) => {
             getBJBoard: () => ({ on: !!blackjackBoard.message, channelId: dbCache._bjChannelId || '' }),
             startBJBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBlackjackBoard(ch); return ch.name; },
             stopBJBoard: () => stopBlackjackBoard(),
+            // Bảng thống kê 📊
+            getStatsBoard: () => ({ on: !!statsBoard.message, channelId: dbCache._statsChannelId || '' }),
+            startStatsBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStatsBoard(ch); return ch.name; },
+            stopStatsBoard: () => stopStatsBoard(),
+            resetStats,
             // Bảng mời chơi Leo Thang
             getStairs: () => ({ on: !!stairsBoard.message, channelId: dbCache._stairsChannelId || '' }),
             startStairs: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStairsBoard(ch); return ch.name; },
@@ -2035,6 +2173,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
             if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
             winAgg[b.userId].amount += win;
         }
+        statAdd(b.userId, 'tx', win - b.amount);   // net từng lệnh cược cho bảng 📊
     });
     const winners = Object.values(winAgg).map(w => ({ u: w.userId, name: w.name, amount: w.amount }));
     const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');

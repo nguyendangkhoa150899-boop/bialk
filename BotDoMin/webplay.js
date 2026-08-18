@@ -222,6 +222,7 @@ function startWebPlay(ctx) {
                         return sendJSON(res, 200, {
                             ok: true, tiles: mines.tiles,
                             maxWin: mines.maxWin, maxBet: mines.maxBet,
+                            minMines: mines.minMines || 1, maxMines: mines.maxMines || (mines.tiles - 1),
                             balance: me.points || 0,
                             game: mines.current(userId),
                             last: mines.last ? mines.last(userId) : null, // ván vừa xong, để vẽ lại màn kết thúc
@@ -974,6 +975,7 @@ const PAGE = [
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
     'var MT=24;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
+    'var MMIN=3,MMAX=20;',   // giới hạn số mìn — server là nguồn chuẩn, mSync ghi đè
     // Bấm nhanh: cú bấm trong lúc chờ server KHÔNG bị nuốt nữa — xếp hàng đào tuần tự.
     // mBusyAt = chốt an toàn: request treo quá 8s thì tự gỡ cờ, không phải F5.
     'var mQ=[];var mBusyAt=0;',
@@ -1001,11 +1003,11 @@ const PAGE = [
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<1)b=1;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
     'function mAllIn(){if(MG)return;$("mBet").value=mCap();mBand()}',
-    'function mStep(d){if(MG)return;var n=mNum("mMines")+d;if(n<1)n=1;if(n>MT-1)n=MT-1;$("mMines").value=n;mTable()}',
+    'function mStep(d){if(MG)return;var n=mNum("mMines")+d;if(n<MMIN)n=MMIN;if(n>MMAX)n=MMAX;$("mMines").value=n;mTable()}',
     // Bảng hệ số lấy TỪ SERVER (client không tự tính, để không lệch với tiền thật khi trả).
     'var mTimer=0;',
     'function mTable(){clearTimeout(mTimer);mTimer=setTimeout(function(){',
-    'var n=mNum("mMines");if(n<1||n>MT-1){n=Math.min(Math.max(n,1),MT-1);$("mMines").value=n}',
+    'var n=mNum("mMines");if(n<MMIN||n>MMAX){n=Math.min(Math.max(n,MMIN),MMAX);$("mMines").value=n}',
     'api("/api/mines/table",{numMines:n}).then(function(j){MTAB=j.table||[];mBar();mBand()}).catch(function(){})},150)}',
     // thanh mốc hệ số: đã ăn = vàng, mốc kế tiếp = xanh nhấp nháy, tự cuộn theo
     // Mốc nào cược hiện tại đã vượt trần thì hiện thẳng "TRẦN" — người chơi thấy ngay
@@ -1057,7 +1059,8 @@ const PAGE = [
     'mDrawGrid();mTable();mBar();mBand()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
     'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||24;setBal(j.balance);',
-    '$("mMinesLab").textContent="Số mìn (1–"+(MT-1)+")";',
+    'MMIN=j.minMines||3;MMAX=j.maxMines||20;',
+    '$("mMinesLab").textContent="Số mìn ("+MMIN+"–"+MMAX+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
     'MG=j.game||null;MLAST=(!MG&&j.last)?j.last:null;MOVER=!!MLAST;mDrawGrid();',
     'if(MG&&MG.luckyPick)luckyOpen("mines");',   // F5 giữa lúc đang chọn hộp -> mở lại
@@ -1175,7 +1178,7 @@ const PAGE = [
     'if(mQ.length){var nx=mQ.shift();setTimeout(function(){mDig(nx)},0)}',
     '}).catch(function(e){mBusy=false;mQ.length=0;toast("❌ "+e.message);mSync()})}',
     'function mStartGame(){if(mBusy||MOVER)return;var n=mNum("mMines"),b=mNum("mBet");',
-    'if(n<1||n>MT-1)return toast("❌ Số mìn từ 1 đến "+(MT-1));',
+    'if(n<MMIN||n>MMAX)return toast("❌ Số mìn từ "+MMIN+" đến "+MMAX);',
     'if(b<=0)return toast("❌ Nhập số Dogcoin");',
     'if(b>BAL)return toast("❌ Không đủ Dogcoin!");',
     'mBusy=true;api("/api/mines/start",{numMines:n,bet:b}).then(function(j){mBusy=false;',
