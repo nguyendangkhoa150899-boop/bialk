@@ -1893,8 +1893,12 @@ async function finishTXGame(gameId, bets) {
 
     txState.nan = null; // đóng cửa sổ nặn
     const info = settleTXPayout(gameId, bets, d1, d2, d3);
+    // Admin có thể bấm Dừng Tài Xỉu NGAY TRONG lúc chờ nặn ở trên -> channel bị gỡ (null).
+    // Tiền đã trả xong ở settleTXPayout, chỉ không gửi được tin kết quả — bỏ qua, đừng sập bot.
+    const ch = txState.channel;
+    if (!ch) { writeLog('SYSTEM', `[TX] Game #${gameId}: bàn đã dừng trước khi gửi kết quả — bỏ qua tin nhắn`); return null; }
     const emb = buildTXResultEmbed(gameId, d1, d2, d3, info, 'Ván mới bắt đầu ngay — cược trên web!');
-    return await txState.channel.send({ embeds: [emb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
+    return await ch.send({ embeds: [emb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KQ TX] ${e.message}`); return null; });
 }
 
 // ==========================================
