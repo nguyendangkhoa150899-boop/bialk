@@ -2196,22 +2196,28 @@ async function finishBCGame(gameId, bets) {
 // --- UI TÀI XỈU ---
 // Tài Xỉu đã CHUYỂN HẾT LÊN WEB: bảng Discord chỉ hiển thị tình hình + nút lấy link/PIN.
 // Đặt cược + nặn xí ngầu (kéo tờ giấy) đều làm trên web (webplay.js).
-// Tài Xỉu: 🔺 🎲🎲🎲 · Tổng 9 · XỈU · LẺ — 💰 BiaLK đặt xỉu +100 | 💥 Hoang đặt tài −50
-// Xí ngầu dùng icon thật (DICE_EMOJIS); net TỪNG NGƯỜI = tổng thắng − tổng cược.
+// Tài Xỉu: 🔺 🎲🎲🎲 · Tổng 16 · TÀI · CHẴN — ⚖️ BiaLK đặt tài +100 · lẻ −100
+// Xí ngầu dùng icon thật (DICE_EMOJIS). Net tính TỪNG CỬA của từng người (đặt
+// tài+lẻ mà ra TÀI CHẴN thì thấy rõ "tài +100 · lẻ −100" chứ không gộp một cục);
+// icon đầu theo TỔNG của người đó: 💰 lời · 💥 lỗ · ⚖️ hòa. Luật ăn tính lại y hệt
+// settleTXPayout: cửa trúng ×2, BÃO chỉ cửa bão ăn ×TX_BAO_RATE.
 function txHistoryLine(h) {
     const head = h.storm ? '🌪️' : (h.tx === 'TÀI' ? '🔺' : '🔻');
     const dice = (h.dice || []).map(d => DICE_EMOJIS[d] || d).join(' ');
     const line = `${head} ${dice} · Tổng **${h.sum}** · **${h.tx}${h.storm ? '' : ' · ' + h.cl}**`;
-    const net = {};
+    const per = {};
     (h.bets || []).forEach(b => {
-        if (!net[b.u]) net[b.u] = { name: b.name, v: 0, cua: [] };
-        net[b.u].v -= b.amount;
-        const c = String(b.choice || '').toLowerCase();
-        if (c && !net[b.u].cua.includes(c)) net[b.u].cua.push(c);
+        const cua = String(b.choice || '');
+        let win = 0;
+        if (h.storm) { if (cua === 'BÃO') win = b.amount * TX_BAO_RATE; }
+        else if (cua === h.tx || cua === h.cl) win = b.amount * 2;
+        const net = win - b.amount;
+        if (!per[b.u]) per[b.u] = { name: b.name, total: 0, parts: [] };
+        per[b.u].total += net;
+        per[b.u].parts.push(`${cua.toLowerCase()} ${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()}`);
     });
-    (h.winners || []).forEach(w => { if (!net[w.u]) net[w.u] = { name: w.name, v: 0, cua: [] }; net[w.u].v += w.amount; });
-    const parts = Object.values(net).map(p =>
-        `${p.v >= 0 ? '💰' : '💥'} **${p.name}** đặt ${p.cua.join('+')} ${p.v >= 0 ? '+' : '−'}${Math.abs(p.v).toLocaleString()}`);
+    const parts = Object.values(per).map(p =>
+        `${p.total > 0 ? '💰' : p.total < 0 ? '💥' : '⚖️'} **${p.name}** đặt ${p.parts.join(' · ')}`);
     return line + (parts.length ? ` — ${parts.join(' | ')}` : '');
 }
 
