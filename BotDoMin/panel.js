@@ -989,6 +989,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="stReset('mines')">Dò Mìn</button>
           <button class="btn-grey" onclick="stReset('stairs')">Leo Thang</button>
           <button class="btn-grey" onclick="stReset('bj')">Blackjack</button>
+          <button class="btn-grey" onclick="stReset('jackpot')">Nổ hũ 🏆</button>
           <button class="btn-red" onclick="stReset('all')">💣 RESET TẤT CẢ</button>
         </div>
         <div class="note">Reset đưa cột đó của MỌI người chơi về 0 — không đụng tới ví.</div>

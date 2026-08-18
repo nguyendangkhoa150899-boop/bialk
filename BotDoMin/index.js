@@ -166,12 +166,14 @@ function logDog(type, userId, username, amount, note) {
 // Đếm TỪ LÚC TÍNH NĂNG BẬT: sổ cái chỉ giữ 500 dòng gần nhất nên không dựng lại
 // được lịch sử cũ trung thực — thà bắt đầu từ 0 còn hơn số nửa đúng nửa sai.
 // Lưu trong dbCache._pstats nên sống qua restart.
+const STAT_KEYS = ['adminIn', 'sentOut', 'recvIn', 'toGame', 'fromGame', 'tx', 'mines', 'stairs', 'bj', 'jpCount', 'jpTotal'];
 function statsOf(userId) {
     if (!dbCache._pstats) dbCache._pstats = {};
-    if (!dbCache._pstats[userId]) {
-        dbCache._pstats[userId] = { adminIn: 0, sentOut: 0, recvIn: 0, toGame: 0, fromGame: 0, tx: 0, mines: 0, stairs: 0, bj: 0 };
-    }
-    return dbCache._pstats[userId];
+    if (!dbCache._pstats[userId]) dbCache._pstats[userId] = {};
+    const s = dbCache._pstats[userId];
+    // backfill: bản ghi tạo từ phiên bản cũ thiếu cột mới -> đắp 0, kẻo cộng ra NaN
+    for (const k of STAT_KEYS) if (typeof s[k] !== 'number') s[k] = 0;
+    return s;
 }
 function statAdd(userId, key, delta) {
     if (!userId || !Number.isFinite(delta) || !delta) return;
@@ -828,10 +830,12 @@ const webMinesApi = {
         g.luckyPending = false; g.luckySpun = true;
         box = Math.min(4, Math.max(1, box || 1));
         const prize = spinWheel(MINES_LUCKY_WHEEL);
-        // Lật cả 4 hộp cho người chơi xem: hộp đã chọn = quà thật, 3 hộp kia quay cùng
-        // bàn quay làm hàng mẫu (kết quả thật đã chốt ở dòng trên, không đổi được).
+        // Lật cả 4 hộp: hộp đã chọn = quà thật, 3 hộp kia là hàng mẫu (quà thật đã chốt
+        // ở dòng trên). 🏆 CHỈ ĐƯỢC HIỆN Ở ĐÚNG 1 VỊ TRÍ — hàng mẫu không bao giờ ra hũ,
+        // kẻo lật ra 2-3 cái hũ ảo nhìn loạn.
+        const decoy = () => { let d; do { d = spinWheel(MINES_LUCKY_WHEEL); } while (d === 'jackpot'); return d; };
         const reveal = [];
-        for (let i = 1; i <= 4; i++) reveal.push(i === box ? prize : spinWheel(MINES_LUCKY_WHEEL));
+        for (let i = 1; i <= 4; i++) reveal.push(i === box ? prize : decoy());
         const lucky = { prize, box, reveal };
         if (prize === 'shield') { g.shield = true; g.luck.push('🛡️'); }
         else if (prize === 'dig') {
@@ -861,6 +865,7 @@ const webMinesApi = {
             const top = minesWin(g.bet, TOTAL_TILES - g.totalMines, g.totalMines);
             const jp = Math.min(g.bet * LUCKY_WIN_CAP_MULTI, top);
             updatePoints(userId, jp);
+            statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
             g.luck.push('🏆');
             writeLog('ADMIN', `[⚠️ NỔ HŨ DÒ MÌN] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.totalMines} mìn)`);
@@ -1122,9 +1127,10 @@ const webStairsApi = {
         g.luckyPending = false;
         box = Math.min(4, Math.max(1, box || 1));
         const prize = spinWheel(STAIRS_LUCKY_WHEEL);
-        // Lật cả 4 hộp: hộp đã chọn = quà thật, 3 hộp kia là hàng mẫu (xem chú thích bên Dò Mìn)
+        // Lật cả 4 hộp — 🏆 chỉ hiện ở đúng 1 vị trí (xem chú thích bên Dò Mìn)
+        const decoy = () => { let d; do { d = spinWheel(STAIRS_LUCKY_WHEEL); } while (d === 'jackpot'); return d; };
         const reveal = [];
-        for (let i = 1; i <= 4; i++) reveal.push(i === box ? prize : spinWheel(STAIRS_LUCKY_WHEEL));
+        for (let i = 1; i <= 4; i++) reveal.push(i === box ? prize : decoy());
         const lucky = { prize, box, reveal };
         if (prize === 'rocket') {
             let up = 2;
@@ -1144,6 +1150,7 @@ const webStairsApi = {
             const top = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
             const jp = Math.min(g.bet * LUCKY_WIN_CAP_MULTI, top);
             updatePoints(userId, jp);
+            statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
             g.luck.push('🏆');
             writeLog('ADMIN', `[⚠️ NỔ HŨ LEO THANG] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.fire} lửa)`);
@@ -1474,7 +1481,7 @@ function getStatsBoardData() {
     const st = dbCache._pstats || {};
     const rows = Object.entries(st).map(([id, s]) => {
         const act = Math.abs(s.adminIn) + s.sentOut + s.recvIn + s.toGame + Math.abs(s.fromGame)
-            + Math.abs(s.tx) + Math.abs(s.mines) + Math.abs(s.stairs) + Math.abs(s.bj);
+            + Math.abs(s.tx) + Math.abs(s.mines) + Math.abs(s.stairs) + Math.abs(s.bj) + (s.jpTotal || 0);
         const name = NAME_OVERRIDE[id] || (dbCache[id] && dbCache[id].name) || ('…' + id.slice(-4));
         const bal = (dbCache[id] && dbCache[id].points) || 0;   // số dư ví hiện tại
         return { id, s, act, name, bal };
@@ -1496,7 +1503,10 @@ function getStatsBoardData() {
             gl('Tài Xỉu  ', r.s.tx) + '\n' +
             gl('Dò Mìn   ', r.s.mines) + '\n' +
             gl('Leo Thang', r.s.stairs) + '\n' +
-            gl('Blackjack', r.s.bj) + '\n' + '```\n';
+            gl('Blackjack', r.s.bj) + '\n' +
+            (r.s.jpCount > 0
+                ? `+ Nổ hũ 🏆 : ${r.s.jpCount} lần · +${fmt(r.s.jpTotal)}`
+                : `  Nổ hũ 🏆 : chưa`) + '\n' + '```\n';
     }
     if (!desc) desc = '*Chưa có dữ liệu — thống kê đếm từ lúc bật tính năng, chơi vài ván là có số.*';
     if (rows.length > shown.length) desc += `\n*…và ${rows.length - shown.length} người nữa (chỉ hiện 12 người sôi nổi nhất).*`;
@@ -1554,6 +1564,9 @@ function runStatsBoardLoop() {
 function resetStats(key) {
     const KEYS = ['adminIn', 'sentOut', 'recvIn', 'toGame', 'fromGame', 'tx', 'mines', 'stairs', 'bj'];
     if (key === 'all') dbCache._pstats = {};
+    else if (key === 'jackpot') {   // nổ hũ gồm 2 cột (số lần + tổng tiền) — reset chung
+        for (const id of Object.keys(dbCache._pstats || {})) { dbCache._pstats[id].jpCount = 0; dbCache._pstats[id].jpTotal = 0; }
+    }
     else if (KEYS.includes(key)) {
         for (const id of Object.keys(dbCache._pstats || {})) dbCache._pstats[id][key] = 0;
     }

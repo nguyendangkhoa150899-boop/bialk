@@ -758,7 +758,7 @@ const PAGE = [
     '<div id="luckyPick"><div class="box">',
     '<div class="clover">🍀</div>',
     '<h2>CỎ 4 LÁ MAY MẮN!</h2>',
-    '<div class="sub">Chọn 1 hộp — biết đâu 🏆 NỔ HŨ x2000!</div>',
+    '<div class="sub" id="luckySub">Chọn 1 hộp quà!</div>',
     '<div class="gifts">',
     '<button data-g="1">🎁</button><button data-g="2">🎁</button>',
     '<button data-g="3">🎁</button><button data-g="4">🎁</button>',
@@ -1094,6 +1094,12 @@ const PAGE = [
     // ===== 🍀 CHỌN 1 TRONG 4 HỘP =====
     'var LUCKGAME="";',
     'function luckyOpen(game){LUCKGAME=game;',
+    // Hũ hiện SỐ THẬT của ván này: min(cược x2000, giải cao nhất theo bảng hệ số) —
+    // ván 1-2-3 lửa hũ bé thì ghi đúng số bé, không treo "x2000" ảo.
+    'var jp=0;',
+    'if(game==="mines"&&MG&&MTAB.length)jp=Math.min(MG.bet*2000,Math.floor(MG.bet*MTAB[MTAB.length-1]));',
+    'if(game==="stairs"&&SG&&STAB.length)jp=Math.min(SG.bet*2000,Math.floor(SG.bet*STAB[STAB.length-1]));',
+    '$("luckySub").textContent=jp>0?("Chọn 1 hộp — biết đâu 🏆 NỔ HŨ "+jp.toLocaleString("vi-VN")+" Dogcoin!"):"Chọn 1 hộp quà!";',
     // dựng lại 4 hộp kín + giấu kết quả/nút đóng của lần trước
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){',
     'b.disabled=false;b.textContent="🎁";b.classList.remove("win","dim")});',
