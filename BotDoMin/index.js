@@ -675,6 +675,9 @@ const webMines = new Map(); // userId -> { mines, revealed[], totalMines, bet, n
 // người chơi xem bao lâu tùy thích, thoát ra vào lại vẫn thấy, tới khi bấm "VÁN MỚI".
 const webMinesLast = new Map();
 function setMinesLast(userId, g, result, amount, hitIdx) {
+    // Cộng tiền hộp 🍀 đã trả GIỮA ván (💰 lì xì / 🏆 hũ) vào net — không cộng thì
+    // ván nổ hũ hiện "Thắng 68" trong khi ví nhận thêm cả nghìn.
+    amount += (g.bonus || 0);
     webMinesLast.set(userId, {
         result, amount, bet: g.bet, totalMines: g.totalMines,
         revealed: g.revealed.slice(), mines: g.mines.slice(),
@@ -722,6 +725,8 @@ function webMinesRefundStale() {
 setInterval(webMinesRefundStale, 10 * 60 * 1000);
 
 function webMinesLog(g, result, amount, hitIdx) {
+    // Cộng tiền hộp 🍀 đã trả GIỮA ván (💰/🏆) vào net của lịch sử + bảng Discord.
+    amount += (g.bonus || 0);
     const entry = {
         name: g.name, bet: g.bet, mines: g.totalMines, diamonds: g.revealed.length,
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
@@ -753,20 +758,20 @@ function webMinesLog(g, result, amount, hitIdx) {
 // ⚠️ CẢNH BÁO KINH TẾ: 10% × trần x2000 nghĩa là mỗi lượt mở hộp cõng kỳ vọng
 // tới ~x200 tiền cược ở ván mìn nhiều/lửa cao. Ví cả server SẼ phình nhanh.
 // Muốn hãm lại chỉ cần hạ số 0.10 bên dưới (và nâng 'none' lên tương ứng).
-// Cân theo chủ server chốt: hũ 5% · hụt 30% · lì xì 30%; 35% còn lại chia
-// khiên 20% / đào-tên lửa 15% (quà đẩy tiến độ nặng kinh tế hơn nên hiếm hơn khiên).
+// Cân theo chủ server chốt (18/08): hũ 5% · hụt 20% · lì xì 35% · khiên 25% ·
+// đào/tên lửa 15% (quà đẩy tiến độ nặng kinh tế hơn nên hiếm hơn khiên).
 const MINES_LUCKY_WHEEL = [
-    { p: 0.20, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết
+    { p: 0.25, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết
     { p: 0.15, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.30, prize: 'cash' },     // 💰 +10% tiền cược tức thì
-    { p: 0.30, prize: 'none' },     // 🍂 hụt
+    { p: 0.35, prize: 'cash' },     // 💰 +10% tiền cược tức thì
+    { p: 0.20, prize: 'none' },     // 🍂 hụt
     { p: 0.05, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.15, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
-    { p: 0.20, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
-    { p: 0.30, prize: 'cash' },     // 💰 +10% tiền cược tức thì
-    { p: 0.30, prize: 'none' },     // 🍂 hụt
+    { p: 0.25, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
+    { p: 0.35, prize: 'cash' },     // 💰 +10% tiền cược tức thì
+    { p: 0.20, prize: 'none' },     // 🍂 hụt
     { p: 0.05, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 // Ô VÀNG 🌟 Leo Thang: 2% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 — thấy mà
@@ -944,6 +949,7 @@ const webMinesApi = {
             const bonus = Math.max(1, Math.floor(g.bet * 0.1));
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
+            g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('💰');
         }
         else if (prize === 'jackpot') {
@@ -954,6 +960,7 @@ const webMinesApi = {
             updatePoints(userId, jp);
             statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
+            g.bonus = (g.bonus || 0) + jp;      // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('🏆');
             writeLog('ADMIN', `[⚠️ NỔ HŨ DÒ MÌN] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.totalMines} mìn)`);
         }
@@ -1008,6 +1015,8 @@ const webStairs = new Map(); // userId -> { bet, fire, floor, traps[][], name, s
 // Ván vừa xong: giữ để màn kết thúc (lộ hết cầu lửa) không tự biến mất.
 const webStairsLast = new Map();
 function setStairsLast(userId, g, result, amount, hitFloor, hitCol) {
+    // Cộng tiền hộp 🍀 đã trả GIỮA ván (💰 lì xì / 🏆 hũ) vào net — xem webMinesLog.
+    amount += (g.bonus || 0);
     webStairsLast.set(userId, {
         result, amount, bet: g.bet, fire: g.fire, floor: g.floor,
         safe: g.safe.slice(), traps: g.traps.map(r => r.slice()),
@@ -1031,6 +1040,9 @@ function stairsWin(bet, cleared, fire) {
 }
 
 function stairsLog(g, result, amount) {
+    // Cộng tiền hộp 🍀 đã trả GIỮA ván (💰 lì xì / 🏆 hũ) vào net — không cộng thì
+    // ván nổ hũ hiện "Thắng 68" trong khi ví nhận thêm cả nghìn (bug 18/08).
+    amount += (g.bonus || 0);
     const entry = {
         name: g.name, bet: g.bet, fire: g.fire, floor: g.floor,
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
@@ -1229,6 +1241,7 @@ const webStairsApi = {
             const bonus = Math.max(1, Math.floor(g.bet * 0.1));
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
+            g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('💰');
         }
         else if (prize === 'jackpot') {
@@ -1239,6 +1252,7 @@ const webStairsApi = {
             updatePoints(userId, jp);
             statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
+            g.bonus = (g.bonus || 0) + jp;      // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('🏆');
             writeLog('ADMIN', `[⚠️ NỔ HŨ LEO THANG] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.fire} lửa)`);
         }
