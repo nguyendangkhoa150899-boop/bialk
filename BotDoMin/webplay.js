@@ -1388,9 +1388,15 @@ const PAGE = [
     // Client chỉ quay bánh xe tới đúng nan — WOFF3 bù lệch đồng hồ như bên nghiện.
     'var WST=null,WOFF3=0,WBUILT=false,WSEQ0=0,WANIM=false,WROT=0,WSEL=localStorage.getItem("wh_color")||"yellow";',
     'var WEM={yellow:"🟡",blue:"🔵",green:"🟢"};',
-    'function wheelSync(){api("/api/wheel/state").then(function(j){WST=j;WOFF3=j.now-Date.now();setBal(j.balance);whBuild();whRender();',
-    'if(j.spin&&j.spin.seq!==WSEQ0){WSEQ0=j.spin.seq;',
-    'if(Date.now()+WOFF3<j.spin.endsAt)whAnimate(j.spin);else whShowRes(j.spin,true)}',   // vào trễ quá thì hiện thẳng kết quả
+    // Server trả tiền + ghi lịch sử NGAY lúc bấm quay (chống mất tiền khi crash),
+    // nên client phải TỰ GIẤU kết quả tới khi bánh xe dừng: chưa hết vòng quay thì
+    // không setBal (số dư nhảy trước là lộ), lịch sử thì whRender tự cắt vòng đang quay.
+    'function wheelSync(){api("/api/wheel/state").then(function(j){WST=j;WOFF3=j.now-Date.now();whBuild();',
+    'var fresh=j.spin&&j.spin.seq!==WSEQ0;',
+    'if(!fresh)setBal(j.balance);',
+    'whRender();',
+    'if(fresh){WSEQ0=j.spin.seq;',
+    'if(Date.now()+WOFF3<j.spin.endsAt)whAnimate(j.spin);else{setBal(j.balance);whShowRes(j.spin,true)}}',   // vào trễ quá thì hiện thẳng kết quả
     '}).catch(function(e){toast("❌ "+e.message)})}',
     // vẽ bánh xe 1 lần từ segments server đưa (đổi bảng nan chỉ cần sửa server)
     'function whBuild(){if(!WST||WBUILT)return;WBUILT=true;',
@@ -1433,6 +1439,9 @@ const PAGE = [
     'if(WST.myColor)WSEL=WST.myColor;',
     '["yellow","blue","green"].forEach(function(c){var b=$("wp_"+c);if(b)b.classList.toggle("sel",WSEL===c)});',
     'var hh=WST.history||[];',
+    // Vòng ĐANG quay đã nằm đầu lịch sử (server ghi ngay lúc bấm) — bánh xe chưa
+    // dừng thì cắt nó đi, kẻo kết quả hiện ở dưới trước khi quay xong.
+    'if(hh.length&&(WANIM||(WST.spin&&(Date.now()+WOFF3)<WST.spin.endsAt)))hh=hh.slice(1);',
     '$("whHist").innerHTML=hh.length?hh.map(function(e){return \'<div style="padding:5px 0;border-bottom:1px solid var(--line)">\'+(e.time||"")+" · "+["yellow","blue","green"].map(function(c){return WEM[c]+" x"+(e.results?e.results[c]:"?")}).join(" ")+"<br>"+(e.players||[]).map(function(p){return WEM[p.color]+" "+esc(p.name)+" +"+Number(p.win).toLocaleString("vi-VN")}).join(" · ")+"</div>"}).join(""):"Chưa có vòng nào.";',
     'whBtn()}',
     // Nút chính 3 trạng thái: chưa vào bàn = VÀO BÀN · vào rồi chưa đủ người = chờ
@@ -1456,8 +1465,11 @@ const PAGE = [
     'else whRender()}',
     'function whGoClick(){if(!WST)return;var b=$("whGo");b.disabled=true;',
     'var p=WST.myColor?api("/api/wheel/spin",{}):api("/api/wheel/ready",{color:WSEL});',
-    'p.then(function(j){WST=j;setBal(j.balance);whRender();',
-    'if(j.spin&&j.spin.seq!==WSEQ0){WSEQ0=j.spin.seq;whAnimate(j.spin)}',   // mình bấm quay -> diễn ngay
+    'p.then(function(j){WST=j;',
+    'var fresh=j.spin&&j.spin.seq!==WSEQ0;',
+    'if(!fresh)setBal(j.balance);',   // vòng mới thì số dư chờ bánh xe dừng mới nhảy
+    'whRender();',
+    'if(fresh){WSEQ0=j.spin.seq;whAnimate(j.spin)}',   // mình bấm quay -> diễn ngay
     '}).catch(function(e){toast("❌ "+e.message);wheelSync()})}',
     'function whOutClick(){var o=$("whOut");o.disabled=true;',
     'api("/api/wheel/unready",{}).then(function(j){WST=j;setBal(j.balance);o.disabled=false;whRender();toast("↩️ Đã rút — hoàn vé")}).catch(function(e){o.disabled=false;toast("❌ "+e.message);wheelSync()})}',
