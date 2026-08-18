@@ -123,6 +123,9 @@ button{border:0;border-radius:12px;font-weight:800;cursor:pointer;color:#0a1410}
 .pchip{width:54px;height:54px;border-radius:50%;border:3px solid var(--gold);box-shadow:0 3px 8px #0009;
   background:url(/dogcoin.png) center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;cursor:pointer;padding:0;transition:transform .1s;position:relative}
 .pchip:active{transform:scale(.9)}
+/* ALL IN: viền vàng nhấp nháy nhẹ cho nổi hẳn khỏi 6 chip mệnh giá */
+.pchip.allin{border-color:#ffe9a8;box-shadow:0 0 0 2px #b8860b,0 0 14px #ffcf5c66,0 3px 8px #0009}
+.pchip.allin .pv{font-size:8px;color:#ffe9a8;padding:0 4px;letter-spacing:.5px}
 .pchip.fly{position:fixed;z-index:120;margin:0;transition:transform .55s cubic-bezier(.3,.7,.4,1),opacity .55s;pointer-events:none}
 /* ---- điện thoại XOAY NGANG: dồn hết màn hình cho BÀN, giấu phần phụ.
    KHÓA CUỘN (body fixed + overflow hidden, cao 100dvh) — bàn khít đúng khung nhìn,
@@ -488,8 +491,13 @@ function renderBar(m){
       (placed?'<button data-clear="1">Xoá cược</button>':'')+
       '<button data-leave="1">Rời bàn</button></div>'+
       '<div class="chiprow">'+CHIP_DENOMS.map(function(d){
-        return '<button class="pchip" data-chip="'+d.v+'"><span class="pv">'+d.t+'</span></button>';
-      }).join("")+'</div>';
+        return '<button class="pchip" data-chip="'+d.v+'" style="'+chipStyle(d)+'">'+
+               '<span class="pv" style="color:'+d.c1+'">'+d.t+'</span></button>';
+      }).join("")+
+      // ALL IN: chip nhỏ nhất là 100, ai còn lẻ (98, 99...) sẽ KHÔNG cược nổi đồng nào
+      // nếu thiếu nút này. Đặt đúng toàn bộ số dư, kể cả số lẻ.
+      '<button class="pchip allin" data-allin="1"><span class="pv">ALL IN</span></button>'+
+      '</div>';
   }else{
     var txt=m.phase==="result"?"Ván kết thúc — chờ ván mới":(seat&&seat.bet>0?"Đang trong ván — chờ tới lượt bạn":"Bạn không đặt ván này — chờ ván sau");
     sig="wait|"+txt;
@@ -510,6 +518,9 @@ var CHIP_DENOMS=[
   {v:5000,t:"5K",c1:"#ff9b6a",c2:"#c2531d"},
   {v:10000,t:"10K",c1:"#ff6b8a",c2:"#b02545"}
 ];
+// Viền + quầng theo mệnh giá: 6 chip trước đây viền vàng giống hệt nhau, liếc nhanh
+// không phân biệt nổi 100 với 10K. c1 = viền sáng, c2 = quầng đậm bao ngoài.
+function chipStyle(d){return "border-color:"+d.c1+";box-shadow:0 0 0 2px "+d.c2+",0 3px 8px #0009"}
 // Bấm chip: cộng dồn cược (server thay bằng tổng mới) + hiệu ứng chip BAY vào ô của mình
 function addChip(denom,fromEl){
   if(!ST)return;
@@ -521,12 +532,25 @@ function addChip(denom,fromEl){
   cmd("bet",{amount:total});
   flyChip(fromEl,denom);
 }
+// ALL IN: đặt TRỌN số dư (kể cả lẻ như 98) — không cộng dồn, thay thẳng cược hiện tại.
+function allIn(fromEl){
+  if(!ST)return;
+  var seat=ST.mySeat>=0?ST.seats[ST.mySeat]:null;
+  if(!seat)return toast("Ngồi vào ghế trước đã");
+  if(ST.phase!=="idle"&&ST.phase!=="betting")return toast("Đang trong ván — chờ ván sau");
+  if(BAL<1)return toast("Bạn không còn Dogcoin");
+  cmd("bet",{amount:BAL});
+  flyChip(fromEl,0);
+}
 function flyChip(fromEl,denom){
   var spot=document.querySelector(".betspot.mine");
   if(!spot||!fromEl)return;
   var a=fromEl.getBoundingClientRect(),b=spot.getBoundingClientRect();
-  var d=CHIP_DENOMS.find(function(x){return x.v===denom})||CHIP_DENOMS[0];
-  var c=document.createElement("div");c.className="pchip fly";c.innerHTML='<span class="pv">'+d.t+'</span>';
+  // denom=0 là ALL IN (không thuộc mệnh giá nào) -> chip vàng chữ ALL IN.
+  var d=CHIP_DENOMS.find(function(x){return x.v===denom})||{t:"ALL IN",c1:"#ffe9a8",c2:"#b8860b"};
+  var c=document.createElement("div");c.className="pchip fly";
+  c.innerHTML='<span class="pv" style="color:'+d.c1+'">'+d.t+'</span>';
+  c.style.cssText+=";"+chipStyle(d);   // chip bay mang đúng màu chip nguồn
   c.style.left=(a.left+a.width/2-27)+"px";c.style.top=(a.top+a.height/2-27)+"px";
   document.body.appendChild(c);
   requestAnimationFrame(function(){
@@ -538,12 +562,13 @@ function flyChip(fromEl,denom){
 
 // ---- uỷ quyền sự kiện (không onclick inline) ----
 document.addEventListener("click",function(e){
-  var el=e.target.closest("[data-sit],[data-act],[data-chip],[data-clear],[data-leave]");
+  var el=e.target.closest("[data-sit],[data-act],[data-chip],[data-allin],[data-clear],[data-leave]");
   if(!el)return;
   if(el.id==="loginBtn")return;
   if(el.dataset.sit!==undefined)cmd("sit",{seat:+el.dataset.sit});
   else if(el.dataset.act!==undefined)cmd("act",{action:el.dataset.act});
   else if(el.dataset.chip!==undefined)addChip(+el.dataset.chip,el);
+  else if(el.dataset.allin!==undefined)allIn(el);
   else if(el.dataset.clear!==undefined)cmd("clearbet");
   else if(el.dataset.leave!==undefined)cmd("leave");
 });
