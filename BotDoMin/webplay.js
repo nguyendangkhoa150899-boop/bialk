@@ -1067,15 +1067,18 @@ const PAGE = [
     // mốc kế tiếp (xanh nhấp nháy) nằm ngay bên cạnh. Người dùng vừa tự kéo/lăn
     // trong 4 giây thì tôn trọng, không giành thanh.
     'var MUSER=0;',
+    // Nhảy THẲNG (không smooth): scroll smooth là animation, bị ngắt giữa chừng khi
+    // thanh còn đà vuốt / đang vẽ lại là nó dừng lửng lơ ở giữa — đúng bug "bấm 1
+    // cái tự ra giữa che mất mốc đang ăn". Gán scrollLeft thì tức thì, không kẹt được.
     'function mBarScroll(done){if(!MG)return;',
     'if(Date.now()-MUSER<4000)return;',
     'var bar=$("mbar");if(!bar)return;',
     // vừa bấm BẮT ĐẦU ĐÀO (chưa mở ô nào): thanh về ĐẦU, mốc thấp nhất đập vào mắt
-    'if(!done){if(bar.scrollTo)bar.scrollTo({left:0,behavior:"smooth"});else bar.scrollLeft=0;return}',
+    'if(!done){bar.scrollLeft=0;return}',
     'var el=$("ms"+done)||$("ms"+(done+1));if(!el)return;',
     'var to=el.offsetLeft-8;',   // trừ chút đệm cho khỏi dính sát mép
     'if(to<0)to=0;var max=bar.scrollWidth-bar.clientWidth;if(to>max)to=max;',
-    'if(bar.scrollTo)bar.scrollTo({left:to,behavior:"smooth"});else bar.scrollLeft=to}',
+    'bar.scrollLeft=to}',
     // Trên máy tính không vuốt được như điện thoại -> cho giữ chuột kéo ngang thanh hệ số.
     // Kéo quá 4px thì coi là đang cuộn, không tính là bấm chọn mốc.
     'function mBarDrag(){var b=$("mbar");var down=false,x0=0,sl=0,moved=0;',
