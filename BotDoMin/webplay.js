@@ -431,7 +431,9 @@ const PAGE = [
     '@keyframes popFade{from{opacity:0}to{opacity:1}}',
     '#sPop .box{background:#161a24;border-radius:18px;padding:14px 14px 16px;max-width:330px;width:100%;text-align:center;border:3px solid #2a3142;box-shadow:0 12px 40px #000c;animation:popIn .32s cubic-bezier(.2,1.3,.5,1)}',
     '@keyframes popIn{0%{transform:scale(.6) translateY(20px);opacity:0}100%{transform:none;opacity:1}}',
-    '#sPop img{width:100%;max-width:230px;border-radius:12px;display:block;margin:0 auto 10px;background:#fff}',
+    // Ảnh đã cắt nền trong suốt -> KHÔNG đặt nền trắng và không bo góc nữa, để hình
+    // nổi thẳng trên thẻ tối. Thêm đổ bóng cho tách khỏi nền.
+    '#sPop img{width:100%;max-width:230px;display:block;margin:0 auto 10px;filter:drop-shadow(0 3px 8px #0009)}',
     '#sPop .ttl{font-size:21px;font-weight:900;margin-bottom:2px}',
     '#sPop .amt{font-size:26px;font-weight:900;margin:4px 0 2px}',
     '#sPop .sub{font-size:13px;color:var(--muted)}',
@@ -1108,9 +1110,9 @@ const PAGE = [
     'function sPopClose(){var p=$("sPop");p.className="";p.style.display=""}',
     'function sPop(res,net,stake){',
     'var p=$("sPop"),kind,img,ttl,sub;',
-    'if(res==="Lên đỉnh"){kind="top";img="/thang100.jpg";ttl="🏆 LÊN TỚI ĐỈNH!";sub="Leo trọn thang, không dính cầu lửa nào"}',
-    'else if(net>=0){kind="win";img="/ngungdungluc.jpg";ttl="✅ NGƯNG ĐÚNG LÚC!";sub="Dừng ở tầng "+SLAST.floor+"/"+SF+" — khôn đấy"}',
-    'else{kind="lose";img="/thua.jpg";ttl="🔥 ĐẠP TRÚNG LỬA";sub="Cháy ở tầng "+(SLAST.hitFloor+1)+"/"+SF}',
+    'if(res==="Lên đỉnh"){kind="top";img="/thang100.png";ttl="🏆 LÊN TỚI ĐỈNH!";sub="Leo trọn thang, không dính cầu lửa nào"}',
+    'else if(net>=0){kind="win";img="/ngungdungluc.png";ttl="✅ NGƯNG ĐÚNG LÚC!";sub="Dừng ở tầng "+SLAST.floor+"/"+SF+" — khôn đấy"}',
+    'else{kind="lose";img="/thua.png";ttl="🔥 ĐẠP TRÚNG LỬA";sub="Cháy ở tầng "+(SLAST.hitFloor+1)+"/"+SF}',
     '$("sPopImg").src=img;$("sPopTtl").textContent=ttl;$("sPopSub").textContent=sub;',
     '$("sPopAmt").textContent=(net>=0?"+":"−")+vnd(Math.abs(net))+" Dogcoin";',
     'p.className="show "+kind;',
