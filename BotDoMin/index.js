@@ -156,6 +156,65 @@ function logDog(type, userId, username, amount, note) {
     if (dbCache._dogLedger.length > 500) dbCache._dogLedger.length = 500;
 }
 
+// ===== CHUYỂN DOGCOIN GIỮA NGƯỜI CHƠI — nút 🧧 Lộc lá trên web =====
+// Cùng luật với lệnh /chuyentien trong Discord, thêm 2 lớp bảo vệ vì web dễ spam hơn:
+//  - chỉ chuyển cho người ĐÃ CÓ VÍ (từng chơi / được liên kết) — dán nhầm ID lạ là
+//    tiền bay vào ví ma không ai nhận, nên chặn từ đầu;
+//  - mỗi người 10 giây mới được chuyển 1 lần — kênh thông báo không bị dội bom.
+const TRANSFER_ANNOUNCE_CHANNEL = '1538752789499347037';
+const transferLastAt = new Map(); // userId -> lần chuyển gần nhất (ms)
+
+function webTransfer(fromId, toId, amount) {
+    toId = String(toId || '').trim();
+    amount = Math.floor(Number(amount));
+    if (!/^\d{15,20}$/.test(toId)) return { error: 'ID người nhận không hợp lệ' };
+    if (toId === fromId) return { error: 'Không thể tự chuyển cho mình!' };
+    if (!Number.isInteger(amount) || amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
+    if (!dbCache[toId] || typeof dbCache[toId] !== 'object') return { error: 'Người này chưa có ví (chưa từng chơi)' };
+    const last = transferLastAt.get(fromId) || 0;
+    if (Date.now() - last < 10000) return { error: 'Từ từ — 10 giây mới được chuyển 1 lần' };
+    const me = getUserData(fromId);
+    if ((me.points || 0) < amount) return { error: 'Không đủ Dogcoin!' };
+
+    transferLastAt.set(fromId, Date.now());
+    const fromName = me.name || fromId;
+    const toName = getUserData(toId).name || toId;
+    updatePoints(fromId, -amount);
+    updatePoints(toId, amount);
+    logDog('transfer', fromId, fromName, -amount, `chuyển cho ${toName} (web)`);
+    logDog('transfer', toId, toName, amount, `nhận từ ${fromName} (web)`);
+    writeLog('ADMIN', `[CHUYỂN TIỀN][WEB] ${fromName} → ${toName} | ${amount.toLocaleString()} Dogcoin`);
+
+    // Thông báo Discord — giữ nguyên khuôn của /chuyentien
+    client.channels.fetch(TRANSFER_ANNOUNCE_CHANNEL).then(ch => ch.send({
+        embeds: [new EmbedBuilder().setTitle('💸 GIAO DỊCH')
+            .setDescription(`✅ <@${fromId}> đã chuyển **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${toId}>!`)
+            .setColor(0x00aeef)],
+    })).catch(e => writeLog('SYSTEM', `[CHUYỂN TIỀN] Không gửi được thông báo: ${e.message}`));
+
+    // Và một dòng vào 💬 Chat sòng trên web (cùng kho _webChat với chat thường)
+    if (!Array.isArray(dbCache._webChat)) dbCache._webChat = [];
+    dbCache._webChat.push({
+        u: 'sys-transfer', name: '💸 GIAO DỊCH',
+        text: `${fromName} đã chuyển ${amount.toLocaleString()} Dogcoin cho ${toName}!`, ts: Date.now(),
+    });
+    while (dbCache._webChat.length > 100) dbCache._webChat.shift();
+
+    return { ok: true, balance: getUserData(fromId).points || 0, toName };
+}
+
+// Danh sách người nhận cho ô tìm trên web: ai có ví là hiện (id + tên đã liên kết).
+// KHÔNG kèm số dư — không để cả sòng soi ví nhau.
+function listTransferTargets() {
+    const out = [];
+    for (const [k, v] of Object.entries(dbCache)) {
+        if (k.startsWith('_') || !/^\d{15,20}$/.test(k)) continue;
+        if (!v || typeof v !== 'object') continue;
+        out.push({ id: k, name: NAME_OVERRIDE[k] || v.name || '' });
+    }
+    return out;
+}
+
 // ===== PHÁT DOGCOIN TOÀN SERVER (gọi từ dashboard) =====
 // Cộng `amount` cho MỌI ví đang tồn tại rồi đăng thông báo tag role vào kênh thông báo.
 // Chỉ cộng ví đã có (ai từng chơi); người mới vào sau vẫn nhận STARTING_DOGCOIN như thường.
@@ -1170,6 +1229,8 @@ client.once('ready', async (c) => {
             stairs: webStairsApi,
             blackjack: blackjackTable,
             webPlayUrl: WEB_PLAY_URL,
+            transfer: webTransfer,
+            transferTargets: listTransferTargets,
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 

@@ -181,6 +181,19 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
 
+                // ===== 🧧 LỘC LÁ: chuyển Dogcoin cho nhau =====
+                // Luật + thông báo Discord + dòng chat sòng đều nằm ở index.js (ctx.transfer).
+                if (path === '/api/players') {
+                    return sendJSON(res, 200, { ok: true, list: ctx.transferTargets ? ctx.transferTargets() : [] });
+                }
+                if (req.method === 'POST' && path === '/api/transfer') {
+                    if (!ctx.transfer) return sendJSON(res, 400, { ok: false, error: 'Chuyển tiền chưa bật' });
+                    const body = await readBody(req);
+                    const r = ctx.transfer(userId, body.toId, body.amount);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, balance: r.balance, toName: r.toName });
+                }
+
                 if (req.method === 'POST' && path === '/api/bet') {
                     const body = await readBody(req);
                     const tx = ctx.getTX();
@@ -425,6 +438,14 @@ const PAGE = [
     '@keyframes shakeX{0%,100%{transform:translate(0,0)}20%{transform:translate(-9px,4px)}40%{transform:translate(8px,-5px)}60%{transform:translate(-7px,3px)}80%{transform:translate(6px,-2px)}}',
     'body.storm{animation:shakeX .65s ease-in-out 2}',
     '.fx{position:fixed;top:-50px;z-index:97;pointer-events:none;animation-name:fxfall;animation-timing-function:linear;animation-fill-mode:forwards}',
+    // ---- 🧧 Lộc lá ----
+    '#lolaPop{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;justify-content:center;background:#000a;padding:24px 16px}',
+    '#lolaPop.show{display:flex}',
+    '#lolaPop .box{background:#161a24;border:1px solid #2a3142;border-radius:16px;padding:16px;max-width:380px;width:100%;box-shadow:0 12px 40px #000c}',
+    '#lolaList{max-height:170px;overflow-y:auto;margin-top:6px}',
+    '#lolaList button{display:flex;justify-content:space-between;width:100%;text-align:left;background:#1c2130;color:#dfe6f5;padding:9px 10px;border-radius:8px;margin-top:4px;font-size:13px}',
+    '#lolaList button.on{background:#3d2c10;color:#ffd977;box-shadow:0 0 0 2px var(--gold) inset}',
+    '#lolaList .lid{color:#6f7a90;font-size:11px}',
     '@keyframes fxfall{to{transform:translateY(115vh) rotate(680deg)}}',
     // bảng 20 ván gần nhất (kiểu soi cầu trong Discord: mã ván · 3 viên · tổng · kết quả)
     '.hrow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}',
@@ -566,6 +587,7 @@ const PAGE = [
     '<div class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div>',
     '<div class="big"><img class="dc" src="/dogcoin.png" alt=""> <span id="bal">0</span></div></div>',
     '<div style="display:flex;gap:8px;align-items:center">',
+    '<button style="background:#3d2c10;color:#ffd977;font-size:13px" onclick="lolaOpen()">🧧 Lộc lá</button>',
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:46px;font-size:17px" onclick="toggleSnd()">🔊</button>',
     '<button style="background:#232735" onclick="logout()">Thoát</button></div></div>',
 
@@ -690,6 +712,18 @@ const PAGE = [
     '<div id="hist20" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
 
     '<div id="winpop"></div>',
+    // 🧧 Lộc lá: chuyển Dogcoin cho người chơi khác. Gõ tên để lọc danh sách ví đã có,
+    // hoặc dán thẳng Discord ID (cho người chưa hiện trong danh sách).
+    '<div id="lolaPop"><div class="box">',
+    '<h2 style="margin-bottom:8px">🧧 Lộc lá — chuyển Dogcoin</h2>',
+    '<input id="lolaQ" placeholder="Gõ tên người nhận (hoặc dán Discord ID)" oninput="lolaRender()">',
+    '<div id="lolaList"></div>',
+    '<div id="lolaSel" class="muted" style="font-size:13px;margin:6px 0">Chưa chọn người nhận</div>',
+    '<input id="lolaAmt" inputmode="numeric" placeholder="Số Dogcoin muốn gửi">',
+    '<div style="display:flex;gap:8px;margin-top:10px">',
+    '<button style="flex:1;background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;padding:12px" onclick="lolaSend()">💸 CHUYỂN</button>',
+    '<button style="background:#232735;min-width:80px" onclick="lolaClose()">Đóng</button>',
+    '</div></div></div>',
     '<div id="toast"></div>',
     '<script>',
     'var TOKEN=localStorage.getItem("play_token")||"";var SEL="";var TT=0;var LOCKS=10;var PHASE="off";var BAL=0;',
@@ -722,6 +756,30 @@ const PAGE = [
     // Tắt/bật tiếng — chơi lúc nửa đêm hay trong giờ làm thì cần tắt được.
     'function toggleSnd(){SND=!SND;localStorage.setItem("play_snd",SND?"1":"0");',
     'document.getElementById("sndBtn").textContent=SND?"🔊":"🔇";if(SND)playBoom()}',
+    // ===== 🧧 LỘC LÁ: chuyển Dogcoin =====
+    'var LOLALIST=[],LOLATO=null;',
+    'function lolaOpen(){LOLATO=null;$("lolaQ").value="";$("lolaAmt").value="";',
+    '$("lolaSel").textContent="Chưa chọn người nhận";',
+    'api("/api/players").then(function(j){LOLALIST=j.list||[];lolaRender()}).catch(function(){LOLALIST=[]});',
+    '$("lolaPop").classList.add("show")}',
+    'function lolaClose(){$("lolaPop").classList.remove("show")}',
+    'function lolaRender(){var q=$("lolaQ").value.trim().toLowerCase();var box=$("lolaList");',
+    // lọc theo tên, giấu chính mình; gõ ID 15-20 số thì cho chọn thẳng ID đó
+    'var items=LOLALIST.filter(function(p){return p.id!==MYID&&(p.name||"").toLowerCase().indexOf(q)>=0}).slice(0,8);',
+    // CHỈ nhét id vào data-attribute, tên tra lại từ danh sách lúc bấm — esc() không
+    // escape dấu nháy nên tên chứa " sẽ phá vỡ attribute nếu nhét thẳng.
+    'var html=items.map(function(p){return \'<button data-id="\'+p.id+\'" class="\'+(LOLATO&&LOLATO.id===p.id?"on":"")+\'"><span>\'+esc(p.name||"(chưa đặt tên)")+\'</span><span class="lid">\'+p.id.slice(-4)+\'</span></button>\'}).join("");',
+    'if(/^\\d{15,20}$/.test(q)&&q!==MYID)html=\'<button data-id="\'+q+\'" class="\'+(LOLATO&&LOLATO.id===q?"on":"")+\'"><span>Dùng thẳng ID này</span><span class="lid">\'+q+\'</span></button>\'+html;',
+    'box.innerHTML=html||\'<div class="muted" style="font-size:12px;padding:6px">Không thấy ai khớp — thử gõ khác hoặc dán Discord ID</div>\'}',
+    'document.getElementById("lolaList").addEventListener("click",function(e){var b=e.target.closest("button[data-id]");if(!b)return;',
+    'var id=b.dataset.id;var p=LOLALIST.find(function(x){return x.id===id});',
+    'LOLATO={id:id,name:p?(p.name||"(chưa đặt tên)"):("ID …"+id.slice(-4))};',
+    '$("lolaSel").innerHTML="Gửi cho: <b style=\\"color:var(--gold)\\">"+esc(LOLATO.name)+"</b>";lolaRender()});',
+    'function lolaSend(){if(!LOLATO)return toast("❌ Chọn người nhận đã");',
+    'var amt=parseInt($("lolaAmt").value)||0;if(amt<1)return toast("❌ Nhập số Dogcoin");',
+    'api("/api/transfer",{toId:LOLATO.id,amount:amt}).then(function(j){setBal(j.balance);',
+    'toast("✅ Đã gửi "+amt.toLocaleString("vi-VN")+" cho "+(j.toName||LOLATO.name));lolaClose();lastChatTs=0;refresh()',
+    '}).catch(function(e){toast("❌ "+e.message)})}',
     'function api(p,body){return fetch(p,{method:body?"POST":"GET",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(j){if(!j.ok)throw new Error(j.error||("HTTP "+r.status));return j})})}',
     'function login(){var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return toast("Nhập đủ ID + PIN");fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})}).then(function(r){return r.json()}).then(function(j){if(!j.ok)return toast(j.error||"Sai thông tin");TOKEN=j.token;localStorage.setItem("play_token",TOKEN);show(j.name)}).catch(function(){toast("Lỗi mạng")})}',
     'function logout(){TOKEN="";localStorage.removeItem("play_token");location.reload()}',
