@@ -1304,9 +1304,10 @@ const webStairsApi = {
 // ===== 🎡 VÒNG QUAY MAY MẮN NHÓM — thay Blackjack (cả server thống nhất 18/08) =====
 // Vé cố định, CHẮC CHẮN thắng (sàn x1.2). 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch nhau
 // 120° (= 8 nan); mỗi người chọn 1 màu, CHỌN TRÙNG thoải mái — cùng màu ăn cùng nan.
-// Đủ N người ready (admin chỉnh ở panel, mặc định 3) là quay MỘT vòng chung.
+// Đủ N người ready (admin chỉnh ở panel, mặc định 3) thì NÚT QUAY SÁNG LÊN —
+// KHÔNG tự quay: ai trong bàn bấm nút là quay MỘT vòng chung cho tất cả.
 // Mỗi người 1 lượt mỗi khung giờ VN: 00:00–11:59 và 12:00–23:59 (reset 00:00 & 12:00).
-const WHEEL_TICKET = 500;
+const WHEEL_TICKET = 1000;
 const WHEEL_COLORS = ['yellow', 'blue', 'green'];
 const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 8, green: 16 };
 // 24 nan: x1.2×7 · x1.4×5 · x1.6×4 · x1.8×3 · x2×2 · x2.2×2 · x10×1 (độc đắc ~4,2%).
@@ -1352,6 +1353,8 @@ function wheelState(userId) {
         arrows: WHEEL_ARROW_OFFSET,
         minPlayers: wheelMinPlayers(),
         status: wheelRoom.status,
+        // đủ người + đang chờ = nút QUAY sáng lên cho người trong bàn bấm
+        armed: wheelRoom.status === 'waiting' && wheelRoom.players.size >= wheelMinPlayers(),
         players: [...wheelRoom.players.values()].map(p => ({ name: p.name, color: p.color })),
         myColor: wheelRoom.players.has(userId) ? wheelRoom.players.get(userId).color : null,
         played: me.lastWheelKey === wheelWindowKey(),
@@ -1378,7 +1381,18 @@ function wheelReady(userId, color) {
         writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn, mũi tên ${color} (${wheelRoom.players.size}/${wheelMinPlayers()})`);
     }
     saveDbNow();
-    wheelMaybeSpin();
+    // KHÔNG tự quay khi đủ người — chỉ bật `armed`, người trong bàn tự bấm nút QUAY.
+    return { ok: true, state: wheelState(userId) };
+}
+// Người trong bàn bấm nút QUAY (chỉ sáng khi đủ người). Hai người bấm gần nhau:
+// người sau nhận luôn state đang quay để client diễn hoạt hình, không báo lỗi.
+function wheelSpin(userId) {
+    if (wheelRoom.status === 'spinning') return { ok: true, state: wheelState(userId) };
+    if (!wheelRoom.players.has(userId)) return { error: 'Vào bàn đã rồi mới bấm quay được' };
+    if (wheelRoom.players.size < wheelMinPlayers()) return { error: `Chưa đủ ${wheelMinPlayers()} người — rủ thêm bạn bè` };
+    const me = wheelRoom.players.get(userId);
+    writeLog('RESULT', `[VÒNG QUAY] ${me.name} bấm nút quay (${wheelRoom.players.size} người trong bàn)`);
+    wheelDoSpin();
     return { ok: true, state: wheelState(userId) };
 }
 function wheelUnready(userId) {
@@ -1390,8 +1404,8 @@ function wheelUnready(userId) {
     saveDbNow();
     return { ok: true, state: wheelState(userId) };
 }
-function wheelMaybeSpin() {
-    if (wheelRoom.status !== 'waiting' || wheelRoom.players.size < wheelMinPlayers()) return;
+function wheelDoSpin() {
+    if (wheelRoom.status !== 'waiting' || !wheelRoom.players.size) return;
     // Chốt kết quả NGAY tại server; client chỉ diễn hoạt hình quay tới nan idx.
     const idx = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
     const key = wheelWindowKey();
@@ -1907,7 +1921,7 @@ client.once('ready', async (c) => {
             // 📅 điểm danh tháng + 💉 nghiện — cùng logic với /diemdanh, /nghien
             daily: { state: dailyState, claim: claimDaily, nghien: claimNghien },
             // 🎡 vòng quay may mắn nhóm (thay blackjack)
-            wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready },
+            wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -1958,7 +1972,7 @@ client.once('ready', async (c) => {
             setWheelMin: (n) => {
                 dbCache._wheelMinPlayers = n;
                 saveDbNow();
-                wheelMaybeSpin();   // hạ số xuống bằng số người đang chờ là quay luôn
+                // hạ số xuống ≤ số người đang chờ thì nút QUAY sáng ngay cho họ tự bấm
             },
             // Bảng thống kê 📊
             getStatsBoard: () => ({ on: !!statsBoard.message, channelId: dbCache._statsChannelId || '' }),

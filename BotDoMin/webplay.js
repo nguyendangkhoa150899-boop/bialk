@@ -220,6 +220,12 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r.state });
                 }
+                // nút QUAY — chỉ người trong bàn bấm được, và chỉ khi đủ người (armed)
+                if (ctx.wheel && ctx.wheel.spin && req.method === 'POST' && path === '/api/wheel/spin') {
+                    const r = ctx.wheel.spin(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r.state });
+                }
 
                 if (req.method === 'POST' && path === '/api/bet') {
                     const body = await readBody(req);
@@ -655,7 +661,10 @@ const PAGE = [
     '#whPick button.y{color:#f5c518}#whPick button.b{color:#60a5fa}#whPick button.g{color:#4ade80}',
     '#whPick button.sel{border-color:currentColor;background:#1a1e2a}',
     '#whRes{display:none;margin-top:10px;font-size:14px;font-weight:700;line-height:1.6;text-align:center;background:#12141a;border:1px solid var(--line);border-radius:12px;padding:10px}',
-    '#whGo:disabled,#whDemo:disabled{opacity:.55}',
+    '#whGo:disabled,#whDemo:disabled,#whOut:disabled{opacity:.55}',
+    // đủ người -> nút QUAY phát sáng nhấp nháy vàng cho cả bàn thấy mà bấm
+    '#whGo.arm{background:linear-gradient(180deg,#ffd977,#e0a63f);color:#3d2c05;animation:whArm 1s ease-in-out infinite}',
+    '@keyframes whArm{0%,100%{box-shadow:0 0 6px #f5c51877}50%{box-shadow:0 0 26px #f5c518ee;transform:scale(1.02)}}',
     // ---- 📅 điểm danh ----
     '#dChips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}',
     '.dchip{background:#12141a;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}',
@@ -797,7 +806,7 @@ const PAGE = [
     '<div id="pageWheel" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎡 Vòng Quay May Mắn</h2><div class="muted" id="whStat">—</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Vé cố định — <b>chắc chắn thắng</b>, bét x1.2, ĐỘC ĐẮC <b>x10</b> 🏆. Chọn 1 màu mũi tên (trùng nhau thoải mái), đủ người là quay chung 1 vòng. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Vé cố định — <b>chắc chắn thắng</b>, bét x1.2, ĐỘC ĐẮC <b>x10</b> 🏆. Chọn 1 màu mũi tên (trùng nhau thoải mái). Đủ người thì nút <b>QUAY sáng lên</b> — ai trong bàn bấm là quay chung 1 vòng. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
     '<div id="whWrap">',
     '<svg id="whSvg" viewBox="0 0 300 300"></svg>',
     '<div class="warr y"><div class="tri"></div></div>',
@@ -812,6 +821,7 @@ const PAGE = [
     '<div class="muted" id="whPlayers" style="font-size:13px;margin-top:8px;text-align:center">—</div>',
     '<div id="whRes"></div>',
     '<button class="btn-full" id="whGo" onclick="whGoClick()">🎟️ VÀO BÀN</button>',
+    '<button id="whOut" style="display:none;width:100%;margin-top:8px;background:#232735;font-size:13px" onclick="whOutClick()">❌ Rút khỏi bàn (hoàn vé)</button>',
     '<button id="whDemo" style="width:100%;margin-top:8px;background:#232735;font-size:13px" onclick="whDemo()">🎠 Quay thử cho biết (không tính tiền, không cần vé)</button>',
     '</div>',
     '<div class="card"><h2>🕘 10 vòng gần nhất</h2><div id="whHist" class="muted" style="font-size:13px">Chưa có vòng nào.</div></div>',
@@ -1496,22 +1506,32 @@ const PAGE = [
     'var hh=WST.history||[];',
     '$("whHist").innerHTML=hh.length?hh.map(function(e){return \'<div style="padding:5px 0;border-bottom:1px solid var(--line)">\'+(e.time||"")+" · "+["yellow","blue","green"].map(function(c){return WEM[c]+" x"+(e.results?e.results[c]:"?")}).join(" ")+"<br>"+(e.players||[]).map(function(p){return WEM[p.color]+" "+esc(p.name)+" +"+Number(p.win).toLocaleString("vi-VN")}).join(" · ")+"</div>"}).join(""):"Chưa có vòng nào.";',
     'whBtn()}',
+    // Nút chính 3 trạng thái: chưa vào bàn = VÀO BÀN · vào rồi chưa đủ người = chờ
+    // (disabled) · đủ người (armed) = QUAY!!! phát sáng, ai trong bàn bấm cũng được.
+    // Nút rút #whOut tách riêng, chỉ hiện khi mình đang trong bàn và chưa quay.
     'function whBtn(){var b=$("whGo");if(!b||!WST)return;var d=$("whDemo");if(d)d.disabled=WANIM;',
+    'var o=$("whOut");if(o)o.style.display=(WST.myColor&&WST.status==="waiting"&&!WANIM)?"block":"none";',
+    'b.classList.remove("arm");',
     'if(WANIM||WST.status==="spinning"){b.disabled=true;b.textContent="🎡 ĐANG QUAY...";return}',
-    'if(WST.played&&!WST.myColor){b.disabled=true;',
+    'if(WST.myColor){',
+    'if(WST.armed){b.disabled=false;b.classList.add("arm");b.textContent="🎡 ĐỦ NGƯỜI — BẤM QUAY!!!";return}',
+    'b.disabled=true;b.textContent="⏳ CHỜ ĐỦ NGƯỜI ("+WST.players.length+"/"+WST.minPlayers+")...";return}',
+    'if(WST.played){b.disabled=true;',
     'var left=WST.nextReset-(Date.now()+WOFF3);if(left<0)left=0;',
     'var hh2=Math.floor(left/3600000),mm2=Math.floor(left%3600000/60000);',
     'b.textContent="⏳ KHUNG NÀY QUAY RỒI — CÒN "+hh2+" GIỜ "+(mm2<10?"0":"")+mm2+" PHÚT";return}',
     'b.disabled=false;',
-    'b.textContent=WST.myColor?("❌ RÚT KHỎI BÀN (hoàn vé "+WST.ticket.toLocaleString("vi-VN")+")"):("🎟️ VÀO BÀN — VÉ "+WST.ticket.toLocaleString("vi-VN")+" "+WEM[WSEL])}',
+    'b.textContent="🎟️ VÀO BÀN — VÉ "+WST.ticket.toLocaleString("vi-VN")+" "+WEM[WSEL]}',
     'function whPickC(c){WSEL=c;localStorage.setItem("wh_color",c);',
     'if(WST&&WST.myColor&&WST.myColor!==c){api("/api/wheel/ready",{color:c}).then(function(j){WST=j;whRender();toast("Đổi mũi tên sang "+WEM[c])}).catch(function(e){toast("❌ "+e.message)})}',
     'else whRender()}',
     'function whGoClick(){if(!WST)return;var b=$("whGo");b.disabled=true;',
-    'var p=WST.myColor?api("/api/wheel/unready",{}):api("/api/wheel/ready",{color:WSEL});',
+    'var p=WST.myColor?api("/api/wheel/spin",{}):api("/api/wheel/ready",{color:WSEL});',
     'p.then(function(j){WST=j;setBal(j.balance);whRender();',
-    'if(j.spin&&j.spin.seq!==WSEQ0){WSEQ0=j.spin.seq;whAnimate(j.spin)}',   // mình là người chốt sổ -> quay luôn
+    'if(j.spin&&j.spin.seq!==WSEQ0){WSEQ0=j.spin.seq;whAnimate(j.spin)}',   // mình bấm quay -> diễn ngay
     '}).catch(function(e){toast("❌ "+e.message);wheelSync()})}',
+    'function whOutClick(){var o=$("whOut");o.disabled=true;',
+    'api("/api/wheel/unready",{}).then(function(j){WST=j;setBal(j.balance);o.disabled=false;whRender();toast("↩️ Đã rút — hoàn vé")}).catch(function(e){o.disabled=false;toast("❌ "+e.message);wheelSync()})}',
     // 🎠 quay thử: random tại chỗ, không đụng server, không đụng ví
     'function whDemo(){if(WANIM||!WST)return;var idx=Math.floor(Math.random()*WST.segments.length);',
     'WANIM=true;$("whRes").style.display="none";whBtn();',
