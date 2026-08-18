@@ -10,9 +10,9 @@ const crypto = require('crypto');
 const { attachWebSocket } = require('./wsserver');
 const BLACKJACK_PAGE = require('./blackjackPage').PAGE;
 
-// Toàn bộ ảnh gom ở images.js — thêm ảnh mới chỉ cần sửa bảng FILES bên đó,
-// không phải đụng vào file này nữa.
-const IMAGES = require('./images');
+// Toàn bộ ảnh + âm thanh gom ở assets.js (tự quét thư mục assets/) — thêm file mới
+// chỉ cần thả vào thư mục đó, không phải đụng vào file này nữa.
+const ASSETS = require('./assets');
 
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
@@ -94,7 +94,7 @@ function startWebPlay(ctx) {
                 return res.end(BLACKJACK_PAGE);
             }
 
-            if (IMAGES.serve(req, res, path)) return;
+            if (ASSETS.serve(req, res, path)) return;
 
             if (req.method === 'POST' && path === '/api/login') {
                 const ip = req.socket.remoteAddress || '?';
@@ -718,37 +718,30 @@ const PAGE = [
     // đồng hồ máy người chơi có thể lệch server vài giây -> đếm giờ theo GIỜ SERVER
     'var CLOCK_OFF=0;function srvNow(){return Math.floor(Date.now()/1000)+CLOCK_OFF}',
     'function toast(m){var t=document.getElementById("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2500)}',
-    // ===== ÂM THANH NỔ / CHÁY =====
-    // TỔNG HỢP bằng Web Audio, KHÔNG kèm file mp3 nào: giữ đúng nguyên tắc dự án
-    // (không thêm asset/phụ thuộc), không lo bản quyền, không tốn băng thông tải file.
-    // Tiếng nổ = ồn trắng tắt dần qua bộ lọc quét từ cao xuống trầm + một cú thụp bass.
-    'var AC=null;var SND=localStorage.getItem("play_snd")!=="0";',
+    // ===== ÂM THANH: DÙNG CHUNG MỘT FILE assets/dry-fart.mp3 =====
+    // Mìn nổ và đạp trúng lửa đều phát cùng tiếng này.
+    'var AC=null;var SND=localStorage.getItem("play_snd")!=="0";var SFX=null;',
     'function acGet(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}',
     'if(AC.state==="suspended")AC.resume();return AC}',
-    // Điện thoại chỉ cho phát tiếng SAU khi người dùng chạm màn hình. Tiếng nổ lại phát
-    // trong .then() của fetch (đã rời khỏi cú chạm) -> mở khoá sẵn ở lần chạm ĐẦU TIÊN.
-    'document.addEventListener("pointerdown",function(){acGet()},{once:true});',
-    // kind: "boom" = mìn nổ (trầm, nặng) | "fire" = bén lửa (rát, xì hơi)
-    'function playBoom(kind){',
-    'if(!SND)return;var c=acGet();if(!c)return;var t=c.currentTime;var fire=kind==="fire";',
-    'var dur=fire?0.75:0.95;',
-    // 1) mảnh vỡ / lửa bén: ồn trắng biên độ tắt dần
-    'var len=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,len,c.sampleRate),d=buf.getChannelData(0);',
-    'for(var i=0;i<len;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/len,fire?1.4:2.2)}',
-    'var src=c.createBufferSource();src.buffer=buf;',
-    'var f=c.createBiquadFilter();',
-    'if(fire){f.type="bandpass";f.Q.value=0.8;f.frequency.setValueAtTime(2600,t);f.frequency.exponentialRampToValueAtTime(420,t+dur)}',
-    'else{f.type="lowpass";f.frequency.setValueAtTime(1800,t);f.frequency.exponentialRampToValueAtTime(70,t+0.7)}',
-    'var g=c.createGain();g.gain.setValueAtTime(fire?0.55:0.85,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);',
-    'src.connect(f);f.connect(g);g.connect(c.destination);src.start(t);src.stop(t+dur);',
-    // 2) cú thụp trầm cho có LỰC (mìn nặng hơn lửa)
-    'var o=c.createOscillator();o.type="sine";',
-    'o.frequency.setValueAtTime(fire?90:150,t);o.frequency.exponentialRampToValueAtTime(fire?40:28,t+0.35);',
-    'var g2=c.createGain();g2.gain.setValueAtTime(fire?0.35:0.8,t);g2.gain.exponentialRampToValueAtTime(0.001,t+(fire?0.4:0.55));',
-    'o.connect(g2);g2.connect(c.destination);o.start(t);o.stop(t+0.6)}',
+    // Tải + giải mã SẴN ngay lúc mở trang: tiếng phát trong .then() của fetch, nếu đợi
+    // tới lúc đó mới tải thì lần nổ đầu tiên bị câm. Tạo AudioContext không cần cử chỉ
+    // (nó chỉ nằm im ở trạng thái suspended), chỉ PHÁT mới cần.
+    'function loadSfx(){var c=acGet();if(!c||SFX)return;',
+    'fetch("/dry-fart.mp3").then(function(r){return r.arrayBuffer()}).then(function(ab){',
+    // Safari đời cũ chỉ có dạng callback, đời mới trả Promise -> đỡ cả hai kiểu
+    'var p=c.decodeAudioData(ab,function(b){SFX=b},function(){});',
+    'if(p&&p.then)p.then(function(b){SFX=b}).catch(function(){})}).catch(function(){})}',
+    'loadSfx();',
+    // Điện thoại chỉ cho phát tiếng SAU khi người dùng chạm màn hình -> mở khoá ở lần
+    // chạm ĐẦU TIÊN, vì tiếng nổ phát trong .then() (đã rời khỏi cú chạm).
+    'document.addEventListener("pointerdown",function(){acGet();loadSfx()},{once:true});',
+    'function playBoom(){',
+    'if(!SND)return;var c=acGet();if(!c)return;',
+    'if(!SFX){loadSfx();return}',           // chưa tải xong thì bỏ qua lượt này, không kêu sai
+    'var s=c.createBufferSource();s.buffer=SFX;s.connect(c.destination);s.start(0)}',
     // Tắt/bật tiếng — chơi lúc nửa đêm hay trong giờ làm thì cần tắt được.
     'function toggleSnd(){SND=!SND;localStorage.setItem("play_snd",SND?"1":"0");',
-    'document.getElementById("sndBtn").textContent=SND?"🔊":"🔇";if(SND)playBoom("boom")}',
+    'document.getElementById("sndBtn").textContent=SND?"🔊":"🔇";if(SND)playBoom()}',
     'function api(p,body){return fetch(p,{method:body?"POST":"GET",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(j){if(!j.ok)throw new Error(j.error||("HTTP "+r.status));return j})})}',
     'function login(){var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return toast("Nhập đủ ID + PIN");fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})}).then(function(r){return r.json()}).then(function(j){if(!j.ok)return toast(j.error||"Sai thông tin");TOKEN=j.token;localStorage.setItem("play_token",TOKEN);show(j.name)}).catch(function(){toast("Lỗi mạng")})}',
     'function logout(){TOKEN="";localStorage.removeItem("play_token");location.reload()}',
@@ -1007,7 +1000,7 @@ const PAGE = [
     'var stake=MG.bet;',
     'api("/api/mines/reveal",{tile:i}).then(function(j){mBusy=false;',
     'if(typeof j.balance==="number")setBal(j.balance);',
-    'if(j.hit){t.className="mtile boom";t.textContent="💣";playBoom("boom");',
+    'if(j.hit){t.className="mtile boom";t.textContent="💣";playBoom();',
     'toast("💥 BÙM! Mất "+stake.toLocaleString("vi-VN")+" Dogcoin");',
     'return mEnd("💥 Trúng mìn — thua "+stake.toLocaleString("vi-VN"),-stake,j.mines)}',
     't.className="mtile coin";t.innerHTML=COINIMG;t.onclick=null;',
@@ -1133,7 +1126,7 @@ const PAGE = [
     'var stake=SG.bet,fire=SG.fire,f=SG.floor;',
     'api("/api/stairs/step",{col:c}).then(function(j){sBusy=false;',
     'if(typeof j.balance==="number")setBal(j.balance);',
-    'if(j.burn){playBoom("fire");toast("🔥 CHÁY! Mất "+vnd(stake)+" Dogcoin");',
+    'if(j.burn){playBoom();toast("🔥 CHÁY! Mất "+vnd(stake)+" Dogcoin");',
     'return sFinish(j,"Trúng lửa (Thua)",-stake,stake,fire,f,f,c)}',
     'var el=$("sc_"+f+"_"+c);if(el){el.className="scell step";el.innerHTML=HEROIMG}',
     'if(j.top){toast("🏆 LÊN ĐỈNH! Nhận "+vnd(j.win));',
