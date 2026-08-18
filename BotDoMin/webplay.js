@@ -458,16 +458,18 @@ const PAGE = [
     '.dc.big{width:1.5em;height:1.5em;vertical-align:-.3em}',
     '#mineCard{background:linear-gradient(180deg,#1b2440,#141a2e);border:1px solid #2b3557}',
     // thanh mốc hệ số cuộn ngang: mốc đã ăn sáng vàng, mốc kế tiếp nhấp nháy xanh
-    '#mbar{display:flex;gap:4px;overflow-x:auto;padding:6px;background:#0d1226;border:1px solid #2b3557;border-radius:10px;scrollbar-width:none}',
-    '#mbar::-webkit-scrollbar{display:none}',
-    '.mstep{flex:0 0 auto;min-width:62px;text-align:center;padding:8px 10px;border-radius:7px;font-size:13.5px;font-weight:800;background:#1a2340;color:#5f6c96;border:1px solid #263159}',
+    // Thanh hệ số PHÂN TRANG 7 ô/trang (bỏ scroll 19/08 — scroll tự động cứ giành
+    // thanh với người dùng, chốt chuyển sang bấm nút ◀ ▶ cho dứt điểm)
+    '#mbar{display:flex;gap:4px;padding:6px;background:#0d1226;border:1px solid #2b3557;border-radius:10px}',
+    '.mstep{flex:1 1 0;min-width:0;text-align:center;padding:8px 2px;border-radius:7px;font-size:13px;font-weight:800;background:#1a2340;color:#5f6c96;border:1px solid #263159;white-space:nowrap;overflow:hidden}',
+    '.mpg{flex:0 0 34px;border-radius:7px;background:#232b4d;color:#8fa2d9;border:1px solid #2b3557;font-size:14px;font-weight:800;padding:0}',
+    '.mpg:disabled{opacity:.3}',
     '.mstep.hit{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
     '.mstep.now{background:linear-gradient(180deg,#4da3ff,#2c6fd0);color:#fff;border-color:#7dc0ff;animation:stepGlow 1.4s ease-in-out infinite}',
     '.mstep.capped{background:#3a2415;color:#ff9a5c;border-color:#7d4a1e;font-size:11px}',
     '.mstep.last{border-color:#c39bf0;box-shadow:inset 0 0 0 1px #c39bf055}',
     '.mstep.last .tag{display:block;font-size:9px;letter-spacing:.5px;color:#c39bf0;font-weight:700}',
     '.mstep.last.hit .tag{color:#7d5f1e}',
-    '#mbar{cursor:grab}#mbar.drag{cursor:grabbing}',
     '@keyframes stepGlow{0%,100%{box-shadow:0 0 0 0 #4da3ff00}50%{box-shadow:0 0 12px 2px #4da3ff88}}',
     // sân: cột đếm Dogcoin còn lại | lưới 5×5 | cột đếm mìn
     '#mstage{display:grid;grid-template-columns:46px 1fr 46px;gap:8px;margin-top:10px}',
@@ -885,7 +887,7 @@ const PAGE = [
     // Tài Xỉu vẫn tự làm mới ngầm kể cả khi đang ở trang Dò Mìn (số dư luôn đúng,
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
-    'mBarDrag();mSync();sSync();',
+    'mSync();sSync();',
     'var saved=localStorage.getItem("play_page");',
     'go(saved==="mine"||saved==="stair"||saved==="wheel"||saved==="daily"?saved:"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
@@ -1053,43 +1055,26 @@ const PAGE = [
     // thanh mốc hệ số: đã ăn = vàng, mốc kế tiếp = xanh nhấp nháy, tự cuộn theo
     // Mốc nào cược hiện tại đã vượt trần thì hiện thẳng "TRẦN" — người chơi thấy ngay
     // đào tới đâu là hết ăn thêm, thay vì đào tiếp rồi mới biết bị cắt.
+    // Thanh hệ số PHÂN TRANG: 7 mốc/trang + nút ◀ ▶. Trang tự bám theo MỐC KẾ TIẾP
+    // (mở hết 7 mốc đầu là tự sang trang 2); bấm ◀ ▶ xem trang khác thì giữ nguyên
+    // lựa chọn đó tới khi mở thêm ô mới (lúc đó nhảy về trang đang chơi).
+    'var MPAGE=0,MPGMAN=false,MDONE0=-1,MPER=7;',
     'function mBar(){var done=MG?MG.revealed.length:0;var bet=MG?MG.bet:mNum("mBet");',
-    '$("mbar").innerHTML=MTAB.map(function(m,i){var k=i+1;',
+    'var np=Math.max(1,Math.ceil(MTAB.length/MPER));',
+    'if(done!==MDONE0){MDONE0=done;MPGMAN=false}',   // vừa mở thêm ô -> về trang tự động
+    'if(!MPGMAN)MPAGE=Math.floor(Math.min(done,Math.max(MTAB.length-1,0))/MPER);',   // trang chứa mốc kế tiếp
+    'if(MPAGE>=np)MPAGE=np-1;if(MPAGE<0)MPAGE=0;',
+    'var cells=MTAB.slice(MPAGE*MPER,MPAGE*MPER+MPER).map(function(m,j){var k=MPAGE*MPER+j+1;',
     'var c=k<=done?"hit":(k===done+1?"now":"");',
     'var cap=MAXWIN&&bet>0&&Math.floor(bet*m)>MAXWIN;if(cap)c+=" capped";',
     // Mốc cuối = mở hết ô an toàn. Đánh dấu hẳn để không ai tưởng bảng bị thiếu.
     'if(k===MTAB.length)c+=" last";',
     'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">\'+(cap?"TRẦN":fx(m))+',
     '(k===MTAB.length?\'<span class="tag">MỞ HẾT</span>\':"")+"</div>"}).join("");',
-    'mBarScroll(done)}',
-    // Tự cuộn CHỈ khi đang chơi và đã mở ô (load trang / đổi số mìn thì đứng yên).
-    // Mốc VỪA ĂN (vàng) neo ở ĐẦU BÊN TRÁI thanh — liếc phát thấy ngay đang x mấy,
-    // mốc kế tiếp (xanh nhấp nháy) nằm ngay bên cạnh. Người dùng vừa tự kéo/lăn
-    // trong 4 giây thì tôn trọng, không giành thanh.
-    'var MUSER=0;',
-    // Nhảy THẲNG (không smooth): scroll smooth là animation, bị ngắt giữa chừng khi
-    // thanh còn đà vuốt / đang vẽ lại là nó dừng lửng lơ ở giữa — đúng bug "bấm 1
-    // cái tự ra giữa che mất mốc đang ăn". Gán scrollLeft thì tức thì, không kẹt được.
-    'function mBarScroll(done){if(!MG)return;',
-    'if(Date.now()-MUSER<4000)return;',
-    'var bar=$("mbar");if(!bar)return;',
-    // vừa bấm BẮT ĐẦU ĐÀO (chưa mở ô nào): thanh về ĐẦU, mốc thấp nhất đập vào mắt
-    'if(!done){bar.scrollLeft=0;return}',
-    'var el=$("ms"+done)||$("ms"+(done+1));if(!el)return;',
-    'var to=el.offsetLeft-8;',   // trừ chút đệm cho khỏi dính sát mép
-    'if(to<0)to=0;var max=bar.scrollWidth-bar.clientWidth;if(to>max)to=max;',
-    'bar.scrollLeft=to}',
-    // Trên máy tính không vuốt được như điện thoại -> cho giữ chuột kéo ngang thanh hệ số.
-    // Kéo quá 4px thì coi là đang cuộn, không tính là bấm chọn mốc.
-    'function mBarDrag(){var b=$("mbar");var down=false,x0=0,sl=0,moved=0;',
-    'b.addEventListener("mousedown",function(e){down=true;moved=0;x0=e.pageX;sl=b.scrollLeft;MUSER=Date.now();b.classList.add("drag");e.preventDefault()});',
-    'window.addEventListener("mousemove",function(e){if(!down)return;var d=e.pageX-x0;moved=Math.max(moved,Math.abs(d));b.scrollLeft=sl-d});',
-    'window.addEventListener("mouseup",function(){down=false;b.classList.remove("drag")});',
-    'b.addEventListener("click",function(e){if(moved>4){e.stopPropagation();e.preventDefault()}},true);',
-    // vuốt trên điện thoại cũng tính là người dùng tự cuộn
-    'b.addEventListener("touchstart",function(){MUSER=Date.now()},{passive:true});',
-    // lăn chuột dọc cũng cuộn ngang được cho tiện
-    'b.addEventListener("wheel",function(e){if(!e.deltaY)return;MUSER=Date.now();b.scrollLeft+=e.deltaY;e.preventDefault()},{passive:false})}',
+    '$("mbar").innerHTML=\'<button class="mpg" onclick="mPg(-1)"\'+(MPAGE<=0?" disabled":"")+">◀</button>"+cells+',
+    '\'<button class="mpg" onclick="mPg(1)"\'+(MPAGE>=np-1?" disabled":"")+">▶</button>"}',
+    'function mPg(d){var np=Math.max(1,Math.ceil(MTAB.length/MPER));',
+    'MPAGE=Math.min(np-1,Math.max(0,MPAGE+d));MPGMAN=true;mBar()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
     'if(MG){',
