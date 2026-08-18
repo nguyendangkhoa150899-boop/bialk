@@ -460,7 +460,12 @@ const PAGE = [
     // thanh mốc hệ số cuộn ngang: mốc đã ăn sáng vàng, mốc kế tiếp nhấp nháy xanh
     '#mbar{display:flex;gap:4px;overflow-x:auto;padding:6px;background:#0d1226;border:1px solid #2b3557;border-radius:10px;scrollbar-width:none}',
     '#mbar::-webkit-scrollbar{display:none}',
-    '.mstep{flex:0 0 auto;min-width:54px;text-align:center;padding:6px 8px;border-radius:7px;font-size:12px;font-weight:800;background:#1a2340;color:#5f6c96;border:1px solid #263159}',
+    '.mstep{flex:0 0 auto;min-width:62px;text-align:center;padding:8px 10px;border-radius:7px;font-size:13.5px;font-weight:800;background:#1a2340;color:#5f6c96;border:1px solid #263159}',
+    // Ô GHIM bên trái: luôn hiện mức đang ăn của ván (sticky, không trôi theo cuộn)
+    '.mstep.mnow{position:sticky;left:0;z-index:2;min-width:70px;font-size:15px;background:#0d1226;border-color:#4da3ff;color:#7dc0ff;box-shadow:3px 0 10px #000b}',
+    '.mstep.mnow .tag{display:block;font-size:9px;letter-spacing:.5px;color:#8a90a3;font-weight:700}',
+    '.mstep.mnow.gold{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
+    '.mstep.mnow.gold .tag{color:#7d5f1e}',
     '.mstep.hit{background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;border-color:#a8842f}',
     '.mstep.now{background:linear-gradient(180deg,#4da3ff,#2c6fd0);color:#fff;border-color:#7dc0ff;animation:stepGlow 1.4s ease-in-out infinite}',
     '.mstep.capped{background:#3a2415;color:#ff9a5c;border-color:#7d4a1e;font-size:11px}',
@@ -1051,7 +1056,11 @@ const PAGE = [
     // Mốc nào cược hiện tại đã vượt trần thì hiện thẳng "TRẦN" — người chơi thấy ngay
     // đào tới đâu là hết ăn thêm, thay vì đào tiếp rồi mới biết bị cắt.
     'function mBar(){var done=MG?MG.revealed.length:0;var bet=MG?MG.bet:mNum("mBet");',
-    '$("mbar").innerHTML=MTAB.map(function(m,i){var k=i+1;',
+    // Ô GHIM đầu bên trái: luôn thấy mình đang ăn x mấy dù thanh cuộn tới đâu
+    'var nowX=(MG&&MG.revealed.length)?fx(MG.multi):"x1";',
+    'var nowTag=MG?(MG.revealed.length?"ĐANG ĂN":"MỞ Ô ĐI"):"CHƯA ĐÀO";',
+    '$("mbar").innerHTML=\'<div class="mstep mnow\'+((MG&&MG.revealed.length)?" gold":"")+\'">\'+nowX+\'<span class="tag">\'+nowTag+"</span></div>"+',
+    'MTAB.map(function(m,i){var k=i+1;',
     'var c=k<=done?"hit":(k===done+1?"now":"");',
     'var cap=MAXWIN&&bet>0&&Math.floor(bet*m)>MAXWIN;if(cap)c+=" capped";',
     // Mốc cuối = mở hết ô an toàn. Đánh dấu hẳn để không ai tưởng bảng bị thiếu.
@@ -1059,21 +1068,27 @@ const PAGE = [
     'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">\'+(cap?"TRẦN":fx(m))+',
     '(k===MTAB.length?\'<span class="tag">MỞ HẾT</span>\':"")+"</div>"}).join("");',
     'mBarScroll(done)}',
-    // Đào tới đâu thanh hệ số chạy theo tới đó, luôn giữ mốc kế tiếp ở giữa.
-    // Tự tính scrollLeft chứ không dùng scrollIntoView — hàm đó có thể kéo trôi cả trang.
-    'function mBarScroll(done){var bar=$("mbar");var el=$("ms"+(done+1))||$("ms"+done);if(!bar||!el)return;',
+    // Tự cuộn CHỈ khi đang chơi và đã mở ô (load trang / đổi số mìn thì đứng yên —
+    // trước đây lúc nào cũng nhảy ra giữa, người dùng kéo lên đầu là bị giật lại).
+    // Người dùng vừa tự kéo/lăn trong 4 giây thì cũng tôn trọng, không giành thanh.
+    'var MUSER=0;',
+    'function mBarScroll(done){if(!MG||!done)return;',
+    'if(Date.now()-MUSER<4000)return;',
+    'var bar=$("mbar");var el=$("ms"+(done+1))||$("ms"+done);if(!bar||!el)return;',
     'var to=el.offsetLeft-(bar.clientWidth/2)+(el.offsetWidth/2);',
     'if(to<0)to=0;var max=bar.scrollWidth-bar.clientWidth;if(to>max)to=max;',
     'if(bar.scrollTo)bar.scrollTo({left:to,behavior:"smooth"});else bar.scrollLeft=to}',
     // Trên máy tính không vuốt được như điện thoại -> cho giữ chuột kéo ngang thanh hệ số.
     // Kéo quá 4px thì coi là đang cuộn, không tính là bấm chọn mốc.
     'function mBarDrag(){var b=$("mbar");var down=false,x0=0,sl=0,moved=0;',
-    'b.addEventListener("mousedown",function(e){down=true;moved=0;x0=e.pageX;sl=b.scrollLeft;b.classList.add("drag");e.preventDefault()});',
+    'b.addEventListener("mousedown",function(e){down=true;moved=0;x0=e.pageX;sl=b.scrollLeft;MUSER=Date.now();b.classList.add("drag");e.preventDefault()});',
     'window.addEventListener("mousemove",function(e){if(!down)return;var d=e.pageX-x0;moved=Math.max(moved,Math.abs(d));b.scrollLeft=sl-d});',
     'window.addEventListener("mouseup",function(){down=false;b.classList.remove("drag")});',
     'b.addEventListener("click",function(e){if(moved>4){e.stopPropagation();e.preventDefault()}},true);',
+    // vuốt trên điện thoại cũng tính là người dùng tự cuộn
+    'b.addEventListener("touchstart",function(){MUSER=Date.now()},{passive:true});',
     // lăn chuột dọc cũng cuộn ngang được cho tiện
-    'b.addEventListener("wheel",function(e){if(!e.deltaY)return;b.scrollLeft+=e.deltaY;e.preventDefault()},{passive:false})}',
+    'b.addEventListener("wheel",function(e){if(!e.deltaY)return;MUSER=Date.now();b.scrollLeft+=e.deltaY;e.preventDefault()},{passive:false})}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
     'if(MG){',
