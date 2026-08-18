@@ -1476,7 +1476,8 @@ function getStatsBoardData() {
         const act = Math.abs(s.adminIn) + s.sentOut + s.recvIn + s.toGame + Math.abs(s.fromGame)
             + Math.abs(s.tx) + Math.abs(s.mines) + Math.abs(s.stairs) + Math.abs(s.bj);
         const name = NAME_OVERRIDE[id] || (dbCache[id] && dbCache[id].name) || ('…' + id.slice(-4));
-        return { id, s, act, name };
+        const bal = (dbCache[id] && dbCache[id].points) || 0;   // số dư ví hiện tại
+        return { id, s, act, name, bal };
     }).filter(r => r.act > 0).sort((a, b) => b.act - a.act);
 
     const fmt = n => (n || 0).toLocaleString('vi-VN');
@@ -1488,7 +1489,7 @@ function getStatsBoardData() {
     let desc = '';
     const shown = rows.slice(0, 12);   // embed tối đa 4096 ký tự — 12 người sôi nổi nhất
     for (const r of shown) {
-        desc += `👤 **${r.name}**\n` + '```diff\n' +
+        desc += `👤 **${r.name}** · ví **${fmt(r.bal)}** ${DOGCOIN_EMOJI}\n` + '```diff\n' +
             `  Admin cho       : ${fmt(r.s.adminIn)}\n` +
             `  Chuyển cho bạn  : ${fmt(r.s.sentOut)} · Nhận từ bạn: ${fmt(r.s.recvIn)}\n` +
             `  Discord ➜ game  : ${fmt(r.s.toGame)} · Game ➜ Discord: ${fmt(r.s.fromGame)}\n` +
