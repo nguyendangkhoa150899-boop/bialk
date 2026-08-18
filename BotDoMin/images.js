@@ -1,40 +1,37 @@
-// ===== GOM TOÀN BỘ FILE ẢNH VỀ MỘT CHỖ =====
+// ===== ẢNH: TẤT CẢ NẰM TRONG THƯ MỤC assets/ =====
 //
-// Trước đây mỗi ảnh phải: khai một biến readFileSync ở đầu webplay.js + thêm một
-// nhánh if trong router. Thêm 3 ảnh là rối tung. Giờ chỉ cần thêm 1 dòng vào bảng
-// FILES bên dưới, không phải đụng vào webplay.js nữa.
+// THÊM ẢNH MỚI = THẢ FILE VÀO assets/ RỒI KHỞI ĐỘNG LẠI BOT. Hết. Không phải khai
+// biến, không phải sửa router, không phải sửa cả file này — thư mục tự được quét.
+// Trong trang web gọi thẳng bằng tên file, ví dụ: <img src="/thang100.jpg">
 //
 // Ảnh đọc 1 lần lúc khởi động rồi giữ trong RAM (tổng vài chục KB, nhẹ hơn nhiều so
-// với việc mỗi lượt tải lại đọc đĩa). THIẾU FILE THÌ TRANG VẪN CHẠY — chỗ đó chỉ
-// trống ảnh chứ không vỡ giao diện, không làm sập bot.
+// với mỗi lượt tải lại đọc đĩa). Thư mục thiếu hoặc rỗng thì trang VẪN CHẠY — chỗ đó
+// chỉ trống ảnh chứ không vỡ giao diện, không làm sập bot.
 
 const fs = require('fs');
 const path = require('path');
 
-// đường dẫn web  ->  tên file trong thư mục này
-const FILES = {
-    '/dogcoin.png': 'dogcoin.png',              // đồng Dogcoin (tiền tệ, chip cược)
-    '/hero.png': 'hero.png',                    // nhân vật leo thang
-    '/thang100.jpg': 'thang100.jpg',            // Leo Thang: lên tới đỉnh
-    '/ngungdungluc.jpg': 'ngungdungluc.jpg',    // Leo Thang: ngưng đúng lúc, ăn tiền
-    '/thua.jpg': 'thua.jpg',                    // Leo Thang: đạp trúng lửa, thua
+const DIR = path.join(__dirname, 'assets');
+// Chỉ nhận đúng các đuôi ảnh. File lạ lọt vào assets/ sẽ bị bỏ qua, không đem phục vụ.
+const MIME = {
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
 };
 
-const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
-
-// { '/dogcoin.png': { buf, type } } — chỉ chứa ảnh ĐỌC ĐƯỢC
+// { '/dogcoin.png': { buf, type } }
 const store = {};
-const missing = [];
-for (const [url, file] of Object.entries(FILES)) {
-    try {
-        store[url] = {
-            buf: fs.readFileSync(path.join(__dirname, file)),
-            type: MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-        };
-    } catch { missing.push(file); }
-}
+let names = [];
+try {
+    for (const file of fs.readdirSync(DIR)) {
+        const type = MIME[path.extname(file).toLowerCase()];
+        if (!type) continue;
+        try { store['/' + file] = { buf: fs.readFileSync(path.join(DIR, file)), type }; names.push(file); } catch { }
+    }
+} catch { /* chưa có thư mục assets/ — trang vẫn chạy, chỉ không có ảnh */ }
 
 // Trả true nếu request này là ảnh và đã phục vụ xong; false thì router xử tiếp.
+// Tra bằng BẢNG dựng sẵn lúc khởi động, KHÔNG ghép đường dẫn từ chuỗi người dùng gửi
+// lên -> không có cửa cho trò ../../ đọc trộm file ngoài thư mục ảnh.
 function serve(req, res, urlPath) {
     if (req.method !== 'GET') return false;
     const img = store[urlPath];
@@ -44,4 +41,4 @@ function serve(req, res, urlPath) {
     return true;
 }
 
-module.exports = { serve, missing, has: (u) => !!store[u] };
+module.exports = { serve, names, count: names.length, has: (u) => !!store[u] };
