@@ -1192,8 +1192,12 @@ const webStairsApi = {
         setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet);
         writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} — nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
         stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
+        // Lộ 🍀/🌟 chưa đạp cả khi DỪNG — đồng bộ với lúc cháy/lên đỉnh (và với Dò Mìn,
+        // vốn đã lộ luckyAt khi dừng). Trước đây thiếu 2 field này nên dừng thì không
+        // thấy, F5 lại thấy (setStairsLast vẫn lưu) — hành xử tự đá nhau.
         return {
             ok: true, win, luckCapped: win < raw, traps: g.traps, safe: g.safe.slice(),
+            luckyCells: g.lucky, goldPos: g.golden ? { f: g.golden.f, c: g.golden.c } : null,
             balance: getUserData(userId).points || 0,
         };
     },
