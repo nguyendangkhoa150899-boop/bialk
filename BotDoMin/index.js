@@ -615,6 +615,7 @@ function webMinesLog(g, result, amount, hitIdx) {
         // Số dư SAU KHI đã trả thưởng (mọi chỗ gọi hàm này đều updatePoints trước) —
         // chốt lại tại thời điểm đó, không tra lúc vẽ bảng vì số dư sẽ trôi.
         bal: g.userId ? (getUserData(g.userId).points || 0) : null,
+        luck: (g.luck || []).slice(),   // 🍀 các phần thưởng đã quay trúng ván này
         // giữ lại bàn cờ để vẽ lại y như bảng dò mìn cũ trong Discord
         board: { open: g.revealed.slice(), bombs: g.mines.slice(), hit: (hitIdx === undefined ? -1 : hitIdx) },
     };
@@ -627,6 +628,33 @@ function webMinesLog(g, result, amount, hitIdx) {
             `(cược ${g.bet.toLocaleString()}, ${g.totalMines} mìn, mở ${g.revealed.length} ô, ` +
             `hệ số x${calculateMulti(g.revealed.length, g.totalMines)})`);
     }
+}
+
+// ===== Ô MAY MẮN 🍀 (dùng chung Dò Mìn + Leo Thang) =====
+// Chạm ô 🍀 -> quay ngẫu nhiên 1 phần thưởng. Ô 🍀 GIẤU (không hiện trên bàn):
+// hiện là lộ ô an toàn, ai cũng bấm nó đầu tiên thành vòng quay miễn phí mỗi ván.
+// Ô "hụt" 🍂 CỐ TÌNH có: nó là van chỉnh kỳ vọng — sòng chảy máu thì tăng % hụt.
+const MINES_LUCKY_WHEEL = [
+    { p: 0.25, prize: 'shield' },  // 🛡️ trúng mìn 1 lần không chết
+    { p: 0.30, prize: 'dig' },     // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
+    { p: 0.25, prize: 'cash' },    // 💰 +10% tiền cược tức thì
+    { p: 0.20, prize: 'none' },    // 🍂 hụt
+];
+const STAIRS_LUCKY_WHEEL = [
+    { p: 0.25, prize: 'rocket' },  // 🚀 thang máy: +2 tầng ngay
+    { p: 0.25, prize: 'shield' },  // 🛡️ đạp lửa 1 lần không cháy
+    { p: 0.25, prize: 'cash' },    // 💰 +10% tiền cược tức thì
+    { p: 0.25, prize: 'none' },    // 🍂 hụt
+];
+// Ô VÀNG 🌟 Leo Thang: 1% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 — thấy mà
+// thèm, phải sống sót leo tới mới đạp được; đạp là lên thẳng đỉnh. CHỈ ván 1–2 lửa:
+// ván 5 lửa đỉnh là x17k, gắn ô vàng vào đó là sập sòng.
+const STAIRS_GOLDEN_RATE = 0.01;
+
+function spinWheel(wheel) {
+    let r = Math.random();
+    for (const w of wheel) { r -= w.p; if (r < 0) return w.prize; }
+    return wheel[wheel.length - 1].prize;
 }
 
 const webMinesApi = {
@@ -654,6 +682,9 @@ const webMinesApi = {
             multi: info.multi, nextMulti: info.nextMulti,
             cashout: MINES_MAX_WIN > 0 ? Math.min(raw, MINES_MAX_WIN) : raw,
             capped: MINES_MAX_WIN > 0 && raw > MINES_MAX_WIN, // web nói rõ "chạm trần", đỡ tưởng bị ăn bớt
+            shield: !!g.shield,                    // 🛡️ đang cầm khiên
+            defused: (g.defused || []).slice(),    // các ô mìn đã bị khiên đỡ (hiện 🛡️)
+            // KHÔNG lộ g.lucky — ô may mắn phải giấu, lộ là lộ luôn ô an toàn
         };
     },
     start: (userId, name, numMines, bet) => {
@@ -670,6 +701,11 @@ const webMinesApi = {
         const g = createGame(numMines, userId);
         g.bet = bet; g.name = name; g.startedAt = Date.now();
         g.userId = userId;   // để lúc ghi lịch sử tra được số dư còn lại
+        // 1 ô 🍀 giấu trên một ô an toàn ngẫu nhiên; mở trúng thì quay phần thưởng
+        const safes = [];
+        for (let i = 0; i < TOTAL_TILES; i++) if (!g.mines.includes(i)) safes.push(i);
+        g.lucky = safes[Math.floor(Math.random() * safes.length)];
+        g.shield = false; g.defused = []; g.luck = [];
         webMines.set(userId, g);
         webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
@@ -682,7 +718,17 @@ const webMinesApi = {
         if (!Number.isInteger(idx) || idx < 0 || idx >= TOTAL_TILES) return { error: 'Ô không hợp lệ' };
         if (g.revealed.includes(idx)) return { error: 'Ô này mở rồi' };
 
+        if ((g.defused || []).includes(idx)) return { error: 'Ô này khiên đỡ rồi — chọn ô khác' };
+
         if (g.mines.includes(idx)) {
+            // 🛡️ Có khiên: quả mìn XỊT, hiện ra trên bàn, ĐỨNG YÊN chơi tiếp.
+            // Không tính là ô an toàn (không nhảy hệ số) — khiên cứu mạng, không in tiền.
+            if (g.shield) {
+                g.shield = false;
+                g.defused.push(idx);
+                writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🛡️ khiên đỡ mìn ô ${idx} — chơi tiếp`);
+                return { ok: true, hit: false, defused: idx, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
+            }
             webMines.delete(userId);
             webMinesLog(g, 'Trúng mìn (Thua)', -g.bet, idx);
             setMinesLast(userId, g, 'Trúng mìn (Thua)', -g.bet, idx);
@@ -692,6 +738,39 @@ const webMinesApi = {
         }
 
         g.revealed.push(idx);
+
+        // 🍀 Mở trúng ô may mắn (vẫn tính 1 ô an toàn như thường) -> quay phần thưởng
+        let lucky = null;
+        if (idx === g.lucky && !g.luckySpun) {
+            g.luckySpun = true;
+            const prize = spinWheel(MINES_LUCKY_WHEEL);
+            lucky = { prize };
+            if (prize === 'shield') { g.shield = true; g.luck.push('🛡️'); }
+            else if (prize === 'dig') {
+                // mở giúp 1–2 ô an toàn ngẫu nhiên (server chọn — cho tự chọn là quá tay)
+                const n = 1 + Math.floor(Math.random() * 2);
+                const pool = [];
+                for (let i = 0; i < TOTAL_TILES; i++) {
+                    if (!g.mines.includes(i) && !g.revealed.includes(i)) pool.push(i);
+                }
+                const opened = [];
+                for (let k = 0; k < n && pool.length; k++) {
+                    opened.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+                }
+                opened.forEach(i => g.revealed.push(i));
+                lucky.opened = opened;
+                g.luck.push('⛏️');
+            }
+            else if (prize === 'cash') {
+                const bonus = Math.max(1, Math.floor(g.bet * 0.1));
+                updatePoints(userId, bonus);
+                lucky.bonus = bonus;
+                g.luck.push('💰');
+            }
+            else g.luck.push('🍂');
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 ô may mắn — quay trúng ${prize}`);
+        }
+
         const maxDiamonds = TOTAL_TILES - g.totalMines;
         if (g.revealed.length >= maxDiamonds) {
             const win = minesWin(g.bet, maxDiamonds, g.totalMines);
@@ -700,9 +779,9 @@ const webMinesApi = {
             webMinesLog(g, 'Jackpot', win - g.bet);
             setMinesLast(userId, g, 'Jackpot', win - g.bet);
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT — nhận ${win}`);
-            return { ok: true, hit: false, jackpot: true, win, mines: g.mines, balance: getUserData(userId).points || 0 };
+            return { ok: true, hit: false, jackpot: true, win, mines: g.mines, lucky, balance: getUserData(userId).points || 0 };
         }
-        return { ok: true, hit: false, state: webMinesApi.current(userId) };
+        return { ok: true, hit: false, lucky, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
     },
     cashout: (userId) => {
         const g = webMines.get(userId);
@@ -761,6 +840,7 @@ function stairsLog(g, result, amount) {
         result, amount, time: new Date().toLocaleTimeString('vi-VN'),
         // Số dư SAU KHI đã trả thưởng (mọi chỗ gọi hàm này đều updatePoints trước).
         bal: g.userId ? (getUserData(g.userId).points || 0) : null,
+        luck: (g.luck || []).slice(),   // 🍀 các phần thưởng đã quay trúng ván này
     };
     if (!Array.isArray(dbCache._stairsHistory)) dbCache._stairsHistory = [];
     dbCache._stairsHistory.unshift(entry);
@@ -802,7 +882,11 @@ const webStairsApi = {
             multi: stairsMulti(g.floor, g.fire),
             nextMulti: stairsMulti(g.floor + 1, g.fire),
             cashout: stairsWin(g.bet, g.floor, g.fire),
-            safe: g.safe.slice(0, g.floor), // ô đã bấm đúng ở các tầng đã qua
+            safe: g.safe.slice(0, g.floor), // ô đã bấm đúng ở các tầng đã qua (-1 = tầng nhảy qua)
+            shield: !!g.shield,                     // 🛡️ đang cầm khiên
+            burned: (g.burned || []).slice(),       // ô lửa đã bị khiên đỡ (lộ 🔥, cấm bấm lại)
+            golden: g.golden ? { floor: g.golden.f, col: g.golden.c } : null, // 🌟 HIỆN RÕ
+            // KHÔNG lộ g.lucky — ô 🍀 phải giấu
         };
     },
     start: (userId, name, fire, bet) => {
@@ -825,6 +909,25 @@ const webStairsApi = {
             traps.push(row);
         }
         const g = { bet, fire, floor: 0, traps, safe: [], name, userId, startedAt: Date.now() };
+        // 2 ô 🍀 GIẤU trên ô trống tầng 1–8 (không rải tầng 9–10: sát đỉnh còn quà là quá tay)
+        g.lucky = []; g.shield = false; g.burned = []; g.luck = [];
+        while (g.lucky.length < 2) {
+            const f = Math.floor(Math.random() * 8);
+            const c = Math.floor(Math.random() * STAIRS_COLS);
+            if (traps[f].includes(c)) continue;
+            if (g.lucky.some(l => l.f === f && l.c === c)) continue;
+            g.lucky.push({ f, c });
+        }
+        // 🌟 Ô VÀNG (1% ván, chỉ 1–2 lửa): HIỆN RÕ ở tầng 5–8, đạp là lên thẳng đỉnh
+        g.golden = null;
+        if (fire <= 2 && Math.random() < STAIRS_GOLDEN_RATE) {
+            for (let t = 0; t < 50 && !g.golden; t++) {
+                const f = 4 + Math.floor(Math.random() * 4);
+                const c = Math.floor(Math.random() * STAIRS_COLS);
+                if (!traps[f].includes(c) && !g.lucky.some(l => l.f === f && l.c === c)) g.golden = { f, c };
+            }
+            if (g.golden) writeLog('SYSTEM', `[LEO THANG] 🌟 Ván của ${name} có Ô VÀNG ở tầng ${g.golden.f + 1}`);
+        }
         webStairs.set(userId, g);
         webStairsLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -bet);
@@ -836,8 +939,20 @@ const webStairsApi = {
         if (!g) return { error: 'Chưa có ván nào đang chơi' };
         if (!Number.isInteger(col) || col < 0 || col >= STAIRS_COLS) return { error: 'Ô không hợp lệ' };
 
+        if ((g.burned || []).some(b => b.f === g.floor && b.c === col)) {
+            return { error: 'Ô này lộ lửa rồi — chọn ô khác' };
+        }
+
         const row = g.traps[g.floor];
         if (row.includes(col)) {
+            // 🛡️ Có khiên: lửa XỊT, ô lửa LỘ RA, ĐỨNG YÊN tầng này chọn ô khác.
+            // Không leo lên — leo lên là khiên thành vé qua tầng miễn phí, quá mạnh.
+            if (g.shield) {
+                g.shield = false;
+                g.burned.push({ f: g.floor, c: col });
+                writeLog('RESULT', `[LEO THANG] ${g.name} 🛡️ khiên đỡ lửa tầng ${g.floor + 1} — đứng lại chọn ô khác`);
+                return { ok: true, burn: false, shielded: true, state: webStairsApi.current(userId), balance: getUserData(userId).points || 0 };
+            }
             const hitFloor = g.floor;
             webStairs.delete(userId);
             const entry = stairsLog(g, 'Trúng lửa (Thua)', -g.bet);
@@ -854,8 +969,37 @@ const webStairsApi = {
             };
         }
 
+        const curFloor = g.floor;
         g.safe.push(col);
         g.floor++;
+
+        // 🌟 đạp trúng Ô VÀNG -> lên thẳng đỉnh (các tầng nhảy qua ghi -1: không có ô bấm)
+        let lucky = null, golden = false;
+        if (g.golden && g.golden.f === curFloor && g.golden.c === col) {
+            golden = true; g.luck.push('🌟');
+            while (g.floor < STAIRS_FLOORS) { g.safe.push(-1); g.floor++; }
+            writeLog('RESULT', `[LEO THANG] ${g.name} 🌟 ĐẠP Ô VÀNG — bay thẳng lên đỉnh!`);
+        }
+        // 🍀 đạp trúng ô may mắn (ô trống bình thường + quay thưởng)
+        else if (g.lucky.some(l => l.f === curFloor && l.c === col)) {
+            const prize = spinWheel(STAIRS_LUCKY_WHEEL);
+            lucky = { prize };
+            if (prize === 'rocket') {
+                let up = 2;
+                while (up-- > 0 && g.floor < STAIRS_FLOORS) { g.safe.push(-1); g.floor++; }
+                g.luck.push('🚀');
+            }
+            else if (prize === 'shield') { g.shield = true; g.luck.push('🛡️'); }
+            else if (prize === 'cash') {
+                const bonus = Math.max(1, Math.floor(g.bet * 0.1));
+                updatePoints(userId, bonus);
+                lucky.bonus = bonus;
+                g.luck.push('💰');
+            }
+            else g.luck.push('🍂');
+            writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 ô may mắn tầng ${curFloor + 1} — quay trúng ${prize}`);
+        }
+
         if (g.floor >= STAIRS_FLOORS) {
             const win = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
             webStairs.delete(userId);
@@ -865,12 +1009,12 @@ const webStairsApi = {
             writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH — nhận ${win}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
-                ok: true, burn: false, top: true, win,
+                ok: true, burn: false, top: true, win, lucky, golden,
                 traps: g.traps, safe: g.safe.slice(),
                 balance: getUserData(userId).points || 0,
             };
         }
-        return { ok: true, burn: false, state: webStairsApi.current(userId) };
+        return { ok: true, burn: false, lucky, golden, state: webStairsApi.current(userId), balance: getUserData(userId).points || 0 };
     },
     cashout: (userId) => {
         const g = webStairs.get(userId);
@@ -978,16 +1122,21 @@ function historyTail(h, i) {
     return out;
 }
 
-// Dò Mìn: 🏆/💰/💥 **Tên** · 8 mìn · mở 4 ô · Thắng 26 🐕 · số dư 1.234 🐕
-function minesHistoryLine(h, i) {
-    const head = h.result === 'Jackpot' ? '🏆' : (h.amount >= 0 ? '💰' : '💥');
-    return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · ${historyTail(h, i)}`;
+// Đuôi 🍀: ván có quay trúng ô may mắn thì khoe luôn trên bảng (quảng cáo miễn phí)
+function luckBadge(h) {
+    return (h.luck && h.luck.length) ? ` · 🍀${h.luck.join('')}` : '';
 }
 
-// Leo Thang: 🏆/💰/🔥 **Tên** · 1 lửa · tầng 7 · Thua 26 🐕 · số dư 0 🐕 PHÁ SẢN 💀
+// Dò Mìn: 🏆/💰/💥 **Tên** · 8 mìn · mở 4 ô · Thắng 26 🐕 · số dư 1.234 🐕 · 🍀🛡️
+function minesHistoryLine(h, i) {
+    const head = h.result === 'Jackpot' ? '🏆' : (h.amount >= 0 ? '💰' : '💥');
+    return `${head} **${h.name}** · ${h.mines} mìn · mở **${h.diamonds}** ô · ${historyTail(h, i)}${luckBadge(h)}`;
+}
+
+// Leo Thang: 🏆/💰/🔥 **Tên** · 1 lửa · tầng 7 · Thua 26 🐕 · số dư 0 🐕 PHÁ SẢN 💀 · 🍀🚀
 function stairsHistoryLine(h, i) {
     const head = h.result === 'Lên đỉnh' ? '🏆' : (h.amount >= 0 ? '💰' : '🔥');
-    return `${head} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · ${historyTail(h, i)}`;
+    return `${head} **${h.name}** · ${h.fire} lửa · tầng **${h.floor}** · ${historyTail(h, i)}${luckBadge(h)}`;
 }
 
 
