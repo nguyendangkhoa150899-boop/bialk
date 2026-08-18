@@ -2416,10 +2416,12 @@ async function deleteBotChat(channel) {
 client.on('interactionCreate', async interaction => {
   try {
     const userId = interaction.user.id;
-    // Ghi lại tên hiển thị cho ví đã tồn tại (để web panel show tên thay vì ID)
-    if (dbCache[userId] && typeof dbCache[userId] === 'object') {
-        dbCache[userId].name = interaction.user.username;
-    }
+    // Đóng dấu tên hiển thị NGAY TƯƠNG TÁC ĐẦU TIÊN — getUserData tự tạo ví cho người
+    // mới. Trước đây chỉ ghi tên khi ví ĐÃ tồn tại, nên acc mới vừa /diemdanh xong
+    // hiện trong 🧧 Lộc lá là "(chưa đặt tên)", gõ tên không tìm ra, phải đợi lần
+    // tương tác thứ 2 hoặc bot restart (backfill) mới có tên.
+    // NAME_OVERRIDE không bị ảnh hưởng: getUserData ép lại tên đó ở mỗi lần đọc.
+    getUserData(userId).name = interaction.user.username;
 
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'diemdanh') {
