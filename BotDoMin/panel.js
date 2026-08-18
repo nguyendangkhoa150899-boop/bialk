@@ -973,7 +973,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="whSaveMin()">💾 Lưu</button>
         </div>
-        <div class="note">Vé <b>1.000</b> · chắc chắn thắng, sàn x1.2 · độc đắc <b>x10</b> (1/24 nan) bêu tên ở kênh nghiện. 3 mũi tên 🟡🔵🟢 lệch nhau 120°, chọn trùng màu thoải mái. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>. Đủ số người thì <b>nút QUAY sáng lên cho người chơi tự bấm</b> (không tự quay) — hạ số xuống ≤ số đang chờ là nút sáng ngay. Blackjack đã hủy theo vote cả server; bảng Discord cũ tự gỡ khi bot khởi động.</div>
+        <div class="note">Vé <b>1.000</b> · chắc chắn thắng, sàn x1.1 · độc đắc <b>x10</b> (1/24 nan) bêu tên ở kênh nghiện. 3 mũi tên 🟡🔵🟢 lệch nhau 120°, chọn trùng màu thoải mái. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>. Đủ số người thì <b>nút QUAY sáng lên cho người chơi tự bấm</b> (không tự quay) — hạ số xuống ≤ số đang chờ là nút sáng ngay. Blackjack đã hủy theo vote cả server; bảng Discord cũ tự gỡ khi bot khởi động.</div>
       </div>
     </div>
 

@@ -1310,9 +1310,11 @@ const webStairsApi = {
 const WHEEL_TICKET = 1000;
 const WHEEL_COLORS = ['yellow', 'blue', 'green'];
 const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 8, green: 16 };
-// 24 nan: x1.2×7 · x1.4×5 · x1.6×4 · x1.8×3 · x2×2 · x2.2×2 · x10×1 (độc đắc ~4,2%).
-// Kỳ vọng ~x1.9 vé — đây là QUÀ định kỳ đội lốt vòng quay, không phải cửa cược.
-const WHEEL_SEGMENTS = [1.2, 1.6, 1.4, 2.0, 1.2, 1.8, 1.4, 2.2, 1.2, 1.6, 10, 1.4, 1.2, 1.8, 1.6, 2.0, 1.2, 1.4, 2.2, 1.8, 1.2, 1.6, 1.4, 1.2];
+// 24 nan (PHẢI chia hết cho 3 — mũi tên lệch 120° = 8 nan), thứ tự XÁO LỘN XỘN
+// theo yêu cầu chủ server, không nhịp đối xứng, không 2 nan giống nhau kề nhau.
+// x1.1×3 · x1.2×3 · x1.3×3 · x1.4×3 · x1.5×2 · x1.6×2 · x1.7×2 · x1.8×2 ·
+// x2×2 · x2.2×1 · x10×1 (độc đắc ~4,2%). Kỳ vọng ~x1.85 vé — quà định kỳ.
+const WHEEL_SEGMENTS = [1.2, 1.5, 1.1, 1.8, 1.3, 2.0, 1.4, 1.1, 1.7, 1.3, 10, 1.2, 1.6, 1.4, 1.1, 2.2, 1.3, 1.5, 1.2, 1.8, 1.4, 2.0, 1.6, 1.7];
 
 const wheelRoom = { status: 'waiting', players: new Map(), spin: null, spinSeq: 0 };
 

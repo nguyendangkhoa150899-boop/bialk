@@ -806,7 +806,7 @@ const PAGE = [
     '<div id="pageWheel" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎡 Vòng Quay May Mắn</h2><div class="muted" id="whStat">—</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Vé cố định — <b>chắc chắn thắng</b>, bét x1.2, ĐỘC ĐẮC <b>x10</b> 🏆. Chọn 1 màu mũi tên (trùng nhau thoải mái). Đủ người thì nút <b>QUAY sáng lên</b> — ai trong bàn bấm là quay chung 1 vòng. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Vé cố định — <b>chắc chắn thắng</b>, bét x1.1, ĐỘC ĐẮC <b>x10</b> 🏆. Chọn 1 màu mũi tên (trùng nhau thoải mái). Đủ người thì nút <b>QUAY sáng lên</b> — ai trong bàn bấm là quay chung 1 vòng. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
     '<div id="whWrap">',
     '<svg id="whSvg" viewBox="0 0 300 300"></svg>',
     '<div class="warr y"><div class="tri"></div></div>',
@@ -1467,7 +1467,7 @@ const PAGE = [
     // vẽ bánh xe 1 lần từ segments server đưa (đổi bảng nan chỉ cần sửa server)
     'function whBuild(){if(!WST||WBUILT)return;WBUILT=true;',
     'var N=WST.segments.length,step=360/N,R=138,cx=150,cy=150;',
-    'var FILL={"1.2":"#3949ab","1.4":"#1e8e4d","1.6":"#c96f14","1.8":"#7c3aed","2":"#0e8f9e","2.2":"#d13b55","10":"#f0b90b"};',
+    'var FILL={"1.1":"#607d8b","1.2":"#3949ab","1.3":"#00838f","1.4":"#1e8e4d","1.5":"#9c27b0","1.6":"#c96f14","1.7":"#ad1457","1.8":"#7c3aed","2":"#2e7dd1","2.2":"#d13b55","10":"#f0b90b"};',
     'var h=\'<circle cx="150" cy="150" r="146" fill="#0e1016"/><g id="whRot">\';',
     'for(var i=0;i<N;i++){var m=WST.segments[i];',
     'var a0=(i*step-90)*Math.PI/180,a1=((i+1)*step-90)*Math.PI/180;',
