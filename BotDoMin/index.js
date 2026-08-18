@@ -754,23 +754,22 @@ function webMinesLog(g, result, amount, hitIdx) {
 // hiện là lộ ô an toàn, ai cũng bấm nó đầu tiên thành vòng quay miễn phí mỗi ván.
 // Ô "hụt" 🍂 CỐ TÌNH có: nó là van chỉnh kỳ vọng — sòng chảy máu thì tăng % hụt.
 // 'jackpot' = 🏆 NỔ HŨ: ăn min(giải cao nhất của ván, x2000 cược).
-// Tỉ lệ 10% THEO VOTE CỦA NGƯỜI CHƠI (game vui vẻ) — các giải còn lại giảm đều.
-// ⚠️ CẢNH BÁO KINH TẾ: 10% × trần x2000 nghĩa là mỗi lượt mở hộp cõng kỳ vọng
-// tới ~x200 tiền cược ở ván mìn nhiều/lửa cao. Ví cả server SẼ phình nhanh.
-// Muốn hãm lại chỉ cần hạ số 0.10 bên dưới (và nâng 'none' lên tương ứng).
+// ⚠️ CẢNH BÁO KINH TẾ: hũ 5% × trần x2000 nghĩa là mỗi lượt mở hộp cõng kỳ vọng
+// ~x100 tiền cược ở ván mìn nhiều/lửa cao. Ví cả server SẼ phình nhanh.
+// Muốn hãm lại chỉ cần hạ số 0.05 bên dưới (và nâng 'none' lên tương ứng).
 // Cân theo chủ server chốt (18/08): hũ 5% · hụt 20% · lì xì 35% · khiên 25% ·
 // đào/tên lửa 15% (quà đẩy tiến độ nặng kinh tế hơn nên hiếm hơn khiên).
 const MINES_LUCKY_WHEEL = [
     { p: 0.25, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết
     { p: 0.15, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.35, prize: 'cash' },     // 💰 +10% tiền cược tức thì
+    { p: 0.35, prize: 'cash' },     // 💰 +20% tiền cược tức thì
     { p: 0.20, prize: 'none' },     // 🍂 hụt
     { p: 0.05, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.15, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
     { p: 0.25, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
-    { p: 0.35, prize: 'cash' },     // 💰 +10% tiền cược tức thì
+    { p: 0.35, prize: 'cash' },     // 💰 +20% tiền cược tức thì
     { p: 0.20, prize: 'none' },     // 🍂 hụt
     { p: 0.05, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
@@ -946,7 +945,7 @@ const webMinesApi = {
             g.luck.push('⛏️');
         }
         else if (prize === 'cash') {
-            const bonus = Math.max(1, Math.floor(g.bet * 0.1));
+            const bonus = Math.max(1, Math.floor(g.bet * 0.2));
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
@@ -1238,7 +1237,7 @@ const webStairsApi = {
         }
         else if (prize === 'shield') { g.shield = true; g.luck.push('🛡️'); }
         else if (prize === 'cash') {
-            const bonus = Math.max(1, Math.floor(g.bet * 0.1));
+            const bonus = Math.max(1, Math.floor(g.bet * 0.2));
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
