@@ -639,12 +639,13 @@ const PAGE = [
     '#paper.open{background:linear-gradient(175deg,#2f7e46 0%,#26663a 60%,#1e5230 100%);color:#e2ffe9;border-color:#6cc287;cursor:grab}',
     '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
     // ---- 🎡 vòng quay ----
-    '#whWrap{position:relative;max-width:330px;margin:14px auto 0;aspect-ratio:1}',
+    // bánh xe chiếm gần hết bề ngang điện thoại, máy tính thì trần 520px cho khỏi lố
+    '#whWrap{position:relative;max-width:min(94vw,520px);margin:14px auto 0;aspect-ratio:1}',
     '#whSvg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 18px #0009)}',
     '#whRot{transform-origin:150px 150px;transform-box:view-box}',
     // 3 mũi tên gắn quanh vành: 🟡 đỉnh, 🔵 xoay 120°, 🟢 xoay 240°
     '.warr{position:absolute;inset:0;pointer-events:none}',
-    '.warr .tri{position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:22px solid #f5c518;filter:drop-shadow(0 2px 3px #000b)}',
+    '.warr .tri{position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:26px solid #f5c518;filter:drop-shadow(0 2px 3px #000b)}',
     '.warr.b{transform:rotate(120deg)}.warr.g{transform:rotate(240deg)}',
     '.warr.b .tri{border-top-color:#3b82f6}.warr.g .tri{border-top-color:#22c55e}',
     '#whPick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}',
@@ -1461,7 +1462,7 @@ const PAGE = [
     'var x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0),x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);',
     'h+=\'<path d="M150 150L\'+x0.toFixed(1)+" "+y0.toFixed(1)+\'A\'+R+" "+R+\' 0 0 1 \'+x1.toFixed(1)+" "+y1.toFixed(1)+\'Z" fill="\'+(FILL[String(m)]||"#2c3350")+\'" stroke="#0e1016" stroke-width="1.5"/>\';',
     'var am=(i*step+step/2-90)*Math.PI/180,tx=cx+108*Math.cos(am),ty=cy+108*Math.sin(am);',
-    'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+(m>=10?"#ffd977":"#e8eaf2")+\'" font-size="\'+(m>=10?13:10)+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(i*step+step/2)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+(m>=10?"x10🏆":"x"+m)+"</text>"}',
+    'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+(m>=10?"#ffd977":"#e8eaf2")+\'" font-size="\'+(m>=10?15:12)+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(i*step+step/2)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+(m>=10?"x10🏆":"x"+m)+"</text>"}',
     'h+=\'</g><circle cx="150" cy="150" r="30" fill="#161926" stroke="#2a2f42" stroke-width="2"/><text x="150" y="150" font-size="22" text-anchor="middle" dominant-baseline="central">🎡</text>\';',
     '$("whSvg").innerHTML=h}',
     // quay bánh xe tới nan idx (thêm 5 vòng cho đã mắt), luôn quay theo một chiều
