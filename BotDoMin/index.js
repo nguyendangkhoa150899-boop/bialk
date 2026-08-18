@@ -10,7 +10,6 @@ const { startWebPlay } = require('./webplay');
 // Cầu nối tự động nạp/rút Dogcoin với game (qua dashboard -> SFTP -> mod UE4SS).
 // CHỈ dùng giveItem/takeItem (không REST, không polling) để nhẹ VPS.
 const pal = require('./palworld');
-const { createTable: createBlackjackTable } = require('./blackjackTable');
 
 // Link hiển thị cho người chơi vào web cược (đổi trong .env nếu khác)
 const WEB_PLAY_URL = process.env.WEB_PLAY_URL || 'http://103.72.98.37:3002';
@@ -1442,73 +1441,9 @@ function wheelDoSpin() {
     setTimeout(() => { wheelRoom.status = 'waiting'; wheelRoom.players.clear(); }, 20000);
 }
 
-// ===== BLACKJACK — ĐÃ HỦY KHỎI GIAO DIỆN (18/08, cả server thống nhất, nhường chỗ
-// cho Vòng Quay). Engine + bàn WS giữ nguyên bên dưới phòng khi muốn bật lại,
-// nhưng web không còn tab, /blackjack không còn link, bảng Discord không nối lại.
-const blackjackTable = createBlackjackTable({
-    clock: () => Date.now(),
-    getPoints: (u) => (getUserData(u).points || 0),
-    // Mọi dòng tiền blackjack (trừ cược, trả thưởng, hoàn) đều qua đây -> cộng dồn
-    // là ra net cho bảng 📊, không phải đục vào engine.
-    addPoints: (u, a) => { updatePoints(u, a); statAdd(u, 'bj', a); },
-    announce: (m) => writeLog('SYSTEM', `[BLACKJACK] ${m}`),
-    log: (cat, msg) => writeLog(cat, msg),
-    SEATS: 5, BET_WINDOW_MS: 7000, TURN_MS: 15000, RESULT_MS: 6000,
-    MIN_BET: 1, MAX_BET: 0,
-});
-
-// ===== BẢNG MỜI CHƠI BLACKJACK TRÊN DISCORD (để lấy link) =====
-const blackjackBoard = { channel: null, message: null, lastEdit: 0 };
-function getBlackjackBoardData() {
-    const v = blackjackTable.view('_');
-    const nSeated = (v.seats || []).filter(s => !s.empty).length;
-    const phaseTxt = v.phase === 'playing' ? '🟢 đang chơi' : v.phase === 'betting' ? '🟢 đang đặt cược' : v.phase === 'result' ? 'đang trả thưởng' : 'bàn trống';
-    const desc =
-        `Xì Dách 5 ghế · **ăn 1.5 (3:2)** · nhà cái dừng ở mọi 17 · 2 bộ bài.\n` +
-        `Có **Rút / Dừng / Nhân đôi / Tách** (tách được nhiều tay). Chơi trên web, xoay ngang cho dễ.\n\n` +
-        `👥 Đang ngồi: **${nSeated}/5** · ${phaseTxt}`;
-    const embed = new EmbedBuilder()
-        .setTitle('🂡 BLACKJACK — chơi trên web')
-        .setColor(0x2e8b57)
-        .setDescription(desc)
-        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_link').setLabel('🂡 Chơi Blackjack trên web').setStyle(ButtonStyle.Success)
-    );
-    return { embeds: [embed], components: [row] };
-}
-async function startBlackjackBoard(channel) {
-    if (blackjackBoard.message) await blackjackBoard.message.delete().catch(() => { });
-    blackjackBoard.channel = channel;
-    blackjackBoard.message = await channel.send(getBlackjackBoardData());
-    blackjackBoard.lastEdit = Date.now();
-    dbCache._bjChannelId = channel.id;
-    dbCache._bjMsgId = blackjackBoard.message.id;
-    saveDbNow();
-}
-function stopBlackjackBoard() {
-    if (blackjackBoard.message) blackjackBoard.message.delete().catch(() => { });
-    blackjackBoard.channel = null; blackjackBoard.message = null;
-    dbCache._bjChannelId = null; dbCache._bjMsgId = null;
-    saveDbNow();
-}
-async function resumeBlackjackBoard() {
-    const chId = dbCache._bjChannelId;
-    if (!chId) return;
-    const ch = await client.channels.fetch(chId);
-    const old = dbCache._bjMsgId ? await ch.messages.fetch(dbCache._bjMsgId).catch(() => null) : null;
-    if (old) { blackjackBoard.channel = ch; blackjackBoard.message = old; blackjackBoard.lastEdit = Date.now(); await old.edit(getBlackjackBoardData()).catch(() => { }); return; }
-    await startBlackjackBoard(ch);
-}
-function runBlackjackBoardLoop() {
-    // cập nhật nhẹ mỗi 15s (số người ngồi / trạng thái), không dính rate limit
-    setInterval(() => {
-        if (!blackjackBoard.message) return;
-        if (Date.now() - blackjackBoard.lastEdit < 15000) return;
-        blackjackBoard.lastEdit = Date.now();
-        blackjackBoard.message.edit(getBlackjackBoardData()).catch(e => writeLog('SYSTEM', `[BẢNG BLACKJACK] ${e.message}`));
-    }, 5000);
-}
+// (Blackjack ĐÃ XÓA HẲN 19/08 — cả server thống nhất hủy, nhường chỗ cho Vòng Quay.
+//  Muốn dựng lại thì lục git history: blackjack.js / blackjackTable.js /
+//  blackjackPage.js / wsserver.js + khối wiring ở đây và webplay.js.)
 
 // ===== BẢNG DÒ MÌN TRÊN DISCORD =====
 // Khác Tài Xỉu: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
@@ -1918,7 +1853,6 @@ client.once('ready', async (c) => {
             writeLog,
             mines: webMinesApi,
             stairs: webStairsApi,
-            blackjack: blackjackTable,
             webPlayUrl: WEB_PLAY_URL,
             transfer: webTransfer,
             transferTargets: listTransferTargets,
@@ -1969,8 +1903,6 @@ client.once('ready', async (c) => {
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
-            // (Blackjack đã hủy — panel không còn tab; getBJBoard giữ cho bản panel cũ khỏi vỡ)
-            getBJBoard: () => ({ on: false, channelId: '' }),
             // 🎡 vòng quay: panel chỉnh số người tối thiểu để khởi động
             getWheel: () => ({ minPlayers: wheelMinPlayers(), waiting: wheelRoom.players.size, ticket: WHEEL_TICKET }),
             setWheelMin: (n) => {
@@ -3682,18 +3614,8 @@ client.on('interactionCreate', async interaction => {
         });
     }
 
-    if (interaction.customId === 'bj_link') {
-        const userData = getUserData(userId);
-        userData.name = userData.name || interaction.user.username;
-        if (!userData.webPin) { userData.webPin = String(Math.floor(100000 + Math.random() * 900000)); saveDbNow(); }
-        return interaction.reply({
-            content:
-                `🂡 **Blackjack (Xì Dách) — vào sòng web rồi bấm tab 🂡 Blackjack (xoay ngang cho dễ):**\n${WEB_PLAY_URL}\n\n` +
-                `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
-                `Đăng nhập 1 lần là chơi được hết các game (PIN dùng chung). ĐỪNG đưa PIN cho ai!`,
-            ephemeral: true,
-        });
-    }
+    // (Nút bj_link đã xóa cùng Blackjack 19/08 — bảng cũ nào còn nút này thì bấm
+    //  vào sẽ không phản hồi, bảng đó cũng đã bị gỡ lúc bot khởi động.)
 
     // ======== NÚT XỔ SỐ ========
     if (interaction.customId === 'xs_de' || interaction.customId === 'xs_lo') {
@@ -4107,9 +4029,6 @@ let isShuttingDown = false;
 function flushAndExit(signal) {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    try {
-        blackjackTable.refundOnShutdown(); // hoàn cược ván blackjack đang chơi trước khi lưu
-    } catch (e) { }
     try {
         syncCache();
         fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));

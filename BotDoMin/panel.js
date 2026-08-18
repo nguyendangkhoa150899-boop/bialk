@@ -140,7 +140,6 @@ function startPanel(ctx) {
             totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
             stairsBoard: ctx.getStairs ? ctx.getStairs() : { on: false, channelId: '' },
-            bjBoard: ctx.getBJBoard ? ctx.getBJBoard() : { on: false, channelId: '' },
             wheel: ctx.getWheel ? ctx.getWheel() : null,
             statsBoard: ctx.getStatsBoard ? ctx.getStatsBoard() : { on: false, channelId: '' },
             stairsHistory: ctx.getStairsHistory ? ctx.getStairsHistory() : [],
@@ -352,21 +351,7 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Vòng quay: cần ${n} người ready để khởi động`);
                     return sendJSON(res, 200, { ok: true, minPlayers: n });
                 }
-                if (path === '/api/bj/board/start') {
-                    const channelId = String(body.channelId || '').trim();
-                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
-                    if (!ctx.startBJBoard) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    try {
-                        const name = await ctx.startBJBoard(channelId);
-                        ctx.writeLog('ADMIN', `[PANEL] Đăng bảng Blackjack tại #${name}`);
-                        return sendJSON(res, 200, { ok: true, name });
-                    } catch (e) { return sendJSON(res, 400, { ok: false, error: e.message }); }
-                }
-                if (path === '/api/bj/board/stop') {
-                    if (ctx.stopBJBoard) ctx.stopBJBoard();
-                    ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Blackjack`);
-                    return sendJSON(res, 200, { ok: true });
-                }
+                // (route bảng Blackjack đã xóa 19/08 cùng cả trò)
                 // ---- BẢNG THỐNG KÊ 📊 ----
                 if (path === '/api/stats/board/start') {
                     const channelId = String(body.channelId || '').trim();
@@ -1001,7 +986,6 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="stReset('tx')">Tài Xỉu</button>
           <button class="btn-grey" onclick="stReset('mines')">Dò Mìn</button>
           <button class="btn-grey" onclick="stReset('stairs')">Leo Thang</button>
-          <button class="btn-grey" onclick="stReset('bj')">Blackjack</button>
           <button class="btn-grey" onclick="stReset('jackpot')">Nổ hũ 🏆</button>
           <button class="btn-red" onclick="stReset('all')">💣 RESET TẤT CẢ</button>
         </div>
