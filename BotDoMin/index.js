@@ -1571,42 +1571,41 @@ const statsBoard = { channel: null, message: null, needsUpdate: false, lastEdit:
 function getStatsBoardData() {
     const st = dbCache._pstats || {};
     const rows = Object.entries(st).map(([id, s]) => {
-        const act = Math.abs(s.adminIn) + s.sentOut + s.recvIn + s.toGame + Math.abs(s.fromGame)
-            + Math.abs(s.tx) + Math.abs(s.mines) + Math.abs(s.stairs) + Math.abs(s.bj) + (s.jpTotal || 0);
+        // Chỉ tính DÒNG TIỀN — thắng/thua mini game + nổ hũ đã BỎ khỏi bảng theo
+        // yêu cầu chủ server (dữ liệu vẫn đếm ngầm trong _pstats, muốn là bật lại).
+        const act = Math.abs(s.adminIn) + s.sentOut + s.recvIn + s.toGame + Math.abs(s.fromGame);
         const name = NAME_OVERRIDE[id] || (dbCache[id] && dbCache[id].name) || ('…' + id.slice(-4));
         const bal = (dbCache[id] && dbCache[id].points) || 0;   // số dư ví hiện tại
         return { id, s, act, name, bal };
     }).filter(r => r.act > 0).sort((a, b) => b.act - a.act);
 
     const fmt = n => (n || 0).toLocaleString('vi-VN');
-    // dòng mini game: + thắng (xanh) / - thua (đỏ) / trắng khi chưa chơi
-    const gl = (label, v) => v > 0 ? `+ ${label}: thắng ${fmt(v)}`
-        : v < 0 ? `- ${label}: thua ${fmt(-v)}`
-            : `  ${label}: 0`;
+    // Dòng tiền trong khối ```diff: "+" Discord tô XANH = tiền VÀO ví,
+    // "-" tô ĐỎ = tiền RA khỏi ví, 0 thì để trắng cho đỡ rối.
+    const ml = (sign, label, v) => {
+        const n = Math.abs(v || 0);
+        return n ? `${sign} ${label.padEnd(17)}: ${fmt(n)}` : `  ${label.padEnd(17)}: 0`;
+    };
 
     let desc = '';
     const shown = rows.slice(0, 12);   // embed tối đa 4096 ký tự — 12 người sôi nổi nhất
     for (const r of shown) {
         desc += `👤 **${r.name}** · ví **${fmt(r.bal)}** ${DOGCOIN_EMOJI}\n` + '```diff\n' +
-            `  Admin cho       : ${fmt(r.s.adminIn)}\n` +
-            `  Chuyển cho bạn  : ${fmt(r.s.sentOut)} · Nhận từ bạn: ${fmt(r.s.recvIn)}\n` +
-            `  Discord ➜ game  : ${fmt(r.s.toGame)} · Game ➜ Discord: ${fmt(r.s.fromGame)}\n` +
-            gl('Tài Xỉu  ', r.s.tx) + '\n' +
-            gl('Dò Mìn   ', r.s.mines) + '\n' +
-            gl('Leo Thang', r.s.stairs) + '\n' +
-            gl('Blackjack', r.s.bj) + '\n' +
-            (r.s.jpCount > 0
-                ? `+ Nổ hũ 🏆 : ${r.s.jpCount} lần · +${fmt(r.s.jpTotal)}`
-                : `  Nổ hũ 🏆 : chưa`) + '\n' + '```\n';
+            ml(r.s.adminIn >= 0 ? '+' : '-', 'Admin cho', r.s.adminIn) + '\n' +
+            ml('+', 'Nhận từ bạn bè', r.s.recvIn) + '\n' +
+            ml('+', 'Game ➜ Discord', r.s.fromGame) + '\n' +
+            ml('-', 'Chuyển cho bạn bè', r.s.sentOut) + '\n' +
+            ml('-', 'Discord ➜ game', r.s.toGame) + '\n' +
+            '```\n';
     }
-    if (!desc) desc = '*Chưa có dữ liệu — thống kê đếm từ lúc bật tính năng, chơi vài ván là có số.*';
+    if (!desc) desc = '*Chưa có dữ liệu — thống kê đếm từ lúc bật tính năng, chuyển tiền vài lần là có số.*';
     if (rows.length > shown.length) desc += `\n*…và ${rows.length - shown.length} người nữa (chỉ hiện 12 người sôi nổi nhất).*`;
 
     const embed = new EmbedBuilder()
         .setTitle('📊 THỐNG KÊ NGƯỜI CHƠI')
         .setColor(0x00aeef)
         .setDescription(desc.slice(0, 4000))
-        .setFooter({ text: 'Xanh = thắng · Đỏ = thua · cập nhật tối đa 1 phút/lần khi có thay đổi' })
+        .setFooter({ text: 'Xanh = tiền vào ví · Đỏ = tiền ra khỏi ví · cập nhật tối đa 1 phút/lần' })
         .setTimestamp();
     return { embeds: [embed] };
 }
