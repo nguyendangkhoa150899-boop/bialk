@@ -353,8 +353,29 @@ function streakNow(u) {
     if (last === vnDayStr(Date.now() - 86400000)) return u.streakRun;   // hôm qua, chuỗi còn sống
     return 0;
 }
+// BÙ gói thưởng chuỗi cho khớp chuỗi hiện tại. Gọi ở CẢ dailyState và claimDaily,
+// nên ai đã có chuỗi từ bản cũ (điểm danh trước khi có tính năng này) mở trang lên
+// là được bù ngay, không phải đợi thêm 2 ngày.
+// streakRunPaid = số gói ĐÃ ghi cho đợt chuỗi đang chạy; claimDaily reset về 0 mỗi
+// khi mở đợt mới (streakRun về 1) nên không bao giờ ghi trùng.
+function streakTopUp(u) {
+    const run = streakNow(u);
+    if (u.streakRun === undefined) u.streakRun = run;   // di cư từ bản cũ
+    if (run <= 0) return run;                            // chuỗi đứt: không bù
+    const due = Math.floor(run / DAILY_STREAK_EVERY);
+    const paid = u.streakRunPaid || 0;
+    if (due > paid) {
+        const add = due - paid;
+        u.streakPacks = (u.streakPacks || 0) + add;
+        u.streakTotal = (u.streakTotal || 0) + add;
+        u.streakRunPaid = due;
+        saveDbNow();
+    }
+    return run;
+}
 function dailyState(userId) {
     const u = dailyBookOf(getUserData(userId));
+    streakTopUp(u);
     const { y, m, d } = vnParts();
     const daysInMonth = new Date(y, m, 0).getDate();
     const set = new Set(u.dailyDays);
@@ -388,19 +409,17 @@ function claimDaily(userId) {
     const prevRun = (u.streakRun !== undefined) ? u.streakRun : streakNow(u);
     const lastVNday = u.lastDaily ? vnDayStr(u.lastDaily) : '';
     u.streakRun = (lastVNday === vnDayStr(Date.now() - 86400000)) ? prevRun + 1 : 1;
+    if (u.streakRun === 1) u.streakRunPaid = 0;   // mở đợt chuỗi mới
 
     u.dailyDays.push(d);
     u.lastDaily = Date.now();
     updatePoints(userId, DAILY_DOGCOIN);
 
-    // Đủ mốc chuỗi (2 ngày liên tiếp) -> GHI 1 gói vào sổ, chưa cộng tiền.
-    // Người chơi tự bấm nhận; gói đã ghi thì chuỗi đứt sau đó cũng không mất.
-    let streakEarned = false;
-    if (u.streakRun % DAILY_STREAK_EVERY === 0) {
-        u.streakPacks = (u.streakPacks || 0) + 1;
-        u.streakTotal = (u.streakTotal || 0) + 1;
-        streakEarned = true;
-    }
+    // Đủ mốc chuỗi -> GHI gói vào sổ, chưa cộng tiền. Người chơi tự bấm nhận;
+    // gói đã ghi thì chuỗi đứt sau đó cũng không mất.
+    const packsBefore = u.streakPacks || 0;
+    streakTopUp(u);
+    const streakEarned = (u.streakPacks || 0) > packsBefore;
     saveDbNow();
     writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | chuỗi ${u.streakRun}${streakEarned ? ` | ĐỦ CHUỖI ${DAILY_STREAK_EVERY} - ghi 1 gói ${DAILY_STREAK_BONUS} chờ nhận` : ''} | Số dư: ${(u.points || 0).toLocaleString()}`);
     return {
@@ -409,19 +428,23 @@ function claimDaily(userId) {
     };
 }
 
-// Bấm nhận thưởng chuỗi: lấy HẾT gói đang chờ trong 1 lần
+// Bấm nhận thưởng chuỗi: MỖI LẦN BẤM lấy 1 gói 800. Gói dồn lại được — điểm danh 4
+// ngày liên tiếp là 2 gói, bấm 2 lần; hết gói thì ô tắt, không nhận nữa.
 function claimStreak(userId) {
     const u = dailyBookOf(getUserData(userId));
+    streakTopUp(u);
     const packs = u.streakPacks || 0;
     if (packs < 1) {
-        return { error: `Chưa đủ chuỗi - điểm danh ${DAILY_STREAK_EVERY} ngày LIÊN TIẾP là nhận được ${DAILY_STREAK_BONUS.toLocaleString()} Dogcoin.` };
+        return { error: `Hết gói thưởng chuỗi - điểm danh thêm ${DAILY_STREAK_EVERY} ngày LIÊN TIẾP là có gói mới (${DAILY_STREAK_BONUS.toLocaleString()} Dogcoin).` };
     }
-    const amount = packs * DAILY_STREAK_BONUS;
-    u.streakPacks = 0;
-    updatePoints(userId, amount);
+    u.streakPacks = packs - 1;
+    updatePoints(userId, DAILY_STREAK_BONUS);
     saveDbNow();
-    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận thưởng chuỗi: ${packs} gói x ${DAILY_STREAK_BONUS.toLocaleString()} = ${amount.toLocaleString()} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
-    return { ok: true, amount, packs, state: dailyState(userId), balance: u.points || 0 };
+    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận 1 gói thưởng chuỗi ${DAILY_STREAK_BONUS.toLocaleString()} Dogcoin (còn ${u.streakPacks} gói) | Số dư: ${(u.points || 0).toLocaleString()}`);
+    return {
+        ok: true, amount: DAILY_STREAK_BONUS, left: u.streakPacks,
+        state: dailyState(userId), balance: u.points || 0,
+    };
 }
 // announce: CHỈ bật khi lụm từ WEB. Gõ /nghien trong Discord thì lời đáp đã hiện
 // ngay tại kênh rồi, đăng thêm là ra 2 tin trùng nội dung. Mặc định TẮT để chỗ gọi

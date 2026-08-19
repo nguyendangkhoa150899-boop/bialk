@@ -1581,12 +1581,12 @@ const PAGE = [
     '$("dMonth").textContent="Tháng "+DST.month+" · "+DST.year;',
     '$("dStreak").textContent=DST.streak+" ngày";',
     '$("dAmt").textContent="+"+DST.amount.toLocaleString("vi-VN");',
-    // ô thưởng chuỗi: hiện số gói chờ nhận, có gói thì sáng lên cho bấm
+    // Ô thưởng chuỗi: mỗi lần bấm nhận 1 gói. Có gói thì SÁNG LÊN + ghi rõ còn mấy lần.
     'var pk=DST.streakPacks||0;',
-    '$("dStreakT").textContent="🔥 Đủ chuỗi "+DST.streakEvery;',
-    '$("dBonus").textContent=pk>0?("NHẬN "+(pk*DST.streakBonus).toLocaleString("vi-VN")):(DST.streakTotal||0)+" lần";',
+    '$("dStreakT").textContent=pk>0?("🎁 BẤM NHẬN +"+DST.streakBonus.toLocaleString("vi-VN")):("🔥 Đủ chuỗi "+DST.streakEvery);',
+    '$("dBonus").textContent=pk>0?("còn "+pk+" lần bấm"):((DST.streakTotal||0)+" lần");',
     '$("dStreakChip").classList.toggle("on",pk>0);',
-    '$("dStreakChip").title=pk>0?("Bấm nhận "+pk+" gói x "+DST.streakBonus.toLocaleString("vi-VN")):("Điểm danh "+DST.streakEvery+" ngày liên tiếp để nhận "+DST.streakBonus.toLocaleString("vi-VN"));',
+    '$("dStreakChip").title=pk>0?("Bấm 1 lần nhận "+DST.streakBonus.toLocaleString("vi-VN")+" - đang có "+pk+" gói"):("Điểm danh "+DST.streakEvery+" ngày liên tiếp để có 1 gói "+DST.streakBonus.toLocaleString("vi-VN"));',
     'var done={};DST.days.forEach(function(d){done[d]=1});',
     'var first=new Date(DST.year,DST.month-1,1).getDay();', // 0 = Chủ nhật
     'var html=["CN","T2","T3","T4","T5","T6","T7"].map(function(w){return \'<div class="dw">\'+w+"</div>"}).join("");',
@@ -1605,11 +1605,11 @@ const PAGE = [
     'api("/api/daily/claim",{}).then(function(j){setBal(j.balance);DST=j.state;DOFF=j.state.nghien.now-Date.now();dRender();',
     'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(j.streakEarned?" · 🔥 ĐỦ CHUỖI! Bấm ô 🔥 nhận "+j.state.streakBonus.toLocaleString("vi-VN"):""));',
     'if(j.streakEarned)celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
-    // bấm ô 🔥 để nhận thưởng chuỗi (lấy hết gói đang chờ)
+    // bấm ô 🎁 để nhận thưởng chuỗi — MỖI LẦN BẤM 1 gói, còn gói thì ô vẫn sáng
     'function streakClaim(){if(!DST||!(DST.streakPacks>0))return;',
-    'var c=$("dStreakChip");c.classList.remove("on");',
+    'var c=$("dStreakChip");c.classList.remove("on");',   // tắt tạm, chặn bấm 2 lần khi đang gửi
     'api("/api/daily/streak",{}).then(function(j){setBal(j.balance);DST=j.state;dRender();',
-    'toast("🔥 Thưởng chuỗi: "+j.packs+" gói x "+DST.streakBonus.toLocaleString("vi-VN")+" = +"+j.amount.toLocaleString("vi-VN")+" Dogcoin!");',
+    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin thưởng chuỗi!"+(j.left>0?" Còn "+j.left+" lần bấm nữa.":" Hết gói - điểm danh tiếp nhé!"));',
     'celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
     'function nghienClaim(){var b=$("ngBtn");if(b.disabled)return;b.disabled=true;',
     'api("/api/daily/nghien",{}).then(function(j){setBal(j.balance);',
