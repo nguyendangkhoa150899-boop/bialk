@@ -373,7 +373,10 @@ function claimDaily(userId) {
     writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận ${DAILY_DOGCOIN.toLocaleString()}${bonus ? ` + BONUS đủ tháng ${bonus.toLocaleString()}` : ''} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
     return { ok: true, amount: DAILY_DOGCOIN, bonus, state: dailyState(userId), balance: u.points || 0 };
 }
-function claimNghien(userId) {
+// announce: CHỈ bật khi lụm từ WEB. Gõ /nghien trong Discord thì lời đáp đã hiện
+// ngay tại kênh rồi, đăng thêm là ra 2 tin trùng nội dung. Mặc định TẮT để chỗ gọi
+// mới sau này có quên cũng không tự dưng spam kênh.
+function claimNghien(userId, announce = false) {
     const u = getUserData(userId);
     const passed = Date.now() - (u.lastNghien || 0);
     if (passed < NGHIEN_COOLDOWN_MS) {
@@ -383,10 +386,12 @@ function claimNghien(userId) {
     updatePoints(userId, HOURLY_DOGCOIN);
     u.lastNghien = Date.now();
     writeLog('ADMIN', `[NGHIỆN] ${u.name || userId} nhận ${HOURLY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
-    // Đăng công khai vào kênh nghiện — lỗi kênh không được chặn việc nhận tiền
-    client.channels.fetch(NGHIEN_ANNOUNCE_CHANNEL_ID)
-        .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện - gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
-        .catch(() => {});
+    // Đăng công khai vào kênh nghiện - lỗi kênh không được chặn việc nhận tiền
+    if (announce) {
+        client.channels.fetch(NGHIEN_ANNOUNCE_CHANNEL_ID)
+            .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện - gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
+            .catch(() => { });
+    }
     return { ok: true, amount: HOURLY_DOGCOIN, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: u.points || 0 };
 }
 
@@ -1953,7 +1958,8 @@ client.once('ready', async (c) => {
             transfer: webTransfer,
             transferTargets: listTransferTargets,
             // 📅 điểm danh tháng + 💉 nghiện — cùng logic với /diemdanh, /nghien
-            daily: { state: dailyState, claim: claimDaily, nghien: claimNghien },
+            // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
+            daily: { state: dailyState, claim: claimDaily, nghien: (uid) => claimNghien(uid, true) },
             // 🎡 vòng quay may mắn nhóm (thay blackjack)
             wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin, spin1: wheelSpin1 },
         });
@@ -3183,8 +3189,9 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.commandName === 'nghien') {
-            // Cooldown LĂN 60 phút từ lần nhận trước — logic chung với web (claimNghien),
-            // có đăng công khai vào kênh nghiện.
+            // Cooldown LĂN 60 phút từ lần nhận trước — logic chung với web (claimNghien).
+            // KHÔNG đăng công khai: lời đáp dưới đây đã hiện ngay tại kênh, đăng thêm
+            // là ra 2 tin trùng nội dung.
             const r = claimNghien(userId);
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
             return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI} - quay lại sau 1 tiếng nhé.`);
