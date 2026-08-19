@@ -198,6 +198,12 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
+                // bấm nhận thưởng chuỗi (2 ngày liên tiếp = 1 gói, lấy hết 1 lần)
+                if (ctx.daily && ctx.daily.streak && req.method === 'POST' && path === '/api/daily/streak') {
+                    const r = ctx.daily.streak(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 if (ctx.daily && req.method === 'POST' && path === '/api/daily/nghien') {
                     const r = ctx.daily.nghien(userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
@@ -617,6 +623,10 @@ const PAGE = [
     '#dChips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}',
     '.dchip{background:#12141a;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}',
     '.dchip .t{font-size:11px;color:var(--muted)}.dchip .v{font-weight:800;font-size:15px;color:var(--gold);margin-top:2px}',
+    // ô thưởng chuỗi: có gói chờ nhận thì SÁNG LÊN + nhấp nháy, bấm được
+    '#dStreakChip.on{background:linear-gradient(180deg,#3d2c10,#241a08);border-color:var(--gold);cursor:pointer;animation:baoPulse 1.8s ease-in-out infinite}',
+    '#dStreakChip.on .t{color:#ffd977}',
+    '#dStreakChip.on:active{transform:scale(.96)}',
     '#dcal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}',
     '.dw{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}',
     '.dd{border-radius:10px;border:1px solid var(--line);background:#12141a;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#5a6072}',
@@ -795,7 +805,8 @@ const PAGE = [
     '<div id="dChips">',
     '<div class="dchip"><div class="t">🔥 Chuỗi</div><div class="v" id="dStreak">-</div></div>',
     '<div class="dchip"><div class="t">🎁 Mỗi ngày</div><div class="v" id="dAmt">-</div></div>',
-    '<div class="dchip"><div class="t">🏆 Đủ tháng</div><div class="v" id="dBonus">-</div></div>',
+    // Ô này BẤM ĐƯỢC: đủ chuỗi 2 ngày là sáng lên, bấm nhận 800 (nhiều gói lấy hết 1 lần)
+    '<div class="dchip" id="dStreakChip" onclick="streakClaim()"><div class="t" id="dStreakT">🔥 Đủ chuỗi 2</div><div class="v" id="dBonus">-</div></div>',
     '</div>',
     '<div id="dcal"></div>',
     '<div class="row" style="margin-top:10px"><div class="muted" id="dCount" style="font-size:13px">-</div><div class="muted" id="dBonusNote" style="font-size:13px"></div></div>',
@@ -1570,7 +1581,12 @@ const PAGE = [
     '$("dMonth").textContent="Tháng "+DST.month+" · "+DST.year;',
     '$("dStreak").textContent=DST.streak+" ngày";',
     '$("dAmt").textContent="+"+DST.amount.toLocaleString("vi-VN");',
-    '$("dBonus").textContent="+"+DST.monthBonus.toLocaleString("vi-VN");',
+    // ô thưởng chuỗi: hiện số gói chờ nhận, có gói thì sáng lên cho bấm
+    'var pk=DST.streakPacks||0;',
+    '$("dStreakT").textContent="🔥 Đủ chuỗi "+DST.streakEvery;',
+    '$("dBonus").textContent=pk>0?("NHẬN "+(pk*DST.streakBonus).toLocaleString("vi-VN")):(DST.streakTotal||0)+" lần";',
+    '$("dStreakChip").classList.toggle("on",pk>0);',
+    '$("dStreakChip").title=pk>0?("Bấm nhận "+pk+" gói x "+DST.streakBonus.toLocaleString("vi-VN")):("Điểm danh "+DST.streakEvery+" ngày liên tiếp để nhận "+DST.streakBonus.toLocaleString("vi-VN"));',
     'var done={};DST.days.forEach(function(d){done[d]=1});',
     'var first=new Date(DST.year,DST.month-1,1).getDay();', // 0 = Chủ nhật
     'var html=["CN","T2","T3","T4","T5","T6","T7"].map(function(w){return \'<div class="dw">\'+w+"</div>"}).join("");',
@@ -1579,7 +1595,7 @@ const PAGE = [
     'html+=\'<div class="\'+cls+\'">\'+d+(done[d]?"<small>CHUỖI</small>":"")+"</div>"}',
     '$("dcal").innerHTML=html;',
     '$("dCount").textContent=DST.days.length+"/"+DST.daysInMonth+" ngày";',
-    '$("dBonusNote").textContent="đủ "+DST.daysInMonth+" ngày → +"+DST.monthBonus.toLocaleString("vi-VN")+" 🏆";',
+    '$("dBonusNote").textContent="chuỗi "+DST.streak+" ngày · cứ "+DST.streakEvery+" ngày liên tiếp = +"+DST.streakBonus.toLocaleString("vi-VN")+" 🔥";',
     '$("dprogIn").style.width=Math.round(DST.days.length*100/DST.daysInMonth)+"%";',
     'var b=$("dClaim");b.disabled=DST.checkedToday;',
     'b.textContent=DST.checkedToday?"✅ HÔM NAY ĐIỂM DANH RỒI - MAI QUAY LẠI":"✨ ĐIỂM DANH NGAY (+"+DST.amount.toLocaleString("vi-VN")+")";',
@@ -1587,8 +1603,14 @@ const PAGE = [
     'ngTick()}',
     'function dailyClaim(){var b=$("dClaim");if(b.disabled)return;b.disabled=true;',
     'api("/api/daily/claim",{}).then(function(j){setBal(j.balance);DST=j.state;DOFF=j.state.nghien.now-Date.now();dRender();',
-    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(j.bonus?" · 🏆 BONUS đủ tháng +"+j.bonus.toLocaleString("vi-VN")+"!":""));',
-    'if(j.bonus)celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
+    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(j.streakEarned?" · 🔥 ĐỦ CHUỖI! Bấm ô 🔥 nhận "+j.state.streakBonus.toLocaleString("vi-VN"):""));',
+    'if(j.streakEarned)celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
+    // bấm ô 🔥 để nhận thưởng chuỗi (lấy hết gói đang chờ)
+    'function streakClaim(){if(!DST||!(DST.streakPacks>0))return;',
+    'var c=$("dStreakChip");c.classList.remove("on");',
+    'api("/api/daily/streak",{}).then(function(j){setBal(j.balance);DST=j.state;dRender();',
+    'toast("🔥 Thưởng chuỗi: "+j.packs+" gói x "+DST.streakBonus.toLocaleString("vi-VN")+" = +"+j.amount.toLocaleString("vi-VN")+" Dogcoin!");',
+    'celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
     'function nghienClaim(){var b=$("ngBtn");if(b.disabled)return;b.disabled=true;',
     'api("/api/daily/nghien",{}).then(function(j){setBal(j.balance);',
     'if(DST){DST.nghien.nextAt=j.nextAt;DOFF=j.now-Date.now()}',

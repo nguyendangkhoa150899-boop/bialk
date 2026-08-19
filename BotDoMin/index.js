@@ -21,7 +21,11 @@ const STARTING_DOGCOIN = 20;
 const DAILY_DOGCOIN = 400;
 const HOURLY_DOGCOIN = 100; // /nghien - điểm danh con nghiện, 1 tiếng/lần
 const NGHIEN_COOLDOWN_MS = 60 * 60 * 1000;
-const DAILY_MONTH_BONUS = 5000; // điểm danh đủ MỌI ngày trong tháng nhận thêm cục này
+// THƯỞNG CHUỖI (thay bonus đủ tháng cũ): cứ điểm danh đủ 2 NGÀY LIÊN TIẾP thì ghi
+// 1 gói 800 vào sổ, người chơi tự bấm nhận. Gói đã ghi là của họ, chuỗi có đứt sau
+// đó cũng không mất. Nhiều gói chưa nhận thì bấm 1 lần lấy hết.
+const DAILY_STREAK_EVERY = 2;
+const DAILY_STREAK_BONUS = 800;
 // Kênh đăng công khai mỗi lần có người lụm nghiện (cả /nghien lẫn nút trên web)
 const NGHIEN_ANNOUNCE_CHANNEL_ID = '1538752789499347037';
 const DOGCOIN_EMOJI = '<:dogcoin:1533903243028205579>';
@@ -327,21 +331,43 @@ function dailyBookOf(userData) {
     }
     return userData;
 }
+// Chuỗi đếm bằng NGÀY THẬT (userData.streakRun), không tính từ lịch tháng — lịch
+// tháng reset mỗi mùng 1 nên tính kiểu đó là sang tháng mới đứt chuỗi oan.
+function vnDayStr(ts) {
+    return new Date(ts).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+// Chuỗi hiện tại: đã điểm danh hôm nay thì lấy thẳng streakRun; chưa thì streakRun
+// chỉ còn giá trị nếu lần trước là HÔM QUA (nếu không thì chuỗi đã đứt = 0).
+function streakNow(u) {
+    if (u.streakRun === undefined) {
+        // di cư từ bản cũ (chưa có streakRun): tạm suy từ lịch tháng
+        const { d } = vnParts();
+        const set = new Set(u.dailyDays || []);
+        let s = 0;
+        for (let cur = set.has(d) ? d : d - 1; cur >= 1 && set.has(cur); cur--) s++;
+        return s;
+    }
+    const today = vnDayStr(Date.now());
+    const last = u.lastDaily ? vnDayStr(u.lastDaily) : '';
+    if (last === today) return u.streakRun;
+    if (last === vnDayStr(Date.now() - 86400000)) return u.streakRun;   // hôm qua, chuỗi còn sống
+    return 0;
+}
 function dailyState(userId) {
     const u = dailyBookOf(getUserData(userId));
     const { y, m, d } = vnParts();
     const daysInMonth = new Date(y, m, 0).getDate();
-    // chuỗi = số ngày liên tiếp tính đến hôm nay (chưa điểm danh hôm nay thì tính đến hôm qua)
     const set = new Set(u.dailyDays);
-    let streak = 0;
-    for (let cur = set.has(d) ? d : d - 1; cur >= 1 && set.has(cur); cur--) streak++;
     return {
         year: y, month: m, today: d, daysInMonth,
         days: u.dailyDays.slice().sort((a, b) => a - b),
         checkedToday: set.has(d),
-        streak,
+        streak: streakNow(u),
         amount: DAILY_DOGCOIN,
-        monthBonus: DAILY_MONTH_BONUS,
+        streakEvery: DAILY_STREAK_EVERY,
+        streakBonus: DAILY_STREAK_BONUS,
+        streakPacks: u.streakPacks || 0,     // số gói ĐANG CHỜ nhận
+        streakTotal: u.streakTotal || 0,     // tổng số lần đủ chuỗi từ đầu
         nghien: { amount: HOURLY_DOGCOIN, nextAt: (u.lastNghien || 0) + NGHIEN_COOLDOWN_MS, now: Date.now() },
         balance: u.points || 0,
     };
@@ -358,20 +384,44 @@ function claimDaily(userId) {
         const minsLeft = (24 * 60) - (nowVN.getHours() * 60 + nowVN.getMinutes());
         return { error: `Hôm nay điểm danh rồi! Qua 00:00 (còn ${Math.floor(minsLeft / 60)} giờ ${minsLeft % 60} phút) là điểm danh tiếp được.` };
     }
+    // Nối chuỗi TRƯỚC khi ghi đè lastDaily: lần trước là hôm qua thì +1, không thì về 1.
+    const prevRun = (u.streakRun !== undefined) ? u.streakRun : streakNow(u);
+    const lastVNday = u.lastDaily ? vnDayStr(u.lastDaily) : '';
+    u.streakRun = (lastVNday === vnDayStr(Date.now() - 86400000)) ? prevRun + 1 : 1;
+
     u.dailyDays.push(d);
     u.lastDaily = Date.now();
     updatePoints(userId, DAILY_DOGCOIN);
-    // đủ mọi ngày trong tháng -> thưởng thêm cục bonus (mỗi tháng 1 lần là tự nhiên
-    // vì mỗi ngày chỉ điểm danh được 1 lần, đủ tháng đúng vào ngày cuối)
-    const daysInMonth = new Date(y, m, 0).getDate();
-    let bonus = 0;
-    if (u.dailyDays.length >= daysInMonth) {
-        bonus = DAILY_MONTH_BONUS;
-        updatePoints(userId, bonus);
+
+    // Đủ mốc chuỗi (2 ngày liên tiếp) -> GHI 1 gói vào sổ, chưa cộng tiền.
+    // Người chơi tự bấm nhận; gói đã ghi thì chuỗi đứt sau đó cũng không mất.
+    let streakEarned = false;
+    if (u.streakRun % DAILY_STREAK_EVERY === 0) {
+        u.streakPacks = (u.streakPacks || 0) + 1;
+        u.streakTotal = (u.streakTotal || 0) + 1;
+        streakEarned = true;
     }
     saveDbNow();
-    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận ${DAILY_DOGCOIN.toLocaleString()}${bonus ? ` + BONUS đủ tháng ${bonus.toLocaleString()}` : ''} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
-    return { ok: true, amount: DAILY_DOGCOIN, bonus, state: dailyState(userId), balance: u.points || 0 };
+    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | chuỗi ${u.streakRun}${streakEarned ? ` | ĐỦ CHUỖI ${DAILY_STREAK_EVERY} - ghi 1 gói ${DAILY_STREAK_BONUS} chờ nhận` : ''} | Số dư: ${(u.points || 0).toLocaleString()}`);
+    return {
+        ok: true, amount: DAILY_DOGCOIN, streakEarned,
+        state: dailyState(userId), balance: u.points || 0,
+    };
+}
+
+// Bấm nhận thưởng chuỗi: lấy HẾT gói đang chờ trong 1 lần
+function claimStreak(userId) {
+    const u = dailyBookOf(getUserData(userId));
+    const packs = u.streakPacks || 0;
+    if (packs < 1) {
+        return { error: `Chưa đủ chuỗi - điểm danh ${DAILY_STREAK_EVERY} ngày LIÊN TIẾP là nhận được ${DAILY_STREAK_BONUS.toLocaleString()} Dogcoin.` };
+    }
+    const amount = packs * DAILY_STREAK_BONUS;
+    u.streakPacks = 0;
+    updatePoints(userId, amount);
+    saveDbNow();
+    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận thưởng chuỗi: ${packs} gói x ${DAILY_STREAK_BONUS.toLocaleString()} = ${amount.toLocaleString()} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
+    return { ok: true, amount, packs, state: dailyState(userId), balance: u.points || 0 };
 }
 // announce: CHỈ bật khi lụm từ WEB. Gõ /nghien trong Discord thì lời đáp đã hiện
 // ngay tại kênh rồi, đăng thêm là ra 2 tin trùng nội dung. Mặc định TẮT để chỗ gọi
@@ -1959,7 +2009,10 @@ client.once('ready', async (c) => {
             transferTargets: listTransferTargets,
             // 📅 điểm danh tháng + 💉 nghiện — cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
-            daily: { state: dailyState, claim: claimDaily, nghien: (uid) => claimNghien(uid, true) },
+            daily: {
+                state: dailyState, claim: claimDaily, streak: claimStreak,
+                nghien: (uid) => claimNghien(uid, true),   // lụm từ WEB thì đăng công khai
+            },
             // 🎡 vòng quay may mắn nhóm (thay blackjack)
             wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin, spin1: wheelSpin1 },
         });
@@ -3185,7 +3238,13 @@ client.on('interactionCreate', async interaction => {
             // tháng cho lịch điểm danh trên web, đủ tháng nhận thêm bonus.
             const r = claimDaily(userId);
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}${r.bonus ? ` + **${r.bonus.toLocaleString()}** ${DOGCOIN_EMOJI} BONUS đủ tháng 🏆` : ''}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}\nChuỗi: **${r.state.streak} ngày** - xem lịch tháng trên web (tab 📅).`);
+            return interaction.reply(
+                `🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}. ` +
+                `Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}\n` +
+                `Chuỗi: **${r.state.streak} ngày**` +
+                (r.streakEarned ? ` - 🔥 **ĐỦ CHUỖI ${DAILY_STREAK_EVERY}!** Vào web (tab 📅) bấm nhận **${DAILY_STREAK_BONUS.toLocaleString()}** ${DOGCOIN_EMOJI}` : '') +
+                (r.state.streakPacks > 0 && !r.streakEarned ? ` - còn **${r.state.streakPacks}** gói thưởng chuỗi chưa nhận, vào web lấy nhé` : '')
+            );
         }
 
         if (interaction.commandName === 'nghien') {
