@@ -350,6 +350,13 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Vòng quay: cần ${n} người ready để khởi động`);
                     return sendJSON(res, 200, { ok: true, minPlayers: n });
                 }
+                // reset lượt quay: cả server quay lại được ngay, khỏi đợi 00:00/12:00
+                if (path === '/api/wheel/reset') {
+                    if (!ctx.resetWheelTurns) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    const n = ctx.resetWheelTurns();
+                    ctx.writeLog('ADMIN', `[PANEL] Vòng quay: reset lượt cho ${n} người`);
+                    return sendJSON(res, 200, { ok: true, n });
+                }
                 // (route bảng Blackjack đã xóa 19/08 cùng cả trò)
                 // (route bảng/reset thống kê 📊 đã xóa 19/08 cùng tính năng)
                 // ---- KÊNH ĐÃ LƯU (id + ghi chú) ----
@@ -928,8 +935,9 @@ const HTML = `<!DOCTYPE html>
         <input id="whMin" type="number" placeholder="vd: 3">
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="whSaveMin()">💾 Lưu</button>
+          <button class="btn-red" onclick="whReset()">🔄 Cho quay lại NGAY (reset lượt)</button>
         </div>
-        <div class="note">Vé <b>1.000</b> · chắc chắn thắng, sàn x1.1 · độc đắc <b>x10</b> (1/24 nan) bêu tên ở kênh nghiện. 3 mũi tên 🟡🔵🟢 lệch nhau 120°, chọn trùng màu thoải mái. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>. Đủ số người thì <b>nút QUAY sáng lên cho người chơi tự bấm</b> (không tự quay) — hạ số xuống ≤ số đang chờ là nút sáng ngay. Blackjack đã hủy theo vote cả server; bảng Discord cũ tự gỡ khi bot khởi động.</div>
+        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay ra giá vé chung <b>1.000/1.500/2.000</b> — vào bàn cọc 2.000, vé rẻ hơn hoàn chênh; rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé — sàn x1.1, độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b> — nút đỏ bên trên cho cả server quay lại ngay không cần đợi. Blackjack đã hủy theo vote cả server.</div>
       </div>
     </div>
 
@@ -1353,6 +1361,7 @@ async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi 
 function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
 async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stairs/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Leo Thang');refresh();});}
 function whSaveMin(){const n=parseInt(document.getElementById('whMin').value);if(!n||n<1||n>50)return toast('Nhập số 1–50');api('/api/wheel/min',{minPlayers:n}).then(()=>{toast('💾 Vòng quay cần '+n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
+async function whReset(){if(!await uiConfirm('Reset lượt vòng quay: CẢ SERVER quay lại được ngay, không đợi 00:00/12:00?','Reset lượt','btn-red'))return;api('/api/wheel/reset',{}).then(j=>{toast('🔄 Đã reset lượt cho '+j.n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
