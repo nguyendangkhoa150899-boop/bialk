@@ -19,7 +19,7 @@ const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
 const STARTING_DOGCOIN = 20;
 const DAILY_DOGCOIN = 400;
-const HOURLY_DOGCOIN = 100; // /nghien — điểm danh con nghiện, 1 tiếng/lần
+const HOURLY_DOGCOIN = 100; // /nghien - điểm danh con nghiện, 1 tiếng/lần
 const NGHIEN_COOLDOWN_MS = 60 * 60 * 1000;
 const DAILY_MONTH_BONUS = 5000; // điểm danh đủ MỌI ngày trong tháng nhận thêm cục này
 // Kênh đăng công khai mỗi lần có người lụm nghiện (cả /nghien lẫn nút trên web)
@@ -109,7 +109,7 @@ function syncCache() {
     dbCache._xsForced = xsState.forced;
     dbCache._xsHistory = xsState.history;
     dbCache._xsResultMsgIds = xsState.resultMsgIds;
-    // Tài Xỉu / Bầu Cua: cược ván đang mở cũng là tiền thật đã trừ ví — giữ y như
+    // Big Small / Bầu Cua: cược ván đang mở cũng là tiền thật đã trừ ví — giữ y như
     // xổ số để restart còn biết đường hoàn (bảng kết ván bình thường sẽ tự rỗng lại).
     dbCache._txBets = txState.bets || [];
     dbCache._bcBets = bcState.bets || [];
@@ -137,7 +137,7 @@ function refundBootPendingBets() {
         count++; total += amount;
         writeLog('SYSTEM', `[HOÀN CƯỢC RESTART] ${label}: hoàn ${amount.toLocaleString()} cho ${uid}`);
     };
-    for (const b of bootPendingBets.tx) give(b && b.userId, b && b.amount, 'Tài Xỉu');
+    for (const b of bootPendingBets.tx) give(b && b.userId, b && b.amount, 'Big Small');
     for (const b of bootPendingBets.bc) give(b && b.userId, b && b.amount, 'Bầu Cua');
     for (const [uid, bet] of Object.entries(bootPendingBets.mines)) give(uid, bet, 'Dò Mìn');
     for (const [uid, bet] of Object.entries(bootPendingBets.stairs)) give(uid, bet, 'Leo Thang');
@@ -266,7 +266,7 @@ function webTransfer(fromId, toId, amount) {
     if (!Number.isInteger(amount) || amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
     if (!dbCache[toId] || typeof dbCache[toId] !== 'object') return { error: 'Người này chưa có ví (chưa từng chơi)' };
     const last = transferLastAt.get(fromId) || 0;
-    if (Date.now() - last < 10000) return { error: 'Từ từ — 10 giây mới được chuyển 1 lần' };
+    if (Date.now() - last < 10000) return { error: 'Từ từ - 10 giây mới được chuyển 1 lần' };
     const me = getUserData(fromId);
     if ((me.points || 0) < amount) return { error: 'Không đủ Dogcoin!' };
 
@@ -385,7 +385,7 @@ function claimNghien(userId) {
     writeLog('ADMIN', `[NGHIỆN] ${u.name || userId} nhận ${HOURLY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
     // Đăng công khai vào kênh nghiện — lỗi kênh không được chặn việc nhận tiền
     client.channels.fetch(NGHIEN_ANNOUNCE_CHANNEL_ID)
-        .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện — gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
+        .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện - gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
         .catch(() => {});
     return { ok: true, amount: HOURLY_DOGCOIN, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: u.points || 0 };
 }
@@ -411,7 +411,7 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null) {
         const ch = await client.channels.fetch(announceChannelId);
         if (ch) {
             await ch.send({
-                content: `<@&${pingRoleId}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi — gõ \`/sodu\` mà xem)`,
+                content: `<@&${pingRoleId}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi - gõ \`/sodu\` mà xem)`,
                 allowedMentions: { roles: [pingRoleId] },
             });
             announced = true;
@@ -428,7 +428,7 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null) {
 // Lua không có cách thêm pal vào túi cho đúng (pal bị treo tới khi restart server).
 const PAL_SHOP = {
     customPrice: 6000,   // tự chọn pal
-    randomPrice: 2000,   // random pal — quay TRƯỚC, biết trúng con gì rồi mới chọn passive/linh hồn
+    randomPrice: 2000,   // random pal - quay TRƯỚC, biết trúng con gì rồi mới chọn passive/linh hồn
     adminDiscordId: '456136500011335698',
     // Chỉ số mặc định cho mọi pal mua ở shop
     stars: 4,
@@ -528,7 +528,7 @@ let bcState = {
 };
 let userBCSelections = {};
 
-// --- CONFIG TÀI XỈU ---
+// --- CONFIG BIG SMALL ---
 let txState = {
     status: 'betting',
     timeLeft: 60,
@@ -597,11 +597,11 @@ let bcDashHistory = Array.isArray(dbCache._bcDashHistory) ? dbCache._bcDashHisto
 let withdrawRequests = Array.isArray(dbCache._withdrawRequests) ? dbCache._withdrawRequests : [];
 let withdrawSeq = dbCache._withdrawSeq || 1;
 
-// Kênh riêng để người chơi bấm nút xin rút Dogcoin (giống cơ chế kênh Bầu Cua/Tài Xỉu,
+// Kênh riêng để người chơi bấm nút xin rút Dogcoin (giống cơ chế kênh Bầu Cua/Big Small,
 // nhưng chỉ 1 tin nhắn tĩnh, không có vòng lặp đếm giờ).
 let withdrawState = { channel: null, message: null };
 
-// Tài Xỉu & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
+// Big Small & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
 // (Trước đây gameId random mỗi lần restart -> soi cầu loạn số. Giờ reset gọn gàng.)
 // Lưu ý: chỉ reset soi cầu Discord (txState/bcState.history), KHÔNG đụng lịch sử dashboard.
 bcState.gameId = 0;
@@ -619,7 +619,7 @@ const DICE_EMOJIS = [
     '<:1410537557069926470:1493488527013318657>'
 ];
 
-// ===== NẶN XÍ NGẦU TRÊN WEB (Tài Xỉu) =====
+// ===== NẶN XÍ NGẦU TRÊN WEB (Big Small) =====
 // Ván TX_ROUND_S (50) giây = 35 giây đặt cược + TX_LOCK_S (15) giây nặn. Lúc khóa sổ
 // xí ngầu lắc NGẦM (txState.nan), người chơi lên web tự "nặn" — kéo tờ giấy che
 // tự do 4 chiều, kéo tới đâu lộ tới đó, ai kéo người đó thấy riêng. Đúng giờ mở bát:
@@ -784,7 +784,7 @@ function webMinesRefundStale() {
             updatePoints(uid, g.bet);
             webMines.delete(uid);
             delete minesPending()[uid];
-            writeLog('SYSTEM', `[WEB DÒ MÌN] Hoàn ${g.bet} cho ${g.name || uid} — ván treo quá 2 tiếng`);
+            writeLog('SYSTEM', `[WEB DÒ MÌN] Hoàn ${g.bet} cho ${g.name || uid} - ván treo quá 2 tiếng`);
         }
     }
 }
@@ -899,7 +899,7 @@ const webMinesApi = {
     minMines: 3,
     maxMines: 20,
     start: (userId, name, numMines, bet) => {
-        if (webMines.has(userId)) return { error: 'Bạn đang có ván dở — chơi nốt hoặc bấm DỪNG đã.' };
+        if (webMines.has(userId)) return { error: 'Bạn đang có ván dở - chơi nốt hoặc bấm DỪNG đã.' };
         if (!Number.isInteger(numMines) || numMines < webMinesApi.minMines || numMines > webMinesApi.maxMines) {
             return { error: `Số mìn phải từ ${webMinesApi.minMines} đến ${webMinesApi.maxMines}` };
         }
@@ -934,7 +934,7 @@ const webMinesApi = {
         if (g.revealed.includes(idx)) return { error: 'Ô này mở rồi' };
 
         if (g.luckyPending) return { error: 'Chọn 1 trong 4 hộp cỏ 4 lá đã!' };
-        if ((g.defused || []).includes(idx)) return { error: 'Ô này khiên đỡ rồi — chọn ô khác' };
+        if ((g.defused || []).includes(idx)) return { error: 'Ô này khiên đỡ rồi - chọn ô khác' };
 
         if (g.mines.includes(idx)) {
             // 🛡️ Có khiên: quả mìn XỊT, hiện ra trên bàn, ĐỨNG YÊN chơi tiếp.
@@ -942,14 +942,14 @@ const webMinesApi = {
             if (g.shield) {
                 g.shield = false;
                 g.defused.push(idx);
-                writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🛡️ khiên đỡ mìn ô ${idx} — chơi tiếp`);
+                writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🛡️ khiên đỡ mìn ô ${idx} - chơi tiếp`);
                 return { ok: true, hit: false, defused: idx, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
             }
             webMines.delete(userId);
             delete minesPending()[userId];
             webMinesLog(g, 'Trúng mìn (Thua)', -g.bet, idx);
             setMinesLast(userId, g, 'Trúng mìn (Thua)', -g.bet, idx);
-            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} BÙM ở ô ${idx} — mất ${g.bet}`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} BÙM ở ô ${idx} - mất ${g.bet}`);
             // Tiền đã trừ từ lúc bắt đầu, thua thì không trừ thêm lần nữa.
             // luckyAt: lộ ô 🍀 chưa kịp mở cho người chơi tiếc chơi ván nữa
             return { ok: true, hit: true, mines: g.mines, luckyAt: (g.luckySpun ? -1 : g.lucky), balance: getUserData(userId).points || 0 };
@@ -962,7 +962,7 @@ const webMinesApi = {
         // 4 hộp là sân khấu, không có gì cho client gian lận.
         if (idx === g.lucky && !g.luckySpun) {
             g.luckyPending = true;
-            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 mở trúng cỏ 4 lá — đang chọn hộp`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 mở trúng cỏ 4 lá - đang chọn hộp`);
             return { ok: true, hit: false, luckyPick: true, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
         }
 
@@ -976,7 +976,7 @@ const webMinesApi = {
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
             setMinesLast(userId, g, 'Jackpot', win - g.bet);
-            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT — nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI} vì có trợ giúp 🍀)` : ''}`);
             return { ok: true, hit: false, jackpot: true, win, luckCapped: win < raw, mines: g.mines, lucky, balance: getUserData(userId).points || 0 };
         }
         return { ok: true, hit: false, lucky, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
@@ -1033,7 +1033,7 @@ const webMinesApi = {
             writeLog('ADMIN', `[⚠️ NỔ HŨ DÒ MÌN] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.totalMines} mìn)`);
         }
         else g.luck.push('🍂');
-        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 chọn hộp ${box} — trúng ${prize}`);
+        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 chọn hộp ${box} - trúng ${prize}`);
 
         // ⛏️ có thể vừa mở đủ ô an toàn -> chốt jackpot ván luôn
         const maxDiamonds = TOTAL_TILES - g.totalMines;
@@ -1045,7 +1045,7 @@ const webMinesApi = {
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
             setMinesLast(userId, g, 'Jackpot', win - g.bet);
-            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT (⛏️ hộp may mắn) — nhận ${win}`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT (⛏️ hộp may mắn) - nhận ${win}`);
             return { ok: true, lucky, jackpot: true, win, luckCapped: win < raw, mines: g.mines, balance: getUserData(userId).points || 0 };
         }
         return { ok: true, lucky, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
@@ -1063,7 +1063,7 @@ const webMinesApi = {
         updatePoints(userId, win);
         webMinesLog(g, 'Dừng (Thắng)', win - g.bet);
         setMinesLast(userId, g, 'Dừng (Thắng)', win - g.bet);
-        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô — nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
+        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
         return { ok: true, win, luckCapped: win < raw, mines: g.mines, luckyAt: (g.luckySpun ? -1 : g.lucky), balance: getUserData(userId).points || 0 };
     },
 };
@@ -1142,7 +1142,7 @@ function stairsRefundStale() {
             updatePoints(uid, g.bet);
             webStairs.delete(uid);
             delete stairsPending()[uid];
-            writeLog('SYSTEM', `[LEO THANG] Hoàn ${g.bet} cho ${g.name || uid} — ván treo quá 2 tiếng`);
+            writeLog('SYSTEM', `[LEO THANG] Hoàn ${g.bet} cho ${g.name || uid} - ván treo quá 2 tiếng`);
         }
     }
 }
@@ -1177,7 +1177,7 @@ const webStairsApi = {
         };
     },
     start: (userId, name, fire, bet) => {
-        if (webStairs.has(userId)) return { error: 'Bạn đang có ván dở — leo tiếp hoặc bấm DỪNG đã.' };
+        if (webStairs.has(userId)) return { error: 'Bạn đang có ván dở - leo tiếp hoặc bấm DỪNG đã.' };
         if (!Number.isInteger(fire) || fire < 1 || fire > STAIRS_MAX_FIRE) {
             return { error: `Số cầu lửa phải từ 1 đến ${STAIRS_MAX_FIRE}` };
         }
@@ -1229,7 +1229,7 @@ const webStairsApi = {
 
         if (g.luckyPending) return { error: 'Chọn 1 trong 4 hộp cỏ 4 lá đã!' };
         if ((g.burned || []).some(b => b.f === g.floor && b.c === col)) {
-            return { error: 'Ô này lộ lửa rồi — chọn ô khác' };
+            return { error: 'Ô này lộ lửa rồi - chọn ô khác' };
         }
 
         const row = g.traps[g.floor];
@@ -1239,7 +1239,7 @@ const webStairsApi = {
             if (g.shield) {
                 g.shield = false;
                 g.burned.push({ f: g.floor, c: col });
-                writeLog('RESULT', `[LEO THANG] ${g.name} 🛡️ khiên đỡ lửa tầng ${g.floor + 1} — đứng lại chọn ô khác`);
+                writeLog('RESULT', `[LEO THANG] ${g.name} 🛡️ khiên đỡ lửa tầng ${g.floor + 1} - đứng lại chọn ô khác`);
                 return { ok: true, burn: false, shielded: true, state: webStairsApi.current(userId), balance: getUserData(userId).points || 0 };
             }
             const hitFloor = g.floor;
@@ -1247,7 +1247,7 @@ const webStairsApi = {
             delete stairsPending()[userId];
             const entry = stairsLog(g, 'Trúng lửa (Thua)', -g.bet);
             setStairsLast(userId, g, 'Trúng lửa (Thua)', -g.bet, hitFloor, col);
-            writeLog('RESULT', `[LEO THANG] ${g.name} CHÁY ở tầng ${hitFloor + 1} — mất ${g.bet}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} CHÁY ở tầng ${hitFloor + 1} - mất ${g.bet}`);
             stairsBoardPush(entry, { hitFloor, hitCol: col, traps: g.traps, safe: g.safe.slice() });
             // Trả BẢN ĐỒ ĐẦY ĐỦ để web lộ hết cầu lửa mọi tầng ngay lúc thua,
             // không phải chỉ tầng vừa cháy (trước phải F5 mới thấy hết).
@@ -1269,13 +1269,13 @@ const webStairsApi = {
         if (g.golden && g.golden.f === curFloor && g.golden.c === col) {
             golden = true; g.luck.push('🌟');
             while (g.floor < STAIRS_FLOORS) { g.safe.push(-1); g.floor++; }
-            writeLog('RESULT', `[LEO THANG] ${g.name} 🌟 ĐẠP Ô VÀNG — bay thẳng lên đỉnh!`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} 🌟 ĐẠP Ô VÀNG - bay thẳng lên đỉnh!`);
         }
         // 🍀 đạp trúng CỎ 4 LÁ (ô trống bình thường, vẫn lên tầng) -> DỪNG, hiện 4 hộp
         else if (g.lucky.some(l => l.f === curFloor && l.c === col)) {
             g.lucky = g.lucky.filter(l => !(l.f === curFloor && l.c === col)); // mỗi ô 1 lần
             g.luckyPending = true;
-            writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 đạp cỏ 4 lá tầng ${curFloor + 1} — đang chọn hộp`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 đạp cỏ 4 lá tầng ${curFloor + 1} - đang chọn hộp`);
             return { ok: true, burn: false, luckyPick: true, state: webStairsApi.current(userId), balance: getUserData(userId).points || 0 };
         }
 
@@ -1287,7 +1287,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH — nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI} vì có trợ giúp 🍀)` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, burn: false, top: true, win, luckCapped: win < raw, lucky, golden,
@@ -1337,7 +1337,7 @@ const webStairsApi = {
             writeLog('ADMIN', `[⚠️ NỔ HŨ LEO THANG] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.fire} lửa)`);
         }
         else g.luck.push('🍂');
-        writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 chọn hộp ${box} — trúng ${prize}`);
+        writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 chọn hộp ${box} - trúng ${prize}`);
 
         // 🚀 có thể vừa đẩy lên đỉnh
         if (g.floor >= STAIRS_FLOORS) {
@@ -1348,7 +1348,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) — nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, lucky, top: true, win, luckCapped: win < raw,
@@ -1371,7 +1371,7 @@ const webStairsApi = {
         updatePoints(userId, win);
         const entry = stairsLog(g, 'Dừng (Thắng)', win - g.bet);
         setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet);
-        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} — nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
+        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
         stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
         // Lộ 🍀/🌟 chưa đạp cả khi DỪNG — đồng bộ với lúc cháy/lên đỉnh (và với Dò Mìn,
         // vốn đã lộ luckyAt khi dừng). Trước đây thiếu 2 field này nên dừng thì không
@@ -1404,7 +1404,7 @@ const WHEEL_SEGMENTS = [1.2, 1.5, 1.1, 1.8, 1.3, 2.0, 1.4, 1.1, 1.7, 1.3, 10, 1.
 // để được quay vòng hệ số; ai không đủ tiền lúc vé chốt thì bị mời ra (không mất
 // gì, không mất lượt). Xen kẽ không 2 nan giống kề nhau (kể cả chỗ nối vòng tròn).
 const WHEEL_STAGE1 = [1000, 1500, 2000, 1000, 2000, 1500, 1000, 1500, 2000, 1500, 1000, 2000, 1500, 1000, 2000];
-const WHEEL_MAX_TICKET = 2000;   // vé đắt nhất (hiển thị) — fallback hoàn pending
+const WHEEL_MAX_TICKET = 2000;   // vé đắt nhất (hiển thị) - fallback hoàn pending
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
@@ -1444,13 +1444,13 @@ function wheelState(userId) {
     const me = getUserData(userId);
     return {
         me: userId,
-        ticket: WHEEL_MAX_TICKET,          // vé đắt nhất (hiển thị) — vào bàn MIỄN PHÍ, vé trừ sau vòng vé
+        ticket: WHEEL_MAX_TICKET,          // vé đắt nhất (hiển thị) - vào bàn MIỄN PHÍ, vé trừ sau vòng vé
         segments: WHEEL_SEGMENTS,
         segments1: WHEEL_STAGE1,           // bánh vé (vòng 1)
         arrows: WHEEL_ARROW_OFFSET,
         minPlayers: wheelMinPlayers(),
         status: wheelRoom.status,
-        spin1: wheelRoom.spin1,            // {seq, idx, price, endsAt} — vòng vé đang/vừa quay
+        spin1: wheelRoom.spin1,            // {seq, idx, price, endsAt} - vòng vé đang/vừa quay
         price: wheelRoom.price,            // giá vé đã chốt (null khi chưa quay vòng vé)
         // đủ người + đang chờ = nút QUAY VÒNG VÉ sáng lên cho người trong bàn bấm
         armed: wheelRoom.status === 'waiting' && wheelRoom.players.size >= wheelMinPlayers(),
@@ -1480,12 +1480,12 @@ function wheelReady(userId, color) {
     const me = getUserData(userId);
     if (wheelRoom.players.has(userId)) {
         if (!hasColor) return { error: 'Chọn màu mũi tên 🟡/🔵/🟢' };
-        if (wheelRoom.status !== 'waiting' && wheelRoom.status !== 'stake') return { error: 'Đang quay — chờ bánh dừng đã' };
+        if (wheelRoom.status !== 'waiting' && wheelRoom.status !== 'stake') return { error: 'Đang quay - chờ bánh dừng đã' };
         wheelRoom.players.get(userId).color = color;
         return { ok: true, state: wheelState(userId) };
     }
-    if (wheelRoom.status !== 'waiting') return { error: 'Vòng đang quay — chờ chút rồi vào ván sau' };
-    if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi — reset lúc 00:00 và 12:00' };
+    if (wheelRoom.status !== 'waiting') return { error: 'Vòng đang quay - chờ chút rồi vào ván sau' };
+    if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi - reset lúc 00:00 và 12:00' };
     // VÀO BÀN MIỄN PHÍ, KHÔNG điều kiện tiền, KHÔNG cần màu (chốt của chủ server)
     wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color: hasColor ? color : null });
     writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn (${wheelRoom.players.size}/${wheelMinPlayers()})`);
@@ -1505,14 +1505,14 @@ function wheelSpin(userId) {
     if (wheelRoom.status === 'spinning') return { ok: true, state: wheelState(userId) };
     // Vòng hệ số CHỈ quay sau khi vòng vé đã chốt giá (stake). Bàn đã khoá người từ
     // vòng vé nên không cần đếm lại min người.
-    if (wheelRoom.status !== 'stake') return { error: 'Quay VÒNG VÉ trước đã — vé chốt xong mới quay vòng hệ số' };
+    if (wheelRoom.status !== 'stake') return { error: 'Quay VÒNG VÉ trước đã - vé chốt xong mới quay vòng hệ số' };
     if (!wheelRoom.players.has(userId)) return { error: 'Vào bàn đã rồi mới bấm quay được' };
     // Vòng 2 cùng luật vòng 1 (đủ số người) + TẤT CẢ đủ tiền vé + TẤT CẢ đã chọn màu
-    if (wheelRoom.players.size < wheelMinPlayers()) return { error: `Chưa đủ ${wheelMinPlayers()} người — rủ thêm bạn bè` };
+    if (wheelRoom.players.size < wheelMinPlayers()) return { error: `Chưa đủ ${wheelMinPlayers()} người - rủ thêm bạn bè` };
     const noc = wheelNoColor();
     if (noc.length) return { error: `${noc.join(', ')} chưa chọn màu mũi tên 🟡/🔵/🟢` };
     const short = wheelShort();
-    if (short.length) return { error: `Chưa quay được — ${short.join(', ')} chưa đủ vé ${(wheelRoom.price || 0).toLocaleString()}` };
+    if (short.length) return { error: `Chưa quay được - ${short.join(', ')} chưa đủ vé ${(wheelRoom.price || 0).toLocaleString()}` };
     const me = wheelRoom.players.get(userId);
     writeLog('RESULT', `[VÒNG QUAY] ${me.name} bấm vòng hệ số (vé ${(wheelRoom.price || 0).toLocaleString()}, ${wheelRoom.players.size} người)`);
     wheelDoSpin();
@@ -1531,7 +1531,7 @@ function wheelSpin1(userId) {
     if (wheelRoom.status === 'spin1') return { ok: true, state: wheelState(userId) };   // 2 người bấm sát nhau
     if (wheelRoom.status !== 'waiting') return { error: 'Không phải lúc quay vòng vé' };
     if (!wheelRoom.players.has(userId)) return { error: 'Vào bàn đã rồi mới bấm quay được' };
-    if (wheelRoom.players.size < wheelMinPlayers()) return { error: `Chưa đủ ${wheelMinPlayers()} người — rủ thêm bạn bè` };
+    if (wheelRoom.players.size < wheelMinPlayers()) return { error: `Chưa đủ ${wheelMinPlayers()} người - rủ thêm bạn bè` };
 
     // Chốt ngay tại server; client chỉ diễn hoạt hình. Vòng vé MIỄN PHÍ HOÀN TOÀN —
     // KHÔNG trừ ai, KHÔNG mời ai ra. Tiền chỉ trừ ở vòng hệ số, và vòng đó chỉ quay
@@ -1546,7 +1546,7 @@ function wheelSpin1(userId) {
     // Không có chuyện câu giờ cho vòng trôi để quay lại vé đẹp hơn: trôi là mất lượt.
     const turnKey = wheelWindowKey();
     for (const p of wheelRoom.players.values()) getUserData(p.userId).lastWheelKey = turnKey;
-    writeLog('RESULT', `[VÒNG QUAY] ${getUserData(userId).name || userId} bấm vòng vé — ra vé ${price.toLocaleString()} (${wheelRoom.players.size} người, lượt đã tính)`);
+    writeLog('RESULT', `[VÒNG QUAY] ${getUserData(userId).name || userId} bấm vòng vé - ra vé ${price.toLocaleString()} (${wheelRoom.players.size} người, lượt đã tính)`);
     saveDbNow();
     setTimeout(() => {
         if (wheelRoom.status !== 'spin1') return;
@@ -1563,9 +1563,9 @@ function wheelSpin1(userId) {
                 const okMoney = (getUserData(p.userId).points || 0) >= (wheelRoom.price || 0);
                 if (!p.color || !okMoney) { wheelRoom.players.delete(p.userId); dropped.push(p.name); }
             }
-            if (dropped.length) writeLog('SYSTEM', `[VÒNG QUAY] Quá giờ — bỏ lại (mất lượt, không mất tiền): ${dropped.join(', ')}`);
+            if (dropped.length) writeLog('SYSTEM', `[VÒNG QUAY] Quá giờ - bỏ lại (mất lượt, không mất tiền): ${dropped.join(', ')}`);
             if (wheelRoom.players.size) { wheelDoSpin(); return; }
-            writeLog('SYSTEM', '[VÒNG QUAY] Quá giờ — không ai sẵn sàng, đóng vòng (lượt cả bàn đã tính)');
+            writeLog('SYSTEM', '[VÒNG QUAY] Quá giờ - không ai sẵn sàng, đóng vòng (lượt cả bàn đã tính)');
             wheelRoom.status = 'waiting';
             wheelRoom.price = null;
             wheelRoom.stakeEndsAt = null;
@@ -1586,7 +1586,7 @@ function wheelShort() {
 }
 function wheelDoSpin() {
     if (wheelRoom.status !== 'stake' || !wheelRoom.players.size) return;
-    if (wheelShort().length || wheelNoColor().length) return;   // phòng hờ — thiếu vé/màu thì không quay
+    if (wheelShort().length || wheelNoColor().length) return;   // phòng hờ - thiếu vé/màu thì không quay
     const price = wheelRoom.price || WHEEL_MAX_TICKET;
     // Chốt kết quả NGAY tại server; client chỉ diễn hoạt hình quay tới nan idx.
     const idx = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
@@ -1602,11 +1602,11 @@ function wheelDoSpin() {
         updatePoints(p.userId, win);
         getUserData(p.userId).lastWheelKey = key;
         players.push({ userId: p.userId, name: p.name, color: p.color, multi, win });
-        writeLog('RESULT', `[VÒNG QUAY] ${p.name} (${p.color}) trúng x${multi} — +${win}`);
+        writeLog('RESULT', `[VÒNG QUAY] ${p.name} (${p.color}) trúng x${multi} - +${win}`);
         if (multi >= 10) {
-            writeLog('ADMIN', `[⚠️ VÒNG QUAY ĐỘC ĐẮC] ${p.name} trúng x10 — +${win.toLocaleString()} Dogcoin`);
+            writeLog('ADMIN', `[⚠️ VÒNG QUAY ĐỘC ĐẮC] ${p.name} trúng x10 - +${win.toLocaleString()} Dogcoin`);
             client.channels.fetch(NGHIEN_ANNOUNCE_CHANNEL_ID)
-                .then(ch => ch.send({ content: `🎡 **${p.name}** quay trúng **ĐỘC ĐẮC x10** — +**${win.toLocaleString()}** ${DOGCOIN_EMOJI}!!!`, allowedMentions: { parse: [] } }))
+                .then(ch => ch.send({ content: `🎡 **${p.name}** quay trúng **ĐỘC ĐẮC x10** - +**${win.toLocaleString()}** ${DOGCOIN_EMOJI}!!!`, allowedMentions: { parse: [] } }))
                 .catch(() => { });
         }
     }
@@ -1614,7 +1614,7 @@ function wheelDoSpin() {
     // hoạt hình client 15s — endsAt 16s (ai vào trong lúc quay vẫn kịp xem đoạn cuối)
     wheelRoom.spin = { seq: wheelRoom.spinSeq, idx, results, players, endsAt: Date.now() + 16000 };
     wheelRoom.status = 'spinning';
-    dbCache._wheelPending = {};   // tiền đã trả — không còn gì để hoàn
+    dbCache._wheelPending = {};   // tiền đã trả - không còn gì để hoàn
     if (!Array.isArray(dbCache._wheelHistory)) dbCache._wheelHistory = [];
     dbCache._wheelHistory.unshift({ time: new Date().toLocaleTimeString('vi-VN'), price, results, players });
     if (dbCache._wheelHistory.length > 20) dbCache._wheelHistory.pop();
@@ -1634,7 +1634,7 @@ function wheelResetTurns() {
         if (v && typeof v === 'object' && v.lastWheelKey) { delete v.lastWheelKey; n++; }
     }
     saveDbNow();
-    writeLog('ADMIN', `[VÒNG QUAY] Reset lượt quay cho ${n} người — quay lại được ngay`);
+    writeLog('ADMIN', `[VÒNG QUAY] Reset lượt quay cho ${n} người - quay lại được ngay`);
     return n;
 }
 
@@ -1643,7 +1643,7 @@ function wheelResetTurns() {
 //  blackjackPage.js / wsserver.js + khối wiring ở đây và webplay.js.)
 
 // ===== BẢNG DÒ MÌN TRÊN DISCORD =====
-// Khác Tài Xỉu: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
+// Khác Big Small: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
 // Nên bảng này chỉ là chỗ mời chơi + khoe 10 ván gần nhất, KHÔNG có nút đặt cược.
 // Có ván mới thì XOÁ tin cũ + ĐĂNG lại (tối đa 1 lần/phút) — xem repostBoard.
 const minesBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
@@ -1690,7 +1690,7 @@ function getMinesBoardData() {
     const recent = minesHistory.slice(0, BOARD_HISTORY_N);
     let desc =
         `Lưới **${TOTAL_TILES} ô**, bạn chọn **số mìn** và **tiền cược**, rồi đào từng ô.\n` +
-        `Mỗi ô an toàn hệ số tăng thêm — **dừng lúc nào cũng được**, trúng mìn là mất tiền cược ván đó.\n\n` +
+        `Mỗi ô an toàn hệ số tăng thêm - **dừng lúc nào cũng được**, trúng mìn là mất tiền cược ván đó.\n\n` +
         `🎯 Càng nhiều mìn, hệ số càng cao. Kéo thanh bên dưới lưới để xem trước ăn bao nhiêu.\n\n`;
 
     if (recent.length) {
@@ -1700,7 +1700,7 @@ function getMinesBoardData() {
     }
 
     const embed = new EmbedBuilder()
-        .setTitle('💣 DÒ MÌN — chơi trên web')
+        .setTitle('💣 DÒ MÌN - chơi trên web')
         .setColor(0x8b5cf6)
         .setDescription(desc)
         .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
@@ -1767,10 +1767,10 @@ function getStairsBoardData() {
     const recent = stairsHistory().slice(0, BOARD_HISTORY_N);
     let desc =
         `Leo **${STAIRS_FLOORS} tầng**, mỗi tầng **${STAIRS_COLS} ô**. Bạn chọn mỗi tầng có mấy **cầu lửa** (1–${STAIRS_MAX_FIRE}).\n` +
-        `Mỗi tầng bấm 1 ô: trúng ô trống thì lên tầng trên, hệ số nhân thêm — **dừng lúc nào cũng được**.\n` +
+        `Mỗi tầng bấm 1 ô: trúng ô trống thì lên tầng trên, hệ số nhân thêm - **dừng lúc nào cũng được**.\n` +
         `Trúng cầu lửa 🔥 là mất tiền cược ván đó.\n\n` +
         `🔥 Càng nhiều lửa mỗi tầng, hệ số càng cao (1 lửa lên đỉnh x3.61 · 5 lửa lên đỉnh x17k).\n` +
-        `🍀 Có ô may mắn giấu trong tháp + 🌟 ô vàng hiếm lên thẳng đỉnh. Ăn NHỜ may mắn trần x2.000 — tự lực thì ăn đủ.\n\n`;
+        `🍀 Có ô may mắn giấu trong tháp + 🌟 ô vàng hiếm lên thẳng đỉnh. Ăn NHỜ may mắn trần x2.000 - tự lực thì ăn đủ.\n\n`;
     if (recent.length) {
         desc += `**🪜 ${recent.length} ván gần đây:**\n` + recent.map(stairsHistoryLine).join('\n');
     } else {
@@ -1778,7 +1778,7 @@ function getStairsBoardData() {
     }
 
     const embed = new EmbedBuilder()
-        .setTitle('🪜 LEO THANG — chơi trên web')
+        .setTitle('🪜 LEO THANG - chơi trên web')
         .setColor(0xe67e22)
         .setDescription(desc)
         .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
@@ -1897,7 +1897,7 @@ client.once('ready', async (c) => {
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     // TẠM TẮT: Bầu cua + Xổ số
     // runBầuCuaLoop();
-    runTaiXiuLoop(); // TÀI XỈU vẫn chạy
+    runTaiXiuLoop(); // BIG SMALL vẫn chạy
     // runXoSoLoop();
     // resumeXosoAfterRestart().catch(() => {});
     runMinesBoardLoop();
@@ -1916,7 +1916,7 @@ client.once('ready', async (c) => {
     })();
     // 🎡 hoàn vé vòng quay còn treo từ trước khi restart
     wheelRefundPending();
-    // 💸 hoàn tiền cược ván dở (Tài Xỉu / Bầu Cua / Dò Mìn / Leo Thang) của phiên trước
+    // 💸 hoàn tiền cược ván dở (Big Small / Bầu Cua / Dò Mìn / Leo Thang) của phiên trước
     refundBootPendingBets();
     runStairsBoardLoop();
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
@@ -2310,10 +2310,10 @@ async function finishBCGame(gameId, bets) {
     return sentMsg;
 }
 
-// --- UI TÀI XỈU ---
-// Tài Xỉu đã CHUYỂN HẾT LÊN WEB: bảng Discord chỉ hiển thị tình hình + nút lấy link/PIN.
+// --- UI BIG SMALL ---
+// Big Small đã CHUYỂN HẾT LÊN WEB: bảng Discord chỉ hiển thị tình hình + nút lấy link/PIN.
 // Đặt cược + nặn xí ngầu (kéo tờ giấy) đều làm trên web (webplay.js).
-// Tài Xỉu: 🔺 🎲🎲🎲 · Tổng 16 · TÀI · CHẴN — ⚖️ BiaLK đặt tài +100 · lẻ −100
+// Big Small: 🔺 🎲🎲🎲 · Tổng 16 · TÀI · CHẴN — ⚖️ BiaLK đặt tài +100 · lẻ −100
 // Xí ngầu dùng icon thật (DICE_EMOJIS). Net tính TỪNG CỬA của từng người (đặt
 // tài+lẻ mà ra TÀI CHẴN thì thấy rõ "tài +100 · lẻ −100" chứ không gộp một cục);
 // icon đầu theo TỔNG của người đó: 💰 lời · 💥 lỗ · ⚖️ hòa. Luật ăn tính lại y hệt
@@ -2335,7 +2335,7 @@ function txHistoryLine(h) {
     });
     const parts = Object.values(per).map(p =>
         `${p.total > 0 ? '💰' : p.total < 0 ? '💥' : '⚖️'} **${p.name}** đặt ${p.parts.join(' · ')}`);
-    return line + (parts.length ? ` — ${parts.join(' | ')}` : '');
+    return line + (parts.length ? ` - ${parts.join(' | ')}` : '');
 }
 
 function getTXMessageData(customStatus = null) {
@@ -2372,16 +2372,16 @@ function getTXMessageData(customStatus = null) {
     if (recent.length) {
         desc += `\n\n**🎲 ${recent.length} ván gần đây:**\n` + recent.map(txHistoryLine).join('\n');
     }
-    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN — đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${TX_LOCK_S} giây cuối khóa sổ để nặn!`}`;
+    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${TX_LOCK_S} giây cuối khóa sổ để nặn!`}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🎲 TÀI XỈU LIVE - Game #${padId(txState.gameId)}`)
+        .setTitle(`🎲 BIG SMALL LIVE - Game #${padId(txState.gameId)}`)
         .setColor(txState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
         // slice 4000: đông người đặt + 10 dòng lịch sử có thể chạm trần 4096 của embed
         .setDescription(desc.slice(0, 4000));
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi trên web (Tài Xỉu + Dò Mìn)').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi trên web (Big Small + Dò Mìn)').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('tx_soicau').setLabel('Soi Cầu').setEmoji('🕵️').setStyle(ButtonStyle.Secondary)
     );
 
@@ -2394,7 +2394,7 @@ async function updateTXMessage(customStatus = null) {
     await txState.message.edit(data).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE TX BẢNG CƯỢC] ${e.message}`); });
 }
 
-// --- VÒNG LẶP TÀI XỈU ---
+// --- VÒNG LẶP BIG SMALL ---
 function runTaiXiuLoop() {
     setInterval(async () => {
         // Auto-recover nếu message bị mất do timeout mạng
@@ -2530,11 +2530,11 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
 
     const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? 'TÀI 🔺' : 'XỈU 🔻');
     const clIcon = isStorm ? 'cửa thường thua hết' : (isChan ? 'CHẴN 🔵' : 'LẺ 🟣');
-    writeLog('RESULT', `[KẾT QUẢ TÀI XỈU] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? 'TÀI' : 'XỈU')} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
+    writeLog('RESULT', `[KẾT QUẢ BIG SMALL] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? 'TÀI' : 'XỈU')} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
 
     if (bets.length > 0) {
         let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${TX_CHOICES[b.choice].name}`).join(' | ');
-        writeLog('BET', `[CƯỢC TÀI XỈU] Game #${gameId} | Đặt: ${betLogDetails} | KQ: ${d1}-${d2}-${d3} (${sum})`);
+        writeLog('BET', `[CƯỢC BIG SMALL] Game #${gameId} | Đặt: ${betLogDetails} | KQ: ${d1}-${d2}-${d3} (${sum})`);
     }
 
     // (lastGameInfo đã bỏ 19/08 — kết quả vòng trước giờ nằm trong danh sách
@@ -2566,7 +2566,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     return { sum, txIcon, clIcon, winLog };
 }
 
-// Ván Tài Xỉu: được gọi NGAY LÚC KHÓA SỔ (T-15s). Lắc ngầm liền để web mở cửa sổ nặn,
+// Ván Big Small: được gọi NGAY LÚC KHÓA SỔ (T-15s). Lắc ngầm liền để web mở cửa sổ nặn,
 // rồi ngủ tới đúng giờ mở bát mới trả thưởng. KHÔNG còn gửi embed kết quả riêng
 // (bỏ 19/08): kết quả hiện thẳng trên bảng cược dạng dòng 🎲 như bảng Dò Mìn/Leo
 // Thang — hết spam "không ai thắng" mỗi 50 giây, đỡ nửa số Discord API call.
@@ -2580,7 +2580,7 @@ async function finishTXGame(gameId, bets) {
     if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs));
 
     txState.nan = null; // đóng cửa sổ nặn
-    // Admin có thể bấm Dừng Tài Xỉu ngay trong lúc chờ nặn — tiền vẫn phải trả đủ.
+    // Admin có thể bấm Dừng Big Small ngay trong lúc chờ nặn — tiền vẫn phải trả đủ.
     settleTXPayout(gameId, bets, d1, d2, d3);
     return null;
 }
@@ -2905,17 +2905,17 @@ async function resumeXosoAfterRestart() {
 function getWithdrawMessageData() {
     const buyable = shopBuyableList().length;
     const lines = [
-        `Chuyển Dogcoin **tự động** giữa ví Discord và Dog Coin trong game — xử lý ngay trong ~10 giây, không cần chờ admin.`,
+        `Chuyển Dogcoin **tự động** giữa ví Discord và Dog Coin trong game - xử lý ngay trong ~10 giây, không cần chờ admin.`,
         '',
         `Lần đầu dùng: nhắn **admin liên kết tên nhân vật** với Discord của bạn (chỉ cần 1 lần).`,
-        `**🎮 Chuyển vào game** — trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
-        `**💬 Chuyển ra Discord** — trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
+        `**🎮 Chuyển vào game** - trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
+        `**💬 Chuyển ra Discord** - trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
         '',
-        `**🎲 Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** — quay từ ${gachaPool().length} pal MẠNH (paldex #${GACHA_MIN_DEX} Helzephyr trở lên, có cả pal raid, trừ Xenolord, Hartalis & Blazamut Ryu). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
-        `**🎯 Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin** — tự chọn 1 trong ${buyable} pal (không có pal raid).`,
+        `**🎲 Pal ngẫu nhiên - ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** - quay từ ${gachaPool().length} pal MẠNH (paldex #${GACHA_MIN_DEX} Helzephyr trở lên, có cả pal raid, trừ Xenolord, Hartalis & Blazamut Ryu). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
+        `**🎯 Pal tùy chọn - ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin** - tự chọn 1 trong ${buyable} pal (không có pal raid).`,
         `Pal nào cũng là bản **Boss (Alpha)** 👑, **${PAL_SHOP.stars} sao** ⭐, **IV ${PAL_SHOP.ivs}**, ` +
             `**${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** + **${PAL_SHOP.passiveSlots} passive** bạn tự chọn.`,
-        `🚫 Passive nhóm **Cây Thế Giới** không bán kèm pal — mua cấy ghép ở sạp trong game.`,
+        `🚫 Passive nhóm **Cây Thế Giới** không bán kèm pal - mua cấy ghép ở sạp trong game.`,
         '',
         `🏪 Lõi Văn Minh, cấy ghép, đổi vàng... mua ở **sạp trong game**.`,
     ];
@@ -2931,8 +2931,8 @@ function getWithdrawMessageData() {
         new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary)
     );
     const rowPal = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('shop_random').setLabel(`Pal ngẫu nhiên — ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('shop_custom').setLabel(`Pal tùy chọn — ${PAL_SHOP.customPrice.toLocaleString()}`).setEmoji('🎯').setStyle(ButtonStyle.Success)
+        new ButtonBuilder().setCustomId('shop_random').setLabel(`Pal ngẫu nhiên - ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('shop_custom').setLabel(`Pal tùy chọn - ${PAL_SHOP.customPrice.toLocaleString()}`).setEmoji('🎯').setStyle(ButtonStyle.Success)
     );
     return { embeds: [embed], components: [rowTransfer, rowPal] };
 }
@@ -2950,8 +2950,8 @@ async function sendPalOrderToAdmin(order) {
         `Giá: **${order.price.toLocaleString()}** Dogcoin (${order.kind === 'random' ? '🎲 ngẫu nhiên' : '🎯 tự chọn'})\n\n` +
         `**Pal: ${order.palName}** \`${order.palCode}\`\n` +
         `• Boss (Alpha), ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
-        `• Linh hồn ${PAL_SHOP.soulPercent}%: ${order.souls || '(đang chọn — sẽ có tin bổ sung)'}\n` +
-        `• Passive: ${order.passives || '(đang chọn — sẽ có tin bổ sung)'}\n\n` +
+        `• Linh hồn ${PAL_SHOP.soulPercent}%: ${order.souls || '(đang chọn - sẽ có tin bổ sung)'}\n` +
+        `• Passive: ${order.passives || '(đang chọn - sẽ có tin bổ sung)'}\n\n` +
         `Lúc: ${order.time}`;
 
     try {
@@ -2959,7 +2959,7 @@ async function sendPalOrderToAdmin(order) {
         await admin.send(text);
         return true;
     } catch (e) {
-        writeLog('ADMIN', `[SHOP PAL] KHONG GUI DUOC DM cho admin — don #${order.id}: ${order.username} mua ${order.palName} (${order.price} Dogcoin). Loi: ${e.message}`);
+        writeLog('ADMIN', `[SHOP PAL] KHONG GUI DUOC DM cho admin - don #${order.id}: ${order.username} mua ${order.palName} (${order.price} Dogcoin). Loi: ${e.message}`);
         return false;
     }
 }
@@ -2973,7 +2973,7 @@ async function completePalOrder(id) {
 
     order.status = 'done';
     order.doneAt = new Date().toLocaleString('vi-VN');
-    writeLog('ADMIN', `[SHOP PAL] Hoan thanh don #${order.id} — ${order.palName} cho ${order.username}`);
+    writeLog('ADMIN', `[SHOP PAL] Hoan thanh don #${order.id} - ${order.palName} cho ${order.username}`);
 
     // Nhắn cho người mua; DM thất bại thì vẫn coi là xong (pal đã giao trong game rồi).
     try {
@@ -3039,9 +3039,9 @@ function ticketActionText(req) {
 // Gửi đơn cho admin qua DM. DM hỏng không sao — panel vẫn là nguồn chính, chỉ ghi log.
 async function sendTicketToAdmin(req) {
     const text =
-        `📨 **ĐƠN MỚI** #${req.id} — ${TICKET_KIND_LABEL[req.kind] || req.kind}\n` +
+        `📨 **ĐƠN MỚI** #${req.id} - ${TICKET_KIND_LABEL[req.kind] || req.kind}\n` +
         `Người chơi: <@${req.userId}> (\`${req.username}\`)` +
-        (req.ingameName ? ` — trong game: **${req.ingameName}**` : '') + '\n' +
+        (req.ingameName ? ` - trong game: **${req.ingameName}**` : '') + '\n' +
         `Việc cần làm: ${ticketActionText(req)}\n` +
         `Lúc: ${req.time}\n` +
         `Duyệt/từ chối trên panel.`;
@@ -3049,7 +3049,7 @@ async function sendTicketToAdmin(req) {
         const admin = await client.users.fetch(PAL_SHOP.adminDiscordId);
         await admin.send(text);
     } catch (e) {
-        writeLog('ADMIN', `[TICKET] Khong gui duoc DM cho admin — don #${req.id} (${req.kind}) cua ${req.username}: ${e.message}. Xem tren panel.`);
+        writeLog('ADMIN', `[TICKET] Khong gui duoc DM cho admin - don #${req.id} (${req.kind}) cua ${req.username}: ${e.message}. Xem tren panel.`);
     }
 }
 
@@ -3071,13 +3071,13 @@ function approveWithdraw(id) {
     if (req.kind === 'to-discord') {
         // Admin xác nhận đã nhận Dog Coin trong game -> giờ mới cộng ví.
         updatePoints(req.userId, req.amount);
-        logDog('from-game', req.userId, req.username, req.amount, `admin xác nhận nhận Dog Coin trong game — đơn #${id}`);
+        logDog('from-game', req.userId, req.username, req.amount, `admin xác nhận nhận Dog Coin trong game - đơn #${id}`);
         notifyTicketUser(req, `✅ Đơn **#${id}** xong: admin đã nhận Dog Coin, ví Discord của bạn +**${req.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).catch(() => {});
     } else { // 'to-game'
         notifyTicketUser(req, `✅ Đơn **#${id}** xong: admin đã đưa **${req.amount.toLocaleString()}** Dog Coin cho bạn trong game.`).catch(() => {});
     }
 
-    writeLog('ADMIN', `[DUYỆT ĐƠN] #${id} (${req.kind || 'to-game'}) ${req.username} — ${ticketActionText(req)}`);
+    writeLog('ADMIN', `[DUYỆT ĐƠN] #${id} (${req.kind || 'to-game'}) ${req.username} - ${ticketActionText(req)}`);
     return true;
 }
 
@@ -3096,7 +3096,7 @@ function rejectWithdraw(id) {
     } else {
         notifyTicketUser(req, `❌ Đơn **#${id}** bị admin từ chối. Ví của bạn không thay đổi.`).catch(() => {});
     }
-    writeLog('ADMIN', `[TỪ CHỐI ĐƠN] #${id} (${req.kind || 'to-game'}) ${req.username}${deducted > 0 ? ` — đã hoàn ${deducted.toLocaleString()} Dogcoin` : ''}`);
+    writeLog('ADMIN', `[TỪ CHỐI ĐƠN] #${id} (${req.kind || 'to-game'}) ${req.username}${deducted > 0 ? ` - đã hoàn ${deducted.toLocaleString()} Dogcoin` : ''}`);
     return true;
 }
 
@@ -3176,7 +3176,7 @@ client.on('interactionCreate', async interaction => {
             // tháng cho lịch điểm danh trên web, đủ tháng nhận thêm bonus.
             const r = claimDaily(userId);
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
-            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}${r.bonus ? ` + **${r.bonus.toLocaleString()}** ${DOGCOIN_EMOJI} BONUS đủ tháng 🏆` : ''}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}\nChuỗi: **${r.state.streak} ngày** — xem lịch tháng trên web (tab 📅).`);
+            return interaction.reply(`🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}${r.bonus ? ` + **${r.bonus.toLocaleString()}** ${DOGCOIN_EMOJI} BONUS đủ tháng 🏆` : ''}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}\nChuỗi: **${r.state.streak} ngày** - xem lịch tháng trên web (tab 📅).`);
         }
 
         if (interaction.commandName === 'nghien') {
@@ -3184,7 +3184,7 @@ client.on('interactionCreate', async interaction => {
             // có đăng công khai vào kênh nghiện.
             const r = claimNghien(userId);
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
-            return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI} — quay lại sau 1 tiếng nhé.`);
+            return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI} - quay lại sau 1 tiếng nhé.`);
         }
 
         if (interaction.commandName === 'sodu') {
@@ -3218,9 +3218,9 @@ client.on('interactionCreate', async interaction => {
         // bắt ở đây để chỉ đường sang web, thay vì để họ bấm rồi không thấy gì.
         if (interaction.commandName === 'domin') {
             return interaction.reply({
-                content: `💎 **Dò Mìn đã chuyển lên web** — lưới 25 ô, đào tới đâu ăn tới đó.\n` +
+                content: `💎 **Dò Mìn đã chuyển lên web** - lưới 25 ô, đào tới đâu ăn tới đó.\n` +
                          `👉 ${WEB_PLAY_URL} → tab **💎 Dò Mìn**\n` +
-                         `Lấy mã PIN bằng nút **🌐 Cược trên web** ở bảng Tài Xỉu.`,
+                         `Lấy mã PIN bằng nút **🌐 Cược trên web** ở bảng Big Small.`,
                 ephemeral: true,
             });
         }
@@ -3429,7 +3429,7 @@ client.on('interactionCreate', async interaction => {
             const banned = findBannedPassive(passives);
             if (banned) {
                 return interaction.reply({
-                    content: `🚫 Passive **${banned}** thuộc nhóm Cây Thế Giới — không bán kèm pal.\nMuốn passive đó thì mua **cấy ghép ở sạp trong game**. Chọn passive khác rồi mua lại nhé (chưa bị trừ tiền).`,
+                    content: `🚫 Passive **${banned}** thuộc nhóm Cây Thế Giới - không bán kèm pal.\nMuốn passive đó thì mua **cấy ghép ở sạp trong game**. Chọn passive khác rồi mua lại nhé (chưa bị trừ tiền).`,
                     ephemeral: true,
                 });
             }
@@ -3447,7 +3447,7 @@ client.on('interactionCreate', async interaction => {
             if (!pal) {
                 return interaction.reply({
                     content: `❌ Không tìm thấy pal **${input}**. Gõ tên tiếng Anh (vd: Anubis, Jetragon, Lamball).\n` +
-                             `Nếu là pal raid (${(PAL_DATA.raidOnly || []).join(', ')}) thì không mua được — chỉ có thể trúng ở nút ngẫu nhiên.`,
+                             `Nếu là pal raid (${(PAL_DATA.raidOnly || []).join(', ')}) thì không mua được - chỉ có thể trúng ở nút ngẫu nhiên.`,
                     ephemeral: true,
                 });
             }
@@ -3483,7 +3483,7 @@ client.on('interactionCreate', async interaction => {
             dbCache._palOrders.unshift(order);
             if (dbCache._palOrders.length > 200) dbCache._palOrders.length = 200;
 
-            logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (tự chọn) — đơn #${order.id}`);
+            logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (tự chọn) - đơn #${order.id}`);
             writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} mua ${order.palName} (custom, ${price} Dogcoin) | linh hon: ${souls} | passive: ${passives}`);
 
             return interaction.editReply(
@@ -3492,7 +3492,7 @@ client.on('interactionCreate', async interaction => {
                 `• Linh hồn ${PAL_SHOP.soulPercent}%: ${souls}\n` +
                 `• Passive: ${passives}\n\n` +
                 `Đã trừ **${price.toLocaleString()}** ${DOGCOIN_EMOJI} (còn **${getUserData(userId).points.toLocaleString()}**).\n` +
-                `Mã đơn **#${order.id}** đã gửi cho admin — chờ admin tạo pal và giao trong game.`
+                `Mã đơn **#${order.id}** đã gửi cho admin - chờ admin tạo pal và giao trong game.`
             );
         }
 
@@ -3514,7 +3514,7 @@ client.on('interactionCreate', async interaction => {
             if (banned) {
                 // Không lưu gì — nút "Chọn passive & linh hồn" vẫn dùng lại được.
                 return interaction.reply({
-                    content: `🚫 Passive **${banned}** thuộc nhóm Cây Thế Giới — không bán kèm pal.\nMuốn passive đó thì mua **cấy ghép ở sạp trong game**. Bấm lại nút và chọn passive khác nhé.`,
+                    content: `🚫 Passive **${banned}** thuộc nhóm Cây Thế Giới - không bán kèm pal.\nMuốn passive đó thì mua **cấy ghép ở sạp trong game**. Bấm lại nút và chọn passive khác nhé.`,
                     ephemeral: true,
                 });
             }
@@ -3528,12 +3528,12 @@ client.on('interactionCreate', async interaction => {
                 try {
                     const admin = await client.users.fetch(PAL_SHOP.adminDiscordId);
                     await admin.send(
-                        `📝 **BỔ SUNG ĐƠN PAL** #${oid} — **${order.palName}** (\`${order.palCode}\`) của \`${order.username}\`\n` +
+                        `📝 **BỔ SUNG ĐƠN PAL** #${oid} - **${order.palName}** (\`${order.palCode}\`) của \`${order.username}\`\n` +
                         `• Linh hồn ${PAL_SHOP.soulPercent}%: ${souls}\n` +
                         `• Passive: ${passives}`
                     );
                 } catch (e) {
-                    writeLog('ADMIN', `[SHOP PAL] Khong DM duoc phan bo sung don #${oid}: ${e.message} — xem tren panel`);
+                    writeLog('ADMIN', `[SHOP PAL] Khong DM duoc phan bo sung don #${oid}: ${e.message} - xem tren panel`);
                 }
             })();
 
@@ -3584,10 +3584,10 @@ client.on('interactionCreate', async interaction => {
             }
             updatePoints(userId, -amt);
             bucket[num] = existing + amt;
-            xsState.needsUpdate = true; // vòng lặp 5s vẽ lại bảng — không await edit kẻo trễ 3s
+            xsState.needsUpdate = true; // vòng lặp 5s vẽ lại bảng - không await edit kẻo trễ 3s
             const rate = kind === 'de' ? `trúng ăn ×${XS_DE_RATE}` : `mỗi nháy ăn ×${XS_LO_RATE}`;
             return interaction.reply({
-                content: `💸 Đã đánh ${kindLabel} số **${num}** — **${bucket[num].toLocaleString()}** ${DOGCOIN_EMOJI} (${rate}). Số dư còn **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`,
+                content: `💸 Đã đánh ${kindLabel} số **${num}** - **${bucket[num].toLocaleString()}** ${DOGCOIN_EMOJI} (${rate}). Số dư còn **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`,
                 ephemeral: true,
             });
         }
@@ -3609,7 +3609,7 @@ client.on('interactionCreate', async interaction => {
             }
             const gameName = (getUserData(userId).ingameName || '').trim();
             if (!gameName) {
-                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
+                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
             }
 
             await interaction.deferReply({ ephemeral: true }); // take mất 5-20s, quá deadline 3s của Discord
@@ -3627,21 +3627,21 @@ client.on('interactionCreate', async interaction => {
 
             const msg = (r && r.message) || (err && err.message) || '';
             if (/player not found/i.test(msg)) {
-                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — chưa trừ gì cả.\nVào game rồi bấm lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) - chưa trừ gì cả.\nVào game rồi bấm lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
             }
             const thieu = /khong du/i.test(msg) && msg.match(/trong game co (\d+)/);
             if (thieu) {
-                return interaction.editReply(`❌ Trong túi bạn chỉ có **${Number(thieu[1]).toLocaleString()}** Dog Coin, không đủ ${amt.toLocaleString()} — chưa trừ gì cả.\n(Chỉ tính Dog Coin **trong túi** — để trong hòm thì cầm ra túi trước nhé.)`);
+                return interaction.editReply(`❌ Trong túi bạn chỉ có **${Number(thieu[1]).toLocaleString()}** Dog Coin, không đủ ${amt.toLocaleString()} - chưa trừ gì cả.\n(Chỉ tính Dog Coin **trong túi** - để trong hòm thì cầm ra túi trước nhé.)`);
             }
             if (/ERROR/.test(msg) && !/LUA ERROR/i.test(msg)) {
                 // Mod từ chối rõ ràng -> trong game không mất gì
-                return interaction.editReply(`❌ Không trừ được Dog Coin trong game — chưa mất gì cả. Mod báo: \`${msg.slice(0, 250)}\``);
+                return interaction.editReply(`❌ Không trừ được Dog Coin trong game - chưa mất gì cả. Mod báo: \`${msg.slice(0, 250)}\``);
             }
             // Không rõ item đã bị trừ trong game hay chưa -> đơn cho admin, KHÔNG cộng ví
             const req = createTicket({ kind: 'to-discord', userId, username: interaction.user.username, ingameName: gameName, amount: amt });
-            writeLog('ADMIN', `[NẠP TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dog Coin từ "${gameName}" | ${msg || 'timeout'} — xem results.log: item ĐÃ trừ thì DUYỆT (cộng ví), chưa trừ thì TỪ CHỐI`);
+            writeLog('ADMIN', `[NẠP TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dog Coin từ "${gameName}" | ${msg || 'timeout'} - xem results.log: item ĐÃ trừ thì DUYỆT (cộng ví), chưa trừ thì TỪ CHỐI`);
             sendTicketToAdmin(req).catch(() => {});
-            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Admin sẽ đối chiếu: Dog Coin trong game đã bị trừ thì ví Discord được cộng đủ, chưa trừ thì hủy đơn — không mất tiền đâu.`);
+            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Admin sẽ đối chiếu: Dog Coin trong game đã bị trừ thì ví Discord được cộng đủ, chưa trừ thì hủy đơn - không mất tiền đâu.`);
         }
 
         // (Mua Lõi Văn Minh / cấy ghép / đổi vàng đã bỏ khỏi Discord — bán ở sạp trong game.)
@@ -3666,7 +3666,7 @@ client.on('interactionCreate', async interaction => {
             }
             const gameName = (userData.ingameName || '').trim();
             if (!gameName) {
-                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
+                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
             }
 
             await interaction.deferReply({ ephemeral: true }); // give mất 5-20s, quá deadline 3s của Discord
@@ -3686,13 +3686,13 @@ client.on('interactionCreate', async interaction => {
                 // Mod xác nhận CHƯA giao -> hoàn ngay, an toàn
                 updatePoints(userId, amt);
                 logDog('refund', userId, interaction.user.tag, amt, 'hoàn rút tự động: chưa vào game / sai tên');
-                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) — đã hoàn **${amt.toLocaleString()}** ${DOGCOIN_EMOJI}.\nVào game rồi bấm rút lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) - đã hoàn **${amt.toLocaleString()}** ${DOGCOIN_EMOJI}.\nVào game rồi bấm rút lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
             }
             // Không rõ đã giao hay chưa -> đơn cho admin, KHÔNG tự hoàn
             const req = createTicket({ kind: 'to-game', userId, username: interaction.user.username, ingameName: gameName, amount: amt });
-            writeLog('ADMIN', `[RÚT TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dogcoin -> "${gameName}" | ${msg || 'timeout'} — kiểm tra results.log rồi duyệt/hoàn`);
+            writeLog('ADMIN', `[RÚT TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dogcoin -> "${gameName}" | ${msg || 'timeout'} - kiểm tra results.log rồi duyệt/hoàn`);
             sendTicketToAdmin(req).catch(() => {});
-            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Ví đã trừ; admin sẽ kiểm tra — nếu chưa nhận được trong game thì admin hoàn lại, đừng lo mất tiền.`);
+            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Ví đã trừ; admin sẽ kiểm tra - nếu chưa nhận được trong game thì admin hoàn lại, đừng lo mất tiền.`);
         }
     }
 
@@ -3708,10 +3708,10 @@ client.on('interactionCreate', async interaction => {
         }
         return interaction.reply({
             content:
-                `🌐 **Chơi trên web — nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
-                `🎲 **Tài Xỉu** — đặt cược + nặn xí ngầu\n💣 **Dò Mìn** — lưới 25 ô, đào tới đâu ăn tới đó\n\n` +
+                `🌐 **Chơi trên web - nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
+                `🎲 **Big Small** - đặt cược + nặn xí ngầu\n💣 **Dò Mìn** - lưới 25 ô, đào tới đâu ăn tới đó\n\n` +
                 `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
-                `Vào web nhập ID + PIN là chơi được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai — ai có PIN là tiêu được ví bạn!`,
+                `Vào web nhập ID + PIN là chơi được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai - ai có PIN là tiêu được ví bạn!`,
             ephemeral: true,
         });
     }
@@ -3778,7 +3778,7 @@ client.on('interactionCreate', async interaction => {
     // ======== NÚT RÚT DOGCOIN ========
     if (interaction.customId === 'rut_open') {
         if (!(getUserData(userId).ingameName || '').trim()) {
-            return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
+            return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
         }
         const modal = new ModalBuilder()
             .setCustomId('rut_modal')
@@ -3800,7 +3800,7 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId === 'nap_open') {
         // KHÔNG gọi API nào trước showModal (Discord chỉ cho 3 giây, SFTP mất ~6s).
         if (!(getUserData(userId).ingameName || '').trim()) {
-            return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game — nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
+            return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
         }
         const modal = new ModalBuilder().setCustomId('nap_modal').setTitle('Chuyển Dog Coin ra Discord');
         modal.addComponents(new ActionRowBuilder().addComponents(
@@ -3829,7 +3829,7 @@ client.on('interactionCreate', async interaction => {
 
         const modal = new ModalBuilder()
             .setCustomId('shop_modal_custom')
-            .setTitle(`Chọn pal — ${price.toLocaleString()}`);
+            .setTitle(`Chọn pal - ${price.toLocaleString()}`);
 
         // Chọn pal bằng ô nhập chứ không dùng menu: Discord chỉ cho 25 lựa chọn mỗi
         // menu, mà danh sách có gần 300 pal.
@@ -3914,8 +3914,8 @@ client.on('interactionCreate', async interaction => {
         dbCache._palOrders.unshift(order);
         if (dbCache._palOrders.length > 200) dbCache._palOrders.length = 200;
 
-        logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) — đơn #${order.id}`);
-        writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) — cho chon passive/linh hon`);
+        logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) - đơn #${order.id}`);
+        writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) - cho chon passive/linh hon`);
 
         // Đăng công khai kết quả quay cho cả server thấy (không chặn luồng trả lời)
         const gachaCh = dbCache._gachaChannelId;
@@ -3932,7 +3932,7 @@ client.on('interactionCreate', async interaction => {
             content:
                 `🎲 Bạn trúng: **${pal.name}** 👑\n` +
                 `• Bản Boss, ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
-                `Đã trừ **${price.toLocaleString()}** ${DOGCOIN_EMOJI} (còn **${getUserData(userId).points.toLocaleString()}**) — mã đơn **#${order.id}**.\n\n` +
+                `Đã trừ **${price.toLocaleString()}** ${DOGCOIN_EMOJI} (còn **${getUserData(userId).points.toLocaleString()}**) - mã đơn **#${order.id}**.\n\n` +
                 `👇 Bấm nút để chọn **${PAL_SHOP.passiveSlots} passive + ${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** cho nó.`,
             components: [new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`shop_fill_${order.id}`).setLabel('Chọn passive & linh hồn').setEmoji('📝').setStyle(ButtonStyle.Primary)
@@ -3950,7 +3950,7 @@ client.on('interactionCreate', async interaction => {
 
         const modal = new ModalBuilder()
             .setCustomId(`shop_fill_modal_${oid}`)
-            .setTitle(`${order.palName} — đơn #${oid}`.slice(0, 45));
+            .setTitle(`${order.palName} - đơn #${oid}`.slice(0, 45));
         modal.addComponents(
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
@@ -3979,7 +3979,7 @@ client.on('interactionCreate', async interaction => {
         userBCSelections[userId] = { mascotId };
 
         bcState.activeMascot = mascotId;
-        bcState.needsUpdate = true; // vòng lặp 1s tự vẽ lại — không await edit kẻo trễ 3s
+        bcState.needsUpdate = true; // vòng lặp 1s tự vẽ lại - không await edit kẻo trễ 3s
 
         return interaction.reply({ content: `✅ Đã chọn **${MASCOTS.find(m => m.id === mascotId).name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
     }
@@ -4032,13 +4032,13 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ embeds: [emb], ephemeral: true });
     }
 
-    // ======== NÚT TÀI XỈU ========
+    // ======== NÚT BIG SMALL ========
     if (interaction.customId.startsWith('tx_c_')) {
         const choice = interaction.customId.split('_')[2];
         userTXSelections[userId] = { choice };
 
         txState.activeChoice = choice;
-        txState.needsUpdate = true; // vòng lặp 1s tự vẽ lại — không await edit kẻo trễ 3s
+        txState.needsUpdate = true; // vòng lặp 1s tự vẽ lại - không await edit kẻo trễ 3s
 
         return interaction.reply({ content: `✅ Đã chọn **${TX_CHOICES[choice].name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
     }

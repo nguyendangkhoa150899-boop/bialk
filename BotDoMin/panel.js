@@ -197,7 +197,7 @@ function startPanel(ctx) {
                     return sendJSON(res, ok ? 200 : 403, { ok });
                 }
 
-                // ---- TÀI XỈU ----
+                // ---- BIG SMALL ----
                 if (path === '/api/tx/force') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     const vals = String(body.values || '').trim();
@@ -206,13 +206,13 @@ function startPanel(ctx) {
                         return sendJSON(res, 400, { ok: false, error: 'Cần 3 số xúc xắc 1-6, vd: 6,5,4' });
                     }
                     ctx.getTX().forcedResult = parts.join(',');
-                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Ép kết quả Tài Xỉu ván tới: ${parts.join(',')}`);
+                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Ép kết quả Big Small ván tới: ${parts.join(',')}`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 if (path === '/api/tx/clear') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     ctx.getTX().forcedResult = null;
-                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Tài Xỉu`);
+                    ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Big Small`);
                     return sendJSON(res, 200, { ok: true });
                 }
 
@@ -254,7 +254,7 @@ function startPanel(ctx) {
                 if (path === '/api/xs/draw') {
                     const r = await ctx.xsDrawNow();
                     if (!r) return sendJSON(res, 400, { ok: false, error: 'Đang quay dở, thử lại sau vài giây' });
-                    ctx.writeLog('ADMIN', `[PANEL XS] QUAY NGAY kỳ #${r.round} — đề về ${r.de}`);
+                    ctx.writeLog('ADMIN', `[PANEL XS] QUAY NGAY kỳ #${r.round} - đề về ${r.de}`);
                     return sendJSON(res, 200, { ok: true, de: r.de, round: r.round });
                 }
                 // Ép = áp kết quả cho VÁN HIỆN TẠI và quay luôn (không chờ đầu giờ)
@@ -296,13 +296,13 @@ function startPanel(ctx) {
                     if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
                     try {
                         const name = await ctx.startTX(channelId);
-                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Tài Xỉu tại #${name}`);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Big Small tại #${name}`);
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
                 }
                 if (path === '/api/tx/stop') {
                     ctx.stopTX();
-                    ctx.writeLog('ADMIN', `[PANEL] Dừng Tài Xỉu`);
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng Big Small`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // ---- BẢNG MỜI CHƠI DÒ MÌN (không có ván chung, chỉ nút vào web) ----
@@ -419,7 +419,7 @@ function startPanel(ctx) {
                     if (!epOk(req)) {
                         const delta = amount - (ctx.getUserData(uid).points || 0);
                         const rem = takeDailyQuota(uid, delta);
-                        if (rem !== null) return sendJSON(res, 400, { ok: false, error: `Vượt trần ${DAILY_ADD_CAP.toLocaleString()}/người/ngày — hôm nay còn thêm được ${rem.toLocaleString()} cho người này` });
+                        if (rem !== null) return sendJSON(res, 400, { ok: false, error: `Vượt trần ${DAILY_ADD_CAP.toLocaleString()}/người/ngày - hôm nay còn thêm được ${rem.toLocaleString()} cho người này` });
                     }
                     ctx.getUserData(uid).points = amount;
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Set ${uid} = ${amount}`);
@@ -431,7 +431,7 @@ function startPanel(ctx) {
                     if (!uid || isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
                     if (!epOk(req)) {
                         const rem = takeDailyQuota(uid, amount);
-                        if (rem !== null) return sendJSON(res, 400, { ok: false, error: `Vượt trần ${DAILY_ADD_CAP.toLocaleString()}/người/ngày — hôm nay còn thêm được ${rem.toLocaleString()} cho người này` });
+                        if (rem !== null) return sendJSON(res, 400, { ok: false, error: `Vượt trần ${DAILY_ADD_CAP.toLocaleString()}/người/ngày - hôm nay còn thêm được ${rem.toLocaleString()} cho người này` });
                     }
                     ctx.updatePoints(uid, amount);
                     if (ctx.logDog) ctx.logDog(amount >= 0 ? 'admin+' : 'admin-', uid, (ctx.getDb()[uid]||{}).name || uid, amount, 'panel: cong/tru tay');
@@ -616,7 +616,7 @@ const HTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Bảng Điều Khiển Casino</title>
+<title>Bảng Điều Khiển</title>
 <style>
   :root{--bg:#1e1f22;--card:#2b2d31;--card2:#313338;--line:#3f4147;--txt:#dbdee1;--mut:#949ba4;
         --green:#23a55a;--red:#f23f43;--blue:#5865f2;--yellow:#f0b132;--purple:#b362f2;}
@@ -713,14 +713,14 @@ const HTML = `<!DOCTYPE html>
 <div id="app" class="hidden">
   <header>
     <div class="dot" id="connDot"></div>
-    <strong>Bảng Điều Khiển Casino</strong>
+    <strong>Bảng Điều Khiển</strong>
     <span id="connText" style="font-size:13px;font-weight:600"></span>
     <span id="statusLine" class="muted" style="margin-left:auto;font-size:13px"></span>
   </header>
 
   <div class="wrap">
     <div class="tabs">
-      <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
+      <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Big Small</button>
       <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
       <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
       <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
@@ -771,10 +771,10 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- TÀI XỈU -->
+    <!-- BIG SMALL -->
     <div id="tab-tx">
       <div class="card">
-        <h3>🎛️ Điều khiển bàn Tài Xỉu</h3>
+        <h3>🎛️ Điều khiển bàn Big Small</h3>
         <label>Channel ID (kênh đăng bàn chơi)</label>
         <input id="txChannel" placeholder="vd: 123456789012345678">
         <div class="chips" id="txSaved"></div>
@@ -791,7 +791,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> (Cài đặt Discord → Advanced) → chuột phải kênh → <b>Copy Channel ID</b>. "Bật" sẽ tạo bàn mới ngay trong kênh đó.</div>
       </div>
       <div class="card">
-        <h2>🎲 Tài Xỉu</h2>
+        <h2>🎲 Big Small</h2>
         <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
         <div class="epOnly" style="display:none">
         <div class="row">
@@ -814,7 +814,7 @@ const HTML = `<!DOCTYPE html>
         </div>
       </div>
       <div class="card">
-        <h3>📜 Lịch sử Tài Xỉu</h3>
+        <h3>📜 Lịch sử Big Small</h3>
         <div id="txHist" class="hist"></div>
       </div>
     </div>
@@ -875,10 +875,10 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-red" onclick="mineBoardStop()">⏹️ Gỡ bảng</button>
           <button class="btn-grey" onclick="chatDelete('mineChannel')">🧹 Xóa chat bot</button>
         </div>
-        <div class="note">Dò mìn <b>không có ván chung theo giờ</b> như Tài Xỉu — mỗi người chơi ván riêng trên web. Bảng này chỉ để mời chơi: có nút <b>🌐 Chơi Dò Mìn trên web</b> phát link + mã PIN, và tự khoe 6 ván gần nhất (ai ăn bao nhiêu, ai dính mìn). Bảng tự vẽ lại tối đa 15 giây/lần. Bot restart sẽ tự nối lại bảng cũ.</div>
+        <div class="note">Dò mìn <b>không có ván chung theo giờ</b> như Big Small - mỗi người chơi ván riêng trên web. Bảng này chỉ để mời chơi: có nút <b>🌐 Chơi Dò Mìn trên web</b> phát link + mã PIN, và tự khoe 6 ván gần nhất (ai ăn bao nhiêu, ai dính mìn). Bảng tự vẽ lại tối đa 15 giây/lần. Bot restart sẽ tự nối lại bảng cũ.</div>
       </div>
       <div class="card epOnly" style="display:none">
-        <h2>💎 Dò Mìn — Ép vị trí mìn (Web 25 ô)</h2>
+        <h2>💎 Dò Mìn - Ép vị trí mìn (Web 25 ô)</h2>
         <div class="note">🌐 Dò mìn chính thức đã chuyển lên web cược (http://103.72.98.37:3002/). Phần này dùng để <b>ép vị trí mìn</b> cho ván web tiếp theo (25 ô grid 5×5).</div>
         <div class="row">
           <div style="flex:3">
@@ -896,7 +896,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="clearGrid()">Xóa lưới</button>
           <button class="btn-green" style="flex:2" onclick="mineForce()">💣 Đặt mìn cho ván tới</button>
         </div>
-        <div class="note">⚠️ <b>25 ô grid (5×5):</b> Mìn ẩn, người chơi tự click trên web — đặt mìn chỉ <b>tăng xác suất</b> trúng, không ép 100%. Số ô đánh dấu (💣) sẽ là mìn chắc chắn; nếu họ chọn số mìn ít hơn thì chỉ lấy bấy nhiêu ô đầu tiên. Muốn dễ thua: đặt mìn ở các ô trên-trái (hay bấm trước).</div>
+        <div class="note">⚠️ <b>25 ô grid (5×5):</b> Mìn ẩn, người chơi tự click trên web - đặt mìn chỉ <b>tăng xác suất</b> trúng, không ép 100%. Số ô đánh dấu (💣) sẽ là mìn chắc chắn; nếu họ chọn số mìn ít hơn thì chỉ lấy bấy nhiêu ô đầu tiên. Muốn dễ thua: đặt mìn ở các ô trên-trái (hay bấm trước).</div>
         <div class="flist" id="mineList"></div>
       </div>
       <div class="card">
@@ -929,7 +929,7 @@ const HTML = `<!DOCTYPE html>
     <!-- BLACKJACK -->
     <div id="tab-bj" class="hidden">
       <div class="card">
-        <h3>🎡 Vòng Quay May Mắn (trên web — thay Blackjack)</h3>
+        <h3>🎡 Vòng Quay May Mắn (trên web - thay Blackjack)</h3>
         <div class="muted" id="whInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Số người READY để vòng quay khởi động (1–50)</label>
         <input id="whMin" type="number" placeholder="vd: 3">
@@ -937,7 +937,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="whSaveMin()">💾 Lưu</button>
           <button class="btn-red" onclick="whReset()">🔄 Cho quay lại NGAY (reset lượt)</button>
         </div>
-        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>1.000/1.500/2.000</b> — vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé — sàn x1.1, độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b> — nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
+        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>1.000/1.500/2.000</b> - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.1, độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
       </div>
     </div>
 
@@ -959,7 +959,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card">
         <h3>🔗 Liên kết tên trong game</h3>
-        <div class="note">Cầu chuyển Dogcoin <b>tự động</b> give/take theo bảng này: người chơi bấm 🎮/💬 là bot giao/trừ Dog Coin cho đúng nhân vật đã liên kết. Người chơi <b>không tự đặt tên được</b> — chỉ admin sửa ở đây (chống giả tên rút trộm túi người khác). Gõ <b>ĐÚNG tên nhân vật trong game</b> (không dấu, bỏ ký tự lạ cũng khớp); để trống rồi 💾 = hủy liên kết.</div>
+        <div class="note">Cầu chuyển Dogcoin <b>tự động</b> give/take theo bảng này: người chơi bấm 🎮/💬 là bot giao/trừ Dog Coin cho đúng nhân vật đã liên kết. Người chơi <b>không tự đặt tên được</b> - chỉ admin sửa ở đây (chống giả tên rút trộm túi người khác). Gõ <b>ĐÚNG tên nhân vật trong game</b> (không dấu, bỏ ký tự lạ cũng khớp); để trống rồi 💾 = hủy liên kết.</div>
         <div id="palLinks"></div>
       </div>
       <div class="card">
@@ -977,7 +977,7 @@ const HTML = `<!DOCTYPE html>
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
       <div class="card hidden" id="wdPendingCard">
         <h3>📨 Đơn đang chờ xử lý</h3>
-        <div class="note"><b>🎮 Chuyển vào game</b>: ví đã trừ sẵn — bạn vào game ĐƯA Dog Coin rồi bấm ✅. <b>💬 Chuyển ra Discord</b>: bạn vào game NHẬN Dog Coin rồi bấm ✅ (lúc đó ví mới được cộng). ❌ Từ chối = hoàn ví nếu đã trừ.</div>
+        <div class="note"><b>🎮 Chuyển vào game</b>: ví đã trừ sẵn - bạn vào game ĐƯA Dog Coin rồi bấm ✅. <b>💬 Chuyển ra Discord</b>: bạn vào game NHẬN Dog Coin rồi bấm ✅ (lúc đó ví mới được cộng). ❌ Từ chối = hoàn ví nếu đã trừ.</div>
         <div id="wdPending"></div>
       </div>
       <div id="wdDone" class="hidden"></div>
@@ -1007,7 +1007,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Đổi qua Discord khác chỉ cần lưu lại <b>kênh + role</b> ở đây (bot gửi 1 tin xác nhận vào kênh, không tag ai). Chưa lưu thì bot vẫn dùng kênh/role của server cũ.</div>
         <div class="row" style="margin-top:12px">
-          <button class="btn-blue" style="flex:1" onclick="resetDaily()">🔄 Reset điểm danh cả danh sách — ai cũng /diemdanh nhận lại được ngay</button>
+          <button class="btn-blue" style="flex:1" onclick="resetDaily()">🔄 Reset điểm danh cả danh sách - ai cũng /diemdanh nhận lại được ngay</button>
         </div>
         <div class="row" style="margin-top:12px">
           <div style="flex:3"><label>Set tất cả người chơi về</label><input id="setAllAmount" type="number" placeholder="vd: 50000"></div>
@@ -1023,11 +1023,11 @@ const HTML = `<!DOCTYPE html>
       </div>
 
       <div class="card danger">
-        <h3>🧨 Reset mùa mới — xóa sạch ví người chơi cũ</h3>
+        <h3>🧨 Reset mùa mới - xóa sạch ví người chơi cũ</h3>
         <div class="note">Dùng khi mở lại mini game (vd: chuyển sang Dog Coin của Palworld). Toàn bộ ví hiện tại bị <b>xóa khỏi database</b>, ai chơi lại sẽ được tạo ví mới với số dư khởi điểm mặc định. Yêu cầu rút đang chờ sẽ bị hủy và lệnh ép mìn bị gỡ. Bot tự lưu 1 file <b>database.backup-reset-*.json</b> cạnh database trước khi xóa.</div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
           <input type="checkbox" id="resetHistory" style="width:auto;margin:0">
-          Xóa luôn lịch sử Tài Xỉu / Bầu Cua / Dò Mìn + lịch sử rút Dogcoin
+          Xóa luôn lịch sử Big Small / Bầu Cua / Dò Mìn + lịch sử rút Dogcoin
         </label>
         <div class="row" style="margin-top:12px">
           <button class="btn-red" style="flex:1" onclick="resetAllPlayers()">🗑️ Xóa toàn bộ ví (<span id="resetCount">0</span> người)</button>
@@ -1060,7 +1060,7 @@ let mineSel = new Set();
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 
-// Hộp xác nhận tự vẽ — hiện giữa màn hình, đúng theme web (thay confirm() của trình duyệt)
+// Hộp xác nhận tự vẽ - hiện giữa màn hình, đúng theme web (thay confirm() của trình duyệt)
 let modalResolve=null,modalRequire='';
 // requireText: bắt admin gõ đúng 1 từ khóa mới cho bấm Đồng ý (dùng cho thao tác xóa sạch)
 function uiConfirm(msg,okLabel,okClass,requireText){
@@ -1121,7 +1121,7 @@ function showApp(){
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
-  // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Tài Xỉu
+  // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small
   if(['tx','mine','stair','bj','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
@@ -1163,7 +1163,7 @@ function renderGacha(){
 // ===== XỔ SỐ =====
 function xsStart(){const id=document.getElementById('xsChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/xs/start',{channelId:id}).then(j=>{toast('✅ Đã bật xổ số tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
 async function xsStop(){if(!await uiConfirm('Tắt bảng Xổ Số? Cược đang treo vẫn được giữ trong database.','Tắt','btn-red'))return;api('/api/xs/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
-async function xsDrawNow(){if(!await uiConfirm('QUAY NGAY kỳ hiện tại? Chốt cược đang có, trả thưởng và mở kỳ mới.','Quay ngay','btn-green'))return;api('/api/xs/draw',{}).then(j=>{toast('🎲 Đã quay kỳ #'+j.round+' — đề về '+j.de);refresh();}).catch(e=>toast('❌ '+e.message));}
+async function xsDrawNow(){if(!await uiConfirm('QUAY NGAY kỳ hiện tại? Chốt cược đang có, trả thưởng và mở kỳ mới.','Quay ngay','btn-green'))return;api('/api/xs/draw',{}).then(j=>{toast('🎲 Đã quay kỳ #'+j.round+' - đề về '+j.de);refresh();}).catch(e=>toast('❌ '+e.message));}
 async function xsForce(){
   const de=document.getElementById('xsForceDe').value.trim();
   const mustHit=document.getElementById('xsForceHit').value.trim();
@@ -1188,7 +1188,7 @@ function renderXS(){
       const fmt=o=>Object.entries(o).map(([n,a])=>n+' ('+Number(a).toLocaleString()+')').join(', ');
       const de=Object.keys(b.de).length?('🎯 đề: '+fmt(b.de)):'';
       const lo=Object.keys(b.lo).length?('🎰 lô: '+fmt(b.lo)):'';
-      return '<div style="padding:4px 0;border-bottom:1px solid var(--line)"><b>'+esc(b.name)+'</b> — '+[de,lo].filter(Boolean).join(' · ')+'</div>';
+      return '<div style="padding:4px 0;border-bottom:1px solid var(--line)"><b>'+esc(b.name)+'</b> - '+[de,lo].filter(Boolean).join(' · ')+'</div>';
     }).join('');
   }
   const hist=xs.history||[];
@@ -1213,7 +1213,7 @@ function renderXS(){
 // (Liên kết Discord ↔ SteamID đã bỏ: server Linux không còn cầu nối tự động,
 //  mọi giao dịch là ticket admin xử lý tay nên không cần biết SteamID nữa.)
 
-// Sổ biến động Dogcoin — dữ liệu đến từ STATE (poll mỗi 3s) nên không cần gọi riêng.
+// Sổ biến động Dogcoin - dữ liệu đến từ STATE (poll mỗi 3s) nên không cần gọi riêng.
 const DOG_TYPE_LABEL = {
   'admin+':'➕ Admin cộng', 'admin-':'➖ Admin trừ', 'transfer':'🔁 Chuyển',
   'to-game':'🎮 Vào game', 'from-game':'💬 Ra Discord', 'shop':'🐾 Mua pal', 'refund':'↩️ Hoàn tiền',
@@ -1239,7 +1239,7 @@ function renderPalOrders(){
   const box=document.getElementById('palOrders');
   if(!box||!STATE) return;
   const rows=STATE.palOrders||[];
-  // Đơn chưa làm lên trước — đó là việc cần làm; đơn xong hiện mờ bên dưới.
+  // Đơn chưa làm lên trước - đó là việc cần làm; đơn xong hiện mờ bên dưới.
   const todo=rows.filter(o=>o.status!=='done');
   const done=rows.filter(o=>o.status==='done');
 
@@ -1307,7 +1307,7 @@ function initSelects(){
     s.onchange=txPreview;
   });
   setDice(1,1,1);
-  // lưới dò mìn — lấy số ô từ bot (STATE.totalTiles) để khỏi phải sửa 2 nơi
+  // lưới dò mìn - lấy số ô từ bot (STATE.totalTiles) để khỏi phải sửa 2 nơi
   const g=document.getElementById('mineGrid');g.innerHTML='';
   for(let i=0;i<(STATE&&STATE.totalTiles?STATE.totalTiles:24);i++){
     const d=document.createElement('div');d.className='tile';d.textContent=i+1;d.dataset.idx=i;
@@ -1326,7 +1326,7 @@ function txPreview(){
 }
 function txForce(){
   const v=[document.getElementById('d1').value,document.getElementById('d2').value,document.getElementById('d3').value].join(',');
-  api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Tài Xỉu: '+v);refresh();});
+  api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Big Small: '+v);refresh();});
 }
 
 function mascotOptions(sel){
@@ -1355,7 +1355,7 @@ function bcForce(){
 }
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
-async function txStop(){if(!await uiConfirm('Tắt bàn Tài Xỉu?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Tài Xỉu');refresh();});}
+async function txStop(){if(!await uiConfirm('Tắt bàn Big Small?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Big Small');refresh();});}
 function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
 function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
@@ -1409,7 +1409,7 @@ function renderPlayers(){
   const af=document.activeElement;
   if(af&&af.id&&af.id.indexOf('amt_')===0)return;
   // Giữ lại số đã gõ nhưng chưa bấm nút: refresh 3s/lần vẽ lại bảng không được xóa nó
-  // (guard focus ở trên không đủ — admin gõ xong rê chuột/bấm chỗ khác là mất focus).
+  // (guard focus ở trên không đủ - admin gõ xong rê chuột/bấm chỗ khác là mất focus).
   const kept={};
   document.querySelectorAll('input[id^="amt_"]').forEach(i=>{if(i.value!=='')kept[i.id]=i.value;});
   const q=(document.getElementById('search').value||'').toLowerCase();
@@ -1432,12 +1432,12 @@ function padId(n){return String(n).padStart(5,'0');}
 
 function renderHistories(){
   if(!STATE)return;
-  // Tài Xỉu
+  // Big Small
   const tx=STATE.txHistory||[];
   document.getElementById('txHist').innerHTML = tx.length? tx.map(g=>{
     const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' ('+b.choice+')').join(' • ')||'không ai đặt';
     const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
-    return '<div class="h"><div class="top"><span>Game #'+padId(g.gameId)+' — 🎲 '+g.dice.join('-')+' (Tổng '+g.sum+') · '+g.tx+' | '+g.cl+'</span><span class="t">'+(g.time||'')+'</span></div>'+
+    return '<div class="h"><div class="top"><span>Game #'+padId(g.gameId)+' - 🎲 '+g.dice.join('-')+' (Tổng '+g.sum+') · '+g.tx+' | '+g.cl+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai thắng</div>')+'</div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
   // Bầu Cua
@@ -1445,7 +1445,7 @@ function renderHistories(){
   document.getElementById('bcHist').innerHTML = bc.length? bc.map(g=>{
     const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' '+(b.emoji||b.mascot||'')).join(' • ')||'không ai đặt';
     const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
-    return '<div class="h"><div class="top"><span>Phiên #'+padId(g.gameId)+' — '+(g.resultEmoji||'')+' ('+esc(g.result||'')+')</span><span class="t">'+(g.time||'')+'</span></div>'+
+    return '<div class="h"><div class="top"><span>Phiên #'+padId(g.gameId)+' - '+(g.resultEmoji||'')+' ('+esc(g.result||'')+')</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 nhà cái húp sạch</div>')+'</div>';
   }).join('') : '<div class="empty">Chưa có phiên nào.</div>';
   // Dò Mìn
@@ -1465,7 +1465,7 @@ function renderHistories(){
       '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'🔥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
 }
-// Xóa số trong ô sau khi thao tác xong — renderPlayers giờ GIỮ số chưa dùng qua các lần
+// Xóa số trong ô sau khi thao tác xong - renderPlayers giờ GIỮ số chưa dùng qua các lần
 // refresh, nên không xóa ở đây là số cũ nằm lại, dễ bấm nhầm cộng/trừ 2 lần.
 function pClear(id){const i=document.getElementById('amt_'+id);if(i)i.value='';}
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');pClear(id);refresh();});}
@@ -1474,7 +1474,7 @@ function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')ret
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng Dogcoin & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
-// Xác nhận theo loại đơn — duyệt 'to-discord' là CỘNG TIỀN vào ví, phải nói rõ.
+// Xác nhận theo loại đơn - duyệt 'to-discord' là CỘNG TIỀN vào ví, phải nói rõ.
 async function wdApprove(id,kind){
   const msg=kind==='to-discord'
     ? 'Xác nhận bạn ĐÃ NHẬN đủ Dog Coin trong game? Ví Discord của người chơi sẽ được CỘNG ngay khi bấm.'
@@ -1511,7 +1511,7 @@ function renderWithdraw(){
   p.innerHTML=pending.length?pending.map(r=>{
     const k=kindInfo(r);
     return '<div class="wd-row"><div class="info">'+
-      '<span class="amt">'+k.label+' · '+esc(r.username)+(r.ingameName?' <span class="meta">(game: '+esc(r.ingameName)+')</span>':'')+' — <b>'+r.amount.toLocaleString()+' Dogcoin</b></span>'+
+      '<span class="amt">'+k.label+' · '+esc(r.username)+(r.ingameName?' <span class="meta">(game: '+esc(r.ingameName)+')</span>':'')+' - <b>'+r.amount.toLocaleString()+' Dogcoin</b></span>'+
       '<span class="meta">Mã #'+r.id+' · '+esc(r.time||'')+' · '+esc(k.act)+'</span>'+
     '</div><div class="acts">'+
       '<button class="btn-green" onclick="wdApprove('+r.id+',\\''+(r.kind||'to-game')+'\\')">✅ Xong</button>'+
@@ -1522,7 +1522,7 @@ function renderWithdraw(){
   const d=document.getElementById('wdDone');
   d.innerHTML=done.length?done.slice(0,30).map(r=>{
     const k=kindInfo(r);
-    return '<div class="h"><div class="top"><span>#'+r.id+' '+k.label+' '+esc(r.username)+' — '+r.amount.toLocaleString()+' Dogcoin</span><span class="t">'+esc(r.time||'')+'</span></div>'+
+    return '<div class="h"><div class="top"><span>#'+r.id+' '+k.label+' '+esc(r.username)+' - '+r.amount.toLocaleString()+' Dogcoin</span><span class="t">'+esc(r.time||'')+'</span></div>'+
     '<div class="'+(r.status==='approved'?'win':'lose')+'">'+(r.status==='approved'?'✅ Đã xong':'❌ Đã từ chối')+'</div></div>';
   }).join(''):'<div class="empty">Chưa xử lý đơn nào.</div>';
   // prefill channel id
@@ -1530,7 +1530,7 @@ function renderWithdraw(){
 }
 async function pDel(id){
   const p=(STATE&&STATE.players||[]).find(x=>x.id===id);
-  const who=p?(p.name+' — '+p.points.toLocaleString()+' Dogcoin'):id;
+  const who=p?(p.name+' - '+p.points.toLocaleString()+' Dogcoin'):id;
   if(!await uiConfirm('Xóa ví của '+who+'? Ví bị xóa khỏi database, lần chơi sau họ được tạo ví mới từ số dư khởi điểm.','🗑️ Xóa ví','btn-red'))return;
   api('/api/points/delete',{userId:id}).then(()=>{toast('🗑️ Đã xóa ví');refresh();});
 }
@@ -1555,7 +1555,7 @@ async function addAllCoins(){
   if(v===''||+v<=0)return toast('Nhập số dương');
   if(!await uiConfirm('Phát '+(+v).toLocaleString()+' Dogcoin cho TẤT CẢ người chơi và đăng thông báo tag role?','Phát tất cả','btn-green'))return;
   api('/api/points/addall',{amount:+v}).then(j=>{
-    toast(j.announced?('✅ Đã phát cho '+j.count+' người + đã thông báo'):('✅ Đã phát cho '+j.count+' người — ⚠️ KHÔNG đăng được thông báo (kiểm tra quyền bot ở kênh)'));
+    toast(j.announced?('✅ Đã phát cho '+j.count+' người + đã thông báo'):('✅ Đã phát cho '+j.count+' người - ⚠️ KHÔNG đăng được thông báo (kiểm tra quyền bot ở kênh)'));
     document.getElementById('addAllAmount').value='';
     refresh();
   }).catch(()=>toast('❌ Lỗi'));
@@ -1570,7 +1570,7 @@ function fmtTime(target){
 function setConn(ok){
   const dot=document.getElementById('connDot'), txt=document.getElementById('connText');
   if(ok){dot.classList.remove('down');txt.style.color='var(--green)';txt.textContent='Online · cập nhật '+new Date().toLocaleTimeString('vi-VN');}
-  else{dot.classList.add('down');txt.style.color='var(--red)';txt.textContent='🔴 MẤT KẾT NỐI — bot có thể đã sập';}
+  else{dot.classList.add('down');txt.style.color='var(--red)';txt.textContent='🔴 MẤT KẾT NỐI - bot có thể đã sập';}
 }
 
 async function refresh(){
