@@ -1408,7 +1408,7 @@ const WHEEL_MAX_TICKET = 2000;   // vé đắt nhất (hiển thị) — fallbac
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
-const wheelRoom = { status: 'waiting', players: new Map(), spin: null, spin1: null, price: null, spinSeq: 0 };
+const wheelRoom = { status: 'waiting', players: new Map(), spin: null, spin1: null, price: null, stakeEndsAt: null, spinSeq: 0 };
 
 function wheelWindowKey() {
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
@@ -1454,11 +1454,15 @@ function wheelState(userId) {
         price: wheelRoom.price,            // giá vé đã chốt (null khi chưa quay vòng vé)
         // đủ người + đang chờ = nút QUAY VÒNG VÉ sáng lên cho người trong bàn bấm
         armed: wheelRoom.status === 'waiting' && wheelRoom.players.size >= wheelMinPlayers(),
-        // vé chốt + đủ số người + TẤT CẢ đủ tiền -> nút QUAY VÒNG HỆ SỐ sáng
+        // vé chốt + đủ số người + TẤT CẢ đủ tiền + TẤT CẢ đã chọn màu -> nút sáng
         stakeShort: wheelRoom.status === 'stake' ? wheelShort() : [],
+        noColor: wheelRoom.status === 'stake' ? wheelNoColor() : [],
+        stakeEndsAt: wheelRoom.stakeEndsAt || null,   // đếm ngược 120s pha chọn màu/gom vé
         armed2: wheelRoom.status === 'stake' && wheelShort().length === 0
+            && wheelNoColor().length === 0
             && wheelRoom.players.size >= wheelMinPlayers(),
         players: [...wheelRoom.players.values()].map(p => ({ name: p.name, color: p.color })),
+        seated: wheelRoom.players.has(userId),   // giờ ngồi-chưa-chọn-màu là hợp lệ, cần cờ riêng
         myColor: wheelRoom.players.has(userId) ? wheelRoom.players.get(userId).color : null,
         played: me.lastWheelKey === wheelWindowKey(),
         spin: wheelRoom.spin,
@@ -1468,22 +1472,32 @@ function wheelState(userId) {
         balance: me.points || 0,
     };
 }
+// VÒNG 1 KHÔNG CẦN MÀU — màu mũi tên chỉ chọn ở vòng hệ số (stake). Vào bàn không
+// màu cũng được; đã ngồi thì gọi lại hàm này với màu để chọn/đổi (cả lúc waiting
+// lẫn lúc vé đã chốt).
 function wheelReady(userId, color) {
-    if (!WHEEL_COLORS.includes(color)) return { error: 'Chọn màu mũi tên 🟡/🔵/🟢 đã' };
-    if (wheelRoom.status !== 'waiting') return { error: 'Vòng đang quay — chờ chút rồi vào ván sau' };
+    const hasColor = WHEEL_COLORS.includes(color);
     const me = getUserData(userId);
-    if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi — reset lúc 00:00 và 12:00' };
     if (wheelRoom.players.has(userId)) {
-        wheelRoom.players.get(userId).color = color;   // đổi màu khi đang chờ: miễn phí
-    } else {
-        // VÀO BÀN MIỄN PHÍ, KHÔNG điều kiện tiền (chốt của chủ server): vòng vé ai
-        // cũng được quay; tới lúc vé chốt giá, không đủ thì bị mời ra — không mất gì.
-        wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color });
-        writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn, mũi tên ${color} (${wheelRoom.players.size}/${wheelMinPlayers()})`);
+        if (!hasColor) return { error: 'Chọn màu mũi tên 🟡/🔵/🟢' };
+        if (wheelRoom.status !== 'waiting' && wheelRoom.status !== 'stake') return { error: 'Đang quay — chờ bánh dừng đã' };
+        wheelRoom.players.get(userId).color = color;
+        return { ok: true, state: wheelState(userId) };
     }
-    saveDbNow();
+    if (wheelRoom.status !== 'waiting') return { error: 'Vòng đang quay — chờ chút rồi vào ván sau' };
+    if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi — reset lúc 00:00 và 12:00' };
+    // VÀO BÀN MIỄN PHÍ, KHÔNG điều kiện tiền, KHÔNG cần màu (chốt của chủ server)
+    wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color: hasColor ? color : null });
+    writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn (${wheelRoom.players.size}/${wheelMinPlayers()})`);
     // KHÔNG tự quay khi đủ người — chỉ bật `armed`, người trong bàn tự bấm nút QUAY.
     return { ok: true, state: wheelState(userId) };
+}
+
+// Ai đang ngồi mà CHƯA chọn màu — vòng hệ số chỉ quay khi danh sách này rỗng
+function wheelNoColor() {
+    const out = [];
+    for (const p of wheelRoom.players.values()) if (!p.color) out.push(p.name);
+    return out;
 }
 // Người trong bàn bấm nút QUAY (chỉ sáng khi đủ người). Hai người bấm gần nhau:
 // người sau nhận luôn state đang quay để client diễn hoạt hình, không báo lỗi.
@@ -1493,8 +1507,10 @@ function wheelSpin(userId) {
     // vòng vé nên không cần đếm lại min người.
     if (wheelRoom.status !== 'stake') return { error: 'Quay VÒNG VÉ trước đã — vé chốt xong mới quay vòng hệ số' };
     if (!wheelRoom.players.has(userId)) return { error: 'Vào bàn đã rồi mới bấm quay được' };
-    // Vòng 2 cùng luật vòng 1: đủ số người (admin chỉnh ở panel) + TẤT CẢ đủ tiền vé
+    // Vòng 2 cùng luật vòng 1 (đủ số người) + TẤT CẢ đủ tiền vé + TẤT CẢ đã chọn màu
     if (wheelRoom.players.size < wheelMinPlayers()) return { error: `Chưa đủ ${wheelMinPlayers()} người — rủ thêm bạn bè` };
+    const noc = wheelNoColor();
+    if (noc.length) return { error: `${noc.join(', ')} chưa chọn màu mũi tên 🟡/🔵/🟢` };
     const short = wheelShort();
     if (short.length) return { error: `Chưa quay được — ${short.join(', ')} chưa đủ vé ${(wheelRoom.price || 0).toLocaleString()}` };
     const me = wheelRoom.players.get(userId);
@@ -1526,20 +1542,34 @@ function wheelSpin1(userId) {
     wheelRoom.spinSeq++;
     wheelRoom.spin1 = { seq: wheelRoom.spinSeq, idx, price, endsAt: Date.now() + 9000 };
     wheelRoom.status = 'spin1';
-    writeLog('RESULT', `[VÒNG QUAY] ${getUserData(userId).name || userId} bấm vòng vé — ra vé ${price.toLocaleString()} (${wheelRoom.players.size} người)`);
+    // KHOÁ LƯỢT NGAY KHI VÉ QUAY — vé đã quay là lượt khung này ĐÃ DÙNG với cả bàn.
+    // Không có chuyện câu giờ cho vòng trôi để quay lại vé đẹp hơn: trôi là mất lượt.
+    const turnKey = wheelWindowKey();
+    for (const p of wheelRoom.players.values()) getUserData(p.userId).lastWheelKey = turnKey;
+    writeLog('RESULT', `[VÒNG QUAY] ${getUserData(userId).name || userId} bấm vòng vé — ra vé ${price.toLocaleString()} (${wheelRoom.players.size} người, lượt đã tính)`);
+    saveDbNow();
     setTimeout(() => {
         if (wheelRoom.status !== 'spin1') return;
         wheelRoom.status = 'stake';
+        wheelRoom.stakeEndsAt = Date.now() + 120000;   // client hiện đồng hồ đếm ngược
         const seq = wheelRoom.spinSeq;
-        // 60s không quay được vòng hệ số: đủ tiền cả bàn thì TỰ quay; vẫn có người
-        // thiếu thì HỦY vòng — không ai mất một đồng nào, bàn mở lại.
+        // 120 GIÂY để chọn màu + gom đủ tiền vé. Hết giờ KHÔNG HUỶ (huỷ là mở đường
+        // câu giờ quay lại vé): ai sẵn sàng thì quay với những người đó; ai chưa thì
+        // bị bỏ lại — lượt đã tính từ lúc quay vé, ráng chịu.
         setTimeout(() => {
             if (wheelRoom.status !== 'stake' || wheelRoom.spinSeq !== seq) return;
-            if (wheelShort().length === 0) { wheelDoSpin(); return; }
-            writeLog('SYSTEM', `[VÒNG QUAY] Hủy vòng — quá 60s vẫn có người chưa đủ vé ${price.toLocaleString()} (${wheelShort().join(', ')})`);
+            const dropped = [];
+            for (const p of [...wheelRoom.players.values()]) {
+                const okMoney = (getUserData(p.userId).points || 0) >= (wheelRoom.price || 0);
+                if (!p.color || !okMoney) { wheelRoom.players.delete(p.userId); dropped.push(p.name); }
+            }
+            if (dropped.length) writeLog('SYSTEM', `[VÒNG QUAY] Quá giờ — bỏ lại (mất lượt, không mất tiền): ${dropped.join(', ')}`);
+            if (wheelRoom.players.size) { wheelDoSpin(); return; }
+            writeLog('SYSTEM', '[VÒNG QUAY] Quá giờ — không ai sẵn sàng, đóng vòng (lượt cả bàn đã tính)');
             wheelRoom.status = 'waiting';
             wheelRoom.price = null;
-        }, 60000);
+            wheelRoom.stakeEndsAt = null;
+        }, 120000);
     }, 9500);
     return { ok: true, state: wheelState(userId) };
 }
@@ -1556,7 +1586,7 @@ function wheelShort() {
 }
 function wheelDoSpin() {
     if (wheelRoom.status !== 'stake' || !wheelRoom.players.size) return;
-    if (wheelShort().length) return;   // phòng hờ — có người thiếu vé thì không quay
+    if (wheelShort().length || wheelNoColor().length) return;   // phòng hờ — thiếu vé/màu thì không quay
     const price = wheelRoom.price || WHEEL_MAX_TICKET;
     // Chốt kết quả NGAY tại server; client chỉ diễn hoạt hình quay tới nan idx.
     const idx = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
@@ -1591,7 +1621,7 @@ function wheelDoSpin() {
     saveDbNow();
     // giữ spin lại sau khi quay xong để ai vào trễ vẫn thấy kết quả gần nhất
     // (hoạt hình 15s nên bàn mở lại sau 20s)
-    setTimeout(() => { wheelRoom.status = 'waiting'; wheelRoom.players.clear(); wheelRoom.spin1 = null; wheelRoom.price = null; }, 20000);
+    setTimeout(() => { wheelRoom.status = 'waiting'; wheelRoom.players.clear(); wheelRoom.spin1 = null; wheelRoom.price = null; wheelRoom.stakeEndsAt = null; }, 20000);
 }
 
 // Admin reset lượt quay (nút ở panel): xoá dấu "đã quay khung này" của MỌI ví —
