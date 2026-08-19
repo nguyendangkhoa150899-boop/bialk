@@ -198,24 +198,6 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
-                // ===== CẦU DOGCOIN <-> GAME (luật tiền ở index.js — ctx.gameBridge) =====
-                if (ctx.gameBridge && path === '/api/game/status') {
-                    const st = await ctx.gameBridge.status(userId);
-                    return sendJSON(res, 200, { ok: true, max: ctx.gameBridge.max, ...st });
-                }
-                if (ctx.gameBridge && req.method === 'POST' && path === '/api/game/to-game') {
-                    const body = await readBody(req);
-                    const r = await ctx.gameBridge.toGame(userId, body.amount);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error, refunded: !!r.refunded });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.gameBridge && req.method === 'POST' && path === '/api/game/to-discord') {
-                    const body = await readBody(req);
-                    const r = await ctx.gameBridge.toDiscord(userId, body.amount);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-
                 // bấm nhận thưởng chuỗi (2 ngày liên tiếp = 1 gói, lấy hết 1 lần)
                 if (ctx.daily && ctx.daily.streak && req.method === 'POST' && path === '/api/daily/streak') {
                     const r = ctx.daily.streak(userId);
@@ -836,19 +818,6 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
-    '</div>',
-    // ===== CẦU DOGCOIN <-> GAME: bắt buộc nhân vật ĐANG ONLINE mới chuyển được =====
-    '<div class="card">',
-    '<div class="row"><h2 style="margin:0">🎮 Dogcoin ↔ Game</h2>',
-    '<div style="display:flex;gap:8px;align-items:center"><div class="muted" id="gbStat">Đang kiểm...</div>',
-    '<button style="background:#232735;font-size:12px;padding:6px 10px" onclick="gbSync()">🔄</button></div></div>',
-    '<div class="muted" style="font-size:13px;margin-top:4px">Chuyển tự động, không cần chờ admin duyệt. <b>Nhân vật phải đang online trong game</b> - vào game trước rồi bấm, làm vậy để tiền không bị treo giữa đường.</div>',
-    '<input id="gbAmt" inputmode="numeric" placeholder="Số Dogcoin muốn chuyển">',
-    '<div class="row" style="margin-top:10px;gap:8px">',
-    '<button id="gbIn" style="flex:1;background:var(--blue)" onclick="gbSend(\'to-discord\')">⬅️ GAME → DISCORD</button>',
-    '<button id="gbOut" style="flex:1;background:#2e7d32" onclick="gbSend(\'to-game\')">DISCORD → GAME ➡️</button>',
-    '</div>',
-    '<div class="muted" id="gbNote" style="font-size:12px;margin-top:8px;text-align:center"></div>',
     '</div>',
     '</div>', // hết #pageDaily
 
@@ -1607,30 +1576,7 @@ const PAGE = [
     // DOFF = lệch giờ máy người chơi so với server — đồng hồ đếm ngược nghiện chạy
     // theo giờ SERVER, chỉnh đồng hồ máy không ăn gian được.
     'var DST=null,DOFF=0;',
-    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});gbSync()}',
-    // ===== CẦU DOGCOIN <-> GAME =====
-    // Trạng thái online chỉ hỏi khi MỞ TAB (và sau mỗi lần chuyển), không hỏi theo
-    // vòng lặp - hỏi liên tục là làm nặng server game.
-    'var GB=null,gbBusy=false;',
-    'function gbSync(){api("/api/game/status").then(function(j){GB=j;gbRender()}).catch(function(){GB=null;',
-    '$("gbStat").textContent="chưa hỏi được server game"})}',
-    'function gbRender(){if(!GB)return;var s=$("gbStat"),n=$("gbNote");',
-    'var can=GB.linked&&GB.online&&!gbBusy;',
-    '$("gbIn").disabled=!can;$("gbOut").disabled=!can;',
-    'if(!GB.linked){s.textContent="🔗 chưa liên kết";n.textContent="Ví chưa gắn tên nhân vật - nhắn admin liên kết giúp (chỉ cần 1 lần)."; return}',
-    'if(!GB.online){s.textContent="🔴 "+GB.gameName+" offline";n.textContent="Vào game bằng nhân vật \\""+GB.gameName+"\\" rồi bấm lại. Bấm 🔄 để kiểm tra lại."; return}',
-    's.textContent="🟢 "+GB.gameName+" đang online";',
-    'n.textContent="Tối đa "+Number(GB.max||0).toLocaleString("vi-VN")+" Dogcoin mỗi lần chuyển vào game. Chuyển mất 5-20 giây, đừng tắt trang."}',
-    'function gbSend(dir){if(gbBusy||!GB||!GB.online)return;',
-    'var amt=parseInt($("gbAmt").value)||0;if(amt<1)return toast("❌ Nhập số Dogcoin");',
-    'gbBusy=true;gbRender();',
-    '$("gbNote").textContent="⏳ Đang chuyển, chờ server game xác nhận (5-20 giây)...";',
-    'api("/api/game/"+dir,{amount:amt}).then(function(j){gbBusy=false;',
-    'if(typeof j.balance==="number")setBal(j.balance);',
-    'if(j.pending){toast("⏳ "+j.message)}',
-    'else{toast("✅ Đã chuyển "+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(dir==="to-game"?" vào game":" ra Discord")+"!");$("gbAmt").value=""}',
-    'dailySync()',   // dailySync tự gọi gbSync, không gọi 2 lần
-    '}).catch(function(e){gbBusy=false;toast("❌ "+e.message);gbSync()})}',
+    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)})}',
     'function dRender(){if(!DST)return;',
     '$("dMonth").textContent="Tháng "+DST.month+" · "+DST.year;',
     '$("dStreak").textContent=DST.streak+" ngày";',

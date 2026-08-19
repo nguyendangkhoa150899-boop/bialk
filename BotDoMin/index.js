@@ -2036,23 +2036,6 @@ client.once('ready', async (c) => {
                 state: dailyState, claim: claimDaily, streak: claimStreak,
                 nghien: (uid) => claimNghien(uid, true),   // lụm từ WEB thì đăng công khai
             },
-            // Cầu Dogcoin <-> game: luật tiền dùng chung với Discord (xem transferToGame)
-            gameBridge: {
-                max: WITHDRAW_MAX_PER_REQUEST,
-                status: async (uid) => {
-                    const u = getUserData(uid);
-                    const gameName = (u.ingameName || '').trim();
-                    if (!gameName) return { linked: false, online: false, gameName: '' };
-                    try {
-                        const who = await findOnlineByName(gameName);
-                        return { linked: true, online: !!who, gameName };
-                    } catch (e) {
-                        return { linked: true, online: false, gameName, error: e.message || 'lỗi kết nối' };
-                    }
-                },
-                toGame: (uid, amt) => transferToGame(uid, getUserData(uid).name || uid, amt),
-                toDiscord: (uid, amt) => transferToDiscord(uid, getUserData(uid).name || uid, amt),
-            },
             // 🎡 vòng quay may mắn nhóm (thay blackjack)
             wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin, spin1: wheelSpin1 },
         });
@@ -3117,170 +3100,6 @@ const TICKET_KIND_LABEL = {
     'to-discord': '💬 Chuyển Dog Coin ra Discord',
 };
 
-// ===== CẦU DOGCOIN <-> GAME: luật tiền DÙNG CHUNG cho Discord và web =====
-// Trước đây Discord có luật riêng, web chưa có. Viết chung một chỗ để hai đường
-// không bao giờ lệch nhau (lệch luật tiền = mất tiền thật).
-//
-// CHẶN NGAY TỪ CỬA bằng kiểm tra ONLINE: đây là nguyên nhân số 1 của mọi đơn lỗi
-// trước giờ (người chơi bấm rút khi chưa vào game). Chặn được cái này thì gần như
-// không còn đơn nào phải nhờ admin.
-//
-// Danh sách online có ĐỆM 5 GIÂY: người chơi bấm nhiều lần cũng chỉ hỏi server 1
-// lần, không bao giờ hỏi theo vòng lặp -> không làm lag server game.
-const ONLINE_CACHE_MS = 5000;
-let onlineCache = { at: 0, list: [] };
-async function onlinePlayersCached() {
-    if (Date.now() - onlineCache.at < ONLINE_CACHE_MS) return onlineCache.list;
-    const list = await pal.getOnlinePlayers();
-    onlineCache = { at: Date.now(), list };
-    return list;
-}
-// So khớp theo TÊN đã liên kết (userData.ingameName). Tên trong game hay dính ký tự
-// ẩn nên phải qua cleanName, và so không phân biệt hoa thường.
-async function findOnlineByName(name) {
-    const want = pal.cleanName(name).toLowerCase();
-    if (!want) return null;
-    const list = await onlinePlayersCached();
-    return list.find(p => pal.cleanName(p.name).toLowerCase() === want) || null;
-}
-
-// Kiểm tra chung trước mọi lần chuyển: có liên kết tên chưa, nhân vật có online không.
-async function gameGate(userId) {
-    const u = getUserData(userId);
-    const gameName = (u.ingameName || '').trim();
-    if (!gameName) {
-        return { error: 'Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn admin liên kết giúp (chỉ cần 1 lần).' };
-    }
-    let who = null;
-    try {
-        who = await findOnlineByName(gameName);
-    } catch (e) {
-        return { error: `Chưa hỏi được server game (${e.message || 'lỗi kết nối'}) - thử lại sau chút nhé.` };
-    }
-    if (!who) {
-        return { error: `Nhân vật "${gameName}" đang KHÔNG online. Vào game trước rồi bấm lại - làm vậy để tiền không bị treo giữa đường.` };
-    }
-    return { ok: true, gameName, who };
-}
-
-// ---- Discord -> game (rút) ----
-// Trừ ví TRƯỚC rồi mới giao. Mod báo "player not found" là chắc chắn CHƯA giao ->
-// hoàn ngay. Timeout/lỗi lạ thì KHÔNG tự hoàn (có thể đã giao) -> đối chiếu bằng
-// cách ĐẾM lại túi trong game sau 45s; vẫn không rõ mới lập đơn cho admin.
-async function transferToGame(userId, username, amt) {
-    amt = Math.floor(Number(amt));
-    if (!Number.isInteger(amt) || amt <= 0) return { error: 'Số Dogcoin không hợp lệ' };
-    if (amt > WITHDRAW_MAX_PER_REQUEST) {
-        return { error: `Mỗi lần chỉ chuyển tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin. Muốn nhiều hơn thì chuyển nhiều lần.` };
-    }
-    if ((getUserData(userId).points || 0) < amt) {
-        return { error: `Không đủ Dogcoin! Số dư: ${(getUserData(userId).points || 0).toLocaleString()}` };
-    }
-    const gate = await gameGate(userId);
-    if (gate.error) return gate;
-    const gameName = gate.gameName;
-
-    // Đếm túi TRƯỚC khi giao: có mốc này thì lúc timeout mới tự đối chiếu được,
-    // khỏi phải nhờ admin. Đếm lỗi thì vẫn cho chuyển (chỉ mất khả năng tự đối chiếu).
-    let before = null;
-    try {
-        const c = await pal.countItem(gameName, 'DogCoin');
-        if (c && typeof c.count === 'number') before = c.count;
-    } catch { /* không sao, chỉ là mất mốc đối chiếu */ }
-
-    updatePoints(userId, -amt);   // giữ chỗ
-    logDog('to-game', userId, username, -amt, `chuyển vào game (tự động, nhân vật ${gameName})`);
-    writeLog('ADMIN', `[CHUYỂN VÀO GAME] ${username} ${amt.toLocaleString()} Dogcoin -> "${gameName}"`);
-
-    let r = null, err = null;
-    try { r = await pal.giveItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
-    if (r && r.ok) {
-        saveDbNow();
-        return { ok: true, amount: amt, gameName, balance: getUserData(userId).points || 0 };
-    }
-    const msg = (r && r.message) || (err && err.message) || '';
-    if (/player not found/i.test(msg)) {
-        updatePoints(userId, amt);
-        logDog('refund', userId, username, amt, 'hoàn: chưa vào game / sai tên');
-        saveDbNow();
-        return { error: `Không thấy "${gameName}" trong game - đã hoàn lại ${amt.toLocaleString()} Dogcoin, chưa mất gì.`, refunded: true };
-    }
-    // Không rõ đã giao chưa -> tự đối chiếu bằng số đếm túi, chạy nền
-    autoVerifyGive({ userId, username, gameName, amt, before, msg }).catch(() => { });
-    saveDbNow();
-    return {
-        pending: true, amount: amt, gameName, balance: getUserData(userId).points || 0,
-        message: 'Chưa xác nhận được với server game. Bot đang tự đối chiếu, khoảng 1 phút nữa sẽ tự hoàn nếu chưa nhận được - không mất tiền đâu.',
-    };
-}
-
-// Chờ mod xử lý xong hàng đợi rồi ĐẾM lại túi: tăng đủ số -> coi như đã giao;
-// không tăng -> hoàn ví. Không đếm được (đếm lỗi / không có mốc trước) mới lập đơn.
-async function autoVerifyGive({ userId, username, gameName, amt, before, msg }) {
-    await new Promise(r => setTimeout(r, 45000));
-    let after = null;
-    if (before !== null) {
-        try {
-            const c = await pal.countItem(gameName, 'DogCoin');
-            if (c && typeof c.count === 'number') after = c.count;
-        } catch { /* để rơi xuống nhánh lập đơn */ }
-    }
-    if (after !== null) {
-        if (after >= before + amt) {
-            writeLog('ADMIN', `[CHUYỂN VÀO GAME] Tự đối chiếu OK: "${gameName}" túi ${before} -> ${after}, đã nhận đủ ${amt.toLocaleString()}`);
-            return;
-        }
-        updatePoints(userId, amt);
-        logDog('refund', userId, username, amt, 'hoàn: tự đối chiếu thấy game chưa nhận');
-        saveDbNow();
-        writeLog('ADMIN', `[CHUYỂN VÀO GAME] Tự đối chiếu: "${gameName}" túi ${before} -> ${after}, CHƯA nhận -> đã hoàn ${amt.toLocaleString()} cho ${username}`);
-        return;
-    }
-    const req = createTicket({ kind: 'to-game', userId, username, ingameName: gameName, amount: amt });
-    writeLog('ADMIN', `[CHUYỂN VÀO GAME LỖI] #${req.id} ${username} ${amt} -> "${gameName}" | ${msg || 'timeout'} | không đếm được túi để tự đối chiếu`);
-    sendTicketToAdmin(req).catch(() => { });
-}
-
-// ---- game -> Discord (nạp) ----
-// TRỪ ITEM TRONG GAME TRƯỚC, mod xác nhận trừ ĐÚNG số (took === amt) rồi mới cộng ví.
-async function transferToDiscord(userId, username, amt) {
-    amt = Math.floor(Number(amt));
-    if (!Number.isInteger(amt) || amt <= 0) return { error: 'Số Dogcoin không hợp lệ' };
-    const gate = await gameGate(userId);
-    if (gate.error) return gate;
-    const gameName = gate.gameName;
-
-    writeLog('ADMIN', `[CHUYỂN RA DISCORD] ${username} ${amt.toLocaleString()} Dogcoin từ "${gameName}"`);
-    let r = null, err = null;
-    try { r = await pal.takeItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
-
-    if (r && r.ok && r.took === amt) {
-        updatePoints(userId, amt);
-        logDog('from-game', userId, username, amt, `chuyển từ game ra (tự động, nhân vật ${gameName})`);
-        saveDbNow();
-        return { ok: true, amount: amt, gameName, balance: getUserData(userId).points || 0 };
-    }
-    const msg = (r && r.message) || (err && err.message) || '';
-    if (/player not found/i.test(msg)) {
-        return { error: `Không thấy "${gameName}" trong game - chưa trừ gì cả.` };
-    }
-    const thieu = /khong du/i.test(msg) && msg.match(/trong game co (\d+)/);
-    if (thieu) {
-        return { error: `Trong túi bạn chỉ có ${Number(thieu[1]).toLocaleString()} Dog Coin, không đủ ${amt.toLocaleString()} - chưa trừ gì cả. (Chỉ tính Dog Coin TRONG TÚI, để trong hòm thì cầm ra trước.)` };
-    }
-    if (/ERROR/.test(msg) && !/LUA ERROR/i.test(msg)) {
-        return { error: `Không trừ được Dog Coin trong game - chưa mất gì cả. Mod báo: ${msg.slice(0, 200)}` };
-    }
-    // Không rõ item đã bị trừ chưa -> KHÔNG cộng ví, lập đơn cho admin đối chiếu
-    const req = createTicket({ kind: 'to-discord', userId, username, ingameName: gameName, amount: amt });
-    writeLog('ADMIN', `[CHUYỂN RA DISCORD LỖI] #${req.id} ${username} ${amt} từ "${gameName}" | ${msg || 'timeout'} - xem results.log`);
-    sendTicketToAdmin(req).catch(() => { });
-    return {
-        pending: true, ticket: req.id,
-        message: `Chưa xác nhận được với server game (đơn #${req.id}). Ví CHƯA cộng. Admin sẽ đối chiếu: nếu trong game đã bị trừ thì ví được cộng đủ.`,
-    };
-}
-
 function createTicket(fields) {
     const req = {
         id: withdrawSeq++,
@@ -3869,32 +3688,103 @@ client.on('interactionCreate', async interaction => {
         //  vật NGƯỜI KHÁC rồi bấm 💬 rút trộm túi họ. Giờ CHỈ admin liên kết tên
         //  ở panel, tab 🎮 Palworld & Dogcoin — ghi vào userData.ingameName.)
 
-        // ===== CHUYỂN game -> Discord (luật tiền ở transferToDiscord, dùng chung với web) =====
+        // ===== NẠP (game -> Discord) TỰ ĐỘNG qua cầu SFTP =====
+        // Luật tiền (README): TRỪ ITEM TRONG GAME TRƯỚC, mod xác nhận trừ đủ đúng số
+        // (`took` === amt) rồi mới cộng ví. Mod trả ERROR là CHẮC CHẮN chưa mất gì
+        // (thiếu tiền nó không trừ, trừ lệch nó tự hoàn — xem main.lua) -> chỉ báo
+        // người chơi. Riêng timeout/không phản hồi là KHÔNG CHẮC -> đơn cho admin
+        // đối chiếu results.log, KHÔNG cộng ví trước.
         if (interaction.customId === 'nap_modal') {
             const amt = parseInt(interaction.fields.getTextInputValue('nap_input_amount'));
-            await interaction.deferReply({ ephemeral: true });   // take mất 5-20s, quá deadline 3s của Discord
-            const r = await transferToDiscord(userId, interaction.user.tag, amt);
-            if (r.error) return interaction.editReply('❌ ' + r.error);
-            if (r.pending) return interaction.editReply('⏳ ' + r.message);
-            return interaction.editReply(
-                `✅ Đã chuyển **${r.amount.toLocaleString()}** Dog Coin từ game vào ví Discord! ` +
-                `Ví hiện có **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}`
-            );
+            if (isNaN(amt) || amt <= 0) {
+                return interaction.reply({ content: '❌ Số Dog Coin không hợp lệ!', ephemeral: true });
+            }
+            const gameName = (getUserData(userId).ingameName || '').trim();
+            if (!gameName) {
+                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
+            }
+
+            await interaction.deferReply({ ephemeral: true }); // take mất 5-20s, quá deadline 3s của Discord
+            writeLog('ADMIN', `[NẠP TỰ ĐỘNG] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dog Coin từ game ("${gameName}") ra Discord`);
+
+            let r = null, err = null;
+            try { r = await pal.takeItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
+
+            if (r && r.ok && r.took === amt) {
+                updatePoints(userId, amt);
+                logDog('from-game', userId, interaction.user.tag, amt, `nạp từ game (tự động, nhân vật ${gameName})`);
+                saveDbNow();
+                return interaction.editReply(`✅ Đã chuyển **${amt.toLocaleString()}** Dog Coin từ game vào ví Discord! Ví hiện có **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
+            }
+
+            const msg = (r && r.message) || (err && err.message) || '';
+            if (/player not found/i.test(msg)) {
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) - chưa trừ gì cả.\nVào game rồi bấm lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
+            }
+            const thieu = /khong du/i.test(msg) && msg.match(/trong game co (\d+)/);
+            if (thieu) {
+                return interaction.editReply(`❌ Trong túi bạn chỉ có **${Number(thieu[1]).toLocaleString()}** Dog Coin, không đủ ${amt.toLocaleString()} - chưa trừ gì cả.\n(Chỉ tính Dog Coin **trong túi** - để trong hòm thì cầm ra túi trước nhé.)`);
+            }
+            if (/ERROR/.test(msg) && !/LUA ERROR/i.test(msg)) {
+                // Mod từ chối rõ ràng -> trong game không mất gì
+                return interaction.editReply(`❌ Không trừ được Dog Coin trong game - chưa mất gì cả. Mod báo: \`${msg.slice(0, 250)}\``);
+            }
+            // Không rõ item đã bị trừ trong game hay chưa -> đơn cho admin, KHÔNG cộng ví
+            const req = createTicket({ kind: 'to-discord', userId, username: interaction.user.username, ingameName: gameName, amount: amt });
+            writeLog('ADMIN', `[NẠP TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dog Coin từ "${gameName}" | ${msg || 'timeout'} - xem results.log: item ĐÃ trừ thì DUYỆT (cộng ví), chưa trừ thì TỪ CHỐI`);
+            sendTicketToAdmin(req).catch(() => {});
+            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Admin sẽ đối chiếu: Dog Coin trong game đã bị trừ thì ví Discord được cộng đủ, chưa trừ thì hủy đơn - không mất tiền đâu.`);
         }
 
         // (Mua Lõi Văn Minh / cấy ghép / đổi vàng đã bỏ khỏi Discord — bán ở sạp trong game.)
 
-        // ===== CHUYỂN Discord -> game (luật tiền ở transferToGame, dùng chung với web) =====
+        // ===== RÚT (Discord -> game) TỰ ĐỘNG qua cầu SFTP =====
+        // Luật tiền (README): trừ ví TRƯỚC; mod báo "player not found" (chưa vào game/
+        // sai tên) là lỗi CHẮC CHẮN chưa giao -> hoàn ngay; timeout/lỗi lạ thì KHÔNG
+        // tự hoàn (có thể đã giao) -> đơn cho admin kiểm tra results.log.
         if (interaction.customId === 'rut_modal') {
-            const amt = parseInt(interaction.fields.getTextInputValue('rut_input_amount'));
-            await interaction.deferReply({ ephemeral: true });   // give mất 5-20s
-            const r = await transferToGame(userId, interaction.user.tag, amt);
-            if (r.error) return interaction.editReply((r.refunded ? '↩️ ' : '❌ ') + r.error);
-            if (r.pending) return interaction.editReply('⏳ ' + r.message);
-            return interaction.editReply(
-                `✅ Đã giao **${r.amount.toLocaleString()}** Dog Coin cho **${r.gameName}** trong game! ` +
-                `Ví còn **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}`
-            );
+            const amountStr = interaction.fields.getTextInputValue('rut_input_amount');
+            const amt = parseInt(amountStr);
+            const userData = getUserData(userId);
+
+            if (isNaN(amt) || amt <= 0) {
+                return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ!", ephemeral: true });
+            }
+            if (amt > WITHDRAW_MAX_PER_REQUEST) {
+                return interaction.reply({ content: `❌ Mỗi lần chỉ rút tối đa **${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}** ${DOGCOIN_EMOJI}. Muốn rút nhiều hơn thì rút nhiều lần.`, ephemeral: true });
+            }
+            if (userData.points < amt) {
+                return interaction.reply({ content: `❌ Bạn không đủ Dogcoin! Số dư hiện tại: **${userData.points.toLocaleString()}** ${DOGCOIN_EMOJI}`, ephemeral: true });
+            }
+            const gameName = (userData.ingameName || '').trim();
+            if (!gameName) {
+                return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
+            }
+
+            await interaction.deferReply({ ephemeral: true }); // give mất 5-20s, quá deadline 3s của Discord
+            updatePoints(userId, -amt); // trừ ví TRƯỚC (giữ chỗ)
+            logDog('to-game', userId, interaction.user.tag, -amt, `rút vào game (tự động, nhân vật ${gameName})`);
+            writeLog('ADMIN', `[RÚT TỰ ĐỘNG] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dogcoin vào game cho "${gameName}"`);
+
+            let r = null, err = null;
+            try { r = await pal.giveItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
+
+            if (r && r.ok) {
+                saveDbNow();
+                return interaction.editReply(`✅ Đã giao **${amt.toLocaleString()}** Dog Coin cho **${gameName}** trong game! Ví còn **${getUserData(userId).points.toLocaleString()}** ${DOGCOIN_EMOJI}`);
+            }
+            const msg = (r && r.message) || (err && err.message) || '';
+            if (/player not found/i.test(msg)) {
+                // Mod xác nhận CHƯA giao -> hoàn ngay, an toàn
+                updatePoints(userId, amt);
+                logDog('refund', userId, interaction.user.tag, amt, 'hoàn rút tự động: chưa vào game / sai tên');
+                return interaction.editReply(`↩️ Không thấy **${gameName}** trong game (chưa online hoặc sai tên) - đã hoàn **${amt.toLocaleString()}** ${DOGCOIN_EMOJI}.\nVào game rồi bấm rút lại; nếu sai tên thì nhắn **admin** sửa liên kết.`);
+            }
+            // Không rõ đã giao hay chưa -> đơn cho admin, KHÔNG tự hoàn
+            const req = createTicket({ kind: 'to-game', userId, username: interaction.user.username, ingameName: gameName, amount: amt });
+            writeLog('ADMIN', `[RÚT TỰ ĐỘNG LỖI] #${req.id} ${interaction.user.tag} ${amt} Dogcoin -> "${gameName}" | ${msg || 'timeout'} - kiểm tra results.log rồi duyệt/hoàn`);
+            sendTicketToAdmin(req).catch(() => {});
+            return interaction.editReply(`⏳ Chưa xác nhận được với server game (đơn **#${req.id}**). Ví đã trừ; admin sẽ kiểm tra - nếu chưa nhận được trong game thì admin hoàn lại, đừng lo mất tiền.`);
         }
     }
 
