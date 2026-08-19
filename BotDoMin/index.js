@@ -1103,16 +1103,22 @@ const webMinesApi = {
             g.luck.push('💰');
         }
         else if (prize === 'jackpot') {
-            // 🏆 NỔ HŨ = GIẢI CAO NHẤT của chính cấu hình ván này, trần x2000 cược.
-            // Chọn 1 mìn rồi ngồi câu hũ vẫn chỉ ăn giải bé của ván 1 mìn — hết cửa farm.
+            // 🏆 NỔ HŨ = GIẢI CAO NHẤT của chính cấu hình ván này, trần x2000 cược,
+            // và CHỐT VÁN NGAY TẠI ĐÂY. Bug 19/08: trước ván vẫn chạy tiếp sau hũ,
+            // người chơi bấm dừng được trả thêm lần nữa — ăn gần x2.
             const top = minesWin(g.bet, TOTAL_TILES - g.totalMines, g.totalMines);
             const jp = Math.min(g.bet * LUCKY_WIN_CAP_MULTI, top);
-            updatePoints(userId, jp);
             statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
-            g.bonus = (g.bonus || 0) + jp;      // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('🏆');
-            writeLog('ADMIN', `[⚠️ NỔ HŨ DÒ MÌN] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.totalMines} mìn)`);
+            webMines.delete(userId);
+            delete minesPending()[userId];
+            updatePoints(userId, jp);
+            webMinesLog(g, 'Jackpot', jp - g.bet);
+            setMinesLast(userId, g, 'Jackpot', jp - g.bet);
+            writeLog('ADMIN', `[⚠️ NỔ HŨ DÒ MÌN] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.totalMines} mìn) - CHỐT VÁN`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 chọn hộp ${box} - trúng jackpot, chốt ván luôn`);
+            return { ok: true, lucky, jackpot: true, win: jp, luckCapped: jp < top, mines: g.mines, balance: getUserData(userId).points || 0 };
         }
         else g.luck.push('🍂');
         writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 chọn hộp ${box} - trúng ${prize}`);
@@ -1407,16 +1413,30 @@ const webStairsApi = {
             g.luck.push('💰');
         }
         else if (prize === 'jackpot') {
-            // 🏆 NỔ HŨ = giải LÊN ĐỈNH của chính mức lửa ván này, trần x2000 cược.
+            // 🏆 NỔ HŨ = giải LÊN ĐỈNH của chính mức lửa ván này, trần x2000 cược,
+            // và CHỐT VÁN NGAY (bug 19/08: ván chạy tiếp sau hũ, dừng là ăn thêm lần nữa).
             // Chơi 1 lửa câu hũ chỉ ăn x3.61 — muốn hũ to phải dám chơi lửa cao.
             const top = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
             const jp = Math.min(g.bet * LUCKY_WIN_CAP_MULTI, top);
-            updatePoints(userId, jp);
             statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
-            g.bonus = (g.bonus || 0) + jp;      // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('🏆');
-            writeLog('ADMIN', `[⚠️ NỔ HŨ LEO THANG] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.fire} lửa)`);
+            webStairs.delete(userId);
+            delete stairsPending()[userId];
+            updatePoints(userId, jp);
+            // Ghi 'Lên đỉnh' vì hũ chính là giải lên đỉnh — bảng công khai lẫn web
+            // sẵn hiểu nhãn này (đầu dòng 🏆, ảnh thang100).
+            const entry = stairsLog(g, 'Lên đỉnh', jp - g.bet);
+            setStairsLast(userId, g, 'Lên đỉnh', jp - g.bet);
+            writeLog('ADMIN', `[⚠️ NỔ HŨ LEO THANG] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} Dogcoin (cược ${g.bet.toLocaleString()}, ${g.fire} lửa) - CHỐT VÁN`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 chọn hộp ${box} - trúng jackpot, chốt ván luôn`);
+            stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
+            return {
+                ok: true, lucky, top: true, win: jp, luckCapped: jp < top,
+                traps: g.traps, safe: g.safe.slice(),
+                luckyCells: g.lucky, goldPos: g.golden ? { f: g.golden.f, c: g.golden.c } : null,
+                balance: getUserData(userId).points || 0,
+            };
         }
         else g.luck.push('🍂');
         writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 chọn hộp ${box} - trúng ${prize}`);

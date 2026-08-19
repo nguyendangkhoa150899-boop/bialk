@@ -141,6 +141,10 @@ Qua cổng online (kèm kiểm túi đủ tiền) → gọi `/api/take-item` **t
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **19/08/2026 — Fix NỔ HŨ 🏆 ăn x2 (Dò Mìn + Leo Thang).** Trúng hộp 🏆 giờ CHỐT VÁN
+  ngay: trả hũ (min của giải cao nhất ván đó và trần x2000 cược) rồi kết thúc — trước đây
+  ván vẫn chạy tiếp nên người chơi bấm dừng được trả THÊM lần nữa. Client không phải sửa
+  (đã sẵn xử lý `jackpot`/`top` từ hộp may mắn).
 - **19/08/2026 — Gacha pal: nút BÁN LẠI 1.000.** Quay random (2.000) trúng con không ưng
   thì bấm 💰 Bán lại ngay cạnh nút chọn passive: hoàn 1.000, đơn tự đóng (admin khỏi giao),
   DM báo admin, panel hiện "💰 Bán lại". Chỉ bán được khi CHƯA chốt passive/linh hồn.
