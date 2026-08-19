@@ -1262,7 +1262,7 @@ function renderPalOrders(){
           '<br><span style="font-size:12px">Linh hồn: <b>'+esc(o.souls||'-')+'</b> | Passive: <b>'+esc(o.passives||'-')+'</b></span>'+
         '</div>'+
         (isDone
-          ? '<span class="win" style="font-size:12px;white-space:nowrap">✅ Đã giao</span>'
+          ? '<span class="win" style="font-size:12px;white-space:nowrap">'+(o.resold?'💰 Bán lại':'✅ Đã giao')+'</span>'
           : '<button class="btn-green" style="padding:4px 10px;font-size:12px;white-space:nowrap" onclick="palOrderDone('+o.id+')">✅ Hoàn thành</button>')+
       '</div>'+
     '</div>';
