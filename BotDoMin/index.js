@@ -1405,7 +1405,6 @@ const WHEEL_SEGMENTS = [1.2, 1.5, 1.1, 1.8, 1.3, 2.0, 1.4, 1.1, 1.7, 1.3, 10, 1.
 // gì, không mất lượt). Xen kẽ không 2 nan giống kề nhau (kể cả chỗ nối vòng tròn).
 const WHEEL_STAGE1 = [1000, 1500, 2000, 1000, 2000, 1500, 1000, 1500, 2000, 1500, 1000, 2000, 1500, 1000, 2000];
 const WHEEL_MAX_TICKET = 2000;   // vé đắt nhất (hiển thị) — fallback hoàn pending
-const WHEEL_MIN_TICKET = 1000;   // vé rẻ nhất — điều kiện tối thiểu để vào bàn
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
@@ -1474,8 +1473,8 @@ function wheelReady(userId, color) {
     if (wheelRoom.players.has(userId)) {
         wheelRoom.players.get(userId).color = color;   // đổi màu khi đang chờ: miễn phí
     } else {
-        // VÀO BÀN MIỄN PHÍ — chỉ cần đủ vé rẻ nhất trong ví (tiền trừ SAU vòng vé)
-        if ((me.points || 0) < WHEEL_MIN_TICKET) return { error: `Cần ít nhất ${WHEEL_MIN_TICKET.toLocaleString()} Dogcoin trong ví — vé (1.000–2.000) trừ sau khi vòng vé chốt giá` };
+        // VÀO BÀN MIỄN PHÍ, KHÔNG điều kiện tiền (chốt của chủ server): vòng vé ai
+        // cũng được quay; tới lúc vé chốt giá, không đủ thì bị mời ra — không mất gì.
         wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color });
         writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn, mũi tên ${color} (${wheelRoom.players.size}/${wheelMinPlayers()})`);
     }
