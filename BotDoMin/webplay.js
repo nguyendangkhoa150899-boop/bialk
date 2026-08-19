@@ -448,7 +448,9 @@ const PAGE = [
     '.hrow:last-child{border-bottom:0}',
     '.hrow .gid{color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}',
     '.hrow .dd{display:flex;gap:3px;flex:0 0 auto}',
-    '.mdie{width:17px;height:17px;background:#f4f1e8;border-radius:4px;position:relative;flex:0 0 auto}',
+    // inline-block để 3 viên LUÔN nằm ngang kể cả khi flex của .dd không ăn
+    // (div mặc định là block — rơi vào ngữ cảnh inline là mỗi viên một dòng)
+    '.mdie{display:inline-block;vertical-align:middle;width:17px;height:17px;background:#f4f1e8;border-radius:4px;position:relative;flex:0 0 auto}',
     '.mdie .p{position:absolute;width:3.4px;height:3.4px;border-radius:50%;background:#c0392b;transform:translate(-50%,-50%)}',
     '.hrow .sum{font-weight:800;flex:0 0 auto}',
     '.hrow .kq{font-weight:700;flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -468,8 +470,14 @@ const PAGE = [
     '.hidden{display:none}',
     '.mine{font-size:13px;margin-top:6px;color:var(--gold)}',
     // ---- thanh chuyển trang (Big Small | Dò Mìn) ----
-    '#nav{display:flex;gap:8px;margin-bottom:12px}',
-    '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:14px;padding:13px 2px}',
+    // Header + nav ép mỏng (19/08): mobile đỡ phải kéo — trước đây riêng cụm đầu
+    // trang đã ngốn ~150px dọc.
+    '#topbar{padding:8px 12px;margin-bottom:8px}',
+    '#topbar .big{font-size:20px}',
+    '#topbar .muted{font-size:11px}',
+    '#topbar button{padding:8px 10px}',
+    '#nav{display:flex;gap:6px;margin-bottom:8px}',
+    '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:13px;padding:9px 2px}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
     // ---- dò mìn (bố cục theo sòng: thanh hệ số trên, 2 cột đếm kẹp lưới) ----
     // icon Dog Coin thật (ảnh trong game) — thay cho emoji 🐕 ở mọi chỗ
@@ -580,9 +588,10 @@ const PAGE = [
     '.hero.end{height:58px;animation:endPop .42s cubic-bezier(.2,1.4,.5,1);z-index:3}',
     '@keyframes endPop{0%{transform:translate(-50%,10px) scale(.4);opacity:0}60%{transform:translate(-50%,-4px) scale(1.14)}100%{transform:translate(-50%,0) scale(1);opacity:1}}',
     '@keyframes heroIdle{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-3px)}}',
-    // nhân vật lúc chưa vào ván: đứng dưới chân tháp
-    '#heroBase{display:flex;align-items:flex-end;justify-content:center;height:44px;margin-top:6px}',
-    '#heroBase img{height:42px;filter:drop-shadow(0 3px 4px #000a);animation:heroIdle 2.2s ease-in-out infinite}',
+    // Nhân vật đứng dưới chân tháp lúc CHƯA vào ván: ĐÃ TẮT 19/08 theo yêu cầu —
+    // chiếm 50px dọc trên mobile mà không có thông tin gì; vào ván thì nhân vật
+    // vẫn hiện trên tháp như thường (HEROIMG trong ô).
+    '#heroBase{display:none}',
     // ---- sân khấu xí ngầu + tờ giấy ----
     '#stage{position:relative;height:150px;border-radius:12px;background:radial-gradient(ellipse at center,#1e3d2b 0%,#152a1e 100%);border:1px solid #2b4a37;overflow:hidden;margin-top:10px;touch-action:none}',
     '#diceRow{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px}',
@@ -663,12 +672,12 @@ const PAGE = [
     '</div>',
 
     '<div id="app" class="hidden">',
-    '<div class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div>',
+    '<div id="topbar" class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div>',
     '<div class="big"><img class="dc" src="/dogcoin.png" alt=""> <span id="bal">0</span></div></div>',
-    '<div style="display:flex;gap:8px;align-items:center">',
-    '<button style="background:#3d2c10;color:#ffd977;font-size:13px" onclick="lolaOpen()">🧧 Lộc lá</button>',
-    '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:46px;font-size:17px" onclick="toggleSnd()">🔊</button>',
-    '<button style="background:#232735" onclick="logout()">Thoát</button></div></div>',
+    '<div style="display:flex;gap:6px;align-items:center">',
+    '<button style="background:#3d2c10;color:#ffd977;font-size:12px" onclick="lolaOpen()">🧧 Lộc lá</button>',
+    '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
+    '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
 
     '<div id="nav">',
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Big Small</button>',
@@ -1317,7 +1326,7 @@ const PAGE = [
     'html+=\'<div class="srow \'+cls+\'" id="sr\'+f+\'"><div class="cells">\'+cells+\'</div><div class="mx">\'+fx(STAB[f])+"</div></div>"}',
     'box.innerHTML=html;',
     // chưa vào ván thì nhân vật đứng dưới chân tháp
-    '$("heroBase").style.display=SG?"none":"flex";',
+    '$("heroBase").style.display="none";',   // hero chân tháp đã tắt hẳn (19/08)
     'if(SG){var row=$("sr"+done);if(row)row.querySelectorAll(".scell").forEach(function(el){',
     'if(el.classList.contains("fire"))return;', // ô lửa đã lộ (khiên đỡ) - cấm bấm lại
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
