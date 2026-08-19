@@ -86,7 +86,7 @@ từng không chứa tên player nên dashboard báo nhầm "timeout" dù mod đ
 
 ---
 
-## Luồng tiền Dogcoin (đang chạy — làm lại 17/08/2026, TỰ ĐỘNG cả 2 chiều)
+## Luồng tiền Dogcoin (đang chạy — làm lại 17/08/2026 TỰ ĐỘNG cả 2 chiều, 19/08 thêm cổng BẮT BUỘC ONLINE)
 
 **ADMIN liên kết tên nhân vật** với Discord ID ở panel bot (cổng 3001, tab
 🎮 Palworld & Dogcoin, card "🔗 Liên kết tên trong game") — lưu `userData.ingameName`
@@ -94,32 +94,76 @@ trong `database.json` của bot, API `/api/pal/set-name`. Người chơi KHÔNG 
 tự đặt là tự nhận tên nhân vật người khác rồi bấm 💬 rút trộm túi họ. Tên được lọc về
 ASCII in được, khớp với `normalizeName` của mod. KHÔNG dùng hệ liên kết SteamID/REST nữa.
 
+### Cổng BẮT BUỘC ONLINE (`requireOnline`, 19/08/2026 — chạy TRƯỚC cả 2 chiều)
+Trước khi đụng tới một đồng nào, bot gửi lệnh `COUNT` hỏi mod đếm túi người đó.
+Mod chạy TRONG game nên chỉ thấy người đang online:
+- Đếm được → **online**, cho làm tiếp (chiều nạp còn dùng luôn số đếm để báo sớm khi túi không đủ).
+- `player not found` **hoặc** `Tried calling a member function` (main.lua:679) → **offline** → chặn,
+  báo "vào game rồi bấm lại", chưa trừ đồng nào. (Câu lỗi thứ hai là do người vừa thoát game
+  để lại PalPlayerState "xác": `IsValid` vẫn true, còn đọc được tên, nhưng gọi
+  `GetInventoryData()` là nổ — mod cũng đã vá để trả `player not found (COUNT stale)` cho chuẩn.)
+- Lỗi khác / cầu SFTP chết → **không rõ** → cũng chặn, chưa đụng tiền.
+
+Đổi lại mỗi lượt nạp/rút chậm thêm ~5-20 giây cho lượt đếm — giá của việc kiểm chắc.
+
 ### Discord → game ("Chuyển vào game", `rut_modal`)
-Bấm nút → trừ ví Discord **ngay** → gọi `/api/give-item`.
+Qua cổng online → trừ ví Discord **ngay** (giữ chỗ) → gọi `/api/give-item`.
 - Mod trả `OK` → xong.
 - Mod trả `player not found` → CHẮC CHẮN chưa giao → **hoàn ví ngay**.
 - Timeout/lỗi lạ → KHÔNG tự hoàn (có thể đã giao) → tạo đơn cho admin đối chiếu `results.log`.
 
 ### Game → Discord ("Chuyển ra Discord", `nap_modal`)
-Bấm nút → gọi `/api/take-item` **trừ item trong game TRƯỚC** → chỉ khi mod xác nhận
-`took` đúng số mới cộng ví.
+Qua cổng online (kèm kiểm túi đủ tiền) → gọi `/api/take-item` **trừ item trong game TRƯỚC**
+→ chỉ khi mod xác nhận `took` đúng số mới cộng ví.
 - Mod trả `ERROR` bất kỳ (not found / `khong du` / trừ lệch tự hoàn) → CHẮC CHẮN trong
   game không mất gì → chỉ báo người chơi, không tạo đơn.
 - Timeout → không rõ đã trừ chưa → đơn cho admin: item ĐÃ trừ thì duyệt (cộng ví),
   chưa trừ thì từ chối.
 
 ### Ba nguyên tắc an toàn tiền (đừng sửa nếu chưa hiểu vì sao)
-1. **Chống giao 2 lần:** đánh dấu `processing` TRƯỚC khi gọi. Bot crash giữa chừng thì
-   yêu cầu nằm lại `processing` và **không tự thử lại** — đẩy admin quyết. Thà chậm còn hơn
-   nhân đôi tiền.
-2. **Timeout ≠ thất bại:** mod có thể đã giao xong nhưng phản hồi về muộn.
-3. **Không tự hoàn tiền khi lỗi:** lỗi phổ biến nhất là offline. Hoàn tiền do admin bấm.
+1. **Chưa chắc online thì chưa đụng tiền:** cổng `requireOnline` chặn từ đầu; đường nào
+   nghi ngờ (unknown) cũng chặn chứ không "thử đại".
+2. **Timeout ≠ thất bại:** mod có thể đã giao/trừ xong nhưng phản hồi về muộn → thành ĐƠN
+   cho admin đối chiếu `results.log`, bot KHÔNG tự hoàn / tự cộng. Thà chậm còn hơn nhân đôi tiền.
+3. **Chỉ tự hoàn khi CHẮC CHẮN chưa mất gì:** `player not found` lúc give là mod xác nhận
+   chưa giao → hoàn ngay; mọi lỗi mập mờ khác đẩy cho admin quyết.
 
 ### Giới hạn
-- Discord → game: tối đa **2000/lần**.
+- Discord → game: tối đa **20.000/lần** (`WITHDRAW_MAX_PER_REQUEST`) — chặn thiệt hại nếu có lỗi.
 - Game → Discord: **không giới hạn** (người chơi chỉ lấy được số họ thật sự có).
 - **Chỉ đếm Dog Coin TRONG TÚI**, không tính hòm/kho ở căn cứ — hàm đếm hòm mà game
   expose chỉ chạy phía client.
+
+---
+
+## Bot Discord (BotDoMin) — nhật ký cập nhật
+
+> **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
+> (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
+
+- **19/08/2026 — Gacha pal: nút BÁN LẠI 1.000.** Quay random (2.000) trúng con không ưng
+  thì bấm 💰 Bán lại ngay cạnh nút chọn passive: hoàn 1.000, đơn tự đóng (admin khỏi giao),
+  DM báo admin, panel hiện "💰 Bán lại". Chỉ bán được khi CHƯA chốt passive/linh hồn.
+- **19/08/2026 — Nạp/rút Dogcoin: cổng BẮT BUỘC ONLINE** (xem mục "Luồng tiền" ở trên).
+  Kèm vá mod `main.lua` trả `player not found (COUNT stale)` thay vì lỗi Lua thô.
+  (Loạt commit trước đó về nút chuyển trên WEB + tự đối chiếu khi timeout đã REVERT —
+  chủ server chọn giữ luồng Discord + đơn cho admin.)
+- **19/08/2026 — Điểm danh: bỏ bonus đủ tháng (5.000), thay bằng THƯỞNG CHUỖI.** Cứ 2 ngày
+  điểm danh LIÊN TIẾP = 1 gói 800, gói dồn được, mỗi lần bấm ô "Đủ chuỗi 2" nhận 1 gói.
+  Chuỗi tính theo ngày thật (`streakRun`) nên sang tháng không đứt; người điểm danh bằng
+  bản cũ được tự BÙ gói khi mở trang (`streakTopUp`).
+- **19/08/2026 — /nghien hết ra 2 tin trùng.** Gõ lệnh trên Discord chỉ còn lời đáp riêng;
+  tin công khai "vừa lụm 100..." chỉ đăng khi điểm danh qua WEB (`claimNghien(uid, announce)`).
+- **19/08/2026 — Đơn pal chỉ hiện TÊN pal**, bỏ mã code (`Sootseer CandleGhost` → `Sootseer`)
+  ở mọi chỗ: tin trúng thưởng, DM admin, panel.
+- **19/08/2026 — Bỏ bảng 📊 thống kê người chơi** (cả bảng Discord lẫn tab panel) theo yêu cầu
+  chủ server. `_pstats` vẫn đếm ngầm; muốn dựng lại thì lục git history (`getStatsBoardData`...).
+- **19/08/2026 — Đổi tên Tài Xỉu → Big Small** (nút BIG/SMALL, CHẴN/LẺ/BÃO giữ tiếng Việt),
+  thêm điều khoản lúc đăng nhập web.
+- **19/08/2026 — 🎡 Vòng quay 2 tầng bản v4:** vòng VÉ miễn phí (không cần màu), vòng HỆ SỐ
+  chỉ quay khi đủ người + cả bàn đủ vé, khóa lượt ngay khi về quay (bịt lỗ câu giờ).
+- **Đang chờ:** hình pal cho tin trúng gacha — đã đo xong (177 pal, CDN paldb có 176 hình),
+  cách làm + code mẫu nằm ở scratchpad `pal-image-prototype.md`; chờ tải ảnh về `assets/pal/`.
 
 ---
 
