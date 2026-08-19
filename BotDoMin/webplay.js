@@ -1622,7 +1622,7 @@ const PAGE = [
     'var lim="Tối đa "+Number(GB.max||0).toLocaleString("vi-VN")+" Dogcoin mỗi lần chuyển vào game. Chuyển mất 5-20 giây, đừng tắt trang.";',
     'if(!GB.linked){s.textContent="🔗 chưa liên kết";n.textContent="Ví chưa gắn tên nhân vật - nhắn admin liên kết giúp (chỉ cần 1 lần)."; return}',
     'if(unknown){s.textContent="⚪ "+GB.gameName;',
-    'n.textContent="Bot sẽ kiểm nhân vật có online LÚC BẤM CHUYỂN - chưa online thì không cho chuyển và không trừ đồng nào. "+lim; return}',
+    'n.textContent="Không kiểm được ai đang online (server game tắt REST API) - vẫn chuyển được. Nhớ VÀO GAME trước, nếu chưa vào thì tiền tự hoàn lại. "+lim; return}',
     'if(GB.online===false){s.textContent="🔴 "+GB.gameName+" offline";n.textContent="Vào game bằng nhân vật \\""+GB.gameName+"\\" rồi bấm lại. Bấm 🔄 để kiểm tra lại."; return}',
     's.textContent="🟢 "+GB.gameName+" đang online";n.textContent=lim}',
     'function gbSend(dir){if(gbBusy||!GB||!GB.linked||GB.online===false)return;',
