@@ -782,7 +782,7 @@ const PAGE = [
     '</div>', // hết #pageStair
 
     // ================= TRANG 🎡 VÒNG QUAY (thay Blackjack — đã hủy 18/08) =================
-    // Bánh xe SVG 24 nan + 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch 120°. Server chốt kết
+    // Bánh xe SVG 27 nan + 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch 120°. Server chốt kết
     // quả trước, client chỉ diễn hoạt hình quay — không gian lận được.
     '<div id="pageWheel" class="hidden">',
     '<div class="card">',
@@ -1436,10 +1436,10 @@ const PAGE = [
     '}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
     '',
     // ===== 🎡 VÒNG QUAY MAY MẮN =====
-    // Server chốt nan trúng (idx dưới mũi tên 🟡 đỉnh); 🔵 = idx+8, 🟢 = idx+16.
+    // Server chốt nan trúng (idx dưới mũi tên 🟡 đỉnh); 🔵 = idx+9, 🟢 = idx+18.
     // Client chỉ quay bánh xe tới đúng nan — WOFF3 bù lệch đồng hồ như bên nghiện.
     // WBMODE: bánh đang vẽ — 1 = VÒNG VÉ (15 nan tiền, 1 mũi tên) · 2 = VÒNG HỆ SỐ
-    // (24 nan x..., 3 mũi tên). WSEQ1 = seq vòng vé đã diễn (như WSEQ0 của vòng hệ số).
+    // (27 nan x..., 3 mũi tên). WSEQ1 = seq vòng vé đã diễn (như WSEQ0 của vòng hệ số).
     'var WST=null,WOFF3=0,WBMODE=0,WSEQ0=0,WSEQ1=0,WANIM=false,WROT=0,WSEL=localStorage.getItem("wh_color")||"yellow";',
     'var WEM={yellow:"🟡",blue:"🔵",green:"🟢"};',
     'function whMode(){if(!WST)return 1;return (WST.status==="stake"||WST.status==="spinning")?2:1}',
@@ -1470,18 +1470,18 @@ const PAGE = [
     '$("whWrap").classList.toggle("one",mode===1);',   // vòng vé: giấu 2 mũi tên phụ
     'var segs=whSegs(),N=segs.length,step=360/N,R=138,cx=150,cy=150;',
     'var FILL={"1.1":"#607d8b","1.2":"#3949ab","1.3":"#00838f","1.4":"#1e8e4d","1.5":"#9c27b0","1.6":"#c96f14","1.7":"#ad1457","1.8":"#7c3aed","2":"#2e7dd1","2.2":"#d13b55","10":"#f0b90b"};',
-    'var FILL1={"1000":"#1e8e4d","1500":"#2e7dd1","2000":"#f0b90b"};',   // vé: xanh lá / dương / vàng
+    'var FILL1={"1500":"#1e8e4d","2000":"#2e7dd1","2500":"#f0b90b"};',   // vé: xanh lá / dương / vàng
     'var h=\'<circle cx="150" cy="150" r="146" fill="#0e1016"/><g id="whRot">\';',
     'for(var i=0;i<N;i++){var m=segs[i];',
     'var a0=(i*step-90)*Math.PI/180,a1=((i+1)*step-90)*Math.PI/180;',
     'var x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0),x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);',
     'var fill=mode===1?(FILL1[String(m)]||"#2c3350"):(FILL[String(m)]||"#2c3350");',
     'h+=\'<path d="M150 150L\'+x0.toFixed(1)+" "+y0.toFixed(1)+\'A\'+R+" "+R+\' 0 0 1 \'+x1.toFixed(1)+" "+y1.toFixed(1)+\'Z" fill="\'+fill+\'" stroke="#0e1016" stroke-width="1.5"/>\';',
-    // Chữ xoay DỌC THEO BÁN KÍNH (đọc từ tâm ra ngoài) như bàn quay thật — 24 nan
+    // Chữ xoay DỌC THEO BÁN KÍNH (đọc từ tâm ra ngoài) như bàn quay thật — 27 nan
     // chữ nằm ngang theo vành là đè lên nhau, xoay dọc thì mỗi nan một làn riêng.
     'var mid=i*step+step/2,am=(mid-90)*Math.PI/180,tx=cx+92*Math.cos(am),ty=cy+92*Math.sin(am);',
     'var lbl=mode===1?m.toLocaleString("vi-VN"):(m>=10?"x10 🏆":"x"+m);',
-    'var tfill=mode===1?(m>=2000?"#3d2c05":"#fff"):(m>=10?"#3d2c05":"#fff");',
+    'var tfill=mode===1?(m>=2500?"#3d2c05":"#fff"):(m>=10?"#3d2c05":"#fff");',   // chữ tối trên nan vàng (vé đắt nhất / x10)
     'var tsz=mode===1?14:(m>=10?16:13);',
     'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+tfill+\'" font-size="\'+tsz+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(mid-90)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+lbl+"</text>"}',
     'h+=\'</g><circle cx="150" cy="150" r="30" fill="#161926" stroke="#2a2f42" stroke-width="2"/><text x="150" y="150" font-size="22" text-anchor="middle" dominant-baseline="central">\'+(mode===1?"🎟️":"🎡")+\'</text>\';',
@@ -1557,7 +1557,7 @@ const PAGE = [
     'var hh2=Math.floor(left/3600000),mm2=Math.floor(left%3600000/60000);',
     'b.textContent="⏳ KHUNG NÀY QUAY RỒI - CÒN "+hh2+" GIỜ "+(mm2<10?"0":"")+mm2+" PHÚT";return}',
     'b.disabled=false;',
-    'b.textContent="🎟️ VÀO BÀN - QUAY VÉ MIỄN PHÍ (vé 1.000–2.000 trừ sau)"}',
+    'b.textContent="🎟️ VÀO BÀN - QUAY VÉ MIỄN PHÍ (vé 1.500–2.500 trừ sau)"}',
     // chọn màu (chỉ hiện ở vòng hệ số): đang ngồi thì gửi server luôn
     'function whPickC(c){WSEL=c;localStorage.setItem("wh_color",c);',
     'if(WST&&WST.seated&&WST.myColor!==c){api("/api/wheel/ready",{color:c}).then(function(j){WST=j;whRender();whBtn();toast("Mũi tên của bạn: "+WEM[c])}).catch(function(e){toast("❌ "+e.message)})}',

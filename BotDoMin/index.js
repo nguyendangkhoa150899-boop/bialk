@@ -1487,26 +1487,29 @@ const webStairsApi = {
 };
 
 // ===== 🎡 VÒNG QUAY MAY MẮN NHÓM — thay Blackjack (cả server thống nhất 18/08) =====
-// Vé cố định, CHẮC CHẮN thắng (sàn x1.2). 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch nhau
-// 120° (= 8 nan); mỗi người chọn 1 màu, CHỌN TRÙNG thoải mái — cùng màu ăn cùng nan.
+// Vé cố định, CHẮC CHẮN thắng (sàn x1.1). 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch nhau
+// 120° (= 9 nan); mỗi người chọn 1 màu, CHỌN TRÙNG thoải mái — cùng màu ăn cùng nan.
 // Đủ N người ready (admin chỉnh ở panel, mặc định 3) thì NÚT QUAY SÁNG LÊN —
 // KHÔNG tự quay: ai trong bàn bấm nút là quay MỘT vòng chung cho tất cả.
 // Mỗi người 1 lượt mỗi khung giờ VN: 00:00–11:59 và 12:00–23:59 (reset 00:00 & 12:00).
 const WHEEL_TICKET = 1000;   // chỉ còn làm fallback hoàn vé pending đời cũ (thiếu amount)
 const WHEEL_COLORS = ['yellow', 'blue', 'green'];
-const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 8, green: 16 };
-// 24 nan (PHẢI chia hết cho 3 — mũi tên lệch 120° = 8 nan), thứ tự XÁO LỘN XỘN
+const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 9, green: 18 };
+// 27 nan (PHẢI chia hết cho 3 — mũi tên lệch 120° = 9 nan), thứ tự XÁO LỘN XỘN
 // theo yêu cầu chủ server, không nhịp đối xứng, không 2 nan giống nhau kề nhau.
-// x1.1×3 · x1.2×3 · x1.3×3 · x1.4×3 · x1.5×2 · x1.6×2 · x1.7×2 · x1.8×2 ·
-// x2×2 · x2.2×1 · x10×1 (độc đắc ~4,2%). Kỳ vọng ~x1.85 vé — quà định kỳ.
-const WHEEL_SEGMENTS = [1.2, 1.5, 1.1, 1.8, 1.3, 2.0, 1.4, 1.1, 1.7, 1.3, 10, 1.2, 1.6, 1.4, 1.1, 2.2, 1.3, 1.5, 1.2, 1.8, 1.4, 2.0, 1.6, 1.7];
+// 19/08: chủ server xin thêm 2 nan 1.3 — thêm hẳn 3 để tổng chia hết cho 3,
+// giữ 3 mũi tên đúng 120° (26 nan là mũi tên lệch khỏi tâm nan).
+// x1.1×3 · x1.2×3 · x1.3×6 · x1.4×3 · x1.5×2 · x1.6×2 · x1.7×2 · x1.8×2 ·
+// x2×2 · x2.2×1 · x10×1 (độc đắc ~3,7%). Kỳ vọng ~x1.79 vé — quà định kỳ.
+const WHEEL_SEGMENTS = [1.2, 1.5, 1.1, 1.8, 1.3, 2.0, 1.4, 1.3, 1.1, 1.7, 1.3, 10, 1.2, 1.6, 1.3, 1.4, 1.1, 2.2, 1.3, 1.5, 1.2, 1.8, 1.3, 1.4, 2.0, 1.6, 1.7];
 
-// ===== VÒNG VÉ (vòng 1) — 15 nan: 1.000×5 · 1.500×5 · 2.000×5 xen kẽ, MỘT mũi tên =====
+// ===== VÒNG VÉ (vòng 1) — 15 nan: 1.500×5 · 2.000×5 · 2.500×5 xen kẽ, MỘT mũi tên =====
+// (19/08 nâng giá vé 1.000/1.500/2.000 -> 1.500/2.000/2.500 theo yêu cầu chủ server)
 // Vào bàn + quay vòng vé MIỄN PHÍ. Quay ra giá nào thì TRỪ ĐÚNG GIÁ ĐÓ mỗi người
 // để được quay vòng hệ số; ai không đủ tiền lúc vé chốt thì bị mời ra (không mất
 // gì, không mất lượt). Xen kẽ không 2 nan giống kề nhau (kể cả chỗ nối vòng tròn).
-const WHEEL_STAGE1 = [1000, 1500, 2000, 1000, 2000, 1500, 1000, 1500, 2000, 1500, 1000, 2000, 1500, 1000, 2000];
-const WHEEL_MAX_TICKET = 2000;   // vé đắt nhất (hiển thị) - fallback hoàn pending
+const WHEEL_STAGE1 = [1500, 2000, 2500, 1500, 2500, 2000, 1500, 2000, 2500, 2000, 1500, 2500, 2000, 1500, 2500];
+const WHEEL_MAX_TICKET = 2500;   // vé đắt nhất (hiển thị) - fallback hoàn pending
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
