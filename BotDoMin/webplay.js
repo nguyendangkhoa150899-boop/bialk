@@ -1469,7 +1469,8 @@ const PAGE = [
     'function whBuild(mode){if(!WST||WBMODE===mode)return;WBMODE=mode;WROT=0;',
     '$("whWrap").classList.toggle("one",mode===1);',   // vòng vé: giấu 2 mũi tên phụ
     'var segs=whSegs(),N=segs.length,step=360/N,R=138,cx=150,cy=150;',
-    'var FILL={"1.1":"#607d8b","1.2":"#3949ab","1.3":"#00838f","1.4":"#1e8e4d","1.5":"#9c27b0","1.6":"#c96f14","1.7":"#ad1457","1.8":"#7c3aed","2":"#2e7dd1","2.2":"#d13b55","10":"#f0b90b"};',
+    'var FILL={"1.5":"#3949ab","1.8":"#00838f","2":"#1e8e4d","2.5":"#9c27b0","3":"#c96f14","5":"#d13b55","10":"#f0b90b"};',   // bậc mới 19/08: sàn 1.5, thêm 3/5
+
     'var FILL1={"1500":"#1e8e4d","2000":"#2e7dd1","2500":"#f0b90b"};',   // vé: xanh lá / dương / vàng
     'var h=\'<circle cx="150" cy="150" r="146" fill="#0e1016"/><g id="whRot">\';',
     'for(var i=0;i<N;i++){var m=segs[i];',

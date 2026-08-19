@@ -1487,7 +1487,7 @@ const webStairsApi = {
 };
 
 // ===== 🎡 VÒNG QUAY MAY MẮN NHÓM — thay Blackjack (cả server thống nhất 18/08) =====
-// Vé cố định, CHẮC CHẮN thắng (sàn x1.1). 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch nhau
+// Vé cố định, CHẮC CHẮN thắng (sàn x1.5). 3 mũi tên 🟡🔵🟢 gắn quanh vành lệch nhau
 // 120° (= 9 nan); mỗi người chọn 1 màu, CHỌN TRÙNG thoải mái — cùng màu ăn cùng nan.
 // Đủ N người ready (admin chỉnh ở panel, mặc định 3) thì NÚT QUAY SÁNG LÊN —
 // KHÔNG tự quay: ai trong bàn bấm nút là quay MỘT vòng chung cho tất cả.
@@ -1497,11 +1497,11 @@ const WHEEL_COLORS = ['yellow', 'blue', 'green'];
 const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 9, green: 18 };
 // 27 nan (PHẢI chia hết cho 3 — mũi tên lệch 120° = 9 nan), thứ tự XÁO LỘN XỘN
 // theo yêu cầu chủ server, không nhịp đối xứng, không 2 nan giống nhau kề nhau.
-// 19/08: chủ server xin thêm 2 nan 1.3 — thêm hẳn 3 để tổng chia hết cho 3,
-// giữ 3 mũi tên đúng 120° (26 nan là mũi tên lệch khỏi tâm nan).
-// x1.1×3 · x1.2×3 · x1.3×6 · x1.4×3 · x1.5×2 · x1.6×2 · x1.7×2 · x1.8×2 ·
-// x2×2 · x2.2×1 · x10×1 (độc đắc ~3,7%). Kỳ vọng ~x1.79 vé — quà định kỳ.
-const WHEEL_SEGMENTS = [1.2, 1.5, 1.1, 1.8, 1.3, 2.0, 1.4, 1.3, 1.1, 1.7, 1.3, 10, 1.2, 1.6, 1.3, 1.4, 1.1, 2.2, 1.3, 1.5, 1.2, 1.8, 1.3, 1.4, 2.0, 1.6, 1.7];
+// 19/08 BUFF theo yêu cầu chủ server: bỏ đám nan lẻ 1.1–1.4 (quay ra +200 nhìn
+// chán), nâng sàn lên x1.5 + thêm bậc x3/x5 cho lần quay nào cũng đã tay.
+// x1.5×9 · x1.8×6 · x2×5 · x2.5×3 · x3×2 · x5×1 · x10×1
+// (độc đắc ~3,7%). Kỳ vọng ~x2.33 vé — quà định kỳ, nhà cái chịu lỗ vòng này.
+const WHEEL_SEGMENTS = [1.5, 2.0, 1.8, 2.5, 1.5, 3.0, 1.8, 1.5, 2.0, 5.0, 1.5, 1.8, 10, 1.5, 2.5, 2.0, 1.8, 1.5, 3.0, 2.0, 1.5, 1.8, 2.5, 1.5, 2.0, 1.5, 1.8];
 
 // ===== VÒNG VÉ (vòng 1) — 15 nan: 1.500×5 · 2.000×5 · 2.500×5 xen kẽ, MỘT mũi tên =====
 // (19/08 nâng giá vé 1.000/1.500/2.000 -> 1.500/2.000/2.500 theo yêu cầu chủ server)
