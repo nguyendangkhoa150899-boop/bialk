@@ -3100,6 +3100,27 @@ const TICKET_KIND_LABEL = {
     'to-discord': '💬 Chuyển Dog Coin ra Discord',
 };
 
+// CỔNG BẮT BUỘC ONLINE cho nạp/rút (yêu cầu chủ server): hỏi mod đếm túi người đó
+// TRƯỚC khi đụng tới tiền. Mod chạy TRONG game nên chỉ thấy người đang online:
+//   đếm được                         -> chắc chắn ONLINE (kèm luôn số dư túi)
+//   "player not found"               -> OFFLINE
+//   "Tried calling a member function"-> cũng là OFFLINE: người vừa thoát game để lại
+//        PalPlayerState "xác" (IsValid vẫn true, còn đọc được tên) nhưng mod gọi
+//        GetInventoryData() là nổ đúng câu lỗi này (main.lua:679)
+//   lỗi khác / cầu SFTP chết         -> KHÔNG RÕ -> cũng chặn: chưa chắc online thì
+//        không cho thao tác, chưa đụng đồng nào của ai.
+// Chậm hơn (~5-20s cho lượt đếm) - đó là giá của việc kiểm chắc trước khi chuyển.
+async function requireOnline(gameName) {
+    let c = null, err = null;
+    try { c = await pal.countItem(gameName, 'DogCoin'); } catch (e) { err = e; }
+    const msg = (c && c.message) || (err && err.message) || '';
+    if (c && c.ok && typeof c.count === 'number') return { online: true, count: c.count };
+    if (/player not found/i.test(msg) || /Tried calling a member function/i.test(msg)) {
+        return { online: false };
+    }
+    return { unknown: true, msg };
+}
+
 function createTicket(fields) {
     const req = {
         id: withdrawSeq++,
@@ -3704,8 +3725,21 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
             }
 
-            await interaction.deferReply({ ephemeral: true }); // take mất 5-20s, quá deadline 3s của Discord
-            writeLog('ADMIN', `[NẠP TỰ ĐỘNG] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dog Coin từ game ("${gameName}") ra Discord`);
+            await interaction.deferReply({ ephemeral: true }); // đếm + take mỗi lượt 5-20s, quá deadline 3s của Discord
+
+            // BẮT BUỘC ONLINE trước, chưa online thì không thao tác gì cả
+            const on = await requireOnline(gameName);
+            if (on.online === false) {
+                return interaction.editReply(`🔴 Nhân vật **${gameName}** chưa online trong game - chưa trừ gì cả.\nVào game rồi bấm lại nhé; nếu sai tên thì nhắn **admin** sửa liên kết.`);
+            }
+            if (on.unknown) {
+                return interaction.editReply(`⏳ Chưa hỏi được server game nên chưa dám thao tác - chưa trừ gì cả. Thử lại sau chút nhé.`);
+            }
+            if (on.count < amt) {
+                return interaction.editReply(`❌ Trong túi bạn chỉ có **${on.count.toLocaleString()}** Dog Coin, không đủ ${amt.toLocaleString()} - chưa trừ gì cả.\n(Chỉ tính Dog Coin **trong túi** - để trong hòm thì cầm ra túi trước nhé.)`);
+            }
+
+            writeLog('ADMIN', `[NẠP TỰ ĐỘNG] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dog Coin từ game ("${gameName}") ra Discord (túi đang có ${on.count})`);
 
             let r = null, err = null;
             try { r = await pal.takeItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
@@ -3761,7 +3795,17 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
             }
 
-            await interaction.deferReply({ ephemeral: true }); // give mất 5-20s, quá deadline 3s của Discord
+            await interaction.deferReply({ ephemeral: true }); // đếm + give mỗi lượt 5-20s, quá deadline 3s của Discord
+
+            // BẮT BUỘC ONLINE trước, chưa online thì không trừ ví, không thao tác gì cả
+            const on = await requireOnline(gameName);
+            if (on.online === false) {
+                return interaction.editReply(`🔴 Nhân vật **${gameName}** chưa online trong game - chưa trừ đồng nào của bạn.\nVào game rồi bấm rút lại nhé; nếu sai tên thì nhắn **admin** sửa liên kết.`);
+            }
+            if (on.unknown) {
+                return interaction.editReply(`⏳ Chưa hỏi được server game nên chưa dám thao tác - chưa trừ đồng nào. Thử lại sau chút nhé.`);
+            }
+
             updatePoints(userId, -amt); // trừ ví TRƯỚC (giữ chỗ)
             logDog('to-game', userId, interaction.user.tag, -amt, `rút vào game (tự động, nhân vật ${gameName})`);
             writeLog('ADMIN', `[RÚT TỰ ĐỘNG] ${interaction.user.tag} chuyển ${amt.toLocaleString()} Dogcoin vào game cho "${gameName}"`);

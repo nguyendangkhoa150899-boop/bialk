@@ -680,6 +680,12 @@ local function countItem(playerName, itemId)
     end)
     if ok then
         appendPlayerResult(playerName, string.format("OK COUNT %s=%d", itemId, n))
+    elseif tostring(n):find("Tried calling a member function", 1, true) then
+        -- Người vừa thoát game để lại PalPlayerState "xác": findPlayerState vẫn thấy
+        -- (IsValid true, còn đọc được tên) nhưng gọi GetInventoryData() là nổ đúng câu
+        -- lỗi này. Với bên gọi thì nghĩa chỉ có một: người này KHÔNG còn trong game
+        -- -> báo chuẩn "player not found" để bot xử như ca offline bình thường.
+        appendPlayerResult(playerName, "ERROR player not found (COUNT stale) | names=[" .. table.concat(names, ", ") .. "]")
     else
         appendPlayerResult(playerName, string.format("ERROR COUNT %s: %s", itemId, tostring(n)))
     end
