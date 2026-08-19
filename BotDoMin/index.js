@@ -3171,10 +3171,25 @@ async function gameGate(userId) {
     return { ok: true, gameName, who };
 }
 
+// KIỂM ONLINE KHÔNG CẦN REST API: hỏi mod đếm túi người đó. Mod chạy TRONG game nên
+// chỉ thấy người đang online -> đếm được = chắc chắn online, "player not found" =
+// chắc chắn offline. Chậm hơn REST (5-20s) nhưng luôn dùng được vì đi qua cầu SFTP
+// mà server đang chạy. Tiện thể lấy luôn mốc số dư để đối chiếu nếu giao bị timeout.
+async function probeInGame(gameName) {
+    let c = null, err = null;
+    try { c = await pal.countItem(gameName, 'DogCoin'); } catch (e) { err = e; }
+    const msg = (c && c.message) || (err && err.message) || '';
+    if (c && c.ok && typeof c.count === 'number') return { online: true, count: c.count };
+    if (/player not found/i.test(msg)) return { online: false, msg };
+    return { unknown: true, msg };
+}
+
 // ---- Discord -> game (rút) ----
-// Trừ ví TRƯỚC rồi mới giao. Mod báo "player not found" là chắc chắn CHƯA giao ->
-// hoàn ngay. Timeout/lỗi lạ thì KHÔNG tự hoàn (có thể đã giao) -> đối chiếu bằng
-// cách ĐẾM lại túi trong game sau 45s; vẫn không rõ mới lập đơn cho admin.
+// CHẶN TỪ CỬA: chưa online thì KHÔNG cho giao dịch, chưa trừ đồng nào (yêu cầu của
+// chủ server - không muốn thấy đơn chờ duyệt nữa). Cầu SFTP hỏng cũng chặn luôn:
+// thà không cho chuyển còn hơn trừ ví rồi treo đơn.
+// Chỉ khi đã online + đã giao mà mod im lặng (timeout) thì mới đối chiếu bằng cách
+// ĐẾM lại túi - lúc đó luôn có mốc trước nên tự xử được, không cần admin.
 async function transferToGame(userId, username, amt) {
     amt = Math.floor(Number(amt));
     if (!Number.isInteger(amt) || amt <= 0) return { error: 'Số Dogcoin không hợp lệ' };
@@ -3188,13 +3203,15 @@ async function transferToGame(userId, username, amt) {
     if (gate.error) return gate;
     const gameName = gate.gameName;
 
-    // Đếm túi TRƯỚC khi giao: có mốc này thì lúc timeout mới tự đối chiếu được,
-    // khỏi phải nhờ admin. Đếm lỗi thì vẫn cho chuyển (chỉ mất khả năng tự đối chiếu).
-    let before = null;
-    try {
-        const c = await pal.countItem(gameName, 'DogCoin');
-        if (c && typeof c.count === 'number') before = c.count;
-    } catch { /* không sao, chỉ là mất mốc đối chiếu */ }
+    // CỬA CHÍNH: hỏi mod trong game. Không online -> chặn, chưa trừ gì.
+    const probe = await probeInGame(gameName);
+    if (probe.online === false) {
+        return { error: `Nhân vật "${gameName}" đang KHÔNG online trong game. Vào game rồi bấm lại - chưa trừ đồng nào của bạn.` };
+    }
+    if (probe.unknown) {
+        return { error: `Chưa nói chuyện được với server game - CHƯA trừ đồng nào. Thử lại sau chút nhé.${probe.msg ? ` (${probe.msg.slice(0, 120)})` : ''}` };
+    }
+    const before = probe.count;   // mốc để đối chiếu nếu giao bị timeout
 
     updatePoints(userId, -amt);   // giữ chỗ
     logDog('to-game', userId, username, -amt, `chuyển vào game (tự động, nhân vật ${gameName})`);
@@ -3223,21 +3240,24 @@ async function transferToGame(userId, username, amt) {
 }
 
 // Chờ mod xử lý xong hàng đợi rồi ĐẾM lại túi: tăng đủ số -> coi như đã giao;
-// không tăng -> hoàn ví. Không đếm được (đếm lỗi / không có mốc trước) mới lập đơn.
+// không tăng -> hoàn ví. THỬ LẠI 3 lần cách nhau 30s vì cầu SFTP có lúc chậm.
+// Cả 3 lần đều không đếm được mới lập đơn (rất khó xảy ra: muốn tới được đây thì
+// lúc bấm chuyển cầu SFTP đã phải sống, xem probeInGame).
 async function autoVerifyGive({ userId, username, gameName, amt, before, msg }) {
-    await new Promise(r => setTimeout(r, 45000));
-    let after = null;
-    if (before !== null) {
+    for (let lan = 1; lan <= 3; lan++) {
+        await new Promise(r => setTimeout(r, lan === 1 ? 45000 : 30000));
+        let after = null;
         try {
             const c = await pal.countItem(gameName, 'DogCoin');
             if (c && typeof c.count === 'number') after = c.count;
-        } catch { /* để rơi xuống nhánh lập đơn */ }
-    }
-    if (after !== null) {
+        } catch { /* thử lại lượt sau */ }
+        if (after === null) continue;
         if (after >= before + amt) {
-            writeLog('ADMIN', `[CHUYỂN VÀO GAME] Tự đối chiếu OK: "${gameName}" túi ${before} -> ${after}, đã nhận đủ ${amt.toLocaleString()}`);
+            writeLog('ADMIN', `[CHUYỂN VÀO GAME] Tự đối chiếu OK (lần ${lan}): "${gameName}" túi ${before} -> ${after}, đã nhận đủ ${amt.toLocaleString()}`);
             return;
         }
+        // Lần đầu chưa thấy tăng có thể do mod còn xếp hàng -> chờ thêm rồi xem lại
+        if (lan < 3) continue;
         updatePoints(userId, amt);
         logDog('refund', userId, username, amt, 'hoàn: tự đối chiếu thấy game chưa nhận');
         saveDbNow();
@@ -3245,7 +3265,7 @@ async function autoVerifyGive({ userId, username, gameName, amt, before, msg }) 
         return;
     }
     const req = createTicket({ kind: 'to-game', userId, username, ingameName: gameName, amount: amt });
-    writeLog('ADMIN', `[CHUYỂN VÀO GAME LỖI] #${req.id} ${username} ${amt} -> "${gameName}" | ${msg || 'timeout'} | không đếm được túi để tự đối chiếu`);
+    writeLog('ADMIN', `[CHUYỂN VÀO GAME LỖI] #${req.id} ${username} ${amt} -> "${gameName}" | ${msg || 'timeout'} | 3 lần đều không đếm được túi`);
     sendTicketToAdmin(req).catch(() => { });
 }
 
@@ -3258,7 +3278,20 @@ async function transferToDiscord(userId, username, amt) {
     if (gate.error) return gate;
     const gameName = gate.gameName;
 
-    writeLog('ADMIN', `[CHUYỂN RA DISCORD] ${username} ${amt.toLocaleString()} Dogcoin từ "${gameName}"`);
+    // CỬA CHÍNH giống chiều kia: chưa online thì chặn luôn, đồng thời biết trước
+    // trong túi có bao nhiêu để báo lỗi cho tử tế.
+    const probe = await probeInGame(gameName);
+    if (probe.online === false) {
+        return { error: `Nhân vật "${gameName}" đang KHÔNG online trong game. Vào game rồi bấm lại.` };
+    }
+    if (probe.unknown) {
+        return { error: `Chưa nói chuyện được với server game - chưa trừ gì cả. Thử lại sau chút nhé.${probe.msg ? ` (${probe.msg.slice(0, 120)})` : ''}` };
+    }
+    if (probe.count < amt) {
+        return { error: `Trong túi bạn chỉ có ${probe.count.toLocaleString()} Dog Coin, không đủ ${amt.toLocaleString()} - chưa trừ gì cả. (Chỉ tính Dog Coin TRONG TÚI, để trong hòm thì cầm ra trước.)` };
+    }
+
+    writeLog('ADMIN', `[CHUYỂN RA DISCORD] ${username} ${amt.toLocaleString()} Dogcoin từ "${gameName}" (túi đang có ${probe.count})`);
     let r = null, err = null;
     try { r = await pal.takeItem(gameName, 'DogCoin', amt); } catch (e) { err = e; }
 
