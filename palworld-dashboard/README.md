@@ -141,6 +141,8 @@ Qua cổng online (kèm kiểm túi đủ tiền) → gọi `/api/take-item` **t
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **19/08/2026 — Cân lại hộp may mắn 🍀:** khiên 🛡️ 25% → 20%, lì xì 💰 (hoàn 20% cược)
+  35% → 40%; giữ nguyên đào/tên lửa 15%, hụt 20%, nổ hũ 5%. Áp cả Dò Mìn lẫn Leo Thang.
 - **19/08/2026 — Fix NỔ HŨ 🏆 ăn x2 (Dò Mìn + Leo Thang).** Trúng hộp 🏆 giờ CHỐT VÁN
   ngay: trả hũ (min của giải cao nhất ván đó và trần x2000 cược) rồi kết thúc — trước đây
   ván vẫn chạy tiếp nên người chơi bấm dừng được trả THÊM lần nữa. Client không phải sửa
