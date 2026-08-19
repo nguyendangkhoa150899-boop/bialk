@@ -2047,7 +2047,9 @@ client.once('ready', async (c) => {
                         const who = await findOnlineByName(gameName);
                         return { linked: true, online: !!who, gameName };
                     } catch (e) {
-                        return { linked: true, online: false, gameName, error: e.message || 'lỗi kết nối' };
+                        // online = null nghĩa là KHÔNG KIỂM ĐƯỢC (REST API tắt), khác hẳn
+                        // false (đã kiểm và người chơi offline). Web vẫn cho bấm chuyển.
+                        return { linked: true, online: null, gameName, checkOff: true };
                     }
                 },
                 toGame: (uid, amt) => transferToGame(uid, getUserData(uid).name || uid, amt),
@@ -3145,18 +3147,24 @@ async function findOnlineByName(name) {
 }
 
 // Kiểm tra chung trước mọi lần chuyển: có liên kết tên chưa, nhân vật có online không.
+//
+// KHÔNG CHẶN khi không kiểm được: danh sách online cần REST API của server Palworld,
+// mà dashboard có thể đang tắt REST (chỉ chạy cầu SFTP). Chặn cứng ở đây là khoá luôn
+// tính năng chuyển tiền dù cầu SFTP vẫn tốt. Không kiểm được thì cứ cho chuyển - mod
+// trong game sẽ báo "player not found" nếu offline, và tiền TỰ HOÀN (xem transferToGame).
 async function gameGate(userId) {
     const u = getUserData(userId);
     const gameName = (u.ingameName || '').trim();
     if (!gameName) {
         return { error: 'Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn admin liên kết giúp (chỉ cần 1 lần).' };
     }
-    let who = null;
+    let who = null, checkErr = null;
     try {
         who = await findOnlineByName(gameName);
     } catch (e) {
-        return { error: `Chưa hỏi được server game (${e.message || 'lỗi kết nối'}) - thử lại sau chút nhé.` };
+        checkErr = e.message || 'lỗi kết nối';
     }
+    if (checkErr) return { ok: true, gameName, unknown: true, checkErr };
     if (!who) {
         return { error: `Nhân vật "${gameName}" đang KHÔNG online. Vào game trước rồi bấm lại - làm vậy để tiền không bị treo giữa đường.` };
     }
