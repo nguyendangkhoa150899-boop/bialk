@@ -1255,7 +1255,7 @@ function renderPalOrders(){
     '<div style="padding:8px 0;border-bottom:1px solid var(--line)'+(isDone?';opacity:.55':'')+'">'+
       '<div class="row" style="justify-content:space-between;align-items:flex-start">'+
         '<div>'+
-          '<b>#'+o.id+' '+esc(o.palName)+'</b> <span class="muted" style="font-size:12px">'+esc(o.palCode)+'</span>'+
+          '<b>#'+o.id+' '+esc(o.palName)+'</b>'+
           ' · '+(o.kind==='random'?'🎲':'🎯')+' '+Number(o.price||0).toLocaleString()+
           '<br><span class="muted" style="font-size:12px">'+esc(o.username||o.userId)+' · '+esc(o.time||'')+
             (isDone&&o.doneAt?' · xong '+esc(o.doneAt):'')+'</span>'+

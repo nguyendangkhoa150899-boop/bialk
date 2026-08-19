@@ -2951,7 +2951,7 @@ async function sendPalOrderToAdmin(order) {
         `🐾 **ĐƠN PAL MỚI** #${order.id}\n` +
         `Người mua: <@${order.userId}> (\`${order.username}\`)\n` +
         `Giá: **${order.price.toLocaleString()}** Dogcoin (${order.kind === 'random' ? '🎲 ngẫu nhiên' : '🎯 tự chọn'})\n\n` +
-        `**Pal: ${order.palName}** \`${order.palCode}\`\n` +
+        `**Pal: ${order.palName}**\n` +
         `• Boss (Alpha), ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
         `• Linh hồn ${PAL_SHOP.soulPercent}%: ${order.souls || '(đang chọn - sẽ có tin bổ sung)'}\n` +
         `• Passive: ${order.passives || '(đang chọn - sẽ có tin bổ sung)'}\n\n` +
@@ -3531,7 +3531,7 @@ client.on('interactionCreate', async interaction => {
                 try {
                     const admin = await client.users.fetch(PAL_SHOP.adminDiscordId);
                     await admin.send(
-                        `📝 **BỔ SUNG ĐƠN PAL** #${oid} - **${order.palName}** (\`${order.palCode}\`) của \`${order.username}\`\n` +
+                        `📝 **BỔ SUNG ĐƠN PAL** #${oid} - **${order.palName}** của \`${order.username}\`\n` +
                         `• Linh hồn ${PAL_SHOP.soulPercent}%: ${souls}\n` +
                         `• Passive: ${passives}`
                     );
