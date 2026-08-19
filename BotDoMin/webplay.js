@@ -602,7 +602,7 @@ const PAGE = [
     '#whPick button.y{color:#f5c518}#whPick button.b{color:#60a5fa}#whPick button.g{color:#4ade80}',
     '#whPick button.sel{border-color:currentColor;background:#1a1e2a}',
     '#whRes{display:none;margin-top:10px;font-size:14px;font-weight:700;line-height:1.6;text-align:center;background:#12141a;border:1px solid var(--line);border-radius:12px;padding:10px}',
-    '#whGo:disabled,#whDemo:disabled,#whOut:disabled{opacity:.55}',
+    '#whGo:disabled,#whOut:disabled{opacity:.55}',
     // đủ người -> nút QUAY phát sáng nhấp nháy vàng cho cả bàn thấy mà bấm
     '#whGo.arm{background:linear-gradient(180deg,#ffd977,#e0a63f);color:#3d2c05;animation:whArm 1s ease-in-out infinite}',
     '@keyframes whArm{0%,100%{box-shadow:0 0 6px #f5c51877}50%{box-shadow:0 0 26px #f5c518ee;transform:scale(1.02)}}',
@@ -747,7 +747,7 @@ const PAGE = [
     '<div id="pageWheel" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎡 Vòng Quay May Mắn</h2><div class="muted" id="whStat">—</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">HAI vòng: <b>VÒNG VÉ</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>1.000 / 1.500 / 2.000</b> — vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì). Rồi tới <b>VÒNG HỆ SỐ</b> nhân tiền vé: bét x1.1, ĐỘC ĐẮC <b>x10</b> 🏆 — chọn 1 màu mũi tên (trùng nhau thoải mái). Đủ người nút QUAY sáng — ai trong bàn bấm cũng được. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px"><b>VÒNG VÉ</b> quay miễn phí ra giá vé chung → cả bàn đủ tiền vé là quay <b>VÒNG HỆ SỐ</b> ăn vé × hệ số, ĐỘC ĐẮC <b>x10</b> 🏆. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
     '<div id="whWrap">',
     '<svg id="whSvg" viewBox="0 0 300 300"></svg>',
     '<div class="warr y"><div class="tri"></div></div>',
@@ -763,7 +763,6 @@ const PAGE = [
     '<div id="whRes"></div>',
     '<button class="btn-full" id="whGo" onclick="whGoClick()">🎟️ VÀO BÀN</button>',
     '<button id="whOut" style="display:none;width:100%;margin-top:8px;background:#232735;font-size:13px" onclick="whOutClick()">❌ Rút khỏi bàn (chưa mất gì)</button>',
-    '<button id="whDemo" style="width:100%;margin-top:8px;background:#232735;font-size:13px" onclick="whDemo()">🎠 Quay thử cho biết (không tính tiền, không cần vé)</button>',
     '</div>',
     '<div class="card"><h2>🕘 10 vòng gần nhất</h2><div id="whHist" class="muted" style="font-size:13px">Chưa có vòng nào.</div></div>',
     '</div>', // hết #pageWheel
@@ -1456,14 +1455,9 @@ const PAGE = [
     'function whAnimate1(sp){WANIM=true;$("whRes").style.display="none";whBtn();',
     'whSpinTo(sp.idx,function(){WANIM=false;whShowRes1(sp,false);wheelSync()},true)}',
     'function whShowRes1(sp,quiet){var box=$("whRes");if(!box)return;',
-    'var h="🎟️ VÉ VÒNG NÀY: <b>"+sp.price.toLocaleString("vi-VN")+"</b> Dogcoin — đã trừ mỗi người<br>Giờ quay VÒNG HỆ SỐ để nhân tiền vé!";',
-    // ai không đủ tiền vé thì bị mời ra — nêu tên cho cả bàn biết vì sao thiếu người
-    'var kk=sp.kicked||[];',
-    'if(kk.length)h+="<br>❌ Không đủ vé, mời ra (không mất gì): "+kk.map(function(k){return esc(k.name)}).join(", ");',
-    'box.innerHTML=h;box.style.display="block";',
-    'var meKicked=false;kk.forEach(function(k){if(WST&&k.userId===WST.me)meKicked=true});',
-    'if(!quiet){if(meKicked)toast("❌ Bạn không đủ "+sp.price.toLocaleString("vi-VN")+" mua vé — bị mời ra, không mất gì");',
-    'else toast("🎟️ Vé "+sp.price.toLocaleString("vi-VN")+" — đã trừ, quay vòng hệ số!")}',
+    'box.innerHTML="🎟️ VÉ VÒNG NÀY: <b>"+sp.price.toLocaleString("vi-VN")+"</b> Dogcoin/người — đủ cả bàn là quay VÒNG HỆ SỐ!";',
+    'box.style.display="block";',
+    'if(!quiet)toast("🎟️ Vé "+sp.price.toLocaleString("vi-VN")+" — cần đủ trong ví để quay tiếp");',
     'whBtn()}',
     'function whShowRes(sp,quiet){var box=$("whRes");if(!box)return;',
     'var h="Kết quả: "+["yellow","blue","green"].map(function(c){return WEM[c]+" <b>x"+sp.results[c]+"</b>"}).join(" · ");',
@@ -1487,14 +1481,16 @@ const PAGE = [
     // Nút chính 3 trạng thái: chưa vào bàn = VÀO BÀN · vào rồi chưa đủ người = chờ
     // (disabled) · đủ người (armed) = QUAY!!! phát sáng, ai trong bàn bấm cũng được.
     // Nút rút #whOut tách riêng, chỉ hiện khi mình đang trong bàn và chưa quay.
-    'function whBtn(){var b=$("whGo");if(!b||!WST)return;var d=$("whDemo");if(d)d.disabled=WANIM;',
+    'function whBtn(){var b=$("whGo");if(!b||!WST)return;',
     'var o=$("whOut");if(o)o.style.display=(WST.myColor&&WST.status==="waiting"&&!WANIM)?"block":"none";',
     'b.classList.remove("arm");',
     'if(WANIM){b.disabled=true;b.textContent=WBMODE===1?"🎟️ ĐANG QUAY VÒNG VÉ...":"🎡 ĐANG QUAY...";return}',
     'if(WST.status==="spinning"){b.disabled=true;b.textContent="🎡 ĐANG QUAY...";return}',
     'if(WST.status==="spin1"){b.disabled=true;b.textContent="🎟️ ĐANG QUAY VÒNG VÉ...";return}',
-    // vé đã chốt: nút vòng hệ số sáng cho người trong bàn; người ngoài đứng xem
+    // vé đã chốt: TẤT CẢ đủ tiền vé thì nút mới sáng; thiếu ai hiện tên người đó
     'if(WST.status==="stake"){',
+    'var sh=WST.stakeShort||[];',
+    'if(sh.length){b.disabled=true;b.textContent="⏳ CHỜ ĐỦ VÉ "+(WST.price||0).toLocaleString("vi-VN")+" — THIẾU: "+sh.join(", ");return}',
     'if(WST.myColor){b.disabled=false;b.classList.add("arm");b.textContent="🎡 VÉ "+(WST.price||0).toLocaleString("vi-VN")+" — QUAY VÒNG HỆ SỐ!!!"}',
     'else{b.disabled=true;b.textContent="🎡 BÀN ĐANG GIỮA VÒNG — CHỜ VÒNG SAU"}return}',
     'if(WST.myColor){',
@@ -1525,14 +1521,7 @@ const PAGE = [
     '}).catch(function(e){toast("❌ "+e.message);wheelSync()})}',
     'function whOutClick(){var o=$("whOut");o.disabled=true;',
     'api("/api/wheel/unready",{}).then(function(j){WST=j;setBal(j.balance);o.disabled=false;whRender();toast("↩️ Đã rút khỏi bàn")}).catch(function(e){o.disabled=false;toast("❌ "+e.message);wheelSync()})}',
-    // 🎠 quay thử: random tại chỗ theo BÁNH ĐANG HIỆN, không đụng server, không đụng ví
-    'function whDemo(){if(WANIM||!WST)return;var segs=whSegs(),idx=Math.floor(Math.random()*segs.length);',
-    'WANIM=true;$("whRes").style.display="none";whBtn();',
-    'whSpinTo(idx,function(){WANIM=false;var box=$("whRes");',
-    'if(WBMODE===1){box.innerHTML="🎠 QUAY THỬ vòng vé (không tính tiền): vé <b>"+segs[idx].toLocaleString("vi-VN")+"</b>"}',
-    'else{var r={};["yellow","blue","green"].forEach(function(c){r[c]=segs[(idx+WST.arrows[c])%segs.length]});',
-    'box.innerHTML="🎠 QUAY THỬ (không tính tiền): "+["yellow","blue","green"].map(function(c){return WEM[c]+" <b>x"+r[c]+"</b>"}).join(" · ")}',
-    'box.style.display="block";whBtn()},WBMODE===1)}',
+    // (nút 🎠 quay thử đã bỏ 19/08 theo yêu cầu chủ server — gọn giao diện)
     // poll khi đang đứng ở tab vòng quay (bắt vòng quay do người khác kích hoạt)
     'setInterval(function(){if(TOKEN&&!WANIM&&localStorage.getItem("play_page")==="wheel")wheelSync()},2000);',
     'setInterval(function(){if(localStorage.getItem("play_page")==="wheel")whBtn()},1000);',
