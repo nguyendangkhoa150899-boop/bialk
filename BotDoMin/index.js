@@ -1400,12 +1400,12 @@ const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 8, green: 16 };
 const WHEEL_SEGMENTS = [1.2, 1.5, 1.1, 1.8, 1.3, 2.0, 1.4, 1.1, 1.7, 1.3, 10, 1.2, 1.6, 1.4, 1.1, 2.2, 1.3, 1.5, 1.2, 1.8, 1.4, 2.0, 1.6, 1.7];
 
 // ===== VÒNG VÉ (vòng 1) — 15 nan: 1.000×5 · 1.500×5 · 2.000×5 xen kẽ, MỘT mũi tên =====
-// Quay ra GIÁ VÉ CHUNG của cả bàn cho vòng hệ số. Vào bàn CỌC trước mức cao nhất
-// (2.000) — "phải đủ Dogcoin tương ứng" đúng với MỌI kết quả, không ai bị đá giữa
-// chừng; vòng vé dừng thì hoàn ngay phần chênh. Xen kẽ không 2 nan giống kề nhau
-// (kể cả chỗ nối vòng tròn).
+// Vào bàn + quay vòng vé MIỄN PHÍ. Quay ra giá nào thì TRỪ ĐÚNG GIÁ ĐÓ mỗi người
+// để được quay vòng hệ số; ai không đủ tiền lúc vé chốt thì bị mời ra (không mất
+// gì, không mất lượt). Xen kẽ không 2 nan giống kề nhau (kể cả chỗ nối vòng tròn).
 const WHEEL_STAGE1 = [1000, 1500, 2000, 1000, 2000, 1500, 1000, 1500, 2000, 1500, 1000, 2000, 1500, 1000, 2000];
-const WHEEL_MAX_TICKET = 2000;
+const WHEEL_MAX_TICKET = 2000;   // vé đắt nhất (hiển thị) — fallback hoàn pending
+const WHEEL_MIN_TICKET = 1000;   // vé rẻ nhất — điều kiện tối thiểu để vào bàn
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
@@ -1445,7 +1445,7 @@ function wheelState(userId) {
     const me = getUserData(userId);
     return {
         me: userId,
-        ticket: WHEEL_MAX_TICKET,          // tiền CỌC khi vào bàn (vé thật 1.000–2.000 do vòng vé quyết)
+        ticket: WHEEL_MAX_TICKET,          // vé đắt nhất (hiển thị) — vào bàn MIỄN PHÍ, vé trừ sau vòng vé
         segments: WHEEL_SEGMENTS,
         segments1: WHEEL_STAGE1,           // bánh vé (vòng 1)
         arrows: WHEEL_ARROW_OFFSET,
@@ -1473,14 +1473,10 @@ function wheelReady(userId, color) {
     if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi — reset lúc 00:00 và 12:00' };
     if (wheelRoom.players.has(userId)) {
         wheelRoom.players.get(userId).color = color;   // đổi màu khi đang chờ: miễn phí
-        if (wheelPending()[userId]) wheelPending()[userId].color = color; // giữ nguyên amount đã trả
     } else {
-        // Cọc mức vé CAO NHẤT — vòng vé ra giá nào cũng chắc chắn đủ; dừng bánh là hoàn chênh
-        if ((me.points || 0) < WHEEL_MAX_TICKET) return { error: `Cần ${WHEEL_MAX_TICKET.toLocaleString()} Dogcoin cọc vé (vé thật 1.000–2.000 do vòng vé quay ra)` };
-        updatePoints(userId, -WHEEL_MAX_TICKET);
+        // VÀO BÀN MIỄN PHÍ — chỉ cần đủ vé rẻ nhất trong ví (tiền trừ SAU vòng vé)
+        if ((me.points || 0) < WHEEL_MIN_TICKET) return { error: `Cần ít nhất ${WHEEL_MIN_TICKET.toLocaleString()} Dogcoin trong ví — vé (1.000–2.000) trừ sau khi vòng vé chốt giá` };
         wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color });
-        // lưu CẢ số tiền đã trừ: đổi giá vé giữa 2 lần restart thì vẫn hoàn đúng giá cũ
-        wheelPending()[userId] = { color, ts: Date.now(), amount: WHEEL_MAX_TICKET };
         writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn, mũi tên ${color} (${wheelRoom.players.size}/${wheelMinPlayers()})`);
     }
     saveDbNow();
@@ -1503,13 +1499,8 @@ function wheelSpin(userId) {
 function wheelUnready(userId) {
     if (wheelRoom.status !== 'waiting') return { error: 'Đang quay rồi, không rút được' };
     if (!wheelRoom.players.has(userId)) return { error: 'Bạn chưa vào bàn' };
-    // hoàn đúng số đã cọc (đọc từ pending — đổi giá cọc giữa chừng vẫn hoàn đúng)
-    const e = wheelPending()[userId];
-    const amt = (e && Number.isFinite(e.amount) && e.amount > 0) ? e.amount : WHEEL_MAX_TICKET;
+    // vào bàn miễn phí -> rút cũng không có gì để hoàn
     wheelRoom.players.delete(userId);
-    delete wheelPending()[userId];
-    updatePoints(userId, amt);
-    saveDbNow();
     return { ok: true, state: wheelState(userId) };
 }
 
@@ -1520,24 +1511,37 @@ function wheelSpin1(userId) {
     if (!wheelRoom.players.has(userId)) return { error: 'Vào bàn đã rồi mới bấm quay được' };
     if (wheelRoom.players.size < wheelMinPlayers()) return { error: `Chưa đủ ${wheelMinPlayers()} người — rủ thêm bạn bè` };
 
-    // Chốt ngay tại server; client chỉ diễn hoạt hình. Hoàn phần cọc chênh LUÔN
-    // (client tự giấu số dư tới khi bánh dừng — cùng kiểu với vòng hệ số).
+    // Chốt ngay tại server; client chỉ diễn hoạt hình. Vòng vé MIỄN PHÍ — tiền chỉ
+    // trừ khi vé chốt: mỗi người trả ĐÚNG GIÁ VÉ để được quay vòng hệ số; ai không
+    // đủ thì mời ra (không mất gì, không mất lượt). Client giấu số dư tới khi bánh dừng.
     const idx = Math.floor(Math.random() * WHEEL_STAGE1.length);
     const price = WHEEL_STAGE1[idx];
     wheelRoom.price = price;
-    for (const p of wheelRoom.players.values()) {
-        const diff = WHEEL_MAX_TICKET - price;
-        if (diff > 0) updatePoints(p.userId, diff);
-        const e = wheelPending()[p.userId];
-        if (e) e.amount = price;   // restart giữa chừng thì hoàn đúng giá vé đã chốt
+    const kicked = [];
+    for (const p of [...wheelRoom.players.values()]) {
+        if ((getUserData(p.userId).points || 0) < price) {
+            wheelRoom.players.delete(p.userId);
+            kicked.push({ userId: p.userId, name: p.name });
+            writeLog('RESULT', `[VÒNG QUAY] ${p.name} không đủ vé ${price.toLocaleString()} — mời ra (không mất gì)`);
+            continue;
+        }
+        updatePoints(p.userId, -price);
+        wheelPending()[p.userId] = { color: p.color, ts: Date.now(), amount: price };   // restart -> hoàn đúng vé
     }
     wheelRoom.spinSeq++;
-    wheelRoom.spin1 = { seq: wheelRoom.spinSeq, idx, price, endsAt: Date.now() + 9000 };
+    wheelRoom.spin1 = { seq: wheelRoom.spinSeq, idx, price, kicked, endsAt: Date.now() + 9000 };
     wheelRoom.status = 'spin1';
-    writeLog('RESULT', `[VÒNG QUAY] ${wheelRoom.players.get(userId).name} bấm vòng vé — ra vé ${price.toLocaleString()} (${wheelRoom.players.size} người)`);
+    writeLog('RESULT', `[VÒNG QUAY] ${getUserData(userId).name || userId} bấm vòng vé — ra vé ${price.toLocaleString()} (${wheelRoom.players.size} người trả vé, ${kicked.length} bị mời ra)`);
     saveDbNow();
     setTimeout(() => {
         if (wheelRoom.status !== 'spin1') return;
+        // cả bàn không ai đủ vé -> huỷ vòng, không ai mất gì, bàn mở lại
+        if (!wheelRoom.players.size) {
+            wheelRoom.status = 'waiting';
+            wheelRoom.price = null;
+            writeLog('SYSTEM', '[VÒNG QUAY] Không ai đủ vé — huỷ vòng, bàn mở lại');
+            return;
+        }
         wheelRoom.status = 'stake';
         // Lưới an toàn: 60s không ai bấm vòng hệ số thì TỰ quay — vé cả bàn đã trừ,
         // không để một người AFK giam tiền những người còn lại.
