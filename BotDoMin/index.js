@@ -630,9 +630,12 @@ const TX_ROUND_S = 50;
 const TX_BAO_RATE = 30;
 // txState.nan = { gameId, dice: [d1,d2,d3] } — chỉ tồn tại trong cửa sổ nặn
 
+// CHÚ Ý: tên ở đây vừa để HIỂN THỊ vừa là giá trị LƯU vào lịch sử (histEntry.tx/cl
+// và bets[].choice), và txHistoryLine so khớp bằng chính các tên này. Đổi tên thì
+// PHẢI so sánh qua TX_CHOICES.* chứ không viết chữ cứng, kẻo cửa Bão hết được trả.
 const TX_CHOICES = {
-    'tai': { name: 'TÀI' },
-    'xiu': { name: 'XỈU' },
+    'tai': { name: 'BIG' },
+    'xiu': { name: 'SMALL' },
     'chan': { name: 'CHẴN' },
     'le': { name: 'LẺ' },
     'bao': { name: 'BÃO' }
@@ -2319,14 +2322,14 @@ async function finishBCGame(gameId, bets) {
 // icon đầu theo TỔNG của người đó: 💰 lời · 💥 lỗ · ⚖️ hòa. Luật ăn tính lại y hệt
 // settleTXPayout: cửa trúng ×2, BÃO chỉ cửa bão ăn ×TX_BAO_RATE.
 function txHistoryLine(h) {
-    const head = h.storm ? '🌪️' : (h.tx === 'TÀI' ? '🔺' : '🔻');
+    const head = h.storm ? '🌪️' : (h.tx === TX_CHOICES.tai.name ? '🔺' : '🔻');
     const dice = (h.dice || []).map(d => DICE_EMOJIS[d] || d).join(' ');
     const line = `${head} ${dice} · Tổng **${h.sum}** · **${h.tx}${h.storm ? '' : ' · ' + h.cl}**`;
     const per = {};
     (h.bets || []).forEach(b => {
         const cua = String(b.choice || '');
         let win = 0;
-        if (h.storm) { if (cua === 'BÃO') win = b.amount * TX_BAO_RATE; }
+        if (h.storm) { if (cua === TX_CHOICES.bao.name) win = b.amount * TX_BAO_RATE; }
         else if (cua === h.tx || cua === h.cl) win = b.amount * 2;
         const net = win - b.amount;
         if (!per[b.u]) per[b.u] = { name: b.name, total: 0, parts: [] };
@@ -2528,9 +2531,9 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     const winners = Object.values(winAgg).map(w => ({ u: w.userId, name: w.name, amount: w.amount }));
     const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
 
-    const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? 'TÀI 🔺' : 'XỈU 🔻');
+    const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? `${TX_CHOICES.tai.name} 🔺` : `${TX_CHOICES.xiu.name} 🔻`);
     const clIcon = isStorm ? 'cửa thường thua hết' : (isChan ? 'CHẴN 🔵' : 'LẺ 🟣');
-    writeLog('RESULT', `[KẾT QUẢ BIG SMALL] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? 'TÀI' : 'XỈU')} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
+    writeLog('RESULT', `[KẾT QUẢ BIG SMALL] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? TX_CHOICES.tai.name : TX_CHOICES.xiu.name)} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
 
     if (bets.length > 0) {
         let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${TX_CHOICES[b.choice].name}`).join(' | ');
@@ -2551,8 +2554,8 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         dice: [d1, d2, d3],
         sum,
         storm: isStorm,
-        tx: isStorm ? 'BÃO' : (isTai ? 'TÀI' : 'XỈU'),
-        cl: isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ'),
+        tx: isStorm ? TX_CHOICES.bao.name : (isTai ? TX_CHOICES.tai.name : TX_CHOICES.xiu.name),
+        cl: isStorm ? TX_CHOICES.bao.name : (isChan ? TX_CHOICES.chan.name : TX_CHOICES.le.name),
         bets: Object.values(betAgg),
         winners,
         time: new Date().toLocaleTimeString('vi-VN')

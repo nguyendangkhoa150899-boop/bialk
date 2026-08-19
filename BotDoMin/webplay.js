@@ -683,8 +683,8 @@ const PAGE = [
 
     '<div class="card" id="betCard">',
     '<div class="grid2">',
-    '<button class="cbtn tai" id="c_tai" onclick="pick(\'tai\')">TÀI<small>11 - 17</small><div class="muted" id="t_tai">0</div></button>',
-    '<button class="cbtn xiu" id="c_xiu" onclick="pick(\'xiu\')">XỈU<small>4 - 10</small><div class="muted" id="t_xiu">0</div></button>',
+    '<button class="cbtn tai" id="c_tai" onclick="pick(\'tai\')">BIG<small>11 - 17</small><div class="muted" id="t_tai">0</div></button>',
+    '<button class="cbtn xiu" id="c_xiu" onclick="pick(\'xiu\')">SMALL<small>4 - 10</small><div class="muted" id="t_xiu">0</div></button>',
     '</div>',
     '<button class="cbtn bao" id="c_bao" style="width:100%" onclick="pick(\'bao\')">🌪️ BÃO<small>3 viên giống nhau · 1 ăn 30 - ra Bão mọi cửa khác THUA</small><div class="muted" id="t_bao">0</div></button>',
     '<div class="grid2">',
@@ -925,7 +925,7 @@ const PAGE = [
     // vẽ 1 viên xí ngầu bằng chấm CSS
     'var PIPS={1:[[50,50]],2:[[25,25],[75,75]],3:[[25,25],[50,50],[75,75]],4:[[25,25],[75,25],[25,75],[75,75]],5:[[25,25],[75,25],[50,50],[25,75],[75,75]],6:[[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]};',
     'function dieHTML(v){var s=\'<div class="die">\';PIPS[v].forEach(function(p){s+=\'<div class="pip" style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></div>\'});return s+"</div>"}',
-    'function showDice(dice,withSum){document.getElementById("diceRow").innerHTML=dice.map(dieHTML).join("");var b=document.getElementById("sumBadge");if(withSum){var s=dice[0]+dice[1]+dice[2];b.textContent="Tổng "+s+" - "+(s>=11?"TÀI":"XỈU")+" · "+(s%2===0?"CHẴN":"LẺ");b.classList.remove("hidden")}else b.classList.add("hidden")}',
+    'function showDice(dice,withSum){document.getElementById("diceRow").innerHTML=dice.map(dieHTML).join("");var b=document.getElementById("sumBadge");if(withSum){var s=dice[0]+dice[1]+dice[2];b.textContent="Tổng "+s+" - "+(s>=11?"BIG":"SMALL")+" · "+(s%2===0?"CHẴN":"LẺ");b.classList.remove("hidden")}else b.classList.add("hidden")}',
     // tờ giấy: che kín, kéo TỰ DO 4 CHIỀU — kéo tới đâu lộ tới đó.
     // Chỉ kéo được trong pha nặn (PHASE==="nan") và khi chưa nặn xong ván này.
     'function initPaper(){var p=document.getElementById("paper");',
@@ -968,7 +968,7 @@ const PAGE = [
     'p.style.transition="transform .6s ease-in";p.style.transform="translate("+paperX+"px,"+(h+60)+"px)";',
     'setTimeout(function(){revealDone();toast("⏰ Hết giờ nặn - tự mở giùm bạn!")},600)}',
     'function bet(){if(PHASE!=="bet")return toast("Đang khóa sổ - chờ ván sau!");if(!SEL)return toast("Chọn cửa trước!");var v=parseInt(document.getElementById("amt").value);if(!v||v<=0)return toast("Nhập số Dogcoin");api("/api/bet",{choice:SEL,amount:v}).then(function(j){BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");document.getElementById("amt").value="";toast("💸 Đã đặt "+v.toLocaleString("vi-VN")+" vào "+SEL.toUpperCase());refresh()}).catch(function(e){toast("❌ "+e.message)})}',
-    'var NAMES={tai:"TÀI",xiu:"XỈU",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
+    'var NAMES={tai:"BIG",xiu:"SMALL",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
     'function refresh(){api("/api/state").then(function(j){',
     'MYID=j.me||MYID;',
     'BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");',
@@ -1018,7 +1018,7 @@ const PAGE = [
     '(h.bets||[]).forEach(function(b){if(b.u===MYID){stake+=b.amount;joined=true}});',
     '(h.winners||[]).forEach(function(w){if(w.u===MYID)winAmt+=w.amount});',
     'var net=winAmt-stake;',
-    'var tai=(h.tx==="TÀI"||h.tx==="TAI");',
+    'var tai=(h.tx==="BIG"||h.tx==="TÀI"||h.tx==="TAI");',
     'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span>\'+h.cl);',
     'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
     '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
