@@ -350,6 +350,11 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **20/08/2026 — TRẦN TUYỆT ĐỐI ×2000 mọi ván (bịt lỗ 25 ô).** Lên 25 ô làm giải
+  mở-hết-bàn phình tới ×4,9 TRIỆU lần cược (12-13 mìn) mà đường TỰ LỰC không trần nào
+  cắt — một cú ăn hết là in nửa tỷ Dogcoin. Giờ `calculateMulti`/`stairsMulti` tự cắt
+  tại ×2000 nên bảng hệ số hiển thị = tiền trả thật, không còn mốc ảo (lên đỉnh 5 lửa
+  ×16.868 cũng về ×2000). Các mốc dưới trần giữ nguyên.
 - **20/08/2026 — Fix khiên 🛡️ + cỏ 🍀 thành hàng MUA THÊM.** Khiên giờ CỘNG DỒN cả 2 game
   (trước là boolean: đang cầm khiên mà hộp ra khiên nữa là mất trắng — "khiên vô dụng");
   UI hiện số khiên đang cầm. Dò Mìn về mặc định **1 ô 🍀/ván**, thêm checkbox

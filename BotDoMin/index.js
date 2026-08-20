@@ -1102,8 +1102,11 @@ function calculateMulti(diamonds, numMines) {
     if (waysToWin === 0) return 1;
     const prob = waysToWin / totalWays;
     let multi = (1 / prob) * RTP;
-    // Cắt xuống 2 số lẻ — đúng như bản Discord cũ, để hệ số khớp cái người chơi đã quen.
-    return Math.floor(multi * 100) / 100;
+    // TRẦN TUYỆT ĐỐI ×2000 cho MỌI mốc, kể cả tự lực (chủ server chốt 20/08):
+    // 25 ô làm giải mở-hết-bàn phình tới x4,9 TRIỆU (12-13 mìn) — một cú ăn hết
+    // là in nửa tỷ Dogcoin. Cắt ngay tại đây để bảng hệ số hiển thị và tiền trả
+    // luôn là CÙNG MỘT SỐ, không có mốc "ảo" vượt trần.
+    return Math.min(Math.floor(multi * 100) / 100, LUCKY_WIN_CAP_MULTI);
 }
 
 const getInfo = (diamonds, numMines) => {
@@ -1566,7 +1569,8 @@ function stairsMulti(cleared, fire) {
     const ov = STAIRS_MULTI_OVERRIDE[`${fire}:${cleared}`];
     if (ov) return ov;
     const m = STAIRS_RTP * Math.pow(STAIRS_COLS / (STAIRS_COLS - fire), cleared);
-    return Math.floor(m * 100) / 100;
+    // Cùng trần tuyệt đối ×2000 như Dò Mìn (lên đỉnh 5 lửa vốn là x16.868)
+    return Math.min(Math.floor(m * 100) / 100, LUCKY_WIN_CAP_MULTI);
 }
 
 function stairsWin(bet, cleared, fire) {
