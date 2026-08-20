@@ -1185,7 +1185,7 @@ const PAGE = [
     'if(i===MLAST.hit){t.className="mtile boom";t.innerHTML="💣"}',
     'else if(MLAST.revealed.indexOf(i)>=0){t.className="mtile coin";t.innerHTML=COINIMG}',
     'else if(MLAST.defused&&MLAST.defused.indexOf(i)>=0){t.className="mtile shieldsave";t.textContent="🛡️"}',
-    'else if(i===MLAST.lucky){t.className="mtile lucky";t.textContent="🍀"}',   // lộ ô 🍀 chưa mở
+    'else if(MLAST.lucky&&MLAST.lucky.indexOf&&MLAST.lucky.indexOf(i)>=0){t.className="mtile lucky";t.textContent="🍀"}',   // lộ các ô 🍀 chưa mở (giờ 2 ô/ván)
     'else if(MLAST.mines.indexOf(i)>=0){t.className="mtile shown";t.innerHTML="💣"}',
     'else{t.className="mtile dead";t.textContent="?"}}',
     'var w=MLAST.amount>=0;',
@@ -1230,11 +1230,11 @@ const PAGE = [
     'if(j.lucky&&j.lucky.prize==="jackpot")celebrate();',
     // cập nhật bàn chơi NGAY phía sau hộp (đóng hộp là thấy liền, không khựng)
     'if(game==="mines"){',
-    'if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng trần x2000")},2400);',
+    'if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'mEnd("🎉 Jackpot - nhận "+j.win.toLocaleString("vi-VN"),j.win-(MG?MG.bet:0),j.mines)}',
     'else{MG=j.state;mDrawGrid();mBar();mBand()}',
     '}else{',
-    'if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng trần x2000")},2400);',
+    'if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'var stk=SG?SG.bet:0,fr=SG?SG.fire:0;',
     'sFinish(j,"Lên đỉnh",j.win-stk,stk,fr,SF)}',
     'else{SG=j.state;sTower();sBand()}}',
@@ -1261,8 +1261,8 @@ const PAGE = [
     // VÁN MỚI — trước đây tự xoá sau 2 giây, chưa kịp nhìn đã mất.
     'function mEnd(msg,net,mines,luckyAt){mRevealAll(mines);MG=null;MOVER=true;',
     // lộ ô 🍀 chưa kịp mở — cho người chơi tiếc mà chơi ván nữa 😏
-    'if(typeof luckyAt==="number"&&luckyAt>=0){var lt=$("mk"+luckyAt);',
-    'if(lt&&!lt.classList.contains("coin")){lt.className="mtile lucky";lt.textContent="🍀"}}',
+    'if(luckyAt&&luckyAt.length){luckyAt.forEach(function(la){var lt=$("mk"+la);',
+    'if(lt&&!lt.classList.contains("coin")){lt.className="mtile lucky";lt.textContent="🍀"}})}',
     '$("mStat").textContent=msg;',
     'if(net!==null)showNet(net);',
     'mBand()}',
@@ -1304,7 +1304,7 @@ const PAGE = [
     'function mCashout(){if(!MG||mBusy)return;mBusy=true;var stake=MG.bet;',
     'api("/api/mines/cashout",{}).then(function(j){mBusy=false;setBal(j.balance);',
     'toast("✅ Nhận "+j.win.toLocaleString("vi-VN")+" Dogcoin");',
-    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng trần x2000")},2400);',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'mEnd("✅ Đã dừng - nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines,j.luckyAt)',
     '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
     'function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=v.toLocaleString("vi-VN")}',
@@ -1435,7 +1435,7 @@ const PAGE = [
     // 🍀 đạp trúng CỎ 4 LÁ: bung 4 hộp cho chọn
     'if(j.luckyPick){toast("🍀 CỎ 4 LÁ MAY MẮN!");SG=j.state;sTower();sBand();luckyOpen("stairs");return}',
     'if(j.golden){toast("🌟 Ô VÀNG!! BAY THẲNG LÊN ĐỈNH!!");celebrate()}',
-    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng trần x2000")},2400);',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'if(j.burn){playBoom();toast("🔥 CHÁY! Mất "+vnd(stake)+" Dogcoin");',
     'return sFinish(j,"Trúng lửa (Thua)",-stake,stake,fire,f,f,c)}',
     'var el=$("sc_"+f+"_"+c);if(el){el.className="scell step";el.innerHTML=HEROIMG}',

@@ -1166,7 +1166,7 @@ function setMinesLast(userId, g, result, amount, hitIdx) {
         hit: (hitIdx === undefined ? -1 : hitIdx),
         multi: calculateMulti(g.revealed.length, g.totalMines),
         // lộ ô 🍀 chưa mở + các ô mìn khiên đã đỡ, để màn kết thúc vẽ lại đúng
-        lucky: (g.luckySpun || g.luckyPending) ? -1 : (g.lucky !== undefined ? g.lucky : -1),
+        lucky: (g.lucky || []).slice(),   // các ô 🍀 CHƯA mở (đã mở là bị filter khỏi g.lucky rồi)
         defused: (g.defused || []).slice(),
     });
 }
@@ -1269,8 +1269,14 @@ function luckyAssisted(g) {
     return (g.luck || []).some(x => x === '🚀' || x === '🌟' || x === '⛏️')
         || (g.defused || []).length > 0 || (g.burned || []).length > 0;
 }
+// Trần thưởng may mắn của VÁN NÀY. Dò Mìn 3-4 mìn quá dễ (chủ server chốt 20/08):
+// thắng nhờ trợ giúp 🍀 (khiên đỡ/⛏️) hay nổ hũ 🏆 đều chỉ trần x100 — chặn farm
+// hũ bằng ván dễ. Ván khó (5+ mìn) và Leo Thang giữ trần x2000 như cũ.
+function luckyCapOf(g) {
+    return (g.totalMines !== undefined && g.totalMines <= 4) ? 100 : LUCKY_WIN_CAP_MULTI;
+}
 function capIfAssisted(g, win) {
-    return luckyAssisted(g) ? Math.min(win, g.bet * LUCKY_WIN_CAP_MULTI) : win;
+    return luckyAssisted(g) ? Math.min(win, g.bet * luckyCapOf(g)) : win;
 }
 
 function spinWheel(wheel) {
@@ -1329,13 +1335,18 @@ const webMinesApi = {
         const g = createGame(numMines, userId);
         g.bet = bet; g.name = name; g.startedAt = Date.now();
         g.userId = userId;   // để lúc ghi lịch sử tra được số dư còn lại
-        // 1 ô 🍀 giấu trên một ô AN TOÀN ngẫu nhiên; mở trúng thì hiện 4 hộp cho chọn.
+        // 2 ô 🍀 giấu trên 2 ô AN TOÀN khác nhau (nâng 1 -> 2 ô theo chủ server 20/08);
+        // mở trúng ô nào thì hiện 4 hộp cho chọn, mỗi ô dùng 1 lần.
         // Ép số khi so với mìn: layout ép từ panel có thể chứa chuỗi ("5" thay vì 5),
         // so lệch kiểu là ô 🍀 rơi trúng ô mìn ngay.
         const mineSet = new Set(g.mines.map(Number));
         const safes = [];
         for (let i = 0; i < TOTAL_TILES; i++) if (!mineSet.has(i)) safes.push(i);
-        g.lucky = safes[Math.floor(Math.random() * safes.length)];
+        g.lucky = [];
+        while (g.lucky.length < 2 && safes.length > g.lucky.length) {
+            const pick = safes[Math.floor(Math.random() * safes.length)];
+            if (!g.lucky.includes(pick)) g.lucky.push(pick);
+        }
         g.shield = false; g.defused = []; g.luck = []; g.luckyPending = false;
         webMines.set(userId, g);
         webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
@@ -1368,8 +1379,8 @@ const webMinesApi = {
             setMinesLast(userId, g, 'Trúng mìn (Thua)', -g.bet, idx);
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} BÙM ở ô ${idx} - mất ${g.bet}`);
             // Tiền đã trừ từ lúc bắt đầu, thua thì không trừ thêm lần nữa.
-            // luckyAt: lộ ô 🍀 chưa kịp mở cho người chơi tiếc chơi ván nữa
-            return { ok: true, hit: true, mines: g.mines, luckyAt: (g.luckySpun ? -1 : g.lucky), balance: getUserData(userId).points || 0 };
+            // luckyAt: lộ các ô 🍀 chưa kịp mở cho người chơi tiếc chơi ván nữa
+            return { ok: true, hit: true, mines: g.mines, luckyAt: (g.lucky || []), balance: getUserData(userId).points || 0 };
         }
 
         g.revealed.push(idx);
@@ -1377,7 +1388,8 @@ const webMinesApi = {
         // 🍀 Mở trúng CỎ 4 LÁ (vẫn tính 1 ô an toàn như thường) -> DỪNG lại, hiện 4 hộp
         // cho người chơi tự chọn. Phần thưởng quyết định lúc CHỌN (luckyPick) ở server —
         // 4 hộp là sân khấu, không có gì cho client gian lận.
-        if (idx === g.lucky && !g.luckySpun) {
+        if ((g.lucky || []).includes(idx)) {
+            g.lucky = g.lucky.filter(i => i !== idx);   // mỗi ô 🍀 dùng đúng 1 lần
             g.luckyPending = true;
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 mở trúng cỏ 4 lá - đang chọn hộp`);
             return { ok: true, hit: false, luckyPick: true, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
@@ -1393,7 +1405,7 @@ const webMinesApi = {
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
             setMinesLast(userId, g, 'Jackpot', win - g.bet);
-            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
             return { ok: true, hit: false, jackpot: true, win, luckCapped: win < raw, mines: g.mines, lucky, balance: getUserData(userId).points || 0 };
         }
         return { ok: true, hit: false, lucky, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
@@ -1404,7 +1416,7 @@ const webMinesApi = {
         const g = webMines.get(userId);
         if (!g) return { error: 'Chưa có ván nào đang chơi' };
         if (!g.luckyPending) return { error: 'Không có cỏ 4 lá nào đang chờ' };
-        g.luckyPending = false; g.luckySpun = true;
+        g.luckyPending = false;   // (bỏ luckySpun: giờ 2 ô 🍀, mỗi ô tự quay 1 lần)
         box = Math.min(4, Math.max(1, box || 1));
         const prize = spinWheel(MINES_LUCKY_WHEEL);
         // Lật cả 4 hộp: hộp đã chọn = quà thật, 3 hộp kia là hàng mẫu (quà thật đã chốt
@@ -1431,18 +1443,19 @@ const webMinesApi = {
             g.luck.push('⛏️');
         }
         else if (prize === 'cash') {
-            const bonus = Math.max(1, Math.floor(g.bet * 0.2));
+            const bonus = Math.max(1, Math.floor(g.bet * 0.3));   // lì xì 20% -> 30% (20/08)
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('💰');
         }
         else if (prize === 'jackpot') {
-            // 🏆 NỔ HŨ = GIẢI CAO NHẤT của chính cấu hình ván này, trần x2000 cược,
+            // 🏆 NỔ HŨ = GIẢI CAO NHẤT của chính cấu hình ván này, trần theo luckyCapOf
+            // (ván 3-4 mìn chỉ x100 — dễ quá không cho farm hũ; 5+ mìn trần x2000),
             // và CHỐT VÁN NGAY TẠI ĐÂY. Bug 19/08: trước ván vẫn chạy tiếp sau hũ,
             // người chơi bấm dừng được trả thêm lần nữa — ăn gần x2.
             const top = minesWin(g.bet, TOTAL_TILES - g.totalMines, g.totalMines);
-            const jp = Math.min(g.bet * LUCKY_WIN_CAP_MULTI, top);
+            const jp = Math.min(g.bet * luckyCapOf(g), top);
             statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
             g.luck.push('🏆');
@@ -1486,8 +1499,8 @@ const webMinesApi = {
         updatePoints(userId, win);
         webMinesLog(g, 'Dừng (Thắng)', win - g.bet);
         setMinesLast(userId, g, 'Dừng (Thắng)', win - g.bet);
-        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
-        return { ok: true, win, luckCapped: win < raw, mines: g.mines, luckyAt: (g.luckySpun ? -1 : g.lucky), balance: getUserData(userId).points || 0 };
+        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)})` : ''}`);
+        return { ok: true, win, luckCapped: win < raw, mines: g.mines, luckyAt: (g.lucky || []), balance: getUserData(userId).points || 0 };
     },
 };
 
@@ -1710,7 +1723,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, burn: false, top: true, win, luckCapped: win < raw, lucky, golden,
@@ -1785,7 +1798,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)})` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, lucky, top: true, win, luckCapped: win < raw,
@@ -1808,7 +1821,7 @@ const webStairsApi = {
         updatePoints(userId, win);
         const entry = stairsLog(g, 'Dừng (Thắng)', win - g.bet);
         setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet);
-        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} - nhận ${win}${win < raw ? ` (trần x${LUCKY_WIN_CAP_MULTI})` : ''}`);
+        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)})` : ''}`);
         stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
         // Lộ 🍀/🌟 chưa đạp cả khi DỪNG — đồng bộ với lúc cháy/lên đỉnh (và với Dò Mìn,
         // vốn đã lộ luckyAt khi dừng). Trước đây thiếu 2 field này nên dừng thì không
