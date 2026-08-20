@@ -387,7 +387,9 @@ function debtReduce(d, amount) {
     d.loan -= payLoan; rest -= payLoan;
     const payAdmin = Math.min(d.admin || 0, rest);
     d.admin -= payAdmin; rest -= payAdmin;
-    if ((d.loan || 0) + (d.admin || 0) <= 0) { d.loan = 0; d.admin = 0; d.bad = false; }
+    // Trả sạch = về vạch xuất phát: nhãn nợ xấu bay + HẠN MỨC NGÀY MỞ LẠI ĐỦ 4.000
+    // (chủ server chốt 20/08: trả hết là được vay tiếp luôn, không phải chờ qua ngày)
+    if ((d.loan || 0) + (d.admin || 0) <= 0) { d.loan = 0; d.admin = 0; d.bad = false; d.bToday = 0; }
     return payLoan + payAdmin;
 }
 
@@ -509,7 +511,7 @@ function debtPayAdmin(userId, username, amount) {
     const wasBad = !!d.bad;
     updatePoints(userId, -want);
     d.admin -= want;
-    if (debtTotal(u) <= 0) { d.loan = 0; d.admin = 0; d.bad = false; }
+    if (debtTotal(u) <= 0) { d.loan = 0; d.admin = 0; d.bad = false; d.bToday = 0; }   // sạch nợ = hạn mức ngày mở lại
     if (wasBad && debtTotal(u) <= 0) {
         vayAnnounce(`🎉 <@${userId}> vừa trả SẠCH NỢ, nhãn ⚠️ nợ xấu tự bay - uy tín hồi sinh, anh em cho vay lại được rồi!`, [userId]);
     }
@@ -559,7 +561,7 @@ function adminDebtClear(userId) {
     const u = getUserData(userId);
     const d = debtOf(u);
     const was = debtTotal(u);
-    d.loan = 0; d.admin = 0; d.bad = false;
+    d.loan = 0; d.admin = 0; d.bad = false; d.bToday = 0;
     writeLog('ADMIN', `[VAY NỢ] Panel XÓA nợ ${was.toLocaleString()} của ${u.name || userId}`);
     saveDbNow();
     vayBoardRefresh();
