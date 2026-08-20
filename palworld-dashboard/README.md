@@ -355,10 +355,12 @@ nạp/rút (16), /nghien (12).
   20%/ngày DỪNG ở trần) · 💳 Trả nợ (đủ số dư mới trả, bỏ trống = trả hết) · 📄 Nợ của tôi.
   Thân bảng tự hiện sổ nợ + khối 🚨 DANH SÁCH NỢ XẤU riêng, tự vẽ lại sau mỗi biến động,
   bot restart tự bám lại bảng cũ. Nợ THƯỜNG không bị siết gì. Nợ xấu do ADMIN GẮN TAY
-  (nút ⚠️ ở tab 👥, có DM báo người chơi) — dính nợ xấu mới bị: cấm vay thêm + chặn chuyển
-  tiền cho người khác (/chuyentien + web) + chặn chuyển vào game + trích 50% tiền điểm
-  danh/nghiện/thưởng chuỗi tự trả nợ (trả nợ vay trước vì có lãi). Admin ghi nợ tay:
-  không lãi, không trần, số âm = giảm.
+  (nút ⚠️ ở tab 👥) — dính nợ xấu mới bị: cấm vay thêm + chặn chuyển tiền cho người khác
+  (/chuyentien + web) + chặn chuyển vào game + trích 50% tiền điểm danh/nghiện/thưởng
+  chuỗi tự trả nợ (trả nợ vay trước vì có lãi). Gắn/gỡ/thoát nợ xấu đều DM người chơi
+  + ĐĂNG CÔNG KHAI vào kênh bảng vay; **trả sạch nợ là nhãn tự bay**, không cần admin gỡ.
+  Admin ghi nợ tay: không lãi, không trần, số âm = giảm. Giọng văn bảng/tin nhắn viết
+  kiểu bông đùa cho server bạn bè.
   Web: card 📒 Nợ ở trang điểm danh (chỉ hiện khi đang nợ) + nút trả. Test vaytest.js 51/51.
 - **19/08/2026 — Vòng quay BUFF vòng hệ số:** bỏ đám nan lẻ ×1.1–1.4 (quay ra +200 nhìn
   chán), sàn lên ×1.5, thêm bậc ×3/×5. Phân bố cuối: ×1.5×9 · ×1.8×6 · ×2×5 · ×2.5×3 ·
