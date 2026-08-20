@@ -1269,14 +1269,25 @@ function luckyAssisted(g) {
     return (g.luck || []).some(x => x === '🚀' || x === '🌟' || x === '⛏️')
         || (g.defused || []).length > 0 || (g.burned || []).length > 0;
 }
-// Trần thưởng may mắn của VÁN NÀY. Dò Mìn 3-4 mìn quá dễ (chủ server chốt 20/08):
-// thắng nhờ trợ giúp 🍀 (khiên đỡ/⛏️) hay nổ hũ 🏆 đều chỉ trần x100 — chặn farm
-// hũ bằng ván dễ. Ván khó (5+ mìn) và Leo Thang giữ trần x2000 như cũ.
-function luckyCapOf(g) {
-    return (g.totalMines !== undefined && g.totalMines <= 4) ? 100 : LUCKY_WIN_CAP_MULTI;
+// Hai TRẦN may mắn riêng cho Dò Mìn — chặn farm bằng ván dễ (chủ server chốt 20/08):
+// - Trần NỔ HŨ 🏆:  3 mìn ×100 · 4 mìn ×200 · 5 mìn ×500 · 6+ không can thiệp (×2000)
+// - Trần THẮNG CUỐI VÁN khi có trợ giúp 🍀 (khiên đỡ/⛏️): 3 mìn ×350 · 4 mìn ×700 ·
+//   5+ không can thiệp (×2000). Leo Thang giữ ×2000 cho cả hai.
+function jackpotCapOf(g) {
+    if (g.totalMines === undefined) return LUCKY_WIN_CAP_MULTI;   // Leo Thang
+    if (g.totalMines <= 3) return 100;
+    if (g.totalMines === 4) return 200;
+    if (g.totalMines === 5) return 500;
+    return LUCKY_WIN_CAP_MULTI;
+}
+function assistCapOf(g) {
+    if (g.totalMines === undefined) return LUCKY_WIN_CAP_MULTI;   // Leo Thang
+    if (g.totalMines <= 3) return 350;
+    if (g.totalMines === 4) return 700;
+    return LUCKY_WIN_CAP_MULTI;
 }
 function capIfAssisted(g, win) {
-    return luckyAssisted(g) ? Math.min(win, g.bet * luckyCapOf(g)) : win;
+    return luckyAssisted(g) ? Math.min(win, g.bet * assistCapOf(g)) : win;
 }
 
 function spinWheel(wheel) {
@@ -1405,7 +1416,7 @@ const webMinesApi = {
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet);
             setMinesLast(userId, g, 'Jackpot', win - g.bet);
-            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
             return { ok: true, hit: false, jackpot: true, win, luckCapped: win < raw, mines: g.mines, lucky, balance: getUserData(userId).points || 0 };
         }
         return { ok: true, hit: false, lucky, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
@@ -1450,12 +1461,12 @@ const webMinesApi = {
             g.luck.push('💰');
         }
         else if (prize === 'jackpot') {
-            // 🏆 NỔ HŨ = GIẢI CAO NHẤT của chính cấu hình ván này, trần theo luckyCapOf
+            // 🏆 NỔ HŨ = GIẢI CAO NHẤT của chính cấu hình ván này, trần theo jackpotCapOf
             // (ván 3-4 mìn chỉ x100 — dễ quá không cho farm hũ; 5+ mìn trần x2000),
             // và CHỐT VÁN NGAY TẠI ĐÂY. Bug 19/08: trước ván vẫn chạy tiếp sau hũ,
             // người chơi bấm dừng được trả thêm lần nữa — ăn gần x2.
             const top = minesWin(g.bet, TOTAL_TILES - g.totalMines, g.totalMines);
-            const jp = Math.min(g.bet * luckyCapOf(g), top);
+            const jp = Math.min(g.bet * jackpotCapOf(g), top);
             statAdd(userId, 'jpCount', 1); statAdd(userId, 'jpTotal', jp);   // bảng 📊
             lucky.bonus = jp;
             g.luck.push('🏆');
@@ -1499,7 +1510,7 @@ const webMinesApi = {
         updatePoints(userId, win);
         webMinesLog(g, 'Dừng (Thắng)', win - g.bet);
         setMinesLast(userId, g, 'Dừng (Thắng)', win - g.bet);
-        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)})` : ''}`);
+        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)})` : ''}`);
         return { ok: true, win, luckCapped: win < raw, mines: g.mines, luckyAt: (g.lucky || []), balance: getUserData(userId).points || 0 };
     },
 };
@@ -1723,7 +1734,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, burn: false, top: true, win, luckCapped: win < raw, lucky, golden,
@@ -1754,7 +1765,7 @@ const webStairsApi = {
         }
         else if (prize === 'shield') { g.shield = true; g.luck.push('🛡️'); }
         else if (prize === 'cash') {
-            const bonus = Math.max(1, Math.floor(g.bet * 0.2));
+            const bonus = Math.max(1, Math.floor(g.bet * 0.3));   // lì xì 20% -> 30% (20/08, cùng Dò Mìn)
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
@@ -1798,7 +1809,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet);
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet);
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)})` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)})` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, lucky, top: true, win, luckCapped: win < raw,
@@ -1821,7 +1832,7 @@ const webStairsApi = {
         updatePoints(userId, win);
         const entry = stairsLog(g, 'Dừng (Thắng)', win - g.bet);
         setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet);
-        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} - nhận ${win}${win < raw ? ` (trần x${luckyCapOf(g)})` : ''}`);
+        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)})` : ''}`);
         stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
         // Lộ 🍀/🌟 chưa đạp cả khi DỪNG — đồng bộ với lúc cháy/lên đỉnh (và với Dò Mìn,
         // vốn đã lộ luckyAt khi dừng). Trước đây thiếu 2 field này nên dừng thì không

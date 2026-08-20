@@ -350,10 +350,11 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
-- **20/08/2026 — Dò Mìn: 2 ô 🍀/ván (mỗi ô quay 1 lần) · lì xì 💰 20% → 30% cược ·
-  VÁN 3-4 MÌN quá dễ nên trần may mắn hạ x2000 → x100** (`luckyCapOf`): nổ hũ 🏆 lẫn
-  thắng nhờ trợ giúp (khiên đỡ/⛏️) của ván 3-4 mìn tối đa ×100 cược — chặn farm hũ
-  bằng ván dễ. Ván 5+ mìn và Leo Thang giữ trần x2000, lì xì Leo Thang giữ 20%.
+- **20/08/2026 — Dò Mìn: 2 ô 🍀/ván (mỗi ô quay 1 lần) · lì xì 💰 20% → 30% cược (CẢ
+  Leo Thang) · trần may mắn theo bậc** — chặn farm bằng ván dễ, hai trần riêng:
+  NỔ HŨ 🏆 (`jackpotCapOf`): 3 mìn ×100 · 4 mìn ×200 · 5 mìn ×500 · 6+ giữ ×2000;
+  THẮNG CUỐI VÁN có trợ giúp 🍀/khiên (`assistCapOf`): 3 mìn ×350 · 4 mìn ×700 ·
+  5+ giữ ×2000. Leo Thang giữ ×2000 cho cả hai.
 - **20/08/2026 — 📒 VAY NỢ Dogcoin (toàn nút bấm, không lệnh).** Bảng trong kênh Discord
   (đặt từ panel tab 👥) với 3 nút: 💰 Vay (tối đa 4.000/ngày, tổng nợ vay ≤ 12.000, lãi kép
   20%/ngày DỪNG ở trần) · 💳 Trả nợ (đủ số dư mới trả, bỏ trống = trả hết) · 📄 Nợ của tôi.
