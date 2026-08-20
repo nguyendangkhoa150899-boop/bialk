@@ -21,6 +21,30 @@ Hệ thống quản lý server Palworld từ xa, và nối server game với bot
 
 ---
 
+## 🧭 Đọc nhanh — trạng thái hệ thống hôm nay (cập nhật 20/08/2026)
+
+Cái gì ĐANG chạy và cái gì đã tắt — để khỏi đi tìm code của thứ không còn tồn tại:
+
+| Thứ | Trạng thái |
+|---|---|
+| Cầu Dogcoin 2 chiều (Discord ↔ game) | ✅ **TỰ ĐỘNG**, bắt buộc nhân vật online, trần rút 20.000/lần |
+| REST API Palworld (kick/ban/xem người chơi) | ❌ **TẮT** (server test không bật) → các endpoint cần REST trả 503 |
+| Liên kết Discord ↔ nhân vật | ✅ **admin đặt tay ở panel**; ❌ hệ SteamID/REST đã ngưng |
+| Tặng pal tự động (give-pal) | ❌ **ĐÃ GỠ** — game không cho, admin tạo tay bằng CreativeMenu |
+| Shop pal trên Discord (mua + gacha + bán lại) | ✅ chạy |
+| Mod Lua UE4SS + cầu SFTP | ✅ chạy (đường sống duy nhất để tặng/trừ item) |
+| PalSchema (máy nghiền không rớt lõi) | ✅ chạy · Silvance no-drop dùng **pak** vì PalSchema chịu thua Lv70+ |
+| Bảng 📊 thống kê người chơi | ❌ **ĐÃ BỎ** 19/08 (dữ liệu `_pstats` vẫn đếm ngầm) |
+| Blackjack | ❌ thay bằng 🎡 Vòng quay nhóm 2 tầng |
+| Dò Mìn trên Discord (`/domin`) | ❌ comment lại — chơi trên web |
+| Mật khẩu panel/dashboard | ❌ **TẮT** theo yêu cầu chủ server (xem mục Xác thực để biết rủi ro) |
+
+Đọc theo thứ tự nếu mới nhận việc: mục **Kiến trúc** → **Luồng tiền Dogcoin** → **BotDoMin
+toàn bộ cơ chế** → **Những thứ đã thử và THẤT BẠI**. Mật khẩu/deploy chi tiết nằm ở sổ tay
+nội bộ của chủ server (`SO-TAY-NOI-BO.md`, KHÔNG có trong repo).
+
+---
+
 ## Ba thành phần đang chạy
 
 | Thành phần | Chỗ chạy | Restart khi nào |
@@ -136,11 +160,204 @@ Qua cổng online (kèm kiểm túi đủ tiền) → gọi `/api/take-item` **t
 
 ---
 
+## 🤖 BotDoMin — TOÀN BỘ CƠ CHẾ BOT (đọc phần này trước khi sửa bot)
+
+> Viết cho người/AI tiếp nhận: đây là mô tả đầy đủ cái bot đang làm gì, tiền chạy đường
+> nào, luật từng game, và các cạm bẫy đã dính. Tên "BotDoMin" = **Bot Dò Mìn** (game đầu
+> tiên của nó), giờ nó cõng cả sòng minigame + shop pal + cầu Dogcoin.
+
+### Bản đồ file (`../BotDoMin/`)
+
+| File | Dòng | Việc của nó |
+|---|---|---|
+| `index.js` | ~4.350 | **Toàn bộ logic**: bot Discord, tất cả game, tiền, ticket, cầu game, wiring cho web/panel |
+| `webplay.js` | ~1.650 | Web chơi cho người chơi (cổng 3002). HTML/CSS/JS client nằm TRONG chuỗi JS |
+| `panel.js` | ~1.660 | Panel admin (cổng 1508 SUPER / 1234 thường). Cũng là HTML trong chuỗi |
+| `palworld.js` | 157 | Cầu tới dashboard: `giveItem`/`takeItem`/`countItem`/`countItemAll`/`getOnlinePlayers`/link. Basic auth, `cleanName` lọc ký tự lạ trong tên nhân vật |
+| `assets.js` | 46 | Phục vụ file tĩnh: **thả file vào `assets/` + restart bot là xong**, không phải khai gì. Đọc 1 lần vào RAM, tra bằng bảng dựng sẵn (không ghép path từ input → không có cửa `../../`) |
+| `shop_items.js` | 55 | Danh mục 21 implant đổi passive (7 loại bị nhà phát hành khoá → không bán) |
+| `pals.json` | — | 290 pal (code nội bộ + tên hiển thị + paldex) |
+| `database.json` | — | **DỮ LIỆU SỐNG** — ví, hồ sơ, cấu hình. Gitignore. Mất là mất hết tiền người chơi |
+| `log_{system,result,bet,admin}.txt` | — | Log chia 4 file, tự cắt bớt dòng cũ (2000/1000/1000/500) |
+
+### 6 nguyên tắc kiến trúc (vi phạm là sinh bug tiền)
+
+1. **Tiền tính 100% ở server.** `index.js` quyết mọi thứ, client chỉ vẽ lại cái server
+   trả về. Không bao giờ tin số client gửi lên — để client tự tính thưởng thì sửa JS là tự
+   cộng tiền.
+2. **Ghi DB:** mọi thứ nằm trong `dbCache` (RAM). Vòng lặp 10 giây so `JSON.stringify` rồi
+   ghi **atomic** (ghi `.tmp` → rename) — đêm không ai chơi thì 0 lần ghi đĩa. `saveDbNow()`
+   ghi ĐỒNG BỘ ngay, chỉ dùng cho khoảnh khắc tiền vừa đổi; **đừng gọi nó trong đường
+   đăng nhập/vòng lặp** (ai spam là chặn đứng cả bot).
+3. **Deadline Discord 3 giây.** KHÔNG gọi API nào (SFTP mất ~6s) trước `showModal`/reply
+   đầu tiên. Cần lâu thì `deferReply` rồi `editReply`.
+4. **Ván nằm trong RAM** (`webMines`/`webStairs`/`wheelRoom` là `Map`). Bot restart là mất
+   ván đang chơi → có **sổ vé treo** (`_minesPending`/`_stairsPending`/`_wheelPending`) để
+   khởi động lại là **tự hoàn tiền cược** các ván treo.
+5. **Trả tiền một lần duy nhất.** Mọi đường kết thúc ván phải: xoá ván khỏi Map → xoá vé
+   treo → cộng tiền → ghi lịch sử. Bug 19/08 (nổ hũ ăn x2) chính là nhánh trả tiền mà
+   *quên xoá ván*.
+6. **Sổ biến động (`logDog`)** chỉ ghi khoản CHUYỂN/ĐIỀU CHỈNH (admin cộng trừ, chuyển
+   giữa người chơi, vào/ra game, mua pal, hoàn tiền) — **cố tình không ghi** cược thắng
+   thua minigame, ghi hết thì sổ thành rác.
+
+### Dữ liệu trong `database.json`
+
+**Mỗi người chơi** (`db[discordUserId]`): `points` (ví), `name`, `webPin` (PIN đăng nhập
+web), `lastDaily` + `dailyMonth` + `dailyDays[]` (lịch điểm danh tháng), `streakRun`
+(chuỗi ngày thật) + `streakPacks` (gói 800 chờ nhận) + `streakTotal` + `streakRunPaid`
+(chống bù trùng), `lastNghien`, `ingameName` (tên nhân vật Palworld — **chỉ admin đặt**),
+`lastWheelKey` (lượt vòng quay theo khung 12 tiếng).
+
+**Cấu hình + trạng thái** nằm cùng file dưới các khoá gạch dưới:
+`_dogLedger` (sổ biến động), `_palOrders`/`_palOrderSeq` (đơn pal), `_withdrawRequests`/
+`_withdrawSeq` (ticket), `_pstats` (thống kê tích luỹ), `_minesHistory`/`_stairsHistory`/
+`_wheelHistory`/`_txDashHistory`/`_bcDashHistory` (lịch sử), `_xsBets`/`_xsForced`/
+`_xsHistory`/`_xsRound`/`_xsResultMsgIds` (xổ số), `_txBets`/`_bcBets`, `_webChat`,
+`_wheelMinPlayers`, `_*ChannelId`/`_*MsgId` (kênh + tin nhắn bảng của từng game),
+`_*Pending` (vé treo). Ai mới vào có `STARTING_DOGCOIN = 20`.
+
+`NAME_OVERRIDE` ép tên hiển thị cho vài Discord ID quen (BiaLK, HoangFour, Anh Vinh Q, Hân Z).
+
+### Các game — luật + hằng số + chỗ trong code
+
+**💣 Dò Mìn** (`webMinesApi`, web) — 24 ô, chọn **3–20 mìn**, mở từng ô, dừng lúc nào cũng
+được. Hệ số = `nCr` tổ hợp × `RTP`, cắt 2 số lẻ. **`RTP = 1.0` → nhà cái KHÔNG ăn đồng
+nào** (giữ y bảng hệ số bản Discord cũ mà người chơi đã quen); muốn hút tiền ra thì hạ
+0.97/0.95. Không trần cược/thưởng (`MINES_MAX_WIN = MINES_MAX_BET = 0`), ván ≥ 50.000 thì
+ghi log cảnh báo. Mở đủ ô an toàn = Jackpot ván. Admin **ép mìn** được từ panel
+(`forcedMines[userId]` hoặc `_any` cho người kế tiếp, dùng 1 lần).
+
+**🔥 Leo Thang** (`webStairsApi`, web) — 10 tầng × 8 cột, tự chọn **1–5 quả cầu lửa**/tầng,
+mỗi tầng bấm 1 ô. `STAIRS_RTP = 0.95`. Hệ số = `0.95 × (8/(8−lửa))^tầng`, riêng 2 lửa tầng
+9/10 bị **ép tay** xuống 11.86/14.86 (`STAIRS_MULTI_OVERRIDE`). Bẫy sinh **sẵn hết lúc bắt
+đầu ván** → server không "đổi ý" giữa chừng. **Ô vàng 🌟** 2% mỗi ván, hiện rõ ở tầng 5–8,
+đạp là lên thẳng đỉnh.
+
+**🍀 Ô may mắn** (dùng chung 2 game trên, `MINES_LUCKY_WHEEL`/`STAIRS_LUCKY_WHEEL`) — ô 🍀
+**giấu** trong bàn (hiện ra là ai cũng bấm nó đầu tiên = vòng quay free mỗi ván). Đạp vào
+thì dừng lại, lật **4 hộp** chọn 1 — phần thưởng quay ở SERVER lúc chọn, 3 hộp kia là hàng
+mẫu (hàng mẫu **không bao giờ** ra hũ, kẻo lật ra 2–3 hũ ảo).
+
+| Quà | Dò Mìn | Leo Thang | Tác dụng |
+|---|---|---|---|
+| 🛡️ Khiên | 20% | 20% | Đỡ 1 lần chết (mìn/lửa), Leo Thang thì đứng yên không lên tầng |
+| ⛏️ Đào / 🚀 Tên lửa | 15% | 15% | Mở giúp 1–2 ô an toàn / +2 tầng |
+| 💰 Lì xì | 40% | 40% | +20% tiền cược ngay (tối thiểu 1) |
+| 🍂 Hụt | 20% | 20% | Không gì cả — **van chỉnh kỳ vọng**, sòng chảy máu thì tăng ô này |
+| 🏆 **NỔ HŨ** | 5% | 5% | `min(giải cao nhất của ván đó, ×2000 cược)` rồi **CHỐT VÁN LUÔN** |
+
+Hai luật kinh tế của hũ, đừng bỏ: (1) hũ tính theo **cấu hình ván đó** — chọn 1 mìn/1 lửa
+rồi ngồi câu hũ chỉ ăn giải bé, hết cửa farm; (2) **trần ×2000 CHỈ áp ván ăn nhờ trợ giúp**
+(🚀/🌟/⛏️ hoặc khiên đã dùng để thoát chết) — tự lực 100% thì trả đủ, cày thật ăn thật.
+
+**🎡 Vòng quay nhóm 2 tầng** (`wheelRoom`) — thay Blackjack. Vào bàn **miễn phí**. Đủ N
+người (admin chỉnh ở panel) thì nút quay sáng, **người trong bàn tự bấm**, không tự quay.
+- *Vòng 1 — VÉ (miễn phí):* 15 nan `1.500/2.000/2.500` xen kẽ, 1 mũi tên, quay ra giá nào
+  thì cả bàn trả giá đó. **Lượt bị khoá ngay khi vé quay** (câu giờ chờ vé đẹp = mất lượt).
+  Ai không đủ tiền lúc vé chốt thì bị mời ra, không mất gì.
+- *Vòng 2 — HỆ SỐ:* 27 nan (chia hết cho 3), 3 mũi tên 🟡🔵🟢 lệch 120° = 9 nan; chọn trùng
+  màu thoải mái. Phân bố sau buff 19/08: `×1.5×9 · ×1.8×6 · ×2×5 · ×2.5×3 · ×3×2 · ×5×1 ·
+  ×10×1` — **sàn ×1.5, chắc chắn thắng**, kỳ vọng ~×2.33 vé (nhà cái chịu lỗ vòng này, coi
+  như quà định kỳ). Vé chốt xong 2 phút không ai bấm thì tự quay.
+- **1 lượt/người/khung 12 tiếng** (00:00–11:59 và 12:00–23:59 giờ VN), admin reset được.
+
+**🎲 Big Small** (tài xỉu, Discord + web) — ván **40 giây** = 25s đặt cược + `TX_LOCK_S = 15`
+giây nặn. Lúc khoá sổ xí ngầu lắc **ngầm** trong server, người chơi lên web **tự kéo tờ giấy
+che** để lộ dần (ai kéo người đó thấy riêng). Cửa: BIG/SMALL/CHẴN/LẺ/**BÃO** (3 viên giống
+nhau, ×30 — bão về thì mọi cửa thường thua sạch). ⚠️ Tên cửa trong `TX_CHOICES` vừa để hiển
+thị vừa là **giá trị lưu lịch sử** — đổi tên phải so qua `TX_CHOICES.*`, không viết chữ cứng.
+
+**🎰 Xổ số miền Bắc** (`xsState`) — mỗi giờ 1 kỳ vào **đúng đầu giờ**, khoá sổ từ **phút 50**.
+Bot tự quay đủ bảng 27 lô như XSMB thật (`XS_PRIZE_SPEC`: ĐB/G1/G2×2/G3×6/G4×4/G5×6/G6×3/G7×4).
+**Đề** = 2 số cuối giải ĐB, ăn **×70**. **Lô** = số về ở bất kỳ lô nào, mỗi nháy ăn **×3.5**.
+Giới hạn: 5 số đề + 5 số lô mỗi kỳ, tối đa **1.000/số**. Admin ép được số đề / bắt số lô
+phải về / cấm về (`_xsForced`, dùng 1 kỳ rồi tự xoá).
+
+**🦀 Bầu Cua** (Discord, `bcState`) — 6 con Hổ/Cua/Tôm/Cá/Gà/Nai. Mặc định `status:'stopped'`
+— **cố tình**: để `'betting'` thì bảng cũ còn sót trong Discord vẫn nhận cược, trừ tiền thật
+rồi không bao giờ trả (tiền bốc hơi im lặng).
+
+**📅 Điểm danh & 💉 Nghiện** (logic dùng chung Discord + web) — điểm danh ngày **400**
+(reset 00:00 giờ VN, có lịch tháng), `/nghien` **100** mỗi **1 tiếng**. **Thưởng chuỗi:** cứ
+**2 ngày điểm danh LIÊN TIẾP** = 1 gói **800** ghi vào sổ, tự bấm nhận, mỗi lần bấm 1 gói,
+gói dồn được và **chuỗi đứt sau đó cũng không mất gói đã ghi**. Chuỗi đếm theo **ngày thật**
+(`streakRun`) nên sang tháng không đứt oan; người điểm danh từ bản cũ được **tự bù**
+(`streakTopUp`) khi mở trang, `streakRunPaid` chống bù trùng. Lụm nghiện **từ web** mới đăng
+công khai vào kênh; gõ `/nghien` trên Discord chỉ có lời đáp riêng (fix 2 tin trùng 19/08).
+
+**🧧 Lộc lá** — chuyển Dogcoin giữa người chơi trên web, có đăng công khai.
+
+**🐾 Shop pal** (Discord) — tự chọn **6.000** / quay ngẫu nhiên **2.000** (pool paldex ≥ 80,
+trừ Xenolord/Hartalis/Blazamut Ryu). Mọi pal shop: **4 sao, IV 100 cả 3, 4 passive + 1 linh
+hồn 60%**. Quay random thì **biết trúng gì rồi mới chọn** passive, hoặc **bán lại 1.000**
+(đơn tự đóng, admin khỏi giao). Passive **Cây Thế Giới không bán kèm** (so khớp sau khi bỏ
+dấu tiếng Việt nên "Thần Hủy Diệt" hay "than huy diet" đều bắt được). Bot **không tự spawn
+pal** — admin tạo tay bằng CreativeMenu rồi bấm hoàn thành trên panel (lý do: xem mục
+"Những thứ đã thử và THẤT BẠI").
+
+### Slash command đang bật
+`/sodu` · `/diemdanh` · `/nghien` · `/chuyentien <người> <số tiền>`.
+`/addtien` `/trutien` đã **xoá** (nhiều người có quyền Administrator Discord ≠ được đụng ví
+— cộng/trừ tay giờ CHỈ ở panel). `/domin` còn nguyên trong code nhưng **comment lại** (chơi
+web mượt hơn, không dính deadline 3 giây).
+
+### Web chơi (cổng 3002)
+Đăng nhập bằng **Discord ID + PIN** (`webPin`, lấy bằng nút 🌐 trên bảng Big Small trong
+Discord). Sai quá nhiều → chặn IP 10 phút; token phiên 30 ngày, đăng nhập lại thu hồi máy cũ.
+API: `/api/login` `/api/state` `/api/chat` `/api/players` `/api/transfer` ·
+`/api/daily/{state,claim,streak,nghien}` · `/api/wheel/{state,ready,unready,spin}` ·
+`/api/bet` · `/api/mines/{state,dismiss,table,start,reveal,cashout,lucky}` ·
+`/api/stairs/{state,dismiss,table,start,step,cashout,lucky}`.
+
+### Panel admin (1508 SUPER / 1234 thường)
+8 tab: `tx` `mine` `stair` `bj`(vòng quay) `bc` `xs` `user` `pal`. Làm được: bật/tắt + ép kết
+quả từng game, ép mìn, reset lượt vòng quay, cộng/trừ/set/xoá ví từng người, phát tiền toàn
+server, reset điểm danh, duyệt/từ chối ticket nạp rút, đóng đơn pal, **liên kết tên nhân vật
+↔ Discord** (`/api/pal/set-name`), xem sổ biến động, chọn kênh cho từng bảng game.
+
+### Kiểm thử — cách đang làm (không có test framework)
+Bot không boot được ở máy Windows (node_modules local là discord.js v13, VPS v14) nên test
+theo lối **trích code**: đọc `index.js` bằng `fs`, cắt đúng hàm/khối cần thử
+(`extract(mốcĐầu, mốcCuối)`), `.replace(/\bconst /g,'var ')` cho biến gắn vào global sandbox,
+rồi chạy trong `vm` với phụ thuộc giả (`getUserData`/`updatePoints`/`writeLog`... là stub, ví
+là object thường). Mẹo đã dùng: **đè `Math.random`** bằng hàng đợi số để đi đúng nhánh, **đè
+`Date`** bằng `FakeDate` để giả lập trôi ngày (test chuỗi điểm danh, sang tháng), shim
+`setTimeout` để co thời gian chờ. Test nằm ở thư mục scratchpad của phiên làm việc — chạy
+xanh hết rồi mới commit. Các bộ đang có: nổ hũ chốt ván (29 ca), ô may mắn (79), vòng quay
+(63), chuỗi điểm danh (36), lộc lá (34), bảng lịch sử (24), bán lại pal (19), cổng online
+nạp/rút (16), /nghien (12).
+
+### Cạm bẫy riêng của bot (đã dính, đừng dính lại)
+- **`panel.js`/`webplay.js` không kiểm được bằng `node --check`** — JS client nằm trong chuỗi
+  HTML. Một lỗi cú pháp ở đó làm chết **toàn bộ** script (triệu chứng: bảng đăng nhập không
+  bao giờ ẩn). Cách kiểm đúng: chạy server → tải HTML thật → `new vm.Script()` đoạn `<script>`.
+- Trong template literal của panel phải viết `\\'` chứ không phải `\'`.
+- **Trùng tên class CSS giữa 2 khu vực** làm vỡ layout (19/08: lịch điểm danh dùng `.dd`
+  trùng hàng xí ngầu → lịch sử xếp dọc).
+- **Heredoc bash làm hỏng `${}`** trong template literal JS (bad substitution → chuỗi rỗng).
+  Sửa file có template literal thì dùng Edit hoặc `node -e`, đừng heredoc.
+- Discord chỉ cho **25 nút/tin** và **25 lựa chọn/menu** — danh sách 290 pal phải nhập bằng
+  ô text, không dùng menu.
+- Ô 🍀 phải chọn trong ô an toàn và **ép số** (`g.mines.map(Number)`) — layout ép từ panel có
+  thể là chuỗi, so lệch kiểu là 🍀 rơi trúng mìn.
+- Đừng để `current()` trả về vị trí ô 🍀/mìn — client xem được là gian lận được.
+
+---
+
 ## Bot Discord (BotDoMin) — nhật ký cập nhật
 
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **19/08/2026 — Vòng quay BUFF vòng hệ số:** bỏ đám nan lẻ ×1.1–1.4 (quay ra +200 nhìn
+  chán), sàn lên ×1.5, thêm bậc ×3/×5. Phân bố cuối: ×1.5×9 · ×1.8×6 · ×2×5 · ×2.5×3 ·
+  ×3×2 · ×5×1 · ×10×1.
+- **19/08/2026 — Vòng quay: giá vé 1.000/1.500/2.000 → 1.500/2.000/2.500**, vòng hệ số
+  thêm 3 nan ×1.3 (24 → 27 nan, phải chia hết cho 3 vì 3 mũi tên lệch 9 nan).
+- **19/08/2026 — Fix xí ngầu lịch sử xếp dọc:** lịch điểm danh dùng trùng class `.dd` với
+  hàng xúc xắc. Web UI: xí ngầu lịch sử nằm ngang, tắt hero chân trang, ép mỏng header/nav.
+- **19/08/2026 — Big Small: ván 50 → 40 giây** (đặt cược còn 25 giây, nặn giữ nguyên 15).
 - **19/08/2026 — Cân lại hộp may mắn 🍀:** khiên 🛡️ 25% → 20%, lì xì 💰 (hoàn 20% cược)
   35% → 40%; giữ nguyên đào/tên lửa 15%, hụt 20%, nổ hũ 5%. Áp cả Dò Mìn lẫn Leo Thang.
 - **19/08/2026 — Fix NỔ HŨ 🏆 ăn x2 (Dò Mìn + Leo Thang).** Trúng hộp 🏆 giờ CHỐT VÁN
