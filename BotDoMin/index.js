@@ -1102,11 +1102,13 @@ function calculateMulti(diamonds, numMines) {
     if (waysToWin === 0) return 1;
     const prob = waysToWin / totalWays;
     let multi = (1 / prob) * RTP;
-    // TRẦN ×2000 mọi mốc, kể cả tự lực (chủ server chốt 20/08 sau 2 lần cân nhắc):
-    // "thắng x1900 thì lấy 1900" — dưới trần trả đúng số, vượt trần (mở hết bàn
-    // 12-13 mìn vốn là x4,9 TRIỆU) thì cắt về x2000. Cắt ngay tại đây để bảng
-    // hệ số hiển thị và tiền trả luôn là CÙNG MỘT SỐ.
-    return Math.min(Math.floor(multi * 100) / 100, LUCKY_WIN_CAP_MULTI);
+    // TỰ LỰC ĂN ĐỦ, KHÔNG TRẦN (chủ server chốt CUỐI CÙNG 20/08 sau 3 lần cân
+    // nhắc): mở hết bàn cực khó (12-13 mìn = 1/5,2 triệu) nên đủ may mắn thì trả
+    // nguyên tỉ lệ x4,9 TRIỆU lần cược — chủ server đã nghe cảnh báo "cú đó in
+    // nửa tỷ Dogcoin" và CHẤP NHẬN. Trần CHỈ nằm ở đường may mắn: nổ hũ
+    // (jackpotCapOf) và khiên/⛏️ ĐÃ DÙNG (assistCapOf). Đừng thêm Math.min vào
+    // đây nữa - đã thêm rồi gỡ 2 lần theo đúng lệnh chủ server.
+    return Math.floor(multi * 100) / 100;
 }
 
 const getInfo = (diamonds, numMines) => {
@@ -1572,8 +1574,8 @@ function stairsMulti(cleared, fire) {
     const ov = STAIRS_MULTI_OVERRIDE[`${fire}:${cleared}`];
     if (ov) return ov;
     const m = STAIRS_RTP * Math.pow(STAIRS_COLS / (STAIRS_COLS - fire), cleared);
-    // Cùng trần ×2000 như Dò Mìn (lên đỉnh 5 lửa vốn là x16.868 -> về x2000)
-    return Math.min(Math.floor(m * 100) / 100, LUCKY_WIN_CAP_MULTI);
+    // Tự lực ăn đủ, không trần (như Dò Mìn — lên đỉnh 5 lửa x16.8k, 1/1,7 triệu)
+    return Math.floor(m * 100) / 100;
 }
 
 function stairsWin(bet, cleared, fire) {

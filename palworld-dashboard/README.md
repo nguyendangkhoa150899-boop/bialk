@@ -350,11 +350,13 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
-- **20/08/2026 — TRẦN TUYỆT ĐỐI ×2000 mọi ván (bịt lỗ 25 ô).** Lên 25 ô làm giải
-  mở-hết-bàn phình tới ×4,9 TRIỆU lần cược (12-13 mìn) mà đường TỰ LỰC không trần nào
-  cắt — một cú ăn hết là in nửa tỷ Dogcoin. Giờ `calculateMulti`/`stairsMulti` tự cắt
-  tại ×2000 nên bảng hệ số hiển thị = tiền trả thật, không còn mốc ảo (lên đỉnh 5 lửa
-  ×16.868 cũng về ×2000). Các mốc dưới trần giữ nguyên.
+- **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
+  tổ hợp, KHÔNG trần (mở hết bàn 12-13 mìn = ×4,9 triệu lần cược, xác suất 1/5,2 triệu —
+  chủ server chấp nhận sau khi nghe cảnh báo). Trần CHỈ áp 3 đường may mắn: nổ hũ 🏆
+  50/100/200 (3/4/5 mìn), khiên/⛏️ ĐÃ DÙNG 100/300/500; 6+ mìn và Leo Thang ×2000.
+  Khiên nhận mà chưa dùng vẫn tính tự lực. UI thanh hệ số tự gộp dải mốc trùng nhau
+  ở cuối bảng thành một ô (nếu có). Lưu ý: trần tuyệt đối từng được thêm rồi GỠ 2 lần
+  trong ngày theo lệnh chủ server — đừng thêm lại nếu không có lệnh mới.
 - **20/08/2026 — Fix khiên 🛡️ + cỏ 🍀 thành hàng MUA THÊM.** Khiên giờ CỘNG DỒN cả 2 game
   (trước là boolean: đang cầm khiên mà hộp ra khiên nữa là mất trắng — "khiên vô dụng");
   UI hiện số khiên đang cầm. Dò Mìn về mặc định **1 ô 🍀/ván**, thêm checkbox
