@@ -1074,7 +1074,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="vayStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="vayStop()">⏹️ Gỡ bảng</button>
         </div>
-        <div class="note">Bảng có 3 nút cho người chơi: <b>💰 Vay</b> (tối đa 4.000/ngày, tổng nợ vay ≤ 12.000, lãi kép 10%/ngày) · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Thân bảng tự hiện sổ nợ + nhãn ⚠️ nợ xấu, tự vẽ lại sau mỗi biến động. Đang nợ thì bot chặn chuyển tiền/chuyển vào game và trích 50% tiền điểm danh trả nợ.</div>
+        <div class="note">Bảng có 3 nút cho người chơi: <b>💰 Vay</b> (tối đa 4.000/ngày, tổng nợ vay ≤ 12.000, lãi kép 20%/ngày) · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Thân bảng tự hiện sổ nợ + nhãn ⚠️ nợ xấu, tự vẽ lại sau mỗi biến động. Nợ thường KHÔNG bị siết gì; dính ⚠️ nợ xấu mới bị: chặn chuyển vào game + chặn chuyển tiền cho người khác + trích 50% tiền điểm danh trả nợ.</div>
       </div>
 
       <div class="card danger">

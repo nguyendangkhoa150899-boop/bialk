@@ -849,7 +849,7 @@ const PAGE = [
     '<input id="debtAmt" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)" style="flex:1">',
     '<button class="btn-full" id="debtPayBtn" style="flex:1;margin-top:0" onclick="debtPay()">💳 TRẢ NỢ</button>',
     '</div>',
-    '<div class="muted" style="font-size:12px;margin-top:6px">Đang nợ thì: không chuyển tiền cho người khác, không chuyển vào game, 50% tiền điểm danh/nghiện/chuỗi tự trừ vào nợ. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:6px">Dính ⚠️ nợ xấu thì: không chuyển vào game, không chuyển tiền cho người khác, 50% tiền điểm danh/nghiện/chuỗi tự trừ vào nợ. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
     '</div>',
     '</div>', // hết #pageDaily
 
