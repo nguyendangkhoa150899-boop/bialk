@@ -1136,20 +1136,27 @@ const PAGE = [
     // lựa chọn đó tới khi mở thêm ô mới (lúc đó nhảy về trang đang chơi).
     'var MPAGE=0,MPGMAN=false,MDONE0=-1,MPER=7;',
     'function mBar(){var done=MG?MG.revealed.length:0;var bet=MG?MG.bet:mNum("mBet");',
-    'var np=Math.max(1,Math.ceil(MTAB.length/MPER));',
+    // Đuôi bảng chạm TRẦN x2000 là một dải mốc GIỐNG HỆT NHAU (5 mìn: ô 17-20 đều x2k)
+    // -> gộp cả dải thành MỘT ô "TRẦN" cho khỏi thấy x2k lặp 4 lần như lỗi.
+    'var LASTV=MTAB.length?MTAB[MTAB.length-1]:0;var CUT=MTAB.length;',
+    'for(var q=0;q<MTAB.length;q++){if(MTAB[q]===LASTV){CUT=q+1;break}}',
+    'var FLAT=CUT<MTAB.length;var TAB=MTAB.slice(0,CUT);',
+    'var np=Math.max(1,Math.ceil(TAB.length/MPER));',
     'if(done!==MDONE0){MDONE0=done;MPGMAN=false}',   // vừa mở thêm ô -> về trang tự động
-    'if(!MPGMAN)MPAGE=Math.floor(Math.min(done,Math.max(MTAB.length-1,0))/MPER);',   // trang chứa mốc kế tiếp
+    'if(!MPGMAN)MPAGE=Math.floor(Math.min(done,Math.max(TAB.length-1,0))/MPER);',   // trang chứa mốc kế tiếp
     'if(MPAGE>=np)MPAGE=np-1;if(MPAGE<0)MPAGE=0;',
-    'var cells=MTAB.slice(MPAGE*MPER,MPAGE*MPER+MPER).map(function(m,j){var k=MPAGE*MPER+j+1;',
+    'var cells=TAB.slice(MPAGE*MPER,MPAGE*MPER+MPER).map(function(m,j){var k=MPAGE*MPER+j+1;',
     'var c=k<=done?"hit":(k===done+1?"now":"");',
     'var cap=MAXWIN&&bet>0&&Math.floor(bet*m)>MAXWIN;if(cap)c+=" capped";',
     // Mốc cuối = mở hết ô an toàn. Đánh dấu hẳn để không ai tưởng bảng bị thiếu.
-    'if(k===MTAB.length)c+=" last";',
+    'if(k===TAB.length)c+=" last";',
     'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">\'+(cap?"TRẦN":fx(m))+',
-    '(k===MTAB.length?\'<span class="tag">MỞ HẾT</span>\':"")+"</div>"}).join("");',
+    '(k===TAB.length?\'<span class="tag">\'+(FLAT?("Ô "+CUT+"+ · TRẦN"):"MỞ HẾT")+\'</span>\':"")+"</div>"}).join("");',
     '$("mbar").innerHTML=\'<button class="mpg" onclick="mPg(-1)"\'+(MPAGE<=0?" disabled":"")+">◀</button>"+cells+',
     '\'<button class="mpg" onclick="mPg(1)"\'+(MPAGE>=np-1?" disabled":"")+">▶</button>"}',
-    'function mPg(d){var np=Math.max(1,Math.ceil(MTAB.length/MPER));',
+    'function mPg(d){var L=MTAB.length?MTAB[MTAB.length-1]:0,C=MTAB.length;',
+    'for(var q=0;q<MTAB.length;q++){if(MTAB[q]===L){C=q+1;break}}',   // cùng cách gộp trần như mBar
+    'var np=Math.max(1,Math.ceil(C/MPER));',
     'MPAGE=Math.min(np-1,Math.max(0,MPAGE+d));MPGMAN=true;mBar()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
