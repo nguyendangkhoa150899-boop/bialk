@@ -362,8 +362,8 @@ nạp/rút (16), /nghien (12).
   bản Discord (đang tắt) hết đường bật lại vì 25 ô + nút DỪNG = 26 nút > trần Discord.
 - **20/08/2026 — Dò Mìn: 2 ô 🍀/ván (mỗi ô quay 1 lần) · lì xì 💰 20% → 30% cược (CẢ
   Leo Thang) · trần may mắn theo bậc** — chặn farm bằng ván dễ, hai trần riêng:
-  NỔ HŨ 🏆 (`jackpotCapOf`): 3 mìn ×100 · 4 mìn ×200 · 5 mìn ×500 · 6+ giữ ×2000;
-  THẮNG CUỐI VÁN có trợ giúp 🍀/khiên (`assistCapOf`): 3 mìn ×350 · 4 mìn ×700 ·
+  NỔ HŨ 🏆 (`jackpotCapOf`): 3 mìn ×50 · 4 mìn ×100 · 5 mìn ×300 · 6+ giữ ×2000;
+  THẮNG CUỐI VÁN có trợ giúp 🍀/khiên (`assistCapOf`): 3 mìn ×150 · 4 mìn ×300 ·
   5+ giữ ×2000. Leo Thang giữ ×2000 cho cả hai.
 - **20/08/2026 — 📒 VAY NỢ Dogcoin (toàn nút bấm, không lệnh).** Bảng trong kênh Discord
   (đặt từ panel tab 👥) với 3 nút: 💰 Vay (tối đa 4.000/ngày, tổng nợ vay ≤ 12.000, lãi kép
