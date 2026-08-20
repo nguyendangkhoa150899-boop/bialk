@@ -1615,7 +1615,7 @@ const PAGE = [
     'var c=$("debtCard");if(!c)return;',
     'if(!(j.total>0)){c.style.display="none";return}',
     'c.style.display="";',
-    '$("debtBad").textContent=j.bad?"⚠️ NỢ XẤU (admin gắn)":"";',
+    '$("debtBad").textContent=j.bad?"⚠️ NỢ XẤU (hệ thống đóng dấu)":"";',
     '$("debtInfo").innerHTML="Đang nợ <b>"+j.total.toLocaleString("vi-VN")+"</b> 🐕"+(j.admin>0?" (vay "+j.loan.toLocaleString("vi-VN")+" + admin ghi "+j.admin.toLocaleString("vi-VN")+")":"")+" · lãi kép "+j.ratePct+"%/ngày trên nợ vay";',
     '}).catch(function(){})}',
     'function debtPay(){var b=$("debtPayBtn");if(b.disabled)return;b.disabled=true;',

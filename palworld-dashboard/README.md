@@ -360,7 +360,10 @@ nạp/rút (16), /nghien (12).
   chuỗi tự trả nợ (trả nợ vay trước vì có lãi). Gắn/gỡ/thoát nợ xấu đều DM người chơi
   + ĐĂNG CÔNG KHAI vào kênh bảng vay; **trả sạch nợ là nhãn tự bay**, không cần admin gỡ.
   Admin ghi nợ tay: không lãi, không trần, số âm = giảm. Giọng văn bảng/tin nhắn viết
-  kiểu bông đùa cho server bạn bè.
+  kiểu bông đùa cho server bạn bè. Lãi đẻ mỗi ngày + gắn/thoát nợ xấu đều RÉO TÊN (tag)
+  công khai ở kênh bảng vay, và luôn nói "HỆ THỐNG" chứ không nói admin (đỡ bị chửi).
+  `/sodu` hiện cả nợ vay + nợ admin + nhãn nợ xấu, kèm nút 💳 Trả nợ vay và 🧾 Trả nợ
+  admin (trả riêng từng khoản) ngay tại chỗ.
   Web: card 📒 Nợ ở trang điểm danh (chỉ hiện khi đang nợ) + nút trả. Test vaytest.js 51/51.
 - **19/08/2026 — Vòng quay BUFF vòng hệ số:** bỏ đám nan lẻ ×1.1–1.4 (quay ra +200 nhìn
   chán), sàn lên ×1.5, thêm bậc ×3/×5. Phân bố cuối: ×1.5×9 · ×1.8×6 · ×2×5 · ×2.5×3 ·
