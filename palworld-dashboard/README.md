@@ -350,6 +350,8 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **20/08/2026 — Nổ hũ 🏆 hạ 5% → 3%** cả 2 bàn quay hộp may mắn (Dò Mìn + Leo Thang),
+  2% dư dồn vào ô hụt 🍂 (20% → 22%) — tổng bàn quay vẫn đúng 100%.
 - **20/08/2026 — Vay nợ: PHÍ VAY 5%** ghi thẳng vào nợ lúc vay (vay 4.000 → ghi sổ
   4.200, nhận đủ 4.000). Chống spam vay-trả-vay: trả sạch mở lại hạn mức ngày, nhưng
   mỗi vòng lặp tốn 5% phí — vay 4.000 trả liền là mất 200.
