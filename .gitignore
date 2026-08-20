@@ -2,3 +2,6 @@ node_modules/
 .env
 *.log
 HUONG-DAN-UPDATE.txt
+
+# So tay noi bo chua mat khau that - KHONG BAO GIO commit
+SO-TAY-NOI-BO.md
