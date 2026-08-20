@@ -1278,21 +1278,24 @@ function luckyAssisted(g) {
     return (g.luck || []).some(x => x === '🚀' || x === '🌟' || x === '⛏️')
         || (g.defused || []).length > 0 || (g.burned || []).length > 0;
 }
-// Hai TRẦN may mắn riêng cho Dò Mìn — chặn farm bằng ván dễ (chủ server chỉnh lần 2, 20/08):
-// - Trần NỔ HŨ 🏆:  3 mìn ×50 · 4 mìn ×100 · 5 mìn ×300 · 6+ không can thiệp (×2000)
-// - Trần THẮNG CUỐI VÁN khi có trợ giúp 🍀 (khiên đỡ/⛏️): 3 mìn ×150 · 4 mìn ×300 ·
-//   5+ không can thiệp (×2000). Leo Thang giữ ×2000 cho cả hai.
+// Hai TRẦN may mắn riêng cho Dò Mìn — CHỐT CUỐI của chủ server 20/08:
+// - Trần NỔ HŨ 🏆:  3 mìn ×50 · 4 mìn ×100 · 5 mìn ×200 · 6+ không can thiệp (×2000)
+// - Trần THẮNG CUỐI VÁN khi TRỢ GIÚP ĐÃ DÙNG (khiên đỡ mìn/⛏️): 3 mìn ×100 ·
+//   4 mìn ×300 · 5 mìn ×500 · 6+ không can thiệp (×2000).
+// Tự lực (khiên chưa dùng cũng tính tự lực) trả đủ theo bảng, chỉ đụng trần tuyệt
+// đối ×2000 trong calculateMulti. Leo Thang giữ ×2000 cho cả hai.
 function jackpotCapOf(g) {
     if (g.totalMines === undefined) return LUCKY_WIN_CAP_MULTI;   // Leo Thang
     if (g.totalMines <= 3) return 50;
     if (g.totalMines === 4) return 100;
-    if (g.totalMines === 5) return 300;
+    if (g.totalMines === 5) return 200;
     return LUCKY_WIN_CAP_MULTI;
 }
 function assistCapOf(g) {
     if (g.totalMines === undefined) return LUCKY_WIN_CAP_MULTI;   // Leo Thang
-    if (g.totalMines <= 3) return 150;
+    if (g.totalMines <= 3) return 100;
     if (g.totalMines === 4) return 300;
+    if (g.totalMines === 5) return 500;
     return LUCKY_WIN_CAP_MULTI;
 }
 function capIfAssisted(g, win) {
