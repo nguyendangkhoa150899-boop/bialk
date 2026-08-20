@@ -1254,11 +1254,11 @@ function webMinesLog(g, result, amount, hitIdx) {
 // Cân theo chủ server chốt (19/08): hũ 5% · hụt 20% · lì xì 40% · khiên 20% ·
 // đào/tên lửa 15% (quà đẩy tiến độ nặng kinh tế hơn nên hiếm hơn khiên).
 const MINES_LUCKY_WHEEL = [
-    { p: 0.20, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết
+    { p: 0.15, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
     { p: 0.15, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.40, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.22, prize: 'none' },     // 🍂 hụt
-    { p: 0.03, prize: 'jackpot' },  // 🏆 NỔ HŨ (hạ 5% -> 3% ngày 20/08)
+    { p: 0.46, prize: 'cash' },     // 💰 +30% tiền cược tức thì
+    { p: 0.21, prize: 'none' },     // 🍂 hụt
+    { p: 0.03, prize: 'jackpot' },  // 🏆 NỔ HŨ
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.15, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay

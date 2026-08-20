@@ -352,7 +352,8 @@ nạp/rút (16), /nghien (12).
 
 - **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
   tổ hợp, KHÔNG trần (mở hết bàn 12-13 mìn = ×4,9 triệu lần cược, xác suất 1/5,2 triệu —
-  chủ server chấp nhận sau khi nghe cảnh báo). Trần CHỈ áp 3 đường may mắn: nổ hũ 🏆
+  chủ server chấp nhận sau khi nghe cảnh báo). Bàn quay 🍀 Dò Mìn: lì xì 46% (+30% cược) · hụt 21% · khiên 15% · đào 15% · hũ 3%
+  (Leo Thang giữ: rocket 15 · khiên 20 · lì xì 40 · hụt 22 · hũ 3). Trần CHỈ áp 3 đường may mắn: nổ hũ 🏆
   50/100/200 (3/4/5 mìn), khiên/⛏️ ĐÃ DÙNG 100/300/500; 6+ mìn và Leo Thang ×2000.
   Khiên nhận mà chưa dùng vẫn tính tự lực. UI thanh hệ số tự gộp dải mốc trùng nhau
   ở cuối bảng thành một ô (nếu có). Lưu ý: trần tuyệt đối từng được thêm rồi GỠ 2 lần
