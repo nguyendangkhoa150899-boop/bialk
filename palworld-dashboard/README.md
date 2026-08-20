@@ -350,6 +350,15 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **20/08/2026 — 📒 VAY NỢ Dogcoin (toàn nút bấm, không lệnh).** Bảng trong kênh Discord
+  (đặt từ panel tab 👥) với 3 nút: 💰 Vay (tối đa 4.000/ngày, tổng nợ vay ≤ 12.000, lãi kép
+  10%/ngày DỪNG ở trần) · 💳 Trả nợ (đủ số dư mới trả, bỏ trống = trả hết) · 📄 Nợ của tôi.
+  Thân bảng tự hiện sổ nợ + khối 🚨 DANH SÁCH NỢ XẤU riêng, tự vẽ lại sau mỗi biến động,
+  bot restart tự bám lại bảng cũ. Nợ xấu do ADMIN GẮN TAY (nút ⚠️ ở tab 👥, có DM báo người
+  chơi) — nợ xấu thì cấm vay thêm. Đang nợ: chặn chuyển tiền cho người khác (/chuyentien +
+  web) + chặn chuyển vào game + trích 50% tiền điểm danh/nghiện/thưởng chuỗi tự trả nợ
+  (trả nợ vay trước vì có lãi). Admin ghi nợ tay: không lãi, không trần, số âm = giảm.
+  Web: card 📒 Nợ ở trang điểm danh (chỉ hiện khi đang nợ) + nút trả. Test vaytest.js 51/51.
 - **19/08/2026 — Vòng quay BUFF vòng hệ số:** bỏ đám nan lẻ ×1.1–1.4 (quay ra +200 nhìn
   chán), sàn lên ×1.5, thêm bậc ×3/×5. Phân bố cuối: ×1.5×9 · ×1.8×6 · ×2×5 · ×2.5×3 ·
   ×3×2 · ×5×1 · ×10×1.

@@ -75,7 +75,12 @@ function startPanel(ctx) {
         const db = ctx.getDb();
         return Object.keys(db)
             .filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object')
-            .map(id => ({ id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '' }))
+            .map(id => ({
+                id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '',
+                // 📒 nợ: hiện thẳng số trong db (index.js có vòng quét cộng lãi mỗi giờ)
+                debt: db[id].debt ? ((db[id].debt.loan || 0) + (db[id].debt.admin || 0)) : 0,
+                debtBad: !!(db[id].debt && db[id].debt.bad),
+            }))
             .sort((a, b) => b.points - a.points);
     };
 
@@ -129,6 +134,7 @@ function startPanel(ctx) {
                 live: !!wd.message,
                 channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
             },
+            vay: ctx.getVay ? ctx.getVay() : { live: false, channelId: '' },
             gachaChannelId: db._gachaChannelId || '',
             giveaway: { channelId: db._giveawayChannelId || '', roleId: db._giveawayRoleId || '' },
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
@@ -452,6 +458,43 @@ function startPanel(ctx) {
                     ctx.stopWithdraw();
                     ctx.writeLog('ADMIN', `[PANEL] Dừng kênh Rút Dogcoin`);
                     return sendJSON(res, 200, { ok: true });
+                }
+                // ---- 📒 VAY NỢ ----
+                if (path === '/api/vay/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    try {
+                        const name = await ctx.startVay(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Đặt bảng VAY NỢ tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                if (path === '/api/vay/stop') {
+                    ctx.stopVay();
+                    ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng VAY NỢ`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                // Admin ghi nợ tay: KHÔNG lãi, KHÔNG trần (số âm = giảm nợ đã ghi)
+                if (path === '/api/debt/add') {
+                    const uid = String(body.userId || '').trim();
+                    const amount = parseInt(body.amount);
+                    if (!uid || isNaN(amount) || !amount) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
+                    const r = ctx.debtAdd(uid, amount);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, total: r.total });
+                }
+                if (path === '/api/debt/clear') {
+                    const uid = String(body.userId || '').trim();
+                    if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu userId' });
+                    const r = ctx.debtClear(uid);
+                    return sendJSON(res, 200, { ok: true, cleared: r.cleared });
+                }
+                // Gắn/gỡ nhãn ⚠️ nợ xấu (thủ công) — bot DM báo người chơi + vẽ lại bảng
+                if (path === '/api/debt/bad') {
+                    const uid = String(body.userId || '').trim();
+                    if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu userId' });
+                    const r = ctx.debtBad(uid, !!body.bad);
+                    return sendJSON(res, 200, { ok: true, bad: r.bad });
                 }
                 // Kênh khoe kết quả quay pal ngẫu nhiên (channelId rỗng = tắt)
                 if (path === '/api/gacha/channel') {
@@ -1016,10 +1059,22 @@ const HTML = `<!DOCTYPE html>
         <input id="search" placeholder="🔍 Tìm theo tên hoặc ID..." oninput="renderPlayers()" style="margin-top:12px">
         <div style="overflow-x:auto">
           <table id="playerTable">
-            <thead><tr><th>Tên</th><th>ID</th><th>Điểm</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>Tên</th><th>ID</th><th>Điểm</th><th>📒 Nợ</th><th>Thao tác</th></tr></thead>
             <tbody id="playerBody"></tbody>
           </table>
         </div>
+        <div class="note">Cột <b>📒 Nợ</b>: ⚠️ = nợ xấu (quá 1 ngày chưa trả lãi, bị cấm vay thêm). Nút <b>Ghi nợ</b> dùng ô số bên cạnh — cộng vào khoản nợ ADMIN (không lãi, không trần, số âm = giảm); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
+      </div>
+
+      <div class="card">
+        <h3>📒 Bảng VAY NỢ trong Discord</h3>
+        <label>Channel ID (kênh đăng bảng — trạng thái: <span id="vayLive">?</span>)</label>
+        <input id="vayChannel" placeholder="vd: 123456789012345678">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="vayStart()">▶️ Bật / Đăng lại bảng</button>
+          <button class="btn-red" onclick="vayStop()">⏹️ Gỡ bảng</button>
+        </div>
+        <div class="note">Bảng có 3 nút cho người chơi: <b>💰 Vay</b> (tối đa 4.000/ngày, tổng nợ vay ≤ 12.000, lãi kép 10%/ngày) · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Thân bảng tự hiện sổ nợ + nhãn ⚠️ nợ xấu, tự vẽ lại sau mỗi biến động. Đang nợ thì bot chặn chuyển tiền/chuyển vào game và trích 50% tiền điểm danh trả nợ.</div>
       </div>
 
       <div class="card danger">
@@ -1416,11 +1471,16 @@ function renderPlayers(){
   const tb=document.getElementById('playerBody');tb.innerHTML='';
   STATE.players.filter(p=>p.name.toLowerCase().includes(q)||p.id.includes(q)).forEach(p=>{
     const tr=document.createElement('tr');
+    const debtCell=p.debt>0?('<b style="color:#e74c3c">'+p.debt.toLocaleString()+'</b>'+(p.debtBad?' ⚠️':'')):'<span class="muted">0</span>';
     tr.innerHTML='<td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
+      '<td>'+debtCell+'</td>'+
       '<td><input class="mini-in" type="number" placeholder="số" id="amt_'+p.id+'">'+
       ' <button class="mini btn-blue" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
       ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button>'+
       ' <button class="mini btn-red" onclick="pSub(\\''+p.id+'\\')">Trừ</button>'+
+      ' <button class="mini btn-red" onclick="pDebt(\\''+p.id+'\\')">📒 Ghi nợ</button>'+
+      ((p.debt>0||p.debtBad)?' <button class="mini '+(p.debtBad?'btn-green':'btn-red')+'" onclick="pDebtBad(\\''+p.id+'\\','+(p.debtBad?'false':'true')+')">'+(p.debtBad?'Gỡ ⚠️':'⚠️ Nợ xấu')+'</button>':'')+
+      (p.debt>0?' <button class="mini btn-grey" onclick="pDebtClear(\\''+p.id+'\\')">Xóa nợ</button>':'')+
       ' <button class="mini btn-grey" onclick="pDel(\\''+p.id+'\\')">🗑️ Xóa ví</button></td>';
     tb.appendChild(tr);
   });
@@ -1474,6 +1534,24 @@ function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')ret
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng Dogcoin & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
+
+// ---- 📒 VAY NỢ ----
+function vayStart(){const c=document.getElementById('vayChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/vay/start',{channelId:c}).then(j=>{toast('▶️ Đã đặt bảng VAY NỢ ở #'+j.name);refresh();});}
+async function vayStop(){if(!await uiConfirm('Gỡ bảng VAY NỢ khỏi kênh? (sổ nợ vẫn giữ nguyên)','Gỡ bảng','btn-red'))return;api('/api/vay/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng');refresh();});}
+async function pDebt(id){
+  const v=parseInt((document.getElementById('amt_'+id)||{}).value);
+  if(isNaN(v)||!v)return toast('Gõ số vào ô trước (âm = giảm nợ đã ghi)');
+  if(!await uiConfirm('Ghi nợ '+fmtAmt(v)+' cho người này? (nợ ADMIN: không lãi, không trần)','📒 Ghi nợ','btn-red'))return;
+  api('/api/debt/add',{userId:id,amount:v}).then(j=>{toast('📒 Đã ghi - tổng nợ '+j.total.toLocaleString());pClear(id);refresh();});
+}
+async function pDebtClear(id){
+  if(!await uiConfirm('Xóa SẠCH nợ (cả vay lẫn admin ghi) của người này?','Xóa nợ','btn-red'))return;
+  api('/api/debt/clear',{userId:id}).then(j=>{toast('✅ Đã xóa '+j.cleared.toLocaleString()+' nợ');refresh();});
+}
+async function pDebtBad(id,bad){
+  if(!await uiConfirm(bad?'Gắn nhãn ⚠️ NỢ XẤU? (bêu tên trên bảng, cấm vay thêm, bot DM báo họ)':'Gỡ nhãn nợ xấu? (họ vay lại được, bot DM báo)',bad?'⚠️ Gắn':'Gỡ nhãn',bad?'btn-red':'btn-green'))return;
+  api('/api/debt/bad',{userId:id,bad:bad}).then(()=>{toast(bad?'⚠️ Đã gắn nợ xấu':'✅ Đã gỡ nhãn');refresh();});
+}
 // Xác nhận theo loại đơn - duyệt 'to-discord' là CỘNG TIỀN vào ví, phải nói rõ.
 async function wdApprove(id,kind){
   const msg=kind==='to-discord'
@@ -1527,6 +1605,8 @@ function renderWithdraw(){
   }).join(''):'<div class="empty">Chưa xử lý đơn nào.</div>';
   // prefill channel id
   const wc=document.getElementById('wdChannel'); if(wc&&!wc.value&&STATE.withdraw&&STATE.withdraw.channelId) wc.value=STATE.withdraw.channelId;
+  const vc=document.getElementById('vayChannel'); if(vc&&!vc.value&&STATE.vay&&STATE.vay.channelId) vc.value=STATE.vay.channelId;
+  const vl=document.getElementById('vayLive'); if(vl&&STATE.vay) vl.textContent=STATE.vay.live?'🟢 đang treo trong kênh':'⚫ chưa đặt';
 }
 async function pDel(id){
   const p=(STATE&&STATE.players||[]).find(x=>x.id===id);

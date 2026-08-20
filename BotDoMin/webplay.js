@@ -210,6 +210,17 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, r);
                 }
 
+                // ===== 📒 VAY NỢ: xem + trả trên web (vay thì qua bảng Discord) =====
+                if (ctx.debt && path === '/api/debt/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.debt.state(userId) });
+                }
+                if (ctx.debt && req.method === 'POST' && path === '/api/debt/pay') {
+                    const body = await readBody(req);
+                    const r = ctx.debt.pay(userId, Math.floor(Number(body.amount) || 0));
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
+
                 // ===== 🎡 VÒNG QUAY MAY MẮN NHÓM (logic + tiền ở index.js — ctx.wheel) =====
                 if (ctx.wheel && path === '/api/wheel/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.wheel.state(userId) });
@@ -829,6 +840,16 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
+    '</div>',
+    // 📒 Nợ: chỉ hiện khi ĐANG NỢ. Vay thì qua bảng trong Discord; ở web chỉ xem + trả.
+    '<div class="card" id="debtCard" style="display:none">',
+    '<div class="row"><h2 style="margin:0">📒 Nợ Dogcoin</h2><div class="muted" id="debtBad"></div></div>',
+    '<div id="debtInfo" style="font-size:14px;margin-top:6px">-</div>',
+    '<div class="row" style="margin-top:8px">',
+    '<input id="debtAmt" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)" style="flex:1">',
+    '<button class="btn-full" id="debtPayBtn" style="flex:1;margin-top:0" onclick="debtPay()">💳 TRẢ NỢ</button>',
+    '</div>',
+    '<div class="muted" style="font-size:12px;margin-top:6px">Đang nợ thì: không chuyển tiền cho người khác, không chuyển vào game, 50% tiền điểm danh/nghiện/chuỗi tự trừ vào nợ. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
     '</div>',
     '</div>', // hết #pageDaily
 
@@ -1588,7 +1609,21 @@ const PAGE = [
     // DOFF = lệch giờ máy người chơi so với server — đồng hồ đếm ngược nghiện chạy
     // theo giờ SERVER, chỉnh đồng hồ máy không ăn gian được.
     'var DST=null,DOFF=0;',
-    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)})}',
+    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync()}',
+    // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
+    'function debtSync(){api("/api/debt/state").then(function(j){',
+    'var c=$("debtCard");if(!c)return;',
+    'if(!(j.total>0)){c.style.display="none";return}',
+    'c.style.display="";',
+    '$("debtBad").textContent=j.bad?"⚠️ NỢ XẤU (admin gắn)":"";',
+    '$("debtInfo").innerHTML="Đang nợ <b>"+j.total.toLocaleString("vi-VN")+"</b> 🐕"+(j.admin>0?" (vay "+j.loan.toLocaleString("vi-VN")+" + admin ghi "+j.admin.toLocaleString("vi-VN")+")":"")+" · lãi kép "+j.ratePct+"%/ngày trên nợ vay";',
+    '}).catch(function(){})}',
+    'function debtPay(){var b=$("debtPayBtn");if(b.disabled)return;b.disabled=true;',
+    'var v=parseInt($("debtAmt").value)||0;',
+    'api("/api/debt/pay",{amount:v}).then(function(j){setBal(j.balance);$("debtAmt").value="";',
+    'toast(j.debt.total>0?("💳 Đã trả "+j.paid.toLocaleString("vi-VN")+" - còn nợ "+j.debt.total.toLocaleString("vi-VN")):"✅ Đã trả "+j.paid.toLocaleString("vi-VN")+" - SẠCH NỢ!");',
+    'debtSync();b.disabled=false',
+    '}).catch(function(e){toast("❌ "+e.message);b.disabled=false})}',
     'function dRender(){if(!DST)return;',
     '$("dMonth").textContent="Tháng "+DST.month+" · "+DST.year;',
     '$("dStreak").textContent=DST.streak+" ngày";',
@@ -1615,18 +1650,21 @@ const PAGE = [
     'ngTick()}',
     'function dailyClaim(){var b=$("dClaim");if(b.disabled)return;b.disabled=true;',
     'api("/api/daily/claim",{}).then(function(j){setBal(j.balance);DST=j.state;DOFF=j.state.nghien.now-Date.now();dRender();',
-    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(j.streakEarned?" · 🔥 ĐỦ CHUỖI! Bấm ô 🔥 nhận "+j.state.streakBonus.toLocaleString("vi-VN"):""));',
+    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(j.debtCut?" (−"+j.debtCut.toLocaleString("vi-VN")+" trả nợ)":"")+(j.streakEarned?" · 🔥 ĐỦ CHUỖI! Bấm ô 🔥 nhận "+j.state.streakBonus.toLocaleString("vi-VN"):""));',
+    'if(j.debtCut)debtSync();',
     'if(j.streakEarned)celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
     // bấm ô 🎁 để nhận thưởng chuỗi — MỖI LẦN BẤM 1 gói, còn gói thì ô vẫn sáng
     'function streakClaim(){if(!DST||!(DST.streakPacks>0))return;',
     'var c=$("dStreakChip");c.classList.remove("on");',   // tắt tạm, chặn bấm 2 lần khi đang gửi
     'api("/api/daily/streak",{}).then(function(j){setBal(j.balance);DST=j.state;dRender();',
-    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin thưởng chuỗi!"+(j.left>0?" Còn "+j.left+" lần bấm nữa.":" Hết gói - điểm danh tiếp nhé!"));',
+    'toast("🎁 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin thưởng chuỗi!"+(j.debtCut?" (−"+j.debtCut.toLocaleString("vi-VN")+" trả nợ)":"")+(j.left>0?" Còn "+j.left+" lần bấm nữa.":" Hết gói - điểm danh tiếp nhé!"));',
+    'if(j.debtCut)debtSync();',
     'celebrate()}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
     'function nghienClaim(){var b=$("ngBtn");if(b.disabled)return;b.disabled=true;',
     'api("/api/daily/nghien",{}).then(function(j){setBal(j.balance);',
     'if(DST){DST.nghien.nextAt=j.nextAt;DOFF=j.now-Date.now()}',
-    'toast("💉 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin - hẹn 1 tiếng nữa!");ngTick()',
+    'toast("💉 +"+j.amount.toLocaleString("vi-VN")+" Dogcoin"+(j.debtCut?" (−"+j.debtCut.toLocaleString("vi-VN")+" trả nợ)":"")+" - hẹn 1 tiếng nữa!");',
+    'if(j.debtCut)debtSync();ngTick()',
     '}).catch(function(e){toast("❌ "+e.message);dailySync()})}',
     'function ngTick(){var b=$("ngBtn");if(!b||!DST)return;',
     'var left=DST.nghien.nextAt-(Date.now()+DOFF);',

@@ -273,6 +273,9 @@ function webTransfer(fromId, toId, amount) {
     if (Date.now() - last < 10000) return { error: 'Từ từ - 10 giây mới được chuyển 1 lần' };
     const me = getUserData(fromId);
     if ((me.points || 0) < amount) return { error: 'Không đủ Dogcoin!' };
+    // Đang nợ thì cấm chuyển cho người khác — vay xong tuồn tiền qua nick phụ là nợ thành cho không
+    debtAccrue(fromId);
+    if (debtTotal(me) > 0) return { error: `Đang nợ ${debtTotal(me).toLocaleString()} Dogcoin - trả hết nợ (nút 💳 ở bảng 📒 VAY NỢ) rồi mới chuyển được.` };
 
     transferLastAt.set(fromId, Date.now());
     const fromName = me.name || fromId;
@@ -312,6 +315,268 @@ function listTransferTargets() {
     }
     return out;
 }
+
+// ===== 📒 VAY NỢ — bảng nút trong kênh Discord, KHÔNG dùng lệnh =====
+// Luật chủ server chốt 20/08:
+//  - Vay tối đa LOAN_DAILY_MAX/ngày (giờ VN), tổng nợ vay không quá LOAN_CAP.
+//  - Lãi KÉP LOAN_RATE/ngày trên nợ vay, DỪNG TĂNG khi chạm LOAN_CAP.
+//  - ⚠️ NỢ XẤU do ADMIN GẮN TAY trên panel (chủ server chọn thủ công cho đỡ bug):
+//    bị bêu tên trên bảng + CẤM VAY THÊM. Admin gỡ nhãn thì vay lại được.
+//  - Đang nợ (vay hoặc admin ghi): CHẶN chuyển Dogcoin vào game + CHẶN chuyển
+//    tiền cho người khác + TRÍCH LOAN_INCOME_CUT thu nhập điểm danh/nghiện/chuỗi
+//    tự trả nợ (trả nợ vay trước vì nó có lãi, dư mới trừ nợ admin).
+//  - Nợ do ADMIN ghi tay (panel tab 👥): KHÔNG lãi, KHÔNG trần — sổ ghi nợ mua đồ.
+const LOAN_DAILY_MAX = 4000;
+const LOAN_CAP = 12000;
+const LOAN_RATE = 0.10;
+const LOAN_INCOME_CUT = 0.5;
+
+// Ngày VN dạng sắp xếp/parse được ('2026-08-20') — vnDayStr bên dưới ra 'vi-VN'
+// (20/8/2026) nên KHÔNG dùng cho tính khoảng cách ngày được.
+function vnDayISO(ts) {
+    return new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+function vnDayGap(isoNew, isoOld) {
+    const a = Date.parse(isoNew), b = Date.parse(isoOld);
+    if (isNaN(a) || isNaN(b)) return 0;
+    return Math.round((a - b) / 86400000);
+}
+
+function debtOf(u) {
+    if (!u.debt || typeof u.debt !== 'object') {
+        u.debt = { loan: 0, admin: 0, lastAccrue: '', bad: false, bDay: '', bToday: 0 };
+    }
+    return u.debt;
+}
+function debtTotal(u) { const d = debtOf(u); return (d.loan || 0) + (d.admin || 0); }
+
+// Cộng lãi dồn tới hôm nay. Gọi TRƯỚC mọi thao tác đọc/đụng tới nợ (lazy) —
+// kèm một vòng quét định kỳ bên dưới để bảng tự cập nhật theo ngày.
+// (Nhãn nợ xấu KHÔNG tự gắn ở đây — admin gắn/gỡ tay trên panel.)
+function debtAccrue(userId) {
+    const u = getUserData(userId);
+    const d = debtOf(u);
+    const today = vnDayISO(Date.now());
+    if (d.loan <= 0) { d.lastAccrue = today; return d; }
+    if (!d.lastAccrue) { d.lastAccrue = today; return d; }
+    const days = vnDayGap(today, d.lastAccrue);
+    if (days <= 0) return d;
+    for (let i = 0; i < days && d.loan < LOAN_CAP; i++) {
+        d.loan = Math.min(LOAN_CAP, Math.round(d.loan * (1 + LOAN_RATE)));
+    }
+    d.lastAccrue = today;
+    return d;
+}
+
+// Trừ một khoản vào sổ nợ (KHÔNG đụng ví — chỗ gọi tự lo tiền). Nợ vay trước (có
+// lãi), dư mới trừ nợ admin.
+function debtReduce(d, amount) {
+    let rest = amount;
+    const payLoan = Math.min(d.loan || 0, rest);
+    d.loan -= payLoan; rest -= payLoan;
+    const payAdmin = Math.min(d.admin || 0, rest);
+    d.admin -= payAdmin; rest -= payAdmin;
+    return payLoan + payAdmin;
+}
+
+function debtBorrow(userId, username, amount) {
+    amount = Math.floor(Number(amount));
+    if (!Number.isInteger(amount) || amount < 100) return { error: 'Vay ít nhất 100 Dogcoin' };
+    const d = debtAccrue(userId);
+    const u = getUserData(userId);
+    if (d.bad) return { error: `⚠️ Bạn đang bị gắn nhãn NỢ XẤU - trả nợ rồi nhắn admin gỡ nhãn mới vay tiếp được.` };
+    const today = vnDayISO(Date.now());
+    if (d.bDay !== today) { d.bDay = today; d.bToday = 0; }
+    if (d.bToday + amount > LOAN_DAILY_MAX) {
+        const left = LOAN_DAILY_MAX - d.bToday;
+        return { error: `Mỗi ngày vay tối đa ${LOAN_DAILY_MAX.toLocaleString()} - hôm nay bạn còn vay được ${Math.max(0, left).toLocaleString()}.` };
+    }
+    if (d.loan + amount > LOAN_CAP) {
+        return { error: `Tổng nợ vay tối đa ${LOAN_CAP.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, chỉ vay thêm được ${Math.max(0, LOAN_CAP - d.loan).toLocaleString()}.` };
+    }
+    d.loan += amount;
+    d.bToday += amount;
+    updatePoints(userId, amount);
+    logDog('vay', userId, username, amount, `vay nợ (lãi ${LOAN_RATE * 100}%/ngày)`);
+    writeLog('ADMIN', `[VAY NỢ] ${username} vay ${amount.toLocaleString()} | nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
+    saveDbNow();
+    vayBoardRefresh();
+    return { ok: true, amount, debt: debtStatus(userId), balance: u.points || 0 };
+}
+
+// amount bỏ trống/0 = trả hết. Yêu cầu đủ số dư cho đúng khoản định trả.
+function debtPay(userId, username, amount) {
+    const d = debtAccrue(userId);
+    const u = getUserData(userId);
+    const total = debtTotal(u);
+    if (total <= 0) return { error: 'Bạn không nợ đồng nào.' };
+    let want = Math.floor(Number(amount) || 0);
+    if (want <= 0 || want > total) want = total;
+    if ((u.points || 0) < want) {
+        return { error: `Không đủ số dư - cần ${want.toLocaleString()} mà ví chỉ có ${(u.points || 0).toLocaleString()}.` };
+    }
+    updatePoints(userId, -want);
+    debtReduce(d, want);
+    logDog('trano', userId, username, -want, `trả nợ (còn ${debtTotal(u).toLocaleString()})`);
+    writeLog('ADMIN', `[VAY NỢ] ${username} trả ${want.toLocaleString()} | còn nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
+    saveDbNow();
+    vayBoardRefresh();
+    return { ok: true, paid: want, debt: debtStatus(userId), balance: u.points || 0 };
+}
+
+// Trích một phần thu nhập (điểm danh/nghiện/thưởng chuỗi) tự trả nợ.
+// Trả về { keep: phần thực vào ví, cut: phần đã trừ nợ, left: nợ còn lại }.
+function debtCutIncome(userId, amount) {
+    const d = debtAccrue(userId);
+    const u = getUserData(userId);
+    const total = debtTotal(u);
+    if (total <= 0) return { keep: amount, cut: 0, left: 0 };
+    const cut = Math.min(total, Math.floor(amount * LOAN_INCOME_CUT));
+    if (cut < 1) return { keep: amount, cut: 0, left: total };
+    debtReduce(d, cut);
+    vayBoardRefresh();
+    return { keep: amount - cut, cut, left: debtTotal(u) };
+}
+
+function debtStatus(userId) {
+    const d = debtAccrue(userId);
+    const u = getUserData(userId);
+    const today = vnDayISO(Date.now());
+    const bToday = d.bDay === today ? d.bToday : 0;
+    return {
+        loan: d.loan || 0, admin: d.admin || 0, total: debtTotal(u),
+        bad: !!d.bad,
+        canBorrowToday: d.bad ? 0 : Math.max(0, Math.min(LOAN_DAILY_MAX - bToday, LOAN_CAP - (d.loan || 0))),
+        dailyMax: LOAN_DAILY_MAX, cap: LOAN_CAP, ratePct: LOAN_RATE * 100, cutPct: LOAN_INCOME_CUT * 100,
+    };
+}
+
+// Danh sách người đang nợ (đã cộng lãi tới hôm nay) — cho bảng Discord + panel.
+function debtList() {
+    const out = [];
+    for (const [k, v] of Object.entries(dbCache)) {
+        if (k.startsWith('_') || !/^\d{15,20}$/.test(k) || !v || typeof v !== 'object') continue;
+        if (!v.debt || ((v.debt.loan || 0) + (v.debt.admin || 0)) <= 0) continue;
+        const d = debtAccrue(k);
+        if ((d.loan + d.admin) <= 0) continue;
+        out.push({ id: k, name: NAME_OVERRIDE[k] || v.name || k, loan: d.loan, admin: d.admin, total: d.loan + d.admin, bad: !!d.bad });
+    }
+    return out.sort((a, b) => b.total - a.total);
+}
+
+// Admin ghi nợ tay (panel tab 👥): cộng vào khoản 'admin' — KHÔNG lãi, KHÔNG trần.
+// Số âm = giảm nợ đã ghi. Dùng để ghi "mua pal/lõi trong game còn thiếu tiền".
+function adminDebtAdd(userId, amount) {
+    amount = Math.floor(Number(amount) || 0);
+    if (!amount) return { error: 'Số không hợp lệ' };
+    const u = getUserData(userId);
+    const d = debtOf(u);
+    d.admin = Math.max(0, (d.admin || 0) + amount);
+    writeLog('ADMIN', `[VAY NỢ] Panel ghi nợ ${amount > 0 ? '+' : ''}${amount.toLocaleString()} cho ${u.name || userId} | nợ admin ${d.admin.toLocaleString()} + vay ${d.loan.toLocaleString()}`);
+    saveDbNow();
+    vayBoardRefresh();
+    return { ok: true, total: debtTotal(u) };
+}
+// Admin gắn/gỡ nhãn ⚠️ NỢ XẤU (thủ công theo yêu cầu chủ server — không tự động).
+// Gắn = bêu tên trên bảng + cấm vay thêm. Có DM báo cho người chơi (hỏng cũng kệ).
+function adminDebtBad(userId, bad) {
+    const u = getUserData(userId);
+    const d = debtOf(u);
+    d.bad = !!bad;
+    writeLog('ADMIN', `[VAY NỢ] Panel ${bad ? 'GẮN' : 'GỠ'} nhãn NỢ XẤU cho ${u.name || userId} (đang nợ ${debtTotal(u).toLocaleString()})`);
+    saveDbNow();
+    vayBoardRefresh();
+    client.users.fetch(userId).then(us => us.send(bad
+        ? `⚠️ Bạn bị gắn nhãn **NỢ XẤU** (đang nợ **${debtTotal(u).toLocaleString()}** Dogcoin). Không vay thêm được và bị bêu tên ở bảng 📒 VAY NỢ - trả nợ (nút 💳) rồi nhắn admin gỡ nhãn nhé.`
+        : `✅ Admin đã gỡ nhãn NỢ XẤU cho bạn - vay lại được rồi.`
+    )).catch(() => {});
+    return { ok: true, bad: d.bad };
+}
+
+function adminDebtClear(userId) {
+    const u = getUserData(userId);
+    const d = debtOf(u);
+    const was = debtTotal(u);
+    d.loan = 0; d.admin = 0; d.bad = false;
+    writeLog('ADMIN', `[VAY NỢ] Panel XÓA nợ ${was.toLocaleString()} của ${u.name || userId}`);
+    saveDbNow();
+    vayBoardRefresh();
+    return { ok: true, cleared: was };
+}
+
+// ---- bảng 📒 VAY NỢ trong kênh Discord (khuôn y bảng Dogcoin & Shop Pal) ----
+const vayState = { channel: null, message: null };
+function getVayMessageData() {
+    const rows = debtList();
+    const lines = [
+        `Vay nhanh Dogcoin - bấm nút, không cần admin duyệt.`,
+        '',
+        `**💰 Vay** - tối đa **${LOAN_DAILY_MAX.toLocaleString()}/ngày**, tổng nợ vay không quá **${LOAN_CAP.toLocaleString()}**.`,
+        `**Lãi kép ${LOAN_RATE * 100}%/ngày.** Chây ì không trả sẽ bị admin gắn ⚠️ **NỢ XẤU**: bêu tên ở bảng này + không vay thêm được.`,
+        `Đang nợ thì: 🚫 không chuyển Dogcoin vào game · 🚫 không chuyển tiền cho người khác · ` +
+            `📅 ${LOAN_INCOME_CUT * 100}% tiền điểm danh/nghiện/thưởng chuỗi tự trừ vào nợ.`,
+        `**💳 Trả nợ** tại đây hoặc trên web mini game - trả sớm đỡ lãi.`,
+        '',
+        // Server ít người nên danh sách NỢ XẤU bêu thẳng trên bảng, tách khối riêng cho nổi
+        ...(rows.some(r => r.bad) ? [
+            `🚨 **DANH SÁCH NỢ XẤU** (admin gắn - cấm vay thêm):`,
+            ...rows.filter(r => r.bad).map(r => `⚠️ **${r.name}** - nợ **${r.total.toLocaleString()}** ${DOGCOIN_EMOJI}`),
+            '',
+        ] : []),
+        rows.length ? `**📋 SỔ NỢ (${rows.length} người):**` : `**📋 SỔ NỢ:** chưa ai nợ - sạch sẽ! 🎉`,
+        ...rows.slice(0, 15).map(r =>
+            `${r.bad ? '⚠️' : '•'} **${r.name}** - nợ **${r.total.toLocaleString()}**` +
+            (r.admin > 0 ? ` (vay ${r.loan.toLocaleString()} + admin ghi ${r.admin.toLocaleString()})` : '')),
+        rows.length > 15 ? `... và ${rows.length - 15} người nữa` : null,
+    ].filter(s => s !== null);   // chỉ bỏ dòng điều kiện rỗng, GIỮ dòng '' giãn cách
+
+    const embed = new EmbedBuilder()
+        .setTitle('📒 VAY NỢ DOGCOIN')
+        .setColor(rows.some(r => r.bad) ? 0xe74c3c : 0x2ecc71)
+        .setDescription(lines.join('\n'))
+        .setFooter({ text: `Cập nhật ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}` });
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('vay_open').setLabel('Vay').setEmoji('💰').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('vay_pay_open').setLabel('Trả nợ').setEmoji('💳').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('vay_my').setLabel('Nợ của tôi').setEmoji('📄').setStyle(ButtonStyle.Secondary)
+    );
+    return { embeds: [embed], components: [row] };
+}
+async function startVay(channel) {
+    if (vayState.message) await vayState.message.delete().catch(() => {});
+    vayState.channel = channel;
+    vayState.message = await channel.send(getVayMessageData());
+    dbCache._vayChannelId = channel.id;
+    dbCache._vayMsgId = vayState.message.id;
+    saveDbNow();
+}
+function stopVay() {
+    if (vayState.message) vayState.message.delete().catch(() => {});
+    vayState.channel = null;
+    vayState.message = null;
+    dbCache._vayChannelId = null;
+    dbCache._vayMsgId = null;
+}
+// Vẽ lại bảng sau mỗi biến động — gom 3 giây một lần kẻo spam API Discord.
+let vayRefreshTimer = null;
+function vayBoardRefresh() {
+    if (!vayState.message || vayRefreshTimer) return;
+    vayRefreshTimer = setTimeout(() => {
+        vayRefreshTimer = null;
+        if (vayState.message) vayState.message.edit(getVayMessageData()).catch(() => {});
+    }, 3000);
+}
+// Quét mỗi giờ: cộng lãi + cập nhật nhãn nợ xấu cho MỌI người nợ, kể cả khi họ
+// không bấm gì — để bảng và lệnh chặn luôn đúng theo ngày.
+setInterval(() => {
+    try {
+        const before = JSON.stringify(Object.entries(dbCache).filter(([k, v]) => v && v.debt).map(([k, v]) => v.debt));
+        debtList();
+        const after = JSON.stringify(Object.entries(dbCache).filter(([k, v]) => v && v.debt).map(([k, v]) => v.debt));
+        if (before !== after) { saveDbNow(); vayBoardRefresh(); }
+    } catch (e) { writeLog('SYSTEM', `[VAY NỢ] Lỗi quét lãi: ${e.message}`); }
+}, 60 * 60 * 1000);
 
 // ===== 📅 ĐIỂM DANH THÁNG + 💉 NGHIỆN — logic DÙNG CHUNG Discord & web =====
 // Sổ tháng lưu ở userData.dailyMonth ('2026-08') + dailyDays ([1,5,18...]);
@@ -413,7 +678,9 @@ function claimDaily(userId) {
 
     u.dailyDays.push(d);
     u.lastDaily = Date.now();
-    updatePoints(userId, DAILY_DOGCOIN);
+    // Đang nợ thì một phần tiền điểm danh tự trừ vào nợ (xem khối VAY NỢ)
+    const inc = debtCutIncome(userId, DAILY_DOGCOIN);
+    updatePoints(userId, inc.keep);
 
     // Đủ mốc chuỗi -> GHI gói vào sổ, chưa cộng tiền. Người chơi tự bấm nhận;
     // gói đã ghi thì chuỗi đứt sau đó cũng không mất.
@@ -424,6 +691,7 @@ function claimDaily(userId) {
     writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận ${DAILY_DOGCOIN.toLocaleString()} Dogcoin | chuỗi ${u.streakRun}${streakEarned ? ` | ĐỦ CHUỖI ${DAILY_STREAK_EVERY} - ghi 1 gói ${DAILY_STREAK_BONUS} chờ nhận` : ''} | Số dư: ${(u.points || 0).toLocaleString()}`);
     return {
         ok: true, amount: DAILY_DOGCOIN, streakEarned,
+        debtCut: inc.cut, debtLeft: inc.left,
         state: dailyState(userId), balance: u.points || 0,
     };
 }
@@ -438,11 +706,13 @@ function claimStreak(userId) {
         return { error: `Hết gói thưởng chuỗi - điểm danh thêm ${DAILY_STREAK_EVERY} ngày LIÊN TIẾP là có gói mới (${DAILY_STREAK_BONUS.toLocaleString()} Dogcoin).` };
     }
     u.streakPacks = packs - 1;
-    updatePoints(userId, DAILY_STREAK_BONUS);
+    const inc = debtCutIncome(userId, DAILY_STREAK_BONUS);
+    updatePoints(userId, inc.keep);
     saveDbNow();
-    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận 1 gói thưởng chuỗi ${DAILY_STREAK_BONUS.toLocaleString()} Dogcoin (còn ${u.streakPacks} gói) | Số dư: ${(u.points || 0).toLocaleString()}`);
+    writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận 1 gói thưởng chuỗi ${DAILY_STREAK_BONUS.toLocaleString()} Dogcoin (còn ${u.streakPacks} gói)${inc.cut ? ` | trừ nợ ${inc.cut}` : ''} | Số dư: ${(u.points || 0).toLocaleString()}`);
     return {
         ok: true, amount: DAILY_STREAK_BONUS, left: u.streakPacks,
+        debtCut: inc.cut, debtLeft: inc.left,
         state: dailyState(userId), balance: u.points || 0,
     };
 }
@@ -456,7 +726,8 @@ function claimNghien(userId, announce = false) {
         const msLeft = NGHIEN_COOLDOWN_MS - passed;
         return { error: `Nghiện vừa thôi! Còn ${Math.ceil(msLeft / 60000)} phút nữa mới lụm tiếp được.`, msLeft };
     }
-    updatePoints(userId, HOURLY_DOGCOIN);
+    const inc = debtCutIncome(userId, HOURLY_DOGCOIN);
+    updatePoints(userId, inc.keep);
     u.lastNghien = Date.now();
     writeLog('ADMIN', `[NGHIỆN] ${u.name || userId} nhận ${HOURLY_DOGCOIN.toLocaleString()} Dogcoin | Số dư: ${(u.points || 0).toLocaleString()}`);
     // Đăng công khai vào kênh nghiện - lỗi kênh không được chặn việc nhận tiền
@@ -465,7 +736,7 @@ function claimNghien(userId, announce = false) {
             .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${HOURLY_DOGCOIN.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện - gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
             .catch(() => { });
     }
-    return { ok: true, amount: HOURLY_DOGCOIN, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: u.points || 0 };
+    return { ok: true, amount: HOURLY_DOGCOIN, debtCut: inc.cut, debtLeft: inc.left, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: u.points || 0 };
 }
 
 // ===== PHÁT DOGCOIN TOÀN SERVER (gọi từ dashboard) =====
@@ -2062,6 +2333,11 @@ client.once('ready', async (c) => {
             },
             // 🎡 vòng quay may mắn nhóm (thay blackjack)
             wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin, spin1: wheelSpin1 },
+            // 📒 vay nợ: xem + trả ngay trên web (vay thì qua bảng Discord)
+            debt: {
+                state: (uid) => debtStatus(uid),
+                pay: (uid, amt) => debtPay(uid, getUserData(uid).name || uid, amt),
+            },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -2159,12 +2435,29 @@ client.once('ready', async (c) => {
             getWithdrawRequests: () => withdrawRequests,
             approveWithdraw,
             rejectWithdraw,
+            // 📒 vay nợ: bảng trong kênh + admin ghi/xóa nợ ở tab 👥
+            getVay: () => ({ live: !!vayState.message, channelId: (vayState.channel && vayState.channel.id) || dbCache._vayChannelId || '' }),
+            startVay: async (channelId) => { const ch = await client.channels.fetch(channelId); await startVay(ch); return ch.name; },
+            stopVay: () => stopVay(),
+            debtAdd: adminDebtAdd,
+            debtClear: adminDebtClear,
+            debtBad: adminDebtBad,
 
         });
         writeLog('SYSTEM', `🌐 Web panel: SUPER cổng ${parseInt(process.env.PANEL_PORT) || 1508} | admin thường cổng ${parseInt(process.env.PANEL_PUBLIC_PORT) || 1234}`);
         // Không còn vòng quét tự động nào: mọi giao dịch với game là ticket, admin xử lý tay.
     } catch (e) {
         writeLog('SYSTEM', `[LỖI PANEL] ${e.message}`);
+    }
+
+    // Nối lại bảng 📒 VAY NỢ sau restart (admin đã đặt bảng từ trước thì tự bám lại)
+    if (dbCache._vayChannelId && dbCache._vayMsgId) {
+        try {
+            const ch = await client.channels.fetch(dbCache._vayChannelId);
+            vayState.channel = ch;
+            vayState.message = await ch.messages.fetch(dbCache._vayMsgId);
+            vayState.message.edit(getVayMessageData()).catch(() => {});
+        } catch { /* kênh/tin nhắn đã mất — admin đặt lại từ panel tab 👥 */ }
     }
 
     // Backfill tên cho các ví cũ chưa có tên (kéo từ Discord)
@@ -3307,7 +3600,8 @@ client.on('interactionCreate', async interaction => {
             const r = claimDaily(userId);
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
             return interaction.reply(
-                `🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}. ` +
+                `🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}` +
+                (r.debtCut ? ` (📒 trừ **${r.debtCut.toLocaleString()}** trả nợ, còn nợ ${r.debtLeft.toLocaleString()})` : '') + `. ` +
                 `Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI}\n` +
                 `Chuỗi: **${r.state.streak} ngày**` +
                 (r.streakEarned ? ` - 🔥 **ĐỦ CHUỖI ${DAILY_STREAK_EVERY}!** Vào web (tab 📅) bấm nhận **${DAILY_STREAK_BONUS.toLocaleString()}** ${DOGCOIN_EMOJI}` : '') +
@@ -3321,7 +3615,9 @@ client.on('interactionCreate', async interaction => {
             // là ra 2 tin trùng nội dung.
             const r = claimNghien(userId);
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
-            return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI} - quay lại sau 1 tiếng nhé.`);
+            return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}` +
+                (r.debtCut ? ` (📒 trừ **${r.debtCut.toLocaleString()}** trả nợ, còn nợ ${r.debtLeft.toLocaleString()})` : '') +
+                `. Số dư mới: **${r.balance.toLocaleString()}** ${DOGCOIN_EMOJI} - quay lại sau 1 tiếng nhé.`);
         }
 
         if (interaction.commandName === 'sodu') {
@@ -3342,8 +3638,12 @@ client.on('interactionCreate', async interaction => {
             
             const senderData = getUserData(userId);
             if (senderData.points < amount) return interaction.reply({ content: `❌ Bạn không đủ Dogcoin!`, ephemeral: true });
-            
-            updatePoints(userId, -amount); 
+            debtAccrue(userId);
+            if (debtTotal(senderData) > 0) {
+                return interaction.reply({ content: `📒 Đang nợ **${debtTotal(senderData).toLocaleString()}** ${DOGCOIN_EMOJI} - trả hết nợ (nút 💳 ở bảng VAY NỢ) rồi mới chuyển tiền được.`, ephemeral: true });
+            }
+
+            updatePoints(userId, -amount);
             updatePoints(receiver.id, amount);
             logDog('transfer', userId, interaction.user.tag, -amount, `chuyển cho ${receiver.tag}`);
             logDog('transfer', receiver.id, receiver.tag, amount, `nhận từ ${interaction.user.tag}`);
@@ -3740,6 +4040,30 @@ client.on('interactionCreate', async interaction => {
         // (thiếu tiền nó không trừ, trừ lệch nó tự hoàn — xem main.lua) -> chỉ báo
         // người chơi. Riêng timeout/không phản hồi là KHÔNG CHẮC -> đơn cho admin
         // đối chiếu results.log, KHÔNG cộng ví trước.
+        // ======== 📒 VAY NỢ: nhận modal vay / trả ========
+        if (interaction.customId === 'vay_modal') {
+            const amt = parseInt(interaction.fields.getTextInputValue('vay_amount'));
+            const r = debtBorrow(userId, interaction.user.tag, amt);
+            if (r.error) return interaction.reply({ content: '❌ ' + r.error, ephemeral: true });
+            return interaction.reply({
+                content:
+                    `💰 Đã vay **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI} - ví hiện có **${r.balance.toLocaleString()}**.\n` +
+                    `Tổng nợ: **${r.debt.total.toLocaleString()}** (lãi kép ${r.debt.ratePct}%/ngày). Trả sớm đỡ lãi - chây ì là admin gắn ⚠️ nợ xấu đó!`,
+                ephemeral: true,
+            });
+        }
+        if (interaction.customId === 'vay_pay_modal') {
+            const raw = (interaction.fields.getTextInputValue('vay_pay_amount') || '').trim();
+            const r = debtPay(userId, interaction.user.tag, raw ? parseInt(raw) : 0);
+            if (r.error) return interaction.reply({ content: '❌ ' + r.error, ephemeral: true });
+            return interaction.reply({
+                content: r.debt.total > 0
+                    ? `💳 Đã trả **${r.paid.toLocaleString()}** ${DOGCOIN_EMOJI} - còn nợ **${r.debt.total.toLocaleString()}**${r.debt.bad ? ' (⚠️ nhãn nợ xấu do admin gắn - trả xong nhắn admin gỡ)' : ''}. Ví còn **${r.balance.toLocaleString()}**.`
+                    : `✅ Đã trả **${r.paid.toLocaleString()}** ${DOGCOIN_EMOJI} - **SẠCH NỢ!** Ví còn **${r.balance.toLocaleString()}**.`,
+                ephemeral: true,
+            });
+        }
+
         if (interaction.customId === 'nap_modal') {
             const amt = parseInt(interaction.fields.getTextInputValue('nap_input_amount'));
             if (isNaN(amt) || amt <= 0) {
@@ -3818,6 +4142,11 @@ client.on('interactionCreate', async interaction => {
             const gameName = (userData.ingameName || '').trim();
             if (!gameName) {
                 return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
+            }
+            // Đang nợ thì cấm chuyển vào game — vay xong tuồn giá trị vào game là nợ thành cho không
+            debtAccrue(userId);
+            if (debtTotal(userData) > 0) {
+                return interaction.reply({ content: `📒 Đang nợ **${debtTotal(userData).toLocaleString()}** ${DOGCOIN_EMOJI} - trả hết nợ (nút 💳 ở bảng VAY NỢ) rồi mới chuyển vào game được.`, ephemeral: true });
             }
 
             await interaction.deferReply({ ephemeral: true }); // đếm + give mỗi lượt 5-20s, quá deadline 3s của Discord
@@ -3937,6 +4266,50 @@ client.on('interactionCreate', async interaction => {
     }
 
     // ======== NÚT RÚT DOGCOIN ========
+    // ======== 📒 VAY NỢ: các nút trên bảng ========
+    if (interaction.customId === 'vay_open') {
+        const st = debtStatus(userId);
+        if (st.bad) {
+            return interaction.reply({ content: `⚠️ Bạn đang bị gắn nhãn **NỢ XẤU** - bấm 💳 Trả nợ cho sạch rồi nhắn admin gỡ nhãn, mới vay tiếp được.`, ephemeral: true });
+        }
+        if (st.canBorrowToday < 100) {
+            return interaction.reply({ content: `❌ Hết hạn mức: mỗi ngày vay tối đa **${LOAN_DAILY_MAX.toLocaleString()}**, tổng nợ vay không quá **${LOAN_CAP.toLocaleString()}** (bạn đang nợ vay ${st.loan.toLocaleString()}).`, ephemeral: true });
+        }
+        const modal = new ModalBuilder().setCustomId('vay_modal').setTitle(`Vay Dogcoin - lãi ${LOAN_RATE * 100}%/ngày`);
+        modal.addComponents(new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId('vay_amount')
+                .setLabel(`Số muốn vay (hôm nay còn ${st.canBorrowToday.toLocaleString()})`)
+                .setPlaceholder(`vd: ${Math.min(2000, st.canBorrowToday)}`)
+                .setStyle(TextInputStyle.Short).setRequired(true)
+        ));
+        return interaction.showModal(modal);
+    }
+    if (interaction.customId === 'vay_pay_open') {
+        const st = debtStatus(userId);
+        if (st.total <= 0) return interaction.reply({ content: '✅ Bạn không nợ đồng nào.', ephemeral: true });
+        const modal = new ModalBuilder().setCustomId('vay_pay_modal').setTitle('Trả nợ Dogcoin');
+        modal.addComponents(new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId('vay_pay_amount')
+                .setLabel(`Đang nợ ${st.total.toLocaleString()} - bỏ trống = trả hết`)
+                .setPlaceholder('vd: 1000 (hoặc bỏ trống)')
+                .setStyle(TextInputStyle.Short).setRequired(false)
+        ));
+        return interaction.showModal(modal);
+    }
+    if (interaction.customId === 'vay_my') {
+        const st = debtStatus(userId);
+        if (st.total <= 0) return interaction.reply({ content: `✅ Bạn không nợ đồng nào. Hôm nay có thể vay tới **${st.canBorrowToday.toLocaleString()}** ${DOGCOIN_EMOJI}.`, ephemeral: true });
+        return interaction.reply({
+            content:
+                `📄 **Nợ của bạn: ${st.total.toLocaleString()}** ${DOGCOIN_EMOJI}` +
+                (st.admin > 0 ? `\n• Vay: **${st.loan.toLocaleString()}** · Admin ghi: **${st.admin.toLocaleString()}** (khoản admin không lãi)` : '') +
+                (st.bad ? `\n• ⚠️ **NỢ XẤU** (admin gắn) - trả nợ rồi nhắn admin gỡ nhãn mới vay lại được` : '') +
+                `\n• Lãi kép **${st.ratePct}%/ngày** (nợ vay), hôm nay còn vay được **${st.canBorrowToday.toLocaleString()}**` +
+                `\n• Đang nợ nên: 🚫 không chuyển vào game / cho người khác · 📅 ${st.cutPct}% tiền điểm danh tự trừ nợ`,
+            ephemeral: true,
+        });
+    }
+
     if (interaction.customId === 'rut_open') {
         if (!(getUserData(userId).ingameName || '').trim()) {
             return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
