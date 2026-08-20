@@ -350,6 +350,9 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **20/08/2026 — Vay nợ: PHÍ VAY 5%** ghi thẳng vào nợ lúc vay (vay 4.000 → ghi sổ
+  4.200, nhận đủ 4.000). Chống spam vay-trả-vay: trả sạch mở lại hạn mức ngày, nhưng
+  mỗi vòng lặp tốn 5% phí — vay 4.000 trả liền là mất 200.
 - **20/08/2026 — NERF thưởng giữa (người chơi ăn chắc dễ quá):** Dò Mìn 24 ô → **25 ô**
   (lưới 5×5) + RTP 1.0 → **0.95**; Leo Thang RTP 0.95 → **0.92**. Hệ số khúc giữa giảm
   rõ (vd 3 mìn mở 8 ô: x3.61 → x3.21; mở 15 ô: x24.1 → x18.2). Các mốc CỐ ĐỊNH giữ

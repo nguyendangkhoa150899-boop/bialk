@@ -331,6 +331,10 @@ const LOAN_DAILY_MAX = 4000;
 const LOAN_CAP = 12000;
 const LOAN_RATE = 0.20;
 const LOAN_INCOME_CUT = 0.5;
+// PHÍ VAY 5% cộng thẳng vào nợ lúc vay (vay 4.000 -> ghi nợ 4.200, nhận đủ 4.000).
+// Chống spam vay-trả-vay: trả sạch là hạn mức ngày mở lại, nên mỗi vòng lặp phải
+// tốn phí này — hết cửa quay vòng miễn phí (chủ server chốt 20/08).
+const LOAN_FEE = 0.05;
 
 // Ngày VN dạng sắp xếp/parse được ('2026-08-20') — vnDayStr bên dưới ra 'vi-VN'
 // (20/8/2026) nên KHÔNG dùng cho tính khoảng cách ngày được.
@@ -416,14 +420,15 @@ function debtBorrow(userId, username, amount) {
         const left = LOAN_DAILY_MAX - d.bToday;
         return { error: `Mỗi ngày vay tối đa ${LOAN_DAILY_MAX.toLocaleString()} - hôm nay bạn còn vay được ${Math.max(0, left).toLocaleString()}.` };
     }
-    if (d.loan + amount > LOAN_CAP) {
-        return { error: `Tổng nợ vay tối đa ${LOAN_CAP.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, chỉ vay thêm được ${Math.max(0, LOAN_CAP - d.loan).toLocaleString()}.` };
+    const owed = Math.round(amount * (1 + LOAN_FEE));   // nhận amount, ghi nợ amount + phí 5%
+    if (d.loan + owed > LOAN_CAP) {
+        return { error: `Tổng nợ vay tối đa ${LOAN_CAP.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt (nhớ tính cả phí vay ${LOAN_FEE * 100}%).` };
     }
-    d.loan += amount;
+    d.loan += owed;
     d.bToday += amount;
     updatePoints(userId, amount);
-    logDog('vay', userId, username, amount, `vay nợ (lãi ${LOAN_RATE * 100}%/ngày)`);
-    writeLog('ADMIN', `[VAY NỢ] ${username} vay ${amount.toLocaleString()} | nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
+    logDog('vay', userId, username, amount, `vay nợ (phí ${LOAN_FEE * 100}% + lãi ${LOAN_RATE * 100}%/ngày, ghi nợ ${owed.toLocaleString()})`);
+    writeLog('ADMIN', `[VAY NỢ] ${username} vay ${amount.toLocaleString()} (ghi nợ ${owed.toLocaleString()}) | nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
     saveDbNow();
     vayBoardRefresh();
     return { ok: true, amount, debt: debtStatus(userId), balance: u.points || 0 };
@@ -575,7 +580,8 @@ function getVayMessageData() {
     const lines = [
         `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp pal. 🙏`,
         '',
-        `**💰 Vay** - bơm tối đa **${LOAN_DAILY_MAX.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${LOAN_CAP.toLocaleString()}**.`,
+        `**💰 Vay** - bơm tối đa **${LOAN_DAILY_MAX.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${LOAN_CAP.toLocaleString()}**. ` +
+            `Phí vay **${LOAN_FEE * 100}%** ghi thẳng vào nợ (vay 4.000 là ghi sổ 4.200) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
         `**Lãi kép ${LOAN_RATE * 100}%/ngày** - cứ qua 00:00 là nợ tự đẻ. Vay ${LOAN_DAILY_MAX.toLocaleString()} rồi ngủ quên vài hôm, dậy thấy nợ ${LOAN_CAP.toLocaleString()} thì đừng hỏi tại sao. 💀`,
         `Xù nợ lâu quá là HỆ THỐNG đóng dấu ⚠️ **NỢ XẤU**: bêu tên ngay bảng này · 🚫 hết cửa vay · ` +
             `🚫 không chuyển tiền cho ai · 🚫 không chuyển vào game · 📅 ${LOAN_INCOME_CUT * 100}% tiền điểm danh bị xiết trả nợ.`,
@@ -4150,7 +4156,7 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({
                 content:
                     `💰 Bơm **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI} vào ví thành công - ví hiện có **${r.balance.toLocaleString()}**. Gỡ đẹp nha! 🙏\n` +
-                    `Đang ôm nợ: **${r.debt.total.toLocaleString()}** (lãi kép ${r.debt.ratePct}%/ngày - qua 00:00 là nó đẻ). Trả sớm đỡ đau ví, chây ì là ăn dấu ⚠️ nợ xấu!`,
+                    `Đang ôm nợ: **${r.debt.total.toLocaleString()}** (đã gồm phí vay ${LOAN_FEE * 100}%; lãi kép ${r.debt.ratePct}%/ngày - qua 00:00 là nó đẻ). Trả sớm đỡ đau ví, chây ì là ăn dấu ⚠️ nợ xấu!`,
                 ephemeral: true,
             });
         }
