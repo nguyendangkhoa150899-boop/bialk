@@ -299,7 +299,7 @@ function startWebPlay(ctx) {
                     if (req.method === 'POST' && path === '/api/mines/start') {
                         const body = await readBody(req);
                         const r = mines.start(userId, me.name || ('web_' + userId.slice(-4)),
-                            Math.floor(Number(body.numMines)), Math.floor(Number(body.bet)));
+                            Math.floor(Number(body.numMines)), Math.floor(Number(body.bet)), body.extra === true);
                         if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                         return sendJSON(res, 200, r);
                     }
@@ -762,8 +762,12 @@ const PAGE = [
     '<button id="mPlus" onclick="mStep(1)">+</button>',
     '</div>',
 
+    // 🍀 mặc định 1 ô; tick = mua thêm 1 ô, phí 20% tiền cược (server tự trừ lúc bắt đầu)
+    '<label class="muted" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;margin-top:8px;cursor:pointer">',
+    '<input type="checkbox" id="mExtra" onchange="mBand()" style="width:16px;height:16px;accent-color:#2ec26a">',
+    '🍀 Mua thêm 1 cỏ may mắn (phí <b id="mExtraFee">20</b> = 20% cược)</label>',
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
-    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao - trúng mìn là mất tiền cược ván đó.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao - trúng mìn là mất tiền cược ván đó. Mỗi ván giấu sẵn 1 ô 🍀.</div>',
     '<div class="muted" id="mNote" style="font-size:12px;margin-top:3px;text-align:center;color:#ff9a5c"></div>',
     '</div>',
     '</div>', // hết #pageMine
@@ -1149,6 +1153,7 @@ const PAGE = [
     'MPAGE=Math.min(np-1,Math.max(0,MPAGE+d));MPGMAN=true;mBar()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
+    'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
     '$("mBombN").textContent=MG.totalMines;',
@@ -1252,7 +1257,7 @@ const PAGE = [
     'else{t.className="mtile dead";t.textContent="?"}',
     'g.appendChild(t)}',
     // đang cầm khiên thì nhắc thường trực; không có khiên thì trả lại dòng trần cược cũ
-    '$("mNote").textContent=(MG&&MG.shield)?"🛡️ Đang có khiên - trúng mìn 1 lần không chết":',
+    '$("mNote").textContent=(MG&&MG.shield)?("🛡️ Đang có "+MG.shield+" khiên - trúng mìn "+MG.shield+" lần không chết"):',
     '(MAXBET?"Cược tối đa "+vnd(MAXBET)+" · nhận tối đa "+vnd(MAXWIN)+" mỗi ván":"")}',
     'function mRevealAll(mines){for(var i=0;i<MT;i++){var t=$("mk"+i);if(!t)continue;t.onclick=null;',
     'if(t.classList.contains("coin")||t.classList.contains("boom"))continue;',
@@ -1298,7 +1303,7 @@ const PAGE = [
     'if(n<MMIN||n>MMAX)return toast("❌ Số mìn từ "+MMIN+" đến "+MMAX);',
     'if(b<=0)return toast("❌ Nhập số Dogcoin");',
     'if(b>BAL)return toast("❌ Không đủ Dogcoin!");',
-    'mBusy=true;api("/api/mines/start",{numMines:n,bet:b}).then(function(j){mBusy=false;',
+    'mBusy=true;api("/api/mines/start",{numMines:n,bet:b,extra:$("mExtra").checked}).then(function(j){mBusy=false;',
     'setBal(j.balance);MG=j.state;mDrawGrid();mBar();mBand()',
     '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
     'function mCashout(){if(!MG||mBusy)return;mBusy=true;var stake=MG.bet;',
@@ -1355,7 +1360,7 @@ const PAGE = [
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
     'function sBand(){var go=$("sGo");',
     'if(SG){',
-    '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?" · 🛡️ có khiên":"");',
+    '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?(" · 🛡️ x"+SG.shield):"");',
     'go.className="mgo cash";',
     'go.innerHTML=SG.floor?("NHẬN TIỀN "+vnd(SG.cashout)+\' <img class="dc" src="/dogcoin.png" alt="">\'):"🪜 BƯỚC LÊN TẦNG 1 ĐI";',
     'go.disabled=!SG.floor;',

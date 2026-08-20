@@ -350,6 +350,11 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **20/08/2026 — Fix khiên 🛡️ + cỏ 🍀 thành hàng MUA THÊM.** Khiên giờ CỘNG DỒN cả 2 game
+  (trước là boolean: đang cầm khiên mà hộp ra khiên nữa là mất trắng — "khiên vô dụng");
+  UI hiện số khiên đang cầm. Dò Mìn về mặc định **1 ô 🍀/ván**, thêm checkbox
+  **mua thêm 1 cỏ = phí 20% tiền cược** (đặt 100 cần 120; phí vào net lịch sử, vé treo
+  hoàn cả phí khi restart).
 - **20/08/2026 — Nổ hũ 🏆 hạ 5% → 3%** cả 2 bàn quay hộp may mắn (Dò Mìn + Leo Thang),
   2% dư dồn vào ô hụt 🍂 (20% → 22%) — tổng bàn quay vẫn đúng 100%.
 - **20/08/2026 — Vay nợ: PHÍ VAY 5%** ghi thẳng vào nợ lúc vay (vay 4.000 → ghi sổ
