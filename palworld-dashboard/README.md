@@ -350,6 +350,11 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **20/08/2026 — NERF thưởng giữa (người chơi ăn chắc dễ quá):** Dò Mìn 24 ô → **25 ô**
+  (lưới 5×5) + RTP 1.0 → **0.95**; Leo Thang RTP 0.95 → **0.92**. Hệ số khúc giữa giảm
+  rõ (vd 3 mìn mở 8 ô: x3.61 → x3.21; mở 15 ô: x24.1 → x18.2). Các mốc CỐ ĐỊNH giữ
+  nguyên: trần nổ hũ/khiên, mốc ép tay 2 lửa tầng 9/10 (11.86/14.86). Lưu ý: /domin
+  bản Discord (đang tắt) hết đường bật lại vì 25 ô + nút DỪNG = 26 nút > trần Discord.
 - **20/08/2026 — Dò Mìn: 2 ô 🍀/ván (mỗi ô quay 1 lần) · lì xì 💰 20% → 30% cược (CẢ
   Leo Thang) · trần may mắn theo bậc** — chặn farm bằng ván dễ, hai trần riêng:
   NỔ HŨ 🏆 (`jackpotCapOf`): 3 mìn ×100 · 4 mìn ×200 · 5 mìn ×500 · 6+ giữ ×2000;

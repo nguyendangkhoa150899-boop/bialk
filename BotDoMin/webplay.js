@@ -1090,7 +1090,7 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
-    'var MT=24;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
+    'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
     'var MMIN=3,MMAX=20;',   // giới hạn số mìn - server là nguồn chuẩn, mSync ghi đè
     // Bấm nhanh: cú bấm trong lúc chờ server KHÔNG bị nuốt nữa — xếp hàng đào tuần tự.
     // mBusyAt = chốt an toàn: request treo quá 8s thì tự gỡ cờ, không phải F5.
@@ -1169,7 +1169,7 @@ const PAGE = [
     'function mNewGame(){MOVER=false;MLAST=null;api("/api/mines/dismiss",{}).catch(function(){});',
     'mDrawGrid();mTable();mBar();mBand()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
-    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||24;setBal(j.balance);',
+    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;setBal(j.balance);',
     'MMIN=j.minMines||3;MMAX=j.maxMines||20;',
     '$("mMinesLab").textContent="Số mìn ("+MMIN+"–"+MMAX+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',

@@ -1071,14 +1071,14 @@ async function manageHistory(state, sessionMsgs) {
 // ==========================================
 // --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
 // ==========================================
-// 24 ô + RTP 1.0 — giữ nguyên như bản dò mìn chạy trong Discord trước đây,
-// người chơi đã quen bảng hệ số này (từng đổi sang 25 ô/RTP 0.95 rồi trả lại).
-//
-// ⚠️ RTP 1.0 = nhà cái KHÔNG ăn đồng nào: dài hạn dò mìn không hút được chút
-// Dogcoin nào ra khỏi server, chỉ làm tổng cung dao động. Muốn nó thành chỗ
-// tiêu tiền thì hạ xuống 0.97 (ăn 3%) hoặc 0.95 (ăn 5%, mức sòng thật hay dùng).
-const TOTAL_TILES = 24;
-const RTP = 1.0;
+// 25 ô (lưới 5×5 tròn trịa) + RTP 0.95 — chủ server chốt 20/08: "dễ ăn quá" nên
+// nerf. Hai núm này cùng lúc làm HỆ SỐ KHÚC GIỮA giảm rõ (người chơi dừng-sớm-ăn-chắc
+// bị chạm nhiều nhất), còn các mốc CỐ ĐỊNH (trần nổ hũ 100/200/500, trần có khiên
+// 350/700) giữ nguyên. Lịch sử: 19/08 từng chạy 24 ô/RTP 1.0 theo bảng Discord cũ.
+// ⚠️ /domin bản Discord (đang comment) KHÔNG bật lại được với 25 ô: 25 ô + nút DỪNG
+// = 26 nút, vượt trần 25 nút/tin của Discord.
+const TOTAL_TILES = 25;
+const RTP = 0.95;
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -1524,7 +1524,7 @@ const webMinesApi = {
 // server không thể "đổi ý" giữa chừng, và tiền tính hết ở đây — web chỉ vẽ lại.
 const STAIRS_FLOORS = 10;
 const STAIRS_COLS = 8;
-const STAIRS_RTP = 0.95;    // nhà cái ăn 5%, cùng mức các sòng thật hay dùng
+const STAIRS_RTP = 0.92;    // hạ 0.95 -> 0.92 (20/08, nerf nhẹ toàn bảng — mốc ép tay 2 lửa tầng 9/10 vẫn cố định)
 const STAIRS_MAX_FIRE = 5;  // nhiều lửa nhất mỗi tầng (phải nhỏ hơn số ô)
 
 const webStairs = new Map(); // userId -> { bet, fire, floor, traps[][], name, startedAt }
