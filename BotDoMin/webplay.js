@@ -142,6 +142,12 @@ function startWebPlay(ctx) {
                         ok: true,
                         me: userId,
                         balance: me.points || 0,
+                        // 🏆 hũ 2 minigame gửi kèm nhịp 2 giây -> nhãn hũ trên tab luôn tươi,
+                        // thấy người khác nuôi hũ mà không cần bấm sang tab đó
+                        pots: {
+                            mines: (ctx.mines && ctx.mines.pot) ? ctx.mines.pot() : 0,
+                            stairs: (ctx.stairs && ctx.stairs.pot) ? ctx.stairs.pot() : 0,
+                        },
                         live, phase,
                         gameId: tx.gameId,
                         targetTime: tx.targetTime,
@@ -492,6 +498,8 @@ const PAGE = [
     '#nav{display:flex;gap:6px;margin-bottom:8px}',
     '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:13px;padding:9px 2px}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
+    // 🏆 số hũ trên tab: xuống dòng, vàng, nhỏ hơn tên game
+    '.navpot{display:block;font-size:11px;font-weight:bold;color:var(--gold);margin-top:2px;letter-spacing:.2px}',
     // ---- dò mìn (bố cục theo sòng: thanh hệ số trên, 2 cột đếm kẹp lưới) ----
     // icon Dog Coin thật (ảnh trong game) — thay cho emoji 🐕 ở mọi chỗ
     '.dc{width:1.05em;height:1.05em;vertical-align:-.16em;object-fit:contain;display:inline-block}',
@@ -696,8 +704,9 @@ const PAGE = [
 
     '<div id="nav">',
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Big Small</button>',
-    '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
-    '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
+    // 🏆 số hũ hiện ngay trên tab cho dễ thấy (nạp từ mSync/sSync)
+    '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn<span class="navpot" id="navPotMine"></span></button>',
+    '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang<span class="navpot" id="navPotStair"></span></button>',
     '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
     '<button id="navDaily" onclick="go(\'daily\')">📅 Điểm danh</button>',
     '</div>',
@@ -1022,6 +1031,9 @@ const PAGE = [
     'var NAMES={tai:"BIG",xiu:"SMALL",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
     'function refresh(){api("/api/state").then(function(j){',
     'MYID=j.me||MYID;',
+    // 🏆 nhãn hũ trên tab: cập nhật mỗi nhịp 2 giây, kể cả khi người khác đang nuôi hũ
+    'if(j.pots){if(typeof j.pots.mines==="number"){MPOT=j.pots.mines;potTab("navPotMine",MPOT)}',
+    'if(typeof j.pots.stairs==="number"){SPOT=j.pots.stairs;potTab("navPotStair",SPOT)}}',
     'BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");',
     // ván vừa chốt: tính thắng/thua CÁ NHÂN -> popup; ra bão -> hiệu ứng
     'var h0s=j.history[0];',
@@ -1163,8 +1175,9 @@ const PAGE = [
     'var np=Math.max(1,Math.ceil(C/MPER));',
     'MPAGE=Math.min(np-1,Math.max(0,MPAGE+d));MPGMAN=true;mBar()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
+    'function potTab(id,v){var e=$(id);if(e)e.textContent=(v>=0?("HŨ "+vnd(v)+" DOGCOIN"):"")}',
     'function mBand(){var go=$("mGo");',
-    'var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ Dò Mìn: "+vnd(MPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn hũ này";',
+    'potTab("navPotMine",MPOT);var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ Dò Mìn: "+vnd(MPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn hũ này";',
     'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
@@ -1372,7 +1385,7 @@ const PAGE = [
     'if(el.classList.contains("fire"))return;', // ô lửa đã lộ (khiên đỡ) - cấm bấm lại
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
     'function sBand(){var go=$("sGo");',
-    'var spl=$("sPotLine");if(spl&&SPOT>=0)spl.textContent="🏆 Hũ Leo Thang: "+vnd(SPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn hũ này";',
+    'potTab("navPotStair",SPOT);var spl=$("sPotLine");if(spl&&SPOT>=0)spl.textContent="🏆 Hũ Leo Thang: "+vnd(SPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn hũ này";',
     'if(SG){',
     '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?(" · 🛡️ x"+SG.shield):"");',
     'go.className="mgo cash";',

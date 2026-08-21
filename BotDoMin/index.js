@@ -1330,6 +1330,7 @@ function adminPotAdd(key, amount) {
     potBook()[key] = Math.max(0, before + n);
     writeLog('ADMIN', `[HŨ ${POT_LABEL[key]}] Panel ${n > 0 ? 'nạp' : 'rút'} ${Math.abs(n).toLocaleString()} - hũ ${before.toLocaleString()} -> ${potGet(key).toLocaleString()}`);
     saveDbNow();
+    if (key === 'gacha' && typeof withdrawBoardRefresh === 'function') withdrawBoardRefresh();
     return { ok: true, key, pot: potGet(key), max: LUCKY_POT_MAX };
 }
 // Thông báo nổ hũ vào kênh bảng của game (kênh chưa set thì thôi, lỗi cũng kệ)
@@ -3506,7 +3507,6 @@ function getWithdrawMessageData() {
     const lines = [
         `Chuyển Dogcoin **tự động** giữa ví Discord và Dog Coin trong game - xử lý ngay trong ~10 giây, không cần chờ admin.`,
         '',
-        `Lần đầu dùng: nhắn **admin liên kết tên nhân vật** với Discord của bạn (chỉ cần 1 lần).`,
         `**🎮 Chuyển vào game** - trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
         `**💬 Chuyển ra Discord** - trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
         '',
@@ -3515,12 +3515,11 @@ function getWithdrawMessageData() {
         `Pal nào cũng là bản **Boss (Alpha)** 👑, **${PAL_SHOP.stars} sao** ⭐, **IV ${PAL_SHOP.ivs}**, ` +
             `**${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** + **${PAL_SHOP.passiveSlots} passive** bạn tự chọn.`,
         `🚫 Passive nhóm **Cây Thế Giới** không bán kèm pal - mua cấy ghép ở sạp trong game.`,
-        '',
-        `🏪 Lõi Văn Minh, cấy ghép, đổi vàng... mua ở **sạp trong game**.`,
     ];
 
     const embed = new EmbedBuilder()
-        .setTitle('🔄 DOGCOIN & SHOP PAL')
+        // hũ quay Pal hiện ngay trên tiêu đề (bảng tự vẽ lại nên số luôn tươi)
+        .setTitle(`🔄 DOGCOIN & SHOP PAL — HŨ ĐANG CÓ ${potGet('gacha').toLocaleString()} DOGCOIN`)
         .setColor(0xf1c40f)
         .setDescription(lines.join('\n'));
 
@@ -3581,6 +3580,13 @@ async function completePalOrder(id) {
     } catch { /* người chơi tắt DM */ }
 
     return { ok: true };
+}
+
+// Vẽ lại bảng 🔄 DOGCOIN & SHOP PAL (tiêu đề có số hũ quay Pal nên phải cập nhật
+// mỗi lần hũ đổi). Bảng chưa đăng thì thôi, lỗi cũng kệ - không chặn dòng tiền.
+function withdrawBoardRefresh() {
+    if (!withdrawState.message) return;
+    withdrawState.message.edit(getWithdrawMessageData()).catch(() => {});
 }
 
 async function startWithdraw(channel) {
@@ -4687,6 +4693,7 @@ client.on('interactionCreate', async interaction => {
 
         // 🏆 HŨ RIÊNG của quay Pal: nuôi 5% giá vé, nổ theo CHUNG tỉ lệ 3% với 2 minigame
         potFeed('gacha', luckyPotCut('gacha', price));
+        withdrawBoardRefresh();   // tiêu đề bảng có số hũ -> vẽ lại cho tươi
         let palPotWin = 0;
         if (potGet('gacha') > 0 && Math.random() < POT_HIT_RATE) {
             palPotWin = luckyPotPop('gacha');

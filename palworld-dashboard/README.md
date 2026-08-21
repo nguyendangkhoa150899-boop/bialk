@@ -358,9 +358,12 @@ nạp/rút (16), /nghien (12).
   15.000**, nhưng **admin nạp tay thì vượt trần được** (chỉ chặn âm). **Một tỉ lệ nổ duy
   nhất `POT_HIT_RATE` = 3%** = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
   NGUYÊN hũ trò đó; quay Pal mỗi lượt bốc 3% ăn hũ gacha. Nổ ở đâu báo kênh đó. Panel tab
-  💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng
+  💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng (khung dựng
+  MỘT lần rồi chỉ cập nhật số — vẽ lại cả khối là cuốn mất số admin đang gõ, panel refresh 3s)
   (`/api/pot/add` nhận `{key, amount}`). Tiền hũ cũ của bản "1 hũ chung" tự dồn sang hũ
-  Dò Mìn khi khởi động.
+  Dò Mìn khi khởi động. Số hũ hiện **ngay trên tab** 💣/🪜 của web ("HŨ 10.000 DOGCOIN",
+  tươi theo nhịp 2 giây qua `/api/state`) và trên **tiêu đề bảng 🔄 DOGCOIN & SHOP PAL**
+  trong Discord (hũ quay Pal, bảng tự vẽ lại mỗi lượt quay).
 - **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
   tổ hợp, KHÔNG trần (mở hết bàn 12-13 mìn = ×4,9 triệu lần cược, xác suất 1/5,2 triệu —
   chủ server chấp nhận sau khi nghe cảnh báo). Bàn quay 🍀 Dò Mìn: lì xì 46% (+30% cược) · hụt 21% · khiên 15% · đào 15% · hũ 3%
