@@ -2429,11 +2429,16 @@ async function resumeStairsBoard() {
     await startStairsBoard(ch);
 }
 
-// Có ván mới thì XOÁ tin cũ + ĐĂNG tin mới (không sửa tại chỗ) — bảng luôn nằm cuối
-// kênh như một thông báo mới, người chơi khỏi cuộn lên tìm. Tối đa 1 lần/phút, mọi
-// ván trong phút đó gom chung một lần đăng. GỬI TRƯỚC, XOÁ SAU: lỡ gửi lỗi thì bảng
-// cũ còn đó, kênh không bao giờ trống bảng.
+// CÁCH CẬP NHẬT BẢNG (đổi 21/08 — trước đó ván nào cũng xoá-rồi-đăng-mới):
+//   · Bảng vẫn là tin CUỐI kênh  -> SỬA TẠI CHỖ. Không đẻ tin mới thì không thể có
+//     bảng mồ côi, lại đỡ nửa số Discord API call. Kênh bảng thường không ai nhắn
+//     nên đây là đường chạy gần như luôn luôn.
+//   · Có người nhắn đè xuống dưới -> mới ĐĂNG TIN MỚI cho bảng nổi về cuối kênh,
+//     giữ đúng ý ban đầu: người chơi khỏi cuộn lên tìm.
+// Sửa tại chỗ rẻ và không spam nên cho nhanh hơn (10s); đăng tin mới vẫn 1 phút/lần.
+// GỬI TRƯỚC, XOÁ SAU: lỡ gửi lỗi thì bảng cũ còn đó, kênh không bao giờ trống bảng.
 const BOARD_REPOST_MS = 60 * 1000;
+const BOARD_EDIT_MS = 10 * 1000;
 // Dọn bảng mồ côi — DÙNG CHUNG cho Big Small / Dò Mìn / Leo Thang (bug 21/08).
 // Cả 3 bàn đều xoá bảng cũ kiểu fire-and-forget rồi nuốt lỗi; VPS này có Connect
 // Timeout tới Discord nên xoá hụt là chuyện thường, và mỗi lần restart lại bỏ thêm
@@ -2455,9 +2460,20 @@ async function sweepBoards(channel, keepId, titleMatch, label) {
 
 async function repostBoard(board, getData, msgKey, label, titleMatch) {
     if (!board.channel || !board.needsUpdate) return;
-    if (Date.now() - board.lastEdit < BOARD_REPOST_MS) return;
+    // lastMessageId do gateway đẩy về (bot có intent GuildMessages) — không tốn API call
+    const isLast = !!board.message && board.channel.lastMessageId === board.message.id;
+    if (Date.now() - board.lastEdit < (isLast ? BOARD_EDIT_MS : BOARD_REPOST_MS)) return;
     board.needsUpdate = false;
     board.lastEdit = Date.now();
+    if (isLast) {
+        try {
+            await board.message.edit(getData());
+        } catch (e) {
+            writeLog('SYSTEM', `[${label}] Sửa bảng tại chỗ hụt: ${e.message}`);
+            board.needsUpdate = true;   // lượt sau thử lại, hụt mãi thì đăng tin mới
+        }
+        return;
+    }
     const old = board.message;
     try {
         board.message = await board.channel.send(getData());
@@ -3098,17 +3114,11 @@ function runTaiXiuLoop() {
             txState.processingStart = Date.now();
             const prevMsgId = txState.message?.id;
 
+            // Bảng còn nằm cuối kênh thì ván mới SỬA TẠI CHỖ, khỏi xoá-tạo (21/08).
+            const txIsLast = !!prevMsgId && txState.channel?.lastMessageId === prevMsgId;
+
             try {
                 await (txState.resultPromise || Promise.resolve(null));
-                // Bảng cũ xóa NGAY (kết quả đã nằm trong bảng mới) — kênh chỉ còn đúng
-                // 1 bảng live, không giữ 20 phiên cũ như thời còn embed kết quả riêng.
-                if (prevMsgId && txState.channel) {
-                    // KHÔNG nuốt lỗi nữa — cần biết VÌ SAO xoá hụt; dọn thì đã có
-                    // sweepTXBoards() chạy mỗi ván ở dưới lo, không cần cờ riêng.
-                    txState.channel.messages.delete(prevMsgId).catch((e) => {
-                        writeLog('SYSTEM', `[BẢNG TX] Xoá bảng cũ ${prevMsgId} hụt: ${e.message}`);
-                    });
-                }
                 txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
                 txState.status = 'betting';
                 txState.bets = [];
@@ -3117,10 +3127,25 @@ function runTaiXiuLoop() {
                 txState.resultPromise = null;
                 txState.needsUpdate = false;
                 const data = getTXMessageData();
-                txState.message = await txState.channel.send(data).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG MỚI TX] ${e.message}`); return null; });
-                if (txState.message) dbCache._txMsgId = txState.message.id;   // restart còn biết bảng nào mà gỡ
-                // Quét khi vừa xoá hụt, và cứ 10 ván quét một lần làm lưới an toàn
-                sweepTXBoards().catch(() => { });
+                if (txIsLast && txState.message) {
+                    // Đường chạy thường ngày: không đẻ tin mới nên KHÔNG THỂ mồ côi.
+                    // Sửa hụt thì bỏ bảng đi, auto-recover ở đầu vòng lặp đăng bảng mới.
+                    await txState.message.edit(data).catch((e) => {
+                        writeLog('SYSTEM', `[BẢNG TX] Sửa bảng tại chỗ hụt: ${e.message}`);
+                        txState.message = null;
+                    });
+                    if (txState.message) dbCache._txMsgId = txState.message.id;
+                } else {
+                    // Có người nhắn đè xuống dưới -> đăng bảng mới cho nổi về cuối kênh
+                    if (prevMsgId && txState.channel) {
+                        txState.channel.messages.delete(prevMsgId).catch((e) => {
+                            writeLog('SYSTEM', `[BẢNG TX] Xoá bảng cũ ${prevMsgId} hụt: ${e.message}`);
+                        });
+                    }
+                    txState.message = await txState.channel.send(data).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG MỚI TX] ${e.message}`); return null; });
+                    if (txState.message) dbCache._txMsgId = txState.message.id;   // restart còn biết bảng nào mà gỡ
+                    sweepTXBoards().catch(() => { });   // lưới an toàn, dọn bảng sót
+                }
             } catch (e) {
                 writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
                 // Recovery: reset để ván tiếp theo vẫn chạy được
