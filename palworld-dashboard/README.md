@@ -356,7 +356,7 @@ nạp/rút (16), /nghien (12).
   100 trừ đúng 100, khoản nuôi là **nhà cái bao** (lấy từ phần RTP; hệ quả: Dò Mìn RTP 0.95
   trả hết 5% vào hũ ≈ nhà cái về 0 lợi nhuận, Leo Thang còn ~3%). Tự trích **dừng ở trần
   15.000**, nhưng **admin nạp tay thì vượt trần được** (chỉ chặn âm). **Một tỉ lệ nổ duy
-  nhất `POT_HIT_RATE` = 3%** = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
+  nhất `POT_HIT_RATE` = 2%** (hạ từ 3% ngày 20/08 - test nổ 3 lần liên tiếp) = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
   NGUYÊN hũ trò đó; quay Pal mỗi lượt bốc 3% ăn hũ gacha. Nổ ở đâu báo kênh đó. Panel tab
   💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng (khung dựng
   MỘT lần rồi chỉ cập nhật số — vẽ lại cả khối là cuốn mất số admin đang gõ, panel refresh 3s)
@@ -377,8 +377,10 @@ nạp/rút (16), /nghien (12).
   UI hiện số khiên đang cầm. Dò Mìn về mặc định **1 ô 🍀/ván**, thêm checkbox
   **mua thêm 1 cỏ = phí 20% tiền cược** (đặt 100 cần 120; phí vào net lịch sử, vé treo
   hoàn cả phí khi restart).
-- **20/08/2026 — Nổ hũ 🏆 hạ 5% → 3%** cả 2 bàn quay hộp may mắn (Dò Mìn + Leo Thang),
-  2% dư dồn vào ô hụt 🍂 (20% → 22%) — tổng bàn quay vẫn đúng 100%.
+- **20/08/2026 — Nổ hũ 🏆 hạ 5% → 3% → 2%** cả 2 bàn quay hộp may mắn; phần dư dồn vào
+  ô hụt 🍂 (mìn 22%, thang 23%) — tổng mỗi bàn vẫn đúng 100%. Lời mời hộp 🍀 giờ hứa
+  ĐÚNG số sẽ nhận (trần theo số mìn + hũ nuôi), trước đây treo ×2000 nên ván 3 mìn cược
+  1.800 ghi 3.600.000 mà thực nhận 100.270.
 - **20/08/2026 — Vay nợ: PHÍ VAY 5%** ghi thẳng vào nợ lúc vay (vay 4.000 → ghi sổ
   4.200, nhận đủ 4.000). Chống spam vay-trả-vay: trả sạch mở lại hạn mức ngày, nhưng
   mỗi vòng lặp tốn 5% phí — vay 4.000 trả liền là mất 200.

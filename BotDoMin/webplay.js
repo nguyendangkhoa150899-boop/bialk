@@ -1235,11 +1235,14 @@ const PAGE = [
     // ===== 🍀 CHỌN 1 TRONG 4 HỘP =====
     'var LUCKGAME="";',
     'function luckyOpen(game){LUCKGAME=game;',
-    // Hũ hiện SỐ THẬT của ván này: min(cược x2000, giải cao nhất theo bảng hệ số) —
-    // ván 1-2-3 lửa hũ bé thì ghi đúng số bé, không treo "x2000" ảo.
+    // Hũ hiện SỐ THẬT SẼ NHẬN: trần nổ hũ của ván (Dò Mìn theo SỐ MÌN: 3 mìn x50,
+    // 4 mìn x100, 5 mìn x200, 6+ x2000; Leo Thang x2000) rồi kẹp theo giải cao nhất
+    // của bàn, CỘNG hũ nuôi đang có. Trước đây treo x2000 cho mọi ván -> hứa lố
+    // (ván 3 mìn cược 1.800 ghi 3.600.000 mà thực nhận 100.270 - bug 20/08).
+    'function jpCapMines(m){return m<=3?50:(m===4?100:(m===5?200:2000))}',
     'var jp=0;',
-    'if(game==="mines"&&MG&&MTAB.length)jp=Math.min(MG.bet*2000,Math.floor(MG.bet*MTAB[MTAB.length-1]));',
-    'if(game==="stairs"&&SG&&STAB.length)jp=Math.min(SG.bet*2000,Math.floor(SG.bet*STAB[STAB.length-1]));',
+    'if(game==="mines"&&MG&&MTAB.length)jp=Math.min(MG.bet*jpCapMines(MG.totalMines),Math.floor(MG.bet*MTAB[MTAB.length-1]))+(MPOT>0?MPOT:0);',
+    'if(game==="stairs"&&SG&&STAB.length)jp=Math.min(SG.bet*2000,Math.floor(SG.bet*STAB[STAB.length-1]))+(SPOT>0?SPOT:0);',
     '$("luckySub").textContent=jp>0?("Chọn 1 hộp - biết đâu 🏆 NỔ HŨ "+jp.toLocaleString("vi-VN")+" Dogcoin!"):"Chọn 1 hộp quà!";',
     // dựng lại 4 hộp kín + giấu kết quả/nút đóng của lần trước
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){',
