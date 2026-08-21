@@ -250,9 +250,9 @@ mẫu (hàng mẫu **không bao giờ** ra hũ, kẻo lật ra 2–3 hũ ảo).
 Ba luật kinh tế của hũ, đừng bỏ: (1) hũ tính theo **cấu hình ván đó** — chọn 1 mìn/1 lửa
 rồi ngồi câu hũ chỉ ăn giải bé, hết cửa farm; (2) **trần CHỈ áp ván ăn nhờ trợ giúp**
 (🚀/🌟/⛏️, khiên đã dùng để thoát chết, hoặc nổ hũ) — tự lực 100% thì `calculateMulti`/
-`stairsMulti` **trả đủ không trần**, cày thật ăn thật; (3) **cược < `POT_MIN_BET` (200) thì
-không nuôi và không ăn hũ nuôi** — đặt 1 xu cầu may là hết cửa. Nổ xong hũ về mồi
-`POT_SEED` (1.500), không về 0.
+`stairsMulti` **trả đủ không trần**, cày thật ăn thật; (3) **cược dưới `MIN_BET` (200) là
+bị TỪ CHỐI ván** — đặt 1 xu cầu may hết cửa ngay từ đầu, nên mọi ván đều nuôi/ăn hũ như
+nhau (không còn cửa xét riêng cho hũ). Nổ xong hũ về mồi `POT_SEED` (1.500), không về 0.
 
 **🎡 Vòng quay nhóm 2 tầng** (`wheelRoom`) — thay Blackjack. Vào bàn **miễn phí**. Đủ N
 người (admin chỉnh ở panel) thì nút quay sáng, **người trong bàn tự bấm**, không tự quay.
@@ -365,17 +365,18 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
   `luckyTotal`/`luckyLeft`/`extraLucky` (**chỉ số lượng, tuyệt đối không lộ `g.lucky`** —
   lộ vị trí ô 🍀 là lộ ô an toàn), `g.luckyTotal` chốt lúc start; web **khoá ô tick khi
   đang có ván** và đổi nhãn thành "Ván này giấu N ô cỏ may mắn · còn M ô chưa mở".
-- **21/08/2026 — Hũ: cược tối thiểu 200 mới ăn, nổ xong hũ về mồi 1.500.** Trước đó cược
-  1 xu cũng nuôi/ăn hũ nên ai cũng chỉ đặt tối thiểu để "cầu may" — nay `POT_MIN_BET = 200`:
-  cược dưới 200 thì **không trích nuôi hũ** và **trúng ô 🏆 chỉ ăn trần ván, không ăn hũ**
-  (thông báo ghi rõ "cược dưới 200 nên chưa ăn được hũ"). Nổ hũ xong hũ **không về 0** mà
-  đặt lại `POT_SEED = 1500` để người vào sau vẫn còn cửa; hũ mới tạo cũng được mồi 1.500.
-  Mồi chốt 1.500 (không phải 3.000) là có lý do kinh tế: mồi là **tiền nhà cái bỏ ra mỗi
-  lần nổ**, mồi càng cao thì hũ càng bị ghim quanh mức mồi và không bao giờ leo lên con số
-  đủ hấp dẫn — 1.500 vừa đủ để hũ không rỗng, vừa để nó **tự nuôi leo lên** thật.
-  Chỗ sửa: `potEligible/luckyPotCut/luckyPotPop` trong `index.js` (pop giờ nhận thêm tiền
-  cược), `potMin/potSeed` đẩy qua `/api/state` → `POTMIN/POTSEED` ở `webplay.js` (lời mời
-  ô may mắn chỉ cộng hũ khi `bet >= POTMIN`), panel hiện 2 con số này ở `potInfo`.
+- **21/08/2026 — SÀN CƯỢC 200/ván cho 2 minigame + nổ hũ xong hũ về mồi 1.500.**
+  `MIN_BET = 200`: cược dưới mức này thì `start` của **cả Dò Mìn lẫn Leo Thang** trả lỗi
+  "Cược tối thiểu 200" — không tạo ván, không trừ ví, không đụng hũ. ⚠️ Bản đầu làm **sai
+  ý**: cho cược 1 xu nhưng "không được ăn hũ" (`POT_MIN_BET` + `potEligible`); chủ server
+  chốt lại là **BUỘC đặt tối thiểu 200**, nên cửa xét đó **gỡ hẳn** — giờ mọi ván đều nuôi
+  và ăn hũ bình thường, không còn nhánh thông báo "cược dưới 200 nên chưa ăn được hũ".
+  `minBet` đẩy xuống web + panel từ **một nguồn** (`webMinesApi/webStairsApi.minBet` và
+  `ctx.getPot`), web chặn trước cho báo lỗi tử tế, ô cược mặc định lên 200, nút x2/MAX
+  không kéo xuống dưới sàn. Nổ hũ xong hũ **không về 0** mà về `POT_SEED = 1500`; hũ mới
+  tạo cũng được mồi 1.500. Mồi 1.500 (không phải 3.000) có lý do kinh tế: mồi là **tiền nhà
+  cái bỏ ra mỗi lần nổ**, mồi càng cao thì hũ càng bị ghim quanh mức mồi và không bao giờ
+  leo lên con số đủ hấp dẫn.
 - **20/08/2026 — 🏆 HŨ NUÔI: mỗi trò MỘT HŨ RIÊNG, chung một tỉ lệ nổ.** Ba hũ
   `_pots = { mines, stairs, gacha }`, nổ ở trò nào ăn hũ trò đó (2 hũ kia không suy suyển).
   Nuôi: mỗi ván/lượt quay trích **5% tiền cược**, **KHÔNG thu thêm của người chơi** — cược
