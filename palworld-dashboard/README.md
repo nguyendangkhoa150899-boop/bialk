@@ -244,8 +244,8 @@ mẫu (hàng mẫu **không bao giờ** ra hũ, kẻo lật ra 2–3 hũ ảo).
 | 🛡️ Khiên | 15% | 20% | Đỡ 1 lần chết (mìn/lửa), Leo Thang thì đứng yên không lên tầng. **Đếm cộng dồn** (`g.shield++`), không phải cờ bật/tắt |
 | ⛏️ Đào / 🚀 Tên lửa | 15% | 15% | Mở giúp 1–2 ô an toàn / +2 tầng |
 | 💰 Lì xì | 46% | 40% | **+30%** tiền cược ngay (tối thiểu 1) |
-| 🍂 Hụt | 21% | 23% | Không gì cả — **van chỉnh kỳ vọng**, sòng chảy máu thì tăng ô này |
-| 🏆 **NỔ HŨ** | 2% | 2% | `trần nổ hũ của ván` + **NGUYÊN hũ nuôi** của trò đó, rồi **CHỐT VÁN LUÔN** |
+| 🍂 Hụt | 23% | 24% | Không gì cả — **van chỉnh kỳ vọng**, sòng chảy máu thì tăng ô này |
+| 🏆 **NỔ HŨ** | 1% | 1% | `trần nổ hũ của ván` + **NGUYÊN hũ nuôi** của trò đó, rồi **CHỐT VÁN LUÔN** |
 
 Ba luật kinh tế của hũ, đừng bỏ: (1) hũ tính theo **cấu hình ván đó** — chọn 1 mìn/1 lửa
 rồi ngồi câu hũ chỉ ăn giải bé, hết cửa farm; (2) **trần CHỈ áp ván ăn nhờ trợ giúp**
@@ -354,6 +354,11 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **21/08/2026 — Nổ hũ 🏆 hạ 2% → 1% ở CẢ BA trò.** Ô 🏆 của hai bàn quay hộp may mắn
+  còn `p: 0.01`, `POT_HIT_RATE` (quay Pal) còn `0.01`; **phần dư dồn vào ô hụt 🍂** như mọi
+  lần hạ trước (mìn 22% → 23%, thang 23% → 24%) nên tổng mỗi bàn vẫn đúng 100% — kiểm bằng
+  ca "tổng xác suất 2 bàn quay = 1". Lưu ý khi viết test: lát 🏆 giờ chỉ còn `[0.99, 1.0)`,
+  mốc `0.985` cũ **không còn ép ra jackpot nữa** (rơi vào hụt) — dùng `0.995`.
 - **21/08/2026 — Vé vòng quay 1.500/2.000/2.500 → 2.000/2.500/3.000.** `WHEEL_STAGE1`
   (15 nan, mỗi giá 5 nan) + `WHEEL_MAX_TICKET = 3000`; đổi kèm bảng màu nan `FILL1` và
   ngưỡng chữ tối (nan vàng giờ là 3.000), chữ mời vào bàn, chú thích panel.
@@ -383,8 +388,8 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
   100 trừ đúng 100, khoản nuôi là **nhà cái bao** (lấy từ phần RTP; hệ quả: Dò Mìn RTP 0.95
   trả hết 5% vào hũ ≈ nhà cái về 0 lợi nhuận, Leo Thang còn ~3%). Tự trích **dừng ở trần
   20.000**, nhưng **admin nạp tay thì vượt trần được** (chỉ chặn âm). **Một tỉ lệ nổ duy
-  nhất `POT_HIT_RATE` = 2%** (hạ từ 3% ngày 20/08 - test nổ 3 lần liên tiếp) = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
-  NGUYÊN hũ trò đó; quay Pal mỗi lượt bốc 2% ăn hũ gacha. Nổ ở đâu báo kênh đó. Panel tab
+  nhất `POT_HIT_RATE` = 1%** (hạ dần 3% → 2% ngày 20/08 → 1% ngày 21/08) = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
+  NGUYÊN hũ trò đó; quay Pal mỗi lượt bốc 1% ăn hũ gacha. Nổ ở đâu báo kênh đó. Panel tab
   💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng (khung dựng
   MỘT lần rồi chỉ cập nhật số — vẽ lại cả khối là cuốn mất số admin đang gõ, panel refresh 3s)
   (`/api/pot/add` nhận `{key, amount}`). Tiền hũ cũ của bản "1 hũ chung" tự dồn sang hũ
@@ -393,8 +398,8 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
   trong Discord (hũ quay Pal, bảng tự vẽ lại mỗi lượt quay).
 - **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
   tổ hợp, KHÔNG trần (mở hết bàn 12-13 mìn = ×4,9 triệu lần cược, xác suất 1/5,2 triệu —
-  chủ server chấp nhận sau khi nghe cảnh báo). Bàn quay 🍀 Dò Mìn: lì xì 46% (+30% cược) · hụt 21% · khiên 15% · đào 15% · hũ 2%
-  (Leo Thang giữ: rocket 15 · khiên 20 · lì xì 40 · hụt 23 · hũ 2). Trần CHỈ áp 3 đường may mắn: nổ hũ 🏆
+  chủ server chấp nhận sau khi nghe cảnh báo). Bàn quay 🍀 Dò Mìn: lì xì 46% (+30% cược) · hụt 23% · khiên 15% · đào 15% · hũ 1%
+  (Leo Thang giữ: rocket 15 · khiên 20 · lì xì 40 · hụt 24 · hũ 1). Trần CHỈ áp 3 đường may mắn: nổ hũ 🏆
   50/100/200 (3/4/5 mìn), khiên/⛏️ ĐÃ DÙNG 100/300/500; 6+ mìn và Leo Thang ×2000.
   Khiên nhận mà chưa dùng vẫn tính tự lực. UI thanh hệ số tự gộp dải mốc trùng nhau
   ở cuối bảng thành một ô (nếu có). Lưu ý: trần tuyệt đối từng được thêm rồi GỠ 2 lần
@@ -404,8 +409,8 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
   UI hiện số khiên đang cầm. Dò Mìn về mặc định **1 ô 🍀/ván**, thêm checkbox
   **mua thêm 1 cỏ = phí 20% tiền cược** (đặt 100 cần 120; phí vào net lịch sử, vé treo
   hoàn cả phí khi restart).
-- **20/08/2026 — Nổ hũ 🏆 hạ 5% → 3% → 2%** cả 2 bàn quay hộp may mắn; phần dư dồn vào
-  ô hụt 🍂 (mìn 22%, thang 23%) — tổng mỗi bàn vẫn đúng 100%. Lời mời hộp 🍀 giờ hứa
+- **20/08/2026 — Nổ hũ 🏆 hạ 5% → 3% → 2%** cả 2 bàn quay hộp may mắn (21/08 hạ tiếp còn 1%); phần dư dồn vào
+  ô hụt 🍂 — tổng mỗi bàn vẫn đúng 100%. Lời mời hộp 🍀 giờ hứa
   ĐÚNG số sẽ nhận (trần theo số mìn + hũ nuôi), trước đây treo ×2000 nên ván 3 mìn cược
   1.800 ghi 3.600.000 mà thực nhận 100.270.
 - **20/08/2026 — Vay nợ: PHÍ VAY 5%** ghi thẳng vào nợ lúc vay (vay 4.000 → ghi sổ

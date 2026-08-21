@@ -1257,15 +1257,15 @@ const MINES_LUCKY_WHEEL = [
     { p: 0.15, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
     { p: 0.15, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
     { p: 0.46, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.22, prize: 'none' },     // 🍂 hụt (nhận 1% dư từ hũ)
-    { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (hạ 3% -> 2% ngày 20/08)
+    { p: 0.23, prize: 'none' },     // 🍂 hụt (nhận phần dư mỗi lần hạ tỉ lệ hũ)
+    { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ (hạ 5% -> 3% -> 2% -> 1% ngày 21/08)
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.15, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
     { p: 0.20, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
     { p: 0.40, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.23, prize: 'none' },     // 🍂 hụt (nhận 1% dư từ hũ)
-    { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (hạ 3% -> 2% ngày 20/08)
+    { p: 0.24, prize: 'none' },     // 🍂 hụt (nhận phần dư mỗi lần hạ tỉ lệ hũ)
+    { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ (hạ 5% -> 3% -> 2% -> 1% ngày 21/08)
 ];
 // Ô VÀNG 🌟 Leo Thang: 2% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 — thấy mà
 // thèm, phải sống sót leo tới mới đạp được; đạp là lên thẳng đỉnh. Mọi mức lửa đều
@@ -1287,12 +1287,12 @@ const LUCKY_WIN_CAP_MULTI = 2000;
 //    (lấy từ phần RTP đang giữ). Tự trích DỪNG khi hũ chạm LUCKY_POT_MAX (20.000).
 //  - ADMIN nạp tay thì KHÔNG bị trần 20.000 (chủ server muốn mồi hũ to hơn được);
 //    chỉ chặn không cho âm.
-//  - MỘT TỈ LỆ NỔ DUY NHẤT: POT_HIT_RATE = 2%, đúng bằng ô 🏆 của 2 bàn quay hộp
+//  - MỘT TỈ LỆ NỔ DUY NHẤT: POT_HIT_RATE = 1%, đúng bằng ô 🏆 của 2 bàn quay hộp
 //    may mắn. Minigame: trúng 🏆 = trần hũ của ván + NGUYÊN hũ trò đó. Quay Pal:
-//    mỗi lượt tự bốc 2% ăn nguyên hũ gacha (gacha không có hộp để bấm).
+//    mỗi lượt tự bốc 1% ăn nguyên hũ gacha (gacha không có hộp để bấm).
 const LUCKY_POT_RATE = 0.05;
 const LUCKY_POT_MAX = 20000;      // trần TỰ TRÍCH mỗi hũ (admin nạp tay vượt được)
-const POT_HIT_RATE = 0.02;        // = p của 'jackpot' trong MINES/STAIRS_LUCKY_WHEEL
+const POT_HIT_RATE = 0.01;        // = p của 'jackpot' trong MINES/STAIRS_LUCKY_WHEEL
 // SÀN CƯỢC BẮT BUỘC của 2 minigame (chủ server chốt 21/08): cược dưới mức này là
 // server TỪ CHỐI ván luôn. Trước đó làm kiểu "cược dưới 200 thì vẫn chơi được nhưng
 // không ăn hũ" - chủ server bảo không phải vậy, phải BUỘC đặt tối thiểu 200.
@@ -4708,7 +4708,7 @@ client.on('interactionCreate', async interaction => {
         logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) - đơn #${order.id}`);
         writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) - cho chon passive/linh hon`);
 
-        // 🏆 HŨ RIÊNG của quay Pal: nuôi 5% giá vé, nổ theo CHUNG tỉ lệ 2% với 2 minigame
+        // 🏆 HŨ RIÊNG của quay Pal: nuôi 5% giá vé, nổ theo CHUNG tỉ lệ 1% với 2 minigame
         potFeed('gacha', luckyPotCut('gacha', price));
         withdrawBoardRefresh();   // tiêu đề bảng có số hũ -> vẽ lại cho tươi
         let palPotWin = 0;
