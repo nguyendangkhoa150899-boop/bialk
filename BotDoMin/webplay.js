@@ -775,9 +775,9 @@ const PAGE = [
     '</div>',
 
     // 🍀 mặc định 1 ô; tick = mua thêm 1 ô, phí 20% tiền cược (server tự trừ lúc bắt đầu)
-    '<label class="muted" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;margin-top:8px;cursor:pointer">',
+    '<label class="muted" id="mExtraWrap" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;margin-top:8px;cursor:pointer">',
     '<input type="checkbox" id="mExtra" onchange="mBand()" style="width:16px;height:16px;accent-color:#2ec26a">',
-    '🍀 Mua thêm 1 cỏ may mắn (phí <b id="mExtraFee">20</b> = 20% cược)</label>',
+    '<span id="mExtraTxt">🍀 Mua thêm 1 cỏ may mắn (phí <b id="mExtraFee">20</b> = 20% cược)</span></label>',
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
     '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao - trúng mìn là mất tiền cược ván đó. Mỗi ván giấu sẵn 1 ô 🍀.</div>',
     '<div class="muted" id="mPotLine" style="font-size:12px;margin-top:4px;text-align:center;color:#ffd24a"></div>',
@@ -1180,6 +1180,13 @@ const PAGE = [
     'function mBand(){var go=$("mGo");',
     'potTab("mPotHdr",MPOT);var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ Dò Mìn: "+vnd(MPOT)+" · cược từ "+vnd(POTMIN)+" mới ăn hũ · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · nổ xong hũ về "+vnd(POTSEED);',
     'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
+    // Ô tick chỉ có tác dụng cho VÁN MỚI. Đang giữa ván thì khoá lại + nói thẳng ván này
+    // đang có mấy ô 🍀, hết cảnh tick giữa ván rồi tưởng ván đang chạy được thêm cỏ.
+    'var xb=$("mExtra"),xt=$("mExtraTxt"),xw=$("mExtraWrap");',
+    'if(xb&&xt&&xw){if(MG){xb.disabled=true;xb.checked=!!MG.extraLucky;xw.style.cursor="default";xw.style.opacity="0.85";',
+    'xt.innerHTML="🍀 Ván này giấu <b>"+(MG.luckyTotal||1)+"</b> ô cỏ may mắn"+(MG.extraLucky?" (đã mua thêm)":"")+" · còn <b>"+(MG.luckyLeft||0)+"</b> ô chưa mở";',
+    '}else{xb.disabled=false;xw.style.cursor="pointer";xw.style.opacity="1";',
+    'xt.innerHTML=\'🍀 Mua thêm 1 cỏ may mắn (phí <b id="mExtraFee">\'+vnd(Math.floor((mNum("mBet")||0)*0.2))+\'</b> = 20% cược)\';}}',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
     '$("mBombN").textContent=MG.totalMines;',
@@ -1528,7 +1535,7 @@ const PAGE = [
     'var segs=whSegs(),N=segs.length,step=360/N,R=138,cx=150,cy=150;',
     'var FILL={"1.5":"#3949ab","1.8":"#00838f","2":"#1e8e4d","2.5":"#9c27b0","3":"#c96f14","5":"#d13b55","10":"#f0b90b"};',   // bậc mới 19/08: sàn 1.5, thêm 3/5
 
-    'var FILL1={"1500":"#1e8e4d","2000":"#2e7dd1","2500":"#f0b90b"};',   // vé: xanh lá / dương / vàng
+    'var FILL1={"2000":"#1e8e4d","2500":"#2e7dd1","3000":"#f0b90b"};',   // vé: xanh lá / dương / vàng
     'var h=\'<circle cx="150" cy="150" r="146" fill="#0e1016"/><g id="whRot">\';',
     'for(var i=0;i<N;i++){var m=segs[i];',
     'var a0=(i*step-90)*Math.PI/180,a1=((i+1)*step-90)*Math.PI/180;',
@@ -1539,7 +1546,7 @@ const PAGE = [
     // chữ nằm ngang theo vành là đè lên nhau, xoay dọc thì mỗi nan một làn riêng.
     'var mid=i*step+step/2,am=(mid-90)*Math.PI/180,tx=cx+92*Math.cos(am),ty=cy+92*Math.sin(am);',
     'var lbl=mode===1?m.toLocaleString("vi-VN"):(m>=10?"x10 🏆":"x"+m);',
-    'var tfill=mode===1?(m>=2500?"#3d2c05":"#fff"):(m>=10?"#3d2c05":"#fff");',   // chữ tối trên nan vàng (vé đắt nhất / x10)
+    'var tfill=mode===1?(m>=3000?"#3d2c05":"#fff"):(m>=10?"#3d2c05":"#fff");',   // chữ tối trên nan vàng (vé đắt nhất / x10)
     'var tsz=mode===1?14:(m>=10?16:13);',
     'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+tfill+\'" font-size="\'+tsz+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(mid-90)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+lbl+"</text>"}',
     'h+=\'</g><circle cx="150" cy="150" r="30" fill="#161926" stroke="#2a2f42" stroke-width="2"/><text x="150" y="150" font-size="22" text-anchor="middle" dominant-baseline="central">\'+(mode===1?"🎟️":"🎡")+\'</text>\';',
@@ -1615,7 +1622,7 @@ const PAGE = [
     'var hh2=Math.floor(left/3600000),mm2=Math.floor(left%3600000/60000);',
     'b.textContent="⏳ KHUNG NÀY QUAY RỒI - CÒN "+hh2+" GIỜ "+(mm2<10?"0":"")+mm2+" PHÚT";return}',
     'b.disabled=false;',
-    'b.textContent="🎟️ VÀO BÀN - QUAY VÉ MIỄN PHÍ (vé 1.500–2.500 trừ sau)"}',
+    'b.textContent="🎟️ VÀO BÀN - QUAY VÉ MIỄN PHÍ (vé 2.000–3.000 trừ sau)"}',
     // chọn màu (chỉ hiện ở vòng hệ số): đang ngồi thì gửi server luôn
     'function whPickC(c){WSEL=c;localStorage.setItem("wh_color",c);',
     'if(WST&&WST.seated&&WST.myColor!==c){api("/api/wheel/ready",{color:c}).then(function(j){WST=j;whRender();whBtn();toast("Mũi tên của bạn: "+WEM[c])}).catch(function(e){toast("❌ "+e.message)})}',

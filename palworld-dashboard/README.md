@@ -354,6 +354,17 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **21/08/2026 — Vé vòng quay 1.500/2.000/2.500 → 2.000/2.500/3.000.** `WHEEL_STAGE1`
+  (15 nan, mỗi giá 5 nan) + `WHEEL_MAX_TICKET = 3000`; đổi kèm bảng màu nan `FILL1` và
+  ngưỡng chữ tối (nan vàng giờ là 3.000), chữ mời vào bàn, chú thích panel.
+- **21/08/2026 — "Mua cỏ rồi vẫn thấy 1 cỏ" KHÔNG phải bug tiền — là UI nói dối.**
+  Test HTTP đầu-cuối chứng minh server luôn đúng: tick = trừ đúng `cược + 20%` và giấu
+  **2** ô 🍀. Nguyên nhân thật: ô tick là control của **ván sau**, nhưng web để nó bấm
+  được giữa ván (và trình duyệt còn tự khôi phục trạng thái tick sau F5) → người chơi
+  tick giữa ván rồi tưởng ván đang chạy có 2 cỏ. Sửa: `current()` đẩy thêm
+  `luckyTotal`/`luckyLeft`/`extraLucky` (**chỉ số lượng, tuyệt đối không lộ `g.lucky`** —
+  lộ vị trí ô 🍀 là lộ ô an toàn), `g.luckyTotal` chốt lúc start; web **khoá ô tick khi
+  đang có ván** và đổi nhãn thành "Ván này giấu N ô cỏ may mắn · còn M ô chưa mở".
 - **21/08/2026 — Hũ: cược tối thiểu 200 mới ăn, nổ xong hũ về mồi 1.500.** Trước đó cược
   1 xu cũng nuôi/ăn hũ nên ai cũng chỉ đặt tối thiểu để "cầu may" — nay `POT_MIN_BET = 200`:
   cược dưới 200 thì **không trích nuôi hũ** và **trúng ô 🏆 chỉ ăn trần ván, không ăn hũ**

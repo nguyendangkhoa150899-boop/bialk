@@ -1418,7 +1418,11 @@ const webMinesApi = {
             shield: g.shield || 0,                 // 🛡️ số khiên đang cầm (cộng dồn được)
             defused: (g.defused || []).slice(),    // các ô mìn đã bị khiên đỡ (hiện 🛡️)
             luckyPick: !!g.luckyPending,           // đang chờ chọn 1 trong 4 hộp 🍀
-            // KHÔNG lộ g.lucky — ô may mắn phải giấu, lộ là lộ luôn ô an toàn
+            // Chỉ đẩy SỐ LƯỢNG ô 🍀, KHÔNG lộ g.lucky — lộ vị trí là lộ luôn ô an toàn.
+            // Có số này thì web nói được "ván này 2 ô 🍀", hết cảnh mua cỏ rồi tưởng bị mất.
+            luckyTotal: g.luckyTotal || (g.lucky || []).length,
+            luckyLeft: (g.lucky || []).length,
+            extraLucky: !!g.fee,                   // ván này CÓ trả phí mua cỏ thêm hay không
         };
     },
     // 3–20 mìn: chặn ván 1–2 mìn gần như không rủi ro (khiên thành bất tử) và ván
@@ -1458,6 +1462,7 @@ const webMinesApi = {
             const pick = safes[Math.floor(Math.random() * safes.length)];
             if (!g.lucky.includes(pick)) g.lucky.push(pick);
         }
+        g.luckyTotal = g.lucky.length;   // giữ số ban đầu để web hiện "ván này N ô 🍀"
         g.shield = 0; g.defused = []; g.luck = []; g.luckyPending = false;
         webMines.set(userId, g);
         webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
@@ -1986,13 +1991,13 @@ const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 9, green: 18 };
 // (độc đắc ~3,7%). Kỳ vọng ~x2.33 vé — quà định kỳ, nhà cái chịu lỗ vòng này.
 const WHEEL_SEGMENTS = [1.5, 2.0, 1.8, 2.5, 1.5, 3.0, 1.8, 1.5, 2.0, 5.0, 1.5, 1.8, 10, 1.5, 2.5, 2.0, 1.8, 1.5, 3.0, 2.0, 1.5, 1.8, 2.5, 1.5, 2.0, 1.5, 1.8];
 
-// ===== VÒNG VÉ (vòng 1) — 15 nan: 1.500×5 · 2.000×5 · 2.500×5 xen kẽ, MỘT mũi tên =====
-// (19/08 nâng giá vé 1.000/1.500/2.000 -> 1.500/2.000/2.500 theo yêu cầu chủ server)
+// ===== VÒNG VÉ (vòng 1) — 15 nan: 2.000×5 · 2.500×5 · 3.000×5 xen kẽ, MỘT mũi tên =====
+// (19/08 nâng vé 1.000/1.500/2.000 -> 1.500/2.000/2.500; 21/08 nâng tiếp -> 2.000/2.500/3.000)
 // Vào bàn + quay vòng vé MIỄN PHÍ. Quay ra giá nào thì TRỪ ĐÚNG GIÁ ĐÓ mỗi người
 // để được quay vòng hệ số; ai không đủ tiền lúc vé chốt thì bị mời ra (không mất
 // gì, không mất lượt). Xen kẽ không 2 nan giống kề nhau (kể cả chỗ nối vòng tròn).
-const WHEEL_STAGE1 = [1500, 2000, 2500, 1500, 2500, 2000, 1500, 2000, 2500, 2000, 1500, 2500, 2000, 1500, 2500];
-const WHEEL_MAX_TICKET = 2500;   // vé đắt nhất (hiển thị) - fallback hoàn pending
+const WHEEL_STAGE1 = [2000, 2500, 3000, 2000, 3000, 2500, 2000, 2500, 3000, 2500, 2000, 3000, 2500, 2000, 3000];
+const WHEEL_MAX_TICKET = 3000;   // vé đắt nhất (hiển thị) - fallback hoàn pending
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting

@@ -994,7 +994,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="whSaveMin()">💾 Lưu</button>
           <button class="btn-red" onclick="whReset()">🔄 Cho quay lại NGAY (reset lượt)</button>
         </div>
-        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>1.500/2.000/2.500</b> - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
+        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>2.000/2.500/3.000</b> - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
       </div>
     </div>
 
