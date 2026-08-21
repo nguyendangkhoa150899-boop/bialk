@@ -3027,6 +3027,26 @@ async function updateTXMessage(customStatus = null) {
     await txState.message.edit(data).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE TX BẢNG CƯỢC] ${e.message}`); });
 }
 
+// Bảng BIG SMALL mồ côi (bug 21/08): xoá bảng cũ mỗi ván là fire-and-forget và nuốt
+// sạch lỗi, mạng chớp một cái (VPS này có Connect Timeout tới Discord) là bảng nằm
+// lại kênh vĩnh viễn. Cộng thêm restart: TX không lưu id bảng như Dò Mìn/Leo Thang
+// nên bật lại bảng là bỏ quên bảng cũ. Quét kênh gỡ mọi bảng không phải bảng hiện tại.
+let txSweepNeeded = false;
+async function sweepTXBoards() {
+    if (!txState.channel || !client.user) return;
+    try {
+        const keep = txState.message?.id;
+        const msgs = await txState.channel.messages.fetch({ limit: 25 });
+        const junk = msgs.filter(m => m.author?.id === client.user.id
+            && m.id !== keep
+            && (m.embeds?.[0]?.title || '').includes('BIG SMALL LIVE'));
+        for (const m of junk.values()) await m.delete().catch(() => { });
+        if (junk.size) writeLog('SYSTEM', `[BẢNG TX] Dọn ${junk.size} bảng mồ côi ở #${txState.channel.name}`);
+    } catch (e) {
+        writeLog('SYSTEM', `[BẢNG TX] Không dọn được bảng mồ côi: ${e.message}`);
+    }
+}
+
 // --- VÒNG LẶP BIG SMALL ---
 function runTaiXiuLoop() {
     setInterval(async () => {
@@ -3040,6 +3060,8 @@ function runTaiXiuLoop() {
             txState.activeChoice = null;
             txState.resultPromise = null;
             txState.message = await txState.channel.send(getTXMessageData()).catch(() => null);
+            if (txState.message) dbCache._txMsgId = txState.message.id;
+            sweepTXBoards().catch(() => { });   // bảng cũ (trước restart/mất mạng) gỡ luôn ở đây
             txState.isProcessing = false;
             txState.processingStart = 0;
             return;
@@ -3076,7 +3098,11 @@ function runTaiXiuLoop() {
                 // Bảng cũ xóa NGAY (kết quả đã nằm trong bảng mới) — kênh chỉ còn đúng
                 // 1 bảng live, không giữ 20 phiên cũ như thời còn embed kết quả riêng.
                 if (prevMsgId && txState.channel) {
-                    txState.channel.messages.delete(prevMsgId).catch(() => {});
+                    // KHÔNG nuốt lỗi nữa: xoá hụt thì ghi log + bật cờ để ván sau quét dọn
+                    txState.channel.messages.delete(prevMsgId).catch((e) => {
+                        txSweepNeeded = true;
+                        writeLog('SYSTEM', `[BẢNG TX] Xoá bảng cũ ${prevMsgId} hụt: ${e.message} - dọn ở ván sau`);
+                    });
                 }
                 txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
                 txState.status = 'betting';
@@ -3087,6 +3113,9 @@ function runTaiXiuLoop() {
                 txState.needsUpdate = false;
                 const data = getTXMessageData();
                 txState.message = await txState.channel.send(data).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG MỚI TX] ${e.message}`); return null; });
+                if (txState.message) dbCache._txMsgId = txState.message.id;   // restart còn biết bảng nào mà gỡ
+                // Quét khi vừa xoá hụt, và cứ 10 ván quét một lần làm lưới an toàn
+                if (txSweepNeeded || txState.gameId % 10 === 0) { txSweepNeeded = false; sweepTXBoards().catch(() => { }); }
             } catch (e) {
                 writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
                 // Recovery: reset để ván tiếp theo vẫn chạy được
@@ -3252,6 +3281,9 @@ function stopBaucua() {
 
 async function startLonnho(channel) {
     if (txState.message) await txState.message.delete().catch(() => {});
+    // Sau restart txState.message rỗng nhưng bảng cũ VẪN nằm trong kênh — xoá theo id
+    // đã lưu, kẻo mỗi lần deploy rồi bật lại bảng là bỏ lại một bảng chết (bug 21/08).
+    else if (dbCache._txMsgId) await channel.messages.delete(dbCache._txMsgId).catch(() => {});
     txState.message = null;
     txState.channel = channel;
     txState.gameId++;
@@ -3266,6 +3298,8 @@ async function startLonnho(channel) {
     try {
         txState.message = await txState.channel.send(getTXMessageData());
         dbCache._txChannelId = channel.id;
+        dbCache._txMsgId = txState.message.id;
+        sweepTXBoards().catch(() => { });   // dọn sạch bảng mồ côi còn sót trong kênh
     } finally {
         txState.isProcessing = false;
         txState.processingStart = 0;
