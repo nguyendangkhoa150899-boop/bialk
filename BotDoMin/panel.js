@@ -1698,16 +1698,27 @@ async function refresh(){
   if(pt&&pt.pots){
     document.getElementById('potInfo').textContent='Trần tự trích '+Number(pt.max||0).toLocaleString('vi-VN')
       +' mỗi hũ · trích '+Math.round((pt.rate||0)*100)+'% tiền cược (nhà cái bao) · tỉ lệ nổ chung '+Math.round((pt.hit||0)*100)+'%';
-    document.getElementById('potRows').innerHTML=Object.keys(pt.pots).map(k=>{
+    // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
+    // không vẽ lại cả khối — vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
+    const keys=Object.keys(pt.pots), box=document.getElementById('potRows');
+    if(box.dataset.built!==keys.join(',')){
+      box.innerHTML=keys.map(k=>
+        '<div class="row" style="align-items:center;margin-bottom:8px">'+
+          '<div style="flex:3"><b>'+esc((pt.labels&&pt.labels[k])||k)+'</b><br>'+
+            '<span id="potVal_'+k+'" style="font-size:20px;color:#f0b90b">-</span>'+
+            '<span id="potFull_'+k+'" class="badge on" style="display:none"> đầy - ngừng tự trích</span></div>'+
+          '<div style="flex:3"><input id="potAmt_'+k+'" inputmode="numeric" placeholder="Số Dogcoin (âm = rút)"></div>'+
+          '<button class="btn-green" onclick="potAdd(\\''+k+'\\')">➕ Nạp</button>'+
+        '</div>').join('');
+      box.dataset.built=keys.join(',');
+    }
+    keys.forEach(k=>{
       const v=Number(pt.pots[k]||0), full=v>=Number(pt.max||0);
-      return '<div class="row" style="align-items:center;margin-bottom:8px">'+
-        '<div style="flex:3"><b>'+esc((pt.labels&&pt.labels[k])||k)+'</b><br>'+
-          '<span style="font-size:20px;color:'+(full?'#ff9a5c':'#f0b90b')+'">'+v.toLocaleString('vi-VN')+' 🐕</span>'+
-          (full?' <span class="badge on">đầy - ngừng tự trích</span>':'')+'</div>'+
-        '<div style="flex:3"><input id="potAmt_'+k+'" inputmode="numeric" placeholder="Số Dogcoin (âm = rút)"></div>'+
-        '<button class="btn-green" onclick="potAdd(\\''+k+'\\')">➕ Nạp</button>'+
-      '</div>';
-    }).join('');
+      const el=document.getElementById('potVal_'+k);
+      if(el){el.textContent=v.toLocaleString('vi-VN')+' 🐕';el.style.color=full?'#ff9a5c':'#f0b90b';}
+      const fg=document.getElementById('potFull_'+k);
+      if(fg)fg.style.display=full?'':'none';
+    });
   }
   // trang thai bang moi choi Do Min
   const mb=STATE.minesBoard||{on:false,channelId:''};
