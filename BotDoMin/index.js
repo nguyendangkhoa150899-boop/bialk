@@ -1656,10 +1656,18 @@ function setStairsLast(userId, g, result, amount, hitFloor, hitCol) {
     });
 }
 
-// Ép tay hệ số vài mốc theo yêu cầu chủ server 19/08 (hạ nhẹ đỉnh 2 lửa):
-// công thức gốc ra tầng 9 = 12.65 · tầng 10 = 16.86 -> hạ còn 11.86 / 14.86.
-// Key 'lửa:tầng'; ảnh hưởng cả tiền trả (stairsWin), bảng hệ số client lẫn hũ 🏆.
-const STAIRS_MULTI_OVERRIDE = { '2:9': 11.86, '2:10': 14.86 };
+// Ép tay hệ số vài mốc theo yêu cầu chủ server. Key 'lửa:tầng'; ảnh hưởng CẢ tiền trả
+// (stairsWin), bảng hệ số client (webStairsApi.table đọc chính hàm này) LẪN trần hũ 🏆.
+// - 19/08: hạ nhẹ đỉnh 2 lửa, tầng 9/10 từ 12.65/16.86 -> 11.86/14.86.
+// - 21/08: chủ server gửi bảng mới cho 2 lửa, hạ khúc GIỮA-CUỐI (tầng 1-5 giữ nguyên
+//   đúng công thức, không ép):
+//     tầng 6: 5.16 -> 4.16 · tầng 7: 6.89 -> 5.89 · tầng 8: 9.18 -> 8.18
+//     tầng 9: 11.86 -> 10.86 · tầng 10: 14.86 -> 11.86
+//   (Bảng chủ server gửi THIẾU tầng 9; lấy 10.86 theo đúng mạch "-1.00" của tầng 6/7/8
+//    và để hệ số vẫn tăng dần từ 8.18 lên 11.86. Muốn số khác thì sửa đúng dòng này.)
+const STAIRS_MULTI_OVERRIDE = {
+    '2:6': 4.16, '2:7': 5.89, '2:8': 8.18, '2:9': 10.86, '2:10': 11.86,
+};
 function stairsMulti(cleared, fire) {
     if (cleared <= 0) return 1;
     const ov = STAIRS_MULTI_OVERRIDE[`${fire}:${cleared}`];
@@ -1892,7 +1900,7 @@ const webStairsApi = {
         else if (prize === 'jackpot') {
             // 🏆 NỔ HŨ = giải LÊN ĐỈNH của chính mức lửa ván này, trần x2000 cược,
             // và CHỐT VÁN NGAY (bug 19/08: ván chạy tiếp sau hũ, dừng là ăn thêm lần nữa).
-            // Chơi 1 lửa câu hũ chỉ ăn x3.61 — muốn hũ to phải dám chơi lửa cao.
+            // Chơi 1 lửa câu hũ chỉ ăn x3.49 (2 lửa x11.86) — muốn hũ to phải dám chơi lửa cao.
             const top = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
             const jp = Math.min(g.bet * LUCKY_WIN_CAP_MULTI, top);
             const potWin = luckyPotPop('stairs');   // 🏆 ẵm nguyên hũ (cược >= 200 mới ăn)

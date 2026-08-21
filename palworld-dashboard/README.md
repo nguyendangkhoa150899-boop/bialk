@@ -367,6 +367,17 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **21/08/2026 — Bảng thưởng Leo Thang 2 LỬA: hạ khúc giữa-cuối.** Chủ server gửi bảng
+  mới, ép tay thêm 5 mốc vào `STAIRS_MULTI_OVERRIDE`: tầng 6 `5.16→4.16` · 7 `6.89→5.89` ·
+  8 `9.18→8.18` · 9 `11.86→10.86` · 10 `14.86→11.86`. **Tầng 1–5 giữ nguyên công thức**
+  (không ép). Bảng chủ server gửi **thiếu tầng 9** → lấy 10.86 theo mạch "−1,00" của tầng
+  6/7/8 và để hệ số vẫn tăng dần; muốn số khác thì sửa đúng dòng đó. **Trần nổ hũ tự đi
+  theo**: hũ 2 lửa = `min(×2000, giải đỉnh)` nên rơi từ ×14.86 xuống **×11.86** — không
+  phải sửa gì thêm vì `stairsWin` và `webStairsApi.table` đều đọc `stairsMulti`. Hệ quả
+  đo được: nhà cái ở 2 lửa từ −22,8% lên **−25,2%** khi leo tới đỉnh (lỗ hơn, vì bảng thấp
+  làm người chơi rút sớm hơn nên hũ chiếm tỉ trọng lớn hơn) nhưng −18,8% nếu rút ở tầng 8.
+  Test: `s2test.js` 25 ca (từng tầng, tiền trả, hệ số phải tăng dần, các mức lửa khác
+  không bị đụng, trần hũ, web không hardcode số).
 - **21/08/2026 — Vòng quay: 2 khung 12 tiếng → 4 KHUNG 6 TIẾNG.** Reset **00:00, 06:00,
   12:00, 18:00** giờ VN, mỗi người 1 lượt mỗi khung (trước là 00:00 & 12:00). `wheelWindowKey`
   giờ chia theo `Math.floor(giờ / WHEEL_SLOT_HOURS)` ra khoá `...-S0..S3`, `wheelNextReset`
