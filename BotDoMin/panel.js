@@ -315,7 +315,7 @@ function startPanel(ctx) {
                 // ---- 🏆 HŨ NUÔI CHUNG: nạp/rút tay để mồi hũ ----
                 if (path === '/api/pot/add') {
                     if (!ctx.addPot) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    const r = ctx.addPot(body.amount);
+                    const r = ctx.addPot(String(body.key || ''), body.amount);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
@@ -916,14 +916,10 @@ const HTML = `<!DOCTYPE html>
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
       <div class="card">
-        <h3>🏆 Hũ nuôi chung (Dò Mìn · Leo Thang · quay Pal)</h3>
-        <div class="big" id="potNow" style="font-size:26px;color:#f0b90b;margin:4px 0">-</div>
+        <h3>🏆 Hũ nuôi - mỗi trò một hũ riêng</h3>
         <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
-        <div class="row">
-          <div style="flex:3"><input id="potAmt" inputmode="numeric" placeholder="Số Dogcoin (âm = rút bớt)"></div>
-          <button class="btn-green" onclick="potAdd()">➕ Nạp vào hũ</button>
-        </div>
-        <div class="note">Nạp tay để <b>mồi hũ</b> cho anh em chơi. Mỗi ván 2 minigame + mỗi lượt quay Pal tự trích 5% tiền cược vào hũ (<b>nhà cái bao, không thu thêm của người chơi</b>). Trúng 🏆 ở hộp may mắn, hoặc quay Pal trúng 3%, là ẵm NGUYÊN hũ.</div>
+        <div id="potRows"></div>
+        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), tự trích dừng khi chạm trần - nhưng <b>admin nạp tay thì vượt trần được</b>. Nhập số âm để rút bớt.</div>
       </div>
       <div class="card">
         <h3>🎛️ Bảng mời chơi Dò Mìn trên Discord</h3>
@@ -1429,12 +1425,13 @@ function bcForce(){
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function txStop(){if(!await uiConfirm('Tắt bàn Big Small?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Big Small');refresh();});}
-async function potAdd(){
-  const el=document.getElementById('potAmt');
+async function potAdd(key){
+  const el=document.getElementById('potAmt_'+key);
   const n=parseInt(el.value,10);
   if(!n)return toast('Nhập số Dogcoin (âm = rút bớt)');
-  if(!await uiConfirm((n>0?'Nạp ':'Rút ')+Math.abs(n).toLocaleString('vi-VN')+' Dogcoin '+(n>0?'vào':'khỏi')+' hũ nuôi chung?',n>0?'➕ Nạp hũ':'➖ Rút hũ',n>0?'btn-green':'btn-red'))return;
-  try{const j=await api('/api/pot/add',{amount:n});toast('🏆 Hũ hiện có '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
+  const lb=(STATE.pot&&STATE.pot.labels&&STATE.pot.labels[key])||key;
+  if(!await uiConfirm((n>0?'Nạp ':'Rút ')+Math.abs(n).toLocaleString('vi-VN')+' Dogcoin '+(n>0?'vào':'khỏi')+' hũ '+lb+'?',n>0?'➕ Nạp hũ':'➖ Rút hũ',n>0?'btn-green':'btn-red'))return;
+  try{const j=await api('/api/pot/add',{key:key,amount:n});toast('🏆 Hũ '+lb+' hiện có '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
 }
 function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
@@ -1696,12 +1693,21 @@ async function refresh(){
   const bcRun=STATE.bc.live&&STATE.bc.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
   document.getElementById('bcInfo').innerHTML='<span class="run '+(bcRun?'on':'off')+'">'+(bcRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Phiên #'+padId(STATE.bc.gameId)+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
-  // 🏆 hu nuoi chung
+  // 🏆 hu nuoi: moi tro mot hu rieng
   const pt=STATE.pot;
-  if(pt){
-    document.getElementById('potNow').textContent=Number(pt.pot||0).toLocaleString('vi-VN')+' 🐕';
-    document.getElementById('potInfo').textContent='Trần hũ '+Number(pt.max||0).toLocaleString('vi-VN')
-      +' · trích '+Math.round((pt.rate||0)*100)+'% mỗi ván (nhà cái bao) · tỉ lệ nổ '+Math.round((pt.hit||0)*100)+'%';
+  if(pt&&pt.pots){
+    document.getElementById('potInfo').textContent='Trần tự trích '+Number(pt.max||0).toLocaleString('vi-VN')
+      +' mỗi hũ · trích '+Math.round((pt.rate||0)*100)+'% tiền cược (nhà cái bao) · tỉ lệ nổ chung '+Math.round((pt.hit||0)*100)+'%';
+    document.getElementById('potRows').innerHTML=Object.keys(pt.pots).map(k=>{
+      const v=Number(pt.pots[k]||0), full=v>=Number(pt.max||0);
+      return '<div class="row" style="align-items:center;margin-bottom:8px">'+
+        '<div style="flex:3"><b>'+esc((pt.labels&&pt.labels[k])||k)+'</b><br>'+
+          '<span style="font-size:20px;color:'+(full?'#ff9a5c':'#f0b90b')+'">'+v.toLocaleString('vi-VN')+' 🐕</span>'+
+          (full?' <span class="badge on">đầy - ngừng tự trích</span>':'')+'</div>'+
+        '<div style="flex:3"><input id="potAmt_'+k+'" inputmode="numeric" placeholder="Số Dogcoin (âm = rút)"></div>'+
+        '<button class="btn-green" onclick="potAdd(\\''+k+'\\')">➕ Nạp</button>'+
+      '</div>';
+    }).join('');
   }
   // trang thai bang moi choi Do Min
   const mb=STATE.minesBoard||{on:false,channelId:''};

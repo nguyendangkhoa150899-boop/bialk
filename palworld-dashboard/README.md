@@ -350,16 +350,17 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
-- **20/08/2026 — 🏆 MỘT HŨ NUÔI dùng chung cho Dò Mìn + Leo Thang + quay Pal.**
-  Nuôi: mỗi ván/lượt quay trích **5% tiền cược** vào `_luckyPot`, **KHÔNG thu thêm của
-  người chơi** — cược 100 vẫn trừ đúng 100, khoản nuôi hũ là **nhà cái bao** (lấy từ
-  phần RTP đang giữ; hệ quả: Dò Mìn RTP 0.95 trả hết 5% vào hũ ≈ nhà cái về 0 lợi nhuận).
-  Trần hũ **15.000**, đầy thì ngừng trích. **MỘT tỉ lệ nổ duy nhất `POT_HIT_RATE` = 3%**
-  (đúng bằng ô 🏆 của 2 bàn quay): minigame trúng 🏆 = trần hũ của ván + NGUYÊN hũ;
-  quay Pal mỗi lượt tự bốc 3% ăn nguyên hũ. Nổ ở game nào thì bot tag tên báo vào kênh
-  bảng game đó (`_minesChannelId`/`_stairsChannelId`/`_gachaChannelId`). Panel tab 💣 có
-  card **🏆 Hũ nuôi chung**: xem hũ + nút nạp/rút tay (số âm = rút) để mồi hũ,
-  API `/api/pot/add`.
+- **20/08/2026 — 🏆 HŨ NUÔI: mỗi trò MỘT HŨ RIÊNG, chung một tỉ lệ nổ.** Ba hũ
+  `_pots = { mines, stairs, gacha }`, nổ ở trò nào ăn hũ trò đó (2 hũ kia không suy suyển).
+  Nuôi: mỗi ván/lượt quay trích **5% tiền cược**, **KHÔNG thu thêm của người chơi** — cược
+  100 trừ đúng 100, khoản nuôi là **nhà cái bao** (lấy từ phần RTP; hệ quả: Dò Mìn RTP 0.95
+  trả hết 5% vào hũ ≈ nhà cái về 0 lợi nhuận, Leo Thang còn ~3%). Tự trích **dừng ở trần
+  15.000**, nhưng **admin nạp tay thì vượt trần được** (chỉ chặn âm). **Một tỉ lệ nổ duy
+  nhất `POT_HIT_RATE` = 3%** = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
+  NGUYÊN hũ trò đó; quay Pal mỗi lượt bốc 3% ăn hũ gacha. Nổ ở đâu báo kênh đó. Panel tab
+  💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng
+  (`/api/pot/add` nhận `{key, amount}`). Tiền hũ cũ của bản "1 hũ chung" tự dồn sang hũ
+  Dò Mìn khi khởi động.
 - **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
   tổ hợp, KHÔNG trần (mở hết bàn 12-13 mìn = ×4,9 triệu lần cược, xác suất 1/5,2 triệu —
   chủ server chấp nhận sau khi nghe cảnh báo). Bàn quay 🍀 Dò Mìn: lì xì 46% (+30% cược) · hụt 21% · khiên 15% · đào 15% · hũ 3%
