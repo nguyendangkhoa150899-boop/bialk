@@ -361,7 +361,7 @@ nạp/rút (16), /nghien (12).
   💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng (khung dựng
   MỘT lần rồi chỉ cập nhật số — vẽ lại cả khối là cuốn mất số admin đang gõ, panel refresh 3s)
   (`/api/pot/add` nhận `{key, amount}`). Tiền hũ cũ của bản "1 hũ chung" tự dồn sang hũ
-  Dò Mìn khi khởi động. Số hũ hiện **ngay trên tab** 💣/🪜 của web ("HŨ 10.000 DOGCOIN",
+  Dò Mìn khi khởi động. Số hũ hiện **cạnh tên game** trong khung 💣/🪜 của web (nhãn vàng "🏆 HŨ 11.298",
   tươi theo nhịp 2 giây qua `/api/state`) và trên **tiêu đề bảng 🔄 DOGCOIN & SHOP PAL**
   trong Discord (hũ quay Pal, bảng tự vẽ lại mỗi lượt quay).
 - **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
