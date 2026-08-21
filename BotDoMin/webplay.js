@@ -1164,7 +1164,7 @@ const PAGE = [
     'MPAGE=Math.min(np-1,Math.max(0,MPAGE+d));MPGMAN=true;mBar()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
-    'var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ nuôi chung 2 game: "+vnd(MPOT)+" · mỗi ván trích 5% cược nuôi hũ · trúng 🏆 là ẵm trọn";',
+    'var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ nuôi chung 2 game: "+vnd(MPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn";',
     'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
@@ -1372,7 +1372,7 @@ const PAGE = [
     'if(el.classList.contains("fire"))return;', // ô lửa đã lộ (khiên đỡ) - cấm bấm lại
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
     'function sBand(){var go=$("sGo");',
-    'var spl=$("sPotLine");if(spl&&SPOT>=0)spl.textContent="🏆 Hũ nuôi chung 2 game: "+vnd(SPOT)+" · mỗi ván trích 5% cược nuôi hũ · trúng 🏆 là ẵm trọn";',
+    'var spl=$("sPotLine");if(spl&&SPOT>=0)spl.textContent="🏆 Hũ nuôi chung 2 game: "+vnd(SPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn";',
     'if(SG){',
     '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?(" · 🛡️ x"+SG.shield):"");',
     'go.className="mgo cash";',

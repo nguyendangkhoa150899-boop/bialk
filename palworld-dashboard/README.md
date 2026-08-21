@@ -350,14 +350,16 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
-- **20/08/2026 — 🏆 HŨ NUÔI CHUNG (Dò Mìn + Leo Thang) + hũ gacha pal.** Mỗi ván 2
-  minigame THU THÊM 5% tiền cược (hiện rõ trên web, cả ô báo hũ đang bao nhiêu) bơm vào
-  MỘT hũ chung lưu `_luckyPot`; hũ đầy **15.000 thì ngừng thu**. Trúng 🏆 = trần hũ của
-  ván + NGUYÊN hũ nuôi, bot tag tên thông báo vào kênh bảng của đúng game đó
-  (`_minesChannelId`/`_stairsChannelId`), hũ về 0 nuôi lại. Vé treo giữ cả khoản nuôi hũ
-  nên restart hoàn đủ. Hũ GACHA (`_palPot`): mỗi lượt quay pal random trích 5% giá vé
-  (từ tiền đã thu, không thu thêm), trần 15.000, mỗi lượt **2% nổ nguyên hũ** — báo kênh
-  gacha, tin trúng pal luôn hiện hũ đang nuôi.
+- **20/08/2026 — 🏆 MỘT HŨ NUÔI dùng chung cho Dò Mìn + Leo Thang + quay Pal.**
+  Nuôi: mỗi ván/lượt quay trích **5% tiền cược** vào `_luckyPot`, **KHÔNG thu thêm của
+  người chơi** — cược 100 vẫn trừ đúng 100, khoản nuôi hũ là **nhà cái bao** (lấy từ
+  phần RTP đang giữ; hệ quả: Dò Mìn RTP 0.95 trả hết 5% vào hũ ≈ nhà cái về 0 lợi nhuận).
+  Trần hũ **15.000**, đầy thì ngừng trích. **MỘT tỉ lệ nổ duy nhất `POT_HIT_RATE` = 3%**
+  (đúng bằng ô 🏆 của 2 bàn quay): minigame trúng 🏆 = trần hũ của ván + NGUYÊN hũ;
+  quay Pal mỗi lượt tự bốc 3% ăn nguyên hũ. Nổ ở game nào thì bot tag tên báo vào kênh
+  bảng game đó (`_minesChannelId`/`_stairsChannelId`/`_gachaChannelId`). Panel tab 💣 có
+  card **🏆 Hũ nuôi chung**: xem hũ + nút nạp/rút tay (số âm = rút) để mồi hũ,
+  API `/api/pot/add`.
 - **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
   tổ hợp, KHÔNG trần (mở hết bàn 12-13 mìn = ×4,9 triệu lần cược, xác suất 1/5,2 triệu —
   chủ server chấp nhận sau khi nghe cảnh báo). Bàn quay 🍀 Dò Mìn: lì xì 46% (+30% cược) · hụt 21% · khiên 15% · đào 15% · hũ 3%

@@ -145,6 +145,7 @@ function startPanel(ctx) {
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
+            pot: ctx.getPot ? ctx.getPot() : null,   // 🏆 hũ nuôi chung 3 game
             stairsBoard: ctx.getStairs ? ctx.getStairs() : { on: false, channelId: '' },
             wheel: ctx.getWheel ? ctx.getWheel() : null,
             stairsHistory: ctx.getStairsHistory ? ctx.getStairsHistory() : [],
@@ -310,6 +311,13 @@ function startPanel(ctx) {
                     ctx.stopTX();
                     ctx.writeLog('ADMIN', `[PANEL] Dừng Big Small`);
                     return sendJSON(res, 200, { ok: true });
+                }
+                // ---- 🏆 HŨ NUÔI CHUNG: nạp/rút tay để mồi hũ ----
+                if (path === '/api/pot/add') {
+                    if (!ctx.addPot) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.addPot(body.amount);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
                 }
                 // ---- BẢNG MỜI CHƠI DÒ MÌN (không có ván chung, chỉ nút vào web) ----
                 if (path === '/api/mines/board/start') {
@@ -908,6 +916,16 @@ const HTML = `<!DOCTYPE html>
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
       <div class="card">
+        <h3>🏆 Hũ nuôi chung (Dò Mìn · Leo Thang · quay Pal)</h3>
+        <div class="big" id="potNow" style="font-size:26px;color:#f0b90b;margin:4px 0">-</div>
+        <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <div class="row">
+          <div style="flex:3"><input id="potAmt" inputmode="numeric" placeholder="Số Dogcoin (âm = rút bớt)"></div>
+          <button class="btn-green" onclick="potAdd()">➕ Nạp vào hũ</button>
+        </div>
+        <div class="note">Nạp tay để <b>mồi hũ</b> cho anh em chơi. Mỗi ván 2 minigame + mỗi lượt quay Pal tự trích 5% tiền cược vào hũ (<b>nhà cái bao, không thu thêm của người chơi</b>). Trúng 🏆 ở hộp may mắn, hoặc quay Pal trúng 3%, là ẵm NGUYÊN hũ.</div>
+      </div>
+      <div class="card">
         <h3>🎛️ Bảng mời chơi Dò Mìn trên Discord</h3>
         <div class="muted" id="mineBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Channel ID (kênh đăng bảng)</label>
@@ -1411,6 +1429,13 @@ function bcForce(){
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function txStop(){if(!await uiConfirm('Tắt bàn Big Small?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Big Small');refresh();});}
+async function potAdd(){
+  const el=document.getElementById('potAmt');
+  const n=parseInt(el.value,10);
+  if(!n)return toast('Nhập số Dogcoin (âm = rút bớt)');
+  if(!await uiConfirm((n>0?'Nạp ':'Rút ')+Math.abs(n).toLocaleString('vi-VN')+' Dogcoin '+(n>0?'vào':'khỏi')+' hũ nuôi chung?',n>0?'➕ Nạp hũ':'➖ Rút hũ',n>0?'btn-green':'btn-red'))return;
+  try{const j=await api('/api/pot/add',{amount:n});toast('🏆 Hũ hiện có '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
+}
 function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
 function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
@@ -1671,6 +1696,13 @@ async function refresh(){
   const bcRun=STATE.bc.live&&STATE.bc.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
   document.getElementById('bcInfo').innerHTML='<span class="run '+(bcRun?'on':'off')+'">'+(bcRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Phiên #'+padId(STATE.bc.gameId)+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
+  // 🏆 hu nuoi chung
+  const pt=STATE.pot;
+  if(pt){
+    document.getElementById('potNow').textContent=Number(pt.pot||0).toLocaleString('vi-VN')+' 🐕';
+    document.getElementById('potInfo').textContent='Trần hũ '+Number(pt.max||0).toLocaleString('vi-VN')
+      +' · trích '+Math.round((pt.rate||0)*100)+'% mỗi ván (nhà cái bao) · tỉ lệ nổ '+Math.round((pt.hit||0)*100)+'%';
+  }
   // trang thai bang moi choi Do Min
   const mb=STATE.minesBoard||{on:false,channelId:''};
   document.getElementById('mineBoardInfo').innerHTML='<span class="run '+(mb.on?'on':'off')+'">'+(mb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(mb.channelId?' &nbsp; kênh <code>'+esc(mb.channelId)+'</code>':'');

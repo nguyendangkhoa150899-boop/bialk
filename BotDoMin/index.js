@@ -1277,12 +1277,19 @@ const STAIRS_GOLDEN_RATE = 0.02;
 // Lý do: một cú nhảy 🌟 trong ván 5 lửa ăn nguyên x17k là bơm lạm phát cả server.
 const LUCKY_WIN_CAP_MULTI = 2000;
 
-// ===== 🏆 HŨ NUÔI CHUNG Dò Mìn + Leo Thang (chủ server chốt 20/08) =====
-// Mỗi ván THU THÊM 5% tiền cược của người chơi (hiện rõ trên web) bơm vào MỘT hũ
-// chung; hũ đầy 15.000 thì NGỪNG thu. Ai trúng 🏆 trong hộp may mắn là ẵm trần hũ
-// của ván + NGUYÊN hũ nuôi, bot thông báo vào kênh bảng của đúng game đó.
+// ===== 🏆 MỘT HŨ NUÔI DÙNG CHUNG cho Dò Mìn + Leo Thang + gacha pal =====
+// (chủ server chốt 20/08, bản 2 — gộp hết cho đỡ bug, không làm nhiều hũ riêng)
+//
+//  - NUÔI: mỗi ván/lượt quay trích LUCKY_POT_RATE (5%) tính trên tiền cược, nhưng
+//    KHÔNG THU THÊM của người chơi — cược 100 vẫn trừ đúng 100, 5 đồng vào hũ là
+//    NHÀ CÁI BAO (lấy từ phần RTP đang giữ). Hũ đầy 15.000 thì ngừng trích.
+//  - MỘT TỈ LỆ NỔ DUY NHẤT: POT_HIT_RATE = 3%, đúng bằng ô 🏆 trong 2 bàn quay
+//    hộp may mắn. Minigame: trúng 🏆 là ăn trần hũ của ván + NGUYÊN hũ nuôi.
+//    Gacha pal: mỗi lượt quay tự bốc 3% ăn nguyên hũ (không có hộp để bấm).
+//  - Admin nạp/rút hũ tay ở panel (tab 💣) để mồi hũ cho anh em chơi.
 const LUCKY_POT_RATE = 0.05;
 const LUCKY_POT_MAX = 15000;
+const POT_HIT_RATE = 0.03;   // = p của 'jackpot' trong MINES/STAIRS_LUCKY_WHEEL
 function luckyPotCut(bet) {
     const pot = dbCache._luckyPot || 0;
     return Math.max(0, Math.min(Math.floor(bet * LUCKY_POT_RATE), LUCKY_POT_MAX - pot));
@@ -1293,6 +1300,16 @@ function luckyPotPop() {
     dbCache._luckyPot = 0;
     return pot;
 }
+// Admin cộng/trừ hũ tay (số âm = rút bớt). Trả về số hũ sau khi đổi.
+function adminPotAdd(amount) {
+    const n = Math.floor(Number(amount) || 0);
+    if (!n) return { error: 'Nhập số khác 0 (số âm = rút bớt hũ)' };
+    const before = dbCache._luckyPot || 0;
+    dbCache._luckyPot = Math.max(0, Math.min(LUCKY_POT_MAX, before + n));
+    writeLog('ADMIN', `[HŨ] Panel ${n > 0 ? 'nạp' : 'rút'} ${Math.abs(n).toLocaleString()} - hũ ${before.toLocaleString()} -> ${dbCache._luckyPot.toLocaleString()}`);
+    saveDbNow();
+    return { ok: true, pot: dbCache._luckyPot, max: LUCKY_POT_MAX };
+}
 // Thông báo nổ hũ vào kênh bảng của game (kênh chưa set thì thôi, lỗi cũng kệ)
 function potAnnounce(chId, text, tagId) {
     if (!chId) return;
@@ -1300,12 +1317,6 @@ function potAnnounce(chId, text, tagId) {
         .then(ch => ch && ch.send({ content: text, allowedMentions: { users: tagId ? [tagId] : [] } }))
         .catch(() => {});
 }
-
-// 🏆 Hũ GACHA PAL: mỗi lượt quay random trích 5% giá vé vào hũ (lấy từ tiền đã thu,
-// người quay không bị thu thêm), mỗi lượt 2% cơ hội nổ nguyên hũ. Trần 15.000.
-const PAL_POT_RATE = 0.05;
-const PAL_POT_MAX = 15000;
-const PAL_POT_CHANCE = 0.02;
 function luckyAssisted(g) {
     return (g.luck || []).some(x => x === '🚀' || x === '🌟' || x === '⛏️')
         || (g.defused || []).length > 0 || (g.burned || []).length > 0;
@@ -1386,16 +1397,12 @@ const webMinesApi = {
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
         if (MINES_MAX_BET > 0 && bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} Dogcoin mỗi ván` };
         // MUA THÊM 1 ô 🍀: phí 20% tiền cược (chủ server chốt 20/08). Mặc định 1 ô.
-        const extraFee = extraLucky ? Math.floor(bet * 0.2) : 0;
-        // 🏆 nuôi hũ chung: thu thêm 5% cược (hũ đầy 15.000 thì khoản này = 0)
+        const fee = extraLucky ? Math.floor(bet * 0.2) : 0;
+        // 🏆 nuôi hũ: trích 5% cược nhưng KHÔNG THU THÊM - nhà cái bao (xem khối hũ)
         const potCut = luckyPotCut(bet);
-        const fee = extraFee + potCut;   // g.fee gộp mọi phụ phí - lịch sử trừ net cho đúng
         const me = getUserData(userId);
         if ((me.points || 0) < bet + fee) {
-            const parts = [`${bet.toLocaleString()} cược`];
-            if (extraFee) parts.push(`${extraFee.toLocaleString()} phí cỏ thêm`);
-            if (potCut) parts.push(`${potCut.toLocaleString()} nuôi hũ 🏆`);
-            return { error: `Không đủ Dogcoin! Cần ${(bet + fee).toLocaleString()} (${parts.join(' + ')}) - số dư: ${(me.points || 0).toLocaleString()}` };
+            return { error: `Không đủ Dogcoin! Cần ${(bet + fee).toLocaleString()}${fee ? ` (${bet.toLocaleString()} cược + ${fee.toLocaleString()} phí cỏ thêm)` : ''} - số dư: ${(me.points || 0).toLocaleString()}` };
         }
 
         // Tạo ván TRƯỚC rồi mới trừ tiền: createGame lỗi thì người chơi không mất gì.
@@ -1419,9 +1426,9 @@ const webMinesApi = {
         webMines.set(userId, g);
         webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -(bet + fee));
-        dbCache._luckyPot = (dbCache._luckyPot || 0) + potCut;   // bơm hũ chung
-        minesPending()[userId] = bet + fee; // restart giữa ván -> hoàn lại cả cược lẫn phụ phí
-        writeLog('BET', `[WEB DÒ MÌN] ${name} cược ${bet}${extraFee ? ` + ${extraFee} phí cỏ` : ''}${potCut ? ` + ${potCut} nuôi hũ (hũ ${dbCache._luckyPot})` : ''} | ${numMines} mìn | ${wantLucky} ô 🍀`);
+        dbCache._luckyPot = (dbCache._luckyPot || 0) + potCut;   // nhà cái bao, KHÔNG trừ người chơi
+        minesPending()[userId] = bet + fee; // restart giữa ván -> hoàn lại cả cược lẫn phí cỏ
+        writeLog('BET', `[WEB DÒ MÌN] ${name} cược ${bet}${fee ? ` + ${fee} phí cỏ` : ''} | ${numMines} mìn | ${wantLucky} ô 🍀${potCut ? ` | hũ +${potCut} = ${dbCache._luckyPot}` : ''}`);
         return { ok: true, balance: getUserData(userId).points || 0, state: webMinesApi.current(userId), pot: dbCache._luckyPot || 0 };
     },
     reveal: (userId, idx) => {
@@ -1696,12 +1703,10 @@ const webStairsApi = {
             return { error: `Số cầu lửa phải từ 1 đến ${STAIRS_MAX_FIRE}` };
         }
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
-        // 🏆 nuôi hũ chung (cùng hũ với Dò Mìn): thu thêm 5% cược, hũ đầy thì = 0
+        // 🏆 nuôi hũ chung: trích 5% cược nhưng KHÔNG THU THÊM - nhà cái bao
         const potCut = luckyPotCut(bet);
         const me = getUserData(userId);
-        if ((me.points || 0) < bet + potCut) {
-            return { error: `Không đủ Dogcoin! Cần ${(bet + potCut).toLocaleString()} (${bet.toLocaleString()} cược + ${potCut.toLocaleString()} nuôi hũ 🏆) - số dư: ${(me.points || 0).toLocaleString()}` };
-        }
+        if ((me.points || 0) < bet) return { error: `Không đủ Dogcoin! Số dư: ${(me.points || 0).toLocaleString()}` };
 
         // Bẫy sinh sẵn cho cả 10 tầng ngay từ đầu ván. (luckyPending khởi tạo false)
         const traps = [];
@@ -1714,7 +1719,7 @@ const webStairsApi = {
             traps.push(row);
         }
         const g = { bet, fire, floor: 0, traps, safe: [], name, userId, startedAt: Date.now() };
-        g.fee = potCut;   // khoản nuôi hũ - lịch sử trừ net cho đúng
+        // (không có g.fee: nuôi hũ do nhà cái bao, người chơi chỉ trả tiền cược)
         // 3 ô 🍀 GIẤU trên ô trống tầng 1–8 (không rải tầng 9–10: sát đỉnh còn quà là quá tay)
         g.lucky = []; g.shield = 0; g.burned = []; g.luck = []; g.luckyPending = false;
         while (g.lucky.length < 3) {
@@ -1736,10 +1741,10 @@ const webStairsApi = {
         }
         webStairs.set(userId, g);
         webStairsLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
-        updatePoints(userId, -(bet + potCut));
-        dbCache._luckyPot = (dbCache._luckyPot || 0) + potCut;   // bơm hũ chung
-        stairsPending()[userId] = bet + potCut; // restart giữa ván -> hoàn cả cược lẫn nuôi hũ
-        writeLog('BET', `[LEO THANG] ${name} cược ${bet}${potCut ? ` + ${potCut} nuôi hũ (hũ ${dbCache._luckyPot})` : ''} | ${fire} lửa/tầng`);
+        updatePoints(userId, -bet);
+        dbCache._luckyPot = (dbCache._luckyPot || 0) + potCut;   // nhà cái bao, KHÔNG trừ người chơi
+        stairsPending()[userId] = bet; // restart giữa ván -> hoàn lại tiền cược
+        writeLog('BET', `[LEO THANG] ${name} cược ${bet} | ${fire} lửa/tầng${potCut ? ` | hũ +${potCut} = ${dbCache._luckyPot}` : ''}`);
         return { ok: true, balance: getUserData(userId).points || 0, state: webStairsApi.current(userId), pot: dbCache._luckyPot || 0 };
     },
     step: (userId, col) => {
@@ -2545,6 +2550,9 @@ client.once('ready', async (c) => {
             startTX: async (channelId) => { const ch = await client.channels.fetch(channelId); await startLonnho(ch); return ch.name; },
             stopTX: () => stopLonnho(),
             // Bảng mời chơi Dò Mìn (không có ván chung, chỉ khoe kết quả + nút vào web)
+            // 🏆 hũ nuôi chung: xem + nạp/rút tay để mồi hũ cho anh em chơi
+            getPot: () => ({ pot: dbCache._luckyPot || 0, max: LUCKY_POT_MAX, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE }),
+            addPot: adminPotAdd,
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
@@ -4655,22 +4663,21 @@ client.on('interactionCreate', async interaction => {
         logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) - đơn #${order.id}`);
         writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) - cho chon passive/linh hon`);
 
-        // 🏆 HŨ GACHA: mỗi lượt quay trích 5% giá vé vào hũ (lấy từ tiền đã thu,
-        // không thu thêm của người quay), trần 15.000; mỗi lượt 2% cơ hội NỔ nguyên hũ.
-        dbCache._palPot = Math.min(PAL_POT_MAX, (dbCache._palPot || 0) + Math.floor(price * PAL_POT_RATE));
+        // 🏆 HŨ CHUNG: quay pal cũng nuôi và cũng nổ được, DÙNG CHUNG hũ + chung tỉ lệ
+        // 3% với 2 minigame (chủ server chốt: một hũ một tỉ lệ cho đỡ bug).
+        dbCache._luckyPot = (dbCache._luckyPot || 0) + luckyPotCut(price);
         let palPotWin = 0;
-        if ((dbCache._palPot || 0) > 0 && Math.random() < PAL_POT_CHANCE) {
-            palPotWin = dbCache._palPot;
-            dbCache._palPot = 0;
+        if ((dbCache._luckyPot || 0) > 0 && Math.random() < POT_HIT_RATE) {
+            palPotWin = luckyPotPop();
             updatePoints(userId, palPotWin);
-            logDog('hu-gacha', userId, interaction.user.tag, palPotWin, 'nổ hũ gacha pal 🏆');
-            writeLog('ADMIN', `[⚠️ NỔ HŨ GACHA] ${interaction.user.tag} quay pal trúng hũ +${palPotWin.toLocaleString()} Dogcoin`);
+            logDog('hu', userId, interaction.user.tag, palPotWin, 'nổ hũ chung khi quay pal 🏆');
+            writeLog('ADMIN', `[⚠️ NỔ HŨ] ${interaction.user.tag} quay pal trúng HŨ CHUNG +${palPotWin.toLocaleString()} Dogcoin`);
         }
 
         // Đăng công khai kết quả quay cho cả server thấy (không chặn luồng trả lời)
         const gachaCh = dbCache._gachaChannelId;
         if (palPotWin > 0) {
-            potAnnounce(gachaCh, `💥🏆 <@${userId}> quay Pal mà NỔ LUÔN HŨ GACHA: +**${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ về 0, mỗi lượt quay lại nuôi tiếp 🌱`, userId);
+            potAnnounce(gachaCh, `💥🏆 <@${userId}> quay Pal mà NỔ LUÔN HŨ CHUNG: +**${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ về 0, mọi ván Dò Mìn/Leo Thang/quay pal lại nuôi tiếp 🌱`, userId);
         }
         if (gachaCh) {
             client.channels.fetch(gachaCh)
@@ -4687,8 +4694,8 @@ client.on('interactionCreate', async interaction => {
                 `• Bản Boss, ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
                 `Đã trừ **${price.toLocaleString()}** ${DOGCOIN_EMOJI} (còn **${getUserData(userId).points.toLocaleString()}**) - mã đơn **#${order.id}**.\n` +
                 (palPotWin > 0
-                    ? `💥🏆 **VÀ BẠN NỔ HŨ GACHA: +${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}!\n\n`
-                    : `🏆 Hũ gacha đang nuôi: **${(dbCache._palPot || 0).toLocaleString()}** ${DOGCOIN_EMOJI} (mỗi lượt quay 2% cơ hội nổ)\n\n`) +
+                    ? `💥🏆 **VÀ BẠN NỔ HŨ CHUNG: +${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}!\n\n`
+                    : `🏆 Hũ chung đang nuôi: **${(dbCache._luckyPot || 0).toLocaleString()}** ${DOGCOIN_EMOJI} (mỗi lượt quay ${POT_HIT_RATE * 100}% cơ hội nổ)\n\n`) +
                 `👇 Bấm nút để chọn **${PAL_SHOP.passiveSlots} passive + ${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** cho nó.`,
             components: [new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`shop_fill_${order.id}`).setLabel('Chọn passive & linh hồn').setEmoji('📝').setStyle(ButtonStyle.Primary),
