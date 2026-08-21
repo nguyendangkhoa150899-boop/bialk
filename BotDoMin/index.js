@@ -1284,14 +1284,14 @@ const LUCKY_WIN_CAP_MULTI = 2000;
 //    Nổ ở trò nào ăn hũ trò đó, hũ 2 trò kia không suy suyển.
 //  - NUÔI: mỗi ván/lượt quay trích LUCKY_POT_RATE (5%) tiền cược, nhưng KHÔNG THU
 //    THÊM của người chơi — cược 100 vẫn trừ đúng 100; khoản nuôi là NHÀ CÁI BAO
-//    (lấy từ phần RTP đang giữ). Tự trích DỪNG khi hũ chạm LUCKY_POT_MAX (15.000).
-//  - ADMIN nạp tay thì KHÔNG bị trần 15.000 (chủ server muốn mồi hũ to hơn được);
+//    (lấy từ phần RTP đang giữ). Tự trích DỪNG khi hũ chạm LUCKY_POT_MAX (20.000).
+//  - ADMIN nạp tay thì KHÔNG bị trần 20.000 (chủ server muốn mồi hũ to hơn được);
 //    chỉ chặn không cho âm.
 //  - MỘT TỈ LỆ NỔ DUY NHẤT: POT_HIT_RATE = 3%, đúng bằng ô 🏆 của 2 bàn quay hộp
 //    may mắn. Minigame: trúng 🏆 = trần hũ của ván + NGUYÊN hũ trò đó. Quay Pal:
 //    mỗi lượt tự bốc 3% ăn nguyên hũ gacha (gacha không có hộp để bấm).
 const LUCKY_POT_RATE = 0.05;
-const LUCKY_POT_MAX = 15000;      // trần TỰ TRÍCH (admin nạp tay vượt được)
+const LUCKY_POT_MAX = 20000;      // trần TỰ TRÍCH mỗi hũ (admin nạp tay vượt được)
 const POT_HIT_RATE = 0.02;        // = p của 'jackpot' trong MINES/STAIRS_LUCKY_WHEEL
 const POT_KEYS = ['mines', 'stairs', 'gacha'];
 const POT_LABEL = { mines: '💣 Dò Mìn', stairs: '🪜 Leo Thang', gacha: '🎲 Quay Pal' };

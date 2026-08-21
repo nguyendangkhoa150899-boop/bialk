@@ -355,7 +355,7 @@ nạp/rút (16), /nghien (12).
   Nuôi: mỗi ván/lượt quay trích **5% tiền cược**, **KHÔNG thu thêm của người chơi** — cược
   100 trừ đúng 100, khoản nuôi là **nhà cái bao** (lấy từ phần RTP; hệ quả: Dò Mìn RTP 0.95
   trả hết 5% vào hũ ≈ nhà cái về 0 lợi nhuận, Leo Thang còn ~3%). Tự trích **dừng ở trần
-  15.000**, nhưng **admin nạp tay thì vượt trần được** (chỉ chặn âm). **Một tỉ lệ nổ duy
+  20.000**, nhưng **admin nạp tay thì vượt trần được** (chỉ chặn âm). **Một tỉ lệ nổ duy
   nhất `POT_HIT_RATE` = 2%** (hạ từ 3% ngày 20/08 - test nổ 3 lần liên tiếp) = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
   NGUYÊN hũ trò đó; quay Pal mỗi lượt bốc 3% ăn hũ gacha. Nổ ở đâu báo kênh đó. Panel tab
   💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng (khung dựng
