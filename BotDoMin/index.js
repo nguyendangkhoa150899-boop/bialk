@@ -1974,7 +1974,7 @@ const webStairsApi = {
 // 120° (= 9 nan); mỗi người chọn 1 màu, CHỌN TRÙNG thoải mái — cùng màu ăn cùng nan.
 // Đủ N người ready (admin chỉnh ở panel, mặc định 3) thì NÚT QUAY SÁNG LÊN —
 // KHÔNG tự quay: ai trong bàn bấm nút là quay MỘT vòng chung cho tất cả.
-// Mỗi người 1 lượt mỗi khung giờ VN: 00:00–11:59 và 12:00–23:59 (reset 00:00 & 12:00).
+// Mỗi người 1 lượt mỗi khung giờ VN, 4 khung 6 tiếng (xem wheelWindowKey bên dưới).
 const WHEEL_TICKET = 1000;   // chỉ còn làm fallback hoàn vé pending đời cũ (thiếu amount)
 const WHEEL_COLORS = ['yellow', 'blue', 'green'];
 const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 9, green: 18 };
@@ -1998,17 +1998,25 @@ const WHEEL_MAX_TICKET = 3000;   // vé đắt nhất (hiển thị) - fallback 
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
 const wheelRoom = { status: 'waiting', players: new Map(), spin: null, spin1: null, price: null, stakeEndsAt: null, spinSeq: 0 };
 
+// 4 KHUNG 6 TIẾNG (chủ server chốt 21/08, trước đó là 2 khung 12 tiếng):
+// 00:00–05:59 · 06:00–11:59 · 12:00–17:59 · 18:00–23:59 -> reset 00:00, 06:00, 12:00, 18:00.
+const WHEEL_SLOT_HOURS = 6;
+const WHEEL_SLOT_MARKS = [0, 6, 12, 18];   // chỉ để hiển thị cho người chơi
 function wheelWindowKey() {
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
-    return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${now.getHours() < 12 ? 'AM' : 'PM'}`;
+    const slot = Math.floor(now.getHours() / WHEEL_SLOT_HOURS);   // 0..3
+    return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-S${slot}`;
 }
-function wheelNextReset() { // epoch ms của mốc 00:00/12:00 VN kế tiếp (cho đồng hồ đếm ngược)
+function wheelNextReset() { // epoch ms của mốc 00/06/12/18 giờ VN kế tiếp (cho đồng hồ đếm ngược)
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
     const next = new Date(now);
-    if (now.getHours() < 12) next.setHours(12, 0, 0, 0);
-    else { next.setDate(next.getDate() + 1); next.setHours(0, 0, 0, 0); }
+    const nextHour = (Math.floor(now.getHours() / WHEEL_SLOT_HOURS) + 1) * WHEEL_SLOT_HOURS;
+    if (nextHour >= 24) { next.setDate(next.getDate() + 1); next.setHours(0, 0, 0, 0); }
+    else next.setHours(nextHour, 0, 0, 0);
     return Date.now() + (next.getTime() - now.getTime());
 }
+// Câu chữ dùng chung cho mọi chỗ báo mốc reset — đổi khung chỉ phải sửa 1 nơi
+const WHEEL_RESET_TEXT = WHEEL_SLOT_MARKS.map(h => String(h).padStart(2, '0') + ':00').join(', ');
 function wheelMinPlayers() {
     const n = parseInt(dbCache._wheelMinPlayers);
     return Number.isInteger(n) && n >= 1 && n <= 50 ? n : 3;
@@ -2073,7 +2081,7 @@ function wheelReady(userId, color) {
         return { ok: true, state: wheelState(userId) };
     }
     if (wheelRoom.status !== 'waiting') return { error: 'Vòng đang quay - chờ chút rồi vào ván sau' };
-    if (me.lastWheelKey === wheelWindowKey()) return { error: 'Khung này bạn quay rồi - reset lúc 00:00 và 12:00' };
+    if (me.lastWheelKey === wheelWindowKey()) return { error: `Khung này bạn quay rồi - reset lúc ${WHEEL_RESET_TEXT}` };
     // VÀO BÀN MIỄN PHÍ, KHÔNG điều kiện tiền, KHÔNG cần màu (chốt của chủ server)
     wheelRoom.players.set(userId, { userId, name: me.name || ('web_' + userId.slice(-4)), color: hasColor ? color : null });
     writeLog('BET', `[VÒNG QUAY] ${me.name || userId} vào bàn (${wheelRoom.players.size}/${wheelMinPlayers()})`);

@@ -994,7 +994,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="whSaveMin()">💾 Lưu</button>
           <button class="btn-red" onclick="whReset()">🔄 Cho quay lại NGAY (reset lượt)</button>
         </div>
-        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>2.000/2.500/3.000</b> - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
+        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>2.000/2.500/3.000</b> - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, <b>4 khung 6 tiếng</b> - reset <b>00:00, 06:00, 12:00, 18:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
       </div>
     </div>
 
@@ -1012,7 +1012,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="wdStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="wdStop()">⏹️ Tắt</button>
         </div>
-        <div class="note">MỘT bảng duy nhất với 4 nút: <b>Chuyển vào game</b>, <b>Chuyển ra Discord</b>, <b>Pal ngẫu nhiên 1.000</b>, <b>Pal tùy chọn 3.000</b>. Lõi Văn Minh / cấy ghép / đổi vàng bán ở <b>sạp trong game</b>, không qua Discord. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
+        <div class="note">MỘT bảng duy nhất với 4 nút: <b>Chuyển vào game</b>, <b>Chuyển ra Discord</b>, <b>Pal ngẫu nhiên 2.000</b>, <b>Pal tùy chọn 6.000</b>. Lõi Văn Minh / cấy ghép / đổi vàng bán ở <b>sạp trong game</b>, không qua Discord. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
       </div>
       <div class="card">
         <h3>🔗 Liên kết tên trong game</h3>
@@ -1028,7 +1028,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="gachaSave()">💾 Lưu kênh</button>
           <button class="btn-red" onclick="gachaOff()">⏹️ Tắt khoe</button>
         </div>
-        <div class="note">Lưu xong bot gửi 1 tin xác nhận vào kênh đó. Từ đó mỗi lượt quay Pal ngẫu nhiên 1.000 sẽ đăng công khai: <b>ai quay, trúng con gì</b> (tag người quay). Tắt = chỉ người quay tự thấy như cũ.</div>
+        <div class="note">Lưu xong bot gửi 1 tin xác nhận vào kênh đó. Từ đó mỗi lượt quay Pal ngẫu nhiên 2.000 sẽ đăng công khai: <b>ai quay, trúng con gì</b> (tag người quay). Tắt = chỉ người quay tự thấy như cũ.</div>
       </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->

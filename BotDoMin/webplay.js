@@ -816,7 +816,7 @@ const PAGE = [
     '<div id="pageWheel" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎡 Vòng Quay May Mắn</h2><div class="muted" id="whStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px"><b>VÒNG VÉ</b> quay miễn phí ra giá vé chung → cả bàn đủ tiền vé là quay <b>VÒNG HỆ SỐ</b> ăn vé × hệ số, ĐỘC ĐẮC <b>x10</b> 🏆. Mỗi người 1 lượt mỗi khung, reset <b>00:00 & 12:00</b>.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px"><b>VÒNG VÉ</b> quay miễn phí ra giá vé chung → cả bàn đủ tiền vé là quay <b>VÒNG HỆ SỐ</b> ăn vé × hệ số, ĐỘC ĐẮC <b>x10</b> 🏆. Mỗi người 1 lượt mỗi khung <b>6 tiếng</b> - reset <b>00:00, 06:00, 12:00, 18:00</b>.</div>',
     '<div id="whWrap">',
     '<svg id="whSvg" viewBox="0 0 300 300"></svg>',
     '<div class="warr y"><div class="tri"></div></div>',

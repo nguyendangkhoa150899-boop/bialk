@@ -291,6 +291,19 @@ công khai vào kênh; gõ `/nghien` trên Discord chỉ có lời đáp riêng 
 
 **🧧 Lộc lá** — chuyển Dogcoin giữa người chơi trên web, có đăng công khai.
 
+**💱 Giá bán TRONG GAME — admin thu Dogcoin bằng tay, KHÔNG có trong code** (cập nhật
+21/08/2026). Đây là đường **hút Dogcoin về** duy nhất, để bù phần các trò chơi bơm ra:
+
+| Món | Giá | Ghi chú |
+|---|---|---|
+| Lõi Văn Minh | **300**/lõi | nâng từ giá cũ |
+| Sách (kỹ năng) | **2.000**/sách | nâng từ giá cũ |
+| Pal Boss Raid | **40.000–80.000**/con | tuỳ con, admin tự định |
+| Đổi passive / cấy ghép | admin ra giá, **cố tình đắt** | chủ server chốt: đây là chỗ thu lại tiền |
+
+> Vì đây là giá **ngoài code**, muốn đổi thì sửa bảng này rồi nói lại với người chơi — bot
+> không kiểm tra gì cả. Đừng đi tìm hằng số trong `index.js`, không có.
+
 **🐾 Shop pal** (Discord) — tự chọn **6.000** / quay ngẫu nhiên **2.000** (pool paldex ≥ 80,
 trừ Xenolord/Hartalis/Blazamut Ryu). Mọi pal shop: **4 sao, IV 100 cả 3, 4 passive + 1 linh
 hồn 60%**. Quay random thì **biết trúng gì rồi mới chọn** passive, hoặc **bán lại 1.000**
@@ -354,6 +367,18 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **21/08/2026 — Vòng quay: 2 khung 12 tiếng → 4 KHUNG 6 TIẾNG.** Reset **00:00, 06:00,
+  12:00, 18:00** giờ VN, mỗi người 1 lượt mỗi khung (trước là 00:00 & 12:00). `wheelWindowKey`
+  giờ chia theo `Math.floor(giờ / WHEEL_SLOT_HOURS)` ra khoá `...-S0..S3`, `wheelNextReset`
+  đếm tới mốc 6 tiếng kế tiếp. Câu chữ mốc reset gom về **một nguồn** `WHEEL_RESET_TEXT` để
+  lần sau đổi khung chỉ sửa `WHEEL_SLOT_HOURS`. ⚠️ **Đây là quyết định tốn tiền:** vòng quay
+  có RTP **233%** (kỳ vọng hệ số ×2,33 trên vé trung bình 2.500 = lỗ ~3.315/người/lượt), nên
+  gấp đôi số lượt là **gấp đôi tốc độ bơm Dogcoin** — từ ~19.900 lên ~39.800/ngày với 3
+  người. Chủ server chấp nhận, bù lại bằng cách bán passive/lõi/sách/boss raid giá cao
+  (xem bảng "Giá bán TRONG GAME"). Test: `slottest.js` 22 ca (chia khung, biên 05:59↔06:00,
+  sang ngày mới, đồng hồ đếm ngược ở 7 mốc).
+- **21/08/2026 — Sửa panel ghi sai giá shop pal** (1.000/3.000 → đúng là **2.000/6.000**
+  theo `PAL_SHOP.randomPrice/customPrice`). Chú thích panel bị bỏ quên từ đợt nâng giá.
 - **21/08/2026 — Nổ hũ 🏆 hạ 2% → 1% ở CẢ BA trò.** Ô 🏆 của hai bàn quay hộp may mắn
   còn `p: 0.01`, `POT_HIT_RATE` (quay Pal) còn `0.01`; **phần dư dồn vào ô hụt 🍂** như mọi
   lần hạ trước (mìn 22% → 23%, thang 23% → 24%) nên tổng mỗi bàn vẫn đúng 100% — kiểm bằng
