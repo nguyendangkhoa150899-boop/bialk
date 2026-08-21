@@ -1287,9 +1287,9 @@ const LUCKY_WIN_CAP_MULTI = 2000;
 //    (lấy từ phần RTP đang giữ). Tự trích DỪNG khi hũ chạm LUCKY_POT_MAX (20.000).
 //  - ADMIN nạp tay thì KHÔNG bị trần 20.000 (chủ server muốn mồi hũ to hơn được);
 //    chỉ chặn không cho âm.
-//  - MỘT TỈ LỆ NỔ DUY NHẤT: POT_HIT_RATE = 3%, đúng bằng ô 🏆 của 2 bàn quay hộp
+//  - MỘT TỈ LỆ NỔ DUY NHẤT: POT_HIT_RATE = 2%, đúng bằng ô 🏆 của 2 bàn quay hộp
 //    may mắn. Minigame: trúng 🏆 = trần hũ của ván + NGUYÊN hũ trò đó. Quay Pal:
-//    mỗi lượt tự bốc 3% ăn nguyên hũ gacha (gacha không có hộp để bấm).
+//    mỗi lượt tự bốc 2% ăn nguyên hũ gacha (gacha không có hộp để bấm).
 const LUCKY_POT_RATE = 0.05;
 const LUCKY_POT_MAX = 20000;      // trần TỰ TRÍCH mỗi hũ (admin nạp tay vượt được)
 const POT_HIT_RATE = 0.02;        // = p của 'jackpot' trong MINES/STAIRS_LUCKY_WHEEL
@@ -4713,7 +4713,7 @@ client.on('interactionCreate', async interaction => {
         logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) - đơn #${order.id}`);
         writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) - cho chon passive/linh hon`);
 
-        // 🏆 HŨ RIÊNG của quay Pal: nuôi 5% giá vé, nổ theo CHUNG tỉ lệ 3% với 2 minigame
+        // 🏆 HŨ RIÊNG của quay Pal: nuôi 5% giá vé, nổ theo CHUNG tỉ lệ 2% với 2 minigame
         potFeed('gacha', luckyPotCut('gacha', price));
         withdrawBoardRefresh();   // tiêu đề bảng có số hũ -> vẽ lại cho tươi
         let palPotWin = 0;
