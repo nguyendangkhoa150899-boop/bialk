@@ -2434,7 +2434,26 @@ async function resumeStairsBoard() {
 // ván trong phút đó gom chung một lần đăng. GỬI TRƯỚC, XOÁ SAU: lỡ gửi lỗi thì bảng
 // cũ còn đó, kênh không bao giờ trống bảng.
 const BOARD_REPOST_MS = 60 * 1000;
-async function repostBoard(board, getData, msgKey, label) {
+// Dọn bảng mồ côi — DÙNG CHUNG cho Big Small / Dò Mìn / Leo Thang (bug 21/08).
+// Cả 3 bàn đều xoá bảng cũ kiểu fire-and-forget rồi nuốt lỗi; VPS này có Connect
+// Timeout tới Discord nên xoá hụt là chuyện thường, và mỗi lần restart lại bỏ thêm
+// một bảng chết. Thay vì tin vào lệnh xoá, quét kênh gỡ mọi bảng CÙNG LOẠI không
+// phải bảng đang dùng — hỏng kiểu gì thì lượt đăng sau kênh cũng tự sạch.
+async function sweepBoards(channel, keepId, titleMatch, label) {
+    if (!channel || !client.user) return;
+    try {
+        const msgs = await channel.messages.fetch({ limit: 30 });
+        const junk = msgs.filter(m => m.author?.id === client.user.id
+            && m.id !== keepId
+            && (m.embeds?.[0]?.title || '').includes(titleMatch));
+        for (const m of junk.values()) await m.delete().catch(() => { });
+        if (junk.size) writeLog('SYSTEM', `[${label}] Dọn ${junk.size} bảng mồ côi ở #${channel.name}`);
+    } catch (e) {
+        writeLog('SYSTEM', `[${label}] Không dọn được bảng mồ côi: ${e.message}`);
+    }
+}
+
+async function repostBoard(board, getData, msgKey, label, titleMatch) {
     if (!board.channel || !board.needsUpdate) return;
     if (Date.now() - board.lastEdit < BOARD_REPOST_MS) return;
     board.needsUpdate = false;
@@ -2443,7 +2462,9 @@ async function repostBoard(board, getData, msgKey, label) {
     try {
         board.message = await board.channel.send(getData());
         dbCache[msgKey] = board.message.id;   // để restart nối lại đúng tin mới nhất
-        if (old) old.delete().catch(() => { });
+        // KHÔNG nuốt lỗi nữa — xoá hụt phải để lại dấu vết thì lần sau mới truy được
+        if (old) old.delete().catch((e) => writeLog('SYSTEM', `[${label}] Xoá bảng cũ hụt: ${e.message}`));
+        if (titleMatch) await sweepBoards(board.channel, board.message.id, titleMatch, label);
     } catch (e) {
         writeLog('SYSTEM', `[${label}] Không đăng lại được bảng: ${e.message}`);
         board.needsUpdate = true; // giữ cờ, phút sau thử lại
@@ -2451,7 +2472,7 @@ async function repostBoard(board, getData, msgKey, label) {
 }
 
 function runStairsBoardLoop() {
-    setInterval(() => { repostBoard(stairsBoard, getStairsBoardData, '_stairsMsgId', 'BẢNG LEO THANG').catch(() => { }); }, 5000);
+    setInterval(() => { repostBoard(stairsBoard, getStairsBoardData, '_stairsMsgId', 'BẢNG LEO THANG', 'LEO THANG').catch(() => { }); }, 5000);
 }
 
 // (Bảng 📊 THỐNG KÊ NGƯỜI CHƠI đã BỎ 19/08 theo yêu cầu chủ server — cả bảng
@@ -2460,7 +2481,7 @@ function runStairsBoardLoop() {
 // resetStats, addJackpotStat + tab-st bên panel.js.)
 
 function runMinesBoardLoop() {
-    setInterval(() => { repostBoard(minesBoard, getMinesBoardData, '_minesMsgId', 'BẢNG DÒ MÌN').catch(() => { }); }, 5000);
+    setInterval(() => { repostBoard(minesBoard, getMinesBoardData, '_minesMsgId', 'BẢNG DÒ MÌN', 'DÒ MÌN').catch(() => { }); }, 5000);
 }
 
 // --- ĐĂNG KÝ LỆNH SLASH ---
@@ -3027,24 +3048,8 @@ async function updateTXMessage(customStatus = null) {
     await txState.message.edit(data).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE TX BẢNG CƯỢC] ${e.message}`); });
 }
 
-// Bảng BIG SMALL mồ côi (bug 21/08): xoá bảng cũ mỗi ván là fire-and-forget và nuốt
-// sạch lỗi, mạng chớp một cái (VPS này có Connect Timeout tới Discord) là bảng nằm
-// lại kênh vĩnh viễn. Cộng thêm restart: TX không lưu id bảng như Dò Mìn/Leo Thang
-// nên bật lại bảng là bỏ quên bảng cũ. Quét kênh gỡ mọi bảng không phải bảng hiện tại.
-let txSweepNeeded = false;
 async function sweepTXBoards() {
-    if (!txState.channel || !client.user) return;
-    try {
-        const keep = txState.message?.id;
-        const msgs = await txState.channel.messages.fetch({ limit: 25 });
-        const junk = msgs.filter(m => m.author?.id === client.user.id
-            && m.id !== keep
-            && (m.embeds?.[0]?.title || '').includes('BIG SMALL LIVE'));
-        for (const m of junk.values()) await m.delete().catch(() => { });
-        if (junk.size) writeLog('SYSTEM', `[BẢNG TX] Dọn ${junk.size} bảng mồ côi ở #${txState.channel.name}`);
-    } catch (e) {
-        writeLog('SYSTEM', `[BẢNG TX] Không dọn được bảng mồ côi: ${e.message}`);
-    }
+    return sweepBoards(txState.channel, txState.message?.id, 'BIG SMALL LIVE', 'BẢNG TX');
 }
 
 // --- VÒNG LẶP BIG SMALL ---
@@ -3098,10 +3103,10 @@ function runTaiXiuLoop() {
                 // Bảng cũ xóa NGAY (kết quả đã nằm trong bảng mới) — kênh chỉ còn đúng
                 // 1 bảng live, không giữ 20 phiên cũ như thời còn embed kết quả riêng.
                 if (prevMsgId && txState.channel) {
-                    // KHÔNG nuốt lỗi nữa: xoá hụt thì ghi log + bật cờ để ván sau quét dọn
+                    // KHÔNG nuốt lỗi nữa — cần biết VÌ SAO xoá hụt; dọn thì đã có
+                    // sweepTXBoards() chạy mỗi ván ở dưới lo, không cần cờ riêng.
                     txState.channel.messages.delete(prevMsgId).catch((e) => {
-                        txSweepNeeded = true;
-                        writeLog('SYSTEM', `[BẢNG TX] Xoá bảng cũ ${prevMsgId} hụt: ${e.message} - dọn ở ván sau`);
+                        writeLog('SYSTEM', `[BẢNG TX] Xoá bảng cũ ${prevMsgId} hụt: ${e.message}`);
                     });
                 }
                 txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
@@ -3115,7 +3120,7 @@ function runTaiXiuLoop() {
                 txState.message = await txState.channel.send(data).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG MỚI TX] ${e.message}`); return null; });
                 if (txState.message) dbCache._txMsgId = txState.message.id;   // restart còn biết bảng nào mà gỡ
                 // Quét khi vừa xoá hụt, và cứ 10 ván quét một lần làm lưới an toàn
-                if (txSweepNeeded || txState.gameId % 10 === 0) { txSweepNeeded = false; sweepTXBoards().catch(() => { }); }
+                sweepTXBoards().catch(() => { });
             } catch (e) {
                 writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
                 // Recovery: reset để ván tiếp theo vẫn chạy được
