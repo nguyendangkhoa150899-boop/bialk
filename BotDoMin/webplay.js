@@ -276,6 +276,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/mines/state') {
                         return sendJSON(res, 200, {
                             ok: true, tiles: mines.tiles,
+                            pot: mines.pot ? mines.pot() : 0, potRate: mines.potRate || 0,
                             maxWin: mines.maxWin, maxBet: mines.maxBet,
                             minMines: mines.minMines || 1, maxMines: mines.maxMines || (mines.tiles - 1),
                             balance: me.points || 0,
@@ -334,6 +335,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/stairs/state') {
                         return sendJSON(res, 200, {
                             ok: true, floors: stairs.floors, cols: stairs.cols, maxFire: stairs.maxFire,
+                            pot: stairs.pot ? stairs.pot() : 0, potRate: stairs.potRate || 0,
                             balance: me.points || 0, game: stairs.current(userId),
                             last: stairs.last ? stairs.last(userId) : null,
                         });
@@ -768,6 +770,7 @@ const PAGE = [
     '🍀 Mua thêm 1 cỏ may mắn (phí <b id="mExtraFee">20</b> = 20% cược)</label>',
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
     '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao - trúng mìn là mất tiền cược ván đó. Mỗi ván giấu sẵn 1 ô 🍀.</div>',
+    '<div class="muted" id="mPotLine" style="font-size:12px;margin-top:4px;text-align:center;color:#ffd24a"></div>',
     '<div class="muted" id="mNote" style="font-size:12px;margin-top:3px;text-align:center;color:#ff9a5c"></div>',
     '</div>',
     '</div>', // hết #pageMine
@@ -792,6 +795,7 @@ const PAGE = [
     '<button id="sPlus" onclick="sStep(1)">+</button>',
     '</div>',
     '<button class="mgo start" id="sGo" onclick="sGoClick()">🪜 BẮT ĐẦU LEO</button>',
+    '<div class="muted" id="sPotLine" style="font-size:12px;margin-top:6px;text-align:center;color:#ffd24a"></div>',
     '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Càng nhiều cầu lửa hệ số càng cao - đạp trúng lửa là mất tiền cược ván đó.</div>',
     '</div>',
     '</div>', // hết #pageStair
@@ -1094,7 +1098,7 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
-    'var MT=25;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
+    'var MT=25;var MPOT=-1;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
     'var MMIN=3,MMAX=20;',   // giới hạn số mìn - server là nguồn chuẩn, mSync ghi đè
     // Bấm nhanh: cú bấm trong lúc chờ server KHÔNG bị nuốt nữa — xếp hàng đào tuần tự.
     // mBusyAt = chốt an toàn: request treo quá 8s thì tự gỡ cờ, không phải F5.
@@ -1160,6 +1164,7 @@ const PAGE = [
     'MPAGE=Math.min(np-1,Math.max(0,MPAGE+d));MPGMAN=true;mBar()}',
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function mBand(){var go=$("mGo");',
+    'var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ nuôi chung 2 game: "+vnd(MPOT)+" · mỗi ván trích 5% cược nuôi hũ · trúng 🏆 là ẵm trọn";',
     'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
@@ -1181,7 +1186,7 @@ const PAGE = [
     'function mNewGame(){MOVER=false;MLAST=null;api("/api/mines/dismiss",{}).catch(function(){});',
     'mDrawGrid();mTable();mBar();mBand()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
-    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;setBal(j.balance);',
+    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;if(j.pot!==undefined)MPOT=j.pot;setBal(j.balance);',
     'MMIN=j.minMines||3;MMAX=j.maxMines||20;',
     '$("mMinesLab").textContent="Số mìn ("+MMIN+"–"+MMAX+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
@@ -1241,11 +1246,12 @@ const PAGE = [
     '$("luckyClose").style.display="block";',
     'if(j.lucky&&j.lucky.prize==="jackpot")celebrate();',
     // cập nhật bàn chơi NGAY phía sau hộp (đóng hộp là thấy liền, không khựng)
-    'if(game==="mines"){',
+    'if(game==="mines"){if(j.pot!==undefined)MPOT=j.pot;',
     'if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'mEnd("🎉 Jackpot - nhận "+j.win.toLocaleString("vi-VN"),j.win-(MG?MG.bet:0),j.mines)}',
     'else{MG=j.state;mDrawGrid();mBar();mBand()}',
     '}else{',
+    'if(j.pot!==undefined)SPOT=j.pot;',
     'if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'var stk=SG?SG.bet:0,fr=SG?SG.fire:0;',
     'sFinish(j,"Lên đỉnh",j.win-stk,stk,fr,SF)}',
@@ -1310,7 +1316,7 @@ const PAGE = [
     'if(n<MMIN||n>MMAX)return toast("❌ Số mìn từ "+MMIN+" đến "+MMAX);',
     'if(b<=0)return toast("❌ Nhập số Dogcoin");',
     'if(b>BAL)return toast("❌ Không đủ Dogcoin!");',
-    'mBusy=true;api("/api/mines/start",{numMines:n,bet:b,extra:$("mExtra").checked}).then(function(j){mBusy=false;',
+    'mBusy=true;api("/api/mines/start",{numMines:n,bet:b,extra:$("mExtra").checked}).then(function(j){mBusy=false;if(j.pot!==undefined)MPOT=j.pot;',
     'setBal(j.balance);MG=j.state;mDrawGrid();mBar();mBand()',
     '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
     'function mCashout(){if(!MG||mBusy)return;mBusy=true;var stake=MG.bet;',
@@ -1323,7 +1329,7 @@ const PAGE = [
     '',
     // ===== LEO THANG =====
     // Cùng nguyên tắc với dò mìn: client không tự tính tiền, mọi hệ số lấy từ server.
-    'var SF=10,SC=8,SMAXF=5,SG=null,sBusy=false,STAB=[],SOVER=false,SLAST=null;',
+    'var SF=10,SC=8,SMAXF=5,SPOT=-1,SG=null,sBusy=false,STAB=[],SOVER=false,SLAST=null;',
     // sBusyAt: chốt an toàn gỡ cờ kẹt. Leo thang CỐ TÌNH không xếp hàng cú bấm như dò
     // mìn — mỗi bước đổi tầng, cú bấm xếp hàng sẽ áp vào TẦNG KẾ TIẾP ngoài ý muốn.
     'var sBusyAt=0;',
@@ -1366,6 +1372,7 @@ const PAGE = [
     'if(el.classList.contains("fire"))return;', // ô lửa đã lộ (khiên đỡ) - cấm bấm lại
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
     'function sBand(){var go=$("sGo");',
+    'var spl=$("sPotLine");if(spl&&SPOT>=0)spl.textContent="🏆 Hũ nuôi chung 2 game: "+vnd(SPOT)+" · mỗi ván trích 5% cược nuôi hũ · trúng 🏆 là ẵm trọn";',
     'if(SG){',
     '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?(" · 🛡️ x"+SG.shield):"");',
     'go.className="mgo cash";',
@@ -1382,7 +1389,7 @@ const PAGE = [
     'function sNewGame(){SOVER=false;SLAST=null;api("/api/stairs/dismiss",{}).catch(function(){});',
     'sTower();sBand()}',
     'function sSync(){api("/api/stairs/state").then(function(j){',
-    'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;setBal(j.balance);',
+    'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;if(j.pot!==undefined)SPOT=j.pot;setBal(j.balance);',
     'SG=j.game||null;SLAST=(!SG&&j.last)?j.last:null;SOVER=!!SLAST;',
     'if(SG&&SG.luckyPick)luckyOpen("stairs");',   // F5 giữa lúc đang chọn hộp -> mở lại
     '$("sFireLab").textContent="🔥 Cầu lửa mỗi tầng (1–"+SMAXF+")";',
@@ -1458,7 +1465,7 @@ const PAGE = [
     'if(f<1||f>SMAXF)return toast("❌ Cầu lửa từ 1 đến "+SMAXF);',
     'if(b<=0)return toast("❌ Nhập số Dogcoin");',
     'if(b>BAL)return toast("❌ Không đủ Dogcoin!");',
-    'sBusy=true;api("/api/stairs/start",{fire:f,bet:b}).then(function(j){sBusy=false;',
+    'sBusy=true;api("/api/stairs/start",{fire:f,bet:b}).then(function(j){sBusy=false;if(j.pot!==undefined)SPOT=j.pot;',
     'setBal(j.balance);SG=j.state;sTower();sBand()',
     '}).catch(function(e){sBusy=false;toast("❌ "+e.message);sSync()})}',
     'function sCashout(){if(!SG||sBusy)return;sBusy=true;',
