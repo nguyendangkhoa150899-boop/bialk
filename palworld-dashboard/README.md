@@ -241,15 +241,18 @@ mẫu (hàng mẫu **không bao giờ** ra hũ, kẻo lật ra 2–3 hũ ảo).
 
 | Quà | Dò Mìn | Leo Thang | Tác dụng |
 |---|---|---|---|
-| 🛡️ Khiên | 20% | 20% | Đỡ 1 lần chết (mìn/lửa), Leo Thang thì đứng yên không lên tầng |
+| 🛡️ Khiên | 15% | 20% | Đỡ 1 lần chết (mìn/lửa), Leo Thang thì đứng yên không lên tầng. **Đếm cộng dồn** (`g.shield++`), không phải cờ bật/tắt |
 | ⛏️ Đào / 🚀 Tên lửa | 15% | 15% | Mở giúp 1–2 ô an toàn / +2 tầng |
-| 💰 Lì xì | 40% | 40% | +20% tiền cược ngay (tối thiểu 1) |
-| 🍂 Hụt | 20% | 20% | Không gì cả — **van chỉnh kỳ vọng**, sòng chảy máu thì tăng ô này |
-| 🏆 **NỔ HŨ** | 5% | 5% | `min(giải cao nhất của ván đó, ×2000 cược)` rồi **CHỐT VÁN LUÔN** |
+| 💰 Lì xì | 46% | 40% | **+30%** tiền cược ngay (tối thiểu 1) |
+| 🍂 Hụt | 21% | 23% | Không gì cả — **van chỉnh kỳ vọng**, sòng chảy máu thì tăng ô này |
+| 🏆 **NỔ HŨ** | 2% | 2% | `trần nổ hũ của ván` + **NGUYÊN hũ nuôi** của trò đó, rồi **CHỐT VÁN LUÔN** |
 
-Hai luật kinh tế của hũ, đừng bỏ: (1) hũ tính theo **cấu hình ván đó** — chọn 1 mìn/1 lửa
-rồi ngồi câu hũ chỉ ăn giải bé, hết cửa farm; (2) **trần ×2000 CHỈ áp ván ăn nhờ trợ giúp**
-(🚀/🌟/⛏️ hoặc khiên đã dùng để thoát chết) — tự lực 100% thì trả đủ, cày thật ăn thật.
+Ba luật kinh tế của hũ, đừng bỏ: (1) hũ tính theo **cấu hình ván đó** — chọn 1 mìn/1 lửa
+rồi ngồi câu hũ chỉ ăn giải bé, hết cửa farm; (2) **trần CHỈ áp ván ăn nhờ trợ giúp**
+(🚀/🌟/⛏️, khiên đã dùng để thoát chết, hoặc nổ hũ) — tự lực 100% thì `calculateMulti`/
+`stairsMulti` **trả đủ không trần**, cày thật ăn thật; (3) **cược < `POT_MIN_BET` (200) thì
+không nuôi và không ăn hũ nuôi** — đặt 1 xu cầu may là hết cửa. Nổ xong hũ về mồi
+`POT_SEED` (1.500), không về 0.
 
 **🎡 Vòng quay nhóm 2 tầng** (`wheelRoom`) — thay Blackjack. Vào bàn **miễn phí**. Đủ N
 người (admin chỉnh ở panel) thì nút quay sáng, **người trong bàn tự bấm**, không tự quay.
@@ -324,9 +327,10 @@ rồi chạy trong `vm` với phụ thuộc giả (`getUserData`/`updatePoints`/
 là object thường). Mẹo đã dùng: **đè `Math.random`** bằng hàng đợi số để đi đúng nhánh, **đè
 `Date`** bằng `FakeDate` để giả lập trôi ngày (test chuỗi điểm danh, sang tháng), shim
 `setTimeout` để co thời gian chờ. Test nằm ở thư mục scratchpad của phiên làm việc — chạy
-xanh hết rồi mới commit. Các bộ đang có: nổ hũ chốt ván (29 ca), ô may mắn (79), vòng quay
-(63), chuỗi điểm danh (36), lộc lá (34), bảng lịch sử (24), bán lại pal (19), cổng online
-nạp/rút (16), /nghien (12).
+xanh hết rồi mới commit. Các bộ đang có: ô may mắn (88 ca), vay nợ (68), hũ nuôi (60),
+vòng quay (63), chuỗi điểm danh (36), lộc lá (34), nổ hũ chốt ván (29), ảnh leo thang (28),
+bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khiên qua HTTP (14),
+/nghien (12).
 
 ### Cạm bẫy riêng của bot (đã dính, đừng dính lại)
 - **`panel.js`/`webplay.js` không kiểm được bằng `node --check`** — JS client nằm trong chuỗi
@@ -350,6 +354,17 @@ nạp/rút (16), /nghien (12).
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
 
+- **21/08/2026 — Hũ: cược tối thiểu 200 mới ăn, nổ xong hũ về mồi 1.500.** Trước đó cược
+  1 xu cũng nuôi/ăn hũ nên ai cũng chỉ đặt tối thiểu để "cầu may" — nay `POT_MIN_BET = 200`:
+  cược dưới 200 thì **không trích nuôi hũ** và **trúng ô 🏆 chỉ ăn trần ván, không ăn hũ**
+  (thông báo ghi rõ "cược dưới 200 nên chưa ăn được hũ"). Nổ hũ xong hũ **không về 0** mà
+  đặt lại `POT_SEED = 1500` để người vào sau vẫn còn cửa; hũ mới tạo cũng được mồi 1.500.
+  Mồi chốt 1.500 (không phải 3.000) là có lý do kinh tế: mồi là **tiền nhà cái bỏ ra mỗi
+  lần nổ**, mồi càng cao thì hũ càng bị ghim quanh mức mồi và không bao giờ leo lên con số
+  đủ hấp dẫn — 1.500 vừa đủ để hũ không rỗng, vừa để nó **tự nuôi leo lên** thật.
+  Chỗ sửa: `potEligible/luckyPotCut/luckyPotPop` trong `index.js` (pop giờ nhận thêm tiền
+  cược), `potMin/potSeed` đẩy qua `/api/state` → `POTMIN/POTSEED` ở `webplay.js` (lời mời
+  ô may mắn chỉ cộng hũ khi `bet >= POTMIN`), panel hiện 2 con số này ở `potInfo`.
 - **20/08/2026 — 🏆 HŨ NUÔI: mỗi trò MỘT HŨ RIÊNG, chung một tỉ lệ nổ.** Ba hũ
   `_pots = { mines, stairs, gacha }`, nổ ở trò nào ăn hũ trò đó (2 hũ kia không suy suyển).
   Nuôi: mỗi ván/lượt quay trích **5% tiền cược**, **KHÔNG thu thêm của người chơi** — cược

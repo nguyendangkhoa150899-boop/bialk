@@ -282,7 +282,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/mines/state') {
                         return sendJSON(res, 200, {
                             ok: true, tiles: mines.tiles,
-                            pot: mines.pot ? mines.pot() : 0, potRate: mines.potRate || 0,
+                            pot: mines.pot ? mines.pot() : 0, potRate: mines.potRate || 0, potMin: mines.potMin || 0, potSeed: mines.potSeed || 0,
                             maxWin: mines.maxWin, maxBet: mines.maxBet,
                             minMines: mines.minMines || 1, maxMines: mines.maxMines || (mines.tiles - 1),
                             balance: me.points || 0,
@@ -341,7 +341,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/stairs/state') {
                         return sendJSON(res, 200, {
                             ok: true, floors: stairs.floors, cols: stairs.cols, maxFire: stairs.maxFire,
-                            pot: stairs.pot ? stairs.pot() : 0, potRate: stairs.potRate || 0,
+                            pot: stairs.pot ? stairs.pot() : 0, potRate: stairs.potRate || 0, potMin: stairs.potMin || 0, potSeed: stairs.potSeed || 0,
                             balance: me.points || 0, game: stairs.current(userId),
                             last: stairs.last ? stairs.last(userId) : null,
                         });
@@ -1111,7 +1111,7 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
-    'var MT=25;var MPOT=-1;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
+    'var MT=25;var MPOT=-1;var POTMIN=200;var POTSEED=1500;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
     'var MMIN=3,MMAX=20;',   // giới hạn số mìn - server là nguồn chuẩn, mSync ghi đè
     // Bấm nhanh: cú bấm trong lúc chờ server KHÔNG bị nuốt nữa — xếp hàng đào tuần tự.
     // mBusyAt = chốt an toàn: request treo quá 8s thì tự gỡ cờ, không phải F5.
@@ -1178,7 +1178,7 @@ const PAGE = [
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function potTab(id,v){var e=$(id);if(e)e.textContent=(v>=0?("🏆 HŨ "+vnd(v)):"")}',
     'function mBand(){var go=$("mGo");',
-    'potTab("mPotHdr",MPOT);var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ Dò Mìn: "+vnd(MPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn hũ này";',
+    'potTab("mPotHdr",MPOT);var mpl=$("mPotLine");if(mpl&&MPOT>=0)mpl.textContent="🏆 Hũ Dò Mìn: "+vnd(MPOT)+" · cược từ "+vnd(POTMIN)+" mới ăn hũ · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · nổ xong hũ về "+vnd(POTSEED);',
     'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
@@ -1200,7 +1200,7 @@ const PAGE = [
     'function mNewGame(){MOVER=false;MLAST=null;api("/api/mines/dismiss",{}).catch(function(){});',
     'mDrawGrid();mTable();mBar();mBand()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
-    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;if(j.pot!==undefined)MPOT=j.pot;setBal(j.balance);',
+    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;if(j.pot!==undefined)MPOT=j.pot;if(j.potMin)POTMIN=j.potMin;if(j.potSeed)POTSEED=j.potSeed;setBal(j.balance);',
     'MMIN=j.minMines||3;MMAX=j.maxMines||20;',
     '$("mMinesLab").textContent="Số mìn ("+MMIN+"–"+MMAX+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
@@ -1242,8 +1242,8 @@ const PAGE = [
     // (ván 3 mìn cược 1.800 ghi 3.600.000 mà thực nhận 100.270 - bug 20/08).
     'function jpCapMines(m){return m<=3?50:(m===4?100:(m===5?200:2000))}',
     'var jp=0;',
-    'if(game==="mines"&&MG&&MTAB.length)jp=Math.min(MG.bet*jpCapMines(MG.totalMines),Math.floor(MG.bet*MTAB[MTAB.length-1]))+(MPOT>0?MPOT:0);',
-    'if(game==="stairs"&&SG&&STAB.length)jp=Math.min(SG.bet*2000,Math.floor(SG.bet*STAB[STAB.length-1]))+(SPOT>0?SPOT:0);',
+    'if(game==="mines"&&MG&&MTAB.length)jp=Math.min(MG.bet*jpCapMines(MG.totalMines),Math.floor(MG.bet*MTAB[MTAB.length-1]))+((MPOT>0&&MG.bet>=POTMIN)?MPOT:0);',
+    'if(game==="stairs"&&SG&&STAB.length)jp=Math.min(SG.bet*2000,Math.floor(SG.bet*STAB[STAB.length-1]))+((SPOT>0&&SG.bet>=POTMIN)?SPOT:0);',
     '$("luckySub").textContent=jp>0?("Chọn 1 hộp - biết đâu 🏆 NỔ HŨ "+jp.toLocaleString("vi-VN")+" Dogcoin!"):"Chọn 1 hộp quà!";',
     // dựng lại 4 hộp kín + giấu kết quả/nút đóng của lần trước
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){',
@@ -1389,7 +1389,7 @@ const PAGE = [
     'if(el.classList.contains("fire"))return;', // ô lửa đã lộ (khiên đỡ) - cấm bấm lại
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
     'function sBand(){var go=$("sGo");',
-    'potTab("sPotHdr",SPOT);var spl=$("sPotLine");if(spl&&SPOT>=0)spl.textContent="🏆 Hũ Leo Thang: "+vnd(SPOT)+" · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · trúng 🏆 là ẵm trọn hũ này";',
+    'potTab("sPotHdr",SPOT);var spl=$("sPotLine");if(spl&&SPOT>=0)spl.textContent="🏆 Hũ Leo Thang: "+vnd(SPOT)+" · cược từ "+vnd(POTMIN)+" mới ăn hũ · nhà cái trích 5% cược nuôi hũ (KHÔNG thu thêm của bạn) · nổ xong hũ về "+vnd(POTSEED);',
     'if(SG){',
     '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?(" · 🛡️ x"+SG.shield):"");',
     'go.className="mgo cash";',
@@ -1406,7 +1406,7 @@ const PAGE = [
     'function sNewGame(){SOVER=false;SLAST=null;api("/api/stairs/dismiss",{}).catch(function(){});',
     'sTower();sBand()}',
     'function sSync(){api("/api/stairs/state").then(function(j){',
-    'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;if(j.pot!==undefined)SPOT=j.pot;setBal(j.balance);',
+    'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;if(j.pot!==undefined)SPOT=j.pot;if(j.potMin)POTMIN=j.potMin;if(j.potSeed)POTSEED=j.potSeed;setBal(j.balance);',
     'SG=j.game||null;SLAST=(!SG&&j.last)?j.last:null;SOVER=!!SLAST;',
     'if(SG&&SG.luckyPick)luckyOpen("stairs");',   // F5 giữa lúc đang chọn hộp -> mở lại
     '$("sFireLab").textContent="🔥 Cầu lửa mỗi tầng (1–"+SMAXF+")";',

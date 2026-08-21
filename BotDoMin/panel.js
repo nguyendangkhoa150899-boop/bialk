@@ -1697,7 +1697,8 @@ async function refresh(){
   const pt=STATE.pot;
   if(pt&&pt.pots){
     document.getElementById('potInfo').textContent='Trần tự trích '+Number(pt.max||0).toLocaleString('vi-VN')
-      +' mỗi hũ · trích '+Math.round((pt.rate||0)*100)+'% tiền cược (nhà cái bao) · tỉ lệ nổ chung '+Math.round((pt.hit||0)*100)+'%';
+      +' mỗi hũ · trích '+Math.round((pt.rate||0)*100)+'% tiền cược (nhà cái bao) · tỉ lệ nổ chung '+Math.round((pt.hit||0)*100)+'%'
+      +' · cược từ '+Number(pt.minBet||0).toLocaleString('vi-VN')+' mới ăn hũ · nổ xong hũ về '+Number(pt.seed||0).toLocaleString('vi-VN');
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
     // không vẽ lại cả khối — vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
     const keys=Object.keys(pt.pots), box=document.getElementById('potRows');
