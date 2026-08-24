@@ -2403,7 +2403,7 @@ function stockState(userId) {
         lotSize: STOCK_LOT,
         nextTick: dbCache._stockNextTick || (Date.now() + STOCK_TICK_MS),
         now: Date.now(),
-        candles: stockCandles().slice(-60),   // 30 phút nến cho đồ thị
+        candles: stockCandles().slice(-240),  // 2 giờ nến — web tự gộp sang khung lớn
         outstanding: stockShareCount(),
         maxShares: cfg.maxShares,
         maxPer: cfg.maxPer,
@@ -2427,6 +2427,9 @@ function stockState(userId) {
         holders: holders.slice(0, 8),
         mine: closed.filter(c => c.userId === userId).slice(0, 8),
         mineTotal: closed.filter(c => c.userId === userId).reduce((s, c) => s + (Number(c.pl) || 0), 0),
+        // lãi/lỗ CHỐT trong ngày (giờ VN) — ô "hôm nay" ở thanh đầu trang
+        todayPl: closed.filter(c => c.userId === userId && vnDayStr(c.t) === vnDayStr(Date.now()))
+            .reduce((s, c) => s + (Number(c.pl) || 0), 0),
         news: dbCache._stockNews || null,
     };
 }
