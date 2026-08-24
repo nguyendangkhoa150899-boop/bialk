@@ -148,6 +148,7 @@ function startPanel(ctx) {
             pot: ctx.getPot ? ctx.getPot() : null,   // 🏆 hũ nuôi chung 3 game
             stairsBoard: ctx.getStairs ? ctx.getStairs() : { on: false, channelId: '' },
             wheel: ctx.getWheel ? ctx.getWheel() : null,
+            stock: ctx.getStock ? ctx.getStock() : null,
             stairsHistory: ctx.getStairsHistory ? ctx.getStairsHistory() : [],
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
@@ -194,6 +195,18 @@ function startPanel(ctx) {
                 }
 
                 const body = req.method === 'POST' ? await readBody(req) : {};
+                // ===== 📈 SÀN CỔ PHIẾU: chỉnh thông số + thả tin =====
+                if (ctx.setStockCfg && req.method === 'POST' && path === '/api/stock/cfg') {
+                    return sendJSON(res, 200, { ok: true, cfg: ctx.setStockCfg(body) });
+                }
+                if (ctx.stockNews && req.method === 'POST' && path === '/api/stock/news') {
+                    const pct = Number(body.pct);
+                    if (!Number.isFinite(pct) || pct === 0 || Math.abs(pct) > 40) {
+                        return sendJSON(res, 400, { ok: false, error: 'Biên độ phải trong ±1..40%' });
+                    }
+                    return sendJSON(res, 200, { ok: true, ...ctx.stockNews(pct, body.text) });
+                }
+
 
                 // ---- KHÓA ĐIỀU KHIỂN (ẩn mọi can thiệp) ----
                 // Mọi API ép kết quả yêu cầu header X-Ep-Key đúng EP_KEY. UI tương ứng
@@ -775,6 +788,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
       <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
       <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
+      <button data-tab="stock" onclick="tab('stock')">📈 Cổ phiếu</button>
       <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
       <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
@@ -998,6 +1012,52 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <div id="tab-stock" class="hidden">
+      <div class="card">
+        <h3>📈 Sàn Cổ Phiếu Dogcoin (DOG) — game thuần web</h3>
+        <div class="muted" id="skInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <div class="note" id="skRisk" style="margin-bottom:12px"></div>
+        <div class="row">
+          <div style="flex:1">
+            <label>Biến động mỗi nhịp 30s (%)</label>
+            <input id="skVol" type="number" step="0.1" placeholder="vd: 1.5">
+          </div>
+          <div style="flex:1">
+            <label>Chênh mua–bán mỗi chiều (%)</label>
+            <input id="skSpread" type="number" step="0.1" placeholder="vd: 2">
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1">
+            <label>Trần CP toàn sàn</label>
+            <input id="skMaxShares" type="number" placeholder="vd: 500">
+          </div>
+          <div style="flex:1">
+            <label>Trần CP mỗi người</label>
+            <input id="skMaxPer" type="number" placeholder="vd: 80">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
+          <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
+        </div>
+        <div class="note">Sàn đóng thì <b>vẫn cho bán</b>, chỉ chặn mua — dùng khi muốn hạ nhiệt mà không giam tiền ai.</div>
+      </div>
+      <div class="card">
+        <h3>📰 Thả tin — giá bật/sụp NGAY một nhịp</h3>
+        <label>Nội dung tin (hiện trên web cho người chơi đọc)</label>
+        <input id="skNewsTxt" placeholder="vd: Chủ server bơm vốn / Chủ server rút vốn">
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1"><label>Biên độ (%)</label><input id="skNewsPct" type="number" step="1" placeholder="vd: 15"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="skNews(1)">📈 Thả tin tốt</button>
+          <button class="btn-red" onclick="skNews(-1)">📉 Thả tin xấu</button>
+        </div>
+        <div class="note">Giới hạn ±40%/lần. Thả tin tốt khi có người đang gồng nhiều CP là <b>bot trả tiền thật</b> — xem dòng “nếu tất cả bán ngay” ở trên trước khi bấm.</div>
+      </div>
+    </div>
+
     <!-- (tab 📊 THỐNG KÊ đã bỏ 19/08) -->
 
     <!-- NGƯỜI CHƠI -->
@@ -1197,7 +1257,7 @@ function showApp(){
 }
 
 function tab(t){
-  ['tx','bc','mine','stair','bj','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','bc','mine','stair','bj','stock','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -1439,6 +1499,52 @@ function stairBoardStart(){const c=document.getElementById('stairChannel').value
 async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stairs/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Leo Thang');refresh();});}
 function whSaveMin(){const n=parseInt(document.getElementById('whMin').value);if(!n||n<1||n>50)return toast('Nhập số 1–50');api('/api/wheel/min',{minPlayers:n}).then(()=>{toast('💾 Vòng quay cần '+n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
 async function whReset(){if(!await uiConfirm('Reset lượt vòng quay: CẢ SERVER quay lại được ngay, không đợi 00:00/12:00?','Reset lượt','btn-red'))return;api('/api/wheel/reset',{}).then(j=>{toast('🔄 Đã reset lượt cho '+j.n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
+// ===== 📈 SÀN CỔ PHIẾU =====
+// Hai dòng quan trọng nhất là CP lưu hành và trần thiệt hại: chúng cho biết bot
+// đang gánh bao nhiêu tiền nếu giá bay. Đọc trước khi thả tin tốt.
+function skFill(k){
+  if(!k)return;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
+  set('skVol',k.volPct);set('skSpread',k.spreadPct);set('skMaxShares',k.maxShares);set('skMaxPer',k.maxPer);
+  document.getElementById('skInfo').innerHTML='Giá <b>'+k.price.toLocaleString()+'</b> (mốc gốc '+k.base.toLocaleString()+
+    ') · mua <b>'+k.ask.toLocaleString()+'</b> / bán <b>'+k.bid.toLocaleString()+
+    '</b> · <b>'+k.outstanding+'/'+k.maxShares+'</b> CP lưu hành · <b>'+k.holders+'</b> người đang gồng'+
+    (k.open?'':' · <b style="color:var(--red)">SÀN ĐANG ĐÓNG</b>');
+  document.getElementById('skRisk').innerHTML='Nếu <b>tất cả bán ngay</b>: bot trả <b>'+k.payNow.toLocaleString()+
+    '</b> Dogcoin. Trần thiệt hại với số CP đang lưu hành: <b style="color:var(--red)">'+k.worstCase.toLocaleString()+
+    '</b>. Trần tuyệt đối nếu bán hết '+k.maxShares+' CP: <b style="color:var(--red)">'+k.capWorst.toLocaleString()+
+    '</b> — đây là con số bạn phải chịu được.'+
+    (k.news?'<br>📰 Tin gần nhất: <b>'+(k.news.pct>0?'+':'')+k.news.pct+'%</b> — '+esc(k.news.text):'');
+  const b=document.getElementById('skOpenBtn');
+  if(b){b.textContent=k.open?'⏸ Tạm đóng sàn':'▶️ Mở lại sàn';b.className=k.open?'btn-red':'btn-green';}
+}
+function skSave(){
+  const o={volPct:parseFloat(document.getElementById('skVol').value),
+           spreadPct:parseFloat(document.getElementById('skSpread').value),
+           maxShares:parseInt(document.getElementById('skMaxShares').value),
+           maxPer:parseInt(document.getElementById('skMaxPer').value)};
+  if(!(o.volPct>0&&o.volPct<=15))return toast('Biến động phải trong 0–15%');
+  if(!(o.spreadPct>=0&&o.spreadPct<=20))return toast('Chênh mua–bán phải trong 0–20%');
+  if(!(o.maxShares>=10))return toast('Trần sàn phải từ 10 CP');
+  if(!(o.maxPer>=1))return toast('Trần mỗi người phải từ 1 CP');
+  api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+async function skToggle(){
+  const open=!(STATE&&STATE.stock&&STATE.stock.open);
+  if(!open&&!await uiConfirm('Tạm đóng sàn? Người chơi vẫn bán được, chỉ không mua thêm.','Đóng sàn','btn-red'))return;
+  api('/api/stock/cfg',{open}).then(()=>{toast(open?'▶️ Đã mở sàn':'⏸ Đã đóng sàn');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+async function skNews(sign){
+  let pct=Math.abs(parseFloat(document.getElementById('skNewsPct').value));
+  if(!(pct>0&&pct<=40))return toast('Biên độ phải trong 1–40%');
+  pct=pct*sign;
+  const k=STATE&&STATE.stock;
+  const warn=(sign>0&&k&&k.outstanding>0)?(' Bot sẽ phải trả thêm khoảng '+Math.round(k.payNow*pct/100).toLocaleString()+' Dogcoin cho '+k.holders+' người đang gồng.'):'';
+  if(!await uiConfirm('Thả tin '+(pct>0?'+':'')+pct+'% ngay bây giờ?'+warn,'Thả tin',sign>0?'btn-green':'btn-red'))return;
+  api('/api/stock/news',{pct,text:document.getElementById('skNewsTxt').value.trim()})
+    .then(j=>{toast('📰 '+(j.pct>0?'+':'')+j.pct+'%: '+j.from.toLocaleString()+' → '+j.to.toLocaleString());refresh();})
+    .catch(e=>toast('❌ '+e.message));
+}
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
@@ -1735,6 +1841,7 @@ async function refresh(){
   const wh=STATE.wheel;
   if(wh){document.getElementById('whInfo').innerHTML='Vé <b>'+Number(wh.ticket||0).toLocaleString()+'</b> · đang chờ <b>'+wh.waiting+'</b>/'+wh.minPlayers+' người';
   const wmi=document.getElementById('whMin');if(wmi&&!wmi.value&&document.activeElement!==wmi)wmi.value=wh.minPlayers;}
+  if(STATE.stock)skFill(STATE.stock);
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';

@@ -2246,6 +2246,262 @@ function wheelResetTurns() {
 //  Muốn dựng lại thì lục git history: blackjack.js / blackjackTable.js /
 //  blackjackPage.js / wsserver.js + khối wiring ở đây và webplay.js.)
 
+// ===== 📈 SÀN CỔ PHIẾU DOGCOIN (DOG) — CHỈ CHƠI TRÊN WEB (22/08) =====
+// Khác MỌI game khác của bot: các trò kia chốt xong là sạch sổ, còn cổ phiếu thì mỗi
+// người đang giữ là một khoản bot ĐANG NỢ họ, phình theo giá. Nên có 2 cái phanh:
+//   1. Giá bị KÉO VỀ MỐC GỐC (mean reversion) + chặn cứng [STOCK_MIN..STOCK_MAX]
+//      -> giá không chạy lên trời được, thiệt hại tối đa luôn có trần.
+//   2. Trần tổng CP lưu hành (cfg.maxShares) -> trần thiệt hại = maxShares × STOCK_MAX.
+// Lợi thế nhà cái DUY NHẤT là chênh mua–bán (spread): mua đắt 2%, bán rẻ 2%, tức mỗi
+// vòng người chơi mất ~4% dù giá đi đâu. Nói thẳng ở màn đặt mua, không giấu.
+const STOCK_BASE = 1000;             // mốc gốc — giá luôn bị kéo về đây
+const STOCK_TICK_MS = 30 * 1000;     // nhịp giá
+const STOCK_PULL = 0.04;             // lực kéo về mốc (càng xa càng kéo mạnh)
+const STOCK_MIN = 300, STOCK_MAX = 3000;   // chặn cứng 2 đầu
+const STOCK_TICK_CAP = 0.08;         // cầu dao: mỗi nhịp không quá ±8%
+const STOCK_HIST_N = 240;            // 2 giờ. CHẶN TRẦN NGAY TỪ ĐẦU — lịch sử giá sinh
+                                     // 2 dòng/phút, nhanh hơn mọi mảng khác trong bot
+                                     // (bài học _txDashHistory phình 1.348 ván = 57% db).
+const STOCK_LOG_N = 20;              // lệnh vừa khớp hiện trên web
+const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng + lịch sử)
+const STOCK_CFG_DEF = { vol: 0.015, spread: 0.02, maxShares: 500, maxPer: 80, open: true };
+
+function stockCfg() {
+    const c = dbCache._stockCfg && typeof dbCache._stockCfg === 'object' ? dbCache._stockCfg : {};
+    const num = (v, d, lo, hi) => {
+        const n = Number(v);
+        return Number.isFinite(n) && n >= lo && n <= hi ? n : d;
+    };
+    return {
+        vol: num(c.vol, STOCK_CFG_DEF.vol, 0.001, 0.15),
+        spread: num(c.spread, STOCK_CFG_DEF.spread, 0, 0.2),
+        maxShares: Math.floor(num(c.maxShares, STOCK_CFG_DEF.maxShares, 10, 100000)),
+        maxPer: Math.floor(num(c.maxPer, STOCK_CFG_DEF.maxPer, 1, 100000)),
+        open: c.open !== false,
+    };
+}
+function stockPrice() {
+    const p = Number(dbCache._stockPrice);
+    return Number.isFinite(p) && p >= STOCK_MIN && p <= STOCK_MAX ? p : STOCK_BASE;
+}
+// giá MUA (ask) đắt hơn, giá BÁN (bid) rẻ hơn — chênh này là lợi thế nhà cái
+function stockAsk() { return Math.round(stockPrice() * (1 + stockCfg().spread)); }
+function stockBid() { return Math.round(stockPrice() * (1 - stockCfg().spread)); }
+
+function stockHist() {
+    if (!Array.isArray(dbCache._stockHist)) dbCache._stockHist = [stockPrice()];
+    return dbCache._stockHist;
+}
+function stockPos() {
+    if (!dbCache._stockPos || typeof dbCache._stockPos !== 'object') dbCache._stockPos = {};
+    return dbCache._stockPos;
+}
+function stockShareCount() {   // tổng CP đang lưu hành = mức bot đang gánh
+    return Object.values(stockPos()).reduce((s, p) => s + (Number(p.shares) || 0), 0);
+}
+// nhiễu chuẩn xấp xỉ (tổng 6 số ngẫu nhiên) — đủ tốt, không cần Box-Muller
+function stockGauss() {
+    let s = 0;
+    for (let i = 0; i < 6; i++) s += Math.random();
+    return (s - 3) / 1.2247;
+}
+// Đẩy giá thêm MỘT nhịp. KHÔNG chạy bù khi bot vừa bật lại sau lúc chết: hàm này chỉ
+// được setInterval gọi, nên bot tắt 2 tiếng thì giá đứng nguyên 2 tiếng — người đang
+// gồng mở mắt ra không bị cháy vì những nhịp họ không có cơ hội phản ứng.
+function stockTick(forcePct) {
+    const cfg = stockCfg();
+    let p = stockPrice();
+    let move;
+    if (Number.isFinite(forcePct)) {
+        move = forcePct;   // tin tốt/tin xấu do admin thả — bỏ qua cầu dao
+    } else {
+        const pull = -STOCK_PULL * Math.log(p / STOCK_BASE);
+        move = pull + cfg.vol * stockGauss();
+        if (move > STOCK_TICK_CAP) move = STOCK_TICK_CAP;
+        if (move < -STOCK_TICK_CAP) move = -STOCK_TICK_CAP;
+    }
+    p = Math.round(Math.min(STOCK_MAX, Math.max(STOCK_MIN, p * (1 + move))));
+    dbCache._stockPrice = p;
+    const h = stockHist();
+    h.push(p);
+    while (h.length > STOCK_HIST_N) h.shift();
+    return p;
+}
+function stockLog(entry) {
+    if (!Array.isArray(dbCache._stockLog)) dbCache._stockLog = [];
+    dbCache._stockLog.unshift(entry);
+    while (dbCache._stockLog.length > STOCK_LOG_N) dbCache._stockLog.pop();
+}
+function stockClosed() {
+    if (!Array.isArray(dbCache._stockClosed)) dbCache._stockClosed = [];
+    return dbCache._stockClosed;
+}
+
+function stockState(userId) {
+    const cfg = stockCfg();
+    const me = getUserData(userId);
+    const pos = stockPos()[userId] || null;
+    const bid = stockBid(), price = stockPrice();
+    const hist = stockHist();
+    const shares = pos ? (Number(pos.shares) || 0) : 0;
+    const cost = pos ? (Number(pos.cost) || 0) : 0;
+    const pl = shares > 0 ? (shares * bid - cost) : 0;
+    const closed = stockClosed();
+    // Bảng vàng: gộp theo người từ các ván đã đóng (lãi/lỗ thực), + ai đang gồng lâu nhất
+    const byUser = {};
+    for (const c of closed) {
+        if (!byUser[c.userId]) byUser[c.userId] = { name: c.name, pl: 0, n: 0 };
+        byUser[c.userId].pl += Number(c.pl) || 0;
+        byUser[c.userId].n++;
+    }
+    const board = Object.entries(byUser)
+        .map(([uid, v]) => ({ name: v.name, pl: v.pl, n: v.n }))
+        .sort((a, b) => b.pl - a.pl);
+    const holders = Object.entries(stockPos())
+        .filter(([, p]) => (Number(p.shares) || 0) > 0)
+        .map(([uid, p]) => ({
+            name: (getUserData(uid).name || uid),
+            shares: p.shares,
+            since: p.openedAt || Date.now(),
+            mine: uid === userId,
+        }))
+        .sort((a, b) => a.since - b.since);
+    return {
+        open: cfg.open,
+        price, ask: stockAsk(), bid,
+        base: STOCK_BASE,
+        spreadPct: Math.round(cfg.spread * 1000) / 10,
+        tickMs: STOCK_TICK_MS,
+        nextTick: dbCache._stockNextTick || (Date.now() + STOCK_TICK_MS),
+        now: Date.now(),
+        hist: hist.slice(-120),          // 1 giờ cho đồ thị
+        outstanding: stockShareCount(),
+        maxShares: cfg.maxShares,
+        maxPer: cfg.maxPer,
+        balance: me.points || 0,
+        blocked: !!(debtStatus(userId) || {}).bad,   // nợ xấu thì cấm mua (vẫn cho bán)
+        pos: shares > 0 ? {
+            shares, cost,
+            avg: Math.round(cost / shares),
+            value: shares * bid,
+            pl,
+            plPct: Math.round(pl / cost * 1000) / 10,
+            openedAt: pos.openedAt || Date.now(),
+            peak: Number(pos.peak) || 0,
+        } : null,
+        log: (dbCache._stockLog || []).slice(0, 8),
+        board: board.slice(0, 5),
+        holders: holders.slice(0, 8),
+        mine: closed.filter(c => c.userId === userId).slice(0, 8),
+        mineTotal: closed.filter(c => c.userId === userId).reduce((s, c) => s + (Number(c.pl) || 0), 0),
+        news: dbCache._stockNews || null,
+    };
+}
+
+// MUA: nhận theo số Dogcoin muốn xuống (amount) HOẶC theo khối lượng CP (want).
+// Tiền trừ ngay + lưu database ngay (saveDbNow) — vị thế là tiền thật, không đợi vòng 10s.
+function stockBuy(userId, amount, want) {
+    const cfg = stockCfg();
+    if (!cfg.open) return { error: 'Sàn đang tạm đóng - chỉ bán được, chưa mua được' };
+    if ((debtStatus(userId) || {}).bad) return { error: 'Bạn đang bị gắn ⚠️ nợ xấu - trả nợ xong mới mua được cổ phiếu' };
+    const me = getUserData(userId);
+    const ask = stockAsk();
+    let shares = 0;
+    if (Number.isFinite(want) && want > 0) shares = Math.floor(want);
+    else if (Number.isFinite(amount) && amount > 0) shares = Math.floor(amount / ask);
+    if (shares < 1) return { error: `Không đủ mua 1 CP (giá mua đang ${ask.toLocaleString()})` };
+
+    const pos = stockPos()[userId] || { shares: 0, cost: 0, openedAt: Date.now(), peak: 0 };
+    if ((Number(pos.shares) || 0) + shares > cfg.maxPer) {
+        return { error: `Mỗi người giữ tối đa ${cfg.maxPer} CP - bạn đang có ${pos.shares || 0}` };
+    }
+    if (stockShareCount() + shares > cfg.maxShares) {
+        const left = cfg.maxShares - stockShareCount();
+        return { error: `Sàn chỉ còn ${Math.max(0, left)} CP để bán - mua ít hơn hoặc chờ người khác bán ra` };
+    }
+    const cost = shares * ask;
+    if ((me.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} Dogcoin, ví bạn có ${(me.points || 0).toLocaleString()}` };
+
+    updatePoints(userId, -cost);
+    pos.shares = (Number(pos.shares) || 0) + shares;
+    pos.cost = (Number(pos.cost) || 0) + cost;
+    if (!pos.openedAt) pos.openedAt = Date.now();
+    stockPos()[userId] = pos;
+    logDog('cophieu', userId, me.name || userId, -cost, `mua ${shares} CP DOG @ ${ask.toLocaleString()}`);
+    stockLog({ t: Date.now(), name: me.name || userId, side: 'mua', shares, price: ask });
+    writeLog('BET', `[CỔ PHIẾU] ${me.name || userId} MUA ${shares} CP @ ${ask.toLocaleString()} = ${cost.toLocaleString()}`);
+    saveDbNow();
+    return { ok: true, shares, price: ask, cost, state: stockState(userId) };
+}
+
+// BÁN: bán bao nhiêu CP cũng được (mặc định bán hết). Đóng hẳn vị thế thì ghi vào lịch sử.
+function stockSell(userId, want) {
+    const pos = stockPos()[userId];
+    const have = pos ? (Number(pos.shares) || 0) : 0;
+    if (have < 1) return { error: 'Bạn không giữ CP nào' };
+    let shares = Number.isFinite(want) && want > 0 ? Math.floor(want) : have;
+    if (shares > have) shares = have;
+
+    const me = getUserData(userId);
+    const bid = stockBid();
+    const proceeds = shares * bid;
+    const costPart = Math.round((Number(pos.cost) || 0) * shares / have);   // giá vốn phần bán
+    const pl = proceeds - costPart;
+
+    updatePoints(userId, proceeds);
+    pos.shares = have - shares;
+    pos.cost = Math.max(0, (Number(pos.cost) || 0) - costPart);
+    if (pos.shares < 1) delete stockPos()[userId];
+    else stockPos()[userId] = pos;
+
+    stockClosed().unshift({
+        t: Date.now(), userId, name: me.name || userId,
+        shares, avg: Math.round(costPart / shares), price: bid, pl,
+    });
+    while (stockClosed().length > STOCK_CLOSED_N) stockClosed().pop();
+    logDog('cophieu', userId, me.name || userId, proceeds, `bán ${shares} CP DOG @ ${bid.toLocaleString()} (${pl >= 0 ? '+' : ''}${pl.toLocaleString()})`);
+    stockLog({ t: Date.now(), name: me.name || userId, side: 'bán', shares, price: bid });
+    writeLog('RESULT', `[CỔ PHIẾU] ${me.name || userId} BÁN ${shares} CP @ ${bid.toLocaleString()} -> ${pl >= 0 ? 'lãi' : 'lỗ'} ${Math.abs(pl).toLocaleString()}`);
+    saveDbNow();
+    return { ok: true, shares, price: bid, proceeds, pl, state: stockState(userId) };
+}
+
+// Tin tốt/tin xấu do admin thả ở panel — giá bật/sụp NGAY một nhịp
+function stockNews(pct, text) {
+    const p0 = stockPrice();
+    const p1 = stockTick(pct / 100);
+    dbCache._stockNews = {
+        t: Date.now(), pct, from: p0, to: p1,
+        text: String(text || '').slice(0, 120) || (pct >= 0 ? 'Tin tốt bất ngờ' : 'Tin xấu bất ngờ'),
+    };
+    writeLog('ADMIN', `[CỔ PHIẾU] Thả tin ${pct > 0 ? '+' : ''}${pct}% : ${p0.toLocaleString()} -> ${p1.toLocaleString()}`);
+    saveDbNow();
+    return dbCache._stockNews;
+}
+// Cập nhật "đỉnh lãi từng gồng qua" của từng người — chạy mỗi nhịp giá
+function stockTouchPeaks() {
+    const bid = stockBid();
+    for (const [uid, p] of Object.entries(stockPos())) {
+        const shares = Number(p.shares) || 0;
+        if (shares < 1) continue;
+        const pl = shares * bid - (Number(p.cost) || 0);
+        if (pl > (Number(p.peak) || 0)) p.peak = pl;
+    }
+}
+function runStockLoop() {
+    if (!Number.isFinite(Number(dbCache._stockPrice))) dbCache._stockPrice = STOCK_BASE;
+    stockHist();
+    dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
+    setInterval(() => {
+        try {
+            stockTick();
+            stockTouchPeaks();
+            dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
+        } catch (e) { writeLog('SYSTEM', `[CỔ PHIẾU] Lỗi nhịp giá: ${e.message}`); }
+    }, STOCK_TICK_MS);
+    writeLog('SYSTEM', `[CỔ PHIẾU] Sàn DOG chạy - giá ${stockPrice().toLocaleString()}, nhịp ${STOCK_TICK_MS / 1000}s`);
+}
+
 // ===== BẢNG DÒ MÌN TRÊN DISCORD =====
 // Khác Big Small: dò mìn không có ván chung theo giờ, mỗi người chơi ván riêng trên web.
 // Nên bảng này chỉ là chỗ mời chơi + khoe 10 ván gần nhất, KHÔNG có nút đặt cược.
@@ -2560,6 +2816,7 @@ client.once('ready', async (c) => {
     // 💸 hoàn tiền cược ván dở (Big Small / Bầu Cua / Dò Mìn / Leo Thang) của phiên trước
     refundBootPendingBets();
     runStairsBoardLoop();
+    runStockLoop();   // 📈 sàn cổ phiếu DOG (chỉ chơi trên web)
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
     // Bảng 📊 THỐNG KÊ ĐÃ BỎ (19/08 theo yêu cầu chủ server) — bảng cũ còn treo thì gỡ.
     (async () => {
@@ -2598,6 +2855,12 @@ client.once('ready', async (c) => {
             },
             // 🎡 vòng quay may mắn nhóm (thay blackjack)
             wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin, spin1: wheelSpin1 },
+            // 📈 sàn cổ phiếu DOG — game thuần web, không có bảng Discord
+            stock: {
+                state: stockState,
+                buy: (uid, amount, want) => stockBuy(uid, amount, want),
+                sell: (uid, want) => stockSell(uid, want),
+            },
             // 📒 vay nợ: xem + trả ngay trên web (vay thì qua bảng Discord)
             debt: {
                 state: (uid) => debtStatus(uid),
@@ -2657,6 +2920,38 @@ client.once('ready', async (c) => {
                 saveDbNow();
                 // hạ số xuống ≤ số người đang chờ thì nút QUAY sáng ngay cho họ tự bấm
             },
+            // 📈 sàn cổ phiếu: xem mức bot đang gánh + chỉnh thông số + thả tin
+            getStock: () => {
+                const cfg = stockCfg();
+                const out = stockShareCount();
+                const bid = stockBid();
+                return {
+                    price: stockPrice(), ask: stockAsk(), bid, base: STOCK_BASE,
+                    outstanding: out, holders: Object.keys(stockPos()).length,
+                    payNow: out * bid,                 // tất cả bán ngay thì bot trả bấy nhiêu
+                    worstCase: out * STOCK_MAX,        // trần thiệt hại tuyệt đối
+                    capWorst: cfg.maxShares * STOCK_MAX,
+                    volPct: Math.round(cfg.vol * 1000) / 10,
+                    spreadPct: Math.round(cfg.spread * 1000) / 10,
+                    maxShares: cfg.maxShares, maxPer: cfg.maxPer, open: cfg.open,
+                    news: dbCache._stockNews || null,
+                };
+            },
+            setStockCfg: (o) => {
+                const cur = stockCfg();
+                dbCache._stockCfg = {
+                    vol: Number.isFinite(Number(o.volPct)) ? Number(o.volPct) / 100 : cur.vol,
+                    spread: Number.isFinite(Number(o.spreadPct)) ? Number(o.spreadPct) / 100 : cur.spread,
+                    maxShares: Number.isFinite(Number(o.maxShares)) ? Math.floor(Number(o.maxShares)) : cur.maxShares,
+                    maxPer: Number.isFinite(Number(o.maxPer)) ? Math.floor(Number(o.maxPer)) : cur.maxPer,
+                    open: o.open === undefined ? cur.open : !!o.open,
+                };
+                saveDbNow();
+                const c = stockCfg();
+                writeLog('ADMIN', `[CỔ PHIẾU] Đổi cấu hình: biến động ${c.vol * 100}%, chênh ${c.spread * 100}%, trần sàn ${c.maxShares}, trần/người ${c.maxPer}, ${c.open ? 'MỞ' : 'ĐÓNG'}`);
+                return c;
+            },
+            stockNews: (pct, text) => stockNews(Math.max(-40, Math.min(40, Number(pct) || 0)), text),
             // (Bảng thống kê 📊 đã bỏ 19/08 — panel không còn tab)
             // Bảng mời chơi Leo Thang
             getStairs: () => ({ on: !!stairsBoard.message, channelId: dbCache._stairsChannelId || '' }),

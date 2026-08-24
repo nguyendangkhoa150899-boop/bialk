@@ -216,6 +216,24 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, r);
                 }
 
+                // ===== 📈 SÀN CỔ PHIẾU DOG (logic + tiền ở index.js — ctx.stock) =====
+                // Mua nhận theo TIỀN (amount) hoặc theo KHỐI LƯỢNG (shares) — người chơi chọn.
+                if (ctx.stock && path === '/api/stock/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.stock.state(userId) });
+                }
+                if (ctx.stock && req.method === 'POST' && path === '/api/stock/buy') {
+                    const body = await readBody(req);
+                    const r = ctx.stock.buy(userId, Math.floor(Number(body.amount) || 0), Math.floor(Number(body.shares) || 0));
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, bought: r.shares, fill: r.price, cost: r.cost, ...r.state });
+                }
+                if (ctx.stock && req.method === 'POST' && path === '/api/stock/sell') {
+                    const body = await readBody(req);
+                    const r = ctx.stock.sell(userId, Math.floor(Number(body.shares) || 0));
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, sold: r.shares, fill: r.price, proceeds: r.proceeds, pl: r.pl, ...r.state });
+                }
+
                 // ===== 📒 VAY NỢ: xem + trả trên web (vay thì qua bảng Discord) =====
                 if (ctx.debt && path === '/api/debt/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.debt.state(userId) });
@@ -650,6 +668,29 @@ const PAGE = [
     // đủ người -> nút QUAY phát sáng nhấp nháy vàng cho cả bàn thấy mà bấm
     '#whGo.arm{background:linear-gradient(180deg,#ffd977,#e0a63f);color:#3d2c05;animation:whArm 1s ease-in-out infinite}',
     '@keyframes whArm{0%,100%{box-shadow:0 0 6px #f5c51877}50%{box-shadow:0 0 26px #f5c518ee;transform:scale(1.02)}}',
+    // ---- 📈 cổ phiếu ----
+    // Giá là thứ to nhất trang; đồ thị vẽ bằng SVG dựng từ mảng giá server gửi.
+    '#skHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}',
+    '#skPrice{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;font-variant-numeric:tabular-nums}',
+    '#skChart{width:100%;height:120px;display:block;margin-top:10px}',
+    '.skchip{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}',
+    '.skchip.g{background:#12351f;color:var(--green)}.skchip.r{background:#3a1414;color:var(--red)}',
+    '.skchip.y{background:#2a2110;color:var(--gold)}',
+    '.skpl{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:4px}',
+    '.skkv{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}',
+    '.skn{font-variant-numeric:tabular-nums;font-weight:700}',
+    '#skSeg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}',
+    '#skSeg button{padding:9px 4px;border-radius:9px;font-size:12.5px;font-weight:800;background:#12141a;border:1px solid var(--line);color:var(--muted)}',
+    '#skSeg button.on{background:#2a2110;border-color:var(--gold);color:var(--gold)}',
+    '#skQuick{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}',
+    '#skQuick button{padding:8px 0;border-radius:8px;font-size:11.5px;font-weight:800;background:#12141a;border:1px solid var(--line);color:var(--muted)}',
+    '#skPart{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}',
+    '#skPart button{padding:9px 0;border-radius:9px;font-size:12px;font-weight:700;background:#232735;border:0;color:var(--tx)}',
+    '.skrow{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px;border-bottom:1px solid var(--line)}',
+    '.skrow:last-child{border-bottom:0}',
+    '#skBuyBtn{background:linear-gradient(180deg,#48e090,#25a663);color:#05240f}',
+    '#skSellBtn{background:linear-gradient(180deg,#ff8a8a,#e04a4a);color:#2a0606}',
+    '#skNews{background:#241d0e;border:1px solid #4a3a18;border-radius:12px;padding:10px;margin-top:8px;font-size:12.5px}',
     // ---- 📅 điểm danh ----
     '#dChips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}',
     '.dchip{background:#12141a;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}',
@@ -709,6 +750,7 @@ const PAGE = [
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
     '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
     '<button id="navDaily" onclick="go(\'daily\')">📅 Điểm danh</button>',
+    '<button id="navStock" onclick="go(\'stock\')">📈 Cổ phiếu</button>',
     '</div>',
 
     // ================= TRANG BIG SMALL =================
@@ -870,6 +912,63 @@ const PAGE = [
     '<div class="muted" style="font-size:12px;margin-top:6px">Dính ⚠️ nợ xấu thì: không chuyển vào game, không chuyển tiền cho người khác, 50% tiền điểm danh/nghiện/chuỗi tự trừ vào nợ. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
     '</div>',
     '</div>', // hết #pageDaily
+
+    // ================= TRANG 📈 CỔ PHIẾU DOG =================
+    // Sàn thuần web: giá tự nhảy mỗi 30s, mua bằng Dogcoin hoặc theo khối lượng,
+    // giữ bao lâu cũng được (gồng), bán lúc nào cũng được. Không có bảng Discord.
+    '<div id="pageStock" class="hidden">',
+    '<div class="card">',
+    '<div id="skHead">',
+    '<div><div class="muted" style="font-size:12px">CỔ PHIẾU DOGCOIN · DOG</div>',
+    '<div id="skPrice">-</div></div>',
+    '<div style="text-align:right"><span id="skChg" class="skchip y">-</span>',
+    '<div class="muted" style="font-size:12px;margin-top:5px">nhịp sau <b id="skNext">-</b></div></div>',
+    '</div>',
+    '<svg id="skChart" viewBox="0 0 300 120" preserveAspectRatio="none"></svg>',
+    '<div class="muted" style="display:flex;justify-content:space-between;font-size:11.5px">',
+    '<span>1 giờ gần nhất</span><span>mốc gốc <b id="skBase">1.000</b></span></div>',
+    '<div id="skNews" style="display:none"></div>',
+    '</div>',
+
+    '<div id="skPosCard" class="card" style="display:none">',
+    '<div class="row"><span class="muted" style="font-size:12px">VỊ THẾ CỦA BẠN</span><span id="skPosChip" class="skchip y">-</span></div>',
+    '<div id="skPl" class="skpl">-</div>',
+    '<div class="muted" id="skPosLine" style="font-size:12.5px">-</div>',
+    '<div style="height:1px;background:var(--line);margin:9px 0"></div>',
+    '<div class="skkv"><span class="muted">Bán hết bây giờ nhận</span><b class="skn" id="skPosVal">-</b></div>',
+    '<div class="skkv"><span class="muted">Đỉnh lãi từng gồng qua</span><b class="skn" id="skPeak">-</b></div>',
+    '<button class="btn-full" id="skSellBtn" onclick="skSell(0)">BÁN HẾT</button>',
+    '<div id="skPart"><button onclick="skPart(4)">Bán 1/4</button><button onclick="skPart(2)">Bán 1/2</button><button onclick="skPart(1.333)">Bán 3/4</button></div>',
+    '</div>',
+
+    '<div class="card">',
+    '<div class="row"><span class="muted" style="font-size:12px">MUA DOG</span><span class="muted" style="font-size:12px">giá mua <b id="skAsk">-</b></span></div>',
+    '<div id="skSeg"><button id="skModeM" class="on" onclick="skMode(1)">Theo Dogcoin</button><button id="skModeS" onclick="skMode(0)">Theo khối lượng</button></div>',
+    '<input id="skInp" type="number" min="1" placeholder="Số Dogcoin muốn xuống" oninput="skPrev()">',
+    '<div id="skQuick"><button onclick="skPct(25)">25%</button><button onclick="skPct(50)">50%</button><button onclick="skPct(75)">75%</button><button onclick="skPct(100)">TẤT TAY</button></div>',
+    '<div style="height:1px;background:var(--line);margin:10px 0"></div>',
+    '<div class="skkv"><span class="muted">Khối lượng nhận</span><b class="skn" id="skPvS">0 CP</b></div>',
+    '<div class="skkv"><span class="muted">Trừ ví</span><b class="skn" id="skPvC">0</b></div>',
+    '<div class="skkv"><span class="muted">Hoà vốn ở giá</span><b class="skn" id="skPvE">-</b></div>',
+    '<div class="muted" id="skPvNote" style="font-size:11.5px;margin-top:4px"></div>',
+    '<button class="btn-full" id="skBuyBtn" onclick="skBuy()">XÁC NHẬN MUA</button>',
+    '<div class="muted" style="font-size:11.5px;margin-top:7px">Chênh mua–bán <b id="skSpr">2</b>% mỗi chiều là phí của sàn - giá phải nhích hơn mức hoà vốn bạn mới có lãi. Sàn còn <b id="skLeft">-</b> CP, mỗi người giữ tối đa <b id="skPer">-</b> CP.</div>',
+    '</div>',
+
+    '<div class="card"><h2 style="margin:0 0 8px">🏆 Bảng vàng gồng</h2>',
+    '<div id="skBoard" class="muted" style="font-size:12.5px">Chưa có ai chốt ván nào.</div>',
+    '<div style="height:1px;background:var(--line);margin:9px 0"></div>',
+    '<div class="muted" style="font-size:12px;margin-bottom:4px">ĐANG GỒNG</div>',
+    '<div id="skHolders" class="muted" style="font-size:12.5px">Chưa ai giữ CP.</div>',
+    '</div>',
+
+    '<div class="card"><h2 style="margin:0 0 8px">📜 Ván của bạn</h2>',
+    '<div id="skMine" class="muted" style="font-size:12.5px">Chưa có ván nào.</div>',
+    '<div style="height:1px;background:var(--line);margin:9px 0"></div>',
+    '<div class="muted" style="font-size:12px;margin-bottom:4px">LỆNH VỪA KHỚP</div>',
+    '<div id="skLog" class="muted" style="font-size:12px">Chưa có lệnh nào.</div>',
+    '</div>',
+    '</div>', // hết #pageStock
 
     // Chat nằm NGOÀI cả ba trang -> mọi game dùng chung một phòng, đổi tab vẫn thấy
     // nguyên cuộc trò chuyện. Đặt TRÊN bảng lịch sử để khỏi phải cuộn xa mới tới ô chat.
@@ -1127,14 +1226,16 @@ const PAGE = [
     '$("pageStair").classList.toggle("hidden",p!=="stair");',
     '$("pageWheel").classList.toggle("hidden",p!=="wheel");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
+    '$("pageStock").classList.toggle("hidden",p!=="stock");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Big Small
     '$("navTx").classList.toggle("on",p==="tx");',
     '$("navMine").classList.toggle("on",p==="mine");',
     '$("navStair").classList.toggle("on",p==="stair");',
     '$("navWheel").classList.toggle("on",p==="wheel");',
     '$("navDaily").classList.toggle("on",p==="daily");',
+    '$("navStock").classList.toggle("on",p==="stock");',
     'localStorage.setItem("play_page",p);',
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily")dailySync();else if(p==="wheel")wheelSync();else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily")dailySync();else if(p==="wheel")wheelSync();else if(p==="stock")skSync();else refresh()}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
     'function mMul(k){if(MG)return;var b=Math.floor(mNum("mBet")*k);if(b<MINBET)b=MINBET;if(b>mCap())b=mCap();$("mBet").value=b;mBand()}',
@@ -1650,6 +1751,107 @@ const PAGE = [
     'setInterval(function(){if(TOKEN&&!WANIM&&localStorage.getItem("play_page")==="wheel")wheelSync()},2000);',
     'setInterval(function(){if(localStorage.getItem("play_page")==="wheel")whBtn()},1000);',
     '',
+    // ===== 📈 SÀN CỔ PHIẾU DOG =====
+    // SKM=1 nhập theo tiền, 0 nhập theo khối lượng. SOFF bù lệch đồng hồ như bên nghiện.
+    'var SKS=null,SKM=1,SOFF=0,SKBUSY=false;',
+    'function skSync(){api("/api/stock/state").then(function(j){SKS=j;SOFF=j.now-Date.now();setBal(j.balance);skRender()}).catch(function(e){toast("❌ "+e.message)})}',
+    'function skMode(m){SKM=m;$("skModeM").classList.toggle("on",m===1);$("skModeS").classList.toggle("on",m===0);',
+    '$("skInp").placeholder=m?"Số Dogcoin muốn xuống":"Số CP muốn mua";$("skInp").value="";skPrev()}',
+    'function skPct(p){if(!SKS)return;var v=Math.floor(SKS.balance*p/100);',
+    'if(!SKM)v=Math.floor(v/SKS.ask);$("skInp").value=v>0?v:"";skPrev()}',
+    'function skPart(d){if(!SKS||!SKS.pos)return;var n=Math.floor(SKS.pos.shares/d);if(n<1)n=1;skSell(n)}',
+    // Xem trước: quy đổi ngay tại giá mua, nói thẳng mức hoà vốn TRƯỚC khi bấm
+    'function skPrev(){if(!SKS)return;var raw=parseInt($("skInp").value)||0;',
+    'var sh=SKM?Math.floor(raw/SKS.ask):raw;if(sh<0)sh=0;',
+    'var cost=sh*SKS.ask;',
+    '$("skPvS").textContent=sh+" CP";$("skPvC").textContent=vnd(cost);',
+    // hoà vốn = giá mà giá BÁN phủ đúng tiền đã bỏ ra
+    'var even=SKS.spreadPct<100?Math.round(SKS.ask/(1-SKS.spreadPct/100)):0;',
+    '$("skPvE").textContent=sh>0?vnd(even):"-";',
+    'var note="";',
+    'if(sh>0&&SKM){var du=raw-cost;if(du>0)note="Dư "+vnd(du)+" không đủ 1 CP nên giữ lại trong ví. ";}',
+    'if(sh>0)note+="Giá phải nhích thêm "+(Math.round((even/SKS.price-1)*1000)/10)+"% bạn mới bắt đầu có lãi.";',
+    '$("skPvNote").textContent=note;',
+    'var b=$("skBuyBtn");b.disabled=SKBUSY||sh<1||cost>SKS.balance||!SKS.open||SKS.blocked;',
+    'b.textContent=!SKS.open?"SÀN ĐANG TẠM ĐÓNG":SKS.blocked?"ĐANG NỢ XẤU - KHÔNG MUA ĐƯỢC":sh<1?"XÁC NHẬN MUA":cost>SKS.balance?"KHÔNG ĐỦ DOGCOIN":("XÁC NHẬN MUA "+sh+" CP")}',
+    'function skBuy(){if(!SKS||SKBUSY)return;var raw=parseInt($("skInp").value)||0;if(raw<1)return toast("Nhập số đã");',
+    'SKBUSY=true;skPrev();var body=SKM?{amount:raw}:{shares:raw};',
+    'api("/api/stock/buy",body).then(function(j){SKBUSY=false;SKS=j;setBal(j.balance);$("skInp").value="";',
+    'toast("📈 Mua "+j.bought+" CP @ "+vnd(j.fill));skRender()}).catch(function(e){SKBUSY=false;toast("❌ "+e.message);skSync()})}',
+    'function skSell(n){if(!SKS||!SKS.pos||SKBUSY)return;SKBUSY=true;',
+    'api("/api/stock/sell",{shares:n||0}).then(function(j){SKBUSY=false;SKS=j;setBal(j.balance);',
+    'toast((j.pl>=0?"💰 Chốt lãi +":"💥 Cắt lỗ ")+vnd(j.pl)+" ("+j.sold+" CP @ "+vnd(j.fill)+")");',
+    'if(j.pl>0)celebrate();skRender()}).catch(function(e){SKBUSY=false;toast("❌ "+e.message);skSync()})}',
+    // Đồ thị: đường + vùng tô + điểm cuối nhấn, thêm đường kẻ mốc gốc cho dễ đọc
+    'function skChart(){var el=$("skChart");if(!el||!SKS)return;var h=SKS.hist||[];',
+    'if(h.length<2){el.innerHTML="";return}',
+    'var lo=Math.min.apply(null,h),hi=Math.max.apply(null,h);',
+    'if(Math.min(lo,SKS.base)<lo)lo=Math.min(lo,SKS.base);if(Math.max(hi,SKS.base)>hi)hi=Math.max(hi,SKS.base);',
+    'var pad=(hi-lo)*0.15||20;lo-=pad;hi+=pad;',
+    'var X=function(i){return (i/(h.length-1)*300).toFixed(1)};',
+    'var Y=function(v){return (112-(v-lo)/(hi-lo)*104).toFixed(1)};',
+    'var up=h[h.length-1]>=h[0],col=up?"#3ddc84":"#ff5d5d";',
+    'var d="M"+X(0)+" "+Y(h[0]);for(var i=1;i<h.length;i++)d+=" L"+X(i)+" "+Y(h[i]);',
+    'var g="<defs><linearGradient id=\\"skg\\" x1=\\"0\\" y1=\\"0\\" x2=\\"0\\" y2=\\"1\\">";',
+    'g+="<stop offset=\\"0\\" stop-color=\\""+col+"\\" stop-opacity=\\".32\\"/>";',
+    'g+="<stop offset=\\"1\\" stop-color=\\""+col+"\\" stop-opacity=\\"0\\"/></linearGradient></defs>";',
+    'var by=Y(SKS.base);',
+    'g+=\'<line x1="0" y1="\'+by+\'" x2="300" y2="\'+by+\'" stroke="#2a2e3b" stroke-width="1" stroke-dasharray="4 4"/>\';',
+    'g+=\'<path d="\'+d+\' L300 120 L0 120 Z" fill="url(#skg)"/>\';',
+    'g+=\'<path d="\'+d+\'" fill="none" stroke="\'+col+\'" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\';',
+    'g+=\'<circle cx="\'+X(h.length-1)+\'" cy="\'+Y(h[h.length-1])+\'" r="3" fill="\'+col+\'"/>\';',
+    'el.innerHTML=g}',
+    'function skRender(){if(!SKS)return;',
+    '$("skPrice").textContent=vnd(SKS.price);',
+    'var pc=Math.round((SKS.price/SKS.base-1)*1000)/10;',
+    'var chip=$("skChg");chip.textContent=(pc>=0?"▲ +":"▼ ")+pc+"% so mốc gốc";',
+    'chip.className="skchip "+(pc>0?"g":pc<0?"r":"y");',
+    '$("skPrice").style.color=pc>0?"var(--green)":pc<0?"var(--red)":"var(--tx)";',
+    '$("skBase").textContent=vnd(SKS.base);$("skAsk").textContent=vnd(SKS.ask);',
+    '$("skSpr").textContent=SKS.spreadPct;$("skPer").textContent=SKS.maxPer;',
+    '$("skLeft").textContent=vnd(Math.max(0,SKS.maxShares-SKS.outstanding));',
+    'skChart();',
+    'var nw=SKS.news,nb=$("skNews");',
+    'if(nw&&Date.now()-nw.t<30*60000){nb.style.display="block";',
+    'nb.innerHTML=(nw.pct>=0?"📈 <b style=\\"color:var(--green)\\">TIN TỐT":"📉 <b style=\\"color:var(--red)\\">TIN XẤU")+" "+(nw.pct>0?"+":"")+nw.pct+"%</b> - "+esc(nw.text)+" ("+vnd(nw.from)+" → "+vnd(nw.to)+")"}',
+    'else nb.style.display="none";',
+    'var p=SKS.pos,pc2=$("skPosCard");',
+    'if(p){pc2.style.display="block";',
+    'var win=p.pl>=0;',
+    '$("skPl").textContent=(win?"+":"")+vnd(p.pl);',
+    '$("skPl").style.color=win?"var(--green)":"var(--red)";',
+    'pc2.style.borderColor=win?"#2f6b48":"#6b2f2f";',
+    'var mins=Math.floor((Date.now()+SOFF-p.openedAt)/60000);',
+    'var dur=mins<60?(mins+" phút"):(Math.floor(mins/60)+" giờ "+(mins%60));',
+    'var ch=$("skPosChip");ch.textContent=(win?"ĐANG GỒNG LÃI ":"GỒNG LỖ ")+dur;',
+    'ch.className="skchip "+(win?"g":"r");',
+    '$("skPosLine").innerHTML=p.shares+" CP · vốn <b>"+vnd(p.avg)+"</b> → nay <b>"+vnd(SKS.bid)+"</b> · <b style=\\"color:"+(win?"var(--green)":"var(--red)")+"\\">"+(win?"+":"")+p.plPct+"%</b>";',
+    '$("skPosVal").textContent=vnd(p.value);',
+    '$("skPeak").textContent=p.peak>0?("+"+vnd(p.peak)):"chưa từng có lãi";',
+    '$("skSellBtn").textContent=(win?"CHỐT LÃI - BÁN HẾT ":"CẮT LỖ - BÁN HẾT ")+p.shares+" CP → "+vnd(p.value);',
+    '$("skSellBtn").disabled=SKBUSY}',
+    'else pc2.style.display="none";',
+    'var bd=SKS.board||[];',
+    '$("skBoard").innerHTML=bd.length?bd.map(function(b,i){var w=b.pl>=0;',
+    'return \'<div class="skrow"><span><b>\'+(i+1)+\'</b> \'+esc(b.name)+\' <span class="muted">\'+b.n+\' ván</span></span><b style="color:\'+(w?"var(--green)":"var(--red)")+\'">\'+(w?"+":"")+vnd(b.pl)+\'</b></div>\'}).join(""):"Chưa có ai chốt ván nào.";',
+    'var hd=SKS.holders||[];',
+    '$("skHolders").innerHTML=hd.length?hd.map(function(x){',
+    'var m=Math.floor((Date.now()+SOFF-x.since)/60000);var d2=m<60?(m+"p"):(Math.floor(m/60)+"g"+(m%60));',
+    'return \'<div class="skrow"><span>\'+(x.mine?"<b>":"")+esc(x.name)+(x.mine?"</b>":"")+\' <span class="muted">gồng \'+d2+\'</span></span><b>\'+x.shares+\' CP</b></div>\'}).join(""):"Chưa ai giữ CP.";',
+    'var mn=SKS.mine||[];',
+    '$("skMine").innerHTML=mn.length?(mn.map(function(c){var w=c.pl>=0;',
+    'return \'<div class="skrow"><span>\'+c.shares+\' CP · \'+vnd(c.avg)+\' → \'+vnd(c.price)+\'</span><b style="color:\'+(w?"var(--green)":"var(--red)")+\'">\'+(w?"+":"")+vnd(c.pl)+\'</b></div>\'}).join("")',
+    '+\'<div class="skrow" style="border-bottom:0"><span><b>Tổng \'+mn.length+\' ván</b></span><b style="color:\'+(SKS.mineTotal>=0?"var(--green)":"var(--red)")+\'">\'+(SKS.mineTotal>=0?"+":"")+vnd(SKS.mineTotal)+\'</b></div>\'):"Chưa có ván nào.";',
+    'var lg=SKS.log||[];',
+    '$("skLog").innerHTML=lg.length?lg.map(function(l){var b=l.side==="mua";',
+    'return \'<div class="skrow"><span>\'+esc(l.name)+\' <span style="color:\'+(b?"var(--green)":"var(--red)")+\'">\'+l.side+\' \'+l.shares+\' CP</span></span><span class="muted">\'+vnd(l.price)+\'</span></div>\'}).join(""):"Chưa có lệnh nào.";',
+    'skPrev()}',
+    // đếm ngược tới nhịp giá kế + tự nạp lại đúng lúc giá nhảy
+    'setInterval(function(){if(localStorage.getItem("play_page")!=="stock"||!SKS)return;',
+    'var left=Math.ceil((SKS.nextTick-(Date.now()+SOFF))/1000);',
+    'if(left<0)left=0;$("skNext").textContent=left+"s";',
+    'if(left<=0&&!SKBUSY)skSync()},1000);',
+    'setInterval(function(){if(TOKEN&&!SKBUSY&&localStorage.getItem("play_page")==="stock")skSync()},15000);',
     // ===== 📅 ĐIỂM DANH + 💉 NGHIỆN =====
     // DOFF = lệch giờ máy người chơi so với server — đồng hồ đếm ngược nghiện chạy
     // theo giờ SERVER, chỉnh đồng hồ máy không ăn gian được.
