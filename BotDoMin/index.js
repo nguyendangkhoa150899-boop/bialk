@@ -2526,12 +2526,26 @@ function stockOpen(userId, side, amount, want, lev) {
         return { error: `Bạn đang giữ lệnh ${pos.side === 'short' ? 'BÁN' : 'MUA'} - đóng lệnh đó trước rồi mới đổi chiều` };
     }
     pos.side = short ? 'short' : 'long';
-    if ((Number(pos.shares) || 0) + shares > cfg.maxPer) {
-        return { error: `Mỗi người giữ tối đa ${cfg.maxPer} CP - bạn đang có ${pos.shares || 0}` };
+    // Trần tính bằng CP (khối lượng), mà đòn bẩy làm CP phình lên rất nhanh: 10.000 vốn
+    // ở x20 đã là ~199 CP. Nên báo lỗi phải nói THẲNG số vốn tối đa dùng được ở đòn bẩy
+    // đang chọn, chứ không chỉ nói "tối đa 80 CP, bạn đang có 0" (chủ server đã dính).
+    const held = Number(pos.shares) || 0;
+    const capMoney = (capShares) => Math.max(0, Math.floor(capShares * entry / L));
+    if (held + shares > cfg.maxPer) {
+        const room = cfg.maxPer - held;
+        if (room < 1) return { error: `Bạn đã giữ kịch trần ${cfg.maxPer} CP - đóng bớt lệnh rồi mới vào thêm được` };
+        return {
+            error: `Lệnh này cần ${shares} CP, quá trần ${cfg.maxPer} CP/người${held ? ` (đang giữ ${held})` : ''}. `
+                + `Ở đòn bẩy x${L} thì vốn tối đa là ${capMoney(room).toLocaleString()} Dogcoin - hạ vốn hoặc hạ đòn bẩy.`,
+        };
     }
-    if (stockShareCount() + shares > cfg.maxShares) {
-        const left = cfg.maxShares - stockShareCount();
-        return { error: `Sàn chỉ còn ${Math.max(0, left)} CP - vào ít hơn hoặc chờ người khác đóng lệnh` };
+    const leftSan = cfg.maxShares - stockShareCount();
+    if (shares > leftSan) {
+        if (leftSan < 1) return { error: 'Sàn đã kịch trần khối lượng - chờ người khác đóng lệnh' };
+        return {
+            error: `Sàn chỉ còn ${leftSan} CP. Ở đòn bẩy x${L} thì vốn tối đa là `
+                + `${capMoney(leftSan).toLocaleString()} Dogcoin - hạ vốn hoặc hạ đòn bẩy.`,
+        };
     }
     const basis = shares * entry;                 // giá trị lệnh (dùng tính lãi/lỗ)
     const margin = Math.max(1, Math.round(basis / L));   // VỐN trừ khỏi ví = lỗ tối đa
