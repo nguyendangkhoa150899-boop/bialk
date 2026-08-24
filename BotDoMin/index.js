@@ -2265,6 +2265,9 @@ const STOCK_HIST_N = 240;            // 2 giờ. CHẶN TRẦN NGAY TỪ ĐẦU 
 const STOCK_LOG_N = 20;              // lệnh vừa khớp hiện trên web
 const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng + lịch sử)
 const STOCK_CFG_DEF = { vol: 0.015, spread: 0.02, maxShares: 500, maxPer: 80, open: true };
+// Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
+// bên trong vẫn quy ra CP để mọi phép tính tiền không đổi. 1 lot = 10 CP.
+const STOCK_LOT = 10;
 
 function stockCfg() {
     const c = dbCache._stockCfg && typeof dbCache._stockCfg === 'object' ? dbCache._stockCfg : {};
@@ -2288,9 +2291,15 @@ function stockPrice() {
 function stockAsk() { return Math.round(stockPrice() * (1 + stockCfg().spread)); }
 function stockBid() { return Math.round(stockPrice() * (1 - stockCfg().spread)); }
 
-function stockHist() {
-    if (!Array.isArray(dbCache._stockHist)) dbCache._stockHist = [stockPrice()];
-    return dbCache._stockHist;
+// Nến thay cho mảng giá trơn (22/08, theo ảnh MT4 chủ server gửi): mỗi nhịp 30s là
+// MỘT cây nến {o,h,l,c}. Nến xanh = đóng cao hơn mở (giá lên), đỏ = ngược lại.
+function stockCandles() {
+    if (!Array.isArray(dbCache._stockCandles)) {
+        const p = stockPrice();
+        dbCache._stockCandles = [{ o: p, h: p, l: p, c: p }];
+        delete dbCache._stockHist;   // bỏ mảng giá trơn đời đầu
+    }
+    return dbCache._stockCandles;
 }
 function stockPos() {
     if (!dbCache._stockPos || typeof dbCache._stockPos !== 'object') dbCache._stockPos = {};
@@ -2310,21 +2319,31 @@ function stockGauss() {
 // gồng mở mắt ra không bị cháy vì những nhịp họ không có cơ hội phản ứng.
 function stockTick(forcePct) {
     const cfg = stockCfg();
-    let p = stockPrice();
-    let move;
+    const open = stockPrice();
+    let p = open, hi = open, lo = open;
+    const clamp = (v) => Math.min(STOCK_MAX, Math.max(STOCK_MIN, v));
     if (Number.isFinite(forcePct)) {
-        move = forcePct;   // tin tốt/tin xấu do admin thả — bỏ qua cầu dao
+        p = clamp(p * (1 + forcePct));      // tin admin thả: nhảy thẳng, bỏ cầu dao
+        hi = Math.max(hi, p); lo = Math.min(lo, p);
     } else {
-        const pull = -STOCK_PULL * Math.log(p / STOCK_BASE);
-        move = pull + cfg.vol * stockGauss();
-        if (move > STOCK_TICK_CAP) move = STOCK_TICK_CAP;
-        if (move < -STOCK_TICK_CAP) move = -STOCK_TICK_CAP;
+        // 4 bước nhỏ trong một nhịp -> có bóng nến trên/dưới như bàn giao dịch thật.
+        // vol chia cho căn(4) để tổng biến động cả nhịp vẫn đúng như cấu hình.
+        const pull = -STOCK_PULL * Math.log(open / STOCK_BASE) / 4;
+        const sub = cfg.vol / 2;
+        for (let i = 0; i < 4; i++) {
+            let m = pull + sub * stockGauss();
+            if (m > STOCK_TICK_CAP) m = STOCK_TICK_CAP;
+            if (m < -STOCK_TICK_CAP) m = -STOCK_TICK_CAP;
+            p = clamp(p * (1 + m));
+            if (p > hi) hi = p;
+            if (p < lo) lo = p;
+        }
     }
-    p = Math.round(Math.min(STOCK_MAX, Math.max(STOCK_MIN, p * (1 + move))));
+    p = Math.round(p);
     dbCache._stockPrice = p;
-    const h = stockHist();
-    h.push(p);
-    while (h.length > STOCK_HIST_N) h.shift();
+    const cs = stockCandles();
+    cs.push({ o: Math.round(open), h: Math.round(hi), l: Math.round(lo), c: p });
+    while (cs.length > STOCK_HIST_N) cs.shift();
     return p;
 }
 function stockLog(entry) {
@@ -2337,15 +2356,24 @@ function stockClosed() {
     return dbCache._stockClosed;
 }
 
+// Lãi/lỗ tạm tính của một vị thế — DÙNG CHUNG mọi nơi để không bao giờ lệch nhau.
+//   MUA (long) : ăn khi giá LÊN   -> lãi = bán ra bây giờ (shares × bid) − tiền đã bỏ
+//   BÁN (short): ăn khi giá XUỐNG -> lãi = tiền đã cọc − mua lại bây giờ (shares × ask)
+// Cả hai chiều đều bị trừ tiền đúng bằng "invested" lúc mở, nên vốn đối xứng.
+function stockPL(pos) {
+    const sh = Number(pos && pos.shares) || 0;
+    if (sh < 1) return 0;
+    const inv = Number(pos.cost) || 0;
+    return pos.side === 'short' ? (inv - sh * stockAsk()) : (sh * stockBid() - inv);
+}
 function stockState(userId) {
     const cfg = stockCfg();
     const me = getUserData(userId);
     const pos = stockPos()[userId] || null;
     const bid = stockBid(), price = stockPrice();
-    const hist = stockHist();
     const shares = pos ? (Number(pos.shares) || 0) : 0;
     const cost = pos ? (Number(pos.cost) || 0) : 0;
-    const pl = shares > 0 ? (shares * bid - cost) : 0;
+    const pl = stockPL(pos);
     const closed = stockClosed();
     // Bảng vàng: gộp theo người từ các ván đã đóng (lãi/lỗ thực), + ai đang gồng lâu nhất
     const byUser = {};
@@ -2372,22 +2400,27 @@ function stockState(userId) {
         base: STOCK_BASE,
         spreadPct: Math.round(cfg.spread * 1000) / 10,
         tickMs: STOCK_TICK_MS,
+        lotSize: STOCK_LOT,
         nextTick: dbCache._stockNextTick || (Date.now() + STOCK_TICK_MS),
         now: Date.now(),
-        hist: hist.slice(-120),          // 1 giờ cho đồ thị
+        candles: stockCandles().slice(-60),   // 30 phút nến cho đồ thị
         outstanding: stockShareCount(),
         maxShares: cfg.maxShares,
         maxPer: cfg.maxPer,
         balance: me.points || 0,
         blocked: !!(debtStatus(userId) || {}).bad,   // nợ xấu thì cấm mua (vẫn cho bán)
         pos: shares > 0 ? {
+            side: pos.side === 'short' ? 'short' : 'long',
             shares, cost,
             avg: Math.round(cost / shares),
-            value: shares * bid,
+            // đóng lệnh bây giờ nhận về bao nhiêu (short: cọc + lãi/lỗ)
+            value: pos.side === 'short' ? Math.max(0, cost + pl) : shares * bid,
             pl,
             plPct: Math.round(pl / cost * 1000) / 10,
             openedAt: pos.openedAt || Date.now(),
             peak: Number(pos.peak) || 0,
+            // short cháy khi lỗ ăn hết cọc, tức giá mua lại gấp đôi giá vào
+            burnAt: pos.side === 'short' ? Math.round(cost / shares * 2 / (1 + cfg.spread)) : 0,
         } : null,
         log: (dbCache._stockLog || []).slice(0, 8),
         board: board.slice(0, 5),
@@ -2400,70 +2433,101 @@ function stockState(userId) {
 
 // MUA: nhận theo số Dogcoin muốn xuống (amount) HOẶC theo khối lượng CP (want).
 // Tiền trừ ngay + lưu database ngay (saveDbNow) — vị thế là tiền thật, không đợi vòng 10s.
-function stockBuy(userId, amount, want) {
+// MỞ LỆNH — hai chiều như bàn giao dịch thật (22/08 theo yêu cầu chủ server):
+//   side='long'  (MUA) : ăn khi giá LÊN.  Vào ở giá mua (ask), tiền bỏ ra = shares × ask
+//   side='short' (BÁN) : ăn khi giá XUỐNG. Vào ở giá bán (bid), CỌC = shares × bid
+// Chiều BÁN phải cọc bằng đúng giá trị lệnh vì lỗ của nó là giá đi LÊN — cọc chính là
+// mức lỗ tối đa, và lệnh tự CHÁY khi lỗ ăn hết cọc (giá mua lại gấp đôi giá vào).
+// KHÔNG cho giữ 2 chiều cùng lúc: muốn đổi chiều thì đóng lệnh cũ trước.
+function stockOpen(userId, side, amount, want) {
     const cfg = stockCfg();
-    if (!cfg.open) return { error: 'Sàn đang tạm đóng - chỉ bán được, chưa mua được' };
-    if ((debtStatus(userId) || {}).bad) return { error: 'Bạn đang bị gắn ⚠️ nợ xấu - trả nợ xong mới mua được cổ phiếu' };
+    const short = side === 'short';
+    if (!cfg.open) return { error: 'Sàn đang tạm đóng - chỉ đóng lệnh được, chưa mở lệnh mới' };
+    if ((debtStatus(userId) || {}).bad) return { error: 'Bạn đang bị gắn ⚠️ nợ xấu - trả nợ xong mới vào lệnh được' };
     const me = getUserData(userId);
-    const ask = stockAsk();
+    const entry = short ? stockBid() : stockAsk();
     let shares = 0;
     if (Number.isFinite(want) && want > 0) shares = Math.floor(want);
-    else if (Number.isFinite(amount) && amount > 0) shares = Math.floor(amount / ask);
-    if (shares < 1) return { error: `Không đủ mua 1 CP (giá mua đang ${ask.toLocaleString()})` };
+    else if (Number.isFinite(amount) && amount > 0) shares = Math.floor(amount / entry);
+    if (shares < 1) return { error: `Không đủ vào 1 CP (giá ${short ? 'bán' : 'mua'} đang ${entry.toLocaleString()})` };
 
-    const pos = stockPos()[userId] || { shares: 0, cost: 0, openedAt: Date.now(), peak: 0 };
+    const pos = stockPos()[userId] || { side: short ? 'short' : 'long', shares: 0, cost: 0, openedAt: Date.now(), peak: 0 };
+    if ((Number(pos.shares) || 0) > 0 && (pos.side === 'short') !== short) {
+        return { error: `Bạn đang giữ lệnh ${pos.side === 'short' ? 'BÁN' : 'MUA'} - đóng lệnh đó trước rồi mới đổi chiều` };
+    }
+    pos.side = short ? 'short' : 'long';
     if ((Number(pos.shares) || 0) + shares > cfg.maxPer) {
         return { error: `Mỗi người giữ tối đa ${cfg.maxPer} CP - bạn đang có ${pos.shares || 0}` };
     }
     if (stockShareCount() + shares > cfg.maxShares) {
         const left = cfg.maxShares - stockShareCount();
-        return { error: `Sàn chỉ còn ${Math.max(0, left)} CP để bán - mua ít hơn hoặc chờ người khác bán ra` };
+        return { error: `Sàn chỉ còn ${Math.max(0, left)} CP - vào ít hơn hoặc chờ người khác đóng lệnh` };
     }
-    const cost = shares * ask;
-    if ((me.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} Dogcoin, ví bạn có ${(me.points || 0).toLocaleString()}` };
+    const cost = shares * entry;
+    if ((me.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} Dogcoin${short ? ' để cọc' : ''}, ví bạn có ${(me.points || 0).toLocaleString()}` };
 
     updatePoints(userId, -cost);
     pos.shares = (Number(pos.shares) || 0) + shares;
     pos.cost = (Number(pos.cost) || 0) + cost;
     if (!pos.openedAt) pos.openedAt = Date.now();
     stockPos()[userId] = pos;
-    logDog('cophieu', userId, me.name || userId, -cost, `mua ${shares} CP DOG @ ${ask.toLocaleString()}`);
-    stockLog({ t: Date.now(), name: me.name || userId, side: 'mua', shares, price: ask });
-    writeLog('BET', `[CỔ PHIẾU] ${me.name || userId} MUA ${shares} CP @ ${ask.toLocaleString()} = ${cost.toLocaleString()}`);
+    const nhan = short ? 'BÁN (ăn khi giá xuống)' : 'MUA (ăn khi giá lên)';
+    logDog('cophieu', userId, me.name || userId, -cost, `${short ? 'cọc lệnh BÁN' : 'mua'} ${shares} CP DOG @ ${entry.toLocaleString()}`);
+    stockLog({ t: Date.now(), name: me.name || userId, side: short ? 'bán' : 'mua', shares, price: entry });
+    writeLog('BET', `[CỔ PHIẾU] ${me.name || userId} ${nhan} ${shares} CP @ ${entry.toLocaleString()} = ${cost.toLocaleString()}`);
     saveDbNow();
-    return { ok: true, shares, price: ask, cost, state: stockState(userId) };
+    return { ok: true, shares, price: entry, cost, side: pos.side, state: stockState(userId) };
 }
 
 // BÁN: bán bao nhiêu CP cũng được (mặc định bán hết). Đóng hẳn vị thế thì ghi vào lịch sử.
-function stockSell(userId, want) {
+// ĐÓNG LỆNH (một phần hoặc tất cả) — chiều nào cũng đi qua đây.
+//   long : nhận shares × bid
+//   short: nhận cọc phần đóng + lãi/lỗ = cọc + (cọc − shares × ask)
+// forced=true là bị CHÁY (short lỗ hết cọc) — ghi log khác cho dễ truy.
+function stockClose(userId, want, forced) {
     const pos = stockPos()[userId];
     const have = pos ? (Number(pos.shares) || 0) : 0;
-    if (have < 1) return { error: 'Bạn không giữ CP nào' };
+    if (have < 1) return { error: 'Bạn không có lệnh nào đang mở' };
     let shares = Number.isFinite(want) && want > 0 ? Math.floor(want) : have;
     if (shares > have) shares = have;
 
     const me = getUserData(userId);
-    const bid = stockBid();
-    const proceeds = shares * bid;
-    const costPart = Math.round((Number(pos.cost) || 0) * shares / have);   // giá vốn phần bán
-    const pl = proceeds - costPart;
+    const short = pos.side === 'short';
+    const exit = short ? stockAsk() : stockBid();
+    const costPart = Math.round((Number(pos.cost) || 0) * shares / have);   // vốn/cọc phần đóng
+    // Lỗ KHÔNG BAO GIỜ vượt số đã bỏ ra: lệnh BÁN cháy giữa 2 nhịp giá có thể tính ra
+    // lỗ lớn hơn cọc, nhưng ví chỉ mất đúng cọc -> kẹp lại để lịch sử/bảng vàng khớp
+    // đúng số tiền đã dịch chuyển, không phóng đại (bắt được nhờ check-stock2.js).
+    let pl = short ? (costPart - shares * exit) : (shares * exit - costPart);
+    if (pl < -costPart) pl = -costPart;
+    const back = Math.max(0, costPart + pl);   // tiền thực nhận về ví (không âm)
 
-    updatePoints(userId, proceeds);
+    updatePoints(userId, back);
     pos.shares = have - shares;
     pos.cost = Math.max(0, (Number(pos.cost) || 0) - costPart);
     if (pos.shares < 1) delete stockPos()[userId];
     else stockPos()[userId] = pos;
 
     stockClosed().unshift({
-        t: Date.now(), userId, name: me.name || userId,
-        shares, avg: Math.round(costPart / shares), price: bid, pl,
+        t: Date.now(), userId, name: me.name || userId, side: short ? 'short' : 'long',
+        shares, avg: Math.round(costPart / shares), price: exit, pl, forced: !!forced,
     });
     while (stockClosed().length > STOCK_CLOSED_N) stockClosed().pop();
-    logDog('cophieu', userId, me.name || userId, proceeds, `bán ${shares} CP DOG @ ${bid.toLocaleString()} (${pl >= 0 ? '+' : ''}${pl.toLocaleString()})`);
-    stockLog({ t: Date.now(), name: me.name || userId, side: 'bán', shares, price: bid });
-    writeLog('RESULT', `[CỔ PHIẾU] ${me.name || userId} BÁN ${shares} CP @ ${bid.toLocaleString()} -> ${pl >= 0 ? 'lãi' : 'lỗ'} ${Math.abs(pl).toLocaleString()}`);
+    logDog('cophieu', userId, me.name || userId, back, `đóng lệnh ${short ? 'BÁN' : 'MUA'} ${shares} CP @ ${exit.toLocaleString()} (${pl >= 0 ? '+' : ''}${pl.toLocaleString()})${forced ? ' [CHÁY]' : ''}`);
+    stockLog({ t: Date.now(), name: me.name || userId, side: short ? 'đóng bán' : 'đóng mua', shares, price: exit, pl });
+    writeLog('RESULT', `[CỔ PHIẾU] ${me.name || userId} ĐÓNG ${short ? 'BÁN' : 'MUA'} ${shares} CP @ ${exit.toLocaleString()} -> ${pl >= 0 ? 'lãi' : 'lỗ'} ${Math.abs(pl).toLocaleString()}${forced ? ' (CHÁY CỌC)' : ''}`);
     saveDbNow();
-    return { ok: true, shares, price: bid, proceeds, pl, state: stockState(userId) };
+    return { ok: true, shares, price: exit, proceeds: back, pl, forced: !!forced, state: stockState(userId) };
+}
+// Lệnh BÁN cháy khi lỗ ăn hết cọc — chạy mỗi nhịp giá, đóng hộ để không ai âm ví.
+function stockBurnCheck() {
+    for (const [uid, p] of Object.entries(stockPos())) {
+        if (p.side !== 'short' || (Number(p.shares) || 0) < 1) continue;
+        if (stockPL(p) <= -(Number(p.cost) || 0)) {
+            stockClose(uid, p.shares, true);
+            writeLog('SYSTEM', `[CỔ PHIẾU] Lệnh BÁN của ${getUserData(uid).name || uid} CHÁY CỌC (giá lên gấp đôi giá vào)`);
+        }
+    }
 }
 
 // Tin tốt/tin xấu do admin thả ở panel — giá bật/sụp NGAY một nhịp
@@ -2480,21 +2544,20 @@ function stockNews(pct, text) {
 }
 // Cập nhật "đỉnh lãi từng gồng qua" của từng người — chạy mỗi nhịp giá
 function stockTouchPeaks() {
-    const bid = stockBid();
-    for (const [uid, p] of Object.entries(stockPos())) {
-        const shares = Number(p.shares) || 0;
-        if (shares < 1) continue;
-        const pl = shares * bid - (Number(p.cost) || 0);
+    for (const p of Object.values(stockPos())) {
+        if ((Number(p.shares) || 0) < 1) continue;
+        const pl = stockPL(p);
         if (pl > (Number(p.peak) || 0)) p.peak = pl;
     }
 }
 function runStockLoop() {
     if (!Number.isFinite(Number(dbCache._stockPrice))) dbCache._stockPrice = STOCK_BASE;
-    stockHist();
+    stockCandles();
     dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
     setInterval(() => {
         try {
             stockTick();
+            stockBurnCheck();   // lệnh BÁN lỗ hết cọc thì đóng hộ, không để ai âm ví
             stockTouchPeaks();
             dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
         } catch (e) { writeLog('SYSTEM', `[CỔ PHIẾU] Lỗi nhịp giá: ${e.message}`); }
@@ -2857,9 +2920,10 @@ client.once('ready', async (c) => {
             wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin, spin1: wheelSpin1 },
             // 📈 sàn cổ phiếu DOG — game thuần web, không có bảng Discord
             stock: {
+                lotSize: STOCK_LOT,
                 state: stockState,
-                buy: (uid, amount, want) => stockBuy(uid, amount, want),
-                sell: (uid, want) => stockSell(uid, want),
+                open: (uid, side, amount, want) => stockOpen(uid, side, amount, want),
+                close: (uid, want) => stockClose(uid, want),
             },
             // 📒 vay nợ: xem + trả ngay trên web (vay thì qua bảng Discord)
             debt: {

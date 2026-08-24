@@ -1041,7 +1041,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
           <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
         </div>
-        <div class="note">Sàn đóng thì <b>vẫn cho bán</b>, chỉ chặn mua — dùng khi muốn hạ nhiệt mà không giam tiền ai.</div>
+        <div class="note">Người chơi nhập <b>khối lượng (lot)</b> như bàn giao dịch thật: <b>1 lot = 10 CP</b>, nhỏ nhất 0.1 lot. Hai trần ở trên tính bằng CP, nên trần 500 CP = 50 lot toàn sàn và 80 CP = 8 lot mỗi người. Sàn đóng thì <b>vẫn cho đóng lệnh</b>, chỉ chặn mở lệnh mới — dùng khi muốn hạ nhiệt mà không giam tiền ai.</div>
       </div>
       <div class="card">
         <h3>📰 Thả tin — giá bật/sụp NGAY một nhịp</h3>
@@ -1054,7 +1054,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="skNews(1)">📈 Thả tin tốt</button>
           <button class="btn-red" onclick="skNews(-1)">📉 Thả tin xấu</button>
         </div>
-        <div class="note">Giới hạn ±40%/lần. Thả tin tốt khi có người đang gồng nhiều CP là <b>bot trả tiền thật</b> — xem dòng “nếu tất cả bán ngay” ở trên trước khi bấm.</div>
+        <div class="note">Giới hạn ±40%/lần. Tin tốt làm <b>lệnh MUA lãi</b> và <b>lệnh BÁN lỗ</b>, tin xấu thì ngược lại. Thả tin khi có người đang gồng là <b>bot trả tiền thật</b> — xem dòng “nếu tất cả bán ngay” ở trên trước khi bấm.</div>
       </div>
     </div>
 
