@@ -327,11 +327,11 @@ function listTransferTargets() {
 //    tiền cho người khác + TRÍCH LOAN_INCOME_CUT thu nhập điểm danh/nghiện/chuỗi
 //    tự trả nợ (trả nợ vay trước vì nó có lãi, dư mới trừ nợ admin).
 //  - Nợ do ADMIN ghi tay (panel tab 👥): KHÔNG lãi, KHÔNG trần — sổ ghi nợ mua đồ.
-const LOAN_DAILY_MAX = 4000;
-const LOAN_CAP = 12000;
+const LOAN_DAILY_MAX = 10000;
+const LOAN_CAP = 30000;
 const LOAN_RATE = 0.20;
 const LOAN_INCOME_CUT = 0.5;
-// PHÍ VAY 5% cộng thẳng vào nợ lúc vay (vay 4.000 -> ghi nợ 4.200, nhận đủ 4.000).
+// PHÍ VAY 5% cộng thẳng vào nợ lúc vay (vay 10.000 -> ghi nợ 10.500, nhận đủ 10.000).
 // Chống spam vay-trả-vay: trả sạch là hạn mức ngày mở lại, nên mỗi vòng lặp phải
 // tốn phí này — hết cửa quay vòng miễn phí (chủ server chốt 20/08).
 const LOAN_FEE = 0.05;
@@ -391,7 +391,7 @@ function debtReduce(d, amount) {
     d.loan -= payLoan; rest -= payLoan;
     const payAdmin = Math.min(d.admin || 0, rest);
     d.admin -= payAdmin; rest -= payAdmin;
-    // Trả sạch = về vạch xuất phát: nhãn nợ xấu bay + HẠN MỨC NGÀY MỞ LẠI ĐỦ 4.000
+    // Trả sạch = về vạch xuất phát: nhãn nợ xấu bay + HẠN MỨC NGÀY MỞ LẠI ĐỦ 10.000
     // (chủ server chốt 20/08: trả hết là được vay tiếp luôn, không phải chờ qua ngày)
     if ((d.loan || 0) + (d.admin || 0) <= 0) { d.loan = 0; d.admin = 0; d.bad = false; d.bToday = 0; }
     return payLoan + payAdmin;
@@ -581,7 +581,7 @@ function getVayMessageData() {
         `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp pal. 🙏`,
         '',
         `**💰 Vay** - bơm tối đa **${LOAN_DAILY_MAX.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${LOAN_CAP.toLocaleString()}**. ` +
-            `Phí vay **${LOAN_FEE * 100}%** ghi thẳng vào nợ (vay 4.000 là ghi sổ 4.200) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
+            `Phí vay **${LOAN_FEE * 100}%** ghi thẳng vào nợ (vay 10.000 là ghi sổ 10.500) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
         `**Lãi kép ${LOAN_RATE * 100}%/ngày** - cứ qua 00:00 là nợ tự đẻ. Vay ${LOAN_DAILY_MAX.toLocaleString()} rồi ngủ quên vài hôm, dậy thấy nợ ${LOAN_CAP.toLocaleString()} thì đừng hỏi tại sao. 💀`,
         `Xù nợ lâu quá là HỆ THỐNG đóng dấu ⚠️ **NỢ XẤU**: bêu tên ngay bảng này · 🚫 hết cửa vay · ` +
             `🚫 không chuyển tiền cho ai · 🚫 không chuyển vào game · 📅 ${LOAN_INCOME_CUT * 100}% tiền điểm danh bị xiết trả nợ.`,
