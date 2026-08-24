@@ -2255,16 +2255,26 @@ function wheelResetTurns() {
 // Lợi thế nhà cái DUY NHẤT là chênh mua–bán (spread): mua đắt 2%, bán rẻ 2%, tức mỗi
 // vòng người chơi mất ~4% dù giá đi đâu. Nói thẳng ở màn đặt mua, không giấu.
 const STOCK_BASE = 1000;             // mốc gốc — giá luôn bị kéo về đây
-const STOCK_TICK_MS = 10 * 1000;     // nhịp giá (22/08: 30s -> 10s theo yêu cầu chủ server)
-const STOCK_PULL = 0.04;             // lực kéo về mốc (càng xa càng kéo mạnh)
+// 22/08: giá nhảy mỗi 5 GIÂY, nhưng nến chỉ CHỐT mỗi 40 GIÂY (8 nhịp) — nến cuối
+// "sống", cao/thấp/đóng của nó thay đổi theo từng nhịp như bàn giao dịch thật.
+const STOCK_TICK_MS = 5 * 1000;
+const STOCK_CANDLE_TICKS = 8;        // 8 × 5s = 40 giây một cây nến
+// vol/pull/spread PHẢI tính lại theo nhịp, không thì trò thành không thể thắng:
+//   · Bề rộng dao động quanh mốc gốc ≈ vol / căn(2 × pull) — với 0.005 và 0.006 thì
+//     ra ±4,6%, đủ rộng để có kèo.
+//   · Biên độ một cây nến ≈ vol × căn(8) = 1,4% — nến nhìn ra hình nến, không phải
+//     cột dài phi từ đáy lên đỉnh.
+//   · Chênh mua–bán 0,5%/chiều = 1% mỗi vòng. Để 2% như trước thì mỗi vòng mất 4%
+//     trên biên độ chỉ ±4,6% -> người chơi gần như không bao giờ thắng, chơi vài lần
+//     là bỏ. 1% vẫn là lợi thế nhà cái rất lớn khi tính trên nhiều lượt.
+const STOCK_PULL = 0.006;            // lực kéo về mốc (càng xa càng kéo mạnh)
 const STOCK_MIN = 300, STOCK_MAX = 3000;   // chặn cứng 2 đầu
 const STOCK_TICK_CAP = 0.08;         // cầu dao: mỗi nhịp không quá ±8%
-const STOCK_HIST_N = 360;            // 1 giờ ở nhịp 10s. CHẶN TRẦN NGAY TỪ ĐẦU — nến sinh
-                                     // 6 dòng/PHÚT, nhanh hơn mọi mảng khác trong bot
-                                     // (bài học _txDashHistory phình 1.348 ván = 57% db).
+const STOCK_HIST_N = 180;            // 2 giờ ở nến 40s. CHẶN TRẦN NGAY TỪ ĐẦU — bài học
+                                     // _txDashHistory phình 1.348 ván = 57% database.json.
 const STOCK_LOG_N = 20;              // lệnh vừa khớp hiện trên web
 const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng + lịch sử)
-const STOCK_CFG_DEF = { vol: 0.015, spread: 0.02, maxShares: 500, maxPer: 80, open: true };
+const STOCK_CFG_DEF = { vol: 0.005, spread: 0.005, maxShares: 500, maxPer: 80, open: true };
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
 // bên trong vẫn quy ra CP để mọi phép tính tiền không đổi. 1 lot = 10 CP.
 const STOCK_LOT = 10;
@@ -2296,7 +2306,7 @@ function stockBid() { return Math.round(stockPrice() * (1 - stockCfg().spread));
 function stockCandles() {
     if (!Array.isArray(dbCache._stockCandles)) {
         const p = stockPrice();
-        dbCache._stockCandles = [{ o: p, h: p, l: p, c: p }];
+        dbCache._stockCandles = [{ o: p, h: p, l: p, c: p, n: 0 }];
         delete dbCache._stockHist;   // bỏ mảng giá trơn đời đầu
     }
     return dbCache._stockCandles;
@@ -2317,34 +2327,47 @@ function stockGauss() {
 // Đẩy giá thêm MỘT nhịp. KHÔNG chạy bù khi bot vừa bật lại sau lúc chết: hàm này chỉ
 // được setInterval gọi, nên bot tắt 2 tiếng thì giá đứng nguyên 2 tiếng — người đang
 // gồng mở mắt ra không bị cháy vì những nhịp họ không có cơ hội phản ứng.
+// MỘT NHỊP = 5 giây, chỉ nhích giá MỘT bước. Nến cuối mảng là nến ĐANG SỐNG: mỗi
+// nhịp cập nhật đóng/cao/thấp của nó; đủ STOCK_CANDLE_TICKS nhịp (40s) thì mở cây mới.
+// Trường n đếm số nhịp đã vào cây đó — nhờ vậy bot restart giữa cây vẫn chốt đúng chỗ.
 function stockTick(forcePct) {
     const cfg = stockCfg();
-    const open = stockPrice();
-    let p = open, hi = open, lo = open;
+    const before = stockPrice();
     const clamp = (v) => Math.min(STOCK_MAX, Math.max(STOCK_MIN, v));
+    let p;
     if (Number.isFinite(forcePct)) {
-        p = clamp(p * (1 + forcePct));      // tin admin thả: nhảy thẳng, bỏ cầu dao
-        hi = Math.max(hi, p); lo = Math.min(lo, p);
+        p = clamp(before * (1 + forcePct));   // tin admin thả: nhảy thẳng, bỏ cầu dao
     } else {
-        // 4 bước nhỏ trong một nhịp -> có bóng nến trên/dưới như bàn giao dịch thật.
-        // vol chia cho căn(4) để tổng biến động cả nhịp vẫn đúng như cấu hình.
-        const pull = -STOCK_PULL * Math.log(open / STOCK_BASE) / 4;
-        const sub = cfg.vol / 2;
-        for (let i = 0; i < 4; i++) {
-            let m = pull + sub * stockGauss();
-            if (m > STOCK_TICK_CAP) m = STOCK_TICK_CAP;
-            if (m < -STOCK_TICK_CAP) m = -STOCK_TICK_CAP;
-            p = clamp(p * (1 + m));
-            if (p > hi) hi = p;
-            if (p < lo) lo = p;
-        }
+        let m = -STOCK_PULL * Math.log(before / STOCK_BASE) + cfg.vol * stockGauss();
+        if (m > STOCK_TICK_CAP) m = STOCK_TICK_CAP;
+        if (m < -STOCK_TICK_CAP) m = -STOCK_TICK_CAP;
+        p = clamp(before * (1 + m));
     }
     p = Math.round(p);
     dbCache._stockPrice = p;
+
     const cs = stockCandles();
-    cs.push({ o: Math.round(open), h: Math.round(hi), l: Math.round(lo), c: p });
-    while (cs.length > STOCK_HIST_N) cs.shift();
+    const live = cs[cs.length - 1];
+    if (!live || (Number(live.n) || 0) >= STOCK_CANDLE_TICKS) {
+        // chốt cây cũ, mở cây mới: giá mở = giá đóng cây trước (liền mạch)
+        cs.push({ o: Math.round(before), h: Math.max(Math.round(before), p), l: Math.min(Math.round(before), p), c: p, n: 1 });
+        while (cs.length > STOCK_HIST_N) cs.shift();
+    } else {
+        live.c = p;
+        if (p > live.h) live.h = p;
+        if (p < live.l) live.l = p;
+        live.n = (Number(live.n) || 0) + 1;
+    }
     return p;
+}
+// Còn mấy giây nữa chốt nến — web hiện đồng hồ này thay vì đồng hồ nhịp giá
+function stockCandleLeftMs() {
+    const cs = stockCandles();
+    const live = cs[cs.length - 1];
+    const done = live ? Math.min(STOCK_CANDLE_TICKS, Number(live.n) || 0) : STOCK_CANDLE_TICKS;
+    const ticksLeft = STOCK_CANDLE_TICKS - done;
+    const nextTickIn = Math.max(0, (dbCache._stockNextTick || Date.now()) - Date.now());
+    return nextTickIn + Math.max(0, ticksLeft - 1) * STOCK_TICK_MS;
 }
 function stockLog(entry) {
     if (!Array.isArray(dbCache._stockLog)) dbCache._stockLog = [];
@@ -2400,10 +2423,12 @@ function stockState(userId) {
         base: STOCK_BASE,
         spreadPct: Math.round(cfg.spread * 1000) / 10,
         tickMs: STOCK_TICK_MS,
+        candleMs: STOCK_CANDLE_TICKS * STOCK_TICK_MS,
+        candleAt: Date.now() + stockCandleLeftMs(),   // lúc cây nến hiện tại chốt
         lotSize: STOCK_LOT,
         nextTick: dbCache._stockNextTick || (Date.now() + STOCK_TICK_MS),
         now: Date.now(),
-        candles: stockCandles().slice(-360),  // 1 giờ nến — web tự gộp sang khung lớn
+        candles: stockCandles().slice(-180),  // 2 giờ nến — web tự gộp sang khung lớn
         outstanding: stockShareCount(),
         maxShares: cfg.maxShares,
         maxPer: cfg.maxPer,
@@ -2556,6 +2581,13 @@ function stockTouchPeaks() {
 function runStockLoop() {
     if (!Number.isFinite(Number(dbCache._stockPrice))) dbCache._stockPrice = STOCK_BASE;
     stockCandles();
+    // Nến đời trước (mỗi cây = 1 nhịp, không có trường n) không trộn được với nến
+    // 40 giây: cây cuối coi như đã chốt để cây kế mở sạch, khỏi nối lệch cấu trúc.
+    const csBoot = dbCache._stockCandles;
+    if (csBoot.length && csBoot[csBoot.length - 1].n === undefined) {
+        csBoot[csBoot.length - 1].n = STOCK_CANDLE_TICKS;
+        writeLog('SYSTEM', '[CỔ PHIẾU] Nến đời cũ - chốt cây cuối để chuyển sang nến 40 giây');
+    }
     dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
     setInterval(() => {
         try {

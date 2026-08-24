@@ -1019,12 +1019,12 @@ const HTML = `<!DOCTYPE html>
         <div class="note" id="skRisk" style="margin-bottom:12px"></div>
         <div class="row">
           <div style="flex:1">
-            <label>Biến động mỗi nhịp 10s (%)</label>
-            <input id="skVol" type="number" step="0.1" placeholder="vd: 1.5">
+            <label>Biến động mỗi nhịp 5s (%)</label>
+            <input id="skVol" type="number" step="0.1" placeholder="vd: 0.5">
           </div>
           <div style="flex:1">
             <label>Chênh mua–bán mỗi chiều (%)</label>
-            <input id="skSpread" type="number" step="0.1" placeholder="vd: 2">
+            <input id="skSpread" type="number" step="0.1" placeholder="vd: 0.5">
           </div>
         </div>
         <div class="row" style="margin-top:8px">
