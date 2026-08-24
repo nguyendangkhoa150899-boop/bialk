@@ -21,7 +21,7 @@ Hệ thống quản lý server Palworld từ xa, và nối server game với bot
 
 ---
 
-## 🧭 Đọc nhanh — trạng thái hệ thống hôm nay (cập nhật 20/08/2026)
+## 🧭 Đọc nhanh — trạng thái hệ thống hôm nay (cập nhật 22/08/2026)
 
 Cái gì ĐANG chạy và cái gì đã tắt — để khỏi đi tìm code của thứ không còn tồn tại:
 
@@ -36,6 +36,8 @@ Cái gì ĐANG chạy và cái gì đã tắt — để khỏi đi tìm code c�
 | PalSchema (máy nghiền không rớt lõi) | ✅ chạy · Silvance no-drop dùng **pak** vì PalSchema chịu thua Lv70+ |
 | Bảng 📊 thống kê người chơi | ❌ **ĐÃ BỎ** 19/08 (dữ liệu `_pstats` vẫn đếm ngầm) |
 | Blackjack | ❌ thay bằng 🎡 Vòng quay nhóm 2 tầng |
+| 📈 **Sàn Cổ Phiếu Dogcoin (DOG)** | ✅ **MỚI 22/08** — game thuần web, 2 chiều MUA/BÁN, đòn bẩy tới x20, chôn vốn 60s, **lỗ ăn hết ví mới cháy** |
+| Vay nợ Dogcoin | ✅ hạn mức **10.000/ngày**, trần nợ 30.000, lãi kép 20%/ngày |
 | Dò Mìn trên Discord (`/domin`) | ❌ comment lại — chơi trên web |
 | Mật khẩu panel/dashboard | ❌ **TẮT** theo yêu cầu chủ server (xem mục Xác thực để biết rủi ro) |
 
@@ -312,6 +314,127 @@ dấu tiếng Việt nên "Thần Hủy Diệt" hay "than huy diet" đều bắt
 pal** — admin tạo tay bằng CreativeMenu rồi bấm hoàn thành trên panel (lý do: xem mục
 "Những thứ đã thử và THẤT BẠI").
 
+**📈 Sàn Cổ Phiếu Dogcoin — mã DOG** (`stock*` trong index.js, tab web 📈, tab panel 📈)
+— **game duy nhất KHÔNG thanh toán tức thì**: mỗi người đang giữ lệnh là một khoản bot
+**đang nợ họ**, phình theo giá. Đọc hết mục này trước khi sửa bất cứ con số nào.
+
+*Bộ máy giá* — chạy hoàn toàn nội bộ, KHÔNG gọi API ngoài (VPS này từng timeout tới Discord):
+
+```
+mỗi 2 giây (STOCK_TICK_MS):
+  kéo   = −STOCK_PULL × ln(giá / 1000)      // PULL = 0.0024, càng xa mốc càng kéo mạnh
+  nhiễu = cfg.vol × ngẫu_nhiên_chuẩn         // vol mặc định 0.003, admin chỉnh ở panel
+  giá   = giá × (1 + kéo + nhiễu)
+  chặn  : mỗi nhịp không quá ±8% (STOCK_TICK_CAP) · giá luôn trong [300 … 3.000]
+
+nến: cây CUỐI mảng là nến ĐANG SỐNG, mỗi nhịp cập nhật c/h/l và tăng trường n;
+     đủ STOCK_CANDLE_TICKS = 25 nhịp (50 giây) thì chốt, mở cây mới với o = c cây trước.
+
+giá mua (ask) = giá × (1 + spread)   |   giá bán (bid) = giá × (1 − spread)
+```
+
+*Vì sao 3 con số đó dính chặt nhau* (đổi một cái là phải tính lại hai cái kia):
+
+- **Bề rộng dao động** ≈ `vol / căn(2 × pull)` → 0.003/căn(0.0048) = **±4,3%**. Đây là
+  không gian sống của trò: hẹp hơn phí thì không ai thắng nổi.
+- **Biên độ một cây nến** ≈ `vol × căn(25)` = **~1,2%** (đo được 1,18%) → ra hình nến,
+  không phải cột dài phi từ đáy lên đỉnh.
+- **Chênh mua–bán** `spread` = **0,5%/chiều = 1% mỗi vòng**. Đây là **lợi thế nhà cái
+  duy nhất**. Từng để 2%/chiều (4%/vòng) và **sai**: 4% trên biên độ ±4,3% khiến người
+  chơi gần như không bao giờ thắng. Mô phỏng 300.000 nhịp ở mức 0,5%:
+
+  | Kiểu chơi | Thắng | Lãi/lỗ TB |
+  |---|---|---|
+  | Vào lệnh ngẫu nhiên, giữ 40s | 10,9% | −1,00% vốn |
+  | Vào lệnh ngẫu nhiên, giữ 6 phút | 32,6% | −0,99% vốn |
+  | Mua khi dưới 1.000 / bán khi trên, giữ 6 phút | 54,3% | **+0,24%** vốn |
+
+  Tức đa số thua đều 1% mỗi vòng (bot ăn), người chịu quan sát vẫn có cửa. **Đúng tỉ lệ
+  của một trò chơi được.** Đổi `spread` là đổi thẳng vào chỗ này.
+
+*Hai chiều* — `stockOpen(uid, side, amount, want, lev)`:
+
+| | Vào ở giá | Ăn khi | Lãi/lỗ |
+|---|---|---|---|
+| `long` (MUA) | ask | giá **LÊN** | `shares × bid − basis` |
+| `short` (BÁN) | bid | giá **XUỐNG** | `basis − shares × ask` |
+
+KHÔNG cho giữ 2 chiều cùng lúc — đổi chiều phải đóng lệnh cũ trước.
+
+*Đòn bẩy = "khối lượng"* — ba trường trong vị thế, **đừng lẫn**:
+
+- `shares` — số CP nắm giữ (**mức rủi ro của BOT**, đây là cái bị trần chặn)
+- `cost` — **basis**, giá trị lệnh lúc vào = dùng tính lãi/lỗ
+- `margin` — **vốn** đã trừ khỏi ví (KHÔNG còn là mức lỗ tối đa — xem *Cháy ví* dưới)
+
+`đòn bẩy = cost / margin`. Vốn 4.000 ở giá 1.000, giá lên 2% (net 1% sau phí):
+
+| | Nắm | Lãi | Cháy vốn khi giá về |
+|---|---|---|---|
+| x1 | 3 CP | +30 (1% vốn) | không bao giờ (sàn giá 300) |
+| x5 | 19 CP | +190 (5% vốn) | 808 |
+| x10 | 39 CP | +390 (10% vốn) | 909 |
+| x20 | 79 CP | +790 (20% vốn) | 960 |
+
+*Cháy ví* (`stockBurnCheck()` + `posBuffer()`, chạy mỗi nhịp) — áp **CẢ HAI CHIỀU**.
+**Lỗ KHÔNG dừng ở vốn**: ăn hết `margin` thì ăn tiếp vào **số dư ví**, tới khi ví cạn mới
+cháy (chủ server chốt 22/08: *"gồng bằng dogcoin từ trong ví luôn tới khi nào cháy ví thì
+thôi"*). Ngưỡng = `posBuffer() = margin + ví`, nên **mốc cháy tự xa ra khi người chơi có
+nhiều tiền trong ví** và gần lại khi họ tiêu. Đo được với vốn 3.970 / 79 CP / x20:
+
+| Ví còn | Cháy ví khi giá về |
+|---|---|
+| 5.000 | 896 (−10,4%) |
+| 20.000 | 705 (−29,5%) |
+| 100.000 | không bao giờ (giá sàn 300 chặn trước) |
+
+Lỗ ghi sổ bị **kẹp** đúng bằng `margin + ví`, và `updatePoints` ở đây **có thể âm** (trừ
+tiếp vào ví) — theo cách kẹp đó thì ví sau khi đóng **luôn ≥ 0**, đã test. Web hiện dòng
+**💀 CHÁY VÍ nếu giá tới** kèm câu nói rõ đang gồng bằng bao nhiêu (vốn + ví).
+
+> **Lỗ hổng chưa bịt**: mở lệnh xong **chuyển hết tiền đi** (cho bạn / vào game) là đệm
+> chịu lỗ tụt về đúng vốn — cơ chế cháy ví chỉ cắn người để tiền trong ví, người tính toán
+> thì né được. Muốn bịt thì chặn chuyển tiền + chuyển vào game khi đang giữ lệnh, y như
+> cách đang chặn người nợ xấu.
+
+*Chôn vốn* (`cfg.holdS`, mặc định 60 giây) — vào lệnh xong phải giữ đủ số giây này mới
+đóng được, chặn kiểu "thấy xanh một nhịp là rút". **Cháy vốn BỎ QUA chốt này** — không
+giam người chơi trong lệnh đã hết vốn.
+
+*Chốt an toàn* — đang ⚠️ nợ xấu thì **cấm mở lệnh** (vẫn cho đóng); sàn đóng cũng vậy;
+trần `maxPer` (80 CP/người) và `maxShares` (500 CP toàn sàn).
+
+*Panel chỉnh được*: biến động, chênh mua–bán, trần toàn sàn, trần mỗi người, **đòn bẩy tối
+đa** (mặc định x20), **chôn vốn (giây)**, đóng/mở sàn, và **thả tin tốt/tin xấu ±40%** (giá
+bật/sụp ngay một nhịp, có cảnh báo số tiền bot sẽ phải trả trước khi bấm).
+
+> ### ⚠️ Trần CP toàn sàn là cái phanh DUY NHẤT của ví server
+> Thiệt hại tối đa tuyệt đối = `maxShares × 3.000` = **1.500.000** Dogcoin ở mức 500 CP.
+> **Đòn bẩy không đổi trần đó nhưng làm nó DỄ CHẠM hơn rất nhiều**: ở x20 cả server chỉ
+> cần **~25.000** Dogcoin vốn là chạm trần 500 CP (không đòn bẩy thì cần ~500.000). Nghĩa
+> là bot sẽ **thường xuyên** gánh mức rủi ro tối đa thay vì hiếm khi. Thấy tiền chảy ra
+> nhanh thì siết **`maxShares`** (500 → 200), KHÔNG phải `maxPer`.
+
+*Ba cái bẫy đã xử sẵn — đừng vô tình mở lại*:
+
+1. **Trần mảng nến** `STOCK_HIST_N = 180` (180 × 50s = 2,5 giờ) đặt từ dòng code đầu tiên.
+   Nến sinh 30 dòng/phút — nhanh hơn mọi mảng khác trong bot. Đây là bài học
+   `_txDashHistory` phình 1.348 ván = 57% `database.json`.
+2. **Vị thế phải `saveDbNow()`** mỗi lần mở/đóng: tiền đã trừ khỏi ví nên restart mà mất
+   vị thế là **người chơi mất trắng**. Không đợi vòng lưu 10 giây.
+3. **KHÔNG chạy bù nhịp giá** khi bot vừa bật lại sau lúc chết. `stockTick` chỉ do
+   `setInterval` gọi, nên bot tắt 2 tiếng thì giá đứng nguyên 2 tiếng — người đang gồng
+   mở mắt ra không bị cháy vì những nhịp họ không có cơ hội phản ứng.
+
+*Lỗi tiền đã dính (đừng lặp lại)*: `posMargin()` bị gọi **sau** khi cập nhật `cost`, nên
+vị thế mới rơi vào nhánh dự phòng (`margin` rỗng → lấy `cost`) và ghi **vốn 18.090 cho
+lệnh vào 10.000**. Phải đọc vốn cũ **trước** khi đụng `cost`. Đọc code thì trượt, chỉ
+`check-stock3.js` chạy thử mới thấy.
+
+*Test*: `scratchpad/check-stock3.js` — dựng lại logic sát index.js, boot webplay giả rồi
+parse JS client + chạy: bảng đòn bẩy 4 mức, cháy vốn 2 chiều, chôn vốn (chặn khi đang lãi,
+mở sau 60s, cháy thì bỏ qua), mọi trần, và kiểm 25 nhịp/nến + biên độ + vùng giá.
+
 ### Slash command đang bật
 `/sodu` · `/diemdanh` · `/nghien` · `/chuyentien <người> <số tiền>`.
 `/addtien` `/trutien` đã **xoá** (nhiều người có quyền Administrator Discord ≠ được đụng ví
@@ -319,6 +442,15 @@ pal** — admin tạo tay bằng CreativeMenu rồi bấm hoàn thành trên pan
 web mượt hơn, không dính deadline 3 giây).
 
 ### Web chơi (cổng 3002)
+
+Tab 📈 **Cổ phiếu** dựng theo app giao dịch thật: thanh 3 ô **SỐ DƯ · ĐANG GỒNG · HÔM NAY**,
+giá to + Cao/Mở/Thấp/Đóng, tab khung thời gian **50s/5m/10m/20m** (gộp nến ở client) + nút
+**MA**, đồ thị nến có **trục giá bên phải** (nhãn vẽ bằng HTML vì SVG dùng
+`preserveAspectRatio=none` sẽ kéo méo chữ), kẻ chấm ở giá hiện tại, kẻ vàng ở giá vốn.
+Ô đặt lệnh: **nhập số Dogcoin làm vốn** + **tự nhập đòn bẩy** (nút nhanh x1/x5/x10/x20),
+hai nút MUA/BÁN in luôn số tiền lên mặt nút. Có thẻ **❓ Cách chơi** mở sẵn lần đầu (nhớ
+lựa chọn qua `localStorage`) — chủ server từng nói *"vẫn chưa hiểu cách chơi"*, mà game
+không tự dạy thì không ai bấm. Web nạp lại mỗi **2 giây** để nến cuối động thật.
 Đăng nhập bằng **Discord ID + PIN** (`webPin`, lấy bằng nút 🌐 trên bảng Big Small trong
 Discord). Sai quá nhiều → chặn IP 10 phút; token phiên 30 ngày, đăng nhập lại thu hồi máy cũ.
 API: `/api/login` `/api/state` `/api/chat` `/api/players` `/api/transfer` ·
@@ -327,6 +459,10 @@ API: `/api/login` `/api/state` `/api/chat` `/api/players` `/api/transfer` ·
 `/api/stairs/{state,dismiss,table,start,step,cashout,lucky}`.
 
 ### Panel admin (1508 SUPER / 1234 thường)
+
+Tab 📈 **Cổ phiếu**: hai dòng quan trọng nhất là **CP lưu hành** và **trần thiệt hại** —
+đọc trước khi thả tin tốt, vì tin tốt là bot **trả tiền thật** cho những người đang gồng
+lệnh MUA (và tin xấu thì trả cho lệnh BÁN).
 8 tab: `tx` `mine` `stair` `bj`(vòng quay) `bc` `xs` `user` `pal`. Làm được: bật/tắt + ép kết
 quả từng game, ép mìn, reset lượt vòng quay, cộng/trừ/set/xoá ví từng người, phát tiền toàn
 server, reset điểm danh, duyệt/từ chối ticket nạp rút, đóng đơn pal, **liên kết tên nhân vật
@@ -363,6 +499,33 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 ---
 
 ## Bot Discord (BotDoMin) — nhật ký cập nhật
+
+### 22/08/2026 — game mới 📈 Sàn Cổ Phiếu Dogcoin + sửa bảng Discord mồ côi
+
+- **Sàn Cổ Phiếu DOG** (mục *Các game* ở trên là spec đầy đủ): thuần web, 2 chiều
+  MUA/BÁN, nến sống 2s/chốt 50s, đòn bẩy tới x20, chôn vốn 60 giây, và **cháy VÍ** —
+  lỗ ăn hết vốn rồi ăn tiếp số dư, cạn ví mới đóng. Đây là game rủi ro cao nhất của bot.
+- **Bảng game Discord: SỬA TẠI CHỖ thay vì xoá-tạo mới.** Chủ server báo cả 3 bàn (Big
+  Small, Dò Mìn, Leo Thang) đẻ ra nhiều bảng mồ côi. Hai nguyên nhân: (1) lệnh xoá bảng cũ
+  là fire-and-forget `.catch(() => {})` **nuốt sạch lỗi**, mà VPS này có Connect Timeout
+  tới Discord nên xoá hụt là chuyện thường; (2) TX không lưu id bảng vào db như Dò Mìn/Leo
+  Thang nên **mỗi lần deploy bỏ lại một bảng chết**. Cách sửa: bảng còn là tin CUỐI kênh
+  thì **sửa tại chỗ** (không đẻ tin mới = không thể mồ côi, lại đỡ nửa số API call); có
+  người nhắn đè xuống dưới mới đăng tin mới cho bảng nổi về cuối kênh. Biết bằng
+  `channel.lastMessageId` (gateway đẩy sẵn, không tốn API call). Thêm `sweepBoards()`
+  làm lưới an toàn + **ghi log lý do xoá hụt** thay vì nuốt.
+- **Vay nợ**: hạn mức ngày 4.000 → **10.000**, trần nợ 12.000 → **30.000**. Phải nâng trần
+  theo vì lãi kép DỪNG khi chạm trần — giữ 12.000 thì vay 10.000 kịch trần sau **1 ngày**,
+  tổng chi phí tối đa 14% và chế tài lãi kép coi như vô hiệu.
+- **Vòng quay**: bảng nan buff (sàn x1.5, thêm x3/x5, bỏ đám 1.1–1.4), vé lên
+  1.500/2.000/2.500 rồi remote đổi tiếp 2.000/2.500/3.000, reset 4 khung 6 tiếng.
+- **Chẩn đoán "bot chậm"**: đi qua 3 giả thuyết SAI (database phình — thật ra 506 KB; mạng
+  hỏng — thật ra 0,063s tới Discord; CPU bị giành — thật ra load 0.10) trước khi ra nguyên
+  nhân thật: **166 lần restart do deploy 34 commit trong một ngày**. Bài học vận hành: gom
+  nhiều thay đổi rồi restart MỘT lần, tránh giờ đông người. Còn treo: `txDashHistory` /
+  `bcDashHistory` **không có trần** — 1.348 ván = 290 KB = **57% database.json**, và panel
+  gửi cả mảng mỗi 3 giây để hiện 20 dòng. Không làm bot chậm, nhưng là rác lớn dần.
+
 
 > **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
 > (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.

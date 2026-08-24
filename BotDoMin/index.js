@@ -2396,14 +2396,21 @@ function posLev(p) {
     const m = posMargin(p);
     return m > 0 ? (Number(p.cost) || 0) / m : 1;
 }
-// Giá mà lệnh CHÁY VỐN (lỗ ăn hết vốn). Hiện lên thẻ vị thế cho cả hai chiều.
-function posBurnPrice(p) {
+// ĐỆM CHỊU LỖ = vốn đã bỏ ra + TOÀN BỘ SỐ DƯ CÒN LẠI TRONG VÍ (22/08 theo yêu cầu chủ
+// server: "gồng bằng dogcoin từ trong ví luôn tới khi nào cháy ví thì thôi"). Trước đây
+// lỗ dừng ở vốn, phần ví ngoài vốn là an toàn — GIỜ KHÔNG CÒN AN TOÀN NỮA.
+function posBuffer(userId, p) {
+    return posMargin(p) + Math.max(0, Number(getUserData(userId).points) || 0);
+}
+// Giá làm CHÁY VÍ (lỗ ăn hết vốn + hết ví). Hiện lên thẻ vị thế cho cả hai chiều.
+// Giá này TỰ ĐỘNG XA RA khi người chơi nạp thêm tiền vào ví, và gần lại khi họ tiêu.
+function posBurnPrice(userId, p) {
     const sh = Number(p && p.shares) || 0;
     if (sh < 1) return 0;
-    const basis = Number(p.cost) || 0, m = posMargin(p), sp = stockCfg().spread;
+    const basis = Number(p.cost) || 0, buf = posBuffer(userId, p), sp = stockCfg().spread;
     return p.side === 'short'
-        ? Math.round((basis + m) / sh / (1 + sp))
-        : Math.round((basis - m) / sh / (1 - sp));
+        ? Math.round((basis + buf) / sh / (1 + sp))
+        : Math.round((basis - buf) / sh / (1 - sp));
 }
 // Lãi/lỗ tạm tính của một vị thế — DÙNG CHUNG mọi nơi để không bao giờ lệch nhau.
 //   MUA (long) : ăn khi giá LÊN   -> lãi = bán ra bây giờ (shares × bid) − tiền đã bỏ
@@ -2470,12 +2477,13 @@ function stockState(userId) {
             lev: Math.round(posLev(pos) * 10) / 10,
             avg: Math.round(cost / shares),
             // đóng lệnh bây giờ nhận về bao nhiêu = vốn + lãi/lỗ (không âm)
-            value: Math.max(0, posMargin(pos) + pl),
+            value: Math.max(0, posMargin(pos) + pl),   // nhận về ví; lỗ quá vốn thì 0 + trừ ví
             pl,
             plPct: Math.round(pl / posMargin(pos) * 1000) / 10,   // % tính trên VỐN
             openedAt: pos.openedAt || Date.now(),
             peak: Number(pos.peak) || 0,
-            burnAt: posBurnPrice(pos),                 // giá làm cháy vốn (cả 2 chiều)
+            burnAt: posBurnPrice(userId, pos),         // giá làm CHÁY VÍ (cả 2 chiều)
+            buffer: posBuffer(userId, pos),            // vốn + ví = tổng chịu lỗ được
             // VỐN BỊ CHÔN: chưa đủ giờ thì không đóng lệnh được — chặn kiểu "lời là rút"
             unlockAt: (pos.openedAt || Date.now()) + cfg.holdS * 1000,
         } : null,
@@ -2577,12 +2585,15 @@ function stockClose(userId, want, forced) {
     const basisPart = Math.round((Number(pos.cost) || 0) * part);      // giá trị lệnh phần đóng
     const marginPart = Math.round(posMargin(pos) * part);              // VỐN phần đóng
     const lev = Math.round(posLev(pos) * 10) / 10;
-    // Lỗ KHÔNG BAO GIỜ vượt VỐN: lệnh cháy giữa 2 nhịp giá có thể tính ra lỗ lớn hơn
-    // vốn, nhưng ví chỉ mất đúng vốn -> kẹp lại để lịch sử/bảng vàng khớp đúng số tiền
-    // đã dịch chuyển, không phóng đại (bắt được nhờ check-stock2.js).
+    // Lỗ ăn hết vốn thì ĂN TIẾP VÀO VÍ, chặn ở đúng lúc ví cạn (không bao giờ âm ví).
+    // Kẹp lại để lịch sử/bảng vàng khớp đúng số tiền đã dịch chuyển, không phóng đại
+    // (kiểu lỗi check-stock2.js từng bắt được).
+    const walletNow = Math.max(0, Number(getUserData(userId).points) || 0);
+    const room = marginPart + walletNow;         // đóng phần này thì chịu lỗ được tới đây
     let pl = short ? (basisPart - shares * exit) : (shares * exit - basisPart);
-    if (pl < -marginPart) pl = -marginPart;
-    const back = Math.max(0, marginPart + pl);   // vốn + lãi/lỗ, không âm
+    if (pl < -room) pl = -room;
+    const back = marginPart + pl;   // CÓ THỂ ÂM -> trừ tiếp vào ví; theo cách kẹp trên
+                                    // thì ví + back luôn >= 0
 
     updatePoints(userId, back);
     pos.shares = have - shares;
@@ -2607,10 +2618,12 @@ function stockClose(userId, want, forced) {
 function stockBurnCheck() {
     for (const [uid, p] of Object.entries(stockPos())) {
         if ((Number(p.shares) || 0) < 1) continue;
-        if (stockPL(p) <= -posMargin(p)) {
+        // CHÁY VÍ: lỗ ăn hết vốn LẪN số dư còn lại. Ai nhiều tiền trong ví thì gồng
+        // được sâu hơn — đó là ý đồ, nhưng cũng nghĩa là mất sạch ví trong một lệnh.
+        if (stockPL(p) <= -posBuffer(uid, p)) {
             const lev = Math.round(posLev(p) * 10) / 10;
             stockClose(uid, p.shares, true);
-            writeLog('SYSTEM', `[CỔ PHIẾU] Lệnh ${p.side === 'short' ? 'BÁN' : 'MUA'} x${lev} của ${getUserData(uid).name || uid} CHÁY VỐN`);
+            writeLog('SYSTEM', `[CỔ PHIẾU] Lệnh ${p.side === 'short' ? 'BÁN' : 'MUA'} x${lev} của ${getUserData(uid).name || uid} CHÁY VÍ (lỗ ăn hết vốn + số dư)`);
         }
     }
 }
