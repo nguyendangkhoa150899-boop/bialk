@@ -1019,7 +1019,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note" id="skRisk" style="margin-bottom:12px"></div>
         <div class="row">
           <div style="flex:1">
-            <label>Biến động mỗi nhịp 30s (%)</label>
+            <label>Biến động mỗi nhịp 10s (%)</label>
             <input id="skVol" type="number" step="0.1" placeholder="vd: 1.5">
           </div>
           <div style="flex:1">
@@ -1041,7 +1041,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
           <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
         </div>
-        <div class="note">Người chơi nhập <b>khối lượng (lot)</b> như bàn giao dịch thật: <b>1 lot = 10 CP</b>, nhỏ nhất 0.1 lot. Hai trần ở trên tính bằng CP, nên trần 500 CP = 50 lot toàn sàn và 80 CP = 8 lot mỗi người. Sàn đóng thì <b>vẫn cho đóng lệnh</b>, chỉ chặn mở lệnh mới — dùng khi muốn hạ nhiệt mà không giam tiền ai.</div>
+        <div class="note">Người chơi nhập <b>khối lượng (lot)</b> như bàn giao dịch thật: <b>1 lot = 10 CP</b>. Người chơi chỉ nhập <b>số Dogcoin</b>, bot tự quy ra khối lượng. Hai trần ở trên tính bằng CP, nên trần 500 CP = 50 lot toàn sàn và 80 CP = 8 lot mỗi người. Sàn đóng thì <b>vẫn cho đóng lệnh</b>, chỉ chặn mở lệnh mới — dùng khi muốn hạ nhiệt mà không giam tiền ai.</div>
       </div>
       <div class="card">
         <h3>📰 Thả tin — giá bật/sụp NGAY một nhịp</h3>

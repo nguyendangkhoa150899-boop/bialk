@@ -2255,12 +2255,12 @@ function wheelResetTurns() {
 // Lợi thế nhà cái DUY NHẤT là chênh mua–bán (spread): mua đắt 2%, bán rẻ 2%, tức mỗi
 // vòng người chơi mất ~4% dù giá đi đâu. Nói thẳng ở màn đặt mua, không giấu.
 const STOCK_BASE = 1000;             // mốc gốc — giá luôn bị kéo về đây
-const STOCK_TICK_MS = 30 * 1000;     // nhịp giá
+const STOCK_TICK_MS = 10 * 1000;     // nhịp giá (22/08: 30s -> 10s theo yêu cầu chủ server)
 const STOCK_PULL = 0.04;             // lực kéo về mốc (càng xa càng kéo mạnh)
 const STOCK_MIN = 300, STOCK_MAX = 3000;   // chặn cứng 2 đầu
 const STOCK_TICK_CAP = 0.08;         // cầu dao: mỗi nhịp không quá ±8%
-const STOCK_HIST_N = 240;            // 2 giờ. CHẶN TRẦN NGAY TỪ ĐẦU — lịch sử giá sinh
-                                     // 2 dòng/phút, nhanh hơn mọi mảng khác trong bot
+const STOCK_HIST_N = 360;            // 1 giờ ở nhịp 10s. CHẶN TRẦN NGAY TỪ ĐẦU — nến sinh
+                                     // 6 dòng/PHÚT, nhanh hơn mọi mảng khác trong bot
                                      // (bài học _txDashHistory phình 1.348 ván = 57% db).
 const STOCK_LOG_N = 20;              // lệnh vừa khớp hiện trên web
 const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng + lịch sử)
@@ -2403,7 +2403,7 @@ function stockState(userId) {
         lotSize: STOCK_LOT,
         nextTick: dbCache._stockNextTick || (Date.now() + STOCK_TICK_MS),
         now: Date.now(),
-        candles: stockCandles().slice(-240),  // 2 giờ nến — web tự gộp sang khung lớn
+        candles: stockCandles().slice(-360),  // 1 giờ nến — web tự gộp sang khung lớn
         outstanding: stockShareCount(),
         maxShares: cfg.maxShares,
         maxPer: cfg.maxPer,
