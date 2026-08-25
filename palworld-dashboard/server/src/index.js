@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { palworld, PalworldApiError } from "./palworldClient.js";
 import { dashboardAuth } from "./dashboardAuth.js";
-import { giveItem, countItem, countItemAll, takeItem } from "./sftpBridge.js";
+import { giveItem, givePal, countItem, countItemAll, takeItem } from "./sftpBridge.js";
 import { recordGive, readHistory } from "./history.js";
 import { listLinks, getLinkByDiscordId, findBySteamId, saveLink, deleteLink } from "./links.js";
 import { intInRange, nonEmptyString, ValidationError } from "./validate.js";
@@ -91,6 +91,42 @@ app.post(
 
     const results = await giveItem(playerNames, itemId, quantity);
     return finishGive("item", { itemId, quantity }, results);
+  })
+);
+
+// 🎁 Giao PAL (rương pal web, 25/08). Bot gọi khi người chơi bấm NHẬN trong Hồ sơ.
+// species có thể mang tiền tố BOSS_ (pal boss). Linh hồn 0-20 bậc (20 = +60%).
+// Pal dùng được sau restart server — chuyện của game, không phải lỗi giao.
+app.post(
+  "/api/give-pal",
+  handle(async (req) => {
+    const playerName = nonEmptyString(req.body.playerName, "Tên người chơi");
+    const species = nonEmptyString(req.body.species, "Mã pal");
+    if (!/^[A-Za-z0-9_]+$/.test(species)) throw new ValidationError("Mã pal chỉ gồm chữ/số/gạch dưới");
+    const passives = Array.isArray(req.body.passives) ? req.body.passives.map(String) : [];
+    if (passives.length > 4) throw new ValidationError("Tối đa 4 passive");
+    for (const p of passives) {
+      if (!/^[A-Za-z0-9_]+$/.test(p)) throw new ValidationError(`Passive không hợp lệ: ${p}`);
+    }
+    const spec = {
+      species,
+      level: intInRange(req.body.level, { min: 1, max: 100, label: "Level" }),
+      rank: intInRange(req.body.rank ?? 0, { min: 0, max: 5, label: "Sao" }),
+      ivHp: intInRange(req.body.ivHp ?? 0, { min: 0, max: 100, label: "IV máu" }),
+      ivMelee: intInRange(req.body.ivMelee ?? 0, { min: 0, max: 100, label: "IV cận chiến" }),
+      ivShot: intInRange(req.body.ivShot ?? 0, { min: 0, max: 100, label: "IV tầm xa" }),
+      ivDef: intInRange(req.body.ivDef ?? 0, { min: 0, max: 100, label: "IV thủ" }),
+      soulHp: intInRange(req.body.soulHp ?? 0, { min: 0, max: 20, label: "Linh hồn máu" }),
+      soulAtk: intInRange(req.body.soulAtk ?? 0, { min: 0, max: 20, label: "Linh hồn công" }),
+      soulDef: intInRange(req.body.soulDef ?? 0, { min: 0, max: 20, label: "Linh hồn thủ" }),
+      soulWork: intInRange(req.body.soulWork ?? 0, { min: 0, max: 20, label: "Linh hồn làm việc" }),
+      gender: intInRange(req.body.gender ?? 0, { min: 0, max: 2, label: "Giới tính" }),
+      lucky: intInRange(req.body.lucky ?? 0, { min: 0, max: 1, label: "Lucky" }),
+      passivesCsv: passives.length ? passives.join(",") : "-",
+    };
+    const r = await givePal(playerName, spec);
+    recordGive({ action: "pal", detail: { species, level: spec.level, passives: spec.passivesCsv }, results: [{ player: playerName, ...r }] });
+    return { ok: r.ok, message: r.message };
   })
 );
 

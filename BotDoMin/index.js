@@ -914,6 +914,341 @@ function gachaPool() {
     return (PAL_DATA.all || []).filter(p => (p.dex || 0) >= GACHA_MIN_DEX && !GACHA_EXCLUDE_CODES.includes(p.code));
 }
 
+// ===== 🎁 QUAY PAL TRÊN WEB (rương + vòng quay kiểu CSGO, 25/08) =====
+// Thay cho nút quay random trong Discord. Trúng thì pal vào RƯƠNG ở trang Hồ sơ web:
+// bán lại lấy Dogcoin, hoặc NHẬN — chọn linh hồn/passive rồi bot tự giao vào game qua
+// dashboard (spawn+bắt của mod). Pal DÙNG ĐƯỢC sau đợt restart server kế tiếp — game
+// chỉ "nhận nuôi" pal lúc load thế giới, đã dò hết API và không có đường sống nào khác.
+//
+// Pool: TẤT CẢ pal thường (kể cả Predator không số dex) trừ #203 Panthalus + #204
+// Astralym (bug game: chưa cho bắt/thả). Ô "PAL RAID" nổ theo TỈ LỆ RIÊNG (25/08: 1%);
+// trúng nó thì mở vòng 2 chia đều trong các pal raid — giống mở rương CSGO.
+const PALWHEEL_EXCLUDE_DEX = [203, 204]; // Panthalus, Astralym
+// Chỉ các boss triệu hồi được ở Summoning Altar server này (chủ server chốt 25/08,
+// nguồn paldb.cc/en/Raid). Moon Lord KHÔNG lấy được -> không có. Xenogard/Xenovader
+// là pal đẻ ra từ raid Xenolord, không phải boss triệu hồi -> cũng không nằm trong ô RAID.
+const PALWHEEL_RAID_NAMES = ['Bellanoir', 'Bellanoir Libero', 'Blazamut Ryu', 'Xenolord', 'Hartalis'];
+
+let PASSIVE_DATA = { list: [] };
+try {
+    PASSIVE_DATA = JSON.parse(fs.readFileSync(require('path').join(__dirname, 'passives.json'), 'utf8'));
+} catch (e) {
+    console.error('Khong doc duoc passives.json (nhan pal se khong chon duoc passive):', e.message);
+}
+function passiveCatalog() { return Array.isArray(PASSIVE_DATA.list) ? PASSIVE_DATA.list : []; }
+
+// Bộ 4 passive chọn nhanh ("build") — lọc id lạ ngay lúc đọc để passives.json sửa tay
+// sai cũng không lọt id hỏng xuống client/claim.
+function passiveBuilds() {
+    const catalog = new Set(passiveCatalog().map(p => p.id));
+    const raw = Array.isArray(PASSIVE_DATA.builds) ? PASSIVE_DATA.builds : [];
+    return raw
+        .map(b => ({ name: String(b.name || ''), ids: (Array.isArray(b.ids) ? b.ids.map(String).filter(id => catalog.has(id)) : []).slice(0, 4) }))
+        .filter(b => b.name && b.ids.length);
+}
+
+function palWheelCfg() {
+    const c = dbCache._palWheelCfg || {};
+    const num = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+    return {
+        price: Math.floor(num(c.price, 2000, 100, 1000000)),      // vé mỗi lượt quay
+        customPrice: Math.floor(num(c.customPrice, 6000, 100, 1000000)), // 🎯 chọn pal đích danh (25/08, thay shop Discord)
+        sellPrice: Math.floor(num(c.sellPrice, 1000, 0, 1000000)), // bán pal trong rương
+        soulMax: Math.floor(num(c.soulMax, 1, 0, 4)),             // số dòng linh hồn 60% được chọn (25/08: chỉ 1 trong 4)
+        level: Math.floor(num(c.level, 80, 1, 100)),
+        stars: Math.floor(num(c.stars, 4, 0, 5)),
+        boss: c.boss === undefined ? true : !!c.boss,             // giao bản BOSS_ (pal boss)
+        open: c.open === undefined ? true : !!c.open,
+    };
+}
+function setPalWheelCfg(o) {
+    dbCache._palWheelCfg = { ...palWheelCfg(), ...o };
+    saveDbNow();
+    return palWheelCfg();
+}
+function palWheelNormalPool() {
+    const raid = new Set(PAL_DATA.raidOnly || []);
+    return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0));
+}
+function palWheelRaidPool() {
+    return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
+}
+
+// Rương pal của từng người — mảng trên userData, phần tử: { id, code, name, dex, raid,
+// wonAt, status: 'chest' (trong rương) | 'sold' | 'delivering' (đang giao, chờ mod xác
+// nhận) | 'claimed', souls: ['hp'|'atk'|'def'|'work'], passives: [id], deliveredTo }
+function palChest(userId) {
+    const u = getUserData(userId);
+    if (!Array.isArray(u.palChest)) u.palChest = [];
+    return u.palChest;
+}
+
+function palWheelSpin(userId, username) {
+    const cfg = palWheelCfg();
+    if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
+    const normals = palWheelNormalPool();
+    const raids = palWheelRaidPool();
+    if (!normals.length) return { error: 'Danh sách pal chưa nạp được, báo admin' };
+    const user = getUserData(userId);
+    if ((user.points || 0) < cfg.price) {
+        return { error: `Cần ${cfg.price.toLocaleString()} Dogcoin mỗi lượt quay (bạn có ${(user.points || 0).toLocaleString()})` };
+    }
+    updatePoints(userId, -cfg.price);
+
+    // CHIA ĐỀU TẤT CẢ Ô (chủ server chốt 25/08 sau vài vòng đổi ý): ô RAID chiếm đúng
+    // 1 suất như từng con pal thường — pool 281 con thì mỗi ô 1/282 (~0,35%). Trúng ô
+    // RAID thì chia đều tiếp trong các boss raid.
+    const total = normals.length + (raids.length ? 1 : 0);
+    const roll = Math.floor(Math.random() * total);
+    const isRaid = raids.length > 0 && roll === normals.length;
+    const win = isRaid ? raids[Math.floor(Math.random() * raids.length)] : normals[roll];
+
+    // 25/08: pal chỉ HIỆN ra ở trang Cá nhân SAU khi reel quay xong (10s/reel, raid 2 reel)
+    // — revealAt chặn cả kiểu F5 sang tab Cá nhân xem trộm kết quả giữa chừng.
+    const revealMs = isRaid ? 22000 : 11000;
+    const item = {
+        id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
+        code: win.code, name: win.name, dex: win.dex || 0, raid: isRaid,
+        wonAt: new Date().toLocaleString('vi-VN'), status: 'chest',
+        revealAt: Date.now() + revealMs,
+    };
+    palChest(userId).unshift(item);
+
+    // 🏆 Hũ quay pal: giữ nguyên luật cũ của gacha Discord (nuôi 5% vé, nổ 1%)
+    potFeed('gacha', luckyPotCut('gacha', cfg.price));
+    let potWin = 0;
+    if (potGet('gacha') > 0 && Math.random() < POT_HIT_RATE) {
+        potWin = luckyPotPop('gacha');
+        updatePoints(userId, potWin);
+        logDog('jackpot', userId, username || userId, potWin, 'nổ hũ quay pal (web)');
+    }
+
+    logDog('shop', userId, username || userId, -cfg.price, `quay pal web trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}`);
+    writeLog('ADMIN', `[QUAY PAL WEB] ${username || userId} quay trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}${potWin ? ` | NỔ HŨ +${potWin}` : ''}`);
+    saveDbNow();
+
+    // Đăng công khai vào kênh gacha (nếu admin có cấu hình kênh) — ĐỢI reel quay xong
+    // mới đăng, kẻo bạn bè trong Discord biết kết quả trước người đang quay.
+    const gachaCh = dbCache._gachaChannelId;
+    if (gachaCh && typeof client !== 'undefined' && client && client.channels) {
+        const msg = isRaid
+            ? `🎁🔥 **${username || 'Ai đó'}** quay pal trên web trúng ô **PAL RAID** và mở ra **${item.name}**!`
+            : `🎁 **${username || 'Ai đó'}** quay pal trên web trúng **${item.name}**${item.dex ? ` (#${item.dex})` : ''}!`;
+        setTimeout(() => {
+            client.channels.fetch(gachaCh)
+                .then(ch => ch.send(msg + (potWin ? `\n💥🏆 Và NỔ LUÔN HŨ QUAY PAL: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}!` : '')))
+                .catch(e => writeLog('SYSTEM', `[QUAY PAL WEB] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
+        }, revealMs);
+        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> quay pal web NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${POT_SEED.toLocaleString()} 🌱`, userId);
+    }
+
+    return { ok: true, item, potWin, balance: getUserData(userId).points || 0 };
+}
+
+// 🎯 CHỌN PAL ĐÍCH DANH (25/08, thay nút "Pal tùy chọn" 6.000 trong Discord): chọn
+// đúng con mình thích trong pool pal THƯỜNG (không raid, không Panthalus/Astralym),
+// trả tiền, pal vào RƯƠNG như quay trúng — nhận/bán cùng một luồng. Nuôi hũ + xổ hũ
+// giống vé quay cho công bằng giữa hai đường mua.
+function palPickBuy(userId, code, username) {
+    const cfg = palWheelCfg();
+    if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
+    const pal = palWheelNormalPool().find(p => p.code === String(code || ''));
+    if (!pal) return { error: 'Không thấy pal này trong danh sách (pal raid không mua đích danh được)' };
+    const user = getUserData(userId);
+    if ((user.points || 0) < cfg.customPrice) {
+        return { error: `Cần ${cfg.customPrice.toLocaleString()} Dogcoin (bạn có ${(user.points || 0).toLocaleString()})` };
+    }
+    updatePoints(userId, -cfg.customPrice);
+
+    const item = {
+        id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
+        code: pal.code, name: pal.name, dex: pal.dex || 0, raid: false,
+        wonAt: new Date().toLocaleString('vi-VN') + ' (chọn mua)', status: 'chest',
+    };
+    palChest(userId).unshift(item);
+
+    potFeed('gacha', luckyPotCut('gacha', cfg.customPrice));
+    let potWin = 0;
+    if (potGet('gacha') > 0 && Math.random() < POT_HIT_RATE) {
+        potWin = luckyPotPop('gacha');
+        updatePoints(userId, potWin);
+        logDog('jackpot', userId, username || userId, potWin, 'nổ hũ khi chọn mua pal (web)');
+    }
+
+    logDog('shop', userId, username || userId, -cfg.customPrice, `chọn mua pal ${item.name} (web) - rương #${item.id}`);
+    writeLog('ADMIN', `[CHỌN PAL WEB] ${username || userId} mua đích danh ${item.name} - rương #${item.id}${potWin ? ` | NỔ HŨ +${potWin}` : ''}`);
+    saveDbNow();
+
+    const gachaCh = dbCache._gachaChannelId;
+    if (gachaCh && typeof client !== 'undefined' && client && client.channels) {
+        client.channels.fetch(gachaCh)
+            .then(ch => ch.send(`🎯 **${username || 'Ai đó'}** chọn mua **${item.name}**${item.dex ? ` (#${item.dex})` : ''} trên web!` + (potWin ? `\n💥🏆 Và NỔ LUÔN HŨ QUAY PAL: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}!` : '')))
+            .catch(e => writeLog('SYSTEM', `[CHỌN PAL WEB] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
+        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> chọn mua pal mà NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${POT_SEED.toLocaleString()} 🌱`, userId);
+    }
+
+    return { ok: true, item, potWin, balance: getUserData(userId).points || 0 };
+}
+
+function palChestSell(userId, itemId, username) {
+    const cfg = palWheelCfg();
+    const item = palChest(userId).find(i => i.id === Number(itemId));
+    if (!item) return { error: 'Không thấy pal này trong rương' };
+    if (item.revealAt && item.revealAt > Date.now()) return { error: 'Pal đang trong vòng quay — chờ quay xong đã' };
+    if (item.status !== 'chest') return { error: item.status === 'delivering' ? 'Pal đang giao dở, không bán được' : 'Pal này đã xử lý rồi' };
+    item.status = 'sold';
+    item.soldAt = new Date().toLocaleString('vi-VN');
+    updatePoints(userId, cfg.sellPrice);
+    logDog('shop', userId, username || userId, cfg.sellPrice, `bán ${item.name} trong rương pal (#${item.id})`);
+    writeLog('ADMIN', `[RƯƠNG PAL] ${username || userId} bán ${item.name} (#${item.id}) +${cfg.sellPrice} Dogcoin`);
+    saveDbNow();
+    return { ok: true, sold: cfg.sellPrice, balance: getUserData(userId).points || 0 };
+}
+
+const PAL_SOUL_KEYS = ['hp', 'atk', 'def', 'work'];
+async function palChestClaim(userId, itemId, soulsIn, passivesIn, username) {
+    const cfg = palWheelCfg();
+    const item = palChest(userId).find(i => i.id === Number(itemId));
+    if (!item) return { error: 'Không thấy pal này trong rương' };
+    if (item.revealAt && item.revealAt > Date.now()) return { error: 'Pal đang trong vòng quay — chờ quay xong đã' };
+    if (item.status === 'delivering') return { error: 'Pal này đang giao dở — chờ vài phút hoặc nhắn admin' };
+    if (item.status !== 'chest') return { error: 'Pal này đã xử lý rồi' };
+
+    const souls = Array.isArray(soulsIn) ? [...new Set(soulsIn.map(String).filter(s => PAL_SOUL_KEYS.includes(s)))] : [];
+    if (souls.length > cfg.soulMax) return { error: `Chỉ được chọn tối đa ${cfg.soulMax} dòng linh hồn` };
+    // 25/08: BẮT BUỘC chọn đủ dòng linh hồn (chủ server yêu cầu — không chọn không cho nhận)
+    if (cfg.soulMax > 0 && souls.length < cfg.soulMax) {
+        return { error: `Phải chọn đủ ${cfg.soulMax} dòng linh hồn +60% rồi mới nhận được` };
+    }
+    const catalog = new Set(passiveCatalog().map(p => p.id));
+    const passives = Array.isArray(passivesIn) ? [...new Set(passivesIn.map(String).filter(p => catalog.has(p)))] : [];
+    if (passives.length > 4) return { error: 'Tối đa 4 passive' };
+
+    const gameName = (getUserData(userId).ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game — nhắn admin liên kết trước đã' };
+    const on = await requireOnline(gameName);
+    if (on.unknown) return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) — thử lại sau vài phút` };
+    if (!on.online) return { error: `Nhân vật ${gameName} chưa online trong game — vào game rồi bấm nhận nhé` };
+
+    // Đánh dấu ĐANG GIAO trước khi gửi lệnh: nếu kết quả không rõ (timeout) thì giữ
+    // nguyên trạng thái này cho admin xử, tuyệt đối không cho bấm nhận lần 2 (sợ trùng pal).
+    item.status = 'delivering';
+    item.souls = souls;
+    item.passives = passives;
+    item.claimAt = new Date().toLocaleString('vi-VN');
+    saveDbNow();
+
+    const species = (cfg.boss ? 'BOSS_' : '') + item.code;
+    let r = null, err = null;
+    try {
+        r = await pal.givePal(gameName, {
+            species, level: cfg.level, rank: cfg.stars,
+            ivHp: 100, ivMelee: 100, ivShot: 100, ivDef: 100,
+            soulHp: souls.includes('hp') ? 20 : 0,      // 20 bậc x3% = 60%
+            soulAtk: souls.includes('atk') ? 20 : 0,
+            soulDef: souls.includes('def') ? 20 : 0,
+            soulWork: souls.includes('work') ? 20 : 0,
+            passives,
+        });
+    } catch (e) { err = e; }
+
+    if (r && r.ok) {
+        item.status = 'claimed';
+        item.deliveredTo = gameName;
+        saveDbNow();
+        writeLog('ADMIN', `[RƯƠNG PAL] Đã giao ${species} Lv${cfg.level} cho ${gameName} (rương #${item.id} của ${username || userId}) | linh hồn: ${souls.join(',') || '-'} | passive: ${passives.join(',') || '-'}`);
+        return { ok: true, message: '✅ Đã giao vào hộp pal trong game! Pal sẽ DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp.' };
+    }
+
+    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    if (/PALBOX DAY/i.test(msg)) {
+        item.status = 'chest'; // mod từ chối vì hộp đầy, CHƯA giao gì — pal còn nguyên trong rương
+        saveDbNow();
+        return { error: '📦 Hộp pal trong game ĐẦY — dọn bớt chỗ trong palbox rồi bấm nhận lại (pal vẫn còn trong rương)' };
+    }
+    if (/player not found|not found|chưa online/i.test(msg)) {
+        item.status = 'chest'; // mod xác nhận CHƯA giao gì — trả về rương cho bấm lại
+        saveDbNow();
+        return { error: `Không thấy ${gameName} trong game — vào game rồi thử lại` };
+    }
+    // Không rõ đã giao hay chưa: giữ 'delivering', admin kiểm results.log rồi xử ở panel
+    writeLog('ADMIN', `[RƯƠNG PAL] KHÔNG RÕ KẾT QUẢ giao ${species} cho ${gameName} (rương #${item.id} của ${username || userId}): ${msg} — kiểm results.log: đã giao thì bấm "đã giao", chưa thì "trả về rương"`);
+    return { error: '⚠️ Chưa xác nhận được kết quả giao. ĐỪNG quay/bấm lại — admin sẽ kiểm và xử lý sớm.' };
+}
+
+// Panel gọi: admin chốt kết quả cho pal đang kẹt 'delivering' sau khi kiểm results.log
+function palChestResolve(ownerId, itemId, delivered) {
+    const item = palChest(ownerId).find(i => i.id === Number(itemId));
+    if (!item || item.status !== 'delivering') return { error: 'Không thấy pal đang giao dở với id này' };
+    item.status = delivered ? 'claimed' : 'chest';
+    if (delivered) item.deliveredTo = item.deliveredTo || (getUserData(ownerId).ingameName || '').trim();
+    saveDbNow();
+    writeLog('ADMIN', `[RƯƠNG PAL] Admin chốt rương #${item.id} của ${ownerId}: ${delivered ? 'ĐÃ GIAO' : 'trả về rương'}`);
+    return { ok: true };
+}
+
+// ⭐ Build passive RIÊNG của từng người (25/08): tự chọn 4 con ưng ý rồi lưu, lần sau
+// bấm 1 phát lấy lại. Lưu trên userData nên qua restart vẫn còn. Tối đa 8 bộ/người,
+// trùng tên = ghi đè. id lạ bị lọc ngay lúc lưu.
+function palBuildSave(userId, name, idsIn) {
+    const u = getUserData(userId);
+    const nm = String(name || '').trim().slice(0, 24);
+    if (!nm) return { error: 'Đặt tên cho build đã (tối đa 24 ký tự)' };
+    const catalog = new Set(passiveCatalog().map(p => p.id));
+    const ids = Array.isArray(idsIn) ? [...new Set(idsIn.map(String).filter(id => catalog.has(id)))].slice(0, 4) : [];
+    if (!ids.length) return { error: 'Chọn ít nhất 1 passive rồi hãy lưu build' };
+    if (!Array.isArray(u.palBuilds)) u.palBuilds = [];
+    const i = u.palBuilds.findIndex(b => b.name === nm);
+    if (i >= 0) u.palBuilds[i] = { name: nm, ids };
+    else {
+        if (u.palBuilds.length >= 8) return { error: 'Tối đa 8 build riêng — xoá bớt rồi lưu' };
+        u.palBuilds.push({ name: nm, ids });
+    }
+    saveDbNow();
+    return { ok: true, myBuilds: u.palBuilds };
+}
+function palBuildDel(userId, name) {
+    const u = getUserData(userId);
+    if (!Array.isArray(u.palBuilds)) u.palBuilds = [];
+    const before = u.palBuilds.length;
+    u.palBuilds = u.palBuilds.filter(b => b.name !== String(name || ''));
+    if (u.palBuilds.length === before) return { error: 'Không thấy build này' };
+    saveDbNow();
+    return { ok: true, myBuilds: u.palBuilds };
+}
+
+// Panel gọi: liệt kê rương của mọi người (ưu tiên đơn đang giao dở lên đầu)
+function palChestOverview() {
+    const out = [];
+    for (const [uid, rec] of Object.entries(dbCache)) {
+        if (!/^\d{15,20}$/.test(uid) || !rec || !Array.isArray(rec.palChest)) continue;
+        for (const item of rec.palChest) {
+            out.push({ ownerId: uid, ownerName: rec.name || uid, ingameName: (rec.ingameName || '').trim(), ...item });
+        }
+    }
+    const rank = { delivering: 0, chest: 1, claimed: 2, sold: 3 };
+    out.sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9) || b.id - a.id);
+    return out;
+}
+
+// Panel gọi: admin tặng thẳng 1 pal vào rương (đền bù/sự kiện). name khớp theo tên.
+function palChestGrant(ownerId, palName) {
+    const all = PAL_DATA.all || [];
+    const q = String(palName || '').trim().toLowerCase();
+    const win = all.find(p => p.name.toLowerCase() === q) || all.find(p => p.name.toLowerCase().includes(q));
+    if (!win) return { error: `Không thấy pal tên "${palName}"` };
+    const raidSet = new Set(PAL_DATA.raidOnly || []);
+    const item = {
+        id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
+        code: win.code, name: win.name, dex: win.dex || 0, raid: raidSet.has(win.name),
+        wonAt: new Date().toLocaleString('vi-VN') + ' (admin tặng)', status: 'chest',
+    };
+    palChest(ownerId).unshift(item);
+    saveDbNow();
+    writeLog('ADMIN', `[RƯƠNG PAL] Admin tặng ${win.name} vào rương của ${ownerId} (#${item.id})`);
+    return { ok: true, item };
+}
+
 const WITHDRAW_MAX_PER_REQUEST = 20000; // trần mỗi lần chuyển vào game, chặn thiệt hại nếu có lỗi
 // Chiều game -> Discord KHÔNG giới hạn: admin cầm đồ thật trong tay rồi mới duyệt,
 // không có đường lợi dụng.
@@ -2504,6 +2839,9 @@ function stockState(userId) {
             buffer: posBuffer(userId, pos),            // vốn + ví = tổng chịu lỗ được
             // VỐN BỊ CHÔN: chưa đủ giờ thì không đóng lệnh được — chặn kiểu "lời là rút"
             unlockAt: (pos.openedAt || Date.now()) + cfg.holdS * 1000,
+            // 🤖 mốc tự đóng (25/08): giá mid chạm mốc là bot đóng hộ cả lệnh
+            autoLow: Number(pos.autoLow) || 0,
+            autoHigh: Number(pos.autoHigh) || 0,
         } : null,
         log: (dbCache._stockLog || []).slice(0, 8),
         board: board.slice(0, 5),
@@ -2662,6 +3000,47 @@ function stockBurnCheck() {
     }
 }
 
+// 🤖 TỰ ĐỘNG ĐÓNG LỆNH theo 2 mốc giá (25/08, chủ server yêu cầu): người chơi nhìn cột
+// giá bên phải đồ thị rồi điền — "rớt tới X thì tự cắt" và/hoặc "tăng tới Y thì tự cắt"
+// (cắt lỗ hay chốt lời là tuỳ vị thế, bot không phân biệt — chạm mốc là đóng CẢ lệnh).
+// So với giá MID (giá đang hiện trên đồ thị) cho khớp mắt người chơi; đóng thì vẫn ăn
+// giá bid/ask như đóng tay. Để trống cả 2 mốc = xoá.
+function stockAuto(userId, low, high) {
+    const pos = stockPos()[userId];
+    if (!pos || (Number(pos.shares) || 0) < 1) return { error: 'Bạn không có lệnh nào đang mở' };
+    const l = Math.max(0, Math.floor(Number(low) || 0));
+    const h = Math.max(0, Math.floor(Number(high) || 0));
+    if (l && h && l >= h) return { error: 'Mốc dưới phải NHỎ hơn mốc trên' };
+    const p = stockPrice();
+    if (l && l >= p) return { error: `Mốc dưới (${l.toLocaleString()}) phải NHỎ hơn giá hiện tại (${p.toLocaleString()})` };
+    if (h && h <= p) return { error: `Mốc trên (${h.toLocaleString()}) phải LỚN hơn giá hiện tại (${p.toLocaleString()})` };
+    pos.autoLow = l || null;
+    pos.autoHigh = h || null;
+    saveDbNow();
+    writeLog('SYSTEM', `[CỔ PHIẾU] ${getUserData(userId).name || userId} đặt mốc tự đóng: dưới ${l || '-'} / trên ${h || '-'}`);
+    return { ok: true, autoLow: l || 0, autoHigh: h || 0 };
+}
+// Chạy mỗi nhịp giá, SAU burn check (cháy ví ưu tiên). Vẫn tôn trọng thời gian chôn
+// vốn như đóng tay: chưa đủ giờ giữ thì chờ nhịp sau, mốc vẫn còn nguyên.
+function stockAutoCheck() {
+    const p = stockPrice();
+    const holdMs = stockCfg().holdS * 1000;
+    for (const [uid, pos] of Object.entries(stockPos())) {
+        if ((Number(pos.shares) || 0) < 1) continue;
+        const l = Number(pos.autoLow) || 0;
+        const h = Number(pos.autoHigh) || 0;
+        if (!l && !h) continue;
+        const hitLow = l > 0 && p <= l;
+        const hitHigh = h > 0 && p >= h;
+        if (!hitLow && !hitHigh) continue;
+        if (holdMs > 0 && Date.now() - (Number(pos.openedAt) || 0) < holdMs) continue;
+        const r = stockClose(uid, Number(pos.shares) || 0, false);
+        if (r && r.ok) {
+            writeLog('SYSTEM', `[CỔ PHIẾU] 🤖 TỰ ĐÓNG lệnh của ${getUserData(uid).name || uid}: giá ${p.toLocaleString()} chạm mốc ${hitLow ? 'DƯỚI ' + l.toLocaleString() : 'TRÊN ' + h.toLocaleString()} -> ${r.pl >= 0 ? 'lãi' : 'lỗ'} ${Math.abs(r.pl).toLocaleString()}`);
+        }
+    }
+}
+
 // Tin tốt/tin xấu do admin thả ở panel — giá bật/sụp NGAY một nhịp
 function stockNews(pct, text) {
     const p0 = stockPrice();
@@ -2706,6 +3085,7 @@ function runStockLoop() {
         try {
             stockTick();
             stockBurnCheck();   // lệnh BÁN lỗ hết cọc thì đóng hộ, không để ai âm ví
+            stockAutoCheck();   // 🤖 mốc tự đóng người chơi đặt (25/08)
             stockTouchPeaks();
             dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
         } catch (e) { writeLog('SYSTEM', `[CỔ PHIẾU] Lỗi nhịp giá: ${e.message}`); }
@@ -3072,11 +3452,55 @@ client.once('ready', async (c) => {
                 state: stockState,
                 open: (uid, side, amount, want, lev) => stockOpen(uid, side, amount, want, lev),
                 close: (uid, want) => stockClose(uid, want),
+                auto: (uid, low, high) => stockAuto(uid, low, high),   // 🤖 mốc tự đóng
             },
             // 📒 vay nợ: xem + trả ngay trên web (vay thì qua bảng Discord)
             debt: {
                 state: (uid) => debtStatus(uid),
                 pay: (uid, amt) => debtPay(uid, getUserData(uid).name || uid, amt),
+            },
+            // 🎁 quay pal kiểu CSGO + rương/hồ sơ (25/08)
+            palwheel: {
+                state: (uid) => {
+                    const cfg = palWheelCfg();
+                    return {
+                        price: cfg.price, sellPrice: cfg.sellPrice, open: cfg.open,
+                        pot: potGet('gacha'),
+                        names: palWheelNormalPool().map(p => p.name),
+                        raidNames: palWheelRaidPool().map(p => p.name),
+                        // không đếm pal đang quay dở (chưa tới revealAt) — khỏi lộ kết quả sớm
+                        chestCount: palChest(uid).filter(i => i.status === 'chest' && (!i.revealAt || i.revealAt <= Date.now())).length,
+                    };
+                },
+                spin: (uid) => palWheelSpin(uid, getUserData(uid).name || uid),
+                // 🎯 chọn pal đích danh (danh sách + mua)
+                pickState: (uid) => ({
+                    price: palWheelCfg().customPrice,
+                    open: palWheelCfg().open,
+                    pot: potGet('gacha'),
+                    chestCount: palChest(uid).filter(i => i.status === 'chest').length,
+                    list: palWheelNormalPool().map(p => ({ code: p.code, name: p.name, dex: p.dex || 0 })),
+                }),
+                pick: (uid, code) => palPickBuy(uid, code, getUserData(uid).name || uid),
+            },
+            profile: {
+                state: (uid) => {
+                    const cfg = palWheelCfg();
+                    return {
+                        // pal quay dở (chưa tới revealAt) KHÔNG hiện — F5 cũng không xem trộm được
+                        chest: palChest(uid).filter(i => !i.revealAt || i.revealAt <= Date.now()),
+                        sellPrice: cfg.sellPrice, soulMax: cfg.soulMax,
+                        level: cfg.level, stars: cfg.stars, boss: cfg.boss,
+                        passives: passiveCatalog(),
+                        builds: passiveBuilds(),
+                        myBuilds: Array.isArray(getUserData(uid).palBuilds) ? getUserData(uid).palBuilds : [],
+                        ingameName: (getUserData(uid).ingameName || '').trim(),
+                    };
+                },
+                sell: (uid, itemId) => palChestSell(uid, itemId, getUserData(uid).name || uid),
+                claim: (uid, itemId, souls, passives) => palChestClaim(uid, itemId, souls, passives, getUserData(uid).name || uid),
+                saveBuild: (uid, name, ids) => palBuildSave(uid, name, ids),
+                delBuild: (uid, name) => palBuildDel(uid, name),
             },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
@@ -3108,6 +3532,12 @@ client.once('ready', async (c) => {
             getDogLedger: () => dbCache._dogLedger || [],
             getPalOrders: () => dbCache._palOrders || [],
             completePalOrder,
+            // 🎁 rương pal + vòng quay web (25/08)
+            getPalWheelCfg: palWheelCfg,
+            setPalWheelCfg,
+            palChestOverview,
+            palChestGrant,
+            palChestResolve,
             deletePlayer,
             resetAllPlayers,
             addAllPlayers: addAllPlayersAndAnnounce,
@@ -4118,36 +4548,28 @@ async function resumeXosoAfterRestart() {
 // Không dùng hệ liên kết SteamID/REST cũ nữa (REST đã tắt, chỉ còn SFTP).
 
 function getWithdrawMessageData() {
-    const buyable = shopBuyableList().length;
+    // 25/08: SHOP PAL đã DỜI HẾT LÊN WEB (Quay Pal + Chọn Pal ở nhóm 👤 HỒ SƠ).
+    // Bảng Discord này giờ CHỈ còn chuyển Dogcoin hai chiều — không nút pal nữa.
     const lines = [
         `Chuyển Dogcoin **tự động** giữa ví Discord và Dog Coin trong game - xử lý ngay trong ~10 giây, không cần chờ admin.`,
         '',
         `**🎮 Chuyển vào game** - trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
         `**💬 Chuyển ra Discord** - trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
         '',
-        `**🎲 Pal ngẫu nhiên - ${PAL_SHOP.randomPrice.toLocaleString()} Dogcoin** - quay từ ${gachaPool().length} pal MẠNH (paldex #${GACHA_MIN_DEX} Helzephyr trở lên, có cả pal raid, trừ Xenolord, Hartalis & Blazamut Ryu). Biết trúng con gì **rồi mới chọn** passive + linh hồn.`,
-        `**🎯 Pal tùy chọn - ${PAL_SHOP.customPrice.toLocaleString()} Dogcoin** - tự chọn 1 trong ${buyable} pal (không có pal raid).`,
-        `Pal nào cũng là bản **Boss (Alpha)** 👑, **${PAL_SHOP.stars} sao** ⭐, **IV ${PAL_SHOP.ivs}**, ` +
-            `**${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** + **${PAL_SHOP.passiveSlots} passive** bạn tự chọn.`,
-        `🚫 Passive nhóm **Cây Thế Giới** không bán kèm pal - mua cấy ghép ở sạp trong game.`,
+        `**🎁 Pal chuyển hết lên WEB**: ${WEB_PLAY_URL} → nhóm 👤 HỒ SƠ có **🎁 Quay Pal** (${palWheelCfg().price.toLocaleString()}/lượt, kiểu CSGO, có ô PAL RAID) và **🎯 Chọn Pal** (${palWheelCfg().customPrice.toLocaleString()}, tự chọn con mình thích, không raid). Trúng/mua xong pal nằm trong 🎒 RƯƠNG: bán lại ${palWheelCfg().sellPrice.toLocaleString()} hoặc chọn linh hồn + passive rồi bot GIAO THẲNG vào game.`,
     ];
 
     const embed = new EmbedBuilder()
         // hũ quay Pal hiện ngay trên tiêu đề (bảng tự vẽ lại nên số luôn tươi)
-        .setTitle(`🔄 DOGCOIN & SHOP PAL — HŨ ĐANG CÓ ${potGet('gacha').toLocaleString()} DOGCOIN`)
+        .setTitle(`🔄 DOGCOIN — HŨ QUAY PAL ĐANG CÓ ${potGet('gacha').toLocaleString()} DOGCOIN`)
         .setColor(0xf1c40f)
         .setDescription(lines.join('\n'));
 
-    // Màu theo HÀNG cho dễ nhìn: hàng chuyển tiền xanh dương, hàng shop pal xanh lá.
     const rowTransfer = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('rut_open').setLabel('Chuyển vào game').setEmoji('🎮').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary)
     );
-    const rowPal = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('shop_random').setLabel(`Pal ngẫu nhiên - ${PAL_SHOP.randomPrice.toLocaleString()}`).setEmoji('🎲').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('shop_custom').setLabel(`Pal tùy chọn - ${PAL_SHOP.customPrice.toLocaleString()}`).setEmoji('🎯').setStyle(ButtonStyle.Success)
-    );
-    return { embeds: [embed], components: [rowTransfer, rowPal] };
+    return { embeds: [embed], components: [rowTransfer] };
 }
 
 // (Bảng shop pal riêng đã gộp vào bảng chuyển Dogcoin ở trên — 1 kênh, 1 thông báo.
@@ -5206,6 +5628,13 @@ client.on('interactionCreate', async interaction => {
 
     // ======== SHOP PAL: TỰ CHỌN (3000) — modal chọn pal + passive + linh hồn ========
     if (interaction.customId === 'shop_custom') {
+        // 25/08: mua pal tùy chọn đã DỜI LÊN WEB (tab 🎯 Chọn Pal, nhóm 👤 HỒ SƠ).
+        return interaction.reply({
+            content: `🎯 Chọn pal đã chuyển lên **web**: ${WEB_PLAY_URL}\nVào nhóm **👤 HỒ SƠ → 🎯 Chọn Pal** — chọn đích danh con mình thích (${palWheelCfg().customPrice.toLocaleString()} Dogcoin, không pal raid), pal vào 🎒 RƯƠNG rồi chọn linh hồn/passive nhận vào game.`,
+            ephemeral: true,
+        });
+    }
+    if (interaction.customId === 'shop_custom_CU_DA_TAT') {
         const price = PAL_SHOP.customPrice;
         const balance = getUserData(userId).points || 0;
 
@@ -5257,6 +5686,14 @@ client.on('interactionCreate', async interaction => {
     // Trừ tiền + quay ngay khi bấm. Người chơi thấy trúng con gì rồi mới bấm nút
     // "Chọn passive & linh hồn" để điền (shop_fill_<id> bên dưới).
     if (interaction.customId === 'shop_random') {
+        // 25/08: quay pal đã DỜI LÊN WEB (vòng quay kiểu CSGO + rương ở trang Hồ sơ).
+        // Giữ nút để chỉ đường, không trừ tiền ở đây nữa.
+        return interaction.reply({
+            content: `🎁 Quay pal đã chuyển lên **web**: ${WEB_PLAY_URL}\nVào tab **🎁 Quay Pal** — trúng thì pal nằm trong **RƯƠNG** ở trang 👤 Hồ sơ: bán lại lấy Dogcoin hoặc chọn linh hồn/passive rồi nhận vào game.`,
+            ephemeral: true,
+        });
+    }
+    if (interaction.customId === 'shop_random_CU_DA_TAT') {
         const price = PAL_SHOP.randomPrice;
         const balance = getUserData(userId).points || 0;
 

@@ -153,6 +153,9 @@ function startPanel(ctx) {
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
             palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
+            // 🎁 vòng quay pal web + rương (25/08)
+            palWheelCfg: ctx.getPalWheelCfg ? ctx.getPalWheelCfg() : null,
+            palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
         };
     };
 
@@ -205,6 +208,24 @@ function startPanel(ctx) {
                         return sendJSON(res, 400, { ok: false, error: 'Biên độ phải trong ±1..40%' });
                     }
                     return sendJSON(res, 200, { ok: true, ...ctx.stockNews(pct, body.text) });
+                }
+
+                // ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
+                if (ctx.setPalWheelCfg && req.method === 'POST' && path === '/api/palwheel/cfg') {
+                    return sendJSON(res, 200, { ok: true, cfg: ctx.setPalWheelCfg(body) });
+                }
+                if (ctx.palChestGrant && req.method === 'POST' && path === '/api/palchest/grant') {
+                    const uid = String(body.userId || '').trim();
+                    if (!/^\d{15,20}$/.test(uid)) return sendJSON(res, 400, { ok: false, error: 'Discord ID không hợp lệ' });
+                    const r = ctx.palChestGrant(uid, body.palName);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                // Chốt đơn đang giao dở: delivered=true (mod đã giao thật) / false (trả về rương)
+                if (ctx.palChestResolve && req.method === 'POST' && path === '/api/palchest/resolve') {
+                    const r = ctx.palChestResolve(String(body.ownerId || ''), body.id, !!body.delivered);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true });
                 }
 
 
@@ -1119,6 +1140,36 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Người chơi mua ở Discord, bot gửi đơn cho admin qua tin nhắn riêng. Bạn dùng CreativeMenu tạo pal rồi giao trong game.</div>
         <div id="palOrders" class="hist"></div>
       </div>
+
+      <!-- 🎁 Vòng quay pal WEB (25/08): quay ở tab Quay Pal trên web chơi, trúng vào
+           RƯƠNG trang Hồ sơ. NHẬN = bot tự giao qua dashboard (lệnh PAL2 của mod) —
+           KHÔNG cần admin đưa tay nữa. Pal dùng được sau restart server. -->
+      <div class="card">
+        <h3>🎁 Vòng quay Pal web + Rương</h3>
+        <div class="note">Vé quay trừ thẳng ví, nuôi hũ gacha 5%/vé và nổ 1% như cũ. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm — mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1"><label>Vé mỗi lượt quay (Dogcoin)</label><input id="pwPrice" type="number" placeholder="vd: 2000"></div>
+          <div style="flex:1"><label>🎯 Chọn pal đích danh (Dogcoin)</label><input id="pwCustom" type="number" placeholder="vd: 6000"></div>
+          <div style="flex:1"><label>Bán lại pal (Dogcoin)</label><input id="pwSell" type="number" placeholder="vd: 1000"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1"><label>Số dòng linh hồn 60% (0–4)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
+          <div style="flex:1"><label>Level pal giao (1–100)</label><input id="pwLevel" type="number" placeholder="vd: 80"></div>
+          <div style="flex:1"><label>Sao (0–5)</label><input id="pwStars" type="number" placeholder="vd: 4"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> Giao bản PAL BOSS</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
+          <button onclick="pwCfgSave()">💾 Lưu</button>
+        </div>
+        <div class="note" id="pwCfgNow">-</div>
+        <div class="row" style="margin-top:10px">
+          <input id="pgUid" placeholder="Discord ID người nhận" style="flex:2">
+          <input id="pgPal" placeholder="Tên pal (vd: Anubis)" style="flex:2">
+          <button onclick="pgGrant()">🎁 Tặng vào rương</button>
+        </div>
+        <div id="palChests" class="hist"></div>
+      </div>
       <div class="card">
         <h3>💰 Sổ biến động Dogcoin</h3>
         <div class="note">Ghi mọi khoản <b>điều chỉnh và chuyển đổi</b>: admin cộng/trừ tay, chuyển giữa người chơi, chuyển vào/ra game, mua pal, hoàn tiền. <b>Không</b> ghi tiền cược thắng/thua mini game (mỗi ván đều sinh giao dịch, ghi hết thì không tra được gì).</div>
@@ -1553,6 +1604,57 @@ function skSave(){
   if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
+
+// ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
+// Ô số đổ theo kiểu skFill (chỉ khi trống + không focus). Checkbox đổ đúng 1 LẦN —
+// panel tự refresh 3 giây/lần, đổ lại liên tục sẽ đè tay admin đang bấm.
+let pwCfgTicked=false;
+function pwCfgFill(k){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
+  set('pwPrice',k.price);set('pwCustom',k.customPrice);set('pwSell',k.sellPrice);set('pwSoul',k.soulMax);set('pwLevel',k.level);set('pwStars',k.stars);
+  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;}
+  document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
+    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng 60% · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
+    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
+}
+function pwCfgSave(){
+  const o={price:parseInt(document.getElementById('pwPrice').value),
+           customPrice:parseInt(document.getElementById('pwCustom').value),
+           sellPrice:parseInt(document.getElementById('pwSell').value),
+           soulMax:parseInt(document.getElementById('pwSoul').value),
+           level:parseInt(document.getElementById('pwLevel').value),
+           stars:parseInt(document.getElementById('pwStars').value),
+           boss:document.getElementById('pwBoss').checked,
+           open:document.getElementById('pwOpen').checked};
+  if(!(o.price>=100))return toast('Vé phải từ 100');
+  if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
+  if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
+  if(!(o.soulMax>=0&&o.soulMax<=4))return toast('Linh hồn 0–4 dòng');
+  if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
+  if(!(o.stars>=0&&o.stars<=5))return toast('Sao 0–5');
+  api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function pgGrant(){
+  const uid=document.getElementById('pgUid').value.trim(), pal=document.getElementById('pgPal').value.trim();
+  if(!uid||!pal)return toast('Nhập Discord ID + tên pal');
+  api('/api/palchest/grant',{userId:uid,palName:pal}).then(j=>{toast('🎁 Đã tặng '+j.item.name+' vào rương');document.getElementById('pgPal').value='';refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function pcResolve(ownerId,id,delivered){
+  if(!confirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?'))return;
+  api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast('✅ Đã chốt');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function renderPalChests(){
+  const box=document.getElementById('palChests');
+  if(!box||!STATE)return;
+  const rows=STATE.palChests||[];
+  if(!rows.length){box.innerHTML='<div class="muted">Chưa ai có pal trong rương.</div>';return;}
+  box.innerHTML=rows.map(r=>{
+    const st=r.status==='chest'?'🎒 trong rương':r.status==='sold'?'💰 đã bán':r.status==='claimed'?('✅ đã nhận'+(r.deliveredTo?' → '+esc(r.deliveredTo):'')):'<b style="color:var(--red)">⏳ ĐANG GIAO</b>';
+    const btn=r.status==='delivering'?(' <button onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',true)">✅ đã giao</button> <button onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',false)">↩️ về rương</button>'):'';
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--line)'+((r.status==='sold'||r.status==='claimed')?';opacity:.55':'')+'">#'+r.id+' <b>'+esc(r.name)+'</b>'+(r.raid?' 🔥RAID':'')+
+      ' — '+esc(r.ownerName)+(r.ingameName?' ('+esc(r.ingameName)+')':'')+' · '+esc(r.wonAt||'')+' · '+st+btn+'</div>';
+  }).join('');
+}
 async function skToggle(){
   const open=!(STATE&&STATE.stock&&STATE.stock.open);
   if(!open&&!await uiConfirm('Tạm đóng sàn? Người chơi vẫn bán được, chỉ không mua thêm.','Đóng sàn','btn-red'))return;
@@ -1866,6 +1968,8 @@ async function refresh(){
   if(wh){document.getElementById('whInfo').innerHTML='Vé <b>'+Number(wh.ticket||0).toLocaleString()+'</b> · đang chờ <b>'+wh.waiting+'</b>/'+wh.minPlayers+' người';
   const wmi=document.getElementById('whMin');if(wmi&&!wmi.value&&document.activeElement!==wmi)wmi.value=wh.minPlayers;}
   if(STATE.stock)skFill(STATE.stock);
+  if(STATE.palWheelCfg)pwCfgFill(STATE.palWheelCfg);
+  renderPalChests();
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';

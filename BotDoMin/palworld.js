@@ -84,6 +84,21 @@ async function giveItem(playerName, itemId, quantity) {
     };
 }
 
+// 🎁 Giao PAL vào game (rương pal web, 25/08). spec xem /api/give-pal bên dashboard.
+// Pal vào save ngay nhưng DÙNG ĐƯỢC sau restart server — báo người chơi đúng như vậy.
+// Trả { ok, message }. ok=false CÓ THỂ là timeout chứ chưa chắc thất bại — bên gọi
+// phải giữ trạng thái 'delivering' cho admin xử, đừng tự trả về rương.
+async function givePal(playerName, spec) {
+    const data = await call('/api/give-pal', {
+        method: 'POST',
+        body: JSON.stringify({ playerName, ...spec }),
+    });
+    return {
+        ok: !!(data && data.ok),
+        message: (data && data.message) || 'Không rõ kết quả',
+    };
+}
+
 // Đếm item người chơi đang có TRONG GAME. Trả { ok, count, message }.
 async function countItem(playerName, itemId) {
     const params = new URLSearchParams({ playerName, itemId });
@@ -145,6 +160,7 @@ module.exports = {
     getOnlinePlayers,
     findOnlineBySteamId,
     giveItem,
+    givePal,
     countItem,
     countItemAll,
     takeItem,

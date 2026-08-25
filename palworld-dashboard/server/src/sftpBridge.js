@@ -120,6 +120,45 @@ export async function giveItem(playerNames, itemId, quantity) {
   return splitResultsByPlayer(result, playerNames);
 }
 
+// 🎁 Giao PAL (rương pal web, 25/08). Gửi lệnh PAL2 cho mod (spawn + bắt + ghi chỉ số
+// + hủy bản sao ngoài world). Mod trả NHIỀU dòng cho 1 lệnh (V5..., OK gave pal,
+// DEBUG readback...) nên KHÔNG dùng queueAndWait (nó chốt sớm ở dòng đầu tiên) —
+// tự chờ tới khi thấy dòng "OK gave pal" hoặc "ERROR" của đúng người này.
+// Trả { ok, message }.
+export async function givePal(playerName, spec) {
+  const line = [
+    "PAL2", spec.species, spec.level, spec.rank,
+    spec.ivHp, spec.ivMelee, spec.ivShot, spec.ivDef,
+    spec.soulHp, spec.soulAtk, spec.soulDef, spec.soulWork,
+    spec.gender ?? 0, spec.lucky ?? 0,
+    spec.passivesCsv || "-",
+    playerName,
+  ].join(" ");
+
+  return withSftp(async (sftp) => {
+    const queuePath = `${basePath}/queue.txt`;
+    const resultPath = `${basePath}/results.log`;
+    const before = (await readText(sftp, resultPath)) || "";
+    const existingQueue = (await readText(sftp, queuePath)) || "";
+    await writeText(sftp, queuePath, existingQueue + line + "\n");
+
+    const prefix = `[${playerName}] `;
+    for (let attempt = 0; attempt < 25; attempt++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const after = await readText(sftp, resultPath);
+      if (!after || after.length <= before.length) continue;
+      const mine = after
+        .slice(before.length)
+        .split(/\r?\n/)
+        .filter((l) => l.startsWith(prefix))
+        .map((l) => l.slice(prefix.length));
+      const final = mine.find((l) => l.startsWith("OK gave pal") || l.startsWith("ERROR"));
+      if (final) return { ok: final.startsWith("OK gave pal"), message: final };
+    }
+    return { ok: false, message: "Không nhận được phản hồi từ mod trong game (timeout)." };
+  });
+}
+
 // Đếm số lượng item người chơi đang có TRONG GAME (chỉ đọc).
 // Trả { ok, count, message }.
 export async function countItem(playerName, itemId) {

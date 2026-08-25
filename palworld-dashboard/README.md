@@ -500,6 +500,165 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 
 ## Bot Discord (BotDoMin) — nhật ký cập nhật
 
+### 25/08/2026 — 🎁 QUAY PAL kiểu CSGO trên web + 🎒 RƯƠNG ở trang Hồ sơ (giao pal TỰ ĐỘNG)
+
+- **Quay pal dời từ Discord lên web** (tab 🎁 Quay Pal): reel chạy ngang kiểu CSGO theo
+  TÊN pal (ảnh bổ sung sau), server chốt kết quả trước rồi client mới diễn hoạt hình.
+  Pool = **TẤT CẢ pal thường (281 con, kể cả Boltmane/Dragostrophe)** trừ **#203 Panthalus
+  + #204 Astralym** (bug game chưa cho bắt/thả). Ô **🔥 PAL RAID** chiếm đúng 1 suất chia
+  đều; trúng thì mở reel thứ 2 chia đều 7 pal raid (Xenolord/Hartalis/Blazamut Ryu có mặt
+  lại — bỏ luật loại cũ). Vé 2.000, nuôi hũ gacha 5%/vé + nổ 1% như cũ. Nút quay random
+  trong Discord giờ chỉ đường lên web (code cũ giữ dưới `shop_random_CU_DA_TAT`).
+- **Trang 👤 Hồ sơ** (đổi từ tab Điểm danh, điểm danh giữ nguyên bên trong): thêm **🎒 Rương
+  Pal** — pal trúng nằm đây, mỗi con có nút **💰 Bán 1.000** hoặc **🎁 Nhận**: chọn dòng
+  **linh hồn +60%** (damage/thủ/máu/tốc độ làm việc, trần chỉnh được 0–4 dòng) + **4 ô
+  passive có chú thích** (danh mục `BotDoMin/passives.json`, admin sửa thoải mái). Mặc định
+  giao: **Lv 80 · 4 sao · IV 100 · bản BOSS_** (panel chỉnh hết).
+- **Giao TỰ ĐỘNG, hết thời admin đưa tay**: bot kiểm người chơi **đang online trong game**
+  (COUNT qua SFTP) rồi gọi dashboard **POST /api/give-pal** → lệnh **PAL2** cho mod
+  (spawn + bắt + ghi chỉ số + hủy bản sao ngoài world). Kết quả không rõ (timeout) thì đơn
+  kẹt ở **⏳ ĐANG GIAO** — panel có nút ✅ đã giao / ↩️ về rương sau khi admin kiểm
+  results.log; mod báo "player not found" thì pal TỰ về rương. **Pal DÙNG ĐƯỢC sau đợt
+  restart server kế tiếp** (đã dò hết API Lua 25/08: game chỉ "nhận nuôi" pal lúc load
+  thế giới — `Debug_CaptureNewMonster_ToServer` là vỏ rỗng trong bản phát hành, mọi hàm
+  container đều chỉ-đọc; web/panel đều ghi rõ câu này cho người chơi). Chủ server tự lo
+  lịch restart.
+- Panel thêm card **🎁 Vòng quay Pal web + Rương**: chỉnh vé/giá bán/số dòng linh hồn/level/
+  sao/BOSS/mở-đóng + tặng pal vào rương theo Discord ID + danh sách rương mọi người (đơn
+  ĐANG GIAO nổi lên đầu).
+- Đã test: 54 case mới (`palwheeltest.js`) + 16 bộ cũ (632 case) đều xanh; **giao thật
+  end-to-end trên server test**: nhận `BOSS_Penguin_Electric` Lv80 + 4 linh hồn 60% + 4
+  passive qua đúng đường web → bot → dashboard local (cổng 3010) → SFTP → mod, mod đọc
+  lại Level=80 chính xác, 12 giây.
+- Góp ý chủ server sau khi xem thử: **điều hướng tách 2 TẦNG** — tầng 1 chọn nhóm
+  `👤 HỒ SƠ` / `🎮 MINI GAME`, tầng 2 chỉ hiện trang trong nhóm (🪪 Cá nhân + 🎁 Quay Pal
+  một bên; Big Small/Dò Mìn/Leo Thang/Vòng Quay/Cổ phiếu một bên, nhớ trang cuối của
+  từng nhóm — tab con đổi tên "Cá nhân" cho khỏi lặp chữ Hồ sơ);
+  nút **💰 Bán** đổi nền vàng chữ sẫm cho dễ đọc.
+- **Passive làm lại theo palworld.gg/passive-skills (tag PALS + POSITIVE)**: danh mục
+  `passives.json` giờ **87 passive** tiếng Việt đủ bộ (kể cả đồ Feybreak/boss raid:
+  Demon God, Eternal Flame, Lunker, Serenity, Ranch Master...), mỗi con có `tier` 1–4
+  quyết định MÀU trên web (trắng/xanh lá/tím/vàng — lấy đúng rank của trang), chú thích
+  ngay kế bên tên; KHÔNG passive đỏ, KHÔNG passive Cây Thế Giới. Hộp Nhận đổi từ 4 ô
+  select sang DANH SÁCH cuộn bấm-chọn (tối đa 4, đếm đã chọn, có ô 🔎 lọc nhanh).
+  **32 con gắn cờ ⚠ `unsure`**: mã nội bộ chưa kiểm chứng được trong game (bàn phẫu
+  thuật bị tắt bằng pak nên PASSCHK không tra được nữa) — nhận thử trên server test,
+  passive nào không hiện trên pal thì báo tên để sửa id trong passives.json.
+  Sửa luôn lỗi dữ liệu cũ: Musclehead ID thật là `Noukin` (+30% công NHƯNG −50% tốc độ
+  làm việc), `PAL_ALLAttack_up2` là Ferocious +20%; Aggressive = `PAL_oraora`.
+- **Linh hồn 60%: chỉ cho chọn 1 trong 4 dòng** (chủ server chốt 25/08) — `soulMax`
+  mặc định 4 → 1, panel vẫn chỉnh 0–4 được.
+- Chốt lại ô RAID (sau vài vòng đổi ý 1% → 0,5% → chia đều): **mọi ô chia đều** —
+  ô 🔥 PAL RAID chiếm đúng 1 suất như từng con pal (pool 281 con thường → mỗi ô 1/282
+  ≈ 0,35%). Pool raid rút về **ĐÚNG 5 boss triệu hồi được** ở Summoning Altar server
+  (paldb.cc/en/Raid): Bellanoir, Bellanoir Libero, Blazamut Ryu, Xenolord, Hartalis —
+  **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
+  từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
+
+### 25/08/2026 — DEPLOY LÊN SERVER CHÍNH (checklist)
+
+Chủ server đã test đủ trên server test và chốt triển khai. Các bước:
+
+1. **VPS** (bot + dashboard cùng máy):
+   `cd /root/tts-bot && git pull --ff-only`
+   rồi restart **CẢ HAI** tiến trình: `pm2 restart BotDoMin --update-env` và
+   `pm2 restart <tên-tiến-trình-dashboard> --update-env` (xem tên bằng `pm2 ls` —
+   dashboard PHẢI restart vì có API mới `/api/give-pal`; quên là bấm NHẬN pal sẽ
+   báo lỗi 404).
+2. **Server game chính**: up `palworld-dashboard/ue4ss-mod/GiveGoldCommand/Scripts/main.lua`
+   (bản v7: chốt HỘP ĐẦY + dọn actor tái sinh + hủy bản sao hoang) đè lên file cũ qua
+   SFTP — KHÔNG đụng mods.txt (mod đã cài sẵn, chỉ thay ruột Scripts/main.lua) —
+   rồi restart server game để nạp.
+3. **Không cần đổi .env** ở đâu cả: tính năng mới dùng đúng PAL_DASHBOARD_URL/PASSWORD
+   và SFTP sẵn có. Không cần migrate database — field mới (palChest, palBuilds,
+   _palWheelCfg, _palChestSeq) tự sinh khi dùng.
+4. **Liên kết Discord ↔ nhân vật GIỮ NGUYÊN** (nằm trong database.json trên VPS,
+   deploy không đụng). **Reset server game KHÔNG cần liên kết lại** — liên kết theo
+   tên nhân vật, restart không đổi tên.
+5. Sau deploy nhớ: vào panel re-save cấu hình SÀN CỔ PHIẾU (đặc biệt chênh mua–bán
+   về 0.1) vì bản panel cũ từng lưu 0.6; kiểm card 🎁 Vòng quay Pal web (vé 2.000 ·
+   chọn đích danh 6.000 · bán 1.000 · linh hồn 1 dòng · Lv80 · 4 sao · BOSS · mở).
+6. Đơn pal cũ còn treo trong bảng "🐾 Đơn mua Pal" vẫn xử tay như trước cho hết
+   tồn đọng; đơn mới không sinh nữa.
+
+### 25/08/2026 (tối, đợt 2) — 🎯 CHỌN PAL trên web · Discord chỉ còn chuyển tiền · build riêng · cổ phiếu tự cắt
+
+- **Trang 🎯 Chọn Pal** (nhóm 👤 HỒ SƠ giờ có 3 tab: 🪪 Cá nhân · 🎁 Quay Pal · 🎯 Chọn
+  Pal): chọn ĐÍCH DANH 1 pal thường (không raid, không Panthalus/Astralym) giá mặc định
+  **6.000** (panel chỉnh ô "Chọn pal đích danh"), có ô 🔎 tìm theo tên/số paldex. Mua
+  xong pal vào 🎒 RƯƠNG như quay trúng — cùng luồng nhận/bán. Mua đích danh cũng nuôi
+  hũ 5% + 1% nổ như vé quay.
+- **Bảng Discord 🔄 chỉ còn CHUYỂN DOGCOIN 2 chiều**: bỏ nút "Pal ngẫu nhiên" +
+  "Pal tùy chọn" (bấm nút cũ thì được chỉ đường lên web; code cũ giữ dưới
+  `shop_random_CU_DA_TAT`/`shop_custom_CU_DA_TAT`). Đơn pal giờ giao TỰ ĐỘNG nên
+  **admin không còn nhận DM đơn hàng**; kênh thông báo gacha vẫn đăng công khai
+  mỗi lượt trúng/mua như cũ.
+- **Nút build sáng lên khi đang chọn** (viền vàng; tự tay đổi passive là tắt sáng vì
+  đã lệch bộ) + **build RIÊNG từng người**: nút ➕ lưu bộ 4 passive đang chọn thành
+  build ⭐ của mình (đặt tên, tối đa 8 bộ, trùng tên = ghi đè, có nút ✕ xoá) — lưu ở
+  `userData.palBuilds`, qua restart vẫn còn.
+- **📈 Cổ phiếu: MỐC TỰ ĐÓNG LỆNH** — người chơi nhìn cột giá bên phải đồ thị rồi điền
+  2 ô ở khung "LỆNH ĐANG MỞ": "⬇ Rớt tới..." / "⬆ Tăng tới...". Giá (mid trên đồ thị)
+  chạm mốc là bot tự đóng CẢ lệnh (cắt lỗ hay chốt lời tuỳ vị thế), vẫn tôn trọng thời
+  gian chôn vốn, cháy ví vẫn ưu tiên trước. Để trống cả 2 ô + bấm Đặt = xoá mốc.
+  Kiểm ở `stockAutoCheck` mỗi nhịp 2 giây, có log `[CỔ PHIẾU] 🤖 TỰ ĐÓNG`.
+- Mua/quay xong pal về 🎒 RƯƠNG (tab 🪪 Cá nhân) rồi chọn linh hồn + passive ở đó —
+  chủ server cân nhắc xong CHỐT không bật bảng chọn tự động, chỉ cần toast nhắn rõ
+  "pal nằm trong 🎒 RƯƠNG (tab 🪪 Cá nhân), vào đó chọn linh hồn + passive rồi nhận".
+- Test: stocktest 30→39 case, palwheeltest 60→75 case, pottest cập nhật tiêu đề bảng
+  mới — 18 bộ / 771 case xanh. Bot test cổng 4002 đã chạy bản mới.
+
+### 25/08/2026 (tối) — Bắt buộc chọn linh hồn + 9 BUILD passive chọn nhanh
+
+- **Bắt buộc chọn đủ dòng linh hồn** khi nhận pal (mặc định 1 dòng) — trước đó bỏ
+  trống vẫn nhận được. Chặn cả client (toast) lẫn server (`palChestClaim`).
+- **9 bộ build passive chọn nhanh** (chủ server gửi, lưu ở `passives.json` mục
+  `builds`, admin sửa thoải mái): Thợ làm việc · Buff chủ nhân · Một hệ · Tấn công ·
+  Phòng thủ · Đánh raid · Cưỡi đánh raid · Tốc chạy/chở đồ · Bơi lội. Bấm 1 nút trong
+  hộp Nhận là tick đủ 4 passive của bộ. **3 passive Cây Thế Giới trong list gốc
+  (Bàn Tay Ác Quỷ / Thần Hủy Diệt / Cú Nhảy Không Gian) bị luật cấm của server nên
+  thay bằng con cùng vai trò** (Workaholic, Quỷ Thần/Huyền Thoại, Thần Tốc/Động Cơ
+  Vĩnh Cửu) — muốn cho cả Cây Thế Giới vào build thì phải bỏ luật cấm trước.
+  passiveBuilds() lọc id lạ lúc đọc nên sửa tay passives.json sai cũng không lọt.
+- UI hộp Nhận: **chọn đủ 4 passive thì danh sách tự gọn lại chỉ còn 4 con đã chọn**
+  (kèm dòng nhắc, ẩn ô 🔎) — soát nhanh sau khi bấm build; bỏ chọn 1 con là danh
+  sách bung lại đầy đủ. Chưa đủ 4 thì vẫn hiện đủ như thường.
+
+### 25/08/2026 (tối) — Vá bug "pal đầy thì pal văng ra ngoài" (mod v7)
+
+- Chủ server báo: khi pal đầy, con pal giao ra **xuất hiện kế bên rồi đi lung tung**
+  thay vì vào palbox. Soi results.log: pal THẬT đã vào slot chuẩn (`FindByHandle
+  valid=true`, level đọc lại đúng) — con đứng ngoài là **actor tái tạo** do
+  `PalCaptureSuccess` tạo lại pal từ bản copy; bản vá cũ chỉ hủy bản sao hoang ban
+  đầu, không hủy bản tái tạo. Vá 2 lớp trong `main.lua` (đã up server test):
+  1. **Chốt HỘP ĐẦY**: `FindEmptySlot` TRƯỚC khi bắt — hộp không còn slot thì trả
+     `ERROR PALBOX DAY`, hủy bản spawn, KHÔNG giao; bot trả pal về rương + báo
+     "📦 Hộp pal trong game ĐẦY — dọn bớt rồi nhận lại".
+  2. **Dọn actor tái sinh**: sau khi bắt 1,5s + 3,5s, lấy handle từ đúng slot vừa
+     nhận pal → `TryGetIndividualActor` → còn actor đứng ngoài world thì
+     `K2_DestroyActor` (chỉ hủy XÁC ngoài world, dữ liệu trong hộp không đụng).
+     Log `DON PAL TAI SINH` để đối chiếu.
+- Bản main.lua trên server test giờ = bản repo + 2 vá trên (bỏ mớ lệnh chẩn đoán
+  v2–v6 của đợt điều tra — bản sạch giống production). Cần RESET server test để nạp.
+
+### 25/08/2026 (chiều) — Nối trọn bộ vào SERVER TEST cho chủ server tự thử
+
+- Môi trường thử tại chỗ (KHÔNG đụng server gốc): bot test cổng **4002** (web chơi) +
+  **4508/4234** (panel), dashboard test cổng **3010** (`palworld-dashboard/server/.env`
+  local, gitignore, SFTP trỏ server test "1. Cô 4 và những người bạn"), mod v6 trên
+  server test. Đăng nhập web test: ID `111111111111111111` / PIN `123456`, nhân vật
+  liên kết `bia123`. Đã giao thật thành công `BOSS_Penguin_Electric` Lv80 qua đúng
+  đường web → bot → dashboard → SFTP → mod (12 giây).
+- Còn chờ kiểm trong game: các passive gắn cờ ⚠ (mã đoán) — có sẵn kịch bản gửi pal test
+  × 4 passive/con cho bia123, con nào thiếu ô passive là mã sai, sửa `passives.json`.
+- **Passive đổi sang TÊN TIẾNG VIỆT CHUẨN TRONG GAME** (chủ server gửi nguyên văn bản
+  dịch của game): 92 con, đủ cả 5 con mới (Bảo Mẫu Trông Trẻ, Thiết Giáp Hạng Nặng,
+  Thể Chất Đặc Dị, Thân Thể Bất Tử, Bước Đi Trên Không — 5 con này id đoán, cờ ⚠).
+  **Màu đúng như trong game**: trắng (bậc 1-2), VÀNG (bậc 3), XANH NGỌC (bậc 4 — kiểu
+  khung Huyền Thoại), ĐỎ cho 7 passive có mặt trái (Cơ Bắp, Đam Mê Công Việc, Thô Lỗ,
+  Tàn Bạo, Chịu Trận, Tự Cao, Hung Hăng — cờ `bad` trong passives.json). May Mắn cập
+  nhật theo game mới: Tấn công +15%, Tốc độ làm việc +20% (dòng phòng thủ game đã tắt).
+
 ### 24/08/2026 — Cổ phiếu: SỨC NẶNG ĐIỂM GIÁ + phí vay lên 20%
 
 - **📈 SỨC NẶNG ĐIỂM GIÁ (`pointX`, mặc định x5, panel chỉnh 1–20).** Chủ server chê

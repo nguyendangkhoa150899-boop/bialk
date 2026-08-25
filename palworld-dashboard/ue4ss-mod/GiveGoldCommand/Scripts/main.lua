@@ -982,6 +982,24 @@ local function givePal(playerName, speciesId, level, rank, ivHp, ivMelee, ivShot
                 end
             end
 
+            -- 25/08: tìm slot trống TRƯỚC khi bắt — vừa làm chốt chặn hộp đầy, vừa để
+            -- lát nữa biết pal mới nằm slot nào mà dọn actor tái sinh.
+            -- FindEmptySlot trả OBJECT slot (không tonumber — bài học v5). slot:IsValid()
+            -- là hàm wrapper của UE4SS, gọi trên slot rỗng/null vẫn an toàn.
+            local suggestedSlot = nil
+            pcall(function()
+                local st = playerState:GetPalStorage()
+                local c = st and st.TargetContainer
+                if c and c:IsValid() then suggestedSlot = c:FindEmptySlot() end
+            end)
+            if not (suggestedSlot and suggestedSlot:IsValid()) then
+                -- HỘP ĐẦY: bắt vào đâu cũng hỏng (pal "văng ra ngoài" cạnh người chơi,
+                -- dữ liệu không vào hộp). Hủy bản spawn và báo lỗi rõ cho bot trả về rương.
+                appendPlayerResult(playerName, "ERROR PALBOX DAY - khong giao " .. speciesId .. " (don bot pal trong hop roi nhan lai)")
+                pcall(function() if spawned and spawned:IsValid() then spawned:K2_DestroyActor() end end)
+                return
+            end
+
             local captureOk, captureErr = pcall(function()
                 palUtil:PalCaptureSuccess(playerChar, spawned)
             end)
@@ -1007,6 +1025,32 @@ local function givePal(playerName, speciesId, level, rank, ivHp, ivMelee, ivShot
                         appendPlayerResult(playerName, "DEBUG huy actor: ok=" .. tostring(okDestroy) .. " err=" .. tostring(errDestroy))
                     end
                 end)
+
+                -- 25/08: DỌN ACTOR TÁI SINH. PalCaptureSuccess tạo lại pal từ bản copy —
+                -- bản tái tạo này đôi khi ĐỨNG NGOÀI WORLD cạnh người chơi rồi đi lung tung
+                -- (chủ server báo "pal xuất hiện kế bên và văng ra ngoài"). Pal thật đã nằm
+                -- trong slot (FindByHandle valid=true) nên actor ngoài world chỉ là cái xác
+                -- thừa: hủy ACTOR không đụng dữ liệu trong hộp. Quét 2 lần vì tái tạo có trễ.
+                -- QUY TẮC CŨ GIỮ NGUYÊN: slot RỖNG thì không gọi GetHandle (sập tầng C++).
+                local function donPalTaiSinh(tag)
+                    pcall(function()
+                        if not (suggestedSlot and suggestedSlot:IsValid()) then return end
+                        local empty = true
+                        pcall(function() empty = (suggestedSlot:IsEmpty() == true) end)
+                        if empty then return end
+                        local h = nil
+                        pcall(function() h = suggestedSlot:GetHandle() end)
+                        if not (h and h:IsValid()) then return end
+                        local actor = nil
+                        pcall(function() actor = h:TryGetIndividualActor() end)
+                        if actor and actor:IsValid() then
+                            local okD = pcall(function() actor:K2_DestroyActor() end)
+                            appendPlayerResult(playerName, "DON PAL TAI SINH (" .. tag .. "): pal trong slot co actor lang thang ngoai world -> huy ok=" .. tostring(okD))
+                        end
+                    end)
+                end
+                ExecuteWithDelay(1500, function() donPalTaiSinh("1.5s") end)
+                ExecuteWithDelay(3500, function() donPalTaiSinh("3.5s") end)
 
                 -- PalCaptureSuccess tạo lại pal trong túi từ bản copy, nên passive/gender
                 -- phải ghi lại sau một nhịp delay mới ăn. Level/Exp ghi trước capture là đủ
