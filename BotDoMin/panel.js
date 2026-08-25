@@ -1074,20 +1074,21 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h3>🕹️ Can thiệp giá — KÍN, trôi từ từ</h3>
         <div id="skDrift" class="note" style="display:none;margin-bottom:8px"></div>
-        <label>Độ mạnh (%) — luôn là số dương, HƯỚNG chọn bằng nút</label>
+        <label>Số GIÁ muốn cộng/trừ — vd giá đang 900, nhập <b>5</b> bấm ➖ là trôi về ~<b>895</b></label>
         <div class="row" style="gap:6px;align-items:center">
-          <button class="skpct" onclick="skPctSet(5)">5%</button>
-          <button class="skpct" onclick="skPctSet(10)">10%</button>
-          <button class="skpct" onclick="skPctSet(15)">15%</button>
-          <input id="skPushPct" type="number" min="1" max="40" value="10" style="flex:0 0 84px;text-align:center" oninput="skPushPrev()">
-          <span class="muted" style="font-size:12px">trôi trong</span>
+          <button class="skpct" onclick="skAmtSet(5)">5</button>
+          <button class="skpct" onclick="skAmtSet(10)">10</button>
+          <button class="skpct" onclick="skAmtSet(25)">25</button>
+          <button class="skpct" onclick="skAmtSet(50)">50</button>
+          <input id="skPushPct" type="number" min="1" value="5" style="flex:0 0 84px;text-align:center" oninput="skPushPrev()">
+          <span class="muted" style="font-size:12px">giá · trôi trong</span>
           <input id="skPushSecs" type="number" min="30" max="600" value="150" style="flex:0 0 84px;text-align:center">
           <span class="muted" style="font-size:12px">giây</span>
         </div>
         <!-- Hai nút nói THẲNG phe nào thua — khỏi tự dịch dấu cộng trừ -->
         <div class="row" style="margin-top:10px">
-          <button class="btn-red" style="flex:1;line-height:1.35" onclick="skPush(-1)">📉 KÉO GIÁ XUỐNG<br><small>phe 🟢 MUA thua · phe 🔴 BÁN thắng</small></button>
-          <button class="btn-green" style="flex:1;line-height:1.35" onclick="skPush(1)">📈 KÉO GIÁ LÊN<br><small>phe 🔴 BÁN thua · phe 🟢 MUA thắng</small></button>
+          <button class="btn-red" style="flex:1;line-height:1.35" onclick="skPush(-1)">➖ TRỪ GIÁ<br><small>kéo XUỐNG · phe 🟢 MUA thua</small></button>
+          <button class="btn-green" style="flex:1;line-height:1.35" onclick="skPush(1)">➕ CỘNG GIÁ<br><small>kéo LÊN · phe 🔴 BÁN thua</small></button>
         </div>
         <div id="skPushPrev" class="note" style="margin-top:8px;display:none"></div>
         <div class="note"><b>Nhắm MỘT NGƯỜI cụ thể</b>: bấm 💀 (cho thua) hoặc 🎁 (cho thắng) ngay cạnh tên họ ở bảng 👥 phía trên — panel tự chọn hướng kéo đúng, khỏi nghĩ. Nhớ là kéo giá ảnh hưởng CẢ SÀN: ai cùng phe cũng thua/thắng theo, phe kia thì ngược lại. Giá <b>trôi dần</b> trong số giây đã đặt, trộn với sóng tự nhiên — người chơi không nhận thông báo nào và vẫn kịp đóng lệnh giữa đường. Game cũng <b>tự tạo sóng ±10–15%</b> khoảng 40 phút một lần.</div>
@@ -1664,48 +1665,55 @@ function skFill(k){
   if(b){b.textContent=k.open?'⏸ Tạm đóng sàn':'▶️ Mở lại sàn';b.className=k.open?'btn-red':'btn-green';}
   skPushPrev();
 }
-// Độ mạnh luôn DƯƠNG (1..40) — hướng do nút quyết, hết cảnh tự dịch dấu cộng trừ
-function skPctGet(){let v=Math.abs(parseFloat(document.getElementById('skPushPct').value));if(!(v>0))v=10;if(v>40)v=40;return v}
-function skPctSet(v){document.getElementById('skPushPct').value=v;skPushPrev();}
+// Nhập theo SỐ GIÁ (điểm), không phải % — chủ server chốt 25/08: "giá 900, nhập 5
+// bấm trừ là về 895". Server vẫn nhận %, panel tự quy đổi theo giá hiện tại; vì
+// target = giá×(1+amt/giá) = giá+amt nên đích ra ĐÚNG số điểm đã nhập.
+function skAmtGet(){let v=Math.abs(parseFloat(document.getElementById('skPushPct').value));if(!(v>0))v=5;return Math.round(v)}
+function skAmtSet(v){document.getElementById('skPushPct').value=v;skPushPrev();}
 function skSecsGet(){let v=parseInt(document.getElementById('skPushSecs').value)||150;if(v<30)v=30;if(v>600)v=600;return v}
-// XEM TRƯỚC CẢ HAI HƯỚNG cùng lúc: ↓ kéo xuống / ↑ kéo lên — mỗi người ±bao nhiêu.
-// deltaPL = (MUA:+1/BÁN:−1) × hướng × shares × giá × %/100 × sức nặng.
+// XEM TRƯỚC CẢ HAI HƯỚNG — theo điểm giá thì CHÍNH XÁC TUYỆT ĐỐI:
+// delta = shares × sốGiá × sức nặng (MUA ăn khi ➕, BÁN ăn khi ➖).
 function skPushPrev(){
   const k=STATE&&STATE.stock,box=document.getElementById('skPushPrev');
   if(!box||!k)return;
-  const pct=skPctGet();
+  const amt=skAmtGet();
   const ps=k.positions||[];
   if(!ps.length){box.style.display='block';box.innerHTML='Không ai đang giữ lệnh — kéo giá lúc này không tốn của bot đồng nào.';return}
   const money=v=>'<b style="color:'+(v>=0?'var(--green)':'var(--red)')+'">'+(v>=0?'+':'')+v.toLocaleString()+'</b>';
   let up=0;
   const rows=ps.map(p=>{
-    const d=Math.round((p.side==='long'?1:-1)*p.shares*k.price*(pct/100)*(k.pointX||1));
+    const d=(p.side==='long'?1:-1)*p.shares*amt*(k.pointX||1);
     up+=d;
     return '<div class="skrow2"><span>'+(p.side==='long'?'🟢':'🔴')+' '+esc(p.name)+'</span>'+
-      '<span>↓ '+money(-d)+' &nbsp;·&nbsp; ↑ '+money(d)+'</span></div>';
+      '<span>➖ '+money(-d)+' &nbsp;·&nbsp; ➕ '+money(d)+'</span></div>';
   }).join('');
   box.style.display='block';
-  box.innerHTML='<b>Nếu kéo '+pct+'%</b> — mỗi người sẽ ± (↓ = kéo xuống, ↑ = kéo lên):'+rows+
+  box.innerHTML='<b>Nếu giá đi '+amt+' điểm</b> ('+k.price.toLocaleString()+' → ➖ '+(k.price-amt).toLocaleString()+' hoặc ➕ '+(k.price+amt).toLocaleString()+') — mỗi người sẽ ±:'+rows+
     '<div class="skrow2" style="border-top:1px solid #2a2e3b;margin-top:2px"><span><b>BOT</b></span>'+
-    '<span>↓ '+(up<=0?'trả thêm':'thu về')+' <b>'+Math.abs(up).toLocaleString()+'</b> &nbsp;·&nbsp; ↑ '+(up>=0?'trả thêm':'thu về')+' <b>'+Math.abs(up).toLocaleString()+'</b></span></div>'+
-    '<div style="color:var(--mut);font-size:11.5px;margin-top:3px">Ước tính tại giá hiện tại, chưa tính người đóng lệnh giữa đường hay cháy ví sớm.</div>';
+    '<span>➖ '+(up<=0?'trả thêm':'thu về')+' <b>'+Math.abs(up).toLocaleString()+'</b> &nbsp;·&nbsp; ➕ '+(up>=0?'trả thêm':'thu về')+' <b>'+Math.abs(up).toLocaleString()+'</b></span></div>'+
+    '<div style="color:var(--mut);font-size:11.5px;margin-top:3px">Chưa tính người đóng lệnh giữa đường hay cháy ví sớm.</div>';
 }
 async function skPush(sign,label){
-  const pct=skPctGet()*sign,secs=skSecsGet();
-  const msg=label||(sign>0?'Kéo giá LÊN +'+skPctGet()+'% — phe 🔴 BÁN thua, phe 🟢 MUA thắng.':'Kéo giá XUỐNG −'+skPctGet()+'% — phe 🟢 MUA thua, phe 🔴 BÁN thắng.');
+  const k=STATE&&STATE.stock;if(!k)return;
+  const amt=skAmtGet(),secs=skSecsGet();
+  const maxAmt=Math.floor(k.price*0.4);
+  if(amt>maxAmt)return toast('Tối đa '+maxAmt+' giá một lần (40% giá hiện tại)');
+  const pct=amt/k.price*100*sign;   // server nhận %, quy đổi tại đây
+  const den=k.price+amt*sign;
+  const msg=label||((sign>0?'➕ CỘNG ':'➖ TRỪ ')+amt+' giá: '+k.price.toLocaleString()+' → ~'+den.toLocaleString()+'. '+(sign>0?'Phe 🔴 BÁN thua, phe 🟢 MUA thắng.':'Phe 🟢 MUA thua, phe 🔴 BÁN thắng.'));
   if(!await uiConfirm(msg+' Trôi kín trong '+secs+' giây, người chơi không được báo?','Kéo giá',sign>0?'btn-green':'btn-red'))return;
   api('/api/stock/push',{pct,secs})
     .then(j=>{toast('🌊 Đang trôi: '+j.from.toLocaleString()+' → '+j.target.toLocaleString()+' trong '+j.secs+'s');refresh();})
     .catch(e=>toast('❌ '+e.message));
 }
-// 💀/🎁 cạnh tên: panel TỰ chọn hướng — MUA thua = kéo xuống, BÁN thua = kéo lên (và ngược lại)
+// 💀/🎁 cạnh tên: tự chọn hướng — MUA thua = ➖ trừ giá, BÁN thua = ➕ cộng giá (và ngược lại)
 function skHit(i,win){
   const k=STATE&&STATE.stock,p=k&&(k.positions||[])[i];
   if(!p)return toast('Người này vừa đóng lệnh — bảng sẽ tự cập nhật');
   const sign=(p.side==='long')===(win===1)?1:-1;
-  const pct=skPctGet();
-  const d=Math.round((p.side==='long'?1:-1)*sign*p.shares*k.price*(pct/100)*(k.pointX||1));
-  skPush(sign,(win?'🎁 Cho ':'💀 Cho ')+p.name+(win?' THẮNG':' THUA')+': kéo giá '+(sign>0?'LÊN +':'XUỐNG −')+pct+'% → '+p.name+' ('+(p.side==='long'?'MUA':'BÁN')+') sẽ '+(d>=0?'+':'')+d.toLocaleString()+' Dogcoin. Ai cùng phe cũng '+(win?'thắng':'thua')+' theo, phe kia ngược lại.');
+  const amt=skAmtGet();
+  const d=(p.side==='long'?1:-1)*sign*p.shares*amt*(k.pointX||1);
+  skPush(sign,(win?'🎁 Cho ':'💀 Cho ')+p.name+(win?' THẮNG':' THUA')+': '+(sign>0?'➕ cộng ':'➖ trừ ')+amt+' giá ('+k.price.toLocaleString()+' → ~'+(k.price+amt*sign).toLocaleString()+') → '+p.name+' ('+(p.side==='long'?'MUA':'BÁN')+') sẽ '+(d>=0?'+':'')+d.toLocaleString()+' Dogcoin. Ai cùng phe cũng '+(win?'thắng':'thua')+' theo, phe kia ngược lại.');
 }
 
 // ===== 7 HAM DUOI DAY PHUC HOI TU 053c96a (25/08) =====
