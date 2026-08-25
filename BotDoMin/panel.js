@@ -1047,11 +1047,17 @@ const HTML = `<!DOCTYPE html>
             <input id="skHold" type="number" min="0" max="3600" placeholder="vd: 60">
           </div>
         </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1">
+            <label>Sức nặng lãi/lỗ (x) — 1 đồng giá × 1 CP = bấy nhiêu Dogcoin</label>
+            <input id="skPoint" type="number" min="1" max="20" placeholder="vd: 5">
+          </div>
+        </div>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
           <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
         </div>
-        <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ, và <b>vốn chính là mức lỗ tối đa</b> — lỗ ăn hết vốn là bot tự đóng lệnh (cháy vốn), không ai âm ví.<br><b>⚠️ Đòn bẩy làm trần CP dễ chạm hơn nhiều:</b> ở x20 thì cả server chỉ cần ~25.000 Dogcoin vốn là chạm trần 500 CP (không đòn bẩy thì cần ~500.000). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>.<br><b>Chôn vốn</b>: vào lệnh xong phải giữ đủ số giây này mới đóng được — chặn kiểu vào lệnh thấy xanh một nhịp là rút. Để 0 là tắt. Sàn đóng thì <b>vẫn cho đóng lệnh</b>, chỉ chặn mở lệnh mới.</div>
+        <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền: 1 đồng giá nhích × 1 CP = bấy nhiêu Dogcoin — mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn (x10 sức nặng 5 → 1% giá = 50% vốn). ⚠️ Tăng sức nặng thì NÊN hạ chênh mua–bán theo (mặc định mới 0,1%/chiều), không thì phí vòng bị nhân theo luôn — lỗ ăn hết vốn là bot tự đóng lệnh (cháy vốn), không ai âm ví.<br><b>⚠️ Đòn bẩy làm trần CP dễ chạm hơn nhiều:</b> ở x20 thì cả server chỉ cần ~25.000 Dogcoin vốn là chạm trần 500 CP (không đòn bẩy thì cần ~500.000). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>.<br><b>Chôn vốn</b>: vào lệnh xong phải giữ đủ số giây này mới đóng được — chặn kiểu vào lệnh thấy xanh một nhịp là rút. Để 0 là tắt. Sàn đóng thì <b>vẫn cho đóng lệnh</b>, chỉ chặn mở lệnh mới.</div>
       </div>
       <div class="card">
         <h3>📰 Thả tin — giá bật/sụp NGAY một nhịp</h3>
@@ -1516,7 +1522,7 @@ function skFill(k){
   if(!k)return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
   set('skVol',k.volPct);set('skSpread',k.spreadPct);set('skMaxShares',k.maxShares);set('skMaxPer',k.maxPer);
-  set('skMaxLev',k.maxLev);set('skHold',k.holdS);
+  set('skMaxLev',k.maxLev);set('skHold',k.holdS);set('skPoint',k.pointX);
   document.getElementById('skInfo').innerHTML='Giá <b>'+k.price.toLocaleString()+'</b> (mốc gốc '+k.base.toLocaleString()+
     ') · mua <b>'+k.ask.toLocaleString()+'</b> / bán <b>'+k.bid.toLocaleString()+
     '</b> · <b>'+k.outstanding+'/'+k.maxShares+'</b> CP lưu hành · <b>'+k.holders+'</b> người đang gồng'+
@@ -1525,7 +1531,7 @@ function skFill(k){
     '</b> Dogcoin, trong đó người chơi mới gửi <b>'+(k.marginIn||0).toLocaleString()+
     '</b> vốn (đòn bẩy tối đa <b>x'+k.maxLev+'</b> nên vốn ít hơn giá trị lệnh nhiều lần). Trần thiệt hại với số CP đang lưu hành: <b style="color:var(--red)">'+k.worstCase.toLocaleString()+
     '</b>. Trần tuyệt đối nếu bán hết '+k.maxShares+' CP: <b style="color:var(--red)">'+k.capWorst.toLocaleString()+
-    '</b> — đây là con số bạn phải chịu được.'+
+    '</b> — đây là con số bạn phải chịu được (đã nhân sức nặng x'+(k.pointX||1)+').'+
     (k.news?'<br>📰 Tin gần nhất: <b>'+(k.news.pct>0?'+':'')+k.news.pct+'%</b> — '+esc(k.news.text):'');
   const b=document.getElementById('skOpenBtn');
   if(b){b.textContent=k.open?'⏸ Tạm đóng sàn':'▶️ Mở lại sàn';b.className=k.open?'btn-red':'btn-green';}
@@ -1536,13 +1542,15 @@ function skSave(){
            maxShares:parseInt(document.getElementById('skMaxShares').value),
            maxPer:parseInt(document.getElementById('skMaxPer').value),
            maxLev:parseInt(document.getElementById('skMaxLev').value),
-           holdS:parseInt(document.getElementById('skHold').value)};
+           holdS:parseInt(document.getElementById('skHold').value),
+           pointX:parseInt(document.getElementById('skPoint').value)};
   if(!(o.volPct>0&&o.volPct<=15))return toast('Biến động phải trong 0–15%');
   if(!(o.spreadPct>=0&&o.spreadPct<=20))return toast('Chênh mua–bán phải trong 0–20%');
   if(!(o.maxShares>=10))return toast('Trần sàn phải từ 10 CP');
   if(!(o.maxPer>=1))return toast('Trần mỗi người phải từ 1 CP');
   if(!(o.maxLev>=1&&o.maxLev<=100))return toast('Đòn bẩy tối đa phải trong 1–100');
   if(!(o.holdS>=0&&o.holdS<=3600))return toast('Chôn vốn phải trong 0–3600 giây');
+  if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 async function skToggle(){

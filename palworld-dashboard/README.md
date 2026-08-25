@@ -500,6 +500,27 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 
 ## Bot Discord (BotDoMin) — nhật ký cập nhật
 
+### 24/08/2026 — Cổ phiếu: SỨC NẶNG ĐIỂM GIÁ + phí vay lên 20%
+
+- **📈 SỨC NẶNG ĐIỂM GIÁ (`pointX`, mặc định x5, panel chỉnh 1–20).** Chủ server chê
+  "cháy quá thấp": vốn 1.000 x10 chỉ ~9 CP, giá nhích 0,3%/nhịp → tiền chỉ đung đưa
+  ~27/nhịp; tệ hơn, spread 0,5%/chiều nuốt sạch biên: **giá phải lên đúng 1% mới HOÀ VỐN**.
+  Giờ 1 đồng giá × 1 CP = `pointX` Dogcoin: vốn 1.000 x10 thì **+1% = +360, −1% = −540**
+  (khớp đề bài "nhích xíu là ±400"). Mỗi 1% giá = `đòn bẩy × sức nặng %` vốn.
+  Đi kèm BẮT BUỘC: **spread hạ 0,5% → 0,1%/chiều** (pointX khuếch đại luôn phí chênh —
+  giữ 0,5% thì mở lệnh x10 lỗ sẵn ~50% vốn); có **migrate một lần** lúc boot cho cấu hình
+  cũ còn lưu 0.005. Nhân ở đúng 3 chỗ: `stockPL`, `stockClose` (trước khi kẹp ví),
+  `posBurnPrice` (đệm chia pointX → giá cháy GẦN lại). Điểm hoà vốn KHÔNG đổi theo pointX.
+  `payNow` ở panel đổi sang tổng `vốn + stockPL` thật (số cũ `out×bid` sai từ khi có đòn
+  bẩy). **Tiện thể vá bug `setStockCfg` làm rơi `holdS`** — trước đây mỗi lần admin bấm
+  Lưu là "chôn vốn" lặng lẽ về 60 giây. Web: dòng "mỗi 1% = X% vốn (≈N Dogcoin)" dưới ô
+  vốn, thẻ Cách chơi viết lại ví dụ theo sức nặng. Test: `stocktest.js` 30 ca.
+- **📒 Phí vay 5% → 20%** ("vay 10.000 lãi 2.000 chứ không phải 500") — vay 10.000 ghi nợ
+  **12.000**, nhận đủ 10.000. Mỗi vòng vay-trả-liền giờ tốn 2.000/vòng. `vaytest.js` viết
+  lại theo bộ luật mới (hạn mức 10.000/ngày + trần 30.000 của đợt 64cfa9d + phí 20%): 69 ca.
+- Lưu ý test sau này: `git pull` 24/08 làm file trên đĩa thành **CRLF** — regex nguồn
+  trong test phải dùng `\r?\n`, không dùng `\n` trần (pottest đã dính).
+
 ### 22/08/2026 — game mới 📈 Sàn Cổ Phiếu Dogcoin + sửa bảng Discord mồ côi
 
 - **Sàn Cổ Phiếu DOG** (mục *Các game* ở trên là spec đầy đủ): thuần web, 2 chiều

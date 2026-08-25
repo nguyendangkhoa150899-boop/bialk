@@ -331,10 +331,12 @@ const LOAN_DAILY_MAX = 10000;
 const LOAN_CAP = 30000;
 const LOAN_RATE = 0.20;
 const LOAN_INCOME_CUT = 0.5;
-// PHÍ VAY 5% cộng thẳng vào nợ lúc vay (vay 10.000 -> ghi nợ 10.500, nhận đủ 10.000).
+// PHÍ VAY 20% cộng thẳng vào nợ lúc vay (vay 10.000 -> ghi nợ 12.000, nhận đủ 10.000).
+// 24/08 chủ server nâng 5% -> 20% ("vay 10.000 lãi 2.000 chứ không phải 500") — đi kèm
+// đợt nâng hạn mức ngày 4.000 -> 10.000 và trần nợ 12.000 -> 30.000.
 // Chống spam vay-trả-vay: trả sạch là hạn mức ngày mở lại, nên mỗi vòng lặp phải
 // tốn phí này — hết cửa quay vòng miễn phí (chủ server chốt 20/08).
-const LOAN_FEE = 0.05;
+const LOAN_FEE = 0.20;
 
 // Ngày VN dạng sắp xếp/parse được ('2026-08-20') — vnDayStr bên dưới ra 'vi-VN'
 // (20/8/2026) nên KHÔNG dùng cho tính khoảng cách ngày được.
@@ -420,7 +422,7 @@ function debtBorrow(userId, username, amount) {
         const left = LOAN_DAILY_MAX - d.bToday;
         return { error: `Mỗi ngày vay tối đa ${LOAN_DAILY_MAX.toLocaleString()} - hôm nay bạn còn vay được ${Math.max(0, left).toLocaleString()}.` };
     }
-    const owed = Math.round(amount * (1 + LOAN_FEE));   // nhận amount, ghi nợ amount + phí 5%
+    const owed = Math.round(amount * (1 + LOAN_FEE));   // nhận amount, ghi nợ amount + phí 20%
     if (d.loan + owed > LOAN_CAP) {
         return { error: `Tổng nợ vay tối đa ${LOAN_CAP.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt (nhớ tính cả phí vay ${LOAN_FEE * 100}%).` };
     }
@@ -581,7 +583,7 @@ function getVayMessageData() {
         `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp pal. 🙏`,
         '',
         `**💰 Vay** - bơm tối đa **${LOAN_DAILY_MAX.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${LOAN_CAP.toLocaleString()}**. ` +
-            `Phí vay **${LOAN_FEE * 100}%** ghi thẳng vào nợ (vay 10.000 là ghi sổ 10.500) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
+            `Phí vay **${LOAN_FEE * 100}%** ghi thẳng vào nợ (vay 10.000 là ghi sổ 12.000) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
         `**Lãi kép ${LOAN_RATE * 100}%/ngày** - cứ qua 00:00 là nợ tự đẻ. Vay ${LOAN_DAILY_MAX.toLocaleString()} rồi ngủ quên vài hôm, dậy thấy nợ ${LOAN_CAP.toLocaleString()} thì đừng hỏi tại sao. 💀`,
         `Xù nợ lâu quá là HỆ THỐNG đóng dấu ⚠️ **NỢ XẤU**: bêu tên ngay bảng này · 🚫 hết cửa vay · ` +
             `🚫 không chuyển tiền cho ai · 🚫 không chuyển vào game · 📅 ${LOAN_INCOME_CUT * 100}% tiền điểm danh bị xiết trả nợ.`,
@@ -2276,7 +2278,14 @@ const STOCK_HIST_N = 180;            // 2 giờ ở nến 40s. CHẶN TRẦN NGA
                                      // _txDashHistory phình 1.348 ván = 57% database.json.
 const STOCK_LOG_N = 20;              // lệnh vừa khớp hiện trên web
 const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng + lịch sử)
-const STOCK_CFG_DEF = { vol: 0.003, spread: 0.005, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60 };
+// 24/08 — SỨC NẶNG ĐIỂM GIÁ (pointX): mỗi 1 đồng giá nhích × 1 CP = pointX Dogcoin
+// lãi/lỗ (như point value của hợp đồng tương lai). Chủ server chê "cháy quá thấp":
+// vốn 1.000 x10 chỉ ~9 CP, giá nhích 0,3%/nhịp -> lãi/lỗ đung đưa ~27/nhịp. Với
+// pointX=5 + spread 0,1%: giá ±1% là ±360..540 trên vốn 1.000 x10 — đúng đề bài
+// "nhích xíu là ±400". BẮT BUỘC hạ spread cùng lúc (0,5% -> 0,1%/chiều) vì pointX
+// khuếch đại luôn phí chênh: giữ 0,5% thì mở lệnh xong đã lỗ sẵn ~nửa vốn ở x10.
+// Chi phí vòng tuyệt đối (Dogcoin) sau đổi ≈ y như cũ: 0,1% × 5 = 0,5%.
+const STOCK_CFG_DEF = { vol: 0.003, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5 };
 // Bậc đòn bẩy hiện trên web — lọc theo maxLev nên hạ trần ở panel là mất bậc cao luôn.
 const STOCK_LEVS = [1, 5, 10, 20];
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
@@ -2296,6 +2305,7 @@ function stockCfg() {
         maxPer: Math.floor(num(c.maxPer, STOCK_CFG_DEF.maxPer, 1, 100000)),
         maxLev: Math.floor(num(c.maxLev, STOCK_CFG_DEF.maxLev, 1, 100)),
         holdS: Math.floor(num(c.holdS, STOCK_CFG_DEF.holdS, 0, 3600)),   // giây CHÔN VỐN
+        pointX: Math.floor(num(c.pointX, STOCK_CFG_DEF.pointX, 1, 20)),  // sức nặng điểm giá
         open: c.open !== false,
     };
 }
@@ -2407,20 +2417,27 @@ function posBuffer(userId, p) {
 function posBurnPrice(userId, p) {
     const sh = Number(p && p.shares) || 0;
     if (sh < 1) return 0;
-    const basis = Number(p.cost) || 0, buf = posBuffer(userId, p), sp = stockCfg().spread;
+    const cfg = stockCfg();
+    const basis = Number(p.cost) || 0, buf = posBuffer(userId, p), sp = cfg.spread;
+    // 24/08: lãi/lỗ đã nhân pointX nên đệm chịu lỗ quy về "đồng giá" phải CHIA pointX —
+    // sức nặng càng cao thì giá cháy càng GẦN, đúng bản chất đòn bẩy nặng hơn.
+    const bufPts = buf / cfg.pointX;
     return p.side === 'short'
-        ? Math.round((basis + buf) / sh / (1 + sp))
-        : Math.round((basis - buf) / sh / (1 - sp));
+        ? Math.round((basis + bufPts) / sh / (1 + sp))
+        : Math.round((basis - bufPts) / sh / (1 - sp));
 }
 // Lãi/lỗ tạm tính của một vị thế — DÙNG CHUNG mọi nơi để không bao giờ lệch nhau.
 //   MUA (long) : ăn khi giá LÊN   -> lãi = bán ra bây giờ (shares × bid) − tiền đã bỏ
 //   BÁN (short): ăn khi giá XUỐNG -> lãi = tiền đã cọc − mua lại bây giờ (shares × ask)
 // Cả hai chiều đều bị trừ tiền đúng bằng "invested" lúc mở, nên vốn đối xứng.
+// 24/08: nhân SỨC NẶNG ĐIỂM GIÁ (cfg.pointX) — 1 đồng giá × 1 CP = pointX Dogcoin.
+// Điểm hoà vốn KHÔNG đổi theo pointX (nhân cả hai vế của pl=0), chỉ biên độ tiền đổi.
 function stockPL(pos) {
     const sh = Number(pos && pos.shares) || 0;
     if (sh < 1) return 0;
     const inv = Number(pos.cost) || 0;
-    return pos.side === 'short' ? (inv - sh * stockAsk()) : (sh * stockBid() - inv);
+    const raw = pos.side === 'short' ? (inv - sh * stockAsk()) : (sh * stockBid() - inv);
+    return stockCfg().pointX * raw;
 }
 function stockState(userId) {
     const cfg = stockCfg();
@@ -2467,6 +2484,7 @@ function stockState(userId) {
         maxPer: cfg.maxPer,
         levs: STOCK_LEVS.filter(v => v <= cfg.maxLev),
         maxLev: cfg.maxLev,
+        pointX: cfg.pointX,      // sức nặng điểm giá — web hiện "mỗi 1% = lev×pointX% vốn"
         holdS: cfg.holdS,
         balance: me.points || 0,
         blocked: !!(debtStatus(userId) || {}).bad,   // nợ xấu thì cấm mua (vẫn cho bán)
@@ -2604,7 +2622,9 @@ function stockClose(userId, want, forced) {
     // (kiểu lỗi check-stock2.js từng bắt được).
     const walletNow = Math.max(0, Number(getUserData(userId).points) || 0);
     const room = marginPart + walletNow;         // đóng phần này thì chịu lỗ được tới đây
-    let pl = short ? (basisPart - shares * exit) : (shares * exit - basisPart);
+    // 24/08: nhân sức nặng điểm giá — PHẢI cùng hệ số với stockPL, lệch là burn check
+    // đóng lệnh ở mức lỗ khác với số tiền thật sự trừ ví.
+    let pl = stockCfg().pointX * (short ? (basisPart - shares * exit) : (shares * exit - basisPart));
     if (pl < -room) pl = -room;
     const back = marginPart + pl;   // CÓ THỂ ÂM -> trừ tiếp vào ví; theo cách kẹp trên
                                     // thì ví + back luôn >= 0
@@ -2664,6 +2684,15 @@ function stockTouchPeaks() {
 }
 function runStockLoop() {
     if (!Number.isFinite(Number(dbCache._stockPrice))) dbCache._stockPrice = STOCK_BASE;
+    // MIGRATE MỘT LẦN (24/08): cấu hình đời trước sức-nặng còn lưu cứng spread 0.5%.
+    // Có pointX=5 mà giữ 0.5% thì phí vòng bị nhân 5 -> mở lệnh x10 lỗ sẵn ~50% vốn.
+    // Chỉ đụng khi admin CHƯA từng biết tới pointX (chưa có field) VÀ spread đúng 0.005.
+    const mcfg = dbCache._stockCfg;
+    if (mcfg && typeof mcfg === 'object' && mcfg.pointX === undefined && Number(mcfg.spread) === 0.005) {
+        mcfg.spread = 0.001;
+        writeLog('SYSTEM', '[CỔ PHIẾU] Có SỨC NẶNG điểm giá (x5) - tự hạ chênh mua-bán 0.5% -> 0.1%/chiều cho phí vòng giữ nguyên');
+        saveDbNow();
+    }
     stockCandles();
     // Nến đời trước (mỗi cây = 1 nhịp, không có trường n) không trộn được với nến
     // 40 giây: cây cuối coi như đã chốt để cây kế mở sạch, khỏi nối lệch cấu trúc.
@@ -3113,12 +3142,16 @@ client.once('ready', async (c) => {
                     outstanding: out, holders: Object.keys(stockPos()).length,
                     // với đòn bẩy, VỐN người chơi gửi ít hơn giá trị lệnh rất nhiều
                     marginIn: Object.values(stockPos()).reduce((a, p) => a + posMargin(p), 0),
-                    payNow: out * bid,                 // tất cả bán ngay thì bot trả bấy nhiêu
-                    worstCase: out * STOCK_MAX,        // trần thiệt hại tuyệt đối
-                    capWorst: cfg.maxShares * STOCK_MAX,
+                    // 24/08 pointX: "tất cả đóng ngay" tính bằng công thức tiền THẬT
+                    // (vốn + lãi/lỗ đã nhân sức nặng), không còn ước bằng out×bid —
+                    // số cũ đã sai từ khi có đòn bẩy, có pointX thì sai gấp bội.
+                    payNow: Object.values(stockPos()).reduce((a, p) => a + Math.max(0, posMargin(p) + stockPL(p)), 0),
+                    worstCase: out * STOCK_MAX * cfg.pointX,        // trần thiệt hại tuyệt đối (đã nhân sức nặng)
+                    capWorst: cfg.maxShares * STOCK_MAX * cfg.pointX,
                     volPct: Math.round(cfg.vol * 1000) / 10,
                     spreadPct: Math.round(cfg.spread * 1000) / 10,
-                    maxShares: cfg.maxShares, maxPer: cfg.maxPer, maxLev: cfg.maxLev, open: cfg.open,
+                    pointX: cfg.pointX,
+                    maxShares: cfg.maxShares, maxPer: cfg.maxPer, maxLev: cfg.maxLev, holdS: cfg.holdS, open: cfg.open,
                     news: dbCache._stockNews || null,
                 };
             },
@@ -3130,11 +3163,15 @@ client.once('ready', async (c) => {
                     maxShares: Number.isFinite(Number(o.maxShares)) ? Math.floor(Number(o.maxShares)) : cur.maxShares,
                     maxPer: Number.isFinite(Number(o.maxPer)) ? Math.floor(Number(o.maxPer)) : cur.maxPer,
                     maxLev: Number.isFinite(Number(o.maxLev)) ? Math.floor(Number(o.maxLev)) : cur.maxLev,
+                    pointX: Number.isFinite(Number(o.pointX)) ? Math.floor(Number(o.pointX)) : cur.pointX,
+                    // 24/08: trước đây THIẾU holdS — panel gửi lên nhưng server vứt,
+                    // mỗi lần bấm Lưu là "chôn vốn" lặng lẽ về mặc định 60 giây.
+                    holdS: Number.isFinite(Number(o.holdS)) ? Math.floor(Number(o.holdS)) : cur.holdS,
                     open: o.open === undefined ? cur.open : !!o.open,
                 };
                 saveDbNow();
                 const c = stockCfg();
-                writeLog('ADMIN', `[CỔ PHIẾU] Đổi cấu hình: biến động ${c.vol * 100}%, chênh ${c.spread * 100}%, trần sàn ${c.maxShares}, trần/người ${c.maxPer}, ${c.open ? 'MỞ' : 'ĐÓNG'}`);
+                writeLog('ADMIN', `[CỔ PHIẾU] Đổi cấu hình: biến động ${c.vol * 100}%, chênh ${c.spread * 100}%, sức nặng x${c.pointX}, trần sàn ${c.maxShares}, trần/người ${c.maxPer}, ${c.open ? 'MỞ' : 'ĐÓNG'}`);
                 return c;
             },
             stockNews: (pct, text) => stockNews(Math.max(-40, Math.min(40, Number(pct) || 0)), text),
