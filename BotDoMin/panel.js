@@ -1707,6 +1707,98 @@ function skHit(i,win){
   const d=Math.round((p.side==='long'?1:-1)*sign*p.shares*k.price*(pct/100)*(k.pointX||1));
   skPush(sign,(win?'🎁 Cho ':'💀 Cho ')+p.name+(win?' THẮNG':' THUA')+': kéo giá '+(sign>0?'LÊN +':'XUỐNG −')+pct+'% → '+p.name+' ('+(p.side==='long'?'MUA':'BÁN')+') sẽ '+(d>=0?'+':'')+d.toLocaleString()+' Dogcoin. Ai cùng phe cũng '+(win?'thắng':'thua')+' theo, phe kia ngược lại.');
 }
+
+// ===== 7 HAM DUOI DAY PHUC HOI TU 053c96a (25/08) =====
+// Bi xoa oan khi viet lai khoi JS co phieu: patch thay CA VUNG giua 2 moc trong khi
+// phien khac vua chen ham Vong quay Pal/Ruong vao dung vung do. Bai hoc: THAY THEO
+// TUNG HAM, dung thay theo vung khi file co nguoi khac cung sua.
+function skSave(){
+  const o={volPct:parseFloat(document.getElementById('skVol').value),
+           spreadPct:parseFloat(document.getElementById('skSpread').value),
+           maxShares:parseInt(document.getElementById('skMaxShares').value),
+           maxPer:parseInt(document.getElementById('skMaxPer').value),
+           maxLev:parseInt(document.getElementById('skMaxLev').value),
+           holdS:parseInt(document.getElementById('skHold').value),
+           pointX:parseInt(document.getElementById('skPoint').value)};
+  if(!(o.volPct>0&&o.volPct<=15))return toast('Biến động phải trong 0–15%');
+  if(!(o.spreadPct>=0&&o.spreadPct<=20))return toast('Chênh mua–bán phải trong 0–20%');
+  if(!(o.maxShares>=10))return toast('Trần sàn phải từ 10 CP');
+  if(!(o.maxPer>=1))return toast('Trần mỗi người phải từ 1 CP');
+  if(!(o.maxLev>=1&&o.maxLev<=100))return toast('Đòn bẩy tối đa phải trong 1–100');
+  if(!(o.holdS>=0&&o.holdS<=3600))return toast('Chôn vốn phải trong 0–3600 giây');
+  if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
+  api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+
+// ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
+// Ô số đổ theo kiểu skFill (chỉ khi trống + không focus). Checkbox đổ đúng 1 LẦN —
+// panel tự refresh 3 giây/lần, đổ lại liên tục sẽ đè tay admin đang bấm.
+let pwCfgTicked=false;
+async function skToggle(){
+  const open=!(STATE&&STATE.stock&&STATE.stock.open);
+  if(!open&&!await uiConfirm('Tạm đóng sàn? Người chơi vẫn bán được, chỉ không mua thêm.','Đóng sàn','btn-red'))return;
+  api('/api/stock/cfg',{open}).then(()=>{toast(open?'▶️ Đã mở sàn':'⏸ Đã đóng sàn');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function pwCfgFill(k){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
+  set('pwPrice',k.price);set('pwCustom',k.customPrice);set('pwSell',k.sellPrice);set('pwSoul',k.soulMax);set('pwLevel',k.level);set('pwStars',k.stars);
+  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;}
+  document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
+    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng 60% · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
+    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
+}
+function pwCfgSave(){
+  const o={price:parseInt(document.getElementById('pwPrice').value),
+           customPrice:parseInt(document.getElementById('pwCustom').value),
+           sellPrice:parseInt(document.getElementById('pwSell').value),
+           soulMax:parseInt(document.getElementById('pwSoul').value),
+           level:parseInt(document.getElementById('pwLevel').value),
+           stars:parseInt(document.getElementById('pwStars').value),
+           boss:document.getElementById('pwBoss').checked,
+           open:document.getElementById('pwOpen').checked};
+  if(!(o.price>=100))return toast('Vé phải từ 100');
+  if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
+  if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
+  if(!(o.soulMax>=0&&o.soulMax<=4))return toast('Linh hồn 0–4 dòng');
+  if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
+  if(!(o.stars>=0&&o.stars<=4))return toast('Sao 0–4');
+  api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function pgGrant(){
+  const uid=document.getElementById('pgUid').value.trim(), pal=document.getElementById('pgPal').value.trim();
+  if(!uid||!pal)return toast('Nhập Discord ID + tên pal');
+  api('/api/palchest/grant',{userId:uid,palName:pal}).then(j=>{toast('🎁 Đã tặng '+j.item.name+' vào rương');document.getElementById('pgPal').value='';refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function pcResolve(ownerId,id,delivered){
+  if(!confirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?'))return;
+  api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast('✅ Đã chốt');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function renderPalChests(){
+  const box=document.getElementById('palChests');
+  if(!box||!STATE)return;
+  const rows=STATE.palChests||[];
+  if(!rows.length){box.innerHTML='<div class="muted">Chưa ai có pal trong rương.</div>';return;}
+  // 25/08: làm lại cho dễ đọc (góp ý chủ server) — mỗi đơn 1 khung, ĐANG GIAO viền đỏ,
+  // trạng thái là nhãn màu, nút gọn nằm phải, đơn đã xong mờ đi.
+  const chipCss='font-size:11px;border-radius:6px;padding:2px 8px;white-space:nowrap;';
+  box.innerHTML=rows.map(r=>{
+    const dim=(r.status==='sold'||r.status==='claimed');
+    const chip=r.status==='chest'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#aab3c5">🎒 trong rương</span>'
+      :r.status==='sold'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#8f97a8">💰 đã bán</span>'
+      :r.status==='claimed'?'<span style="'+chipCss+'border:1px solid #2f8f4f;color:#7fd98a">✅ đã nhận'+(r.deliveredTo?' → '+esc(r.deliveredTo):'')+'</span>'
+      :'<span style="'+chipCss+'border:1px solid var(--red);color:var(--red);font-weight:700">⏳ ĐANG GIAO</span>';
+    const btn=r.status==='delivering'
+      ?('<button style="padding:5px 10px;font-size:12px" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',true)">✅ đã giao</button>'
+       +'<button style="padding:5px 10px;font-size:12px;background:#3a4155" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',false)">↩️ về rương</button>')
+      :'';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid '+(r.status==='delivering'?'var(--red)':'var(--line)')+';border-radius:10px;margin-top:6px'+(dim?';opacity:.55':'')+'">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:14px"><b>'+esc(r.name)+'</b>'+(r.raid?' <span style="color:#ff8f8f;font-size:11px;font-weight:700">🔥 RAID</span>':'')
+      +' <span class="muted" style="font-size:11px">rương #'+r.id+(r.dex?' · paldex #'+r.dex:'')+'</span></div>'
+      +'<div class="muted" style="font-size:11.5px;margin-top:2px">'+esc(r.ownerName)+(r.ingameName?' — nhân vật <b>'+esc(r.ingameName)+'</b>':'')+' · '+esc(r.wonAt||'')+'</div>'
+      +'</div>'+chip+btn+'</div>';
+  }).join('');
+}
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
