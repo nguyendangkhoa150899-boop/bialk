@@ -1648,11 +1648,25 @@ function renderPalChests(){
   if(!box||!STATE)return;
   const rows=STATE.palChests||[];
   if(!rows.length){box.innerHTML='<div class="muted">Chưa ai có pal trong rương.</div>';return;}
+  // 25/08: làm lại cho dễ đọc (góp ý chủ server) — mỗi đơn 1 khung, ĐANG GIAO viền đỏ,
+  // trạng thái là nhãn màu, nút gọn nằm phải, đơn đã xong mờ đi.
+  const chipCss='font-size:11px;border-radius:6px;padding:2px 8px;white-space:nowrap;';
   box.innerHTML=rows.map(r=>{
-    const st=r.status==='chest'?'🎒 trong rương':r.status==='sold'?'💰 đã bán':r.status==='claimed'?('✅ đã nhận'+(r.deliveredTo?' → '+esc(r.deliveredTo):'')):'<b style="color:var(--red)">⏳ ĐANG GIAO</b>';
-    const btn=r.status==='delivering'?(' <button onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',true)">✅ đã giao</button> <button onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',false)">↩️ về rương</button>'):'';
-    return '<div style="padding:6px 0;border-bottom:1px solid var(--line)'+((r.status==='sold'||r.status==='claimed')?';opacity:.55':'')+'">#'+r.id+' <b>'+esc(r.name)+'</b>'+(r.raid?' 🔥RAID':'')+
-      ' — '+esc(r.ownerName)+(r.ingameName?' ('+esc(r.ingameName)+')':'')+' · '+esc(r.wonAt||'')+' · '+st+btn+'</div>';
+    const dim=(r.status==='sold'||r.status==='claimed');
+    const chip=r.status==='chest'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#aab3c5">🎒 trong rương</span>'
+      :r.status==='sold'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#8f97a8">💰 đã bán</span>'
+      :r.status==='claimed'?'<span style="'+chipCss+'border:1px solid #2f8f4f;color:#7fd98a">✅ đã nhận'+(r.deliveredTo?' → '+esc(r.deliveredTo):'')+'</span>'
+      :'<span style="'+chipCss+'border:1px solid var(--red);color:var(--red);font-weight:700">⏳ ĐANG GIAO</span>';
+    const btn=r.status==='delivering'
+      ?('<button style="padding:5px 10px;font-size:12px" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',true)">✅ đã giao</button>'
+       +'<button style="padding:5px 10px;font-size:12px;background:#3a4155" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',false)">↩️ về rương</button>')
+      :'';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid '+(r.status==='delivering'?'var(--red)':'var(--line)')+';border-radius:10px;margin-top:6px'+(dim?';opacity:.55':'')+'">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:14px"><b>'+esc(r.name)+'</b>'+(r.raid?' <span style="color:#ff8f8f;font-size:11px;font-weight:700">🔥 RAID</span>':'')
+      +' <span class="muted" style="font-size:11px">rương #'+r.id+(r.dex?' · paldex #'+r.dex:'')+'</span></div>'
+      +'<div class="muted" style="font-size:11.5px;margin-top:2px">'+esc(r.ownerName)+(r.ingameName?' — nhân vật <b>'+esc(r.ingameName)+'</b>':'')+' · '+esc(r.wonAt||'')+'</div>'
+      +'</div>'+chip+btn+'</div>';
   }).join('');
 }
 async function skToggle(){
