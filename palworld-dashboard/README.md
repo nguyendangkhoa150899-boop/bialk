@@ -498,6 +498,53 @@ bảng lịch sử (24), bán lại pal (19), cổng online nạp/rút (16), khi
 
 ---
 
+## 📌 GHI CHÚ BÀN GIAO cho phiên phát triển sau (đọc TRƯỚC khi làm gì — 25/08/2026 tối)
+
+**Trạng thái:** toàn bộ hệ pal-web ĐANG CHẠY THẬT trên server chính (commit `4a1fc17`):
+quay pal CSGO 10s + chọn pal đích danh + rương + giao tự động BOSS Lv80 4 sao +
+cổ phiếu tự cắt theo mốc. Đã giao thật nhiều pal cho người chơi thật.
+
+**1. Passive — 12 con còn cờ ⚠ `unsure` trong `BotDoMin/passives.json` (mã đoán, cần
+kiểm):** Chiêu Đãi Hào Phóng (`LavishHospitality`), Thân Thủ Linh Hoạt
+(`RideJumpCount_Increase1`), Chủ Nhân Trang Trại (`RanchMaster`), Bảo Mẫu Trông Trẻ
+(`MutationPal_Babysitter`), Đứa Trẻ Trang Trại (`Farmhand`), Lòng Thương Bao La
+(`Philanthropist`), Tinh Thần Phục Vụ (`ServiceMinded`), Dòng Dõi Cao Quý
+(`SalePrice_Up_2`), Sung Sức (`Stamina_Up_2`), Nóng Vội (`CoolTimeReduction_Up_2`),
+Không Ngủ (`Insomnia`), Bơi Lội Uyển Chuyển (`SwimSpeed_up_1`).
+- **Cách đào mã ĐÃ ĂN 25 con** (làm lại được cho 12 con này): trang
+  `paldb.cc/en/Passive_Skills` nhúng mã thật trong `data-hover="?s=PassiveSkills%2F<ID>"`
+  và tên item cấy `PalPassiveSkillChange_(Consumable_)?<ID>`; passive chỉ có trên boss
+  thì vào TRANG PAL (vd `paldb.cc/en/Bellanoir_Libero`) grep
+  `data-hover="?s=PassiveSkills/<ID>"` (dấu / thường). Ví dụ đã tìm ra: Siren of the
+  Void=`Witch`, Lunker=`Nushi`, Savior=`Salvation`, Otherworldly Cells=`Alien`,
+  Heavyweight=`Deffence_up2_2`, Diamond Body=`Deffence_up3`.
+- **Cách kiểm trong game:** gửi pal test gắn 4 passive ⚠/con qua SFTP server test
+  (kịch bản mẫu: scratchpad `paltest8.mjs` — lệnh `PAL2 <species> 1 0 0 0 0 0 0 0 0 0
+  0 0 <id1,id2,id3,id4> <tênNhânVật>`), người chơi mở hộp xem con nào THIẾU ô = mã sai.
+  Bài học: pal Yakumo giao thật thiếu 2 ô → lòi ra 2 mã sai đầu tiên.
+
+**2. Môi trường test (máy Windows này):** bot test `Desktop/bialk-test` (web 4002,
+panel 4508/4234, PIN 123456, user `111111111111111111`, nhân vật test `bia123`);
+dashboard test cổng 3010 (`palworld-dashboard/server/.env` local, gitignore, SFTP server
+test "1. Cô 4 và những người bạn"); server test SFTP trong `env.sh` ở scratchpad;
+KHÔNG BAO GIỜ trỏ tool test vào server chính khi chưa được lệnh. Bộ test trích code
+thật nằm ở thư mục scratchpad phiên Claude (palwheeltest.js 83 case + 17 bộ khác).
+
+**3. Server CHÍNH:** VPS `/root/tts-bot` (pm2: `BotDoMin` + `palworld-dashboard` —
+sửa dashboard NHỚ restart cả nó); server game panel Shockbyte tên "1. test mod"
+(SFTP uuid `11d72659-…`); web chơi `103.72.98.37:3002`. Deploy = commit → push →
+user pull + pm2 restart; mod = đè `GiveGoldCommand/Scripts/main.lua` qua SFTP + restart
+server game. Pal giao xong DÙNG ĐƯỢC SAU RESTART server game (giới hạn game engine,
+đã dò hết API — đừng đào lại đường "dùng ngay không restart", xem nhật ký 25/08).
+
+**4. Việc còn mở:** (a) kiểm 12 passive ⚠; (b) reel quay hiện ẢNH pal thay tên — cần
+gom đủ ảnh (mới có 16/290 ở `BotDoMin/assets/palimage/`, tên file
+`T_<code>_icon_normal.png`) và sửa `assets.js` (đang chỉ quét 1 cấp thư mục nên file
+trong palimage/ bị 404); (c) tự động hoá restart server game theo khung giờ — dashboard
+có sẵn `/api/save` + `/api/shutdown` (REST Palworld), chỉ cần bật REST trong
+`server/.env` prod + panel Shockbyte auto-start; (d) 7 passive World Tree cố tình CẤM
+khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ server không đổi luật.
+
 ## Bot Discord (BotDoMin) — nhật ký cập nhật
 
 ### 25/08/2026 — 🎁 QUAY PAL kiểu CSGO trên web + 🎒 RƯƠNG ở trang Hồ sơ (giao pal TỰ ĐỘNG)
@@ -580,6 +627,12 @@ Chủ server đã test đủ trên server test và chốt triển khai. Các bư
    chọn đích danh 6.000 · bán 1.000 · linh hồn 1 dòng · Lv80 · 4 sao · BOSS · mở).
 6. Đơn pal cũ còn treo trong bảng "🐾 Đơn mua Pal" vẫn xử tay như trước cho hết
    tồn đọng; đơn mới không sinh nữa.
+
+**Đã thực hiện 25/08 tối:** commit `819612e` push GitHub; VPS đã pull + restart
+BotDoMin; **main.lua v7 đã up lên server game chính** (tên trên panel Shockbyte:
+"1. test mod", UUID SFTP `11d72659-…`) trong lúc server tắt — bản cũ 54.615 ký tự
+backup tại scratchpad `main-prod-backup-25-08.lua`, bản mới 56.826 ký tự khớp repo.
+Còn thiếu lúc ghi dòng này: `pm2 restart palworld-dashboard --update-env` (bước 1).
 
 ### 25/08/2026 (tối, đợt 2) — 🎯 CHỌN PAL trên web · Discord chỉ còn chuyển tiền · build riêng · cổ phiếu tự cắt
 
