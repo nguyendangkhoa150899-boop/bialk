@@ -956,7 +956,7 @@ function palWheelCfg() {
         sellPrice: Math.floor(num(c.sellPrice, 1000, 0, 1000000)), // bán pal trong rương
         soulMax: Math.floor(num(c.soulMax, 1, 0, 4)),             // số dòng linh hồn 60% được chọn (25/08: chỉ 1 trong 4)
         level: Math.floor(num(c.level, 80, 1, 100)),
-        stars: Math.floor(num(c.stars, 4, 0, 5)),
+        stars: Math.floor(num(c.stars, 4, 0, 4)),   // SỐ SAO thật (tối đa 4 — mod tự đổi sang Rank 1..5 của save)
         boss: c.boss === undefined ? true : !!c.boss,             // giao bản BOSS_ (pal boss)
         open: c.open === undefined ? true : !!c.open,
     };

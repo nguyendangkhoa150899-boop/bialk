@@ -1155,7 +1155,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <div style="flex:1"><label>Số dòng linh hồn 60% (0–4)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
           <div style="flex:1"><label>Level pal giao (1–100)</label><input id="pwLevel" type="number" placeholder="vd: 80"></div>
-          <div style="flex:1"><label>Sao (0–5)</label><input id="pwStars" type="number" placeholder="vd: 4"></div>
+          <div style="flex:1"><label>Sao (0–4, sao THẬT trên pal)</label><input id="pwStars" type="number" placeholder="vd: 4"></div>
         </div>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> Giao bản PAL BOSS</label>
@@ -1631,7 +1631,7 @@ function pwCfgSave(){
   if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
   if(!(o.soulMax>=0&&o.soulMax<=4))return toast('Linh hồn 0–4 dòng');
   if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
-  if(!(o.stars>=0&&o.stars<=5))return toast('Sao 0–5');
+  if(!(o.stars>=0&&o.stars<=4))return toast('Sao 0–4');
   api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function pgGrant(){

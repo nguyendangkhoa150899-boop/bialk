@@ -932,8 +932,11 @@ local function givePal(playerName, speciesId, level, rank, ivHp, ivMelee, ivShot
 
                     pcall(function()
                         if rank and rank > 0 then
-                            parameter.SaveParameter.Rank = rank
-                            parameter.SaveParameterMirror.Rank = rank
+                            -- 25/08: tham số rank = SỐ SAO người chơi thấy. Trong save game
+                            -- Rank chạy 1..5 với Rank=1 là 0 sao (số sao = Rank - 1), nên phải
+                            -- +1 khi ghi — trước đây ghi thẳng nên đặt 4 sao ra có 3 sao.
+                            parameter.SaveParameter.Rank = rank + 1
+                            parameter.SaveParameterMirror.Rank = rank + 1
                         end
                         if ivHp then
                             parameter.SaveParameter.Talent_HP = ivHp
