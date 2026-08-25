@@ -1161,6 +1161,15 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username) {
     }
 
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    // 25/08 (rút từ đơn #64 kẹt trên server chính): lỗi 404/401/mất kết nối dashboard
+    // là CHẮC CHẮN chưa ghi gì vào queue -> tự trả về rương, khỏi phiền admin gỡ tay.
+    // Lỗi 500/timeout thì KHÔNG — có thể đã ghi queue rồi mới hỏng, vẫn phải treo chờ kiểm.
+    if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted/i.test(msg)) {
+        item.status = 'chest';
+        saveDbNow();
+        writeLog('ADMIN', `[RƯƠNG PAL] Dashboard không nhận lệnh (${msg}) — trả rương #${item.id} về cho ${username || userId} bấm lại`);
+        return { error: '⚠️ Hệ thống giao đang bảo trì (dashboard chưa sẵn sàng) — pal vẫn trong rương, thử lại sau ít phút' };
+    }
     if (/PALBOX DAY/i.test(msg)) {
         item.status = 'chest'; // mod từ chối vì hộp đầy, CHƯA giao gì — pal còn nguyên trong rương
         saveDbNow();
