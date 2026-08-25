@@ -2696,9 +2696,20 @@ function stockTick(forcePct) {
     const clamp = (v) => Math.min(STOCK_MAX, Math.max(STOCK_MIN, v));
     let p;
     if (Number.isFinite(forcePct)) {
-        p = clamp(before * (1 + forcePct));   // tin admin thả: nhảy thẳng, bỏ cầu dao
+        p = clamp(before * (1 + forcePct));   // đường cũ: nhảy thẳng (không còn ai gọi từ panel)
     } else {
-        let m = -STOCK_PULL * Math.log(before / STOCK_BASE) + cfg.vol * stockGauss();
+        // TRÔI TỪ TỪ (25/08): có đích thì mỗi nhịp nhích 1/ticksLeft khoảng cách còn lại
+        // (đo bằng log để tự bù lực kéo về mốc), nhân nhiễu 0.5–1.5 cho khỏi đều tăm tắp.
+        // Nhiễu vol bình thường vẫn phủ lên trên -> nhìn như một xu hướng thật, không ai
+        // phân biệt được với sóng tự nhiên. Dùng chung cho admin can thiệp + sự kiện tự động.
+        let drift = 0;
+        const d = dbCache._stockDrift;
+        if (d && d.ticksLeft > 0 && Number.isFinite(d.target)) {
+            drift = Math.log(d.target / before) / d.ticksLeft * (0.5 + Math.random());
+            d.ticksLeft--;
+            if (d.ticksLeft <= 0) dbCache._stockDrift = null;
+        }
+        let m = -STOCK_PULL * Math.log(before / STOCK_BASE) + cfg.vol * stockGauss() + drift;
         if (m > STOCK_TICK_CAP) m = STOCK_TICK_CAP;
         if (m < -STOCK_TICK_CAP) m = -STOCK_TICK_CAP;
         p = clamp(before * (1 + m));
@@ -2860,7 +2871,7 @@ function stockState(userId) {
         // lãi/lỗ CHỐT trong ngày (giờ VN) — ô "hôm nay" ở thanh đầu trang
         todayPl: closed.filter(c => c.userId === userId && vnDayStr(c.t) === vnDayStr(Date.now()))
             .reduce((s, c) => s + (Number(c.pl) || 0), 0),
-        news: dbCache._stockNews || null,
+        news: null,   // 25/08: bỏ banner tin — admin can thiệp KÍN, người chơi không được báo
     };
 }
 
@@ -3051,16 +3062,29 @@ function stockAutoCheck() {
 }
 
 // Tin tốt/tin xấu do admin thả ở panel — giá bật/sụp NGAY một nhịp
-function stockNews(pct, text) {
+// CAN THIỆP KÍN (25/08, thay "thả tin"): admin đặt ±% -> giá TRÔI DẦN tới đích trong
+// ~2-3 phút, KHÔNG banner, KHÔNG toast cho người chơi — trên web nó chỉ là một xu hướng.
+// Người chơi vẫn phản ứng được (bán giữa đường) vì giá đi từ từ, không nhảy cột.
+function stockPush(pct, ticks) {
     const p0 = stockPrice();
-    const p1 = stockTick(pct / 100);
-    dbCache._stockNews = {
-        t: Date.now(), pct, from: p0, to: p1,
-        text: String(text || '').slice(0, 120) || (pct >= 0 ? 'Tin tốt bất ngờ' : 'Tin xấu bất ngờ'),
-    };
-    writeLog('ADMIN', `[CỔ PHIẾU] Thả tin ${pct > 0 ? '+' : ''}${pct}% : ${p0.toLocaleString()} -> ${p1.toLocaleString()}`);
+    const target = Math.round(Math.min(STOCK_MAX, Math.max(STOCK_MIN, p0 * (1 + pct / 100))));
+    const t = Math.max(15, Math.min(300, Math.floor(ticks) || 75));   // mặc định 75 nhịp = 150 giây
+    dbCache._stockDrift = { target, ticksLeft: t, by: 'admin' };
+    writeLog('ADMIN', `[CỔ PHIẾU] Can thiệp KÍN ${pct > 0 ? '+' : ''}${pct}%: ${p0.toLocaleString()} -> đích ${target.toLocaleString()} trong ${Math.round(t * STOCK_TICK_MS / 1000)} giây`);
     saveDbNow();
-    return dbCache._stockNews;
+    return { pct, from: p0, target, secs: Math.round(t * STOCK_TICK_MS / 1000) };
+}
+// SỰ KIỆN TỰ ĐỘNG: lâu lâu game tự trôi ±10-15% trong 3-5 phút — gọi mỗi nhịp từ loop.
+// Xác suất 0.0008/nhịp 2s ≈ trung bình ~40 phút một cú; không chồng lên drift đang chạy.
+function stockAutoDrift() {
+    if (dbCache._stockDrift) return;
+    if (Math.random() >= 0.0008) return;
+    const pct = (10 + Math.random() * 5) * (Math.random() < 0.5 ? -1 : 1);
+    const p0 = stockPrice();
+    const target = Math.round(Math.min(STOCK_MAX, Math.max(STOCK_MIN, p0 * (1 + pct / 100))));
+    const t = 90 + Math.floor(Math.random() * 60);   // 90-150 nhịp = 3-5 phút
+    dbCache._stockDrift = { target, ticksLeft: t, by: 'auto' };
+    writeLog('SYSTEM', `[CỔ PHIẾU] 🌊 Sóng tự động ${pct > 0 ? '+' : ''}${Math.round(pct * 10) / 10}%: ${p0.toLocaleString()} -> đích ${target.toLocaleString()} trong ${Math.round(t * STOCK_TICK_MS / 1000)} giây`);
 }
 // Cập nhật "đỉnh lãi từng gồng qua" của từng người — chạy mỗi nhịp giá
 function stockTouchPeaks() {
@@ -3089,9 +3113,11 @@ function runStockLoop() {
         csBoot[csBoot.length - 1].n = STOCK_CANDLE_TICKS;
         writeLog('SYSTEM', '[CỔ PHIẾU] Nến đời cũ - chốt cây cuối để chuyển sang nến 40 giây');
     }
+    delete dbCache._stockNews;   // 25/08: bỏ banner tin — can thiệp giờ là TRÔI KÍN
     dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
     setInterval(() => {
         try {
+            stockAutoDrift();   // 🌊 lâu lâu tự tạo sóng ±10-15%, trôi 3-5 phút
             stockTick();
             stockBurnCheck();   // lệnh BÁN lỗ hết cọc thì đóng hộ, không để ai âm ví
             stockAutoCheck();   // 🤖 mốc tự đóng người chơi đặt (25/08)
@@ -3591,7 +3617,26 @@ client.once('ready', async (c) => {
                     spreadPct: Math.round(cfg.spread * 1000) / 10,
                     pointX: cfg.pointX,
                     maxShares: cfg.maxShares, maxPer: cfg.maxPer, maxLev: cfg.maxLev, holdS: cfg.holdS, open: cfg.open,
-                    news: dbCache._stockNews || null,
+                    // 25/08: từng người đang giữ lệnh — panel hiện ai MUA/BÁN lời lỗ bao nhiêu,
+                    // và là dữ liệu cho ô XEM TRƯỚC tác động khi admin chỉnh %.
+                    positions: Object.entries(stockPos())
+                        .filter(([, p]) => (Number(p.shares) || 0) > 0)
+                        .map(([uid, p]) => ({
+                            name: getUserData(uid).name || uid,
+                            side: p.side === 'short' ? 'short' : 'long',
+                            shares: Number(p.shares) || 0,
+                            lev: Math.round(posLev(p) * 10) / 10,
+                            margin: posMargin(p),
+                            wallet: Math.max(0, Number(getUserData(uid).points) || 0),
+                            pl: stockPL(p),
+                            mins: Math.floor((Date.now() - (Number(p.openedAt) || Date.now())) / 60000),
+                        }))
+                        .sort((a, b) => b.pl - a.pl),
+                    drift: dbCache._stockDrift ? {
+                        target: dbCache._stockDrift.target,
+                        secsLeft: Math.round((dbCache._stockDrift.ticksLeft || 0) * STOCK_TICK_MS / 1000),
+                        by: dbCache._stockDrift.by || 'auto',
+                    } : null,
                 };
             },
             setStockCfg: (o) => {
@@ -3613,7 +3658,10 @@ client.once('ready', async (c) => {
                 writeLog('ADMIN', `[CỔ PHIẾU] Đổi cấu hình: biến động ${c.vol * 100}%, chênh ${c.spread * 100}%, sức nặng x${c.pointX}, trần sàn ${c.maxShares}, trần/người ${c.maxPer}, ${c.open ? 'MỞ' : 'ĐÓNG'}`);
                 return c;
             },
-            stockNews: (pct, text) => stockNews(Math.max(-40, Math.min(40, Number(pct) || 0)), text),
+            stockPush: (pct, secs) => stockPush(
+                Math.max(-40, Math.min(40, Number(pct) || 0)),
+                Math.round((Math.max(30, Math.min(600, Number(secs) || 150))) * 1000 / STOCK_TICK_MS)
+            ),
             // (Bảng thống kê 📊 đã bỏ 19/08 — panel không còn tab)
             // Bảng mời chơi Leo Thang
             getStairs: () => ({ on: !!stairsBoard.message, channelId: dbCache._stairsChannelId || '' }),

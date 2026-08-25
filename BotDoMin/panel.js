@@ -202,12 +202,13 @@ function startPanel(ctx) {
                 if (ctx.setStockCfg && req.method === 'POST' && path === '/api/stock/cfg') {
                     return sendJSON(res, 200, { ok: true, cfg: ctx.setStockCfg(body) });
                 }
-                if (ctx.stockNews && req.method === 'POST' && path === '/api/stock/news') {
+                // 25/08: can thiệp KÍN — giá trôi dần tới đích, không banner, không toast
+                if (ctx.stockPush && req.method === 'POST' && path === '/api/stock/push') {
                     const pct = Number(body.pct);
                     if (!Number.isFinite(pct) || pct === 0 || Math.abs(pct) > 40) {
                         return sendJSON(res, 400, { ok: false, error: 'Biên độ phải trong ±1..40%' });
                     }
-                    return sendJSON(res, 200, { ok: true, ...ctx.stockNews(pct, body.text) });
+                    return sendJSON(res, 200, { ok: true, ...ctx.stockPush(pct, Number(body.secs) || 150) });
                 }
 
                 // ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
@@ -726,6 +727,14 @@ const HTML = `<!DOCTYPE html>
   .run{display:inline-block;padding:4px 12px;border-radius:8px;font-size:14px;font-weight:700}
   .run.on{background:var(--green);color:#fff} .run.off{background:#4e5058;color:#dbdee1}
   .wrap{max-width:840px;margin:0 auto;padding:16px}
+  .sktile{background:#12141a;border:1px solid var(--line,#2a2e3b);border-radius:10px;padding:9px 6px;text-align:center}
+  .sktile .t{font-size:9.5px;color:var(--mut);letter-spacing:.05em}
+  .sktile .v{font-size:17px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+  .skgrp{border:1px solid;border-radius:10px;padding:9px;height:100%}
+  .skgrp .gh{font-size:12px;font-weight:800;margin-bottom:6px}
+  .skrow2{display:flex;justify-content:space-between;gap:6px;padding:4px 0;border-bottom:1px solid #2a2e3b;font-size:12.5px}
+  .skrow2:last-child{border-bottom:0}
+  .skrow2 b{font-variant-numeric:tabular-nums}
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
   .tabs button{background:var(--card);color:var(--mut)}
   .tabs button.active{background:var(--blue);color:#fff}
@@ -1035,9 +1044,49 @@ const HTML = `<!DOCTYPE html>
 
     <div id="tab-stock" class="hidden">
       <div class="card">
-        <h3>📈 Sàn Cổ Phiếu Dogcoin (DOG) — game thuần web</h3>
-        <div class="muted" id="skInfo" style="font-size:13px;margin-bottom:8px"></div>
-        <div class="note" id="skRisk" style="margin-bottom:12px"></div>
+        <h3>📈 Sàn Cổ Phiếu DOG</h3>
+        <!-- 4 ô số to: liếc 2 giây là biết sàn đang thế nào, khỏi đọc cả đoạn văn -->
+        <div id="skTiles" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0">
+          <div class="sktile"><div class="t">GIÁ (mốc 1.000)</div><div class="v" id="skTPrice">-</div></div>
+          <div class="sktile"><div class="t">CP LƯU HÀNH</div><div class="v" id="skTOut">-</div></div>
+          <div class="sktile"><div class="t">NGƯỜI ĐANG GỒNG</div><div class="v" id="skTHold">-</div></div>
+          <div class="sktile"><div class="t">BOT TRẢ NẾU ĐÓNG HẾT</div><div class="v" id="skTPay">-</div></div>
+        </div>
+        <div class="muted" id="skInfo" style="font-size:12.5px;margin-bottom:6px"></div>
+        <div class="note" id="skRisk"></div>
+      </div>
+
+      <div class="card">
+        <h3>👥 Ai đang giữ lệnh — lời/lỗ TỨC THÌ</h3>
+        <div class="row" style="gap:8px;align-items:stretch">
+          <div style="flex:1">
+            <div class="skgrp" style="border-color:#2f6b48"><div class="gh" style="color:var(--green)">🟢 ĐANG MUA (ăn khi giá lên) · <span id="skLongSum">-</span></div><div id="skLongs" class="muted" style="font-size:12.5px">Không có ai.</div></div>
+          </div>
+          <div style="flex:1">
+            <div class="skgrp" style="border-color:#6b2f2f"><div class="gh" style="color:var(--red)">🔴 ĐANG BÁN (ăn khi giá xuống) · <span id="skShortSum">-</span></div><div id="skShorts" class="muted" style="font-size:12.5px">Không có ai.</div></div>
+          </div>
+        </div>
+        <div class="note" style="margin-top:8px">Lời/lỗ tính theo giá hiện tại, đã nhân đòn bẩy + sức nặng. <b>Dương = bot sẽ trả thêm</b> khi họ đóng lệnh, âm = bot thu về. Bảng tự cập nhật mỗi 3 giây.</div>
+      </div>
+
+      <div class="card">
+        <h3>🕹️ Can thiệp giá — KÍN, trôi từ từ</h3>
+        <div id="skDrift" class="note" style="display:none;margin-bottom:8px"></div>
+        <div class="row">
+          <div style="flex:1"><label>Biên độ (%) — âm là kéo xuống</label><input id="skPushPct" type="number" step="1" placeholder="vd: 12 hoặc -12" oninput="skPushPrev()"></div>
+          <div style="flex:1"><label>Trôi trong (giây)</label><input id="skPushSecs" type="number" min="30" max="600" value="150" oninput="skPushPrev()"></div>
+        </div>
+        <!-- XEM TRƯỚC: đụng nút là biết từng người ±bao nhiêu, tổng bot trả thêm/thu về -->
+        <div id="skPushPrev" class="note" style="margin-top:8px;display:none"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-green" onclick="skPush(1)">📈 Kéo GIÁ LÊN</button>
+          <button class="btn-red" onclick="skPush(-1)">📉 Kéo GIÁ XUỐNG</button>
+        </div>
+        <div class="note">Giá <b>trôi dần</b> tới đích trong số giây đã đặt, trộn với sóng tự nhiên — <b>người chơi không nhận bất cứ thông báo nào</b>, trên web nó chỉ là một xu hướng. Họ vẫn kịp đóng lệnh giữa đường. Ngoài ra <b>game tự tạo sóng ±10–15%</b> khoảng 40 phút một lần (trôi 3–5 phút), không cần bấm gì.</div>
+      </div>
+
+      <div class="card">
+        <h3>⚙️ Cấu hình sàn</h3>
         <div class="row">
           <div style="flex:1">
             <label>Biến động mỗi nhịp 2s (%)</label>
@@ -1045,7 +1094,7 @@ const HTML = `<!DOCTYPE html>
           </div>
           <div style="flex:1">
             <label>Chênh mua–bán mỗi chiều (%)</label>
-            <input id="skSpread" type="number" step="0.1" placeholder="vd: 0.5">
+            <input id="skSpread" type="number" step="0.1" placeholder="vd: 0.1">
           </div>
         </div>
         <div class="row" style="margin-top:8px">
@@ -1078,20 +1127,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
           <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
         </div>
-        <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền: 1 đồng giá nhích × 1 CP = bấy nhiêu Dogcoin — mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn (x10 sức nặng 5 → 1% giá = 50% vốn). ⚠️ Tăng sức nặng thì NÊN hạ chênh mua–bán theo (mặc định mới 0,1%/chiều), không thì phí vòng bị nhân theo luôn — lỗ ăn hết vốn là bot tự đóng lệnh (cháy vốn), không ai âm ví.<br><b>⚠️ Đòn bẩy làm trần CP dễ chạm hơn nhiều:</b> ở x20 thì cả server chỉ cần ~25.000 Dogcoin vốn là chạm trần 500 CP (không đòn bẩy thì cần ~500.000). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>.<br><b>Chôn vốn</b>: vào lệnh xong phải giữ đủ số giây này mới đóng được — chặn kiểu vào lệnh thấy xanh một nhịp là rút. Để 0 là tắt. Sàn đóng thì <b>vẫn cho đóng lệnh</b>, chỉ chặn mở lệnh mới.</div>
-      </div>
-      <div class="card">
-        <h3>📰 Thả tin — giá bật/sụp NGAY một nhịp</h3>
-        <label>Nội dung tin (hiện trên web cho người chơi đọc)</label>
-        <input id="skNewsTxt" placeholder="vd: Chủ server bơm vốn / Chủ server rút vốn">
-        <div class="row" style="margin-top:8px">
-          <div style="flex:1"><label>Biên độ (%)</label><input id="skNewsPct" type="number" step="1" placeholder="vd: 15"></div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn-green" onclick="skNews(1)">📈 Thả tin tốt</button>
-          <button class="btn-red" onclick="skNews(-1)">📉 Thả tin xấu</button>
-        </div>
-        <div class="note">Giới hạn ±40%/lần. Tin tốt làm <b>lệnh MUA lãi</b> và <b>lệnh BÁN lỗ</b>, tin xấu thì ngược lại. Thả tin khi có người đang gồng là <b>bot trả tiền thật</b> — xem dòng “nếu tất cả bán ngay” ở trên trước khi bấm.</div>
+        <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền — mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn. ⚠️ Tăng sức nặng thì hạ chênh mua–bán theo (mặc định 0,1%/chiều). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>. <b>Chôn vốn</b>: vào lệnh phải giữ đủ giây mới đóng được, 0 là tắt. Sàn đóng <b>vẫn cho đóng lệnh</b>, chỉ chặn mở mới.</div>
       </div>
     </div>
 
@@ -1567,122 +1603,86 @@ async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏ
 function whSaveMin(){const n=parseInt(document.getElementById('whMin').value);if(!n||n<1||n>50)return toast('Nhập số 1–50');api('/api/wheel/min',{minPlayers:n}).then(()=>{toast('💾 Vòng quay cần '+n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
 async function whReset(){if(!await uiConfirm('Reset lượt vòng quay: CẢ SERVER quay lại được ngay, không đợi 00:00/12:00?','Reset lượt','btn-red'))return;api('/api/wheel/reset',{}).then(j=>{toast('🔄 Đã reset lượt cho '+j.n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
 // ===== 📈 SÀN CỔ PHIẾU =====
-// Hai dòng quan trọng nhất là CP lưu hành và trần thiệt hại: chúng cho biết bot
-// đang gánh bao nhiêu tiền nếu giá bay. Đọc trước khi thả tin tốt.
+// ===== 📈 SÀN CỔ PHIẾU (panel) =====
+// Ô số to + bảng 2 phe MUA/BÁN lời lỗ màu; can thiệp là TRÔI KÍN — người chơi
+// không được báo, nên panel phải cho admin XEM TRƯỚC từng người ±bao nhiêu.
+function skRow(p){
+  const w=p.pl>=0;
+  return '<div class="skrow2"><span>'+esc(p.name)+' <span style="color:var(--mut)">x'+p.lev+' · '+p.shares+' CP · '+p.mins+'p</span></span>'+
+    '<b style="color:'+(w?'var(--green)':'var(--red)')+'">'+(w?'+':'')+p.pl.toLocaleString()+'</b></div>';
+}
 function skFill(k){
   if(!k)return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
   set('skVol',k.volPct);set('skSpread',k.spreadPct);set('skMaxShares',k.maxShares);set('skMaxPer',k.maxPer);
   set('skMaxLev',k.maxLev);set('skHold',k.holdS);set('skPoint',k.pointX);
-  document.getElementById('skInfo').innerHTML='Giá <b>'+k.price.toLocaleString()+'</b> (mốc gốc '+k.base.toLocaleString()+
-    ') · mua <b>'+k.ask.toLocaleString()+'</b> / bán <b>'+k.bid.toLocaleString()+
-    '</b> · <b>'+k.outstanding+'/'+k.maxShares+'</b> CP lưu hành · <b>'+k.holders+'</b> người đang gồng'+
+  const pc=Math.round((k.price/k.base-1)*1000)/10;
+  const tp=document.getElementById('skTPrice');
+  tp.textContent=k.price.toLocaleString()+' ('+(pc>=0?'+':'')+pc+'%)';
+  tp.style.color=pc>0?'var(--green)':pc<0?'var(--red)':'';
+  document.getElementById('skTOut').textContent=k.outstanding+'/'+k.maxShares;
+  document.getElementById('skTHold').textContent=k.holders;
+  const pay=document.getElementById('skTPay');
+  pay.textContent=k.payNow.toLocaleString();
+  pay.style.color=k.payNow>(k.marginIn||0)?'var(--red)':'var(--green)';
+  document.getElementById('skInfo').innerHTML='Mua <b>'+k.ask.toLocaleString()+'</b> / bán <b>'+k.bid.toLocaleString()+
+    '</b> · sức nặng <b>x'+(k.pointX||1)+'</b> · người chơi đã gửi <b>'+(k.marginIn||0).toLocaleString()+'</b> vốn'+
     (k.open?'':' · <b style="color:var(--red)">SÀN ĐANG ĐÓNG</b>');
-  document.getElementById('skRisk').innerHTML='Nếu <b>tất cả bán ngay</b>: bot trả <b>'+k.payNow.toLocaleString()+
-    '</b> Dogcoin, trong đó người chơi mới gửi <b>'+(k.marginIn||0).toLocaleString()+
-    '</b> vốn (đòn bẩy tối đa <b>x'+k.maxLev+'</b> nên vốn ít hơn giá trị lệnh nhiều lần). Trần thiệt hại với số CP đang lưu hành: <b style="color:var(--red)">'+k.worstCase.toLocaleString()+
-    '</b>. Trần tuyệt đối nếu bán hết '+k.maxShares+' CP: <b style="color:var(--red)">'+k.capWorst.toLocaleString()+
-    '</b> — đây là con số bạn phải chịu được (đã nhân sức nặng x'+(k.pointX||1)+').'+
-    (k.news?'<br>📰 Tin gần nhất: <b>'+(k.news.pct>0?'+':'')+k.news.pct+'%</b> — '+esc(k.news.text):'');
+  document.getElementById('skRisk').innerHTML='Trần thiệt hại với CP đang lưu hành: <b style="color:var(--red)">'+
+    k.worstCase.toLocaleString()+'</b> · trần tuyệt đối ('+k.maxShares+' CP): <b style="color:var(--red)">'+
+    k.capWorst.toLocaleString()+'</b> — đã nhân sức nặng.';
+  // bảng 2 phe
+  const ps=k.positions||[];
+  const side=(arr,boxId,sumId)=>{
+    const box=document.getElementById(boxId),sum=document.getElementById(sumId);
+    if(!box)return;
+    box.innerHTML=arr.length?arr.map(skRow).join(''):'Không có ai.';
+    const t=arr.reduce((a,p)=>a+p.pl,0);
+    sum.innerHTML=arr.length+' người · <b style="color:'+(t>=0?'var(--green)':'var(--red)')+'">'+(t>=0?'+':'')+t.toLocaleString()+'</b>';
+  };
+  side(ps.filter(p=>p.side==='long'),'skLongs','skLongSum');
+  side(ps.filter(p=>p.side==='short'),'skShorts','skShortSum');
+  // sóng đang chạy?
+  const dr=document.getElementById('skDrift');
+  if(k.drift){dr.style.display='block';
+    dr.innerHTML='🌊 Giá đang trôi về <b>'+k.drift.target.toLocaleString()+'</b> ('+(k.drift.by==='admin'?'admin can thiệp':'sóng tự động')+') — còn ~<b>'+k.drift.secsLeft+' giây</b>. Can thiệp mới sẽ ĐÈ lên sóng này.';}
+  else dr.style.display='none';
   const b=document.getElementById('skOpenBtn');
   if(b){b.textContent=k.open?'⏸ Tạm đóng sàn':'▶️ Mở lại sàn';b.className=k.open?'btn-red':'btn-green';}
+  skPushPrev();
 }
-function skSave(){
-  const o={volPct:parseFloat(document.getElementById('skVol').value),
-           spreadPct:parseFloat(document.getElementById('skSpread').value),
-           maxShares:parseInt(document.getElementById('skMaxShares').value),
-           maxPer:parseInt(document.getElementById('skMaxPer').value),
-           maxLev:parseInt(document.getElementById('skMaxLev').value),
-           holdS:parseInt(document.getElementById('skHold').value),
-           pointX:parseInt(document.getElementById('skPoint').value)};
-  if(!(o.volPct>0&&o.volPct<=15))return toast('Biến động phải trong 0–15%');
-  if(!(o.spreadPct>=0&&o.spreadPct<=20))return toast('Chênh mua–bán phải trong 0–20%');
-  if(!(o.maxShares>=10))return toast('Trần sàn phải từ 10 CP');
-  if(!(o.maxPer>=1))return toast('Trần mỗi người phải từ 1 CP');
-  if(!(o.maxLev>=1&&o.maxLev<=100))return toast('Đòn bẩy tối đa phải trong 1–100');
-  if(!(o.holdS>=0&&o.holdS<=3600))return toast('Chôn vốn phải trong 0–3600 giây');
-  if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
-  api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
-}
-
-// ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
-// Ô số đổ theo kiểu skFill (chỉ khi trống + không focus). Checkbox đổ đúng 1 LẦN —
-// panel tự refresh 3 giây/lần, đổ lại liên tục sẽ đè tay admin đang bấm.
-let pwCfgTicked=false;
-function pwCfgFill(k){
-  const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
-  set('pwPrice',k.price);set('pwCustom',k.customPrice);set('pwSell',k.sellPrice);set('pwSoul',k.soulMax);set('pwLevel',k.level);set('pwStars',k.stars);
-  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;}
-  document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
-    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng 60% · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
-    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
-}
-function pwCfgSave(){
-  const o={price:parseInt(document.getElementById('pwPrice').value),
-           customPrice:parseInt(document.getElementById('pwCustom').value),
-           sellPrice:parseInt(document.getElementById('pwSell').value),
-           soulMax:parseInt(document.getElementById('pwSoul').value),
-           level:parseInt(document.getElementById('pwLevel').value),
-           stars:parseInt(document.getElementById('pwStars').value),
-           boss:document.getElementById('pwBoss').checked,
-           open:document.getElementById('pwOpen').checked};
-  if(!(o.price>=100))return toast('Vé phải từ 100');
-  if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
-  if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
-  if(!(o.soulMax>=0&&o.soulMax<=4))return toast('Linh hồn 0–4 dòng');
-  if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
-  if(!(o.stars>=0&&o.stars<=4))return toast('Sao 0–4');
-  api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
-}
-function pgGrant(){
-  const uid=document.getElementById('pgUid').value.trim(), pal=document.getElementById('pgPal').value.trim();
-  if(!uid||!pal)return toast('Nhập Discord ID + tên pal');
-  api('/api/palchest/grant',{userId:uid,palName:pal}).then(j=>{toast('🎁 Đã tặng '+j.item.name+' vào rương');document.getElementById('pgPal').value='';refresh();}).catch(e=>toast('❌ '+e.message));
-}
-function pcResolve(ownerId,id,delivered){
-  if(!confirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?'))return;
-  api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast('✅ Đã chốt');refresh();}).catch(e=>toast('❌ '+e.message));
-}
-function renderPalChests(){
-  const box=document.getElementById('palChests');
-  if(!box||!STATE)return;
-  const rows=STATE.palChests||[];
-  if(!rows.length){box.innerHTML='<div class="muted">Chưa ai có pal trong rương.</div>';return;}
-  // 25/08: làm lại cho dễ đọc (góp ý chủ server) — mỗi đơn 1 khung, ĐANG GIAO viền đỏ,
-  // trạng thái là nhãn màu, nút gọn nằm phải, đơn đã xong mờ đi.
-  const chipCss='font-size:11px;border-radius:6px;padding:2px 8px;white-space:nowrap;';
-  box.innerHTML=rows.map(r=>{
-    const dim=(r.status==='sold'||r.status==='claimed');
-    const chip=r.status==='chest'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#aab3c5">🎒 trong rương</span>'
-      :r.status==='sold'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#8f97a8">💰 đã bán</span>'
-      :r.status==='claimed'?'<span style="'+chipCss+'border:1px solid #2f8f4f;color:#7fd98a">✅ đã nhận'+(r.deliveredTo?' → '+esc(r.deliveredTo):'')+'</span>'
-      :'<span style="'+chipCss+'border:1px solid var(--red);color:var(--red);font-weight:700">⏳ ĐANG GIAO</span>';
-    const btn=r.status==='delivering'
-      ?('<button style="padding:5px 10px;font-size:12px" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',true)">✅ đã giao</button>'
-       +'<button style="padding:5px 10px;font-size:12px;background:#3a4155" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',false)">↩️ về rương</button>')
-      :'';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid '+(r.status==='delivering'?'var(--red)':'var(--line)')+';border-radius:10px;margin-top:6px'+(dim?';opacity:.55':'')+'">'
-      +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:14px"><b>'+esc(r.name)+'</b>'+(r.raid?' <span style="color:#ff8f8f;font-size:11px;font-weight:700">🔥 RAID</span>':'')
-      +' <span class="muted" style="font-size:11px">rương #'+r.id+(r.dex?' · paldex #'+r.dex:'')+'</span></div>'
-      +'<div class="muted" style="font-size:11.5px;margin-top:2px">'+esc(r.ownerName)+(r.ingameName?' — nhân vật <b>'+esc(r.ingameName)+'</b>':'')+' · '+esc(r.wonAt||'')+'</div>'
-      +'</div>'+chip+btn+'</div>';
+// XEM TRƯỚC can thiệp: từng người ±bao nhiêu nếu giá đi đúng % đã nhập.
+// deltaPL = (MUA:+1/BÁN:−1) × shares × giá × %/100 × sức nặng — công thức stockPL rút gọn.
+function skPushPrev(){
+  const k=STATE&&STATE.stock,box=document.getElementById('skPushPrev');
+  if(!box)return;
+  const pct=parseFloat(document.getElementById('skPushPct').value);
+  if(!k||!Number.isFinite(pct)||pct===0){box.style.display='none';return}
+  const ps=k.positions||[];
+  if(!ps.length){box.style.display='block';box.innerHTML='Không ai đang giữ lệnh — chỉnh % lúc này không tốn của bot đồng nào.';return}
+  let botPay=0;
+  const rows=ps.map(p=>{
+    const d=Math.round((p.side==='long'?1:-1)*p.shares*k.price*(pct/100)*(k.pointX||1));
+    botPay+=d;
+    const after=p.pl+d;
+    return '<div class="skrow2"><span>'+(p.side==='long'?'🟢':'🔴')+' '+esc(p.name)+' <span style="color:var(--mut)">x'+p.lev+'</span></span>'+
+      '<span><b style="color:'+(d>=0?'var(--green)':'var(--red)')+'">'+(d>=0?'+':'')+d.toLocaleString()+'</b>'+
+      ' <span style="color:var(--mut)">→ tổng '+(after>=0?'+':'')+after.toLocaleString()+'</span></span></div>';
   }).join('');
+  box.style.display='block';
+  box.innerHTML='<b>Nếu giá đi '+(pct>0?'+':'')+pct+'%</b> (mỗi người ± / → lời lỗ sau đó):'+rows+
+    '<div class="skrow2" style="border-top:1px solid #2a2e3b;margin-top:2px"><span><b>BOT '+(botPay>=0?'TRẢ THÊM':'THU VỀ')+'</b></span><b style="color:'+(botPay>=0?'var(--red)':'var(--green)')+'">'+Math.abs(botPay).toLocaleString()+'</b></div>'+
+    '<div style="color:var(--mut);font-size:11.5px;margin-top:3px">Ước tính tại giá hiện tại, chưa tính người đóng lệnh giữa đường hay cháy ví sớm.</div>';
 }
-async function skToggle(){
-  const open=!(STATE&&STATE.stock&&STATE.stock.open);
-  if(!open&&!await uiConfirm('Tạm đóng sàn? Người chơi vẫn bán được, chỉ không mua thêm.','Đóng sàn','btn-red'))return;
-  api('/api/stock/cfg',{open}).then(()=>{toast(open?'▶️ Đã mở sàn':'⏸ Đã đóng sàn');refresh();}).catch(e=>toast('❌ '+e.message));
-}
-async function skNews(sign){
-  let pct=Math.abs(parseFloat(document.getElementById('skNewsPct').value));
+async function skPush(sign){
+  let pct=Math.abs(parseFloat(document.getElementById('skPushPct').value));
   if(!(pct>0&&pct<=40))return toast('Biên độ phải trong 1–40%');
   pct=pct*sign;
-  const k=STATE&&STATE.stock;
-  const warn=(sign>0&&k&&k.outstanding>0)?(' Bot sẽ phải trả thêm khoảng '+Math.round(k.payNow*pct/100).toLocaleString()+' Dogcoin cho '+k.holders+' người đang gồng.'):'';
-  if(!await uiConfirm('Thả tin '+(pct>0?'+':'')+pct+'% ngay bây giờ?'+warn,'Thả tin',sign>0?'btn-green':'btn-red'))return;
-  api('/api/stock/news',{pct,text:document.getElementById('skNewsTxt').value.trim()})
-    .then(j=>{toast('📰 '+(j.pct>0?'+':'')+j.pct+'%: '+j.from.toLocaleString()+' → '+j.to.toLocaleString());refresh();})
+  let secs=parseInt(document.getElementById('skPushSecs').value)||150;
+  if(secs<30)secs=30;if(secs>600)secs=600;
+  if(!await uiConfirm('Kéo giá '+(pct>0?'+':'')+pct+'% trong '+secs+' giây — KÍN, người chơi không được báo?','Kéo giá',sign>0?'btn-green':'btn-red'))return;
+  api('/api/stock/push',{pct,secs})
+    .then(j=>{toast('🌊 Đang trôi: '+j.from.toLocaleString()+' → '+j.target.toLocaleString()+' trong '+j.secs+'s');refresh();})
     .catch(e=>toast('❌ '+e.message));
 }
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
