@@ -2661,6 +2661,9 @@ function wheelSpin1(userId) {
                 if (!p.color || !okMoney) { wheelRoom.players.delete(p.userId); dropped.push(p.name); }
             }
             if (dropped.length) writeLog('SYSTEM', `[VÒNG QUAY] Quá giờ - bỏ lại (mất lượt, không mất tiền): ${dropped.join(', ')}`);
+            // 26/08: ghi danh sách bị bỏ lại vào kết quả quay cho MINH BẠCH — trước đây
+            // bỏ lại trong im lặng, người chơi tưởng bug "3 người quay 1 người nhận"
+            wheelRoom.droppedLast = dropped;
             if (wheelRoom.players.size) { wheelDoSpin(); return; }
             writeLog('SYSTEM', '[VÒNG QUAY] Quá giờ - không ai sẵn sàng, đóng vòng (lượt cả bàn đã tính)');
             wheelRoom.status = 'waiting';
@@ -2708,12 +2711,15 @@ function wheelDoSpin() {
         }
     }
     wheelRoom.spinSeq++;
+    // danh sách bị bỏ lại (hết giờ chưa chọn màu/thiếu vé) — đưa vào kết quả cho ai cũng thấy
+    const dropped = wheelRoom.droppedLast || [];
+    wheelRoom.droppedLast = null;
     // hoạt hình client 15s — endsAt 16s (ai vào trong lúc quay vẫn kịp xem đoạn cuối)
-    wheelRoom.spin = { seq: wheelRoom.spinSeq, idx, results, players, endsAt: Date.now() + 16000 };
+    wheelRoom.spin = { seq: wheelRoom.spinSeq, idx, results, players, dropped, endsAt: Date.now() + 16000 };
     wheelRoom.status = 'spinning';
     dbCache._wheelPending = {};   // tiền đã trả - không còn gì để hoàn
     if (!Array.isArray(dbCache._wheelHistory)) dbCache._wheelHistory = [];
-    dbCache._wheelHistory.unshift({ time: new Date().toLocaleTimeString('vi-VN'), price, results, players });
+    dbCache._wheelHistory.unshift({ time: new Date().toLocaleTimeString('vi-VN'), price, results, players, dropped });
     if (dbCache._wheelHistory.length > 20) dbCache._wheelHistory.pop();
     saveDbNow();
     // giữ spin lại sau khi quay xong để ai vào trễ vẫn thấy kết quả gần nhất

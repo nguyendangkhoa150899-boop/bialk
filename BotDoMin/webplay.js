@@ -1964,18 +1964,20 @@ const PAGE = [
     'var segs=whSegs(),N=segs.length,step=360/N,R=138,cx=150,cy=150;',
     'var FILL={"1.5":"#3949ab","1.8":"#00838f","2":"#1e8e4d","2.5":"#9c27b0","3":"#c96f14","5":"#d13b55","10":"#f0b90b"};',   // bậc mới 19/08: sàn 1.5, thêm 3/5
 
-    'var FILL1={"2000":"#1e8e4d","2500":"#2e7dd1","3000":"#f0b90b"};',   // vé: xanh lá / dương / vàng
+    // 26/08: tô màu vé theo THỨ HẠNG (rẻ -> đắt), khỏi chết màu khi admin đổi giá vé
+    'var uniq1=segs.slice().map(Number).filter(function(v,i,a){return a.indexOf(v)===i}).sort(function(a,b){return a-b});',
+    'var PAL1=["#1fa15c","#8b5cf6","#f0b90b","#d13b55","#2e7dd1"];',   // xanh lá / tím / vàng gold / đỏ / dương
     'var h=\'<circle cx="150" cy="150" r="146" fill="#0e1016"/><g id="whRot">\';',
     'for(var i=0;i<N;i++){var m=segs[i];',
     'var a0=(i*step-90)*Math.PI/180,a1=((i+1)*step-90)*Math.PI/180;',
     'var x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0),x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1);',
-    'var fill=mode===1?(FILL1[String(m)]||"#2c3350"):(FILL[String(m)]||"#2c3350");',
+    'var fill=mode===1?(PAL1[uniq1.indexOf(Number(m))%PAL1.length]||"#2c3350"):(FILL[String(m)]||"#2c3350");',
     'h+=\'<path d="M150 150L\'+x0.toFixed(1)+" "+y0.toFixed(1)+\'A\'+R+" "+R+\' 0 0 1 \'+x1.toFixed(1)+" "+y1.toFixed(1)+\'Z" fill="\'+fill+\'" stroke="#0e1016" stroke-width="1.5"/>\';',
     // Chữ xoay DỌC THEO BÁN KÍNH (đọc từ tâm ra ngoài) như bàn quay thật - 27 nan
     // chữ nằm ngang theo vành là đè lên nhau, xoay dọc thì mỗi nan một làn riêng.
     'var mid=i*step+step/2,am=(mid-90)*Math.PI/180,tx=cx+92*Math.cos(am),ty=cy+92*Math.sin(am);',
     'var lbl=mode===1?m.toLocaleString("vi-VN"):(m>=10?"x10 🏆":"x"+m);',
-    'var tfill=mode===1?(m>=3000?"#3d2c05":"#fff"):(m>=10?"#3d2c05":"#fff");',   // chữ tối trên nan vàng (vé đắt nhất / x10)
+    'var tfill=mode===1?(uniq1.indexOf(Number(m))===2?"#3d2c05":"#fff"):(m>=10?"#3d2c05":"#fff");',   // chữ tối trên nan VÀNG (hạng 3) / x10
     'var tsz=mode===1?14:(m>=10?16:13);',
     'h+=\'<text x="\'+tx.toFixed(1)+\'" y="\'+ty.toFixed(1)+\'" fill="\'+tfill+\'" font-size="\'+tsz+\'" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(\'+(mid-90)+\' \'+tx.toFixed(1)+" "+ty.toFixed(1)+\')">\'+lbl+"</text>"}',
     'h+=\'</g><circle cx="150" cy="150" r="30" fill="#161926" stroke="#2a2f42" stroke-width="2"/><text x="150" y="150" font-size="22" text-anchor="middle" dominant-baseline="central">\'+(mode===1?"🎟️":"🎡")+\'</text>\';',
@@ -2005,6 +2007,8 @@ const PAGE = [
     'function whShowRes(sp,quiet){var box=$("whRes");if(!box)return;',
     'var h="Kết quả: "+["yellow","blue","green"].map(function(c){return WEM[c]+" <b>x"+sp.results[c]+"</b>"}).join(" · ");',
     'h+="<br>"+sp.players.map(function(p){return WEM[p.color]+" "+esc(p.name)+" <b>+"+p.win.toLocaleString("vi-VN")+"</b>"}).join(" · ");',
+    // 26/08: ai bị bỏ lại (hết 120s chưa chọn màu/thiếu vé) phải được NÓI RÕ, khỏi tưởng bug
+    'if(sp.dropped&&sp.dropped.length)h+="<br><span style=\\"color:var(--red);font-size:12px\\">❌ Bị bỏ lại vì hết giờ chưa chọn màu/không đủ vé: "+sp.dropped.map(esc).join(", ")+" (mất lượt khung này, KHÔNG mất tiền)</span>";',
     'box.innerHTML=h;box.style.display="block";',
     'var mine=null;sp.players.forEach(function(p){if(WST&&p.userId===WST.me)mine=p});',
     'if(!quiet&&mine){if(mine.multi>=10){celebrate();toast("🏆 ĐỘC ĐẮC x10!!! +"+mine.win.toLocaleString("vi-VN")+" Dogcoin!!!")}',
@@ -2024,7 +2028,7 @@ const PAGE = [
     // Vòng ĐANG quay đã nằm đầu lịch sử (server ghi ngay lúc bấm) - bánh xe chưa
     // dừng thì cắt nó đi, kẻo kết quả hiện ở dưới trước khi quay xong.
     'if(hh.length&&(WANIM||(WST.spin&&(Date.now()+WOFF3)<WST.spin.endsAt)))hh=hh.slice(1);',
-    '$("whHist").innerHTML=hh.length?hh.map(function(e){return \'<div style="padding:5px 0;border-bottom:1px solid var(--line)">\'+(e.time||"")+(e.price?" · 🎟️ vé "+Number(e.price).toLocaleString("vi-VN"):"")+" · "+["yellow","blue","green"].map(function(c){return WEM[c]+" x"+(e.results?e.results[c]:"?")}).join(" ")+"<br>"+(e.players||[]).map(function(p){return WEM[p.color]+" "+esc(p.name)+" +"+Number(p.win).toLocaleString("vi-VN")}).join(" · ")+"</div>"}).join(""):"Chưa có vòng nào.";',
+    '$("whHist").innerHTML=hh.length?hh.map(function(e){return \'<div style="padding:5px 0;border-bottom:1px solid var(--line)">\'+(e.time||"")+(e.price?" · 🎟️ vé "+Number(e.price).toLocaleString("vi-VN"):"")+" · "+["yellow","blue","green"].map(function(c){return WEM[c]+" x"+(e.results?e.results[c]:"?")}).join(" ")+"<br>"+(e.players||[]).map(function(p){return WEM[p.color]+" "+esc(p.name)+" +"+Number(p.win).toLocaleString("vi-VN")}).join(" · ")+((e.dropped&&e.dropped.length)?"<br><span style=\\"color:var(--red);font-size:11.5px\\">❌ bỏ lại: "+e.dropped.map(esc).join(", ")+"</span>":"")+"</div>"}).join(""):"Chưa có vòng nào.";',
     'whBtn()}',
     // Nút chính 3 trạng thái: chưa vào bàn = VÀO BÀN · vào rồi chưa đủ người = chờ
     // (disabled) · đủ người (armed) = QUAY!!! phát sáng, ai trong bàn bấm cũng được.
@@ -2134,7 +2138,7 @@ const PAGE = [
     'var maxPan=Math.max(0,cs.length-64);if(SKPAN>maxPan)SKPAN=maxPan;',
     'if(SKPAN>0)cs=cs.slice(Math.max(0,cs.length-64-SKPAN),cs.length-SKPAN);',
     'else if(cs.length>64)cs=cs.slice(cs.length-64);',
-    'if(cs.length<2){el.innerHTML="";if(ax)ax.innerHTML="";return}',
+    'if(cs.length<2){el.innerHTML="";if(ax)ax.innerHTML="<div class=\\"muted\\" style=\\"position:absolute;left:-240px;top:80px;width:230px;text-align:center;font-size:12px\\">Chưa đủ nến cho khung này - chờ vài phút hoặc chọn khung nhỏ hơn (50s)</div>";return}',
     'var lo=1e9,hi=0;for(var i=0;i<cs.length;i++){if(cs[i].l<lo)lo=cs[i].l;if(cs[i].h>hi)hi=cs[i].h}',
     'if(SKS.price<lo)lo=SKS.price;if(SKS.price>hi)hi=SKS.price;',
     'var pad=(hi-lo)*0.1||20;lo-=pad;hi+=pad;',
@@ -2240,7 +2244,8 @@ const PAGE = [
     'var col=pc>0?"var(--green)":pc<0?"var(--red)":"var(--muted)";',
     '$("skPrice").style.color=col;',
     'var cl2=$("skChgLine");cl2.style.color=col;',
-    'cl2.textContent=(pc>=0?"+":"")+vnd(SKS.price-SKS.base)+" ("+(pc>=0?"+":"")+pc+"%)";',
+    'var dfB=SKS.price-SKS.base;',
+    'cl2.textContent=(dfB>0?"+":"")+vnd(dfB)+" ("+(pc>0?"+":"")+pc+"%)";',
     'var rc=SKS.candles||[],lastC=rc.length?rc[rc.length-1]:null;',
     'if(lastC){$("skHi").textContent=vnd(lastC.h);$("skOp").textContent=vnd(lastC.o);',
     '$("skLo").textContent=vnd(lastC.l);$("skCl").textContent=vnd(lastC.c);',
