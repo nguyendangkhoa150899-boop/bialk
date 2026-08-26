@@ -1216,7 +1216,9 @@ const PAGE = [
     '<div id="skWrap">',
     '<svg id="skChart" viewBox="0 0 300 190" preserveAspectRatio="none"></svg>',
     '<div id="skAxis"></div>',
-    '<div id="skPanBtn" class="hidden" onclick="skPanReset()" style="position:absolute;left:8px;top:6px;background:#232b3f;border:1px solid var(--gold);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;z-index:3">⏩ Về hiện tại</div>',
+    // onpointerdown chặn lan xuống skWrap — không chặn thì cú nhích chuột sau khi click
+    // bị handler kéo hiểu là kéo tiếp, SKPAN nhảy về giá trị cũ và nút không chịu mất
+    '<div id="skPanBtn" class="hidden" onclick="skPanReset()" onpointerdown="event.stopPropagation()" style="position:absolute;left:8px;top:6px;background:#232b3f;border:1px solid var(--gold);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;z-index:3">⏩ Về hiện tại</div>',
     '</div>',
     '<div id="skPcts">',
     '<div><div class="t">5 phút</div><div class="v" id="skP5">-</div></div>',

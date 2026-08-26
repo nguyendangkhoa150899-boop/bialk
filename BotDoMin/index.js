@@ -3299,6 +3299,48 @@ function runStockLoop() {
         writeLog('SYSTEM', '[CỔ PHIẾU] MIGRATE: mốc gốc 1.000 -> 5.000, biên cứng 1.500-8.000, sóng lang thang 2.000-7.000, nến làm mới');
         saveDbNow();
     }
+    // GIẢ LẬP LỊCH SỬ (26/08, chủ server yêu cầu): nến đang trống/mỏng thì dựng sẵn
+    // 2 NGÀY quá khứ bằng đúng kiểu sóng lang thang 2000-7000, đuôi nắn dần về giá
+    // hiện tại — khung "2 ngày" có cái xem ngay thay vì trống trơn cả ngày đầu.
+    if (!Array.isArray(dbCache._stockCandles) || dbCache._stockCandles.length < 200) {
+        const total = 3456;                 // 2 ngày × nến 50 giây
+        const out = [];
+        let target = 2000 + Math.random() * 5000;
+        let p = target, legLeft = 0;
+        for (let i = 0; i < total; i++) {
+            if (legLeft <= 0) {
+                const step = 500 + Math.random() * 1000;
+                const pUp = Math.max(0.15, Math.min(0.85, 0.5 - (target - STOCK_BASE) / 6000));
+                target = Math.min(7000, Math.max(2000, target + (Math.random() < pUp ? step : -step)));
+                legLeft = 12 + Math.floor(Math.random() * 36);   // mỗi chân 10-40 phút (nến 50s)
+            }
+            legLeft--;
+            const o = p;
+            p = p + (target - p) / Math.max(1, legLeft + 1) + p * 0.008 * (Math.random() * 2 - 1);
+            p = Math.min(STOCK_MAX, Math.max(STOCK_MIN, p));
+            const h = Math.max(o, p) * (1 + Math.random() * 0.004);
+            const l = Math.min(o, p) * (1 - Math.random() * 0.004);
+            out.push({ o: Math.round(o), h: Math.round(h), l: Math.round(l), c: Math.round(p), n: STOCK_CANDLE_TICKS });
+        }
+        // nắn 60 nến cuối trôi dần về điểm nối: có nến thật thì nối vào nến thật
+        // đầu tiên, không thì nối thẳng vào giá hiện tại — tránh vách đá ở mối nối
+        const real = Array.isArray(dbCache._stockCandles) ? dbCache._stockCandles : [];
+        const cur = Number(dbCache._stockPrice) || STOCK_BASE;
+        const joinTo = real.length ? (Number(real[0].o) || cur) : cur;
+        const shift = joinTo - out[out.length - 1].c;
+        for (let k = 0; k < 60; k++) {
+            const c2 = out[out.length - 60 + k];
+            const f = (k + 1) / 60;
+            c2.o = Math.round(c2.o + shift * (k / 60));
+            c2.c = Math.round(c2.c + shift * f);
+            c2.h = Math.max(c2.h, c2.o, c2.c);
+            c2.l = Math.min(c2.l, c2.o, c2.c);
+        }
+        // giữ nến thật đang có (nếu lác đác vài cây) nối sau phần giả lập
+        dbCache._stockCandles = out.concat(real).slice(-STOCK_HIST_N);
+        writeLog('SYSTEM', `[CỔ PHIẾU] Dựng sẵn ${total} nến quá khứ (2 ngày) cho khung xem dài`);
+        saveDbNow();
+    }
     // MIGRATE MỘT LẦN (24/08): cấu hình đời trước sức-nặng còn lưu cứng spread 0.5%.
     // Có pointX=5 mà giữ 0.5% thì phí vòng bị nhân 5 -> mở lệnh x10 lỗ sẵn ~50% vốn.
     // Chỉ đụng khi admin CHƯA từng biết tới pointX (chưa có field) VÀ spread đúng 0.005.

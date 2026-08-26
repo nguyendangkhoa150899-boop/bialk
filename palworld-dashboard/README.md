@@ -602,6 +602,17 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (chiều 3) — Nút "Về hiện tại" + giả lập sẵn 2 ngày nến
+
+- Nút "⏩ Về hiện tại" bấm không chịu mất: nút nằm trong vùng kéo chart, cú nhích
+  chuột ngay sau click bị handler kéo hiểu là kéo tiếp nên pan nhảy về giá trị cũ.
+  Fix: onpointerdown chặn lan sự kiện xuống vùng kéo.
+- Nến trống/mỏng (<200 cây) khi boot → tự DỰNG SẴN 3456 nến quá khứ (đúng 2 ngày,
+  nến 50s) bằng chính thuật toán sóng lang thang 2000-7000; 60 nến cuối nắn dần về
+  nến thật đầu tiên (không có nến thật thì về giá sống) nên mối nối lệch 0. Nến
+  thật đang có được giữ nguyên nối sau phần giả lập. Đã kiểm trên test: 3479 nến,
+  biên 2480-7098, không hở close→open, không nến sai thân/bóng.
+
 ### 26/08/2026 (chiều 2) — Vòng quay minh bạch + màu vé + 2 lỗi chart
 
 - Vụ "3 người quay 1 người nhận" KHÔNG mất tiền ai: 2 người bị bỏ lại đúng luật
