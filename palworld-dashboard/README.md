@@ -602,6 +602,17 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (chiều 2) — Vòng quay minh bạch + màu vé + 2 lỗi chart
+
+- Vụ "3 người quay 1 người nhận" KHÔNG mất tiền ai: 2 người bị bỏ lại đúng luật
+  120 giây (chưa chọn màu / thiếu vé) nhưng trước đây bị bỏ lại IM LẶNG. Giờ danh
+  sách bị bỏ lại ghi thẳng vào kết quả quay + lịch sử 10 vòng, kèm chú "mất lượt
+  khung này, KHÔNG mất tiền".
+- Màu vòng vé tô theo THỨ HẠNG giá (rẻ→đắt: xanh lá/tím/vàng gold) thay vì khoá
+  cứng theo số tiền cũ — đổi giá vé không bao giờ xám xịt nữa.
+- Chart cổ phiếu: fix dòng "+-1" (dấu lấy theo hiệu số thật) + khung to trống sau
+  migrate giờ hiện "chưa đủ nến, chọn khung nhỏ hơn" thay vì trắng trơn.
+
 ### 26/08/2026 (chiều) — GÓI CHỈNH KINH TẾ + CỔ PHIẾU MỐC 5000 LANG THANG
 
 Gói chỉnh số chủ server chốt (đã đẩy chính cùng ngày):
