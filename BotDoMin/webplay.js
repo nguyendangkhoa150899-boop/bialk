@@ -2093,8 +2093,8 @@ const PAGE = [
     'var SKS=null,SOFF=0,SKBUSY=false;',
     // khung 54 ("2 ngày") đã bỏ 26/08 tối — ai còn lưu trong máy thì ép về 50s
     'var SKTF=parseInt(localStorage.getItem("sk_tf"))||1;if([1,6,12,24].indexOf(SKTF)<0)SKTF=1;',
-    // 26/08 tối: mỗi màn 30 nến (thay vì 64) — nến to dễ nhìn, đúng ảnh chủ server chọn
-    'var SKVIEW=30;',
+    // 26/08 tối: mỗi màn 15 nến — nến to rõ, dễ nhìn (chủ server chốt, hạ dần 64->30->15)
+    'var SKVIEW=15;',
     // KÉO XEM LẠI: SKPAN = số cây lùi về quá khứ (0 = bám hiện tại); kéo ngang trên đồ thị
     'var SKPAN=0;',
     'function skPanBtn(){var b=$("skPanBtn");if(b)b.classList.toggle("hidden",SKPAN<=0)}',

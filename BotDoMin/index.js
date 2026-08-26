@@ -2782,9 +2782,10 @@ const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng
 // "nhích xíu là ±400". BẮT BUỘC hạ spread cùng lúc (0,5% -> 0,1%/chiều) vì pointX
 // khuếch đại luôn phí chênh: giữ 0,5% thì mở lệnh xong đã lỗ sẵn ~nửa vốn ở x10.
 // Chi phí vòng tuyệt đối (Dogcoin) sau đổi ≈ y như cũ: 0,1% × 5 = 0,5%.
-// 26/08 tối: nhiễu đổi từ % sang ĐƠN VỊ GIÁ (tickAmp) — thời mốc 1000 nhiễu 0.3%
-// là ±3 đơn vị, lên mốc 4000 thành ±12 mỗi 2 giây, chủ server kêu "nhảy nhiều số".
-const STOCK_CFG_DEF = { tickAmp: 4, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5 };
+// tickAmp = độ lệch chuẩn nhiễu mỗi nhịp 2s (ĐƠN VỊ GIÁ). Mặc định 12 = đúng 0,3%
+// trên mốc 4000, tái tạo dáng nến đẹp có râu của bản mốc 1000 (chủ server chốt 26/08
+// tối, sau khi thử 4 thấy nến dẹp không đầu đuôi). Panel chỉnh 1–200.
+const STOCK_CFG_DEF = { tickAmp: 12, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5 };
 // Bậc đòn bẩy hiện trên web — lọc theo maxLev nên hạ trần ở panel là mất bậc cao luôn.
 const STOCK_LEVS = [1, 5, 10, 20];
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
@@ -2873,10 +2874,11 @@ function stockTick(forcePct) {
         const anc = dbCache._stockAnchor;
         const anchor = (anc && anc.until > Date.now() && Number.isFinite(anc.v)) ? anc.v : STOCK_BASE;
         let m = -STOCK_PULL * Math.log(before / anchor) + (cfg.tickAmp * stockGauss()) / before + drift;
-        // 26/08 tối (chủ server chốt): mỗi nhịp 2s nhích TỐI ĐA ±tickAmp ĐƠN VỊ, kẹp
-        // cả kéo-về + nhiễu + trôi. Chân sóng vẫn tới đích: mỗi nhịp trôi ~0.2-1 đơn
-        // vị, thấp hơn trần này nhiều.
-        const capU = cfg.tickAmp / before;
+        // 26/08 tối (chủ server chốt "nến đẹp có râu như hình 2"): tickAmp = ĐỘ LỆCH
+        // CHUẨN nhiễu mỗi nhịp (đơn vị giá) — std ~tickAmp, thi thoảng lớn hơn để nến
+        // có thân + râu tự nhiên. Trần LỎNG 4×tickAmp: chỉ chặn cú sốc, KHÔNG kẹp phẳng
+        // từng nhịp (kẹp chặt = nến dẹp không đầu đuôi, đúng lỗi hình 1).
+        const capU = (cfg.tickAmp * 4) / before;
         if (m > capU) m = capU;
         if (m < -capU) m = -capU;
         p = clamp(before * (1 + m));

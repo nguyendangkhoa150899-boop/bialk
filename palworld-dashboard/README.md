@@ -602,6 +602,41 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (tối 8) — Nến đẹp có râu như hình 2 + 15 nến/màn
+
+- Chủ server: nến bản trước (tickAmp 4 = 0,1%/nhịp) DẸP LÉP không đầu đuôi. Chẩn đúng
+  bệnh: không phải sai bản code, mà biên độ quá nhỏ so với mốc 4.000. Không rollback
+  (giữ trọn vòng quay/kinh tế/pal) — chỉ TĂNG BIÊN ĐỘ về đúng độ đã tạo ra hình 2.
+- tickAmp mặc định 4 -> **12** (= 0,3% trên mốc 4.000, đúng độ biến động bản mốc 1.000).
+  Trần mỗi nhịp đổi từ kẹp CHẶT ±tickAmp (làm nến phẳng) sang LỎNG ±4×tickAmp — chỉ
+  chặn cú sốc, để nhiễu gauss tạo thân + râu tự nhiên. Mô phỏng nến 50s: râu TB 49,
+  thân TB 30 đơn vị (dao động ~1,2%). Đo sống: bước nhịp -7/+2/+4/+2/-6/+10.
+- Mỗi màn 30 -> **15 nến** (SKVIEW=15) cho nến to rõ.
+- Cfg cũ (test/chính) không có field tickAmp -> tự lấy default 12, khỏi chỉnh tay.
+
+### 26/08/2026 (tối 7, ĐIỀU TRA — KHÔNG đổi code) — Nút reset cho người chơi: BẤT KHẢ THI, dùng lịch hẹn
+
+Chủ server hỏi: lấy nút reset server bỏ vô dashboard người chơi (mỗi người 1 lần/ngày,
+reset 00:00) để pal kích hoạt được khi chủ off. Đã dò TẬN NƠI trên server CHÍNH
+("1. test mod", 11d72659), kết luận + bằng chứng để lần sau khỏi đào lại:
+
+- **REST API prod BẬT**: `RESTAPIEnabled=True`, port **22666**, AdminPassword đọc được
+  qua SFTP (ini ở `/1. test mod/Pal/Saved/Config/WindowsServer/`). `GET /v1/api/info`
+  trả 200 tại **15.235.132.81:22666** (địa chỉ game, KHÁC IP SFTP 139.99.22.10 chỉ mở 2222).
+- **Test thật (0 người online)**: announce → chờ 60s → `/save` (200) → `/shutdown(10s)` (200)
+  → server SẬP sau ~18s và **KHÔNG tự dậy** (panel coi shutdown êm = admin chủ động tắt).
+  → **REST chỉ TẮT được, không BẬT lại được.** Server nằm im tới khi bấm Start tay.
+- **Access Control KHÔNG có API key** — chỉ "Invite via Discord" (thêm admin panel qua
+  Discord). Dashboard người chơi **không có cửa lập trình** để gọi task "Send Restart".
+- → **Nút bấm-reset-liền cho người chơi: loại.** Không đường sạch trên hosting này.
+
+**LỜI GIẢI (không cần code, không cần online):** panel có **Tasks → "Send Restart"**
+(restart CHÍNH CHỦ, tự tắt tự bật, khác REST shutdown) + **Scheduled Tasks** đặt lịch.
+Hẹn "Send Restart" 3 cữ/ngày (vd 6:00 / 14:00 / 22:00) → pal mua trong ngày tự kích
+hoạt trong tối đa ~8h. Web đổi câu thông báo: pal về rương + "dùng được sau cữ khởi
+động lại gần nhất (6h/14h/22h)" — nói đúng sự thật, không hứa nút không có.
+LƯU Ý: `/shutdown` REST là con dao một chiều trên hosting này — đừng gọi tự động.
+
 ### 26/08/2026 (tối 6, CHỐT DEPLOY) — Bỏ seed data + kẹp mỗi nhịp 1-4 đơn vị
 
 - Chủ server chốt cuối: KHÔNG dựng data giả (gỡ SEED v4) — nến chạy thật từ 4.000,
