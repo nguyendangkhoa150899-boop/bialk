@@ -602,6 +602,27 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (chiều) — GÓI CHỈNH KINH TẾ + CỔ PHIẾU MỐC 5000 LANG THANG
+
+Gói chỉnh số chủ server chốt (đã đẩy chính cùng ngày):
+
+- **Điểm danh** 400 → **600**/ngày; **/nghien** 100 → **200**/giờ.
+- **Vòng quay may mắn**: vé 2k/2.5k/3k → **3.000/4.000/5.000**.
+- **Sàn cược Dò Mìn + Leo Thang**: 200 → **400**/ván (Big Small không dính).
+- **Hũ tách theo trò**: Dò Mìn/Leo Thang mồi **5.000**, trần nuôi **50.000**;
+  hũ Quay Pal giữ 1.500/20.000 (`POT_SEED_BY`/`LUCKY_POT_MAX_BY`, `potSeed(key)`).
+- **📈 Cổ phiếu đại tu theo chốt mới**: mốc gốc **5.000** (biên cứng 1.500–8.000),
+  giá **ĐI BỘ NGẪU NHIÊN 2.000–7.000** — mỗi chân sóng bốc đích cách neo cũ
+  500..waveAmp (mặc định 1.500) đơn vị, trôi 10–30 phút, đứng vùng 5–25 phút,
+  càng xa 5.000 càng dễ đảo chiều (không cắm đầu một mạch, không dao động một chỗ).
+  Tắt `waveOn` = về bám mốc gốc. **MIGRATE tự động** lúc boot: giá cũ (<2500) thì
+  đóng hộ mọi lệnh theo luật đóng thường, đặt giá 5.000, làm mới nến.
+- **Chart**: nút khung **2 ngày** (nến giữ 3.600 cây ~2 ngày) + **kéo ngang đồ thị
+  xem lại quá khứ** (chuột/ngón tay, nút "⏩ Về hiện tại" khi đang lùi).
+- Test: cập nhật 6 bộ theo số mới (jptest/luckytest/pottest/wheeltest/shieldtest/
+  stocktest — stocktest ép thang cũ trong sandbox để giữ 39 case toán, thêm 5 case
+  nguồn cho hằng số mới) — TOÀN BỘ 18 bộ xanh.
+
 ### 26/08/2026 — DEPLOY đợt 💎 lên SERVER CHÍNH
 
 Chủ server test đủ trên server test ("mọi thứ hoàn hảo") và chốt đẩy. Gồm 6 đợt trong

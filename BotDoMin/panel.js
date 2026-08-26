@@ -1040,7 +1040,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="whSaveMin()">💾 Lưu</button>
           <button class="btn-red" onclick="whReset()">🔄 Cho quay lại NGAY (reset lượt)</button>
         </div>
-        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>2.000/2.500/3.000</b> - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, <b>4 khung 6 tiếng</b> - reset <b>00:00, 06:00, 12:00, 18:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
+        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>3.000/4.000/5.000</b> (26/08 nâng từ 2k/2.5k/3k) - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, <b>4 khung 6 tiếng</b> - reset <b>00:00, 06:00, 12:00, 18:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
       </div>
     </div>
 
@@ -1131,7 +1131,15 @@ const HTML = `<!DOCTYPE html>
             <label>Sức nặng lãi/lỗ (x) — 1 đồng giá × 1 CP = bấy nhiêu Dogcoin</label>
             <input id="skPoint" type="number" min="1" max="20" placeholder="vd: 5">
           </div>
+          <div style="flex:1">
+            <label>🌊 Bước mỗi chân sóng (đơn vị giá, 500–2500)</label>
+            <input id="skWaveAmp" type="number" step="50" placeholder="vd: 1500">
+          </div>
+          <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px">
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="skWaveOn"> Bật siêu sóng</label>
+          </div>
         </div>
+        <div class="note" id="skWaveNow" style="margin-top:4px"></div>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
           <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
@@ -1657,6 +1665,10 @@ function skFill(k){
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
   set('skVol',k.volPct);set('skSpread',k.spreadPct);set('skMaxShares',k.maxShares);set('skMaxPer',k.maxPer);
   set('skMaxLev',k.maxLev);set('skHold',k.holdS);set('skPoint',k.pointX);
+  set('skWaveAmp',k.waveAmp);
+  if(!skWaveTicked){skWaveTicked=true;const cb=document.getElementById('skWaveOn');if(cb)cb.checked=k.waveOn!==false;}
+  const wn=document.getElementById('skWaveNow');
+  if(wn)wn.innerHTML=k.anchor?('🌊 ĐANG NEO vùng <b>'+k.anchor.v.toLocaleString()+'</b> (còn ~'+k.anchor.minsLeft+' phút rồi bốc chân sóng mới)'):('Sóng lang thang: '+(k.waveOn!==false?('BẬT — giá đi bộ ngẫu nhiên 2.000–7.000, mỗi chân 500–'+(k.waveAmp||1500)+' đơn vị (10–30 phút), càng xa 5.000 càng dễ đảo chiều'):'ĐANG TẮT — giá bám mốc gốc 5.000'));
   const pc=Math.round((k.price/k.base-1)*1000)/10;
   const tp=document.getElementById('skTPrice');
   tp.textContent=k.price.toLocaleString()+' ('+(pc>=0?'+':'')+pc+'%)';
@@ -1755,7 +1767,9 @@ function skSave(){
            maxPer:parseInt(document.getElementById('skMaxPer').value),
            maxLev:parseInt(document.getElementById('skMaxLev').value),
            holdS:parseInt(document.getElementById('skHold').value),
-           pointX:parseInt(document.getElementById('skPoint').value)};
+           pointX:parseInt(document.getElementById('skPoint').value),
+           waveOn:document.getElementById('skWaveOn').checked,
+           waveAmp:parseInt(document.getElementById('skWaveAmp').value)};
   if(!(o.volPct>0&&o.volPct<=15))return toast('Biến động phải trong 0–15%');
   if(!(o.spreadPct>=0&&o.spreadPct<=20))return toast('Chênh mua–bán phải trong 0–20%');
   if(!(o.maxShares>=10))return toast('Trần sàn phải từ 10 CP');
@@ -1763,6 +1777,7 @@ function skSave(){
   if(!(o.maxLev>=1&&o.maxLev<=100))return toast('Đòn bẩy tối đa phải trong 1–100');
   if(!(o.holdS>=0&&o.holdS<=3600))return toast('Chôn vốn phải trong 0–3600 giây');
   if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
+  if(!(o.waveAmp>=500&&o.waveAmp<=2500))return toast('Bước chân sóng trong 500–2500 đơn vị');
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 
@@ -1770,6 +1785,7 @@ function skSave(){
 // Ô số đổ theo kiểu skFill (chỉ khi trống + không focus). Checkbox đổ đúng 1 LẦN —
 // panel tự refresh 3 giây/lần, đổ lại liên tục sẽ đè tay admin đang bấm.
 let pwCfgTicked=false;
+let skWaveTicked=false;
 async function skToggle(){
   const open=!(STATE&&STATE.stock&&STATE.stock.open);
   if(!open&&!await uiConfirm('Tạm đóng sàn? Người chơi vẫn bán được, chỉ không mua thêm.','Đóng sàn','btn-red'))return;
@@ -2121,9 +2137,11 @@ async function refresh(){
   // 🏆 hu nuoi: moi tro mot hu rieng
   const pt=STATE.pot;
   if(pt&&pt.pots){
-    document.getElementById('potInfo').textContent='Trần tự trích '+Number(pt.max||0).toLocaleString('vi-VN')
+    const seedTxt=pt.seedBy?('mồi Dò Mìn/Leo Thang '+Number(pt.seedBy.mines||0).toLocaleString('vi-VN')+' · mồi Quay Pal '+Number((pt.seedBy.gacha)||0).toLocaleString('vi-VN')):('nổ xong hũ về '+Number(pt.seed||0).toLocaleString('vi-VN'));
+    const maxTxt=pt.maxBy?('trần nuôi Dò Mìn/Leo Thang '+Number(pt.maxBy.mines||0).toLocaleString('vi-VN')+' · trần Quay Pal '+Number(pt.maxBy.gacha||0).toLocaleString('vi-VN')):('Trần tự trích '+Number(pt.max||0).toLocaleString('vi-VN'));
+    document.getElementById('potInfo').textContent=maxTxt
       +' mỗi hũ · trích '+Math.round((pt.rate||0)*100)+'% tiền cược (nhà cái bao) · tỉ lệ nổ chung '+Math.round((pt.hit||0)*100)+'%'
-      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván · nổ xong hũ về '+Number(pt.seed||0).toLocaleString('vi-VN');
+      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván · '+seedTxt;
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
     // không vẽ lại cả khối — vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
     const keys=Object.keys(pt.pots), box=document.getElementById('potRows');
@@ -2139,7 +2157,7 @@ async function refresh(){
       box.dataset.built=keys.join(',');
     }
     keys.forEach(k=>{
-      const v=Number(pt.pots[k]||0), full=v>=Number(pt.max||0);
+      const v=Number(pt.pots[k]||0), full=v>=Number((pt.maxBy&&pt.maxBy[k])||pt.max||0);
       const el=document.getElementById('potVal_'+k);
       if(el){el.textContent=v.toLocaleString('vi-VN')+' 🐕';el.style.color=full?'#ff9a5c':'#f0b90b';}
       const fg=document.getElementById('potFull_'+k);

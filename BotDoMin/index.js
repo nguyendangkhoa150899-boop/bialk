@@ -18,8 +18,8 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const TOKEN = process.env.TOKEN;
 const DATA_FILE = './database.json';
 const STARTING_DOGCOIN = 20;
-const DAILY_DOGCOIN = 400;
-const HOURLY_DOGCOIN = 100; // /nghien - điểm danh con nghiện, 1 tiếng/lần
+const DAILY_DOGCOIN = 600;  // 26/08 tăng 400 -> 600 (chủ server chốt)
+const HOURLY_DOGCOIN = 200; // /nghien - điểm danh con nghiện, 1 tiếng/lần (26/08: 100 -> 200)
 const NGHIEN_COOLDOWN_MS = 60 * 60 * 1000;
 // THƯỞNG CHUỖI (thay bonus đủ tháng cũ): cứ điểm danh đủ 2 NGÀY LIÊN TIẾP thì ghi
 // 1 gói 800 vào sổ, người chơi tự bấm nhận. Gói đã ghi là của họ, chuỗi có đứt sau
@@ -1064,7 +1064,7 @@ function palWheelSpin(userId, username) {
                 .then(ch => ch.send(msg + (potWin ? `\n💥🏆 Và NỔ LUÔN HŨ QUAY PAL: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}!` : '')))
                 .catch(e => writeLog('SYSTEM', `[QUAY PAL WEB] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
         }, revealMs);
-        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> quay pal web NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${POT_SEED.toLocaleString()} 🌱`, userId);
+        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> quay pal web NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('gacha').toLocaleString()} 🌱`, userId);
     }
 
     return { ok: true, item, potWin, balance: getUserData(userId).points || 0 };
@@ -1125,7 +1125,7 @@ function palPickBuy(userId, code, username) {
         client.channels.fetch(gachaCh)
             .then(ch => ch.send(`🎯 **${username || 'Ai đó'}** chọn mua **${item.name}**${item.dex ? ` (#${item.dex})` : ''} trên web!` + (potWin ? `\n💥🏆 Và NỔ LUÔN HŨ QUAY PAL: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}!` : '')))
             .catch(e => writeLog('SYSTEM', `[CHỌN PAL WEB] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
-        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> chọn mua pal mà NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${POT_SEED.toLocaleString()} 🌱`, userId);
+        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> chọn mua pal mà NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('gacha').toLocaleString()} 🌱`, userId);
     }
 
     return { ok: true, item, potWin, balance: getUserData(userId).points || 0 };
@@ -1784,10 +1784,16 @@ const POT_HIT_RATE = 0.01;        // = p của 'jackpot' trong MINES/STAIRS_LUCK
 // server TỪ CHỐI ván luôn. Trước đó làm kiểu "cược dưới 200 thì vẫn chơi được nhưng
 // không ăn hũ" - chủ server bảo không phải vậy, phải BUỘC đặt tối thiểu 200.
 // Nhờ vậy mọi ván đều đủ điều kiện nuôi/ăn hũ, không cần cửa xét riêng nữa.
-const MIN_BET = 200;
+const MIN_BET = 400;   // 26/08: 200 -> 400 (Big Small không dính sàn này)
 // Nổ hũ xong hũ KHÔNG về 0 mà về mức mồi này, để người vào sau không thấy hũ rỗng
 // (chủ server: "về 0 thì bất công"). Nhà cái bao khoản mồi này mỗi lần nổ.
-const POT_SEED = 1500;
+// 26/08: mồi + trần TÁCH THEO TỪNG HŨ — Dò Mìn/Leo Thang mồi 5.000 trần nuôi 50.000,
+// hũ Quay Pal giữ 1.500/20.000 như cũ.
+const POT_SEED = 1500;            // (giữ cho chỗ nào chưa theo key — gacha dùng mức này)
+const POT_SEED_BY = { mines: 5000, stairs: 5000, gacha: 1500 };
+const LUCKY_POT_MAX_BY = { mines: 50000, stairs: 50000, gacha: 20000 };
+const potSeed = (key) => POT_SEED_BY[key] !== undefined ? POT_SEED_BY[key] : POT_SEED;
+const potMax = (key) => LUCKY_POT_MAX_BY[key] !== undefined ? LUCKY_POT_MAX_BY[key] : LUCKY_POT_MAX;
 const POT_KEYS = ['mines', 'stairs', 'gacha'];
 const POT_LABEL = { mines: '💣 Dò Mìn', stairs: '🪜 Leo Thang', gacha: '🎲 Quay Pal' };
 
@@ -1799,13 +1805,13 @@ function potBook() {
         delete dbCache._luckyPot;
     }
     // hũ mới lập thì mồi sẵn POT_SEED cho khỏi rỗng ngay từ đầu
-    for (const k of POT_KEYS) if (typeof dbCache._pots[k] !== 'number') dbCache._pots[k] = POT_SEED;
+    for (const k of POT_KEYS) if (typeof dbCache._pots[k] !== 'number') dbCache._pots[k] = potSeed(k);
     return dbCache._pots;
 }
 function potGet(key) { return potBook()[key] || 0; }
 // Phần được phép trích thêm vào hũ này (hũ đã quá trần thì 0)
 function luckyPotCut(key, bet) {
-    return Math.max(0, Math.min(Math.floor(bet * LUCKY_POT_RATE), LUCKY_POT_MAX - potGet(key)));
+    return Math.max(0, Math.min(Math.floor(bet * LUCKY_POT_RATE), potMax(key) - potGet(key)));
 }
 function potFeed(key, cut) {
     if (cut > 0) potBook()[key] = potGet(key) + cut;
@@ -1815,7 +1821,7 @@ function potFeed(key, cut) {
 // (Không còn xét cược tối thiểu ở đây: sàn cược MIN_BET đã chặn ngay lúc start.)
 function luckyPotPop(key) {
     const pot = potGet(key);
-    potBook()[key] = POT_SEED;
+    potBook()[key] = potSeed(key);
     return pot;
 }
 // Admin cộng/trừ tay từng hũ (số âm = rút bớt). KHÔNG chặn trần, chỉ chặn âm.
@@ -1828,7 +1834,7 @@ function adminPotAdd(key, amount) {
     writeLog('ADMIN', `[HŨ ${POT_LABEL[key]}] Panel ${n > 0 ? 'nạp' : 'rút'} ${Math.abs(n).toLocaleString()} - hũ ${before.toLocaleString()} -> ${potGet(key).toLocaleString()}`);
     saveDbNow();
     if (key === 'gacha' && typeof withdrawBoardRefresh === 'function') withdrawBoardRefresh();
-    return { ok: true, key, pot: potGet(key), max: LUCKY_POT_MAX };
+    return { ok: true, key, pot: potGet(key), max: potMax(key) };
 }
 // Thông báo nổ hũ vào kênh bảng của game (kênh chưa set thì thôi, lỗi cũng kệ)
 function potAnnounce(chId, text, tagId) {
@@ -1874,7 +1880,7 @@ function spinWheel(wheel) {
 const webMinesApi = {
     tiles: TOTAL_TILES,
     pot: () => potGet('mines'),   // 🏆 hũ riêng của Dò Mìn (hiện trên web)
-    potRate: LUCKY_POT_RATE, potMax: LUCKY_POT_MAX, potSeed: POT_SEED, minBet: MIN_BET,
+    potRate: LUCKY_POT_RATE, potMax: potMax('mines'), potSeed: potSeed('mines'), minBet: MIN_BET,
     maxWin: MINES_MAX_WIN,
     maxBet: MINES_MAX_BET,
     // Bảng hệ số để client hiện trước khi đặt — tính ở server nên client không bịa được.
@@ -2072,7 +2078,7 @@ const webMinesApi = {
             writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🍀 chọn hộp ${box} - trúng jackpot, chốt ván luôn`);
             potAnnounce(dbCache._minesChannelId,
                 `💥🏆 <@${userId}> vừa NỔ HŨ ở 💣 DÒ MÌN: **${jp.toLocaleString()}** trần ván (${g.totalMines} mìn)` +
-                ` + **${potWin.toLocaleString()}** HŨ DÒ MÌN = **${(jp + potWin).toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${POT_SEED.toLocaleString()} - ai vào cũng còn cửa 🌱`,
+                ` + **${potWin.toLocaleString()}** HŨ DÒ MÌN = **${(jp + potWin).toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('mines').toLocaleString()} - ai vào cũng còn cửa 🌱`,
                 userId);
             return { ok: true, lucky, jackpot: true, win: jp + potWin, potWin, luckCapped: jp < top, mines: g.mines, balance: getUserData(userId).points || 0, pot: potGet('mines') };
         }
@@ -2206,7 +2212,7 @@ const webStairsApi = {
     cols: STAIRS_COLS,
     maxFire: STAIRS_MAX_FIRE,
     pot: () => potGet('stairs'),   // 🏆 hũ riêng của Leo Thang
-    potRate: LUCKY_POT_RATE, potMax: LUCKY_POT_MAX, potSeed: POT_SEED, minBet: MIN_BET,
+    potRate: LUCKY_POT_RATE, potMax: potMax('stairs'), potSeed: potSeed('stairs'), minBet: MIN_BET,
     last: (userId) => webStairsLast.get(userId) || null,
     dismiss: (userId) => { webStairsLast.delete(userId); return { ok: true }; },
     table: (fire) => {
@@ -2405,7 +2411,7 @@ const webStairsApi = {
             writeLog('ADMIN', `[⚠️ NỔ HŨ LEO THANG] ${g.name} trúng hộp 🏆 +${jp.toLocaleString()} trần ván + ${potWin.toLocaleString()} hũ nuôi (cược ${g.bet.toLocaleString()}, ${g.fire} lửa) - CHỐT VÁN`);
             potAnnounce(dbCache._stairsChannelId,
                 `💥🏆 <@${userId}> vừa NỔ HŨ ở 🪜 LEO THANG: **${jp.toLocaleString()}** trần ván (${g.fire} lửa)` +
-                ` + **${potWin.toLocaleString()}** HŨ LEO THANG = **${(jp + potWin).toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${POT_SEED.toLocaleString()} - ai vào cũng còn cửa 🌱`,
+                ` + **${potWin.toLocaleString()}** HŨ LEO THANG = **${(jp + potWin).toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('stairs').toLocaleString()} - ai vào cũng còn cửa 🌱`,
                 userId);
             writeLog('RESULT', `[LEO THANG] ${g.name} 🍀 chọn hộp ${box} - trúng jackpot, chốt ván luôn`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
@@ -2482,12 +2488,12 @@ const WHEEL_ARROW_OFFSET = { yellow: 0, blue: 9, green: 18 };
 const WHEEL_SEGMENTS = [1.5, 2.0, 1.8, 2.5, 1.5, 3.0, 1.8, 1.5, 2.0, 5.0, 1.5, 1.8, 10, 1.5, 2.5, 2.0, 1.8, 1.5, 3.0, 2.0, 1.5, 1.8, 2.5, 1.5, 2.0, 1.5, 1.8];
 
 // ===== VÒNG VÉ (vòng 1) — 15 nan: 2.000×5 · 2.500×5 · 3.000×5 xen kẽ, MỘT mũi tên =====
-// (19/08 nâng vé 1.000/1.500/2.000 -> 1.500/2.000/2.500; 21/08 nâng tiếp -> 2.000/2.500/3.000)
+// (19/08 nâng vé 1.000/1.500/2.000 -> 1.500/2.000/2.500; 21/08 -> 2.000/2.500/3.000; 26/08 -> 3.000/4.000/5.000)
 // Vào bàn + quay vòng vé MIỄN PHÍ. Quay ra giá nào thì TRỪ ĐÚNG GIÁ ĐÓ mỗi người
 // để được quay vòng hệ số; ai không đủ tiền lúc vé chốt thì bị mời ra (không mất
 // gì, không mất lượt). Xen kẽ không 2 nan giống kề nhau (kể cả chỗ nối vòng tròn).
-const WHEEL_STAGE1 = [2000, 2500, 3000, 2000, 3000, 2500, 2000, 2500, 3000, 2500, 2000, 3000, 2500, 2000, 3000];
-const WHEEL_MAX_TICKET = 3000;   // vé đắt nhất (hiển thị) - fallback hoàn pending
+const WHEEL_STAGE1 = [3000, 4000, 5000, 3000, 5000, 4000, 3000, 4000, 5000, 4000, 3000, 5000, 4000, 3000, 5000];   // 26/08: nâng 2k/2.5k/3k -> 3k/4k/5k
+const WHEEL_MAX_TICKET = 5000;   // vé đắt nhất (hiển thị) - fallback hoàn pending
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
@@ -2741,7 +2747,7 @@ function wheelResetTurns() {
 //   2. Trần tổng CP lưu hành (cfg.maxShares) -> trần thiệt hại = maxShares × STOCK_MAX.
 // Lợi thế nhà cái DUY NHẤT là chênh mua–bán (spread): mua đắt 2%, bán rẻ 2%, tức mỗi
 // vòng người chơi mất ~4% dù giá đi đâu. Nói thẳng ở màn đặt mua, không giấu.
-const STOCK_BASE = 1000;             // mốc gốc — giá luôn bị kéo về đây
+const STOCK_BASE = 5000;             // mốc gốc (26/08: 1000 -> 5000, chủ server chốt)
 // 22/08: giá nhảy mỗi 2 GIÂY, nhưng nến chỉ CHỐT mỗi 50 GIÂY (25 nhịp) — nến cuối
 // "sống", cao/thấp/đóng của nó thay đổi theo từng nhịp như bàn giao dịch thật.
 const STOCK_TICK_MS = 2 * 1000;
@@ -2757,9 +2763,9 @@ const STOCK_CANDLE_TICKS = 25;       // 25 × 2s = 50 giây một cây nến
 //     trên biên độ chỉ ±4,6% -> người chơi gần như không bao giờ thắng, chơi vài lần
 //     là bỏ. 1% vẫn là lợi thế nhà cái rất lớn khi tính trên nhiều lượt.
 const STOCK_PULL = 0.0024;           // lực kéo về mốc (càng xa càng kéo mạnh)
-const STOCK_MIN = 300, STOCK_MAX = 3000;   // chặn cứng 2 đầu
+const STOCK_MIN = 1500, STOCK_MAX = 8000;  // chặn cứng 2 đầu (26/08 theo mốc gốc 5000)
 const STOCK_TICK_CAP = 0.08;         // cầu dao: mỗi nhịp không quá ±8%
-const STOCK_HIST_N = 180;            // 2 giờ ở nến 40s. CHẶN TRẦN NGAY TỪ ĐẦU — bài học
+const STOCK_HIST_N = 3600;           // 26/08: giữ đủ 2 NGÀY nến 50s (3.456 cây) cho khung xem 2 ngày — bài học
                                      // _txDashHistory phình 1.348 ván = 57% database.json.
 const STOCK_LOG_N = 20;              // lệnh vừa khớp hiện trên web
 const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng + lịch sử)
@@ -2792,6 +2798,9 @@ function stockCfg() {
         holdS: Math.floor(num(c.holdS, STOCK_CFG_DEF.holdS, 0, 3600)),   // giây CHÔN VỐN
         pointX: Math.floor(num(c.pointX, STOCK_CFG_DEF.pointX, 1, 20)),  // sức nặng điểm giá
         open: c.open !== false,
+        // 🌊🌊 SIÊU SÓNG (26/08): lâu lâu đổi hẳn vùng giá lên 2000-3000 / sụp ~500
+        waveOn: c.waveOn !== false,                                      // mặc định BẬT
+        waveAmp: Math.floor(num(c.waveAmp, 1500, 500, 2500)),            // bước TỐI ĐA mỗi chân sóng (đơn vị giá); bốc 500..waveAmp
     };
 }
 function stockPrice() {
@@ -2850,7 +2859,12 @@ function stockTick(forcePct) {
             d.ticksLeft--;
             if (d.ticksLeft <= 0) dbCache._stockDrift = null;
         }
-        let m = -STOCK_PULL * Math.log(before / STOCK_BASE) + cfg.vol * stockGauss() + drift;
+        // 🌊🌊 SIÊU SÓNG: khi đang NEO vùng giá mới thì lực kéo hướng về NEO thay vì mốc
+        // gốc — nhờ vậy giá đứng được ở 2000-3000 vài chục phút; hết hạn neo thì chính
+        // lực kéo này đưa giá về 1000 từ từ (không nhảy cột).
+        const anc = dbCache._stockAnchor;
+        const anchor = (anc && anc.until > Date.now() && Number.isFinite(anc.v)) ? anc.v : STOCK_BASE;
+        let m = -STOCK_PULL * Math.log(before / anchor) + cfg.vol * stockGauss() + drift;
         if (m > STOCK_TICK_CAP) m = STOCK_TICK_CAP;
         if (m < -STOCK_TICK_CAP) m = -STOCK_TICK_CAP;
         p = clamp(before * (1 + m));
@@ -3227,6 +3241,31 @@ function stockAutoDrift() {
     dbCache._stockDrift = { target, ticksLeft: t, by: 'auto' };
     writeLog('SYSTEM', `[CỔ PHIẾU] 🌊 Sóng tự động ${pct > 0 ? '+' : ''}${Math.round(pct * 10) / 10}%: ${p0.toLocaleString()} -> đích ${target.toLocaleString()} trong ${Math.round(t * STOCK_TICK_MS / 1000)} giây`);
 }
+// 🌊🌊 NEO LANG THANG (chốt lại 26/08: "cho chart tự quyết lên xuống, đừng dao động
+// một chỗ"): giá KHÔNG bám 5000 nữa mà đi bộ ngẫu nhiên trong [2000..7000] — hết mỗi
+// chân sóng lại bốc đích mới cách neo cũ 500..waveAmp đơn vị, trôi tới trong 10-30
+// phút rồi đứng vùng đó 5-25 phút. Hướng chân sau THIÊN VỊ QUAY VỀ GIỮA: càng xa 5000
+// càng dễ đảo chiều -> có lên có xuống, không cắm đầu một mạch, thi thoảng chạm 2000
+// hay 7000 rồi tự bật lại. Tắt waveOn thì giá về bám mốc gốc như cũ.
+function stockBigWave() {
+    const cfg = stockCfg();
+    if (!cfg.waveOn) return;
+    if (dbCache._stockDrift) return;   // đang trôi (kể cả admin can thiệp) thì không chồng
+    const a = dbCache._stockAnchor;
+    if (a && a.until > Date.now()) return;   // đang đứng vùng thì chờ hết đã
+    const cur = (a && Number.isFinite(a.v)) ? a.v : stockPrice();
+    const step = 500 + Math.random() * Math.max(0, cfg.waveAmp - 500);
+    // thiên vị về giữa: ở 5000 lên/xuống 50-50, sát 7000 chỉ ~17% đi tiếp lên, sát 2000 ngược lại
+    const pUp = Math.max(0.15, Math.min(0.85, 0.5 - (cur - STOCK_BASE) / 6000));
+    const up = Math.random() < pUp;
+    const target = Math.round(Math.min(7000, Math.max(2000, cur + (up ? step : -step))));
+    const t = 300 + Math.floor(Math.random() * 600);              // trôi tới đích 10-30 phút
+    const holdMs = (5 + Math.floor(Math.random() * 21)) * 60000;  // đứng vùng 5-25 phút
+    dbCache._stockDrift = { target, ticksLeft: t, by: 'auto' };
+    dbCache._stockAnchor = { v: target, until: Date.now() + t * STOCK_TICK_MS + holdMs };
+    writeLog('SYSTEM', `[CỔ PHIẾU] 🌊 Chân sóng ${up ? 'LÊN' : 'XUỐNG'}: neo ${Math.round(cur).toLocaleString()} -> đích ${target.toLocaleString()}, trôi ${Math.round(t * STOCK_TICK_MS / 60000)} phút`);
+    saveDbNow();
+}
 // Cập nhật "đỉnh lãi từng gồng qua" của từng người — chạy mỗi nhịp giá
 function stockTouchPeaks() {
     for (const p of Object.values(stockPos())) {
@@ -3237,6 +3276,23 @@ function stockTouchPeaks() {
 }
 function runStockLoop() {
     if (!Number.isFinite(Number(dbCache._stockPrice))) dbCache._stockPrice = STOCK_BASE;
+    // MIGRATE MỘT LẦN (26/08): mốc gốc đổi 1000 -> 5000. Giá cũ (<2500) mà giữ nguyên
+    // thì lực kéo lôi lên 5000 = +400%, ai SHORT cháy oan, ai LONG trúng lộc trời.
+    // Nên: ĐÓNG HỘ mọi lệnh đang mở theo giá hiện tại (tiền về ví đúng luật đóng),
+    // rồi đặt giá 5000 và làm mới nến cho đồ thị sạch.
+    if (Number(dbCache._stockPrice) < 2500) {
+        for (const [uid, p] of Object.entries(stockPos())) {
+            if ((Number(p.shares) || 0) < 1) continue;
+            const r = stockClose(uid, Number(p.shares) || 0, true);
+            writeLog('SYSTEM', `[CỔ PHIẾU] MIGRATE mốc 5000: đóng hộ lệnh của ${getUserData(uid).name || uid} (${r && r.ok ? (r.pl >= 0 ? '+' : '') + r.pl : 'lỗi'})`);
+        }
+        dbCache._stockPrice = STOCK_BASE;
+        dbCache._stockDrift = null;
+        dbCache._stockAnchor = null;
+        dbCache._stockCandles = [];
+        writeLog('SYSTEM', '[CỔ PHIẾU] MIGRATE: mốc gốc 1.000 -> 5.000, biên cứng 1.500-8.000, sóng lang thang 2.000-7.000, nến làm mới');
+        saveDbNow();
+    }
     // MIGRATE MỘT LẦN (24/08): cấu hình đời trước sức-nặng còn lưu cứng spread 0.5%.
     // Có pointX=5 mà giữ 0.5% thì phí vòng bị nhân 5 -> mở lệnh x10 lỗ sẵn ~50% vốn.
     // Chỉ đụng khi admin CHƯA từng biết tới pointX (chưa có field) VÀ spread đúng 0.005.
@@ -3259,6 +3315,7 @@ function runStockLoop() {
     setInterval(() => {
         try {
             stockAutoDrift();   // 🌊 lâu lâu tự tạo sóng ±10-15%, trôi 3-5 phút
+            stockBigWave();     // 🌊🌊 hiếm hơn: đổi hẳn vùng giá (2000-3000 hoặc ~500) rồi neo
             stockTick();
             stockBurnCheck();   // lệnh BÁN lỗ hết cọc thì đóng hộ, không để ai âm ví
             stockAutoCheck();   // 🤖 mốc tự đóng người chơi đặt (25/08)
@@ -3736,7 +3793,7 @@ client.once('ready', async (c) => {
             stopTX: () => stopLonnho(),
             // Bảng mời chơi Dò Mìn (không có ván chung, chỉ khoe kết quả + nút vào web)
             // 🏆 hũ nuôi chung: xem + nạp/rút tay để mồi hũ cho anh em chơi
-            getPot: () => ({ pots: { ...potBook() }, labels: POT_LABEL, max: LUCKY_POT_MAX, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: MIN_BET, seed: POT_SEED }),
+            getPot: () => ({ pots: { ...potBook() }, labels: POT_LABEL, maxBy: { ...LUCKY_POT_MAX_BY }, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: MIN_BET, seedBy: { ...POT_SEED_BY } }),
             addPot: (key, amount) => adminPotAdd(key, amount),
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
@@ -3769,6 +3826,9 @@ client.once('ready', async (c) => {
                     spreadPct: Math.round(cfg.spread * 1000) / 10,
                     pointX: cfg.pointX,
                     maxShares: cfg.maxShares, maxPer: cfg.maxPer, maxLev: cfg.maxLev, holdS: cfg.holdS, open: cfg.open,
+                    waveOn: cfg.waveOn, waveAmp: cfg.waveAmp,
+                    anchor: (dbCache._stockAnchor && dbCache._stockAnchor.until > Date.now())
+                        ? { v: dbCache._stockAnchor.v, minsLeft: Math.max(0, Math.round((dbCache._stockAnchor.until - Date.now()) / 60000)) } : null,
                     // 25/08: từng người đang giữ lệnh — panel hiện ai MUA/BÁN lời lỗ bao nhiêu,
                     // và là dữ liệu cho ô XEM TRƯỚC tác động khi admin chỉnh %.
                     positions: Object.entries(stockPos())
@@ -3804,6 +3864,9 @@ client.once('ready', async (c) => {
                     // mỗi lần bấm Lưu là "chôn vốn" lặng lẽ về mặc định 60 giây.
                     holdS: Number.isFinite(Number(o.holdS)) ? Math.floor(Number(o.holdS)) : cur.holdS,
                     open: o.open === undefined ? cur.open : !!o.open,
+                    // 🌊🌊 siêu sóng (26/08)
+                    waveOn: o.waveOn === undefined ? cur.waveOn : !!o.waveOn,
+                    waveAmp: Number.isFinite(Number(o.waveAmp)) ? Math.floor(Number(o.waveAmp)) : cur.waveAmp,
                 };
                 saveDbNow();
                 const c = stockCfg();
@@ -5966,7 +6029,7 @@ client.on('interactionCreate', async interaction => {
         // Đăng công khai kết quả quay cho cả server thấy (không chặn luồng trả lời)
         const gachaCh = dbCache._gachaChannelId;
         if (palPotWin > 0) {
-            potAnnounce(gachaCh, `💥🏆 <@${userId}> quay Pal mà NỔ LUÔN HŨ QUAY PAL: +**${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${POT_SEED.toLocaleString()}, mỗi lượt quay lại nuôi tiếp 🌱`, userId);
+            potAnnounce(gachaCh, `💥🏆 <@${userId}> quay Pal mà NỔ LUÔN HŨ QUAY PAL: +**${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('gacha').toLocaleString()}, mỗi lượt quay lại nuôi tiếp 🌱`, userId);
         }
         if (gachaCh) {
             client.channels.fetch(gachaCh)
