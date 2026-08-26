@@ -954,9 +954,34 @@ function palWheelCfg() {
         price: Math.floor(num(c.price, 2000, 100, 1000000)),      // vé mỗi lượt quay
         customPrice: Math.floor(num(c.customPrice, 6000, 100, 1000000)), // 🎯 chọn pal đích danh (25/08, thay shop Discord)
         sellPrice: Math.floor(num(c.sellPrice, 1000, 0, 1000000)), // bán pal trong rương
-        soulMax: Math.floor(num(c.soulMax, 1, 0, 4)),             // số dòng linh hồn 60% được chọn (25/08: chỉ 1 trong 4)
+        soulMax: Math.floor(num(c.soulMax, 4, 1, 4)),             // 26/08: cho chọn NHIỀU dòng (dòng đầu miễn phí, thêm dòng tính phí cấp số nhân)
         level: Math.floor(num(c.level, 80, 1, 100)),
         stars: Math.floor(num(c.stars, 4, 0, 4)),   // SỐ SAO thật (tối đa 4 — mod tự đổi sang Rank 1..5 của save)
+        // 26/08: PAL VƯỢT TRẦN (chủ server đã kiểm chứng bằng Creative Menu, game chịu).
+        // 3 giá trị dưới là mức GỐC MIỄN PHÍ — người chơi muốn hơn thì MUA từng nấc
+        // ngay trong bảng nhận (bảng giá up* bên dưới, admin chỉnh ở panel).
+        ivs: Math.floor(num(c.ivs, 100, 1, 255)),                 // IV gốc miễn phí
+        soulPct: Math.floor(num(c.soulPct, 60, 3, 201)),          // % linh hồn gốc miễn phí mỗi dòng (rank = %/3)
+        passiveMax: Math.floor(num(c.passiveMax, 4, 1, 8)),       // số ô passive gốc miễn phí
+        // 💎 bảng giá nâng cấp (26/08, chủ server đưa): ô passive 5-8 giá RIÊNG TỪNG Ô;
+        // linh hồn tính theo BẬC 3% với 5 khung giá; IV tính theo điểm.
+        upSlot5: Math.floor(num(c.upSlot5, 8000, 0, 10000000)),
+        upSlot6: Math.floor(num(c.upSlot6, 16000, 0, 10000000)),
+        upSlot7: Math.floor(num(c.upSlot7, 32000, 0, 10000000)),
+        upSlot8: Math.floor(num(c.upSlot8, 64000, 0, 10000000)),
+        upIv: Math.floor(num(c.upIv, 500, 0, 1000000)),           // giá mỗi ĐIỂM IV trên mức gốc, TÍNH RIÊNG TỪNG CHỈ SỐ (Máu/Công/Thủ)
+        upSoulLine: Math.floor(num(c.upSoulLine, 2000, 0, 10000000)), // phí THÊM DÒNG linh hồn: dòng 2 giá này, dòng 3 gấp đôi, dòng 4 gấp 4 (cấp số nhân)
+        upSoul1: Math.floor(num(c.upSoul1, 1000, 0, 10000000)),   // giá MỖI 1% tới 72% (kéo 1 nấc 3% = x3 giá)
+        upSoul2: Math.floor(num(c.upSoul2, 1500, 0, 10000000)),   // mỗi 1%: 72 -> 81%
+        upSoul3: Math.floor(num(c.upSoul3, 2500, 0, 10000000)),   // mỗi 1%: 81 -> 90%
+        upSoul4: Math.floor(num(c.upSoul4, 3500, 0, 10000000)),   // mỗi 1%: 90 -> 102%
+        upSoul5: Math.floor(num(c.upSoul5, 6000, 0, 10000000)),   // mỗi 1%: 102 -> 201%
+        upWtPassive: Math.floor(num(c.upWtPassive, 1000, 0, 10000000)), // 🌈 giá MỖI passive Cây Thế Giới (26/08 mở bán trong bảng nhận)
+        // 🎯 4 boss raid bán ĐÍCH DANH ở trang Chọn Pal, giá riêng từng con (26/08); 0 = ngừng bán
+        pickBellaLib: Math.floor(num(c.pickBellaLib, 9000, 0, 10000000)),   // Bellanoir Libero
+        pickBlaza: Math.floor(num(c.pickBlaza, 20000, 0, 10000000)),        // Blazamut Ryu
+        pickXeno: Math.floor(num(c.pickXeno, 20000, 0, 10000000)),          // Xenolord
+        pickHarta: Math.floor(num(c.pickHarta, 20000, 0, 10000000)),        // Hartalis
         boss: c.boss === undefined ? true : !!c.boss,             // giao bản BOSS_ (pal boss)
         open: c.open === undefined ? true : !!c.open,
     };
@@ -1049,25 +1074,41 @@ function palWheelSpin(userId, username) {
 // đúng con mình thích trong pool pal THƯỜNG (không raid, không Panthalus/Astralym),
 // trả tiền, pal vào RƯƠNG như quay trúng — nhận/bán cùng một luồng. Nuôi hũ + xổ hũ
 // giống vé quay cho công bằng giữa hai đường mua.
+// 4 boss raid được bán đích danh (26/08) — tên khớp pals.json, giá theo key trong cfg
+const PALPICK_RAID = [
+    { name: 'Bellanoir Libero', key: 'pickBellaLib' },
+    { name: 'Blazamut Ryu', key: 'pickBlaza' },
+    { name: 'Xenolord', key: 'pickXeno' },
+    { name: 'Hartalis', key: 'pickHarta' },
+];
+function palPickPrice(pal, cfg) {
+    const r = PALPICK_RAID.find(x => x.name === pal.name);
+    return r ? cfg[r.key] : cfg.customPrice;
+}
 function palPickBuy(userId, code, username) {
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
-    const pal = palWheelNormalPool().find(p => p.code === String(code || ''));
-    if (!pal) return { error: 'Không thấy pal này trong danh sách (pal raid không mua đích danh được)' };
+    // pool thường + 4 boss raid đang mở bán (giá > 0)
+    const raidNames = new Set(PALPICK_RAID.filter(x => cfg[x.key] > 0).map(x => x.name));
+    const pal = palWheelNormalPool().find(p => p.code === String(code || ''))
+        || palWheelRaidPool().find(p => raidNames.has(p.name) && p.code === String(code || ''));
+    if (!pal) return { error: 'Không thấy pal này trong danh sách bán' };
+    const isRaid = raidNames.has(pal.name);
+    const price = palPickPrice(pal, cfg);
     const user = getUserData(userId);
-    if ((user.points || 0) < cfg.customPrice) {
-        return { error: `Cần ${cfg.customPrice.toLocaleString()} Dogcoin (bạn có ${(user.points || 0).toLocaleString()})` };
+    if ((user.points || 0) < price) {
+        return { error: `Cần ${price.toLocaleString()} Dogcoin (bạn có ${(user.points || 0).toLocaleString()})` };
     }
-    updatePoints(userId, -cfg.customPrice);
+    updatePoints(userId, -price);
 
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
-        code: pal.code, name: pal.name, dex: pal.dex || 0, raid: false,
+        code: pal.code, name: pal.name, dex: pal.dex || 0, raid: isRaid,
         wonAt: new Date().toLocaleString('vi-VN') + ' (chọn mua)', status: 'chest',
     };
     palChest(userId).unshift(item);
 
-    potFeed('gacha', luckyPotCut('gacha', cfg.customPrice));
+    potFeed('gacha', luckyPotCut('gacha', price));
     let potWin = 0;
     if (potGet('gacha') > 0 && Math.random() < POT_HIT_RATE) {
         potWin = luckyPotPop('gacha');
@@ -1075,7 +1116,7 @@ function palPickBuy(userId, code, username) {
         logDog('jackpot', userId, username || userId, potWin, 'nổ hũ khi chọn mua pal (web)');
     }
 
-    logDog('shop', userId, username || userId, -cfg.customPrice, `chọn mua pal ${item.name} (web) - rương #${item.id}`);
+    logDog('shop', userId, username || userId, -price, `chọn mua pal ${item.name}${isRaid ? ' (BOSS RAID)' : ''} (web) - rương #${item.id}`);
     writeLog('ADMIN', `[CHỌN PAL WEB] ${username || userId} mua đích danh ${item.name} - rương #${item.id}${potWin ? ` | NỔ HŨ +${potWin}` : ''}`);
     saveDbNow();
 
@@ -1105,8 +1146,44 @@ function palChestSell(userId, itemId, username) {
     return { ok: true, sold: cfg.sellPrice, balance: getUserData(userId).points || 0 };
 }
 
+// ===== 💎 TÍNH PHÍ NÂNG CẤP VƯỢT TRẦN (26/08) =====
+// Ô passive: 4 ô đầu (hoặc mức gốc admin đặt) miễn phí, mỗi ô tiếp theo giá riêng.
+function palUpPassiveCost(count, cfg) {
+    const prices = { 5: cfg.upSlot5, 6: cfg.upSlot6, 7: cfg.upSlot7, 8: cfg.upSlot8 };
+    let cost = 0;
+    for (let i = Math.max(5, cfg.passiveMax + 1); i <= count; i++) cost += prices[i] || 0;
+    return cost;
+}
+// Linh hồn: giá niêm yết là MỖI 1% (chủ server chốt 26/08: "1 lần kéo 3% thì x3 sẵn"),
+// chia 5 khung theo % SAU khi bước: tới 72% / 81% / 90% / 102% / 201%.
+// Ví dụ 60->72 = 12% x 1.000 = 12.000; 60->201 = 684.000 MỖI DÒNG.
+function palUpSoulStepPrice(pctAfter, cfg) {
+    if (pctAfter <= 72) return cfg.upSoul1;
+    if (pctAfter <= 81) return cfg.upSoul2;
+    if (pctAfter <= 90) return cfg.upSoul3;
+    if (pctAfter <= 102) return cfg.upSoul4;
+    return cfg.upSoul5;
+}
+function palUpSoulCost(targetPct, cfg) {   // phí % cho MỘT dòng linh hồn (mỗi nấc 3% = 3 x giá/1%)
+    let cost = 0;
+    for (let p = cfg.soulPct + 3; p <= targetPct; p += 3) cost += 3 * palUpSoulStepPrice(p, cfg);
+    return cost;
+}
+// Phí THÊM DÒNG linh hồn: dòng 1 miễn phí, dòng 2 = upSoulLine, dòng 3 = x2, dòng 4 = x4
+// (cấp số nhân). 2 dòng = 2k, 3 dòng = 2k+4k = 6k, 4 dòng = 2k+4k+8k = 14k (giá mặc định).
+function palUpSoulLineCost(lines, cfg) {
+    let cost = 0;
+    for (let k = 2; k <= lines; k++) cost += cfg.upSoulLine * Math.pow(2, k - 2);
+    return cost;
+}
+// IV: 3 chỉ số RIÊNG (Máu / Công / Thủ), mỗi điểm trên mức gốc = upIv, tính từng chỉ số.
+function palUpIvCost(ivHp, ivAtk, ivDef, cfg) {
+    const d = (v) => Math.max(0, v - cfg.ivs);
+    return (d(ivHp) + d(ivAtk) + d(ivDef)) * cfg.upIv;
+}
+
 const PAL_SOUL_KEYS = ['hp', 'atk', 'def', 'work'];
-async function palChestClaim(userId, itemId, soulsIn, passivesIn, username) {
+async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extra) {
     const cfg = palWheelCfg();
     const item = palChest(userId).find(i => i.id === Number(itemId));
     if (!item) return { error: 'Không thấy pal này trong rương' };
@@ -1116,13 +1193,48 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username) {
 
     const souls = Array.isArray(soulsIn) ? [...new Set(soulsIn.map(String).filter(s => PAL_SOUL_KEYS.includes(s)))] : [];
     if (souls.length > cfg.soulMax) return { error: `Chỉ được chọn tối đa ${cfg.soulMax} dòng linh hồn` };
-    // 25/08: BẮT BUỘC chọn đủ dòng linh hồn (chủ server yêu cầu — không chọn không cho nhận)
-    if (cfg.soulMax > 0 && souls.length < cfg.soulMax) {
-        return { error: `Phải chọn đủ ${cfg.soulMax} dòng linh hồn +60% rồi mới nhận được` };
+    // 26/08: BẮT BUỘC ít nhất 1 dòng; dòng đầu miễn phí, thêm dòng tính phí cấp số nhân
+    if (souls.length < 1) {
+        return { error: 'Phải chọn ít nhất 1 dòng linh hồn rồi mới nhận được' };
     }
     const catalog = new Set(passiveCatalog().map(p => p.id));
     const passives = Array.isArray(passivesIn) ? [...new Set(passivesIn.map(String).filter(p => catalog.has(p)))] : [];
-    if (passives.length > 4) return { error: 'Tối đa 4 passive' };
+    if (passives.length > 8) return { error: 'Tối đa 8 passive' };
+
+    // 💎 NÂNG CẤP TRẢ PHÍ (26/08, chủ server chốt bảng giá): mức vượt gốc miễn phí
+    // (ô passive 5-8, linh hồn quá cfg.soulPct, IV quá cfg.ivs) bị tính tiền —
+    // trừ ví ngay lúc nhận; nhánh nào CHẮC CHẮN chưa giao thì hoàn đủ.
+    const want = (extra && typeof extra === 'object') ? extra : {};
+    // 26/08 (chốt lại): % linh hồn kéo RIÊNG TỪNG DÒNG (mua Công 201% mà Máu 102% được),
+    // phí tính riêng từng dòng theo bảng mỗi-1%. Dòng không chọn thì bỏ qua.
+    const soulPcts = {};
+    for (const k of souls) {
+        const field = 'soul' + k.charAt(0).toUpperCase() + k.slice(1) + 'Pct'; // soulHpPct...
+        const v = Math.floor(Number(want[field]) || cfg.soulPct);
+        if (v < cfg.soulPct || v > 201 || v % 3 !== 0) {
+            return { error: `Mức linh hồn dòng ${k} không hợp lệ (${cfg.soulPct}–201%, bước 3%)` };
+        }
+        soulPcts[k] = v;
+    }
+    // 3 chỉ số IV RIÊNG: Máu / Công / Thủ (game hiện đúng 3 dòng này)
+    const ivHp = Math.floor(Number(want.ivHp) || cfg.ivs);
+    const ivAtk = Math.floor(Number(want.ivAtk) || cfg.ivs);
+    const ivDef = Math.floor(Number(want.ivDef) || cfg.ivs);
+    for (const v of [ivHp, ivAtk, ivDef]) {
+        if (v < cfg.ivs || v > 255) return { error: `Mức IV không hợp lệ (${cfg.ivs}–255)` };
+    }
+    const soulPctCost = souls.reduce((s, k) => s + palUpSoulCost(soulPcts[k], cfg), 0);
+    // 🌈 passive Cây Thế Giới bán riêng theo con (26/08)
+    const wtSet = new Set(passiveCatalog().filter(p => p.wt).map(p => p.id));
+    const wtCount = passives.filter(id => wtSet.has(id)).length;
+    const upCost = palUpPassiveCost(passives.length, cfg)
+        + soulPctCost
+        + palUpSoulLineCost(souls.length, cfg)
+        + palUpIvCost(ivHp, ivAtk, ivDef, cfg)
+        + wtCount * cfg.upWtPassive;
+    if (upCost > 0 && (getUserData(userId).points || 0) < upCost) {
+        return { error: `💎 Nâng cấp này tốn ${upCost.toLocaleString()} Dogcoin — ví bạn không đủ` };
+    }
 
     const gameName = (getUserData(userId).ingameName || '').trim();
     if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game — nhắn admin liên kết trước đã' };
@@ -1136,18 +1248,38 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username) {
     item.souls = souls;
     item.passives = passives;
     item.claimAt = new Date().toLocaleString('vi-VN');
+    // trừ phí nâng cấp NGAY (chủ server chốt "bấm thêm thì trừ tiền luôn")
+    const soulDesc = souls.map(k => `${k} ${soulPcts[k]}%`).join(' ');
+    item.upCost = 0;
+    item.upPick = { soulPcts, ivHp, ivAtk, ivDef, soulLines: souls.length, passiveCount: passives.length };
+    if (upCost > 0) {
+        updatePoints(userId, -upCost);
+        item.upCost = upCost;
+        logDog('shop', userId, username || userId, -upCost, `💎 nâng cấp pal vượt trần (rương #${item.id}): ${passives.length} passive · linh hồn ${soulDesc} · IV ${ivHp}/${ivAtk}/${ivDef}`);
+    }
     saveDbNow();
+    // hoàn phí nâng cấp cho các nhánh CHẮC CHẮN chưa giao gì
+    const refundUp = () => {
+        if (item.upCost > 0) {
+            updatePoints(userId, item.upCost);
+            logDog('refund', userId, username || userId, item.upCost, `hoàn phí nâng cấp pal (rương #${item.id} chưa giao được)`);
+            item.upCost = 0;
+        }
+    };
 
     const species = (cfg.boss ? 'BOSS_' : '') + item.code;
+    // linh hồn theo % TỪNG DÒNG người chơi mua — rank trong save = %/3 (60% -> 20, 201% -> 67)
+    const soulRank = (k) => souls.includes(k) ? Math.max(0, Math.min(255, Math.round(soulPcts[k] / 3))) : 0;
     let r = null, err = null;
     try {
         r = await pal.givePal(gameName, {
             species, level: cfg.level, rank: cfg.stars,
-            ivHp: 100, ivMelee: 100, ivShot: 100, ivDef: 100,
-            soulHp: souls.includes('hp') ? 20 : 0,      // 20 bậc x3% = 60%
-            soulAtk: souls.includes('atk') ? 20 : 0,
-            soulDef: souls.includes('def') ? 20 : 0,
-            soulWork: souls.includes('work') ? 20 : 0,
+            // Công trong game = Talent_Shot; Talent_Melee đã bỏ nhưng ghi cùng giá cho chắc
+            ivHp: ivHp, ivMelee: ivAtk, ivShot: ivAtk, ivDef: ivDef,
+            soulHp: soulRank('hp'),
+            soulAtk: soulRank('atk'),
+            soulDef: soulRank('def'),
+            soulWork: soulRank('work'),
             passives,
         });
     } catch (e) { err = e; }
@@ -1156,8 +1288,8 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username) {
         item.status = 'claimed';
         item.deliveredTo = gameName;
         saveDbNow();
-        writeLog('ADMIN', `[RƯƠNG PAL] Đã giao ${species} Lv${cfg.level} cho ${gameName} (rương #${item.id} của ${username || userId}) | linh hồn: ${souls.join(',') || '-'} | passive: ${passives.join(',') || '-'}`);
-        return { ok: true, message: '✅ Đã giao vào hộp pal trong game! Pal sẽ DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp.' };
+        writeLog('ADMIN', `[RƯƠNG PAL] Đã giao ${species} Lv${cfg.level} cho ${gameName} (rương #${item.id} của ${username || userId}) | linh hồn: ${soulDesc || '-'} | IV ${ivHp}/${ivAtk}/${ivDef} | passive: ${passives.join(',') || '-'}${upCost ? ` | 💎 phí nâng cấp ${upCost.toLocaleString()}` : ''}`);
+        return { ok: true, message: `✅ Đã giao vào hộp pal trong game!${upCost ? ` (💎 phí nâng cấp −${upCost.toLocaleString()} Dogcoin)` : ''} Pal sẽ DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp.` };
     }
 
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
@@ -1166,19 +1298,22 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username) {
     // Lỗi 500/timeout thì KHÔNG — có thể đã ghi queue rồi mới hỏng, vẫn phải treo chờ kiểm.
     if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted/i.test(msg)) {
         item.status = 'chest';
+        refundUp();
         saveDbNow();
         writeLog('ADMIN', `[RƯƠNG PAL] Dashboard không nhận lệnh (${msg}) — trả rương #${item.id} về cho ${username || userId} bấm lại`);
-        return { error: '⚠️ Hệ thống giao đang bảo trì (dashboard chưa sẵn sàng) — pal vẫn trong rương, thử lại sau ít phút' };
+        return { error: '⚠️ Hệ thống giao đang bảo trì (dashboard chưa sẵn sàng) — pal vẫn trong rương, phí nâng cấp đã hoàn, thử lại sau ít phút' };
     }
     if (/PALBOX DAY/i.test(msg)) {
         item.status = 'chest'; // mod từ chối vì hộp đầy, CHƯA giao gì — pal còn nguyên trong rương
+        refundUp();
         saveDbNow();
-        return { error: '📦 Hộp pal trong game ĐẦY — dọn bớt chỗ trong palbox rồi bấm nhận lại (pal vẫn còn trong rương)' };
+        return { error: '📦 Hộp pal trong game ĐẦY — dọn bớt chỗ trong palbox rồi bấm nhận lại (pal + phí nâng cấp còn nguyên)' };
     }
     if (/player not found|not found|chưa online/i.test(msg)) {
         item.status = 'chest'; // mod xác nhận CHƯA giao gì — trả về rương cho bấm lại
+        refundUp();
         saveDbNow();
-        return { error: `Không thấy ${gameName} trong game — vào game rồi thử lại` };
+        return { error: `Không thấy ${gameName} trong game — vào game rồi thử lại (phí nâng cấp đã hoàn)` };
     }
     // Không rõ đã giao hay chưa: giữ 'delivering', admin kiểm results.log rồi xử ở panel
     writeLog('ADMIN', `[RƯƠNG PAL] KHÔNG RÕ KẾT QUẢ giao ${species} cho ${gameName} (rương #${item.id} của ${username || userId}): ${msg} — kiểm results.log: đã giao thì bấm "đã giao", chưa thì "trả về rương"`);
@@ -1191,6 +1326,12 @@ function palChestResolve(ownerId, itemId, delivered) {
     if (!item || item.status !== 'delivering') return { error: 'Không thấy pal đang giao dở với id này' };
     item.status = delivered ? 'claimed' : 'chest';
     if (delivered) item.deliveredTo = item.deliveredTo || (getUserData(ownerId).ingameName || '').trim();
+    // 26/08: admin trả về rương = xác nhận CHƯA giao -> hoàn phí nâng cấp đã trừ
+    if (!delivered && (Number(item.upCost) || 0) > 0) {
+        updatePoints(ownerId, item.upCost);
+        logDog('refund', ownerId, getUserData(ownerId).name || ownerId, item.upCost, `admin hoàn phí nâng cấp pal (rương #${item.id} trả về rương)`);
+        item.upCost = 0;
+    }
     saveDbNow();
     writeLog('ADMIN', `[RƯƠNG PAL] Admin chốt rương #${item.id} của ${ownerId}: ${delivered ? 'ĐÃ GIAO' : 'trả về rương'}`);
     return { ok: true };
@@ -1204,7 +1345,7 @@ function palBuildSave(userId, name, idsIn) {
     const nm = String(name || '').trim().slice(0, 24);
     if (!nm) return { error: 'Đặt tên cho build đã (tối đa 24 ký tự)' };
     const catalog = new Set(passiveCatalog().map(p => p.id));
-    const ids = Array.isArray(idsIn) ? [...new Set(idsIn.map(String).filter(id => catalog.has(id)))].slice(0, 4) : [];
+    const ids = Array.isArray(idsIn) ? [...new Set(idsIn.map(String).filter(id => catalog.has(id)))].slice(0, 8) : [];
     if (!ids.length) return { error: 'Chọn ít nhất 1 passive rồi hãy lưu build' };
     if (!Array.isArray(u.palBuilds)) u.palBuilds = [];
     const i = u.palBuilds.findIndex(b => b.name === nm);
@@ -3509,13 +3650,21 @@ client.once('ready', async (c) => {
                 },
                 spin: (uid) => palWheelSpin(uid, getUserData(uid).name || uid),
                 // 🎯 chọn pal đích danh (danh sách + mua)
-                pickState: (uid) => ({
-                    price: palWheelCfg().customPrice,
-                    open: palWheelCfg().open,
-                    pot: potGet('gacha'),
-                    chestCount: palChest(uid).filter(i => i.status === 'chest').length,
-                    list: palWheelNormalPool().map(p => ({ code: p.code, name: p.name, dex: p.dex || 0 })),
-                }),
+                pickState: (uid) => {
+                    const cfg = palWheelCfg();
+                    // 26/08: 4 boss raid bán đích danh giá riêng, xếp LÊN ĐẦU danh sách
+                    const raidRows = PALPICK_RAID.filter(x => cfg[x.key] > 0)
+                        .map(x => palWheelRaidPool().find(p => p.name === x.name))
+                        .filter(Boolean)
+                        .map(p => ({ code: p.code, name: p.name, dex: p.dex || 0, raid: true, price: palPickPrice(p, cfg) }));
+                    return {
+                        price: cfg.customPrice,
+                        open: cfg.open,
+                        pot: potGet('gacha'),
+                        chestCount: palChest(uid).filter(i => i.status === 'chest').length,
+                        list: raidRows.concat(palWheelNormalPool().map(p => ({ code: p.code, name: p.name, dex: p.dex || 0, raid: false, price: cfg.customPrice }))),
+                    };
+                },
                 pick: (uid, code) => palPickBuy(uid, code, getUserData(uid).name || uid),
             },
             profile: {
@@ -3525,6 +3674,9 @@ client.once('ready', async (c) => {
                         // pal quay dở (chưa tới revealAt) KHÔNG hiện — F5 cũng không xem trộm được
                         chest: palChest(uid).filter(i => !i.revealAt || i.revealAt <= Date.now()),
                         sellPrice: cfg.sellPrice, soulMax: cfg.soulMax,
+                        soulPct: cfg.soulPct, passiveMax: cfg.passiveMax, ivs: cfg.ivs,
+                        // 💎 bảng giá nâng cấp để client tính phí y hệt server
+                        up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
                         level: cfg.level, stars: cfg.stars, boss: cfg.boss,
                         passives: passiveCatalog(),
                         builds: passiveBuilds(),
@@ -3533,7 +3685,7 @@ client.once('ready', async (c) => {
                     };
                 },
                 sell: (uid, itemId) => palChestSell(uid, itemId, getUserData(uid).name || uid),
-                claim: (uid, itemId, souls, passives) => palChestClaim(uid, itemId, souls, passives, getUserData(uid).name || uid),
+                claim: (uid, itemId, souls, passives, extra) => palChestClaim(uid, itemId, souls, passives, getUserData(uid).name || uid, extra),
                 saveBuild: (uid, name, ids) => palBuildSave(uid, name, ids),
                 delBuild: (uid, name) => palBuildDel(uid, name),
             },

@@ -602,6 +602,97 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 — DEPLOY đợt 💎 lên SERVER CHÍNH
+
+Chủ server test đủ trên server test ("mọi thứ hoàn hảo") và chốt đẩy. Gồm 6 đợt trong
+ngày: nâng cấp trả phí (passive 5-8, linh hồn %/dòng riêng, IV 3 chỉ số), bố cục 2 cột
++ 🧾 TỔNG KẾT, bán 4 boss raid đích danh, 7 passive Cây Thế Giới cầu vồng. Deploy:
+VPS pull + restart CẢ BotDoMin LẪN palworld-dashboard (dashboard có nới trần
+validation give-pal — quên restart là nhận pal lỗi). Mod KHÔNG đổi từ f2c90fc,
+không cần đụng server game.
+
+### 26/08/2026 (đợt 6) — 🔥 Bán 4 boss raid đích danh + 🌈 passive Cây Thế Giới
+
+- **🎯 Chọn Pal bán thêm 4 BOSS RAID** giá riêng (panel chỉnh, 0 = ngừng bán):
+  Bellanoir Libero **9.000** · Blazamut Ryu **20.000** · Xenolord **20.000** ·
+  Hartalis **20.000** — xếp đầu danh sách, viền đỏ 🔥 BOSS RAID. Bellanoir THƯỜNG
+  vẫn chỉ có từ vòng quay. Mua raid cũng nuôi hũ 5% + 1% nổ.
+- **🌈 7 passive Cây Thế Giới mở bán trong bảng nhận** (đảo luật cấm cũ theo chốt
+  chủ server): tên hiện MÀU CẦU VỒNG + giá 💎 ngay cạnh, mặc định **1.000/con**
+  (panel chỉnh `upWtPassive`), cộng vào tổng phụ phí + dòng riêng trong 🧾 TỔNG KẾT.
+  Mã dùng bộ id THẬT đào từ paldb (WorldTree_ATK/DEF/ATK_DEF/CraftSpeed/MoveSpeed/
+  Sanity; Seedbed = WorldTree_FullStomach cờ ⚠ chưa kiểm). Mô tả tiếng Việt nguyên
+  văn game (chủ server chụp 26/08). Danh mục 92 → 99 con.
+- Test: palwheeltest **105 case xanh** (giá raid đúng 4 con, tắt bán bằng giá 0,
+  Bellanoir thường vẫn chặn, 2 passive WT trừ đúng 2.000). Đã lên server chính 26/08.
+
+### 26/08/2026 (đợt 5) — Bố cục hộp nhận + 🧾 TỔNG KẾT ĐƠN
+
+- Máy tính (màn ≥920px): hộp nhận nở rộng 940px chia **2 CỘT** — trái là linh hồn + IV,
+  phải là passive (danh sách cao 380px đỡ cuộn); điện thoại giữ bố cục dọc như cũ.
+- **Passive thêm CHECKBOX** đầu mỗi dòng cho dễ bấm/dễ thấy (đồng bộ với chọn bằng
+  click dòng và nút build).
+- **🧾 TỔNG KẾT ĐƠN** trước nút nhận: pal gì (BOSS · Lv · sao), từng dòng linh hồn +%
+  và phí, phí thêm dòng, IV 3 chỉ số + phí, số passive + phí, tổng 💎 + số dư ví.
+- Bỏ toàn bộ ký tự "—" trong chữ trên web (96 chỗ) theo góp ý chủ server.
+
+### 26/08/2026 (đợt 4) — 💠 % linh hồn kéo RIÊNG TỪNG DÒNG
+
+- Chốt lại của chủ server: mỗi dòng linh hồn có THANH KÉO % RIÊNG (giống IV) — mua
+  Công 201% mà Máu chỉ 102% được. Tick dòng nào thanh dòng đó mở; bỏ tick thì thanh
+  khoá + reset về gốc. Phí tính riêng từng dòng theo đúng bảng mỗi-1% 5 khung; phí
+  thêm dòng cấp số nhân giữ nguyên. Payload claim đổi sang soulHpPct/soulAtkPct/
+  soulDefPct/soulWorkPct; upPick lưu % từng dòng. 100 case xanh (combo mẫu: atk 72%
+  riêng + hp gốc + IV máu 255 + 5 passive = trừ đúng 99.500). Đã lên server chính 26/08.
+
+### 26/08/2026 (đợt 3) — 💎 SỬA BẢNG PHÍ theo chốt lại của chủ server
+
+- **Nhiều dòng linh hồn**: bắt buộc ÍT NHẤT 1 (dòng đầu miễn phí), chọn tới 4; thêm
+  dòng tính phí CẤP SỐ NHÂN từ `upSoulLine` (mặc định 2k): dòng 2 = 2k, dòng 3 = 4k,
+  dòng 4 = 8k (chọn cả 4 = 14k). Thanh % áp cho MỌI dòng đã chọn.
+- **Giá linh hồn là MỖI 1%** (trước hiểu nhầm là mỗi bậc): 1 nấc kéo 3% = ×3 giá.
+  60→72% = 12k · →81% = 25,5k · →90% = 48k · →102% = 90k · **→201% = 684k MỖI DÒNG**.
+- **IV tách 3 chỉ số riêng** như trong game (❤️ Máu / ⚔️ Công / 🛡️ Thủ), mỗi chỉ số một
+  thanh kéo 100→255, **500/điểm** trên mức gốc (1 chỉ số max = 77,5k; cả 3 = 232,5k).
+  Công ghi vào cả Talent_Shot lẫn Talent_Melee (game hiện Công = Shot).
+- Panel: thêm ô "Thêm DÒNG linh hồn", nhãn giá linh hồn đổi thành "mỗi 1%", IV 500.
+- Test: palwheeltest **100 case xanh** (12k/25,5k/48k/90k/684k; dòng 0/2k/6k/14k;
+  IV 77,5k/232,5k; combo 2 dòng 72% + IV máu 255 + 5 passive = trừ đúng 111,5k;
+  hoàn đủ khi giao hụt). Đã lên server chính 26/08.
+
+### 26/08/2026 (đợt 2) — 💎 NÂNG CẤP TRẢ PHÍ: người chơi tự mua vượt trần, trừ ví ngay
+
+- Đổi mô hình theo chốt chủ server: KHÔNG mở trần toàn cục nữa — gốc miễn phí
+  (4 passive · 60% · IV 100, admin đổi được), người chơi muốn hơn thì MUA từng nấc
+  ngay trong bảng nhận. Bảng giá mặc định (admin sửa ở panel, card 🎁):
+  Ô passive 5/6/7/8 = **8k/16k/32k/64k** (chọn 8 ô = 120k); linh hồn theo BẬC 3%
+  5 khung: **→72% 1k · →81% 1,5k · →90% 2,5k · →102% 3,5k · →201% 6k mỗi bậc**
+  (60→201% = 228k MỖI DÒNG); IV **400/điểm** (100→255 = 62k). Trần cứng 8/201%/255.
+- Web (bảng nhận): 2 thanh kéo 💠 Mức linh hồn + 🧬 IV, phí hiện ngay dưới từng thanh,
+  phí ô passive 5-8 hiện cạnh tiêu đề, dòng 💎 Tổng phụ phí + hộp xác nhận trước khi
+  trừ. Máy tính phí client là GƯƠNG của công thức server (server mới là người quyết).
+- Tiền: trừ ví ngay lúc nhận (`upCost` lưu trên item); mọi nhánh CHẮC CHẮN chưa giao
+  (hộp đầy / không thấy người / dashboard 404) tự HOÀN đủ; treo ĐANG GIAO thì phí giữ
+  lại, admin bấm "↩️ về rương" là hoàn, "✅ đã giao" là giữ.
+- Dashboard nới lưới an toàn: 8 passive, IV/linh hồn ≤255 rank. Mod không cần sửa.
+- Test: palwheeltest **101 case xanh** (đúng từng con số bảng giá: 72%=4k, 201%=228k,
+  8 ô=120k, IV255=62k; trừ-hoàn đủ vòng; chặn cứng 9 passive; chặn % lẻ không chia 3).
+  Đã lên server chính 26/08.
+
+- Chủ server đã kiểm chứng bằng Creative Menu: game chịu pal 6-8 passive, linh hồn
+  vượt 60% (vd 201%), IV 255 — muốn bán tự động thay vì đưa tay khi vắng mặt.
+- Mod KHÔNG cần sửa (applyPassives ghi nguyên danh sách, soul/IV ghi số thô — trần
+  nằm ở bot + dashboard). 3 cấu hình mới trong `palWheelCfg` (panel chỉnh, card 🎁):
+  **% linh hồn mỗi dòng** (3–765, bội của 3 vì mỗi bậc save = 3%; 201% → rank 67),
+  **IV 3 chỉ số** (1–255), **Passive tối đa** (1–8). MẶC ĐỊNH GIỮ AN TOÀN như cũ
+  (60% / 100 / 4) — lên chính xong phải vào panel chỉnh mới mở trần.
+- Dashboard `/api/give-pal` nới lưới an toàn: passive ≤8, IV/linh hồn ≤255.
+- Web: nhãn "+60%", "tối đa 4", bộ đếm x/4, ngưỡng gọn-danh-sách... tất cả ĐỘNG theo
+  cấu hình; build riêng lưu được tới 8 passive.
+- Test: palwheeltest 82→91 case xanh (kẹp trần mới, giao 201%→rank 67, IV 255 ×4
+  trường, 6 passive đi đủ, chặn vượt passiveMax). Môi trường test dựng lại đủ:
+  bot 4002 + dashboard 3010 (khởi động lại sau reboot máy).
+
 ### 25/08/2026 — DEPLOY LÊN SERVER CHÍNH (checklist)
 
 Chủ server đã test đủ trên server test và chốt triển khai. Các bước:

@@ -103,8 +103,11 @@ app.post(
     const playerName = nonEmptyString(req.body.playerName, "Tên người chơi");
     const species = nonEmptyString(req.body.species, "Mã pal");
     if (!/^[A-Za-z0-9_]+$/.test(species)) throw new ValidationError("Mã pal chỉ gồm chữ/số/gạch dưới");
+    // 26/08: MỞ TRẦN theo yêu cầu chủ server (đã kiểm chứng bằng Creative Menu in-game):
+    // tối đa 8 passive, IV tới 255, linh hồn tới rank 255 (~765%). Trần THẬT nằm ở
+    // cấu hình bot (panel chỉnh) — đây chỉ là lưới an toàn chống dữ liệu rác.
     const passives = Array.isArray(req.body.passives) ? req.body.passives.map(String) : [];
-    if (passives.length > 4) throw new ValidationError("Tối đa 4 passive");
+    if (passives.length > 8) throw new ValidationError("Tối đa 8 passive");
     for (const p of passives) {
       if (!/^[A-Za-z0-9_]+$/.test(p)) throw new ValidationError(`Passive không hợp lệ: ${p}`);
     }
@@ -112,14 +115,14 @@ app.post(
       species,
       level: intInRange(req.body.level, { min: 1, max: 100, label: "Level" }),
       rank: intInRange(req.body.rank ?? 0, { min: 0, max: 5, label: "Sao" }),
-      ivHp: intInRange(req.body.ivHp ?? 0, { min: 0, max: 100, label: "IV máu" }),
-      ivMelee: intInRange(req.body.ivMelee ?? 0, { min: 0, max: 100, label: "IV cận chiến" }),
-      ivShot: intInRange(req.body.ivShot ?? 0, { min: 0, max: 100, label: "IV tầm xa" }),
-      ivDef: intInRange(req.body.ivDef ?? 0, { min: 0, max: 100, label: "IV thủ" }),
-      soulHp: intInRange(req.body.soulHp ?? 0, { min: 0, max: 20, label: "Linh hồn máu" }),
-      soulAtk: intInRange(req.body.soulAtk ?? 0, { min: 0, max: 20, label: "Linh hồn công" }),
-      soulDef: intInRange(req.body.soulDef ?? 0, { min: 0, max: 20, label: "Linh hồn thủ" }),
-      soulWork: intInRange(req.body.soulWork ?? 0, { min: 0, max: 20, label: "Linh hồn làm việc" }),
+      ivHp: intInRange(req.body.ivHp ?? 0, { min: 0, max: 255, label: "IV máu" }),
+      ivMelee: intInRange(req.body.ivMelee ?? 0, { min: 0, max: 255, label: "IV cận chiến" }),
+      ivShot: intInRange(req.body.ivShot ?? 0, { min: 0, max: 255, label: "IV tầm xa" }),
+      ivDef: intInRange(req.body.ivDef ?? 0, { min: 0, max: 255, label: "IV thủ" }),
+      soulHp: intInRange(req.body.soulHp ?? 0, { min: 0, max: 255, label: "Linh hồn máu" }),
+      soulAtk: intInRange(req.body.soulAtk ?? 0, { min: 0, max: 255, label: "Linh hồn công" }),
+      soulDef: intInRange(req.body.soulDef ?? 0, { min: 0, max: 255, label: "Linh hồn thủ" }),
+      soulWork: intInRange(req.body.soulWork ?? 0, { min: 0, max: 255, label: "Linh hồn làm việc" }),
       gender: intInRange(req.body.gender ?? 0, { min: 0, max: 2, label: "Giới tính" }),
       lucky: intInRange(req.body.lucky ?? 0, { min: 0, max: 1, label: "Lucky" }),
       passivesCsv: passives.length ? passives.join(",") : "-",

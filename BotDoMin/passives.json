@@ -85,6 +85,63 @@
   ],
   "list": [
     {
+      "id": "WorldTree_CraftSpeed",
+      "en": "Demon's Hand",
+      "name": "Bàn Tay Ác Quỷ",
+      "desc": "Tốc độ làm việc +90%, Minh Mẫn giảm nhanh +15%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần",
+      "tier": 4,
+      "wt": true
+    },
+    {
+      "id": "WorldTree_MoveSpeed",
+      "en": "Dimensional Leap",
+      "name": "Cú Nhảy Không Gian",
+      "desc": "Tốc độ di chuyển tăng +50%, Mức Độ No giảm nhanh +15%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần",
+      "tier": 4,
+      "wt": true
+    },
+    {
+      "id": "WorldTree_ATK_DEF",
+      "en": "God of Destruction",
+      "name": "Thần Hủy Diệt",
+      "desc": "Tấn công +40%, Phòng thủ +20%, Máu tối đa -50%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần",
+      "tier": 4,
+      "wt": true
+    },
+    {
+      "id": "WorldTree_Sanity",
+      "en": "Hermit Sage",
+      "name": "Tiên Nhân",
+      "desc": "Minh Mẫn giảm chậm +50%, Tốc độ làm việc -20%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần",
+      "tier": 4,
+      "wt": true
+    },
+    {
+      "id": "WorldTree_DEF",
+      "en": "Sanctified Meat Shield",
+      "name": "Thành Trì Thịt Sống",
+      "desc": "Phòng thủ +50%, Tấn công -30%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần",
+      "tier": 4,
+      "wt": true
+    },
+    {
+      "id": "WorldTree_ATK",
+      "en": "Twin-Edged Holy Blade",
+      "name": "Thánh Kiếm Hai Lưỡi",
+      "desc": "Tấn công +50%, Phòng thủ -30%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần",
+      "tier": 4,
+      "wt": true
+    },
+    {
+      "id": "WorldTree_FullStomach",
+      "en": "World Tree Seedbed",
+      "name": "Vườn Ươm Cây Thần",
+      "desc": "Mức Độ No giảm chậm +50%, Máu -20%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần",
+      "tier": 4,
+      "wt": true,
+      "unsure": true
+    },
+    {
       "id": "Legend",
       "en": "Legend",
       "name": "Huyền Thoại",

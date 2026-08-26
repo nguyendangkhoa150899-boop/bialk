@@ -1198,9 +1198,37 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>Bán lại pal (Dogcoin)</label><input id="pwSell" type="number" placeholder="vd: 1000"></div>
         </div>
         <div class="row" style="margin-top:8px">
-          <div style="flex:1"><label>Số dòng linh hồn 60% (0–4)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
+          <div style="flex:1"><label>Số dòng linh hồn TỐI ĐA (1–4)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
           <div style="flex:1"><label>Level pal giao (1–100)</label><input id="pwLevel" type="number" placeholder="vd: 80"></div>
           <div style="flex:1"><label>Sao (0–4, sao THẬT trên pal)</label><input id="pwStars" type="number" placeholder="vd: 4"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1"><label>% linh hồn GỐC miễn phí (bội của 3)</label><input id="pwSoulPct" type="number" placeholder="vd: 60"></div>
+          <div style="flex:1"><label>IV GỐC miễn phí (1–255)</label><input id="pwIvs" type="number" placeholder="vd: 100"></div>
+          <div style="flex:1"><label>Ô passive GỐC miễn phí (1–8)</label><input id="pwPassMax" type="number" placeholder="vd: 4"></div>
+        </div>
+        <div class="note" style="margin-top:8px">💎 <b>GIÁ NÂNG CẤP VƯỢT TRẦN</b> — người chơi tự mua trong bảng nhận, trừ ví ngay (giao hụt tự hoàn). Trần cứng: 8 passive · 201% linh hồn · 255 IV.</div>
+        <div class="row" style="margin-top:4px">
+          <div style="flex:1"><label>Ô passive thứ 5</label><input id="pwUp5" type="number" placeholder="vd: 8000"></div>
+          <div style="flex:1"><label>Ô thứ 6</label><input id="pwUp6" type="number" placeholder="vd: 16000"></div>
+          <div style="flex:1"><label>Ô thứ 7</label><input id="pwUp7" type="number" placeholder="vd: 32000"></div>
+          <div style="flex:1"><label>Ô thứ 8</label><input id="pwUp8" type="number" placeholder="vd: 64000"></div>
+          <div style="flex:1"><label>IV: giá mỗi ĐIỂM (từng chỉ số Máu/Công/Thủ)</label><input id="pwUpIv" type="number" placeholder="vd: 500"></div>
+          <div style="flex:1"><label>Thêm DÒNG linh hồn (dòng 2; dòng 3 ×2, dòng 4 ×4)</label><input id="pwUpLine" type="number" placeholder="vd: 2000"></div>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <div style="flex:1"><label>🌈 Passive Cây Thế Giới (giá/con)</label><input id="pwUpWt" type="number" placeholder="vd: 1000"></div>
+          <div style="flex:1"><label>🔥 Bellanoir Libero (0 = ngừng bán)</label><input id="pwPkBL" type="number" placeholder="vd: 9000"></div>
+          <div style="flex:1"><label>🔥 Blazamut Ryu</label><input id="pwPkBR" type="number" placeholder="vd: 20000"></div>
+          <div style="flex:1"><label>🔥 Xenolord</label><input id="pwPkXe" type="number" placeholder="vd: 20000"></div>
+          <div style="flex:1"><label>🔥 Hartalis</label><input id="pwPkHa" type="number" placeholder="vd: 20000"></div>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <div style="flex:1"><label>Linh hồn →72% (giá MỖI 1%)</label><input id="pwUpS1" type="number" placeholder="vd: 1000"></div>
+          <div style="flex:1"><label>→81% (mỗi 1%)</label><input id="pwUpS2" type="number" placeholder="vd: 1500"></div>
+          <div style="flex:1"><label>→90% (mỗi 1%)</label><input id="pwUpS3" type="number" placeholder="vd: 2500"></div>
+          <div style="flex:1"><label>→102% (mỗi 1%)</label><input id="pwUpS4" type="number" placeholder="vd: 3500"></div>
+          <div style="flex:1"><label>→201% (mỗi 1%)</label><input id="pwUpS5" type="number" placeholder="vd: 6000"></div>
         </div>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> Giao bản PAL BOSS</label>
@@ -1750,9 +1778,13 @@ async function skToggle(){
 function pwCfgFill(k){
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
   set('pwPrice',k.price);set('pwCustom',k.customPrice);set('pwSell',k.sellPrice);set('pwSoul',k.soulMax);set('pwLevel',k.level);set('pwStars',k.stars);
+  set('pwSoulPct',k.soulPct);set('pwIvs',k.ivs);set('pwPassMax',k.passiveMax);
+  set('pwUp5',k.upSlot5);set('pwUp6',k.upSlot6);set('pwUp7',k.upSlot7);set('pwUp8',k.upSlot8);set('pwUpIv',k.upIv);set('pwUpLine',k.upSoulLine);
+  set('pwUpWt',k.upWtPassive);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
+  set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
-    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng 60% · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
+    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
     (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
 }
 function pwCfgSave(){
@@ -1760,6 +1792,25 @@ function pwCfgSave(){
            customPrice:parseInt(document.getElementById('pwCustom').value),
            sellPrice:parseInt(document.getElementById('pwSell').value),
            soulMax:parseInt(document.getElementById('pwSoul').value),
+           soulPct:parseInt(document.getElementById('pwSoulPct').value),
+           ivs:parseInt(document.getElementById('pwIvs').value),
+           passiveMax:parseInt(document.getElementById('pwPassMax').value),
+           upSlot5:parseInt(document.getElementById('pwUp5').value),
+           upSlot6:parseInt(document.getElementById('pwUp6').value),
+           upSlot7:parseInt(document.getElementById('pwUp7').value),
+           upSlot8:parseInt(document.getElementById('pwUp8').value),
+           upIv:parseInt(document.getElementById('pwUpIv').value),
+           upSoulLine:parseInt(document.getElementById('pwUpLine').value),
+           upWtPassive:parseInt(document.getElementById('pwUpWt').value),
+           pickBellaLib:parseInt(document.getElementById('pwPkBL').value),
+           pickBlaza:parseInt(document.getElementById('pwPkBR').value),
+           pickXeno:parseInt(document.getElementById('pwPkXe').value),
+           pickHarta:parseInt(document.getElementById('pwPkHa').value),
+           upSoul1:parseInt(document.getElementById('pwUpS1').value),
+           upSoul2:parseInt(document.getElementById('pwUpS2').value),
+           upSoul3:parseInt(document.getElementById('pwUpS3').value),
+           upSoul4:parseInt(document.getElementById('pwUpS4').value),
+           upSoul5:parseInt(document.getElementById('pwUpS5').value),
            level:parseInt(document.getElementById('pwLevel').value),
            stars:parseInt(document.getElementById('pwStars').value),
            boss:document.getElementById('pwBoss').checked,
@@ -1767,7 +1818,13 @@ function pwCfgSave(){
   if(!(o.price>=100))return toast('Vé phải từ 100');
   if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
   if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
-  if(!(o.soulMax>=0&&o.soulMax<=4))return toast('Linh hồn 0–4 dòng');
+  if(!(o.soulMax>=1&&o.soulMax<=4))return toast('Linh hồn 1–4 dòng');
+  if(!(o.soulPct>=3&&o.soulPct<=201))return toast('% linh hồn gốc trong 3–201');
+  if(o.soulPct%3!==0)return toast('% linh hồn phải là BỘI CỦA 3 (mỗi bậc trong save = 3%) — vd 60, 201');
+  if(!(o.ivs>=1&&o.ivs<=255))return toast('IV gốc trong 1–255');
+  if(!(o.passiveMax>=1&&o.passiveMax<=8))return toast('Ô passive gốc trong 1–8');
+  for(const kk of ['upSlot5','upSlot6','upSlot7','upSlot8','upIv','upSoulLine','upWtPassive','pickBellaLib','pickBlaza','pickXeno','pickHarta','upSoul1','upSoul2','upSoul3','upSoul4','upSoul5'])
+    if(!(o[kk]>=0))return toast('Giá nâng cấp không được âm/trống');
   if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
   if(!(o.stars>=0&&o.stars<=4))return toast('Sao 0–4');
   api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
