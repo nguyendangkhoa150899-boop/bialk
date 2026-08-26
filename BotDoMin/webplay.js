@@ -1202,7 +1202,7 @@ const PAGE = [
     '<div><div class="muted" style="font-size:12px">DOG · Cổ phiếu Dogcoin</div>',
     '<div id="skPrice">-</div>',
     '<div id="skChgLine" style="font-size:13px;font-weight:700">-</div>',
-    '<div class="muted" style="font-size:11.5px;margin-top:2px">chốt nến sau <b id="skNext">-</b> · giá nhảy mỗi <b>2s</b> · mốc gốc <b id="skBase">4.000</b></div></div>',
+    '<div class="muted" style="font-size:11.5px;margin-top:2px">chốt nến sau <b id="skNext">-</b> · giá nhảy mỗi <b>2s</b> · mốc gốc <b id="skBase">1.000</b></div></div>',
     '<div id="skOhlc">',
     '<span>Cao</span><b id="skHi">-</b>',
     '<span>Mở</span><b id="skOp">-</b>',

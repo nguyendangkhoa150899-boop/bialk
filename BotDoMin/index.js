@@ -2753,11 +2753,11 @@ function wheelResetTurns() {
 //   2. Trần tổng CP lưu hành (cfg.maxShares) -> trần thiệt hại = maxShares × STOCK_MAX.
 // Lợi thế nhà cái DUY NHẤT là chênh mua–bán (spread): mua đắt 2%, bán rẻ 2%, tức mỗi
 // vòng người chơi mất ~4% dù giá đi đâu. Nói thẳng ở màn đặt mua, không giấu.
-const STOCK_BASE = 4000;             // mốc gốc (26/08 tối: chủ server chốt xuất phát 4000)
+const STOCK_BASE = 1000;             // mốc gốc (26/08 tối: chủ server chốt về 1000, biên 100-1.500)
 // 22/08: giá nhảy mỗi 2 GIÂY, nhưng nến chỉ CHỐT mỗi 50 GIÂY (25 nhịp) — nến cuối
 // "sống", cao/thấp/đóng của nó thay đổi theo từng nhịp như bàn giao dịch thật.
 const STOCK_TICK_MS = 2 * 1000;
-const STOCK_CANDLE_TICKS = 25;       // 25 × 2s = 50 giây một cây nến
+const STOCK_CANDLE_TICKS = 30;       // 30 × 2s = 60 giây một cây nến (chủ server chốt 26/08 tối)
 // vol/pull/spread PHẢI tính lại theo nhịp, không thì trò thành không thể thắng:
 //   · Bề rộng dao động quanh mốc gốc ≈ vol / căn(2 × pull) — với 0.003 và 0.0024 thì
 //     ra ±4,3%, đủ rộng để có kèo.
@@ -2768,8 +2768,8 @@ const STOCK_CANDLE_TICKS = 25;       // 25 × 2s = 50 giây một cây nến
 //   · Chênh mua–bán 0,5%/chiều = 1% mỗi vòng. Để 2% như trước thì mỗi vòng mất 4%
 //     trên biên độ chỉ ±4,6% -> người chơi gần như không bao giờ thắng, chơi vài lần
 //     là bỏ. 1% vẫn là lợi thế nhà cái rất lớn khi tính trên nhiều lượt.
-const STOCK_PULL = 0.0024;           // lực kéo về mốc (càng xa càng kéo mạnh)
-const STOCK_MIN = 1500, STOCK_MAX = 8000;  // chặn cứng 2 đầu (26/08 theo mốc gốc 5000)
+const STOCK_PULL = 0.001;            // lực kéo về mốc (nhẹ: giá lượn quanh 1.000, không bị ghì cứng một chỗ)
+const STOCK_MIN = 100, STOCK_MAX = 1500;   // 26/08 tối: chủ server chốt biên 100-1.500, tâm 1.000
 const STOCK_TICK_CAP = 0.08;         // (nghỉ hưu 26/08 tối: trần mỗi nhịp giờ là ±tickAmp ĐƠN VỊ trong stockTick)
 const STOCK_HIST_N = 288;            // 26/08 tối: chủ server chốt kho nến chỉ 4 GIỜ (288 cây 50s) — nhẹ db,
                                      // bài học _txDashHistory phình 1.348 ván = 57% database.json.
@@ -2782,10 +2782,10 @@ const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng
 // "nhích xíu là ±400". BẮT BUỘC hạ spread cùng lúc (0,5% -> 0,1%/chiều) vì pointX
 // khuếch đại luôn phí chênh: giữ 0,5% thì mở lệnh xong đã lỗ sẵn ~nửa vốn ở x10.
 // Chi phí vòng tuyệt đối (Dogcoin) sau đổi ≈ y như cũ: 0,1% × 5 = 0,5%.
-// tickAmp = độ lệch chuẩn nhiễu mỗi nhịp 2s (ĐƠN VỊ GIÁ). Mặc định 12 = đúng 0,3%
-// trên mốc 4000, tái tạo dáng nến đẹp có râu của bản mốc 1000 (chủ server chốt 26/08
-// tối, sau khi thử 4 thấy nến dẹp không đầu đuôi). Panel chỉnh 1–200.
-const STOCK_CFG_DEF = { tickAmp: 12, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5 };
+// tickAmp = độ lệch chuẩn nhiễu mỗi nhịp 2s (ĐƠN VỊ GIÁ). Mặc định 4 trên mốc 1000
+// (~0,4%): nến 60s có thân + râu rõ mà số nhảy vẫn nhẹ. Panel chỉnh 1–200.
+// waveOn mặc định TẮT (26/08 tối chủ server bỏ sóng lớn) — giá chỉ lượn quanh 1.000.
+const STOCK_CFG_DEF = { tickAmp: 4, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5, waveOn: false };
 // Bậc đòn bẩy hiện trên web — lọc theo maxLev nên hạ trần ở panel là mất bậc cao luôn.
 const STOCK_LEVS = [1, 5, 10, 20];
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
@@ -2807,9 +2807,10 @@ function stockCfg() {
         holdS: Math.floor(num(c.holdS, STOCK_CFG_DEF.holdS, 0, 3600)),   // giây CHÔN VỐN
         pointX: Math.floor(num(c.pointX, STOCK_CFG_DEF.pointX, 1, 20)),  // sức nặng điểm giá
         open: c.open !== false,
-        // 🌊🌊 SIÊU SÓNG (26/08): lâu lâu đổi hẳn vùng giá lên 2000-3000 / sụp ~500
-        waveOn: c.waveOn !== false,                                      // mặc định BẬT
-        waveAmp: Math.floor(num(c.waveAmp, 1500, 500, 2500)),            // bước TỐI ĐA mỗi chân sóng (đơn vị giá); bốc 500..waveAmp
+        // 🌊🌊 SIÊU SÓNG: đã BỎ 26/08 tối (chủ server) — mặc định TẮT, giá chỉ lượn
+        // quanh mốc. Giữ field để bật lại được nếu sau này muốn, nhưng loop KHÔNG gọi.
+        waveOn: c.waveOn === true,                                       // mặc định TẮT
+        waveAmp: Math.floor(num(c.waveAmp, 1500, 500, 2500)),
     };
 }
 function stockPrice() {
@@ -3297,22 +3298,25 @@ function runStockLoop() {
     // theo giá hiện tại TRƯỚC khi đổi giá (tiền về ví đúng luật đóng, không ai cháy oan
     // vì giá nhảy cóc). _stockSeedV=3 đánh dấu đã chạy — boot sau không đụng nữa.
     // (Gộp luôn vai trò của migrate 1000->5000 cũ: server chính còn giá đời cũ vào đây.)
-    if ((dbCache._stockSeedV | 0) < 3) {
+    // RESET MỘT LẦN v5 (26/08 tối, chủ server chốt: bỏ sóng lớn, về mốc 1.000 biên
+    // 100-1.500). Đóng hộ mọi lệnh đang mở theo giá hiện tại TRƯỚC khi đổi mốc (tiền
+    // về ví đúng luật đóng), xoá NEO/DRIFT sóng cũ (hết "🌊 ĐANG NEO vùng..."), đưa
+    // giá về 1.000, tắt waveOn, làm mới nến. _stockSeedV=5 — chạy đúng 1 lần.
+    if ((dbCache._stockSeedV | 0) < 5) {
         for (const [uid, p] of Object.entries(stockPos())) {
             if ((Number(p.shares) || 0) < 1) continue;
             const r = stockClose(uid, Number(p.shares) || 0, true);
-            writeLog('SYSTEM', `[CỔ PHIẾU] RESET mốc 4000: đóng hộ lệnh của ${getUserData(uid).name || uid} (${r && r.ok ? (r.pl >= 0 ? '+' : '') + r.pl : 'lỗi'})`);
+            writeLog('SYSTEM', `[CỔ PHIẾU] RESET mốc 1000: đóng hộ lệnh của ${getUserData(uid).name || uid} (${r && r.ok ? (r.pl >= 0 ? '+' : '') + r.pl : 'lỗi'})`);
         }
         dbCache._stockPrice = STOCK_BASE;
         dbCache._stockDrift = null;
         dbCache._stockAnchor = null;
         dbCache._stockCandles = [];
-        dbCache._stockSeedV = 3;
-        writeLog('SYSTEM', '[CỔ PHIẾU] RESET v3: bỏ data giả lập, nến thật từ đầu, giá xuất phát 4.000, sóng lang thang 2.000-7.000');
+        if (dbCache._stockCfg && typeof dbCache._stockCfg === 'object') dbCache._stockCfg.waveOn = false;
+        dbCache._stockSeedV = 5;
+        writeLog('SYSTEM', '[CỔ PHIẾU] RESET v5: bỏ sóng lớn, giá về 1.000, biên 100-1.500, nến 60s có râu');
         saveDbNow();
     }
-    // (26/08 tối, chốt cuối: KHÔNG dựng data giả — nến chạy thật từ 4.000, kho 4 giờ
-    //  tự đầy sau ~4 tiếng. Bản dựng sẵn v4 đã gỡ theo lệnh "không cần data".)
     // kho đổi cỡ (2 ngày -> 4 giờ): nến cũ dư thì cắt ngay lúc boot cho gọn db
     if (Array.isArray(dbCache._stockCandles) && dbCache._stockCandles.length > STOCK_HIST_N) {
         dbCache._stockCandles = dbCache._stockCandles.slice(-STOCK_HIST_N);
@@ -3339,8 +3343,9 @@ function runStockLoop() {
     dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
     setInterval(() => {
         try {
-            stockAutoDrift();   // 🌊 lâu lâu tự tạo sóng ±10-15%, trôi 3-5 phút
-            stockBigWave();     // 🌊🌊 hiếm hơn: đổi hẳn vùng giá (2000-3000 hoặc ~500) rồi neo
+            // 26/08 tối: BỎ sóng lớn — không gọi stockAutoDrift/stockBigWave nữa. Giá
+            // chỉ lượn quanh mốc 1.000 (biên 100-1.500) qua nhiễu mỗi nhịp. Admin vẫn
+            // can thiệp tay được (stockPush đặt _stockDrift, stockTick vẫn tiêu drift đó).
             stockTick();
             stockBurnCheck();   // lệnh BÁN lỗ hết cọc thì đóng hộ, không để ai âm ví
             stockAutoCheck();   // 🤖 mốc tự đóng người chơi đặt (25/08)

@@ -1668,7 +1668,7 @@ function skFill(k){
   set('skWaveAmp',k.waveAmp);
   if(!skWaveTicked){skWaveTicked=true;const cb=document.getElementById('skWaveOn');if(cb)cb.checked=k.waveOn!==false;}
   const wn=document.getElementById('skWaveNow');
-  if(wn)wn.innerHTML=k.anchor?('🌊 ĐANG NEO vùng <b>'+k.anchor.v.toLocaleString()+'</b> (còn ~'+k.anchor.minsLeft+' phút rồi bốc chân sóng mới)'):('Sóng lang thang: '+(k.waveOn!==false?('BẬT — giá đi bộ ngẫu nhiên 2.000–7.000, mỗi chân 500–'+(k.waveAmp||1500)+' đơn vị (10–30 phút), càng xa 5.000 càng dễ đảo chiều'):'ĐANG TẮT — giá bám mốc gốc 5.000'));
+  if(wn)wn.innerHTML='Sóng lớn ĐÃ TẮT (26/08 tối) — giá lượn quanh mốc <b>1.000</b> (biên cứng 100–1.500), nến 60s có râu. Ô "Bước chân sóng" bên dưới hiện không tác dụng.';
   const pc=Math.round((k.price/k.base-1)*1000)/10;
   const tp=document.getElementById('skTPrice');
   tp.textContent=k.price.toLocaleString()+' ('+(pc>=0?'+':'')+pc+'%)';

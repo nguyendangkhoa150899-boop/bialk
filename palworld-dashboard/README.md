@@ -602,6 +602,22 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (tối 9) — BỎ sóng lớn, về mốc 1.000 (biên 100-1.500), nến 60s
+
+- Chủ server chốt: bỏ "🌊 ĐANG NEO vùng...", bỏ sóng lớn, cho giá lượn nhẹ quanh
+  mốc; nến 1 phút có đầu đuôi/râu; 2s nhảy 1 lần.
+- STOCK_BASE 4000 -> **1000**; STOCK_MIN/MAX -> **100 / 1.500** (tường cứng, tâm 1.000).
+- STOCK_CANDLE_TICKS 25 -> **30** (nến 60s). STOCK_PULL 0.0024 -> **0.001** (kéo nhẹ,
+  giá lượn không bị ghì một chỗ). tickAmp mặc định 12 -> **4** (~0,4% trên mốc 1.000).
+- BỎ 2 nguồn sóng: loop KHÔNG gọi `stockAutoDrift` (±10-15%) và `stockBigWave` (neo
+  vùng) nữa; `waveOn` mặc định TẮT. Hàm giữ lại để bật lại nếu cần, nhưng không chạy.
+  Admin can thiệp tay (stockPush) vẫn hoạt động.
+- RESET v5 khi boot: đóng hộ lệnh đang mở, xoá _stockAnchor/_stockDrift (hết "ĐANG
+  NEO"), giá về 1.000, tắt waveOn, làm mới nến. Chạy 1 lần.
+- Panel: ghi chú sóng đổi thành "Sóng lớn ĐÃ TẮT — giá lượn quanh 1.000 (100-1.500)".
+- Đo sống sau reset: giá 992, bước nhịp -3/+2/-1/0/-2/-2. Mô phỏng nến 60s: râu ~19,
+  thân ~12 (râu > thân = có đầu đuôi rõ). stocktest 44/44.
+
 ### 26/08/2026 (tối 8) — Nến đẹp có râu như hình 2 + 15 nến/màn
 
 - Chủ server: nến bản trước (tickAmp 4 = 0,1%/nhịp) DẸP LÉP không đầu đuôi. Chẩn đúng
