@@ -1099,7 +1099,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row">
           <div style="flex:1">
             <label>🫨 Giá nhảy mỗi nhịp 2s (± đơn vị, 1–200)</label>
-            <input id="skTickAmp" type="number" step="1" placeholder="vd: 12">
+            <input id="skTickAmp" type="number" step="1" placeholder="vd: 3 (lình xình) · 8-10 (dứt khoát)">
           </div>
           <div style="flex:1">
             <label>Chênh mua–bán mỗi chiều (%)</label>

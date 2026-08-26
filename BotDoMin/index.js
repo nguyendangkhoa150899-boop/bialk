@@ -2782,10 +2782,12 @@ const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng
 // "nhích xíu là ±400". BẮT BUỘC hạ spread cùng lúc (0,5% -> 0,1%/chiều) vì pointX
 // khuếch đại luôn phí chênh: giữ 0,5% thì mở lệnh xong đã lỗ sẵn ~nửa vốn ở x10.
 // Chi phí vòng tuyệt đối (Dogcoin) sau đổi ≈ y như cũ: 0,1% × 5 = 0,5%.
-// tickAmp = độ lệch chuẩn nhiễu mỗi nhịp 2s (ĐƠN VỊ GIÁ). Mặc định 4 trên mốc 1000
-// (~0,4%): nến 60s có thân + râu rõ mà số nhảy vẫn nhẹ. Panel chỉnh 1–200.
+// tickAmp = độ lệch chuẩn nhiễu mỗi nhịp 2s (ĐƠN VỊ GIÁ). Mặc định 3 trên mốc 1000
+// (~0,3%): biên độ nhỏ nên trong 1 phút giá hay quay đầu về giữa -> NHIỀU nến 2 đầu
+// do dự, chart lình xình (chủ server chốt 26/08 tối). Tăng lên 8-10 = nến thân dài
+// dứt khoát. Panel chỉnh sống 1–200, không cần restart.
 // waveOn mặc định TẮT (26/08 tối chủ server bỏ sóng lớn) — giá chỉ lượn quanh 1.000.
-const STOCK_CFG_DEF = { tickAmp: 4, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5, waveOn: false };
+const STOCK_CFG_DEF = { tickAmp: 3, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5, waveOn: false };
 // Bậc đòn bẩy hiện trên web — lọc theo maxLev nên hạ trần ở panel là mất bậc cao luôn.
 const STOCK_LEVS = [1, 5, 10, 20];
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;

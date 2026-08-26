@@ -602,6 +602,17 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (tối 10) — tickAmp mặc định về 3: chart lình xình, nhiều nến 2 đầu
+
+- Chủ server muốn nhiều nến "2 đầu" do dự (râu cả trên lẫn dưới, thân nhỏ giữa).
+  Mô phỏng setting cũ (tickAmp 6): 57% nến có râu 2 đầu, 25% là nến 2-đầu rõ.
+  Hạ tickAmp mặc định 4 -> **3** (~0,3% trên mốc 1.000): biên độ nhỏ nên trong 60s
+  giá hay quay về giữa -> lình xình hơn nữa. Đo sống: bước nhịp 0/-1/-1/+3/+2/0.
+- Placeholder panel đổi thành "vd: 3 (lình xình) · 8-10 (dứt khoát)".
+- LƯU Ý PROD: nếu panel chính đã LƯU tickAmp=6 trước đó thì giá trị lưu ĐÈ default,
+  pull code không tự đổi — phải vào panel gõ 3 + Lưu. Server nào chưa lưu thì tự ăn
+  default 3.
+
 ### 26/08/2026 (tối 9) — BỎ sóng lớn, về mốc 1.000 (biên 100-1.500), nến 60s
 
 - Chủ server chốt: bỏ "🌊 ĐANG NEO vùng...", bỏ sóng lớn, cho giá lượn nhẹ quanh
