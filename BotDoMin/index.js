@@ -2753,7 +2753,7 @@ function wheelResetTurns() {
 //   2. Trần tổng CP lưu hành (cfg.maxShares) -> trần thiệt hại = maxShares × STOCK_MAX.
 // Lợi thế nhà cái DUY NHẤT là chênh mua–bán (spread): mua đắt 2%, bán rẻ 2%, tức mỗi
 // vòng người chơi mất ~4% dù giá đi đâu. Nói thẳng ở màn đặt mua, không giấu.
-const STOCK_BASE = 5000;             // mốc gốc (26/08: 1000 -> 5000, chủ server chốt)
+const STOCK_BASE = 4000;             // mốc gốc (26/08 tối: chủ server chốt xuất phát 4000)
 // 22/08: giá nhảy mỗi 2 GIÂY, nhưng nến chỉ CHỐT mỗi 50 GIÂY (25 nhịp) — nến cuối
 // "sống", cao/thấp/đóng của nó thay đổi theo từng nhịp như bàn giao dịch thật.
 const STOCK_TICK_MS = 2 * 1000;
@@ -2770,9 +2770,9 @@ const STOCK_CANDLE_TICKS = 25;       // 25 × 2s = 50 giây một cây nến
 //     là bỏ. 1% vẫn là lợi thế nhà cái rất lớn khi tính trên nhiều lượt.
 const STOCK_PULL = 0.0024;           // lực kéo về mốc (càng xa càng kéo mạnh)
 const STOCK_MIN = 1500, STOCK_MAX = 8000;  // chặn cứng 2 đầu (26/08 theo mốc gốc 5000)
-const STOCK_TICK_CAP = 0.08;         // cầu dao: mỗi nhịp không quá ±8%
-const STOCK_HIST_N = 3600;           // 26/08: giữ đủ 2 NGÀY nến 50s (3.456 cây) cho khung xem 2 ngày — bài học
-                                     // _txDashHistory phình 1.348 ván = 57% database.json.
+const STOCK_TICK_CAP = 0.08;         // (nghỉ hưu 26/08 tối: trần mỗi nhịp giờ là ±tickAmp ĐƠN VỊ trong stockTick)
+const STOCK_HIST_N = 288;            // 26/08 tối: chủ server chốt kho nến chỉ 4 GIỜ (288 cây 50s) — nhẹ db,
+                                     // bài học _txDashHistory phình 1.348 ván = 57% database.json.
 const STOCK_LOG_N = 20;              // lệnh vừa khớp hiện trên web
 const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng + lịch sử)
 // 24/08 — SỨC NẶNG ĐIỂM GIÁ (pointX): mỗi 1 đồng giá nhích × 1 CP = pointX Dogcoin
@@ -2782,7 +2782,9 @@ const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng
 // "nhích xíu là ±400". BẮT BUỘC hạ spread cùng lúc (0,5% -> 0,1%/chiều) vì pointX
 // khuếch đại luôn phí chênh: giữ 0,5% thì mở lệnh xong đã lỗ sẵn ~nửa vốn ở x10.
 // Chi phí vòng tuyệt đối (Dogcoin) sau đổi ≈ y như cũ: 0,1% × 5 = 0,5%.
-const STOCK_CFG_DEF = { vol: 0.003, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5 };
+// 26/08 tối: nhiễu đổi từ % sang ĐƠN VỊ GIÁ (tickAmp) — thời mốc 1000 nhiễu 0.3%
+// là ±3 đơn vị, lên mốc 4000 thành ±12 mỗi 2 giây, chủ server kêu "nhảy nhiều số".
+const STOCK_CFG_DEF = { tickAmp: 4, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5 };
 // Bậc đòn bẩy hiện trên web — lọc theo maxLev nên hạ trần ở panel là mất bậc cao luôn.
 const STOCK_LEVS = [1, 5, 10, 20];
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
@@ -2796,7 +2798,7 @@ function stockCfg() {
         return Number.isFinite(n) && n >= lo && n <= hi ? n : d;
     };
     return {
-        vol: num(c.vol, STOCK_CFG_DEF.vol, 0.001, 0.15),
+        tickAmp: Math.floor(num(c.tickAmp, STOCK_CFG_DEF.tickAmp, 1, 200)),   // giá nhảy ±X đơn vị mỗi nhịp 2s
         spread: num(c.spread, STOCK_CFG_DEF.spread, 0, 0.2),
         maxShares: Math.floor(num(c.maxShares, STOCK_CFG_DEF.maxShares, 10, 100000)),
         maxPer: Math.floor(num(c.maxPer, STOCK_CFG_DEF.maxPer, 1, 100000)),
@@ -2870,9 +2872,13 @@ function stockTick(forcePct) {
         // lực kéo này đưa giá về 1000 từ từ (không nhảy cột).
         const anc = dbCache._stockAnchor;
         const anchor = (anc && anc.until > Date.now() && Number.isFinite(anc.v)) ? anc.v : STOCK_BASE;
-        let m = -STOCK_PULL * Math.log(before / anchor) + cfg.vol * stockGauss() + drift;
-        if (m > STOCK_TICK_CAP) m = STOCK_TICK_CAP;
-        if (m < -STOCK_TICK_CAP) m = -STOCK_TICK_CAP;
+        let m = -STOCK_PULL * Math.log(before / anchor) + (cfg.tickAmp * stockGauss()) / before + drift;
+        // 26/08 tối (chủ server chốt): mỗi nhịp 2s nhích TỐI ĐA ±tickAmp ĐƠN VỊ, kẹp
+        // cả kéo-về + nhiễu + trôi. Chân sóng vẫn tới đích: mỗi nhịp trôi ~0.2-1 đơn
+        // vị, thấp hơn trần này nhiều.
+        const capU = cfg.tickAmp / before;
+        if (m > capU) m = capU;
+        if (m < -capU) m = -capU;
         p = clamp(before * (1 + m));
     }
     p = Math.round(p);
@@ -2995,6 +3001,7 @@ function stockState(userId) {
         nextTick: dbCache._stockNextTick || (Date.now() + STOCK_TICK_MS),
         now: Date.now(),
         candles: stockCandles().slice(-180),  // 2 giờ nến — web tự gộp sang khung lớn
+        histLen: stockCandles().length,       // tổng nến trong kho — client biết còn bao nhiêu để kéo lùi
         outstanding: stockShareCount(),
         maxShares: cfg.maxShares,
         maxPer: cfg.maxPer,
@@ -3265,8 +3272,9 @@ function stockBigWave() {
     const pUp = Math.max(0.15, Math.min(0.85, 0.5 - (cur - STOCK_BASE) / 6000));
     const up = Math.random() < pUp;
     const target = Math.round(Math.min(7000, Math.max(2000, cur + (up ? step : -step))));
-    const t = 300 + Math.floor(Math.random() * 600);              // trôi tới đích 10-30 phút
-    const holdMs = (5 + Math.floor(Math.random() * 21)) * 60000;  // đứng vùng 5-25 phút
+    // 26/08 (chủ server): "cho chạy từ từ" — trôi chậm gấp đôi, đứng vùng lâu hơn
+    const t = 600 + Math.floor(Math.random() * 750);              // trôi tới đích 20-45 phút
+    const holdMs = (10 + Math.floor(Math.random() * 21)) * 60000; // đứng vùng 10-30 phút
     dbCache._stockDrift = { target, ticksLeft: t, by: 'auto' };
     dbCache._stockAnchor = { v: target, until: Date.now() + t * STOCK_TICK_MS + holdMs };
     writeLog('SYSTEM', `[CỔ PHIẾU] 🌊 Chân sóng ${up ? 'LÊN' : 'XUỐNG'}: neo ${Math.round(cur).toLocaleString()} -> đích ${target.toLocaleString()}, trôi ${Math.round(t * STOCK_TICK_MS / 60000)} phút`);
@@ -3282,63 +3290,30 @@ function stockTouchPeaks() {
 }
 function runStockLoop() {
     if (!Number.isFinite(Number(dbCache._stockPrice))) dbCache._stockPrice = STOCK_BASE;
-    // MIGRATE MỘT LẦN (26/08): mốc gốc đổi 1000 -> 5000. Giá cũ (<2500) mà giữ nguyên
-    // thì lực kéo lôi lên 5000 = +400%, ai SHORT cháy oan, ai LONG trúng lộc trời.
-    // Nên: ĐÓNG HỘ mọi lệnh đang mở theo giá hiện tại (tiền về ví đúng luật đóng),
-    // rồi đặt giá 5000 và làm mới nến cho đồ thị sạch.
-    if (Number(dbCache._stockPrice) < 2500) {
+    // RESET MỘT LẦN v3 (26/08 tối, chủ server chốt): BỎ HẲN data giả lập — đồ thị chạy
+    // bằng nến THẬT từ đầu, giá xuất phát 4000 (mốc gốc mới). Đóng hộ mọi lệnh đang mở
+    // theo giá hiện tại TRƯỚC khi đổi giá (tiền về ví đúng luật đóng, không ai cháy oan
+    // vì giá nhảy cóc). _stockSeedV=3 đánh dấu đã chạy — boot sau không đụng nữa.
+    // (Gộp luôn vai trò của migrate 1000->5000 cũ: server chính còn giá đời cũ vào đây.)
+    if ((dbCache._stockSeedV | 0) < 3) {
         for (const [uid, p] of Object.entries(stockPos())) {
             if ((Number(p.shares) || 0) < 1) continue;
             const r = stockClose(uid, Number(p.shares) || 0, true);
-            writeLog('SYSTEM', `[CỔ PHIẾU] MIGRATE mốc 5000: đóng hộ lệnh của ${getUserData(uid).name || uid} (${r && r.ok ? (r.pl >= 0 ? '+' : '') + r.pl : 'lỗi'})`);
+            writeLog('SYSTEM', `[CỔ PHIẾU] RESET mốc 4000: đóng hộ lệnh của ${getUserData(uid).name || uid} (${r && r.ok ? (r.pl >= 0 ? '+' : '') + r.pl : 'lỗi'})`);
         }
         dbCache._stockPrice = STOCK_BASE;
         dbCache._stockDrift = null;
         dbCache._stockAnchor = null;
         dbCache._stockCandles = [];
-        writeLog('SYSTEM', '[CỔ PHIẾU] MIGRATE: mốc gốc 1.000 -> 5.000, biên cứng 1.500-8.000, sóng lang thang 2.000-7.000, nến làm mới');
+        dbCache._stockSeedV = 3;
+        writeLog('SYSTEM', '[CỔ PHIẾU] RESET v3: bỏ data giả lập, nến thật từ đầu, giá xuất phát 4.000, sóng lang thang 2.000-7.000');
         saveDbNow();
     }
-    // GIẢ LẬP LỊCH SỬ (26/08, chủ server yêu cầu): nến đang trống/mỏng thì dựng sẵn
-    // 2 NGÀY quá khứ bằng đúng kiểu sóng lang thang 2000-7000, đuôi nắn dần về giá
-    // hiện tại — khung "2 ngày" có cái xem ngay thay vì trống trơn cả ngày đầu.
-    if (!Array.isArray(dbCache._stockCandles) || dbCache._stockCandles.length < 200) {
-        const total = 3456;                 // 2 ngày × nến 50 giây
-        const out = [];
-        let target = 2000 + Math.random() * 5000;
-        let p = target, legLeft = 0;
-        for (let i = 0; i < total; i++) {
-            if (legLeft <= 0) {
-                const step = 500 + Math.random() * 1000;
-                const pUp = Math.max(0.15, Math.min(0.85, 0.5 - (target - STOCK_BASE) / 6000));
-                target = Math.min(7000, Math.max(2000, target + (Math.random() < pUp ? step : -step)));
-                legLeft = 12 + Math.floor(Math.random() * 36);   // mỗi chân 10-40 phút (nến 50s)
-            }
-            legLeft--;
-            const o = p;
-            p = p + (target - p) / Math.max(1, legLeft + 1) + p * 0.008 * (Math.random() * 2 - 1);
-            p = Math.min(STOCK_MAX, Math.max(STOCK_MIN, p));
-            const h = Math.max(o, p) * (1 + Math.random() * 0.004);
-            const l = Math.min(o, p) * (1 - Math.random() * 0.004);
-            out.push({ o: Math.round(o), h: Math.round(h), l: Math.round(l), c: Math.round(p), n: STOCK_CANDLE_TICKS });
-        }
-        // nắn 60 nến cuối trôi dần về điểm nối: có nến thật thì nối vào nến thật
-        // đầu tiên, không thì nối thẳng vào giá hiện tại — tránh vách đá ở mối nối
-        const real = Array.isArray(dbCache._stockCandles) ? dbCache._stockCandles : [];
-        const cur = Number(dbCache._stockPrice) || STOCK_BASE;
-        const joinTo = real.length ? (Number(real[0].o) || cur) : cur;
-        const shift = joinTo - out[out.length - 1].c;
-        for (let k = 0; k < 60; k++) {
-            const c2 = out[out.length - 60 + k];
-            const f = (k + 1) / 60;
-            c2.o = Math.round(c2.o + shift * (k / 60));
-            c2.c = Math.round(c2.c + shift * f);
-            c2.h = Math.max(c2.h, c2.o, c2.c);
-            c2.l = Math.min(c2.l, c2.o, c2.c);
-        }
-        // giữ nến thật đang có (nếu lác đác vài cây) nối sau phần giả lập
-        dbCache._stockCandles = out.concat(real).slice(-STOCK_HIST_N);
-        writeLog('SYSTEM', `[CỔ PHIẾU] Dựng sẵn ${total} nến quá khứ (2 ngày) cho khung xem dài`);
+    // (26/08 tối, chốt cuối: KHÔNG dựng data giả — nến chạy thật từ 4.000, kho 4 giờ
+    //  tự đầy sau ~4 tiếng. Bản dựng sẵn v4 đã gỡ theo lệnh "không cần data".)
+    // kho đổi cỡ (2 ngày -> 4 giờ): nến cũ dư thì cắt ngay lúc boot cho gọn db
+    if (Array.isArray(dbCache._stockCandles) && dbCache._stockCandles.length > STOCK_HIST_N) {
+        dbCache._stockCandles = dbCache._stockCandles.slice(-STOCK_HIST_N);
         saveDbNow();
     }
     // MIGRATE MỘT LẦN (24/08): cấu hình đời trước sức-nặng còn lưu cứng spread 0.5%.
@@ -3731,6 +3706,7 @@ client.once('ready', async (c) => {
             stock: {
                 lotSize: STOCK_LOT,
                 state: stockState,
+                hist: () => stockCandles(),   // cả kho 2 ngày — route riêng, client cache 60s
                 open: (uid, side, amount, want, lev) => stockOpen(uid, side, amount, want, lev),
                 close: (uid, want) => stockClose(uid, want),
                 auto: (uid, low, high) => stockAuto(uid, low, high),   // 🤖 mốc tự đóng
@@ -3870,7 +3846,7 @@ client.once('ready', async (c) => {
                     payNow: Object.values(stockPos()).reduce((a, p) => a + Math.max(0, posMargin(p) + stockPL(p)), 0),
                     worstCase: out * STOCK_MAX * cfg.pointX,        // trần thiệt hại tuyệt đối (đã nhân sức nặng)
                     capWorst: cfg.maxShares * STOCK_MAX * cfg.pointX,
-                    volPct: Math.round(cfg.vol * 1000) / 10,
+                    tickAmp: cfg.tickAmp,
                     spreadPct: Math.round(cfg.spread * 1000) / 10,
                     pointX: cfg.pointX,
                     maxShares: cfg.maxShares, maxPer: cfg.maxPer, maxLev: cfg.maxLev, holdS: cfg.holdS, open: cfg.open,
@@ -3902,7 +3878,7 @@ client.once('ready', async (c) => {
             setStockCfg: (o) => {
                 const cur = stockCfg();
                 dbCache._stockCfg = {
-                    vol: Number.isFinite(Number(o.volPct)) ? Number(o.volPct) / 100 : cur.vol,
+                    tickAmp: Number.isFinite(Number(o.tickAmp)) ? Math.floor(Number(o.tickAmp)) : cur.tickAmp,
                     spread: Number.isFinite(Number(o.spreadPct)) ? Number(o.spreadPct) / 100 : cur.spread,
                     maxShares: Number.isFinite(Number(o.maxShares)) ? Math.floor(Number(o.maxShares)) : cur.maxShares,
                     maxPer: Number.isFinite(Number(o.maxPer)) ? Math.floor(Number(o.maxPer)) : cur.maxPer,
@@ -3918,7 +3894,7 @@ client.once('ready', async (c) => {
                 };
                 saveDbNow();
                 const c = stockCfg();
-                writeLog('ADMIN', `[CỔ PHIẾU] Đổi cấu hình: biến động ${c.vol * 100}%, chênh ${c.spread * 100}%, sức nặng x${c.pointX}, trần sàn ${c.maxShares}, trần/người ${c.maxPer}, ${c.open ? 'MỞ' : 'ĐÓNG'}`);
+                writeLog('ADMIN', `[CỔ PHIẾU] Đổi cấu hình: nhảy ±${c.tickAmp}/nhịp, chênh ${c.spread * 100}%, sức nặng x${c.pointX}, trần sàn ${c.maxShares}, trần/người ${c.maxPer}, ${c.open ? 'MỞ' : 'ĐÓNG'}`);
                 return c;
             },
             stockPush: (pct, secs) => stockPush(

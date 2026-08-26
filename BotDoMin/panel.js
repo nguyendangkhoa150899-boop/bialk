@@ -1098,8 +1098,8 @@ const HTML = `<!DOCTYPE html>
         <h3>⚙️ Cấu hình sàn</h3>
         <div class="row">
           <div style="flex:1">
-            <label>Biến động mỗi nhịp 2s (%)</label>
-            <input id="skVol" type="number" step="0.1" placeholder="vd: 0.3">
+            <label>🫨 Giá nhảy mỗi nhịp 2s (± đơn vị, 1–200)</label>
+            <input id="skTickAmp" type="number" step="1" placeholder="vd: 4">
           </div>
           <div style="flex:1">
             <label>Chênh mua–bán mỗi chiều (%)</label>
@@ -1663,7 +1663,7 @@ function skRow(p){
 function skFill(k){
   if(!k)return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
-  set('skVol',k.volPct);set('skSpread',k.spreadPct);set('skMaxShares',k.maxShares);set('skMaxPer',k.maxPer);
+  set('skTickAmp',k.tickAmp);set('skSpread',k.spreadPct);set('skMaxShares',k.maxShares);set('skMaxPer',k.maxPer);
   set('skMaxLev',k.maxLev);set('skHold',k.holdS);set('skPoint',k.pointX);
   set('skWaveAmp',k.waveAmp);
   if(!skWaveTicked){skWaveTicked=true;const cb=document.getElementById('skWaveOn');if(cb)cb.checked=k.waveOn!==false;}
@@ -1761,7 +1761,7 @@ function skHit(i,win){
 // phien khac vua chen ham Vong quay Pal/Ruong vao dung vung do. Bai hoc: THAY THEO
 // TUNG HAM, dung thay theo vung khi file co nguoi khac cung sua.
 function skSave(){
-  const o={volPct:parseFloat(document.getElementById('skVol').value),
+  const o={tickAmp:parseInt(document.getElementById('skTickAmp').value),
            spreadPct:parseFloat(document.getElementById('skSpread').value),
            maxShares:parseInt(document.getElementById('skMaxShares').value),
            maxPer:parseInt(document.getElementById('skMaxPer').value),
@@ -1770,7 +1770,7 @@ function skSave(){
            pointX:parseInt(document.getElementById('skPoint').value),
            waveOn:document.getElementById('skWaveOn').checked,
            waveAmp:parseInt(document.getElementById('skWaveAmp').value)};
-  if(!(o.volPct>0&&o.volPct<=15))return toast('Biến động phải trong 0–15%');
+  if(!(o.tickAmp>=1&&o.tickAmp<=200))return toast('Giá nhảy mỗi nhịp phải trong 1–200 đơn vị');
   if(!(o.spreadPct>=0&&o.spreadPct<=20))return toast('Chênh mua–bán phải trong 0–20%');
   if(!(o.maxShares>=10))return toast('Trần sàn phải từ 10 CP');
   if(!(o.maxPer>=1))return toast('Trần mỗi người phải từ 1 CP');
@@ -1787,9 +1787,20 @@ function skSave(){
 let pwCfgTicked=false;
 let skWaveTicked=false;
 async function skToggle(){
-  const open=!(STATE&&STATE.stock&&STATE.stock.open);
+  // 26/08: KHÔNG đoán mò khi chưa có state — trước đây STATE.stock chưa tải xong mà
+  // bấm là open tính ra true, nút "Tạm đóng sàn" lại gửi lệnh MỞ sàn (nút coi như hỏng)
+  if(!STATE||!STATE.stock){toast('⏳ Panel chưa tải xong trạng thái sàn - chờ 2 giây bấm lại');return;}
+  const open=!STATE.stock.open;
   if(!open&&!await uiConfirm('Tạm đóng sàn? Người chơi vẫn bán được, chỉ không mua thêm.','Đóng sàn','btn-red'))return;
-  api('/api/stock/cfg',{open}).then(()=>{toast(open?'▶️ Đã mở sàn':'⏸ Đã đóng sàn');refresh();}).catch(e=>toast('❌ '+e.message));
+  const b=document.getElementById('skOpenBtn');if(b)b.disabled=true;
+  api('/api/stock/cfg',{open}).then(j=>{
+    // tin theo KẾT QUẢ THẬT server trả về + đổi nút NGAY, khỏi đợi vòng refresh 3s
+    const real=!!(j.cfg&&j.cfg.open);
+    if(STATE&&STATE.stock)STATE.stock.open=real;
+    if(b){b.disabled=false;b.textContent=real?'⏸ Tạm đóng sàn':'▶️ Mở lại sàn';b.className=real?'btn-red':'btn-green';}
+    toast(real?'▶️ Sàn ĐANG MỞ':'⏸ Sàn ĐÃ ĐÓNG - người chơi chỉ đóng lệnh được');
+    refresh();
+  }).catch(e=>{if(b)b.disabled=false;toast('❌ '+e.message);});
 }
 function pwCfgFill(k){
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};

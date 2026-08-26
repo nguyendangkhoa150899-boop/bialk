@@ -602,6 +602,81 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (tối 6, CHỐT DEPLOY) — Bỏ seed data + kẹp mỗi nhịp 1-4 đơn vị
+
+- Chủ server chốt cuối: KHÔNG dựng data giả (gỡ SEED v4) — nến chạy thật từ 4.000,
+  kho 4 giờ tự đầy sau ~4 tiếng. Trên server đã lỡ seed (test) chỉ cần để nến thật
+  lăn đè dần; server chính pull là sạch từ đầu.
+- Mỗi nhịp 2s KẸP CỨNG ±tickAmp ĐƠN VỊ (kẹp cả kéo-về + nhiễu + trôi); tickAmp
+  mặc định 4. Mô phỏng 3000 nhịp: nhảy TB 1.8, tối đa 4, 0 lần vượt — đúng lệnh
+  "chỉ nhích 1-4 đơn vị". STOCK_TICK_CAP % nghỉ hưu (giữ const cho test extraction).
+- LƯU Ý setting cũ trên panel chính: ô "Biến động %" không còn (thay bằng "Giá nhảy
+  mỗi nhịp ± đơn vị"); cấu hình cũ lưu % bị bỏ qua, tự về tickAmp=4.
+
+### 26/08/2026 (tối 5) — Nến TO 30 cây/màn + kho data rút còn 4 GIỜ
+
+- Chủ server gửi ảnh chốt cỡ nến: ~30 nến to rõ trên màn. Mỗi màn đổi 64 -> 30 nến
+  (SKVIEW=30, dùng chung cho slice/pan), mọi khung nhìn dày đẹp như ảnh.
+- STOCK_HIST_N 3600 -> 288 (4 giờ nến 50s): kho nhẹ, /api/stock/hist còn ~13KB.
+  Boot tự cắt kho cũ dư về 288. SEED v4 đổi theo: dựng dư 360 rồi cắt còn 288.
+- Hệ quả từng khung với kho 4 giờ: 50s xem 30 kéo lùi ~4.3h; 5m = 48 cây (xem 30
+  kéo 18); 10m = 28 cây; 20m = 12 cây (to nhất, hết kho ngay trong màn).
+
+### 26/08/2026 (tối 4) — Chủ server chốt "đẹp ngay": SEED v4 dựng 2 ngày dáng thật
+
+- Sau khi cân đo chờ ~5h cho khung 5m tự đầy vs đẹp ngay, chủ server chốt đẹp ngay.
+- SEED v4 (_stockSeedV=4, chạy 1 lần sau RESET v3): dựng 3456 nến 2 ngày ĐÚNG dáng
+  sóng thật — chân 250-650 kéo 20-60 phút quanh mốc 4000 (bias về giữa), rung mỗi
+  nến ±12 khớp tickAmp 5, wick ±8; 60 nến cuối nắn về nối KHÍT nến thật đầu tiên,
+  nến thật đã tích giữ nguyên nối sau. v3 đổi điều kiện !==3 thành <3 để không wipe
+  lại sau khi v4 đặt seedV=4.
+- Kiểm trên test: 3469 nến, mở đúng 4000, biên 2368-5781, hở close->open = 0.
+- Server chính khi pull: boot chạy v3 (đóng hộ lệnh, giá 4000, xoá nến cũ) rồi v4
+  (dựng 2 ngày) — mở web là chart đầy đẹp mọi khung ngay lập tức.
+
+### 26/08/2026 (tối 3) — Giá nhảy mỗi nhịp đổi sang ĐƠN VỊ, admin chỉnh được
+
+- Chủ server: "biểu đồ nhảy 1 lần nhiều số". Nguyên nhân: nhiễu mỗi nhịp 2s tính
+  theo %GIÁ (0.3%) — mốc 1000 là ±3 đơn vị nhưng lên mốc 4000 thành ±12, nhìn giật.
+- Đổi hẳn config: bỏ "Biến động %" (volPct/skVol), thay bằng tickAmp = "🫨 Giá nhảy
+  mỗi nhịp 2s (± đơn vị, 1-200)", mặc định 5. stockTick: nhiễu = tickAmp×gauss/giá.
+  Đo mô phỏng 2000 nhịp: nhảy trung bình 2.3, tối đa 8. Đo sống trên test: -2/-7/-3.
+  Cfg cũ còn lưu vol bị bỏ qua, tự về mặc định 5 — không cần tay.
+- Sóng to vẫn chỉnh riêng bằng "Bước chân sóng" (waveAmp 500-2500) như cũ.
+
+### 26/08/2026 (tối 2) — UI chart NHƯ CŨ, bỏ giả lập, xuất phát 4000 + vá nút đóng sàn
+
+- Chủ server chốt lại: UI đúng như bản cũ (bỏ nút "2 ngày"), CHỈ thêm kéo qua lại;
+  KHÔNG đổ data giả lập nữa — nến thật chạy từ đầu; giá xuất phát 4.000.
+- STOCK_BASE 5000 -> 4000. RESET v3 một lần khi boot (_stockSeedV=3): đóng hộ mọi
+  lệnh đang mở theo giá hiện tại, xoá sạch nến (kể cả giả lập v1/v2), giá về 4.000.
+  Gộp luôn vai trò migrate 1000->5000 cũ — server chính pull là vào thẳng đây.
+- Bỏ nút "2 ngày" + khung 54; ai còn lưu sk_tf=54 trong máy bị ép về 50s. Giữ
+  nguyên: kéo lùi mọi khung + /api/stock/hist (kho nến đầy) + nút "Về hiện tại".
+- Nút "⏸ Tạm đóng sàn" (panel): vá lỗ hổng bấm khi STATE.stock CHƯA TẢI XONG —
+  open tính ngược thành true, nút đóng sàn lại gửi lệnh MỞ sàn, nhìn như nút hỏng
+  (nghi đây là vụ "nút tắt cổ phiếu không sử dụng được"). Giờ: chưa tải xong thì
+  báo chờ; bấm xong tin theo kết quả THẬT server trả, đổi nút ngay không đợi
+  refresh 3s, khoá nút trong lúc gửi. Đã test API đóng/mở trên panel test: OK.
+- stocktest đổi theo: mốc 4000 + RESET v3 + web bỏ sktf54 (44/44 xanh).
+
+### 26/08/2026 (tối) — Chart trả về dáng cũ + kéo được MỌI khung + data êm từ 5000
+
+- Thủ phạm chart xấu: state chỉ gửi 180 nến cuối nên khung 5m còn 30 nến mập ú,
+  10m còn 15, "2 ngày" trống — client vẽ w=300/n nên ít nến là nến phình to.
+  Fix: route mới /api/stock/hist trả CẢ KHO nến (~152KB, client cache 60 giây),
+  state 2 giây vẫn nhẹ (180 nến + histLen). Client ghép kho cũ + đuôi sống →
+  mọi khung đều đủ 64 nến, trông dày đẹp đúng như bản cũ, kéo lùi được hết
+  (50s/5m/10m/20m; riêng "2 ngày" = trọn kho nên không còn gì để kéo).
+- Bỏ chữ "· kéo ngang đồ thị để xem lại" trên header — trả dòng chú thích về gọn
+  như cũ.
+- GIẢ LẬP v2 (_stockSeedV=2, thay trọn bản v1 sóng gắt): 3456 nến XUẤT PHÁT ĐÚNG
+  5000, chân sóng nhỏ 250-650 kéo dài 20-60 phút, nhiễu giảm — bước nến trung bình
+  11 đơn vị (trước ~40), biên 2 ngày 3.402-6.568, đuôi khớp giá sống. Server nào
+  đã lỡ seed v1 (test/chính) boot lại là tự thay bằng v2, chạy đúng 1 lần.
+- Sóng SỐNG cũng chậm lại theo lệnh "cho chạy từ từ": trôi tới đích 20-45 phút
+  (trước 10-30), đứng vùng 10-30 phút (trước 5-25).
+
 ### 26/08/2026 (chiều 3) — Nút "Về hiện tại" + giả lập sẵn 2 ngày nến
 
 - Nút "⏩ Về hiện tại" bấm không chịu mất: nút nằm trong vùng kéo chart, cú nhích

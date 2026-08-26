@@ -275,6 +275,11 @@ function startWebPlay(ctx) {
                 if (ctx.stock && path === '/api/stock/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.stock.state(userId) });
                 }
+                // CẢ KHO NẾN 2 ngày (26/08) cho khung to + kéo lùi. Route riêng vì nhét
+                // vào state là mỗi người ngốn ~160KB MỖI 2 GIÂY — client cache 60s là đủ
+                if (ctx.stock && ctx.stock.hist && path === '/api/stock/hist') {
+                    return sendJSON(res, 200, { ok: true, candles: ctx.stock.hist() });
+                }
                 // MỞ lệnh: side='long' ăn khi giá LÊN, side='short' ăn khi giá XUỐNG.
                 // Khối lượng gửi theo lot (0.1/0.5/1...) hoặc theo số Dogcoin muốn xuống.
                 if (ctx.stock && req.method === 'POST' && path === '/api/stock/open') {
@@ -1197,7 +1202,7 @@ const PAGE = [
     '<div><div class="muted" style="font-size:12px">DOG · Cổ phiếu Dogcoin</div>',
     '<div id="skPrice">-</div>',
     '<div id="skChgLine" style="font-size:13px;font-weight:700">-</div>',
-    '<div class="muted" style="font-size:11.5px;margin-top:2px">chốt nến sau <b id="skNext">-</b> · giá nhảy mỗi <b>2s</b> · mốc gốc <b id="skBase">5.000</b> · kéo ngang đồ thị để xem lại</div></div>',
+    '<div class="muted" style="font-size:11.5px;margin-top:2px">chốt nến sau <b id="skNext">-</b> · giá nhảy mỗi <b>2s</b> · mốc gốc <b id="skBase">4.000</b></div></div>',
     '<div id="skOhlc">',
     '<span>Cao</span><b id="skHi">-</b>',
     '<span>Mở</span><b id="skOp">-</b>',
@@ -1210,7 +1215,6 @@ const PAGE = [
     '<button id="sktf6" onclick="skTf(6)">5m</button>',
     '<button id="sktf12" onclick="skTf(12)">10m</button>',
     '<button id="sktf24" onclick="skTf(24)">20m</button>',
-    '<button id="sktf54" onclick="skTf(54)">2 ngày</button>',
     '<button id="sktfma" class="ma" onclick="skMa()">MA</button>',
     '</div>',
     '<div id="skWrap">',
@@ -1562,7 +1566,7 @@ const PAGE = [
     '["navTx","navMine","navStair","navWheel","navStock"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
     '["navDaily","navPal","navPick"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="stock")skSync();else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
@@ -2087,22 +2091,29 @@ const PAGE = [
     // SKTF = mấy nến 30s gộp thành 1 cây (1=30s · 4=2m · 10=5m · 30=15m).
     // SKMA = bật đường trung bình 10 cây. SOFF bù lệch đồng hồ máy so với server.
     'var SKS=null,SOFF=0,SKBUSY=false;',
-    'var SKTF=parseInt(localStorage.getItem("sk_tf"))||1;',
+    // khung 54 ("2 ngày") đã bỏ 26/08 tối — ai còn lưu trong máy thì ép về 50s
+    'var SKTF=parseInt(localStorage.getItem("sk_tf"))||1;if([1,6,12,24].indexOf(SKTF)<0)SKTF=1;',
+    // 26/08 tối: mỗi màn 30 nến (thay vì 64) — nến to dễ nhìn, đúng ảnh chủ server chọn
+    'var SKVIEW=30;',
     // KÉO XEM LẠI: SKPAN = số cây lùi về quá khứ (0 = bám hiện tại); kéo ngang trên đồ thị
     'var SKPAN=0;',
     'function skPanBtn(){var b=$("skPanBtn");if(b)b.classList.toggle("hidden",SKPAN<=0)}',
     'function skPanReset(){SKPAN=0;skPanBtn();skRender()}',
     'function skPanInit(){var w=$("skWrap");if(!w||w._pan)return;w._pan=1;var sx=0,sp=0,on=false;',
-    'w.addEventListener("pointerdown",function(e){on=true;sx=e.clientX;sp=SKPAN;try{w.setPointerCapture(e.pointerId)}catch(x){}});',
-    'w.addEventListener("pointermove",function(e){if(!on)return;var bw=Math.max(2,(w.clientWidth-52)/64);var d=Math.round((e.clientX-sx)/bw);var np=sp+d;if(np<0)np=0;if(np!==SKPAN){SKPAN=np;skPanBtn();skChart()}});',
+    'w.addEventListener("pointerdown",function(e){skHist();on=true;sx=e.clientX;sp=SKPAN;try{w.setPointerCapture(e.pointerId)}catch(x){}});',
+    'w.addEventListener("pointermove",function(e){if(!on)return;var bw=Math.max(2,(w.clientWidth-52)/SKVIEW);var d=Math.round((e.clientX-sx)/bw);var np=sp+d;if(np<0)np=0;if(np!==SKPAN){SKPAN=np;skPanBtn();skChart()}});',
     'var end=function(){on=false};w.addEventListener("pointerup",end);w.addEventListener("pointercancel",end)}',
     'var SKMA=localStorage.getItem("sk_ma")==="1";',
     'function skLot(){return (SKS&&SKS.lotSize)||10}',
     // giá vào lệnh theo chiều đang giữ (chưa giữ gì thì lấy giá mua làm mốc quy đổi)
     'function skRef(){return (SKS&&SKS.pos&&SKS.pos.side==="short")?SKS.bid:(SKS?SKS.ask:0)}',
     'function skSync(){api("/api/stock/state").then(function(j){SKS=j;SOFF=j.now-Date.now();setBal(j.balance);skRender()}).catch(function(e){toast("❌ "+e.message)})}',
-    'function skTf(n){SKTF=n;localStorage.setItem("sk_tf",n);SKPAN=0;skPanBtn();',
-    '[1,6,12,24,54].forEach(function(k){var b=$("sktf"+k);if(b)b.classList.toggle("on",k===n)});skRender()}',
+    // KHO NẾN 2 NGÀY (26/08): state 2s chỉ mang 180 nến cuối cho nhẹ; phần cũ hơn lấy
+    // qua /api/stock/hist, cache 60 giây — khung 5m/10m/20m/2 ngày + kéo lùi ăn từ đây
+    'var SKH=null,SKHat=0;',
+    'function skHist(force){if(!force&&SKH&&Date.now()-SKHat<60000)return;SKHat=Date.now();api("/api/stock/hist").then(function(j){SKH=j.candles||[];skRender()}).catch(function(e){})}',
+    'function skTf(n){SKTF=n;localStorage.setItem("sk_tf",n);SKPAN=0;skPanBtn();skHist();',
+    '[1,6,12,24].forEach(function(k){var b=$("sktf"+k);if(b)b.classList.toggle("on",k===n)});skRender()}',
     'function skMa(){SKMA=!SKMA;localStorage.setItem("sk_ma",SKMA?"1":"0");',
     '$("sktfma").classList.toggle("on",SKMA);skRender()}',
     'function skHelpT(){var b=$("skHelpBody");var on=b.classList.toggle("on");',
@@ -2135,11 +2146,14 @@ const PAGE = [
     // Nến + trục giá bên phải. Nhãn trục vẽ bằng HTML (SVG kéo méo chữ vì
     // preserveAspectRatio=none), nên toạ độ phải quy từ viewBox 190 sang px thật.
     'function skChart(){var el=$("skChart"),ax=$("skAxis");if(!el||!SKS)return;skPanInit();',
-    'var cs=skGroup(SKS.candles||[],SKTF);',
+    // ghép kho nến cũ (SKH) trước 180 nến sống — mọi khung đều đủ 64 cây, kéo lùi thoải mái
+    'var raw=SKS.candles||[];',
+    'if(SKH&&SKH.length&&SKS.histLen>raw.length){var pre=Math.min(SKH.length,SKS.histLen-raw.length);if(pre>0)raw=SKH.slice(0,pre).concat(raw)}',
+    'var cs=skGroup(raw,SKTF);',
     // KÉO XEM LẠI (26/08): SKPAN = số cây lùi về quá khứ; kéo chuột/ngón tay trên đồ thị
-    'var maxPan=Math.max(0,cs.length-64);if(SKPAN>maxPan)SKPAN=maxPan;',
-    'if(SKPAN>0)cs=cs.slice(Math.max(0,cs.length-64-SKPAN),cs.length-SKPAN);',
-    'else if(cs.length>64)cs=cs.slice(cs.length-64);',
+    'var maxPan=Math.max(0,cs.length-SKVIEW);if(SKPAN>maxPan)SKPAN=maxPan;',
+    'if(SKPAN>0)cs=cs.slice(Math.max(0,cs.length-SKVIEW-SKPAN),cs.length-SKPAN);',
+    'else if(cs.length>SKVIEW)cs=cs.slice(cs.length-SKVIEW);',
     'if(cs.length<2){el.innerHTML="";if(ax)ax.innerHTML="<div class=\\"muted\\" style=\\"position:absolute;left:-240px;top:80px;width:230px;text-align:center;font-size:12px\\">Chưa đủ nến cho khung này - chờ vài phút hoặc chọn khung nhỏ hơn (50s)</div>";return}',
     'var lo=1e9,hi=0;for(var i=0;i<cs.length;i++){if(cs[i].l<lo)lo=cs[i].l;if(cs[i].h>hi)hi=cs[i].h}',
     'if(SKS.price<lo)lo=SKS.price;if(SKS.price>hi)hi=SKS.price;',
@@ -2328,11 +2342,11 @@ const PAGE = [
     'if(lf>0){lk2.innerHTML="🔒 Vốn đang bị chôn - còn <b>"+lf+" giây</b> nữa mới đóng lệnh được";',
     'bt.textContent="🔒 CHÔN VỐN - CÒN "+lf+"s";bt.disabled=true}',
     'else if(lk2.style.display!=="none"){skRender()}}},1000);',
-    'setInterval(function(){if(TOKEN&&!SKBUSY&&localStorage.getItem("play_page")==="stock")skSync()},2000);',
+    'setInterval(function(){if(TOKEN&&!SKBUSY&&localStorage.getItem("play_page")==="stock"){skSync();skHist()}},2000);',
     // lần đầu MỞ SẴN hướng dẫn; ai đã gập thì tôn trọng. Khôi phục khung giờ + MA.
     '(function(){if(localStorage.getItem("sk_help")!=="0"){var b=$("skHelpBody");',
     'if(b){b.classList.add("on");$("skHelpAr").textContent="▴"}}',
-    '[1,6,12,24,54].forEach(function(k){var q=$("sktf"+k);if(q)q.classList.toggle("on",k===SKTF)});',
+    '[1,6,12,24].forEach(function(k){var q=$("sktf"+k);if(q)q.classList.toggle("on",k===SKTF)});',
     'var qm=$("sktfma");if(qm)qm.classList.toggle("on",SKMA)})();',
     // ===== 📅 ĐIỂM DANH + 💉 NGHIỆN =====
     // DOFF = lệch giờ máy người chơi so với server - đồng hồ đếm ngược nghiện chạy
