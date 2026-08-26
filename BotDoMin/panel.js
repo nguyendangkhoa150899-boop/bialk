@@ -1131,12 +1131,18 @@ const HTML = `<!DOCTYPE html>
             <label>Sức nặng lãi/lỗ (x) — 1 đồng giá × 1 CP = bấy nhiêu Dogcoin</label>
             <input id="skPoint" type="number" min="1" max="20" placeholder="vd: 5">
           </div>
-          <div style="flex:1">
-            <label>🌊 Bước mỗi chân sóng (đơn vị giá, 500–2500)</label>
-            <input id="skWaveAmp" type="number" step="50" placeholder="vd: 1500">
-          </div>
           <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px">
-            <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="skWaveOn"> Bật siêu sóng</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="skWaveOn"> Bật neo lang thang</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1">
+            <label>🌊 Đáy mềm — dưới mức này neo thiên đi LÊN (100–1000)</label>
+            <input id="skWaveLow" type="number" step="10" placeholder="vd: 350">
+          </div>
+          <div style="flex:1">
+            <label>🌊 Trần mềm — trên mức này neo thiên đi XUỐNG (1000–2000)</label>
+            <input id="skWaveHigh" type="number" step="10" placeholder="vd: 1650">
           </div>
         </div>
         <div class="note" id="skWaveNow" style="margin-top:4px"></div>
@@ -1665,10 +1671,10 @@ function skFill(k){
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
   set('skTickAmp',k.tickAmp);set('skSpread',k.spreadPct);set('skMaxShares',k.maxShares);set('skMaxPer',k.maxPer);
   set('skMaxLev',k.maxLev);set('skHold',k.holdS);set('skPoint',k.pointX);
-  set('skWaveAmp',k.waveAmp);
+  set('skWaveLow',k.waveLow);set('skWaveHigh',k.waveHigh);
   if(!skWaveTicked){skWaveTicked=true;const cb=document.getElementById('skWaveOn');if(cb)cb.checked=k.waveOn!==false;}
   const wn=document.getElementById('skWaveNow');
-  if(wn)wn.innerHTML='Sóng lớn ĐÃ TẮT (26/08 tối) — giá lượn quanh mốc <b>1.000</b> (biên cứng 100–1.500), nến 60s có râu. Ô "Bước chân sóng" bên dưới hiện không tác dụng.';
+  if(wn)wn.innerHTML=(k.waveOn!==false?('🌊 Neo lang thang BẬT — giá tự đi bộ khắp <b>100–2.000</b>'+(k.anchor?(', neo đang ở ~<b>'+k.anchor.v.toLocaleString()+'</b>'):'')+'. Dưới <b>'+(k.waveLow||350)+'</b> thiên lên, trên <b>'+(k.waveHigh||1650)+'</b> thiên xuống, ở giữa random.'):'Neo lang thang TẮT — giá bám mốc gốc 1.000.');
   const pc=Math.round((k.price/k.base-1)*1000)/10;
   const tp=document.getElementById('skTPrice');
   tp.textContent=k.price.toLocaleString()+' ('+(pc>=0?'+':'')+pc+'%)';
@@ -1769,7 +1775,8 @@ function skSave(){
            holdS:parseInt(document.getElementById('skHold').value),
            pointX:parseInt(document.getElementById('skPoint').value),
            waveOn:document.getElementById('skWaveOn').checked,
-           waveAmp:parseInt(document.getElementById('skWaveAmp').value)};
+           waveLow:parseInt(document.getElementById('skWaveLow').value),
+           waveHigh:parseInt(document.getElementById('skWaveHigh').value)};
   if(!(o.tickAmp>=1&&o.tickAmp<=200))return toast('Giá nhảy mỗi nhịp phải trong 1–200 đơn vị');
   if(!(o.spreadPct>=0&&o.spreadPct<=20))return toast('Chênh mua–bán phải trong 0–20%');
   if(!(o.maxShares>=10))return toast('Trần sàn phải từ 10 CP');
@@ -1777,7 +1784,8 @@ function skSave(){
   if(!(o.maxLev>=1&&o.maxLev<=100))return toast('Đòn bẩy tối đa phải trong 1–100');
   if(!(o.holdS>=0&&o.holdS<=3600))return toast('Chôn vốn phải trong 0–3600 giây');
   if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
-  if(!(o.waveAmp>=500&&o.waveAmp<=2500))return toast('Bước chân sóng trong 500–2500 đơn vị');
+  if(!(o.waveLow>=100&&o.waveLow<=1000))return toast('Đáy mềm phải trong 100–1000');
+  if(!(o.waveHigh>=1000&&o.waveHigh<=2000))return toast('Trần mềm phải trong 1000–2000');
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 

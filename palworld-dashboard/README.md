@@ -602,6 +602,25 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (tối 11) — BẬT LẠI neo lang thang (bản hiền): giá random khắp 100-2.000
+
+- Chủ server đảo lại "bỏ sóng": muốn giá lúc nằm 200 lúc 1.000 lúc 1.800, random,
+  không ép về giữa. Đã chứng minh random-walk trơn KHÔNG làm được (lệch xuống, kẹt
+  một vùng, 24h vẫn 435-1.079). Lời giải đúng = neo lang thang, chỉnh hiền.
+- Cơ chế (gọn trong stockTick, bỏ hẳn stockAutoDrift/stockBigWave đời cũ): một neo
+  vô hình `_stockAnchor.v` tự đi bộ — mỗi chặng 20-50 phút bốc đích cách 150-700 đơn
+  vị, trôi mượt tới (v += (target-v)*0.01); giá bám neo (PULL 0.004) + nhiễu tickAmp.
+  Mô phỏng 24h: dải 105-1.905, phân bố ĐỀU mọi mức (200/400/.../1.400 mỗi mức ~12%),
+  bước nhịp lớn nhất 7 -> nến vẫn lình xình có râu.
+- Ngưỡng mềm CHỈNH ĐƯỢC ở panel (chủ server chốt <350 lên, >1.650 xuống): dưới
+  waveLow neo thiên đi LÊN (pUp 0.82), trên waveHigh thiên XUỐNG (0.18), giữa random.
+- STOCK_MAX 1.500 -> 2.000; STOCK_PULL 0.001 -> 0.004 (bám neo); STOCK_BASE giữ 1.000.
+- Panel: bỏ ô "Bước chân sóng", thay bằng 2 ô "Đáy mềm" (100-1000) + "Trần mềm"
+  (1000-2000); toggle đổi tên "Bật neo lang thang"; ghi chú hiện neo đang ở đâu.
+- RESET v6 khi boot: đóng hộ lệnh, giá về 1.000, dựng neo mới, xoá cờ waveOn=false
+  của v5 (ăn lại mặc định BẬT). Đo sống: giá 995, neo bò 1.031->1.234, nhịp ±3.
+- stocktest 44/44.
+
 ### 26/08/2026 (tối 10) — tickAmp mặc định về 3: chart lình xình, nhiều nến 2 đầu
 
 - Chủ server muốn nhiều nến "2 đầu" do dự (râu cả trên lẫn dưới, thân nhỏ giữa).

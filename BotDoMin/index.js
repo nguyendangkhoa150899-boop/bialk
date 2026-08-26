@@ -2768,8 +2768,8 @@ const STOCK_CANDLE_TICKS = 30;       // 30 × 2s = 60 giây một cây nến (ch
 //   · Chênh mua–bán 0,5%/chiều = 1% mỗi vòng. Để 2% như trước thì mỗi vòng mất 4%
 //     trên biên độ chỉ ±4,6% -> người chơi gần như không bao giờ thắng, chơi vài lần
 //     là bỏ. 1% vẫn là lợi thế nhà cái rất lớn khi tính trên nhiều lượt.
-const STOCK_PULL = 0.001;            // lực kéo về mốc (nhẹ: giá lượn quanh 1.000, không bị ghì cứng một chỗ)
-const STOCK_MIN = 100, STOCK_MAX = 1500;   // 26/08 tối: chủ server chốt biên 100-1.500, tâm 1.000
+const STOCK_PULL = 0.004;            // lực kéo giá về NEO hiện tại (đủ chặt để bám neo lang thang)
+const STOCK_MIN = 100, STOCK_MAX = 2000;   // 26/08 tối: chủ server chốt biên 100-2.000 (neo lang thang)
 const STOCK_TICK_CAP = 0.08;         // (nghỉ hưu 26/08 tối: trần mỗi nhịp giờ là ±tickAmp ĐƠN VỊ trong stockTick)
 const STOCK_HIST_N = 288;            // 26/08 tối: chủ server chốt kho nến chỉ 4 GIỜ (288 cây 50s) — nhẹ db,
                                      // bài học _txDashHistory phình 1.348 ván = 57% database.json.
@@ -2782,12 +2782,12 @@ const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng
 // "nhích xíu là ±400". BẮT BUỘC hạ spread cùng lúc (0,5% -> 0,1%/chiều) vì pointX
 // khuếch đại luôn phí chênh: giữ 0,5% thì mở lệnh xong đã lỗ sẵn ~nửa vốn ở x10.
 // Chi phí vòng tuyệt đối (Dogcoin) sau đổi ≈ y như cũ: 0,1% × 5 = 0,5%.
-// tickAmp = độ lệch chuẩn nhiễu mỗi nhịp 2s (ĐƠN VỊ GIÁ). Mặc định 3 trên mốc 1000
-// (~0,3%): biên độ nhỏ nên trong 1 phút giá hay quay đầu về giữa -> NHIỀU nến 2 đầu
-// do dự, chart lình xình (chủ server chốt 26/08 tối). Tăng lên 8-10 = nến thân dài
-// dứt khoát. Panel chỉnh sống 1–200, không cần restart.
-// waveOn mặc định TẮT (26/08 tối chủ server bỏ sóng lớn) — giá chỉ lượn quanh 1.000.
-const STOCK_CFG_DEF = { tickAmp: 3, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5, waveOn: false };
+// tickAmp = độ lệch chuẩn nhiễu mỗi nhịp 2s (ĐƠN VỊ GIÁ), mặc định 3 = nến lình xình.
+// NEO LANG THANG bật lại (26/08 tối): waveOn mặc định BẬT — một "nhà" vô hình tự đi
+// bộ chậm khắp dải 100-2000, giá bám theo -> lúc thấp lúc cao, random, nhưng bước mỗi
+// nhịp vẫn nhỏ. waveLow/waveHigh = ngưỡng mềm: dưới waveLow neo thiên đi LÊN, trên
+// waveHigh thiên đi XUỐNG; ở giữa hướng random (chủ server chỉnh sống ở panel).
+const STOCK_CFG_DEF = { tickAmp: 3, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5, waveOn: true, waveLow: 350, waveHigh: 1650 };
 // Bậc đòn bẩy hiện trên web — lọc theo maxLev nên hạ trần ở panel là mất bậc cao luôn.
 const STOCK_LEVS = [1, 5, 10, 20];
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
@@ -2809,10 +2809,10 @@ function stockCfg() {
         holdS: Math.floor(num(c.holdS, STOCK_CFG_DEF.holdS, 0, 3600)),   // giây CHÔN VỐN
         pointX: Math.floor(num(c.pointX, STOCK_CFG_DEF.pointX, 1, 20)),  // sức nặng điểm giá
         open: c.open !== false,
-        // 🌊🌊 SIÊU SÓNG: đã BỎ 26/08 tối (chủ server) — mặc định TẮT, giá chỉ lượn
-        // quanh mốc. Giữ field để bật lại được nếu sau này muốn, nhưng loop KHÔNG gọi.
-        waveOn: c.waveOn === true,                                       // mặc định TẮT
-        waveAmp: Math.floor(num(c.waveAmp, 1500, 500, 2500)),
+        // 🌊 NEO LANG THANG (bật lại 26/08 tối): neo tự đi bộ khắp dải, giá bám theo.
+        waveOn: c.waveOn !== false,                                      // mặc định BẬT
+        waveLow: Math.floor(num(c.waveLow, STOCK_CFG_DEF.waveLow, STOCK_MIN, 1000)),    // dưới mức này neo thiên đi LÊN
+        waveHigh: Math.floor(num(c.waveHigh, STOCK_CFG_DEF.waveHigh, 1000, STOCK_MAX)), // trên mức này neo thiên đi XUỐNG
     };
 }
 function stockPrice() {
@@ -2871,11 +2871,26 @@ function stockTick(forcePct) {
             d.ticksLeft--;
             if (d.ticksLeft <= 0) dbCache._stockDrift = null;
         }
-        // 🌊🌊 SIÊU SÓNG: khi đang NEO vùng giá mới thì lực kéo hướng về NEO thay vì mốc
-        // gốc — nhờ vậy giá đứng được ở 2000-3000 vài chục phút; hết hạn neo thì chính
-        // lực kéo này đưa giá về 1000 từ từ (không nhảy cột).
-        const anc = dbCache._stockAnchor;
-        const anchor = (anc && anc.until > Date.now() && Number.isFinite(anc.v)) ? anc.v : STOCK_BASE;
+        // 🌊 NEO LANG THANG (26/08 tối, chốt cuối): một "nhà" vô hình (_stockAnchor.v)
+        // tự đi bộ chậm khắp dải; giá bám theo neo + nhiễu nhỏ -> lang thang cả 100-2000
+        // mà bước mỗi nhịp vẫn nhỏ (nến lình xình). Mỗi chặng 20-50 phút bốc đích mới:
+        // ở giữa hướng RANDOM, dưới waveLow thiên LÊN, trên waveHigh thiên XUỐNG.
+        let a = dbCache._stockAnchor;
+        if (!a || !Number.isFinite(a.v)) a = dbCache._stockAnchor = { v: STOCK_BASE, target: STOCK_BASE, legLeft: 0 };
+        if (cfg.waveOn) {
+            if ((a.legLeft | 0) <= 0) {
+                const pUp = a.v < cfg.waveLow ? 0.82 : a.v > cfg.waveHigh ? 0.18 : 0.5;
+                const dir = Math.random() < pUp ? 1 : -1;
+                const step = 150 + Math.random() * 550;                       // dời 150-700 đơn vị
+                a.target = Math.round(Math.min(STOCK_MAX - 50, Math.max(STOCK_MIN + 50, a.v + dir * step)));
+                a.legLeft = 600 + Math.floor(Math.random() * 900);            // 20-50 phút mỗi chặng (nhịp 2s)
+            }
+            a.legLeft--;
+            a.v += (a.target - a.v) * 0.01;                                   // neo trôi mượt tới đích
+        } else {
+            a.v = STOCK_BASE; a.target = STOCK_BASE; a.legLeft = 0;           // tắt sóng -> neo đứng ở mốc
+        }
+        const anchor = a.v;
         let m = -STOCK_PULL * Math.log(before / anchor) + (cfg.tickAmp * stockGauss()) / before + drift;
         // 26/08 tối (chủ server chốt "nến đẹp có râu như hình 2"): tickAmp = ĐỘ LỆCH
         // CHUẨN nhiễu mỗi nhịp (đơn vị giá) — std ~tickAmp, thi thoảng lớn hơn để nến
@@ -3247,44 +3262,8 @@ function stockPush(pct, ticks) {
     saveDbNow();
     return { pct, from: p0, target, secs: Math.round(t * STOCK_TICK_MS / 1000) };
 }
-// SỰ KIỆN TỰ ĐỘNG: lâu lâu game tự trôi ±10-15% trong 3-5 phút — gọi mỗi nhịp từ loop.
-// Xác suất 0.0008/nhịp 2s ≈ trung bình ~40 phút một cú; không chồng lên drift đang chạy.
-function stockAutoDrift() {
-    if (dbCache._stockDrift) return;
-    if (Math.random() >= 0.0008) return;
-    const pct = (10 + Math.random() * 5) * (Math.random() < 0.5 ? -1 : 1);
-    const p0 = stockPrice();
-    const target = Math.round(Math.min(STOCK_MAX, Math.max(STOCK_MIN, p0 * (1 + pct / 100))));
-    const t = 90 + Math.floor(Math.random() * 60);   // 90-150 nhịp = 3-5 phút
-    dbCache._stockDrift = { target, ticksLeft: t, by: 'auto' };
-    writeLog('SYSTEM', `[CỔ PHIẾU] 🌊 Sóng tự động ${pct > 0 ? '+' : ''}${Math.round(pct * 10) / 10}%: ${p0.toLocaleString()} -> đích ${target.toLocaleString()} trong ${Math.round(t * STOCK_TICK_MS / 1000)} giây`);
-}
-// 🌊🌊 NEO LANG THANG (chốt lại 26/08: "cho chart tự quyết lên xuống, đừng dao động
-// một chỗ"): giá KHÔNG bám 5000 nữa mà đi bộ ngẫu nhiên trong [2000..7000] — hết mỗi
-// chân sóng lại bốc đích mới cách neo cũ 500..waveAmp đơn vị, trôi tới trong 10-30
-// phút rồi đứng vùng đó 5-25 phút. Hướng chân sau THIÊN VỊ QUAY VỀ GIỮA: càng xa 5000
-// càng dễ đảo chiều -> có lên có xuống, không cắm đầu một mạch, thi thoảng chạm 2000
-// hay 7000 rồi tự bật lại. Tắt waveOn thì giá về bám mốc gốc như cũ.
-function stockBigWave() {
-    const cfg = stockCfg();
-    if (!cfg.waveOn) return;
-    if (dbCache._stockDrift) return;   // đang trôi (kể cả admin can thiệp) thì không chồng
-    const a = dbCache._stockAnchor;
-    if (a && a.until > Date.now()) return;   // đang đứng vùng thì chờ hết đã
-    const cur = (a && Number.isFinite(a.v)) ? a.v : stockPrice();
-    const step = 500 + Math.random() * Math.max(0, cfg.waveAmp - 500);
-    // thiên vị về giữa: ở 5000 lên/xuống 50-50, sát 7000 chỉ ~17% đi tiếp lên, sát 2000 ngược lại
-    const pUp = Math.max(0.15, Math.min(0.85, 0.5 - (cur - STOCK_BASE) / 6000));
-    const up = Math.random() < pUp;
-    const target = Math.round(Math.min(7000, Math.max(2000, cur + (up ? step : -step))));
-    // 26/08 (chủ server): "cho chạy từ từ" — trôi chậm gấp đôi, đứng vùng lâu hơn
-    const t = 600 + Math.floor(Math.random() * 750);              // trôi tới đích 20-45 phút
-    const holdMs = (10 + Math.floor(Math.random() * 21)) * 60000; // đứng vùng 10-30 phút
-    dbCache._stockDrift = { target, ticksLeft: t, by: 'auto' };
-    dbCache._stockAnchor = { v: target, until: Date.now() + t * STOCK_TICK_MS + holdMs };
-    writeLog('SYSTEM', `[CỔ PHIẾU] 🌊 Chân sóng ${up ? 'LÊN' : 'XUỐNG'}: neo ${Math.round(cur).toLocaleString()} -> đích ${target.toLocaleString()}, trôi ${Math.round(t * STOCK_TICK_MS / 60000)} phút`);
-    saveDbNow();
-}
+// (26/08 tối: stockAutoDrift + stockBigWave đời cũ ĐÃ GỠ — neo lang thang giờ chạy
+//  gọn trong stockTick, không cần hàm riêng. Admin can thiệp tay vẫn qua stockPush.)
 // Cập nhật "đỉnh lãi từng gồng qua" của từng người — chạy mỗi nhịp giá
 function stockTouchPeaks() {
     for (const p of Object.values(stockPos())) {
@@ -3304,19 +3283,20 @@ function runStockLoop() {
     // 100-1.500). Đóng hộ mọi lệnh đang mở theo giá hiện tại TRƯỚC khi đổi mốc (tiền
     // về ví đúng luật đóng), xoá NEO/DRIFT sóng cũ (hết "🌊 ĐANG NEO vùng..."), đưa
     // giá về 1.000, tắt waveOn, làm mới nến. _stockSeedV=5 — chạy đúng 1 lần.
-    if ((dbCache._stockSeedV | 0) < 5) {
+    if ((dbCache._stockSeedV | 0) < 6) {
         for (const [uid, p] of Object.entries(stockPos())) {
             if ((Number(p.shares) || 0) < 1) continue;
             const r = stockClose(uid, Number(p.shares) || 0, true);
-            writeLog('SYSTEM', `[CỔ PHIẾU] RESET mốc 1000: đóng hộ lệnh của ${getUserData(uid).name || uid} (${r && r.ok ? (r.pl >= 0 ? '+' : '') + r.pl : 'lỗi'})`);
+            writeLog('SYSTEM', `[CỔ PHIẾU] RESET neo lang thang: đóng hộ lệnh của ${getUserData(uid).name || uid} (${r && r.ok ? (r.pl >= 0 ? '+' : '') + r.pl : 'lỗi'})`);
         }
         dbCache._stockPrice = STOCK_BASE;
         dbCache._stockDrift = null;
-        dbCache._stockAnchor = null;
+        dbCache._stockAnchor = { v: STOCK_BASE, target: STOCK_BASE, legLeft: 0 };
         dbCache._stockCandles = [];
-        if (dbCache._stockCfg && typeof dbCache._stockCfg === 'object') dbCache._stockCfg.waveOn = false;
-        dbCache._stockSeedV = 5;
-        writeLog('SYSTEM', '[CỔ PHIẾU] RESET v5: bỏ sóng lớn, giá về 1.000, biên 100-1.500, nến 60s có râu');
+        // bật lại neo lang thang (v5 đã tắt) — xoá cờ waveOn=false cũ để ăn mặc định BẬT
+        if (dbCache._stockCfg && typeof dbCache._stockCfg === 'object') delete dbCache._stockCfg.waveOn;
+        dbCache._stockSeedV = 6;
+        writeLog('SYSTEM', '[CỔ PHIẾU] RESET v6: neo lang thang 100-2.000, giá về 1.000, nến 60s lình xình');
         saveDbNow();
     }
     // kho đổi cỡ (2 ngày -> 4 giờ): nến cũ dư thì cắt ngay lúc boot cho gọn db
@@ -3345,9 +3325,8 @@ function runStockLoop() {
     dbCache._stockNextTick = Date.now() + STOCK_TICK_MS;
     setInterval(() => {
         try {
-            // 26/08 tối: BỎ sóng lớn — không gọi stockAutoDrift/stockBigWave nữa. Giá
-            // chỉ lượn quanh mốc 1.000 (biên 100-1.500) qua nhiễu mỗi nhịp. Admin vẫn
-            // can thiệp tay được (stockPush đặt _stockDrift, stockTick vẫn tiêu drift đó).
+            // 26/08 tối: NEO LANG THANG chạy gọn trong stockTick (neo tự đi bộ khắp
+            // dải 100-2000, giá bám theo). Admin can thiệp tay qua stockPush (_stockDrift).
             stockTick();
             stockBurnCheck();   // lệnh BÁN lỗ hết cọc thì đóng hộ, không để ai âm ví
             stockAutoCheck();   // 🤖 mốc tự đóng người chơi đặt (25/08)
@@ -3859,9 +3838,9 @@ client.once('ready', async (c) => {
                     spreadPct: Math.round(cfg.spread * 1000) / 10,
                     pointX: cfg.pointX,
                     maxShares: cfg.maxShares, maxPer: cfg.maxPer, maxLev: cfg.maxLev, holdS: cfg.holdS, open: cfg.open,
-                    waveOn: cfg.waveOn, waveAmp: cfg.waveAmp,
-                    anchor: (dbCache._stockAnchor && dbCache._stockAnchor.until > Date.now())
-                        ? { v: dbCache._stockAnchor.v, minsLeft: Math.max(0, Math.round((dbCache._stockAnchor.until - Date.now()) / 60000)) } : null,
+                    waveOn: cfg.waveOn, waveLow: cfg.waveLow, waveHigh: cfg.waveHigh,
+                    anchor: (dbCache._stockAnchor && Number.isFinite(dbCache._stockAnchor.v))
+                        ? { v: Math.round(dbCache._stockAnchor.v) } : null,
                     // 25/08: từng người đang giữ lệnh — panel hiện ai MUA/BÁN lời lỗ bao nhiêu,
                     // và là dữ liệu cho ô XEM TRƯỚC tác động khi admin chỉnh %.
                     positions: Object.entries(stockPos())
@@ -3897,9 +3876,10 @@ client.once('ready', async (c) => {
                     // mỗi lần bấm Lưu là "chôn vốn" lặng lẽ về mặc định 60 giây.
                     holdS: Number.isFinite(Number(o.holdS)) ? Math.floor(Number(o.holdS)) : cur.holdS,
                     open: o.open === undefined ? cur.open : !!o.open,
-                    // 🌊🌊 siêu sóng (26/08)
+                    // 🌊 neo lang thang (26/08 tối) — ngưỡng mềm chỉnh được
                     waveOn: o.waveOn === undefined ? cur.waveOn : !!o.waveOn,
-                    waveAmp: Number.isFinite(Number(o.waveAmp)) ? Math.floor(Number(o.waveAmp)) : cur.waveAmp,
+                    waveLow: Number.isFinite(Number(o.waveLow)) ? Math.floor(Number(o.waveLow)) : cur.waveLow,
+                    waveHigh: Number.isFinite(Number(o.waveHigh)) ? Math.floor(Number(o.waveHigh)) : cur.waveHigh,
                 };
                 saveDbNow();
                 const c = stockCfg();
