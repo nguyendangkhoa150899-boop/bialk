@@ -602,6 +602,16 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 27/08/2026 (2) — Fix nút panel "nền bạc chữ trắng" + màu nút giới tính
+
+- Panel: base `button{}` có `color:#fff` nhưng KHÔNG set background → nút nào không có
+  class `.btn-*` (💾 Lưu pwCfgSave, 🎁 Tặng vào rương pgGrant, ↩️ về rương pcResolve...)
+  ăn nền bạc mặc định của trình duyệt + chữ trắng = không đọc được. Fix GỐC: thêm
+  `background:#3a4155` vào base button → mọi nút không class thành xám-xanh tối đọc rõ;
+  nút có class vẫn tự đè màu riêng. Sửa 1 dòng, hết cho toàn panel.
+- Web nút giới tính: ♂ Đực xanh dương / ♀ Cái hồng hiện rõ cả khi chưa chọn, hover
+  nhấc nhẹ + sáng viền, chọn thì tô nền đặc chữ trắng.
+
 ### 27/08/2026 — 🚻 Giới tính pal ở web nhận (BẮT BUỘC chọn ♂/♀)
 
 - Verify tận game: mod ghi `sp.Gender` số nguyên ĂN (1=Đực, 2=Cái, 0=random). Test

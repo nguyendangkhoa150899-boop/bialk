@@ -715,7 +715,7 @@ const HTML = `<!DOCTYPE html>
   #login .box{background:var(--card);padding:28px;border-radius:14px;width:320px;max-width:90vw;box-shadow:0 10px 40px rgba(0,0,0,.5)}
   input,select,button{font-family:inherit;font-size:15px}
   input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--txt);margin-top:6px}
-  button{cursor:pointer;border:0;border-radius:8px;padding:10px 14px;font-weight:600;color:#fff}
+  button{cursor:pointer;border:0;border-radius:8px;padding:10px 14px;font-weight:600;color:#fff;background:#3a4155}
   .btn-green{background:var(--green)} .btn-red{background:var(--red)} .btn-blue{background:var(--blue)}
   .btn-grey{background:#4e5058} .btn-yellow{background:var(--yellow);color:#000}
   button:active{transform:translateY(1px)}
