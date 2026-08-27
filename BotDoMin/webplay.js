@@ -225,6 +225,12 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
+                // 🍀 quay vòng RAID (tốn 1 vé đầy thanh may mắn) — 27/08
+                if (ctx.palwheel && ctx.palwheel.raidSpin && req.method === 'POST' && path === '/api/palwheel/raidspin') {
+                    const r = ctx.palwheel.raidSpin(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 // 🎯 chọn pal đích danh (25/08, thay shop Discord)
                 if (ctx.palwheel && ctx.palwheel.pickState && path === '/api/palpick/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.palwheel.pickState(userId) });
@@ -596,15 +602,35 @@ const PAGE = [
     '#navGrp button{flex:1;background:#1a1f2d;border:1px solid var(--line);color:var(--muted);font-size:14px;font-weight:800;padding:11px 2px;letter-spacing:.5px}',
     '#navGrp button.on{background:linear-gradient(180deg,#33405c,#252c40);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
     // 🎁 Quay Pal: reel kiểu CSGO (dải thẻ chạy ngang, vạch giữa là kim)
-    '#pwWrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#141824;height:92px;margin-top:10px}',
+    '#pwWrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#141824;height:126px;margin-top:10px}',
     '#pwMark{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--gold);z-index:2;box-shadow:0 0 8px #ffcf5c}',
     '#pwStrip{display:flex;gap:6px;position:absolute;left:0;top:8px;will-change:transform}',
-    '.pwCard{flex:0 0 128px;height:74px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,#232839,#1b2030);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;text-align:center}',
-    '.pwCard .nm{font-size:13px;font-weight:700;line-height:1.15;word-break:break-word}',
-    '.pwCard .dx{font-size:10px;color:var(--muted);margin-top:3px}',
+    // 27/08: thẻ có HÌNH pal (icon 60px) + tên dưới. Con thiếu hình thì onerror ẩn <img>, chừa tên.
+    '.pwCard{flex:0 0 110px;height:110px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,#232839,#1b2030);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;text-align:center;overflow:hidden}',
+    '.pwCard img{width:62px;height:62px;object-fit:contain;image-rendering:auto;margin-bottom:2px;filter:drop-shadow(0 2px 3px #0007)}',
+    '.pwCard .nm{font-size:12px;font-weight:700;line-height:1.1;word-break:break-word}',
+    '.pwCard .dx{font-size:10px;color:var(--muted);margin-top:2px}',
     '.pwCard.raid{border-color:#ff6b6b;background:linear-gradient(180deg,#3a2330,#241a22)}',
     '.pwCard.raid .nm{color:#ff8f8f}',
+    // 🔥 thẻ raid ở ô trúng: viền lửa nhấp nháy + hào quang (chỉ gắn vào thẻ kết quả)
+    '.pwCard.raidhit{border-color:#ffcf5c;box-shadow:0 0 14px #ff8f3c,0 0 4px #ffcf5c inset;animation:raidGlow .7s ease-in-out infinite alternate}',
+    '@keyframes raidGlow{from{box-shadow:0 0 8px #ff6b3c,0 0 3px #ffcf5c inset}to{box-shadow:0 0 22px #ffb03c,0 0 8px #ff8f5c inset}}',
     '#pwRes{margin-top:10px;border:1px solid var(--gold);border-radius:10px;padding:10px;text-align:center;background:#1d2130}',
+    '#pwRes.raidwin{border-color:#ff8f3c;background:linear-gradient(180deg,#2a1c1a,#1d1518);box-shadow:0 0 18px #ff6b3c55}',
+    // 🍀 THANH MAY MẮN (27/08)
+    '#pwLuckWrap{margin-top:12px;background:#141824;border:1px solid var(--line);border-radius:10px;padding:10px}',
+    '#pwLuckHead{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;margin-bottom:6px}',
+    '#pwLuckBar{position:relative;height:16px;border-radius:9px;background:#0e1220;border:1px solid var(--line);overflow:hidden}',
+    '#pwLuckFill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:9px;background:linear-gradient(90deg,#3fe0a0,#7cff5c,#ffe45c);transition:width .5s ease}',
+    '#pwLuckPct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;text-shadow:0 0 2px #000,0 0 4px #000,0 1px 2px #000;letter-spacing:.3px}',
+    '#pwLuckNote{font-size:11px;color:var(--muted);margin-top:5px}',
+    // 🔥 VÒNG QUAY RAID (hiện khi có vé) — reel giống trên nhưng đỏ lửa
+    '#pwRaidBox{margin-top:12px;border:1px solid #ff6b6b;border-radius:12px;padding:12px;background:linear-gradient(180deg,#241820,#191114);box-shadow:0 0 18px #ff5b3c33}',
+    '#pwRaidBox.hidden{display:none}',
+    '#pwRaidWrap{position:relative;overflow:hidden;border:1px solid #7a3540;border-radius:10px;background:#160f13;height:126px;margin-top:8px}',
+    '#pwRaidMark{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#ffcf5c;z-index:2;box-shadow:0 0 8px #ff8f3c}',
+    '#pwRaidStrip{display:flex;gap:6px;position:absolute;left:0;top:8px;will-change:transform}',
+    '#pwRaidRes{margin-top:10px;border:1px solid #ff8f3c;border-radius:10px;padding:10px;text-align:center;background:#231619}',
     // 🎒 Rương pal + hộp nhận
     '.pcItem{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
     '.pcItem .nm{font-weight:700}',
@@ -1081,11 +1107,25 @@ const PAGE = [
     '<div id="pagePal" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎁 Quay Pal</h2><div class="muted" id="pwStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="pwInfo">Quay TẤT CẢ pal, mọi ô <b>chia đều</b> (trừ Panthalus + Astralym đang bug game). Ô 🔥 PAL RAID cũng là 1 ô như từng con - trúng thì mở tiếp vòng RAID chia đều 5 boss (Bellanoir, Bellanoir Libero, Blazamut Ryu, Xenolord, Hartalis). Pal trúng nằm trong <b>RƯƠNG</b> ở tab 🪪 Cá nhân.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px" id="pwInfo">Quay TẤT CẢ pal, mọi ô <b>chia đều</b>. Có thể ra thẳng <b>🔥 boss RAID</b> ngay trong vòng này (ô trúng bốc lửa). Mỗi lượt quay còn nạp <b>🍀 thanh may mắn</b> phía dưới - đầy 100% được quay <b>vòng RAID</b> ăn boss + thưởng Dogcoin. Pal trúng nằm trong <b>RƯƠNG</b> ở tab 🪪 Cá nhân.</div>',
     '<div id="pwWrap"><div id="pwMark"></div><div id="pwStrip"></div></div>',
     '<div id="pwRes" class="hidden"></div>',
     '<button class="btn-full" id="pwGo" onclick="pwSpin()">🎁 QUAY</button>',
     '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center" id="pwPot">-</div>',
+    // 🍀 THANH MAY MẮN
+    '<div id="pwLuckWrap">',
+    '<div id="pwLuckHead"><span>🍀 Thanh may mắn</span><span id="pwLuckTix"></span></div>',
+    '<div id="pwLuckBar"><div id="pwLuckFill"></div><div id="pwLuckPct">0%</div></div>',
+    '<div id="pwLuckNote">Mỗi lượt quay tích thêm may mắn. Đầy 100% được 1 vé quay vòng RAID bên dưới.</div>',
+    '</div>',
+    '</div>',
+    // 🔥 VÒNG QUAY RAID (chỉ hiện khi có vé)
+    '<div class="card" id="pwRaidBox">',
+    '<div class="row"><h2 style="margin:0">🔥 Vòng quay RAID</h2><div class="muted" id="pwRaidStat">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px" id="pwRaidInfo">-</div>',
+    '<div id="pwRaidWrap"><div id="pwRaidMark"></div><div id="pwRaidStrip"></div></div>',
+    '<div id="pwRaidRes" class="hidden"></div>',
+    '<button class="btn-full" id="pwRaidGo" onclick="pwRaidSpin()">🔥 QUAY RAID (dùng 1 vé)</button>',
     '</div>',
     '</div>', // hết #pagePal
 
@@ -2448,40 +2488,81 @@ const PAGE = [
     // ===== 🎁 QUAY PAL kiểu CSGO =====
     // Server chốt kết quả TRƯỚC (trong /spin), client chỉ diễn hoạt hình dải thẻ
     // chạy ngang rồi dừng đúng thẻ kết quả. Thẻ 128px + khe 6px = bước 134px.
-    'var PW=null,PWBUSY=false;',
-    'function pwSync(){api("/api/palwheel/state").then(function(j){PW=j;',
-    '$("pwStat").textContent=(j.names.length+ (j.raidNames.length?1:0))+" ô · rương có "+j.chestCount+" pal";',
-    '$("pwGo").textContent=j.open?("🎁 QUAY ("+vnd(j.price)+" Dogcoin)"):"⛔ ĐANG ĐÓNG BẢO TRÌ";',
-    '$("pwGo").disabled=!j.open||PWBUSY;',
-    '$("pwPot").innerHTML="🏆 Hũ quay pal: <b>"+vnd(j.pot)+"</b> Dogcoin (mỗi lượt 1% nổ) · Bán lại pal: "+vnd(j.sellPrice)+" · Mỗi ô 1/"+(j.names.length+(j.raidNames.length?1:0))+" · Ô 🔥 RAID mở ra "+j.raidNames.length+" boss chia đều";',
-    'if(!PWBUSY)pwIdle()}).catch(function(e){toast("❌ "+e.message)})}',
+    'var PW=null,PWBUSY=false,PWRBUSY=false,PWLOCK=0,PWTICKING=false;',
+    // keepMain/keepRaid: sau khi quay xong GIỮ NGUYÊN dải ở ô trúng (không chạy lại idle),
+    // để pal trúng đứng yên tại chỗ cho người chơi nhìn — quay lượt mới mới dựng dải mới.
+    'function pwSync(keepMain,keepRaid){api("/api/palwheel/state").then(function(j){PW=j;',
+    '$("pwStat").textContent=(j.pals.length+(j.raids.length?1:0))+" ô · rương có "+j.chestCount+" pal";',
+    '$("pwPot").innerHTML="🏆 Hũ quay pal: <b>"+vnd(j.pot)+"</b> Dogcoin (mỗi lượt 1% nổ) · Bán lại pal: "+vnd(j.sellPrice)+" · Ô 🔥 RAID: "+j.raids.length+" boss, ra thẳng ngay vòng này (ô trúng bốc lửa)";',
+    // ⏳ dựng lại đếm ngược sau F5: server báo còn bao nhiêu ms -> đặt PWLOCK, chạy ticker
+    'if(j.spinRemain>0){var uu=Date.now()+j.spinRemain+300;if(uu>PWLOCK)PWLOCK=uu}',
+    'pwRenderLuck();pwLockKick();',
+    'if(!PWBUSY&&!keepMain)pwIdle();if(!PWRBUSY&&!keepRaid)pwRaidIdle()}).catch(function(e){toast("❌ "+e.message)})}',
+    // ⏳ nút quay + nút raid: hiện đếm ngược khoá (~10,5s/lượt) rồi mới bấm lại được —
+    // khớp khoá chống-spam ở server. F5 xong pwSync đọc spinRemain dựng lại đếm ngược này.
+    'function pwGoLabel(){if(!PW)return;var now=Date.now(),lk=PWLOCK>now,w=Math.ceil((PWLOCK-now)/1000);var g=$("pwGo");',
+    'if(!PW.open){g.textContent="⛔ ĐANG ĐÓNG BẢO TRÌ";g.disabled=true}',
+    'else if(lk){g.textContent="⏳ Chờ "+w+"s để quay tiếp";g.disabled=true}',
+    'else if(PWBUSY){g.textContent="⏳ Đang quay...";g.disabled=true}',
+    'else{g.textContent="🎁 QUAY ("+vnd(PW.price)+" Dogcoin)";g.disabled=false}',
+    'var rg=$("pwRaidGo");if(rg){if(lk){rg.textContent="⏳ Chờ "+w+"s";rg.disabled=true}',
+    'else if(PWRBUSY){rg.textContent="⏳ Đang quay...";rg.disabled=true}',
+    'else if(PW.raidReady){rg.textContent="🔥 QUAY RAID (đầy may mắn)";rg.disabled=false}',
+    'else{rg.textContent="🔒 Đầy 100% may mắn mới quay được";rg.disabled=true}}}',
+    'function pwLockStart(){PWLOCK=Date.now()+10800;pwLockKick()}',
+    // kick: cập nhật nút + chạy ticker nếu đang khoá mà chưa chạy (tránh 2 ticker chồng nhau)
+    'function pwLockKick(){pwGoLabel();if(PWLOCK>Date.now()&&!PWTICKING){PWTICKING=true;pwLockTick()}}',
+    'function pwLockTick(){pwGoLabel();if(Date.now()<PWLOCK){setTimeout(pwLockTick,300)}else{PWTICKING=false;pwGoLabel()}}',
     'function pwPick(a){return a[Math.floor(Math.random()*a.length)]}',
-    'function pwCardHtml(n,raid){return "<div class=\\"pwCard"+(raid?" raid":"")+"\\"><div class=\\"nm\\">"+(raid?"🔥 ":"")+esc(n)+"</div><div class=\\"dx\\">"+(raid?"PAL RAID":"&nbsp;")+"</div></div>"}',
-    'function pwIdle(){if(!PW||!PW.names.length)return;var h="";for(var i=0;i<14;i++)h+=pwCardHtml(pwPick(PW.names),false);',
+    // 🖼️ gắn hình pal (assets/palimage/T_<code>_icon_normal.png) — con thiếu hình thì ẩn <img>, chừa tên
+    'function pwImg(code){return code?("<img src=\\"/palimage/T_"+code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""}',
+    'function pwCardHtml(p,raid,hit){var nm=(p&&p.name!==undefined)?p.name:(p||"");var code=(p&&p.code)||"";',
+    'return "<div class=\\"pwCard"+(raid?" raid":"")+(hit?" raidhit":"")+"\\">"+pwImg(code)+"<div class=\\"nm\\">"+(raid?"🔥 ":"")+esc(nm)+"</div><div class=\\"dx\\">"+(raid?"PAL RAID":(p&&p.dex?"#"+p.dex:"&nbsp;"))+"</div></div>"}',
+    'function pwIdle(){if(!PW||!PW.pals||!PW.pals.length)return;var h="";for(var i=0;i<14;i++){var r=PW.raids.length&&Math.random()<0.06;h+=r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false)}',
     'var s=$("pwStrip");s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
-    // dải quay: 60 thẻ, kết quả nằm ở thẻ 52; jitter ±40px cho khỏi lần nào cũng dừng chính giữa.
-    // 25/08: kéo lên 10 GIÂY/reel cho hồi hộp (chủ server yêu cầu) - đuôi bezier bò chậm dần.
-    'function pwRoll(cards,cb){var s=$("pwStrip"),W=$("pwWrap").clientWidth;',
-    's.innerHTML=cards.join("");s.style.transition="none";s.style.transform="translateX(0px)";',
-    'void s.offsetWidth;',
-    'var jit=Math.floor(Math.random()*80)-40;var target=52*134+64-W/2+jit;',
+    // dải quay dùng chung cho cả 2 vòng: 60 thẻ, kết quả ở thẻ 52; jitter ±35px. Thẻ 110px + khe 6px = bước 116px.
+    'function pwRollEl(strip,wrap,cards,cb){var s=$(strip),W=$(wrap).clientWidth;',
+    's.innerHTML=cards.join("");s.style.transition="none";s.style.transform="translateX(0px)";void s.offsetWidth;',
+    'var STEP=116,HALF=55;var jit=Math.floor(Math.random()*70)-35;var target=52*STEP+HALF-W/2+jit;',
     's.style.transition="transform 10s cubic-bezier(.06,.72,.05,1)";',
     's.style.transform="translateX("+(-target)+"px)";setTimeout(cb,10300)}',
+    // 27/08: GỘP 1 reel — raid ra thẳng ở vòng thường, ô trúng (thẻ 52) gắn hiệu ứng lửa nếu là raid
     'function pwStrip1(it){var out=[];for(var i=0;i<60;i++){',
-    'if(i===52)out.push(pwCardHtml(it.raid?"PAL RAID":it.name,it.raid));',
-    'else{var r=PW.raidNames.length&&Math.random()<0.05;out.push(r?pwCardHtml("PAL RAID",true):pwCardHtml(pwPick(PW.names),false))}}return out}',
-    'function pwStrip2(it){var out=[];for(var i=0;i<60;i++)out.push(pwCardHtml(i===52?it.name:pwPick(PW.raidNames),true));return out}',
-    'function pwSpin(){if(PWBUSY||!PW||!PW.open)return;PWBUSY=true;$("pwGo").disabled=true;$("pwRes").classList.add("hidden");',
-    'api("/api/palwheel/spin",{}).then(function(j){setBal(j.balance);',
-    'pwRoll(pwStrip1(j.item),function(){',
-    'if(j.item.raid){toast("🔥 TRÚNG Ô PAL RAID! Mở vòng raid...");pwRoll(pwStrip2(j.item),function(){pwDone(j)})}',
-    'else pwDone(j)})',
-    '}).catch(function(e){PWBUSY=false;$("pwGo").disabled=false;toast("❌ "+e.message)})}',
-    'function pwDone(j){PWBUSY=false;$("pwGo").disabled=false;var it=j.item;',
-    '$("pwRes").classList.remove("hidden");',
-    '$("pwRes").innerHTML="🎉 Trúng <b style=\\"font-size:17px\\">"+esc(it.name)+"</b>"+(it.raid?" <span style=\\"color:#ff8f8f;font-weight:700\\">PAL RAID</span>":"")+(it.dex?" <span class=\\"muted\\">#"+it.dex+"</span>":"")+"<div class=\\"muted\\" style=\\"font-size:12px;margin-top:4px\\">Đã vào 🎒 RƯƠNG - qua tab 🪪 Cá nhân để 💰 bán hoặc 🎁 nhận vào game</div>";',
+    'if(i===52)out.push(pwCardHtml(it,!!it.raid,!!it.raid));',
+    'else{var r=PW.raids.length&&Math.random()<0.06;out.push(r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false))}}return out}',
+    'function pwSpin(){if(PWBUSY||!PW||!PW.open||PWLOCK>Date.now())return;PWBUSY=true;pwGoLabel();$("pwRes").classList.add("hidden");',
+    'api("/api/palwheel/spin",{}).then(function(j){setBal(j.balance);pwLockStart();',
+    'pwRollEl("pwStrip","pwWrap",pwStrip1(j.item),function(){pwDone(j)})',
+    '}).catch(function(e){PWBUSY=false;pwGoLabel();toast("❌ "+e.message)})}',
+    'function pwDone(j){PWBUSY=false;pwGoLabel();var it=j.item;var res=$("pwRes");',
+    'res.classList.remove("hidden");if(it.raid)res.classList.add("raidwin");else res.classList.remove("raidwin");',
+    'res.innerHTML=(it.raid?"🔥 TRÚNG BOSS RAID! ":"🎉 Trúng ")+"<b style=\\"font-size:17px\\">"+esc(it.name)+"</b>"+(it.raid?" <span style=\\"color:#ff9f5c;font-weight:700\\">PAL RAID</span>":"")+(it.dex?" <span class=\\"muted\\">#"+it.dex+"</span>":"")+"<div class=\\"muted\\" style=\\"font-size:12px;margin-top:4px\\">Đã vào 🎒 RƯƠNG - qua tab 🪪 Cá nhân để 💰 bán hoặc 🎁 nhận vào game</div>";',
+    'if(it.raid)toast("🔥🔥 CỰC HIẾM! Bạn quay trúng BOSS RAID "+it.name+" — khác hẳn pal thường!");',
     'if(j.potWin)toast("💥🏆 NỔ HŨ QUAY PAL +"+vnd(j.potWin)+" Dogcoin!");',
-    'pwSync()}',
+    'if(j.luckJustFull)toast("🍀 ĐẦY THANH MAY MẮN! Kéo xuống quay 🔥 VÒNG RAID nhận boss + thưởng Dogcoin!");',
+    'pwSync(true,false)}',
+    '',
+    // ===== 🍀 THANH MAY MẮN + 🔥 VÒNG QUAY RAID (27/08) =====
+    'function pwRenderLuck(){if(!PW)return;var l=Math.max(0,Math.min(100,PW.luck||0));',
+    '$("pwLuckFill").style.width=l+"%";$("pwLuckPct").textContent=l+"%";',
+    '$("pwLuckTix").innerHTML=PW.raidReady?"<span style=\\"color:#ffcf5c;font-weight:800\\">🔥 ĐỦ 100%! quay vòng RAID</span>":(PW.raidWheelOn?("<span class=\\"muted\\">còn "+(100-l)+"% nữa</span>"):"<span class=\\"muted\\">vòng RAID đang tắt</span>");',
+    'var box=$("pwRaidBox");if(PW.raidWheelOn)box.classList.remove("hidden");else box.classList.add("hidden");',
+    'if(PW.raidWheelOn){var rp=PW.raidWheelPals||[];',
+    '$("pwRaidStat").textContent=rp.length+" boss · thưởng "+vnd(PW.raidBonus)+" Dogcoin";',
+    '$("pwRaidInfo").innerHTML="Đầy <b>100%</b> may mắn mới quay được. Chỉ toàn boss RAID: "+rp.map(function(p){return esc(p.name)}).join(", ")+". Trúng 1 boss + <b style=\\"color:#7cff9c\\">"+vnd(PW.raidBonus)+"</b> Dogcoin. Quay xong thanh may mắn <b>về 0</b>.";}',
+    'pwGoLabel()}',
+    'function pwRaidIdle(){if(!PW||!PW.raidWheelPals||!PW.raidWheelPals.length)return;var h="";for(var i=0;i<14;i++)h+=pwCardHtml(pwPick(PW.raidWheelPals),true,false);',
+    'var s=$("pwRaidStrip");if(!s)return;s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
+    'function pwRaidStrip1(it){var out=[];for(var i=0;i<60;i++)out.push(pwCardHtml(i===52?it:pwPick(PW.raidWheelPals),true,i===52));return out}',
+    'function pwRaidSpin(){if(PWRBUSY||!PW||!PW.raidReady||PWLOCK>Date.now())return;PWRBUSY=true;pwGoLabel();$("pwRaidRes").classList.add("hidden");',
+    'api("/api/palwheel/raidspin",{}).then(function(j){setBal(j.balance);pwLockStart();',
+    'pwRollEl("pwRaidStrip","pwRaidWrap",pwRaidStrip1(j.item),function(){pwRaidDone(j)})',
+    '}).catch(function(e){PWRBUSY=false;pwGoLabel();toast("❌ "+e.message)})}',
+    'function pwRaidDone(j){PWRBUSY=false;pwGoLabel();var it=j.item;',
+    '$("pwRaidRes").classList.remove("hidden");',
+    '$("pwRaidRes").innerHTML="🔥🍀 TRÚNG <b style=\\"font-size:18px;color:#ff9f5c\\">"+esc(it.name)+"</b>"+(it.dex?" <span class=\\"muted\\">#"+it.dex+"</span>":"")+(j.bonus?" <span style=\\"color:#7cff9c;font-weight:800\\">+"+vnd(j.bonus)+" Dogcoin</span>":"")+"<div class=\\"muted\\" style=\\"font-size:12px;margin-top:4px\\">Boss vào 🎒 RƯƠNG - qua tab 🪪 Cá nhân để nhận vào game. Thanh may mắn đã về 0.</div>";',
+    'toast("🔥 Trúng boss RAID "+it.name+(j.bonus?" + "+vnd(j.bonus)+" Dogcoin":"")+"!");',
+    'pwSync(false,true)}',
     '',
     // ===== 🎯 CHỌN PAL ĐÍCH DANH =====
     'var PK=null,PKBUSY=false;',

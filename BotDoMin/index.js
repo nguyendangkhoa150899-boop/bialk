@@ -950,10 +950,17 @@ function gachaPool() {
 // Astralym (bug game: chưa cho bắt/thả). Ô "PAL RAID" nổ theo TỈ LỆ RIÊNG (25/08: 1%);
 // trúng nó thì mở vòng 2 chia đều trong các pal raid — giống mở rương CSGO.
 const PALWHEEL_EXCLUDE_DEX = [203, 204]; // Panthalus, Astralym
+// 27/08: loại thêm theo CODE (2 con này dex=undefined nên không loại theo dex được) —
+// chủ server không muốn (chưa gom hình): Boltmane, Dragostrophe.
+const PALWHEEL_EXCLUDE_CODE = ['ElecLion', 'BlackFurDragon'];
 // Chỉ các boss triệu hồi được ở Summoning Altar server này (chủ server chốt 25/08,
 // nguồn paldb.cc/en/Raid). Moon Lord KHÔNG lấy được -> không có. Xenogard/Xenovader
 // là pal đẻ ra từ raid Xenolord, không phải boss triệu hồi -> cũng không nằm trong ô RAID.
 const PALWHEEL_RAID_NAMES = ['Bellanoir', 'Bellanoir Libero', 'Blazamut Ryu', 'Xenolord', 'Hartalis'];
+// 🍀 VÒNG QUAY RAID MAY MẮN (27/08): đầy thanh may mắn (100%) mới được quay. Đúng 4 boss
+// chủ server chốt (KHÔNG có Bellanoir Libero) + thưởng thêm Dogcoin. Khác pool ô RAID
+// của vòng thường ở trên.
+const PALWHEEL_LUCKY_RAID_NAMES = ['Hartalis', 'Bellanoir', 'Blazamut Ryu', 'Xenolord'];
 
 let PASSIVE_DATA = { list: [] };
 try {
@@ -1010,6 +1017,13 @@ function palWheelCfg() {
         pickHarta: Math.floor(num(c.pickHarta, 20000, 0, 10000000)),        // Hartalis
         boss: c.boss === undefined ? true : !!c.boss,             // giao bản BOSS_ (pal boss)
         open: c.open === undefined ? true : !!c.open,
+        // 🍀 THANH MAY MẮN + VÒNG RAID (27/08): mỗi lượt quay thường nạp luckMin..luckMax %
+        // (admin còn đặt riêng %/quay TỪNG NGƯỜI ở panel — xem palLuckStep). Đầy 100% được
+        // 1 vé quay vòng RAID: trúng 1/4 boss + thưởng raidBonus Dogcoin.
+        luckMin: Math.floor(num(c.luckMin, 1, 0, 100)),
+        luckMax: Math.floor(num(c.luckMax, 3, 0, 100)),
+        raidBonus: Math.floor(num(c.raidBonus, 18000, 0, 100000000)),
+        raidWheelOn: c.raidWheelOn === undefined ? true : !!c.raidWheelOn,
     };
 }
 function setPalWheelCfg(o) {
@@ -1019,10 +1033,32 @@ function setPalWheelCfg(o) {
 }
 function palWheelNormalPool() {
     const raid = new Set(PAL_DATA.raidOnly || []);
-    return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0));
+    return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code));
 }
 function palWheelRaidPool() {
     return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
+}
+// 🍀 4 boss của vòng quay RAID may mắn (khác pool ô RAID vòng thường)
+function palLuckyRaidPool() {
+    return (PAL_DATA.all || []).filter(p => PALWHEEL_LUCKY_RAID_NAMES.includes(p.name));
+}
+// %/quay nạp thanh may mắn của 1 người: admin đặt riêng (u.palLuckRate, số cố định) thì
+// dùng số đó; chưa đặt thì random trong [luckMin, luckMax] toàn sàn. Đây là NÚT GIAN LẬN
+// công khai của chủ server — đặt cao cho bạn bè để họ đầy thanh nhanh.
+function palLuckStep(userId) {
+    const u = getUserData(userId);
+    if (Number.isFinite(u.palLuckRate)) return Math.max(0, Math.min(100, u.palLuckRate));
+    const cfg = palWheelCfg();
+    const lo = Math.min(cfg.luckMin, cfg.luckMax), hi = Math.max(cfg.luckMin, cfg.luckMax);
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
+// Panel gọi để đặt/xoá %/quay riêng của 1 người (null/'' = xoá về mặc định toàn sàn)
+function setPalLuckRate(userId, rate) {
+    const u = getUserData(userId);
+    if (rate === null || rate === undefined || rate === '') { delete u.palLuckRate; }
+    else { const n = Number(rate); if (!Number.isFinite(n)) return { error: 'Số không hợp lệ' }; u.palLuckRate = Math.max(0, Math.min(100, n)); }
+    saveDbNow();
+    return { ok: true, rate: Number.isFinite(u.palLuckRate) ? u.palLuckRate : null };
 }
 
 // Rương pal của từng người — mảng trên userData, phần tử: { id, code, name, dex, raid,
@@ -1033,11 +1069,19 @@ function palChest(userId) {
     if (!Array.isArray(u.palChest)) u.palChest = [];
     return u.palChest;
 }
+// 🚫 CHỐNG SPAM: đang có 1 lượt quay CHƯA HIỆN kết quả (revealAt còn tương lai) thì khoá
+// quay lượt mới — chặn kiểu "quay → F5 → quay → F5" tạo cả đống lượt chồng chéo gây lỗi.
+// Tự mở khoá sau khi reel hiện xong (~10,5s). Enforce ở SERVER nên F5/gọi tay đều vô ích.
+function palSpinLocked(userId) {
+    const now = Date.now();
+    return palChest(userId).some(i => i.revealAt && i.revealAt > now);
+}
 
 function palWheelSpin(userId, username) {
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới quay pal được' };
+    if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt — chờ vài giây cho hiện kết quả rồi quay tiếp nhé' };
     const normals = palWheelNormalPool();
     const raids = palWheelRaidPool();
     if (!normals.length) return { error: 'Danh sách pal chưa nạp được, báo admin' };
@@ -1055,9 +1099,9 @@ function palWheelSpin(userId, username) {
     const isRaid = raids.length > 0 && roll === normals.length;
     const win = isRaid ? raids[Math.floor(Math.random() * raids.length)] : normals[roll];
 
-    // 25/08: pal chỉ HIỆN ra ở trang Cá nhân SAU khi reel quay xong (10s/reel, raid 2 reel)
-    // — revealAt chặn cả kiểu F5 sang tab Cá nhân xem trộm kết quả giữa chừng.
-    const revealMs = isRaid ? 22000 : 11000;
+    // 27/08: gộp 1 reel (raid ra thẳng) nên cả thường lẫn raid đều ~10,5s. revealAt vẫn
+    // chặn F5 sang tab Cá nhân xem trộm giữa chừng + là mốc tự mở khoá chống spam.
+    const revealMs = 10500;
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
         code: win.code, name: win.name, dex: win.dex || 0, raid: isRaid,
@@ -1075,8 +1119,16 @@ function palWheelSpin(userId, username) {
         logDog('jackpot', userId, username || userId, potWin, 'nổ hũ quay pal (web)');
     }
 
+    // 🍀 THANH MAY MẮN: mỗi lượt quay nạp %/quay của người này (mặc định 1-3, admin đặt
+    // riêng từng người). CHẶN TRẦN 100 — đầy thì mở nút quay vòng RAID, quay raid xong về 0
+    // (chủ server chốt 27/08: không cộng dồn quá 100, không tích nhiều vé).
+    if (typeof user.palLuck !== 'number' || user.palLuck < 0) user.palLuck = 0;
+    const luckBefore = user.palLuck;
+    user.palLuck = Math.min(100, user.palLuck + palLuckStep(userId));
+    const luckJustFull = luckBefore < 100 && user.palLuck >= 100;
+
     logDog('shop', userId, username || userId, -cfg.price, `quay pal web trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}`);
-    writeLog('ADMIN', `[QUAY PAL WEB] ${username || userId} quay trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}${potWin ? ` | NỔ HŨ +${potWin}` : ''}`);
+    writeLog('ADMIN', `[QUAY PAL WEB] ${username || userId} quay trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}${potWin ? ` | NỔ HŨ +${potWin}` : ''}${luckJustFull ? ' | ĐẦY THANH MAY MẮN -> mở vòng RAID' : ''}`);
     saveDbNow();
 
     // Đăng công khai vào kênh gacha (nếu admin có cấu hình kênh) — ĐỢI reel quay xong
@@ -1094,7 +1146,44 @@ function palWheelSpin(userId, username) {
         if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> quay pal web NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('gacha').toLocaleString()} 🌱`, userId);
     }
 
-    return { ok: true, item, potWin, balance: getUserData(userId).points || 0 };
+    return { ok: true, item, potWin, balance: getUserData(userId).points || 0, luck: user.palLuck, raidReady: cfg.raidWheelOn && user.palLuck >= 100, luckJustFull };
+}
+
+// 🍀 QUAY VÒNG RAID (27/08): đầy thanh may mắn (100%) mới quay được. Trúng đều 1/4 boss
+// + thưởng raidBonus Dogcoin. Quay xong THANH VỀ 0. Pal vào rương như quay thường.
+function palRaidSpin(userId, username) {
+    const cfg = palWheelCfg();
+    if (!cfg.raidWheelOn) return { error: 'Vòng quay RAID đang tắt' };
+    if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới quay được' };
+    if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt — chờ vài giây rồi quay tiếp nhé' };
+    const user = getUserData(userId);
+    if ((user.palLuck || 0) < 100) return { error: 'Chưa đủ thanh may mắn (cần đầy 100%)' };
+    const pool = palLuckyRaidPool();
+    if (!pool.length) return { error: 'Danh sách boss raid chưa nạp được, báo admin' };
+    user.palLuck = 0; // quay xong may mắn về 0
+    const win = pool[Math.floor(Math.random() * pool.length)];
+    const item = {
+        id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
+        code: win.code, name: win.name, dex: win.dex || 0, raid: true,
+        wonAt: new Date().toLocaleString('vi-VN') + ' (thưởng may mắn)', status: 'chest',
+        revealAt: Date.now() + 10500,
+    };
+    palChest(userId).unshift(item);
+    const bonus = cfg.raidBonus;
+    if (bonus > 0) updatePoints(userId, bonus);
+    logDog('shop', userId, username || userId, bonus, `THƯỞNG vòng RAID may mắn: ${item.name} + ${bonus} Dogcoin - rương #${item.id}`);
+    writeLog('ADMIN', `[VÒNG RAID] ${username || userId} đầy thanh may mắn -> ${item.name}${bonus ? ` + ${bonus} Dogcoin` : ''} - rương #${item.id}`);
+    saveDbNow();
+
+    const gachaCh = dbCache._gachaChannelId;
+    if (gachaCh && typeof client !== 'undefined' && client && client.channels) {
+        const msg = `🍀🔥 **${username || 'Ai đó'}** đầy THANH MAY MẮN, quay vòng RAID ra **${item.name}**${bonus > 0 ? ` + **${bonus.toLocaleString()}** ${DOGCOIN_EMOJI}` : ''}!`;
+        setTimeout(() => {
+            client.channels.fetch(gachaCh).then(ch => ch.send(msg))
+                .catch(e => writeLog('SYSTEM', `[VÒNG RAID] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
+        }, 10500);
+    }
+    return { ok: true, item, bonus, luck: user.palLuck, raidReady: false, balance: getUserData(userId).points || 0 };
 }
 
 // 🎯 CHỌN PAL ĐÍCH DANH (25/08, thay nút "Pal tùy chọn" 6.000 trong Discord): chọn
@@ -3728,16 +3817,31 @@ client.once('ready', async (c) => {
             palwheel: {
                 state: (uid) => {
                     const cfg = palWheelCfg();
+                    const u = getUserData(uid);
+                    // ⏳ còn bao nhiêu ms nữa mới mở khoá quay (lượt mới nhất chưa hiện xong).
+                    // CHỈ để client dựng lại NÚT ĐẾM NGƯỢC sau F5 — KHÔNG kèm kết quả nên
+                    // không xem trộm được, và KHÔNG chạy lại hoạt hình (tránh lỗi resume cũ).
+                    const newest = palChest(uid)[0];
+                    const spinRemain = (newest && newest.revealAt && newest.status === 'chest' && newest.revealAt > Date.now())
+                        ? (newest.revealAt - Date.now()) : 0;
                     return {
                         price: cfg.price, sellPrice: cfg.sellPrice, open: cfg.open,
-                        pot: potGet('gacha'),
-                        names: palWheelNormalPool().map(p => p.name),
-                        raidNames: palWheelRaidPool().map(p => p.name),
+                        pot: potGet('gacha'), spinRemain,
+                        // 27/08: kèm code để web gắn hình (/palimage/T_<code>_icon_normal.png)
+                        pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),
+                        raids: palWheelRaidPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),
+                        // 🍀 thanh may mắn + vòng raid (27/08): đầy 100 mới quay raid, xong về 0
+                        luck: typeof u.palLuck === 'number' ? u.palLuck : 0,
+                        raidReady: cfg.raidWheelOn && (u.palLuck || 0) >= 100,
+                        raidWheelOn: cfg.raidWheelOn,
+                        raidBonus: cfg.raidBonus,
+                        raidWheelPals: palLuckyRaidPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),
                         // không đếm pal đang quay dở (chưa tới revealAt) — khỏi lộ kết quả sớm
                         chestCount: palChest(uid).filter(i => i.status === 'chest' && (!i.revealAt || i.revealAt <= Date.now())).length,
                     };
                 },
                 spin: (uid) => palWheelSpin(uid, getUserData(uid).name || uid),
+                raidSpin: (uid) => palRaidSpin(uid, getUserData(uid).name || uid),
                 // 🎯 chọn pal đích danh (danh sách + mua)
                 pickState: (uid) => {
                     const cfg = palWheelCfg();
@@ -3810,6 +3914,7 @@ client.once('ready', async (c) => {
             // 🎁 rương pal + vòng quay web (25/08)
             getPalWheelCfg: palWheelCfg,
             setPalWheelCfg,
+            setPalLuckRate,   // 🍀 đặt %/quay may mắn riêng từng người (rig cho bạn bè)
             palChestOverview,
             palChestGrant,
             palChestResolve,

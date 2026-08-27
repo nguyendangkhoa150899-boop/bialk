@@ -80,6 +80,9 @@ function startPanel(ctx) {
                 // 📒 nợ: hiện thẳng số trong db (index.js có vòng quét cộng lãi mỗi giờ)
                 debt: db[id].debt ? ((db[id].debt.loan || 0) + (db[id].debt.admin || 0)) : 0,
                 debtBad: !!(db[id].debt && db[id].debt.bad),
+                // 🍀 %/quay may mắn RIÊNG (null = theo mặc định toàn sàn) + thanh hiện tại
+                luckRate: Number.isFinite(db[id].palLuckRate) ? db[id].palLuckRate : null,
+                luck: Number.isFinite(db[id].palLuck) ? db[id].palLuck : 0,
             }))
             .sort((a, b) => b.points - a.points);
     };
@@ -216,6 +219,15 @@ function startPanel(ctx) {
                 // ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
                 if (ctx.setPalWheelCfg && req.method === 'POST' && path === '/api/palwheel/cfg') {
                     return sendJSON(res, 200, { ok: true, cfg: ctx.setPalWheelCfg(body) });
+                }
+                // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) — '' = xoá về mặc định
+                if (ctx.setPalLuckRate && req.method === 'POST' && path === '/api/palwheel/luckrate') {
+                    const uid = String(body.userId || '').trim();
+                    if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu người chơi' });
+                    const r = ctx.setPalLuckRate(uid, body.rate);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    ctx.writeLog('ADMIN', `[PANEL MAY MẮN] ${uid} -> %/quay = ${r.rate === null ? 'mặc định toàn sàn' : r.rate + '%'}`);
+                    return sendJSON(res, 200, { ok: true, rate: r.rate });
                 }
                 if (ctx.palChestGrant && req.method === 'POST' && path === '/api/palchest/grant') {
                     const uid = String(body.userId || '').trim();
@@ -1178,6 +1190,13 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>→102% (mỗi 1%)</label><input id="pwUpS4" type="number" placeholder="vd: 3500"></div>
           <div style="flex:1"><label>→201% (mỗi 1%)</label><input id="pwUpS5" type="number" placeholder="vd: 6000"></div>
         </div>
+        <div class="note" style="margin-top:8px">🍀 <b>THANH MAY MẮN + VÒNG RAID</b> — mỗi lượt quay thường nạp % may mắn (random trong khoảng dưới). Đầy 100% người chơi được quay <b>vòng RAID</b>: trúng 1/4 boss (Hartalis, Bellanoir, Blazamut Ryu, Xenolord) + thưởng Dogcoin, xong thanh về 0. Muốn <b>cài sẵn cho bạn bè</b>: đặt %/quay riêng ở cột 🍀 bảng ví người chơi bên tab 👥.</div>
+        <div class="row" style="margin-top:4px">
+          <div style="flex:1"><label>🍀 May mắn/quay TỐI THIỂU (%)</label><input id="pwLuckMin" type="number" placeholder="vd: 1"></div>
+          <div style="flex:1"><label>🍀 May mắn/quay TỐI ĐA (%)</label><input id="pwLuckMax" type="number" placeholder="vd: 3"></div>
+          <div style="flex:1"><label>🔥 Thưởng trúng vòng RAID (Dogcoin)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
+          <label style="display:flex;align-items:center;gap:6px;flex:1"><input type="checkbox" id="pwRaidOn" style="width:auto"> Mở vòng RAID</label>
+        </div>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> Giao bản PAL BOSS</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
@@ -1222,7 +1241,7 @@ const HTML = `<!DOCTYPE html>
         <input id="search" placeholder="🔍 Tìm theo tên hoặc ID..." oninput="renderPlayers()" style="margin-top:12px">
         <div style="overflow-x:auto">
           <table id="playerTable">
-            <thead><tr><th>Tên</th><th>ID</th><th>Điểm</th><th>📒 Nợ</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>Tên</th><th>ID</th><th>Điểm</th><th>📒 Nợ</th><th>🍀 May mắn</th><th>Thao tác</th></tr></thead>
             <tbody id="playerBody"></tbody>
           </table>
         </div>
@@ -1765,7 +1784,8 @@ function pwCfgFill(k){
   set('pwUp5',k.upSlot5);set('pwUp6',k.upSlot6);set('pwUp7',k.upSlot7);set('pwUp8',k.upSlot8);set('pwUpIv',k.upIv);set('pwUpLine',k.upSoulLine);
   set('pwUpWt',k.upWtPassive);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
-  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;}
+  set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);
+  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
     '</b> · linh hồn <b>'+k.soulMax+'</b> dòng × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
     (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
@@ -1796,6 +1816,10 @@ function pwCfgSave(){
            upSoul5:parseInt(document.getElementById('pwUpS5').value),
            level:parseInt(document.getElementById('pwLevel').value),
            stars:parseInt(document.getElementById('pwStars').value),
+           luckMin:parseInt(document.getElementById('pwLuckMin').value),
+           luckMax:parseInt(document.getElementById('pwLuckMax').value),
+           raidBonus:parseInt(document.getElementById('pwRaidBonus').value),
+           raidWheelOn:document.getElementById('pwRaidOn').checked,
            boss:document.getElementById('pwBoss').checked,
            open:document.getElementById('pwOpen').checked};
   if(!(o.price>=100))return toast('Vé phải từ 100');
@@ -1810,6 +1834,9 @@ function pwCfgSave(){
     if(!(o[kk]>=0))return toast('Giá nâng cấp không được âm/trống');
   if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
   if(!(o.stars>=0&&o.stars<=4))return toast('Sao 0–4');
+  if(!(o.luckMin>=0&&o.luckMin<=100)||!(o.luckMax>=0&&o.luckMax<=100))return toast('% may mắn/quay trong 0–100');
+  if(o.luckMin>o.luckMax)return toast('May mắn tối thiểu không được lớn hơn tối đa');
+  if(!(o.raidBonus>=0))return toast('Thưởng vòng RAID không được âm/trống');
   api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function pgGrant(){
@@ -1890,18 +1917,25 @@ function renderPlayers(){
   if(!STATE)return;
   // Đừng vẽ lại bảng khi admin đang gõ vào ô nhập số (tránh mất focus + reset số)
   const af=document.activeElement;
-  if(af&&af.id&&af.id.indexOf('amt_')===0)return;
+  if(af&&af.id&&(af.id.indexOf('amt_')===0||af.id.indexOf('luck_')===0))return;
   // Giữ lại số đã gõ nhưng chưa bấm nút: refresh 3s/lần vẽ lại bảng không được xóa nó
   // (guard focus ở trên không đủ - admin gõ xong rê chuột/bấm chỗ khác là mất focus).
   const kept={};
-  document.querySelectorAll('input[id^="amt_"]').forEach(i=>{if(i.value!=='')kept[i.id]=i.value;});
+  document.querySelectorAll('input[id^="amt_"],input[id^="luck_"]').forEach(i=>{if(i.value!=='')kept[i.id]=i.value;});
   const q=(document.getElementById('search').value||'').toLowerCase();
   const tb=document.getElementById('playerBody');tb.innerHTML='';
   STATE.players.filter(p=>p.name.toLowerCase().includes(q)||p.id.includes(q)).forEach(p=>{
     const tr=document.createElement('tr');
     const debtCell=p.debt>0?('<b style="color:#e74c3c">'+p.debt.toLocaleString()+'</b>'+(p.debtBad?' ⚠️':'')):'<span class="muted">0</span>';
+    // 🍀 cột may mắn: rate riêng (hoặc "mặc định") + thanh hiện tại + ô đặt %/quay riêng
+    const luckRateTxt=(p.luckRate===null||p.luckRate===undefined)?'<span class="muted">mặc định</span>':('<b style="color:#7cff9c">'+p.luckRate+'%/quay</b>');
+    const luckCell='<div style="font-size:12px">'+luckRateTxt+' <span class="muted">· thanh '+(p.luck||0)+'%</span></div>'+
+      '<input class="mini-in" type="number" min="0" max="100" placeholder="%/quay" id="luck_'+p.id+'" style="width:70px">'+
+      ' <button class="mini btn-green" onclick="pLuck(\\''+p.id+'\\')">🍀 Đặt</button>'+
+      ' <button class="mini btn-grey" onclick="pLuckClear(\\''+p.id+'\\')">↺ Mặc định</button>';
     tr.innerHTML='<td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
       '<td>'+debtCell+'</td>'+
+      '<td>'+luckCell+'</td>'+
       '<td><input class="mini-in" type="number" placeholder="số" id="amt_'+p.id+'">'+
       ' <button class="mini btn-blue" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
       ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button>'+
@@ -1951,6 +1985,9 @@ function pClear(id){const i=document.getElementById('amt_'+id);if(i)i.value='';}
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');pClear(id);refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');pClear(id);refresh();});}
 function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');pClear(id);refresh();}).catch(()=>toast('❌ Lỗi'));}
+// 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) — trống = báo lỗi, dùng nút ↺ để về mặc định
+function pLuck(id){const v=document.getElementById('luck_'+id).value;if(v==='')return toast('Nhập % (0–100), hoặc bấm ↺ Mặc định');api('/api/palwheel/luckrate',{userId:id,rate:+v}).then(j=>{toast('🍀 '+id+' -> '+j.rate+'%/quay');document.getElementById('luck_'+id).value='';refresh();}).catch(e=>toast('❌ '+e.message));}
+function pLuckClear(id){api('/api/palwheel/luckrate',{userId:id,rate:''}).then(()=>{toast('↺ '+id+' về mặc định toàn sàn');refresh();}).catch(e=>toast('❌ '+e.message));}
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng Dogcoin & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}

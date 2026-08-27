@@ -580,6 +580,19 @@ passive 4 ô (mở tới 8), bản PAL BOSS. **Nâng cấp trả phí** (trừ v
 hoàn): slot passive 5/6/7/8 = 8k/16k/32k/64k; soul %/IV/số-dòng-soul theo bảng; passive
 Cây Thế Giới 1.000/cái; boss raid Bellanoir Libero 9.000, Blazamut Ryu/Xenolord/Hartalis
 20.000. **Giới tính BẮT BUỘC chọn** (♂ Đực=1 / ♀ Cái=2, không mặc định).
+27/08 **VÒNG QUAY GẮN HÌNH + THANH MAY MẮN + VÒNG RAID**: reel giờ có **hình pal**
+(`assets/palimage/T_<code>_icon_normal.png`, 287 icon; `assets.js` quét subfolder; con
+thiếu hình tự ẩn `<img>` chừa tên). Pool thường **279** (loại thêm Boltmane/Dragostrophe
+theo `PALWHEEL_EXCLUDE_CODE` vì chưa có hình). **Gộp 1 reel**: raid ra thẳng ở vòng thường
+(ô trúng bốc lửa `.raidhit` + toast riêng), bỏ màn 2-reel; `revealMs` cả 2 loại = **10.500**.
+🍀 **Thanh may mắn** (`u.palLuck`, mỗi lượt +`luckMin..luckMax`% mặc định 1-3, **admin đặt
+%/quay RIÊNG từng người** ở panel `u.palLuckRate` để cài sẵn cho bạn — máy in tiền có chủ
+đích, đặt cao = lời vô hạn). Đầy 100% mở **🔥 VÒNG RAID** (`palRaidSpin`, 4 boss Hartalis/
+Bellanoir/Blazamut Ryu/Xenolord + thưởng `raidBonus` mặc định **18.000**, quay xong thanh
+**về 0**). Cfg panel: `luckMin/luckMax/raidBonus/raidWheelOn`. **Chống spam** (`palSpinLocked`):
+đang có lượt chưa hiện (revealAt tương lai) thì server CHẶN quay mới (cả 2 vòng) + nút web
+**đếm ngược ~10,5s** (state trả `spinRemain` để F5 dựng lại đếm ngược, KHÔNG resume hoạt
+hình — bản resume cũ bị bỏ vì F5 nhảy loạn con khác).
 
 **✨ Passive (`BotDoMin/passives.json`, 99 mục)** — tên/mô tả tiếng Việt trong game, `id`
 = FName game lưu thật, `tier` 1-4 màu (trắng/vàng/xanh ngọc, `bad` đỏ, `wt` Cây Thế Giới
@@ -657,6 +670,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   trực tiếp (cửa nào gánh bao nhiêu + ai đặt gì) + nút 🎯 tự chọn xúc xắc cho nhà cái ăn
   nhiều nhất + đồng hồ "còn Xs để ép ăn ván này". Ép chỉ ăn khi CÒN MỞ CƯỢC (dice chốt lúc
   khóa sổ; ép sau khóa trôi sang ván sau — không phá cơ chế nặn).
+- **27/08 (chiều)** — **Vòng quay pal gắn hình** (287 icon `assets/palimage/`, assets.js quét
+  subfolder); gộp 1 reel raid ra thẳng + ô trúng bốc lửa; loại Boltmane/Dragostrophe (thiếu
+  hình). 🍀 **Thanh may mắn** đầy 100% mở **vòng RAID** (4 boss + 18k, xong về 0), admin đặt
+  **%/quay riêng từng người** ở panel (rig cho bạn). **Chống spam quay/F5**: server khoá khi
+  còn lượt chưa hiện + nút web đếm ngược ~10,5s (dùng `spinRemain`, chỉ đếm ngược không resume).
 - **26/08** — Cổ phiếu chốt: mốc 1.000, neo lang thang 100–2.000, nến 60s lình xình
   (tickAmp 3), ngưỡng mềm 350/1650 chỉnh panel. Sửa 6 ID passive sai. Điều tra nút reset
   server (kết luận bất khả thi → Scheduled Task). Bán 4 boss raid + 7 passive Cây Thế Giới.

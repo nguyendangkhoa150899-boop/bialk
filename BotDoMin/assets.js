@@ -20,16 +20,24 @@ const MIME = {
     '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.m4a': 'audio/mp4',
 };
 
-// { '/dogcoin.png': { buf, type } }
+// { '/dogcoin.png': { buf, type }, '/palimage/T_Anubis_icon_normal.png': {...} }
+// 27/08: quét THÊM thư mục con 1 cấp (vd assets/palimage/ chứa 287 icon pal) rồi phục vụ
+// theo đường dẫn có tiền tố: <img src="/palimage/T_Anubis_icon_normal.png">. Vẫn "thả
+// file vào rồi restart" như cũ — chỉ khác là icon pal gom riêng 1 thư mục cho gọn.
 const store = {};
 let names = [];
-try {
-    for (const file of fs.readdirSync(DIR)) {
-        const type = MIME[path.extname(file).toLowerCase()];
+function scanDir(dir, prefix) {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+        if (e.isDirectory()) { scanDir(path.join(dir, e.name), prefix + e.name + '/'); continue; }
+        const type = MIME[path.extname(e.name).toLowerCase()];
         if (!type) continue;
-        try { store['/' + file] = { buf: fs.readFileSync(path.join(DIR, file)), type }; names.push(file); } catch { }
+        const key = '/' + prefix + e.name;
+        try { store[key] = { buf: fs.readFileSync(path.join(dir, e.name)), type }; names.push(prefix + e.name); } catch { }
     }
-} catch { /* chưa có thư mục assets/ — trang vẫn chạy, chỉ không có ảnh/tiếng */ }
+}
+scanDir(DIR, '');
 
 // Trả true nếu request này là file tĩnh và đã phục vụ xong; false thì router xử tiếp.
 // Tra bằng BẢNG dựng sẵn lúc khởi động, KHÔNG ghép đường dẫn từ chuỗi người dùng gửi
