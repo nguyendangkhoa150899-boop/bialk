@@ -2377,7 +2377,7 @@ const PAGE = [
     '$("skPeak").textContent=p.peak>0?("+"+vnd(p.peak)):"chưa từng có lãi";',
     '$("skAutoNow").textContent=(p.autoLow||p.autoHigh)?((p.autoLow?"⬇ "+vnd(p.autoLow):"")+(p.autoLow&&p.autoHigh?" · ":"")+(p.autoHigh?"⬆ "+vnd(p.autoHigh):"")):"chưa đặt";',
     // cháy vốn giờ áp cả 2 chiều (có đòn bẩy) - chỉ ẩn khi x1 chiều MUA vì giá sàn 300
-    'var br=$("skBurnRow");var showB=p.burnAt>0&&p.burnAt>=300&&p.burnAt<=3000;',
+    'var br=$("skBurnRow");var showB=p.burnAt>0&&p.burnAt>=10&&p.burnAt<=4000;',
     'br.style.display=showB?"flex":"none";',
     'if(showB){$("skBurn").textContent=vnd(p.burnAt);',
     '$("skBurnL").textContent=sht?"💀 CHÁY VÍ nếu giá LÊN tới":"💀 CHÁY VÍ nếu giá XUỐNG tới";',

@@ -2869,7 +2869,7 @@ const STOCK_CANDLE_TICKS = 30;       // 30 × 2s = 60 giây một cây nến (ch
 //     trên biên độ chỉ ±4,6% -> người chơi gần như không bao giờ thắng, chơi vài lần
 //     là bỏ. 1% vẫn là lợi thế nhà cái rất lớn khi tính trên nhiều lượt.
 const STOCK_PULL = 0.004;            // lực kéo giá về NEO hiện tại (đủ chặt để bám neo lang thang)
-const STOCK_MIN = 100, STOCK_MAX = 2000;   // 26/08 tối: chủ server chốt biên 100-2.000 (neo lang thang)
+const STOCK_MIN = 10, STOCK_MAX = 4000;    // 28/08: chủ server nới biên 10-4.000
 const STOCK_TICK_CAP = 0.08;         // (nghỉ hưu 26/08 tối: trần mỗi nhịp giờ là ±tickAmp ĐƠN VỊ trong stockTick)
 const STOCK_HIST_N = 288;            // 26/08 tối: chủ server chốt kho nến chỉ 4 GIỜ (288 cây 50s) — nhẹ db,
                                      // bài học _txDashHistory phình 1.348 ván = 57% database.json.
@@ -2887,7 +2887,7 @@ const STOCK_CLOSED_N = 60;           // ván đã đóng (dùng cho bảng vàng
 // bộ chậm khắp dải 100-2000, giá bám theo -> lúc thấp lúc cao, random, nhưng bước mỗi
 // nhịp vẫn nhỏ. waveLow/waveHigh = ngưỡng mềm: dưới waveLow neo thiên đi LÊN, trên
 // waveHigh thiên đi XUỐNG; ở giữa hướng random (chủ server chỉnh sống ở panel).
-const STOCK_CFG_DEF = { tickAmp: 3, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5, waveOn: true, waveLow: 350, waveHigh: 1650 };
+const STOCK_CFG_DEF = { tickAmp: 3, spread: 0.001, maxShares: 500, maxPer: 80, open: true, maxLev: 20, holdS: 60, pointX: 5, waveOn: true, waveLow: 550, waveHigh: 3650 };
 // Bậc đòn bẩy hiện trên web — lọc theo maxLev nên hạ trần ở panel là mất bậc cao luôn.
 const STOCK_LEVS = [1, 5, 10, 20];
 // Khối lượng nhập theo LOT như bàn giao dịch thật (0.1 · 0.5 · 1 · 2...) cho quen mắt;
@@ -2979,10 +2979,16 @@ function stockTick(forcePct) {
         if (!a || !Number.isFinite(a.v)) a = dbCache._stockAnchor = { v: STOCK_BASE, target: STOCK_BASE, legLeft: 0 };
         if (cfg.waveOn) {
             if ((a.legLeft | 0) <= 0) {
-                const pUp = a.v < cfg.waveLow ? 0.82 : a.v > cfg.waveHigh ? 0.18 : 0.5;
-                const dir = Math.random() < pUp ? 1 : -1;
-                const step = 150 + Math.random() * 550;                       // dời 150-700 đơn vị
-                a.target = Math.round(Math.min(STOCK_MAX - 50, Math.max(STOCK_MIN + 50, a.v + dir * step)));
+                // 28/08 FIX vụ neo bò về đáy: trước đây dưới waveLow vẫn còn 18% bốc
+                // hướng XUỐNG TIẾP, và chặng giữa được nhắm đích tận đáy dải rồi treo
+                // ở đó 20-50 phút -> neo về ~100 dù "thiên lên". Giờ: trong vùng ngưỡng
+                // hướng bị ÉP CỨNG (dưới waveLow chỉ đi lên, trên waveHigh chỉ đi xuống),
+                // và đích của mọi chặng bị kẹp không lún quá 200 đơn vị qua ngưỡng.
+                const dir = a.v < cfg.waveLow ? 1 : a.v > cfg.waveHigh ? -1 : (Math.random() < 0.5 ? 1 : -1);
+                const step = 200 + Math.random() * 700;                       // dời 200-900 đơn vị (dải rộng gấp đôi)
+                const lo = Math.max(STOCK_MIN + 50, cfg.waveLow - 200);
+                const hi = Math.min(STOCK_MAX - 50, cfg.waveHigh + 200);
+                a.target = Math.round(Math.min(hi, Math.max(lo, a.v + dir * step)));
                 a.legLeft = 600 + Math.floor(Math.random() * 900);            // 20-50 phút mỗi chặng (nhịp 2s)
             }
             a.legLeft--;
@@ -3393,6 +3399,13 @@ function runStockLoop() {
         dbCache._stockDrift = null;
         dbCache._stockAnchor = { v: STOCK_BASE, target: STOCK_BASE, legLeft: 0 };
         dbCache._stockCandles = [];
+        // 28/08: ngưỡng đời cũ 350/1650 lưu trong db -> nâng lên 550/3650 theo biên mới,
+        // và ép neo bốc chặng lại ngay (chặng cũ có thể đang nhắm đích ~150 dưới đáy mới)
+        if (dbCache._stockCfg && Number(dbCache._stockCfg.waveLow) === 350 && Number(dbCache._stockCfg.waveHigh) === 1650) {
+            dbCache._stockCfg.waveLow = 550; dbCache._stockCfg.waveHigh = 3650;
+            writeLog('SYSTEM', '[CỔ PHIẾU] Biên mới 10-4.000: nâng ngưỡng mềm 350/1650 -> 550/3650');
+        }
+        if (dbCache._stockAnchor) dbCache._stockAnchor.legLeft = 0;
         // bật lại neo lang thang (v5 đã tắt) — xoá cờ waveOn=false cũ để ăn mặc định BẬT
         if (dbCache._stockCfg && typeof dbCache._stockCfg === 'object') delete dbCache._stockCfg.waveOn;
         dbCache._stockSeedV = 6;

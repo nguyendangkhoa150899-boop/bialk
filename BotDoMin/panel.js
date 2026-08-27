@@ -1641,7 +1641,7 @@ function skFill(k){
   set('skWaveLow',k.waveLow);set('skWaveHigh',k.waveHigh);
   if(!skWaveTicked){skWaveTicked=true;const cb=document.getElementById('skWaveOn');if(cb)cb.checked=k.waveOn!==false;}
   const wn=document.getElementById('skWaveNow');
-  if(wn)wn.innerHTML=(k.waveOn!==false?('🌊 Neo lang thang BẬT — giá tự đi bộ khắp <b>100–2.000</b>'+(k.anchor?(', neo đang ở ~<b>'+k.anchor.v.toLocaleString()+'</b>'):'')+'. Dưới <b>'+(k.waveLow||350)+'</b> thiên lên, trên <b>'+(k.waveHigh||1650)+'</b> thiên xuống, ở giữa random.'):'Neo lang thang TẮT — giá bám mốc gốc 1.000.');
+  if(wn)wn.innerHTML=(k.waveOn!==false?('🌊 Neo lang thang BẬT — giá tự đi bộ khắp <b>10–4.000</b>'+(k.anchor?(', neo đang ở ~<b>'+k.anchor.v.toLocaleString()+'</b>'):'')+'. Dưới <b>'+(k.waveLow||550)+'</b> CHỈ đi lên, trên <b>'+(k.waveHigh||3650)+'</b> CHỈ đi xuống (lún tối đa 200 qua ngưỡng), ở giữa random.'):'Neo lang thang TẮT — giá bám mốc gốc 1.000.');
   const pc=Math.round((k.price/k.base-1)*1000)/10;
   const tp=document.getElementById('skTPrice');
   tp.textContent=k.price.toLocaleString()+' ('+(pc>=0?'+':'')+pc+'%)';
@@ -1751,8 +1751,8 @@ function skSave(){
   if(!(o.maxLev>=1&&o.maxLev<=100))return toast('Đòn bẩy tối đa phải trong 1–100');
   if(!(o.holdS>=0&&o.holdS<=3600))return toast('Chôn vốn phải trong 0–3600 giây');
   if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
-  if(!(o.waveLow>=100&&o.waveLow<=1000))return toast('Đáy mềm phải trong 100–1000');
-  if(!(o.waveHigh>=1000&&o.waveHigh<=2000))return toast('Trần mềm phải trong 1000–2000');
+  if(!(o.waveLow>=10&&o.waveLow<=1000))return toast('Đáy mềm phải trong 10–1000');
+  if(!(o.waveHigh>=1000&&o.waveHigh<=4000))return toast('Trần mềm phải trong 1000–4000');
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 
