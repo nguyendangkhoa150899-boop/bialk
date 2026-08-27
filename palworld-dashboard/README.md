@@ -675,6 +675,8 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   hình). 🍀 **Thanh may mắn** đầy 100% mở **vòng RAID** (4 boss + 18k, xong về 0), admin đặt
   **%/quay riêng từng người** ở panel (rig cho bạn). **Chống spam quay/F5**: server khoá khi
   còn lượt chưa hiện + nút web đếm ngược ~10,5s (dùng `spinRemain`, chỉ đếm ngược không resume).
+  Làm lại card **🎒 Rương Pal**: mỗi con 1 thẻ — trên là hình pal + tên/tag/giờ, dưới là nút
+  Bán/Nhận full ngang (con RAID viền lửa).
 - **26/08** — Cổ phiếu chốt: mốc 1.000, neo lang thang 100–2.000, nến 60s lình xình
   (tickAmp 3), ngưỡng mềm 350/1650 chỉnh panel. Sửa 6 ID passive sai. Điều tra nút reset
   server (kết luận bất khả thi → Scheduled Task). Bán 4 boss raid + 7 passive Cây Thế Giới.
