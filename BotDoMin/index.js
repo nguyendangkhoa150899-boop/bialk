@@ -1411,7 +1411,7 @@ function palChestGrant(ownerId, palName) {
     return { ok: true, item };
 }
 
-const WITHDRAW_MAX_PER_REQUEST = 20000; // trần mỗi lần chuyển vào game, chặn thiệt hại nếu có lỗi
+const WITHDRAW_MAX_PER_REQUEST = 90000; // trần mỗi lần chuyển CẢ 2 CHIỀU (27/08: 20k -> 90k), chặn thiệt hại nếu có lỗi
 // Chiều game -> Discord KHÔNG giới hạn: admin cầm đồ thật trong tay rồi mới duyệt,
 // không có đường lợi dụng.
 
@@ -4851,7 +4851,7 @@ function getWithdrawMessageData() {
         `Chuyển Dogcoin **tự động** giữa ví Discord và Dog Coin trong game - xử lý ngay trong ~10 giây, không cần chờ admin.`,
         '',
         `**🎮 Chuyển vào game** - trừ ví Discord, Dog Coin rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
-        `**💬 Chuyển ra Discord** - trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord.`,
+        `**💬 Chuyển ra Discord** - trừ Dog Coin **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord. Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
         '',
         `**🎁 Pal chuyển hết lên WEB**: ${WEB_PLAY_URL} → nhóm 👤 HỒ SƠ có **🎁 Quay Pal** (${palWheelCfg().price.toLocaleString()}/lượt, kiểu CSGO, có ô PAL RAID) và **🎯 Chọn Pal** (${palWheelCfg().customPrice.toLocaleString()}, tự chọn con mình thích, không raid). Trúng/mua xong pal nằm trong 🎒 RƯƠNG: bán lại ${palWheelCfg().sellPrice.toLocaleString()} hoặc chọn linh hồn + passive rồi bot GIAO THẲNG vào game.`,
     ];
@@ -5631,6 +5631,10 @@ client.on('interactionCreate', async interaction => {
             const amt = parseInt(interaction.fields.getTextInputValue('nap_input_amount'));
             if (isNaN(amt) || amt <= 0) {
                 return interaction.reply({ content: '❌ Số Dog Coin không hợp lệ!', ephemeral: true });
+            }
+            // 27/08: trần mỗi lần chiều game -> Discord, đối xứng với chiều kia (50.000)
+            if (amt > WITHDRAW_MAX_PER_REQUEST) {
+                return interaction.reply({ content: `❌ Mỗi lần chỉ chuyển tối đa **${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}** ${DOGCOIN_EMOJI} ra Discord. Muốn nhiều hơn thì chuyển nhiều lần.`, ephemeral: true });
             }
             const gameName = (getUserData(userId).ingameName || '').trim();
             if (!gameName) {
