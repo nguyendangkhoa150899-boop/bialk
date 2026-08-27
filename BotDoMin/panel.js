@@ -1194,11 +1194,9 @@ const HTML = `<!DOCTYPE html>
         <div id="wdPending"></div>
       </div>
       <div id="wdDone" class="hidden"></div>
-      <div class="card">
-        <h3>🐾 Đơn mua Pal<span id="palOrderBadge" class="hidden"></span></h3>
-        <div class="note">Người chơi mua ở Discord, bot gửi đơn cho admin qua tin nhắn riêng. Bạn dùng CreativeMenu tạo pal rồi giao trong game.</div>
-        <div id="palOrders" class="hist"></div>
-      </div>
+      <!-- 🐾 Đơn mua Pal ĐÃ GỠ (27/08): mua pal giờ TỰ ĐỘNG qua web → dashboard → mod,
+           không còn đơn tay cho admin. Backend getPalOrders/completePalOrder giữ nguyên
+           (vô hại, không gọi tới) để lịch sử đơn cũ không mất nếu cần tra. -->
 
       <!-- 🎁 Vòng quay pal WEB (25/08): quay ở tab Quay Pal trên web chơi, trúng vào
            RƯƠNG trang Hồ sơ. NHẬN = bot tự giao qua dashboard (lệnh PAL2 của mod) —

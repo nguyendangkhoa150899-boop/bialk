@@ -1223,6 +1223,12 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     for (const v of [ivHp, ivAtk, ivDef]) {
         if (v < cfg.ivs || v > 255) return { error: `Mức IV không hợp lệ (${cfg.ivs}–255)` };
     }
+    // 🚻 GIỚI TÍNH (27/08, chủ server chốt BẮT BUỘC chọn — không có mặc định): 1=Đực, 2=Cái.
+    // Verify tận game: mod ghi sp.Gender số nguyên ăn (cừu ra đúng đực/cái).
+    const gender = Math.floor(Number(want.gender) || 0);
+    if (gender !== 1 && gender !== 2) {
+        return { error: 'Phải chọn giới tính pal (♂ Đực hoặc ♀ Cái) rồi mới nhận được' };
+    }
     const soulPctCost = souls.reduce((s, k) => s + palUpSoulCost(soulPcts[k], cfg), 0);
     // 🌈 passive Cây Thế Giới bán riêng theo con (26/08)
     const wtSet = new Set(passiveCatalog().filter(p => p.wt).map(p => p.id));
@@ -1280,6 +1286,7 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
             soulAtk: soulRank('atk'),
             soulDef: soulRank('def'),
             soulWork: soulRank('work'),
+            gender,
             passives,
         });
     } catch (e) { err = e; }

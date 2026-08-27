@@ -602,6 +602,23 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 27/08/2026 — 🚻 Giới tính pal ở web nhận (BẮT BUỘC chọn ♂/♀)
+
+- Verify tận game: mod ghi `sp.Gender` số nguyên ĂN (1=Đực, 2=Cái, 0=random). Test
+  server test giao 3 con Sheepball ép gender → ra đúng đực/cái.
+- Wire full chuỗi: web claim modal → /api/pal/claim → palChestClaim → givePal spec →
+  dashboard /api/give-pal (đã nhận gender sẵn) → mod. Chỉ phải thêm ở BOT + WEB.
+  · webplay: thêm nút ♂ Đực / ♀ Cái (pcmGM/pcmGF) ngay dưới dòng mặc định, reset khi
+    mở modal, gửi `gender:PCGENDER` trong POST; BẮT BUỘC chọn (chặn nhận nếu chưa).
+  · index palChestClaim: validate gender phải 1 hoặc 2, đưa vào spec givePal.
+  · webplay route: chuyển body.gender vào extra.
+  · Tiện tay fix bug cũ: confirm() phụ phí giờ hỏi TRƯỚC khi khoá nút (huỷ không còn
+    kẹt nút "Đang giao").
+- LƯU Ý tên nhân vật: give-pal khớp tên CHÍNH XÁC; test account có ký tự ẩn U+1CBC sau
+  "bia123" (game đọc "bia123᲼") nên gửi "bia123" trượt "no PlayerController". Đếm túi
+  khớp mờ nên vẫn thấy online → dễ tưởng nhầm. Ai có ký tự lạ trong tên có thể nhận
+  hụt; sau này nên cho give-pal khớp theo tiền tố/lược ký tự ẩn như đếm túi.
+
 ### 26/08/2026 (tối 12) — SỬA 6 ID PASSIVE SAI (dò từ save-editor, đối chiếu chuẩn)
 
 - Người chơi chọn "Lòng Thương Bao La" + "Chiêu Đãi Hào Phóng" nhưng game ra passive

@@ -252,6 +252,7 @@ function startWebPlay(ctx) {
                     const r = await ctx.profile.claim(userId, body.id, body.souls, body.passives, {
                         soulHpPct: body.soulHpPct, soulAtkPct: body.soulAtkPct, soulDefPct: body.soulDefPct, soulWorkPct: body.soulWorkPct,
                         ivHp: body.ivHp, ivAtk: body.ivAtk, ivDef: body.ivDef,
+                        gender: body.gender,   // 🚻 27/08: bắt buộc chọn 1=Đực / 2=Cái
                     });
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
@@ -617,6 +618,20 @@ const PAGE = [
     // máy tính (>=920px): hộp nhận nở rộng 2 cột - trái linh hồn+IV, phải passive cao hơn
     '@media(min-width:920px){',
     '#pcBox{max-width:940px;padding:18px 20px}',
+    '#pcmGenderWrap{margin:10px 0 2px}',
+    '.pcmGbtn{flex:1;border-radius:8px;padding:11px;font-weight:800;font-size:15px;cursor:pointer;transition:all .12s}',
+    // luôn có màu rõ: Đực xanh dương, Cái hồng (dễ nhìn ngay cả khi chưa chọn)
+    '.pcmGbtn.male{border:2px solid #4f9dff;background:#17253c;color:#9fcaff}',
+    '.pcmGbtn.female{border:2px solid #ff7ab6;background:#351826;color:#ffb2d6}',
+    // đang chọn: tô nền đặc + chữ trắng + viền sáng
+    '.pcmGbtn.male.on{background:#2f7dff;color:#fff;box-shadow:0 0 0 3px rgba(79,157,255,.35)}',
+    '.pcmGbtn.female.on{background:#ff5fa8;color:#fff;box-shadow:0 0 0 3px rgba(255,122,182,.35)}',
+    // hover: nhấc nhẹ + sáng thêm (cả lúc chưa chọn lẫn đang chọn)',
+    '.pcmGbtn:hover{transform:translateY(-1px)}',
+    '.pcmGbtn.male:hover{background:#213a63;color:#c9e0ff;border-color:#7ab6ff}',
+    '.pcmGbtn.female:hover{background:#4a2236;color:#ffd0e7;border-color:#ff9ccb}',
+    '.pcmGbtn.male.on:hover{background:#4a8dff}',
+    '.pcmGbtn.female.on:hover{background:#ff74b6}',
     '#pcmCols{display:flex;gap:20px;align-items:flex-start}',
     '#pcmColL{flex:1;min-width:0}',
     '#pcmColR{flex:1.15;min-width:0}',
@@ -1129,6 +1144,13 @@ const PAGE = [
     '<div id="pcBox">',
     '<div class="row"><h2 style="margin:0" id="pcmTitle">Nhận pal</h2><button onclick="pcClose()" style="background:#232735;padding:4px 12px">✕</button></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px" id="pcmBase">-</div>',
+    // 🚻 GIỚI TÍNH (27/08): bắt buộc chọn, không có mặc định — server chặn nếu bỏ trống
+    '<div id="pcmGenderWrap">',
+    '<div style="font-weight:700">🚻 Giới tính <span style="color:var(--red);font-weight:400;font-size:12px">* bắt buộc chọn</span></div>',
+    '<div class="row" style="gap:8px;margin-top:5px">',
+    '<button type="button" id="pcmGM" class="pcmGbtn male" onclick="pcGenderPick(1)">♂ Đực</button>',
+    '<button type="button" id="pcmGF" class="pcmGbtn female" onclick="pcGenderPick(2)">♀ Cái</button>',
+    '</div></div>',
     '<div id="pcmCols">',
     '<div id="pcmColL">',
     '<div style="font-weight:700;margin:10px 0 4px">💠 Linh hồn <span class="muted" style="font-weight:400">(ít nhất 1, tối đa <span id="pcmSoulMax">4</span> dòng · dòng đầu MIỄN PHÍ · tick rồi kéo % riêng từng dòng)</span></div>',
@@ -2515,6 +2537,7 @@ const PAGE = [
     'pcUpCalc();',
     // danh sách passive: xếp bậc cao trước, tên tô MÀU THEO BẬC, chú thích kế bên, bấm chọn
     'PCSEL={};$("pcmPk").textContent="0";',
+    'PCGENDER=0;$("pcmGM").classList.remove("on");$("pcmGF").classList.remove("on");',
     // màu giống trong game: trắng (bậc 1-2) · vàng (bậc 3) · xanh ngọc (bậc 4) · đỏ (có mặt trái)
     'var rows=PC.passives.slice().sort(function(a,b){return (b.tier||1)-(a.tier||1)});',
     '$("pcmPass").innerHTML=rows.map(function(p){var c=p.bad?"#ff7a7a":(p.tier===4?"#3fe0cf":(p.tier===3?"#ffd76a":"#e8ecf5"));',
@@ -2607,13 +2630,17 @@ const PAGE = [
     'if(PCBK){PCBK="";pcBuildsRender()}', // tự tay đổi passive -> đã lệch bộ, tắt nút sáng
     '$("pcmPk").textContent=Object.keys(PCSEL).length;pcPassFilter();pcUpCalc()}',
     'function pcClose(){$("pcModal").classList.add("hidden");PCIT=null}',
+    // 🚻 giới tính: 0=chưa chọn, 1=Đực, 2=Cái. Bắt buộc chọn mới nhận được.
+    'var PCGENDER=0;',
+    'function pcGenderPick(g){PCGENDER=g;$("pcmGM").classList.toggle("on",g===1);$("pcmGF").classList.toggle("on",g===2)}',
     'function pcClaimGo(){if(!PCIT||PCBUSY)return;',
     'var souls=[].slice.call($("pcmSouls").querySelectorAll("input:checked")).map(function(c){return c.value});',
     'if(souls.length<1)return toast("💠 Chọn ít nhất 1 dòng linh hồn trước đã (dòng đầu miễn phí)");',
+    'if(PCGENDER!==1&&PCGENDER!==2)return toast("🚻 Chọn giới tính ♂ Đực hoặc ♀ Cái trước đã");',
     'var passives=Object.keys(PCSEL);',
-    'PCBUSY=true;var b=$("pcmOk");b.disabled=true;b.textContent="⏳ Đang giao... (có thể mất 1-2 phút, ĐỪNG tắt trang)";',
     'if(PCUP>0&&!confirm("💎 Nâng cấp vượt trần tốn "+vnd(PCUP)+" Dogcoin, trừ ví ngay khi nhận (giao hụt tự hoàn). Đồng ý?"))return;',
-    'api("/api/pal/claim",{id:PCIT.id,souls:souls,passives:passives,',
+    'PCBUSY=true;var b=$("pcmOk");b.disabled=true;b.textContent="⏳ Đang giao... (có thể mất 1-2 phút, ĐỪNG tắt trang)";',
+    'api("/api/pal/claim",{id:PCIT.id,souls:souls,passives:passives,gender:PCGENDER,',
     'soulHpPct:parseInt($("sr_hp").value)||0,soulAtkPct:parseInt($("sr_atk").value)||0,soulDefPct:parseInt($("sr_def").value)||0,soulWorkPct:parseInt($("sr_work").value)||0,',
     'ivHp:parseInt($("pcmIvH").value)||0,ivAtk:parseInt($("pcmIvA").value)||0,ivDef:parseInt($("pcmIvD").value)||0}).then(function(j){',
     'PCBUSY=false;b.disabled=false;b.textContent="✅ NHẬN VÀO GAME";pcClose();toast(j.message||"✅ Đã giao!");pcSync()',
