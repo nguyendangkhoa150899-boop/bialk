@@ -653,7 +653,10 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   kèm lời nhắn custom; gỡ card "Đơn mua Pal"; fix nút panel nền bạc; chip passive đã chọn;
   cầu Dogcoin trần 90k; Tài Xỉu tự khởi động + giữ lịch sử; **đại tu vay nợ** (phí 20% 1
   lần, không lãi kép, nợ xấu xiết ví về 1.000, admin chỉnh panel); **GỠ HẲN Bầu Cua** (dọn
-  ~514 dòng dead code, cả index.js lẫn panel.js).
+  ~514 dòng dead code, cả index.js lẫn panel.js); **can thiệp Tài Xỉu** ở panel: hiện cược
+  trực tiếp (cửa nào gánh bao nhiêu + ai đặt gì) + nút 🎯 tự chọn xúc xắc cho nhà cái ăn
+  nhiều nhất + đồng hồ "còn Xs để ép ăn ván này". Ép chỉ ăn khi CÒN MỞ CƯỢC (dice chốt lúc
+  khóa sổ; ép sau khóa trôi sang ván sau — không phá cơ chế nặn).
 - **26/08** — Cổ phiếu chốt: mốc 1.000, neo lang thang 100–2.000, nến 60s lình xình
   (tickAmp 3), ngưỡng mềm 350/1650 chỉnh panel. Sửa 6 ID passive sai. Điều tra nút reset
   server (kết luận bất khả thi → Scheduled Task). Bán 4 boss raid + 7 passive Cây Thế Giới.

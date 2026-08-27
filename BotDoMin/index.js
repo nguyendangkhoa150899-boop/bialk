@@ -3790,6 +3790,8 @@ client.once('ready', async (c) => {
             // Muốn bật lại thì đặt PANEL_PASSWORD=<mật khẩu> trong .env.
             password: process.env.PANEL_PASSWORD || '',
             txChoices: TX_CHOICES,
+            txBaoRate: TX_BAO_RATE,
+            txLockS: TX_LOCK_S,
             diceEmojis: DICE_EMOJIS,
             totalTiles: TOTAL_TILES,
             getTX: () => txState,

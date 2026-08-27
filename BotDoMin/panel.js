@@ -89,15 +89,28 @@ function startPanel(ctx) {
         const db = ctx.getDb();
         const wd = ctx.getWithdraw ? ctx.getWithdraw() : {};
         return {
-            tx: {
-                gameId: tx.gameId,
-                status: tx.status,
-                targetTime: tx.targetTime,
-                betsCount: tx.bets ? tx.bets.length : 0,
-                forced: tx.forcedResult || null,
-                live: !!tx.message,
-                channelId: (tx.channel && tx.channel.id) || db._txChannelId || '',
-            },
+            tx: (() => {
+                const bets = Array.isArray(tx.bets) ? tx.bets : [];
+                // gộp theo cửa cho admin thấy tiền đang gánh ở đâu (ép cho cửa nặng thua)
+                const agg = { tai: 0, xiu: 0, chan: 0, le: 0, bao: 0 };
+                bets.forEach(b => { if (agg[b.choice] !== undefined) agg[b.choice] += (b.amount || 0); });
+                const lockS = ctx.txLockS || 15;
+                const secsToBet = Math.max(0, (tx.targetTime || 0) - lockS - Math.floor(Date.now() / 1000));
+                return {
+                    gameId: tx.gameId,
+                    status: tx.status,
+                    targetTime: tx.targetTime,
+                    betsCount: bets.length,
+                    forced: tx.forcedResult || null,
+                    live: !!tx.message,
+                    channelId: (tx.channel && tx.channel.id) || db._txChannelId || '',
+                    // 27/08: cho admin xem cược trực tiếp + ép tối ưu + biết cửa sổ còn mấy giây
+                    betAgg: agg,
+                    bets: bets.slice(-40).map(b => ({ name: b.username || b.userId, choice: b.choice, amount: b.amount || 0 })),
+                    secsToBet,
+                    baoRate: ctx.txBaoRate || 30,
+                };
+            })(),
             forcedMines: ctx.getForcedMines(),
             xs: (() => {
                 if (!ctx.getXS) return null;
@@ -853,6 +866,7 @@ const HTML = `<!DOCTYPE html>
         <h2>🎲 Big Small</h2>
         <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
         <div class="epOnly" style="display:none">
+        <div id="txBetsLive" style="margin-bottom:10px"></div>
         <div class="row">
           <div><label>Xúc xắc 1</label><select id="d1"></select></div>
           <div><label>Xúc xắc 2</label><select id="d2"></select></div>
@@ -865,11 +879,14 @@ const HTML = `<!DOCTYPE html>
           <button onclick="setDice(1,2,3)">Xỉu + Chẵn (6)</button>
           <button onclick="setDice(1,2,2)">Xỉu + Lẻ (5)</button>
         </div>
-        <div class="row" style="margin-top:14px">
+        <div class="row" style="margin-top:10px">
+          <button class="btn-yellow" style="flex:1" onclick="txAutoForce()">🎯 Chọn xúc xắc cho nhà cái ĂN NHIỀU NHẤT</button>
+        </div>
+        <div class="row" style="margin-top:10px">
           <button class="btn-green" style="flex:2" onclick="txForce()">⚡ Ép kết quả ván tới</button>
           <button class="btn-grey" onclick="api('/api/tx/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
         </div>
-        <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 xúc xắc này.</div>
+        <div class="note">Ép cứng 100% cho <b>lần khóa sổ kế tiếp</b>. ⚠️ Chỉ ăn nếu ép <b>lúc còn MỞ CƯỢC</b> (xem đồng hồ ở khung cược trên); khóa sổ rồi mới ép thì trôi sang ván sau. Nút 🎯 tự tính 3 xúc xắc khiến cửa đang gánh nhiều tiền nhất bị thua.</div>
         </div>
       </div>
       <div class="card">
@@ -1533,7 +1550,38 @@ function txPreview(){
 }
 function txForce(){
   const v=[document.getElementById('d1').value,document.getElementById('d2').value,document.getElementById('d3').value].join(',');
-  api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Big Small: '+v);refresh();});
+  api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Big Small: '+v);refresh();}).catch(e=>toast('❌ '+e.message));
+}
+// 27/08: chọn 3 xúc xắc khiến nhà cái trả ÍT NHẤT (cửa gánh nhiều tiền nhất thua)
+function txAutoForce(){
+  if(!STATE||!STATE.tx)return; const a=STATE.tx.betAgg||{tai:0,xiu:0,chan:0,le:0,bao:0}; const br=STATE.tx.baoRate||30;
+  // 5 kết cục ứng viên: [nhãn, xúc xắc, tiền phải trả]
+  const opts=[
+    ['Tài+Chẵn',[6,6,4],a.tai*2+a.chan*2],
+    ['Tài+Lẻ',[6,5,4],a.tai*2+a.le*2],
+    ['Xỉu+Chẵn',[1,2,3],a.xiu*2+a.chan*2],
+    ['Xỉu+Lẻ',[1,2,2],a.xiu*2+a.le*2],
+    ['Bão',[1,1,1],a.bao*br],
+  ];
+  opts.sort((x,y)=>x[2]-y[2]); const best=opts[0];
+  setDice(best[1][0],best[1][1],best[1][2]);
+  const totalBet=a.tai+a.xiu+a.chan+a.le+a.bao;
+  toast('🎯 '+best[0]+': nhà cái chỉ trả '+best[2].toLocaleString()+' (tổng cược '+totalBet.toLocaleString()+'). Bấm ⚡ Ép để chốt.');
+}
+function renderTxBetsLive(){
+  const box=document.getElementById('txBetsLive'); if(!box||!STATE||!STATE.tx)return;
+  const a=STATE.tx.betAgg||{}; const t=STATE.tx;
+  const win=t.secsToBet>0
+    ? '<span style="color:#3ddc84;font-weight:800">🟢 CÒN '+t.secsToBet+'s ĐỂ ÉP — ép giờ ĂN ván này</span>'
+    : '<span style="color:#ff7a7a;font-weight:800">🔒 ĐÃ KHÓA SỔ — ép giờ sẽ vào VÁN SAU</span>';
+  const cua='🟢 Tài <b>'+(a.tai||0).toLocaleString()+'</b> · 🔴 Xỉu <b>'+(a.xiu||0).toLocaleString()+'</b> · 🔵 Chẵn <b>'+(a.chan||0).toLocaleString()+'</b> · 🟣 Lẻ <b>'+(a.le||0).toLocaleString()+'</b> · 🌩️ Bão <b>'+(a.bao||0).toLocaleString()+'</b>';
+  const list=(t.bets||[]).length
+    ? (t.bets||[]).slice().reverse().map(b=>esc(b.name)+': '+({tai:'Tài',xiu:'Xỉu',chan:'Chẵn',le:'Lẻ',bao:'Bão'}[b.choice]||b.choice)+' '+Number(b.amount).toLocaleString()).join(' • ')
+    : 'chưa ai đặt';
+  box.innerHTML='<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#141824">'
+    +'<div style="margin-bottom:5px">'+win+' &nbsp;·&nbsp; Ván #'+padId(t.gameId)+' · '+t.betsCount+' lượt đặt</div>'
+    +'<div style="margin-bottom:5px">'+cua+'</div>'
+    +'<div class="muted" style="font-size:12px">'+list+'</div></div>';
 }
 
 
@@ -2047,6 +2095,7 @@ async function refresh(){
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
+  renderTxBetsLive();
   // 🏆 hu nuoi: moi tro mot hu rieng
   const pt=STATE.pot;
   if(pt&&pt.pots){
