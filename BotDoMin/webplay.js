@@ -632,6 +632,11 @@ const PAGE = [
     '.pcmGbtn.female:hover{background:#4a2236;color:#ffd0e7;border-color:#ff9ccb}',
     '.pcmGbtn.male.on:hover{background:#4a8dff}',
     '.pcmGbtn.female.on:hover{background:#ff74b6}',
+    // chip passive đã chọn (luôn thấy dù cuộn list) — bấm ✕ để bỏ
+    '#pcmChips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 7px;min-height:22px}',
+    '.pchip{display:inline-flex;align-items:center;gap:6px;background:#1b1f2c;border:1px solid var(--line);border-radius:13px;padding:3px 6px 3px 10px;font-size:12px}',
+    '.pchip .x{cursor:pointer;background:#3a4155;color:#fff;border-radius:50%;width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;line-height:1}',
+    '.pchip .x:hover{background:var(--red)}',
     '#pcmCols{display:flex;gap:20px;align-items:flex-start}',
     '#pcmColL{flex:1;min-width:0}',
     '#pcmColR{flex:1.15;min-width:0}',
@@ -1169,6 +1174,8 @@ const PAGE = [
     '</div>', // hết cột trái
     '<div id="pcmColR">',
     '<div style="font-weight:700;margin:12px 0 4px">✨ Passive <span class="muted" style="font-weight:400">(<span id="pcmPassMax">4</span> ô đầu MIỄN PHÍ, mở tới 8 ô tính phí · đã chọn <span id="pcmPk">0</span>/<span id="pcmPkMax">8</span>)</span> <span id="pcmPassCost" style="color:var(--gold);font-size:11px"></span></div>',
+    // hàng chip passive ĐÃ CHỌN — luôn thấy dù cuộn list, bấm ✕ bỏ nhanh
+    '<div id="pcmChips"></div>',
     '<div class="muted" style="font-size:11px;margin-bottom:4px">Màu như trong game: <b style="color:#e8ecf5">■ thường</b> · <b style="color:#ffd76a">■ bậc 3</b> · <b style="color:#3fe0cf">■ bậc 4</b> · <b style="color:#ff7a7a">■ có mặt trái</b>. Con nào có ⚠ là đang chờ kiểm mã trong game.</div>',
     '<div id="pcmBuilds" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>',
     '<input id="pcmFind" placeholder="🔎 Tìm passive..." oninput="pcPassFilter()" style="width:100%;margin-bottom:5px">',
@@ -2545,7 +2552,7 @@ const PAGE = [
     'var nameHtml=p.wt?("<b class=\\"pwt\\">"+esc(p.name)+"</b> <span style=\\"color:var(--gold);font-size:10px\\">💎 "+vnd((PC.up&&PC.up.wt)||1000)+"</span>"):("<b style=\\"color:"+c+"\\">"+esc(p.name)+"</b>");',
     'return "<div class=\\"pcmP\\" id=\\"pp_"+p.id+"\\" data-t=\\""+esc((p.name+" "+p.desc).toLowerCase())+"\\" onclick=\\"pcPassTog(\'"+p.id+"\')\\"><input type=\\"checkbox\\" class=\\"ppcb\\" tabindex=\\"-1\\">"+nameHtml+(p.unsure?" <span style=\\"color:#ffcf5c;font-size:10px\\">⚠</span>":"")+" <span class=\\"pd\\">"+esc(p.desc)+"</span></div>"}).join("");',
     'var ff=$("pcmFind");if(ff){ff.value="";pcPassFilter()}',
-    'PCBK="";pcBuildsRender();',
+    'PCBK="";pcBuildsRender();pcChipsRender();',
     '$("pcModal").classList.remove("hidden")}',
     // Hàng nút build: bộ của SERVER + bộ RIÊNG (⭐, có nút ✕ xoá) + nút lưu bộ mới.
     // Bộ đang chọn sáng viền vàng (PCBK); tự tay đổi passive thì tắt sáng (đã lệch bộ).
@@ -2561,7 +2568,7 @@ const PAGE = [
     '[].slice.call($("pcmPass").children).forEach(function(el){el.classList.remove("sel")});',
     'b.ids.forEach(function(id){if(Object.keys(PCSEL).length>=8)return;var el=$("pp_"+id);if(el){PCSEL[id]=1;el.classList.add("sel")}});',
     '[].slice.call($("pcmPass").children).forEach(function(el2){var cb2=el2.querySelector(".ppcb");if(cb2)cb2.checked=el2.classList.contains("sel")});',
-    '$("pcmPk").textContent=Object.keys(PCSEL).length;pcBuildsRender();pcPassFilter();pcUpCalc();',
+    '$("pcmPk").textContent=Object.keys(PCSEL).length;pcBuildsRender();pcPassFilter();pcChipsRender();pcUpCalc();',
     'toast("⚡ Đã chọn bộ "+b.name+" ("+Object.keys(PCSEL).length+" passive) - nhớ tick thêm linh hồn")}',
     // lưu bộ đang chọn thành build riêng (đặt tên qua hộp thoại), trùng tên = ghi đè
     'function pcBuildSave(){var ids=Object.keys(PCSEL);if(!ids.length)return toast("Chọn passive trước rồi hãy lưu");',
@@ -2628,7 +2635,13 @@ const PAGE = [
     'else{if(Object.keys(PCSEL).length>=8)return toast("Tối đa 8 ô passive - bỏ bớt rồi chọn tiếp");PCSEL[id]=1;el.classList.add("sel")}',
     'var cb0=el.querySelector(".ppcb");if(cb0)cb0.checked=!!PCSEL[id];',
     'if(PCBK){PCBK="";pcBuildsRender()}', // tự tay đổi passive -> đã lệch bộ, tắt nút sáng
-    '$("pcmPk").textContent=Object.keys(PCSEL).length;pcPassFilter();pcUpCalc()}',
+    '$("pcmPk").textContent=Object.keys(PCSEL).length;pcPassFilter();pcChipsRender();pcUpCalc()}',
+    // hàng chip passive đã chọn — luôn hiện dù cuộn list, ✕ để bỏ (màu theo bậc/Cây Thế Giới)
+    'function pcChipsRender(){var box=$("pcmChips");if(!box||!PC)return;var ids=Object.keys(PCSEL);',
+    'if(!ids.length){box.innerHTML="<span class=\\"muted\\" style=\\"font-size:11.5px\\">Chưa chọn passive nào — bấm trong danh sách bên dưới</span>";return}',
+    'var map={};(PC.passives||[]).forEach(function(p){map[p.id]=p});',
+    'box.innerHTML=ids.map(function(id){var p=map[id]||{name:id};var c=p.wt?"#c9a2ff":(p.tier===4?"#3fe0cf":(p.tier===3?"#ffd76a":(p.bad?"#ff7a7a":"#e8ecf5")));',
+    'return "<span class=\\"pchip\\" style=\\"border-color:"+c+"\\"><b style=\\"color:"+c+"\\">"+esc(p.name||id)+"</b><span class=\\"x\\" title=\\"bỏ chọn\\" onclick=\\"pcPassTog(\'"+id+"\')\\">✕</span></span>"}).join("")}',
     'function pcClose(){$("pcModal").classList.add("hidden");PCIT=null}',
     // 🚻 giới tính: 0=chưa chọn, 1=Đực, 2=Cái. Bắt buộc chọn mới nhận được.
     'var PCGENDER=0;',

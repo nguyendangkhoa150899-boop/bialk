@@ -814,7 +814,7 @@ function claimNghien(userId, announce = false) {
 // ===== PHÁT DOGCOIN TOÀN SERVER (gọi từ dashboard) =====
 // Cộng `amount` cho MỌI ví đang tồn tại rồi đăng thông báo tag role vào kênh thông báo.
 // Chỉ cộng ví đã có (ai từng chơi); người mới vào sau vẫn nhận STARTING_DOGCOIN như thường.
-async function addAllPlayersAndAnnounce(amount, onlyIds = null) {
+async function addAllPlayersAndAnnounce(amount, onlyIds = null, msg = '') {
     // Khóa _ là dữ liệu nội bộ (lịch sử, đơn rút...), không phải ví người chơi.
     // onlyIds: panel truyền danh sách còn hạn mức trần/ngày (null = phát tất cả).
     const allow = onlyIds ? new Set(onlyIds) : null;
@@ -827,12 +827,17 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null) {
     // sửa code. Chưa đặt thì rơi về ID hardcode của server cũ.
     const announceChannelId = dbCache._giveawayChannelId || GIVEAWAY_ANNOUNCE_CHANNEL_ID;
     const pingRoleId = dbCache._giveawayRoleId || GIVEAWAY_PING_ROLE_ID;
+    // 27/08: lời nhắn CUSTOM từ panel (vd "Quà 2/9", "Ăn mừng VN vô địch") làm dòng
+    // tiêu đề; bỏ trống thì dùng câu mặc định. allowedMentions chỉ cho tag đúng role
+    // nên @everyone/@here lọt trong text cũng KHÔNG ping ai — vẫn cắt bớt cho gọn.
+    const custom = String(msg || '').trim().replace(/@(everyone|here)/gi, '$1').slice(0, 400);
+    const headline = custom || `🎁 Tặng cho mấy con nghiện!`;
     let announced = false;
     try {
         const ch = await client.channels.fetch(announceChannelId);
         if (ch) {
             await ch.send({
-                content: `<@&${pingRoleId}> 🎁 Tặng cho mấy con nghiện **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}!\n(Đã cộng vào ví của **${userIds.length}** người chơi - gõ \`/sodu\` mà xem)`,
+                content: `<@&${pingRoleId}> ${headline}\n🎁 Mỗi người nhận **${amount.toLocaleString()}** ${DOGCOIN_EMOJI}! (đã cộng ví **${userIds.length}** người - gõ \`/sodu\` mà xem)`,
                 allowedMentions: { roles: [pingRoleId] },
             });
             announced = true;

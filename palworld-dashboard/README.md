@@ -545,724 +545,106 @@ có sẵn `/api/save` + `/api/shutdown` (REST Palworld), chỉ cần bật REST 
 `server/.env` prod + panel Shockbyte auto-start; (d) 7 passive World Tree cố tình CẤM
 khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ server không đổi luật.
 
-## Bot Discord (BotDoMin) — nhật ký cập nhật
-
-### 25/08/2026 — 🎁 QUAY PAL kiểu CSGO trên web + 🎒 RƯƠNG ở trang Hồ sơ (giao pal TỰ ĐỘNG)
-
-- **Quay pal dời từ Discord lên web** (tab 🎁 Quay Pal): reel chạy ngang kiểu CSGO theo
-  TÊN pal (ảnh bổ sung sau), server chốt kết quả trước rồi client mới diễn hoạt hình.
-  Pool = **TẤT CẢ pal thường (281 con, kể cả Boltmane/Dragostrophe)** trừ **#203 Panthalus
-  + #204 Astralym** (bug game chưa cho bắt/thả). Ô **🔥 PAL RAID** chiếm đúng 1 suất chia
-  đều; trúng thì mở reel thứ 2 chia đều 7 pal raid (Xenolord/Hartalis/Blazamut Ryu có mặt
-  lại — bỏ luật loại cũ). Vé 2.000, nuôi hũ gacha 5%/vé + nổ 1% như cũ. Nút quay random
-  trong Discord giờ chỉ đường lên web (code cũ giữ dưới `shop_random_CU_DA_TAT`).
-- **Trang 👤 Hồ sơ** (đổi từ tab Điểm danh, điểm danh giữ nguyên bên trong): thêm **🎒 Rương
-  Pal** — pal trúng nằm đây, mỗi con có nút **💰 Bán 1.000** hoặc **🎁 Nhận**: chọn dòng
-  **linh hồn +60%** (damage/thủ/máu/tốc độ làm việc, trần chỉnh được 0–4 dòng) + **4 ô
-  passive có chú thích** (danh mục `BotDoMin/passives.json`, admin sửa thoải mái). Mặc định
-  giao: **Lv 80 · 4 sao · IV 100 · bản BOSS_** (panel chỉnh hết).
-- **Giao TỰ ĐỘNG, hết thời admin đưa tay**: bot kiểm người chơi **đang online trong game**
-  (COUNT qua SFTP) rồi gọi dashboard **POST /api/give-pal** → lệnh **PAL2** cho mod
-  (spawn + bắt + ghi chỉ số + hủy bản sao ngoài world). Kết quả không rõ (timeout) thì đơn
-  kẹt ở **⏳ ĐANG GIAO** — panel có nút ✅ đã giao / ↩️ về rương sau khi admin kiểm
-  results.log; mod báo "player not found" thì pal TỰ về rương. **Pal DÙNG ĐƯỢC sau đợt
-  restart server kế tiếp** (đã dò hết API Lua 25/08: game chỉ "nhận nuôi" pal lúc load
-  thế giới — `Debug_CaptureNewMonster_ToServer` là vỏ rỗng trong bản phát hành, mọi hàm
-  container đều chỉ-đọc; web/panel đều ghi rõ câu này cho người chơi). Chủ server tự lo
-  lịch restart.
-- Panel thêm card **🎁 Vòng quay Pal web + Rương**: chỉnh vé/giá bán/số dòng linh hồn/level/
-  sao/BOSS/mở-đóng + tặng pal vào rương theo Discord ID + danh sách rương mọi người (đơn
-  ĐANG GIAO nổi lên đầu).
-- Đã test: 54 case mới (`palwheeltest.js`) + 16 bộ cũ (632 case) đều xanh; **giao thật
-  end-to-end trên server test**: nhận `BOSS_Penguin_Electric` Lv80 + 4 linh hồn 60% + 4
-  passive qua đúng đường web → bot → dashboard local (cổng 3010) → SFTP → mod, mod đọc
-  lại Level=80 chính xác, 12 giây.
-- Góp ý chủ server sau khi xem thử: **điều hướng tách 2 TẦNG** — tầng 1 chọn nhóm
-  `👤 HỒ SƠ` / `🎮 MINI GAME`, tầng 2 chỉ hiện trang trong nhóm (🪪 Cá nhân + 🎁 Quay Pal
-  một bên; Big Small/Dò Mìn/Leo Thang/Vòng Quay/Cổ phiếu một bên, nhớ trang cuối của
-  từng nhóm — tab con đổi tên "Cá nhân" cho khỏi lặp chữ Hồ sơ);
-  nút **💰 Bán** đổi nền vàng chữ sẫm cho dễ đọc.
-- **Passive làm lại theo palworld.gg/passive-skills (tag PALS + POSITIVE)**: danh mục
-  `passives.json` giờ **87 passive** tiếng Việt đủ bộ (kể cả đồ Feybreak/boss raid:
-  Demon God, Eternal Flame, Lunker, Serenity, Ranch Master...), mỗi con có `tier` 1–4
-  quyết định MÀU trên web (trắng/xanh lá/tím/vàng — lấy đúng rank của trang), chú thích
-  ngay kế bên tên; KHÔNG passive đỏ, KHÔNG passive Cây Thế Giới. Hộp Nhận đổi từ 4 ô
-  select sang DANH SÁCH cuộn bấm-chọn (tối đa 4, đếm đã chọn, có ô 🔎 lọc nhanh).
-  **32 con gắn cờ ⚠ `unsure`**: mã nội bộ chưa kiểm chứng được trong game (bàn phẫu
-  thuật bị tắt bằng pak nên PASSCHK không tra được nữa) — nhận thử trên server test,
-  passive nào không hiện trên pal thì báo tên để sửa id trong passives.json.
-  Sửa luôn lỗi dữ liệu cũ: Musclehead ID thật là `Noukin` (+30% công NHƯNG −50% tốc độ
-  làm việc), `PAL_ALLAttack_up2` là Ferocious +20%; Aggressive = `PAL_oraora`.
-- **Linh hồn 60%: chỉ cho chọn 1 trong 4 dòng** (chủ server chốt 25/08) — `soulMax`
-  mặc định 4 → 1, panel vẫn chỉnh 0–4 được.
-- Chốt lại ô RAID (sau vài vòng đổi ý 1% → 0,5% → chia đều): **mọi ô chia đều** —
-  ô 🔥 PAL RAID chiếm đúng 1 suất như từng con pal (pool 281 con thường → mỗi ô 1/282
-  ≈ 0,35%). Pool raid rút về **ĐÚNG 5 boss triệu hồi được** ở Summoning Altar server
-  (paldb.cc/en/Raid): Bellanoir, Bellanoir Libero, Blazamut Ryu, Xenolord, Hartalis —
-  **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
-  từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
-
-### 27/08/2026 (2) — Fix nút panel "nền bạc chữ trắng" + màu nút giới tính
-
-- Panel: base `button{}` có `color:#fff` nhưng KHÔNG set background → nút nào không có
-  class `.btn-*` (💾 Lưu pwCfgSave, 🎁 Tặng vào rương pgGrant, ↩️ về rương pcResolve...)
-  ăn nền bạc mặc định của trình duyệt + chữ trắng = không đọc được. Fix GỐC: thêm
-  `background:#3a4155` vào base button → mọi nút không class thành xám-xanh tối đọc rõ;
-  nút có class vẫn tự đè màu riêng. Sửa 1 dòng, hết cho toàn panel.
-- Web nút giới tính: ♂ Đực xanh dương / ♀ Cái hồng hiện rõ cả khi chưa chọn, hover
-  nhấc nhẹ + sáng viền, chọn thì tô nền đặc chữ trắng.
-
-### 27/08/2026 — 🚻 Giới tính pal ở web nhận (BẮT BUỘC chọn ♂/♀)
-
-- Verify tận game: mod ghi `sp.Gender` số nguyên ĂN (1=Đực, 2=Cái, 0=random). Test
-  server test giao 3 con Sheepball ép gender → ra đúng đực/cái.
-- Wire full chuỗi: web claim modal → /api/pal/claim → palChestClaim → givePal spec →
-  dashboard /api/give-pal (đã nhận gender sẵn) → mod. Chỉ phải thêm ở BOT + WEB.
-  · webplay: thêm nút ♂ Đực / ♀ Cái (pcmGM/pcmGF) ngay dưới dòng mặc định, reset khi
-    mở modal, gửi `gender:PCGENDER` trong POST; BẮT BUỘC chọn (chặn nhận nếu chưa).
-  · index palChestClaim: validate gender phải 1 hoặc 2, đưa vào spec givePal.
-  · webplay route: chuyển body.gender vào extra.
-  · Tiện tay fix bug cũ: confirm() phụ phí giờ hỏi TRƯỚC khi khoá nút (huỷ không còn
-    kẹt nút "Đang giao").
-- LƯU Ý tên nhân vật: give-pal khớp tên CHÍNH XÁC; test account có ký tự ẩn U+1CBC sau
-  "bia123" (game đọc "bia123᲼") nên gửi "bia123" trượt "no PlayerController". Đếm túi
-  khớp mờ nên vẫn thấy online → dễ tưởng nhầm. Ai có ký tự lạ trong tên có thể nhận
-  hụt; sau này nên cho give-pal khớp theo tiền tố/lược ký tự ẩn như đếm túi.
-
-### 26/08/2026 (tối 12) — SỬA 6 ID PASSIVE SAI (dò từ save-editor, đối chiếu chuẩn)
-
-- Người chơi chọn "Lòng Thương Bao La" + "Chiêu Đãi Hào Phóng" nhưng game ra passive
-  khác (passive gốc của pal). Gốc: 2 ID sai → mod ghi cả lô bị game từ chối → pal
-  giữ passive spawn. (Manh mối chủ server: mod add được "Huyền Thoại" vào pal thường
-  → mod bỏ qua hạn chế cấy, nên KHÔNG phải "passive cấm", chỉ là ID sai.)
-- Nguồn ID chuẩn: repo save-editor `oMaN-Rod/palworld-save-pal`
-  (data/json/l10n/en/passive_skills.json) = FName game LƯU thật = đúng cái mod ghi.
-  Đối chiếu 6 ID đã chạy được (Vampire/CraftSpeed_up3/Legend/Deffence_up3/
-  MutationPal_Babysitter/CoolTimeReduction_Up_1) khớp 100% → nguồn tin cậy.
-- Quét toàn bộ 99 passive: 6 ID SAI, sửa hết:
-  · Chiêu Đãi Hào Phóng: LavishHospitality → SelfDeathAddItemDrop_up_3
-  · Chủ Nhân Trang Trại: RanchMaster → WorkSuitabilityAddRank_MonsterFarm_2
-  · Đứa Trẻ Trang Trại: Farmhand → WorkSuitabilityAddRank_MonsterFarm_1
-  · Lòng Thương Bao La: Philanthropist → Test_PalEgg_HatchingSpeed_Up
-  · Tinh Thần Phục Vụ: ServiceMinded → SelfDeathAddItemDrop_up_2
-  · Không Ngủ: Insomnia → Nocturnal
-  Gỡ cờ unsure (⚠) trên 6 cái này. 4 cái en="?" (Heavily Armored/Idiosyncratic/
-  Immortality/Skymarcher) kiểm ra ID vẫn ĐÚNG, không đụng. Còn 7 unsure id-hợp-lệ.
-- Cần reset server để pal nhận lại passive đúng (chủ server tự lo).
-- Đã verify TẬN GAME (test server): Bellanoir Libero nhận đúng Lavish Hospitality +
-  Philanthropist + Ranch Master + Service-Minded. Fix chuẩn.
-
-**Lỗi "fetch failed" khi bấm nhận pal** = dashboard (cổng 3010) CHƯA CHẠY. Bot gọi
-`PAL_DASHBOARD_URL` (test .env: http://127.0.0.1:3010) để đếm túi kiểm online; dashboard
-tắt là fail. Bật local: `cd palworld-dashboard/server && node src/index.js`. Prod chạy
-trong pm2 nên tự sống. SFTP không cần đổi khi lỗi này.
-
-**SFTP 2 server (test + chính):** thông tin nhạy cảm (user/UUID/mật khẩu) KHÔNG để ở
-đây — nằm trong `palworld-dashboard/server/.env` (đã gitignore) và trong bộ nhớ Claude
-(`memory/sftp-2-server.md`). Fix passive/mod: sửa `passives.json` (bot) hoặc `main.lua`
-(mod, đẩy qua SFTP). Chuỗi giao pal: bot → dashboard(3010) → SFTP → mod → reset server.
-
-### 26/08/2026 (tối 11) — BẬT LẠI neo lang thang (bản hiền): giá random khắp 100-2.000
-
-- Chủ server đảo lại "bỏ sóng": muốn giá lúc nằm 200 lúc 1.000 lúc 1.800, random,
-  không ép về giữa. Đã chứng minh random-walk trơn KHÔNG làm được (lệch xuống, kẹt
-  một vùng, 24h vẫn 435-1.079). Lời giải đúng = neo lang thang, chỉnh hiền.
-- Cơ chế (gọn trong stockTick, bỏ hẳn stockAutoDrift/stockBigWave đời cũ): một neo
-  vô hình `_stockAnchor.v` tự đi bộ — mỗi chặng 20-50 phút bốc đích cách 150-700 đơn
-  vị, trôi mượt tới (v += (target-v)*0.01); giá bám neo (PULL 0.004) + nhiễu tickAmp.
-  Mô phỏng 24h: dải 105-1.905, phân bố ĐỀU mọi mức (200/400/.../1.400 mỗi mức ~12%),
-  bước nhịp lớn nhất 7 -> nến vẫn lình xình có râu.
-- Ngưỡng mềm CHỈNH ĐƯỢC ở panel (chủ server chốt <350 lên, >1.650 xuống): dưới
-  waveLow neo thiên đi LÊN (pUp 0.82), trên waveHigh thiên XUỐNG (0.18), giữa random.
-- STOCK_MAX 1.500 -> 2.000; STOCK_PULL 0.001 -> 0.004 (bám neo); STOCK_BASE giữ 1.000.
-- Panel: bỏ ô "Bước chân sóng", thay bằng 2 ô "Đáy mềm" (100-1000) + "Trần mềm"
-  (1000-2000); toggle đổi tên "Bật neo lang thang"; ghi chú hiện neo đang ở đâu.
-- RESET v6 khi boot: đóng hộ lệnh, giá về 1.000, dựng neo mới, xoá cờ waveOn=false
-  của v5 (ăn lại mặc định BẬT). Đo sống: giá 995, neo bò 1.031->1.234, nhịp ±3.
-- stocktest 44/44.
-
-### 26/08/2026 (tối 10) — tickAmp mặc định về 3: chart lình xình, nhiều nến 2 đầu
-
-- Chủ server muốn nhiều nến "2 đầu" do dự (râu cả trên lẫn dưới, thân nhỏ giữa).
-  Mô phỏng setting cũ (tickAmp 6): 57% nến có râu 2 đầu, 25% là nến 2-đầu rõ.
-  Hạ tickAmp mặc định 4 -> **3** (~0,3% trên mốc 1.000): biên độ nhỏ nên trong 60s
-  giá hay quay về giữa -> lình xình hơn nữa. Đo sống: bước nhịp 0/-1/-1/+3/+2/0.
-- Placeholder panel đổi thành "vd: 3 (lình xình) · 8-10 (dứt khoát)".
-- LƯU Ý PROD: nếu panel chính đã LƯU tickAmp=6 trước đó thì giá trị lưu ĐÈ default,
-  pull code không tự đổi — phải vào panel gõ 3 + Lưu. Server nào chưa lưu thì tự ăn
-  default 3.
-
-### 26/08/2026 (tối 9) — BỎ sóng lớn, về mốc 1.000 (biên 100-1.500), nến 60s
-
-- Chủ server chốt: bỏ "🌊 ĐANG NEO vùng...", bỏ sóng lớn, cho giá lượn nhẹ quanh
-  mốc; nến 1 phút có đầu đuôi/râu; 2s nhảy 1 lần.
-- STOCK_BASE 4000 -> **1000**; STOCK_MIN/MAX -> **100 / 1.500** (tường cứng, tâm 1.000).
-- STOCK_CANDLE_TICKS 25 -> **30** (nến 60s). STOCK_PULL 0.0024 -> **0.001** (kéo nhẹ,
-  giá lượn không bị ghì một chỗ). tickAmp mặc định 12 -> **4** (~0,4% trên mốc 1.000).
-- BỎ 2 nguồn sóng: loop KHÔNG gọi `stockAutoDrift` (±10-15%) và `stockBigWave` (neo
-  vùng) nữa; `waveOn` mặc định TẮT. Hàm giữ lại để bật lại nếu cần, nhưng không chạy.
-  Admin can thiệp tay (stockPush) vẫn hoạt động.
-- RESET v5 khi boot: đóng hộ lệnh đang mở, xoá _stockAnchor/_stockDrift (hết "ĐANG
-  NEO"), giá về 1.000, tắt waveOn, làm mới nến. Chạy 1 lần.
-- Panel: ghi chú sóng đổi thành "Sóng lớn ĐÃ TẮT — giá lượn quanh 1.000 (100-1.500)".
-- Đo sống sau reset: giá 992, bước nhịp -3/+2/-1/0/-2/-2. Mô phỏng nến 60s: râu ~19,
-  thân ~12 (râu > thân = có đầu đuôi rõ). stocktest 44/44.
-
-### 26/08/2026 (tối 8) — Nến đẹp có râu như hình 2 + 15 nến/màn
-
-- Chủ server: nến bản trước (tickAmp 4 = 0,1%/nhịp) DẸP LÉP không đầu đuôi. Chẩn đúng
-  bệnh: không phải sai bản code, mà biên độ quá nhỏ so với mốc 4.000. Không rollback
-  (giữ trọn vòng quay/kinh tế/pal) — chỉ TĂNG BIÊN ĐỘ về đúng độ đã tạo ra hình 2.
-- tickAmp mặc định 4 -> **12** (= 0,3% trên mốc 4.000, đúng độ biến động bản mốc 1.000).
-  Trần mỗi nhịp đổi từ kẹp CHẶT ±tickAmp (làm nến phẳng) sang LỎNG ±4×tickAmp — chỉ
-  chặn cú sốc, để nhiễu gauss tạo thân + râu tự nhiên. Mô phỏng nến 50s: râu TB 49,
-  thân TB 30 đơn vị (dao động ~1,2%). Đo sống: bước nhịp -7/+2/+4/+2/-6/+10.
-- Mỗi màn 30 -> **15 nến** (SKVIEW=15) cho nến to rõ.
-- Cfg cũ (test/chính) không có field tickAmp -> tự lấy default 12, khỏi chỉnh tay.
-
-### 26/08/2026 (tối 7, ĐIỀU TRA — KHÔNG đổi code) — Nút reset cho người chơi: BẤT KHẢ THI, dùng lịch hẹn
-
-Chủ server hỏi: lấy nút reset server bỏ vô dashboard người chơi (mỗi người 1 lần/ngày,
-reset 00:00) để pal kích hoạt được khi chủ off. Đã dò TẬN NƠI trên server CHÍNH
-("1. test mod", 11d72659), kết luận + bằng chứng để lần sau khỏi đào lại:
-
-- **REST API prod BẬT**: `RESTAPIEnabled=True`, port **22666**, AdminPassword đọc được
-  qua SFTP (ini ở `/1. test mod/Pal/Saved/Config/WindowsServer/`). `GET /v1/api/info`
-  trả 200 tại **15.235.132.81:22666** (địa chỉ game, KHÁC IP SFTP 139.99.22.10 chỉ mở 2222).
-- **Test thật (0 người online)**: announce → chờ 60s → `/save` (200) → `/shutdown(10s)` (200)
-  → server SẬP sau ~18s và **KHÔNG tự dậy** (panel coi shutdown êm = admin chủ động tắt).
-  → **REST chỉ TẮT được, không BẬT lại được.** Server nằm im tới khi bấm Start tay.
-- **Access Control KHÔNG có API key** — chỉ "Invite via Discord" (thêm admin panel qua
-  Discord). Dashboard người chơi **không có cửa lập trình** để gọi task "Send Restart".
-- → **Nút bấm-reset-liền cho người chơi: loại.** Không đường sạch trên hosting này.
-
-**LỜI GIẢI (không cần code, không cần online):** panel có **Tasks → "Send Restart"**
-(restart CHÍNH CHỦ, tự tắt tự bật, khác REST shutdown) + **Scheduled Tasks** đặt lịch.
-Hẹn "Send Restart" 3 cữ/ngày (vd 6:00 / 14:00 / 22:00) → pal mua trong ngày tự kích
-hoạt trong tối đa ~8h. Web đổi câu thông báo: pal về rương + "dùng được sau cữ khởi
-động lại gần nhất (6h/14h/22h)" — nói đúng sự thật, không hứa nút không có.
-LƯU Ý: `/shutdown` REST là con dao một chiều trên hosting này — đừng gọi tự động.
-
-### 26/08/2026 (tối 6, CHỐT DEPLOY) — Bỏ seed data + kẹp mỗi nhịp 1-4 đơn vị
-
-- Chủ server chốt cuối: KHÔNG dựng data giả (gỡ SEED v4) — nến chạy thật từ 4.000,
-  kho 4 giờ tự đầy sau ~4 tiếng. Trên server đã lỡ seed (test) chỉ cần để nến thật
-  lăn đè dần; server chính pull là sạch từ đầu.
-- Mỗi nhịp 2s KẸP CỨNG ±tickAmp ĐƠN VỊ (kẹp cả kéo-về + nhiễu + trôi); tickAmp
-  mặc định 4. Mô phỏng 3000 nhịp: nhảy TB 1.8, tối đa 4, 0 lần vượt — đúng lệnh
-  "chỉ nhích 1-4 đơn vị". STOCK_TICK_CAP % nghỉ hưu (giữ const cho test extraction).
-- LƯU Ý setting cũ trên panel chính: ô "Biến động %" không còn (thay bằng "Giá nhảy
-  mỗi nhịp ± đơn vị"); cấu hình cũ lưu % bị bỏ qua, tự về tickAmp=4.
-
-### 26/08/2026 (tối 5) — Nến TO 30 cây/màn + kho data rút còn 4 GIỜ
-
-- Chủ server gửi ảnh chốt cỡ nến: ~30 nến to rõ trên màn. Mỗi màn đổi 64 -> 30 nến
-  (SKVIEW=30, dùng chung cho slice/pan), mọi khung nhìn dày đẹp như ảnh.
-- STOCK_HIST_N 3600 -> 288 (4 giờ nến 50s): kho nhẹ, /api/stock/hist còn ~13KB.
-  Boot tự cắt kho cũ dư về 288. SEED v4 đổi theo: dựng dư 360 rồi cắt còn 288.
-- Hệ quả từng khung với kho 4 giờ: 50s xem 30 kéo lùi ~4.3h; 5m = 48 cây (xem 30
-  kéo 18); 10m = 28 cây; 20m = 12 cây (to nhất, hết kho ngay trong màn).
-
-### 26/08/2026 (tối 4) — Chủ server chốt "đẹp ngay": SEED v4 dựng 2 ngày dáng thật
-
-- Sau khi cân đo chờ ~5h cho khung 5m tự đầy vs đẹp ngay, chủ server chốt đẹp ngay.
-- SEED v4 (_stockSeedV=4, chạy 1 lần sau RESET v3): dựng 3456 nến 2 ngày ĐÚNG dáng
-  sóng thật — chân 250-650 kéo 20-60 phút quanh mốc 4000 (bias về giữa), rung mỗi
-  nến ±12 khớp tickAmp 5, wick ±8; 60 nến cuối nắn về nối KHÍT nến thật đầu tiên,
-  nến thật đã tích giữ nguyên nối sau. v3 đổi điều kiện !==3 thành <3 để không wipe
-  lại sau khi v4 đặt seedV=4.
-- Kiểm trên test: 3469 nến, mở đúng 4000, biên 2368-5781, hở close->open = 0.
-- Server chính khi pull: boot chạy v3 (đóng hộ lệnh, giá 4000, xoá nến cũ) rồi v4
-  (dựng 2 ngày) — mở web là chart đầy đẹp mọi khung ngay lập tức.
-
-### 26/08/2026 (tối 3) — Giá nhảy mỗi nhịp đổi sang ĐƠN VỊ, admin chỉnh được
-
-- Chủ server: "biểu đồ nhảy 1 lần nhiều số". Nguyên nhân: nhiễu mỗi nhịp 2s tính
-  theo %GIÁ (0.3%) — mốc 1000 là ±3 đơn vị nhưng lên mốc 4000 thành ±12, nhìn giật.
-- Đổi hẳn config: bỏ "Biến động %" (volPct/skVol), thay bằng tickAmp = "🫨 Giá nhảy
-  mỗi nhịp 2s (± đơn vị, 1-200)", mặc định 5. stockTick: nhiễu = tickAmp×gauss/giá.
-  Đo mô phỏng 2000 nhịp: nhảy trung bình 2.3, tối đa 8. Đo sống trên test: -2/-7/-3.
-  Cfg cũ còn lưu vol bị bỏ qua, tự về mặc định 5 — không cần tay.
-- Sóng to vẫn chỉnh riêng bằng "Bước chân sóng" (waveAmp 500-2500) như cũ.
-
-### 26/08/2026 (tối 2) — UI chart NHƯ CŨ, bỏ giả lập, xuất phát 4000 + vá nút đóng sàn
-
-- Chủ server chốt lại: UI đúng như bản cũ (bỏ nút "2 ngày"), CHỈ thêm kéo qua lại;
-  KHÔNG đổ data giả lập nữa — nến thật chạy từ đầu; giá xuất phát 4.000.
-- STOCK_BASE 5000 -> 4000. RESET v3 một lần khi boot (_stockSeedV=3): đóng hộ mọi
-  lệnh đang mở theo giá hiện tại, xoá sạch nến (kể cả giả lập v1/v2), giá về 4.000.
-  Gộp luôn vai trò migrate 1000->5000 cũ — server chính pull là vào thẳng đây.
-- Bỏ nút "2 ngày" + khung 54; ai còn lưu sk_tf=54 trong máy bị ép về 50s. Giữ
-  nguyên: kéo lùi mọi khung + /api/stock/hist (kho nến đầy) + nút "Về hiện tại".
-- Nút "⏸ Tạm đóng sàn" (panel): vá lỗ hổng bấm khi STATE.stock CHƯA TẢI XONG —
-  open tính ngược thành true, nút đóng sàn lại gửi lệnh MỞ sàn, nhìn như nút hỏng
-  (nghi đây là vụ "nút tắt cổ phiếu không sử dụng được"). Giờ: chưa tải xong thì
-  báo chờ; bấm xong tin theo kết quả THẬT server trả, đổi nút ngay không đợi
-  refresh 3s, khoá nút trong lúc gửi. Đã test API đóng/mở trên panel test: OK.
-- stocktest đổi theo: mốc 4000 + RESET v3 + web bỏ sktf54 (44/44 xanh).
-
-### 26/08/2026 (tối) — Chart trả về dáng cũ + kéo được MỌI khung + data êm từ 5000
-
-- Thủ phạm chart xấu: state chỉ gửi 180 nến cuối nên khung 5m còn 30 nến mập ú,
-  10m còn 15, "2 ngày" trống — client vẽ w=300/n nên ít nến là nến phình to.
-  Fix: route mới /api/stock/hist trả CẢ KHO nến (~152KB, client cache 60 giây),
-  state 2 giây vẫn nhẹ (180 nến + histLen). Client ghép kho cũ + đuôi sống →
-  mọi khung đều đủ 64 nến, trông dày đẹp đúng như bản cũ, kéo lùi được hết
-  (50s/5m/10m/20m; riêng "2 ngày" = trọn kho nên không còn gì để kéo).
-- Bỏ chữ "· kéo ngang đồ thị để xem lại" trên header — trả dòng chú thích về gọn
-  như cũ.
-- GIẢ LẬP v2 (_stockSeedV=2, thay trọn bản v1 sóng gắt): 3456 nến XUẤT PHÁT ĐÚNG
-  5000, chân sóng nhỏ 250-650 kéo dài 20-60 phút, nhiễu giảm — bước nến trung bình
-  11 đơn vị (trước ~40), biên 2 ngày 3.402-6.568, đuôi khớp giá sống. Server nào
-  đã lỡ seed v1 (test/chính) boot lại là tự thay bằng v2, chạy đúng 1 lần.
-- Sóng SỐNG cũng chậm lại theo lệnh "cho chạy từ từ": trôi tới đích 20-45 phút
-  (trước 10-30), đứng vùng 10-30 phút (trước 5-25).
-
-### 26/08/2026 (chiều 3) — Nút "Về hiện tại" + giả lập sẵn 2 ngày nến
-
-- Nút "⏩ Về hiện tại" bấm không chịu mất: nút nằm trong vùng kéo chart, cú nhích
-  chuột ngay sau click bị handler kéo hiểu là kéo tiếp nên pan nhảy về giá trị cũ.
-  Fix: onpointerdown chặn lan sự kiện xuống vùng kéo.
-- Nến trống/mỏng (<200 cây) khi boot → tự DỰNG SẴN 3456 nến quá khứ (đúng 2 ngày,
-  nến 50s) bằng chính thuật toán sóng lang thang 2000-7000; 60 nến cuối nắn dần về
-  nến thật đầu tiên (không có nến thật thì về giá sống) nên mối nối lệch 0. Nến
-  thật đang có được giữ nguyên nối sau phần giả lập. Đã kiểm trên test: 3479 nến,
-  biên 2480-7098, không hở close→open, không nến sai thân/bóng.
-
-### 26/08/2026 (chiều 2) — Vòng quay minh bạch + màu vé + 2 lỗi chart
-
-- Vụ "3 người quay 1 người nhận" KHÔNG mất tiền ai: 2 người bị bỏ lại đúng luật
-  120 giây (chưa chọn màu / thiếu vé) nhưng trước đây bị bỏ lại IM LẶNG. Giờ danh
-  sách bị bỏ lại ghi thẳng vào kết quả quay + lịch sử 10 vòng, kèm chú "mất lượt
-  khung này, KHÔNG mất tiền".
-- Màu vòng vé tô theo THỨ HẠNG giá (rẻ→đắt: xanh lá/tím/vàng gold) thay vì khoá
-  cứng theo số tiền cũ — đổi giá vé không bao giờ xám xịt nữa.
-- Chart cổ phiếu: fix dòng "+-1" (dấu lấy theo hiệu số thật) + khung to trống sau
-  migrate giờ hiện "chưa đủ nến, chọn khung nhỏ hơn" thay vì trắng trơn.
-
-### 26/08/2026 (chiều) — GÓI CHỈNH KINH TẾ + CỔ PHIẾU MỐC 5000 LANG THANG
-
-Gói chỉnh số chủ server chốt (đã đẩy chính cùng ngày):
-
-- **Điểm danh** 400 → **600**/ngày; **/nghien** 100 → **200**/giờ.
-- **Vòng quay may mắn**: vé 2k/2.5k/3k → **3.000/4.000/5.000**.
-- **Sàn cược Dò Mìn + Leo Thang**: 200 → **400**/ván (Big Small không dính).
-- **Hũ tách theo trò**: Dò Mìn/Leo Thang mồi **5.000**, trần nuôi **50.000**;
-  hũ Quay Pal giữ 1.500/20.000 (`POT_SEED_BY`/`LUCKY_POT_MAX_BY`, `potSeed(key)`).
-- **📈 Cổ phiếu đại tu theo chốt mới**: mốc gốc **5.000** (biên cứng 1.500–8.000),
-  giá **ĐI BỘ NGẪU NHIÊN 2.000–7.000** — mỗi chân sóng bốc đích cách neo cũ
-  500..waveAmp (mặc định 1.500) đơn vị, trôi 10–30 phút, đứng vùng 5–25 phút,
-  càng xa 5.000 càng dễ đảo chiều (không cắm đầu một mạch, không dao động một chỗ).
-  Tắt `waveOn` = về bám mốc gốc. **MIGRATE tự động** lúc boot: giá cũ (<2500) thì
-  đóng hộ mọi lệnh theo luật đóng thường, đặt giá 5.000, làm mới nến.
-- **Chart**: nút khung **2 ngày** (nến giữ 3.600 cây ~2 ngày) + **kéo ngang đồ thị
-  xem lại quá khứ** (chuột/ngón tay, nút "⏩ Về hiện tại" khi đang lùi).
-- Test: cập nhật 6 bộ theo số mới (jptest/luckytest/pottest/wheeltest/shieldtest/
-  stocktest — stocktest ép thang cũ trong sandbox để giữ 39 case toán, thêm 5 case
-  nguồn cho hằng số mới) — TOÀN BỘ 18 bộ xanh.
-
-### 26/08/2026 — DEPLOY đợt 💎 lên SERVER CHÍNH
-
-Chủ server test đủ trên server test ("mọi thứ hoàn hảo") và chốt đẩy. Gồm 6 đợt trong
-ngày: nâng cấp trả phí (passive 5-8, linh hồn %/dòng riêng, IV 3 chỉ số), bố cục 2 cột
-+ 🧾 TỔNG KẾT, bán 4 boss raid đích danh, 7 passive Cây Thế Giới cầu vồng. Deploy:
-VPS pull + restart CẢ BotDoMin LẪN palworld-dashboard (dashboard có nới trần
-validation give-pal — quên restart là nhận pal lỗi). Mod KHÔNG đổi từ f2c90fc,
-không cần đụng server game.
-
-### 26/08/2026 (đợt 6) — 🔥 Bán 4 boss raid đích danh + 🌈 passive Cây Thế Giới
-
-- **🎯 Chọn Pal bán thêm 4 BOSS RAID** giá riêng (panel chỉnh, 0 = ngừng bán):
-  Bellanoir Libero **9.000** · Blazamut Ryu **20.000** · Xenolord **20.000** ·
-  Hartalis **20.000** — xếp đầu danh sách, viền đỏ 🔥 BOSS RAID. Bellanoir THƯỜNG
-  vẫn chỉ có từ vòng quay. Mua raid cũng nuôi hũ 5% + 1% nổ.
-- **🌈 7 passive Cây Thế Giới mở bán trong bảng nhận** (đảo luật cấm cũ theo chốt
-  chủ server): tên hiện MÀU CẦU VỒNG + giá 💎 ngay cạnh, mặc định **1.000/con**
-  (panel chỉnh `upWtPassive`), cộng vào tổng phụ phí + dòng riêng trong 🧾 TỔNG KẾT.
-  Mã dùng bộ id THẬT đào từ paldb (WorldTree_ATK/DEF/ATK_DEF/CraftSpeed/MoveSpeed/
-  Sanity; Seedbed = WorldTree_FullStomach cờ ⚠ chưa kiểm). Mô tả tiếng Việt nguyên
-  văn game (chủ server chụp 26/08). Danh mục 92 → 99 con.
-- Test: palwheeltest **105 case xanh** (giá raid đúng 4 con, tắt bán bằng giá 0,
-  Bellanoir thường vẫn chặn, 2 passive WT trừ đúng 2.000). Đã lên server chính 26/08.
-
-### 26/08/2026 (đợt 5) — Bố cục hộp nhận + 🧾 TỔNG KẾT ĐƠN
-
-- Máy tính (màn ≥920px): hộp nhận nở rộng 940px chia **2 CỘT** — trái là linh hồn + IV,
-  phải là passive (danh sách cao 380px đỡ cuộn); điện thoại giữ bố cục dọc như cũ.
-- **Passive thêm CHECKBOX** đầu mỗi dòng cho dễ bấm/dễ thấy (đồng bộ với chọn bằng
-  click dòng và nút build).
-- **🧾 TỔNG KẾT ĐƠN** trước nút nhận: pal gì (BOSS · Lv · sao), từng dòng linh hồn +%
-  và phí, phí thêm dòng, IV 3 chỉ số + phí, số passive + phí, tổng 💎 + số dư ví.
-- Bỏ toàn bộ ký tự "—" trong chữ trên web (96 chỗ) theo góp ý chủ server.
-
-### 26/08/2026 (đợt 4) — 💠 % linh hồn kéo RIÊNG TỪNG DÒNG
-
-- Chốt lại của chủ server: mỗi dòng linh hồn có THANH KÉO % RIÊNG (giống IV) — mua
-  Công 201% mà Máu chỉ 102% được. Tick dòng nào thanh dòng đó mở; bỏ tick thì thanh
-  khoá + reset về gốc. Phí tính riêng từng dòng theo đúng bảng mỗi-1% 5 khung; phí
-  thêm dòng cấp số nhân giữ nguyên. Payload claim đổi sang soulHpPct/soulAtkPct/
-  soulDefPct/soulWorkPct; upPick lưu % từng dòng. 100 case xanh (combo mẫu: atk 72%
-  riêng + hp gốc + IV máu 255 + 5 passive = trừ đúng 99.500). Đã lên server chính 26/08.
-
-### 26/08/2026 (đợt 3) — 💎 SỬA BẢNG PHÍ theo chốt lại của chủ server
-
-- **Nhiều dòng linh hồn**: bắt buộc ÍT NHẤT 1 (dòng đầu miễn phí), chọn tới 4; thêm
-  dòng tính phí CẤP SỐ NHÂN từ `upSoulLine` (mặc định 2k): dòng 2 = 2k, dòng 3 = 4k,
-  dòng 4 = 8k (chọn cả 4 = 14k). Thanh % áp cho MỌI dòng đã chọn.
-- **Giá linh hồn là MỖI 1%** (trước hiểu nhầm là mỗi bậc): 1 nấc kéo 3% = ×3 giá.
-  60→72% = 12k · →81% = 25,5k · →90% = 48k · →102% = 90k · **→201% = 684k MỖI DÒNG**.
-- **IV tách 3 chỉ số riêng** như trong game (❤️ Máu / ⚔️ Công / 🛡️ Thủ), mỗi chỉ số một
-  thanh kéo 100→255, **500/điểm** trên mức gốc (1 chỉ số max = 77,5k; cả 3 = 232,5k).
-  Công ghi vào cả Talent_Shot lẫn Talent_Melee (game hiện Công = Shot).
-- Panel: thêm ô "Thêm DÒNG linh hồn", nhãn giá linh hồn đổi thành "mỗi 1%", IV 500.
-- Test: palwheeltest **100 case xanh** (12k/25,5k/48k/90k/684k; dòng 0/2k/6k/14k;
-  IV 77,5k/232,5k; combo 2 dòng 72% + IV máu 255 + 5 passive = trừ đúng 111,5k;
-  hoàn đủ khi giao hụt). Đã lên server chính 26/08.
-
-### 26/08/2026 (đợt 2) — 💎 NÂNG CẤP TRẢ PHÍ: người chơi tự mua vượt trần, trừ ví ngay
-
-- Đổi mô hình theo chốt chủ server: KHÔNG mở trần toàn cục nữa — gốc miễn phí
-  (4 passive · 60% · IV 100, admin đổi được), người chơi muốn hơn thì MUA từng nấc
-  ngay trong bảng nhận. Bảng giá mặc định (admin sửa ở panel, card 🎁):
-  Ô passive 5/6/7/8 = **8k/16k/32k/64k** (chọn 8 ô = 120k); linh hồn theo BẬC 3%
-  5 khung: **→72% 1k · →81% 1,5k · →90% 2,5k · →102% 3,5k · →201% 6k mỗi bậc**
-  (60→201% = 228k MỖI DÒNG); IV **400/điểm** (100→255 = 62k). Trần cứng 8/201%/255.
-- Web (bảng nhận): 2 thanh kéo 💠 Mức linh hồn + 🧬 IV, phí hiện ngay dưới từng thanh,
-  phí ô passive 5-8 hiện cạnh tiêu đề, dòng 💎 Tổng phụ phí + hộp xác nhận trước khi
-  trừ. Máy tính phí client là GƯƠNG của công thức server (server mới là người quyết).
-- Tiền: trừ ví ngay lúc nhận (`upCost` lưu trên item); mọi nhánh CHẮC CHẮN chưa giao
-  (hộp đầy / không thấy người / dashboard 404) tự HOÀN đủ; treo ĐANG GIAO thì phí giữ
-  lại, admin bấm "↩️ về rương" là hoàn, "✅ đã giao" là giữ.
-- Dashboard nới lưới an toàn: 8 passive, IV/linh hồn ≤255 rank. Mod không cần sửa.
-- Test: palwheeltest **101 case xanh** (đúng từng con số bảng giá: 72%=4k, 201%=228k,
-  8 ô=120k, IV255=62k; trừ-hoàn đủ vòng; chặn cứng 9 passive; chặn % lẻ không chia 3).
-  Đã lên server chính 26/08.
-
-- Chủ server đã kiểm chứng bằng Creative Menu: game chịu pal 6-8 passive, linh hồn
-  vượt 60% (vd 201%), IV 255 — muốn bán tự động thay vì đưa tay khi vắng mặt.
-- Mod KHÔNG cần sửa (applyPassives ghi nguyên danh sách, soul/IV ghi số thô — trần
-  nằm ở bot + dashboard). 3 cấu hình mới trong `palWheelCfg` (panel chỉnh, card 🎁):
-  **% linh hồn mỗi dòng** (3–765, bội của 3 vì mỗi bậc save = 3%; 201% → rank 67),
-  **IV 3 chỉ số** (1–255), **Passive tối đa** (1–8). MẶC ĐỊNH GIỮ AN TOÀN như cũ
-  (60% / 100 / 4) — lên chính xong phải vào panel chỉnh mới mở trần.
-- Dashboard `/api/give-pal` nới lưới an toàn: passive ≤8, IV/linh hồn ≤255.
-- Web: nhãn "+60%", "tối đa 4", bộ đếm x/4, ngưỡng gọn-danh-sách... tất cả ĐỘNG theo
-  cấu hình; build riêng lưu được tới 8 passive.
-- Test: palwheeltest 82→91 case xanh (kẹp trần mới, giao 201%→rank 67, IV 255 ×4
-  trường, 6 passive đi đủ, chặn vượt passiveMax). Môi trường test dựng lại đủ:
-  bot 4002 + dashboard 3010 (khởi động lại sau reboot máy).
-
-### 25/08/2026 — DEPLOY LÊN SERVER CHÍNH (checklist)
-
-Chủ server đã test đủ trên server test và chốt triển khai. Các bước:
-
-1. **VPS** (bot + dashboard cùng máy):
-   `cd /root/tts-bot && git pull --ff-only`
-   rồi restart **CẢ HAI** tiến trình: `pm2 restart BotDoMin --update-env` và
-   `pm2 restart <tên-tiến-trình-dashboard> --update-env` (xem tên bằng `pm2 ls` —
-   dashboard PHẢI restart vì có API mới `/api/give-pal`; quên là bấm NHẬN pal sẽ
-   báo lỗi 404).
-2. **Server game chính**: up `palworld-dashboard/ue4ss-mod/GiveGoldCommand/Scripts/main.lua`
-   (bản v7: chốt HỘP ĐẦY + dọn actor tái sinh + hủy bản sao hoang) đè lên file cũ qua
-   SFTP — KHÔNG đụng mods.txt (mod đã cài sẵn, chỉ thay ruột Scripts/main.lua) —
-   rồi restart server game để nạp.
-3. **Không cần đổi .env** ở đâu cả: tính năng mới dùng đúng PAL_DASHBOARD_URL/PASSWORD
-   và SFTP sẵn có. Không cần migrate database — field mới (palChest, palBuilds,
-   _palWheelCfg, _palChestSeq) tự sinh khi dùng.
-4. **Liên kết Discord ↔ nhân vật GIỮ NGUYÊN** (nằm trong database.json trên VPS,
-   deploy không đụng). **Reset server game KHÔNG cần liên kết lại** — liên kết theo
-   tên nhân vật, restart không đổi tên.
-5. Sau deploy nhớ: vào panel re-save cấu hình SÀN CỔ PHIẾU (đặc biệt chênh mua–bán
-   về 0.1) vì bản panel cũ từng lưu 0.6; kiểm card 🎁 Vòng quay Pal web (vé 2.000 ·
-   chọn đích danh 6.000 · bán 1.000 · linh hồn 1 dòng · Lv80 · 4 sao · BOSS · mở).
-6. Đơn pal cũ còn treo trong bảng "🐾 Đơn mua Pal" vẫn xử tay như trước cho hết
-   tồn đọng; đơn mới không sinh nữa.
-
-**Đã thực hiện 25/08 tối:** commit `819612e` push GitHub; VPS đã pull + restart
-BotDoMin; **main.lua v7 đã up lên server game chính** (tên trên panel Shockbyte:
-"1. test mod", UUID SFTP `11d72659-…`) trong lúc server tắt — bản cũ 54.615 ký tự
-backup tại scratchpad `main-prod-backup-25-08.lua`, bản mới 56.826 ký tự khớp repo.
-Còn thiếu lúc ghi dòng này: `pm2 restart palworld-dashboard --update-env` (bước 1).
-
-### 25/08/2026 (tối, đợt 2) — 🎯 CHỌN PAL trên web · Discord chỉ còn chuyển tiền · build riêng · cổ phiếu tự cắt
-
-- **Trang 🎯 Chọn Pal** (nhóm 👤 HỒ SƠ giờ có 3 tab: 🪪 Cá nhân · 🎁 Quay Pal · 🎯 Chọn
-  Pal): chọn ĐÍCH DANH 1 pal thường (không raid, không Panthalus/Astralym) giá mặc định
-  **6.000** (panel chỉnh ô "Chọn pal đích danh"), có ô 🔎 tìm theo tên/số paldex. Mua
-  xong pal vào 🎒 RƯƠNG như quay trúng — cùng luồng nhận/bán. Mua đích danh cũng nuôi
-  hũ 5% + 1% nổ như vé quay.
-- **Bảng Discord 🔄 chỉ còn CHUYỂN DOGCOIN 2 chiều**: bỏ nút "Pal ngẫu nhiên" +
-  "Pal tùy chọn" (bấm nút cũ thì được chỉ đường lên web; code cũ giữ dưới
-  `shop_random_CU_DA_TAT`/`shop_custom_CU_DA_TAT`). Đơn pal giờ giao TỰ ĐỘNG nên
-  **admin không còn nhận DM đơn hàng**; kênh thông báo gacha vẫn đăng công khai
-  mỗi lượt trúng/mua như cũ.
-- **Nút build sáng lên khi đang chọn** (viền vàng; tự tay đổi passive là tắt sáng vì
-  đã lệch bộ) + **build RIÊNG từng người**: nút ➕ lưu bộ 4 passive đang chọn thành
-  build ⭐ của mình (đặt tên, tối đa 8 bộ, trùng tên = ghi đè, có nút ✕ xoá) — lưu ở
-  `userData.palBuilds`, qua restart vẫn còn.
-- **📈 Cổ phiếu: MỐC TỰ ĐÓNG LỆNH** — người chơi nhìn cột giá bên phải đồ thị rồi điền
-  2 ô ở khung "LỆNH ĐANG MỞ": "⬇ Rớt tới..." / "⬆ Tăng tới...". Giá (mid trên đồ thị)
-  chạm mốc là bot tự đóng CẢ lệnh (cắt lỗ hay chốt lời tuỳ vị thế), vẫn tôn trọng thời
-  gian chôn vốn, cháy ví vẫn ưu tiên trước. Để trống cả 2 ô + bấm Đặt = xoá mốc.
-  Kiểm ở `stockAutoCheck` mỗi nhịp 2 giây, có log `[CỔ PHIẾU] 🤖 TỰ ĐÓNG`.
-- Mua/quay xong pal về 🎒 RƯƠNG (tab 🪪 Cá nhân) rồi chọn linh hồn + passive ở đó —
-  chủ server cân nhắc xong CHỐT không bật bảng chọn tự động, chỉ cần toast nhắn rõ
-  "pal nằm trong 🎒 RƯƠNG (tab 🪪 Cá nhân), vào đó chọn linh hồn + passive rồi nhận".
-- Test: stocktest 30→39 case, palwheeltest 60→75 case, pottest cập nhật tiêu đề bảng
-  mới — 18 bộ / 771 case xanh. Bot test cổng 4002 đã chạy bản mới.
-
-### 25/08/2026 (tối) — Bắt buộc chọn linh hồn + 9 BUILD passive chọn nhanh
-
-- **Bắt buộc chọn đủ dòng linh hồn** khi nhận pal (mặc định 1 dòng) — trước đó bỏ
-  trống vẫn nhận được. Chặn cả client (toast) lẫn server (`palChestClaim`).
-- **9 bộ build passive chọn nhanh** (chủ server gửi, lưu ở `passives.json` mục
-  `builds`, admin sửa thoải mái): Thợ làm việc · Buff chủ nhân · Một hệ · Tấn công ·
-  Phòng thủ · Đánh raid · Cưỡi đánh raid · Tốc chạy/chở đồ · Bơi lội. Bấm 1 nút trong
-  hộp Nhận là tick đủ 4 passive của bộ. **3 passive Cây Thế Giới trong list gốc
-  (Bàn Tay Ác Quỷ / Thần Hủy Diệt / Cú Nhảy Không Gian) bị luật cấm của server nên
-  thay bằng con cùng vai trò** (Workaholic, Quỷ Thần/Huyền Thoại, Thần Tốc/Động Cơ
-  Vĩnh Cửu) — muốn cho cả Cây Thế Giới vào build thì phải bỏ luật cấm trước.
-  passiveBuilds() lọc id lạ lúc đọc nên sửa tay passives.json sai cũng không lọt.
-- UI hộp Nhận: **chọn đủ 4 passive thì danh sách tự gọn lại chỉ còn 4 con đã chọn**
-  (kèm dòng nhắc, ẩn ô 🔎) — soát nhanh sau khi bấm build; bỏ chọn 1 con là danh
-  sách bung lại đầy đủ. Chưa đủ 4 thì vẫn hiện đủ như thường.
-
-### 25/08/2026 (tối) — Vá bug "pal đầy thì pal văng ra ngoài" (mod v7)
-
-- Chủ server báo: khi pal đầy, con pal giao ra **xuất hiện kế bên rồi đi lung tung**
-  thay vì vào palbox. Soi results.log: pal THẬT đã vào slot chuẩn (`FindByHandle
-  valid=true`, level đọc lại đúng) — con đứng ngoài là **actor tái tạo** do
-  `PalCaptureSuccess` tạo lại pal từ bản copy; bản vá cũ chỉ hủy bản sao hoang ban
-  đầu, không hủy bản tái tạo. Vá 2 lớp trong `main.lua` (đã up server test):
-  1. **Chốt HỘP ĐẦY**: `FindEmptySlot` TRƯỚC khi bắt — hộp không còn slot thì trả
-     `ERROR PALBOX DAY`, hủy bản spawn, KHÔNG giao; bot trả pal về rương + báo
-     "📦 Hộp pal trong game ĐẦY — dọn bớt rồi nhận lại".
-  2. **Dọn actor tái sinh**: sau khi bắt 1,5s + 3,5s, lấy handle từ đúng slot vừa
-     nhận pal → `TryGetIndividualActor` → còn actor đứng ngoài world thì
-     `K2_DestroyActor` (chỉ hủy XÁC ngoài world, dữ liệu trong hộp không đụng).
-     Log `DON PAL TAI SINH` để đối chiếu.
-- Bản main.lua trên server test giờ = bản repo + 2 vá trên (bỏ mớ lệnh chẩn đoán
-  v2–v6 của đợt điều tra — bản sạch giống production). Cần RESET server test để nạp.
-
-### 25/08/2026 (chiều) — Nối trọn bộ vào SERVER TEST cho chủ server tự thử
-
-- Môi trường thử tại chỗ (KHÔNG đụng server gốc): bot test cổng **4002** (web chơi) +
-  **4508/4234** (panel), dashboard test cổng **3010** (`palworld-dashboard/server/.env`
-  local, gitignore, SFTP trỏ server test "1. Cô 4 và những người bạn"), mod v6 trên
-  server test. Đăng nhập web test: ID `111111111111111111` / PIN `123456`, nhân vật
-  liên kết `bia123`. Đã giao thật thành công `BOSS_Penguin_Electric` Lv80 qua đúng
-  đường web → bot → dashboard → SFTP → mod (12 giây).
-- Còn chờ kiểm trong game: các passive gắn cờ ⚠ (mã đoán) — có sẵn kịch bản gửi pal test
-  × 4 passive/con cho bia123, con nào thiếu ô passive là mã sai, sửa `passives.json`.
-- **Passive đổi sang TÊN TIẾNG VIỆT CHUẨN TRONG GAME** (chủ server gửi nguyên văn bản
-  dịch của game): 92 con, đủ cả 5 con mới (Bảo Mẫu Trông Trẻ, Thiết Giáp Hạng Nặng,
-  Thể Chất Đặc Dị, Thân Thể Bất Tử, Bước Đi Trên Không — 5 con này id đoán, cờ ⚠).
-  **Màu đúng như trong game**: trắng (bậc 1-2), VÀNG (bậc 3), XANH NGỌC (bậc 4 — kiểu
-  khung Huyền Thoại), ĐỎ cho 7 passive có mặt trái (Cơ Bắp, Đam Mê Công Việc, Thô Lỗ,
-  Tàn Bạo, Chịu Trận, Tự Cao, Hung Hăng — cờ `bad` trong passives.json). May Mắn cập
-  nhật theo game mới: Tấn công +15%, Tốc độ làm việc +20% (dòng phòng thủ game đã tắt).
-
-### 24/08/2026 — Cổ phiếu: SỨC NẶNG ĐIỂM GIÁ + phí vay lên 20%
-
-- **📈 SỨC NẶNG ĐIỂM GIÁ (`pointX`, mặc định x5, panel chỉnh 1–20).** Chủ server chê
-  "cháy quá thấp": vốn 1.000 x10 chỉ ~9 CP, giá nhích 0,3%/nhịp → tiền chỉ đung đưa
-  ~27/nhịp; tệ hơn, spread 0,5%/chiều nuốt sạch biên: **giá phải lên đúng 1% mới HOÀ VỐN**.
-  Giờ 1 đồng giá × 1 CP = `pointX` Dogcoin: vốn 1.000 x10 thì **+1% = +360, −1% = −540**
-  (khớp đề bài "nhích xíu là ±400"). Mỗi 1% giá = `đòn bẩy × sức nặng %` vốn.
-  Đi kèm BẮT BUỘC: **spread hạ 0,5% → 0,1%/chiều** (pointX khuếch đại luôn phí chênh —
-  giữ 0,5% thì mở lệnh x10 lỗ sẵn ~50% vốn); có **migrate một lần** lúc boot cho cấu hình
-  cũ còn lưu 0.005. Nhân ở đúng 3 chỗ: `stockPL`, `stockClose` (trước khi kẹp ví),
-  `posBurnPrice` (đệm chia pointX → giá cháy GẦN lại). Điểm hoà vốn KHÔNG đổi theo pointX.
-  `payNow` ở panel đổi sang tổng `vốn + stockPL` thật (số cũ `out×bid` sai từ khi có đòn
-  bẩy). **Tiện thể vá bug `setStockCfg` làm rơi `holdS`** — trước đây mỗi lần admin bấm
-  Lưu là "chôn vốn" lặng lẽ về 60 giây. Web: dòng "mỗi 1% = X% vốn (≈N Dogcoin)" dưới ô
-  vốn, thẻ Cách chơi viết lại ví dụ theo sức nặng. Test: `stocktest.js` 30 ca.
-- **📒 Phí vay 5% → 20%** ("vay 10.000 lãi 2.000 chứ không phải 500") — vay 10.000 ghi nợ
-  **12.000**, nhận đủ 10.000. Mỗi vòng vay-trả-liền giờ tốn 2.000/vòng. `vaytest.js` viết
-  lại theo bộ luật mới (hạn mức 10.000/ngày + trần 30.000 của đợt 64cfa9d + phí 20%): 69 ca.
-- Lưu ý test sau này: `git pull` 24/08 làm file trên đĩa thành **CRLF** — regex nguồn
-  trong test phải dùng `\r?\n`, không dùng `\n` trần (pottest đã dính).
-
-### 22/08/2026 — game mới 📈 Sàn Cổ Phiếu Dogcoin + sửa bảng Discord mồ côi
-
-- **Sàn Cổ Phiếu DOG** (mục *Các game* ở trên là spec đầy đủ): thuần web, 2 chiều
-  MUA/BÁN, nến sống 2s/chốt 50s, đòn bẩy tới x20, chôn vốn 60 giây, và **cháy VÍ** —
-  lỗ ăn hết vốn rồi ăn tiếp số dư, cạn ví mới đóng. Đây là game rủi ro cao nhất của bot.
-- **Bảng game Discord: SỬA TẠI CHỖ thay vì xoá-tạo mới.** Chủ server báo cả 3 bàn (Big
-  Small, Dò Mìn, Leo Thang) đẻ ra nhiều bảng mồ côi. Hai nguyên nhân: (1) lệnh xoá bảng cũ
-  là fire-and-forget `.catch(() => {})` **nuốt sạch lỗi**, mà VPS này có Connect Timeout
-  tới Discord nên xoá hụt là chuyện thường; (2) TX không lưu id bảng vào db như Dò Mìn/Leo
-  Thang nên **mỗi lần deploy bỏ lại một bảng chết**. Cách sửa: bảng còn là tin CUỐI kênh
-  thì **sửa tại chỗ** (không đẻ tin mới = không thể mồ côi, lại đỡ nửa số API call); có
-  người nhắn đè xuống dưới mới đăng tin mới cho bảng nổi về cuối kênh. Biết bằng
-  `channel.lastMessageId` (gateway đẩy sẵn, không tốn API call). Thêm `sweepBoards()`
-  làm lưới an toàn + **ghi log lý do xoá hụt** thay vì nuốt.
-- **Vay nợ**: hạn mức ngày 4.000 → **10.000**, trần nợ 12.000 → **30.000**. Phải nâng trần
-  theo vì lãi kép DỪNG khi chạm trần — giữ 12.000 thì vay 10.000 kịch trần sau **1 ngày**,
-  tổng chi phí tối đa 14% và chế tài lãi kép coi như vô hiệu.
-- **Vòng quay**: bảng nan buff (sàn x1.5, thêm x3/x5, bỏ đám 1.1–1.4), vé lên
-  1.500/2.000/2.500 rồi remote đổi tiếp 2.000/2.500/3.000, reset 4 khung 6 tiếng.
-- **Chẩn đoán "bot chậm"**: đi qua 3 giả thuyết SAI (database phình — thật ra 506 KB; mạng
-  hỏng — thật ra 0,063s tới Discord; CPU bị giành — thật ra load 0.10) trước khi ra nguyên
-  nhân thật: **166 lần restart do deploy 34 commit trong một ngày**. Bài học vận hành: gom
-  nhiều thay đổi rồi restart MỘT lần, tránh giờ đông người. Còn treo: `txDashHistory` /
-  `bcDashHistory` **không có trần** — 1.348 ván = 290 KB = **57% database.json**, và panel
-  gửi cả mảng mỗi 3 giây để hiện 20 dòng. Không làm bot chậm, nhưng là rác lớn dần.
-
-
-> **Quy ước:** mỗi lần thêm/sửa tính năng của bot thì THÊM 1 dòng vào đầu danh sách này
-> (ngày + tóm tắt). Chi tiết cách làm/vì sao thì xem message của commit tương ứng.
-
-- **21/08/2026 — Bảng thưởng Leo Thang 2 LỬA: hạ khúc giữa-cuối.** Chủ server gửi bảng
-  mới, ép tay thêm 5 mốc vào `STAIRS_MULTI_OVERRIDE`: tầng 6 `5.16→4.16` · 7 `6.89→5.89` ·
-  8 `9.18→8.18` · 9 `11.86→10.86` · 10 `14.86→11.86`. **Tầng 1–5 giữ nguyên công thức**
-  (không ép). Bảng chủ server gửi **thiếu tầng 9** → lấy 10.86 theo mạch "−1,00" của tầng
-  6/7/8 và để hệ số vẫn tăng dần; muốn số khác thì sửa đúng dòng đó. **Trần nổ hũ tự đi
-  theo**: hũ 2 lửa = `min(×2000, giải đỉnh)` nên rơi từ ×14.86 xuống **×11.86** — không
-  phải sửa gì thêm vì `stairsWin` và `webStairsApi.table` đều đọc `stairsMulti`. Hệ quả
-  đo được: nhà cái ở 2 lửa từ −22,8% lên **−25,2%** khi leo tới đỉnh (lỗ hơn, vì bảng thấp
-  làm người chơi rút sớm hơn nên hũ chiếm tỉ trọng lớn hơn) nhưng −18,8% nếu rút ở tầng 8.
-  Test: `s2test.js` 25 ca (từng tầng, tiền trả, hệ số phải tăng dần, các mức lửa khác
-  không bị đụng, trần hũ, web không hardcode số).
-- **21/08/2026 — Vòng quay: 2 khung 12 tiếng → 4 KHUNG 6 TIẾNG.** Reset **00:00, 06:00,
-  12:00, 18:00** giờ VN, mỗi người 1 lượt mỗi khung (trước là 00:00 & 12:00). `wheelWindowKey`
-  giờ chia theo `Math.floor(giờ / WHEEL_SLOT_HOURS)` ra khoá `...-S0..S3`, `wheelNextReset`
-  đếm tới mốc 6 tiếng kế tiếp. Câu chữ mốc reset gom về **một nguồn** `WHEEL_RESET_TEXT` để
-  lần sau đổi khung chỉ sửa `WHEEL_SLOT_HOURS`. ⚠️ **Đây là quyết định tốn tiền:** vòng quay
-  có RTP **233%** (kỳ vọng hệ số ×2,33 trên vé trung bình 2.500 = lỗ ~3.315/người/lượt), nên
-  gấp đôi số lượt là **gấp đôi tốc độ bơm Dogcoin** — từ ~19.900 lên ~39.800/ngày với 3
-  người. Chủ server chấp nhận, bù lại bằng cách bán passive/lõi/sách/boss raid giá cao
-  (xem bảng "Giá bán TRONG GAME"). Test: `slottest.js` 22 ca (chia khung, biên 05:59↔06:00,
-  sang ngày mới, đồng hồ đếm ngược ở 7 mốc).
-- **21/08/2026 — Sửa panel ghi sai giá shop pal** (1.000/3.000 → đúng là **2.000/6.000**
-  theo `PAL_SHOP.randomPrice/customPrice`). Chú thích panel bị bỏ quên từ đợt nâng giá.
-- **21/08/2026 — Nổ hũ 🏆 hạ 2% → 1% ở CẢ BA trò.** Ô 🏆 của hai bàn quay hộp may mắn
-  còn `p: 0.01`, `POT_HIT_RATE` (quay Pal) còn `0.01`; **phần dư dồn vào ô hụt 🍂** như mọi
-  lần hạ trước (mìn 22% → 23%, thang 23% → 24%) nên tổng mỗi bàn vẫn đúng 100% — kiểm bằng
-  ca "tổng xác suất 2 bàn quay = 1". Lưu ý khi viết test: lát 🏆 giờ chỉ còn `[0.99, 1.0)`,
-  mốc `0.985` cũ **không còn ép ra jackpot nữa** (rơi vào hụt) — dùng `0.995`.
-- **21/08/2026 — Vé vòng quay 1.500/2.000/2.500 → 2.000/2.500/3.000.** `WHEEL_STAGE1`
-  (15 nan, mỗi giá 5 nan) + `WHEEL_MAX_TICKET = 3000`; đổi kèm bảng màu nan `FILL1` và
-  ngưỡng chữ tối (nan vàng giờ là 3.000), chữ mời vào bàn, chú thích panel.
-- **21/08/2026 — "Mua cỏ rồi vẫn thấy 1 cỏ" KHÔNG phải bug tiền — là UI nói dối.**
-  Test HTTP đầu-cuối chứng minh server luôn đúng: tick = trừ đúng `cược + 20%` và giấu
-  **2** ô 🍀. Nguyên nhân thật: ô tick là control của **ván sau**, nhưng web để nó bấm
-  được giữa ván (và trình duyệt còn tự khôi phục trạng thái tick sau F5) → người chơi
-  tick giữa ván rồi tưởng ván đang chạy có 2 cỏ. Sửa: `current()` đẩy thêm
-  `luckyTotal`/`luckyLeft`/`extraLucky` (**chỉ số lượng, tuyệt đối không lộ `g.lucky`** —
-  lộ vị trí ô 🍀 là lộ ô an toàn), `g.luckyTotal` chốt lúc start; web **khoá ô tick khi
-  đang có ván** và đổi nhãn thành "Ván này giấu N ô cỏ may mắn · còn M ô chưa mở".
-- **21/08/2026 — SÀN CƯỢC 200/ván cho 2 minigame + nổ hũ xong hũ về mồi 1.500.**
-  `MIN_BET = 200`: cược dưới mức này thì `start` của **cả Dò Mìn lẫn Leo Thang** trả lỗi
-  "Cược tối thiểu 200" — không tạo ván, không trừ ví, không đụng hũ. ⚠️ Bản đầu làm **sai
-  ý**: cho cược 1 xu nhưng "không được ăn hũ" (`POT_MIN_BET` + `potEligible`); chủ server
-  chốt lại là **BUỘC đặt tối thiểu 200**, nên cửa xét đó **gỡ hẳn** — giờ mọi ván đều nuôi
-  và ăn hũ bình thường, không còn nhánh thông báo "cược dưới 200 nên chưa ăn được hũ".
-  `minBet` đẩy xuống web + panel từ **một nguồn** (`webMinesApi/webStairsApi.minBet` và
-  `ctx.getPot`), web chặn trước cho báo lỗi tử tế, ô cược mặc định lên 200, nút x2/MAX
-  không kéo xuống dưới sàn. Nổ hũ xong hũ **không về 0** mà về `POT_SEED = 1500`; hũ mới
-  tạo cũng được mồi 1.500. Mồi 1.500 (không phải 3.000) có lý do kinh tế: mồi là **tiền nhà
-  cái bỏ ra mỗi lần nổ**, mồi càng cao thì hũ càng bị ghim quanh mức mồi và không bao giờ
-  leo lên con số đủ hấp dẫn.
-- **20/08/2026 — 🏆 HŨ NUÔI: mỗi trò MỘT HŨ RIÊNG, chung một tỉ lệ nổ.** Ba hũ
-  `_pots = { mines, stairs, gacha }`, nổ ở trò nào ăn hũ trò đó (2 hũ kia không suy suyển).
-  Nuôi: mỗi ván/lượt quay trích **5% tiền cược**, **KHÔNG thu thêm của người chơi** — cược
-  100 trừ đúng 100, khoản nuôi là **nhà cái bao** (lấy từ phần RTP; hệ quả: Dò Mìn RTP 0.95
-  trả hết 5% vào hũ ≈ nhà cái về 0 lợi nhuận, Leo Thang còn ~3%). Tự trích **dừng ở trần
-  20.000**, nhưng **admin nạp tay thì vượt trần được** (chỉ chặn âm). **Một tỉ lệ nổ duy
-  nhất `POT_HIT_RATE` = 1%** (hạ dần 3% → 2% ngày 20/08 → 1% ngày 21/08) = ô 🏆 của 2 bàn quay: minigame trúng 🏆 = trần hũ của ván +
-  NGUYÊN hũ trò đó; quay Pal mỗi lượt bốc 1% ăn hũ gacha. Nổ ở đâu báo kênh đó. Panel tab
-  💣: khu **🏆 Hũ nuôi** liệt kê 3 hũ, mỗi hũ một ô nhập + nút nạp/rút riêng (khung dựng
-  MỘT lần rồi chỉ cập nhật số — vẽ lại cả khối là cuốn mất số admin đang gõ, panel refresh 3s)
-  (`/api/pot/add` nhận `{key, amount}`). Tiền hũ cũ của bản "1 hũ chung" tự dồn sang hũ
-  Dò Mìn khi khởi động. Số hũ hiện **cạnh tên game** trong khung 💣/🪜 của web (nhãn vàng "🏆 HŨ 11.298",
-  tươi theo nhịp 2 giây qua `/api/state`) và trên **tiêu đề bảng 🔄 DOGCOIN & SHOP PAL**
-  trong Discord (hũ quay Pal, bảng tự vẽ lại mỗi lượt quay).
-- **20/08/2026 — Chốt cuối tiền thưởng Dò Mìn/Leo Thang:** TỰ LỰC ĂN ĐỦ theo tỉ lệ
-  tổ hợp, KHÔNG trần (mở hết bàn 12-13 mìn = ×4,9 triệu lần cược, xác suất 1/5,2 triệu —
-  chủ server chấp nhận sau khi nghe cảnh báo). Bàn quay 🍀 Dò Mìn: lì xì 46% (+30% cược) · hụt 23% · khiên 15% · đào 15% · hũ 1%
-  (Leo Thang giữ: rocket 15 · khiên 20 · lì xì 40 · hụt 24 · hũ 1). Trần CHỈ áp 3 đường may mắn: nổ hũ 🏆
-  50/100/200 (3/4/5 mìn), khiên/⛏️ ĐÃ DÙNG 100/300/500; 6+ mìn và Leo Thang ×2000.
-  Khiên nhận mà chưa dùng vẫn tính tự lực. UI thanh hệ số tự gộp dải mốc trùng nhau
-  ở cuối bảng thành một ô (nếu có). Lưu ý: trần tuyệt đối từng được thêm rồi GỠ 2 lần
-  trong ngày theo lệnh chủ server — đừng thêm lại nếu không có lệnh mới.
-- **20/08/2026 — Fix khiên 🛡️ + cỏ 🍀 thành hàng MUA THÊM.** Khiên giờ CỘNG DỒN cả 2 game
-  (trước là boolean: đang cầm khiên mà hộp ra khiên nữa là mất trắng — "khiên vô dụng");
-  UI hiện số khiên đang cầm. Dò Mìn về mặc định **1 ô 🍀/ván**, thêm checkbox
-  **mua thêm 1 cỏ = phí 20% tiền cược** (đặt 100 cần 120; phí vào net lịch sử, vé treo
-  hoàn cả phí khi restart).
-- **20/08/2026 — Nổ hũ 🏆 hạ 5% → 3% → 2%** cả 2 bàn quay hộp may mắn (21/08 hạ tiếp còn 1%); phần dư dồn vào
-  ô hụt 🍂 — tổng mỗi bàn vẫn đúng 100%. Lời mời hộp 🍀 giờ hứa
-  ĐÚNG số sẽ nhận (trần theo số mìn + hũ nuôi), trước đây treo ×2000 nên ván 3 mìn cược
-  1.800 ghi 3.600.000 mà thực nhận 100.270.
-- **20/08/2026 — Vay nợ: PHÍ VAY 5%** ghi thẳng vào nợ lúc vay (vay 4.000 → ghi sổ
-  4.200, nhận đủ 4.000). Chống spam vay-trả-vay: trả sạch mở lại hạn mức ngày, nhưng
-  mỗi vòng lặp tốn 5% phí — vay 4.000 trả liền là mất 200.
-- **20/08/2026 — NERF thưởng giữa (người chơi ăn chắc dễ quá):** Dò Mìn 24 ô → **25 ô**
-  (lưới 5×5) + RTP 1.0 → **0.95**; Leo Thang RTP 0.95 → **0.92**. Hệ số khúc giữa giảm
-  rõ (vd 3 mìn mở 8 ô: x3.61 → x3.21; mở 15 ô: x24.1 → x18.2). Các mốc CỐ ĐỊNH giữ
-  nguyên: trần nổ hũ/khiên, mốc ép tay 2 lửa tầng 9/10 (11.86/14.86). Lưu ý: /domin
-  bản Discord (đang tắt) hết đường bật lại vì 25 ô + nút DỪNG = 26 nút > trần Discord.
-- **20/08/2026 — Dò Mìn: 2 ô 🍀/ván (mỗi ô quay 1 lần) · lì xì 💰 20% → 30% cược (CẢ
-  Leo Thang) · trần may mắn theo bậc** — chặn farm bằng ván dễ, hai trần riêng:
-  NỔ HŨ 🏆 (`jackpotCapOf`): 3 mìn ×50 · 4 mìn ×100 · 5 mìn ×200 · 6+ giữ ×2000;
-  THẮNG CUỐI VÁN khi trợ giúp ĐÃ DÙNG (`assistCapOf`): 3 mìn ×100 · 4 mìn ×300 · 5 mìn ×500 ·
-  5+ giữ ×2000. Leo Thang giữ ×2000 cho cả hai.
-- **20/08/2026 — 📒 VAY NỢ Dogcoin (toàn nút bấm, không lệnh).** Bảng trong kênh Discord
-  (đặt từ panel tab 👥) với 3 nút: 💰 Vay (tối đa 4.000/ngày, tổng nợ vay ≤ 12.000, lãi kép
-  20%/ngày DỪNG ở trần) · 💳 Trả nợ (đủ số dư mới trả, bỏ trống = trả hết) · 📄 Nợ của tôi.
-  Thân bảng tự hiện sổ nợ + khối 🚨 DANH SÁCH NỢ XẤU riêng, tự vẽ lại sau mỗi biến động,
-  bot restart tự bám lại bảng cũ. Nợ THƯỜNG không bị siết gì. Nợ xấu do ADMIN GẮN TAY
-  (nút ⚠️ ở tab 👥) — dính nợ xấu mới bị: cấm vay thêm + chặn chuyển tiền cho người khác
-  (/chuyentien + web) + chặn chuyển vào game + trích 50% tiền điểm danh/nghiện/thưởng
-  chuỗi tự trả nợ (trả nợ vay trước vì có lãi). Gắn/gỡ/thoát nợ xấu đều DM người chơi
-  + ĐĂNG CÔNG KHAI vào kênh bảng vay; **trả sạch nợ là nhãn tự bay**, không cần admin gỡ.
-  Admin ghi nợ tay: không lãi, không trần, số âm = giảm. Giọng văn bảng/tin nhắn viết
-  kiểu bông đùa cho server bạn bè. Lãi đẻ mỗi ngày + gắn/thoát nợ xấu đều RÉO TÊN (tag)
-  công khai ở kênh bảng vay, và luôn nói "HỆ THỐNG" chứ không nói admin (đỡ bị chửi).
-  `/sodu` hiện cả nợ vay + nợ admin + nhãn nợ xấu, kèm nút 💳 Trả nợ vay và 🧾 Trả nợ
-  admin (trả riêng từng khoản) ngay tại chỗ.
-  Web: card 📒 Nợ ở trang điểm danh (chỉ hiện khi đang nợ) + nút trả. Test vaytest.js 51/51.
-- **19/08/2026 — Vòng quay BUFF vòng hệ số:** bỏ đám nan lẻ ×1.1–1.4 (quay ra +200 nhìn
-  chán), sàn lên ×1.5, thêm bậc ×3/×5. Phân bố cuối: ×1.5×9 · ×1.8×6 · ×2×5 · ×2.5×3 ·
-  ×3×2 · ×5×1 · ×10×1.
-- **19/08/2026 — Vòng quay: giá vé 1.000/1.500/2.000 → 1.500/2.000/2.500**, vòng hệ số
-  thêm 3 nan ×1.3 (24 → 27 nan, phải chia hết cho 3 vì 3 mũi tên lệch 9 nan).
-- **19/08/2026 — Fix xí ngầu lịch sử xếp dọc:** lịch điểm danh dùng trùng class `.dd` với
-  hàng xúc xắc. Web UI: xí ngầu lịch sử nằm ngang, tắt hero chân trang, ép mỏng header/nav.
-- **19/08/2026 — Big Small: ván 50 → 40 giây** (đặt cược còn 25 giây, nặn giữ nguyên 15).
-- **19/08/2026 — Cân lại hộp may mắn 🍀:** khiên 🛡️ 25% → 20%, lì xì 💰 (hoàn 20% cược)
-  35% → 40%; giữ nguyên đào/tên lửa 15%, hụt 20%, nổ hũ 5%. Áp cả Dò Mìn lẫn Leo Thang.
-- **19/08/2026 — Fix NỔ HŨ 🏆 ăn x2 (Dò Mìn + Leo Thang).** Trúng hộp 🏆 giờ CHỐT VÁN
-  ngay: trả hũ (min của giải cao nhất ván đó và trần x2000 cược) rồi kết thúc — trước đây
-  ván vẫn chạy tiếp nên người chơi bấm dừng được trả THÊM lần nữa. Client không phải sửa
-  (đã sẵn xử lý `jackpot`/`top` từ hộp may mắn).
-- **19/08/2026 — Gacha pal: nút BÁN LẠI 1.000.** Quay random (2.000) trúng con không ưng
-  thì bấm 💰 Bán lại ngay cạnh nút chọn passive: hoàn 1.000, đơn tự đóng (admin khỏi giao),
-  DM báo admin, panel hiện "💰 Bán lại". Chỉ bán được khi CHƯA chốt passive/linh hồn.
-- **19/08/2026 — Nạp/rút Dogcoin: cổng BẮT BUỘC ONLINE** (xem mục "Luồng tiền" ở trên).
-  Kèm vá mod `main.lua` trả `player not found (COUNT stale)` thay vì lỗi Lua thô.
-  (Loạt commit trước đó về nút chuyển trên WEB + tự đối chiếu khi timeout đã REVERT —
-  chủ server chọn giữ luồng Discord + đơn cho admin.)
-- **19/08/2026 — Điểm danh: bỏ bonus đủ tháng (5.000), thay bằng THƯỞNG CHUỖI.** Cứ 2 ngày
-  điểm danh LIÊN TIẾP = 1 gói 800, gói dồn được, mỗi lần bấm ô "Đủ chuỗi 2" nhận 1 gói.
-  Chuỗi tính theo ngày thật (`streakRun`) nên sang tháng không đứt; người điểm danh bằng
-  bản cũ được tự BÙ gói khi mở trang (`streakTopUp`).
-- **19/08/2026 — /nghien hết ra 2 tin trùng.** Gõ lệnh trên Discord chỉ còn lời đáp riêng;
-  tin công khai "vừa lụm 100..." chỉ đăng khi điểm danh qua WEB (`claimNghien(uid, announce)`).
-- **19/08/2026 — Đơn pal chỉ hiện TÊN pal**, bỏ mã code (`Sootseer CandleGhost` → `Sootseer`)
-  ở mọi chỗ: tin trúng thưởng, DM admin, panel.
-- **19/08/2026 — Bỏ bảng 📊 thống kê người chơi** (cả bảng Discord lẫn tab panel) theo yêu cầu
-  chủ server. `_pstats` vẫn đếm ngầm; muốn dựng lại thì lục git history (`getStatsBoardData`...).
-- **19/08/2026 — Đổi tên Tài Xỉu → Big Small** (nút BIG/SMALL, CHẴN/LẺ/BÃO giữ tiếng Việt),
-  thêm điều khoản lúc đăng nhập web.
-- **19/08/2026 — 🎡 Vòng quay 2 tầng bản v4:** vòng VÉ miễn phí (không cần màu), vòng HỆ SỐ
-  chỉ quay khi đủ người + cả bàn đủ vé, khóa lượt ngay khi về quay (bịt lỗ câu giờ).
-- **Đang chờ:** hình pal cho tin trúng gacha — đã đo xong (177 pal, CDN paldb có 176 hình),
-  cách làm + code mẫu nằm ở scratchpad `pal-image-prototype.md`; chờ tải ảnh về `assets/pal/`.
+## 📋 TRẠNG THÁI HIỆN TẠI + BÀI HỌC (đọc đầu tiên khi mất lịch sử)
+
+Thay cho nhật ký theo ngày: chỉ giữ **cái đang đúng** + **bài học đã tốn nhiều lượt
+thử-sai**. Ngày tháng không quan trọng, GIÁ TRỊ HIỆN TẠI mới quan trọng. Có gì lệch với
+các mục hằng-số phía trên thì TIN MỤC NÀY (mục trên có thể còn số cũ chưa cập nhật).
+
+### Cấu hình hiện tại từng hệ thống
+
+**📈 Cổ phiếu Dogcoin (web, index.js `stockTick`/`stockCfg`)** — mốc gốc **1.000**, biên
+cứng **100–2.000** (`STOCK_MIN/MAX`), nến **60 giây** (`STOCK_CANDLE_TICKS=30`, nhịp 2s),
+kho **4 giờ** (`STOCK_HIST_N=288`), web hiện **15 nến/màn** (kéo ngang xem lại). Giá đi
+theo **NEO LANG THANG**: một neo vô hình (`_stockAnchor`) tự đi bộ khắp dải, mỗi chặng
+20–50 phút bốc đích cách 150–700, giá bám neo (`STOCK_PULL=0.004`) + nhiễu `tickAmp` (mặc
+định 3, độ lệch chuẩn ĐƠN VỊ giá/nhịp, trần ±4×tickAmp). Ngưỡng mềm chỉnh ở panel:
+dưới `waveLow`(350) neo thiên LÊN, trên `waveHigh`(1650) thiên XUỐNG, giữa random. Reset
+1 lần khi boot: `_stockSeedV=6`. Admin can thiệp KÍN = `stockPush` (±40%, trôi ~2,5 phút,
+người chơi không biết). Panel chỉnh sống: tickAmp, spread(0,1%), maxShares, maxPer, maxLev
+(20), holdS(60), pointX, waveOn/waveLow/waveHigh.
+⚠️ **Lỗ hổng kinh tế phải canh:** mint tối đa/người = `maxPer × biên_độ_di_chuyển × pointX`.
+Với neo lang thang 100–2.000, người mua sát đáy giữ tới đỉnh ăn KHỔNG LỒ gần như chắc
+(chính ngưỡng mềm tạo điểm mua/bán gần chắc thắng). Giữ **`maxPer` thấp (~50)**, không để
+500. Hạ rủi ro thật = hạ đòn bẩy/maxPer/pointX, KHÔNG phải tickAmp.
+
+**💰 Kinh tế** — điểm danh **+600/ngày**, `/nghien` **+200/giờ**, vé vòng quay
+**3.000/4.000/5.000**, `MIN_BET=400` (mọi minigame trừ Tài Xỉu), hũ Dò Mìn/Leo Thang mồi
+**5.000** trần nuôi **50.000**, hũ gacha mồi **1.500** trần **20.000**.
+
+**🎁 Shop pal (web, trang 🪪 Cá nhân) — giao TỰ ĐỘNG**, không cần admin đưa tay. Luồng:
+web chọn → `/api/pal/claim` → `palChestClaim` → `pal.givePal` → dashboard `/api/give-pal`
+→ mod (lệnh PAL2) → pal vào save, **DÙNG ĐƯỢC SAU RESET server**. Có Quay Pal kiểu CSGO
+(vé 2.000) + Chọn Pal đích danh (6.000, boss raid giá riêng) + Rương. `palWheelCfg`:
+level 80, 4 sao, linh hồn 1 dòng 60% (mở tới 4 dòng, mua tới 201%), IV 100 (mua tới 255),
+passive 4 ô (mở tới 8), bản PAL BOSS. **Nâng cấp trả phí** (trừ ví khi nhận, giao hụt tự
+hoàn): slot passive 5/6/7/8 = 8k/16k/32k/64k; soul %/IV/số-dòng-soul theo bảng; passive
+Cây Thế Giới 1.000/cái; boss raid Bellanoir Libero 9.000, Blazamut Ryu/Xenolord/Hartalis
+20.000. **Giới tính BẮT BUỘC chọn** (♂ Đực=1 / ♀ Cái=2, không mặc định).
+
+**✨ Passive (`BotDoMin/passives.json`, 99 mục)** — tên/mô tả tiếng Việt trong game, `id`
+= FName game lưu thật, `tier` 1-4 màu (trắng/vàng/xanh ngọc, `bad` đỏ, `wt` Cây Thế Giới
+cầu vồng). `builds` = bộ 4 passive chọn nhanh. Cấm: 7 passive Cây Thế Giới trong build gốc
+(thay con cùng vai trò).
+
+**🎡 Vòng quay nhóm 2 tầng, 📉 vay nợ, 💣 Dò Mìn, 🔥 Leo Thang, 🍀 ô may mắn** — xem mục
+"Các game — luật + hằng số" phía trên (cơ chế không đổi; chỉ số tiền theo mục kinh tế này).
+
+### Bài học tái sử dụng (đọc trước khi sửa cùng loại)
+
+1. **ID passive/pal sai = pal ra passive lạ hoặc không đổi giới tính.** Mod ghi thẳng
+   `FName(id)` vào save, bỏ qua hạn chế cấy (add được cả Legend/Huyền Thoại vào pal thường)
+   — nên KHÔNG có "passive cấm", chỉ có ID SAI. **Một id sai trong lô → game từ chối CẢ
+   lô → pal giữ passive spawn.** Nguồn FName chuẩn = save-editor
+   `oMaN-Rod/palworld-save-pal` file `data/json/l10n/en/passive_skills.json` (key = FName,
+   value.localized_name = tên EN). paldb.cc chỉ có mã cho passive cấy-được; passive 1.0 đặc
+   biệt phải lấy từ save-editor. 26/08 đã sửa 6 id bằng nguồn này.
+2. **Giới tính pal:** trường `Gender` (EPalGenderType) — **0=random, 1=Đực, 2=Cái**. Mod
+   ghi số nguyên `sp.Gender=1/2` ĂN (verify tận game). Không phải FName.
+3. **Nút reset server cho người chơi = BẤT KHẢ THI trên hosting này.** REST `/shutdown`
+   chỉ TẮT được, server KHÔNG tự dậy (panel coi là admin chủ động tắt). Access Control
+   không cấp API key → dashboard không gọi được task panel. Lời giải: đặt lịch **"Send
+   Restart"** trong **Scheduled Tasks** của panel Shockbyte (Tasks) — pal tự kích hoạt ở
+   cữ restart, không cần ai online. Đừng gọi `/shutdown` REST tự động.
+4. **"fetch failed" khi bấm nhận pal** = dashboard chưa chạy. Bot gọi `PAL_DASHBOARD_URL`
+   (test .env `http://127.0.0.1:3010`) để đếm túi kiểm online. Bật local:
+   `cd palworld-dashboard/server && node src/index.js`; prod chạy trong pm2 nên tự sống.
+5. **give-pal khớp tên nhân vật CHÍNH XÁC.** Tên có ký tự ẩn (vd U+1CBC sau "bia123",
+   game đọc "bia123᲼") → gửi tên liên kết trượt "no PlayerController". Đếm túi khớp mờ nên
+   VẪN thấy online → dễ tưởng nhầm. Ai đặt tên có ký tự lạ có thể nhận hụt; sau này nên cho
+   give-pal khớp theo tiền tố/lược ký tự ẩn như đếm túi.
+6. **UI:** đổi UI xong PHẢI Ctrl+Shift+R (trình duyệt cache trang cũ — hay bị tưởng lỗi
+   code). Panel: base `button{}` có `color:#fff` + `background:#3a4155` (đã fix); nút không
+   có class `.btn-*` mà thiếu background = nền bạc chữ trắng không đọc được.
+7. **Client HTML/JS** nằm trong MẢNG STRING ở webplay.js/panel.js. Đừng re-render khối
+   chứa input (mất giá trị đang gõ) — markup tĩnh + cập nhật value riêng. `pagecheck.js`
+   validate từng khối `<script>`. Escape `\\'` trong template panel.
+8. **Kiểm thử** không có framework: extraction-based (`ex(startMark,endMark)` cắt index.js
+   → `const→var` → chạy trong `vm` sandbox với hàng đợi RNG). Bộ test ở scratchpad
+   (stocktest 44, wheeltest, pottest, luckytest...). Sửa hằng số cổ phiếu thì cập nhật
+   assertion trong stocktest.
+9. **Deploy:** CHỈ commit/push khi chủ server ra lệnh. VPS:
+   `cd /root/tts-bot && git pull --ff-only && pm2 restart BotDoMin --update-env` (dashboard
+   ít khi cần restart). Bot test ở `Desktop/bialk-test` (dữ liệu sống, không xoá), dashboard
+   local phải TỰ bật. **SFTP 2 server + hard-block server cấm** nằm trong `.env` (gitignore)
+   + bộ nhớ Claude — KHÔNG đưa mật khẩu lên README/git.
+
+### Nhật ký cô đọng (mốc lớn, mới → cũ)
+
+- **27/08** — Giới tính pal bắt buộc chọn ở web (♂ xanh/♀ hồng); phát Dogcoin toàn server
+  kèm lời nhắn custom; gỡ card "Đơn mua Pal" (mua đã tự động); fix nút panel nền bạc.
+- **26/08** — Cổ phiếu chốt: mốc 1.000, neo lang thang 100–2.000, nến 60s lình xình
+  (tickAmp 3), ngưỡng mềm 350/1650 chỉnh panel. Sửa 6 ID passive sai. Điều tra nút reset
+  server (kết luận bất khả thi → Scheduled Task). Bán 4 boss raid + 7 passive Cây Thế Giới.
+  Nâng cấp pal trả phí (passive 5-8, soul/IV vượt trần, boss raid). Gói chỉnh kinh tế.
+- **25/08** — Shop pal LÊN WEB: Quay Pal kiểu CSGO + Chọn Pal + Rương ở Cá nhân, giao TỰ
+  ĐỘNG qua dashboard→SFTP→mod. Discord chỉ còn chuyển tiền. 9 build passive chọn nhanh.
+- **24/08** — Cổ phiếu: sức nặng điểm giá (pointX) + phí vay 20%.
+- **22/08** — Game mới 📈 Sàn Cổ Phiếu Dogcoin (thuần web, đòn bẩy, chôn vốn, cháy cả ví).
+- **(trước đó)** — Cầu Dogcoin 2 chiều TỰ ĐỘNG (bắt buộc online), mini-game web (Dò Mìn,
+  Leo Thang, ô may mắn, hũ), Vòng quay nhóm 2 tầng thay Blackjack, PalSchema máy nghiền.
 
 ---
-
 ## Liên kết Discord ↔ nhân vật — ĐÃ NGƯNG (17/08/2026)
 
 Hệ liên kết SteamID cần REST API (`/api/players`) mà server test hiện **không bật REST**

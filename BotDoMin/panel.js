@@ -662,7 +662,7 @@ function startPanel(ctx) {
                         skipped = ids.length - onlyIds.length;
                         if (onlyIds.length === 0) return sendJSON(res, 400, { ok: false, error: `Tất cả người chơi đều vượt trần ${DAILY_ADD_CAP.toLocaleString()}/ngày rồi` });
                     }
-                    const r = await ctx.addAllPlayers(amount, onlyIds);
+                    const r = await ctx.addAllPlayers(amount, onlyIds, body.msg);
                     return sendJSON(res, 200, { ok: true, ...r, skipped });
                 }
 
@@ -1266,7 +1266,8 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
         <div class="row">
-          <div style="flex:3"><label>🎁 Phát Dogcoin cho TẤT CẢ (bot thông báo + tag role)</label><input id="addAllAmount" type="number" placeholder="vd: 500"></div>
+          <div style="flex:1"><label>🎁 Phát Dogcoin cho TẤT CẢ (bot tag role + thông báo)</label><input id="addAllAmount" type="number" placeholder="vd: 500"></div>
+          <div style="flex:2"><label>💬 Lời nhắn (trống = câu mặc định)</label><input id="addAllMsg" placeholder="vd: 🎉 Quà 2/9! · Ăn mừng VN vô địch cúp!"></div>
           <button class="btn-green" onclick="addAllCoins()">Phát tất cả</button>
         </div>
         <div class="row" style="margin-top:12px">
@@ -2113,10 +2114,11 @@ async function setAll(){const v=document.getElementById('setAllAmount').value;if
 async function addAllCoins(){
   const v=document.getElementById('addAllAmount').value;
   if(v===''||+v<=0)return toast('Nhập số dương');
-  if(!await uiConfirm('Phát '+(+v).toLocaleString()+' Dogcoin cho TẤT CẢ người chơi và đăng thông báo tag role?','Phát tất cả','btn-green'))return;
-  api('/api/points/addall',{amount:+v}).then(j=>{
+  const msg=(document.getElementById('addAllMsg').value||'').trim();
+  if(!await uiConfirm('Phát '+(+v).toLocaleString()+' Dogcoin cho TẤT CẢ người chơi'+(msg?' với lời nhắn "'+msg+'"':'')+' và tag role?','Phát tất cả','btn-green'))return;
+  api('/api/points/addall',{amount:+v,msg:msg}).then(j=>{
     toast(j.announced?('✅ Đã phát cho '+j.count+' người + đã thông báo'):('✅ Đã phát cho '+j.count+' người - ⚠️ KHÔNG đăng được thông báo (kiểm tra quyền bot ở kênh)'));
-    document.getElementById('addAllAmount').value='';
+    document.getElementById('addAllAmount').value='';document.getElementById('addAllMsg').value='';
     refresh();
   }).catch(()=>toast('❌ Lỗi'));
 }
