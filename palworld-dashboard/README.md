@@ -602,6 +602,39 @@ khỏi web (giữ kinh tế sạp trong game) — đừng thêm vào nếu chủ
   **không Moon Lord** (không lấy được), Xenogard/Xenovader cũng ra khỏi ô RAID (pal đẻ
   từ raid, không phải boss triệu hồi; vẫn không nằm trong pool thường).
 
+### 26/08/2026 (tối 12) — SỬA 6 ID PASSIVE SAI (dò từ save-editor, đối chiếu chuẩn)
+
+- Người chơi chọn "Lòng Thương Bao La" + "Chiêu Đãi Hào Phóng" nhưng game ra passive
+  khác (passive gốc của pal). Gốc: 2 ID sai → mod ghi cả lô bị game từ chối → pal
+  giữ passive spawn. (Manh mối chủ server: mod add được "Huyền Thoại" vào pal thường
+  → mod bỏ qua hạn chế cấy, nên KHÔNG phải "passive cấm", chỉ là ID sai.)
+- Nguồn ID chuẩn: repo save-editor `oMaN-Rod/palworld-save-pal`
+  (data/json/l10n/en/passive_skills.json) = FName game LƯU thật = đúng cái mod ghi.
+  Đối chiếu 6 ID đã chạy được (Vampire/CraftSpeed_up3/Legend/Deffence_up3/
+  MutationPal_Babysitter/CoolTimeReduction_Up_1) khớp 100% → nguồn tin cậy.
+- Quét toàn bộ 99 passive: 6 ID SAI, sửa hết:
+  · Chiêu Đãi Hào Phóng: LavishHospitality → SelfDeathAddItemDrop_up_3
+  · Chủ Nhân Trang Trại: RanchMaster → WorkSuitabilityAddRank_MonsterFarm_2
+  · Đứa Trẻ Trang Trại: Farmhand → WorkSuitabilityAddRank_MonsterFarm_1
+  · Lòng Thương Bao La: Philanthropist → Test_PalEgg_HatchingSpeed_Up
+  · Tinh Thần Phục Vụ: ServiceMinded → SelfDeathAddItemDrop_up_2
+  · Không Ngủ: Insomnia → Nocturnal
+  Gỡ cờ unsure (⚠) trên 6 cái này. 4 cái en="?" (Heavily Armored/Idiosyncratic/
+  Immortality/Skymarcher) kiểm ra ID vẫn ĐÚNG, không đụng. Còn 7 unsure id-hợp-lệ.
+- Cần reset server để pal nhận lại passive đúng (chủ server tự lo).
+- Đã verify TẬN GAME (test server): Bellanoir Libero nhận đúng Lavish Hospitality +
+  Philanthropist + Ranch Master + Service-Minded. Fix chuẩn.
+
+**Lỗi "fetch failed" khi bấm nhận pal** = dashboard (cổng 3010) CHƯA CHẠY. Bot gọi
+`PAL_DASHBOARD_URL` (test .env: http://127.0.0.1:3010) để đếm túi kiểm online; dashboard
+tắt là fail. Bật local: `cd palworld-dashboard/server && node src/index.js`. Prod chạy
+trong pm2 nên tự sống. SFTP không cần đổi khi lỗi này.
+
+**SFTP 2 server (test + chính):** thông tin nhạy cảm (user/UUID/mật khẩu) KHÔNG để ở
+đây — nằm trong `palworld-dashboard/server/.env` (đã gitignore) và trong bộ nhớ Claude
+(`memory/sftp-2-server.md`). Fix passive/mod: sửa `passives.json` (bot) hoặc `main.lua`
+(mod, đẩy qua SFTP). Chuỗi giao pal: bot → dashboard(3010) → SFTP → mod → reset server.
+
 ### 26/08/2026 (tối 11) — BẬT LẠI neo lang thang (bản hiền): giá random khắp 100-2.000
 
 - Chủ server đảo lại "bỏ sóng": muốn giá lúc nằm 200 lúc 1.000 lúc 1.800, random,

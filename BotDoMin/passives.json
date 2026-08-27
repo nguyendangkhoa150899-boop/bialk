@@ -219,12 +219,11 @@
       "tier": 4
     },
     {
-      "id": "LavishHospitality",
+      "id": "SelfDeathAddItemDrop_up_3",
       "en": "Lavish Hospitality",
       "name": "Chiêu Đãi Hào Phóng",
       "desc": "Lượng vật phẩm rơi ra của bản thân +100%",
-      "tier": 4,
-      "unsure": true
+      "tier": 4
     },
     {
       "id": "RideJumpCount_Increase1",
@@ -249,12 +248,11 @@
       "tier": 4
     },
     {
-      "id": "RanchMaster",
+      "id": "WorkSuitabilityAddRank_MonsterFarm_2",
       "en": "Ranch Master",
       "name": "Chủ Nhân Trang Trại",
       "desc": "Năng lực làm việc của Làm Nông +2",
-      "tier": 4,
-      "unsure": true
+      "tier": 4
     },
     {
       "id": "CraftSpeed_up3",
@@ -461,12 +459,11 @@
       "tier": 3
     },
     {
-      "id": "Farmhand",
+      "id": "WorkSuitabilityAddRank_MonsterFarm_1",
       "en": "Farmhand",
       "name": "Đứa Trẻ Trang Trại",
       "desc": "Năng lực làm việc của Làm Nông +1",
-      "tier": 3,
-      "unsure": true
+      "tier": 3
     },
     {
       "id": "AutoHPRegeneRate_Passive",
@@ -490,12 +487,11 @@
       "tier": 3
     },
     {
-      "id": "Philanthropist",
+      "id": "Test_PalEgg_HatchingSpeed_Up",
       "en": "Philanthropist",
       "name": "Lòng Thương Bao La",
       "desc": "Khi được phân công vào Trang Trại Nhân Giống, tốc độ sản xuất trứng tăng 100%",
-      "tier": 3,
-      "unsure": true
+      "tier": 3
     },
     {
       "id": "ReloadSpeedUp_Passive",
@@ -512,12 +508,11 @@
       "tier": 3
     },
     {
-      "id": "ServiceMinded",
+      "id": "SelfDeathAddItemDrop_up_2",
       "en": "Service-Minded",
       "name": "Tinh Thần Phục Vụ",
       "desc": "Lượng vật phẩm rơi ra của bản thân +50%",
-      "tier": 3,
-      "unsure": true
+      "tier": 3
     },
     {
       "id": "PlayerSP_DecreaseRate_Passive",
@@ -782,12 +777,11 @@
       "unsure": true
     },
     {
-      "id": "Insomnia",
+      "id": "Nocturnal",
       "en": "Insomnia",
       "name": "Không Ngủ",
       "desc": "Tiếp tục làm việc mà không ngủ, ngay cả vào ban đêm",
-      "tier": 1,
-      "unsure": true
+      "tier": 1
     },
     {
       "id": "Alien",
