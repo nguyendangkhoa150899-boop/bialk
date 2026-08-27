@@ -37,7 +37,7 @@ Cái gì ĐANG chạy và cái gì đã tắt — để khỏi đi tìm code c�
 | Bảng 📊 thống kê người chơi | ❌ **ĐÃ BỎ** 19/08 (dữ liệu `_pstats` vẫn đếm ngầm) |
 | Blackjack | ❌ thay bằng 🎡 Vòng quay nhóm 2 tầng |
 | 📈 **Sàn Cổ Phiếu Dogcoin (DOG)** | ✅ **MỚI 22/08** — game thuần web, 2 chiều MUA/BÁN, đòn bẩy tới x20, chôn vốn 60s, **lỗ ăn hết ví mới cháy** |
-| Vay nợ Dogcoin | ✅ hạn mức **10.000/ngày**, trần nợ 30.000, lãi kép 20%/ngày |
+| Vay nợ Dogcoin | ✅ **20.000/ngày**, trần **60.000**, phí **20% thu 1 lần** (không lãi kép), admin chỉnh panel |
 | Dò Mìn trên Discord (`/domin`) | ❌ comment lại — chơi trên web |
 | Mật khẩu panel/dashboard | ❌ **TẮT** theo yêu cầu chủ server (xem mục Xác thực để biết rủi ro) |
 
@@ -279,9 +279,8 @@ Bot tự quay đủ bảng 27 lô như XSMB thật (`XS_PRIZE_SPEC`: ĐB/G1/G2×
 Giới hạn: 5 số đề + 5 số lô mỗi kỳ, tối đa **1.000/số**. Admin ép được số đề / bắt số lô
 phải về / cấm về (`_xsForced`, dùng 1 kỳ rồi tự xoá).
 
-**🦀 Bầu Cua** (Discord, `bcState`) — 6 con Hổ/Cua/Tôm/Cá/Gà/Nai. Mặc định `status:'stopped'`
-— **cố tình**: để `'betting'` thì bảng cũ còn sót trong Discord vẫn nhận cược, trừ tiền thật
-rồi không bao giờ trả (tiền bốc hơi im lặng).
+**🦀 Bầu Cua** — ĐÃ GỠ HẲN 27/08 (game tắt lâu, dọn cho nhẹ: bỏ MASCOTS/bcState + hàm
+BC + nút bc_* + card panel + ctx, ~514 dòng). Muốn dựng lại: lục git history.
 
 **📅 Điểm danh & 💉 Nghiện** (logic dùng chung Discord + web) — điểm danh ngày **400**
 (reset 00:00 giờ VN, có lịch tháng), `/nghien` **100** mỗi **1 tiếng**. **Thưởng chuỗi:** cứ
@@ -587,6 +586,25 @@ Cây Thế Giới 1.000/cái; boss raid Bellanoir Libero 9.000, Blazamut Ryu/Xen
 cầu vồng). `builds` = bộ 4 passive chọn nhanh. Cấm: 7 passive Cây Thế Giới trong build gốc
 (thay con cùng vai trò).
 
+**📒 Vay nợ (`loanCfg`, admin chỉnh panel tab 🎮)** — 27/08 ĐẠI TU: phí vay **1 LẦN**
+(mặc định 20%, `feePct`), **KHÔNG còn lãi kép ngày** (`debtAccrue` chỉ ghi mốc, không
+tăng nợ). Vay X → ghi nợ X×(1+phí%), nhận đủ X (vay 10k → nợ 12k; vay 20k → 24k). Vay
+tối đa `dailyMax`=20.000/ngày, ôm tối đa `cap`=60.000. Cả 3 số chỉnh sống ở panel
+(_loanCfg), đổi xong **Đăng lại bảng** để text mới. **NỢ XẤU** (admin gắn) bị siết mạnh:
+🚫 vay · 🚫 chuyển tiền (đi lẫn nhận) · 🚫 mua/quay pal · 🚫 chuyển vào game · mọi khoản
+thu (điểm danh/nghiện/event/ai chuyển cho) bị **xiết thẳng trả nợ, ví chỉ chừa sàn 1.000**
+(`DEBT_BAD_FLOOR`, hàm `debtBadSweep` gọi khi gắn nhãn + mỗi lần nhận tiền). Trả sạch =
+nhãn tự bay.
+
+**🎲 Big Small / Tài Xỉu (web nặn xí ngầu, `txState`)** — ván `TX_ROUND_S=40s`. Vòng chạy
+(`runTaiXiuLoop`) CHỈ tick khi có `txState.channel` (bảng Discord). **27/08: TỰ KHỞI ĐỘNG**
+— boot tự `startLonnho` lại kênh `_txChannelId` đã lưu, khỏi cần admin bấm mở. **Lịch sử
+KHÔNG mất qua restart**: `dbCache._txHist20` lưu 20 ván gần nhất (web đọc `txState.history`
+để vẽ "Lịch sử 20 ván"), boot khôi phục + gameId nối tiếp. 27/08 DỌN NHẸ RAM/DB: soi
+cầu RAM 1000→**100**; `_txDashHistory` (từng phình 57% vì KHÔNG cap) giờ **cap 100 ván
+cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều trần **90.000/lần**
+(`WITHDRAW_MAX_PER_REQUEST`, dùng chung cả 2 chiều).
+
 **🎡 Vòng quay nhóm 2 tầng, 📉 vay nợ, 💣 Dò Mìn, 🔥 Leo Thang, 🍀 ô may mắn** — xem mục
 "Các game — luật + hằng số" phía trên (cơ chế không đổi; chỉ số tiền theo mục kinh tế này).
 
@@ -632,7 +650,10 @@ cầu vồng). `builds` = bộ 4 passive chọn nhanh. Cấm: 7 passive Cây Th�
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
 - **27/08** — Giới tính pal bắt buộc chọn ở web (♂ xanh/♀ hồng); phát Dogcoin toàn server
-  kèm lời nhắn custom; gỡ card "Đơn mua Pal" (mua đã tự động); fix nút panel nền bạc.
+  kèm lời nhắn custom; gỡ card "Đơn mua Pal"; fix nút panel nền bạc; chip passive đã chọn;
+  cầu Dogcoin trần 90k; Tài Xỉu tự khởi động + giữ lịch sử; **đại tu vay nợ** (phí 20% 1
+  lần, không lãi kép, nợ xấu xiết ví về 1.000, admin chỉnh panel); **GỠ HẲN Bầu Cua** (dọn
+  ~514 dòng dead code, cả index.js lẫn panel.js).
 - **26/08** — Cổ phiếu chốt: mốc 1.000, neo lang thang 100–2.000, nến 60s lình xình
   (tickAmp 3), ngưỡng mềm 350/1650 chỉnh panel. Sửa 6 ID passive sai. Điều tra nút reset
   server (kết luận bất khả thi → Scheduled Task). Bán 4 boss raid + 7 passive Cây Thế Giới.

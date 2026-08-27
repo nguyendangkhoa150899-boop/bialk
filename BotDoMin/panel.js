@@ -86,7 +86,6 @@ function startPanel(ctx) {
 
     const buildState = () => {
         const tx = ctx.getTX();
-        const bc = ctx.getBC();
         const db = ctx.getDb();
         const wd = ctx.getWithdraw ? ctx.getWithdraw() : {};
         return {
@@ -98,15 +97,6 @@ function startPanel(ctx) {
                 forced: tx.forcedResult || null,
                 live: !!tx.message,
                 channelId: (tx.channel && tx.channel.id) || db._txChannelId || '',
-            },
-            bc: {
-                gameId: bc.gameId,
-                status: bc.status,
-                targetTime: bc.targetTime,
-                betsCount: bc.bets ? bc.bets.length : 0,
-                forced: bc.forcedResult || null,
-                live: !!bc.message,
-                channelId: (bc.channel && bc.channel.id) || db._bcChannelId || '',
             },
             forcedMines: ctx.getForcedMines(),
             xs: (() => {
@@ -139,9 +129,7 @@ function startPanel(ctx) {
             giveaway: { channelId: db._giveawayChannelId || '', roleId: db._giveawayRoleId || '' },
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
-            mascots: ctx.mascots.map(m => ({ id: m.id, name: m.name, emoji: m.emoji })),
             txHistory: (ctx.getTXDash ? ctx.getTXDash() : []),
-            bcHistory: (ctx.getBCDash ? ctx.getBCDash() : []),
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
@@ -156,6 +144,7 @@ function startPanel(ctx) {
             // 🎁 vòng quay pal web + rương (25/08)
             palWheelCfg: ctx.getPalWheelCfg ? ctx.getPalWheelCfg() : null,
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
+            loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
         };
     };
 
@@ -258,25 +247,7 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
 
-                // ---- BẦU CUA ----
-                if (path === '/api/bc/force') {
-                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
-                    const vals = String(body.values || '').trim();
-                    const ids = vals.split(',').map(s => s.trim());
-                    const valid = new Set(ctx.mascots.map(m => m.id));
-                    if (ids.length !== 3 || ids.some(id => !valid.has(id))) {
-                        return sendJSON(res, 400, { ok: false, error: 'Cần 3 con vật hợp lệ' });
-                    }
-                    ctx.getBC().forcedResult = ids.join(',');
-                    ctx.writeLog('ADMIN', `[PANEL ÉP BC] Ép kết quả Bầu Cua ván tới: ${ids.join(',')}`);
-                    return sendJSON(res, 200, { ok: true });
-                }
-                if (path === '/api/bc/clear') {
-                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
-                    ctx.getBC().forcedResult = null;
-                    ctx.writeLog('ADMIN', `[PANEL ÉP BC] Hủy ép kết quả Bầu Cua`);
-                    return sendJSON(res, 200, { ok: true });
-                }
+                // (Bầu Cua đã gỡ 27/08)
 
                 // ---- XỔ SỐ MIỀN BẮC ----
                 if (path === '/api/xs/start') {
@@ -319,20 +290,6 @@ function startPanel(ctx) {
                 }
 
                 // ---- ĐIỀU KHIỂN BÀN CHƠI ----
-                if (path === '/api/bc/start') {
-                    const channelId = String(body.channelId || '').trim();
-                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
-                    try {
-                        const name = await ctx.startBC(channelId);
-                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Bầu Cua tại #${name}`);
-                        return sendJSON(res, 200, { ok: true, name });
-                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
-                }
-                if (path === '/api/bc/stop') {
-                    ctx.stopBC();
-                    ctx.writeLog('ADMIN', `[PANEL] Dừng Bầu Cua`);
-                    return sendJSON(res, 200, { ok: true });
-                }
                 if (path === '/api/tx/start') {
                     const channelId = String(body.channelId || '').trim();
                     if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
@@ -516,6 +473,12 @@ function startPanel(ctx) {
                     ctx.stopVay();
                     ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng VAY NỢ`);
                     return sendJSON(res, 200, { ok: true });
+                }
+                // Chỉnh hạn mức/trần/phí vay (27/08) — lưu _loanCfg, bảng đăng lại mới đổi text
+                if (ctx.setLoanCfg && path === '/api/loan/cfg') {
+                    const r = ctx.setLoanCfg(body);
+                    ctx.writeLog('ADMIN', `[PANEL] Cấu hình vay: ngày ${r.dailyMax}, trần ${r.cap}, phí ${r.feePct}%`);
+                    return sendJSON(res, 200, { ok: true, cfg: r });
                 }
                 // Admin ghi nợ tay: KHÔNG lãi, KHÔNG trần (số âm = giảm nợ đã ghi)
                 if (path === '/api/debt/add') {
@@ -822,7 +785,6 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
       <button data-tab="stock" onclick="tab('stock')">📈 Cổ phiếu</button>
       <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
-      <button data-tab="bc" onclick="tab('bc')">🦀 Bầu Cua</button>
       <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
       -->
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
@@ -913,49 +875,6 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h3>📜 Lịch sử Big Small</h3>
         <div id="txHist" class="hist"></div>
-      </div>
-    </div>
-
-    <!-- BẦU CUA -->
-    <div id="tab-bc" class="hidden">
-      <div class="card">
-        <h3>🎛️ Điều khiển bàn Bầu Cua</h3>
-        <label>Channel ID (kênh đăng bàn chơi)</label>
-        <input id="bcChannel" placeholder="vd: 123456789012345678">
-        <div class="chips" id="bcSaved"></div>
-        <div class="row" style="margin-top:8px">
-          <div style="flex:2"><input id="bcSaveId" placeholder="Channel ID"></div>
-          <div style="flex:3"><input id="bcSaveNote" placeholder="Ghi chú"></div>
-          <button class="btn-blue" onclick="saveChannel('bc')">💾 Lưu kênh</button>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn-green" onclick="bcStart()">▶️ Bật / Tạo bàn mới</button>
-          <button class="btn-red" onclick="bcStop()">⏹️ Tắt bàn</button>
-          <button class="btn-grey" onclick="chatDelete('bcChannel')">🧹 Xóa chat bot</button>
-        </div>
-        <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> → chuột phải kênh → <b>Copy Channel ID</b>.</div>
-      </div>
-      <div class="card">
-        <h2>🦀 Bầu Cua</h2>
-        <div class="muted" id="bcInfo" style="font-size:13px;margin-bottom:10px"></div>
-        <div class="epOnly" style="display:none">
-        <div class="row">
-          <div><label>Con 1</label><select id="m1"></select></div>
-          <div><label>Con 2</label><select id="m2"></select></div>
-          <div><label>Con 3</label><select id="m3"></select></div>
-        </div>
-        <div class="preview" id="bcPrev"></div>
-        <div class="quick" id="bcQuick"></div>
-        <div class="row" style="margin-top:14px">
-          <button class="btn-green" style="flex:2" onclick="bcForce()">⚡ Ép kết quả ván tới</button>
-          <button class="btn-grey" onclick="api('/api/bc/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
-        </div>
-        <div class="note">Ép cứng 100%: ván mở bát kế tiếp sẽ ra đúng 3 con vật này.</div>
-        </div>
-      </div>
-      <div class="card">
-        <h3>📜 Lịch sử Bầu Cua</h3>
-        <div id="bcHist" class="hist"></div>
       </div>
     </div>
 
@@ -1301,7 +1220,13 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="vayStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="vayStop()">⏹️ Gỡ bảng</button>
         </div>
-        <div class="note">Bảng có 3 nút cho người chơi: <b>💰 Vay</b> (tối đa 10.000/ngày, tổng nợ vay ≤ 30.000, lãi kép 20%/ngày) · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Thân bảng tự hiện sổ nợ + nhãn ⚠️ nợ xấu, tự vẽ lại sau mỗi biến động. Nợ thường KHÔNG bị siết gì; dính ⚠️ nợ xấu mới bị: cấm vay + chặn chuyển vào game + chặn chuyển tiền cho người khác + trích 50% tiền điểm danh trả nợ. Gắn/gỡ/thoát nợ xấu đều được bot ĐĂNG CÔNG KHAI vào kênh bảng vay; <b>trả sạch nợ là nhãn TỰ BAY</b> (nút Gỡ ⚠️ chỉ dùng khi muốn ân xá sớm).</div>
+        <div class="row" style="margin-top:12px">
+          <div style="flex:1"><label>💰 Vay tối đa / ngày</label><input id="loanDaily" type="number" placeholder="vd: 20000"></div>
+          <div style="flex:1"><label>📦 Ôm nợ tối đa (trần)</label><input id="loanCap" type="number" placeholder="vd: 60000"></div>
+          <div style="flex:1"><label>💸 Phí vay 1 lần (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
+          <button class="btn-blue" onclick="loanCfgSave()">💾 Lưu</button>
+        </div>
+        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Phí vay thu <b>1 LẦN</b> lúc vay (vay 10.000 phí 20% = ghi sổ 12.000), <b>KHÔNG lãi kép ngày</b>. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
       </div>
 
       <div class="card danger">
@@ -1410,7 +1335,7 @@ function showApp(){
 }
 
 function tab(t){
-  ['tx','bc','mine','stair','bj','stock','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','mine','stair','bj','stock','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -1611,30 +1536,6 @@ function txForce(){
   api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Big Small: '+v);refresh();});
 }
 
-function mascotOptions(sel){
-  if(!STATE)return;
-  ['m1','m2','m3'].forEach(id=>{
-    const s=document.getElementById(id);if(s.dataset.filled)return;
-    STATE.mascots.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.emoji+' '+m.name;s.appendChild(o);});
-    s.dataset.filled='1';s.onchange=bcPreview;
-  });
-  // quick buttons: 3 con giống nhau
-  const q=document.getElementById('bcQuick');
-  if(!q.dataset.filled){
-    STATE.mascots.forEach(m=>{const b=document.createElement('button');b.textContent=m.emoji+'x3';b.onclick=()=>{document.getElementById('m1').value=m.id;document.getElementById('m2').value=m.id;document.getElementById('m3').value=m.id;bcPreview();};q.appendChild(b);});
-    q.dataset.filled='1';
-  }
-}
-function bcPreview(){
-  if(!STATE)return;
-  const ids=[document.getElementById('m1').value,document.getElementById('m2').value,document.getElementById('m3').value];
-  const txt=ids.map(id=>{const m=STATE.mascots.find(x=>x.id===id);return m?m.emoji:'?';}).join(' ');
-  document.getElementById('bcPrev').textContent=txt;
-}
-function bcForce(){
-  const v=[document.getElementById('m1').value,document.getElementById('m2').value,document.getElementById('m3').value].join(',');
-  api('/api/bc/force',{values:v}).then(()=>{toast('⚡ Đã ép Bầu Cua');refresh();});
-}
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
 async function txStop(){if(!await uiConfirm('Tắt bàn Big Small?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Big Small');refresh();});}
@@ -1899,8 +1800,6 @@ function renderPalChests(){
   }).join('');
 }
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
-function bcStart(){const c=document.getElementById('bcChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/bc/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
-async function bcStop(){if(!await uiConfirm('Tắt bàn Bầu Cua?','Tắt bàn','btn-red'))return;api('/api/bc/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Bầu Cua');refresh();});}
 async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
 
 function saveChannel(prefix){
@@ -1981,14 +1880,6 @@ function renderHistories(){
     return '<div class="h"><div class="top"><span>Game #'+padId(g.gameId)+' - 🎲 '+g.dice.join('-')+' (Tổng '+g.sum+') · '+g.tx+' | '+g.cl+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai thắng</div>')+'</div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
-  // Bầu Cua
-  const bc=STATE.bcHistory||[];
-  document.getElementById('bcHist').innerHTML = bc.length? bc.map(g=>{
-    const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' '+(b.emoji||b.mascot||'')).join(' • ')||'không ai đặt';
-    const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
-    return '<div class="h"><div class="top"><span>Phiên #'+padId(g.gameId)+' - '+(g.resultEmoji||'')+' ('+esc(g.result||'')+')</span><span class="t">'+(g.time||'')+'</span></div>'+
-      '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 nhà cái húp sạch</div>')+'</div>';
-  }).join('') : '<div class="empty">Chưa có phiên nào.</div>';
   // Dò Mìn
   const mn=STATE.minesHistory||[];
   document.getElementById('mineHist').innerHTML = mn.length? mn.map(g=>{
@@ -2018,6 +1909,14 @@ async function wdStop(){if(!await uiConfirm('Tắt bảng Dogcoin & Shop Pal?','
 
 // ---- 📒 VAY NỢ ----
 function vayStart(){const c=document.getElementById('vayChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/vay/start',{channelId:c}).then(j=>{toast('▶️ Đã đặt bảng VAY NỢ ở #'+j.name);refresh();});}
+function loanCfgSave(){
+  const o={dailyMax:parseInt(document.getElementById('loanDaily').value),cap:parseInt(document.getElementById('loanCap').value),feePct:parseFloat(document.getElementById('loanFee').value)};
+  if(!(o.dailyMax>=100))return toast('Vay/ngày tối thiểu 100');
+  if(!(o.cap>=o.dailyMax))return toast('Trần nợ phải ≥ vay/ngày');
+  if(!(o.feePct>=0&&o.feePct<=1000))return toast('Phí vay 0–1000%');
+  api('/api/loan/cfg',o).then(j=>{toast('💾 Đã lưu — nhớ Đăng lại bảng để text đổi');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function loanCfgFill(k){if(!k)return;const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};set('loanDaily',k.dailyMax);set('loanCap',k.cap);set('loanFee',k.feePct);}
 async function vayStop(){if(!await uiConfirm('Gỡ bảng VAY NỢ khỏi kênh? (sổ nợ vẫn giữ nguyên)','Gỡ bảng','btn-red'))return;api('/api/vay/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng');refresh();});}
 async function pDebt(id){
   const v=parseInt((document.getElementById('amt_'+id)||{}).value);
@@ -2141,18 +2040,13 @@ async function refresh(){
   setConn(true);
   STATE=j.state;
   epApply(!!STATE.superAdmin); // cổng SUPER hiện cụm can thiệp, cổng thường ẩn
-  mascotOptions();
-  bcPreview();
   // status line
-  document.getElementById('statusLine').textContent='TX #'+padId(STATE.tx.gameId)+' • BC #'+padId(STATE.bc.gameId)+' • '+STATE.players.length+' người chơi';
+  document.getElementById('statusLine').textContent='TX #'+padId(STATE.tx.gameId)+' • '+STATE.players.length+' người chơi';
   // prefill channel id (chỉ khi ô đang trống, không đè lúc admin đang gõ)
   const txC=document.getElementById('txChannel'); if(txC&&!txC.value&&STATE.tx.channelId) txC.value=STATE.tx.channelId;
-  const bcC=document.getElementById('bcChannel'); if(bcC&&!bcC.value&&STATE.bc.channelId) bcC.value=STATE.bc.channelId;
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
-  const bcRun=STATE.bc.live&&STATE.bc.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
-  document.getElementById('bcInfo').innerHTML='<span class="run '+(bcRun?'on':'off')+'">'+(bcRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Phiên #'+padId(STATE.bc.gameId)+' • <span class="badge '+(STATE.bc.status==='betting'?'on':'off')+'">'+STATE.bc.status+'</span> • '+fmtTime(STATE.bc.targetTime)+' • '+STATE.bc.betsCount+' cược'+(STATE.bc.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.bc.forced+'</span>':'');
   // 🏆 hu nuoi: moi tro mot hu rieng
   const pt=STATE.pot;
   if(pt&&pt.pots){
@@ -2199,6 +2093,7 @@ async function refresh(){
   const wmi=document.getElementById('whMin');if(wmi&&!wmi.value&&document.activeElement!==wmi)wmi.value=wh.minPlayers;}
   if(STATE.stock)skFill(STATE.stock);
   if(STATE.palWheelCfg)pwCfgFill(STATE.palWheelCfg);
+  if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;

@@ -104,7 +104,6 @@ const bootPendingBets = {
 function syncCache() {
     dbCache._minesHistory = minesHistory;
     dbCache._txDashHistory = txDashHistory;
-    dbCache._bcDashHistory = bcDashHistory;
     dbCache._withdrawRequests = withdrawRequests;
     dbCache._withdrawSeq = withdrawSeq;
     // Xổ số: cược đang treo là TIỀN THẬT đã trừ ví -> bắt buộc giữ qua restart
@@ -113,10 +112,9 @@ function syncCache() {
     dbCache._xsForced = xsState.forced;
     dbCache._xsHistory = xsState.history;
     dbCache._xsResultMsgIds = xsState.resultMsgIds;
-    // Big Small / Bầu Cua: cược ván đang mở cũng là tiền thật đã trừ ví — giữ y như
-    // xổ số để restart còn biết đường hoàn (bảng kết ván bình thường sẽ tự rỗng lại).
+    // Big Small: cược ván đang mở cũng là tiền thật đã trừ ví — giữ để restart còn
+    // biết đường hoàn (bảng kết ván bình thường sẽ tự rỗng lại).
     dbCache._txBets = txState.bets || [];
-    dbCache._bcBets = bcState.bets || [];
     // (Dò Mìn / Leo Thang ghi thẳng vào dbCache._minesPending/_stairsPending lúc
     //  vào/kết ván — không cần gom ở đây.)
 }
@@ -286,6 +284,8 @@ function webTransfer(fromId, toId, amount) {
     logDog('transfer', fromId, fromName, -amount, `chuyển cho ${toName} (web)`);
     logDog('transfer', toId, toName, amount, `nhận từ ${fromName} (web)`);
     writeLog('ADMIN', `[CHUYỂN TIỀN][WEB] ${fromName} → ${toName} | ${amount.toLocaleString()} Dogcoin`);
+    // 27/08: người NHẬN đang nợ xấu -> tiền vừa nhận bị xiết thẳng trả nợ (chừa sàn 1.000)
+    debtBadSweep(toId);
 
     // Thông báo Discord — giữ nguyên khuôn của /chuyentien
     client.channels.fetch(TRANSFER_ANNOUNCE_CHANNEL).then(ch => ch.send({
@@ -319,24 +319,28 @@ function listTransferTargets() {
 
 // ===== 📒 VAY NỢ — bảng nút trong kênh Discord, KHÔNG dùng lệnh =====
 // Luật chủ server chốt 20/08:
-//  - Vay tối đa LOAN_DAILY_MAX/ngày (giờ VN), tổng nợ vay không quá LOAN_CAP.
-//  - Lãi KÉP LOAN_RATE/ngày trên nợ vay, DỪNG TĂNG khi chạm LOAN_CAP.
+//  - Vay tối đa loanCfg().dailyMax/ngày (giờ VN), tổng nợ vay không quá loanCfg().cap.
+//  - Phí loanCfg().feePct% THU 1 LẦN lúc vay (không lãi kép ngày) — admin chỉnh ở panel.
 //  - ⚠️ NỢ XẤU do ADMIN GẮN TAY trên panel (chủ server chọn thủ công cho đỡ bug):
 //    bị bêu tên trên bảng + CẤM VAY THÊM. Admin gỡ nhãn thì vay lại được.
 //  - Đang nợ (vay hoặc admin ghi): CHẶN chuyển Dogcoin vào game + CHẶN chuyển
 //    tiền cho người khác + TRÍCH LOAN_INCOME_CUT thu nhập điểm danh/nghiện/chuỗi
 //    tự trả nợ (trả nợ vay trước vì nó có lãi, dư mới trừ nợ admin).
 //  - Nợ do ADMIN ghi tay (panel tab 👥): KHÔNG lãi, KHÔNG trần — sổ ghi nợ mua đồ.
-const LOAN_DAILY_MAX = 10000;
-const LOAN_CAP = 30000;
-const LOAN_RATE = 0.20;
-const LOAN_INCOME_CUT = 0.5;
-// PHÍ VAY 20% cộng thẳng vào nợ lúc vay (vay 10.000 -> ghi nợ 12.000, nhận đủ 10.000).
-// 24/08 chủ server nâng 5% -> 20% ("vay 10.000 lãi 2.000 chứ không phải 500") — đi kèm
-// đợt nâng hạn mức ngày 4.000 -> 10.000 và trần nợ 12.000 -> 30.000.
-// Chống spam vay-trả-vay: trả sạch là hạn mức ngày mở lại, nên mỗi vòng lặp phải
-// tốn phí này — hết cửa quay vòng miễn phí (chủ server chốt 20/08).
-const LOAN_FEE = 0.20;
+// 27/08: VAY NỢ chuyển sang PHÍ 1 LẦN (không còn lãi kép ngày). Vay X -> ghi nợ
+// X×(1+phí%), nhận đủ X. Phí ghi thẳng lúc vay: vay xong trả liền vẫn tốn phí (hết
+// cửa quay vòng chùa). Admin chỉnh dailyMax / cap / feePct ở panel (lưu _loanCfg).
+const LOAN_INCOME_CUT = 0.5;   // (Phần 2 sẽ xiết mạnh hơn cho nợ xấu)
+const LOAN_CFG_DEF = { dailyMax: 20000, cap: 60000, feePct: 20 };
+function loanCfg() {
+    const c = dbCache._loanCfg && typeof dbCache._loanCfg === 'object' ? dbCache._loanCfg : {};
+    const num = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : d; };
+    return {
+        dailyMax: Math.floor(num(c.dailyMax, LOAN_CFG_DEF.dailyMax, 100, 100000000)),
+        cap: Math.floor(num(c.cap, LOAN_CFG_DEF.cap, 100, 1000000000)),
+        feePct: num(c.feePct, LOAN_CFG_DEF.feePct, 0, 1000),   // phí vay 1 lần (%)
+    };
+}
 
 // Ngày VN dạng sắp xếp/parse được ('2026-08-20') — vnDayStr bên dưới ra 'vi-VN'
 // (20/8/2026) nên KHÔNG dùng cho tính khoảng cách ngày được.
@@ -360,28 +364,12 @@ function debtTotal(u) { const d = debtOf(u); return (d.loan || 0) + (d.admin || 
 // Cộng lãi dồn tới hôm nay. Gọi TRƯỚC mọi thao tác đọc/đụng tới nợ (lazy) —
 // kèm một vòng quét định kỳ bên dưới để bảng tự cập nhật theo ngày.
 // (Nhãn nợ xấu KHÔNG tự gắn ở đây — admin gắn/gỡ tay trên panel.)
+// 27/08: KHÔNG còn lãi kép ngày — phí đã thu 1 lần lúc vay. Hàm giữ lại chỉ để ghi
+// mốc ngày (lastAccrue) cho tương thích dữ liệu cũ; nợ KHÔNG tự tăng theo thời gian.
 function debtAccrue(userId) {
     const u = getUserData(userId);
     const d = debtOf(u);
-    const today = vnDayISO(Date.now());
-    if (d.loan <= 0) { d.lastAccrue = today; return d; }
-    if (!d.lastAccrue) { d.lastAccrue = today; return d; }
-    const days = vnDayGap(today, d.lastAccrue);
-    if (days <= 0) return d;
-    const before = d.loan;
-    for (let i = 0; i < days && d.loan < LOAN_CAP; i++) {
-        d.loan = Math.min(LOAN_CAP, Math.round(d.loan * (1 + LOAN_RATE)));
-    }
-    d.lastAccrue = today;
-    // Lãi vừa đẻ -> réo tên con nợ công khai ở kênh bảng vay (mỗi ngày đúng 1 lần
-    // vì lastAccrue đã ghi hôm nay, các lần gọi sau trong ngày days=0 thoát sớm)
-    if (d.loan > before) {
-        vayAnnounce(
-            `💸 Ting ting! Qua ngày mới, nợ của <@${userId}> vừa đẻ thêm **${(d.loan - before).toLocaleString()}** ${DOGCOIN_EMOJI} ` +
-            `→ đang ôm **${(d.loan + (d.admin || 0)).toLocaleString()}**${d.loan >= LOAN_CAP ? ' (kịch trần, hên đấy)' : ''}. Lãi kép ${LOAN_RATE * 100}%/ngày không ngủ đâu nha 😴❌`,
-            [userId]
-        );
-    }
+    d.lastAccrue = vnDayISO(Date.now());
     return d;
 }
 
@@ -411,6 +399,7 @@ function vayAnnounce(text, tagIds) {
 }
 
 function debtBorrow(userId, username, amount) {
+    const cfg = loanCfg();
     amount = Math.floor(Number(amount));
     if (!Number.isInteger(amount) || amount < 100) return { error: 'Vay ít nhất 100 Dogcoin' };
     const d = debtAccrue(userId);
@@ -418,18 +407,18 @@ function debtBorrow(userId, username, amount) {
     if (d.bad) return { error: `⚠️ Đang ôm nhãn NỢ XẤU mà còn đòi vay nữa hả?! Trả sạch nợ đi, nhãn tự bay, lúc đó vay lại thoải mái.` };
     const today = vnDayISO(Date.now());
     if (d.bDay !== today) { d.bDay = today; d.bToday = 0; }
-    if (d.bToday + amount > LOAN_DAILY_MAX) {
-        const left = LOAN_DAILY_MAX - d.bToday;
-        return { error: `Mỗi ngày vay tối đa ${LOAN_DAILY_MAX.toLocaleString()} - hôm nay bạn còn vay được ${Math.max(0, left).toLocaleString()}.` };
+    if (d.bToday + amount > cfg.dailyMax) {
+        const left = cfg.dailyMax - d.bToday;
+        return { error: `Mỗi ngày vay tối đa ${cfg.dailyMax.toLocaleString()} - hôm nay bạn còn vay được ${Math.max(0, left).toLocaleString()}.` };
     }
-    const owed = Math.round(amount * (1 + LOAN_FEE));   // nhận amount, ghi nợ amount + phí 20%
-    if (d.loan + owed > LOAN_CAP) {
-        return { error: `Tổng nợ vay tối đa ${LOAN_CAP.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt (nhớ tính cả phí vay ${LOAN_FEE * 100}%).` };
+    const owed = Math.round(amount * (1 + cfg.feePct / 100));   // nhận amount, ghi nợ amount + phí
+    if (d.loan + owed > cfg.cap) {
+        return { error: `Tổng nợ vay tối đa ${cfg.cap.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt (nhớ tính cả phí vay ${cfg.feePct}%).` };
     }
     d.loan += owed;
     d.bToday += amount;
     updatePoints(userId, amount);
-    logDog('vay', userId, username, amount, `vay nợ (phí ${LOAN_FEE * 100}% + lãi ${LOAN_RATE * 100}%/ngày, ghi nợ ${owed.toLocaleString()})`);
+    logDog('vay', userId, username, amount, `vay nợ (phí ${cfg.feePct}% ghi 1 lần, ghi nợ ${owed.toLocaleString()})`);
     writeLog('ADMIN', `[VAY NỢ] ${username} vay ${amount.toLocaleString()} (ghi nợ ${owed.toLocaleString()}) | nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
     saveDbNow();
     vayBoardRefresh();
@@ -460,23 +449,49 @@ function debtPay(userId, username, amount) {
     return { ok: true, paid: want, debt: debtStatus(userId), balance: u.points || 0 };
 }
 
-// Trích một phần thu nhập (điểm danh/nghiện/thưởng chuỗi) tự trả nợ —
-// CHỈ áp cho người bị gắn ⚠️ NỢ XẤU (chủ server chốt 20/08: nợ thường không bị gì).
-// Trả về { keep: phần thực vào ví, cut: phần đã trừ nợ, left: nợ còn lại }.
+// Sàn ví tối thiểu cho người NỢ XẤU (27/08): mọi khoản thu bị xiết trả nợ, ví chỉ
+// được giữ tới mốc này cho tới khi trả sạch nợ.
+const DEBT_BAD_FLOOR = 1000;
+
+// Thu nhập (điểm danh/nghiện/chuỗi) — chỉ NỢ XẤU mới bị xiết. 27/08 đổi từ "cắt 50%"
+// sang "chỉ giữ ví tới sàn 1.000, phần còn lại trả nợ" (mạnh hơn, ép trả nợ).
+// Trả { keep: phần thực vào ví, cut: phần đã trừ nợ, left: nợ còn lại }.
 function debtCutIncome(userId, amount) {
     const d = debtAccrue(userId);
     const u = getUserData(userId);
     const total = debtTotal(u);
     if (total <= 0) return { keep: amount, cut: 0, left: 0 };
     if (!d.bad) return { keep: amount, cut: 0, left: total };   // nợ thường: nhận đủ
-    const cut = Math.min(total, Math.floor(amount * LOAN_INCOME_CUT));
+    const walletNow = u.points || 0;
+    const keep = Math.max(0, Math.min(amount, DEBT_BAD_FLOOR - walletNow));  // chỉ giữ đủ chạm sàn 1.000
+    const cut = Math.min(total, amount - keep);
     if (cut < 1) return { keep: amount, cut: 0, left: total };
     debtReduce(d, cut);
     if (debtTotal(u) <= 0) {
-        vayAnnounce(`🎉 <@${userId}> cày điểm danh trả SẠCH NỢ, nhãn ⚠️ nợ xấu tự bay - nghị lực đấy!`, [userId]);
+        vayAnnounce(`🎉 <@${userId}> cày trả SẠCH NỢ, nhãn ⚠️ nợ xấu tự bay - nghị lực đấy!`, [userId]);
     }
     vayBoardRefresh();
-    return { keep: amount - cut, cut, left: debtTotal(u) };
+    return { keep, cut, left: debtTotal(u) };
+}
+
+// XIẾT VÍ về sàn 1.000 khi NỢ XẤU (27/08): lấy phần ví vượt 1.000 trừ thẳng vào nợ.
+// Gọi khi: gắn nhãn nợ xấu, nhận chuyển từ người khác, nhận tiền event. Trả số đã xiết.
+function debtBadSweep(userId) {
+    const u = getUserData(userId);
+    const d = debtOf(u);
+    if (!d.bad) return 0;
+    const total = debtTotal(u);
+    if (total <= 0) return 0;
+    const avail = Math.max(0, (u.points || 0) - DEBT_BAD_FLOOR);
+    const take = Math.min(avail, total);
+    if (take < 1) return 0;
+    updatePoints(userId, -take);
+    debtReduce(d, take);
+    logDog('debt', userId, u.name || userId, -take, `nợ xấu: xiết ví về ${DEBT_BAD_FLOOR.toLocaleString()} trả nợ`);
+    if (debtTotal(u) <= 0) vayAnnounce(`🎉 <@${userId}> đã trả SẠCH NỢ (bị xiết ví), nhãn ⚠️ nợ xấu tự bay!`, [userId]);
+    vayBoardRefresh();
+    saveDbNow();
+    return take;
 }
 
 function debtStatus(userId) {
@@ -487,8 +502,8 @@ function debtStatus(userId) {
     return {
         loan: d.loan || 0, admin: d.admin || 0, total: debtTotal(u),
         bad: !!d.bad,
-        canBorrowToday: d.bad ? 0 : Math.max(0, Math.min(LOAN_DAILY_MAX - bToday, LOAN_CAP - (d.loan || 0))),
-        dailyMax: LOAN_DAILY_MAX, cap: LOAN_CAP, ratePct: LOAN_RATE * 100, cutPct: LOAN_INCOME_CUT * 100,
+        canBorrowToday: d.bad ? 0 : Math.max(0, Math.min(loanCfg().dailyMax - bToday, loanCfg().cap - (d.loan || 0))),
+        dailyMax: loanCfg().dailyMax, cap: loanCfg().cap, feePct: loanCfg().feePct, cutPct: LOAN_INCOME_CUT * 100,
     };
 }
 
@@ -550,6 +565,8 @@ function adminDebtBad(userId, bad) {
     d.bad = !!bad;
     writeLog('ADMIN', `[VAY NỢ] Panel ${bad ? 'GẮN' : 'GỠ'} nhãn NỢ XẤU cho ${u.name || userId} (đang nợ ${debtTotal(u).toLocaleString()})`);
     saveDbNow();
+    // 27/08: vừa gắn nợ xấu -> xiết ngay ví về sàn 1.000 trả nợ
+    if (d.bad) debtBadSweep(userId);
     vayBoardRefresh();
     // Bêu/ân xá công khai + TAG thẳng tên ở kênh bảng vay. LUÔN nói "hệ thống"
     // chứ không nói admin — chủ server không muốn bị chửi 🙈
@@ -558,7 +575,7 @@ function adminDebtBad(userId, bad) {
         : `🕊️ Hệ thống **ân xá nợ xấu** cho <@${userId}> - vay lại được rồi, đừng để dính lần nữa nha!`,
         [userId]);
     client.users.fetch(userId).then(us => us.send(bad
-        ? `⚠️ HỆ THỐNG vừa đóng dấu **NỢ XẤU** lên trán bạn (đang nợ **${debtTotal(u).toLocaleString()}** Dogcoin). Hậu quả: không vay thêm, không chuyển tiền, không chuyển vào game, điểm danh bị xiết 50% trả nợ, và bị bêu tên ở bảng 📒 VAY NỢ. Trả sạch nợ (nút 💳) là nhãn TỰ BAY - cày đi!`
+        ? `⚠️ HỆ THỐNG vừa đóng dấu **NỢ XẤU** lên trán bạn (đang nợ **${debtTotal(u).toLocaleString()}** Dogcoin). Hậu quả: không vay thêm, không chuyển tiền, không chuyển vào game, không mua/quay pal, và MỌI khoản thu (điểm danh/event/ai chuyển cho) bị xiết thẳng trả nợ - ví chỉ được giữ tối đa **1.000** cho tới khi trả sạch. Bị bêu tên ở bảng 📒 VAY NỢ. Trả sạch nợ (nút 💳) là nhãn TỰ BAY - cày đi!`
         : `🕊️ Hệ thống đã gỡ nhãn NỢ XẤU cho bạn - vay lại được rồi. Lần này nhớ trả đúng hẹn nha!`
     )).catch(() => {});
     return { ok: true, bad: d.bad };
@@ -579,14 +596,16 @@ function adminDebtClear(userId) {
 const vayState = { channel: null, message: null };
 function getVayMessageData() {
     const rows = debtList();
+    const lc = loanCfg();
+    const feeEx = Math.round(10000 * (1 + lc.feePct / 100));
     const lines = [
         `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp pal. 🙏`,
         '',
-        `**💰 Vay** - bơm tối đa **${LOAN_DAILY_MAX.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${LOAN_CAP.toLocaleString()}**. ` +
-            `Phí vay **${LOAN_FEE * 100}%** ghi thẳng vào nợ (vay 10.000 là ghi sổ 12.000) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
-        `**Lãi kép ${LOAN_RATE * 100}%/ngày** - cứ qua 00:00 là nợ tự đẻ. Vay ${LOAN_DAILY_MAX.toLocaleString()} rồi ngủ quên vài hôm, dậy thấy nợ ${LOAN_CAP.toLocaleString()} thì đừng hỏi tại sao. 💀`,
-        `Xù nợ lâu quá là HỆ THỐNG đóng dấu ⚠️ **NỢ XẤU**: bêu tên ngay bảng này · 🚫 hết cửa vay · ` +
-            `🚫 không chuyển tiền cho ai · 🚫 không chuyển vào game · 📅 ${LOAN_INCOME_CUT * 100}% tiền điểm danh bị xiết trả nợ.`,
+        `**💰 Vay** - bơm tối đa **${lc.dailyMax.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${lc.cap.toLocaleString()}**. ` +
+            `Phí vay **${lc.feePct}%** ghi thẳng vào nợ (vay 10.000 là ghi sổ ${feeEx.toLocaleString()}) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
+        `Phí thu **1 LẦN** lúc vay, KHÔNG đẻ thêm theo ngày - nhưng đã ghi sổ là phải trả đủ. 💀`,
+        `Nợ mà chây ì là HỆ THỐNG đóng dấu ⚠️ **NỢ XẤU**: bêu tên ngay bảng này · 🚫 hết cửa vay · ` +
+            `🚫 không chuyển tiền · 🚫 không mua/quay pal · 💸 mọi khoản thu (điểm danh, event, ai chuyển cho) bị **xiết thẳng trả nợ**, ví chỉ chừa **1.000**.`,
         `**💳 Trả nợ** tại đây hoặc trên web - trả sạch là nhãn nợ xấu **TỰ BAY**, uy tín sáng lại như chưa từng vay. ✨`,
         '',
         // Server ít người nên danh sách NỢ XẤU bêu thẳng trên bảng, tách khối riêng cho nổi
@@ -820,6 +839,8 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null, msg = '') {
     const allow = onlyIds ? new Set(onlyIds) : null;
     const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_') && (!allow || allow.has(k)));
     userIds.forEach(id => updatePoints(id, amount));
+    // 27/08: ai đang nợ xấu thì tiền event vừa nhận bị xiết thẳng trả nợ (chừa sàn 1.000)
+    userIds.forEach(id => { if (debtOf(getUserData(id)).bad) debtBadSweep(id); });
     saveDbNow();
     writeLog('ADMIN', `[CỘNG TIỀN ALL] Dashboard cộng ${amount.toLocaleString()} Dogcoin cho ${userIds.length} người chơi`);
 
@@ -1016,6 +1037,7 @@ function palChest(userId) {
 function palWheelSpin(userId, username) {
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
+    if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới quay pal được' };
     const normals = palWheelNormalPool();
     const raids = palWheelRaidPool();
     if (!normals.length) return { error: 'Danh sách pal chưa nạp được, báo admin' };
@@ -1093,6 +1115,7 @@ function palPickPrice(pal, cfg) {
 function palPickBuy(userId, code, username) {
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
+    if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới mua pal được' };
     // pool thường + 4 boss raid đang mở bán (giá > 0)
     const raidNames = new Set(PALPICK_RAID.filter(x => cfg[x.key] > 0).map(x => x.name));
     const pal = palWheelNormalPool().find(p => p.code === String(code || ''))
@@ -1419,33 +1442,9 @@ const WITHDRAW_MAX_PER_REQUEST = 90000; // trần mỗi lần chuyển CẢ 2 CH
 const padId = (n) => String(n).padStart(5, '0');
 
 // --- CONFIG BẦU CUA ---
-const MASCOTS = [
-    { id: 'hu', name: 'Hổ', emoji: '🐯' }, { id: 'cua', name: 'Cua', emoji: '🦀' },
-    { id: 'tom', name: 'Tôm', emoji: '🦞' }, { id: 'ca', name: 'Cá', emoji: '🐟' },
-    { id: 'ga', name: 'Gà', emoji: '🐓' }, { id: 'nai', name: 'Nai', emoji: '🦌' }
-];
-let bcState = {
-    // 'stopped' chứ KHÔNG phải 'betting': Bầu Cua đang tắt (không chạy vòng lặp mở bát).
-    // Nếu để 'betting' thì bảng cũ còn sót trong Discord vẫn nhận cược, trừ tiền thật rồi
-    // không bao giờ trả — tiền bốc hơi im lặng. startBaucua() sẽ tự đặt lại 'betting'
-    // khi admin bật bàn, nên không ảnh hưởng lúc mở lại game.
-    status: 'stopped',
-    timeLeft: 60,
-    targetTime: 0,
-    bets: [],
-    message: null,
-    channel: null,
-    gameId: Math.floor(Math.random() * 9999),
-    needsUpdate: false,
-    activeMascot: null,
-    isProcessing: false,
-    processingStart: 0,
-    lastGameInfo: null,
-    history: [],
-    msgHistory: [],
-    resultPromise: null
-};
-let userBCSelections = {};
+// (Bầu Cua ĐÃ GỠ HẲN 27/08 — game tắt lâu rồi, dọn cho nhẹ. Muốn dựng lại thì lục
+//  git history: MASCOTS/bcState + getBCMessageData/runBầuCuaLoop/finishBCGame/
+//  startBaucua/stopBaucua + các nút bc_* + card panel Bầu Cua.)
 
 // --- CONFIG BIG SMALL ---
 let txState = {
@@ -1507,7 +1506,9 @@ if (dbCache._minesHistory) minesHistory = dbCache._minesHistory;
 // Lịch sử DASHBOARD (web): CHỈ ván có người đặt, LƯU VĨNH VIỄN vào database.json
 // (giữ qua restart/deploy, KHÔNG tự xóa). Khác với soi cầu Discord ở RAM bên dưới.
 let txDashHistory = Array.isArray(dbCache._txDashHistory) ? dbCache._txDashHistory : [];
-let bcDashHistory = Array.isArray(dbCache._bcDashHistory) ? dbCache._bcDashHistory : [];
+// 27/08: dọn 1 lần lúc boot — bản cũ lưu KHÔNG cap khiến database.json phình (57%).
+// Giữ 100 ván cược gần nhất, dư cắt bỏ cho nhẹ máy chủ.
+if (txDashHistory.length > 100) { txDashHistory.length = 100; dbCache._txDashHistory = txDashHistory; }
 
 // Yêu cầu rút Dogcoin (người chơi bấm nút -> chờ admin duyệt trên dashboard).
 // Trừ Dogcoin NGAY khi tạo yêu cầu (khoá số dư lại, tránh vừa xin rút vừa đem đi cược tiếp).
@@ -1520,13 +1521,11 @@ let withdrawSeq = dbCache._withdrawSeq || 1;
 // nhưng chỉ 1 tin nhắn tĩnh, không có vòng lặp đếm giờ).
 let withdrawState = { channel: null, message: null };
 
-// Big Small & Bầu Cua: MỖI LẦN KHỞI ĐỘNG BOT đếm lại từ #0001 và làm mới SOI CẦU (RAM).
-// (Trước đây gameId random mỗi lần restart -> soi cầu loạn số. Giờ reset gọn gàng.)
-// Lưu ý: chỉ reset soi cầu Discord (txState/bcState.history), KHÔNG đụng lịch sử dashboard.
-bcState.gameId = 0;
-txState.gameId = 0;
-bcState.history = [];
-txState.history = [];
+// Big Small: 27/08 GIỮ LỊCH SỬ qua restart — khôi phục 20 ván gần nhất (web đọc
+// txState.history để vẽ "Lịch sử 20 ván"), gameId NỐI TIẾP ván cuối cho số liền mạch
+// (không nhảy về #0001, không loạn soi cầu). Chỉ giữ 20 ván nên DB không phình.
+txState.history = Array.isArray(dbCache._txHist20) ? dbCache._txHist20.slice(0, 20) : [];
+txState.gameId = (txState.history[0] && Number(txState.history[0].gameId)) || 0;
 
 const DICE_EMOJIS = [
     '',
@@ -3639,8 +3638,7 @@ client.once('ready', async (c) => {
     try {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
-    // TẠM TẮT: Bầu cua + Xổ số
-    // runBầuCuaLoop();
+    // (Bầu Cua đã gỡ hẳn; Xổ số tạm tắt)
     runTaiXiuLoop(); // BIG SMALL vẫn chạy
     // runXoSoLoop();
     // resumeXosoAfterRestart().catch(() => {});
@@ -3662,6 +3660,16 @@ client.once('ready', async (c) => {
     wheelRefundPending();
     // 💸 hoàn tiền cược ván dở (Big Small / Bầu Cua / Dò Mìn / Leo Thang) của phiên trước
     refundBootPendingBets();
+    // 🎲 27/08: TỰ KHỞI ĐỘNG Big Small ở kênh đã lưu (_txChannelId) — khỏi cần admin
+    // bấm mở bảng lại mỗi lần restart. Chưa từng mở (không có kênh lưu) thì bỏ qua.
+    (async () => {
+        try {
+            if (dbCache._txChannelId) {
+                const ch = await client.channels.fetch(dbCache._txChannelId).catch(() => null);
+                if (ch) { await startLonnho(ch); writeLog('SYSTEM', `[BIG SMALL] Tự khởi động lại ở #${ch.name || ch.id}`); }
+            }
+        } catch (e) { writeLog('SYSTEM', `[BIG SMALL] Không tự mở lại được: ${e.message}`); }
+    })();
     runStairsBoardLoop();
     runStockLoop();   // 📈 sàn cổ phiếu DOG (chỉ chơi trên web)
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
@@ -3781,19 +3789,16 @@ client.once('ready', async (c) => {
             // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.
             // Muốn bật lại thì đặt PANEL_PASSWORD=<mật khẩu> trong .env.
             password: process.env.PANEL_PASSWORD || '',
-            mascots: MASCOTS,
             txChoices: TX_CHOICES,
             diceEmojis: DICE_EMOJIS,
             totalTiles: TOTAL_TILES,
             getTX: () => txState,
-            getBC: () => bcState,
             getDb: () => dbCache,
             getForcedMines: () => forcedMines,
             setForcedMines: (key, positions) => { forcedMines[key] = positions; },
             clearForcedMines: (key) => { delete forcedMines[key]; },
             getMinesHistory: () => minesHistory,
             getTXDash: () => txDashHistory,
-            getBCDash: () => bcDashHistory,
             getUserData,
             updatePoints,
             logDog,
@@ -3811,8 +3816,6 @@ client.once('ready', async (c) => {
             addAllPlayers: addAllPlayersAndAnnounce,
             saveDbNow,
             writeLog,
-            startBC: async (channelId) => { const ch = await client.channels.fetch(channelId); await startBaucua(ch); return ch.name; },
-            stopBC: () => stopBaucua(),
             startTX: async (channelId) => { const ch = await client.channels.fetch(channelId); await startLonnho(ch); return ch.name; },
             stopTX: () => stopLonnho(),
             // Bảng mời chơi Dò Mìn (không có ván chung, chỉ khoe kết quả + nút vào web)
@@ -3955,6 +3958,17 @@ client.once('ready', async (c) => {
             debtAdd: adminDebtAdd,
             debtClear: adminDebtClear,
             debtBad: adminDebtBad,
+            getLoanCfg: () => loanCfg(),
+            setLoanCfg: (o) => {
+                const cur = loanCfg();
+                dbCache._loanCfg = {
+                    dailyMax: Number.isFinite(Number(o.dailyMax)) ? Math.floor(Number(o.dailyMax)) : cur.dailyMax,
+                    cap: Number.isFinite(Number(o.cap)) ? Math.floor(Number(o.cap)) : cur.cap,
+                    feePct: Number.isFinite(Number(o.feePct)) ? Number(o.feePct) : cur.feePct,
+                };
+                saveDbNow();
+                return loanCfg();
+            },
 
         });
         writeLog('SYSTEM', `🌐 Web panel: SUPER cổng ${parseInt(process.env.PANEL_PORT) || 1508} | admin thường cổng ${parseInt(process.env.PANEL_PUBLIC_PORT) || 1234}`);
@@ -3987,243 +4001,6 @@ client.once('ready', async (c) => {
         if (done) writeLog('SYSTEM', `[BACKFILL TÊN] Đã lấy tên cho ${done}/${ids.length} ví`);
     })();
 });
-
-// --- UI BẦU CUA ---
-function getBCMessageData(customStatus = null) {
-    const lockTime = bcState.targetTime - 6;
-    
-    let desc = `⏳ **Mở bát:** <t:${bcState.targetTime}:R>\n\n`;
-
-    if (bcState.lastGameInfo) {
-        desc += `🔙 **Kết quả vòng trước (#${padId(bcState.lastGameInfo.gameId)}):** ${bcState.lastGameInfo.result}\n`;
-        desc += `💸 **Người đặt vòng trước:** ${bcState.lastGameInfo.betDetails}\n\n`;
-    }
-
-    desc += `📝 **Người đặt hiện tại:**\n`;
-    if (bcState.bets.length > 0) {
-        // Gộp cược trùng của cùng 1 người vào cùng 1 con vật
-        const byUser = {};
-        bcState.bets.forEach(b => {
-            const k = `${b.userId}_${b.mascotId}`;
-            if (!byUser[k]) byUser[k] = { username: b.username, mascotId: b.mascotId, amount: 0 };
-            byUser[k].amount += b.amount;
-        });
-        desc += Object.values(byUser)
-            .map(b => `• **${b.username}**: ${MASCOTS.find(m => m.id === b.mascotId).emoji} **${b.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`)
-            .join('\n');
-    } else {
-        desc += "*Chưa có ai đặt*";
-    }
-    desc = desc.trimEnd();
-    desc += `\n\n${customStatus || "👉 Chọn con vật rồi chọn số Dogcoin đặt!"}`;
-
-    const embed = new EmbedBuilder()
-        .setTitle(`🎲 BẦU CUA LIVE - Phiên #${padId(bcState.gameId)}`)
-        .setColor(bcState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
-        .setDescription(desc);
-
-    const mascotRows1 = MASCOTS.slice(0, 3).map(m => 
-        new ButtonBuilder().setCustomId(`bc_m_${m.id}`).setLabel(m.name).setEmoji(m.emoji)
-        .setStyle(bcState.activeMascot === m.id ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setDisabled(bcState.status !== 'betting')
-    );
-    const mascotRows2 = MASCOTS.slice(3, 6).map(m => 
-        new ButtonBuilder().setCustomId(`bc_m_${m.id}`).setLabel(m.name).setEmoji(m.emoji)
-        .setStyle(bcState.activeMascot === m.id ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setDisabled(bcState.status !== 'betting')
-    );
-
-    const amountBets = [
-        { id: '10', label: '10' },
-        { id: '20', label: '20' },
-        { id: '50', label: '50' },
-        { id: '100', label: '100' }
-    ];
-    const amountRows = amountBets.map(v => 
-        new ButtonBuilder().setCustomId(`bc_a_${v.id}`).setLabel(v.label)
-        .setStyle(ButtonStyle.Primary).setDisabled(bcState.status !== 'betting')
-    );
-
-    const rows = [
-        new ActionRowBuilder().addComponents(mascotRows1),
-        new ActionRowBuilder().addComponents(mascotRows2),
-        new ActionRowBuilder().addComponents(amountRows),
-        new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('bc_a_custom').setLabel('💰 Tùy Chọn').setStyle(ButtonStyle.Success).setDisabled(bcState.status !== 'betting'),
-            new ButtonBuilder().setCustomId('bc_a_all').setLabel('💸 All In').setStyle(ButtonStyle.Danger).setDisabled(bcState.status !== 'betting'),
-            new ButtonBuilder().setCustomId('bc_soicau').setLabel('Soi Cầu').setEmoji('🕵️').setStyle(ButtonStyle.Secondary)
-        )
-    ];
-    return { embeds: [embed], components: rows };
-}
-
-async function updateBCMessage(customStatus = null) {
-    if (!bcState.message) return;
-    const data = getBCMessageData(customStatus);
-    await bcState.message.edit(data).catch((e) => { writeLog('SYSTEM', `[LỖI UPDATE BC BẢNG CƯỢC] ${e.message}`); });
-}
-
-// --- VÒNG LẶP BẦU CUA ---
-function runBầuCuaLoop() {
-    setInterval(async () => {
-        // Auto-recover nếu message bị mất do timeout mạng
-        if (!bcState.message && bcState.channel && !bcState.isProcessing) {
-            bcState.isProcessing = true;
-            bcState.processingStart = Date.now();
-            bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-            bcState.status = 'betting';
-            bcState.bets = [];
-            bcState.activeMascot = null;
-            bcState.resultPromise = null;
-            bcState.message = await bcState.channel.send(getBCMessageData()).catch(() => null);
-            bcState.isProcessing = false;
-            bcState.processingStart = 0;
-            return;
-        }
-        if (!bcState.message || !bcState.channel) return;
-        if (bcState.isProcessing) {
-            // Watchdog: nếu kẹt quá 120 giây thì tự reset, auto-recover sẽ gửi bảng mới
-            if (bcState.processingStart && Date.now() - bcState.processingStart > 120000) {
-                writeLog('SYSTEM', '[WATCHDOG BC] isProcessing kẹt, tự reset');
-                bcState.isProcessing = false;
-                bcState.processingStart = 0;
-                bcState.status = 'betting';
-                bcState.resultPromise = null;
-                bcState.bets = [];
-                bcState.activeMascot = null;
-                bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-                bcState.message = null;
-            }
-            return;
-        }
-
-        const nowSec = Math.floor(Date.now() / 1000);
-        const lockTime = bcState.targetTime - 5;
-
-        if (nowSec >= bcState.targetTime) {
-            // Mở bát: kết quả đã được tính từ lúc đóng phiên, chỉ cần await
-            bcState.status = 'ending';
-            bcState.isProcessing = true;
-            bcState.processingStart = Date.now();
-            const prevMsgId = bcState.message?.id;
-
-            try {
-                const resultMsg = await (bcState.resultPromise || Promise.resolve(null));
-                if (resultMsg?.id && prevMsgId) {
-                    manageHistory(bcState, [prevMsgId, resultMsg.id]).catch(() => {});
-                }
-                                bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-                bcState.status = 'betting';
-                bcState.bets = [];
-                bcState.gameId++;
-                bcState.activeMascot = null;
-                bcState.resultPromise = null;
-                bcState.needsUpdate = false;
-                const data = getBCMessageData();
-                bcState.message = await bcState.channel.send(data).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI BẢNG MỚI BC] ${e.message}`); return null; });
-            } catch (e) {
-                writeLog('SYSTEM', `[LỖI LOOP BC] ${e.message}`);
-                // Recovery: reset để ván tiếp theo vẫn chạy được
-                bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-                bcState.status = 'betting';
-                bcState.bets = [];
-                bcState.activeMascot = null;
-                bcState.resultPromise = null;
-            }
-
-            bcState.isProcessing = false;
-            bcState.processingStart = 0;
-
-        } else if (nowSec >= lockTime && bcState.status === 'betting') {
-            bcState.status = 'ending';
-            bcState.activeMascot = null;
-            const snapGameId = bcState.gameId;
-            const snapBets = bcState.bets.slice();
-            bcState.resultPromise = finishBCGame(snapGameId, snapBets);
-            updateBCMessage().catch(() => {});
-
-        } else if (bcState.status === 'betting' && bcState.needsUpdate) {
-            updateBCMessage().catch(() => {});
-            bcState.needsUpdate = false;
-        }
-    }, 1000);
-}
-
-async function finishBCGame(gameId, bets) {
-    // Hàm này được gọi từ lúc KHÓA BÁT (T-5s). Ngủ chờ tới đúng giờ mở bát rồi mới
-    // tính kết quả + trả thưởng + đăng — không thì kết quả lòi ra sớm 5-7 giây so
-    // với đồng hồ đếm ngược người chơi đang nhìn.
-    const revealAtMs = bcState.targetTime * 1000;
-    const waitMs = revealAtMs - Date.now();
-    if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs));
-
-    let res = [];
-    if (bcState.forcedResult) {
-        res = bcState.forcedResult.split(',').map(id => MASCOTS.find(m => m.id === id.trim()) || MASCOTS[0]);
-        bcState.forcedResult = null;
-    } else {
-        for (let i = 0; i < 3; i++) res.push(MASCOTS[Math.floor(Math.random() * MASCOTS.length)]);
-    }
-
-    let prevBetsDisplay = bets.map(b => `${b.username} (${b.amount})`).join(', ');
-
-    // Gộp tiền thắng theo người (1 người đặt nhiều lần -> 1 dòng)
-    const winAgg = {};
-    bets.forEach(b => {
-        const count = res.filter(r => r.id === b.mascotId).length;
-        if (count > 0) {
-            const win = b.amount * (count + 1);
-            updatePoints(b.userId, win);
-            if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
-            winAgg[b.userId].amount += win;
-        }
-    });
-    const winners = Object.values(winAgg).map(w => ({ name: w.name, amount: w.amount }));
-    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
-
-    const resultNames = res.map(r => r.name).join(', ');
-    writeLog('RESULT', `[KẾT QUẢ BẦU CUA] Phiên #${gameId}: ${resultNames}`);
-
-    if (bets.length > 0) {
-        let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${MASCOTS.find(m => m.id === b.mascotId).name}`).join(' | ');
-        writeLog('BET', `[CƯỢC BẦU CUA] Phiên #${gameId} | Đặt: ${betLogDetails} | KQ: ${resultNames}`);
-    }
-
-    const resEmb = new EmbedBuilder()
-        .setTitle(`🎰 KẾT QUẢ #${padId(gameId)}`)
-        .setColor(0xf1c40f)
-        .setDescription(`🎲: ${res.map(r => r.emoji).join(' ')}\n\n🏆 **Thắng:**\n${winLog || "Ván này nhà cái húp sạch!"}`);
-
-    const sentMsg = await bcState.channel.send({ embeds: [resEmb] }).catch((e) => { writeLog('SYSTEM', `[LỖI GỬI KẾT QUẢ BC] ${e.message}`); return null; });
-
-    bcState.lastGameInfo = {
-        gameId,
-        result: res.map(r => r.emoji).join(' '),
-        betDetails: prevBetsDisplay || "Không có ai đặt"
-    };
-    // Gộp cược trùng để lưu gọn (rỗng nếu không ai đặt).
-    const betAgg = {};
-    bets.forEach(b => {
-        const k = `${b.userId}_${b.mascotId}`;
-        if (!betAgg[k]) betAgg[k] = { name: b.username, mascot: MASCOTS.find(m => m.id === b.mascotId).name, emoji: MASCOTS.find(m => m.id === b.mascotId).emoji, amount: 0 };
-        betAgg[k].amount += b.amount;
-    });
-    const histEntry = {
-        gameId,
-        result: resultNames,
-        resultEmoji: res.map(r => r.emoji).join(' '),
-        bets: Object.values(betAgg),
-        winners,
-        time: new Date().toLocaleTimeString('vi-VN')
-    };
-    // Soi cầu Discord: lưu MỌI ván (cầu liền mạch), RAM, giữ 1000 ván, mất khi restart.
-    bcState.history.unshift(histEntry);
-    if (bcState.history.length > 1000) bcState.history.pop();
-    // Dashboard web: CHỈ ván có người đặt, lưu vĩnh viễn vào database.json, KHÔNG xóa.
-    if (bets.length > 0) bcDashHistory.unshift(histEntry);
-
-    return sentMsg;
-}
 
 // --- UI BIG SMALL ---
 // Big Small đã CHUYỂN HẾT LÊN WEB: bảng Discord chỉ hiển thị tình hình + nút lấy link/PIN.
@@ -4494,11 +4271,17 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         winners,
         time: new Date().toLocaleTimeString('vi-VN')
     };
-    // Soi cầu Discord: lưu MỌI ván (cầu liền mạch), RAM, giữ 1000 ván, mất khi restart.
+    // 27/08 (dọn cho nhẹ RAM): soi cầu RAM giữ 100 ván (trước 1000).
     txState.history.unshift(histEntry);
-    if (txState.history.length > 1000) txState.history.pop();
-    // Dashboard web: CHỈ ván có người đặt, lưu vĩnh viễn vào database.json, KHÔNG xóa.
-    if (bets.length > 0) txDashHistory.unshift(histEntry);
+    if (txState.history.length > 100) txState.history.pop();
+    // Web đọc 20 ván; boot khôi phục từ đây (bounded 20, DB không phình).
+    dbCache._txHist20 = txState.history.slice(0, 20);
+    // Dashboard: CHỈ ván có người đặt. 27/08 CAP 100 ván (trước KHÔNG cap -> phình
+    // database.json tới 57%). Giữ 100 ván cược gần nhất, dư dọn hết cho đỡ nặng.
+    if (bets.length > 0) {
+        txDashHistory.unshift(histEntry);
+        if (txDashHistory.length > 100) txDashHistory.length = 100;
+    }
 
     return { sum, txIcon, clIcon, winLog };
 }
@@ -4525,35 +4308,6 @@ async function finishTXGame(gameId, bets) {
 // ==========================================
 // --- ĐIỀU KHIỂN BÀN CHƠI (gọi từ web panel) ---
 // ==========================================
-async function startBaucua(channel) {
-    if (bcState.message) await bcState.message.delete().catch(() => {});
-    bcState.message = null;
-    bcState.channel = channel;
-    bcState.gameId++;
-    bcState.timeLeft = 55;
-    bcState.targetTime = Math.floor(Date.now() / 1000) + 61;
-    bcState.status = 'betting';
-    bcState.bets = [];
-    bcState.needsUpdate = false;
-    bcState.activeMascot = null;
-    bcState.isProcessing = true;
-    bcState.processingStart = Date.now();
-    try {
-        bcState.message = await bcState.channel.send(getBCMessageData());
-        dbCache._bcChannelId = channel.id;
-    } finally {
-        bcState.isProcessing = false;
-        bcState.processingStart = 0;
-    }
-}
-
-function stopBaucua() {
-    if (bcState.message) bcState.message.delete().catch(() => {});
-    bcState.channel = null;
-    bcState.message = null;
-    bcState.status = 'stopped';
-}
-
 async function startLonnho(channel) {
     if (txState.message) await txState.message.delete().catch(() => {});
     // Sau restart txState.message rỗng nhưng bảng cũ VẪN nằm trong kênh — xoá theo id
@@ -5101,7 +4855,6 @@ function resetAllPlayers(alsoHistory) {
         withdrawSeq = 1;
         minesHistory = [];
         txDashHistory = [];
-        bcDashHistory = [];
     }
     saveDbNow();
     writeLog('ADMIN', `[PANEL RESET] Xóa toàn bộ ${ids.length} ví`
@@ -5162,7 +4915,7 @@ client.on('interactionCreate', async interaction => {
             const st = debtStatus(userId);
             const desc = [
                 `Số dư hiện tại: **${points.toLocaleString()}** ${DOGCOIN_EMOJI}`,
-                ...(st.loan > 0 ? [`📒 Nợ vay: **${st.loan.toLocaleString()}** (lãi kép ${st.ratePct}%/ngày - qua 00:00 là đẻ)`] : []),
+                ...(st.loan > 0 ? [`📒 Nợ vay: **${st.loan.toLocaleString()}** (đã gồm phí ${st.feePct}% - không đẻ thêm)`] : []),
                 ...(st.admin > 0 ? [`🧾 Nợ admin: **${st.admin.toLocaleString()}** (mua đồ ghi sổ, không lãi)`] : []),
                 ...(st.bad ? [`⚠️ **ĐANG DÍNH NỢ XẤU** - trả sạch là nhãn tự bay`] : []),
             ].join('\n');
@@ -5199,6 +4952,7 @@ client.on('interactionCreate', async interaction => {
             logDog('transfer', userId, interaction.user.tag, -amount, `chuyển cho ${receiver.tag}`);
             logDog('transfer', receiver.id, receiver.tag, amount, `nhận từ ${interaction.user.tag}`);
             writeLog('ADMIN', `[CHUYỂN TIỀN] ${interaction.user.tag} → ${receiver.tag} | ${amount.toLocaleString()} Dogcoin`);
+            debtBadSweep(receiver.id);   // 27/08: người nhận nợ xấu -> xiết trả nợ (chừa 1.000)
             return interaction.reply({ embeds: [new EmbedBuilder().setTitle("💸 GIAO DỊCH").setDescription(`✅ <@${userId}> đã chuyển **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho <@${receiver.id}>!`).setColor(0x00aeef)] });
         }
 
@@ -5356,31 +5110,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isModalSubmit()) {
-        if (interaction.customId === 'bc_modal_custom') {
-            if (bcState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
-            const sel = userBCSelections[userId];
-            if (!sel) return interaction.reply({ content: "❌ Bạn chưa chọn con vật!", ephemeral: true });
-
-            const amountStr = interaction.fields.getTextInputValue('bc_input_amount');
-            const amt = parseInt(amountStr);
-
-            if (isNaN(amt) || amt <= 0 || getUserData(userId).points < amt) {
-                return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ hoặc bạn không đủ Dogcoin!", ephemeral: true });
-            }
-
-            updatePoints(userId, -amt);
-            bcState.bets.push({ userId, username: interaction.user.username, mascotId: sel.mascotId, amount: amt });
-
-            userBCSelections[userId] = null;
-            bcState.activeMascot = null;
-            // KHÔNG await edit bảng ở đây: edit message bị Discord rate-limit, đông người
-            // cược là chờ quá 3 giây -> interaction chết (10062) -> người chơi không thấy
-            // phản hồi gì. Reply ngay, vòng lặp 1s thấy needsUpdate sẽ tự vẽ lại bảng.
-            bcState.needsUpdate = true;
-
-            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
-        }
-
         if (interaction.customId === 'tx_modal_custom') {
             if (txState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
             const sel = userTXSelections[userId];
@@ -5398,7 +5127,8 @@ client.on('interactionCreate', async interaction => {
 
             userTXSelections[userId] = null;
             txState.activeChoice = null;
-            // Reply ngay, không await edit bảng (lý do: xem chú thích ở bc_modal_custom).
+            // Reply ngay, KHÔNG await edit bảng: edit message bị Discord rate-limit,
+            // đông người là chờ quá 3s -> interaction chết. Vòng lặp 1s tự vẽ lại.
             txState.needsUpdate = true;
 
             return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
@@ -5599,7 +5329,7 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({
                 content:
                     `💰 Bơm **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI} vào ví thành công - ví hiện có **${r.balance.toLocaleString()}**. Gỡ đẹp nha! 🙏\n` +
-                    `Đang ôm nợ: **${r.debt.total.toLocaleString()}** (đã gồm phí vay ${LOAN_FEE * 100}%; lãi kép ${r.debt.ratePct}%/ngày - qua 00:00 là nó đẻ). Trả sớm đỡ đau ví, chây ì là ăn dấu ⚠️ nợ xấu!`,
+                    `Đang ôm nợ: **${r.debt.total.toLocaleString()}** (đã gồm phí vay ${r.debt.feePct}% thu 1 lần, không đẻ thêm). Trả sớm cho nhẹ nợ, chây ì là ăn dấu ⚠️ nợ xấu!`,
                 ephemeral: true,
             });
         }
@@ -5840,9 +5570,9 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: `⚠️ Đang ôm nhãn **NỢ XẤU** mà còn mò vào vay tiếp?! Bấm 💳 trả sạch đi, nhãn tự bay là lại được bơm tiền.`, ephemeral: true });
         }
         if (st.canBorrowToday < 100) {
-            return interaction.reply({ content: `🥱 Hút cạn hạn mức rồi: mỗi ngày bơm tối đa **${LOAN_DAILY_MAX.toLocaleString()}**, ôm tối đa **${LOAN_CAP.toLocaleString()}** (đang nợ vay ${st.loan.toLocaleString()}). Mai quay lại, hoặc... trả bớt đi?`, ephemeral: true });
+            return interaction.reply({ content: `🥱 Hút cạn hạn mức rồi: mỗi ngày bơm tối đa **${st.dailyMax.toLocaleString()}**, ôm tối đa **${st.cap.toLocaleString()}** (đang nợ vay ${st.loan.toLocaleString()}). Mai quay lại, hoặc... trả bớt đi?`, ephemeral: true });
         }
-        const modal = new ModalBuilder().setCustomId('vay_modal').setTitle(`Vay Dogcoin - lãi ${LOAN_RATE * 100}%/ngày`);
+        const modal = new ModalBuilder().setCustomId('vay_modal').setTitle(`Vay Dogcoin - phí ${st.feePct}% 1 lần`);
         modal.addComponents(new ActionRowBuilder().addComponents(
             new TextInputBuilder().setCustomId('vay_amount')
                 .setLabel(`Số muốn vay (hôm nay còn ${st.canBorrowToday.toLocaleString()})`)
@@ -6163,65 +5893,6 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
-    // ======== NÚT BẦU CUA ========
-    if (interaction.customId.startsWith('bc_m_')) {
-        const mascotId = interaction.customId.split('_')[2];
-        userBCSelections[userId] = { mascotId };
-
-        bcState.activeMascot = mascotId;
-        bcState.needsUpdate = true; // vòng lặp 1s tự vẽ lại - không await edit kẻo trễ 3s
-
-        return interaction.reply({ content: `✅ Đã chọn **${MASCOTS.find(m => m.id === mascotId).name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
-    }
-    
-    if (interaction.customId === 'bc_a_custom') {
-        const sel = userBCSelections[userId];
-        if (!sel) return interaction.reply({ content: "❌ Bạn phải bấm chọn con vật trước!", ephemeral: true });
-
-        const modal = new ModalBuilder()
-            .setCustomId('bc_modal_custom')
-            .setTitle('Nhập Số Dogcoin Đặt');
-
-        const amountInput = new TextInputBuilder()
-            .setCustomId('bc_input_amount')
-            .setLabel('Ví dụ: 15000')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-        modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
-        await interaction.showModal(modal);
-        return;
-    }
-
-    if (interaction.customId.startsWith('bc_a_')) {
-        if (bcState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
-        const sel = userBCSelections[userId];
-        if (!sel) return interaction.reply({ content: "❌ Chọn con vật trước!", ephemeral: true });
-
-        let amt = interaction.customId === 'bc_a_all' ? getUserData(userId).points : parseInt(interaction.customId.split('_')[2]);
-        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ Dogcoin để đặt mức này!", ephemeral: true });
-        
-        updatePoints(userId, -amt);
-        bcState.bets.push({ userId, username: interaction.user.username, mascotId: sel.mascotId, amount: amt });
-
-        userBCSelections[userId] = null;
-        bcState.activeMascot = null;
-        bcState.needsUpdate = true; // reply ngay, vòng lặp 1s vẽ lại bảng
-
-        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${MASCOTS.find(m => m.id === sel.mascotId).name}**!`, ephemeral: true });
-    }
-
-    if (interaction.customId === 'bc_soicau') {
-        if (bcState.history.length === 0) return interaction.reply({ content: "Chưa có lịch sử phiên nào!", ephemeral: true });
-        const hisDesc = bcState.history.slice(0, 10).map(h => `Phiên ${padId(h.gameId)}: ${h.resultEmoji} (${h.result})`).join('\n');
-        const emb = new EmbedBuilder()
-            .setTitle('🔮 Soi Cầu Bầu Cua - Lịch sử 10 phiên gần nhất')
-            .setDescription(hisDesc)
-            .setFooter({ text: 'Cờ bạc có thể gây nghiện - Chơi có trách nhiệm' })
-            .setColor(0x2b2d31);
-        return interaction.reply({ embeds: [emb], ephemeral: true });
-    }
-
     // ======== NÚT BIG SMALL ========
     if (interaction.customId.startsWith('tx_c_')) {
         const choice = interaction.customId.split('_')[2];
@@ -6294,7 +5965,6 @@ client.on('interactionCreate', async interaction => {
 
 // Dọn memory userSelections mỗi 10 phút (tránh leak)
 setInterval(() => {
-    userBCSelections = {};
     userTXSelections = {};
 }, 10 * 60 * 1000);
 
@@ -6334,3 +6004,4 @@ process.on('SIGINT', () => flushAndExit('SIGINT'));
 process.on('SIGTERM', () => flushAndExit('SIGTERM'));
 
 client.login(TOKEN);        
+    
