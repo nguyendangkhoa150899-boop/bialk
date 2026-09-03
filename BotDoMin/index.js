@@ -1213,7 +1213,7 @@ function spmDrawCrash(cfg) {
 }
 function spmMultAt(elapsedMs, cfg) { return Math.exp(cfg.growth * elapsedMs / 1000); }
 
-let spmState = { phase: 'bet', roundId: 0, betEndAt: 0, flightStart: 0, crashAt: 0, crashEndAt: 0, crashPoint: 0, forced: null, bets: {}, history: [] };
+let spmState = { phase: 'bet', roundId: 0, betEndAt: 0, flightStart: 0, crashAt: 0, crashEndAt: 0, crashPoint: 0, forced: null, bets: {}, nextBets: {}, history: [], betHistory: [] };
 
 function spmResetRound() {
     const cfg = spmCfg();
@@ -1222,6 +1222,14 @@ function spmResetRound() {
     spmState.betEndAt = Date.now() + cfg.betS * 1000;
     spmState.flightStart = 0; spmState.crashAt = 0; spmState.crashEndAt = 0; spmState.crashPoint = 0;
     spmState.bets = {};
+    // áp các cược đã ĐẶT TRƯỚC (tiền đã trừ) vào chuyến mới này
+    const nb = spmState.nextBets || {}; spmState.nextBets = {};
+    for (const [uid, b] of Object.entries(nb)) {
+        spmState.bets[uid] = { amount: b.amount, name: b.name, auto: b.auto || null, cashed: null, win: 0, at: Date.now() };
+        dbCache._spmBets = dbCache._spmBets || {};
+        dbCache._spmBets[uid] = { amount: b.amount, roundId: spmState.roundId };
+    }
+    if (Object.keys(nb).length) saveDbNow();
 }
 function spmStartFlight() {
     const cfg = spmCfg();
@@ -1248,13 +1256,24 @@ function spmCrash() {
     const cfg = spmCfg();
     spmState.phase = 'crash';
     spmState.crashEndAt = Date.now() + cfg.crashRevealS * 1000;
+    // 📜 lịch sử từng lượt cược (thắng/thua) — thắng lên trước, ghi log đơn thua
+    const rows = Object.entries(spmState.bets).map(([uid, b]) => ({
+        name: b.name, amount: b.amount, cashed: b.cashed || null, win: b.win || 0,
+        crash: spmState.crashPoint, bal: (getUserData(uid).points || 0),
+    })).sort((a, b) => (b.cashed ? 1 : 0) - (a.cashed ? 1 : 0) || b.amount - a.amount);
     for (const [uid, b] of Object.entries(spmState.bets)) {
         if (!b.cashed) logDog('bet', uid, b.name || uid, -b.amount, `Phi Thuyền #${spmState.roundId} NỔ ${spmState.crashPoint}x — thua ${b.amount}`);
     }
+    for (const r of rows) spmState.betHistory.unshift(r);
+    if (spmState.betHistory.length > 100) spmState.betHistory.length = 100;
     spmState.history.unshift({ id: spmState.roundId, crash: spmState.crashPoint, time: new Date().toLocaleString('vi-VN') });
     if (spmState.history.length > 50) spmState.history.length = 50;
-    dbCache._spmBets = {};   // đã settle hết
+    // đã settle chuyến này — nhưng GIỮ lại đơn đặt trước (chưa vào chuyến) để restart còn hoàn
+    const keep = {};
+    for (const [uid, b] of Object.entries(spmState.nextBets || {})) keep[uid] = { amount: b.amount, roundId: spmState.roundId + 1, queued: true };
+    dbCache._spmBets = keep;
     saveDbNow();
+    spmBoard.needsUpdate = true;   // bảng Discord đăng lại kết quả chuyến (tối đa 1 phút/lần)
     writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} NỔ ${spmState.crashPoint}x`);
 }
 function spmTick() {
@@ -1276,7 +1295,7 @@ function spmBet(uid, username, amount, auto) {
     const cfg = spmCfg();
     if (!cfg.open) return { error: 'Phi Thuyền đang đóng bảo trì' };
     if (debtOf(getUserData(uid)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới chơi được' };
-    if (spmState.phase !== 'bet') return { error: 'Hết cửa cược rồi — chờ chuyến sau nhé' };
+    if (spmState.phase !== 'bet') return spmQueueBet(uid, username, amount, auto);   // đang bay/nổ -> đặt cho chuyến sau
     if (spmState.bets[uid]) return { error: 'Bạn đã cược chuyến này rồi' };
     amount = Math.floor(Number(amount) || 0);
     if (amount < cfg.minBet) return { error: `Cược tối thiểu ${cfg.minBet.toLocaleString()} Dogcoin` };
@@ -1290,6 +1309,38 @@ function spmBet(uid, username, amount, auto) {
     dbCache._spmBets = dbCache._spmBets || {};
     dbCache._spmBets[uid] = { amount, roundId: spmState.roundId };
     logDog('bet', uid, username || uid, -amount, `Phi Thuyền #${spmState.roundId} cược ${amount}${autoM ? ` (auto rút ${autoM}x)` : ''}`);
+    saveDbNow();
+    return { ok: true, balance: getUserData(uid).points || 0 };
+}
+// đặt cược cho CHUYẾN SAU (khi đang bay/nổ) — trừ tiền ngay, áp vào lúc mở chuyến mới
+function spmQueueBet(uid, username, amount, auto) {
+    const cfg = spmCfg();
+    if (!cfg.open) return { error: 'Phi Thuyền đang đóng bảo trì' };
+    if (debtOf(getUserData(uid)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới chơi được' };
+    if (spmState.nextBets[uid]) return { error: 'Bạn đã đặt cược cho chuyến sau rồi' };
+    amount = Math.floor(Number(amount) || 0);
+    if (amount < cfg.minBet) return { error: `Cược tối thiểu ${cfg.minBet.toLocaleString()} Dogcoin` };
+    if (amount > cfg.maxBet) return { error: `Cược tối đa ${cfg.maxBet.toLocaleString()} Dogcoin/chuyến` };
+    const u = getUserData(uid);
+    if ((u.points || 0) < amount) return { error: `Không đủ Dogcoin (bạn có ${(u.points || 0).toLocaleString()})` };
+    let autoM = Number(auto);
+    autoM = Number.isFinite(autoM) && autoM >= 1.01 ? Math.floor(autoM * 100) / 100 : null;
+    updatePoints(uid, -amount);
+    spmState.nextBets[uid] = { amount, name: u.name || uid, auto: autoM };
+    dbCache._spmBets = dbCache._spmBets || {};
+    dbCache._spmBets[uid] = { amount, roundId: spmState.roundId + 1, queued: true };
+    logDog('bet', uid, username || uid, -amount, `Phi Thuyền đặt trước chuyến sau — cược ${amount}${autoM ? ` (auto rút ${autoM}x)` : ''}`);
+    saveDbNow();
+    return { ok: true, queued: true, balance: getUserData(uid).points || 0 };
+}
+// huỷ đặt cược trước -> hoàn tiền (chỉ khi chưa vào chuyến)
+function spmCancelNext(uid) {
+    const b = spmState.nextBets[uid];
+    if (!b) return { error: 'Bạn chưa đặt cược trước' };
+    updatePoints(uid, b.amount);
+    delete spmState.nextBets[uid];
+    if (dbCache._spmBets) delete dbCache._spmBets[uid];
+    logDog('refund', uid, b.name || uid, b.amount, `Huỷ đặt cược trước Phi Thuyền — hoàn ${b.amount}`);
     saveDbNow();
     return { ok: true, balance: getUserData(uid).points || 0 };
 }
@@ -1316,7 +1367,9 @@ function spmWebState(uid) {
         growth: cfg.growth, minBet: cfg.minBet, maxBet: cfg.maxBet, open: cfg.open, maxMult: cfg.maxMult,
         crashPoint: spmState.phase === 'crash' ? spmState.crashPoint : null,   // chỉ lộ khi đã nổ
         me: me ? { amount: me.amount, auto: me.auto, cashed: me.cashed, win: me.win } : null,
+        myNext: spmState.nextBets[uid] ? { amount: spmState.nextBets[uid].amount, auto: spmState.nextBets[uid].auto } : null,
         players, history: spmState.history.slice(0, 20),
+        betHistory: spmState.betHistory.slice(0, 20),
         balance: getUserData(uid).points || 0,
     };
 }
@@ -1331,6 +1384,81 @@ function runSpmLoop() {
     }
     spmResetRound();
     setInterval(spmTick, SPM_TICK_MS);
+}
+
+// ===== BẢNG PHI THUYỀN TRÊN DISCORD =====
+// Giống bảng Dò Mìn: chỗ mời chơi + khoe kết quả gần đây (thắng/thua từng người),
+// KHÔNG có nút cược. Có chuyến nổ thì đăng lại (tối đa 1 phút/lần — xem repostBoard).
+const spmBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
+
+// 💰 thắng x… được … · 💥 NỔ x… thua hết … · số dư … (PHÁ SẢN nếu hết)
+function spmHistoryLine(h, i) {
+    const bal = typeof h.bal === 'number'
+        ? ` · số dư ${h.bal.toLocaleString()} ${DOGCOIN_EMOJI}` + (h.bal <= 0 ? ` **PHÁ SẢN** ${BANKRUPT_EMOJI[i % BANKRUPT_EMOJI.length]}` : '')
+        : '';
+    if (h.cashed) {
+        return `💰 **${h.name}** · cược ${h.amount.toLocaleString()} · thắng **x${h.cashed.toFixed(2)}** được **${(h.win || 0).toLocaleString()}** ${DOGCOIN_EMOJI}${bal}`;
+    }
+    return `💥 **${h.name}** · cược ${h.amount.toLocaleString()} · NỔ **x${(h.crash || 1).toFixed(2)}** thua hết **${h.amount.toLocaleString()}** ${DOGCOIN_EMOJI}${bal}`;
+}
+
+function getSpmBoardData() {
+    const cfg = spmCfg();
+    const recent = spmState.betHistory.slice(0, BOARD_HISTORY_N);
+    let desc =
+        `Một chiếc **phi thuyền 🚀** cất cánh mỗi chuyến, hệ số nhân tăng dần — **rút kịp trước khi NỔ** là ăn.\n` +
+        `Đặt cược trong cửa **${cfg.betS}s** (đang bay vẫn đặt được cho chuyến sau), đang bay bấm **RÚT** để chốt tiền; để trễ là mất cược.\n` +
+        `🎯 Bay càng cao ăn càng đậm (tối đa **x${cfg.maxMult}**) nhưng có thể nổ bất cứ lúc nào. Cả nhà chung một chuyến.\n\n`;
+    if (recent.length) desc += `**🚀 ${recent.length} lượt gần đây:**\n` + recent.map(spmHistoryLine).join('\n');
+    else desc += `*Chưa có ai bay. Mở hàng đi!*`;
+
+    const embed = new EmbedBuilder()
+        .setTitle('🚀 PHI THUYỀN - chơi trên web')
+        .setColor(0x22d3ee)
+        .setDescription(desc)
+        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Phi Thuyền trên web').setStyle(ButtonStyle.Success)
+    );
+    return { embeds: [embed], components: [row] };
+}
+
+async function startSpmBoard(channel) {
+    if (spmBoard.message) await spmBoard.message.delete().catch(() => { });
+    spmBoard.channel = channel;
+    spmBoard.message = await channel.send(getSpmBoardData());
+    spmBoard.needsUpdate = false;
+    spmBoard.lastEdit = Date.now();
+    dbCache._spmChannelId = channel.id;
+    dbCache._spmMsgId = spmBoard.message.id;
+    saveDbNow();
+}
+function stopSpmBoard() {
+    if (spmBoard.message) spmBoard.message.delete().catch(() => { });
+    spmBoard.channel = null;
+    spmBoard.message = null;
+    dbCache._spmChannelId = null;
+    dbCache._spmMsgId = null;
+    saveDbNow();
+}
+async function resumeSpmBoard() {
+    const chId = dbCache._spmChannelId;
+    if (!chId) return;
+    const ch = await client.channels.fetch(chId);
+    const old = dbCache._spmMsgId ? await ch.messages.fetch(dbCache._spmMsgId).catch(() => null) : null;
+    if (old) {
+        spmBoard.channel = ch;
+        spmBoard.message = old;
+        spmBoard.lastEdit = Date.now();
+        await old.edit(getSpmBoardData()).catch(() => { });
+        writeLog('SYSTEM', `[BẢNG PHI THUYỀN] Nối lại bảng cũ ở #${ch.name}`);
+        return;
+    }
+    await startSpmBoard(ch);
+    writeLog('SYSTEM', `[BẢNG PHI THUYỀN] Bảng cũ mất, đã đăng bảng mới ở #${ch.name}`);
+}
+function runSpmBoardLoop() {
+    setInterval(() => { repostBoard(spmBoard, getSpmBoardData, '_spmMsgId', 'BẢNG PHI THUYỀN', 'PHI THUYỀN').catch(() => { }); }, 5000);
 }
 
 function setPalWheelCfg(o) {
@@ -4087,6 +4215,8 @@ client.once('ready', async (c) => {
     // resumeXosoAfterRestart().catch(() => {});
     runMinesBoardLoop();
     resumeMinesBoard().catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không nối lại được: ${e.message}`));
+    runSpmBoardLoop();
+    resumeSpmBoard().catch(e => writeLog('SYSTEM', `[BẢNG PHI THUYỀN] Không nối lại được: ${e.message}`));
     // Blackjack ĐÃ HỦY — không nối lại bảng Discord; nếu bảng cũ còn treo thì gỡ luôn.
     (async () => {
         try {
@@ -4258,6 +4388,7 @@ client.once('ready', async (c) => {
                 state: (uid) => spmWebState(uid),
                 bet: (uid, amount, auto) => spmBet(uid, getUserData(uid).name || uid, amount, auto),
                 cashout: (uid) => spmCashout(uid),
+                cancelNext: (uid) => spmCancelNext(uid),
             },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
@@ -4324,6 +4455,10 @@ client.once('ready', async (c) => {
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
+            // 🚀 Bảng Phi Thuyền: khoe kết quả từng chuyến (thắng/thua) + nút vào web
+            getSpmBoard: () => ({ on: !!spmBoard.message, channelId: dbCache._spmChannelId || '' }),
+            startSpmBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startSpmBoard(ch); return ch.name; },
+            stopSpmBoard: () => stopSpmBoard(),
             // 🎡 vòng quay: panel chỉnh số người tối thiểu để khởi động
             getWheel: () => ({ minPlayers: wheelMinPlayers(), waiting: wheelRoom.players.size, ticket: WHEEL_MAX_TICKET }),
             resetWheelTurns: wheelResetTurns,

@@ -161,6 +161,7 @@ function startPanel(ctx) {
             palWheelCfg: ctx.getPalWheelCfg ? ctx.getPalWheelCfg() : null,
             spmCfg: ctx.getSpmCfg ? ctx.getSpmCfg() : null,
             spmState: ctx.getSpmState ? ctx.getSpmState() : null,
+            spmBoard: ctx.getSpmBoard ? ctx.getSpmBoard() : { on: false, channelId: '' },
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
@@ -372,6 +373,24 @@ function startPanel(ctx) {
                 if (path === '/api/mines/board/stop') {
                     if (ctx.stopMines) ctx.stopMines();
                     ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Dò Mìn`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                // ---- BẢNG KẾT QUẢ PHI THUYỀN ----
+                if (path === '/api/spm/board/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    if (!ctx.startSpmBoard) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    try {
+                        const name = await ctx.startSpmBoard(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Đăng bảng Phi Thuyền tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) {
+                        return sendJSON(res, 400, { ok: false, error: e.message });
+                    }
+                }
+                if (path === '/api/spm/board/stop') {
+                    if (ctx.stopSpmBoard) ctx.stopSpmBoard();
+                    ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng Phi Thuyền`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // ---- BẢNG MỜI CHƠI LEO THANG ----
@@ -1147,6 +1166,19 @@ const HTML = `<!DOCTYPE html>
           <div class="row"><input id="spForce" type="number" step="0.1" min="1" placeholder="vd 1.10 (nổ sớm)" style="flex:2"><button class="btn-red" onclick="spForceCrash()">⚡ Ép điểm nổ</button></div>
         </div>
       </div>
+      <div class="card">
+        <h3>🎛️ Bảng kết quả Phi Thuyền trên Discord</h3>
+        <div class="muted" id="spmBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <label>Channel ID (kênh đăng bảng)</label>
+        <input id="spmChannel" placeholder="vd: 123456789012345678">
+        <div class="chips" id="spmSaved"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-green" onclick="spmBoardStart()">▶️ Bật / Đăng lại bảng</button>
+          <button class="btn-red" onclick="spmBoardStop()">⏹️ Gỡ bảng</button>
+          <button class="btn-grey" onclick="chatDelete('spmChannel')">🧹 Xóa chat bot</button>
+        </div>
+        <div class="note">Sau mỗi chuyến NỔ, bảng tự khoe kết quả từng người (💰 thắng x… được … / 💥 NỔ x… thua hết …) kèm số dư, và có nút <b>🌐 Chơi Phi Thuyền trên web</b> phát link + mã PIN. Bảng tự đăng lại tối đa 1 phút/lần, bot restart tự nối lại bảng cũ.</div>
+      </div>
     </div>
 
     <!-- (tab 📊 THỐNG KÊ đã bỏ 19/08) -->
@@ -1682,6 +1714,8 @@ async function potAdd(key){
 }
 function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
+function spmBoardStart(){const c=document.getElementById('spmChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/spm/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Phi Thuyền ở #'+j.name);refresh();});}
+async function spmBoardStop(){if(!await uiConfirm('Gỡ bảng Phi Thuyền khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/spm/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Phi Thuyền');refresh();});}
 function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
 async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stairs/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Leo Thang');refresh();});}
 function whSaveMin(){const n=parseInt(document.getElementById('whMin').value);if(!n||n<1||n>50)return toast('Nhập số 1–50');api('/api/wheel/min',{minPlayers:n}).then(()=>{toast('💾 Vòng quay cần '+n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
@@ -2036,7 +2070,7 @@ function useChannel(prefix,id){document.getElementById(prefix+'Channel').value=i
 function renderSavedChannels(){
   if(!STATE)return;
   const list=STATE.savedChannels||[];
-  ['tx','bc','mine','stair','bj'].forEach(prefix=>{
+  ['tx','bc','mine','stair','bj','spm'].forEach(prefix=>{
     const el=document.getElementById(prefix+'Saved');if(!el)return;
     if(!list.length){el.innerHTML='<span class="empty">Chưa lưu kênh nào. Nhập ID + ghi chú rồi bấm 💾 Lưu kênh.</span>';return;}
     el.innerHTML=list.map(c=>
@@ -2317,6 +2351,11 @@ async function refresh(){
   document.getElementById('stairBoardInfo').innerHTML='<span class="run '+(sb2.on?'on':'off')+'">'+(sb2.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(sb2.channelId?' &nbsp; kênh <code>'+esc(sb2.channelId)+'</code>':'');
   const sch=document.getElementById('stairChannel');
   if(sb2.channelId&&!sch.value)sch.value=sb2.channelId;
+  // trang thai bang Phi Thuyen
+  const spb=STATE.spmBoard||{on:false,channelId:''};
+  const spbEl=document.getElementById('spmBoardInfo');
+  if(spbEl){spbEl.innerHTML='<span class="run '+(spb.on?'on':'off')+'">'+(spb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(spb.channelId?' &nbsp; kênh <code>'+esc(spb.channelId)+'</code>':'');
+  const spch=document.getElementById('spmChannel');if(spb.channelId&&spch&&!spch.value)spch.value=spb.channelId;}
   // 🎡 vòng quay: đang chờ mấy người / cần mấy người
   const wh=STATE.wheel;
   if(wh){document.getElementById('whInfo').innerHTML='Vé <b>'+Number(wh.ticket||0).toLocaleString()+'</b> · đang chờ <b>'+wh.waiting+'</b>/'+wh.minPlayers+' người';

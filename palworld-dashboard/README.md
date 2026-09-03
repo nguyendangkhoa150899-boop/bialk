@@ -662,6 +662,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **03/09** — 🚀 Phi Thuyền đợt 2: **📜 lịch sử 20 lượt cược** (thắng xanh `×m +tiền` / thua đỏ
+  `thua hết −cược`, `spmState.betHistory` cap 100, lộ 20 qua `spmWebState`); **đặt cược CHUYẾN SAU**
+  khi đang bay/nổ (`spmQueueBet` trừ tiền ngay → `spmResetRound` áp vào chuyến mới; nút luôn bấm
+  được, có **huỷ đặt trước hoàn tiền** `spmCancelNext` + route `/api/spm/cancelnext`; đơn đặt trước
+  vẫn nằm `_spmBets` để restart refund); **bảng kết quả Discord** kiểu bảng Dò Mìn (`spmBoard`,
+  admin chọn kênh ở panel tab Phi Thuyền, `/api/spm/board/start|stop`, khoe 10 lượt gần nhất
+  💰 thắng x… được … / 💥 NỔ x… thua hết … kèm số dư, nút web_pin, tự nối lại sau restart).
 - **28/08 (tối)** — 🚀 **PHI THUYỀN** (crash game kiểu Spaceman, thuần web): vòng chơi CHUNG
   (chờ cược 8s → bay số nhân tăng dần `m=e^(growth·s)` → nổ → lặp), 1 loop `spmTick` 250ms.
   Điểm nổ chốt KÍN lúc cất cánh (`spmDrawCrash`, house edge baked-in, kẹp `maxMult`); client
