@@ -1032,6 +1032,20 @@ function palWheelCfg() {
 
 // ===== 🛒 SHOP ITEM (28/08): mua item game + số lượng -> giao thẳng vào túi qua mod =====
 // Danh mục admin tự quản ở panel (dbCache._itemShop): { id (StaticItemId game), name, price, max }.
+// Bộ mặc định: seed 1 LẦN khi DB chưa từng có _itemShop (deploy mới là có sẵn). Admin sửa/
+// xoá sau thì thôi (kể cả xoá sạch thành [] cũng KHÔNG seed lại — chỉ seed khi undefined).
+// StaticItemId tra từ paldb (mục "Code"); hình ở assets/itemimage/.
+const DEFAULT_ITEM_SHOP = [
+    { id: 'ExpBoost_04', name: 'Sách Huấn Luyện (XL)', price: 50, max: 999, img: 'T_itemicon_Consume_ExpBoost_04.webp' },
+    { id: 'AffectionFruit_01', name: 'Đào Tâm Giao', price: 2500, max: 999, img: 'T_itemicon_Consume_AffectionFruit_01.webp' },
+    { id: 'LvUP_01', name: 'Tinh Thể Bồi Dưỡng', price: 1300, max: 999, img: 'T_itemicon_Consume_LvUP_01.webp' },
+    { id: 'AncientArmorWeight_5', name: 'Áo Giáp Cổ Đại Hạng Nhẹ (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientArmorWeight.webp' },
+    { id: 'AncientHelmet_5', name: 'Mũ Cổ Đại (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientHelmet.webp' },
+    { id: 'AncientParts2', name: 'Lõi Văn Minh Cổ Đại', price: 500, max: 999, img: 'T_itemicon_Material_AncientParts2.webp' },
+];
+function seedItemShopIfEmpty() {
+    if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); }
+}
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 function itemShopList() {
@@ -3844,6 +3858,7 @@ client.once('ready', async (c) => {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     // (Bầu Cua đã gỡ hẳn; Xổ số tạm tắt)
+    seedItemShopIfEmpty();   // 🛒 seed 6 món mặc định nếu DB chưa có danh mục item
     runTaiXiuLoop(); // BIG SMALL vẫn chạy
     // runXoSoLoop();
     // resumeXosoAfterRestart().catch(() => {});

@@ -666,7 +666,9 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   `ITEM`, `pal.giveItem` có sẵn), admin quản danh mục ở panel (id/tên/giá/max/hình), hình ở
   `assets/itemimage/` (assets.js quét subfolder). **StaticItemId lấy từ paldb** (mục "Code")
   hoặc suy từ tên icon (bỏ tiền tố: `T_itemicon_Consume_ExpBoost_04`→`ExpBoost_04`); **độ
-  hiếm armor = id RIÊNG có hậu tố** (`AncientHelmet_5`=Huyền Thoại). ⏳ **Cooldown nhận pal
+  hiếm armor = id RIÊNG có hậu tố** (`AncientHelmet_5`=Huyền Thoại). Boot **seed 6 món mặc
+  định** (`DEFAULT_ITEM_SHOP`) khi DB chưa có `_itemShop` (deploy mới có sẵn; admin xoá/sửa
+  sau vẫn giữ — chỉ seed khi `undefined`). ⏳ **Cooldown nhận pal
   CHUNG** 5 phút (đặt sau khi giao thành công). 🚦 **Khoá giao đơn chung** (`deliverBusy`):
   đang giao 1 đơn pal/item thì chặn mọi đơn khác → **chống mở nhiều phiên SFTP dồn dập
   (Shockbyte khoá ~10 phút)**. 📈 **Cổ phiếu NHỐT GIÁ TRONG BAND**: waveOn = giá chỉ loanh
