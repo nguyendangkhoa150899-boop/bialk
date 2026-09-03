@@ -159,6 +159,7 @@ function startPanel(ctx) {
             palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
             // 🎁 vòng quay pal web + rương (25/08)
             palWheelCfg: ctx.getPalWheelCfg ? ctx.getPalWheelCfg() : null,
+            itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
         };
@@ -219,6 +220,12 @@ function startPanel(ctx) {
                 // ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
                 if (ctx.setPalWheelCfg && req.method === 'POST' && path === '/api/palwheel/cfg') {
                     return sendJSON(res, 200, { ok: true, cfg: ctx.setPalWheelCfg(body) });
+                }
+                // 🛒 SHOP ITEM: lưu toàn bộ danh mục item (id/name/price/max/img)
+                if (ctx.setItemShop && req.method === 'POST' && path === '/api/itemshop/save') {
+                    const list = ctx.setItemShop(Array.isArray(body.items) ? body.items : []);
+                    ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Lưu ${list.length} món`);
+                    return sendJSON(res, 200, { ok: true, items: list });
                 }
                 // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) — '' = xoá về mặc định
                 if (ctx.setPalLuckRate && req.method === 'POST' && path === '/api/palwheel/luckrate') {
@@ -1080,17 +1087,17 @@ const HTML = `<!DOCTYPE html>
             <input id="skPoint" type="number" min="1" max="20" placeholder="vd: 5">
           </div>
           <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px">
-            <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="skWaveOn"> Bật neo lang thang</label>
+            <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="skWaveOn"> Nhốt giá trong band</label>
           </div>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1">
-            <label>🌊 Đáy mềm — dưới mức này neo thiên đi LÊN (100–1000)</label>
-            <input id="skWaveLow" type="number" step="10" placeholder="vd: 350">
+            <label>🌊 Đáy band — giá KHÔNG xuống dưới mức này (10–4000)</label>
+            <input id="skWaveLow" type="number" step="10" placeholder="vd: 1000">
           </div>
           <div style="flex:1">
-            <label>🌊 Trần mềm — trên mức này neo thiên đi XUỐNG (1000–2000)</label>
-            <input id="skWaveHigh" type="number" step="10" placeholder="vd: 1650">
+            <label>🌊 Trần band — giá KHÔNG lên trên mức này (10–4000)</label>
+            <input id="skWaveHigh" type="number" step="10" placeholder="vd: 1300">
           </div>
         </div>
         <div class="note" id="skWaveNow" style="margin-top:4px"></div>
@@ -1197,6 +1204,10 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>🔥 Thưởng trúng vòng RAID (Dogcoin)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
           <label style="display:flex;align-items:center;gap:6px;flex:1"><input type="checkbox" id="pwRaidOn" style="width:auto"> Mở vòng RAID</label>
         </div>
+        <div class="note" style="margin-top:8px">⏳ <b>COOLDOWN NHẬN PAL CHUNG</b> — ai nhận 1 con thì CẢ SERVER phải chờ ngần này giây mới nhận con tiếp (0 = tắt). Sao pal = "Sao (0–4)" ở trên (Palworld chốt cứng 4 sao, không có sao 5+).</div>
+        <div class="row" style="margin-top:4px">
+          <div style="flex:1"><label>⏳ Cooldown nhận pal (giây)</label><input id="pwClaimCd" type="number" placeholder="vd: 300"></div>
+        </div>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> Giao bản PAL BOSS</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
@@ -1209,6 +1220,20 @@ const HTML = `<!DOCTYPE html>
           <button onclick="pgGrant()">🎁 Tặng vào rương</button>
         </div>
         <div id="palChests" class="hist"></div>
+      </div>
+      <div class="card">
+        <h3>🛒 Shop Item — item giao thẳng vào game</h3>
+        <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, vd Training Manual XL). <b>Hình</b> = tên file trong <code>assets/itemimage/</code> (thả file + restart bot; trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
+        <div style="overflow-x:auto;margin-top:8px">
+          <table id="itemShopTable">
+            <thead><tr><th>StaticItemId</th><th>Tên hiện</th><th>Giá/cái</th><th>Max/lần</th><th>Hình (file)</th><th></th></tr></thead>
+            <tbody id="itemShopBody"></tbody>
+          </table>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-blue" onclick="itemShopAddRow()">➕ Thêm món</button>
+          <button class="btn-green" onclick="itemShopSave()">💾 Lưu shop</button>
+        </div>
       </div>
       <div class="card">
         <h3>💰 Sổ biến động Dogcoin</h3>
@@ -1364,8 +1389,9 @@ function showApp(){
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
-  // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small
-  if(['tx','mine','stair','bj','user','pal'].includes(saved)) tab(saved);
+  // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
+  // 28/08: thêm 'stock' (Cổ phiếu) — trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
+  if(['tx','mine','stair','bj','stock','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
@@ -1641,7 +1667,7 @@ function skFill(k){
   set('skWaveLow',k.waveLow);set('skWaveHigh',k.waveHigh);
   if(!skWaveTicked){skWaveTicked=true;const cb=document.getElementById('skWaveOn');if(cb)cb.checked=k.waveOn!==false;}
   const wn=document.getElementById('skWaveNow');
-  if(wn)wn.innerHTML=(k.waveOn!==false?('🌊 Neo lang thang BẬT — giá tự đi bộ khắp <b>10–4.000</b>'+(k.anchor?(', neo đang ở ~<b>'+k.anchor.v.toLocaleString()+'</b>'):'')+'. Dưới <b>'+(k.waveLow||550)+'</b> CHỈ đi lên, trên <b>'+(k.waveHigh||3650)+'</b> CHỈ đi xuống (lún tối đa 200 qua ngưỡng), ở giữa random.'):'Neo lang thang TẮT — giá bám mốc gốc 1.000.');
+  if(wn)wn.innerHTML=(k.waveOn!==false?('🌊 Nhốt giá trong band BẬT — giá <b>chỉ loanh quanh</b> trong <b>'+(k.waveLow||1000).toLocaleString()+'–'+(k.waveHigh||1300).toLocaleString()+'</b>'+(k.anchor?(', neo đang ở ~<b>'+k.anchor.v.toLocaleString()+'</b>'):'')+'. Chạm mép bị đẩy vào, ~98% thời gian nằm gọn trong band (thỉnh thoảng chạm nhẹ mép rồi bật ra).'):'Nhốt giá TẮT — giá thả rông cả <b>10–4.000</b>, bám mốc gốc 1.000.');
   const pc=Math.round((k.price/k.base-1)*1000)/10;
   const tp=document.getElementById('skTPrice');
   tp.textContent=k.price.toLocaleString()+' ('+(pc>=0?'+':'')+pc+'%)';
@@ -1751,8 +1777,10 @@ function skSave(){
   if(!(o.maxLev>=1&&o.maxLev<=100))return toast('Đòn bẩy tối đa phải trong 1–100');
   if(!(o.holdS>=0&&o.holdS<=3600))return toast('Chôn vốn phải trong 0–3600 giây');
   if(!(o.pointX>=1&&o.pointX<=20))return toast('Sức nặng phải trong 1–20');
-  if(!(o.waveLow>=10&&o.waveLow<=1000))return toast('Đáy mềm phải trong 10–1000');
-  if(!(o.waveHigh>=1000&&o.waveHigh<=4000))return toast('Trần mềm phải trong 1000–4000');
+  if(!(o.waveLow>=10&&o.waveLow<=4000))return toast('Đáy band phải trong 10–4000');
+  if(!(o.waveHigh>=10&&o.waveHigh<=4000))return toast('Trần band phải trong 10–4000');
+  if(!(o.waveLow<o.waveHigh))return toast('Đáy band phải NHỎ HƠN trần band');
+  if(o.waveHigh-o.waveLow<50)return toast('Band quá hẹp — để chênh đáy/trần ít nhất 50 cho nến còn đường chạy');
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 
@@ -1785,6 +1813,7 @@ function pwCfgFill(k){
   set('pwUpWt',k.upWtPassive);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);
+  set('pwClaimCd',k.claimCd);
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
     '</b> · linh hồn <b>'+k.soulMax+'</b> dòng × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
@@ -1820,6 +1849,7 @@ function pwCfgSave(){
            luckMax:parseInt(document.getElementById('pwLuckMax').value),
            raidBonus:parseInt(document.getElementById('pwRaidBonus').value),
            raidWheelOn:document.getElementById('pwRaidOn').checked,
+           claimCd:parseInt(document.getElementById('pwClaimCd').value),
            boss:document.getElementById('pwBoss').checked,
            open:document.getElementById('pwOpen').checked};
   if(!(o.price>=100))return toast('Vé phải từ 100');
@@ -1873,6 +1903,43 @@ function renderPalChests(){
       +'<div class="muted" style="font-size:11.5px;margin-top:2px">'+esc(r.ownerName)+(r.ingameName?' — nhân vật <b>'+esc(r.ingameName)+'</b>':'')+' · '+esc(r.wonAt||'')+'</div>'
       +'</div>'+chip+btn+'</div>';
   }).join('');
+}
+// 🛒 SHOP ITEM (28/08): admin sửa bảng item (id/tên/giá/max/hình) rồi 💾 Lưu shop
+function itemShopFill(){
+  var body=document.getElementById('itemShopBody');if(!body||!STATE)return;
+  if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#itemShopBody'))return; // đang gõ thì đừng vẽ lại
+  body.innerHTML='';
+  var rows=STATE.itemShop||[];
+  if(!rows.length){itemShopAddRow();return;}
+  rows.forEach(function(it){itemShopAddRow(it)});
+}
+function itemShopAddRow(it){
+  it=it||{};
+  var body=document.getElementById('itemShopBody');if(!body)return;
+  var tr=document.createElement('tr');
+  tr.innerHTML='<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
+    +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
+    +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
+    +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
+    +'<td><input class="mini-in isf-img" style="width:170px" placeholder="vd: training_manual_xl.png"></td>'
+    +'<td><button class="mini btn-red" onclick="itemShopDelRow(this)">🗑️</button></td>';
+  body.appendChild(tr);
+  tr.querySelector('.isf-id').value=it.id||'';
+  tr.querySelector('.isf-name').value=it.name||'';
+  tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
+  tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
+  tr.querySelector('.isf-img').value=it.img||'';
+}
+function itemShopDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();}
+function itemShopSave(){
+  var items=[].slice.call(document.querySelectorAll('#itemShopBody tr')).map(function(tr){
+    return {id:tr.querySelector('.isf-id').value.trim(),
+      name:tr.querySelector('.isf-name').value.trim(),
+      price:parseInt(tr.querySelector('.isf-price').value)||0,
+      max:parseInt(tr.querySelector('.isf-max').value)||1,
+      img:tr.querySelector('.isf-img').value.trim()};
+  }).filter(function(x){return x.id;});
+  api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');refresh();}).catch(function(e){toast('❌ '+e.message);});
 }
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
@@ -2181,6 +2248,7 @@ async function refresh(){
   if(STATE.palWheelCfg)pwCfgFill(STATE.palWheelCfg);
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();
+  itemShopFill();
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';

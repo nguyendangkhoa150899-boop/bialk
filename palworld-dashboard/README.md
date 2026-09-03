@@ -662,6 +662,19 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **28/08** — 🛒 **SHOP ITEM**: mua item game + số lượng → giao thẳng vào túi qua mod (lệnh
+  `ITEM`, `pal.giveItem` có sẵn), admin quản danh mục ở panel (id/tên/giá/max/hình), hình ở
+  `assets/itemimage/` (assets.js quét subfolder). **StaticItemId lấy từ paldb** (mục "Code")
+  hoặc suy từ tên icon (bỏ tiền tố: `T_itemicon_Consume_ExpBoost_04`→`ExpBoost_04`); **độ
+  hiếm armor = id RIÊNG có hậu tố** (`AncientHelmet_5`=Huyền Thoại). ⏳ **Cooldown nhận pal
+  CHUNG** 5 phút (đặt sau khi giao thành công). 🚦 **Khoá giao đơn chung** (`deliverBusy`):
+  đang giao 1 đơn pal/item thì chặn mọi đơn khác → **chống mở nhiều phiên SFTP dồn dập
+  (Shockbyte khoá ~10 phút)**. 📈 **Cổ phiếu NHỐT GIÁ TRONG BAND**: waveOn = giá chỉ loanh
+  quanh trong [waveLow, waveHigh] (neo đi trong band + đẩy mềm mép + chốt cứng; ~98% trong
+  band); panel đổi nhãn "Đáy/Trần band". 🎨 Popup xác nhận web (`gConfirm`) giống admin thay
+  `confirm()`. **F5 giữ tab** (web dùng PAGE_GRP; panel thêm tab stock). Card 🎒 Rương làm
+  lại (hình pal + nút dưới). **THỬ rồi BỎ "mua sao 5-15"**: Palworld chốt cứng 4 sao (+20%),
+  sao 5+ vô dụng — pal giao đúng cfg.stars, sức mạnh thật = IV + linh hồn.
 - **27/08** — Giới tính pal bắt buộc chọn ở web (♂ xanh/♀ hồng); phát Dogcoin toàn server
   kèm lời nhắn custom; gỡ card "Đơn mua Pal"; fix nút panel nền bạc; chip passive đã chọn;
   cầu Dogcoin trần 90k; Tài Xỉu tự khởi động + giữ lịch sử; **đại tu vay nợ** (phí 20% 1

@@ -244,6 +244,16 @@ function startWebPlay(ctx) {
                 if (ctx.profile && path === '/api/profile') {
                     return sendJSON(res, 200, { ok: true, ...ctx.profile.state(userId) });
                 }
+                // 🛒 shop item (28/08)
+                if (ctx.itemshop && path === '/api/itemshop/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.itemshop.state(userId) });
+                }
+                if (ctx.itemshop && req.method === 'POST' && path === '/api/itemshop/buy') {
+                    const body = await readBody(req);
+                    const r = await ctx.itemshop.buy(userId, body.itemId, body.qty);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 if (ctx.profile && req.method === 'POST' && path === '/api/pal/sell') {
                     const body = await readBody(req);
                     const r = ctx.profile.sell(userId, body.id);
@@ -584,6 +594,15 @@ const PAGE = [
     '.bet-btn:disabled{background:#2a2e3b;color:var(--muted)}',
     '.row{display:flex;justify-content:space-between;align-items:center}',
     '#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000c;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;z-index:99}',
+    // 28/08: popup xác nhận đồng bộ giống admin portal (thay confirm() mặc định nhảy lung tung)
+    '#gmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:120;padding:16px}',
+    '#gmodal.hidden{display:none}',
+    '#gmBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;width:370px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:gmpop .15s ease}',
+    '@keyframes gmpop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}',
+    '#gmMsg{font-size:15px;line-height:1.55;margin-bottom:20px}',
+    '#gmActs{display:flex;gap:10px;justify-content:flex-end}',
+    '#gmActs button{min-width:100px;padding:10px 14px;font-weight:700;border-radius:9px}',
+    '#gmCancel{background:#3a4155;color:#fff}',
     '.big{font-size:26px;font-weight:800}',
     '.hidden{display:none}',
     '.mine{font-size:13px;margin-top:6px;color:var(--gold)}',
@@ -648,6 +667,16 @@ const PAGE = [
     '.pcActs{display:flex;gap:8px;margin-top:10px}',
     '.pcActs button{flex:1;padding:10px;font-size:13px;font-weight:700}',
     '.pcActs .tag{flex:1;text-align:center;padding:9px;font-size:12px;border-radius:8px}',
+    // 🛒 shop item
+    '.isItem{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px;background:#141824;display:flex;align-items:center;gap:12px;flex-wrap:wrap}',
+    '.isItem img{width:58px;height:58px;flex:0 0 58px;object-fit:contain;background:#1b2030;border:1px solid var(--line);border-radius:9px;padding:3px}',
+    '.isItem .isPh{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;font-size:30px;background:#1b2030;border:1px solid var(--line);border-radius:9px}',
+    '.isItem .isMeta{flex:1;min-width:120px}',
+    '.isItem .isNm{font-weight:800;font-size:15px}',
+    '.isItem .isPr{color:var(--gold);font-size:13px;font-weight:700;margin-top:2px}',
+    '.isItem .isBuyRow{display:flex;align-items:center;gap:8px}',
+    '.isItem .isQty{width:72px}',
+    '.isItem button{padding:9px 14px;font-weight:700;background:linear-gradient(180deg,#2f8f4f,#256e3e)}',
     '#pcModal{position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center;padding:12px}',
     '#pcModal.hidden{display:none}',
     '#pcBox{background:var(--card);border:1px solid var(--gold);border-radius:12px;padding:14px;max-width:460px;width:100%;max-height:92vh;overflow-y:auto}',
@@ -983,6 +1012,7 @@ const PAGE = [
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
     '<button id="navPal" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
+    '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
     '</div>',
 
     // ================= TRANG BIG SMALL =================
@@ -1151,6 +1181,17 @@ const PAGE = [
     '</div>',
     '</div>', // hết #pagePick
 
+    // ================= TRANG 🛒 SHOP ITEM (28/08) =================
+    // Mua item game + số lượng -> giao thẳng vào túi qua mod (phải đang ONLINE trong game).
+    '<div id="pageShop" class="hidden">',
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">🛒 Shop Item</h2><div class="muted" id="isStat">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px" id="isInfo">Mua item + số lượng, bot giao <b>thẳng vào túi</b> trong game. Phải đang <b>ONLINE trong game</b> lúc mua. Trừ Dogcoin ngay; giao hụt tự hoàn.</div>',
+    '<div id="isLink" class="muted" style="font-size:12px;margin-top:4px">-</div>',
+    '<div id="isList" style="margin-top:10px"><div class="muted">Đang tải...</div></div>',
+    '</div>',
+    '</div>', // hết #pageShop
+
     // ================= TRANG ĐIỂM DANH (dashboard người chơi) =================
     // Lịch tháng kiểu app điểm danh: ngày đã nhận vàng + nhãn CHUỖI, hôm nay viền tím,
     // progress đủ tháng ăn bonus. Nghiện = nút đếm ngược 60 phút theo GIỜ SERVER.
@@ -1188,6 +1229,8 @@ const PAGE = [
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎒 Rương Pal</h2><div class="muted" id="pcStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px" id="pcLink">-</div>',
+    // ⏳ cooldown nhận pal CHUNG toàn server (28/08)
+    '<div id="pcCdBanner" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px;font-weight:700"></div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageDaily
@@ -1407,6 +1450,12 @@ const PAGE = [
     '<button style="background:#232735;min-width:80px" onclick="lolaClose()">Đóng</button>',
     '</div></div></div>',
     '<div id="toast"></div>',
+    // 28/08: popup xác nhận đồng bộ giống admin portal (gConfirm thay confirm mặc định)
+    '<div id="gmodal" class="hidden" onclick="if(event.target===this)gmClose(false)">',
+    '<div id="gmBox">',
+    '<div id="gmMsg"></div>',
+    '<div id="gmActs"><button id="gmCancel" onclick="gmClose(false)">Hủy</button><button id="gmOk" onclick="gmClose(true)">Đồng ý</button></div>',
+    '</div></div>',
     '<script>',
     'var TOKEN=localStorage.getItem("play_token")||"";var SEL="";var TT=0;var LOCKS=10;var PHASE="off";var BAL=0;',
     'var NAN=null;var revealedGame=0;var dragging=false;var paperX=0,paperY=0,baseX=0,baseY=0,dragX0=0,dragY0=0;',
@@ -1414,6 +1463,14 @@ const PAGE = [
     // đồng hồ máy người chơi có thể lệch server vài giây -> đếm giờ theo GIỜ SERVER
     'var CLOCK_OFF=0;function srvNow(){return Math.floor(Date.now()/1000)+CLOCK_OFF}',
     'function toast(m){var t=document.getElementById("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2500)}',
+    // 28/08: popup xác nhận giống admin portal — trả Promise(true/false), thay confirm() mặc định
+    'var GMRES=null;',
+    'function gConfirm(msg,okLabel,danger){return new Promise(function(resolve){GMRES=resolve;',
+    'var mm=document.getElementById("gmMsg");mm.innerHTML=msg;',   // cho phép <b>/emoji trong câu hỏi
+    'var ok=document.getElementById("gmOk");ok.textContent=okLabel||"Đồng ý";',
+    'ok.style.background=danger?"linear-gradient(180deg,#e86a6a,#c23c3c)":"linear-gradient(180deg,#3ddc84,#2aa564)";ok.style.color=danger?"#fff":"#08210f";',
+    'document.getElementById("gmodal").classList.remove("hidden")})}',
+    'function gmClose(ok){document.getElementById("gmodal").classList.add("hidden");if(GMRES){var r=GMRES;GMRES=null;r(!!ok)}}',
     // ===== ÂM THANH: DÙNG CHUNG MỘT FILE assets/dry-fart.mp3 =====
     // Mìn nổ và đạp trúng lửa đều phát cùng tiếng này.
     'var AC=null;var SND=localStorage.getItem("play_snd")!=="0";var SFX=null;',
@@ -1475,8 +1532,10 @@ const PAGE = [
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
     'mSync();sSync();',
+    // 28/08: F5 giữ nguyên tab đang xem — khôi phục MỌI tab hợp lệ (theo PAGE_GRP, tự
+    // đúng cho cả tab thêm sau này như 🛒 Shop Item), không còn whitelist cứng thiếu tab.
     'var saved=localStorage.getItem("play_page");',
-    'go(saved==="mine"||saved==="stair"||saved==="wheel"||saved==="daily"||saved==="pal"||saved==="pick"||saved==="stock"?saved:"tx")}',
+    'go(PAGE_GRP[saved]?saved:"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
     'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
     'function allIn(){document.getElementById("amt").value=BAL}',
@@ -1618,7 +1677,7 @@ const PAGE = [
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
-    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",daily:"profile",pal:"profile",pick:"profile"};',
+    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",daily:"profile",pal:"profile",pick:"profile",shop:"profile"};',
     'var GRP_LAST={games:"tx",profile:"daily"};',
     'function go(p){',
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
@@ -1627,6 +1686,7 @@ const PAGE = [
     '$("pageWheel").classList.toggle("hidden",p!=="wheel");',
     '$("pagePal").classList.toggle("hidden",p!=="pal");',
     '$("pagePick").classList.toggle("hidden",p!=="pick");',
+    '$("pageShop").classList.toggle("hidden",p!=="shop");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("pageStock").classList.toggle("hidden",p!=="stock");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Big Small
@@ -1636,6 +1696,7 @@ const PAGE = [
     '$("navWheel").classList.toggle("on",p==="wheel");',
     '$("navPal").classList.toggle("on",p==="pal");',
     '$("navPick").classList.toggle("on",p==="pick");',
+    '$("navShop").classList.toggle("on",p==="shop");',
     '$("navDaily").classList.toggle("on",p==="daily");',
     '$("navStock").classList.toggle("on",p==="stock");',
     // nhóm trang: tầng 1 chọn nhóm, tầng 2 chỉ hiện trang trong nhóm (nhớ trang cuối mỗi nhóm)
@@ -1643,9 +1704,9 @@ const PAGE = [
     '$("ngProfile").classList.toggle("on",g==="profile");',
     '$("ngGames").classList.toggle("on",g==="games");',
     '["navTx","navMine","navStair","navWheel","navStock"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
-    '["navDaily","navPal","navPick"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navDaily","navPal","navPick","navShop"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
@@ -2587,18 +2648,40 @@ const PAGE = [
     'var st=p.raid?"border:1px solid var(--red);border-radius:8px;margin:4px;background:#1d1420":"";',
     'h+="<div class=\\"pcmP\\" style=\\"display:flex;align-items:center;gap:8px;cursor:default;"+st+"\\"><b>"+esc(p.name)+"</b>"+(p.raid?" <span style=\\"color:#ff8f8f;font-size:11px;font-weight:700\\">🔥 BOSS RAID</span>":"")+(p.dex?"<span class=\\"muted\\" style=\\"font-size:11px\\">#"+p.dex+"</span>":"")+"<span style=\\"flex:1\\"></span><button style=\\"padding:5px 10px;font-size:12px;background:linear-gradient(180deg,#2f8f4f,#256e3e)\\" onclick=\\"pkBuy(\'"+p.code+"\')\\">🎯 Mua "+vnd(p.price||PK.price)+"</button></div>"});',
     '$("pkList").innerHTML=h||"<div class=\\"muted\\" style=\\"padding:10px\\">Không thấy pal nào khớp.</div>"}',
-    'function pkBuy(code){if(PKBUSY||!PK)return;var p=null;PK.list.forEach(function(x){if(x.code===code)p=x});if(!p)return;',
-    'if(!confirm("Mua đích danh "+p.name+(p.raid?" (BOSS RAID)":"")+" với "+vnd(p.price||PK.price)+" Dogcoin? Pal sẽ vào 🎒 RƯƠNG."))return;',
+    'async function pkBuy(code){if(PKBUSY||!PK)return;var p=null;PK.list.forEach(function(x){if(x.code===code)p=x});if(!p)return;',
+    'if(!(await gConfirm("Mua đích danh <b>"+esc(p.name)+"</b>"+(p.raid?" (BOSS RAID)":"")+" với <b>"+vnd(p.price||PK.price)+"</b> Dogcoin? Pal sẽ vào 🎒 RƯƠNG.","🎯 Mua")))return;',
     'PKBUSY=true;api("/api/palpick/buy",{code:code}).then(function(j){PKBUSY=false;setBal(j.balance);',
     // chủ server chốt 25/08: KHÔNG bật bảng chọn ngay - pal về rương, nhắn rõ chỗ nhận là đủ
     'toast("🎯 Đã mua "+j.item.name+" - pal nằm trong 🎒 RƯƠNG (tab 🪪 Cá nhân), vào đó chọn linh hồn + passive rồi nhận");',
     'if(j.potWin)toast("💥🏆 NỔ HŨ +"+vnd(j.potWin)+" Dogcoin!");',
     'pkSync()}).catch(function(e){PKBUSY=false;toast("❌ "+e.message)})}',
     '',
+    // ===== 🛒 SHOP ITEM (28/08): mua item + số lượng -> giao thẳng vào túi trong game =====
+    'var IS=null,ISBUSY=false;',
+    'function isSync(){api("/api/itemshop/state").then(function(j){IS=j;',
+    '$("isStat").textContent=j.items.length+" món · ví "+vnd(j.balance);',
+    '$("isLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - item giao thẳng vào túi (phải đang ONLINE trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới mua được";',
+    'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
+    // hình item: file trong assets/itemimage/ (thả file + restart như palimage); thiếu -> ô 📦
+    'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
+    'function isRender(){if(!IS)return;var h="";IS.items.forEach(function(it){',
+    'h+="<div class=\\"isItem\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div></div>"',
+    '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"});',
+    '$("isList").innerHTML=h||"<div class=\\"muted\\">Shop chưa có món nào - admin thêm ở panel tab 🎮.</div>"}',
+    'async function isBuy(id){if(ISBUSY||!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
+    'var q=parseInt($("isq_"+id).value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");',
+    'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
+    'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
+    'ISBUSY=true;api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;toast("❌ "+e.message);isSync()})}',
+    '',
     // ===== 🎒 RƯƠNG PAL (trang Hồ sơ) =====
-    'var PC=null,PCIT=null,PCBUSY=false;',
+    'var PC=null,PCIT=null,PCBUSY=false,PCCDUNTIL=0,PCCDTICKING=false;',
+    // ⏳ cooldown nhận pal CHUNG toàn server: dựng lại từ claimCdLeft (F5 vẫn đúng)
+    'function pcCdTick(){var left=Math.ceil((PCCDUNTIL-Date.now())/1000);var b=$("pcCdBanner");if(!b)return;',
+    'if(left>0){b.style.display="";b.textContent="⏳ Kho pal chung đang bận — còn "+left+"s mới nhận được con tiếp (cooldown dùng chung cả server)";if(!PCCDTICKING){PCCDTICKING=true;setTimeout(function tk(){pcCdTick();if(Date.now()<PCCDUNTIL)setTimeout(tk,500);else PCCDTICKING=false},500)}}else{b.style.display="none"}}',
     // cb: mua/quay xong gọi pcSync(function(){pcOpen(id)}) để bật ngay bảng chọn linh hồn+passive
     'function pcSync(cb){api("/api/profile").then(function(j){PC=j;',
+    'PCCDUNTIL=Date.now()+(j.claimCdLeft||0);pcCdTick();',
     'var inChest=0;j.chest.forEach(function(i){if(i.status==="chest")inChest++});',
     '$("pcStat").textContent=inChest+" pal trong rương";',
     '$("pcLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - bấm 🎁 Nhận là giao thẳng vào game (phải đang online trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới NHẬN pal được (bán thì vẫn bán được)";',
@@ -2613,9 +2696,11 @@ const PAGE = [
     '$("pcList").innerHTML=h||"<div class=\\"muted\\">Rương trống - qua tab 🎁 Quay Pal thử vận may!</div>";',
     'if(cb)cb()',
     '}).catch(function(e){toast("❌ "+e.message)})}',
-    'function pcSell(id){if(!PC)return;if(!confirm("Bán pal này lấy "+vnd(PC.sellPrice)+" Dogcoin? Không hoàn tác được."))return;',
+    'async function pcSell(id){if(!PC)return;if(!(await gConfirm("Bán pal này lấy <b>"+vnd(PC.sellPrice)+"</b> Dogcoin? Không hoàn tác được.","💰 Bán")))return;',
     'api("/api/pal/sell",{id:id}).then(function(j){setBal(j.balance);toast("💰 +"+vnd(j.sold)+" Dogcoin");pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
-    'function pcOpen(id){if(!PC)return;PCIT=null;PC.chest.forEach(function(i){if(i.id===id)PCIT=i});if(!PCIT)return;',
+    'function pcOpen(id){if(!PC)return;',
+    'if(PCCDUNTIL>Date.now())return toast("⏳ Kho pal đang bận (cooldown chung toàn server) - chờ "+Math.ceil((PCCDUNTIL-Date.now())/1000)+"s rồi nhận con tiếp");',
+    'PCIT=null;PC.chest.forEach(function(i){if(i.id===id)PCIT=i});if(!PCIT)return;',
     'if(!PC.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     '$("pcmTitle").textContent="🎁 Nhận "+PCIT.name;',
     '$("pcmBase").innerHTML="Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số"+(PC.boss?" · bản <b>PAL BOSS</b>":"");',
@@ -2666,8 +2751,8 @@ const PAGE = [
     'function pcBuildSave(){var ids=Object.keys(PCSEL);if(!ids.length)return toast("Chọn passive trước rồi hãy lưu");',
     'var nm=prompt("Đặt tên cho build này (tối đa 24 ký tự):");if(!nm||!nm.trim())return;',
     'api("/api/pal/build/save",{name:nm.trim(),ids:ids}).then(function(j){PC.myBuilds=j.myBuilds;pcBuildsRender();toast("⭐ Đã lưu build "+nm.trim())}).catch(function(e){toast("❌ "+e.message)})}',
-    'function pcBuildDel(i){var b=(PC.myBuilds||[])[i];if(!b)return;',
-    'if(!confirm("Xoá build ⭐ "+b.name+"?"))return;',
+    'async function pcBuildDel(i){var b=(PC.myBuilds||[])[i];if(!b)return;',
+    'if(!(await gConfirm("Xoá build ⭐ <b>"+esc(b.name)+"</b>?","🗑️ Xoá",true)))return;',
     'api("/api/pal/build/del",{name:b.name}).then(function(j){PC.myBuilds=j.myBuilds;if(PCBK==="m"+i)PCBK="";pcBuildsRender();toast("🗑️ Đã xoá build "+b.name)}).catch(function(e){toast("❌ "+e.message)})}',
     // Hiển thị danh sách passive theo trạng thái (25/08, góp ý chủ server):
     // - ĐỦ 4 con đã chọn -> CHỈ hiện 4 con đó (dễ soát, khỏi cuộn tìm), ẩn ô tìm kiếm
@@ -2738,12 +2823,12 @@ const PAGE = [
     // 🚻 giới tính: 0=chưa chọn, 1=Đực, 2=Cái. Bắt buộc chọn mới nhận được.
     'var PCGENDER=0;',
     'function pcGenderPick(g){PCGENDER=g;$("pcmGM").classList.toggle("on",g===1);$("pcmGF").classList.toggle("on",g===2)}',
-    'function pcClaimGo(){if(!PCIT||PCBUSY)return;',
+    'async function pcClaimGo(){if(!PCIT||PCBUSY)return;',
     'var souls=[].slice.call($("pcmSouls").querySelectorAll("input:checked")).map(function(c){return c.value});',
     'if(souls.length<1)return toast("💠 Chọn ít nhất 1 dòng linh hồn trước đã (dòng đầu miễn phí)");',
     'if(PCGENDER!==1&&PCGENDER!==2)return toast("🚻 Chọn giới tính ♂ Đực hoặc ♀ Cái trước đã");',
     'var passives=Object.keys(PCSEL);',
-    'if(PCUP>0&&!confirm("💎 Nâng cấp vượt trần tốn "+vnd(PCUP)+" Dogcoin, trừ ví ngay khi nhận (giao hụt tự hoàn). Đồng ý?"))return;',
+    'if(PCUP>0&&!(await gConfirm("💎 Nâng cấp vượt trần tốn <b>"+vnd(PCUP)+"</b> Dogcoin, trừ ví ngay khi nhận (giao hụt tự hoàn). Đồng ý?","✅ Nhận & trừ phí")))return;',
     'PCBUSY=true;var b=$("pcmOk");b.disabled=true;b.textContent="⏳ Đang giao... (có thể mất 1-2 phút, ĐỪNG tắt trang)";',
     'api("/api/pal/claim",{id:PCIT.id,souls:souls,passives:passives,gender:PCGENDER,',
     'soulHpPct:parseInt($("sr_hp").value)||0,soulAtkPct:parseInt($("sr_atk").value)||0,soulDefPct:parseInt($("sr_def").value)||0,soulWorkPct:parseInt($("sr_work").value)||0,',

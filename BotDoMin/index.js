@@ -1024,7 +1024,78 @@ function palWheelCfg() {
         luckMax: Math.floor(num(c.luckMax, 3, 0, 100)),
         raidBonus: Math.floor(num(c.raidBonus, 18000, 0, 100000000)),
         raidWheelOn: c.raidWheelOn === undefined ? true : !!c.raidWheelOn,
+        // ⏳ COOLDOWN NHẬN PAL CHUNG TOÀN SERVER (28/08): ai nhận 1 con thì CẢ SERVER phải
+        // chờ ngần này giây mới nhận con tiếp (giảm tải hàng đợi mod/SFTP). 0 = tắt.
+        claimCd: Math.floor(num(c.claimCd, 300, 0, 86400)),
     };
+}
+
+// ===== 🛒 SHOP ITEM (28/08): mua item game + số lượng -> giao thẳng vào túi qua mod =====
+// Danh mục admin tự quản ở panel (dbCache._itemShop): { id (StaticItemId game), name, price, max }.
+// Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
+// CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
+function itemShopList() {
+    const arr = dbCache._itemShop;
+    return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
+        id: String(x.id), name: String(x.name || x.id),
+        price: Math.max(0, Math.floor(Number(x.price) || 0)),
+        max: Math.max(1, Math.floor(Number(x.max) || 999)),
+        img: String(x.img || ''),   // tên file trong assets/itemimage/ (trống = ô 📦)
+    }));
+}
+function setItemShop(list) {
+    dbCache._itemShop = (Array.isArray(list) ? list : [])
+        .map(x => ({
+            id: String((x && x.id) || '').trim().replace(/[^A-Za-z0-9_]/g, ''),   // StaticItemId: chỉ chữ/số/_
+            name: String((x && x.name) || (x && x.id) || '').trim().slice(0, 60),
+            price: Math.max(0, Math.floor(Number(x && x.price) || 0)),
+            max: Math.max(1, Math.floor(Number(x && x.max) || 999)),
+            img: String((x && x.img) || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80),
+        }))
+        .filter(x => x.id)
+        .slice(0, 100);
+    saveDbNow();
+    return itemShopList();
+}
+async function itemShopBuy(userId, itemId, qty, username) {
+    if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới mua item được' };
+    const it = itemShopList().find(x => x.id === String(itemId));
+    if (!it) return { error: 'Không thấy món này trong shop' };
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1 || qty > it.max) return { error: `Số lượng phải trong 1–${it.max}` };
+    const cost = it.price * qty;
+    const user = getUserData(userId);
+    if ((user.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} Dogcoin (bạn có ${(user.points || 0).toLocaleString()})` };
+    const gameName = (user.ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game — nhắn admin liên kết trước đã' };
+    // 🚦 đang giao đơn khác (pal/item) -> chặn (khỏi mở nhiều phiên SFTP cùng lúc)
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác — chờ vài giây rồi mua nhé (chưa trừ đồng nào)' };
+    deliverLock();
+    const on = await requireOnline(gameName);
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) — thử lại sau (chưa trừ đồng nào)` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game — vào game rồi mua nhé (chưa trừ đồng nào)` }; }
+
+    updatePoints(userId, -cost);   // trừ TRƯỚC (giữ chỗ)
+    logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
+    saveDbNow();
+    let r = null, err = null;
+    try { r = await pal.giveItem(gameName, it.id, qty); } catch (e) { err = e; }
+    deliverUnlock();   // 🚦 SFTP xong -> mở khoá
+    if (r && r.ok) {
+        writeLog('ADMIN', `[SHOP ITEM] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} (-${cost})`);
+        return { ok: true, message: `✅ Đã giao ${qty.toLocaleString()} ${it.name} vào túi ${gameName} trong game!`, balance: getUserData(userId).points || 0 };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    // CHẮC CHẮN chưa giao (dashboard chết / mod báo không thấy người) -> hoàn ngay
+    if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
+        updatePoints(userId, cost);
+        logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
+        saveDbNow();
+        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) — đã hoàn ${cost.toLocaleString()} Dogcoin` };
+    }
+    // mơ hồ (timeout) -> KHÔNG hoàn, báo admin kiểm (chống double-give)
+    writeLog('ADMIN', `[SHOP ITEM LỖI] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} | ${msg} — kiểm results.log, chưa nhận thì hoàn tay`);
+    return { error: `⏳ Chưa xác nhận được với game — ví đã trừ, admin sẽ kiểm (không nhận được sẽ hoàn). Đừng mua lại kẻo trùng.`, balance: getUserData(userId).points || 0 };
 }
 function setPalWheelCfg(o) {
     dbCache._palWheelCfg = { ...palWheelCfg(), ...o };
@@ -1076,6 +1147,13 @@ function palSpinLocked(userId) {
     const now = Date.now();
     return palChest(userId).some(i => i.revealAt && i.revealAt > now);
 }
+// 🚦 KHOÁ GIAO ĐƠN CHUNG (28/08): đang giao 1 đơn (nhận pal / mua item — đều mở phiên
+// SFTP) thì CHẶN mọi đơn khác (pal lẫn item) tới khi xong. Tránh mở nhiều phiên SFTP
+// cùng lúc (Shockbyte khoá brute-force ~10 phút nếu dồn dập). Tự hết sau 2 phút phòng kẹt.
+let _deliverBusyUntil = 0;
+function deliverBusy() { return Date.now() < _deliverBusyUntil; }
+function deliverLock() { _deliverBusyUntil = Date.now() + 120000; }
+function deliverUnlock() { _deliverBusyUntil = 0; }
 
 function palWheelSpin(userId, username) {
     const cfg = palWheelCfg();
@@ -1308,6 +1386,14 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     if (item.status === 'delivering') return { error: 'Pal này đang giao dở — chờ vài phút hoặc nhắn admin' };
     if (item.status !== 'chest') return { error: 'Pal này đã xử lý rồi' };
 
+    // ⏳ COOLDOWN NHẬN PAL CHUNG (28/08): đặt SAU khi giao thành công, chặn CẢ SERVER tới hết giờ.
+    if (cfg.claimCd > 0) {
+        const left = Math.ceil(((dbCache._palClaimCdUntil || 0) - Date.now()) / 1000);
+        if (left > 0) return { error: `⏳ Kho pal đang bận (cooldown chung toàn server) — chờ ${left}s rồi nhận con tiếp nhé` };
+    }
+    // 🚦 đang giao đơn khác (pal/item) -> chặn, khỏi mở nhiều phiên SFTP cùng lúc
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác — chờ vài giây rồi thử lại nhé' };
+
     const souls = Array.isArray(soulsIn) ? [...new Set(soulsIn.map(String).filter(s => PAL_SOUL_KEYS.includes(s)))] : [];
     if (souls.length > cfg.soulMax) return { error: `Chỉ được chọn tối đa ${cfg.soulMax} dòng linh hồn` };
     // 26/08: BẮT BUỘC ít nhất 1 dòng; dòng đầu miễn phí, thêm dòng tính phí cấp số nhân
@@ -1361,9 +1447,10 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
 
     const gameName = (getUserData(userId).ingameName || '').trim();
     if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game — nhắn admin liên kết trước đã' };
+    deliverLock();   // 🚦 giữ khoá suốt phiên SFTP (online-check + giao)
     const on = await requireOnline(gameName);
-    if (on.unknown) return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) — thử lại sau vài phút` };
-    if (!on.online) return { error: `Nhân vật ${gameName} chưa online trong game — vào game rồi bấm nhận nhé` };
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) — thử lại sau vài phút` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game — vào game rồi bấm nhận nhé` }; }
 
     // Đánh dấu ĐANG GIAO trước khi gửi lệnh: nếu kết quả không rõ (timeout) thì giữ
     // nguyên trạng thái này cho admin xử, tuyệt đối không cho bấm nhận lần 2 (sợ trùng pal).
@@ -1407,10 +1494,13 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
             passives,
         });
     } catch (e) { err = e; }
+    deliverUnlock();   // 🚦 SFTP xong -> mở khoá cho đơn khác (phần xử lý kết quả dưới không đụng SFTP)
 
     if (r && r.ok) {
         item.status = 'claimed';
         item.deliveredTo = gameName;
+        // ⏳ đặt cooldown CHUNG toàn server sau khi giao xong
+        if (cfg.claimCd > 0) dbCache._palClaimCdUntil = Date.now() + cfg.claimCd * 1000;
         saveDbNow();
         writeLog('ADMIN', `[RƯƠNG PAL] Đã giao ${species} Lv${cfg.level} cho ${gameName} (rương #${item.id} của ${username || userId}) | linh hồn: ${soulDesc || '-'} | IV ${ivHp}/${ivAtk}/${ivDef} | passive: ${passives.join(',') || '-'}${upCost ? ` | 💎 phí nâng cấp ${upCost.toLocaleString()}` : ''}`);
         return { ok: true, message: `✅ Đã giao vào hộp pal trong game!${upCost ? ` (💎 phí nâng cấp −${upCost.toLocaleString()} Dogcoin)` : ''} Pal sẽ DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp.` };
@@ -2911,8 +3001,10 @@ function stockCfg() {
         open: c.open !== false,
         // 🌊 NEO LANG THANG (bật lại 26/08 tối): neo tự đi bộ khắp dải, giá bám theo.
         waveOn: c.waveOn !== false,                                      // mặc định BẬT
-        waveLow: Math.floor(num(c.waveLow, STOCK_CFG_DEF.waveLow, STOCK_MIN, 1000)),    // dưới mức này neo thiên đi LÊN
-        waveHigh: Math.floor(num(c.waveHigh, STOCK_CFG_DEF.waveHigh, 1000, STOCK_MAX)), // trên mức này neo thiên đi XUỐNG
+        // 28/08: đáy/trần band GIÁ (waveOn thì giá nhốt trong đây). Cho set bất kỳ trong
+        // [STOCK_MIN, STOCK_MAX]; stockTick tự lấy min/max nên đảo ngược cũng không vỡ.
+        waveLow: Math.floor(num(c.waveLow, STOCK_CFG_DEF.waveLow, STOCK_MIN, STOCK_MAX)),
+        waveHigh: Math.floor(num(c.waveHigh, STOCK_CFG_DEF.waveHigh, STOCK_MIN, STOCK_MAX)),
     };
 }
 function stockPrice() {
@@ -2977,27 +3069,37 @@ function stockTick(forcePct) {
         // ở giữa hướng RANDOM, dưới waveLow thiên LÊN, trên waveHigh thiên XUỐNG.
         let a = dbCache._stockAnchor;
         if (!a || !Number.isFinite(a.v)) a = dbCache._stockAnchor = { v: STOCK_BASE, target: STOCK_BASE, legLeft: 0 };
+        // 28/08 (tối) — chủ server chốt: "set band nào GIÁ LOANH QUANH TRONG ĐÓ". waveOn =
+        // giá bị NHỐT trong [waveLow, waveHigh]: neo đi bộ TRONG band (không lún ra ngoài),
+        // bước theo bề rộng band; giá bám neo + đẩy mềm khi chạm mép + CHỐT CỨNG về band.
+        // Mô phỏng 300k nhịp: ~98% thời gian nằm gọn trong band, chỉ ~2% chạm nhẹ mép rồi
+        // bật ra (không dán phẳng vào tường). waveOn=false = thả rông cả [STOCK_MIN,MAX].
+        const bandLo = Math.max(STOCK_MIN, Math.min(cfg.waveLow, cfg.waveHigh));
+        const bandHi = Math.min(STOCK_MAX, Math.max(cfg.waveLow, cfg.waveHigh));
         if (cfg.waveOn) {
             if ((a.legLeft | 0) <= 0) {
-                // 28/08 FIX vụ neo bò về đáy: trước đây dưới waveLow vẫn còn 18% bốc
-                // hướng XUỐNG TIẾP, và chặng giữa được nhắm đích tận đáy dải rồi treo
-                // ở đó 20-50 phút -> neo về ~100 dù "thiên lên". Giờ: trong vùng ngưỡng
-                // hướng bị ÉP CỨNG (dưới waveLow chỉ đi lên, trên waveHigh chỉ đi xuống),
-                // và đích của mọi chặng bị kẹp không lún quá 200 đơn vị qua ngưỡng.
-                const dir = a.v < cfg.waveLow ? 1 : a.v > cfg.waveHigh ? -1 : (Math.random() < 0.5 ? 1 : -1);
-                const step = 200 + Math.random() * 700;                       // dời 200-900 đơn vị (dải rộng gấp đôi)
-                const lo = Math.max(STOCK_MIN + 50, cfg.waveLow - 200);
-                const hi = Math.min(STOCK_MAX - 50, cfg.waveHigh + 200);
-                a.target = Math.round(Math.min(hi, Math.max(lo, a.v + dir * step)));
+                const dir = a.v < bandLo ? 1 : a.v > bandHi ? -1 : (Math.random() < 0.5 ? 1 : -1);
+                const bw = Math.max(1, bandHi - bandLo);
+                const step = (0.15 + Math.random() * 0.5) * bw;               // dời 15-65% bề rộng band
+                a.target = Math.round(Math.min(bandHi, Math.max(bandLo, a.v + dir * step)));
                 a.legLeft = 600 + Math.floor(Math.random() * 900);            // 20-50 phút mỗi chặng (nhịp 2s)
             }
             a.legLeft--;
             a.v += (a.target - a.v) * 0.01;                                   // neo trôi mượt tới đích
+            if (a.v < bandLo) a.v = bandLo; if (a.v > bandHi) a.v = bandHi;   // đổi band giữa chừng vẫn an toàn
         } else {
             a.v = STOCK_BASE; a.target = STOCK_BASE; a.legLeft = 0;           // tắt sóng -> neo đứng ở mốc
         }
         const anchor = a.v;
-        let m = -STOCK_PULL * Math.log(before / anchor) + (cfg.tickAmp * stockGauss()) / before + drift;
+        // đẩy mềm khi giá lỡ ra ngoài band: càng ra càng bị kéo vào (tối đa 0.05/nhịp) —
+        // nhờ vậy giá bật khỏi tường ngay, không bị kẹp dính phẳng ở mép.
+        let edge = 0;
+        if (cfg.waveOn) {
+            const bw = Math.max(1, bandHi - bandLo);
+            if (before > bandHi) edge = -Math.min(0.05, (before - bandHi) / bw * 0.4);
+            else if (before < bandLo) edge = Math.min(0.05, (bandLo - before) / bw * 0.4);
+        }
+        let m = -STOCK_PULL * Math.log(before / anchor) + (cfg.tickAmp * stockGauss()) / before + drift + edge;
         // 26/08 tối (chủ server chốt "nến đẹp có râu như hình 2"): tickAmp = ĐỘ LỆCH
         // CHUẨN nhiễu mỗi nhịp (đơn vị giá) — std ~tickAmp, thi thoảng lớn hơn để nến
         // có thân + râu tự nhiên. Trần LỎNG 4×tickAmp: chỉ chặn cú sốc, KHÔNG kẹp phẳng
@@ -3005,7 +3107,8 @@ function stockTick(forcePct) {
         const capU = (cfg.tickAmp * 4) / before;
         if (m > capU) m = capU;
         if (m < -capU) m = -capU;
-        p = clamp(before * (1 + m));
+        // CHỐT CỨNG: waveOn thì nhốt trong band, không thì cả [STOCK_MIN, STOCK_MAX]
+        p = cfg.waveOn ? Math.min(bandHi, Math.max(bandLo, before * (1 + m))) : clamp(before * (1 + m));
     }
     p = Math.round(p);
     dbCache._stockPrice = p;
@@ -3884,6 +3987,8 @@ client.once('ready', async (c) => {
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
                         up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
                         level: cfg.level, stars: cfg.stars, boss: cfg.boss,
+                        // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại)
+                        claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),
                         passives: passiveCatalog(),
                         builds: passiveBuilds(),
                         myBuilds: Array.isArray(getUserData(uid).palBuilds) ? getUserData(uid).palBuilds : [],
@@ -3894,6 +3999,15 @@ client.once('ready', async (c) => {
                 claim: (uid, itemId, souls, passives, extra) => palChestClaim(uid, itemId, souls, passives, getUserData(uid).name || uid, extra),
                 saveBuild: (uid, name, ids) => palBuildSave(uid, name, ids),
                 delBuild: (uid, name) => palBuildDel(uid, name),
+            },
+            // 🛒 shop item (28/08): mua item game + số lượng -> giao vào túi qua mod
+            itemshop: {
+                state: (uid) => ({
+                    items: itemShopList(),
+                    ingameName: (getUserData(uid).ingameName || '').trim(),
+                    balance: getUserData(uid).points || 0,
+                }),
+                buy: (uid, itemId, qty) => itemShopBuy(uid, itemId, qty, getUserData(uid).name || uid),
             },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
@@ -3928,6 +4042,8 @@ client.once('ready', async (c) => {
             getPalWheelCfg: palWheelCfg,
             setPalWheelCfg,
             setPalLuckRate,   // 🍀 đặt %/quay may mắn riêng từng người (rig cho bạn bè)
+            getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
+            setItemShop,
             palChestOverview,
             palChestGrant,
             palChestResolve,
