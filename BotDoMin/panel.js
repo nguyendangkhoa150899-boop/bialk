@@ -159,6 +159,8 @@ function startPanel(ctx) {
             palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
             // 🎁 vòng quay pal web + rương (25/08)
             palWheelCfg: ctx.getPalWheelCfg ? ctx.getPalWheelCfg() : null,
+            spmCfg: ctx.getSpmCfg ? ctx.getSpmCfg() : null,
+            spmState: ctx.getSpmState ? ctx.getSpmState() : null,
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
@@ -220,6 +222,17 @@ function startPanel(ctx) {
                 // ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
                 if (ctx.setPalWheelCfg && req.method === 'POST' && path === '/api/palwheel/cfg') {
                     return sendJSON(res, 200, { ok: true, cfg: ctx.setPalWheelCfg(body) });
+                }
+                // 🚀 PHI THUYỀN: cấu hình + ép điểm nổ (ép chỉ ở cổng SUPER)
+                if (ctx.setSpmCfg && req.method === 'POST' && path === '/api/spm/cfg') {
+                    return sendJSON(res, 200, { ok: true, cfg: ctx.setSpmCfg(body) });
+                }
+                if (ctx.spmForceCrash && req.method === 'POST' && path === '/api/spm/force') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    const r = ctx.spmForceCrash(body.m);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    ctx.writeLog('ADMIN', `[PHI THUYỀN] Ép điểm nổ chuyến tới = ${r.forced}x`);
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 // 🛒 SHOP ITEM: lưu toàn bộ danh mục item (id/name/price/max/img)
                 if (ctx.setItemShop && req.method === 'POST' && path === '/api/itemshop/save') {
@@ -816,6 +829,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
       <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
       <button data-tab="stock" onclick="tab('stock')">📈 Cổ phiếu</button>
+      <button data-tab="spm" onclick="tab('spm')">🚀 Phi Thuyền</button>
       <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
       <button data-tab="xs" onclick="tab('xs')">🎰 Xổ Số</button>
       -->
@@ -1109,6 +1123,32 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <div id="tab-spm" class="hidden">
+      <div class="card">
+        <h3>🚀 Phi Thuyền (crash game)</h3>
+        <div class="note">Vòng chơi chung ở web. <b>House edge</b> = % nhà cái ăn dài hạn (RTP = 100−edge). <b>Tốc độ bay</b>: số nhân = e^(tốc độ·giây) — 0.14 thì x1→x2 ~5s, càng cao càng nhanh. <b>Hệ số tối đa</b>: bay hết ăn tới đây (kịch trần). <b>Cược tối đa/người</b>: khoá rủi ro nhà cái (max ăn 1 ván = cược × hệ số tối đa).</div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1"><label>Cửa cược (giây)</label><input id="spBetS" type="number" placeholder="8"></div>
+          <div style="flex:1"><label>Tốc độ bay</label><input id="spGrowth" type="number" step="0.01" placeholder="0.14"></div>
+          <div style="flex:1"><label>House edge (%)</label><input id="spEdge" type="number" step="0.5" placeholder="8"></div>
+          <div style="flex:1"><label>Hệ số tối đa (x)</label><input id="spMaxMult" type="number" placeholder="200"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1"><label>Cược tối thiểu</label><input id="spMinBet" type="number" placeholder="400"></div>
+          <div style="flex:1"><label>Cược tối đa / người</label><input id="spMaxBet" type="number" placeholder="15000"></div>
+          <div style="flex:1"><label>Hiện kết quả nổ (giây)</label><input id="spReveal" type="number" placeholder="4"></div>
+          <label style="display:flex;align-items:center;gap:6px;flex:1"><input type="checkbox" id="spOpen" style="width:auto"> Mở game</label>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn-green" onclick="spSave()">💾 Lưu cấu hình</button></div>
+        <div class="note" id="spNow">-</div>
+        <div id="spSuper" class="epOnly" style="display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+          <div class="note">⚡ <b>NHÀ CÁI CAN THIỆP</b> — ép điểm nổ chuyến TỚI (chuyến đang bay không đổi được). Nhập x thấp (vd 1.10) để bào cả sàn, hoặc cao để thả cho ăn. Chỉ hiện ở cổng SUPER.</div>
+          <div id="spLive" style="font-size:13px;margin:6px 0">-</div>
+          <div class="row"><input id="spForce" type="number" step="0.1" min="1" placeholder="vd 1.10 (nổ sớm)" style="flex:2"><button class="btn-red" onclick="spForceCrash()">⚡ Ép điểm nổ</button></div>
+        </div>
+      </div>
+    </div>
+
     <!-- (tab 📊 THỐNG KÊ đã bỏ 19/08) -->
 
     <!-- NGƯỜI CHƠI -->
@@ -1391,13 +1431,13 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) — trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','mine','stair','bj','stock','user','pal'].includes(saved)) tab(saved);
+  if(['tx','mine','stair','bj','stock','spm','user','pal'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
 
 function tab(t){
-  ['tx','mine','stair','bj','stock','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','mine','stair','bj','stock','spm','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -1789,6 +1829,43 @@ function skSave(){
 // panel tự refresh 3 giây/lần, đổ lại liên tục sẽ đè tay admin đang bấm.
 let pwCfgTicked=false;
 let skWaveTicked=false;
+// 🚀 Phi Thuyền config + can thiệp
+let spTicked=false;
+function spFill(k){
+  if(!k)return;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
+  set('spBetS',k.betS);set('spGrowth',k.growth);set('spEdge',+(k.houseEdge*100).toFixed(2));set('spMaxMult',k.maxMult);
+  set('spMinBet',k.minBet);set('spMaxBet',k.maxBet);set('spReveal',k.crashRevealS);
+  if(!spTicked){spTicked=true;document.getElementById('spOpen').checked=!!k.open;}
+  document.getElementById('spNow').innerHTML='Đang áp dụng: edge <b>'+(k.houseEdge*100).toFixed(1)+'%</b> (RTP '+(100-k.houseEdge*100).toFixed(1)+'%) · cược '+k.minBet.toLocaleString()+'–'+k.maxBet.toLocaleString()+' · tối đa <b>'+k.maxMult+'x</b> · tốc độ '+k.growth+' · cửa '+k.betS+'s · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
+}
+function spLiveRender(){
+  const s=STATE&&STATE.spmState;const box=document.getElementById('spLive');if(!box)return;
+  if(!s){box.textContent='-';return;}
+  const lbl={bet:'⏳ chờ cược',fly:'🚀 đang bay',crash:'💥 nổ'}[s.phase]||s.phase;
+  let t='Chuyến #'+s.roundId+' · '+lbl;
+  if(s.phase==='fly'&&s.liveMult)t+=' <b>'+s.liveMult+'x</b>';
+  if(s.phase==='crash')t+=' <b>'+s.crashPoint+'x</b>';
+  t+=' · '+(s.bets?s.bets.length:0)+' người · tổng cược <b>'+(s.totalStake||0).toLocaleString()+'</b>';
+  if(s.forced)t+=' · ⚡ <b style="color:#ffcf5c">đã ép '+s.forced+'x (chuyến tới)</b>';
+  box.innerHTML=t;
+}
+function spSave(){
+  const o={betS:parseInt(document.getElementById('spBetS').value),growth:parseFloat(document.getElementById('spGrowth').value),
+    houseEdge:(parseFloat(document.getElementById('spEdge').value)||0)/100,maxMult:parseInt(document.getElementById('spMaxMult').value),
+    minBet:parseInt(document.getElementById('spMinBet').value),maxBet:parseInt(document.getElementById('spMaxBet').value),
+    crashRevealS:parseInt(document.getElementById('spReveal').value),open:document.getElementById('spOpen').checked};
+  if(!(o.minBet>=1))return toast('Cược tối thiểu ≥ 1');
+  if(!(o.maxBet>=o.minBet))return toast('Cược tối đa phải ≥ tối thiểu');
+  if(!(o.houseEdge>=0&&o.houseEdge<=0.2))return toast('House edge trong 0–20%');
+  if(!(o.maxMult>=2))return toast('Hệ số tối đa ≥ 2');
+  if(!(o.growth>=0.02&&o.growth<=1))return toast('Tốc độ bay trong 0.02–1');
+  api('/api/spm/cfg',o).then(()=>{toast('💾 Đã lưu Phi Thuyền');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function spForceCrash(){
+  const v=parseFloat(document.getElementById('spForce').value);if(!(v>=1))return toast('Nhập điểm nổ ≥ 1.00');
+  api('/api/spm/force',{m:v}).then(j=>{toast('⚡ Đã ép chuyến tới nổ '+j.forced+'x');document.getElementById('spForce').value='';refresh();}).catch(e=>toast('❌ '+e.message));
+}
 async function skToggle(){
   // 26/08: KHÔNG đoán mò khi chưa có state — trước đây STATE.stock chưa tải xong mà
   // bấm là open tính ra true, nút "Tạm đóng sàn" lại gửi lệnh MỞ sàn (nút coi như hỏng)
@@ -2245,6 +2322,8 @@ async function refresh(){
   if(wh){document.getElementById('whInfo').innerHTML='Vé <b>'+Number(wh.ticket||0).toLocaleString()+'</b> · đang chờ <b>'+wh.waiting+'</b>/'+wh.minPlayers+' người';
   const wmi=document.getElementById('whMin');if(wmi&&!wmi.value&&document.activeElement!==wmi)wmi.value=wh.minPlayers;}
   if(STATE.stock)skFill(STATE.stock);
+  if(STATE.spmCfg)spFill(STATE.spmCfg);
+  spLiveRender();
   if(STATE.palWheelCfg)pwCfgFill(STATE.palWheelCfg);
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();

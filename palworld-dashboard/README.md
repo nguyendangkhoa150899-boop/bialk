@@ -662,6 +662,17 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **28/08 (tối)** — 🚀 **PHI THUYỀN** (crash game kiểu Spaceman, thuần web): vòng chơi CHUNG
+  (chờ cược 8s → bay số nhân tăng dần `m=e^(growth·s)` → nổ → lặp), 1 loop `spmTick` 250ms.
+  Điểm nổ chốt KÍN lúc cất cánh (`spmDrawCrash`, house edge baked-in, kẹp `maxMult`); client
+  vẽ số nhân theo giờ server, RÚT thì SERVER tính hệ số (chống gian lận). Cược trừ trước, rút
+  cộng `cược×hệ số`, nổ = mất; refund `_spmBets` khi restart. Auto-cashout đúng mốc. Cấu hình
+  panel tab RIÊNG (edge/tốc độ/min-max/maxMult/cửa) + **ép điểm nổ** (nhà cái can thiệp ván
+  tới, cổng SUPER). Mặc định edge **6%** · tối đa **200x** · cược **15k** (đều chỉnh panel).
+  💸 **CHUYỂN/RÚT DOGCOIN LÊN WEB** (tab HỒ SƠ mới): chuyển ví↔ví (đã có Lộc lá) + **rút vào
+  game** (`webRutGame`, giveItem DogCoin) + **nạp ra web** (`webNapGame`, takeItem, cộng đúng
+  `took`) — xử lý THẲNG web→dashboard/SFTP (không qua lệnh Discord, đỡ chết bot), dùng chung
+  khoá giao đơn, trần **500k/lần** (`WITHDRAW_MAX_PER_REQUEST`).
 - **28/08** — 🛒 **SHOP ITEM**: mua item game + số lượng → giao thẳng vào túi qua mod (lệnh
   `ITEM`, `pal.giveItem` có sẵn), admin quản danh mục ở panel (id/tên/giá/max/hình), hình ở
   `assets/itemimage/` (assets.js quét subfolder). **StaticItemId lấy từ paldb** (mục "Code")

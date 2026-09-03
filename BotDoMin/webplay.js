@@ -192,6 +192,22 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, balance: r.balance, toName: r.toName });
                 }
+                // ===== 🎮 NẠP/RÚT Dogcoin ↔ game qua web (28/08) =====
+                if (ctx.dogbridge && path === '/api/dogbridge/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.dogbridge.state(userId) });
+                }
+                if (ctx.dogbridge && req.method === 'POST' && path === '/api/dogbridge/rut') {
+                    const body = await readBody(req);
+                    const r = await ctx.dogbridge.rut(userId, body.amount);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                if (ctx.dogbridge && req.method === 'POST' && path === '/api/dogbridge/nap') {
+                    const body = await readBody(req);
+                    const r = await ctx.dogbridge.nap(userId, body.amount);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
 
                 // ===== 📅 ĐIỂM DANH THÁNG + 💉 NGHIỆN =====
                 // Toàn bộ luật + tiền nằm ở index.js (ctx.daily) - dùng chung với
@@ -251,6 +267,21 @@ function startWebPlay(ctx) {
                 if (ctx.itemshop && req.method === 'POST' && path === '/api/itemshop/buy') {
                     const body = await readBody(req);
                     const r = await ctx.itemshop.buy(userId, body.itemId, body.qty);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                // 🚀 Phi Thuyền (crash game, 28/08)
+                if (ctx.spm && path === '/api/spm/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.spm.state(userId) });
+                }
+                if (ctx.spm && req.method === 'POST' && path === '/api/spm/bet') {
+                    const body = await readBody(req);
+                    const r = ctx.spm.bet(userId, body.amount, body.auto);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                if (ctx.spm && req.method === 'POST' && path === '/api/spm/cashout') {
+                    const r = ctx.spm.cashout(userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -677,6 +708,32 @@ const PAGE = [
     '.isItem .isBuyRow{display:flex;align-items:center;gap:8px}',
     '.isItem .isQty{width:72px}',
     '.isItem button{padding:9px 14px;font-weight:700;background:linear-gradient(180deg,#2f8f4f,#256e3e)}',
+    // 🚀 Phi Thuyền (crash game)
+    '#spmStage{position:relative;height:210px;border-radius:14px;margin-top:10px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 120%,#3a2a6e,#191233 70%);transition:background .3s}',
+    '#spmStage.fly{background:radial-gradient(120% 100% at 50% 120%,#25407e,#0e1730 70%)}',
+    '#spmStage.crash{background:radial-gradient(120% 100% at 50% 120%,#7e2a2a,#2a0f0f 70%)}',
+    '#spmMult{font-size:54px;font-weight:900;color:#fff;text-shadow:0 2px 14px #000b;line-height:1}',
+    '#spmStage.crash #spmMult{color:#ff8f8f}',
+    '#spmStage.fly #spmMult{color:#8fffca}',
+    '#spmRocket{font-size:40px;margin-top:6px}',
+    '#spmStage.fly #spmRocket{animation:spmFloat 1s ease-in-out infinite alternate}',
+    '@keyframes spmFloat{from{transform:translateY(5px) rotate(-8deg)}to{transform:translateY(-9px) rotate(7deg)}}',
+    '#spmStage.crash #spmRocket{animation:spmBoom .5s ease-out}',
+    '@keyframes spmBoom{0%{transform:scale(1)}40%{transform:scale(1.6) rotate(40deg)}100%{transform:scale(.6) translateY(40px) rotate(120deg);opacity:.3}}',
+    '#spmMsg{margin-top:8px;font-weight:800;font-size:15px;color:#cdd3e6;letter-spacing:.5px}',
+    '#spmHistBar{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}',
+    '#spmHistBar .h{font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px;background:#1b1f2c;border:1px solid var(--line)}',
+    '#spmBetBox{margin-top:12px}',
+    '.spmP{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:7px 10px;margin-top:6px;font-size:13px}',
+    '.spmP.me{border-color:var(--gold);background:#1d2130}',
+    '.spmP.cashed{border-color:#3ddc84}',
+    '.spmP .nm{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.spmP.lost{border-color:#ff6b6b;opacity:.7}',
+    '.spmChip{flex:1;background:#232735;padding:10px 4px;font-weight:800;font-size:13px;border-radius:8px}',
+    '.spmChip:hover{background:#2c3142}',
+    '#spmFloats{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}',
+    '.spmFloat{position:absolute;bottom:32%;font-size:13px;font-weight:800;color:#8fffca;white-space:nowrap;text-shadow:0 2px 6px #000;animation:spmJump 1.9s ease-out forwards}',
+    '@keyframes spmJump{0%{opacity:0;transform:translateY(14px) scale(.7)}18%{opacity:1;transform:translateY(-8px) scale(1.15)}100%{opacity:0;transform:translateY(-130px) scale(1) rotate(-18deg)}}',
     '#pcModal{position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center;padding:12px}',
     '#pcModal.hidden{display:none}',
     '#pcBox{background:var(--card);border:1px solid var(--gold);border-radius:12px;padding:14px;max-width:460px;width:100%;max-height:92vh;overflow-y:auto}',
@@ -1009,10 +1066,12 @@ const PAGE = [
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
     '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
     '<button id="navStock" onclick="go(\'stock\')">📈 Cổ phiếu</button>',
+    '<button id="navSpm" onclick="go(\'spm\')">🚀 Phi Thuyền</button>',
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
     '<button id="navPal" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
     '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
+    '<button id="navDog" onclick="go(\'dog\')">💸 Chuyển/Rút</button>',
     '</div>',
 
     // ================= TRANG BIG SMALL =================
@@ -1191,6 +1250,30 @@ const PAGE = [
     '<div id="isList" style="margin-top:10px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageShop
+
+    // ================= TRANG 💸 CHUYỂN / RÚT DOGCOIN (28/08) =================
+    '<div id="pageDog" class="hidden">',
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">💸 Chuyển tiền</h2><div class="muted" id="dogTfStat">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Chuyển Dogcoin cho người khác trong sòng (ví ↔ ví). Gõ tên hoặc Discord ID người nhận. 10 giây/lần.</div>',
+    '<input id="dogTfName" list="dogTfList" placeholder="🔎 Tên hoặc Discord ID người nhận" style="width:100%;margin-top:8px" oninput="dogPickTarget()">',
+    '<datalist id="dogTfList"></datalist>',
+    '<input id="dogTfId" type="hidden">',
+    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogTfAmt" type="number" inputmode="numeric" placeholder="Số Dogcoin" style="flex:1"><button class="btn-full" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px" onclick="dogTransfer()">💸 Chuyển</button></div>',
+    '</div>',
+    // Rút vào game
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">🎮 Rút vào game</h2><div class="muted" id="dogLink">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px" id="dogRutInfo">Trừ ví web, Dogcoin rơi thẳng vào <b>túi trong game</b> (phải đang ONLINE). Tối đa <span id="dogMax1">-</span>/lần.</div>',
+    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogRutAmt" type="number" inputmode="numeric" placeholder="Số Dogcoin" style="flex:1"><button class="btn-full" id="dogRutBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#2f8f4f,#256e3e)" onclick="dogRut()">🎮 Rút vào game</button></div>',
+    '</div>',
+    // Nạp từ game
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">💬 Nạp ra web</h2></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Trừ Dogcoin <b>trong túi game</b> (không tính đồ trong hòm), cộng thẳng vào ví web. Phải đang ONLINE. Tối đa <span id="dogMax2">-</span>/lần.</div>',
+    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogNapAmt" type="number" inputmode="numeric" placeholder="Số Dogcoin" style="flex:1"><button class="btn-full" id="dogNapBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#4a7fbf,#356197)" onclick="dogNap()">💬 Nạp ra web</button></div>',
+    '</div>',
+    '</div>', // hết #pageDog
 
     // ================= TRANG ĐIỂM DANH (dashboard người chơi) =================
     // Lịch tháng kiểu app điểm danh: ngày đã nhận vàng + nhãn CHUỖI, hôm nay viền tím,
@@ -1410,6 +1493,34 @@ const PAGE = [
     '<div id="skLog" class="muted" style="font-size:12px">Chưa có lệnh nào.</div>',
     '</div>',
     '</div>', // hết #pageStock
+
+    // ================= TRANG 🚀 PHI THUYỀN (crash game, 28/08) =================
+    // Vòng chơi CHUNG: chờ cược -> bay (số nhân tăng) -> nổ. Client vẽ số nhân theo giờ
+    // server; RÚT thì server tính hệ số. Không rút kịp = mất cược.
+    '<div id="pageSpm" class="hidden">',
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">🚀 Phi Thuyền</h2><div class="muted" id="spmStat">-</div></div>',
+    '<div id="spmHistBar"></div>',
+    '<div id="spmStage"><div id="spmFloats"></div><div id="spmMult">1.00x</div><div id="spmRocket">🚀</div><div id="spmMsg">Chờ chuyến bay...</div></div>',
+    '<div id="spmBetBox">',
+    '<input id="spmAmt" type="number" inputmode="numeric" placeholder="Tiền cược (tối thiểu 400)" style="width:100%">',
+    '<div class="row" id="spmChips" style="gap:6px;margin-top:7px">',
+    '<button class="spmChip" onclick="spmSet(400)">400</button>',
+    '<button class="spmChip" onclick="spmSet(1000)">1K</button>',
+    '<button class="spmChip" onclick="spmSet(5000)">5K</button>',
+    '<button class="spmChip" onclick="spmSet(10000)">10K</button>',
+    '<button class="spmChip" onclick="spmMax()">MAX</button>',
+    '</div>',
+    '<label class="row" style="gap:8px;align-items:center;margin-top:8px;font-size:13px"><input type="checkbox" id="spmAutoOn" style="width:auto;margin:0"> 🤖 Tự rút ở <input id="spmAutoX" type="number" step="0.1" min="1.01" placeholder="2.0" style="width:80px"> x</label>',
+    '<button class="btn-full" id="spmBtn" onclick="spmAction()">✅ ĐẶT CƯỢC</button>',
+    '</div>',
+    '<div class="muted" id="spmInfo" style="font-size:12px;margin-top:6px;text-align:center">-</div>',
+    '</div>',
+    '<div class="card">',
+    '<div class="row"><h3 style="margin:0">👥 Trên chuyến</h3><div class="muted" id="spmPlayStat">-</div></div>',
+    '<div id="spmPlayers" style="margin-top:8px"><div class="muted">Chưa ai lên chuyến.</div></div>',
+    '</div>',
+    '</div>', // hết #pageSpm
 
     // Chat nằm NGOÀI cả ba trang -> mọi game dùng chung một phòng, đổi tab vẫn thấy
     // nguyên cuộc trò chuyện. Đặt TRÊN bảng lịch sử để khỏi phải cuộn xa mới tới ô chat.
@@ -1677,7 +1788,7 @@ const PAGE = [
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
-    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",daily:"profile",pal:"profile",pick:"profile",shop:"profile"};',
+    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile"};',
     'var GRP_LAST={games:"tx",profile:"daily"};',
     'function go(p){',
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
@@ -1687,8 +1798,10 @@ const PAGE = [
     '$("pagePal").classList.toggle("hidden",p!=="pal");',
     '$("pagePick").classList.toggle("hidden",p!=="pick");',
     '$("pageShop").classList.toggle("hidden",p!=="shop");',
+    '$("pageDog").classList.toggle("hidden",p!=="dog");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("pageStock").classList.toggle("hidden",p!=="stock");',
+    '$("pageSpm").classList.toggle("hidden",p!=="spm");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Big Small
     '$("navTx").classList.toggle("on",p==="tx");',
     '$("navMine").classList.toggle("on",p==="mine");',
@@ -1697,16 +1810,18 @@ const PAGE = [
     '$("navPal").classList.toggle("on",p==="pal");',
     '$("navPick").classList.toggle("on",p==="pick");',
     '$("navShop").classList.toggle("on",p==="shop");',
+    '$("navDog").classList.toggle("on",p==="dog");',
     '$("navDaily").classList.toggle("on",p==="daily");',
     '$("navStock").classList.toggle("on",p==="stock");',
+    '$("navSpm").classList.toggle("on",p==="spm");',
     // nhóm trang: tầng 1 chọn nhóm, tầng 2 chỉ hiện trang trong nhóm (nhớ trang cuối mỗi nhóm)
     'var g=PAGE_GRP[p]||"games";GRP_LAST[g]=p;',
     '$("ngProfile").classList.toggle("on",g==="profile");',
     '$("ngGames").classList.toggle("on",g==="games");',
-    '["navTx","navMine","navStair","navWheel","navStock"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
-    '["navDaily","navPal","navPick","navShop"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navTx","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
+    '["navDaily","navPal","navPick","navShop","navDog"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
@@ -2673,6 +2788,67 @@ const PAGE = [
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
     'ISBUSY=true;api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;toast("❌ "+e.message);isSync()})}',
+    '',
+    // ===== 🚀 PHI THUYỀN (crash game, 28/08) — vòng chơi chung, số nhân đồng bộ giờ server =====
+    'var SPM=null,SPMOFF=0,SPMBUSY=false,SPMTIMER=null,SPMANIM=null,SPMRID=0,SPMSEEN={},SPMFRESH=false;',
+    // 🧑‍🚀 hiệu ứng người rút "nhảy ra khỏi phi thuyền": chữ bay lên rồi tan
+    'function spmSpawnFloat(name,mult,win){var box=$("spmFloats");if(!box)return;var d=document.createElement("div");d.className="spmFloat";d.style.left=(12+Math.random()*62)+"%";d.textContent="🧑\\u200d🚀 "+name+" "+mult.toFixed(2)+"x +"+vnd(win);box.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},1850)}',
+    'function spmNow(){return Date.now()+SPMOFF}',   // ước tính giờ server
+    'function spmEnter(){spmSync();if(!SPMANIM)SPMANIM=setInterval(spmAnimTick,80)}',
+    'function spmSync(){api("/api/spm/state").then(function(j){SPM=j;SPMOFF=(j.now||Date.now())-Date.now();if(j.balance!==undefined)setBal(j.balance);spmRender();',
+    'if(SPMTIMER)clearTimeout(SPMTIMER);SPMTIMER=setTimeout(spmSync,j.phase==="fly"?350:1000)}).catch(function(){if(SPMTIMER)clearTimeout(SPMTIMER);SPMTIMER=setTimeout(spmSync,1500)})}',
+    // vẽ số nhân chạy mượt (chỉ khi đang bay); nút RÚT hiện luôn tiền ăn hiện tại
+    'function spmAnimTick(){if(!SPM||SPM.phase!=="fly")return;var el=(spmNow()-SPM.flightStart)/1000;if(el<0)el=0;var m=Math.exp((SPM.growth||0.1)*el);$("spmMult").textContent=m.toFixed(2)+"x";',
+    'if(SPM.me&&!SPM.me.cashed&&!SPMBUSY){$("spmBtn").textContent="💰 RÚT "+m.toFixed(2)+"x  (+"+vnd(Math.floor(SPM.me.amount*m))+")"}}',
+    'function spmHc(x){var c=x>=10?"#c9a2ff":(x>=2?"#8fffca":(x>=1.5?"#ffd76a":"#ff8f8f"));return "<span class=\\"h\\" style=\\"color:"+c+"\\">"+x.toFixed(2)+"x</span>"}',
+    'function spmRender(){if(!SPM)return;var st=$("spmStage");st.classList.toggle("fly",SPM.phase==="fly");st.classList.toggle("crash",SPM.phase==="crash");',
+    'var myname=($("myName")||{}).textContent||"";',
+    '$("spmInfo").innerHTML="Cược "+vnd(SPM.minBet)+" – "+vnd(SPM.maxBet)+"/chuyến · bay hết ăn tới <b>"+SPM.maxMult+"x</b>"+(SPM.open?"":" · <b style=\\"color:var(--red)\\">ĐANG ĐÓNG</b>");',
+    '$("spmHistBar").innerHTML=(SPM.history||[]).map(function(h){return spmHc(h.crash)}).join("")||"<span class=\\"muted\\" style=\\"font-size:11px\\">chưa có chuyến nào</span>";',
+    'if(SPM.phase==="bet"){var left=Math.max(0,Math.ceil((SPM.betEndAt-spmNow())/1000));$("spmStat").textContent="Chuyến #"+SPM.roundId+" · chờ cược "+left+"s";',
+    'if(!SPM.me)$("spmMult").textContent="1.00x";$("spmMsg").textContent=SPM.me?("✅ Đã lên chuyến "+vnd(SPM.me.amount)+" — bay sau "+left+"s"):("🛫 ĐẶT CƯỢC — bay sau "+left+"s")}',
+    'else if(SPM.phase==="fly"){$("spmStat").textContent="Chuyến #"+SPM.roundId+" · ĐANG BAY";$("spmMsg").textContent=(SPM.me&&SPM.me.cashed)?("✅ Đã rút "+SPM.me.cashed.toFixed(2)+"x (+"+vnd(SPM.me.win)+")"):"🚀 ĐANG BAY — cảm thấy đủ rồi thì chạy đi các cháu ơi !!!"}',
+    'else{$("spmStat").textContent="Chuyến #"+SPM.roundId+" · NỔ";$("spmMult").textContent=(SPM.crashPoint||1).toFixed(2)+"x";$("spmMsg").textContent=(SPM.me&&SPM.me.cashed)?("✅ Bạn đã rút "+SPM.me.cashed.toFixed(2)+"x kịp!"):(SPM.me?"💥 NỔ — bạn mất cược":"💥 NỔ ở "+(SPM.crashPoint||1).toFixed(2)+"x")}',
+    // nút + hộp cược theo phase
+    'var b=$("spmBtn"),box=$("spmBetBox");',
+    'if(SPM.phase==="fly"&&SPM.me&&!SPM.me.cashed){box.style.display="";b.disabled=false;b.style.background="linear-gradient(180deg,#ffd76a,#e0ac3f)";b.style.color="#241d0a"}',
+    'else if(SPM.phase==="bet"&&!SPM.me){box.style.display="";b.disabled=!SPM.open;b.style.background="";b.style.color="";b.textContent="✅ ĐẶT CƯỢC"}',
+    'else{box.style.display="none"}',
+    // người trên chuyến
+    'var ps=SPM.players||[];$("spmPlayStat").textContent=ps.length+" người · "+vnd(ps.reduce(function(s,p){return s+p.amount},0))+" cược";',
+    // vòng mới -> reset danh sách đã-bay-hiệu-ứng; SPMFRESH bỏ qua burst khi mới vào giữa vòng
+    'if(SPM.roundId!==SPMRID){SPMRID=SPM.roundId;SPMSEEN={};SPMFRESH=true}',
+    'ps.forEach(function(p){if(p.cashed){var k=p.name+"|"+p.cashed;if(!SPMSEEN[k]){SPMSEEN[k]=1;if(!SPMFRESH&&SPM.phase==="fly")spmSpawnFloat(p.name,p.cashed,p.win)}}});',
+    '$("spmPlayers").innerHTML=ps.length?ps.map(function(p){var lost=(!p.cashed&&SPM.phase==="crash");var cl="spmP"+(p.cashed?" cashed":"")+(lost?" lost":"")+((p.name===myname)?" me":"");',
+    'var res=p.cashed?("<span style=\\"color:#3ddc84;font-weight:800\\">"+p.cashed.toFixed(2)+"x → +"+vnd(p.win)+"</span>"):(lost?"<span style=\\"color:#ff8f8f;font-weight:800\\">💥 −"+vnd(p.amount)+"</span>":(SPM.phase==="fly"?"<span class=\\"muted\\">đang bay</span>":"<span class=\\"muted\\">đã cược</span>"));',
+    'return "<div class=\\""+cl+"\\"><span class=\\"nm\\">"+esc(p.name)+(p.name===myname?" (bạn)":"")+"</span><span>"+vnd(p.amount)+"</span>"+res+"</div>"}).join(""):"<div class=\\"muted\\">Chưa ai lên chuyến.</div>";',
+    'SPMFRESH=false}',
+    'function spmSet(n){$("spmAmt").value=n}',
+    'function spmMax(){if(SPM)$("spmAmt").value=Math.min(SPM.maxBet,BAL)}',
+    'function spmAction(){if(!SPM||SPMBUSY)return;',
+    'if(SPM.phase==="fly"&&SPM.me&&!SPM.me.cashed){SPMBUSY=true;var bb=$("spmBtn");bb.disabled=true;bb.textContent="⏳ Đang rút...";',
+    'api("/api/spm/cashout",{}).then(function(j){SPMBUSY=false;setBal(j.balance);if(SPM&&SPM.me){SPM.me.cashed=j.m;SPM.me.win=j.win}spmRender();toast("💰 Rút "+j.m.toFixed(2)+"x — +"+vnd(j.win)+" Dogcoin!");spmSync()}).catch(function(e){SPMBUSY=false;toast("❌ "+e.message);spmSync()});return}',
+    'if(SPM.phase==="bet"&&!SPM.me){var amt=parseInt($("spmAmt").value)||0;if(amt<SPM.minBet)return toast("Cược tối thiểu "+vnd(SPM.minBet));',
+    'var auto=$("spmAutoOn").checked?(parseFloat($("spmAutoX").value)||0):0;if($("spmAutoOn").checked&&auto<1.01)return toast("Mốc tự rút phải ≥ 1.01x");',
+    'SPMBUSY=true;api("/api/spm/bet",{amount:amt,auto:auto}).then(function(j){SPMBUSY=false;setBal(j.balance);toast("🛫 Lên chuyến "+vnd(amt)+(auto>=1.01?" · tự rút "+auto+"x":""));spmSync()}).catch(function(e){SPMBUSY=false;toast("❌ "+e.message);spmSync()});return}}',
+    '',
+    // ===== 💸 CHUYỂN / RÚT DOGCOIN (28/08) — xử lý THẲNG (web -> dashboard/SFTP hoặc ví DB), không qua Discord =====
+    'var DOGBUSY=false,DOGTARGETS=[];',
+    'function dogSync(){api("/api/dogbridge/state").then(function(j){setBal(j.balance);',
+    '$("dogLink").innerHTML=j.ingameName?("Nhân vật: <b>"+esc(j.ingameName)+"</b>"):"⚠️ Chưa liên kết tên nhân vật - nhắn admin";',
+    '$("dogMax1").textContent=vnd(j.max);$("dogMax2").textContent=vnd(j.max);',
+    'if(!j.ingameName){$("dogRutBtn").disabled=true;$("dogNapBtn").disabled=true}else{$("dogRutBtn").disabled=false;$("dogNapBtn").disabled=false}}).catch(function(e){toast("❌ "+e.message)});',
+    'api("/api/players").then(function(j){DOGTARGETS=j.list||[];var dl=$("dogTfList");dl.innerHTML=DOGTARGETS.map(function(p){return "<option value=\\""+esc(p.name||p.id)+"\\">"+esc(p.id)+"</option>"}).join("");$("dogTfStat").textContent=DOGTARGETS.length+" người có ví"}).catch(function(){})}',
+    // chọn người nhận: gõ tên khớp -> lấy id; hoặc gõ thẳng id 15-20 số
+    'function dogPickTarget(){var v=($("dogTfName").value||"").trim();var found=null;DOGTARGETS.forEach(function(p){if((p.name&&p.name.toLowerCase()===v.toLowerCase())||p.id===v)found=p});',
+    '$("dogTfId").value=found?found.id:(/^\\d{15,20}$/.test(v)?v:"")}',
+    'function dogTransfer(){if(DOGBUSY)return;dogPickTarget();var toId=$("dogTfId").value;if(!/^\\d{15,20}$/.test(toId))return toast("Chọn đúng người nhận (tên trong danh sách hoặc Discord ID)");',
+    'var amt=parseInt($("dogTfAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin");',
+    'DOGBUSY=true;api("/api/transfer",{toId:toId,amount:amt}).then(function(j){DOGBUSY=false;setBal(j.balance);toast("💸 Đã chuyển "+vnd(amt)+" cho "+(j.toName||toId));$("dogTfAmt").value=""}).catch(function(e){DOGBUSY=false;toast("❌ "+e.message)})}',
+    'function dogRut(){if(DOGBUSY)return;var amt=parseInt($("dogRutAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin");',
+    'DOGBUSY=true;var b=$("dogRutBtn");b.disabled=true;b.textContent="⏳ Đang giao...";api("/api/dogbridge/rut",{amount:amt}).then(function(j){DOGBUSY=false;b.textContent="🎮 Rút vào game";setBal(j.balance);toast(j.message||"✅ Đã rút!");$("dogRutAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="🎮 Rút vào game";toast("❌ "+e.message);dogSync()})}',
+    'function dogNap(){if(DOGBUSY)return;var amt=parseInt($("dogNapAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin");',
+    'DOGBUSY=true;var b=$("dogNapBtn");b.disabled=true;b.textContent="⏳ Đang nạp...";api("/api/dogbridge/nap",{amount:amt}).then(function(j){DOGBUSY=false;b.textContent="💬 Nạp ra web";setBal(j.balance);toast(j.message||"✅ Đã nạp!");$("dogNapAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="💬 Nạp ra web";toast("❌ "+e.message);dogSync()})}',
     '',
     // ===== 🎒 RƯƠNG PAL (trang Hồ sơ) =====
     'var PC=null,PCIT=null,PCBUSY=false,PCCDUNTIL=0,PCCDTICKING=false;',

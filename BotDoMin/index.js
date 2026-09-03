@@ -317,6 +317,74 @@ function listTransferTargets() {
     return out;
 }
 
+// 🎮 RÚT Dogcoin vào game (ví Discord -> túi game): trừ ví TRƯỚC, giveItem DogCoin. Hụt
+// CHẮC CHẮN (dashboard chết / player not found) -> hoàn; mơ hồ (timeout) -> giữ + báo admin
+// (chống double-give). Dùng chung khoá giao đơn (deliverBusy) + trần WITHDRAW_MAX như cầu Discord.
+async function webRutGame(userId, amount) {
+    amount = Math.floor(Number(amount) || 0);
+    if (amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
+    if (amount > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin` };
+    const u = getUserData(userId);
+    debtAccrue(userId);
+    if (debtOf(u).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới chuyển vào game được' };
+    if ((u.points || 0) < amount) return { error: `Không đủ Dogcoin (bạn có ${(u.points || 0).toLocaleString()})` };
+    const gameName = (u.ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game — nhắn admin liên kết trước đã' };
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác — chờ vài giây rồi thử lại (chưa trừ đồng nào)' };
+    deliverLock();
+    const on = await requireOnline(gameName);
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) — thử lại sau (chưa trừ đồng nào)` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game — vào game rồi rút nhé (chưa trừ đồng nào)` }; }
+    updatePoints(userId, -amount);
+    logDog('to-game', userId, u.name || userId, -amount, `rút vào game (web, nhân vật ${gameName})`);
+    saveDbNow();
+    let r = null, err = null;
+    try { r = await pal.giveItem(gameName, 'DogCoin', amount); } catch (e) { err = e; }
+    deliverUnlock();
+    if (r && r.ok) {
+        writeLog('ADMIN', `[RÚT WEB] ${u.name || userId} chuyển ${amount} Dogcoin vào game "${gameName}"`);
+        return { ok: true, message: `✅ Đã giao ${amount.toLocaleString()} Dogcoin vào túi ${gameName} trong game!`, balance: getUserData(userId).points || 0 };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
+        updatePoints(userId, amount);
+        logDog('refund', userId, u.name || userId, amount, `hoàn rút web (chưa giao: ${msg})`);
+        saveDbNow();
+        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) — đã hoàn ${amount.toLocaleString()} Dogcoin` };
+    }
+    writeLog('ADMIN', `[RÚT WEB LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${msg} — ví đã trừ, kiểm results.log rồi hoàn tay nếu chưa nhận`);
+    return { error: `⏳ Chưa xác nhận được với game — ví đã trừ, admin sẽ kiểm (không nhận được sẽ hoàn). Đừng rút lại kẻo trùng.`, balance: getUserData(userId).points || 0 };
+}
+// 🎮 NẠP Dogcoin từ game (túi game -> ví Discord): takeItem trước (trừ trong game), rồi cộng
+// ví ĐÚNG số đã lấy được (r.took) — an toàn, không cộng khống, không mất tiền game.
+async function webNapGame(userId, amount) {
+    amount = Math.floor(Number(amount) || 0);
+    if (amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
+    if (amount > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin` };
+    const u = getUserData(userId);
+    const gameName = (u.ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game — nhắn admin liên kết trước đã' };
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác — chờ vài giây rồi thử lại' };
+    deliverLock();
+    const on = await requireOnline(gameName);
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) — thử lại sau` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game — vào game rồi nạp nhé` }; }
+    if (typeof on.count === 'number' && on.count < amount) { deliverUnlock(); return { error: `Túi game chỉ có ${on.count.toLocaleString()} Dogcoin (cần ${amount.toLocaleString()}) — chỉ tính Dogcoin TRONG TÚI, không tính trong hòm` }; }
+    let r = null, err = null;
+    try { r = await pal.takeItem(gameName, 'DogCoin', amount); } catch (e) { err = e; }
+    deliverUnlock();
+    if (r && r.ok && r.took > 0) {
+        updatePoints(userId, r.took);
+        logDog('from-game', userId, u.name || userId, r.took, `nạp từ game (web, nhân vật ${gameName})`);
+        debtBadSweep(userId);
+        saveDbNow();
+        return { ok: true, message: `✅ Đã chuyển ${r.took.toLocaleString()} Dogcoin từ game vào ví!`, balance: getUserData(userId).points || 0 };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không rõ kết quả';
+    writeLog('ADMIN', `[NẠP WEB LỖI] ${u.name || userId} ${amount} từ "${gameName}" | took=${r ? r.took : '?'} | ${msg}`);
+    return { error: `⏳ Chưa nạp được (${msg}) — chưa cộng ví. Thử lại; nếu trong game đã trừ mà ví chưa cộng thì báo admin.` };
+}
+
 // ===== 📒 VAY NỢ — bảng nút trong kênh Discord, KHÔNG dùng lệnh =====
 // Luật chủ server chốt 20/08:
 //  - Vay tối đa loanCfg().dailyMax/ngày (giờ VN), tổng nợ vay không quá loanCfg().cap.
@@ -1111,6 +1179,160 @@ async function itemShopBuy(userId, itemId, qty, username) {
     writeLog('ADMIN', `[SHOP ITEM LỖI] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} | ${msg} — kiểm results.log, chưa nhận thì hoàn tay`);
     return { error: `⏳ Chưa xác nhận được với game — ví đã trừ, admin sẽ kiểm (không nhận được sẽ hoàn). Đừng mua lại kẻo trùng.`, balance: getUserData(userId).points || 0 };
 }
+
+// ===== 🚀 PHI THUYỀN (crash game kiểu Spaceman, 28/08) — thuần web =====
+// Vòng chơi CHUNG: chờ cược -> bay (hệ số nhân tăng dần) -> nổ -> lặp. Server chốt điểm nổ
+// KÍN lúc cất cánh; client tự vẽ số nhân theo thời gian (đồng bộ đồng hồ server gửi kèm);
+// bấm RÚT thì server tính hệ số TẠI thời điểm đó (chống gian lận, không tin client). Trần:
+// cược mỗi người (admin đặt) + hệ số tối đa 2000x (bay hết ăn x2000). Nhà cái ép điểm nổ
+// ở panel SUPER (giống ép Tài Xỉu). Tiền: trừ lúc cược, cộng lúc rút, nổ = mất (đã trừ).
+const SPM_TICK_MS = 250;
+const SPM_MAX_MULT = 5000;   // trần CỨNG tuyệt đối (cfg.maxMult không vượt quá)
+// growth 0.14: x1->x2 ~5s, x2->x3 ~2.9s, x50->x55 ~0.7s (chậm đầu, càng cao càng nhanh — kiểu Spaceman)
+const SPM_CFG_DEF = { betS: 8, crashRevealS: 4, growth: 0.14, houseEdge: 0.06, minBet: 400, maxBet: 15000, maxMult: 200, open: true };
+function spmCfg() {
+    const c = dbCache._spmCfg || {};
+    const num = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+    return {
+        betS: Math.floor(num(c.betS, SPM_CFG_DEF.betS, 3, 60)),                    // cửa cược (giây)
+        crashRevealS: Math.floor(num(c.crashRevealS, SPM_CFG_DEF.crashRevealS, 1, 15)), // hiện kết quả nổ (giây)
+        growth: num(c.growth, SPM_CFG_DEF.growth, 0.02, 1),                        // tốc độ bay (số nhân = e^(growth·giây))
+        houseEdge: num(c.houseEdge, SPM_CFG_DEF.houseEdge, 0, 0.2),                // % lợi nhà cái (xác suất nổ sớm)
+        minBet: Math.floor(num(c.minBet, SPM_CFG_DEF.minBet, 1, 1000000000)),
+        maxBet: Math.floor(num(c.maxBet, SPM_CFG_DEF.maxBet, 1, 1000000000)),      // TRẦN cược mỗi người (khoá rủi ro nhà cái)
+        maxMult: num(c.maxMult, SPM_CFG_DEF.maxMult, 2, SPM_MAX_MULT),             // hệ số TỐI ĐA (bay hết ăn x này)
+        open: c.open === undefined ? true : !!c.open,
+    };
+}
+function setSpmCfg(o) { dbCache._spmCfg = { ...spmCfg(), ...o }; saveDbNow(); return spmCfg(); }
+// điểm nổ ngẫu nhiên: house edge baked in (r nhỏ -> nổ ~1.00x), đuôi nặng, kẹp trần 2000x
+function spmDrawCrash(cfg) {
+    const r = Math.random();
+    const m = (1 - cfg.houseEdge) / (1 - r);
+    return Math.min(cfg.maxMult, Math.max(1.00, Math.floor(m * 100) / 100));
+}
+function spmMultAt(elapsedMs, cfg) { return Math.exp(cfg.growth * elapsedMs / 1000); }
+
+let spmState = { phase: 'bet', roundId: 0, betEndAt: 0, flightStart: 0, crashAt: 0, crashEndAt: 0, crashPoint: 0, forced: null, bets: {}, history: [] };
+
+function spmResetRound() {
+    const cfg = spmCfg();
+    spmState.phase = 'bet';
+    spmState.roundId = (spmState.roundId || 0) + 1;
+    spmState.betEndAt = Date.now() + cfg.betS * 1000;
+    spmState.flightStart = 0; spmState.crashAt = 0; spmState.crashEndAt = 0; spmState.crashPoint = 0;
+    spmState.bets = {};
+}
+function spmStartFlight() {
+    const cfg = spmCfg();
+    spmState.phase = 'fly';
+    spmState.flightStart = Date.now();
+    const cp = Number.isFinite(spmState.forced) ? Math.min(cfg.maxMult, Math.max(1.00, spmState.forced)) : spmDrawCrash(cfg);
+    spmState.forced = null;
+    spmState.crashPoint = cp;
+    const T = Math.log(cp) / cfg.growth;   // số giây bay tới điểm nổ
+    spmState.crashAt = spmState.flightStart + Math.max(0, T) * 1000;
+    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} cất cánh — điểm nổ ${cp}x (kín) · ${Object.keys(spmState.bets).length} người cược`);
+}
+function spmCashoutInternal(uid, m) {
+    const b = spmState.bets[uid];
+    if (!b || b.cashed) return null;
+    const win = Math.floor(b.amount * m);
+    b.cashed = m; b.win = win;
+    updatePoints(uid, win);
+    if (dbCache._spmBets) delete dbCache._spmBets[uid];
+    logDog('bet', uid, b.name || uid, win - b.amount, `Phi Thuyền #${spmState.roundId} rút ${m}x (cược ${b.amount} → +${win})`);
+    return { m, win };
+}
+function spmCrash() {
+    const cfg = spmCfg();
+    spmState.phase = 'crash';
+    spmState.crashEndAt = Date.now() + cfg.crashRevealS * 1000;
+    for (const [uid, b] of Object.entries(spmState.bets)) {
+        if (!b.cashed) logDog('bet', uid, b.name || uid, -b.amount, `Phi Thuyền #${spmState.roundId} NỔ ${spmState.crashPoint}x — thua ${b.amount}`);
+    }
+    spmState.history.unshift({ id: spmState.roundId, crash: spmState.crashPoint, time: new Date().toLocaleString('vi-VN') });
+    if (spmState.history.length > 50) spmState.history.length = 50;
+    dbCache._spmBets = {};   // đã settle hết
+    saveDbNow();
+    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} NỔ ${spmState.crashPoint}x`);
+}
+function spmTick() {
+    const now = Date.now();
+    const cfg = spmCfg();
+    if (spmState.phase === 'bet') {
+        if (now >= spmState.betEndAt) spmStartFlight();
+    } else if (spmState.phase === 'fly') {
+        const m = spmMultAt(now - spmState.flightStart, cfg);
+        for (const [uid, b] of Object.entries(spmState.bets)) {
+            if (!b.cashed && b.auto && m >= b.auto && now < spmState.crashAt) spmCashoutInternal(uid, b.auto);
+        }
+        if (now >= spmState.crashAt) spmCrash();
+    } else if (spmState.phase === 'crash') {
+        if (now >= (spmState.crashEndAt || 0)) spmResetRound();
+    }
+}
+function spmBet(uid, username, amount, auto) {
+    const cfg = spmCfg();
+    if (!cfg.open) return { error: 'Phi Thuyền đang đóng bảo trì' };
+    if (debtOf(getUserData(uid)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới chơi được' };
+    if (spmState.phase !== 'bet') return { error: 'Hết cửa cược rồi — chờ chuyến sau nhé' };
+    if (spmState.bets[uid]) return { error: 'Bạn đã cược chuyến này rồi' };
+    amount = Math.floor(Number(amount) || 0);
+    if (amount < cfg.minBet) return { error: `Cược tối thiểu ${cfg.minBet.toLocaleString()} Dogcoin` };
+    if (amount > cfg.maxBet) return { error: `Cược tối đa ${cfg.maxBet.toLocaleString()} Dogcoin/chuyến` };
+    const u = getUserData(uid);
+    if ((u.points || 0) < amount) return { error: `Không đủ Dogcoin (bạn có ${(u.points || 0).toLocaleString()})` };
+    let autoM = Number(auto);
+    autoM = Number.isFinite(autoM) && autoM >= 1.01 ? Math.floor(autoM * 100) / 100 : null;
+    updatePoints(uid, -amount);
+    spmState.bets[uid] = { amount, name: u.name || uid, auto: autoM, cashed: null, win: 0, at: Date.now() };
+    dbCache._spmBets = dbCache._spmBets || {};
+    dbCache._spmBets[uid] = { amount, roundId: spmState.roundId };
+    logDog('bet', uid, username || uid, -amount, `Phi Thuyền #${spmState.roundId} cược ${amount}${autoM ? ` (auto rút ${autoM}x)` : ''}`);
+    saveDbNow();
+    return { ok: true, balance: getUserData(uid).points || 0 };
+}
+function spmCashout(uid) {
+    if (spmState.phase !== 'fly') return { error: 'Chưa bay hoặc đã nổ rồi' };
+    const now = Date.now();
+    if (now >= spmState.crashAt) return { error: 'Nổ mất rồi!' };
+    const m = Math.floor(spmMultAt(now - spmState.flightStart, spmCfg()) * 100) / 100;
+    const r = spmCashoutInternal(uid, m);
+    if (!r) return { error: 'Bạn không có cược đang bay' };
+    saveDbNow();
+    return { ok: true, m: r.m, win: r.win, balance: getUserData(uid).points || 0 };
+}
+// state cho web: KHÔNG lộ crashPoint khi đang bay (chống xem trộm). now = đồng hồ server.
+function spmWebState(uid) {
+    const cfg = spmCfg();
+    const me = spmState.bets[uid] || null;
+    const players = Object.entries(spmState.bets)
+        .map(([, b]) => ({ name: b.name, amount: b.amount, cashed: b.cashed, win: b.win }))
+        .sort((a, b) => b.amount - a.amount).slice(0, 40);
+    return {
+        phase: spmState.phase, roundId: spmState.roundId, now: Date.now(),
+        betEndAt: spmState.betEndAt, flightStart: spmState.flightStart,
+        growth: cfg.growth, minBet: cfg.minBet, maxBet: cfg.maxBet, open: cfg.open, maxMult: cfg.maxMult,
+        crashPoint: spmState.phase === 'crash' ? spmState.crashPoint : null,   // chỉ lộ khi đã nổ
+        me: me ? { amount: me.amount, auto: me.auto, cashed: me.cashed, win: me.win } : null,
+        players, history: spmState.history.slice(0, 20),
+        balance: getUserData(uid).points || 0,
+    };
+}
+function runSpmLoop() {
+    // refund đơn treo từ trước khi restart (đã trừ mà chưa settle -> hoàn cho công bằng)
+    if (dbCache._spmBets && Object.keys(dbCache._spmBets).length) {
+        for (const [uid, b] of Object.entries(dbCache._spmBets)) {
+            updatePoints(uid, b.amount);
+            logDog('refund', uid, (getUserData(uid).name) || uid, b.amount, `hoàn cược Phi Thuyền (bot restart giữa vòng)`);
+        }
+        dbCache._spmBets = {}; saveDbNow();
+    }
+    spmResetRound();
+    setInterval(spmTick, SPM_TICK_MS);
+}
+
 function setPalWheelCfg(o) {
     dbCache._palWheelCfg = { ...palWheelCfg(), ...o };
     saveDbNow();
@@ -1627,7 +1849,7 @@ function palChestGrant(ownerId, palName) {
     return { ok: true, item };
 }
 
-const WITHDRAW_MAX_PER_REQUEST = 90000; // trần mỗi lần chuyển CẢ 2 CHIỀU (27/08: 20k -> 90k), chặn thiệt hại nếu có lỗi
+const WITHDRAW_MAX_PER_REQUEST = 500000; // trần mỗi lần chuyển CẢ 2 CHIỀU (28/08: 90k -> 500k), chặn thiệt hại nếu có lỗi
 // Chiều game -> Discord KHÔNG giới hạn: admin cầm đồ thật trong tay rồi mới duyệt,
 // không có đường lợi dụng.
 
@@ -3859,6 +4081,7 @@ client.once('ready', async (c) => {
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     // (Bầu Cua đã gỡ hẳn; Xổ số tạm tắt)
     seedItemShopIfEmpty();   // 🛒 seed 6 món mặc định nếu DB chưa có danh mục item
+    runSpmLoop();    // 🚀 Phi Thuyền (crash game) — vòng chơi chung
     runTaiXiuLoop(); // BIG SMALL vẫn chạy
     // runXoSoLoop();
     // resumeXosoAfterRestart().catch(() => {});
@@ -3922,6 +4145,12 @@ client.once('ready', async (c) => {
             webPlayUrl: WEB_PLAY_URL,
             transfer: webTransfer,
             transferTargets: listTransferTargets,
+            // 🎮 nạp/rút Dogcoin ↔ game qua web (28/08)
+            dogbridge: {
+                rut: (uid, amount) => webRutGame(uid, amount),
+                nap: (uid, amount) => webNapGame(uid, amount),
+                state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST }),
+            },
             // 📅 điểm danh tháng + 💉 nghiện — cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
             daily: {
@@ -4024,6 +4253,12 @@ client.once('ready', async (c) => {
                 }),
                 buy: (uid, itemId, qty) => itemShopBuy(uid, itemId, qty, getUserData(uid).name || uid),
             },
+            // 🚀 Phi Thuyền (crash game, 28/08) — vòng chơi chung
+            spm: {
+                state: (uid) => spmWebState(uid),
+                bet: (uid, amount, auto) => spmBet(uid, getUserData(uid).name || uid, amount, auto),
+                cashout: (uid) => spmCashout(uid),
+            },
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -4059,6 +4294,19 @@ client.once('ready', async (c) => {
             setPalLuckRate,   // 🍀 đặt %/quay may mắn riêng từng người (rig cho bạn bè)
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
             setItemShop,
+            // 🚀 Phi Thuyền (crash game): config + xem vòng + ép điểm nổ (SUPER)
+            getSpmCfg: spmCfg,
+            setSpmCfg,
+            getSpmState: () => ({
+                phase: spmState.phase, roundId: spmState.roundId, betEndAt: spmState.betEndAt,
+                flightStart: spmState.flightStart, crashAt: spmState.crashAt, now: Date.now(),
+                crashPoint: spmState.crashPoint, forced: spmState.forced,
+                bets: Object.entries(spmState.bets).map(([id, b]) => ({ id, name: b.name, amount: b.amount, auto: b.auto, cashed: b.cashed, win: b.win })),
+                totalStake: Object.values(spmState.bets).reduce((s, b) => s + b.amount, 0),
+                liveMult: spmState.phase === 'fly' ? Math.floor(spmMultAt(Date.now() - spmState.flightStart, spmCfg()) * 100) / 100 : null,
+                history: spmState.history.slice(0, 15),
+            }),
+            spmForceCrash: (m) => { const v = Number(m); if (!Number.isFinite(v) || v < 1) return { error: 'Điểm nổ phải ≥ 1.00' }; spmState.forced = Math.min(spmCfg().maxMult, v); return { ok: true, forced: spmState.forced, phase: spmState.phase }; },
             palChestOverview,
             palChestGrant,
             palChestResolve,
