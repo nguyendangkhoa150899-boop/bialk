@@ -420,6 +420,14 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Vòng quay: cần ${n} người ready để khởi động`);
                     return sendJSON(res, 200, { ok: true, minPlayers: n });
                 }
+                // 🎫 3 mốc giá vé bánh vòng 1 (04/09)
+                if (path === '/api/wheel/prices') {
+                    if (!ctx.setWheelPrices) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    const r = ctx.setWheelPrices(body.prices);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    ctx.writeLog('ADMIN', `[PANEL] Vòng quay: 3 mốc giá vé ${r.prices.join('/')}`);
+                    return sendJSON(res, 200, { ok: true, prices: r.prices });
+                }
                 // reset lượt quay: cả server quay lại được ngay, khỏi đợi 00:00/12:00
                 if (path === '/api/wheel/reset') {
                     if (!ctx.resetWheelTurns) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
@@ -541,7 +549,7 @@ function startPanel(ctx) {
                 // Chỉnh hạn mức/trần/phí vay (27/08) — lưu _loanCfg, bảng đăng lại mới đổi text
                 if (ctx.setLoanCfg && path === '/api/loan/cfg') {
                     const r = ctx.setLoanCfg(body);
-                    ctx.writeLog('ADMIN', `[PANEL] Cấu hình vay: ngày ${r.dailyMax}, trần ${r.cap}, phí ${r.feePct}%`);
+                    ctx.writeLog('ADMIN', `[PANEL] Cấu hình vay: ngày ${r.dailyMax}, trần ${r.cap}, lãi ${r.feePct}%/ngày`);
                     return sendJSON(res, 200, { ok: true, cfg: r });
                 }
                 // Admin ghi nợ tay: KHÔNG lãi, KHÔNG trần (số âm = giảm nợ đã ghi)
@@ -1024,11 +1032,17 @@ const HTML = `<!DOCTYPE html>
         <div class="muted" id="whInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Số người READY để vòng quay khởi động (1–50)</label>
         <input id="whMin" type="number" placeholder="vd: 3">
+        <label style="margin-top:10px">🎫 3 mốc giá vé bánh vòng 1 (Dogcoin) — tự sắp từ thấp tới cao</label>
+        <div class="row" style="gap:6px">
+          <input id="whP1" type="number" placeholder="8000">
+          <input id="whP2" type="number" placeholder="9000">
+          <input id="whP3" type="number" placeholder="10000">
+        </div>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="whSaveMin()">💾 Lưu</button>
           <button class="btn-red" onclick="whReset()">🔄 Cho quay lại NGAY (reset lượt)</button>
         </div>
-        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung <b>3.000/4.000/5.000</b> (26/08 nâng từ 2k/2.5k/3k) - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, <b>4 khung 6 tiếng</b> - reset <b>00:00, 06:00, 12:00, 18:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
+        <div class="note">HAI vòng: <b>vòng vé</b> (1 mũi tên) quay <b>MIỄN PHÍ</b> ra giá vé chung theo <b>3 mốc chỉnh ở trên</b> (04/09 mặc định 8.000/9.000/10.000) - vé chốt là trừ đúng giá đó mỗi người, ai không đủ bị mời ra (không mất gì, không mất lượt); rồi <b>vòng hệ số</b> (3 mũi tên 🟡🔵🟢 lệch 120°) nhân tiền vé - sàn x1.5 (buff 19/08, kỳ vọng ~x2.33), độc đắc <b>x10</b> bêu tên ở kênh nghiện. Vé chốt xong mà 60s không ai bấm thì tự quay (không giam vé). Mỗi người 1 lượt mỗi khung, <b>4 khung 6 tiếng</b> - reset <b>00:00, 06:00, 12:00, 18:00</b> - nút đỏ bên trên cho cả server quay lại ngay không cần đợi.</div>
       </div>
     </div>
 
@@ -1356,10 +1370,10 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <div style="flex:1"><label>💰 Vay tối đa / ngày</label><input id="loanDaily" type="number" placeholder="vd: 20000"></div>
           <div style="flex:1"><label>📦 Ôm nợ tối đa (trần)</label><input id="loanCap" type="number" placeholder="vd: 60000"></div>
-          <div style="flex:1"><label>💸 Phí vay 1 lần (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
+          <div style="flex:1"><label>🩸 Lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
           <button class="btn-blue" onclick="loanCfgSave()">💾 Lưu</button>
         </div>
-        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Phí vay thu <b>1 LẦN</b> lúc vay (vay 10.000 phí 20% = ghi sổ 12.000), <b>KHÔNG lãi kép ngày</b>. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
+        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Vay KHÔNG mất phí lúc vay, nhưng còn nợ QUA NGÀY là <b>LÃI KÉP mỗi ngày</b> theo % ở trên (lãi 20%: 10.000 qua 1 ngày = 12.000, lì 3 ngày = 17.280). Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
       </div>
 
       <div class="card danger">
@@ -1718,7 +1732,18 @@ function spmBoardStart(){const c=document.getElementById('spmChannel').value.tri
 async function spmBoardStop(){if(!await uiConfirm('Gỡ bảng Phi Thuyền khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/spm/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Phi Thuyền');refresh();});}
 function stairBoardStart(){const c=document.getElementById('stairChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/stairs/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Leo Thang ở #'+j.name);refresh();});}
 async function stairBoardStop(){if(!await uiConfirm('Gỡ bảng Leo Thang khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/stairs/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Leo Thang');refresh();});}
-function whSaveMin(){const n=parseInt(document.getElementById('whMin').value);if(!n||n<1||n>50)return toast('Nhập số 1–50');api('/api/wheel/min',{minPlayers:n}).then(()=>{toast('💾 Vòng quay cần '+n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
+function whSaveMin(){
+  const n=parseInt(document.getElementById('whMin').value);
+  const ps=['whP1','whP2','whP3'].map(id=>parseInt(document.getElementById(id).value));
+  const hasP=ps.every(v=>Number.isFinite(v));
+  if(!n&&!hasP)return toast('Nhập số người hoặc đủ 3 mốc giá vé');
+  if(n&&(n<1||n>50))return toast('Số người 1–50');
+  if(hasP&&!ps.every(v=>v>=100&&v<=1000000))return toast('Mốc giá vé trong 100 – 1.000.000');
+  const steps=[];
+  if(n)steps.push(()=>api('/api/wheel/min',{minPlayers:n}));
+  if(hasP)steps.push(()=>api('/api/wheel/prices',{prices:ps}));
+  steps.reduce((p,f)=>p.then(f),Promise.resolve()).then(()=>{toast('💾 Đã lưu vòng quay');refresh();}).catch(e=>toast('❌ '+(e.message||'Lỗi')));
+}
 async function whReset(){if(!await uiConfirm('Reset lượt vòng quay: CẢ SERVER quay lại được ngay, không đợi 00:00/12:00?','Reset lượt','btn-red'))return;api('/api/wheel/reset',{}).then(j=>{toast('🔄 Đã reset lượt cho '+j.n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
 // ===== 📈 SÀN CỔ PHIẾU =====
 // ===== 📈 SÀN CỔ PHIẾU (panel) =====
@@ -2176,7 +2201,7 @@ function loanCfgSave(){
   const o={dailyMax:parseInt(document.getElementById('loanDaily').value),cap:parseInt(document.getElementById('loanCap').value),feePct:parseFloat(document.getElementById('loanFee').value)};
   if(!(o.dailyMax>=100))return toast('Vay/ngày tối thiểu 100');
   if(!(o.cap>=o.dailyMax))return toast('Trần nợ phải ≥ vay/ngày');
-  if(!(o.feePct>=0&&o.feePct<=1000))return toast('Phí vay 0–1000%');
+  if(!(o.feePct>=0&&o.feePct<=1000))return toast('Lãi ngày 0–1000%');
   api('/api/loan/cfg',o).then(j=>{toast('💾 Đã lưu — nhớ Đăng lại bảng để text đổi');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function loanCfgFill(k){if(!k)return;const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};set('loanDaily',k.dailyMax);set('loanCap',k.cap);set('loanFee',k.feePct);}
@@ -2359,7 +2384,8 @@ async function refresh(){
   // 🎡 vòng quay: đang chờ mấy người / cần mấy người
   const wh=STATE.wheel;
   if(wh){document.getElementById('whInfo').innerHTML='Vé <b>'+Number(wh.ticket||0).toLocaleString()+'</b> · đang chờ <b>'+wh.waiting+'</b>/'+wh.minPlayers+' người';
-  const wmi=document.getElementById('whMin');if(wmi&&!wmi.value&&document.activeElement!==wmi)wmi.value=wh.minPlayers;}
+  const wmi=document.getElementById('whMin');if(wmi&&!wmi.value&&document.activeElement!==wmi)wmi.value=wh.minPlayers;
+  (wh.prices||[]).forEach((v,i)=>{const e=document.getElementById('whP'+(i+1));if(e&&!e.value&&document.activeElement!==e)e.value=v;});}
   if(STATE.stock)skFill(STATE.stock);
   if(STATE.spmCfg)spFill(STATE.spmCfg);
   spLiveRender();

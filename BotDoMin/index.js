@@ -395,9 +395,9 @@ async function webNapGame(userId, amount) {
 //    tiền cho người khác + TRÍCH LOAN_INCOME_CUT thu nhập điểm danh/nghiện/chuỗi
 //    tự trả nợ (trả nợ vay trước vì nó có lãi, dư mới trừ nợ admin).
 //  - Nợ do ADMIN ghi tay (panel tab 👥): KHÔNG lãi, KHÔNG trần — sổ ghi nợ mua đồ.
-// 27/08: VAY NỢ chuyển sang PHÍ 1 LẦN (không còn lãi kép ngày). Vay X -> ghi nợ
-// X×(1+phí%), nhận đủ X. Phí ghi thẳng lúc vay: vay xong trả liền vẫn tốn phí (hết
-// cửa quay vòng chùa). Admin chỉnh dailyMax / cap / feePct ở panel (lưu _loanCfg).
+// 04/09: quay lại LÃI KÉP NGÀY theo yêu cầu chủ server — vay X ghi sổ đúng X (không
+// phí lúc vay), nhưng còn nợ VAY qua ngày (giờ VN) là nợ nhân (1+lãi%) MỖI NGÀY.
+// feePct giờ mang nghĩa "lãi %/ngày" (mặc định 20). Nợ admin ghi tay vẫn KHÔNG lãi.
 const LOAN_INCOME_CUT = 0.5;   // (Phần 2 sẽ xiết mạnh hơn cho nợ xấu)
 const LOAN_CFG_DEF = { dailyMax: 20000, cap: 60000, feePct: 20 };
 function loanCfg() {
@@ -406,7 +406,7 @@ function loanCfg() {
     return {
         dailyMax: Math.floor(num(c.dailyMax, LOAN_CFG_DEF.dailyMax, 100, 100000000)),
         cap: Math.floor(num(c.cap, LOAN_CFG_DEF.cap, 100, 1000000000)),
-        feePct: num(c.feePct, LOAN_CFG_DEF.feePct, 0, 1000),   // phí vay 1 lần (%)
+        feePct: num(c.feePct, LOAN_CFG_DEF.feePct, 0, 1000),   // lãi %/NGÀY khi còn nợ vay (04/09)
     };
 }
 
@@ -432,12 +432,26 @@ function debtTotal(u) { const d = debtOf(u); return (d.loan || 0) + (d.admin || 
 // Cộng lãi dồn tới hôm nay. Gọi TRƯỚC mọi thao tác đọc/đụng tới nợ (lazy) —
 // kèm một vòng quét định kỳ bên dưới để bảng tự cập nhật theo ngày.
 // (Nhãn nợ xấu KHÔNG tự gắn ở đây — admin gắn/gỡ tay trên panel.)
-// 27/08: KHÔNG còn lãi kép ngày — phí đã thu 1 lần lúc vay. Hàm giữ lại chỉ để ghi
-// mốc ngày (lastAccrue) cho tương thích dữ liệu cũ; nợ KHÔNG tự tăng theo thời gian.
+// 04/09: LÃI KÉP NGÀY trở lại — mỗi ngày (giờ VN) còn nợ VAY là nợ nhân (1+lãi%).
+// Nợ admin ghi tay KHÔNG lãi. Gọi lazy ở mọi đường đụng nợ + vòng quét mỗi giờ bên
+// dưới, nên có trốn không bấm gì thì nợ vẫn đẻ đúng ngày.
 function debtAccrue(userId) {
     const u = getUserData(userId);
     const d = debtOf(u);
-    d.lastAccrue = vnDayISO(Date.now());
+    const today = vnDayISO(Date.now());
+    if (!d.lastAccrue) { d.lastAccrue = today; return d; }
+    const gap = vnDayGap(today, d.lastAccrue);
+    if (gap <= 0) return d;
+    d.lastAccrue = today;
+    if ((d.loan || 0) > 0) {
+        const pct = loanCfg().feePct;
+        const before = d.loan;
+        d.loan = Math.round(d.loan * Math.pow(1 + pct / 100, gap));
+        if (d.loan > before) {
+            writeLog('ADMIN', `[VAY NỢ] Lãi ${gap} ngày x${pct}%: ${u.name || userId} ${before.toLocaleString()} -> ${d.loan.toLocaleString()}`);
+            vayAnnounce(`🩸 <@${userId}> ôm nợ qua ${gap} ngày, lãi ${pct}%/ngày đẻ: **${before.toLocaleString()} → ${d.loan.toLocaleString()}** ${DOGCOIN_EMOJI} - trả sớm đi kẻo nợ nuốt ví!`, [userId]);
+        }
+    }
     return d;
 }
 
@@ -479,14 +493,14 @@ function debtBorrow(userId, username, amount) {
         const left = cfg.dailyMax - d.bToday;
         return { error: `Mỗi ngày vay tối đa ${cfg.dailyMax.toLocaleString()} - hôm nay bạn còn vay được ${Math.max(0, left).toLocaleString()}.` };
     }
-    const owed = Math.round(amount * (1 + cfg.feePct / 100));   // nhận amount, ghi nợ amount + phí
+    const owed = amount;   // 04/09: hết phí 1 lần — ghi sổ đúng số vay, lãi đẻ theo ngày ở debtAccrue
     if (d.loan + owed > cfg.cap) {
-        return { error: `Tổng nợ vay tối đa ${cfg.cap.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt (nhớ tính cả phí vay ${cfg.feePct}%).` };
+        return { error: `Tổng nợ vay tối đa ${cfg.cap.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt.` };
     }
     d.loan += owed;
     d.bToday += amount;
     updatePoints(userId, amount);
-    logDog('vay', userId, username, amount, `vay nợ (phí ${cfg.feePct}% ghi 1 lần, ghi nợ ${owed.toLocaleString()})`);
+    logDog('vay', userId, username, amount, `vay nợ (lãi ${cfg.feePct}%/ngày khi chưa trả)`);
     writeLog('ADMIN', `[VAY NỢ] ${username} vay ${amount.toLocaleString()} (ghi nợ ${owed.toLocaleString()}) | nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
     saveDbNow();
     vayBoardRefresh();
@@ -665,13 +679,14 @@ const vayState = { channel: null, message: null };
 function getVayMessageData() {
     const rows = debtList();
     const lc = loanCfg();
-    const feeEx = Math.round(10000 * (1 + lc.feePct / 100));
+    const feeEx1 = Math.round(10000 * (1 + lc.feePct / 100));
+    const feeEx3 = Math.round(10000 * Math.pow(1 + lc.feePct / 100, 3));
     const lines = [
         `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp pal. 🙏`,
         '',
         `**💰 Vay** - bơm tối đa **${lc.dailyMax.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${lc.cap.toLocaleString()}**. ` +
-            `Phí vay **${lc.feePct}%** ghi thẳng vào nợ (vay 10.000 là ghi sổ ${feeEx.toLocaleString()}) - vay xong trả liền cũng tốn phí, đừng hòng quay vòng chùa 😏`,
-        `Phí thu **1 LẦN** lúc vay, KHÔNG đẻ thêm theo ngày - nhưng đã ghi sổ là phải trả đủ. 💀`,
+            `Vay bao nhiêu ghi sổ bấy nhiêu, KHÔNG mất phí lúc vay - trả ngay trong ngày là huề vốn 😏`,
+        `Nhưng ôm nợ QUA NGÀY là **LÃI KÉP ${lc.feePct}%/NGÀY**: 10.000 để 1 ngày thành **${feeEx1.toLocaleString()}**, lì 3 ngày thành **${feeEx3.toLocaleString()}** - nợ đẻ nhanh hơn pal, trả sớm đi. 💀`,
         `Nợ mà chây ì là HỆ THỐNG đóng dấu ⚠️ **NỢ XẤU**: bêu tên ngay bảng này · 🚫 hết cửa vay · ` +
             `🚫 không chuyển tiền · 🚫 không mua/quay pal · 💸 mọi khoản thu (điểm danh, event, ai chuyển cho) bị **xiết thẳng trả nợ**, ví chỉ chừa **1.000**.`,
         `**💳 Trả nợ** tại đây hoặc trên web - trả sạch là nhãn nợ xấu **TỰ BAY**, uy tín sáng lại như chưa từng vay. ✨`,
@@ -3046,8 +3061,17 @@ const WHEEL_SEGMENTS = [1.5, 2.0, 1.8, 2.5, 1.5, 3.0, 1.8, 1.5, 2.0, 5.0, 1.5, 1
 // Vào bàn + quay vòng vé MIỄN PHÍ. Quay ra giá nào thì TRỪ ĐÚNG GIÁ ĐÓ mỗi người
 // để được quay vòng hệ số; ai không đủ tiền lúc vé chốt thì bị mời ra (không mất
 // gì, không mất lượt). Xen kẽ không 2 nan giống kề nhau (kể cả chỗ nối vòng tròn).
-const WHEEL_STAGE1 = [3000, 4000, 5000, 3000, 5000, 4000, 3000, 4000, 5000, 4000, 3000, 5000, 4000, 3000, 5000];   // 26/08: nâng 2k/2.5k/3k -> 3k/4k/5k
-const WHEEL_MAX_TICKET = 5000;   // vé đắt nhất (hiển thị) - fallback hoàn pending
+// 04/09: 3 mốc giá vé cho admin chỉnh sống ở panel (lưu _wheelPrices), mặc định 8k/9k/10k.
+const WHEEL_PRICE_DEF = [8000, 9000, 10000];
+function wheelPrices() {
+    const a = Array.isArray(dbCache._wheelPrices) ? dbCache._wheelPrices.map(Number) : [];
+    return (a.length === 3 && a.every(v => Number.isFinite(v) && v >= 100 && v <= 1000000))
+        ? a.map(v => Math.floor(v)) : WHEEL_PRICE_DEF.slice();
+}
+// Bánh vé 15 ô: giữ nguyên hoa văn xen kẽ của bản cũ, chỉ thay 3 giá trị vào khuôn
+const WHEEL_STAGE1_PAT = [0, 1, 2, 0, 2, 1, 0, 1, 2, 1, 0, 2, 1, 0, 2];
+function wheelStage1() { const p = wheelPrices(); return WHEEL_STAGE1_PAT.map(i => p[i]); }
+function wheelMaxTicket() { return Math.max(...wheelPrices()); }
 
 // status: waiting -> spin1 (bánh vé đang quay ~8s) -> stake (vé đã chốt, chờ bấm
 // vòng hệ số; 60s không ai bấm thì tự quay — không giam vé cả bàn) -> spinning -> waiting
@@ -3095,9 +3119,9 @@ function wheelState(userId) {
     const me = getUserData(userId);
     return {
         me: userId,
-        ticket: WHEEL_MAX_TICKET,          // vé đắt nhất (hiển thị) - vào bàn MIỄN PHÍ, vé trừ sau vòng vé
+        ticket: wheelMaxTicket(),          // vé đắt nhất (hiển thị) - vào bàn MIỄN PHÍ, vé trừ sau vòng vé
         segments: WHEEL_SEGMENTS,
-        segments1: WHEEL_STAGE1,           // bánh vé (vòng 1)
+        segments1: wheelStage1(),          // bánh vé (vòng 1)
         arrows: WHEEL_ARROW_OFFSET,
         minPlayers: wheelMinPlayers(),
         status: wheelRoom.status,
@@ -3187,8 +3211,9 @@ function wheelSpin1(userId) {
     // Chốt ngay tại server; client chỉ diễn hoạt hình. Vòng vé MIỄN PHÍ HOÀN TOÀN —
     // KHÔNG trừ ai, KHÔNG mời ai ra. Tiền chỉ trừ ở vòng hệ số, và vòng đó chỉ quay
     // được khi TẤT CẢ người ngồi đủ tiền vé (xem wheelSpin/wheelShort).
-    const idx = Math.floor(Math.random() * WHEEL_STAGE1.length);
-    const price = WHEEL_STAGE1[idx];
+    const seg1 = wheelStage1();
+    const idx = Math.floor(Math.random() * seg1.length);
+    const price = seg1[idx];
     wheelRoom.price = price;
     wheelRoom.spinSeq++;
     wheelRoom.spin1 = { seq: wheelRoom.spinSeq, idx, price, endsAt: Date.now() + 9000 };
@@ -3241,7 +3266,7 @@ function wheelShort() {
 function wheelDoSpin() {
     if (wheelRoom.status !== 'stake' || !wheelRoom.players.size) return;
     if (wheelShort().length || wheelNoColor().length) return;   // phòng hờ - thiếu vé/màu thì không quay
-    const price = wheelRoom.price || WHEEL_MAX_TICKET;
+    const price = wheelRoom.price || wheelMaxTicket();
     // Chốt kết quả NGAY tại server; client chỉ diễn hoạt hình quay tới nan idx.
     const idx = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
     const key = wheelWindowKey();
@@ -4460,12 +4485,23 @@ client.once('ready', async (c) => {
             startSpmBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startSpmBoard(ch); return ch.name; },
             stopSpmBoard: () => stopSpmBoard(),
             // 🎡 vòng quay: panel chỉnh số người tối thiểu để khởi động
-            getWheel: () => ({ minPlayers: wheelMinPlayers(), waiting: wheelRoom.players.size, ticket: WHEEL_MAX_TICKET }),
+            getWheel: () => ({ minPlayers: wheelMinPlayers(), waiting: wheelRoom.players.size, ticket: wheelMaxTicket(), prices: wheelPrices() }),
             resetWheelTurns: wheelResetTurns,
             setWheelMin: (n) => {
                 dbCache._wheelMinPlayers = n;
                 saveDbNow();
                 // hạ số xuống ≤ số người đang chờ thì nút QUAY sáng ngay cho họ tự bấm
+            },
+            // 04/09: admin tự đặt 3 mốc giá vé của bánh vòng 1 (ván đang chạy không bị
+            // đụng — giá đã chốt nằm trong wheelRoom.price, mốc mới ăn từ ván sau)
+            setWheelPrices: (arr) => {
+                const a = (Array.isArray(arr) ? arr : []).map(v => Math.floor(Number(v)));
+                if (a.length !== 3 || !a.every(v => Number.isFinite(v) && v >= 100 && v <= 1000000))
+                    return { error: 'Cần đúng 3 số trong khoảng 100 - 1.000.000' };
+                a.sort((x, y) => x - y);
+                dbCache._wheelPrices = a;
+                saveDbNow();
+                return { ok: true, prices: a };
             },
             // 📈 sàn cổ phiếu: xem mức bot đang gánh + chỉnh thông số + thả tin
             getStock: () => {
