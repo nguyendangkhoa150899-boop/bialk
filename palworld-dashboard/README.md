@@ -662,6 +662,9 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **05/09** — 🩹 Panel: ô nhập (mức thưởng + trần cược TX) chỉ điền khi còn TRỐNG - hết bị
+  refresh 3s đè số đang gõ; tab 📜 Log thêm 5 nút chọn mục (hiện 1 mục/lúc, F5 nhớ); bỏ 2
+  banner 👁️ view-only (cơ chế chặn vẫn nguyên).
 - **04/09 (tối 3)** — 🚀 **Phi Thuyền hiện AI đặt trước chuyến sau** (`nextPlayers` trong
   `spmWebState`, hộp `#spmNext` riêng "Hân đặt 5.000 cho chuyến sau" - bỏ kiểu nhét vào
   `spmMsg` gây chồng chữ). 📜 **Panel thêm tab Log**: gom Lịch sử Big Small / Dò Mìn /
