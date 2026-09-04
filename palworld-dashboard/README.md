@@ -662,6 +662,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **04/09 (chiều 2)** — 💎 **Shop thêm 9 viên Đá Thức Tỉnh** (`PalAwakening_<Hệ>`,
+  Nước/Sấm/Đất/Cỏ/Lửa/Băng/Rồng/Bóng Tối/Thường — code + tên VN chuẩn paldb) 10k/viên,
+  nhóm tiêu hao. Ghép vào DB đang chạy bằng cờ RIÊNG `_migItemShopAwaken0409` — merge tổng
+  cũ KHÔNG chạy lại (tránh hồi sinh món admin đã xoá, vd Cung Cơ Khí nếu chủ server đã thay
+  bằng Cung Trợ Lực tự thêm). 9 icon webp do chủ server tự bỏ vào `assets/itemimage/`.
 - **04/09 (tối)** — 🎲 **Trần cược Big Small 400k, admin chỉnh được**: `txMaxBet()`
   (dbCache `_txMaxBet`, mặc định 400.000, 0 = tắt) — trần tính TỔNG mọi cửa + mọi lần đặt
   của 1 người trong 1 ván (`txBetTotalOf` + `txCapCheck`, chặn kiểu đặt lắt nhắt lách trần).

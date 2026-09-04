@@ -1204,21 +1204,46 @@ const DEFAULT_ITEM_SHOP = [
     { cat: 'weapon', id: 'SkySubmachineGun_5', name: 'Súng Tiểu Liên Chiến Đấu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkySubmachineGun.webp' },
     { cat: 'weapon', id: 'YakushimaBlade003_5', name: 'Terraprisma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_YakushimaBlade003.webp' },
     { cat: 'weapon', id: 'FishingRod_03_2', name: 'Cần Câu Cao Cấp (Depresso)', price: 70000, max: 99, img: 'T_itemicon_Weapon_FishingRod_6.webp' },
+    // 04/09 (chiều): 9 viên ĐÁ THỨC TỈNH (Awakening Crystal) 10k/viên — code chuẩn paldb
+    // PalAwakening_<Hệ>, tên tiếng Việt theo paldb /vi. Ghép vào DB đang chạy bằng cờ
+    // RIÊNG _migItemShopAwaken0409 (không chạy lại merge tổng).
+    { cat: 'consume', id: 'PalAwakening_Water', name: 'Tinh Thể Thức Tỉnh Hệ Nước', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Water.webp' },
+    { cat: 'consume', id: 'PalAwakening_Electric', name: 'Tinh Thể Thức Tỉnh Hệ Sấm', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Electric.webp' },
+    { cat: 'consume', id: 'PalAwakening_Ground', name: 'Tinh Thể Thức Tỉnh Hệ Đất', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Ground.webp' },
+    { cat: 'consume', id: 'PalAwakening_Grass', name: 'Tinh Thể Thức Tỉnh Hệ Cỏ', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Grass.webp' },
+    { cat: 'consume', id: 'PalAwakening_Fire', name: 'Tinh Thể Thức Tỉnh Hệ Lửa', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Fire.webp' },
+    { cat: 'consume', id: 'PalAwakening_Ice', name: 'Tinh Thể Thức Tỉnh Hệ Băng', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Ice.webp' },
+    { cat: 'consume', id: 'PalAwakening_Dragon', name: 'Tinh Thể Thức Tỉnh Hệ Rồng', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Dragon.webp' },
+    { cat: 'consume', id: 'PalAwakening_Dark', name: 'Tinh Thể Thức Tỉnh Hệ Bóng Tối', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Dark.webp' },
+    { cat: 'consume', id: 'PalAwakening_Neutral', name: 'Tinh Thể Thức Tỉnh Hệ Thường', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Neutral.webp' },
 ];
 function seedItemShopIfEmpty() {
     if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
     // 04/09: shop ĐÃ có danh mục trong DB -> GHÉP THÊM món mặc định còn thiếu (so theo
     // id, không đè món admin đã sửa). Chạy ĐÚNG 1 LẦN theo cờ — sau đợt này admin xoá
-    // món nào thì nó không tự mọc lại; đợt bổ sung sau thì thay tên cờ mới.
-    if (dbCache._migItemShopWeapons0409) return;
-    dbCache._migItemShopWeapons0409 = 1;
-    const cur = itemShopList();
-    const have = new Set(cur.map(x => x.id));
-    const missing = DEFAULT_ITEM_SHOP.filter(x => !have.has(x.id));
-    if (missing.length) {
-        setItemShop(cur.concat(missing));
-        writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${missing.length} món mặc định còn thiếu: ${missing.map(x => x.id).join(', ')}`);
-    } else saveDbNow();
+    // món nào thì nó không tự mọc lại; đợt bổ sung sau thì THÊM CỜ MỚI + lọc đúng nhóm
+    // id mới (đừng chạy lại merge tổng kẻo hồi sinh món admin đã xoá).
+    if (!dbCache._migItemShopWeapons0409) {
+        dbCache._migItemShopWeapons0409 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const missing = DEFAULT_ITEM_SHOP.filter(x => !have.has(x.id));
+        if (missing.length) {
+            setItemShop(cur.concat(missing));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${missing.length} món mặc định còn thiếu: ${missing.map(x => x.id).join(', ')}`);
+        } else saveDbNow();
+    }
+    // 04/09 (chiều): đợt 2 — CHỈ ghép 9 viên đá thức tỉnh (PalAwakening_*), cờ riêng
+    if (!dbCache._migItemShopAwaken0409) {
+        dbCache._migItemShopAwaken0409 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const add = DEFAULT_ITEM_SHOP.filter(x => x.id.startsWith('PalAwakening_') && !have.has(x.id));
+        if (add.length) {
+            setItemShop(cur.concat(add));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} viên đá thức tỉnh: ${add.map(x => x.id).join(', ')}`);
+        } else saveDbNow();
+    }
 }
 // 04/09: điền nhóm (cat) cho món CŨ trong DB còn thiếu — tra theo id trong DEFAULT,
 // lạ thì về 'consume'. Idempotent (chỉ đụng món thiếu cat), chạy mỗi boot, không cần cờ.
