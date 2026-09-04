@@ -549,10 +549,10 @@ function startPanel(ctx) {
                 // Chỉnh hạn mức/trần/phí vay (27/08) — lưu _loanCfg, bảng đăng lại mới đổi text
                 if (ctx.setLoanCfg && path === '/api/loan/cfg') {
                     const r = ctx.setLoanCfg(body);
-                    ctx.writeLog('ADMIN', `[PANEL] Cấu hình vay: ngày ${r.dailyMax}, trần ${r.cap}, lãi ${r.feePct}%/ngày`);
+                    ctx.writeLog('ADMIN', `[PANEL] Cấu hình vay: ngày ${r.dailyMax}, trần ${r.cap}, phí vay + lãi ${r.feePct}%/ngày`);
                     return sendJSON(res, 200, { ok: true, cfg: r });
                 }
-                // Admin ghi nợ tay: KHÔNG lãi, KHÔNG trần (số âm = giảm nợ đã ghi)
+                // Admin ghi nợ tay: KHÔNG trần (số âm = giảm nợ đã ghi); 04/09 nợ này cũng đẻ lãi ngày
                 if (path === '/api/debt/add') {
                     const uid = String(body.userId || '').trim();
                     const amount = parseInt(body.amount);
@@ -1356,7 +1356,7 @@ const HTML = `<!DOCTYPE html>
             <tbody id="playerBody"></tbody>
           </table>
         </div>
-        <div class="note">Cột <b>📒 Nợ</b>: ⚠️ = nợ xấu (quá 1 ngày chưa trả lãi, bị cấm vay thêm). Nút <b>Ghi nợ</b> dùng ô số bên cạnh — cộng vào khoản nợ ADMIN (không lãi, không trần, số âm = giảm); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
+        <div class="note">Cột <b>📒 Nợ</b>: ⚠️ = nợ xấu (quá 1 ngày chưa trả lãi, bị cấm vay thêm). Nút <b>Ghi nợ</b> dùng ô số bên cạnh — cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
       </div>
 
       <div class="card">
@@ -1370,10 +1370,10 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <div style="flex:1"><label>💰 Vay tối đa / ngày</label><input id="loanDaily" type="number" placeholder="vd: 20000"></div>
           <div style="flex:1"><label>📦 Ôm nợ tối đa (trần)</label><input id="loanCap" type="number" placeholder="vd: 60000"></div>
-          <div style="flex:1"><label>🩸 Lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
+          <div style="flex:1"><label>🩸 Phí vay + lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
           <button class="btn-blue" onclick="loanCfgSave()">💾 Lưu</button>
         </div>
-        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. Vay KHÔNG mất phí lúc vay, nhưng còn nợ QUA NGÀY là <b>LÃI KÉP mỗi ngày</b> theo % ở trên (lãi 20%: 10.000 qua 1 ngày = 12.000, lì 3 ngày = 17.280). Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
+        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ — kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
       </div>
 
       <div class="card danger">

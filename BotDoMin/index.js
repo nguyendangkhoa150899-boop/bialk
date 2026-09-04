@@ -438,16 +438,15 @@ async function webNapGame(userId, amount) {
 // ===== 📒 VAY NỢ — bảng nút trong kênh Discord, KHÔNG dùng lệnh =====
 // Luật chủ server chốt 20/08:
 //  - Vay tối đa loanCfg().dailyMax/ngày (giờ VN), tổng nợ vay không quá loanCfg().cap.
-//  - Phí loanCfg().feePct% THU 1 LẦN lúc vay (không lãi kép ngày) — admin chỉnh ở panel.
 //  - ⚠️ NỢ XẤU do ADMIN GẮN TAY trên panel (chủ server chọn thủ công cho đỡ bug):
 //    bị bêu tên trên bảng + CẤM VAY THÊM. Admin gỡ nhãn thì vay lại được.
 //  - Đang nợ (vay hoặc admin ghi): CHẶN chuyển Dogcoin vào game + CHẶN chuyển
 //    tiền cho người khác + TRÍCH LOAN_INCOME_CUT thu nhập điểm danh/nghiện/chuỗi
-//    tự trả nợ (trả nợ vay trước vì nó có lãi, dư mới trừ nợ admin).
-//  - Nợ do ADMIN ghi tay (panel tab 👥): KHÔNG lãi, KHÔNG trần — sổ ghi nợ mua đồ.
-// 04/09: quay lại LÃI KÉP NGÀY theo yêu cầu chủ server — vay X ghi sổ đúng X (không
-// phí lúc vay), nhưng còn nợ VAY qua ngày (giờ VN) là nợ nhân (1+lãi%) MỖI NGÀY.
-// feePct giờ mang nghĩa "lãi %/ngày" (mặc định 20). Nợ admin ghi tay vẫn KHÔNG lãi.
+//    tự trả nợ (trả nợ vay trước, dư mới trừ nợ admin).
+// 04/09 (tối) — chủ server chốt lại lần nữa, cả 2 lớp cùng feePct (mặc định 20):
+//  - PHÍ CỘNG NGAY LÚC VAY: vay X ghi sổ X×(1+phí%) — vay 40.000 là ôm nợ 48.000.
+//  - LÃI KÉP MỖI NGÀY (mốc 00:00 giờ VN): còn nợ qua ngày là CẢ CỤC NỢ nhân (1+lãi%),
+//    TÍNH CẢ NỢ ADMIN ghi tay (trước đây nợ admin không lãi), kèm thông báo réo tên.
 const LOAN_INCOME_CUT = 0.5;   // (Phần 2 sẽ xiết mạnh hơn cho nợ xấu)
 const LOAN_CFG_DEF = { dailyMax: 20000, cap: 60000, feePct: 20 };
 function loanCfg() {
@@ -482,9 +481,9 @@ function debtTotal(u) { const d = debtOf(u); return (d.loan || 0) + (d.admin || 
 // Cộng lãi dồn tới hôm nay. Gọi TRƯỚC mọi thao tác đọc/đụng tới nợ (lazy) —
 // kèm một vòng quét định kỳ bên dưới để bảng tự cập nhật theo ngày.
 // (Nhãn nợ xấu KHÔNG tự gắn ở đây — admin gắn/gỡ tay trên panel.)
-// 04/09: LÃI KÉP NGÀY trở lại — mỗi ngày (giờ VN) còn nợ VAY là nợ nhân (1+lãi%).
-// Nợ admin ghi tay KHÔNG lãi. Gọi lazy ở mọi đường đụng nợ + vòng quét mỗi giờ bên
-// dưới, nên có trốn không bấm gì thì nợ vẫn đẻ đúng ngày.
+// 04/09 (tối): LÃI KÉP MỖI NGÀY (mốc 00:00 giờ VN) trên CẢ CỤC NỢ — vay LẪN admin
+// ghi tay đều đẻ (chủ server chốt). Gọi lazy ở mọi đường đụng nợ + vòng quét mỗi
+// giờ bên dưới, nên có trốn không bấm gì thì nợ vẫn đẻ đúng ngày, kèm thông báo.
 function debtAccrue(userId) {
     const u = getUserData(userId);
     const d = debtOf(u);
@@ -493,20 +492,24 @@ function debtAccrue(userId) {
     const gap = vnDayGap(today, d.lastAccrue);
     if (gap <= 0) return d;
     d.lastAccrue = today;
-    if ((d.loan || 0) > 0) {
+    const before = (d.loan || 0) + (d.admin || 0);
+    if (before > 0) {
         const pct = loanCfg().feePct;
-        const before = d.loan;
-        d.loan = Math.round(d.loan * Math.pow(1 + pct / 100, gap));
-        if (d.loan > before) {
-            writeLog('ADMIN', `[VAY NỢ] Lãi ${gap} ngày x${pct}%: ${u.name || userId} ${before.toLocaleString()} -> ${d.loan.toLocaleString()}`);
-            vayAnnounce(`🩸 <@${userId}> ôm nợ qua ${gap} ngày, lãi ${pct}%/ngày đẻ: **${before.toLocaleString()} → ${d.loan.toLocaleString()}** ${DOGCOIN_EMOJI} - trả sớm đi kẻo nợ nuốt ví!`, [userId]);
+        const k = Math.pow(1 + pct / 100, gap);
+        d.loan = Math.round((d.loan || 0) * k);
+        d.admin = Math.round((d.admin || 0) * k);
+        const after = d.loan + d.admin;
+        if (after > before) {
+            writeLog('ADMIN', `[VAY NỢ] Lãi ${gap} ngày x${pct}% (cả nợ admin): ${u.name || userId} ${before.toLocaleString()} -> ${after.toLocaleString()}`);
+            vayAnnounce(`🩸 <@${userId}> ôm nợ qua ${gap} ngày, lãi ${pct}%/ngày đẻ trên CẢ CỤC NỢ: **${before.toLocaleString()} → ${after.toLocaleString()}** ${DOGCOIN_EMOJI} - trả sớm đi kẻo nợ nuốt ví!`, [userId]);
         }
     }
     return d;
 }
 
-// Trừ một khoản vào sổ nợ (KHÔNG đụng ví — chỗ gọi tự lo tiền). Nợ vay trước (có
-// lãi), dư mới trừ nợ admin. TRẢ SẠCH LÀ NHÃN NỢ XẤU TỰ BAY — admin khỏi gỡ tay.
+// Trừ một khoản vào sổ nợ (KHÔNG đụng ví — chỗ gọi tự lo tiền). Trừ nợ vay trước,
+// dư mới trừ nợ admin (giờ cả 2 đều có lãi — thứ tự giữ nguyên cho quen sổ sách).
+// TRẢ SẠCH LÀ NHÃN NỢ XẤU TỰ BAY — admin khỏi gỡ tay.
 function debtReduce(d, amount) {
     let rest = amount;
     const payLoan = Math.min(d.loan || 0, rest);
@@ -543,18 +546,20 @@ function debtBorrow(userId, username, amount) {
         const left = cfg.dailyMax - d.bToday;
         return { error: `Mỗi ngày vay tối đa ${cfg.dailyMax.toLocaleString()} - hôm nay bạn còn vay được ${Math.max(0, left).toLocaleString()}.` };
     }
-    const owed = amount;   // 04/09: hết phí 1 lần — ghi sổ đúng số vay, lãi đẻ theo ngày ở debtAccrue
+    // 04/09 (tối): PHÍ CỘNG NGAY LÚC VAY — vay 40.000 ghi sổ 48.000, rồi qua ngày
+    // (00:00 VN) chưa trả là cả cục nợ đẻ tiếp feePct%/ngày ở debtAccrue.
+    const owed = Math.round(amount * (1 + cfg.feePct / 100));
     if (d.loan + owed > cfg.cap) {
-        return { error: `Tổng nợ vay tối đa ${cfg.cap.toLocaleString()} - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt.` };
+        return { error: `Tổng nợ vay tối đa ${cfg.cap.toLocaleString()} (tính cả phí ${cfg.feePct}%: vay ${amount.toLocaleString()} là ghi sổ ${owed.toLocaleString()}) - bạn đang nợ vay ${d.loan.toLocaleString()}, vay thêm là vượt.` };
     }
     d.loan += owed;
     d.bToday += amount;
     updatePoints(userId, amount);
-    logDog('vay', userId, username, amount, `vay nợ (lãi ${cfg.feePct}%/ngày khi chưa trả)`);
-    writeLog('ADMIN', `[VAY NỢ] ${username} vay ${amount.toLocaleString()} (ghi nợ ${owed.toLocaleString()}) | nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
+    logDog('vay', userId, username, amount, `vay nợ (ghi sổ ${owed.toLocaleString()} = vay + phí ${cfg.feePct}%; chưa trả thì +${cfg.feePct}%/ngày)`);
+    writeLog('ADMIN', `[VAY NỢ] ${username} vay ${amount.toLocaleString()} (ghi nợ ${owed.toLocaleString()}, phí ${cfg.feePct}%) | nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
     saveDbNow();
     vayBoardRefresh();
-    return { ok: true, amount, debt: debtStatus(userId), balance: u.points || 0 };
+    return { ok: true, amount, owed, debt: debtStatus(userId), balance: u.points || 0 };
 }
 
 // amount bỏ trống/0 = trả hết. Yêu cầu đủ số dư cho đúng khoản định trả.
@@ -635,7 +640,9 @@ function debtStatus(userId) {
         loan: d.loan || 0, admin: d.admin || 0, total: debtTotal(u),
         bad: !!d.bad,
         canBorrowToday: d.bad ? 0 : Math.max(0, Math.min(loanCfg().dailyMax - bToday, loanCfg().cap - (d.loan || 0))),
-        dailyMax: loanCfg().dailyMax, cap: loanCfg().cap, feePct: loanCfg().feePct, cutPct: LOAN_INCOME_CUT * 100,
+        dailyMax: loanCfg().dailyMax, cap: loanCfg().cap, feePct: loanCfg().feePct,
+        ratePct: loanCfg().feePct,   // web + nút "Nợ của tôi" đọc tên này (trước đây thiếu -> in "undefined")
+        cutPct: LOAN_INCOME_CUT * 100,
     };
 }
 
@@ -676,13 +683,16 @@ function debtPayAdmin(userId, username, amount) {
     return { ok: true, paid: want, debt: debtStatus(userId), balance: u.points || 0 };
 }
 
-// Admin ghi nợ tay (panel tab 👥): cộng vào khoản 'admin' — KHÔNG lãi, KHÔNG trần.
-// Số âm = giảm nợ đã ghi. Dùng để ghi "mua pal/lõi trong game còn thiếu tiền".
+// Admin ghi nợ tay (panel tab 👥): cộng vào khoản 'admin' — KHÔNG trần. Số âm =
+// giảm nợ đã ghi. Dùng để ghi "mua pal/lõi trong game còn thiếu tiền".
+// 04/09 (tối): nợ admin giờ CŨNG đẻ lãi ngày như nợ vay (xem debtAccrue) — vì vậy
+// tính lãi phần nợ cũ dồn tới hôm nay TRƯỚC rồi mới cộng khoản mới (khoản mới
+// chỉ bắt đầu chịu lãi từ mốc 00:00 kế tiếp, không bị dính lãi hồi tố).
 function adminDebtAdd(userId, amount) {
     amount = Math.floor(Number(amount) || 0);
     if (!amount) return { error: 'Số không hợp lệ' };
     const u = getUserData(userId);
-    const d = debtOf(u);
+    const d = debtAccrue(userId);
     d.admin = Math.max(0, (d.admin || 0) + amount);
     writeLog('ADMIN', `[VAY NỢ] Panel ghi nợ ${amount > 0 ? '+' : ''}${amount.toLocaleString()} cho ${u.name || userId} | nợ admin ${d.admin.toLocaleString()} + vay ${d.loan.toLocaleString()}`);
     saveDbNow();
@@ -729,14 +739,15 @@ const vayState = { channel: null, message: null };
 function getVayMessageData() {
     const rows = debtList();
     const lc = loanCfg();
-    const feeEx1 = Math.round(10000 * (1 + lc.feePct / 100));
-    const feeEx3 = Math.round(10000 * Math.pow(1 + lc.feePct / 100, 3));
+    const feeEx0 = Math.round(10000 * (1 + lc.feePct / 100));                            // vay 10k -> ghi sổ
+    const feeEx1 = Math.round(feeEx0 * (1 + lc.feePct / 100));                           // để qua 1 ngày
+    const feeEx3 = Math.round(feeEx0 * Math.pow(1 + lc.feePct / 100, 3));                // lì 3 ngày
     const lines = [
         `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp pal. 🙏`,
         '',
-        `**💰 Vay** - bơm tối đa **${lc.dailyMax.toLocaleString()}/ngày** thẳng vào ví, ôm tối đa **${lc.cap.toLocaleString()}**. ` +
-            `Vay bao nhiêu ghi sổ bấy nhiêu, KHÔNG mất phí lúc vay - trả ngay trong ngày là huề vốn 😏`,
-        `Nhưng ôm nợ QUA NGÀY là **LÃI KÉP ${lc.feePct}%/NGÀY**: 10.000 để 1 ngày thành **${feeEx1.toLocaleString()}**, lì 3 ngày thành **${feeEx3.toLocaleString()}** - nợ đẻ nhanh hơn pal, trả sớm đi. 💀`,
+        `**💰 Vay** - bơm tối đa **${lc.dailyMax.toLocaleString()}/ngày** thẳng vào ví, sổ nợ ôm tối đa **${lc.cap.toLocaleString()}**. ` +
+            `Phí **${lc.feePct}%** cộng NGAY lúc vay: vay 10.000 là ghi sổ **${feeEx0.toLocaleString()}** 😏`,
+        `Chưa trả thì cứ qua mốc **00:00** là CẢ CỤC NỢ (kể cả nợ admin ghi) **LÃI KÉP ${lc.feePct}%/NGÀY**: ghi sổ ${feeEx0.toLocaleString()} để 1 ngày thành **${feeEx1.toLocaleString()}**, lì 3 ngày thành **${feeEx3.toLocaleString()}** - nợ đẻ nhanh hơn pal, trả sớm đi. 💀`,
         `Nợ mà chây ì là HỆ THỐNG đóng dấu ⚠️ **NỢ XẤU**: bêu tên ngay bảng này · 🚫 hết cửa vay · ` +
             `🚫 không chuyển tiền · 🚫 không mua/quay pal · 💸 mọi khoản thu (điểm danh, event, ai chuyển cho) bị **xiết thẳng trả nợ**, ví chỉ chừa **1.000**.`,
         `**💳 Trả nợ** tại đây hoặc trên web - trả sạch là nhãn nợ xấu **TỰ BAY**, uy tín sáng lại như chưa từng vay. ✨`,
@@ -1178,9 +1189,36 @@ const DEFAULT_ITEM_SHOP = [
     { id: 'AncientArmorWeight_5', name: 'Áo Giáp Cổ Đại Hạng Nhẹ (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientArmorWeight.webp' },
     { id: 'AncientHelmet_5', name: 'Mũ Cổ Đại (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientHelmet.webp' },
     { id: 'AncientParts2', name: 'Lõi Văn Minh Cổ Đại', price: 500, max: 999, img: 'T_itemicon_Material_AncientParts2.webp' },
+    // 04/09: 12 vũ khí Huyền Thoại — Code chuẩn theo paldb (Legendary = hậu tố _5;
+    // riêng LaserMiningTool chỉ có 1 bản legendary không hậu tố, cần câu Depresso
+    // là FishingRod_03_2 — FishingRod_6 chỉ là TÊN ICON, không phải id). Tên = paldb /vi.
+    { id: 'BeamLauncher_5', name: 'Thiết Bị Phóng Chùm Tia (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_BeamLauncher.webp' },
+    { id: 'ElectricArcAssaultRifle_5', name: 'Súng Trường Plasma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_ElectricArcAssaultRifle.webp' },
+    { id: 'DroneLauncher_5', name: 'Thiết Bị Phóng Drone (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_DroneLauncher.webp' },
+    { id: 'SkyBeamSword_5', name: 'Kiếm Laser (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBeamSword.webp' },
+    { id: 'SkyGrenadeLauncher_5', name: 'Súng Phóng Lựu Chiến Thuật (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyGrenadeLauncher.webp' },
+    { id: 'SkyAssaultRifle_5', name: 'Súng Trường Tấn Công Hạng Nặng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyAssaultRifle.webp' },
+    { id: 'SkyShotgun_5', name: 'Súng Săn Nguyên Mẫu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyShotgun.webp' },
+    { id: 'LaserMiningTool', name: 'Máy Cắt Plasma Đa Năng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_LaserMiningTool.webp' },
+    { id: 'SkyBow_5', name: 'Cung Cơ Khí (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBow.webp' },
+    { id: 'SkySubmachineGun_5', name: 'Súng Tiểu Liên Chiến Đấu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkySubmachineGun.webp' },
+    { id: 'YakushimaBlade003_5', name: 'Terraprisma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_YakushimaBlade003.webp' },
+    { id: 'FishingRod_03_2', name: 'Cần Câu Cao Cấp (Depresso)', price: 70000, max: 99, img: 'T_itemicon_Weapon_FishingRod_6.webp' },
 ];
 function seedItemShopIfEmpty() {
-    if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); }
+    if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
+    // 04/09: shop ĐÃ có danh mục trong DB -> GHÉP THÊM món mặc định còn thiếu (so theo
+    // id, không đè món admin đã sửa). Chạy ĐÚNG 1 LẦN theo cờ — sau đợt này admin xoá
+    // món nào thì nó không tự mọc lại; đợt bổ sung sau thì thay tên cờ mới.
+    if (dbCache._migItemShopWeapons0409) return;
+    dbCache._migItemShopWeapons0409 = 1;
+    const cur = itemShopList();
+    const have = new Set(cur.map(x => x.id));
+    const missing = DEFAULT_ITEM_SHOP.filter(x => !have.has(x.id));
+    if (missing.length) {
+        setItemShop(cur.concat(missing));
+        writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${missing.length} món mặc định còn thiếu: ${missing.map(x => x.id).join(', ')}`);
+    } else saveDbNow();
 }
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
@@ -5649,8 +5687,8 @@ client.on('interactionCreate', async interaction => {
             const st = debtStatus(userId);
             const desc = [
                 `Số dư hiện tại: **${points.toLocaleString()}** ${DOGCOIN_EMOJI}`,
-                ...(st.loan > 0 ? [`📒 Nợ vay: **${st.loan.toLocaleString()}** (đã gồm phí ${st.feePct}% - không đẻ thêm)`] : []),
-                ...(st.admin > 0 ? [`🧾 Nợ admin: **${st.admin.toLocaleString()}** (mua đồ ghi sổ, không lãi)`] : []),
+                ...(st.loan > 0 ? [`📒 Nợ vay: **${st.loan.toLocaleString()}** (đã gồm phí ${st.feePct}%; chưa trả là +${st.feePct}%/ngày)`] : []),
+                ...(st.admin > 0 ? [`🧾 Nợ admin: **${st.admin.toLocaleString()}** (mua đồ ghi sổ - cũng đẻ lãi ${st.feePct}%/ngày)`] : []),
                 ...(st.bad ? [`⚠️ **ĐANG DÍNH NỢ XẤU** - trả sạch là nhãn tự bay`] : []),
             ].join('\n');
             const embed = new EmbedBuilder()
@@ -6063,7 +6101,8 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({
                 content:
                     `💰 Bơm **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI} vào ví thành công - ví hiện có **${r.balance.toLocaleString()}**. Gỡ đẹp nha! 🙏\n` +
-                    `Đang ôm nợ: **${r.debt.total.toLocaleString()}** (đã gồm phí vay ${r.debt.feePct}% thu 1 lần, không đẻ thêm). Trả sớm cho nhẹ nợ, chây ì là ăn dấu ⚠️ nợ xấu!`,
+                    `Ghi sổ **${r.owed.toLocaleString()}** (vay + phí ${r.debt.feePct}%) - đang ôm nợ tổng: **${r.debt.total.toLocaleString()}**.\n` +
+                    `⏰ Qua mỗi mốc **00:00** chưa trả là CẢ CỤC NỢ đẻ thêm **${r.debt.feePct}%** (kể cả nợ admin). Trả sớm cho nhẹ, chây ì là ăn dấu ⚠️ nợ xấu!`,
                 ephemeral: true,
             });
         }
@@ -6345,8 +6384,8 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({
             content:
                 `📄 **Đang ôm nợ: ${st.total.toLocaleString()}** ${DOGCOIN_EMOJI}` +
-                (st.admin > 0 ? `\n• Vay: **${st.loan.toLocaleString()}** · Admin ghi sổ: **${st.admin.toLocaleString()}** (khoản này không đẻ lãi)` : '') +
-                `\n• Lãi kép **${st.ratePct}%/ngày** trên nợ vay - qua 00:00 đêm nay là nó lại đẻ. Hôm nay còn vay được **${st.canBorrowToday.toLocaleString()}**` +
+                (st.admin > 0 ? `\n• Vay: **${st.loan.toLocaleString()}** · Admin ghi sổ: **${st.admin.toLocaleString()}** (giờ khoản này cũng đẻ lãi)` : '') +
+                `\n• Lãi kép **${st.ratePct}%/ngày** trên CẢ CỤC NỢ - qua 00:00 đêm nay là nó lại đẻ. Hôm nay còn vay được **${st.canBorrowToday.toLocaleString()}**` +
                 (st.bad ? `\n• ⚠️ **ĐANG DÍNH NỢ XẤU**: hết cửa vay, không chuyển tiền, không chuyển vào game, điểm danh bị xiết ${st.cutPct}% trả nợ. Trả SẠCH là nhãn tự bay!` : ''),
             ephemeral: true,
         });

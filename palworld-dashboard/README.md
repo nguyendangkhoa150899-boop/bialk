@@ -662,6 +662,18 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **04/09** — 🛒 **Shop thêm 12 vũ khí Huyền Thoại** (11 món 45k + Cần Câu Depresso 70k):
+  Code chuẩn paldb (Legendary = `_5`; ngoại lệ `LaserMiningTool` chỉ có 1 bản legendary
+  không hậu tố, cần câu là `FishingRod_03_2` — `FishingRod_6` chỉ là tên icon), tên tiếng
+  Việt theo paldb /vi. `seedItemShopIfEmpty` nay còn GHÉP THÊM món mặc định thiếu vào shop
+  đã có trong DB (1 lần theo cờ `_migItemShopWeapons0409`, không đè món admin sửa, không
+  hồi sinh món admin xoá). 12 icon webp mới trong `assets/itemimage/`.
+- **04/09** — 📒 **Vay nợ siết lại 2 lớp cùng `feePct` (20%)**: (1) **phí cộng NGAY lúc vay**
+  — vay X ghi sổ X×1.2 (vay 40.000 ôm nợ 48.000, trần sổ tính cả phí); (2) **lãi kép mỗi ngày
+  mốc 00:00 VN trên CẢ CỤC NỢ, KỂ CẢ NỢ ADMIN ghi tay** (trước không lãi) + thông báo réo tên
+  ở kênh bảng vay (vòng quét mỗi giờ sẵn có lo phần tự chạy). `adminDebtAdd` accrue nợ cũ trước
+  khi cộng khoản mới (không lãi hồi tố); fix `ratePct` undefined ở web + nút "Nợ của tôi";
+  đồng bộ text bảng vay/sodu/web/panel. Test vaytest 19/19.
 - **03/09 (chiều)** — ⏳ **Cooldown nhận pal 5 phút → 2 phút** (default `claimCd` 300→120 +
   migration 1 lần `_migClaimCd120` sửa cfg đã lưu trong DB; admin đổi tay sau đó thì giữ) và
   **đồng hồ cooldown ai cũng thấy**: banner sẵn có dựng lại từ server nên F5 vẫn đúng, thêm

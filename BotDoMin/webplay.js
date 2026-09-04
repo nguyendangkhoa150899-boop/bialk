@@ -2646,7 +2646,7 @@ const PAGE = [
     'if(!(j.total>0)){c.style.display="none";return}',
     'c.style.display="";',
     '$("debtBad").textContent=j.bad?"⚠️ NỢ XẤU (hệ thống đóng dấu)":"";',
-    '$("debtInfo").innerHTML="Đang nợ <b>"+j.total.toLocaleString("vi-VN")+"</b> 🐕"+(j.admin>0?" (vay "+j.loan.toLocaleString("vi-VN")+" + admin ghi "+j.admin.toLocaleString("vi-VN")+")":"")+" · lãi kép "+j.ratePct+"%/ngày trên nợ vay";',
+    '$("debtInfo").innerHTML="Đang nợ <b>"+j.total.toLocaleString("vi-VN")+"</b> 🐕"+(j.admin>0?" (vay "+j.loan.toLocaleString("vi-VN")+" + admin ghi "+j.admin.toLocaleString("vi-VN")+")":"")+" · qua 00:00 chưa trả là CẢ CỤC NỢ +"+j.ratePct+"%/ngày (lãi kép, cả nợ admin)";',
     '}).catch(function(){})}',
     'function debtPay(){var b=$("debtPayBtn");if(b.disabled)return;b.disabled=true;',
     'var v=parseInt($("debtAmt").value)||0;',
