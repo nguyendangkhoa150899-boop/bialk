@@ -151,6 +151,7 @@ function startWebPlay(ctx) {
                         live, phase,
                         gameId: tx.gameId,
                         targetTime: tx.targetTime,
+                        txMax: ctx.txMaxBet ? ctx.txMaxBet() : 0,   // 💰 trần cược/người/ván (0 = không giới hạn)
                         // giờ server: client dùng để hiệu chỉnh lệch đồng hồ máy người chơi
                         now: Math.floor(Date.now() / 1000),
                         lockSeconds: LOCK_S,
@@ -422,6 +423,9 @@ function startWebPlay(ctx) {
                     if (!tx.message || tx.status !== 'betting') return sendJSON(res, 400, { ok: false, error: 'Đã khóa sổ - đợi ván sau, giờ là lúc NẶN!' });
                     const me = ctx.getUserData(userId);
                     if ((me.points || 0) < amount) return sendJSON(res, 400, { ok: false, error: 'Không đủ Dogcoin! Số dư: ' + (me.points || 0).toLocaleString() });
+                    // 💰 trần cược/người/ván — luật tính ở index.js (txCapCheck), web chỉ chuyển tiếp
+                    const capErr = ctx.txCapCheck ? ctx.txCapCheck(userId, amount) : null;
+                    if (capErr) return sendJSON(res, 400, { ok: false, error: capErr });
                     ctx.updatePoints(userId, -amount);
                     tx.bets.push({ userId, username: me.name || ('web_' + userId.slice(-4)), choice, amount });
                     tx.needsUpdate = true; // bảng Discord tự vẽ lại trong 1 giây
@@ -1136,6 +1140,7 @@ const PAGE = [
     '<button class="chip" onclick="allIn()">ALL IN</button>',
     '</div>',
     '<button class="bet-btn" id="betBtn" onclick="bet()">ĐẶT CƯỢC</button>',
+    '<div class="muted" id="txCapNote" style="font-size:12px;margin-top:6px;text-align:center"></div>',
     '<div class="mine" id="mine"></div>',
     '</div>',
 
@@ -1749,6 +1754,9 @@ const PAGE = [
     'if(j.now)CLOCK_OFF=j.now-Math.floor(Date.now()/1000);',
     'TT=j.targetTime;LOCKS=j.lockSeconds;var prevPhase=PHASE;PHASE=j.phase;NAN=j.nan;',
     'document.getElementById("betBtn").disabled=(PHASE!=="bet");',
+    // 💰 trần cược/người/ván + đã đặt bao nhiêu ván này (server chặn, đây chỉ là nhắc)
+    'var cpn=document.getElementById("txCapNote");if(cpn){var myTot=0;(j.myBets||[]).forEach(function(b){myTot+=b.amount||0});',
+    'cpn.textContent=(j.txMax>0)?("💰 Trần cược "+j.txMax.toLocaleString("vi-VN")+"/người/ván"+(myTot>0?" · ván này bạn đã đặt "+myTot.toLocaleString("vi-VN"):"")):""}',
     'var stt=document.getElementById("stt");var cap=document.getElementById("stageCap");var paper=document.getElementById("paper");',
     'var hint=document.getElementById("paperHint"),sub=document.getElementById("paperSub");',
     'if(PHASE==="bet"){stt.textContent="🟢 Đang nhận cược";',

@@ -2153,6 +2153,28 @@ let txState = {
 };
 let userTXSelections = {};
 
+// 💰 04/09: TRẦN CƯỢC Tài Xỉu mỗi NGƯỜI mỗi VÁN — cộng dồn MỌI cửa, MỌI lần đặt
+// trong ván (đặt lắt nhắt nhiều lần cũng không lách được). Admin chỉnh ở panel
+// (tab Big Small), lưu dbCache._txMaxBet; 0 = không giới hạn. Mặc định 400.000.
+const TX_MAX_BET_DEF = 400000;
+function txMaxBet() {
+    const n = Number(dbCache._txMaxBet);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : TX_MAX_BET_DEF;
+}
+function txBetTotalOf(userId) {
+    return (txState.bets || []).reduce((s, b) => s + (b.userId === userId ? (b.amount || 0) : 0), 0);
+}
+// Trả chuỗi lỗi nếu đặt thêm `amount` là vượt trần; null = ok. Dùng chung web + Discord.
+function txCapCheck(userId, amount) {
+    const cap = txMaxBet();
+    if (cap <= 0) return null;
+    const cur = txBetTotalOf(userId);
+    if (cur + amount > cap) {
+        return `Trần cược ${cap.toLocaleString()} Dogcoin/người/ván - ván này bạn đã đặt ${cur.toLocaleString()}${cap > cur ? `, còn đặt được ${(cap - cur).toLocaleString()}` : ''}.`;
+    }
+    return null;
+}
+
 // --- CONFIG XỔ SỐ MIỀN BẮC ---
 // Bot tự quay đủ bảng 27 lô như XSMB thật, mỗi giờ 1 kỳ vào ĐÚNG ĐẦU GIỜ (giờ VN),
 // khóa sổ từ phút 50. Đề = 2 số cuối giải Đặc Biệt (1 ăn XS_DE_RATE).
@@ -4427,6 +4449,8 @@ client.once('ready', async (c) => {
             port: parseInt(process.env.PLAY_PORT) || 3002,
             lockSeconds: TX_LOCK_S,
             getTX: () => txState,
+            txMaxBet,        // 💰 trần cược TX/người/ván (hiện trên trang cược)
+            txCapCheck,      // 💰 chặn vượt trần (dùng chung luật với Discord)
             getDb: () => dbCache,
             getUserData,
             updatePoints,
@@ -4569,6 +4593,16 @@ client.once('ready', async (c) => {
             password: process.env.PANEL_PASSWORD || '',
             txChoices: TX_CHOICES,
             txBaoRate: TX_BAO_RATE,
+            // 💰 trần cược TX/người/ván: panel xem + chỉnh (0 = không giới hạn)
+            getTXMaxBet: txMaxBet,
+            setTXMaxBet: (n) => {
+                n = Math.floor(Number(n));
+                if (!Number.isFinite(n) || n < 0 || n > 1000000000) return { error: 'Số không hợp lệ (0 - 1 tỷ, 0 = không giới hạn)' };
+                dbCache._txMaxBet = n;
+                saveDbNow();
+                txState.needsUpdate = true;   // bảng Discord vẽ lại dòng trần cược
+                return { ok: true, maxBet: txMaxBet() };
+            },
             txLockS: TX_LOCK_S,
             diceEmojis: DICE_EMOJIS,
             totalTiles: TOTAL_TILES,
@@ -4876,7 +4910,7 @@ function getTXMessageData(customStatus = null) {
     if (recent.length) {
         desc += `\n\n**🎲 ${recent.length} ván gần đây:**\n` + recent.map(txHistoryLine).join('\n');
     }
-    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${TX_LOCK_S} giây cuối khóa sổ để nặn!`}`;
+    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${TX_LOCK_S} giây cuối khóa sổ để nặn!${txMaxBet() > 0 ? ` · 💰 Trần cược **${txMaxBet().toLocaleString()}**/người/ván` : ''}`}`;
 
     const embed = new EmbedBuilder()
         .setTitle(`🎲 BIG SMALL LIVE - Game #${padId(txState.gameId)}`)
@@ -5933,6 +5967,8 @@ client.on('interactionCreate', async interaction => {
             if (isNaN(amt) || amt <= 0 || getUserData(userId).points < amt) {
                 return interaction.reply({ content: "❌ Số Dogcoin không hợp lệ hoặc bạn không đủ Dogcoin!", ephemeral: true });
             }
+            const txCapErr = txCapCheck(userId, amt);
+            if (txCapErr) return interaction.reply({ content: '❌ ' + txCapErr, ephemeral: true });
 
             updatePoints(userId, -amt);
             txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
@@ -6760,8 +6796,12 @@ client.on('interactionCreate', async interaction => {
         if (!sel) return interaction.reply({ content: "❌ Chọn cửa trước!", ephemeral: true });
 
         let amt = interaction.customId === 'tx_a_all' ? getUserData(userId).points : parseInt(interaction.customId.split('_')[2]);
-        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ Dogcoin để đặt mức này!", ephemeral: true });
-        
+        // 💰 ALL-IN thì tự kẹp về phần trần còn lại của ván (đỡ bực); mức cố định vượt trần thì báo
+        if (interaction.customId === 'tx_a_all' && txMaxBet() > 0) amt = Math.min(amt, Math.max(0, txMaxBet() - txBetTotalOf(userId)));
+        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ Dogcoin để đặt mức này (hoặc đã chạm trần cược ván này)!", ephemeral: true });
+        const txCapErr2 = txCapCheck(userId, amt);
+        if (txCapErr2) return interaction.reply({ content: '❌ ' + txCapErr2, ephemeral: true });
+
         updatePoints(userId, -amt);
         txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
 

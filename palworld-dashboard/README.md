@@ -662,6 +662,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **04/09 (tối)** — 🎲 **Trần cược Big Small 400k, admin chỉnh được**: `txMaxBet()`
+  (dbCache `_txMaxBet`, mặc định 400.000, 0 = tắt) — trần tính TỔNG mọi cửa + mọi lần đặt
+  của 1 người trong 1 ván (`txBetTotalOf` + `txCapCheck`, chặn kiểu đặt lắt nhắt lách trần).
+  Áp cả 3 cửa đặt: web `/api/bet`, Discord modal, nút cược nhanh (ALL IN tự kẹp về phần trần
+  còn lại). Panel tab Big Small có ô "Trần cược/người/ván" (`/api/tx/maxbet`); trần hiện trên
+  bảng Discord + ghi chú dưới nút cược web (kèm "ván này bạn đã đặt X").
 - **04/09 (tối)** — 🛒 **Shop chia 3 mục + admin up hình từ panel**: item có field `cat`
   (weapon/armor/consume, panel chọn bằng select, sai giá trị thì rơi về consume), web render
   theo mục 🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao (mục trống tự ẩn); `backfillItemShopCat` điền

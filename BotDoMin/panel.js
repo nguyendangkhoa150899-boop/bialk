@@ -112,6 +112,7 @@ function startPanel(ctx) {
                     bets: bets.slice(-40).map(b => ({ name: b.username || b.userId, choice: b.choice, amount: b.amount || 0 })),
                     secsToBet,
                     baoRate: ctx.txBaoRate || 30,
+                    maxBet: ctx.getTXMaxBet ? ctx.getTXMaxBet() : 0,   // 💰 trần cược/người/ván
                 };
             })(),
             forcedMines: ctx.getForcedMines(),
@@ -350,6 +351,14 @@ function startPanel(ctx) {
                         ctx.writeLog('ADMIN', `[PANEL] Khởi tạo Big Small tại #${name}`);
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
+                }
+                // 💰 trần cược TX mỗi người mỗi ván (0 = không giới hạn)
+                if (path === '/api/tx/maxbet') {
+                    if (!ctx.setTXMaxBet) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setTXMaxBet(body.maxBet);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    ctx.writeLog('ADMIN', `[PANEL] Trần cược Big Small: ${r.maxBet.toLocaleString()}/người/ván${r.maxBet ? '' : ' (KHÔNG giới hạn)'}`);
+                    return sendJSON(res, 200, { ok: true, maxBet: r.maxBet });
                 }
                 if (path === '/api/tx/stop') {
                     ctx.stopTX();
@@ -927,6 +936,11 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="chatDelete('txChannel')">🧹 Xóa chat bot</button>
         </div>
         <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> (Cài đặt Discord → Advanced) → chuột phải kênh → <b>Copy Channel ID</b>. "Bật" sẽ tạo bàn mới ngay trong kênh đó.</div>
+        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="flex:1"><label>💰 Trần cược / người / ván (0 = không giới hạn)</label><input id="txMaxBet" type="number" min="0" placeholder="vd: 400000"></div>
+          <button class="btn-green" onclick="txSaveMaxBet()">💾 Lưu trần cược</button>
+        </div>
+        <div class="note">Tính TỔNG mọi cửa + mọi lần đặt của 1 người trong 1 ván (đặt lắt nhắt nhiều lần cũng không lách được). Áp cả web lẫn Discord; nút ALL IN tự kẹp về phần trần còn lại. Trần hiện lên bảng Discord + trang web.</div>
       </div>
       <div class="card">
         <h2>🎲 Big Small</h2>
@@ -1723,6 +1737,7 @@ function renderTxBetsLive(){
 
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
+function txSaveMaxBet(){const n=parseInt(document.getElementById('txMaxBet').value);if(!(n>=0))return toast('Nhập số ≥ 0 (0 = không giới hạn)');api('/api/tx/maxbet',{maxBet:n}).then(j=>{toast('💰 Trần cược Big Small: '+(j.maxBet?j.maxBet.toLocaleString('vi-VN')+'/người/ván':'KHÔNG giới hạn'));refresh();}).catch(e=>toast('❌ '+e.message));}
 async function txStop(){if(!await uiConfirm('Tắt bàn Big Small?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Big Small');refresh();});}
 async function potAdd(key){
   const el=document.getElementById('potAmt_'+key);
@@ -2359,6 +2374,7 @@ async function refresh(){
   document.getElementById('statusLine').textContent='TX #'+padId(STATE.tx.gameId)+' • '+STATE.players.length+' người chơi';
   // prefill channel id (chỉ khi ô đang trống, không đè lúc admin đang gõ)
   const txC=document.getElementById('txChannel'); if(txC&&!txC.value&&STATE.tx.channelId) txC.value=STATE.tx.channelId;
+  const txM=document.getElementById('txMaxBet'); if(txM&&document.activeElement!==txM&&STATE.tx.maxBet!==undefined) txM.value=STATE.tx.maxBet;
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
