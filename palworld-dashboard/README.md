@@ -662,6 +662,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **04/09 (tối)** — 🛒 **Shop chia 3 mục + admin up hình từ panel**: item có field `cat`
+  (weapon/armor/consume, panel chọn bằng select, sai giá trị thì rơi về consume), web render
+  theo mục 🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao (mục trống tự ẩn); `backfillItemShopCat` điền
+  nhóm cho món cũ trong DB mỗi boot (idempotent, tra id trong DEFAULT). 🖼️ **Up hình không
+  cần code/deploy**: nút 📷 Up ở từng dòng panel → POST `/api/itemshop/upload` (base64, trần
+  600KB, chỉ ảnh, sanitize tên) → `uploadItemImage` ghi `assets/itemimage/` + `ASSETS.add()`
+  nạp RAM phục vụ NGAY không restart. Lưu ý: hình up kiểu này nằm NGOÀI git (git pull không
+  đụng, nhưng deploy-lại-từ-đầu sẽ mất — thỉnh thoảng gom về repo).
 - **04/09** — 🛒 **Shop thêm 12 vũ khí Huyền Thoại** (11 món 45k + Cần Câu Depresso 70k):
   Code chuẩn paldb (Legendary = `_5`; ngoại lệ `LaserMiningTool` chỉ có 1 bản legendary
   không hậu tố, cần câu là `FishingRod_03_2` — `FishingRod_6` chỉ là tên icon), tên tiếng

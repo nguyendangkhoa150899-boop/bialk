@@ -235,11 +235,17 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PHI THUYỀN] Ép điểm nổ chuyến tới = ${r.forced}x`);
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
-                // 🛒 SHOP ITEM: lưu toàn bộ danh mục item (id/name/price/max/img)
+                // 🛒 SHOP ITEM: lưu toàn bộ danh mục item (id/name/price/max/img/cat)
                 if (ctx.setItemShop && req.method === 'POST' && path === '/api/itemshop/save') {
                     const list = ctx.setItemShop(Array.isArray(body.items) ? body.items : []);
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Lưu ${list.length} món`);
                     return sendJSON(res, 200, { ok: true, items: list });
+                }
+                // 🖼️ 04/09: up hình item thẳng từ panel (base64) — phục vụ ngay, khỏi restart
+                if (ctx.uploadItemImage && req.method === 'POST' && path === '/api/itemshop/upload') {
+                    const r = ctx.uploadItemImage(body.name, body.data);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, file: r.file });
                 }
                 // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) — '' = xoá về mặc định
                 if (ctx.setPalLuckRate && req.method === 'POST' && path === '/api/palwheel/luckrate') {
@@ -1309,10 +1315,10 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card">
         <h3>🛒 Shop Item — item giao thẳng vào game</h3>
-        <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, vd Training Manual XL). <b>Hình</b> = tên file trong <code>assets/itemimage/</code> (thả file + restart bot; trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
+        <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc — KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong — ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
-            <thead><tr><th>StaticItemId</th><th>Tên hiện</th><th>Giá/cái</th><th>Max/lần</th><th>Hình (file)</th><th></th></tr></thead>
+            <thead><tr><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Hình (file)</th><th></th></tr></thead>
             <tbody id="itemShopBody"></tbody>
           </table>
         </div>
@@ -2055,22 +2061,43 @@ function itemShopAddRow(it){
   var tr=document.createElement('tr');
   tr.innerHTML='<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
+    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option></select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
     +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
-    +'<td><input class="mini-in isf-img" style="width:170px" placeholder="vd: training_manual_xl.png"></td>'
+    +'<td style="white-space:nowrap"><input class="mini-in isf-img" style="width:150px" placeholder="tên file hình">'
+    +'<input type="file" class="isf-file" accept=".png,.jpg,.jpeg,.gif,.webp" style="display:none" onchange="itemShopUpload(this)">'
+    +'<button class="mini" style="margin-left:4px" onclick="this.previousElementSibling.click()">📷 Up</button></td>'
     +'<td><button class="mini btn-red" onclick="itemShopDelRow(this)">🗑️</button></td>';
   body.appendChild(tr);
   tr.querySelector('.isf-id').value=it.id||'';
   tr.querySelector('.isf-name').value=it.name||'';
+  tr.querySelector('.isf-cat').value=(it.cat==='weapon'||it.cat==='armor')?it.cat:'consume';
   tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
   tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
   tr.querySelector('.isf-img').value=it.img||'';
+}
+// 🖼️ up hình item: đọc file -> base64 -> POST, server ghi assets/itemimage/ + phục vụ ngay
+function itemShopUpload(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  if(f.size>600*1024){toast('❌ Ảnh quá 600KB - nén nhỏ lại (icon ~50KB là đẹp)');inp.value='';return;}
+  var tr=inp.closest('tr');
+  var rd=new FileReader();
+  rd.onload=function(){
+    var b64=String(rd.result).split(',')[1]||'';
+    api('/api/itemshop/upload',{name:f.name,data:b64}).then(function(j){
+      if(tr&&tr.querySelector('.isf-img'))tr.querySelector('.isf-img').value=j.file;
+      toast('🖼️ Đã up '+j.file+' - nhớ bấm 💾 Lưu shop');
+    }).catch(function(e){toast('❌ '+e.message)});
+    inp.value='';
+  };
+  rd.readAsDataURL(f);
 }
 function itemShopDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();}
 function itemShopSave(){
   var items=[].slice.call(document.querySelectorAll('#itemShopBody tr')).map(function(tr){
     return {id:tr.querySelector('.isf-id').value.trim(),
       name:tr.querySelector('.isf-name').value.trim(),
+      cat:tr.querySelector('.isf-cat').value,
       price:parseInt(tr.querySelector('.isf-price').value)||0,
       max:parseInt(tr.querySelector('.isf-max').value)||1,
       img:tr.querySelector('.isf-img').value.trim()};

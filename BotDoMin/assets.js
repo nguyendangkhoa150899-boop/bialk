@@ -51,4 +51,15 @@ function serve(req, res, urlPath) {
     return true;
 }
 
-module.exports = { serve, names, count: names.length, has: (u) => !!store[u] };
+// 04/09: cho bot THÊM file lúc đang chạy (panel up hình item) — chỗ gọi tự ghi đĩa,
+// hàm này chỉ đăng ký vào RAM để phục vụ NGAY không cần restart. Chỉ nhận đuôi trong MIME.
+function add(relPath, buf) {
+    const type = MIME[path.extname(relPath).toLowerCase()];
+    if (!type || !Buffer.isBuffer(buf)) return false;
+    const key = '/' + relPath;
+    if (!store[key]) names.push(relPath);
+    store[key] = { buf, type };
+    return true;
+}
+
+module.exports = { serve, names, count: names.length, has: (u) => !!store[u], add };

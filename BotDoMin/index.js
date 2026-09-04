@@ -1183,27 +1183,27 @@ function palWheelCfg() {
 // xoá sau thì thôi (kể cả xoá sạch thành [] cũng KHÔNG seed lại — chỉ seed khi undefined).
 // StaticItemId tra từ paldb (mục "Code"); hình ở assets/itemimage/.
 const DEFAULT_ITEM_SHOP = [
-    { id: 'ExpBoost_04', name: 'Sách Huấn Luyện (XL)', price: 50, max: 999, img: 'T_itemicon_Consume_ExpBoost_04.webp' },
-    { id: 'AffectionFruit_01', name: 'Đào Tâm Giao', price: 2500, max: 999, img: 'T_itemicon_Consume_AffectionFruit_01.webp' },
-    { id: 'LvUP_01', name: 'Tinh Thể Bồi Dưỡng', price: 1300, max: 999, img: 'T_itemicon_Consume_LvUP_01.webp' },
-    { id: 'AncientArmorWeight_5', name: 'Áo Giáp Cổ Đại Hạng Nhẹ (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientArmorWeight.webp' },
-    { id: 'AncientHelmet_5', name: 'Mũ Cổ Đại (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientHelmet.webp' },
-    { id: 'AncientParts2', name: 'Lõi Văn Minh Cổ Đại', price: 500, max: 999, img: 'T_itemicon_Material_AncientParts2.webp' },
+    { cat: 'consume', id: 'ExpBoost_04', name: 'Sách Huấn Luyện (XL)', price: 50, max: 999, img: 'T_itemicon_Consume_ExpBoost_04.webp' },
+    { cat: 'consume', id: 'AffectionFruit_01', name: 'Đào Tâm Giao', price: 2500, max: 999, img: 'T_itemicon_Consume_AffectionFruit_01.webp' },
+    { cat: 'consume', id: 'LvUP_01', name: 'Tinh Thể Bồi Dưỡng', price: 1300, max: 999, img: 'T_itemicon_Consume_LvUP_01.webp' },
+    { cat: 'armor', id: 'AncientArmorWeight_5', name: 'Áo Giáp Cổ Đại Hạng Nhẹ (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientArmorWeight.webp' },
+    { cat: 'armor', id: 'AncientHelmet_5', name: 'Mũ Cổ Đại (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientHelmet.webp' },
+    { cat: 'consume', id: 'AncientParts2', name: 'Lõi Văn Minh Cổ Đại', price: 500, max: 999, img: 'T_itemicon_Material_AncientParts2.webp' },
     // 04/09: 12 vũ khí Huyền Thoại — Code chuẩn theo paldb (Legendary = hậu tố _5;
     // riêng LaserMiningTool chỉ có 1 bản legendary không hậu tố, cần câu Depresso
     // là FishingRod_03_2 — FishingRod_6 chỉ là TÊN ICON, không phải id). Tên = paldb /vi.
-    { id: 'BeamLauncher_5', name: 'Thiết Bị Phóng Chùm Tia (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_BeamLauncher.webp' },
-    { id: 'ElectricArcAssaultRifle_5', name: 'Súng Trường Plasma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_ElectricArcAssaultRifle.webp' },
-    { id: 'DroneLauncher_5', name: 'Thiết Bị Phóng Drone (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_DroneLauncher.webp' },
-    { id: 'SkyBeamSword_5', name: 'Kiếm Laser (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBeamSword.webp' },
-    { id: 'SkyGrenadeLauncher_5', name: 'Súng Phóng Lựu Chiến Thuật (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyGrenadeLauncher.webp' },
-    { id: 'SkyAssaultRifle_5', name: 'Súng Trường Tấn Công Hạng Nặng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyAssaultRifle.webp' },
-    { id: 'SkyShotgun_5', name: 'Súng Săn Nguyên Mẫu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyShotgun.webp' },
-    { id: 'LaserMiningTool', name: 'Máy Cắt Plasma Đa Năng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_LaserMiningTool.webp' },
-    { id: 'SkyBow_5', name: 'Cung Cơ Khí (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBow.webp' },
-    { id: 'SkySubmachineGun_5', name: 'Súng Tiểu Liên Chiến Đấu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkySubmachineGun.webp' },
-    { id: 'YakushimaBlade003_5', name: 'Terraprisma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_YakushimaBlade003.webp' },
-    { id: 'FishingRod_03_2', name: 'Cần Câu Cao Cấp (Depresso)', price: 70000, max: 99, img: 'T_itemicon_Weapon_FishingRod_6.webp' },
+    { cat: 'weapon', id: 'BeamLauncher_5', name: 'Thiết Bị Phóng Chùm Tia (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_BeamLauncher.webp' },
+    { cat: 'weapon', id: 'ElectricArcAssaultRifle_5', name: 'Súng Trường Plasma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_ElectricArcAssaultRifle.webp' },
+    { cat: 'weapon', id: 'DroneLauncher_5', name: 'Thiết Bị Phóng Drone (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_DroneLauncher.webp' },
+    { cat: 'weapon', id: 'SkyBeamSword_5', name: 'Kiếm Laser (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBeamSword.webp' },
+    { cat: 'weapon', id: 'SkyGrenadeLauncher_5', name: 'Súng Phóng Lựu Chiến Thuật (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyGrenadeLauncher.webp' },
+    { cat: 'weapon', id: 'SkyAssaultRifle_5', name: 'Súng Trường Tấn Công Hạng Nặng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyAssaultRifle.webp' },
+    { cat: 'weapon', id: 'SkyShotgun_5', name: 'Súng Săn Nguyên Mẫu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyShotgun.webp' },
+    { cat: 'weapon', id: 'LaserMiningTool', name: 'Máy Cắt Plasma Đa Năng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_LaserMiningTool.webp' },
+    { cat: 'weapon', id: 'SkyBow_5', name: 'Cung Cơ Khí (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBow.webp' },
+    { cat: 'weapon', id: 'SkySubmachineGun_5', name: 'Súng Tiểu Liên Chiến Đấu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkySubmachineGun.webp' },
+    { cat: 'weapon', id: 'YakushimaBlade003_5', name: 'Terraprisma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_YakushimaBlade003.webp' },
+    { cat: 'weapon', id: 'FishingRod_03_2', name: 'Cần Câu Cao Cấp (Depresso)', price: 70000, max: 99, img: 'T_itemicon_Weapon_FishingRod_6.webp' },
 ];
 function seedItemShopIfEmpty() {
     if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
@@ -1220,6 +1220,42 @@ function seedItemShopIfEmpty() {
         writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${missing.length} món mặc định còn thiếu: ${missing.map(x => x.id).join(', ')}`);
     } else saveDbNow();
 }
+// 04/09: điền nhóm (cat) cho món CŨ trong DB còn thiếu — tra theo id trong DEFAULT,
+// lạ thì về 'consume'. Idempotent (chỉ đụng món thiếu cat), chạy mỗi boot, không cần cờ.
+function backfillItemShopCat() {
+    const raw = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
+    let fixed = 0;
+    for (const x of raw) {
+        if (!x || x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'consume') continue;
+        const def = DEFAULT_ITEM_SHOP.find(d => d.id === x.id);
+        x.cat = def ? def.cat : 'consume';
+        fixed++;
+    }
+    if (fixed) { saveDbNow(); writeLog('SYSTEM', `[SHOP ITEM] Điền nhóm cho ${fixed} món cũ trong DB`); }
+}
+
+// 🖼️ 04/09: admin UP HÌNH ITEM từ panel — ghi thẳng vào assets/itemimage/ trên đĩa
+// + nạp luôn vào RAM assets để phục vụ NGAY, không cần sửa code/đẩy git/restart bot.
+// Chỉ nhận ảnh, trần 600KB (body panel cap 1MB, base64 phình 4/3 nên 600KB là an toàn).
+// Lưu ý vận hành: file up kiểu này nằm NGOÀI git — muốn giữ bền qua deploy-lại-từ-đầu
+// thì thỉnh thoảng gom về repo, còn git pull thường KHÔNG đụng file lạ, cứ yên tâm.
+const ASSETS = require('./assets');
+function uploadItemImage(fileName, dataB64) {
+    const name = String(fileName || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80);
+    if (!/\.(png|jpe?g|gif|webp)$/i.test(name)) return { error: 'Chỉ nhận .png .jpg .gif .webp' };
+    let buf;
+    try { buf = Buffer.from(String(dataB64 || ''), 'base64'); } catch { return { error: 'Dữ liệu ảnh hỏng' }; }
+    if (!buf || buf.length < 100) return { error: 'File rỗng/hỏng' };
+    if (buf.length > 600 * 1024) return { error: 'Ảnh quá 600KB — icon webp/png ~50KB là đẹp, nén bớt đi' };
+    try {
+        const dir = require('path').join(__dirname, 'assets', 'itemimage');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(require('path').join(dir, name), buf);
+    } catch (e) { return { error: 'Không ghi được file: ' + e.message }; }
+    ASSETS.add('itemimage/' + name, buf);
+    writeLog('ADMIN', `[SHOP ITEM] Panel up hình itemimage/${name} (${(buf.length / 1024).toFixed(1)}KB)`);
+    return { ok: true, file: name };
+}
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 function itemShopList() {
@@ -1229,6 +1265,7 @@ function itemShopList() {
         price: Math.max(0, Math.floor(Number(x.price) || 0)),
         max: Math.max(1, Math.floor(Number(x.max) || 999)),
         img: String(x.img || ''),   // tên file trong assets/itemimage/ (trống = ô 📦)
+        cat: (x.cat === 'weapon' || x.cat === 'armor') ? x.cat : 'consume',   // 04/09: nhóm hiển thị
     }));
 }
 function setItemShop(list) {
@@ -1239,6 +1276,7 @@ function setItemShop(list) {
             price: Math.max(0, Math.floor(Number(x && x.price) || 0)),
             max: Math.max(1, Math.floor(Number(x && x.max) || 999)),
             img: String((x && x.img) || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80),
+            cat: (x && (x.cat === 'weapon' || x.cat === 'armor')) ? x.cat : 'consume',
         }))
         .filter(x => x.id)
         .slice(0, 100);
@@ -4324,7 +4362,8 @@ client.once('ready', async (c) => {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     // (Bầu Cua đã gỡ hẳn; Xổ số tạm tắt)
-    seedItemShopIfEmpty();   // 🛒 seed 6 món mặc định nếu DB chưa có danh mục item
+    seedItemShopIfEmpty();   // 🛒 seed món mặc định nếu DB chưa có danh mục item
+    backfillItemShopCat();   // 🛒 điền nhóm (vũ khí/giáp/tiêu hao) cho món cũ thiếu cat
     // ⏳ 03/09: hạ cooldown nhận pal 5 phút -> 2 phút. Chạy ĐÚNG 1 LẦN (cờ _migClaimCd120):
     // cfg đã lưu trong DB đè default nên phải sửa tận nơi; sau này admin chỉnh panel thì giữ nguyên.
     if (!dbCache._migClaimCd120) {
@@ -4552,6 +4591,7 @@ client.once('ready', async (c) => {
             setPalLuckRate,   // 🍀 đặt %/quay may mắn riêng từng người (rig cho bạn bè)
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
             setItemShop,
+            uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
             // 🚀 Phi Thuyền (crash game): config + xem vòng + ép điểm nổ (SUPER)
             getSpmCfg: spmCfg,
             setSpmCfg,

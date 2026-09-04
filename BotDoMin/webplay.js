@@ -751,6 +751,9 @@ const PAGE = [
     '#spmFloats{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}',
     '.spmFloat{position:absolute;bottom:32%;font-size:13px;font-weight:800;color:#8fffca;white-space:nowrap;text-shadow:0 2px 6px #000;animation:spmJump 1.9s ease-out forwards}',
     '@keyframes spmJump{0%{opacity:0;transform:translateY(14px) scale(.7)}18%{opacity:1;transform:translateY(-8px) scale(1.15)}100%{opacity:0;transform:translateY(-130px) scale(1) rotate(-18deg)}}',
+    // 🛒 đề mục nhóm item trong shop
+    '.isCat{margin:16px 0 8px;font-weight:800;font-size:14px;letter-spacing:.5px;border-bottom:1px solid var(--line);padding-bottom:5px}',
+    '.isCat:first-child{margin-top:4px}',
     // 💸 chip chọn người nhận (chuyển tiền nhiều người 1 lần)
     '.dogChip{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:999px;background:#141824;border:1px solid var(--line);font-size:13px;font-weight:700;cursor:pointer;user-select:none}',
     '.dogChip.sel{background:#12351f;border-color:#3ddc84;color:#7cff9c}',
@@ -2811,9 +2814,14 @@ const PAGE = [
     'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
     // hình item: file trong assets/itemimage/ (thả file + restart như palimage); thiếu -> ô 📦
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
-    'function isRender(){if(!IS)return;var h="";IS.items.forEach(function(it){',
+    // 04/09: shop chia 3 mục theo it.cat (admin chỉnh ở panel) — mục trống thì ẩn luôn
+    'function isRender(){if(!IS)return;var h="";',
+    'var G=[["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🧪 VẬT PHẨM TIÊU HAO"]];',
+    'G.forEach(function(g){var rows=IS.items.filter(function(it){return (it.cat||"consume")===g[0]});if(!rows.length)return;',
+    'h+="<div class=\\"isCat\\">"+g[1]+" <span style=\\"color:var(--muted);font-weight:400;font-size:12px\\">("+rows.length+" món)</span></div>";',
+    'rows.forEach(function(it){',
     'h+="<div class=\\"isItem\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div></div>"',
-    '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"});',
+    '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"})});',
     '$("isList").innerHTML=h||"<div class=\\"muted\\">Shop chưa có món nào - admin thêm ở panel tab 🎮.</div>"}',
     'async function isBuy(id){if(ISBUSY||!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
     'var q=parseInt($("isq_"+id).value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");',
