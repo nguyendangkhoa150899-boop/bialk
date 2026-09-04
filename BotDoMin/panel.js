@@ -41,7 +41,7 @@ function startPanel(ctx) {
     };
 
     // ===== PHÂN QUYỀN 2 CỔNG =====
-    // ctx.port (1508)       = SUPER ADMIN: vào là full quyền — hiện cụm can thiệp,
+    // ctx.port (1508)       = SUPER ADMIN: vào là full quyền - hiện cụm can thiệp,
     //                         nạp tiền không trần. Cổng này KHÔNG share cho ai.
     // ctx.publicPort (3001) = ADMIN THƯỜNG: cùng panel nhưng can thiệp bị khóa CỨNG
     //                         + trần nạp/ngày luôn áp.
@@ -163,6 +163,7 @@ function startPanel(ctx) {
             spmCfg: ctx.getSpmCfg ? ctx.getSpmCfg() : null,
             spmState: ctx.getSpmState ? ctx.getSpmState() : null,
             spmBoard: ctx.getSpmBoard ? ctx.getSpmBoard() : { on: false, channelId: '' },
+            dailyCfg: ctx.getDailyCfg ? ctx.getDailyCfg() : null,   // 🪪 mức điểm danh/nghiện/chuỗi
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
@@ -175,7 +176,7 @@ function startPanel(ctx) {
             const path = url.pathname;
 
             // Trang chủ. Nhúng thẳng trạng thái auth vào HTML thay vì để client tự dò
-            // — client dò bằng fetch dễ hỏng khi trình duyệt còn cache bản JS cũ.
+            // - client dò bằng fetch dễ hỏng khi trình duyệt còn cache bản JS cũ.
             // no-store để lần sau sửa panel là thấy ngay, không phải xóa cache.
             if (req.method === 'GET' && path === '/') {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -208,12 +209,32 @@ function startPanel(ctx) {
                 }
 
                 const body = req.method === 'POST' ? await readBody(req) : {};
+
+                // 04/09: cổng ADMIN THƯỜNG chỉ được XEM 2 tab 👥 Người chơi + 🎮 Palworld
+                // & Dogcoin - mọi route GHI của 2 tab đó phải vào từ cổng SUPER. Chặn ở
+                // MỘT chỗ này (kèm ẩn/khoá nút phía client) cho khỏi sót route lẻ.
+                const VIEWONLY_PATHS = [
+                    // tab 👥: ví/nợ/phát quà/mức thưởng
+                    '/api/points/set', '/api/points/add', '/api/points/subtract', '/api/points/delete',
+                    '/api/points/resetall', '/api/points/setall', '/api/points/reset-daily', '/api/points/addall',
+                    '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/debt/bad', '/api/daily/cfg',
+                    // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
+                    '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
+                    '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
+                    '/api/itemshop/save', '/api/itemshop/upload', '/api/palchest/grant', '/api/palchest/resolve',
+                    '/api/palwheel/luckrate',
+                ];
+                if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
+                    return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
+                }
                 // ===== 📈 SÀN CỔ PHIẾU: chỉnh thông số + thả tin =====
                 if (ctx.setStockCfg && req.method === 'POST' && path === '/api/stock/cfg') {
                     return sendJSON(res, 200, { ok: true, cfg: ctx.setStockCfg(body) });
                 }
-                // 25/08: can thiệp KÍN — giá trôi dần tới đích, không banner, không toast
+                // 25/08: can thiệp KÍN - giá trôi dần tới đích, không banner, không toast
+                // 04/09: CHỈ cổng SUPER được kéo giá (chủ server chuyển khỏi admin thường)
                 if (ctx.stockPush && req.method === 'POST' && path === '/api/stock/push') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
                     const pct = Number(body.pct);
                     if (!Number.isFinite(pct) || pct === 0 || Math.abs(pct) > 40) {
                         return sendJSON(res, 400, { ok: false, error: 'Biên độ phải trong ±1..40%' });
@@ -242,13 +263,26 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Lưu ${list.length} món`);
                     return sendJSON(res, 200, { ok: true, items: list });
                 }
-                // 🖼️ 04/09: up hình item thẳng từ panel (base64) — phục vụ ngay, khỏi restart
+                // 🖼️ 04/09: up hình item thẳng từ panel (base64) - phục vụ ngay, khỏi restart
                 if (ctx.uploadItemImage && req.method === 'POST' && path === '/api/itemshop/upload') {
                     const r = ctx.uploadItemImage(body.name, body.data);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, file: r.file });
                 }
-                // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) — '' = xoá về mặc định
+                // 🪪 mức điểm danh / nghiện / thưởng chuỗi (tab 👥)
+                if (ctx.setDailyCfg && req.method === 'POST' && path === '/api/daily/cfg') {
+                    const num = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n >= 0 ? n : null; };
+                    const o = {};
+                    if (num(body.daily) !== null) o.daily = num(body.daily);
+                    if (num(body.nghien) !== null) o.nghien = num(body.nghien);
+                    if (num(body.streakEvery) !== null && num(body.streakEvery) >= 1) o.streakEvery = num(body.streakEvery);
+                    if (num(body.streakBonus) !== null) o.streakBonus = num(body.streakBonus);
+                    if (!Object.keys(o).length) return sendJSON(res, 400, { ok: false, error: 'Không có số hợp lệ' });
+                    const r = ctx.setDailyCfg(o);
+                    ctx.writeLog('ADMIN', `[PANEL] Mức điểm danh: ngày ${r.cfg.daily} · nghiện ${r.cfg.nghien} · đủ ${r.cfg.streakEvery} ngày thưởng ${r.cfg.streakBonus}`);
+                    return sendJSON(res, 200, { ok: true, cfg: r.cfg });
+                }
+                // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (UI đã gỡ 04/09 - route giữ cho tương lai)
                 if (ctx.setPalLuckRate && req.method === 'POST' && path === '/api/palwheel/luckrate') {
                     const uid = String(body.userId || '').trim();
                     if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu người chơi' });
@@ -508,7 +542,7 @@ function startPanel(ctx) {
                     const uid = String(body.userId || '').trim();
                     const amount = parseInt(body.amount);
                     if (!uid || isNaN(amount)) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
-                    // Set tăng số dư cũng là "thêm tiền" — tính vào trần ngày (nếu chưa mở khóa #)
+                    // Set tăng số dư cũng là "thêm tiền" - tính vào trần ngày (nếu chưa mở khóa #)
                     if (!epOk(req)) {
                         const delta = amount - (ctx.getUserData(uid).points || 0);
                         const rem = takeDailyQuota(uid, delta);
@@ -561,7 +595,7 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Gỡ bảng VAY NỢ`);
                     return sendJSON(res, 200, { ok: true });
                 }
-                // Chỉnh hạn mức/trần/phí vay (27/08) — lưu _loanCfg, bảng đăng lại mới đổi text
+                // Chỉnh hạn mức/trần/phí vay (27/08) - lưu _loanCfg, bảng đăng lại mới đổi text
                 if (ctx.setLoanCfg && path === '/api/loan/cfg') {
                     const r = ctx.setLoanCfg(body);
                     ctx.writeLog('ADMIN', `[PANEL] Cấu hình vay: ngày ${r.dailyMax}, trần ${r.cap}, phí vay + lãi ${r.feePct}%/ngày`);
@@ -582,7 +616,7 @@ function startPanel(ctx) {
                     const r = ctx.debtClear(uid);
                     return sendJSON(res, 200, { ok: true, cleared: r.cleared });
                 }
-                // Gắn/gỡ nhãn ⚠️ nợ xấu (thủ công) — bot DM báo người chơi + vẽ lại bảng
+                // Gắn/gỡ nhãn ⚠️ nợ xấu (thủ công) - bot DM báo người chơi + vẽ lại bảng
                 if (path === '/api/debt/bad') {
                     const uid = String(body.userId || '').trim();
                     if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu userId' });
@@ -612,14 +646,14 @@ function startPanel(ctx) {
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
                 }
-                // Reset điểm danh cả danh sách — ai cũng /diemdanh nhận thưởng lại được ngay
+                // Reset điểm danh cả danh sách - ai cũng /diemdanh nhận thưởng lại được ngay
                 if (path === '/api/points/reset-daily') {
                     if (!ctx.resetAllDaily) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
                     const count = ctx.resetAllDaily();
                     ctx.writeLog('ADMIN', `[PANEL] Reset điểm danh cho ${count} ví`);
                     return sendJSON(res, 200, { ok: true, count });
                 }
-                // (Bảng Shop Pal riêng đã gộp vào bảng Rút Dogcoin — không còn API riêng.)
+                // (Bảng Shop Pal riêng đã gộp vào bảng Rút Dogcoin - không còn API riêng.)
                 if (path === '/api/withdraw/approve') {
                     const id = parseInt(body.id);
                     if (!ctx.approveWithdraw(id)) return sendJSON(res, 400, { ok: false, error: 'Yêu cầu không tồn tại hoặc đã xử lý' });
@@ -640,7 +674,7 @@ function startPanel(ctx) {
                 }
 
                 // Liên kết Discord ↔ tên nhân vật trong game. Cầu Dogcoin TỰ ĐỘNG
-                // give/take theo ingameName này — CHỈ admin đặt được (người chơi tự
+                // give/take theo ingameName này - CHỈ admin đặt được (người chơi tự
                 // đặt là lỗ hổng: đặt tên nhân vật người khác rồi rút túi họ về ví mình).
                 // Tên rỗng = hủy liên kết. Lọc về ASCII in được cho khớp normalizeName
                 // của mod trong game.
@@ -745,7 +779,7 @@ function startPanel(ctx) {
 }
 
 // ============================================================
-//  GIAO DIỆN (single-page) — vanilla JS, theme tối kiểu Discord
+//  GIAO DIỆN (single-page) - vanilla JS, theme tối kiểu Discord
 // ============================================================
 const HTML = `<!DOCTYPE html>
 <html lang="vi">
@@ -842,6 +876,13 @@ const HTML = `<!DOCTYPE html>
   .card.danger{border:1px solid #6b2326}
   .card.danger h3{color:#ff7a7a}
   #modalInput{margin-top:0;margin-bottom:18px}
+  /* 04/09: cổng admin thường - 2 tab 👥/🎮 CHỈ XEM: khoá mọi ô nhập/nút (kể cả hàng
+     render động sau này vì là CSS), chừa ô 🔍 tìm kiếm. Server cũng chặn 403 song song. */
+  body.viewonly #tab-user input,body.viewonly #tab-user button,body.viewonly #tab-user select,
+  body.viewonly #tab-pal input,body.viewonly #tab-pal button,body.viewonly #tab-pal select{pointer-events:none;opacity:.4}
+  body.viewonly #tab-user #search{pointer-events:auto;opacity:1}
+  .voNote{display:none;font-size:13px;font-weight:700;color:#ffd27a;background:#231d10;border:1px solid #ffcf5c;border-radius:9px;padding:9px 12px;margin-bottom:10px}
+  body.viewonly .voNote{display:block}
 </style>
 </head>
 <body>
@@ -877,6 +918,7 @@ const HTML = `<!DOCTYPE html>
       -->
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
       <button data-tab="pal" onclick="tab('pal')">🎮 Palworld & Dogcoin<span id="wdBadge" class="hidden"></span></button>
+      <button data-tab="log" onclick="tab('log')">📜 Log</button>
     </div>
 
     <!-- XỔ SỐ MIỀN BẮC -->
@@ -969,10 +1011,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Ép cứng 100% cho <b>lần khóa sổ kế tiếp</b>. ⚠️ Chỉ ăn nếu ép <b>lúc còn MỞ CƯỢC</b> (xem đồng hồ ở khung cược trên); khóa sổ rồi mới ép thì trôi sang ván sau. Nút 🎯 tự tính 3 xúc xắc khiến cửa đang gánh nhiều tiền nhất bị thua.</div>
         </div>
       </div>
-      <div class="card">
-        <h3>📜 Lịch sử Big Small</h3>
-        <div id="txHist" class="hist"></div>
-      </div>
+      <!-- (📜 Lịch sử Big Small đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
 
     <!-- DÒ MÌN -->
@@ -1018,10 +1057,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">⚠️ <b>25 ô grid (5×5):</b> Mìn ẩn, người chơi tự click trên web - đặt mìn chỉ <b>tăng xác suất</b> trúng, không ép 100%. Số ô đánh dấu (💣) sẽ là mìn chắc chắn; nếu họ chọn số mìn ít hơn thì chỉ lấy bấy nhiêu ô đầu tiên. Muốn dễ thua: đặt mìn ở các ô trên-trái (hay bấm trước).</div>
         <div class="flist" id="mineList"></div>
       </div>
-      <div class="card">
-        <h3>📜 Lịch sử Dò Mìn</h3>
-        <div id="mineHist" class="hist"></div>
-      </div>
+      <!-- (📜 Lịch sử Dò Mìn đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
 
     <!-- LEO THANG -->
@@ -1039,10 +1075,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Leo <b>10 tầng</b>, mỗi tầng <b>8 ô</b>, người chơi chọn <b>1–5 cầu lửa</b> mỗi tầng. Bấm trúng ô trống thì lên tầng, hệ số nhân thêm; trúng lửa là mất cược. Chơi trên web, mỗi ván xong bot đăng kết quả kèm bản đồ tháp về kênh này. Bot restart sẽ tự nối lại bảng cũ.</div>
       </div>
-      <div class="card">
-        <h3>📜 Lịch sử Leo Thang</h3>
-        <div id="stairHist" class="hist"></div>
-      </div>
+      <!-- (📜 Lịch sử Leo Thang đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
 
     <!-- BLACKJACK -->
@@ -1052,7 +1085,7 @@ const HTML = `<!DOCTYPE html>
         <div class="muted" id="whInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Số người READY để vòng quay khởi động (1–50)</label>
         <input id="whMin" type="number" placeholder="vd: 3">
-        <label style="margin-top:10px">🎫 3 mốc giá vé bánh vòng 1 (Dogcoin) — tự sắp từ thấp tới cao</label>
+        <label style="margin-top:10px">🎫 3 mốc giá vé bánh vòng 1 (Dogcoin) - tự sắp từ thấp tới cao</label>
         <div class="row" style="gap:6px">
           <input id="whP1" type="number" placeholder="8000">
           <input id="whP2" type="number" placeholder="9000">
@@ -1081,7 +1114,7 @@ const HTML = `<!DOCTYPE html>
       </div>
 
       <div class="card">
-        <h3>👥 Ai đang giữ lệnh — lời/lỗ TỨC THÌ</h3>
+        <h3>👥 Ai đang giữ lệnh - lời/lỗ TỨC THÌ</h3>
         <div class="row" style="gap:8px;align-items:stretch">
           <div style="flex:1">
             <div class="skgrp" style="border-color:#2f6b48"><div class="gh" style="color:var(--green)">🟢 ĐANG MUA (ăn khi giá lên) · <span id="skLongSum">-</span></div><div id="skLongs" class="muted" style="font-size:12.5px">Không có ai.</div></div>
@@ -1093,10 +1126,10 @@ const HTML = `<!DOCTYPE html>
         <div class="note" style="margin-top:8px">Lời/lỗ tính theo giá hiện tại, đã nhân đòn bẩy + sức nặng. <b>Dương = bot sẽ trả thêm</b> khi họ đóng lệnh, âm = bot thu về. Bảng tự cập nhật mỗi 3 giây.</div>
       </div>
 
-      <div class="card">
-        <h3>🕹️ Can thiệp giá — KÍN, trôi từ từ</h3>
+      <div class="card epOnly" style="display:none">
+        <h3>🕹️ Can thiệp giá - KÍN, trôi từ từ (cổng SUPER)</h3>
         <div id="skDrift" class="note" style="display:none;margin-bottom:8px"></div>
-        <label>Số GIÁ muốn cộng/trừ — vd giá đang 900, nhập <b>5</b> bấm ➖ là trôi về ~<b>895</b></label>
+        <label>Số GIÁ muốn cộng/trừ - vd giá đang 900, nhập <b>5</b> bấm ➖ là trôi về ~<b>895</b></label>
         <div class="row" style="gap:6px;align-items:center">
           <button class="skpct" onclick="skAmtSet(5)">5</button>
           <button class="skpct" onclick="skAmtSet(10)">10</button>
@@ -1107,13 +1140,13 @@ const HTML = `<!DOCTYPE html>
           <input id="skPushSecs" type="number" min="30" max="600" value="150" style="flex:0 0 84px;text-align:center">
           <span class="muted" style="font-size:12px">giây</span>
         </div>
-        <!-- Hai nút nói THẲNG phe nào thua — khỏi tự dịch dấu cộng trừ -->
+        <!-- Hai nút nói THẲNG phe nào thua - khỏi tự dịch dấu cộng trừ -->
         <div class="row" style="margin-top:10px">
           <button class="btn-red" style="flex:1;line-height:1.35" onclick="skPush(-1)">➖ TRỪ GIÁ<br><small>kéo XUỐNG · phe 🟢 MUA thua</small></button>
           <button class="btn-green" style="flex:1;line-height:1.35" onclick="skPush(1)">➕ CỘNG GIÁ<br><small>kéo LÊN · phe 🔴 BÁN thua</small></button>
         </div>
         <div id="skPushPrev" class="note" style="margin-top:8px;display:none"></div>
-        <div class="note"><b>Nhắm MỘT NGƯỜI cụ thể</b>: bấm 💀 (cho thua) hoặc 🎁 (cho thắng) ngay cạnh tên họ ở bảng 👥 phía trên — panel tự chọn hướng kéo đúng, khỏi nghĩ. Nhớ là kéo giá ảnh hưởng CẢ SÀN: ai cùng phe cũng thua/thắng theo, phe kia thì ngược lại. Giá <b>trôi dần</b> trong số giây đã đặt, trộn với sóng tự nhiên — người chơi không nhận thông báo nào và vẫn kịp đóng lệnh giữa đường. Game cũng <b>tự tạo sóng ±10–15%</b> khoảng 40 phút một lần.</div>
+        <div class="note"><b>Nhắm MỘT NGƯỜI cụ thể</b>: bấm 💀 (cho thua) hoặc 🎁 (cho thắng) ngay cạnh tên họ ở bảng 👥 phía trên - panel tự chọn hướng kéo đúng, khỏi nghĩ. Nhớ là kéo giá ảnh hưởng CẢ SÀN: ai cùng phe cũng thua/thắng theo, phe kia thì ngược lại. Giá <b>trôi dần</b> trong số giây đã đặt, trộn với sóng tự nhiên - người chơi không nhận thông báo nào và vẫn kịp đóng lệnh giữa đường. Game cũng <b>tự tạo sóng ±10–15%</b> khoảng 40 phút một lần.</div>
       </div>
 
       <div class="card">
@@ -1150,7 +1183,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1">
-            <label>Sức nặng lãi/lỗ (x) — 1 đồng giá × 1 CP = bấy nhiêu Dogcoin</label>
+            <label>Sức nặng lãi/lỗ (x) - 1 đồng giá × 1 CP = bấy nhiêu Dogcoin</label>
             <input id="skPoint" type="number" min="1" max="20" placeholder="vd: 5">
           </div>
           <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px">
@@ -1159,11 +1192,11 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1">
-            <label>🌊 Đáy band — giá KHÔNG xuống dưới mức này (10–4000)</label>
+            <label>🌊 Đáy band - giá KHÔNG xuống dưới mức này (10–4000)</label>
             <input id="skWaveLow" type="number" step="10" placeholder="vd: 1000">
           </div>
           <div style="flex:1">
-            <label>🌊 Trần band — giá KHÔNG lên trên mức này (10–4000)</label>
+            <label>🌊 Trần band - giá KHÔNG lên trên mức này (10–4000)</label>
             <input id="skWaveHigh" type="number" step="10" placeholder="vd: 1300">
           </div>
         </div>
@@ -1172,14 +1205,14 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
           <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
         </div>
-        <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền — mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn. ⚠️ Tăng sức nặng thì hạ chênh mua–bán theo (mặc định 0,1%/chiều). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>. <b>Chôn vốn</b>: vào lệnh phải giữ đủ giây mới đóng được, 0 là tắt. Sàn đóng <b>vẫn cho đóng lệnh</b>, chỉ chặn mở mới.</div>
+        <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền - mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn. ⚠️ Tăng sức nặng thì hạ chênh mua–bán theo (mặc định 0,1%/chiều). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>. <b>Chôn vốn</b>: vào lệnh phải giữ đủ giây mới đóng được, 0 là tắt. Sàn đóng <b>vẫn cho đóng lệnh</b>, chỉ chặn mở mới.</div>
       </div>
     </div>
 
     <div id="tab-spm" class="hidden">
       <div class="card">
         <h3>🚀 Phi Thuyền (crash game)</h3>
-        <div class="note">Vòng chơi chung ở web. <b>House edge</b> = % nhà cái ăn dài hạn (RTP = 100−edge). <b>Tốc độ bay</b>: số nhân = e^(tốc độ·giây) — 0.14 thì x1→x2 ~5s, càng cao càng nhanh. <b>Hệ số tối đa</b>: bay hết ăn tới đây (kịch trần). <b>Cược tối đa/người</b>: khoá rủi ro nhà cái (max ăn 1 ván = cược × hệ số tối đa).</div>
+        <div class="note">Vòng chơi chung ở web. <b>House edge</b> = % nhà cái ăn dài hạn (RTP = 100−edge). <b>Tốc độ bay</b>: số nhân = e^(tốc độ·giây) - 0.14 thì x1→x2 ~5s, càng cao càng nhanh. <b>Hệ số tối đa</b>: bay hết ăn tới đây (kịch trần). <b>Cược tối đa/người</b>: khoá rủi ro nhà cái (max ăn 1 ván = cược × hệ số tối đa).</div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1"><label>Cửa cược (giây)</label><input id="spBetS" type="number" placeholder="8"></div>
           <div style="flex:1"><label>Tốc độ bay</label><input id="spGrowth" type="number" step="0.01" placeholder="0.14"></div>
@@ -1195,7 +1228,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px"><button class="btn-green" onclick="spSave()">💾 Lưu cấu hình</button></div>
         <div class="note" id="spNow">-</div>
         <div id="spSuper" class="epOnly" style="display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
-          <div class="note">⚡ <b>NHÀ CÁI CAN THIỆP</b> — ép điểm nổ chuyến TỚI (chuyến đang bay không đổi được). Nhập x thấp (vd 1.10) để bào cả sàn, hoặc cao để thả cho ăn. Chỉ hiện ở cổng SUPER.</div>
+          <div class="note">⚡ <b>NHÀ CÁI CAN THIỆP</b> - ép điểm nổ chuyến TỚI (chuyến đang bay không đổi được). Nhập x thấp (vd 1.10) để bào cả sàn, hoặc cao để thả cho ăn. Chỉ hiện ở cổng SUPER.</div>
           <div id="spLive" style="font-size:13px;margin:6px 0">-</div>
           <div class="row"><input id="spForce" type="number" step="0.1" min="1" placeholder="vd 1.10 (nổ sớm)" style="flex:2"><button class="btn-red" onclick="spForceCrash()">⚡ Ép điểm nổ</button></div>
         </div>
@@ -1221,6 +1254,7 @@ const HTML = `<!DOCTYPE html>
     <!-- RÚT DOGCOIN -->
     <!-- PALWORLD -->
     <div id="tab-pal" class="hidden">
+      <div class="voNote">👁️ Cổng admin thường: tab này CHỈ XEM - duyệt đơn/cấu hình pal/shop item vào cổng SUPER.</div>
       <div class="card">
         <h3>🎛️ Kênh Dogcoin & Shop Pal</h3>
         <label>Channel ID (kênh đăng bảng)</label>
@@ -1260,11 +1294,11 @@ const HTML = `<!DOCTYPE html>
            (vô hại, không gọi tới) để lịch sử đơn cũ không mất nếu cần tra. -->
 
       <!-- 🎁 Vòng quay pal WEB (25/08): quay ở tab Quay Pal trên web chơi, trúng vào
-           RƯƠNG trang Hồ sơ. NHẬN = bot tự giao qua dashboard (lệnh PAL2 của mod) —
+           RƯƠNG trang Hồ sơ. NHẬN = bot tự giao qua dashboard (lệnh PAL2 của mod) -
            KHÔNG cần admin đưa tay nữa. Pal dùng được sau restart server. -->
       <div class="card">
         <h3>🎁 Vòng quay Pal web + Rương</h3>
-        <div class="note">Vé quay trừ thẳng ví, nuôi hũ gacha 5%/vé và nổ 1% như cũ. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm — mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
+        <div class="note">Vé quay trừ thẳng ví, nuôi hũ gacha 5%/vé và nổ 1% như cũ. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1"><label>Vé mỗi lượt quay (Dogcoin)</label><input id="pwPrice" type="number" placeholder="vd: 2000"></div>
           <div style="flex:1"><label>🎯 Chọn pal đích danh (Dogcoin)</label><input id="pwCustom" type="number" placeholder="vd: 6000"></div>
@@ -1280,7 +1314,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>IV GỐC miễn phí (1–255)</label><input id="pwIvs" type="number" placeholder="vd: 100"></div>
           <div style="flex:1"><label>Ô passive GỐC miễn phí (1–8)</label><input id="pwPassMax" type="number" placeholder="vd: 4"></div>
         </div>
-        <div class="note" style="margin-top:8px">💎 <b>GIÁ NÂNG CẤP VƯỢT TRẦN</b> — người chơi tự mua trong bảng nhận, trừ ví ngay (giao hụt tự hoàn). Trần cứng: 8 passive · 201% linh hồn · 255 IV.</div>
+        <div class="note" style="margin-top:8px">💎 <b>GIÁ NÂNG CẤP VƯỢT TRẦN</b> - người chơi tự mua trong bảng nhận, trừ ví ngay (giao hụt tự hoàn). Trần cứng: 8 passive · 201% linh hồn · 255 IV.</div>
         <div class="row" style="margin-top:4px">
           <div style="flex:1"><label>Ô passive thứ 5</label><input id="pwUp5" type="number" placeholder="vd: 8000"></div>
           <div style="flex:1"><label>Ô thứ 6</label><input id="pwUp6" type="number" placeholder="vd: 16000"></div>
@@ -1303,14 +1337,14 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>→102% (mỗi 1%)</label><input id="pwUpS4" type="number" placeholder="vd: 3500"></div>
           <div style="flex:1"><label>→201% (mỗi 1%)</label><input id="pwUpS5" type="number" placeholder="vd: 6000"></div>
         </div>
-        <div class="note" style="margin-top:8px">🍀 <b>THANH MAY MẮN + VÒNG RAID</b> — mỗi lượt quay thường nạp % may mắn (random trong khoảng dưới). Đầy 100% người chơi được quay <b>vòng RAID</b>: trúng 1/4 boss (Hartalis, Bellanoir, Blazamut Ryu, Xenolord) + thưởng Dogcoin, xong thanh về 0. Muốn <b>cài sẵn cho bạn bè</b>: đặt %/quay riêng ở cột 🍀 bảng ví người chơi bên tab 👥.</div>
+        <div class="note" style="margin-top:8px">🍀 <b>THANH MAY MẮN + VÒNG RAID</b> - mỗi lượt quay thường nạp % may mắn (random trong khoảng dưới). Đầy 100% người chơi được quay <b>vòng RAID</b>: trúng 1/4 boss (Hartalis, Bellanoir, Blazamut Ryu, Xenolord) + thưởng Dogcoin, xong thanh về 0. Muốn <b>cài sẵn cho bạn bè</b>: đặt %/quay riêng ở cột 🍀 bảng ví người chơi bên tab 👥.</div>
         <div class="row" style="margin-top:4px">
           <div style="flex:1"><label>🍀 May mắn/quay TỐI THIỂU (%)</label><input id="pwLuckMin" type="number" placeholder="vd: 1"></div>
           <div style="flex:1"><label>🍀 May mắn/quay TỐI ĐA (%)</label><input id="pwLuckMax" type="number" placeholder="vd: 3"></div>
           <div style="flex:1"><label>🔥 Thưởng trúng vòng RAID (Dogcoin)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
           <label style="display:flex;align-items:center;gap:6px;flex:1"><input type="checkbox" id="pwRaidOn" style="width:auto"> Mở vòng RAID</label>
         </div>
-        <div class="note" style="margin-top:8px">⏳ <b>COOLDOWN NHẬN PAL CHUNG</b> — ai nhận 1 con thì CẢ SERVER phải chờ ngần này giây mới nhận con tiếp (0 = tắt). Sao pal = "Sao (0–4)" ở trên (Palworld chốt cứng 4 sao, không có sao 5+).</div>
+        <div class="note" style="margin-top:8px">⏳ <b>COOLDOWN NHẬN PAL CHUNG</b> - ai nhận 1 con thì CẢ SERVER phải chờ ngần này giây mới nhận con tiếp (0 = tắt). Sao pal = "Sao (0–4)" ở trên (Palworld chốt cứng 4 sao, không có sao 5+).</div>
         <div class="row" style="margin-top:4px">
           <div style="flex:1"><label>⏳ Cooldown nhận pal (giây)</label><input id="pwClaimCd" type="number" placeholder="vd: 120"></div>
         </div>
@@ -1325,11 +1359,14 @@ const HTML = `<!DOCTYPE html>
           <input id="pgPal" placeholder="Tên pal (vd: Anubis)" style="flex:2">
           <button onclick="pgGrant()">🎁 Tặng vào rương</button>
         </div>
-        <div id="palChests" class="hist"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-grey" id="pcToggleBtn" style="flex:1" onclick="pcToggle()">🎒 Xem rương pal</button>
+        </div>
+        <div id="palChests" class="hist" style="display:none"></div>
       </div>
       <div class="card">
-        <h3>🛒 Shop Item — item giao thẳng vào game</h3>
-        <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc — KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong — ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
+        <h3>🛒 Shop Item - item giao thẳng vào game</h3>
+        <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
             <thead><tr><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Hình (file)</th><th></th></tr></thead>
@@ -1341,6 +1378,27 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="itemShopSave()">💾 Lưu shop</button>
         </div>
       </div>
+      <!-- (💰 Sổ biến động Dogcoin đã chuyển sang tab 📜 Log - 04/09) -->
+    </div>
+
+    <!-- 📜 LOG: gom toàn bộ lịch sử thắng/thua về một chỗ (04/09) - mỗi mục 30 ván CÓ CƯỢC -->
+    <div id="tab-log" class="hidden">
+      <div class="card">
+        <h3>📜 Lịch sử Big Small</h3>
+        <div id="txHist" class="hist"></div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử Dò Mìn</h3>
+        <div id="mineHist" class="hist"></div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử Leo Thang</h3>
+        <div id="stairHist" class="hist"></div>
+      </div>
+      <div class="card">
+        <h3>📜 Lịch sử Phi Thuyền</h3>
+        <div id="spmHist" class="hist"></div>
+      </div>
       <div class="card">
         <h3>💰 Sổ biến động Dogcoin</h3>
         <div class="note">Ghi mọi khoản <b>điều chỉnh và chuyển đổi</b>: admin cộng/trừ tay, chuyển giữa người chơi, chuyển vào/ra game, mua pal, hoàn tiền. <b>Không</b> ghi tiền cược thắng/thua mini game (mỗi ván đều sinh giao dịch, ghi hết thì không tra được gì).</div>
@@ -1349,6 +1407,7 @@ const HTML = `<!DOCTYPE html>
     </div>
 
     <div id="tab-user" class="hidden">
+      <div class="voNote">👁️ Cổng admin thường: tab này CHỈ XEM - muốn chỉnh (ví/nợ/phát quà/mức thưởng) vào cổng SUPER.</div>
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
         <div class="row">
@@ -1369,19 +1428,27 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:3"><label>Set tất cả người chơi về</label><input id="setAllAmount" type="number" placeholder="vd: 50000"></div>
           <button class="btn-red" onclick="setAll()">Set tất cả</button>
         </div>
+        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="flex:1"><label>🪪 Điểm danh/ngày</label><input id="dcDaily" type="number" min="0" placeholder="vd: 600"></div>
+          <div style="flex:1"><label>💉 Nghiện/giờ</label><input id="dcNghien" type="number" min="0" placeholder="vd: 200"></div>
+          <div style="flex:1"><label>🔥 Đủ chuỗi (ngày)</label><input id="dcStreakEvery" type="number" min="1" placeholder="vd: 2"></div>
+          <div style="flex:1"><label>🎁 Thưởng chuỗi</label><input id="dcStreakBonus" type="number" min="0" placeholder="vd: 800"></div>
+          <button class="btn-green" onclick="dcSave()">💾 Lưu mức thưởng</button>
+        </div>
+        <div class="note">Áp NGAY cho lượt nhận kế tiếp (cả Discord lẫn web), không cần restart. <b>Đủ chuỗi</b>: điểm danh đủ ngần này ngày LIÊN TIẾP là được ghi 1 gói thưởng chuỗi chờ nhận trên web. Số hiện trong mô tả lệnh /diemdanh, /nghien chỉ cập nhật sau restart bot (không ảnh hưởng số tiền thật).</div>
         <input id="search" placeholder="🔍 Tìm theo tên hoặc ID..." oninput="renderPlayers()" style="margin-top:12px">
         <div style="overflow-x:auto">
           <table id="playerTable">
-            <thead><tr><th>Tên</th><th>ID</th><th>Điểm</th><th>📒 Nợ</th><th>🍀 May mắn</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>Tên</th><th>ID</th><th>Điểm</th><th>📒 Nợ</th><th>Thao tác</th></tr></thead>
             <tbody id="playerBody"></tbody>
           </table>
         </div>
-        <div class="note">Cột <b>📒 Nợ</b>: ⚠️ = nợ xấu (quá 1 ngày chưa trả lãi, bị cấm vay thêm). Nút <b>Ghi nợ</b> dùng ô số bên cạnh — cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
+        <div class="note">Cột <b>📒 Nợ</b>: ⚠️ = nợ xấu (quá 1 ngày chưa trả lãi, bị cấm vay thêm). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
       </div>
 
       <div class="card">
         <h3>📒 Bảng VAY NỢ trong Discord</h3>
-        <label>Channel ID (kênh đăng bảng — trạng thái: <span id="vayLive">?</span>)</label>
+        <label>Channel ID (kênh đăng bảng - trạng thái: <span id="vayLive">?</span>)</label>
         <input id="vayChannel" placeholder="vd: 123456789012345678">
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="vayStart()">▶️ Bật / Đăng lại bảng</button>
@@ -1393,7 +1460,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>🩸 Phí vay + lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
           <button class="btn-blue" onclick="loanCfgSave()">💾 Lưu</button>
         </div>
-        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ — kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
+        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
       </div>
 
       <div class="card danger">
@@ -1478,7 +1545,9 @@ async function api(path, body){
 // ===== CỤM CAN THIỆP =====
 // Quyền theo CỔNG đang vào (server trả state.superAdmin): cổng SUPER thấy hết,
 // cổng admin thường ẩn + server chặn cứng.
-function epApply(on){document.querySelectorAll('.epOnly').forEach(el=>{el.style.display=on?'':'none';});}
+function epApply(on){document.querySelectorAll('.epOnly').forEach(el=>{el.style.display=on?'':'none';});
+  // 04/09: cổng thường = 2 tab 👥/🎮 chỉ XEM (CSS khoá mọi input/nút, server cũng chặn 403)
+  document.body.classList.toggle('viewonly',!on);}
 
 async function login(){
   const pw=document.getElementById('pw').value;
@@ -1496,14 +1565,14 @@ function showApp(){
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
-  // 28/08: thêm 'stock' (Cổ phiếu) — trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','mine','stair','bj','stock','spm','user','pal'].includes(saved)) tab(saved);
+  // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
+  if(['tx','mine','stair','bj','stock','spm','user','pal','log'].includes(saved)) tab(saved);
   refresh();
   setInterval(refresh,3000);
 }
 
 function tab(t){
-  ['tx','mine','stair','bj','stock','spm','xs','user','pal'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','mine','stair','bj','stock','spm','xs','user','pal','log'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -1723,8 +1792,8 @@ function renderTxBetsLive(){
   const box=document.getElementById('txBetsLive'); if(!box||!STATE||!STATE.tx)return;
   const a=STATE.tx.betAgg||{}; const t=STATE.tx;
   const win=t.secsToBet>0
-    ? '<span style="color:#3ddc84;font-weight:800">🟢 CÒN '+t.secsToBet+'s ĐỂ ÉP — ép giờ ĂN ván này</span>'
-    : '<span style="color:#ff7a7a;font-weight:800">🔒 ĐÃ KHÓA SỔ — ép giờ sẽ vào VÁN SAU</span>';
+    ? '<span style="color:#3ddc84;font-weight:800">🟢 CÒN '+t.secsToBet+'s ĐỂ ÉP - ép giờ ĂN ván này</span>'
+    : '<span style="color:#ff7a7a;font-weight:800">🔒 ĐÃ KHÓA SỔ - ép giờ sẽ vào VÁN SAU</span>';
   const cua='🟢 Tài <b>'+(a.tai||0).toLocaleString()+'</b> · 🔴 Xỉu <b>'+(a.xiu||0).toLocaleString()+'</b> · 🔵 Chẵn <b>'+(a.chan||0).toLocaleString()+'</b> · 🟣 Lẻ <b>'+(a.le||0).toLocaleString()+'</b> · 🌩️ Bão <b>'+(a.bao||0).toLocaleString()+'</b>';
   const list=(t.bets||[]).length
     ? (t.bets||[]).slice().reverse().map(b=>esc(b.name)+': '+({tai:'Tài',xiu:'Xỉu',chan:'Chẵn',le:'Lẻ',bao:'Bão'}[b.choice]||b.choice)+' '+Number(b.amount).toLocaleString()).join(' • ')
@@ -1768,16 +1837,17 @@ function whSaveMin(){
 async function whReset(){if(!await uiConfirm('Reset lượt vòng quay: CẢ SERVER quay lại được ngay, không đợi 00:00/12:00?','Reset lượt','btn-red'))return;api('/api/wheel/reset',{}).then(j=>{toast('🔄 Đã reset lượt cho '+j.n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
 // ===== 📈 SÀN CỔ PHIẾU =====
 // ===== 📈 SÀN CỔ PHIẾU (panel) =====
-// Ô số to + bảng 2 phe MUA/BÁN lời lỗ màu; can thiệp là TRÔI KÍN — người chơi
+// Ô số to + bảng 2 phe MUA/BÁN lời lỗ màu; can thiệp là TRÔI KÍN - người chơi
 // không được báo, nên panel phải cho admin XEM TRƯỚC từng người ±bao nhiêu.
 function skRow(p){
   const w=p.pl>=0;
-  // _i = vị trí trong STATE.stock.positions — nút 💀/🎁 tra ngược qua đây,
+  // _i = vị trí trong STATE.stock.positions - nút 💀/🎁 tra ngược qua đây,
   // không nhét tên vào onclick (tên có dấu nháy là vỡ HTML)
+  // 04/09: nút 💀/🎁 (kéo giá nhắm người) CHỈ hiện ở cổng SUPER - admin thường chỉ xem
+  const hitBtns=(STATE&&STATE.superAdmin)?('<button class="skmini" title="Cho người này THUA" onclick="skHit('+p._i+',0)">💀</button>'+
+    '<button class="skmini" title="Cho người này THẮNG" onclick="skHit('+p._i+',1)">🎁</button>'):'';
   return '<div class="skrow2"><span>'+esc(p.name)+' <span style="color:var(--mut)">x'+p.lev+' · '+p.shares+' CP · '+p.mins+'p</span></span>'+
-    '<span><b style="color:'+(w?'var(--green)':'var(--red)')+'">'+(w?'+':'')+p.pl.toLocaleString()+'</b>'+
-    '<button class="skmini" title="Cho người này THUA" onclick="skHit('+p._i+',0)">💀</button>'+
-    '<button class="skmini" title="Cho người này THẮNG" onclick="skHit('+p._i+',1)">🎁</button></span></div>';
+    '<span><b style="color:'+(w?'var(--green)':'var(--red)')+'">'+(w?'+':'')+p.pl.toLocaleString()+'</b>'+hitBtns+'</span></div>';
 }
 function skFill(k){
   if(!k)return;
@@ -1787,7 +1857,7 @@ function skFill(k){
   set('skWaveLow',k.waveLow);set('skWaveHigh',k.waveHigh);
   if(!skWaveTicked){skWaveTicked=true;const cb=document.getElementById('skWaveOn');if(cb)cb.checked=k.waveOn!==false;}
   const wn=document.getElementById('skWaveNow');
-  if(wn)wn.innerHTML=(k.waveOn!==false?('🌊 Nhốt giá trong band BẬT — giá <b>chỉ loanh quanh</b> trong <b>'+(k.waveLow||1000).toLocaleString()+'–'+(k.waveHigh||1300).toLocaleString()+'</b>'+(k.anchor?(', neo đang ở ~<b>'+k.anchor.v.toLocaleString()+'</b>'):'')+'. Chạm mép bị đẩy vào, ~98% thời gian nằm gọn trong band (thỉnh thoảng chạm nhẹ mép rồi bật ra).'):'Nhốt giá TẮT — giá thả rông cả <b>10–4.000</b>, bám mốc gốc 1.000.');
+  if(wn)wn.innerHTML=(k.waveOn!==false?('🌊 Nhốt giá trong band BẬT - giá <b>chỉ loanh quanh</b> trong <b>'+(k.waveLow||1000).toLocaleString()+'–'+(k.waveHigh||1300).toLocaleString()+'</b>'+(k.anchor?(', neo đang ở ~<b>'+k.anchor.v.toLocaleString()+'</b>'):'')+'. Chạm mép bị đẩy vào, ~98% thời gian nằm gọn trong band (thỉnh thoảng chạm nhẹ mép rồi bật ra).'):'Nhốt giá TẮT - giá thả rông cả <b>10–4.000</b>, bám mốc gốc 1.000.');
   const pc=Math.round((k.price/k.base-1)*1000)/10;
   const tp=document.getElementById('skTPrice');
   tp.textContent=k.price.toLocaleString()+' ('+(pc>=0?'+':'')+pc+'%)';
@@ -1802,8 +1872,8 @@ function skFill(k){
     (k.open?'':' · <b style="color:var(--red)">SÀN ĐANG ĐÓNG</b>');
   document.getElementById('skRisk').innerHTML='Trần thiệt hại với CP đang lưu hành: <b style="color:var(--red)">'+
     k.worstCase.toLocaleString()+'</b> · trần tuyệt đối ('+k.maxShares+' CP): <b style="color:var(--red)">'+
-    k.capWorst.toLocaleString()+'</b> — đã nhân sức nặng.';
-  // bảng 2 phe — đánh số _i trước khi lọc để nút 💀/🎁 tra đúng người
+    k.capWorst.toLocaleString()+'</b> - đã nhân sức nặng.';
+  // bảng 2 phe - đánh số _i trước khi lọc để nút 💀/🎁 tra đúng người
   const ps=k.positions||[];
   ps.forEach((p,i)=>{p._i=i});
   const side=(arr,boxId,sumId)=>{
@@ -1818,26 +1888,26 @@ function skFill(k){
   // sóng đang chạy?
   const dr=document.getElementById('skDrift');
   if(k.drift){dr.style.display='block';
-    dr.innerHTML='🌊 Giá đang trôi về <b>'+k.drift.target.toLocaleString()+'</b> ('+(k.drift.by==='admin'?'admin can thiệp':'sóng tự động')+') — còn ~<b>'+k.drift.secsLeft+' giây</b>. Can thiệp mới sẽ ĐÈ lên sóng này.';}
+    dr.innerHTML='🌊 Giá đang trôi về <b>'+k.drift.target.toLocaleString()+'</b> ('+(k.drift.by==='admin'?'admin can thiệp':'sóng tự động')+') - còn ~<b>'+k.drift.secsLeft+' giây</b>. Can thiệp mới sẽ ĐÈ lên sóng này.';}
   else dr.style.display='none';
   const b=document.getElementById('skOpenBtn');
   if(b){b.textContent=k.open?'⏸ Tạm đóng sàn':'▶️ Mở lại sàn';b.className=k.open?'btn-red':'btn-green';}
   skPushPrev();
 }
-// Nhập theo SỐ GIÁ (điểm), không phải % — chủ server chốt 25/08: "giá 900, nhập 5
+// Nhập theo SỐ GIÁ (điểm), không phải % - chủ server chốt 25/08: "giá 900, nhập 5
 // bấm trừ là về 895". Server vẫn nhận %, panel tự quy đổi theo giá hiện tại; vì
 // target = giá×(1+amt/giá) = giá+amt nên đích ra ĐÚNG số điểm đã nhập.
 function skAmtGet(){let v=Math.abs(parseFloat(document.getElementById('skPushPct').value));if(!(v>0))v=5;return Math.round(v)}
 function skAmtSet(v){document.getElementById('skPushPct').value=v;skPushPrev();}
 function skSecsGet(){let v=parseInt(document.getElementById('skPushSecs').value)||150;if(v<30)v=30;if(v>600)v=600;return v}
-// XEM TRƯỚC CẢ HAI HƯỚNG — theo điểm giá thì CHÍNH XÁC TUYỆT ĐỐI:
+// XEM TRƯỚC CẢ HAI HƯỚNG - theo điểm giá thì CHÍNH XÁC TUYỆT ĐỐI:
 // delta = shares × sốGiá × sức nặng (MUA ăn khi ➕, BÁN ăn khi ➖).
 function skPushPrev(){
   const k=STATE&&STATE.stock,box=document.getElementById('skPushPrev');
   if(!box||!k)return;
   const amt=skAmtGet();
   const ps=k.positions||[];
-  if(!ps.length){box.style.display='block';box.innerHTML='Không ai đang giữ lệnh — kéo giá lúc này không tốn của bot đồng nào.';return}
+  if(!ps.length){box.style.display='block';box.innerHTML='Không ai đang giữ lệnh - kéo giá lúc này không tốn của bot đồng nào.';return}
   const money=v=>'<b style="color:'+(v>=0?'var(--green)':'var(--red)')+'">'+(v>=0?'+':'')+v.toLocaleString()+'</b>';
   let up=0;
   const rows=ps.map(p=>{
@@ -1847,7 +1917,7 @@ function skPushPrev(){
       '<span>➖ '+money(-d)+' &nbsp;·&nbsp; ➕ '+money(d)+'</span></div>';
   }).join('');
   box.style.display='block';
-  box.innerHTML='<b>Nếu giá đi '+amt+' điểm</b> ('+k.price.toLocaleString()+' → ➖ '+(k.price-amt).toLocaleString()+' hoặc ➕ '+(k.price+amt).toLocaleString()+') — mỗi người sẽ ±:'+rows+
+  box.innerHTML='<b>Nếu giá đi '+amt+' điểm</b> ('+k.price.toLocaleString()+' → ➖ '+(k.price-amt).toLocaleString()+' hoặc ➕ '+(k.price+amt).toLocaleString()+') - mỗi người sẽ ±:'+rows+
     '<div class="skrow2" style="border-top:1px solid #2a2e3b;margin-top:2px"><span><b>BOT</b></span>'+
     '<span>➖ '+(up<=0?'trả thêm':'thu về')+' <b>'+Math.abs(up).toLocaleString()+'</b> &nbsp;·&nbsp; ➕ '+(up>=0?'trả thêm':'thu về')+' <b>'+Math.abs(up).toLocaleString()+'</b></span></div>'+
     '<div style="color:var(--mut);font-size:11.5px;margin-top:3px">Chưa tính người đóng lệnh giữa đường hay cháy ví sớm.</div>';
@@ -1865,10 +1935,10 @@ async function skPush(sign,label){
     .then(j=>{toast('🌊 Đang trôi: '+j.from.toLocaleString()+' → '+j.target.toLocaleString()+' trong '+j.secs+'s');refresh();})
     .catch(e=>toast('❌ '+e.message));
 }
-// 💀/🎁 cạnh tên: tự chọn hướng — MUA thua = ➖ trừ giá, BÁN thua = ➕ cộng giá (và ngược lại)
+// 💀/🎁 cạnh tên: tự chọn hướng - MUA thua = ➖ trừ giá, BÁN thua = ➕ cộng giá (và ngược lại)
 function skHit(i,win){
   const k=STATE&&STATE.stock,p=k&&(k.positions||[])[i];
-  if(!p)return toast('Người này vừa đóng lệnh — bảng sẽ tự cập nhật');
+  if(!p)return toast('Người này vừa đóng lệnh - bảng sẽ tự cập nhật');
   const sign=(p.side==='long')===(win===1)?1:-1;
   const amt=skAmtGet();
   const d=(p.side==='long'?1:-1)*sign*p.shares*amt*(k.pointX||1);
@@ -1900,12 +1970,12 @@ function skSave(){
   if(!(o.waveLow>=10&&o.waveLow<=4000))return toast('Đáy band phải trong 10–4000');
   if(!(o.waveHigh>=10&&o.waveHigh<=4000))return toast('Trần band phải trong 10–4000');
   if(!(o.waveLow<o.waveHigh))return toast('Đáy band phải NHỎ HƠN trần band');
-  if(o.waveHigh-o.waveLow<50)return toast('Band quá hẹp — để chênh đáy/trần ít nhất 50 cho nến còn đường chạy');
+  if(o.waveHigh-o.waveLow<50)return toast('Band quá hẹp - để chênh đáy/trần ít nhất 50 cho nến còn đường chạy');
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 
 // ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
-// Ô số đổ theo kiểu skFill (chỉ khi trống + không focus). Checkbox đổ đúng 1 LẦN —
+// Ô số đổ theo kiểu skFill (chỉ khi trống + không focus). Checkbox đổ đúng 1 LẦN -
 // panel tự refresh 3 giây/lần, đổ lại liên tục sẽ đè tay admin đang bấm.
 let pwCfgTicked=false;
 let skWaveTicked=false;
@@ -1947,7 +2017,7 @@ function spForceCrash(){
   api('/api/spm/force',{m:v}).then(j=>{toast('⚡ Đã ép chuyến tới nổ '+j.forced+'x');document.getElementById('spForce').value='';refresh();}).catch(e=>toast('❌ '+e.message));
 }
 async function skToggle(){
-  // 26/08: KHÔNG đoán mò khi chưa có state — trước đây STATE.stock chưa tải xong mà
+  // 26/08: KHÔNG đoán mò khi chưa có state - trước đây STATE.stock chưa tải xong mà
   // bấm là open tính ra true, nút "Tạm đóng sàn" lại gửi lệnh MỞ sàn (nút coi như hỏng)
   if(!STATE||!STATE.stock){toast('⏳ Panel chưa tải xong trạng thái sàn - chờ 2 giây bấm lại');return;}
   const open=!STATE.stock.open;
@@ -2014,7 +2084,7 @@ function pwCfgSave(){
   if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
   if(!(o.soulMax>=1&&o.soulMax<=4))return toast('Linh hồn 1–4 dòng');
   if(!(o.soulPct>=3&&o.soulPct<=201))return toast('% linh hồn gốc trong 3–201');
-  if(o.soulPct%3!==0)return toast('% linh hồn phải là BỘI CỦA 3 (mỗi bậc trong save = 3%) — vd 60, 201');
+  if(o.soulPct%3!==0)return toast('% linh hồn phải là BỘI CỦA 3 (mỗi bậc trong save = 3%) - vd 60, 201');
   if(!(o.ivs>=1&&o.ivs<=255))return toast('IV gốc trong 1–255');
   if(!(o.passiveMax>=1&&o.passiveMax<=8))return toast('Ô passive gốc trong 1–8');
   for(const kk of ['upSlot5','upSlot6','upSlot7','upSlot8','upIv','upSoulLine','upWtPassive','pickBellaLib','pickBlaza','pickXeno','pickHarta','upSoul1','upSoul2','upSoul3','upSoul4','upSoul5'])
@@ -2035,12 +2105,22 @@ function pcResolve(ownerId,id,delivered){
   if(!confirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?'))return;
   api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast('✅ Đã chốt');refresh();}).catch(e=>toast('❌ '+e.message));
 }
+// 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
+let PCOPEN=false;
+function pcToggle(){PCOPEN=!PCOPEN;pcToggleApply();}
+function pcToggleApply(){
+  const box=document.getElementById('palChests');if(box)box.style.display=PCOPEN?'':'none';
+  const rows=(STATE&&STATE.palChests)||[];
+  const deliver=rows.filter(r=>r.status==='delivering').length;
+  const btn=document.getElementById('pcToggleBtn');
+  if(btn)btn.textContent=(PCOPEN?'🎒 Đóng rương pal':'🎒 Xem rương pal')+' ('+rows.length+' pal'+(deliver?' · ⏳ '+deliver+' ĐANG GIAO cần kiểm':'')+')';
+}
 function renderPalChests(){
   const box=document.getElementById('palChests');
   if(!box||!STATE)return;
   const rows=STATE.palChests||[];
   if(!rows.length){box.innerHTML='<div class="muted">Chưa ai có pal trong rương.</div>';return;}
-  // 25/08: làm lại cho dễ đọc (góp ý chủ server) — mỗi đơn 1 khung, ĐANG GIAO viền đỏ,
+  // 25/08: làm lại cho dễ đọc (góp ý chủ server) - mỗi đơn 1 khung, ĐANG GIAO viền đỏ,
   // trạng thái là nhãn màu, nút gọn nằm phải, đơn đã xong mờ đi.
   const chipCss='font-size:11px;border-radius:6px;padding:2px 8px;white-space:nowrap;';
   box.innerHTML=rows.map(r=>{
@@ -2057,7 +2137,7 @@ function renderPalChests(){
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:14px"><b>'+esc(r.name)+'</b>'+(r.raid?' <span style="color:#ff8f8f;font-size:11px;font-weight:700">🔥 RAID</span>':'')
       +' <span class="muted" style="font-size:11px">rương #'+r.id+(r.dex?' · paldex #'+r.dex:'')+'</span></div>'
-      +'<div class="muted" style="font-size:11.5px;margin-top:2px">'+esc(r.ownerName)+(r.ingameName?' — nhân vật <b>'+esc(r.ingameName)+'</b>':'')+' · '+esc(r.wonAt||'')+'</div>'
+      +'<div class="muted" style="font-size:11.5px;margin-top:2px">'+esc(r.ownerName)+(r.ingameName?' - nhân vật <b>'+esc(r.ingameName)+'</b>':'')+' · '+esc(r.wonAt||'')+'</div>'
       +'</div>'+chip+btn+'</div>';
   }).join('');
 }
@@ -2162,25 +2242,19 @@ function renderPlayers(){
   if(!STATE)return;
   // Đừng vẽ lại bảng khi admin đang gõ vào ô nhập số (tránh mất focus + reset số)
   const af=document.activeElement;
-  if(af&&af.id&&(af.id.indexOf('amt_')===0||af.id.indexOf('luck_')===0))return;
+  if(af&&af.id&&af.id.indexOf('amt_')===0)return;
   // Giữ lại số đã gõ nhưng chưa bấm nút: refresh 3s/lần vẽ lại bảng không được xóa nó
   // (guard focus ở trên không đủ - admin gõ xong rê chuột/bấm chỗ khác là mất focus).
   const kept={};
-  document.querySelectorAll('input[id^="amt_"],input[id^="luck_"]').forEach(i=>{if(i.value!=='')kept[i.id]=i.value;});
+  document.querySelectorAll('input[id^="amt_"]').forEach(i=>{if(i.value!=='')kept[i.id]=i.value;});
   const q=(document.getElementById('search').value||'').toLowerCase();
   const tb=document.getElementById('playerBody');tb.innerHTML='';
   STATE.players.filter(p=>p.name.toLowerCase().includes(q)||p.id.includes(q)).forEach(p=>{
     const tr=document.createElement('tr');
     const debtCell=p.debt>0?('<b style="color:#e74c3c">'+p.debt.toLocaleString()+'</b>'+(p.debtBad?' ⚠️':'')):'<span class="muted">0</span>';
-    // 🍀 cột may mắn: rate riêng (hoặc "mặc định") + thanh hiện tại + ô đặt %/quay riêng
-    const luckRateTxt=(p.luckRate===null||p.luckRate===undefined)?'<span class="muted">mặc định</span>':('<b style="color:#7cff9c">'+p.luckRate+'%/quay</b>');
-    const luckCell='<div style="font-size:12px">'+luckRateTxt+' <span class="muted">· thanh '+(p.luck||0)+'%</span></div>'+
-      '<input class="mini-in" type="number" min="0" max="100" placeholder="%/quay" id="luck_'+p.id+'" style="width:70px">'+
-      ' <button class="mini btn-green" onclick="pLuck(\\''+p.id+'\\')">🍀 Đặt</button>'+
-      ' <button class="mini btn-grey" onclick="pLuckClear(\\''+p.id+'\\')">↺ Mặc định</button>';
+    // (cột 🍀 may mắn đã gỡ 04/09 - chủ server để mặc định, bảng đỡ banh ngang)
     tr.innerHTML='<td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
       '<td>'+debtCell+'</td>'+
-      '<td>'+luckCell+'</td>'+
       '<td><input class="mini-in" type="number" placeholder="số" id="amt_'+p.id+'">'+
       ' <button class="mini btn-blue" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
       ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button>'+
@@ -2199,8 +2273,9 @@ function padId(n){return String(n).padStart(5,'0');}
 
 function renderHistories(){
   if(!STATE)return;
+  // 04/09: tab 📜 Log - mỗi mục CHỈ HIỆN 30 ván có cược cho gọn
   // Big Small
-  const tx=STATE.txHistory||[];
+  const tx=(STATE.txHistory||[]).slice(0,30);
   document.getElementById('txHist').innerHTML = tx.length? tx.map(g=>{
     const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' ('+b.choice+')').join(' • ')||'không ai đặt';
     const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
@@ -2208,7 +2283,7 @@ function renderHistories(){
       '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai thắng</div>')+'</div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
   // Dò Mìn
-  const mn=STATE.minesHistory||[];
+  const mn=(STATE.minesHistory||[]).slice(0,30);
   document.getElementById('mineHist').innerHTML = mn.length? mn.map(g=>{
     const win=g.amount>=0;
     return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
@@ -2216,13 +2291,24 @@ function renderHistories(){
       '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
 
-  const sh=STATE.stairsHistory||[];
+  const sh=(STATE.stairsHistory||[]).slice(0,30);
   document.getElementById('stairHist').innerHTML = sh.length? sh.map(g=>{
     const win=g.amount>=0;
     return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">🔥 '+g.fire+' lửa/tầng · 🪜 lên '+(g.floor||0)+' tầng · cược '+Number(g.bet).toLocaleString()+'</div>'+
       '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'🔥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
+  // 🚀 Phi Thuyền (04/09): mỗi dòng = 1 lượt cược đã chốt (thắng/thua)
+  const spEl=document.getElementById('spmHist');
+  if(spEl){
+    const sp=((STATE.spmState&&STATE.spmState.betHistory)||[]).slice(0,30);
+    spEl.innerHTML = sp.length? sp.map(r=>{
+      const win=!!r.cashed;
+      return '<div class="h"><div class="top"><span>'+esc(r.name)+'</span><span class="t">'+(win?('rút x'+r.cashed):('NỔ x'+(r.crash||1)))+'</span></div>'+
+        '<div class="'+(win?'win':'lose')+'">'+(win?('💰 cược '+Number(r.amount).toLocaleString()+' → +'+Number(r.win||0).toLocaleString()):('💥 cược '+Number(r.amount).toLocaleString()+' → thua hết'))+
+        (typeof r.bal==='number'?(' · số dư '+r.bal.toLocaleString()):'')+'</div></div>';
+    }).join('') : '<div class="empty">Chưa có lượt nào.</div>';
+  }
 }
 // Xóa số trong ô sau khi thao tác xong - renderPlayers giờ GIỮ số chưa dùng qua các lần
 // refresh, nên không xóa ở đây là số cũ nằm lại, dễ bấm nhầm cộng/trừ 2 lần.
@@ -2230,9 +2316,15 @@ function pClear(id){const i=document.getElementById('amt_'+id);if(i)i.value='';}
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');pClear(id);refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');pClear(id);refresh();});}
 function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');pClear(id);refresh();}).catch(()=>toast('❌ Lỗi'));}
-// 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) — trống = báo lỗi, dùng nút ↺ để về mặc định
-function pLuck(id){const v=document.getElementById('luck_'+id).value;if(v==='')return toast('Nhập % (0–100), hoặc bấm ↺ Mặc định');api('/api/palwheel/luckrate',{userId:id,rate:+v}).then(j=>{toast('🍀 '+id+' -> '+j.rate+'%/quay');document.getElementById('luck_'+id).value='';refresh();}).catch(e=>toast('❌ '+e.message));}
-function pLuckClear(id){api('/api/palwheel/luckrate',{userId:id,rate:''}).then(()=>{toast('↺ '+id+' về mặc định toàn sàn');refresh();}).catch(e=>toast('❌ '+e.message));}
+// 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) - trống = báo lỗi, dùng nút ↺ để về mặc định
+// (pLuck/pLuckClear đã gỡ 04/09 cùng cột 🍀 - route /api/palwheel/luckrate vẫn còn nếu cần dựng lại)
+// 🪪 mức điểm danh / nghiện / thưởng chuỗi
+function dcSave(){
+  const g=id=>parseInt(document.getElementById(id).value);
+  const o={daily:g('dcDaily'),nghien:g('dcNghien'),streakEvery:g('dcStreakEvery'),streakBonus:g('dcStreakBonus')};
+  if(!(o.daily>=0&&o.nghien>=0&&o.streakBonus>=0&&o.streakEvery>=1))return toast('Điền đủ 4 ô (chuỗi ≥ 1 ngày, còn lại ≥ 0)');
+  api('/api/daily/cfg',o).then(j=>{toast('💾 Điểm danh '+j.cfg.daily.toLocaleString('vi-VN')+' · nghiện '+j.cfg.nghien.toLocaleString('vi-VN')+' · đủ '+j.cfg.streakEvery+' ngày thưởng '+j.cfg.streakBonus.toLocaleString('vi-VN'));refresh();}).catch(e=>toast('❌ '+e.message));
+}
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng Dogcoin & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
@@ -2244,7 +2336,7 @@ function loanCfgSave(){
   if(!(o.dailyMax>=100))return toast('Vay/ngày tối thiểu 100');
   if(!(o.cap>=o.dailyMax))return toast('Trần nợ phải ≥ vay/ngày');
   if(!(o.feePct>=0&&o.feePct<=1000))return toast('Lãi ngày 0–1000%');
-  api('/api/loan/cfg',o).then(j=>{toast('💾 Đã lưu — nhớ Đăng lại bảng để text đổi');refresh();}).catch(e=>toast('❌ '+e.message));
+  api('/api/loan/cfg',o).then(j=>{toast('💾 Đã lưu - nhớ Đăng lại bảng để text đổi');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function loanCfgFill(k){if(!k)return;const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};set('loanDaily',k.dailyMax);set('loanCap',k.cap);set('loanFee',k.feePct);}
 async function vayStop(){if(!await uiConfirm('Gỡ bảng VAY NỢ khỏi kênh? (sổ nợ vẫn giữ nguyên)','Gỡ bảng','btn-red'))return;api('/api/vay/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng');refresh();});}
@@ -2375,6 +2467,8 @@ async function refresh(){
   // prefill channel id (chỉ khi ô đang trống, không đè lúc admin đang gõ)
   const txC=document.getElementById('txChannel'); if(txC&&!txC.value&&STATE.tx.channelId) txC.value=STATE.tx.channelId;
   const txM=document.getElementById('txMaxBet'); if(txM&&document.activeElement!==txM&&STATE.tx.maxBet!==undefined) txM.value=STATE.tx.maxBet;
+  // 🪪 mức điểm danh/nghiện/chuỗi (không đè khi đang gõ)
+  if(STATE.dailyCfg){[['dcDaily','daily'],['dcNghien','nghien'],['dcStreakEvery','streakEvery'],['dcStreakBonus','streakBonus']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&document.activeElement!==el)el.value=STATE.dailyCfg[k];});}
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
@@ -2388,7 +2482,7 @@ async function refresh(){
       +' mỗi hũ · trích '+Math.round((pt.rate||0)*100)+'% tiền cược (nhà cái bao) · tỉ lệ nổ chung '+Math.round((pt.hit||0)*100)+'%'
       +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván · '+seedTxt;
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
-    // không vẽ lại cả khối — vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
+    // không vẽ lại cả khối - vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
     const keys=Object.keys(pt.pots), box=document.getElementById('potRows');
     if(box.dataset.built!==keys.join(',')){
       box.innerHTML=keys.map(k=>
@@ -2435,6 +2529,7 @@ async function refresh(){
   if(STATE.palWheelCfg)pwCfgFill(STATE.palWheelCfg);
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();
+  pcToggleApply();
   itemShopFill();
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;

@@ -662,6 +662,25 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **04/09 (tối 3)** — 🚀 **Phi Thuyền hiện AI đặt trước chuyến sau** (`nextPlayers` trong
+  `spmWebState`, hộp `#spmNext` riêng "Hân đặt 5.000 cho chuyến sau" - bỏ kiểu nhét vào
+  `spmMsg` gây chồng chữ). 📜 **Panel thêm tab Log**: gom Lịch sử Big Small / Dò Mìn /
+  Leo Thang (chuyển từ tab từng game) + **Lịch sử Phi Thuyền mới** (từ `betHistory`, thêm
+  vào `getSpmState`) + 💰 Sổ biến động Dogcoin (chuyển từ tab 🎮) - mỗi mục hiện 30 ván
+  có cược. 🎮 **Tab Palworld & Dogcoin gọn lại**: 🎒 rương pal ĐÓNG mặc định sau nút
+  "Xem rương pal (N · ⏳ X đang giao)" (`pcToggle`).
+- **04/09 (tối 2)** — 🔐 **Phân quyền 2 cổng panel + dọn dẹp**: 🕹️ Can thiệp giá cổ phiếu
+  (kéo giá KÍN + nút 💀/🎁 nhắm người) chuyển hẳn sang cổng SUPER (card `epOnly` + route
+  `/api/stock/push` chặn `epOk`); cổng ADMIN THƯỜNG chỉ XEM 2 tab 👥 Người chơi + 🎮 Palworld
+  & Dogcoin - chặn 1 chỗ bằng `VIEWONLY_PATHS` (27 route ghi: ví/nợ/phát quà/mức thưởng/duyệt
+  đơn rút/cấu hình pal/shop item...) trả 403, client khoá bằng CSS `body.viewonly` (chừa ô 🔍)
+  + banner 👁️ đầu tab. LƯU Ý: admin thường hết duyệt được đơn rút/giao pal. 🪪 **Mức điểm
+  danh/nghiện/thưởng chuỗi cho admin chỉnh** (`dailyCfg()` thay 4 hằng cứng, lưu `_dailyCfg`,
+  card ở tab 👥, route `/api/daily/cfg`, áp ngay không restart). 🍀 Gỡ cột "May mắn admin set"
+  khỏi bảng ví (banh ngang) + migration `_migClearPalLuckRate0409` xoá % override còn sót -
+  tất cả về mặc định; route luckrate giữ lại nếu cần dựng lại. 🧹 Xoá khối dò mìn Discord cũ
+  (139 dòng comment) + khối lệnh /domin comment; `.gitignore` thêm `.claude/` + `.dashpid`.
+  ✒️ Thay TOÀN BỘ dấu gạch dài "—" bằng "-" ở index/webplay/panel (418 chỗ) theo yêu cầu.
 - **04/09 (chiều 2)** — 💎 **Shop thêm 9 viên Đá Thức Tỉnh** (`PalAwakening_<Hệ>`,
   Nước/Sấm/Đất/Cỏ/Lửa/Băng/Rồng/Bóng Tối/Thường — code + tên VN chuẩn paldb) 10k/viên,
   nhóm tiêu hao. Ghép vào DB đang chạy bằng cờ RIÊNG `_migItemShopAwaken0409` — merge tổng
