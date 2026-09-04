@@ -1393,7 +1393,7 @@ function spmDrawCrash(cfg) {
 }
 function spmMultAt(elapsedMs, cfg) { return Math.exp(cfg.growth * elapsedMs / 1000); }
 
-let spmState = { phase: 'bet', roundId: 0, betEndAt: 0, flightStart: 0, crashAt: 0, crashEndAt: 0, crashPoint: 0, forced: null, bets: {}, nextBets: {}, history: [], betHistory: [] };
+let spmState = { phase: 'bet', roundId: 0, betEndAt: 0, flightStart: 0, crashAt: 0, crashEndAt: 0, crashPoint: 0, maxWin: false, won: false, forced: null, bets: {}, nextBets: {}, history: [], betHistory: [] };
 
 function spmResetRound() {
     const cfg = spmCfg();
@@ -1401,6 +1401,7 @@ function spmResetRound() {
     spmState.roundId = (spmState.roundId || 0) + 1;
     spmState.betEndAt = Date.now() + cfg.betS * 1000;
     spmState.flightStart = 0; spmState.crashAt = 0; spmState.crashEndAt = 0; spmState.crashPoint = 0;
+    spmState.maxWin = false; spmState.won = false;
     spmState.bets = {};
     // áp các cược đã ĐẶT TRƯỚC (tiền đã trừ) vào chuyến mới này
     const nb = spmState.nextBets || {}; spmState.nextBets = {};
@@ -1418,9 +1419,11 @@ function spmStartFlight() {
     const cp = Number.isFinite(spmState.forced) ? Math.min(cfg.maxMult, Math.max(1.00, spmState.forced)) : spmDrawCrash(cfg);
     spmState.forced = null;
     spmState.crashPoint = cp;
+    // 05/09: bốc trúng TRẦN maxMult = chuyến THẮNG TUYỆT ĐỐI (bay tới đỉnh, không nổ)
+    spmState.maxWin = cp >= cfg.maxMult - 1e-9;
     const T = Math.log(cp) / cfg.growth;   // số giây bay tới điểm nổ
     spmState.crashAt = spmState.flightStart + Math.max(0, T) * 1000;
-    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} cất cánh - điểm nổ ${cp}x (kín) · ${Object.keys(spmState.bets).length} người cược`);
+    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} cất cánh - điểm nổ ${cp}x (kín)${spmState.maxWin ? ' — TRÚNG TRẦN, chuyến THẮNG TUYỆT ĐỐI' : ''} · ${Object.keys(spmState.bets).length} người cược`);
 }
 function spmCashoutInternal(uid, m) {
     const b = spmState.bets[uid];
@@ -1431,6 +1434,18 @@ function spmCashoutInternal(uid, m) {
     if (dbCache._spmBets) delete dbCache._spmBets[uid];
     logDog('bet', uid, b.name || uid, win - b.amount, `Phi Thuyền #${spmState.roundId} rút ${m}x (cược ${b.amount} → +${win})`);
     return { m, win };
+}
+// 05/09: bay chạm TRẦN — tự rút cho MỌI người còn trên tàu ở đúng trần rồi mới
+// settle; không ai thua, client nhìn cờ won để bung hiệu ứng chiến thắng thay vì nổ.
+function spmWin() {
+    const cp = spmState.crashPoint;
+    let n = 0;
+    for (const uid of Object.keys(spmState.bets)) {
+        if (!spmState.bets[uid].cashed) { spmCashoutInternal(uid, cp); n++; }
+    }
+    spmState.won = true;
+    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} 🏆 BAY TỚI ĐỈNH ${cp}x - tự rút cho ${n} người còn trên tàu`);
+    spmCrash();   // settle + lịch sử như thường, nhưng ai cũng đã rút nên không ai thua
 }
 function spmCrash() {
     const cfg = spmCfg();
@@ -1446,7 +1461,7 @@ function spmCrash() {
     }
     for (const r of rows) spmState.betHistory.unshift(r);
     if (spmState.betHistory.length > 100) spmState.betHistory.length = 100;
-    spmState.history.unshift({ id: spmState.roundId, crash: spmState.crashPoint, time: new Date().toLocaleString('vi-VN') });
+    spmState.history.unshift({ id: spmState.roundId, crash: spmState.crashPoint, win: !!spmState.won, time: new Date().toLocaleString('vi-VN') });
     if (spmState.history.length > 50) spmState.history.length = 50;
     // đã settle chuyến này - nhưng GIỮ lại đơn đặt trước (chưa vào chuyến) để restart còn hoàn
     const keep = {};
@@ -1454,7 +1469,7 @@ function spmCrash() {
     dbCache._spmBets = keep;
     saveDbNow();
     spmBoard.needsUpdate = true;   // bảng Discord đăng lại kết quả chuyến (tối đa 1 phút/lần)
-    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} NỔ ${spmState.crashPoint}x`);
+    if (!spmState.won) writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} NỔ ${spmState.crashPoint}x`);
 }
 function spmTick() {
     const now = Date.now();
@@ -1466,7 +1481,7 @@ function spmTick() {
         for (const [uid, b] of Object.entries(spmState.bets)) {
             if (!b.cashed && b.auto && m >= b.auto && now < spmState.crashAt) spmCashoutInternal(uid, b.auto);
         }
-        if (now >= spmState.crashAt) spmCrash();
+        if (now >= spmState.crashAt) { if (spmState.maxWin) spmWin(); else spmCrash(); }
     } else if (spmState.phase === 'crash') {
         if (now >= (spmState.crashEndAt || 0)) spmResetRound();
     }
@@ -1546,6 +1561,7 @@ function spmWebState(uid) {
         betEndAt: spmState.betEndAt, flightStart: spmState.flightStart,
         growth: cfg.growth, minBet: cfg.minBet, maxBet: cfg.maxBet, open: cfg.open, maxMult: cfg.maxMult,
         crashPoint: spmState.phase === 'crash' ? spmState.crashPoint : null,   // chỉ lộ khi đã nổ
+        won: spmState.phase === 'crash' ? !!spmState.won : false,              // 05/09: chuyến chạm trần = thắng tuyệt đối
         me: me ? { amount: me.amount, auto: me.auto, cashed: me.cashed, win: me.win } : null,
         myNext: spmState.nextBets[uid] ? { amount: spmState.nextBets[uid].amount, auto: spmState.nextBets[uid].auto } : null,
         // 04/09: AI đang đặt trước chuyến sau - web hiện danh sách "Hân đặt 5.000 cho chuyến sau"
