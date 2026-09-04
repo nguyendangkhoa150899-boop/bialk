@@ -305,13 +305,63 @@ function webTransfer(fromId, toId, amount) {
     return { ok: true, balance: getUserData(fromId).points || 0, toName };
 }
 
+// 💸 03/09: chuyển cho NHIỀU người 1 lần (tick chọn từ danh sách, MỖI NGƯỜI nhận cùng
+// số tiền, trừ tổng = tiền × số người). Vẫn 10s/lần dùng chung đồng hồ với chuyển đơn;
+// gộp 1 thông báo Discord + 1 dòng chat sòng cho đỡ rác kênh.
+function webTransferMulti(fromId, toIds, amount) {
+    const ids = [...new Set((Array.isArray(toIds) ? toIds : []).map(x => String(x || '').trim()))];
+    amount = Math.floor(Number(amount));
+    if (!ids.length) return { error: 'Chọn ít nhất 1 người nhận' };
+    if (ids.length > 20) return { error: 'Tối đa 20 người/lần' };
+    if (!Number.isInteger(amount) || amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
+    for (const id of ids) {
+        if (!/^\d{15,20}$/.test(id)) return { error: 'ID người nhận không hợp lệ' };
+        if (id === fromId) return { error: 'Không thể tự chuyển cho mình!' };
+        if (!dbCache[id] || typeof dbCache[id] !== 'object') return { error: `Có người trong danh sách chưa có ví (${id})` };
+    }
+    const last = transferLastAt.get(fromId) || 0;
+    if (Date.now() - last < 10000) return { error: 'Từ từ - 10 giây mới được chuyển 1 lần' };
+    const total = amount * ids.length;
+    const me = getUserData(fromId);
+    if ((me.points || 0) < total) return { error: `Không đủ Dogcoin! Cần ${total.toLocaleString()} (${amount.toLocaleString()} × ${ids.length} người), bạn có ${(me.points || 0).toLocaleString()}` };
+    debtAccrue(fromId);
+    if (debtOf(me).bad) return { error: `⚠️ Đang bị gắn NỢ XẤU (nợ ${debtTotal(me).toLocaleString()}) - trả nợ (nút 💳 ở bảng 📒 VAY NỢ) rồi nhờ admin gỡ nhãn mới chuyển được.` };
+
+    transferLastAt.set(fromId, Date.now());
+    const fromName = me.name || fromId;
+    const names = [];
+    updatePoints(fromId, -total);
+    logDog('transfer', fromId, fromName, -total, `chuyển cho ${ids.length} người × ${amount.toLocaleString()} (web)`);
+    for (const id of ids) {
+        const toName = getUserData(id).name || id;
+        names.push(toName);
+        updatePoints(id, amount);
+        logDog('transfer', id, toName, amount, `nhận từ ${fromName} (web${ids.length > 1 ? ', chuyển nhóm' : ''})`);
+        debtBadSweep(id);   // người nhận nợ xấu -> tiền vừa nhận bị xiết trả nợ
+    }
+    writeLog('ADMIN', `[CHUYỂN TIỀN][WEB] ${fromName} → ${names.join(', ')} | ${amount.toLocaleString()} × ${ids.length} = ${total.toLocaleString()} Dogcoin`);
+    client.channels.fetch(TRANSFER_ANNOUNCE_CHANNEL).then(ch => ch.send({
+        embeds: [new EmbedBuilder().setTitle('💸 GIAO DỊCH')
+            .setDescription(`✅ <@${fromId}> đã chuyển **${amount.toLocaleString()}** ${DOGCOIN_EMOJI} cho ${ids.map(id => `<@${id}>`).join(', ')}${ids.length > 1 ? ` (tổng **${total.toLocaleString()}** ${DOGCOIN_EMOJI})` : ''}!`)
+            .setColor(0x00aeef)],
+    })).catch(e => writeLog('SYSTEM', `[CHUYỂN TIỀN] Không gửi được thông báo: ${e.message}`));
+    if (!Array.isArray(dbCache._webChat)) dbCache._webChat = [];
+    dbCache._webChat.push({
+        u: 'sys-transfer', name: '💸 GIAO DỊCH',
+        text: `${fromName} đã chuyển ${amount.toLocaleString()} Dogcoin cho ${names.join(', ')}!`, ts: Date.now(),
+    });
+    while (dbCache._webChat.length > 100) dbCache._webChat.shift();
+    return { ok: true, balance: getUserData(fromId).points || 0, names, total };
+}
+
 // Danh sách người nhận cho ô tìm trên web: ai có ví là hiện (id + tên đã liên kết).
-// KHÔNG kèm số dư — không để cả sòng soi ví nhau.
-function listTransferTargets() {
+// KHÔNG kèm số dư — không để cả sòng soi ví nhau. excludeId = bỏ chính mình khỏi list.
+function listTransferTargets(excludeId) {
     const out = [];
     for (const [k, v] of Object.entries(dbCache)) {
         if (k.startsWith('_') || !/^\d{15,20}$/.test(k)) continue;
         if (!v || typeof v !== 'object') continue;
+        if (excludeId && k === excludeId) continue;
         out.push({ id: k, name: NAME_OVERRIDE[k] || v.name || '' });
     }
     return out;
@@ -1037,8 +1087,10 @@ const PALWHEEL_EXCLUDE_DEX = [203, 204]; // Panthalus, Astralym
 // chủ server không muốn (chưa gom hình): Boltmane, Dragostrophe.
 const PALWHEEL_EXCLUDE_CODE = ['ElecLion', 'BlackFurDragon'];
 // Chỉ các boss triệu hồi được ở Summoning Altar server này (chủ server chốt 25/08,
-// nguồn paldb.cc/en/Raid). Moon Lord KHÔNG lấy được -> không có. Xenogard/Xenovader
-// là pal đẻ ra từ raid Xenolord, không phải boss triệu hồi -> cũng không nằm trong ô RAID.
+// nguồn paldb.cc/en/Raid). Moon Lord KHÔNG lấy được -> không có.
+// (03/09: Xenovader #145 + Xenogard #146 RA KHỎI raidOnly theo yêu cầu chủ server —
+// thành pal thường, quay được ở vòng thường + mua tùy chọn; hình T_DarkAlien /
+// T_WhiteAlienDragon _icon_normal.png đều có sẵn. Chúng vẫn KHÔNG nằm trong ô RAID.)
 const PALWHEEL_RAID_NAMES = ['Bellanoir', 'Bellanoir Libero', 'Blazamut Ryu', 'Xenolord', 'Hartalis'];
 // 🍀 VÒNG QUAY RAID MAY MẮN (27/08): đầy thanh may mắn (100%) mới được quay. Đúng 4 boss
 // chủ server chốt (KHÔNG có Bellanoir Libero) + thưởng thêm Dogcoin. Khác pool ô RAID
@@ -1109,7 +1161,8 @@ function palWheelCfg() {
         raidWheelOn: c.raidWheelOn === undefined ? true : !!c.raidWheelOn,
         // ⏳ COOLDOWN NHẬN PAL CHUNG TOÀN SERVER (28/08): ai nhận 1 con thì CẢ SERVER phải
         // chờ ngần này giây mới nhận con tiếp (giảm tải hàng đợi mod/SFTP). 0 = tắt.
-        claimCd: Math.floor(num(c.claimCd, 300, 0, 86400)),
+        // 03/09: hạ 300 -> 120 theo yêu cầu chủ server (kèm migration 1 lần ở ready).
+        claimCd: Math.floor(num(c.claimCd, 120, 0, 86400)),
     };
 }
 
@@ -4234,6 +4287,13 @@ client.once('ready', async (c) => {
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     // (Bầu Cua đã gỡ hẳn; Xổ số tạm tắt)
     seedItemShopIfEmpty();   // 🛒 seed 6 món mặc định nếu DB chưa có danh mục item
+    // ⏳ 03/09: hạ cooldown nhận pal 5 phút -> 2 phút. Chạy ĐÚNG 1 LẦN (cờ _migClaimCd120):
+    // cfg đã lưu trong DB đè default nên phải sửa tận nơi; sau này admin chỉnh panel thì giữ nguyên.
+    if (!dbCache._migClaimCd120) {
+        dbCache._migClaimCd120 = 1;
+        if (dbCache._palWheelCfg && dbCache._palWheelCfg.claimCd === 300) dbCache._palWheelCfg.claimCd = 120;
+        saveDbNow();
+    }
     runSpmLoop();    // 🚀 Phi Thuyền (crash game) — vòng chơi chung
     runTaiXiuLoop(); // BIG SMALL vẫn chạy
     // runXoSoLoop();
@@ -4299,6 +4359,7 @@ client.once('ready', async (c) => {
             stairs: webStairsApi,
             webPlayUrl: WEB_PLAY_URL,
             transfer: webTransfer,
+            transferMulti: webTransferMulti,
             transferTargets: listTransferTargets,
             // 🎮 nạp/rút Dogcoin ↔ game qua web (28/08)
             dogbridge: {
@@ -4386,8 +4447,9 @@ client.once('ready', async (c) => {
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
                         up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
                         level: cfg.level, stars: cfg.stars, boss: cfg.boss,
-                        // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại)
+                        // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),
+                        claimCd: cfg.claimCd,
                         passives: passiveCatalog(),
                         builds: passiveBuilds(),
                         myBuilds: Array.isArray(getUserData(uid).palBuilds) ? getUserData(uid).palBuilds : [],
@@ -4396,6 +4458,8 @@ client.once('ready', async (c) => {
                 },
                 sell: (uid, itemId) => palChestSell(uid, itemId, getUserData(uid).name || uid),
                 claim: (uid, itemId, souls, passives, extra) => palChestClaim(uid, itemId, souls, passives, getUserData(uid).name || uid, extra),
+                // đồng hồ cooldown NHẸ cho client poll (không kéo cả rương)
+                claimCdInfo: () => ({ left: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()), cd: palWheelCfg().claimCd }),
                 saveBuild: (uid, name, ids) => palBuildSave(uid, name, ids),
                 delBuild: (uid, name) => palBuildDel(uid, name),
             },

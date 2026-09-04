@@ -183,7 +183,7 @@ function startWebPlay(ctx) {
                 // ===== 🧧 LỘC LÁ: chuyển Dogcoin cho nhau =====
                 // Luật + thông báo Discord + dòng chat sòng đều nằm ở index.js (ctx.transfer).
                 if (path === '/api/players') {
-                    return sendJSON(res, 200, { ok: true, list: ctx.transferTargets ? ctx.transferTargets() : [] });
+                    return sendJSON(res, 200, { ok: true, list: ctx.transferTargets ? ctx.transferTargets(userId) : [] });
                 }
                 if (req.method === 'POST' && path === '/api/transfer') {
                     if (!ctx.transfer) return sendJSON(res, 400, { ok: false, error: 'Chuyển tiền chưa bật' });
@@ -191,6 +191,14 @@ function startWebPlay(ctx) {
                     const r = ctx.transfer(userId, body.toId, body.amount);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, balance: r.balance, toName: r.toName });
+                }
+                // 💸 03/09: chuyển cho NHIỀU người 1 lần (mỗi người cùng số tiền)
+                if (req.method === 'POST' && path === '/api/transfer/multi') {
+                    if (!ctx.transferMulti) return sendJSON(res, 400, { ok: false, error: 'Chuyển tiền chưa bật' });
+                    const body = await readBody(req);
+                    const r = ctx.transferMulti(userId, body.toIds, body.amount);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, balance: r.balance, names: r.names, total: r.total });
                 }
                 // ===== 🎮 NẠP/RÚT Dogcoin ↔ game qua web (28/08) =====
                 if (ctx.dogbridge && path === '/api/dogbridge/state') {
@@ -259,6 +267,10 @@ function startWebPlay(ctx) {
                 }
                 if (ctx.profile && path === '/api/profile') {
                     return sendJSON(res, 200, { ok: true, ...ctx.profile.state(userId) });
+                }
+                // ⏳ đồng hồ cooldown nhận pal (nhẹ, client poll khi mở trang Hồ sơ)
+                if (ctx.profile && ctx.profile.claimCdInfo && path === '/api/pal/cd') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.profile.claimCdInfo() });
                 }
                 // 🛒 shop item (28/08)
                 if (ctx.itemshop && path === '/api/itemshop/state') {
@@ -739,6 +751,9 @@ const PAGE = [
     '#spmFloats{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}',
     '.spmFloat{position:absolute;bottom:32%;font-size:13px;font-weight:800;color:#8fffca;white-space:nowrap;text-shadow:0 2px 6px #000;animation:spmJump 1.9s ease-out forwards}',
     '@keyframes spmJump{0%{opacity:0;transform:translateY(14px) scale(.7)}18%{opacity:1;transform:translateY(-8px) scale(1.15)}100%{opacity:0;transform:translateY(-130px) scale(1) rotate(-18deg)}}',
+    // 💸 chip chọn người nhận (chuyển tiền nhiều người 1 lần)
+    '.dogChip{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:999px;background:#141824;border:1px solid var(--line);font-size:13px;font-weight:700;cursor:pointer;user-select:none}',
+    '.dogChip.sel{background:#12351f;border-color:#3ddc84;color:#7cff9c}',
     // 📜 lịch sử cược
     '.spmH{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-top:6px;border-radius:10px;background:#141824;border-left:3px solid var(--line);font-size:13px}',
     '.spmH.win{border-left-color:#3ddc84}',
@@ -1269,11 +1284,10 @@ const PAGE = [
     '<div id="pageDog" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">💸 Chuyển tiền</h2><div class="muted" id="dogTfStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Chuyển Dogcoin cho người khác trong sòng (ví ↔ ví). Gõ tên hoặc Discord ID người nhận. 10 giây/lần.</div>',
-    '<input id="dogTfName" list="dogTfList" placeholder="🔎 Tên hoặc Discord ID người nhận" style="width:100%;margin-top:8px" oninput="dogPickTarget()">',
-    '<datalist id="dogTfList"></datalist>',
-    '<input id="dogTfId" type="hidden">',
-    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogTfAmt" type="number" inputmode="numeric" placeholder="Số Dogcoin" style="flex:1"><button class="btn-full" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px" onclick="dogTransfer()">💸 Chuyển</button></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Chuyển Dogcoin ví ↔ ví. Bấm chọn <b>1 hoặc nhiều người</b> bên dưới — <b>mỗi người</b> nhận cùng số tiền, ví bạn bị trừ tổng. 10 giây/lần.</div>',
+    '<div id="dogTfPick" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><span class="muted">Đang tải danh sách...</span></div>',
+    '<div class="muted" id="dogTfSum" style="font-size:12px;margin-top:6px">Chưa chọn ai.</div>',
+    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogTfAmt" type="number" inputmode="numeric" placeholder="Số Dogcoin mỗi người" style="flex:1" oninput="dogTfSumDraw()"><button class="btn-full" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px" onclick="dogTransfer()">💸 Chuyển</button></div>',
     '</div>',
     // Rút vào game
     '<div class="card">',
@@ -2865,31 +2879,40 @@ const PAGE = [
     'SPMBUSY=true;api("/api/spm/bet",{amount:amt,auto:auto}).then(function(j){SPMBUSY=false;setBal(j.balance);toast(j.queued?("🔜 Đã đặt "+vnd(amt)+" cho chuyến sau"):("🛫 Lên chuyến "+vnd(amt)+(auto>=1.01?" · tự rút "+auto+"x":"")));spmSync()}).catch(function(e){SPMBUSY=false;toast("❌ "+e.message);spmSync()});return}',
     '',
     // ===== 💸 CHUYỂN / RÚT DOGCOIN (28/08) — xử lý THẲNG (web -> dashboard/SFTP hoặc ví DB), không qua Discord =====
-    'var DOGBUSY=false,DOGTARGETS=[];',
+    'var DOGBUSY=false,DOGTARGETS=[],DOGSEL={};',
     'function dogSync(){api("/api/dogbridge/state").then(function(j){setBal(j.balance);',
     '$("dogLink").innerHTML=j.ingameName?("Nhân vật: <b>"+esc(j.ingameName)+"</b>"):"⚠️ Chưa liên kết tên nhân vật - nhắn admin";',
     '$("dogMax1").textContent=vnd(j.max);$("dogMax2").textContent=vnd(j.max);',
     'if(!j.ingameName){$("dogRutBtn").disabled=true;$("dogNapBtn").disabled=true}else{$("dogRutBtn").disabled=false;$("dogNapBtn").disabled=false}}).catch(function(e){toast("❌ "+e.message)});',
-    'api("/api/players").then(function(j){DOGTARGETS=j.list||[];var dl=$("dogTfList");dl.innerHTML=DOGTARGETS.map(function(p){return "<option value=\\""+esc(p.name||p.id)+"\\">"+esc(p.id)+"</option>"}).join("");$("dogTfStat").textContent=DOGTARGETS.length+" người có ví"}).catch(function(){})}',
-    // chọn người nhận: gõ tên khớp -> lấy id; hoặc gõ thẳng id 15-20 số
-    'function dogPickTarget(){var v=($("dogTfName").value||"").trim();var found=null;DOGTARGETS.forEach(function(p){if((p.name&&p.name.toLowerCase()===v.toLowerCase())||p.id===v)found=p});',
-    '$("dogTfId").value=found?found.id:(/^\\d{15,20}$/.test(v)?v:"")}',
-    'function dogTransfer(){if(DOGBUSY)return;dogPickTarget();var toId=$("dogTfId").value;if(!/^\\d{15,20}$/.test(toId))return toast("Chọn đúng người nhận (tên trong danh sách hoặc Discord ID)");',
-    'var amt=parseInt($("dogTfAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin");',
-    'DOGBUSY=true;api("/api/transfer",{toId:toId,amount:amt}).then(function(j){DOGBUSY=false;setBal(j.balance);toast("💸 Đã chuyển "+vnd(amt)+" cho "+(j.toName||toId));$("dogTfAmt").value=""}).catch(function(e){DOGBUSY=false;toast("❌ "+e.message)})}',
+    'api("/api/players").then(function(j){DOGTARGETS=j.list||[];',
+    // người rời list (đổi ví...) thì bỏ khỏi lựa chọn cho khỏi gửi nhầm
+    'var ok={};DOGTARGETS.forEach(function(p){ok[p.id]=1});Object.keys(DOGSEL).forEach(function(id){if(!ok[id])delete DOGSEL[id]});',
+    '$("dogTfStat").textContent=DOGTARGETS.length+" người có ví";dogRenderPick()}).catch(function(){})}',
+    // 💸 chọn NHIỀU người nhận bằng chip: bấm chọn/bỏ, tổng tiền cập nhật sống
+    'function dogRenderPick(){var box=$("dogTfPick");if(!box)return;',
+    'box.innerHTML=DOGTARGETS.length?DOGTARGETS.map(function(p){var on=!!DOGSEL[p.id];return "<span class=\\"dogChip"+(on?" sel":"")+"\\" onclick=\\"dogTogglePick(\'"+p.id+"\')\\">"+(on?"✅ ":"")+esc(p.name||p.id)+"</span>"}).join(""):"<span class=\\"muted\\">Chưa có ai khác có ví.</span>";dogTfSumDraw()}',
+    'function dogTogglePick(id){if(DOGSEL[id])delete DOGSEL[id];else DOGSEL[id]=1;dogRenderPick()}',
+    'function dogTfSumDraw(){var n=Object.keys(DOGSEL).length;var amt=parseInt($("dogTfAmt").value)||0;var el=$("dogTfSum");if(!el)return;',
+    'el.innerHTML=n?("Đã chọn <b>"+n+"</b> người × "+vnd(amt)+" = trừ tổng <b style=\\"color:#ffd76a\\">"+vnd(n*amt)+"</b> Dogcoin"):"Chưa chọn ai."}',
+    'function dogTransfer(){if(DOGBUSY)return;var ids=Object.keys(DOGSEL);if(!ids.length)return toast("Bấm chọn ít nhất 1 người nhận đã");',
+    'var amt=parseInt($("dogTfAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin mỗi người");',
+    'DOGBUSY=true;api("/api/transfer/multi",{toIds:ids,amount:amt}).then(function(j){DOGBUSY=false;setBal(j.balance);toast("💸 Đã chuyển "+vnd(amt)+"/người cho "+(j.names||[]).join(", ")+(ids.length>1?" — tổng "+vnd(j.total||amt*ids.length):""));$("dogTfAmt").value="";DOGSEL={};dogRenderPick()}).catch(function(e){DOGBUSY=false;toast("❌ "+e.message)})}',
     'function dogRut(){if(DOGBUSY)return;var amt=parseInt($("dogRutAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin");',
     'DOGBUSY=true;var b=$("dogRutBtn");b.disabled=true;b.textContent="⏳ Đang giao...";api("/api/dogbridge/rut",{amount:amt}).then(function(j){DOGBUSY=false;b.textContent="🎮 Rút vào game";setBal(j.balance);toast(j.message||"✅ Đã rút!");$("dogRutAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="🎮 Rút vào game";toast("❌ "+e.message);dogSync()})}',
     'function dogNap(){if(DOGBUSY)return;var amt=parseInt($("dogNapAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin");',
     'DOGBUSY=true;var b=$("dogNapBtn");b.disabled=true;b.textContent="⏳ Đang nạp...";api("/api/dogbridge/nap",{amount:amt}).then(function(j){DOGBUSY=false;b.textContent="💬 Nạp ra web";setBal(j.balance);toast(j.message||"✅ Đã nạp!");$("dogNapAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="💬 Nạp ra web";toast("❌ "+e.message);dogSync()})}',
     '',
     // ===== 🎒 RƯƠNG PAL (trang Hồ sơ) =====
-    'var PC=null,PCIT=null,PCBUSY=false,PCCDUNTIL=0,PCCDTICKING=false;',
+    'var PC=null,PCIT=null,PCBUSY=false,PCCDUNTIL=0,PCCDTICKING=false,PCCD=0;',
     // ⏳ cooldown nhận pal CHUNG toàn server: dựng lại từ claimCdLeft (F5 vẫn đúng)
+    'function pcCdRule(){if(!PCCD)return"";return PCCD%60===0?(PCCD/60)+" phút/lần":PCCD+"s/lần"}',
     'function pcCdTick(){var left=Math.ceil((PCCDUNTIL-Date.now())/1000);var b=$("pcCdBanner");if(!b)return;',
-    'if(left>0){b.style.display="";b.textContent="⏳ Kho pal chung đang bận — còn "+left+"s mới nhận được con tiếp (cooldown dùng chung cả server)";if(!PCCDTICKING){PCCDTICKING=true;setTimeout(function tk(){pcCdTick();if(Date.now()<PCCDUNTIL)setTimeout(tk,500);else PCCDTICKING=false},500)}}else{b.style.display="none"}}',
+    'if(left>0){b.style.display="";b.textContent="⏳ Kho pal chung đang bận — còn "+left+"s mới nhận được con tiếp ("+(pcCdRule()||"cooldown")+", dùng chung cả server)";if(!PCCDTICKING){PCCDTICKING=true;setTimeout(function tk(){pcCdTick();if(Date.now()<PCCDUNTIL)setTimeout(tk,500);else PCCDTICKING=false},500)}}else{b.style.display="none"}}',
+    // người KHÁC vừa nhận pal thì mình đang ngồi trên trang cũng thấy đồng hồ: poll nhẹ 15s/lần
+    'setInterval(function(){var pg=$("pageDaily");if(!pg||pg.classList.contains("hidden"))return;api("/api/pal/cd").then(function(j){PCCD=j.cd||PCCD;PCCDUNTIL=Date.now()+(j.left||0);pcCdTick()}).catch(function(){})},15000);',
     // cb: mua/quay xong gọi pcSync(function(){pcOpen(id)}) để bật ngay bảng chọn linh hồn+passive
     'function pcSync(cb){api("/api/profile").then(function(j){PC=j;',
-    'PCCDUNTIL=Date.now()+(j.claimCdLeft||0);pcCdTick();',
+    'PCCD=j.claimCd||0;PCCDUNTIL=Date.now()+(j.claimCdLeft||0);pcCdTick();',
     'var inChest=0;j.chest.forEach(function(i){if(i.status==="chest")inChest++});',
     '$("pcStat").textContent=inChest+" pal trong rương";',
     '$("pcLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - bấm 🎁 Nhận là giao thẳng vào game (phải đang online trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới NHẬN pal được (bán thì vẫn bán được)";',

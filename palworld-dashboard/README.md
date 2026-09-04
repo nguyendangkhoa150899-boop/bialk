@@ -662,6 +662,20 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **03/09 (chiều)** — ⏳ **Cooldown nhận pal 5 phút → 2 phút** (default `claimCd` 300→120 +
+  migration 1 lần `_migClaimCd120` sửa cfg đã lưu trong DB; admin đổi tay sau đó thì giữ) và
+  **đồng hồ cooldown ai cũng thấy**: banner sẵn có dựng lại từ server nên F5 vẫn đúng, thêm
+  endpoint nhẹ `/api/pal/cd` + client poll 15s khi mở trang Hồ sơ (người KHÁC vừa nhận là mình
+  thấy ngay), banner ghi rõ quy tắc "X phút/lần". 💸 **Chuyển tiền NHIỀU người 1 lần**: bỏ ô gõ
+  tên, hiện TẤT CẢ người chơi thành chip bấm chọn (tự loại chính mình khỏi list), mỗi người nhận
+  cùng số tiền — trừ tổng, dòng tổng cập nhật sống; `webTransferMulti` (khử trùng id, chặn
+  thiếu tiền/nợ xấu, vẫn 10s/lần chung, tối đa 20 người) + route `/api/transfer/multi`, gộp
+  1 thông báo Discord + 1 dòng chat sòng. Test dogmultitest 15/15.
+- **03/09 (chiều)** — 🐾 **Xenovader #145 + Xenogard #146 thành pal thường**: bỏ 2 tên khỏi
+  `raidOnly` trong `pals.json` → tự vào vòng quay thường (`palWheelNormalPool` 279→281 con)
+  + trang 🎯 Chọn Pal (giá customPrice); hình `T_DarkAlien` / `T_WhiteAlienDragon` đã có sẵn
+  trong assets. Chúng vẫn KHÔNG nằm trong ô RAID/vòng raid (không phải boss triệu hồi).
+  Test palwheeltest 151/151 + verify HTTP trên bot test.
 - **03/09** — 🚀 Phi Thuyền đợt 2: **📜 lịch sử 20 lượt cược** (thắng xanh `×m +tiền` / thua đỏ
   `thua hết −cược`, `spmState.betHistory` cap 100, lộ 20 qua `spmWebState`); **đặt cược CHUYẾN SAU**
   khi đang bay/nổ (`spmQueueBet` trừ tiền ngay → `spmResetRound` áp vào chuyến mới; nút luôn bấm

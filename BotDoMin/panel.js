@@ -1292,7 +1292,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note" style="margin-top:8px">⏳ <b>COOLDOWN NHẬN PAL CHUNG</b> — ai nhận 1 con thì CẢ SERVER phải chờ ngần này giây mới nhận con tiếp (0 = tắt). Sao pal = "Sao (0–4)" ở trên (Palworld chốt cứng 4 sao, không có sao 5+).</div>
         <div class="row" style="margin-top:4px">
-          <div style="flex:1"><label>⏳ Cooldown nhận pal (giây)</label><input id="pwClaimCd" type="number" placeholder="vd: 300"></div>
+          <div style="flex:1"><label>⏳ Cooldown nhận pal (giây)</label><input id="pwClaimCd" type="number" placeholder="vd: 120"></div>
         </div>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> Giao bản PAL BOSS</label>
