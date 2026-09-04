@@ -881,8 +881,6 @@ const HTML = `<!DOCTYPE html>
   body.viewonly #tab-user input,body.viewonly #tab-user button,body.viewonly #tab-user select,
   body.viewonly #tab-pal input,body.viewonly #tab-pal button,body.viewonly #tab-pal select{pointer-events:none;opacity:.4}
   body.viewonly #tab-user #search{pointer-events:auto;opacity:1}
-  .voNote{display:none;font-size:13px;font-weight:700;color:#ffd27a;background:#231d10;border:1px solid #ffcf5c;border-radius:9px;padding:9px 12px;margin-bottom:10px}
-  body.viewonly .voNote{display:block}
 </style>
 </head>
 <body>
@@ -1254,7 +1252,6 @@ const HTML = `<!DOCTYPE html>
     <!-- RÚT DOGCOIN -->
     <!-- PALWORLD -->
     <div id="tab-pal" class="hidden">
-      <div class="voNote">👁️ Cổng admin thường: tab này CHỈ XEM - duyệt đơn/cấu hình pal/shop item vào cổng SUPER.</div>
       <div class="card">
         <h3>🎛️ Kênh Dogcoin & Shop Pal</h3>
         <label>Channel ID (kênh đăng bảng)</label>
@@ -1381,25 +1378,35 @@ const HTML = `<!DOCTYPE html>
       <!-- (💰 Sổ biến động Dogcoin đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
 
-    <!-- 📜 LOG: gom toàn bộ lịch sử thắng/thua về một chỗ (04/09) - mỗi mục 30 ván CÓ CƯỢC -->
+    <!-- 📜 LOG: gom toàn bộ lịch sử thắng/thua về một chỗ (04/09) - mỗi mục 30 ván CÓ CƯỢC.
+         Chọn mục nào hiện mục đó, khỏi kéo dài (05/09). -->
     <div id="tab-log" class="hidden">
       <div class="card">
+        <div class="row" style="flex-wrap:wrap;gap:6px">
+          <button class="btn-grey logPick" data-log="tx" onclick="logPick('tx')">🎲 Big Small</button>
+          <button class="btn-grey logPick" data-log="mine" onclick="logPick('mine')">💣 Dò Mìn</button>
+          <button class="btn-grey logPick" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
+          <button class="btn-grey logPick" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
+          <button class="btn-grey logPick" data-log="dog" onclick="logPick('dog')">💰 Sổ Dogcoin</button>
+        </div>
+      </div>
+      <div class="card logSec" id="logSec-tx">
         <h3>📜 Lịch sử Big Small</h3>
         <div id="txHist" class="hist"></div>
       </div>
-      <div class="card">
+      <div class="card logSec hidden" id="logSec-mine">
         <h3>📜 Lịch sử Dò Mìn</h3>
         <div id="mineHist" class="hist"></div>
       </div>
-      <div class="card">
+      <div class="card logSec hidden" id="logSec-stair">
         <h3>📜 Lịch sử Leo Thang</h3>
         <div id="stairHist" class="hist"></div>
       </div>
-      <div class="card">
+      <div class="card logSec hidden" id="logSec-spm">
         <h3>📜 Lịch sử Phi Thuyền</h3>
         <div id="spmHist" class="hist"></div>
       </div>
-      <div class="card">
+      <div class="card logSec hidden" id="logSec-dog">
         <h3>💰 Sổ biến động Dogcoin</h3>
         <div class="note">Ghi mọi khoản <b>điều chỉnh và chuyển đổi</b>: admin cộng/trừ tay, chuyển giữa người chơi, chuyển vào/ra game, mua pal, hoàn tiền. <b>Không</b> ghi tiền cược thắng/thua mini game (mỗi ván đều sinh giao dịch, ghi hết thì không tra được gì).</div>
         <div id="dogLedger" class="hist"></div>
@@ -1407,7 +1414,6 @@ const HTML = `<!DOCTYPE html>
     </div>
 
     <div id="tab-user" class="hidden">
-      <div class="voNote">👁️ Cổng admin thường: tab này CHỈ XEM - muốn chỉnh (ví/nợ/phát quà/mức thưởng) vào cổng SUPER.</div>
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
         <div class="row">
@@ -1567,6 +1573,8 @@ function showApp(){
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
   if(['tx','mine','stair','bj','stock','spm','user','pal','log'].includes(saved)) tab(saved);
+  const savedLog=localStorage.getItem('panel_log');
+  logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
   setInterval(refresh,3000);
 }
@@ -2105,6 +2113,12 @@ function pcResolve(ownerId,id,delivered){
   if(!confirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?'))return;
   api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast('✅ Đã chốt');refresh();}).catch(e=>toast('❌ '+e.message));
 }
+// 📜 tab Log: chọn mục nào hiện mục đó (lưu lựa chọn qua F5)
+function logPick(k){
+  localStorage.setItem('panel_log',k);
+  document.querySelectorAll('.logSec').forEach(el=>el.classList.toggle('hidden',el.id!=='logSec-'+k));
+  document.querySelectorAll('.logPick').forEach(b=>{b.style.outline=b.dataset.log===k?'2px solid var(--green)':'';});
+}
 // 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
 let PCOPEN=false;
 function pcToggle(){PCOPEN=!PCOPEN;pcToggleApply();}
@@ -2466,9 +2480,10 @@ async function refresh(){
   document.getElementById('statusLine').textContent='TX #'+padId(STATE.tx.gameId)+' • '+STATE.players.length+' người chơi';
   // prefill channel id (chỉ khi ô đang trống, không đè lúc admin đang gõ)
   const txC=document.getElementById('txChannel'); if(txC&&!txC.value&&STATE.tx.channelId) txC.value=STATE.tx.channelId;
-  const txM=document.getElementById('txMaxBet'); if(txM&&document.activeElement!==txM&&STATE.tx.maxBet!==undefined) txM.value=STATE.tx.maxBet;
-  // 🪪 mức điểm danh/nghiện/chuỗi (không đè khi đang gõ)
-  if(STATE.dailyCfg){[['dcDaily','daily'],['dcNghien','nghien'],['dcStreakEvery','streakEvery'],['dcStreakBonus','streakBonus']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&document.activeElement!==el)el.value=STATE.dailyCfg[k];});}
+  // CHỈ điền khi ô còn TRỐNG (lần đầu mở trang) - refresh 3s không được đè số admin
+  // vừa gõ (kể cả khi đã rời focus qua ô khác; bấm 💾 xong giá trị gõ = giá trị lưu).
+  const txM=document.getElementById('txMaxBet'); if(txM&&txM.value===''&&document.activeElement!==txM&&STATE.tx.maxBet!==undefined) txM.value=STATE.tx.maxBet;
+  if(STATE.dailyCfg){[['dcDaily','daily'],['dcNghien','nghien'],['dcStreakEvery','streakEvery'],['dcStreakBonus','streakBonus']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&el.value===''&&document.activeElement!==el)el.value=STATE.dailyCfg[k];});}
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
