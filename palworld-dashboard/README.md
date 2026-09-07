@@ -662,6 +662,8 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **07/09** — 🖼️ 🎯 Chọn Pal gắn icon pal 34px đầu mỗi dòng (kho `/palimage/` theo code,
+  `loading=lazy` - 286 hình chỉ tải khi cuộn tới, thiếu hình tự ẩn không vỡ layout).
 - **07/09** — 🐾 **Thêm Demon Eye (Mắt Ác Quỷ)** vào pals.json (`YakushimaBoss001_Small`,
   pal collab Terraria, KHÔNG số paldex như Boltmane) → tự vào vòng quay thường (pool 282)
   + 🎯 Chọn Pal giá thường. Icon tải từ paldb (ruột webp, tên .png cho khớp URL client -
