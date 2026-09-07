@@ -803,6 +803,11 @@ const PAGE = [
     '.pcmGbtn:hover{transform:translateY(-1px)}',
     '.pcmGbtn.male:hover{background:#213a63;color:#c9e0ff;border-color:#7ab6ff}',
     '.pcmGbtn.female:hover{background:#4a2236;color:#ffd0e7;border-color:#ff9ccb}',
+    // 👑 nút bản PAL BOSS: cùng khuôn nút giới tính - bấm là TÔ VÀNG cả ô, chữ đổi màu tối cho tương phản
+    '.pcmGbtn.boss{border:2px solid #ffcf5c;background:#2b2312;color:#ffd76a;display:flex;align-items:center;justify-content:center;gap:8px}',
+    '.pcmGbtn.boss:hover{background:#3d331b;color:#ffe49a;border-color:#ffe08a}',
+    '.pcmGbtn.boss.on{background:linear-gradient(180deg,#ffd76a,#e0ac3f);color:#241d0a;box-shadow:0 0 0 3px rgba(255,207,92,.35)}',
+    '.pcmGbtn.boss.on:hover{background:linear-gradient(180deg,#ffe08a,#e8b54a);color:#241d0a}',
     '.pcmGbtn.male.on:hover{background:#4a8dff}',
     '.pcmGbtn.female.on:hover{background:#ff74b6}',
     // chip passive đã chọn (luôn thấy dù cuộn list) - bấm ✕ để bỏ
@@ -1383,13 +1388,13 @@ const PAGE = [
     '<button type="button" id="pcmGM" class="pcmGbtn male" onclick="pcGenderPick(1)">♂ Đực</button>',
     '<button type="button" id="pcmGF" class="pcmGbtn female" onclick="pcGenderPick(2)">♀ Cái</button>',
     '</div></div>',
-    // 👑 07/09: bản PAL BOSS thành TUỲ CHỌN trả phí (mặc định bản thường) - icon riêng /palboss.png
+    // 👑 07/09: bản PAL BOSS thành TUỲ CHỌN trả phí (mặc định bản thường) - nút full-width
+    // cùng khuôn nút giới tính, bấm là tô vàng cả ô (class on)
     '<div id="pcmBossRow" style="display:none;margin-top:8px">',
-    '<div class="pcmSoul" id="pcmBossBox" onclick="pcBossTog()" style="border-color:#ffcf5c">',
-    '<img src="/palboss.png" alt="" style="width:26px;height:26px;border-radius:6px;flex:0 0 auto" onerror="this.outerHTML=\'👑\'">',
-    '<b>Bản PAL BOSS</b><span class="muted" style="flex:1;font-size:12px">to đẹp trai hơn bản thường · +<span id="pcmBossPrice">10.000</span> Dogcoin</span>',
-    '<input type="checkbox" id="pcmBossCb" onclick="event.stopPropagation();pcBossTog(true)">',
-    '</div></div>',
+    '<button type="button" id="pcmBossBtn" class="pcmGbtn boss" onclick="pcBossTog()" style="width:100%">',
+    '<img src="/palboss.png" alt="" style="width:24px;height:24px;border-radius:6px" onerror="this.outerHTML=\'👑\'">',
+    '<span>Bản PAL BOSS <span style="font-weight:400;font-size:12.5px;opacity:.85">· to đẹp trai hơn · +<span id="pcmBossPrice">10.000</span> Dogcoin</span></span>',
+    '</button></div>',
     '<div id="pcmCols">',
     '<div id="pcmColL">',
     '<div style="font-weight:700;margin:10px 0 4px">💠 Linh hồn <span class="muted" style="font-weight:400">(ít nhất 1, tối đa <span id="pcmSoulMax">4</span> dòng · dòng đầu MIỄN PHÍ · tick rồi kéo % riêng từng dòng)</span></div>',
@@ -2993,7 +2998,7 @@ const PAGE = [
     '$("pcmTitle").textContent="🎁 Nhận "+PCIT.name;',
     '$("pcmBase").innerHTML="Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số · bản <b>THƯỜNG</b>";',
     // 👑 reset lựa chọn boss mỗi lần mở bảng + chỉ hiện khi đang mở bán và pal CÓ bản boss
-    'PCBOSS=0;var bcb=$("pcmBossCb");if(bcb)bcb.checked=false;',
+    'PCBOSS=0;var bbt=$("pcmBossBtn");if(bbt)bbt.classList.remove("on");',
     'var bRow=$("pcmBossRow");if(bRow)bRow.style.display=(PC.boss&&!/^Yakushima/i.test(PCIT.code||""))?"":"none";',
     'var bpr=$("pcmBossPrice");if(bpr)bpr.textContent=vnd((PC.up&&PC.up.boss)||10000);',
     '$("pcmSoulMax").textContent=PC.soulMax;',
@@ -3118,9 +3123,9 @@ const PAGE = [
     // 🚻 giới tính: 0=chưa chọn, 1=Đực, 2=Cái. Bắt buộc chọn mới nhận được.
     'var PCGENDER=0;',
     'function pcGenderPick(g){PCGENDER=g;$("pcmGM").classList.toggle("on",g===1);$("pcmGF").classList.toggle("on",g===2)}',
-    // 👑 chọn bản PAL BOSS: bấm cả hàng hoặc tick checkbox đều được
+    // 👑 chọn bản PAL BOSS: bấm nút toggle - class "on" tô vàng cả ô
     'var PCBOSS=0;',
-    'function pcBossTog(fromCb){var cb=$("pcmBossCb");if(fromCb){PCBOSS=cb&&cb.checked?1:0}else{PCBOSS=PCBOSS?0:1;if(cb)cb.checked=!!PCBOSS}pcUpCalc()}',
+    'function pcBossTog(){PCBOSS=PCBOSS?0:1;var b=$("pcmBossBtn");if(b)b.classList.toggle("on",!!PCBOSS);pcUpCalc()}',
     'async function pcClaimGo(){if(!PCIT||PCBUSY)return;',
     'var souls=[].slice.call($("pcmSouls").querySelectorAll("input:checked")).map(function(c){return c.value});',
     'if(souls.length<1)return toast("💠 Chọn ít nhất 1 dòng linh hồn trước đã (dòng đầu miễn phí)");',
