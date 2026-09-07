@@ -662,6 +662,10 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **07/09** — 🐾 **Thêm Demon Eye (Mắt Ác Quỷ)** vào pals.json (`YakushimaBoss001_Small`,
+  pal collab Terraria, KHÔNG số paldex như Boltmane) → tự vào vòng quay thường (pool 282)
+  + 🎯 Chọn Pal giá thường. Icon tải từ paldb (ruột webp, tên .png cho khớp URL client -
+  browser render theo magic bytes). palwheeltest 152/152.
 - **05/09** — 🩹 Panel: ô nhập (mức thưởng + trần cược TX) chỉ điền khi còn TRỐNG - hết bị
   refresh 3s đè số đang gõ; tab 📜 Log thêm 5 nút chọn mục (hiện 1 mục/lúc, F5 nhớ); bỏ 2
   banner 👁️ view-only (cơ chế chặn vẫn nguyên).
