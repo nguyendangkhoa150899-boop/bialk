@@ -662,6 +662,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **07/09 (chiều)** — 👑 **Bản PAL BOSS thành TUỲ CHỌN trả phí**: mặc định giao bản THƯỜNG,
+  tick "Bản PAL BOSS" trong bảng nhận là +`upBoss` (mặc định 10k, panel chỉnh ô 👑;
+  checkbox cũ "Giao bản PAL BOSS" đổi nghĩa thành CÔNG TẮC MỞ BÁN). Server chặn: chưa mở
+  bán / pal Yakushima không có bản BOSS. Icon riêng `assets/palboss.png` thay 👑 trong UI.
+  🎒 **Rương Pal tách 2 phần** "CHƯA NHẬN" (chest+đang giao, mặc định mở) và "ĐÃ NHẬN/ĐÃ BÁN"
+  (mặc định đóng) - bấm đề mục đóng/mở, trạng thái lưu localStorage nên **F5 giữ nguyên**.
+  palwheeltest 162/162.
 - **07/09** — 🐛 **Fix Demon Eye kẹt ĐANG GIAO + chống tái diễn cho MỌI pal**: results.log
   prod báo `ERROR spawn failed BOSS_YakushimaBoss001_Small` - pal collab Terraria không có
   bản `BOSS_`, mà cfg "Giao bản PAL BOSS" gắn prefix cho mọi pal, và message "spawn failed"

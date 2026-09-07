@@ -1167,6 +1167,7 @@ function palWheelCfg() {
         upSoul4: Math.floor(num(c.upSoul4, 3500, 0, 10000000)),   // mỗi 1%: 90 -> 102%
         upSoul5: Math.floor(num(c.upSoul5, 6000, 0, 10000000)),   // mỗi 1%: 102 -> 201%
         upWtPassive: Math.floor(num(c.upWtPassive, 1000, 0, 10000000)), // 🌈 giá MỖI passive Cây Thế Giới (26/08 mở bán trong bảng nhận)
+        upBoss: Math.floor(num(c.upBoss, 10000, 0, 10000000)),   // 👑 07/09: bản PAL BOSS thành TUỲ CHỌN trả phí (mặc định giao bản thường)
         // 🎯 4 boss raid bán ĐÍCH DANH ở trang Chọn Pal, giá riêng từng con (26/08); 0 = ngừng bán
         pickBellaLib: Math.floor(num(c.pickBellaLib, 9000, 0, 10000000)),   // Bellanoir Libero
         pickBlaza: Math.floor(num(c.pickBlaza, 20000, 0, 10000000)),        // Blazamut Ryu
@@ -1996,6 +1997,13 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     if (gender !== 1 && gender !== 2) {
         return { error: 'Phải chọn giới tính pal (♂ Đực hoặc ♀ Cái) rồi mới nhận được' };
     }
+    // 👑 07/09 (chủ server chốt): MẶC ĐỊNH giao bản THƯỜNG; muốn bản PAL BOSS thì
+    // TÍCH CHỌN + trả thêm cfg.upBoss (mặc định 10k). cfg.boss giờ = công tắc MỞ BÁN.
+    // Pal Yakushima không có bản BOSS trong game -> chặn từ đây luôn.
+    const noBossVariant = /^Yakushima/i.test(item.code);
+    const wantBoss = Math.floor(Number(want.boss) || 0) === 1;
+    if (wantBoss && !cfg.boss) return { error: '👑 Bản PAL BOSS đang không mở bán' };
+    if (wantBoss && noBossVariant) return { error: '👑 Pal này game không có bản BOSS - nhận bản thường nhé' };
     const soulPctCost = souls.reduce((s, k) => s + palUpSoulCost(soulPcts[k], cfg), 0);
     // 🌈 passive Cây Thế Giới bán riêng theo con (26/08)
     const wtSet = new Set(passiveCatalog().filter(p => p.wt).map(p => p.id));
@@ -2004,7 +2012,8 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         + soulPctCost
         + palUpSoulLineCost(souls.length, cfg)
         + palUpIvCost(ivHp, ivAtk, ivDef, cfg)
-        + wtCount * cfg.upWtPassive;
+        + wtCount * cfg.upWtPassive
+        + (wantBoss ? cfg.upBoss : 0);
     if (upCost > 0 && (getUserData(userId).points || 0) < upCost) {
         return { error: `💎 Nâng cấp này tốn ${upCost.toLocaleString()} Dogcoin - ví bạn không đủ` };
     }
@@ -2025,7 +2034,7 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     // trừ phí nâng cấp NGAY (chủ server chốt "bấm thêm thì trừ tiền luôn")
     const soulDesc = souls.map(k => `${k} ${soulPcts[k]}%`).join(' ');
     item.upCost = 0;
-    item.upPick = { soulPcts, ivHp, ivAtk, ivDef, soulLines: souls.length, passiveCount: passives.length };
+    item.upPick = { soulPcts, ivHp, ivAtk, ivDef, soulLines: souls.length, passiveCount: passives.length, boss: wantBoss };
     if (upCost > 0) {
         updatePoints(userId, -upCost);
         item.upCost = upCost;
@@ -2041,11 +2050,8 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         }
     };
 
-    // 07/09: pal collab Terraria (Yakushima*) KHÔNG có bản BOSS_ trong game — gắn
-    // BOSS_ là mod spawn fail "sai Species ID" (dính thật với Demon Eye trên prod,
-    // xem results.log). Các pal thường vẫn giao bản BOSS_ như cấu hình.
-    const noBossVariant = /^Yakushima/i.test(item.code);
-    let species = (cfg.boss && !noBossVariant ? 'BOSS_' : '') + item.code;
+    // 07/09: BOSS_ chỉ khi người chơi MUA bản boss (wantBoss - đã chặn Yakushima ở trên)
+    let species = (wantBoss ? 'BOSS_' : '') + item.code;
     // linh hồn theo % TỪNG DÒNG người chơi mua - rank trong save = %/3 (60% -> 20, 201% -> 67)
     const soulRank = (k) => souls.includes(k) ? Math.max(0, Math.min(255, Math.round(soulPcts[k] / 3))) : 0;
     const specBase = {
@@ -4625,7 +4631,7 @@ client.once('ready', async (c) => {
                         sellPrice: cfg.sellPrice, soulMax: cfg.soulMax,
                         soulPct: cfg.soulPct, passiveMax: cfg.passiveMax, ivs: cfg.ivs,
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
-                        up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
+                        up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, boss: cfg.upBoss, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
                         level: cfg.level, stars: cfg.stars, boss: cfg.boss,
                         // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),

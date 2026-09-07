@@ -1322,6 +1322,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:4px">
           <div style="flex:1"><label>🌈 Passive Cây Thế Giới (giá/con)</label><input id="pwUpWt" type="number" placeholder="vd: 1000"></div>
+          <div style="flex:1"><label>👑 Bản PAL BOSS (giá/con - 07/09 thành tuỳ chọn)</label><input id="pwUpBoss" type="number" placeholder="vd: 10000"></div>
           <div style="flex:1"><label>🔥 Bellanoir Libero (0 = ngừng bán)</label><input id="pwPkBL" type="number" placeholder="vd: 9000"></div>
           <div style="flex:1"><label>🔥 Blazamut Ryu</label><input id="pwPkBR" type="number" placeholder="vd: 20000"></div>
           <div style="flex:1"><label>🔥 Xenolord</label><input id="pwPkXe" type="number" placeholder="vd: 20000"></div>
@@ -1346,7 +1347,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>⏳ Cooldown nhận pal (giây)</label><input id="pwClaimCd" type="number" placeholder="vd: 120"></div>
         </div>
         <div class="row" style="margin-top:8px">
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> Giao bản PAL BOSS</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> 👑 Mở bán bản PAL BOSS (mặc định giao bản thường, chọn BOSS trả thêm giá ở ô 👑)</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
           <button onclick="pwCfgSave()">💾 Lưu</button>
         </div>
@@ -2045,7 +2046,7 @@ function pwCfgFill(k){
   set('pwPrice',k.price);set('pwCustom',k.customPrice);set('pwSell',k.sellPrice);set('pwSoul',k.soulMax);set('pwLevel',k.level);set('pwStars',k.stars);
   set('pwSoulPct',k.soulPct);set('pwIvs',k.ivs);set('pwPassMax',k.passiveMax);
   set('pwUp5',k.upSlot5);set('pwUp6',k.upSlot6);set('pwUp7',k.upSlot7);set('pwUp8',k.upSlot8);set('pwUpIv',k.upIv);set('pwUpLine',k.upSoulLine);
-  set('pwUpWt',k.upWtPassive);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
+  set('pwUpWt',k.upWtPassive);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);
   set('pwClaimCd',k.claimCd);
@@ -2069,6 +2070,7 @@ function pwCfgSave(){
            upIv:parseInt(document.getElementById('pwUpIv').value),
            upSoulLine:parseInt(document.getElementById('pwUpLine').value),
            upWtPassive:parseInt(document.getElementById('pwUpWt').value),
+           upBoss:parseInt(document.getElementById('pwUpBoss').value),
            pickBellaLib:parseInt(document.getElementById('pwPkBL').value),
            pickBlaza:parseInt(document.getElementById('pwPkBR').value),
            pickXeno:parseInt(document.getElementById('pwPkXe').value),
