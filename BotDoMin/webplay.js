@@ -2999,7 +2999,7 @@ const PAGE = [
     '$("pcmBase").innerHTML="Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số · bản <b>THƯỜNG</b>";',
     // 👑 reset lựa chọn boss mỗi lần mở bảng + chỉ hiện khi đang mở bán và pal CÓ bản boss
     'PCBOSS=0;var bbt=$("pcmBossBtn");if(bbt)bbt.classList.remove("on");',
-    'var bRow=$("pcmBossRow");if(bRow)bRow.style.display=(PC.boss&&!/^Yakushima/i.test(PCIT.code||""))?"":"none";',
+    'var bRow=$("pcmBossRow");if(bRow)bRow.style.display=(PC.boss&&!/^Yakushima/i.test(PCIT.code||"")&&(PC.noBoss||[]).indexOf(PCIT.code)<0)?"":"none";',
     'var bpr=$("pcmBossPrice");if(bpr)bpr.textContent=vnd((PC.up&&PC.up.boss)||10000);',
     '$("pcmSoulMax").textContent=PC.soulMax;',
     // mỗi dòng linh hồn: tick chọn + THANH KÉO % RIÊNG (26/08 - mua Công 201% mà Máu 102% được)

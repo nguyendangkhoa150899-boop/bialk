@@ -1999,8 +1999,10 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     }
     // 👑 07/09 (chủ server chốt): MẶC ĐỊNH giao bản THƯỜNG; muốn bản PAL BOSS thì
     // TÍCH CHỌN + trả thêm cfg.upBoss (mặc định 10k). cfg.boss giờ = công tắc MỞ BÁN.
-    // Pal Yakushima không có bản BOSS trong game -> chặn từ đây luôn.
-    const noBossVariant = /^Yakushima/i.test(item.code);
+    // Không có bản BOSS = Yakushima (biết trước) + _noBossCodes (bot TỰ HỌC từ lần
+    // spawn BOSS_ fail - xem khối retry bên dưới) -> chặn từ đầu, khỏi mất công thử.
+    const noBossVariant = /^Yakushima/i.test(item.code)
+        || (Array.isArray(dbCache._noBossCodes) && dbCache._noBossCodes.includes(item.code));
     const wantBoss = Math.floor(Number(want.boss) || 0) === 1;
     if (wantBoss && !cfg.boss) return { error: '👑 Bản PAL BOSS đang không mở bán' };
     if (wantBoss && noBossVariant) return { error: '👑 Pal này game không có bản BOSS - nhận bản thường nhé' };
@@ -2072,9 +2074,21 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     // 07/09: "spawn failed" từ mod = game KHÔNG có id này và CHƯA giao gì. Nếu đang gắn
     // BOSS_ thì tự thử lại bản thường 1 lần - pal đặc biệt nào thiếu bản BOSS_ (kiểu
     // Demon Eye) tự lành theo đường này, khỏi nuôi danh sách ngoại lệ.
+    // Người chơi ĐÃ TRẢ PHÍ bản boss -> hoàn ngay phần phí đó (giao bản thường mà giữ
+    // 10k là ăn gian tiền người ta), và GHI NHỚ code này để lần sau chặn từ đầu.
+    let bossFellBack = false;
     if (!(r && r.ok) && /spawn failed/i.test((r && r.message) || (err && err.message) || '') && species !== item.code) {
-        writeLog('ADMIN', `[RƯƠNG PAL] ${species} spawn fail (không có bản BOSS?) - tự thử lại bản thường ${item.code} (rương #${item.id})`);
+        writeLog('ADMIN', `[RƯƠNG PAL] ${species} spawn fail (không có bản BOSS) - tự thử lại bản thường ${item.code} (rương #${item.id})`);
         species = item.code;
+        bossFellBack = true;
+        if (wantBoss && cfg.upBoss > 0 && (Number(item.upCost) || 0) >= cfg.upBoss) {
+            updatePoints(userId, cfg.upBoss);
+            item.upCost -= cfg.upBoss;
+            logDog('refund', userId, username || userId, cfg.upBoss, `hoàn phí bản BOSS (pal ${item.code} game không có bản boss - giao bản thường)`);
+        }
+        if (item.upPick) item.upPick.boss = false;
+        dbCache._noBossCodes = Array.isArray(dbCache._noBossCodes) ? dbCache._noBossCodes : [];
+        if (!dbCache._noBossCodes.includes(item.code)) dbCache._noBossCodes.push(item.code);
         err = null;
         try {
             r = await pal.givePal(gameName, { species, ...specBase });
@@ -2089,7 +2103,7 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         if (cfg.claimCd > 0) dbCache._palClaimCdUntil = Date.now() + cfg.claimCd * 1000;
         saveDbNow();
         writeLog('ADMIN', `[RƯƠNG PAL] Đã giao ${species} Lv${cfg.level} cho ${gameName} (rương #${item.id} của ${username || userId}) | linh hồn: ${soulDesc || '-'} | IV ${ivHp}/${ivAtk}/${ivDef} | passive: ${passives.join(',') || '-'}${upCost ? ` | 💎 phí nâng cấp ${upCost.toLocaleString()}` : ''}`);
-        return { ok: true, message: `✅ Đã giao vào hộp pal trong game!${upCost ? ` (💎 phí nâng cấp −${upCost.toLocaleString()} Dogcoin)` : ''} Pal sẽ DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp.` };
+        return { ok: true, message: `${bossFellBack ? `⚠️ Pal này game KHÔNG có bản BOSS - đã giao BẢN THƯỜNG và hoàn ${cfg.upBoss.toLocaleString()} phí BOSS. ` : ''}✅ Đã giao vào hộp pal trong game!${(Number(item.upCost) || 0) ? ` (💎 phí nâng cấp −${Number(item.upCost).toLocaleString()} Dogcoin)` : ''} Pal sẽ DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp.` };
     }
 
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
@@ -4633,6 +4647,7 @@ client.once('ready', async (c) => {
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
                         up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, boss: cfg.upBoss, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
                         level: cfg.level, stars: cfg.stars, boss: cfg.boss,
+                        noBoss: Array.isArray(dbCache._noBossCodes) ? dbCache._noBossCodes : [],   // 👑 code không có bản BOSS (bot tự học) - client ẩn nút
                         // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),
                         claimCd: cfg.claimCd,
