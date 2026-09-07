@@ -1367,7 +1367,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
-            <thead><tr><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Hình (file)</th><th></th></tr></thead>
+            <thead><tr><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Ghi chú tác dụng</th><th>Hình (file)</th><th></th></tr></thead>
             <tbody id="itemShopBody"></tbody>
           </table>
         </div>
@@ -2172,9 +2172,10 @@ function itemShopAddRow(it){
   var tr=document.createElement('tr');
   tr.innerHTML='<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
-    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option></select></td>'
+    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option><option value="accessory">💍 Phụ kiện</option></select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
     +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
+    +'<td><input class="mini-in isf-note" style="width:200px" placeholder="tác dụng (hiện trên web + search được)"></td>'
     +'<td style="white-space:nowrap"><input class="mini-in isf-img" style="width:150px" placeholder="tên file hình">'
     +'<input type="file" class="isf-file" accept=".png,.jpg,.jpeg,.gif,.webp" style="display:none" onchange="itemShopUpload(this)">'
     +'<button class="mini" style="margin-left:4px" onclick="this.previousElementSibling.click()">📷 Up</button></td>'
@@ -2185,6 +2186,7 @@ function itemShopAddRow(it){
   tr.querySelector('.isf-cat').value=(it.cat==='weapon'||it.cat==='armor')?it.cat:'consume';
   tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
   tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
+  tr.querySelector('.isf-note').value=it.note||'';
   tr.querySelector('.isf-img').value=it.img||'';
 }
 // 🖼️ up hình item: đọc file -> base64 -> POST, server ghi assets/itemimage/ + phục vụ ngay
@@ -2211,6 +2213,7 @@ function itemShopSave(){
       cat:tr.querySelector('.isf-cat').value,
       price:parseInt(tr.querySelector('.isf-price').value)||0,
       max:parseInt(tr.querySelector('.isf-max').value)||1,
+      note:tr.querySelector('.isf-note').value.trim(),
       img:tr.querySelector('.isf-img').value.trim()};
   }).filter(function(x){return x.id;});
   api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');refresh();}).catch(function(e){toast('❌ '+e.message);});

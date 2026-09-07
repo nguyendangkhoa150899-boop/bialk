@@ -770,9 +770,15 @@ const PAGE = [
     '.spmNxT{font-size:11px;font-weight:800;letter-spacing:.5px;color:#7aa2ff;margin-bottom:4px}',
     '.spmNx{display:flex;align-items:center;gap:8px;padding:6px 10px;margin-top:4px;border-radius:9px;background:#131a2b;border:1px solid #23304f;font-size:13px}',
     '.spmNx .nm{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    // 🛒 đề mục nhóm item trong shop
+    // 🛒 đề mục nhóm item trong shop (chỉ còn dùng khi TÌM KIẾM quét mọi nhóm)
     '.isCat{margin:16px 0 8px;font-weight:800;font-size:14px;letter-spacing:.5px;border-bottom:1px solid var(--line);padding-bottom:5px}',
     '.isCat:first-child{margin-top:4px}',
+    // 🛒 4 nút nhóm shop (07/09) + dòng ghi chú tác dụng trên card
+    '.isCatBtn{padding:9px 13px;border-radius:9px;border:1px solid var(--line);background:#181c28;color:var(--tx);font-weight:800;font-size:13px;cursor:pointer}',
+    '.isCatBtn span{color:var(--muted);font-weight:400;font-size:11.5px}',
+    '.isCatBtn.on{background:linear-gradient(180deg,#2f8f4f,#256e3e);border-color:#3ddc84;color:#fff}',
+    '.isCatBtn.on span{color:#c9f5d9}',
+    '.isNote{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.35}',
     // 💸 chip chọn người nhận (chuyển tiền nhiều người 1 lần)
     '.dogChip{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:999px;background:#141824;border:1px solid var(--line);font-size:13px;font-weight:700;cursor:pointer;user-select:none}',
     '.dogChip.sel{background:#12351f;border-color:#3ddc84;color:#7cff9c}',
@@ -1304,6 +1310,9 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">🛒 Shop Item</h2><div class="muted" id="isStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px" id="isInfo">Mua item + số lượng, bot giao <b>thẳng vào túi</b> trong game. Phải đang <b>ONLINE trong game</b> lúc mua. Trừ Dogcoin ngay; giao hụt tự hoàn.</div>',
     '<div id="isLink" class="muted" style="font-size:12px;margin-top:4px">-</div>',
+    // 07/09: 4 nút nhóm + ô tìm kiếm (tìm theo tên LẪN ghi chú tác dụng, quét mọi nhóm)
+    '<div id="isCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>',
+    '<input id="isFind" placeholder="🔎 Tìm item theo tên hoặc tác dụng..." oninput="isRender()" style="width:100%;margin-top:8px">',
     '<div id="isList" style="margin-top:10px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageShop
@@ -2851,15 +2860,25 @@ const PAGE = [
     'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
     // hình item: file trong assets/itemimage/ (thả file + restart như palimage); thiếu -> ô 📦
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
-    // 04/09: shop chia 3 mục theo it.cat (admin chỉnh ở panel) - mục trống thì ẩn luôn
-    'function isRender(){if(!IS)return;var h="";',
-    'var G=[["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🧪 VẬT PHẨM TIÊU HAO"]];',
-    'G.forEach(function(g){var rows=IS.items.filter(function(it){return (it.cat||"consume")===g[0]});if(!rows.length)return;',
-    'h+="<div class=\\"isCat\\">"+g[1]+" <span style=\\"color:var(--muted);font-weight:400;font-size:12px\\">("+rows.length+" món)</span></div>";',
-    'rows.forEach(function(it){',
-    'h+="<div class=\\"isItem\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div></div>"',
-    '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"})});',
-    '$("isList").innerHTML=h||"<div class=\\"muted\\">Shop chưa có món nào - admin thêm ở panel tab 🎮.</div>"}',
+    // 07/09: shop kiểu 4 NÚT NHÓM - bấm nhóm nào hiện đồ nhóm đó (nhớ qua F5);
+    // gõ ô tìm là quét TÊN + GHI CHÚ trên mọi nhóm (kèm đề mục nhóm cho khỏi lạc)
+    'var ISG=[["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🧪 VẬT PHẨM TIÊU HAO"],["accessory","💍 PHỤ KIỆN"]];',
+    'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
+    'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
+    'function isCard(it){return "<div class=\\"isItem\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+"</div>"',
+    '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"}',
+    'function isRender(){if(!IS)return;var cat=isCatGet();var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
+    // hàng nút nhóm (đếm số món từng nhóm, nhóm đang xem sáng lên)
+    'var cb=$("isCats");if(cb)cb.innerHTML=ISG.map(function(g){var n=IS.items.filter(function(it){return (it.cat||"consume")===g[0]}).length;',
+    'return "<button class=\\"isCatBtn"+(g[0]===cat&&!q?" on":"")+"\\" onclick=\\"isCatPick(\'"+g[0]+"\')\\">"+g[1]+" <span>("+n+")</span></button>"}).join("");',
+    'var h="";',
+    'if(q){ISG.forEach(function(g){var rows=IS.items.filter(function(it){return (it.cat||"consume")===g[0]&&((it.name||"").toLowerCase().indexOf(q)>=0||(it.note||"").toLowerCase().indexOf(q)>=0)});if(!rows.length)return;',
+    'h+="<div class=\\"isCat\\">"+g[1]+" <span style=\\"color:var(--muted);font-weight:400;font-size:12px\\">("+rows.length+" món khớp)</span></div>";rows.forEach(function(it){h+=isCard(it)})});',
+    'if(!h)h="<div class=\\"muted\\" style=\\"margin-top:10px\\">Không thấy món nào khớp \\""+esc(q)+"\\".</div>"}',
+    'else{var rows=IS.items.filter(function(it){return (it.cat||"consume")===cat});',
+    'rows.forEach(function(it){h+=isCard(it)});',
+    'if(!rows.length)h="<div class=\\"muted\\" style=\\"margin-top:10px\\">Nhóm này chưa có món nào.</div>"}',
+    '$("isList").innerHTML=h}',
     'async function isBuy(id){if(ISBUSY||!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
     'var q=parseInt($("isq_"+id).value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',

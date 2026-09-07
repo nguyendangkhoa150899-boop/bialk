@@ -1228,6 +1228,50 @@ const DEFAULT_ITEM_SHOP = [
     { cat: 'consume', id: 'PalAwakening_Dragon', name: 'Tinh Thể Thức Tỉnh Hệ Rồng', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Dragon.webp' },
     { cat: 'consume', id: 'PalAwakening_Dark', name: 'Tinh Thể Thức Tỉnh Hệ Bóng Tối', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Dark.webp' },
     { cat: 'consume', id: 'PalAwakening_Neutral', name: 'Tinh Thể Thức Tỉnh Hệ Thường', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Neutral.webp' },
+    // 07/09: 💍 PHỤ KIỆN - code + tên VN + tác dụng đối chiếu registry save-editor (icon->code
+    // khớp 38/38, lưu ý game gõ sai "Dargon" trong code nhẫn Elphidran). Không ghi giá = 60k.
+    { cat: 'accessory', id: 'Accessory_AirDash3', name: 'Giày Lướt Gió Ba Bước', price: 20000, max: 99, img: 'T_itemicon_Accessory_AirDash.webp', note: 'Lướt nhanh trên không 3 lần' },
+    { cat: 'accessory', id: 'Otomo_PalExp_Increase_3', name: 'Chuông Thúc Đẩy Tăng Trưởng (Cấp 3)', price: 20000, max: 99, img: 'T_itemicon_Accessory_Otomo_Exp_up.webp', note: 'Tăng kinh nghiệm nhận được cho Pal (cấp 3)' },
+    { cat: 'accessory', id: 'Accessory_PPAT_1', name: 'Huy Hiệu Dogen', price: 50000, max: 99, img: 'T_itemicon_Accessory_PPAT_1.webp', note: 'Tăng Tấn Công người chơi + Tấn Công Pal' },
+    { cat: 'accessory', id: 'Accessory_PPDF_1', name: 'Huy Hiệu Silvegis', price: 50000, max: 99, img: 'T_itemicon_Accessory_PPDF_1.webp', note: 'Tăng Phòng Thủ người chơi + Phòng Thủ Pal' },
+    { cat: 'accessory', id: 'Accessory_HCMW_1', name: 'Bùa Hộ Mệnh Thương Nhân Lang Thang', price: 50000, max: 99, img: 'T_itemicon_Accessory_HCMW_1.webp', note: 'Chịu nhiệt/lạnh tốt + tăng giới hạn sức mang' },
+    { cat: 'accessory', id: 'Accessory_HCHP_1', name: 'Bùa Hộ Mệnh Đội Tiền Trạm', price: 50000, max: 99, img: 'T_itemicon_Accessory_HCHP_1.webp', note: 'Chịu nhiệt/lạnh tốt + tăng đáng kể Máu' },
+    { cat: 'accessory', id: 'Accessory_ExplosionResist', name: 'Trang Phục Chống Cháy Nổ', price: 50000, max: 99, img: 'T_itemicon_Accessory_ExplosionResist.webp', note: 'Miễn nhiễm sát thương cháy nổ' },
+    { cat: 'accessory', id: 'Accessory_DFHP_1', name: 'Đai Warsect Terra', price: 50000, max: 99, img: 'T_itemicon_Accessory_DFHP_1.webp', note: 'Tăng đáng kể Phòng Thủ và Máu' },
+    { cat: 'accessory', id: 'Accessory_WKMC_1', name: 'Đai Dụng Cụ Dân Đảo', price: 50000, max: 99, img: 'T_itemicon_Accessory_WKMC_1.webp', note: 'Tăng sức mang + tốc độ làm việc' },
+    // 9 gậy chỉ huy: tăng TẤN CÔNG Pal cùng chiến đấu + buff sát thương theo hệ
+    { cat: 'accessory', id: 'Otomo_ATNormal_ElementBoost_1', name: 'Gậy Chỉ Huy Thiên Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATNormal_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Thường' },
+    { cat: 'accessory', id: 'Otomo_ATFire_ElementBoost_1', name: 'Gậy Chỉ Huy Viêm Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATFire_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Lửa' },
+    { cat: 'accessory', id: 'Otomo_ATWater_ElementBoost_1', name: 'Gậy Chỉ Huy Hải Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATWater_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Nước' },
+    { cat: 'accessory', id: 'Otomo_ATElectricity_ElementBoost_1', name: 'Gậy Chỉ Huy Lôi Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATElectricity_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Sấm' },
+    { cat: 'accessory', id: 'Otomo_ATLeaf_ElementBoost_1', name: 'Gậy Chỉ Huy Tinh Linh Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATLeaf_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Cỏ' },
+    { cat: 'accessory', id: 'Otomo_ATIce_ElementBoost_1', name: 'Gậy Chỉ Huy Băng Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATIce_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Băng' },
+    { cat: 'accessory', id: 'Otomo_ATEarth_ElementBoost_1', name: 'Gậy Chỉ Huy Địa Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATEarth_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Đất' },
+    { cat: 'accessory', id: 'Otomo_ATDark_ElementBoost_1', name: 'Gậy Chỉ Huy Minh Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATDark_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Bóng Tối' },
+    { cat: 'accessory', id: 'Otomo_ATDragon_ElementBoost_1', name: 'Gậy Chỉ Huy Thần Long', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATDragon_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Rồng' },
+    // 9 bùa hộ mệnh: tăng PHÒNG THỦ Pal cùng chiến đấu + buff sát thương theo hệ
+    { cat: 'accessory', id: 'Otomo_DFNormal_ElementBoost_1', name: 'Bùa Hộ Mệnh Hartalis', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFNormal_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Thường' },
+    { cat: 'accessory', id: 'Otomo_DFFire_ElementBoost_1', name: 'Bùa Hộ Mệnh Blazamut', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFFire_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Lửa' },
+    { cat: 'accessory', id: 'Otomo_DFWater_ElementBoost_1', name: 'Bùa Hộ Mệnh Neptilius', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFWater_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Nước' },
+    { cat: 'accessory', id: 'Otomo_DFElectricity_ElementBoost_1', name: 'Bùa Hộ Mệnh Orserk', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFElectricity_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Sấm' },
+    { cat: 'accessory', id: 'Otomo_DFLeaf_ElementBoost_1', name: 'Bùa Hộ Mệnh Lyleen', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFLeaf_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Cỏ' },
+    { cat: 'accessory', id: 'Otomo_DFIce_ElementBoost_1', name: 'Bùa Hộ Mệnh Frostallion', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFIce_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Băng' },
+    { cat: 'accessory', id: 'Otomo_DFEarth_ElementBoost_1', name: 'Bùa Hộ Mệnh Anubis', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFEarth_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Đất' },
+    { cat: 'accessory', id: 'Otomo_DFDark_ElementBoost_1', name: 'Bùa Hộ Mệnh Lyleen Noct', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFDark_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Bóng Tối' },
+    { cat: 'accessory', id: 'Otomo_DFDragon_ElementBoost_1', name: 'Bùa Hộ Mệnh Jetragon', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFDragon_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Rồng' },
+    // 9 nhẫn hệ: GIẢM sát thương nhận vào 1 hệ + buff sát thương 1 hệ cho Pal
+    { cat: 'accessory', id: 'Accessory_Otomo_Fire_1', name: 'Nhẫn Blazehowl', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Fire_1.webp', note: 'Giảm sát thương hệ Cỏ nhận vào + buff hệ Lửa cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Fire_2', name: 'Nhẫn Faleris', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Fire_2.webp', note: 'Giảm sát thương hệ Băng nhận vào + buff hệ Lửa cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Water_1', name: 'Nhẫn Faleris Aqua', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Water_1.webp', note: 'Giảm sát thương hệ Lửa nhận vào + buff hệ Nước cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Electricity_1', name: 'Nhẫn Fenglope Lux', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Electricity_1.webp', note: 'Giảm sát thương hệ Nước nhận vào + buff hệ Sấm cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Earth_1', name: 'Nhẫn Menasting Terra', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Earth_1.webp', note: 'Giảm sát thương hệ Sấm nhận vào + buff hệ Đất cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Leaf_1', name: 'Nhẫn Vaelet', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Leaf_1.webp', note: 'Giảm sát thương hệ Đất nhận vào + buff hệ Cỏ cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Dark_1', name: 'Nhẫn Katress', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Dark_1.webp', note: 'Giảm sát thương hệ Thường nhận vào + buff hệ Bóng Tối cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Dargon_1', name: 'Nhẫn Elphidran', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Dargon_1.webp', note: 'Giảm sát thương hệ Bóng Tối nhận vào + buff hệ Rồng cho Pal' },
+    { cat: 'accessory', id: 'Accessory_Otomo_Ice_1', name: 'Nhẫn Cryolinx', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Ice_1.webp', note: 'Giảm sát thương hệ Rồng nhận vào + buff hệ Băng cho Pal' },
+    // 2 nhẫn lẻ (chủ server tải icon sẵn, giá mặc định 60k)
+    { cat: 'accessory', id: 'Accessory_Avoid_1', name: 'Nhẫn Huyễn Ảnh', price: 60000, max: 99, img: 'T_itemicon_Accessory_Accessory_Avoid_1.webp', note: 'Kéo dài thời gian bất tử khi lăn/nhảy né' },
+    { cat: 'accessory', id: 'Otomo_PalConfidence_Increase_1', name: 'Nhẫn Tin Cậy', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_PalConfidence_Increase_1.webp', note: 'Dễ chiếm lòng tin của Pal hơn' },
 ];
 function seedItemShopIfEmpty() {
     if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
@@ -1256,6 +1300,26 @@ function seedItemShopIfEmpty() {
             writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} viên đá thức tỉnh: ${add.map(x => x.id).join(', ')}`);
         } else saveDbNow();
     }
+    // 07/09: đợt 3 - CHỈ ghép 38 món 💍 phụ kiện (cat accessory), cờ riêng
+    if (!dbCache._migItemShopAcc0709) {
+        dbCache._migItemShopAcc0709 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'accessory' && !have.has(x.id));
+        if (add.length) {
+            setItemShop(cur.concat(add));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món phụ kiện`);
+        } else saveDbNow();
+    }
+    // 07/09: điền GHI CHÚ tác dụng cho món cũ còn thiếu (tra id trong DEFAULT) - idempotent
+    const rawN = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
+    let noted = 0;
+    for (const x of rawN) {
+        if (!x || x.note) continue;
+        const def = DEFAULT_ITEM_SHOP.find(d => d.id === x.id && d.note);
+        if (def) { x.note = def.note; noted++; }
+    }
+    if (noted) { saveDbNow(); writeLog('SYSTEM', `[SHOP ITEM] Điền ghi chú cho ${noted} món cũ`); }
 }
 // 04/09: điền nhóm (cat) cho món CŨ trong DB còn thiếu - tra theo id trong DEFAULT,
 // lạ thì về 'consume'. Idempotent (chỉ đụng món thiếu cat), chạy mỗi boot, không cần cờ.
@@ -1263,7 +1327,7 @@ function backfillItemShopCat() {
     const raw = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     let fixed = 0;
     for (const x of raw) {
-        if (!x || x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'consume') continue;
+        if (!x || x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'consume' || x.cat === 'accessory') continue;
         const def = DEFAULT_ITEM_SHOP.find(d => d.id === x.id);
         x.cat = def ? def.cat : 'consume';
         fixed++;
@@ -1302,7 +1366,8 @@ function itemShopList() {
         price: Math.max(0, Math.floor(Number(x.price) || 0)),
         max: Math.max(1, Math.floor(Number(x.max) || 999)),
         img: String(x.img || ''),   // tên file trong assets/itemimage/ (trống = ô 📦)
-        cat: (x.cat === 'weapon' || x.cat === 'armor') ? x.cat : 'consume',   // 04/09: nhóm hiển thị
+        cat: (x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'accessory') ? x.cat : 'consume',   // 04/09 nhóm · 07/09 thêm 💍 phụ kiện
+        note: String(x.note || '').slice(0, 140),   // 07/09: ghi chú tác dụng (hiện trên card + search được)
     }));
 }
 function setItemShop(list) {
@@ -1313,7 +1378,8 @@ function setItemShop(list) {
             price: Math.max(0, Math.floor(Number(x && x.price) || 0)),
             max: Math.max(1, Math.floor(Number(x && x.max) || 999)),
             img: String((x && x.img) || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80),
-            cat: (x && (x.cat === 'weapon' || x.cat === 'armor')) ? x.cat : 'consume',
+            cat: (x && (x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'accessory')) ? x.cat : 'consume',
+            note: String((x && x.note) || '').trim().slice(0, 140),
         }))
         .filter(x => x.id)
         .slice(0, 100);

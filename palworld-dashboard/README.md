@@ -662,6 +662,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **07/09 (chiều 2)** — 💍 **Shop thêm 38 PHỤ KIỆN + UI 4 nút nhóm + search + ghi chú**:
+  cat mới `accessory`; item có field `note` (ghi chú tác dụng, panel sửa được, hiện trên
+  card). Icon→code đối chiếu registry save-editor 38/38 khớp (giày AirDash3, chuông Exp
+  cấp 3, 2 huy hiệu, 2 bùa hộ mệnh thân, đai/trang phục, 9 gậy chỉ huy AT, 9 bùa DF theo
+  hệ, 9 nhẫn hệ - code Elphidran game gõ sai "Dargon", + Nhẫn Huyễn Ảnh/Tin Cậy). Giá:
+  giày+chuông 20k · 7 món 50k · còn lại 60k (luật "không ghi giá = 60k"). Web shop bỏ
+  cuộn dài: 4 NÚT NHÓM (đếm số món, nhớ nhóm qua F5) + ô 🔎 tìm theo tên LẪN tác dụng
+  quét mọi nhóm. Migration cờ riêng `_migItemShopAcc0709` + backfill note cho món cũ.
 - **07/09 (chiều)** — 👑 **Bản PAL BOSS thành TUỲ CHỌN trả phí**: mặc định giao bản THƯỜNG,
   tick "Bản PAL BOSS" trong bảng nhận là +`upBoss` (mặc định 10k, panel chỉnh ô 👑;
   checkbox cũ "Giao bản PAL BOSS" đổi nghĩa thành CÔNG TẮC MỞ BÁN). Server chặn: chưa mở
