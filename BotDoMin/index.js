@@ -2041,23 +2041,39 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         }
     };
 
-    const species = (cfg.boss ? 'BOSS_' : '') + item.code;
+    // 07/09: pal collab Terraria (Yakushima*) KHÔNG có bản BOSS_ trong game — gắn
+    // BOSS_ là mod spawn fail "sai Species ID" (dính thật với Demon Eye trên prod,
+    // xem results.log). Các pal thường vẫn giao bản BOSS_ như cấu hình.
+    const noBossVariant = /^Yakushima/i.test(item.code);
+    let species = (cfg.boss && !noBossVariant ? 'BOSS_' : '') + item.code;
     // linh hồn theo % TỪNG DÒNG người chơi mua - rank trong save = %/3 (60% -> 20, 201% -> 67)
     const soulRank = (k) => souls.includes(k) ? Math.max(0, Math.min(255, Math.round(soulPcts[k] / 3))) : 0;
+    const specBase = {
+        level: cfg.level, rank: cfg.stars,
+        // Công trong game = Talent_Shot; Talent_Melee đã bỏ nhưng ghi cùng giá cho chắc
+        ivHp: ivHp, ivMelee: ivAtk, ivShot: ivAtk, ivDef: ivDef,
+        soulHp: soulRank('hp'),
+        soulAtk: soulRank('atk'),
+        soulDef: soulRank('def'),
+        soulWork: soulRank('work'),
+        gender,
+        passives,
+    };
     let r = null, err = null;
     try {
-        r = await pal.givePal(gameName, {
-            species, level: cfg.level, rank: cfg.stars,
-            // Công trong game = Talent_Shot; Talent_Melee đã bỏ nhưng ghi cùng giá cho chắc
-            ivHp: ivHp, ivMelee: ivAtk, ivShot: ivAtk, ivDef: ivDef,
-            soulHp: soulRank('hp'),
-            soulAtk: soulRank('atk'),
-            soulDef: soulRank('def'),
-            soulWork: soulRank('work'),
-            gender,
-            passives,
-        });
+        r = await pal.givePal(gameName, { species, ...specBase });
     } catch (e) { err = e; }
+    // 07/09: "spawn failed" từ mod = game KHÔNG có id này và CHƯA giao gì. Nếu đang gắn
+    // BOSS_ thì tự thử lại bản thường 1 lần - pal đặc biệt nào thiếu bản BOSS_ (kiểu
+    // Demon Eye) tự lành theo đường này, khỏi nuôi danh sách ngoại lệ.
+    if (!(r && r.ok) && /spawn failed/i.test((r && r.message) || (err && err.message) || '') && species !== item.code) {
+        writeLog('ADMIN', `[RƯƠNG PAL] ${species} spawn fail (không có bản BOSS?) - tự thử lại bản thường ${item.code} (rương #${item.id})`);
+        species = item.code;
+        err = null;
+        try {
+            r = await pal.givePal(gameName, { species, ...specBase });
+        } catch (e) { err = e; }
+    }
     deliverUnlock();   // 🚦 SFTP xong -> mở khoá cho đơn khác (phần xử lý kết quả dưới không đụng SFTP)
 
     if (r && r.ok) {
@@ -2092,6 +2108,15 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         refundUp();
         saveDbNow();
         return { error: `Không thấy ${gameName} trong game - vào game rồi thử lại (phí nâng cấp đã hoàn)` };
+    }
+    // 07/09: spawn fail (đã thử cả bản thường ở trên) = mod CHƯA giao gì - trả về rương,
+    // đừng treo 'delivering' bắt admin gỡ tay như vụ Demon Eye.
+    if (/spawn failed/i.test(msg)) {
+        item.status = 'chest';
+        refundUp();
+        saveDbNow();
+        writeLog('ADMIN', `[RƯƠNG PAL] Spawn fail cả 2 kiểu id cho ${item.code} (rương #${item.id} của ${username || userId}) - đã trả về rương; kiểm lại id pal trong pals.json`);
+        return { error: '⚠️ Game không spawn được pal này - pal + phí nâng cấp đã hoàn về rương, báo admin kiểm giùm' };
     }
     // Không rõ đã giao hay chưa: giữ 'delivering', admin kiểm results.log rồi xử ở panel
     writeLog('ADMIN', `[RƯƠNG PAL] KHÔNG RÕ KẾT QUẢ giao ${species} cho ${gameName} (rương #${item.id} của ${username || userId}): ${msg} - kiểm results.log: đã giao thì bấm "đã giao", chưa thì "trả về rương"`);

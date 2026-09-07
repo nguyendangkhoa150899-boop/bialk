@@ -662,6 +662,16 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **07/09** — 🐛 **Fix Demon Eye kẹt ĐANG GIAO + chống tái diễn cho MỌI pal**: results.log
+  prod báo `ERROR spawn failed BOSS_YakushimaBoss001_Small` - pal collab Terraria không có
+  bản `BOSS_`, mà cfg "Giao bản PAL BOSS" gắn prefix cho mọi pal, và message "spawn failed"
+  không khớp nhánh nào nên treo 'delivering'. Fix 3 lớp trong palChestClaim: (1) code
+  `Yakushima*` khỏi gắn BOSS_ ngay từ đầu; (2) BOSS_ spawn fail → TỰ THỬ LẠI bản thường
+  1 lần (pal đặc biệt nào thiếu bản BOSS_ sau này tự lành, khỏi nuôi danh sách); (3) spawn
+  fail cả 2 kiểu = mod CHƯA giao gì → TRẢ VỀ RƯƠNG + hoàn phí, hết treo. Audit tĩnh toàn bộ
+  291 code trong pals.json với registry save-editor oMaN-Rod: id hợp lệ 291/291, pool không
+  con nào thiếu icon, Panthalus disabled đúng như đã loại, chỉ Demon Eye thuộc họ đặc biệt.
+  palwheeltest 158/158. Đơn kẹt cũ: panel SUPER → 🎒 rương → ↩️ về rương cho nhận lại.
 - **07/09** — 🖼️ 🎯 Chọn Pal gắn icon pal 34px đầu mỗi dòng (kho `/palimage/` theo code,
   `loading=lazy` - 286 hình chỉ tải khi cuộn tới, thiếu hình tự ẩn không vỡ layout).
 - **07/09** — 🐾 **Thêm Demon Eye (Mắt Ác Quỷ)** vào pals.json (`YakushimaBoss001_Small`,
