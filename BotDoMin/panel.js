@@ -2337,7 +2337,8 @@ function itemShopAddRow(it){
   body.appendChild(tr);
   tr.querySelector('.isf-id').value=it.id||'';
   tr.querySelector('.isf-name').value=it.name||'';
-  tr.querySelector('.isf-cat').value=(it.cat==='weapon'||it.cat==='armor')?it.cat:'consume';
+  // 08/09: thiếu 'accessory' → mọi phụ kiện nạp lên form thành Tiêu hao, bấm Lưu là mất nhóm cả 38 món
+  tr.querySelector('.isf-cat').value=(it.cat==='weapon'||it.cat==='armor'||it.cat==='accessory')?it.cat:'consume';
   tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
   tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
   tr.querySelector('.isf-note').value=it.note||'';

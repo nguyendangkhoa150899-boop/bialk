@@ -679,6 +679,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   bị chặn). Fix: sửa `.env` prod + `pm2 restart palworld-dashboard`, KHÔNG cần đụng mod/restart
   game. Đã chạy OK sau fix. Lần sau thấy "Dashboard server error" ngay sau khi đổi tên/đổi
   gói server → nghĩ tới cái này đầu tiên.
+- **08/09 (tối 3)** — 🐛 **Trình sửa shop item nuốt nhóm Phụ kiện**: `itemShopAddRow` chỉ
+  nhận cat weapon/armor (viết trước khi có accessory 07/09) → 38 phụ kiện nạp lên form thành
+  🧪 Tiêu hao, admin bấm 💾 Lưu là server ghi đè cat=consume cả 38 món (server thì nhận
+  accessory đúng). Sửa 1 dòng. Quy trình thêm món bán mới = lấy StaticItemId ở 📦 Kho đồ
+  (SUPER) → tab shop: id + tên + nhóm + giá + 📷 Up hình → 💾 Lưu, không cần code/restart.
 - **08/09 (tối 2)** — 🔐 **Web người chơi: login sai PIN không thấy báo gì** → lỗi giờ hiện
   trong khung đỏ `#loginErr` NGAY DƯỚI ô PIN (đứng yên tới lần thử sau; toast đáy màn hình bị
   bàn phím điện thoại che), nút login khoá "⏳ Đang kiểm tra..." khi chờ, Enter ở ô PIN =
