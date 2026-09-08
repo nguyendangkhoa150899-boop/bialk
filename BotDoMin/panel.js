@@ -856,8 +856,14 @@ const HTML = `<!DOCTYPE html>
   td .mini{padding:6px 8px;font-size:13px}
   .mini-in{width:110px;padding:6px 8px;margin:0}
   .note{font-size:13px;color:var(--mut);background:var(--card2);padding:10px 12px;border-radius:8px;margin-top:10px;line-height:1.5}
-  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:10px 18px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none;z-index:80}
-  #toast.show{opacity:1}
+  /* 08/09: toast XẾP CHỒNG (nhiều tin cùng lúc không đè nhau), hiện lâu theo độ dài chữ,
+     lỗi viền đỏ + ở lâu hơn, thành công viền xanh, bấm vào là tắt. Trước đây 1 ô duy nhất
+     1.8s là biến - admin phải F12 mới đọc kịp kết quả giao đồ. */
+  #toasts{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;z-index:80;max-width:min(92vw,720px);pointer-events:none}
+  .toast{background:#0b0f1a;color:#fff;padding:10px 18px;border-radius:9px;border:1px solid #2a3146;box-shadow:0 6px 24px rgba(0,0,0,.45);font-size:14px;line-height:1.35;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:auto;cursor:pointer;max-width:100%;word-break:break-word}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:#e5484d;background:#2a1215}
+  .toast.ok{border-color:#3dd68c;background:#0f2a1c}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:70;padding:16px}
   .modal-box{background:var(--card);border-radius:14px;padding:24px;width:360px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:pop .15s ease}
   @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
@@ -986,7 +992,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="txStart()">▶️ Bật / Tạo bàn mới</button>
           <button class="btn-red" onclick="txStop()">⏹️ Tắt bàn</button>
-          <button class="btn-grey" onclick="chatDelete('txChannel')">🧹 Xóa chat bot</button>
+          <button class="btn-grey" onclick="chatDelete('txChannel',this)">🧹 Xóa chat bot</button>
         </div>
         <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> (Cài đặt Discord → Advanced) → chuột phải kênh → <b>Copy Channel ID</b>. "Bật" sẽ tạo bàn mới ngay trong kênh đó.</div>
         <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
@@ -1042,7 +1048,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="mineBoardStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="mineBoardStop()">⏹️ Gỡ bảng</button>
-          <button class="btn-grey" onclick="chatDelete('mineChannel')">🧹 Xóa chat bot</button>
+          <button class="btn-grey" onclick="chatDelete('mineChannel',this)">🧹 Xóa chat bot</button>
         </div>
         <div class="note">Dò mìn <b>không có ván chung theo giờ</b> như Big Small - mỗi người chơi ván riêng trên web. Bảng này chỉ để mời chơi: có nút <b>🌐 Chơi Dò Mìn trên web</b> phát link + mã PIN, và tự khoe 6 ván gần nhất (ai ăn bao nhiêu, ai dính mìn). Bảng tự vẽ lại tối đa 15 giây/lần. Bot restart sẽ tự nối lại bảng cũ.</div>
       </div>
@@ -1082,7 +1088,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="stairBoardStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="stairBoardStop()">⏹️ Gỡ bảng</button>
-          <button class="btn-grey" onclick="chatDelete('stairChannel')">🧹 Xóa chat bot</button>
+          <button class="btn-grey" onclick="chatDelete('stairChannel',this)">🧹 Xóa chat bot</button>
         </div>
         <div class="note">Leo <b>10 tầng</b>, mỗi tầng <b>8 ô</b>, người chơi chọn <b>1–5 cầu lửa</b> mỗi tầng. Bấm trúng ô trống thì lên tầng, hệ số nhân thêm; trúng lửa là mất cược. Chơi trên web, mỗi ván xong bot đăng kết quả kèm bản đồ tháp về kênh này. Bot restart sẽ tự nối lại bảng cũ.</div>
       </div>
@@ -1253,7 +1259,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="spmBoardStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="spmBoardStop()">⏹️ Gỡ bảng</button>
-          <button class="btn-grey" onclick="chatDelete('spmChannel')">🧹 Xóa chat bot</button>
+          <button class="btn-grey" onclick="chatDelete('spmChannel',this)">🧹 Xóa chat bot</button>
         </div>
         <div class="note">Sau mỗi chuyến NỔ, bảng tự khoe kết quả từng người (💰 thắng x… được … / 💥 NỔ x… thua hết …) kèm số dư, và có nút <b>🌐 Chơi Phi Thuyền trên web</b> phát link + mã PIN. Bảng tự đăng lại tối đa 1 phút/lần, bot restart tự nối lại bảng cũ.</div>
       </div>
@@ -1407,6 +1413,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><select id="gvType" onchange="gvRender()"><option value="">Tất cả nhóm</option></select></div>
         </div>
         <div class="muted" id="gvStat" style="font-size:12px;margin-top:6px">Bấm vào tab là tải danh sách...</div>
+        <div id="gvResult" class="hidden" style="margin-top:8px;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);font-size:13px"></div>
         <div id="gvList" style="margin-top:8px;max-height:540px;overflow-y:auto"></div>
       </div>
     </div>
@@ -1517,7 +1524,7 @@ const HTML = `<!DOCTYPE html>
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toasts"></div>
 
 <div id="modal" class="modal-overlay hidden" onclick="if(event.target===this)modalClose(false)">
   <div class="modal-box">
@@ -1538,7 +1545,28 @@ let TOKEN = localStorage.getItem('panel_token') || '';
 let STATE = null;
 let mineSel = new Set();
 
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+// Thông báo nổi: xếp chồng (tối đa 5), thời gian hiện theo độ dài chữ (lỗi ≥6s), tin TRÙNG
+// trong 1.5s thì bỏ qua (api() đã toast lỗi rồi, caller toast lại không bị hiện đôi).
+// Bấm vào toast để tắt sớm.
+let lastToast={msg:'',at:0};
+function toast(msg){
+  msg=String(msg==null?'':msg);
+  const now=Date.now();
+  if(msg===lastToast.msg&&now-lastToast.at<1500)return;
+  lastToast={msg:msg,at:now};
+  const box=document.getElementById('toasts');
+  if(!box)return;
+  const isErr=/^(❌|⚠️|⛔)/.test(msg), isOk=/^(✅|🎁|💾|▶️|🔄|🎲|⚡|🏆|🧹|🔗|📒|↩️|⏹️|🗑️|🌊)/.test(msg);
+  const el=document.createElement('div');
+  el.className='toast'+(isErr?' err':(isOk?' ok':''));
+  el.textContent=msg;
+  const kill=()=>{el.classList.remove('show');setTimeout(()=>el.remove(),260);};
+  el.onclick=kill;
+  box.appendChild(el);
+  while(box.children.length>5)box.firstChild.remove();
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(kill,Math.min(10000,Math.max(isErr?6000:2600,1200+msg.length*55)));
+}
 
 // Hộp xác nhận tự vẽ - hiện giữa màn hình, đúng theme web (thay confirm() của trình duyệt)
 let modalResolve=null,modalRequire='';
@@ -1574,11 +1602,39 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElemen
 async function api(path, body){
   const opt={method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}};
   if(body!==undefined) opt.body=JSON.stringify(body);
-  const r=await fetch(path,opt);
+  let r;
+  // 08/09: fetch đứt (bot tắt / mạng rớt / proxy) trước đây KHÔNG toast gì - admin bấm nút mà
+  // im lặng, phải F12 mới biết. Giờ mọi đường lỗi đều ra toast, kèm cờ toasted để caller nào
+  // .catch(e=>toast(...)) cũng không hiện đôi.
+  try{ r=await fetch(path,opt); }
+  catch(e){ throw apiErr('Không gọi được bot ('+(e.message||'mạng đứt')+') - bot tắt hay mất mạng?'); }
   const j=await r.json().catch(()=>({}));
   if(r.status===401){logout();throw new Error('401');}
-  if(!j.ok){toast('❌ '+(j.error||'Lỗi'));throw new Error(j.error||'err');}
+  if(!j.ok){
+    let m=j.error;
+    if(!m){
+      if(r.status===403)m='Cổng này chỉ được XEM - vào cổng SUPER để thao tác';
+      else if(r.status===502||r.status===504)m='Bot/proxy không phản hồi kịp (HTTP '+r.status+') - lệnh có thể VẪN đang chạy, kiểm tra log trước khi bấm lại';
+      else m='Bot trả về lỗi HTTP '+r.status;
+    }
+    throw apiErr(m);
+  }
   return j;
+}
+function apiErr(m){toast('❌ '+m);const e=new Error(m);e.toasted=true;return e;}
+// Lưới an toàn: lỗi JS nào lọt ra ngoài (promise không .catch, code trong .then ném) đều hiện
+// toast thay vì chỉ nằm trong Console.
+window.addEventListener('unhandledrejection',e=>{const r=e.reason;if(r&&(r.toasted||r.message==='401'))return;toast('❌ '+((r&&r.message)||r||'Lỗi không rõ'));});
+window.addEventListener('error',e=>{if(e&&e.message)toast('❌ Lỗi trang: '+e.message);});
+// Nút bận dùng chung (như bảng người chơi): khoá nút + đổi chữ ⏳ tới khi việc xong, thành công
+// hay lỗi đều trả nút về như cũ. Dùng: onclick="chatDelete('x',this)" → runBtn(this,'Đang xóa...',fn)
+async function runBtn(btn,label,fn){
+  if(!btn||!btn.tagName)return fn();
+  if(btn.dataset.busy)return;
+  const orig=btn.innerHTML;btn.dataset.busy='1';btn.disabled=true;btn.textContent='⏳ '+label;
+  try{return await fn();}
+  catch(e){if(!(e&&e.toasted))toast('❌ '+(e.message||'Lỗi'));}
+  finally{btn.disabled=false;delete btn.dataset.busy;btn.innerHTML=orig;}
 }
 
 // ===== CỤM CAN THIỆP =====
@@ -1590,7 +1646,9 @@ function epApply(on){document.querySelectorAll('.epOnly').forEach(el=>{el.style.
 
 async function login(){
   const pw=document.getElementById('pw').value;
-  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+  let r;
+  try{r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});}
+  catch(e){document.getElementById('loginErr').textContent='Không gọi được bot ('+e.message+') - bot tắt hay mất mạng?';return;}
   const j=await r.json().catch(()=>({}));
   if(j.ok){TOKEN=j.token;localStorage.setItem('panel_token',TOKEN);showApp();}
   else document.getElementById('loginErr').textContent='Sai mật khẩu';
@@ -1628,7 +1686,7 @@ function gaSave(){
   const c=document.getElementById('gaChannel').value.trim();
   const r=document.getElementById('gaRole').value.trim();
   if(!c)return toast('Nhập Channel ID');
-  api('/api/giveaway/config',{channelId:c,roleId:r}).then(j=>{toast('✅ Thông báo phát sẽ vào #'+j.name);refresh();}).catch(()=>toast('❌ Lỗi'));
+  api('/api/giveaway/config',{channelId:c,roleId:r}).then(j=>{toast('✅ Thông báo phát sẽ vào #'+j.name);refresh();}).catch(()=>{});
 }
 function renderGiveaway(){
   if(!STATE||!STATE.giveaway)return;
@@ -1637,7 +1695,7 @@ function renderGiveaway(){
 }
 async function resetDaily(){
   if(!await uiConfirm('Reset điểm danh cho CẢ danh sách? Mọi người /diemdanh nhận thưởng lại được ngay hôm nay.','🔄 Reset','btn-blue'))return;
-  api('/api/points/reset-daily',{}).then(j=>{toast('🔄 Đã reset điểm danh cho '+j.count+' ví');refresh();}).catch(()=>toast('❌ Lỗi'));
+  api('/api/points/reset-daily',{}).then(j=>{toast('🔄 Đã reset điểm danh cho '+j.count+' ví');refresh();}).catch(()=>{});
 }
 function renderGacha(){
   if(!STATE)return;
@@ -1783,7 +1841,7 @@ function renderPalLinks(){
 }
 function palSetName(id){
   const v=document.getElementById('pn_'+id).value;
-  api('/api/pal/set-name',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>toast('❌ Lỗi'));
+  api('/api/pal/set-name',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{});
 }
 
 function initSelects(){
@@ -1876,7 +1934,7 @@ function whSaveMin(){
   if(hasP)steps.push(()=>api('/api/wheel/prices',{prices:ps}));
   steps.reduce((p,f)=>p.then(f),Promise.resolve()).then(()=>{toast('💾 Đã lưu vòng quay');refresh();}).catch(e=>toast('❌ '+(e.message||'Lỗi')));
 }
-async function whReset(){if(!await uiConfirm('Reset lượt vòng quay: CẢ SERVER quay lại được ngay, không đợi 00:00/12:00?','Reset lượt','btn-red'))return;api('/api/wheel/reset',{}).then(j=>{toast('🔄 Đã reset lượt cho '+j.n+' người');refresh();}).catch(()=>toast('❌ Lỗi'));}
+async function whReset(){if(!await uiConfirm('Reset lượt vòng quay: CẢ SERVER quay lại được ngay, không đợi 00:00/12:00?','Reset lượt','btn-red'))return;api('/api/wheel/reset',{}).then(j=>{toast('🔄 Đã reset lượt cho '+j.n+' người');refresh();}).catch(()=>{});}
 // ===== 📈 SÀN CỔ PHIẾU =====
 // ===== 📈 SÀN CỔ PHIẾU (panel) =====
 // Ô số to + bảng 2 phe MUA/BÁN lời lỗ màu; can thiệp là TRÔI KÍN - người chơi
@@ -2144,9 +2202,10 @@ function pgGrant(){
   if(!uid||!pal)return toast('Nhập Discord ID + tên pal');
   api('/api/palchest/grant',{userId:uid,palName:pal}).then(j=>{toast('🎁 Đã tặng '+j.item.name+' vào rương');document.getElementById('pgPal').value='';refresh();}).catch(e=>toast('❌ '+e.message));
 }
-function pcResolve(ownerId,id,delivered){
-  if(!confirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?'))return;
-  api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast('✅ Đã chốt');refresh();}).catch(e=>toast('❌ '+e.message));
+async function pcResolve(ownerId,id,delivered){
+  // 08/09: dùng hộp xác nhận của web (trước là confirm() trình duyệt, lệch theme)
+  if(!await uiConfirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?',delivered?'✅ Đã giao':'↩️ Về rương',delivered?'btn-green':'btn-grey'))return;
+  api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast(delivered?'✅ Đã chốt: đã giao':'↩️ Đã trả về rương');refresh();}).catch(()=>{});
 }
 // 📦 KHO ĐỒ TOÀN GAME (chỉ SUPER) - tải 1 lần khi mở tab, tìm client-side
 let GV=null,GVBUSY=false;
@@ -2176,20 +2235,39 @@ function gvRender(){
     return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-top:5px;border:1px solid var(--line);border-radius:9px;background:var(--card2)">'+ic
       +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+rc+'">'+esc(x.n)+' <span class="muted" style="font-weight:400;font-size:11px">'+esc(x.id)+' · '+(GV_TYPES[x.t]||x.t)+'</span></div>'
       +(x.d?'<div class="muted" style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.d)+'</div>':'')+'</div>'
-      +'<button class="mini btn-green" style="flex:0 0 auto" onclick="gvGive(\\''+x.id+'\\')">🎁 Giao</button></div>';
+      +'<button class="mini btn-green gv-give" style="flex:0 0 auto" '+(GVBUSY?'disabled':'')+' onclick="gvGive(\\''+x.id+'\\',this)">'+(GVBUSY&&GVBUSY.id===x.id?'⏳ Đang giao...':'🎁 Giao')+'</button></div>';
   }).join('')||'<div class="empty">Không món nào khớp.</div>';
 }
-async function gvGive(id){
-  if(GVBUSY)return;
+// Nút "Giao": bấm → khoá TẤT CẢ nút Giao, nút vừa bấm đổi chữ ⏳ (như bảng người chơi), xong
+// (thành công hay lỗi) mới mở lại. Kết quả ghi vào khung #gvResult (giữ 8 dòng mới nhất) để
+// không phải F12; server cũng có deliverLock nên không bao giờ 2 lệnh chạy chồng.
+async function gvGive(id,btn){
+  if(GVBUSY)return toast('⏳ Đang giao món khác - chờ xong rồi bấm tiếp');
   const target=(document.getElementById('gvTargetFree').value||'').trim()||document.getElementById('gvTarget').value;
   const qty=parseInt(document.getElementById('gvQty').value)||1;
-  if(!target)return toast('Chọn/nhập người nhận');
+  if(!target)return toast('❌ Chọn/nhập người nhận');
   const it=(GV&&GV.items||[]).find(x=>x.id===id);
-  if(!await uiConfirm('Giao '+qty+' × '+(it?it.n:id)+' vào túi '+target+'? (phải đang online)','🎁 Giao','btn-green'))return;
-  GVBUSY=true;
-  try{const j=await api('/api/give/item',{target:target,itemId:id,qty:qty});toast(j.message||'✅ Đã giao');}
-  catch(e){}
-  GVBUSY=false;
+  const what=qty+' × '+(it?it.n:id);
+  if(!await uiConfirm('Giao '+what+' vào túi '+target+'? (phải đang online)','🎁 Giao','btn-green'))return;
+  GVBUSY={id:id};
+  document.querySelectorAll('.gv-give').forEach(b=>{b.disabled=true;});
+  if(btn)btn.textContent='⏳ Đang giao...';
+  gvNote('⏳ Đang giao '+what+' cho '+target+'... (mod cần tới 1-2 phút, đừng tắt tab)','');
+  try{const j=await api('/api/give/item',{target:target,itemId:id,qty:qty});const m=j.message||('✅ Đã giao '+what+' vào túi '+target);toast(m);gvNote(m,'ok');}
+  catch(e){gvNote('❌ '+(e.message||'Lỗi')+' | '+what+' cho '+target,'err');}
+  GVBUSY=null;
+  document.querySelectorAll('.gv-give').forEach(b=>{b.disabled=false;b.textContent='🎁 Giao';});
+}
+// Khung kết quả trong tab: dòng mới nhất trên cùng; dòng ⏳ đang chạy được thay bằng kết quả.
+let GVLOG=[];
+function gvNote(msg,kind){
+  const t=new Date();const hh=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  if(GVLOG.length&&GVLOG[0].kind==='')GVLOG.shift();
+  GVLOG.unshift({t:hh,msg:msg,kind:kind});
+  GVLOG=GVLOG.slice(0,8);
+  const box=document.getElementById('gvResult');if(!box)return;
+  box.classList.remove('hidden');
+  box.innerHTML=GVLOG.map((r,i)=>'<div style="padding:3px 0;'+(i?'opacity:.7;font-size:12px;':'font-weight:600;')+'color:'+(r.kind==='err'?'#ff8a8a':(r.kind==='ok'?'#7ee2a8':'var(--tx)'))+'"><span class="muted" style="font-weight:400;font-size:11px">'+r.t+'</span> '+esc(r.msg)+'</div>').join('');
 }
 // 📜 tab Log: chọn mục nào hiện mục đó (lưu lựa chọn qua F5)
 function logPick(k){
@@ -2295,7 +2373,7 @@ function itemShopSave(){
   api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');refresh();}).catch(function(e){toast('❌ '+e.message);});
 }
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
-async function chatDelete(inputId){const c=document.getElementById(inputId).value.trim();if(!c)return toast('Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');});}
+async function chatDelete(inputId,btn){const c=document.getElementById(inputId).value.trim();if(!c)return toast('❌ Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;await runBtn(btn,'Đang xóa...',()=>api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');}));}
 
 function saveChannel(prefix){
   const id=document.getElementById(prefix+'SaveId').value.trim();
@@ -2410,7 +2488,7 @@ function renderHistories(){
 function pClear(id){const i=document.getElementById('amt_'+id);if(i)i.value='';}
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');pClear(id);refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');pClear(id);refresh();});}
-function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');pClear(id);refresh();}).catch(()=>toast('❌ Lỗi'));}
+function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');pClear(id);refresh();}).catch(()=>{});}
 // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) - trống = báo lỗi, dùng nút ↺ để về mặc định
 // (pLuck/pLuckClear đã gỡ 04/09 cùng cột 🍀 - route /api/palwheel/luckrate vẫn còn nếu cần dựng lại)
 // 🪪 mức điểm danh / nghiện / thưởng chuỗi
@@ -2536,7 +2614,7 @@ async function addAllCoins(){
     toast(j.announced?('✅ Đã phát cho '+j.count+' người + đã thông báo'):('✅ Đã phát cho '+j.count+' người - ⚠️ KHÔNG đăng được thông báo (kiểm tra quyền bot ở kênh)'));
     document.getElementById('addAllAmount').value='';document.getElementById('addAllMsg').value='';
     refresh();
-  }).catch(()=>toast('❌ Lỗi'));
+  }).catch(()=>{});
 }
 
 function fmtTime(target){

@@ -532,8 +532,11 @@ KHÔNG BAO GIỜ trỏ tool test vào server chính khi chưa được lệnh. B
 thật nằm ở thư mục scratchpad phiên Claude (palwheeltest.js 83 case + 17 bộ khác).
 
 **3. Server CHÍNH:** VPS `/root/tts-bot` (pm2: `BotDoMin` + `palworld-dashboard` —
-sửa dashboard NHỚ restart cả nó); server game panel Shockbyte tên "1. test mod"
-(SFTP uuid `11d72659-…`); web chơi `103.72.98.37:3002`. Deploy = commit → push →
+sửa dashboard NHỚ restart cả nó); server game panel Shockbyte tên "1. Cô 4 vui vẻ"
+(08/09 đổi từ "1. test mod"; SFTP uuid `11d72659-…`) — **path SFTP = tên hiển thị**, đổi
+tên server trên Shockbyte là phải sửa `SFTP_MOD_PATH` trong `.env` prod + restart
+dashboard, không thì mọi give/count báo "Dashboard server error"; web chơi
+`103.72.98.37:3002`. Deploy = commit → push →
 user pull + pm2 restart; mod = đè `GiveGoldCommand/Scripts/main.lua` qua SFTP + restart
 server game. Pal giao xong DÙNG ĐƯỢC SAU RESTART server game (giới hạn game engine).
 Đường "dùng ngay không restart" đã đào TỚI ĐÁY 08/09 (mổ pak CreativeMenu, dump chữ ký
@@ -667,6 +670,27 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **08/09 (tối)** — ⚠️ **Đổi tên server trên Shockbyte = GÃY prod âm thầm**: chủ server đổi
+  tên server CHÍNH "1. test mod" → **"1. Cô 4 vui vẻ"** (và server TEST → "1. test mod").
+  Path SFTP Shockbyte đi theo TÊN HIỂN THỊ nên `SFTP_MOD_PATH` trong `.env` dashboard prod
+  sai → mọi ghi `queue.txt` lỗi "path not found" → bot báo "Không kiểm tra được online
+  (Dashboard server error)" cho CẢ Kho đồ lẫn nhận pal, dù mod Lua trên server vẫn sống.
+  Chẩn đoán: `opendir("/")+readdir` trên SFTP prod liệt kê tên hiện tại (readdir thư mục con
+  bị chặn). Fix: sửa `.env` prod + `pm2 restart palworld-dashboard`, KHÔNG cần đụng mod/restart
+  game. Đã chạy OK sau fix. Lần sau thấy "Dashboard server error" ngay sau khi đổi tên/đổi
+  gói server → nghĩ tới cái này đầu tiên.
+- **08/09 (tối)** — 🔔 **Panel: thông báo nhìn thấy được, không phải F12 nữa**. (1) `toast()`
+  xếp chồng tối đa 5 tin, thời gian hiện theo độ dài chữ (lỗi ≥6s, tối đa 10s), lỗi viền
+  đỏ / thành công viền xanh, bấm là tắt, tin trùng trong 1.5s bỏ qua (trước: 1 ô, 1.8s là
+  biến). (2) `api()` toast MỌI đường lỗi: fetch đứt (bot tắt/mất mạng - trước đây im lặng
+  hoàn toàn), HTTP 403 cổng chỉ xem, 502/504 proxy không kịp; lỗi gắn cờ `toasted` để caller
+  không hiện đôi; thêm `unhandledrejection` + `window.error` → toast lưới an toàn cho mọi
+  chỗ quên `.catch`. (3) Helper **`runBtn(btn,label,fn)`** dùng chung: khoá nút + chữ ⏳ tới
+  khi xong, thành công/lỗi đều trả nút về; đã gắn cho 🧹 Xóa chat bot (4 chỗ). (4) Kho đồ:
+  bấm Giao → khoá TẤT CẢ nút Giao, nút bấm hiện "⏳ Đang giao...", khung `#gvResult` trong
+  tab ghi dòng ⏳ rồi thay bằng ✅/❌ (giữ 8 dòng, có giờ) - giống bảng người chơi. (5)
+  `pcResolve` (rương pal) bỏ `confirm()` trình duyệt, dùng uiConfirm; login báo lỗi mạng.
+  Smoke test vm `toasttest.js` (scratchpad) 17 case trích code từ trang đang chạy.
 - **08/09** — 📦 **Tab "Kho đồ" (CHỈ cổng SUPER): admin giao BẤT KỲ item vào túi người
   chơi**, thay hẳn CreativeMenu (mod đó cần cài cả client, server bật bAllowClientMod).
   `BotDoMin/gameitems.json` 2299 item {id, tên VN, mô tả, icon, rarity, type} lấy từ registry
