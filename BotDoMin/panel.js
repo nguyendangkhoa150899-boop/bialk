@@ -263,6 +263,18 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Lưu ${list.length} món`);
                     return sendJSON(res, 200, { ok: true, items: list });
                 }
+                // 📦 08/09: KHO ĐỒ TOÀN GAME - CHỈ cổng SUPER (thay CreativeMenu client)
+                if (ctx.gameItems && path === '/api/gameitems') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    return sendJSON(res, 200, { ok: true, items: ctx.gameItems(), targets: ctx.giveTargets ? ctx.giveTargets() : [] });
+                }
+                if (ctx.adminGiveItem && req.method === 'POST' && path === '/api/give/item') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    const r = await ctx.adminGiveItem(body.target, body.itemId, body.qty);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    ctx.writeLog('ADMIN', `[PANEL] Kho đồ: giao ${body.itemId} x${body.qty} cho ${body.target}`);
+                    return sendJSON(res, 200, { ok: true, message: r.message });
+                }
                 // 🖼️ 04/09: up hình item thẳng từ panel (base64) - phục vụ ngay, khỏi restart
                 if (ctx.uploadItemImage && req.method === 'POST' && path === '/api/itemshop/upload') {
                     const r = ctx.uploadItemImage(body.name, body.data);
@@ -917,6 +929,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
       <button data-tab="pal" onclick="tab('pal')">🎮 Palworld & Dogcoin<span id="wdBadge" class="hidden"></span></button>
       <button data-tab="log" onclick="tab('log')">📜 Log</button>
+      <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
     </div>
 
     <!-- XỔ SỐ MIỀN BẮC -->
@@ -1379,6 +1392,25 @@ const HTML = `<!DOCTYPE html>
       <!-- (💰 Sổ biến động Dogcoin đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
 
+    <!-- 📦 KHO ĐỒ TOÀN GAME (08/09) - CHỈ CỔNG SUPER: thay CreativeMenu client mod -->
+    <div id="tab-give" class="hidden">
+      <div class="card">
+        <h2>📦 Kho đồ toàn game <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
+        <div class="note">Giao BẤT KỲ item nào của game vào túi người chơi (họ phải đang <b>ONLINE trong game</b>). Dữ liệu 2.299 món kèm tên + mô tả tiếng Việt; icon lấy thẳng từ paldb. Mọi lượt giao đều ghi log. ⚠️ Dùng cho <b>đền bù / sự kiện</b> - spawn bừa là tự phá giá shop item của chính mình.</div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:2"><label>Người nhận (nhân vật đã liên kết)</label><select id="gvTarget"></select></div>
+          <div style="flex:2"><label>Hoặc gõ tên nhân vật khác</label><input id="gvTargetFree" placeholder="trống = dùng ô bên trái"></div>
+          <div style="flex:1"><label>Số lượng</label><input id="gvQty" type="number" min="1" max="999" value="1"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:2"><input id="gvFind" placeholder="🔎 Tìm theo tên / mô tả / id..." oninput="gvRender()"></div>
+          <div style="flex:1"><select id="gvType" onchange="gvRender()"><option value="">Tất cả nhóm</option></select></div>
+        </div>
+        <div class="muted" id="gvStat" style="font-size:12px;margin-top:6px">Bấm vào tab là tải danh sách...</div>
+        <div id="gvList" style="margin-top:8px;max-height:540px;overflow-y:auto"></div>
+      </div>
+    </div>
+
     <!-- 📜 LOG: gom toàn bộ lịch sử thắng/thua về một chỗ (04/09) - mỗi mục 30 ván CÓ CƯỢC.
          Chọn mục nào hiện mục đó, khỏi kéo dài (05/09). -->
     <div id="tab-log" class="hidden">
@@ -1573,7 +1605,7 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','mine','stair','bj','stock','spm','user','pal','log'].includes(saved)) tab(saved);
+  if(['tx','mine','stair','bj','stock','spm','user','pal','log','give'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
@@ -1581,7 +1613,8 @@ function showApp(){
 }
 
 function tab(t){
-  ['tx','mine','stair','bj','stock','spm','xs','user','pal','log'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  ['tx','mine','stair','bj','stock','spm','xs','user','pal','log','give'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  if(t==='give')gvLoad();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -2114,6 +2147,49 @@ function pgGrant(){
 function pcResolve(ownerId,id,delivered){
   if(!confirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?'))return;
   api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast('✅ Đã chốt');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+// 📦 KHO ĐỒ TOÀN GAME (chỉ SUPER) - tải 1 lần khi mở tab, tìm client-side
+let GV=null,GVBUSY=false;
+const GV_TYPES={Weapon:'🗡️ Vũ khí',SpecialWeapon:'☄️ Vũ khí đặc biệt',Armor:'🛡️ Giáp',Accessory:'💍 Phụ kiện',Ammo:'🔫 Đạn',Consume:'🧪 Tiêu hao',Food:'🍖 Đồ ăn',Material:'🧱 Nguyên liệu',Blueprint:'📜 Bản vẽ',Glider:'🪂 Dù lượn',SphereModule:'🔮 Module cầu',Essential:'🔑 Trọng yếu'};
+async function gvLoad(){
+  if(GV)return;
+  try{
+    const j=await api('/api/gameitems');
+    GV=j;
+    const ts=document.getElementById('gvTarget');
+    ts.innerHTML=(j.targets||[]).map(t=>'<option value="'+esc(t.ingame)+'">'+esc(t.ingame)+' ('+esc(t.name)+')</option>').join('')||'<option value="">(chưa ai liên kết nhân vật)</option>';
+    const seen=[...new Set((j.items||[]).map(x=>x.t))];
+    document.getElementById('gvType').innerHTML='<option value="">Tất cả nhóm</option>'+seen.map(t=>'<option value="'+t+'">'+(GV_TYPES[t]||t)+'</option>').join('');
+    gvRender();
+  }catch(e){document.getElementById('gvStat').textContent='❌ '+e.message+' (tab này chỉ chạy ở cổng SUPER)';}
+}
+function gvRender(){
+  if(!GV)return;
+  const q=(document.getElementById('gvFind').value||'').trim().toLowerCase();
+  const ty=document.getElementById('gvType').value;
+  let rows=(GV.items||[]).filter(x=>(!ty||x.t===ty)&&(!q||x.n.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)||(x.d||'').toLowerCase().includes(q)));
+  document.getElementById('gvStat').textContent=rows.length.toLocaleString()+' món khớp'+(rows.length>80?' - hiện 80 đầu, gõ thêm để lọc':'');
+  rows=rows.slice(0,80);
+  document.getElementById('gvList').innerHTML=rows.map(x=>{
+    const ic=x.i?'<img src="https://cdn.paldb.cc/image/Others/InventoryItemIcon/Texture/'+x.i+'.webp" loading="lazy" style="width:38px;height:38px;border-radius:7px;flex:0 0 auto" onerror="this.outerHTML=\\'📦\\'">':'<span style="font-size:24px">📦</span>';
+    const rc=x.r>=4?'#ffd76a':(x.r===3?'#c9a2ff':(x.r===2?'#7ab6ff':'var(--tx)'));
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-top:5px;border:1px solid var(--line);border-radius:9px;background:var(--card2)">'+ic
+      +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+rc+'">'+esc(x.n)+' <span class="muted" style="font-weight:400;font-size:11px">'+esc(x.id)+' · '+(GV_TYPES[x.t]||x.t)+'</span></div>'
+      +(x.d?'<div class="muted" style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.d)+'</div>':'')+'</div>'
+      +'<button class="mini btn-green" style="flex:0 0 auto" onclick="gvGive(\\''+x.id+'\\')">🎁 Giao</button></div>';
+  }).join('')||'<div class="empty">Không món nào khớp.</div>';
+}
+async function gvGive(id){
+  if(GVBUSY)return;
+  const target=(document.getElementById('gvTargetFree').value||'').trim()||document.getElementById('gvTarget').value;
+  const qty=parseInt(document.getElementById('gvQty').value)||1;
+  if(!target)return toast('Chọn/nhập người nhận');
+  const it=(GV&&GV.items||[]).find(x=>x.id===id);
+  if(!await uiConfirm('Giao '+qty+' × '+(it?it.n:id)+' vào túi '+target+'? (phải đang online)','🎁 Giao','btn-green'))return;
+  GVBUSY=true;
+  try{const j=await api('/api/give/item',{target:target,itemId:id,qty:qty});toast(j.message||'✅ Đã giao');}
+  catch(e){}
+  GVBUSY=false;
 }
 // 📜 tab Log: chọn mục nào hiện mục đó (lưu lựa chọn qua F5)
 function logPick(k){

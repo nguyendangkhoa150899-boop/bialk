@@ -1386,6 +1386,54 @@ function setItemShop(list) {
     saveDbNow();
     return itemShopList();
 }
+// 📦 08/09: KHO ĐỒ TOÀN GAME cho cổng SUPER - thay CreativeMenu (client mod đã bị
+// bAllowClientMod=false chặn). Data gameitems.json build từ registry save-editor +
+// icon paldb (2.299 món, tên + mô tả tiếng Việt). KHÔNG dính tiền - chỉ SUPER admin
+// giao tay cho đền bù/sự kiện; mọi lượt giao đều ghi log ADMIN.
+let GAME_ITEMS = null;
+function gameItems() {
+    if (!GAME_ITEMS) {
+        try { GAME_ITEMS = JSON.parse(fs.readFileSync(require('path').join(__dirname, 'gameitems.json'), 'utf8')); }
+        catch (e) { GAME_ITEMS = []; writeLog('SYSTEM', `[KHO ĐỒ] Không đọc được gameitems.json: ${e.message}`); }
+    }
+    return GAME_ITEMS;
+}
+// Danh sách nhân vật đã liên kết (để panel làm dropdown người nhận)
+function giveTargets() {
+    const out = [];
+    for (const [k, v] of Object.entries(dbCache)) {
+        if (k.startsWith('_') || !/^\d{15,20}$/.test(k) || !v || typeof v !== 'object') continue;
+        const g = (v.ingameName || '').trim();
+        if (g) out.push({ name: v.name || k, ingame: g });
+    }
+    return out;
+}
+async function adminGiveItem(gameName, itemId, qty) {
+    gameName = String(gameName || '').trim();
+    itemId = String(itemId || '').trim().replace(/[^A-Za-z0-9_]/g, '');
+    qty = Math.floor(Number(qty) || 0);
+    if (!gameName) return { error: 'Chọn/nhập tên nhân vật nhận' };
+    if (!itemId) return { error: 'Thiếu item id' };
+    if (qty < 1 || qty > 999) return { error: 'Số lượng 1-999' };
+    const it = gameItems().find(x => x.id === itemId);
+    if (!it) return { error: `Không thấy '${itemId}' trong kho dữ liệu` };
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi bấm lại' };
+    deliverLock();
+    const on = await requireOnline(gameName);
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được online (${on.msg || 'timeout'}) - thử lại sau` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game` }; }
+    let r = null, err = null;
+    try { r = await pal.giveItem(gameName, itemId, qty); } catch (e) { err = e; }
+    deliverUnlock();
+    if (r && r.ok) {
+        writeLog('ADMIN', `[KHO ĐỒ] SUPER giao ${it.n} x${qty} (${itemId}) -> ${gameName}`);
+        return { ok: true, message: `✅ Đã giao ${qty} × ${it.n} vào túi ${gameName}` };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    writeLog('ADMIN', `[KHO ĐỒ LỖI] giao ${itemId} x${qty} -> ${gameName} | ${msg}`);
+    return { error: `Giao hụt: ${msg}` };
+}
+
 async function itemShopBuy(userId, itemId, qty, username) {
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới mua item được' };
     const it = itemShopList().find(x => x.id === String(itemId));
@@ -4800,6 +4848,10 @@ client.once('ready', async (c) => {
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
             setItemShop,
             uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
+            // 📦 kho đồ toàn game (CHỈ cổng SUPER - panel tự gate epOk)
+            gameItems,
+            giveTargets,
+            adminGiveItem,
             // 🚀 Phi Thuyền (crash game): config + xem vòng + ép điểm nổ (SUPER)
             getSpmCfg: spmCfg,
             setSpmCfg,
@@ -5740,14 +5792,25 @@ const TICKET_KIND_LABEL = {
 //        không cho thao tác, chưa đụng đồng nào của ai.
 // Chậm hơn (~5-20s cho lượt đếm) - đó là giá của việc kiểm chắc trước khi chuyển.
 async function requireOnline(gameName) {
-    let c = null, err = null;
-    try { c = await pal.countItem(gameName, 'DogCoin'); } catch (e) { err = e; }
-    const msg = (c && c.message) || (err && err.message) || '';
-    if (c && c.ok && typeof c.count === 'number') return { online: true, count: c.count };
-    if (/player not found/i.test(msg) || /Tried calling a member function/i.test(msg)) {
-        return { online: false };
+    // 08/09: COUNT là thao tác CHỈ ĐỌC nên đứt giữa chừng (abort/timeout - hay gặp
+    // ngay sau khi game server restart, SFTP còn ì) thì THỬ LẠI 1 lần sau 3s.
+    // An toàn tuyệt đối: không giao gì ở bước này, không có cửa giao trùng.
+    for (let attempt = 0; attempt < 2; attempt++) {
+        let c = null, err = null;
+        try { c = await pal.countItem(gameName, 'DogCoin'); } catch (e) { err = e; }
+        const msg = (c && c.message) || (err && err.message) || '';
+        if (c && c.ok && typeof c.count === 'number') return { online: true, count: c.count };
+        if (/player not found/i.test(msg) || /Tried calling a member function/i.test(msg)) {
+            return { online: false };
+        }
+        if (attempt === 0 && /aborted|timeout|timed out/i.test(msg)) {
+            writeLog('SYSTEM', `[ONLINE CHECK] ${gameName} đứt lần 1 (${msg}) - thử lại sau 3s`);
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+        }
+        return { unknown: true, msg };
     }
-    return { unknown: true, msg };
+    return { unknown: true, msg: 'timeout sau 2 lần thử' };
 }
 
 function createTicket(fields) {

@@ -525,7 +525,9 @@ Không Ngủ (`Insomnia`), Bơi Lội Uyển Chuyển (`SwimSpeed_up_1`).
 **2. Môi trường test (máy Windows này):** bot test `Desktop/bialk-test` (web 4002,
 panel 4508/4234, PIN 123456, user `111111111111111111`, nhân vật test `bia123`);
 dashboard test cổng 3010 (`palworld-dashboard/server/.env` local, gitignore, SFTP server
-test "1. Cô 4 và những người bạn"); server test SFTP trong `env.sh` ở scratchpad;
+test — 08/09 chủ server ĐỔI TÊN thành "1. test mod", path SFTP đổi theo tên hiển thị
+nên đổi tên server trên Shockbyte = phải sửa `SFTP_MOD_PATH` trong `.env` tương ứng);
+server test SFTP trong `env.sh` ở scratchpad;
 KHÔNG BAO GIỜ trỏ tool test vào server chính khi chưa được lệnh. Bộ test trích code
 thật nằm ở thư mục scratchpad phiên Claude (palwheeltest.js 83 case + 17 bộ khác).
 
@@ -533,8 +535,11 @@ thật nằm ở thư mục scratchpad phiên Claude (palwheeltest.js 83 case + 
 sửa dashboard NHỚ restart cả nó); server game panel Shockbyte tên "1. test mod"
 (SFTP uuid `11d72659-…`); web chơi `103.72.98.37:3002`. Deploy = commit → push →
 user pull + pm2 restart; mod = đè `GiveGoldCommand/Scripts/main.lua` qua SFTP + restart
-server game. Pal giao xong DÙNG ĐƯỢC SAU RESTART server game (giới hạn game engine,
-đã dò hết API — đừng đào lại đường "dùng ngay không restart", xem nhật ký 25/08).
+server game. Pal giao xong DÙNG ĐƯỢC SAU RESTART server game (giới hạn game engine).
+Đường "dùng ngay không restart" đã đào TỚI ĐÁY 08/09 (mổ pak CreativeMenu, dump chữ ký
+hàm, thử gọi thật) — rào cản là UE4SS Lua không dựng được struct param, engine sập.
+Chủ server CHỐT giữ restart. Toàn bộ kết quả + code thử + cách dò lại khi game update:
+`ue4ss-mod/GHI-CHU-GIVE-PAL-XAI-LIEN.md`. Muốn mở lại chỉ còn đường C++ mod / pak tự build.
 
 **4. Việc còn mở:** (a) kiểm 12 passive ⚠; (b) reel quay hiện ẢNH pal thay tên — cần
 gom đủ ảnh (mới có 16/290 ở `BotDoMin/assets/palimage/`, tên file
@@ -662,6 +667,38 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **08/09** — 📦 **Tab "Kho đồ" (CHỈ cổng SUPER): admin giao BẤT KỲ item vào túi người
+  chơi**, thay hẳn CreativeMenu (mod đó cần cài cả client, server bật bAllowClientMod).
+  `BotDoMin/gameitems.json` 2299 item {id, tên VN, mô tả, icon, rarity, type} lấy từ registry
+  save-editor oMaN-Rod (items.json + l10n/vi); icon hotlink `cdn.paldb.cc/.../<Icon>.webp`
+  — CDN PHÂN BIỆT HOA/THƯỜNG nên tên icon đã đối chiếu 793 tên chuẩn cào từ paldb.cc/vi/Items.
+  Bot: `gameItems()` (lazy), `giveTargets()`, `adminGiveItem()` (sanitize id, qty 1-999,
+  deliverLock + requireOnline + pal.giveItem, log `[KHO ĐỒ]`). Panel: `/api/gameitems` +
+  `/api/give/item` (epOk), UI chọn người (select + ô gõ tay) / số lượng / 🔎 tìm / lọc loại,
+  tối đa 80 dòng. Confirm dialog của panel là `textContent` → KHÔNG dùng thẻ HTML trong
+  chuỗi uiConfirm (đã dính hiện `<b>` thô, sửa). Đã giao thật thành công trên test.
+- **08/09** — 🩹 **Hết kẹt "This operation was aborted" vĩnh viễn**: dashboard
+  `sftpBridge.withSftpNow` thêm **watchdog 75s** (`conn.destroy()` + reject) — stream SFTP
+  câm (hay gặp ngay sau restart server game) làm promise không bao giờ settle → `sftpChain`
+  tuần tự KẸT MÃI, mọi give/count sau đều timeout tới khi restart dashboard. Bot
+  `requireOnline` thử lại 1 lần sau 3s khi lỗi aborted/timeout (COUNT chỉ đọc, an toàn).
+  ⚠️ **Deploy đợt này VPS phải `pm2 restart palworld-dashboard` NGOÀI BotDoMin.**
+- **08/09** — 🔬 **Nghiên cứu "pal xài liền không restart" — KẾT LUẬN: BỎ, giữ restart.**
+  `DBGPAL` (Debug_CaptureNewMonster_ToServer) SẬP SERVER 2/2 → cấm tuyệt đối trên prod.
+  Mổ `CreativeMenu_P.pak` (UE pak V11 + Oodle, parse import map .uasset) tìm ra đường
+  GRANTED pal: `GetInitializedCharacterSaveParemter → CharacterManager:CreateIndividual →
+  PlayerState:OnCreatedGrantedIndividualHandle_ServerInternal`, dump chữ ký thật; thử
+  `GIVEPAL2` trên test: b1/b2 OK, b3 crash native (Lua không dựng được struct out-param,
+  pcall vô dụng). main.lua đã TRẢ VỀ bản gốc (không còn GIVEPAL2), code thử + hướng còn lại
+  (C++ UE4SS mod / pak tự build) lưu `ue4ss-mod/GHI-CHU-GIVE-PAL-XAI-LIEN.md`.
+- **08/09** — 🛡️ **Chống hack sau khi mời người lạ** (server TEST, chưa làm prod):
+  `bAllowClientMod=False` trong `ShockPal.ini` (file nguồn sinh PalWorldSettings.ini trên
+  image Shockbyte modded); cài **PalDefender 1.9.1** — one-click của Shockbyte bỏ nhầm DLL
+  vào `ue4ss/Mods/`, đã dời `d3d9.dll` + `PalDefender.dll` về `Pal/Binaries/Win64/` cạnh
+  `PalServer-Win64-Shipping.exe` (UE4SS nạp qua dwmapi.dll nên không đụng nhau); giao pal
+  + item vẫn chạy khi PalDefender bật. Config `Win64/PalDefender/Config.json` (whitelist,
+  webhook AntiCheats, ban cheater) chủ server tự chỉnh. **Chưa quyết**: khoá cầu nạp/rút
+  Dogcoin game↔web (sạp trong game đã gỡ nên có thể khoá cả 2 chiều) — chỉ bàn, chưa code.
 - **07/09 (chiều 2)** — 💍 **Shop thêm 38 PHỤ KIỆN + UI 4 nút nhóm + search + ghi chú**:
   cat mới `accessory`; item có field `note` (ghi chú tác dụng, panel sửa được, hiện trên
   card). Icon→code đối chiếu registry save-editor 38/38 khớp (giày AirDash3, chuông Exp

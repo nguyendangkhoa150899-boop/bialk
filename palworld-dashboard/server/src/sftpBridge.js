@@ -19,27 +19,38 @@ function withSftp(fn) {
 function withSftpNow(fn) {
   return new Promise((resolve, reject) => {
     const conn = new Client();
+    let done = false;
+    let watchdog = null;
+    const finish = (err, result) => {
+      if (done) return;
+      done = true;
+      clearTimeout(watchdog);
+      try { conn.end(); } catch {}
+      if (err) reject(err); else resolve(result);
+    };
+
+    // 08/09: TRẦN 75 GIÂY cho MỘT phiên. Kết nối chết ngầm (stream câm - không data,
+    // không error, không end; hay xảy ra khi game server vừa restart) mà không có trần
+    // thì promise này không bao giờ settle -> sftpChain (hàng đợi tuần tự bên dưới)
+    // KẸT VĨNH VIỄN, mọi lệnh give/count sau xếp hàng chờ vô vọng tới khi restart
+    // dashboard. Dính thật 08/09 trên server test. Hủy hẳn socket rồi reject để
+    // chain nhả cho lệnh kế tiếp.
+    watchdog = setTimeout(() => {
+      try { conn.destroy(); } catch {}
+      finish(new Error("SFTP quá 75s không phản hồi - đã hủy phiên để giải phóng hàng đợi, thử lại nhé"));
+    }, 75000);
 
     conn.on("ready", () => {
       conn.sftp((err, sftp) => {
-        if (err) {
-          conn.end();
-          return reject(err);
-        }
+        if (err) return finish(err);
         fn(sftp).then(
-          (result) => {
-            conn.end();
-            resolve(result);
-          },
-          (err) => {
-            conn.end();
-            reject(err);
-          }
+          (result) => finish(null, result),
+          (err) => finish(err)
         );
       });
     });
 
-    conn.on("error", reject);
+    conn.on("error", (e) => finish(e));
 
     conn.connect({
       host: process.env.SFTP_HOST,
