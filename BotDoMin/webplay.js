@@ -646,7 +646,10 @@ const PAGE = [
     '.bet-btn{width:100%;margin-top:10px;background:var(--green);color:#0c2417;font-size:17px}',
     '.bet-btn:disabled{background:#2a2e3b;color:var(--muted)}',
     '.row{display:flex;justify-content:space-between;align-items:center}',
-    '#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000c;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;z-index:99}',
+    // 08/09: z-index 200 để nổi TRÊN mọi popup (Lộc lá 100, chọn quà 110, gmodal 120) - trước
+    // đây toast lỗi trong popup bị chính popup che mất. color rõ, chữ dài tự xuống dòng.
+    '#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000d;color:#fff;border:1px solid #2a3146;padding:10px 18px;border-radius:10px;font-size:14px;line-height:1.35;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;word-break:break-word;z-index:200}',
+    '.lerr{display:none;color:#ff8a8a;background:#2a1215;border:1px solid #e5484d;border-radius:10px;padding:9px 12px;margin:8px 0;font-size:13.5px;font-weight:600;word-break:break-word}',
     // 28/08: popup xác nhận đồng bộ giống admin portal (thay confirm() mặc định nhảy lung tung)
     '#gmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:120;padding:16px}',
     '#gmodal.hidden{display:none}',
@@ -1104,7 +1107,10 @@ const PAGE = [
     '<label class="tk"><input type="checkbox" id="agree" onchange="agreeChg()"> Tôi đã đọc và <b>đồng ý</b> các điều khoản trên</label>',
     '</div>',
     '<input id="uid" inputmode="numeric" placeholder="Discord ID của bạn">',
-    '<input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số">',
+    '<input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số" onkeydown="if(event.key===\'Enter\')login()">',
+    // 08/09: lỗi login hiện NGAY DƯỚI ô PIN và đứng yên tới lần thử sau (toast đáy màn hình bị
+    // bàn phím điện thoại che, người chơi nhập sai PIN mà tưởng web không phản hồi)
+    '<div id="loginErr" class="lerr"></div>',
     '<button class="btn-full" id="loginBtn" onclick="login()" disabled>✅ ĐỒNG Ý VÀ VÀO CHƠI</button>',
     '</div>',
 
@@ -1650,7 +1656,9 @@ const PAGE = [
     'var MYID="";var lastSettled=-1;',
     // đồng hồ máy người chơi có thể lệch server vài giây -> đếm giờ theo GIỜ SERVER
     'var CLOCK_OFF=0;function srvNow(){return Math.floor(Date.now()/1000)+CLOCK_OFF}',
-    'function toast(m){var t=document.getElementById("toast");t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(function(){t.style.opacity=0},2500)}',
+    // 08/09: thời gian hiện theo độ dài chữ (2.5s → tối đa 8s), lỗi ❌/⚠️ tối thiểu 5s - trước
+    // đây 2.5s cố định, câu lỗi dài chưa đọc xong đã biến.
+    'function toast(m){var t=document.getElementById("toast");m=String(m==null?"":m);t.textContent=m;t.style.opacity=1;clearTimeout(t._h);var err=/^(❌|⚠️|⛔)/.test(m);t._h=setTimeout(function(){t.style.opacity=0},Math.min(8000,Math.max(err?5000:2500,1200+m.length*50)))}',
     // 28/08: popup xác nhận giống admin portal - trả Promise(true/false), thay confirm() mặc định
     'var GMRES=null;',
     'function gConfirm(msg,okLabel,danger){return new Promise(function(resolve){GMRES=resolve;',
@@ -1710,8 +1718,16 @@ const PAGE = [
     'function api(p,body){return fetch(p,{method:body?"POST":"GET",headers:{"Content-Type":"application/json","Authorization":"Bearer "+TOKEN},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(j){if(!j.ok)throw new Error(j.error||("HTTP "+r.status));return j})})}',
     // tick điều khoản mới mở nút vào chơi
     'function agreeChg(){var c=document.getElementById("agree"),b=document.getElementById("loginBtn");if(c&&b)b.disabled=!c.checked}',
-    'function login(){var c=document.getElementById("agree");if(c&&!c.checked)return toast("Phải đồng ý điều khoản trước đã");',
-    'var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return toast("Nhập đủ ID + PIN");fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})}).then(function(r){return r.json()}).then(function(j){if(!j.ok)return toast(j.error||"Sai thông tin");TOKEN=j.token;localStorage.setItem("play_token",TOKEN);show(j.name)}).catch(function(){toast("Lỗi mạng")})}',
+    // loginErr(m): ghi lỗi vào khung đỏ dưới ô PIN + toast; loginErr("") xoá khung.
+    'function loginErr(m){var e=document.getElementById("loginErr");if(e){e.textContent=m||"";e.style.display=m?"block":"none"}if(m)toast(m)}',
+    'function login(){var c=document.getElementById("agree");if(c&&!c.checked)return loginErr("⚠️ Phải tick đồng ý điều khoản trước đã");',
+    'var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return loginErr("⚠️ Nhập đủ Discord ID + mã PIN");',
+    'var b=document.getElementById("loginBtn");if(b.disabled&&b._busy)return;var ot=b.textContent;b._busy=true;b.disabled=true;b.textContent="⏳ Đang kiểm tra...";loginErr("");',
+    'function done(){b._busy=false;b.disabled=false;b.textContent=ot}',
+    'fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})})',
+    '.then(function(r){return r.json().catch(function(){return{ok:false,error:"Bot trả về lỗi HTTP "+r.status}})})',
+    '.then(function(j){done();if(!j.ok)return loginErr("❌ "+(j.error||"Sai thông tin"));TOKEN=j.token;localStorage.setItem("play_token",TOKEN);show(j.name)})',
+    '.catch(function(e){done();loginErr("❌ Không gọi được bot ("+((e&&e.message)||"mạng đứt")+") - bot tắt hay mất mạng? Thử lại sau")})}',
     'function logout(){TOKEN="";localStorage.removeItem("play_token");location.reload()}',
     'function show(n){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");',
     'if(n)document.getElementById("myName").textContent=n;initPaper();',

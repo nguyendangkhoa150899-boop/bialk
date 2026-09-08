@@ -679,6 +679,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   bị chặn). Fix: sửa `.env` prod + `pm2 restart palworld-dashboard`, KHÔNG cần đụng mod/restart
   game. Đã chạy OK sau fix. Lần sau thấy "Dashboard server error" ngay sau khi đổi tên/đổi
   gói server → nghĩ tới cái này đầu tiên.
+- **08/09 (tối 2)** — 🔐 **Web người chơi: login sai PIN không thấy báo gì** → lỗi giờ hiện
+  trong khung đỏ `#loginErr` NGAY DƯỚI ô PIN (đứng yên tới lần thử sau; toast đáy màn hình bị
+  bàn phím điện thoại che), nút login khoá "⏳ Đang kiểm tra..." khi chờ, Enter ở ô PIN =
+  bấm nút, JSON hỏng/HTTP lỗi/mạng đứt đều có câu rõ. Toast webplay z-index 99 → **200**
+  (trước bị popup Lộc lá 100 / chọn quà 110 / gmodal 120 che → báo lỗi trong popup mất tăm),
+  thời gian hiện theo độ dài (lỗi ≥5s, tối đa 8s).
 - **08/09 (tối)** — 🔔 **Panel: thông báo nhìn thấy được, không phải F12 nữa**. (1) `toast()`
   xếp chồng tối đa 5 tin, thời gian hiện theo độ dài chữ (lỗi ≥6s, tối đa 10s), lỗi viền
   đỏ / thành công viền xanh, bấm là tắt, tin trùng trong 1.5s bỏ qua (trước: 1 ô, 1.8s là
