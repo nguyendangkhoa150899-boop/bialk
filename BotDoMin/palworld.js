@@ -99,14 +99,27 @@ async function givePal(playerName, spec) {
     };
 }
 
-// 🆘 Tẩu thoát khẩn cấp: dịch chuyển nhân vật về điểm xuất phát. Trả { ok, message }.
-async function rescuePlayer(playerName) {
+// 🆘 Tẩu thoát khẩn cấp: dịch chuyển nhân vật. point {x,y,z} = điểm admin đặt (tuỳ chọn).
+async function rescuePlayer(playerName, point) {
     const data = await call('/api/rescue', {
+        method: 'POST',
+        body: JSON.stringify({ playerName, ...(point || {}) }),
+    });
+    return {
+        ok: !!(data && data.ok),
+        message: (data && data.message) || 'Không rõ kết quả',
+    };
+}
+
+// 📍 Đo toạ độ nhân vật đang đứng (CHỈ ĐỌC). Trả { ok, x, y, z, message }.
+async function whereIs(playerName) {
+    const data = await call('/api/whereis', {
         method: 'POST',
         body: JSON.stringify({ playerName }),
     });
     return {
         ok: !!(data && data.ok),
+        x: data && data.x, y: data && data.y, z: data && data.z,
         message: (data && data.message) || 'Không rõ kết quả',
     };
 }
@@ -174,6 +187,7 @@ module.exports = {
     giveItem,
     givePal,
     rescuePlayer,
+    whereIs,
     countItem,
     countItemAll,
     takeItem,

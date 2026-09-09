@@ -225,7 +225,7 @@ function startPanel(ctx) {
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
-                    '/api/palwheel/luckrate', '/api/pot/cfg',
+                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/rescue/point', '/api/rescue/whereis',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -747,6 +747,24 @@ function startPanel(ctx) {
                 // đặt là lỗ hổng: đặt tên nhân vật người khác rồi rút túi họ về ví mình).
                 // Tên rỗng = hủy liên kết. Lọc về ASCII in được cho khớp normalizeName
                 // của mod trong game.
+                // 🆘 điểm tẩu thoát (10/09): body {get:1} đọc · {x,y,z} lưu · {clear:1} về mặc định
+                if (path === '/api/rescue/point') {
+                    if (!ctx.setRescuePoint) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    if (body.get) return sendJSON(res, 200, { ok: true, point: ctx.getRescuePoint() });
+                    const p = body.clear ? ctx.setRescuePoint(null)
+                        : ctx.setRescuePoint({ x: Number(body.x), y: Number(body.y), z: Number(body.z) });
+                    if (!body.clear && !p) return sendJSON(res, 400, { ok: false, error: 'Toạ độ không hợp lệ - bấm 📍 cho nhanh' });
+                    ctx.writeLog('ADMIN', p ? `[PANEL] Điểm tẩu thoát: ${p.x}, ${p.y}, ${p.z}` : '[PANEL] Điểm tẩu thoát: về mặc định (PlayerStart)');
+                    return sendJSON(res, 200, { ok: true, point: p });
+                }
+                if (path === '/api/rescue/whereis') {
+                    if (!ctx.palWhereIs) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    const wname = String(body.name || '').trim();
+                    if (!wname) return sendJSON(res, 400, { ok: false, error: 'Nhập tên nhân vật đang online' });
+                    const wr = await ctx.palWhereIs(wname);
+                    if (!wr.ok) return sendJSON(res, 400, { ok: false, error: 'Không lấy được toạ độ: ' + String(wr.message || 'không rõ').slice(0, 120) });
+                    return sendJSON(res, 200, { ok: true, x: wr.x, y: wr.y, z: wr.z });
+                }
                 if (path === '/api/pal/set-name') {
                     const uid = String(body.userId || '').trim();
                     if (!uid || !ctx.getDb()[uid]) return sendJSON(res, 400, { ok: false, error: 'Không tìm thấy ví này' });
@@ -1351,6 +1369,24 @@ const HTML = `<!DOCTYPE html>
         <div id="palLinks"></div>
       </div>
       <div class="card">
+        <h3>🆘 Điểm tẩu thoát khẩn cấp</h3>
+        <div class="note">Nút 🆘 trên Hồ sơ web dịch chuyển người chơi về điểm này (4 tiếng/lần). <b>Chưa đặt = game tự chọn PlayerStart - đo ra đang rơi ở World Tree!</b> Cách đặt: đứng nhân vật của bạn ở chỗ muốn làm điểm về (vd bãi tân thủ), gõ tên nhân vật, bấm 📍 rồi 💾 Lưu. Đổi điểm KHÔNG cần restart gì.</div>
+        <div class="row" style="gap:6px">
+          <input id="rpName" placeholder="tên nhân vật ĐANG online" style="flex:2">
+          <button onclick="rpGrab()" style="flex:1">📍 Lấy toạ độ người này</button>
+        </div>
+        <div class="row" style="gap:6px;margin-top:8px">
+          <input id="rpX" type="number" placeholder="X" style="flex:1">
+          <input id="rpY" type="number" placeholder="Y" style="flex:1">
+          <input id="rpZ" type="number" placeholder="Z" style="flex:1">
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-green" onclick="rpSave()">💾 Lưu điểm</button>
+          <button class="btn-red" onclick="rpClear()">🗑️ Về mặc định</button>
+        </div>
+        <div class="note" id="rpNow">-</div>
+      </div>
+      <div class="card">
         <h3>🎲 Kênh khoe kết quả quay Pal</h3>
         <div class="muted" id="gachaInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Channel ID (kênh đăng công khai ai quay trúng con gì)</label>
@@ -1931,6 +1967,18 @@ function renderPalLinks(){
       '<td><button class="mini btn-green" onclick="palSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
     '</table>';
 }
+// 🆘 điểm tẩu thoát (10/09)
+function rpFill(p){const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e)e.value=(v===0||v)?v:'';};set('rpX',p&&p.x);set('rpY',p&&p.y);set('rpZ',p&&p.z);
+  const n=document.getElementById('rpNow');if(n)n.textContent=p?('Đang dùng điểm: '+p.x+', '+p.y+', '+p.z):'Chưa đặt - đang dùng mặc định PlayerStart (rơi ở World Tree!)';}
+function rpLoad(){api('/api/rescue/point',{get:1}).then(j=>rpFill(j.point)).catch(()=>{});}
+function rpGrab(){const name=document.getElementById('rpName').value.trim();if(!name)return toast('Gõ tên nhân vật ĐANG online trước');
+  toast('📍 Đang hỏi mod trong game (5-20 giây)...');
+  api('/api/rescue/whereis',{name}).then(j=>{document.getElementById('rpX').value=Math.round(j.x);document.getElementById('rpY').value=Math.round(j.y);document.getElementById('rpZ').value=Math.round(j.z);toast('📍 Lấy được toạ độ - bấm 💾 Lưu để chốt');}).catch(e=>toast('❌ '+e.message));}
+function rpSave(){const g=id=>parseFloat(document.getElementById(id).value);const x=g('rpX'),y=g('rpY'),z=g('rpZ');
+  if(![x,y,z].every(Number.isFinite))return toast('Nhập đủ X Y Z (bấm 📍 cho nhanh)');
+  api('/api/rescue/point',{x,y,z}).then(j=>{rpFill(j.point);toast('💾 Đã lưu điểm tẩu thoát');}).catch(e=>toast('❌ '+e.message));}
+function rpClear(){api('/api/rescue/point',{clear:1}).then(()=>{rpFill(null);toast('🗑️ Về mặc định PlayerStart');}).catch(e=>toast('❌ '+e.message));}
+setTimeout(rpLoad,800);
 function palSetName(id){
   const v=document.getElementById('pn_'+id).value;
   api('/api/pal/set-name',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{});

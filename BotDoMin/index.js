@@ -1221,8 +1221,12 @@ async function palRescue(userId) {
     if (left > 0) return { error: `🆘 Tẩu thoát 4 tiếng mới dùng được 1 lần - còn ${Math.ceil(left / 60000)} phút nữa` };
     if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi bấm lại' };
     deliverLock();
+    // 📍 điểm đích do admin đặt ở panel (dbCache._rescuePoint); chưa đặt -> mod fallback
+    // PlayerStart (10/09 đo ra là World Tree - nhắc admin đặt điểm cho tử tế)
+    const pt = dbCache._rescuePoint;
+    const point = pt && [pt.x, pt.y, pt.z].every(Number.isFinite) ? pt : null;
     let r = null, err = null;
-    try { r = await pal.rescuePlayer(gameName); } catch (e) { err = e; }
+    try { r = await pal.rescuePlayer(gameName, point); } catch (e) { err = e; }
     deliverUnlock();
     if (r && r.ok) {
         u.lastRescue = Date.now();
@@ -5168,6 +5172,21 @@ client.once('ready', async (c) => {
             // 🎡 vòng quay: panel chỉnh số người tối thiểu để khởi động
             getWheel: () => ({ minPlayers: wheelMinPlayers(), waiting: wheelRoom.players.size, ticket: wheelMaxTicket(), prices: wheelPrices() }),
             resetWheelTurns: wheelResetTurns,
+            // 🆘 điểm tẩu thoát (10/09): admin đặt/xoá toạ độ đích + đo toạ độ người online
+            getRescuePoint: () => {
+                const p = dbCache._rescuePoint;
+                return p && [p.x, p.y, p.z].every(Number.isFinite) ? p : null;
+            },
+            setRescuePoint: (p) => {
+                if (p && [p.x, p.y, p.z].every(Number.isFinite)) {
+                    dbCache._rescuePoint = { x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z) };
+                } else {
+                    delete dbCache._rescuePoint;
+                }
+                saveDbNow();
+                return dbCache._rescuePoint || null;
+            },
+            palWhereIs: (name) => pal.whereIs(name),
             setWheelMin: (n) => {
                 dbCache._wheelMinPlayers = n;
                 saveDbNow();

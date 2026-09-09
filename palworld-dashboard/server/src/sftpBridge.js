@@ -172,11 +172,23 @@ export async function givePal(playerName, spec) {
 
 // Đếm số lượng item người chơi đang có TRONG GAME (chỉ đọc).
 // Trả { ok, count, message }.
-// 🆘 Tẩu thoát khẩn cấp (09/09): mod dịch chuyển người chơi về điểm xuất phát.
-export async function rescuePlayer(playerName) {
-  const result = await queueAndWait([`RESCUE ${playerName}`], 1, 8);
+// 🆘 Tẩu thoát khẩn cấp (09/09): mod dịch chuyển người chơi. point {x,y,z} = toạ độ
+// admin đặt (RESCUEAT); không có thì mod tự về PlayerStart (RESCUE - rơi ở World Tree).
+export async function rescuePlayer(playerName, point) {
+  const line = point && Number.isFinite(point.x)
+    ? `RESCUEAT ${point.x} ${point.y} ${point.z} ${playerName}`
+    : `RESCUE ${playerName}`;
+  const result = await queueAndWait([line], 1, 8);
   const [r] = splitResultsByPlayer(result, [playerName]);
   return { ok: r.ok, message: r.message };
+}
+
+// 📍 Đo toạ độ người chơi đang đứng (CHỈ ĐỌC) - admin bắt điểm tẩu thoát.
+export async function whereIs(playerName) {
+  const result = await queueAndWait([`WHEREIS ${playerName}`], 1, 6);
+  const [r] = splitResultsByPlayer(result, [playerName]);
+  const m = r.message && r.message.match(/WHEREIS\s+X=(-?[\d.]+)\s+Y=(-?[\d.]+)\s+Z=(-?[\d.]+)/);
+  return { ok: r.ok && !!m, x: m ? +m[1] : null, y: m ? +m[2] : null, z: m ? +m[3] : null, message: r.message };
 }
 
 export async function countItem(playerName, itemId) {

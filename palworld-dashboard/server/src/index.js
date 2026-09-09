@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { palworld, PalworldApiError } from "./palworldClient.js";
 import { dashboardAuth } from "./dashboardAuth.js";
-import { giveItem, givePal, countItem, countItemAll, takeItem, rescuePlayer } from "./sftpBridge.js";
+import { giveItem, givePal, countItem, countItemAll, takeItem, rescuePlayer, whereIs } from "./sftpBridge.js";
 import { recordGive, readHistory } from "./history.js";
 import { listLinks, getLinkByDiscordId, findBySteamId, saveLink, deleteLink } from "./links.js";
 import { intInRange, nonEmptyString, ValidationError } from "./validate.js";
@@ -102,8 +102,19 @@ app.post(
   "/api/rescue",
   handle(async (req) => {
     const playerName = nonEmptyString(req.body.playerName, "Tên người chơi");
-    const r = await rescuePlayer(playerName);
+    const pt = [req.body.x, req.body.y, req.body.z].map(Number);
+    const point = pt.every(Number.isFinite) ? { x: pt[0], y: pt[1], z: pt[2] } : null;
+    const r = await rescuePlayer(playerName, point);
     return { ok: r.ok, message: r.message };
+  })
+);
+
+// 📍 Đo toạ độ người chơi đang online (admin bắt điểm tẩu thoát ở panel bot).
+app.post(
+  "/api/whereis",
+  handle(async (req) => {
+    const playerName = nonEmptyString(req.body.playerName, "Tên người chơi");
+    return await whereIs(playerName);
   })
 );
 
