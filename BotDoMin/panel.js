@@ -116,6 +116,7 @@ function startPanel(ctx) {
                 };
             })(),
             forcedMines: ctx.getForcedMines(),
+            forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
             xs: (() => {
                 if (!ctx.getXS) return null;
                 const xs = ctx.getXS();
@@ -222,7 +223,7 @@ function startPanel(ctx) {
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/palchest/grant', '/api/palchest/resolve',
-                    '/api/palwheel/luckrate',
+                    '/api/palwheel/luckrate', '/api/pot/cfg',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -418,6 +419,13 @@ function startPanel(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
+                // 🏆 09/09: luật ăn hũ theo cược (x mult) + trần hũ (0 = vô hạn) - Dò Mìn/Leo Thang, SUPER
+                if (path === '/api/pot/cfg') {
+                    if (!ctx.setPotCfg) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setPotCfg(String(body.key || ''), { mults: body.mults });
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 // ---- BẢNG MỜI CHƠI DÒ MÌN (không có ván chung, chỉ nút vào web) ----
                 if (path === '/api/mines/board/start') {
                     const channelId = String(body.channelId || '').trim();
@@ -546,6 +554,22 @@ function startPanel(ctx) {
                     const key = String(body.key || '').trim();
                     ctx.clearForcedMines(key);
                     ctx.writeLog('ADMIN', `[PANEL ÉP MÌN] Hủy ép mìn cho ${key}`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                // 🍀 09/09: ép QUÀ hộp may mắn kế tiếp (dựng kịch bản test)
+                if (path === '/api/lucky/force') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
+                    if (!ctx.setForcedLucky) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const key = String(body.key || '').trim(), prize = String(body.prize || '').trim();
+                    if (!key) return sendJSON(res, 400, { ok: false, error: 'Thiếu người chơi' });
+                    if (!['shield', 'dig', 'cash', 'rocket', 'jackpot', 'none'].includes(prize)) return sendJSON(res, 400, { ok: false, error: 'Quà không hợp lệ' });
+                    ctx.setForcedLucky(key, prize);
+                    ctx.writeLog('ADMIN', `[PANEL ÉP HỘP 🍀] ${key} -> ${prize}`);
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (path === '/api/lucky/clear') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
+                    if (ctx.clearForcedLucky) ctx.clearForcedLucky(String(body.key || '').trim());
                     return sendJSON(res, 200, { ok: true });
                 }
 
@@ -1037,7 +1061,7 @@ const HTML = `<!DOCTYPE html>
         <h3>🏆 Hũ nuôi - mỗi trò một hũ riêng</h3>
         <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
         <div id="potRows"></div>
-        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), tự trích dừng khi chạm trần - nhưng <b>admin nạp tay thì vượt trần được</b>. Nhập số âm để rút bớt.</div>
+        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới. Quay Pal giữ hũ nuôi 5%/vé, nổ 1% ẵm nguyên. Nhập số âm để rút bớt hũ Quay Pal.</div>
       </div>
       <div class="card">
         <h3>🎛️ Bảng mời chơi Dò Mìn trên Discord</h3>
@@ -1071,6 +1095,13 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="clearGrid()">Xóa lưới</button>
           <button class="btn-green" style="flex:2" onclick="mineForce()">💣 Đặt mìn cho ván tới</button>
         </div>
+        <!-- 🍀 09/09: ép quà hộp may mắn kế tiếp - dựng kịch bản test (ép khiên -> đạp mìn -> xem cảnh báo trần x2000) -->
+        <div class="row" style="margin-top:10px;align-items:flex-end">
+          <div style="flex:3"><label>🍀 Ép QUÀ hộp may mắn kế tiếp (cùng người chơi mục tiêu ở trên)</label>
+            <select id="luckyPrize"><option value="shield">🛡️ Khiên</option><option value="dig">⛏️ Máy đào (Dò Mìn)</option><option value="rocket">🚀 Thang máy (Leo Thang)</option><option value="cash">💰 Lì xì</option><option value="jackpot">🏆 Nổ hũ</option><option value="none">🍂 Hụt</option></select></div>
+          <button class="btn-green" style="flex:2" onclick="luckyForce()">🍀 Ép quà hộp kế tiếp</button>
+        </div>
+        <div class="flist" id="luckyList"></div>
         <div class="note">⚠️ <b>25 ô grid (5×5):</b> Mìn ẩn, người chơi tự click trên web - đặt mìn chỉ <b>tăng xác suất</b> trúng, không ép 100%. Số ô đánh dấu (💣) sẽ là mìn chắc chắn; nếu họ chọn số mìn ít hơn thì chỉ lấy bấy nhiêu ô đầu tiên. Muốn dễ thua: đặt mìn ở các ô trên-trái (hay bấm trước).</div>
         <div class="flist" id="mineList"></div>
       </div>
@@ -1321,7 +1352,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>Bán lại pal (Dogcoin)</label><input id="pwSell" type="number" placeholder="vd: 1000"></div>
         </div>
         <div class="row" style="margin-top:8px">
-          <div style="flex:1"><label>Số dòng linh hồn TỐI ĐA (1–4)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
+          <div style="flex:1"><label>Dòng linh hồn GỐC miễn phí (1–4, dòng vượt bán theo giá bên dưới)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
           <div style="flex:1"><label>Level pal giao (1–100)</label><input id="pwLevel" type="number" placeholder="vd: 80"></div>
           <div style="flex:1"><label>Sao (0–4, sao THẬT trên pal)</label><input id="pwStars" type="number" placeholder="vd: 4"></div>
         </div>
@@ -1337,10 +1368,12 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>Ô thứ 7</label><input id="pwUp7" type="number" placeholder="vd: 32000"></div>
           <div style="flex:1"><label>Ô thứ 8</label><input id="pwUp8" type="number" placeholder="vd: 64000"></div>
           <div style="flex:1"><label>IV: giá mỗi ĐIỂM (từng chỉ số Máu/Công/Thủ)</label><input id="pwUpIv" type="number" placeholder="vd: 500"></div>
-          <div style="flex:1"><label>Thêm DÒNG linh hồn (dòng 2; dòng 3 ×2, dòng 4 ×4)</label><input id="pwUpLine" type="number" placeholder="vd: 2000"></div>
+          <div style="flex:1"><label>Thêm DÒNG linh hồn (giá MỖI dòng thêm, dòng 1 miễn phí)</label><input id="pwUpLine" type="number" placeholder="vd: 5000"></div>
+          <div style="flex:1"><label>💎 Ô passive 2–4 (giá MỖI ô khi hạ ô gốc miễn phí)</label><input id="pwUpLow" type="number" placeholder="vd: 5000"></div>
         </div>
         <div class="row" style="margin-top:4px">
           <div style="flex:1"><label>🌈 Passive Cây Thế Giới (giá/con)</label><input id="pwUpWt" type="number" placeholder="vd: 1000"></div>
+          <div style="flex:1"><label>💎 Passive HẠNG 4 thường (Huyền Thoại, May Mắn, Thần Tốc... giá/con, 0 = miễn phí)</label><input id="pwUpT4" type="number" placeholder="vd: 3000"></div>
           <div style="flex:1"><label>👑 Bản PAL BOSS (giá/con - 07/09 thành tuỳ chọn)</label><input id="pwUpBoss" type="number" placeholder="vd: 10000"></div>
           <div style="flex:1"><label>🔥 Bellanoir Libero (0 = ngừng bán)</label><input id="pwPkBL" type="number" placeholder="vd: 9000"></div>
           <div style="flex:1"><label>🔥 Blazamut Ryu</label><input id="pwPkBR" type="number" placeholder="vd: 20000"></div>
@@ -1916,6 +1949,15 @@ async function potAdd(key){
   if(!await uiConfirm((n>0?'Nạp ':'Rút ')+Math.abs(n).toLocaleString('vi-VN')+' Dogcoin '+(n>0?'vào':'khỏi')+' hũ '+lb+'?',n>0?'➕ Nạp hũ':'➖ Rút hũ',n>0?'btn-green':'btn-red'))return;
   try{const j=await api('/api/pot/add',{key:key,amount:n});toast('🏆 Hũ '+lb+' hiện có '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
 }
+// 🏆 09/09: bội số nổ hũ (Dò Mìn/Leo Thang) - danh sách "10,15,20", trúng 🏆 bốc ngẫu nhiên 1 số × tiền cược
+async function potCfgSave(key,btn){
+  const raw=(document.getElementById('potMults_'+key).value||'').trim();
+  const mults=[...new Set(raw.split(/[,\s;\/x]+/).map(Number).filter(x=>x>=1&&x<=1000))].sort((a,b)=>a-b);
+  if(!mults.length||mults.length>6)return toast('❌ Nhập 1-6 bội số từ 1 đến 1000, vd: 10,15,20');
+  const lb=(STATE.pot&&STATE.pot.labels&&STATE.pot.labels[key])||key;
+  if(!await uiConfirm(lb+': trúng 🏆 bốc ngẫu nhiên x'+mults.join(' / x')+' tiền cược (cược 1.000 → '+(1000*mults[0]).toLocaleString('vi-VN')+' tới '+(1000*mults[mults.length-1]).toLocaleString('vi-VN')+') + trần ván?','💾 Lưu bội số','btn-green'))return;
+  await runBtn(btn,'Lưu...',()=>api('/api/pot/cfg',{key:key,mults:mults}).then(j=>{toast('💾 '+lb+': nổ hũ bốc x'+j.cfg.mults.join(' / x')+' tiền cược');refresh();}));
+}
 function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
 function spmBoardStart(){const c=document.getElementById('spmChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/spm/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Phi Thuyền ở #'+j.name);refresh();});}
@@ -2136,14 +2178,14 @@ function pwCfgFill(k){
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
   set('pwPrice',k.price);set('pwCustom',k.customPrice);set('pwSell',k.sellPrice);set('pwSoul',k.soulMax);set('pwLevel',k.level);set('pwStars',k.stars);
   set('pwSoulPct',k.soulPct);set('pwIvs',k.ivs);set('pwPassMax',k.passiveMax);
-  set('pwUp5',k.upSlot5);set('pwUp6',k.upSlot6);set('pwUp7',k.upSlot7);set('pwUp8',k.upSlot8);set('pwUpIv',k.upIv);set('pwUpLine',k.upSoulLine);
-  set('pwUpWt',k.upWtPassive);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
+  set('pwUp5',k.upSlot5);set('pwUp6',k.upSlot6);set('pwUp7',k.upSlot7);set('pwUp8',k.upSlot8);set('pwUpLow',k.upSlotLow);set('pwUpIv',k.upIv);set('pwUpLine',k.upSoulLine);
+  set('pwUpWt',k.upWtPassive);set('pwUpT4',k.upTier4);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);
   set('pwClaimCd',k.claimCd);
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
-    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
+    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng miễn phí × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
     (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
 }
 function pwCfgSave(){
@@ -2158,9 +2200,11 @@ function pwCfgSave(){
            upSlot6:parseInt(document.getElementById('pwUp6').value),
            upSlot7:parseInt(document.getElementById('pwUp7').value),
            upSlot8:parseInt(document.getElementById('pwUp8').value),
+           upSlotLow:parseInt(document.getElementById('pwUpLow').value),
            upIv:parseInt(document.getElementById('pwUpIv').value),
            upSoulLine:parseInt(document.getElementById('pwUpLine').value),
            upWtPassive:parseInt(document.getElementById('pwUpWt').value),
+           upTier4:parseInt(document.getElementById('pwUpT4').value),
            upBoss:parseInt(document.getElementById('pwUpBoss').value),
            pickBellaLib:parseInt(document.getElementById('pwPkBL').value),
            pickBlaza:parseInt(document.getElementById('pwPkBR').value),
@@ -2183,12 +2227,12 @@ function pwCfgSave(){
   if(!(o.price>=100))return toast('Vé phải từ 100');
   if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
   if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
-  if(!(o.soulMax>=1&&o.soulMax<=4))return toast('Linh hồn 1–4 dòng');
+  if(!(o.soulMax>=1&&o.soulMax<=4))return toast('Dòng linh hồn gốc miễn phí 1–4');
   if(!(o.soulPct>=3&&o.soulPct<=201))return toast('% linh hồn gốc trong 3–201');
   if(o.soulPct%3!==0)return toast('% linh hồn phải là BỘI CỦA 3 (mỗi bậc trong save = 3%) - vd 60, 201');
   if(!(o.ivs>=1&&o.ivs<=255))return toast('IV gốc trong 1–255');
   if(!(o.passiveMax>=1&&o.passiveMax<=8))return toast('Ô passive gốc trong 1–8');
-  for(const kk of ['upSlot5','upSlot6','upSlot7','upSlot8','upIv','upSoulLine','upWtPassive','pickBellaLib','pickBlaza','pickXeno','pickHarta','upSoul1','upSoul2','upSoul3','upSoul4','upSoul5'])
+  for(const kk of ['upSlot5','upSlot6','upSlot7','upSlot8','upSlotLow','upIv','upSoulLine','upWtPassive','upTier4','pickBellaLib','pickBlaza','pickXeno','pickHarta','upSoul1','upSoul2','upSoul3','upSoul4','upSoul5'])
     if(!(o[kk]>=0))return toast('Giá nâng cấp không được âm/trống');
   if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
   if(!(o.stars>=0&&o.stars<=4))return toast('Sao 0–4');
@@ -2404,6 +2448,15 @@ function renderMineTarget(){
   const any=document.getElementById('mineAny').checked;
   document.getElementById('mineUser').disabled=any;
 }
+// 🍀 09/09: ép quà hộp may mắn kế tiếp (dùng 1 lần) - cùng ô chọn người chơi của ép mìn
+function luckyForce(){
+  const any=document.getElementById('mineAny').checked;
+  const key=any?'_any':document.getElementById('mineUser').value;
+  if(!key){toast('❌ Chọn người chơi');return;}
+  const prize=document.getElementById('luckyPrize').value;
+  api('/api/lucky/force',{key,prize}).then(()=>{toast('🍀 Hộp may mắn kế tiếp sẽ ra: '+document.getElementById('luckyPrize').selectedOptions[0].textContent);refresh();});
+}
+function luckyClear(k){api('/api/lucky/clear',{key:k}).then(()=>{toast('Đã xóa ép hộp 🍀');refresh();});}
 function mineForce(){
   const any=document.getElementById('mineAny').checked;
   const key=any?'_any':document.getElementById('mineUser').value;
@@ -2652,9 +2705,9 @@ async function refresh(){
   const pt=STATE.pot;
   if(pt&&pt.pots){
     const seedTxt=pt.seedBy?('mồi Dò Mìn/Leo Thang '+Number(pt.seedBy.mines||0).toLocaleString('vi-VN')+' · mồi Quay Pal '+Number((pt.seedBy.gacha)||0).toLocaleString('vi-VN')):('nổ xong hũ về '+Number(pt.seed||0).toLocaleString('vi-VN'));
-    const maxTxt=pt.maxBy?('trần nuôi Dò Mìn/Leo Thang '+Number(pt.maxBy.mines||0).toLocaleString('vi-VN')+' · trần Quay Pal '+Number(pt.maxBy.gacha||0).toLocaleString('vi-VN')):('Trần tự trích '+Number(pt.max||0).toLocaleString('vi-VN'));
-    document.getElementById('potInfo').textContent=maxTxt
-      +' mỗi hũ · trích '+Math.round((pt.rate||0)*100)+'% tiền cược (nhà cái bao) · tỉ lệ nổ chung '+Math.round((pt.hit||0)*100)+'%'
+    const mu=pt.mults||{}, muTxt=(k)=>'x'+((mu[k]&&mu[k].length)?mu[k]:[10,15,20]).join(' / x');
+    document.getElementById('potInfo').textContent='Dò Mìn/Leo Thang KHÔNG còn hũ nuôi (09/09): trúng 🏆 trong hộp 🍀 bốc ngẫu nhiên '+muTxt('mines')+' (mìn) · '+muTxt('stairs')+' (thang) NHÂN tiền cược + trần ván, ván dừng ngay'
+      +' · Quay Pal vẫn hũ nuôi: trích '+Math.round((pt.rate||0)*100)+'%/vé, nổ '+Math.round((pt.hit||0)*100)+'% ẵm nguyên, trần '+Number((pt.maxBy&&pt.maxBy.gacha)||0).toLocaleString('vi-VN')
       +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván · '+seedTxt;
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
     // không vẽ lại cả khối - vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
@@ -2667,16 +2720,22 @@ async function refresh(){
             '<span id="potFull_'+k+'" class="badge on" style="display:none"> đầy - ngừng tự trích</span></div>'+
           '<div style="flex:3"><input id="potAmt_'+k+'" inputmode="numeric" placeholder="Số Dogcoin (âm = rút)"></div>'+
           '<button class="btn-green" onclick="potAdd(\\''+k+'\\')">➕ Nạp</button>'+
-        '</div>').join('');
+        '</div>').join('')
+        // 🏆 09/09: bội số nổ hũ 2 minigame (hết hũ nuôi) - ô text "10,15,20", SUPER
+        +['mines','stairs'].map(k=>'<div class="row epOnly" style="align-items:center;margin-bottom:8px"><div style="flex:3"><b>'+(k==='mines'?'💣 Dò Mìn':'🪜 Leo Thang')+'</b><br><span class="muted" style="font-size:12px">🏆 bội số nổ hũ (bốc ngẫu nhiên × tiền cược)'+(pt.leftover&&pt.leftover[k]>0?' · hũ cũ còn '+Number(pt.leftover[k]).toLocaleString('vi-VN')+' không dùng':'')+'</span></div>'
+          +'<div style="flex:3"><input id="potMults_'+k+'" placeholder="vd: 10,15,20" title="1-6 số, cách nhau bằng dấu phẩy"></div>'
+          +'<button class="btn-green" onclick="potCfgSave(\\''+k+'\\',this)">💾 Lưu</button></div>').join('');
       box.dataset.built=keys.join(',');
     }
     keys.forEach(k=>{
-      const v=Number(pt.pots[k]||0), full=v>=Number((pt.maxBy&&pt.maxBy[k])||pt.max||0);
+      const mx=Number((pt.maxBy&&pt.maxBy[k])||pt.max||0), v=Number(pt.pots[k]||0), full=mx>0&&v>=mx;
       const el=document.getElementById('potVal_'+k);
       if(el){el.textContent=v.toLocaleString('vi-VN')+' 🐕';el.style.color=full?'#ff9a5c':'#f0b90b';}
       const fg=document.getElementById('potFull_'+k);
       if(fg)fg.style.display=full?'':'none';
     });
+    // ô bội số: chỉ điền khi còn TRỐNG và không đang gõ (poll 3s không cuốn số đang sửa)
+    ['mines','stairs'].forEach(k=>{const m=document.getElementById('potMults_'+k);if(m&&m.value===''&&document.activeElement!==m&&pt.mults&&pt.mults[k])m.value=pt.mults[k].join(',');});
   }
   // trang thai bang moi choi Do Min
   const mb=STATE.minesBoard||{on:false,channelId:''};
@@ -2725,6 +2784,14 @@ async function refresh(){
       fl.appendChild(item);
     });
   }
+  // 🍀 ép quà hộp kế tiếp
+  const ll=document.getElementById('luckyList');
+  if(ll){ll.innerHTML='';const fl2=STATE.forcedLucky||{};const lk=Object.keys(fl2);const PZ={shield:'🛡️ Khiên',dig:'⛏️ Máy đào',rocket:'🚀 Thang máy',cash:'💰 Lì xì',jackpot:'🏆 Nổ hũ',none:'🍂 Hụt'};
+    if(lk.length){ll.innerHTML='<div class="muted" style="font-size:13px;margin-top:6px">Đang ép hộp 🍀:</div>';
+      lk.forEach(k=>{const p=STATE.players.find(x=>x.id===k);const name=k==='_any'?'🎯 Người tiếp theo bất kỳ':(p?p.name:k);
+        const item=document.createElement('div');item.className='item';
+        item.innerHTML='<span>'+esc(name)+' → hộp kế tiếp ra '+(PZ[fl2[k]]||fl2[k])+'</span><button class="mini btn-red" onclick="luckyClear(\\''+k+'\\')">Xóa</button>';
+        ll.appendChild(item);});}}
   // xổ số
   renderXS();
   // kênh khoe quay pal

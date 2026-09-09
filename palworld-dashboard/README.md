@@ -679,6 +679,56 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   bị chặn). Fix: sửa `.env` prod + `pm2 restart palworld-dashboard`, KHÔNG cần đụng mod/restart
   game. Đã chạy OK sau fix. Lần sau thấy "Dashboard server error" ngay sau khi đổi tên/đổi
   gói server → nghĩ tới cái này đầu tiên.
+- **09/09** — 🍀 **Panel SUPER: ép QUÀ hộp may mắn kế tiếp** (tab 💣, cùng ô chọn người của ép
+  mìn): khiên/⛏️/🚀/💰/🏆/hụt, dùng 1 lần rồi xoá, quà không thuộc bàn quay của trò đó thì quay
+  thường. Mục đích: dựng kịch bản test (ép mìn 7 ô + ép khiên → đạp mìn → mở tiếp qua ô an
+  toàn thứ 14 → thấy cảnh báo trần ×2000). Code `forcedLucky` + `takeForcedLucky(userId, wheel)`
+  gọi trước `spinWheel` ở 2 `luckyPick`; route `/api/lucky/force|clear`; state `forcedLucky`.
+- **09/09** — ⚠️ **Báo người chơi khi ván CÓ TRỢ GIÚP đã chạm trần** (khiên đã đỡ/⛏️ → trần
+  thắng ×100/300/500 theo 3/4/5 mìn, ×2000 từ 6 mìn và Leo Thang). Trước đây số trên nút chỉ
+  đứng yên, không ai nói gì, người chơi mở tiếp ôm rủi ro 100% lợi 0%. Server `current()` thêm
+  `assistCap` + `assistCapHit` (2 game); web: dòng trạng thái ghi "⚠️ CHẠM TRẦN ×N (ván có trợ
+  giúp 🍀) - mở thêm KHÔNG tăng tiền", nút NHẬN TIỀN nối "· ⚠️ TỐI ĐA ×N (nhờ …) - NÊN DỪNG",
+  toast đỏ 1 lần/ván (cờ MCAPWARN/SCAPWARN). Không tự dừng ván thay người chơi. Chủ server
+  chốt câu chữ + vị trí: server thêm `assistWhy` (`assistWhyOf(g)`: "KHIÊN đỡ mìn / KHIÊN đỡ
+  lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
+  thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
+  nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 💎 **Giá riêng cho passive HẠNG 4 thường** (`upTier4`, mặc định 0 = miễn phí như
+  cũ; 24 con tier 4 không phải Cây Thế Giới: Huyền Thoại, May Mắn, Thần Tốc, Ma Cà Rồng, Quỷ
+  Thần, Thân Thể Kim Cương...). Server cộng `t4Count × upTier4` vào upCost (không tính đôi với 7
+  con 🌈 đã có `upWtPassive`); web hiện "💎 giá" cạnh tên khi > 0, tính vào tổng + dòng riêng
+  từng con trong tóm tắt; panel ô "💎 Passive HẠNG 4 thường (giá/con)". `passives.json` có sẵn
+  field `tier` (1:36 · 2:2 · 3:30 · 4:31).
+- **09/09** — 💎 **Pal: giá dòng linh hồn PHẲNG + bán ô passive 2–4**. `cfg.soulMax` ĐỔI NGHĨA
+  (giữ tên key cho db cũ): từ "trần chọn" thành **số dòng linh hồn GỐC MIỄN PHÍ** (mặc định 1) -
+  người chơi luôn tick được tới 4 dòng, dòng vượt gốc trả tiền, y hệt passiveMax (trước: để 1 là
+  web chặn không cho tick dòng 2-4 - chủ server bắt lỗi). `palUpSoulLineCost = max(0, lines -
+  soulMax) × upSoulLine`, hết cấp số nhân: mỗi dòng vượt = `upSoulLine` (mặc định đổi 2.000 →
+  **5.000**; gốc 1 → 4 dòng = 15k). Panel nhãn "Dòng linh hồn GỐC miễn phí (1–4)". Tóm tắt
+  nhận pal (web) ghi phí NGAY TRÊN TỪNG DÒNG: linh hồn "· thêm dòng +5.000" / "· dòng gốc miễn
+  phí" (+ phí kéo % nếu có), bỏ cục "Phí thêm dòng (4 dòng) +15.000" gây hiểu nhầm là bug; passive
+  từng con một dòng "✨ Passive #i Tên 🌈 · ô vượt gốc +N (ô X + 🌈 Y)" thay 2 dòng gộp.
+  `palUpPassiveCost` tính MỌI ô vượt "ô gốc miễn phí": ô 2–4 giá `upSlotLow` (mới, mặc định
+  5.000; hạ gốc xuống 1 là bán ô 2/3/4), ô 5–8 giá riêng như cũ (trước đây ô 2–4 luôn miễn phí
+  dù hạ gốc). Panel tab 🎮: ô "💎 Ô passive 2–4", nhãn dòng linh hồn đổi; web gương công thức
+  (`up.slotLow`, `lc = (lines-1)×soulLine`). palwheeltest 166/166.
+- **09/09** — 🏆 **Nổ hũ Dò Mìn/Leo Thang = BỘI SỐ NGẪU NHIÊN × tiền cược, BỎ HẲN hũ nuôi**
+  (chủ server chốt lần cuối sau 3 vòng: chia % hũ → ăn x10 từ hũ vô hạn → bản này). Trúng 🏆
+  trong hộp 🍀 → bốc đều 1 trong danh sách bội số (mặc định **x10 / x15 / x20**) × cược, CỘNG
+  trần ván như cũ (`jackpotCapOf`: 3 mìn ×50 · 4 ×100 · 5 ×200 · 6+ / thang ×2000, kẹp giải
+  cao nhất bàn), ván DỪNG NGAY. 2 minigame **không trích 5%, không hiện hũ, không trần hũ**
+  nữa (`luckyPotCut` trả 0 cho mines/stairs); tiền hũ cũ trong `_pots.mines/stairs` nằm yên,
+  panel hiện "hũ cũ còn N không dùng" (rút tay bằng số âm nếu muốn). Hũ Quay Pal GIỮ NGUYÊN.
+  Code: `potCfg(key).mults` (lưu `dbCache._potCfg[key].mults`), `setPotCfg(key,{mults})` nhận
+  chuỗi "10,15,20" (1–6 số, 1–1000, bỏ trùng, sắp tăng), `jackpotMult(key, bet)` tốn đúng 1
+  `Math.random()` SAU quay hộp + 3 hàng mẫu (test đẩy RQ theo thứ tự đó). Panel tab 💣: ô bội
+  số từng trò (SUPER, `/api/pot/cfg`). Web: nhãn cạnh tên game "🏆 NỔ HŨ x10/x15/x20", dòng
+  dưới bàn "cược X → Y tới Z", lời mời hộp 🍀 "NỔ HŨ tới…", kết quả "(🎲 bốc x15 tiền cược =
+  N + trần ván)"; state gửi `potMults`. Discord: "+N bội số 🎲 bốc **x15** tiền cược".
+  ⚠️ Kinh tế: nhà cái trả THẲNG, kỳ vọng thêm mỗi hộp 🍀 = 1% × ~15 × cược = 15% cược (cộng
+  lì xì 30%×46% sẵn có) - chủ server đã nghe, chấp nhận; giảm bằng cách hạ danh sách bội số.
+  pottest 76/76, luckytest 91/91.
 - **08/09 (tối 3)** — 🐛 **Trình sửa shop item nuốt nhóm Phụ kiện**: `itemShopAddRow` chỉ
   nhận cat weapon/armor (viết trước khi có accessory 07/09) → 38 phụ kiện nạp lên form thành
   🧪 Tiêu hao, admin bấm 💾 Lưu là server ghi đè cat=consume cả 38 món (server thì nhận
