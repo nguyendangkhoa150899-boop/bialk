@@ -1149,8 +1149,7 @@ const PAGE = [
     '<div id="topbar" class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div>',
     '<div class="big"><img class="dc" src="/dogcoin.png" alt=""> <span id="bal">0</span></div></div>',
     '<div style="display:flex;gap:6px;align-items:center">',
-    // 🆘 10/09: thế chỗ nút Lộc lá cũ (chuyển tiền giờ ở Hồ sơ). Đồng hồ do pcRescueTick lo.
-    '<button id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-size:12px;font-weight:700">🆘 Tẩu thoát</button>',
+    // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
 
@@ -1424,7 +1423,11 @@ const PAGE = [
     // ⏳ cooldown nhận pal CHUNG toàn server (28/08)
     '<div id="pcCdBanner" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px;font-weight:700"></div>',
     '<div id="pcDayNote" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #3a4155;border-radius:9px;background:#1b1f2c;color:#aab3c5;font-size:13px"></div>',
-    // (🆘 dời lên topbar 10/09 - cạnh số dư, thế chỗ nút Lộc lá)
+    // 🆘 tẩu thoát khẩn cấp: kẹt đất/kẹt đá trong game thì bấm - 4 tiếng/lần (có popup xác nhận)
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">',
+    '<button class="mini" id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-weight:700;padding:8px 12px">🆘 Tẩu thoát khẩn cấp</button>',
+    '<span class="muted" style="font-size:12px">kẹt đất/kẹt đá? Dịch chuyển về điểm an toàn (phải đang ONLINE trong game) - 4 tiếng/lần</span>',
+    '</div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageDaily
@@ -3081,9 +3084,9 @@ const PAGE = [
     // 🆘 tẩu thoát: đồng hồ đếm theo state hồ sơ, chỉ khoá nút - luật thật ở server
     'var RSCUNTIL=0,RSCCD=14400000,RSCBUSY=false;',
     'function pcRescueTick(){var b=$("pcRescueBtn");if(!b)return;',
-    'if(RSCBUSY){b.disabled=true;b.textContent="⏳ Đang bay...";return}',
+    'if(RSCBUSY){b.disabled=true;b.textContent="⏳ Đang dịch chuyển...";return}',
     'var left=RSCUNTIL-Date.now();',
-    'if(left>0){b.disabled=true;b.textContent="🆘 "+Math.ceil(left/60000)+"p nữa"}else{b.disabled=false;b.textContent="🆘 Tẩu thoát"}}',
+    'if(left>0){b.disabled=true;b.textContent="🆘 Tẩu thoát ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 Tẩu thoát khẩn cấp"}}',
     'setInterval(pcRescueTick,30000);',
     'async function pcRescue(){if(RSCBUSY)return;',
     'if(!(await gConfirm("Dịch chuyển nhân vật về <b>ĐIỂM XUẤT PHÁT</b> ngay bây giờ? Dùng khi kẹt đất/kẹt đá - không chết, không rớt đồ.<br><b>4 tiếng mới dùng lại được.</b>","🆘 Tẩu thoát",true)))return;',
