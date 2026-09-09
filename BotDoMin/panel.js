@@ -6,7 +6,11 @@ const crypto = require('crypto');
 
 function startPanel(ctx) {
     const PASSWORD = ctx.password;
-    const tokens = new Set();
+    // 10/09: mật khẩu RIÊNG cổng SUPER - đặt PANEL_SUPER_PASSWORD trong .env.
+    // Có nó thì cổng SUPER bắt đăng nhập BẤT KỂ cổng thường đang mở toang.
+    const SUPER_PASSWORD = ctx.superPassword || '';
+    const tokens = new Set();        // token cổng thường
+    const superTokens = new Set();   // token cổng SUPER - hai bộ TÁCH RIÊNG, không dùng chéo
 
     const sendJSON = (res, code, obj) => {
         const body = JSON.stringify(obj);
@@ -34,6 +38,12 @@ function startPanel(ctx) {
     const AUTH_OFF = !PASSWORD;
 
     const isAuthed = (req) => {
+        // Cổng SUPER có mật khẩu riêng: bắt buộc token SUPER, kệ AUTH_OFF của cổng thường
+        if (req.socket.localPort === ctx.port && SUPER_PASSWORD) {
+            const h0 = req.headers['authorization'] || '';
+            const t0 = h0.startsWith('Bearer ') ? h0.slice(7) : '';
+            return !!t0 && superTokens.has(t0);
+        }
         if (AUTH_OFF) return true;
         const h = req.headers['authorization'] || '';
         const t = h.startsWith('Bearer ') ? h.slice(7) : '';
@@ -189,6 +199,16 @@ function startPanel(ctx) {
             // Đăng nhập
             if (req.method === 'POST' && path === '/api/login') {
                 const body = await readBody(req);
+                // Cổng SUPER: so với mật khẩu SUPER riêng (nếu có đặt)
+                if (req.socket.localPort === ctx.port && SUPER_PASSWORD) {
+                    if (body.password === SUPER_PASSWORD) {
+                        const token = crypto.randomBytes(24).toString('hex');
+                        superTokens.add(token);
+                        return sendJSON(res, 200, { ok: true, token });
+                    }
+                    ctx.writeLog('ADMIN', `[PANEL] Đăng nhập SAI mật khẩu SUPER từ ${req.socket.remoteAddress}`);
+                    return sendJSON(res, 401, { ok: false, error: 'Sai mật khẩu' });
+                }
                 if (AUTH_OFF) {
                     return sendJSON(res, 200, { ok: true, token: 'no-auth' });
                 }

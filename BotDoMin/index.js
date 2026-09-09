@@ -5072,6 +5072,8 @@ client.once('ready', async (c) => {
             // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.
             // Muốn bật lại thì đặt PANEL_PASSWORD=<mật khẩu> trong .env.
             password: process.env.PANEL_PASSWORD || '',
+            // 10/09: mật khẩu RIÊNG cổng SUPER (đặt trong .env, KHÔNG hardcode vào repo)
+            superPassword: process.env.PANEL_SUPER_PASSWORD || '',
             txChoices: TX_CHOICES,
             txBaoRate: TX_BAO_RATE,
             // 💰 trần cược TX/người/ván: panel xem + chỉnh (0 = không giới hạn)
