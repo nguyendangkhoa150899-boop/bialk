@@ -694,6 +694,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — ⏸️ **Công tắc MỞ/ĐÓNG Dò Mìn + Leo Thang** (panel SUPER tab 💣, khung đầu; các trò
+  khác đã có sẵn: Phi Thuyền/Vòng quay Pal `open`, Cổ phiếu `skOpen`, Big Small tắt bàn).
+  `gameOpen(key)/setGameOpen(key,on)` lưu `dbCache._gameOpen`; `start()` 2 game từ chối "⛔ …
+  đang ĐÓNG bảo trì" khi đóng, ván đang chơi vẫn chơi nốt/dừng (không nuốt tiền). Web nhận
+  `open` qua state → nút bắt đầu thành "⛔ DÒ MÌN/LEO THANG ĐANG ĐÓNG BẢO TRÌ" (disabled). Route
+  `/api/games/open {key, open}` (epOk). Đổi chữ "trần" → "kịch khung" ở 2 minigame (web,
+  Discord, log) theo ý chủ server; giữ "Trần cược" Big Small + "trần khối lượng" sàn.
 - **09/09 (v2 nổ hũ)** — 🎁 **Trúng 🏆 thì tự tay chọn hộp bội số**: hộp cỏ ra 🏆 KHÔNG trả ngay
   nữa - server treo ván (`g.jpPending`, guard chặn mở ô/dừng "Chọn 1 hộp NỔ HŨ đã!"), trả
   `{jackpotPick:true, mults, state}`; web đóng hộp cỏ là bung modal vàng `#jpPick` với N hộp úp

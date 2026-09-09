@@ -2883,9 +2883,23 @@ function spinWheel(wheel) {
     return wheel[wheel.length - 1].prize;
 }
 
+// ⏸️ 09/09: công tắc MỞ/ĐÓNG Dò Mìn + Leo Thang (panel SUPER, tab 💣). Đóng = không cho vào ván
+// MỚI; ván đang chơi vẫn chơi nốt/dừng được (không nuốt tiền ai). Lưu dbCache._gameOpen.
+// (Phi Thuyền / Vòng quay Pal / Cổ phiếu / Big Small đã có công tắc riêng từ trước.)
+function gameOpen(key) { const o = dbCache._gameOpen; return !(o && typeof o === 'object' && o[key] === false); }
+function setGameOpen(key, on) {
+    if (!['mines', 'stairs'].includes(key)) return { error: 'Trò không hợp lệ' };
+    if (!dbCache._gameOpen || typeof dbCache._gameOpen !== 'object') dbCache._gameOpen = {};
+    dbCache._gameOpen[key] = !!on;
+    saveDbNow();
+    writeLog('ADMIN', `[${key === 'mines' ? '💣 DÒ MÌN' : '🪜 LEO THANG'}] Panel ${on ? 'MỞ' : 'ĐÓNG'} trò`);
+    return { ok: true, key, open: !!on };
+}
+
 const webMinesApi = {
     tiles: TOTAL_TILES,
     potMults: () => potCfg('mines').mults,   // 🏆 09/09: bội số nổ hũ (hết hũ nuôi ở Dò Mìn)
+    open: () => gameOpen('mines'),   // ⏸️ công tắc panel
     minBet: MIN_BET,
     maxWin: MINES_MAX_WIN,
     maxBet: MINES_MAX_BET,
@@ -2932,6 +2946,7 @@ const webMinesApi = {
     maxMines: 20,
     start: (userId, name, numMines, bet, extraLucky) => {
         if (webMines.has(userId)) return { error: 'Bạn đang có ván dở - chơi nốt hoặc bấm DỪNG đã.' };
+        if (!gameOpen('mines')) return { error: '⛔ Dò Mìn đang ĐÓNG bảo trì - admin sẽ mở lại sau' };
         if (!Number.isInteger(numMines) || numMines < webMinesApi.minMines || numMines > webMinesApi.maxMines) {
             return { error: `Số mìn phải từ ${webMinesApi.minMines} đến ${webMinesApi.maxMines}` };
         }
@@ -3248,6 +3263,7 @@ const webStairsApi = {
     cols: STAIRS_COLS,
     maxFire: STAIRS_MAX_FIRE,
     potMults: () => potCfg('stairs').mults,   // 🏆 09/09: bội số nổ hũ (hết hũ nuôi ở Leo Thang)
+    open: () => gameOpen('stairs'),
     minBet: MIN_BET,
     last: (userId) => webStairsLast.get(userId) || null,
     dismiss: (userId) => { webStairsLast.delete(userId); return { ok: true }; },
@@ -3279,6 +3295,7 @@ const webStairsApi = {
     },
     start: (userId, name, fire, bet) => {
         if (webStairs.has(userId)) return { error: 'Bạn đang có ván dở - leo tiếp hoặc bấm DỪNG đã.' };
+        if (!gameOpen('stairs')) return { error: '⛔ Leo Thang đang ĐÓNG bảo trì - admin sẽ mở lại sau' };
         if (!Number.isInteger(fire) || fire < 1 || fire > STAIRS_MAX_FIRE) {
             return { error: `Số cầu lửa phải từ 1 đến ${STAIRS_MAX_FIRE}` };
         }
@@ -4953,6 +4970,9 @@ client.once('ready', async (c) => {
             getForcedLucky: () => forcedLucky,
             setForcedLucky: (key, prize) => { forcedLucky[key] = prize; },
             clearForcedLucky: (key) => { delete forcedLucky[key]; },
+            // ⏸️ 09/09: mở/đóng Dò Mìn + Leo Thang
+            getGameOpen: () => ({ mines: gameOpen('mines'), stairs: gameOpen('stairs') }),
+            setGameOpen: (key, on) => setGameOpen(key, on),
             getMinesHistory: () => minesHistory,
             getTXDash: () => txDashHistory,
             getUserData,

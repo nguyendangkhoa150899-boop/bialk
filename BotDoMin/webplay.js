@@ -444,7 +444,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/mines/state') {
                         return sendJSON(res, 200, {
                             ok: true, tiles: mines.tiles,
-                            potMults: mines.potMults ? mines.potMults() : [10, 15, 20], minBet: mines.minBet || 0,
+                            potMults: mines.potMults ? mines.potMults() : [10, 15, 20], open: mines.open ? mines.open() : true, minBet: mines.minBet || 0,
                             maxWin: mines.maxWin, maxBet: mines.maxBet,
                             minMines: mines.minMines || 1, maxMines: mines.maxMines || (mines.tiles - 1),
                             balance: me.points || 0,
@@ -510,7 +510,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/stairs/state') {
                         return sendJSON(res, 200, {
                             ok: true, floors: stairs.floors, cols: stairs.cols, maxFire: stairs.maxFire,
-                            potMults: stairs.potMults ? stairs.potMults() : [10, 15, 20], minBet: stairs.minBet || 0,
+                            potMults: stairs.potMults ? stairs.potMults() : [10, 15, 20], open: stairs.open ? stairs.open() : true, minBet: stairs.minBet || 0,
                             balance: me.points || 0, game: stairs.current(userId),
                             last: stairs.last ? stairs.last(userId) : null,
                         });
@@ -1909,7 +1909,7 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/dogcoin.png" alt="">\';',
-    'var MT=25;var MCAPWARN=false;var MPOT=-1;var MPOTMULTS=[10,15,20];var MINBET=400;var POTSEED=5000;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
+    'var MT=25;var MOPEN=true;var MCAPWARN=false;var MPOT=-1;var MPOTMULTS=[10,15,20];var MINBET=400;var POTSEED=5000;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
     'var MMIN=3,MMAX=20;',   // giới hạn số mìn - server là nguồn chuẩn, mSync ghi đè
     // Bấm nhanh: cú bấm trong lúc chờ server KHÔNG bị nuốt nữa - xếp hàng đào tuần tự.
     // mBusyAt = chốt an toàn: request treo quá 8s thì tự gỡ cờ, không phải F5.
@@ -2021,7 +2021,7 @@ const PAGE = [
     '}else{',
     'var n=Math.min(Math.max(mNum("mMines"),1),MT-1);',
     '$("mLeft").textContent=(MT-n);$("mBombN").textContent=n;',
-    'go.className="mgo start";go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=false;',
+    'go.className="mgo start";if(!MOPEN){go.textContent="⛔ DÒ MÌN ĐANG ĐÓNG BẢO TRÌ";go.disabled=true}else{go.textContent="⛏️ BẮT ĐẦU ĐÀO";go.disabled=false}',   // ⏸️ 09/09 công tắc panel
     '$("mStat").textContent=MTAB.length?("mở 1 ô "+fx(MTAB[0])+" · mở hết "+fx(MTAB[MTAB.length-1])):"Chọn số mìn và tiền cược";}',
     '["mDouble","mMax","mMinus","mPlus"].forEach(function(id){$(id).disabled=!!MG});',
     '$("mBet").disabled=!!MG;$("mMines").disabled=!!MG;mBar()}',
@@ -2029,7 +2029,7 @@ const PAGE = [
     'function mNewGame(){MOVER=false;MLAST=null;api("/api/mines/dismiss",{}).catch(function(){});',
     'mDrawGrid();mTable();mBar();mBand()}',
     // Lấy trạng thái từ server: F5 hay mất mạng giữa ván thì quay lại vẫn đúng chỗ cũ.
-    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;if(j.potMults&&j.potMults.length)MPOTMULTS=j.potMults;if(j.minBet)MINBET=j.minBet;setBal(j.balance);',
+    'function mSync(){api("/api/mines/state").then(function(j){MT=j.tiles||25;MOPEN=j.open!==false;if(j.potMults&&j.potMults.length)MPOTMULTS=j.potMults;if(j.minBet)MINBET=j.minBet;setBal(j.balance);',
     'MMIN=j.minMines||3;MMAX=j.maxMines||20;',
     '$("mMinesLab").textContent="Số mìn ("+MMIN+"–"+MMAX+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
@@ -2196,7 +2196,7 @@ const PAGE = [
     '',
     // ===== LEO THANG =====
     // Cùng nguyên tắc với dò mìn: client không tự tính tiền, mọi hệ số lấy từ server.
-    'var SF=10,SC=8,SMAXF=5,SCAPWARN=false,SPOT=-1,SPOTMULTS=[10,15,20],SG=null,sBusy=false,STAB=[],SOVER=false,SLAST=null;',
+    'var SF=10,SC=8,SMAXF=5,SOPEN=true,SCAPWARN=false,SPOT=-1,SPOTMULTS=[10,15,20],SG=null,sBusy=false,STAB=[],SOVER=false,SLAST=null;',
     // sBusyAt: chốt an toàn gỡ cờ kẹt. Leo thang CỐ TÌNH không xếp hàng cú bấm như dò
     // mìn - mỗi bước đổi tầng, cú bấm xếp hàng sẽ áp vào TẦNG KẾ TIẾP ngoài ý muốn.
     'var sBusyAt=0;',
@@ -2250,7 +2250,7 @@ const PAGE = [
     '}else if(SOVER){',
     'go.className="mgo start";go.textContent="🔄 VÁN MỚI";go.disabled=false;',
     '}else{',
-    'go.className="mgo start";go.textContent="🪜 BẮT ĐẦU LEO";go.disabled=false;',
+    'go.className="mgo start";if(!SOPEN){go.textContent="⛔ LEO THANG ĐANG ĐÓNG BẢO TRÌ";go.disabled=true}else{go.textContent="🪜 BẮT ĐẦU LEO";go.disabled=false}',
     '$("sStat").textContent=STAB.length?("tầng 1 "+fx(STAB[0])+" · lên đỉnh "+fx(STAB[STAB.length-1])):"Chọn số cầu lửa và tiền cược";}',
     '["sMax","sMinus","sPlus"].forEach(function(id){$(id).disabled=!!SG});',
     '$("sBet").disabled=!!SG;$("sFire").disabled=!!SG}',
@@ -2258,7 +2258,7 @@ const PAGE = [
     'function sNewGame(){SOVER=false;SLAST=null;api("/api/stairs/dismiss",{}).catch(function(){});',
     'sTower();sBand()}',
     'function sSync(){api("/api/stairs/state").then(function(j){',
-    'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;if(j.potMults&&j.potMults.length)SPOTMULTS=j.potMults;if(j.minBet)MINBET=j.minBet;setBal(j.balance);',
+    'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;SOPEN=j.open!==false;if(j.potMults&&j.potMults.length)SPOTMULTS=j.potMults;if(j.minBet)MINBET=j.minBet;setBal(j.balance);',
     'SG=j.game||null;SLAST=(!SG&&j.last)?j.last:null;SOVER=!!SLAST;',
     'if(SG&&SG.luckyPick)luckyOpen("stairs");',
     'if(SG&&SG.jpPick)jpOpen("stairs",SG.jpMults);',   // F5 giữa lúc đang chọn hộp -> mở lại

@@ -117,6 +117,7 @@ function startPanel(ctx) {
             })(),
             forcedMines: ctx.getForcedMines(),
             forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
+            gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             xs: (() => {
                 if (!ctx.getXS) return null;
                 const xs = ctx.getXS();
@@ -566,6 +567,14 @@ function startPanel(ctx) {
                     ctx.setForcedLucky(key, prize);
                     ctx.writeLog('ADMIN', `[PANEL ÉP HỘP 🍀] ${key} -> ${prize}`);
                     return sendJSON(res, 200, { ok: true });
+                }
+                // ⏸️ 09/09: mở/đóng Dò Mìn + Leo Thang
+                if (path === '/api/games/open') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
+                    if (!ctx.setGameOpen) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setGameOpen(String(body.key || ''), !!body.open);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
                 }
                 if (path === '/api/lucky/clear') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
@@ -1057,6 +1066,15 @@ const HTML = `<!DOCTYPE html>
 
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
+      <!-- ⏸️ 09/09: công tắc mở/đóng 2 minigame (các trò khác có công tắc riêng ở tab của chúng) -->
+      <div class="card epOnly" style="display:none">
+        <h3>⏸️ Mở / Đóng trò</h3>
+        <div class="row" style="gap:22px;flex-wrap:wrap">
+          <label id="goMinesLb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="goMines" style="width:auto;margin:0" onchange="gameOpenToggle('mines',this)"> 💣 Dò Mìn</label>
+          <label id="goStairsLb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="goStairs" style="width:auto;margin:0" onchange="gameOpenToggle('stairs',this)"> 🪜 Leo Thang</label>
+        </div>
+        <div class="note">Bỏ tick = ĐÓNG: người chơi không vào được ván MỚI (nút trên web thành ⛔ ĐÓNG BẢO TRÌ), ván đang chơi vẫn chơi nốt / dừng bình thường, không ai mất tiền. Phi Thuyền, Vòng quay Pal, Cổ phiếu, Big Small có công tắc riêng ở tab của chúng.</div>
+      </div>
       <div class="card">
         <h3>🏆 Hũ nuôi - mỗi trò một hũ riêng</h3>
         <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
@@ -2449,6 +2467,12 @@ function renderMineTarget(){
   document.getElementById('mineUser').disabled=any;
 }
 // 🍀 09/09: ép quà hộp may mắn kế tiếp (dùng 1 lần) - cùng ô chọn người chơi của ép mìn
+// ⏸️ 09/09: mở/đóng Dò Mìn + Leo Thang
+async function gameOpenToggle(key,cb){
+  const on=cb.checked, lb=key==='mines'?'💣 Dò Mìn':'🪜 Leo Thang';
+  if(!on&&!await uiConfirm('ĐÓNG '+lb+'? Người chơi không vào được ván mới, ván đang chơi vẫn chơi nốt.','⏸ Đóng','btn-red')){cb.checked=true;return;}
+  api('/api/games/open',{key:key,open:on}).then(j=>{toast(j.open?'▶️ Đã MỞ '+lb:'⏸ Đã ĐÓNG '+lb);refresh();}).catch(()=>{cb.checked=!on;});
+}
 function luckyForce(){
   const any=document.getElementById('mineAny').checked;
   const key=any?'_any':document.getElementById('mineUser').value;
@@ -2784,6 +2808,9 @@ async function refresh(){
       fl.appendChild(item);
     });
   }
+  // ⏸️ công tắc mở/đóng 2 minigame (không đụng khi admin đang bấm)
+  const gopen=STATE.gameOpen||{};
+  [['mines','goMines','goMinesLb','💣 Dò Mìn'],['stairs','goStairs','goStairsLb','🪜 Leo Thang']].forEach(([k,id,lid,nm])=>{const cb=document.getElementById(id),lb=document.getElementById(lid);if(!cb)return;const on=gopen[k]!==false;if(document.activeElement!==cb)cb.checked=on;if(lb){lb.style.color=on?'':'var(--red)';lb.lastChild.textContent=' '+nm+(on?' - đang MỞ':' - ĐANG ĐÓNG');}});
   // 🍀 ép quà hộp kế tiếp
   const ll=document.getElementById('luckyList');
   if(ll){ll.innerHTML='';const fl2=STATE.forcedLucky||{};const lk=Object.keys(fl2);const PZ={shield:'🛡️ Khiên',dig:'⛏️ Máy đào',rocket:'🚀 Thang máy',cash:'💰 Lì xì',jackpot:'🏆 Nổ hũ',none:'🍂 Hụt'};
