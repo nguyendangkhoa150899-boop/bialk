@@ -118,6 +118,7 @@ function startPanel(ctx) {
             forcedMines: ctx.getForcedMines(),
             forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
+            dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
             xs: (() => {
                 if (!ctx.getXS) return null;
                 const xs = ctx.getXS();
@@ -574,6 +575,14 @@ function startPanel(ctx) {
                     ctx.setForcedLucky(key, prize);
                     ctx.writeLog('ADMIN', `[PANEL ÉP HỘP 🍀] ${key} -> ${prize}`);
                     return sendJSON(res, 200, { ok: true });
+                }
+                // 🔁 09/09: cầu Dogcoin web ↔ game (rut / nap)
+                if (path === '/api/dogbridge/open') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
+                    if (!ctx.setDogBridge) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setDogBridge(String(body.key || ''), !!body.open);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
                 }
                 // ⏸️ 09/09: mở/đóng Dò Mìn + Leo Thang
                 if (path === '/api/games/open') {
@@ -1517,7 +1526,11 @@ const HTML = `<!DOCTYPE html>
           <label id="gs_stock_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_stock" style="width:auto;margin:0" onchange="gameSwitch('stock',this)"> 📈 Sàn cổ phiếu</label>
           <span id="gs_tx" class="muted" style="font-size:13px"></span>
         </div>
-        <div class="note">Bỏ tick = ĐÓNG ngay, không cần Lưu: người chơi không vào ván/đặt cược/quay MỚI (web hiện ⛔ ĐÓNG), ván đang chơi vẫn xong bình thường, không ai mất tiền. Tick lại là mở. Big Small: dùng ▶️ Tạo bàn / ⏹ Tắt bàn ở tab 🎲.</div>
+        <div class="row" style="gap:18px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+          <label id="gs_rut_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_rut" style="width:auto;margin:0" onchange="gameSwitch('rut',this)"> 🎮 Rút Dogcoin web → game</label>
+          <label id="gs_nap_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_nap" style="width:auto;margin:0" onchange="gameSwitch('nap',this)"> 💬 Nạp Dogcoin game → web</label>
+        </div>
+        <div class="note">Bỏ tick = ĐÓNG ngay, không cần Lưu: người chơi không vào ván/đặt cược/quay MỚI (web hiện ⛔ ĐÓNG), ván đang chơi vẫn xong bình thường, không ai mất tiền. Tick lại là mở. Big Small: dùng ▶️ Tạo bàn / ⏹ Tắt bàn ở tab 🎲. Hàng dưới: 2 chiều cầu Dogcoin ↔ game trên web (đóng chiều nào thì nút chiều đó trên web thành ⛔, chống hack trong game rồi chuyển ra).</div>
       </div>
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
@@ -2511,14 +2524,15 @@ function renderMineTarget(){
 }
 // 🍀 09/09: ép quà hộp may mắn kế tiếp (dùng 1 lần) - cùng ô chọn người chơi của ép mìn
 // ⏸️ 09/09: công tắc GOM 5 trò (tab 👥) - mỗi trò gọi đúng API sẵn có của nó
-const GS_LB={mines:'💣 Dò Mìn',stairs:'🪜 Leo Thang',spm:'🚀 Phi Thuyền',pal:'🎁 Vòng quay Pal',stock:'📈 Sàn cổ phiếu'};
-function gsState(){const S=STATE||{};return {mines:(S.gameOpen||{}).mines!==false,stairs:(S.gameOpen||{}).stairs!==false,spm:!S.spmCfg||S.spmCfg.open!==false,pal:!S.palWheelCfg||S.palWheelCfg.open!==false,stock:!S.stock||S.stock.open!==false};}
+const GS_LB={mines:'💣 Dò Mìn',stairs:'🪜 Leo Thang',spm:'🚀 Phi Thuyền',pal:'🎁 Vòng quay Pal',stock:'📈 Sàn cổ phiếu',rut:'🎮 Rút Dogcoin web → game',nap:'💬 Nạp Dogcoin game → web'};
+function gsState(){const S=STATE||{};return {mines:(S.gameOpen||{}).mines!==false,stairs:(S.gameOpen||{}).stairs!==false,spm:!S.spmCfg||S.spmCfg.open!==false,pal:!S.palWheelCfg||S.palWheelCfg.open!==false,stock:!S.stock||S.stock.open!==false,rut:!S.dogBridge||S.dogBridge.rut!==false,nap:!S.dogBridge||S.dogBridge.nap!==false};}
 async function gameSwitch(key,cb){
   const on=cb.checked, lb=GS_LB[key]||key;
   if(!on&&!await uiConfirm('ĐÓNG '+lb+'? Không nhận ván/cược/quay mới, ván đang chơi vẫn xong bình thường.','⏸ Đóng','btn-red')){cb.checked=true;return;}
   const call=key==='mines'||key==='stairs'?api('/api/games/open',{key:key,open:on})
     :key==='spm'?api('/api/spm/cfg',{open:on})
     :key==='pal'?api('/api/palwheel/cfg',{open:on})
+    :(key==='rut'||key==='nap')?api('/api/dogbridge/open',{key:key,open:on})
     :api('/api/stock/cfg',{open:on});
   call.then(()=>{toast(on?'▶️ Đã MỞ '+lb:'⏸ Đã ĐÓNG '+lb);refresh();}).catch(()=>{cb.checked=!on;});
 }

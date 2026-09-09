@@ -694,6 +694,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 🔁 **Công tắc cầu Dogcoin web ↔ game** (2 chiều riêng, tab 👥 hàng dưới card Mở/Đóng):
+  `dogBridgeCfg()/setDogBridge(key,on)` lưu `dbCache._dogBridge {rut, nap}`; `webRutGame`/`webNapGame`
+  từ chối ngay đầu hàm khi đóng ("⛔ … đang ĐÓNG - admin tạm khoá chiều này"); state
+  `/api/dogbridge/state` thêm `rutOpen/napOpen` → web khoá nút chiều đó + đổi chữ "⛔ … ĐANG ĐÓNG".
+  Route `/api/dogbridge/open {key: rut|nap, open}` (epOk). Mục đích: chặn hack Dogcoin trong game
+  rồi chuyển ra web (bàn 08/09), giờ admin bật/tắt tuỳ lúc thay vì phải sửa code.
 - **09/09** — 🧰 **3 tiện ích panel SUPER**: (1) **⏸️ Mở/Đóng trò GOM về tab 👥** (chủ server:
   "dễ thao tác 1 lần"): card đầu tab với 5 ô tick Dò Mìn / Leo Thang / Phi Thuyền / Vòng quay Pal
   / Sàn cổ phiếu + trạng thái Big Small kèm nút ⏹ - `gameSwitch()` gọi đúng API sẵn có của từng trò

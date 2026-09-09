@@ -381,7 +381,19 @@ function listTransferTargets(excludeId) {
 // 🎮 RÚT Dogcoin vào game (ví Discord -> túi game): trừ ví TRƯỚC, giveItem DogCoin. Hụt
 // CHẮC CHẮN (dashboard chết / player not found) -> hoàn; mơ hồ (timeout) -> giữ + báo admin
 // (chống double-give). Dùng chung khoá giao đơn (deliverBusy) + trần WITHDRAW_MAX như cầu Discord.
+// 🔁 09/09: công tắc cầu Dogcoin web ↔ game (panel SUPER tab 👥). rut = web -> game, nap = game -> web.
+// Mặc định MỞ cả 2; lưu dbCache._dogBridge. Đóng = từ chối ngay ở đầu hàm, web khoá nút + ghi lý do.
+function dogBridgeCfg() { const o = dbCache._dogBridge; return { rut: !(o && o.rut === false), nap: !(o && o.nap === false) }; }
+function setDogBridge(key, on) {
+    if (!['rut', 'nap'].includes(key)) return { error: 'Chiều không hợp lệ (rut/nap)' };
+    if (!dbCache._dogBridge || typeof dbCache._dogBridge !== 'object') dbCache._dogBridge = {};
+    dbCache._dogBridge[key] = !!on;
+    saveDbNow();
+    writeLog('ADMIN', `[CẦU DOGCOIN] Panel ${on ? 'MỞ' : 'ĐÓNG'} chiều ${key === 'rut' ? 'RÚT web → game' : 'NẠP game → web'}`);
+    return { ok: true, key, open: !!on, cfg: dogBridgeCfg() };
+}
 async function webRutGame(userId, amount) {
+    if (!dogBridgeCfg().rut) return { error: '⛔ Rút Dogcoin vào game đang ĐÓNG - admin tạm khoá chiều này' };
     amount = Math.floor(Number(amount) || 0);
     if (amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
     if (amount > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin` };
@@ -419,6 +431,7 @@ async function webRutGame(userId, amount) {
 // 🎮 NẠP Dogcoin từ game (túi game -> ví Discord): takeItem trước (trừ trong game), rồi cộng
 // ví ĐÚNG số đã lấy được (r.took) - an toàn, không cộng khống, không mất tiền game.
 async function webNapGame(userId, amount) {
+    if (!dogBridgeCfg().nap) return { error: '⛔ Nạp Dogcoin ra web đang ĐÓNG - admin tạm khoá chiều này' };
     amount = Math.floor(Number(amount) || 0);
     if (amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
     if (amount > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin` };
@@ -4854,7 +4867,7 @@ client.once('ready', async (c) => {
             dogbridge: {
                 rut: (uid, amount) => webRutGame(uid, amount),
                 nap: (uid, amount) => webNapGame(uid, amount),
-                state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST }),
+                state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut, napOpen: dogBridgeCfg().nap }),   // 🔁 09/09 công tắc 2 chiều
             },
             // 📅 điểm danh tháng + 💉 nghiện - cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
@@ -5006,6 +5019,9 @@ client.once('ready', async (c) => {
             clearForcedLucky: (key) => { delete forcedLucky[key]; },
             // ⏸️ 09/09: mở/đóng Dò Mìn + Leo Thang
             getGameOpen: () => ({ mines: gameOpen('mines'), stairs: gameOpen('stairs') }),
+            // 🔁 09/09: cầu Dogcoin web ↔ game
+            getDogBridge: () => dogBridgeCfg(),
+            setDogBridge: (key, on) => setDogBridge(key, on),
             setGameOpen: (key, on) => setGameOpen(key, on),
             getMinesHistory: () => minesHistory,
             getTXDash: () => txDashHistory,

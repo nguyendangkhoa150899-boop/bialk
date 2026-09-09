@@ -3030,7 +3030,11 @@ const PAGE = [
     'function dogSync(){api("/api/dogbridge/state").then(function(j){setBal(j.balance);',
     '$("dogLink").innerHTML=j.ingameName?("Nhân vật: <b>"+esc(j.ingameName)+"</b>"):"⚠️ Chưa liên kết tên nhân vật - nhắn admin";',
     '$("dogMax1").textContent=vnd(j.max);$("dogMax2").textContent=vnd(j.max);',
-    'if(!j.ingameName){$("dogRutBtn").disabled=true;$("dogNapBtn").disabled=true}else{$("dogRutBtn").disabled=false;$("dogNapBtn").disabled=false}}).catch(function(e){toast("❌ "+e.message)});',
+    // 🔁 09/09: admin đóng chiều nào thì nút chiều đó khoá + đổi chữ (không mất nút, người chơi biết lý do)
+    'var rb=$("dogRutBtn"),nb=$("dogNapBtn");var rOn=j.rutOpen!==false,nOn=j.napOpen!==false;',
+    'rb.disabled=!j.ingameName||!rOn;nb.disabled=!j.ingameName||!nOn;',
+    'rb.textContent=rOn?"🎮 Rút vào game":"⛔ RÚT VÀO GAME ĐANG ĐÓNG";nb.textContent=nOn?"💬 Nạp ra web":"⛔ NẠP RA WEB ĐANG ĐÓNG";',
+    '}).catch(function(e){toast("❌ "+e.message)});',
     'api("/api/players").then(function(j){DOGTARGETS=j.list||[];',
     // người rời list (đổi ví...) thì bỏ khỏi lựa chọn cho khỏi gửi nhầm
     'var ok={};DOGTARGETS.forEach(function(p){ok[p.id]=1});Object.keys(DOGSEL).forEach(function(id){if(!ok[id])delete DOGSEL[id]});',
