@@ -3086,7 +3086,7 @@ const PAGE = [
     'function pcRescueTick(){var b=$("pcRescueBtn");if(!b)return;',
     'if(RSCBUSY){b.disabled=true;b.textContent="⏳ Đang dịch chuyển...";return}',
     'var left=RSCUNTIL-Date.now();',
-    'if(left>0){b.disabled=true;b.textContent="🆘 TẨU THOÁT ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 TẨU THOÁT KHẨN CẤP"}}',
+    'if(left>0){b.disabled=true;b.textContent="🆘 TẨU THOÁT KHẨN CẤP ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 TẨU THOÁT KHẨN CẤP"}}',
     'setInterval(pcRescueTick,30000);',
     'async function pcRescue(){if(RSCBUSY)return;',
     'if(!(await gConfirm("Dịch chuyển nhân vật về <b>ĐIỂM XUẤT PHÁT</b> ngay bây giờ? Dùng khi kẹt đất/kẹt đá - không chết, không rớt đồ.<br><b>4 tiếng mới dùng lại được.</b>","🆘 Tẩu thoát",true)))return;',
