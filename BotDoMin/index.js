@@ -3032,7 +3032,8 @@ const webMinesApi = {
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
         if (bet < minBet()) return { error: `Cược tối thiểu ${minBet().toLocaleString()} Dogcoin mỗi ván` };
         if (MINES_MAX_BET > 0 && bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} Dogcoin mỗi ván` };
-        // MUA THÊM 1 ô 🍀: phí 20% tiền cược (chủ server chốt 20/08). Mặc định 1 ô.
+        // 🍀 09/09 (chủ server chốt): KHÔNG còn cỏ miễn phí - muốn cỏ phải MUA,
+        // phí 20% tiền cược, TỐI ĐA 1 ô/ván. (Luật cũ 20/08: 1 free + mua thêm 1.)
         const fee = extraLucky ? Math.floor(bet * 0.2) : 0;
         // 🏆 nuôi hũ RIÊNG của Dò Mìn: trích 5% cược, KHÔNG thu thêm (nhà cái bao)
         const potCut = luckyPotCut('mines', bet);
@@ -3046,13 +3047,13 @@ const webMinesApi = {
         g.bet = bet; g.name = name; g.startedAt = Date.now();
         g.userId = userId;   // để lúc ghi lịch sử tra được số dư còn lại
         g.fee = fee;         // phí cỏ thêm - tính vào net của lịch sử cuối ván
-        // Ô 🍀 giấu trên ô AN TOÀN; mặc định 1 ô, mua thêm thì 2 ô, mỗi ô dùng 1 lần.
+        // Ô 🍀 giấu trên ô AN TOÀN; 09/09: CHỈ có khi mua (tối đa 1 ô), dùng 1 lần.
         // Ép số khi so với mìn: layout ép từ panel có thể chứa chuỗi ("5" thay vì 5),
         // so lệch kiểu là ô 🍀 rơi trúng ô mìn ngay.
         const mineSet = new Set(g.mines.map(Number));
         const safes = [];
         for (let i = 0; i < TOTAL_TILES; i++) if (!mineSet.has(i)) safes.push(i);
-        const wantLucky = extraLucky ? 2 : 1;
+        const wantLucky = extraLucky ? 1 : 0;
         g.lucky = [];
         while (g.lucky.length < wantLucky && safes.length > g.lucky.length) {
             const pick = safes[Math.floor(Math.random() * safes.length)];
@@ -3369,10 +3370,11 @@ const webStairsApi = {
             golden: g.golden ? { floor: g.golden.f, col: g.golden.c } : null, // 🌟 HIỆN RÕ
             luckyPick: !!g.luckyPending,            // đang chờ chọn 1 trong 4 hộp 🍀
             jpPick: !!g.jpPending, jpMults: g.jpPending ? potCfg('stairs').mults : undefined,   // 🏆 09/09 v2
-            // KHÔNG lộ g.lucky - ô 🍀 phải giấu
+            // 🍀 09/09: chỉ đưa SỐ LƯỢNG (0 hoặc 1), KHÔNG lộ vị trí g.lucky
+            luckyTotal: g.luckyTotal || 0, luckyLeft: (g.lucky || []).length, extraLucky: !!g.fee,
         };
     },
-    start: (userId, name, fire, bet) => {
+    start: (userId, name, fire, bet, extraLucky) => {
         if (webStairs.has(userId)) return { error: 'Bạn đang có ván dở - leo tiếp hoặc bấm DỪNG đã.' };
         if (!gameOpen('stairs')) return { error: '⛔ Leo Thang đang ĐÓNG bảo trì - admin sẽ mở lại sau' };
         if (!Number.isInteger(fire) || fire < 1 || fire > STAIRS_MAX_FIRE) {
@@ -3380,10 +3382,14 @@ const webStairsApi = {
         }
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
         if (bet < minBet()) return { error: `Cược tối thiểu ${minBet().toLocaleString()} Dogcoin mỗi ván` };
+        // 🍀 09/09: cỏ KHÔNG miễn phí - tick mua 1 ô, phí 20% cược (cùng luật Dò Mìn)
+        const fee = extraLucky ? Math.floor(bet * 0.2) : 0;
         // 🏆 nuôi hũ RIÊNG của Leo Thang: trích 5% cược, KHÔNG thu thêm (nhà cái bao)
         const potCut = luckyPotCut('stairs', bet);
         const me = getUserData(userId);
-        if ((me.points || 0) < bet) return { error: `Không đủ Dogcoin! Số dư: ${(me.points || 0).toLocaleString()}` };
+        if ((me.points || 0) < bet + fee) {
+            return { error: `Không đủ Dogcoin! Cần ${(bet + fee).toLocaleString()}${fee ? ` (${bet.toLocaleString()} cược + ${fee.toLocaleString()} phí cỏ)` : ''} - số dư: ${(me.points || 0).toLocaleString()}` };
+        }
 
         // Bẫy sinh sẵn cho cả 10 tầng ngay từ đầu ván. (luckyPending khởi tạo false)
         const traps = [];
@@ -3396,16 +3402,18 @@ const webStairsApi = {
             traps.push(row);
         }
         const g = { bet, fire, floor: 0, traps, safe: [], name, userId, startedAt: Date.now() };
-        // (không có g.fee: nuôi hũ do nhà cái bao, người chơi chỉ trả tiền cược)
-        // 3 ô 🍀 GIẤU trên ô trống tầng 1–8 (không rải tầng 9–10: sát đỉnh còn quà là quá tay)
+        g.fee = fee;   // phí mua cỏ - tính vào net lịch sử cuối ván (các dòng g.fee||0 có sẵn)
+        // Ô 🍀 GIẤU trên ô trống tầng 1–8 (không rải tầng 9–10: sát đỉnh còn quà là quá
+        // tay). 09/09: CHỈ có khi mua, tối đa 1 ô (luật cũ: 3 ô free).
         g.lucky = []; g.shield = 0; g.burned = []; g.luck = []; g.luckyPending = false;
-        while (g.lucky.length < 3) {
+        while (g.lucky.length < (extraLucky ? 1 : 0)) {
             const f = Math.floor(Math.random() * 8);
             const c = Math.floor(Math.random() * STAIRS_COLS);
             if (traps[f].includes(c)) continue;
             if (g.lucky.some(l => l.f === f && l.c === c)) continue;
             g.lucky.push({ f, c });
         }
+        g.luckyTotal = g.lucky.length;   // web hiện "ván này có mua cỏ hay không"
         // 🌟 Ô VÀNG (2% ván, mọi mức lửa - ăn nhờ nó đã có trần x2000): tầng 5–8
         g.golden = null;
         if (Math.random() < STAIRS_GOLDEN_RATE) {
@@ -3418,10 +3426,10 @@ const webStairsApi = {
         }
         webStairs.set(userId, g);
         webStairsLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
-        updatePoints(userId, -bet);
+        updatePoints(userId, -(bet + fee));
         potFeed('stairs', potCut);   // nhà cái bao, KHÔNG trừ người chơi
-        stairsPending()[userId] = bet; // restart giữa ván -> hoàn lại tiền cược
-        writeLog('BET', `[LEO THANG] ${name} cược ${bet} | ${fire} lửa/tầng${potCut ? ` | hũ thang +${potCut} = ${potGet('stairs')}` : ''}`);
+        stairsPending()[userId] = bet + fee; // restart giữa ván -> hoàn cả cược lẫn phí cỏ
+        writeLog('BET', `[LEO THANG] ${name} cược ${bet}${fee ? ` + ${fee} phí cỏ` : ''} | ${fire} lửa/tầng | ${g.lucky.length} ô 🍀${potCut ? ` | hũ thang +${potCut} = ${potGet('stairs')}` : ''}`);
         return { ok: true, balance: getUserData(userId).points || 0, state: webStairsApi.current(userId) };
     },
     step: (userId, col) => {
