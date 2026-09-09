@@ -710,6 +710,33 @@ local function countItemAll(itemId)
     appendResult(string.format("OK COUNTALL %s: %d nguoi online", itemId, reported))
 end
 
+-- ===== 🆘 TẨU THOÁT KHẨN CẤP (09/09): dịch chuyển người chơi về điểm xuất phát =====
+-- PalDefender chặn Emergency Respawn gốc của game (vì nó né DeathPenalty). Đây là bản
+-- có kiểm soát cho nút trên web: KHÔNG giết nhân vật, chỉ K2_TeleportTo về PlayerStart
+-- đầu tiên của map (điểm sinh mặc định - khỏi hardcode toạ độ, map update vẫn đúng).
+local function rescuePlayer(playerName)
+    local playerState, names = findPlayerState(playerName)
+    if not playerState then
+        appendPlayerResult(playerName, "ERROR player not found (RESCUE) | names=[" .. table.concat(names, ", ") .. "]")
+        return
+    end
+    local ok, err = pcall(function()
+        local pawn = playerState.PawnPrivate
+        if not pawn or not pawn:IsValid() then error("khong lay duoc pawn (nguoi choi vua thoat?)") end
+        local starts = FindAllOf("PlayerStart") or {}
+        if #starts < 1 then error("khong tim thay PlayerStart nao") end
+        local loc = starts[1]:K2_GetActorLocation()
+        loc.Z = loc.Z + 150   -- nhấc lên chút cho khỏi lún đất
+        local moved = pawn:K2_TeleportTo(loc, pawn:K2_GetActorRotation())
+        if not moved then error("K2_TeleportTo tra ve false") end
+    end)
+    if ok then
+        appendPlayerResult(playerName, "OK RESCUE")
+    else
+        appendPlayerResult(playerName, "ERROR RESCUE: " .. tostring(err))
+    end
+end
+
 -- ===== TRỪ ITEM TRONG TÚI (cho luồng nạp: game -> Discord) =====
 -- Game không có hàm trừ item nào expose ra Lua, nên ghi thẳng StackCount của từng ô
 -- rồi gọi OnRep_StackCount để đồng bộ — cùng kỹ thuật đã dùng cho chỉ số pal.
@@ -1155,6 +1182,13 @@ local function processLine(line)
     local rawSpecies, rawPlayer = line:match("^RAWPAL%s+(%S+)%s+(.+)$")
     if rawSpecies then
         giveRawPal(rawPlayer, rawSpecies)
+        return
+    end
+
+    -- RESCUE <playerName>   dich chuyen ve diem xuat phat (tau thoat co kiem soat)
+    local rescueName = line:match("^RESCUE%s+(.+)$")
+    if rescueName then
+        rescuePlayer(rescueName)
         return
     end
 

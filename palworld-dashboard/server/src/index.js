@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { palworld, PalworldApiError } from "./palworldClient.js";
 import { dashboardAuth } from "./dashboardAuth.js";
-import { giveItem, givePal, countItem, countItemAll, takeItem } from "./sftpBridge.js";
+import { giveItem, givePal, countItem, countItemAll, takeItem, rescuePlayer } from "./sftpBridge.js";
 import { recordGive, readHistory } from "./history.js";
 import { listLinks, getLinkByDiscordId, findBySteamId, saveLink, deleteLink } from "./links.js";
 import { intInRange, nonEmptyString, ValidationError } from "./validate.js";
@@ -97,6 +97,16 @@ app.post(
 // 🎁 Giao PAL (rương pal web, 25/08). Bot gọi khi người chơi bấm NHẬN trong Hồ sơ.
 // species có thể mang tiền tố BOSS_ (pal boss). Linh hồn 0-20 bậc (20 = +60%).
 // Pal dùng được sau restart server — chuyện của game, không phải lỗi giao.
+// 🆘 Tẩu thoát khẩn cấp (09/09): bot gọi khi người chơi bấm nút trên Hồ sơ web.
+app.post(
+  "/api/rescue",
+  handle(async (req) => {
+    const playerName = nonEmptyString(req.body.playerName, "Tên người chơi");
+    const r = await rescuePlayer(playerName);
+    return { ok: r.ok, message: r.message };
+  })
+);
+
 app.post(
   "/api/give-pal",
   handle(async (req) => {

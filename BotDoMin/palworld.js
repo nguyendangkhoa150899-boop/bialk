@@ -99,6 +99,18 @@ async function givePal(playerName, spec) {
     };
 }
 
+// 🆘 Tẩu thoát khẩn cấp: dịch chuyển nhân vật về điểm xuất phát. Trả { ok, message }.
+async function rescuePlayer(playerName) {
+    const data = await call('/api/rescue', {
+        method: 'POST',
+        body: JSON.stringify({ playerName }),
+    });
+    return {
+        ok: !!(data && data.ok),
+        message: (data && data.message) || 'Không rõ kết quả',
+    };
+}
+
 // Đếm item người chơi đang có TRONG GAME. Trả { ok, count, message }.
 async function countItem(playerName, itemId) {
     const params = new URLSearchParams({ playerName, itemId });
@@ -161,6 +173,7 @@ module.exports = {
     findOnlineBySteamId,
     giveItem,
     givePal,
+    rescuePlayer,
     countItem,
     countItemAll,
     takeItem,

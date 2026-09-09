@@ -172,6 +172,13 @@ export async function givePal(playerName, spec) {
 
 // Đếm số lượng item người chơi đang có TRONG GAME (chỉ đọc).
 // Trả { ok, count, message }.
+// 🆘 Tẩu thoát khẩn cấp (09/09): mod dịch chuyển người chơi về điểm xuất phát.
+export async function rescuePlayer(playerName) {
+  const result = await queueAndWait([`RESCUE ${playerName}`], 1, 8);
+  const [r] = splitResultsByPlayer(result, [playerName]);
+  return { ok: r.ok, message: r.message };
+}
+
 export async function countItem(playerName, itemId) {
   const result = await queueAndWait([`COUNT ${itemId} ${playerName}`], 1, 6);
   const [r] = splitResultsByPlayer(result, [playerName]);

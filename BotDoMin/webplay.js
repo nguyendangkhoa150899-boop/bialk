@@ -273,6 +273,12 @@ function startWebPlay(ctx) {
                 if (ctx.profile && ctx.profile.claimCdInfo && path === '/api/pal/cd') {
                     return sendJSON(res, 200, { ok: true, ...ctx.profile.claimCdInfo() });
                 }
+                // 🆘 tẩu thoát khẩn cấp (09/09)
+                if (ctx.profile && ctx.profile.rescue && req.method === 'POST' && path === '/api/pal/rescue') {
+                    const r = await ctx.profile.rescue(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 // 🛒 shop item (28/08)
                 if (ctx.itemshop && path === '/api/itemshop/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.itemshop.state(userId) });
@@ -1417,6 +1423,11 @@ const PAGE = [
     // ⏳ cooldown nhận pal CHUNG toàn server (28/08)
     '<div id="pcCdBanner" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px;font-weight:700"></div>',
     '<div id="pcDayNote" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #3a4155;border-radius:9px;background:#1b1f2c;color:#aab3c5;font-size:13px"></div>',
+    // 🆘 tẩu thoát khẩn cấp (09/09): kẹt đất/kẹt đá trong game thì bấm - 4 tiếng/lần
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">',
+    '<button class="mini" id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-weight:700;padding:8px 12px">🆘 Tẩu thoát khẩn cấp</button>',
+    '<span class="muted" style="font-size:12px">kẹt đất/kẹt đá? Dịch chuyển về điểm xuất phát (phải đang ONLINE trong game) - 4 tiếng/lần</span>',
+    '</div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageDaily
@@ -3070,6 +3081,18 @@ const PAGE = [
     'function pcCdRule(){if(!PCCD)return"";return PCCD%60===0?(PCCD/60)+" phút/lần":PCCD+"s/lần"}',
     // 📅 hạn mức pal/ngày: server đưa palDayMax/palDayUsed trong state hồ sơ; nhận xong
     // client tải lại rương -> số tự cập nhật. Hết lượt thì đổi màu vàng cho dễ thấy.
+    // 🆘 tẩu thoát: đồng hồ đếm theo state hồ sơ, chỉ khoá nút - luật thật ở server
+    'var RSCUNTIL=0,RSCCD=14400000,RSCBUSY=false;',
+    'function pcRescueTick(){var b=$("pcRescueBtn");if(!b)return;',
+    'if(RSCBUSY){b.disabled=true;b.textContent="⏳ Đang dịch chuyển...";return}',
+    'var left=RSCUNTIL-Date.now();',
+    'if(left>0){b.disabled=true;b.textContent="🆘 Tẩu thoát ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 Tẩu thoát khẩn cấp"}}',
+    'setInterval(pcRescueTick,30000);',
+    'async function pcRescue(){if(RSCBUSY)return;',
+    'if(!(await gConfirm("Dịch chuyển nhân vật về <b>ĐIỂM XUẤT PHÁT</b> ngay bây giờ? Dùng khi kẹt đất/kẹt đá - không chết, không rớt đồ.<br><b>4 tiếng mới dùng lại được.</b>","🆘 Tẩu thoát",true)))return;',
+    'RSCBUSY=true;pcRescueTick();',
+    'api("/api/pal/rescue",{}).then(function(j){RSCBUSY=false;RSCUNTIL=Date.now()+RSCCD;toast(j.message||"✅ Đã dịch chuyển!");pcRescueTick()})',
+    '.catch(function(e){RSCBUSY=false;pcRescueTick();toast("❌ "+(e.message||"Lỗi"))});}',
     'var PDMAX=0,PDUSED=0;',
     'function pcDayNote(){var e=$("pcDayNote");if(!e)return;if(!(PDMAX>0)){e.style.display="none";return}var left=Math.max(0,PDMAX-PDUSED);e.style.display="";',
     'if(left>0){e.style.color="#aab3c5";e.style.borderColor="#3a4155";e.innerHTML="📅 Hôm nay bạn còn chuyển được <b style=\\"color:#8fffca\\">"+left+"/"+PDMAX+"</b> pal vào game (reset 00:00)"}',
@@ -3086,6 +3109,7 @@ const PAGE = [
     'function pcSync(cb){api("/api/profile").then(function(j){PC=j;',
     'PCCD=j.claimCd||0;PCCDUNTIL=Date.now()+(j.claimCdLeft||0);pcCdTick();',
     'PDMAX=j.palDayMax||0;PDUSED=j.palDayUsed||0;pcDayNote();',
+    'RSCCD=j.rescueCd||RSCCD;if(!RSCBUSY)RSCUNTIL=Date.now()+(j.rescueCdLeft||0);pcRescueTick();',
     'var inChest=0;j.chest.forEach(function(i){if(i.status==="chest")inChest++});',
     '$("pcStat").textContent=inChest+" pal trong rương";',
     '$("pcLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - bấm 🎁 Nhận là giao thẳng vào game (phải đang online trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới NHẬN pal được (bán thì vẫn bán được)";',

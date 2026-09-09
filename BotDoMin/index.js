@@ -1208,6 +1208,33 @@ function palWheelCfg() {
     };
 }
 
+// ===== 🆘 TẨU THOÁT KHẨN CẤP (09/09): nút trên Hồ sơ web, 4 tiếng/người/lần =====
+// PalDefender chặn Emergency Respawn gốc (né được DeathPenalty=All). Bản có kiểm soát
+// này KHÔNG giết nhân vật - mod chỉ dịch chuyển về điểm xuất phát, nên không có hình
+// phạt nào để né. Cooldown chỉ tính khi mod xác nhận OK - lỗi/timeout không tốn lượt.
+const RESCUE_CD_MS = 4 * 3600 * 1000;
+async function palRescue(userId) {
+    const u = getUserData(userId);
+    const gameName = (u.ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhờ admin liên kết ở panel trước đã' };
+    const left = (u.lastRescue || 0) + RESCUE_CD_MS - Date.now();
+    if (left > 0) return { error: `🆘 Tẩu thoát 4 tiếng mới dùng được 1 lần - còn ${Math.ceil(left / 60000)} phút nữa` };
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi bấm lại' };
+    deliverLock();
+    let r = null, err = null;
+    try { r = await pal.rescuePlayer(gameName); } catch (e) { err = e; }
+    deliverUnlock();
+    if (r && r.ok) {
+        u.lastRescue = Date.now();
+        saveDbNow();
+        writeLog('ADMIN', `[TẨU THOÁT] ${u.name || userId} (${gameName}) dịch chuyển về điểm xuất phát`);
+        return { ok: true, message: '🆘 Đã dịch chuyển nhân vật về ĐIỂM XUẤT PHÁT! Không chết, không rớt gì - hẹn 4 tiếng nữa.' };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    if (/player not found/i.test(msg)) return { error: 'Không thấy nhân vật ONLINE - phải đang đứng trong game mới tẩu thoát được (chưa tính lượt)' };
+    return { error: 'Chưa dịch chuyển được: ' + msg.slice(0, 120) + ' - thử lại sau (chưa tính lượt)' };
+}
+
 // ===== 🛒 SHOP ITEM (28/08): mua item game + số lượng -> giao thẳng vào túi qua mod =====
 // Danh mục admin tự quản ở panel (dbCache._itemShop): { id (StaticItemId game), name, price, max }.
 // Bộ mặc định: seed 1 LẦN khi DB chưa từng có _itemShop (deploy mới là có sẵn). Admin sửa/
@@ -4993,6 +5020,9 @@ client.once('ready', async (c) => {
                         // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),
                         claimCd: cfg.claimCd,
+                        // 🆘 tẩu thoát khẩn cấp: đồng hồ của TÔI (ms còn lại + độ dài cooldown)
+                        rescueCdLeft: Math.max(0, ((getUserData(uid).lastRescue || 0) + RESCUE_CD_MS) - Date.now()),
+                        rescueCd: RESCUE_CD_MS,
                         // 📅 hạn mức pal/ngày của TÔI (dayMax 0 = tắt)
                         palDayMax: cfg.dayMax,
                         palDayUsed: getUserData(uid).palDayKey === vnDayISO(Date.now()) ? (getUserData(uid).palDayN || 0) : 0,
@@ -5006,6 +5036,8 @@ client.once('ready', async (c) => {
                 claim: (uid, itemId, souls, passives, extra) => palChestClaim(uid, itemId, souls, passives, getUserData(uid).name || uid, extra),
                 // đồng hồ cooldown NHẸ cho client poll (không kéo cả rương)
                 claimCdInfo: () => ({ left: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()), cd: palWheelCfg().claimCd }),
+                // 🆘 tẩu thoát khẩn cấp (09/09) - 4 tiếng/người/lần
+                rescue: (uid) => palRescue(uid),
                 saveBuild: (uid, name, ids) => palBuildSave(uid, name, ids),
                 delBuild: (uid, name) => palBuildDel(uid, name),
             },
