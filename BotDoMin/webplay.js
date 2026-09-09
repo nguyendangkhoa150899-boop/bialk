@@ -2059,7 +2059,7 @@ const PAGE = [
     'dig:"⛏️ MÁY ĐÀO - mở giúp "+((L.opened||[]).length)+" ô an toàn!",',
     'cash:"💰 LÌ XÌ - +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin vào ví luôn!",',
     'rocket:"🚀 THANG MÁY - vọt lên 2 tầng!",',
-    'jackpot:"🏆 NỔ HŨ!!! +"+(L.bonus||0).toLocaleString("vi-VN")+" DOGCOIN!!!"+(L.potMult?" (🎲 bốc x"+L.potMult+" tiền cược = "+(L.potWin||0).toLocaleString("vi-VN")+" + trần ván)":""),',
+    'jackpot:(L.jpPick?"🏆 NỔ HŨ!!! Bấm OK để tự tay chọn hộp bội số x"+((L.mults&&L.mults.length)?L.mults:[10,15,20]).join("/x")+" TIỀN CƯỢC + trần ván!":"🏆 NỔ HŨ!!! +"+(L.bonus||0).toLocaleString("vi-VN")+" DOGCOIN!!!"+(L.potMult?" (🎲 bốc x"+L.potMult+" tiền cược = "+(L.potWin||0).toLocaleString("vi-VN")+" + trần ván)":"")),',   // 09/09 v2: trúng 🏆 chưa trả tiền, mời qua hộp bội số
     'none:"🍂 Trống trơn... kiếp sau may hơn!"',
     '}[L.prize]||"🍀"}',
     'function luckyToast(L){if(L)toast("🎁 "+luckyMsg(L))}',
@@ -2090,7 +2090,7 @@ const PAGE = [
     'b.textContent=PRIZE_EMO[rv[i]]||"🍂";',
     'if(i===n-1)b.classList.add("win");else b.classList.add("dim")});',
     '$("luckyRes").innerHTML="Hộp của bạn: "+luckyMsg(j.lucky);$("luckyRes").style.display="block";',
-    '$("luckyClose").style.display="block";',
+    '$("luckyClose").style.display="block";$("luckyClose").textContent=(j.lucky&&j.lucky.jpPick)?"🏆 CHỌN HỘP NỔ HŨ":"OK, CHƠI TIẾP";',   // 09/09 v2: nút đóng đổi chữ khi đang treo nổ hũ
     'if(j.lucky&&j.lucky.prize==="jackpot")celebrate();',
     // cập nhật bàn chơi NGAY phía sau hộp (đóng hộp là thấy liền, không khựng)
     'if(game==="mines"){if(j.pot!==undefined)MPOT=j.pot;',
