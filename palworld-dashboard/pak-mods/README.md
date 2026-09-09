@@ -131,7 +131,16 @@ trong pak sẽ đè lên → cần trích lại bảng mới và vá lại.
 
 # BialkRaidTimer_P.pak
 
-**Bản v8 (09/09/2026) — thêm: BOSS THÁP HẾT CÀY EXP.** 21 dòng `GYM_*` (boss tháp + bản Hard
+**Sổ phiên bản (file này KHÔNG phải v7 như mục dưới ghi - README từ 09/08 không được cập nhật,
+lịch sử thật nằm ở commit message):** v7 22/08 → v8–v12 27-28/08 (hạ trâu Ultra, buff boss thường,
+vá thêm `_Common`, máu Ultra 19–25M) → nhánh thử `BialkRaidTimerLv76/Lv77_P.pak` 28/08 (Ultra lv76→77,
+Moon Lord về mặc định) → **v16 03/09 gộp Lv77 vào file chính + xoá file Lv77** (mọi boss raid
+lv80, giảm sát thương +20 điểm, attack ×1.2) → **v17 03/09** (Ultra giảm sát thương 40→80%, 4 con `_2`)
+→ **v18 09/09** (bên dưới). ⚠️ 09/09 phát hiện server TEST còn sót `BialkRaidTimerLv77_P.pak` (bản
+v15 28/08) nằm cạnh file chính → 2 pak đè cùng 4 bảng → đã gỡ khỏi `~mods/` test (bản sao: git
+`e23ae99`). Prod chỉ nên có MỘT file `BialkRaidTimer_P.pak`.
+
+**Bản v18 (09/09/2026, nền v17) — thêm: BOSS THÁP HẾT CÀY EXP.** 21 dòng `GYM_*` (boss tháp + bản Hard
 `_2` + Avatar/Servant/Otomo) trong `DT_PalMonsterParameter` + `_Common`: `ExpRatio` **30–35 → 1**
 (20 dòng đổi mỗi bảng, `GYM_ElecPanda_Otomo` vốn 1). Lý do: game KHÔNG có cooldown tháp
 (`PalBossBattleManager` chỉ có Entry/Cancel/Exit, không có đếm lần) - chặn cứng bằng Lua
@@ -141,8 +150,7 @@ tháp không còn gì để cày. Điểm công nghệ lần đầu (`OneTimeRew
 (`scripts/surgical_expratio.js`: makeB → fromjson A/B → diff CỤM byte liên tiếp, KHÔNG gom
 theo mốc 4 byte vì property trong uexp không canh 4 → 20 offset → kiểm byte gốc = rebuild-A
 → ghi vào uexp GỐC → tojson so từng dòng: 20 khác biệt ExpRatio, 0 khác lạ, RAID Ultra HP
-3333 giữ). 8 file còn lại trong pak byte giống v7. Bản v7 lưu `BialkRaidTimer_P.v7.bak` ở
-scratchpad (không commit). Đã chép lên `~mods/` server TEST, **chưa test trong game**: đánh
+3333 giữ). 8 file còn lại trong pak byte giống v17. Bản v17 = git `3f00641`. Đã chép lên `~mods/` server TEST, **chưa test trong game**: đánh
 lại tháp phải thấy EXP nhỏ như pal thường; lần đầu vẫn nhận điểm công nghệ.
 
 Boss triệu hồi ở Tế đàn (Summoning Altar) — bản v7 (09/08/2026):

@@ -694,7 +694,16 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
-- **09/09** — 🏯 **Boss tháp hết cày EXP (`BialkRaidTimer_P.pak` v8)**: chủ server muốn cooldown/
+- **09/09** — 🧹 **Dọn nhầm lẫn pak raid + Dandilord**: (1) tiêu đề README pak-mods ghi "v7" nhưng file
+  thật đã là **v17** (git `3f00641`, 03/09) - bản vá EXP tháp hôm nay là **v18** trên nền v17, không
+  phải v8; đã thêm sổ phiên bản vào README pak-mods. (2) Server TEST còn sót `BialkRaidTimerLv77_P.pak`
+  (bản thử 28/08, v16 đã gộp + xoá khỏi repo) nằm cạnh file chính → 2 pak đè cùng bảng → **đã gỡ
+  khỏi `~mods/` test** (bản sao git `e23ae99`). (3) Chủ server nhớ "Dandilord không drop": đúng là
+  đã làm 12/08 bằng PalSchema `drop_dandilord.json` (Rate=0 FlowerPrince + BOSS) nhưng **revert
+  cùng ngày** (bd0d03d → e92835f) vì cách Rate=0 PalSchema không ăn Lv70+ (bài Silvance); hiện
+  KHÔNG có file nào chặn drop Dandilord - pak Silvance chỉ tắt 4 dòng Mothman. Muốn làm thì vá 4
+  dòng FlowerPrince (`000`/`070` × thường/BOSS) vào pak drop như Silvance.
+- **09/09** — 🏯 **Boss tháp hết cày EXP (`BialkRaidTimer_P.pak` v18, nền v17)**: chủ server muốn cooldown/
   giới hạn số lần vào tháp. Dump `PalBossBattleManager` / `PalBossBattleSequencer` /
   `PalBossBattleInstanceModel` trên server test (lệnh DUMPP của mod): game **không có** cooldown
   hay đếm lần, chỉ `BossBattleEntry/Cancel/Exit`, `EntryPlayers/WonPlayers/FirstClearPlayers`.
