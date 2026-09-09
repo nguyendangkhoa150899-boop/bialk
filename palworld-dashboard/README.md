@@ -694,6 +694,10 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09 (tối)** — 🛒 **Shop item thêm 2 nhóm 🍖 Thức ăn (`food`) + 🔫 Đạn (`ammo`)**: whitelist nhóm
+  gom về 1 hằng `ITEM_SHOP_CATS` trong index.js (list/save/backfill dùng chung), panel select + nạp
+  form, web mảng `ISG` 6 nút (hàng nút đã flex-wrap). Món cũ không đổi nhóm. Thêm nhóm sau này = thêm
+  1 phần tử ở 3 chỗ đó.
 - **09/09 (tối)** — 🔄 **PROD RESET SẠCH + CÀI LẠI** (team chơi lại từ đầu). Chủ server reset qua
   Shockbyte (world mới id `45DB99BA…`, UE4SS có sẵn theo image, AdminPassword MỚI do Shockbyte
   sinh - khác mật khẩu cũ, REST 22666/RCON 22665 bật, ExpRate 0.4, ServerName mặc định). Claude cài

@@ -1343,7 +1343,7 @@ function backfillItemShopCat() {
     const raw = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     let fixed = 0;
     for (const x of raw) {
-        if (!x || x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'consume' || x.cat === 'accessory') continue;
+        if (!x || ITEM_SHOP_CATS.includes(x.cat)) continue;
         const def = DEFAULT_ITEM_SHOP.find(d => d.id === x.id);
         x.cat = def ? def.cat : 'consume';
         fixed++;
@@ -1375,6 +1375,8 @@ function uploadItemImage(fileName, dataB64) {
 }
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
+// 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
+const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo'];
 function itemShopList() {
     const arr = dbCache._itemShop;
     return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
@@ -1382,7 +1384,7 @@ function itemShopList() {
         price: Math.max(0, Math.floor(Number(x.price) || 0)),
         max: Math.max(1, Math.floor(Number(x.max) || 999)),
         img: String(x.img || ''),   // tên file trong assets/itemimage/ (trống = ô 📦)
-        cat: (x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'accessory') ? x.cat : 'consume',   // 04/09 nhóm · 07/09 thêm 💍 phụ kiện
+        cat: ITEM_SHOP_CATS.includes(x.cat) ? x.cat : 'consume',   // 04/09 nhóm · 07/09 💍 phụ kiện · 09/09 🍖 thức ăn + 🔫 đạn
         note: String(x.note || '').slice(0, 140),   // 07/09: ghi chú tác dụng (hiện trên card + search được)
         off: !!x.off,   // 09/09: ẨN khỏi web (admin tắt bán từng món, giữ nguyên dòng trong bảng)
     }));
@@ -1395,7 +1397,7 @@ function setItemShop(list) {
             price: Math.max(0, Math.floor(Number(x && x.price) || 0)),
             max: Math.max(1, Math.floor(Number(x && x.max) || 999)),
             img: String((x && x.img) || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80),
-            cat: (x && (x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'accessory')) ? x.cat : 'consume',
+            cat: (x && ITEM_SHOP_CATS.includes(x.cat)) ? x.cat : 'consume',
             note: String((x && x.note) || '').trim().slice(0, 140),
             off: !!(x && x.off),
         }))

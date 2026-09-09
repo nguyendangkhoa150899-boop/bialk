@@ -2939,7 +2939,7 @@ const PAGE = [
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
     // 07/09: shop kiểu 4 NÚT NHÓM - bấm nhóm nào hiện đồ nhóm đó (nhớ qua F5);
     // gõ ô tìm là quét TÊN + GHI CHÚ trên mọi nhóm (kèm đề mục nhóm cho khỏi lạc)
-    'var ISG=[["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🧪 VẬT PHẨM TIÊU HAO"],["accessory","💍 PHỤ KIỆN"]];',
+    'var ISG=[["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🧪 VẬT PHẨM TIÊU HAO"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"]];',   // 09/09 +2 nhóm
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
     'function isCard(it){return "<div class=\\"isItem\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+"</div>"',
