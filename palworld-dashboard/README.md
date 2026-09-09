@@ -694,6 +694,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 📦 **Đối chiếu `~mods/` PROD (chỉ đọc)**: prod chạy `BialkServer` (= repo),
+  `BialkRaidTimer` (= **v17** → v18 vá EXP tháp đúng nền, dùng thẳng), `BialkNoDrop_P.pak`
+  (Silvance + Dandilord 8 dòng về 0 - file chủ server dựng ở nhà, nay đưa vào repo thay
+  `BialkSilvanceNoDrop`), và `CreativeMenu_P.pak` sót (nên gỡ). Test đã đồng bộ: v18 + ShopOff +
+  NoDrop, gỡ Lv77 sót. Web: fix chế độ PAL GỐC vẫn bị chặn "chọn ít nhất 1 dòng linh hồn" ở client.
 - **09/09** — 🧹 **Dọn nhầm lẫn pak raid + Dandilord**: (1) tiêu đề README pak-mods ghi "v7" nhưng file
   thật đã là **v17** (git `3f00641`, 03/09) - bản vá EXP tháp hôm nay là **v18** trên nền v17, không
   phải v8; đã thêm sổ phiên bản vào README pak-mods. (2) Server TEST còn sót `BialkRaidTimerLv77_P.pak`

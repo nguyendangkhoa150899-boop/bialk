@@ -6,10 +6,19 @@ thì xóa file đó khỏi `~mods/` rồi restart:
 | File | Tác dụng |
 |---|---|
 | `BialkServer_P.pak` | Máy nghiền cổ vật không rớt implant + lõi cổ đại |
-| `BialkSilvanceNoDrop_P.pak` | Silvance (mọi cấp, cả boss) không rớt gì hết |
+| `BialkNoDrop_P.pak` | **Silvance + Dandilord** (mỗi con 4 dòng `000/070` × thường/BOSS, Rate về 0) không rớt gì. Thay `BialkSilvanceNoDrop_P.pak` (đã gỡ khỏi repo 09/09, còn ở git `5fbb707`). File này chủ server dựng ở máy nhà và chạy trên PROD từ trước, 09/09 lấy từ prod về repo |
 | `BialkRaidTimer_P.pak` | Raid: timer 4 TIẾNG + CHỈ Ultra/Master buff trường kỳ (máu to, giáp 20%, attack 250-350%) + pal nở từ trứng KHÔNG phối giống được |
 | `BialkSurgeryOff_P.pak` | VÔ HIỆU bàn phẫu thuật toàn server (chặn cheat mod client đổi passive) |
 | `BialkShopOff_P.pak` | THƯƠNG NHÂN NPC không bán gì (item: Stock -1 · người buôn Pal/chợ đen: 0 pal) - kinh tế đi qua Shop Dogcoin web |
+
+**Trạng thái PROD (đọc SFTP 09/09, `~mods/` của "1. Cô 4 vui vẻ")**: `BialkServer_P.pak` (= repo),
+`BialkRaidTimer_P.pak` (**= v17**, chưa có nerf EXP tháp), `BialkNoDrop_P.pak` (= repo), và
+`CreativeMenu_P.pak` (mod client CreativeMenu - NÊN GỠ, admin không dùng được nữa vì bAllowClientMod
+tắt, để lại chỉ tốn RAM/rủi ro). KHÔNG có `BialkSurgeryOff_P.pak` (chưa test) và chưa có
+`BialkShopOff_P.pak`. **Deploy đợt 09/09 lên prod** = đè `BialkRaidTimer_P.pak` bằng v18 +
+chép `BialkShopOff_P.pak` + (tuỳ) xoá `CreativeMenu_P.pak` → restart. Lưu ý Shockbyte `readdir`
+chỉ trả 1 entry/thư mục nên không liệt kê được `~mods/` - phải thử mở theo tên
+(`scratchpad/prod_paks.js`).
 
 **Đồ nghề build đã lưu bền tại `C:\Users\Khoa\Desktop\palworld\pak-tools\`**
 (repak.exe + UAssetCLI + json đã vá) — khỏi tải lại. Game gốc: `E:\SteamLibrary\steamapps\common\Palworld\Pal\Content\Paks\Pal-Windows.pak`.
