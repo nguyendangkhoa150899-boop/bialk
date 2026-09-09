@@ -306,3 +306,77 @@ chấp nhận vì kinh tế server đi qua shop pal/ticket.
 
 Nếu test thấy phẫu thuật VẪN ăn → giả thuyết model sai (RPC đi đường khác) → gỡ pak,
 chuyển sang phương án quét save định kỳ tìm passive bất hợp lệ.
+
+---
+
+# (KẾ HOẠCH - chưa build) BialkShopOff_P.pak — THƯƠNG NHÂN KHÔNG BÁN GÌ
+
+**Mục đích (09/09/2026):** kinh tế server đi hết qua 🛒 Shop Dogcoin trên web, nên thương
+nhân NPC trong game (làng, sa mạc, núi lửa, huy chương, tiền thưởng, đấu trường, đoàn lữ
+hành, lang thang, hầm ngục, người buôn Pal, chợ đen) **không được bán gì**. Không cần
+xoá NPC, không cần client cài gì.
+
+## Kết luận nghiên cứu
+
+- **Khả thi, dễ hơn BialkSurgeryOff**: đây là mod **DataTable** (cùng quy trình
+  `BialkServer_P.pak`: UAssetCLI tojson → vá JSON → fromjson → repak), không đụng blueprint.
+- **Hàng bán nằm ở 2 bảng** (đường dẫn theo pwmodding.wiki + các mod Nexus):
+  - `Pal/Content/Pal/DataTable/ItemShop/DT_ItemShopCreateData_Common` — mỗi dòng = 1 shop
+    (`Village_Shop_1`, Desert, Volcano, Medal, Bounty, Arena, Caravan, Dungeon…), field
+    `ProductDataArray[]` gồm `StaticItemId · ProductType (Normal/OnlyPurchaseOne) ·
+    OverridePrice · ProductNum · Stock`. **`Stock = -1` = "not visible in shop"** (0 = vô hạn,
+    ≥1 = giới hạn/ngày) → cách tắt sạch nhất là đặt Stock = -1 cho MỌI sản phẩm, giữ cấu trúc.
+  - `Pal/Content/Pal/DataTable/ItemShop/DT_PalShopCreateData_Common` — người buôn Pal +
+    chợ đen bán pal. Nếu struct không có Stock thì làm RỖNG mảng sản phẩm (`--empty`).
+  - Có thể còn bản KHÔNG hậu tố `_Common` (như DT_PalDropItem) → vá cả 2 cho chắc.
+  - Thương nhân **lang thang** có hàng ngẫu nhiên: soi thêm `DT_ItemShopLotteryData*` cùng thư
+    mục; nếu sau test mà thương nhân lang thang vẫn bán → vá bảng này (Stock/ mảng) nốt.
+- **Chỉ cần cài SERVER**: các mod đổi `DT_ItemShopCreateData_Common` trên Nexus (Infinitum-Shop,
+  Useful Skill Fruit Shop) ghi rõ "on dedicated servers, installing it only on the server is
+  enough" — danh sách hàng do server sinh và replicate xuống client. Đúng mô hình mình cần.
+- **Không đổi**: người chơi vẫn BÁN đồ cho thương nhân lấy vàng (giá bán nằm ở
+  `DT_ItemDataTable.Price`, bảng khác). Muốn chặn luôn thì bảng đó phải đặt Price = 0 cho
+  mọi item — đụng mọi thứ, KHÔNG khuyến nghị.
+- Cách khác đã cân và loại: xoá spawn NPC (dữ liệu level, khó, mất luôn nhiệm vụ/đối thoại);
+  đổi ConcreteModel như bàn phẫu thuật (NPC không phải BuildObject); hook UE4SS Lua vào RPC mua
+  (chạy trên Wine, dễ gãy khi game update). Vá Stock là ít rủi ro nhất.
+
+## Quy trình build (máy có `pak-tools` + `Pal-Windows.pak`)
+
+```bash
+repak unpack Pal-Windows.pak -o extracted     # hoặc chỉ trích 2 file dưới
+# tojson (BẮT BUỘC mappings)
+dotnet UAssetCLI.dll tojson extracted/Pal/Content/Pal/DataTable/ItemShop/DT_ItemShopCreateData_Common.uasset item.json VER_UE5_1 Mappings.usmap
+dotnet UAssetCLI.dll tojson extracted/Pal/Content/Pal/DataTable/ItemShop/DT_PalShopCreateData_Common.uasset  pal.json  VER_UE5_1 Mappings.usmap
+# soi cấu trúc trước
+node scripts/patch_shopoff.js --check item.json
+node scripts/patch_shopoff.js --check pal.json
+# vá
+node scripts/patch_shopoff.js item.json item.patched.json --stock     # Stock -> -1
+node scripts/patch_shopoff.js pal.json  pal.patched.json  --stock     # không có Stock thì đổi --empty
+# fromjson vào cây build đúng đường dẫn gốc
+dotnet UAssetCLI.dll fromjson item.patched.json build/Pal/Content/Pal/DataTable/ItemShop/DT_ItemShopCreateData_Common.uasset Mappings.usmap
+dotnet UAssetCLI.dll fromjson pal.patched.json  build/Pal/Content/Pal/DataTable/ItemShop/DT_PalShopCreateData_Common.uasset  Mappings.usmap
+repak pack build BialkShopOff_P.pak --version V11 -p 764445180
+```
+
+**Bắt buộc trước khi tin file**: round-trip bản GỐC (tojson → fromjson) phải ra byte giống
+hệt. Bảng nào lệch byte (bug FName kiểu `_2` như DT_PalMonsterParameter) thì KHÔNG dùng
+fromjson mà vá phẫu thuật byte: Stock là int32 little-endian, giá trị cũ thường `0` hoặc số
+nhỏ → tìm offset qua diff 2 bản rebuild như `surgical_patch.js`, ghi `FF FF FF FF`.
+
+## Test (server TEST trước, backup save)
+
+1. Chép pak vào `Pal/Content/Paks/~mods/` server test → restart.
+2. Client thường (không mod) vào: mở thương nhân làng → danh sách trống; người buôn Pal /
+   chợ đen → trống; thương nhân lang thang → trống (không trống = vá thêm bảng Lottery).
+3. Bán đồ cho thương nhân vẫn được (không phải mục tiêu chặn).
+4. Nhiệm vụ / đối thoại NPC không lỗi. Không crash khi load.
+5. OK → prod. Game update đổi bảng shop → trích lại 2 bảng, chạy lại script (script bắt theo
+   tên field, không theo vị trí).
+
+## Trạng thái
+
+- 09/09: nghiên cứu xong, script `scripts/patch_shopoff.js` viết sẵn (duyệt đệ quy theo tên
+  field, có `--check`). **Chưa build** vì máy văn phòng không có `pak-tools` lẫn
+  `Pal-Windows.pak` (đồ nghề ở máy nhà). Việc của máy nhà: chạy 12 dòng ở trên + test.

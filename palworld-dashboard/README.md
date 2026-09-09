@@ -694,6 +694,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 🧾 **Nghiên cứu tắt thương nhân NPC (kế hoạch pak `BialkShopOff_P.pak`)**: khả
+  thi, là mod DataTable như `BialkServer_P.pak` - đặt `Stock = -1` ("not visible in shop") cho
+  mọi sản phẩm trong `DT_ItemShopCreateData_Common` (+ `DT_PalShopCreateData_Common`, có thể
+  `DT_ItemShopLotteryData` cho thương nhân lang thang); chỉ cần cài server (mod Nexus cùng bảng
+  xác nhận replicate xuống client). Script vá sẵn `pak-mods/scripts/patch_shopoff.js`
+  (`--check/--stock/--empty`, duyệt theo tên field). **Chưa build**: máy văn phòng không có
+  pak-tools + Pal-Windows.pak → việc cho máy nhà, quy trình + test plan trong `pak-mods/README.md`.
 - **09/09** — 🩹 **Bảng shop item cuốn số đang sửa** (chủ server: "edit số, mấy giây sau reset về
   mặc định"): render 3s/lần chỉ chừa lúc con trỏ còn trong ô, rời chuột là vẽ lại theo db. Fix:
   cờ `ISDIRTY` (mọi input/change trong `#itemShopBody`, ➕ Thêm, 🗑️, 📷 up) → không vẽ lại tới khi
