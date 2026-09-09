@@ -1451,8 +1451,8 @@ const HTML = `<!DOCTYPE html>
           </table>
         </div>
         <div class="row" style="margin-top:10px">
-          <button class="btn-blue" onclick="itemShopAddRow()">➕ Thêm món</button>
-          <button class="btn-green" onclick="itemShopSave()">💾 Lưu shop</button>
+          <button class="btn-blue" onclick="itemShopAddRow();itemShopDirty(true)">➕ Thêm món</button>
+          <button class="btn-green" id="itemShopSaveBtn" onclick="itemShopSave()">💾 Lưu shop</button>
         </div>
       </div>
       <!-- (💰 Sổ biến động Dogcoin đã chuyển sang tab 📜 Log - 04/09) -->
@@ -2430,11 +2430,18 @@ function renderPalChests(){
 function itemShopFill(){
   var body=document.getElementById('itemShopBody');if(!body||!STATE)return;
   if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#itemShopBody'))return; // đang gõ thì đừng vẽ lại
-  body.innerHTML='';
+  // 09/09: (1) đang có sửa CHƯA LƯU thì tuyệt đối không vẽ lại (trước đây rời chuột khỏi ô là 3s sau
+  // số về mặc định); (2) dữ liệu server không đổi thì cũng không vẽ lại (đỡ nháy, đỡ mất chọn)
+  if(ISDIRTY)return;
   var rows=STATE.itemShop||[];
+  var sig=JSON.stringify(rows);if(sig===ISSIG&&body.children.length)return;ISSIG=sig;
+  body.innerHTML='';
   if(!rows.length){itemShopAddRow();return;}
   rows.forEach(function(it){itemShopAddRow(it)});
 }
+var ISDIRTY=false,ISSIG='';
+function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
+(function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
 function itemShopAddRow(it){
   it=it||{};
   var body=document.getElementById('itemShopBody');if(!body)return;
@@ -2477,7 +2484,7 @@ function itemShopUpload(inp){
   };
   rd.readAsDataURL(f);
 }
-function itemShopDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();}
+function itemShopDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();itemShopDirty(true);}
 function itemShopSave(){
   var items=[].slice.call(document.querySelectorAll('#itemShopBody tr')).map(function(tr){
     return {id:tr.querySelector('.isf-id').value.trim(),
@@ -2489,7 +2496,7 @@ function itemShopSave(){
       off:!tr.querySelector('.isf-on').checked,
       img:tr.querySelector('.isf-img').value.trim()};
   }).filter(function(x){return x.id;});
-  api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');refresh();}).catch(function(e){toast('❌ '+e.message);});
+  api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');itemShopDirty(false);ISSIG='';refresh();}).catch(function(e){toast('❌ '+e.message);});
 }
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 async function chatDelete(inputId,btn){const c=document.getElementById(inputId).value.trim();if(!c)return toast('❌ Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;await runBtn(btn,'Đang xóa...',()=>api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');}));}

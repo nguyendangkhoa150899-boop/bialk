@@ -694,6 +694,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 🩹 **Bảng shop item cuốn số đang sửa** (chủ server: "edit số, mấy giây sau reset về
+  mặc định"): render 3s/lần chỉ chừa lúc con trỏ còn trong ô, rời chuột là vẽ lại theo db. Fix:
+  cờ `ISDIRTY` (mọi input/change trong `#itemShopBody`, ➕ Thêm, 🗑️, 📷 up) → không vẽ lại tới khi
+  💾 Lưu thành công; nút Lưu đổi "💾 Lưu shop ● CHƯA LƯU" (đỏ); thêm chữ ký `ISSIG` = JSON db, dữ
+  liệu server không đổi cũng không vẽ lại (đỡ nháy). Cùng bài với ô nhập panel 05/09.
 - **09/09** — 🔁 **Công tắc cầu Dogcoin web ↔ game** (2 chiều riêng, tab 👥 hàng dưới card Mở/Đóng):
   `dogBridgeCfg()/setDogBridge(key,on)` lưu `dbCache._dogBridge {rut, nap}`; `webRutGame`/`webNapGame`
   từ chối ngay đầu hàm khi đóng ("⛔ … đang ĐÓNG - admin tạm khoá chiều này"); state
