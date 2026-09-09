@@ -1425,7 +1425,7 @@ const PAGE = [
     '<div id="pcDayNote" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #3a4155;border-radius:9px;background:#1b1f2c;color:#aab3c5;font-size:13px"></div>',
     // 🆘 tẩu thoát khẩn cấp: kẹt đất/kẹt đá trong game thì bấm - 4 tiếng/lần (có popup xác nhận)
     '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">',
-    '<button class="mini" id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-weight:700;padding:8px 12px">🆘 Tẩu thoát khẩn cấp</button>',
+    '<button class="mini" id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-weight:700;padding:8px 12px">🆘 TẨU THOÁT KHẨN CẤP</button>',
     '<span class="muted" style="font-size:12px">kẹt đất/kẹt đá? Dịch chuyển về điểm an toàn (phải đang ONLINE trong game) - 4 tiếng/lần</span>',
     '</div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
@@ -3086,7 +3086,7 @@ const PAGE = [
     'function pcRescueTick(){var b=$("pcRescueBtn");if(!b)return;',
     'if(RSCBUSY){b.disabled=true;b.textContent="⏳ Đang dịch chuyển...";return}',
     'var left=RSCUNTIL-Date.now();',
-    'if(left>0){b.disabled=true;b.textContent="🆘 Tẩu thoát ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 Tẩu thoát khẩn cấp"}}',
+    'if(left>0){b.disabled=true;b.textContent="🆘 TẨU THOÁT ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 TẨU THOÁT KHẨN CẤP"}}',
     'setInterval(pcRescueTick,30000);',
     'async function pcRescue(){if(RSCBUSY)return;',
     'if(!(await gConfirm("Dịch chuyển nhân vật về <b>ĐIỂM XUẤT PHÁT</b> ngay bây giờ? Dùng khi kẹt đất/kẹt đá - không chết, không rớt đồ.<br><b>4 tiếng mới dùng lại được.</b>","🆘 Tẩu thoát",true)))return;',
