@@ -694,6 +694,15 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 🏯 **Boss tháp hết cày EXP (`BialkRaidTimer_P.pak` v8)**: chủ server muốn cooldown/
+  giới hạn số lần vào tháp. Dump `PalBossBattleManager` / `PalBossBattleSequencer` /
+  `PalBossBattleInstanceModel` trên server test (lệnh DUMPP của mod): game **không có** cooldown
+  hay đếm lần, chỉ `BossBattleEntry/Cancel/Exit`, `EntryPlayers/WonPlayers/FirstClearPlayers`.
+  Chặn cứng = Lua đá người sau khi vào + rủi ro sập native (bài DBGPAL) → CHỌN bịt động lực:
+  `ExpRatio` 21 dòng `GYM_*` trong `DT_PalMonsterParameter(+_Common)` 30–35 → **1**. Bảng này
+  đã nằm trong pak RaidTimer (2 pak cùng bảng đè nhau) → vá thêm vào bản đó, phẫu thuật byte
+  (`pak-mods/scripts/surgical_expratio.js`), verify 20/0, dựng lại pak, đã chép lên server TEST
+  (chưa test game). Bài học mới: gom diff theo CỤM byte, không theo mốc 4 (property không canh 4).
 - **09/09** — 🧾 **Nghiên cứu tắt thương nhân NPC (kế hoạch pak `BialkShopOff_P.pak`)**: khả
   thi, là mod DataTable như `BialkServer_P.pak` - đặt `Stock = -1` ("not visible in shop") cho
   mọi sản phẩm trong `DT_ItemShopCreateData_Common` (+ `DT_PalShopCreateData_Common`, có thể

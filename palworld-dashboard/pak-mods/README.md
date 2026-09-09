@@ -131,6 +131,20 @@ trong pak sẽ đè lên → cần trích lại bảng mới và vá lại.
 
 # BialkRaidTimer_P.pak
 
+**Bản v8 (09/09/2026) — thêm: BOSS THÁP HẾT CÀY EXP.** 21 dòng `GYM_*` (boss tháp + bản Hard
+`_2` + Avatar/Servant/Otomo) trong `DT_PalMonsterParameter` + `_Common`: `ExpRatio` **30–35 → 1**
+(20 dòng đổi mỗi bảng, `GYM_ElecPanda_Otomo` vốn 1). Lý do: game KHÔNG có cooldown tháp
+(`PalBossBattleManager` chỉ có Entry/Cancel/Exit, không có đếm lần) - chặn cứng bằng Lua
+là đá người chơi sau khi đã vào + rủi ro sập native; hạ EXP về bằng pal thường thì đánh lại
+tháp không còn gì để cày. Điểm công nghệ lần đầu (`OneTimeRewards`/`FirstClearPlayers`) và
+đồ `SuccessItemList` KHÔNG đụng. Vá bằng đường phẫu thuật byte
+(`scripts/surgical_expratio.js`: makeB → fromjson A/B → diff CỤM byte liên tiếp, KHÔNG gom
+theo mốc 4 byte vì property trong uexp không canh 4 → 20 offset → kiểm byte gốc = rebuild-A
+→ ghi vào uexp GỐC → tojson so từng dòng: 20 khác biệt ExpRatio, 0 khác lạ, RAID Ultra HP
+3333 giữ). 8 file còn lại trong pak byte giống v7. Bản v7 lưu `BialkRaidTimer_P.v7.bak` ở
+scratchpad (không commit). Đã chép lên `~mods/` server TEST, **chưa test trong game**: đánh
+lại tháp phải thấy EXP nhỏ như pal thường; lần đầu vẫn nhận điểm công nghệ.
+
 Boss triệu hồi ở Tế đàn (Summoning Altar) — bản v7 (09/08/2026):
 
 0. **CHỈ Ultra/Master thành boss trường kỳ** (mọi boss THƯỜNG nguyên bản game) —
