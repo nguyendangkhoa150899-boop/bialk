@@ -694,6 +694,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 🔒 **Chế độ PAL GỐC (tắt chỉ số)** - team chơi lại sợ pal quá mạnh. Panel tab 🎮 ô
+  tick đỏ "🔒 TẮT CHỈ SỐ PAL" (`palWheelCfg.raw`). Bật → mọi pal giao ra **Lv1 · 0 sao · IV 1/1/1 ·
+  linh hồn 0 · bản THƯỜNG** (không BOSS_), chỉ giữ giới tính + passive đã chọn (passive vẫn tính
+  phí ô/🌈/hạng 4 như cũ). Server: `specBase` nhánh raw, bỏ bắt "ít nhất 1 dòng linh hồn", bỏ mọi
+  phí linh hồn/IV/dòng/BOSS dù client gửi lên. Web nhận pal: ẩn cột linh hồn + IV và nút BOSS,
+  dòng mặc định ghi "🔒 CHẾ ĐỘ PAL GỐC", tóm tắt bỏ 2 dòng linh hồn/IV. Bỏ tick là về luật thường.
+  Phi Thuyền: thêm **nút to ⏸/▶️** cạnh tiêu đề card (bấm 1 lần, gọi `/api/spm/cfg {open}`) - công
+  tắc cũ là ô tick "Mở game" nhỏ + phải Lưu nên chủ server không thấy.
 - **09/09** — ⏸️ **Công tắc MỞ/ĐÓNG Dò Mìn + Leo Thang** (panel SUPER tab 💣, khung đầu; các trò
   khác đã có sẵn: Phi Thuyền/Vòng quay Pal `open`, Cổ phiếu `skOpen`, Big Small tắt bàn).
   `gameOpen(key)/setGameOpen(key,on)` lưu `dbCache._gameOpen`; `start()` 2 game từ chối "⛔ …

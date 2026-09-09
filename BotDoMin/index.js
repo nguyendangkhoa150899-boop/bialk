@@ -1176,6 +1176,7 @@ function palWheelCfg() {
         pickXeno: Math.floor(num(c.pickXeno, 20000, 0, 10000000)),          // Xenolord
         pickHarta: Math.floor(num(c.pickHarta, 20000, 0, 10000000)),        // Hartalis
         boss: c.boss === undefined ? true : !!c.boss,             // giao bản BOSS_ (pal boss)
+        raw: !!c.raw,   // 🔒 09/09: TẮT CHỈ SỐ - mọi pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không BOSS (team chơi lại, sợ pal quá mạnh). Passive vẫn chọn/mua như cũ
         open: c.open === undefined ? true : !!c.open,
         // 🍀 THANH MAY MẮN + VÒNG RAID (27/08): mỗi lượt quay thường nạp luckMin..luckMax %
         // (admin còn đặt riêng %/quay TỪNG NGƯỜI ở panel - xem palLuckStep). Đầy 100% được
@@ -2079,7 +2080,8 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     const souls = Array.isArray(soulsIn) ? [...new Set(soulsIn.map(String).filter(s => PAL_SOUL_KEYS.includes(s)))] : [];
     if (souls.length > 4) return { error: 'Chỉ có 4 dòng linh hồn (Tấn công/Phòng thủ/Máu/Làm việc)' };   // 09/09: soulMax giờ là số dòng MIỄN PHÍ, không còn chặn chọn
     // 26/08: BẮT BUỘC ít nhất 1 dòng; dòng đầu miễn phí, thêm dòng tính phí cấp số nhân
-    if (souls.length < 1) {
+    // 🔒 09/09: chế độ PAL GỐC (cfg.raw) bỏ qua linh hồn/IV/BOSS người chơi gửi lên - không bắt chọn dòng
+    if (souls.length < 1 && !palWheelCfg().raw) {
         return { error: 'Phải chọn ít nhất 1 dòng linh hồn rồi mới nhận được' };
     }
     const catalog = new Set(passiveCatalog().map(p => p.id));
@@ -2131,12 +2133,10 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     const t4Set = new Set(passiveCatalog().filter(p => p.tier === 4 && !p.wt).map(p => p.id));
     const t4Count = passives.filter(id => t4Set.has(id)).length;
     const upCost = palUpPassiveCost(passives.length, cfg)
-        + soulPctCost
-        + palUpSoulLineCost(souls.length, cfg)
-        + palUpIvCost(ivHp, ivAtk, ivDef, cfg)
         + wtCount * cfg.upWtPassive
         + t4Count * cfg.upTier4
-        + (wantBoss ? cfg.upBoss : 0);
+        // 🔒 09/09: PAL GỐC bỏ hết phí chỉ số (linh hồn/IV/dòng/BOSS) vì không giao mấy thứ đó
+        + (cfg.raw ? 0 : soulPctCost + palUpSoulLineCost(souls.length, cfg) + palUpIvCost(ivHp, ivAtk, ivDef, cfg) + (wantBoss ? cfg.upBoss : 0));
     if (upCost > 0 && (getUserData(userId).points || 0) < upCost) {
         return { error: `💎 Nâng cấp này tốn ${upCost.toLocaleString()} Dogcoin - ví bạn không đủ` };
     }
@@ -2177,7 +2177,14 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     let species = (wantBoss ? 'BOSS_' : '') + item.code;
     // linh hồn theo % TỪNG DÒNG người chơi mua - rank trong save = %/3 (60% -> 20, 201% -> 67)
     const soulRank = (k) => souls.includes(k) ? Math.max(0, Math.min(255, Math.round(soulPcts[k] / 3))) : 0;
-    const specBase = {
+    const specBase = cfg.raw ? {
+        // 🔒 PAL GỐC: Lv1 · 0 sao · IV 1 · linh hồn 0 · bản thường - chỉ giữ giới tính + passive đã chọn
+        level: 1, rank: 0,
+        ivHp: 1, ivMelee: 1, ivShot: 1, ivDef: 1,
+        soulHp: 0, soulAtk: 0, soulDef: 0, soulWork: 0,
+        gender,
+        passives,
+    } : {
         level: cfg.level, rank: cfg.stars,
         // Công trong game = Talent_Shot; Talent_Melee đã bỏ nhưng ghi cùng giá cho chắc
         ivHp: ivHp, ivMelee: ivAtk, ivShot: ivAtk, ivDef: ivDef,
@@ -2188,6 +2195,7 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         gender,
         passives,
     };
+    if (cfg.raw) species = item.code;   // 🔒 không BOSS_ khi tắt chỉ số
     let r = null, err = null;
     try {
         r = await pal.givePal(gameName, { species, ...specBase });
@@ -4901,7 +4909,7 @@ client.once('ready', async (c) => {
                         soulPct: cfg.soulPct, passiveMax: cfg.passiveMax, ivs: cfg.ivs,
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
                         up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, slotLow: cfg.upSlotLow, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, t4: cfg.upTier4, boss: cfg.upBoss, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
-                        level: cfg.level, stars: cfg.stars, boss: cfg.boss,
+                        level: cfg.level, stars: cfg.stars, boss: cfg.boss, raw: cfg.raw,   // 🔒 tắt chỉ số
                         noBoss: Array.isArray(dbCache._noBossCodes) ? dbCache._noBossCodes : [],   // 👑 code không có bản BOSS (bot tự học) - client ẩn nút
                         // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),

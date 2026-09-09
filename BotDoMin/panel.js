@@ -1277,7 +1277,7 @@ const HTML = `<!DOCTYPE html>
 
     <div id="tab-spm" class="hidden">
       <div class="card">
-        <h3>🚀 Phi Thuyền (crash game)</h3>
+        <h3>🚀 Phi Thuyền (crash game) <button id="spOpenBtn" class="btn-red" style="margin-left:10px;font-size:13px;padding:6px 12px" onclick="spToggle()">⏸ Tạm đóng Phi Thuyền</button></h3>
         <div class="note">Vòng chơi chung ở web. <b>House edge</b> = % nhà cái ăn dài hạn (RTP = 100−edge). <b>Tốc độ bay</b>: số nhân = e^(tốc độ·giây) - 0.14 thì x1→x2 ~5s, càng cao càng nhanh. <b>Hệ số tối đa</b>: bay hết ăn tới đây (kịch trần). <b>Cược tối đa/người</b>: khoá rủi ro nhà cái (max ăn 1 ván = cược × hệ số tối đa).</div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1"><label>Cửa cược (giây)</label><input id="spBetS" type="number" placeholder="8"></div>
@@ -1419,6 +1419,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> 👑 Mở bán bản PAL BOSS (mặc định giao bản thường, chọn BOSS trả thêm giá ở ô 👑)</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
+          <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700" title="Team chơi lại, sợ pal quá mạnh: tick là MỌI pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không BOSS. Passive vẫn chọn/mua như cũ. Bỏ tick là về luật thường."><input type="checkbox" id="pwRaw" style="width:auto"> 🔒 TẮT CHỈ SỐ PAL (giao Lv1 · 0 sao · IV 1 · không linh hồn)</label>
           <button onclick="pwCfgSave()">💾 Lưu</button>
         </div>
         <div class="note" id="pwCfgNow">-</div>
@@ -2147,6 +2148,9 @@ function spFill(k){
   set('spBetS',k.betS);set('spGrowth',k.growth);set('spEdge',+(k.houseEdge*100).toFixed(2));set('spMaxMult',k.maxMult);
   set('spMinBet',k.minBet);set('spMaxBet',k.maxBet);set('spReveal',k.crashRevealS);
   if(!spTicked){spTicked=true;document.getElementById('spOpen').checked=!!k.open;}
+  // 09/09: nút to mở/đóng - luôn theo trạng thái thật (ô tick chỉ đồng bộ khi không đang bấm)
+  const ob=document.getElementById('spOpenBtn');if(ob&&!ob.disabled){ob.textContent=k.open?'⏸ Tạm đóng Phi Thuyền':'▶️ Mở lại Phi Thuyền';ob.className=k.open?'btn-red':'btn-green';}
+  const oc=document.getElementById('spOpen');if(oc&&document.activeElement!==oc)oc.checked=!!k.open;
   document.getElementById('spNow').innerHTML='Đang áp dụng: edge <b>'+(k.houseEdge*100).toFixed(1)+'%</b> (RTP '+(100-k.houseEdge*100).toFixed(1)+'%) · cược '+k.minBet.toLocaleString()+'–'+k.maxBet.toLocaleString()+' · tối đa <b>'+k.maxMult+'x</b> · tốc độ '+k.growth+' · cửa '+k.betS+'s · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
 }
 function spLiveRender(){
@@ -2159,6 +2163,21 @@ function spLiveRender(){
   t+=' · '+(s.bets?s.bets.length:0)+' người · tổng cược <b>'+(s.totalStake||0).toLocaleString()+'</b>';
   if(s.forced)t+=' · ⚡ <b style="color:#ffcf5c">đã ép '+s.forced+'x (chuyến tới)</b>';
   box.innerHTML=t;
+}
+// 09/09: đóng/mở Phi Thuyền 1 nút (chủ server không thấy ô tick "Mở game" nhỏ). Đóng = không đặt
+// cược mới (chuyến đang bay vẫn bay + rút được), web hiện "ĐANG ĐÓNG" và khoá nút đặt.
+async function spToggle(){
+  if(!STATE||!STATE.spmCfg){toast('⏳ Panel chưa tải xong cấu hình Phi Thuyền - chờ 2 giây bấm lại');return;}
+  const open=!STATE.spmCfg.open;
+  if(!open&&!await uiConfirm('Tạm đóng Phi Thuyền? Không nhận cược mới, chuyến đang bay vẫn bay và rút được.','⏸ Đóng','btn-red'))return;
+  const b=document.getElementById('spOpenBtn');if(b)b.disabled=true;
+  api('/api/spm/cfg',{open}).then(j=>{
+    const real=!!(j.cfg&&j.cfg.open);
+    if(STATE&&STATE.spmCfg)STATE.spmCfg.open=real;
+    if(b){b.disabled=false;b.textContent=real?'⏸ Tạm đóng Phi Thuyền':'▶️ Mở lại Phi Thuyền';b.className=real?'btn-red':'btn-green';}
+    const oc=document.getElementById('spOpen');if(oc)oc.checked=real;
+    toast(real?'▶️ Phi Thuyền ĐANG MỞ':'⏸ Phi Thuyền ĐÃ ĐÓNG - không nhận cược mới');
+  }).catch(()=>{if(b)b.disabled=false;});
 }
 function spSave(){
   const o={betS:parseInt(document.getElementById('spBetS').value),growth:parseFloat(document.getElementById('spGrowth').value),
@@ -2201,10 +2220,10 @@ function pwCfgFill(k){
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);
   set('pwClaimCd',k.claimCd);
-  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;}
+  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;document.getElementById('pwRaw').checked=!!k.raw;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
     '</b> · linh hồn <b>'+k.soulMax+'</b> dòng miễn phí × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
-    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>');
+    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: giao Lv1 · 0 sao · IV 1 · không linh hồn</b>':'');
 }
 function pwCfgSave(){
   const o={price:parseInt(document.getElementById('pwPrice').value),
@@ -2241,6 +2260,7 @@ function pwCfgSave(){
            raidWheelOn:document.getElementById('pwRaidOn').checked,
            claimCd:parseInt(document.getElementById('pwClaimCd').value),
            boss:document.getElementById('pwBoss').checked,
+           raw:document.getElementById('pwRaw').checked,
            open:document.getElementById('pwOpen').checked};
   if(!(o.price>=100))return toast('Vé phải từ 100');
   if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
