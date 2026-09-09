@@ -694,6 +694,20 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09 (tối)** — 🔄 **PROD RESET SẠCH + CÀI LẠI** (team chơi lại từ đầu). Chủ server reset qua
+  Shockbyte (world mới id `45DB99BA…`, UE4SS có sẵn theo image, AdminPassword MỚI do Shockbyte
+  sinh - khác mật khẩu cũ, REST 22666/RCON 22665 bật, ExpRate 0.4, ServerName mặc định). Claude cài
+  lại qua SFTP bằng `tools/pak/prod_setup.js` (ghi xong đọc lại khớp byte từng file): (1) mod
+  `GiveGoldCommand` (main.lua repo + enabled/queue/results + `mods.txt` thêm `GiveGoldCommand : 1`
+  trước khối Keybinds); (2) **PalDefender 1.9.1** vào `Pal/Binaries/Win64/` (d3d9.dll + PalDefender.dll)
+  + `PalDefender/Config.json` chép từ server test (kick cheater, chưa ban, log chat/IP, chặn respawn
+  khẩn); (3) 4 pak `BialkServer / BialkNoDrop / BialkRaidTimer v18 / BialkShopOff` vào `~mods/`, KHÔNG
+  CreativeMenu; (4) `bAllowClientMod=False` ở `ShockPal.ini` + `PalWorldSettings.ini`. Server đang
+  CHẠY lúc ghi → hiệu lực sau restart (chủ server tự restart). ⚠️ Ai dùng REST game trên VPS phải đổi
+  sang AdminPassword mới (xem ShockPal.ini prod); đường giao pal/Kho đồ đi SFTP nên không ảnh hưởng;
+  `SFTP_MOD_PATH` không đổi (tên server + UUID giữ). Kinh tế Dogcoin trên bot CHƯA reset (chờ lệnh).
+  Web: fix chế độ PAL GỐC vẫn bị client chặn "chọn ít nhất 1 dòng linh hồn" (`2f1d005`) - prod hết
+  lỗi khi pull. Đồ nghề rút pak/cài server chuyển từ scratchpad vào `tools/pak/` (có README riêng).
 - **09/09** — 📦 **Đối chiếu `~mods/` PROD (chỉ đọc)**: prod chạy `BialkServer` (= repo),
   `BialkRaidTimer` (= **v17** → v18 vá EXP tháp đúng nền, dùng thẳng), `BialkNoDrop_P.pak`
   (Silvance + Dandilord 8 dòng về 0 - file chủ server dựng ở nhà, nay đưa vào repo thay
