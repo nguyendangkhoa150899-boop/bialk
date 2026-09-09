@@ -699,8 +699,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   mọi sản phẩm trong `DT_ItemShopCreateData_Common` (+ `DT_PalShopCreateData_Common`, có thể
   `DT_ItemShopLotteryData` cho thương nhân lang thang); chỉ cần cài server (mod Nexus cùng bảng
   xác nhận replicate xuống client). Script vá sẵn `pak-mods/scripts/patch_shopoff.js`
-  (`--check/--stock/--empty`, duyệt theo tên field). **Chưa build**: máy văn phòng không có
-  pak-tools + Pal-Windows.pak → việc cho máy nhà, quy trình + test plan trong `pak-mods/README.md`.
+  (`--check/--stock/--empty`, duyệt theo tên field; pal shop: `CharacterNum` → 0). **ĐÃ BUILD
+  cùng ngày** dù máy không có game: rút 5 bảng thẳng từ `Pal-WindowsServer.pak` (4.9 GB) trên
+  server test qua SFTP đọc-theo-offset + Oodle, tải nóng UAssetCLI + .NET 10 portable + repak.
+  Round-trip gốc byte giống hệt; 587/587 Stock = -1, 8/8 CharacterNum = 0; pak V11 seed chuẩn
+  6 file `pak-mods/BialkShopOff_P.pak`, đã chép lên `~mods/` server TEST (chờ restart + test).
+  Chi tiết + cách rút file từ pak server: `pak-mods/README.md`.
 - **09/09** — 🩹 **Bảng shop item cuốn số đang sửa** (chủ server: "edit số, mấy giây sau reset về
   mặc định"): render 3s/lần chỉ chừa lúc con trỏ còn trong ô, rời chuột là vẽ lại theo db. Fix:
   cờ `ISDIRTY` (mọi input/change trong `#itemShopBody`, ➕ Thêm, 🗑️, 📷 up) → không vẽ lại tới khi

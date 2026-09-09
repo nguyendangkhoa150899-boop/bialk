@@ -55,6 +55,13 @@ function walk(node, depth) {
         stat.stockValues[node.Value] = (stat.stockValues[node.Value] || 0) + 1;
         if (!checkOnly && mode === 'stock' && node.Value !== -1) { node.Value = -1; stat.stockPatched++; }
     }
+    // Người buôn Pal (DT_PalShopCreateData): mỗi dòng có CharacterNum = số pal bày bán -> 0 = shop trống.
+    // GIỮ CharacterIDArray nguyên (không làm rỗng - tránh code bốc ngẫu nhiên chia cho 0).
+    if (/^CharacterNum$/i.test(String(node.Name)) && /IntPropertyData/.test(t) && typeof node.Value === 'number') {
+        stat.stockSeen++;
+        stat.stockValues['CharacterNum=' + node.Value] = (stat.stockValues['CharacterNum=' + node.Value] || 0) + 1;
+        if (!checkOnly && mode === 'stock' && node.Value !== 0) { node.Value = 0; stat.stockPatched++; }
+    }
     if (isProductArray(node.Name) && /ArrayPropertyData/.test(t) && Array.isArray(node.Value)) {
         stat.arraysSeen++;
         stat.arrayNames[node.Name] = (stat.arrayNames[node.Name] || 0) + 1;

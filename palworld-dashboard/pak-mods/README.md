@@ -9,6 +9,7 @@ thì xóa file đó khỏi `~mods/` rồi restart:
 | `BialkSilvanceNoDrop_P.pak` | Silvance (mọi cấp, cả boss) không rớt gì hết |
 | `BialkRaidTimer_P.pak` | Raid: timer 4 TIẾNG + CHỈ Ultra/Master buff trường kỳ (máu to, giáp 20%, attack 250-350%) + pal nở từ trứng KHÔNG phối giống được |
 | `BialkSurgeryOff_P.pak` | VÔ HIỆU bàn phẫu thuật toàn server (chặn cheat mod client đổi passive) |
+| `BialkShopOff_P.pak` | THƯƠNG NHÂN NPC không bán gì (item: Stock -1 · người buôn Pal/chợ đen: 0 pal) - kinh tế đi qua Shop Dogcoin web |
 
 **Đồ nghề build đã lưu bền tại `C:\Users\Khoa\Desktop\palworld\pak-tools\`**
 (repak.exe + UAssetCLI + json đã vá) — khỏi tải lại. Game gốc: `E:\SteamLibrary\steamapps\common\Palworld\Pal\Content\Paks\Pal-Windows.pak`.
@@ -309,7 +310,7 @@ chuyển sang phương án quét save định kỳ tìm passive bất hợp lệ
 
 ---
 
-# (KẾ HOẠCH - chưa build) BialkShopOff_P.pak — THƯƠNG NHÂN KHÔNG BÁN GÌ
+# BialkShopOff_P.pak — THƯƠNG NHÂN KHÔNG BÁN GÌ (ĐÃ BUILD 09/09/2026, chờ test)
 
 **Mục đích (09/09/2026):** kinh tế server đi hết qua 🛒 Shop Dogcoin trên web, nên thương
 nhân NPC trong game (làng, sa mạc, núi lửa, huy chương, tiền thưởng, đấu trường, đoàn lữ
@@ -375,8 +376,26 @@ nhỏ → tìm offset qua diff 2 bản rebuild như `surgical_patch.js`, ghi `FF
 5. OK → prod. Game update đổi bảng shop → trích lại 2 bảng, chạy lại script (script bắt theo
    tên field, không theo vị trí).
 
-## Trạng thái
+## Đã build thế nào (09/09, máy văn phòng KHÔNG có game)
 
-- 09/09: nghiên cứu xong, script `scripts/patch_shopoff.js` viết sẵn (duyệt đệ quy theo tên
-  field, có `--check`). **Chưa build** vì máy văn phòng không có `pak-tools` lẫn
-  `Pal-Windows.pak` (đồ nghề ở máy nhà). Việc của máy nhà: chạy 12 dòng ở trên + test.
+Không có `Pal-Windows.pak` local → **rút thẳng 5 bảng từ pak của server TEST qua SFTP**
+(`Pal/Content/Paks/Pal-WindowsServer.pak`, 4.9 GB, không tải cả file): Shockbyte chặn
+`fstat` nhưng cho `sftp.read` theo offset → dò kích thước bằng đọc thử (nhân đôi rồi chia
+đôi), đọc footer 204 B → primary index → Full Directory Index (158.565 file) → decode entry
+→ đọc đúng block Oodle của 10 file → giải bằng `oodle-data-shared.dll` (P/Invoke PowerShell).
+Script: scratchpad `sftp_pakget.js` (list/get theo regex) + `oodle_unpack.ps1` — nên chép về
+`pak-tools` để lần sau khỏi viết lại. Đồ nghề tải nóng: UAssetCLI v1.0.5 + .NET 10 runtime
+portable (dotnet-install.ps1, `-InstallDir`) + repak v0.2.3.
+
+Kết quả kiểm:
+- Round-trip 3 bảng gốc (json → uasset/uexp): **byte giống hệt** → không dính bug FName, dùng
+  fromjson được, không cần vá phẫu thuật.
+- `DT_ItemShopCreateData` + `_Common`: 38 shop, 587 sản phẩm → 533 đổi Stock 0..500 → **-1**
+  (54 vốn -1 sẵn - xác nhận -1 là trạng thái game hỗ trợ). Bảng Lottery KHÔNG cần vá: nó
+  chỉ chọn `ShopGroupName` (Vagrant_Trader/Village_Shop/Caravan...), hàng nằm ở CreateData.
+- `DT_PalShopCreateData` (server không có bản `_Common`): 8 dòng (Test_00/01, Desert_00,
+  Volcano_00, Dark_01..04 = chợ đen) → **CharacterNum = 0**, giữ `CharacterIDArray`.
+- Đọc ngược file vá: 587/587 Stock = -1, 8/8 CharacterNum = 0. Pak: V11, seed 2D9081FC,
+  mount `../../../`, 6 file. Đã chép lên `~mods/` server TEST, đọc lại khớp byte.
+
+**Chưa test trong game** — chủ server restart server test rồi kiểm theo mục Test ở trên.
