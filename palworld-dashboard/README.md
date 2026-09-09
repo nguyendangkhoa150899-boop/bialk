@@ -694,6 +694,15 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09 (v2 nổ hũ)** — 🎁 **Trúng 🏆 thì tự tay chọn hộp bội số**: hộp cỏ ra 🏆 KHÔNG trả ngay
+  nữa - server treo ván (`g.jpPending`, guard chặn mở ô/dừng "Chọn 1 hộp NỔ HŨ đã!"), trả
+  `{jackpotPick:true, mults, state}`; web đóng hộp cỏ là bung modal vàng `#jpPick` với N hộp úp
+  (N = số bội số cấu hình, mặc định 3: x10/x15/x20). Người chơi bấm hộp → `POST
+  /api/<game>/jackpot {box}` → `jackpotPick()` bốc bội số ngẫu nhiên (hộp chỉ là sân khấu như hộp
+  cỏ), N-1 hộp kia lật ra các bội số còn lại (trộn), trả trần ván + bội số × cược, CHỐT VÁN, kết
+  quả ghi "🎲 Bạn bốc x15 = +N · 🏆 Trần ván +M · TỔNG". F5 giữa chừng: `current().jpPick/jpMults`
+  → web mở lại hộp. RQ test: mult random tốn ở jackpotPick (không còn ở luckyPick). pottest 80,
+  luckytest 92.
 - **09/09** — 💎 **Giá riêng cho passive HẠNG 4 thường** (`upTier4`, mặc định 0 = miễn phí như
   cũ; 24 con tier 4 không phải Cây Thế Giới: Huyền Thoại, May Mắn, Thần Tốc, Ma Cà Rồng, Quỷ
   Thần, Thân Thể Kim Cương...). Server cộng `t4Count × upTier4` vào upCost (không tính đôi với 7

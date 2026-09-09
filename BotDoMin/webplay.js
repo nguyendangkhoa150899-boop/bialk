@@ -493,6 +493,13 @@ function startWebPlay(ctx) {
                         if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                         return sendJSON(res, 200, r);
                     }
+                    // 🏆 09/09 v2: chọn 1 trong N hộp bội số sau khi trúng nổ hũ
+                    if (req.method === 'POST' && path === '/api/mines/jackpot') {
+                        const body = await readBody(req);
+                        const r = mines.jackpotPick(userId, Math.floor(Number(body.box)) || 0);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
                 }
 
                 // ===== LEO THANG ===== (giống dò mìn: tiền và hệ số tính ở index.js)
@@ -541,6 +548,12 @@ function startWebPlay(ctx) {
                     if (req.method === 'POST' && path === '/api/stairs/lucky') {
                         const body = await readBody(req);
                         const r = stairs.luckyPick(userId, Math.floor(Number(body.box)) || 0);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+                    if (req.method === 'POST' && path === '/api/stairs/jackpot') {
+                        const body = await readBody(req);
+                        const r = stairs.jackpotPick(userId, Math.floor(Number(body.box)) || 0);
                         if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                         return sendJSON(res, 200, r);
                     }
@@ -896,6 +909,14 @@ const PAGE = [
     '.mtile.lucky{background:linear-gradient(180deg,#2ec26a,#1a7a40);border-color:#7dffb0;border-bottom-color:#0f4a26;color:#fff;cursor:default;animation:boomPop .32s ease-out}',
     '.scell.lucky{background:linear-gradient(180deg,#2ec26a,#1a7a40);border-color:#7dffb0;color:#fff}',
     // hộp chọn quà 🍀
+    // 🏆 09/09 v2: hộp NỔ HŨ - chọn 1 trong N hộp bội số (vàng, nằm TRÊN hộp cỏ z-index 111)
+    '#jpPick{position:fixed;inset:0;z-index:111;display:none;align-items:center;justify-content:center;background:#000d;padding:16px}#jpPick.show{display:flex}',
+    '#jpPick .box{background:#2a1f08;border:2px solid var(--gold);border-radius:18px;padding:20px;max-width:380px;width:100%;text-align:center;box-shadow:0 12px 44px #000d}',
+    '#jpPick .clover{font-size:56px;animation:cloverPulse 1.1s ease-in-out infinite}#jpPick h2{color:var(--gold);font-size:22px;margin:4px 0 2px}#jpPick .sub{font-size:13px;color:#e8d9a8;margin-bottom:14px}',
+    '#jpPick .gifts{display:grid;gap:10px}#jpPick .gifts button{font-size:30px;padding:16px 0;background:#3d2c10;border:1px solid #ffcf5c66;border-radius:14px;color:var(--gold);font-weight:900;transition:transform .12s}#jpPick .gifts button:active{transform:scale(.88)}',
+    '#jpPick .gifts button.win{border:2px solid var(--gold);box-shadow:0 0 18px #ffcf5c99;transform:scale(1.12);opacity:1}#jpPick .gifts button.dim{opacity:.35}',
+    '#jpRes{display:none;margin-top:14px;font-size:15px;font-weight:800;color:#ffe9a8;line-height:1.5;background:#1a1408;border:1px solid #ffcf5c55;border-radius:12px;padding:10px}',
+    '#jpClose{display:none;margin-top:12px;width:100%;padding:12px;background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;font-weight:900;border-radius:12px}',
     '#luckyPick{position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;background:#000c;padding:16px}',
     '#luckyPick.show{display:flex}',
     '#luckyPick .box{background:#12241a;border:2px solid #2ec26a;border-radius:18px;padding:20px;max-width:360px;width:100%;text-align:center;box-shadow:0 12px 44px #000d}',
@@ -1626,6 +1647,15 @@ const PAGE = [
 
     '<div id="winpop"></div>',
     // 🍀 CỎ 4 LÁ: chọn 1 trong 4 hộp quà (phần thưởng do server quay lúc bấm)
+    // 🏆 09/09 v2: hộp NỔ HŨ - N nút sinh động theo danh sách bội số
+    '<div id="jpPick"><div class="box">',
+    '<div class="clover">🏆</div>',
+    '<h2>NỔ HŨ!!!</h2>',
+    '<div class="sub" id="jpSub">Chọn 1 hộp - mỗi hộp giấu 1 bội số tiền cược!</div>',
+    '<div class="gifts" id="jpGifts"></div>',
+    '<div id="jpRes"></div>',
+    '<button id="jpClose" onclick="jpDone()">💰 NHẬN THƯỞNG</button>',
+    '</div></div>',
     '<div id="luckyPick"><div class="box">',
     '<div class="clover">🍀</div>',
     '<h2>CỎ 4 LÁ MAY MẮN!</h2>',
@@ -2004,7 +2034,8 @@ const PAGE = [
     '$("mMinesLab").textContent="Số mìn ("+MMIN+"–"+MMAX+")";',
     'MAXWIN=j.maxWin||0;MAXBET=j.maxBet||0;',
     'MG=j.game||null;MLAST=(!MG&&j.last)?j.last:null;MOVER=!!MLAST;mDrawGrid();',
-    'if(MG&&MG.luckyPick)luckyOpen("mines");',   // F5 giữa lúc đang chọn hộp -> mở lại
+    'if(MG&&MG.luckyPick)luckyOpen("mines");',
+    'if(MG&&MG.jpPick)jpOpen("mines",MG.jpMults);',   // F5 giữa lúc đang chọn hộp -> mở lại
     'if(MG){$("mMines").value=MG.totalMines;$("mBet").value=MG.bet}',
     'else if(MLAST){$("mMines").value=MLAST.totalMines;$("mBet").value=MLAST.bet;mPaintLast()}',
     'if(MAXBET)$("mNote").textContent="Cược tối đa "+vnd(MAXBET)+" · nhận tối đa "+vnd(MAXWIN)+" mỗi ván";',
@@ -2063,18 +2094,37 @@ const PAGE = [
     'if(j.lucky&&j.lucky.prize==="jackpot")celebrate();',
     // cập nhật bàn chơi NGAY phía sau hộp (đóng hộp là thấy liền, không khựng)
     'if(game==="mines"){if(j.pot!==undefined)MPOT=j.pot;',
-    'if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'if(j.jackpotPick){MG=j.state;mDrawGrid();mBar();mBand()}',   // 🏆 v2: bàn treo, đóng hộp cỏ là mở hộp bội số (luckyDone)
+    'else if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'mEnd("🎉 Jackpot - nhận "+j.win.toLocaleString("vi-VN"),j.win-(MG?MG.bet:0),j.mines)}',
     'else{MG=j.state;mDrawGrid();mBar();mBand()}',
     '}else{',
     'if(j.pot!==undefined)SPOT=j.pot;',
-    'if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'if(j.jackpotPick){SG=j.state;sTower();sBand()}',
+    'else if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
     'var stk=SG?SG.bet:0,fr=SG?SG.fire:0;',
     'sFinish(j,"Lên đỉnh",j.win-stk,stk,fr,SF)}',
     'else{SG=j.state;sTower();sBand()}}',
     '}).catch(function(e){$("luckyPick").classList.remove("show");toast("❌ "+e.message);',
     'if(game==="mines")mSync();else sSync()})}',
-    'function luckyDone(){$("luckyPick").classList.remove("show")}',
+    // đóng hộp cỏ: nếu đang treo NỔ HŨ thì mở ngay hộp bội số
+    'function luckyDone(){$("luckyPick").classList.remove("show");if(MG&&MG.jpPick)jpOpen("mines",MG.jpMults);else if(SG&&SG.jpPick)jpOpen("stairs",SG.jpMults)}',
+    // ===== 🏆 HỘP NỔ HŨ: chọn 1 trong N hộp bội số (09/09 v2) =====
+    'var JPGAME="",JPRES=null;',
+    'function jpOpen(game,mults){JPGAME=game;JPRES=null;var ms=(mults&&mults.length)?mults:[10,15,20];var g=$("jpGifts");g.style.gridTemplateColumns="repeat("+ms.length+",1fr)";g.innerHTML="";',
+    'ms.forEach(function(m,i){var b=document.createElement("button");b.textContent="🎁";b.onclick=function(){jpSend(i+1)};g.appendChild(b)});',
+    'var bet=(game==="mines"&&MG)?MG.bet:((SG&&SG.bet)||0);$("jpSub").textContent="Chọn 1 hộp! Mỗi hộp giấu 1 bội số x"+ms.join("/x")+" TIỀN CƯỢC ("+vnd(bet*Math.min.apply(null,ms))+" tới "+vnd(bet*Math.max.apply(null,ms))+") + trần ván";',
+    '$("jpRes").style.display="none";$("jpClose").style.display="none";$("jpPick").classList.add("show")}',
+    'function jpSend(n){if(!JPGAME)return;var game=JPGAME;JPGAME="";',
+    'document.querySelectorAll("#jpGifts button").forEach(function(b){b.disabled=true});',
+    'api("/api/"+game+"/jackpot",{box:n}).then(function(j){if(typeof j.balance==="number")setBal(j.balance);',
+    'var rv=j.reveal||[];document.querySelectorAll("#jpGifts button").forEach(function(b,i){b.textContent="x"+(rv[i]!==undefined?rv[i]:"?");if(i===n-1)b.classList.add("win");else b.classList.add("dim")});',
+    '$("jpRes").innerHTML="🎲 Bạn bốc <b>x"+j.mult+"</b> tiền cược = +"+vnd(j.potWin)+"<br>🏆 Trần ván: +"+vnd(j.jp)+"<br>💰 TỔNG NHẬN: <b>"+vnd(j.win)+"</b> Dogcoin";$("jpRes").style.display="block";$("jpClose").style.display="block";celebrate();',
+    'JPRES={game:game,j:j}}).catch(function(e){$("jpPick").classList.remove("show");toast("❌ "+e.message);if(game==="mines")mSync();else sSync()})}',
+    'function jpDone(){$("jpPick").classList.remove("show");if(!JPRES)return;var game=JPRES.game,j=JPRES.j;JPRES=null;',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'if(game==="mines"){mEnd("🎉 Jackpot - nhận "+j.win.toLocaleString("vi-VN"),j.win-(MG?MG.bet:0),j.mines)}',
+    'else{var stk=SG?SG.bet:0,fr=SG?SG.fire:0;sFinish(j,"Lên đỉnh",j.win-stk,stk,fr,SF)}}',
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){',
     'b.addEventListener("click",function(){luckySend(parseInt(this.dataset.g))})});',
     'function mDrawGrid(){var g=$("mGrid");g.innerHTML="";',
@@ -2210,7 +2260,8 @@ const PAGE = [
     'function sSync(){api("/api/stairs/state").then(function(j){',
     'SF=j.floors||10;SC=j.cols||8;SMAXF=j.maxFire||5;if(j.potMults&&j.potMults.length)SPOTMULTS=j.potMults;if(j.minBet)MINBET=j.minBet;setBal(j.balance);',
     'SG=j.game||null;SLAST=(!SG&&j.last)?j.last:null;SOVER=!!SLAST;',
-    'if(SG&&SG.luckyPick)luckyOpen("stairs");',   // F5 giữa lúc đang chọn hộp -> mở lại
+    'if(SG&&SG.luckyPick)luckyOpen("stairs");',
+    'if(SG&&SG.jpPick)jpOpen("stairs",SG.jpMults);',   // F5 giữa lúc đang chọn hộp -> mở lại
     '$("sFireLab").textContent="🔥 Cầu lửa mỗi tầng (1–"+SMAXF+")";',
     'if(SG){$("sFire").value=SG.fire;$("sBet").value=SG.bet}',
     'else if(SLAST){$("sFire").value=SLAST.fire;$("sBet").value=SLAST.bet}',
