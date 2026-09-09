@@ -5187,6 +5187,18 @@ client.once('ready', async (c) => {
                 return dbCache._rescuePoint || null;
             },
             palWhereIs: (name) => pal.whereIs(name),
+            // 🧪 admin thử dịch chuyển ngay (không tính lượt/cooldown của ai) - cổng SUPER
+            palRescueTest: async (name) => {
+                if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây' };
+                deliverLock();
+                let r = null, err = null;
+                const p0 = dbCache._rescuePoint;
+                const point = p0 && [p0.x, p0.y, p0.z].every(Number.isFinite) ? p0 : null;
+                try { r = await pal.rescuePlayer(String(name || '').trim(), point); } catch (e) { err = e; }
+                deliverUnlock();
+                if (r && r.ok) return { ok: true, point };
+                return { error: ((r && r.message) || (err && err.message) || 'không rõ').slice(0, 150) };
+            },
             setWheelMin: (n) => {
                 dbCache._wheelMinPlayers = n;
                 saveDbNow();

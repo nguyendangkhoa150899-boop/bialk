@@ -225,7 +225,7 @@ function startPanel(ctx) {
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
-                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/rescue/point', '/api/rescue/whereis',
+                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -756,6 +756,15 @@ function startPanel(ctx) {
                     if (!body.clear && !p) return sendJSON(res, 400, { ok: false, error: 'Toạ độ không hợp lệ - bấm 📍 cho nhanh' });
                     ctx.writeLog('ADMIN', p ? `[PANEL] Điểm tẩu thoát: ${p.x}, ${p.y}, ${p.z}` : '[PANEL] Điểm tẩu thoát: về mặc định (PlayerStart)');
                     return sendJSON(res, 200, { ok: true, point: p });
+                }
+                if (path === '/api/rescue/test') {
+                    if (!ctx.palRescueTest) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
+                    const tname = String(body.name || '').trim();
+                    if (!tname) return sendJSON(res, 400, { ok: false, error: 'Nhập tên nhân vật đang online' });
+                    const tr = await ctx.palRescueTest(tname);
+                    if (tr.error) return sendJSON(res, 400, { ok: false, error: tr.error });
+                    ctx.writeLog('ADMIN', `[PANEL] 🧪 Thử tẩu thoát cho ${tname} -> ${tr.point ? tr.point.x + ', ' + tr.point.y + ', ' + tr.point.z : 'PlayerStart mặc định'}`);
+                    return sendJSON(res, 200, { ok: true, point: tr.point });
                 }
                 if (path === '/api/rescue/whereis') {
                     if (!ctx.palWhereIs) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
@@ -1382,6 +1391,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:10px">
           <button class="btn-green" onclick="rpSave()">💾 Lưu điểm</button>
+          <button onclick="rpTest()">🧪 Thử dịch chuyển ngay</button>
           <button class="btn-red" onclick="rpClear()">🗑️ Về mặc định</button>
         </div>
         <div class="note" id="rpNow">-</div>
@@ -1979,6 +1989,9 @@ function rpSave(){const g=id=>parseFloat(document.getElementById(id).value);cons
   api('/api/rescue/point',{x,y,z}).then(j=>{rpFill(j.point);toast('💾 Đã lưu điểm tẩu thoát');}).catch(e=>toast('❌ '+e.message));}
 function rpClear(){api('/api/rescue/point',{clear:1}).then(()=>{rpFill(null);toast('🗑️ Về mặc định PlayerStart');}).catch(e=>toast('❌ '+e.message));}
 setTimeout(rpLoad,800);
+function rpTest(){const name=document.getElementById('rpName').value.trim();if(!name)return toast('Gõ tên nhân vật ĐANG online (ô trên)');
+  toast('🧪 Đang dịch chuyển '+name+' tới điểm đã LƯU (5-20 giây)... - không tính lượt 4 tiếng');
+  api('/api/rescue/test',{name}).then(j=>toast('✅ Đã dịch chuyển '+name+(j.point?' tới '+j.point.x+', '+j.point.y:' về PlayerStart (chưa đặt điểm - lại World Tree đấy!)'))).catch(e=>toast('❌ '+e.message));}
 function palSetName(id){
   const v=document.getElementById('pn_'+id).value;
   api('/api/pal/set-name',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{});
