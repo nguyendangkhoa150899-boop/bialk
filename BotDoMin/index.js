@@ -1202,6 +1202,9 @@ function palWheelCfg() {
         // chờ ngần này giây mới nhận con tiếp (giảm tải hàng đợi mod/SFTP). 0 = tắt.
         // 03/09: hạ 300 -> 120 theo yêu cầu chủ server (kèm migration 1 lần ở ready).
         claimCd: Math.floor(num(c.claimCd, 120, 0, 86400)),
+        // 📅 HẠN MỨC PAL/NGÀY từng người (09/09): mỗi người chỉ chuyển được ngần này pal
+        // vào game mỗi ngày (giờ VN, reset 00:00). 0 = tắt. Chỉ đếm lượt giao THÀNH CÔNG.
+        dayMax: Math.floor(num(c.dayMax, 5, 0, 1000)),
     };
 }
 
@@ -2099,6 +2102,17 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         const left = Math.ceil(((dbCache._palClaimCdUntil || 0) - Date.now()) / 1000);
         if (left > 0) return { error: `⏳ Kho pal đang bận (cooldown chung toàn server) - chờ ${left}s rồi nhận con tiếp nhé` };
     }
+    // 📅 HẠN MỨC PAL/NGÀY (09/09): sổ đếm nằm ở u.palDayKey (ngày VN) + u.palDayN.
+    // Chỉ CHẶN ở đây - lượt chỉ bị TRỪ ở nhánh giao thành công bên dưới, nên giao lỗi
+    // (hoàn về rương / treo chờ admin) không ăn mất lượt của người chơi.
+    if (cfg.dayMax > 0) {
+        const uQ = getUserData(userId);
+        const todayQ = vnDayISO(Date.now());
+        if (uQ.palDayKey !== todayQ) { uQ.palDayKey = todayQ; uQ.palDayN = 0; }
+        if ((uQ.palDayN || 0) >= cfg.dayMax) {
+            return { error: `📅 Hôm nay bạn đã chuyển đủ ${cfg.dayMax} pal vào game - qua 00:00 lại nhận tiếp được nhé` };
+        }
+    }
     // 🚦 đang giao đơn khác (pal/item) -> chặn, khỏi mở nhiều phiên SFTP cùng lúc
     if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi thử lại nhé' };
 
@@ -2256,6 +2270,13 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         item.deliveredTo = gameName;
         // ⏳ đặt cooldown CHUNG toàn server sau khi giao xong
         if (cfg.claimCd > 0) dbCache._palClaimCdUntil = Date.now() + cfg.claimCd * 1000;
+        // 📅 trừ 1 lượt hạn mức ngày (chỉ lượt giao THÀNH CÔNG mới tốn)
+        {
+            const uQ = getUserData(userId);
+            const todayQ = vnDayISO(Date.now());
+            if (uQ.palDayKey !== todayQ) { uQ.palDayKey = todayQ; uQ.palDayN = 0; }
+            uQ.palDayN = (uQ.palDayN || 0) + 1;
+        }
         saveDbNow();
         writeLog('ADMIN', `[RƯƠNG PAL] Đã giao ${species} Lv${cfg.level} cho ${gameName} (rương #${item.id} của ${username || userId}) | linh hồn: ${soulDesc || '-'} | IV ${ivHp}/${ivAtk}/${ivDef} | passive: ${passives.join(',') || '-'}${upCost ? ` | 💎 phí nâng cấp ${upCost.toLocaleString()}` : ''}`);
         return { ok: true, message: `${bossFellBack ? `⚠️ Pal này game KHÔNG có bản BOSS - đã giao BẢN THƯỜNG và hoàn ${cfg.upBoss.toLocaleString()} phí BOSS. ` : ''}✅ Đã giao vào hộp pal trong game!${(Number(item.upCost) || 0) ? ` (💎 phí nâng cấp −${Number(item.upCost).toLocaleString()} Dogcoin)` : ''} Pal sẽ DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp.` };
@@ -4964,6 +4985,9 @@ client.once('ready', async (c) => {
                         // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),
                         claimCd: cfg.claimCd,
+                        // 📅 hạn mức pal/ngày của TÔI (dayMax 0 = tắt)
+                        palDayMax: cfg.dayMax,
+                        palDayUsed: getUserData(uid).palDayKey === vnDayISO(Date.now()) ? (getUserData(uid).palDayN || 0) : 0,
                         passives: passiveCatalog(),
                         builds: passiveBuilds(),
                         myBuilds: Array.isArray(getUserData(uid).palBuilds) ? getUserData(uid).palBuilds : [],

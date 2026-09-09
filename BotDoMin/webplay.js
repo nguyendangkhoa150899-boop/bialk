@@ -1412,6 +1412,7 @@ const PAGE = [
     '<div class="muted" style="font-size:12px;margin-top:4px" id="pcLink">-</div>',
     // ⏳ cooldown nhận pal CHUNG toàn server (28/08)
     '<div id="pcCdBanner" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px;font-weight:700"></div>',
+    '<div id="pcDayNote" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #3a4155;border-radius:9px;background:#1b1f2c;color:#aab3c5;font-size:13px"></div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageDaily
@@ -3057,6 +3058,12 @@ const PAGE = [
     'var PC=null,PCIT=null,PCBUSY=false,PCCDUNTIL=0,PCCDTICKING=false,PCCD=0;',
     // ⏳ cooldown nhận pal CHUNG toàn server: dựng lại từ claimCdLeft (F5 vẫn đúng)
     'function pcCdRule(){if(!PCCD)return"";return PCCD%60===0?(PCCD/60)+" phút/lần":PCCD+"s/lần"}',
+    // 📅 hạn mức pal/ngày: server đưa palDayMax/palDayUsed trong state hồ sơ; nhận xong
+    // client tải lại rương -> số tự cập nhật. Hết lượt thì đổi màu vàng cho dễ thấy.
+    'var PDMAX=0,PDUSED=0;',
+    'function pcDayNote(){var e=$("pcDayNote");if(!e)return;if(!(PDMAX>0)){e.style.display="none";return}var left=Math.max(0,PDMAX-PDUSED);e.style.display="";',
+    'if(left>0){e.style.color="#aab3c5";e.style.borderColor="#3a4155";e.innerHTML="📅 Hôm nay bạn còn chuyển được <b style=\\"color:#8fffca\\">"+left+"/"+PDMAX+"</b> pal vào game (reset 00:00)"}',
+    'else{e.style.color="#ffd27a";e.style.borderColor="#ffcf5c";e.innerHTML="📅 Hôm nay bạn đã chuyển đủ <b>"+PDMAX+"</b> pal vào game - qua 00:00 lại nhận tiếp được"}}',
     'function pcCdTick(){var left=Math.ceil((PCCDUNTIL-Date.now())/1000);var b=$("pcCdBanner");if(!b)return;',
     'if(left>0){b.style.display="";b.textContent="⏳ Kho pal chung đang bận - còn "+left+"s mới nhận được con tiếp ("+(pcCdRule()||"cooldown")+", dùng chung cả server)";if(!PCCDTICKING){PCCDTICKING=true;setTimeout(function tk(){pcCdTick();if(Date.now()<PCCDUNTIL)setTimeout(tk,500);else PCCDTICKING=false},500)}}else{b.style.display="none"}}',
     // người KHÁC vừa nhận pal thì mình đang ngồi trên trang cũng thấy đồng hồ: poll nhẹ 15s/lần
@@ -3068,6 +3075,7 @@ const PAGE = [
     // cb: mua/quay xong gọi pcSync(function(){pcOpen(id)}) để bật ngay bảng chọn linh hồn+passive
     'function pcSync(cb){api("/api/profile").then(function(j){PC=j;',
     'PCCD=j.claimCd||0;PCCDUNTIL=Date.now()+(j.claimCdLeft||0);pcCdTick();',
+    'PDMAX=j.palDayMax||0;PDUSED=j.palDayUsed||0;pcDayNote();',
     'var inChest=0;j.chest.forEach(function(i){if(i.status==="chest")inChest++});',
     '$("pcStat").textContent=inChest+" pal trong rương";',
     '$("pcLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - bấm 🎁 Nhận là giao thẳng vào game (phải đang online trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới NHẬN pal được (bán thì vẫn bán được)";',
