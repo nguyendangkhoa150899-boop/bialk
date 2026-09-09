@@ -3236,7 +3236,7 @@ const PAGE = [
     'function pcBossTog(){PCBOSS=PCBOSS?0:1;var b=$("pcmBossBtn");if(b)b.classList.toggle("on",!!PCBOSS);pcUpCalc()}',
     'async function pcClaimGo(){if(!PCIT||PCBUSY)return;',
     'var souls=[].slice.call($("pcmSouls").querySelectorAll("input:checked")).map(function(c){return c.value});',
-    'if(souls.length<1)return toast("💠 Chọn ít nhất 1 dòng linh hồn trước đã (dòng đầu miễn phí)");',
+    'if(souls.length<1&&!(PC&&PC.raw))return toast("💠 Chọn ít nhất 1 dòng linh hồn trước đã (dòng đầu miễn phí)");',   // 🔒 09/09: chế độ PAL GỐC không có linh hồn -> bỏ kiểm
     'if(PCGENDER!==1&&PCGENDER!==2)return toast("🚻 Chọn giới tính ♂ Đực hoặc ♀ Cái trước đã");',
     'var passives=Object.keys(PCSEL);',
     'if(PCUP>0&&!(await gConfirm("💎 Nâng cấp vượt trần tốn <b>"+vnd(PCUP)+"</b> Dogcoin, trừ ví ngay khi nhận (giao hụt tự hoàn). Đồng ý?","✅ Nhận & trừ phí")))return;',
