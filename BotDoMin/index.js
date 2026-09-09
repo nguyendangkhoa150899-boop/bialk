@@ -3025,7 +3025,7 @@ const webMinesApi = {
             updatePoints(userId, win);
             webMinesLog(g, 'Jackpot', win - g.bet - (g.fee || 0));
             setMinesLast(userId, g, 'Jackpot', win - g.bet - (g.fee || 0));
-            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} JACKPOT - nhận ${win}${win < raw ? ` (kịch khung x${assistCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
             return { ok: true, hit: false, jackpot: true, win, luckCapped: win < raw, mines: g.mines, lucky, balance: getUserData(userId).points || 0 };
         }
         return { ok: true, hit: false, lucky, state: webMinesApi.current(userId), balance: getUserData(userId).points || 0 };
@@ -3059,7 +3059,7 @@ const webMinesApi = {
         writeLog('ADMIN', `[⚠️ NỔ HŨ DÒ MÌN] ${g.name} chọn hộp bội số ${box}/${n} ra x${pt.mult} (trong x${pt.mults.join('/x')}) × cược ${g.bet.toLocaleString()} = ${potWin.toLocaleString()} + trần ván ${jp.toLocaleString()} (${g.totalMines} mìn) - CHỐT VÁN`);
         writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} 🏆 chọn hộp bội số ${box} - x${pt.mult}, chốt ván`);
         potAnnounce(dbCache._minesChannelId,
-            `💥🏆 <@${userId}> vừa NỔ HŨ ở 💣 DÒ MÌN: **${jp.toLocaleString()}** trần ván (${g.totalMines} mìn)` +
+            `💥🏆 <@${userId}> vừa NỔ HŨ ở 💣 DÒ MÌN: **${jp.toLocaleString()}** kịch khung ván (${g.totalMines} mìn)` +
             ` + **${potWin.toLocaleString()}** bội số 🎲 tự tay bốc **x${pt.mult}** tiền cược = **${(jp + potWin).toLocaleString()}** ${DOGCOIN_EMOJI}!`,
             userId);
         return { ok: true, jackpot: true, box, reveal, mult: pt.mult, mults: pt.mults, jp, potWin, win: jp + potWin, luckCapped: jp < top, mines: g.mines, balance: getUserData(userId).points || 0 };
@@ -3149,7 +3149,7 @@ const webMinesApi = {
         updatePoints(userId, win);
         webMinesLog(g, 'Dừng (Thắng)', win - g.bet - (g.fee || 0));
         setMinesLast(userId, g, 'Dừng (Thắng)', win - g.bet - (g.fee || 0));
-        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)})` : ''}`);
+        writeLog('RESULT', `[WEB DÒ MÌN] ${g.name} DỪNG ở ${g.revealed.length} ô - nhận ${win}${win < raw ? ` (kịch khung x${assistCapOf(g)})` : ''}`);
         return { ok: true, win, luckCapped: win < raw, mines: g.mines, luckyAt: (g.lucky || []), balance: getUserData(userId).points || 0 };
     },
 };
@@ -3394,7 +3394,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet - (g.fee || 0));
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet - (g.fee || 0));
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH - nhận ${win}${win < raw ? ` (kịch khung x${assistCapOf(g)} vì có trợ giúp 🍀)` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, burn: false, top: true, win, luckCapped: win < raw, lucky, golden,
@@ -3431,7 +3431,7 @@ const webStairsApi = {
         setStairsLast(userId, g, 'Lên đỉnh', jp + potWin - g.bet - (g.fee || 0));
         writeLog('ADMIN', `[⚠️ NỔ HŨ LEO THANG] ${g.name} chọn hộp bội số ${box}/${n} ra x${pt.mult} (trong x${pt.mults.join('/x')}) × cược ${g.bet.toLocaleString()} = ${potWin.toLocaleString()} + trần ván ${jp.toLocaleString()} (${g.fire} lửa) - CHỐT VÁN`);
         potAnnounce(dbCache._stairsChannelId,
-            `💥🏆 <@${userId}> vừa NỔ HŨ ở 🪜 LEO THANG: **${jp.toLocaleString()}** trần ván (${g.fire} lửa)` +
+            `💥🏆 <@${userId}> vừa NỔ HŨ ở 🪜 LEO THANG: **${jp.toLocaleString()}** kịch khung ván (${g.fire} lửa)` +
             ` + **${potWin.toLocaleString()}** bội số 🎲 tự tay bốc **x${pt.mult}** tiền cược = **${(jp + potWin).toLocaleString()}** ${DOGCOIN_EMOJI}!`,
             userId);
         writeLog('RESULT', `[LEO THANG] ${g.name} 🏆 chọn hộp bội số ${box} - x${pt.mult}, chốt ván`);
@@ -3492,7 +3492,7 @@ const webStairsApi = {
             updatePoints(userId, win);
             const entry = stairsLog(g, 'Lên đỉnh', win - g.bet - (g.fee || 0));
             setStairsLast(userId, g, 'Lên đỉnh', win - g.bet - (g.fee || 0));
-            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)})` : ''}`);
+            writeLog('RESULT', `[LEO THANG] ${g.name} LÊN ĐỈNH (🚀 hộp may mắn) - nhận ${win}${win < raw ? ` (kịch khung x${assistCapOf(g)})` : ''}`);
             stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
             return {
                 ok: true, lucky, top: true, win, luckCapped: win < raw,
@@ -3516,7 +3516,7 @@ const webStairsApi = {
         updatePoints(userId, win);
         const entry = stairsLog(g, 'Dừng (Thắng)', win - g.bet - (g.fee || 0));
         setStairsLast(userId, g, 'Dừng (Thắng)', win - g.bet - (g.fee || 0));
-        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} - nhận ${win}${win < raw ? ` (trần x${assistCapOf(g)})` : ''}`);
+        writeLog('RESULT', `[LEO THANG] ${g.name} DỪNG ở tầng ${g.floor} - nhận ${win}${win < raw ? ` (kịch khung x${assistCapOf(g)})` : ''}`);
         stairsBoardPush(entry, { hitFloor: -1, hitCol: -1, traps: g.traps, safe: g.safe.slice() });
         // Lộ 🍀/🌟 chưa đạp cả khi DỪNG - đồng bộ với lúc cháy/lên đỉnh (và với Dò Mìn,
         // vốn đã lộ luckyAt khi dừng). Trước đây thiếu 2 field này nên dừng thì không
@@ -4560,7 +4560,7 @@ function getStairsBoardData() {
         `Mỗi tầng bấm 1 ô: trúng ô trống thì lên tầng trên, hệ số nhân thêm - **dừng lúc nào cũng được**.\n` +
         `Trúng cầu lửa 🔥 là mất tiền cược ván đó.\n\n` +
         `🔥 Càng nhiều lửa mỗi tầng, hệ số càng cao (1 lửa lên đỉnh x3.61 · 5 lửa lên đỉnh x17k).\n` +
-        `🍀 Có ô may mắn giấu trong tháp + 🌟 ô vàng hiếm lên thẳng đỉnh. Ăn NHỜ may mắn trần x2.000 - tự lực thì ăn đủ.\n\n`;
+        `🍀 Có ô may mắn giấu trong tháp + 🌟 ô vàng hiếm lên thẳng đỉnh. Ăn NHỜ may mắn kịch khung x2.000 - tự lực thì ăn đủ.\n\n`;
     if (recent.length) {
         desc += `**🪜 ${recent.length} ván gần đây:**\n` + recent.map(stairsHistoryLine).join('\n');
     } else {

@@ -1997,7 +1997,7 @@ const PAGE = [
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function potTab(id,m){var e=$(id);if(e)e.textContent=(m&&m.length?("🏆 NỔ HŨ x"+m.join("/x")):"")}',
     'function mBand(){var go=$("mGo");',
-    'potTab("mPotHdr",MPOTMULTS);var mpl=$("mPotLine");if(mpl){var mb0=mNum("mBet")||MINBET;mpl.textContent="🏆 NỔ HŨ: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên x"+MPOTMULTS.join("/x")+" TIỀN CƯỢC (cược "+vnd(mb0)+" → "+vnd(mb0*Math.min.apply(null,MPOTMULTS))+" tới "+vnd(mb0*Math.max.apply(null,MPOTMULTS))+") + trần ván, ván dừng ngay · cược tối thiểu "+vnd(MINBET)+"/ván"}',
+    'potTab("mPotHdr",MPOTMULTS);var mpl=$("mPotLine");if(mpl){var mb0=mNum("mBet")||MINBET;mpl.textContent="🏆 NỔ HŨ: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên x"+MPOTMULTS.join("/x")+" TIỀN CƯỢC (cược "+vnd(mb0)+" → "+vnd(mb0*Math.min.apply(null,MPOTMULTS))+" tới "+vnd(mb0*Math.max.apply(null,MPOTMULTS))+") + kịch khung ván, ván dừng ngay · cược tối thiểu "+vnd(MINBET)+"/ván"}',
     'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
     // Ô tick chỉ có tác dụng cho VÁN MỚI. Đang giữa ván thì khoá lại + nói thẳng ván này
     // đang có mấy ô 🍀, hết cảnh tick giữa ván rồi tưởng ván đang chạy được thêm cỏ.
@@ -2009,7 +2009,7 @@ const PAGE = [
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
     '$("mBombN").textContent=MG.totalMines;',
-    '$("mStat").textContent=MG.totalMines+" mìn · cược "+vnd(MG.bet)+" · "+fx(MG.multi)+(MG.capped?" · chạm trần":"")+(MG.assistCapHit?" · ⚠️ mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" - mở thêm KHÔNG tăng tiền":"");',
+    '$("mStat").textContent=MG.totalMines+" mìn · cược "+vnd(MG.bet)+" · "+fx(MG.multi)+(MG.capped?" · kịch khung":"")+(MG.assistCapHit?" · ⚠️ mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" - mở thêm KHÔNG tăng tiền":"");',
     // 09/09: ván có trợ giúp chạm trần -> toast đỏ 1 lần/ván, nút NHẬN TIỀN ghi thẳng "NÊN DỪNG"
     'var mcw=$("mCapWarn");if(mcw){mcw.classList.toggle("show",!!MG.assistCapHit);if(MG.assistCapHit)mcw.textContent="⚠️ Ván này bạn mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" = "+vnd(MG.cashout)+" Dogcoin. Mở thêm KHÔNG tăng tiền, chỉ thêm rủi ro - NÊN DỪNG!"}',
     'if(MG.assistCapHit&&!MCAPWARN){MCAPWARN=true;toast("⚠️ Ván này bạn mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" = "+vnd(MG.cashout)+" Dogcoin. Đã chạm mức này - mở thêm KHÔNG tăng tiền, chỉ thêm rủi ro. NÊN DỪNG NHẬN TIỀN!")}if(!MG.assistCapHit)MCAPWARN=false;',
@@ -2059,7 +2059,7 @@ const PAGE = [
     'dig:"⛏️ MÁY ĐÀO - mở giúp "+((L.opened||[]).length)+" ô an toàn!",',
     'cash:"💰 LÌ XÌ - +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin vào ví luôn!",',
     'rocket:"🚀 THANG MÁY - vọt lên 2 tầng!",',
-    'jackpot:(L.jpPick?"🏆 NỔ HŨ!!! Bấm OK để tự tay chọn hộp bội số x"+((L.mults&&L.mults.length)?L.mults:[10,15,20]).join("/x")+" TIỀN CƯỢC + trần ván!":"🏆 NỔ HŨ!!! +"+(L.bonus||0).toLocaleString("vi-VN")+" DOGCOIN!!!"+(L.potMult?" (🎲 bốc x"+L.potMult+" tiền cược = "+(L.potWin||0).toLocaleString("vi-VN")+" + trần ván)":"")),',   // 09/09 v2: trúng 🏆 chưa trả tiền, mời qua hộp bội số
+    'jackpot:(L.jpPick?"🏆 NỔ HŨ!!! Bấm OK để tự tay chọn hộp bội số x"+((L.mults&&L.mults.length)?L.mults:[10,15,20]).join("/x")+" TIỀN CƯỢC + kịch khung ván!":"🏆 NỔ HŨ!!! +"+(L.bonus||0).toLocaleString("vi-VN")+" DOGCOIN!!!"+(L.potMult?" (🎲 bốc x"+L.potMult+" tiền cược = "+(L.potWin||0).toLocaleString("vi-VN")+" + kịch khung ván)":"")),',   // 09/09 v2: trúng 🏆 chưa trả tiền, mời qua hộp bội số
     'none:"🍂 Trống trơn... kiếp sau may hơn!"',
     '}[L.prize]||"🍀"}',
     'function luckyToast(L){if(L)toast("🎁 "+luckyMsg(L))}',
@@ -2074,7 +2074,7 @@ const PAGE = [
     'var jp=0;',
     'if(game==="mines"&&MG&&MTAB.length)jp=Math.min(MG.bet*jpCapMines(MG.totalMines),Math.floor(MG.bet*MTAB[MTAB.length-1]))+Math.floor(MG.bet*Math.max.apply(null,MPOTMULTS));',
     'if(game==="stairs"&&SG&&STAB.length)jp=Math.min(SG.bet*2000,Math.floor(SG.bet*STAB[STAB.length-1]))+Math.floor(SG.bet*Math.max.apply(null,SPOTMULTS));',
-    '$("luckySub").textContent=jp>0?("Chọn 1 hộp - biết đâu 🏆 NỔ HŨ tới "+jp.toLocaleString("vi-VN")+" Dogcoin (bốc x"+(game==="mines"?MPOTMULTS:SPOTMULTS).join("/x")+" tiền cược + trần ván)!"):"Chọn 1 hộp quà!";',
+    '$("luckySub").textContent=jp>0?("Chọn 1 hộp - biết đâu 🏆 NỔ HŨ tới "+jp.toLocaleString("vi-VN")+" Dogcoin (bốc x"+(game==="mines"?MPOTMULTS:SPOTMULTS).join("/x")+" tiền cược + kịch khung ván)!"):"Chọn 1 hộp quà!";',
     // dựng lại 4 hộp kín + giấu kết quả/nút đóng của lần trước
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){',
     'b.disabled=false;b.textContent="🎁";b.classList.remove("win","dim")});',
@@ -2095,13 +2095,13 @@ const PAGE = [
     // cập nhật bàn chơi NGAY phía sau hộp (đóng hộp là thấy liền, không khựng)
     'if(game==="mines"){if(j.pot!==undefined)MPOT=j.pot;',
     'if(j.jackpotPick){MG=j.state;mDrawGrid();mBar();mBand()}',   // 🏆 v2: bàn treo, đóng hộp cỏ là mở hộp bội số (luckyDone)
-    'else if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'else if(j.jackpot){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng kịch khung may mắn")},2400);',
     'mEnd("🎉 Jackpot - nhận "+j.win.toLocaleString("vi-VN"),j.win-(MG?MG.bet:0),j.mines)}',
     'else{MG=j.state;mDrawGrid();mBar();mBand()}',
     '}else{',
     'if(j.pot!==undefined)SPOT=j.pot;',
     'if(j.jackpotPick){SG=j.state;sTower();sBand()}',
-    'else if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'else if(j.top){if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng kịch khung may mắn")},2400);',
     'var stk=SG?SG.bet:0,fr=SG?SG.fire:0;',
     'sFinish(j,"Lên đỉnh",j.win-stk,stk,fr,SF)}',
     'else{SG=j.state;sTower();sBand()}}',
@@ -2113,16 +2113,16 @@ const PAGE = [
     'var JPGAME="",JPRES=null;',
     'function jpOpen(game,mults){JPGAME=game;JPRES=null;var ms=(mults&&mults.length)?mults:[10,15,20];var g=$("jpGifts");g.style.gridTemplateColumns="repeat("+ms.length+",1fr)";g.innerHTML="";',
     'ms.forEach(function(m,i){var b=document.createElement("button");b.textContent="🎁";b.onclick=function(){jpSend(i+1)};g.appendChild(b)});',
-    'var bet=(game==="mines"&&MG)?MG.bet:((SG&&SG.bet)||0);$("jpSub").textContent="Chọn 1 hộp! Mỗi hộp giấu 1 bội số x"+ms.join("/x")+" TIỀN CƯỢC ("+vnd(bet*Math.min.apply(null,ms))+" tới "+vnd(bet*Math.max.apply(null,ms))+") + trần ván";',
+    'var bet=(game==="mines"&&MG)?MG.bet:((SG&&SG.bet)||0);$("jpSub").textContent="Chọn 1 hộp! Mỗi hộp giấu 1 bội số x"+ms.join("/x")+" TIỀN CƯỢC ("+vnd(bet*Math.min.apply(null,ms))+" tới "+vnd(bet*Math.max.apply(null,ms))+") + kịch khung ván";',
     '$("jpRes").style.display="none";$("jpClose").style.display="none";$("jpPick").classList.add("show")}',
     'function jpSend(n){if(!JPGAME)return;var game=JPGAME;JPGAME="";',
     'document.querySelectorAll("#jpGifts button").forEach(function(b){b.disabled=true});',
     'api("/api/"+game+"/jackpot",{box:n}).then(function(j){if(typeof j.balance==="number")setBal(j.balance);',
     'var rv=j.reveal||[];document.querySelectorAll("#jpGifts button").forEach(function(b,i){b.textContent="x"+(rv[i]!==undefined?rv[i]:"?");if(i===n-1)b.classList.add("win");else b.classList.add("dim")});',
-    '$("jpRes").innerHTML="🎲 Bạn bốc <b>x"+j.mult+"</b> tiền cược = +"+vnd(j.potWin)+"<br>🏆 Trần ván: +"+vnd(j.jp)+"<br>💰 TỔNG NHẬN: <b>"+vnd(j.win)+"</b> Dogcoin";$("jpRes").style.display="block";$("jpClose").style.display="block";celebrate();',
+    '$("jpRes").innerHTML="🎲 Bạn bốc <b>x"+j.mult+"</b> tiền cược = +"+vnd(j.potWin)+"<br>🏆 Kịch khung ván: +"+vnd(j.jp)+"<br>💰 TỔNG NHẬN: <b>"+vnd(j.win)+"</b> Dogcoin";$("jpRes").style.display="block";$("jpClose").style.display="block";celebrate();',
     'JPRES={game:game,j:j}}).catch(function(e){$("jpPick").classList.remove("show");toast("❌ "+e.message);if(game==="mines")mSync();else sSync()})}',
     'function jpDone(){$("jpPick").classList.remove("show");if(!JPRES)return;var game=JPRES.game,j=JPRES.j;JPRES=null;',
-    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng kịch khung may mắn")},2400);',
     'if(game==="mines"){mEnd("🎉 Jackpot - nhận "+j.win.toLocaleString("vi-VN"),j.win-(MG?MG.bet:0),j.mines)}',
     'else{var stk=SG?SG.bet:0,fr=SG?SG.fire:0;sFinish(j,"Lên đỉnh",j.win-stk,stk,fr,SF)}}',
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){',
@@ -2189,7 +2189,7 @@ const PAGE = [
     'function mCashout(){if(!MG||mBusy)return;mBusy=true;var stake=MG.bet;',
     'api("/api/mines/cashout",{}).then(function(j){mBusy=false;setBal(j.balance);',
     'toast("✅ Nhận "+j.win.toLocaleString("vi-VN")+" Dogcoin");',
-    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng kịch khung may mắn")},2400);',
     'mEnd("✅ Đã dừng - nhận "+j.win.toLocaleString("vi-VN"),j.win-stake,j.mines,j.luckyAt)',
     '}).catch(function(e){mBusy=false;toast("❌ "+e.message);mSync()})}',
     'function setBal(v){if(typeof v!=="number")return;BAL=v;$("bal").textContent=v.toLocaleString("vi-VN")}',
@@ -2239,7 +2239,7 @@ const PAGE = [
     'if(el.classList.contains("fire"))return;', // ô lửa đã lộ (khiên đỡ) - cấm bấm lại
     'el.onclick=function(){sTap(parseInt(this.dataset.c))}})}}',
     'function sBand(){var go=$("sGo");',
-    'potTab("sPotHdr",SPOTMULTS);var spl=$("sPotLine");if(spl){var sb0=sNum("sBet")||MINBET;spl.textContent="🏆 NỔ HŨ: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên x"+SPOTMULTS.join("/x")+" TIỀN CƯỢC (cược "+vnd(sb0)+" → "+vnd(sb0*Math.min.apply(null,SPOTMULTS))+" tới "+vnd(sb0*Math.max.apply(null,SPOTMULTS))+") + trần lên đỉnh, ván dừng ngay · cược tối thiểu "+vnd(MINBET)+"/ván"}',
+    'potTab("sPotHdr",SPOTMULTS);var spl=$("sPotLine");if(spl){var sb0=sNum("sBet")||MINBET;spl.textContent="🏆 NỔ HŨ: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên x"+SPOTMULTS.join("/x")+" TIỀN CƯỢC (cược "+vnd(sb0)+" → "+vnd(sb0*Math.min.apply(null,SPOTMULTS))+" tới "+vnd(sb0*Math.max.apply(null,SPOTMULTS))+") + kịch khung lên đỉnh, ván dừng ngay · cược tối thiểu "+vnd(MINBET)+"/ván"}',
     'if(SG){',
     '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?(" · 🛡️ x"+SG.shield):"")+(SG.assistCapHit?" · ⚠️ leo được nhờ "+(SG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+SG.assistCap+" - leo thêm KHÔNG tăng tiền":"");',
     'var scw=$("sCapWarn");if(scw){scw.classList.toggle("show",!!SG.assistCapHit);if(SG.assistCapHit)scw.textContent="⚠️ Ván này bạn leo được nhờ "+(SG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+SG.assistCap+" = "+vnd(SG.cashout)+" Dogcoin. Leo thêm KHÔNG tăng tiền, chỉ thêm rủi ro - NÊN DỪNG!"}',
@@ -2324,7 +2324,7 @@ const PAGE = [
     // 🍀 đạp trúng CỎ 4 LÁ: bung 4 hộp cho chọn
     'if(j.luckyPick){toast("🍀 CỎ 4 LÁ MAY MẮN!");SG=j.state;sTower();sBand();luckyOpen("stairs");return}',
     'if(j.golden){toast("🌟 Ô VÀNG!! BAY THẲNG LÊN ĐỈNH!!");celebrate()}',
-    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng chạm trần may mắn")},2400);',
+    'if(j.luckCapped)setTimeout(function(){toast("🍀 Có trợ giúp may mắn - thưởng kịch khung may mắn")},2400);',
     'if(j.burn){playBoom();toast("🔥 CHÁY! Mất "+vnd(stake)+" Dogcoin");',
     'return sFinish(j,"Trúng lửa (Thua)",-stake,stake,fire,f,f,c)}',
     'var el=$("sc_"+f+"_"+c);if(el){el.className="scell step";el.innerHTML=HEROIMG}',
