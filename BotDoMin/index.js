@@ -2788,7 +2788,16 @@ const POT_HIT_RATE = 0.01;        // = p của 'jackpot' trong MINES/STAIRS_LUCK
 // server TỪ CHỐI ván luôn. Trước đó làm kiểu "cược dưới 200 thì vẫn chơi được nhưng
 // không ăn hũ" - chủ server bảo không phải vậy, phải BUỘC đặt tối thiểu 200.
 // Nhờ vậy mọi ván đều đủ điều kiện nuôi/ăn hũ, không cần cửa xét riêng nữa.
-const MIN_BET = 400;   // 26/08: 200 -> 400 (Big Small không dính sàn này)
+const MIN_BET = 400;   // 26/08: 200 -> 400 (Big Small không dính sàn này) - 09/09: chỉ còn là MẶC ĐỊNH, số thật ở minBet()
+// 🎚️ 09/09: sàn cược Dò Mìn + Leo Thang admin chỉnh ở panel tab 👥 (lưu dbCache._minBet), chủ server muốn hạ về 100.
+function minBet() { const v = Number(dbCache._minBet); return Number.isFinite(v) && v >= 1 ? Math.floor(v) : MIN_BET; }
+function setMinBet(v) {
+    const n = Math.floor(Number(v));
+    if (!(n >= 1 && n <= 10000000)) return { error: 'Sàn cược phải từ 1 đến 10.000.000' };
+    dbCache._minBet = n; saveDbNow();
+    writeLog('ADMIN', `[SÀN CƯỢC] Panel đặt cược tối thiểu Dò Mìn/Leo Thang = ${n.toLocaleString()}`);
+    return { ok: true, minBet: n };
+}
 // Nổ hũ xong hũ KHÔNG về 0 mà về mức mồi này, để người vào sau không thấy hũ rỗng
 // (chủ server: "về 0 thì bất công"). Nhà cái bao khoản mồi này mỗi lần nổ.
 // 26/08: mồi + trần TÁCH THEO TỪNG HŨ - Dò Mìn/Leo Thang mồi 5.000 trần nuôi 50.000,
@@ -2949,7 +2958,7 @@ const webMinesApi = {
     tiles: TOTAL_TILES,
     potMults: () => potCfg('mines').mults,   // 🏆 09/09: bội số nổ hũ (hết hũ nuôi ở Dò Mìn)
     open: () => gameOpen('mines'),   // ⏸️ công tắc panel
-    minBet: MIN_BET,
+    minBet: () => minBet(),   // 09/09 getter - panel đổi là web thấy ngay
     maxWin: MINES_MAX_WIN,
     maxBet: MINES_MAX_BET,
     // Bảng hệ số để client hiện trước khi đặt - tính ở server nên client không bịa được.
@@ -3000,7 +3009,7 @@ const webMinesApi = {
             return { error: `Số mìn phải từ ${webMinesApi.minMines} đến ${webMinesApi.maxMines}` };
         }
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
-        if (bet < MIN_BET) return { error: `Cược tối thiểu ${MIN_BET.toLocaleString()} Dogcoin mỗi ván` };
+        if (bet < minBet()) return { error: `Cược tối thiểu ${minBet().toLocaleString()} Dogcoin mỗi ván` };
         if (MINES_MAX_BET > 0 && bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} Dogcoin mỗi ván` };
         // MUA THÊM 1 ô 🍀: phí 20% tiền cược (chủ server chốt 20/08). Mặc định 1 ô.
         const fee = extraLucky ? Math.floor(bet * 0.2) : 0;
@@ -3313,7 +3322,7 @@ const webStairsApi = {
     maxFire: STAIRS_MAX_FIRE,
     potMults: () => potCfg('stairs').mults,   // 🏆 09/09: bội số nổ hũ (hết hũ nuôi ở Leo Thang)
     open: () => gameOpen('stairs'),
-    minBet: MIN_BET,
+    minBet: () => minBet(),   // 09/09 getter - panel đổi là web thấy ngay
     last: (userId) => webStairsLast.get(userId) || null,
     dismiss: (userId) => { webStairsLast.delete(userId); return { ok: true }; },
     table: (fire) => {
@@ -3349,7 +3358,7 @@ const webStairsApi = {
             return { error: `Số cầu lửa phải từ 1 đến ${STAIRS_MAX_FIRE}` };
         }
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
-        if (bet < MIN_BET) return { error: `Cược tối thiểu ${MIN_BET.toLocaleString()} Dogcoin mỗi ván` };
+        if (bet < minBet()) return { error: `Cược tối thiểu ${minBet().toLocaleString()} Dogcoin mỗi ván` };
         // 🏆 nuôi hũ RIÊNG của Leo Thang: trích 5% cược, KHÔNG thu thêm (nhà cái bao)
         const potCut = luckyPotCut('stairs', bet);
         const me = getUserData(userId);
@@ -5023,6 +5032,8 @@ client.once('ready', async (c) => {
             getGameOpen: () => ({ mines: gameOpen('mines'), stairs: gameOpen('stairs') }),
             // 🔁 09/09: cầu Dogcoin web ↔ game
             getDogBridge: () => dogBridgeCfg(),
+            // 🎚️ 09/09: sàn cược 2 minigame
+            setMinBet: (v) => setMinBet(v),
             setDogBridge: (key, on) => setDogBridge(key, on),
             setGameOpen: (key, on) => setGameOpen(key, on),
             getMinesHistory: () => minesHistory,
@@ -5080,7 +5091,7 @@ client.once('ready', async (c) => {
             // Bảng mời chơi Dò Mìn (không có ván chung, chỉ khoe kết quả + nút vào web)
             // 🏆 hũ nuôi chung: xem + nạp/rút tay để mồi hũ cho anh em chơi
             // 09/09: chỉ còn hũ nuôi Quay Pal; Dò Mìn/Leo Thang = bội số nổ hũ (mults)
-            getPot: () => ({ pots: { gacha: potGet('gacha') }, labels: POT_LABEL, maxBy: { gacha: LUCKY_POT_MAX_BY.gacha }, mults: { mines: potCfg('mines').mults, stairs: potCfg('stairs').mults }, leftover: { mines: potGet('mines'), stairs: potGet('stairs') }, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: MIN_BET, seedBy: { gacha: POT_SEED_BY.gacha } }),
+            getPot: () => ({ pots: { gacha: potGet('gacha') }, labels: POT_LABEL, maxBy: { gacha: LUCKY_POT_MAX_BY.gacha }, mults: { mines: potCfg('mines').mults, stairs: potCfg('stairs').mults }, leftover: { mines: potGet('mines'), stairs: potGet('stairs') }, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: minBet(), seedBy: { gacha: POT_SEED_BY.gacha } }),
             addPot: (key, amount) => adminPotAdd(key, amount),
             setPotCfg: (key, o) => setPotCfg(key, o),   // 🏆 09/09: danh sách bội số nổ hũ (x10/x15/x20) của Dò Mìn/Leo Thang
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),

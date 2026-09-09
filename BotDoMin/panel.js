@@ -576,6 +576,14 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL ÉP HỘP 🍀] ${key} -> ${prize}`);
                     return sendJSON(res, 200, { ok: true });
                 }
+                // 🎚️ 09/09: sàn cược Dò Mìn/Leo Thang
+                if (path === '/api/games/minbet') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
+                    if (!ctx.setMinBet) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setMinBet(body.minBet);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 // 🔁 09/09: cầu Dogcoin web ↔ game (rut / nap)
                 if (path === '/api/dogbridge/open') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
@@ -1529,6 +1537,11 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="gap:18px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
           <label id="gs_rut_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_rut" style="width:auto;margin:0" onchange="gameSwitch('rut',this)"> 🎮 Rút Dogcoin web → game</label>
           <label id="gs_nap_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_nap" style="width:auto;margin:0" onchange="gameSwitch('nap',this)"> 💬 Nạp Dogcoin game → web</label>
+        </div>
+        <div class="row" style="gap:10px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+          <div style="flex:2"><label>🎚️ Cược tối thiểu Dò Mìn + Leo Thang (Dogcoin/ván)</label><input id="gsMinBet" type="number" min="1" placeholder="vd: 400"></div>
+          <button class="btn-green" onclick="minBetSave(this)">💾 Lưu sàn cược</button>
+          <div class="muted" style="flex:3;font-size:12px">Áp dụng ngay cho ván MỚI, web tự đổi số. Big Small và Phi Thuyền có sàn/trần riêng ở tab của chúng.</div>
         </div>
         <div class="note">Bỏ tick = ĐÓNG ngay, không cần Lưu: người chơi không vào ván/đặt cược/quay MỚI (web hiện ⛔ ĐÓNG), ván đang chơi vẫn xong bình thường, không ai mất tiền. Tick lại là mở. Big Small: dùng ▶️ Tạo bàn / ⏹ Tắt bàn ở tab 🎲. Hàng dưới: 2 chiều cầu Dogcoin ↔ game trên web (đóng chiều nào thì nút chiều đó trên web thành ⛔, chống hack trong game rồi chuyển ra).</div>
       </div>
@@ -2543,7 +2556,15 @@ async function gameSwitch(key,cb){
     :api('/api/stock/cfg',{open:on});
   call.then(()=>{toast(on?'▶️ Đã MỞ '+lb:'⏸ Đã ĐÓNG '+lb);refresh();}).catch(()=>{cb.checked=!on;});
 }
+// 🎚️ 09/09: sàn cược 2 minigame
+async function minBetSave(btn){
+  const v=parseInt(document.getElementById('gsMinBet').value,10);
+  if(!(v>=1))return toast('❌ Nhập số ≥ 1');
+  if(!await uiConfirm('Đặt cược tối thiểu Dò Mìn + Leo Thang = '+v.toLocaleString('vi-VN')+' Dogcoin/ván?','💾 Lưu','btn-green'))return;
+  await runBtn(btn,'Lưu...',()=>api('/api/games/minbet',{minBet:v}).then(j=>{toast('🎚️ Sàn cược Dò Mìn/Leo Thang: '+j.minBet.toLocaleString('vi-VN'));refresh();}));
+}
 function gsFill(){
+  const mb=document.getElementById('gsMinBet');if(mb&&mb.value===''&&document.activeElement!==mb&&STATE&&STATE.pot&&STATE.pot.minBet)mb.value=STATE.pot.minBet;
   const st=gsState();
   Object.keys(GS_LB).forEach(k=>{const cb=document.getElementById('gs_'+k),lb=document.getElementById('gs_'+k+'_lb');if(!cb)return;if(document.activeElement!==cb)cb.checked=st[k];if(lb){lb.style.color=st[k]?'':'var(--red)';lb.lastChild.textContent=' '+GS_LB[k]+(st[k]?' - MỞ':' - ĐANG ĐÓNG');}});
   const tx=document.getElementById('gs_tx');if(tx&&STATE&&STATE.tx){const run=STATE.tx.live&&STATE.tx.status!=='stopped';tx.innerHTML='🎲 Big Small: '+(run?'<b style="color:#3dd68c">ĐANG CHẠY</b> · <button class="mini btn-red" onclick="txStop()">⏹ Tắt bàn</button>':'<b style="color:var(--red)">ĐÃ TẮT</b> (mở lại ở tab 🎲)');}

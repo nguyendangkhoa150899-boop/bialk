@@ -444,7 +444,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/mines/state') {
                         return sendJSON(res, 200, {
                             ok: true, tiles: mines.tiles,
-                            potMults: mines.potMults ? mines.potMults() : [10, 15, 20], open: mines.open ? mines.open() : true, minBet: mines.minBet || 0,
+                            potMults: mines.potMults ? mines.potMults() : [10, 15, 20], open: mines.open ? mines.open() : true, minBet: typeof mines.minBet === 'function' ? mines.minBet() : (mines.minBet || 0),
                             maxWin: mines.maxWin, maxBet: mines.maxBet,
                             minMines: mines.minMines || 1, maxMines: mines.maxMines || (mines.tiles - 1),
                             balance: me.points || 0,
@@ -510,7 +510,7 @@ function startWebPlay(ctx) {
                     if (path === '/api/stairs/state') {
                         return sendJSON(res, 200, {
                             ok: true, floors: stairs.floors, cols: stairs.cols, maxFire: stairs.maxFire,
-                            potMults: stairs.potMults ? stairs.potMults() : [10, 15, 20], open: stairs.open ? stairs.open() : true, minBet: stairs.minBet || 0,
+                            potMults: stairs.potMults ? stairs.potMults() : [10, 15, 20], open: stairs.open ? stairs.open() : true, minBet: typeof stairs.minBet === 'function' ? stairs.minBet() : (stairs.minBet || 0),
                             balance: me.points || 0, game: stairs.current(userId),
                             last: stairs.last ? stairs.last(userId) : null,
                         });

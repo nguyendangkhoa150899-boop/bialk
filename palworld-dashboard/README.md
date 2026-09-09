@@ -694,6 +694,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09 (tối)** — 🎚️ **Sàn cược Dò Mìn + Leo Thang admin chỉnh được** (tab 👥, card Mở/Đóng, hàng
+  dưới): `MIN_BET = 400` chỉ còn là mặc định, số thật `minBet()` đọc `dbCache._minBet`
+  (`setMinBet`, route `/api/games/minbet`, 1–10.000.000); `start()` 2 game + web api dùng getter nên
+  đổi là áp ngay cho ván mới, web nhận `minBet` qua state. Chủ server muốn hạ về 100 cho team chơi
+  lại. pottest +4 case (90). ⚠️ Lúc kiểm API shop, Claude lỡ lưu danh sách RỖNG vào shop bot TEST
+  (65 món) → khôi phục từ `DEFAULT_ITEM_SHOP` (đúng 65, cùng nhóm); nếu chủ server từng sửa giá trên
+  test thì mất. Bài học: không gọi API ghi lên db test bằng dữ liệu giả để "dọn".
 - **09/09 (tối)** — 🛒 **Shop item thêm 2 nhóm 🍖 Thức ăn (`food`) + 🔫 Đạn (`ammo`)**: whitelist nhóm
   gom về 1 hằng `ITEM_SHOP_CATS` trong index.js (list/save/backfill dùng chung), panel select + nạp
   form, web mảng `ISG` 6 nút (hàng nút đã flex-wrap). Món cũ không đổi nhóm. Thêm nhóm sau này = thêm
