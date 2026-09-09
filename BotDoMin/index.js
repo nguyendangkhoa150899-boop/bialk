@@ -1371,6 +1371,7 @@ function itemShopList() {
         img: String(x.img || ''),   // tên file trong assets/itemimage/ (trống = ô 📦)
         cat: (x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'accessory') ? x.cat : 'consume',   // 04/09 nhóm · 07/09 thêm 💍 phụ kiện
         note: String(x.note || '').slice(0, 140),   // 07/09: ghi chú tác dụng (hiện trên card + search được)
+        off: !!x.off,   // 09/09: ẨN khỏi web (admin tắt bán từng món, giữ nguyên dòng trong bảng)
     }));
 }
 function setItemShop(list) {
@@ -1383,6 +1384,7 @@ function setItemShop(list) {
             img: String((x && x.img) || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80),
             cat: (x && (x.cat === 'weapon' || x.cat === 'armor' || x.cat === 'accessory')) ? x.cat : 'consume',
             note: String((x && x.note) || '').trim().slice(0, 140),
+            off: !!(x && x.off),
         }))
         .filter(x => x.id)
         .slice(0, 100);
@@ -1440,7 +1442,7 @@ async function adminGiveItem(gameName, itemId, qty) {
 async function itemShopBuy(userId, itemId, qty, username) {
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới mua item được' };
     const it = itemShopList().find(x => x.id === String(itemId));
-    if (!it) return { error: 'Không thấy món này trong shop' };
+    if (!it || it.off) return { error: 'Không thấy món này trong shop' };   // 09/09: món đang tắt bán coi như không có
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1 || qty > it.max) return { error: `Số lượng phải trong 1–${it.max}` };
     const cost = it.price * qty;
@@ -2329,6 +2331,21 @@ function palBuildDel(userId, name) {
 }
 
 // Panel gọi: liệt kê rương của mọi người (ưu tiên đơn đang giao dở lên đầu)
+// 🗑️ 09/09: xoá SẠCH rương pal của MỌI người chơi (panel SUPER, gõ XOA). Giữ lại pal đang
+// 'delivering' (đang giao dở - admin phải chốt ✅/↩️ trước) để không mất dấu đơn. KHÔNG hoàn tiền
+// (chủ server reset kinh tế cho team chơi lại). Trả số đã xoá / còn giữ.
+function palChestClearAll() {
+    let removed = 0, kept = 0, users = 0;
+    for (const [uid, rec] of Object.entries(dbCache)) {
+        if (!/^\d{15,20}$/.test(uid) || !rec || !Array.isArray(rec.palChest) || !rec.palChest.length) continue;
+        const keep = rec.palChest.filter(i => i.status === 'delivering');
+        removed += rec.palChest.length - keep.length; kept += keep.length; users++;
+        rec.palChest = keep;
+    }
+    saveDbNow();
+    writeLog('ADMIN', `[🗑️ RƯƠNG PAL] Panel XOÁ SẠCH rương: bỏ ${removed} pal của ${users} người, giữ ${kept} đơn đang giao`);
+    return { ok: true, removed, kept, users };
+}
 function palChestOverview() {
     const out = [];
     for (const [uid, rec] of Object.entries(dbCache)) {
@@ -4939,7 +4956,7 @@ client.once('ready', async (c) => {
             // 🛒 shop item (28/08): mua item game + số lượng -> giao vào túi qua mod
             itemshop: {
                 state: (uid) => ({
-                    items: itemShopList(),
+                    items: itemShopList().filter(x => !x.off),   // 09/09: món admin tắt bán không xuống web
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
                 }),
@@ -5033,6 +5050,7 @@ client.once('ready', async (c) => {
             spmForceCrash: (m) => { const v = Number(m); if (!Number.isFinite(v) || v < 1) return { error: 'Điểm nổ phải ≥ 1.00' }; spmState.forced = Math.min(spmCfg().maxMult, v); return { ok: true, forced: spmState.forced, phase: spmState.phase }; },
             palChestOverview,
             palChestGrant,
+            palChestClearAll,   // 🗑️ 09/09 xoá sạch rương mọi người (SUPER)
             palChestResolve,
             deletePlayer,
             resetAllPlayers,

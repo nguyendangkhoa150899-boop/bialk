@@ -694,6 +694,15 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   lửa / MÁY ĐÀO mở ô / THANG MÁY / Ô VÀNG") → câu "Ván này bạn mở được nhờ KHIÊN đỡ mìn nên chỉ
   thưởng TỐI ĐA ×2000 = N"; **khung đỏ nhấp nháy `.capwarn` (#mCapWarn/#sCapWarn) đặt NGAY TRÊN
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
+- **09/09** — 🧰 **3 tiện ích panel SUPER**: (1) **⏸️ Mở/Đóng trò GOM về tab 👥** (chủ server:
+  "dễ thao tác 1 lần"): card đầu tab với 5 ô tick Dò Mìn / Leo Thang / Phi Thuyền / Vòng quay Pal
+  / Sàn cổ phiếu + trạng thái Big Small kèm nút ⏹ - `gameSwitch()` gọi đúng API sẵn có của từng trò
+  (`/api/games/open`, `/api/spm/cfg {open}`, `/api/palwheel/cfg {open}`, `/api/stock/cfg {open}`),
+  đổi ngay không cần Lưu; card cũ ở tab 💣 bỏ. (2) **🗑️ Xóa TẤT CẢ pal trong rương** mọi người
+  chơi (nút đỏ cạnh 🎒 Xem rương, gõ XOA): `palChestClearAll()` xoá mọi item trừ `delivering` (đơn
+  đang giao phải chốt trước), KHÔNG hoàn tiền, route `/api/palchest/clearall`. (3) **Shop item: công
+  tắc Bán/ẩn từng món** - cột "Bán" đầu bảng, bỏ tick = `off:true` → web không thấy, mua thẳng API
+  bị chặn, dòng mờ 45% trong panel, dữ liệu món giữ nguyên.
 - **09/09** — 🔒 **Chế độ PAL GỐC (tắt chỉ số)** - team chơi lại sợ pal quá mạnh. Panel tab 🎮 ô
   tick đỏ "🔒 TẮT CHỈ SỐ PAL" (`palWheelCfg.raw`). Bật → mọi pal giao ra **Lv1 · 0 sao · IV 1/1/1 ·
   linh hồn 0 · KHÔNG passive · bản THƯỜNG** (không BOSS_), chỉ chọn giới tính (v2 theo chủ server:

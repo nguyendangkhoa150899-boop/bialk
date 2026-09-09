@@ -223,7 +223,7 @@ function startPanel(ctx) {
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
-                    '/api/itemshop/save', '/api/itemshop/upload', '/api/palchest/grant', '/api/palchest/resolve',
+                    '/api/itemshop/save', '/api/itemshop/upload', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
                     '/api/palwheel/luckrate', '/api/pot/cfg',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
@@ -304,6 +304,13 @@ function startPanel(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     ctx.writeLog('ADMIN', `[PANEL MAY MẮN] ${uid} -> %/quay = ${r.rate === null ? 'mặc định toàn sàn' : r.rate + '%'}`);
                     return sendJSON(res, 200, { ok: true, rate: r.rate });
+                }
+                // 🗑️ 09/09: xoá sạch rương pal mọi người (SUPER)
+                if (ctx.palChestClearAll && req.method === 'POST' && path === '/api/palchest/clearall') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    const r = ctx.palChestClearAll();
+                    ctx.writeLog('ADMIN', `[PANEL] Xoá sạch rương pal: -${r.removed} pal, giữ ${r.kept} đang giao`);
+                    return sendJSON(res, 200, r);
                 }
                 if (ctx.palChestGrant && req.method === 'POST' && path === '/api/palchest/grant') {
                     const uid = String(body.userId || '').trim();
@@ -1066,15 +1073,6 @@ const HTML = `<!DOCTYPE html>
 
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
-      <!-- ⏸️ 09/09: công tắc mở/đóng 2 minigame (các trò khác có công tắc riêng ở tab của chúng) -->
-      <div class="card epOnly" style="display:none">
-        <h3>⏸️ Mở / Đóng trò</h3>
-        <div class="row" style="gap:22px;flex-wrap:wrap">
-          <label id="goMinesLb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="goMines" style="width:auto;margin:0" onchange="gameOpenToggle('mines',this)"> 💣 Dò Mìn</label>
-          <label id="goStairsLb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="goStairs" style="width:auto;margin:0" onchange="gameOpenToggle('stairs',this)"> 🪜 Leo Thang</label>
-        </div>
-        <div class="note">Bỏ tick = ĐÓNG: người chơi không vào được ván MỚI (nút trên web thành ⛔ ĐÓNG BẢO TRÌ), ván đang chơi vẫn chơi nốt / dừng bình thường, không ai mất tiền. Phi Thuyền, Vòng quay Pal, Cổ phiếu, Big Small có công tắc riêng ở tab của chúng.</div>
-      </div>
       <div class="card">
         <h3>🏆 Hũ nuôi - mỗi trò một hũ riêng</h3>
         <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
@@ -1430,6 +1428,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:10px">
           <button class="btn-grey" id="pcToggleBtn" style="flex:1" onclick="pcToggle()">🎒 Xem rương pal</button>
+          <button class="btn-red epOnly" style="display:none" onclick="pcClearAll(this)">🗑️ Xóa TẤT CẢ pal trong rương</button>
         </div>
         <div id="palChests" class="hist" style="display:none"></div>
       </div>
@@ -1438,7 +1437,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
-            <thead><tr><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Ghi chú tác dụng</th><th>Hình (file)</th><th></th></tr></thead>
+            <thead><tr><th title="Tick = đang bán trên web · bỏ tick = ẩn, người chơi không thấy/không mua được (dòng vẫn giữ)">Bán</th><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Ghi chú tác dụng</th><th>Hình (file)</th><th></th></tr></thead>
             <tbody id="itemShopBody"></tbody>
           </table>
         </div>
@@ -1506,6 +1505,20 @@ const HTML = `<!DOCTYPE html>
     </div>
 
     <div id="tab-user" class="hidden">
+      <!-- ⏸️ 09/09: GOM công tắc mở/đóng 5 trò về 1 chỗ (chủ server: "dễ thao tác 1 lần"). Big Small là bàn
+           Discord, tắt/mở bằng ▶️/⏹ ở tab của nó (cần Channel ID) nên chỉ hiện trạng thái + nút tắt. -->
+      <div class="card epOnly" style="display:none">
+        <h2>⏸️ Mở / Đóng trò chơi</h2>
+        <div class="row" style="gap:18px;flex-wrap:wrap" id="gsRow">
+          <label id="gs_mines_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_mines" style="width:auto;margin:0" onchange="gameSwitch('mines',this)"> 💣 Dò Mìn</label>
+          <label id="gs_stairs_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_stairs" style="width:auto;margin:0" onchange="gameSwitch('stairs',this)"> 🪜 Leo Thang</label>
+          <label id="gs_spm_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_spm" style="width:auto;margin:0" onchange="gameSwitch('spm',this)"> 🚀 Phi Thuyền</label>
+          <label id="gs_pal_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_pal" style="width:auto;margin:0" onchange="gameSwitch('pal',this)"> 🎁 Vòng quay Pal + Chọn Pal</label>
+          <label id="gs_stock_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_stock" style="width:auto;margin:0" onchange="gameSwitch('stock',this)"> 📈 Sàn cổ phiếu</label>
+          <span id="gs_tx" class="muted" style="font-size:13px"></span>
+        </div>
+        <div class="note">Bỏ tick = ĐÓNG ngay, không cần Lưu: người chơi không vào ván/đặt cược/quay MỚI (web hiện ⛔ ĐÓNG), ván đang chơi vẫn xong bình thường, không ai mất tiền. Tick lại là mở. Big Small: dùng ▶️ Tạo bàn / ⏹ Tắt bàn ở tab 🎲.</div>
+      </div>
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
         <div class="row">
@@ -2360,6 +2373,13 @@ function logPick(k){
 // 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
 let PCOPEN=false;
 function pcToggle(){PCOPEN=!PCOPEN;pcToggleApply();}
+// 🗑️ 09/09: xoá sạch rương pal MỌI người chơi (giữ đơn đang giao) - gõ XOA để xác nhận, không hoàn tiền
+async function pcClearAll(btn){
+  const rows=(STATE&&STATE.palChests)||[];
+  const n=rows.filter(r=>r.status!=='delivering').length, d=rows.filter(r=>r.status==='delivering').length;
+  if(!await uiConfirm('XÓA SẠCH rương pal của TẤT CẢ người chơi ('+n+' pal đang thấy'+(d?', giữ lại '+d+' đơn ĐANG GIAO':'')+')? KHÔNG hoàn Dogcoin, không khôi phục được.','🗑️ Xóa hết','btn-red','XOA'))return;
+  await runBtn(btn,'Đang xóa...',()=>api('/api/palchest/clearall',{}).then(j=>{toast('🗑️ Đã xóa '+j.removed+' pal của '+j.users+' người'+(j.kept?' · giữ '+j.kept+' đơn đang giao':''));refresh();}));
+}
 function pcToggleApply(){
   const box=document.getElementById('palChests');if(box)box.style.display=PCOPEN?'':'none';
   const rows=(STATE&&STATE.palChests)||[];
@@ -2406,7 +2426,8 @@ function itemShopAddRow(it){
   it=it||{};
   var body=document.getElementById('itemShopBody');if(!body)return;
   var tr=document.createElement('tr');
-  tr.innerHTML='<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
+  tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="isf-on" style="width:auto;margin:0" title="Đang bán / ẩn" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45"></td>'
+    +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
     +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option><option value="accessory">💍 Phụ kiện</option></select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
@@ -2417,6 +2438,7 @@ function itemShopAddRow(it){
     +'<button class="mini" style="margin-left:4px" onclick="this.previousElementSibling.click()">📷 Up</button></td>'
     +'<td><button class="mini btn-red" onclick="itemShopDelRow(this)">🗑️</button></td>';
   body.appendChild(tr);
+  tr.querySelector('.isf-on').checked=!it.off;tr.style.opacity=it.off?.45:1;   // 09/09 công tắc bán
   tr.querySelector('.isf-id').value=it.id||'';
   tr.querySelector('.isf-name').value=it.name||'';
   // 08/09: thiếu 'accessory' → mọi phụ kiện nạp lên form thành Tiêu hao, bấm Lưu là mất nhóm cả 38 món
@@ -2451,6 +2473,7 @@ function itemShopSave(){
       price:parseInt(tr.querySelector('.isf-price').value)||0,
       max:parseInt(tr.querySelector('.isf-max').value)||1,
       note:tr.querySelector('.isf-note').value.trim(),
+      off:!tr.querySelector('.isf-on').checked,
       img:tr.querySelector('.isf-img').value.trim()};
   }).filter(function(x){return x.id;});
   api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');refresh();}).catch(function(e){toast('❌ '+e.message);});
@@ -2487,11 +2510,22 @@ function renderMineTarget(){
   document.getElementById('mineUser').disabled=any;
 }
 // 🍀 09/09: ép quà hộp may mắn kế tiếp (dùng 1 lần) - cùng ô chọn người chơi của ép mìn
-// ⏸️ 09/09: mở/đóng Dò Mìn + Leo Thang
-async function gameOpenToggle(key,cb){
-  const on=cb.checked, lb=key==='mines'?'💣 Dò Mìn':'🪜 Leo Thang';
-  if(!on&&!await uiConfirm('ĐÓNG '+lb+'? Người chơi không vào được ván mới, ván đang chơi vẫn chơi nốt.','⏸ Đóng','btn-red')){cb.checked=true;return;}
-  api('/api/games/open',{key:key,open:on}).then(j=>{toast(j.open?'▶️ Đã MỞ '+lb:'⏸ Đã ĐÓNG '+lb);refresh();}).catch(()=>{cb.checked=!on;});
+// ⏸️ 09/09: công tắc GOM 5 trò (tab 👥) - mỗi trò gọi đúng API sẵn có của nó
+const GS_LB={mines:'💣 Dò Mìn',stairs:'🪜 Leo Thang',spm:'🚀 Phi Thuyền',pal:'🎁 Vòng quay Pal',stock:'📈 Sàn cổ phiếu'};
+function gsState(){const S=STATE||{};return {mines:(S.gameOpen||{}).mines!==false,stairs:(S.gameOpen||{}).stairs!==false,spm:!S.spmCfg||S.spmCfg.open!==false,pal:!S.palWheelCfg||S.palWheelCfg.open!==false,stock:!S.stock||S.stock.open!==false};}
+async function gameSwitch(key,cb){
+  const on=cb.checked, lb=GS_LB[key]||key;
+  if(!on&&!await uiConfirm('ĐÓNG '+lb+'? Không nhận ván/cược/quay mới, ván đang chơi vẫn xong bình thường.','⏸ Đóng','btn-red')){cb.checked=true;return;}
+  const call=key==='mines'||key==='stairs'?api('/api/games/open',{key:key,open:on})
+    :key==='spm'?api('/api/spm/cfg',{open:on})
+    :key==='pal'?api('/api/palwheel/cfg',{open:on})
+    :api('/api/stock/cfg',{open:on});
+  call.then(()=>{toast(on?'▶️ Đã MỞ '+lb:'⏸ Đã ĐÓNG '+lb);refresh();}).catch(()=>{cb.checked=!on;});
+}
+function gsFill(){
+  const st=gsState();
+  Object.keys(GS_LB).forEach(k=>{const cb=document.getElementById('gs_'+k),lb=document.getElementById('gs_'+k+'_lb');if(!cb)return;if(document.activeElement!==cb)cb.checked=st[k];if(lb){lb.style.color=st[k]?'':'var(--red)';lb.lastChild.textContent=' '+GS_LB[k]+(st[k]?' - MỞ':' - ĐANG ĐÓNG');}});
+  const tx=document.getElementById('gs_tx');if(tx&&STATE&&STATE.tx){const run=STATE.tx.live&&STATE.tx.status!=='stopped';tx.innerHTML='🎲 Big Small: '+(run?'<b style="color:#3dd68c">ĐANG CHẠY</b> · <button class="mini btn-red" onclick="txStop()">⏹ Tắt bàn</button>':'<b style="color:var(--red)">ĐÃ TẮT</b> (mở lại ở tab 🎲)');}
 }
 function luckyForce(){
   const any=document.getElementById('mineAny').checked;
@@ -2828,9 +2862,7 @@ async function refresh(){
       fl.appendChild(item);
     });
   }
-  // ⏸️ công tắc mở/đóng 2 minigame (không đụng khi admin đang bấm)
-  const gopen=STATE.gameOpen||{};
-  [['mines','goMines','goMinesLb','💣 Dò Mìn'],['stairs','goStairs','goStairsLb','🪜 Leo Thang']].forEach(([k,id,lid,nm])=>{const cb=document.getElementById(id),lb=document.getElementById(lid);if(!cb)return;const on=gopen[k]!==false;if(document.activeElement!==cb)cb.checked=on;if(lb){lb.style.color=on?'':'var(--red)';lb.lastChild.textContent=' '+nm+(on?' - đang MỞ':' - ĐANG ĐÓNG');}});
+  gsFill();   // ⏸️ công tắc gom 5 trò ở tab 👥
   // 🍀 ép quà hộp kế tiếp
   const ll=document.getElementById('luckyList');
   if(ll){ll.innerHTML='';const fl2=STATE.forcedLucky||{};const lk=Object.keys(fl2);const PZ={shield:'🛡️ Khiên',dig:'⛏️ Máy đào',rocket:'🚀 Thang máy',cash:'💰 Lì xì',jackpot:'🏆 Nổ hũ',none:'🍂 Hụt'};
