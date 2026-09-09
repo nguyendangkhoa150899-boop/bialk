@@ -696,10 +696,15 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
   nút NHẬN TIỀN**; toast webplay có class `.err` (nền đỏ) khi câu bắt đầu ⚠️/❌/⛔.
 - **09/09** — 🔒 **Chế độ PAL GỐC (tắt chỉ số)** - team chơi lại sợ pal quá mạnh. Panel tab 🎮 ô
   tick đỏ "🔒 TẮT CHỈ SỐ PAL" (`palWheelCfg.raw`). Bật → mọi pal giao ra **Lv1 · 0 sao · IV 1/1/1 ·
-  linh hồn 0 · bản THƯỜNG** (không BOSS_), chỉ giữ giới tính + passive đã chọn (passive vẫn tính
-  phí ô/🌈/hạng 4 như cũ). Server: `specBase` nhánh raw, bỏ bắt "ít nhất 1 dòng linh hồn", bỏ mọi
-  phí linh hồn/IV/dòng/BOSS dù client gửi lên. Web nhận pal: ẩn cột linh hồn + IV và nút BOSS,
-  dòng mặc định ghi "🔒 CHẾ ĐỘ PAL GỐC", tóm tắt bỏ 2 dòng linh hồn/IV. Bỏ tick là về luật thường.
+  linh hồn 0 · KHÔNG passive · bản THƯỜNG** (không BOSS_), chỉ chọn giới tính (v2 theo chủ server:
+  "chỉ chọn được giới tính thôi"). Server: `specBase` nhánh raw, `passives = []`, bỏ bắt "ít nhất 1
+  dòng linh hồn", không tính phí gì dù client gửi lên. **Pool**: bật raw thì `palWheelNormalPool`
+  ẩn 6 huyền thoại (`PALWHEEL_RAW_EXCLUDE_CODE`: SaintCentaur Paladius · BlackCentaur Necromus ·
+  IceHorse Frostallion · IceHorse_Dark Frostallion Noct · JetDragon Jetragon · PoseidonOrca
+  Neptilius), `palWheelRaidPool` + `palLuckyRaidPool` trả rỗng (không ô RAID, không bán raid đích
+  danh, vòng RAID may mắn báo tạm tắt). Web nhận pal: ẩn cả 2 cột (linh hồn+IV, passive) và nút
+  BOSS, dòng mặc định ghi "🔒 CHẾ ĐỘ PAL GỐC". Bỏ tick là về luật thường + pool đủ như cũ.
+  palwheeltest thêm 6 case raw (pool + claim).
   Phi Thuyền: thêm **nút to ⏸/▶️** cạnh tiêu đề card (bấm 1 lần, gọi `/api/spm/cfg {open}`) - công
   tắc cũ là ô tick "Mở game" nhỏ + phải Lưu nên chủ server không thấy.
 - **09/09** — ⏸️ **Công tắc MỞ/ĐÓNG Dò Mìn + Leo Thang** (panel SUPER tab 💣, khung đầu; các trò

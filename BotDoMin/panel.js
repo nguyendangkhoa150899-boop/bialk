@@ -1419,7 +1419,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> 👑 Mở bán bản PAL BOSS (mặc định giao bản thường, chọn BOSS trả thêm giá ở ô 👑)</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
-          <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700" title="Team chơi lại, sợ pal quá mạnh: tick là MỌI pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không BOSS. Passive vẫn chọn/mua như cũ. Bỏ tick là về luật thường."><input type="checkbox" id="pwRaw" style="width:auto"> 🔒 TẮT CHỈ SỐ PAL (giao Lv1 · 0 sao · IV 1 · không linh hồn)</label>
+          <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700" title="Team chơi lại, sợ pal quá mạnh: tick là MỌI pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không passive · không BOSS (chỉ chọn giới tính); vòng quay + chọn pal ẩn Paladius/Necromus/Frostallion/Frostallion Noct/Jetragon/Neptilius và mọi pal raid, vòng RAID may mắn tạm tắt. Bỏ tick là về luật thường."><input type="checkbox" id="pwRaw" style="width:auto"> 🔒 TẮT CHỈ SỐ PAL (Lv1 · 0 sao · IV 1 · không linh hồn · không passive · ẩn 6 pal huyền thoại + pal raid khỏi quay/chọn)</label>
           <button onclick="pwCfgSave()">💾 Lưu</button>
         </div>
         <div class="note" id="pwCfgNow">-</div>
@@ -2223,7 +2223,7 @@ function pwCfgFill(k){
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;document.getElementById('pwRaw').checked=!!k.raw;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
     '</b> · linh hồn <b>'+k.soulMax+'</b> dòng miễn phí × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
-    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: giao Lv1 · 0 sao · IV 1 · không linh hồn</b>':'');
+    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: Lv1 · 0 sao · IV 1 · không linh hồn · không passive · ẩn huyền thoại + raid</b>':'');
 }
 function pwCfgSave(){
   const o={price:parseInt(document.getElementById('pwPrice').value),

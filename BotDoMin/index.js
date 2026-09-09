@@ -1784,15 +1784,22 @@ function setPalWheelCfg(o) {
     saveDbNow();
     return palWheelCfg();
 }
+// 🔒 09/09: chế độ PAL GỐC (palWheelCfg().raw) ẨN 6 pal huyền thoại khỏi quay + chọn đích danh
+// (chủ server: team chơi lại, không muốn pal quá mạnh). Tắt chế độ là về đủ như cũ.
+const PALWHEEL_RAW_EXCLUDE_CODE = ['SaintCentaur', 'BlackCentaur', 'IceHorse', 'IceHorse_Dark', 'JetDragon', 'PoseidonOrca'];   // Paladius · Necromus · Frostallion · Frostallion Noct · Jetragon · Neptilius
 function palWheelNormalPool() {
     const raid = new Set(PAL_DATA.raidOnly || []);
-    return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code));
+    const raw = palWheelCfg().raw;
+    return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code)
+        && !(raw && PALWHEEL_RAW_EXCLUDE_CODE.includes(p.code)));
 }
 function palWheelRaidPool() {
+    if (palWheelCfg().raw) return [];   // 🔒 PAL GỐC: không ô RAID trên vòng, không bán raid đích danh
     return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
 }
 // 🍀 4 boss của vòng quay RAID may mắn (khác pool ô RAID vòng thường)
 function palLuckyRaidPool() {
+    if (palWheelCfg().raw) return [];   // 🔒 PAL GỐC: vòng RAID may mắn cũng tắt
     return (PAL_DATA.all || []).filter(p => PALWHEEL_LUCKY_RAID_NAMES.includes(p.name));
 }
 // %/quay nạp thanh may mắn của 1 người: admin đặt riêng (u.palLuckRate, số cố định) thì
@@ -1914,6 +1921,7 @@ function palWheelSpin(userId, username) {
 function palRaidSpin(userId, username) {
     const cfg = palWheelCfg();
     if (!cfg.raidWheelOn) return { error: 'Vòng quay RAID đang tắt' };
+    if (cfg.raw) return { error: '🔒 Đang chế độ PAL GỐC - vòng quay RAID tạm tắt (thanh may mắn vẫn giữ)' };
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới quay được' };
     if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt - chờ vài giây rồi quay tiếp nhé' };
     const user = getUserData(userId);
@@ -2085,7 +2093,8 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
         return { error: 'Phải chọn ít nhất 1 dòng linh hồn rồi mới nhận được' };
     }
     const catalog = new Set(passiveCatalog().map(p => p.id));
-    const passives = Array.isArray(passivesIn) ? [...new Set(passivesIn.map(String).filter(p => catalog.has(p)))] : [];
+    // 🔒 09/09: PAL GỐC không có passive (chỉ chọn giới tính) - client gửi gì cũng bỏ
+    const passives = palWheelCfg().raw ? [] : (Array.isArray(passivesIn) ? [...new Set(passivesIn.map(String).filter(p => catalog.has(p)))] : []);
     if (passives.length > 8) return { error: 'Tối đa 8 passive' };
 
     // 💎 NÂNG CẤP TRẢ PHÍ (26/08, chủ server chốt bảng giá): mức vượt gốc miễn phí

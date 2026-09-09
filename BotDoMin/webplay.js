@@ -3092,9 +3092,9 @@ const PAGE = [
     'PCIT=null;PC.chest.forEach(function(i){if(i.id===id)PCIT=i});if(!PCIT)return;',
     'if(!PC.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     '$("pcmTitle").textContent="🎁 Nhận "+PCIT.name;',
-    '$("pcmBase").innerHTML=PC.raw?"🔒 <b>CHẾ ĐỘ PAL GỐC</b> (admin tắt chỉ số): giao <b>Lv 1</b> · <b>0 sao</b> · <b>IV 1</b> · <b>không linh hồn</b> · bản <b>THƯỜNG</b> - chỉ chọn giới tính + passive":"Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số · bản <b>THƯỜNG</b>";',
+    '$("pcmBase").innerHTML=PC.raw?"🔒 <b>CHẾ ĐỘ PAL GỐC</b> (admin tắt chỉ số): giao <b>Lv 1</b> · <b>0 sao</b> · <b>IV 1</b> · <b>không linh hồn</b> · <b>không passive</b> · bản <b>THƯỜNG</b> - chỉ chọn giới tính":"Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số · bản <b>THƯỜNG</b>";',
     // 🔒 09/09: PAL GỐC -> ẩn cột linh hồn + IV và nút BOSS (server bỏ qua dù gửi lên)
-    'var colL=$("pcmColL");if(colL)colL.style.display=PC.raw?"none":"";',
+    'var colL=$("pcmColL");if(colL)colL.style.display=PC.raw?"none":"";var colR=$("pcmColR");if(colR)colR.style.display=PC.raw?"none":"";if(PC.raw)PCSEL={};',   // 🔒 v2: ẩn luôn passive
     // 👑 reset lựa chọn boss mỗi lần mở bảng + chỉ hiện khi đang mở bán và pal CÓ bản boss
     'PCBOSS=0;var bbt=$("pcmBossBtn");if(bbt)bbt.classList.remove("on");',
     'var bRow=$("pcmBossRow");if(bRow)bRow.style.display=(!PC.raw&&PC.boss&&!/^Yakushima/i.test(PCIT.code||"")&&(PC.noBoss||[]).indexOf(PCIT.code)<0)?"":"none";',
@@ -3190,12 +3190,12 @@ const PAGE = [
     '$("pcmLineCost").textContent=lc?("💎 "+(lines-(PC.soulMax||1))+" dòng vượt "+(PC.soulMax||1)+" dòng gốc miễn phí × "+vnd(up.soulLine||0)+" = +"+vnd(lc)):"";',
     '$("pcmIvCost").textContent=ivc?("💎 phụ phí IV: +"+vnd(ivc)+" ("+vnd(up.iv||0)+"/điểm mỗi chỉ số)"):"gốc miễn phí";',
     '$("pcmPassCost").textContent=pc?("💎 +"+vnd(pc)):"";',
-    'if(PC.raw){sc=0;lc=0;ivc=0;bc=0}',   // 🔒 PAL GỐC: chỉ còn phí passive
+    'if(PC.raw){sc=0;lc=0;ivc=0;bc=0;pc=0;wtc=0;t4c=0;PCSEL={}}',   // 🔒 PAL GỐC v2: không phí gì cả (không passive)
     'PCUP=sc+lc+ivc+pc+wtc+t4c+bc;',
     // 🧾 tổng kết: mua gì, tốn gì - từng dòng một, phí bên phải
     'var line=function(l,v){return "<div class=\\"sline\\"><span class=\\"muted\\">"+l+"</span><b>"+v+"</b></div>"};',
     'var bIco="<img src=\\"/palboss.png\\" alt=\\"👑\\" style=\\"width:15px;height:15px;vertical-align:-3px;border-radius:3px\\" onerror=\\"this.outerHTML=\'👑\'\\"> ";',
-    'var sum=PC.raw?line("Pal",esc(PCIT?PCIT.name:"?")+" · thường · <b>Lv1 · 0⭐ · IV 1 · không linh hồn</b> (🔒 admin tắt chỉ số)"):line("Pal",esc(PCIT?PCIT.name:"?")+(PCBOSS?" · "+bIco+"BOSS":" · thường")+" · Lv"+(PC.level||80)+" · "+(PC.stars||4)+"⭐");',
+    'var sum=PC.raw?line("Pal",esc(PCIT?PCIT.name:"?")+" · thường · <b>Lv1 · 0⭐ · IV 1 · không linh hồn · không passive</b> (🔒 admin tắt chỉ số)"):line("Pal",esc(PCIT?PCIT.name:"?")+(PCBOSS?" · "+bIco+"BOSS":" · thường")+" · Lv"+(PC.level||80)+" · "+(PC.stars||4)+"⭐");',
     'if(PCBOSS)sum+=line(bIco+"Bản PAL BOSS","+"+vnd(bc));',
     // 09/09: mỗi dòng linh hồn ghi đủ phí của chính nó (thêm dòng + kéo %), không gộp cục "phí thêm dòng" ở dưới nữa
     'if(!PC.raw){soulRows.forEach(function(s){var f=s.lf+s.c;sum+=line("💠 Linh hồn "+SOUL_LBL[s.k]+" +"+s.sp+"%"+(s.lf?" · thêm dòng":" · dòng gốc"),f?"+"+vnd(f):"miễn phí")});',
@@ -3205,7 +3205,7 @@ const PAGE = [
     'var pIdx=0,pfree=(PC.passiveMax||4),pr2={5:up.slot5||0,6:up.slot6||0,7:up.slot7||0,8:up.slot8||0};',
     'Object.keys(PCSEL).forEach(function(id){pIdx++;var pp=(PC.passives||[]).filter(function(x){return x.id===id})[0];var sf=pIdx>pfree?(pIdx>=5?(pr2[pIdx]||0):(up.slotLow||0)):0;var wf=(pp&&pp.wt)?(up.wt||0):((pp&&pp.tier===4)?(up.t4||0):0);',
     'sum+=line("✨ Passive #"+pIdx+" "+esc(pp?pp.name:id)+(pp&&pp.wt?" 🌈":(pp&&pp.tier===4&&wf?" 💎":""))+(sf?" · ô vượt gốc":""),(sf+wf)?"+"+vnd(sf+wf)+(sf&&wf?" (ô "+vnd(sf)+" + passive "+vnd(wf)+")":""):"miễn phí")});',
-    'if(!pIdx)sum+=line("✨ Passive","game tự random");',
+    'if(!pIdx)sum+=line("✨ Passive",PC.raw?"🔒 tắt chỉ số - không chọn, game tự random":"game tự random");',
     '$("pcmSumBody").innerHTML=sum;',
     '$("pcmUpTotal").innerHTML=PCUP?("💎 Tổng phụ phí: <b style=\\"color:var(--gold)\\">"+vnd(PCUP)+"</b> Dogcoin (trừ ví khi nhận, giao hụt tự hoàn) · Ví: "+vnd(BAL)):"✅ Đang ở mức gốc, không tốn phụ phí · Ví: "+vnd(BAL)}',
     'function pcSoulLim(cb){var n=$("pcmSouls").querySelectorAll("input:checked").length;',
