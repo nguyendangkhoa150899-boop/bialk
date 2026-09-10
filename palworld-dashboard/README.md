@@ -670,6 +670,9 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — ✂️ **Tên implant chỉ còn tiếng Việt**: bỏ "Cấy ghép dùng một lần: " / "Cấy ghép: " và " (Tên tiếng Anh)"
+  ở 22 món nhóm implant (DEFAULT + đợt ghép 9 `_migItemShopImplantName1009` gọt tên món đã có trong DB theo đúng mẫu,
+  tên admin tự sửa không dính). Ví dụ "Cấy ghép dùng một lần: Cú Nhảy Không Gian (Dimensional Leap)" → "Cú Nhảy Không Gian".
 - **10/09** — 🆘 **Tẩu thoát: 4 tiếng → 1 tiếng/người/lần** (`RESCUE_CD_MS`), sửa luôn mọi câu chữ "4 tiếng" ở ngữ
   cảnh tẩu thoát trong index/webplay/panel (câu chặn, câu báo xong, chú thích Hồ sơ web, card panel, toast 🧪). Web tự
   lấy `rescueCd` từ state nên đồng hồ đếm ngược đúng ngay. ⚠️ Commit `4a43a6a` lỡ đẩy TRƯỚC khi kiểm cú pháp (script kiểm
