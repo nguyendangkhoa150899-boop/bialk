@@ -1496,9 +1496,10 @@ function seedItemShopIfEmpty() {
         writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} implant Cây Thế Giới (12.000/cái, 1/người/ngày) + icon Chuyển Đổi riêng`);
     }
     // 10/09: đợt 9 - tên implant chỉ còn tiếng Việt (bỏ "Cấy ghép dùng một lần: " / "Cấy ghép: " / " (English)"), cờ riêng
-    if (!dbCache._migItemShopImplantName1009) {
-        dbCache._migItemShopImplantName1009 = 1;
-        const strip = (v) => String(v || '').replace(/^Cấy ghép( dùng một lần)?: /, '').replace(/ \([^()]*\)$/, '');
+    // (b: tên từng bị cắt 60 ký tự nên có đuôi " (Twin-Edged Holy" mất ngoặc đóng -> gọt cả đuôi hở)
+    if (!dbCache._migItemShopImplantName1009b) {
+        dbCache._migItemShopImplantName1009b = 1;
+        const strip = (v) => String(v || '').replace(/^Cấy ghép( dùng một lần)?: /, '').replace(/ \([^()]*\)?$/, '').trim();
         const cur = itemShopList();
         let n = 0;
         const fixed = cur.map(x => { if (x.cat !== 'implant') return x; const v = strip(x.name); if (v !== x.name) n++; return { ...x, name: v }; });
