@@ -1349,6 +1349,40 @@ const DEFAULT_ITEM_SHOP = [
     { cat: 'material', id: 'Venom', name: 'Tuyến Độc', price: 2, max: 999, img: 'T_itemicon_Material_Venom.webp' },
     { cat: 'material', id: 'PalOil', name: 'Dầu Pal Thượng Hạng', price: 2, max: 999, img: 'T_itemicon_Material_PalOil.webp' },
     { cat: 'material', id: 'PalItem_RaijinDaughter', name: 'Mây Dazzi', price: 2, max: 999, img: 'T_itemicon_Material_PalItem_RaijinDaughter.webp' },
+    // 10/09: 🔫 32 loại đạn (mọi Ammo trong game trừ Magnum + Súng Máy chưa có), 1 Dogcoin/cái - thương nhân
+    // đã tắt (BialkShopOff) nên đạn chỉ mua được ở đây. Tên = tên tiếng Việt trong game (gameitems.json).
+    { cat: 'ammo', id: 'Arrow', name: 'Mũi Tên', price: 1, max: 999, img: 'T_itemicon_Ammo_Arrow.webp' },
+    { cat: 'ammo', id: 'Arrow_Poison', name: 'Mũi Tên Độc', price: 1, max: 999, img: 'T_itemicon_Ammo_Arrow_Poison.webp' },
+    { cat: 'ammo', id: 'Arrow_Fire', name: 'Mũi Tên Lửa', price: 1, max: 999, img: 'T_itemicon_Ammo_Arrow_Fire.webp' },
+    { cat: 'ammo', id: 'ReinforcedArrow', name: 'Mũi Tên Cường Hóa', price: 1, max: 999, img: 'T_itemicon_Ammo_ReinforcedArrow.webp' },
+    { cat: 'ammo', id: 'SFArrow', name: 'Mũi Tên Nâng Cấp', price: 1, max: 999, img: 'T_itemicon_Ammo_SFArrow.webp' },
+    { cat: 'ammo', id: 'RoughBullet', name: 'Đạn Thô', price: 1, max: 999, img: 'T_itemicon_Ammo_RoughBullet.webp' },
+    { cat: 'ammo', id: 'HandgunBullet', name: 'Đạn Súng Ngắn', price: 1, max: 999, img: 'T_itemicon_Ammo_HandgunBullet.webp' },
+    { cat: 'ammo', id: 'RifleBullet', name: 'Đạn Súng Trường', price: 1, max: 999, img: 'T_itemicon_Ammo_RifleBullet.webp' },
+    { cat: 'ammo', id: 'ShotgunBullet', name: 'Đạn Súng Săn', price: 1, max: 999, img: 'T_itemicon_Ammo_ShotgunBullet.webp' },
+    { cat: 'ammo', id: 'AssaultRifleBullet', name: 'Đạn Súng Trường Tấn Công', price: 1, max: 999, img: 'T_itemicon_Ammo_AssaultRifleBullet.webp' },
+    { cat: 'ammo', id: 'ExplosiveBullet', name: 'Tên Lửa', price: 1, max: 999, img: 'T_itemicon_Ammo_ExplosiveBullet.webp' },
+    { cat: 'ammo', id: 'InkBullet', name: 'Đạn Súng Bắn Decal', price: 1, max: 999, img: 'T_itemicon_Ammo_InkBullet.webp' },
+    { cat: 'ammo', id: 'FlamethrowerBullet', name: 'Nhiên Liệu Súng Phun Lửa', price: 1, max: 999, img: 'T_itemicon_Ammo_FlamethrowerBullet.webp' },
+    { cat: 'ammo', id: 'MissileBullet', name: 'Tên Lửa Điều Khiển', price: 1, max: 999, img: 'T_itemicon_Ammo_MissileBullet.webp' },
+    { cat: 'ammo', id: 'GrenadeBullet', name: 'Lựu Đạn', price: 1, max: 999, img: 'T_itemicon_Ammo_GrenadeBullet.webp' },
+    { cat: 'ammo', id: 'GatlingBullet', name: 'Đạn Súng Nòng Xoay', price: 1, max: 999, img: 'T_itemicon_Ammo_GatlingBullet.webp' },
+    { cat: 'ammo', id: 'MeteorBullet', name: 'Đạn Thiên Thạch', price: 1, max: 999, img: 'T_itemicon_Ammo_MeteorBullet.webp' },
+    { cat: 'ammo', id: 'LaserBullet', name: 'Đạn Năng Lượng', price: 1, max: 999, img: 'T_itemicon_Ammo_LaserBullet.webp' },
+    { cat: 'ammo', id: 'EnergyLauncherBullet', name: 'Đạn Plasma', price: 1, max: 999, img: 'T_itemicon_Ammo_EnergyLauncherBullet.webp' },
+    { cat: 'ammo', id: 'LaserGatlingBullet', name: 'Đạn Súng Nòng Xoay Laser', price: 1, max: 999, img: 'T_itemicon_Ammo_LaserGatlingBullet.webp' },
+    { cat: 'ammo', id: 'ChargeLaserRifleBullet', name: 'Đạn Súng Trường Năng Lượng', price: 1, max: 999, img: 'T_itemicon_Ammo_ChargeLaserRifleBullet.webp' },
+    { cat: 'ammo', id: 'OverheatRifleBullet', name: 'Đạn Súng Trường Quá Nhiệt', price: 1, max: 999, img: 'T_itemicon_Ammo_OverheatRifleBullet.webp' },
+    { cat: 'ammo', id: 'EnergyShotgunBullet', name: 'Đạn Súng Săn Năng Lượng', price: 1, max: 999, img: 'T_itemicon_Ammo_EnergyShotgunBullet.webp' },
+    { cat: 'ammo', id: 'PalDopingShotBullet', name: 'Đạn Súng Cường Lực', price: 1, max: 999, img: 'T_itemicon_Ammo_PalDopingShotBullet.webp' },
+    { cat: 'ammo', id: 'WidePenetrateShotgunBullet', name: 'Đạn Súng Năng Lượng Tán Xạ', price: 1, max: 999, img: 'T_itemicon_Ammo_WidePenetrateShotgunBullet.webp' },
+    { cat: 'ammo', id: 'ElectricArcAssaultRifleBullet', name: 'Đạn Súng Trường Plasma', price: 1, max: 999, img: 'T_itemicon_Ammo_ElectricArcAssaultRifleBullet.webp' },
+    { cat: 'ammo', id: 'BeamLauncherBullet', name: 'Đạn Thiết Bị Phóng Chùm Tia', price: 1, max: 999, img: 'T_itemicon_Ammo_BeamLauncherBullet.webp' },
+    { cat: 'ammo', id: 'SkyBowArrow', name: 'Mũi Tên Cung Cơ Khí', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyBowArrow.webp' },
+    { cat: 'ammo', id: 'SkySubmachineGunBullet', name: 'Đạn Súng Tiểu Liên Chiến Đấu', price: 1, max: 999, img: 'T_itemicon_Ammo_SkySubmachineGunBullet.webp' },
+    { cat: 'ammo', id: 'SkyShotgunBullet', name: 'Đạn Súng Săn Nguyên Mẫu', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyShotgunBullet.webp' },
+    { cat: 'ammo', id: 'SkyAssaultRifleBullet', name: 'Đạn Súng Trường Tấn Công Hạng Nặng', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyAssaultRifleBullet.webp' },
+    { cat: 'ammo', id: 'SkyGrenadeLauncherBullet', name: 'Đạn Súng Phóng Lựu Chiến Thuật', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyGrenadeLauncherBullet.webp' },
 ];
 function seedItemShopIfEmpty() {
     if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
@@ -1397,6 +1431,17 @@ function seedItemShopIfEmpty() {
         if (add.length) {
             setItemShop(cur.concat(add));
             writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món thức ăn + nguyên liệu: ${add.map(x => x.id).join(', ')}`);
+        } else saveDbNow();
+    }
+    // 10/09: đợt 5 - CHỈ ghép 32 🔫 đạn (cat ammo), cờ riêng
+    if (!dbCache._migItemShopAmmo1009) {
+        dbCache._migItemShopAmmo1009 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'ammo' && !have.has(x.id));
+        if (add.length) {
+            setItemShop(cur.concat(add));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} loại đạn (1 Dogcoin/cái)`);
         } else saveDbNow();
     }
     // 07/09: điền GHI CHÚ tác dụng cho món cũ còn thiếu (tra id trong DEFAULT) - idempotent
@@ -1474,7 +1519,7 @@ function setItemShop(list) {
             off: !!(x && x.off),
         }))
         .filter(x => x.id)
-        .slice(0, 100);
+        .slice(0, 300);   // 10/09: trần 100 -> 300 (84 món + 32 đạn = 116 đã vượt 100)
     saveDbNow();
     return itemShopList();
 }

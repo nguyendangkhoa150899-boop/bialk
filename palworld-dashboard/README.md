@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🔫 **Shop item +32 loại đạn, 1 Dogcoin/cái** (chủ server tải 32 icon `T_itemicon_Ammo_*.webp`, dẫn
+  paldb.cc/vi/Ammo, dặn BỎ 6 món chưa có trong game: 2 món tên "-", Đạn Súng Máy `MachingunBullet`, Đạn Magnum
+  `MagnumBullet`, SkyLightBullet, SkyHeavyBullet). Lấy đúng 34 Ammo trong `gameitems.json` trừ 2 id Magnum/Súng Máy
+  = 32, tên tiếng Việt trong game, cat `ammo` (đã có từ 09/09). Đợt ghép 5 cờ `_migItemShopAmmo1009`. **Nới trần
+  `setItemShop` 100 → 300** (84 + 32 = 116 đã vượt 100 - trước đây sẽ bị cắt lặng lẽ). Test bot: log "Ghép thêm 32 loại
+  đạn", web 116 món / 7 nhóm, 32 đạn giá 1, icon 200. Lưu ý: `RoughBullet` (Đạn Thô), `InkBullet` (đạn súng decal),
+  `PalDopingShotBullet` có trong dữ liệu game nhưng ít ai xài - admin không cần thì tắt "Bán" ở panel.
 - **10/09** — 🐛 **HOTFIX web Shop Item vỡ layout (card lồng bậc thang, mất nút Mua)** ngay sau `499e865`: patch
   hạn/ngày chèn 2 hàm `isDayLeft/isDayLine` vào GIỮA 2 dòng của biểu thức `return` trong `isCard` (hàm này trải
   2 phần tử mảng chuỗi) → ASI cắt return sớm, card không đóng `</div>`, mất hàng Mua, 2 hàm thành hàm lồng nên
