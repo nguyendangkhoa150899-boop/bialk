@@ -2965,10 +2965,10 @@ const PAGE = [
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
     'function isCard(it){return "<div class=\\"isItem\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
+    '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
     'function isDayLine(it){if(!IS||!(IS.dayMax>0))return "";var l=isDayLeft(it.id);return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?"hôm nay còn mua được "+l+"/"+IS.dayMax:"hôm nay đã mua đủ "+IS.dayMax+" - mai quay lại")+"</div>"}',
-    '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"}',
     'function isRender(){if(!IS)return;var cat=isCatGet();var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
     // hàng nút nhóm (đếm số món từng nhóm, nhóm đang xem sáng lên)
     'var cb=$("isCats");if(cb)cb.innerHTML=ISG.map(function(g){var n=IS.items.filter(function(it){return (it.cat||"consume")===g[0]}).length;',

@@ -670,6 +670,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🐛 **HOTFIX web Shop Item vỡ layout (card lồng bậc thang, mất nút Mua)** ngay sau `499e865`: patch
+  hạn/ngày chèn 2 hàm `isDayLeft/isDayLine` vào GIỮA 2 dòng của biểu thức `return` trong `isCard` (hàm này trải
+  2 phần tử mảng chuỗi) → ASI cắt return sớm, card không đóng `</div>`, mất hàng Mua, 2 hàm thành hàm lồng nên
+  `isBuy` gọi `isDayLeft` lỗi. pagecheck KHÔNG bắt được (cú pháp vẫn hợp lệ). Fix: dời 2 hàm xuống sau isCard.
+  Bài học: webplay.js là MẢNG chuỗi, một hàm có thể trải nhiều phần tử - chèn dòng mới phải nhìn cả dòng kế.
+  Thêm bộ test `shopcardtest.js` (11 case, trích isCard từ trang 4002 đã render: đếm div đóng/mở, có nút Mua,
+  dòng 📅 xanh/đỏ, 2 hàm cấp cao nhất). Chữ Việt hiện "?" trong ảnh chủ server gửi là hệ quả lồng card (font
+  đậm chồng nhiều lớp), header + meta đều utf-8.
 - **10/09** — 📅 **Shop item: GIỚI HẠN MUA mỗi món / mỗi người / ngày** (chủ server: "mỗi người chỉ được mua
   99 cái/ngày, tất cả vật phẩm, cho mình set"). Một số chung `dbCache._itemShopDayMax` (mặc định 99, 0 = không
   giới hạn), admin đặt ở panel SUPER tab 🎮 card Shop Item (ô 📅 + 💾, route `/api/itemshop/daymax` trong VIEWONLY
