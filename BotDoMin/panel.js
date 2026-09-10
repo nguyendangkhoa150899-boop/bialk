@@ -173,6 +173,9 @@ function startPanel(ctx) {
             palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
             // 🎁 vòng quay pal web + rương (25/08)
             palWheelCfg: ctx.getPalWheelCfg ? ctx.getPalWheelCfg() : null,
+            // 🆘 10/09: điểm tẩu thoát admin đặt - đi theo state để F5 / cổng thường vẫn thấy
+            // (trước chỉ tải bằng POST riêng lúc mở trang, chưa đăng nhập -> 401 -> ô trống)
+            rescuePoint: ctx.getRescuePoint ? ctx.getRescuePoint() : null,
             spmCfg: ctx.getSpmCfg ? ctx.getSpmCfg() : null,
             spmState: ctx.getSpmState ? ctx.getSpmState() : null,
             spmBoard: ctx.getSpmBoard ? ctx.getSpmBoard() : { on: false, channelId: '' },
@@ -1022,7 +1025,9 @@ const HTML = `<!DOCTYPE html>
     <div class="dot" id="connDot"></div>
     <strong>Bảng Điều Khiển</strong>
     <span id="connText" style="font-size:13px;font-weight:600"></span>
+    <span id="holdText" style="font-size:12px;font-weight:700;color:var(--gold,#e6b13a)"></span>
     <span id="statusLine" class="muted" style="margin-left:auto;font-size:13px"></span>
+    <button id="holdBtn" class="btn-grey" style="padding:6px 10px;font-size:12px" type="button" onclick="holdToggle()" title="Tạm dừng vẽ lại màn hình (để bôi chữ / copy / Ctrl+F). Dữ liệu vẫn tải, bấm lần nữa để chạy lại">⏸ Dừng cập nhật</button>
   </header>
 
   <div class="wrap">
@@ -1696,6 +1701,16 @@ const HTML = `<!DOCTYPE html>
 </div>
 
 <script>
+// 10/09: innerHTML "lười" - gán lại ĐÚNG chuỗi đã gán lần trước (và số con không đổi) thì
+// KHÔNG đụng DOM. Nhịp 3s dựng lại ~40 khối; khối nào dữ liệu y cũ giờ đứng yên -> giữ
+// được bôi đen + vệt Ctrl+F ở cả 2 cổng, chỉ khối có số đổi (sàn CP, giờ) mới vẽ lại.
+// Đếm childNodes để chỗ nào gán '' rồi appendChild vẫn reset đúng như cũ.
+(function(){
+  const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+  if(!d||!d.set)return;
+  Object.defineProperty(Element.prototype,'innerHTML',{configurable:true,enumerable:d.enumerable,get:d.get,
+    set:function(v){v=String(v);if(this.__hs===v&&this.__hn===this.childNodes.length)return;d.set.call(this,v);this.__hs=v;this.__hn=this.childNodes.length;}});
+})();
 // Server nhúng giá trị này vào trang (xem handler GET '/'). true = panel không có
 // mật khẩu, vào thẳng, không hiện bảng đăng nhập.
 const AUTH_OFF = __AUTH_OFF__;
@@ -1825,7 +1840,9 @@ function showApp(){
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
-  setInterval(refresh,3000);
+  // 10/09: nhịp 3s = refresh(false) (tự động, tôn trọng "giữ màn hình"); refresh() sau khi bấm
+  // nút = ép vẽ lại ngay (admin vừa thao tác thì muốn thấy kết quả, kể cả đang bôi chữ / ⏸).
+  setInterval(()=>refresh(false),3000);
 }
 
 function tab(t){
@@ -1998,7 +2015,7 @@ function renderPalLinks(){
     '</table>';
 }
 // 🆘 điểm tẩu thoát (10/09)
-function rpFill(p){const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e)e.value=(v===0||v)?v:'';};set('rpX',p&&p.x);set('rpY',p&&p.y);set('rpZ',p&&p.z);
+function rpFill(p,soft){const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!(soft&&e.value!==''))e.value=(v===0||v)?v:'';};set('rpX',p&&p.x);set('rpY',p&&p.y);set('rpZ',p&&p.z);
   const n=document.getElementById('rpNow');if(n)n.textContent=p?('Đang dùng điểm: '+p.x+', '+p.y+', '+p.z):'Chưa đặt - đang dùng mặc định PlayerStart (rơi ở World Tree!)';}
 function rpLoad(){api('/api/rescue/point',{get:1}).then(j=>rpFill(j.point)).catch(()=>{});}
 function rpGrab(){const name=document.getElementById('rpName').value.trim();if(!name)return toast('Gõ tên nhân vật ĐANG online trước');
@@ -2008,7 +2025,8 @@ function rpSave(){const g=id=>parseFloat(document.getElementById(id).value);cons
   if(![x,y,z].every(Number.isFinite))return toast('Nhập đủ X Y Z (bấm 📍 cho nhanh)');
   api('/api/rescue/point',{x,y,z}).then(j=>{rpFill(j.point);toast('💾 Đã lưu điểm tẩu thoát');}).catch(e=>toast('❌ '+e.message));}
 function rpClear(){api('/api/rescue/point',{clear:1}).then(()=>{rpFill(null);toast('🗑️ Về mặc định PlayerStart');}).catch(e=>toast('❌ '+e.message));}
-setTimeout(rpLoad,800);
+// 10/09: không tải mù sau 800ms nữa (lúc đó chưa đăng nhập -> 401 -> ô trống, F5 là "mất").
+// refresh() điền từ STATE.rescuePoint; rpLoad giữ lại cho nút nào cần hỏi thẳng.
 function rpTest(){const name=document.getElementById('rpName').value.trim();if(!name)return toast('Gõ tên nhân vật ĐANG online (ô trên)');
   toast('🧪 Đang dịch chuyển '+name+' tới điểm đã LƯU (5-20 giây)... - không tính lượt 4 tiếng');
   api('/api/rescue/test',{name}).then(j=>toast('✅ Đã dịch chuyển '+name+(j.point?' tới '+j.point.x+', '+j.point.y:' về PlayerStart (chưa đặt điểm - lại World Tree đấy!)'))).catch(e=>toast('❌ '+e.message));}
@@ -2592,7 +2610,7 @@ function itemShopSave(){
       off:!tr.querySelector('.isf-on').checked,
       img:tr.querySelector('.isf-img').value.trim()};
   }).filter(function(x){return x.id;});
-  api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');itemShopDirty(false);ISSIG='';refresh();}).catch(function(e){toast('❌ '+e.message);});
+  api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');itemShopDirty(false);ISSIG='';HOLD_SIG='';refresh();}).catch(function(e){toast('❌ '+e.message);});
 }
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 async function chatDelete(inputId,btn){const c=document.getElementById(inputId).value.trim();if(!c)return toast('❌ Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;await runBtn(btn,'Đang xóa...',()=>api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');}));}
@@ -2678,12 +2696,13 @@ function renderPlayers(){
   const kept={};
   document.querySelectorAll('input[id^="amt_"]').forEach(i=>{if(i.value!=='')kept[i.id]=i.value;});
   const q=(document.getElementById('search').value||'').toLowerCase();
-  const tb=document.getElementById('playerBody');tb.innerHTML='';
+  // 10/09: dựng CẢ bảng thành 1 chuỗi rồi gán 1 lần - ví/nợ không đổi thì setter lười bỏ
+  // qua, bảng đứng yên (trước: xóa sạch + appendChild từng dòng mỗi 3s -> mất bôi đen).
+  const tb=document.getElementById('playerBody');let tbHtml='';
   STATE.players.filter(p=>p.name.toLowerCase().includes(q)||p.id.includes(q)).forEach(p=>{
-    const tr=document.createElement('tr');
     const debtCell=p.debt>0?('<b style="color:#e74c3c">'+p.debt.toLocaleString()+'</b>'+(p.debtBad?' ⚠️':'')):'<span class="muted">0</span>';
     // (cột 🍀 may mắn đã gỡ 04/09 - chủ server để mặc định, bảng đỡ banh ngang)
-    tr.innerHTML='<td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
+    tbHtml+='<tr><td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
       '<td>'+debtCell+'</td>'+
       '<td><input class="mini-in" type="number" placeholder="số" id="amt_'+p.id+'">'+
       ' <button class="mini btn-blue" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
@@ -2692,9 +2711,9 @@ function renderPlayers(){
       ' <button class="mini btn-red" onclick="pDebt(\\''+p.id+'\\')">📒 Ghi nợ</button>'+
       ((p.debt>0||p.debtBad)?' <button class="mini '+(p.debtBad?'btn-green':'btn-red')+'" onclick="pDebtBad(\\''+p.id+'\\','+(p.debtBad?'false':'true')+')">'+(p.debtBad?'Gỡ ⚠️':'⚠️ Nợ xấu')+'</button>':'')+
       (p.debt>0?' <button class="mini btn-grey" onclick="pDebtClear(\\''+p.id+'\\')">Xóa nợ</button>':'')+
-      ' <button class="mini btn-grey" onclick="pDel(\\''+p.id+'\\')">🗑️ Xóa ví</button></td>';
-    tb.appendChild(tr);
+      ' <button class="mini btn-grey" onclick="pDel(\\''+p.id+'\\')">🗑️ Xóa ví</button></td></tr>';
   });
+  tb.innerHTML=tbHtml;
   Object.keys(kept).forEach(id=>{const i=document.getElementById(id);if(i)i.value=kept[id];});
 }
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
@@ -2880,17 +2899,55 @@ function fmtTime(target){
   return 'mở bát sau '+left+'s';
 }
 
+// ===== 10/09: GIỮ MÀN HÌNH khi bôi chữ / Ctrl+F / bấm ⏸ =====
+var HOLD_SIG='',HOLD_MANUAL=false,HOLD_FIND=false,HOLD_SEL_SINCE=0;
+function holdReason(){
+  if(HOLD_MANUAL)return '⏸ ĐÃ DỪNG CẬP NHẬT (bấm ▶ để chạy lại)';
+  if(HOLD_FIND&&!document.hasFocus())return '⏸ giữ màn hình: đang Ctrl+F (Esc để chạy lại)';
+  HOLD_FIND=false;
+  try{
+    const sl=window.getSelection(),app=document.getElementById('app');
+    if(sl&&!sl.isCollapsed&&sl.rangeCount&&app&&app.contains(sl.anchorNode)){
+      // bôi chữ để copy: giữ tối đa 5 phút, quá hạn tự chạy lại (kẻo quên bôi rồi đi chơi)
+      if(!HOLD_SEL_SINCE)HOLD_SEL_SINCE=Date.now();
+      if(Date.now()-HOLD_SEL_SINCE<5*60*1000)return '⏸ giữ màn hình: đang bôi chữ (bấm chỗ trống để chạy lại)';
+    }else HOLD_SEL_SINCE=0;
+  }catch(e){HOLD_SEL_SINCE=0;}
+  return '';
+}
+function holdShow(t){
+  const el=document.getElementById('holdText');if(el)el.textContent=t;
+  const b=document.getElementById('holdBtn');if(b){b.textContent=HOLD_MANUAL?'▶ Chạy lại':'⏸ Dừng cập nhật';b.style.borderColor=HOLD_MANUAL?'var(--gold,#e6b13a)':'';}
+}
+function holdToggle(){HOLD_MANUAL=!HOLD_MANUAL;holdShow(HOLD_MANUAL?holdReason():'');if(!HOLD_MANUAL){HOLD_SIG='';refresh();}}
+// Ctrl+F / F3: trình duyệt mở khung tìm -> trang mất focus; giữ tới khi focus quay lại (Esc/bấm vào trang)
+document.addEventListener('keydown',e=>{
+  if(((e.ctrlKey||e.metaKey)&&(e.key==='f'||e.key==='F'||e.key==='g'||e.key==='G'))||e.key==='F3'){HOLD_FIND=true;holdShow(holdReason()||'⏸ giữ màn hình: đang Ctrl+F');}
+});
+window.addEventListener('focus',()=>{if(HOLD_FIND){HOLD_FIND=false;holdShow('');}});
+// vừa bỏ bôi chữ (bấm chỗ trống) -> vẽ lại ngay, không đợi 3s
+document.addEventListener('selectionchange',()=>{if(HOLD_SEL_SINCE&&!holdReason()){HOLD_SEL_SINCE=0;HOLD_SIG='';holdShow('');}});
 function setConn(ok){
   const dot=document.getElementById('connDot'), txt=document.getElementById('connText');
   if(ok){dot.classList.remove('down');txt.style.color='var(--green)';txt.textContent='Online · cập nhật '+new Date().toLocaleTimeString('vi-VN');}
   else{dot.classList.add('down');txt.style.color='var(--red)';txt.textContent='🔴 MẤT KẾT NỐI - bot có thể đã sập';}
 }
 
-async function refresh(){
+async function refresh(force){
+  const auto=force===false;
   let j;
   try{j=await api('/api/state');}catch(e){ if(e.message!=='401') setConn(false); return; }
   setConn(true);
+  // 10/09: KHÔNG vẽ lại DOM khi (a) admin đang bôi chữ trong trang, (b) đang Ctrl+F,
+  // (c) bấm ⏸ Dừng cập nhật, (d) state y như lần vẽ trước (đứng yên = không đụng DOM,
+  // Ctrl+F giữ được vệt vàng). Trước đây innerHTML bị dựng lại mỗi 3s -> mất bôi đen,
+  // mất vệt tìm kiếm ở CẢ 2 cổng (SUPER + thường). STATE vẫn cập nhật cho nút bấm dùng.
   STATE=j.state;
+  const holdWhy=auto?holdReason():'';
+  const sig=JSON.stringify(j.state);
+  if(holdWhy){holdShow(holdWhy);return;}
+  if(auto&&sig===HOLD_SIG&&document.getElementById('statusLine').textContent){holdShow('');return;}
+  HOLD_SIG=sig;holdShow(HOLD_MANUAL?holdReason():'');
   epApply(!!STATE.superAdmin); // cổng SUPER hiện cụm can thiệp, cổng thường ẩn
   // status line
   document.getElementById('statusLine').textContent='TX #'+padId(STATE.tx.gameId)+' • '+STATE.players.length+' người chơi';
@@ -2964,6 +3021,7 @@ async function refresh(){
   if(STATE.spmCfg)spFill(STATE.spmCfg);
   spLiveRender();
   if(STATE.palWheelCfg)pwCfgFill(STATE.palWheelCfg);
+  if('rescuePoint' in STATE)rpFill(STATE.rescuePoint,true); // 🆘 soft: chỉ điền ô TRỐNG + dòng "Đang dùng điểm" (không đè số admin đang gõ/chưa lưu)
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();
   pcToggleApply();

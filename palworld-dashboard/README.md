@@ -670,6 +670,27 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🆘 **Điểm tẩu thoát "mất" sau F5** (chủ server: "F5 nó mất, hôm qua mình lưu"): điểm
+  KHÔNG mất - vẫn nằm ở `dbCache._rescuePoint` (database.json VPS, reset server game không đụng tới)
+  và người chơi bấm 🆘 vẫn về đúng điểm đó. Chỉ là card panel tải điểm bằng POST riêng sau 800 ms
+  lúc mở trang - khi panel có mật khẩu thì lúc đó chưa đăng nhập → 401 nuốt lỗi → 3 ô trống; cổng
+  thường còn bị 403 vì route nằm trong VIEWONLY. Fix: `buildState()` thêm `rescuePoint`, `refresh()`
+  gọi `rpFill(STATE.rescuePoint, true)` (soft: chỉ điền ô TRỐNG + dòng "Đang dùng điểm", không đè
+  số admin đang gõ chưa lưu), bỏ `setTimeout(rpLoad,800)`. Test HTTP 2 cổng: lưu ở SUPER → state
+  cả 2 cổng có điểm, cổng thường POST vẫn 403; holdtest thêm 6 case (34/34). Kiểm prod chỉ-đọc qua
+  SFTP: main.lua prod có RESCUEAT (10:19), server restart 14:00 → mod mới đã nạp, chưa ai bấm 🆘 sau đó.
+- **10/09** — 🖱️ **Panel: bôi chữ / Ctrl+F bị mất sau 2–3 giây (CẢ 2 cổng SUPER + thường)**:
+  nhịp `refresh()` 3 s gán lại `innerHTML` ~40 khối dù dữ liệu y cũ → trình duyệt vứt vùng bôi
+  đen + vệt tìm kiếm. Fix 3 lớp trong `panel.js` (1 trang cho cả 2 cổng): (1) **setter
+  `innerHTML` "lười"** (IIFE đầu script): gán lại đúng chuỗi đã gán lần trước và số con không
+  đổi thì không đụng DOM → khối nào không đổi đứng yên, chỉ khối có số đổi (sàn CP nhịp 2 s, giờ)
+  mới vẽ lại; (2) **giữ màn hình** `holdReason()`: đang bôi chữ trong `#app` (tối đa 5 phút),
+  đang Ctrl+F/F3 (bắt keydown, giữ tới khi trang lấy lại focus), hoặc bấm nút **⏸ Dừng cập nhật**
+  ở header → nhịp tự động `refresh(false)` chỉ cập nhật STATE + chỉ báo vàng ở header, không vẽ;
+  `refresh()` sau khi bấm nút vẫn ép vẽ ngay; state y hệt lần vẽ trước (so chuỗi JSON) cũng bỏ
+  qua; (3) bảng 👥 Người chơi dựng thành 1 chuỗi gán 1 lần (trước xoá sạch + appendChild từng
+  dòng). Bộ test `holdtest.js` 28 case trích code từ trang đã render (setter lười, holdReason,
+  refresh guard, renderPlayers). Đã sync + restart bot test (4508/4234).
 - **10/09** — 🆘 **Tẩu thoát khi OFFLINE báo lỗi thô** ("ERROR RESCUE: …main.lua:727: khong lay duoc
   pawn…"): người chơi thoát game vẫn còn PlayerState nên mod tìm được state mà không có pawn.
   Fix: `palRescue` **kiểm `requireOnline` trước** như mọi luồng giao đồ (offline → "Nhân vật X chưa
