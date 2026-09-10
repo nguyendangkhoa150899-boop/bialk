@@ -752,6 +752,9 @@ const PAGE = [
     '.isItem .isPh{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;font-size:30px;background:#1b2030;border:1px solid var(--line);border-radius:9px}',
     '.isItem .isMeta{flex:1;min-width:120px}',
     '.isItem .isNm{font-weight:800;font-size:15px}',
+    // 🌳 10/09: implant Cây Thế Giới - viền + tên cầu vồng cho dễ nhận
+    '.isItem.isWT{border:2px solid transparent;background:linear-gradient(#141824,#141824) padding-box,linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff) border-box}',
+    '.isItem.isWT .isNm{background:linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff);-webkit-background-clip:text;background-clip:text;color:transparent}',
     '.isItem .isPr{color:var(--gold);font-size:13px;font-weight:700;margin-top:2px}',
     '.isItem .isBuyRow{display:flex;align-items:center;gap:8px}',
     '.isItem .isQty{width:72px}',
@@ -1423,7 +1426,7 @@ const PAGE = [
     // ⏳ cooldown nhận pal CHUNG toàn server (28/08)
     '<div id="pcCdBanner" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px;font-weight:700"></div>',
     '<div id="pcDayNote" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #3a4155;border-radius:9px;background:#1b1f2c;color:#aab3c5;font-size:13px"></div>',
-    // 🆘 tẩu thoát khẩn cấp: kẹt đất/kẹt đá trong game thì bấm - 4 tiếng/lần (có popup xác nhận)
+    // 🆘 tẩu thoát khẩn cấp: kẹt đất/kẹt đá trong game thì bấm - 1 tiếng/lần (có popup xác nhận)
     '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">',
     '<button class="mini" id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-weight:700;padding:8px 12px">🆘 TẨU THOÁT KHẨN CẤP</button>',
     '<span class="muted" style="font-size:12px">kẹt đất/kẹt đá? Dịch chuyển về điểm an toàn (phải đang ONLINE trong game) - 4 tiếng/lần</span>',
@@ -2964,13 +2967,15 @@ const PAGE = [
     'var ISG=[["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🧪 VẬT PHẨM TIÊU HAO"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🧱 NGUYÊN LIỆU"],["implant","🧬 IMPLANT"]];',   // 09/09 +2 nhóm · 10/09 +material +implant
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
-    'function isCard(it){return "<div class=\\"isItem\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
+    'function isWT(it){return it.cat==="implant"&&/Consumable_WorldTree_/.test(it.id)}',
+    'function isCard(it){return "<div class=\\"isItem"+(isWT(it)?" isWT":"")+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
     'function isImpLeft(){return IS&&IS.implantMax>0?Math.max(0,IS.implantMax-(IS.implantToday||0)):-1}',
-    'function isImpLine(it){if(!IS||it.cat!=="implant"||!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant (mọi loại gộp)":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
-    'function isDayLine(it){var imp=isImpLine(it);if(!IS||!(IS.dayMax>0))return imp;var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return imp+"<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
+    'function isWtLeft(){return IS&&IS.wtMax>0?Math.max(0,IS.wtMax-(IS.wtToday||0)):-1}',
+    'function isImpLine(it){if(!IS||it.cat!=="implant")return "";if(isWT(it)){if(!(IS.wtMax>0))return "";var w=isWtLeft();return "<div class=\\"isNote\\" style=\\"color:"+(w?"#8fd18f":"#ff8a80")+"\\">🌳 "+(w?"hôm nay bạn còn mua được "+w+"/"+IS.wtMax+" implant Cây Thế Giới":"hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")+"</div>"}if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant (mọi loại gộp)":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
+    'function isDayLine(it){var imp=isImpLine(it);if(!IS||!(IS.dayMax>0)||it.cat==="implant")return imp;var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return imp+"<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
     'function isRender(){if(!IS)return;var cat=isCatGet();var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
     // hàng nút nhóm (đếm số món từng nhóm, nhóm đang xem sáng lên)
     'var cb=$("isCats");if(cb)cb.innerHTML=ISG.map(function(g){var n=IS.items.filter(function(it){return (it.cat||"consume")===g[0]}).length;',
@@ -2984,7 +2989,7 @@ const PAGE = [
     'if(!rows.length)h="<div class=\\"muted\\" style=\\"margin-top:10px\\">Nhóm này chưa có món nào.</div>"}',
     '$("isList").innerHTML=h}',
     'async function isBuy(id){if(ISBUSY||!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
-    'var q=parseInt($("isq_"+id).value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant (mọi loại gộp)":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}var dl=isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
+    'var q=parseInt($("isq_"+id).value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant (mọi loại gộp)":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}var dl=it.cat==="implant"?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
     'ISBUSY=true;api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;toast("❌ "+e.message);isSync()})}',
@@ -3094,7 +3099,7 @@ const PAGE = [
     'if(left>0){b.disabled=true;b.textContent="🆘 TẨU THOÁT KHẨN CẤP ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 TẨU THOÁT KHẨN CẤP"}}',
     'setInterval(pcRescueTick,30000);',
     'async function pcRescue(){if(RSCBUSY)return;',
-    'if(!(await gConfirm("Dịch chuyển nhân vật về <b>ĐIỂM XUẤT PHÁT</b> ngay bây giờ? Dùng khi kẹt đất/kẹt đá - không chết, không rớt đồ.<br><b>4 tiếng mới dùng lại được.</b>","🆘 Tẩu thoát",true)))return;',
+    'if(!(await gConfirm("Dịch chuyển nhân vật về <b>ĐIỂM XUẤT PHÁT</b> ngay bây giờ? Dùng khi kẹt đất/kẹt đá - không chết, không rớt đồ.<br><b>1 tiếng mới dùng lại được.</b>","🆘 Tẩu thoát",true)))return;',
     'RSCBUSY=true;pcRescueTick();',
     'api("/api/pal/rescue",{}).then(function(j){RSCBUSY=false;RSCUNTIL=Date.now()+RSCCD;toast(j.message||"✅ Đã dịch chuyển!");pcRescueTick()})',
     '.catch(function(e){RSCBUSY=false;pcRescueTick();toast("❌ "+(e.message||"Lỗi"))});}',

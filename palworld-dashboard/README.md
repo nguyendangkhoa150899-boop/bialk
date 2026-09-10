@@ -670,6 +670,20 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🌳 **Implant: +7 Cây Thế Giới 12.000 (hạn riêng 1/người/ngày, card cầu vồng), Chuyển Đổi lên đầu +
+  icon riêng, nhóm implant MIỄN hạn 📅 chung, chú thích = tác dụng thuần** (4 yêu cầu liên tiếp của chủ server). (1) Card
+  implant bỏ dòng "📅 cả server hôm nay còn N" (web `isDayLine` trả riêng dòng 🧬/🌳; server `itemShopBuy` bỏ qua hạn chung
+  cho `cat==='implant'` vì đã có hạn riêng - nếu không, số hiện và số chặn lệch nhau). (2) 7 implant
+  `PalPassiveSkillChange_Consumable_WorldTree_*` (Thánh Kiếm Hai Lưỡi, Thành Trì Thịt Sống, Thần Hủy Diệt, Bàn Tay Ác Quỷ,
+  Cú Nhảy Không Gian, Tiên Nhân, Vườn Ươm Cây Thần) giá 12.000, hạn riêng `_itemShopWtMax` (mặc định 1, admin đặt ở ô 🌳
+  panel, body `wtMax` cùng route daymax), đếm `user.wtDay`, KHÔNG ăn vào quota 🧬 2/ngày; web: class `.isWT` viền + tên
+  gradient cầu vồng, dòng 🌳 còn N/1. (3) Chuyển Đổi dùng `T_itemicon_Material_PalGenderReverse.webp`, đứng đầu nhóm: server
+  `itemShopWebList()` sort ổn định trong nhóm implant (Chuyển Đổi → 🌳 → thường), nhóm khác giữ thứ tự. (4) `note` = mô tả
+  passive nguyên văn (bỏ tiền tố 🏟️/🎯/🌳), nới `note` 140 → 240 ký tự cả đọc lẫn ghi (WT dài ~95). Đợt ghép 8 cờ
+  `_migItemShopWT1009`: thêm WT còn thiếu + đổi icon Chuyển Đổi + gọt tiền tố note món đã có. DEFAULT 131 → 138. Test:
+  palwheeltest +10 (213/213), shopcardtest 22/22 (harness trích thêm isWT/isWtLeft), e2e HTTP: web 138 món, thứ tự đúng, WT 7 ×
+  12000, note sạch tiền tố, mua 2 WT bị chặn "còn 1", wtMax 3 → state 3, icon Chuyển Đổi 200. Bài học harness: regex trong
+  template literal của patch test cần ĐÚNG 2 lớp escape - viết 8 backslash ra 4 trong file = sai lặng lẽ.
 - **10/09** — 🧬 **Shop item: nhóm IMPLANT riêng, 15 món × 6.000, mỗi người 2 cái/ngày mọi loại gộp** (chủ server gửi
   ảnh paldb "Unlock Implants from Arena/Bounty" + Pal Reverser, dặn dùng chung icon
   `T_itemicon_Material_PalPassiveSkillChange_Consumable.webp`, "làm tiếng Việt + chú thích"). Map EN → id qua

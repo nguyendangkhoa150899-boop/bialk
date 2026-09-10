@@ -184,6 +184,7 @@ function startPanel(ctx) {
             itemShopDayMax: ctx.getItemShopDayMax ? ctx.getItemShopDayMax() : null,   // 📅 10/09
             itemShopDayMode: ctx.getItemShopDayMode ? ctx.getItemShopDayMode() : null,   // 📅 'server' | 'user'
             itemShopImplantMax: ctx.getItemShopImplantMax ? ctx.getItemShopImplantMax() : null,   // 🧬
+            itemShopWtMax: ctx.getItemShopWtMax ? ctx.getItemShopWtMax() : null,   // 🌳
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
         };
@@ -299,6 +300,11 @@ function startPanel(ctx) {
                         const im = ctx.setItemShopImplantMax(body.implantMax);
                         if (im.error) return sendJSON(res, 400, { ok: false, error: im.error });
                         r.implantMax = im.implantMax;
+                    }
+                    if (body.wtMax !== undefined && ctx.setItemShopWtMax) {
+                        const w = ctx.setItemShopWtMax(body.wtMax);
+                        if (w.error) return sendJSON(res, 400, { ok: false, error: w.error });
+                        r.wtMax = w.wtMax;
                     }
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Giới hạn mua mỗi món/ngày = ${r.dayMax || 'không giới hạn'} · chế độ ${r.dayMode === 'user' ? 'mỗi người' : 'toàn server'}`);
                     return sendJSON(res, 200, r);
@@ -1423,7 +1429,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card">
         <h3>🆘 Điểm tẩu thoát khẩn cấp</h3>
-        <div class="note">Nút 🆘 trên Hồ sơ web dịch chuyển người chơi về điểm này (4 tiếng/lần). <b>Chưa đặt = game tự chọn PlayerStart - đo ra đang rơi ở World Tree!</b> Cách đặt: đứng nhân vật của bạn ở chỗ muốn làm điểm về (vd bãi tân thủ), gõ tên nhân vật, bấm 📍 rồi 💾 Lưu. Đổi điểm KHÔNG cần restart gì.</div>
+        <div class="note">Nút 🆘 trên Hồ sơ web dịch chuyển người chơi về điểm này (1 tiếng/lần). <b>Chưa đặt = game tự chọn PlayerStart - đo ra đang rơi ở World Tree!</b> Cách đặt: đứng nhân vật của bạn ở chỗ muốn làm điểm về (vd bãi tân thủ), gõ tên nhân vật, bấm 📍 rồi 💾 Lưu. Đổi điểm KHÔNG cần restart gì.</div>
         <div class="row" style="gap:6px">
           <input id="rpName" placeholder="tên nhân vật ĐANG online" style="flex:2">
           <button onclick="rpGrab()" style="flex:1">📍 Lấy toạ độ người này</button>
@@ -1555,6 +1561,12 @@ const HTML = `<!DOCTYPE html>
           <input class="mini-in" id="isImplantMax" type="number" min="0" max="1000" placeholder="2" style="width:70px">
           <span>cái/ngày, <b>mọi loại gộp</b></span>
           <span class="muted" style="font-size:12px">(hạn riêng nhóm 🧬, luôn đếm theo người · lưu bằng nút 💾 ở trên · 0 = không giới hạn)</span>
+        </div>
+        <div class="row" style="margin-top:6px;align-items:center;gap:8px">
+          <span>🌳 Implant <b>Cây Thế Giới</b>: <b>mỗi người</b> tối đa</span>
+          <input class="mini-in" id="isWtMax" type="number" min="0" max="1000" placeholder="1" style="width:70px">
+          <span>cái/ngày</span>
+          <span class="muted" style="font-size:12px">(riêng, không ăn vào hạn 🧬 ở trên · nhóm implant MIỄN hạn 📅 chung · lưu bằng nút 💾)</span>
         </div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
@@ -2060,7 +2072,7 @@ function rpClear(){api('/api/rescue/point',{clear:1}).then(()=>{rpFill(null);toa
 // 10/09: không tải mù sau 800ms nữa (lúc đó chưa đăng nhập -> 401 -> ô trống, F5 là "mất").
 // refresh() điền từ STATE.rescuePoint; rpLoad giữ lại cho nút nào cần hỏi thẳng.
 function rpTest(){const name=document.getElementById('rpName').value.trim();if(!name)return toast('Gõ tên nhân vật ĐANG online (ô trên)');
-  toast('🧪 Đang dịch chuyển '+name+' tới điểm đã LƯU (5-20 giây)... - không tính lượt 4 tiếng');
+  toast('🧪 Đang dịch chuyển '+name+' tới điểm đã LƯU (5-20 giây)... - không tính lượt 1 tiếng');
   api('/api/rescue/test',{name}).then(j=>toast('✅ Đã dịch chuyển '+name+(j.point?' tới '+j.point.x+', '+j.point.y:' về PlayerStart (chưa đặt điểm - lại World Tree đấy!)'))).catch(e=>toast('❌ '+e.message));}
 function palSetName(id){
   const v=document.getElementById('pn_'+id).value;
@@ -2593,7 +2605,9 @@ async function isDayMaxSave(btn){
   const mode=(document.getElementById('isDayMode')||{}).value||'server';
   const imEl=document.getElementById('isImplantMax');const im=imEl&&imEl.value!==''?parseInt(imEl.value):undefined;
   if(im!==undefined&&!(im>=0))return toast('❌ Hạn implant: nhập số ≥ 0');
-  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
+  const wtEl=document.getElementById('isWtMax');const wt=wtEl&&wtEl.value!==''?parseInt(wtEl.value):undefined;
+  if(wt!==undefined&&!(wt>=0))return toast('❌ Hạn Cây Thế Giới: nhập số ≥ 0');
+  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,wtMax:wt}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':'')+(j.wtMax!==undefined?' · 🌳 '+(j.wtMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
 }
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
@@ -3070,6 +3084,7 @@ async function refresh(force){
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
   // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)
+  const wtx=document.getElementById('isWtMax');if(wtx&&wtx.value===''&&document.activeElement!==wtx&&STATE.itemShopWtMax!==null&&STATE.itemShopWtMax!==undefined)wtx.value=STATE.itemShopWtMax;
   const imx=document.getElementById('isImplantMax');if(imx&&imx.value===''&&document.activeElement!==imx&&STATE.itemShopImplantMax!==null&&STATE.itemShopImplantMax!==undefined)imx.value=STATE.itemShopImplantMax;
   const dmo=document.getElementById('isDayMode');if(dmo&&STATE.itemShopDayMode&&!dmo.dataset.touched&&document.activeElement!==dmo){dmo.value=STATE.itemShopDayMode;dmo.onchange=()=>{dmo.dataset.touched='1';};}
   // mine user select
