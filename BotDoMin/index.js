@@ -2132,14 +2132,15 @@ function setPalWheelCfg(o) {
     saveDbNow();
     return palWheelCfg();
 }
-// 🔒 09/09: chế độ PAL GỐC (palWheelCfg().raw) ẨN 6 pal huyền thoại khỏi quay + chọn đích danh
-// (chủ server: team chơi lại, không muốn pal quá mạnh). Tắt chế độ là về đủ như cũ.
-const PALWHEEL_RAW_EXCLUDE_CODE = ['SaintCentaur', 'BlackCentaur', 'IceHorse', 'IceHorse_Dark', 'JetDragon', 'PoseidonOrca'];   // Paladius · Necromus · Frostallion · Frostallion Noct · Jetragon · Neptilius
+// 10/09: 6 pal huyền thoại TRỞ LẠI vòng quay kể cả ở chế độ PAL GỐC (chủ server đổi ý:
+// pal gốc Lv1 · 0 sao · không chỉ số thì huyền thoại cũng không còn quá mạnh).
+// Bản ẩn cũ (PALWHEEL_RAW_EXCLUDE_CODE) nằm ở git history commit 09/09 nếu cần dựng lại.
+// Danh sách giờ chỉ còn dùng để TÔ VÀNG cho đẹp trên web (cờ legend trong state).
+const PALWHEEL_LEGEND_CODE = ['SaintCentaur', 'BlackCentaur', 'IceHorse', 'IceHorse_Dark', 'JetDragon', 'PoseidonOrca'];   // Paladius · Necromus · Frostallion · Frostallion Noct · Jetragon · Neptilius
+const palIsLegend = (code) => PALWHEEL_LEGEND_CODE.includes(code);
 function palWheelNormalPool() {
     const raid = new Set(PAL_DATA.raidOnly || []);
-    const raw = palWheelCfg().raw;
-    return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code)
-        && !(raw && PALWHEEL_RAW_EXCLUDE_CODE.includes(p.code)));
+    return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code));
 }
 function palWheelRaidPool() {
     if (palWheelCfg().raw) return [];   // 🔒 PAL GỐC: không ô RAID trên vòng, không bán raid đích danh
@@ -2219,7 +2220,7 @@ function palWheelSpin(userId, username) {
     const revealMs = 10500;
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
-        code: win.code, name: win.name, dex: win.dex || 0, raid: isRaid,
+        code: win.code, name: win.name, dex: win.dex || 0, raid: isRaid, legend: palIsLegend(win.code),
         wonAt: new Date().toLocaleString('vi-VN'), status: 'chest',
         revealAt: Date.now() + revealMs,
     };
@@ -5274,7 +5275,7 @@ client.once('ready', async (c) => {
                         price: cfg.price, sellPrice: cfg.sellPrice, open: cfg.open,
                         pot: potGet('gacha'), spinRemain,
                         // 27/08: kèm code để web gắn hình (/palimage/T_<code>_icon_normal.png)
-                        pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),
+                        pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code) })),
                         raids: palWheelRaidPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),
                         // 🍀 thanh may mắn + vòng raid (27/08): đầy 100 mới quay raid, xong về 0
                         luck: typeof u.palLuck === 'number' ? u.palLuck : 0,
@@ -5301,7 +5302,7 @@ client.once('ready', async (c) => {
                         open: cfg.open,
                         pot: potGet('gacha'),
                         chestCount: palChest(uid).filter(i => i.status === 'chest').length,
-                        list: raidRows.concat(palWheelNormalPool().map(p => ({ code: p.code, name: p.name, dex: p.dex || 0, raid: false, price: cfg.customPrice }))),
+                        list: raidRows.concat(palWheelNormalPool().map(p => ({ code: p.code, name: p.name, dex: p.dex || 0, raid: false, legend: palIsLegend(p.code), price: cfg.customPrice }))),
                     };
                 },
                 pick: (uid, code) => palPickBuy(uid, code, getUserData(uid).name || uid),

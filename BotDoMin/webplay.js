@@ -712,6 +712,10 @@ const PAGE = [
     '.pwCard.raid .nm{color:#ff8f8f}',
     // 🔥 thẻ raid ở ô trúng: viền lửa nhấp nháy + hào quang (chỉ gắn vào thẻ kết quả)
     '.pwCard.raidhit{border-color:#ffcf5c;box-shadow:0 0 14px #ff8f3c,0 0 4px #ffcf5c inset;animation:raidGlow .7s ease-in-out infinite alternate}',
+    // 👑 10/09: pal huyền thoại tô VÀNG (viền + tên); trúng thì phát sáng vàng
+    '.pwCard.legend{border-color:#e7b53c;background:linear-gradient(180deg,#332b14,#221d10)}',
+    '.pwCard.legend .nm{color:#ffd76a}',
+    '.pwCard.legendhit{border-color:#ffe9a0;box-shadow:0 0 16px #ffd24a,0 0 5px #ffe9a0 inset;animation:raidGlow .7s ease-in-out infinite alternate}',
     '@keyframes raidGlow{from{box-shadow:0 0 8px #ff6b3c,0 0 3px #ffcf5c inset}to{box-shadow:0 0 22px #ffb03c,0 0 8px #ff8f5c inset}}',
     '#pwRes{margin-top:10px;border:1px solid var(--gold);border-radius:10px;padding:10px;text-align:center;background:#1d2130}',
     '#pwRes.raidwin{border-color:#ff8f3c;background:linear-gradient(180deg,#2a1c1a,#1d1518);box-shadow:0 0 18px #ff6b3c55}',
@@ -2890,7 +2894,8 @@ const PAGE = [
     // 🖼️ gắn hình pal (assets/palimage/T_<code>_icon_normal.png) - con thiếu hình thì ẩn <img>, chừa tên
     'function pwImg(code){return code?("<img src=\\"/palimage/T_"+code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""}',
     'function pwCardHtml(p,raid,hit){var nm=(p&&p.name!==undefined)?p.name:(p||"");var code=(p&&p.code)||"";',
-    'return "<div class=\\"pwCard"+(raid?" raid":"")+(hit?" raidhit":"")+"\\">"+pwImg(code)+"<div class=\\"nm\\">"+(raid?"🔥 ":"")+esc(nm)+"</div><div class=\\"dx\\">"+(raid?"PAL RAID":(p&&p.dex?"#"+p.dex:"&nbsp;"))+"</div></div>"}',
+    'var lg=!raid&&p&&p.legend;',
+    'return "<div class=\\"pwCard"+(raid?" raid":"")+(lg?" legend":"")+(hit?(raid?" raidhit":" legendhit"):"")+"\\">"+pwImg(code)+"<div class=\\"nm\\">"+(raid?"🔥 ":(lg?"👑 ":""))+esc(nm)+"</div><div class=\\"dx\\">"+(raid?"PAL RAID":(lg?"HUYỀN THOẠI":(p&&p.dex?"#"+p.dex:"&nbsp;")))+"</div></div>"}',
     'function pwIdle(){if(!PW||!PW.pals||!PW.pals.length)return;var h="";for(var i=0;i<14;i++){var r=PW.raids.length&&Math.random()<0.06;h+=r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false)}',
     'var s=$("pwStrip");s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
     // dải quay dùng chung cho cả 2 vòng: 60 thẻ, kết quả ở thẻ 52; jitter ±35px. Thẻ 110px + khe 6px = bước 116px.
@@ -2901,7 +2906,7 @@ const PAGE = [
     's.style.transform="translateX("+(-target)+"px)";setTimeout(cb,10300)}',
     // 27/08: GỘP 1 reel - raid ra thẳng ở vòng thường, ô trúng (thẻ 52) gắn hiệu ứng lửa nếu là raid
     'function pwStrip1(it){var out=[];for(var i=0;i<60;i++){',
-    'if(i===52)out.push(pwCardHtml(it,!!it.raid,!!it.raid));',
+    'if(i===52)out.push(pwCardHtml(it,!!it.raid,!!(it.raid||it.legend)));',
     'else{var r=PW.raids.length&&Math.random()<0.06;out.push(r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false))}}return out}',
     'function pwSpin(){if(PWBUSY||!PW||!PW.open||PWLOCK>Date.now())return;PWBUSY=true;pwGoLabel();$("pwRes").classList.add("hidden");',
     'api("/api/palwheel/spin",{}).then(function(j){setBal(j.balance);pwLockStart();',
