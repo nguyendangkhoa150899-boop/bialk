@@ -1429,7 +1429,7 @@ const PAGE = [
     // 🆘 tẩu thoát khẩn cấp: kẹt đất/kẹt đá trong game thì bấm - 1 tiếng/lần (có popup xác nhận)
     '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">',
     '<button class="mini" id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-weight:700;padding:8px 12px">🆘 TẨU THOÁT KHẨN CẤP</button>',
-    '<span class="muted" style="font-size:12px">kẹt đất/kẹt đá? Dịch chuyển về điểm an toàn (phải đang ONLINE trong game) - 4 tiếng/lần</span>',
+    '<span class="muted" style="font-size:12px">kẹt đất/kẹt đá? Dịch chuyển về điểm an toàn (phải đang ONLINE trong game) - 1 tiếng/lần</span>',
     '</div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
     '</div>',
