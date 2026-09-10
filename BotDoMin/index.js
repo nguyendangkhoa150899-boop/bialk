@@ -1587,8 +1587,21 @@ function setItemShopDayMax(v) {
     saveDbNow();
     return { ok: true, dayMax: v };
 }
+// 10/09 (chiều): CHẾ ĐỘ đếm - 'server' = gộp CẢ SERVER (mặc định, chủ server: "toàn server được mua thay
+// vì cá nhân") / 'user' = mỗi người riêng. Bộ đếm server ở dbCache._itemShopDay, mỗi người ở user.shopDay.
+function itemShopDayMode() { return dbCache._itemShopDayMode === 'user' ? 'user' : 'server'; }
+function setItemShopDayMode(m) {
+    if (m !== 'user' && m !== 'server') return { error: "Chế độ phải là 'user' (mỗi người) hoặc 'server' (toàn server)" };
+    dbCache._itemShopDayMode = m;
+    saveDbNow();
+    return { ok: true, dayMode: m };
+}
 function itemShopToday(user) {
     const d = vnDayISO(Date.now());
+    if (itemShopDayMode() === 'server') {
+        if (!dbCache._itemShopDay || dbCache._itemShopDay.day !== d) dbCache._itemShopDay = { day: d, bought: {} };
+        return dbCache._itemShopDay.bought;
+    }
     if (!user.shopDay || user.shopDay.day !== d) user.shopDay = { day: d, bought: {} };
     return user.shopDay.bought;
 }
@@ -1605,7 +1618,10 @@ async function itemShopBuy(userId, itemId, qty, username) {
     const today = itemShopToday(user);
     if (dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
         const left = Math.max(0, dayMax - (today[it.id] || 0));
-        return { error: left ? `📅 Mỗi người chỉ mua tối đa ${dayMax} ${it.name}/ngày - hôm nay bạn còn mua được ${left}` : `📅 Hôm nay bạn đã mua đủ ${dayMax} ${it.name} - mai quay lại (reset 00:00)` };
+        const srv = itemShopDayMode() === 'server';
+        return { error: left
+            ? (srv ? `📅 Cả server chỉ mua tối đa ${dayMax} ${it.name}/ngày - hôm nay còn ${left} (ai nhanh thì được)` : `📅 Mỗi người chỉ mua tối đa ${dayMax} ${it.name}/ngày - hôm nay bạn còn mua được ${left}`)
+            : (srv ? `📅 Hôm nay cả server đã mua hết ${dayMax} ${it.name} - mai 00:00 mở lại` : `📅 Hôm nay bạn đã mua đủ ${dayMax} ${it.name} - mai quay lại (reset 00:00)`) };
     }
     if ((user.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} Dogcoin (bạn có ${(user.points || 0).toLocaleString()})` };
     const gameName = (user.ingameName || '').trim();
@@ -5163,6 +5179,7 @@ client.once('ready', async (c) => {
                 state: (uid) => ({
                     items: itemShopList().filter(x => !x.off),   // 09/09: món admin tắt bán không xuống web
                     dayMax: itemShopDayMax(),                        // 📅 10/09: hạn mua mỗi món/ngày (0 = không)
+                    dayMode: itemShopDayMode(),                      // 📅 'server' (gộp cả server) | 'user' (mỗi người)
                     today: itemShopToday(getUserData(uid)),          // 📅 { itemId: đã mua hôm nay }
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
@@ -5243,6 +5260,7 @@ client.once('ready', async (c) => {
             },
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
             getItemShopDayMax: itemShopDayMax, setItemShopDayMax,   // 📅 10/09 hạn mua/ngày
+            getItemShopDayMode: itemShopDayMode, setItemShopDayMode,   // 📅 chế độ đếm server/user
             setItemShop,
             uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
             // 📦 kho đồ toàn game (CHỈ cổng SUPER - panel tự gate epOk)

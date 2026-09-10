@@ -670,6 +670,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🌐 **Hạn mua/ngày đổi sang GỘP CẢ SERVER** (chủ server: "toàn server được mua thay vì cá nhân").
+  Thêm chế độ `dbCache._itemShopDayMode`: `'server'` (MẶC ĐỊNH mới - mọi người chung 1 bộ đếm
+  `dbCache._itemShopDay {day, bought}`, ai mua trước được trước) / `'user'` (mỗi người, bộ đếm cũ `user.shopDay`).
+  Panel: select 🌐/👤 cạnh ô 📅, lưu chung route `/api/itemshop/daymax` (body `dayMode`). Web: state gửi `dayMode`,
+  card ghi "cả server hôm nay còn N/99" hoặc "hôm nay bạn còn…"; câu chặn server-side đổi theo chế độ. Test:
+  palwheeltest +7 (192/192, khối cũ ép `'user'`), shopcardtest +3 (14/14), e2e HTTP: đặt 1/server → web mua 2 Mũi Tên
+  bị chặn "Cả server chỉ mua tối đa 1…", dayMode lạ → 400. ⚠️ Rủi ro chủ server cần biết: 99/ngày CHUNG cho món 1–2
+  Dogcoin = 1 người đăng nhập sớm vét sạch, người sau trắng tay; muốn công bằng thì nâng số hoặc bật lại 👤.
 - **10/09** — 🔫 **Shop item +32 loại đạn, 1 Dogcoin/cái** (chủ server tải 32 icon `T_itemicon_Ammo_*.webp`, dẫn
   paldb.cc/vi/Ammo, dặn BỎ 6 món chưa có trong game: 2 món tên "-", Đạn Súng Máy `MachingunBullet`, Đạn Magnum
   `MagnumBullet`, SkyLightBullet, SkyHeavyBullet). Lấy đúng 34 Ammo trong `gameitems.json` trừ 2 id Magnum/Súng Máy

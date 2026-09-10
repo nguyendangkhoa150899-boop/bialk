@@ -182,6 +182,7 @@ function startPanel(ctx) {
             dailyCfg: ctx.getDailyCfg ? ctx.getDailyCfg() : null,   // 🪪 mức điểm danh/nghiện/chuỗi
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             itemShopDayMax: ctx.getItemShopDayMax ? ctx.getItemShopDayMax() : null,   // 📅 10/09
+            itemShopDayMode: ctx.getItemShopDayMode ? ctx.getItemShopDayMode() : null,   // 📅 'server' | 'user'
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
         };
@@ -288,7 +289,12 @@ function startPanel(ctx) {
                 if (ctx.setItemShopDayMax && req.method === 'POST' && path === '/api/itemshop/daymax') {
                     const r = ctx.setItemShopDayMax(body.dayMax);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Giới hạn mua mỗi món/người/ngày = ${r.dayMax || 'không giới hạn'}`);
+                    if (body.dayMode !== undefined && ctx.setItemShopDayMode) {
+                        const m = ctx.setItemShopDayMode(body.dayMode);
+                        if (m.error) return sendJSON(res, 400, { ok: false, error: m.error });
+                        r.dayMode = m.dayMode;
+                    }
+                    ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Giới hạn mua mỗi món/ngày = ${r.dayMax || 'không giới hạn'} · chế độ ${r.dayMode === 'user' ? 'mỗi người' : 'toàn server'}`);
                     return sendJSON(res, 200, r);
                 }
                 if (ctx.setItemShop && req.method === 'POST' && path === '/api/itemshop/save') {
@@ -1532,10 +1538,11 @@ const HTML = `<!DOCTYPE html>
         <h3>🛒 Shop Item - item giao thẳng vào game</h3>
         <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
-          <span>📅 Giới hạn mua <b>mỗi món / mỗi người / ngày</b>:</span>
+          <span>📅 Giới hạn mua <b>mỗi món / ngày</b>:</span>
           <input class="mini-in" id="isDayMax" type="number" min="0" max="100000" placeholder="99" style="width:90px">
+          <select class="mini-in" id="isDayMode" style="width:auto"><option value="server">🌐 gộp CẢ SERVER</option><option value="user">👤 mỗi người riêng</option></select>
           <button class="btn-green mini" onclick="isDayMaxSave(this)">💾 Lưu</button>
-          <span class="muted" style="font-size:12px">áp cho TẤT CẢ món · 0 = không giới hạn · đếm lại 00:00 giờ VN · web hiện "còn N hôm nay"</span>
+          <span class="muted" style="font-size:12px">áp cho TẤT CẢ món · 0 = không giới hạn · đếm lại 00:00 giờ VN · "cả server" = ai mua trước được trước</span>
         </div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
@@ -2571,7 +2578,8 @@ var ISDIRTY=false,ISSIG='';
 async function isDayMaxSave(btn){
   const v=parseInt(document.getElementById('isDayMax').value);
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
-  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn'));HOLD_SIG='';refresh();}));
+  const mode=(document.getElementById('isDayMode')||{}).value||'server';
+  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server'));HOLD_SIG='';refresh();}));
 }
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
@@ -3047,6 +3055,8 @@ async function refresh(force){
   itemShopFill();
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
+  // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)
+  const dmo=document.getElementById('isDayMode');if(dmo&&STATE.itemShopDayMode&&!dmo.dataset.touched&&document.activeElement!==dmo){dmo.value=STATE.itemShopDayMode;dmo.onchange=()=>{dmo.dataset.touched='1';};}
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
   sel.innerHTML='';

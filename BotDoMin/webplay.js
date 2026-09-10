@@ -2968,7 +2968,7 @@ const PAGE = [
     '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
-    'function isDayLine(it){if(!IS||!(IS.dayMax>0))return "";var l=isDayLeft(it.id);return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?"hôm nay còn mua được "+l+"/"+IS.dayMax:"hôm nay đã mua đủ "+IS.dayMax+" - mai quay lại")+"</div>"}',
+    'function isDayLine(it){if(!IS||!(IS.dayMax>0))return "";var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
     'function isRender(){if(!IS)return;var cat=isCatGet();var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
     // hàng nút nhóm (đếm số món từng nhóm, nhóm đang xem sáng lên)
     'var cb=$("isCats");if(cb)cb.innerHTML=ISG.map(function(g){var n=IS.items.filter(function(it){return (it.cat||"consume")===g[0]}).length;',
@@ -2982,7 +2982,7 @@ const PAGE = [
     'if(!rows.length)h="<div class=\\"muted\\" style=\\"margin-top:10px\\">Nhóm này chưa có món nào.</div>"}',
     '$("isList").innerHTML=h}',
     'async function isBuy(id){if(ISBUSY||!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
-    'var q=parseInt($("isq_"+id).value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");var dl=isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay bạn còn mua được "+dl+" "+it.name:"📅 Hôm nay đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
+    'var q=parseInt($("isq_"+id).value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");var dl=isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
     'ISBUSY=true;api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;toast("❌ "+e.message);isSync()})}',
