@@ -670,6 +670,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🆘 **Tẩu thoát: 4 tiếng → 1 tiếng/người/lần** (`RESCUE_CD_MS`), sửa luôn mọi câu chữ "4 tiếng" ở ngữ
+  cảnh tẩu thoát trong index/webplay/panel (câu chặn, câu báo xong, chú thích Hồ sơ web, card panel, toast 🧪). Web tự
+  lấy `rescueCd` từ state nên đồng hồ đếm ngược đúng ngay. ⚠️ Commit `4a43a6a` lỡ đẩy TRƯỚC khi kiểm cú pháp (script kiểm
+  "còn sót 4 tiếng" tự bắt chính dòng comment của nó rồi ném lỗi, chuỗi lệnh dùng `;` nên commit vẫn chạy) - đã kiểm lại
+  ngay sau: syntax + pagecheck OK, bot test chạy, web trả `rescueCd` = 3.600.000 ms. Bài học: sau bước ném lỗi phải là
+  `&&`, không phải `;`.
 - **10/09** — 🌳 **Implant: +7 Cây Thế Giới 12.000 (hạn riêng 1/người/ngày, card cầu vồng), Chuyển Đổi lên đầu +
   icon riêng, nhóm implant MIỄN hạn 📅 chung, chú thích = tác dụng thuần** (4 yêu cầu liên tiếp của chủ server). (1) Card
   implant bỏ dòng "📅 cả server hôm nay còn N" (web `isDayLine` trả riêng dòng 🧬/🌳; server `itemShopBuy` bỏ qua hạn chung
