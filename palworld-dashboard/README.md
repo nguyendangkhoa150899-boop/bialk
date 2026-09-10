@@ -670,6 +670,23 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 📅 **Shop item: GIỚI HẠN MUA mỗi món / mỗi người / ngày** (chủ server: "mỗi người chỉ được mua
+  99 cái/ngày, tất cả vật phẩm, cho mình set"). Một số chung `dbCache._itemShopDayMax` (mặc định 99, 0 = không
+  giới hạn), admin đặt ở panel SUPER tab 🎮 card Shop Item (ô 📅 + 💾, route `/api/itemshop/daymax` trong VIEWONLY
+  → cổng thường 403). Đếm ở `user.shopDay {day, bought:{id:n}}` theo ngày VN (`vnDayISO`), đổi ngày tự đếm lại.
+  `itemShopBuy` kiểm TRƯỚC khi trừ tiền/mở SFTP; tính hạn lúc trừ tiền; giao hụt (hoàn tiền) trả lại hạn; timeout
+  mơ hồ (giữ tiền) vẫn tính (chống lách). Web: state gửi `dayMax` + `today`, card hiện "📅 hôm nay còn mua được
+  N/99" (đỏ khi hết), `isBuy` chặn sớm; server vẫn là chốt. Test: palwheeltest +13 case (185/185); e2e HTTP bot test
+  (đặt 1 → web mua 2 bị chặn đúng câu, cổng thường 403, 0 và -5 xử đúng); 19 món test-bot đã sửa giá 2 qua API.
+- **10/09** — 🛒 **Shop item +19 món: 13 🍖 thức ăn (12 thịt sống + Mật Ong) + 6 🧱 nguyên liệu** (chủ server
+  tải icon sẵn vào `assets/itemimage/`, tra ID từ `gameitems.json` theo icon - lưu ý IconName ≠ ID ở
+  1631/2299 món nên KHÔNG lấy IconName làm ID). Nhóm shop MỚI `material` (🧱 Nguyên liệu): thêm vào
+  `ITEM_SHOP_CATS` (server), select `.isf-cat` panel, `ISG` web (7 nút nhóm). `DEFAULT_ITEM_SHOP` 65 → 84;
+  đợt ghép 4 theo cờ `_migItemShopFood1009` (chỉ thêm cat food/material còn thiếu, không hồi sinh món
+  admin đã xoá, chạy 1 lần lúc bot khởi động → prod `pm2 restart` là có). Giá chủ server chốt: **2 Dogcoin/cái**
+  cả 19 món (cần số lượng rất lớn) - bù bằng hạn mua/ngày (mục dưới). ⚠️ `setItemShop` cắt ở **100 món** (`.slice(0,100)`),
+  còn 16 chỗ. Test: web /api/itemshop/state 84 món đúng nhóm, 4 ảnh mới 200, palwheeltest 172/172
+  (sandbox thêm `vnDayISO` - hàm Claude nhà thêm, không liên quan đợt này).
 - **10/09** — 🆘 **Điểm tẩu thoát "mất" sau F5** (chủ server: "F5 nó mất, hôm qua mình lưu"): điểm
   KHÔNG mất - vẫn nằm ở `dbCache._rescuePoint` (database.json VPS, reset server game không đụng tới)
   và người chơi bấm 🆘 vẫn về đúng điểm đó. Chỉ là card panel tải điểm bằng POST riêng sau 800 ms

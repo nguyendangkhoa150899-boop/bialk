@@ -1328,6 +1328,27 @@ const DEFAULT_ITEM_SHOP = [
     // 2 nhẫn lẻ (chủ server tải icon sẵn, giá mặc định 60k)
     { cat: 'accessory', id: 'Accessory_Avoid_1', name: 'Nhẫn Huyễn Ảnh', price: 60000, max: 99, img: 'T_itemicon_Accessory_Accessory_Avoid_1.webp', note: 'Kéo dài thời gian bất tử khi lăn/nhảy né' },
     { cat: 'accessory', id: 'Otomo_PalConfidence_Increase_1', name: 'Nhẫn Tin Cậy', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_PalConfidence_Increase_1.webp', note: 'Dễ chiếm lòng tin của Pal hơn' },
+    // 10/09: 🍖 13 thức ăn (thịt sống + mật ong) + 🧱 6 nguyên liệu (nhóm material MỚI) - chủ server
+    // tải icon sẵn. Giá 2 Dogcoin/cái (chủ server chốt 10/09: cần số lượng rất lớn) - bù bằng giới hạn/ngày.
+    { cat: 'food', id: 'Meat_ChickenPal', name: 'Thịt Gà Chikipi', price: 2, max: 999, img: 'T_itemicon_Food_Meat_ChickenPal.webp' },
+    { cat: 'food', id: 'Meat_SheepBall', name: 'Thịt Cừu Lamball', price: 2, max: 999, img: 'T_itemicon_Food_Meat_SheepBall.webp' },
+    { cat: 'food', id: 'Meat_Boar', name: 'Thịt Lợn Rushoar', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Boar.webp' },
+    { cat: 'food', id: 'Meat_CowPal', name: 'Thịt Bò Mozzarina', price: 2, max: 999, img: 'T_itemicon_Food_Meat_CowPal.webp' },
+    { cat: 'food', id: 'Meat_BerryGoat', name: 'Thịt Caprity Thảo Mộc', price: 2, max: 999, img: 'T_itemicon_Food_Meat_BerryGoat.webp' },
+    { cat: 'food', id: 'Meat_Deer', name: 'Thịt Nai Eikthyrdeer', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Deer.webp' },
+    { cat: 'food', id: 'Meat_IceDeer', name: 'Thịt Nai Reindrix', price: 2, max: 999, img: 'T_itemicon_Food_Meat_IceDeer.webp' },
+    { cat: 'food', id: 'Meat_Eagle', name: 'Thịt Gà Galeclaw', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Eagle.webp' },
+    { cat: 'food', id: 'Meat_Kelpie', name: 'Thịt Cá Kelpsea', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Kelpie.webp' },
+    { cat: 'food', id: 'Meat_LazyCatfish', name: 'Thịt Cá Dumud', price: 2, max: 999, img: 'T_itemicon_Food_Meat_LazyCatfish.webp' },
+    { cat: 'food', id: 'Meat_SakuraSaurus', name: 'Thịt Khủng Long Broncherry', price: 2, max: 999, img: 'T_itemicon_Food_Meat_SakuraSaurus.webp' },
+    { cat: 'food', id: 'Meat_GrassMammoth', name: 'Thịt Quái Thú Mammorest', price: 2, max: 999, img: 'T_itemicon_Food_Meat_GrassMammoth.webp' },
+    { cat: 'food', id: 'Honey', name: 'Mật Ong', price: 2, max: 999, img: 'T_itemicon_Food_Honey.webp' },
+    { cat: 'material', id: 'FireOrgan', name: 'Cơ Quan Tạo Lửa', price: 2, max: 999, img: 'T_itemicon_Material_FireOrgan.webp' },
+    { cat: 'material', id: 'IceOrgan', name: 'Cơ Quan Kết Băng', price: 2, max: 999, img: 'T_itemicon_Material_IceOrgan.webp' },
+    { cat: 'material', id: 'ElectricOrgan', name: 'Cơ Quan Sinh Điện', price: 2, max: 999, img: 'T_itemicon_Material_ElectricOrgan.webp' },
+    { cat: 'material', id: 'Venom', name: 'Tuyến Độc', price: 2, max: 999, img: 'T_itemicon_Material_Venom.webp' },
+    { cat: 'material', id: 'PalOil', name: 'Dầu Pal Thượng Hạng', price: 2, max: 999, img: 'T_itemicon_Material_PalOil.webp' },
+    { cat: 'material', id: 'PalItem_RaijinDaughter', name: 'Mây Dazzi', price: 2, max: 999, img: 'T_itemicon_Material_PalItem_RaijinDaughter.webp' },
 ];
 function seedItemShopIfEmpty() {
     if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
@@ -1365,6 +1386,17 @@ function seedItemShopIfEmpty() {
         if (add.length) {
             setItemShop(cur.concat(add));
             writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món phụ kiện`);
+        } else saveDbNow();
+    }
+    // 10/09: đợt 4 - CHỈ ghép 13 🍖 thức ăn + 6 🧱 nguyên liệu mới (cat food/material), cờ riêng
+    if (!dbCache._migItemShopFood1009) {
+        dbCache._migItemShopFood1009 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const add = DEFAULT_ITEM_SHOP.filter(x => (x.cat === 'food' || x.cat === 'material') && !have.has(x.id));
+        if (add.length) {
+            setItemShop(cur.concat(add));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món thức ăn + nguyên liệu: ${add.map(x => x.id).join(', ')}`);
         } else saveDbNow();
     }
     // 07/09: điền GHI CHÚ tác dụng cho món cũ còn thiếu (tra id trong DEFAULT) - idempotent
@@ -1416,7 +1448,7 @@ function uploadItemImage(fileName, dataB64) {
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 // 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
-const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo'];
+const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material'];   // 10/09 +material (🧱 nguyên liệu)
 function itemShopList() {
     const arr = dbCache._itemShop;
     return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
@@ -1494,6 +1526,27 @@ async function adminGiveItem(gameName, itemId, qty) {
     return { error: `Giao hụt: ${msg}` };
 }
 
+// 📅 10/09: GIỚI HẠN MUA mỗi món / mỗi người / ngày (giờ VN, reset 00:00). Admin đặt 1 số chung
+// ở panel (dbCache._itemShopDayMax, mặc định 99, 0 = không giới hạn) - áp cho TẤT CẢ món vì có
+// món 2 Dogcoin (thịt/nguyên liệu) mà không chặn thì 1 người vét cả kho. Đếm ở user.shopDay
+// { day: 'YYYY-MM-DD', bought: { itemId: n } }; đổi ngày là đếm lại từ 0.
+const ITEM_SHOP_DAYMAX_DEF = 99;
+function itemShopDayMax() {
+    const v = Number(dbCache._itemShopDayMax);
+    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : ITEM_SHOP_DAYMAX_DEF;
+}
+function setItemShopDayMax(v) {
+    v = Math.floor(Number(v));
+    if (!Number.isFinite(v) || v < 0 || v > 100000) return { error: 'Giới hạn/ngày phải là số 0–100000 (0 = không giới hạn)' };
+    dbCache._itemShopDayMax = v;
+    saveDbNow();
+    return { ok: true, dayMax: v };
+}
+function itemShopToday(user) {
+    const d = vnDayISO(Date.now());
+    if (!user.shopDay || user.shopDay.day !== d) user.shopDay = { day: d, bought: {} };
+    return user.shopDay.bought;
+}
 async function itemShopBuy(userId, itemId, qty, username) {
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới mua item được' };
     const it = itemShopList().find(x => x.id === String(itemId));
@@ -1502,6 +1555,13 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if (qty < 1 || qty > it.max) return { error: `Số lượng phải trong 1–${it.max}` };
     const cost = it.price * qty;
     const user = getUserData(userId);
+    // 📅 giới hạn/ngày (kiểm TRƯỚC khi trừ tiền / mở SFTP)
+    const dayMax = itemShopDayMax();
+    const today = itemShopToday(user);
+    if (dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
+        const left = Math.max(0, dayMax - (today[it.id] || 0));
+        return { error: left ? `📅 Mỗi người chỉ mua tối đa ${dayMax} ${it.name}/ngày - hôm nay bạn còn mua được ${left}` : `📅 Hôm nay bạn đã mua đủ ${dayMax} ${it.name} - mai quay lại (reset 00:00)` };
+    }
     if ((user.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} Dogcoin (bạn có ${(user.points || 0).toLocaleString()})` };
     const gameName = (user.ingameName || '').trim();
     if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
@@ -1513,6 +1573,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi mua nhé (chưa trừ đồng nào)` }; }
 
     updatePoints(userId, -cost);   // trừ TRƯỚC (giữ chỗ)
+    today[it.id] = (today[it.id] || 0) + qty;   // 📅 tính vào hạn ngày ngay lúc trừ tiền
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
     saveDbNow();
     let r = null, err = null;
@@ -1526,6 +1587,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     // CHẮC CHẮN chưa giao (dashboard chết / mod báo không thấy người) -> hoàn ngay
     if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
         updatePoints(userId, cost);
+        today[it.id] = Math.max(0, (today[it.id] || 0) - qty);   // 📅 chưa giao -> trả lại hạn ngày
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();
         return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã hoàn ${cost.toLocaleString()} Dogcoin` };
@@ -5055,6 +5117,8 @@ client.once('ready', async (c) => {
             itemshop: {
                 state: (uid) => ({
                     items: itemShopList().filter(x => !x.off),   // 09/09: món admin tắt bán không xuống web
+                    dayMax: itemShopDayMax(),                        // 📅 10/09: hạn mua mỗi món/ngày (0 = không)
+                    today: itemShopToday(getUserData(uid)),          // 📅 { itemId: đã mua hôm nay }
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
                 }),
@@ -5133,6 +5197,7 @@ client.once('ready', async (c) => {
                 return { ok: true, cfg: dailyCfg() };
             },
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
+            getItemShopDayMax: itemShopDayMax, setItemShopDayMax,   // 📅 10/09 hạn mua/ngày
             setItemShop,
             uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
             // 📦 kho đồ toàn game (CHỈ cổng SUPER - panel tự gate epOk)
