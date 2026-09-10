@@ -1221,6 +1221,11 @@ async function palRescue(userId) {
     if (left > 0) return { error: `🆘 Tẩu thoát 4 tiếng mới dùng được 1 lần - còn ${Math.ceil(left / 60000)} phút nữa` };
     if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi bấm lại' };
     deliverLock();
+    // 10/09: KIỂM ONLINE TRƯỚC như mọi luồng giao đồ - offline vẫn còn PlayerState nhưng không có
+    // nhân vật, mod báo lỗi kỹ thuật thô ("khong lay duoc pawn") làm người chơi hoảng.
+    const on = await requireOnline(gameName);
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau vài phút (chưa tính lượt)` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa ONLINE trong game - vào game, đứng yên vài giây rồi bấm 🆘 (chưa tính lượt)` }; }
     // 📍 điểm đích do admin đặt ở panel (dbCache._rescuePoint); chưa đặt -> mod fallback
     // PlayerStart (10/09 đo ra là World Tree - nhắc admin đặt điểm cho tử tế)
     const pt = dbCache._rescuePoint;
@@ -1235,7 +1240,8 @@ async function palRescue(userId) {
         return { ok: true, message: '🆘 Đã dịch chuyển nhân vật về ĐIỂM XUẤT PHÁT! Không chết, không rớt gì - hẹn 4 tiếng nữa.' };
     }
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
-    if (/player not found/i.test(msg)) return { error: 'Không thấy nhân vật ONLINE - phải đang đứng trong game mới tẩu thoát được (chưa tính lượt)' };
+    if (/player not found|khong lay duoc pawn/i.test(msg)) return { error: `Nhân vật ${gameName} chưa ONLINE trong game (hoặc vừa thoát) - vào game rồi bấm 🆘 lại (chưa tính lượt)` };
+    if (/timeout|aborted|không phản hồi/i.test(msg)) return { error: 'Mod trong game không trả lời kịp - server đang bận, thử lại sau 1 phút (chưa tính lượt)' };
     return { error: 'Chưa dịch chuyển được: ' + msg.slice(0, 120) + ' - thử lại sau (chưa tính lượt)' };
 }
 

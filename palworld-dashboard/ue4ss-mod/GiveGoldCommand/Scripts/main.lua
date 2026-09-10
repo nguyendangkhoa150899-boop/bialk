@@ -724,7 +724,7 @@ local function rescuePlayer(playerName, x, y, z)
     end
     local ok, err = pcall(function()
         local pawn = playerState.PawnPrivate
-        if not pawn or not pawn:IsValid() then error("khong lay duoc pawn (nguoi choi vua thoat?)") end
+        if not pawn or not pawn:IsValid() then error("khong lay duoc pawn (nguoi choi vua thoat?)", 0) end
         -- lấy struct vector THẬT từ engine rồi ghi đè field - tự dựng bảng Lua có thể
         -- không convert được sang FVector tuỳ bản UE4SS
         local loc = pawn:K2_GetActorLocation()
@@ -732,12 +732,12 @@ local function rescuePlayer(playerName, x, y, z)
             loc.X = x; loc.Y = y; loc.Z = z + 150   -- nhấc lên chút cho khỏi lún đất
         else
             local starts = FindAllOf("PlayerStart") or {}
-            if #starts < 1 then error("khong tim thay PlayerStart nao") end
+            if #starts < 1 then error("khong tim thay PlayerStart nao", 0) end
             local sl = starts[1]:K2_GetActorLocation()
             loc.X = sl.X; loc.Y = sl.Y; loc.Z = sl.Z + 150
         end
         local moved = pawn:K2_TeleportTo(loc, pawn:K2_GetActorRotation())
-        if not moved then error("K2_TeleportTo tra ve false") end
+        if not moved then error("K2_TeleportTo tra ve false", 0) end
     end)
     if ok then
         appendPlayerResult(playerName, "OK RESCUE")
@@ -755,7 +755,7 @@ local function whereIs(playerName)
     end
     local ok, err = pcall(function()
         local pawn = playerState.PawnPrivate
-        if not pawn or not pawn:IsValid() then error("khong lay duoc pawn") end
+        if not pawn or not pawn:IsValid() then error("khong lay duoc pawn", 0) end
         local loc = pawn:K2_GetActorLocation()
         appendPlayerResult(playerName, string.format("OK WHEREIS X=%.1f Y=%.1f Z=%.1f", loc.X, loc.Y, loc.Z))
     end)

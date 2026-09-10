@@ -670,6 +670,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🆘 **Tẩu thoát khi OFFLINE báo lỗi thô** ("ERROR RESCUE: …main.lua:727: khong lay duoc
+  pawn…"): người chơi thoát game vẫn còn PlayerState nên mod tìm được state mà không có pawn.
+  Fix: `palRescue` **kiểm `requireOnline` trước** như mọi luồng giao đồ (offline → "Nhân vật X chưa
+  ONLINE trong game - vào game, đứng yên vài giây rồi bấm 🆘 (chưa tính lượt)", không kiểm được →
+  câu riêng); lỗi mod `khong lay duoc pawn` / timeout cũng dịch ra câu người thường; Lua
+  `rescuePlayer` dùng `error(msg, 0)` để không kèm `file:dòng`. main.lua đã chép lên TEST + PROD
+  (cần restart server mới nạp).
+
 - **08/09 (tối)** — ⚠️ **Đổi tên server trên Shockbyte = GÃY prod âm thầm**: chủ server đổi
   tên server CHÍNH "1. test mod" → **"1. Cô 4 vui vẻ"** (và server TEST → "1. test mod").
   Path SFTP Shockbyte đi theo TÊN HIỂN THỊ nên `SFTP_MOD_PATH` trong `.env` dashboard prod
