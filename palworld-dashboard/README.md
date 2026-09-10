@@ -670,6 +670,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 💎 **Implant xếp HẠNG theo passive** (chủ server: "cái nào kim cương xếp kim cương, cái nào vàng xếp vàng").
+  Server `implantTier(id)` tra `passives.json` (tier 4 = 💎 kim cương, 3 = 🥇 vàng, 1-2 = thường; Cây Thế Giới = 🌈 riêng;
+  Chuyển Đổi = gender), `itemShopWebList()` xếp Chuyển Đổi → 🌈 → 💎 → 🥇 → thường (nhóm khác giữ thứ tự) và gắn field
+  `tier` (không lưu DB). Web: card `.isT4` viền + tên xanh ngọc #3fe0cf, `.isT3` vàng #ffd76a (cùng màu bảng passive lúc
+  nhận pal), nhãn nhỏ 💎 KIM CƯƠNG / 🥇 VÀNG / 🌈 CÂY THẾ GIỚI cạnh tên. Kết quả nhóm implant: 1 Chuyển Đổi, 7 🌈, 14 💎
+  (9.000), 13 🥇 (6.000), 1 thường (Cơ Bắp tier 2, 6.000). Test: shopcardtest +5, palwheeltest +2.
 - **10/09** — 🧪 **Implant +14 món dùng một lần còn lại** (chủ server đối chiếu paldb "Disposable Implant" 21 món: 7 🌳 đã
   có, thiếu 5 Đột biến + 9 Cao cấp - Quỷ Thần, Thân Thể Kim Cương, Siêu Cấp Kỹ Năng, Nhịn Ăn Thành Thạo, Bất Động Minh
   Vương Chi Tâm, Thần Tốc, Động Cơ Vĩnh Cửu, Ma Cà Rồng, Vua Lướt Sóng, Thân Thể Bất Tử, Thể Chất Đặc Dị, Bảo Mẫu Trông

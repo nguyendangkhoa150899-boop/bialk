@@ -755,6 +755,11 @@ const PAGE = [
     // 🌳 10/09: implant Cây Thế Giới - viền + tên cầu vồng cho dễ nhận
     '.isItem.isWT{border:2px solid transparent;background:linear-gradient(#141824,#141824) padding-box,linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff) border-box}',
     '.isItem.isWT .isNm{background:linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff);-webkit-background-clip:text;background-clip:text;color:transparent}',
+    // 💎 10/09: hạng implant - kim cương (tier 4) xanh ngọc, vàng (tier 3) - cùng màu với bảng passive lúc nhận pal
+    '.isItem.isT4{border-color:#3fe0cf;box-shadow:0 0 0 1px #3fe0cf55 inset}.isItem.isT4 .isNm{color:#3fe0cf}',
+    '.isItem.isT3{border-color:#ffd76a;box-shadow:0 0 0 1px #ffd76a55 inset}.isItem.isT3 .isNm{color:#ffd76a}',
+    '.isTier{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle}',
+    '.isTier.t4{background:#3fe0cf22;color:#3fe0cf}.isTier.t3{background:#ffd76a22;color:#ffd76a}.isTier.twt{background:#c85fff22;color:#e0b3ff}',
     '.isItem .isPr{color:var(--gold);font-size:13px;font-weight:700;margin-top:2px}',
     '.isItem .isBuyRow{display:flex;align-items:center;gap:8px}',
     '.isItem .isQty{width:72px}',
@@ -2968,7 +2973,9 @@ const PAGE = [
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
     'function isWT(it){return it.cat==="implant"&&/Consumable_WorldTree_/.test(it.id)}',
-    'function isCard(it){return "<div class=\\"isItem"+(isWT(it)?" isWT":"")+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
+    'function isTierCls(it){return isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":""))}',
+    'function isTierTag(it){return isWT(it)?"<span class=\\"isTier twt\\">🌈 CÂY THẾ GIỚI</span>":(it.tier==="diamond"?"<span class=\\"isTier t4\\">💎 KIM CƯƠNG</span>":(it.tier==="gold"?"<span class=\\"isTier t3\\">🥇 VÀNG</span>":""))}',
+    'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+isTierTag(it)+"</div><div class=\\"isPr\\">"+vnd(it.price)+" Dogcoin / cái</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+"<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',

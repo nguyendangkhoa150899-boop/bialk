@@ -1718,9 +1718,22 @@ function wtToday(user) {
     return user.wtDay;
 }
 // thứ tự cho web: trong nhóm implant -> Chuyển Đổi, rồi Cây Thế Giới, rồi implant thường; nhóm khác giữ nguyên
+// 💎 10/09: HẠNG implant theo passive (passives.json: tier 4 = kim cương/xanh ngọc, 3 = vàng, 1-2 = thường; Cây Thế Giới
+// riêng 'wt'). Chủ server: "cái nào kim cương xếp kim cương, cái nào vàng xếp vàng" -> web tô màu card + xếp thứ tự.
+function implantTier(id) {
+    id = String(id || '');
+    if (id === 'PalGenderReverse') return 'gender';
+    if (isWtImplant(id)) return 'wt';
+    const pid = id.replace(/^PalPassiveSkillChange_(Consumable_)?/, '');
+    const pv = passiveCatalog().find(p => p && p.id === pid) || (Array.isArray(PASSIVE_DATA.builds) ? PASSIVE_DATA.builds : []).find(p => p && p.id === pid);
+    const t = pv ? Number(pv.tier) : 0;
+    return t >= 4 ? 'diamond' : (t === 3 ? 'gold' : 'normal');
+}
+const IMPLANT_TIER_RANK = { gender: 0, wt: 0.2, diamond: 0.4, gold: 0.6, normal: 0.8 };
 function itemShopWebList() {
-    const rank = (x) => x.cat !== 'implant' ? 1 : (x.id === 'PalGenderReverse' ? 0 : (isWtImplant(x.id) ? 0.5 : 1));
-    return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (a[1] - b[1])).map(a => a[0]);
+    const rank = (x) => x.cat !== 'implant' ? 1 : IMPLANT_TIER_RANK[implantTier(x.id)];
+    return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (a[1] - b[1]))
+        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : a[0]);   // web tô màu theo tier
 }
 function implantToday(user) {
     const d = vnDayISO(Date.now());
