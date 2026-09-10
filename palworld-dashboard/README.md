@@ -670,6 +670,9 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 💰 **Implant: trong cùng bậc xếp giá CAO trước** (chủ server: "1 bậc cây → kim cương → vàng; 2 giá trong bậc
+  12000 xếp trước 8000"). `itemShopWebList()` sort 3 khoá: bậc (Chuyển Đổi → 🌈 → 💎 → 🥇 → thường) → giá giảm dần (chỉ cat
+  implant) → thứ tự admin. Nhóm khác không đổi. Test palwheeltest +1 (216/216).
 - **10/09** — 💎 **Implant xếp HẠNG theo passive** (chủ server: "cái nào kim cương xếp kim cương, cái nào vàng xếp vàng").
   Server `implantTier(id)` tra `passives.json` (tier 4 = 💎 kim cương, 3 = 🥇 vàng, 1-2 = thường; Cây Thế Giới = 🌈 riêng;
   Chuyển Đổi = gender), `itemShopWebList()` xếp Chuyển Đổi → 🌈 → 💎 → 🥇 → thường (nhóm khác giữ thứ tự) và gắn field

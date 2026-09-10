@@ -1732,7 +1732,9 @@ function implantTier(id) {
 const IMPLANT_TIER_RANK = { gender: 0, wt: 0.2, diamond: 0.4, gold: 0.6, normal: 0.8 };
 function itemShopWebList() {
     const rank = (x) => x.cat !== 'implant' ? 1 : IMPLANT_TIER_RANK[implantTier(x.id)];
-    return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (a[1] - b[1]))
+    // trong CÙNG bậc implant: giá cao xếp trước (chủ server 10/09: "12000 xếp trước 8000"); nhóm khác giữ thứ tự admin
+    const priceKey = (x) => x.cat === 'implant' ? -(Number(x.price) || 0) : 0;
+    return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (priceKey(a[0]) - priceKey(b[0])) || (a[1] - b[1]))
         .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : a[0]);   // web tô màu theo tier
 }
 function implantToday(user) {
