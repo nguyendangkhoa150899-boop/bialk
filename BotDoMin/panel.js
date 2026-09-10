@@ -183,6 +183,7 @@ function startPanel(ctx) {
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             itemShopDayMax: ctx.getItemShopDayMax ? ctx.getItemShopDayMax() : null,   // 📅 10/09
             itemShopDayMode: ctx.getItemShopDayMode ? ctx.getItemShopDayMode() : null,   // 📅 'server' | 'user'
+            itemShopImplantMax: ctx.getItemShopImplantMax ? ctx.getItemShopImplantMax() : null,   // 🧬
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
         };
@@ -293,6 +294,11 @@ function startPanel(ctx) {
                         const m = ctx.setItemShopDayMode(body.dayMode);
                         if (m.error) return sendJSON(res, 400, { ok: false, error: m.error });
                         r.dayMode = m.dayMode;
+                    }
+                    if (body.implantMax !== undefined && ctx.setItemShopImplantMax) {
+                        const im = ctx.setItemShopImplantMax(body.implantMax);
+                        if (im.error) return sendJSON(res, 400, { ok: false, error: im.error });
+                        r.implantMax = im.implantMax;
                     }
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Giới hạn mua mỗi món/ngày = ${r.dayMax || 'không giới hạn'} · chế độ ${r.dayMode === 'user' ? 'mỗi người' : 'toàn server'}`);
                     return sendJSON(res, 200, r);
@@ -1544,6 +1550,12 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green mini" onclick="isDayMaxSave(this)">💾 Lưu</button>
           <span class="muted" style="font-size:12px">áp cho TẤT CẢ món · 0 = không giới hạn · đếm lại 00:00 giờ VN · "cả server" = ai mua trước được trước</span>
         </div>
+        <div class="row" style="margin-top:6px;align-items:center;gap:8px">
+          <span>🧬 Implant: <b>mỗi người</b> tối đa</span>
+          <input class="mini-in" id="isImplantMax" type="number" min="0" max="1000" placeholder="2" style="width:70px">
+          <span>cái/ngày, <b>mọi loại gộp</b></span>
+          <span class="muted" style="font-size:12px">(hạn riêng nhóm 🧬, luôn đếm theo người · lưu bằng nút 💾 ở trên · 0 = không giới hạn)</span>
+        </div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
             <thead><tr><th title="Tick = đang bán trên web · bỏ tick = ẩn, người chơi không thấy/không mua được (dòng vẫn giữ)">Bán</th><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Ghi chú tác dụng</th><th>Hình (file)</th><th></th></tr></thead>
@@ -2579,7 +2591,9 @@ async function isDayMaxSave(btn){
   const v=parseInt(document.getElementById('isDayMax').value);
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
   const mode=(document.getElementById('isDayMode')||{}).value||'server';
-  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server'));HOLD_SIG='';refresh();}));
+  const imEl=document.getElementById('isImplantMax');const im=imEl&&imEl.value!==''?parseInt(imEl.value):undefined;
+  if(im!==undefined&&!(im>=0))return toast('❌ Hạn implant: nhập số ≥ 0');
+  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
 }
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
@@ -2590,7 +2604,7 @@ function itemShopAddRow(it){
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="isf-on" style="width:auto;margin:0" title="Đang bán / ẩn" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45"></td>'
     +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
-    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🧱 Nguyên liệu</option></select></td>'
+    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🧱 Nguyên liệu</option><option value="implant">🧬 Implant</option></select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
     +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
     +'<td><input class="mini-in isf-note" style="width:200px" placeholder="tác dụng (hiện trên web + search được)"></td>'
@@ -2603,7 +2617,7 @@ function itemShopAddRow(it){
   tr.querySelector('.isf-id').value=it.id||'';
   tr.querySelector('.isf-name').value=it.name||'';
   // 08/09: thiếu 'accessory' → mọi phụ kiện nạp lên form thành Tiêu hao, bấm Lưu là mất nhóm cả 38 món
-  tr.querySelector('.isf-cat').value=['weapon','armor','accessory','food','ammo','material'].includes(it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material
+  tr.querySelector('.isf-cat').value=['weapon','armor','accessory','food','ammo','material','implant'].includes(it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material + implant
   tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
   tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
   tr.querySelector('.isf-note').value=it.note||'';
@@ -3056,6 +3070,7 @@ async function refresh(force){
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
   // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)
+  const imx=document.getElementById('isImplantMax');if(imx&&imx.value===''&&document.activeElement!==imx&&STATE.itemShopImplantMax!==null&&STATE.itemShopImplantMax!==undefined)imx.value=STATE.itemShopImplantMax;
   const dmo=document.getElementById('isDayMode');if(dmo&&STATE.itemShopDayMode&&!dmo.dataset.touched&&document.activeElement!==dmo){dmo.value=STATE.itemShopDayMode;dmo.onchange=()=>{dmo.dataset.touched='1';};}
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;

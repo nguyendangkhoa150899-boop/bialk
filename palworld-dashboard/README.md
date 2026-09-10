@@ -670,6 +670,21 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🧬 **Shop item: nhóm IMPLANT riêng, 15 món × 6.000, mỗi người 2 cái/ngày mọi loại gộp** (chủ server gửi
+  ảnh paldb "Unlock Implants from Arena/Bounty" + Pal Reverser, dặn dùng chung icon
+  `T_itemicon_Material_PalPassiveSkillChange_Consumable.webp`, "làm tiếng Việt + chú thích"). Map EN → id qua
+  `passives.json` (en) rồi item `PalPassiveSkillChange_<passive>` trong `gameitems.json`: Serenity=CoolTimeReduction_Up_1,
+  Infinite Stamina=Stamina_Up_1, **Runner=MoveSpeed_up_2 (Cấp Tốc, KHÔNG phải up_1 Nhanh Nhẹn)**, Ace Swimmer=SwimSpeed_up_2,
+  Noble=SalePrice_Up_1, Healing Coach=AutoHPRegeneRate_Passive, Reload Master=ReloadSpeedUp_Passive, Musclehead=Noukin,
+  Burly Body=Deffence_up2, Artisan=CraftSpeed_up2, Vanguard=TrainerATK_UP_1, Stronghold Strategist=TrainerDEF_UP_1,
+  Motivational Leader=TrainerWorkSpeed_UP_1, Wellness Watcher=PlayerSP_DecreaseRate_Passive; Pal Reverser=`PalGenderReverse`.
+  Tên = tên item game + (EN), `note` = 🏟️/🎯 nguồn + mô tả passive (hiện trên card + search). Nhóm `implant` thêm vào
+  `ITEM_SHOP_CATS`/panel/web (8 nhóm). **Hạn RIÊNG** `_itemShopImplantMax` (mặc định 2, 0 = không) đếm `user.implantDay {day,n}`
+  THEO NGƯỜI bất kể chế độ 🌐/👤 của hạn chung; kiểm trước khi trừ tiền, hoàn tiền trả lại hạn; web: dòng 🧬 trên card
+  implant + `isBuy` chặn sớm; panel: ô 🧬 cạnh ô 📅, lưu chung route `/api/itemshop/daymax` (body `implantMax`). Đợt ghép 7
+  cờ `_migItemShopImplant1009`. DEFAULT 116 → 131. Test: palwheeltest +11 (203/203), shopcardtest +4 (18/18; harness phải
+  trích thêm isImpLeft/isImpLine), e2e HTTP: web 131 món / 15 implant / 6000, mua 3 Chuyển Đổi bị chặn "còn 2", implantMax
+  5 → state 5, -3 → 400, icon 200.
 - **10/09** — 🌐 **Hạn mua/ngày đổi sang GỘP CẢ SERVER** (chủ server: "toàn server được mua thay vì cá nhân").
   Thêm chế độ `dbCache._itemShopDayMode`: `'server'` (MẶC ĐỊNH mới - mọi người chung 1 bộ đếm
   `dbCache._itemShopDay {day, bought}`, ai mua trước được trước) / `'user'` (mỗi người, bộ đếm cũ `user.shopDay`).

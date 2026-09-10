@@ -1383,6 +1383,24 @@ const DEFAULT_ITEM_SHOP = [
     { cat: 'ammo', id: 'SkyShotgunBullet', name: 'Đạn Súng Săn Nguyên Mẫu', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyShotgunBullet.webp' },
     { cat: 'ammo', id: 'SkyAssaultRifleBullet', name: 'Đạn Súng Trường Tấn Công Hạng Nặng', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyAssaultRifleBullet.webp' },
     { cat: 'ammo', id: 'SkyGrenadeLauncherBullet', name: 'Đạn Súng Phóng Lựu Chiến Thuật', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyGrenadeLauncherBullet.webp' },
+    // 10/09: 🧬 IMPLANT (nhóm implant MỚI) - 14 cấy ghép mở từ Đấu Trường (Arena) + Truy Nã (Bounty) và Chuyển Đổi
+    // giới tính. 6.000/cái, dùng chung 1 icon. Hạn RIÊNG: mỗi người tối đa 2 cái/ngày mọi loại gộp (itemShopImplantMax).
+    // Tên = tên item trong game (gameitems.json), chú thích = mô tả passive (passives.json).
+    { cat: 'implant', id: 'PalPassiveSkillChange_CoolTimeReduction_Up_1', name: 'Cấy ghép: Điềm Tĩnh (Serenity)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🏟️ Đấu Trường · Thời gian hồi chiêu của kỹ năng chủ động giảm 30%, Tấn công +10%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Stamina_Up_1', name: 'Cấy ghép: Sức Bền Vô Hạn (Infinite Stamina)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🏟️ Đấu Trường · Thể lực tối đa +50% (*chỉ hiệu lực đối với Pal có thể cưỡi)' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_MoveSpeed_up_2', name: 'Cấy ghép: Cấp Tốc (Runner)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🏟️ Đấu Trường · Tăng tốc độ di chuyển 20%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_SwimSpeed_up_2', name: 'Cấy ghép: Bơi Lội Siêu Phàm (Ace Swimmer)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🏟️ Đấu Trường · Tăng tốc độ di chuyển trên mặt nước 40%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_SalePrice_Up_1', name: 'Cấy ghép: Cao Quý (Noble)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🏟️ Đấu Trường · Giá giao dịch tăng +5%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_AutoHPRegeneRate_Passive', name: 'Cấy ghép: Hỗ Trợ Hồi Phục (Healing Coach)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🏟️ Đấu Trường · Tốc độ tự hồi Máu của người chơi +5%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_ReloadSpeedUp_Passive', name: 'Cấy ghép: Bậc Thầy Nạp Đạn (Reload Master)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🏟️ Đấu Trường · Tăng tốc độ nạp đạn của người chơi +4%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Noukin', name: 'Cấy ghép: Cơ Bắp (Musclehead)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🎯 Truy Nã · Tấn công +30% NHƯNG Tốc độ làm việc −50%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Deffence_up2', name: 'Cấy ghép: Cường Tráng (Burly Body)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🎯 Truy Nã · Phòng thủ +20%, trạng thái choáng bị vô hiệu' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_CraftSpeed_up2', name: 'Cấy ghép: Nghệ Nhân Đích Thực (Artisan)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🎯 Truy Nã · Tốc độ làm việc +50%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_TrainerATK_UP_1', name: 'Cấy ghép: Kẻ Tiên Phong (Vanguard)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🎯 Truy Nã · Tấn công của người chơi tăng 10%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_TrainerDEF_UP_1', name: 'Cấy ghép: Quân Sư Phòng Thủ (Stronghold Strategist)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🎯 Truy Nã · Phòng thủ của người chơi tăng 10%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_TrainerWorkSpeed_UP_1', name: 'Cấy ghép: Thúc Đẩy Động Lực (Motivational Leader)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🎯 Truy Nã · Tốc độ làm việc của người chơi tăng 25%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_PlayerSP_DecreaseRate_Passive', name: 'Cấy ghép: Chống Kiệt Sức (Wellness Watcher)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '🎯 Truy Nã · Giảm tiêu hao thể lực của người chơi +5,0%' },
+    { cat: 'implant', id: 'PalGenderReverse', name: 'Chuyển Đổi Giới Tính Pal (Pal Reverser)', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: '⚧ Dùng ở Bàn Phẫu Thuật Pal: đổi giới tính đực ↔ cái của 1 pal (dùng 1 lần)' },
 ];
 function seedItemShopIfEmpty() {
     if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
@@ -1444,6 +1462,17 @@ function seedItemShopIfEmpty() {
             writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} loại đạn (1 Dogcoin/cái)`);
         } else saveDbNow();
     }
+    // 10/09: đợt 6 - CHỈ ghép 15 🧬 implant (cat implant), cờ riêng
+    if (!dbCache._migItemShopImplant1009) {
+        dbCache._migItemShopImplant1009 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'implant' && !have.has(x.id));
+        if (add.length) {
+            setItemShop(cur.concat(add));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} implant (6.000/cái, mỗi người 2/ngày)`);
+        } else saveDbNow();
+    }
     // 07/09: điền GHI CHÚ tác dụng cho món cũ còn thiếu (tra id trong DEFAULT) - idempotent
     const rawN = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     let noted = 0;
@@ -1493,7 +1522,7 @@ function uploadItemImage(fileName, dataB64) {
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 // 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
-const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material'];   // 10/09 +material (🧱 nguyên liệu)
+const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant'];   // 10/09 +material (🧱) +implant (🧬)
 function itemShopList() {
     const arr = dbCache._itemShop;
     return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
@@ -1596,6 +1625,25 @@ function setItemShopDayMode(m) {
     saveDbNow();
     return { ok: true, dayMode: m };
 }
+// 🧬 10/09: hạn RIÊNG cho nhóm implant - MỖI NGƯỜI tối đa N cái/ngày, MỌI LOẠI GỘP (mặc định 2, 0 = không),
+// luôn đếm theo người bất kể chế độ server/user ở trên. Bộ đếm user.implantDay { day, n }.
+const ITEM_SHOP_IMPLANT_MAX_DEF = 2;
+function itemShopImplantMax() {
+    const v = Number(dbCache._itemShopImplantMax);
+    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : ITEM_SHOP_IMPLANT_MAX_DEF;
+}
+function setItemShopImplantMax(v) {
+    v = Math.floor(Number(v));
+    if (!Number.isFinite(v) || v < 0 || v > 1000) return { error: 'Hạn implant/ngày phải là số 0–1000 (0 = không giới hạn)' };
+    dbCache._itemShopImplantMax = v;
+    saveDbNow();
+    return { ok: true, implantMax: v };
+}
+function implantToday(user) {
+    const d = vnDayISO(Date.now());
+    if (!user.implantDay || user.implantDay.day !== d) user.implantDay = { day: d, n: 0 };
+    return user.implantDay;
+}
 function itemShopToday(user) {
     const d = vnDayISO(Date.now());
     if (itemShopDayMode() === 'server') {
@@ -1614,6 +1662,14 @@ async function itemShopBuy(userId, itemId, qty, username) {
     const cost = it.price * qty;
     const user = getUserData(userId);
     // 📅 giới hạn/ngày (kiểm TRƯỚC khi trừ tiền / mở SFTP)
+    // 🧬 implant: hạn riêng theo người, mọi loại gộp
+    const isImplant = it.cat === 'implant';
+    const impMax = isImplant ? itemShopImplantMax() : 0;
+    const imp = isImplant ? implantToday(user) : null;
+    if (isImplant && impMax > 0 && imp.n + qty > impMax) {
+        const left = Math.max(0, impMax - imp.n);
+        return { error: left ? `🧬 Implant mỗi người chỉ mua tối đa ${impMax} cái/ngày (mọi loại gộp) - hôm nay bạn còn ${left}` : `🧬 Hôm nay bạn đã mua đủ ${impMax} implant - mai 00:00 mua tiếp` };
+    }
     const dayMax = itemShopDayMax();
     const today = itemShopToday(user);
     if (dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
@@ -1635,6 +1691,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
 
     updatePoints(userId, -cost);   // trừ TRƯỚC (giữ chỗ)
     today[it.id] = (today[it.id] || 0) + qty;   // 📅 tính vào hạn ngày ngay lúc trừ tiền
+    if (imp) imp.n += qty;                       // 🧬 hạn implant/người
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
     saveDbNow();
     let r = null, err = null;
@@ -1649,6 +1706,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
         updatePoints(userId, cost);
         today[it.id] = Math.max(0, (today[it.id] || 0) - qty);   // 📅 chưa giao -> trả lại hạn ngày
+        if (imp) imp.n = Math.max(0, imp.n - qty);
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();
         return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã hoàn ${cost.toLocaleString()} Dogcoin` };
@@ -5180,6 +5238,8 @@ client.once('ready', async (c) => {
                     items: itemShopList().filter(x => !x.off),   // 09/09: món admin tắt bán không xuống web
                     dayMax: itemShopDayMax(),                        // 📅 10/09: hạn mua mỗi món/ngày (0 = không)
                     dayMode: itemShopDayMode(),                      // 📅 'server' (gộp cả server) | 'user' (mỗi người)
+                    implantMax: itemShopImplantMax(),                // 🧬 mỗi người tối đa N implant/ngày (0 = không)
+                    implantToday: implantToday(getUserData(uid)).n,  // 🧬 đã mua hôm nay
                     today: itemShopToday(getUserData(uid)),          // 📅 { itemId: đã mua hôm nay }
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
@@ -5261,6 +5321,7 @@ client.once('ready', async (c) => {
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
             getItemShopDayMax: itemShopDayMax, setItemShopDayMax,   // 📅 10/09 hạn mua/ngày
             getItemShopDayMode: itemShopDayMode, setItemShopDayMode,   // 📅 chế độ đếm server/user
+            getItemShopImplantMax: itemShopImplantMax, setItemShopImplantMax,   // 🧬 hạn implant/người/ngày
             setItemShop,
             uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
             // 📦 kho đồ toàn game (CHỈ cổng SUPER - panel tự gate epOk)
