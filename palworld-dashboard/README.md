@@ -670,6 +670,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **10/09** — 🧪 **Implant +14 món dùng một lần còn lại** (chủ server đối chiếu paldb "Disposable Implant" 21 món: 7 🌳 đã
+  có, thiếu 5 Đột biến + 9 Cao cấp - Quỷ Thần, Thân Thể Kim Cương, Siêu Cấp Kỹ Năng, Nhịn Ăn Thành Thạo, Bất Động Minh
+  Vương Chi Tâm, Thần Tốc, Động Cơ Vĩnh Cửu, Ma Cà Rồng, Vua Lướt Sóng, Thân Thể Bất Tử, Thể Chất Đặc Dị, Bảo Mẫu Trông
+  Trẻ, Thiết Giáp Hạng Nặng, Bước Đi Trên Không). Giá **9.000** (Claude đề xuất giữa 6.000 và 12.000, chủ server duyệt
+  "thêm đi"), gộp quota 🧬 2/người/ngày (không phải WT nên không vào quota 🌳), đứng sau 🌳 trước implant thường. Đợt ghép
+  10 cờ `_migItemShopImplant14_1009`. DEFAULT 138 → 152, nhóm implant 36 món.
 - **10/09** — ✂️ **Tên implant chỉ còn tiếng Việt**: bỏ "Cấy ghép dùng một lần: " / "Cấy ghép: " và " (Tên tiếng Anh)"
   ở 22 món nhóm implant (DEFAULT + đợt ghép 9 `_migItemShopImplantName1009` gọt tên món đã có trong DB theo đúng mẫu,
   tên admin tự sửa không dính). Ví dụ "Cấy ghép dùng một lần: Cú Nhảy Không Gian (Dimensional Leap)" → "Cú Nhảy Không Gian".

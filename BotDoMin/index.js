@@ -1396,6 +1396,21 @@ const DEFAULT_ITEM_SHOP = [
     { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_MoveSpeed', name: 'Cú Nhảy Không Gian', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ di chuyển tăng +50%, Mức Độ No giảm nhanh +15%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
     { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_Sanity', name: 'Tiên Nhân', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Minh Mẫn giảm chậm +50%, Tốc độ làm việc -20%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
     { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_FullStomach', name: 'Vườn Ươm Cây Thần', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Mức Độ No giảm chậm +50%, Máu -20%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
+    // 10/09 (tối): +14 implant DÙNG MỘT LẦN còn lại (5 Đột biến + 9 Cao cấp) 9.000/cái, gộp quota 🧬 2/người/ngày.
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_Immortal', name: 'Thân Thể Bất Tử', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Hút Sinh Mệnh +5%, hồi Máu tự nhiên của Pal +100%, Tấn công +15%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_Mutant', name: 'Thể Chất Đặc Dị', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Hồi Máu tự nhiên của Pal và người chơi +50%, Phòng thủ +25%, sát thương do trúng độc/thiêu đốt vô hiệu' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_Babysitter', name: 'Bảo Mẫu Trông Trẻ', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Ở căn cứ: tốc độ tạo trứng của Pal tại Trang Trại Phối Giống +30%, tốc độ ấp trứng +30%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_ExplosionResist', name: 'Thiết Giáp Hạng Nặng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Sát thương do nổ vô hiệu' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_RideJumpCount_Increase2', name: 'Bước Đi Trên Không', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Số lần nhảy khi đang cưỡi +2' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_CraftSpeed_up3', name: 'Siêu Cấp Kỹ Năng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ làm việc +75%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_Deffence_up3', name: 'Thân Thể Kim Cương', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Phòng thủ +30%, trạng thái choáng bị vô hiệu, thổi bay bị vô hiệu' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_PAL_ALLAttack_up3', name: 'Quỷ Thần', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tấn công +30%, Phòng thủ +5%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_PAL_FullStomach_Down_3', name: 'Nhịn Ăn Thành Thạo', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'No lâu +20,0%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_PAL_Sanity_Down_3', name: 'Bất Động Minh Vương Chi Tâm', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Minh mẫn giảm chậm hơn +20,0%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MoveSpeed_up_3', name: 'Thần Tốc', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ di chuyển 30%' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_Stamina_Up_3', name: 'Động Cơ Vĩnh Cửu', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Thể lực tối đa +75% (*chỉ hiệu lực đối với Pal có thể cưỡi)' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_Vampire', name: 'Ma Cà Rồng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Gây sát thương, hấp thụ một phần sát thương đó và hồi phục Máu. Tiếp tục làm việc mà không ngủ, ngay cả vào ban đêm' },
+    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_SwimSpeed_up_3', name: 'Vua Lướt Sóng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ di chuyển trên mặt nước 50%' },
     { cat: 'implant', id: 'PalPassiveSkillChange_CoolTimeReduction_Up_1', name: 'Điềm Tĩnh', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Thời gian hồi chiêu của kỹ năng chủ động giảm 30%, Tấn công +10%' },
     { cat: 'implant', id: 'PalPassiveSkillChange_Stamina_Up_1', name: 'Sức Bền Vô Hạn', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Thể lực tối đa +50% (*chỉ hiệu lực đối với Pal có thể cưỡi)' },
     { cat: 'implant', id: 'PalPassiveSkillChange_MoveSpeed_up_2', name: 'Cấp Tốc', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ di chuyển 20%' },
@@ -1505,6 +1520,17 @@ function seedItemShopIfEmpty() {
         const fixed = cur.map(x => { if (x.cat !== 'implant') return x; const v = strip(x.name); if (v !== x.name) n++; return { ...x, name: v }; });
         if (n) setItemShop(fixed); else saveDbNow();
         writeLog('SYSTEM', `[SHOP ITEM] Gọt tên ${n} implant về tiếng Việt thuần`);
+    }
+    // 10/09: đợt 10 - ghép 14 implant dùng một lần còn lại (cat implant còn thiếu), cờ riêng
+    if (!dbCache._migItemShopImplant14_1009) {
+        dbCache._migItemShopImplant14_1009 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'implant' && !have.has(x.id));
+        if (add.length) {
+            setItemShop(cur.concat(add));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} implant dùng một lần (9.000/cái)`);
+        } else saveDbNow();
     }
     // 07/09: điền GHI CHÚ tác dụng cho món cũ còn thiếu (tra id trong DEFAULT) - idempotent
     const rawN = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
