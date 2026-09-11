@@ -309,6 +309,25 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
+                // 🤝 11/09: bán/tặng pal cho người chơi khác
+                if (ctx.profile && ctx.profile.tradeOffer && req.method === 'POST' && path === '/api/pal/trade/offer') {
+                    const body = await readBody(req);
+                    const r = ctx.profile.tradeOffer(userId, body.id, body.toId, body.price);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                if (ctx.profile && ctx.profile.tradeCancel && req.method === 'POST' && path === '/api/pal/trade/cancel') {
+                    const body = await readBody(req);
+                    const r = ctx.profile.tradeCancel(userId, body.tradeId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                if (ctx.profile && ctx.profile.tradeAccept && req.method === 'POST' && path === '/api/pal/trade/accept') {
+                    const body = await readBody(req);
+                    const r = ctx.profile.tradeAccept(userId, body.tradeId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 if (ctx.profile && req.method === 'POST' && path === '/api/pal/sell') {
                     const body = await readBody(req);
                     const r = ctx.profile.sell(userId, body.id);
@@ -745,6 +764,11 @@ const PAGE = [
     '#pwRaidMark{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#ffcf5c;z-index:2;box-shadow:0 0 8px #ff8f3c}',
     '#pwRaidStrip{display:flex;gap:6px;position:absolute;left:0;top:8px;will-change:transform}',
     '#pwRaidRes{margin-top:10px;border:1px solid #ff8f3c;border-radius:10px;padding:10px;text-align:center;background:#231619}',
+    // 🤝 11/09: thẻ giao dịch pal
+    '.pcItem.trIn{border-color:#3ddc84;box-shadow:0 0 0 1px #3ddc8444 inset}.pcItem.trOut{border-color:#ffd76a;opacity:.95}',
+    '#tmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:120;padding:16px}#tmodal.hidden{display:none}',
+    '.tmBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;width:420px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:gmpop .15s ease}',
+    '.tmActs{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}.tmActs button{min-width:100px;padding:10px 14px;font-weight:700;border-radius:9px}',
     // 🎒 Rương pal + hộp nhận
     // 27/08: thẻ Rương gọn - trên: hình pal + tên/tag/giờ · dưới: nút Bán/Nhận full ngang
     '.pcItem{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px;background:#141824}',
@@ -1726,6 +1750,17 @@ const PAGE = [
     '</div></div></div>',
     '<div id="toast"></div>',
     // 28/08: popup xác nhận đồng bộ giống admin portal (gConfirm thay confirm mặc định)
+    // 🤝 11/09: popup BÁN PAL - 2 lựa chọn: shop giá cố định | người chơi khác (nhập giá, 0 = tặng)
+    '<div id="tmodal" class="hidden" onclick="if(event.target===this)tmClose()">',
+    '<div class="tmBox">',
+    '<div id="tmTitle" style="font-weight:800;font-size:16px;margin-bottom:8px"></div>',
+    '<button class="btn-full" id="tmShop" onclick="tmSellShop()" style="background:linear-gradient(180deg,#ffd76a,#e0ac3f);color:#241d0a;margin-bottom:10px"></button>',
+    '<div style="border-top:1px dashed var(--line);padding-top:10px"><b>🤝 Bán / tặng cho người chơi khác</b>',
+    '<div class="muted" style="font-size:12px;margin:4px 0 6px">Pal rời rương của bạn và chờ bên kia bấm <b>Xác nhận mua</b>. Bên kia câu giờ thì bạn <b>Thu hồi</b> lấy lại. Giá <b>0</b> = tặng.</div>',
+    '<select id="tmTo" style="width:100%;margin-bottom:6px"></select>',
+    '<div class="row" style="gap:8px"><input id="tmPrice" type="number" inputmode="numeric" min="0" placeholder="Giá Dogcoin (0 = tặng)" style="flex:1"><button onclick="tmOffer()" style="flex:0 0 auto;background:linear-gradient(180deg,#4da3ff,#2b74c9)">📤 Gửi lời bán</button></div></div>',
+    '<div class="tmActs"><button onclick="tmClose()">Đóng</button></div>',
+    '</div></div>',
     '<div id="gmodal" class="hidden" onclick="if(event.target===this)gmClose(false)">',
     '<div id="gmBox">',
     '<div id="gmMsg"></div>',
@@ -3189,17 +3224,39 @@ const PAGE = [
     'else acts="<span class=\\"tag\\">✅ ĐÃ NHẬN"+(it.deliveredTo?" → "+esc(it.deliveredTo):"")+"</span>";',
     'var img=it.code?("<img src=\\"/palimage/T_"+it.code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):"";',
     'return "<div class=\\"pcItem"+(it.raid?" raid":"")+"\\"><div class=\\"pcTop\\">"+img+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\">"+esc(it.name)+"</span> "+(it.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(it.dex?"<span class=\\"tag\\">#"+it.dex+"</span>":"")+"</div><div class=\\"tm\\">"+esc(it.wonAt||"")+"</div></div></div><div class=\\"pcActs\\">"+acts+"</div></div>"};',
+    // 🤝 11/09: pal đang giao dịch - của tôi đang rao (thu hồi) + lời bán gửi cho tôi (mua / từ chối)
+    'var TR=j.trades||{out:[],in:[]};var trH="";',
+    'var trImg=function(it){return it.code?("<img src=\\"/palimage/T_"+it.code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""};',
+    'TR.in.forEach(function(t){trH+="<div class=\\"pcItem trIn\\"><div class=\\"pcTop\\">"+trImg(t.item)+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\">"+esc(t.item.name)+"</span> "+(t.item.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(t.item.dex?"<span class=\\"tag\\">#"+t.item.dex+"</span>":"")+"</div><div class=\\"tm\\">📥 <b>"+esc(t.fromName)+"</b> muốn "+(t.price>0?"bán cho bạn giá <b style=\\"color:#ffd76a\\">"+vnd(t.price)+" Dogcoin</b>":"<b style=\\"color:#7cff9c\\">TẶNG</b> bạn")+" · "+esc(t.atText||"")+"</div></div></div>"',
+    '+"<div class=\\"pcActs\\"><button style=\\"background:linear-gradient(180deg,#3ddc84,#2aa564);color:#08210f\\" onclick=\\"trAccept("+t.id+","+t.price+")\\">"+(t.price>0?"✅ Xác nhận mua với "+vnd(t.price):"🎁 Nhận tặng")+"</button><button style=\\"background:#4e5058\\" onclick=\\"trCancel("+t.id+",false)\\">❌ Từ chối</button></div></div>"});',
+    'TR.out.forEach(function(t){trH+="<div class=\\"pcItem trOut\\"><div class=\\"pcTop\\">"+trImg(t.item)+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\">"+esc(t.item.name)+"</span> "+(t.item.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(t.item.dex?"<span class=\\"tag\\">#"+t.item.dex+"</span>":"")+"</div><div class=\\"tm\\">📤 Đang rao cho <b>"+esc(t.toName)+"</b> giá <b style=\\"color:#ffd76a\\">"+(t.price>0?vnd(t.price)+" Dogcoin":"TẶNG (0)")+"</b> · chờ bên kia xác nhận · "+esc(t.atText||"")+"</div></div></div>"',
+    '+"<div class=\\"pcActs\\"><button style=\\"background:linear-gradient(180deg,#e86a6a,#c23c3c)\\" onclick=\\"trCancel("+t.id+",true)\\">↩️ Thu hồi pal</button></div></div>"});',
+    'if(TR.in.length||TR.out.length)trH="<div class=\\"pcSecH\\"><b>🤝 ĐANG GIAO DỊCH ("+(TR.in.length+TR.out.length)+")</b><span class=\\"muted\\">"+(TR.in.length?TR.in.length+" lời bán gửi cho bạn":"")+(TR.in.length&&TR.out.length?" · ":"")+(TR.out.length?TR.out.length+" pal bạn đang rao":"")+"</span></div>"+trH;',
     'var wait=j.chest.filter(function(i){return i.status==="chest"||i.status==="delivering"});',
     'var done=j.chest.filter(function(i){return i.status==="claimed"||i.status==="sold"});',
     'var h="<div class=\\"pcSecH\\" onclick=\\"pcSecTog(\'wait\')\\"><b>🎁 CHƯA NHẬN ("+wait.length+")</b><span>"+(pcSecOn("wait")?"▾ thu gọn":"▸ mở ra")+"</span></div>";',
     'if(pcSecOn("wait"))h+=wait.map(row).join("")||"<div class=\\"muted\\" style=\\"margin:6px 0 10px\\">Không có pal chờ nhận - qua tab 🎁 Quay Pal thử vận may!</div>";',
     'h+="<div class=\\"pcSecH\\" onclick=\\"pcSecTog(\'done\')\\"><b>✅ ĐÃ NHẬN / ĐÃ BÁN ("+done.length+")</b><span>"+(pcSecOn("done")?"▾ thu gọn":"▸ mở ra")+"</span></div>";',
     'if(pcSecOn("done"))h+=done.map(row).join("")||"<div class=\\"muted\\" style=\\"margin:6px 0\\">Chưa nhận/bán con nào.</div>";',
-    '$("pcList").innerHTML=h;',
+    '$("pcList").innerHTML=trH+h;',
     'if(cb)cb()',
     '}).catch(function(e){toast("❌ "+e.message)})}',
-    'async function pcSell(id){if(!PC)return;if(!(await gConfirm("Bán pal này lấy <b>"+vnd(PC.sellPrice)+"</b> Dogcoin? Không hoàn tác được.","💰 Bán")))return;',
+    // 🤝 11/09: nút Bán -> popup 2 lựa chọn (shop | người chơi khác)
+    'var TMID=null;',
+    'function pcSell(id){if(!PC)return;var it=null;PC.chest.forEach(function(i){if(i.id===id)it=i});if(!it)return;TMID=id;',
+    '$("tmTitle").textContent="💰 Bán "+it.name;$("tmShop").textContent="🏪 Bán cho shop +"+vnd(PC.sellPrice)+" Dogcoin";$("tmPrice").value="";',
+    'var fill=function(){var sel=$("tmTo");sel.innerHTML=DOGTARGETS.length?DOGTARGETS.map(function(p){return "<option value=\\""+esc(p.id)+"\\">"+esc(p.name)+"</option>"}).join(""):"<option value=\\"\\">(chưa có người chơi khác)</option>"};',
+    'if(DOGTARGETS.length)fill();else api("/api/players").then(function(j){DOGTARGETS=j.list||[];fill()}).catch(function(){fill()});',
+    '$("tmodal").classList.remove("hidden")}',
+    'function tmClose(){$("tmodal").classList.add("hidden");TMID=null}',
+    'async function tmSellShop(){if(TMID===null||!PC)return;var id=TMID;tmClose();if(!(await gConfirm("Bán pal này cho shop lấy <b>"+vnd(PC.sellPrice)+"</b> Dogcoin? Không hoàn tác được.","💰 Bán")))return;',
     'api("/api/pal/sell",{id:id}).then(function(j){setBal(j.balance);toast("💰 +"+vnd(j.sold)+" Dogcoin");pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
+    'function tmOffer(){if(TMID===null)return;var to=$("tmTo").value;var pr=parseInt($("tmPrice").value)||0;if(!to)return toast("Chọn người nhận");if(pr<0)return toast("Giá không hợp lệ");var id=TMID;',
+    'api("/api/pal/trade/offer",{id:id,toId:to,price:pr}).then(function(j){tmClose();toast(pr>0?"📤 Đã gửi lời bán "+j.trade.item.name+" cho "+j.trade.toName+" giá "+vnd(pr)+" - chờ bên kia xác nhận":"🎁 Đã gửi lời tặng "+j.trade.item.name+" cho "+j.trade.toName);pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
+    'async function trCancel(tid,mine){if(!(await gConfirm(mine?"Thu hồi pal về rương của bạn? Lời bán sẽ huỷ.":"Từ chối lời bán này? Pal trả về cho người bán.",mine?"↩️ Thu hồi":"❌ Từ chối",true)))return;',
+    'api("/api/pal/trade/cancel",{tradeId:tid}).then(function(j){toast(j.how==="cancel"?"↩️ Đã thu hồi "+j.item.name+" về rương":"❌ Đã từ chối, "+j.item.name+" trả về người bán");pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
+    'async function trAccept(tid,price){if(!(await gConfirm(price>0?"Xác nhận mua pal này với <b>"+vnd(price)+"</b> Dogcoin? Tiền chuyển thẳng cho người bán, pal vào rương bạn.":"Nhận pal được tặng vào rương?",price>0?"✅ Mua":"🎁 Nhận")))return;',
+    'api("/api/pal/trade/accept",{tradeId:tid}).then(function(j){setBal(j.balance);toast(j.price>0?"✅ Đã mua "+j.item.name+" từ "+j.fromName+" với "+vnd(j.price)+" Dogcoin - pal trong rương":"🎁 Đã nhận "+j.item.name+" từ "+j.fromName);pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
     'function pcOpen(id){if(!PC)return;',
     'if(PCCDUNTIL>Date.now())return toast("⏳ Kho pal đang bận (cooldown chung toàn server) - chờ "+Math.ceil((PCCDUNTIL-Date.now())/1000)+"s rồi nhận con tiếp");',
     'PCIT=null;PC.chest.forEach(function(i){if(i.id===id)PCIT=i});if(!PCIT)return;',

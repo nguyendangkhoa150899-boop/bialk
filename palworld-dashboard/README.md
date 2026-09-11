@@ -670,6 +670,17 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🤝 **BÁN / TẶNG PAL CHO NGƯỜI CHƠI KHÁC** (chủ server: nút Bán → popup (1) bán shop giá sẵn (2) bán cho người
+  khác nhập giá, 0 = tặng; bên nhận thấy pal + "Xác nhận mua với X"; người bán thu hồi được nếu câu giờ; UI pal đang giao dịch).
+  Server: `dbCache._palTrades[]` {id, from, fromName, to, toName, price, item, at}; `palTradeOffer` RÚT pal khỏi rương người
+  bán (không bán shop/nhận trùng được), kiểm người nhận có ví (`palUserExists` tra dbCache[id]), giá 0–100M, trần 10 pal đang
+  rao/người; `palTradeCancel` = thu hồi (người bán) hoặc từ chối (người nhận) → pal về rương người bán; `palTradeAccept` =
+  người nhận mua: giá > 0 thì kiểm nợ xấu + đủ tiền, trừ ví mua, cộng ví bán (logDog transfer 2 chiều), pal sang rương người mua
+  (status chest, wonAt ghi "mua/được tặng từ X"). Profile state gửi `trades {out, in}`. Web: `pcSell` → popup `#tmodal` (🏪 bán
+  shop | 🤝 chọn người nhận từ /api/players + giá), khối "🤝 ĐANG GIAO DỊCH" trên đầu rương: thẻ xanh = lời bán gửi cho tôi
+  (✅ Xác nhận mua với X / 🎁 Nhận tặng / ❌ Từ chối), thẻ vàng = pal tôi đang rao (↩️ Thu hồi); routes
+  `/api/pal/trade/offer|cancel|accept`. Test palwheeltest +15 (251/251). Chưa có DM Discord báo bên nhận - bên nhận thấy khi mở
+  web (poll rương). Cầu Dogcoin: chủ server xác nhận nạp game→web giữ hạn 10.000 web/người/ngày như admin đặt (đã có).
 - **11/09** — 💱 **Nạp Dogcoin game → web theo TỈ LỆ 1 : 2** (chủ server: "game 1 dog ở ngoài 2 dog, tại không cho rút, đồ quá
   cao + khoá shop"). `dbCache._dogNapRate` (mặc định 2, 0.1–100), admin đặt ở tab 👥 cùng dòng hạn ngày (ô 💱, lưu chung nút 💾,
   body `napRate` route daymax). `webNapGame`: lấy `took` trong game → ví + `floor(took × rate)`, hạn ngày chiều nạp đếm theo

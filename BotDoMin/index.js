@@ -2480,6 +2480,76 @@ function palChestSell(userId, itemId, username) {
     return { ok: true, sold: cfg.sellPrice, balance: getUserData(userId).points || 0 };
 }
 
+// ===== 🤝 BÁN / TẶNG PAL CHO NGƯỜI CHƠI KHÁC (11/09) =====
+// Chủ server: bấm Bán -> popup (1) bán shop giá cố định (2) bán cho người khác, nhập giá (0 = tặng);
+// bên nhận thấy pal + nút "Xác nhận mua với X" ; người bán "Thu hồi" được nếu bên kia câu giờ.
+// Pal đang rao được RÚT KHỎI rương người bán (nằm trong dbCache._palTrades) -> không bán shop / nhận
+// trùng được; thu hồi hoặc bị từ chối thì về rương; mua xong thì sang rương người mua (status chest).
+const PAL_TRADE_MAX_OPEN = 10;
+function palTrades() { if (!Array.isArray(dbCache._palTrades)) dbCache._palTrades = []; return dbCache._palTrades; }
+function palUserExists(id) { id = String(id || ''); return !!id && !id.startsWith('_') && !!dbCache[id] && typeof dbCache[id] === 'object'; }
+function palTradePublic(t) { return { id: t.id, from: t.from, fromName: t.fromName, to: t.to, toName: t.toName, price: t.price, at: t.at, atText: t.atText, item: { id: t.item.id, name: t.item.name, code: t.item.code, dex: t.item.dex || 0, raid: !!t.item.raid, legend: !!t.item.legend, wonAt: t.item.wonAt } }; }
+function palTradesFor(userId) {
+    const u = String(userId);
+    return { out: palTrades().filter(t => t.from === u).map(palTradePublic), in: palTrades().filter(t => t.to === u).map(palTradePublic) };
+}
+function palTradeOffer(userId, itemId, toId, price, username) {
+    const from = String(userId); toId = String(toId || ''); price = Math.floor(Number(price) || 0);
+    if (!toId || toId === from) return { error: 'Chọn người nhận khác mình' };
+    if (!palUserExists(toId)) return { error: 'Người nhận chưa có ví Dogcoin trên bot' };
+    if (price < 0 || price > 100000000) return { error: 'Giá không hợp lệ (0 = tặng, tối đa 100.000.000)' };
+    const chest = palChest(from); const idx = chest.findIndex(i => i.id === Number(itemId));
+    if (idx < 0) return { error: 'Không thấy pal này trong rương' };
+    const item = chest[idx];
+    if (item.revealAt && item.revealAt > Date.now()) return { error: 'Pal đang trong vòng quay - chờ quay xong đã' };
+    if (item.status !== 'chest') return { error: item.status === 'delivering' ? 'Pal đang giao dở, không bán được' : 'Pal này đã xử lý rồi' };
+    if (palTrades().filter(t => t.from === from).length >= PAL_TRADE_MAX_OPEN) return { error: `Tối đa ${PAL_TRADE_MAX_OPEN} pal đang rao cùng lúc - thu hồi bớt đã` };
+    chest.splice(idx, 1);
+    const toName = (getUserData(toId).name || toId);
+    const t = { id: dbCache._palTradeSeq = (dbCache._palTradeSeq || 0) + 1, from, fromName: username || from, to: toId, toName, price, item, at: Date.now(), atText: new Date().toLocaleString('vi-VN') };
+    palTrades().push(t);
+    writeLog('ADMIN', `[BÁN PAL] ${t.fromName} rao ${item.name} (#${item.id}) cho ${toName} giá ${price || 'TẶNG (0)'} - giao dịch #${t.id}`);
+    saveDbNow();
+    return { ok: true, trade: palTradePublic(t) };
+}
+// thu hồi (người bán) hoặc từ chối (người nhận): pal về rương người bán
+function palTradeCancel(userId, tradeId, username) {
+    const u = String(userId); const i = palTrades().findIndex(t => t.id === Number(tradeId));
+    if (i < 0) return { error: 'Giao dịch không còn (đã xong hoặc đã thu hồi)' };
+    const t = palTrades()[i];
+    if (t.from !== u && t.to !== u) return { error: 'Không phải giao dịch của bạn' };
+    palTrades().splice(i, 1);
+    t.item.status = 'chest';
+    palChest(t.from).unshift(t.item);
+    const how = t.from === u ? 'THU HỒI' : 'bị người nhận TỪ CHỐI';
+    writeLog('ADMIN', `[BÁN PAL] giao dịch #${t.id} ${t.item.name} ${how} bởi ${username || u} - pal về rương ${t.fromName}`);
+    saveDbNow();
+    return { ok: true, how: t.from === u ? 'cancel' : 'decline', item: { id: t.item.id, name: t.item.name } };
+}
+// người nhận xác nhận mua: trừ ví người mua, cộng ví người bán (price > 0), pal sang rương người mua
+function palTradeAccept(userId, tradeId, username) {
+    const u = String(userId); const i = palTrades().findIndex(t => t.id === Number(tradeId));
+    if (i < 0) return { error: 'Giao dịch không còn (người bán đã thu hồi?)' };
+    const t = palTrades()[i];
+    if (t.to !== u) return { error: 'Lời bán này không gửi cho bạn' };
+    const buyer = getUserData(u);
+    if (t.price > 0) {
+        if (debtOf(buyer).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới mua pal được' };
+        if ((buyer.points || 0) < t.price) return { error: `Cần ${t.price.toLocaleString()} Dogcoin (bạn có ${(buyer.points || 0).toLocaleString()})` };
+        updatePoints(u, -t.price);
+        updatePoints(t.from, t.price);
+        logDog('transfer', u, username || u, -t.price, `mua pal ${t.item.name} (#${t.item.id}) từ ${t.fromName} - giao dịch #${t.id}`);
+        logDog('transfer', t.from, t.fromName, t.price, `bán pal ${t.item.name} (#${t.item.id}) cho ${username || u} - giao dịch #${t.id}`);
+    }
+    palTrades().splice(i, 1);
+    t.item.status = 'chest';
+    t.item.wonAt = (t.item.wonAt || '') + ` · ${t.price > 0 ? 'mua' : 'được tặng'} từ ${t.fromName} ${new Date().toLocaleString('vi-VN')}`;
+    palChest(u).unshift(t.item);
+    writeLog('ADMIN', `[BÁN PAL] ${username || u} ${t.price > 0 ? 'MUA' : 'NHẬN TẶNG'} ${t.item.name} (#${t.item.id}) từ ${t.fromName} giá ${t.price} - giao dịch #${t.id}`);
+    saveDbNow();
+    return { ok: true, price: t.price, item: { id: t.item.id, name: t.item.name }, fromName: t.fromName, balance: getUserData(u).points || 0 };
+}
+
 // ===== 💎 TÍNH PHÍ NÂNG CẤP VƯỢT TRẦN (26/08) =====
 // Ô passive: 4 ô đầu (hoặc mức gốc admin đặt) miễn phí, mỗi ô tiếp theo giá riêng.
 function palUpPassiveCost(count, cfg) {
@@ -5436,9 +5506,14 @@ client.once('ready', async (c) => {
                         builds: passiveBuilds(),
                         myBuilds: Array.isArray(getUserData(uid).palBuilds) ? getUserData(uid).palBuilds : [],
                         ingameName: (getUserData(uid).ingameName || '').trim(),
+                        trades: palTradesFor(uid),   // 🤝 11/09: pal đang rao (out) + lời bán gửi cho tôi (in)
                     };
                 },
                 sell: (uid, itemId) => palChestSell(uid, itemId, getUserData(uid).name || uid),
+                // 🤝 11/09 bán/tặng pal cho người chơi khác
+                tradeOffer: (uid, itemId, toId, price) => palTradeOffer(uid, itemId, toId, price, getUserData(uid).name || uid),
+                tradeCancel: (uid, tradeId) => palTradeCancel(uid, tradeId, getUserData(uid).name || uid),
+                tradeAccept: (uid, tradeId) => palTradeAccept(uid, tradeId, getUserData(uid).name || uid),
                 claim: (uid, itemId, souls, passives, extra) => palChestClaim(uid, itemId, souls, passives, getUserData(uid).name || uid, extra),
                 // đồng hồ cooldown NHẸ cho client poll (không kéo cả rương)
                 claimCdInfo: () => ({ left: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()), cd: palWheelCfg().claimCd }),
