@@ -2211,8 +2211,8 @@ const PALWHEEL_LEGEND_CODE = ['SaintCentaur', 'BlackCentaur', 'IceHorse', 'IceHo
 const palIsLegend = (code) => PALWHEEL_LEGEND_CODE.includes(code);
 // 💜 11/09: 16 pal "TÍM" (epic) - chủ server chốt: pal cuối game người chơi thật sự build để đánh, KHÔNG phải huyền thoại,
 // KHÔNG phải raid. CHỈ tô màu tím trên vòng quay (cờ epic trong state) - giá + tỉ lệ y như pal thường.
-const PALWHEEL_EPIC_CODE = ['BlueSkyDragon', 'ThunderDragonMan', 'BlackMetalDragon', 'BlackGriffon', 'KingBahamut', 'WhiteShieldDragon', 'MoonQueen', 'SnowTigerBeastman', 'WhiteAlienDragon', 'WingGolem_Fire', 'Horus', 'Horus_Water', 'Anubis', 'LilyQueen_Dark', 'ElecPanda', 'Umihebi_Fire'];
-// Shaolong · Orserk · Astegon · Shadowbeak · Blazamut · Silvegis · Selyne · Bastigor · Xenogard · Knocklem Ignis · Faleris · Faleris Aqua · Anubis · Lyleen Noct · Grizzbolt · Jormuntide Ignis
+const PALWHEEL_EPIC_CODE = ['BlueSkyDragon', 'ThunderDragonMan', 'BlackMetalDragon', 'BlackGriffon', 'KingBahamut', 'WhiteShieldDragon', 'MoonQueen', 'SnowTigerBeastman', 'WhiteAlienDragon', 'WingGolem_Fire', 'Horus', 'Horus_Water', 'Anubis', 'LilyQueen_Dark', 'ElecPanda', 'Umihebi_Fire', 'WhiteDeer_Dark', 'GhostDragon_Fire', 'FlowerPrince', 'Mothman', 'DomeArmorDragon', 'KabukiMan', 'MonochromeQueen'];
+// Shaolong · Orserk · Astegon · Shadowbeak · Blazamut · Silvegis · Selyne · Bastigor · Xenogard · Knocklem Ignis · Faleris · Faleris Aqua · Anubis · Lyleen Noct · Grizzbolt · Jormuntide Ignis · 11/09 +7 bản 1.0: Celesdir Noct · Eidrolon Ignis · Dandilord · Silvance · Aegidron · Renjishi · Solenne
 const palIsEpic = (code) => PALWHEEL_EPIC_CODE.includes(code);
 function palWheelNormalPool() {
     const raid = new Set(PAL_DATA.raidOnly || []);

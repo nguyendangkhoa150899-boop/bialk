@@ -670,6 +670,9 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 💜 **+7 pal tím bản 1.0** (chủ server nêu Celesdir Noct + Eidrolon Ignis, bảo tìm thêm): thêm Dandilord (194),
+  Silvance (193), Aegidron (184), Renjishi (183), Solenne (182) - 5 pal 1.0 dex cao nhất còn lại trong pool thường. KHÔNG thêm
+  Lyleen thường, Wistella/Loomen/Mycora (support/thợ), Venusa trở xuống. Tổng tím 23/282 (~8%). Test 236/236.
 - **11/09** — 🎯 **Viền sáng ô trúng chỉ hiện SAU khi mũi tên dừng** (chủ server: "tô vàng hiện trước, biết trúng con nào").
   Trước: thẻ 52 dựng sẵn class `raidhit/legendhit/epichit` từ đầu reel → nhìn dải là lộ. Nay cả 3 dải (vòng random, vòng may mắn
   reel 1, reel 2) dựng thẻ 52 với hit=false; `pwRollEl` sau 10,3 s dò `s.children[52]` gắn hit theo class thẻ rồi mới gọi cb.
