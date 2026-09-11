@@ -670,6 +670,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🔥 **PAL GỐC: pal RAID trở lại vòng quay RANDOM, vẫn khoá mua đích danh + vòng RAID may mắn** (chủ server:
+  "thêm lại pal raid ở vòng quay, vẫn khoá cái lucky" → "chỉ cho quay random thôi"). `palWheelRaidPool()` bỏ early-return khi
+  raw (ô RAID trên vòng có lại, xác suất như thường); `palPickBuy` + `pickState` dùng `raidNames`/`raidRows` RỖNG khi raw →
+  danh sách mua đích danh không có raid, gọi thẳng API cũng "Không thấy pal này"; `palLuckyRaidPool` + `palRaidSpin` giữ khoá.
+  Pal raid quay ra ở chế độ gốc vẫn là Lv1/0 sao/không passive như mọi pal gốc. Test palwheeltest +2 (226/226).
 - **11/09** — 💥🏆 **Web: hiệu ứng NỔ HŨ QUAY PAL** (chủ server: "thiếu dấu hiệu biết mình nổ" - trước chỉ 1 toast 2 giây dễ
   trôi). `palJackpotFx(amount)` trong webplay.js: lóe vàng toàn màn `#jpFlash` 3 nhịp, rung màn (`body.storm`), mưa 44 emoji
   🏆💥🪙💰✨🐶 (dùng lại `.fx`), chữ to vàng giữa màn `#winpop.jp` 5,2 s "💥🏆 NỔ HŨ QUAY PAL +N Dogcoin", toast; khung kết

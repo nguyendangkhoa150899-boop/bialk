@@ -2211,7 +2211,8 @@ function palWheelNormalPool() {
     return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code));
 }
 function palWheelRaidPool() {
-    if (palWheelCfg().raw) return [];   // 🔒 PAL GỐC: không ô RAID trên vòng, không bán raid đích danh
+    // 11/09: PAL GỐC vẫn CÓ ô RAID trên vòng quay random (chủ server: "thêm lại pal raid, chỉ cho quay random").
+    // Mua raid ĐÍCH DANH + vòng RAID MAY MẮN vẫn khoá khi raw - xem palPickBuy / pickState / palLuckyRaidPool.
     return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
 }
 // 🍀 4 boss của vòng quay RAID may mắn (khác pool ô RAID vòng thường)
@@ -2390,8 +2391,8 @@ function palPickBuy(userId, code, username) {
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới mua pal được' };
-    // pool thường + 4 boss raid đang mở bán (giá > 0)
-    const raidNames = new Set(PALPICK_RAID.filter(x => cfg[x.key] > 0).map(x => x.name));
+    // pool thường + 4 boss raid đang mở bán (giá > 0) - 🔒 PAL GỐC: KHÔNG bán raid đích danh (chỉ quay random mới ra)
+    const raidNames = new Set(cfg.raw ? [] : PALPICK_RAID.filter(x => cfg[x.key] > 0).map(x => x.name));
     const pal = palWheelNormalPool().find(p => p.code === String(code || ''))
         || palWheelRaidPool().find(p => raidNames.has(p.name) && p.code === String(code || ''));
     if (!pal) return { error: 'Không thấy pal này trong danh sách bán' };
@@ -5361,8 +5362,8 @@ client.once('ready', async (c) => {
                 // 🎯 chọn pal đích danh (danh sách + mua)
                 pickState: (uid) => {
                     const cfg = palWheelCfg();
-                    // 26/08: 4 boss raid bán đích danh giá riêng, xếp LÊN ĐẦU danh sách
-                    const raidRows = PALPICK_RAID.filter(x => cfg[x.key] > 0)
+                    // 26/08: 4 boss raid bán đích danh giá riêng, xếp LÊN ĐẦU danh sách · 🔒 PAL GỐC: ẩn (chỉ quay random)
+                    const raidRows = (cfg.raw ? [] : PALPICK_RAID.filter(x => cfg[x.key] > 0))
                         .map(x => palWheelRaidPool().find(p => p.name === x.name))
                         .filter(Boolean)
                         .map(p => ({ code: p.code, name: p.name, dex: p.dex || 0, raid: true, price: palPickPrice(p, cfg) }));
