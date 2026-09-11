@@ -670,6 +670,9 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🛒 **Pak thương nhân: giữ thêm Arena_Shop_1** (Thương Nhân Đấu Trường). `BialkShopOff_P.pak` build lại
+  `--keep=Bounty_Shop_1,Arena_Shop_1`: 74 sản phẩm còn bán (18 + 56), 513 ẩn, pal shop tắt; đọc ngược khớp; đã chép lên server
+  TEST `~mods/` (khớp byte, cần restart TEST). Prod: chủ server tự đè file (hoặc ra lệnh chép).
 - **11/09** — ⭐ **Shop: nhóm QUAN TRỌNG (cat `important`) - mỗi người mua ĐÚNG 1 LẦN, vĩnh viễn** (chủ server: 2 Hộp Phụ Kiện
   mở ô phụ kiện - Kỳ Lạ `UnlockEquipmentSlot_Accessory_01` 3.000 tím, Bí Ẩn `UnlockEquipmentSlot_Accessory_02` 10.000 vàng; icon
   chủ server tải). Server: `user.shopOnce {id: ts}`, `itemShopBuy` chặn "đã mua rồi" + ép số lượng 1, MIỄN hạn ngày chung,

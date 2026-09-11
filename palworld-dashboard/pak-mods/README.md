@@ -348,7 +348,14 @@ nhân NPC trong game (làng, sa mạc, núi lửa, huy chương, tiền thưởn
 hành, lang thang, hầm ngục, người buôn Pal, chợ đen) **không được bán gì**. Không cần
 xoá NPC, không cần client cài gì.
 
-## 11/09: BẢN ĐANG DÙNG = CHỈ GIỮ Bounty_Shop_1 (Sĩ Quan Truy Nã PIDF)
+## 11/09 (trưa): BẢN ĐANG DÙNG = GIỮ Bounty_Shop_1 + Arena_Shop_1
+
+Chủ server thêm **Arena_Shop_1** (Thương Nhân Đấu Trường, bán bằng Vé Chiến Đấu: 10 bản vẽ Octavia/súng năng lượng cấp 4-5,
+7 implant Arena, skill fruit). Build `--keep=Bounty_Shop_1,Arena_Shop_1` → 459 sản phẩm → -1, **74 giữ** (18 Bounty + 56
+Arena), pal shop 8/8 = 0. Đọc ngược pak: {"0":74,"-1":513}. `BialkShopOff_P.pak` repo = bản này, đã chép lên TEST `~mods/`
+khớp byte. Mục dưới là lịch sử bản chỉ-Bounty (sáng 11/09), giữ để biết cách build.
+
+## 11/09 (sáng): bản chỉ giữ Bounty_Shop_1 (Sĩ Quan Truy Nã PIDF) - ĐÃ THAY bằng bản trên
 
 Chủ server chốt: **tắt mọi thương nhân, để lại đúng Bounty_Shop_1** (paldb: NPC "PIDF Bounty Officer" / Sĩ Quan Truy Nã
 PIDF, toạ độ 74,-477, bán bằng Chứng Nhận Diệt Kẻ Bị Truy Nã - vàng/sách công nghệ/Chuyển Đổi/7 implant Bounty/quả).
