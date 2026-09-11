@@ -187,6 +187,7 @@ function startPanel(ctx) {
             itemShopDayMode: ctx.getItemShopDayMode ? ctx.getItemShopDayMode() : null,   // 📅 'server' | 'user'
             itemShopImplantMax: ctx.getItemShopImplantMax ? ctx.getItemShopImplantMax() : null,   // 🧬
             itemShopAmmoMax: ctx.getItemShopAmmoMax ? ctx.getItemShopAmmoMax() : null,   // 🔫 11/09
+            itemShopMatMax: ctx.getItemShopMatMax ? ctx.getItemShopMatMax() : null,   // 🧱 12/09
             itemShopWtMax: ctx.getItemShopWtMax ? ctx.getItemShopWtMax() : null,   // 🌳
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
@@ -313,6 +314,11 @@ function startPanel(ctx) {
                         const am = ctx.setItemShopAmmoMax(body.ammoMax);
                         if (am.error) return sendJSON(res, 400, { ok: false, error: am.error });
                         r.ammoMax = am.ammoMax;
+                    }
+                    if (body.matMax !== undefined && ctx.setItemShopMatMax) {
+                        const mm = ctx.setItemShopMatMax(body.matMax);
+                        if (mm.error) return sendJSON(res, 400, { ok: false, error: mm.error });
+                        r.matMax = mm.matMax;
                     }
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Giới hạn mua mỗi món/ngày = ${r.dayMax || 'không giới hạn'} · chế độ ${r.dayMode === 'user' ? 'mỗi người' : 'toàn server'}`);
                     return sendJSON(res, 200, r);
@@ -1595,6 +1601,12 @@ const HTML = `<!DOCTYPE html>
           <span>viên/ngày, <b>mọi loại gộp</b></span>
           <span class="muted" style="font-size:12px">(hạn riêng nhóm 🔫, đếm theo người · nhóm đạn MIỄN hạn 📅 chung · lưu bằng nút 💾 · 0 = không giới hạn)</span>
         </div>
+        <div class="row" style="margin-top:6px;align-items:center;gap:8px">
+          <span>🧱 Nguyên liệu: <b>mỗi người</b> tối đa</span>
+          <input class="mini-in" id="isMatMax" type="number" min="0" max="100000" placeholder="999" style="width:90px">
+          <span>cái/ngày, <b>mọi loại gộp</b></span>
+          <span class="muted" style="font-size:12px">(hạn riêng nhóm 🧱, đếm theo người · nhóm nguyên liệu MIỄN hạn 📅 chung · lưu bằng nút 💾 · 0 = không giới hạn)</span>
+        </div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
             <thead><tr><th title="Tick = đang bán trên web · bỏ tick = ẩn, người chơi không thấy/không mua được (dòng vẫn giữ)">Bán</th><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Ghi chú tác dụng</th><th>Hình (file)</th><th></th></tr></thead>
@@ -2648,7 +2660,9 @@ async function isDayMaxSave(btn){
   if(wt!==undefined&&!(wt>=0))return toast('❌ Hạn Cây Thế Giới: nhập số ≥ 0');
   const amEl=document.getElementById('isAmmoMax');const am=amEl&&amEl.value!==''?parseInt(amEl.value):undefined;
   if(am!==undefined&&!(am>=0))return toast('❌ Hạn đạn: nhập số ≥ 0');
-  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,wtMax:wt,ammoMax:am}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':'')+(j.wtMax!==undefined?' · 🌳 '+(j.wtMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
+  const mmEl=document.getElementById('isMatMax');const mm=mmEl&&mmEl.value!==''?parseInt(mmEl.value):undefined;
+  if(mm!==undefined&&!(mm>=0))return toast('❌ Hạn nguyên liệu: nhập số ≥ 0');
+  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,wtMax:wt,ammoMax:am,matMax:mm}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':'')+(j.wtMax!==undefined?' · 🌳 '+(j.wtMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
 }
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
@@ -3137,6 +3151,7 @@ async function refresh(force){
   const wtx=document.getElementById('isWtMax');if(wtx&&wtx.value===''&&document.activeElement!==wtx&&STATE.itemShopWtMax!==null&&STATE.itemShopWtMax!==undefined)wtx.value=STATE.itemShopWtMax;
   const imx=document.getElementById('isImplantMax');if(imx&&imx.value===''&&document.activeElement!==imx&&STATE.itemShopImplantMax!==null&&STATE.itemShopImplantMax!==undefined)imx.value=STATE.itemShopImplantMax;
   const amx=document.getElementById('isAmmoMax');if(amx&&amx.value===''&&document.activeElement!==amx&&STATE.itemShopAmmoMax!==null&&STATE.itemShopAmmoMax!==undefined)amx.value=STATE.itemShopAmmoMax;
+  const mmx=document.getElementById('isMatMax');if(mmx&&mmx.value===''&&document.activeElement!==mmx&&STATE.itemShopMatMax!==null&&STATE.itemShopMatMax!==undefined)mmx.value=STATE.itemShopMatMax;
   const dmo=document.getElementById('isDayMode');if(dmo&&STATE.itemShopDayMode&&!dmo.dataset.touched&&document.activeElement!==dmo){dmo.value=STATE.itemShopDayMode;dmo.onchange=()=>{dmo.dataset.touched='1';};}
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
