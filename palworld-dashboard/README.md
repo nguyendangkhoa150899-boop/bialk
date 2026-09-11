@@ -670,6 +670,10 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 📅 **Cầu Dogcoin: mỗi chiều 1 dòng hạn riêng + XEM TRƯỚC khi gõ số** (chủ server: "Nạp ra web không có cảnh báo
+  vượt"). Rút: dòng "Hạn rút vào game N/ngày · hôm nay còn X"; Nạp: dòng "Hạn nạp ra web N web/ngày · còn X web (= X/rate game)".
+  Gõ số là hiện ngay (dogPreview): xanh "→ Lấy A game, ví web +B (tỉ lệ 1 : 2)" hoặc đỏ "⚠️ Vượt hạn ngày… chỉ còn nhận được X web" /
+  "⚠️ Vượt trần 500.000/lần". Server vẫn là chốt cuối.
 - **11/09** — 📣 **Bán/tặng pal: DM Discord + log kênh trúng pal** (chủ server: thêm DM + log ở kênh 1538789642743193611 - kênh
   đang đăng pal quay trúng). `palTradeNotify(kind, t)`: offer → DM người nhận (kèm link web → 🪪 Cá nhân → 🤝) + đăng kênh;
   accept → DM người bán + kênh; decline → DM người bán + kênh; cancel → DM người nhận + kênh. Kênh = `dbCache._gachaChannelId`
