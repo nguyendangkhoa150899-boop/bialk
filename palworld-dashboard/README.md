@@ -670,6 +670,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 💜 **16 pal "TÍM" trên vòng quay** (chủ server chốt danh sách sau khi bàn: pal cuối game build để đánh, không phải
+  huyền thoại/raid; các con "lưỡng lự" Suzaku/Cryolinx/Helzephyr/Menasting/Gildane/Azurmane/Dogen/Omascul KHÔNG thêm). CHỈ tô
+  màu, giá + tỉ lệ y pal thường. `PALWHEEL_EPIC_CODE` 16 mã: Shaolong, Orserk, Astegon, Shadowbeak, Blazamut, Silvegis, Selyne, Bastigor, Xenogard, Knocklem Ignis, Faleris, Faleris Aqua, Anubis, Lyleen Noct, Grizzbolt, Jormuntide Ignis.
+  State gửi cờ `epic` ở 3 chỗ như `legend`; web `.pwCard.epic` viền/tên tím #c9a2ff + 💜 + chữ "PAL MẠNH", trúng thì `.epichit`
+  phát sáng tím (ưu tiên: raid > huyền thoại > tím). Test palwheeltest +2 (228/228).
 - **11/09** — 🔥 **PAL GỐC: pal RAID trở lại vòng quay RANDOM, vẫn khoá mua đích danh + vòng RAID may mắn** (chủ server:
   "thêm lại pal raid ở vòng quay, vẫn khoá cái lucky" → "chỉ cho quay random thôi"). `palWheelRaidPool()` bỏ early-return khi
   raw (ô RAID trên vòng có lại, xác suất như thường); `palPickBuy` + `pickState` dùng `raidNames`/`raidRows` RỖNG khi raw →
