@@ -15,6 +15,12 @@
 //   --empty                        : làm RỒNG mọi ArrayProperty tên *ProductDataArray* / *ShopProductData*
 //                                   (dùng khi bảng không có field Stock, vd pal shop).
 //   --check <file.json>            : chỉ đếm, không ghi (dùng để soi cấu trúc trước khi vá).
+//   --list <file.json>             : in danh sách SHOP (tên dòng + số sản phẩm) - để chọn tắt/giữ.
+//   --off=A,B,C                    : CHỈ tắt các shop có tên dòng khớp (so chuỗi đúng, hoặc regex nếu bọc /.../),
+//                                   shop khác GIỮ NGUYÊN. Vd --off=Arena_Shop_1,Medal_Shop_1  hoặc  --off=/^Caravan_/
+//   --keep=A,B,C                   : tắt HẾT trừ các shop khớp. Vd --keep=Village_Shop_1,/^Vagrant_/
+//                                   (11/09: chủ server muốn "tắt thương nhân huyền thoại, giữ con cần thiết")
+//                                   Áp cho cả DT_ItemShopCreateData (Stock) lẫn DT_PalShopCreateData (CharacterNum).
 //
 // Cách chạy (máy có pak-tools):
 //   dotnet UAssetCLI.dll tojson DT_ItemShopCreateData_Common.uasset shop.json VER_UE5_1 Mappings.usmap
@@ -31,7 +37,18 @@ const args = process.argv.slice(2);
 const flags = new Set(args.filter(a => a.startsWith('--')));
 const files = args.filter(a => !a.startsWith('--'));
 const mode = flags.has('--empty') ? 'empty' : 'stock';
-const checkOnly = flags.has('--check');
+const listOnly = flags.has('--list');
+const checkOnly = flags.has('--check') || listOnly;
+// --off= / --keep= : bộ lọc theo TÊN DÒNG shop (Village_Shop_1, Arena_Shop_1, Dark_01 ...)
+// regex viết /.../ HOẶC ~... (Git Bash trên Windows tự đổi "/^Dark_/" thành đường dẫn -> dùng ~^Dark_ cho an toàn)
+const parseSel = (prefix) => { const a = args.find(x => x.startsWith(prefix)); if (!a) return null; return a.slice(prefix.length).split(',').map(x => x.trim()).filter(Boolean).map(x => /^\/.*\/$/.test(x) ? new RegExp(x.slice(1, -1)) : (x.startsWith('~') ? new RegExp(x.slice(1)) : x)); };
+const SEL_OFF = parseSel('--off='), SEL_KEEP = parseSel('--keep=');
+if (SEL_OFF && SEL_KEEP) { console.log('Chỉ dùng MỘT trong --off= hoặc --keep='); process.exit(1); }
+const selMatch = (list, name) => list.some(x => x instanceof RegExp ? x.test(name) : x === name);
+// shop này có bị tắt không? (không có bộ lọc = tắt hết như cũ)
+const shopOff = (name) => SEL_OFF ? selMatch(SEL_OFF, name) : (SEL_KEEP ? !selMatch(SEL_KEEP, name) : true);
+const shops = [];   // [{name, products, off}] cho --list + log
+let curShop = null;
 if (!files[0] || (!checkOnly && !files[1])) {
     console.log('Dùng: node patch_shopoff.js <in.json> <out.json> [--stock|--empty]   |   node patch_shopoff.js --check <in.json>');
     process.exit(1);
@@ -49,23 +66,35 @@ function walk(node, depth) {
     if (!node || typeof node !== 'object') return;
     const t = String(node.$type || '');
     // Dòng DataTable (UAssetAPI: StructPropertyData có Name = row name, nằm trong Table.Data)
-    if (/StructPropertyData/.test(t) && node.StructType && /ShopCreateData|ShopLottery/i.test(String(node.StructType))) stat.rows++;
+    // Dòng shop = StructType *ShopCreateDataRow / PalShopCreateData (KHÔNG phải struct sản phẩm con) -> đặt curShop
+    // rồi duyệt con trong ngữ cảnh shop đó; Stock/CharacterNum bên trong chỉ vá khi shopOff(curShop).
+    if (/StructPropertyData/.test(t) && node.StructType && /ShopCreateData|ShopLottery/i.test(String(node.StructType)) && !/Product/i.test(String(node.StructType)) && node.Name !== 'productDataArray') {
+        stat.rows++;
+        const prev = curShop;
+        curShop = { name: String(node.Name), products: 0, off: shopOff(String(node.Name)) };
+        shops.push(curShop);
+        for (const k of Object.keys(node)) if (k !== '$type' && typeof node[k] === 'object') walk(node[k], depth + 1);
+        curShop = prev;
+        return;
+    }
+    if (/StaticItemId/i.test(String(node.Name)) && curShop) curShop.products++;
+    const inOffShop = !curShop || curShop.off;   // ngoài ngữ cảnh shop (không nên xảy ra) -> giữ hành vi cũ
     if (isStockName(node.Name) && /IntPropertyData/.test(t) && typeof node.Value === 'number') {
         stat.stockSeen++;
         stat.stockValues[node.Value] = (stat.stockValues[node.Value] || 0) + 1;
-        if (!checkOnly && mode === 'stock' && node.Value !== -1) { node.Value = -1; stat.stockPatched++; }
+        if (!checkOnly && mode === 'stock' && inOffShop && node.Value !== -1) { node.Value = -1; stat.stockPatched++; }
     }
     // Người buôn Pal (DT_PalShopCreateData): mỗi dòng có CharacterNum = số pal bày bán -> 0 = shop trống.
     // GIỮ CharacterIDArray nguyên (không làm rỗng - tránh code bốc ngẫu nhiên chia cho 0).
     if (/^CharacterNum$/i.test(String(node.Name)) && /IntPropertyData/.test(t) && typeof node.Value === 'number') {
         stat.stockSeen++;
         stat.stockValues['CharacterNum=' + node.Value] = (stat.stockValues['CharacterNum=' + node.Value] || 0) + 1;
-        if (!checkOnly && mode === 'stock' && node.Value !== 0) { node.Value = 0; stat.stockPatched++; }
+        if (!checkOnly && mode === 'stock' && inOffShop && node.Value !== 0) { node.Value = 0; stat.stockPatched++; }
     }
     if (isProductArray(node.Name) && /ArrayPropertyData/.test(t) && Array.isArray(node.Value)) {
         stat.arraysSeen++;
         stat.arrayNames[node.Name] = (stat.arrayNames[node.Name] || 0) + 1;
-        if (!checkOnly && mode === 'empty' && node.Value.length) { node.Value = []; stat.arraysEmptied++; }
+        if (!checkOnly && mode === 'empty' && inOffShop && node.Value.length) { node.Value = []; stat.arraysEmptied++; }
     }
     for (const k of Object.keys(node)) if (k !== '$type') walk(node[k], depth + 1);
 }
@@ -73,6 +102,14 @@ walk(json, 0);
 
 console.log('Bảng:', files[0]);
 console.log('  dòng shop (StructType *ShopCreateData/*ShopLottery):', stat.rows);
+if (SEL_OFF || SEL_KEEP) console.log('  bộ lọc:', SEL_OFF ? '--off' : '--keep', (SEL_OFF || SEL_KEEP).map(String).join(', '), '=> TẮT', shops.filter(x => x.off).length, '/ GIỮ', shops.filter(x => !x.off).length, 'shop');
+if (listOnly || SEL_OFF || SEL_KEEP) {
+    console.log('  ' + 'SHOP'.padEnd(22) + 'SP'.padStart(4) + '  TRẠNG THÁI');
+    for (const sh of shops) console.log('  ' + sh.name.padEnd(22) + String(sh.products).padStart(4) + '  ' + (sh.off ? '⛔ tắt' : '✅ giữ'));
+    const unknown = (SEL_OFF || SEL_KEEP || []).filter(x => !(x instanceof RegExp) && !shops.some(sh => sh.name === x));
+    if (unknown.length) console.log('  !! tên shop KHÔNG có trong bảng này:', unknown.join(', '));
+}
+if (listOnly) { process.exit(0); }
 console.log('  field Stock thấy:', stat.stockSeen, '| phân bố giá trị gốc:', JSON.stringify(stat.stockValues));
 console.log('  mảng sản phẩm thấy:', stat.arraysSeen, JSON.stringify(stat.arrayNames));
 if (checkOnly) { console.log('(--check: không ghi gì)'); process.exit(0); }

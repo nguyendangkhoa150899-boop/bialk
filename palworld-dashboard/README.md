@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🛒 **Nghiên cứu: tắt/giữ THEO TỪNG thương nhân** (chủ server: "tắt thương nhân huyền thoại, giữ con cần").
+  Khả thi ngay: bảng shop 38 dòng = 38 shop, Stock theo dòng. `scripts/patch_shopoff.js` thêm `--list`, `--off=A,B`,
+  `--keep=A,B` (regex `~^Caravan_`), áp cả CharacterNum bảng pal shop; kiểm trên JSON rút từ pak 09/09 (93/495/533 sản
+  phẩm đúng). Bảng 38 shop + đoán NPC ghi ở README pak-mods (mục BialkShopOff). "Thương nhân huyền thoại" nhiều khả năng =
+  `Arena_Shop_1` (10 bản vẽ Octavia/súng năng lượng cấp 5) và `Medal_Shop_1` (bản vẽ giáo Forest Boss cấp 5). CHƯA build
+  pak - chờ chủ server chốt danh sách tắt/giữ; đồ nghề (dotnet10 + UAssetCLI + repak) còn trong scratchpad, Mappings.usmap
+  trong repo. Pull sáng 11/09 nhận thêm commit Claude nhà `7f50b3c` (vòng quay pal: 6 huyền thoại trở lại + tô vàng).
 - **10/09** — 💰 **Implant: trong cùng bậc xếp giá CAO trước** (chủ server: "1 bậc cây → kim cương → vàng; 2 giá trong bậc
   12000 xếp trước 8000"). `itemShopWebList()` sort 3 khoá: bậc (Chuyển Đổi → 🌈 → 💎 → 🥇 → thường) → giá giảm dần (chỉ cat
   implant) → thứ tự admin. Nhóm khác không đổi. Test palwheeltest +1 (216/216).

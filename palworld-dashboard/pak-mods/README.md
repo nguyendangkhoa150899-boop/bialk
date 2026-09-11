@@ -348,6 +348,40 @@ nhân NPC trong game (làng, sa mạc, núi lửa, huy chương, tiền thưởn
 hành, lang thang, hầm ngục, người buôn Pal, chợ đen) **không được bán gì**. Không cần
 xoá NPC, không cần client cài gì.
 
+## 11/09: TẮT / GIỮ THEO TỪNG THƯƠNG NHÂN (nghiên cứu theo yêu cầu chủ server)
+
+**Khả thi, không cần kỹ thuật mới**: bảng `DT_ItemShopCreateData(_Common)` có **38 dòng, mỗi dòng = 1 shop**
+(tên dòng bên dưới), Stock nằm trong từng dòng → chỉ đặt `-1` cho dòng muốn tắt, dòng khác giữ nguyên byte.
+`DT_PalShopCreateData` 8 dòng (Test_00/01 = người buôn Pal làng?, Desert_00, Volcano_00, Dark_01..04 = chợ đen)
+→ CharacterNum = 0 theo dòng. Script đã thêm bộ lọc:
+
+```
+node scripts/patch_shopoff.js --list <bảng.json>                      # xem 38 shop + số sản phẩm
+node scripts/patch_shopoff.js in.json out.json --off=Arena_Shop_1,Medal_Shop_1     # CHỈ tắt 2 shop này
+node scripts/patch_shopoff.js in.json out.json --keep=Village_Shop_1,~^Vagrant_    # tắt HẾT trừ làng + lang thang
+node scripts/patch_shopoff.js pal.json pal.out.json --off=~^Dark_                  # chợ đen không bán pal
+```
+Regex viết `~^Caravan_` (KHÔNG dùng `/.../` trong Git Bash Windows - bị đổi thành đường dẫn). Tên sai → script
+in `!! tên shop KHÔNG có trong bảng`. Đã kiểm trên JSON rút từ pak server 09/09: `--off=Arena_Shop_1,Medal_Shop_1`
+→ đúng 93 sản phẩm (56+37) về -1, 36 shop còn nguyên; `--keep=Village_Shop_1,~^Vagrant_` → 495; không lọc → 533 như bản cũ.
+
+| Dòng shop | SP | Bán gì (đoán NPC trong game) |
+|---|---|---|
+| Village_Shop_1 | 39 | Thương nhân **làng Khu Định Cư Nhỏ**: bản vẽ mũ thường, gỗ, sphere, mồi câu, tên, thuốc, hạt, trứng, sữa, thịt, da, nội tạng, đá quý |
+| Vagrant_Trader_1_1/2/3 | 4/1/3 | Lang thang tối giản: gỗ/đá/đồng · chảo · 3 loại sphere |
+| Desert_Shop_1/2 | 27/24 | **Duneshelter** (sa mạc): đồ tiêu hao + skill fruit / bản vẽ mũ |
+| Volcano_Shop_1/2 | 27/24 | Khu **núi lửa**: tương tự sa mạc |
+| Wander_Shop_1 | 32 | **Thương nhân lang thang** (hàng random): skill fruit, đạn cơ bản, đá quý, nội tạng |
+| Medal_Shop_1 | 37 | **Thương nhân huy chương** (Dog Coin/medal): mở ô phụ kiện, mũ, quả nâng chỉ số, Elixir, Rankup 1-4, **bản vẽ giáo Forest Boss huyền thoại**, vé công việc |
+| Bounty_Shop_1 | 18 | **Thương nhân truy nã**: vàng, sách công nghệ, Chuyển Đổi, 7 implant Bounty (đang bán trên web), quả |
+| Arena_Shop_1 | 56 | **Thương nhân Đấu Trường** ← ứng viên "thương nhân huyền thoại": **10 bản vẽ vũ khí/giáp Octavia + súng năng lượng cấp 4-5**, 7 implant Arena, skill fruit hiếm |
+| Caravan_Shop_1..25 | 3-31 | 25 dòng **đoàn lữ hành / Sakurajima** theo bậc: đạn, thịt, hạt, thuốc, món ăn, da/xương |
+| Dungeon_Shop_01 | 33 | Thương nhân **trong hầm ngục**: đồ sinh tồn cơ bản |
+
+Lưu ý khi chọn: (1) tắt shop **không** gỡ NPC - vẫn nói chuyện, vẫn BÁN đồ cho họ lấy vàng; (2) 2 bảng `DT_ItemShopCreateData`
+và `_Common` phải vá CÙNG bộ lọc; (3) bản pak mới thay thế `BialkShopOff_P.pak` (1 file, cùng tên) → restart server;
+(4) map dòng → NPC trong game là suy luận từ tên + hàng, chưa đi kiểm từng NPC - test trên server TEST trước.
+
 ## Kết luận nghiên cứu
 
 - **Khả thi, dễ hơn BialkSurgeryOff**: đây là mod **DataTable** (cùng quy trình
