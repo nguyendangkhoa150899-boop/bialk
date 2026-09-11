@@ -670,6 +670,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 📣 **Bán/tặng pal: DM Discord + log kênh trúng pal** (chủ server: thêm DM + log ở kênh 1538789642743193611 - kênh
+  đang đăng pal quay trúng). `palTradeNotify(kind, t)`: offer → DM người nhận (kèm link web → 🪪 Cá nhân → 🤝) + đăng kênh;
+  accept → DM người bán + kênh; decline → DM người bán + kênh; cancel → DM người nhận + kênh. Kênh = `dbCache._gachaChannelId`
+  (cài ở panel, hiện chính là kênh đó), chưa cài thì fallback hằng `PAL_TRADE_LOG_CHANNEL`. Bắn nền, lỗi DM (người tắt DM) chỉ
+  ghi log. Test +5 với client giả (256/256).
 - **11/09** — 🤝 **BÁN / TẶNG PAL CHO NGƯỜI CHƠI KHÁC** (chủ server: nút Bán → popup (1) bán shop giá sẵn (2) bán cho người
   khác nhập giá, 0 = tặng; bên nhận thấy pal + "Xác nhận mua với X"; người bán thu hồi được nếu câu giờ; UI pal đang giao dịch).
   Server: `dbCache._palTrades[]` {id, from, fromName, to, toName, price, item, at}; `palTradeOffer` RÚT pal khỏi rương người

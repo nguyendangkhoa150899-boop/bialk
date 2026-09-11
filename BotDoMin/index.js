@@ -2489,6 +2489,32 @@ const PAL_TRADE_MAX_OPEN = 10;
 function palTrades() { if (!Array.isArray(dbCache._palTrades)) dbCache._palTrades = []; return dbCache._palTrades; }
 function palUserExists(id) { id = String(id || ''); return !!id && !id.startsWith('_') && !!dbCache[id] && typeof dbCache[id] === 'object'; }
 function palTradePublic(t) { return { id: t.id, from: t.from, fromName: t.fromName, to: t.to, toName: t.toName, price: t.price, at: t.at, atText: t.atText, item: { id: t.item.id, name: t.item.name, code: t.item.code, dex: t.item.dex || 0, raid: !!t.item.raid, legend: !!t.item.legend, wonAt: t.item.wonAt } }; }
+// 📣 11/09: báo Discord - DM người liên quan + đăng kênh trúng pal (kênh gacha đã cài ở panel; chưa cài thì
+// dùng kênh chủ server đưa 11/09). Bắn nền, lỗi chỉ ghi log, không chặn giao dịch.
+const PAL_TRADE_LOG_CHANNEL = '1538789642743193611';
+function palTradeNotify(kind, t, extra) {
+    if (typeof client === 'undefined' || !client || !client.users) return;
+    const web = `${WEB_PLAY_URL} → 🪪 Cá nhân → 🤝 ĐANG GIAO DỊCH`;
+    const gia = t.price > 0 ? `**${t.price.toLocaleString()}** ${DOGCOIN_EMOJI}` : '**TẶNG (0)**';
+    const pal = `**${t.item.name}**${t.item.raid ? ' 🔥RAID' : ''}${t.item.legend ? ' 👑' : ''}`;
+    let dmTo = null, dmMsg = '', pub = '';
+    if (kind === 'offer') {
+        dmTo = t.to; dmMsg = `🤝 **${t.fromName}** muốn ${t.price > 0 ? 'BÁN' : 'TẶNG'} bạn pal ${pal} giá ${gia}.\nVào ${web} để **Xác nhận mua** hoặc **Từ chối**. Người bán có thể thu hồi bất cứ lúc nào.`;
+        pub = `🤝 **${t.fromName}** rao pal ${pal} cho **${t.toName}** giá ${gia} - chờ xác nhận.`;
+    } else if (kind === 'accept') {
+        dmTo = t.from; dmMsg = t.price > 0 ? `✅ **${t.toName}** đã MUA pal ${pal} của bạn - ví +${gia}.` : `🎁 **${t.toName}** đã nhận pal ${pal} bạn tặng.`;
+        pub = t.price > 0 ? `✅ **${t.toName}** đã mua pal ${pal} từ **${t.fromName}** với ${gia}.` : `🎁 **${t.toName}** nhận pal ${pal} do **${t.fromName}** tặng.`;
+    } else if (kind === 'decline') {
+        dmTo = t.from; dmMsg = `❌ **${t.toName}** đã từ chối pal ${pal} bạn rao (${gia}) - pal đã về rương bạn.`;
+        pub = `❌ **${t.toName}** từ chối pal ${pal} của **${t.fromName}**.`;
+    } else if (kind === 'cancel') {
+        dmTo = t.to; dmMsg = `↩️ **${t.fromName}** đã thu hồi pal ${pal} (${gia}) - lời bán đã huỷ.`;
+        pub = `↩️ **${t.fromName}** thu hồi pal ${pal} đang rao cho **${t.toName}**.`;
+    }
+    if (dmTo && dmMsg) client.users.fetch(dmTo).then(us => us.send(dmMsg)).catch(e => writeLog('SYSTEM', `[BÁN PAL] DM ${dmTo} lỗi: ${e.message}`));
+    const chId = dbCache._gachaChannelId || PAL_TRADE_LOG_CHANNEL;
+    if (pub && chId && client.channels) client.channels.fetch(chId).then(ch => ch.send(pub)).catch(e => writeLog('SYSTEM', `[BÁN PAL] Khong dang duoc vao kenh ${chId}: ${e.message}`));
+}
 function palTradesFor(userId) {
     const u = String(userId);
     return { out: palTrades().filter(t => t.from === u).map(palTradePublic), in: palTrades().filter(t => t.to === u).map(palTradePublic) };
@@ -2510,6 +2536,7 @@ function palTradeOffer(userId, itemId, toId, price, username) {
     palTrades().push(t);
     writeLog('ADMIN', `[BÁN PAL] ${t.fromName} rao ${item.name} (#${item.id}) cho ${toName} giá ${price || 'TẶNG (0)'} - giao dịch #${t.id}`);
     saveDbNow();
+    palTradeNotify('offer', t);
     return { ok: true, trade: palTradePublic(t) };
 }
 // thu hồi (người bán) hoặc từ chối (người nhận): pal về rương người bán
@@ -2524,6 +2551,7 @@ function palTradeCancel(userId, tradeId, username) {
     const how = t.from === u ? 'THU HỒI' : 'bị người nhận TỪ CHỐI';
     writeLog('ADMIN', `[BÁN PAL] giao dịch #${t.id} ${t.item.name} ${how} bởi ${username || u} - pal về rương ${t.fromName}`);
     saveDbNow();
+    palTradeNotify(t.from === u ? 'cancel' : 'decline', t);
     return { ok: true, how: t.from === u ? 'cancel' : 'decline', item: { id: t.item.id, name: t.item.name } };
 }
 // người nhận xác nhận mua: trừ ví người mua, cộng ví người bán (price > 0), pal sang rương người mua
@@ -2547,6 +2575,7 @@ function palTradeAccept(userId, tradeId, username) {
     palChest(u).unshift(t.item);
     writeLog('ADMIN', `[BÁN PAL] ${username || u} ${t.price > 0 ? 'MUA' : 'NHẬN TẶNG'} ${t.item.name} (#${t.item.id}) từ ${t.fromName} giá ${t.price} - giao dịch #${t.id}`);
     saveDbNow();
+    palTradeNotify('accept', t);
     return { ok: true, price: t.price, item: { id: t.item.id, name: t.item.name }, fromName: t.fromName, balance: getUserData(u).points || 0 };
 }
 
