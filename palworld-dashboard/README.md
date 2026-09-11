@@ -670,6 +670,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🎁 **Vòng quay RANDOM bỏ hẳn ô RAID (mọi chế độ); đổi tên "Vòng quay RAID" → "🍀 Vòng quay may mắn"; thẻ Ô RAID =
+  Lamball tô đỏ** (chủ server: "tắt raid đi chỉ còn legend trở xuống", "chuyển thành vòng quay may mắn", "lấy hình
+  T_SheepBall tô đỏ, hình kia xấu"). `palWheelSpin` `raids = []` + state `raids: []` → 282 ô chia đều, không còn 1/283 raid;
+  mua raid đích danh (`palPickBuy`, dùng `palWheelRaidPool`) KHÔNG đổi - vẫn bán khi không raw. Web: mọi chữ "vòng RAID" →
+  "vòng may mắn", thẻ Ô RAID dùng `/palimage/T_SheepBall_icon_normal.png` + `filter:sepia(1) saturate(9) hue-rotate(-45deg)`
+  (đỏ), `raid_slot.jpg` xoá khỏi repo. Test: 2 case cũ "trúng Ô RAID ở vòng random" viết lại thành "không bao giờ ra raid" (234/234).
 - **11/09** — 🖼️ **Thẻ "Ô RAID" vòng may mắn dùng icon riêng** `assets/itemimage/raid_slot.jpg` (chủ server tải, tên gốc
   `images.jpg` → đổi cho rõ). `pwRaidSlotHtml` render <img> 62px bo góc, thiếu file thì onerror rớt về 🔥. Không đổi luật.
 - **11/09** — 🍀 **VÒNG MAY MẮN LÀM LẠI + MỞ Ở PAL GỐC; raid KHOÁ LẠI ở vòng random** (chủ server: "vòng may mắn có pal

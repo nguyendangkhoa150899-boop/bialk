@@ -2279,7 +2279,7 @@ function palWheelSpin(userId, username) {
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới quay pal được' };
     if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt - chờ vài giây cho hiện kết quả rồi quay tiếp nhé' };
     const normals = palWheelNormalPool();
-    const raids = palWheelRaidPool();
+    const raids = [];   // 11/09: 🎁 vòng RANDOM không còn ô RAID ở MỌI chế độ (chủ server: "chỉ còn legend trở xuống") - raid chỉ ra ở 🍀 vòng may mắn
     if (!normals.length) return { error: 'Danh sách pal chưa nạp được, báo admin' };
     const user = getUserData(userId);
     if ((user.points || 0) < cfg.price) {
@@ -5360,7 +5360,7 @@ client.once('ready', async (c) => {
                         pot: potGet('gacha'), spinRemain,
                         // 27/08: kèm code để web gắn hình (/palimage/T_<code>_icon_normal.png)
                         pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code), epic: palIsEpic(p.code) })),
-                        raids: palWheelRaidPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),
+                        raids: [],   // 11/09: vòng random không còn ô RAID (web không trộn thẻ raid nữa)
                         // 🍀 thanh may mắn + vòng raid (27/08): đầy 100 mới quay raid, xong về 0
                         luck: typeof u.palLuck === 'number' ? u.palLuck : 0,
                         raidReady: cfg.raidWheelOn && (u.palLuck || 0) >= 100,
