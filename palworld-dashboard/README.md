@@ -670,6 +670,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🔁 **Hạn ngày chiều NẠP đếm theo Dogcoin TRONG GAME** (chủ server: "để 5000 thì game vẫn cho chuyển ra 5000, web nhận
+  10000, sau đó không chuyển nữa - đang bị ngược"). Trước: đếm theo số web nhận (hạn 10.000 web = 5.000 game). Nay: `dogBridgeDayCheck`
+  chiều nạp dùng `amount` (game), đếm `r.took` (game) - cùng đơn vị với chiều rút nên 1 ô hạn dùng chung cho cả 2 chiều; web nhận
+  = took × tỉ lệ. Web dòng hạn nạp ghi "N Dogcoin TRONG GAME/ngày · còn lấy được X trong game (= nhận X×rate web)", xem trước sửa
+  theo. Test bridgetest sửa 4 + thêm kịch bản 5.000/×2 (25/25).
 - **11/09** — 📅 **Cầu Dogcoin: mỗi chiều 1 dòng hạn riêng + XEM TRƯỚC khi gõ số** (chủ server: "Nạp ra web không có cảnh báo
   vượt"). Rút: dòng "Hạn rút vào game N/ngày · hôm nay còn X"; Nạp: dòng "Hạn nạp ra web N web/ngày · còn X web (= X/rate game)".
   Gõ số là hiện ngay (dogPreview): xanh "→ Lấy A game, ví web +B (tỉ lệ 1 : 2)" hoặc đỏ "⚠️ Vượt hạn ngày… chỉ còn nhận được X web" /

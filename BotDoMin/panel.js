@@ -1677,7 +1677,7 @@ const HTML = `<!DOCTYPE html>
           <input class="mini-in" id="gsNapRate" type="number" min="0.1" max="100" step="0.1" placeholder="2" style="width:70px" title="Tỉ lệ nạp: 2 = lấy 1 Dogcoin trong game cộng 2 Dogcoin ví web. Rút web→game luôn 1:1. Hạn ngày chiều nạp đếm theo số web nhận.">
           <span>Dogcoin web</span>
           <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu</button>
-          <span class="muted" style="font-size:12px">rút web→game và nạp game→web đếm RIÊNG · 0 = không giới hạn · đếm lại 00:00 giờ VN</span>
+          <span class="muted" style="font-size:12px">đếm theo Dogcoin TRONG GAME (rút = số vào game, nạp = số lấy ra khỏi game, web nhận × tỉ lệ) · 2 chiều đếm RIÊNG · 0 = không giới hạn · 00:00 giờ VN</span>
         </div>
         <div class="row" style="gap:10px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
           <div style="flex:2"><label>🎚️ Cược tối thiểu Dò Mìn + Leo Thang (Dogcoin/ván)</label><input id="gsMinBet" type="number" min="1" placeholder="vd: 400"></div>

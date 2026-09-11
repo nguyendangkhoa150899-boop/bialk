@@ -489,8 +489,10 @@ async function webNapGame(userId, amount) {
     if (amount > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin` };
     const u = getUserData(userId);
     const rate = dogNapRate();
-    const dayErrN = dogBridgeDayCheck(u, 'nap', Math.floor(amount * rate));   // 📅 hạn ngày đếm theo số WEB nhận (× tỉ lệ)
-    if (dayErrN) return { error: dayErrN + (rate !== 1 ? ` (tỉ lệ 1 : ${rate} - ${amount.toLocaleString()} game = ${Math.floor(amount * rate).toLocaleString()} web)` : '') };
+    // 📅 11/09 (chiều): hạn ngày chiều nạp đếm theo Dogcoin TRONG GAME lấy ra (cùng đơn vị với chiều rút) - chủ server:
+    // "để 5000 thì game vẫn cho chuyển ra 5000, web nhận 10000 rồi hết lượt". Số web nhận = amount × rate, KHÔNG dùng để đếm hạn.
+    const dayErrN = dogBridgeDayCheck(u, 'nap', amount);
+    if (dayErrN) return { error: dayErrN.replace('Dogcoin/ngày', 'Dogcoin TRONG GAME/ngày') + (rate !== 1 ? ` (web nhận × ${rate})` : '') };
     const gameName = (u.ingameName || '').trim();
     if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
     if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi thử lại' };
@@ -505,7 +507,7 @@ async function webNapGame(userId, amount) {
     if (r && r.ok && r.took > 0) {
         const credit = Math.floor(r.took * rate);   // 💱 1 game = rate web
         updatePoints(userId, credit);
-        dogBridgeToday(u).nap += credit;   // 📅 đếm số WEB nhận (đúng số đã lấy được × tỉ lệ)
+        dogBridgeToday(u).nap += r.took;   // 📅 đếm theo Dogcoin GAME đã lấy được (không nhân tỉ lệ)
         logDog('from-game', userId, u.name || userId, credit, `nạp từ game (web, nhân vật ${gameName}) ${r.took} game × ${rate} = ${credit}`);
         debtBadSweep(userId);
         saveDbNow();
