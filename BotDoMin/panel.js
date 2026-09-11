@@ -1528,7 +1528,8 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:4px">
           <div style="flex:1"><label>🍀 May mắn/quay TỐI THIỂU (%)</label><input id="pwLuckMin" type="number" placeholder="vd: 1"></div>
           <div style="flex:1"><label>🍀 May mắn/quay TỐI ĐA (%)</label><input id="pwLuckMax" type="number" placeholder="vd: 3"></div>
-          <div style="flex:1"><label>🔥 Thưởng trúng vòng RAID (Dogcoin)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
+          <div style="flex:1"><label>🔥 Thưởng trúng vòng may mắn (Dogcoin)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
+          <div style="flex:1"><label title="Vòng may mắn = 6 huyền thoại + ô RAID. % này là xác suất rơi vào ô RAID (trúng thì quay thêm vòng boss). 40 = '10 ô huyền thoại thì 4 ô raid'">🔥 % ô RAID trên vòng may mắn (0–100)</label><input id="pwLuckyRaidPct" type="number" min="0" max="100" placeholder="vd: 40"></div>
           <label style="display:flex;align-items:center;gap:6px;flex:1"><input type="checkbox" id="pwRaidOn" style="width:auto"> Mở vòng RAID</label>
         </div>
         <div class="note" style="margin-top:8px">⏳ <b>COOLDOWN NHẬN PAL CHUNG</b> - ai nhận 1 con thì CẢ SERVER phải chờ ngần này giây mới nhận con tiếp (0 = tắt). 📅 <b>Pal/người/NGÀY</b> - mỗi người chỉ chuyển được ngần này pal vào game mỗi ngày, reset 00:00 giờ VN, chỉ tính lượt giao THÀNH CÔNG (0 = tắt). Sao pal = "Sao (0–4)" ở trên (Palworld chốt cứng 4 sao, không có sao 5+).</div>
@@ -2416,7 +2417,7 @@ function pwCfgFill(k){
   set('pwUp5',k.upSlot5);set('pwUp6',k.upSlot6);set('pwUp7',k.upSlot7);set('pwUp8',k.upSlot8);set('pwUpLow',k.upSlotLow);set('pwUpIv',k.upIv);set('pwUpLine',k.upSoulLine);
   set('pwUpWt',k.upWtPassive);set('pwUpT4',k.upTier4);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
-  set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);
+  set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);set('pwLuckyRaidPct',k.luckyRaidPct);
   set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;document.getElementById('pwRaw').checked=!!k.raw;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
@@ -2455,6 +2456,7 @@ function pwCfgSave(){
            luckMin:parseInt(document.getElementById('pwLuckMin').value),
            luckMax:parseInt(document.getElementById('pwLuckMax').value),
            raidBonus:parseInt(document.getElementById('pwRaidBonus').value),
+           luckyRaidPct:parseInt(document.getElementById('pwLuckyRaidPct').value),
            raidWheelOn:document.getElementById('pwRaidOn').checked,
            claimCd:parseInt(document.getElementById('pwClaimCd').value),
            dayMax:parseInt(document.getElementById('pwDayMax').value),
@@ -2476,6 +2478,7 @@ function pwCfgSave(){
   if(!(o.luckMin>=0&&o.luckMin<=100)||!(o.luckMax>=0&&o.luckMax<=100))return toast('% may mắn/quay trong 0–100');
   if(o.luckMin>o.luckMax)return toast('May mắn tối thiểu không được lớn hơn tối đa');
   if(!(o.raidBonus>=0))return toast('Thưởng vòng RAID không được âm/trống');
+  if(!(o.luckyRaidPct>=0&&o.luckyRaidPct<=100))return toast('% ô RAID vòng may mắn phải 0–100');
   api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function pgGrant(){

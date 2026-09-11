@@ -670,6 +670,15 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🍀 **VÒNG MAY MẮN LÀM LẠI + MỞ Ở PAL GỐC; raid KHOÁ LẠI ở vòng random** (chủ server: "vòng may mắn có pal
+  legend với pal raid là 1 ô nằm riêng, trúng ô raid thì quay thêm raid random; 10 ô legend thì 4 ô raid; khoá pal raid ở quay
+  random; vẫn khoá build chỉ số"). Server `palRaidSpin`: roll 1 = `Math.random()*100 < cfg.luckyRaidPct` (mặc định **40**, admin
+  đặt ở panel ô "% ô RAID trên vòng may mắn") → nhóm RAID (5 boss `palLuckyRaidPool`, không phụ thuộc raw) hay nhóm HUYỀN THOẠI
+  (6 con `palLegendPool`); roll 2 = con nào trong nhóm; trả `raidHit`, item `raid`/`legend`; thưởng raidBonus giữ; bỏ chặn raw
+  (pal ra vẫn Lv1/0 sao/không passive theo luật raw lúc nhận). `palWheelRaidPool` (vòng RANDOM + đích danh) trở lại `[]` khi raw.
+  State: `luckyLegends`, `luckyRaidPct`, `raidWheelPals` (5 boss cho reel 2). Web: reel 1 trộn thẻ 👑 vàng + thẻ "🔥 Ô RAID"
+  theo %; trúng Ô RAID → toast + **reel 2 toàn boss** dừng đúng con server chọn (`pwRaidStrip2` → `pwRaidFinal`); huyền thoại →
+  kết quả vàng luôn. Test palwheeltest +6 (234/234): raid/legend theo roll, %=0/100, raw mở, pool random khoá.
 - **11/09** — 💜 **16 pal "TÍM" trên vòng quay** (chủ server chốt danh sách sau khi bàn: pal cuối game build để đánh, không phải
   huyền thoại/raid; các con "lưỡng lự" Suzaku/Cryolinx/Helzephyr/Menasting/Gildane/Azurmane/Dogen/Omascul KHÔNG thêm). CHỈ tô
   màu, giá + tỉ lệ y pal thường. `PALWHEEL_EPIC_CODE` 16 mã: Shaolong, Orserk, Astegon, Shadowbeak, Blazamut, Silvegis, Selyne, Bastigor, Xenogard, Knocklem Ignis, Faleris, Faleris Aqua, Anubis, Lyleen Noct, Grizzbolt, Jormuntide Ignis.

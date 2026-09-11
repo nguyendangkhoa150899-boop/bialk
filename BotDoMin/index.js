@@ -1238,6 +1238,9 @@ function palWheelCfg() {
         luckMax: Math.floor(num(c.luckMax, 3, 0, 100)),
         raidBonus: Math.floor(num(c.raidBonus, 18000, 0, 100000000)),
         raidWheelOn: c.raidWheelOn === undefined ? true : !!c.raidWheelOn,
+        // 🍀 11/09: vòng MAY MẮN làm lại = 6 huyền thoại (ô riêng từng con) + ô RAID chiếm luckyRaidPct % (mặc định 40:
+        // "10 ô legend thì 4 ô raid"); trúng ô RAID -> quay thêm reel boss random. Mở ở cả PAL GỐC.
+        luckyRaidPct: Math.floor(num(c.luckyRaidPct, 40, 0, 100)),
         // ⏳ COOLDOWN NHẬN PAL CHUNG TOÀN SERVER (28/08): ai nhận 1 con thì CẢ SERVER phải
         // chờ ngần này giây mới nhận con tiếp (giảm tải hàng đợi mod/SFTP). 0 = tắt.
         // 03/09: hạ 300 -> 120 theo yêu cầu chủ server (kèm migration 1 lần ở ready).
@@ -2215,15 +2218,18 @@ function palWheelNormalPool() {
     const raid = new Set(PAL_DATA.raidOnly || []);
     return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code));
 }
+// pool ô RAID trên vòng quay RANDOM thường - 11/09 (chiều): PAL GỐC KHOÁ LẠI (chủ server đổi ý: raid chỉ ra ở vòng MAY MẮN)
 function palWheelRaidPool() {
-    // 11/09: PAL GỐC vẫn CÓ ô RAID trên vòng quay random (chủ server: "thêm lại pal raid, chỉ cho quay random").
-    // Mua raid ĐÍCH DANH + vòng RAID MAY MẮN vẫn khoá khi raw - xem palPickBuy / pickState / palLuckyRaidPool.
+    if (palWheelCfg().raw) return [];   // 🔒 PAL GỐC: không ô RAID trên vòng random, không bán raid đích danh
     return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
 }
-// 🍀 4 boss của vòng quay RAID may mắn (khác pool ô RAID vòng thường)
+// 🍀 11/09: vòng MAY MẮN làm lại - pool RAID = CẢ 5 boss (random khi trúng ô RAID), KHÔNG phụ thuộc raw
 function palLuckyRaidPool() {
-    if (palWheelCfg().raw) return [];   // 🔒 PAL GỐC: vòng RAID may mắn cũng tắt
-    return (PAL_DATA.all || []).filter(p => PALWHEEL_LUCKY_RAID_NAMES.includes(p.name));
+    return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
+}
+// 👑 6 huyền thoại - mỗi con 1 ô trên vòng may mắn
+function palLegendPool() {
+    return (PAL_DATA.all || []).filter(p => palIsLegend(p.code));
 }
 // %/quay nạp thanh may mắn của 1 người: admin đặt riêng (u.palLuckRate, số cố định) thì
 // dùng số đó; chưa đặt thì random trong [luckMin, luckMax] toàn sàn. Đây là NÚT GIAN LẬN
@@ -2344,37 +2350,40 @@ function palWheelSpin(userId, username) {
 function palRaidSpin(userId, username) {
     const cfg = palWheelCfg();
     if (!cfg.raidWheelOn) return { error: 'Vòng quay RAID đang tắt' };
-    if (cfg.raw) return { error: '🔒 Đang chế độ PAL GỐC - vòng quay RAID tạm tắt (thanh may mắn vẫn giữ)' };
+    // 11/09: PAL GỐC vẫn quay được vòng may mắn (pal ra vẫn Lv1/0 sao/không passive theo luật raw lúc nhận)
     if (debtOf(getUserData(userId)).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới quay được' };
     if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt - chờ vài giây rồi quay tiếp nhé' };
     const user = getUserData(userId);
     if ((user.palLuck || 0) < 100) return { error: 'Chưa đủ thanh may mắn (cần đầy 100%)' };
-    const pool = palLuckyRaidPool();
-    if (!pool.length) return { error: 'Danh sách boss raid chưa nạp được, báo admin' };
+    const raids = palLuckyRaidPool(), legends = palLegendPool();
+    if (!raids.length || !legends.length) return { error: 'Danh sách boss raid / huyền thoại chưa nạp được, báo admin' };
     user.palLuck = 0; // quay xong may mắn về 0
-    const win = pool[Math.floor(Math.random() * pool.length)];
+    // roll 1: ô RAID (luckyRaidPct %) hay ô huyền thoại; roll 2: con nào trong nhóm đó (random đều)
+    const raidHit = Math.random() * 100 < cfg.luckyRaidPct;
+    const grp = raidHit ? raids : legends;
+    const win = grp[Math.floor(Math.random() * grp.length)];
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
-        code: win.code, name: win.name, dex: win.dex || 0, raid: true,
+        code: win.code, name: win.name, dex: win.dex || 0, raid: raidHit, legend: !raidHit,
         wonAt: new Date().toLocaleString('vi-VN') + ' (thưởng may mắn)', status: 'chest',
         revealAt: Date.now() + 10500,
     };
     palChest(userId).unshift(item);
     const bonus = cfg.raidBonus;
     if (bonus > 0) updatePoints(userId, bonus);
-    logDog('shop', userId, username || userId, bonus, `THƯỞNG vòng RAID may mắn: ${item.name} + ${bonus} Dogcoin - rương #${item.id}`);
-    writeLog('ADMIN', `[VÒNG RAID] ${username || userId} đầy thanh may mắn -> ${item.name}${bonus ? ` + ${bonus} Dogcoin` : ''} - rương #${item.id}`);
+    logDog('shop', userId, username || userId, bonus, `THƯỞNG vòng MAY MẮN: ${raidHit ? 'Ô RAID → ' : 'huyền thoại '}${item.name} + ${bonus} Dogcoin - rương #${item.id}`);
+    writeLog('ADMIN', `[VÒNG MAY MẮN] ${username || userId} đầy thanh -> ${raidHit ? 'Ô RAID → boss ' : '👑 '}${item.name}${bonus ? ` + ${bonus} Dogcoin` : ''} - rương #${item.id}`);
     saveDbNow();
 
     const gachaCh = dbCache._gachaChannelId;
     if (gachaCh && typeof client !== 'undefined' && client && client.channels) {
-        const msg = `🍀🔥 **${username || 'Ai đó'}** đầy THANH MAY MẮN, quay vòng RAID ra **${item.name}**${bonus > 0 ? ` + **${bonus.toLocaleString()}** ${DOGCOIN_EMOJI}` : ''}!`;
+        const msg = `🍀${raidHit ? '🔥' : '👑'} **${username || 'Ai đó'}** đầy THANH MAY MẮN, quay vòng may mắn ra ${raidHit ? 'Ô RAID → boss ' : 'huyền thoại '}**${item.name}**${bonus > 0 ? ` + **${bonus.toLocaleString()}** ${DOGCOIN_EMOJI}` : ''}!`;
         setTimeout(() => {
             client.channels.fetch(gachaCh).then(ch => ch.send(msg))
                 .catch(e => writeLog('SYSTEM', `[VÒNG RAID] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
         }, 10500);
     }
-    return { ok: true, item, bonus, luck: user.palLuck, raidReady: false, balance: getUserData(userId).points || 0 };
+    return { ok: true, item, bonus, raidHit, luck: user.palLuck, raidReady: false, balance: getUserData(userId).points || 0 };
 }
 
 // 🎯 CHỌN PAL ĐÍCH DANH (25/08, thay nút "Pal tùy chọn" 6.000 trong Discord): chọn
@@ -5357,7 +5366,9 @@ client.once('ready', async (c) => {
                         raidReady: cfg.raidWheelOn && (u.palLuck || 0) >= 100,
                         raidWheelOn: cfg.raidWheelOn,
                         raidBonus: cfg.raidBonus,
-                        raidWheelPals: palLuckyRaidPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),
+                        raidWheelPals: palLuckyRaidPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0 })),   // 5 boss cho reel 2
+                        luckyLegends: palLegendPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: true })),   // 👑 6 ô huyền thoại
+                        luckyRaidPct: cfg.luckyRaidPct,
                         // không đếm pal đang quay dở (chưa tới revealAt) - khỏi lộ kết quả sớm
                         chestCount: palChest(uid).filter(i => i.status === 'chest' && (!i.revealAt || i.revealAt <= Date.now())).length,
                     };
