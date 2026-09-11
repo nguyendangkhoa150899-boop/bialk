@@ -1814,7 +1814,8 @@ function itemShopGroupQuota() {
     for (const c of ITEM_SHOP_QUOTA_CATS) {
         const g = dbCache._itemShopGroupQuota[c];
         const mx = g && Number.isFinite(Number(g.max)) ? Math.max(0, Math.floor(Number(g.max))) : 0;
-        out[c] = { mode: g && g.mode === 'server' ? 'server' : 'user', max: Math.min(1000000, mx) };
+        // per: 'group' = mọi loại gộp 1 sổ · 'item' = RIÊNG TỪNG MÓN (12/09 v3)
+        out[c] = { mode: g && g.mode === 'server' ? 'server' : 'user', per: g && g.per === 'item' ? 'item' : 'group', max: Math.min(1000000, mx) };
     }
     return out;
 }
@@ -1824,7 +1825,7 @@ function setItemShopGroupQuota(o) {
         if (!ITEM_SHOP_QUOTA_CATS.includes(c) || !g || typeof g !== 'object') continue;
         const mx = Math.floor(Number(g.max));
         if (!Number.isFinite(mx) || mx < 0 || mx > 1000000) return { error: `Hạn nhóm ${c}: nhập số 0–1.000.000 (0 = tắt)` };
-        cur[c] = { mode: g.mode === 'server' ? 'server' : 'user', max: mx };
+        cur[c] = { mode: g.mode === 'server' ? 'server' : 'user', per: g.per === 'item' ? 'item' : 'group', max: mx };
     }
     dbCache._itemShopGroupQuota = cur;
     saveDbNow();
@@ -1914,15 +1915,18 @@ async function itemShopBuy(userId, itemId, qty, username) {
     // 🗂️ HẠN THEO NHÓM (12/09 v2): admin đặt chế độ 🌐/👤 + số/ngày cho từng nhóm
     const gq = (!isImplantCat && !isOnce) ? itemShopGroupQuota()[it.cat] : null;
     const gqOn = !!(gq && gq.max > 0);
+    // 12/09 v3: sổ đếm theo per - 'group' gộp cả nhóm (key = cat), 'item' riêng từng món (key = i:<id>)
+    const gqKey = gqOn ? (gq.per === 'item' ? 'i:' + it.id : it.cat) : null;
     const gCnt = gqOn ? (gq.mode === 'server' ? groupDaySrv() : groupDayUser(user)) : null;
     if (gCnt) {
-        const gn = gCnt.n[it.cat] || 0;
+        const gn = gCnt.n[gqKey] || 0;
         if (gn + qty > gq.max) {
             const left = Math.max(0, gq.max - gn);
             const sv = gq.mode === 'server';
+            const unit = gq.per === 'item' ? it.name : 'món nhóm này (mọi loại gộp)';
             return { error: left
-                ? `🗂️ ${sv ? 'Cả server' : 'Mỗi người'} chỉ mua tối đa ${gq.max.toLocaleString()} món nhóm này/ngày (mọi loại gộp) - hôm nay còn ${left.toLocaleString()}${sv ? ' (ai nhanh thì được)' : ''}`
-                : `🗂️ Hôm nay ${sv ? 'cả server' : 'bạn'} đã mua đủ ${gq.max.toLocaleString()} món nhóm này - mai 00:00 mua tiếp` };
+                ? `🗂️ ${sv ? 'Cả server' : 'Mỗi người'} chỉ mua tối đa ${gq.max.toLocaleString()} ${unit}/ngày - hôm nay còn ${left.toLocaleString()}${sv ? ' (ai nhanh thì được)' : ''}`
+                : `🗂️ Hôm nay ${sv ? 'cả server' : 'bạn'} đã mua đủ ${gq.max.toLocaleString()} ${unit} - mai 00:00 mua tiếp` };
         }
     }
     const dayMax = itemShopDayMax();
@@ -1949,7 +1953,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     today[it.id] = (today[it.id] || 0) + qty;   // 📅 tính vào hạn ngày ngay lúc trừ tiền
     if (imp) imp.n += qty;                       // 🧬 hạn implant/người
     if (wt) wt.n += qty;                         // 🌳 hạn Cây Thế Giới/người
-    if (gCnt) gCnt.n[it.cat] = (gCnt.n[it.cat] || 0) + qty;   // 🗂️ hạn nhóm (12/09 v2)
+    if (gCnt) gCnt.n[gqKey] = (gCnt.n[gqKey] || 0) + qty;   // 🗂️ hạn nhóm (key theo per)
     if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
     saveDbNow();
@@ -1967,7 +1971,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
         today[it.id] = Math.max(0, (today[it.id] || 0) - qty);   // 📅 chưa giao -> trả lại hạn ngày
         if (imp) imp.n = Math.max(0, imp.n - qty);
         if (wt) wt.n = Math.max(0, wt.n - qty);
-        if (gCnt) gCnt.n[it.cat] = Math.max(0, (gCnt.n[it.cat] || 0) - qty);   // 🗂️ chưa giao -> trả lượt
+        if (gCnt) gCnt.n[gqKey] = Math.max(0, (gCnt.n[gqKey] || 0) - qty);   // 🗂️ chưa giao -> trả lượt
         if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();

@@ -2641,10 +2641,12 @@ const GQ_CATS=[["weapon","🗡️ Vũ khí"],["armor","🛡️ Giáp"],["consume
 function gqRender(){const box=document.getElementById('isGroupQuota');if(!box||box.dataset.built)return;box.dataset.built='1';
   box.innerHTML=GQ_CATS.map(g=>'<div style="display:flex;align-items:center;gap:5px;border:1px solid #2a3142;border-radius:8px;padding:5px 8px"><span style="font-size:12px;min-width:96px">'+g[1]+'</span>'+
     '<select class="mini-in" id="gqm_'+g[0]+'" style="width:auto"><option value="user">👤 cá nhân</option><option value="server">🌐 toàn server</option></select>'+
+    '<select class="mini-in" id="gqp_'+g[0]+'" style="width:auto" title="gộp mọi loại = cả nhóm chung 1 sổ · riêng từng món = số này áp cho TỪNG item (mua 1000 trứng gà xong vẫn còn 1000 sữa bò)"><option value="group">gộp mọi loại</option><option value="item">riêng từng món</option></select>'+
     '<input class="mini-in" id="gqx_'+g[0]+'" type="number" min="0" max="1000000" placeholder="0" style="width:84px"><span class="muted" style="font-size:11px">/ngày</span></div>').join('');}
-function gqFill(q){if(!q)return;GQ_CATS.forEach(g=>{const x=document.getElementById('gqx_'+g[0]),md=document.getElementById('gqm_'+g[0]),v=q[g[0]];if(!v)return;
+function gqFill(q){if(!q)return;GQ_CATS.forEach(g=>{const x=document.getElementById('gqx_'+g[0]),md=document.getElementById('gqm_'+g[0]),pd=document.getElementById('gqp_'+g[0]),v=q[g[0]];if(!v)return;
   if(x&&x.value===''&&document.activeElement!==x)x.value=v.max;
-  if(md&&!md.dataset.touched&&document.activeElement!==md){md.value=v.mode;md.onchange=()=>{md.dataset.touched='1';};}});}
+  if(md&&!md.dataset.touched&&document.activeElement!==md){md.value=v.mode;md.onchange=()=>{md.dataset.touched='1';};}
+  if(pd&&!pd.dataset.touched&&document.activeElement!==pd){pd.value=v.per||'group';pd.onchange=()=>{pd.dataset.touched='1';};}});}
 async function isDayMaxSave(btn){
   const v=parseInt(document.getElementById('isDayMax').value);
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
@@ -2657,7 +2659,7 @@ async function isDayMaxSave(btn){
   GQ_CATS.forEach(g=>{const x=document.getElementById('gqx_'+g[0]);const md=document.getElementById('gqm_'+g[0]);
     if(!x||x.value==='')return;const n=parseInt(x.value);
     if(!(n>=0))gqErr='❌ Hạn nhóm '+g[1]+': nhập số ≥ 0';
-    gq[g[0]]={mode:(md||{}).value==='server'?'server':'user',max:n||0};});
+    gq[g[0]]={mode:(md||{}).value==='server'?'server':'user',per:(document.getElementById('gqp_'+g[0])||{}).value==='item'?'item':'group',max:n||0};});
   if(gqErr)return toast(gqErr);
   await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,wtMax:wt,groupQuota:gq}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':'')+(j.wtMax!==undefined?' · 🌳 '+(j.wtMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
 }
