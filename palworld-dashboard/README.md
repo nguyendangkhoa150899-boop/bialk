@@ -670,6 +670,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 💥🏆 **Web: hiệu ứng NỔ HŨ QUAY PAL** (chủ server: "thiếu dấu hiệu biết mình nổ" - trước chỉ 1 toast 2 giây dễ
+  trôi). `palJackpotFx(amount)` trong webplay.js: lóe vàng toàn màn `#jpFlash` 3 nhịp, rung màn (`body.storm`), mưa 44 emoji
+  🏆💥🪙💰✨🐶 (dùng lại `.fx`), chữ to vàng giữa màn `#winpop.jp` 5,2 s "💥🏆 NỔ HŨ QUAY PAL +N Dogcoin", toast; khung kết
+  quả `#pwRes` thêm dòng vàng + viền nhấp nháy `.jpwin` 8 s. Gọi ở CẢ vòng quay thường (`pwDone`) lẫn mua đích danh (`pkBuy`).
+  Test: `paljpfxtest.js` 7 case chạy hàm thật với DOM giả (đếm 44 emoji, class, số tiền, dọn sau hẹn giờ) + palwheeltest nguồn
+  (224/224); không có âm thanh vì assets chỉ có 1 file mp3 cũ.
 - **11/09** — 🛒 **Pak thương nhân: giữ thêm Arena_Shop_1** (Thương Nhân Đấu Trường). `BialkShopOff_P.pak` build lại
   `--keep=Bounty_Shop_1,Arena_Shop_1`: 74 sản phẩm còn bán (18 + 56), 513 ẩn, pal shop tắt; đọc ngược khớp; đã chép lên server
   TEST `~mods/` (khớp byte, cần restart TEST). Prod: chủ server tự đè file (hoặc ra lệnh chép).

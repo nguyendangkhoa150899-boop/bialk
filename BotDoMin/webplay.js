@@ -629,6 +629,13 @@ const PAGE = [
     // popup +/- tiền sau mỗi ván mình có đặt
     '#winpop{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-size:46px;font-weight:900;pointer-events:none;opacity:0;z-index:98;text-shadow:0 2px 14px #000c}',
     '#winpop.show{animation:winfloat 3.4s ease-out forwards}',
+    // 💥🏆 11/09: NỔ HŨ QUAY PAL - lóe vàng 3 nhịp + chữ to vàng 5s + khung kết quả nhấp nháy (dùng lại mưa emoji .fx + rung .storm)
+    '#jpFlash{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%,#ffd76a99,#ffcf5c22 45%,#ffcf5c00 75%);pointer-events:none;opacity:0;z-index:96}',
+    '#jpFlash.on{animation:jpFlash 1.1s ease-out 3}',
+    '@keyframes jpFlash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}',
+    '#winpop.jp{color:#ffcf5c;font-size:40px;text-align:center;line-height:1.15;text-shadow:0 0 18px #ff9f1c,0 2px 14px #000}',
+    '#winpop.jp.show{animation:winfloat 5.2s ease-out forwards}',
+    '.jpwin{border:2px solid #ffcf5c!important;animation:baoPulse .9s ease-in-out 8}',
     '@keyframes winfloat{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}25%{transform:translate(-50%,-52%) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) scale(.9)}}',
     // hiệu ứng BÃO: rung màn hình + mưa emoji
     '@keyframes shakeX{0%,100%{transform:translate(0,0)}20%{transform:translate(-9px,4px)}40%{transform:translate(8px,-5px)}60%{transform:translate(-7px,3px)}80%{transform:translate(6px,-2px)}}',
@@ -1678,6 +1685,7 @@ const PAGE = [
     '<div id="hist20" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
 
     '<div id="winpop"></div>',
+    '<div id="jpFlash"></div>',
     // 🍀 CỎ 4 LÁ: chọn 1 trong 4 hộp quà (phần thưởng do server quay lúc bấm)
     // 🏆 09/09 v2: hộp NỔ HŨ - N nút sinh động theo danh sách bội số
     '<div id="jpPick"><div class="box">',
@@ -2341,6 +2349,14 @@ const PAGE = [
     // Lên đỉnh thì ăn mừng; thông báo tiền vẫn là showNet + dòng sStat như cũ.
     'SG=null;SOVER=true;sTower();sPaintLast();showNet(net);sBand();',
     'if(res==="Lên đỉnh")celebrate()}',
+    // 💥🏆 11/09: NỔ HŨ QUAY PAL - dấu hiệu KHÔNG THỂ BỎ LỠ: lóe vàng + rung + mưa 🏆🪙 + chữ to giữa màn 5s + toast
+    'function palJackpotFx(amount){var f=$("jpFlash");if(f){f.classList.remove("on");void f.offsetWidth;f.classList.add("on")}',
+    'document.body.classList.remove("storm");void document.body.offsetWidth;document.body.classList.add("storm");',
+    'var EM=["🏆","💥","🪙","💰","✨","🐶"];for(var i=0;i<44;i++){var s=document.createElement("div");s.className="fx";s.textContent=EM[i%EM.length];',
+    's.style.left=(Math.random()*96)+"vw";s.style.fontSize=(20+Math.random()*32)+"px";s.style.animationDuration=(1.4+Math.random()*2)+"s";s.style.animationDelay=(Math.random()*1.2)+"s";',
+    'document.body.appendChild(s);(function(el){setTimeout(function(){el.remove()},4800)})(s)}',
+    'var el=$("winpop");if(el){el.className="jp";el.innerHTML="💥🏆 NỔ HŨ QUAY PAL 🏆💥<br>+"+vnd(amount)+" Dogcoin";void el.offsetWidth;el.classList.add("show");setTimeout(function(){el.className=""},5300)}',
+    'setTimeout(function(){document.body.classList.remove("storm")},1600);toast("💥🏆 NỔ HŨ QUAY PAL +"+vnd(amount)+" Dogcoin!")}',
     // mưa emoji ăn mừng (dùng lại .fx của hiệu ứng Bão bên Big Small)
     'function celebrate(){',
     'document.body.classList.remove("storm");void document.body.offsetWidth;document.body.classList.add("storm");',
@@ -2920,7 +2936,7 @@ const PAGE = [
     'res.classList.remove("hidden");if(it.raid)res.classList.add("raidwin");else res.classList.remove("raidwin");',
     'res.innerHTML=(it.raid?"🔥 TRÚNG BOSS RAID! ":"🎉 Trúng ")+"<b style=\\"font-size:17px\\">"+esc(it.name)+"</b>"+(it.raid?" <span style=\\"color:#ff9f5c;font-weight:700\\">PAL RAID</span>":"")+(it.dex?" <span class=\\"muted\\">#"+it.dex+"</span>":"")+"<div class=\\"muted\\" style=\\"font-size:12px;margin-top:4px\\">Đã vào 🎒 RƯƠNG - qua tab 🪪 Cá nhân để 💰 bán hoặc 🎁 nhận vào game</div>";',
     'if(it.raid)toast("🔥🔥 CỰC HIẾM! Bạn quay trúng BOSS RAID "+it.name+" - khác hẳn pal thường!");',
-    'if(j.potWin)toast("💥🏆 NỔ HŨ QUAY PAL +"+vnd(j.potWin)+" Dogcoin!");',
+    'if(j.potWin){palJackpotFx(j.potWin);res.classList.add("jpwin");res.innerHTML+="<div style=\\"color:#ffcf5c;font-weight:900;font-size:16px;margin-top:6px\\">💥🏆 NỔ HŨ QUAY PAL +"+vnd(j.potWin)+" Dogcoin! 🏆💥</div>";setTimeout(function(){res.classList.remove("jpwin")},8000)}else res.classList.remove("jpwin");',
     'if(j.luckJustFull)toast("🍀 ĐẦY THANH MAY MẮN! Kéo xuống quay 🔥 VÒNG RAID nhận boss + thưởng Dogcoin!");',
     'pwSync(true,false)}',
     '',
@@ -2965,7 +2981,7 @@ const PAGE = [
     'PKBUSY=true;api("/api/palpick/buy",{code:code}).then(function(j){PKBUSY=false;setBal(j.balance);',
     // chủ server chốt 25/08: KHÔNG bật bảng chọn ngay - pal về rương, nhắn rõ chỗ nhận là đủ
     'toast("🎯 Đã mua "+j.item.name+" - pal nằm trong 🎒 RƯƠNG (tab 🪪 Cá nhân), vào đó chọn linh hồn + passive rồi nhận");',
-    'if(j.potWin)toast("💥🏆 NỔ HŨ +"+vnd(j.potWin)+" Dogcoin!");',
+    'if(j.potWin)palJackpotFx(j.potWin);',
     'pkSync()}).catch(function(e){PKBUSY=false;toast("❌ "+e.message)})}',
     '',
     // ===== 🛒 SHOP ITEM (28/08): mua item + số lượng -> giao thẳng vào túi trong game =====
