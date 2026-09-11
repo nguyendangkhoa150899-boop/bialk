@@ -2223,9 +2223,9 @@ function palWheelRaidPool() {
     if (palWheelCfg().raw) return [];   // 🔒 PAL GỐC: không ô RAID trên vòng random, không bán raid đích danh
     return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
 }
-// 🍀 11/09: vòng MAY MẮN làm lại - pool RAID = CẢ 5 boss (random khi trúng ô RAID), KHÔNG phụ thuộc raw
+// 🍀 11/09: vòng MAY MẮN làm lại - ô RAID random trong 4 boss (luật 27/08: KHÔNG Bellanoir Libero), KHÔNG phụ thuộc raw
 function palLuckyRaidPool() {
-    return (PAL_DATA.all || []).filter(p => PALWHEEL_RAID_NAMES.includes(p.name));
+    return (PAL_DATA.all || []).filter(p => PALWHEEL_LUCKY_RAID_NAMES.includes(p.name));
 }
 // 👑 6 huyền thoại - mỗi con 1 ô trên vòng may mắn
 function palLegendPool() {
