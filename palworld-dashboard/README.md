@@ -670,6 +670,8 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🖼️ **Thẻ "Ô RAID" vòng may mắn dùng icon riêng** `assets/itemimage/raid_slot.jpg` (chủ server tải, tên gốc
+  `images.jpg` → đổi cho rõ). `pwRaidSlotHtml` render <img> 62px bo góc, thiếu file thì onerror rớt về 🔥. Không đổi luật.
 - **11/09** — 🍀 **VÒNG MAY MẮN LÀM LẠI + MỞ Ở PAL GỐC; raid KHOÁ LẠI ở vòng random** (chủ server: "vòng may mắn có pal
   legend với pal raid là 1 ô nằm riêng, trúng ô raid thì quay thêm raid random; 10 ô legend thì 4 ô raid; khoá pal raid ở quay
   random; vẫn khoá build chỉ số"). Server `palRaidSpin`: roll 1 = `Math.random()*100 < cfg.luckyRaidPct` (mặc định **40**, admin

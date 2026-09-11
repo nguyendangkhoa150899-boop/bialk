@@ -2956,7 +2956,8 @@ const PAGE = [
     '$("pwRaidInfo").innerHTML="Đầy <b>100%</b> may mắn mới quay được. Vòng gồm <b style=\\"color:#ffd76a\\">👑 "+lgs.map(function(p){return esc(p.name)}).join(", ")+"</b> và <b style=\\"color:#ff8f8f\\">🔥 Ô RAID ("+rpct+"%)</b> - trúng ô RAID thì <b>quay thêm 1 vòng boss</b>: "+rp.map(function(p){return esc(p.name)}).join(", ")+". Kèm <b style=\\"color:#7cff9c\\">+"+vnd(PW.raidBonus)+"</b> Dogcoin. Quay xong thanh may mắn <b>về 0</b>.";}',
     'pwGoLabel()}',
     // 🍀 11/09: vòng may mắn = thẻ huyền thoại (vàng) + thẻ "Ô RAID" chung (đỏ) theo % - trúng ô RAID thì reel 2 toàn boss
-    'function pwRaidSlotHtml(hit){return "<div class=\\"pwCard raid"+(hit?" raidhit":"")+"\\"><div class=\\"nm\\" style=\\"font-size:22px\\">🔥</div><div class=\\"nm\\">Ô RAID</div><div class=\\"dx\\">quay thêm boss</div></div>"}',
+    // 🖼️ 11/09: icon Ô RAID do chủ server tải (assets/itemimage/raid_slot.jpg) - thiếu file thì rớt về 🔥
+    'function pwRaidSlotHtml(hit){return "<div class=\\"pwCard raid"+(hit?" raidhit":"")+"\\"><img src=\\"/itemimage/raid_slot.jpg\\" alt=\\"\\" style=\\"width:62px;height:62px;object-fit:cover;border-radius:8px\\" onerror=\\"this.outerHTML=\'<div class=&quot;nm&quot; style=&quot;font-size:22px&quot;>🔥</div>\'\\"><div class=\\"nm\\">Ô RAID</div><div class=\\"dx\\">quay thêm boss</div></div>"}',
     'function pwLuckyCard(){var pct=PW.luckyRaidPct===undefined?40:PW.luckyRaidPct;var lgs=PW.luckyLegends||[];return (Math.random()*100<pct||!lgs.length)?pwRaidSlotHtml(false):pwCardHtml(pwPick(lgs),false,false)}',
     'function pwRaidIdle(){if(!PW||!PW.raidWheelOn)return;var h="";for(var i=0;i<14;i++)h+=pwLuckyCard();',
     'var s=$("pwRaidStrip");if(!s)return;s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
