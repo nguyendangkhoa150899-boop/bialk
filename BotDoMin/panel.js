@@ -130,6 +130,7 @@ function startPanel(ctx) {
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
             dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,   // 📅 11/09
+            dogNapRate: ctx.getDogNapRate ? ctx.getDogNapRate() : null,   // 💱 11/09
             xs: (() => {
                 if (!ctx.getXS) return null;
                 const xs = ctx.getXS();
@@ -639,6 +640,11 @@ function startPanel(ctx) {
                     if (!ctx.setDogBridgeDayMax) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     const r = ctx.setDogBridgeDayMax(body.dayMax);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    if (body.napRate !== undefined && ctx.setDogNapRate) {   // 💱 lưu chung 1 nút
+                        const nr = ctx.setDogNapRate(body.napRate);
+                        if (nr.error) return sendJSON(res, 400, { ok: false, error: nr.error });
+                        r.napRate = nr.napRate;
+                    }
                     return sendJSON(res, 200, r);
                 }
                 if (path === '/api/dogbridge/open') {
@@ -1667,6 +1673,9 @@ const HTML = `<!DOCTYPE html>
           <span>📅 Cầu Dogcoin: <b>mỗi người</b> chuyển tối đa</span>
           <input class="mini-in" id="gsDogDay" type="number" min="0" placeholder="10000" style="width:110px">
           <span>Dogcoin <b>/ chiều / ngày</b></span>
+          <span style="margin-left:10px">💱 Nạp game→web: <b>1</b> Dogcoin game =</span>
+          <input class="mini-in" id="gsNapRate" type="number" min="0.1" max="100" step="0.1" placeholder="2" style="width:70px" title="Tỉ lệ nạp: 2 = lấy 1 Dogcoin trong game cộng 2 Dogcoin ví web. Rút web→game luôn 1:1. Hạn ngày chiều nạp đếm theo số web nhận.">
+          <span>Dogcoin web</span>
           <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu</button>
           <span class="muted" style="font-size:12px">rút web→game và nạp game→web đếm RIÊNG · 0 = không giới hạn · đếm lại 00:00 giờ VN</span>
         </div>
@@ -2740,9 +2749,12 @@ async function minBetSave(btn){
 async function dogDaySave(btn){
   const v=parseInt(document.getElementById('gsDogDay').value);
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
-  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v}).then(j=>{toast('📅 Hạn chuyển Dogcoin: '+(j.dayMax?j.dayMax.toLocaleString('vi-VN'):'không giới hạn')+'/người/chiều/ngày');HOLD_SIG='';refresh();}));
+  const nrEl=document.getElementById('gsNapRate');const nr=nrEl&&nrEl.value!==''?parseFloat(nrEl.value):undefined;
+  if(nr!==undefined&&!(nr>=0.1&&nr<=100))return toast('❌ Tỉ lệ nạp phải 0.1–100');
+  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,napRate:nr}).then(j=>{toast('📅 Hạn chuyển Dogcoin: '+(j.dayMax?j.dayMax.toLocaleString('vi-VN'):'không giới hạn')+'/người/chiều/ngày'+(j.napRate!==undefined?' · 💱 nạp 1 : '+j.napRate:''));HOLD_SIG='';refresh();}));
 }
 function gsFill(){
+  const nrx=document.getElementById('gsNapRate');if(nrx&&nrx.value===''&&document.activeElement!==nrx&&STATE&&STATE.dogNapRate!==null&&STATE.dogNapRate!==undefined)nrx.value=STATE.dogNapRate;
   const dd=document.getElementById('gsDogDay');if(dd&&dd.value===''&&document.activeElement!==dd&&STATE&&STATE.dogBridgeDayMax!==null&&STATE.dogBridgeDayMax!==undefined)dd.value=STATE.dogBridgeDayMax;
   const mb=document.getElementById('gsMinBet');if(mb&&mb.value===''&&document.activeElement!==mb&&STATE&&STATE.pot&&STATE.pot.minBet)mb.value=STATE.pot.minBet;
   const st=gsState();

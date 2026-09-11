@@ -670,6 +670,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 💱 **Nạp Dogcoin game → web theo TỈ LỆ 1 : 2** (chủ server: "game 1 dog ở ngoài 2 dog, tại không cho rút, đồ quá
+  cao + khoá shop"). `dbCache._dogNapRate` (mặc định 2, 0.1–100), admin đặt ở tab 👥 cùng dòng hạn ngày (ô 💱, lưu chung nút 💾,
+  body `napRate` route daymax). `webNapGame`: lấy `took` trong game → ví + `floor(took × rate)`, hạn ngày chiều nạp đếm theo
+  SỐ WEB nhận (kiểm trước bằng `amount × rate`, câu chặn kèm quy đổi), message + `credit/took/rate` trả về; RÚT web→game giữ 1:1.
+  Web: dòng xanh "💱 Tỉ lệ 1 : 2 - lấy 1 Dogcoin trong game được 2 Dogcoin web", toast xem trước khi bấm nạp. Test bridgetest +7
+  (24/24). ⚠️ Lưu ý kinh tế: 1:2 cộng với hạn 10.000 web/ngày = tối đa 5.000 Dogcoin game/ngày đổi được; đổi hạn nhớ tính lại.
 - **11/09** — 💜 **+7 pal tím bản 1.0** (chủ server nêu Celesdir Noct + Eidrolon Ignis, bảo tìm thêm): thêm Dandilord (194),
   Silvance (193), Aegidron (184), Renjishi (183), Solenne (182) - 5 pal 1.0 dex cao nhất còn lại trong pool thường. KHÔNG thêm
   Lyleen thường, Wistella/Loomen/Mycora (support/thợ), Venusa trở xuống. Tổng tím 23/282 (~8%). Test 236/236.
