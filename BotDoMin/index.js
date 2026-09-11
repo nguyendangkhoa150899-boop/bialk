@@ -1794,44 +1794,51 @@ function wtToday(user) {
     if (!user.wtDay || user.wtDay.day !== d) user.wtDay = { day: d, n: 0 };
     return user.wtDay;
 }
-// 🔫 11/09: hạn RIÊNG cho nhóm ĐẠN - MỖI NGƯỜI tối đa N viên/ngày, MỌI LOẠI GỘP
-// (mặc định 999, 0 = không giới hạn), luôn đếm theo người như quota implant.
-// Đạn MIỄN hạn chung 📅 mỗi-món. Bộ đếm user.ammoDay { day, n }.
-const ITEM_SHOP_AMMO_MAX_DEF = 999;
-function itemShopAmmoMax() {
-    const v = Number(dbCache._itemShopAmmoMax);
-    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : ITEM_SHOP_AMMO_MAX_DEF;
+// 🗂️ 12/09 v2 (chủ server chốt UI dễ): HẠN THEO NHÓM - mỗi nhóm chọn chế độ
+// 🌐 toàn server (cả server chia nhau, ai mua trước được trước) / 👤 cá nhân
+// (mỗi người riêng, không liên quan nhau) + số/ngày (0 = tắt). Nhóm có hạn thì
+// MIỄN hạn chung 📅 mỗi-món. implant/important có luật riêng, không nằm bảng này.
+// Lưu dbCache._itemShopGroupQuota { cat: { mode, max } }. Đếm: 👤 user.groupDay
+// {day,n:{cat}} · 🌐 dbCache._itemShopGroupDay {day,n:{cat}} - đều reset 00:00 VN.
+const ITEM_SHOP_QUOTA_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material'];
+function itemShopGroupQuota() {
+    // migrate 1 lần từ hạn đạn/nguyên liệu đời 11/09 - GIỮ số admin đã đặt
+    if (!dbCache._itemShopGroupQuota || typeof dbCache._itemShopGroupQuota !== 'object') {
+        const a = Number(dbCache._itemShopAmmoMax), m = Number(dbCache._itemShopMatMax);
+        dbCache._itemShopGroupQuota = {
+            ammo: { mode: 'user', max: Number.isFinite(a) && a >= 0 ? Math.floor(a) : 999 },
+            material: { mode: 'user', max: Number.isFinite(m) && m >= 0 ? Math.floor(m) : 999 },
+        };
+    }
+    const out = {};
+    for (const c of ITEM_SHOP_QUOTA_CATS) {
+        const g = dbCache._itemShopGroupQuota[c];
+        const mx = g && Number.isFinite(Number(g.max)) ? Math.max(0, Math.floor(Number(g.max))) : 0;
+        out[c] = { mode: g && g.mode === 'server' ? 'server' : 'user', max: Math.min(1000000, mx) };
+    }
+    return out;
 }
-function setItemShopAmmoMax(v) {
-    v = Math.floor(Number(v));
-    if (!Number.isFinite(v) || v < 0 || v > 100000) return { error: 'Hạn đạn/ngày phải là số 0–100.000 (0 = không giới hạn)' };
-    dbCache._itemShopAmmoMax = v;
+function setItemShopGroupQuota(o) {
+    const cur = itemShopGroupQuota();
+    for (const [c, g] of Object.entries(o || {})) {
+        if (!ITEM_SHOP_QUOTA_CATS.includes(c) || !g || typeof g !== 'object') continue;
+        const mx = Math.floor(Number(g.max));
+        if (!Number.isFinite(mx) || mx < 0 || mx > 1000000) return { error: `Hạn nhóm ${c}: nhập số 0–1.000.000 (0 = tắt)` };
+        cur[c] = { mode: g.mode === 'server' ? 'server' : 'user', max: mx };
+    }
+    dbCache._itemShopGroupQuota = cur;
     saveDbNow();
-    return { ok: true, ammoMax: v };
+    return { ok: true, groupQuota: itemShopGroupQuota() };
 }
-function ammoToday(user) {
+function groupDayUser(user) {
     const d = vnDayISO(Date.now());
-    if (!user.ammoDay || user.ammoDay.day !== d) user.ammoDay = { day: d, n: 0 };
-    return user.ammoDay;
+    if (!user.groupDay || user.groupDay.day !== d) user.groupDay = { day: d, n: {} };
+    return user.groupDay;
 }
-// 🧱 12/09: NGUYÊN LIỆU cũng có hạn riêng y hệt đạn - mỗi người N cái/ngày, mọi loại gộp,
-// miễn hạn chung 📅. Bộ đếm user.matDay { day, n }.
-const ITEM_SHOP_MAT_MAX_DEF = 999;
-function itemShopMatMax() {
-    const v = Number(dbCache._itemShopMatMax);
-    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : ITEM_SHOP_MAT_MAX_DEF;
-}
-function setItemShopMatMax(v) {
-    v = Math.floor(Number(v));
-    if (!Number.isFinite(v) || v < 0 || v > 100000) return { error: 'Hạn nguyên liệu/ngày phải là số 0–100.000 (0 = không giới hạn)' };
-    dbCache._itemShopMatMax = v;
-    saveDbNow();
-    return { ok: true, matMax: v };
-}
-function matToday(user) {
+function groupDaySrv() {
     const d = vnDayISO(Date.now());
-    if (!user.matDay || user.matDay.day !== d) user.matDay = { day: d, n: 0 };
-    return user.matDay;
+    if (!dbCache._itemShopGroupDay || dbCache._itemShopGroupDay.day !== d) dbCache._itemShopGroupDay = { day: d, n: {} };
+    return dbCache._itemShopGroupDay;
 }
 // thứ tự cho web: trong nhóm implant -> Chuyển Đổi, rồi Cây Thế Giới, rồi implant thường; nhóm khác giữ nguyên
 // 💎 10/09: HẠNG implant theo passive (passives.json: tier 4 = kim cương/xanh ngọc, 3 = vàng, 1-2 = thường; Cây Thế Giới
@@ -1904,26 +1911,24 @@ async function itemShopBuy(userId, itemId, qty, username) {
         const left = Math.max(0, wtMax - wt.n);
         return { error: left ? `🌳 Implant Cây Thế Giới mỗi người chỉ mua tối đa ${wtMax} cái/ngày - hôm nay bạn còn ${left}` : `🌳 Hôm nay bạn đã mua đủ ${wtMax} implant Cây Thế Giới - mai 00:00 mua tiếp` };
     }
-    // 🔫 đạn: hạn riêng theo người, mọi loại gộp (11/09)
-    const isAmmo = it.cat === 'ammo';
-    const ammoMax = isAmmo ? itemShopAmmoMax() : 0;
-    const ammo = isAmmo ? ammoToday(user) : null;
-    if (isAmmo && ammoMax > 0 && ammo.n + qty > ammoMax) {
-        const leftA = Math.max(0, ammoMax - ammo.n);
-        return { error: leftA ? `🔫 Đạn mỗi người chỉ mua tối đa ${ammoMax.toLocaleString()} viên/ngày (mọi loại gộp) - hôm nay bạn còn ${leftA.toLocaleString()}` : `🔫 Hôm nay bạn đã mua đủ ${ammoMax.toLocaleString()} viên đạn - mai 00:00 mua tiếp` };
-    }
-    // 🧱 nguyên liệu: hạn riêng theo người, mọi loại gộp (12/09)
-    const isMat = it.cat === 'material';
-    const matMax = isMat ? itemShopMatMax() : 0;
-    const mat = isMat ? matToday(user) : null;
-    if (isMat && matMax > 0 && mat.n + qty > matMax) {
-        const leftM = Math.max(0, matMax - mat.n);
-        return { error: leftM ? `🧱 Nguyên liệu mỗi người chỉ mua tối đa ${matMax.toLocaleString()} cái/ngày (mọi loại gộp) - hôm nay bạn còn ${leftM.toLocaleString()}` : `🧱 Hôm nay bạn đã mua đủ ${matMax.toLocaleString()} nguyên liệu - mai 00:00 mua tiếp` };
+    // 🗂️ HẠN THEO NHÓM (12/09 v2): admin đặt chế độ 🌐/👤 + số/ngày cho từng nhóm
+    const gq = (!isImplantCat && !isOnce) ? itemShopGroupQuota()[it.cat] : null;
+    const gqOn = !!(gq && gq.max > 0);
+    const gCnt = gqOn ? (gq.mode === 'server' ? groupDaySrv() : groupDayUser(user)) : null;
+    if (gCnt) {
+        const gn = gCnt.n[it.cat] || 0;
+        if (gn + qty > gq.max) {
+            const left = Math.max(0, gq.max - gn);
+            const sv = gq.mode === 'server';
+            return { error: left
+                ? `🗂️ ${sv ? 'Cả server' : 'Mỗi người'} chỉ mua tối đa ${gq.max.toLocaleString()} món nhóm này/ngày (mọi loại gộp) - hôm nay còn ${left.toLocaleString()}${sv ? ' (ai nhanh thì được)' : ''}`
+                : `🗂️ Hôm nay ${sv ? 'cả server' : 'bạn'} đã mua đủ ${gq.max.toLocaleString()} món nhóm này - mai 00:00 mua tiếp` };
+        }
     }
     const dayMax = itemShopDayMax();
     const today = itemShopToday(user);
-    // nhóm implant + đạn + nguyên liệu MIỄN hạn chung 📅 (có hạn riêng theo người) - 10-12/09
-    if (!isImplantCat && !isOnce && !isAmmo && !isMat && dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
+    // implant MIỄN hạn chung 📅; nhóm nào có hạn 🗂️ cũng MIỄN (một tầng hạn thôi)
+    if (!isImplantCat && !isOnce && !gqOn && dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
         const left = Math.max(0, dayMax - (today[it.id] || 0));
         const srv = itemShopDayMode() === 'server';
         return { error: left
@@ -1944,8 +1949,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     today[it.id] = (today[it.id] || 0) + qty;   // 📅 tính vào hạn ngày ngay lúc trừ tiền
     if (imp) imp.n += qty;                       // 🧬 hạn implant/người
     if (wt) wt.n += qty;                         // 🌳 hạn Cây Thế Giới/người
-    if (ammo) ammo.n += qty;                     // 🔫 hạn đạn/người (11/09)
-    if (mat) mat.n += qty;                       // 🧱 hạn nguyên liệu/người (12/09)
+    if (gCnt) gCnt.n[it.cat] = (gCnt.n[it.cat] || 0) + qty;   // 🗂️ hạn nhóm (12/09 v2)
     if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
     saveDbNow();
@@ -1963,8 +1967,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
         today[it.id] = Math.max(0, (today[it.id] || 0) - qty);   // 📅 chưa giao -> trả lại hạn ngày
         if (imp) imp.n = Math.max(0, imp.n - qty);
         if (wt) wt.n = Math.max(0, wt.n - qty);
-        if (ammo) ammo.n = Math.max(0, ammo.n - qty);   // 🔫 chưa giao -> trả lượt
-        if (mat) mat.n = Math.max(0, mat.n - qty);      // 🧱 chưa giao -> trả lượt
+        if (gCnt) gCnt.n[it.cat] = Math.max(0, (gCnt.n[it.cat] || 0) - qty);   // 🗂️ chưa giao -> trả lượt
         if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();
@@ -5623,10 +5626,9 @@ client.once('ready', async (c) => {
                     once: Object.keys((getUserData(uid).shopOnce) || {}),   // ⭐ id đã mua 1 lần
                     wtMax: itemShopWtMax(),                          // 🌳 Cây Thế Giới: mỗi người tối đa N/ngày
                     wtToday: wtToday(getUserData(uid)).n,
-                    ammoMax: itemShopAmmoMax(),                      // 🔫 đạn: mỗi người tối đa N viên/ngày (gộp)
-                    ammoToday: ammoToday(getUserData(uid)).n,
-                    matMax: itemShopMatMax(),                        // 🧱 nguyên liệu: mỗi người tối đa N/ngày (gộp)
-                    matToday: matToday(getUserData(uid)).n,
+                    groupQuota: itemShopGroupQuota(),                // 🗂️ {cat:{mode:'server'|'user',max}}
+                    groupToday: groupDayUser(getUserData(uid)).n,    // 👤 tôi đã mua hôm nay {cat:n}
+                    groupSrvToday: groupDaySrv().n,                  // 🌐 cả server hôm nay {cat:n}
                     today: itemShopToday(getUserData(uid)),          // 📅 { itemId: đã mua hôm nay }
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
@@ -5712,8 +5714,7 @@ client.once('ready', async (c) => {
             getItemShopDayMode: itemShopDayMode, setItemShopDayMode,   // 📅 chế độ đếm server/user
             getItemShopImplantMax: itemShopImplantMax, setItemShopImplantMax,   // 🧬 hạn implant/người/ngày
             getItemShopWtMax: itemShopWtMax, setItemShopWtMax,   // 🌳 hạn implant Cây Thế Giới/người/ngày
-            getItemShopAmmoMax: itemShopAmmoMax, setItemShopAmmoMax,   // 🔫 hạn đạn/người/ngày (11/09)
-            getItemShopMatMax: itemShopMatMax, setItemShopMatMax,   // 🧱 hạn nguyên liệu/người/ngày (12/09)
+            getItemShopGroupQuota: itemShopGroupQuota, setItemShopGroupQuota,   // 🗂️ hạn theo nhóm (12/09 v2)
             setItemShop,
             uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
             // 📦 kho đồ toàn game (CHỈ cổng SUPER - panel tự gate epOk)

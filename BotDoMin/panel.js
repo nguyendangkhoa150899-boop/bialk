@@ -186,8 +186,7 @@ function startPanel(ctx) {
             itemShopDayMax: ctx.getItemShopDayMax ? ctx.getItemShopDayMax() : null,   // 📅 10/09
             itemShopDayMode: ctx.getItemShopDayMode ? ctx.getItemShopDayMode() : null,   // 📅 'server' | 'user'
             itemShopImplantMax: ctx.getItemShopImplantMax ? ctx.getItemShopImplantMax() : null,   // 🧬
-            itemShopAmmoMax: ctx.getItemShopAmmoMax ? ctx.getItemShopAmmoMax() : null,   // 🔫 11/09
-            itemShopMatMax: ctx.getItemShopMatMax ? ctx.getItemShopMatMax() : null,   // 🧱 12/09
+            itemShopGroupQuota: ctx.getItemShopGroupQuota ? ctx.getItemShopGroupQuota() : null,   // 🗂️ 12/09 v2
             itemShopWtMax: ctx.getItemShopWtMax ? ctx.getItemShopWtMax() : null,   // 🌳
             palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
@@ -310,15 +309,10 @@ function startPanel(ctx) {
                         if (w.error) return sendJSON(res, 400, { ok: false, error: w.error });
                         r.wtMax = w.wtMax;
                     }
-                    if (body.ammoMax !== undefined && ctx.setItemShopAmmoMax) {
-                        const am = ctx.setItemShopAmmoMax(body.ammoMax);
-                        if (am.error) return sendJSON(res, 400, { ok: false, error: am.error });
-                        r.ammoMax = am.ammoMax;
-                    }
-                    if (body.matMax !== undefined && ctx.setItemShopMatMax) {
-                        const mm = ctx.setItemShopMatMax(body.matMax);
-                        if (mm.error) return sendJSON(res, 400, { ok: false, error: mm.error });
-                        r.matMax = mm.matMax;
+                    if (body.groupQuota !== undefined && ctx.setItemShopGroupQuota) {
+                        const gg = ctx.setItemShopGroupQuota(body.groupQuota);
+                        if (gg.error) return sendJSON(res, 400, { ok: false, error: gg.error });
+                        r.groupQuota = gg.groupQuota;
                     }
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Giới hạn mua mỗi món/ngày = ${r.dayMax || 'không giới hạn'} · chế độ ${r.dayMode === 'user' ? 'mỗi người' : 'toàn server'}`);
                     return sendJSON(res, 200, r);
@@ -1595,17 +1589,9 @@ const HTML = `<!DOCTYPE html>
           <span>cái/ngày</span>
           <span class="muted" style="font-size:12px">(riêng, không ăn vào hạn 🧬 ở trên · nhóm implant MIỄN hạn 📅 chung · lưu bằng nút 💾)</span>
         </div>
-        <div class="row" style="margin-top:6px;align-items:center;gap:8px">
-          <span>🔫 Đạn: <b>mỗi người</b> tối đa</span>
-          <input class="mini-in" id="isAmmoMax" type="number" min="0" max="100000" placeholder="999" style="width:90px">
-          <span>viên/ngày, <b>mọi loại gộp</b></span>
-          <span class="muted" style="font-size:12px">(hạn riêng nhóm 🔫, đếm theo người · nhóm đạn MIỄN hạn 📅 chung · lưu bằng nút 💾 · 0 = không giới hạn)</span>
-        </div>
-        <div class="row" style="margin-top:6px;align-items:center;gap:8px">
-          <span>🧱 Nguyên liệu: <b>mỗi người</b> tối đa</span>
-          <input class="mini-in" id="isMatMax" type="number" min="0" max="100000" placeholder="999" style="width:90px">
-          <span>cái/ngày, <b>mọi loại gộp</b></span>
-          <span class="muted" style="font-size:12px">(hạn riêng nhóm 🧱, đếm theo người · nhóm nguyên liệu MIỄN hạn 📅 chung · lưu bằng nút 💾 · 0 = không giới hạn)</span>
+        <div style="margin-top:8px">
+          <b>🗂️ Hạn theo NHÓM</b> <span class="muted" style="font-size:12px">- mỗi nhóm chọn <b>🌐 toàn server</b> (cả server chia nhau, ai mua trước được trước) hoặc <b>👤 cá nhân</b> (mỗi người riêng) + số lượng/ngày · 0 = không giới hạn · nhóm có hạn thì MIỄN hạn 📅 chung · reset 00:00 giờ VN · lưu bằng nút 💾 ở trên</span>
+          <div id="isGroupQuota" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap"></div>
         </div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
@@ -2650,6 +2636,15 @@ function itemShopFill(){
 }
 var ISDIRTY=false,ISSIG='';
 // 📅 10/09: giới hạn mua mỗi món/người/ngày (SUPER)
+// 🗂️ bảng hạn theo nhóm (12/09 v2)
+const GQ_CATS=[["weapon","🗡️ Vũ khí"],["armor","🛡️ Giáp"],["consume","🧪 Tiêu hao"],["accessory","💍 Phụ kiện"],["food","🍖 Thức ăn"],["ammo","🔫 Đạn"],["material","🧱 Nguyên liệu"]];
+function gqRender(){const box=document.getElementById('isGroupQuota');if(!box||box.dataset.built)return;box.dataset.built='1';
+  box.innerHTML=GQ_CATS.map(g=>'<div style="display:flex;align-items:center;gap:5px;border:1px solid #2a3142;border-radius:8px;padding:5px 8px"><span style="font-size:12px;min-width:96px">'+g[1]+'</span>'+
+    '<select class="mini-in" id="gqm_'+g[0]+'" style="width:auto"><option value="user">👤 cá nhân</option><option value="server">🌐 toàn server</option></select>'+
+    '<input class="mini-in" id="gqx_'+g[0]+'" type="number" min="0" max="1000000" placeholder="0" style="width:84px"><span class="muted" style="font-size:11px">/ngày</span></div>').join('');}
+function gqFill(q){if(!q)return;GQ_CATS.forEach(g=>{const x=document.getElementById('gqx_'+g[0]),md=document.getElementById('gqm_'+g[0]),v=q[g[0]];if(!v)return;
+  if(x&&x.value===''&&document.activeElement!==x)x.value=v.max;
+  if(md&&!md.dataset.touched&&document.activeElement!==md){md.value=v.mode;md.onchange=()=>{md.dataset.touched='1';};}});}
 async function isDayMaxSave(btn){
   const v=parseInt(document.getElementById('isDayMax').value);
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
@@ -2658,11 +2653,13 @@ async function isDayMaxSave(btn){
   if(im!==undefined&&!(im>=0))return toast('❌ Hạn implant: nhập số ≥ 0');
   const wtEl=document.getElementById('isWtMax');const wt=wtEl&&wtEl.value!==''?parseInt(wtEl.value):undefined;
   if(wt!==undefined&&!(wt>=0))return toast('❌ Hạn Cây Thế Giới: nhập số ≥ 0');
-  const amEl=document.getElementById('isAmmoMax');const am=amEl&&amEl.value!==''?parseInt(amEl.value):undefined;
-  if(am!==undefined&&!(am>=0))return toast('❌ Hạn đạn: nhập số ≥ 0');
-  const mmEl=document.getElementById('isMatMax');const mm=mmEl&&mmEl.value!==''?parseInt(mmEl.value):undefined;
-  if(mm!==undefined&&!(mm>=0))return toast('❌ Hạn nguyên liệu: nhập số ≥ 0');
-  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,wtMax:wt,ammoMax:am,matMax:mm}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':'')+(j.wtMax!==undefined?' · 🌳 '+(j.wtMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
+  const gq={};let gqErr=null;
+  GQ_CATS.forEach(g=>{const x=document.getElementById('gqx_'+g[0]);const md=document.getElementById('gqm_'+g[0]);
+    if(!x||x.value==='')return;const n=parseInt(x.value);
+    if(!(n>=0))gqErr='❌ Hạn nhóm '+g[1]+': nhập số ≥ 0';
+    gq[g[0]]={mode:(md||{}).value==='server'?'server':'user',max:n||0};});
+  if(gqErr)return toast(gqErr);
+  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,wtMax:wt,groupQuota:gq}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':'')+(j.wtMax!==undefined?' · 🌳 '+(j.wtMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
 }
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
@@ -3150,8 +3147,7 @@ async function refresh(force){
   // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)
   const wtx=document.getElementById('isWtMax');if(wtx&&wtx.value===''&&document.activeElement!==wtx&&STATE.itemShopWtMax!==null&&STATE.itemShopWtMax!==undefined)wtx.value=STATE.itemShopWtMax;
   const imx=document.getElementById('isImplantMax');if(imx&&imx.value===''&&document.activeElement!==imx&&STATE.itemShopImplantMax!==null&&STATE.itemShopImplantMax!==undefined)imx.value=STATE.itemShopImplantMax;
-  const amx=document.getElementById('isAmmoMax');if(amx&&amx.value===''&&document.activeElement!==amx&&STATE.itemShopAmmoMax!==null&&STATE.itemShopAmmoMax!==undefined)amx.value=STATE.itemShopAmmoMax;
-  const mmx=document.getElementById('isMatMax');if(mmx&&mmx.value===''&&document.activeElement!==mmx&&STATE.itemShopMatMax!==null&&STATE.itemShopMatMax!==undefined)mmx.value=STATE.itemShopMatMax;
+  gqRender();gqFill(STATE.itemShopGroupQuota);
   const dmo=document.getElementById('isDayMode');if(dmo&&STATE.itemShopDayMode&&!dmo.dataset.touched&&document.activeElement!==dmo){dmo.value=STATE.itemShopDayMode;dmo.onchange=()=>{dmo.dataset.touched='1';};}
   // mine user select
   const sel=document.getElementById('mineUser');const cur=sel.value;
