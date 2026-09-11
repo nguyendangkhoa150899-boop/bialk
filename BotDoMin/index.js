@@ -1465,6 +1465,10 @@ const DEFAULT_ITEM_SHOP = [
     { cat: 'implant', id: 'PalPassiveSkillChange_TrainerDEF_UP_1', name: 'Quân Sư Phòng Thủ', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Phòng thủ của người chơi tăng 10%' },
     { cat: 'implant', id: 'PalPassiveSkillChange_TrainerWorkSpeed_UP_1', name: 'Thúc Đẩy Động Lực', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ làm việc của người chơi tăng 25%' },
     { cat: 'implant', id: 'PalPassiveSkillChange_PlayerSP_DecreaseRate_Passive', name: 'Chống Kiệt Sức', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Giảm tiêu hao thể lực của người chơi +5,0%' },
+    // 11/09: ⭐ QUAN TRỌNG (nhóm important MỚI) - mỗi người chỉ mua ĐÚNG 1 LẦN (vĩnh viễn, không theo ngày).
+    // Chủ server tải icon; 2 Hộp Phụ Kiện mở ô phụ kiện. Giá chủ server chốt: Kỳ Lạ 3.000 (tím), Bí Ẩn 10.000 (vàng).
+    { cat: 'important', id: 'UnlockEquipmentSlot_Accessory_01', name: 'Hộp Phụ Kiện Kỳ Lạ', price: 3000, max: 1, img: 'T_itemicon_Essential_UnlockEquipmentSlot_Accessory.webp', note: 'Chiếc hộp bí ẩn có phần bên trong đồng bộ với cơ thể người sở hữu. Sở hữu vật phẩm sẽ mở 1 ô trang bị phụ kiện' },
+    { cat: 'important', id: 'UnlockEquipmentSlot_Accessory_02', name: 'Hộp Phụ Kiện Bí Ẩn', price: 10000, max: 1, img: 'T_itemicon_Essential_UnlockEquipmentSlot_Accessory_1.webp', note: 'Chiếc hộp bí ẩn có phần bên trong đồng bộ với cơ thể người sở hữu. Sở hữu vật phẩm sẽ mở thêm 1 ô trang bị phụ' },
 ];
 function seedItemShopIfEmpty() {
     if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
@@ -1572,6 +1576,17 @@ function seedItemShopIfEmpty() {
             writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} implant dùng một lần (9.000/cái)`);
         } else saveDbNow();
     }
+    // 11/09: đợt 11 - ghép nhóm ⭐ QUAN TRỌNG (cat important) còn thiếu, cờ riêng
+    if (!dbCache._migItemShopImportant1109) {
+        dbCache._migItemShopImportant1109 = 1;
+        const cur = itemShopList();
+        const have = new Set(cur.map(x => x.id));
+        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'important' && !have.has(x.id));
+        if (add.length) {
+            setItemShop(cur.concat(add));
+            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món ⭐ QUAN TRỌNG (mỗi người mua 1 lần)`);
+        } else saveDbNow();
+    }
     // 07/09: điền GHI CHÚ tác dụng cho món cũ còn thiếu (tra id trong DEFAULT) - idempotent
     const rawN = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     let noted = 0;
@@ -1621,7 +1636,7 @@ function uploadItemImage(fileName, dataB64) {
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 // 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
-const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant'];   // 10/09 +material (🧱) +implant (🧬)
+const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant', 'important'];   // 10/09 +material +implant · 11/09 +important (⭐ mua 1 lần)
 function itemShopList() {
     const arr = dbCache._itemShop;
     return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
@@ -1775,8 +1790,13 @@ function itemShopWebList() {
     // trong CÙNG bậc implant: giá cao xếp trước (chủ server 10/09: "12000 xếp trước 8000"); nhóm khác giữ thứ tự admin
     const priceKey = (x) => x.cat === 'implant' ? -(Number(x.price) || 0) : 0;
     return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (priceKey(a[0]) - priceKey(b[0])) || (a[1] - b[1]))
-        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : a[0]);   // web tô màu theo tier
+        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : (a[0].cat === 'important' ? { ...a[0], tier: importantTier(a[0].id) } : a[0]));   // web tô màu theo tier
 }
+// ⭐ 11/09: nhóm QUAN TRỌNG - mỗi người mua ĐÚNG 1 lần, vĩnh viễn. user.shopOnce = { itemId: timestamp }.
+function shopOnceBought(user, id) { return !!(user.shopOnce && user.shopOnce[id]); }
+function shopOnceMark(user, id, on) { if (!user.shopOnce || typeof user.shopOnce !== 'object') user.shopOnce = {}; if (on) user.shopOnce[id] = Date.now(); else delete user.shopOnce[id]; }
+// màu card web cho nhóm ⭐: theo độ hiếm item trong gameitems (r 3 = tím, r ≥ 4 = vàng)
+function importantTier(id) { const gi = (typeof gameItems === 'function' ? gameItems() : []).find(x => x && x.id === id); const r = gi ? Number(gi.r) : 0; return r >= 4 ? 'gold' : (r === 3 ? 'purple' : 'normal'); }
 function implantToday(user) {
     const d = vnDayISO(Date.now());
     if (!user.implantDay || user.implantDay.day !== d) user.implantDay = { day: d, n: 0 };
@@ -1801,6 +1821,12 @@ async function itemShopBuy(userId, itemId, qty, username) {
     const user = getUserData(userId);
     // 📅 giới hạn/ngày (kiểm TRƯỚC khi trừ tiền / mở SFTP)
     // 🧬 implant: hạn riêng theo người, mọi loại gộp
+    // ⭐ QUAN TRỌNG: mỗi người 1 lần, số lượng luôn 1, miễn hạn ngày chung
+    const isOnce = it.cat === 'important';
+    if (isOnce) {
+        if (shopOnceBought(user, it.id)) return { error: `⭐ ${it.name}: mỗi người chỉ mua được 1 LẦN - bạn đã mua rồi` };
+        if (qty !== 1) return { error: `⭐ ${it.name} mỗi người chỉ mua 1 cái duy nhất - đặt số lượng 1` };
+    }
     const isImplantCat = it.cat === 'implant';
     const isWt = isImplantCat && isWtImplant(it.id);
     const isImplant = isImplantCat && !isWt;
@@ -1820,7 +1846,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     const dayMax = itemShopDayMax();
     const today = itemShopToday(user);
     // nhóm implant MIỄN hạn chung 📅 (đã có hạn riêng theo người) - chủ server 10/09
-    if (!isImplantCat && dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
+    if (!isImplantCat && !isOnce && dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
         const left = Math.max(0, dayMax - (today[it.id] || 0));
         const srv = itemShopDayMode() === 'server';
         return { error: left
@@ -1841,6 +1867,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     today[it.id] = (today[it.id] || 0) + qty;   // 📅 tính vào hạn ngày ngay lúc trừ tiền
     if (imp) imp.n += qty;                       // 🧬 hạn implant/người
     if (wt) wt.n += qty;                         // 🌳 hạn Cây Thế Giới/người
+    if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
     saveDbNow();
     let r = null, err = null;
@@ -1857,6 +1884,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
         today[it.id] = Math.max(0, (today[it.id] || 0) - qty);   // 📅 chưa giao -> trả lại hạn ngày
         if (imp) imp.n = Math.max(0, imp.n - qty);
         if (wt) wt.n = Math.max(0, wt.n - qty);
+        if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();
         return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã hoàn ${cost.toLocaleString()} Dogcoin` };
@@ -5392,6 +5420,7 @@ client.once('ready', async (c) => {
                     dayMode: itemShopDayMode(),                      // 📅 'server' (gộp cả server) | 'user' (mỗi người)
                     implantMax: itemShopImplantMax(),                // 🧬 mỗi người tối đa N implant/ngày (0 = không)
                     implantToday: implantToday(getUserData(uid)).n,  // 🧬 đã mua hôm nay
+                    once: Object.keys((getUserData(uid).shopOnce) || {}),   // ⭐ id đã mua 1 lần
                     wtMax: itemShopWtMax(),                          // 🌳 Cây Thế Giới: mỗi người tối đa N/ngày
                     wtToday: wtToday(getUserData(uid)).n,
                     today: itemShopToday(getUserData(uid)),          // 📅 { itemId: đã mua hôm nay }

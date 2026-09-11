@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — ⭐ **Shop: nhóm QUAN TRỌNG (cat `important`) - mỗi người mua ĐÚNG 1 LẦN, vĩnh viễn** (chủ server: 2 Hộp Phụ Kiện
+  mở ô phụ kiện - Kỳ Lạ `UnlockEquipmentSlot_Accessory_01` 3.000 tím, Bí Ẩn `UnlockEquipmentSlot_Accessory_02` 10.000 vàng; icon
+  chủ server tải). Server: `user.shopOnce {id: ts}`, `itemShopBuy` chặn "đã mua rồi" + ép số lượng 1, MIỄN hạn ngày chung,
+  đánh dấu lúc trừ tiền, giao hụt có hoàn → gỡ dấu; state web gửi `once` (id đã mua); `importantTier` tô màu theo độ hiếm
+  gameitems (r3 tím `.isPur`, r≥4 vàng). Web: nhóm ⭐ đứng ĐẦU danh sách nhóm, card không có ô số lượng, nút "🛒 Mua (1 lần duy
+  nhất)" → sau khi mua thành "✅ ĐÃ MUA" khoá + card mờ; isCard tách hàng Mua ra `isBuyRow(it)` (hàm đặt SAU isCard, không chen
+  giữa). Panel: option ⭐ trong select nhóm. Đợt ghép 12 cờ `_migItemShopImportant1109`. Test: palwheeltest +7, shopcardtest +5.
 - **11/09** — 🔁 **Cầu Dogcoin web↔game: HẠN NGÀY mỗi người, mỗi chiều** (chủ server: "chuyển tối đa 10.000 từ game ra web và
   ngược lại, limit 1 ngày, admin set được cạnh nút bật tắt"). `dbCache._dogBridgeDayMax` (mặc định 10.000, 0 = không giới hạn),
   đếm `user.dogDay {day, rut, nap}` theo ngày VN - rút web→game và nạp game→web đếm RIÊNG. Kiểm TRƯỚC khi trừ ví/mở SFTP; rút tính

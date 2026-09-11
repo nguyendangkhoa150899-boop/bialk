@@ -2633,7 +2633,7 @@ function itemShopAddRow(it){
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="isf-on" style="width:auto;margin:0" title="Đang bán / ẩn" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45"></td>'
     +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
-    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🧱 Nguyên liệu</option><option value="implant">🧬 Implant</option></select></td>'
+    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🧱 Nguyên liệu</option><option value="implant">🧬 Implant</option><option value="important">⭐ Quan trọng (mua 1 lần)</option></select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
     +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
     +'<td><input class="mini-in isf-note" style="width:200px" placeholder="tác dụng (hiện trên web + search được)"></td>'
@@ -2646,7 +2646,7 @@ function itemShopAddRow(it){
   tr.querySelector('.isf-id').value=it.id||'';
   tr.querySelector('.isf-name').value=it.name||'';
   // 08/09: thiếu 'accessory' → mọi phụ kiện nạp lên form thành Tiêu hao, bấm Lưu là mất nhóm cả 38 món
-  tr.querySelector('.isf-cat').value=['weapon','armor','accessory','food','ammo','material','implant'].includes(it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material + implant
+  tr.querySelector('.isf-cat').value=['weapon','armor','accessory','food','ammo','material','implant','important'].includes(it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material + implant · 11/09 important
   tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
   tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
   tr.querySelector('.isf-note').value=it.note||'';
