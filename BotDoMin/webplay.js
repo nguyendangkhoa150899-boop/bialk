@@ -2928,10 +2928,11 @@ const PAGE = [
     's.innerHTML=cards.join("");s.style.transition="none";s.style.transform="translateX(0px)";void s.offsetWidth;',
     'var STEP=116,HALF=55;var jit=Math.floor(Math.random()*70)-35;var target=52*STEP+HALF-W/2+jit;',
     's.style.transition="transform 10s cubic-bezier(.06,.72,.05,1)";',
-    's.style.transform="translateX("+(-target)+"px)";setTimeout(cb,10300)}',
+    // 11/09: viền sáng ô trúng gắn SAU khi dừng (raid/legend/epic) - lúc quay mọi thẻ trông như nhau, không lộ kết quả
+    's.style.transform="translateX("+(-target)+"px)";setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},10300)}',
     // 27/08: GỘP 1 reel - raid ra thẳng ở vòng thường, ô trúng (thẻ 52) gắn hiệu ứng lửa nếu là raid
     'function pwStrip1(it){var out=[];for(var i=0;i<60;i++){',
-    'if(i===52)out.push(pwCardHtml(it,!!it.raid,!!(it.raid||it.legend||it.epic)));',
+    'if(i===52)out.push(pwCardHtml(it,!!it.raid,false));',   // hit=false: viền sáng gắn lúc dừng (pwRollEl)
     'else{var r=PW.raids.length&&Math.random()<0.06;out.push(r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false))}}return out}',
     'function pwSpin(){if(PWBUSY||!PW||!PW.open||PWLOCK>Date.now())return;PWBUSY=true;pwGoLabel();$("pwRes").classList.add("hidden");',
     'api("/api/palwheel/spin",{}).then(function(j){setBal(j.balance);pwLockStart();',
@@ -2961,8 +2962,8 @@ const PAGE = [
     'function pwLuckyCard(){var pct=PW.luckyRaidPct===undefined?40:PW.luckyRaidPct;var lgs=PW.luckyLegends||[];return (Math.random()*100<pct||!lgs.length)?pwRaidSlotHtml(false):pwCardHtml(pwPick(lgs),false,false)}',
     'function pwRaidIdle(){if(!PW||!PW.raidWheelOn)return;var h="";for(var i=0;i<14;i++)h+=pwLuckyCard();',
     'var s=$("pwRaidStrip");if(!s)return;s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
-    'function pwRaidStrip1(j){var out=[];for(var i=0;i<60;i++)out.push(i===52?(j.raidHit?pwRaidSlotHtml(true):pwCardHtml(j.item,false,true)):pwLuckyCard());return out}',
-    'function pwRaidStrip2(it){var out=[];for(var i=0;i<60;i++)out.push(pwCardHtml(i===52?it:pwPick(PW.raidWheelPals),true,i===52));return out}',
+    'function pwRaidStrip1(j){var out=[];for(var i=0;i<60;i++)out.push(i===52?(j.raidHit?pwRaidSlotHtml(false):pwCardHtml(j.item,false,false)):pwLuckyCard());return out}',
+    'function pwRaidStrip2(it){var out=[];for(var i=0;i<60;i++)out.push(pwCardHtml(i===52?it:pwPick(PW.raidWheelPals),true,false));return out}',
     'function pwRaidSpin(){if(PWRBUSY||!PW||!PW.raidReady||PWLOCK>Date.now())return;PWRBUSY=true;pwGoLabel();$("pwRaidRes").classList.add("hidden");',
     'api("/api/palwheel/raidspin",{}).then(function(j){setBal(j.balance);pwLockStart();',
     'pwRollEl("pwRaidStrip","pwRaidWrap",pwRaidStrip1(j),function(){pwRaidDone(j)})',

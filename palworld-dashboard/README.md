@@ -670,6 +670,10 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🎯 **Viền sáng ô trúng chỉ hiện SAU khi mũi tên dừng** (chủ server: "tô vàng hiện trước, biết trúng con nào").
+  Trước: thẻ 52 dựng sẵn class `raidhit/legendhit/epichit` từ đầu reel → nhìn dải là lộ. Nay cả 3 dải (vòng random, vòng may mắn
+  reel 1, reel 2) dựng thẻ 52 với hit=false; `pwRollEl` sau 10,3 s dò `s.children[52]` gắn hit theo class thẻ rồi mới gọi cb.
+  Test palwheeltest +1 (236/236).
 - **11/09** — 🎁 **Vòng quay RANDOM bỏ hẳn ô RAID (mọi chế độ); đổi tên "Vòng quay RAID" → "🍀 Vòng quay may mắn"; thẻ Ô RAID =
   Lamball tô đỏ** (chủ server: "tắt raid đi chỉ còn legend trở xuống", "chuyển thành vòng quay may mắn", "lấy hình
   T_SheepBall tô đỏ, hình kia xấu"). `palWheelSpin` `raids = []` + state `raids: []` → 282 ô chia đều, không còn 1/283 raid;
