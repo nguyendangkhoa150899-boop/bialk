@@ -670,6 +670,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🛒 **Pak thương nhân: CHỈ GIỮ Bounty_Shop_1** (chủ server chốt sau khi xem bảng 38 shop + paldb: Bounty_Shop_1 =
+  "Sĩ Quan Truy Nã PIDF", Arena_Shop_1 = Thương Nhân Đấu Trường bán bản vẽ Octavia cấp 5, Medal_Shop_1 = Thương Nhân Huy Chương
+  Dog Coin). Build `--keep=Bounty_Shop_1` từ JSON rút pak 09/09 → `BialkShopOff_P.pak` mới (515 → -1, 18 Bounty giữ 0, pal shop
+  8/8 = 0), đọc ngược pak khớp. Bản tắt sạch cũ đổi tên `BialkShopOff_ALL_P.pak` (chỉ cài 1 trong 2). Đã chép lên server TEST
+  `~mods/` khớp byte - chờ restart TEST + kiểm trong game; prod chưa đụng (cần chủ server đè file hoặc ra lệnh).
 - **11/09** — 🛒 **Nghiên cứu: tắt/giữ THEO TỪNG thương nhân** (chủ server: "tắt thương nhân huyền thoại, giữ con cần").
   Khả thi ngay: bảng shop 38 dòng = 38 shop, Stock theo dòng. `scripts/patch_shopoff.js` thêm `--list`, `--off=A,B`,
   `--keep=A,B` (regex `~^Caravan_`), áp cả CharacterNum bảng pal shop; kiểm trên JSON rút từ pak 09/09 (93/495/533 sản

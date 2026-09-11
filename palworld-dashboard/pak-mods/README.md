@@ -348,6 +348,22 @@ nhân NPC trong game (làng, sa mạc, núi lửa, huy chương, tiền thưởn
 hành, lang thang, hầm ngục, người buôn Pal, chợ đen) **không được bán gì**. Không cần
 xoá NPC, không cần client cài gì.
 
+## 11/09: BẢN ĐANG DÙNG = CHỈ GIỮ Bounty_Shop_1 (Sĩ Quan Truy Nã PIDF)
+
+Chủ server chốt: **tắt mọi thương nhân, để lại đúng Bounty_Shop_1** (paldb: NPC "PIDF Bounty Officer" / Sĩ Quan Truy Nã
+PIDF, toạ độ 74,-477, bán bằng Chứng Nhận Diệt Kẻ Bị Truy Nã - vàng/sách công nghệ/Chuyển Đổi/7 implant Bounty/quả).
+Build: `patch_shopoff.js in out --keep=Bounty_Shop_1` cho CẢ 2 bảng ItemShop (515 sản phẩm → -1, 18 của Bounty giữ Stock 0
+= vô hạn), pal shop giữ CharacterNum = 0 cả 8 dòng (người buôn Pal + chợ đen vẫn tắt). fromjson + repak V11 seed
+764445180, 6 file, 233.475 B. Đọc ngược pak: 2 bảng đúng {"0":18,"-1":569}, pal {"CharacterNum=0":8}.
+
+- **`BialkShopOff_P.pak`** (repo) = bản MỚI này. Đã chép lên server TEST `~mods/` (đọc lại khớp byte) - cần restart TEST
+  rồi kiểm: vào Sĩ Quan Truy Nã còn bán đủ 18 món, thương nhân làng/lang thang/đấu trường/huy chương trống.
+- **`BialkShopOff_ALL_P.pak`** = bản cũ 09/09 tắt SẠCH 38 shop (đang chạy prod tới khi thay). ⚠️ Hai file vá CÙNG bảng -
+  chỉ cài MỘT trong hai; lên prod = đè `BialkShopOff_P.pak` bằng bản mới, không để thêm file ALL cạnh nó.
+- Đổi danh sách sau này: chạy lại 3 lệnh patch với `--keep=`/`--off=` khác, fromjson, pack - JSON gốc rút từ pak server
+  nằm ở scratchpad phiên 10/09 (`json/DT_ItemShopCreateData*.json`, `DT_PalShopCreateData.json`); mất thì rút lại bằng
+  `tools/pak/sftp_pakget.js`.
+
 ## 11/09: TẮT / GIỮ THEO TỪNG THƯƠNG NHÂN (nghiên cứu theo yêu cầu chủ server)
 
 **Khả thi, không cần kỹ thuật mới**: bảng `DT_ItemShopCreateData(_Common)` có **38 dòng, mỗi dòng = 1 shop**
