@@ -1385,6 +1385,8 @@ const PAGE = [
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎮 Rút vào game</h2><div class="muted" id="dogLink">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px" id="dogRutInfo">Trừ ví web, Dogcoin rơi thẳng vào <b>túi trong game</b> (phải đang ONLINE). Tối đa <span id="dogMax1">-</span>/lần.</div>',
+    // 📅 11/09: hạn ngày mỗi chiều (server đếm) - hiện còn bao nhiêu hôm nay
+    '<div class="muted" id="dogDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
     '<div class="row" style="gap:8px;margin-top:8px"><input id="dogRutAmt" type="number" inputmode="numeric" placeholder="Số Dogcoin" style="flex:1"><button class="btn-full" id="dogRutBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#2f8f4f,#256e3e)" onclick="dogRut()">🎮 Rút vào game</button></div>',
     '</div>',
     // Nạp từ game
@@ -3074,6 +3076,7 @@ const PAGE = [
     'function dogSync(){api("/api/dogbridge/state").then(function(j){setBal(j.balance);',
     '$("dogLink").innerHTML=j.ingameName?("Nhân vật: <b>"+esc(j.ingameName)+"</b>"):"⚠️ Chưa liên kết tên nhân vật - nhắn admin";',
     '$("dogMax1").textContent=vnd(j.max);$("dogMax2").textContent=vnd(j.max);',
+    'var ddm=j.dayMax>0?j.dayMax:0,ddi=$("dogDayInfo");if(ddi)ddi.innerHTML=ddm?("📅 Hạn mỗi chiều <b>"+vnd(ddm)+"</b>/ngày · hôm nay còn rút vào game <b>"+vnd(Math.max(0,ddm-(j.rutToday||0)))+"</b> · còn nạp ra web <b>"+vnd(Math.max(0,ddm-(j.napToday||0)))+"</b>"):"";',
     // 🔁 09/09: admin đóng chiều nào thì nút chiều đó khoá + đổi chữ (không mất nút, người chơi biết lý do)
     'var rb=$("dogRutBtn"),nb=$("dogNapBtn");var rOn=j.rutOpen!==false,nOn=j.napOpen!==false;',
     'rb.disabled=!j.ingameName||!rOn;nb.disabled=!j.ingameName||!nOn;',

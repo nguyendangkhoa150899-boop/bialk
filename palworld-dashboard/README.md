@@ -670,6 +670,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **11/09** — 🔁 **Cầu Dogcoin web↔game: HẠN NGÀY mỗi người, mỗi chiều** (chủ server: "chuyển tối đa 10.000 từ game ra web và
+  ngược lại, limit 1 ngày, admin set được cạnh nút bật tắt"). `dbCache._dogBridgeDayMax` (mặc định 10.000, 0 = không giới hạn),
+  đếm `user.dogDay {day, rut, nap}` theo ngày VN - rút web→game và nạp game→web đếm RIÊNG. Kiểm TRƯỚC khi trừ ví/mở SFTP; rút tính
+  hạn lúc trừ ví, giao hụt có hoàn → trả hạn, timeout mơ hồ (giữ tiền) vẫn tính; nạp đếm đúng `r.took` (số thật lấy được từ túi
+  game). Trần 500k/lần giữ nguyên. Panel: dòng "📅 Cầu Dogcoin: mỗi người chuyển tối đa [10000] / chiều / ngày 💾" ngay dưới 2
+  công tắc 🎮/💬 ở tab 👥, route `/api/dogbridge/daymax` (SUPER, cổng thường 403), điền từ state khi ô trống. Web Hồ sơ: dòng
+  vàng "📅 Hạn mỗi chiều 10.000/ngày · hôm nay còn rút … · còn nạp …". Test mới `bridgetest.js` 17 case (trích webRutGame/
+  webNapGame thật); e2e HTTP: web rút 20.000 bị chặn "còn 10,000" không đụng SFTP, cổng thường 403, -1 → 400.
 - **11/09** — 🛒 **Pak thương nhân: CHỈ GIỮ Bounty_Shop_1** (chủ server chốt sau khi xem bảng 38 shop + paldb: Bounty_Shop_1 =
   "Sĩ Quan Truy Nã PIDF", Arena_Shop_1 = Thương Nhân Đấu Trường bán bản vẽ Octavia cấp 5, Medal_Shop_1 = Thương Nhân Huy Chương
   Dog Coin). Build `--keep=Bounty_Shop_1` từ JSON rút pak 09/09 → `BialkShopOff_P.pak` mới (515 → -1, 18 Bounty giữ 0, pal shop

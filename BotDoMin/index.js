@@ -392,12 +392,47 @@ function setDogBridge(key, on) {
     writeLog('ADMIN', `[CẦU DOGCOIN] Panel ${on ? 'MỞ' : 'ĐÓNG'} chiều ${key === 'rut' ? 'RÚT web → game' : 'NẠP game → web'}`);
     return { ok: true, key, open: !!on, cfg: dogBridgeCfg() };
 }
+// 📅 11/09: HẠN NGÀY cầu Dogcoin - MỖI NGƯỜI, MỖI CHIỀU (rút web→game / nạp game→web), tổng trong ngày (giờ VN).
+// Chủ server: "chuyển tối đa 10.000 Dogcoin từ game ra web và ngược lại, limit 1 ngày, admin set được".
+// dbCache._dogBridgeDayMax (mặc định 10.000, 0 = không giới hạn). Đếm ở user.dogDay { day, rut, nap }.
+// Trần mỗi lần (WITHDRAW_MAX_PER_REQUEST 500k) vẫn giữ - hạn ngày nhỏ hơn nên thực tế hạn ngày chặn trước.
+const DOG_BRIDGE_DAY_DEF = 10000;
+function dogBridgeDayMax() {
+    const v = Number(dbCache._dogBridgeDayMax);
+    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : DOG_BRIDGE_DAY_DEF;
+}
+function setDogBridgeDayMax(v) {
+    v = Math.floor(Number(v));
+    if (!Number.isFinite(v) || v < 0 || v > 1000000000) return { error: 'Hạn chuyển/ngày phải là số 0–1.000.000.000 (0 = không giới hạn)' };
+    dbCache._dogBridgeDayMax = v;
+    saveDbNow();
+    writeLog('ADMIN', `[CẦU DOGCOIN] Panel đặt hạn chuyển mỗi người/chiều/ngày = ${v ? v.toLocaleString() : 'không giới hạn'}`);
+    return { ok: true, dayMax: v };
+}
+function dogBridgeToday(user) {
+    const d = vnDayISO(Date.now());
+    if (!user.dogDay || user.dogDay.day !== d) user.dogDay = { day: d, rut: 0, nap: 0 };
+    return user.dogDay;
+}
+function dogBridgeDayCheck(user, key, amount) {
+    const dayMax = dogBridgeDayMax();
+    if (dayMax <= 0) return null;
+    const used = dogBridgeToday(user)[key] || 0;
+    if (used + amount <= dayMax) return null;
+    const left = Math.max(0, dayMax - used);
+    const lb = key === 'rut' ? 'rút vào game' : 'nạp ra web';
+    return left
+        ? `📅 Mỗi người ${lb} tối đa ${dayMax.toLocaleString()} Dogcoin/ngày - hôm nay bạn còn ${left.toLocaleString()}`
+        : `📅 Hôm nay bạn đã ${lb} đủ ${dayMax.toLocaleString()} Dogcoin - mai 00:00 chuyển tiếp`;
+}
 async function webRutGame(userId, amount) {
     if (!dogBridgeCfg().rut) return { error: '⛔ Rút Dogcoin vào game đang ĐÓNG - admin tạm khoá chiều này' };
     amount = Math.floor(Number(amount) || 0);
     if (amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
     if (amount > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin` };
     const u = getUserData(userId);
+    const dayErr = dogBridgeDayCheck(u, 'rut', amount);   // 📅 hạn ngày
+    if (dayErr) return { error: dayErr };
     debtAccrue(userId);
     if (debtOf(u).bad) return { error: '⚠️ Đang nợ xấu - trả sạch nợ mới chuyển vào game được' };
     if ((u.points || 0) < amount) return { error: `Không đủ Dogcoin (bạn có ${(u.points || 0).toLocaleString()})` };
@@ -409,6 +444,7 @@ async function webRutGame(userId, amount) {
     if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau (chưa trừ đồng nào)` }; }
     if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi rút nhé (chưa trừ đồng nào)` }; }
     updatePoints(userId, -amount);
+    dogBridgeToday(u).rut += amount;   // 📅 tính vào hạn ngày lúc trừ ví
     logDog('to-game', userId, u.name || userId, -amount, `rút vào game (web, nhân vật ${gameName})`);
     saveDbNow();
     let r = null, err = null;
@@ -421,6 +457,7 @@ async function webRutGame(userId, amount) {
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
     if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
         updatePoints(userId, amount);
+        dogBridgeToday(u).rut = Math.max(0, dogBridgeToday(u).rut - amount);   // 📅 chưa giao -> trả lại hạn
         logDog('refund', userId, u.name || userId, amount, `hoàn rút web (chưa giao: ${msg})`);
         saveDbNow();
         return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã hoàn ${amount.toLocaleString()} Dogcoin` };
@@ -436,6 +473,8 @@ async function webNapGame(userId, amount) {
     if (amount < 1) return { error: 'Số Dogcoin không hợp lệ' };
     if (amount > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()} Dogcoin` };
     const u = getUserData(userId);
+    const dayErrN = dogBridgeDayCheck(u, 'nap', amount);   // 📅 hạn ngày
+    if (dayErrN) return { error: dayErrN };
     const gameName = (u.ingameName || '').trim();
     if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
     if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi thử lại' };
@@ -449,6 +488,7 @@ async function webNapGame(userId, amount) {
     deliverUnlock();
     if (r && r.ok && r.took > 0) {
         updatePoints(userId, r.took);
+        dogBridgeToday(u).nap += r.took;   // 📅 đếm đúng số đã lấy được
         logDog('from-game', userId, u.name || userId, r.took, `nạp từ game (web, nhân vật ${gameName})`);
         debtBadSweep(userId);
         saveDbNow();
@@ -5236,7 +5276,8 @@ client.once('ready', async (c) => {
             dogbridge: {
                 rut: (uid, amount) => webRutGame(uid, amount),
                 nap: (uid, amount) => webNapGame(uid, amount),
-                state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut, napOpen: dogBridgeCfg().nap }),   // 🔁 09/09 công tắc 2 chiều
+                state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut, napOpen: dogBridgeCfg().nap,
+                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, napToday: dogBridgeToday(getUserData(uid)).nap }),   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày
             },
             // 📅 điểm danh tháng + 💉 nghiện - cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
@@ -5407,6 +5448,7 @@ client.once('ready', async (c) => {
             getGameOpen: () => ({ mines: gameOpen('mines'), stairs: gameOpen('stairs') }),
             // 🔁 09/09: cầu Dogcoin web ↔ game
             getDogBridge: () => dogBridgeCfg(),
+            getDogBridgeDayMax: dogBridgeDayMax, setDogBridgeDayMax,   // 📅 11/09 hạn chuyển/ngày
             // 🎚️ 09/09: sàn cược 2 minigame
             setMinBet: (v) => setMinBet(v),
             setDogBridge: (key, on) => setDogBridge(key, on),

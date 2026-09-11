@@ -129,6 +129,7 @@ function startPanel(ctx) {
             forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
+            dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,   // 📅 11/09
             xs: (() => {
                 if (!ctx.getXS) return null;
                 const xs = ctx.getXS();
@@ -633,6 +634,13 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, r);
                 }
                 // 🔁 09/09: cầu Dogcoin web ↔ game (rut / nap)
+                if (path === '/api/dogbridge/daymax') {   // 📅 11/09: hạn chuyển mỗi người/chiều/ngày (SUPER)
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
+                    if (!ctx.setDogBridgeDayMax) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setDogBridgeDayMax(body.dayMax);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 if (path === '/api/dogbridge/open') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     if (!ctx.setDogBridge) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
@@ -1653,6 +1661,13 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="gap:18px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
           <label id="gs_rut_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_rut" style="width:auto;margin:0" onchange="gameSwitch('rut',this)"> 🎮 Rút Dogcoin web → game</label>
           <label id="gs_nap_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_nap" style="width:auto;margin:0" onchange="gameSwitch('nap',this)"> 💬 Nạp Dogcoin game → web</label>
+        </div>
+        <div class="row" style="gap:8px;align-items:center;margin-top:6px">
+          <span>📅 Cầu Dogcoin: <b>mỗi người</b> chuyển tối đa</span>
+          <input class="mini-in" id="gsDogDay" type="number" min="0" placeholder="10000" style="width:110px">
+          <span>Dogcoin <b>/ chiều / ngày</b></span>
+          <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu</button>
+          <span class="muted" style="font-size:12px">rút web→game và nạp game→web đếm RIÊNG · 0 = không giới hạn · đếm lại 00:00 giờ VN</span>
         </div>
         <div class="row" style="gap:10px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
           <div style="flex:2"><label>🎚️ Cược tối thiểu Dò Mìn + Leo Thang (Dogcoin/ván)</label><input id="gsMinBet" type="number" min="1" placeholder="vd: 400"></div>
@@ -2719,7 +2734,13 @@ async function minBetSave(btn){
   if(!await uiConfirm('Đặt cược tối thiểu Dò Mìn + Leo Thang = '+v.toLocaleString('vi-VN')+' Dogcoin/ván?','💾 Lưu','btn-green'))return;
   await runBtn(btn,'Lưu...',()=>api('/api/games/minbet',{minBet:v}).then(j=>{toast('🎚️ Sàn cược Dò Mìn/Leo Thang: '+j.minBet.toLocaleString('vi-VN'));refresh();}));
 }
+async function dogDaySave(btn){
+  const v=parseInt(document.getElementById('gsDogDay').value);
+  if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
+  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v}).then(j=>{toast('📅 Hạn chuyển Dogcoin: '+(j.dayMax?j.dayMax.toLocaleString('vi-VN'):'không giới hạn')+'/người/chiều/ngày');HOLD_SIG='';refresh();}));
+}
 function gsFill(){
+  const dd=document.getElementById('gsDogDay');if(dd&&dd.value===''&&document.activeElement!==dd&&STATE&&STATE.dogBridgeDayMax!==null&&STATE.dogBridgeDayMax!==undefined)dd.value=STATE.dogBridgeDayMax;
   const mb=document.getElementById('gsMinBet');if(mb&&mb.value===''&&document.activeElement!==mb&&STATE&&STATE.pot&&STATE.pot.minBet)mb.value=STATE.pot.minBet;
   const st=gsState();
   Object.keys(GS_LB).forEach(k=>{const cb=document.getElementById('gs_'+k),lb=document.getElementById('gs_'+k+'_lb');if(!cb)return;if(document.activeElement!==cb)cb.checked=st[k];if(lb){lb.style.color=st[k]?'':'var(--red)';lb.lastChild.textContent=' '+GS_LB[k]+(st[k]?' - MỞ':' - ĐANG ĐÓNG');}});
