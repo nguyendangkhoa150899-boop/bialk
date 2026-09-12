@@ -3367,7 +3367,7 @@ const MINES_LUCKY_WHEEL = [
     { p: 0.15, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
     { p: 0.13, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
     { p: 0.38, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +60% cược, thua 0 (EV = 1 ô 💰)
+    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0 (12/09 chủ server nâng)
     { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
     { p: 0.14, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
     { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (1% -> 2% ngày 12/09, chủ server chốt)
@@ -3376,7 +3376,7 @@ const STAIRS_LUCKY_WHEEL = [
     { p: 0.13, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
     { p: 0.18, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
     { p: 0.36, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +60% cược, thua 0
+    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
     { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô lửa tầng kế (⚠️) - tính là TRỢ GIÚP
     { p: 0.13, prize: 'refund' },   // ↩️ hoàn phí mua cỏ
     { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (1% -> 2% ngày 12/09)
@@ -3801,11 +3801,13 @@ const webMinesApi = {
             g.luck.push('💰');
         }
         else if (prize === 'dbl') {
-            // 🎲 tung xu NGAY tại chỗ (EV = đúng 1 ô lì xì): thắng +60% cược, thua trắng
+            // 🎲 tung xu NGAY tại chỗ: thắng +X2 TIỀN CƯỢC, thua trắng (12/09 nâng từ +60%)
             const winFlip = Math.random() < 0.5;
             lucky.dblWin = winFlip;
             if (winFlip) {
-                const bonus = Math.max(1, Math.floor(g.bet * 0.6));
+                // 12/09 (chủ server chốt): thắng xu trả X2 TIỀN CƯỢC (cược 100 -> +200 vào ví).
+                // EV ô này = 10% x 50% x 200% = +10% cược/hộp - ĐẮT hơn ô lì xì (3%), đã cảnh báo.
+                const bonus = Math.max(1, Math.floor(g.bet * 2));
                 updatePoints(userId, bonus);
                 lucky.bonus = bonus;
                 g.bonus = (g.bonus || 0) + bonus;
@@ -4214,11 +4216,13 @@ const webStairsApi = {
             g.luck.push('💰');
         }
         else if (prize === 'dbl') {
-            // 🎲 tung xu NGAY (EV = 1 ô lì xì): thắng +60% cược, thua trắng
+            // 🎲 tung xu NGAY: thắng +X2 TIỀN CƯỢC, thua trắng (12/09 nâng từ +60%)
             const winFlip = Math.random() < 0.5;
             lucky.dblWin = winFlip;
             if (winFlip) {
-                const bonus = Math.max(1, Math.floor(g.bet * 0.6));
+                // 12/09 (chủ server chốt): thắng xu trả X2 TIỀN CƯỢC (cược 100 -> +200 vào ví).
+                // EV ô này = 10% x 50% x 200% = +10% cược/hộp - ĐẮT hơn ô lì xì (3%), đã cảnh báo.
+                const bonus = Math.max(1, Math.floor(g.bet * 2));
                 updatePoints(userId, bonus);
                 lucky.bonus = bonus;
                 g.bonus = (g.bonus || 0) + bonus;

@@ -2149,7 +2149,7 @@ const PAGE = [
     'rocket:"🚀 THANG MÁY - vọt lên 2 tầng!",',
     'jackpot:(L.jpPick?"🏆 NỔ HŨ!!! Bấm OK để tự tay chọn hộp bội số x"+((L.mults&&L.mults.length)?L.mults:[10,15,20]).join("/x")+" TIỀN CƯỢC + kịch khung ván!":"🏆 NỔ HŨ!!! +"+(L.bonus||0).toLocaleString("vi-VN")+" DOGCOIN!!!"+(L.potMult?" (🎲 bốc x"+L.potMult+" tiền cược = "+(L.potWin||0).toLocaleString("vi-VN")+" + kịch khung ván)":"")),',   // 09/09 v2: trúng 🏆 chưa trả tiền, mời qua hộp bội số
     'none:"🍂 Trống trơn... kiếp sau may hơn!",',
-    'dbl:(L.dblWin?"🎲 GẤP ĐÔI HAY VỀ KHÔNG - tung xu... THẮNG! +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin (x2 lì xì)!":"🎲 GẤP ĐÔI HAY VỀ KHÔNG - tung xu... sấp mặt, trắng tay! Được ăn cả ngã về không mà 😏"),',
+    'dbl:(L.dblWin?"🎲 GẤP ĐÔI HAY VỀ KHÔNG - tung xu... THẮNG! +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin (X2 TIỀN CƯỢC)!":"🎲 GẤP ĐÔI HAY VỀ KHÔNG - tung xu... sấp mặt, trắng tay! Được ăn cả ngã về không mà 😏"),',
     'scout:"🧭 LA BÀN - lộ 1 ô TỬ THẦN trên bàn (ô ⚠️ đó, liệu mà né)!",',
     'refund:"↩️ HOÀN VÉ CỎ - trả lại "+(L.refund||0).toLocaleString("vi-VN")+" Dogcoin phí mua cỏ. Hụt mà không thiệt!"',
     '}[L.prize]||"🍀"}',
