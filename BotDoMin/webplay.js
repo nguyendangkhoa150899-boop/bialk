@@ -973,6 +973,9 @@ const PAGE = [
     '#jpPick .gifts button.win{border:2px solid var(--gold);box-shadow:0 0 18px #ffcf5c99;transform:scale(1.12);opacity:1}#jpPick .gifts button.dim{opacity:.35}',
     '#jpRes{display:none;margin-top:14px;font-size:15px;font-weight:800;color:#ffe9a8;line-height:1.5;background:#1a1408;border:1px solid #ffcf5c55;border-radius:12px;padding:10px}',
     '#jpClose{display:none;margin-top:12px;width:100%;padding:12px;background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;font-weight:900;border-radius:12px}',
+    // 🧭 ô bị la bàn soi: viền cam cảnh báo, vẫn bấm được (bấm là tự chọn cái chết)
+    '.mtile.scoutmk{border-color:#ff9f3c!important;color:#ffb45c;box-shadow:0 0 8px #ff9f3c66 inset}',
+    '.scell.scoutmk{outline:2px solid #ff9f3c;border-radius:6px}',
     '#luckyPick{position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;background:#000c;padding:16px}',
     '#luckyPick.show{display:flex}',
     '#luckyPick .box{background:#12241a;border:2px solid #2ec26a;border-radius:18px;padding:20px;max-width:360px;width:100%;text-align:center;box-shadow:0 12px 44px #000d}',
@@ -2138,14 +2141,17 @@ const PAGE = [
     '$("mStat").textContent=(w?(MLAST.result==="Jackpot"?"🎉 Jackpot - nhận ":"✅ Đã dừng - nhận "):"💥 Trúng mìn - thua ")+',
     'vnd(Math.abs(w?MLAST.amount+MLAST.bet:MLAST.bet))}',
     // Chữ mô tả từng loại quà 🍀 (dùng cho cả dòng kết quả trong hộp lẫn toast)
-    'var PRIZE_EMO={shield:"🛡️",dig:"⛏️",cash:"💰",rocket:"🚀",jackpot:"🏆",none:"🍂"};',
+    'var PRIZE_EMO={shield:"🛡️",dig:"⛏️",cash:"💰",rocket:"🚀",jackpot:"🏆",none:"🍂",dbl:"🎲",scout:"🧭",refund:"↩️"};',
     'function luckyMsg(L){if(!L)return "";return {',
     'shield:"🛡️ KHIÊN - trúng mìn/lửa 1 lần không chết!",',
     'dig:"⛏️ MÁY ĐÀO - mở giúp "+((L.opened||[]).length)+" ô an toàn!",',
     'cash:"💰 LÌ XÌ - +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin vào ví luôn!",',
     'rocket:"🚀 THANG MÁY - vọt lên 2 tầng!",',
     'jackpot:(L.jpPick?"🏆 NỔ HŨ!!! Bấm OK để tự tay chọn hộp bội số x"+((L.mults&&L.mults.length)?L.mults:[10,15,20]).join("/x")+" TIỀN CƯỢC + kịch khung ván!":"🏆 NỔ HŨ!!! +"+(L.bonus||0).toLocaleString("vi-VN")+" DOGCOIN!!!"+(L.potMult?" (🎲 bốc x"+L.potMult+" tiền cược = "+(L.potWin||0).toLocaleString("vi-VN")+" + kịch khung ván)":"")),',   // 09/09 v2: trúng 🏆 chưa trả tiền, mời qua hộp bội số
-    'none:"🍂 Trống trơn... kiếp sau may hơn!"',
+    'none:"🍂 Trống trơn... kiếp sau may hơn!",',
+    'dbl:(L.dblWin?"🎲 GẤP ĐÔI HAY VỀ KHÔNG - tung xu... THẮNG! +"+(L.bonus||0).toLocaleString("vi-VN")+" Dogcoin (x2 lì xì)!":"🎲 GẤP ĐÔI HAY VỀ KHÔNG - tung xu... sấp mặt, trắng tay! Được ăn cả ngã về không mà 😏"),',
+    'scout:"🧭 LA BÀN - lộ 1 ô TỬ THẦN trên bàn (ô ⚠️ đó, liệu mà né)!",',
+    'refund:"↩️ HOÀN VÉ CỎ - trả lại "+(L.refund||0).toLocaleString("vi-VN")+" Dogcoin phí mua cỏ. Hụt mà không thiệt!"',
     '}[L.prize]||"🍀"}',
     'function luckyToast(L){if(L)toast("🎁 "+luckyMsg(L))}',
     // ===== 🍀 CHỌN 1 TRONG 4 HỘP =====
@@ -2217,6 +2223,7 @@ const PAGE = [
     'if(MG&&MG.revealed.indexOf(i)>=0){t.className="mtile coin";t.innerHTML=COINIMG}',
     // ô mìn đã bị khiên đỡ: lộ 🛡️, chết cứng, không bấm lại được
     'else if(MG&&MG.defused&&MG.defused.indexOf(i)>=0){t.className="mtile shieldsave";t.textContent="🛡️"}',
+    'else if(MG&&MG.scouted&&MG.scouted.indexOf(i)>=0){t.className="mtile can scoutmk";t.textContent="⚠️";t.onclick=function(){mDig(parseInt(this.dataset.i))}}',
     'else if(MG){t.className="mtile can";t.textContent="?";t.onclick=function(){mDig(parseInt(this.dataset.i))}}',
     'else{t.className="mtile dead";t.textContent="?"}',
     'g.appendChild(t)}',
@@ -2313,6 +2320,7 @@ const PAGE = [
     'inner=(f===heroF)?HEROIMG:COINCELL}',
     // 🌟 ô vàng HIỆN RÕ (đạp là lên thẳng đỉnh) - thấy mà thèm, phải leo tới mới ăn
     'else if(SG&&SG.golden&&SG.golden.floor===f&&SG.golden.col===c&&f>=done){cc+=" gold";inner="🌟"}',
+    'else if(SG&&SG.scouted&&SG.scouted.some(function(sq){return sq.f===f&&sq.c===c})&&f>=done){cc+=" scoutmk";inner="⚠️"}',
     // ô lửa đã bị khiên đỡ: lộ 🔥, cấm bấm lại
     'else if(SG&&SG.burned&&SG.burned.some(function(b){return b.f===f&&b.c===c})){cc+=" fire";inner="🔥"}',
     'cells+=\'<div class="\'+cc+\'" id="sc_\'+f+"_"+c+\'" data-c="\'+c+\'">\'+inner+"</div>"}',

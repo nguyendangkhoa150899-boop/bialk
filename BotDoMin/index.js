@@ -3361,19 +3361,25 @@ function webMinesLog(g, result, amount, hitIdx) {
 // Muốn hãm lại chỉ cần hạ số 0.05 bên dưới (và nâng 'none' lên tương ứng).
 // Cân theo chủ server chốt (19/08): hũ 5% · hụt 20% · lì xì 40% · khiên 20% ·
 // đào/tên lửa 15% (quà đẩy tiến độ nặng kinh tế hơn nên hiếm hơn khiên).
+// 12/09: BỎ 🍂 Hụt - cỏ giờ phải MUA (20% cược) nên "trả tiền bốc trúng không-có-gì"
+// là trải nghiệm tệ nhất sòng. Van chỉnh kỳ vọng mới = tỉ lệ ↩️ refund (ô rẻ nhất bảng).
 const MINES_LUCKY_WHEEL = [
     { p: 0.15, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
-    { p: 0.15, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.46, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.23, prize: 'none' },     // 🍂 hụt (nhận phần dư mỗi lần hạ tỉ lệ hũ)
-    { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ (hạ 5% -> 3% -> 2% -> 1% ngày 21/08)
+    { p: 0.13, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
+    { p: 0.38, prize: 'cash' },     // 💰 +30% tiền cược tức thì
+    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +60% cược, thua 0 (EV = 1 ô 💰)
+    { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
+    { p: 0.14, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
+    { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (1% -> 2% ngày 12/09, chủ server chốt)
 ];
 const STAIRS_LUCKY_WHEEL = [
-    { p: 0.15, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
-    { p: 0.20, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
-    { p: 0.40, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.24, prize: 'none' },     // 🍂 hụt (nhận phần dư mỗi lần hạ tỉ lệ hũ)
-    { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ (hạ 5% -> 3% -> 2% -> 1% ngày 21/08)
+    { p: 0.13, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
+    { p: 0.18, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
+    { p: 0.36, prize: 'cash' },     // 💰 +30% tiền cược tức thì
+    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +60% cược, thua 0
+    { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô lửa tầng kế (⚠️) - tính là TRỢ GIÚP
+    { p: 0.13, prize: 'refund' },   // ↩️ hoàn phí mua cỏ
+    { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (1% -> 2% ngày 12/09)
 ];
 // Ô VÀNG 🌟 Leo Thang: 2% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 - thấy mà
 // thèm, phải sống sót leo tới mới đạp được; đạp là lên thẳng đỉnh. Mọi mức lửa đều
@@ -3514,7 +3520,7 @@ function potAnnounce(chId, text, tagId) {
         .catch(() => {});
 }
 function luckyAssisted(g) {
-    return (g.luck || []).some(x => x === '🚀' || x === '🌟' || x === '⛏️')
+    return (g.luck || []).some(x => x === '🚀' || x === '🌟' || x === '⛏️' || x === '🧭')
         || (g.defused || []).length > 0 || (g.burned || []).length > 0;
 }
 // Hai TRẦN may mắn riêng cho Dò Mìn - CHỐT CUỐI của chủ server 20/08:
@@ -3544,6 +3550,7 @@ function assistWhyOf(g) {
     if ((g.defused || []).length) why.push('KHIÊN đỡ mìn');
     if ((g.burned || []).length) why.push('KHIÊN đỡ lửa');
     if ((g.luck || []).includes('⛏️')) why.push('MÁY ĐÀO mở ô');
+    if ((g.luck || []).includes('🧭')) why.push('LA BÀN lộ ô');
     if ((g.luck || []).includes('🚀')) why.push('THANG MÁY');
     if ((g.luck || []).includes('🌟')) why.push('Ô VÀNG');
     return why.join(' + ');
@@ -3606,6 +3613,7 @@ const webMinesApi = {
             assistWhy: assistWhyOf(g),   // "khiên đỡ mìn" / "máy đào mở ô" - web ghép vào câu cảnh báo
             shield: g.shield || 0,                 // 🛡️ số khiên đang cầm (cộng dồn được)
             defused: (g.defused || []).slice(),    // các ô mìn đã bị khiên đỡ (hiện 🛡️)
+            scouted: (g.scouted || []).slice(),    // 🧭 ô mìn đã bị la bàn lộ (⚠️, vẫn bấm được)
             luckyPick: !!g.luckyPending,           // đang chờ chọn 1 trong 4 hộp 🍀
             jpPick: !!g.jpPending, jpMults: g.jpPending ? potCfg('mines').mults : undefined,   // 🏆 09/09 v2: đang chờ chọn hộp bội số
             // Chỉ đẩy SỐ LƯỢNG ô 🍀, KHÔNG lộ g.lucky - lộ vị trí là lộ luôn ô an toàn.
@@ -3656,7 +3664,7 @@ const webMinesApi = {
             if (!g.lucky.includes(pick)) g.lucky.push(pick);
         }
         g.luckyTotal = g.lucky.length;   // giữ số ban đầu để web hiện "ván này N ô 🍀"
-        g.shield = 0; g.defused = []; g.luck = []; g.luckyPending = false;
+        g.shield = 0; g.defused = []; g.luck = []; g.luckyPending = false; g.scouted = [];
         webMines.set(userId, g);
         webMinesLast.delete(userId); // vào ván mới thì bỏ màn kết thúc cũ
         updatePoints(userId, -(bet + fee));
@@ -3791,6 +3799,42 @@ const webMinesApi = {
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('💰');
+        }
+        else if (prize === 'dbl') {
+            // 🎲 tung xu NGAY tại chỗ (EV = đúng 1 ô lì xì): thắng +60% cược, thua trắng
+            const winFlip = Math.random() < 0.5;
+            lucky.dblWin = winFlip;
+            if (winFlip) {
+                const bonus = Math.max(1, Math.floor(g.bet * 0.6));
+                updatePoints(userId, bonus);
+                lucky.bonus = bonus;
+                g.bonus = (g.bonus || 0) + bonus;
+            }
+            g.luck.push('🎲');
+        }
+        else if (prize === 'scout' || prize === 'refund') {
+            // 🧭 lộ 1 ô mìn thật chưa lộ (⚠️ trên bàn, vẫn bấm được - né hay không tuỳ);
+            // hết mìn để lộ (chỉ xảy ra khi admin ép nhiều lần) -> rơi về hoàn vé.
+            let done = false;
+            if (prize === 'scout') {
+                const pool = g.mines.filter(i => !(g.defused || []).includes(i) && !(g.scouted || []).includes(i));
+                if (pool.length) {
+                    const pick = pool[Math.floor(Math.random() * pool.length)];
+                    g.scouted = g.scouted || [];
+                    g.scouted.push(pick);
+                    lucky.scouted = pick;
+                    g.luck.push('🧭');   // tính là TRỢ GIÚP -> luckyAssisted -> trần kịch khung
+                    done = true;
+                }
+            }
+            if (!done) {
+                // ↩️ hoàn đúng phí mua cỏ - "hụt mà không thiệt" (thay 🍂 từ 12/09)
+                lucky.prize = 'refund';
+                const back = Math.max(0, g.fee || 0);
+                if (back) { updatePoints(userId, back); g.bonus = (g.bonus || 0) + back; }
+                lucky.refund = back;
+                g.luck.push('↩️');
+            }
         }
         else if (prize === 'jackpot') {
             // 🏆 NỔ HŨ = GIẢI CAO NHẤT của chính cấu hình ván này, trần theo jackpotCapOf
@@ -3963,6 +4007,7 @@ const webStairsApi = {
             safe: g.safe.slice(0, g.floor), // ô đã bấm đúng ở các tầng đã qua (-1 = tầng nhảy qua)
             shield: g.shield || 0,                  // 🛡️ số khiên đang cầm (cộng dồn được)
             burned: (g.burned || []).slice(),       // ô lửa đã bị khiên đỡ (lộ 🔥, cấm bấm lại)
+            scouted: (g.scouted || []).slice(),     // 🧭 ô lửa đã bị la bàn lộ (⚠️, vẫn bấm được)
             golden: g.golden ? { floor: g.golden.f, col: g.golden.c } : null, // 🌟 HIỆN RÕ
             luckyPick: !!g.luckyPending,            // đang chờ chọn 1 trong 4 hộp 🍀
             jpPick: !!g.jpPending, jpMults: g.jpPending ? potCfg('stairs').mults : undefined,   // 🏆 09/09 v2
@@ -4001,7 +4046,7 @@ const webStairsApi = {
         g.fee = fee;   // phí mua cỏ - tính vào net lịch sử cuối ván (các dòng g.fee||0 có sẵn)
         // Ô 🍀 GIẤU trên ô trống tầng 1–8 (không rải tầng 9–10: sát đỉnh còn quà là quá
         // tay). 09/09: CHỈ có khi mua, tối đa 1 ô (luật cũ: 3 ô free).
-        g.lucky = []; g.shield = 0; g.burned = []; g.luck = []; g.luckyPending = false;
+        g.lucky = []; g.shield = 0; g.burned = []; g.luck = []; g.luckyPending = false; g.scouted = [];
         while (g.lucky.length < (extraLucky ? 1 : 0)) {
             const f = Math.floor(Math.random() * 8);
             const c = Math.floor(Math.random() * STAIRS_COLS);
@@ -4167,6 +4212,43 @@ const webStairsApi = {
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
             g.luck.push('💰');
+        }
+        else if (prize === 'dbl') {
+            // 🎲 tung xu NGAY (EV = 1 ô lì xì): thắng +60% cược, thua trắng
+            const winFlip = Math.random() < 0.5;
+            lucky.dblWin = winFlip;
+            if (winFlip) {
+                const bonus = Math.max(1, Math.floor(g.bet * 0.6));
+                updatePoints(userId, bonus);
+                lucky.bonus = bonus;
+                g.bonus = (g.bonus || 0) + bonus;
+            }
+            g.luck.push('🎲');
+        }
+        else if (prize === 'scout' || prize === 'refund') {
+            // 🧭 lộ 1 ô LỬA ở tầng KẾ TIẾP (⚠️); tầng kế hết ô lửa kín -> rơi về hoàn vé
+            let done = false;
+            if (prize === 'scout') {
+                g.scouted = g.scouted || [];
+                const f = g.floor;   // tầng sắp leo (0-based)
+                const pool = (f < STAIRS_FLOORS ? g.traps[f] : []).filter(c =>
+                    !(g.burned || []).some(b => b.f === f && b.c === c)
+                    && !g.scouted.some(sq => sq.f === f && sq.c === c));
+                if (pool.length) {
+                    const c = pool[Math.floor(Math.random() * pool.length)];
+                    g.scouted.push({ f, c });
+                    lucky.scouted = { f, c };
+                    g.luck.push('🧭');   // tính là TRỢ GIÚP -> trần kịch khung
+                    done = true;
+                }
+            }
+            if (!done) {
+                lucky.prize = 'refund';
+                const back = Math.max(0, g.fee || 0);
+                if (back) { updatePoints(userId, back); g.bonus = (g.bonus || 0) + back; }
+                lucky.refund = back;
+                g.luck.push('↩️');
+            }
         }
         else if (prize === 'jackpot') {
             // 🏆 NỔ HŨ = giải LÊN ĐỈNH của chính mức lửa ván này, trần x2000 cược,
