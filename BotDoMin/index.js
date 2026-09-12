@@ -1248,7 +1248,11 @@ function palWheelCfg() {
         pickXeno: Math.floor(num(c.pickXeno, 20000, 0, 10000000)),          // Xenolord
         pickHarta: Math.floor(num(c.pickHarta, 20000, 0, 10000000)),        // Hartalis
         boss: c.boss === undefined ? true : !!c.boss,             // giao bản BOSS_ (pal boss)
-        raw: !!c.raw,   // 🔒 09/09: TẮT CHỈ SỐ - mọi pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không BOSS (team chơi lại, sợ pal quá mạnh). Passive vẫn chọn/mua như cũ
+        raw: !!c.raw,   // 🔒 09/09: TẮT CHỈ SỐ - mọi pal giao ra Lv1 · 0 sao · không passive · không BOSS (team chơi lại, sợ pal quá mạnh)
+        // 13/09: PAL GỐC vẫn được chút chỉ số nền (chủ server chốt ~20% linh hồn + 40 IV;
+        // linh hồn đi bước 3% nên 20 -> 21). Admin chỉnh 2 ô này ở panel, chỉ áp khi raw bật.
+        rawSoulPct: Math.floor(num(c.rawSoulPct, 21, 0, 201)),    // % linh hồn MỖI DÒNG (cả 4 dòng), rank = %/3
+        rawIv: Math.floor(num(c.rawIv, 40, 0, 255)),              // IV cả 3 chỉ số
         open: c.open === undefined ? true : !!c.open,
         // 🍀 THANH MAY MẮN + VÒNG RAID (27/08): mỗi lượt quay thường nạp luckMin..luckMax %
         // (admin còn đặt riêng %/quay TỪNG NGƯỜI ở panel - xem palLuckStep). Đầy 100% được
@@ -2813,11 +2817,13 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     let species = (wantBoss ? 'BOSS_' : '') + item.code;
     // linh hồn theo % TỪNG DÒNG người chơi mua - rank trong save = %/3 (60% -> 20, 201% -> 67)
     const soulRank = (k) => souls.includes(k) ? Math.max(0, Math.min(255, Math.round(soulPcts[k] / 3))) : 0;
+    // 13/09: PAL GỐC có nền linh hồn + IV admin đặt (mặc định 21% / IV 40) - vẫn Lv1 · 0 sao
+    const rawSoul = Math.max(0, Math.min(255, Math.round((cfg.rawSoulPct || 0) / 3)));
+    const rawIv = Math.max(0, Math.min(255, cfg.rawIv || 0));
     const specBase = cfg.raw ? {
-        // 🔒 PAL GỐC: Lv1 · 0 sao · IV 1 · linh hồn 0 · bản thường - chỉ giữ giới tính + passive đã chọn
         level: 1, rank: 0,
-        ivHp: 1, ivMelee: 1, ivShot: 1, ivDef: 1,
-        soulHp: 0, soulAtk: 0, soulDef: 0, soulWork: 0,
+        ivHp: rawIv, ivMelee: rawIv, ivShot: rawIv, ivDef: rawIv,
+        soulHp: rawSoul, soulAtk: rawSoul, soulDef: rawSoul, soulWork: rawSoul,
         gender,
         passives,
     } : {
@@ -5675,6 +5681,7 @@ client.once('ready', async (c) => {
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
                         up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, slotLow: cfg.upSlotLow, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, t4: cfg.upTier4, boss: cfg.upBoss, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
                         level: cfg.level, stars: cfg.stars, boss: cfg.boss, raw: cfg.raw,   // 🔒 tắt chỉ số
+                        rawSoulPct: cfg.rawSoulPct, rawIv: cfg.rawIv,   // 13/09: nền PAL GỐC cho web hiện đúng
                         noBoss: Array.isArray(dbCache._noBossCodes) ? dbCache._noBossCodes : [],   // 👑 code không có bản BOSS (bot tự học) - client ẩn nút
                         // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),

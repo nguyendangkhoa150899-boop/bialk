@@ -1552,7 +1552,8 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> 👑 Mở bán bản PAL BOSS (mặc định giao bản thường, chọn BOSS trả thêm giá ở ô 👑)</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
-          <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700" title="Team chơi lại, sợ pal quá mạnh: tick là MỌI pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không passive · không BOSS (chỉ chọn giới tính). Vòng quay vẫn có 6 huyền thoại (tô vàng) + 23 pal tím; vòng MAY MẮN vẫn quay (huyền thoại / ô RAID); chỉ KHÔNG bán pal raid đích danh. Pal raid ra được chỉ qua ô RAID vòng may mắn. Bỏ tick là về luật thường (bán raid đích danh mở lại)."><input type="checkbox" id="pwRaw" style="width:auto"> 🔒 TẮT CHỈ SỐ PAL (Lv1 · 0 sao · IV 1 · không linh hồn · không passive · chỉ chọn giới tính · khoá mua raid đích danh)</label>
+          <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700" title="Team chơi lại, sợ pal quá mạnh: tick là MỌI pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không passive · không BOSS (chỉ chọn giới tính). Vòng quay vẫn có 6 huyền thoại (tô vàng) + 23 pal tím; vòng MAY MẮN vẫn quay (huyền thoại / ô RAID); chỉ KHÔNG bán pal raid đích danh. Pal raid ra được chỉ qua ô RAID vòng may mắn. Bỏ tick là về luật thường (bán raid đích danh mở lại)."><input type="checkbox" id="pwRaw" style="width:auto"> 🔒 TẮT CHỈ SỐ PAL (Lv1 · 0 sao · không passive · chỉ chọn giới tính · khoá mua raid đích danh)</label>
+          <span style="display:flex;align-items:center;gap:6px;font-size:13px">↳ nền PAL GỐC: linh hồn <input class="mini-in" id="pwRawSoul" type="number" min="0" max="201" step="3" placeholder="21" style="width:64px">%/dòng (cả 4 dòng, bước 3) · IV <input class="mini-in" id="pwRawIv" type="number" min="0" max="255" placeholder="40" style="width:64px"> cả 3</span>
           <button onclick="pwCfgSave()">💾 Lưu</button>
         </div>
         <div class="note" id="pwCfgNow">-</div>
@@ -2437,11 +2438,11 @@ function pwCfgFill(k){
   set('pwUpWt',k.upWtPassive);set('pwUpT4',k.upTier4);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);set('pwLuckyRaidPct',k.luckyRaidPct);
-  set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);
+  set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);set('pwRawSoul',k.rawSoulPct);set('pwRawIv',k.rawIv);
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;document.getElementById('pwRaw').checked=!!k.raw;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
     '</b> · linh hồn <b>'+k.soulMax+'</b> dòng miễn phí × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
-    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: Lv1 · 0 sao · IV 1 · không linh hồn · không passive · khoá mua raid đích danh</b>':'');
+    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: Lv1 · 0 sao · linh hồn '+(k.rawSoulPct||0)+'%/dòng · IV '+(k.rawIv||0)+' · không passive · khoá mua raid đích danh</b>':'');
 }
 function pwCfgSave(){
   const o={price:parseInt(document.getElementById('pwPrice').value),
@@ -2481,6 +2482,8 @@ function pwCfgSave(){
            dayMax:parseInt(document.getElementById('pwDayMax').value),
            boss:document.getElementById('pwBoss').checked,
            raw:document.getElementById('pwRaw').checked,
+           rawSoulPct:parseInt(document.getElementById('pwRawSoul').value),
+           rawIv:parseInt(document.getElementById('pwRawIv').value),
            open:document.getElementById('pwOpen').checked};
   if(!(o.price>=100))return toast('Vé phải từ 100');
   if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');

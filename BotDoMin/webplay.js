@@ -3305,7 +3305,7 @@ const PAGE = [
     'PCIT=null;PC.chest.forEach(function(i){if(i.id===id)PCIT=i});if(!PCIT)return;',
     'if(!PC.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     '$("pcmTitle").textContent="🎁 Nhận "+PCIT.name;',
-    '$("pcmBase").innerHTML=PC.raw?"🔒 <b>CHẾ ĐỘ PAL GỐC</b> (admin tắt chỉ số): giao <b>Lv 1</b> · <b>0 sao</b> · <b>IV 1</b> · <b>không linh hồn</b> · <b>không passive</b> · bản <b>THƯỜNG</b> - chỉ chọn giới tính":"Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số · bản <b>THƯỜNG</b>";',
+    '$("pcmBase").innerHTML=PC.raw?"🔒 <b>CHẾ ĐỘ PAL GỐC</b> (admin tắt chỉ số): giao <b>Lv 1</b> · <b>0 sao</b> · <b>IV "+(PC.rawIv||0)+"</b> cả 3 · <b>linh hồn "+(PC.rawSoulPct||0)+"%</b> cả 4 dòng · <b>không passive</b> · bản <b>THƯỜNG</b> - chỉ chọn giới tính":"Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số · bản <b>THƯỜNG</b>";',
     // 🔒 09/09: PAL GỐC -> ẩn cột linh hồn + IV và nút BOSS (server bỏ qua dù gửi lên)
     'var colL=$("pcmColL");if(colL)colL.style.display=PC.raw?"none":"";var colR=$("pcmColR");if(colR)colR.style.display=PC.raw?"none":"";if(PC.raw)PCSEL={};',   // 🔒 v2: ẩn luôn passive
     // 👑 reset lựa chọn boss mỗi lần mở bảng + chỉ hiện khi đang mở bán và pal CÓ bản boss
@@ -3408,7 +3408,7 @@ const PAGE = [
     // 🧾 tổng kết: mua gì, tốn gì - từng dòng một, phí bên phải
     'var line=function(l,v){return "<div class=\\"sline\\"><span class=\\"muted\\">"+l+"</span><b>"+v+"</b></div>"};',
     'var bIco="<img src=\\"/palboss.png\\" alt=\\"👑\\" style=\\"width:15px;height:15px;vertical-align:-3px;border-radius:3px\\" onerror=\\"this.outerHTML=\'👑\'\\"> ";',
-    'var sum=PC.raw?line("Pal",esc(PCIT?PCIT.name:"?")+" · thường · <b>Lv1 · 0⭐ · IV 1 · không linh hồn · không passive</b> (🔒 admin tắt chỉ số)"):line("Pal",esc(PCIT?PCIT.name:"?")+(PCBOSS?" · "+bIco+"BOSS":" · thường")+" · Lv"+(PC.level||80)+" · "+(PC.stars||4)+"⭐");',
+    'var sum=PC.raw?line("Pal",esc(PCIT?PCIT.name:"?")+" · thường · <b>Lv1 · 0⭐ · IV "+(PC.rawIv||0)+" · linh hồn "+(PC.rawSoulPct||0)+"% x4 dòng · không passive</b> (🔒 admin tắt chỉ số)"):line("Pal",esc(PCIT?PCIT.name:"?")+(PCBOSS?" · "+bIco+"BOSS":" · thường")+" · Lv"+(PC.level||80)+" · "+(PC.stars||4)+"⭐");',
     'if(PCBOSS)sum+=line(bIco+"Bản PAL BOSS","+"+vnd(bc));',
     // 09/09: mỗi dòng linh hồn ghi đủ phí của chính nó (thêm dòng + kéo %), không gộp cục "phí thêm dòng" ở dưới nữa
     'if(!PC.raw){soulRows.forEach(function(s){var f=s.lf+s.c;sum+=line("💠 Linh hồn "+SOUL_LBL[s.k]+" +"+s.sp+"%"+(s.lf?" · thêm dòng":" · dòng gốc"),f?"+"+vnd(f):"miễn phí")});',
