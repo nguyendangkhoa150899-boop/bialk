@@ -975,6 +975,9 @@ const PAGE = [
     '#jpClose{display:none;margin-top:12px;width:100%;padding:12px;background:linear-gradient(180deg,#ffe9a8,#e0b750);color:#3d2c05;font-weight:900;border-radius:12px}',
     // 🧭 ô bị la bàn soi: viền cam cảnh báo, vẫn bấm được (bấm là tự chọn cái chết)
     '.mtile.scoutmk{border-color:#ff9f3c!important;color:#ffb45c;box-shadow:0 0 8px #ff9f3c66 inset}',
+    // 🪙 đồng xu quay (hộp 🎲) - rotateY liên tục tới khi setTimeout lộ kết quả
+    '@keyframes coinSpin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}',
+    '.coinflip{display:inline-block;font-size:46px;animation:coinSpin .28s linear infinite}',
     '.scell.scoutmk{outline:2px solid #ff9f3c;border-radius:6px}',
     '#luckyPick{position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;background:#000c;padding:16px}',
     '#luckyPick.show{display:flex}',
@@ -2174,14 +2177,28 @@ const PAGE = [
     'function luckySend(n){if(!LUCKGAME)return;var game=LUCKGAME;LUCKGAME="";',
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b){b.disabled=true});',
     'api("/api/"+game+"/lucky",{box:n}).then(function(j){',
-    'if(typeof j.balance==="number")setBal(j.balance);',
+    // 🎲 giữ số dư đứng im tới lúc xu rơi - không thì nhìn ví là biết trước thắng thua
+    'var isDbl=j.lucky&&j.lucky.prize==="dbl";',
+    'if(!isDbl&&typeof j.balance==="number")setBal(j.balance);',
     // LẬT CẢ 4 HỘP: hộp mình chọn sáng vàng, 3 hộp kia mờ - thấy rõ trúng gì, hụt gì
     'var rv=(j.lucky&&j.lucky.reveal)||[];',
     'document.querySelectorAll("#luckyPick .gifts button").forEach(function(b,i){',
     'b.textContent=PRIZE_EMO[rv[i]]||"🍂";',
     'if(i===n-1)b.classList.add("win");else b.classList.add("dim")});',
+    'if(isDbl){',
+    // pha 1: xu quay + giấu nút OK (bắt buộc xem hết màn tung xu)
+    '$("luckyRes").innerHTML=\'<div style="font-size:15px;font-weight:800;color:#ffd76a">🎲 GẤP ĐÔI HAY VỀ KHÔNG!</div><div class="coinflip">🪙</div><div style="font-size:13px;color:#a9c2b4">Đang tung đồng xu...</div>\';',
+    '$("luckyRes").style.display="block";$("luckyClose").style.display="none";',
+    'setTimeout(function(){var w=j.lucky.dblWin;',
+    '$("luckyRes").innerHTML=w?\'<div style="font-size:36px">🪙</div><div style="font-size:18px;font-weight:900;color:#ffd76a">NGỬA - THẮNG LỚN!</div><div style="font-size:16px;font-weight:800;color:#7dffb0">+\'+(j.lucky.bonus||0).toLocaleString("vi-VN")+\' DOGCOIN (X2 TIỀN CƯỢC)</div>\'',
+    ':\'<div style="font-size:36px;filter:grayscale(1)">🪙</div><div style="font-size:18px;font-weight:900;color:#ff8a80">SẤP - TRẮNG TAY!</div><div style="font-size:13px;color:#a9c2b4">Được ăn cả ngã về không mà 😏</div>\';',
+    'if(typeof j.balance==="number")setBal(j.balance);',
+    'if(w)celebrate();',
+    '$("luckyClose").style.display="block";$("luckyClose").textContent="OK, CHƠI TIẾP";},1700);',
+    '}else{',
     '$("luckyRes").innerHTML="Hộp của bạn: "+luckyMsg(j.lucky);$("luckyRes").style.display="block";',
     '$("luckyClose").style.display="block";$("luckyClose").textContent=(j.lucky&&j.lucky.jpPick)?"🏆 CHỌN HỘP NỔ HŨ":"OK, CHƠI TIẾP";',   // 09/09 v2: nút đóng đổi chữ khi đang treo nổ hũ
+    '}',
     'if(j.lucky&&j.lucky.prize==="jackpot")celebrate();',
     // cập nhật bàn chơi NGAY phía sau hộp (đóng hộp là thấy liền, không khựng)
     'if(game==="mines"){if(j.pot!==undefined)MPOT=j.pot;',
