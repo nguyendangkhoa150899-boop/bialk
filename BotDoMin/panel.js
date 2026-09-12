@@ -1552,11 +1552,25 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> 👑 Mở bán bản PAL BOSS (mặc định giao bản thường, chọn BOSS trả thêm giá ở ô 👑)</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
-          <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700" title="Team chơi lại, sợ pal quá mạnh: tick là MỌI pal giao ra Lv1 · 0 sao · IV 1 · không linh hồn · không passive · không BOSS (chỉ chọn giới tính). Vòng quay vẫn có 6 huyền thoại (tô vàng) + 23 pal tím; vòng MAY MẮN vẫn quay (huyền thoại / ô RAID); chỉ KHÔNG bán pal raid đích danh. Pal raid ra được chỉ qua ô RAID vòng may mắn. Bỏ tick là về luật thường (bán raid đích danh mở lại)."><input type="checkbox" id="pwRaw" style="width:auto"> 🔒 TẮT CHỈ SỐ PAL (Lv1 · 0 sao · không passive · chỉ chọn giới tính · khoá mua raid đích danh)</label>
-          <span style="display:flex;align-items:center;gap:6px;font-size:13px">↳ nền PAL GỐC: linh hồn <input class="mini-in" id="pwRawSoul" type="number" min="0" max="201" step="3" placeholder="21" style="width:64px">%/dòng (cả 4 dòng, bước 3) · IV <input class="mini-in" id="pwRawIv" type="number" min="0" max="255" placeholder="40" style="width:64px"> cả 3</span>
           <button onclick="pwCfgSave()">💾 Lưu</button>
+          <span class="muted" style="font-size:12px">(chế độ 🔒 PAL GỐC có card riêng bên dưới)</span>
         </div>
         <div class="note" id="pwCfgNow">-</div>
+      </div>
+      <div class="card">
+        <h3>🔒 PAL GỐC (tắt chỉ số pal)</h3>
+        <div class="note">Bật là MỌI pal giao ra <b>Lv1 · 0 sao · không passive · bản thường</b> (chỉ chọn giới tính, khoá mua raid đích danh) - nhưng vẫn kèm <b>nền chỉ số</b> đặt ở 2 ô dưới. Vòng quay vẫn đủ 6 huyền thoại (tô vàng) + pal tím; pal raid chỉ ra qua ô RAID vòng may mắn. Đặt 0/0 = trần trụi tuyệt đối. Linh hồn đi bước 3% (20 không chia hết nên mặc định 21). Đổi số chỉ áp cho pal nhận TỪ GIỜ - pal đã giao không đổi.</div>
+        <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700;margin-top:6px"><input type="checkbox" id="pwRaw" style="width:auto"> BẬT chế độ PAL GỐC</label>
+        <div class="row" style="margin-top:8px;align-items:center;gap:8px">
+          <span>💠 Linh hồn</span>
+          <input class="mini-in" id="pwRawSoul" type="number" min="0" max="201" step="3" placeholder="21" style="width:70px">
+          <span>%/dòng (cả 4 dòng, bước 3%)</span>
+          <span>· 🎯 IV</span>
+          <input class="mini-in" id="pwRawIv" type="number" min="0" max="255" placeholder="40" style="width:70px">
+          <span>cả 3 chỉ số</span>
+          <button class="btn-green" onclick="pwRawSave(this)">💾 Lưu PAL GỐC</button>
+        </div>
+        <div class="note" id="pwRawNow">-</div>
         <div class="row" style="margin-top:10px">
           <input id="pgUid" placeholder="Discord ID người nhận" style="flex:2">
           <input id="pgPal" placeholder="Tên pal (vd: Anubis)" style="flex:2">
@@ -2438,12 +2452,24 @@ function pwCfgFill(k){
   set('pwUpWt',k.upWtPassive);set('pwUpT4',k.upTier4);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);set('pwLuckyRaidPct',k.luckyRaidPct);
-  set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);set('pwRawSoul',k.rawSoulPct);set('pwRawIv',k.rawIv);
+  set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);set('pwRawSoul',k.rawSoulPct);set('pwRawIv',k.rawIv);pwRawNow(k);
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;document.getElementById('pwRaw').checked=!!k.raw;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
     '</b> · linh hồn <b>'+k.soulMax+'</b> dòng miễn phí × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
     (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: Lv1 · 0 sao · linh hồn '+(k.rawSoulPct||0)+'%/dòng · IV '+(k.rawIv||0)+' · không passive · khoá mua raid đích danh</b>':'');
 }
+// 🔒 card PAL GỐC riêng (13/09): chỉ gửi 3 trường, server merge - không đụng giá vé/cooldown...
+async function pwRawSave(btn){
+  const sp=parseInt(document.getElementById('pwRawSoul').value);
+  const iv=parseInt(document.getElementById('pwRawIv').value);
+  if(!(sp>=0&&sp<=201))return toast('❌ Linh hồn 0–201%');
+  if(sp%3!==0)return toast('❌ Linh hồn phải chia hết cho 3 (bước 3%: 18, 21, 24...)');
+  if(!(iv>=0&&iv<=255))return toast('❌ IV 0–255');
+  const raw=document.getElementById('pwRaw').checked;
+  await runBtn(btn,'Lưu...',()=>api('/api/palwheel/cfg',{raw,rawSoulPct:sp,rawIv:iv}).then(()=>{toast('💾 PAL GỐC: '+(raw?'BẬT':'TẮT')+' · linh hồn '+sp+'%/dòng · IV '+iv);refresh();}));
+}
+function pwRawNow(k){const e=document.getElementById('pwRawNow');if(!e||!k)return;
+  e.innerHTML=k.raw?('Đang <b style="color:var(--red)">BẬT</b>: pal giao ra Lv1 · 0 sao · linh hồn <b>'+(k.rawSoulPct||0)+'%</b> cả 4 dòng · IV <b>'+(k.rawIv||0)+'</b> cả 3 · không passive'):('Đang <b style="color:#3dd68c">TẮT</b>: pal giao theo cấu hình thường (Lv'+(k.level||80)+' · '+(k.stars||4)+' sao · IV '+(k.ivs||100)+')');}
 function pwCfgSave(){
   const o={price:parseInt(document.getElementById('pwPrice').value),
            customPrice:parseInt(document.getElementById('pwCustom').value),
