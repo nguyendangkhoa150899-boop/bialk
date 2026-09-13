@@ -490,28 +490,24 @@ Kết quả kiểm:
 
 ---
 
-## 🔀 Hai biến thể pak raid (13/09/2026)
+## 🔀 Hai pak raid theo nhịp chơi (13/09/2026)
 
-Chủ server muốn tách "buff boss raid" và "nerf EXP tháp" ra 2 file.
-**Giới hạn kỹ thuật:** cả hai thứ nằm trong CÙNG một bảng
-`DT_PalMonsterParameter(_Common)` — hai pak cùng chứa một file thì game chỉ nạp
-MỘT (pak ưu tiên cao hơn che hẳn pak kia), không có chuyện cộng dồn. Nên không
-thể làm 2 mod bật/tắt độc lập bằng pak. Cách tách chạy được là **2 biến thể,
-dùng đúng 1 cái**:
+Chủ server: ngày thường boss để nguyên bản, **khi nào có event mới đưa file boss
+nhiều máu vào**. EXP boss tháp () để **0.7 × gốc** ở cả hai file.
 
-| File | Boss raid | EXP boss tháp (dòng `GYM_*`) |
-|---|---|---|
-| `BialkRaid_ExpGoc_P.pak` | buff đầy đủ + timer 4h | **nguyên bản game** (30–35, hầu 10) |
-| `BialkRaid_ExpNerf_P.pak` | buff đầy đủ + timer 4h | **một nửa gốc** (15–17.5, hầu 5) |
+| File | Boss raid | Cấp | EXP tháp |
+|---|---|---|---|
+|  | **vanilla 100%** (333k–1,41M thường · ultra 1,95–2,56M, giáp 91%, atk 1000–1300%) | vanilla 35/45/55/65/70, ultra 80 | 21–24,5 (hầu 7) |
+|  | **buff** 2/4/6/10/12M thường · ultra 19/20/22/25M, giáp 80%, atk 300–420% | tất cả **80** | 21–24,5 (hầu 7) |
 
-Raid trong 2 file **giống hệt nhau từng byte** (đã verify: 0 dòng RAID_ khác
-nhau) — đổi file chỉ đổi EXP tháp, boss không suy suyển.
+Cả hai giữ **timer 4 tiếng** + luật trứng raid nở ra toàn con cái.
 
-**Cài:** trong `~mods` chỉ được có ĐÚNG MỘT file raid. Xoá
-`BialkRaidTimer_P.pak` cũ (tên đời trước) rồi chép file muốn dùng vào, restart
-server game.
+**Giới hạn kỹ thuật (đừng quên):** buff raid và EXP tháp nằm CÙNG bảng
+ → hai pak cùng chứa bảng đó thì game chỉ nạp
+MỘT. Vì vậy trong  chỉ được có **đúng một** file raid; đổi chế độ =
+xoá file cũ, chép file kia vào, **restart server game**.
 
-**Muốn 2 mod bật/tắt thật sự độc lập?** Phải dùng **PalSchema** (vá bảng lúc
-chạy, các mod JSON cộng dồn được, sửa JSON là nạp lại ngay không cần restart).
-PalSchema hiện KHÔNG còn cài trên server chính — kiểm 13/09,
-`ue4ss/Mods/PalSchema` không tồn tại.
+Số vanilla dựng lại từ ghi chép các đợt v7/v9/v11 (client 07/09 đổi format bảng,
+usmap hiện có đọc ra RawExport). Đối chiếu paldb khớp 3 chữ số: 420×5700 =
+2,394M ≈ 2,39M · 500×5100 = 2,55M · 420×6100 = 2,562M ≈ 2,56M · 320×6100 =
+1,952M ≈ 1,95M. Sai số máu ultra (nếu có) dưới 1%.
