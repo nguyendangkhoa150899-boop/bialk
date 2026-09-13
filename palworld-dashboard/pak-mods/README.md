@@ -493,21 +493,23 @@ Kết quả kiểm:
 ## 🔀 Hai pak raid theo nhịp chơi (13/09/2026)
 
 Chủ server: ngày thường boss để nguyên bản, **khi nào có event mới đưa file boss
-nhiều máu vào**. EXP boss tháp () để **0.7 × gốc** ở cả hai file.
+nhiều máu vào**. EXP boss tháp (dòng `GYM_*`) để **0.7 × gốc** ở cả hai file.
 
 | File | Boss raid | Cấp | EXP tháp |
 |---|---|---|---|
-|  | **vanilla 100%** (333k–1,41M thường · ultra 1,95–2,56M, giáp 91%, atk 1000–1300%) | vanilla 35/45/55/65/70, ultra 80 | 21–24,5 (hầu 7) |
-|  | **buff** 2/4/6/10/12M thường · ultra 19/20/22/25M, giáp 80%, atk 300–420% | tất cả **80** | 21–24,5 (hầu 7) |
+| `BialkRaid_NgayThuong_P.pak` | **vanilla 100%** — thường 333k–1,41M · ultra 1,95–2,56M, giáp 91%, atk 1000–1300% | vanilla 35/45/55/65/70 · ultra 80 | 21–24,5 (hầu 7) |
+| `BialkRaid_Event_P.pak` | **buff** — thường 2/4/6/10/12M · ultra 19/20/22/25M, giáp 80%, atk 300–420% | tất cả **80** | 21–24,5 (hầu 7) |
 
 Cả hai giữ **timer 4 tiếng** + luật trứng raid nở ra toàn con cái.
 
-**Giới hạn kỹ thuật (đừng quên):** buff raid và EXP tháp nằm CÙNG bảng
- → hai pak cùng chứa bảng đó thì game chỉ nạp
-MỘT. Vì vậy trong  chỉ được có **đúng một** file raid; đổi chế độ =
-xoá file cũ, chép file kia vào, **restart server game**.
+**Giới hạn kỹ thuật (đừng quên):** buff raid và EXP tháp nằm CÙNG một bảng
+`DT_PalMonsterParameter(_Common)` — hai pak cùng chứa bảng đó thì game chỉ nạp
+MỘT (pak ưu tiên cao che hẳn pak kia), không cộng dồn. Vì vậy trong `~mods` chỉ
+được có **đúng một** file raid; đổi chế độ = xoá file cũ, chép file kia vào,
+**restart server game**.
 
-Số vanilla dựng lại từ ghi chép các đợt v7/v9/v11 (client 07/09 đổi format bảng,
-usmap hiện có đọc ra RawExport). Đối chiếu paldb khớp 3 chữ số: 420×5700 =
-2,394M ≈ 2,39M · 500×5100 = 2,55M · 420×6100 = 2,562M ≈ 2,56M · 320×6100 =
-1,952M ≈ 1,95M. Sai số máu ultra (nếu có) dưới 1%.
+Số vanilla dựng lại từ ghi chép các đợt v7/v9/v11 — client 07/09 đổi format
+bảng nên usmap hiện có đọc bảng gốc mới ra RawExport, không trích trực tiếp
+được. Đối chiếu paldb khớp tới 3 chữ số: 420×5700 = 2,394M ≈ 2,39M · 500×5100 =
+2,55M · 420×6100 = 2,562M ≈ 2,56M · 320×6100 = 1,952M ≈ 1,95M. Sai số máu ultra
+(nếu có) dưới 1% — không nhìn thấy được trong game.
