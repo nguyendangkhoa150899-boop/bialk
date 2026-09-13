@@ -487,3 +487,31 @@ Kết quả kiểm:
   mount `../../../`, 6 file. Đã chép lên `~mods/` server TEST, đọc lại khớp byte.
 
 **Chưa test trong game** — chủ server restart server test rồi kiểm theo mục Test ở trên.
+
+---
+
+## 🔀 Hai biến thể pak raid (13/09/2026)
+
+Chủ server muốn tách "buff boss raid" và "nerf EXP tháp" ra 2 file.
+**Giới hạn kỹ thuật:** cả hai thứ nằm trong CÙNG một bảng
+`DT_PalMonsterParameter(_Common)` — hai pak cùng chứa một file thì game chỉ nạp
+MỘT (pak ưu tiên cao hơn che hẳn pak kia), không có chuyện cộng dồn. Nên không
+thể làm 2 mod bật/tắt độc lập bằng pak. Cách tách chạy được là **2 biến thể,
+dùng đúng 1 cái**:
+
+| File | Boss raid | EXP boss tháp (dòng `GYM_*`) |
+|---|---|---|
+| `BialkRaid_ExpGoc_P.pak` | buff đầy đủ + timer 4h | **nguyên bản game** (30–35, hầu 10) |
+| `BialkRaid_ExpNerf_P.pak` | buff đầy đủ + timer 4h | **một nửa gốc** (15–17.5, hầu 5) |
+
+Raid trong 2 file **giống hệt nhau từng byte** (đã verify: 0 dòng RAID_ khác
+nhau) — đổi file chỉ đổi EXP tháp, boss không suy suyển.
+
+**Cài:** trong `~mods` chỉ được có ĐÚNG MỘT file raid. Xoá
+`BialkRaidTimer_P.pak` cũ (tên đời trước) rồi chép file muốn dùng vào, restart
+server game.
+
+**Muốn 2 mod bật/tắt thật sự độc lập?** Phải dùng **PalSchema** (vá bảng lúc
+chạy, các mod JSON cộng dồn được, sửa JSON là nạp lại ngay không cần restart).
+PalSchema hiện KHÔNG còn cài trên server chính — kiểm 13/09,
+`ue4ss/Mods/PalSchema` không tồn tại.
