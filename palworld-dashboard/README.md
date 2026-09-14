@@ -670,6 +670,29 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 📱 **Sửa vỡ dòng trên điện thoại** (chủ server gửi ảnh chụp màn hình iPhone: "UI trên mobile nó bị đẩy xuống dòng rồi").
+  ① **Huy hiệu "Tổng 10 - XỈU · CHẴN" rớt xuống 2 dòng**: `#sumBadge` canh giữa bằng `left:50%` + `translateX(-50%)` nhưng
+  **không đặt `right`**, nên bề ngang khả dụng chỉ tính từ mốc 50% tới mép phải, tức NỬA sân khấu → chữ dài tự xuống dòng và
+  đè lên xí ngầu. Thêm `white-space:nowrap` + `max-width:96%` + cắt bớt cỡ chữ dưới 420px.
+  ② **Thanh trả nợ**: ô nhập bị bóp, chữ gợi ý cụt. Cho `flex-wrap:wrap`, ô nhập `flex:1 1 140px`, nút `flex:0 0 auto`,
+  rút gọn chữ gợi ý còn "Trống = trả hết".
+  ③ **Thanh đầu trang** (giờ có thêm ô NỢ): `flex-wrap:wrap` + `gap:8px`, ô NỢ `flex:0 0 auto;white-space:nowrap` để màn
+  hẹp thì xuống dòng gọn chứ không bóp méo số dư.
+  🔍 **`hiddencheck.js` thêm luật thứ 2**: bắt mọi khối canh giữa kiểu `position:absolute` + `left:50%` + `translateX(-50%)`
+  mà thiếu cả `right`, `width` lẫn `white-space:nowrap` - đúng cái bẫy làm rớt dòng. Thử ngược trên bản đã push: bắt đủ
+  3 lỗi (`#debtBar`, `#paper`, `#sumBadge`); bản sửa: sạch.
+- **14/09** — 🩹 **SỬA: dòng trả nợ hiện cả khi KHÔNG nợ** (chủ server: "khi nào có nợ mới hiện dòng trả nợ chat ơi").
+  Lỗi CSS kinh điển: `#debtBar{display:flex}` chọn theo **id** nên độ ưu tiên 100, đè `.hidden{display:none}` chọn theo
+  **class** chỉ có 10 → thêm class `hidden` vào là vô tác dụng, dòng trả nợ luôn nằm đó. Thêm `#debtBar.hidden{display:none}`
+  (id + class = 110) là thắng lại. Ô 📒 ĐANG NỢ không dính lỗi này vì luật id của nó không đặt `display`.
+  🔍 **Bộ test mới `hiddencheck.js`** quét đúng loại lỗi này trên toàn trang: render trang thật, lấy CSS, tìm mọi id vừa có
+  luật đặt `display` vừa được ẩn/hiện bằng class `hidden`, và bắt buộc phải có luật `#id.hidden`. Bỏ qua tên biến dùng lại
+  khắp nơi (`box`, `el`, `b`...) kẻo báo nhầm. Thử ngược trên bản đã push: bắt đúng 2 lỗi; bản sửa: sạch.
+  🎲 **Nhờ bộ test này lòi ra lỗi cũ ở CHÉN NẶN Tài Xỉu**: `#paper` cũng đặt `display:flex` theo id nên **4 chỗ** gọi
+  `paper.classList.add("hidden")` đều không ẩn được chén - nặn xong, đang mở bát, bàn tắt, và lúc vẽ lại trạng thái.
+  Chén vẫn nằm đó (chỉ bị kéo lệch đi) thay vì biến mất. Đã thêm `#paper.hidden{display:none}`.
+  Bài học ghi lại: trong `webplay.js`, hễ đặt `display` trong luật `#id{...}` mà chỗ khác ẩn bằng class `hidden` thì
+  **luôn phải viết kèm** `#id.hidden{display:none}` - các chỗ làm đúng từ trước là `#gmodal`, `#tmodal`, `#pwRaidBox`.
 - **14/09** — 💳 **Ô NỢ ngay cạnh số dư, bấm là trả nợ tại chỗ** (chủ server: "thêm mục nợ kế bên Số dư dogcoin, kế bên có
   phần nợ bấm vào trả được luôn"). Trước đây muốn trả nợ phải vào tab 👤 Hồ sơ kéo tìm thẻ 📒 Nợ Dogcoin.
   Nay thanh đầu trang có ô **📒 ĐANG NỢ + số tiền** nằm sát số dư, viền đỏ; bấm vào là **xổ ngay một ô trả nợ** ngay dưới thanh,

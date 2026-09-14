@@ -733,18 +733,20 @@ const PAGE = [
     // ---- thanh chuyển trang (Big Small | Dò Mìn) ----
     // Header + nav ép mỏng (19/08): mobile đỡ phải kéo - trước đây riêng cụm đầu
     // trang đã ngốn ~150px dọc.
-    '#topbar{padding:8px 12px;margin-bottom:8px}',
+    '#topbar{padding:8px 12px;margin-bottom:8px;flex-wrap:wrap;gap:8px}',
     '#topbar .big{font-size:20px}',
     '#topbar .muted{font-size:11px}',
     '#topbar button{padding:8px 10px}',
     // 📒 14/09: ô NỢ nằm ngay cạnh số dư - bấm là xổ ô trả nợ ngay dưới thanh
-    '#debtChip{cursor:pointer;user-select:none;padding:6px 10px;border-radius:10px;border:1px solid #a33;background:linear-gradient(180deg,#3a1c1c,#2a1414);line-height:1.15;text-align:center}',
+    '#debtChip{flex:0 0 auto;white-space:nowrap;cursor:pointer;user-select:none;padding:6px 10px;border-radius:10px;border:1px solid #a33;background:linear-gradient(180deg,#3a1c1c,#2a1414);line-height:1.15;text-align:center}',
     '#debtChip .lb{font-size:10px;color:#ffb3b3;letter-spacing:.3px}',
     '#debtChip .vl{font-size:15px;font-weight:900;color:#ff8b8b}',
     '#debtChip:active{transform:translateY(1px)}',
-    '#debtBar{display:flex;gap:6px;align-items:center;margin:-4px 0 8px;padding:8px 10px;border:1px solid #a33;border-radius:12px;background:#241414}',
-    '#debtBar input{flex:1;min-width:0}',
-    '#debtBar button{white-space:nowrap}',
+    '#debtBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-4px 0 8px;padding:8px 10px;border:1px solid #a33;border-radius:12px;background:#241414}',
+    // ⚠️ BẮT BUỘC: id đặt display thì phải có luật id+hidden, không thì class hidden vô tác dụng
+    '#debtBar.hidden{display:none}',
+    '#debtBar input{flex:1 1 140px;min-width:0}',
+    '#debtBar button{white-space:nowrap;flex:0 0 auto}',
     '#debtBarNote{font-size:11px;color:#ffb3b3;margin-top:4px}',
     '#nav{display:flex;gap:6px;margin-bottom:8px}',
     '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:13px;padding:9px 2px}',
@@ -1098,10 +1100,13 @@ const PAGE = [
     '.die{width:56px;height:56px;background:linear-gradient(160deg,#e0463a 0%,#c0271c 55%,#9c1b13 100%);border:1px solid #ff8b7a44;border-radius:12px;position:relative;box-shadow:0 3px 10px #000a,inset 0 1px 2px #ffffff33}',
     // 14/09 chủ sòng chốt: hột ĐỎ · nút TRẮNG · nền ĐEN - thuần CSS, không cần hình
     '.pip{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0006;transform:translate(-50%,-50%)}',
-    '#sumBadge{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:#000a;border-radius:8px;padding:3px 12px;font-weight:800;font-size:15px}',
+    // ⚠️ left:50% mà không có right -> bề ngang chỉ còn nửa sân khấu, phải nowrap kẻo rớt dòng
+    '#sumBadge{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:#000a;border-radius:8px;padding:3px 12px;font-weight:800;font-size:15px;white-space:nowrap;max-width:96%;overflow:hidden;text-overflow:ellipsis}',
+    '@media (max-width:420px){#sumBadge{font-size:13px;padding:3px 9px}}',
     // 14/09: CHÉN THẬT (assets/chennantaixiu.png) thay tờ giấy - kéo chén hé ra để nặn.
     // Chén 176px phủ trọn cụm xí ngầu 118px (góc xa tâm 83,4px < bán kính 88px) nên không lộ trước.
     '#paper{position:absolute;left:50%;top:50%;width:176px;height:176px;margin:-88px 0 0 -88px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;will-change:transform}',
+    '#paper.hidden{display:none}',   // ⚠️ phải có, không thì class hidden vô tác dụng
     '#paper img{width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 8px 18px #000b)}',
     // xám+mờ = CHƯA cho mở (đang giờ đặt cược) - sáng + viền xanh = tới giờ nặn
     '#paper.locked{cursor:not-allowed}#paper.locked img{filter:grayscale(.7) brightness(.55)}',
@@ -1263,7 +1268,7 @@ const PAGE = [
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
     // 📒 14/09: ô trả nợ nhanh, xổ ra khi bấm vào ô NỢ trên thanh
     '<div id="debtBar" class="hidden">',
-    '<input id="debtAmt2" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)">',
+    '<input id="debtAmt2" type="number" min="1" placeholder="Trống = trả hết">',
     '<button class="btn-full" id="debtPayBtn2" style="margin-top:0;width:auto" onclick="debtPay2()">💳 TRẢ NỢ</button>',
     '<button style="background:#232735" onclick="debtBarToggle()">✕</button>',
     '</div>',
