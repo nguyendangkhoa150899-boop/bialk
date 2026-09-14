@@ -440,6 +440,66 @@ function dogBridgeDayCheck(user, key, amount) {
         ? `📅 Mỗi người ${lb} tối đa ${dayMax.toLocaleString()} Dogcoin/ngày - hôm nay bạn còn ${left.toLocaleString()}`
         : `📅 Hôm nay bạn đã ${lb} đủ ${dayMax.toLocaleString()} Dogcoin - mai 00:00 chuyển tiếp`;
 }
+// 🪙 14/09: ĐỔI VÀNG TRONG GAME -> DOGCOIN WEB (chủ server: thương nhân đã tắt, vàng thành vô dụng).
+// Quy ước: 100 vàng = 1 "Dogcoin TRONG GAME" nên 10.000 vàng = dogNapRate() × 100 Dogcoin web
+// (tỉ lệ 1:4 => 10.000 vàng = 400 Dogcoin). Nhờ quy về CÙNG ĐƠN VỊ với luồng nạp, hai đường
+// (đổi Dogcoin + đổi vàng) DÙNG CHUNG một bộ đếm giới hạn ngày, không cần ô cấu hình mới.
+const GOLD_ITEM = 'Money';        // mã Đồng Vàng trong game (gameitems.json)
+const GOLD_PER_DOG = 100;         // 100 vàng = 1 Dogcoin trong game
+const GOLD_STEP = 10000;          // người chơi chỉ nhập BỘI SỐ 10.000 cho dễ nhẩm
+const goldToWeb = (gold, rate) => Math.floor(gold * rate / GOLD_PER_DOG);
+async function webNapGold(userId, gold) {
+    if (!dogBridgeCfg().nap) return { error: '⛔ Đổi vàng ra Dogcoin đang ĐÓNG - admin tạm khoá chiều game → web' };
+    gold = Math.floor(Number(gold) || 0);
+    if (gold < GOLD_STEP || gold % GOLD_STEP !== 0) {
+        return { error: `Chỉ đổi theo BỘI SỐ ${GOLD_STEP.toLocaleString('vi-VN')} vàng (${GOLD_STEP.toLocaleString('vi-VN')} · ${(GOLD_STEP * 2).toLocaleString('vi-VN')} · ${(GOLD_STEP * 5).toLocaleString('vi-VN')}…)` };
+    }
+    if (gold > WITHDRAW_MAX_PER_REQUEST) return { error: `Mỗi lần tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString('vi-VN')} vàng` };
+    const u = getUserData(userId);
+    const rate = dogNapRate();
+    const unit = gold / GOLD_PER_DOG;   // quy ra Dogcoin TRONG GAME để dùng chung giới hạn ngày
+    // 📅 giới hạn ngày CHUNG với 💬 Nạp ra web - câu báo quy ngược ra vàng cho người chơi dễ đọc
+    const dayMax = dogBridgeDayMax();
+    if (dayMax > 0) {
+        const used = dogBridgeToday(u).nap || 0;
+        if (used + unit > dayMax) {
+            const leftGold = Math.floor(Math.max(0, dayMax - used) * GOLD_PER_DOG / GOLD_STEP) * GOLD_STEP;
+            return {
+                error: leftGold
+                    ? `📅 Giới hạn chung với nạp Dogcoin - hôm nay bạn chỉ còn đổi được ${leftGold.toLocaleString('vi-VN')} vàng (= ${goldToWeb(leftGold, rate).toLocaleString('vi-VN')} Dogcoin web)`
+                    : '📅 Hôm nay bạn đã dùng hết giới hạn chuyển game → web (chung cho cả vàng lẫn Dogcoin) - mai 00:00 đổi tiếp',
+            };
+        }
+    }
+    const gameName = (u.ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi thử lại' };
+    deliverLock();
+    const on = await requireOnline(gameName, GOLD_ITEM);   // đếm VÀNG, cũng là bước kiểm online
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi đổi nhé` }; }
+    if (typeof on.count === 'number' && on.count < gold) {
+        deliverUnlock();
+        return { error: `Túi game chỉ có ${on.count.toLocaleString('vi-VN')} vàng (cần ${gold.toLocaleString('vi-VN')}) - chỉ tính vàng TRONG TÚI, không tính trong hòm` };
+    }
+    let r = null, err = null;
+    try { r = await pal.takeItem(gameName, GOLD_ITEM, gold); } catch (e) { err = e; }
+    deliverUnlock();
+    if (r && r.ok && r.took > 0) {
+        const credit = goldToWeb(r.took, rate);
+        updatePoints(userId, credit);
+        dogBridgeToday(u).nap += r.took / GOLD_PER_DOG;   // 📅 đếm chung, quy về Dogcoin trong game
+        logDog('from-game', userId, u.name || userId, credit, `đổi vàng (web, nhân vật ${gameName}) ${r.took} vàng ÷ ${GOLD_PER_DOG} × ${rate} = ${credit}`);
+        debtBadSweep(userId);
+        saveDbNow();
+        writeLog('ADMIN', `[ĐỔI VÀNG] ${u.name || userId} đổi ${r.took} vàng của "${gameName}" -> +${credit} Dogcoin`);
+        return { ok: true, message: `✅ Đã trừ ${r.took.toLocaleString('vi-VN')} vàng trong game → cộng ${credit.toLocaleString('vi-VN')} Dogcoin vào ví!`, balance: getUserData(userId).points || 0, took: r.took, credit, rate };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không rõ kết quả';
+    writeLog('ADMIN', `[ĐỔI VÀNG LỖI] ${u.name || userId} ${gold} vàng từ "${gameName}" | took=${r ? r.took : '?'} | ${msg}`);
+    return { error: `⏳ Chưa đổi được (${msg}) - chưa cộng ví. Thử lại; nếu trong game đã trừ vàng mà ví chưa cộng thì báo admin.` };
+}
+
 async function webRutGame(userId, amount) {
     if (!dogBridgeCfg().rut) return { error: '⛔ Rút Dogcoin vào game đang ĐÓNG - admin tạm khoá chiều này' };
     amount = Math.floor(Number(amount) || 0);
@@ -2801,7 +2861,7 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     if (upCost > 0) {
         updatePoints(userId, -upCost);
         item.upCost = upCost;
-        logDog('shop', userId, username || userId, -upCost, `💎 nâng cấp pal vượt trần (rương #${item.id}): ${passives.length} passive · linh hồn ${soulDesc} · IV ${ivHp}/${ivAtk}/${ivDef}`);
+        logDog('shop', userId, username || userId, -upCost, `💎 nâng cấp pal vượt giới hạn (rương #${item.id}): ${passives.length} passive · linh hồn ${soulDesc} · IV ${ivHp}/${ivAtk}/${ivDef}`);
     }
     saveDbNow();
     // hoàn phí nâng cấp cho các nhánh CHẮC CHẮN chưa giao gì
@@ -3064,7 +3124,7 @@ function txCapCheck(userId, amount) {
     if (cap <= 0) return null;
     const cur = txBetTotalOf(userId);
     if (cur + amount > cap) {
-        return `Trần cược ${cap.toLocaleString()} Dogcoin/người/ván - ván này bạn đã đặt ${cur.toLocaleString()}${cap > cur ? `, còn đặt được ${(cap - cur).toLocaleString()}` : ''}.`;
+        return `Giới hạn cược ${cap.toLocaleString()} Dogcoin/người/ván - ván này bạn đã đặt ${cur.toLocaleString()}${cap > cur ? `, còn đặt được ${(cap - cur).toLocaleString()}` : ''}.`;
     }
     return null;
 }
@@ -4977,15 +5037,15 @@ function stockOpen(userId, side, amount, want, lev) {
     const capMoney = (capShares) => Math.max(0, Math.floor(capShares * entry / L));
     if (held + shares > cfg.maxPer) {
         const room = cfg.maxPer - held;
-        if (room < 1) return { error: `Bạn đã giữ kịch trần ${cfg.maxPer} CP - đóng bớt lệnh rồi mới vào thêm được` };
+        if (room < 1) return { error: `Bạn đã giữ hết giới hạn ${cfg.maxPer} CP - đóng bớt lệnh rồi mới vào thêm được` };
         return {
-            error: `Lệnh này cần ${shares} CP, quá trần ${cfg.maxPer} CP/người${held ? ` (đang giữ ${held})` : ''}. `
+            error: `Lệnh này cần ${shares} CP, quá giới hạn ${cfg.maxPer} CP/người${held ? ` (đang giữ ${held})` : ''}. `
                 + `Ở đòn bẩy x${L} thì vốn tối đa là ${capMoney(room).toLocaleString()} Dogcoin - hạ vốn hoặc hạ đòn bẩy.`,
         };
     }
     const leftSan = cfg.maxShares - stockShareCount();
     if (shares > leftSan) {
-        if (leftSan < 1) return { error: 'Sàn đã kịch trần khối lượng - chờ người khác đóng lệnh' };
+        if (leftSan < 1) return { error: 'Sàn đã hết giới hạn khối lượng - chờ người khác đóng lệnh' };
         return {
             error: `Sàn chỉ còn ${leftSan} CP. Ở đòn bẩy x${L} thì vốn tối đa là `
                 + `${capMoney(leftSan).toLocaleString()} Dogcoin - hạ vốn hoặc hạ đòn bẩy.`,
@@ -5595,9 +5655,10 @@ client.once('ready', async (c) => {
             dogbridge: {
                 rut: (uid, amount) => webRutGame(uid, amount),
                 nap: (uid, amount) => webNapGame(uid, amount),
+                napGold: (uid, gold) => webNapGold(uid, gold),   // 🪙 14/09
                 state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut, napOpen: dogBridgeCfg().nap,
                     dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, napToday: dogBridgeToday(getUserData(uid)).nap,
-                    napRate: dogNapRate() }),   // 💱 11/09   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày
+                    napRate: dogNapRate(), goldPerDog: GOLD_PER_DOG, goldStep: GOLD_STEP }),   // 💱 11/09 · 🪙 14/09 đổi vàng   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày
             },
             // 📅 điểm danh tháng + 💉 nghiện - cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
@@ -6787,13 +6848,13 @@ const TICKET_KIND_LABEL = {
 //   lỗi khác / cầu SFTP chết         -> KHÔNG RÕ -> cũng chặn: chưa chắc online thì
 //        không cho thao tác, chưa đụng đồng nào của ai.
 // Chậm hơn (~5-20s cho lượt đếm) - đó là giá của việc kiểm chắc trước khi chuyển.
-async function requireOnline(gameName) {
+async function requireOnline(gameName, itemId) {
     // 08/09: COUNT là thao tác CHỈ ĐỌC nên đứt giữa chừng (abort/timeout - hay gặp
     // ngay sau khi game server restart, SFTP còn ì) thì THỬ LẠI 1 lần sau 3s.
     // An toàn tuyệt đối: không giao gì ở bước này, không có cửa giao trùng.
     for (let attempt = 0; attempt < 2; attempt++) {
         let c = null, err = null;
-        try { c = await pal.countItem(gameName, 'DogCoin'); } catch (e) { err = e; }
+        try { c = await pal.countItem(gameName, itemId || 'DogCoin'); } catch (e) { err = e; }   // 14/09: 'Money' cho luồng đổi vàng
         const msg = (c && c.message) || (err && err.message) || '';
         if (c && c.ok && typeof c.count === 'number') return { online: true, count: c.count };
         if (/player not found/i.test(msg) || /Tried calling a member function/i.test(msg)) {
@@ -7893,7 +7954,7 @@ client.on('interactionCreate', async interaction => {
         let amt = interaction.customId === 'tx_a_all' ? getUserData(userId).points : parseInt(interaction.customId.split('_')[2]);
         // 💰 ALL-IN thì tự kẹp về phần trần còn lại của ván (đỡ bực); mức cố định vượt trần thì báo
         if (interaction.customId === 'tx_a_all' && txMaxBet() > 0) amt = Math.min(amt, Math.max(0, txMaxBet() - txBetTotalOf(userId)));
-        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ Dogcoin để đặt mức này (hoặc đã chạm trần cược ván này)!", ephemeral: true });
+        if (amt <= 0 || getUserData(userId).points < amt) return interaction.reply({ content: "❌ Bạn không đủ Dogcoin để đặt mức này (hoặc đã chạm giới hạn cược ván này)!", ephemeral: true });
         const txCapErr2 = txCapCheck(userId, amt);
         if (txCapErr2) return interaction.reply({ content: '❌ ' + txCapErr2, ephemeral: true });
 

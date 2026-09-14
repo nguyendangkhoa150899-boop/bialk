@@ -211,6 +211,13 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
+                // 🪙 14/09: đổi VÀNG trong game -> Dogcoin web (chung giới hạn với /nap)
+                if (ctx.dogbridge && ctx.dogbridge.napGold && req.method === 'POST' && path === '/api/dogbridge/napgold') {
+                    const body = await readBody(req);
+                    const r = await ctx.dogbridge.napGold(userId, body.gold);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 if (ctx.dogbridge && req.method === 'POST' && path === '/api/dogbridge/nap') {
                     const body = await readBody(req);
                     const r = await ctx.dogbridge.nap(userId, body.amount);
@@ -856,6 +863,10 @@ const PAGE = [
     '.isCatBtn.on span{color:#c9f5d9}',
     '.isNote{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.35}',
     // 💸 chip chọn người nhận (chuyển tiền nhiều người 1 lần)
+// 🪙 14/09: khung tỉ lệ đổi vàng (icon Đồng Vàng -> Dogcoin)
+    '.dogRate{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding:8px 10px;border:1px solid #e0ac3f66;border-radius:10px;background:#241d10;font-weight:800}',
+    '.dogRate img{width:24px;height:24px;object-fit:contain;vertical-align:middle}',
+    '.dogRate .ar{color:var(--muted);margin:0 2px;font-weight:400}',
     '.dogChip{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:999px;background:#141824;border:1px solid var(--line);font-size:13px;font-weight:700;cursor:pointer;user-select:none}',
     '.dogChip.sel{background:#12351f;border-color:#3ddc84;color:#7cff9c}',
     // 📜 lịch sử cược
@@ -1442,6 +1453,15 @@ const PAGE = [
     '<div class="row" style="gap:8px;margin-top:8px"><input id="dogNapAmt" type="number" inputmode="numeric" placeholder="Số Dogcoin" style="flex:1" oninput="dogPreview()"><button class="btn-full" id="dogNapBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#4a7fbf,#356197)" onclick="dogNap()">💬 Nạp ra web</button></div>',
     '<div id="dogNapPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
     '</div>',
+    // 🪙 14/09: ĐỔI VÀNG trong game -> Dogcoin web. UI riêng nhưng DÙNG CHUNG giới hạn ngày với 💬 Nạp ra web.
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">🪙 Đổi Vàng ra Dogcoin</h2><div class="muted" id="dogGoldStat">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Trừ <b>Đồng Vàng</b> trong túi game (không tính trong hòm), cộng Dogcoin vào ví web. Phải đang ONLINE. Chỉ nhập <b>bội số 10.000</b> vàng.</div>',
+    '<div class="dogRate"><img src="/itemimage/T_itemicon_Material_Money.webp" alt=""><span id="dogGoldUnitG">-</span> Đồng Vàng <span class="ar">→</span> <img src="/itemimage/T_itemicon_Material_DogCoin.webp" alt=""><span id="dogGoldUnitD" style="color:#ffd76a">-</span> Dogcoin</div>',
+    '<div class="muted" id="dogGoldDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
+    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogGoldAmt" type="text" inputmode="numeric" placeholder="Số vàng (vd 10.000)" style="flex:1" oninput="dogGoldFmt(this)"><button class="btn-full" id="dogGoldBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#e0ac3f,#b8862a);color:#241d0a" onclick="dogGold()">🪙 Đổi ra Dogcoin</button></div>',
+    '<div id="dogGoldPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
+    '</div>',
     '</div>', // hết #pageDog
 
     // ================= TRANG ĐIỂM DANH (dashboard người chơi) =================
@@ -1935,7 +1955,7 @@ const PAGE = [
     'document.getElementById("betBtn").disabled=(PHASE!=="bet");',
     // 💰 trần cược/người/ván + đã đặt bao nhiêu ván này (server chặn, đây chỉ là nhắc)
     'var cpn=document.getElementById("txCapNote");if(cpn){var myTot=0;(j.myBets||[]).forEach(function(b){myTot+=b.amount||0});',
-    'cpn.textContent=(j.txMax>0)?("💰 Trần cược "+j.txMax.toLocaleString("vi-VN")+"/người/ván"+(myTot>0?" · ván này bạn đã đặt "+myTot.toLocaleString("vi-VN"):"")):""}',
+    'cpn.textContent=(j.txMax>0)?("💰 Giới hạn cược "+j.txMax.toLocaleString("vi-VN")+"/người/ván"+(myTot>0?" · ván này bạn đã đặt "+myTot.toLocaleString("vi-VN"):"")):""}',
     'var stt=document.getElementById("stt");var cap=document.getElementById("stageCap");var paper=document.getElementById("paper");',
     'var hint=document.getElementById("paperHint"),sub=document.getElementById("paperSub");',
     'if(PHASE==="bet"){stt.textContent="🟢 Đang nhận cược";',
@@ -2077,8 +2097,8 @@ const PAGE = [
     'var cap=MAXWIN&&bet>0&&Math.floor(bet*m)>MAXWIN;if(cap)c+=" capped";',
     // Mốc cuối = mở hết ô an toàn. Đánh dấu hẳn để không ai tưởng bảng bị thiếu.
     'if(k===TAB.length)c+=" last";',
-    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">\'+(cap?"TRẦN":fx(m))+',
-    '(k===TAB.length?\'<span class="tag">\'+(FLAT?("Ô "+CUT+"+ · TRẦN"):"MỞ HẾT")+\'</span>\':"")+"</div>"}).join("");',
+    'return \'<div class="mstep \'+c+\'" id="ms\'+k+\'">\'+(cap?"TỐI ĐA":fx(m))+',
+    '(k===TAB.length?\'<span class="tag">\'+(FLAT?("Ô "+CUT+"+ · TỐI ĐA"):"MỞ HẾT")+\'</span>\':"")+"</div>"}).join("");',
     '$("mbar").innerHTML=\'<button class="mpg" onclick="mPg(-1)"\'+(MPAGE<=0?" disabled":"")+">◀</button>"+cells+',
     '\'<button class="mpg" onclick="mPg(1)"\'+(MPAGE>=np-1?" disabled":"")+">▶</button>"}',
     'function mPg(d){var L=MTAB.length?MTAB[MTAB.length-1]:0,C=MTAB.length;',
@@ -2744,7 +2764,7 @@ const PAGE = [
     'var kl=$("skPvKl");if(kl)kl.textContent=sh<1?("còn "+roomSh+" CP · vốn tối đa "+vnd(maxMoney)+" ở x"+LV)',
     ':((over?"⚠️ ":"")+"x"+LV+" → "+sh+" CP"+(over?(" / sàn chỉ còn "+roomSh+" CP"):(" ("+vnd(ref.basis)+" Dogcoin giá trị lệnh)")));',
     'var note="";',
-    'if(over)note="⚠️ Quá trần khối lượng: lệnh cần "+sh+" CP mà chỉ còn "+roomSh+" CP. Ở x"+LV+" thì vốn tối đa là "+vnd(maxMoney)+" Dogcoin - hạ vốn hoặc hạ đòn bẩy. ";',
+    'if(over)note="⚠️ Quá giới hạn khối lượng: lệnh cần "+sh+" CP mà chỉ còn "+roomSh+" CP. Ở x"+LV+" thì vốn tối đa là "+vnd(maxMoney)+" Dogcoin - hạ vốn hoặc hạ đòn bẩy. ";',
     'if(!over&&sh>0&&m>ref.c)note="Dư "+vnd(m-ref.c)+" không đủ thêm khối lượng nên giữ lại trong ví. ";',
     // 24/08: sức nặng điểm giá (pointX) nhân thẳng vào tiền -> mỗi 1% giá = lev × pointX % vốn
     'var PX=SKS.pointX||1;',
@@ -2762,7 +2782,7 @@ const PAGE = [
     'b.disabled=SKBUSY||!!lock||wrong||ov||o.sh<1||o.c>SKS.balance;',
     'b.textContent=lock?(lbl+" · "+lock):wrong?(lbl+" · đóng lệnh cũ trước")',
     ':o.sh<1?(lbl+" · nhập tiền đã")',
-    ':ov?(lbl+" · quá trần, tối đa "+vnd(Math.floor(roomSh*o.e/LV)))',
+    ':ov?(lbl+" · quá giới hạn, tối đa "+vnd(Math.floor(roomSh*o.e/LV)))',
     ':o.c>SKS.balance?(lbl+" · thiếu Dogcoin"):(lbl+" · "+vnd(o.c))};',
     'setB("skBuyBtn",L,"🟢 MUA · giá LÊN","long");setB("skSellOpenBtn",S,"🔴 BÁN · giá XUỐNG","short")}',
     'function skOpen(short){if(!SKS||SKBUSY)return;var m=parseInt($("skMoney").value)||0;',
@@ -3188,6 +3208,12 @@ const PAGE = [
     // 📅 11/09: mỗi chiều 1 dòng hạn riêng + xem trước khi gõ (chủ server: "nạp ra web không có cảnh báo vượt")
     'DOGST=j;var ddm=j.dayMax>0?j.dayMax:0,ddi=$("dogDayInfo");if(ddi)ddi.innerHTML=ddm?("📅 Hạn rút vào game <b>"+vnd(ddm)+"</b>/ngày · hôm nay còn <b>"+vnd(Math.max(0,ddm-(j.rutToday||0)))+"</b>"):"";',
     'var ndi=$("dogNapDayInfo");if(ndi){var nl=Math.max(0,ddm-(j.napToday||0));ndi.innerHTML=ddm?("📅 Hạn nạp ra web <b>"+vnd(ddm)+"</b> Dogcoin TRONG GAME/ngày · hôm nay còn lấy được <b>"+vnd(nl)+"</b> trong game"+(DOGRATE!==1?" (= nhận <b>"+vnd(Math.floor(nl*DOGRATE))+"</b> web)":"")):""}dogPreview();',
+    // 🪙 14/09: khung tỉ lệ + dòng giới hạn CHUNG quy ra vàng (per = 100 vàng/1 Dogcoin game, st = bội số nhập)
+    'var per=j.goldPerDog||100,st=j.goldStep||10000;',
+    'var gs=$("dogGoldStat");if(gs)gs.textContent="tỉ lệ 1 : "+DOGRATE+" · dùng chung giới hạn với Nạp ra web";',
+    'var gg=$("dogGoldUnitG"),gd=$("dogGoldUnitD");if(gg)gg.textContent=vnd(st);if(gd)gd.textContent=vnd(Math.floor(st*DOGRATE/per));',
+    'var gdi=$("dogGoldDayInfo");if(gdi){var lg=Math.floor(Math.max(0,ddm-(j.napToday||0))*per/st)*st;gdi.innerHTML=ddm?("📅 Dùng CHUNG giới hạn với 💬 Nạp ra web · hôm nay còn đổi được <b>"+vnd(lg)+"</b> vàng (= nhận <b>"+vnd(Math.floor(lg*DOGRATE/per))+"</b> Dogcoin)"):""}',
+    'dogGoldPreview();',
     // 🔁 09/09: admin đóng chiều nào thì nút chiều đó khoá + đổi chữ (không mất nút, người chơi biết lý do)
     'var rb=$("dogRutBtn"),nb=$("dogNapBtn");var rOn=j.rutOpen!==false,nOn=j.napOpen!==false;',
     'rb.disabled=!j.ingameName||!rOn;nb.disabled=!j.ingameName||!nOn;',
@@ -3211,8 +3237,22 @@ const PAGE = [
     'var DOGRATE=1,DOGST=null;',
     // xem trước khi gõ số: rút -> còn/vượt hạn + trần/lần; nạp -> đổi ra web + còn/vượt hạn
     'function dogPreview(){if(!DOGST)return;var mx=DOGST.max||0,dm=DOGST.dayMax>0?DOGST.dayMax:0;',
-    'var ra=parseInt(($("dogRutAmt")||{}).value)||0,rp=$("dogRutPrev");if(rp){if(!ra)rp.textContent="";else{var rl=dm?Math.max(0,dm-(DOGST.rutToday||0)):Infinity;if(mx&&ra>mx){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt trần "+vnd(mx)+"/lần"}else if(ra>rl){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt hạn ngày - hôm nay chỉ còn rút được "+vnd(rl)+" Dogcoin"}else{rp.style.color="#8fd18f";rp.textContent="→ Túi game +"+vnd(ra)+" Dogcoin, ví web -"+vnd(ra)}}}',
-    'var na=parseInt(($("dogNapAmt")||{}).value)||0,np=$("dogNapPrev");if(np){if(!na)np.textContent="";else{var web=Math.floor(na*DOGRATE),nlft=dm?Math.max(0,dm-(DOGST.napToday||0)):Infinity;if(mx&&na>mx){np.style.color="#ff8a80";np.textContent="⚠️ Vượt trần "+vnd(mx)+"/lần"}else if(na>nlft){np.style.color="#ff8a80";np.textContent="⚠️ Vượt hạn ngày: hôm nay chỉ còn lấy được "+vnd(nlft)+" Dogcoin trong game (= nhận "+vnd(Math.floor(nlft*DOGRATE))+" web)"}else{np.style.color="#8fd18f";np.textContent="→ Lấy "+vnd(na)+" Dogcoin trong game, ví web +"+vnd(web)+(DOGRATE!==1?" (tỉ lệ 1 : "+DOGRATE+")":"")}}}}',
+    'var ra=parseInt(($("dogRutAmt")||{}).value)||0,rp=$("dogRutPrev");if(rp){if(!ra)rp.textContent="";else{var rl=dm?Math.max(0,dm-(DOGST.rutToday||0)):Infinity;if(mx&&ra>mx){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt giới hạn "+vnd(mx)+"/lần"}else if(ra>rl){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt hạn ngày - hôm nay chỉ còn rút được "+vnd(rl)+" Dogcoin"}else{rp.style.color="#8fd18f";rp.textContent="→ Túi game +"+vnd(ra)+" Dogcoin, ví web -"+vnd(ra)}}}',
+    'var na=parseInt(($("dogNapAmt")||{}).value)||0,np=$("dogNapPrev");if(np){if(!na)np.textContent="";else{var web=Math.floor(na*DOGRATE),nlft=dm?Math.max(0,dm-(DOGST.napToday||0)):Infinity;if(mx&&na>mx){np.style.color="#ff8a80";np.textContent="⚠️ Vượt giới hạn "+vnd(mx)+"/lần"}else if(na>nlft){np.style.color="#ff8a80";np.textContent="⚠️ Vượt hạn ngày: hôm nay chỉ còn lấy được "+vnd(nlft)+" Dogcoin trong game (= nhận "+vnd(Math.floor(nlft*DOGRATE))+" web)"}else{np.style.color="#8fd18f";np.textContent="→ Lấy "+vnd(na)+" Dogcoin trong game, ví web +"+vnd(web)+(DOGRATE!==1?" (tỉ lệ 1 : "+DOGRATE+")":"")}}}}',
+// 🪙 14/09: ô nhập vàng tự chèn dấu ngăn nghìn, chỉ nhận bội số 10.000, xem trước ra bao nhiêu Dogcoin
+    'function dogGoldNum(){return parseInt(((($("dogGoldAmt")||{}).value)||"").replace(/[^0-9]/g,""))||0}',
+    'function dogGoldFmt(el){var d=(el.value||"").replace(/[^0-9]/g,"");el.value=d?Number(d).toLocaleString("vi-VN"):"";dogGoldPreview()}',
+    'function dogGoldPreview(){if(!DOGST)return;var p=$("dogGoldPrev");if(!p)return;var g=dogGoldNum();if(!g){p.textContent="";return}',
+    'var per=DOGST.goldPerDog||100,st=DOGST.goldStep||10000,dm=DOGST.dayMax>0?DOGST.dayMax:0,mx=DOGST.max||0;',
+    'if(g%st){p.style.color="#ff8a80";p.textContent="⚠️ Chỉ đổi theo bội số "+vnd(st)+" vàng ("+vnd(st)+" · "+vnd(st*2)+" · "+vnd(st*5)+"…)";return}',
+    'if(mx&&g>mx){p.style.color="#ff8a80";p.textContent="⚠️ Vượt giới hạn "+vnd(mx)+" vàng/lần";return}',
+    'var lg=dm?Math.floor(Math.max(0,dm-(DOGST.napToday||0))*per/st)*st:Infinity;',
+    'if(g>lg){p.style.color="#ff8a80";p.textContent="⚠️ Vượt giới hạn ngày (chung với Nạp ra web) - hôm nay chỉ còn đổi được "+vnd(lg)+" vàng";return}',
+    'p.style.color="#8fd18f";p.textContent="→ Trừ "+vnd(g)+" vàng trong game, ví web +"+vnd(Math.floor(g*DOGRATE/per))+" Dogcoin"}',
+    'function dogGold(){if(DOGBUSY)return;var g=dogGoldNum();if(!g)return toast("Nhập số vàng");',
+    'var st=(DOGST&&DOGST.goldStep)||10000;if(g%st)return toast("⚠️ Chỉ đổi theo bội số "+vnd(st)+" vàng");',
+    'DOGBUSY=true;var b=$("dogGoldBtn");b.disabled=true;b.textContent="⏳ Đang đổi...";',
+    'api("/api/dogbridge/napgold",{gold:g}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent="🪙 Đổi ra Dogcoin";setBal(j.balance);toast(j.message);$("dogGoldAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="🪙 Đổi ra Dogcoin";toast("❌ "+e.message)})}',
     'function dogNap(){if(DOGBUSY)return;var amt=parseInt($("dogNapAmt").value)||0;if(amt<1)return toast("Nhập số Dogcoin");if(DOGRATE!==1)toast("💱 Lấy "+vnd(amt)+" trong game → +"+vnd(Math.floor(amt*DOGRATE))+" Dogcoin web");',
     'DOGBUSY=true;var b=$("dogNapBtn");b.disabled=true;b.textContent="⏳ Đang nạp...";api("/api/dogbridge/nap",{amount:amt}).then(function(j){DOGBUSY=false;b.textContent="💬 Nạp ra web";setBal(j.balance);toast(j.message||"✅ Đã nạp!");$("dogNapAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="💬 Nạp ra web";toast("❌ "+e.message);dogSync()})}',
     '',
@@ -3448,7 +3488,7 @@ const PAGE = [
     'if(souls.length<1&&!(PC&&PC.raw))return toast("💠 Chọn ít nhất 1 dòng linh hồn trước đã (dòng đầu miễn phí)");',   // 🔒 09/09: chế độ PAL GỐC không có linh hồn -> bỏ kiểm
     'if(PCGENDER!==1&&PCGENDER!==2)return toast("🚻 Chọn giới tính ♂ Đực hoặc ♀ Cái trước đã");',
     'var passives=Object.keys(PCSEL);',
-    'if(PCUP>0&&!(await gConfirm("💎 Nâng cấp vượt trần tốn <b>"+vnd(PCUP)+"</b> Dogcoin, trừ ví ngay khi nhận (giao hụt tự hoàn). Đồng ý?","✅ Nhận & trừ phí")))return;',
+    'if(PCUP>0&&!(await gConfirm("💎 Nâng cấp vượt giới hạn tốn <b>"+vnd(PCUP)+"</b> Dogcoin, trừ ví ngay khi nhận (giao hụt tự hoàn). Đồng ý?","✅ Nhận & trừ phí")))return;',
     'PCBUSY=true;var b=$("pcmOk");b.disabled=true;b.textContent="⏳ Đang giao... (có thể mất 1-2 phút, ĐỪNG tắt trang)";',
     'api("/api/pal/claim",{id:PCIT.id,souls:souls,passives:passives,gender:PCGENDER,boss:PCBOSS,',
     'soulHpPct:parseInt($("sr_hp").value)||0,soulAtkPct:parseInt($("sr_atk").value)||0,soulDefPct:parseInt($("sr_def").value)||0,soulWorkPct:parseInt($("sr_work").value)||0,',

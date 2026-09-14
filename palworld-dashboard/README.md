@@ -670,6 +670,21 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🪙 **ĐỔI VÀNG trong game → Dogcoin web, DÙNG CHUNG giới hạn ngày với 💬 Nạp ra web** (chủ server: thương nhân đã
+  tắt nên vàng thành vô dụng; "2 UI khác nhau mà xài chung 1 giới hạn"). Quy ước **100 vàng = 1 Dogcoin TRONG GAME** nên
+  10.000 vàng = `dogNapRate` × 100 Dogcoin web (tỉ lệ 1:4 → 400) - nhờ quy về cùng đơn vị với luồng nạp nên KHÔNG cần ô cấu
+  hình mới, hai đường ăn chung một bộ đếm `user.dogDay.nap`. Server: `webNapGold` (chỉ nhận BỘI SỐ 10.000 vàng, ≤ 500.000
+  vàng/lần, kiểm giới hạn ngày trước khi đụng SFTP, câu chặn quy ngược ra vàng), `requireOnline(gameName, itemId)` thêm tham
+  số để đếm `Money` thay `DogCoin`, mod TAKE/COUNT vốn đã nhận itemId bất kỳ nên KHÔNG phải sửa Lua. Ví cộng
+  `floor(took × rate / 100)` theo số vàng THẬT lấy được, bộ đếm cộng `took / 100`. Web: card riêng 🪙 Đổi Vàng ra Dogcoin
+  (dưới 💬 Nạp ra web) với khung tỉ lệ có icon `T_itemicon_Material_Money.webp` → `T_itemicon_Material_DogCoin.webp`, ô nhập
+  tự chèn dấu ngăn nghìn (10.000), xem trước "→ Trừ N vàng, ví web +M Dogcoin", dòng vàng "Dùng CHUNG giới hạn với 💬 Nạp ra
+  web · hôm nay còn đổi được X vàng". Route `/api/dogbridge/napgold`. Panel: chú thích ô 📅 nói rõ vàng dùng chung hạn.
+  Với 8.000/ngày + tỉ lệ 4: tối đa 800.000 vàng/ngày = 32.000 Dogcoin web. Test bridgetest +14 (38/38) + e2e HTTP.
+- **14/09** — 🔤 **Chữ "trần" người chơi đọc thấy → "giới hạn"** (chủ server: dễ đọc hơn). 14 chỗ trong webplay/index:
+  giới hạn cược Big Small, quá giới hạn khối lượng cổ phiếu, vượt giới hạn /lần ở cầu Dogcoin, nâng cấp pal vượt giới hạn…
+  Riêng 2 nhãn hẹp trong bảng trả thưởng Dò Mìn/Leo Thang dùng **"TỐI ĐA"** (6 ký tự) cho khỏi vỡ lưới. Không đụng comment,
+  log admin, hay các câu đã đổi thành "kịch khung" hôm 09/09.
 - **11/09** — 🔁 **Hạn ngày chiều NẠP đếm theo Dogcoin TRONG GAME** (chủ server: "để 5000 thì game vẫn cho chuyển ra 5000, web nhận
   10000, sau đó không chuyển nữa - đang bị ngược"). Trước: đếm theo số web nhận (hạn 10.000 web = 5.000 game). Nay: `dogBridgeDayCheck`
   chiều nạp dùng `amount` (game), đếm `r.took` (game) - cùng đơn vị với chiều rút nên 1 ô hạn dùng chung cho cả 2 chiều; web nhận
