@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🗂️ **Thay ảnh trong `assets/` xong người chơi vẫn thấy ảnh CŨ - sửa tận gốc bằng ETag** (chủ server: "sao mình
+  vẫn thấy hình này" sau khi chén đã cắt tròn - server trả đúng ảnh mới, lỗi nằm ở trình duyệt). `assets.js` trước gửi
+  `Cache-Control: public, max-age=604800` nên ảnh nằm lì trong máy người chơi **7 ngày**: đổi icon item, đổi chén, đổi ảnh
+  gì cũng phải chờ hết hạn hoặc bắt từng người Ctrl+F5. Nay mỗi file có **ETag = sha1 nội dung** (tính lúc quét thư mục và
+  cả lúc admin up hình từ panel) + `Cache-Control: no-cache`: trình duyệt hỏi lại mỗi lần, chưa đổi thì nhận **304** vài chục
+  byte, đổi file là thấy ngay. Kiểm: GET lần đầu 200 có ETag, gửi lại kèm `If-None-Match` ra 304. ⚠️ Ghi chú: `ASSETS.serve`
+  chỉ nhận GET nên `curl -I` (HEAD) luôn ra 404, đừng tưởng hỏng.
 - **14/09** — ✂️ **Cắt TRÒN ảnh chén + bỏ chú thích dán dưới chén** (chủ server: ảnh gửi lên chưa cắt, và không cần chữ ở dưới).
   Ảnh gốc là ảnh chụp màn hình 157×163 nền đục. Không có thư viện ảnh trong repo nên viết `scratchpad/png.js` đọc/ghi PNG RGBA
   8-bit thuần Node (inflate → bỏ filter → pixel → deflate + CRC). Dò đĩa vàng bằng đoạn màu dài nhất theo hàng/cột: tâm

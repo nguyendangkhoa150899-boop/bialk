@@ -10,6 +10,9 @@
 // trống ảnh/mất tiếng chứ không vỡ giao diện, không làm sập bot.
 
 const fs = require('fs');
+const crypto = require('crypto');
+// 14/09: dấu vân tay nội dung -> ETag, đổi file là đổi vân tay
+const etagOf = (buf) => '"' + crypto.createHash('sha1').update(buf).digest('base64').slice(0, 22) + '"';
 const path = require('path');
 
 const DIR = path.join(__dirname, 'assets');
@@ -34,7 +37,7 @@ function scanDir(dir, prefix) {
         const type = MIME[path.extname(e.name).toLowerCase()];
         if (!type) continue;
         const key = '/' + prefix + e.name;
-        try { store[key] = { buf: fs.readFileSync(path.join(dir, e.name)), type }; names.push(prefix + e.name); } catch { }
+        try { const buf = fs.readFileSync(path.join(dir, e.name)); store[key] = { buf, type, etag: etagOf(buf) }; names.push(prefix + e.name); } catch { }
     }
 }
 scanDir(DIR, '');
@@ -46,7 +49,14 @@ function serve(req, res, urlPath) {
     if (req.method !== 'GET') return false;
     const f = store[urlPath];
     if (!f) return false;
-    res.writeHead(200, { 'Content-Type': f.type, 'Cache-Control': 'public, max-age=604800' });
+    // 14/09: cache CÓ kiểm lại. Trước để max-age 7 ngày nên chủ server thay ảnh (icon item, chén
+    // nặn...) mà người chơi vẫn thấy ảnh cũ cả tuần. Giờ trình duyệt hỏi lại mỗi lần: giống thì 304.
+    if (f.etag && req.headers['if-none-match'] === f.etag) {
+        res.writeHead(304, { 'ETag': f.etag, 'Cache-Control': 'no-cache' });
+        res.end();
+        return true;
+    }
+    res.writeHead(200, { 'Content-Type': f.type, 'Cache-Control': 'no-cache', 'ETag': f.etag || '' });
     res.end(f.buf);
     return true;
 }
@@ -58,7 +68,7 @@ function add(relPath, buf) {
     if (!type || !Buffer.isBuffer(buf)) return false;
     const key = '/' + relPath;
     if (!store[key]) names.push(relPath);
-    store[key] = { buf, type };
+    store[key] = { buf, type, etag: etagOf(buf) };   // 14/09: hình admin up lúc chạy cũng có ETag
     return true;
 }
 
