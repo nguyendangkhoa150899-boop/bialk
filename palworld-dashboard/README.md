@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🩹 **SỬA GẤP: trang Tài Xỉu đứng hình sau bản hũ Bão** (chủ server: "sao tài xỉu local nó chết rồi"). Bot vẫn chạy ván
+  bình thường (log ra tới ván #43) nhưng web đứng ở ván #40, đồng hồ "--": hàm `txPotDraw` bị đợt patch chèn **lọt vào giữa thân
+  `renderHist20`** nên chỗ gọi ở vòng cập nhật state không thấy nó → `ReferenceError` → hàm vẽ chết ngay sau dòng "Ván #...",
+  mọi thứ phía dưới (đồng hồ, xí ngầu, ô cược) không được vẽ nữa. Đã đưa `txPotDraw` ra **top-level** (ngay sau `$` và `vnd`).
+  Thêm bộ test mới `scopecheck.js`: render trang thật, xoá chuỗi/comment rồi đếm ngoặc để tìm mọi hàm khai báo lồng bên trong
+  hàm khác **mà vẫn bị gọi từ ngoài** - đúng loại lỗi này. Đã thử ngược trên bản lỗi: test bắt đúng 1 lỗi; bản sửa: sạch.
+  Bài học cho lần sau: patch chèn hàm mới phải neo vào **mốc top-level**, không neo vào dòng nằm giữa thân hàm khác.
 - **14/09** — 🌪️ **HŨ BÃO cho Tài Xỉu: trúng Bão ăn x40** (chủ server: "đặt bão 1000 thì hũ ăn 10.000 + x30 của bão = 40.000",
   "cứ thắng là x40 để người chơi tham gia bão nhiều"). Hũ `tx` thêm vào `POT_KEYS` (mồi 10.000, trần nuôi 500.000) nên hiện
   luôn ở card hũ của panel, admin cộng/trừ tay được. Nuôi 5% TỔNG cược mỗi ván, nuôi TRƯỚC khi trả để tiền ván đó cũng bú được.

@@ -2007,8 +2007,6 @@ const PAGE = [
     '(h.winners||[]).forEach(function(w){if(w.u===MYID)winAmt+=w.amount});',
     'var net=winAmt-stake;',
     'var tai=(h.tx==="BIG"||h.tx==="TÀI"||h.tx==="TAI");',
-    'function txPotDraw(j){var b=$("txPotVal");if(!b)return;b.textContent=vnd(j.txPot||0);',
-    'var n=$("txPotNote");if(n)n.textContent="· trúng Bão bú thêm 1 ăn "+(j.txPotX||10)+" tiền cược (đã tính trong x40)";}',
     'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span>\'+h.cl);',
     'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
     '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
@@ -2047,6 +2045,9 @@ const PAGE = [
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
+    // 🌪️ 14/09 hũ Bão - PHẢI ở top-level, trước đây lọt vào trong renderHist20 làm treo trang
+    'function txPotDraw(j){var b=$("txPotVal");if(!b)return;b.textContent=vnd(j.txPot||0);',
+    'var n=$("txPotNote");if(n)n.textContent="· trúng Bão bú thêm 1 ăn "+(j.txPotX||10)+" tiền cược (đã tính trong x40)";}',
     'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile"};',
     'var GRP_LAST={games:"tx",profile:"daily"};',
     'var CURPAGE="tx";',
