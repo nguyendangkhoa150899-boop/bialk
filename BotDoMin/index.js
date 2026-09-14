@@ -3572,9 +3572,12 @@ function luckyPotPop(key) {
 // nuôi vào, không bao giờ lỗ quá quỹ. Đây là lý do bản 2 an toàn hơn hẳn bản 1.
 // Nhiều người cùng trúng mà hũ không đủ -> CHIA THEO TỈ LỆ TIỀN CƯỢC (không phải ai trước ăn trước).
 // 💰 % NUÔI mặc định 2% tổng cược mỗi ván, nhà cái bao (người chơi vẫn bị trừ đúng số đã đặt).
-//   Vì sao 2%: biên nhà cái Tài Xỉu là 2,78% ở cửa tài/xỉu/chẵn/lẻ và 16,7% ở cửa Bão, trộn lại
-//   khoảng 4% tổng cược. Nuôi bao nhiêu % là nhà cái CHO ĐI bấy nhiêu %, nên 5% (bản 1) là lỗ,
-//   2% giữ lại chừng một nửa lãi, 3% là mạo hiểm hơn cho hũ mau to. Admin chỉnh ở panel tab 💣.
+//   Vì sao 1% (chủ server chốt sau khi xem mô phỏng 300.000 ván): nuôi bao nhiêu % là nhà cái
+//   CHO ĐI bấy nhiêu %, mà biên Tài Xỉu chỉ khoảng 4% tổng cược. Đo ở mức cửa Bão chiếm 10%
+//   tiền cược: không hũ 3,78% · nuôi 1% còn 2,87% · nuôi 2% còn 1,69% · nuôi 3% còn 1,21%.
+//   Nuôi 2% chỉ hoà vốn khi cửa Bão đông gấp ba (10% -> 30% tổng cược), đặt cược quá lớn vào
+//   hành vi người chơi. 1% giữ được biên mà hũ vẫn lên tới trần, chỉ chậm hơn; muốn hũ to ngay
+//   thì admin bấm NẠP/ĐẶT tay ở panel. Admin chỉnh % ở panel tab 💣.
 // Hũ chạm trần nuôi (LUCKY_POT_MAX_BY.tx) thì ngừng trích; admin nạp tay thì không bị trần.
 // 🌪️ 14/09 - RA BÃO KHÔNG CÒN THUA SẠCH: cửa thường ĐÚNG BÊN với bão được hoàn 30% tiền cược
 // (tức chỉ thua 70%), cửa ngược bên vẫn thua hết. Chủ server: "đặt 10.000 tài ra bão 444/555/666
@@ -3585,7 +3588,7 @@ function luckyPotPop(key) {
 // tài/xỉu/chẵn/lẻ giảm từ 2,78% xuống 2,36%. Nhỏ, đổi lại người chơi đỡ cay khi gặp bão.
 const TX_STORM_REFUND = 0.3;
 const TX_POT_X_DEF = 10;          // bội số bú hũ mặc định (cược × 10)
-const TX_POT_RATE_DEF = 0.02;     // % tổng cược mỗi ván nuôi vào hũ Bão
+const TX_POT_RATE_DEF = 0.01;     // % tổng cược mỗi ván nuôi vào hũ Bão (1%, chủ server chốt 14/09)
 function txPotCfg() {
     const c = dbCache._txPot && typeof dbCache._txPot === 'object' ? dbCache._txPot : {};
     const rate = Number(c.rate), x = Number(c.x);
@@ -3634,6 +3637,19 @@ function adminPotAdd(key, amount) {
     const before = potGet(key);
     potBook()[key] = Math.max(0, before + n);
     writeLog('ADMIN', `[HŨ ${POT_LABEL[key]}] Panel ${n > 0 ? 'nạp' : 'rút'} ${Math.abs(n).toLocaleString()} - hũ ${before.toLocaleString()} -> ${potGet(key).toLocaleString()}`);
+    saveDbNow();
+    if (key === 'gacha' && typeof withdrawBoardRefresh === 'function') withdrawBoardRefresh();
+    return { ok: true, key, pot: potGet(key), max: potMax(key) };
+}
+// 🎯 14/09: admin ĐẶT THẲNG số tiền trong hũ (khác adminPotAdd là cộng/trừ chênh lệch).
+// Tiện khi muốn mồi hũ Bão lên đúng một con số tròn cho đẹp bảng.
+function adminPotSet(key, amount) {
+    if (!POT_KEYS.includes(key)) return { error: 'Hũ không hợp lệ' };
+    const n = Math.floor(Number(amount));
+    if (!(Number.isFinite(n) && n >= 0 && n <= 1000000000)) return { error: 'Nhập số từ 0 đến 1.000.000.000' };
+    const before = potGet(key);
+    potBook()[key] = n;
+    writeLog('ADMIN', `[HŨ ${POT_LABEL[key]}] Panel ĐẶT THẲNG hũ ${before.toLocaleString()} -> ${n.toLocaleString()}`);
     saveDbNow();
     if (key === 'gacha' && typeof withdrawBoardRefresh === 'function') withdrawBoardRefresh();
     return { ok: true, key, pot: potGet(key), max: potMax(key) };
@@ -5971,6 +5987,7 @@ client.once('ready', async (c) => {
             // 09/09: chỉ còn hũ nuôi Quay Pal; Dò Mìn/Leo Thang = bội số nổ hũ (mults)
             getPot: () => ({ pots: { gacha: potGet('gacha'), tx: potGet('tx') }, labels: POT_LABEL, maxBy: { gacha: LUCKY_POT_MAX_BY.gacha, tx: LUCKY_POT_MAX_BY.tx }, txPot: txPotCfg(), baoRate: TX_BAO_RATE, mults: { mines: potCfg('mines').mults, stairs: potCfg('stairs').mults }, leftover: { mines: potGet('mines'), stairs: potGet('stairs') }, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: minBet(), seedBy: { gacha: POT_SEED_BY.gacha } }),
             addPot: (key, amount) => adminPotAdd(key, amount),
+            setPot: (key, amount) => adminPotSet(key, amount),   // 🎯 14/09: đặt thẳng số tiền trong hũ
             setPotCfg: (key, o) => setPotCfg(key, o),   // 🏆 09/09: danh sách bội số nổ hũ (x10/x15/x20) của Dò Mìn/Leo Thang
             setTxPotCfg: (o) => setTxPotCfg(o),         // 🌪️ 14/09: % nuôi + bội số bú hũ Bão
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),

@@ -670,6 +670,26 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 📉 **Hạ nuôi hũ Bão 2% → 1% + admin ĐẶT THẲNG số tiền trong hũ** (chủ server hỏi "2% nuôi hủ bão vậy hợp lý
+  ko", xem mô phỏng xong chốt "hạ hủ xuống 1% tiền cược cho toàn bộ cược", "có chỗ cho admin config tiền trong hủ luôn nha").
+  📊 **Mô phỏng 300.000 ván** bằng chính `settleTXPayout` (`scratchpad/potsim.js`), mỗi ván cả bàn cược 100.000, đo biên nhà cái:
+
+  | cửa Bão chiếm | không hũ | nuôi 1% | nuôi 2% | nuôi 3% | nuôi 10% cược Bão |
+  |---|---|---|---|---|---|
+  | 5% | 2,98% | 1,90% | 1,74% | 1,49% | 2,60% |
+  | 10% | 3,78% | 2,87% | 1,69% | 1,21% | 2,72% |
+  | 20% | 5,35% | 4,31% | 3,27% | 2,57% | 3,03% |
+  | 30% | 6,59% | 5,45% | 4,90% | 3,74% | 3,47% |
+
+  Kết luận đã báo chủ server: nuôi 2% chỉ hoà vốn khi cửa Bão đông **gấp ba** (10% → 30% tổng cược), tức đặt cược quá lớn vào
+  hành vi người chơi; 1% giữ thêm hơn một điểm biên mà hũ vẫn lên tới trần, chỉ chậm hơn. Hũ muốn to ngay thì admin mồi tay.
+  Cũng đã nêu phương án "nuôi 10% tiền cược cửa Bão" - an toàn hơn vì không bao giờ tụt dưới biên gốc, nhưng chủ server chọn 1%.
+  `TX_POT_RATE_DEF` 0.02 → **0.01**; admin vẫn chỉnh được ở panel tab 💣 nên không cần sửa code lần sau.
+  🎯 **`adminPotSet(key, amount)`** mới + route `/api/pot/set` + nút **🎯 Đặt đúng số** cạnh nút **➕ Cộng thêm** trong card hũ.
+  Trước chỉ cộng/trừ chênh lệch nên muốn hũ đúng 250.000 phải tự tính; giờ gõ số rồi bấm là hũ thành đúng số đó. Chặn số âm,
+  cho vượt trần nuôi để mồi hũ to, ghi log riêng "Panel ĐẶT THẲNG hũ X -> Y". Áp dụng cho mọi hũ chứ không riêng hũ Bão.
+  ✅ `txpottest.js` lên **58 case** (thêm 9 case cho nuôi 1% + cộng/trừ/đặt thẳng/chặn âm/chặn hũ lạ). Đã gọi thật 4 lần
+  `/api/pot/set` và `/api/pot/add` trên bot test: đặt 250.000 → rút 50.000 → chặn số âm → đặt lại 100.000, log khớp từng dòng.
 - **14/09** — 🎲 **Tài Xỉu: ra Bão không còn thua sạch + đổi tên cửa + nút bấm nhanh mới** (chủ server: "đối với bão đặt đúng
   sẽ thua 70% số xu đặt", "đặt 10.000 tài ra bão 4 4 4 thì sẽ thua 7.000 còn ra 111 222 333 thì thua hết").
   **Luật hoàn 30%**: ra Bão thì cửa thường ĐÚNG BÊN với bão được hoàn `TX_STORM_REFUND` = 30% tiền cược (chỉ thua 70%),

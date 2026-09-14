@@ -491,6 +491,13 @@ function startPanel(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
+                // 🎯 14/09: đặt THẲNG số tiền trong hũ (khác /api/pot/add là cộng thêm)
+                if (path === '/api/pot/set') {
+                    if (!ctx.setPot) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setPot(String(body.key || ''), body.amount);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 // 🌪️ 14/09: hũ Bão Tài Xỉu - % nuôi mỗi ván + bội số bú hũ (SUPER)
                 if (path === '/api/txpot/cfg') {
                     if (!ctx.setTxPotCfg) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
@@ -2208,6 +2215,16 @@ async function potAdd(key){
   if(!await uiConfirm((n>0?'Nạp ':'Rút ')+Math.abs(n).toLocaleString('vi-VN')+' Dogcoin '+(n>0?'vào':'khỏi')+' hũ '+lb+'?',n>0?'➕ Nạp hũ':'➖ Rút hũ',n>0?'btn-green':'btn-red'))return;
   try{const j=await api('/api/pot/add',{key:key,amount:n});toast('🏆 Hũ '+lb+' hiện có '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
 }
+// 🎯 14/09: đặt THẲNG số tiền trong hũ - gõ số rồi bấm, hũ thành đúng số đó
+async function potSet(key){
+  const el=document.getElementById('potAmt_'+key);
+  const n=parseInt(el.value,10);
+  if(!(n>=0))return toast('Nhập số Dogcoin từ 0 trở lên');
+  const lb=(STATE.pot&&STATE.pot.labels&&STATE.pot.labels[key])||key;
+  const cur=Number((STATE.pot&&STATE.pot.pots&&STATE.pot.pots[key])||0);
+  if(!await uiConfirm('Đặt hũ '+lb+' thành ĐÚNG '+n.toLocaleString('vi-VN')+' Dogcoin? Hiện đang '+cur.toLocaleString('vi-VN')+'.','🎯 Đặt số hũ','btn-blue'))return;
+  try{const j=await api('/api/pot/set',{key:key,amount:n});toast('🎯 Hũ '+lb+' giờ đúng '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
+}
 // 🏆 09/09: bội số nổ hũ (Dò Mìn/Leo Thang) - danh sách "10,15,20", trúng 🏆 bốc ngẫu nhiên 1 số × tiền cược
 async function potCfgSave(key,btn){
   const raw=(document.getElementById('potMults_'+key).value||'').trim();
@@ -3145,8 +3162,9 @@ async function refresh(force){
           '<div style="flex:3"><b>'+esc((pt.labels&&pt.labels[k])||k)+'</b><br>'+
             '<span id="potVal_'+k+'" style="font-size:20px;color:#f0b90b">-</span>'+
             '<span id="potFull_'+k+'" class="badge on" style="display:none"> đầy - ngừng tự trích</span></div>'+
-          '<div style="flex:3"><input id="potAmt_'+k+'" inputmode="numeric" placeholder="Số Dogcoin (âm = rút)"></div>'+
-          '<button class="btn-green" onclick="potAdd(\\''+k+'\\')">➕ Nạp</button>'+
+          '<div style="flex:3"><input id="potAmt_'+k+'" inputmode="numeric" placeholder="Số Dogcoin · cộng thêm (âm = rút) hoặc đặt đúng số"></div>'+
+          '<button class="btn-green" onclick="potAdd(\\''+k+'\\')">➕ Cộng thêm</button>'+
+          '<button class="btn-blue" onclick="potSet(\\''+k+'\\')">🎯 Đặt đúng số</button>'+
         '</div>').join('')
         // 🏆 09/09: bội số nổ hũ 2 minigame (hết hũ nuôi) - ô text "10,15,20", SUPER
         +['mines','stairs'].map(k=>'<div class="row epOnly" style="align-items:center;margin-bottom:8px"><div style="flex:3"><b>'+(k==='mines'?'💣 Dò Mìn':'🪜 Leo Thang')+'</b><br><span class="muted" style="font-size:12px">🏆 bội số nổ hũ (bốc ngẫu nhiên × tiền cược)'+(pt.leftover&&pt.leftover[k]>0?' · hũ cũ còn '+Number(pt.leftover[k]).toLocaleString('vi-VN')+' không dùng':'')+'</span></div>'
@@ -3154,7 +3172,7 @@ async function refresh(force){
           +'<button class="btn-green" onclick="potCfgSave(\\''+k+'\\',this)">💾 Lưu</button></div>').join('')
         // 🌪️ 14/09: luật hũ Bão Tài Xỉu
         +'<div class="row epOnly" style="align-items:center;margin-bottom:8px"><div style="flex:3"><b>🌪️ Hũ Bão (Tài Xỉu)</b><br><span class="muted" style="font-size:12px">Trúng Bão = x'+((pt.baoRate)||30)+' tiền cửa + bú hũ min(cược × bội số, hũ đang có). Nhà cái KHÔNG bù thêm.</span></div>'
-          +'<div style="flex:1.5"><input id="txPotRate" inputmode="decimal" placeholder="% nuôi/ván" title="Phần trăm tổng cược mỗi ván nuôi vào hũ (khuyên 2)"></div>'
+          +'<div style="flex:1.5"><input id="txPotRate" inputmode="decimal" placeholder="% nuôi/ván" title="Phần trăm tổng cược mỗi ván nuôi vào hũ (khuyên 1)"></div>'
           +'<div style="flex:1.5"><input id="txPotX" inputmode="numeric" placeholder="Bội số bú hũ" title="Trúng Bão bú tối đa cược × số này"></div>'
           +'<button class="btn-green" onclick="txPotCfgSave(this)">💾 Lưu</button></div>';
       box.dataset.built=keys.join(',');
