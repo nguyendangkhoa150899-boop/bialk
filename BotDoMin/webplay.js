@@ -749,13 +749,14 @@ const PAGE = [
     '#debtChip .lb{font-size:10px;color:#ffb3b3;letter-spacing:.3px}',
     '#debtChip .vl{font-size:15px;font-weight:900;color:#ff8b8b}',
     '#debtChip:active{transform:translateY(1px)}',
-    '#debtBarNote{font-size:11px;color:#ffb3b3;margin-top:4px}',
     '#nav{display:flex;gap:6px;margin-bottom:8px}',
     '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:13px;padding:9px 2px}',
-    // 📒 14/09: tab Nợ tô đỏ cho nổi, chỉ hiện khi đang nợ
-    '#navDebt{background:linear-gradient(180deg,#3a1c1c,#2a1414);border-color:#a33;color:#ff9b9b;font-weight:900}',
-    '#navDebt.on{background:linear-gradient(180deg,#5a2626,#3a1818);color:#ffd2d2;border-color:#e06060;box-shadow:0 0 0 1px #e0606055}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
+    // 📒 14/09: tab Nợ tô ĐỎ, chỉ hiện khi đang nợ.
+    // ⚠️ PHẢI viết '#nav button#navDebt' chứ không phải '#navDebt': luật '#nav button'
+    // (id + thẻ = 101) mạnh hơn luật chỉ có id (100) nên sẽ đè mất màu đỏ. Bản đầu dính đúng bẫy này.
+    '#nav button#navDebt{background:linear-gradient(180deg,#4a1f1f,#2e1414);border-color:#c04a4a;color:#ff9b9b;font-weight:900}',
+    '#nav button#navDebt.on{background:linear-gradient(180deg,#7a2a2a,#4a1a1a);color:#fff0f0;border-color:#ff6b6b;box-shadow:0 0 0 1px #ff6b6b88}',
     // tầng 1: 2 nút nhóm to rõ; nhóm đang chọn viền vàng
     '#navGrp{display:flex;gap:6px;margin-bottom:6px}',
     '#navGrp button{flex:1;background:#1a1f2d;border:1px solid var(--line);color:var(--muted);font-size:14px;font-weight:800;padding:11px 2px;letter-spacing:.5px}',
@@ -1534,7 +1535,7 @@ const PAGE = [
     '<div class="muted" style="font-size:12px;margin-top:6px">Còn nợ một đồng là <b>không mua được đồ ở shop item</b> và <b>không chuyển được pal vào game</b>. Mấy thứ khác vẫn chơi bình thường, trả sạch nợ là mở khoá ngay. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
     // 🆘 14/09: réo anh em ra kênh chat trả giùm
     '<button class="btn-full" id="sosBtn" style="background:linear-gradient(180deg,#b5352f,#8a201b)" onclick="debtSos()">🆘 CẦU CỨU ANH EM</button>',
-    '<div class="muted" style="font-size:12px;margin-top:6px">Đăng thẻ số dư + số nợ của bạn ra kênh chat, kèm nút để anh em bấm <b>trả nợ giùm</b>. Mỗi 10 phút réo được một lần thôi nha.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:6px">Đăng thẻ số dư + số nợ của bạn ra kênh chat, kèm nút để anh em bấm <b>trả nợ giùm</b>. Mỗi 1 phút réo được một lần thôi nha.</div>',
     '</div>',
     '</div>',
 

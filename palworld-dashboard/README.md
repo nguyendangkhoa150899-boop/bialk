@@ -670,6 +670,18 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🔴 **SỬA: tab Nợ ra màu vàng chứ không đỏ** (chủ server gửi ảnh: "ô nợ này cho thành màu đỏ") **+ hạ nghỉ
+  cầu cứu 10 phút → 1 phút** ("cho 1 phút bấm 1 lần nữa").
+  Lại là bẫy độ ưu tiên CSS, lần này ở hướng khác: `#navDebt` chỉ có **id** nên điểm 100, thua `#nav button` có **id + thẻ**
+  nên điểm 101 → nền/viền/chữ đỏ bị đè sạch, và `#navDebt.on` (110) thua `#nav button.on` (111) nên lúc chọn ra viền vàng.
+  Viết lại thành `#nav button#navDebt` (201) và `#nav button#navDebt.on` (211) là thắng. Nhân tiện tô đậm hơn cho rõ và
+  dọn luật thừa `#debtBarNote` còn sót từ lúc bỏ thanh trả nợ.
+  🔍 **`hiddencheck.js` thêm luật thứ 3**: đọc markup lấy mọi id nút nằm trong `#nav`/`#navGrp`, rồi bắt mọi luật CSS tô
+  màu riêng cho nút đó mà **không** viết kèm `#nav button` - tức là chắc chắn sẽ bị đè. Thử ngược trên bản đã push: bắt đúng
+  2 lỗi (`#navDebt`, `#navDebt.on`); bản sửa: sạch. Bộ này giờ soi 3 loại bẫy CSS: ẩn không được, canh giữa rớt dòng,
+  và tô màu nút nav bị đè.
+  ⏱️ `DEBT_SOS_CD_MS` 10 phút → **1 phút**, câu báo đổi từ đếm phút sang **đếm giây** cho khớp ("chờ 60 giây nữa").
+  Đã thử thật: bấm lần đầu đăng được, bấm lại ngay bị chặn đúng câu.
 - **14/09** — 📒 **Tab NỢ đỏ riêng trong nhóm Hồ sơ + nút 🆘 CẦU CỨU ANH EM** (chủ server: "thêm 1 ô Nợ màu đỏ nếu người chơi
   có nợ ở phần hồ sơ phía trước cá nhân, khi có nợ mới hiện ra bấm vào để trả nợ, nếu không nợ thì không hiện", "khi bấm vào có
   nút cầu cứu anh em kênh chat sẽ hiện thông báo số dư để có thể người khác trả nợ giùm, đây là id 1538752789499347037").

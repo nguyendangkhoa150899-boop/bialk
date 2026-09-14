@@ -765,15 +765,15 @@ function debtPayFor(payerId, payerName, debtorId, amount) {
 }
 
 // 🆘 14/09 - CẦU CỨU ANH EM: đăng thẻ số dư + nợ ra kênh chat, kèm nút 🤝 để người khác
-// bấm trả giùm ngay tại đó. Có nghỉ 10 phút giữa 2 lần để khỏi spam kênh.
+// bấm trả giùm ngay tại đó. Có nghỉ 1 phút giữa 2 lần để khỏi spam kênh (chủ server chốt).
 const DEBT_SOS_CHANNEL = '1538752789499347037';
-const DEBT_SOS_CD_MS = 10 * 60 * 1000;
+const DEBT_SOS_CD_MS = 60 * 1000;   // 14/09: 10 phút -> 1 phút
 async function debtSosPost(userId) {
     const st = debtStatus(userId);
     if (st.total <= 0) return { error: 'Bạn không nợ đồng nào - khỏi cầu cứu 😄' };
     const u = getUserData(userId);
     const con = DEBT_SOS_CD_MS - (Date.now() - (u.sosAt || 0));
-    if (con > 0) return { error: `Vừa cầu cứu xong rồi - chờ ${Math.ceil(con / 60000)} phút nữa hãy réo tiếp nhé` };
+    if (con > 0) return { error: `Vừa cầu cứu xong rồi - chờ ${Math.ceil(con / 1000)} giây nữa hãy réo tiếp nhé` };
     const ch = await client.channels.fetch(DEBT_SOS_CHANNEL).catch(() => null);
     if (!ch) return { error: 'Không vào được kênh cầu cứu - nhắn admin giùm' };
     const embed = new EmbedBuilder()
