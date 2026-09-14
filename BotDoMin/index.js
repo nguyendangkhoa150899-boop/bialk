@@ -779,7 +779,7 @@ async function debtSosPost(userId) {
     const embed = new EmbedBuilder()
         .setTitle('🆘 CẦU CỨU: AI TRẢ NỢ GIÙM VỚI!')
         .setDescription([
-            `<@${userId}> đang kẹt nợ, réo anh em một tiếng 🙏`,
+            `<@${userId}> trả nợ giùm tao đi tụi bây tao khổ quá 🙏`,
             '',
             `💰 Số dư ví: **${(u.points || 0).toLocaleString()}** ${DOGCOIN_EMOJI}`,
             ...(st.loan > 0 ? [`📒 Nợ vay: **${st.loan.toLocaleString()}**`] : []),
