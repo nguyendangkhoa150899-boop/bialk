@@ -151,6 +151,7 @@ function startWebPlay(ctx) {
                         // 🌪️ 14/09: hũ Bão + tỉ lệ bú hũ (1 ăn N) để trang Tài Xỉu hiện
                         txPot: ctx.txPot ? ctx.txPot() : 0,
                         txPotX: (typeof ctx.txPotX === 'function' ? ctx.txPotX() : ctx.txPotX) || 10,
+                        txBaoRate: ctx.txBaoRate || 30,
                         live, phase,
                         gameId: tx.gameId,
                         targetTime: tx.targetTime,
@@ -1114,14 +1115,11 @@ const PAGE = [
     '#paper.open img{animation:chenIdle 1.8s ease-in-out infinite}',
     '@keyframes chenIdle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-1.5deg)}}',
     // 🌪️ 14/09: khung hũ Bão ngay dưới cửa BÃO
-    // 🌪️ 14/09 bản 2: HŨ BÃO là CARD RIÊNG cho nổi, không nhét chung khối cược nữa
-    '#txPotCard{margin:10px 0;padding:12px 12px 10px;border:1px solid #8a6320;border-radius:14px;text-align:center;background:linear-gradient(180deg,#332611,#1d1810);box-shadow:0 0 18px rgba(255,190,70,.12) inset}',
-    '#txPotTop{font-size:13px;font-weight:800;letter-spacing:.5px;color:#ffcf6a}',
-    '#txPotVal{color:#ffd76a;font-size:30px;font-weight:900;line-height:1.15;text-shadow:0 0 12px rgba(255,200,90,.45)}',
-    '#txPotVal img{width:22px;height:22px;vertical-align:-3px}',
-    '#txPotNote{font-size:12px;margin-top:4px;line-height:1.45}',
-    '#txStormNote{margin:8px 0 0;padding:8px 10px;border:1px dashed #6a5a3a;border-radius:10px;background:#1b1812;font-size:12px;line-height:1.5;color:#cbbfa4}',
-    '#txPotCalc{font-size:12.5px;margin-top:6px;color:#9fe6a0;font-weight:700}',
+    // 🌪️ 14/09: gom hết lên NÚT BÃO - số hũ, luật hoàn 30%, và câu nhẩm "đặt X ăn Y"
+    '#baoPot{display:inline-block;margin-left:6px;padding:2px 9px;border-radius:9px;background:#6b4f16;color:#ffe9a8;font-size:14px;font-weight:900;letter-spacing:0;vertical-align:2px;white-space:nowrap}',
+    '#baoPot img{width:15px;height:15px;vertical-align:-2px;margin-left:2px}',
+    '#baoCalc{font-size:12.5px;font-weight:800;color:#134a22;margin-top:3px;line-height:1.4;letter-spacing:0}',
+    '@media (max-width:420px){#baoPot{font-size:13px;padding:2px 7px}#baoCalc{font-size:11.5px}}',
     '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
     // ---- 🎡 vòng quay ----
     // bánh xe chiếm gần hết bề ngang điện thoại, máy tính thì trần 520px cho khỏi lố.
@@ -1306,23 +1304,15 @@ const PAGE = [
     '<div id="stageCap"></div>',
     '</div>',
 
-    // 🌪️ 14/09: nhắc luật ra bão - đúng bên chỉ thua 70%
-    '<div id="txStormNote">🌪️ Ra Bão: cửa <b>đúng bên với Bão</b> được hoàn 30% tiền cược (chỉ thua 70%), cửa ngược bên thua hết. Bão 4-4-4/5-5-5/6-6-6 là phía TÀI, 1-1-1/2-2-2/3-3-3 là phía XỈU.</div>',
-
-    // 🌪️ 14/09 bản 2: hũ Bão đứng riêng một card, ngay trên bàn cược
-    '<div class="card" id="txPotCard">',
-    '<div id="txPotTop">🌪️ HŨ BÃO ĐANG NUÔI</div>',
-    '<div id="txPotVal">-</div>',
-    '<div class="muted" id="txPotNote"></div>',
-    '<div id="txPotCalc"></div>',
-    '</div>',
-
     '<div class="card" id="betCard">',
     '<div class="grid2">',
     '<button class="cbtn tai" id="c_tai" onclick="pick(\'tai\')">TÀI<small>11 - 17</small><div class="muted" id="t_tai">0</div></button>',
     '<button class="cbtn xiu" id="c_xiu" onclick="pick(\'xiu\')">XỈU<small>4 - 10</small><div class="muted" id="t_xiu">0</div></button>',
     '</div>',
-    '<button class="cbtn bao" id="c_bao" style="width:100%" onclick="pick(\'bao\')">🌪️ BÃO<small>3 viên giống nhau · <b>x30 tiền cửa + BÚ HŨ</b> - ra Bão mọi cửa khác THUA</small><div class="muted" id="t_bao">0</div></button>',
+    '<button class="cbtn bao" id="c_bao" style="width:100%" onclick="pick(\'bao\')">🌪️ BÃO<span id="baoPot">HŨ -</span>',
+    '<small>3 viên giống nhau · ăn <b>x30 tiền cửa + bú hũ</b><br>Bão 1-1-1/2-2-2/3-3-3 = <b>XỈU</b> · 4-4-4/5-5-5/6-6-6 = <b>TÀI</b><br>Đặt <b>ĐÚNG bên</b> với Bão được hoàn 30% tiền cược, đặt sai mất hết</small>',
+    '<div id="baoCalc"></div>',
+    '<div class="muted" id="t_bao">0</div></button>',
     '<div class="grid2">',
     '<button class="cbtn chan" id="c_chan" onclick="pick(\'chan\')">CHẴN<small>tổng chẵn</small><div class="muted" id="t_chan">0</div></button>',
     '<button class="cbtn le" id="c_le" onclick="pick(\'le\')">LẺ<small>tổng lẻ</small><div class="muted" id="t_le">0</div></button>',
@@ -2105,15 +2095,14 @@ const PAGE = [
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
     // 🌪️ 14/09 hũ Bão - PHẢI ở top-level, trước đây lọt vào trong renderHist20 làm treo trang
-    'function txPotDraw(j){var b=$("txPotVal");if(!b)return;var pot=j.txPot||0,x=j.txPotX||10;',
-    'b.innerHTML=vnd(pot)+\' <img src="/dogcoin.png" alt="">\';',
-    'var n=$("txPotNote");if(n)n.textContent="Trúng cửa Bão: ăn x30 tiền cửa + bú hũ x"+x+" tiền cược, nhưng không quá số hũ đang có.";',
-    // nhẩm trước: đặt bao nhiêu thì ăn bao nhiêu (đúng công thức server)
-    'var c=$("txPotCalc");if(!c)return;var a=$("amt"),v=a?Math.floor(Number(String(a.value).replace(/[^0-9]/g,""))||0):0;',
-    'if(v<1){c.textContent="";return}',
-    'var bu=Math.min(v*x,pot),tong=v*30+bu;',
-    'c.textContent="Đặt "+vnd(v)+" → trúng Bão ăn "+vnd(v*30)+" (x30) + bú hũ "+vnd(bu)+" = "+vnd(tong);',
-    'if(v*x>pot)c.textContent+=" (hũ chỉ còn "+vnd(pot)+" nên bú tới đó thôi)";}',
+    // 🌪️ 14/09: mọi thứ về hũ Bão nằm ngay trên NÚT BÃO
+    'function txPotDraw(j){var pot=j.txPot||0,x=j.txPotX||10,r=j.txBaoRate||30;',
+    'var p=$("baoPot");if(p)p.innerHTML="HŨ "+vnd(pot)+\' <img src="/dogcoin.png" alt="">\';',
+    'var c=$("baoCalc");if(!c)return;',
+    'var a=$("amt"),v=a?Math.floor(Number(String(a.value).replace(/[^0-9]/g,""))||0):0;',
+    'if(v<1){c.textContent="Gõ số tiền để xem ra Bão ăn bao nhiêu";return}',
+    'var bu=Math.min(v*x,pot);',
+    'c.textContent="Đặt "+vnd(v)+" → ra Bão ăn "+vnd(v*r)+" + bú hũ "+vnd(bu)+" = "+vnd(v*r+bu);}',
     'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile"};',
     'var GRP_LAST={games:"tx",profile:"daily"};',
     'var CURPAGE="tx";',

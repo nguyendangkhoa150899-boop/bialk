@@ -670,6 +670,17 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🌪️ **Gom hết thông tin Bão lên NÚT BÃO** (chủ server: "bỏ chú thích ... viết gọn ở nút bão luôn", "chỗ HŨ BÃO
+  ĐANG NUÔI hiện vào nút đặt bão luôn"). Bỏ **khung chú thích riêng** `#txStormNote` và **card hũ riêng** `#txPotCard`.
+  Nút Bão giờ có đủ ba tầng: dòng đầu **🌪️ BÃO + viên "HŨ 54.331 🪙"**; dòng nhỏ ghi luật gọn - 3 viên giống nhau, ăn x30 tiền
+  cửa + bú hũ, **Bão 1-1-1/2-2-2/3-3-3 = XỈU · 4-4-4/5-5-5/6-6-6 = TÀI**, đặt ĐÚNG bên được hoàn 30% tiền cược, đặt sai mất hết;
+  dòng cuối **nhẩm tiền theo số đang gõ**: "Đặt 20.000 → ra Bão ăn 600.000 + bú hũ 54.331 = 654.331". Chưa gõ số thì nhắc
+  "Gõ số tiền để xem ra Bão ăn bao nhiêu".
+  Tỉ lệ cửa Bão nay gửi kèm trong state (`txBaoRate`) để nút tự tính đúng, admin đổi `TX_BAO_RATE` là web đổi theo, không
+  còn số 30 cứng trong mã trang.
+  ✅ `txpottest.js` lên **84 case**: thêm **6 case phủ đủ 6 mặt bão** (1-1-1 · 2-2-2 · 3-3-3 về phía XỈU, 4-4-4 · 5-5-5 · 6-6-6
+  về phía TÀI, mỗi ván kiểm cả bên được hoàn lẫn bên mất trắng) đúng như chủ server chốt lại, cộng các case kiểm nút Bão
+  chứa đủ số hũ, dòng nhẩm tiền và câu luật.
 - **14/09** — 📱 **Sửa vỡ dòng trên điện thoại** (chủ server gửi ảnh chụp màn hình iPhone: "UI trên mobile nó bị đẩy xuống dòng rồi").
   ① **Huy hiệu "Tổng 10 - XỈU · CHẴN" rớt xuống 2 dòng**: `#sumBadge` canh giữa bằng `left:50%` + `translateX(-50%)` nhưng
   **không đặt `right`**, nên bề ngang khả dụng chỉ tính từ mốc 50% tới mép phải, tức NỬA sân khấu → chữ dài tự xuống dòng và

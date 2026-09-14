@@ -5652,6 +5652,7 @@ client.once('ready', async (c) => {
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
             txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)
+            txBaoRate: TX_BAO_RATE,      // 🌪️ 14/09: nút Bão tự tính "đặt X ăn Y" theo đúng tỉ lệ
             getDb: () => dbCache,
             getUserData,
             updatePoints,
