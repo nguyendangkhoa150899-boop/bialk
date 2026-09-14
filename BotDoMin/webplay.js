@@ -170,6 +170,12 @@ function startWebPlay(ctx) {
                     });
                 }
 
+                // 🀫 14/09: người chơi nặn xong -> trả thưởng NGAY cho riêng họ.
+                // Gọi mấy lần cũng chỉ trả 1 lần (bot tự chặn trùng), ai chưa nặn thì chưa ảnh hưởng.
+                if (req.method === 'POST' && path === '/api/tx/reveal') {
+                    if (!ctx.txReveal) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    return sendJSON(res, 200, ctx.txReveal(userId));
+                }
                 if (req.method === 'POST' && path === '/api/chat') {
                     const body = await readBody(req);
                     const text = String(body.text || '').trim().slice(0, 200);
@@ -1944,7 +1950,15 @@ const PAGE = [
     'function rectOverlap(a,b){return !(a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom)}',
     'function checkReveal(){if(!NAN||revealedGame===NAN.gameId)return;var pr=document.getElementById("paper").getBoundingClientRect();var dies=document.querySelectorAll("#diceRow .die");if(dies.length<3)return;for(var i=0;i<dies.length;i++){if(rectOverlap(pr,dies[i].getBoundingClientRect()))return}revealDone()}',
     'function revealDone(){if(!NAN||revealedGame===NAN.gameId)return;revealedGame=NAN.gameId;var p=document.getElementById("paper");p.classList.add("hidden");showDice(NAN.dice,true);',
-    'if(NAN.dice[0]===NAN.dice[1]&&NAN.dice[1]===NAN.dice[2])stormFx(NAN.gameId);else toast("🀫 Bạn nặn xong - giữ kín tới giờ mở bát 😏")}',
+    'var storm=(NAN.dice[0]===NAN.dice[1]&&NAN.dice[1]===NAN.dice[2]);var g=NAN.gameId;',
+    // 🀫 14/09: nặn xong là tiền về ví ngay, không phải chờ hết giờ mở bát nữa
+    'api("/api/tx/reveal",{gameId:g}).then(function(j){',
+    // đánh dấu đã ăn tiền ván này để lát bảng lịch sử về không hiện popup lần hai
+    'if(g>lastSettled)lastSettled=g;',
+    'if(typeof j.balance==="number"){BAL=j.balance;$("bal").textContent=j.balance.toLocaleString("vi-VN")}',
+    'if(j.stake>0)showNet(j.net);else if(!storm)toast("🀫 Bạn nặn xong - ván này bạn không đặt");',
+    '}).catch(function(){});',
+    'if(storm)stormFx(g)}',
     // BÃO: rung màn hình + mưa emoji (mỗi ván chỉ nổ 1 lần)
     'var stormFor=0;',
     'function stormFx(gid){if(gid&&stormFor===gid)return;if(gid)stormFor=gid;',
@@ -2002,7 +2016,7 @@ const PAGE = [
     'var h0=j.history[0];cap.textContent=h0?("Ván trước #"+String(h0.gameId).padStart(5,"0")+": "+h0.dice.join("-")+" = "+h0.sum+" ("+h0.tx+" · "+h0.cl+")"):"Đặt cược đi!";',
     'if(h0)showDice(h0.dice,false);else document.getElementById("diceRow").innerHTML="";document.getElementById("sumBadge").classList.add("hidden")}',
     'else if(PHASE==="nan"&&NAN){stt.textContent="🀫 Khóa sổ - GIỜ NẶN ĐÂY!";',
-    'if(revealedGame===NAN.gameId){paper.classList.add("hidden");showDice(NAN.dice,true);cap.textContent="Bạn nặn xong rồi - chờ mở bát trả tiền..."}',
+    'if(revealedGame===NAN.gameId){paper.classList.add("hidden");showDice(NAN.dice,true);cap.textContent="Bạn nặn xong rồi - tiền đã về ví, chờ ván sau"}',
     'else{showDice(NAN.dice,false);paper.classList.remove("hidden","locked");paper.classList.add("open");',
     'cap.textContent="Giữ và kéo chén ra - lộ đủ 3 viên là ra điểm · ai kéo người đó thấy, người khác KHÔNG thấy của bạn 🤫"}}',
     'else if(PHASE==="wait"){stt.textContent="⏳ Đang mở bát...";cap.textContent="";paper.classList.add("hidden")}',

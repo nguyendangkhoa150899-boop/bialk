@@ -670,6 +670,26 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🀫 **NẶN XONG LÀ TIỀN VỀ VÍ NGAY, trả riêng từng người** (chủ server: "nếu người chơi tự mở thì cộng trừ vẫn
+  như cũ", "nếu nặn xong rồi thì trả thưởng tại chỗ luôn, show +/- Dogcoin, trả riêng người đó thôi, người khác chưa nặn
+  hoặc không nặn thì chưa ảnh hưởng"). Trước đây lắc lúc khóa sổ rồi CHỜ HẾT 15 giây mới trả cho tất cả cùng lúc.
+  🔑 **Cách làm - tính MỘT LẦN, trả RẢI RÁC**: tách `settleTXPayout` cũ làm ba:
+  `txPlanPayout(gameId, bets, d1,d2,d3)` chạy ngay sau `rollTXDice()`, tính trọn bảng tiền của cả ván và **nuôi + rút hũ Bão
+  đúng một lần tại đây**, nhưng CHƯA cộng ví ai; `txPayUser(gameId, userId)` trả cho đúng một người, gọi mấy lần cũng chỉ
+  trả một lần nhờ cờ `plan.paid`; `settleTXPayout` giữ nguyên tên/tham số/giá trị trả về, tới giờ mở bát thì quét nốt ai
+  chưa nhận rồi mới ghi lịch sử + log + bảng Discord. Giữ nguyên chữ ký nên mọi chỗ gọi cũ và bộ test không phải sửa.
+  ⚠️ **Vì sao phải tính trước chứ không tính lúc nặn**: phần bú hũ khi nhiều người cùng trúng Bão được chia theo tỉ lệ tiền
+  cược. Nếu tính lúc nặn thì người nặn sớm sẽ ẵm sạch hũ, người nặn muộn mất phần. Tính một lần từ lúc lắc thì phần của ai
+  người nấy nhận, nặn sớm hay muộn không đổi một đồng. Đã có case test riêng cho đúng chuyện này.
+  🛟 **Cứu ván dở khi bot tắt giữa chừng**: kế hoạch được cất ở `dbCache._txPlan`, lúc bot bật lại sẽ trả nốt cho ai chưa kịp
+  nhận rồi mới dọn, ghi log "Bot bật lại giữa ván #N". Trước đây bot chết giữa 15 giây nặn là cả ván mất trắng; nay nếu không
+  cứu thì còn tệ hơn vì người nặn sớm đã nhận còn người nặn muộn thì không.
+  🖥️ **Web**: route mới `POST /api/tx/reveal`, `revealDone()` gọi ngay khi chén rời khỏi xí ngầu, nhận về `net` + số dư mới,
+  cập nhật ô số dư và bật popup +/- tại chỗ. Đặt `lastSettled = gameId` để lát bảng lịch sử về không bật popup lần hai.
+  Câu chờ đổi từ "chờ mở bát trả tiền" thành "tiền đã về ví, chờ ván sau". Ai không nặn thì tới giờ tự mở, y như cũ.
+  ✅ `txpottest.js` lên **76 case** (thêm 18 case: trả riêng từng người, chống trả trùng, người không đặt, nặn sớm không ẵm
+  phần hũ của người nặn muộn, cứu ván dở sau restart). Thêm `reveal-e2e.js` đánh thật một ván rồi đòi tiền ngay lúc còn
+  đang nặn để chắc chắn ví cộng trước giờ mở bát và không bị cộng lần hai.
 - **14/09** — 📉 **Hạ nuôi hũ Bão 2% → 1% + admin ĐẶT THẲNG số tiền trong hũ** (chủ server hỏi "2% nuôi hủ bão vậy hợp lý
   ko", xem mô phỏng xong chốt "hạ hủ xuống 1% tiền cược cho toàn bộ cược", "có chỗ cho admin config tiền trong hủ luôn nha").
   📊 **Mô phỏng 300.000 ván** bằng chính `settleTXPayout` (`scratchpad/potsim.js`), mỗi ván cả bàn cược 100.000, đo biên nhà cái:

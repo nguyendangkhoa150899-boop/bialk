@@ -5692,6 +5692,18 @@ client.once('ready', async (c) => {
             }
         } catch (e) { writeLog('SYSTEM', `[BIG SMALL] Không tự mở lại được: ${e.message}`); }
     })();
+    // 🀫 14/09: bot tắt ngay giữa lúc nặn thì bảng tiền ván dở còn nằm trong DB - người nặn sớm
+    // đã nhận, người nặn muộn chưa. Trả nốt cho ai còn thiếu rồi mới dọn, không để ai mất trắng.
+    try {
+        const dp = dbCache._txPlan;
+        if (dp && dp.byUser && typeof dp.gameId === 'number') {
+            txState.plan = dp; if (!dp.paid) dp.paid = {};
+            const left = Object.keys(dp.byUser).filter(u => !dp.paid[u]);
+            left.forEach(u => txPayUser(dp.gameId, u));
+            if (left.length) writeLog('SYSTEM', `[TÀI XỈU] Bot bật lại giữa ván #${dp.gameId} - đã trả nốt ${left.length} người chưa kịp nhận`);
+            txState.plan = null; delete dbCache._txPlan; saveDbNow();
+        }
+    } catch (e) { writeLog('SYSTEM', `[TÀI XỈU] Không trả nốt được ván dở: ${e.message}`); }
     runStairsBoardLoop();
     runStockLoop();   // 📈 sàn cổ phiếu DOG (chỉ chơi trên web)
     resumeStairsBoard().catch(e => writeLog('SYSTEM', `[BẢNG LEO THANG] Không nối lại được: ${e.message}`));
@@ -5716,6 +5728,7 @@ client.once('ready', async (c) => {
             getTX: () => txState,
             txMaxBet,        // 💰 trần cược TX/người/ván (hiện trên trang cược)
             txCapCheck,      // 💰 chặn vượt trần (dùng chung luật với Discord)
+            txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
             txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)
             getDb: () => dbCache,
@@ -6421,7 +6434,11 @@ function rollTXDice() {
 
 // Tính kết quả + TRẢ thưởng + ghi log/lịch sử/soi cầu. Với ván có nặn, hàm này chỉ được
 // gọi lúc lật đủ 3 viên (hoặc hết hạn tự mở) - KHÔNG gọi lúc lắc, kẻo trả tiền 2 lần.
-function settleTXPayout(gameId, bets, d1, d2, d3) {
+// 🀫 14/09: TÍNH bảng tiền của cả ván NGAY LÚC LẮC, chưa cộng vào ví ai cả.
+// Hũ Bão được nuôi + rút ở đây, đúng MỘT LẦN cho cả ván, nên dù trả rải rác từng người
+// thì phần bú hũ vẫn chia theo tỉ lệ tiền cược như luật đã chốt.
+// Trả về kế hoạch { gameId, byUser, ... }; cất ở txState.plan + dbCache._txPlan (phòng bot tắt giữa chừng).
+function txPlanPayout(gameId, bets, d1, d2, d3) {
     const sum = d1 + d2 + d3;
 
     const isStorm = d1 === d2 && d2 === d3; // BÃO: 3 viên giống nhau
@@ -6464,6 +6481,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     // 🌪️ refAgg: tiền HOÀN khi ra bão mà đặt đúng bên - tách khỏi winAgg để log không ghi
     // nhầm thành "thắng", nhưng vẫn cộng vào winners để web tính lãi/lỗ ván đúng.
     const refAgg = {};
+    const byUser = {};               // uid -> { name, stake, win, refund } : tiền của TỪNG NGƯỜI, chưa trả
     bets.forEach((b, idx) => {
         let win = 0, refund = 0;
         if (isStorm) {
@@ -6482,13 +6500,55 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         }
         const got = win + refund;
         if (got > 0) {
-            updatePoints(b.userId, got);
             const bucket = win > 0 ? winAgg : refAgg;
             if (!bucket[b.userId]) bucket[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
             bucket[b.userId].amount += got;
         }
-        statAdd(b.userId, 'tx', got - b.amount);   // net từng lệnh cược cho bảng 📊
+        // KHÔNG cộng ví ở đây nữa - chỉ ghi sổ, txPayUser mới thật sự trả
+        if (!byUser[b.userId]) byUser[b.userId] = { name: b.username, stake: 0, win: 0, refund: 0 };
+        const e = byUser[b.userId];
+        e.stake += b.amount; e.win += win; e.refund += refund;
     });
+    const plan = {
+        gameId, dice: [d1, d2, d3], sum, isStorm, isTai, isChan,
+        byUser, winAgg, refAgg, txPotPaid, txPotWinners, paid: {},
+    };
+    txState.plan = plan; dbCache._txPlan = plan;
+    return plan;
+}
+
+// 💸 Trả tiền cho ĐÚNG MỘT người theo kế hoạch đã tính. Gọi 2 lần cũng chỉ trả 1 lần.
+// Trả về { got, stake, net } hoặc null nếu người này không có phần trong ván.
+function txPayUser(gameId, userId) {
+    const p = txState.plan;
+    if (!p || p.gameId !== gameId) return null;
+    const e = p.byUser[userId];
+    if (!e || p.paid[userId]) return null;
+    p.paid[userId] = true;
+    const got = e.win + e.refund;
+    if (got > 0) updatePoints(userId, got);
+    statAdd(userId, 'tx', got - e.stake);   // net cho bảng 📊, tính đúng lúc trả
+    return { got, stake: e.stake, net: got - e.stake };
+}
+
+// 🀫 Người chơi bấm "nặn xong" trên web -> trả tiền riêng cho họ tại chỗ.
+function txRevealClaim(userId) {
+    const p = txState.plan;
+    if (!p) return { ok: true, net: 0, stake: 0, balance: (getUserData(userId).points || 0) };
+    const r = txPayUser(p.gameId, userId);
+    const bal = getUserData(userId).points || 0;
+    if (!r) return { ok: true, gameId: p.gameId, net: 0, stake: 0, balance: bal, already: true };
+    return { ok: true, gameId: p.gameId, net: r.net, got: r.got, stake: r.stake, balance: bal };
+}
+
+// 🏁 Tới giờ mở bát: trả nốt cho ai chưa nặn, rồi ghi lịch sử/log/bảng Discord.
+// Giữ nguyên tên + tham số + giá trị trả về như bản cũ để mọi chỗ gọi và bộ test không phải đổi.
+function settleTXPayout(gameId, bets, d1, d2, d3) {
+    const p = (txState.plan && txState.plan.gameId === gameId)
+        ? txState.plan : txPlanPayout(gameId, bets, d1, d2, d3);
+    Object.keys(p.byUser).forEach(uid => txPayUser(gameId, uid));
+    const { sum, isStorm, isTai, isChan, winAgg, refAgg, txPotPaid, txPotWinners } = p;
+
     // winners = thắng THẬT + tiền hoàn, gộp theo người (web lấy đây tính net của ván)
     const allAgg = {};
     [winAgg, refAgg].forEach(m => Object.values(m).forEach(w => {
@@ -6549,6 +6609,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         if (txDashHistory.length > 100) txDashHistory.length = 100;
     }
 
+    txState.plan = null; delete dbCache._txPlan;   // ván đã chốt sổ, dọn kế hoạch
     return { sum, txIcon, clIcon, winLog, txPotPaid };
 }
 
@@ -6558,6 +6619,9 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
 // Thang - hết spam "không ai thắng" mỗi 50 giây, đỡ nửa số Discord API call.
 async function finishTXGame(gameId, bets) {
     const [d1, d2, d3] = rollTXDice();
+    // 🀫 14/09: tính sẵn bảng tiền cả ván (nuôi + rút hũ ở đây, đúng 1 lần) nhưng CHƯA trả ai.
+    // Ai nặn xong trước thì /api/tx/reveal trả riêng cho người đó ngay.
+    txPlanPayout(gameId, bets, d1, d2, d3);
     // Mở cửa sổ nặn trên web: ai đăng nhập cũng kéo giấy xem riêng được
     txState.nan = { gameId, dice: [d1, d2, d3] };
 
