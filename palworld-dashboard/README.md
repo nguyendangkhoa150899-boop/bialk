@@ -670,6 +670,40 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🎲 **Tài Xỉu: ra Bão không còn thua sạch + đổi tên cửa + nút bấm nhanh mới** (chủ server: "đối với bão đặt đúng
+  sẽ thua 70% số xu đặt", "đặt 10.000 tài ra bão 4 4 4 thì sẽ thua 7.000 còn ra 111 222 333 thì thua hết").
+  **Luật hoàn 30%**: ra Bão thì cửa thường ĐÚNG BÊN với bão được hoàn `TX_STORM_REFUND` = 30% tiền cược (chỉ thua 70%),
+  cửa ngược bên vẫn thua hết. Bão 4-4-4 (12) · 5-5-5 (15) · 6-6-6 (18) là phía TÀI; 1-1-1 (3) · 2-2-2 (6) · 3-3-3 (9) là phía XỈU.
+  ⚠️ **Đã áp dụng cho CẢ CHẴN/LẺ** theo đúng nghĩa "đặt đúng" (bão 6/12/18 là CHẴN, bão 3/9/15 là LẺ) - chủ server chỉ nêu
+  ví dụ tài/xỉu, nếu muốn bỏ chẵn/lẻ ra thì sửa đúng một điều kiện trong `settleTXPayout`.
+  📐 Kinh tế: mỗi cửa thường có 3/216 ván là "bão đúng bên", hoàn 30% → biên nhà cái cửa tài/xỉu/chẵn/lẻ giảm **2,78% → 2,36%**.
+  Tiền hoàn đi vào `refAgg` riêng: log Discord ghi dòng "🌪️ Bão hoàn 30% tiền cược" tách khỏi dòng "thắng" cho khỏi hiểu nhầm,
+  nhưng vẫn gộp vào `winners` để web tính lãi/lỗ ván đúng (làm tròn XUỐNG, 999 → 299).
+  🔤 **Đổi tên cửa BIG/SMALL → TÀI/XỈU** ở `TX_CHOICES` (Discord + web + lịch sử). Lịch sử cũ lưu "BIG" vẫn tô màu đúng vì
+  chỗ đọc nhận cả hai tên. Toast lúc đặt cược ghi tên tiếng Việt thay vì "TAI"/"XIU".
+  🎨 **Tô màu CHẴN/LẺ**: trước chỉ TÀI (đỏ) / XỈU (xanh) có màu, chẵn lẻ trắng trơn. Nay CHẴN xanh lá `#4fd6a0`, LẺ tím
+  `#c79bff` ở cả bảng 20 ván lẫn huy hiệu "Tổng N" dưới khay xí ngầu.
+  ⚡ **Nút bấm nhanh 1.000 / 5.000 / 10.000 / 20.000** (trước là +10/+50/+100/+500). Bấm mà vượt số dư thì tự hạ về đúng số dư
+  kèm nhắc "Chỉ còn X Dogcoin - đặt hết luôn", y như nút ALL IN.
+  ✅ `txpottest.js` lên **49 case** (thêm 10 case luật hoàn + tên cửa + kiểm nguồn UI). Thêm `txpot-e2e.js` đánh thật 1 ván
+  3 cửa (Bão + Tài + Lẻ) rồi ép 4-4-4 qua panel SUPER để soi tiền về ví.
+- **14/09** — 🌪️ **HŨ BÃO BẢN 2: để riêng, ăn theo tiền cược, trần là số hũ đang có** (chủ server: "hủ bão để riêng ra đi cho
+  hấp dẫn", "nếu thắng thì sẽ thắng dựa trên số tiền cược", "hủ đang nuôi ở 20.000 thì đặt 100 ăn được 1.000 + x30, đặt 3.000
+  thì cũng chỉ ăn 20.000 thôi + x30"). Luật mới: **trúng cửa Bão = x30 tiền cửa + bú hũ min(cược × bội số, hũ đang có)**.
+  Bỏ hẳn đường "nhà cái bù" của bản 1 - giờ chi phí hũ đúng bằng số đã nuôi vào, nhà cái không bao giờ lỗ quá quỹ.
+  Nhiều người cùng trúng mà hũ không đủ thì **chia theo tỉ lệ tiền cược** (gom trước rồi mới chia, không phải ai trước ăn trước);
+  tiền lẻ dồn cho người cuối nên hũ cạn đúng 0, không đẻ thêm đồng nào.
+  **% nuôi hạ 5% → 2%** và tách khỏi `LUCKY_POT_RATE` dùng chung: `txPotCfg()` đọc `dbCache._txPot = {rate, x}`.
+  📐 **Vì sao 2%**: biên nhà cái Tài Xỉu là 2,78% ở cửa tài/xỉu/chẵn/lẻ (thắng 105/216, trả x2) và 16,7% ở cửa Bão (6/216, trả x30);
+  trộn lại khoảng **4% tổng cược**. Nuôi bao nhiêu % là nhà cái cho đi bấy nhiêu %, nên **5% của bản 1 là ăn lỗ**, 2% giữ lại
+  chừng nửa lãi, 3% là mức mạo hiểm hơn cho hũ mau to. Cửa Bão càng đông thì biên càng cao, lúc đó nâng % được.
+  🎛️ **Panel (tab 💣, SUPER)**: hũ Bão hiện trong card hũ nên **admin nạp/rút tay** như hũ khác (`adminPotAdd` vốn đã nhận key
+  `tx`, chỉ thiếu chỗ hiện - nay `getPot` trả thêm `tx`), kèm 2 ô mới **% nuôi/ván** và **bội số bú hũ** (route `/api/txpot/cfg`).
+  🖥️ **Web**: hũ Bão tách thành **card riêng** ngay trên bàn cược, số vàng cỡ lớn có quầng sáng, thêm dòng nhẩm trước theo số
+  đang gõ: "Đặt 3.000 → trúng Bão ăn 90.000 (x30) + bú hũ 20.000 = 110.000 (hũ chỉ còn 20.000 nên bú tới đó thôi)".
+  Nút BÃO bỏ chữ "1 ăn 40" cố định. Bội số đọc động từ config nên admin sửa là web đổi theo.
+  ✅ `txpottest.js` viết lại **32 case** chạy `settleTXPayout` thật, gồm đúng 2 ví dụ chủ server đưa, hũ rỗng, chia tỉ lệ,
+  chia tiền lẻ, đổi % nuôi, đổi bội số. Thêm `txpot-e2e.js` đánh thật 1 ván cửa Bão qua HTTP trên bot test.
 - **14/09** — 🩹 **SỬA GẤP: trang Tài Xỉu đứng hình sau bản hũ Bão** (chủ server: "sao tài xỉu local nó chết rồi"). Bot vẫn chạy ván
   bình thường (log ra tới ván #43) nhưng web đứng ở ván #40, đồng hồ "--": hàm `txPotDraw` bị đợt patch chèn **lọt vào giữa thân
   `renderHist20`** nên chỗ gọi ở vòng cập nhật state không thấy nó → `ReferenceError` → hàm vẽ chết ngay sau dòng "Ván #...",

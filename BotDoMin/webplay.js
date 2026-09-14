@@ -150,7 +150,7 @@ function startWebPlay(ctx) {
                         },
                         // 🌪️ 14/09: hũ Bão + tỉ lệ bú hũ (1 ăn N) để trang Tài Xỉu hiện
                         txPot: ctx.txPot ? ctx.txPot() : 0,
-                        txPotX: ctx.txPotX || 10,
+                        txPotX: (typeof ctx.txPotX === 'function' ? ctx.txPotX() : ctx.txPotX) || 10,
                         live, phase,
                         gameId: tx.gameId,
                         targetTime: tx.targetTime,
@@ -691,6 +691,9 @@ const PAGE = [
     '.hrow .sum{font-weight:800;flex:0 0 auto}',
     '.hrow .kq{font-weight:700;flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.hrow .kq .t{color:#ff7b86}.hrow .kq .x{color:#7db4ff}.hrow .kq .sep{color:var(--muted);font-weight:400}',
+    // 14/09: CHẴN/LẺ cũng có màu riêng (trước chỉ TÀI/XỈU có màu, chẵn lẻ trắng trơn)
+    '.hrow .kq .ce{color:#4fd6a0}.hrow .kq .od{color:#c79bff}',
+    '#sumBadge .t{color:#ff7b86}#sumBadge .x{color:#7db4ff}#sumBadge .ce{color:#4fd6a0}#sumBadge .od{color:#c79bff}',
     '.hrow .net{flex:0 0 auto;font-weight:800;font-variant-numeric:tabular-nums}',
     '.hrow .net.w{color:var(--green)}.hrow .net.l{color:var(--red)}',
     '.hrow.storm{background:linear-gradient(90deg,#4a3a1033,transparent);border-radius:6px;padding-left:5px}',
@@ -1091,8 +1094,14 @@ const PAGE = [
     '#paper.open img{animation:chenIdle 1.8s ease-in-out infinite}',
     '@keyframes chenIdle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-1.5deg)}}',
     // 🌪️ 14/09: khung hũ Bão ngay dưới cửa BÃO
-    '#txPotBox{margin-top:8px;padding:8px 10px;border:1px solid #7a5a2a;border-radius:10px;background:linear-gradient(180deg,#2a2113,#1c1710);font-size:13px;text-align:center}',
-    '#txPotVal{color:#ffd76a;font-size:17px;font-weight:900}',
+    // 🌪️ 14/09 bản 2: HŨ BÃO là CARD RIÊNG cho nổi, không nhét chung khối cược nữa
+    '#txPotCard{margin:10px 0;padding:12px 12px 10px;border:1px solid #8a6320;border-radius:14px;text-align:center;background:linear-gradient(180deg,#332611,#1d1810);box-shadow:0 0 18px rgba(255,190,70,.12) inset}',
+    '#txPotTop{font-size:13px;font-weight:800;letter-spacing:.5px;color:#ffcf6a}',
+    '#txPotVal{color:#ffd76a;font-size:30px;font-weight:900;line-height:1.15;text-shadow:0 0 12px rgba(255,200,90,.45)}',
+    '#txPotVal img{width:22px;height:22px;vertical-align:-3px}',
+    '#txPotNote{font-size:12px;margin-top:4px;line-height:1.45}',
+    '#txStormNote{margin:8px 0 0;padding:8px 10px;border:1px dashed #6a5a3a;border-radius:10px;background:#1b1812;font-size:12px;line-height:1.5;color:#cbbfa4}',
+    '#txPotCalc{font-size:12.5px;margin-top:6px;color:#9fe6a0;font-weight:700}',
     '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
     // ---- 🎡 vòng quay ----
     // bánh xe chiếm gần hết bề ngang điện thoại, máy tính thì trần 520px cho khỏi lố.
@@ -1269,21 +1278,31 @@ const PAGE = [
     '<div id="stageCap"></div>',
     '</div>',
 
+    // 🌪️ 14/09: nhắc luật ra bão - đúng bên chỉ thua 70%
+    '<div id="txStormNote">🌪️ Ra Bão: cửa <b>đúng bên với Bão</b> được hoàn 30% tiền cược (chỉ thua 70%), cửa ngược bên thua hết. Bão 4-4-4/5-5-5/6-6-6 là phía TÀI, 1-1-1/2-2-2/3-3-3 là phía XỈU.</div>',
+
+    // 🌪️ 14/09 bản 2: hũ Bão đứng riêng một card, ngay trên bàn cược
+    '<div class="card" id="txPotCard">',
+    '<div id="txPotTop">🌪️ HŨ BÃO ĐANG NUÔI</div>',
+    '<div id="txPotVal">-</div>',
+    '<div class="muted" id="txPotNote"></div>',
+    '<div id="txPotCalc"></div>',
+    '</div>',
+
     '<div class="card" id="betCard">',
     '<div class="grid2">',
-    '<button class="cbtn tai" id="c_tai" onclick="pick(\'tai\')">BIG<small>11 - 17</small><div class="muted" id="t_tai">0</div></button>',
-    '<button class="cbtn xiu" id="c_xiu" onclick="pick(\'xiu\')">SMALL<small>4 - 10</small><div class="muted" id="t_xiu">0</div></button>',
+    '<button class="cbtn tai" id="c_tai" onclick="pick(\'tai\')">TÀI<small>11 - 17</small><div class="muted" id="t_tai">0</div></button>',
+    '<button class="cbtn xiu" id="c_xiu" onclick="pick(\'xiu\')">XỈU<small>4 - 10</small><div class="muted" id="t_xiu">0</div></button>',
     '</div>',
-    '<button class="cbtn bao" id="c_bao" style="width:100%" onclick="pick(\'bao\')">🌪️ BÃO<small>3 viên giống nhau · <b>1 ăn 40</b> (x30 cửa + x10 bú hũ) - ra Bão mọi cửa khác THUA</small><div class="muted" id="t_bao">0</div></button>',
-    '<div id="txPotBox">🌪️ <b>HŨ BÃO</b>: <b id="txPotVal">-</b> <img class="dc" src="/dogcoin.png" alt=""> <span class="muted" id="txPotNote"></span></div>',
+    '<button class="cbtn bao" id="c_bao" style="width:100%" onclick="pick(\'bao\')">🌪️ BÃO<small>3 viên giống nhau · <b>x30 tiền cửa + BÚ HŨ</b> - ra Bão mọi cửa khác THUA</small><div class="muted" id="t_bao">0</div></button>',
     '<div class="grid2">',
     '<button class="cbtn chan" id="c_chan" onclick="pick(\'chan\')">CHẴN<small>tổng chẵn</small><div class="muted" id="t_chan">0</div></button>',
     '<button class="cbtn le" id="c_le" onclick="pick(\'le\')">LẺ<small>tổng lẻ</small><div class="muted" id="t_le">0</div></button>',
     '</div>',
     '<input id="amt" inputmode="numeric" placeholder="Số Dogcoin đặt">',
     '<div class="chips">',
-    '<button class="chip" onclick="addAmt(10)">+10</button><button class="chip" onclick="addAmt(50)">+50</button>',
-    '<button class="chip" onclick="addAmt(100)">+100</button><button class="chip" onclick="addAmt(500)">+500</button>',
+    '<button class="chip" onclick="addAmt(1000)">+1.000</button><button class="chip" onclick="addAmt(5000)">+5.000</button>',
+    '<button class="chip" onclick="addAmt(10000)">+10.000</button><button class="chip" onclick="addAmt(20000)">+20.000</button>',
     '<button class="chip" onclick="allIn()">ALL IN</button>',
     '</div>',
     '<button class="bet-btn" id="betBtn" onclick="bet()">ĐẶT CƯỢC</button>',
@@ -1905,12 +1924,14 @@ const PAGE = [
     'var saved=localStorage.getItem("play_page");',
     'go(PAGE_GRP[saved]?saved:"tx")}',
     'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)})}',
-    'function addAmt(n){var a=document.getElementById("amt");a.value=(parseInt(a.value||"0")||0)+n}',
+    // 14/09: bấm nhanh mà vượt số dư thì tự hạ xuống đúng số dư (y như nút ALL IN)
+    'function addAmt(n){var a=document.getElementById("amt");var v=(parseInt(a.value||"0")||0)+n;',
+    'if(v>BAL){v=BAL;toast("Chỉ còn "+vnd(BAL)+" Dogcoin - đặt hết luôn")}a.value=v}',
     'function allIn(){document.getElementById("amt").value=BAL}',
     // vẽ 1 viên xí ngầu bằng chấm CSS
     'var PIPS={1:[[50,50]],2:[[25,25],[75,75]],3:[[25,25],[50,50],[75,75]],4:[[25,25],[75,25],[25,75],[75,75]],5:[[25,25],[75,25],[50,50],[25,75],[75,75]],6:[[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]};',
     'function dieHTML(v){var s=\'<div class="die">\';PIPS[v].forEach(function(p){s+=\'<div class="pip" style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></div>\'});return s+"</div>"}',
-    'function showDice(dice,withSum){document.getElementById("diceRow").innerHTML=dice.map(dieHTML).join("");var b=document.getElementById("sumBadge");if(withSum){var s=dice[0]+dice[1]+dice[2];b.textContent="Tổng "+s+" - "+(s>=11?"BIG":"SMALL")+" · "+(s%2===0?"CHẴN":"LẺ");b.classList.remove("hidden")}else b.classList.add("hidden")}',
+    'function showDice(dice,withSum){document.getElementById("diceRow").innerHTML=dice.map(dieHTML).join("");var b=document.getElementById("sumBadge");if(withSum){var s=dice[0]+dice[1]+dice[2];b.innerHTML="Tổng "+s+" - <span class=\'"+(s>=11?"t":"x")+"\'>"+(s>=11?"TÀI":"XỈU")+"</span> · <span class=\'"+(s%2===0?"ce":"od")+"\'>"+(s%2===0?"CHẴN":"LẺ")+"</span>";b.classList.remove("hidden")}else b.classList.add("hidden")}',
     // chén: che kín cụm xí ngầu, kéo TỰ DO 4 CHIỀU - kéo tới đâu lộ tới đó.
     // Chỉ kéo được trong pha nặn (PHASE==="nan") và khi chưa nặn xong ván này.
     'function initPaper(){var p=document.getElementById("paper");',
@@ -1952,8 +1973,8 @@ const PAGE = [
     'var p=document.getElementById("paper");var h=document.getElementById("stage").offsetHeight;',
     'p.style.transition="transform .6s ease-in";p.style.transform="translate("+paperX+"px,"+(h+60)+"px)";',
     'setTimeout(function(){revealDone();if(CURPAGE==="tx")toast("⏰ Hết giờ nặn - tự mở giùm bạn!")},600)}',
-    'function bet(){if(PHASE!=="bet")return toast("Đang khóa sổ - chờ ván sau!");if(!SEL)return toast("Chọn cửa trước!");var v=parseInt(document.getElementById("amt").value);if(!v||v<=0)return toast("Nhập số Dogcoin");api("/api/bet",{choice:SEL,amount:v}).then(function(j){BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");document.getElementById("amt").value="";toast("💸 Đã đặt "+v.toLocaleString("vi-VN")+" vào "+SEL.toUpperCase());refresh()}).catch(function(e){toast("❌ "+e.message)})}',
-    'var NAMES={tai:"BIG",xiu:"SMALL",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
+    'function bet(){if(PHASE!=="bet")return toast("Đang khóa sổ - chờ ván sau!");if(!SEL)return toast("Chọn cửa trước!");var v=parseInt(document.getElementById("amt").value);if(!v||v<=0)return toast("Nhập số Dogcoin");api("/api/bet",{choice:SEL,amount:v}).then(function(j){BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");document.getElementById("amt").value="";toast("💸 Đã đặt "+v.toLocaleString("vi-VN")+" vào "+(NAMES[SEL]||SEL));refresh()}).catch(function(e){toast("❌ "+e.message)})}',
+    'var NAMES={tai:"TÀI",xiu:"XỈU",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
     'function refresh(){api("/api/state").then(function(j){',
     'MYID=j.me||MYID;',
     // 🏆 nhãn hũ trên tab: cập nhật mỗi nhịp 2 giây, kể cả khi người khác đang nuôi hũ
@@ -2007,7 +2028,8 @@ const PAGE = [
     '(h.winners||[]).forEach(function(w){if(w.u===MYID)winAmt+=w.amount});',
     'var net=winAmt-stake;',
     'var tai=(h.tx==="BIG"||h.tx==="TÀI"||h.tx==="TAI");',
-    'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span>\'+h.cl);',
+    'var chan=(h.cl==="CHẴN");',
+    'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span><span class="\'+(chan?"ce":"od")+\'">\'+h.cl+\'</span>\');',
     'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
     '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
     '\'<span class="dd">\'+h.dice.map(mdie).join("")+"</span>"+',
@@ -2046,8 +2068,15 @@ const PAGE = [
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
     // 🌪️ 14/09 hũ Bão - PHẢI ở top-level, trước đây lọt vào trong renderHist20 làm treo trang
-    'function txPotDraw(j){var b=$("txPotVal");if(!b)return;b.textContent=vnd(j.txPot||0);',
-    'var n=$("txPotNote");if(n)n.textContent="· trúng Bão bú thêm 1 ăn "+(j.txPotX||10)+" tiền cược (đã tính trong x40)";}',
+    'function txPotDraw(j){var b=$("txPotVal");if(!b)return;var pot=j.txPot||0,x=j.txPotX||10;',
+    'b.innerHTML=vnd(pot)+\' <img src="/dogcoin.png" alt="">\';',
+    'var n=$("txPotNote");if(n)n.textContent="Trúng cửa Bão: ăn x30 tiền cửa + bú hũ x"+x+" tiền cược, nhưng không quá số hũ đang có.";',
+    // nhẩm trước: đặt bao nhiêu thì ăn bao nhiêu (đúng công thức server)
+    'var c=$("txPotCalc");if(!c)return;var a=$("amt"),v=a?Math.floor(Number(String(a.value).replace(/[^0-9]/g,""))||0):0;',
+    'if(v<1){c.textContent="";return}',
+    'var bu=Math.min(v*x,pot),tong=v*30+bu;',
+    'c.textContent="Đặt "+vnd(v)+" → trúng Bão ăn "+vnd(v*30)+" (x30) + bú hũ "+vnd(bu)+" = "+vnd(tong);',
+    'if(v*x>pot)c.textContent+=" (hũ chỉ còn "+vnd(pot)+" nên bú tới đó thôi)";}',
     'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile"};',
     'var GRP_LAST={games:"tx",profile:"daily"};',
     'var CURPAGE="tx";',

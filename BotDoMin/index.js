@@ -3216,9 +3216,11 @@ const TX_BAO_RATE = 30;
 // CHÚ Ý: tên ở đây vừa để HIỂN THỊ vừa là giá trị LƯU vào lịch sử (histEntry.tx/cl
 // và bets[].choice), và txHistoryLine so khớp bằng chính các tên này. Đổi tên thì
 // PHẢI so sánh qua TX_CHOICES.* chứ không viết chữ cứng, kẻo cửa Bão hết được trả.
+// 14/09: đổi tên cửa cho người Việt dễ đọc. Lịch sử cũ lưu 'BIG'/'SMALL' vẫn đọc được
+// vì chỗ tô màu ở web nhận cả 2 tên (h.tx === "BIG" || h.tx === "TÀI").
 const TX_CHOICES = {
-    'tai': { name: 'BIG' },
-    'xiu': { name: 'SMALL' },
+    'tai': { name: 'TÀI' },
+    'xiu': { name: 'XỈU' },
     'chan': { name: 'CHẴN' },
     'le': { name: 'LẺ' },
     'bao': { name: 'BÃO' }
@@ -3547,7 +3549,9 @@ function potGet(key) { return potBook()[key] || 0; }
 // Phần được phép trích thêm vào hũ này (hũ đã quá trần thì 0)
 function luckyPotCut(key, bet) {
     if (POT_CFG_KEYS.includes(key)) return 0;   // 09/09: Dò Mìn/Leo Thang BỎ hũ nuôi - không trích
-    return Math.max(0, Math.min(Math.floor(bet * LUCKY_POT_RATE), potMax(key) - potGet(key)));
+    // 🌪️ 14/09: hũ Bão để riêng, có % nuôi của riêng nó (admin chỉnh), không dùng chung 5% với Quay Pal
+    const rate = key === 'tx' ? txPotCfg().rate : LUCKY_POT_RATE;
+    return Math.max(0, Math.min(Math.floor(bet * rate), potMax(key) - potGet(key)));
 }
 function potFeed(key, cut) {
     if (cut > 0) potBook()[key] = potGet(key) + cut;
@@ -3560,14 +3564,53 @@ function luckyPotPop(key) {
     potBook()[key] = potSeed(key);
     return pot;
 }
-// 🌪️ 14/09 - HŨ BÃO của Tài Xỉu: đặt cửa Bão mà ra bão thì LUÔN ăn x40 = x30 tiền cửa + x10 bú hũ
-// (cược 1.000 -> 30.000 + 10.000 = 40.000). Chủ server chốt: "cứ thắng là x40" để kéo người chơi vào
-// cửa Bão, nên x10 KHÔNG phụ thuộc hũ còn bao nhiêu - hũ thiếu thì NHÀ CÁI BÙ phần còn lại.
-// Hũ nuôi 5% tổng cược mỗi ván (nhà cái bao, không trừ người chơi) để có sẵn quỹ + hiện số cho vui.
-// ⚠️ KINH TẾ: bão ra 6/216 = 2,78%/ván. Kỳ vọng cửa Bão = 2,78% x 40 = 1,11 -> NGƯỜI CHƠI LỜI ~11%
-// về dài hạn ở cửa này (trước khi có hũ là 2,78% x 30 = 0,83, nhà cái giữ 17%). Chủ server đã chốt
-// đánh đổi này để hút người vào Bão; van an toàn còn lại là TRẦN CƯỢC/người/ván ở panel.
-const TX_POT_X = 10;
+// 🌪️ 14/09 BẢN 2 (chủ server chốt lại) - HŨ BÃO ĐỂ RIÊNG, ĂN THEO TIỀN CƯỢC NHƯNG KHÔNG QUÁ SỐ HŨ ĐANG CÓ.
+// Trúng cửa Bão = x30 tiền cửa (TX_BAO_RATE) + BÚ HŨ = min(cược × bội số, hũ đang có).
+//   vd hũ đang 20.000: đặt 100 -> bú 1.000 (100×10) · đặt 3.000 -> đáng lẽ 30.000 nhưng hũ chỉ có
+//   20.000 nên bú đúng 20.000. Đặt to hơn không moi được nhiều hơn số hũ đang nuôi.
+// KHÁC BẢN 1 (luôn x40, hũ thiếu nhà cái bù): NHÀ CÁI KHÔNG BÙ NỮA -> chi phí hũ đúng bằng số đã
+// nuôi vào, không bao giờ lỗ quá quỹ. Đây là lý do bản 2 an toàn hơn hẳn bản 1.
+// Nhiều người cùng trúng mà hũ không đủ -> CHIA THEO TỈ LỆ TIỀN CƯỢC (không phải ai trước ăn trước).
+// 💰 % NUÔI mặc định 2% tổng cược mỗi ván, nhà cái bao (người chơi vẫn bị trừ đúng số đã đặt).
+//   Vì sao 2%: biên nhà cái Tài Xỉu là 2,78% ở cửa tài/xỉu/chẵn/lẻ và 16,7% ở cửa Bão, trộn lại
+//   khoảng 4% tổng cược. Nuôi bao nhiêu % là nhà cái CHO ĐI bấy nhiêu %, nên 5% (bản 1) là lỗ,
+//   2% giữ lại chừng một nửa lãi, 3% là mạo hiểm hơn cho hũ mau to. Admin chỉnh ở panel tab 💣.
+// Hũ chạm trần nuôi (LUCKY_POT_MAX_BY.tx) thì ngừng trích; admin nạp tay thì không bị trần.
+// 🌪️ 14/09 - RA BÃO KHÔNG CÒN THUA SẠCH: cửa thường ĐÚNG BÊN với bão được hoàn 30% tiền cược
+// (tức chỉ thua 70%), cửa ngược bên vẫn thua hết. Chủ server: "đặt 10.000 tài ra bão 444/555/666
+// thì thua 7.000, còn ra 111/222/333 thì thua hết".
+//   Bão 4-4-4 (12) · 5-5-5 (15) · 6-6-6 (18) = phía TÀI  ·  1-1-1 (3) · 2-2-2 (6) · 3-3-3 (9) = phía XỈU.
+// ÁP DỤNG CHO CẢ CHẴN/LẺ theo đúng nghĩa "đặt đúng": bão 6/12/18 là CHẴN, bão 3/9/15 là LẺ.
+// 📐 Kinh tế: mỗi cửa thường có 3/216 ván là "bão đúng bên", hoàn 30% -> biên nhà cái ở cửa
+// tài/xỉu/chẵn/lẻ giảm từ 2,78% xuống 2,36%. Nhỏ, đổi lại người chơi đỡ cay khi gặp bão.
+const TX_STORM_REFUND = 0.3;
+const TX_POT_X_DEF = 10;          // bội số bú hũ mặc định (cược × 10)
+const TX_POT_RATE_DEF = 0.02;     // % tổng cược mỗi ván nuôi vào hũ Bão
+function txPotCfg() {
+    const c = dbCache._txPot && typeof dbCache._txPot === 'object' ? dbCache._txPot : {};
+    const rate = Number(c.rate), x = Number(c.x);
+    return {
+        rate: Number.isFinite(rate) && rate >= 0 && rate <= 0.2 ? rate : TX_POT_RATE_DEF,
+        x: Number.isFinite(x) && x >= 1 && x <= 1000 ? Math.floor(x) : TX_POT_X_DEF,
+    };
+}
+// o.rate nhập theo ĐƠN VỊ PHẦN TRĂM ở panel (2 = 2%), o.x là bội số bú hũ.
+function setTxPotCfg(o) {
+    const cur = txPotCfg(); const next = { rate: cur.rate, x: cur.x };
+    if (o && o.rate !== undefined && String(o.rate).trim() !== '') {
+        const r = Number(String(o.rate).replace(',', '.'));
+        if (!(Number.isFinite(r) && r >= 0 && r <= 20)) return { error: '% nuôi hũ Bão phải từ 0 đến 20' };
+        next.rate = Math.round(r * 100) / 10000;
+    }
+    if (o && o.x !== undefined && String(o.x).trim() !== '') {
+        const x = Math.floor(Number(o.x));
+        if (!(Number.isFinite(x) && x >= 1 && x <= 1000)) return { error: 'Bội số bú hũ phải từ 1 đến 1000' };
+        next.x = x;
+    }
+    dbCache._txPot = next; saveDbNow();
+    writeLog('ADMIN', `[HŨ BÃO] Panel đặt: nuôi ${(next.rate * 100).toFixed(2)}% tổng cược/ván · bú hũ tối đa x${next.x} tiền cược`);
+    return { ok: true, cfg: next };
+}
 // Rút bớt hũ (khác luckyPotPop: không ẵm sạch, không mồi lại). Trả về số thực rút được.
 function potTake(key, amount) {
     const have = potGet(key);
@@ -5658,7 +5701,7 @@ client.once('ready', async (c) => {
             txMaxBet,        // 💰 trần cược TX/người/ván (hiện trên trang cược)
             txCapCheck,      // 💰 chặn vượt trần (dùng chung luật với Discord)
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
-            txPotX: TX_POT_X,
+            txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)
             getDb: () => dbCache,
             getUserData,
             updatePoints,
@@ -5926,9 +5969,10 @@ client.once('ready', async (c) => {
             // Bảng mời chơi Dò Mìn (không có ván chung, chỉ khoe kết quả + nút vào web)
             // 🏆 hũ nuôi chung: xem + nạp/rút tay để mồi hũ cho anh em chơi
             // 09/09: chỉ còn hũ nuôi Quay Pal; Dò Mìn/Leo Thang = bội số nổ hũ (mults)
-            getPot: () => ({ pots: { gacha: potGet('gacha') }, labels: POT_LABEL, maxBy: { gacha: LUCKY_POT_MAX_BY.gacha }, mults: { mines: potCfg('mines').mults, stairs: potCfg('stairs').mults }, leftover: { mines: potGet('mines'), stairs: potGet('stairs') }, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: minBet(), seedBy: { gacha: POT_SEED_BY.gacha } }),
+            getPot: () => ({ pots: { gacha: potGet('gacha'), tx: potGet('tx') }, labels: POT_LABEL, maxBy: { gacha: LUCKY_POT_MAX_BY.gacha, tx: LUCKY_POT_MAX_BY.tx }, txPot: txPotCfg(), baoRate: TX_BAO_RATE, mults: { mines: potCfg('mines').mults, stairs: potCfg('stairs').mults }, leftover: { mines: potGet('mines'), stairs: potGet('stairs') }, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: minBet(), seedBy: { gacha: POT_SEED_BY.gacha } }),
             addPot: (key, amount) => adminPotAdd(key, amount),
             setPotCfg: (key, o) => setPotCfg(key, o),   // 🏆 09/09: danh sách bội số nổ hũ (x10/x15/x20) của Dò Mìn/Leo Thang
+            setTxPotCfg: (o) => setTxPotCfg(o),         // 🌪️ 14/09: % nuôi + bội số bú hũ Bão
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
@@ -6373,44 +6417,82 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     // Gộp tiền thắng theo người (1 người đặt nhiều lần / nhiều cửa -> 1 dòng)
     // Luật BÃO: ra 3 viên giống nhau thì CHỈ cửa Bão ăn ×TX_BAO_RATE, mọi cửa
     // thường (tài/xỉu/chẵn/lẻ) thua sạch. Không bão thì cửa Bão thua, cửa thường ×2.
-    // 🌪️ nuôi HŨ BÃO: 5% tổng cược ván này, nhà cái bao (người chơi vẫn trừ đúng số đã đặt).
+    // 🌪️ nuôi HŨ BÃO: % tổng cược ván này (mặc định 2%), nhà cái bao - người chơi vẫn trừ đúng số đã đặt.
     // Nuôi TRƯỚC khi trả để tiền ván này cũng nằm trong hũ người trúng bú được.
     potFeed('tx', luckyPotCut('tx', bets.reduce((s, b) => s + (b.amount || 0), 0)));
     const winAgg = {};
     let txPotPaid = 0;               // tổng tiền bú hũ đã trả ván này (cho log + báo Discord)
-    let txPotHouse = 0;              // phần hũ không đủ, nhà cái bù - theo dõi chi phí thật
     const txPotWinners = [];
-    bets.forEach(b => {
-        let win = 0;
+    // 🌪️ BÚ HŨ (bản 2): gom TRƯỚC mọi cửa Bão trúng rồi mới chia, để hũ không đủ thì chia theo
+    // TỈ LỆ TIỀN CƯỢC chứ không phải ai đứng trước ăn trước. Nhà cái không bù: lấy tối đa bằng hũ.
+    const TXPX = txPotCfg().x;
+    const txPotShare = {};           // vị trí lệnh cược -> số bú được
+    if (isStorm) {
+        const hit = [];
+        bets.forEach((b, i) => { if (b.choice === 'bao' && b.amount > 0) hit.push({ i, need: b.amount * TXPX }); });
+        const need = hit.reduce((t, h) => t + h.need, 0);
+        const pool = Math.min(need, potGet('tx'));
+        if (pool > 0) {
+            if (pool >= need) hit.forEach(h => { txPotShare[h.i] = h.need; });
+            else {
+                let left = pool;
+                hit.forEach((h, k) => {
+                    const part = (k === hit.length - 1) ? left : Math.floor(pool * h.need / need);
+                    txPotShare[h.i] = part; left -= part;
+                });
+            }
+            potTake('tx', pool);
+        }
+    }
+    // 🌪️ refAgg: tiền HOÀN khi ra bão mà đặt đúng bên - tách khỏi winAgg để log không ghi
+    // nhầm thành "thắng", nhưng vẫn cộng vào winners để web tính lãi/lỗ ván đúng.
+    const refAgg = {};
+    bets.forEach((b, idx) => {
+        let win = 0, refund = 0;
         if (isStorm) {
             if (b.choice === 'bao') {
                 win = b.amount * TX_BAO_RATE;
-                // 🌪️ BÚ HŨ: LUÔN 1 ăn 10 tiền cược. Hũ có bao nhiêu lấy bấy nhiêu, thiếu thì nhà cái bù.
-                const need = b.amount * TX_POT_X;
-                const fromPot = potTake('tx', need);
-                win += need; txPotPaid += need; txPotHouse += need - fromPot;
-                txPotWinners.push({ userId: b.userId, name: b.username, take: need, fromPot });
+                const fromPot = txPotShare[idx] || 0;
+                if (fromPot > 0) {
+                    win += fromPot; txPotPaid += fromPot;
+                    txPotWinners.push({ userId: b.userId, name: b.username, take: fromPot });
+                }
+            } else if (b.choice === resultTX || b.choice === resultCL) {
+                refund = Math.floor(b.amount * TX_STORM_REFUND);   // đặt đúng bên với bão: thua 70%
             }
         } else if (b.choice === resultTX || b.choice === resultCL) {
             win = b.amount * 2;
         }
-        if (win > 0) {
-            updatePoints(b.userId, win);
-            if (!winAgg[b.userId]) winAgg[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
-            winAgg[b.userId].amount += win;
+        const got = win + refund;
+        if (got > 0) {
+            updatePoints(b.userId, got);
+            const bucket = win > 0 ? winAgg : refAgg;
+            if (!bucket[b.userId]) bucket[b.userId] = { userId: b.userId, name: b.username, amount: 0 };
+            bucket[b.userId].amount += got;
         }
-        statAdd(b.userId, 'tx', win - b.amount);   // net từng lệnh cược cho bảng 📊
+        statAdd(b.userId, 'tx', got - b.amount);   // net từng lệnh cược cho bảng 📊
     });
-    const winners = Object.values(winAgg).map(w => ({ u: w.userId, name: w.name, amount: w.amount }));
+    // winners = thắng THẬT + tiền hoàn, gộp theo người (web lấy đây tính net của ván)
+    const allAgg = {};
+    [winAgg, refAgg].forEach(m => Object.values(m).forEach(w => {
+        if (!allAgg[w.userId]) allAgg[w.userId] = { userId: w.userId, name: w.name, amount: 0 };
+        allAgg[w.userId].amount += w.amount;
+    }));
+    const winners = Object.values(allAgg).map(w => ({ u: w.userId, name: w.name, amount: w.amount }));
     let winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
     if (txPotPaid > 0) {
         winLog += `\n💥🌪️ **BÚ HŨ BÃO**: ${txPotWinners.map(p => `<@${p.userId}> +**${p.take.toLocaleString()}**`).join(' · ')} ${DOGCOIN_EMOJI} (hũ còn ${potGet('tx').toLocaleString()})`;
         txPotWinners.forEach(p => logDog('jackpot', p.userId, p.name, p.take, `bú hũ Bão Tài Xỉu (ván #${gameId})`));
-        writeLog('ADMIN', `[HŨ BÃO] Ván #${gameId} trả ${txPotPaid} cho ${txPotWinners.length} người (hũ ${txPotPaid - txPotHouse} + nhà cái bù ${txPotHouse}) - hũ còn ${potGet('tx')}`);
+        writeLog('ADMIN', `[HŨ BÃO] Ván #${gameId} bú ${txPotPaid} cho ${txPotWinners.length} người (toàn bộ lấy từ hũ, nhà cái không bù) - hũ còn ${potGet('tx')}`);
+    }
+
+    if (Object.keys(refAgg).length) {
+        if (winLog) winLog += '\n';
+        winLog += `🌪️ **Bão hoàn 30% tiền cược** (đặt đúng bên): ${Object.values(refAgg).map(w => `<@${w.userId}> +**${w.amount.toLocaleString()}**`).join(' · ')} ${DOGCOIN_EMOJI}`;
     }
 
     const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? `${TX_CHOICES.tai.name} 🔺` : `${TX_CHOICES.xiu.name} 🔻`);
-    const clIcon = isStorm ? 'cửa thường thua hết' : (isChan ? 'CHẴN 🔵' : 'LẺ 🟣');
+    const clIcon = isStorm ? `cửa ${isTai ? 'TÀI' : 'XỈU'}/${isChan ? 'CHẴN' : 'LẺ'} hoàn 30% · cửa ngược thua hết` : (isChan ? 'CHẴN 🔵' : 'LẺ 🟣');
     writeLog('RESULT', `[KẾT QUẢ BIG SMALL] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? TX_CHOICES.tai.name : TX_CHOICES.xiu.name)} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
 
     if (bets.length > 0) {
