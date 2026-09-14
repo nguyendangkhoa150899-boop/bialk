@@ -670,6 +670,20 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 📒 **Tab NỢ đỏ riêng trong nhóm Hồ sơ + nút 🆘 CẦU CỨU ANH EM** (chủ server: "thêm 1 ô Nợ màu đỏ nếu người chơi
+  có nợ ở phần hồ sơ phía trước cá nhân, khi có nợ mới hiện ra bấm vào để trả nợ, nếu không nợ thì không hiện", "khi bấm vào có
+  nút cầu cứu anh em kênh chat sẽ hiện thông báo số dư để có thể người khác trả nợ giùm, đây là id 1538752789499347037").
+  🔴 **Tab 📒 Nợ** tô đỏ, đứng **trước** 🪪 Cá nhân, mặc định ẩn - chỉ hiện khi đang nợ, trả sạch là **tự ẩn** và nếu đang đứng
+  ở trang Nợ thì tự đá về Cá nhân. Thẻ nợ được **dời hẳn** từ trang Cá nhân sang trang riêng `#pageDebt`.
+  🧹 **Bỏ thanh trả nợ xổ dưới topbar** (làm hôm nay, giờ thừa). Ô 📒 ĐANG NỢ cạnh số dư vẫn giữ làm đèn báo, nhưng bấm vào là
+  **nhảy thẳng sang tab Nợ** và điền sẵn số trả hết, thay vì xổ thanh tại chỗ.
+  🆘 **Nút CẦU CỨU ANH EM** trong trang Nợ: gọi `POST /api/debt/sos` → bot đăng ra kênh `1538752789499347037` một thẻ đỏ ghi
+  số dư ví, nợ vay, nợ admin, tổng nợ và lãi ngày, kèm nút **🤝 Trả nợ giùm người này** để ai cũng bấm trả hộ ngay tại đó.
+  Có **nghỉ 10 phút** giữa 2 lần réo (`u.sosAt`) để khỏi spam kênh; sạch nợ thì chặn luôn.
+  📣 **Thông báo LÃI ĐẺ và AI TRẢ NỢ GIÙM nay đăng cả ở kênh chat đó** (chủ server bổ sung), qua helper `vayAnnounce2` -
+  đăng bảng 📒 VAY NỢ trước rồi tới kênh chat, nếu hai kênh trùng nhau thì chỉ đăng một lần.
+  ✅ `notest.js` lên **60 case**. Thử thật trên bot test: sạch nợ bấm cầu cứu bị chặn đúng câu, ghi nợ 24.000 rồi bấm thì
+  đăng được, bấm lần hai ngay lập tức bị chặn "chờ 10 phút", log admin ghi đủ.
 - **14/09** — 🤝 **Nút "Trả nợ giùm người này" trên thẻ `/sodu`** (chủ server: "thêm nút trả nợ giùm được không chat,
   người khác bấm vào xong trả cho người nào /sodu á"). Ai chạy `/sodu` mà đang nợ thì thẻ hiện thêm nút xanh; **người khác**
   bấm vào là mở ô nhập số tiền, gửi xong thì **tiền trừ ví NGƯỜI BẤM, nợ trừ sổ NGƯỜI NỢ**.

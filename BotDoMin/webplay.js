@@ -421,6 +421,12 @@ function startWebPlay(ctx) {
                 if (ctx.debt && path === '/api/debt/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.debt.state(userId) });
                 }
+                // 🆘 14/09: đăng lời cầu cứu ra kênh chat để người khác trả nợ giùm
+                if (ctx.debt && ctx.debt.sos && req.method === 'POST' && path === '/api/debt/sos') {
+                    const r = await ctx.debt.sos(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 if (ctx.debt && req.method === 'POST' && path === '/api/debt/pay') {
                     const body = await readBody(req);
                     const r = ctx.debt.pay(userId, Math.floor(Number(body.amount) || 0));
@@ -743,14 +749,12 @@ const PAGE = [
     '#debtChip .lb{font-size:10px;color:#ffb3b3;letter-spacing:.3px}',
     '#debtChip .vl{font-size:15px;font-weight:900;color:#ff8b8b}',
     '#debtChip:active{transform:translateY(1px)}',
-    '#debtBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-4px 0 8px;padding:8px 10px;border:1px solid #a33;border-radius:12px;background:#241414}',
-    // ⚠️ BẮT BUỘC: id đặt display thì phải có luật id+hidden, không thì class hidden vô tác dụng
-    '#debtBar.hidden{display:none}',
-    '#debtBar input{flex:1 1 140px;min-width:0}',
-    '#debtBar button{white-space:nowrap;flex:0 0 auto}',
     '#debtBarNote{font-size:11px;color:#ffb3b3;margin-top:4px}',
     '#nav{display:flex;gap:6px;margin-bottom:8px}',
     '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:13px;padding:9px 2px}',
+    // 📒 14/09: tab Nợ tô đỏ cho nổi, chỉ hiện khi đang nợ
+    '#navDebt{background:linear-gradient(180deg,#3a1c1c,#2a1414);border-color:#a33;color:#ff9b9b;font-weight:900}',
+    '#navDebt.on{background:linear-gradient(180deg,#5a2626,#3a1818);color:#ffd2d2;border-color:#e06060;box-shadow:0 0 0 1px #e0606055}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
     // tầng 1: 2 nút nhóm to rõ; nhóm đang chọn viền vàng
     '#navGrp{display:flex;gap:6px;margin-bottom:6px}',
@@ -1266,12 +1270,6 @@ const PAGE = [
     // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
-    // 📒 14/09: ô trả nợ nhanh, xổ ra khi bấm vào ô NỢ trên thanh
-    '<div id="debtBar" class="hidden">',
-    '<input id="debtAmt2" type="number" min="1" placeholder="Trống = trả hết">',
-    '<button class="btn-full" id="debtPayBtn2" style="margin-top:0;width:auto" onclick="debtPay2()">💳 TRẢ NỢ</button>',
-    '<button style="background:#232735" onclick="debtBarToggle()">✕</button>',
-    '</div>',
 
     // 25/08: điều hướng 2 TẦNG cho đỡ chồng chéo - tầng 1 chọn NHÓM (Hồ sơ / Mini game),
     // tầng 2 chỉ hiện các trang thuộc nhóm đó. Quay Pal nằm bên nhóm Hồ sơ.
@@ -1286,6 +1284,7 @@ const PAGE = [
     '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
     '<button id="navStock" onclick="go(\'stock\')">📈 Cổ phiếu</button>',
     '<button id="navSpm" onclick="go(\'spm\')">🚀 Phi Thuyền</button>',
+    '<button id="navDebt" class="hidden" onclick="go(\'debt\')">📒 Nợ</button>',
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
     '<button id="navPal" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
@@ -1523,6 +1522,22 @@ const PAGE = [
     // ================= TRANG ĐIỂM DANH (dashboard người chơi) =================
     // Lịch tháng kiểu app điểm danh: ngày đã nhận vàng + nhãn CHUỖI, hôm nay viền tím,
     // progress đủ tháng ăn bonus. Nghiện = nút đếm ngược 60 phút theo GIỜ SERVER.
+    // 📒 14/09: TRANG NỢ riêng - tab đỏ ở nhóm Hồ sơ, chỉ hiện khi đang nợ
+    '<div id="pageDebt" class="hidden">',
+    '<div class="card" id="debtCard" style="display:none">',
+    '<div class="row"><h2 style="margin:0">📒 Nợ Dogcoin</h2><div class="muted" id="debtBad"></div></div>',
+    '<div id="debtInfo" style="font-size:14px;margin-top:6px">-</div>',
+    '<div class="row" style="margin-top:8px">',
+    '<input id="debtAmt" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)" style="flex:1">',
+    '<button class="btn-full" id="debtPayBtn" style="flex:1;margin-top:0" onclick="debtPay()">💳 TRẢ NỢ</button>',
+    '</div>',
+    '<div class="muted" style="font-size:12px;margin-top:6px">Còn nợ một đồng là <b>không mua được đồ ở shop item</b> và <b>không chuyển được pal vào game</b>. Mấy thứ khác vẫn chơi bình thường, trả sạch nợ là mở khoá ngay. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
+    // 🆘 14/09: réo anh em ra kênh chat trả giùm
+    '<button class="btn-full" id="sosBtn" style="background:linear-gradient(180deg,#b5352f,#8a201b)" onclick="debtSos()">🆘 CẦU CỨU ANH EM</button>',
+    '<div class="muted" style="font-size:12px;margin-top:6px">Đăng thẻ số dư + số nợ của bạn ra kênh chat, kèm nút để anh em bấm <b>trả nợ giùm</b>. Mỗi 10 phút réo được một lần thôi nha.</div>',
+    '</div>',
+    '</div>',
+
     '<div id="pageDaily" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">📅 Điểm Danh</h2><div class="muted" id="dMonth">Tháng -</div></div>',
@@ -1542,16 +1557,6 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
-    '</div>',
-    // 📒 Nợ: chỉ hiện khi ĐANG NỢ. Vay thì qua bảng trong Discord; ở web chỉ xem + trả.
-    '<div class="card" id="debtCard" style="display:none">',
-    '<div class="row"><h2 style="margin:0">📒 Nợ Dogcoin</h2><div class="muted" id="debtBad"></div></div>',
-    '<div id="debtInfo" style="font-size:14px;margin-top:6px">-</div>',
-    '<div class="row" style="margin-top:8px">',
-    '<input id="debtAmt" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)" style="flex:1">',
-    '<button class="btn-full" id="debtPayBtn" style="flex:1;margin-top:0" onclick="debtPay()">💳 TRẢ NỢ</button>',
-    '</div>',
-    '<div class="muted" style="font-size:12px;margin-top:6px">Còn nợ một đồng là <b>không mua được đồ ở shop item</b> và <b>không chuyển được pal vào game</b>. Mấy thứ khác vẫn chơi bình thường, trả sạch nợ là mở khoá ngay. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
     '</div>',
     // 🎒 RƯƠNG PAL (25/08): pal quay trúng nằm ở đây - bán lấy Dogcoin hoặc NHẬN vào game
     '<div class="card">',
@@ -2109,7 +2114,7 @@ const PAGE = [
     'if(v<1){c.textContent="Gõ số tiền để xem ra Bão ăn bao nhiêu";return}',
     'var bu=Math.min(v*BPX,BPOT);',
     'c.textContent="Đặt "+vnd(v)+" → ra Bão ăn "+vnd(v*BPR)+" + bú hũ "+vnd(bu)+" = "+vnd(v*BPR+bu);}',
-    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile"};',
+    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile"};',
     'var GRP_LAST={games:"tx",profile:"daily"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
@@ -2122,6 +2127,7 @@ const PAGE = [
     '$("pageShop").classList.toggle("hidden",p!=="shop");',
     '$("pageDog").classList.toggle("hidden",p!=="dog");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
+    '$("pageDebt").classList.toggle("hidden",p!=="debt");',
     '$("pageStock").classList.toggle("hidden",p!=="stock");',
     '$("pageSpm").classList.toggle("hidden",p!=="spm");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
@@ -2134,6 +2140,7 @@ const PAGE = [
     '$("navShop").classList.toggle("on",p==="shop");',
     '$("navDog").classList.toggle("on",p==="dog");',
     '$("navDaily").classList.toggle("on",p==="daily");',
+    '$("navDebt").classList.toggle("on",p==="debt");',
     '$("navStock").classList.toggle("on",p==="stock");',
     '$("navSpm").classList.toggle("on",p==="spm");',
     // nhóm trang: tầng 1 chọn nhóm, tầng 2 chỉ hiện trang trong nhóm (nhớ trang cuối mỗi nhóm)
@@ -2991,9 +2998,10 @@ const PAGE = [
     'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync()}',
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
     'var DEBTNOW=0;',   // 📒 14/09: số nợ hiện tại, cho ô trên thanh + điền sẵn ô trả
-    'function debtChipDraw(){var ch=$("debtChip");if(!ch)return;',
-    'if(DEBTNOW>0){ch.classList.remove("hidden");$("debtChipVal").textContent=DEBTNOW.toLocaleString("vi-VN")}',
-    'else{ch.classList.add("hidden");var bar=$("debtBar");if(bar)bar.classList.add("hidden")}}',
+    'function debtChipDraw(){var ch=$("debtChip"),tb=$("navDebt");',
+    'if(DEBTNOW>0){if(ch){ch.classList.remove("hidden");$("debtChipVal").textContent=DEBTNOW.toLocaleString("vi-VN")}if(tb)tb.classList.remove("hidden")}',
+    // sạch nợ: giấu cả ô trên thanh lẫn tab, đang đứng ở trang Nợ thì tự về Cá nhân
+    'else{if(ch)ch.classList.add("hidden");if(tb)tb.classList.add("hidden");if(CURPAGE==="debt")go("daily")}}',
     'function debtSync(){api("/api/debt/state").then(function(j){',
     'DEBTNOW=j.total||0;debtChipDraw();',
     'var c=$("debtCard");if(!c)return;',
@@ -3007,15 +3015,16 @@ const PAGE = [
     'var v=parseInt($(inpId).value)||0;',
     'api("/api/debt/pay",{amount:v}).then(function(j){setBal(j.balance);$(inpId).value="";',
     'toast(j.debt.total>0?("💳 Đã trả "+j.paid.toLocaleString("vi-VN")+" - còn nợ "+j.debt.total.toLocaleString("vi-VN")):"✅ Đã trả "+j.paid.toLocaleString("vi-VN")+" - SẠCH NỢ!");',
-    'if(!(j.debt.total>0)){var bar=$("debtBar");if(bar)bar.classList.add("hidden")}',
     'debtSync();b.disabled=false',
     '}).catch(function(e){toast("❌ "+e.message);b.disabled=false})}',
     'function debtPay(){debtDo("debtAmt","debtPayBtn")}',
-    'function debtPay2(){debtDo("debtAmt2","debtPayBtn2")}',
-    // bấm ô NỢ trên thanh: xổ/thu ô trả nhanh, mở ra là điền sẵn TRẢ HẾT cho tiện
-    'function debtBarToggle(){var bar=$("debtBar");if(!bar)return;',
-    'var mo=bar.classList.contains("hidden");bar.classList.toggle("hidden");',
-    'if(mo){var i=$("debtAmt2");if(i){i.value=DEBTNOW||"";i.focus();i.select()}}}',
+    // 📒 14/09: bấm ô NỢ trên thanh -> nhảy thẳng sang tab 📒 Nợ, điền sẵn số trả hết
+    'function debtBarToggle(){if(!(DEBTNOW>0))return;grpGo("profile");go("debt");',
+    'var i=$("debtAmt");if(i){i.value=DEBTNOW;setTimeout(function(){i.focus();i.select()},60)}}',
+    // 🆘 réo anh em ra kênh chat trả giùm
+    'function debtSos(){var b=$("sosBtn");if(!b||b.disabled)return;b.disabled=true;',
+    'api("/api/debt/sos",{}).then(function(){toast("🆘 Đã réo anh em ở kênh chat - chờ người tốt bụng nha!")})',
+    '.catch(function(e){toast("❌ "+e.message)}).then(function(){b.disabled=false})}',
     'function dRender(){if(!DST)return;',
     '$("dMonth").textContent="Tháng "+DST.month+" · "+DST.year;',
     '$("dStreak").textContent=DST.streak+" ngày";',

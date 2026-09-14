@@ -632,7 +632,7 @@ function debtAccrue(userId) {
         const after = d.loan + d.admin;
         if (after > before) {
             writeLog('ADMIN', `[VAY NỢ] Lãi ${gap} ngày x${pct}% (cả nợ admin): ${u.name || userId} ${before.toLocaleString()} -> ${after.toLocaleString()}`);
-            vayAnnounce(`🩸 <@${userId}> ôm nợ qua ${gap} ngày, lãi ${pct}%/ngày đẻ trên CẢ CỤC NỢ: **${before.toLocaleString()} → ${after.toLocaleString()}** ${DOGCOIN_EMOJI} - trả sớm đi kẻo nợ nuốt ví!`, [userId]);
+            vayAnnounce2(`🩸 <@${userId}> ôm nợ qua ${gap} ngày, lãi ${pct}%/ngày đẻ trên CẢ CỤC NỢ: **${before.toLocaleString()} → ${after.toLocaleString()}** ${DOGCOIN_EMOJI} - trả sớm đi kẻo nợ nuốt ví!`, [userId]);
         }
     }
     return d;
@@ -660,6 +660,17 @@ function vayAnnounce(text, tagIds) {
     const chId = (vayState.channel && vayState.channel.id) || dbCache._vayChannelId;
     if (!chId) return;
     client.channels.fetch(chId)
+        .then(ch => ch && ch.send({ content: text, allowedMentions: { users: tagIds || [] } }))
+        .catch(() => {});
+}
+
+// 📣 14/09 (chủ server): mấy tin quan trọng - LÃI ĐẺ và AI TRẢ NỢ GIÙM - đăng cả ở
+// bảng 📒 VAY NỢ lẫn KÊNH CHAT chung cho anh em thấy. Trùng kênh thì chỉ đăng 1 lần.
+function vayAnnounce2(text, tagIds) {
+    vayAnnounce(text, tagIds);
+    const chBang = (vayState.channel && vayState.channel.id) || dbCache._vayChannelId;
+    if (chBang === DEBT_SOS_CHANNEL) return;
+    client.channels.fetch(DEBT_SOS_CHANNEL)
         .then(ch => ch && ch.send({ content: text, allowedMentions: { users: tagIds || [] } }))
         .catch(() => {});
 }
@@ -746,11 +757,50 @@ function debtPayFor(payerId, payerName, debtorId, amount) {
     writeLog('ADMIN', `[VAY NỢ] ${payerName} trả GIÙM ${ten} ${want.toLocaleString()} | người nợ còn ${left.toLocaleString()}`);
     saveDbNow();
     vayBoardRefresh();
-    vayAnnounce(left > 0
+    vayAnnounce2(left > 0
         ? `🤝 <@${payerId}> vừa trả giùm <@${debtorId}> **${want.toLocaleString()}** ${DOGCOIN_EMOJI} - còn nợ **${left.toLocaleString()}**. Tình nghĩa quá!`
         : `🤝 <@${payerId}> vừa trả giùm <@${debtorId}> **${want.toLocaleString()}** ${DOGCOIN_EMOJI} - **SẠCH NỢ** luôn! Anh em tốt thật 🫡`,
         [payerId, debtorId]);
     return { ok: true, paid: want, left, payerBalance: getUserData(payerId).points || 0 };
+}
+
+// 🆘 14/09 - CẦU CỨU ANH EM: đăng thẻ số dư + nợ ra kênh chat, kèm nút 🤝 để người khác
+// bấm trả giùm ngay tại đó. Có nghỉ 10 phút giữa 2 lần để khỏi spam kênh.
+const DEBT_SOS_CHANNEL = '1538752789499347037';
+const DEBT_SOS_CD_MS = 10 * 60 * 1000;
+async function debtSosPost(userId) {
+    const st = debtStatus(userId);
+    if (st.total <= 0) return { error: 'Bạn không nợ đồng nào - khỏi cầu cứu 😄' };
+    const u = getUserData(userId);
+    const con = DEBT_SOS_CD_MS - (Date.now() - (u.sosAt || 0));
+    if (con > 0) return { error: `Vừa cầu cứu xong rồi - chờ ${Math.ceil(con / 60000)} phút nữa hãy réo tiếp nhé` };
+    const ch = await client.channels.fetch(DEBT_SOS_CHANNEL).catch(() => null);
+    if (!ch) return { error: 'Không vào được kênh cầu cứu - nhắn admin giùm' };
+    const embed = new EmbedBuilder()
+        .setTitle('🆘 CẦU CỨU: AI TRẢ NỢ GIÙM VỚI!')
+        .setDescription([
+            `<@${userId}> đang kẹt nợ, réo anh em một tiếng 🙏`,
+            '',
+            `💰 Số dư ví: **${(u.points || 0).toLocaleString()}** ${DOGCOIN_EMOJI}`,
+            ...(st.loan > 0 ? [`📒 Nợ vay: **${st.loan.toLocaleString()}**`] : []),
+            ...(st.admin > 0 ? [`🧾 Nợ admin: **${st.admin.toLocaleString()}**`] : []),
+            `🔴 **TỔNG NỢ: ${st.total.toLocaleString()}** ${DOGCOIN_EMOJI} · chưa trả là +${st.feePct}%/ngày`,
+            '',
+            'Bấm **🤝 Trả nợ giùm người này** bên dưới: tiền trừ ví BẠN, nợ trừ sổ người ta. Để trống số tiền là trả hết.',
+        ].join('\n'))
+        .setColor(0xe74c3c);
+    await ch.send({
+        content: `<@${userId}>`,
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`vay_ho_${userId}`).setLabel('Trả nợ giùm người này').setEmoji('🤝').setStyle(ButtonStyle.Success)
+        )],
+        allowedMentions: { users: [userId] },
+    });
+    u.sosAt = Date.now();
+    saveDbNow();
+    writeLog('ADMIN', `[VAY NỢ] ${u.name || userId} bấm CẦU CỨU - đăng kêu gọi trả nợ giùm (đang nợ ${st.total.toLocaleString()})`);
+    return { ok: true, total: st.total };
 }
 
 // 🚧 14/09 - CỔNG CHẶN DUY NHẤT CỦA HỆ THỐNG NỢ.
@@ -5726,6 +5776,7 @@ client.once('ready', async (c) => {
             debt: {
                 state: (uid) => debtStatus(uid),
                 pay: (uid, amt) => debtPay(uid, getUserData(uid).name || uid, amt),
+                sos: (uid) => debtSosPost(uid),   // 🆘 14/09: đăng cầu cứu ra kênh chat
             },
             // 🎁 quay pal kiểu CSGO + rương/hồ sơ (25/08)
             palwheel: {
