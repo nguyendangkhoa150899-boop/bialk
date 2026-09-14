@@ -89,7 +89,6 @@ function startPanel(ctx) {
                 id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '',
                 // 📒 nợ: hiện thẳng số trong db (index.js có vòng quét cộng lãi mỗi giờ)
                 debt: db[id].debt ? ((db[id].debt.loan || 0) + (db[id].debt.admin || 0)) : 0,
-                debtBad: !!(db[id].debt && db[id].debt.bad),
                 // 🍀 %/quay may mắn RIÊNG (null = theo mặc định toàn sàn) + thanh hiện tại
                 luckRate: Number.isFinite(db[id].palLuckRate) ? db[id].palLuckRate : null,
                 luck: Number.isFinite(db[id].palLuck) ? db[id].palLuck : 0,
@@ -250,7 +249,7 @@ function startPanel(ctx) {
                     // tab 👥: ví/nợ/phát quà/mức thưởng
                     '/api/points/set', '/api/points/add', '/api/points/subtract', '/api/points/delete',
                     '/api/points/resetall', '/api/points/setall', '/api/points/reset-daily', '/api/points/addall',
-                    '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/debt/bad', '/api/daily/cfg',
+                    '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
@@ -766,13 +765,6 @@ function startPanel(ctx) {
                     if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu userId' });
                     const r = ctx.debtClear(uid);
                     return sendJSON(res, 200, { ok: true, cleared: r.cleared });
-                }
-                // Gắn/gỡ nhãn ⚠️ nợ xấu (thủ công) - bot DM báo người chơi + vẽ lại bảng
-                if (path === '/api/debt/bad') {
-                    const uid = String(body.userId || '').trim();
-                    if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu userId' });
-                    const r = ctx.debtBad(uid, !!body.bad);
-                    return sendJSON(res, 200, { ok: true, bad: r.bad });
                 }
                 // Kênh khoe kết quả quay pal ngẫu nhiên (channelId rỗng = tắt)
                 if (path === '/api/gacha/channel') {
@@ -1760,7 +1752,7 @@ const HTML = `<!DOCTYPE html>
             <tbody id="playerBody"></tbody>
           </table>
         </div>
-        <div class="note">Cột <b>📒 Nợ</b>: ⚠️ = nợ xấu (quá 1 ngày chưa trả lãi, bị cấm vay thêm). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
+        <div class="note">Cột <b>📒 Nợ</b>: còn nợ là người chơi KHÔNG mua được đồ ở shop item và KHÔNG chuyển được pal vào game (14/09 bỏ hẳn nhãn nợ xấu). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
       </div>
 
       <div class="card">
@@ -1777,7 +1769,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>🩸 Phí vay + lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
           <button class="btn-blue" onclick="loanCfgSave()">💾 Lưu</button>
         </div>
-        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. Nợ thường KHÔNG bị siết; dính ⚠️ <b>NỢ XẤU</b> mới bị: cấm vay + không chuyển tiền + không mua/quay pal + mọi khoản thu (điểm danh/event/ai chuyển cho) bị xiết trả nợ, ví chỉ chừa 1.000. Trả sạch nợ là nhãn TỰ BAY.</div>
+        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. <b>14/09 bỏ hẳn nhãn NỢ XẤU</b>: giờ cứ CÒN NỢ MỘT ĐỒNG là bị khoá đúng 2 việc - không mua đồ ở <b>shop item</b> và không chuyển <b>pal vào game</b>. Chuyển tiền, chuyển Dogcoin vào game, minigame, quay pal, cổ phiếu, vay thêm đều KHÔNG bị đụng. Trả sạch nợ là mở khoá ngay.</div>
       </div>
 
       <div class="card danger">
@@ -2883,7 +2875,7 @@ function renderPlayers(){
   // qua, bảng đứng yên (trước: xóa sạch + appendChild từng dòng mỗi 3s -> mất bôi đen).
   const tb=document.getElementById('playerBody');let tbHtml='';
   STATE.players.filter(p=>p.name.toLowerCase().includes(q)||p.id.includes(q)).forEach(p=>{
-    const debtCell=p.debt>0?('<b style="color:#e74c3c">'+p.debt.toLocaleString()+'</b>'+(p.debtBad?' ⚠️':'')):'<span class="muted">0</span>';
+    const debtCell=p.debt>0?('<b style="color:#e74c3c">'+p.debt.toLocaleString()+'</b>'):'<span class="muted">0</span>';
     // (cột 🍀 may mắn đã gỡ 04/09 - chủ server để mặc định, bảng đỡ banh ngang)
     tbHtml+='<tr><td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
       '<td>'+debtCell+'</td>'+
@@ -2892,7 +2884,6 @@ function renderPlayers(){
       ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button>'+
       ' <button class="mini btn-red" onclick="pSub(\\''+p.id+'\\')">Trừ</button>'+
       ' <button class="mini btn-red" onclick="pDebt(\\''+p.id+'\\')">📒 Ghi nợ</button>'+
-      ((p.debt>0||p.debtBad)?' <button class="mini '+(p.debtBad?'btn-green':'btn-red')+'" onclick="pDebtBad(\\''+p.id+'\\','+(p.debtBad?'false':'true')+')">'+(p.debtBad?'Gỡ ⚠️':'⚠️ Nợ xấu')+'</button>':'')+
       (p.debt>0?' <button class="mini btn-grey" onclick="pDebtClear(\\''+p.id+'\\')">Xóa nợ</button>':'')+
       ' <button class="mini btn-grey" onclick="pDel(\\''+p.id+'\\')">🗑️ Xóa ví</button></td></tr>';
   });
@@ -2981,10 +2972,6 @@ async function pDebt(id){
 async function pDebtClear(id){
   if(!await uiConfirm('Xóa SẠCH nợ (cả vay lẫn admin ghi) của người này?','Xóa nợ','btn-red'))return;
   api('/api/debt/clear',{userId:id}).then(j=>{toast('✅ Đã xóa '+j.cleared.toLocaleString()+' nợ');refresh();});
-}
-async function pDebtBad(id,bad){
-  if(!await uiConfirm(bad?'Gắn nhãn ⚠️ NỢ XẤU? (bêu tên trên bảng, cấm vay thêm, bot DM báo họ)':'Gỡ nhãn nợ xấu? (họ vay lại được, bot DM báo)',bad?'⚠️ Gắn':'Gỡ nhãn',bad?'btn-red':'btn-green'))return;
-  api('/api/debt/bad',{userId:id,bad:bad}).then(()=>{toast(bad?'⚠️ Đã gắn nợ xấu':'✅ Đã gỡ nhãn');refresh();});
 }
 // Xác nhận theo loại đơn - duyệt 'to-discord' là CỘNG TIỀN vào ví, phải nói rõ.
 async function wdApprove(id,kind){

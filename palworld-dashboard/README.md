@@ -670,6 +670,36 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 💳 **Ô NỢ ngay cạnh số dư, bấm là trả nợ tại chỗ** (chủ server: "thêm mục nợ kế bên Số dư dogcoin, kế bên có
+  phần nợ bấm vào trả được luôn"). Trước đây muốn trả nợ phải vào tab 👤 Hồ sơ kéo tìm thẻ 📒 Nợ Dogcoin.
+  Nay thanh đầu trang có ô **📒 ĐANG NỢ + số tiền** nằm sát số dư, viền đỏ; bấm vào là **xổ ngay một ô trả nợ** ngay dưới thanh,
+  đã **điền sẵn đúng số nợ** để bấm một phát trả hết, hoặc sửa số để trả một phần. Trả sạch là ô nợ và ô trả **tự biến mất**.
+  Ô nợ **chỉ hiện khi đang nợ** và tự làm mới 15 giây một lần ở MỌI trang, không riêng trang Hồ sơ như `debtSync` cũ.
+  Thẻ nợ trong Hồ sơ giữ nguyên; hai chỗ trả nợ dùng chung một hàm `debtDo(inpId, btnId)` nên không sợ lệch luật.
+  ✅ `notest.js` lên **35 case**. Đã thử thật trên bot test: ghi nợ 7.777 → trả một phần 2.777 còn 5.000 → để trống trả hết
+  còn 0 → ô nợ tự ẩn. Trang render ra có đủ `debtChip` và `debtBar`.
+- **14/09** — 📒 **BỎ HẲN NHÃN ⚠️ NỢ XẤU - còn nợ một đồng là khoá 2 việc** (chủ server: "bỏ nợ xấu đi, giờ nếu ai nợ sẽ ko
+  mua đồ ở shop item nữa, không được lấy pal vào game, miễn sao tài khoản có nợ sẽ bị vậy và ko có nợ xấu, lãi vẫn tính như cũ").
+  ✅ **Luật mới, đúng 2 cổng chặn** qua hàm `debtBlock(userId, việc)`: còn nợ (vay HOẶC admin ghi) thì ① không mua được đồ ở
+  🛒 SHOP ITEM (`itemShopBuy`) và ② không chuyển được PAL vào game (`palChestClaim`). Trả sạch nợ là mở khoá ngay, không chờ ai duyệt.
+  Vẫn bán/tặng pal trong rương bình thường - chỉ chặn đường đưa pal vào game.
+  🗑️ **Đã xoá sạch bộ máy nợ xấu**: hàm `adminDebtBad` + route `/api/debt/bad` + nút "⚠️ Nợ xấu" ở panel + hàm client
+  `pDebtBad`; hàm xiết ví `debtBadSweep` và hằng `DEBT_BAD_FLOOR` (ví bị vét về 1.000); trường `bad` trong `debtStatus`/`debtList`;
+  "BẢNG PHONG THẦN NỢ XẤU" trên bảng Discord. Cờ `bad` cũ còn sót trong database bị **xoá dần** mỗi lần người đó trả sạch nợ
+  (`delete d.bad`), và trong lúc còn sót thì cũng vô nghĩa vì không còn chỗ nào đọc nó.
+  ⚠️ **Hệ quả cần biết - đã báo chủ server**: mọi ràng buộc CŨ gắn với nhãn nợ xấu đều biến mất theo. Người đang nợ giờ
+  **vẫn** chuyển tiền cho người khác được, vẫn chuyển Dogcoin vào game, vẫn chơi Dò Mìn/Leo Thang/Phi Thuyền, vẫn quay/mua pal,
+  vẫn vào lệnh cổ phiếu, vẫn vay thêm trong hạn mức. Tiền điểm danh/nghiện/chuỗi **không còn bị cắt** để trừ nợ
+  (`LOAN_INCOME_CUT` 0.5 → 0, `debtCutIncome` giữ lại nhưng luôn trả đủ). Nghĩa là sức ép trả nợ giờ chỉ còn **lãi kép mỗi ngày**
+  cộng 2 cổng chặn trên, không còn cơ chế cưỡng chế thu tiền nào.
+  💰 **Lãi giữ nguyên 100%**: `debtAccrue` không đụng tới - qua mỗi mốc 00:00 giờ VN cả cục nợ (kể cả nợ admin ghi) nhân
+  (1 + feePct%), vẫn réo tên ở kênh bảng vay.
+  🖥️ Lời lẽ đã sửa đồng bộ ở: bảng 📒 VAY NỢ trong Discord, nút "Nợ của tôi", thông báo trả nợ, DM, thẻ nợ trên web, 2 dòng
+  ghi chú trong panel. Cột 📒 Nợ ở panel bỏ dấu ⚠️.
+  ✅ Bộ test mới `notest.js` **29 case** chạy hàm thật trong vm: chặn từ 1 đồng nợ, nợ admin ghi cũng chặn, trả sạch mở khoá,
+  `debtStatus` hết trường `bad`, cờ `bad` cũ vô hiệu, thu nhập không bị cắt, lãi 1 ngày + lãi kép 3 ngày vẫn đúng, và quét
+  nguồn để chắc không còn chỗ nào đọc `.bad`. Đã thử thật trên bot test: ghi nợ 5.000 → mua shop bị chặn đúng câu, chuyển tiền
+  vẫn chạy, xoá nợ xong hết bị chặn.
 - **14/09** — 🀫 **NẶN XONG LÀ TIỀN VỀ VÍ NGAY, trả riêng từng người** (chủ server: "nếu người chơi tự mở thì cộng trừ vẫn
   như cũ", "nếu nặn xong rồi thì trả thưởng tại chỗ luôn, show +/- Dogcoin, trả riêng người đó thôi, người khác chưa nặn
   hoặc không nặn thì chưa ảnh hưởng"). Trước đây lắc lúc khóa sổ rồi CHỜ HẾT 15 giây mới trả cho tất cả cùng lúc.

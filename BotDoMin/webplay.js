@@ -737,6 +737,15 @@ const PAGE = [
     '#topbar .big{font-size:20px}',
     '#topbar .muted{font-size:11px}',
     '#topbar button{padding:8px 10px}',
+    // 📒 14/09: ô NỢ nằm ngay cạnh số dư - bấm là xổ ô trả nợ ngay dưới thanh
+    '#debtChip{cursor:pointer;user-select:none;padding:6px 10px;border-radius:10px;border:1px solid #a33;background:linear-gradient(180deg,#3a1c1c,#2a1414);line-height:1.15;text-align:center}',
+    '#debtChip .lb{font-size:10px;color:#ffb3b3;letter-spacing:.3px}',
+    '#debtChip .vl{font-size:15px;font-weight:900;color:#ff8b8b}',
+    '#debtChip:active{transform:translateY(1px)}',
+    '#debtBar{display:flex;gap:6px;align-items:center;margin:-4px 0 8px;padding:8px 10px;border:1px solid #a33;border-radius:12px;background:#241414}',
+    '#debtBar input{flex:1;min-width:0}',
+    '#debtBar button{white-space:nowrap}',
+    '#debtBarNote{font-size:11px;color:#ffb3b3;margin-top:4px}',
     '#nav{display:flex;gap:6px;margin-bottom:8px}',
     '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:13px;padding:9px 2px}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
@@ -1246,10 +1255,18 @@ const PAGE = [
     '<div id="app" class="hidden">',
     '<div id="topbar" class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div>',
     '<div class="big"><img class="dc" src="/dogcoin.png" alt=""> <span id="bal">0</span></div></div>',
+    // 📒 14/09: ô NỢ kế bên số dư - chỉ hiện khi đang nợ, bấm vào là trả được luôn
+    '<div id="debtChip" class="hidden" onclick="debtBarToggle()" title="Bấm để trả nợ"><div class="lb">📒 ĐANG NỢ</div><div class="vl" id="debtChipVal">0</div></div>',
     '<div style="display:flex;gap:6px;align-items:center">',
     // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
+    // 📒 14/09: ô trả nợ nhanh, xổ ra khi bấm vào ô NỢ trên thanh
+    '<div id="debtBar" class="hidden">',
+    '<input id="debtAmt2" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)">',
+    '<button class="btn-full" id="debtPayBtn2" style="margin-top:0;width:auto" onclick="debtPay2()">💳 TRẢ NỢ</button>',
+    '<button style="background:#232735" onclick="debtBarToggle()">✕</button>',
+    '</div>',
 
     // 25/08: điều hướng 2 TẦNG cho đỡ chồng chéo - tầng 1 chọn NHÓM (Hồ sơ / Mini game),
     // tầng 2 chỉ hiện các trang thuộc nhóm đó. Quay Pal nằm bên nhóm Hồ sơ.
@@ -1537,7 +1554,7 @@ const PAGE = [
     '<input id="debtAmt" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)" style="flex:1">',
     '<button class="btn-full" id="debtPayBtn" style="flex:1;margin-top:0" onclick="debtPay()">💳 TRẢ NỢ</button>',
     '</div>',
-    '<div class="muted" style="font-size:12px;margin-top:6px">Dính ⚠️ nợ xấu thì: không chuyển vào game, không chuyển tiền cho người khác, 50% tiền điểm danh/nghiện/chuỗi tự trừ vào nợ. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:6px">Còn nợ một đồng là <b>không mua được đồ ở shop item</b> và <b>không chuyển được pal vào game</b>. Mấy thứ khác vẫn chơi bình thường, trả sạch nợ là mở khoá ngay. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
     '</div>',
     // 🎒 RƯƠNG PAL (25/08): pal quay trúng nằm ở đây - bán lấy Dogcoin hoặc NHẬN vào game
     '<div class="card">',
@@ -1924,6 +1941,7 @@ const PAGE = [
     // Big Small vẫn tự làm mới ngầm kể cả khi đang ở trang Dò Mìn (số dư luôn đúng,
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
+    'debtSync();setInterval(function(){if(TOKEN)debtSync()},15000);',   // 📒 14/09: ô nợ trên thanh luôn tươi
     'mSync();sSync();',
     // 28/08: F5 giữ nguyên tab đang xem - khôi phục MỌI tab hợp lệ (theo PAGE_GRP, tự
     // đúng cho cả tab thêm sau này như 🛒 Shop Item), không còn whitelist cứng thiếu tab.
@@ -2837,7 +2855,7 @@ const PAGE = [
     ':held==="long"?("Giá phải lên "+(Math.round((even/SKS.price-1)*1000)/10)+"% bạn mới có lãi.")',
     ':("MUA cần giá lên "+(Math.round((evenL/SKS.price-1)*1000)/10)+"%, BÁN cần giá xuống "+(Math.round((1-evenS/SKS.price)*1000)/10)+"% mới có lãi.");',
     '$("skPvNote").textContent=note;',
-    'var lock=!SKS.open?"SÀN TẠM ĐÓNG":SKS.blocked?"ĐANG NỢ XẤU":"";',
+    'var lock=!SKS.open?"SÀN TẠM ĐÓNG":SKS.blocked?"TẠM KHOÁ":"";',
     'var setB=function(id,o,lbl,sd){var b=$(id);if(!b)return;var wrong=held&&held!==sd;',
     // mỗi chiều vào ở giá khác nhau -> số CP khác nhau, nên kiểm trần RIÊNG từng nút
     'var ov=o.sh>roomSh;',
@@ -2972,19 +2990,32 @@ const PAGE = [
     'var DST=null,DOFF=0;',
     'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync()}',
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
+    'var DEBTNOW=0;',   // 📒 14/09: số nợ hiện tại, cho ô trên thanh + điền sẵn ô trả
+    'function debtChipDraw(){var ch=$("debtChip");if(!ch)return;',
+    'if(DEBTNOW>0){ch.classList.remove("hidden");$("debtChipVal").textContent=DEBTNOW.toLocaleString("vi-VN")}',
+    'else{ch.classList.add("hidden");var bar=$("debtBar");if(bar)bar.classList.add("hidden")}}',
     'function debtSync(){api("/api/debt/state").then(function(j){',
+    'DEBTNOW=j.total||0;debtChipDraw();',
     'var c=$("debtCard");if(!c)return;',
     'if(!(j.total>0)){c.style.display="none";return}',
     'c.style.display="";',
-    '$("debtBad").textContent=j.bad?"⚠️ NỢ XẤU (hệ thống đóng dấu)":"";',
+    '$("debtBad").textContent=(j.total>0)?"⛔ Đang nợ - khoá mua shop item + chuyển pal vào game":"";',
     '$("debtInfo").innerHTML="Đang nợ <b>"+j.total.toLocaleString("vi-VN")+"</b> 🐕"+(j.admin>0?" (vay "+j.loan.toLocaleString("vi-VN")+" + admin ghi "+j.admin.toLocaleString("vi-VN")+")":"")+" · qua 00:00 chưa trả là CẢ CỤC NỢ +"+j.ratePct+"%/ngày (lãi kép, cả nợ admin)";',
     '}).catch(function(){})}',
-    'function debtPay(){var b=$("debtPayBtn");if(b.disabled)return;b.disabled=true;',
-    'var v=parseInt($("debtAmt").value)||0;',
-    'api("/api/debt/pay",{amount:v}).then(function(j){setBal(j.balance);$("debtAmt").value="";',
+    // 📒 14/09: một hàm trả nợ dùng chung cho thẻ nợ trong Hồ sơ LẪN ô nhanh trên thanh
+    'function debtDo(inpId,btnId){var b=$(btnId);if(!b||b.disabled)return;b.disabled=true;',
+    'var v=parseInt($(inpId).value)||0;',
+    'api("/api/debt/pay",{amount:v}).then(function(j){setBal(j.balance);$(inpId).value="";',
     'toast(j.debt.total>0?("💳 Đã trả "+j.paid.toLocaleString("vi-VN")+" - còn nợ "+j.debt.total.toLocaleString("vi-VN")):"✅ Đã trả "+j.paid.toLocaleString("vi-VN")+" - SẠCH NỢ!");',
+    'if(!(j.debt.total>0)){var bar=$("debtBar");if(bar)bar.classList.add("hidden")}',
     'debtSync();b.disabled=false',
     '}).catch(function(e){toast("❌ "+e.message);b.disabled=false})}',
+    'function debtPay(){debtDo("debtAmt","debtPayBtn")}',
+    'function debtPay2(){debtDo("debtAmt2","debtPayBtn2")}',
+    // bấm ô NỢ trên thanh: xổ/thu ô trả nhanh, mở ra là điền sẵn TRẢ HẾT cho tiện
+    'function debtBarToggle(){var bar=$("debtBar");if(!bar)return;',
+    'var mo=bar.classList.contains("hidden");bar.classList.toggle("hidden");',
+    'if(mo){var i=$("debtAmt2");if(i){i.value=DEBTNOW||"";i.focus();i.select()}}}',
     'function dRender(){if(!DST)return;',
     '$("dMonth").textContent="Tháng "+DST.month+" · "+DST.year;',
     '$("dStreak").textContent=DST.streak+" ngày";',
