@@ -670,6 +670,12 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 📦 **Kho đồ bỏ giới hạn 999/lần** (chủ server: admin chuyển vào game cho thoải mái): `adminGiveItem` + ô nhập
+  panel nới lên **1.000.000**. Giữ MỘT mức chặn rất cao thay vì bỏ hẳn: gõ nhầm hoặc dán số khổng lồ sẽ làm mod ghi StackCount
+  rất lâu và kẹt hàng đợi SFTP của cả server (mọi luồng giao pal/item đi chung một khoá). Muốn bỏ hẳn thì sửa đúng 1 dòng.
+- **14/09** — 🐶 **Card "Nạp ra web" đổi thành icon Dogcoin + chữ "Chuyển Dogcoin từ game ra web"** (nút: "Chuyển ra web").
+  Nút phải chuyển từ `textContent` sang `innerHTML` mới nhúng được thẻ ảnh, nhãn để một biến `DOGNAPLB` dùng lại cho lúc bấm
+  xong và lúc admin khoá chiều. Thẻ 🪙 đổi vàng nhắc tên card theo chữ mới. CSS `.tic` (22px tiêu đề) + `.bic` (18px nút).
 - **14/09** — 🪙 **ĐỔI VÀNG trong game → Dogcoin web, DÙNG CHUNG giới hạn ngày với 💬 Nạp ra web** (chủ server: thương nhân đã
   tắt nên vàng thành vô dụng; "2 UI khác nhau mà xài chung 1 giới hạn"). Quy ước **100 vàng = 1 Dogcoin TRONG GAME** nên
   10.000 vàng = `dogNapRate` × 100 Dogcoin web (tỉ lệ 1:4 → 400) - nhờ quy về cùng đơn vị với luồng nạp nên KHÔNG cần ô cấu

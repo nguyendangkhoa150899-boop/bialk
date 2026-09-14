@@ -1630,7 +1630,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><label>Người nhận (nhân vật đã liên kết)</label><select id="gvTarget"></select></div>
           <div style="flex:2"><label>Hoặc gõ tên nhân vật khác</label><input id="gvTargetFree" placeholder="trống = dùng ô bên trái"></div>
-          <div style="flex:1"><label>Số lượng</label><input id="gvQty" type="number" min="1" max="999" value="1"></div>
+          <div style="flex:1"><label>Số lượng</label><input id="gvQty" type="number" min="1" max="1000000" value="1" title="Bao nhiêu cũng được (tối đa 1.000.000) - giao thẳng vào túi nhân vật đang online"></div>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><input id="gvFind" placeholder="🔎 Tìm theo tên / mô tả / id..." oninput="gvRender()"></div>

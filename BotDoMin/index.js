@@ -1780,7 +1780,9 @@ async function adminGiveItem(gameName, itemId, qty) {
     qty = Math.floor(Number(qty) || 0);
     if (!gameName) return { error: 'Chọn/nhập tên nhân vật nhận' };
     if (!itemId) return { error: 'Thiếu item id' };
-    if (qty < 1 || qty > 999) return { error: 'Số lượng 1-999' };
+    // 14/09: chủ server bỏ giới hạn 999 cho Kho đồ (giao thoải mái). Giữ 1 mức chặn RẤT CAO để
+    // gõ nhầm/dán số khổng lồ không làm nghẽn mod + kẹt hàng đợi SFTP của cả server.
+    if (qty < 1 || qty > 1000000) return { error: 'Số lượng phải từ 1 đến 1.000.000' };
     const it = gameItems().find(x => x.id === itemId);
     if (!it) return { error: `Không thấy '${itemId}' trong kho dữ liệu` };
     if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi bấm lại' };
