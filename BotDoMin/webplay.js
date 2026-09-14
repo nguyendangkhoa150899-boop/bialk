@@ -1,8 +1,8 @@
 // ===== CỔNG WEB CƯỢC CHO NGƯỜI CHƠI (Big Small) =====
 // Chạy CỔNG RIÊNG (mặc định 3002), tách hẳn panel admin (150899).
 // Đăng nhập: Discord ID + mã PIN (bot phát PIN qua nút 🌐 trên bảng Big Small).
-// TOÀN BỘ thao tác Big Small ở đây: đặt cược + NẶN XÍ NGẦU (kéo tờ giấy che 3 viên).
-// 15 giây cuối ván khóa sổ, xí ngầu lắc ngầm - ai kéo giấy người đó thấy riêng,
+// TOÀN BỘ thao tác Big Small ở đây: đặt cược + NẶN XÍ NGẦU (kéo CHÉN che 3 viên - 14/09 đổi từ tờ giấy).
+// 15 giây cuối ván khóa sổ, xí ngầu lắc ngầm - ai kéo chén người đó thấy riêng,
 // hết giờ tự mở + trả tiền. Cược đi thẳng vào txState của bot nên bảng Discord
 // vẫn hiển thị như thường, không dính deadline 3 giây / rate limit của Discord.
 const http = require('http');
@@ -135,7 +135,7 @@ function startWebPlay(ctx) {
                         whoAgg[k].amount += b.amount;
                     }
                     const live = !!tx.message && tx.status !== 'stopped';
-                    // phase: bet (đang nhận cược) | nan (khóa sổ, kéo giấy xem riêng) | wait
+                    // phase: bet (đang nhận cược) | nan (khóa sổ, kéo chén xem riêng) | wait
                     let phase = 'off';
                     if (live) phase = tx.status === 'betting' ? 'bet' : (tx.nan ? 'nan' : 'wait');
                     return sendJSON(res, 200, {
@@ -1069,18 +1069,28 @@ const PAGE = [
     // chiếm 50px dọc trên mobile mà không có thông tin gì; vào ván thì nhân vật
     // vẫn hiện trên tháp như thường (HEROIMG trong ô).
     '#heroBase{display:none}',
-    // ---- sân khấu xí ngầu + tờ giấy ----
-    '#stage{position:relative;height:150px;border-radius:12px;background:radial-gradient(ellipse at center,#1e3d2b 0%,#152a1e 100%);border:1px solid #2b4a37;overflow:hidden;margin-top:10px;touch-action:none}',
-    '#diceRow{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px}',
-    '.die{width:56px;height:56px;background:#f4f1e8;border-radius:12px;position:relative;box-shadow:0 3px 8px #0008}',
+    // ---- sân khấu xí ngầu + chén nặn ----
+    '#stage{position:relative;height:196px;border-radius:12px;background:radial-gradient(ellipse at center,#1e3d2b 0%,#152a1e 100%);border:1px solid #2b4a37;overflow:hidden;margin-top:10px;touch-action:none}',
+    // 14/09: xếp TAM GIÁC (1 trên · 2 dưới) cho gọn dưới chén, nặn hé một góc là thấy được
+    '#diceRow{position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,48px);grid-auto-rows:48px;gap:8px;align-content:center;justify-content:center}',
+    '#diceRow .die:first-child{grid-column:1 / span 2;justify-self:center}',
+    '.die{width:48px;height:48px;background:#f4f1e8;border-radius:11px;position:relative;box-shadow:0 3px 8px #0008}',
     // chấm xí ngầu ĐỎ toàn bộ (yêu cầu chủ sòng) - thuần CSS, không cần hình
-    '.pip{position:absolute;width:11px;height:11px;border-radius:50%;background:#c0392b;transform:translate(-50%,-50%)}',
+    '.pip{position:absolute;width:10px;height:10px;border-radius:50%;background:#c0392b;transform:translate(-50%,-50%)}',
     '#sumBadge{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:#000a;border-radius:8px;padding:3px 12px;font-weight:800;font-size:15px}',
-    '#paper{position:absolute;inset:-4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-weight:800;box-shadow:0 6px 18px #000a;user-select:none;border-bottom:3px dashed}',
-    '#paper .hint{font-size:16px}#paper .sub{font-size:12px;font-weight:600;opacity:.8;text-align:center;padding:0 14px}',
-    // đỏ = CHƯA cho mở (đang giờ đặt cược) - xanh lá = mở được (giờ nặn)
-    '#paper.locked{background:linear-gradient(175deg,#7e2f2f 0%,#6b2626 60%,#571e1e 100%);color:#ffdfdf;border-color:#b95c5c;cursor:not-allowed}',
-    '#paper.open{background:linear-gradient(175deg,#2f7e46 0%,#26663a 60%,#1e5230 100%);color:#e2ffe9;border-color:#6cc287;cursor:grab}',
+    // 14/09: CHÉN THẬT (assets/chennantaixiu.png) thay tờ giấy - kéo chén hé ra để nặn.
+    // Chén 168px phủ trọn cụm xí ngầu 104px (góc xa tâm 73px < bán kính 84px) nên không lộ trước.
+    '#paper{position:absolute;left:50%;top:50%;width:168px;height:168px;margin:-84px 0 0 -84px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;will-change:transform}',
+    '#paper img{width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 8px 18px #000b)}',
+    '#paper .pill{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:#0b0f16d9;border:1px solid;pointer-events:none}',
+    '#paper .sub{display:block;font-size:10px;font-weight:600;opacity:.85}',
+    // xám+mờ = CHƯA cho mở (đang giờ đặt cược) - sáng + viền xanh = tới giờ nặn
+    '#paper.locked{cursor:not-allowed}#paper.locked img{filter:grayscale(.7) brightness(.55)}',
+    '#paper.locked .pill{color:#ffbcbc;border-color:#b95c5c}',
+    '#paper.open{cursor:grab}#paper.open:active{cursor:grabbing}',
+    '#paper.open .pill{color:#c9ffdb;border-color:#6cc287}',
+    '#paper.open img{animation:chenIdle 1.8s ease-in-out infinite}',
+    '@keyframes chenIdle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-1.5deg)}}',
     '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
     // ---- 🎡 vòng quay ----
     // bánh xe chiếm gần hết bề ngang điện thoại, máy tính thì trần 520px cho khỏi lố.
@@ -1252,7 +1262,7 @@ const PAGE = [
     '<div id="stage">',
     '<div id="diceRow"></div>',
     '<div id="sumBadge" class="hidden"></div>',
-    '<div id="paper" class="hidden locked"><div class="hint" id="paperHint">🔒 CHƯA TỚI GIỜ NẶN</div><div class="sub" id="paperSub">đặt cược đi - giấy chuyển XANH là kéo được</div></div>',
+    '<div id="paper" class="hidden locked"><img src="/chennantaixiu.png" alt="" draggable="false"><div class="pill"><span id="paperHint">🔒 CHƯA TỚI GIỜ NẶN</span><span class="sub" id="paperSub">đặt cược đi - tới giờ chén sáng lên là kéo được</span></div></div>',
     '</div>',
     '<div id="stageCap"></div>',
     '</div>',
@@ -1898,7 +1908,7 @@ const PAGE = [
     'var PIPS={1:[[50,50]],2:[[25,25],[75,75]],3:[[25,25],[50,50],[75,75]],4:[[25,25],[75,25],[25,75],[75,75]],5:[[25,25],[75,25],[50,50],[25,75],[75,75]],6:[[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]};',
     'function dieHTML(v){var s=\'<div class="die">\';PIPS[v].forEach(function(p){s+=\'<div class="pip" style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></div>\'});return s+"</div>"}',
     'function showDice(dice,withSum){document.getElementById("diceRow").innerHTML=dice.map(dieHTML).join("");var b=document.getElementById("sumBadge");if(withSum){var s=dice[0]+dice[1]+dice[2];b.textContent="Tổng "+s+" - "+(s>=11?"BIG":"SMALL")+" · "+(s%2===0?"CHẴN":"LẺ");b.classList.remove("hidden")}else b.classList.add("hidden")}',
-    // tờ giấy: che kín, kéo TỰ DO 4 CHIỀU - kéo tới đâu lộ tới đó.
+    // chén: che kín cụm xí ngầu, kéo TỰ DO 4 CHIỀU - kéo tới đâu lộ tới đó.
     // Chỉ kéo được trong pha nặn (PHASE==="nan") và khi chưa nặn xong ván này.
     'function initPaper(){var p=document.getElementById("paper");',
     'p.addEventListener("pointerdown",function(e){if(PHASE!=="nan"||!NAN||revealedGame===NAN.gameId)return;dragging=true;dragX0=e.clientX;dragY0=e.clientY;baseX=paperX;baseY=paperY;p.setPointerCapture(e.pointerId);e.preventDefault()});',
@@ -1906,7 +1916,7 @@ const PAGE = [
     'paperX=Math.max(-mw,Math.min(mw,baseX+(e.clientX-dragX0)));paperY=Math.max(-mh,Math.min(mh,baseY+(e.clientY-dragY0)));',
     'p.style.transform="translate("+paperX+"px,"+paperY+"px)";checkReveal()});',
     'function up(){dragging=false}p.addEventListener("pointerup",up);p.addEventListener("pointercancel",up);}',
-    // lộ đủ cả 3 viên (giấy không còn đè lên viên nào) mới tính là nặn xong
+    // lộ đủ cả 3 viên (chén không còn đè lên viên nào) mới tính là nặn xong
     'function rectOverlap(a,b){return !(a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom)}',
     'function checkReveal(){if(!NAN||revealedGame===NAN.gameId)return;var pr=document.getElementById("paper").getBoundingClientRect();var dies=document.querySelectorAll("#diceRow .die");if(dies.length<3)return;for(var i=0;i<dies.length;i++){if(rectOverlap(pr,dies[i].getBoundingClientRect()))return}revealDone()}',
     'function revealDone(){if(!NAN||revealedGame===NAN.gameId)return;revealedGame=NAN.gameId;var p=document.getElementById("paper");p.classList.add("hidden");showDice(NAN.dice,true);',
@@ -1931,7 +1941,7 @@ const PAGE = [
     'function tick(){var now=srvNow();var el=document.getElementById("clock");',
     'if(PHASE==="bet"){var s=TT-LOCKS-now;el.textContent=(s>0?s:0)+"s";el.style.color=""}',
     'else if(PHASE==="nan"){var s2=TT-now;el.textContent="🀫 "+(s2>0?s2:0)+"s";el.style.color="#ffcf5c";',
-    // 3 giây cuối chưa nặn -> tự kéo giấy giùm để kịp thấy kết quả
+    // 3 giây cuối chưa nặn -> tự kéo chén giùm để kịp thấy kết quả
     'if(s2<=3&&NAN&&revealedGame!==NAN.gameId)autoReveal()}',
     'else{el.textContent="--";el.style.color=""}}',
     'var autoRevealing=0;',
@@ -1963,15 +1973,15 @@ const PAGE = [
     'var stt=document.getElementById("stt");var cap=document.getElementById("stageCap");var paper=document.getElementById("paper");',
     'var hint=document.getElementById("paperHint"),sub=document.getElementById("paperSub");',
     'if(PHASE==="bet"){stt.textContent="🟢 Đang nhận cược";',
-    // giấy ĐỎ che sẵn (khóa) - kết quả ván trước xuống dòng chú thích dưới sân khấu
+    // chén xám che sẵn (khóa) - kết quả ván trước xuống dòng chú thích dưới sân khấu
     'resetPaper();paper.classList.remove("hidden","open");paper.classList.add("locked");',
-    'hint.textContent="🔒 CHƯA TỚI GIỜ NẶN";sub.textContent="đặt cược đi - giấy chuyển XANH là kéo được";',
+    'hint.textContent="🔒 CHƯA TỚI GIỜ NẶN";sub.textContent="đặt cược đi - tới giờ chén sáng lên là kéo được";',
     'var h0=j.history[0];cap.textContent=h0?("Ván trước #"+String(h0.gameId).padStart(5,"0")+": "+h0.dice.join("-")+" = "+h0.sum+" ("+h0.tx+" · "+h0.cl+")"):"Đặt cược đi!";',
     'if(h0)showDice(h0.dice,false);else document.getElementById("diceRow").innerHTML="";document.getElementById("sumBadge").classList.add("hidden")}',
     'else if(PHASE==="nan"&&NAN){stt.textContent="🀫 Khóa sổ - GIỜ NẶN ĐÂY!";',
     'if(revealedGame===NAN.gameId){paper.classList.add("hidden");showDice(NAN.dice,true);cap.textContent="Bạn nặn xong rồi - chờ mở bát trả tiền..."}',
     'else{showDice(NAN.dice,false);paper.classList.remove("hidden","locked");paper.classList.add("open");',
-    'hint.textContent="🀫 NẶN ĐI - GIẤY XANH LÀ MỞ ĐƯỢC!";sub.textContent="giữ và kéo tờ giấy về bất kỳ hướng nào, lộ đủ 3 viên là ra điểm";',
+    'hint.textContent="🀫 NẶN ĐI - KÉO CHÉN RA!";sub.textContent="giữ và kéo chén về bất kỳ hướng nào, lộ đủ 3 viên là ra điểm";',
     'cap.textContent="Ai kéo người đó thấy - người khác KHÔNG thấy của bạn 🤫"}}',
     'else if(PHASE==="wait"){stt.textContent="⏳ Đang mở bát...";cap.textContent="";paper.classList.add("hidden")}',
     'else{stt.textContent="🔴 Bàn Big Small đang tắt";cap.textContent="";paper.classList.add("hidden")}',

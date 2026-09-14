@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🀫 **Big Small: xí ngầu xếp TAM GIÁC + thay tờ giấy bằng CHÉN THẬT để nặn** (chủ server gửi ảnh mẫu sòng +
+  `assets/chennantaixiu.png`). `#diceRow` đổi từ flex 1 hàng sang grid 2 cột, viên đầu chiếm 2 cột canh giữa (1 trên · 2 dưới),
+  xí ngầu 56 → 48px; sân khấu cao 150 → 196px cho vừa chén. `#paper` (giữ id để không phải sửa luật nặn) nay là ảnh chén tròn
+  168px giữa sân khấu: khoá thì xám mờ, tới giờ thì sáng + nhấp nhô nhẹ + con trỏ nắm, chữ nhắc gom vào viên thuốc dưới chén
+  (`pointer-events:none` để không chắn kéo). Luật GIỮ NGUYÊN: chỉ kéo trong pha nặn, phải lộ đủ 3 viên mới ra điểm, 3 giây cuối
+  tự tuột chén giùm. **Số đo là ràng buộc chống gian lận**: cụm xí ngầu 102px có góc xa tâm 72,1px phải ≤ bán kính chén 84px,
+  hở là lộ kết quả trước khi nặn. Bộ test mới `chentest.js` 14 case đọc trang đã render, tính lại hình học đó mỗi lần chạy.
 - **14/09** — 📦 **Kho đồ bỏ giới hạn 999/lần** (chủ server: admin chuyển vào game cho thoải mái): `adminGiveItem` + ô nhập
   panel nới lên **1.000.000**. Giữ MỘT mức chặn rất cao thay vì bỏ hẳn: gõ nhầm hoặc dán số khổng lồ sẽ làm mod ghi StackCount
   rất lâu và kẹt hàng đợi SFTP của cả server (mọi luồng giao pal/item đi chung một khoá). Muốn bỏ hẳn thì sửa đúng 1 dòng.
