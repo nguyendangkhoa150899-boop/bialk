@@ -721,6 +721,38 @@ function debtCutIncome(userId, amount) {
     return { keep: amount, cut: 0, left: debtTotal(getUserData(userId)) };
 }
 
+// 🤝 14/09 - TRẢ NỢ GIÙM NGƯỜI KHÁC: tiền trừ ví NGƯỜI TRẢ, nợ trừ sổ NGƯỜI NỢ.
+// Người nợ KHÔNG được cộng Dogcoin (nếu cộng rồi trừ thì họ có thể cướp tiền giữa chừng),
+// mà trừ thẳng vào sổ nợ - nên không có kẽ hở nào.
+// Bỏ trống số tiền = trả hết phần còn nợ. Không cho trả quá số đang nợ.
+function debtPayFor(payerId, payerName, debtorId, amount) {
+    if (!/^\d{15,20}$/.test(String(debtorId))) return { error: 'Không rõ đang trả giùm ai' };
+    if (String(payerId) === String(debtorId)) return { error: 'Nợ của chính bạn thì bấm nút 💳 Trả nợ vay nhé' };
+    const d = debtAccrue(debtorId);
+    const owner = getUserData(debtorId);
+    const total = debtTotal(owner);
+    if (total <= 0) return { error: 'Người này đã sạch nợ rồi - khỏi trả giùm' };
+    let want = Math.floor(Number(amount) || 0);
+    if (want <= 0 || want > total) want = total;
+    const payer = getUserData(payerId);
+    if ((payer.points || 0) < want) {
+        return { error: `Ví bạn có ${(payer.points || 0).toLocaleString('vi-VN')} mà đòi trả giùm ${want.toLocaleString('vi-VN')}?! Cày thêm đi đã.` };
+    }
+    updatePoints(payerId, -want);
+    debtReduce(d, want);
+    const left = debtTotal(owner);
+    const ten = owner.name || debtorId;
+    logDog('trano', payerId, payerName, -want, `trả nợ GIÙM ${ten} (họ còn ${left.toLocaleString('vi-VN')})`);
+    writeLog('ADMIN', `[VAY NỢ] ${payerName} trả GIÙM ${ten} ${want.toLocaleString()} | người nợ còn ${left.toLocaleString()}`);
+    saveDbNow();
+    vayBoardRefresh();
+    vayAnnounce(left > 0
+        ? `🤝 <@${payerId}> vừa trả giùm <@${debtorId}> **${want.toLocaleString()}** ${DOGCOIN_EMOJI} - còn nợ **${left.toLocaleString()}**. Tình nghĩa quá!`
+        : `🤝 <@${payerId}> vừa trả giùm <@${debtorId}> **${want.toLocaleString()}** ${DOGCOIN_EMOJI} - **SẠCH NỢ** luôn! Anh em tốt thật 🫡`,
+        [payerId, debtorId]);
+    return { ok: true, paid: want, left, payerBalance: getUserData(payerId).points || 0 };
+}
+
 // 🚧 14/09 - CỔNG CHẶN DUY NHẤT CỦA HỆ THỐNG NỢ.
 // Còn nợ một đồng là chặn. Trả null nếu sạch nợ, trả CHUỖI LỖI nếu đang nợ.
 // Chỉ dùng cho đúng 2 chỗ chủ server chốt: mua shop item + chuyển pal vào game.
@@ -7190,6 +7222,8 @@ client.on('interactionCreate', async interaction => {
             const btns = [];
             if (st.loan > 0) btns.push(new ButtonBuilder().setCustomId('vay_pay_open').setLabel('Trả nợ vay').setEmoji('💳').setStyle(ButtonStyle.Primary));
             if (st.admin > 0) btns.push(new ButtonBuilder().setCustomId('vay_pay_admin_open').setLabel('Trả nợ admin').setEmoji('🧾').setStyle(ButtonStyle.Secondary));
+            // 🤝 14/09: người KHÁC bấm nút này để trả giùm chính chủ thẻ /sodu này
+            if (st.total > 0) btns.push(new ButtonBuilder().setCustomId(`vay_ho_${userId}`).setLabel('Trả nợ giùm người này').setEmoji('🤝').setStyle(ButtonStyle.Success));
             return interaction.reply({
                 embeds: [embed],
                 components: btns.length ? [new ActionRowBuilder().addComponents(...btns)] : [],
@@ -7227,6 +7261,20 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isModalSubmit()) {
+        // 🤝 14/09: xác nhận trả nợ giùm
+        if (interaction.customId.startsWith('vay_ho_modal_')) {
+            const target = interaction.customId.slice('vay_ho_modal_'.length);
+            const raw = interaction.fields.getTextInputValue('vay_ho_amount');
+            const amt = Math.floor(Number(String(raw || '').replace(/[^0-9]/g, '')) || 0);
+            const r = debtPayFor(userId, interaction.user.tag, target, amt);
+            if (r.error) return interaction.reply({ content: '❌ ' + r.error, ephemeral: true });
+            return interaction.reply({
+                content: `🤝 Đã trả giùm <@${target}> **${r.paid.toLocaleString()}** ${DOGCOIN_EMOJI}` +
+                    (r.left > 0 ? ` - họ còn nợ **${r.left.toLocaleString()}**.` : ' - **SẠCH NỢ** luôn!') +
+                    ` Ví bạn còn **${r.payerBalance.toLocaleString()}**.`,
+                ephemeral: true,
+            });
+        }
         if (interaction.customId === 'tx_modal_custom') {
             if (txState.status !== 'betting') return interaction.reply({ content: "❌ Phiên đặt cược đã đóng!", ephemeral: true });
             const sel = userTXSelections[userId];
@@ -7700,6 +7748,21 @@ client.on('interactionCreate', async interaction => {
             new TextInputBuilder().setCustomId('vay_pay_amount')
                 .setLabel(`Đang nợ ${st.total.toLocaleString()} - bỏ trống = trả hết`)
                 .setPlaceholder('vd: 1000 (hoặc bỏ trống)')
+                .setStyle(TextInputStyle.Short).setRequired(false)
+        ));
+        return interaction.showModal(modal);
+    }
+    // 🤝 14/09: trả nợ GIÙM chính chủ thẻ /sodu (id người nợ nằm ngay trong tên nút)
+    if (interaction.customId.startsWith('vay_ho_')) {
+        const target = interaction.customId.slice('vay_ho_'.length);
+        if (target === userId) return interaction.reply({ content: '🙂 Nợ của chính bạn mà - bấm nút 💳 Trả nợ vay ấy.', ephemeral: true });
+        const stt = debtStatus(target);
+        if (stt.total <= 0) return interaction.reply({ content: '✅ Người này đã sạch nợ rồi, khỏi trả giùm.', ephemeral: true });
+        const modal = new ModalBuilder().setCustomId(`vay_ho_modal_${target}`).setTitle('Trả nợ giùm');
+        modal.addComponents(new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId('vay_ho_amount')
+                .setLabel('Số muốn trả giùm - trống = trả hết')
+                .setPlaceholder(`Họ đang nợ ${stt.total.toLocaleString('vi-VN')} (vd: 5000)`)
                 .setStyle(TextInputStyle.Short).setRequired(false)
         ));
         return interaction.showModal(modal);

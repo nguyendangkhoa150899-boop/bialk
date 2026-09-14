@@ -670,6 +670,17 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🤝 **Nút "Trả nợ giùm người này" trên thẻ `/sodu`** (chủ server: "thêm nút trả nợ giùm được không chat,
+  người khác bấm vào xong trả cho người nào /sodu á"). Ai chạy `/sodu` mà đang nợ thì thẻ hiện thêm nút xanh; **người khác**
+  bấm vào là mở ô nhập số tiền, gửi xong thì **tiền trừ ví NGƯỜI BẤM, nợ trừ sổ NGƯỜI NỢ**.
+  🔒 **Chốt an toàn**: id người nợ nằm ngay trong tên nút (`vay_ho_<id>`) nên không nhầm người; người nợ **KHÔNG** được cộng
+  Dogcoin rồi trừ lại (làm vậy họ có thể cuỗm tiền giữa chừng) mà trừ THẲNG vào sổ nợ; tự bấm trả giùm chính mình bị chặn và
+  chỉ sang nút 💳 Trả nợ vay; ví không đủ thì chặn, không trừ của ai đồng nào; gõ quá số nợ thì chỉ lấy đúng số đang nợ;
+  bỏ trống = trả hết; và `debtAccrue` chạy TRƯỚC nên lãi dồn tới hôm nay được tính vào rồi mới trả.
+  📣 Có thông báo réo tên cả hai người ở kênh bảng 📒 VAY NỢ, ghi sổ Dogcoin bên người trả ("trả nợ GIÙM ..."), và log admin.
+  Người bấm nhận phản hồi riêng tư: đã trả bao nhiêu, người kia còn nợ bao nhiêu, ví mình còn bao nhiêu.
+  ✅ `notest.js` lên **49 case** (thêm 14: trả một phần, trả hết, gõ quá số nợ, ví không đủ, tự trả giùm mình, người ta sạch nợ,
+  id lung tung, và lãi dồn được cộng trước khi trả).
 - **14/09** — 🔤 **Dọn phông chữ + khoá vuông xí ngầu + nút Bão gọn lại** (chủ server: "phông chữ hơi kì, xí ngầu nó bị méo,
   chữ ở ô bão cũng có vấn đề, bỏ dòng chú thích 3 viên giống nhau cho chữ bự lên xíu, phần tính toán ở nút bão sẽ hay hơn khi
   người chơi bấm vào nút đó + gõ số tiền").
