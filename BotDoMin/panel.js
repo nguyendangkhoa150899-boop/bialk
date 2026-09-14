@@ -1077,7 +1077,7 @@ const HTML = `<!DOCTYPE html>
 
   <div class="wrap">
     <div class="tabs">
-      <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Big Small</button>
+      <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
       <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
       <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
       <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
@@ -1647,7 +1647,7 @@ const HTML = `<!DOCTYPE html>
     <div id="tab-log" class="hidden">
       <div class="card">
         <div class="row" style="flex-wrap:wrap;gap:6px">
-          <button class="btn-grey logPick" data-log="tx" onclick="logPick('tx')">🎲 Big Small</button>
+          <button class="btn-grey logPick" data-log="tx" onclick="logPick('tx')">🎲 Tài Xỉu</button>
           <button class="btn-grey logPick" data-log="mine" onclick="logPick('mine')">💣 Dò Mìn</button>
           <button class="btn-grey logPick" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
           <button class="btn-grey logPick" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
@@ -2815,7 +2815,7 @@ function gsFill(){
   const mb=document.getElementById('gsMinBet');if(mb&&mb.value===''&&document.activeElement!==mb&&STATE&&STATE.pot&&STATE.pot.minBet)mb.value=STATE.pot.minBet;
   const st=gsState();
   Object.keys(GS_LB).forEach(k=>{const cb=document.getElementById('gs_'+k),lb=document.getElementById('gs_'+k+'_lb');if(!cb)return;if(document.activeElement!==cb)cb.checked=st[k];if(lb){lb.style.color=st[k]?'':'var(--red)';lb.lastChild.textContent=' '+GS_LB[k]+(st[k]?' - MỞ':' - ĐANG ĐÓNG');}});
-  const tx=document.getElementById('gs_tx');if(tx&&STATE&&STATE.tx){const run=STATE.tx.live&&STATE.tx.status!=='stopped';tx.innerHTML='🎲 Big Small: '+(run?'<b style="color:#3dd68c">ĐANG CHẠY</b> · <button class="mini btn-red" onclick="txStop()">⏹ Tắt bàn</button>':'<b style="color:var(--red)">ĐÃ TẮT</b> (mở lại ở tab 🎲)');}
+  const tx=document.getElementById('gs_tx');if(tx&&STATE&&STATE.tx){const run=STATE.tx.live&&STATE.tx.status!=='stopped';tx.innerHTML='🎲 Tài Xỉu: '+(run?'<b style="color:#3dd68c">ĐANG CHẠY</b> · <button class="mini btn-red" onclick="txStop()">⏹ Tắt bàn</button>':'<b style="color:var(--red)">ĐÃ TẮT</b> (mở lại ở tab 🎲)');}
 }
 function luckyForce(){
   const any=document.getElementById('mineAny').checked;

@@ -3494,12 +3494,12 @@ function setMinBet(v) {
 // 26/08: mồi + trần TÁCH THEO TỪNG HŨ - Dò Mìn/Leo Thang mồi 5.000 trần nuôi 50.000,
 // hũ Quay Pal giữ 1.500/20.000 như cũ.
 const POT_SEED = 1500;            // (giữ cho chỗ nào chưa theo key - gacha dùng mức này)
-const POT_SEED_BY = { mines: 5000, stairs: 5000, gacha: 1500 };
-const LUCKY_POT_MAX_BY = { mines: 50000, stairs: 50000, gacha: 20000 };
+const POT_SEED_BY = { mines: 5000, stairs: 5000, gacha: 1500, tx: 10000 };
+const LUCKY_POT_MAX_BY = { mines: 50000, stairs: 50000, gacha: 20000, tx: 500000 };
 const potSeed = (key) => POT_SEED_BY[key] !== undefined ? POT_SEED_BY[key] : POT_SEED;
 const potMax = (key) => LUCKY_POT_MAX_BY[key] !== undefined ? LUCKY_POT_MAX_BY[key] : LUCKY_POT_MAX;
-const POT_KEYS = ['mines', 'stairs', 'gacha'];
-const POT_LABEL = { mines: '💣 Dò Mìn', stairs: '🪜 Leo Thang', gacha: '🎲 Quay Pal' };
+const POT_KEYS = ['mines', 'stairs', 'gacha', 'tx'];
+const POT_LABEL = { mines: '💣 Dò Mìn', stairs: '🪜 Leo Thang', gacha: '🎲 Quay Pal', tx: '🌪️ Hũ Bão (Tài Xỉu)' };
 // ===== 🏆 NỔ HŨ = BỘI SỐ TIỀN CƯỢC (09/09, chủ server chốt lần cuối) - chỉ Dò Mìn + Leo Thang =====
 // BỎ HẲN hũ nuôi ở 2 minigame (không trích 5%, không hiện hũ, không trần hũ). Trúng 🏆 trong
 // hộp 🍀 -> bốc NGẪU NHIÊN 1 bội số trong danh sách (mặc định x10 / x15 / x20) nhân với tiền
@@ -3559,6 +3559,21 @@ function luckyPotPop(key) {
     const pot = potGet(key);
     potBook()[key] = potSeed(key);
     return pot;
+}
+// 🌪️ 14/09 - HŨ BÃO của Tài Xỉu: đặt cửa Bão mà ra bão thì LUÔN ăn x40 = x30 tiền cửa + x10 bú hũ
+// (cược 1.000 -> 30.000 + 10.000 = 40.000). Chủ server chốt: "cứ thắng là x40" để kéo người chơi vào
+// cửa Bão, nên x10 KHÔNG phụ thuộc hũ còn bao nhiêu - hũ thiếu thì NHÀ CÁI BÙ phần còn lại.
+// Hũ nuôi 5% tổng cược mỗi ván (nhà cái bao, không trừ người chơi) để có sẵn quỹ + hiện số cho vui.
+// ⚠️ KINH TẾ: bão ra 6/216 = 2,78%/ván. Kỳ vọng cửa Bão = 2,78% x 40 = 1,11 -> NGƯỜI CHƠI LỜI ~11%
+// về dài hạn ở cửa này (trước khi có hũ là 2,78% x 30 = 0,83, nhà cái giữ 17%). Chủ server đã chốt
+// đánh đổi này để hút người vào Bão; van an toàn còn lại là TRẦN CƯỢC/người/ván ở panel.
+const TX_POT_X = 10;
+// Rút bớt hũ (khác luckyPotPop: không ẵm sạch, không mồi lại). Trả về số thực rút được.
+function potTake(key, amount) {
+    const have = potGet(key);
+    const take = Math.max(0, Math.min(Math.floor(Number(amount) || 0), have));
+    if (take > 0) potBook()[key] = have - take;
+    return take;
 }
 // 🏆 NỔ HŨ = bốc 1 bội số ngẫu nhiên trong danh sách (đều nhau) nhân tiền cược (09/09).
 // Tốn đúng 1 Math.random() SAU khi đã quay hộp + 3 hàng mẫu (test đẩy RQ theo thứ tự này).
@@ -5490,7 +5505,7 @@ async function sweepBoards(channel, keepId, titleMatch, label) {
         const msgs = await channel.messages.fetch({ limit: 30 });
         const junk = msgs.filter(m => m.author?.id === client.user.id
             && m.id !== keepId
-            && (m.embeds?.[0]?.title || '').includes(titleMatch));
+            && (Array.isArray(titleMatch) ? titleMatch : [titleMatch]).some(t => (m.embeds?.[0]?.title || '').includes(t)));
         for (const m of junk.values()) await m.delete().catch(() => { });
         if (junk.size) writeLog('SYSTEM', `[${label}] Dọn ${junk.size} bảng mồ côi ở #${channel.name}`);
     } catch (e) {
@@ -5642,6 +5657,8 @@ client.once('ready', async (c) => {
             getTX: () => txState,
             txMaxBet,        // 💰 trần cược TX/người/ván (hiện trên trang cược)
             txCapCheck,      // 💰 chặn vượt trần (dùng chung luật với Discord)
+            txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
+            txPotX: TX_POT_X,
             getDb: () => dbCache,
             getUserData,
             updatePoints,
@@ -6199,13 +6216,13 @@ function getTXMessageData(customStatus = null) {
     desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${TX_LOCK_S} giây cuối khóa sổ để nặn!${txMaxBet() > 0 ? ` · 💰 Trần cược **${txMaxBet().toLocaleString()}**/người/ván` : ''}`}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🎲 BIG SMALL LIVE - Game #${padId(txState.gameId)}`)
+        .setTitle(`🎲 TÀI XỈU LIVE - Game #${padId(txState.gameId)}`)
         .setColor(txState.status === 'betting' ? 0x2ecc71 : 0xe74c3c)
         // slice 4000: đông người đặt + 10 dòng lịch sử có thể chạm trần 4096 của embed
         .setDescription(desc.slice(0, 4000));
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi trên web (Big Small + Dò Mìn)').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi trên web (Tài Xỉu + Dò Mìn)').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('tx_soicau').setLabel('Soi Cầu').setEmoji('🕵️').setStyle(ButtonStyle.Secondary)
     );
 
@@ -6219,7 +6236,7 @@ async function updateTXMessage(customStatus = null) {
 }
 
 async function sweepTXBoards() {
-    return sweepBoards(txState.channel, txState.message?.id, 'BIG SMALL LIVE', 'BẢNG TX');
+    return sweepBoards(txState.channel, txState.message?.id, ['TÀI XỈU LIVE', 'BIG SMALL LIVE'], 'BẢNG TX');
 }
 
 // --- VÒNG LẶP BIG SMALL ---
@@ -6356,11 +6373,24 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     // Gộp tiền thắng theo người (1 người đặt nhiều lần / nhiều cửa -> 1 dòng)
     // Luật BÃO: ra 3 viên giống nhau thì CHỈ cửa Bão ăn ×TX_BAO_RATE, mọi cửa
     // thường (tài/xỉu/chẵn/lẻ) thua sạch. Không bão thì cửa Bão thua, cửa thường ×2.
+    // 🌪️ nuôi HŨ BÃO: 5% tổng cược ván này, nhà cái bao (người chơi vẫn trừ đúng số đã đặt).
+    // Nuôi TRƯỚC khi trả để tiền ván này cũng nằm trong hũ người trúng bú được.
+    potFeed('tx', luckyPotCut('tx', bets.reduce((s, b) => s + (b.amount || 0), 0)));
     const winAgg = {};
+    let txPotPaid = 0;               // tổng tiền bú hũ đã trả ván này (cho log + báo Discord)
+    let txPotHouse = 0;              // phần hũ không đủ, nhà cái bù - theo dõi chi phí thật
+    const txPotWinners = [];
     bets.forEach(b => {
         let win = 0;
         if (isStorm) {
-            if (b.choice === 'bao') win = b.amount * TX_BAO_RATE;
+            if (b.choice === 'bao') {
+                win = b.amount * TX_BAO_RATE;
+                // 🌪️ BÚ HŨ: LUÔN 1 ăn 10 tiền cược. Hũ có bao nhiêu lấy bấy nhiêu, thiếu thì nhà cái bù.
+                const need = b.amount * TX_POT_X;
+                const fromPot = potTake('tx', need);
+                win += need; txPotPaid += need; txPotHouse += need - fromPot;
+                txPotWinners.push({ userId: b.userId, name: b.username, take: need, fromPot });
+            }
         } else if (b.choice === resultTX || b.choice === resultCL) {
             win = b.amount * 2;
         }
@@ -6372,7 +6402,12 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         statAdd(b.userId, 'tx', win - b.amount);   // net từng lệnh cược cho bảng 📊
     });
     const winners = Object.values(winAgg).map(w => ({ u: w.userId, name: w.name, amount: w.amount }));
-    const winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
+    let winLog = Object.values(winAgg).map(w => `• <@${w.userId}> thắng **${w.amount.toLocaleString()}** ${DOGCOIN_EMOJI}`).join('\n');
+    if (txPotPaid > 0) {
+        winLog += `\n💥🌪️ **BÚ HŨ BÃO**: ${txPotWinners.map(p => `<@${p.userId}> +**${p.take.toLocaleString()}**`).join(' · ')} ${DOGCOIN_EMOJI} (hũ còn ${potGet('tx').toLocaleString()})`;
+        txPotWinners.forEach(p => logDog('jackpot', p.userId, p.name, p.take, `bú hũ Bão Tài Xỉu (ván #${gameId})`));
+        writeLog('ADMIN', `[HŨ BÃO] Ván #${gameId} trả ${txPotPaid} cho ${txPotWinners.length} người (hũ ${txPotPaid - txPotHouse} + nhà cái bù ${txPotHouse}) - hũ còn ${potGet('tx')}`);
+    }
 
     const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? `${TX_CHOICES.tai.name} 🔺` : `${TX_CHOICES.xiu.name} 🔻`);
     const clIcon = isStorm ? 'cửa thường thua hết' : (isChan ? 'CHẴN 🔵' : 'LẺ 🟣');
@@ -6415,7 +6450,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
         if (txDashHistory.length > 100) txDashHistory.length = 100;
     }
 
-    return { sum, txIcon, clIcon, winLog };
+    return { sum, txIcon, clIcon, winLog, txPotPaid };
 }
 
 // Ván Big Small: được gọi NGAY LÚC KHÓA SỔ (T-15s). Lắc ngầm liền để web mở cửa sổ nặn,
@@ -7105,7 +7140,7 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({
                 content: `💎 **Dò Mìn đã chuyển lên web** - lưới 25 ô, đào tới đâu ăn tới đó.\n` +
                          `👉 ${WEB_PLAY_URL} → tab **💎 Dò Mìn**\n` +
-                         `Lấy mã PIN bằng nút **🌐 Cược trên web** ở bảng Big Small.`,
+                         `Lấy mã PIN bằng nút **🌐 Cược trên web** ở bảng Tài Xỉu.`,
                 ephemeral: true,
             });
         }
@@ -7503,7 +7538,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({
             content:
                 `🌐 **Chơi trên web - nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
-                `🎲 **Big Small** - đặt cược + nặn xí ngầu\n💣 **Dò Mìn** - lưới 25 ô, đào tới đâu ăn tới đó\n\n` +
+                `🎲 **Tài Xỉu** - đặt cược + nặn xí ngầu\n💣 **Dò Mìn** - lưới 25 ô, đào tới đâu ăn tới đó\n\n` +
                 `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
                 `Vào web nhập ID + PIN là chơi được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai - ai có PIN là tiêu được ví bạn!`,
             ephemeral: true,

@@ -670,6 +670,21 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🌪️ **HŨ BÃO cho Tài Xỉu: trúng Bão ăn x40** (chủ server: "đặt bão 1000 thì hũ ăn 10.000 + x30 của bão = 40.000",
+  "cứ thắng là x40 để người chơi tham gia bão nhiều"). Hũ `tx` thêm vào `POT_KEYS` (mồi 10.000, trần nuôi 500.000) nên hiện
+  luôn ở card hũ của panel, admin cộng/trừ tay được. Nuôi 5% TỔNG cược mỗi ván, nuôi TRƯỚC khi trả để tiền ván đó cũng bú được.
+  Settle: cửa Bão trúng bão nhận `x30 + bet×10`; `potTake` rút hũ (không ẵm sạch, không mồi lại), **hũ thiếu thì nhà cái bù**
+  nên người chơi luôn đủ x40; log admin ghi tách "hũ X + nhà cái bù Y" để thấy chi phí thật. Web: khung 🌪️ HŨ BÃO dưới nút Bão,
+  nút ghi "1 ăn 40 (x30 cửa + x10 bú hũ)", state gửi `txPot`/`txPotX`. Bộ test mới `txpottest.js` 21 case chạy `settleTXPayout`
+  thật (nuôi, bú, hũ cạn, nhiều người trúng, cửa thường, trần nuôi).
+  ⚠️ **KINH TẾ - chủ server đã được báo và chốt**: bão ra 6/216 = 2,78%/ván. Kỳ vọng cửa Bão = 2,78% × 40 = **1,11** → người
+  chơi LỜI ~11% dài hạn ở cửa này (trước khi có hũ là ×30 → 0,83, nhà cái giữ 17%). Van an toàn còn lại là **trần cược/người/ván**
+  ở panel; nếu thấy chảy máu thì hạ trần hoặc hạ `TX_POT_X`.
+- **14/09** — 🔤 **Đổi tên "Big Small" → "Tài Xỉu" ở mọi chỗ người chơi đọc** + **toast tự nặn chỉ hiện ở trang Tài Xỉu**
+  (trước đang ở tab khác cũng bị nhảy toast). Web: nhãn tab, câu đăng nhập, câu lấy PIN; Discord: tiêu đề bảng "🎲 TÀI XỈU LIVE",
+  nhãn nút web, hướng dẫn; panel: nhãn tab. `sweepBoards` nhận MẢNG tên (`['TÀI XỈU LIVE','BIG SMALL LIVE']`) để bảng mồ côi
+  đăng trước 14/09 vẫn quét được. Log kỹ thuật `[KẾT QUẢ BIG SMALL]` giữ nguyên cho log cũ/mới đọc chung. Trang web thêm biến
+  `CURPAGE` (set trong `go()`) để biết đang xem trang nào.
 - **14/09** — 🎲 **Xí ngầu ĐỎ · nút TRẮNG · nền ĐEN + viên to hơn** (chủ sòng chốt). Hột 48 → **56px** (nền đỏ chuyển sắc
   + viền sáng mảnh), nút 10 → **12px** trắng có bóng, sân khấu đổi từ nỉ xanh sang đen, cao 196 → 206px. Vì viên to lên nên
   **chén phải nới 168 → 176px** cho vẫn phủ kín: cụm xí ngầu 118px, góc xa tâm 83,4px ≤ bán kính 88px (chentest tính lại mỗi
