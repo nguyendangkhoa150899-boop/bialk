@@ -670,6 +670,21 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🔤 **Dọn phông chữ + khoá vuông xí ngầu + nút Bão gọn lại** (chủ server: "phông chữ hơi kì, xí ngầu nó bị méo,
+  chữ ở ô bão cũng có vấn đề, bỏ dòng chú thích 3 viên giống nhau cho chữ bự lên xíu, phần tính toán ở nút bão sẽ hay hơn khi
+  người chơi bấm vào nút đó + gõ số tiền").
+  🔤 **Giãn chữ**: `.cbtn` đang `letter-spacing:2px` và `.cbtn.bao` `3px` - kéo chữ tiếng Việt có dấu ra trông rất kì.
+  Hạ còn `.5px` và `1px`; dòng `small` bỏ hẳn giãn chữ.
+  🎲 **Xí ngầu méo**: cả viên to (`.die`, nằm trong lưới) lẫn viên nhỏ ở bảng soi cầu (`.mdie`, nằm trong hàng flex) đều
+  chỉ đặt `width/height` nên chỗ hẹp là bị kéo giãn. Khoá `aspect-ratio:1/1` + `flex:0 0 auto` + `min-width`, và cho
+  `#diceRow .die` `justify-self/align-self:center` để ô lưới không kéo viên xúc xắc ra.
+  🌪️ **Nút Bão**: bỏ dòng "3 viên giống nhau · ăn x30 tiền cửa + bú hũ" như chủ server yêu cầu, còn đúng 2 dòng luật.
+  Chữ to lên: viên HŨ 14 → 16px, dòng luật 12 → 13.5px (giãn dòng 1.55), dòng tính tiền 12.5 → 14px.
+  🧮 **Dòng tính tiền chỉ hiện khi ĐÃ BẤM chọn cửa Bão** (trước đây lúc nào cũng hiện). Tách riêng `baoCalcDraw()` và gọi
+  ngay khi: bấm chọn cửa (`pick`), gõ số (`oninput` của ô tiền), bấm nút nhanh (`addAmt`), bấm ALL IN - nên số nhảy tức
+  thì chứ không phải chờ nhịp 2 giây. Số hũ, bội số, tỉ lệ cửa Bão được nhớ ở `BPOT/BPX/BPR` để tính lại không cần gọi mạng.
+  ✅ `txpottest.js` lên **90 case** (thêm 6: xí ngầu khoá vuông, bớt giãn chữ, chữ nút Bão to lên, chỉ tính khi chọn cửa Bão,
+  bốn đường nhập liệu đều tính lại ngay).
 - **14/09** — 🌪️ **Gom hết thông tin Bão lên NÚT BÃO** (chủ server: "bỏ chú thích ... viết gọn ở nút bão luôn", "chỗ HŨ BÃO
   ĐANG NUÔI hiện vào nút đặt bão luôn"). Bỏ **khung chú thích riêng** `#txStormNote` và **card hũ riêng** `#txPotCard`.
   Nút Bão giờ có đủ ba tầng: dòng đầu **🌪️ BÃO + viên "HŨ 54.331 🪙"**; dòng nhỏ ghi luật gọn - 3 viên giống nhau, ăn x30 tiền
