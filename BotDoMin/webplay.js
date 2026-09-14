@@ -1070,17 +1070,17 @@ const PAGE = [
     // vẫn hiện trên tháp như thường (HEROIMG trong ô).
     '#heroBase{display:none}',
     // ---- sân khấu xí ngầu + chén nặn ----
-    '#stage{position:relative;height:196px;border-radius:12px;background:radial-gradient(ellipse at center,#1e3d2b 0%,#152a1e 100%);border:1px solid #2b4a37;overflow:hidden;margin-top:10px;touch-action:none}',
+    '#stage{position:relative;height:206px;border-radius:12px;background:radial-gradient(ellipse at center,#242424 0%,#080808 100%);border:1px solid #3a3a3a;overflow:hidden;margin-top:10px;touch-action:none}',
     // 14/09: xếp TAM GIÁC (1 trên · 2 dưới) cho gọn dưới chén, nặn hé một góc là thấy được
-    '#diceRow{position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,48px);grid-auto-rows:48px;gap:8px;align-content:center;justify-content:center}',
+    '#diceRow{position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,56px);grid-auto-rows:56px;gap:6px;align-content:center;justify-content:center}',
     '#diceRow .die:first-child{grid-column:1 / span 2;justify-self:center}',
-    '.die{width:48px;height:48px;background:#f4f1e8;border-radius:11px;position:relative;box-shadow:0 3px 8px #0008}',
-    // chấm xí ngầu ĐỎ toàn bộ (yêu cầu chủ sòng) - thuần CSS, không cần hình
-    '.pip{position:absolute;width:10px;height:10px;border-radius:50%;background:#c0392b;transform:translate(-50%,-50%)}',
+    '.die{width:56px;height:56px;background:linear-gradient(160deg,#e0463a 0%,#c0271c 55%,#9c1b13 100%);border:1px solid #ff8b7a44;border-radius:12px;position:relative;box-shadow:0 3px 10px #000a,inset 0 1px 2px #ffffff33}',
+    // 14/09 chủ sòng chốt: hột ĐỎ · nút TRẮNG · nền ĐEN - thuần CSS, không cần hình
+    '.pip{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0006;transform:translate(-50%,-50%)}',
     '#sumBadge{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:#000a;border-radius:8px;padding:3px 12px;font-weight:800;font-size:15px}',
     // 14/09: CHÉN THẬT (assets/chennantaixiu.png) thay tờ giấy - kéo chén hé ra để nặn.
-    // Chén 168px phủ trọn cụm xí ngầu 104px (góc xa tâm 73px < bán kính 84px) nên không lộ trước.
-    '#paper{position:absolute;left:50%;top:50%;width:168px;height:168px;margin:-84px 0 0 -84px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;will-change:transform}',
+    // Chén 176px phủ trọn cụm xí ngầu 118px (góc xa tâm 83,4px < bán kính 88px) nên không lộ trước.
+    '#paper{position:absolute;left:50%;top:50%;width:176px;height:176px;margin:-88px 0 0 -88px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;will-change:transform}',
     '#paper img{width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 8px 18px #000b)}',
     // xám+mờ = CHƯA cho mở (đang giờ đặt cược) - sáng + viền xanh = tới giờ nặn
     '#paper.locked{cursor:not-allowed}#paper.locked img{filter:grayscale(.7) brightness(.55)}',

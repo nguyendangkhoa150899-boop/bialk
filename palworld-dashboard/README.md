@@ -670,6 +670,10 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — 🎲 **Xí ngầu ĐỎ · nút TRẮNG · nền ĐEN + viên to hơn** (chủ sòng chốt). Hột 48 → **56px** (nền đỏ chuyển sắc
+  + viền sáng mảnh), nút 10 → **12px** trắng có bóng, sân khấu đổi từ nỉ xanh sang đen, cao 196 → 206px. Vì viên to lên nên
+  **chén phải nới 168 → 176px** cho vẫn phủ kín: cụm xí ngầu 118px, góc xa tâm 83,4px ≤ bán kính 88px (chentest tính lại mỗi
+  lần chạy, hở là báo đỏ vì sẽ lộ kết quả trước khi nặn).
 - **14/09** — 🗂️ **Thay ảnh trong `assets/` xong người chơi vẫn thấy ảnh CŨ - sửa tận gốc bằng ETag** (chủ server: "sao mình
   vẫn thấy hình này" sau khi chén đã cắt tròn - server trả đúng ảnh mới, lỗi nằm ở trình duyệt). `assets.js` trước gửi
   `Cache-Control: public, max-age=604800` nên ảnh nằm lì trong máy người chơi **7 ngày**: đổi icon item, đổi chén, đổi ảnh
