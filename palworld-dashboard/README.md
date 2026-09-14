@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **14/09** — ✂️ **Cắt TRÒN ảnh chén + bỏ chú thích dán dưới chén** (chủ server: ảnh gửi lên chưa cắt, và không cần chữ ở dưới).
+  Ảnh gốc là ảnh chụp màn hình 157×163 nền đục. Không có thư viện ảnh trong repo nên viết `scratchpad/png.js` đọc/ghi PNG RGBA
+  8-bit thuần Node (inflate → bỏ filter → pixel → deflate + CRC). Dò đĩa vàng bằng đoạn màu dài nhất theo hàng/cột: tâm
+  (78.5, 79.5), đường kính 132 → cắt vuông 132 quanh tâm, bo alpha tròn (mép vờn 1,2px cho hết răng cưa), phóng 2× song tuyến
+  thành **264×264** cho nét khi web hiện 168px. Bản gốc vẫn nằm trong git ở commit `e32406d` nếu cần dựng lại. Viên thuốc chữ
+  dưới chén bỏ hẳn (kể cả CSS + 2 biến JS), hướng dẫn dồn xuống dòng dưới sân khấu. `chentest.js` lên 20 case, thêm phần đọc
+  thẳng file PNG: ảnh phải vuông, 4 góc trong suốt, tâm đục, 8 điểm quanh vành còn đục.
 - **14/09** — 🀫 **Big Small: xí ngầu xếp TAM GIÁC + thay tờ giấy bằng CHÉN THẬT để nặn** (chủ server gửi ảnh mẫu sòng +
   `assets/chennantaixiu.png`). `#diceRow` đổi từ flex 1 hàng sang grid 2 cột, viên đầu chiếm 2 cột canh giữa (1 trên · 2 dưới),
   xí ngầu 56 → 48px; sân khấu cao 150 → 196px cho vừa chén. `#paper` (giữ id để không phải sửa luật nặn) nay là ảnh chén tròn
