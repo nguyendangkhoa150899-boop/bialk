@@ -3220,9 +3220,9 @@ const PAGE = [
     // Dựng thẻ bằng DOM (không nối chuỗi HTML) để khỏi vướng dấu nháy lồng nhau.
     'var GIFTS=[];',
     'function giftCard(g){var d=document.createElement("div");d.className="isItem"+(g.taken?" isDone":"");',
-    'd.innerHTML=isImg(g.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\"></div><div class=\\"isPr\\">🎁 Miễn phí · x"+(g.qty||1)+" cái</div><div class=\\"isNote gNote\\"></div><div class=\\"isNote gSt\\"></div></div><div class=\\"isBuyRow\\"><button class=\\"gBtn\\"></button></div>";',
+    'd.innerHTML=isImg(g.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\"></div><div class=\\"isPr\\">🎁 Miễn phí · x"+(g.qty||1)+" cái. Mỗi ngày nhận 1 lần</div><div class=\\"isNote gNote\\"></div><div class=\\"isNote gSt\\"></div></div><div class=\\"isBuyRow\\"><button class=\\"gBtn\\"></button></div>";',
     'd.querySelector(".isNm").textContent=g.name||g.id;var nt=d.querySelector(".gNote");if(g.note)nt.textContent=g.note;else nt.remove();',
-    'var st=d.querySelector(".gSt");st.style.color=g.taken?"#8fd18f":"#ffd76a";st.textContent=g.taken?"✅ Hôm nay bạn đã nhận - qua 00:00 nhận lại được":"🎁 Mỗi ngày nhận 1 lần, số lượng do admin đặt";',
+    'var st=d.querySelector(".gSt");if(g.taken){st.style.color="#8fd18f";st.textContent="✅ Hôm nay bạn đã nhận - qua 00:00 nhận lại được"}else st.remove();',
     'var b=d.querySelector(".gBtn");if(g.taken){b.disabled=true;b.textContent="✅ ĐÃ NHẬN HÔM NAY"}else{b.textContent="🎁 Nhận quà (x"+(g.qty||1)+")";b.onclick=function(){giftClaim(g.gid,b)}}return d}',
     'function giftDraw(){var tb=$("navGift"),box=$("giftList"),st=$("giftStat");var L=GIFTS.filter(function(g){return !g.taken});',
     // còn quà chưa nhận -> hiện tab kèm số; hết -> ẩn, đang ở trang Quà thì tự về Cá nhân (như tab Nợ)
