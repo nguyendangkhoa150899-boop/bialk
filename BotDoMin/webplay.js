@@ -296,6 +296,16 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
+                // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
+                if (ctx.gift && path === '/api/gift/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.gift.state(userId) });
+                }
+                if (ctx.gift && req.method === 'POST' && path === '/api/gift/claim') {
+                    const body = await readBody(req);
+                    const r = await ctx.gift.claim(userId, body.gid);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 // 🛒 shop item (28/08)
                 if (ctx.itemshop && path === '/api/itemshop/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.itemshop.state(userId) });
@@ -1959,7 +1969,7 @@ const PAGE = [
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
     'debtSync();setInterval(function(){if(TOKEN)debtSync()},15000);',
-    'isSync();setInterval(function(){if(TOKEN)isSync()},30000);',   // 🎁 15/09: tab Quà luôn đúng, qua 00:00 tự hiện lại   // 📒 14/09: ô nợ trên thanh luôn tươi
+    'giftSync();setInterval(function(){if(TOKEN)giftSync()},30000);',   // 🎁 15/09: tab Quà luôn đúng, qua 00:00 tự hiện lại   // 📒 14/09: ô nợ trên thanh luôn tươi
     'mSync();sSync();',
     // 28/08: F5 giữ nguyên tab đang xem - khôi phục MỌI tab hợp lệ (theo PAGE_GRP, tự
     // đúng cho cả tab thêm sau này như 🛒 Shop Item), không còn whitelist cứng thiếu tab.
@@ -2144,7 +2154,7 @@ const PAGE = [
     '$("pageDog").classList.toggle("hidden",p!=="dog");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("pageDebt").classList.toggle("hidden",p!=="debt");',
-    '$("pageGift").classList.toggle("hidden",p!=="gift");if(p==="gift")isSync();',
+    '$("pageGift").classList.toggle("hidden",p!=="gift");if(p==="gift")giftSync();',
     '$("pageStock").classList.toggle("hidden",p!=="stock");',
     '$("pageSpm").classList.toggle("hidden",p!=="spm");',
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
@@ -3206,16 +3216,25 @@ const PAGE = [
     '',
     // ===== 🛒 SHOP ITEM (28/08): mua item + số lượng -> giao thẳng vào túi trong game =====
     'var IS=null,ISBUSY=false;',
-    // 🎁 15/09: quà còn nhận được hôm nay = cat gift, đang bật, chưa có trong danh sách "đã lấy"
-    'function giftLeft(){if(!IS||!IS.items)return [];return IS.items.filter(function(it){return (it.cat||"consume")==="gift"&&!it.off&&!isOnceBought(it)})}',
-    'function giftTabDraw(){var tb=$("navGift");if(!tb)return;var n=giftLeft().length;',
-    'if(n>0){tb.classList.remove("hidden");tb.textContent="🎁 Quà ("+n+")"}',
-    // hết quà: giấu tab, đang đứng ở trang Quà thì tự về Cá nhân (y như tab Nợ)
-    'else{tb.classList.add("hidden");if(CURPAGE==="gift")go("daily")}',
-    'var box=$("giftList"),st=$("giftStat");if(!box)return;var L=giftLeft();',
-    'if(st)st.textContent=L.length?(L.length+" món chưa nhận"):"đã nhận hết hôm nay";',
-    'box.innerHTML=L.length?L.map(isCard).join(""):\'<div class="muted">Hôm nay bạn đã nhận hết quà - mai 00:00 quay lại nhé 🎁</div>\';}',
-    'function isSync(){api("/api/itemshop/state").then(function(j){IS=j;giftTabDraw();',
+    // 🎁 15/09 (chiều): QUÀ ADMIN TẶNG - danh sách riêng /api/gift/state, không dính shop.
+    // Dựng thẻ bằng DOM (không nối chuỗi HTML) để khỏi vướng dấu nháy lồng nhau.
+    'var GIFTS=[];',
+    'function giftCard(g){var d=document.createElement("div");d.className="isItem"+(g.taken?" isDone":"");',
+    'd.innerHTML=isImg(g.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\"></div><div class=\\"isPr\\">🎁 Miễn phí · x"+(g.qty||1)+" cái</div><div class=\\"isNote gNote\\"></div><div class=\\"isNote gSt\\"></div></div><div class=\\"isBuyRow\\"><button class=\\"gBtn\\"></button></div>";',
+    'd.querySelector(".isNm").textContent=g.name||g.id;var nt=d.querySelector(".gNote");if(g.note)nt.textContent=g.note;else nt.remove();',
+    'var st=d.querySelector(".gSt");st.style.color=g.taken?"#8fd18f":"#ffd76a";st.textContent=g.taken?"✅ Hôm nay bạn đã nhận - qua 00:00 nhận lại được":"🎁 Mỗi ngày nhận 1 lần, số lượng do admin đặt";',
+    'var b=d.querySelector(".gBtn");if(g.taken){b.disabled=true;b.textContent="✅ ĐÃ NHẬN HÔM NAY"}else{b.textContent="🎁 Nhận quà (x"+(g.qty||1)+")";b.onclick=function(){giftClaim(g.gid,b)}}return d}',
+    'function giftDraw(){var tb=$("navGift"),box=$("giftList"),st=$("giftStat");var L=GIFTS.filter(function(g){return !g.taken});',
+    // còn quà chưa nhận -> hiện tab kèm số; hết -> ẩn, đang ở trang Quà thì tự về Cá nhân (như tab Nợ)
+    'if(tb){if(L.length>0){tb.classList.remove("hidden");tb.textContent="🎁 Quà ("+L.length+")"}else{tb.classList.add("hidden");if(CURPAGE==="gift")go("daily")}}',
+    'if(!box)return;if(st)st.textContent=L.length?(L.length+" món chưa nhận"):(GIFTS.length?"đã nhận hết hôm nay":"chưa có quà");',
+    'box.innerHTML="";if(!GIFTS.length){box.innerHTML="<div class=\\"muted\\">Hôm nay chưa có quà nào 🎁</div>";return}',
+    'GIFTS.slice().sort(function(a,b){return (a.taken?1:0)-(b.taken?1:0)}).forEach(function(g){box.appendChild(giftCard(g))})}',
+    'function giftSync(){api("/api/gift/state").then(function(j){GIFTS=j.items||[];giftDraw()}).catch(function(){})}',
+    'var GIFTBUSY=false;',
+    'function giftClaim(gid,btn){if(GIFTBUSY)return;GIFTBUSY=true;if(btn)btn.disabled=true;',
+    'api("/api/gift/claim",{gid:gid}).then(function(j){toast(j.message||"🎁 Đã nhận!")}).catch(function(e){toast("❌ "+e.message)}).then(function(){GIFTBUSY=false;giftSync()})}',
+    'function isSync(){api("/api/itemshop/state").then(function(j){IS=j;',
     '$("isStat").textContent=j.items.length+" món · ví "+vnd(j.balance);',
     '$("isLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - item giao thẳng vào túi (phải đang ONLINE trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới mua được";',
     'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
@@ -3223,20 +3242,18 @@ const PAGE = [
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
     // 07/09: shop kiểu 4 NÚT NHÓM - bấm nhóm nào hiện đồ nhóm đó (nhớ qua F5);
     // gõ ô tìm là quét TÊN + GHI CHÚ trên mọi nhóm (kèm đề mục nhóm cho khỏi lạc)
-    'var ISG=[["gift","🎁 ADMIN TẶNG"],["important","⭐ QUAN TRỌNG"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🏪 THƯƠNG NHÂN"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🐾 NGUYÊN LIỆU CHO PAL"],["implant","🧬 IMPLANT"]];',   // 15/09 +gift · đổi tên consume/material   // 09/09 +2 nhóm · 10/09 +material +implant
+    'var ISG=[["important","⭐ QUAN TRỌNG"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🏪 THƯƠNG NHÂN"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🐾 NGUYÊN LIỆU CHO PAL"],["implant","🧬 IMPLANT"]];',   // 15/09 +gift · đổi tên consume/material   // 09/09 +2 nhóm · 10/09 +material +implant
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
     'function isWT(it){return it.cat==="implant"&&/Consumable_WorldTree_/.test(it.id)}',
-    'function isOnceCat(c){return c==="important"||c==="gift"}',   // 15/09: 2 nhóm "1 lần/người"
+    'function isOnceCat(c){return c==="important"}',   // 15/09: quà 🎁 đã tách khỏi shop, chỉ còn ⭐
     'function isOnceBought(it){return !!(IS&&isOnceCat(it.cat)&&(IS.once||[]).indexOf(it.id)>=0)}',
     'function isTierCls(it){return (isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))))+(isOnceBought(it)?" isDone":"")}',
     'function isTierTag(it){return isWT(it)?"<span class=\\"isTier twt\\">🌈 CÂY THẾ GIỚI</span>":(it.tier==="diamond"?"<span class=\\"isTier t4\\">💎 KIM CƯƠNG</span>":(it.tier==="gold"?"<span class=\\"isTier t3\\">🥇 VÀNG</span>":""))}',
     'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" Dogcoin / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+isBuyRow(it)+"</div>"}',
     // ⭐ 11/09: nhóm QUAN TRỌNG mua 1 lần/người -> không ô số lượng; đã mua -> nút "✅ ĐÃ MUA" khoá
-    // 🎁 15/09: quà admin tặng - không ô số lượng, nút "Nhận quà (xN)", nhận rồi khoá
-    'function isBuyRow(it){if(it.cat==="gift"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ NHẬN HÔM NAY - mai nhận lại</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🎁 Nhận quà (x"+(it.max||1)+")</button></div>"}',
-    'if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
+    'function isBuyRow(it){if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
     'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
@@ -3245,7 +3262,7 @@ const PAGE = [
     'function isGrpQ(it){var g=IS&&IS.groupQuota?IS.groupQuota[it.cat]:null;return g&&g.max>0?g:null}',
     'function isGrpLeft(it){var g=isGrpQ(it);if(!g)return -1;var key=g.per==="item"?("i:"+it.id):it.cat;var used=((g.mode==="server"?IS.groupSrvToday:IS.groupToday)||{})[key]||0;return Math.max(0,g.max-used)}',
     'function isWtLeft(){return IS&&IS.wtMax>0?Math.max(0,IS.wtMax-(IS.wtToday||0)):-1}',
-    'function isOnceLine(it){if(!IS||!isOnceCat(it.cat))return "";if(it.cat==="gift")return isOnceBought(it)?"<div class=\\"isNote\\" style=\\"color:#8fd18f\\">✅ Hôm nay bạn đã nhận quà này - qua 00:00 nhận lại được</div>":"<div class=\\"isNote\\" style=\\"color:#ffd76a\\">🎁 Admin tặng - mỗi ngày nhận 1 lần, mỗi lần "+(it.max||1)+" cái</div>";return isOnceBought(it)?"<div class=\\"isNote\\" style=\\"color:#8fd18f\\">✅ Bạn đã mua món này - mỗi người chỉ 1 lần</div>":"<div class=\\"isNote\\" style=\\"color:#ffd76a\\">⭐ Mỗi người chỉ mua được 1 lần duy nhất</div>"}',
+    'function isOnceLine(it){if(!IS||!isOnceCat(it.cat))return "";return isOnceBought(it)?"<div class=\\"isNote\\" style=\\"color:#8fd18f\\">✅ Bạn đã mua món này - mỗi người chỉ 1 lần</div>":"<div class=\\"isNote\\" style=\\"color:#ffd76a\\">⭐ Mỗi người chỉ mua được 1 lần duy nhất</div>"}',
     'function isImpLine(it){var gg=isGrpQ(it);if(gg&&it.cat!=="implant"&&!isOnceCat(it.cat)){var gl=isGrpLeft(it),sv=gg.mode==="server";var un=gg.per==="item"?("món "+esc(it.name)):"món nhóm này (mọi loại gộp)";return "<div class=\\"isNote\\" style=\\"color:"+(gl?"#8fd18f":"#ff8a80")+"\\">🗂️ "+(gl?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+gl.toLocaleString()+"/"+gg.max.toLocaleString()+" "+un+(sv?" - ai nhanh thì được":""):(sv?"cả server":"bạn")+" đã mua đủ "+gg.max.toLocaleString()+" "+un+" hôm nay - mai quay lại")+"</div>"}if(!IS||it.cat!=="implant")return isOnceLine(it);if(isWT(it)){if(!(IS.wtMax>0))return "";var w=isWtLeft();return "<div class=\\"isNote\\" style=\\"color:"+(w?"#8fd18f":"#ff8a80")+"\\">🌳 "+(w?"hôm nay bạn còn mua được "+w+"/"+IS.wtMax+" implant Cây Thế Giới":"hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")+"</div>"}if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant (mọi loại gộp)":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
     'function isDayLine(it){var imp=isImpLine(it);if(!IS||!(IS.dayMax>0)||it.cat==="implant"||isOnceCat(it.cat)||isGrpQ(it))return imp;var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return imp+"<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
     'function isRender(){if(!IS)return;var cat=isCatGet();if(isOnceCat(cat)&&!IS.items.some(function(it){return (it.cat||"consume")===cat&&!isOnceBought(it)}))cat="consume";var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
@@ -3261,8 +3278,8 @@ const PAGE = [
     'if(!rows.length)h="<div class=\\"muted\\" style=\\"margin-top:10px\\">Nhóm này chưa có món nào.</div>"}',
     '$("isList").innerHTML=h}',
     'async function isBuy(id){if(ISBUSY||!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
-    'if(isOnceCat(it.cat)&&isOnceBought(it))return toast(it.cat==="gift"?"🎁 Hôm nay bạn đã nhận quà này rồi - qua 00:00 nhận lại":"⭐ Bạn đã mua món này rồi - mỗi người chỉ 1 lần");',
-    'var q=it.cat==="important"?1:(it.cat==="gift"?(it.max||1):(parseInt(($("isq_"+id)||{}).value)||0));if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant (mọi loại gộp)":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này (mọi loại gộp)";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
+    'if(isOnceCat(it.cat)&&isOnceBought(it))return toast("⭐ Bạn đã mua món này rồi - mỗi người chỉ 1 lần");',
+    'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant (mọi loại gộp)":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này (mọi loại gộp)";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
     'ISBUSY=true;api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;toast("❌ "+e.message);isSync()})}',

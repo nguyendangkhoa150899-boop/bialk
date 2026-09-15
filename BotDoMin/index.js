@@ -1727,7 +1727,7 @@ function uploadItemImage(fileName, dataB64) {
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 // 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
-const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant', 'important', 'gift'];   // 15/09 +gift (🎁 admin tặng, nhận 1 lần, số lượng = Max)   // 10/09 +material +implant · 11/09 +important (⭐ mua 1 lần)
+const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant', 'important'];   // 15/09: quà 🎁 TÁCH sang danh sách riêng _giftShop (xem giftList) - không còn là nhóm shop   // 10/09 +material +implant · 11/09 +important (⭐ mua 1 lần)
 function itemShopList() {
     const arr = dbCache._itemShop;
     return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
@@ -1757,6 +1757,77 @@ function setItemShop(list) {
     saveDbNow();
     return itemShopList();
 }
+// ===== 🎁 15/09 (chiều) - QUÀ ADMIN TẶNG: DANH SÁCH RIÊNG, LOGIC RIÊNG =====
+// Vì sao tách khỏi shop item: shop tra món theo StaticItemId, nên "Pin Cánh Bay" vừa bán ở nhóm
+// Phụ kiện vừa làm quà là 2 dòng CÙNG id -> nút Nhận quà dính dữ liệu dòng bán (hạn ngày, giá,
+// số lượng). Quà giờ nằm ở dbCache._giftShop, mỗi dòng có gid RIÊNG (không phải item id), dấu
+// "đã nhận hôm nay" đếm theo gid, giao đồ đi đúng đường mod như shop. Không dính tiền, không dính
+// hạn ngày/hạn nhóm/nợ. Panel: tab 🎁 Quà tặng cạnh Kho đồ (SUPER). Web: tab vàng 🎁 Quà ở Hồ sơ.
+const GIFT_MAX_ROWS = 100;
+function giftList() { return Array.isArray(dbCache._giftShop) ? dbCache._giftShop : []; }
+function setGiftShop(list) {
+    const used = new Set();
+    dbCache._giftShop = (Array.isArray(list) ? list : []).map(x => {
+        const id = String((x && x.id) || '').trim().replace(/[^A-Za-z0-9_]/g, '');
+        let gid = String((x && x.gid) || '').trim().replace(/[^A-Za-z0-9_]/g, '') || id;
+        const base = gid; let k = 2;
+        while (gid && used.has(gid)) gid = base + '_' + (k++);   // 2 quà cùng item -> gid khác nhau
+        used.add(gid);
+        return {
+            gid, id,
+            name: String((x && x.name) || id).trim().slice(0, 60),
+            qty: Math.max(1, Math.floor(Number(x && x.qty) || 1)),
+            img: String((x && x.img) || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80),
+            note: String((x && x.note) || '').trim().slice(0, 240),
+            off: !!(x && x.off),
+        };
+    }).filter(x => x.id && x.gid).slice(0, GIFT_MAX_ROWS);
+    saveDbNow();
+    return giftList();
+}
+// Cho web: quà đang bật + cờ "hôm nay đã nhận" của riêng người xem. Không lộ gì thừa.
+function giftWebList(user) {
+    return giftList().filter(g => !g.off).map(g => ({ gid: g.gid, id: g.id, name: g.name, qty: g.qty, img: g.img, note: g.note, taken: giftTakenToday(user, g.gid) }));
+}
+async function giftClaim(userId, gid, username) {
+    const g = giftList().find(x => x.gid === String(gid || ''));
+    if (!g || g.off) return { error: 'Quà này không còn' };
+    const user = getUserData(userId);
+    if (giftTakenToday(user, g.gid)) return { error: `🎁 ${g.name}: hôm nay bạn đã nhận rồi - qua 00:00 nhận lại được` };
+    const gameName = (user.ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi nhận nhé' };
+    deliverLock();
+    const on = await requireOnline(gameName);
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi nhận nhé` }; }
+    giftMark(user, g.gid, true);   // đánh dấu TRƯỚC khi giao (chặn bấm đúp); giao hỏng thì gỡ
+    saveDbNow();
+    let r = null, err = null;
+    try { r = await pal.giveItem(gameName, g.id, g.qty); } catch (e) { err = e; }
+    deliverUnlock();
+    if (r && r.ok) {
+        writeLog('ADMIN', `[QUÀ TẶNG] ${username || userId} nhận ${g.name} x${g.qty} (${g.id}) -> ${gameName}`);
+        return { ok: true, message: `🎁 Đã nhận ${g.qty.toLocaleString()} ${g.name} vào túi ${gameName}!` };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    giftMark(user, g.gid, false); saveDbNow();
+    writeLog('ADMIN', `[QUÀ TẶNG] ${username || userId} nhận ${g.name} THẤT BẠI: ${msg}`);
+    return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - thử lại sau nhé` };
+}
+// Dọn 1 lần lúc boot: dòng shop có cat 'gift' (bản sáng 15/09) -> chuyển sang _giftShop, gid = item id
+// để dấu "đã nhận hôm nay" (u.shopGift[id]) vẫn khớp. Trả về số dòng đã chuyển.
+function giftMigrateFromShop() {
+    const cur = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
+    const gifts = cur.filter(x => x && x.cat === 'gift');
+    if (!gifts.length) return 0;
+    const moved = gifts.map(x => ({ gid: x.id, id: x.id, name: x.name, qty: x.max || 1, img: x.img, note: x.note, off: !!x.off }));
+    setGiftShop(giftList().concat(moved));
+    setItemShop(cur.filter(x => !(x && x.cat === 'gift')));
+    writeLog('SYSTEM', `[QUÀ TẶNG] Chuyển ${moved.length} dòng shop nhóm 🎁 sang danh sách quà riêng`);
+    return moved.length;
+}
+
 // 📦 08/09: KHO ĐỒ TOÀN GAME cho cổng SUPER - thay CreativeMenu (client mod đã bị
 // bAllowClientMod=false chặn). Data gameitems.json build từ registry save-editor +
 // icon paldb (2.299 món, tên + mô tả tiếng Việt). KHÔNG dính tiền - chỉ SUPER admin
@@ -1930,9 +2001,30 @@ function itemShopWebList() {
     // trong CÙNG bậc implant: giá cao xếp trước (chủ server 10/09: "12000 xếp trước 8000"); nhóm khác giữ thứ tự admin
     const priceKey = (x) => x.cat === 'implant' ? -(Number(x.price) || 0) : 0;
     return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (priceKey(a[0]) - priceKey(b[0])) || (a[1] - b[1]))
-        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : ((a[0].cat === 'important' || a[0].cat === 'gift') ? { ...a[0], tier: importantTier(a[0].id) } : a[0]));   // web tô màu theo tier
+        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : (a[0].cat === 'important' ? { ...a[0], tier: importantTier(a[0].id) } : a[0]));   // web tô màu theo tier
 }
 // ⭐ 11/09: nhóm QUAN TRỌNG - mỗi người mua ĐÚNG 1 lần, vĩnh viễn. user.shopOnce = { itemId: timestamp }.
+// 🩹 15/09 - TỰ CHỮA TÊN MÓN BỊ MẤT DẤU. Dấu hiệu hỏng: có ký tự thay thế "\uFFFD" hoặc có dấu "?"
+// (tên món tiếng Việt không bao giờ có "?"). Tên chuẩn lấy theo id: ưu tiên DEFAULT_ITEM_SHOP
+// (tên chủ server đã đặt), không có thì lấy gameitems.json. Không tìm được tên chuẩn thì để yên.
+// Trả về số món đã sửa. Gọi 1 lần lúc boot; gọi lại cũng vô hại (tên đã sạch thì bỏ qua).
+function itemShopNameLooksBroken(name) { return /\uFFFD|\?/.test(String(name || '')); }
+function itemShopRepairNames() {
+    const L = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
+    const gi = (typeof gameItems === 'function' ? gameItems() : []) || [];
+    let n = 0;
+    for (const it of L) {
+        if (!it || !itemShopNameLooksBroken(it.name)) continue;
+        const def = (typeof DEFAULT_ITEM_SHOP !== 'undefined' ? DEFAULT_ITEM_SHOP : []).find(x => x && x.id === it.id);
+        const g = gi.find(x => x && x.id === it.id);
+        const good = (def && def.name && !itemShopNameLooksBroken(def.name)) ? def.name : (g && g.n && !itemShopNameLooksBroken(g.n) ? g.n : null);
+        if (!good) continue;
+        writeLog('SYSTEM', `[SHOP ITEM] Sửa tên mất dấu: ${it.id} "${it.name}" -> "${good}"`);
+        it.name = good; n++;
+    }
+    if (n) saveDbNow();
+    return n;
+}
 function shopOnceBought(user, id) { return !!(user.shopOnce && user.shopOnce[id]); }
 // 🎁 15/09: quà admin - dấu "đã nhận" THEO NGÀY (giờ VN). Nhận rồi thì tới 00:00 mới nhận lại được.
 function giftTakenToday(user, id) { return !!(user.shopGift && user.shopGift[id] === vnDayISO(Date.now())); }
@@ -1967,16 +2059,11 @@ async function itemShopBuy(userId, itemId, qty, username) {
     // 📅 giới hạn/ngày (kiểm TRƯỚC khi trừ tiền / mở SFTP)
     // 🧬 implant: hạn riêng theo người, mọi loại gộp
     // ⭐ QUAN TRỌNG: mỗi người 1 lần, số lượng luôn 1, miễn hạn ngày chung
-    // 🎁 ADMIN TẶNG (15/09): cũng 1 lần/người như ⭐, nhưng SỐ LƯỢNG do admin đặt ở cột Max -
-    // người chơi không chọn, server tự lấy it.max (bỏ qua số client gửi lên).
-    const isGift = it.cat === 'gift';
-    const isOnce = it.cat === 'important' || isGift;
+    // ⭐ QUAN TRỌNG: mỗi người 1 lần vĩnh viễn. (🎁 quà admin đã TÁCH sang giftClaim - không đi đường này nữa)
+    const isOnce = it.cat === 'important';
     if (isOnce) {
-        if (isGift ? giftTakenToday(user, it.id) : shopOnceBought(user, it.id)) {
-            return { error: isGift ? `🎁 ${it.name}: hôm nay bạn đã nhận rồi - qua 00:00 nhận lại được` : `⭐ ${it.name}: mỗi người chỉ mua được 1 LẦN - bạn đã mua rồi` };
-        }
-        if (isGift) { qty = Math.max(1, Math.floor(Number(it.max) || 1)); cost = it.price * qty; }
-        else if (qty !== 1) return { error: `⭐ ${it.name} mỗi người chỉ mua 1 cái duy nhất - đặt số lượng 1` };
+        if (shopOnceBought(user, it.id)) return { error: `⭐ ${it.name}: mỗi người chỉ mua được 1 LẦN - bạn đã mua rồi` };
+        if (qty !== 1) return { error: `⭐ ${it.name} mỗi người chỉ mua 1 cái duy nhất - đặt số lượng 1` };
     }
     const isImplantCat = it.cat === 'implant';
     const isWt = isImplantCat && isWtImplant(it.id);
@@ -2036,8 +2123,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if (imp) imp.n += qty;                       // 🧬 hạn implant/người
     if (wt) wt.n += qty;                         // 🌳 hạn Cây Thế Giới/người
     if (gCnt) gCnt.n[gqKey] = (gCnt.n[gqKey] || 0) + qty;   // 🗂️ hạn nhóm (key theo per)
-    if (isGift) giftMark(user, it.id, true);           // 🎁 đánh dấu đã nhận HÔM NAY
-    else if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
+    if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
     saveDbNow();
     let r = null, err = null;
@@ -2045,7 +2131,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     deliverUnlock();   // 🚦 SFTP xong -> mở khoá
     if (r && r.ok) {
         writeLog('ADMIN', `[SHOP ITEM] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} (-${cost})`);
-        return { ok: true, message: `${isGift ? '🎁 Đã nhận quà:' : '✅ Đã giao'} ${qty.toLocaleString()} ${it.name} vào túi ${gameName} trong game!`, balance: getUserData(userId).points || 0 };
+        return { ok: true, message: `✅ Đã giao ${qty.toLocaleString()} ${it.name} vào túi ${gameName} trong game!`, balance: getUserData(userId).points || 0 };
     }
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
     // CHẮC CHẮN chưa giao (dashboard chết / mod báo không thấy người) -> hoàn ngay
@@ -2055,8 +2141,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
         if (imp) imp.n = Math.max(0, imp.n - qty);
         if (wt) wt.n = Math.max(0, wt.n - qty);
         if (gCnt) gCnt.n[gqKey] = Math.max(0, (gCnt.n[gqKey] || 0) - qty);   // 🗂️ chưa giao -> trả lượt
-        if (isGift) giftMark(user, it.id, false);          // 🎁 chưa giao -> cho nhận lại
-        else if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
+        if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();
         return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã hoàn ${cost.toLocaleString()} Dogcoin` };
@@ -5707,6 +5792,11 @@ client.once('ready', async (c) => {
             }
         } catch (e) { writeLog('SYSTEM', `[BIG SMALL] Không tự mở lại được: ${e.message}`); }
     })();
+    // 🎁 15/09 (chiều): dòng shop nhóm gift của bản sáng -> chuyển sang danh sách quà riêng
+    try { giftMigrateFromShop(); } catch (e) { writeLog('SYSTEM', `[QUÀ TẶNG] Không chuyển được dòng cũ: ${e.message}`); }
+    // 🩹 15/09: tên món shop bị mất dấu (lỗi bảng mã từ ngoài) -> tự chữa theo id
+    try { const nFix = itemShopRepairNames(); if (nFix) writeLog('SYSTEM', `[SHOP ITEM] Đã sửa ${nFix} tên món bị mất dấu lúc khởi động`); }
+    catch (e) { writeLog('SYSTEM', `[SHOP ITEM] Không sửa được tên món: ${e.message}`); }
     // 🀫 14/09: bot tắt ngay giữa lúc nặn thì bảng tiền ván dở còn nằm trong DB - người nặn sớm
     // đã nhận, người nặn muộn chưa. Trả nốt cho ai còn thiếu rồi mới dọn, không để ai mất trắng.
     try {
@@ -5882,6 +5972,10 @@ client.once('ready', async (c) => {
                 delBuild: (uid, name) => palBuildDel(uid, name),
             },
             // 🛒 shop item (28/08): mua item game + số lượng -> giao vào túi qua mod
+            gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
+                state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
+                claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),
+            },
             itemshop: {
                 state: (uid) => ({
                     items: itemShopWebList(),                        // 09/09 bỏ món tắt · 10/09 implant: Chuyển Đổi → 🌳 → thường
@@ -5889,7 +5983,7 @@ client.once('ready', async (c) => {
                     dayMode: itemShopDayMode(),                      // 📅 'server' (gộp cả server) | 'user' (mỗi người)
                     implantMax: itemShopImplantMax(),                // 🧬 mỗi người tối đa N implant/ngày (0 = không)
                     implantToday: implantToday(getUserData(uid)).n,  // 🧬 đã mua hôm nay
-                    once: Object.keys((getUserData(uid).shopOnce) || {}).concat(giftTakenIds(getUserData(uid))),   // ⭐ id đã mua 1 lần + 🎁 quà đã nhận hôm nay
+                    once: Object.keys((getUserData(uid).shopOnce) || {}),   // ⭐ id đã mua 1 lần
                     wtMax: itemShopWtMax(),                          // 🌳 Cây Thế Giới: mỗi người tối đa N/ngày
                     wtToday: wtToday(getUserData(uid)).n,
                     groupQuota: itemShopGroupQuota(),                // 🗂️ {cat:{mode:'server'|'user',max}}
@@ -5976,6 +6070,7 @@ client.once('ready', async (c) => {
                 return { ok: true, cfg: dailyCfg() };
             },
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
+            getGiftShop: giftList, setGiftShop,   // 🎁 15/09: quà admin tặng - danh sách riêng
             getItemShopDayMax: itemShopDayMax, setItemShopDayMax,   // 📅 10/09 hạn mua/ngày
             getItemShopDayMode: itemShopDayMode, setItemShopDayMode,   // 📅 chế độ đếm server/user
             getItemShopImplantMax: itemShopImplantMax, setItemShopImplantMax,   // 🧬 hạn implant/người/ngày

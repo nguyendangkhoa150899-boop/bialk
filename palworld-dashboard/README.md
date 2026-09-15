@@ -670,6 +670,45 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — 🎁 **TÁCH quà admin ra danh sách riêng + tab 🎁 Quà tặng cạnh Kho đồ** (chủ server gửi ảnh nút "Nhận quà
+  (x999)" kèm dòng "cả server còn mua được 99 Pin Cánh Bay": "mình bị vướng cái này nè nên muốn tách admin ra tab khác để chạy
+  logic riêng thôi").
+  🐛 **Lỗi gốc**: shop tra món theo **StaticItemId**. Chủ server có 2 dòng cùng `WingGlider_Fuel` - một bán ở nhóm 💍 Phụ kiện
+  (giá 100, max 99), một làm quà (giá 0, max 999). Nút quà tra theo id nên **vớ nhầm dòng bán**: câu hạn ngày, giá, số lượng
+  đều lấy của dòng kia. Không vá được bằng bộ lọc - phải tách kho.
+  🗃️ **Kho quà riêng** `dbCache._giftShop`, mỗi dòng có **`gid` riêng** (không phải item id). `setGiftShop` tự sinh gid không
+  trùng: 2 quà cùng item → `WingGlider_Fuel` và `WingGlider_Fuel_2`. Dấu "đã nhận hôm nay" đếm **theo gid**. `giftClaim`
+  đi đường giao đồ riêng: kiểm online → đánh dấu TRƯỚC (chặn bấm đúp) → gọi mod → hỏng thì gỡ dấu. **Không** dính tiền, hạn
+  ngày, hạn nhóm, nợ. `giftWebList` chỉ trả quà đang bật + cờ `taken` của riêng người xem.
+  🧹 **Gỡ nhóm `gift` khỏi shop**: `ITEM_SHOP_CATS` bỏ `gift`, `itemShopBuy` về lại luật ⭐ thuần, web bỏ nhóm 🎁 khỏi
+  `ISG` và `isOnceCat`, panel bỏ lựa chọn nhóm 🎁. `giftMigrateFromShop()` chạy lúc boot chuyển dòng `cat:'gift'` của bản sáng
+  sang kho quà với **gid = item id** để dấu "đã nhận" cũ vẫn khớp, dòng bán ở shop giữ nguyên.
+  🖥️ **Panel**: tab **🎁 Quà tặng** ngay trước 📦 Kho đồ, chỉ cổng SUPER (`/api/gift/save` nằm trong `VIEWONLY_PATHS`). Bảng riêng
+  6 cột: Phát · StaticItemId · Tên hiện · Số cái/lần · Ghi chú · Hình (up ảnh dùng chung route shop). Có cờ "chưa lưu" riêng.
+  🌐 **Web**: route `/api/gift/state` + `/api/gift/claim`. Thẻ quà dựng bằng **DOM** thay vì nối chuỗi HTML cho khỏi vướng dấu
+  nháy lồng nhau. Tab vàng 🎁 Quà đếm theo kho quà riêng, hết quà thì ẩn + tự về Cá nhân, nạp lúc vào + 30 giây/lần.
+  ✅ Bộ test mới `giftstoretest.js` **32 case** chạy hàm thật: gid không trùng khi cùng item, lọc id lạ, quà tắt không lộ/không
+  nhận được, nhận 1 lần/ngày, qua ngày nhận lại, người khác độc lập, giao hỏng gỡ dấu, chưa online/chưa liên kết thì chặn,
+  migrate đúng 1 dòng và giữ nguyên dòng bán. Thử thật trên bot test: lưu 2 quà cùng `WingGlider_Fuel` → ra 2 gid khác nhau,
+  web thấy 2 dòng riêng, shop còn 157 món và **0 dòng nhóm gift**.
+  ⚠️ Đường **giao đồ vào game chưa thử được ở máy** (cầu dashboard :3010 không chạy) - `requireOnline` chặn đúng và không đánh
+  dấu đã nhận. Logic giao đã có test với mod giả; lên server thật cần nhận thử 1 món.
+- **15/09** — 🩹 **Tự chữa tên món shop bị mất dấu + ô lọc bảng vật phẩm ở panel** (chủ server: "phông chữ bị ��o T�m Giao",
+  "làm thêm phần lọc vật phẩm").
+  🔎 **Nguyên nhân chữ lỗi**: không phải phông chữ. `database.json` của **bot test** có **84/156 tên món** bị hỏng kiểu bảng mã
+  Windows (dấu tiếng Việt thành `?` hoặc ký tự thay thế `\uFFFD`: "S?ch Hu?n Luy?n", "��o T�m Giao", "Th?t B� Mozzarina").
+  Hỏng hàng loạt = cả file bị ghi sai bảng mã một lần từ **ngoài bot** (bot ghi `JSON.stringify` → `writeFileSync` UTF-8 chuẩn,
+  `gameitems.json` và 3 file JS đều sạch). Không truy được đúng lệnh nào gây ra; khả năng cao là một lần ghi file bằng công cụ
+  Windows dùng ANSI. **Chưa xác nhận server thật có dính không** - chủ server cần liếc một tên món trên web thật.
+  🩹 **Tự chữa lúc boot** `itemShopRepairNames()`: tên nào có `\uFFFD` hoặc dấu `?` (tên món tiếng Việt không bao giờ có `?`)
+  thì lấy lại tên chuẩn theo **id**: ưu tiên `DEFAULT_ITEM_SHOP` (tên chủ server đã đặt), không có thì `gameitems.json`; không tìm
+  được thì để yên, không bịa. Ghi log từng món + tổng. Gọi lại nhiều lần vô hại. Chạy trên bot test: **sửa đủ 84/84, còn 0**.
+  Đưa vào boot nên nếu server thật có dính thì pull về restart là tự lành, không cần sửa tay.
+  🔍 **Ô lọc bảng vật phẩm panel** (tab 🎮): gõ id/tên/nhóm/ghi chú, chọn nhóm (có 🎁 Admin tặng + tên nhóm mới), tick "chỉ món
+  đang tắt", đếm "hiện x/y món". **Chỉ ẩn dòng, không xoá** nên bấm 💾 vẫn lưu đủ mọi dòng kể cả dòng đang ẩn; dòng mới thêm cũng
+  theo bộ lọc đang gõ.
+  ✅ Bộ test mới `repairtest.js` **19 case**: nhận diện hỏng/sạch, chữa đúng theo id, ưu tiên DEFAULT, không bịa khi thiếu nguồn,
+  gọi lại không lưu thừa, và các mảnh panel. Bot test chạy lại không lỗi.
 - **15/09** — 🎁 **Nhóm shop "ADMIN TẶNG" (quà mỗi ngày) + tab 🎁 Quà vàng ở Hồ sơ + đổi tên 2 nhóm** (chủ server: "đổi tên
   🧱 Nguyên liệu → Nguyên liệu cho Pal, 🧪 Tiêu hao → Thương nhân, thêm icon; thêm 1 mục admin tặng đồ, nhận vào game xong vật
   phẩm bị xóa, admin nhập số lượng, ẩn hiện như Quan trọng" → sau chốt lại: "nhận xong qua ngày mới có thể nhận lại, admin bật
