@@ -183,6 +183,7 @@ function startPanel(ctx) {
             dailyCfg: ctx.getDailyCfg ? ctx.getDailyCfg() : null,   // 🪪 mức điểm danh/nghiện/chuỗi
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             giftShop: ctx.getGiftShop ? ctx.getGiftShop() : [],   // 🎁 15/09: quà admin tặng (danh sách riêng)
+            feats: ctx.featList ? ctx.featList() : [],   // 🔌 15/09: công tắc chức năng người chơi
             itemShopDayMax: ctx.getItemShopDayMax ? ctx.getItemShopDayMax() : null,   // 📅 10/09
             itemShopDayMode: ctx.getItemShopDayMode ? ctx.getItemShopDayMode() : null,   // 📅 'server' | 'user'
             itemShopImplantMax: ctx.getItemShopImplantMax ? ctx.getItemShopImplantMax() : null,   // 🧬
@@ -255,7 +256,7 @@ function startPanel(ctx) {
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/itemshop/daymax', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
-                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
+                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -315,6 +316,12 @@ function startPanel(ctx) {
                         r.groupQuota = gg.groupQuota;
                     }
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Giới hạn mua mỗi món/ngày = ${r.dayMax || 'không giới hạn'} · chế độ ${r.dayMode === 'user' ? 'mỗi người' : 'toàn server'}`);
+                    return sendJSON(res, 200, r);
+                }
+                // 🔌 15/09: bật/tắt chức năng người chơi (chỉ SUPER)
+                if (ctx.setFeatOff && req.method === 'POST' && path === '/api/feat/set') {
+                    const r = ctx.setFeatOff(String(body.key || ''), !!body.off);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
                 // 🎁 15/09: quà admin tặng - danh sách riêng (chỉ SUPER, xem VIEWONLY_PATHS)
@@ -1785,6 +1792,11 @@ const HTML = `<!DOCTYPE html>
             <tbody id="playerBody"></tbody>
           </table>
         </div>
+        <div class="card epOnly" style="display:none">
+          <h2>🔌 Bật / tắt chức năng người chơi <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
+          <div class="note">Tắt mục nào thì mục đó <b>biến mất khỏi web</b> của người chơi và <b>mọi thao tác của mục đó bị server từ chối</b> - sửa trình duyệt cũng không lách được. Ván đang chơi dở vẫn rút tiền ra được bình thường. Không đụng tới 🪪 Cá nhân, 📒 Nợ, 🎁 Quà.</div>
+          <div id="featBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+        </div>
         <div class="note">Cột <b>📒 Nợ</b>: còn nợ là người chơi KHÔNG mua được đồ ở shop item và KHÔNG chuyển được pal vào game (14/09 bỏ hẳn nhãn nợ xấu). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
       </div>
 
@@ -2755,6 +2767,19 @@ async function isDayMaxSave(btn){
 }
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
+// 🔌 15/09: công tắc chức năng người chơi - mỗi mục 1 nút, xanh = đang mở, đỏ = đang tắt
+function featRender(){
+  var box=document.getElementById('featBox');if(!box||!STATE||!STATE.feats)return;
+  var sig=JSON.stringify(STATE.feats);if(box.dataset.sig===sig)return;box.dataset.sig=sig;
+  box.innerHTML=STATE.feats.map(function(f){
+    return '<button class="'+(f.off?'btn-red':'btn-green')+'" style="min-width:150px" onclick="featSet(&quot;'+f.key+'&quot;,'+(f.off?'false':'true')+')">'+(f.off?'⛔ ':'✅ ')+f.label+'</button>';
+  }).join('');
+}
+async function featSet(key,off){
+  var f=(STATE.feats||[]).find(function(x){return x.key===key})||{label:key};
+  if(!await uiConfirm(off?('TẮT '+f.label+' cho người chơi? Mục này sẽ biến mất khỏi web và mọi thao tác bị chặn.'):('MỞ lại '+f.label+' cho người chơi?'),off?'⛔ Tắt':'✅ Mở',off?'btn-red':'btn-green'))return;
+  try{await api('/api/feat/set',{key:key,off:off});toast((off?'⛔ Đã tắt ':'✅ Đã mở ')+f.label);refresh();}catch(e){}
+}
 // 🎁 15/09 (chiều): QUÀ ADMIN TẶNG - bảng riêng, lưu vào _giftShop, không dính shop item
 var GFDIRTY=false,GFSIG='';
 function giftDirty(on){GFDIRTY=!!on;var b=document.getElementById('giftSaveBtn');if(b)b.textContent=on?'💾 Lưu quà (CHƯA LƯU)':'💾 Lưu quà';}
@@ -3297,7 +3322,7 @@ async function refresh(force){
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();
   pcToggleApply();
-  itemShopFill();giftFill();
+  itemShopFill();giftFill();featRender();
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
   // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)

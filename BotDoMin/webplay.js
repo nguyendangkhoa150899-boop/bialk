@@ -121,6 +121,32 @@ function startWebPlay(ctx) {
                 const userId = getSessionUser(req);
                 if (!userId) return sendJSON(res, 401, { ok: false, error: 'unauth' });
 
+                // 🔌 15/09: mục admin TẮT thì chặn thẳng ở đây - client sửa gì cũng vô ích.
+                // Chỉ chặn đường HÀNH ĐỘNG (đặt cược/mua/quay/rút), KHÔNG chặn đường xem trạng
+                // thái, để trang đang mở không vỡ và người chơi vẫn rút được ván đang chơi dở.
+                if (ctx.featOffList) {
+                    const off = ctx.featOffList();
+                    if (off.length) {
+                        const HANH_DONG = [
+                            ['tx', ['/api/bet']],
+                            ['mine', ['/api/mines/start', '/api/mines/reveal', '/api/mines/lucky', '/api/mines/jackpot']],
+                            ['stair', ['/api/stairs/start', '/api/stairs/step', '/api/stairs/lucky', '/api/stairs/jackpot']],
+                            ['wheel', ['/api/wheel/ready', '/api/wheel/spin']],
+                            ['stock', ['/api/stock/open', '/api/stock/auto']],
+                            ['spm', ['/api/spm/bet']],
+                            ['pal', ['/api/palwheel/spin', '/api/palwheel/raidspin']],
+                            ['pick', ['/api/palpick/buy']],
+                            ['shop', ['/api/itemshop/buy']],
+                            ['dog', ['/api/dogbridge/rut', '/api/dogbridge/nap', '/api/dogbridge/napgold']],
+                        ];
+                        for (const [key, paths] of HANH_DONG) {
+                            if (off.includes(key) && paths.includes(path)) {
+                                return sendJSON(res, 403, { ok: false, error: '⛔ Mục này đang tạm khoá - admin đã tắt' });
+                            }
+                        }
+                    }
+                }
+
                 if (path === '/api/state') {
                     const tx = ctx.getTX();
                     const me = ctx.getUserData(userId);
@@ -149,6 +175,7 @@ function startWebPlay(ctx) {
                             stairs: (ctx.stairs && ctx.stairs.pot) ? ctx.stairs.pot() : 0,
                         },
                         // 🌪️ 14/09: hũ Bão + tỉ lệ bú hũ (1 ăn N) để trang Tài Xỉu hiện
+                        featOff: ctx.featOffList ? ctx.featOffList() : [],   // 🔌 15/09: mục admin đang tắt
                         txPot: ctx.txPot ? ctx.txPot() : 0,
                         txPotX: (typeof ctx.txPotX === 'function' ? ctx.txPotX() : ctx.txPotX) || 10,
                         txBaoRate: ctx.txBaoRate || 30,
@@ -2049,6 +2076,7 @@ const PAGE = [
     'if(h0s.storm)stormFx(h0s.gameId)}}',
     'document.getElementById("round").textContent="Ván #"+String(j.gameId).padStart(5,"0");',
     'txPotDraw(j);',   // 🌪️ 14/09 hũ Bão
+    'featDraw(j.featOff||[]);',   // 🔌 15/09: giấu tab mục đang tắt
     'if(j.now)CLOCK_OFF=j.now-Math.floor(Date.now()/1000);',
     'TT=j.targetTime;LOCKS=j.lockSeconds;var prevPhase=PHASE;PHASE=j.phase;NAN=j.nan;',
     'document.getElementById("betBtn").disabled=(PHASE!=="bet");',
@@ -3025,6 +3053,12 @@ const PAGE = [
     'var DST=null,DOFF=0;',
     'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync()}',
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
+    // 🔌 15/09: giấu tab của mục admin tắt. Đang đứng trong mục bị tắt thì đá về Tài Xỉu.
+    'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",pal:"navPal",pick:"navPick",shop:"navShop",dog:"navDog"};',
+    'var FEATOFF=[];',
+    'function featDraw(off){FEATOFF=off||[];',
+    'for(var k in FEATNAV){var b=$(FEATNAV[k]);if(b)b.classList.toggle("hidden",FEATOFF.indexOf(k)>=0)}',
+    'if(FEATOFF.indexOf(CURPAGE)>=0){toast("⛔ Mục này đang tạm khoá");go("tx")}}',
     'var DEBTNOW=0;',   // 📒 14/09: số nợ hiện tại, cho ô trên thanh + điền sẵn ô trả
     'function debtChipDraw(){var ch=$("debtChip"),tb=$("navDebt");',
     'if(DEBTNOW>0){if(ch){ch.classList.remove("hidden");$("debtChipVal").textContent=DEBTNOW.toLocaleString("vi-VN")}if(tb)tb.classList.remove("hidden")}',

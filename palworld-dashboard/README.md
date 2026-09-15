@@ -670,6 +670,20 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — 🔌 **Công tắc bật/tắt từng chức năng của người chơi** (chủ server: "thêm nút tắt mở các chức năng của
+  người chơi, hiện tại mình muốn tắt tab chọn pal").
+  🎛️ **10 mục bật/tắt được**: 🎲 Tài Xỉu · 💣 Dò Mìn · 🪜 Leo Thang · 🎡 Vòng Quay · 📈 Cổ phiếu · 🚀 Phi Thuyền · 🎁 Quay Pal ·
+  🎯 Chọn Pal · 🛒 Shop Item · 💸 Chuyển/Rút. Không đụng 🪪 Cá nhân, 📒 Nợ, 🎁 Quà (quà tắt từng món ở tab riêng).
+  Lưu ở `dbCache._featOff`, **chỉ ghi mục ĐANG TẮT** nên mặc định mở hết và mở lại là sạch, không để rác trong DB.
+  🔒 **Chặn 2 tầng**: (1) **server** từ chối mọi đường HÀNH ĐỘNG của mục bị tắt - danh sách đường dẫn đặt ngay sau khâu đăng nhập
+  trong `webplay.js`, cộng `featGuard()` ở `itemShopBuy`/`palPickBuy`/`palWheelSpin`/`spmBet`/`stockOpen` để Discord cũng dính;
+  (2) **web** giấu luôn tab, đang đứng trong mục bị tắt thì báo và đá về Tài Xỉu.
+  ⚠️ **Cố ý KHÔNG chặn đường xem trạng thái**: ai đang chơi dở một ván Dò Mìn/Leo Thang/Cổ phiếu lúc admin tắt vẫn **rút tiền ra
+  được**, không bị kẹt vốn. Chỉ cấm bắt đầu ván mới.
+  🖥️ **Panel** tab 👥 Người chơi (chỉ SUPER): mỗi mục một nút, **xanh = đang mở, đỏ = đang tắt**, bấm là hỏi xác nhận rồi đổi.
+  Route `/api/feat/set` nằm trong `VIEWONLY_PATHS` nên cổng admin thường không đổi được. Mỗi lần đổi ghi log admin.
+  ✅ Bộ test mới `feattest.js` **22 case** chạy hàm thật + quét nguồn. Thử thật trên bot test: tắt 🎯 Chọn Pal → web nhận
+  `featOff:["pick"]`, gọi mua trả **403 "Mục này đang tạm khoá"**, 🎁 Quay Pal không tắt vẫn chạy bình thường, mở lại thì sạch.
 - **15/09 (chiều)** — 🎁 **TÁCH quà admin ra danh sách riêng + tab 🎁 Quà tặng cạnh Kho đồ** (chủ server gửi ảnh nút "Nhận quà
   (x999)" kèm dòng "cả server còn mua được 99 Pin Cánh Bay": "mình bị vướng cái này nè nên muốn tách admin ra tab khác để chạy
   logic riêng thôi").

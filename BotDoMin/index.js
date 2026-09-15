@@ -1757,6 +1757,38 @@ function setItemShop(list) {
     saveDbNow();
     return itemShopList();
 }
+// ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
+// Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
+// chối - người chơi sửa client cũng không lách được. Lưu ở dbCache._featOff (chỉ lưu mục ĐANG TẮT,
+// mặc định mở hết). Không đụng tới 🪪 Cá nhân / 📒 Nợ / 🎁 Quà (quà tắt từng món ở tab riêng).
+const PLAYER_FEATURES = [
+    { key: 'tx', label: '🎲 Tài Xỉu' },
+    { key: 'mine', label: '💣 Dò Mìn' },
+    { key: 'stair', label: '🪜 Leo Thang' },
+    { key: 'wheel', label: '🎡 Vòng Quay' },
+    { key: 'stock', label: '📈 Cổ phiếu' },
+    { key: 'spm', label: '🚀 Phi Thuyền' },
+    { key: 'pal', label: '🎁 Quay Pal' },
+    { key: 'pick', label: '🎯 Chọn Pal' },
+    { key: 'shop', label: '🛒 Shop Item' },
+    { key: 'dog', label: '💸 Chuyển/Rút' },
+];
+const FEAT_KEYS = PLAYER_FEATURES.map(f => f.key);
+function featBook() { if (!dbCache._featOff || typeof dbCache._featOff !== 'object') dbCache._featOff = {}; return dbCache._featOff; }
+function featOff(key) { return !!featBook()[key]; }
+function featOffList() { return FEAT_KEYS.filter(featOff); }
+function featLabel(key) { const f = PLAYER_FEATURES.find(x => x.key === key); return f ? f.label : key; }
+// Trả CHUỖI LỖI nếu mục đang tắt, null nếu đang mở. Dùng ở mọi cửa hành động.
+function featGuard(key) { return featOff(key) ? `⛔ ${featLabel(key)} đang tạm khoá - admin đã tắt mục này` : null; }
+function setFeatOff(key, off) {
+    if (!FEAT_KEYS.includes(key)) return { error: 'Chức năng không hợp lệ' };
+    const b = featBook();
+    if (off) b[key] = true; else delete b[key];
+    saveDbNow();
+    writeLog('ADMIN', `[CHỨC NĂNG] Panel ${off ? 'TẮT' : 'MỞ'} ${featLabel(key)} cho người chơi`);
+    return { ok: true, key, off: featOff(key), list: featOffList() };
+}
+
 // ===== 🎁 15/09 (chiều) - QUÀ ADMIN TẶNG: DANH SÁCH RIÊNG, LOGIC RIÊNG =====
 // Vì sao tách khỏi shop item: shop tra món theo StaticItemId, nên "Pin Cánh Bay" vừa bán ở nhóm
 // Phụ kiện vừa làm quà là 2 dòng CÙNG id -> nút Nhận quà dính dữ liệu dòng bán (hạn ngày, giá,
@@ -2048,6 +2080,7 @@ function itemShopToday(user) {
     return user.shopDay.bought;
 }
 async function itemShopBuy(userId, itemId, qty, username) {
+    const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const dbErr = debtBlock(userId, 'mua đồ ở shop');   // 📒 14/09: còn nợ là không mua được
     if (dbErr) return { error: dbErr };
     const it = itemShopList().find(x => x.id === String(itemId));
@@ -2278,6 +2311,7 @@ function spmTick() {
     }
 }
 function spmBet(uid, username, amount, auto) {
+    const ftErr = featGuard('spm'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const cfg = spmCfg();
     if (!cfg.open) return { error: 'Phi Thuyền đang đóng bảo trì' };
     if (spmState.phase !== 'bet') return spmQueueBet(uid, username, amount, auto);   // đang bay/nổ -> đặt cho chuyến sau
@@ -2526,6 +2560,7 @@ function deliverLock() { _deliverBusyUntil = Date.now() + 120000; }
 function deliverUnlock() { _deliverBusyUntil = 0; }
 
 function palWheelSpin(userId, username) {
+    const ftErr = featGuard('pal'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
     if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt - chờ vài giây cho hiện kết quả rồi quay tiếp nhé' };
@@ -2652,6 +2687,7 @@ function palPickPrice(pal, cfg) {
     return r ? cfg[r.key] : cfg.customPrice;
 }
 function palPickBuy(userId, code, username) {
+    const ftErr = featGuard('pick'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
     // pool thường + 4 boss raid đang mở bán (giá > 0) - 🔒 PAL GỐC: KHÔNG bán raid đích danh (chỉ quay random mới ra)
@@ -5189,6 +5225,7 @@ function stockState(userId) {
 // mức lỗ tối đa, và lệnh tự CHÁY khi lỗ ăn hết cọc (giá mua lại gấp đôi giá vào).
 // KHÔNG cho giữ 2 chiều cùng lúc: muốn đổi chiều thì đóng lệnh cũ trước.
 function stockOpen(userId, side, amount, want, lev) {
+    const ftErr = featGuard('stock'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const cfg = stockCfg();
     const short = side === 'short';
     if (!cfg.open) return { error: 'Sàn đang tạm đóng - chỉ đóng lệnh được, chưa mở lệnh mới' };
@@ -5833,6 +5870,7 @@ client.once('ready', async (c) => {
             getTX: () => txState,
             txMaxBet,        // 💰 trần cược TX/người/ván (hiện trên trang cược)
             txCapCheck,      // 💰 chặn vượt trần (dùng chung luật với Discord)
+            featOffList,   // 🔌 15/09: danh sách mục admin đang tắt (web giấu tab)
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
             txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)
@@ -6071,6 +6109,7 @@ client.once('ready', async (c) => {
             },
             getItemShop: itemShopList,   // 🛒 danh mục shop item (admin quản)
             getGiftShop: giftList, setGiftShop,   // 🎁 15/09: quà admin tặng - danh sách riêng
+            featList: () => PLAYER_FEATURES.map(f => ({ ...f, off: featOff(f.key) })), setFeatOff,   // 🔌 15/09: công tắc chức năng
             getItemShopDayMax: itemShopDayMax, setItemShopDayMax,   // 📅 10/09 hạn mua/ngày
             getItemShopDayMode: itemShopDayMode, setItemShopDayMode,   // 📅 chế độ đếm server/user
             getItemShopImplantMax: itemShopImplantMax, setItemShopImplantMax,   // 🧬 hạn implant/người/ngày
