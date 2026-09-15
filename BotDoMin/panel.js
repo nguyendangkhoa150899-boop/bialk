@@ -1237,7 +1237,7 @@ const HTML = `<!DOCTYPE html>
         <h3>🏆 Hũ nuôi - mỗi trò một hũ riêng</h3>
         <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
         <div id="potRows"></div>
-        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới. <b>Quay Pal (15/09) cũng KHÔNG còn hũ nuôi</b>: quay trúng đích danh <b>Mimog (#144)</b> là ăn giải cố định 50.000 + thưởng 10.000 = 60.000, nhà cái trả thẳng.</div>
+        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới. <b>Quay Pal (15/09) cũng KHÔNG còn hũ nuôi</b>: quay trúng đích danh <b>Mimog (#144)</b> là ăn giải cố định 25.000 + thưởng 10.000 = 35.000, nhà cái trả thẳng (2 ô Mimog trên vòng).</div>
       </div>
       <div class="card">
         <h3>🎛️ Bảng mời chơi Dò Mìn trên Discord</h3>
@@ -1532,7 +1532,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-yellow" onclick="pwForce()">⚡ Ép lượt kế tiếp</button>
           <button class="btn-grey" onclick="pwForceClear()">Hủy ép</button>
         </div>
-        <div class="note">Chỉ SUPER. Lượt quay ngẫu nhiên <b>kế tiếp của BẤT KỲ ai</b> sẽ ra đúng con này, dùng <b>1 lần</b> rồi tự hủy; restart bot cũng hết. Ra Mimog thì trả nổ hũ thật (50.000 + 10.000) và đăng kênh khoe như thật - <b>thử xong nhớ Hủy ép nếu chưa ai quay</b>. 🎯 Chọn Pal mua đích danh không bị ảnh hưởng.</div>
+        <div class="note">Chỉ SUPER. Lượt quay ngẫu nhiên <b>kế tiếp của BẤT KỲ ai</b> sẽ ra đúng con này, dùng <b>1 lần</b> rồi tự hủy; restart bot cũng hết. Ra Mimog thì trả nổ hũ thật (25.000 + 10.000) và đăng kênh khoe như thật - <b>thử xong nhớ Hủy ép nếu chưa ai quay</b>. 🎯 Chọn Pal mua đích danh không bị ảnh hưởng.</div>
       </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
@@ -1551,7 +1551,7 @@ const HTML = `<!DOCTYPE html>
            KHÔNG cần admin đưa tay nữa. Pal dùng được sau restart server. -->
       <div class="card">
         <h3>🎁 Vòng quay Pal web + Rương</h3>
-        <div class="note">Vé quay trừ thẳng ví. <b>Nổ hũ (15/09)</b>: quay trúng đích danh <b>Mimog (#144)</b> = 50.000 + thưởng 10.000 = 60.000 cố định, không nuôi hũ nữa. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
+        <div class="note">Vé quay trừ thẳng ví. <b>Nổ hũ (15/09)</b>: quay trúng đích danh <b>Mimog (#144)</b> = 25.000 + thưởng 10.000 = 35.000 cố định (2 ô Mimog trên vòng), không nuôi hũ nữa. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1"><label>Vé mỗi lượt quay (Dogcoin)</label><input id="pwPrice" type="number" placeholder="vd: 2000"></div>
           <div style="flex:1"><label>🎯 Chọn pal đích danh (Dogcoin)</label><input id="pwCustom" type="number" placeholder="vd: 6000"></div>

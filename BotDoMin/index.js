@@ -2517,18 +2517,29 @@ const PALWHEEL_EPIC_CODE = ['BlueSkyDragon', 'ThunderDragonMan', 'BlackMetalDrag
 // Shaolong · Orserk · Astegon · Shadowbeak · Blazamut · Silvegis · Selyne · Bastigor · Xenogard · Knocklem Ignis · Faleris · Faleris Aqua · Anubis · Lyleen Noct · Grizzbolt · Jormuntide Ignis · 11/09 +7 bản 1.0: Celesdir Noct · Eidrolon Ignis · Dandilord · Silvance · Aegidron · Renjishi · Solenne
 const palIsEpic = (code) => PALWHEEL_EPIC_CODE.includes(code);
 // 💰 15/09 (chủ server chốt): NỔ HŨ QUAY PAL = QUAY TRÚNG ĐÍCH DANH CON MIMOG (#144).
-// Hũ là GIẢI CỐ ĐỊNH 50.000 - KHÔNG nuôi dần, KHÔNG trích % vé, KHÔNG có mồi/trần, admin
-// không nạp/rút. Trúng Mimog = 50.000 hũ + 10.000 thưởng = 60.000, nhà cái trả thẳng.
+// Hũ là GIẢI CỐ ĐỊNH 25.000 (15/09 tối hạ từ 50.000 khi lên 2 ô) - KHÔNG nuôi dần, KHÔNG trích
+// % vé, KHÔNG có mồi/trần, admin không nạp/rút. Trúng Mimog = 25.000 hũ + 10.000 thưởng = 35.000.
 //   Bỏ hẳn luật cũ (mỗi lượt 1% ngẫu nhiên ẵm hũ nuôi 5%/vé, mồi 1.500, trần 20.000).
-//   Tỉ lệ ra Mimog: 1 ô trong 282 ô = 0,355%/lượt -> kỳ vọng nhà cái trả 60.000/282
-//   ≈ 213 Dogcoin mỗi vé 2.000 (10,6% giá vé). Luật cũ tốn ≈ 100-200/vé nên đắt hơn một
-//   chút, đổi lại cú nổ to gấp đôi và người chơi nhắm được đúng ô mà ngóng.
+//   Tỉ lệ (15/09 tối, chủ server tăng lên 2 Ô Mimog - PALWHEEL_JACKPOT_SLOTS): 2 ô trong
+//   283 ô = 0,707%/lượt -> kỳ vọng nhà cái trả 35.000×2/283 ≈ 247 Dogcoin mỗi vé 2.000
+//   (12,4% giá vé). Bản 1 ô/60.000 là ≈ 213/vé (10,6%); 2 ô/60.000 là 424/vé (21%) - chủ
+//   server thấy số đó rồi hạ hũ; luật cũ 1%-hũ-nuôi ≈ 100-200/vé.
 // ⚠️ Chỉ áp dụng cho VÒNG QUAY NGẪU NHIÊN. 🎯 Chọn Pal mua đích danh Mimog KHÔNG được gì
-// thêm, nếu không ai cũng bỏ tiền mua thẳng Mimog để lấy 60.000.
+// thêm, nếu không ai cũng bỏ tiền mua thẳng Mimog để lấy 35.000.
 const PALWHEEL_JACKPOT_CODE = 'MimicDog';      // Mimog - paldex #144
-const PALWHEEL_JACKPOT_POT = 50000;            // hũ cố định
+const PALWHEEL_JACKPOT_POT = 25000;            // hũ cố định (15/09 tối: 50.000 -> 25.000)
 const PALWHEEL_JACKPOT_BONUS = 10000;          // thưởng thêm ngoài hũ
+const PALWHEEL_JACKPOT_SLOTS = 2;              // số Ô Mimog trên vòng (15/09 tối: 1 -> 2)
 const palIsJackpot = (code) => code === PALWHEEL_JACKPOT_CODE;
+// Danh sách Ô thật sự để quay = pool thường + (SLOTS-1) bản Mimog nối cuối. Dùng chung cho
+// lượt quay (chia đều mọi ô) và cho state gửi web (thẻ mồi bốc đúng tỉ lệ, dải rảnh hiện đủ ô).
+function palWheelSlots(pool) {
+    const j = pool.find(p => palIsJackpot(p.code));
+    if (!j) return pool;
+    const out = pool.slice();
+    for (let i = 1; i < PALWHEEL_JACKPOT_SLOTS; i++) out.push(j);
+    return out;
+}
 // ⚡ 15/09: SUPER ÉP LƯỢT QUAY KẾ TIẾP ra đúng 1 con (mặc định Mimog) để thử nổ hũ + hiệu ứng.
 // Chỉ trong RAM (restart là hết), dùng ĐÚNG 1 LẦN cho lượt quay kế tiếp của BẤT KỲ ai, rồi tự xoá.
 // Cùng kiểu với ép xúc xắc Tài Xỉu (txState.forcedResult). Mua đích danh (palPickBuy) không dính.
@@ -2616,12 +2627,13 @@ function palWheelSpin(userId, username) {
     updatePoints(userId, -cfg.price);
 
     // CHIA ĐỀU TẤT CẢ Ô (chủ server chốt 25/08 sau vài vòng đổi ý): ô RAID chiếm đúng
-    // 1 suất như từng con pal thường - pool 281 con thì mỗi ô 1/282 (~0,35%). Trúng ô
-    // RAID thì chia đều tiếp trong các boss raid.
-    const total = normals.length + (raids.length ? 1 : 0);
+    // 1 suất như từng con pal thường. Trúng ô RAID thì chia đều tiếp trong các boss raid.
+    // 15/09: Mimog chiếm PALWHEEL_JACKPOT_SLOTS ô (2/283) - xem palWheelSlots.
+    const slots = palWheelSlots(normals);
+    const total = slots.length + (raids.length ? 1 : 0);
     const roll = Math.floor(Math.random() * total);
-    let isRaid = raids.length > 0 && roll === normals.length;
-    let win = isRaid ? raids[Math.floor(Math.random() * raids.length)] : normals[roll];
+    let isRaid = raids.length > 0 && roll === slots.length;
+    let win = isRaid ? raids[Math.floor(Math.random() * raids.length)] : slots[roll];
     // ⚡ 15/09: SUPER ép lượt này ra đúng 1 con (thử nổ hũ Mimog) - đọc xong xoá ngay, chỉ 1 lượt
     if (palWheelForced) {
         const f = normals.find(p => p.code === palWheelForced);
@@ -5961,7 +5973,9 @@ client.once('ready', async (c) => {
                         price: cfg.price, sellPrice: cfg.sellPrice, open: cfg.open,
                         pot: PALWHEEL_JACKPOT_POT, spinRemain,   // 💰 15/09: giải cố định, không còn số dư nuôi
                         // 27/08: kèm code để web gắn hình (/palimage/T_<code>_icon_normal.png)
-                        pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code), epic: palIsEpic(p.code), jack: palIsJackpot(p.code) })),   // 💰 15/09: jack = ô NỔ HŨ (Mimog)
+                        // 💰 15/09: danh sách Ô THẬT (Mimog xuất hiện PALWHEEL_JACKPOT_SLOTS lần) - jack = ô NỔ HŨ
+                        pals: palWheelSlots(palWheelNormalPool()).map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code), epic: palIsEpic(p.code), jack: palIsJackpot(p.code) })),
+                        jackSlots: PALWHEEL_JACKPOT_SLOTS,
                         jackName: (palWheelNormalPool().find(p => palIsJackpot(p.code)) || {}).name || '',
                         jackCode: PALWHEEL_JACKPOT_CODE,   // client tự tô thẻ nếu vật thể thiếu cờ jack (vd rương cũ)
                         jackBonus: PALWHEEL_JACKPOT_BONUS,

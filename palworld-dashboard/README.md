@@ -670,6 +670,24 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (tối)** — 💰 **Hạ hũ Mimog 50.000 → 25.000 (+10.000 thưởng = 35.000), thẻ chỉ còn dòng "💰 Mimog"** (chủ server sau khi
+  nghe con số 21%: "hạ xuống nổ hũ 25.000 + 10.000; bỏ chữ Ô NỔ HŨ ở dưới, chỉ cần dòng Mimog với icon").
+  ✅ `PALWHEEL_JACKPOT_POT = 25000`. Kỳ vọng nhà cái trả **35.000×2/283 ≈ 247/vé 2.000 = 12,4%** (gần bằng bản 1 ô/60.000 là
+  10,6%). 3 ghi chú panel đổi số. Thẻ `.pwCard.jack`: dòng `.dx` = `&nbsp;` (giữ chiều cao thẻ đều), tên vẫn `💰 Mimog`.
+  `mimogtest.js` 99 case đổi số tiền + assert bỏ chữ; 2 e2e đổi số.
+- **15/09 (tối)** — 💰💰 **2 Ô MIMOG trên vòng + 🖐️ kéo dải Quay Pal xem hết ô** (chủ server: "cho người chơi kéo được vùng để
+  quay nhưng kết quả vẫn random, show được hết pal; tăng ô Mimog lên 2 ô").
+  ✅ `PALWHEEL_JACKPOT_SLOTS = 2` + `palWheelSlots(pool)` = pool thường + (SLOTS−1) bản Mimog nối cuối → **2/283 ô = 0,707%/lượt**.
+  `palWheelSpin` quay trên `slots` (chia đều mọi ô như cũ); state web gửi đúng danh sách ô (2 Mimog) + `jackSlots` nên thẻ mồi
+  bốc theo đúng tỉ lệ thật. 💸 **Kỳ vọng nhà cái trả 60.000×2/283 ≈ 424 Dogcoin/vé 2.000 = 21% giá vé** (bản 1 ô: 10,6%; luật
+  hũ nuôi cũ ≈ 5-10%). Đã nói thẳng với chủ server, chủ server chốt.
+  ✅ Web: dải lúc rảnh dựng **ĐỦ 283 ô** xếp theo #paldex (`pwIdleList`, ô Mimog thứ 2 chèn giữa dải cho thấy rõ có 2 ô), hình
+  `loading="lazy"` (dải quay 60 thẻ vẫn nạp thẳng để thẻ kết quả có hình ngay). Kéo bằng pointer events (chuột + ngón tay) và
+  cuộn ngang; `touch-action:pan-y` để mobile vẫn cuộn dọc trang; kẹp biên; gắn listener 1 lần (`dataset.drag`); khoá khi đang
+  quay; quay xong nhớ vị trí (`PWDX=-target`) để kéo tiếp không giật. **Chỉ là trưng bày** - bấm quay thì dải dựng lại 60 thẻ
+  như cũ, kết quả server đã chốt trong `/spin` trước khi hoạt hình chạy → không có đường nào "kéo tới ô rồi quay trúng".
+  ✅ `mimogtest.js` **99 case** (+16: slots đúng 2 Mimog, ô thứ 2 cũng nổ, pool không Mimog giữ nguyên, 9 case dải kéo);
+  `mimog-e2e.js` đổi assert 283 ô / 2 cờ jack.
 - **15/09 (chiều)** — 🔎 **Ô "Tặng vào rương" (thẻ PAL GỐC): chọn người nhận + chọn pal từ danh sách, hết gõ tay** (chủ server:
   "Discord người nhận show ra người đang được liên kết và đang chơi luôn; tên pal để sẵn, thêm nút search thay vì mình nhập sẽ sai").
   ✅ `index.js`: ctx thêm `getPalPickList()` (code/name/dex/raid từ `PAL_DATA`) + `getOnlinePlayers()` (nối `pal.getOnlinePlayers`

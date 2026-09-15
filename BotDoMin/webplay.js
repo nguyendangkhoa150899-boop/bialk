@@ -803,7 +803,9 @@ const PAGE = [
     '#navGrp button{flex:1;background:#1a1f2d;border:1px solid var(--line);color:var(--muted);font-size:14px;font-weight:800;padding:11px 2px;letter-spacing:.5px}',
     '#navGrp button.on{background:linear-gradient(180deg,#33405c,#252c40);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
     // 🎁 Quay Pal: reel kiểu CSGO (dải thẻ chạy ngang, vạch giữa là kim)
-    '#pwWrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#141824;height:126px;margin-top:10px}',
+    '#pwWrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#141824;height:126px;margin-top:10px;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}',
+    '#pwWrap.grabbing{cursor:grabbing}',
+    '#pwWrap img{-webkit-user-drag:none;pointer-events:none}',   // kéo dải không kéo nhầm ảnh
     '#pwMark{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--gold);z-index:2;box-shadow:0 0 8px #ffcf5c}',
     '#pwStrip{display:flex;gap:6px;position:absolute;left:0;top:8px;will-change:transform}',
     // 27/08: thẻ có HÌNH pal (icon 60px) + tên dưới. Con thiếu hình thì onerror ẩn <img>, chừa tên.
@@ -3152,7 +3154,7 @@ const PAGE = [
     // keepMain/keepRaid: sau khi quay xong GIỮ NGUYÊN dải ở ô trúng (không chạy lại idle),
     // để pal trúng đứng yên tại chỗ cho người chơi nhìn - quay lượt mới mới dựng dải mới.
     'function pwSync(keepMain,keepRaid){api("/api/palwheel/state").then(function(j){PW=j;',
-    '$("pwStat").textContent=(j.pals.length+(j.raids.length?1:0))+" ô · rương có "+j.chestCount+" pal";',
+    '$("pwStat").textContent=(j.pals.length+(j.raids.length?1:0))+" ô ("+(j.jackSlots||1)+" ô 💰 "+(j.jackName||"Mimog")+") · rương có "+j.chestCount+" pal · 🖐️ kéo dải để xem hết các ô";',
     '$("pwPot").innerHTML="💰 Quay trúng ô <b style=\\"color:#ffe98a\\">💰 "+esc(j.jackName||"Mimog")+"</b> = NỔ HŨ <b>"+vnd(j.pot)+"</b> + thưởng <b>"+vnd(j.jackBonus||0)+"</b> = <b style=\\"color:#ffe98a\\">"+vnd((j.pot||0)+(j.jackBonus||0))+"</b> Dogcoin · Bán lại pal: "+vnd(j.sellPrice)+" · Ô 🔥 RAID: "+j.raids.length+" boss, ra thẳng ngay vòng này (ô trúng bốc lửa)";',
     // ⏳ dựng lại đếm ngược sau F5: server báo còn bao nhiêu ms -> đặt PWLOCK, chạy ticker
     'if(j.spinRemain>0){var uu=Date.now()+j.spinRemain+300;if(uu>PWLOCK)PWLOCK=uu}',
@@ -3175,20 +3177,33 @@ const PAGE = [
     'function pwLockTick(){pwGoLabel();if(Date.now()<PWLOCK){setTimeout(pwLockTick,300)}else{PWTICKING=false;pwGoLabel()}}',
     'function pwPick(a){return a[Math.floor(Math.random()*a.length)]}',
     // 🖼️ gắn hình pal (assets/palimage/T_<code>_icon_normal.png) - con thiếu hình thì ẩn <img>, chừa tên
-    'function pwImg(code){return code?("<img src=\\"/palimage/T_"+code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""}',
-    'function pwCardHtml(p,raid,hit){var nm=(p&&p.name!==undefined)?p.name:(p||"");var code=(p&&p.code)||"";',
+    'function pwImg(code,lazy){return code?("<img src=\\"/palimage/T_"+code+"_icon_normal.png\\" alt=\\""+(lazy?" loading=\\"lazy\\"":"")+" onerror=\\"this.style.display=\'none\'\\">"):""}',
+    'function pwCardHtml(p,raid,hit,lazy){var nm=(p&&p.name!==undefined)?p.name:(p||"");var code=(p&&p.code)||"";',
     'var lg=!raid&&p&&p.legend,ep=!raid&&!lg&&p&&p.epic;',
     'var jk=!raid&&p&&(p.jack||(PW&&PW.jackCode&&p.code===PW.jackCode));',   // 💰 15/09: ô NỔ HŨ (Mimog) - cờ từ server, thiếu thì suy từ code
-    'return "<div class=\\"pwCard"+(raid?" raid":"")+(jk?" jack":"")+(lg?" legend":"")+(ep?" epic":"")+(hit?(jk?" jackhit":(raid?" raidhit":(lg?" legendhit":(ep?" epichit":"")))):"")+"\\">"+pwImg(code)+"<div class=\\"nm\\">"+(jk?"💰 ":(raid?"🔥 ":(lg?"👑 ":(ep?"💜 ":""))))+esc(nm)+"</div><div class=\\"dx\\">"+(jk?"💰 Ô NỔ HŨ":(raid?"PAL RAID":(lg?"HUYỀN THOẠI":(ep?"PAL MẠNH":(p&&p.dex?"#"+p.dex:"&nbsp;")))))+"</div></div>"}',
-    'function pwIdle(){if(!PW||!PW.pals||!PW.pals.length)return;var h="";for(var i=0;i<14;i++){var r=PW.raids.length&&Math.random()<0.06;h+=r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false)}',
-    'var s=$("pwStrip");s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
+    'return "<div class=\\"pwCard"+(raid?" raid":"")+(jk?" jack":"")+(lg?" legend":"")+(ep?" epic":"")+(hit?(jk?" jackhit":(raid?" raidhit":(lg?" legendhit":(ep?" epichit":"")))):"")+"\\">"+pwImg(code,lazy)+"<div class=\\"nm\\">"+(jk?"💰 ":(raid?"🔥 ":(lg?"👑 ":(ep?"💜 ":""))))+esc(nm)+"</div><div class=\\"dx\\">"+(jk?"&nbsp;":(raid?"PAL RAID":(lg?"HUYỀN THOẠI":(ep?"PAL MẠNH":(p&&p.dex?"#"+p.dex:"&nbsp;")))))+"</div></div>"}',
+    // 15/09: dải lúc RẢNH hiện ĐỦ mọi ô (xếp theo #paldex, ô Mimog thứ 2 chèn giữa dải), người chơi kéo xem.
+    // Chỉ là trưng bày - lúc quay dải dựng lại 60 thẻ như cũ, kết quả server đã chốt.
+    'function pwIdleList(){var L=PW.pals.slice().sort(function(a,b){return (a.dex||9999)-(b.dex||9999)});var seen={},base=[],dup=[];',
+    'L.forEach(function(p){if(seen[p.code]){dup.push(p)}else{seen[p.code]=1;base.push(p)}});',
+    'dup.forEach(function(p,i){base.splice(Math.floor(base.length/2)+i,0,p)});return base}',
+    'function pwIdle(){if(!PW||!PW.pals||!PW.pals.length)return;var h="";pwIdleList().forEach(function(p){h+=pwCardHtml(p,false,false,true)});',
+    'var s=$("pwStrip");s.style.transition="none";PWDX=0;s.style.transform="translateX(0px)";s.innerHTML=h;pwDragInit()}',
+    // 🖐️ kéo dải: chuột / ngón tay (pointer events) + cuộn ngang. Khoá khi đang quay. Chỉ dịch chuyển hiển thị.
+    'var PWDX=0,PWDRAG=null;',
+    'function pwDragTo(x){var w=$("pwWrap"),s=$("pwStrip");if(!w||!s)return;var min=Math.min(0,w.clientWidth-s.offsetWidth);PWDX=Math.max(min,Math.min(0,x));s.style.transform="translateX("+PWDX+"px)"}',
+    'function pwDragInit(){var w=$("pwWrap"),s=$("pwStrip");if(!w||!s||w.dataset.drag)return;w.dataset.drag="1";',
+    'w.addEventListener("pointerdown",function(e){if(PWBUSY)return;PWDRAG={x0:e.clientX,st:PWDX};try{w.setPointerCapture(e.pointerId)}catch(x){}w.classList.add("grabbing");s.style.transition="none"});',
+    'w.addEventListener("pointermove",function(e){if(!PWDRAG)return;pwDragTo(PWDRAG.st+(e.clientX-PWDRAG.x0))});',
+    'function pwDragEnd(){PWDRAG=null;w.classList.remove("grabbing")}w.addEventListener("pointerup",pwDragEnd);w.addEventListener("pointercancel",pwDragEnd);w.addEventListener("pointerleave",pwDragEnd);',
+    'w.addEventListener("wheel",function(e){if(PWBUSY)return;var d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;if(!d)return;e.preventDefault();s.style.transition="none";pwDragTo(PWDX-d)},{passive:false})}',
     // dải quay dùng chung cho cả 2 vòng: 60 thẻ, kết quả ở thẻ 52; jitter ±35px. Thẻ 110px + khe 6px = bước 116px.
     'function pwRollEl(strip,wrap,cards,cb){var s=$(strip),W=$(wrap).clientWidth;',
     's.innerHTML=cards.join("");s.style.transition="none";s.style.transform="translateX(0px)";void s.offsetWidth;',
     'var STEP=116,HALF=55;var jit=Math.floor(Math.random()*70)-35;var target=52*STEP+HALF-W/2+jit;',
     's.style.transition="transform 10s cubic-bezier(.06,.72,.05,1)";',
     // 11/09: viền sáng ô trúng gắn SAU khi dừng (raid/legend/epic) - lúc quay mọi thẻ trông như nhau, không lộ kết quả
-    's.style.transform="translateX("+(-target)+"px)";setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("jack"))c.classList.add("jackhit");else if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},10300)}',
+    's.style.transform="translateX("+(-target)+"px)";if(strip==="pwStrip")PWDX=-target;setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("jack"))c.classList.add("jackhit");else if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},10300)}',
     // 27/08: GỘP 1 reel - raid ra thẳng ở vòng thường, ô trúng (thẻ 52) gắn hiệu ứng lửa nếu là raid
     'function pwStrip1(it){var out=[];for(var i=0;i<60;i++){',
     'if(i===52)out.push(pwCardHtml(it,!!it.raid,false));',   // hit=false: viền sáng gắn lúc dừng (pwRollEl)
