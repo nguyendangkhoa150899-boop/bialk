@@ -670,6 +670,28 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — 💰 **Nổ hũ Quay Pal = quay trúng đích danh Mimog (#144): 50.000 cố định + 10.000 thưởng** (chủ server,
+  2 lượt chốt trong cùng buổi: "khi quay trúng con này được +10.000 + với hũ luôn thay vì 1%" → "hũ giờ mặc định ở mốc 50.000,
+  không cần nuôi, xóa bỏ bớt code thừa"). Luật cũ: mỗi lượt 1% ngẫu nhiên ẵm hũ nuôi 5%/vé (mồi 1.500, trần 20.000).
+  ✅ `PALWHEEL_JACKPOT_CODE='MimicDog'`, `PALWHEEL_JACKPOT_POT=50000`, `PALWHEEL_JACKPOT_BONUS=10000` (`index.js` cạnh `palIsEpic`).
+  `palWheelSpin`: `isJack = !isRaid && palIsJackpot(win.code)` → cộng thẳng 60.000, trả `{ jackpot, potWin, palBonus }`.
+  Tỉ lệ 1/282 ô = 0,355%/lượt → kỳ vọng ≈ 213 Dogcoin/vé 2.000 (10,6% giá vé), đắt hơn luật cũ một chút, đổi lại cú nổ gấp đôi.
+  ⚠️ **🎯 Chọn Pal mua đích danh Mimog KHÔNG được gì** (không thì ai cũng mua thẳng Mimog lấy 60.000) - `palPickBuy` bỏ luôn
+  nhánh nổ hũ 1% cũ, không còn `potWin` trong kết quả.
+  🧹 **Cắt code thừa**: `'gacha'` rút khỏi `POT_KEYS/POT_LABEL/POT_SEED_BY/LUCKY_POT_MAX_BY`; xoá `POT_HIT_RATE`,
+  `LUCKY_POT_RATE`, `LUCKY_POT_MAX`, `POT_SEED`, `luckyPotPop`, `gachaPool`+`GACHA_MIN_DEX`, `withdrawBoardRefresh`, nhánh
+  `key === 'gacha'` trong `adminPotAdd/adminPotSet`, và **cả khối quay pal Discord cũ `shop_random_CU_DA_TAT`** (đã tắt từ 25/08,
+  customId không bao giờ khớp). `luckyPotCut` giờ chỉ nuôi `tx`. Tiêu đề bảng 🔄 DOGCOIN không còn số hũ. `getPot` cho panel bỏ
+  `gacha/rate/hit/seedBy`, thêm `palJack:{pot,bonus,name}`. Số dư cũ `dbCache._pots.gacha` trên prod để đó, vô hại, không ai đọc.
+  🎨 **Web**: state gửi `jack:true` cho Mimog + `jackName/jackBonus`; thẻ `.pwCard.jack` nhấp nháy vàng-xanh **luôn luôn** (thẻ
+  mồi trên dải cũng bốc trúng Mimog như mọi con → không lộ kết quả), nhãn `💰 Ô NỔ HŨ`; dừng dải thì `.jackhit` phồng to + sáng
+  gắt (xét trước raid/legend/epic); dòng `#pwPot` nói rõ "trúng Mimog = 50.000 + 10.000 = 60.000"; khung kết quả khoe hũ + thưởng
+  + tổng. Panel: 2 ghi chú + `potInfo` đổi theo luật mới.
+  ✅ `mimogtest.js` **56 case** chạy `palWheelSpin`/`palPickBuy` thật trong vm, ép `Math.random` rơi đúng ô: trúng Mimog +60.000
+  đúng ví, không đụng sổ hũ; trúng con khác 0; legend không phải ô hũ; mua đích danh Mimog chỉ trừ 6.000; 18 case soi code thừa
+  đã cắt; 8 case CSS/thẻ web; 3 case panel. `txpottest.js` 91 giữ nguyên sau khi bỏ trích các hằng đã xoá.
+  ❗ Chưa thử nổ hũ **thật** trên bot test (1/282 lượt, mỗi lượt khoá 10s) - hàm thật đã chạy trong vm; hiệu ứng thẻ thấy được
+  ngay trên dải mồi vì Mimog luôn nhấp nháy.
 - **15/09 (chiều)** — 📒 **Đang nợ thì KHÔNG nhận được quà admin** (chủ server: "check giùm nếu có nợ được nhận quà admin
   không, nếu có thì không cho nhận luôn"). Kiểm tra: **có, đang nợ vẫn nhận được** - lỗ hổng do chính đợt tách quà sáng nay.
   🐛 Khi tách quà ra kho riêng, `giftClaim()` là đường đi **mới hoàn toàn** và quên gắn `debtBlock()`. `itemShopBuy` và

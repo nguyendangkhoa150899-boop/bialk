@@ -1212,7 +1212,7 @@ const HTML = `<!DOCTYPE html>
         <h3>🏆 Hũ nuôi - mỗi trò một hũ riêng</h3>
         <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
         <div id="potRows"></div>
-        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới. Quay Pal giữ hũ nuôi 5%/vé, nổ 1% ẵm nguyên. Nhập số âm để rút bớt hũ Quay Pal.</div>
+        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới. <b>Quay Pal (15/09) cũng KHÔNG còn hũ nuôi</b>: quay trúng đích danh <b>Mimog (#144)</b> là ăn giải cố định 50.000 + thưởng 10.000 = 60.000, nhà cái trả thẳng.</div>
       </div>
       <div class="card">
         <h3>🎛️ Bảng mời chơi Dò Mìn trên Discord</h3>
@@ -1515,7 +1515,7 @@ const HTML = `<!DOCTYPE html>
            KHÔNG cần admin đưa tay nữa. Pal dùng được sau restart server. -->
       <div class="card">
         <h3>🎁 Vòng quay Pal web + Rương</h3>
-        <div class="note">Vé quay trừ thẳng ví, nuôi hũ gacha 5%/vé và nổ 1% như cũ. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
+        <div class="note">Vé quay trừ thẳng ví. <b>Nổ hũ (15/09)</b>: quay trúng đích danh <b>Mimog (#144)</b> = 50.000 + thưởng 10.000 = 60.000 cố định, không nuôi hũ nữa. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1"><label>Vé mỗi lượt quay (Dogcoin)</label><input id="pwPrice" type="number" placeholder="vd: 2000"></div>
           <div style="flex:1"><label>🎯 Chọn pal đích danh (Dogcoin)</label><input id="pwCustom" type="number" placeholder="vd: 6000"></div>
@@ -3251,11 +3251,11 @@ async function refresh(force){
   // 🏆 hu nuoi: moi tro mot hu rieng
   const pt=STATE.pot;
   if(pt&&pt.pots){
-    const seedTxt=pt.seedBy?('mồi Dò Mìn/Leo Thang '+Number(pt.seedBy.mines||0).toLocaleString('vi-VN')+' · mồi Quay Pal '+Number((pt.seedBy.gacha)||0).toLocaleString('vi-VN')):('nổ xong hũ về '+Number(pt.seed||0).toLocaleString('vi-VN'));
+    const pj=pt.palJack||{};
     const mu=pt.mults||{}, muTxt=(k)=>'x'+((mu[k]&&mu[k].length)?mu[k]:[10,15,20]).join(' / x');
     document.getElementById('potInfo').textContent='Dò Mìn/Leo Thang KHÔNG còn hũ nuôi (09/09): trúng 🏆 trong hộp 🍀 bốc ngẫu nhiên '+muTxt('mines')+' (mìn) · '+muTxt('stairs')+' (thang) NHÂN tiền cược + trần ván, ván dừng ngay'
-      +' · Quay Pal vẫn hũ nuôi: trích '+Math.round((pt.rate||0)*100)+'%/vé, nổ '+Math.round((pt.hit||0)*100)+'% ẵm nguyên, trần '+Number((pt.maxBy&&pt.maxBy.gacha)||0).toLocaleString('vi-VN')
-      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván · '+seedTxt
+      +' · 💰 Quay Pal (15/09) KHÔNG còn hũ nuôi: quay trúng '+(pj.name||'Mimog')+' = '+Number(pj.pot||0).toLocaleString('vi-VN')+' + thưởng '+Number(pj.bonus||0).toLocaleString('vi-VN')+' cố định'
+      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván
       +(pt.txPot?' · 🌪️ Hũ Bão: nuôi '+(pt.txPot.rate*100).toFixed(2)+'% tổng cược mỗi ván Tài Xỉu, trúng Bão bú min(cược × '+pt.txPot.x+', hũ đang có) - nhà cái không bù':'');
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
     // không vẽ lại cả khối - vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).

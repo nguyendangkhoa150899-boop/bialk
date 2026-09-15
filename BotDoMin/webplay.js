@@ -824,6 +824,14 @@ const PAGE = [
     '.pwCard.epic .nm{color:#c9a2ff}',
     '.pwCard.epichit{border-color:#e0ccff;box-shadow:0 0 16px #a97cff,0 0 5px #e0ccff inset;animation:epicGlow .7s ease-in-out infinite alternate}',
     '@keyframes epicGlow{from{box-shadow:0 0 8px #8a5cff,0 0 3px #c9a2ff inset}to{box-shadow:0 0 22px #b48cff,0 0 8px #d9c2ff inset}}',
+    // 💰 15/09: Ô NỔ HŨ (Mimog) - vàng kho báu, luôn nhấp nháy để người chơi nhắm mà ngóng.
+    // Không lộ kết quả: thẻ mồi trên dải cũng bốc trúng Mimog như mọi con khác.
+    '.pwCard.jack{border-color:#ffd24a;background:linear-gradient(180deg,#3b2f0d,#1e2a15);animation:jackIdle 1.2s ease-in-out infinite alternate}',
+    '.pwCard.jack .nm{color:#ffe98a}',
+    '.pwCard.jack .dx{color:#7cff9c;font-weight:900}',
+    '@keyframes jackIdle{from{box-shadow:0 0 6px #ffd24a77,0 0 2px #7cff9c44 inset}to{box-shadow:0 0 18px #ffd24a,0 0 7px #7cff9c66 inset}}',
+    '.pwCard.jackhit{border-color:#fff3b0;z-index:3;animation:jackHit .45s ease-in-out infinite alternate}',
+    '@keyframes jackHit{from{box-shadow:0 0 14px #ffd24a,0 0 5px #7cff9c inset;transform:scale(1)}to{box-shadow:0 0 34px #ffe98a,0 0 14px #7cff9c inset;transform:scale(1.07)}}',
     '@keyframes raidGlow{from{box-shadow:0 0 8px #ff6b3c,0 0 3px #ffcf5c inset}to{box-shadow:0 0 22px #ffb03c,0 0 8px #ff8f5c inset}}',
     '#pwRes{margin-top:10px;border:1px solid var(--gold);border-radius:10px;padding:10px;text-align:center;background:#1d2130}',
     '#pwRes.raidwin{border-color:#ff8f3c;background:linear-gradient(180deg,#2a1c1a,#1d1518);box-shadow:0 0 18px #ff6b3c55}',
@@ -3144,7 +3152,7 @@ const PAGE = [
     // để pal trúng đứng yên tại chỗ cho người chơi nhìn - quay lượt mới mới dựng dải mới.
     'function pwSync(keepMain,keepRaid){api("/api/palwheel/state").then(function(j){PW=j;',
     '$("pwStat").textContent=(j.pals.length+(j.raids.length?1:0))+" ô · rương có "+j.chestCount+" pal";',
-    '$("pwPot").innerHTML="🏆 Hũ quay pal: <b>"+vnd(j.pot)+"</b> Dogcoin (mỗi lượt 1% nổ) · Bán lại pal: "+vnd(j.sellPrice)+" · Ô 🔥 RAID: "+j.raids.length+" boss, ra thẳng ngay vòng này (ô trúng bốc lửa)";',
+    '$("pwPot").innerHTML="💰 Quay trúng ô <b style=\\"color:#ffe98a\\">💰 "+esc(j.jackName||"Mimog")+"</b> = NỔ HŨ <b>"+vnd(j.pot)+"</b> + thưởng <b>"+vnd(j.jackBonus||0)+"</b> = <b style=\\"color:#ffe98a\\">"+vnd((j.pot||0)+(j.jackBonus||0))+"</b> Dogcoin · Bán lại pal: "+vnd(j.sellPrice)+" · Ô 🔥 RAID: "+j.raids.length+" boss, ra thẳng ngay vòng này (ô trúng bốc lửa)";',
     // ⏳ dựng lại đếm ngược sau F5: server báo còn bao nhiêu ms -> đặt PWLOCK, chạy ticker
     'if(j.spinRemain>0){var uu=Date.now()+j.spinRemain+300;if(uu>PWLOCK)PWLOCK=uu}',
     'pwRenderLuck();pwLockKick();',
@@ -3169,7 +3177,8 @@ const PAGE = [
     'function pwImg(code){return code?("<img src=\\"/palimage/T_"+code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""}',
     'function pwCardHtml(p,raid,hit){var nm=(p&&p.name!==undefined)?p.name:(p||"");var code=(p&&p.code)||"";',
     'var lg=!raid&&p&&p.legend,ep=!raid&&!lg&&p&&p.epic;',
-    'return "<div class=\\"pwCard"+(raid?" raid":"")+(lg?" legend":"")+(ep?" epic":"")+(hit?(raid?" raidhit":(lg?" legendhit":(ep?" epichit":""))):"")+"\\">"+pwImg(code)+"<div class=\\"nm\\">"+(raid?"🔥 ":(lg?"👑 ":(ep?"💜 ":"")))+esc(nm)+"</div><div class=\\"dx\\">"+(raid?"PAL RAID":(lg?"HUYỀN THOẠI":(ep?"PAL MẠNH":(p&&p.dex?"#"+p.dex:"&nbsp;"))))+"</div></div>"}',
+    'var jk=!raid&&p&&p.jack;',   // 💰 15/09: ô NỔ HŨ (Mimog) - ưu tiên hiển thị trên cả legend/epic
+    'return "<div class=\\"pwCard"+(raid?" raid":"")+(jk?" jack":"")+(lg?" legend":"")+(ep?" epic":"")+(hit?(jk?" jackhit":(raid?" raidhit":(lg?" legendhit":(ep?" epichit":"")))):"")+"\\">"+pwImg(code)+"<div class=\\"nm\\">"+(jk?"💰 ":(raid?"🔥 ":(lg?"👑 ":(ep?"💜 ":""))))+esc(nm)+"</div><div class=\\"dx\\">"+(jk?"💰 Ô NỔ HŨ":(raid?"PAL RAID":(lg?"HUYỀN THOẠI":(ep?"PAL MẠNH":(p&&p.dex?"#"+p.dex:"&nbsp;")))))+"</div></div>"}',
     'function pwIdle(){if(!PW||!PW.pals||!PW.pals.length)return;var h="";for(var i=0;i<14;i++){var r=PW.raids.length&&Math.random()<0.06;h+=r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false)}',
     'var s=$("pwStrip");s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
     // dải quay dùng chung cho cả 2 vòng: 60 thẻ, kết quả ở thẻ 52; jitter ±35px. Thẻ 110px + khe 6px = bước 116px.
@@ -3178,7 +3187,7 @@ const PAGE = [
     'var STEP=116,HALF=55;var jit=Math.floor(Math.random()*70)-35;var target=52*STEP+HALF-W/2+jit;',
     's.style.transition="transform 10s cubic-bezier(.06,.72,.05,1)";',
     // 11/09: viền sáng ô trúng gắn SAU khi dừng (raid/legend/epic) - lúc quay mọi thẻ trông như nhau, không lộ kết quả
-    's.style.transform="translateX("+(-target)+"px)";setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},10300)}',
+    's.style.transform="translateX("+(-target)+"px)";setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("jack"))c.classList.add("jackhit");else if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},10300)}',
     // 27/08: GỘP 1 reel - raid ra thẳng ở vòng thường, ô trúng (thẻ 52) gắn hiệu ứng lửa nếu là raid
     'function pwStrip1(it){var out=[];for(var i=0;i<60;i++){',
     'if(i===52)out.push(pwCardHtml(it,!!it.raid,false));',   // hit=false: viền sáng gắn lúc dừng (pwRollEl)
@@ -3191,7 +3200,7 @@ const PAGE = [
     'res.classList.remove("hidden");if(it.raid)res.classList.add("raidwin");else res.classList.remove("raidwin");',
     'res.innerHTML=(it.raid?"🔥 TRÚNG BOSS RAID! ":"🎉 Trúng ")+"<b style=\\"font-size:17px\\">"+esc(it.name)+"</b>"+(it.raid?" <span style=\\"color:#ff9f5c;font-weight:700\\">PAL RAID</span>":"")+(it.dex?" <span class=\\"muted\\">#"+it.dex+"</span>":"")+"<div class=\\"muted\\" style=\\"font-size:12px;margin-top:4px\\">Đã vào 🎒 RƯƠNG - qua tab 🪪 Cá nhân để 💰 bán hoặc 🎁 nhận vào game</div>";',
     'if(it.raid)toast("🔥🔥 CỰC HIẾM! Bạn quay trúng BOSS RAID "+it.name+" - khác hẳn pal thường!");',
-    'if(j.potWin){palJackpotFx(j.potWin);res.classList.add("jpwin");res.innerHTML+="<div style=\\"color:#ffcf5c;font-weight:900;font-size:16px;margin-top:6px\\">💥🏆 NỔ HŨ QUAY PAL +"+vnd(j.potWin)+" Dogcoin! 🏆💥</div>";setTimeout(function(){res.classList.remove("jpwin")},8000)}else res.classList.remove("jpwin");',
+    'if(j.jackpot){var tong=(j.potWin||0)+(j.palBonus||0);palJackpotFx(tong);res.classList.add("jpwin");res.innerHTML+="<div style=\\"color:#ffcf5c;font-weight:900;font-size:16px;margin-top:6px\\">💰💥 Ô NỔ HŨ! Nguyên hũ "+vnd(j.potWin||0)+" + thưởng "+vnd(j.palBonus||0)+" = <span style=\\"font-size:19px\\">+"+vnd(tong)+"</span> Dogcoin 💥💰</div>";setTimeout(function(){res.classList.remove("jpwin")},8000)}else res.classList.remove("jpwin");',
     'if(j.luckJustFull)toast("🍀 ĐẦY THANH MAY MẮN! Kéo xuống quay VÒNG MAY MẮN: huyền thoại hoặc boss RAID + thưởng Dogcoin!");',
     'pwSync(true,false)}',
     '',
@@ -3245,7 +3254,6 @@ const PAGE = [
     'PKBUSY=true;api("/api/palpick/buy",{code:code}).then(function(j){PKBUSY=false;setBal(j.balance);',
     // chủ server chốt 25/08: KHÔNG bật bảng chọn ngay - pal về rương, nhắn rõ chỗ nhận là đủ
     'toast("🎯 Đã mua "+j.item.name+" - pal nằm trong 🎒 RƯƠNG (tab 🪪 Cá nhân), vào đó chọn linh hồn + passive rồi nhận");',
-    'if(j.potWin)palJackpotFx(j.potWin);',
     'pkSync()}).catch(function(e){PKBUSY=false;toast("❌ "+e.message)})}',
     '',
     // ===== 🛒 SHOP ITEM (28/08): mua item + số lượng -> giao thẳng vào túi trong game =====

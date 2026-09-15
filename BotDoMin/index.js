@@ -1224,13 +1224,7 @@ function findPalByName(input) {
 // ===== QUAY PAL NGẪU NHIÊN (gacha) =====
 // Kênh đăng công khai kết quả quay: cấu hình trên dashboard (tab Palworld & Dogcoin),
 // lưu ở dbCache._gachaChannelId. Không có thì không đăng.
-// Pool quay: chỉ pal từ paldex #80 (Helzephyr) trở lên; loại Xenolord + Hartalis.
-// Boltmane/Dragostrophe (pal Predator, không có số paldex) cũng bị loại theo luật này.
-const GACHA_MIN_DEX = 80;
-const GACHA_EXCLUDE_CODES = ['DarkMechaDragon', 'LegendDeer', 'KingBahamut_Dragon']; // Xenolord, Hartalis, Blazamut Ryu
-function gachaPool() {
-    return (PAL_DATA.all || []).filter(p => (p.dex || 0) >= GACHA_MIN_DEX && !GACHA_EXCLUDE_CODES.includes(p.code));
-}
+// (15/09: pool quay Discord cũ gachaPool/GACHA_MIN_DEX đã xoá - vòng quay web dùng palWheelNormalPool.)
 
 // ===== 🎁 QUAY PAL TRÊN WEB (rương + vòng quay kiểu CSGO, 25/08) =====
 // Thay cho nút quay random trong Discord. Trúng thì pal vào RƯƠNG ở trang Hồ sơ web:
@@ -2522,6 +2516,19 @@ const palIsLegend = (code) => PALWHEEL_LEGEND_CODE.includes(code);
 const PALWHEEL_EPIC_CODE = ['BlueSkyDragon', 'ThunderDragonMan', 'BlackMetalDragon', 'BlackGriffon', 'KingBahamut', 'WhiteShieldDragon', 'MoonQueen', 'SnowTigerBeastman', 'WhiteAlienDragon', 'WingGolem_Fire', 'Horus', 'Horus_Water', 'Anubis', 'LilyQueen_Dark', 'ElecPanda', 'Umihebi_Fire', 'WhiteDeer_Dark', 'GhostDragon_Fire', 'FlowerPrince', 'Mothman', 'DomeArmorDragon', 'KabukiMan', 'MonochromeQueen'];
 // Shaolong · Orserk · Astegon · Shadowbeak · Blazamut · Silvegis · Selyne · Bastigor · Xenogard · Knocklem Ignis · Faleris · Faleris Aqua · Anubis · Lyleen Noct · Grizzbolt · Jormuntide Ignis · 11/09 +7 bản 1.0: Celesdir Noct · Eidrolon Ignis · Dandilord · Silvance · Aegidron · Renjishi · Solenne
 const palIsEpic = (code) => PALWHEEL_EPIC_CODE.includes(code);
+// 💰 15/09 (chủ server chốt): NỔ HŨ QUAY PAL = QUAY TRÚNG ĐÍCH DANH CON MIMOG (#144).
+// Hũ là GIẢI CỐ ĐỊNH 50.000 - KHÔNG nuôi dần, KHÔNG trích % vé, KHÔNG có mồi/trần, admin
+// không nạp/rút. Trúng Mimog = 50.000 hũ + 10.000 thưởng = 60.000, nhà cái trả thẳng.
+//   Bỏ hẳn luật cũ (mỗi lượt 1% ngẫu nhiên ẵm hũ nuôi 5%/vé, mồi 1.500, trần 20.000).
+//   Tỉ lệ ra Mimog: 1 ô trong 282 ô = 0,355%/lượt -> kỳ vọng nhà cái trả 60.000/282
+//   ≈ 213 Dogcoin mỗi vé 2.000 (10,6% giá vé). Luật cũ tốn ≈ 100-200/vé nên đắt hơn một
+//   chút, đổi lại cú nổ to gấp đôi và người chơi nhắm được đúng ô mà ngóng.
+// ⚠️ Chỉ áp dụng cho VÒNG QUAY NGẪU NHIÊN. 🎯 Chọn Pal mua đích danh Mimog KHÔNG được gì
+// thêm, nếu không ai cũng bỏ tiền mua thẳng Mimog để lấy 60.000.
+const PALWHEEL_JACKPOT_CODE = 'MimicDog';      // Mimog - paldex #144
+const PALWHEEL_JACKPOT_POT = 50000;            // hũ cố định
+const PALWHEEL_JACKPOT_BONUS = 10000;          // thưởng thêm ngoài hũ
+const palIsJackpot = (code) => code === PALWHEEL_JACKPOT_CODE;
 function palWheelNormalPool() {
     const raid = new Set(PAL_DATA.raidOnly || []);
     return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code));
@@ -2614,13 +2621,15 @@ function palWheelSpin(userId, username) {
     };
     palChest(userId).unshift(item);
 
-    // 🏆 Hũ quay pal: giữ nguyên luật cũ của gacha Discord (nuôi 5% vé, nổ 1%)
-    potFeed('gacha', luckyPotCut('gacha', cfg.price));
-    let potWin = 0;
-    if (potGet('gacha') > 0 && Math.random() < POT_HIT_RATE) {
-        potWin = luckyPotPop('gacha');
-        updatePoints(userId, potWin);
-        logDog('jackpot', userId, username || userId, potWin, 'nổ hũ quay pal (web)');
+    // 💰 15/09: NỔ HŨ = quay trúng đúng ô Mimog (#144) -> hũ cố định + thưởng, nhà cái trả
+    // thẳng. Không còn nuôi hũ theo vé, không bốc 1% ngẫu nhiên. Trúng là chắc chắn nổ.
+    let potWin = 0, palBonus = 0;
+    const isJack = !isRaid && palIsJackpot(win.code);
+    if (isJack) {
+        potWin = PALWHEEL_JACKPOT_POT;
+        palBonus = PALWHEEL_JACKPOT_BONUS;
+        updatePoints(userId, potWin + palBonus);
+        logDog('jackpot', userId, username || userId, potWin + palBonus, `quay trúng ${win.name} - nổ hũ quay pal (${potWin.toLocaleString()}) + thưởng ${palBonus.toLocaleString()}`);
     }
 
     // 🍀 THANH MAY MẮN: mỗi lượt quay nạp %/quay của người này (mặc định 1-3, admin đặt
@@ -2632,7 +2641,7 @@ function palWheelSpin(userId, username) {
     const luckJustFull = luckBefore < 100 && user.palLuck >= 100;
 
     logDog('shop', userId, username || userId, -cfg.price, `quay pal web trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}`);
-    writeLog('ADMIN', `[QUAY PAL WEB] ${username || userId} quay trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}${potWin ? ` | NỔ HŨ +${potWin}` : ''}${luckJustFull ? ' | ĐẦY THANH MAY MẮN -> mở vòng RAID' : ''}`);
+    writeLog('ADMIN', `[QUAY PAL WEB] ${username || userId} quay trúng ${item.name}${isRaid ? ' (PAL RAID)' : ''} - rương #${item.id}${isJack ? ` | 💰 Ô MIMOG: NỔ HŨ +${potWin} + thưởng ${palBonus}` : ''}${luckJustFull ? ' | ĐẦY THANH MAY MẮN -> mở vòng RAID' : ''}`);
     saveDbNow();
 
     // Đăng công khai vào kênh gacha (nếu admin có cấu hình kênh) - ĐỢI reel quay xong
@@ -2644,13 +2653,13 @@ function palWheelSpin(userId, username) {
             : `🎁 **${username || 'Ai đó'}** quay pal trên web trúng **${item.name}**${item.dex ? ` (#${item.dex})` : ''}!`;
         setTimeout(() => {
             client.channels.fetch(gachaCh)
-                .then(ch => ch.send(msg + (potWin ? `\n💥🏆 Và NỔ LUÔN HŨ QUAY PAL: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}!` : '')))
+                .then(ch => ch.send(msg + (isJack ? `\n💰💥 Và đó là **Ô NỔ HŨ**! Ẵm nguyên hũ **${potWin.toLocaleString()}** + thưởng **${palBonus.toLocaleString()}** = **${(potWin + palBonus).toLocaleString()}** ${DOGCOIN_EMOJI}!` : '')))
                 .catch(e => writeLog('SYSTEM', `[QUAY PAL WEB] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
         }, revealMs);
-        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> quay pal web NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('gacha').toLocaleString()} 🌱`, userId);
+        if (isJack) potAnnounce(gachaCh, `💰💥 <@${userId}> quay trúng **${item.name}** - ô NỔ HŨ của vòng quay pal: ẵm nguyên hũ **${potWin.toLocaleString()}** + thưởng **${palBonus.toLocaleString()}** = **${(potWin + palBonus).toLocaleString()}** ${DOGCOIN_EMOJI}!`, userId);
     }
 
-    return { ok: true, item, potWin, balance: getUserData(userId).points || 0, luck: user.palLuck, raidReady: cfg.raidWheelOn && user.palLuck >= 100, luckJustFull };
+    return { ok: true, item, potWin, palBonus, jackpot: isJack, balance: getUserData(userId).points || 0, luck: user.palLuck, raidReady: cfg.raidWheelOn && user.palLuck >= 100, luckJustFull };
 }
 
 // 🍀 QUAY VÒNG RAID (27/08): đầy thanh may mắn (100%) mới quay được. Trúng đều 1/4 boss
@@ -2732,27 +2741,19 @@ function palPickBuy(userId, code, username) {
     };
     palChest(userId).unshift(item);
 
-    potFeed('gacha', luckyPotCut('gacha', price));
-    let potWin = 0;
-    if (potGet('gacha') > 0 && Math.random() < POT_HIT_RATE) {
-        potWin = luckyPotPop('gacha');
-        updatePoints(userId, potWin);
-        logDog('jackpot', userId, username || userId, potWin, 'nổ hũ khi chọn mua pal (web)');
-    }
-
+    // 💰 15/09: mua đích danh KHÔNG dính hũ - giải Mimog chỉ dành cho vòng quay ngẫu nhiên.
     logDog('shop', userId, username || userId, -price, `chọn mua pal ${item.name}${isRaid ? ' (BOSS RAID)' : ''} (web) - rương #${item.id}`);
-    writeLog('ADMIN', `[CHỌN PAL WEB] ${username || userId} mua đích danh ${item.name} - rương #${item.id}${potWin ? ` | NỔ HŨ +${potWin}` : ''}`);
+    writeLog('ADMIN', `[CHỌN PAL WEB] ${username || userId} mua đích danh ${item.name} - rương #${item.id}`);
     saveDbNow();
 
     const gachaCh = dbCache._gachaChannelId;
     if (gachaCh && typeof client !== 'undefined' && client && client.channels) {
         client.channels.fetch(gachaCh)
-            .then(ch => ch.send(`🎯 **${username || 'Ai đó'}** chọn mua **${item.name}**${item.dex ? ` (#${item.dex})` : ''} trên web!` + (potWin ? `\n💥🏆 Và NỔ LUÔN HŨ QUAY PAL: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}!` : '')))
+            .then(ch => ch.send(`🎯 **${username || 'Ai đó'}** chọn mua **${item.name}**${item.dex ? ` (#${item.dex})` : ''} trên web!`))
             .catch(e => writeLog('SYSTEM', `[CHỌN PAL WEB] Khong dang duoc vao kenh ${gachaCh}: ${e.message}`));
-        if (potWin) potAnnounce(gachaCh, `💥🏆 <@${userId}> chọn mua pal mà NỔ HŨ: +**${potWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('gacha').toLocaleString()} 🌱`, userId);
     }
 
-    return { ok: true, item, potWin, balance: getUserData(userId).points || 0 };
+    return { ok: true, item, balance: getUserData(userId).points || 0 };
 }
 
 function palChestSell(userId, itemId, username) {
@@ -3620,22 +3621,13 @@ const STAIRS_GOLDEN_RATE = 0.02;
 // Lý do: một cú nhảy 🌟 trong ván 5 lửa ăn nguyên x17k là bơm lạm phát cả server.
 const LUCKY_WIN_CAP_MULTI = 2000;
 
-// ===== 🏆 HŨ NUÔI: MỖI TRÒ MỘT HŨ RIÊNG, chung MỘT tỉ lệ nổ =====
-// (chủ server chốt 20/08, bản 3 - bản 2 gộp 1 hũ đã bỏ)
-//
-//  - 3 hũ riêng: 'mines' (Dò Mìn) · 'stairs' (Leo Thang) · 'gacha' (quay Pal).
-//    Nổ ở trò nào ăn hũ trò đó, hũ 2 trò kia không suy suyển.
-//  - NUÔI: mỗi ván/lượt quay trích LUCKY_POT_RATE (5%) tiền cược, nhưng KHÔNG THU
-//    THÊM của người chơi - cược 100 vẫn trừ đúng 100; khoản nuôi là NHÀ CÁI BAO
-//    (lấy từ phần RTP đang giữ). Tự trích DỪNG khi hũ chạm LUCKY_POT_MAX (20.000).
-//  - ADMIN nạp tay thì KHÔNG bị trần 20.000 (chủ server muốn mồi hũ to hơn được);
-//    chỉ chặn không cho âm.
-//  - MỘT TỈ LỆ NỔ DUY NHẤT: POT_HIT_RATE = 1%, đúng bằng ô 🏆 của 2 bàn quay hộp
-//    may mắn. Minigame: trúng 🏆 = trần hũ của ván + NGUYÊN hũ trò đó. Quay Pal:
-//    mỗi lượt tự bốc 1% ăn nguyên hũ gacha (gacha không có hộp để bấm).
-const LUCKY_POT_RATE = 0.05;
-const LUCKY_POT_MAX = 20000;      // trần TỰ TRÍCH mỗi hũ (admin nạp tay vượt được)
-const POT_HIT_RATE = 0.01;        // = p của 'jackpot' trong MINES/STAIRS_LUCKY_WHEEL
+// ===== 🏆 SỔ HŨ (dbCache._pots) =====
+// Lịch sử: 20/08 mỗi trò một hũ nuôi 5%/nổ 1% (mines · stairs · gacha) -> 09/09 Dò Mìn/Leo
+// Thang bỏ hũ nuôi, đổi sang bội số tiền cược (POT_CFG_KEYS bên dưới) -> 14/09 thêm hũ Bão
+// Tài Xỉu (tx, % nuôi riêng) -> 15/09 Quay Pal bỏ hũ nuôi luôn: trúng Mimog ăn giải CỐ ĐỊNH
+// (PALWHEEL_JACKPOT_POT), không còn sổ hũ 'gacha'. Giờ hũ DUY NHẤT còn nuôi thật là 'tx'.
+// Số dư cũ trong dbCache._pots.gacha (nếu prod còn) không dùng nữa, để đó vô hại.
+// NUÔI (chỉ tx): trích % tổng cược mỗi ván, KHÔNG THU THÊM của người chơi - nhà cái bao.
 // SÀN CƯỢC BẮT BUỘC của 2 minigame (chủ server chốt 21/08): cược dưới mức này là
 // server TỪ CHỐI ván luôn. Trước đó làm kiểu "cược dưới 200 thì vẫn chơi được nhưng
 // không ăn hũ" - chủ server bảo không phải vậy, phải BUỘC đặt tối thiểu 200.
@@ -3652,22 +3644,20 @@ function setMinBet(v) {
 }
 // Nổ hũ xong hũ KHÔNG về 0 mà về mức mồi này, để người vào sau không thấy hũ rỗng
 // (chủ server: "về 0 thì bất công"). Nhà cái bao khoản mồi này mỗi lần nổ.
-// 26/08: mồi + trần TÁCH THEO TỪNG HŨ - Dò Mìn/Leo Thang mồi 5.000 trần nuôi 50.000,
-// hũ Quay Pal giữ 1.500/20.000 như cũ.
-const POT_SEED = 1500;            // (giữ cho chỗ nào chưa theo key - gacha dùng mức này)
-const POT_SEED_BY = { mines: 5000, stairs: 5000, gacha: 1500, tx: 10000 };
-const LUCKY_POT_MAX_BY = { mines: 50000, stairs: 50000, gacha: 20000, tx: 500000 };
-const potSeed = (key) => POT_SEED_BY[key] !== undefined ? POT_SEED_BY[key] : POT_SEED;
-const potMax = (key) => LUCKY_POT_MAX_BY[key] !== undefined ? LUCKY_POT_MAX_BY[key] : LUCKY_POT_MAX;
-const POT_KEYS = ['mines', 'stairs', 'gacha', 'tx'];
-const POT_LABEL = { mines: '💣 Dò Mìn', stairs: '🪜 Leo Thang', gacha: '🎲 Quay Pal', tx: '🌪️ Hũ Bão (Tài Xỉu)' };
+// 26/08: mồi + trần TÁCH THEO TỪNG HŨ. 15/09: bỏ 'gacha' (Quay Pal không còn hũ nuôi).
+const POT_SEED_BY = { mines: 5000, stairs: 5000, tx: 10000 };
+const LUCKY_POT_MAX_BY = { mines: 50000, stairs: 50000, tx: 500000 };
+const potSeed = (key) => POT_SEED_BY[key] || 0;
+const potMax = (key) => LUCKY_POT_MAX_BY[key] || 0;
+const POT_KEYS = ['mines', 'stairs', 'tx'];
+const POT_LABEL = { mines: '💣 Dò Mìn', stairs: '🪜 Leo Thang', tx: '🌪️ Hũ Bão (Tài Xỉu)' };
 // ===== 🏆 NỔ HŨ = BỘI SỐ TIỀN CƯỢC (09/09, chủ server chốt lần cuối) - chỉ Dò Mìn + Leo Thang =====
 // BỎ HẲN hũ nuôi ở 2 minigame (không trích 5%, không hiện hũ, không trần hũ). Trúng 🏆 trong
 // hộp 🍀 -> bốc NGẪU NHIÊN 1 bội số trong danh sách (mặc định x10 / x15 / x20) nhân với tiền
 // cược, CỘNG trần ván như cũ (jackpotCapOf - "ăn toàn bộ ô của bàn, có trần khi có trợ giúp"),
 // ván DỪNG NGAY. Danh sách bội số panel SUPER chỉnh được (tab 💣), lưu dbCache._potCfg[key].mults.
 // Tiền hũ cũ còn trong dbCache._pots.mines/stairs KHÔNG dùng nữa (admin muốn thì rút tay
-// bằng adminPotAdd số âm). Hũ Quay Pal (gacha) GIỮ NGUYÊN luật nuôi 5%/nổ 1%/ẵm nguyên.
+// bằng adminPotAdd số âm).
 // Lịch sử 09/09: (1) đề xuất chia % hũ theo cược -> (2) ăn x10 cược từ hũ, hũ vô hạn ->
 // (3) bản này: bỏ hũ, bội số ngẫu nhiên. Kinh tế: kỳ vọng thưởng thêm mỗi hộp = 1% x 15 x cược
 // = 15% cược, nhà cái bao thẳng (không còn quỹ nuôi) - chủ server đã nghe và chấp nhận.
@@ -3705,23 +3695,14 @@ function potBook() {
     return dbCache._pots;
 }
 function potGet(key) { return potBook()[key] || 0; }
-// Phần được phép trích thêm vào hũ này (hũ đã quá trần thì 0)
+// Phần được phép trích thêm vào hũ này (hũ đã quá trần thì 0). 15/09: chỉ còn hũ Bão 'tx' nuôi.
 function luckyPotCut(key, bet) {
-    if (POT_CFG_KEYS.includes(key)) return 0;   // 09/09: Dò Mìn/Leo Thang BỎ hũ nuôi - không trích
-    // 🌪️ 14/09: hũ Bão để riêng, có % nuôi của riêng nó (admin chỉnh), không dùng chung 5% với Quay Pal
-    const rate = key === 'tx' ? txPotCfg().rate : LUCKY_POT_RATE;
-    return Math.max(0, Math.min(Math.floor(bet * rate), potMax(key) - potGet(key)));
+    if (key !== 'tx') return 0;   // 09/09 Dò Mìn/Leo Thang, 15/09 Quay Pal: đều BỎ hũ nuôi
+    return Math.max(0, Math.min(Math.floor(bet * txPotCfg().rate), potMax(key) - potGet(key)));
 }
 function potFeed(key, cut) {
     if (cut > 0) potBook()[key] = potGet(key) + cut;
     return potGet(key);
-}
-// Người nổ ẵm nguyên hũ, hũ đặt lại về mức mồi POT_SEED (không về 0).
-// (Không còn xét cược tối thiểu ở đây: sàn cược MIN_BET đã chặn ngay lúc start.)
-function luckyPotPop(key) {
-    const pot = potGet(key);
-    potBook()[key] = potSeed(key);
-    return pot;
 }
 // 🌪️ 14/09 BẢN 2 (chủ server chốt lại) - HŨ BÃO ĐỂ RIÊNG, ĂN THEO TIỀN CƯỢC NHƯNG KHÔNG QUÁ SỐ HŨ ĐANG CÓ.
 // Trúng cửa Bão = x30 tiền cửa (TX_BAO_RATE) + BÚ HŨ = min(cược × bội số, hũ đang có).
@@ -3773,7 +3754,7 @@ function setTxPotCfg(o) {
     writeLog('ADMIN', `[HŨ BÃO] Panel đặt: nuôi ${(next.rate * 100).toFixed(2)}% tổng cược/ván · bú hũ tối đa x${next.x} tiền cược`);
     return { ok: true, cfg: next };
 }
-// Rút bớt hũ (khác luckyPotPop: không ẵm sạch, không mồi lại). Trả về số thực rút được.
+// Rút bớt hũ (không ẵm sạch, không mồi lại). Trả về số thực rút được.
 function potTake(key, amount) {
     const have = potGet(key);
     const take = Math.max(0, Math.min(Math.floor(Number(amount) || 0), have));
@@ -3797,7 +3778,6 @@ function adminPotAdd(key, amount) {
     potBook()[key] = Math.max(0, before + n);
     writeLog('ADMIN', `[HŨ ${POT_LABEL[key]}] Panel ${n > 0 ? 'nạp' : 'rút'} ${Math.abs(n).toLocaleString()} - hũ ${before.toLocaleString()} -> ${potGet(key).toLocaleString()}`);
     saveDbNow();
-    if (key === 'gacha' && typeof withdrawBoardRefresh === 'function') withdrawBoardRefresh();
     return { ok: true, key, pot: potGet(key), max: potMax(key) };
 }
 // 🎯 14/09: admin ĐẶT THẲNG số tiền trong hũ (khác adminPotAdd là cộng/trừ chênh lệch).
@@ -3810,7 +3790,6 @@ function adminPotSet(key, amount) {
     potBook()[key] = n;
     writeLog('ADMIN', `[HŨ ${POT_LABEL[key]}] Panel ĐẶT THẲNG hũ ${before.toLocaleString()} -> ${n.toLocaleString()}`);
     saveDbNow();
-    if (key === 'gacha' && typeof withdrawBoardRefresh === 'function') withdrawBoardRefresh();
     return { ok: true, key, pot: potGet(key), max: potMax(key) };
 }
 // Thông báo nổ hũ vào kênh bảng của game (kênh chưa set thì thôi, lỗi cũng kệ)
@@ -5953,9 +5932,11 @@ client.once('ready', async (c) => {
                         ? (newest.revealAt - Date.now()) : 0;
                     return {
                         price: cfg.price, sellPrice: cfg.sellPrice, open: cfg.open,
-                        pot: potGet('gacha'), spinRemain,
+                        pot: PALWHEEL_JACKPOT_POT, spinRemain,   // 💰 15/09: giải cố định, không còn số dư nuôi
                         // 27/08: kèm code để web gắn hình (/palimage/T_<code>_icon_normal.png)
-                        pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code), epic: palIsEpic(p.code) })),
+                        pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code), epic: palIsEpic(p.code), jack: palIsJackpot(p.code) })),   // 💰 15/09: jack = ô NỔ HŨ (Mimog)
+                        jackName: (palWheelNormalPool().find(p => palIsJackpot(p.code)) || {}).name || '',
+                        jackBonus: PALWHEEL_JACKPOT_BONUS,
                         raids: [],   // 11/09: vòng random không còn ô RAID (web không trộn thẻ raid nữa)
                         // 🍀 thanh may mắn + vòng raid (27/08): đầy 100 mới quay raid, xong về 0
                         luck: typeof u.palLuck === 'number' ? u.palLuck : 0,
@@ -5982,7 +5963,6 @@ client.once('ready', async (c) => {
                     return {
                         price: cfg.customPrice,
                         open: cfg.open,
-                        pot: potGet('gacha'),
                         chestCount: palChest(uid).filter(i => i.status === 'chest').length,
                         list: raidRows.concat(palWheelNormalPool().map(p => ({ code: p.code, name: p.name, dex: p.dex || 0, raid: false, legend: palIsLegend(p.code), epic: palIsEpic(p.code), price: cfg.customPrice }))),
                     };
@@ -6171,7 +6151,7 @@ client.once('ready', async (c) => {
             // Bảng mời chơi Dò Mìn (không có ván chung, chỉ khoe kết quả + nút vào web)
             // 🏆 hũ nuôi chung: xem + nạp/rút tay để mồi hũ cho anh em chơi
             // 09/09: chỉ còn hũ nuôi Quay Pal; Dò Mìn/Leo Thang = bội số nổ hũ (mults)
-            getPot: () => ({ pots: { gacha: potGet('gacha'), tx: potGet('tx') }, labels: POT_LABEL, maxBy: { gacha: LUCKY_POT_MAX_BY.gacha, tx: LUCKY_POT_MAX_BY.tx }, txPot: txPotCfg(), baoRate: TX_BAO_RATE, mults: { mines: potCfg('mines').mults, stairs: potCfg('stairs').mults }, leftover: { mines: potGet('mines'), stairs: potGet('stairs') }, rate: LUCKY_POT_RATE, hit: POT_HIT_RATE, minBet: minBet(), seedBy: { gacha: POT_SEED_BY.gacha } }),
+            getPot: () => ({ pots: { tx: potGet('tx') }, labels: POT_LABEL, maxBy: { tx: LUCKY_POT_MAX_BY.tx }, txPot: txPotCfg(), baoRate: TX_BAO_RATE, mults: { mines: potCfg('mines').mults, stairs: potCfg('stairs').mults }, leftover: { mines: potGet('mines'), stairs: potGet('stairs') }, minBet: minBet(), palJack: { pot: PALWHEEL_JACKPOT_POT, bonus: PALWHEEL_JACKPOT_BONUS, name: (palWheelNormalPool().find(p => palIsJackpot(p.code)) || {}).name || PALWHEEL_JACKPOT_CODE } }),
             addPot: (key, amount) => adminPotAdd(key, amount),
             setPot: (key, amount) => adminPotSet(key, amount),   // 🎯 14/09: đặt thẳng số tiền trong hũ
             setPotCfg: (key, o) => setPotCfg(key, o),   // 🏆 09/09: danh sách bội số nổ hũ (x10/x15/x20) của Dò Mìn/Leo Thang
@@ -7113,8 +7093,7 @@ function getWithdrawMessageData() {
     ];
 
     const embed = new EmbedBuilder()
-        // hũ quay Pal hiện ngay trên tiêu đề (bảng tự vẽ lại nên số luôn tươi)
-        .setTitle(`🔄 DOGCOIN - HŨ QUAY PAL ĐANG CÓ ${potGet('gacha').toLocaleString()} DOGCOIN`)
+        .setTitle('🔄 DOGCOIN - CHUYỂN HAI CHIỀU DISCORD ↔ GAME')
         .setColor(0xf1c40f)
         .setDescription(lines.join('\n'));
 
@@ -7170,13 +7149,6 @@ async function completePalOrder(id) {
     } catch { /* người chơi tắt DM */ }
 
     return { ok: true };
-}
-
-// Vẽ lại bảng 🔄 DOGCOIN & SHOP PAL (tiêu đề có số hũ quay Pal nên phải cập nhật
-// mỗi lần hũ đổi). Bảng chưa đăng thì thôi, lỗi cũng kệ - không chặn dòng tiền.
-function withdrawBoardRefresh() {
-    if (!withdrawState.message) return;
-    withdrawState.message.edit(getWithdrawMessageData()).catch(() => {});
 }
 
 async function startWithdraw(channel) {
@@ -8117,97 +8089,6 @@ client.on('interactionCreate', async interaction => {
             ephemeral: true,
         });
     }
-    if (interaction.customId === 'shop_random_CU_DA_TAT') {
-        const price = PAL_SHOP.randomPrice;
-        const balance = getUserData(userId).points || 0;
-
-        if (balance < price) {
-            return interaction.reply({
-                content: `❌ Không đủ Dogcoin! Cần **${price.toLocaleString()}**, bạn có **${balance.toLocaleString()}** ${DOGCOIN_EMOJI}`,
-                ephemeral: true,
-            });
-        }
-        const pool = gachaPool();
-        if (pool.length === 0) {
-            return interaction.reply({ content: '❌ Danh sách pal chưa nạp được, báo admin.', ephemeral: true });
-        }
-
-        await interaction.deferReply({ ephemeral: true });
-
-        const pal = pool[Math.floor(Math.random() * pool.length)];
-        updatePoints(userId, -price);
-        const order = {
-            id: dbCache._palOrderSeq = (dbCache._palOrderSeq || 0) + 1,
-            userId,
-            username: interaction.user.tag,
-            kind: 'random',
-            price,
-            palName: pal.name,
-            palCode: pal.code,
-            souls: '',
-            passives: '',
-            status: 'pending',
-            time: new Date().toLocaleString('vi-VN'),
-        };
-
-        const sent = await sendPalOrderToAdmin(order);
-        if (!sent) {
-            updatePoints(userId, price); // hoàn tiền vì admin không nhận được đơn
-            logDog('refund', userId, interaction.user.tag, price, `hoàn đơn pal #${order.id} (không gửi được cho admin)`);
-            return interaction.editReply(
-                '❌ Không gửi được đơn cho admin (admin chặn tin nhắn riêng?). ' +
-                `Đã **hoàn lại ${price.toLocaleString()}** ${DOGCOIN_EMOJI} cho bạn.`
-            );
-        }
-
-        if (!Array.isArray(dbCache._palOrders)) dbCache._palOrders = [];
-        dbCache._palOrders.unshift(order);
-        if (dbCache._palOrders.length > 200) dbCache._palOrders.length = 200;
-
-        logDog('shop', userId, interaction.user.tag, -price, `mua pal ${pal.name} (ngẫu nhiên) - đơn #${order.id}`);
-        writeLog('ADMIN', `[SHOP PAL] #${order.id} ${order.username} quay trung ${order.palName} (random, ${price} Dogcoin) - cho chon passive/linh hon`);
-
-        // 🏆 HŨ RIÊNG của quay Pal: nuôi 5% giá vé, nổ theo CHUNG tỉ lệ 1% với 2 minigame
-        potFeed('gacha', luckyPotCut('gacha', price));
-        withdrawBoardRefresh();   // tiêu đề bảng có số hũ -> vẽ lại cho tươi
-        let palPotWin = 0;
-        if (potGet('gacha') > 0 && Math.random() < POT_HIT_RATE) {
-            palPotWin = luckyPotPop('gacha');
-            updatePoints(userId, palPotWin);
-            logDog('hu', userId, interaction.user.tag, palPotWin, 'nổ hũ quay Pal 🏆');
-            writeLog('ADMIN', `[⚠️ NỔ HŨ GACHA] ${interaction.user.tag} quay pal trúng hũ +${palPotWin.toLocaleString()} Dogcoin`);
-        }
-
-        // Đăng công khai kết quả quay cho cả server thấy (không chặn luồng trả lời)
-        const gachaCh = dbCache._gachaChannelId;
-        if (palPotWin > 0) {
-            potAnnounce(gachaCh, `💥🏆 <@${userId}> quay Pal mà NỔ LUÔN HŨ QUAY PAL: +**${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}! Hũ đặt lại về ${potSeed('gacha').toLocaleString()}, mỗi lượt quay lại nuôi tiếp 🌱`, userId);
-        }
-        if (gachaCh) {
-            client.channels.fetch(gachaCh)
-                .then(ch => ch && ch.send({
-                    content: `🎲 <@${userId}> vừa chi **${price.toLocaleString()}** ${DOGCOIN_EMOJI} quay Pal ngẫu nhiên và trúng **${pal.name}** 👑${pal.dex ? ` (paldex #${pal.dex})` : ''}!`,
-                    allowedMentions: { users: [userId] },
-                }))
-                .catch(e => writeLog('SYSTEM', `[SHOP PAL] Khong dang duoc thong bao quay random vao kenh ${gachaCh}: ${e.message}`));
-        }
-
-        return interaction.editReply({
-            content:
-                `🎲 Bạn trúng: **${pal.name}** 👑\n` +
-                `• Bản Boss, ${PAL_SHOP.stars} sao, IV ${PAL_SHOP.ivs} cả 3 chỉ số\n` +
-                `Đã trừ **${price.toLocaleString()}** ${DOGCOIN_EMOJI} (còn **${getUserData(userId).points.toLocaleString()}**) - mã đơn **#${order.id}**.\n` +
-                (palPotWin > 0
-                    ? `💥🏆 **VÀ BẠN NỔ HŨ CHUNG: +${palPotWin.toLocaleString()}** ${DOGCOIN_EMOJI}!\n\n`
-                    : `🏆 Hũ quay Pal đang nuôi: **${potGet('gacha').toLocaleString()}** ${DOGCOIN_EMOJI} (mỗi lượt quay ${POT_HIT_RATE * 100}% cơ hội nổ)\n\n`) +
-                `👇 Bấm nút để chọn **${PAL_SHOP.passiveSlots} passive + ${PAL_SHOP.soulSlots} dòng linh hồn ${PAL_SHOP.soulPercent}%** cho nó.`,
-            components: [new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`shop_fill_${order.id}`).setLabel('Chọn passive & linh hồn').setEmoji('📝').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`shop_sell_${order.id}`).setLabel(`Bán lại ${PAL_SHOP.randomSellBack.toLocaleString()}`).setEmoji('💰').setStyle(ButtonStyle.Secondary)
-            )],
-        });
-    }
-
     // ======== SHOP PAL: BÁN LẠI pal random không ưng - đóng đơn luôn, hoàn tiền ========
     // Chỉ bán được khi CHƯA chọn passive/linh hồn (chọn rồi coi như admin đã bắt tay làm).
     if (interaction.customId.startsWith('shop_sell_')) {
