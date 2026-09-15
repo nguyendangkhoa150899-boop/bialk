@@ -670,6 +670,17 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — ⚡ **SUPER ép lượt quay Pal kế tiếp ra 1 con (để thử nổ hũ Mimog)** (chủ server: "có cách nào test nổ hũ
+  không, làm cho admin can thiệp đi"). Cùng kiểu ép xúc xắc Tài Xỉu (`txState.forcedResult`).
+  ✅ `index.js`: `let palWheelForced = null` (**chỉ RAM**, restart là hết) + `palWheelForce(code)` nhận code **hoặc tên** (không
+  phân biệt hoa thường), code lạ → lỗi và không đổi trạng thái, rỗng = hủy. Trong `palWheelSpin` vẫn rút `Math.random` như
+  thường rồi mới ghi đè `win` (thứ tự random không đổi → test cũ giữ nguyên), **dùng đúng 1 lượt** rồi tự xoá; con bị ép không
+  còn trong pool → bỏ qua + xoá ép + log. `palPickBuy` không dính. ctx panel thêm `palWheelForce`, `palWheelForcedInfo`.
+  ✅ `panel.js`: route `/api/palwheel/force` chặn `epOk` (SUPER); state có `palForced`; thẻ `epOnly` "⚡ Ép lượt quay Pal kế
+  tiếp" trong tab Quay Pal (ô nhập mặc định `MimicDog`, nút Ép/Hủy, badge đang ép vẽ mỗi nhịp refresh).
+  ⚠️ Ép là ép **lượt kế tiếp của BẤT KỲ ai** và trả nổ hũ THẬT (60.000) + đăng kênh khoe như thật - thử xong chưa ai quay thì
+  bấm Hủy ép. `mimogtest.js` lên **77 case** (+21), `palforce-e2e.js` 11 case trên bot test: panel thường bị 403, ép theo tên,
+  quay ra đúng Mimog +58.000 ròng, tự hủy sau 1 lượt.
 - **15/09 (chiều)** — 💰 **Nổ hũ Quay Pal = quay trúng đích danh Mimog (#144): 50.000 cố định + 10.000 thưởng** (chủ server,
   2 lượt chốt trong cùng buổi: "khi quay trúng con này được +10.000 + với hũ luôn thay vì 1%" → "hũ giờ mặc định ở mốc 50.000,
   không cần nuôi, xóa bỏ bớt code thừa"). Luật cũ: mỗi lượt 1% ngẫu nhiên ẵm hũ nuôi 5%/vé (mồi 1.500, trần 20.000).

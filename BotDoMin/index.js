@@ -2529,6 +2529,19 @@ const PALWHEEL_JACKPOT_CODE = 'MimicDog';      // Mimog - paldex #144
 const PALWHEEL_JACKPOT_POT = 50000;            // hũ cố định
 const PALWHEEL_JACKPOT_BONUS = 10000;          // thưởng thêm ngoài hũ
 const palIsJackpot = (code) => code === PALWHEEL_JACKPOT_CODE;
+// ⚡ 15/09: SUPER ÉP LƯỢT QUAY KẾ TIẾP ra đúng 1 con (mặc định Mimog) để thử nổ hũ + hiệu ứng.
+// Chỉ trong RAM (restart là hết), dùng ĐÚNG 1 LẦN cho lượt quay kế tiếp của BẤT KỲ ai, rồi tự xoá.
+// Cùng kiểu với ép xúc xắc Tài Xỉu (txState.forcedResult). Mua đích danh (palPickBuy) không dính.
+let palWheelForced = null;
+function palWheelForce(code) {
+    const c = String(code || '').trim();
+    if (!c) { palWheelForced = null; writeLog('ADMIN', '[QUAY PAL WEB] Hủy ép lượt kế tiếp'); return { ok: true, code: null }; }
+    const p = palWheelNormalPool().find(x => x.code === c || x.name.toLowerCase() === c.toLowerCase());
+    if (!p) return { error: `Không có pal "${c}" trong vòng quay (nhập code vd MimicDog hoặc tên vd Mimog)` };
+    palWheelForced = p.code;
+    writeLog('ADMIN', `[QUAY PAL WEB] ⚡ SUPER ép lượt quay KẾ TIẾP ra ${p.name} (${p.code})`);
+    return { ok: true, code: p.code, name: p.name };
+}
 function palWheelNormalPool() {
     const raid = new Set(PAL_DATA.raidOnly || []);
     return (PAL_DATA.all || []).filter(p => !raid.has(p.name) && !PALWHEEL_EXCLUDE_DEX.includes(p.dex || 0) && !PALWHEEL_EXCLUDE_CODE.includes(p.code));
@@ -2607,8 +2620,15 @@ function palWheelSpin(userId, username) {
     // RAID thì chia đều tiếp trong các boss raid.
     const total = normals.length + (raids.length ? 1 : 0);
     const roll = Math.floor(Math.random() * total);
-    const isRaid = raids.length > 0 && roll === normals.length;
-    const win = isRaid ? raids[Math.floor(Math.random() * raids.length)] : normals[roll];
+    let isRaid = raids.length > 0 && roll === normals.length;
+    let win = isRaid ? raids[Math.floor(Math.random() * raids.length)] : normals[roll];
+    // ⚡ 15/09: SUPER ép lượt này ra đúng 1 con (thử nổ hũ Mimog) - đọc xong xoá ngay, chỉ 1 lượt
+    if (palWheelForced) {
+        const f = normals.find(p => p.code === palWheelForced);
+        writeLog('ADMIN', `[QUAY PAL WEB] ⚡ Lượt của ${username || userId} bị ÉP ra ${f ? f.name : palWheelForced + ' (không còn trong pool - bỏ qua)'}`);
+        palWheelForced = null;
+        if (f) { win = f; isRaid = false; }
+    }
 
     // 27/08: gộp 1 reel (raid ra thẳng) nên cả thường lẫn raid đều ~10,5s. revealAt vẫn
     // chặn F5 sang tab Cá nhân xem trộm giữa chừng + là mốc tự mở khoá chống spam.
@@ -6099,6 +6119,7 @@ client.once('ready', async (c) => {
             completePalOrder,
             // 🎁 rương pal + vòng quay web (25/08)
             getPalWheelCfg: palWheelCfg,
+            palWheelForce, palWheelForcedInfo: () => palWheelForced,   // ⚡ 15/09: ép lượt quay kế tiếp (SUPER)
             setPalWheelCfg,
             setPalLuckRate,   // 🍀 đặt %/quay may mắn riêng từng người (rig cho bạn bè)
             // 🪪 mức điểm danh/nghiện/thưởng chuỗi (panel tab 👥 chỉnh)

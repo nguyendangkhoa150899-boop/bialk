@@ -157,6 +157,7 @@ function startPanel(ctx) {
             },
             vay: ctx.getVay ? ctx.getVay() : { live: false, channelId: '' },
             gachaChannelId: db._gachaChannelId || '',
+            palForced: ctx.palWheelForcedInfo ? ctx.palWheelForcedInfo() : null,   // ⚡ 15/09
             giveaway: { channelId: db._giveawayChannelId || '', roleId: db._giveawayRoleId || '' },
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
@@ -423,6 +424,14 @@ function startPanel(ctx) {
                     ctx.getTX().forcedResult = null;
                     ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Big Small`);
                     return sendJSON(res, 200, { ok: true });
+                }
+                // ⚡ 15/09: ép LƯỢT QUAY PAL kế tiếp ra 1 con (SUPER) - code rỗng = hủy ép
+                if (path === '/api/palwheel/force') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
+                    if (!ctx.palWheelForce) return sendJSON(res, 500, { ok: false, error: 'Bot chưa nối hàm ép' });
+                    const r = ctx.palWheelForce(body.code);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
                 }
 
                 // (Bầu Cua đã gỡ 27/08)
@@ -1498,6 +1507,17 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Lưu xong bot gửi 1 tin xác nhận vào kênh đó. Từ đó mỗi lượt quay Pal ngẫu nhiên 2.000 sẽ đăng công khai: <b>ai quay, trúng con gì</b> (tag người quay). Tắt = chỉ người quay tự thấy như cũ.</div>
       </div>
+      <div class="card epOnly">
+        <h3>⚡ Ép lượt quay Pal kế tiếp (thử nổ hũ)</h3>
+        <div id="pwForceNow" style="font-size:13px;margin-bottom:8px">-</div>
+        <label>Code hoặc tên pal (mặc định Mimog = ô nổ hũ)</label>
+        <input id="pwForceCode" placeholder="MimicDog" value="MimicDog">
+        <div class="row" style="margin-top:12px">
+          <button class="btn-yellow" onclick="pwForce()">⚡ Ép lượt kế tiếp</button>
+          <button class="btn-grey" onclick="pwForceClear()">Hủy ép</button>
+        </div>
+        <div class="note">Chỉ SUPER. Lượt quay ngẫu nhiên <b>kế tiếp của BẤT KỲ ai</b> sẽ ra đúng con này, dùng <b>1 lần</b> rồi tự hủy; restart bot cũng hết. Ra Mimog thì trả nổ hũ thật (50.000 + 10.000) và đăng kênh khoe như thật - <b>thử xong nhớ Hủy ép nếu chưa ai quay</b>. 🎯 Chọn Pal mua đích danh không bị ảnh hưởng.</div>
+      </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
       <div class="card hidden" id="wdPendingCard">
@@ -1998,6 +2018,8 @@ function tab(t){
 }
 
 // ===== KÊNH KHOE QUAY PAL =====
+function pwForce(){const c=(document.getElementById('pwForceCode').value||'').trim();if(!c)return toast('Nhập code hoặc tên pal');api('/api/palwheel/force',{code:c}).then(j=>{toast('⚡ Lượt quay kế tiếp sẽ ra '+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
+function pwForceClear(){api('/api/palwheel/force',{code:''}).then(()=>{toast('Đã hủy ép');refresh();}).catch(e=>toast('❌ '+e.message));}
 function gachaSave(){const id=document.getElementById('gachaChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/gacha/channel',{channelId:id}).then(j=>{toast('✅ Đã bật khoe tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
 async function gachaOff(){if(!await uiConfirm('Tắt đăng công khai kết quả quay Pal?','Tắt','btn-red'))return;api('/api/gacha/channel',{channelId:''}).then(()=>{toast('⏹️ Đã tắt');document.getElementById('gachaChannel').value='';refresh();});}
 
@@ -2022,6 +2044,7 @@ function renderGacha(){
   const on=!!STATE.gachaChannelId;
   const c=document.getElementById('gachaChannel'); if(c&&!c.value&&STATE.gachaChannelId) c.value=STATE.gachaChannelId;
   document.getElementById('gachaInfo').innerHTML='<span class="run '+(on?'on':'off')+'">'+(on?'🟢 ĐANG KHOE công khai':'🔴 ĐANG TẮT (chỉ người quay tự thấy)')+'</span>';
+  const pf=document.getElementById('pwForceNow');if(pf)pf.innerHTML=STATE.palForced?'<span class="badge on">⚡ ĐANG ÉP: lượt quay kế tiếp ra '+esc(STATE.palForced)+'</span>':'<span class="muted">Không ép - quay ngẫu nhiên bình thường</span>';
 }
 
 // ===== XỔ SỐ =====
