@@ -3278,7 +3278,7 @@ async function refresh(force){
     const mu=pt.mults||{}, muTxt=(k)=>'x'+((mu[k]&&mu[k].length)?mu[k]:[10,15,20]).join(' / x');
     document.getElementById('potInfo').textContent='Dò Mìn/Leo Thang KHÔNG còn hũ nuôi (09/09): trúng 🏆 trong hộp 🍀 bốc ngẫu nhiên '+muTxt('mines')+' (mìn) · '+muTxt('stairs')+' (thang) NHÂN tiền cược + trần ván, ván dừng ngay'
       +' · 💰 Quay Pal (15/09) KHÔNG còn hũ nuôi: quay trúng '+(pj.name||'Mimog')+' = '+Number(pj.pot||0).toLocaleString('vi-VN')+' + thưởng '+Number(pj.bonus||0).toLocaleString('vi-VN')+' cố định'
-      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván
+      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván'
       +(pt.txPot?' · 🌪️ Hũ Bão: nuôi '+(pt.txPot.rate*100).toFixed(2)+'% tổng cược mỗi ván Tài Xỉu, trúng Bão bú min(cược × '+pt.txPot.x+', hũ đang có) - nhà cái không bù':'');
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
     // không vẽ lại cả khối - vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).

@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — 🐛 **HOTFIX panel không đăng nhập được** (chủ server: "sao mình login vô super không được nữa"). Lỗi do
+  commit `05c0b49`: dòng `potInfo` trong `panel.js` thiếu **1 dấu nháy đóng** sau `'/ván` → **toàn bộ script client** của panel
+  (cả SUPER lẫn thường) chết từ dòng đầu → nút đăng nhập không phản ứng. `node --check panel.js` **không bắt được** vì lỗi nằm
+  TRONG chuỗi template; e2e đăng nhập qua API nên cũng lọt. Sửa 1 ký tự.
+  🛡️ Thêm `panelclient-check.js`: dựng chuỗi template panel đúng như lúc emit (giải `\\'`, `` \` ``, `${}` bằng vm + Proxy) rồi
+  `new Function()` phần `<script>` → chỉ ra đúng dòng lỗi. Đã chứng minh **bắt được bản `05c0b49`** (báo dòng 1411, đúng chỗ) và
+  pass bản sửa. **Từ giờ chạy bộ này mỗi lần đụng `panel.js`** — đây là lỗi kiểu "nhìn code không thấy, mở trang mới thấy".
 - **15/09 (chiều)** — ⚡ **SUPER ép lượt quay Pal kế tiếp ra 1 con (để thử nổ hũ Mimog)** (chủ server: "có cách nào test nổ hũ
   không, làm cho admin can thiệp đi"). Cùng kiểu ép xúc xắc Tài Xỉu (`txState.forcedResult`).
   ✅ `index.js`: `let palWheelForced = null` (**chỉ RAM**, restart là hết) + `palWheelForce(code)` nhận code **hoặc tên** (không
