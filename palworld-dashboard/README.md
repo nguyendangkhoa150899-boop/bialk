@@ -670,6 +670,25 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — 🔎 **Ô "Tặng vào rương" (thẻ PAL GỐC): chọn người nhận + chọn pal từ danh sách, hết gõ tay** (chủ server:
+  "Discord người nhận show ra người đang được liên kết và đang chơi luôn; tên pal để sẵn, thêm nút search thay vì mình nhập sẽ sai").
+  ✅ `index.js`: ctx thêm `getPalPickList()` (code/name/dex/raid từ `PAL_DATA`) + `getOnlinePlayers()` (nối `pal.getOnlinePlayers`
+  của `palworld.js` - dashboard `/api/players`, trước giờ bot chưa dùng). `palChestGrant(ownerId, palName, palCode)`: có `palCode`
+  thì **chỉ khớp code**, code sai là lỗi ngay (test bắt được bản đầu còn rơi về khớp mờ theo tên → siết lại); đường cũ theo tên
+  giữ cho script.
+  ✅ `panel.js`: route `/api/palchest/pickers` trả `pals` + `players` (chỉ người **đã liên kết tên game**, `online` = so tên game
+  không phân biệt hoa thường với cả `name`/`cleanName` online; cầu dashboard chết → `online:null` + `onlineErr`, **vẫn trả danh
+  sách**), xếp 🟢 online lên đầu. UI: 2 ô 🔎 lọc + 2 `<select size=6>` (người: `🟢/⚪/❔ TênGame · TênDiscord (ID)`; pal:
+  `🔥 Tên #dex`), option dựng bằng `createElement` (tên lạ không phá trang), giữ lựa chọn khi lọc, nút 🔄 hỏi lại online. Danh
+  sách nạp **1 lần** lúc vẽ panel (không dính nhịp 3s). Gửi `palCode`, không gửi tên.
+  ✅ `pgpicktest.js` 28 case, `pgpick-e2e.js` 10 case trên bot test (cầu :3010 chết → `❔ fetch failed`, 3 người liên kết vẫn
+  hiện; tặng theo code đúng Mimog; code sai 400). `panelclient-check.js` pass.
+- **15/09 (chiều)** — 🎨 **Thẻ Mimog THẮNG (ô 52 dưới kim) giờ cũng tô màu nổ hũ** (chủ server gửi ảnh: thẻ dừng dưới kim
+  hiện "Mimog #144" trơ, trong khi thẻ mồi Mimog trên dải thì nháy vàng). 🐛 Thẻ 52 dựng từ `j.item` (kết quả spin) mà `item`
+  **không có cờ `jack`** - chỉ pool trong state có → đúng thẻ thắng thì trơ, còn `.jackhit` lúc dừng cũng không bám vì
+  `classList.contains("jack")` sai. ✅ Sửa 2 tầng: server gắn `item.jack` (lưu luôn vào rương, `isJack = item.jack`); state gửi
+  `jackCode`, client `pwCardHtml` suy `jk` từ `p.jack || p.code===PW.jackCode` (rương cũ thiếu cờ vẫn tô đúng). 🎒 Thẻ trong RƯƠNG
+  cũng viền vàng + nhãn `💰 NỔ HŨ`. `mimogtest.js` **83 case** (+6), e2e ép Mimog thêm 2 case (`item.jack`, `state.jackCode`).
 - **15/09 (chiều)** — 🐛 **HOTFIX panel không đăng nhập được** (chủ server: "sao mình login vô super không được nữa"). Lỗi do
   commit `05c0b49`: dòng `potInfo` trong `panel.js` thiếu **1 dấu nháy đóng** sau `'/ván` → **toàn bộ script client** của panel
   (cả SUPER lẫn thường) chết từ dòng đầu → nút đăng nhập không phản ứng. `node --check panel.js` **không bắt được** vì lỗi nằm

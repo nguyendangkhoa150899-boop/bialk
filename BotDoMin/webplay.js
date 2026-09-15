@@ -829,6 +829,7 @@ const PAGE = [
     '.pwCard.jack{border-color:#ffd24a;background:linear-gradient(180deg,#3b2f0d,#1e2a15);animation:jackIdle 1.2s ease-in-out infinite alternate}',
     '.pwCard.jack .nm{color:#ffe98a}',
     '.pwCard.jack .dx{color:#7cff9c;font-weight:900}',
+    '.pcItem.jack{border-color:#ffd24a;background:linear-gradient(180deg,#2e2510,#1a2213)}',
     '@keyframes jackIdle{from{box-shadow:0 0 6px #ffd24a77,0 0 2px #7cff9c44 inset}to{box-shadow:0 0 18px #ffd24a,0 0 7px #7cff9c66 inset}}',
     '.pwCard.jackhit{border-color:#fff3b0;z-index:3;animation:jackHit .45s ease-in-out infinite alternate}',
     '@keyframes jackHit{from{box-shadow:0 0 14px #ffd24a,0 0 5px #7cff9c inset;transform:scale(1)}to{box-shadow:0 0 34px #ffe98a,0 0 14px #7cff9c inset;transform:scale(1.07)}}',
@@ -3177,7 +3178,7 @@ const PAGE = [
     'function pwImg(code){return code?("<img src=\\"/palimage/T_"+code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""}',
     'function pwCardHtml(p,raid,hit){var nm=(p&&p.name!==undefined)?p.name:(p||"");var code=(p&&p.code)||"";',
     'var lg=!raid&&p&&p.legend,ep=!raid&&!lg&&p&&p.epic;',
-    'var jk=!raid&&p&&p.jack;',   // 💰 15/09: ô NỔ HŨ (Mimog) - ưu tiên hiển thị trên cả legend/epic
+    'var jk=!raid&&p&&(p.jack||(PW&&PW.jackCode&&p.code===PW.jackCode));',   // 💰 15/09: ô NỔ HŨ (Mimog) - cờ từ server, thiếu thì suy từ code
     'return "<div class=\\"pwCard"+(raid?" raid":"")+(jk?" jack":"")+(lg?" legend":"")+(ep?" epic":"")+(hit?(jk?" jackhit":(raid?" raidhit":(lg?" legendhit":(ep?" epichit":"")))):"")+"\\">"+pwImg(code)+"<div class=\\"nm\\">"+(jk?"💰 ":(raid?"🔥 ":(lg?"👑 ":(ep?"💜 ":""))))+esc(nm)+"</div><div class=\\"dx\\">"+(jk?"💰 Ô NỔ HŨ":(raid?"PAL RAID":(lg?"HUYỀN THOẠI":(ep?"PAL MẠNH":(p&&p.dex?"#"+p.dex:"&nbsp;")))))+"</div></div>"}',
     'function pwIdle(){if(!PW||!PW.pals||!PW.pals.length)return;var h="";for(var i=0;i<14;i++){var r=PW.raids.length&&Math.random()<0.06;h+=r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false)}',
     'var s=$("pwStrip");s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
@@ -3508,7 +3509,8 @@ const PAGE = [
     'else if(it.status==="sold")acts="<span class=\\"tag\\">ĐÃ BÁN</span>";',
     'else acts="<span class=\\"tag\\">✅ ĐÃ NHẬN"+(it.deliveredTo?" → "+esc(it.deliveredTo):"")+"</span>";',
     'var img=it.code?("<img src=\\"/palimage/T_"+it.code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):"";',
-    'return "<div class=\\"pcItem"+(it.raid?" raid":"")+"\\"><div class=\\"pcTop\\">"+img+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\">"+esc(it.name)+"</span> "+(it.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(it.dex?"<span class=\\"tag\\">#"+it.dex+"</span>":"")+"</div><div class=\\"tm\\">"+esc(it.wonAt||"")+"</div></div></div><div class=\\"pcActs\\">"+acts+"</div></div>"};',
+    'var jkc=!it.raid&&(it.jack||(PW&&PW.jackCode&&it.code===PW.jackCode));',
+    'return "<div class=\\"pcItem"+(it.raid?" raid":"")+(jkc?" jack":"")+"\\"><div class=\\"pcTop\\">"+img+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\""+(jkc?" style=\\"color:#ffe98a\\"":"")+">"+(jkc?"💰 ":"")+esc(it.name)+"</span> "+(it.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(jkc?"<span class=\\"tag\\" style=\\"background:#3b2f0d;color:#ffe98a;border:1px solid #ffd24a\\">💰 NỔ HŨ</span> ":"")+(it.dex?"<span class=\\"tag\\">#"+it.dex+"</span>":"")+"</div><div class=\\"tm\\">"+esc(it.wonAt||"")+"</div></div></div><div class=\\"pcActs\\">"+acts+"</div></div>"};',
     // 🤝 11/09: pal đang giao dịch - của tôi đang rao (thu hồi) + lời bán gửi cho tôi (mua / từ chối)
     'var TR=j.trades||{out:[],in:[]};var trH="";',
     'var trImg=function(it){return it.code?("<img src=\\"/palimage/T_"+it.code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""};',

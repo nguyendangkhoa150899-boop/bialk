@@ -383,10 +383,26 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Xoá sạch rương pal: -${r.removed} pal, giữ ${r.kept} đang giao`);
                     return sendJSON(res, 200, r);
                 }
+                // 🔎 15/09: danh sách để CHỌN người nhận (đã liên kết tên game, kèm 🟢 online) + CHỌN pal
+                if (req.method === 'POST' && path === '/api/palchest/pickers') {
+                    const pals = ctx.getPalPickList ? ctx.getPalPickList() : [];
+                    let onlineSet = null, onlineErr = '';
+                    if (ctx.getOnlinePlayers) {
+                        try {
+                            const on = await ctx.getOnlinePlayers();
+                            onlineSet = new Set(on.flatMap(p => [p.name, p.cleanName]).filter(Boolean).map(s => String(s).trim().toLowerCase()));
+                        } catch (e) { onlineErr = e.message || 'không hỏi được cầu dashboard'; }
+                    }
+                    const players = buildPlayers()
+                        .filter(p => p.ingameName)
+                        .map(p => ({ id: p.id, name: p.name, ingameName: p.ingameName, online: onlineSet ? onlineSet.has(p.ingameName.trim().toLowerCase()) : null }))
+                        .sort((a, b) => ((b.online === true) - (a.online === true)) || a.ingameName.localeCompare(b.ingameName));
+                    return sendJSON(res, 200, { ok: true, pals, players, onlineErr, onlineCount: onlineSet ? onlineSet.size / 2 : null });
+                }
                 if (ctx.palChestGrant && req.method === 'POST' && path === '/api/palchest/grant') {
                     const uid = String(body.userId || '').trim();
                     if (!/^\d{15,20}$/.test(uid)) return sendJSON(res, 400, { ok: false, error: 'Discord ID không hợp lệ' });
-                    const r = ctx.palChestGrant(uid, body.palName);
+                    const r = ctx.palChestGrant(uid, body.palName, body.palCode);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -1612,11 +1628,23 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="pwRawSave(this)">💾 Lưu PAL GỐC</button>
         </div>
         <div class="note" id="pwRawNow">-</div>
-        <div class="row" style="margin-top:10px">
-          <input id="pgUid" placeholder="Discord ID người nhận" style="flex:2">
-          <input id="pgPal" placeholder="Tên pal (vd: Anubis)" style="flex:2">
+        <div class="row" style="margin-top:10px;align-items:flex-start">
+          <div style="flex:2;min-width:220px">
+            <input id="pgUidQ" placeholder="🔎 Tìm người nhận: tên game / tên Discord / ID" oninput="pgPickDraw()">
+            <select id="pgUid" size="6" style="margin-top:6px;font-size:13px"></select>
+            <div class="muted" id="pgUidNote" style="font-size:12px;margin-top:4px">-</div>
+          </div>
+          <div style="flex:2;min-width:220px">
+            <input id="pgPalQ" placeholder="🔎 Tìm pal: tên / #số paldex / code" oninput="pgPickDraw()">
+            <select id="pgPal" size="6" style="margin-top:6px;font-size:13px"></select>
+            <div class="muted" id="pgPalNote" style="font-size:12px;margin-top:4px">-</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn-grey" onclick="pgPickLoad(true)">🔄 Cập nhật ai đang online</button>
           <button onclick="pgGrant()">🎁 Tặng vào rương</button>
         </div>
+        <div class="note">Người nhận chỉ hiện <b>người đã liên kết tên game</b>: 🟢 đang trong game · ⚪ offline · ❔ không hỏi được dashboard. Pal chọn từ danh sách thật (🔥 = boss raid), gửi theo <b>code</b> nên không còn tặng nhầm con vì gõ sai tên. Danh sách online lấy lúc mở panel, bấm 🔄 để hỏi lại.</div>
         <div class="row" style="margin-top:10px">
           <button class="btn-grey" id="pcToggleBtn" style="flex:1" onclick="pcToggle()">🎒 Xem rương pal</button>
           <button class="btn-red epOnly" style="display:none" onclick="pcClearAll(this)">🗑️ Xóa TẤT CẢ pal trong rương</button>
@@ -2044,6 +2072,7 @@ function renderGacha(){
   const on=!!STATE.gachaChannelId;
   const c=document.getElementById('gachaChannel'); if(c&&!c.value&&STATE.gachaChannelId) c.value=STATE.gachaChannelId;
   document.getElementById('gachaInfo').innerHTML='<span class="run '+(on?'on':'off')+'">'+(on?'🟢 ĐANG KHOE công khai':'🔴 ĐANG TẮT (chỉ người quay tự thấy)')+'</span>';
+  if(!PGP&&!PGLOADING&&document.getElementById('pgUid'))pgPickLoad(false);
   const pf=document.getElementById('pwForceNow');if(pf)pf.innerHTML=STATE.palForced?'<span class="badge on">⚡ ĐANG ÉP: lượt quay kế tiếp ra '+esc(STATE.palForced)+'</span>':'<span class="muted">Không ép - quay ngẫu nhiên bình thường</span>';
 }
 
@@ -2625,10 +2654,38 @@ function pwCfgSave(){
   if(!(o.luckyRaidPct>=0&&o.luckyRaidPct<=100))return toast('% ô RAID vòng may mắn phải 0–100');
   api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
 }
+// 🔎 15/09: chọn người nhận + chọn pal từ danh sách (thay gõ tay)
+let PGP=null,PGLOADING=false;
+function pgPickLoad(force){
+  if(PGLOADING)return;if(PGP&&!force)return;PGLOADING=true;
+  const n=document.getElementById('pgUidNote');if(n)n.textContent='⏳ Đang hỏi ai đang online...';
+  api('/api/palchest/pickers',{}).then(j=>{PGP=j;pgPickDraw();}).catch(e=>{if(n)n.textContent='❌ '+e.message;}).finally(()=>{PGLOADING=false;});
+}
+function pgOpt(sel,value,label,keep){const o=document.createElement('option');o.value=value;o.textContent=label;if(keep===value)o.selected=true;sel.appendChild(o);}
+function pgPickDraw(){
+  if(!PGP)return;
+  const su=document.getElementById('pgUid'),sp=document.getElementById('pgPal');if(!su||!sp)return;
+  const qu=(document.getElementById('pgUidQ').value||'').trim().toLowerCase(),qp=(document.getElementById('pgPalQ').value||'').trim().toLowerCase();
+  const ku=su.value,kp=sp.value;su.innerHTML='';sp.innerHTML='';
+  let nu=0;(PGP.players||[]).forEach(p=>{
+    if(qu&&(p.ingameName+' '+p.name+' '+p.id).toLowerCase().indexOf(qu)<0)return;nu++;
+    pgOpt(su,p.id,(p.online===true?'🟢 ':(p.online===false?'⚪ ':'❔ '))+p.ingameName+' · '+p.name+' ('+p.id+')',ku);
+  });
+  let np=0;(PGP.pals||[]).forEach(p=>{
+    if(qp&&(p.name+' #'+p.dex+' '+p.code).toLowerCase().indexOf(qp)<0)return;np++;
+    pgOpt(sp,p.code,(p.raid?'🔥 ':'')+p.name+(p.dex?' #'+p.dex:'')+(p.raid?' (boss raid)':''),kp);
+  });
+  const on=(PGP.players||[]).filter(p=>p.online===true).length;
+  document.getElementById('pgUidNote').textContent=(PGP.onlineErr?'❔ Không hỏi được dashboard ('+PGP.onlineErr+') - chưa rõ ai online · ':('🟢 '+on+' đang trong game · '))+nu+'/'+(PGP.players||[]).length+' người đã liên kết';
+  document.getElementById('pgPalNote').textContent=np+'/'+(PGP.pals||[]).length+' pal'+(sp.value?' · đang chọn: '+sp.options[sp.selectedIndex].textContent:'');
+}
 function pgGrant(){
-  const uid=document.getElementById('pgUid').value.trim(), pal=document.getElementById('pgPal').value.trim();
-  if(!uid||!pal)return toast('Nhập Discord ID + tên pal');
-  api('/api/palchest/grant',{userId:uid,palName:pal}).then(j=>{toast('🎁 Đã tặng '+j.item.name+' vào rương');document.getElementById('pgPal').value='';refresh();}).catch(e=>toast('❌ '+e.message));
+  const su=document.getElementById('pgUid'),sp=document.getElementById('pgPal');
+  const uid=su.value,code=sp.value;
+  if(!uid)return toast('Chọn người nhận trong danh sách (gõ ô 🔎 để lọc)');
+  if(!code)return toast('Chọn pal trong danh sách (gõ ô 🔎 để lọc)');
+  const who=su.options[su.selectedIndex].textContent;
+  api('/api/palchest/grant',{userId:uid,palCode:code}).then(j=>{toast('🎁 Đã tặng '+j.item.name+' vào rương của '+who);refresh();}).catch(e=>toast('❌ '+e.message));
 }
 async function pcResolve(ownerId,id,delivered){
   // 08/09: dùng hộp xác nhận của web (trước là confirm() trình duyệt, lệch theme)

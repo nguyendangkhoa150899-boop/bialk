@@ -2636,6 +2636,7 @@ function palWheelSpin(userId, username) {
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
         code: win.code, name: win.name, dex: win.dex || 0, raid: isRaid, legend: palIsLegend(win.code), epic: palIsEpic(win.code),
+        jack: !isRaid && palIsJackpot(win.code),   // 💰 15/09: thẻ THẮNG trên dải + thẻ trong rương tô màu nổ hũ theo cờ này
         wonAt: new Date().toLocaleString('vi-VN'), status: 'chest',
         revealAt: Date.now() + revealMs,
     };
@@ -2644,7 +2645,7 @@ function palWheelSpin(userId, username) {
     // 💰 15/09: NỔ HŨ = quay trúng đúng ô Mimog (#144) -> hũ cố định + thưởng, nhà cái trả
     // thẳng. Không còn nuôi hũ theo vé, không bốc 1% ngẫu nhiên. Trúng là chắc chắn nổ.
     let potWin = 0, palBonus = 0;
-    const isJack = !isRaid && palIsJackpot(win.code);
+    const isJack = item.jack;
     if (isJack) {
         potWin = PALWHEEL_JACKPOT_POT;
         palBonus = PALWHEEL_JACKPOT_BONUS;
@@ -3239,12 +3240,18 @@ function palChestOverview() {
     return out;
 }
 
-// Panel gọi: admin tặng thẳng 1 pal vào rương (đền bù/sự kiện). name khớp theo tên.
-function palChestGrant(ownerId, palName) {
+// Panel gọi: admin tặng thẳng 1 pal vào rương (đền bù/sự kiện).
+// 15/09: panel gửi palCode (chọn từ danh sách) -> khớp CHÍNH XÁC theo code, hết tặng nhầm con vì gõ
+// sai tên. Vẫn nhận palName (khớp mờ) cho script/đường cũ.
+function palChestGrant(ownerId, palName, palCode) {
     const all = PAL_DATA.all || [];
+    const c = String(palCode || '').trim();
     const q = String(palName || '').trim().toLowerCase();
-    const win = all.find(p => p.name.toLowerCase() === q) || all.find(p => p.name.toLowerCase().includes(q));
-    if (!win) return { error: `Không thấy pal tên "${palName}"` };
+    // Có code thì CHỈ khớp code - code sai là dừng, không rơi về khớp tên (kẻo tặng nhầm con khác).
+    const win = c
+        ? (all.find(p => p.code === c) || null)
+        : (q ? (all.find(p => p.name.toLowerCase() === q) || all.find(p => p.name.toLowerCase().includes(q)) || null) : null);
+    if (!win) return { error: c ? `Không có pal code "${c}"` : `Không thấy pal tên "${palName}"` };
     const raidSet = new Set(PAL_DATA.raidOnly || []);
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
@@ -5956,6 +5963,7 @@ client.once('ready', async (c) => {
                         // 27/08: kèm code để web gắn hình (/palimage/T_<code>_icon_normal.png)
                         pals: palWheelNormalPool().map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code), epic: palIsEpic(p.code), jack: palIsJackpot(p.code) })),   // 💰 15/09: jack = ô NỔ HŨ (Mimog)
                         jackName: (palWheelNormalPool().find(p => palIsJackpot(p.code)) || {}).name || '',
+                        jackCode: PALWHEEL_JACKPOT_CODE,   // client tự tô thẻ nếu vật thể thiếu cờ jack (vd rương cũ)
                         jackBonus: PALWHEEL_JACKPOT_BONUS,
                         raids: [],   // 11/09: vòng random không còn ô RAID (web không trộn thẻ raid nữa)
                         // 🍀 thanh may mắn + vòng raid (27/08): đầy 100 mới quay raid, xong về 0
@@ -6160,6 +6168,9 @@ client.once('ready', async (c) => {
             spmForceCrash: (m) => { const v = Number(m); if (!Number.isFinite(v) || v < 1) return { error: 'Điểm nổ phải ≥ 1.00' }; spmState.forced = Math.min(spmCfg().maxMult, v); return { ok: true, forced: spmState.forced, phase: spmState.phase }; },
             palChestOverview,
             palChestGrant,
+            // 🔎 15/09: cho panel dựng ô CHỌN người nhận + CHỌN pal (thay gõ tay)
+            getPalPickList: () => { const rs = new Set(PAL_DATA.raidOnly || []); return (PAL_DATA.all || []).map(p => ({ code: p.code, name: p.name, dex: p.dex || 0, raid: rs.has(p.name) })); },
+            getOnlinePlayers: () => pal.getOnlinePlayers(),   // [{name, cleanName, userId, level}] - ném lỗi nếu cầu dashboard chết
             palChestClearAll,   // 🗑️ 09/09 xoá sạch rương mọi người (SUPER)
             palChestResolve,
             deletePlayer,
