@@ -3258,7 +3258,7 @@ const PAGE = [
     'd.querySelector(".isNm").textContent=g.name||g.id;var nt=d.querySelector(".gNote");if(g.note)nt.textContent=g.note;else nt.remove();',
     'var st=d.querySelector(".gSt");if(g.taken){st.style.color="#8fd18f";st.textContent="✅ Hôm nay bạn đã nhận - qua 00:00 nhận lại được"}else st.remove();',
     'var b=d.querySelector(".gBtn");if(g.taken){b.disabled=true;b.textContent="✅ ĐÃ NHẬN HÔM NAY"}else{b.textContent="🎁 Nhận quà (x"+(g.qty||1)+")";b.onclick=function(){giftClaim(g.gid,b)}}return d}',
-    'function giftDraw(){var tb=$("navGift"),box=$("giftList"),st=$("giftStat");var L=GIFTS.filter(function(g){return !g.taken});',
+    'function giftDraw(){if(GIFTBUSY)return;var tb=$("navGift"),box=$("giftList"),st=$("giftStat");var L=GIFTS.filter(function(g){return !g.taken});',
     // còn quà chưa nhận -> hiện tab kèm số; hết -> ẩn, đang ở trang Quà thì tự về Cá nhân (như tab Nợ)
     'if(tb){if(L.length>0){tb.classList.remove("hidden");tb.textContent="🎁 Quà ("+L.length+")"}else{tb.classList.add("hidden");if(CURPAGE==="gift")go("daily")}}',
     'if(!box)return;if(st)st.textContent=L.length?(L.length+" món chưa nhận"):(GIFTS.length?"đã nhận hết hôm nay":"chưa có quà");',
@@ -3266,8 +3266,17 @@ const PAGE = [
     'GIFTS.slice().sort(function(a,b){return (a.taken?1:0)-(b.taken?1:0)}).forEach(function(g){box.appendChild(giftCard(g))})}',
     'function giftSync(){api("/api/gift/state").then(function(j){GIFTS=j.items||[];giftDraw()}).catch(function(){})}',
     'var GIFTBUSY=false;',
-    'function giftClaim(gid,btn){if(GIFTBUSY)return;GIFTBUSY=true;if(btn)btn.disabled=true;',
-    'api("/api/gift/claim",{gid:gid}).then(function(j){toast(j.message||"🎁 Đã nhận!")}).catch(function(e){toast("❌ "+e.message)}).then(function(){GIFTBUSY=false;giftSync()})}',
+    // khoá TẤT CẢ nút quà khi đang giao (bấm nút khác cũng vô ích vì bot giao từng đơn một)
+    'function giftBtnLock(on,btn){var bs=document.querySelectorAll("#giftList .gBtn");',
+    'for(var i=0;i<bs.length;i++){bs[i].disabled=on;if(on&&bs[i]!==btn)bs[i].style.opacity=.5;else bs[i].style.opacity=1}}',
+    'function giftClaim(gid,btn){',
+    'if(GIFTBUSY){toast("⏳ Đang giao quà vào game - chờ chút nhé");return}',
+    'GIFTBUSY=true;giftBtnLock(true,btn);',
+    'var chu=btn?btn.textContent:"";if(btn)btn.textContent="⏳ Đang giao vào game...";',
+    'api("/api/gift/claim",{gid:gid}).then(function(j){toast(j.message||"🎁 Đã nhận!")})',
+    '.catch(function(e){toast("❌ "+e.message);if(btn)btn.textContent=chu})',
+    // mở khoá TRƯỚC rồi mới vẽ lại, vì giftDraw đang chặn khi GIFTBUSY
+    '.then(function(){GIFTBUSY=false;giftBtnLock(false);giftSync()})}',
     'function isSync(){api("/api/itemshop/state").then(function(j){IS=j;',
     '$("isStat").textContent=j.items.length+" món · ví "+vnd(j.balance);',
     '$("isLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - item giao thẳng vào túi (phải đang ONLINE trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới mua được";',
@@ -3287,8 +3296,8 @@ const PAGE = [
     'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" Dogcoin / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+isBuyRow(it)+"</div>"}',
     // ⭐ 11/09: nhóm QUAN TRỌNG mua 1 lần/người -> không ô số lượng; đã mua -> nút "✅ ĐÃ MUA" khoá
-    'function isBuyRow(it){if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
-    'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\')\\">🛒 Mua</button></div>"}',
+    'function isBuyRow(it){if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
+    'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua</button></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
     'function isImpLeft(){return IS&&IS.implantMax>0?Math.max(0,IS.implantMax-(IS.implantToday||0)):-1}',
@@ -3299,7 +3308,7 @@ const PAGE = [
     'function isOnceLine(it){if(!IS||!isOnceCat(it.cat))return "";return isOnceBought(it)?"<div class=\\"isNote\\" style=\\"color:#8fd18f\\">✅ Bạn đã mua món này - mỗi người chỉ 1 lần</div>":"<div class=\\"isNote\\" style=\\"color:#ffd76a\\">⭐ Mỗi người chỉ mua được 1 lần duy nhất</div>"}',
     'function isImpLine(it){var gg=isGrpQ(it);if(gg&&it.cat!=="implant"&&!isOnceCat(it.cat)){var gl=isGrpLeft(it),sv=gg.mode==="server";var un=gg.per==="item"?("món "+esc(it.name)):"món nhóm này (mọi loại gộp)";return "<div class=\\"isNote\\" style=\\"color:"+(gl?"#8fd18f":"#ff8a80")+"\\">🗂️ "+(gl?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+gl.toLocaleString()+"/"+gg.max.toLocaleString()+" "+un+(sv?" - ai nhanh thì được":""):(sv?"cả server":"bạn")+" đã mua đủ "+gg.max.toLocaleString()+" "+un+" hôm nay - mai quay lại")+"</div>"}if(!IS||it.cat!=="implant")return isOnceLine(it);if(isWT(it)){if(!(IS.wtMax>0))return "";var w=isWtLeft();return "<div class=\\"isNote\\" style=\\"color:"+(w?"#8fd18f":"#ff8a80")+"\\">🌳 "+(w?"hôm nay bạn còn mua được "+w+"/"+IS.wtMax+" implant Cây Thế Giới":"hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")+"</div>"}if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant (mọi loại gộp)":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
     'function isDayLine(it){var imp=isImpLine(it);if(!IS||!(IS.dayMax>0)||it.cat==="implant"||isOnceCat(it.cat)||isGrpQ(it))return imp;var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return imp+"<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
-    'function isRender(){if(!IS)return;var cat=isCatGet();if(isOnceCat(cat)&&!IS.items.some(function(it){return (it.cat||"consume")===cat&&!isOnceBought(it)}))cat="consume";var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
+    'function isRender(){if(!IS||ISBUSY)return;var cat=isCatGet();if(isOnceCat(cat)&&!IS.items.some(function(it){return (it.cat||"consume")===cat&&!isOnceBought(it)}))cat="consume";var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
     // hàng nút nhóm (đếm số món từng nhóm, nhóm đang xem sáng lên)
     'var cb=$("isCats");if(cb)cb.innerHTML=ISG.map(function(g){var n=IS.items.filter(function(it){return (it.cat||"consume")===g[0]&&!isOnceBought(it)}).length;',
     'if(isOnceCat(g[0])&&!n)return "";return "<button class=\\"isCatBtn"+(g[0]===cat&&!q?" on":"")+"\\" onclick=\\"isCatPick(\'"+g[0]+"\')\\">"+g[1]+" <span>("+n+")</span></button>"}).join("");',
@@ -3311,12 +3320,16 @@ const PAGE = [
     'rows.forEach(function(it){h+=isCard(it)});',
     'if(!rows.length)h="<div class=\\"muted\\" style=\\"margin-top:10px\\">Nhóm này chưa có món nào.</div>"}',
     '$("isList").innerHTML=h}',
-    'async function isBuy(id){if(ISBUSY||!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
+    // 🛒 15/09: khoá mọi nút mua khi đang giao, đổi chữ nút vừa bấm cho biết đang chạy
+    'function isBtnLock(on,btn){var bs=document.querySelectorAll("#isList .isBuyRow button");',
+    'for(var i=0;i<bs.length;i++){if(bs[i].dataset.done)continue;bs[i].disabled=on;bs[i].style.opacity=(on&&bs[i]!==btn)?.5:1}}',
+    'async function isBuy(id,btn){if(ISBUSY){toast("⏳ Đang giao đơn trước - chờ chút nhé");return}if(!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
     'if(isOnceCat(it.cat)&&isOnceBought(it))return toast("⭐ Bạn đã mua món này rồi - mỗi người chỉ 1 lần");',
     'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant (mọi loại gộp)":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này (mọi loại gộp)";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
-    'ISBUSY=true;api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;toast("❌ "+e.message);isSync()})}',
+    'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent="⏳ Đang giao vào game...";',
+    'api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;isBtnLock(false);if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;isBtnLock(false);if(btn)btn.textContent=chu;toast("❌ "+e.message);isSync()})}',
     '',
     // ===== 🚀 PHI THUYỀN (crash game, 28/08) - vòng chơi chung, số nhân đồng bộ giờ server =====
     'var SPM=null,SPMOFF=0,SPMBUSY=false,SPMTIMER=null,SPMANIM=null,SPMRID=0,SPMSEEN={},SPMFRESH=false;',

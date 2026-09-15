@@ -670,6 +670,18 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — ⏳ **Nút "Nhận quà" và "Mua" giờ khoá + báo rõ khi đang giao** (chủ server: "bấm là nhận, không có hiệu
+  ứng disable nút hoặc đang giao đồ vô nên không biết khi nào xong, dễ bấm spam crash game").
+  Nút quà **đã có** khoá (`GIFTBUSY` + `btn.disabled`) nhưng khoá đó **vô dụng** vì 3 lý do: ① không đổi chữ nên nhìn y như chưa
+  bấm; ② vòng tự làm mới 30 giây gọi `giftDraw()` vẽ LẠI cả danh sách → nút đang khoá bị thay bằng nút mới còn bấm được;
+  ③ bấm lúc đang giao bị chặn **im lặng**, người chơi tưởng đơ nên bấm tiếp.
+  ✅ Nay: nút đổi thành **"⏳ Đang giao vào game..."**, **mọi nút quà khác mờ đi + khoá**, `giftDraw()` **không vẽ lại** khi đang
+  giao, bấm thêm thì hiện toast "Đang giao quà vào game - chờ chút nhé", giao hỏng thì trả lại chữ cũ để bấm lại.
+  🛒 **Sửa luôn nút Mua ở Shop Item** - dính y hệt và chỗ đó còn **trừ tiền thật**: thêm `isBtnLock()`, đổi chữ nút, chặn
+  `isRender()` khi `ISBUSY`, và báo toast thay vì thoát im lặng. Truyền `this` vào `isBuy(id, btn)` để biết nút nào vừa bấm.
+  🔒 **Phía bot vốn đã an toàn** - đã kiểm lại và thêm test: `giftClaim` gọi `deliverBusy()`/`deliverLock()` **TRƯỚC** lệnh chờ
+  `await requireOnline`, nên 2 lần bấm không thể cùng lọt qua; quà còn `giftMark` trước khi giao. Lỗi thuần giao diện.
+  ✅ `giftstoretest.js` lên **42 case** (thêm 10 case cho phần khoá nút 2 bên + thứ tự khoá ở server).
 - **15/09 (chiều)** — 🔌 **Công tắc bật/tắt từng chức năng của người chơi** (chủ server: "thêm nút tắt mở các chức năng của
   người chơi, hiện tại mình muốn tắt tab chọn pal").
   🎛️ **10 mục bật/tắt được**: 🎲 Tài Xỉu · 💣 Dò Mìn · 🪜 Leo Thang · 🎡 Vòng Quay · 📈 Cổ phiếu · 🚀 Phi Thuyền · 🎁 Quay Pal ·
