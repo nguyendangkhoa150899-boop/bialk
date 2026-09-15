@@ -666,7 +666,9 @@ const PAGE = [
     // liếc nhanh rất dễ bấm nhầm CHẴN với LẺ). Cùng tông với dòng small bên dưới.
     '.cbtn.tai{color:#a32626}.cbtn.xiu{color:#1d4f8f}.cbtn.chan{color:#156b4c}.cbtn.le{color:#63389b}',
     '.cbtn.bao{margin:10px 0;font-size:23px;letter-spacing:1px;background:linear-gradient(180deg,#ffe9a8 0%,#f2d071 55%,#d3ab45 100%);border:2px solid #a8842f;border-bottom:6px solid #7d5f1e;color:#3d2c05;animation:baoPulse 2.2s ease-in-out infinite}',
-    '.cbtn.bao small{color:#8a4a12;font-size:13.5px;letter-spacing:0;padding:0 6px}',
+    '.cbtn.bao small{color:#8a4a12;font-size:clamp(11px,3.4vw,13.5px);letter-spacing:0;padding:0 6px}',
+    // 15/09: mỗi chú thích đúng 1 hàng - khoá nowrap, chữ đã co theo màn hình ở trên nên không cần cắt bớt
+    '.cbtn.bao small .bl{display:block;white-space:nowrap}',
     '@keyframes baoPulse{0%,100%{box-shadow:0 0 0 0 #ffcf5c00}50%{box-shadow:0 0 16px 3px #ffcf5c77}}',
     // popup +/- tiền sau mỗi ván mình có đặt
     '#winpop{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-size:46px;font-weight:900;pointer-events:none;opacity:0;z-index:98;text-shadow:0 2px 14px #000c}',
@@ -1312,7 +1314,7 @@ const PAGE = [
     '<button class="cbtn xiu" id="c_xiu" onclick="pick(\'xiu\')">XỈU<small>4 - 10</small><div class="muted" id="t_xiu">0</div></button>',
     '</div>',
     '<button class="cbtn bao" id="c_bao" style="width:100%" onclick="pick(\'bao\')">🌪️ BÃO<span id="baoPot">HŨ -</span>',
-    '<small>Bão 1-1-1/2-2-2/3-3-3 = <b>XỈU</b> · 4-4-4/5-5-5/6-6-6 = <b>TÀI</b><br>Đặt <b>ĐÚNG bên</b> với Bão được hoàn <b>30%</b> tiền cược, đặt sai mất hết</small>',
+    '<small><span class="bl">Bão 111, 222, 333 = <b>XỈU</b> · 444, 555, 666 = <b>TÀI</b></span><span class="bl">Đặt đúng cửa Bão hoàn <b>30%</b> xu, sai mất hết</span></small>',
     '<div id="baoCalc"></div>',
     '<div class="muted" id="t_bao">0</div></button>',
     '<div class="grid2">',

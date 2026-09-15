@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09** — 📱 **Nút Bão trên điện thoại: mỗi chú thích đúng 1 hàng** (chủ server gửi ảnh iPhone: "ở mobile đang bị xuống
+  dòng, giúp mình viết lại text ... mỗi chú thích nằm trên 1 hàng thôi").
+  Chữ viết gọn theo đúng câu chủ server đưa: **"Bão 111, 222, 333 = XỈU · 444, 555, 666 = TÀI"** và **"Đặt đúng cửa Bão hoàn
+  30% xu, sai mất hết"**. Mỗi câu bọc trong `<span class="bl">` là một khối riêng có `white-space:nowrap`, cỡ chữ đổi sang
+  `clamp(11px, 3.4vw, 13.5px)` để tự co theo bề ngang: iPhone 375px ra ~12.7px, máy 320px xuống 11px vẫn đủ chỗ cho câu dài
+  nhất (~44 ký tự), máy to thì giữ 13.5px như cũ. Không dùng cắt bớt bằng dấu ba chấm vì sẽ mất chữ "TÀI" ở cuối câu.
+  ✅ `txpottest.js` cập nhật 2 assertion theo chữ mới + 1 assertion kiểm đúng 2 khối `.bl`, nowrap, và clamp.
 - **14/09** — 🔴 **SỬA: tab Nợ ra màu vàng chứ không đỏ** (chủ server gửi ảnh: "ô nợ này cho thành màu đỏ") **+ hạ nghỉ
   cầu cứu 10 phút → 1 phút** ("cho 1 phút bấm 1 lần nữa").
   Lại là bẫy độ ưu tiên CSS, lần này ở hướng khác: `#navDebt` chỉ có **id** nên điểm 100, thua `#nav button` có **id + thẻ**
