@@ -670,6 +670,11 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (tối)** — 🖐️ **Dải Quay Pal: xáo ngẫu nhiên thay xếp theo ID; đã quay 1 lượt là hết kéo tới khi F5** (chủ server:
+  "khi quay xong không cho kéo nữa, pal kéo là random không cần xếp theo ID, trừ khi F5 mới cho kéo lại").
+  ✅ `pwIdleList()` = Fisher-Yates trên `PW.pals` (283 ô, 2 Mimog rơi chỗ ngẫu nhiên). `PWSPUN` (biến trang, không lưu) bật
+  trong `pwSpin()` → `pointerdown`/`wheel` bỏ qua, `#pwWrap.nodrag{cursor:default}`, dòng thống kê đổi thành "đã quay - F5 để
+  kéo dải xem lại". Đổi tab rồi quay lại vẫn khoá (đúng ý: chỉ F5 mới mở). `mimogtest.js` 101 case.
 - **15/09 (tối)** — 💰 **Hạ hũ Mimog 50.000 → 25.000 (+10.000 thưởng = 35.000), thẻ chỉ còn dòng "💰 Mimog"** (chủ server sau khi
   nghe con số 21%: "hạ xuống nổ hũ 25.000 + 10.000; bỏ chữ Ô NỔ HŨ ở dưới, chỉ cần dòng Mimog với icon").
   ✅ `PALWHEEL_JACKPOT_POT = 25000`. Kỳ vọng nhà cái trả **35.000×2/283 ≈ 247/vé 2.000 = 12,4%** (gần bằng bản 1 ô/60.000 là
