@@ -670,6 +670,28 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09** — 🎁 **Nhóm shop "ADMIN TẶNG" (quà mỗi ngày) + tab 🎁 Quà vàng ở Hồ sơ + đổi tên 2 nhóm** (chủ server: "đổi tên
+  🧱 Nguyên liệu → Nguyên liệu cho Pal, 🧪 Tiêu hao → Thương nhân, thêm icon; thêm 1 mục admin tặng đồ, nhận vào game xong vật
+  phẩm bị xóa, admin nhập số lượng, ẩn hiện như Quan trọng" → sau chốt lại: "nhận xong qua ngày mới có thể nhận lại, admin bật
+  tắt được" → rồi: "nó nằm ở phần hồ sơ luôn, ô màu vàng, mua hết ẩn đi như phần nợ, qua ngày mới lại hiện").
+  🔤 **Đổi tên**: `material` → **🐾 Nguyên liệu cho Pal**, `consume` → **🏪 Thương nhân** - ở thanh nhóm trên web, ô chọn nhóm và
+  bảng hạn nhóm trong panel. Mã nhóm giữ nguyên nên món cũ không phải sửa.
+  🎁 **Nhóm `gift`** (thêm vào `ITEM_SHOP_CATS`): admin tạo món như thường, chọn nhóm 🎁, giá để **0** (web hiện "Miễn phí"),
+  cột **Max** = **số cái tặng mỗi lần**. Luật trong `itemShopBuy`: người chơi không chọn số lượng - server **tự lấy `it.max`**
+  (bỏ qua số client gửi); **mỗi người mỗi ngày nhận 1 lần** theo ngày VN (`giftTakenToday/giftMark/giftTakenIds`, lưu
+  `u.shopGift[id] = 'YYYY-MM-DD'`), khác nhóm ⭐ là vĩnh viễn (`shopOnce`). Giao hỏng thì gỡ dấu để nhận lại ngay. Miễn hạn
+  ngày chung và hạn nhóm. Bật/tắt từng món bằng ô **Bán** sẵn có (`it.off` → coi như không tồn tại). Web nhận danh sách
+  "đã lấy" = ⭐ vĩnh viễn + 🎁 đã nhận hôm nay để khoá nút và ẩn nhóm.
+  🟡 **Tab 🎁 Quà** trong nhóm Hồ sơ, ngay sau tab đỏ Nợ, trước Cá nhân. Chỉ hiện khi **còn quà chưa nhận hôm nay** (đếm
+  `cat gift && !off && chưa lấy`), ghi kèm số món; nhận hết là **ẩn** và nếu đang đứng ở trang Quà thì tự về Cá nhân, y như tab
+  Nợ. Trạng thái shop giờ nạp **ngay khi vào + 30 giây/lần** ở mọi trang (trước chỉ nạp khi mở Shop) nên **qua 00:00 tab tự
+  hiện lại** mà không cần F5. Trang Quà dùng lại đúng thẻ món của shop (`isCard`), nút "🎁 Nhận quà (xN)" / "✅ ĐÃ NHẬN HÔM
+  NAY - mai nhận lại". CSS viết `#nav button#navGift` cho đúng độ ưu tiên (bài học tab Nợ hôm qua).
+  ✅ Bộ test mới `gifttest.js` **37 case** chạy `itemShopBuy` thật với mod giao đồ giả và ngày VN giả: giao đúng Max, giá 0 không trừ
+  ví, cùng ngày nhận lần 2 bị chặn, **đổi ngày là nhận lại được**, người khác độc lập, quà có giá tính tiền theo Max, món tắt
+  không nhận được, giao hỏng gỡ dấu, nhóm ⭐ vẫn vĩnh viễn, món thường không ảnh hưởng, và toàn bộ mảnh UI/panel/tab.
+  Các bộ cũ vẫn xanh: shopcard 33, nợ 60, hũ Bão 91, cầu Dogcoin 38, CSS/scope/page sạch. Bot test chạy lại không lỗi, cả 2
+  trang phục vụ đủ nhãn mới + tab Quà.
 - **15/09** — 📱 **Nút Bão trên điện thoại: mỗi chú thích đúng 1 hàng** (chủ server gửi ảnh iPhone: "ở mobile đang bị xuống
   dòng, giúp mình viết lại text ... mỗi chú thích nằm trên 1 hàng thôi").
   Chữ viết gọn theo đúng câu chủ server đưa: **"Bão 111, 222, 333 = XỈU · 444, 555, 666 = TÀI"** và **"Đặt đúng cửa Bão hoàn

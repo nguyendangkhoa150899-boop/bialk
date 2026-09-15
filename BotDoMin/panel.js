@@ -1590,7 +1590,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card">
         <h3>🛒 Shop Item - item giao thẳng vào game</h3>
-        <div class="note">Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
+        <div class="note">🎁 <b>Admin tặng</b> (15/09): chọn nhóm này, để giá <b>0</b>, cột <b>Max</b> = số cái tặng mỗi lần - mỗi người <b>mỗi ngày nhận 1 lần</b> (qua 00:00 nhận lại), nhận xong món ẩn khỏi shop của người đó tới hết ngày. Bật/tắt từng món bằng ô <b>Bán</b>. Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
           <span>📅 Giới hạn mua <b>mỗi món / ngày</b>:</span>
           <input class="mini-in" id="isDayMax" type="number" min="0" max="100000" placeholder="99" style="width:90px">
@@ -2694,7 +2694,7 @@ function itemShopFill(){
 var ISDIRTY=false,ISSIG='';
 // 📅 10/09: giới hạn mua mỗi món/người/ngày (SUPER)
 // 🗂️ bảng hạn theo nhóm (12/09 v2)
-const GQ_CATS=[["weapon","🗡️ Vũ khí"],["armor","🛡️ Giáp"],["consume","🧪 Tiêu hao"],["accessory","💍 Phụ kiện"],["food","🍖 Thức ăn"],["ammo","🔫 Đạn"],["material","🧱 Nguyên liệu"]];
+const GQ_CATS=[["weapon","🗡️ Vũ khí"],["armor","🛡️ Giáp"],["consume","🏪 Thương nhân"],["accessory","💍 Phụ kiện"],["food","🍖 Thức ăn"],["ammo","🔫 Đạn"],["material","🐾 Nguyên liệu cho Pal"]];   // 15/09 đổi tên 2 nhóm
 function gqRender(){const box=document.getElementById('isGroupQuota');if(!box||box.dataset.built)return;box.dataset.built='1';
   box.innerHTML=GQ_CATS.map(g=>'<div style="display:flex;align-items:center;gap:5px;border:1px solid #2a3142;border-radius:8px;padding:5px 8px"><span style="font-size:12px;min-width:96px">'+g[1]+'</span>'+
     '<select class="mini-in" id="gqm_'+g[0]+'" style="width:auto"><option value="user">👤 cá nhân</option><option value="server">🌐 toàn server</option></select>'+
@@ -2729,7 +2729,7 @@ function itemShopAddRow(it){
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="isf-on" style="width:auto;margin:0" title="Đang bán / ẩn" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45"></td>'
     +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
-    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🧪 Tiêu hao</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🧱 Nguyên liệu</option><option value="implant">🧬 Implant</option><option value="important">⭐ Quan trọng (mua 1 lần)</option></select></td>'
+    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🏪 Thương nhân</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🐾 Nguyên liệu cho Pal</option><option value="implant">🧬 Implant</option><option value="important">⭐ Quan trọng (mua 1 lần)</option><option value="gift">🎁 Admin tặng (mỗi ngày 1 lần, số lượng = Max)</option></select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
     +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
     +'<td><input class="mini-in isf-note" style="width:200px" placeholder="tác dụng (hiện trên web + search được)"></td>'
@@ -2742,7 +2742,7 @@ function itemShopAddRow(it){
   tr.querySelector('.isf-id').value=it.id||'';
   tr.querySelector('.isf-name').value=it.name||'';
   // 08/09: thiếu 'accessory' → mọi phụ kiện nạp lên form thành Tiêu hao, bấm Lưu là mất nhóm cả 38 món
-  tr.querySelector('.isf-cat').value=['weapon','armor','accessory','food','ammo','material','implant','important'].includes(it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material + implant · 11/09 important
+  tr.querySelector('.isf-cat').value=['weapon','armor','accessory','food','ammo','material','implant','important','gift'].includes(it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material + implant · 11/09 important
   tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
   tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
   tr.querySelector('.isf-note').value=it.note||'';

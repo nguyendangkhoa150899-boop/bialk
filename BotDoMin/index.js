@@ -1727,7 +1727,7 @@ function uploadItemImage(fileName, dataB64) {
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 // 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
-const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant', 'important'];   // 10/09 +material +implant · 11/09 +important (⭐ mua 1 lần)
+const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant', 'important', 'gift'];   // 15/09 +gift (🎁 admin tặng, nhận 1 lần, số lượng = Max)   // 10/09 +material +implant · 11/09 +important (⭐ mua 1 lần)
 function itemShopList() {
     const arr = dbCache._itemShop;
     return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
@@ -1930,10 +1930,14 @@ function itemShopWebList() {
     // trong CÙNG bậc implant: giá cao xếp trước (chủ server 10/09: "12000 xếp trước 8000"); nhóm khác giữ thứ tự admin
     const priceKey = (x) => x.cat === 'implant' ? -(Number(x.price) || 0) : 0;
     return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (priceKey(a[0]) - priceKey(b[0])) || (a[1] - b[1]))
-        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : (a[0].cat === 'important' ? { ...a[0], tier: importantTier(a[0].id) } : a[0]));   // web tô màu theo tier
+        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : ((a[0].cat === 'important' || a[0].cat === 'gift') ? { ...a[0], tier: importantTier(a[0].id) } : a[0]));   // web tô màu theo tier
 }
 // ⭐ 11/09: nhóm QUAN TRỌNG - mỗi người mua ĐÚNG 1 lần, vĩnh viễn. user.shopOnce = { itemId: timestamp }.
 function shopOnceBought(user, id) { return !!(user.shopOnce && user.shopOnce[id]); }
+// 🎁 15/09: quà admin - dấu "đã nhận" THEO NGÀY (giờ VN). Nhận rồi thì tới 00:00 mới nhận lại được.
+function giftTakenToday(user, id) { return !!(user.shopGift && user.shopGift[id] === vnDayISO(Date.now())); }
+function giftMark(user, id, on) { if (!user.shopGift || typeof user.shopGift !== 'object') user.shopGift = {}; if (on) user.shopGift[id] = vnDayISO(Date.now()); else delete user.shopGift[id]; }
+function giftTakenIds(user) { const t = vnDayISO(Date.now()); return Object.entries(user.shopGift || {}).filter(([, d]) => d === t).map(([id]) => id); }
 function shopOnceMark(user, id, on) { if (!user.shopOnce || typeof user.shopOnce !== 'object') user.shopOnce = {}; if (on) user.shopOnce[id] = Date.now(); else delete user.shopOnce[id]; }
 // màu card web cho nhóm ⭐: theo độ hiếm item trong gameitems (r 3 = tím, r ≥ 4 = vàng)
 function importantTier(id) { const gi = (typeof gameItems === 'function' ? gameItems() : []).find(x => x && x.id === id); const r = gi ? Number(gi.r) : 0; return r >= 4 ? 'gold' : (r === 3 ? 'purple' : 'normal'); }
@@ -1958,15 +1962,21 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if (!it || it.off) return { error: 'Không thấy món này trong shop' };   // 09/09: món đang tắt bán coi như không có
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1 || qty > it.max) return { error: `Số lượng phải trong 1–${it.max}` };
-    const cost = it.price * qty;
+    let cost = it.price * qty;
     const user = getUserData(userId);
     // 📅 giới hạn/ngày (kiểm TRƯỚC khi trừ tiền / mở SFTP)
     // 🧬 implant: hạn riêng theo người, mọi loại gộp
     // ⭐ QUAN TRỌNG: mỗi người 1 lần, số lượng luôn 1, miễn hạn ngày chung
-    const isOnce = it.cat === 'important';
+    // 🎁 ADMIN TẶNG (15/09): cũng 1 lần/người như ⭐, nhưng SỐ LƯỢNG do admin đặt ở cột Max -
+    // người chơi không chọn, server tự lấy it.max (bỏ qua số client gửi lên).
+    const isGift = it.cat === 'gift';
+    const isOnce = it.cat === 'important' || isGift;
     if (isOnce) {
-        if (shopOnceBought(user, it.id)) return { error: `⭐ ${it.name}: mỗi người chỉ mua được 1 LẦN - bạn đã mua rồi` };
-        if (qty !== 1) return { error: `⭐ ${it.name} mỗi người chỉ mua 1 cái duy nhất - đặt số lượng 1` };
+        if (isGift ? giftTakenToday(user, it.id) : shopOnceBought(user, it.id)) {
+            return { error: isGift ? `🎁 ${it.name}: hôm nay bạn đã nhận rồi - qua 00:00 nhận lại được` : `⭐ ${it.name}: mỗi người chỉ mua được 1 LẦN - bạn đã mua rồi` };
+        }
+        if (isGift) { qty = Math.max(1, Math.floor(Number(it.max) || 1)); cost = it.price * qty; }
+        else if (qty !== 1) return { error: `⭐ ${it.name} mỗi người chỉ mua 1 cái duy nhất - đặt số lượng 1` };
     }
     const isImplantCat = it.cat === 'implant';
     const isWt = isImplantCat && isWtImplant(it.id);
@@ -2026,7 +2036,8 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if (imp) imp.n += qty;                       // 🧬 hạn implant/người
     if (wt) wt.n += qty;                         // 🌳 hạn Cây Thế Giới/người
     if (gCnt) gCnt.n[gqKey] = (gCnt.n[gqKey] || 0) + qty;   // 🗂️ hạn nhóm (key theo per)
-    if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
+    if (isGift) giftMark(user, it.id, true);           // 🎁 đánh dấu đã nhận HÔM NAY
+    else if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
     saveDbNow();
     let r = null, err = null;
@@ -2034,7 +2045,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     deliverUnlock();   // 🚦 SFTP xong -> mở khoá
     if (r && r.ok) {
         writeLog('ADMIN', `[SHOP ITEM] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} (-${cost})`);
-        return { ok: true, message: `✅ Đã giao ${qty.toLocaleString()} ${it.name} vào túi ${gameName} trong game!`, balance: getUserData(userId).points || 0 };
+        return { ok: true, message: `${isGift ? '🎁 Đã nhận quà:' : '✅ Đã giao'} ${qty.toLocaleString()} ${it.name} vào túi ${gameName} trong game!`, balance: getUserData(userId).points || 0 };
     }
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
     // CHẮC CHẮN chưa giao (dashboard chết / mod báo không thấy người) -> hoàn ngay
@@ -2044,7 +2055,8 @@ async function itemShopBuy(userId, itemId, qty, username) {
         if (imp) imp.n = Math.max(0, imp.n - qty);
         if (wt) wt.n = Math.max(0, wt.n - qty);
         if (gCnt) gCnt.n[gqKey] = Math.max(0, (gCnt.n[gqKey] || 0) - qty);   // 🗂️ chưa giao -> trả lượt
-        if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
+        if (isGift) giftMark(user, it.id, false);          // 🎁 chưa giao -> cho nhận lại
+        else if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();
         return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã hoàn ${cost.toLocaleString()} Dogcoin` };
@@ -5877,7 +5889,7 @@ client.once('ready', async (c) => {
                     dayMode: itemShopDayMode(),                      // 📅 'server' (gộp cả server) | 'user' (mỗi người)
                     implantMax: itemShopImplantMax(),                // 🧬 mỗi người tối đa N implant/ngày (0 = không)
                     implantToday: implantToday(getUserData(uid)).n,  // 🧬 đã mua hôm nay
-                    once: Object.keys((getUserData(uid).shopOnce) || {}),   // ⭐ id đã mua 1 lần
+                    once: Object.keys((getUserData(uid).shopOnce) || {}).concat(giftTakenIds(getUserData(uid))),   // ⭐ id đã mua 1 lần + 🎁 quà đã nhận hôm nay
                     wtMax: itemShopWtMax(),                          // 🌳 Cây Thế Giới: mỗi người tối đa N/ngày
                     wtToday: wtToday(getUserData(uid)).n,
                     groupQuota: itemShopGroupQuota(),                // 🗂️ {cat:{mode:'server'|'user',max}}
