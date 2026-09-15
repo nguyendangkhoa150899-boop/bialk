@@ -670,6 +670,14 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — 📒 **Đang nợ thì KHÔNG nhận được quà admin** (chủ server: "check giùm nếu có nợ được nhận quà admin
+  không, nếu có thì không cho nhận luôn"). Kiểm tra: **có, đang nợ vẫn nhận được** - lỗ hổng do chính đợt tách quà sáng nay.
+  🐛 Khi tách quà ra kho riêng, `giftClaim()` là đường đi **mới hoàn toàn** và quên gắn `debtBlock()`. `itemShopBuy` và
+  `palChestClaim` đều có chốt nợ, riêng quà thì không - nên người đang nợ vẫn lấy đồ vào game được, đúng thứ luật nợ muốn cấm.
+  ✅ Thêm `debtBlock(userId, 'nhận quà admin tặng')` ở **ĐẦU** `giftClaim`, **trước** cả bước kiểm "hôm nay đã nhận chưa" -
+  nhờ vậy người đang nợ bấm nhầm **không bị đánh dấu đã nhận**, trả sạch nợ là nhận lại được ngay trong ngày.
+  ✅ `giftstoretest.js` lên **46 case** (thêm 4: đang nợ bị chặn đúng câu, không giao món nào, không bị đánh dấu, sạch nợ nhận
+  bình thường). Thử thật trên bot test: ghi nợ 5.000 → chặn đúng câu; xoá nợ → quà vẫn còn nguyên chưa bị đánh dấu.
 - **15/09 (chiều)** — 🩹 **Chữa luôn cột GHI CHÚ mất dấu, không chỉ cột tên** (chủ server gửi ảnh panel prod: "hiện tại ở prod
   đang bị 23 chỗ lỗi này" - ký tự hỏng nằm trong ghi chú: "Giảm tiêu hao thể ���c", "hông biến m���t khi đến").
   🐛 Hàm `itemShopRepairNames()` làm sáng nay **chỉ chữa `name`**, bỏ sót `note` - nên bot có restart bao nhiêu lần ghi chú vẫn hỏng.

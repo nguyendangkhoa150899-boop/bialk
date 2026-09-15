@@ -1822,6 +1822,11 @@ function giftWebList(user) {
     return giftList().filter(g => !g.off).map(g => ({ gid: g.gid, id: g.id, name: g.name, qty: g.qty, img: g.img, note: g.note, taken: giftTakenToday(user, g.gid) }));
 }
 async function giftClaim(userId, gid, username) {
+    // 📒 15/09: CÒN NỢ thì không nhận quà (chủ server chốt) - cùng luật với mua shop item và
+    // chuyển pal vào game. Chặn ở ĐẦU hàm, trước cả kiểm "đã nhận hôm nay", để người đang nợ
+    // không bị đánh dấu nhầm là đã nhận.
+    const dbErr = debtBlock(userId, 'nhận quà admin tặng');
+    if (dbErr) return { error: dbErr };
     const g = giftList().find(x => x.gid === String(gid || ''));
     if (!g || g.off) return { error: 'Quà này không còn' };
     const user = getUserData(userId);
