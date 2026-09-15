@@ -2044,15 +2044,32 @@ function itemShopNameLooksBroken(name) { return /\uFFFD|\?/.test(String(name || 
 function itemShopRepairNames() {
     const L = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     const gi = (typeof gameItems === 'function' ? gameItems() : []) || [];
+    const DEF = (typeof DEFAULT_ITEM_SHOP !== 'undefined' ? DEFAULT_ITEM_SHOP : []);
     let n = 0;
     for (const it of L) {
-        if (!it || !itemShopNameLooksBroken(it.name)) continue;
-        const def = (typeof DEFAULT_ITEM_SHOP !== 'undefined' ? DEFAULT_ITEM_SHOP : []).find(x => x && x.id === it.id);
+        if (!it) continue;
+        const def = DEF.find(x => x && x.id === it.id);
         const g = gi.find(x => x && x.id === it.id);
-        const good = (def && def.name && !itemShopNameLooksBroken(def.name)) ? def.name : (g && g.n && !itemShopNameLooksBroken(g.n) ? g.n : null);
-        if (!good) continue;
-        writeLog('SYSTEM', `[SHOP ITEM] Sửa tên mất dấu: ${it.id} "${it.name}" -> "${good}"`);
-        it.name = good; n++;
+        // TÊN
+        if (itemShopNameLooksBroken(it.name)) {
+            const good = (def && def.name && !itemShopNameLooksBroken(def.name)) ? def.name
+                : (g && g.n && !itemShopNameLooksBroken(g.n) ? g.n : null);
+            if (good) {
+                writeLog('SYSTEM', `[SHOP ITEM] Sửa tên mất dấu: ${it.id} "${it.name}" -> "${good}"`);
+                it.name = good; n++;
+            }
+        }
+        // GHI CHÚ (15/09: prod dính 23 chỗ ở cột này, hàm cũ bỏ sót)
+        if (itemShopNameLooksBroken(it.note)) {
+            const goodNote = (def && def.note && !itemShopNameLooksBroken(def.note)) ? def.note
+                : (g && g.d && !itemShopNameLooksBroken(g.d) ? g.d : null);
+            if (goodNote) {
+                writeLog('SYSTEM', `[SHOP ITEM] Sửa ghi chú mất dấu: ${it.id} "${it.note}" -> "${goodNote}"`);
+                it.note = goodNote; n++;
+            } else {
+                writeLog('SYSTEM', `[SHOP ITEM] Ghi chú hỏng nhưng KHÔNG có bản chuẩn để lấy lại: ${it.id} "${it.note}" - admin sửa tay giúp`);
+            }
+        }
     }
     if (n) saveDbNow();
     return n;
@@ -5832,7 +5849,7 @@ client.once('ready', async (c) => {
     // 🎁 15/09 (chiều): dòng shop nhóm gift của bản sáng -> chuyển sang danh sách quà riêng
     try { giftMigrateFromShop(); } catch (e) { writeLog('SYSTEM', `[QUÀ TẶNG] Không chuyển được dòng cũ: ${e.message}`); }
     // 🩹 15/09: tên món shop bị mất dấu (lỗi bảng mã từ ngoài) -> tự chữa theo id
-    try { const nFix = itemShopRepairNames(); if (nFix) writeLog('SYSTEM', `[SHOP ITEM] Đã sửa ${nFix} tên món bị mất dấu lúc khởi động`); }
+    try { const nFix = itemShopRepairNames(); if (nFix) writeLog('SYSTEM', `[SHOP ITEM] Đã sửa ${nFix} chỗ mất dấu (tên + ghi chú) lúc khởi động`); }
     catch (e) { writeLog('SYSTEM', `[SHOP ITEM] Không sửa được tên món: ${e.message}`); }
     // 🀫 14/09: bot tắt ngay giữa lúc nặn thì bảng tiền ván dở còn nằm trong DB - người nặn sớm
     // đã nhận, người nặn muộn chưa. Trả nốt cho ai còn thiếu rồi mới dọn, không để ai mất trắng.

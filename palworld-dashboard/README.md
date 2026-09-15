@@ -670,6 +670,17 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **15/09 (chiều)** — 🩹 **Chữa luôn cột GHI CHÚ mất dấu, không chỉ cột tên** (chủ server gửi ảnh panel prod: "hiện tại ở prod
+  đang bị 23 chỗ lỗi này" - ký tự hỏng nằm trong ghi chú: "Giảm tiêu hao thể ���c", "hông biến m���t khi đến").
+  🐛 Hàm `itemShopRepairNames()` làm sáng nay **chỉ chữa `name`**, bỏ sót `note` - nên bot có restart bao nhiêu lần ghi chú vẫn hỏng.
+  ✅ Nay chữa cả hai trong một vòng: lấy lại theo **id** từ `DEFAULT_ITEM_SHOP` (36 implant + toàn bộ món gốc đều có note đúng),
+  không có thì lấy mô tả `d` trong `gameitems.json`. **Không có bản chuẩn thì GIỮ NGUYÊN và ghi log riêng** nhắc admin sửa tay,
+  tuyệt đối không bịa. Ghi chú **rỗng** không coi là hỏng nên không tự điền vào. Log tách 2 loại (tên / ghi chú) + tổng kết
+  "Đã sửa N chỗ mất dấu (tên + ghi chú)".
+  🧪 Thử bằng cách **làm hỏng y kiểu prod** trên bản sao dữ liệu bot test (29 ghi chú implant + món cũ): khởi động lại → bot
+  chữa **38 chỗ**, đếm lại còn **0 tên hỏng, 0 ghi chú hỏng** trên 157 món.
+  ✅ `repairtest.js` lên **29 case** (thêm 10: chữa ghi chú, không đụng ghi chú sạch, món hỏng cả tên lẫn ghi chú, không có bản
+  chuẩn thì giữ nguyên + báo admin, ghi chú rỗng bỏ qua, chạy lại không sửa thừa).
 - **15/09 (chiều)** — ⏳ **Nút "Nhận quà" và "Mua" giờ khoá + báo rõ khi đang giao** (chủ server: "bấm là nhận, không có hiệu
   ứng disable nút hoặc đang giao đồ vô nên không biết khi nào xong, dễ bấm spam crash game").
   Nút quà **đã có** khoá (`GIFTBUSY` + `btn.disabled`) nhưng khoá đó **vô dụng** vì 3 lý do: ① không đổi chữ nên nhìn y như chưa
