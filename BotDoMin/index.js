@@ -2121,7 +2121,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
     const imp = isImplant ? implantToday(user) : null;
     if (isImplant && impMax > 0 && imp.n + qty > impMax) {
         const left = Math.max(0, impMax - imp.n);
-        return { error: left ? `🧬 Implant mỗi người chỉ mua tối đa ${impMax} cái/ngày (mọi loại gộp) - hôm nay bạn còn ${left}` : `🧬 Hôm nay bạn đã mua đủ ${impMax} implant - mai 00:00 mua tiếp` };
+        return { error: left ? `🧬 Implant mỗi người chỉ mua tối đa ${impMax} cái/ngày - hôm nay bạn còn ${left}` : `🧬 Hôm nay bạn đã mua đủ ${impMax} implant - mai 00:00 mua tiếp` };
     }
     // 🌳 Cây Thế Giới: hạn riêng nữa (mặc định 1/người/ngày), không ăn vào quota implant thường
     const wtMax = isWt ? itemShopWtMax() : 0;
@@ -2141,7 +2141,7 @@ async function itemShopBuy(userId, itemId, qty, username) {
         if (gn + qty > gq.max) {
             const left = Math.max(0, gq.max - gn);
             const sv = gq.mode === 'server';
-            const unit = gq.per === 'item' ? it.name : 'món nhóm này (mọi loại gộp)';
+            const unit = gq.per === 'item' ? it.name : 'món nhóm này';
             return { error: left
                 ? `🗂️ ${sv ? 'Cả server' : 'Mỗi người'} chỉ mua tối đa ${gq.max.toLocaleString()} ${unit}/ngày - hôm nay còn ${left.toLocaleString()}${sv ? ' (ai nhanh thì được)' : ''}`
                 : `🗂️ Hôm nay ${sv ? 'cả server' : 'bạn'} đã mua đủ ${gq.max.toLocaleString()} ${unit} - mai 00:00 mua tiếp` };

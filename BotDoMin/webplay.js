@@ -888,11 +888,16 @@ const PAGE = [
     '.pcActs button{flex:1;padding:10px;font-size:13px;font-weight:700}',
     '.pcActs .tag{flex:1;text-align:center;padding:9px;font-size:12px;border-radius:8px}',
     // 🛒 shop item
-    '.isItem{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px;background:#141824;display:flex;align-items:center;gap:12px;flex-wrap:wrap}',
-    '.isItem img{width:58px;height:58px;flex:0 0 58px;object-fit:contain;background:#1b2030;border:1px solid var(--line);border-radius:9px;padding:3px}',
-    '.isItem .isPh{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;font-size:30px;background:#1b2030;border:1px solid var(--line);border-radius:9px}',
-    '.isItem .isMeta{flex:1;min-width:120px}',
-    '.isItem .isNm{font-weight:800;font-size:15px}',
+    // 🛒 16/09: danh sách item = LƯỚI thẻ. Điện thoại hẹp -> 1 cột như cũ; máy tính -> 3-4 thẻ/hàng,
+    // đỡ phải cuộn dài. Đề mục nhóm + dòng "không thấy món nào" chiếm trọn hàng (grid-column:1/-1).
+    '#isList{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;align-items:start}',
+    '#isList>.isCat,#isList>.muted{grid-column:1/-1}',
+    '.isItem{border:1px solid var(--line);border-radius:14px;padding:12px;background:linear-gradient(180deg,#171c29,#131722);display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap;transition:border-color .15s,transform .15s}',
+    '.isItem:hover{border-color:#3a4155;transform:translateY(-1px)}',
+    '.isItem img{width:62px;height:62px;flex:0 0 62px;object-fit:contain;background:#1b2030;border:1px solid var(--line);border-radius:11px;padding:4px}',
+    '.isItem .isPh{width:62px;height:62px;flex:0 0 62px;display:flex;align-items:center;justify-content:center;font-size:30px;background:#1b2030;border:1px solid var(--line);border-radius:11px}',
+    '.isItem .isMeta{flex:1;min-width:110px}',
+    '.isItem .isNm{font-weight:800;font-size:15px;line-height:1.25}',
     // 🌳 10/09: implant Cây Thế Giới - viền + tên cầu vồng cho dễ nhận
     '.isItem.isWT{border:2px solid transparent;background:linear-gradient(#141824,#141824) padding-box,linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff) border-box}',
     '.isItem.isWT .isNm{background:linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff);-webkit-background-clip:text;background-clip:text;color:transparent}',
@@ -903,10 +908,13 @@ const PAGE = [
     '.isItem.isDone{opacity:.72}.isItem.isDone .isBuyRow button{background:#2e7d4f;cursor:default}',
     '.isTier{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle}',
     '.isTier.t4{background:#3fe0cf22;color:#3fe0cf}.isTier.t3{background:#ffd76a22;color:#ffd76a}.isTier.twt{background:#c85fff22;color:#e0b3ff}',
-    '.isItem .isPr{color:var(--gold);font-size:13px;font-weight:700;margin-top:2px}',
-    '.isItem .isBuyRow{display:flex;align-items:center;gap:8px}',
-    '.isItem .isQty{width:72px}',
-    '.isItem button{padding:9px 14px;font-weight:700;background:linear-gradient(180deg,#2f8f4f,#256e3e)}',
+    // giá: huy hiệu vàng cho nổi hẳn khỏi tên
+    '.isItem .isPr{display:inline-block;color:var(--gold);font-size:13px;font-weight:800;margin-top:5px;background:#3a2f0d;border:1px solid #6b5613;border-radius:7px;padding:2px 8px}',
+    // hàng mua nằm TRỌN đáy thẻ (width:100% ép xuống dòng riêng), nút chiếm hết chỗ còn lại
+    '.isItem .isBuyRow{display:flex;align-items:center;gap:8px;width:100%;margin-top:10px}',
+    '.isItem .isQty{width:66px;flex:0 0 66px;text-align:center}',
+    '.isItem .isBuyRow button{flex:1;padding:10px 12px;font-weight:800;border-radius:9px;background:linear-gradient(180deg,#2f8f4f,#256e3e)}',
+    '.isItem .isBuyRow button:disabled{opacity:.55}',
     // 🚀 Phi Thuyền (crash game)
     '#spmStage{position:relative;height:210px;border-radius:14px;margin-top:10px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 120%,#3a2a6e,#191233 70%);transition:background .3s}',
     '#spmStage.fly{background:radial-gradient(120% 100% at 50% 120%,#25407e,#0e1730 70%)}',
@@ -958,10 +966,17 @@ const PAGE = [
     '.isCat{margin:16px 0 8px;font-weight:800;font-size:14px;letter-spacing:.5px;border-bottom:1px solid var(--line);padding-bottom:5px}',
     '.isCat:first-child{margin-top:4px}',
     // 🛒 4 nút nhóm shop (07/09) + dòng ghi chú tác dụng trên card
-    '.isCatBtn{padding:9px 13px;border-radius:9px;border:1px solid var(--line);background:#181c28;color:var(--tx);font-weight:800;font-size:13px;cursor:pointer}',
-    '.isCatBtn span{color:var(--muted);font-weight:400;font-size:11.5px}',
+    '.isCatBtn{padding:9px 13px;border-radius:999px;border:1px solid var(--line);background:#181c28;color:var(--tx);font-weight:800;font-size:13px;cursor:pointer;transition:border-color .15s,background .15s}',
+    '.isCatBtn:hover{border-color:#3ddc84}',
+    '.isCatBtn span{color:var(--muted);font-weight:400;font-size:11.5px;background:#0e1220;border-radius:999px;padding:1px 7px;margin-left:3px}',
     '.isCatBtn.on{background:linear-gradient(180deg,#2f8f4f,#256e3e);border-color:#3ddc84;color:#fff}',
-    '.isCatBtn.on span{color:#c9f5d9}',
+    '.isCatBtn.on span{color:#c9f5d9;background:#0b2f1c}',
+    // 💖 16/09: nhóm ADMIN YÊU THƯƠNG - hồng, khác hẳn các nhóm bán hàng
+    '.isCatBtn.love{border-color:#ff7ab8;color:#ffd0e6}',
+    '.isCatBtn.love.on{background:linear-gradient(180deg,#d1457f,#a32d60);border-color:#ff7ab8;color:#fff}',
+    '.isCatBtn.love.on span{background:#4a1230;color:#ffd0e6}',
+    '.isItem.isLove{border-color:#ff7ab8;background:linear-gradient(180deg,#2a1622,#1a1119)}',
+    '.isItem.isLove .isNm{color:#ffb3d6}',
     '.isNote{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.35}',
     // 💸 chip chọn người nhận (chuyển tiền nhiều người 1 lần)
 // 🪙 14/09: khung tỉ lệ đổi vàng (icon Đồng Vàng -> Dogcoin)
@@ -1553,7 +1568,7 @@ const PAGE = [
     // 07/09: 4 nút nhóm + ô tìm kiếm (tìm theo tên LẪN ghi chú tác dụng, quét mọi nhóm)
     '<div id="isCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>',
     '<input id="isFind" placeholder="🔎 Tìm item theo tên hoặc tác dụng..." oninput="isRender()" style="width:100%;margin-top:8px">',
-    '<div id="isList" style="margin-top:10px"><div class="muted">Đang tải...</div></div>',
+    '<div id="isList" style="margin-top:12px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageShop
 
@@ -3357,13 +3372,13 @@ const PAGE = [
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
     // 07/09: shop kiểu 4 NÚT NHÓM - bấm nhóm nào hiện đồ nhóm đó (nhớ qua F5);
     // gõ ô tìm là quét TÊN + GHI CHÚ trên mọi nhóm (kèm đề mục nhóm cho khỏi lạc)
-    'var ISG=[["important","⭐ QUAN TRỌNG"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🏪 THƯƠNG NHÂN"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🐾 NGUYÊN LIỆU CHO PAL"],["implant","🧬 IMPLANT"]];',   // 15/09 +gift · đổi tên consume/material   // 09/09 +2 nhóm · 10/09 +material +implant
+    'var ISG=[["important","⭐ QUAN TRỌNG"],["admin","💖 ADMIN YÊU THƯƠNG &lt;3"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🏪 THƯƠNG NHÂN"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🐾 NGUYÊN LIỆU CHO PAL"],["implant","🧬 IMPLANT"]];',   // 15/09 +gift · đổi tên consume/material   // 09/09 +2 nhóm · 10/09 +material +implant
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
     'function isWT(it){return it.cat==="implant"&&/Consumable_WorldTree_/.test(it.id)}',
     'function isOnceCat(c){return c==="important"}',   // 15/09: quà 🎁 đã tách khỏi shop, chỉ còn ⭐
     'function isOnceBought(it){return !!(IS&&isOnceCat(it.cat)&&(IS.once||[]).indexOf(it.id)>=0)}',
-    'function isTierCls(it){return (isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))))+(isOnceBought(it)?" isDone":"")}',
+    'function isTierCls(it){return (isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))))+(it.cat==="admin"?" isLove":"")+(isOnceBought(it)?" isDone":"")}',
     'function isTierTag(it){return isWT(it)?"<span class=\\"isTier twt\\">🌈 CÂY THẾ GIỚI</span>":(it.tier==="diamond"?"<span class=\\"isTier t4\\">💎 KIM CƯƠNG</span>":(it.tier==="gold"?"<span class=\\"isTier t3\\">🥇 VÀNG</span>":""))}',
     'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" Dogcoin / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+isBuyRow(it)+"</div>"}',
@@ -3378,12 +3393,12 @@ const PAGE = [
     'function isGrpLeft(it){var g=isGrpQ(it);if(!g)return -1;var key=g.per==="item"?("i:"+it.id):it.cat;var used=((g.mode==="server"?IS.groupSrvToday:IS.groupToday)||{})[key]||0;return Math.max(0,g.max-used)}',
     'function isWtLeft(){return IS&&IS.wtMax>0?Math.max(0,IS.wtMax-(IS.wtToday||0)):-1}',
     'function isOnceLine(it){if(!IS||!isOnceCat(it.cat))return "";return isOnceBought(it)?"<div class=\\"isNote\\" style=\\"color:#8fd18f\\">✅ Bạn đã mua món này - mỗi người chỉ 1 lần</div>":"<div class=\\"isNote\\" style=\\"color:#ffd76a\\">⭐ Mỗi người chỉ mua được 1 lần duy nhất</div>"}',
-    'function isImpLine(it){var gg=isGrpQ(it);if(gg&&it.cat!=="implant"&&!isOnceCat(it.cat)){var gl=isGrpLeft(it),sv=gg.mode==="server";var un=gg.per==="item"?("món "+esc(it.name)):"món nhóm này (mọi loại gộp)";return "<div class=\\"isNote\\" style=\\"color:"+(gl?"#8fd18f":"#ff8a80")+"\\">🗂️ "+(gl?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+gl.toLocaleString()+"/"+gg.max.toLocaleString()+" "+un+(sv?" - ai nhanh thì được":""):(sv?"cả server":"bạn")+" đã mua đủ "+gg.max.toLocaleString()+" "+un+" hôm nay - mai quay lại")+"</div>"}if(!IS||it.cat!=="implant")return isOnceLine(it);if(isWT(it)){if(!(IS.wtMax>0))return "";var w=isWtLeft();return "<div class=\\"isNote\\" style=\\"color:"+(w?"#8fd18f":"#ff8a80")+"\\">🌳 "+(w?"hôm nay bạn còn mua được "+w+"/"+IS.wtMax+" implant Cây Thế Giới":"hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")+"</div>"}if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant (mọi loại gộp)":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
+    'function isImpLine(it){var gg=isGrpQ(it);if(gg&&it.cat!=="implant"&&!isOnceCat(it.cat)){var gl=isGrpLeft(it),sv=gg.mode==="server";var un=gg.per==="item"?("món "+esc(it.name)):"món nhóm này";return "<div class=\\"isNote\\" style=\\"color:"+(gl?"#8fd18f":"#ff8a80")+"\\">🗂️ "+(gl?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+gl.toLocaleString()+"/"+gg.max.toLocaleString()+" "+un+(sv?" - ai nhanh thì được":""):(sv?"cả server":"bạn")+" đã mua đủ "+gg.max.toLocaleString()+" "+un+" hôm nay - mai quay lại")+"</div>"}if(!IS||it.cat!=="implant")return isOnceLine(it);if(isWT(it)){if(!(IS.wtMax>0))return "";var w=isWtLeft();return "<div class=\\"isNote\\" style=\\"color:"+(w?"#8fd18f":"#ff8a80")+"\\">🌳 "+(w?"hôm nay bạn còn mua được "+w+"/"+IS.wtMax+" implant Cây Thế Giới":"hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")+"</div>"}if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
     'function isDayLine(it){var imp=isImpLine(it);if(!IS||!(IS.dayMax>0)||it.cat==="implant"||isOnceCat(it.cat)||isGrpQ(it))return imp;var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return imp+"<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
     'function isRender(){if(!IS||ISBUSY)return;var cat=isCatGet();if(isOnceCat(cat)&&!IS.items.some(function(it){return (it.cat||"consume")===cat&&!isOnceBought(it)}))cat="consume";var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
     // hàng nút nhóm (đếm số món từng nhóm, nhóm đang xem sáng lên)
     'var cb=$("isCats");if(cb)cb.innerHTML=ISG.map(function(g){var n=IS.items.filter(function(it){return (it.cat||"consume")===g[0]&&!isOnceBought(it)}).length;',
-    'if(isOnceCat(g[0])&&!n)return "";return "<button class=\\"isCatBtn"+(g[0]===cat&&!q?" on":"")+"\\" onclick=\\"isCatPick(\'"+g[0]+"\')\\">"+g[1]+" <span>("+n+")</span></button>"}).join("");',
+    'if(isOnceCat(g[0])&&!n)return "";return "<button class=\\"isCatBtn"+(g[0]==="admin"?" love":"")+(g[0]===cat&&!q?" on":"")+"\\" onclick=\\"isCatPick(\'"+g[0]+"\')\\">"+g[1]+" <span>"+n+"</span></button>"}).join("");',
     'var h="";',
     'if(q){ISG.forEach(function(g){var rows=IS.items.filter(function(it){return !isOnceBought(it)&&(it.cat||"consume")===g[0]&&((it.name||"").toLowerCase().indexOf(q)>=0||(it.note||"").toLowerCase().indexOf(q)>=0)});if(!rows.length)return;',
     'h+="<div class=\\"isCat\\">"+g[1]+" <span style=\\"color:var(--muted);font-weight:400;font-size:12px\\">("+rows.length+" món khớp)</span></div>";rows.forEach(function(it){h+=isCard(it)})});',
@@ -3397,7 +3412,7 @@ const PAGE = [
     'for(var i=0;i<bs.length;i++){if(bs[i].dataset.done)continue;bs[i].disabled=on;bs[i].style.opacity=(on&&bs[i]!==btn)?.5:1}}',
     'async function isBuy(id,btn){if(ISBUSY){toast("⏳ Đang giao đơn trước - chờ chút nhé");return}if(!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
     'if(isOnceCat(it.cat)&&isOnceBought(it))return toast("⭐ Bạn đã mua món này rồi - mỗi người chỉ 1 lần");',
-    'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant (mọi loại gộp)":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này (mọi loại gộp)";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
+    'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
     'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent="⏳ Đang giao vào game...";',

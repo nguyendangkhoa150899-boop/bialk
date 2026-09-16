@@ -670,6 +670,19 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **16/09** — 🛒 **Shop Item: UI lưới thẻ + nhóm mới 💖 ADMIN YÊU THƯƠNG &lt;3 + bỏ chữ "(mọi loại gộp)"** (chủ server: "làm UI
+  shop lại cho đẹp, thêm 1 mục đồ tên ADMIN YÊU THƯƠNG <3" · "bỏ text (mọi loại gộp) ở tất cả đi nhìn nó thừa quá").
+  ✅ **Nhóm mới `cat:'admin'`** đứng sau ⭐ QUAN TRỌNG, tô **hồng** cả chip nhóm lẫn viền thẻ. Phải khai **4 chỗ**:
+  `ISG` (web) · ô lọc nhóm panel · `<select class="isf-cat">` từng dòng · và **whitelist nạp dòng lên form** (`panel.js` ~2942).
+  ⚠️ Thiếu chỗ thứ 4 là lặp lại bug 08/09: mở dòng ra là nhóm tự rơi về `consume`, bấm Lưu mất nhóm cả loạt món (lần đó 38 món
+  Phụ kiện). Có 1 case test canh riêng chỗ này. Thêm cả vào `GQ_CATS` để đặt hạn mua theo nhóm được.
+  ⚠️ Nhãn dùng **`&lt;3`** chứ không phải `<3` trần - chuỗi này đi thẳng vào `innerHTML`.
+  ✅ **UI**: `#isList` thành lưới `repeat(auto-fill,minmax(250px,1fr))` (điện thoại vẫn 1 cột, máy tính 3-4 thẻ/hàng - shop
+  đang 135 món); đề mục nhóm + câu "không thấy món" `grid-column:1/-1`; giá thành huy hiệu vàng; hàng mua `width:100%` xuống
+  đáy thẻ, nút `flex:1` cho dễ bấm trên điện thoại; chip nhóm bo tròn + số đếm thành pill. **Chỉ đụng CSS + 2 dòng nhỏ**, không
+  rớ logic mua/hạn ngày/tier/mua-1-lần (5 case test canh riêng phần này).
+  ✅ Bỏ chữ **"(mọi loại gộp)"** ở 5 câu hiển thị (2 web, 2 bot, 1 panel); **giữ trong comment code** vì đó là chỗ giải thích
+  cơ chế. Test quét cả 3 file, chỉ chấp nhận còn trong dòng comment. `shopuitest.js` **29 case**.
 - **16/09** — 🔒 **Mở popup là khoá cuộn trang + 📜 mục ĐÃ NHẬN/ĐÃ BÁN chỉ gửi 100 con gần nhất** (chủ server: "mở popup bất
   kỳ thì phần còn lại không được scroll, áp dụng tất cả chức năng" · "phần này show 100 con gần nhất thôi đỡ lag web").
   ✅ **Khoá cuộn**: KHÔNG sửa từng chỗ mở/đóng (dễ sót, popup mới lại quên) mà `MutationObserver` theo dõi class/style của 6
