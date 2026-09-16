@@ -1973,7 +1973,69 @@ function wtToday(user) {
 // MIỄN hạn chung 📅 mỗi-món. implant/important có luật riêng, không nằm bảng này.
 // Lưu dbCache._itemShopGroupQuota { cat: { mode, max } }. Đếm: 👤 user.groupDay
 // {day,n:{cat}} · 🌐 dbCache._itemShopGroupDay {day,n:{cat}} - đều reset 00:00 VN.
-const ITEM_SHOP_QUOTA_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material'];
+// ===== 🏷️ 16/09: DANH SÁCH NHÓM HÀNG - admin sửa ở panel, KHÔNG hard-code nữa =====
+// key = mã nhóm lưu trong từng món (it.cat), KHÔNG đổi được sau khi tạo (đổi là món mất nhóm).
+// label = chữ hiện trên web + panel, admin sửa thoải mái.
+// lock = nhóm có luật riêng trong code, xoá là vỡ luật -> chỉ cho sửa tên.
+const ITEM_CAT_DEF = [
+    { key: 'important', label: '⭐ QUAN TRỌNG', lock: true },
+    { key: 'admin', label: '🧺 LINH TINH' },
+    { key: 'weapon', label: '🗡️ VŨ KHÍ' },
+    { key: 'armor', label: '🛡️ GIÁP' },
+    { key: 'consume', label: '🏪 THƯƠNG NHÂN', lock: true },
+    { key: 'accessory', label: '💍 PHỤ KIỆN' },
+    { key: 'food', label: '🍖 THỨC ĂN' },
+    { key: 'ammo', label: '🔫 ĐẠN' },
+    { key: 'material', label: '🐾 NGUYÊN LIỆU CHO PAL' },
+    { key: 'implant', label: '🧬 IMPLANT', lock: true },
+];
+const ITEM_CAT_LOCKED = ITEM_CAT_DEF.filter(c => c.lock).map(c => c.key);
+const ITEM_CAT_MAX = 30;
+function itemCatList() {
+    const saved = Array.isArray(dbCache._itemCats) ? dbCache._itemCats : null;
+    if (!saved) return ITEM_CAT_DEF.map(c => ({ ...c }));
+    // Nhóm KHOÁ luôn phải có mặt dù db cũ thiếu (bản lưu từ đời trước, hoặc admin nghịch tay).
+    const out = saved.filter(c => c && typeof c.key === 'string' && c.key)
+        .map(c => ({ key: c.key, label: String(c.label || c.key), lock: ITEM_CAT_LOCKED.includes(c.key) }));
+    for (const d of ITEM_CAT_DEF) if (d.lock && !out.some(c => c.key === d.key)) out.push({ ...d });
+    return out;
+}
+function itemCatLabel(key) { const c = itemCatList().find(x => x.key === key); return c ? c.label : String(key || ''); }
+function itemCatHas(key) { return itemCatList().some(c => c.key === key); }
+// Panel lưu: [{key,label}] theo đúng thứ tự muốn hiện. key mới do server tự sinh (g1, g2...) để
+// admin không gõ được ký tự lạ vào dữ liệu.
+function setItemCats(list) {
+    if (!Array.isArray(list)) return { error: 'Dữ liệu nhóm không hợp lệ' };
+    if (list.length > ITEM_CAT_MAX) return { error: `Tối đa ${ITEM_CAT_MAX} nhóm` };
+    const cur = itemCatList();
+    const dung = [], thay = new Set();
+    for (const row of list) {
+        if (!row || typeof row !== 'object') continue;
+        let key = String(row.key || '').trim();
+        const label = String(row.label || '').trim().slice(0, 40);
+        if (!label) return { error: 'Tên nhóm không được để trống' };
+        if (!key) {   // nhóm MỚI -> tự sinh key g1, g2... (không trùng key nào đang có)
+            let n = 1; while (cur.some(c => c.key === 'g' + n) || thay.has('g' + n)) n++;
+            key = 'g' + n;
+        } else if (!/^[a-zA-Z0-9_]{1,20}$/.test(key)) return { error: `Mã nhóm "${key}" không hợp lệ` };
+        if (thay.has(key)) return { error: `Mã nhóm "${key}" bị trùng` };
+        thay.add(key);
+        dung.push({ key, label });
+    }
+    // KHÔNG cho xoá nhóm khoá (luật riêng) và nhóm ĐANG CÓ MÓN (món sẽ mất nhóm, rơi về Thương nhân)
+    for (const k of ITEM_CAT_LOCKED) if (!thay.has(k)) return { error: `Nhóm ${itemCatLabel(k)} có luật riêng trong code - không xoá được, chỉ đổi tên` };
+    const dung2 = itemShopList().filter(x => !thay.has(x.cat || 'consume'));
+    if (dung2.length) {
+        const mat = [...new Set(dung2.map(x => itemCatLabel(x.cat || 'consume')))];
+        return { error: `Còn ${dung2.length} món đang thuộc nhóm ${mat.join(', ')} - đổi nhóm cho mấy món đó trước rồi mới xoá được` };
+    }
+    dbCache._itemCats = dung;
+    saveDbNow();
+    writeLog('ADMIN', `[SHOP ITEM] Panel lưu danh sách nhóm hàng: ${dung.length} nhóm (${dung.map(c => c.label).join(' · ')})`);
+    return { ok: true, cats: itemCatList() };
+}
+// Nhóm đặt hạn mua được = mọi nhóm TRỪ 2 nhóm có sổ hạn riêng (important mua 1 lần, implant hạn riêng)
+function itemShopQuotaCats() { return itemCatList().map(c => c.key).filter(k => k !== 'important' && k !== 'implant'); }
 function itemShopGroupQuota() {
     // migrate 1 lần từ hạn đạn/nguyên liệu đời 11/09 - GIỮ số admin đã đặt
     if (!dbCache._itemShopGroupQuota || typeof dbCache._itemShopGroupQuota !== 'object') {
@@ -1984,7 +2046,7 @@ function itemShopGroupQuota() {
         };
     }
     const out = {};
-    for (const c of ITEM_SHOP_QUOTA_CATS) {
+    for (const c of itemShopQuotaCats()) {
         const g = dbCache._itemShopGroupQuota[c];
         const mx = g && Number.isFinite(Number(g.max)) ? Math.max(0, Math.floor(Number(g.max))) : 0;
         // per: 'group' = mọi loại gộp 1 sổ · 'item' = RIÊNG TỪNG MÓN (12/09 v3)
@@ -1995,7 +2057,7 @@ function itemShopGroupQuota() {
 function setItemShopGroupQuota(o) {
     const cur = itemShopGroupQuota();
     for (const [c, g] of Object.entries(o || {})) {
-        if (!ITEM_SHOP_QUOTA_CATS.includes(c) || !g || typeof g !== 'object') continue;
+        if (!itemShopQuotaCats().includes(c) || !g || typeof g !== 'object') continue;
         const mx = Math.floor(Number(g.max));
         if (!Number.isFinite(mx) || mx < 0 || mx > 1000000) return { error: `Hạn nhóm ${c}: nhập số 0–1.000.000 (0 = tắt)` };
         cur[c] = { mode: g.mode === 'server' ? 'server' : 'user', per: g.per === 'item' ? 'item' : 'group', max: mx };
@@ -6153,6 +6215,7 @@ client.once('ready', async (c) => {
                     wtMax: itemShopWtMax(),                          // 🌳 Cây Thế Giới: mỗi người tối đa N/ngày
                     wtToday: wtToday(getUserData(uid)).n,
                     groupQuota: itemShopGroupQuota(),                // 🗂️ {cat:{mode:'server'|'user',max}}
+                    cats: itemCatList().map(c => [c.key, c.label]),   // 🏷️ 16/09: nhóm hàng admin tự đặt
                     groupToday: groupDayUser(getUserData(uid)).n,    // 👤 tôi đã mua hôm nay {cat:n}
                     groupSrvToday: groupDaySrv().n,                  // 🌐 cả server hôm nay {cat:n}
                     today: itemShopToday(getUserData(uid)),          // 📅 { itemId: đã mua hôm nay }
@@ -6264,6 +6327,8 @@ client.once('ready', async (c) => {
                 betHistory: spmState.betHistory.slice(0, 30),   // 📜 tab Log panel (30 lượt cược)
             }),
             spmForceCrash: (m) => { const v = Number(m); if (!Number.isFinite(v) || v < 1) return { error: 'Điểm nổ phải ≥ 1.00' }; spmState.forced = Math.min(spmCfg().maxMult, v); return { ok: true, forced: spmState.forced, phase: spmState.phase }; },
+            getItemCats: itemCatList,
+            setItemCats,
             palChestOverview,
             palChestGrant,
             // 🔎 15/09: cho panel dựng ô CHỌN người nhận + CHỌN pal (thay gõ tay)

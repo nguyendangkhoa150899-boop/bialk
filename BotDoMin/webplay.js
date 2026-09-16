@@ -966,17 +966,18 @@ const PAGE = [
     '.isCat{margin:16px 0 8px;font-weight:800;font-size:14px;letter-spacing:.5px;border-bottom:1px solid var(--line);padding-bottom:5px}',
     '.isCat:first-child{margin-top:4px}',
     // 🛒 4 nút nhóm shop (07/09) + dòng ghi chú tác dụng trên card
-    '.isCatBtn{padding:9px 13px;border-radius:999px;border:1px solid var(--line);background:#181c28;color:var(--tx);font-weight:800;font-size:13px;cursor:pointer;transition:border-color .15s,background .15s}',
+    '#isCats{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}',
+    '.isCatBtn{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:#181c28;color:var(--tx);font-weight:700;font-size:12.5px;line-height:1.35;cursor:pointer;transition:border-color .15s,background .15s}',
     '.isCatBtn:hover{border-color:#3ddc84}',
-    '.isCatBtn span{color:var(--muted);font-weight:400;font-size:11.5px;background:#0e1220;border-radius:999px;padding:1px 7px;margin-left:3px}',
+    '.isCatBtn span{color:var(--muted);font-weight:700;font-size:11px;background:#0e1220;border-radius:999px;padding:0 6px;min-width:18px;text-align:center}',
     '.isCatBtn.on{background:linear-gradient(180deg,#2f8f4f,#256e3e);border-color:#3ddc84;color:#fff}',
     '.isCatBtn.on span{color:#c9f5d9;background:#0b2f1c}',
-    // 💖 16/09: nhóm ADMIN YÊU THƯƠNG - hồng, khác hẳn các nhóm bán hàng
-    '.isCatBtn.love{border-color:#ff7ab8;color:#ffd0e6}',
-    '.isCatBtn.love.on{background:linear-gradient(180deg,#d1457f,#a32d60);border-color:#ff7ab8;color:#fff}',
-    '.isCatBtn.love.on span{background:#4a1230;color:#ffd0e6}',
-    '.isItem.isLove{border-color:#ff7ab8;background:linear-gradient(180deg,#2a1622,#1a1119)}',
-    '.isItem.isLove .isNm{color:#ffb3d6}',
+    // 🧺 16/09: nhóm LINH TINH (mã nhóm trong dữ liệu vẫn là 'admin') - xanh xám, tách khỏi các nhóm bán hàng
+    '.isCatBtn.misc{border-color:#7aa2ff;color:#cfdcff}',
+    '.isCatBtn.misc.on{background:linear-gradient(180deg,#42639e,#2c4570);border-color:#7aa2ff;color:#fff}',
+    '.isCatBtn.misc.on span{background:#14203a;color:#cfdcff}',
+    '.isItem.isMisc{border-color:#7aa2ff;background:linear-gradient(180deg,#171d2c,#12161f)}',
+    '.isItem.isMisc .isNm{color:#b7caff}',
     '.isNote{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.35}',
     // 💸 chip chọn người nhận (chuyển tiền nhiều người 1 lần)
 // 🪙 14/09: khung tỉ lệ đổi vàng (icon Đồng Vàng -> Dogcoin)
@@ -1566,8 +1567,8 @@ const PAGE = [
     '<div class="muted" style="font-size:12px;margin-top:4px" id="isInfo">Mua item + số lượng, bot giao <b>thẳng vào túi</b> trong game. Phải đang <b>ONLINE trong game</b> lúc mua. Trừ Dogcoin ngay; giao hụt tự hoàn.</div>',
     '<div id="isLink" class="muted" style="font-size:12px;margin-top:4px">-</div>',
     // 07/09: 4 nút nhóm + ô tìm kiếm (tìm theo tên LẪN ghi chú tác dụng, quét mọi nhóm)
-    '<div id="isCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>',
-    '<input id="isFind" placeholder="🔎 Tìm item theo tên hoặc tác dụng..." oninput="isRender()" style="width:100%;margin-top:8px">',
+    '<input id="isFind" placeholder="🔎 Tìm nhanh trong tất cả nhóm: tên item hoặc tác dụng..." oninput="isRender()" style="width:100%;margin-top:10px">',
+    '<div id="isCats"></div>',
     '<div id="isList" style="margin-top:12px"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '</div>', // hết #pageShop
@@ -2266,7 +2267,7 @@ const PAGE = [
     '$("ngProfile").classList.toggle("on",g==="profile");',
     '$("ngGames").classList.toggle("on",g==="games");',
     '["navTx","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
-    '["navDaily","navPal","navPick","navShop","navDog"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navDaily","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
@@ -3364,7 +3365,7 @@ const PAGE = [
     '.catch(function(e){toast("❌ "+e.message);if(btn)btn.textContent=chu})',
     // mở khoá TRƯỚC rồi mới vẽ lại, vì giftDraw đang chặn khi GIFTBUSY
     '.then(function(){GIFTBUSY=false;giftBtnLock(false);giftSync()})}',
-    'function isSync(){api("/api/itemshop/state").then(function(j){IS=j;',
+    'function isSync(){api("/api/itemshop/state").then(function(j){IS=j;if(j.cats&&j.cats.length)ISG=j.cats;',
     '$("isStat").textContent=j.items.length+" món · ví "+vnd(j.balance);',
     '$("isLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - item giao thẳng vào túi (phải đang ONLINE trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới mua được";',
     'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
@@ -3372,13 +3373,15 @@ const PAGE = [
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
     // 07/09: shop kiểu 4 NÚT NHÓM - bấm nhóm nào hiện đồ nhóm đó (nhớ qua F5);
     // gõ ô tìm là quét TÊN + GHI CHÚ trên mọi nhóm (kèm đề mục nhóm cho khỏi lạc)
-    'var ISG=[["important","⭐ QUAN TRỌNG"],["admin","💖 ADMIN YÊU THƯƠNG &lt;3"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🏪 THƯƠNG NHÂN"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🐾 NGUYÊN LIỆU CHO PAL"],["implant","🧬 IMPLANT"]];',   // 15/09 +gift · đổi tên consume/material   // 09/09 +2 nhóm · 10/09 +material +implant
+    // 🏷️ 16/09: nhóm hàng do ADMIN đặt ở panel, server gửi kèm state. Dưới đây chỉ là bản dự phòng
+    // lúc chưa tải xong state (isSync ghi đè ngay khi có dữ liệu).
+    'var ISG=[["important","⭐ QUAN TRỌNG"],["admin","🧺 LINH TINH"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🏪 THƯƠNG NHÂN"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🐾 NGUYÊN LIỆU CHO PAL"],["implant","🧬 IMPLANT"]];',   // 15/09 +gift · đổi tên consume/material   // 09/09 +2 nhóm · 10/09 +material +implant
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
     'function isWT(it){return it.cat==="implant"&&/Consumable_WorldTree_/.test(it.id)}',
     'function isOnceCat(c){return c==="important"}',   // 15/09: quà 🎁 đã tách khỏi shop, chỉ còn ⭐
     'function isOnceBought(it){return !!(IS&&isOnceCat(it.cat)&&(IS.once||[]).indexOf(it.id)>=0)}',
-    'function isTierCls(it){return (isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))))+(it.cat==="admin"?" isLove":"")+(isOnceBought(it)?" isDone":"")}',
+    'function isTierCls(it){return (isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))))+(it.cat==="admin"?" isMisc":"")+(isOnceBought(it)?" isDone":"")}',
     'function isTierTag(it){return isWT(it)?"<span class=\\"isTier twt\\">🌈 CÂY THẾ GIỚI</span>":(it.tier==="diamond"?"<span class=\\"isTier t4\\">💎 KIM CƯƠNG</span>":(it.tier==="gold"?"<span class=\\"isTier t3\\">🥇 VÀNG</span>":""))}',
     'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" Dogcoin / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+isBuyRow(it)+"</div>"}',
@@ -3395,10 +3398,14 @@ const PAGE = [
     'function isOnceLine(it){if(!IS||!isOnceCat(it.cat))return "";return isOnceBought(it)?"<div class=\\"isNote\\" style=\\"color:#8fd18f\\">✅ Bạn đã mua món này - mỗi người chỉ 1 lần</div>":"<div class=\\"isNote\\" style=\\"color:#ffd76a\\">⭐ Mỗi người chỉ mua được 1 lần duy nhất</div>"}',
     'function isImpLine(it){var gg=isGrpQ(it);if(gg&&it.cat!=="implant"&&!isOnceCat(it.cat)){var gl=isGrpLeft(it),sv=gg.mode==="server";var un=gg.per==="item"?("món "+esc(it.name)):"món nhóm này";return "<div class=\\"isNote\\" style=\\"color:"+(gl?"#8fd18f":"#ff8a80")+"\\">🗂️ "+(gl?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+gl.toLocaleString()+"/"+gg.max.toLocaleString()+" "+un+(sv?" - ai nhanh thì được":""):(sv?"cả server":"bạn")+" đã mua đủ "+gg.max.toLocaleString()+" "+un+" hôm nay - mai quay lại")+"</div>"}if(!IS||it.cat!=="implant")return isOnceLine(it);if(isWT(it)){if(!(IS.wtMax>0))return "";var w=isWtLeft();return "<div class=\\"isNote\\" style=\\"color:"+(w?"#8fd18f":"#ff8a80")+"\\">🌳 "+(w?"hôm nay bạn còn mua được "+w+"/"+IS.wtMax+" implant Cây Thế Giới":"hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")+"</div>"}if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
     'function isDayLine(it){var imp=isImpLine(it);if(!IS||!(IS.dayMax>0)||it.cat==="implant"||isOnceCat(it.cat)||isGrpQ(it))return imp;var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return imp+"<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
-    'function isRender(){if(!IS||ISBUSY)return;var cat=isCatGet();if(isOnceCat(cat)&&!IS.items.some(function(it){return (it.cat||"consume")===cat&&!isOnceBought(it)}))cat="consume";var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
+    'function isRender(){if(!IS||ISBUSY)return;var cat=isCatGet();',
+    // nhóm đang chọn hết món (mua sạch nhóm ⭐, hoặc admin dọn hết nhóm) -> tự sang nhóm còn hàng
+    'var isConHang=function(c){return IS.items.some(function(it){return (it.cat||"consume")===c&&!isOnceBought(it)})};',
+    'if(!isConHang(cat)){for(var gi=0;gi<ISG.length;gi++){if(isConHang(ISG[gi][0])){cat=ISG[gi][0];break}}}',
+    'var q=(($("isFind")||{}).value||"").trim().toLowerCase();',
     // hàng nút nhóm (đếm số món từng nhóm, nhóm đang xem sáng lên)
     'var cb=$("isCats");if(cb)cb.innerHTML=ISG.map(function(g){var n=IS.items.filter(function(it){return (it.cat||"consume")===g[0]&&!isOnceBought(it)}).length;',
-    'if(isOnceCat(g[0])&&!n)return "";return "<button class=\\"isCatBtn"+(g[0]==="admin"?" love":"")+(g[0]===cat&&!q?" on":"")+"\\" onclick=\\"isCatPick(\'"+g[0]+"\')\\">"+g[1]+" <span>"+n+"</span></button>"}).join("");',
+    'if(!n)return "";return "<button class=\\"isCatBtn"+(g[0]==="admin"?" misc":"")+(g[0]===cat&&!q?" on":"")+"\\" onclick=\\"isCatPick(\'"+g[0]+"\')\\">"+g[1]+" <span>"+n+"</span></button>"}).join("");',
     'var h="";',
     'if(q){ISG.forEach(function(g){var rows=IS.items.filter(function(it){return !isOnceBought(it)&&(it.cat||"consume")===g[0]&&((it.name||"").toLowerCase().indexOf(q)>=0||(it.note||"").toLowerCase().indexOf(q)>=0)});if(!rows.length)return;',
     'h+="<div class=\\"isCat\\">"+g[1]+" <span style=\\"color:var(--muted);font-weight:400;font-size:12px\\">("+rows.length+" món khớp)</span></div>";rows.forEach(function(it){h+=isCard(it)})});',

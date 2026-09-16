@@ -670,6 +670,26 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **16/09** — 🏷️ **Nhóm hàng trong shop do ADMIN tự đặt (sửa tên / thêm / xoá / lưu)** + 🔖 **sửa nút 📒 Nợ, 🎁 Quà lọt sang
+  hàng MINI GAME** + 🧺 đổi tên nhóm mới thành **LINH TINH** (chủ server: "cho mình custom được text ở đây với add new nhóm đồ
+  mới + lưu" · "quà chỉ nằm ở bên hồ sơ thôi sao có bên này nữa" · "bỏ mục admin yêu thương đi để là LINH TINH").
+  ✅ **1 NGUỒN DUY NHẤT**: `ITEM_CAT_DEF` (10 nhóm mặc định) + `dbCache._itemCats`. `itemCatList()` / `setItemCats()` /
+  `itemCatLabel()`. Trước đây nhóm hard-code **4 chỗ** (ISG web + 2 ô select panel + whitelist) - thêm nhóm phải sửa đủ 4, sót
+  1 là mất nhóm hàng loạt (bug 08/09, 38 món Phụ kiện). Giờ web (`state.cats`), ô chọn nhóm từng dòng (`icOpts()`), ô lọc
+  (`icFillFilter()`), bảng hạn theo nhóm (`GQ_CATS_NOW()`) đều đọc 1 chỗ → **cái bẫy đó biến mất**.
+  🔒 **3 chốt an toàn**: (a) `important`/`implant`/`consume` khoá không xoá (luật riêng trong code: mua 1 lần · hạn implant+WT ·
+  nhóm mặc định khi món chưa rõ nhóm) - đổi tên vẫn được; (b) nhóm **đang có món** không xoá được, báo rõ còn bao nhiêu món;
+  (c) **mã nhóm do server sinh** (`g1`, `g2`…), admin chỉ gõ được TÊN → không lọt ký tự lạ vào dữ liệu. Đổi tên hiện ra web
+  **ngay**, không cần restart. `gqRender` đổi `dataset.built` sang chữ ký danh sách nên đổi tên là bảng hạn dựng lại.
+  🐛 **Nút 📒 Nợ / 🎁 Quà**: `PAGE_GRP` xếp cả hai vào `profile` rồi, nhưng 2 danh sách ẩn/hiện theo nhóm **bỏ sót chúng** nên
+  đứng ở 🎮 MINI GAME vẫn thấy. Thêm vào danh sách profile, dùng `style.display=""` (KHÔNG phải `"block"`) để class `.hidden`
+  - thứ giấu nút khi hết quà - vẫn còn tác dụng.
+  🎨 **Hàng nhóm gọn hơn**: ô tìm lên **trước** hàng chip (157 món thì gõ nhanh hơn bấm), **ẩn nhóm rỗng**, chip nhỏ lại
+  (4 hàng → ~2), số đếm thành pill `min-width:18px` cho thẳng hàng, và nhóm đang xem hết món thì **tự nhảy sang nhóm còn hàng**
+  (trước chỉ xử lý riêng nhóm ⭐ - nay cần vì admin xoá/thêm nhóm được).
+  ✅ `itemcats-e2e.js` **14 case** HTTP thật (đổi tên + thêm nhóm thấy ngay trên web; 4 trường hợp bị từ chối: xoá nhóm khoá,
+  xoá nhóm còn món, mã trùng, tên rỗng). `shopuitest.js` **47 case**. 2 bộ test cũ kêu đúng khi đổi kiến trúc (đang canh mấy
+  dòng `<option>` cứng nay không còn) - viết lại để canh thiết kế mới, không tắt đi cho xanh.
 - **16/09** — 🛒 **Shop Item: UI lưới thẻ + nhóm mới 💖 ADMIN YÊU THƯƠNG &lt;3 + bỏ chữ "(mọi loại gộp)"** (chủ server: "làm UI
   shop lại cho đẹp, thêm 1 mục đồ tên ADMIN YÊU THƯƠNG <3" · "bỏ text (mọi loại gộp) ở tất cả đi nhìn nó thừa quá").
   ✅ **Nhóm mới `cat:'admin'`** đứng sau ⭐ QUAN TRỌNG, tô **hồng** cả chip nhóm lẫn viền thẻ. Phải khai **4 chỗ**:

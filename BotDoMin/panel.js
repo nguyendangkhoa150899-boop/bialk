@@ -157,6 +157,7 @@ function startPanel(ctx) {
             },
             vay: ctx.getVay ? ctx.getVay() : { live: false, channelId: '' },
             gachaChannelId: db._gachaChannelId || '',
+            itemCats: ctx.getItemCats ? ctx.getItemCats() : [],   // 🏷️ 16/09
             palForced: ctx.palWheelForcedInfo ? ctx.palWheelForcedInfo() : null,   // ⚡ 15/09
             giveaway: { channelId: db._giveawayChannelId || '', roleId: db._giveawayRoleId || '' },
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
@@ -255,7 +256,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg',
+                    '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg', '/api/itemcats/save',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/itemshop/daymax', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
                     '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                 ];
@@ -398,6 +399,12 @@ function startPanel(ctx) {
                         .map(p => ({ id: p.id, name: p.name, ingameName: p.ingameName, online: onlineSet ? onlineSet.has(p.ingameName.trim().toLowerCase()) : null }))
                         .sort((a, b) => ((b.online === true) - (a.online === true)) || a.ingameName.localeCompare(b.ingameName));
                     return sendJSON(res, 200, { ok: true, pals, players, onlineErr, onlineCount: onlineSet ? onlineSet.size / 2 : null });
+                }
+                // 🏷️ 16/09: lưu danh sách nhóm hàng (đổi tên / thêm / bớt)
+                if (ctx.setItemCats && req.method === 'POST' && path === '/api/itemcats/save') {
+                    const r = ctx.setItemCats(body.cats);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 if (ctx.palChestGrant && req.method === 'POST' && path === '/api/palchest/grant') {
                     const uid = String(body.userId || '').trim();
@@ -1653,6 +1660,16 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card">
         <h3>🛒 Shop Item - item giao thẳng vào game</h3>
+        <div class="card">
+          <h3>🏷️ Nhóm hàng trong shop</h3>
+          <div class="muted" style="font-size:13px;margin-bottom:8px">Sửa tên nhóm (kèm emoji) hoặc thêm nhóm mới. Tên này hiện <b>cả trên web người chơi lẫn mọi ô chọn nhóm ở đây</b>.</div>
+          <div id="icBody"></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn-grey" onclick="icAdd()">➕ Thêm nhóm</button>
+            <button class="btn-green" onclick="icSave(this)">💾 Lưu nhóm</button>
+          </div>
+          <div class="note">🔒 = nhóm có luật riêng trong code (⭐ mua 1 lần · 🧬 hạn implant · 🏪 nhóm mặc định khi món chưa rõ nhóm) - đổi tên được, <b>xoá thì không</b>. Nhóm đang có món cũng không xoá được: đổi nhóm cho mấy món đó trước đã. <b>Mã nhóm</b> (chữ xám) là thứ lưu trong từng món - server tự đặt, không sửa được, đổi là món mất nhóm.</div>
+        </div>
         <div class="note">🎁 Quà admin tặng đã chuyển sang tab riêng <b>🎁 Quà tặng</b> cạnh Kho đồ (danh sách riêng, không dính shop) - đừng tạo quà ở đây nữa. Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
           <span>📅 Giới hạn mua <b>mỗi món / ngày</b>:</span>
@@ -1680,7 +1697,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
           <input class="mini-in" id="isfFilter" placeholder="🔍 Lọc: gõ id, tên hoặc nhóm (vd: gift, thịt, Ammo_)" style="flex:1;min-width:200px" oninput="itemShopFilter()">
           <select class="mini-in" id="isfFilterCat" style="width:170px" onchange="itemShopFilter()">
-            <option value="">Mọi nhóm</option><option value="important">⭐ Quan trọng</option><option value="admin">💖 Admin yêu thương &lt;3</option><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🏪 Thương nhân</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🐾 Nguyên liệu cho Pal</option><option value="implant">🧬 Implant</option>
+            <option value="">Mọi nhóm</option>
           </select>
           <label style="display:flex;align-items:center;gap:4px;white-space:nowrap"><input type="checkbox" id="isfFilterOff" style="width:auto;margin:0" onchange="itemShopFilter()"> chỉ món đang tắt</label>
           <span class="muted" id="isfFilterN" style="font-size:12px;white-space:nowrap"></span>
@@ -2048,6 +2065,43 @@ function tab(t){
 // ===== KÊNH KHOE QUAY PAL =====
 function pwForce(){const c=(document.getElementById('pwForceCode').value||'').trim();if(!c)return toast('Nhập code hoặc tên pal');api('/api/palwheel/force',{code:c}).then(j=>{toast('⚡ Lượt quay kế tiếp sẽ ra '+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
 function pwForceClear(){api('/api/palwheel/force',{code:''}).then(()=>{toast('Đã hủy ép');refresh();}).catch(e=>toast('❌ '+e.message));}
+// 🏷️ 16/09: danh sách nhóm hàng - vẽ 1 lần rồi giữ nguyên (poll 3s không cuốn chữ admin đang gõ)
+let ICROWS=null;
+function icDraw(){
+  const box=document.getElementById('icBody'); if(!box) return;
+  if(!ICROWS) ICROWS=(STATE.itemCats||[]).map(c=>({key:c.key,label:c.label,lock:!!c.lock}));
+  box.innerHTML=ICROWS.map((c,i)=>
+    '<div class="row" style="align-items:center;gap:8px;margin-bottom:6px">'+
+      '<span class="muted" style="flex:0 0 96px;font-size:12px">'+(c.lock?'🔒 ':'')+esc(c.key||'(mới)')+'</span>'+
+      '<input class="mini-in" style="flex:1" value="'+esc(c.label)+'" oninput="icSet('+i+',this.value)">'+
+      (c.lock?'<span class="muted" style="font-size:12px;flex:0 0 74px">khoá</span>'
+             :'<button class="btn-red" style="flex:0 0 74px;padding:6px 8px" onclick="icDel('+i+')">🗑️ Xoá</button>')+
+    '</div>').join('')||'<div class="muted">Chưa có nhóm nào.</div>';
+}
+function icSet(i,v){ if(ICROWS&&ICROWS[i]) ICROWS[i].label=v; }
+// <option> dùng chung cho mọi ô chọn nhóm (dòng shop + ô lọc) - luôn theo danh sách hiện tại
+function icOpts(){ return ((STATE&&STATE.itemCats)||[]).map(c=>'<option value="'+esc(c.key)+'">'+esc(c.label)+'</option>').join(''); }
+// ô LỌC nhóm: dựng lại khi danh sách đổi, giữ nguyên lựa chọn đang có
+function icFillFilter(){
+  const el=document.getElementById('isfFilterCat'); if(!el) return;
+  const sig=((STATE&&STATE.itemCats)||[]).map(c=>c.key+'|'+c.label).join(',');
+  if(el.dataset.built===sig) return;
+  const keep=el.value; el.dataset.built=sig;
+  el.innerHTML='<option value="">Mọi nhóm</option>'+icOpts();
+  el.value=keep;
+}
+function icAdd(){ if(!ICROWS)ICROWS=[]; ICROWS.push({key:'',label:'🆕 Nhóm mới',lock:false}); icDraw(); }
+async function icDel(i){
+  if(!ICROWS||!ICROWS[i]) return;
+  if(!await uiConfirm('Xoá nhóm <b>'+esc(ICROWS[i].label)+'</b>? Nhóm còn món thì server sẽ từ chối.','🗑️ Xoá','btn-red')) return;
+  ICROWS.splice(i,1); icDraw();
+}
+async function icSave(btn){
+  if(!ICROWS) return;
+  await runBtn(btn,'Lưu...',()=>api('/api/itemcats/save',{cats:ICROWS.map(c=>({key:c.key,label:c.label}))})
+    .then(j=>{ICROWS=(j.cats||[]).map(c=>({key:c.key,label:c.label,lock:!!c.lock}));toast('💾 Đã lưu '+ICROWS.length+' nhóm');icDraw();refresh();})
+    .catch(e=>{toast('❌ '+e.message);}));
+}
 function gachaSave(){const id=document.getElementById('gachaChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/gacha/channel',{channelId:id}).then(j=>{toast('✅ Đã bật khoe tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
 async function gachaOff(){if(!await uiConfirm('Tắt đăng công khai kết quả quay Pal?','Tắt','btn-red'))return;api('/api/gacha/channel',{channelId:''}).then(()=>{toast('⏹️ Đã tắt');document.getElementById('gachaChannel').value='';refresh();});}
 
@@ -2072,6 +2126,7 @@ function renderGacha(){
   const on=!!STATE.gachaChannelId;
   const c=document.getElementById('gachaChannel'); if(c&&!c.value&&STATE.gachaChannelId) c.value=STATE.gachaChannelId;
   document.getElementById('gachaInfo').innerHTML='<span class="run '+(on?'on':'off')+'">'+(on?'🟢 ĐANG KHOE công khai':'🔴 ĐANG TẮT (chỉ người quay tự thấy)')+'</span>';
+  icDraw(); icFillFilter();
   if(!PGP&&!PGLOADING&&document.getElementById('pgUid'))pgPickLoad(false);
   const pf=document.getElementById('pwForceNow');if(pf)pf.innerHTML=STATE.palForced?'<span class="badge on">⚡ ĐANG ÉP: lượt quay kế tiếp ra '+esc(STATE.palForced)+'</span>':'<span class="muted">Không ép - quay ngẫu nhiên bình thường</span>';
 }
@@ -2819,13 +2874,16 @@ function itemShopFill(){
 var ISDIRTY=false,ISSIG='';
 // 📅 10/09: giới hạn mua mỗi món/người/ngày (SUPER)
 // 🗂️ bảng hạn theo nhóm (12/09 v2)
-const GQ_CATS=[["admin","💖 Admin yêu thương"],["weapon","🗡️ Vũ khí"],["armor","🛡️ Giáp"],["consume","🏪 Thương nhân"],["accessory","💍 Phụ kiện"],["food","🍖 Thức ăn"],["ammo","🔫 Đạn"],["material","🐾 Nguyên liệu cho Pal"]];   // 15/09 đổi tên 2 nhóm
-function gqRender(){const box=document.getElementById('isGroupQuota');if(!box||box.dataset.built)return;box.dataset.built='1';
+// 🏷️ 16/09: lấy từ danh sách nhóm admin đặt. Bỏ 2 nhóm có sổ hạn riêng (⭐ mua 1 lần, 🧬 hạn implant).
+function GQ_CATS_NOW(){return ((STATE&&STATE.itemCats)||[]).filter(c=>c.key!=='important'&&c.key!=='implant').map(c=>[c.key,c.label]);}
+function gqRender(){const box=document.getElementById('isGroupQuota');if(!box)return;
+  const GQ_CATS=GQ_CATS_NOW();const sig=GQ_CATS.map(g=>g[0]+'|'+g[1]).join(',');
+  if(box.dataset.built===sig)return;box.dataset.built=sig;
   box.innerHTML=GQ_CATS.map(g=>'<div style="display:flex;align-items:center;gap:5px;border:1px solid #2a3142;border-radius:8px;padding:5px 8px"><span style="font-size:12px;min-width:96px">'+g[1]+'</span>'+
     '<select class="mini-in" id="gqm_'+g[0]+'" style="width:auto"><option value="user">👤 cá nhân</option><option value="server">🌐 toàn server</option></select>'+
     '<select class="mini-in" id="gqp_'+g[0]+'" style="width:auto" title="gộp mọi loại = cả nhóm chung 1 sổ · riêng từng món = số này áp cho TỪNG item (mua 1000 trứng gà xong vẫn còn 1000 sữa bò)"><option value="group">gộp mọi loại</option><option value="item">riêng từng món</option></select>'+
     '<input class="mini-in" id="gqx_'+g[0]+'" type="number" min="0" max="1000000" placeholder="0" style="width:84px"><span class="muted" style="font-size:11px">/ngày</span></div>').join('');}
-function gqFill(q){if(!q)return;GQ_CATS.forEach(g=>{const x=document.getElementById('gqx_'+g[0]),md=document.getElementById('gqm_'+g[0]),pd=document.getElementById('gqp_'+g[0]),v=q[g[0]];if(!v)return;
+function gqFill(q){if(!q)return;GQ_CATS_NOW().forEach(g=>{const x=document.getElementById('gqx_'+g[0]),md=document.getElementById('gqm_'+g[0]),pd=document.getElementById('gqp_'+g[0]),v=q[g[0]];if(!v)return;
   if(x&&x.value===''&&document.activeElement!==x)x.value=v.max;
   if(md&&!md.dataset.touched&&document.activeElement!==md){md.value=v.mode;md.onchange=()=>{md.dataset.touched='1';};}
   if(pd&&!pd.dataset.touched&&document.activeElement!==pd){pd.value=v.per||'group';pd.onchange=()=>{pd.dataset.touched='1';};}});}
@@ -2838,7 +2896,7 @@ async function isDayMaxSave(btn){
   const wtEl=document.getElementById('isWtMax');const wt=wtEl&&wtEl.value!==''?parseInt(wtEl.value):undefined;
   if(wt!==undefined&&!(wt>=0))return toast('❌ Hạn Cây Thế Giới: nhập số ≥ 0');
   const gq={};let gqErr=null;
-  GQ_CATS.forEach(g=>{const x=document.getElementById('gqx_'+g[0]);const md=document.getElementById('gqm_'+g[0]);
+  GQ_CATS_NOW().forEach(g=>{const x=document.getElementById('gqx_'+g[0]);const md=document.getElementById('gqm_'+g[0]);
     if(!x||x.value==='')return;const n=parseInt(x.value);
     if(!(n>=0))gqErr='❌ Hạn nhóm '+g[1]+': nhập số ≥ 0';
     gq[g[0]]={mode:(md||{}).value==='server'?'server':'user',per:(document.getElementById('gqp_'+g[0])||{}).value==='item'?'item':'group',max:n||0};});
@@ -2925,7 +2983,7 @@ function itemShopAddRow(it){
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="isf-on" style="width:auto;margin:0" title="Đang bán / ẩn" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45"></td>'
     +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
-    +'<td><select class="mini-in isf-cat" style="width:110px"><option value="weapon">🗡️ Vũ khí</option><option value="armor">🛡️ Giáp</option><option value="consume">🏪 Thương nhân</option><option value="accessory">💍 Phụ kiện</option><option value="food">🍖 Thức ăn</option><option value="ammo">🔫 Đạn</option><option value="material">🐾 Nguyên liệu cho Pal</option><option value="implant">🧬 Implant</option><option value="important">⭐ Quan trọng (mua 1 lần)</option><option value="admin">💖 Admin yêu thương &lt;3</option></select></td>'
+    +'<td><select class="mini-in isf-cat" style="width:110px">'+icOpts()+'</select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
     +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
     +'<td><input class="mini-in isf-note" style="width:200px" placeholder="tác dụng (hiện trên web + search được)"></td>'
@@ -2939,7 +2997,8 @@ function itemShopAddRow(it){
   tr.querySelector('.isf-id').value=it.id||'';
   tr.querySelector('.isf-name').value=it.name||'';
   // 08/09: thiếu 'accessory' → mọi phụ kiện nạp lên form thành Tiêu hao, bấm Lưu là mất nhóm cả 38 món
-  tr.querySelector('.isf-cat').value=['weapon','armor','accessory','food','ammo','material','implant','important','admin'].includes(it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material + implant · 11/09 important
+  // 🏷️ 16/09: nhóm nào KHÔNG còn trong danh sách thì rơi về 🏪 Thương nhân (nhóm mặc định)
+  tr.querySelector('.isf-cat').value=(STATE.itemCats||[]).some(c=>c.key===it.cat)?it.cat:'consume';   // 09/09 food/ammo · 10/09 material + implant · 11/09 important
   tr.querySelector('.isf-price').value=(it.price!==undefined?it.price:0);
   tr.querySelector('.isf-max').value=(it.max!==undefined?it.max:999);
   tr.querySelector('.isf-note').value=it.note||'';
