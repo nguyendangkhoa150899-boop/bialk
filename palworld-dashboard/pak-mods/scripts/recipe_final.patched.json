@@ -3887,22 +3887,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -4150,22 +4150,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -4391,22 +4391,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -4610,22 +4610,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -4851,22 +4851,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -5092,22 +5092,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -5333,22 +5333,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -5574,22 +5574,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -5815,22 +5815,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -6056,22 +6056,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -6297,22 +6297,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -6538,22 +6538,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -6779,22 +6779,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -7042,11 +7042,11 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
@@ -7283,22 +7283,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -7502,22 +7502,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -7721,22 +7721,22 @@
                 "Name": "Material2_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material2_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -7984,22 +7984,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -8225,22 +8225,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -8466,22 +8466,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -8707,22 +8707,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -8948,22 +8948,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -9189,22 +9189,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -9430,22 +9430,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -9693,22 +9693,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -9934,22 +9934,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -10175,22 +10175,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -10372,22 +10372,22 @@
                 "Name": "Material2_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material2_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -10635,22 +10635,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -10876,22 +10876,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -11117,22 +11117,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -11358,22 +11358,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 1
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -24175,22 +24175,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -24453,7 +24453,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 3
+                "Value": 13
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -24694,7 +24694,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 4
+                "Value": 14
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -24935,7 +24935,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 15
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -25176,7 +25176,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 16
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -34364,22 +34364,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -34642,7 +34642,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 3
+                "Value": 13
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -34883,7 +34883,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 4
+                "Value": 14
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -35124,7 +35124,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 15
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -35365,7 +35365,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 16
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -48497,22 +48497,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -48775,7 +48775,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 16
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -49016,7 +49016,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 7
+                "Value": 17
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -49257,7 +49257,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 8
+                "Value": 18
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -49498,7 +49498,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 20
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -49739,7 +49739,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 55
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -50024,7 +50024,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 56
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -50265,7 +50265,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 7
+                "Value": 57
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -50506,7 +50506,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 8
+                "Value": 58
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -50747,7 +50747,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 60
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -57240,22 +57240,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -57518,7 +57518,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 16
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -57759,7 +57759,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 7
+                "Value": 17
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -58000,7 +58000,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 8
+                "Value": 18
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -58241,7 +58241,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 20
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -58482,7 +58482,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 7
+                "Value": 57
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -58767,7 +58767,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 8
+                "Value": 58
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -59008,7 +59008,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 60
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -59249,7 +59249,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 12
+                "Value": 62
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -59490,7 +59490,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 14
+                "Value": 64
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -62236,22 +62236,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -62514,7 +62514,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 15
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -62755,7 +62755,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 16
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -62996,7 +62996,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 7
+                "Value": 17
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -63237,7 +63237,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 8
+                "Value": 18
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -74693,22 +74693,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -74971,7 +74971,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 16
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -75212,7 +75212,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 7
+                "Value": 17
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -75453,7 +75453,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 8
+                "Value": 18
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -75694,7 +75694,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 20
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -79682,7 +79682,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 60
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -79967,7 +79967,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 12
+                "Value": 62
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -80208,7 +80208,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 15
+                "Value": 65
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -80449,7 +80449,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 17
+                "Value": 67
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -80690,7 +80690,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 20
+                "Value": 70
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -80931,7 +80931,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 55
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -81216,7 +81216,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 6
+                "Value": 56
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -81457,7 +81457,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 7
+                "Value": 57
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -81698,7 +81698,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 8
+                "Value": 58
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -81939,7 +81939,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 60
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -96180,7 +96180,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 30
+                "Value": 70
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -96421,7 +96421,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 30
+                "Value": 70
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -96662,7 +96662,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 30
+                "Value": 80
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -125571,22 +125571,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -125834,22 +125834,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -126075,22 +126075,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -126316,22 +126316,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -126557,22 +126557,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -126798,22 +126798,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -127061,22 +127061,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -127302,22 +127302,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -127543,22 +127543,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -127784,22 +127784,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -128003,22 +128003,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -128266,22 +128266,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -128507,22 +128507,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -128748,22 +128748,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -128989,22 +128989,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -129208,22 +129208,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -129471,22 +129471,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -129712,22 +129712,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -129953,22 +129953,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -130194,22 +130194,22 @@
                 "Name": "Material5_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material5_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -140295,22 +140295,22 @@
                 "Name": "Material3_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material3_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -140558,22 +140558,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -140799,22 +140799,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -141040,22 +141040,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -141281,22 +141281,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -183716,7 +183716,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -190464,7 +190464,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -190705,7 +190705,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -190946,7 +190946,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -191187,7 +191187,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -191428,7 +191428,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -191669,7 +191669,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -191910,7 +191910,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -192151,7 +192151,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -192392,7 +192392,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 45
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -199644,7 +199644,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 10
+                "Value": 60
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -342520,22 +342520,22 @@
                 "Name": "Material4_Id",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": null
+                "Value": "AncientParts2"
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.IntPropertyData, UAssetAPI",
                 "Name": "Material4_Count",
                 "ArrayIndex": 0,
                 "PropertyGuid": null,
-                "IsZero": true,
+                "IsZero": false,
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 0
+                "Value": 10
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.NamePropertyData, UAssetAPI",
@@ -345208,7 +345208,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 2
+                "Value": 42
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",
@@ -345449,7 +345449,7 @@
                 "PropertyTagFlags": "None",
                 "PropertyTypeName": null,
                 "PropertyTagExtensions": "NoExtension",
-                "Value": 5
+                "Value": 55
               },
               {
                 "$type": "UAssetAPI.PropertyTypes.Objects.EnumPropertyData, UAssetAPI",

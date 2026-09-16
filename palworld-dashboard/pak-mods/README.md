@@ -627,26 +627,121 @@ Kiểm logic bằng dữ liệu giả theo hình dạng JSON UAssetCLI (22 case,
 
 ---
 
-# BialkWingFuel_P.pak — Pin Cánh Bay cần Lõi Văn Minh (17/09/2026)
+# BialkRecipe_P.pak — Lõi Văn Minh Cổ Đại gắn vào công thức (17/09/2026)
 
-Sửa `Pal/Content/Pal/DataTable/Item/DT_ItemRecipeDataTable` **và** `_Common`, đúng 1
-dòng `WingGlider_Fuel` (Pin Cánh Bay, item tiêu hao cho Bộ Cánh Bay):
+**Một pak duy nhất cho MỌI chỉnh sửa công thức** — bảng `DT_ItemRecipeDataTable` +
+`_Common` (2 bảng giống hệt, vá cả 2). Có món mới thì sửa tiếp pak này, KHÔNG tách
+pak (cùng bảng = chỉ 1 pak được nạp). Thay cho `BialkWingFuel_P.pak` đời trước.
 
-| Nguyên liệu | Gốc | Mod |
+Bối cảnh: máy nghiền + thám hiểm đã chặn rớt lõi → lõi chỉ mua bằng Dogcoin ở shop
+→ chủ server dùng lõi làm "vé" cho đồ endgame + đạn.
+
+## ⚠️ Hai vật phẩm dễ lẫn (chốt 17/09: pak này CHỈ đụng Lõi)
+| Tên VN | Mã | paldb (EN) | Số công thức dùng |
+|---|---|---|---|
+| **Lõi Văn Minh Cổ Đại** | `AncientParts2` | Ancient Civilization **Core** | 37 (toàn endgame) |
+| Linh Kiện Văn Minh Cổ Đại | `PalCrystal_Ex` | Ancient Civilization **Parts** | 345 (mọi bậc, cả áo vải/cung thô) |
+
+Chủ server đã cân nhắc và **giữ Linh Kiện nguyên game gốc** (áp +40 cho 345 món là
+người mới không chế nổi áo vải). Cung Cơ Khí dùng Linh Kiện nên không nằm trong đợt này.
+
+## 1. Pin Cánh Bay: thêm 1 lõi
+`WingGlider_Fuel`: Gỗ Thần Bí ×10 + Dầu Thô ×20 + **Lõi ×1** → 1 pin.
+
+## 2. Mọi công thức ĐANG dùng lõi: +40 (36 món, đủ mọi bậc _2→_5)
+| Dòng | Món | Lõi cũ → mới |
 |---|---|---|
-| Vật Liệu Gỗ Thần Bí (`Wood_WorldTree`) | 10 | 10 |
-| Dầu Thô (`CrudeOil`) | 20 | 20 |
-| **Lõi Văn Minh Cổ Đại (`AncientParts2`)** | — | **1** (ô Material3, vốn trống) |
+| `WidePenetrateShotgun` | Súng Năng Lượng Tán Xạ | 5 → **45** |
+| `WidePenetrateShotgun_2` | Súng Năng Lượng Tán Xạ | 6 → **46** |
+| `WidePenetrateShotgun_3` | Súng Năng Lượng Tán Xạ | 7 → **47** |
+| `WidePenetrateShotgun_4` | Súng Năng Lượng Tán Xạ | 8 → **48** |
+| `WidePenetrateShotgun_5` | Súng Năng Lượng Tán Xạ | 10 → **50** |
+| `ElectricArcAssaultRifle` | Súng Trường Plasma | 7 → **47** |
+| `ElectricArcAssaultRifle_2` | Súng Trường Plasma | 8 → **48** |
+| `ElectricArcAssaultRifle_3` | Súng Trường Plasma | 10 → **50** |
+| `ElectricArcAssaultRifle_4` | Súng Trường Plasma | 12 → **52** |
+| `ElectricArcAssaultRifle_5` | Súng Trường Plasma | 14 → **54** |
+| `BeamLauncher` | Thiết Bị Phóng Chùm Tia | 10 → **50** |
+| `BeamLauncher_2` | Thiết Bị Phóng Chùm Tia | 12 → **52** |
+| `BeamLauncher_3` | Thiết Bị Phóng Chùm Tia | 15 → **55** |
+| `BeamLauncher_4` | Thiết Bị Phóng Chùm Tia | 17 → **57** |
+| `BeamLauncher_5` | Thiết Bị Phóng Chùm Tia | 20 → **60** |
+| `DroneLauncher` | Thiết Bị Phóng Drone | 5 → **45** |
+| `DroneLauncher_2` | Thiết Bị Phóng Drone | 6 → **46** |
+| `DroneLauncher_3` | Thiết Bị Phóng Drone | 7 → **47** |
+| `DroneLauncher_4` | Thiết Bị Phóng Drone | 8 → **48** |
+| `DroneLauncher_5` | Thiết Bị Phóng Drone | 10 → **50** |
+| `Shield_Ultra` | Khiên Tối Thượng | 30 → **70** |
+| `Shield_SF` | Khiên Nâng Cấp | 30 → **70** |
+| `Shield_07` | Khiên Cổ Đại | 30 → **70** |
+| `Accessory_TalentChecker` | Kính Tiềm Năng | 5 → **45** |
+| `Otomo_ATNormal_ElementBoost_1` | Gậy Chỉ Huy Thiên Vương | 5 → **45** |
+| `Otomo_ATFire_ElementBoost_1` | Gậy Chỉ Huy Viêm Đế | 5 → **45** |
+| `Otomo_ATWater_ElementBoost_1` | Gậy Chỉ Huy Hải Vương | 5 → **45** |
+| `Otomo_ATElectricity_ElementBoost_1` | Gậy Chỉ Huy Lôi Đế | 5 → **45** |
+| `Otomo_ATLeaf_ElementBoost_1` | Gậy Chỉ Huy Tinh Linh Vương | 5 → **45** |
+| `Otomo_ATIce_ElementBoost_1` | Gậy Chỉ Huy Băng Đế | 5 → **45** |
+| `Otomo_ATEarth_ElementBoost_1` | Gậy Chỉ Huy Địa Đế | 5 → **45** |
+| `Otomo_ATDark_ElementBoost_1` | Gậy Chỉ Huy Minh Vương | 5 → **45** |
+| `Otomo_ATDragon_ElementBoost_1` | Gậy Chỉ Huy Thần Long | 5 → **45** |
+| `WingGlider` | Bộ Cánh Bay | 10 → **50** |
+| `SphereModule_Sniper2` | Thiết Bị Tăng Tầm Ném II | 2 → **42** |
+| `SphereModule_Homing` | Thiết Bị Tự Ngắm Mục Tiêu | 5 → **45** |
 
-Mục đích: máy nghiền + thám hiểm đã bị chặn rớt lõi, nên lõi giờ chỉ mua bằng
-Dogcoin ở shop → mỗi lần bay tốn 1 lõi = "vé bay" gắn vào kinh tế Dogcoin.
+**Cố ý KHÔNG cộng `AIcore` (Lõi AI, giữ ×1):** nguyên liệu trung gian nằm trong hầu hết
+súng cấp cao (5–12 Lõi AI/cây) — +40 vào nó là Súng Tán Xạ bậc 5 tốn ~460 lõi/cây.
 
-**Kỹ thuật:** bảng công thức KHÔNG dính bug FName `_2` (round-trip tojson→fromjson
-khớp 100% từng byte, kiểm 17/09 trên bản game 07/09) → sửa JSON rồi `fromjson`
-thẳng, không cần vá byte. Pak chỉ chứa 2 file bảng công thức — **không đụng pak
-nào khác** đang chạy (chỉ số / xổ số / shop là bảng riêng). Đổi số lõi: sửa
-`Material3_Count` trong `scripts/recipe_wingfuel.patched.json`, fromjson cả 2
-bảng, pack lại (`--version V11 -p 764445180`).
+## 3. Toàn bộ đạn: +1 lõi mỗi lần chế (32 loại)
+| Dòng | Đạn | Mỗi lần chế ra | Thêm |
+|---|---|---|---|
+| `Arrow` | Mũi Tên | x10 | **+1 lõi** |
+| `Arrow_Poison` | Mũi Tên Độc | x10 | **+1 lõi** |
+| `Arrow_Fire` | Mũi Tên Lửa | x10 | **+1 lõi** |
+| `ReinforcedArrow` | Mũi Tên Cường Hóa | x10 | **+1 lõi** |
+| `SFArrow` | Mũi Tên Nâng Cấp | x10 | **+1 lõi** |
+| `RoughBullet` | Đạn Thô | x20 | **+1 lõi** |
+| `HandgunBullet` | Đạn Súng Ngắn | x20 | **+1 lõi** |
+| `RifleBullet` | Đạn Súng Trường | x10 | **+1 lõi** |
+| `ShotgunBullet` | Đạn Súng Săn | x10 | **+1 lõi** |
+| `AssaultRifleBullet` | Đạn Súng Trường Tấn Công | x20 | **+1 lõi** |
+| `ExplosiveBullet` | Tên Lửa | x10 | **+1 lõi** |
+| `InkBullet` | Đạn Súng Bắn Decal | x10 | **+1 lõi** |
+| `FlamethrowerBullet` | Nhiên Liệu Súng Phun Lửa | x10 | **+1 lõi** |
+| `MissileBullet` | Tên Lửa Điều Khiển | x10 | **+1 lõi** |
+| `GrenadeBullet` | Lựu Đạn | x10 | **+1 lõi** |
+| `GatlingBullet` | Đạn Súng Nòng Xoay | x50 | **+1 lõi** |
+| `MeteorBullet` | Đạn Thiên Thạch | x10 | **+1 lõi** |
+| `LaserBullet` | Đạn Năng Lượng | x20 | **+1 lõi** |
+| `EnergyLauncherBullet` | Đạn Plasma | x10 | **+1 lõi** |
+| `LaserGatlingBullet` | Đạn Súng Nòng Xoay Laser | x50 | **+1 lõi** |
+| `ChargeLaserRifleBullet` | Đạn Súng Trường Năng Lượng | x10 | **+1 lõi** |
+| `OverheatRifleBullet` | Đạn Súng Trường Quá Nhiệt | x20 | **+1 lõi** |
+| `EnergyShotgunBullet` | Đạn Súng Săn Năng Lượng | x10 | **+1 lõi** |
+| `PalDopingShotBullet` | Đạn Súng Cường Lực | x10 | **+1 lõi** |
+| `WidePenetrateShotgunBullet` | Đạn Súng Năng Lượng Tán Xạ | x10 | **+1 lõi** |
+| `ElectricArcAssaultRifleBullet` | Đạn Súng Trường Plasma | x20 | **+1 lõi** |
+| `BeamLauncherBullet` | Đạn Thiết Bị Phóng Chùm Tia | x10 | **+1 lõi** |
+| `SkyBowArrow` | Mũi Tên Cung Cơ Khí | x10 | **+1 lõi** |
+| `SkySubmachineGunBullet` | Đạn Súng Tiểu Liên Chiến Đấu | x20 | **+1 lõi** |
+| `SkyShotgunBullet` | Đạn Súng Săn Nguyên Mẫu | x10 | **+1 lõi** |
+| `SkyAssaultRifleBullet` | Đạn Súng Trường Tấn Công Hạng Nặng | x20 | **+1 lõi** |
+| `SkyGrenadeLauncherBullet` | Đạn Súng Phóng Lựu Chiến Thuật | x10 | **+1 lõi** |
 
-Cài: chép vào `~mods`, restart server game. Kiểm trong game: mở bàn chế → Pin Cánh
-Bay phải hiện 3 dòng nguyên liệu.
+⚠️ Gồm cả Mũi Tên / Đạn Thô đầu game — người mới **không có Dogcoin mua lõi thì không
+chế được đạn**. Chủ server chốt "tất cả đạn", ghi lại để biết nguồn khiếu nại.
+
+## 4. Mọi món dùng Lõi AI (`AIcore`): +10 Lõi Văn Minh (79 món)
+- **23 món đã có lõi** → cộng thêm 10 (chồng lên +40 ở mục 2; vd Súng Tán Xạ bậc 5 = 10 gốc + 40 + 10 = **60**).
+- **32 món chưa có lõi, còn ô trống** → thêm ô Lõi ×10: Kiếm Laser, Cung Cơ Khí, Súng Săn Nguyên Mẫu, Súng Trường Tấn Công Hạng Nặng, Súng Tiểu Liên Chiến Đấu, Súng Phóng Lựu Chiến Thuật, Áo Giáp Cổ Đại, Áo Giáp Cổ Đại Chịu Nhiệt, Áo Giáp Cổ Đại Chịu Lạnh, Áo Giáp Cổ Đại Hạng Nhẹ, Mũ Cổ Đại, Súng Phóng Tên Lửa Điều Khiển Jetragon.
+- **24 món ĐẦY 5 ô** (bậc 2→5 của 6 vũ khí Sky: Kiếm Laser, Cung Cơ Khí, Súng Săn Nguyên Mẫu, Súng Trường Tấn Công Hạng Nặng, Súng Tiểu Liên Chiến Đấu, Súng Phóng Lựu Chiến Thuật) → game không có ô thứ 6, chủ server chốt **+10 Lõi AI** thay thế (Lõi AI vốn cũng tốn 1 Lõi Văn Minh/viên).
+
+## Sửa đồ (repair) — không có bảng riêng
+Chi phí sửa = nguyên liệu công thức × `RequiredRepairItemRate` (chỉ có trong C++, không
+nằm trong BP nào để vá pak — đã soi BP_PalGameSetting: NameMap không có). Nên lõi cộng vào
+công thức **tự kéo theo vào sửa đồ**. Muốn biết chính xác mỗi lần sửa tốn bao nhiêu lõi:
+đo trong game 1 lần (sửa 1 món từ hỏng hẳn, đếm lõi mất ÷ lõi công thức = tỉ lệ).
+
+Kỹ thuật: bảng công thức round-trip khớp 100% byte (không bug FName) → sửa JSON
+(`scripts/recipe_final.patched.json`) rồi `fromjson` thẳng, pack V11 seed 764445180.
+Verify đọc ngược từ pak: 125 dòng đổi đúng luật, 1.289 dòng nguyên, 2 bảng trùng
+1414/1414. md5 afe60642.
