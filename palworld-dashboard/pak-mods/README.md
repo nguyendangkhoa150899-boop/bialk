@@ -630,7 +630,7 @@ Kiểm logic bằng dữ liệu giả theo hình dạng JSON UAssetCLI (22 case,
 # BialkRecipe_P.pak — Lõi Văn Minh Cổ Đại gắn vào công thức (17/09/2026)
 
 **Một pak duy nhất cho MỌI chỉnh sửa công thức** — bảng `DT_ItemRecipeDataTable` +
-`_Common` (2 bảng giống hệt, vá cả 2). Có món mới thì sửa tiếp pak này, KHÔNG tách
+`_Common` (vật phẩm) **và** `DT_BuildObjectDataTable` + `_Common` (công trình, mục 5); 4 bảng, vá cả 4. Có món mới thì sửa tiếp pak này, KHÔNG tách
 pak (cùng bảng = chỉ 1 pak được nạp). Thay cho `BialkWingFuel_P.pak` đời trước.
 
 Bối cảnh: máy nghiền + thám hiểm đã chặn rớt lõi → lõi chỉ mua bằng Dogcoin ở shop
@@ -735,6 +735,31 @@ chế được đạn**. Chủ server chốt "tất cả đạn", ghi lại đ�
 - **32 món chưa có lõi, còn ô trống** → thêm ô Lõi ×10: Kiếm Laser, Cung Cơ Khí, Súng Săn Nguyên Mẫu, Súng Trường Tấn Công Hạng Nặng, Súng Tiểu Liên Chiến Đấu, Súng Phóng Lựu Chiến Thuật, Áo Giáp Cổ Đại, Áo Giáp Cổ Đại Chịu Nhiệt, Áo Giáp Cổ Đại Chịu Lạnh, Áo Giáp Cổ Đại Hạng Nhẹ, Mũ Cổ Đại, Súng Phóng Tên Lửa Điều Khiển Jetragon.
 - **24 món ĐẦY 5 ô** (bậc 2→5 của 6 vũ khí Sky: Kiếm Laser, Cung Cơ Khí, Súng Săn Nguyên Mẫu, Súng Trường Tấn Công Hạng Nặng, Súng Tiểu Liên Chiến Đấu, Súng Phóng Lựu Chiến Thuật) → game không có ô thứ 6, chủ server chốt **+10 Lõi AI** thay thế (Lõi AI vốn cũng tốn 1 Lõi Văn Minh/viên).
 
+## 5. CÔNG TRÌNH (máy Văn Minh Cổ Đại, Lv66+) — bảng riêng `DT_BuildObjectDataTable` (+`_Common`)
+Phát hiện 17/09 khi chủ server soi Máy Tạo Vật Chất vẫn 10 lõi: **công trình KHÔNG nằm trong
+bảng chế vật phẩm** mà ở `Pal/Content/Pal/DataTable/MapObject/Building/` (chỉ **4 ô** nguyên liệu).
+Cùng luật: có Lõi → +40; có Lõi AI → +10 Lõi nữa (chưa có Lõi mà còn ô → thêm ô Lõi ×10;
+đầy 4 ô → +10 Lõi AI thay thế). 15 công trình đổi, 483 dòng còn lại nguyên (tường/mái/nền
+Cổ Đại chỉ tốn Thỏi Skyisland — không đụng). 19 công trình dùng Linh Kiện giữ nguyên.
+
+| Mã | Công trình | Lõi cũ → mới |
+|---|---|---|
+| `ElectricHatchingPalEgg` | Lò Ấp Trứng Điện | 2 → **42** |
+| `MultiElectricHatchingPalEgg` | Lò Ấp Trứng Điện Lớn | 20 → **60** |
+| `MultiHatchingPalEgg` | Lò Ấp Trứng Lớn | 4 → **44** |
+| `Factory_Money` | Máy In Tiền | 5 → **55** (+40, +10 vì có Lõi AI) |
+| `AncientElectricGenerator` | Máy Phát Điện Văn Minh Cổ Đại | 10 → **50** |
+| `AncientBlastFurnace` | Lò Luyện Văn Minh Cổ Đại | 10 → **50** |
+| `AncientCookingStove` | Bếp Văn Minh Cổ Đại | 10 → **50** |
+| `AncientMultiProduct` | Máy Tạo Vật Chất Văn Minh Cổ Đại | 10 → **50** |
+| `AncientFarmBlock` | Máy Canh Tác Văn Minh Cổ Đại | 10 → **50** |
+| `MultiElectricHatchingPalEggWithBreed` | Lò Ấp Điện Lớn (kèm phối giống) | 20 → **70** (+40, +10 vì có Lõi AI) |
+| `AncientRelicRecycler` | Máy Nghiền Di Vật Cổ Đại | 20 → **60** |
+| `BaseCampWorkHard03` | Trạm Làm Việc Chăm Chỉ III | 5 → **45** |
+| `Ancient_Clinic` | Phòng Khám Văn Minh Cổ Đại | 10 → **50** |
+| `AncientWorkBench` | Bàn Chế Văn Minh Cổ Đại | 0 → **10** (thêm ô Lõi vì có Lõi AI) |
+| `Ancient_AirConditioner` | Máy Điều Hoà Văn Minh Cổ Đại | không có ô trống (4/4) → **Lõi AI 10 → 20** thay thế |
+
 ## Sửa đồ (repair) — không có bảng riêng
 Chi phí sửa = nguyên liệu công thức × `RequiredRepairItemRate` (chỉ có trong C++, không
 nằm trong BP nào để vá pak — đã soi BP_PalGameSetting: NameMap không có). Nên lõi cộng vào
@@ -743,5 +768,5 @@ công thức **tự kéo theo vào sửa đồ**. Muốn biết chính xác mỗ
 
 Kỹ thuật: bảng công thức round-trip khớp 100% byte (không bug FName) → sửa JSON
 (`scripts/recipe_final.patched.json`) rồi `fromjson` thẳng, pack V11 seed 764445180.
-Verify đọc ngược từ pak: 125 dòng đổi đúng luật, 1.289 dòng nguyên, 2 bảng trùng
-1414/1414. md5 afe60642.
+Verify đọc ngược từ pak: vật phẩm 125 dòng đổi / 1.289 nguyên (2 bảng trùng 1414/1414); công trình
+15 đổi / 483 nguyên (2 bảng trùng 498/498); round-trip 8/8 file khớp byte. md5 a72b4066.
