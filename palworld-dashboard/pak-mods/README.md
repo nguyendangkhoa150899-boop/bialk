@@ -624,3 +624,29 @@ kiểm giúp 5 dòng đó đã "+0" chưa.
 
 Kiểm logic bằng dữ liệu giả theo hình dạng JSON UAssetCLI (22 case, scratchpad `expedition-fixture-test.js`);
 **chưa chạy trên bảng thật** — đọc kỹ log `--check` + round-trip fromjson→tojson như phần recycler trước khi lên server.
+
+---
+
+# BialkWingFuel_P.pak — Pin Cánh Bay cần Lõi Văn Minh (17/09/2026)
+
+Sửa `Pal/Content/Pal/DataTable/Item/DT_ItemRecipeDataTable` **và** `_Common`, đúng 1
+dòng `WingGlider_Fuel` (Pin Cánh Bay, item tiêu hao cho Bộ Cánh Bay):
+
+| Nguyên liệu | Gốc | Mod |
+|---|---|---|
+| Vật Liệu Gỗ Thần Bí (`Wood_WorldTree`) | 10 | 10 |
+| Dầu Thô (`CrudeOil`) | 20 | 20 |
+| **Lõi Văn Minh Cổ Đại (`AncientParts2`)** | — | **1** (ô Material3, vốn trống) |
+
+Mục đích: máy nghiền + thám hiểm đã bị chặn rớt lõi, nên lõi giờ chỉ mua bằng
+Dogcoin ở shop → mỗi lần bay tốn 1 lõi = "vé bay" gắn vào kinh tế Dogcoin.
+
+**Kỹ thuật:** bảng công thức KHÔNG dính bug FName `_2` (round-trip tojson→fromjson
+khớp 100% từng byte, kiểm 17/09 trên bản game 07/09) → sửa JSON rồi `fromjson`
+thẳng, không cần vá byte. Pak chỉ chứa 2 file bảng công thức — **không đụng pak
+nào khác** đang chạy (chỉ số / xổ số / shop là bảng riêng). Đổi số lõi: sửa
+`Material3_Count` trong `scripts/recipe_wingfuel.patched.json`, fromjson cả 2
+bảng, pack lại (`--version V11 -p 764445180`).
+
+Cài: chép vào `~mods`, restart server game. Kiểm trong game: mở bàn chế → Pin Cánh
+Bay phải hiện 3 dòng nguyên liệu.
