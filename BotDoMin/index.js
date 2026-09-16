@@ -2597,6 +2597,31 @@ function palChest(userId) {
     if (!Array.isArray(u.palChest)) u.palChest = [];
     return u.palChest;
 }
+// 🎒 16/09 (chủ server chốt): TRẦN 100 PAL ở mục "CHƯA NHẬN". Trước đây rương không có trần -
+// quay thoải mái mà mỗi ngày chỉ nhận được dayMax (mặc định 5) con vào game, nên rương phình mãi:
+// /api/profile trả CẢ mảng và web vẽ HẾT (mỗi dòng 1 ảnh, không lazy) -> vài trăm con là điện
+// thoại đứng. Trần chặn ngay từ gốc thay vì vá chỗ hiển thị.
+const PAL_CHEST_MAX = 100;
+// 📜 16/09: mục "ĐÃ NHẬN / ĐÃ BÁN" chỉ gửi PAL_DONE_SHOW con GẦN NHẤT. Mục này không có trần
+// (bán/nhận bao nhiêu cũng cộng dồn mãi) nên người chơi lâu năm có vài trăm con -> mỗi lần pcSync
+// là tải cả mảng + vẽ cả mảng, mở popup giật. Pal cũ vẫn nằm nguyên trong db, chỉ là không gửi ra web.
+const PAL_DONE_SHOW = 100;
+// Đếm pal ĐANG CHỜ XỬ LÝ: trong rương (chest = chờ, delivering = đang giao dở, kể cả con đang
+// quay chưa hiện) CỘNG pal người khác đang rao ĐẾN mình (chưa bấm nhận nhưng chắc chắn sẽ vào
+// rương). Không đếm 'claimed'/'sold' - hai loại đó nằm mục ĐÃ NHẬN, không chiếm chỗ.
+// ⚠️ Phải đếm cả lời rao đang treo, nếu không 5 người mỗi người rao 20 con cho một người đang
+// có 80 là người đó thành 180 - đúng cái mà trần này muốn chặn.
+function palWaitCount(userId) {
+    const mine = palChest(userId).filter(i => i && (i.status === 'chest' || i.status === 'delivering')).length;
+    const incoming = palTrades().filter(t => t.to === String(userId)).length;
+    return mine + incoming;
+}
+function palChestRoom(userId) { return Math.max(0, PAL_CHEST_MAX - palWaitCount(userId)); }
+// Trả câu báo lỗi nếu KHÔNG còn chỗ, null nếu còn. viec = "quay tiếp" / "mua pal" ...
+function palChestFullErr(userId, viec) {
+    if (palChestRoom(userId) > 0) return null;
+    return `🎒 Mục CHƯA NHẬN đang đầy ${PAL_CHEST_MAX} pal - bán bớt hoặc nhận vào game rồi ${viec}. (Mỗi ngày nhận được ${palWheelCfg().dayMax} con vào game)`;
+}
 // 🚫 CHỐNG SPAM: đang có 1 lượt quay CHƯA HIỆN kết quả (revealAt còn tương lai) thì khoá
 // quay lượt mới - chặn kiểu "quay → F5 → quay → F5" tạo cả đống lượt chồng chéo gây lỗi.
 // Tự mở khoá sau khi reel hiện xong (~10,5s). Enforce ở SERVER nên F5/gọi tay đều vô ích.
@@ -2617,6 +2642,8 @@ function palWheelSpin(userId, username) {
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
     if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt - chờ vài giây cho hiện kết quả rồi quay tiếp nhé' };
+    const fullErr = palChestFullErr(userId, 'quay tiếp');   // 🎒 16/09 trần rương
+    if (fullErr) return { error: fullErr, chestFull: true };
     const normals = palWheelNormalPool();
     const raids = [];   // 11/09: 🎁 vòng RANDOM không còn ô RAID ở MỌI chế độ (chủ server: "chỉ còn legend trở xuống") - raid chỉ ra ở 🍀 vòng may mắn
     if (!normals.length) return { error: 'Danh sách pal chưa nạp được, báo admin' };
@@ -2702,6 +2729,8 @@ function palRaidSpin(userId, username) {
     if (!cfg.raidWheelOn) return { error: 'Vòng quay RAID đang tắt' };
     // 11/09: PAL GỐC vẫn quay được vòng may mắn (pal ra vẫn Lv1/0 sao/không passive theo luật raw lúc nhận)
     if (palSpinLocked(userId)) return { error: '⏳ Đang quay dở một lượt - chờ vài giây rồi quay tiếp nhé' };
+    const fullErrR = palChestFullErr(userId, 'quay tiếp');   // 🎒 16/09 trần rương
+    if (fullErrR) return { error: fullErrR, chestFull: true };
     const user = getUserData(userId);
     if ((user.palLuck || 0) < 100) return { error: 'Chưa đủ thanh may mắn (cần đầy 100%)' };
     const raids = palLuckyRaidPool(), legends = palLegendPool();
@@ -2752,6 +2781,8 @@ function palPickPrice(pal, cfg) {
 }
 function palPickBuy(userId, code, username) {
     const ftErr = featGuard('pick'); if (ftErr) return { error: ftErr };   // 🔌 15/09
+    const fullErrP = palChestFullErr(userId, 'mua tiếp');   // 🎒 16/09 trần rương
+    if (fullErrP) return { error: fullErrP, chestFull: true };
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
     // pool thường + 4 boss raid đang mở bán (giá > 0) - 🔒 PAL GỐC: KHÔNG bán raid đích danh (chỉ quay random mới ra)
@@ -2804,6 +2835,35 @@ function palChestSell(userId, itemId, username) {
     return { ok: true, sold: cfg.sellPrice, balance: getUserData(userId).points || 0 };
 }
 
+// 🧺 16/09 (chủ server): BÁN HÀNG LOẠT - web tick checkbox nhiều con rồi bán 1 phát.
+// Bán từng con theo đúng luật của palChestSell (bỏ qua con không bán được thay vì hỏng cả mẻ),
+// cộng tiền MỘT lần và ghi MỘT dòng log cho gọn sổ. Trần 100 id/lần = đúng trần rương.
+function palChestSellMany(userId, ids, username) {
+    const cfg = palWheelCfg();
+    // id pal luôn >= 1 (dbCache._palChestSeq đếm từ 1) - lọc luôn 0/âm/rác để mảng toàn rác
+    // báo đúng câu "chưa chọn con nào" thay vì "không con nào bán được".
+    const want = [...new Set((Array.isArray(ids) ? ids : []).map(Number).filter(x => Number.isFinite(x) && x > 0))].slice(0, PAL_CHEST_MAX);
+    if (!want.length) return { error: 'Chưa chọn con nào' };
+    const chest = palChest(userId);
+    const now = Date.now(), at = new Date().toLocaleString('vi-VN');
+    const sold = [];
+    for (const id of want) {
+        const it = chest.find(i => i.id === id);
+        if (!it) continue;
+        if (it.revealAt && it.revealAt > now) continue;   // đang quay dở
+        if (it.status !== 'chest') continue;              // đang giao / đã nhận / đã bán
+        it.status = 'sold'; it.soldAt = at;
+        sold.push(it);
+    }
+    if (!sold.length) return { error: 'Không con nào bán được (đang giao dở, đang quay, hoặc đã xử lý rồi)' };
+    const tien = cfg.sellPrice * sold.length;
+    updatePoints(userId, tien);
+    logDog('shop', userId, username || userId, tien, `bán hàng loạt ${sold.length} pal trong rương`);
+    writeLog('ADMIN', `[RƯƠNG PAL] ${username || userId} bán hàng loạt ${sold.length} pal (+${tien} Dogcoin): ${sold.map(i => i.name + ' #' + i.id).join(', ').slice(0, 500)}`);
+    saveDbNow();
+    return { ok: true, n: sold.length, sold: tien, balance: getUserData(userId).points || 0, bo: want.length - sold.length };
+}
+
 // ===== 🤝 BÁN / TẶNG PAL CHO NGƯỜI CHƠI KHÁC (11/09) =====
 // Chủ server: bấm Bán -> popup (1) bán shop giá cố định (2) bán cho người khác, nhập giá (0 = tặng);
 // bên nhận thấy pal + nút "Xác nhận mua với X" ; người bán "Thu hồi" được nếu bên kia câu giờ.
@@ -2854,6 +2914,10 @@ function palTradeOffer(userId, itemId, toId, price, username) {
     if (item.revealAt && item.revealAt > Date.now()) return { error: 'Pal đang trong vòng quay - chờ quay xong đã' };
     if (item.status !== 'chest') return { error: item.status === 'delivering' ? 'Pal đang giao dở, không bán được' : 'Pal này đã xử lý rồi' };
     if (palTrades().filter(t => t.from === from).length >= PAL_TRADE_MAX_OPEN) return { error: `Tối đa ${PAL_TRADE_MAX_OPEN} pal đang rao cùng lúc - thu hồi bớt đã` };
+    // 🎒 16/09 (chủ server): KHÔNG bán sang người đã đụng trần. Chỗ trống tính cả lời rao ĐANG TREO
+    // gửi cho họ, nên rao 20 con cho người đang có 80 là vừa đủ, con thứ 21 bị chặn.
+    const room = palChestRoom(toId);
+    if (room <= 0) return { error: `${getUserData(toId).name || toId} đang đầy ${PAL_CHEST_MAX} pal chưa nhận - không nhận thêm được, bảo họ xử lý bớt đã` };
     chest.splice(idx, 1);
     const toName = (getUserData(toId).name || toId);
     const t = { id: dbCache._palTradeSeq = (dbCache._palTradeSeq || 0) + 1, from, fromName: username || from, to: toId, toName, price, item, at: Date.now(), atText: new Date().toLocaleString('vi-VN') };
@@ -2884,6 +2948,9 @@ function palTradeAccept(userId, tradeId, username) {
     if (i < 0) return { error: 'Giao dịch không còn (người bán đã thu hồi?)' };
     const t = palTrades()[i];
     if (t.to !== u) return { error: 'Lời bán này không gửi cho bạn' };
+    // 🎒 16/09: lúc rao đã giữ sẵn 1 chỗ cho lời này, nên trừ chính nó ra khi kiểm lại. Chỉ chặn
+    // khi rương đã đầy vì đường khác (admin tặng, quay thêm) trong lúc lời rao còn treo.
+    if (palWaitCount(u) - 1 >= PAL_CHEST_MAX) return { error: `Rương bạn đang đầy ${PAL_CHEST_MAX} pal chưa nhận - bán bớt hoặc nhận vào game rồi bấm lại` };
     const buyer = getUserData(u);
     if (t.price > 0) {
         if ((buyer.points || 0) < t.price) return { error: `Cần ${t.price.toLocaleString()} Dogcoin (bạn có ${(buyer.points || 0).toLocaleString()})` };
@@ -3264,6 +3331,8 @@ function palChestGrant(ownerId, palName, palCode) {
         ? (all.find(p => p.code === c) || null)
         : (q ? (all.find(p => p.name.toLowerCase() === q) || all.find(p => p.name.toLowerCase().includes(q)) || null) : null);
     if (!win) return { error: c ? `Không có pal code "${c}"` : `Không thấy pal tên "${palName}"` };
+    // 🎒 16/09: admin tặng cũng theo trần - nhồi thêm vào rương đã đầy chỉ làm web người đó nặng hơn
+    if (palChestRoom(ownerId) <= 0) return { error: `Người này đang đầy ${PAL_CHEST_MAX} pal chưa nhận - bảo họ bán bớt / nhận vào game đã` };
     const raidSet = new Set(PAL_DATA.raidOnly || []);
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
@@ -5972,6 +6041,7 @@ client.once('ready', async (c) => {
                     return {
                         price: cfg.price, sellPrice: cfg.sellPrice, open: cfg.open,
                         pot: PALWHEEL_JACKPOT_POT, spinRemain,   // 💰 15/09: giải cố định, không còn số dư nuôi
+                        chestWait: palWaitCount(uid), chestMax: PAL_CHEST_MAX,   // 🎒 16/09: nút tự động quay dừng khi đầy
                         // 27/08: kèm code để web gắn hình (/palimage/T_<code>_icon_normal.png)
                         // 💰 15/09: danh sách Ô THẬT (Mimog xuất hiện PALWHEEL_JACKPOT_SLOTS lần) - jack = ô NỔ HŨ
                         pals: palWheelSlots(palWheelNormalPool()).map(p => ({ name: p.name, code: p.code, dex: p.dex || 0, legend: palIsLegend(p.code), epic: palIsEpic(p.code), jack: palIsJackpot(p.code) })),
@@ -6016,7 +6086,20 @@ client.once('ready', async (c) => {
                     const cfg = palWheelCfg();
                     return {
                         // pal quay dở (chưa tới revealAt) KHÔNG hiện - F5 cũng không xem trộm được
-                        chest: palChest(uid).filter(i => !i.revealAt || i.revealAt <= Date.now()),
+                        // 📜 16/09: giữ ĐỦ pal chờ nhận/đang giao (đã có trần 100) + 100 con ĐÃ NHẬN/ĐÃ BÁN
+                        // gần nhất. palChest dùng unshift nên đầu mảng là mới nhất -> slice là lấy đúng con mới.
+                        chest: (() => {
+                            const now = Date.now();
+                            const cho = [], xong = [];
+                            for (const i of palChest(uid)) {
+                                if (i.revealAt && i.revealAt > now) continue;   // đang quay dở - không lộ sớm
+                                if (i.status === 'claimed' || i.status === 'sold') { if (xong.length < PAL_DONE_SHOW) xong.push(i); }
+                                else cho.push(i);
+                            }
+                            return cho.concat(xong);
+                        })(),
+                        doneShow: PAL_DONE_SHOW,
+                        chestWait: palWaitCount(uid), chestMax: PAL_CHEST_MAX,   // 🎒 16/09 trần mục CHƯA NHẬN
                         sellPrice: cfg.sellPrice, soulMax: cfg.soulMax,
                         soulPct: cfg.soulPct, passiveMax: cfg.passiveMax, ivs: cfg.ivs,
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
@@ -6041,6 +6124,7 @@ client.once('ready', async (c) => {
                     };
                 },
                 sell: (uid, itemId) => palChestSell(uid, itemId, getUserData(uid).name || uid),
+                sellMany: (uid, ids) => palChestSellMany(uid, ids, getUserData(uid).name || uid),   // 🧺 16/09
                 // 🤝 11/09 bán/tặng pal cho người chơi khác
                 tradeOffer: (uid, itemId, toId, price) => palTradeOffer(uid, itemId, toId, price, getUserData(uid).name || uid),
                 tradeCancel: (uid, tradeId) => palTradeCancel(uid, tradeId, getUserData(uid).name || uid),

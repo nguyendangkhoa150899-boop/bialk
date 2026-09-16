@@ -670,6 +670,42 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **16/09** — 🔒 **Mở popup là khoá cuộn trang + 📜 mục ĐÃ NHẬN/ĐÃ BÁN chỉ gửi 100 con gần nhất** (chủ server: "mở popup bất
+  kỳ thì phần còn lại không được scroll, áp dụng tất cả chức năng" · "phần này show 100 con gần nhất thôi đỡ lag web").
+  ✅ **Khoá cuộn**: KHÔNG sửa từng chỗ mở/đóng (dễ sót, popup mới lại quên) mà `MutationObserver` theo dõi class/style của 6
+  lớp phủ `POPIDS = [gmodal, tmodal, pcModal, jpPick, luckyPick, lolaPop]` → hễ còn 1 cái đang hiện là `body.noscroll`.
+  Khoá bằng `position:fixed` + nhớ `scrollY` (chỉ `overflow:hidden` thì **iOS Safari vẫn cuộn**), đóng hết thì `scrollTo` về
+  đúng chỗ cũ. `#pcBox` thêm `overscroll-behavior:contain`. Không đụng `#winpop`/`#jpFlash`/`#toast` (pointer-events:none).
+  ✅ **100 con gần nhất**: `PAL_DONE_SHOW = 100`, cắt ở **SERVER** trong `/api/profile` (giấu ở client thì trình duyệt vẫn tải
+  cả mảng mỗi lần `pcSync` - mà `pcSync` chạy lại sau mỗi lần bán/nhận/giao dịch). `palChest` dùng `unshift` nên `slice` đầu
+  mảng = con mới nhất. Pal cũ **vẫn nguyên trong db**, chỉ không gửi ra web. Đo thật: `/api/profile` còn **32 KB**.
+  Tiêu đề đổi thành **✅ ĐÃ NHẬN / BÁN 100 PAL GẦN NHẤT** (bỏ số tổng).
+  🐛 **Nút "Bán đã chọn" bấm không ăn**: em gọi `uiConfirm` (hộp xác nhận của **panel admin**) trong web - web dùng `gConfirm`.
+  JS nổ ngay dòng đó, **không toast, không gì cả**. 66 case test đều xanh vì chúng chỉ **đọc chuỗi**, không bấm nút.
+  🛡️ Vì vậy thêm `sellbtn-sim.js`: lấy **đúng hàm `pcSellMany` từ trang đã render** rồi chạy thật trong vm với đồ giả - gọi
+  hàm không tồn tại là nổ ngay (8 case). `popupscroll-test.js` 17 case cũng chạy thật logic khoá/mở, kèm 1 case **tự quét mọi
+  lớp phủ `position:fixed;inset:0` trong CSS và bắt buộc có tên trong POPIDS** → popup mới quên khai là test kêu.
+  `chestmaxtest.js` lên **62 case**.
+- **16/09** — 🎒 **TRẦN 100 pal ở mục CHƯA NHẬN + 🔁 nút tự động quay + 🧺 bán hàng loạt bằng checkbox** (chủ server, sau khi
+  hỏi "tối đa bao nhiêu pal ở mục chưa nhận"). Trả lời lúc đó: **không có trần nào cả** - `/api/profile` trả cả mảng, web vẽ
+  hết, mỗi dòng 1 ảnh không lazy; mà nhận vào game chỉ `dayMax` (5) con/ngày còn quay thì vô hạn → rương phình mãi, vài trăm
+  con là điện thoại đứng.
+  ✅ `PAL_CHEST_MAX = 100` + `palWaitCount()` / `palChestRoom()` / `palChestFullErr()`. **Đếm chỗ** = pal `chest` +
+  `delivering` **CỘNG lời rao đang treo gửi cho mình** (không đếm lời treo là 5 người mỗi người rao 20 cho một người đang có
+  80 → thành 180). `claimed`/`sold` không chiếm chỗ. Chặn ở **4 đường**: quay thường, vòng may mắn, chọn pal đích danh, admin
+  tặng vào rương; 3 đường đầu trả kèm cờ `chestFull` (route `/spin` forward xuống client).
+  ✅ **Bán sang người khác theo chỗ trống NGƯỜI NHẬN** (đúng ví dụ chủ server: p2 có 80 → p1 chỉ chuyển qua được 20).
+  `palTradeOffer` giữ sẵn chỗ lúc rao; `palTradeAccept` kiểm lại (trừ chính lời đó ra) phòng rương đầy vì đường khác.
+  ⚠️ Nhớ `PAL_TRADE_MAX_OPEN = 10` (luật 11/09) vẫn chặn rao quá 10 lời **cùng lúc** - nhận xong mới rao tiếp được.
+  ✅ `palChestSellMany()` + route `/api/pal/sell-many`: bỏ qua con đang giao/đang quay thay vì hỏng cả mẻ, cộng ví **1 lần**,
+  ghi **1 dòng** log, lọc id trùng và id ≤ 0. Web: ô tick trên từng thẻ chờ nhận (giữ trạng thái qua mỗi lần vẽ lại), thanh
+  **Chọn tất cả** + nút hiện số con/số tiền, hỏi xác nhận, khoá lúc đang bán. Tiêu đề đổi thành **CHƯA NHẬN (n/100)**, đầy thì
+  cảnh báo đỏ. Ảnh trong rương giờ `loading="lazy"`.
+  ✅ **🔁 TỰ ĐỘNG QUAY**: bấm 1 lần tự quay tiếp, nhãn hiện "còn X chỗ", dừng khi đầy / hết tiền / lỗi bất kỳ / bấm lại. Vẫn
+  gọi `/spin` từng lượt như bấm tay (server chốt kết quả + khoá 10,5s mỗi lượt) - **không nhanh hơn, không đổi tỉ lệ**.
+  ✅ `chestmaxtest.js` **52 case** (hàm thật trong vm) + `chestmax-e2e.js` **14 case** HTTP thật: tặng dừng đúng ở 100, quay/mua
+  bị chặn kèm `chestFull`, bán loạt 30 con +30.000 rồi quay lại được. Test bắt 2 lỗi thật của bản đầu: `chestFull` bị route
+  nuốt mất, và `ids:['x',null]` lọt qua `Number.isFinite` vì `Number(null)===0`.
 - **15/09 (tối)** — 🖐️ **Dải Quay Pal: xáo ngẫu nhiên thay xếp theo ID; đã quay 1 lượt là hết kéo tới khi F5** (chủ server:
   "khi quay xong không cho kéo nữa, pal kéo là random không cần xếp theo ID, trừ khi F5 mới cho kéo lại").
   ✅ `pwIdleList()` = Fisher-Yates trên `PW.pals` (283 ô, 2 Mimog rơi chỗ ngẫu nhiên). `PWSPUN` (biến trang, không lưu) bật
