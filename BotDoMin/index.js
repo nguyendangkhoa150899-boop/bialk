@@ -1688,7 +1688,7 @@ function backfillItemShopCat() {
     const raw = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     let fixed = 0;
     for (const x of raw) {
-        if (!x || ITEM_SHOP_CATS.includes(x.cat)) continue;
+        if (!x || itemCatHas(x.cat)) continue;
         const def = DEFAULT_ITEM_SHOP.find(d => d.id === x.id);
         x.cat = def ? def.cat : 'consume';
         fixed++;
@@ -1721,7 +1721,8 @@ function uploadItemImage(fileName, dataB64) {
 // Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 // 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
-const ITEM_SHOP_CATS = ['weapon', 'armor', 'consume', 'accessory', 'food', 'ammo', 'material', 'implant', 'important'];   // 15/09: quà 🎁 TÁCH sang danh sách riêng _giftShop (xem giftList) - không còn là nhóm shop   // 10/09 +material +implant · 11/09 +important (⭐ mua 1 lần)
+// 16/09: BỎ whitelist nhóm cứng ở đây - danh sách nhóm giờ do admin đặt (itemCatList/itemCatHas).
+// Để lại whitelist cứng thì nhóm admin mới thêm bị ghi đè thành 'consume' ngay lúc lưu, im lặng. _giftShop (xem giftList) - không còn là nhóm shop   // 10/09 +material +implant · 11/09 +important (⭐ mua 1 lần)
 function itemShopList() {
     const arr = dbCache._itemShop;
     return (Array.isArray(arr) ? arr : []).filter(x => x && x.id).map(x => ({
@@ -1729,7 +1730,7 @@ function itemShopList() {
         price: Math.max(0, Math.floor(Number(x.price) || 0)),
         max: Math.max(1, Math.floor(Number(x.max) || 999)),
         img: String(x.img || ''),   // tên file trong assets/itemimage/ (trống = ô 📦)
-        cat: ITEM_SHOP_CATS.includes(x.cat) ? x.cat : 'consume',   // 04/09 nhóm · 07/09 💍 phụ kiện · 09/09 🍖 thức ăn + 🔫 đạn
+        cat: itemCatHas(x.cat) ? x.cat : 'consume',   // 16/09: theo danh sách nhóm admin đặt (nhóm đã xoá -> về 🏪 Thương nhân)
         note: String(x.note || '').slice(0, 240),   // 07/09: ghi chú tác dụng (hiện trên card + search được) · 10/09 nới 140→240
         off: !!x.off,   // 09/09: ẨN khỏi web (admin tắt bán từng món, giữ nguyên dòng trong bảng)
     }));
@@ -1742,7 +1743,7 @@ function setItemShop(list) {
             price: Math.max(0, Math.floor(Number(x && x.price) || 0)),
             max: Math.max(1, Math.floor(Number(x && x.max) || 999)),
             img: String((x && x.img) || '').trim().replace(/[^A-Za-z0-9_.\-]/g, '').slice(0, 80),
-            cat: (x && ITEM_SHOP_CATS.includes(x.cat)) ? x.cat : 'consume',
+            cat: (x && itemCatHas(x.cat)) ? x.cat : 'consume',   // 16/09: theo danh sách nhóm admin đặt
             note: String((x && x.note) || '').trim().slice(0, 240),
             off: !!(x && x.off),
         }))

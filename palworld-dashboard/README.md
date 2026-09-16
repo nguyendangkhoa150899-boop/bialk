@@ -670,6 +670,20 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **16/09** — 🐛 **HOTFIX: đổi nhóm món sang LINH TINH lưu xong F5 là mất + gõ tên nhóm 2 giây là bị cướp chữ**
+  (chủ server: "save xong F5 nó không save khi bỏ vào linh tinh" · "nhập text ở đó 2 giây nó không cho nhập").
+  🚨 **Danh sách nhóm chết cứng THỨ 5**: `ITEM_SHOP_CATS` trong `index.js`, dùng ngay trong `itemShopList()` +
+  `setItemShop()` + `backfillItemShopCat()`. Không có `'admin'` → nhóm bị ghi đè thành `'consume'` **ngay lúc lưu, im lặng**.
+  Đợt refactor hôm trước chỉ soi `panel.js`/`webplay.js`, **không soi `index.js`** → nhật ký hôm qua ghi "cái bẫy đã biến mất"
+  là SAI. Cùng loại bug 08/09, lần thứ ba. Sửa: xoá hẳn `ITEM_SHOP_CATS`, mọi chỗ dùng `itemCatHas()`.
+  🛡️ Thêm case **tự quét cả 3 file**: mảng nào liệt kê ≥4 mã nhóm cùng lúc là kêu (trừ `ITEM_CAT_DEF` gốc + bản dự phòng web
+  có chú thích) → sót chỗ nữa thì test bắt, không cần nhớ.
+  🐛 **Gõ tên nhóm bị cướp chữ**: panel tự làm mới 3s/lần, `icDraw()` dựng lại `innerHTML` → ô input bị thay mới, mất cả chữ
+  lẫn con trỏ. Sửa: `icDraw(force)` chỉ dựng khi **thêm/xoá/lưu** hoặc lần đầu (`dataset.built`); nhịp làm mới gọi không force.
+  Chữ đang gõ đã ghi thẳng vào `ICROWS` qua `oninput` nên không dựng lại cũng không mất.
+  ✅ `catsave-e2e.js` **8 case** đi đúng đường panel (đọc shop → đổi cat → Lưu shop → đọc lại = F5), gồm cả nhóm admin tự thêm
+  và "nhóm bị xoá thì món rơi về 🏪 Thương nhân, không mất dòng". `shopuitest.js` **56 case**. Đã kiểm chứng bản `d9f5e8d`
+  đúng là có cả 2 lỗi.
 - **16/09** — 🏷️ **Nhóm hàng trong shop do ADMIN tự đặt (sửa tên / thêm / xoá / lưu)** + 🔖 **sửa nút 📒 Nợ, 🎁 Quà lọt sang
   hàng MINI GAME** + 🧺 đổi tên nhóm mới thành **LINH TINH** (chủ server: "cho mình custom được text ở đây với add new nhóm đồ
   mới + lưu" · "quà chỉ nằm ở bên hồ sơ thôi sao có bên này nữa" · "bỏ mục admin yêu thương đi để là LINH TINH").

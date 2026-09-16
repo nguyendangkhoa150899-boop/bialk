@@ -2067,9 +2067,13 @@ function pwForce(){const c=(document.getElementById('pwForceCode').value||'').tr
 function pwForceClear(){api('/api/palwheel/force',{code:''}).then(()=>{toast('Đã hủy ép');refresh();}).catch(e=>toast('❌ '+e.message));}
 // 🏷️ 16/09: danh sách nhóm hàng - vẽ 1 lần rồi giữ nguyên (poll 3s không cuốn chữ admin đang gõ)
 let ICROWS=null;
-function icDraw(){
+// force=true khi THÊM/XOÁ/LƯU. Nhịp làm mới 3 giây gọi icDraw() không force -> chỉ dựng lần đầu,
+// nhờ vậy chữ admin đang gõ không bị thay mới mất (oninput đã ghi thẳng vào ICROWS rồi).
+function icDraw(force){
   const box=document.getElementById('icBody'); if(!box) return;
   if(!ICROWS) ICROWS=(STATE.itemCats||[]).map(c=>({key:c.key,label:c.label,lock:!!c.lock}));
+  if(!force && box.dataset.built==='1') return;
+  box.dataset.built='1';
   box.innerHTML=ICROWS.map((c,i)=>
     '<div class="row" style="align-items:center;gap:8px;margin-bottom:6px">'+
       '<span class="muted" style="flex:0 0 96px;font-size:12px">'+(c.lock?'🔒 ':'')+esc(c.key||'(mới)')+'</span>'+
@@ -2090,16 +2094,16 @@ function icFillFilter(){
   el.innerHTML='<option value="">Mọi nhóm</option>'+icOpts();
   el.value=keep;
 }
-function icAdd(){ if(!ICROWS)ICROWS=[]; ICROWS.push({key:'',label:'🆕 Nhóm mới',lock:false}); icDraw(); }
+function icAdd(){ if(!ICROWS)ICROWS=[]; ICROWS.push({key:'',label:'🆕 Nhóm mới',lock:false}); icDraw(true); }
 async function icDel(i){
   if(!ICROWS||!ICROWS[i]) return;
   if(!await uiConfirm('Xoá nhóm <b>'+esc(ICROWS[i].label)+'</b>? Nhóm còn món thì server sẽ từ chối.','🗑️ Xoá','btn-red')) return;
-  ICROWS.splice(i,1); icDraw();
+  ICROWS.splice(i,1); icDraw(true);
 }
 async function icSave(btn){
   if(!ICROWS) return;
   await runBtn(btn,'Lưu...',()=>api('/api/itemcats/save',{cats:ICROWS.map(c=>({key:c.key,label:c.label}))})
-    .then(j=>{ICROWS=(j.cats||[]).map(c=>({key:c.key,label:c.label,lock:!!c.lock}));toast('💾 Đã lưu '+ICROWS.length+' nhóm');icDraw();refresh();})
+    .then(j=>{ICROWS=(j.cats||[]).map(c=>({key:c.key,label:c.label,lock:!!c.lock}));toast('💾 Đã lưu '+ICROWS.length+' nhóm');icDraw(true);refresh();})
     .catch(e=>{toast('❌ '+e.message);}));
 }
 function gachaSave(){const id=document.getElementById('gachaChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/gacha/channel',{channelId:id}).then(j=>{toast('✅ Đã bật khoe tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
