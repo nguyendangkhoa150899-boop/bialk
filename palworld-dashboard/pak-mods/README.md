@@ -513,3 +513,114 @@ bảng nên usmap hiện có đọc bảng gốc mới ra RawExport, không trí
 được. Đối chiếu paldb khớp tới 3 chữ số: 420×5700 = 2,394M ≈ 2,39M · 500×5100 =
 2,55M · 420×6100 = 2,562M ≈ 2,56M · 320×6100 = 1,952M ≈ 1,95M. Sai số máu ultra
 (nếu có) dưới 1% — không nhìn thấy được trong game.
+
+---
+
+# 🗂️ NHÓM PAK & LUẬT Ở CHUNG (đo thật bằng `repak list`, 16/09/2026)
+
+Pak nạp theo **thứ tự chữ cái tên file**; hai pak chứa **cùng một file** thì pak nạp SAU **thay cả file**, pak
+trước mất tác dụng **im lặng** (không cộng dồn). Cùng nhóm = cùng file.
+
+| Nhóm | Pak | File bị đè | Ở chung? |
+|---|---|---|---|
+| **A** | `BialkServer_P.pak` (prod đổi tên `NerfRelic_NoImplant_NoCore_P.pak`, byte y hệt) | `Common/DT_FieldLotteryNameDataTable` | cặp A cố ý: xem dưới |
+| **A** | `BialkServer_ZExpedition_P.pak` (= trên + thám hiểm) | `Common/DT_FieldLotteryNameDataTable` | superset, phải xếp SAU pak recycler |
+| B | `BialkNoDrop_P.pak` (prod đổi tên `NoDrop_Silvance_Dandilord_P.pak`, byte y hệt) | `Character/DT_PalDropItem` + `_Common` | riêng |
+| **C** | `BialkRaid_NgayThuong_P.pak` (raid vanilla, EXP tháp 0,7×) | `RaidBoss/DT_PalRaidBoss`+`_Common`, `BP_PalRaidBossManager`, `Character/DT_PalMonsterParameter`+`_Common` | **chỉ 1 file nhóm C** |
+| **C** | `BialkRaid_Event_P.pak` (raid buff, EXP tháp 0,7×) | y hệt trên | |
+| **C** | `BialkRaidTimer_P.pak` (= git `1ab3a6a` v8: raid buff như Event, EXP tháp **=1**) - còn trên TEST, không có trong repo HEAD | y hệt trên | |
+| **D** | `BialkShopOff_P.pak` / `BialkShopOff_ALL_P.pak` | `ItemShop/DT_ItemShopCreateData`+`_Common`, `PalShop/DT_PalShopCreateData` | **chỉ 1 file nhóm D** |
+| E | `BialkSurgeryOff_P.pak` | `BP_BuildObject_OperatingTable` | riêng |
+
+**Vì sao "raid" và "nerf EXP tháp" không tách được:** boss raid (`RAID_*`) và boss tháp (`GYM_*`) nằm **cùng bảng**
+`DT_PalMonsterParameter`. Muốn "raid giữ nguyên + chỉ nerf EXP tháp" = **1 file** chứa RAID_* vanilla + GYM_* đã hạ
+→ chính là `BialkRaid_NgayThuong_P.pak` (đang chạy prod, EXP 0,7× gốc = 21–24,5). Muốn nerf mạnh hơn (vd =1 như test) thì
+dựng lại file NgayThuong với GYM_* khác, KHÔNG thêm pak thứ hai.
+
+**Trạng thái đọc SFTP 16/09** — PROD `~mods`: `BialkRaid_NgayThuong_P.pak` · `BialkShopOff_P.pak` · `NerfRelic_NoImplant_NoCore_P.pak`
+· `NoDrop_Silvance_Dandilord_P.pak` (hợp lệ, mỗi nhóm 1). TEST `~mods`: `BialkNoDrop` · `BialkRaidTimer` (v8) · `BialkServer` ·
+`BialkServer_ZExpedition` · `BialkShopOff` · `CreativeMenu` (nên gỡ).
+
+---
+
+# BialkServer_ZExpedition_P.pak = recycler + THÁM HIỂM (dựng 16/09/2026, đang test trên server test)
+
+⚠️ **Tên trên PROD phải là `NerfRelic_ZExpedition_P.pak`** (hoặc bất kỳ tên xếp SAU `NerfRelic_NoImplant_NoCore_P.pak`):
+recycler trên prod tên `NerfRelic_…`, mà `BialkServer_Z…` xếp trước chữ `N` → nạp trước → bị đè → **mất tác dụng im lặng**.
+Cùng một file, chỉ khác tên theo server. Luật chung: tên file Z phải xếp sau tên pak recycler **đang có trên server đó**.
+
+**Trạng thái 16/09 ~17:30:** ✅ TEST đã kiểm trong game (chuyến Sunreach Isle 38 phút: 7 món, không Lõi/Linh kiện; bảng sống
+đọc bằng DTMAP: slot 11/12 = 0). ✅ PROD đã **chép** `NerfRelic_ZExpedition_P.pak` (byte y hệt), **chưa restart**. Prod có 5 pak:
+`BialkRaid_NgayThuong` · `BialkShopOff` · `NerfRelic_NoImplant_NoCore` · `NerfRelic_ZExpedition` · `NoDrop_Silvance_Dandilord` -
+mỗi nhóm 1 file (A là cặp cố ý), **không có gì trùng để xoá**.
+⏳ Còn phải **đo** giả định "pak xếp sau thắng" khi 2 file nhóm A cùng có mặt (test đã sắp đúng cặp, chờ restart + DTMAP).
+Nếu đo ra pak xếp TRƯỚC thắng → đổi sang cách **không phụ thuộc thứ tự**: chỉ giữ 1 file nhóm A (Z là superset; muốn tắt thám
+hiểm thì thay Z bằng file recycler-only), cũng vẫn bật/tắt được.
+
+**Cách dùng (chủ server chốt: KHÔNG đè file cũ, muốn bật/tắt Lõi thám hiểm được):**
+- File này chứa **CẢ** phần chặn máy nghiền (y hệt `BialkServer_P.pak`) **+** phần chặn thám hiểm. Bắt buộc là superset:
+  hai pak sửa **cùng một file bảng** (`DT_FieldLotteryNameDataTable`), pak nạp sau **thay toàn bộ bảng** - nếu file này chỉ
+  chứa thám hiểm thì lúc cả hai cùng cài, máy nghiền hết bị chặn.
+- Tên phải xếp **sau** `BialkServer_P.pak` theo chữ cái (`Z` > `P`) để nạp sau và thắng. Đổi tên là đổi thứ tự nạp → hỏng.
+- **Có file Z** = chặn máy nghiền + thám hiểm · **xoá file Z** = chỉ chặn máy nghiền như cũ. `BialkServer_P.pak` giữ nguyên.
+- Kiểm pak nào đang thắng ngay trong game bằng mod: `DTMAP PalMasterDataTableAccess_FieldLotteryNameData ItemSlot11_ProbabilityPercent,ItemSlot12_ProbabilityPercent Expedition_` → Expedition_Grass slot 11 = 0 là Z đang thắng, = 100 là chưa.
+
+Mục tiêu: **Trạm Thám Hiểm Pal không rớt `AncientParts2` (Lõi Văn Minh Cổ Đại) và `PalCrystal_Ex`
+(Linh Kiện Văn Minh Cổ Đại = "Ancient Civilization Parts")** — nguồn thứ 3 sau máy nghiền (BialkServer_P)
+và Silvance/Dandilord (BialkNoDrop_P).
+
+## Đã xác minh (DTINFO trên server test, 16/09)
+
+Thám hiểm dùng **đúng hệ xổ số của máy nghiền**: `DT_FieldLotteryNameDataTable` có **18 dòng**
+`Expedition_{Grass,Forest,Volcano,Desert,Snow,Sakurajima,DarkIsland,SkyIsland,WorldTree}` + bản `_Hard`.
+Bảng `DT_ItemLotteryDataTable` (8.782 dòng đánh số 1..N) nối với bảng trên qua **field `FieldName`**
+trong từng dòng — không qua tên dòng, nên grep tên dòng không ra gì.
+
+Mod `DTROW` **không đọc được nội dung dòng** (BP_FindRow fail cả 3 cách, kể cả dòng recycler đã biết)
+→ ánh xạ slot→món **phải làm offline** bằng UAssetCLI trên máy có game, y như lần recycler.
+
+Palpedia (palpedia.net/expeditions) nói Core rơi ở 5 thám hiểm cao cấp (Astral Frost Cavern, Celestial
+Sakura Cavern, Dark Cave of Feybreak, Sunreach Isle, World Tree Subterranean City Ruins), Parts rơi ở
+5 đó + 5 thám hiểm đầu game. Dùng để **đối chiếu** kết quả `--check`, không dùng làm nguồn vá.
+
+## Kết quả đọc bảng sống (DTMAP, 16/09) → 15 slot cần tắt, KHÔNG slot nào lẫn món khác
+
+| Dòng field | Slot | Món trong slot | % gốc → sau |
+|---|---|---|---|
+| Expedition_Grass / _Snow / _Sakurajima / _DarkIsland / _SkyIsland / _WorldTree | 11 | PalCrystal_Ex | 100 → +0 |
+| Expedition_Snow / _Sakurajima / _DarkIsland / _SkyIsland / _WorldTree | 12 | AncientParts2 | 100 → +0 |
+| Expedition_Forest / _Volcano / _Desert | 12 | PalCrystal_Ex | 100 → +0 |
+| Expedition_WorldTree_Hard | 7 | PalCrystal_Ex + AncientParts2 | 100 → +0 |
+| 7 dòng _Hard còn lại | — | không có 2 món này | giữ nguyên |
+
+Đối chiếu độ tin: khối DTMAP của `AncientRelicRecycler_WorldTreeRelic_05` ra đúng y phần recycler ở trên (slot 8 = 16 implant,
+slot 9 = AncientParts2, slot 14 = implant đột biến + RideJumpCount); 18/18 dòng Expedition trong game sống khớp bảng trong
+pak → không lệch phiên bản. Pak mới = vá tiếp `field-recycler.json` (bảng lấy từ BialkServer_P.pak cũ) → **1 pak thay
+BialkServer_P.pak**, giữ nguyên 5 dòng recycler. Bung ngược kiểm: đúng 15 giá trị đổi, 0 đổi ngoài Expedition, 511 dòng, V11 /
+seed 2D9081FC / mount ../../../ y hệt bản cũ. Bản cũ backup ở scratchpad + vẫn là bản git.
+
+**Toolchain chạy ngay trên máy không có game** (không cần thuê máy): repak v0.2.3 + .NET 10 runtime cài user-scope +
+UAssetCLI v1.0.5 + Mappings.usmap trong repo; bảng gốc lấy từ pak cũ; ánh xạ slot→món lấy bằng lệnh `DTMAP` mới của mod (main.lua 16/09).
+
+⚠️ **Bài học SFTP**: ssh2 `fastPut` lên Shockbyte xáo thứ tự khúc 32 KB (cùng size, sai nội dung → main.lua báo lỗi
+cú pháp ở dòng vô can, mod chết). Ghi bằng `createWriteStream` tuần tự và **so từng byte** sau khi ghi.
+
+## Script: `scripts/patch_expedition.js`
+
+```bash
+dotnet UAssetCLI.dll tojson DT_ItemLotteryDataTable.uasset      item.json  VER_UE5_1 Mappings.usmap
+dotnet UAssetCLI.dll tojson DT_FieldLotteryNameDataTable.uasset field.json VER_UE5_1 Mappings.usmap
+node scripts/patch_expedition.js --check --keep-recycler item.json field.json     # SOI TRƯỚC, không ghi
+node scripts/patch_expedition.js item.json field.json field.patched.json           # vá
+```
+Mặc định **chỉ tắt slot mà mọi món đều là món cần tắt**; slot lẫn món khác thì báo ⚠️ và GIỮ
+(bài học slot 14 recycler) — thấy chấp nhận mất kèm thì thêm `--force`. In % gốc từng slot, kể cả
+slot giữ lại. `--items=`, `--rows=~regex` đổi món/dòng. Idempotent, sai bảng thì báo và không ghi.
+
+**⚠️ Đóng CHUNG 1 pak với recycler**: hai pak cùng sửa `DT_FieldLotteryNameDataTable` thì pak load
+sau đè pak trước → một trong hai mất tác dụng. Cách đúng: vá recycler (slot 8/9/14 = "+0", 5 dòng)
+rồi vá tiếp thám hiểm trên **cùng json**, đóng **1 pak** thay `BialkServer_P.pak`. `--keep-recycler`
+kiểm giúp 5 dòng đó đã "+0" chưa.
+
+Kiểm logic bằng dữ liệu giả theo hình dạng JSON UAssetCLI (22 case, scratchpad `expedition-fixture-test.js`);
+**chưa chạy trên bảng thật** — đọc kỹ log `--check` + round-trip fromjson→tojson như phần recycler trước khi lên server.

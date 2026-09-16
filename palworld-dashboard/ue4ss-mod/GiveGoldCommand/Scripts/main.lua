@@ -312,6 +312,87 @@ local DTROW_FIELDS = {
     "ItemId5", "Rate5", "Min5", "Max5",
 }
 
+-- DTMAP <ten class> <Prop1,Prop2,...> [tienTo]   (16/09)
+-- Doc CA COT bang GetDataTableColumnAsString (thu vien Blueprint cua engine). Ham nay KHONG co
+-- tham so struct nen khong dinh tuong "UE4SS Lua khong dung duoc struct param" da lam DTROW chet.
+-- Ghep cac cot theo chi so dong -> moi dong 1 CSV "MAP rowName;Prop1;Prop2;...".
+-- tienTo (tuy chon): chi in dong ma TEN DONG hoac GIA TRI COT 1 bat dau bang chuoi do (vd Expedition_).
+-- Dung de lay anh xa slot->mon cua bang xo so ma khong can file game trong may.
+local function dumpDataTableColumns(className, propsCsv, prefix)
+    local objs = FindAllOf(className) or {}
+    appendDump("")
+    appendDump("=========== DTMAP " .. className .. " [" .. propsCsv .. "]" .. (prefix and (" loc=" .. prefix) or "") .. " ===========")
+    if #objs == 0 then
+        appendDump("   khong thay instance")
+        appendDump("=========== HET DTMAP ===========")
+        return false
+    end
+    local lib = StaticFindObject("/Script/Engine.Default__DataTableFunctionLibrary")
+    if not lib or not lib:IsValid() then
+        appendDump("   khong lay duoc /Script/Engine.Default__DataTableFunctionLibrary")
+        appendDump("=========== HET DTMAP ===========")
+        return false
+    end
+    local obj = objs[1]
+    local okDt, dt = pcall(function() return obj.DataTable end)
+    if not (okDt and dt and dt:IsValid()) then
+        appendDump("   khong doc duoc obj.DataTable")
+        appendDump("=========== HET DTMAP ===========")
+        return false
+    end
+    appendDump("   DataTable = " .. tostring(dt:GetFullName()))
+
+    -- mang UE (TArray<FString>/<FName>) -> bang Lua chuoi. Cung cach doc nhu DTINFO.
+    local function toList(arr)
+        local out, n = {}, 0
+        pcall(function() n = arr:GetArrayNum() end)
+        if n == 0 then pcall(function() n = #arr end) end
+        for j = 1, n do
+            local s = nil
+            pcall(function() s = arr[j]:get():ToString() end)
+            if not s then pcall(function() s = arr[j]:ToString() end) end
+            if not s then pcall(function() s = tostring(arr[j]:get()) end) end
+            out[j] = s or "?"
+        end
+        return out
+    end
+
+    local names = {}
+    pcall(function() names = toList(obj:GetRowNames()) end)
+    local props, cols = {}, {}
+    for p in string.gmatch(propsCsv, "[^,]+") do props[#props + 1] = p end
+    for _, p in ipairs(props) do
+        local ok, arr = pcall(function() return lib:GetDataTableColumnAsString(dt, FName(p)) end)
+        if not ok or arr == nil then
+            appendDump("   COT " .. p .. ": GOI LOI: " .. tostring(arr))
+            cols[p] = {}
+        else
+            cols[p] = toList(arr)
+            appendDump("   COT " .. p .. ": " .. tostring(#cols[p]) .. " gia tri")
+        end
+    end
+    local n = #names
+    for _, p in ipairs(props) do if #cols[p] > n then n = #cols[p] end end
+    appendDump("   HEADER row;" .. table.concat(props, ";"))
+    local shown = 0
+    for i = 1, n do
+        local rn = names[i] or tostring(i)
+        local first = (cols[props[1]] and cols[props[1]][i]) or ""
+        local hit = (prefix == nil)
+            or (string.sub(tostring(rn), 1, #prefix) == prefix)
+            or (string.sub(tostring(first), 1, #prefix) == prefix)
+        if hit then
+            local parts = { rn }
+            for _, p in ipairs(props) do parts[#parts + 1] = tostring(cols[p][i] or "") end
+            appendDump("   MAP " .. table.concat(parts, ";"))
+            shown = shown + 1
+        end
+    end
+    appendDump("   tong " .. tostring(n) .. " dong, in " .. tostring(shown))
+    appendDump("=========== HET DTMAP ===========")
+    return true
+end
+
 local function dumpDataTableRow(className, rowName)
     local objs = FindAllOf(className) or {}
     appendDump("")
@@ -1174,6 +1255,16 @@ local function processLine(line)
     if dtInfoName then
         local ok = dumpDataTableInfo(dtInfoName)
         appendResult("DTINFO " .. (ok and "OK" or "KHONG TIM THAY INSTANCE") .. ": " .. dtInfoName)
+        return
+    end
+
+    -- DTMAP <ten class> <Prop1,Prop2,...> [tienTo]   (16/09) - doc ca cot, ghep thanh CSV ra dump.log
+    -- vd: DTMAP PalMasterDataTableAccess_ItemLotteryData FieldName,SlotNo,StaticItemId,WeightInSlot Expedition_
+    local dtMapClass, dtMapProps, dtMapPre = line:match("^DTMAP%s+(%S+)%s+(%S+)%s*(%S*)$")
+    if dtMapClass then
+        if dtMapPre == "" then dtMapPre = nil end
+        local ok = dumpDataTableColumns(dtMapClass, dtMapProps, dtMapPre)
+        appendResult("DTMAP " .. (ok and "OK" or "FAILED") .. ": " .. dtMapClass .. " [" .. dtMapProps .. "]")
         return
     end
 

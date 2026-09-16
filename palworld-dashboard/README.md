@@ -670,6 +670,34 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **16/09 (chiều→tối)** — 🏕️ **Trạm Thám Hiểm KHÔNG rớt Lõi + Linh kiện Văn Minh Cổ Đại — làm xong KHÔNG cần máy có game**
+  (chủ server: "phải thuê máy vì máy này không có game, bất tiện quá"). Đường đi: (1) thêm lệnh **`DTMAP`** vào mod
+  (`GetDataTableColumnAsString` đọc CẢ CỘT bảng - không tham số struct nên né được chỗ `DTROW` chết) → đọc ánh xạ slot→món ngay
+  trên server test: **281 dòng món** thuộc 18 field `Expedition_*`, đối chiếu khối recycler ra đúng y README 08/08; (2) bảng gốc
+  `DT_FieldLotteryNameDataTable` lấy từ chính `BialkServer_P.pak` cũ (18/18 dòng khớp game sống - không lệch phiên bản);
+  (3) toolchain cài tại chỗ: `repak` 0.2.3 + `.NET 10` user-scope (`dotnet-install.ps1 -InstallDir`) + `UAssetCLI` 1.0.5,
+  round-trip **byte giống hệt**; (4) `patch_expedition.js` nhận nguồn món từ `dump.log` → **15 slot / 12 thám hiểm, không slot
+  nào lẫn món khác**; (5) pak mới = recycler + thám hiểm, bung ngược đúng 15 giá trị đổi, 511 dòng, V11/seed 2D9081FC.
+  ✅ **Test trong game**: chuyến Sunreach Isle 38' → 7 món, không Lõi/Linh kiện; bảng sống slot 11/12 = 0. Bảng xem trước
+  phần thưởng phía client **vẫn hiện Lõi** (client dùng bảng riêng, pak chỉ phía server) - đúng như đã cảnh báo, không sai kết quả.
+  📦 Chủ server chốt **không đè file cũ**: pak riêng `BialkServer_ZExpedition_P.pak` (superset, tên xếp sau để nạp sau) - có =
+  chặn cả hai, xoá = về máy nghiền-only. Prod đã đổi tên pak recycler thành `NerfRelic_NoImplant_NoCore_P.pak` (byte y repo) →
+  trên prod file Z phải tên **`NerfRelic_ZExpedition_P.pak`**; đã chép lên prod, **chưa restart**, chờ đo thứ tự nạp trên test.
+  🐛 Hai lỗi của em: `ssh2 fastPut` lên Shockbyte **xáo khúc 32 KB** (size khớp, nội dung sai → `main.lua:713 syntax error`, mod chết
+  trên test 1 lần restart; chứng minh bằng parser Lua 5.4 `wasmoon`: bản local OK, bản server đúng lỗi đó) → mọi ghi SFTP giờ dùng
+  stream tuần tự + so byte, ghi vào bộ nhớ; và ghi README qua bash `node -e` nuốt backtick (lỗi đã có ghi nhớ mà vẫn phạm).
+  📚 Tiện tay đo được bảng **nhóm/xung đột pak** bằng `repak list` (README pak-mods): nhóm C raid = 3 tổ hợp của cùng bảng
+  `DT_PalMonsterParameter` nên "raid giữ nguyên + chỉ nerf EXP tháp" = `BialkRaid_NgayThuong_P.pak` đang chạy prod (vanilla + 0,7×);
+  test đang chạy bản v8 (raid buff + EXP=1). Prod 4→5 pak, mỗi nhóm 1, không có gì trùng để xoá.
+- **16/09** — 🧭 **Nghiên cứu tắt rớt Lõi/Linh kiện Văn Minh Cổ Đại ở Trạm Thám Hiểm** (chủ server: "bỏ Ancient Civilization
+  Core và Parts trong toàn bộ thám hiểm", đưa server test để dò). ✅ **Khả thi, cùng cơ chế recycler**: DTINFO sống trên server
+  test xác nhận `DT_FieldLotteryNameDataTable` có **18 dòng `Expedition_*`** (9 vùng × thường/Hard); bảng item 8.782 dòng nối qua
+  field `FieldName`. `DTROW` của mod **không đọc được nội dung dòng** (BP_FindRow fail) → ánh xạ slot→món phải làm offline bằng
+  UAssetCLI trên máy có game (máy này không có pak/tools). "Ancient Civilization Parts" = `PalCrystal_Ex` (gameitems.json).
+  ✅ Viết sẵn `pak-mods/scripts/patch_expedition.js` (theo kiểu `patch_shopoff.js`): `--check` soi trước, mặc định chỉ tắt slot
+  thuần món cần tắt (slot lẫn món khác thì báo + giữ, `--force` để tắt luôn), in % gốc, idempotent, `--keep-recycler` nhắc **đóng
+  chung 1 pak** vì cùng file với `BialkServer_P.pak` (2 pak sửa 1 file thì cái load sau đè cái trước). 22 case trên dữ liệu giả
+  đúng hình dạng JSON UAssetCLI - **chưa chạy trên bảng thật**. Chi tiết + lệnh ở `pak-mods/README.md` mục BialkExpedition.
 - **16/09** — 🐛 **HOTFIX: đổi nhóm món sang LINH TINH lưu xong F5 là mất + gõ tên nhóm 2 giây là bị cướp chữ**
   (chủ server: "save xong F5 nó không save khi bỏ vào linh tinh" · "nhập text ở đó 2 giây nó không cho nhập").
   🚨 **Danh sách nhóm chết cứng THỨ 5**: `ITEM_SHOP_CATS` trong `index.js`, dùng ngay trong `itemShopList()` +
