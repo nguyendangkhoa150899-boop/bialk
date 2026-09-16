@@ -760,6 +760,31 @@ Cổ Đại chỉ tốn Thỏi Skyisland — không đụng). 19 công trình d�
 | `AncientWorkBench` | Bàn Chế Văn Minh Cổ Đại | 0 → **10** (thêm ô Lõi vì có Lõi AI) |
 | `Ancient_AirConditioner` | Máy Điều Hoà Văn Minh Cổ Đại | không có ô trống (4/4) → **Lõi AI 10 → 20** thay thế |
 
+## ⏸️ TRẠNG THÁI 17/09 — CHƯA CHỐT, mai tính tiếp
+Pak đã build xong (md5 a72b4066), đã nằm trên **server TEST** (`~mods`, 376 734 byte) — **chưa lên prod**.
+
+**Vướng mắc phát hiện 17/09:** menu chế/xây do CLIENT vẽ từ file game của client → người chơi
+không cài pak sẽ **mãi thấy 10 Lõi** dù server đòi 50 (y hệt vụ máu tối đa boss). Chủ server
+có luật **không cho client cài mod** → pak này chỉ có 2 đường:
+1. Whitelist đúng 1 file `BialkRecipe_P.pak` cho client (pak thuần, chép `~mods`, không gian được gì
+   vì server mới quyết tiêu hao; PalDefender không kiểm pak client nên luật "cấm mod" chỉ là chính sách).
+2. Bỏ pak công thức, dùng đòn bẩy **giá + quota Lõi trong shop** (rớt lõi đã chặn → shop là nguồn duy nhất)
+   — minh bạch, không cần ai cài gì. (Khuyến nghị của Claude.)
+
+**Bài test quyết định (chưa chạy):** trên server test, client KHÔNG pak, cầm 10–49 Lõi, đặt Máy Tạo
+Vật Chất. Không đặt được = server có kiểm (pak ăn, chỉ vướng hiển thị). Đặt được mất 10 = server
+không kiểm → pak chết trên server-only → bỏ.
+
+**Dọn server test 17/09 (chủ server làm tay):** xóa `BialkServer_P.pak` (trùng asset với
+`BialkServer_ZExpedition_P.pak`) + `BialkRaidTimer_P.pak` (gộp cũ), up `BialkRaid_NgayThuong_P.pak`.
+`~mods` chuẩn = 6 file: NoDrop, Raid_NgayThuong, Recipe, Server_ZExpedition, ShopOff, CreativeMenu.
+
+**Cân bằng đã tính (4 người, shop 300 lõi/ngày chung, Lv20–50 sau 4 ngày):** cung ~75/người/ngày;
+cầu 1 lần khi Lv66+ ~190/người + ~425 cho bộ máy base → 300/ngày KHÔNG thắt. Cái "ác" thật là:
+(a) Mũi Tên/Đạn Thô/Đạn Súng Ngắn +1 lõi đánh vào nhóm Lv20–40 không có Dogcoin; (b) quota chung →
+người mạnh mua sạch (nên chuyển 👤 cá nhân ~60/ngày); (c) Lò Ấp Điện 2→42, Máy Nghiền 20→60 quét
+nhầm; (d) sửa đồ chưa đo tỉ lệ. Nếu giữ pak: miễn 3 đạn đầu game, hạ lò ấp/máy nghiền.
+
 ## Sửa đồ (repair) — không có bảng riêng
 Chi phí sửa = nguyên liệu công thức × `RequiredRepairItemRate` (chỉ có trong C++, không
 nằm trong BP nào để vá pak — đã soi BP_PalGameSetting: NameMap không có). Nên lõi cộng vào
