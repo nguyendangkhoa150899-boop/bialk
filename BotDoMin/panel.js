@@ -106,7 +106,10 @@ function startPanel(ctx) {
                 // gộp theo cửa cho admin thấy tiền đang gánh ở đâu (ép cho cửa nặng thua)
                 const agg = { tai: 0, xiu: 0, chan: 0, le: 0, bao: 0 };
                 bets.forEach(b => { if (agg[b.choice] !== undefined) agg[b.choice] += (b.amount || 0); });
-                const lockS = ctx.txLockS || 15;
+                // ⚠️ 17/09: index.js đổi txLockS thành HÀM (admin chỉnh giây nặn ở panel).
+                // Quên gọi thì lockS là cả cái hàm -> phép trừ dưới ra NaN -> secsToBet = NaN ->
+                // panel LÚC NÀO CŨNG báo "ĐÃ KHÓA SỔ", admin không ép được kết quả. Đã dính đúng lỗi này.
+                const lockS = Number(typeof ctx.txLockS === 'function' ? ctx.txLockS() : ctx.txLockS) || 15;
                 const secsToBet = Math.max(0, (tx.targetTime || 0) - lockS - Math.floor(Date.now() / 1000));
                 return {
                     gameId: tx.gameId,

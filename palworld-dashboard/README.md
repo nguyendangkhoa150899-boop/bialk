@@ -699,6 +699,23 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (tối, 2 lỗi chủ server báo liền nhau)** — 🐞 **Bảng Dò Mìn + Phi Thuyền đứng hình** và
+  🐞 **panel lúc nào cũng "ĐÃ KHÓA SỔ"**.
+  **(a) Bảng đứng hình**: commit dọn Xổ Số `f067db4` **cắt lố** khối khởi động, mất 4 dòng
+  `runMinesBoardLoop()` · `resumeMinesBoard()` · `runSpmBoardLoop()` · `resumeSpmBoard()`.
+  Hàm vẫn còn nguyên, chỉ là **không ai gọi** → không lỗi, không log, mọi bộ kiểm cũ vẫn xanh.
+  Thiếu `resume*` còn tệ hơn thiếu vòng lặp: sau restart `board.channel` rỗng nên `repostBoard`
+  thoát ngay dòng đầu. Leo Thang không dính vì 2 dòng của nó nằm chỗ khác.
+  Bộ kiểm mới `boardloop-test.js` (24 case): **mọi `run*Loop` phải được gọi**, và **mỗi bảng phải đủ
+  cặp `run*BoardLoop()` + `resume*Board()`** - tự dò theo tên hàm nên thêm bảng mới cũng được canh.
+  **(b) "ĐÃ KHÓA SỔ" vĩnh viễn**: cùng ngày mình đổi `ctx.txLockS` từ SỐ thành HÀM (để admin chỉnh
+  giây nặn), nhưng panel vẫn viết `const lockS = ctx.txLockS || 15` → lấy nguyên cái hàm → phép trừ ra
+  `NaN` → `secsToBet` JSON hoá thành `null` → panel luôn báo khoá sổ, **admin hết ép được kết quả**.
+  Sửa: panel gọi hàm (`typeof === 'function' ? ...() : ...`). Thêm kiểm: `txtimetest` soi không nơi nào
+  đem `ctx.txLockS`/`ctx.lockSeconds` vào phép tính mà quên gọi; `txtime-e2e` đòi `secsToBet` phải là
+  **số hữu hạn** và phải có lúc `> 0`. Chạy ngược trên bản hỏng: e2e in đúng `null`, khớp triệu chứng.
+  📌 **Bài học chung của cả hai**: đổi một khoá `ctx` từ giá trị sang hàm thì **phải rà hết bên dùng**;
+  và **xoá khối lớn thì phải liệt kê từng dòng bị mất** (đây là lần thứ hai `cut()` cắt lố ở commit đó).
 - **17/09 (tối muộn, vá ngay sau đó)** — 🐞 **Tick "Bật báo" xong 3 giây tự tắt** (chủ server báo).
   Vòng làm mới 3 giây của panel **ghi đè ô đang sửa mà chưa bấm Lưu** - đúng họ với lỗi ô tên nhóm đồ
   hôm trước. Ô chữ/số còn đỡ nhờ chốt `value===''`, nhưng **xoá ô để gõ lại thì vẫn bị điền lại giá trị

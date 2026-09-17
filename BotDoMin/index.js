@@ -6073,6 +6073,14 @@ client.once('ready', async (c) => {
     }
     runSpmLoop();    // 🚀 Phi Thuyền (crash game) - vòng chơi chung
     runTaiXiuLoop(); // BIG SMALL vẫn chạy
+    // ⚠️ 17/09: 4 dòng dưới TỪNG BỊ XOÁ NHẦM khi dọn Xổ Số (f067db4) -> bảng Dò Mìn và Phi Thuyền
+    // đứng hình trên Discord, không báo lỗi gì. Mỗi bảng cần ĐỦ CẶP: run*BoardLoop() để vẽ lại
+    // mỗi 5 giây, và resume*Board() để nối lại bảng cũ sau restart (thiếu cái sau thì board.channel
+    // rỗng, repostBoard thoát ngay dòng đầu). Bộ kiểm boardloop-test.js canh đúng chỗ này.
+    runMinesBoardLoop();
+    resumeMinesBoard().catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không nối lại được: ${e.message}`));
+    runSpmBoardLoop();
+    resumeSpmBoard().catch(e => writeLog('SYSTEM', `[BẢNG PHI THUYỀN] Không nối lại được: ${e.message}`));
     // 🎡 hoàn vé vòng quay còn treo từ trước khi restart
     wheelRefundPending();
     cleanupGoneGames();   // 🧹 17/09: hoàn cược + xoá khoá db của Bầu Cua / Blackjack / Xổ Số
