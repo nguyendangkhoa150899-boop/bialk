@@ -242,7 +242,7 @@ function startPanel(ctx) {
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg', '/api/itemcats/save',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/itemshop/daymax', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
-                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
+                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -316,6 +316,25 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL QUÀ TẶNG] Lưu ${list.length} quà`);
                     return sendJSON(res, 200, { ok: true, items: list });
                 }
+                // 🎯 18/09: tặng RIÊNG 1 người từ tab 🎁 - where 'ruong' = bỏ thẳng vào Rương Ích Kỷ (không hạn,
+                // không cần online, không cần liên kết); 'game' = giao thẳng vào túi (phải liên kết + online,
+                // đi lại đúng đường Kho đồ adminGiveItem nên cùng deliverLock, cùng log).
+                if (ctx.adminIchKyGrant && req.method === 'POST' && path === '/api/gift/grant') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    const uid = String(body.userId || '').trim();
+                    const rec = ctx.getDb()[uid];
+                    if (!uid || !rec || typeof rec !== 'object') return sendJSON(res, 400, { ok: false, error: 'Chưa chọn người nhận' });
+                    let r;
+                    if (body.where === 'game') {
+                        const gname = String(rec.ingameName || '').trim();
+                        if (!gname) return sendJSON(res, 400, { ok: false, error: 'Người này chưa liên kết tên nhân vật - chỉ bỏ vào rương được' });
+                        if (!ctx.adminGiveItem) return sendJSON(res, 400, { ok: false, error: 'Kho đồ chưa bật' });
+                        r = await ctx.adminGiveItem(gname, body.itemId, body.qty);
+                    } else r = ctx.adminIchKyGrant(uid, body.itemId, body.qty, body.note);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    ctx.writeLog('ADMIN', `[PANEL QUÀ RIÊNG] ${body.where === 'game' ? 'vào game' : 'vào rương'}: ${body.itemId} x${body.qty} -> ${rec.name || uid}`);
+                    return sendJSON(res, 200, { ok: true, message: r.message });
+                }
                 if (ctx.setItemShop && req.method === 'POST' && path === '/api/itemshop/save') {
                     const list = ctx.setItemShop(Array.isArray(body.items) ? body.items : []);
                     ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Lưu ${list.length} món`);
@@ -324,7 +343,7 @@ function startPanel(ctx) {
                 // 📦 08/09: KHO ĐỒ TOÀN GAME - CHỈ cổng SUPER (thay CreativeMenu client)
                 if (ctx.gameItems && path === '/api/gameitems') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
-                    return sendJSON(res, 200, { ok: true, items: ctx.gameItems(), targets: ctx.giveTargets ? ctx.giveTargets() : [] });
+                    return sendJSON(res, 200, { ok: true, items: ctx.gameItems(), targets: ctx.giveTargets ? ctx.giveTargets() : [], wallets: ctx.giftTargets ? ctx.giftTargets() : [] });
                 }
                 if (ctx.adminGiveItem && req.method === 'POST' && path === '/api/give/item') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
@@ -1670,6 +1689,27 @@ const HTML = `<!DOCTYPE html>
           </table>
         </div>
       </div>
+      <!-- 🎯 18/09: tặng riêng 1 người - không tính hạn -->
+      <div class="card">
+        <h2>🎯 Tặng riêng 1 người <span class="muted" style="font-size:13px;font-weight:400">(không tính hạn · chỉ cổng SUPER)</span></h2>
+        <div class="note"><b>🧰 Bỏ vào rương</b>: đồ nằm thẳng trong Rương Ích Kỷ của họ - <b>không</b> tính hạn mua 100/ngày, <b>không</b> tính sức chứa 100, <b>không</b> cần online, <b>không</b> cần liên kết. Họ tự NHẬN vào game (lúc đó mới cần liên kết + online) hoặc tặng tiếp; <b>00:00 không nhận là mất</b> như mọi món trong rương. <b>🎮 Giao vào game</b>: vào túi ngay, họ phải <b>liên kết + đang online</b> (đi đúng đường Kho đồ 📦). Cả 2 đều ghi log; ghi chú hiện ở sổ "ai tặng" trong rương của họ.</div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:2"><label>Người nhận (mọi ví, kể cả chưa liên kết)</label><select id="gtWho"></select></div>
+          <div style="flex:1"><label>Số lượng</label><input id="gtQty" type="number" min="1" max="1000000" value="1"></div>
+          <div style="flex:2"><label>Ghi chú (hiện ở sổ "ai tặng" của họ)</label><input id="gtNote" placeholder="vd: đền bù rớt đồ" maxlength="60"></div>
+        </div>
+        <div class="row" style="margin-top:8px;align-items:center">
+          <div style="flex:2"><input id="gtFind" placeholder="🔎 Gõ tên / id món để tìm..." oninput="gtRender()"></div>
+          <div style="flex:2;font-size:13px" id="gtPicked" class="muted">Chưa chọn món</div>
+        </div>
+        <div class="muted" id="gtStat" style="font-size:12px;margin-top:6px">Gõ tên món để tìm</div>
+        <div id="gtList" style="margin-top:6px;max-height:260px;overflow-y:auto"></div>
+        <div class="row" style="margin-top:10px;gap:8px">
+          <button class="btn-green" onclick="gtSend('ruong',this)">🧰 Bỏ vào rương</button>
+          <button class="btn-blue" onclick="gtSend('game',this)">🎮 Giao vào game</button>
+        </div>
+        <div id="gtResult" class="hidden" style="margin-top:8px;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);font-size:13px"></div>
+      </div>
     </div>
     <div id="tab-give" class="hidden">
       <div class="card">
@@ -1996,7 +2036,7 @@ function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
   ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gift')giftFill(true);
+  if(t==='give')gvLoad();if(t==='gift'){giftFill(true);gtLoad();}
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -2831,6 +2871,39 @@ async function featSet(key,off){
   var f=(STATE.feats||[]).find(function(x){return x.key===key})||{label:key};
   if(!await uiConfirm(off?('TẮT '+f.label+' cho người chơi? Mục này sẽ biến mất khỏi web và mọi thao tác bị chặn.'):('MỞ lại '+f.label+' cho người chơi?'),off?'⛔ Tắt':'✅ Mở',off?'btn-red':'btn-green'))return;
   try{await api('/api/feat/set',{key:key,off:off});toast((off?'⛔ Đã tắt ':'✅ Đã mở ')+f.label);refresh();}catch(e){}
+}
+// 🎯 18/09: TẶNG RIÊNG 1 NGƯỜI (tab 🎁) - dùng chung kho đồ GV với tab 📦; danh sách ví ở GV.wallets
+let GT={id:'',n:''},GTBUSY=false;
+async function gtLoad(){
+  try{
+    if(!GV||!GV.wallets){GV=await api('/api/gameitems');}
+    const s=document.getElementById('gtWho');if(!s)return;const cur=s.value;
+    s.innerHTML=(GV.wallets||[]).map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+(w.ingame?' · 🎮 '+esc(w.ingame):' · (chưa liên kết)')+(w.ichky?' · 🧰 '+w.ichky:'')+'</option>').join('')||'<option value="">(chưa có ví nào)</option>';
+    if(cur)s.value=cur;
+    gtRender();
+  }catch(e){const st=document.getElementById('gtStat');if(st)st.textContent='❌ '+e.message+' (card này chỉ chạy ở cổng SUPER)';}
+}
+function gtRender(){
+  if(!GV)return;const f=document.getElementById('gtFind'),q=(f&&f.value||'').trim().toLowerCase();
+  let rows=q?(GV.items||[]).filter(x=>x.n.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)):[];
+  const st=document.getElementById('gtStat');if(st)st.textContent=q?rows.length.toLocaleString()+' món khớp'+(rows.length>40?' - hiện 40 đầu, gõ thêm để lọc':''):'Gõ tên món để tìm';
+  rows=rows.slice(0,40);
+  const L=document.getElementById('gtList');if(!L)return;
+  L.innerHTML=rows.map(x=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-top:4px;border:1px solid var(--line);border-radius:8px;background:var(--card2)'+(GT.id===x.id?';outline:2px solid #3dd68c':'')+'"><div style="flex:1;min-width:0"><b>'+esc(x.n)+'</b> <span class="muted" style="font-size:11px">'+esc(x.id)+' · '+(GV_TYPES[x.t]||x.t)+'</span></div><button class="mini btn-grey" onclick="gtPick(\\''+x.id+'\\')">Chọn</button></div>').join('');
+}
+function gtPick(id){const x=((GV&&GV.items)||[]).find(y=>y.id===id);if(!x)return;GT={id:x.id,n:x.n};const p=document.getElementById('gtPicked');if(p)p.innerHTML='Đã chọn: <b>'+esc(x.n)+'</b> <span class="muted" style="font-size:11px">'+esc(x.id)+'</span>';gtRender();}
+async function gtSend(where,btn){
+  if(GTBUSY)return toast('⏳ Đang gửi món trước - chờ xong');
+  const s=document.getElementById('gtWho'),uid=s.value,qty=parseInt(document.getElementById('gtQty').value)||0;
+  if(!uid)return toast('Chọn người nhận');if(!GT.id)return toast('Chọn món trước (gõ ô 🔎 rồi bấm Chọn)');if(qty<1)return toast('Số lượng phải từ 1');
+  const who=(s.options&&s.options[s.selectedIndex])?s.options[s.selectedIndex].textContent:uid;
+  if(!await uiConfirm((where==='game'?'🎮 GIAO THẲNG VÀO GAME ':'🧰 BỎ VÀO RƯƠNG ')+qty.toLocaleString()+' × '+GT.n+' cho '+who+'?',where==='game'?'🎮 Giao':'🧰 Bỏ vào rương','btn-green'))return;
+  GTBUSY=true;
+  await runBtn(btn,'⏳ Đang gửi...',()=>api('/api/gift/grant',{userId:uid,itemId:GT.id,qty:qty,where:where,note:(document.getElementById('gtNote').value||'').trim()}).then(j=>{
+    toast(j.message||'✅ Xong');const r=document.getElementById('gtResult');if(r){r.classList.remove('hidden');r.innerHTML='<div>'+new Date().toLocaleTimeString('vi-VN')+' · '+esc(j.message||'OK')+'</div>'+r.innerHTML;}
+    GV=null;gtLoad();   // tải lại để số 🧰 cạnh tên người nhận nhảy ngay
+  }).catch(e=>{if(!e.toasted)toast('❌ '+e.message)}));
+  GTBUSY=false;
 }
 // 🎁 15/09 (chiều): QUÀ ADMIN TẶNG - bảng riêng, lưu vào _giftShop, không dính shop item
 var GFDIRTY=false,GFSIG='';

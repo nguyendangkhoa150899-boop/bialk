@@ -2239,7 +2239,9 @@ function ichKyState(userId) {
         const it = ds.find(x => x.id === id);
         // ⚠️ tên ảnh của shop nằm ở trường 'img' (vd T_itemicon_Consume_LvUP_01.webp), KHÔNG phải 'icon'.
         // Trả nhầm tên trường thì web không có ảnh mà cũng chẳng báo lỗi gì.
-        return { id, qty: Number(qty) || 0, name: (it && it.name) || id, img: (it && it.img) || '', cat: (it && it.cat) || '' };
+        // 18/09: quà admin bỏ vào có thể là món KHÔNG bán ở shop -> tên lấy từ kho đồ toàn game (gameitems.json)
+        const gi = it ? null : gameItems().find(x => x.id === id);
+        return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '' };
     }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
     return {
         items, total: ichKyTotal(k),
@@ -2287,6 +2289,42 @@ function ichKyGive(userId, toUserId, itemId, qty, username) {
     saveDbNow();
     writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} tặng ${ten} x${qty} cho ${ban.name || toUserId}`);
     return { ok: true, message: `🎁 Đã tặng ${qty.toLocaleString()} ${ten} sang rương của ${ban.name || toUserId}`, state: ichKyState(userId) };
+}
+
+// 🎯 18/09: ADMIN (cổng SUPER, tab 🎁 Quà) bỏ đồ THẲNG vào rương 1 người. Cố ý KHÔNG tính hạn mua
+// 100/ngày, KHÔNG tính sức chứa 100, KHÔNG cần online, KHÔNG kiểm nợ/liên kết/công tắc - đền bù
+// hay thưởng thì phải tới tay. Vẫn theo luật rương: 00:00 không NHẬN là mất (người nhận phải
+// liên kết + online mới NHẬN được, đó là việc của họ). Ghi sổ "ai tặng" = 👑 Admin để họ biết nguồn.
+function adminIchKyGrant(toUserId, itemId, qty, note) {
+    toUserId = String(toUserId || '').trim();
+    itemId = String(itemId || '').trim().replace(/[^A-Za-z0-9_]/g, '');
+    qty = Math.floor(Number(qty) || 0);
+    if (!/^\d{15,20}$/.test(toUserId) || !dbCache[toUserId] || typeof dbCache[toUserId] !== 'object') return { error: 'Người này chưa có ví trong hệ thống' };
+    if (!itemId) return { error: 'Thiếu item id' };
+    if (qty < 1 || qty > 1000000) return { error: 'Số lượng phải từ 1 đến 1.000.000' };
+    const gi = gameItems().find(x => x.id === itemId);
+    if (!gi) return { error: `Không thấy '${itemId}' trong kho dữ liệu` };
+    const ban = getUserData(toUserId);
+    ichKyAdd(ban, itemId, qty);
+    const so = ichKyOf(ban);
+    note = String(note || '').trim().slice(0, 60);
+    so.nhan.push({ tu: '👑 Admin' + (note ? ' - ' + note : ''), ten: gi.n, qty, at: Date.now() });
+    if (so.nhan.length > 20) so.nhan = so.nhan.slice(-20);
+    saveDbNow();
+    writeLog('ADMIN', `[QUÀ RIÊNG] SUPER bỏ ${gi.n} x${qty} (${itemId}) vào rương của ${ban.name || toUserId}${note ? ' | ' + note : ''}`);
+    return { ok: true, message: `🧰 Đã bỏ ${qty.toLocaleString()} × ${gi.n} vào Rương Ích Kỷ của ${ban.name || toUserId} - họ phải NHẬN trước 00:00`, total: ichKyTotal(so) };
+}
+// Mọi ví (kể cả chưa liên kết) cho ô người nhận ở tab 🎁 - rương không cần online/liên kết.
+// Đếm rương KHÔNG qua ichKyOf() để không tạo/reset sổ của cả server chỉ vì admin mở tab.
+function giftTargets() {
+    const hnay = vnDayStr(Date.now());
+    const out = [];
+    for (const [k, v] of Object.entries(dbCache)) {
+        if (k.startsWith('_') || !/^\d{15,20}$/.test(k) || !v || typeof v !== 'object') continue;
+        const r = v.ichKy && v.ichKy.day === hnay && v.ichKy.items ? Object.values(v.ichKy.items).reduce((t, n) => t + (Number(n) || 0), 0) : 0;
+        out.push({ id: k, name: v.name || k, ingame: (v.ingameName || '').trim(), ichky: r });
+    }
+    return out.sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
 // 📦 NHẬN đồ từ rương vào túi trong game. Đây mới là chỗ BẮT BUỘC online (bot phải giao qua SFTP).
@@ -6626,6 +6664,7 @@ client.once('ready', async (c) => {
             gameItems,
             giveTargets,
             adminGiveItem,
+            giftTargets, adminIchKyGrant,   // 🎯 18/09: tab 🎁 tặng riêng 1 người (vào rương / vào game)
             // 🚀 Phi Thuyền (crash game): config + xem vòng + ép điểm nổ (SUPER)
             getSpmCfg: spmCfg,
             setSpmCfg,
