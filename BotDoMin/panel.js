@@ -1689,36 +1689,16 @@ const HTML = `<!DOCTYPE html>
           </table>
         </div>
       </div>
-      <!-- 🎯 18/09: tặng riêng 1 người - không tính hạn -->
-      <div class="card">
-        <h2>🎯 Tặng riêng 1 người <span class="muted" style="font-size:13px;font-weight:400">(không tính hạn · chỉ cổng SUPER)</span></h2>
-        <div class="note"><b>🧰 Bỏ vào rương</b>: đồ nằm thẳng trong Rương Ích Kỷ của họ - <b>không</b> tính hạn mua 100/ngày, <b>không</b> tính sức chứa 100, <b>không</b> cần online, <b>không</b> cần liên kết. Họ tự NHẬN vào game (lúc đó mới cần liên kết + online) hoặc tặng tiếp; <b>00:00 không nhận là mất</b> như mọi món trong rương. <b>🎮 Giao vào game</b>: vào túi ngay, họ phải <b>liên kết + đang online</b> (đi đúng đường Kho đồ 📦). Cả 2 đều ghi log; ghi chú hiện ở sổ "ai tặng" trong rương của họ.</div>
-        <div class="row" style="margin-top:8px">
-          <div style="flex:2"><label>Người nhận (mọi ví, kể cả chưa liên kết)</label><select id="gtWho"></select></div>
-          <div style="flex:1"><label>Số lượng</label><input id="gtQty" type="number" min="1" max="1000000" value="1"></div>
-          <div style="flex:2"><label>Ghi chú (hiện ở sổ "ai tặng" của họ)</label><input id="gtNote" placeholder="vd: đền bù rớt đồ" maxlength="60"></div>
-        </div>
-        <div class="row" style="margin-top:8px;align-items:center">
-          <div style="flex:2"><input id="gtFind" placeholder="🔎 Gõ tên / id món để tìm..." oninput="gtRender()"></div>
-          <div style="flex:2;font-size:13px" id="gtPicked" class="muted">Chưa chọn món</div>
-        </div>
-        <div class="muted" id="gtStat" style="font-size:12px;margin-top:6px">Gõ tên món để tìm</div>
-        <div id="gtList" style="margin-top:6px;max-height:260px;overflow-y:auto"></div>
-        <div class="row" style="margin-top:10px;gap:8px">
-          <button class="btn-green" onclick="gtSend('ruong',this)">🧰 Bỏ vào rương</button>
-          <button class="btn-blue" onclick="gtSend('game',this)">🎮 Giao vào game</button>
-        </div>
-        <div id="gtResult" class="hidden" style="margin-top:8px;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);font-size:13px"></div>
-      </div>
     </div>
     <div id="tab-give" class="hidden">
       <div class="card">
         <h2>📦 Kho đồ toàn game <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
-        <div class="note">Giao BẤT KỲ item nào của game vào túi người chơi (họ phải đang <b>ONLINE trong game</b>). Dữ liệu 2.299 món kèm tên + mô tả tiếng Việt; icon lấy thẳng từ paldb. Mọi lượt giao đều ghi log. ⚠️ Dùng cho <b>đền bù / sự kiện</b> - spawn bừa là tự phá giá shop item của chính mình.</div>
+        <div class="note">Mỗi món có 2 nút. <b>🎁 Giao</b>: vào túi trong game ngay - họ phải <b>liên kết + đang ONLINE</b>. <b>🧰 Rương</b> (18/09): bỏ thẳng vào <b>Rương Ích Kỷ</b> của họ - <b>không</b> tính hạn mua 100/ngày, <b>không</b> tính sức chứa 100, <b>không</b> cần online, <b>không</b> cần liên kết; họ tự NHẬN vào game hoặc tặng tiếp, <b>00:00 không nhận là mất</b> như mọi món trong rương. Ghi chú hiện ở sổ "ai tặng" trong rương của họ. Dữ liệu 2.299 món kèm tên + mô tả tiếng Việt; icon lấy thẳng từ paldb. Mọi lượt đều ghi log. ⚠️ Dùng cho <b>đền bù / sự kiện</b> - spawn bừa là tự phá giá shop item của chính mình.</div>
         <div class="row" style="margin-top:8px">
-          <div style="flex:2"><label>Người nhận (nhân vật đã liên kết)</label><select id="gvTarget"></select></div>
-          <div style="flex:2"><label>Hoặc gõ tên nhân vật khác</label><input id="gvTargetFree" placeholder="trống = dùng ô bên trái"></div>
-          <div style="flex:1"><label>Số lượng</label><input id="gvQty" type="number" min="1" max="1000000" value="1" title="Bao nhiêu cũng được (tối đa 1.000.000) - giao thẳng vào túi nhân vật đang online"></div>
+          <div style="flex:2"><label>Người nhận (mọi ví · 🎮 = đã liên kết · 🧰 = số món đang trong rương)</label><select id="gvTarget"></select></div>
+          <div style="flex:2"><label>Hoặc gõ tên nhân vật khác (chỉ 🎁 Giao vào game)</label><input id="gvTargetFree" placeholder="trống = dùng ô bên trái"></div>
+          <div style="flex:1"><label>Số lượng</label><input id="gvQty" type="number" min="1" max="1000000" value="1" title="Bao nhiêu cũng được (tối đa 1.000.000)"></div>
+          <div style="flex:2"><label>Ghi chú (chỉ 🧰 Rương - hiện ở sổ "ai tặng")</label><input id="gvNote" placeholder="vd: đền bù rớt đồ" maxlength="60"></div>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><input id="gvFind" placeholder="🔎 Tìm theo tên / mô tả / id..." oninput="gvRender()"></div>
@@ -2036,7 +2016,7 @@ function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
   ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gift'){giftFill(true);gtLoad();}
+  if(t==='give')gvLoad();if(t==='gift')giftFill(true);
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -2710,7 +2690,10 @@ async function gvLoad(){
     const j=await api('/api/gameitems');
     GV=j;
     const ts=document.getElementById('gvTarget');
-    ts.innerHTML=(j.targets||[]).map(t=>'<option value="'+esc(t.ingame)+'">'+esc(t.ingame)+' ('+esc(t.name)+')</option>').join('')||'<option value="">(chưa ai liên kết nhân vật)</option>';
+    // 18/09: mọi ví (value = Discord ID) - 🎮 tên nhân vật nếu đã liên kết, 🧰 số món đang trong rương hôm nay
+    const cur=ts.value;
+    ts.innerHTML=(j.wallets||[]).map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+(w.ingame?' · 🎮 '+esc(w.ingame):' · (chưa liên kết)')+(w.ichky?' · 🧰 '+w.ichky:'')+'</option>').join('')||'<option value="">(chưa có ví nào)</option>';
+    if(cur)ts.value=cur;
     const seen=[...new Set((j.items||[]).map(x=>x.t))];
     document.getElementById('gvType').innerHTML='<option value="">Tất cả nhóm</option>'+seen.map(t=>'<option value="'+t+'">'+(GV_TYPES[t]||t)+'</option>').join('');
     gvRender();
@@ -2729,28 +2712,48 @@ function gvRender(){
     return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-top:5px;border:1px solid var(--line);border-radius:9px;background:var(--card2)">'+ic
       +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+rc+'">'+esc(x.n)+' <span class="muted" style="font-weight:400;font-size:11px">'+esc(x.id)+' · '+(GV_TYPES[x.t]||x.t)+'</span></div>'
       +(x.d?'<div class="muted" style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.d)+'</div>':'')+'</div>'
-      +'<button class="mini btn-green gv-give" style="flex:0 0 auto" '+(GVBUSY?'disabled':'')+' onclick="gvGive(\\''+x.id+'\\',this)">'+(GVBUSY&&GVBUSY.id===x.id?'⏳ Đang giao...':'🎁 Giao')+'</button></div>';
+      +'<button class="mini btn-green gv-give" data-lbl="🎁 Giao" style="flex:0 0 auto" '+(GVBUSY?'disabled':'')+' onclick="gvGive(\\''+x.id+'\\',this,\\'game\\')">'+(GVBUSY&&GVBUSY.id===x.id&&GVBUSY.where==='game'?'⏳ Đang giao...':'🎁 Giao')+'</button>'
+      +'<button class="mini btn-grey gv-give" data-lbl="🧰 Rương" title="Bỏ thẳng vào Rương Ích Kỷ - không tính hạn, không cần online/liên kết" style="flex:0 0 auto" '+(GVBUSY?'disabled':'')+' onclick="gvGive(\\''+x.id+'\\',this,\\'ruong\\')">'+(GVBUSY&&GVBUSY.id===x.id&&GVBUSY.where==='ruong'?'⏳...':'🧰 Rương')+'</button></div>';
   }).join('')||'<div class="empty">Không món nào khớp.</div>';
 }
 // Nút "Giao": bấm → khoá TẤT CẢ nút Giao, nút vừa bấm đổi chữ ⏳ (như bảng người chơi), xong
 // (thành công hay lỗi) mới mở lại. Kết quả ghi vào khung #gvResult (giữ 8 dòng mới nhất) để
 // không phải F12; server cũng có deliverLock nên không bao giờ 2 lệnh chạy chồng.
-async function gvGive(id,btn){
+// where: 'game' = /api/give/item vào túi (ô gõ tay ưu tiên, không thì tên nhân vật của ví đã chọn);
+//        'ruong' = /api/gift/grant bỏ thẳng vào Rương Ích Kỷ theo Discord ID (không dùng ô gõ tay).
+async function gvGive(id,btn,where){
+  where=where||'game';
   if(GVBUSY)return toast('⏳ Đang giao món khác - chờ xong rồi bấm tiếp');
-  const target=(document.getElementById('gvTargetFree').value||'').trim()||document.getElementById('gvTarget').value;
+  const free=(document.getElementById('gvTargetFree').value||'').trim();
+  const sel=document.getElementById('gvTarget');const uid=sel.value;
+  const w=((GV&&GV.wallets)||[]).find(x=>x.id===uid);
   const qty=parseInt(document.getElementById('gvQty').value)||1;
-  if(!target)return toast('❌ Chọn/nhập người nhận');
   const it=(GV&&GV.items||[]).find(x=>x.id===id);
-  const what=qty+' × '+(it?it.n:id);
-  if(!await uiConfirm('Giao '+what+' vào túi '+target+'? (phải đang online)','🎁 Giao','btn-green'))return;
-  GVBUSY={id:id};
+  const what=qty.toLocaleString()+' × '+(it?it.n:id);
+  let target,label;
+  if(where==='ruong'){
+    if(free)return toast('❌ 🧰 Rương chỉ nhận người trong danh sách - xoá ô gõ tay hoặc dùng 🎁 Giao');
+    if(!uid||!w)return toast('❌ Chọn người nhận trong danh sách');
+    target=uid;label=w.name;
+    if(!await uiConfirm('🧰 Bỏ '+what+' vào RƯƠNG ÍCH KỶ của '+label+'? Không tính hạn, không cần online - họ phải NHẬN trước 00:00.','🧰 Bỏ vào rương','btn-green'))return;
+  }else{
+    target=free||(w&&w.ingame)||'';label=target;
+    if(!target)return toast(w?'❌ '+w.name+' chưa liên kết nhân vật - chỉ 🧰 Rương được':'❌ Chọn/nhập người nhận');
+    if(!await uiConfirm('Giao '+what+' vào túi '+label+'? (phải đang online)','🎁 Giao','btn-green'))return;
+  }
+  GVBUSY={id:id,where:where};
   document.querySelectorAll('.gv-give').forEach(b=>{b.disabled=true;});
-  if(btn)btn.textContent='⏳ Đang giao...';
-  gvNote('⏳ Đang giao '+what+' cho '+target+'... (mod cần tới 1-2 phút, đừng tắt tab)','');
-  try{const j=await api('/api/give/item',{target:target,itemId:id,qty:qty});const m=j.message||('✅ Đã giao '+what+' vào túi '+target);toast(m);gvNote(m,'ok');}
-  catch(e){gvNote('❌ '+(e.message||'Lỗi')+' | '+what+' cho '+target,'err');}
+  if(btn)btn.textContent=where==='ruong'?'⏳...':'⏳ Đang giao...';
+  gvNote(where==='ruong'?('⏳ Đang bỏ '+what+' vào rương của '+label+'...'):('⏳ Đang giao '+what+' cho '+label+'... (mod cần tới 1-2 phút, đừng tắt tab)'),'');
+  try{
+    const j=where==='ruong'
+      ?await api('/api/gift/grant',{userId:target,itemId:id,qty:qty,where:'ruong',note:(document.getElementById('gvNote').value||'').trim()})
+      :await api('/api/give/item',{target:target,itemId:id,qty:qty});
+    const m=j.message||('✅ Xong '+what+' cho '+label);toast(m);gvNote(m,'ok');
+    if(where==='ruong'){GV=null;gvLoad();}   // tải lại để số 🧰 cạnh tên nhảy ngay
+  }catch(e){gvNote('❌ '+(e.message||'Lỗi')+' | '+what+' cho '+label,'err');}
   GVBUSY=null;
-  document.querySelectorAll('.gv-give').forEach(b=>{b.disabled=false;b.textContent='🎁 Giao';});
+  document.querySelectorAll('.gv-give').forEach(b=>{b.disabled=false;b.textContent=(b.dataset&&b.dataset.lbl)||b.textContent;});
 }
 // Khung kết quả trong tab: dòng mới nhất trên cùng; dòng ⏳ đang chạy được thay bằng kết quả.
 let GVLOG=[];
@@ -2871,39 +2874,6 @@ async function featSet(key,off){
   var f=(STATE.feats||[]).find(function(x){return x.key===key})||{label:key};
   if(!await uiConfirm(off?('TẮT '+f.label+' cho người chơi? Mục này sẽ biến mất khỏi web và mọi thao tác bị chặn.'):('MỞ lại '+f.label+' cho người chơi?'),off?'⛔ Tắt':'✅ Mở',off?'btn-red':'btn-green'))return;
   try{await api('/api/feat/set',{key:key,off:off});toast((off?'⛔ Đã tắt ':'✅ Đã mở ')+f.label);refresh();}catch(e){}
-}
-// 🎯 18/09: TẶNG RIÊNG 1 NGƯỜI (tab 🎁) - dùng chung kho đồ GV với tab 📦; danh sách ví ở GV.wallets
-let GT={id:'',n:''},GTBUSY=false;
-async function gtLoad(){
-  try{
-    if(!GV||!GV.wallets){GV=await api('/api/gameitems');}
-    const s=document.getElementById('gtWho');if(!s)return;const cur=s.value;
-    s.innerHTML=(GV.wallets||[]).map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+(w.ingame?' · 🎮 '+esc(w.ingame):' · (chưa liên kết)')+(w.ichky?' · 🧰 '+w.ichky:'')+'</option>').join('')||'<option value="">(chưa có ví nào)</option>';
-    if(cur)s.value=cur;
-    gtRender();
-  }catch(e){const st=document.getElementById('gtStat');if(st)st.textContent='❌ '+e.message+' (card này chỉ chạy ở cổng SUPER)';}
-}
-function gtRender(){
-  if(!GV)return;const f=document.getElementById('gtFind'),q=(f&&f.value||'').trim().toLowerCase();
-  let rows=q?(GV.items||[]).filter(x=>x.n.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)):[];
-  const st=document.getElementById('gtStat');if(st)st.textContent=q?rows.length.toLocaleString()+' món khớp'+(rows.length>40?' - hiện 40 đầu, gõ thêm để lọc':''):'Gõ tên món để tìm';
-  rows=rows.slice(0,40);
-  const L=document.getElementById('gtList');if(!L)return;
-  L.innerHTML=rows.map(x=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-top:4px;border:1px solid var(--line);border-radius:8px;background:var(--card2)'+(GT.id===x.id?';outline:2px solid #3dd68c':'')+'"><div style="flex:1;min-width:0"><b>'+esc(x.n)+'</b> <span class="muted" style="font-size:11px">'+esc(x.id)+' · '+(GV_TYPES[x.t]||x.t)+'</span></div><button class="mini btn-grey" onclick="gtPick(\\''+x.id+'\\')">Chọn</button></div>').join('');
-}
-function gtPick(id){const x=((GV&&GV.items)||[]).find(y=>y.id===id);if(!x)return;GT={id:x.id,n:x.n};const p=document.getElementById('gtPicked');if(p)p.innerHTML='Đã chọn: <b>'+esc(x.n)+'</b> <span class="muted" style="font-size:11px">'+esc(x.id)+'</span>';gtRender();}
-async function gtSend(where,btn){
-  if(GTBUSY)return toast('⏳ Đang gửi món trước - chờ xong');
-  const s=document.getElementById('gtWho'),uid=s.value,qty=parseInt(document.getElementById('gtQty').value)||0;
-  if(!uid)return toast('Chọn người nhận');if(!GT.id)return toast('Chọn món trước (gõ ô 🔎 rồi bấm Chọn)');if(qty<1)return toast('Số lượng phải từ 1');
-  const who=(s.options&&s.options[s.selectedIndex])?s.options[s.selectedIndex].textContent:uid;
-  if(!await uiConfirm((where==='game'?'🎮 GIAO THẲNG VÀO GAME ':'🧰 BỎ VÀO RƯƠNG ')+qty.toLocaleString()+' × '+GT.n+' cho '+who+'?',where==='game'?'🎮 Giao':'🧰 Bỏ vào rương','btn-green'))return;
-  GTBUSY=true;
-  await runBtn(btn,'⏳ Đang gửi...',()=>api('/api/gift/grant',{userId:uid,itemId:GT.id,qty:qty,where:where,note:(document.getElementById('gtNote').value||'').trim()}).then(j=>{
-    toast(j.message||'✅ Xong');const r=document.getElementById('gtResult');if(r){r.classList.remove('hidden');r.innerHTML='<div>'+new Date().toLocaleTimeString('vi-VN')+' · '+esc(j.message||'OK')+'</div>'+r.innerHTML;}
-    GV=null;gtLoad();   // tải lại để số 🧰 cạnh tên người nhận nhảy ngay
-  }).catch(e=>{if(!e.toasted)toast('❌ '+e.message)}));
-  GTBUSY=false;
 }
 // 🎁 15/09 (chiều): QUÀ ADMIN TẶNG - bảng riêng, lưu vào _giftShop, không dính shop item
 var GFDIRTY=false,GFSIG='';
