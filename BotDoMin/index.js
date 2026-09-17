@@ -2308,6 +2308,9 @@ function adminIchKyGrant(toUserId, itemId, qty, note) {
     ichKyAdd(ban, itemId, qty);
     const so = ichKyOf(ban);
     note = String(note || '').trim().slice(0, 60);
+    // 18/09: chủ server gõ "80" vào ô ghi chú, số lượng để 1 -> tặng 1 cái ghi chú "80". Ghi chú toàn số
+    // gần chắc là gõ nhầm ô -> từ chối thẳng, không đoán ý.
+    if (/^d+$/.test(note)) return { error: `Ghi chú "${note}" toàn là số - bạn gõ nhầm ô SỐ LƯỢNG? Sửa lại rồi bấm lại (chưa bỏ gì vào rương)` };
     so.nhan.push({ tu: '👑 Admin' + (note ? ' - ' + note : ''), ten: gi.n, qty, at: Date.now() });
     if (so.nhan.length > 20) so.nhan = so.nhan.slice(-20);
     saveDbNow();

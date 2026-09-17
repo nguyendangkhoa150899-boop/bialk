@@ -1698,7 +1698,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:2"><label>Người nhận (mọi ví · 🎮 = đã liên kết · 🧰 = số món đang trong rương)</label><select id="gvTarget"></select></div>
           <div style="flex:2"><label>Hoặc gõ tên nhân vật khác (chỉ 🎁 Giao vào game)</label><input id="gvTargetFree" placeholder="trống = dùng ô bên trái"></div>
           <div style="flex:1"><label>Số lượng</label><input id="gvQty" type="number" min="1" max="1000000" value="1" title="Bao nhiêu cũng được (tối đa 1.000.000)"></div>
-          <div style="flex:2"><label>Ghi chú (chỉ 🧰 Rương - hiện ở sổ "ai tặng")</label><input id="gvNote" placeholder="vd: đền bù rớt đồ" maxlength="60"></div>
+          <div style="flex:2"><label>Lời nhắn kèm (CHỮ, không phải số lượng · chỉ 🧰 Rương)</label><input id="gvNote" placeholder="vd: đền bù rớt đồ - để trống cũng được" maxlength="60"></div>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><input id="gvFind" placeholder="🔎 Tìm theo tên / mô tả / id..." oninput="gvRender()"></div>
@@ -2734,6 +2734,8 @@ async function gvGive(id,btn,where){
   if(where==='ruong'){
     if(free)return toast('❌ 🧰 Rương chỉ nhận người trong danh sách - xoá ô gõ tay hoặc dùng 🎁 Giao');
     if(!uid||!w)return toast('❌ Chọn người nhận trong danh sách');
+    const nt=(document.getElementById('gvNote').value||'').trim();
+    if(/^d+$/.test(nt))return toast('❌ Ô "Lời nhắn" đang là số '+nt+' - số lượng nhập ở ô SỐ LƯỢNG (hiện là '+qty+')');
     target=uid;label=w.name;
     if(!await uiConfirm('🧰 Bỏ '+what+' vào RƯƠNG ÍCH KỶ của '+label+'? Không tính hạn, không cần online - họ phải NHẬN trước 00:00.','🧰 Bỏ vào rương','btn-green'))return;
   }else{
