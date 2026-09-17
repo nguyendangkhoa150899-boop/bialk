@@ -3868,14 +3868,23 @@ function webMinesLog(g, result, amount, hitIdx) {
 // đào/tên lửa 15% (quà đẩy tiến độ nặng kinh tế hơn nên hiếm hơn khiên).
 // 12/09: BỎ 🍂 Hụt - cỏ giờ phải MUA (20% cược) nên "trả tiền bốc trúng không-có-gì"
 // là trải nghiệm tệ nhất sòng. Van chỉnh kỳ vọng mới = tỉ lệ ↩️ refund (ô rẻ nhất bảng).
+// 17/09: chủ server ĐẢO LẠI quyết định trên - 🍂 vào lại Dò Mìn, và chốt số cụ thể:
+// Lì xì 20 · Khiên 13 · Máy đào 5 · Gấp đôi 10 · La bàn 3 · Nổ hũ 1 = 52; còn 48 CHIA ĐỀU
+// cho 🍂 Hụt và ↩️ Hoàn vé cỏ = 24 mỗi ô. Bảng trước đó: cash .38 · shield .15 · refund .14 ·
+// dig .13 · dbl .10 · scout .08 · jackpot .02 (không có 🍂).
+// ⚠️ Gần MỘT NỬA số hộp giờ chỉ hoàn phí cỏ hoặc không được gì - đúng ý "giảm rate", nhưng
+// đây là cú hãm mạnh, muốn nới thì kéo 2 ô 24% xuống rồi bù lại cho cash/dig.
+// TỔNG PHẢI BẰNG 1.00 - spinWheel trừ dần, thiếu thì DỒN HẾT vào ô CUỐI bảng (luckywheeltest canh).
+// Leo Thang giữ nguyên, chủ server chỉ đổi Dò Mìn.
 const MINES_LUCKY_WHEEL = [
-    { p: 0.15, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
-    { p: 0.13, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.38, prize: 'cash' },     // 💰 +30% tiền cược tức thì
-    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0 (12/09 chủ server nâng)
-    { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
-    { p: 0.14, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
-    { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (1% -> 2% ngày 12/09, chủ server chốt)
+    { p: 0.13, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
+    { p: 0.05, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
+    { p: 0.20, prize: 'cash' },     // 💰 +30% tiền cược tức thì
+    { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
+    { p: 0.03, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
+    { p: 0.24, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
+    { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ (2% -> 1%, chủ server chốt 17/09)
+    { p: 0.24, prize: 'none' },     // 🍂 HỤT - không được gì
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.13, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay

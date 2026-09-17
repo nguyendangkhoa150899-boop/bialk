@@ -9,3 +9,13 @@ SO-TAY-NOI-BO.md
 # Rac runtime/IDE - khong commit (04/09)
 .claude/
 palworld-dashboard/server/.dashpid
+
+# 17/09 - ANH ICON ITEM chu server TU TAY up ca o may nha lan tren VPS.
+# Commit chung se lam `git pull` tren prod tach do khong dam ghi de file da co san
+# -> da vo mot lan. Anh cu (130 tep) van nam trong git binh thuong, dong nay chi
+# bo qua anh MOI them tay. Can dua mot anh vao git that thi: git add -f <duong dan>
+BotDoMin/assets/itemimage/*.webp
+
+# Ban sao cua .env (chua mat khau SFTP that) - khong bao gio commit
+.env.*
+*.env.bak*

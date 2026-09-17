@@ -699,6 +699,37 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (khuya)** — 🍂 **Dò Mìn: ô HỤT vào lại hộp 🍀, mọi quà khác hạ tỉ lệ** (chủ server:
+  *"dò mìn thêm cái lá vô nữa, giảm rate mấy cái còn lại đi"*). Đây là **đảo lại quyết định 12/09**
+  (hôm đó bỏ 🍂 vì "trả tiền mua cỏ mà bốc trúng không-có-gì là trải nghiệm tệ nhất").
+  Mã cho 🍂 vẫn còn nguyên ở cả 3 nơi (nhánh `else g.luck.push('🍂')` ở index, `PRIZE_EMO` +
+  câu "Trống trơn..." ở web, nhãn `none:'🍂 Hụt'` ở panel) - chỉ thiếu đúng dòng tỉ lệ.
+
+  Số do **chủ server ghi tay**: Lì xì 20 · Khiên 13 · Máy đào 5 · Gấp đôi 10 · La bàn 3 · Nổ hũ 1
+  = 52, còn **48 chia ĐỀU** cho 🍂 Hụt và ↩️ Hoàn vé cỏ = 24 mỗi ô.
+
+  | Quà | Cũ | Mới |
+  |---|---|---|
+  | 💰 Lì xì (+30% cược) | 38% | **20%** |
+  | 🛡️ Khiên | 15% | **13%** |
+  | ↩️ Hoàn vé cỏ | 14% | **24%** |
+  | ⛏️ Máy đào | 13% | **5%** |
+  | 🎲 Gấp đôi/không | 10% | **10%** (giữ) |
+  | 🧭 La bàn | 8% | **3%** |
+  | 🏆 Nổ hũ | 2% | **1%** |
+  | 🍂 Hụt | — | **24%** |
+
+  ⚠️ **48% số hộp giờ chỉ hoàn phí cỏ hoặc không được gì.** Cỏ tốn 20% tiền cược, nên gần một nửa
+  lượt mở là huề vốn phí hoặc mất trắng phí. Đây là cú hãm rất mạnh, cố ý. Muốn nới thì kéo 2 ô 24%
+  xuống rồi bù lại cho 💰/⛏️.
+
+  **Leo Thang KHÔNG đụng** (chủ server chỉ nói Dò Mìn) - vẫn 7 ô, không có 🍂.
+  Panel: thêm 🍂 vào ô chọn "ép quà hộp kế tiếp" và cho mã `none` qua route (trước bị chặn).
+  Bộ kiểm mới `luckywheeltest.js` (50 case): **tổng tỉ lệ phải đúng 1.00** - `spinWheel` trừ dần nên
+  thiếu bao nhiêu là **dồn hết vào ô CUỐI bảng** (test dựng bảng tổng 0.4 để chứng minh cái bẫy này);
+  mọi mã quà phải có nhánh xử lý + emoji web + nhãn panel; quay thật 200.000 lượt đối chiếu tần suất.
+  `leaf-e2e.js` (12 case) chơi ván Dò Mìn THẬT, ép hộp ra 🍂 rồi mở - nhánh này **chết từ 12/09**
+  nên phải chạy thật mới chắc còn sống; kiểm cả "trúng 🍂 thì ví không đổi đồng nào".
 - **17/09 (tối, 2 lỗi chủ server báo liền nhau)** — 🐞 **Bảng Dò Mìn + Phi Thuyền đứng hình** và
   🐞 **panel lúc nào cũng "ĐÃ KHÓA SỔ"**.
   **(a) Bảng đứng hình**: commit dọn Xổ Số `f067db4` **cắt lố** khối khởi động, mất 4 dòng

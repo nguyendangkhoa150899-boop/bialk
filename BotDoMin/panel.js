@@ -648,7 +648,8 @@ function startPanel(ctx) {
                     if (!ctx.setForcedLucky) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     const key = String(body.key || '').trim(), prize = String(body.prize || '').trim();
                     if (!key) return sendJSON(res, 400, { ok: false, error: 'Thiếu người chơi' });
-                    if (!['shield', 'dig', 'cash', 'rocket', 'jackpot', 'dbl', 'scout', 'refund'].includes(prize)) return sendJSON(res, 400, { ok: false, error: 'Quà không hợp lệ' });
+                    // 17/09: thêm 'none' (🍂 Hụt) - đã vào lại bảng quà Dò Mìn nên phải ép được
+                    if (!['shield', 'dig', 'cash', 'rocket', 'jackpot', 'dbl', 'scout', 'refund', 'none'].includes(prize)) return sendJSON(res, 400, { ok: false, error: 'Quà không hợp lệ' });
                     ctx.setForcedLucky(key, prize);
                     ctx.writeLog('ADMIN', `[PANEL ÉP HỘP 🍀] ${key} -> ${prize}`);
                     return sendJSON(res, 200, { ok: true });
@@ -1217,7 +1218,7 @@ const HTML = `<!DOCTYPE html>
         <!-- 🍀 09/09: ép quà hộp may mắn kế tiếp - dựng kịch bản test (ép khiên -> đạp mìn -> xem cảnh báo trần x2000) -->
         <div class="row" style="margin-top:10px;align-items:flex-end">
           <div style="flex:3"><label>🍀 Ép QUÀ hộp may mắn kế tiếp (cùng người chơi mục tiêu ở trên)</label>
-            <select id="luckyPrize"><option value="shield">🛡️ Khiên</option><option value="dig">⛏️ Máy đào (Dò Mìn)</option><option value="rocket">🚀 Thang máy (Leo Thang)</option><option value="cash">💰 Lì xì</option><option value="jackpot">🏆 Nổ hũ</option><option value="dbl">🎲 Gấp đôi/không</option><option value="scout">🧭 La bàn</option><option value="refund">↩️ Hoàn vé cỏ</option></select></div>
+            <select id="luckyPrize"><option value="shield">🛡️ Khiên</option><option value="dig">⛏️ Máy đào (Dò Mìn)</option><option value="rocket">🚀 Thang máy (Leo Thang)</option><option value="cash">💰 Lì xì</option><option value="jackpot">🏆 Nổ hũ</option><option value="dbl">🎲 Gấp đôi/không</option><option value="scout">🧭 La bàn</option><option value="refund">↩️ Hoàn vé cỏ</option><option value="none">🍂 Hụt (chỉ Dò Mìn)</option></select></div>
           <button class="btn-green" style="flex:2" onclick="luckyForce()">🍀 Ép quà hộp kế tiếp</button>
         </div>
         <div class="flist" id="luckyList"></div>
