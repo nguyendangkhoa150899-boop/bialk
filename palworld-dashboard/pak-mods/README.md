@@ -549,6 +549,32 @@ dựng lại file NgayThuong với GYM_* khác, KHÔNG thêm pak thứ hai.
 recycler trên prod tên `NerfRelic_…`, mà `BialkServer_Z…` xếp trước chữ `N` → nạp trước → bị đè → **mất tác dụng im lặng**.
 Cùng một file, chỉ khác tên theo server. Luật chung: tên file Z phải xếp sau tên pak recycler **đang có trên server đó**.
 
+## ⏳ VIỆC TREO (16/09 17:40) — ĐO THỨ TỰ NẠP PAK NHÓM A, chủ server làm ở máy khác
+
+**Tình hình:** prod đã restart 17:33 với **cả hai** file nhóm A (`NerfRelic_NoImplant_NoCore_P.pak` + `NerfRelic_ZExpedition_P.pak`).
+Giả định "file xếp sau theo chữ cái thắng" **CHƯA ĐO**. Nếu sai → thám hiểm trên prod **vẫn rơi Lõi**, không báo hiệu; máy nghiền
+thì vẫn bị chặn dù pak nào thắng (cả hai đều chứa). Prod đang có người chơi nên chưa restart thêm.
+
+**Cập nhật 17/09 sáng:** chủ server đã dọn TEST còn **1 file nhóm A** (`BialkServer_ZExpedition_P.pak`, xoá `BialkServer_P.pak`) →
+test hết phụ thuộc thứ tự nạp, và cũng **không còn cặp để đo** nữa. Khuyến nghị đổi: **làm prod y test** — xoá
+`NerfRelic_NoImplant_NoCore_P.pak` trên prod (Z đã bao gồm phần máy nghiền, đã kiểm trong game trên test), restart 1 lần → khỏi đo gì.
+Muốn tắt thám hiểm sau này: thay Z bằng `BialkServer_P.pak` (đổi tên tuỳ ý) + restart. Hai cách đo dưới chỉ còn cần nếu vẫn muốn giữ cặp.
+
+**Cách đo (chọn 1):**
+- **A (không đụng prod):** trên TEST chép lại `BialkServer_P.pak` vào `~mods` (để có cặp như prod), restart TEST, rồi
+  từ `palworld-dashboard/server`:
+  ```
+  SFTP_USER='<user test>' SFTP_PASS='<pass>' SFTP_MOD_PATH='/1. test mod/Pal/Binaries/Win64/ue4ss/Mods/GiveGoldCommand' \
+  node ../tools/sftp-dtmap.cjs "DTMAP PalMasterDataTableAccess_FieldLotteryNameData ItemSlot11_ProbabilityPercent,ItemSlot12_ProbabilityPercent Expedition_"
+  ```
+  `Expedition_Grass` slot 11 = **0** → Z thắng (giả định đúng, prod OK). = **100** → Z thua.
+- **B:** chép `main.lua` mới (có DTMAP, đang chạy test) lên prod bằng stream tuần tự + so byte, restart prod, chạy lệnh trên với
+  path prod `/1. Cô 4 vui vẻ/...` → đo thẳng prod.
+
+**Nếu Z thua:** trên prod **xoá `NerfRelic_NoImplant_NoCore_P.pak`** (Z là superset, có sẵn phần máy nghiền) + restart → hết phụ
+thuộc thứ tự. Muốn tắt thám hiểm sau này: thay Z bằng file recycler-only (`BialkServer_P.pak` đổi tên). Làm y vậy trên test.
+**Nếu Z thắng:** giữ nguyên, xoá mục này.
+
 **Trạng thái 16/09 ~17:30:** ✅ TEST đã kiểm trong game (chuyến Sunreach Isle 38 phút: 7 món, không Lõi/Linh kiện; bảng sống
 đọc bằng DTMAP: slot 11/12 = 0). ✅ PROD đã **chép** `NerfRelic_ZExpedition_P.pak` (byte y hệt), **chưa restart**. Prod có 5 pak:
 `BialkRaid_NgayThuong` · `BialkShopOff` · `NerfRelic_NoImplant_NoCore` · `NerfRelic_ZExpedition` · `NoDrop_Silvance_Dandilord` -

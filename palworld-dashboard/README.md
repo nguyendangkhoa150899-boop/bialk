@@ -670,6 +670,13 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **16/09 (tối)** — ⏳ **VIỆC TREO: đo thứ tự nạp pak nhóm A trên prod** (chủ server: "prod đang có người chơi, note lại, mình
+  làm ở máy local khác"). Prod đã restart 17:33 với cả `NerfRelic_NoImplant_NoCore_P.pak` + `NerfRelic_ZExpedition_P.pak`;
+  giả định "xếp sau thắng" **chưa đo** → thám hiểm prod có thể vẫn rơi Lõi (máy nghiền vẫn chặn dù sao). Cách đo + cách sửa ghi
+  đủ ở `pak-mods/README.md` mục **VIỆC TREO**. 17/09 sáng: TEST đã được chủ server dọn còn **1 file nhóm A** (Z) → khuyến nghị
+  làm prod y vậy (xoá `NerfRelic_NoImplant_NoCore_P.pak`, giữ Z, restart 1 lần) thay vì đo thứ tự. Phiên khác (17/09 01:00) đã
+  thêm `BialkRecipe_P.pak` (Lõi vào công thức) - **chưa chốt**, còn bài test quyết định + rủi ro client hiển thị sai; xem README pak-mods. Thêm `tools/sftp-dtmap.cjs`: gửi lệnh DTMAP qua SFTP (stream tuần tự), tải
+  dump về, in dòng MAP — creds qua ENV, có hard-block. Chạy từ `palworld-dashboard/server` để có `ssh2`.
 - **16/09 (chiều→tối)** — 🏕️ **Trạm Thám Hiểm KHÔNG rớt Lõi + Linh kiện Văn Minh Cổ Đại — làm xong KHÔNG cần máy có game**
   (chủ server: "phải thuê máy vì máy này không có game, bất tiện quá"). Đường đi: (1) thêm lệnh **`DTMAP`** vào mod
   (`GetDataTableColumnAsString` đọc CẢ CỘT bảng - không tham số struct nên né được chỗ `DTROW` chết) → đọc ánh xạ slot→món ngay
