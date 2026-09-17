@@ -699,6 +699,47 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (khuya)** — 🧰 **RƯƠNG ÍCH KỶ**: mua đồ shop **không cần đang online**, để dành trong rương,
+  rồi **NHẬN vào game** hoặc **TẶNG người khác**; **00:00 giờ VN xoá sạch**, không xài là mất trắng.
+  Nút 🧰 nằm trên thanh số dư (chỗ chủ server chỉ), có nhãn đỏ đếm số món.
+
+  | Luật | Số |
+  |---|---|
+  | Mua vào rương | tối đa **100 món/người/NGÀY** (nhận hết cũng không mua thêm được tới 00:00) |
+  | Rương giữ | tối đa **100 món** (chặn dồn quà từ nhiều người) |
+  | Tặng | tối đa **100 món/lần**, không ăn vào hạn MUA của người nhận |
+  | Reset | **00:00 giờ VN**, so ngày mỗi lần mở rương (không hẹn giờ → bot tắt qua đêm vẫn đúng) |
+
+  **Chỉ nhận món có hạn TOÀN SERVER** (chủ server chốt): đọc thẳng cấu hình đang chạy, nhóm để
+  🌐 *toàn server* thì được, nhóm để 👤 *cá nhân* thì không (vd NGUYÊN LIỆU CHO PAL). Implant,
+  implant Cây Thế Giới, ⭐ món 1-lần đều là hạn theo NGƯỜI nên bị loại. **Không ghi cứng tên nhóm** -
+  admin đổi nhóm sang toàn server là nút 🧰 hiện ra ngay. Lý do luật này hợp: hạn toàn server =
+  "ai nhanh thì được", người offline không tranh nổi; hạn cá nhân thì ai cũng có phần, khỏi cần rương.
+
+  **Cách làm**: KHÔNG viết đường mua thứ hai. Thêm tham số `vaoRuong` cho chính `itemShopBuy()` →
+  mọi luật giá/nợ/công tắc/hạn ngày/hạn nhóm dùng CHUNG một chỗ, khỏi lệch. Khác đúng 2 chỗ: bỏ kiểm
+  online và thay giao SFTP bằng bỏ vào rương. Shop giữ **cả hai nút**: 🛒 Mua (giao ngay) + 🧰 Vào rương.
+  🐞 **Vấp 1**: hàm bọc `itemshop.buy` chỉ khai 3 tham số nên **nuốt mất cờ `vaoRuong`** → mua vào rương
+  vẫn đòi online. Đúng họ với lỗi `ctx.txLockS` ban chiều. `ichkytest` nay canh chữ ký hàm bọc.
+  🐞 **Vấp 2**: `#ikModal{display:flex}` đè `.hidden` (id 100 > class 10) → popup không ẩn được.
+  `hiddencheck.js` bắt đúng, đã thêm `#ikModal.hidden{display:none}` như mọi modal khác.
+  **Giao diện** (sau khi chủ server xem thật): danh sách xếp **lưới thẻ** kiểu kho đồ - ảnh món to,
+  số lượng đè góc dưới ảnh, tên, rồi ô nhập + 2 nút; mỗi hàng 2 thẻ cho nút đủ to bấm trên điện thoại.
+  Nút 🧰 viền **đỏ**, hiện **luôn số món** kể cả khi 0.
+  **🎁 Người nhận biết AI TẶNG** mà không cần thêm màn hình: một khung xanh ngay trong popup rương,
+  "• *TÊN* tặng *N* *món* (giờ)", mới nhất lên đầu, giữ 20 lượt. Sổ này nằm **chung trong `ichKy`**
+  nên 00:00 tự bay theo đồ, khỏi dọn riêng.
+  🐞 **Vấp 3**: `ichKyState` trả tên ảnh ở trường `icon` nhưng shop lưu ở `img` → ảnh luôn rỗng,
+  không lỗi không log. 🐞 **Vấp 4**: máy chủ GỬI `ichKyTotal` mỗi 2 giây nhưng client KHÔNG ĐỌC →
+  F5 xong nút hiện 0 tới khi bấm mở rương. Cả hai nay đều có chốt chặn trong `ichkytest`.
+  Kiểm: `ichkytest.js` 62 (chạy hàm thật: giả lập qua 00:00 phải mất đồ VÀ sổ mua về 0, dữ liệu rác,
+  đủ nhánh chặn khi tặng, canh cả hai đầu gửi/đọc) · `ichky-e2e.js` 28 (HTTP thật: mua offline được,
+  implant/nhóm cá nhân bị chặn, trần 100/ngày, tặng qua người 2 + sổ ai tặng, nhận hụt thì **đồ phải
+  còn nguyên**).
+  ⚠️ **Bài học viết e2e**: bài kiểm bám cứng vào 1 mã món + giả định rương trống nên chạy lần 2 trong
+  ngày là **bỏ qua gần hết phần quan trọng mà vẫn báo xanh**. Nay nó tự chọn món đang thực sự có và
+  tự thích ứng khi hết lượt mua - trần 100/ngày là thật, không "reset" được trong ngày.
+
 - **17/09 (khuya, sau đợt 🍂)** — 📉 **Dò Mìn: hệ số trả CHỐT 0,88** (trong một ngày đi
   0,95 → 0,90 → 0,80 → **0,88**). Nhà cái ăn **12%**.
   **🚧 0,88 là SÀN, đừng hạ tiếp.** Bàn 3 mìn có 22/25 ô an toàn = 88%, hệ số ô đầu = (1/0,88)×RTP,

@@ -192,6 +192,8 @@ function startWebPlay(ctx) {
                         balance: me.points || 0,
                         // 🔗 17/09: false = admin chưa liên kết tên nhân vật -> client hiện banner đỏ
                         linked: ctx.daLienKet ? !!ctx.daLienKet(userId) : true,
+                        // 🧰 17/09: số món đang nằm trong Rương Ích Kỷ -> nhãn đỏ trên nút 🧰
+                        ichKyTotal: ctx.ichKy ? (ctx.ichKy.state(userId).total || 0) : 0,
                         // 🏆 hũ 2 minigame gửi kèm nhịp 2 giây -> nhãn hũ trên tab luôn tươi,
                         // thấy người khác nuôi hũ mà không cần bấm sang tab đó
                         pots: {
@@ -364,7 +366,27 @@ function startWebPlay(ctx) {
                 }
                 if (ctx.itemshop && req.method === 'POST' && path === '/api/itemshop/buy') {
                     const body = await readBody(req);
-                    const r = await ctx.itemshop.buy(userId, body.itemId, body.qty);
+                    // 🧰 17/09: vaoRuong = true -> bỏ vào Rương Ích Kỷ, KHÔNG cần online, không giao SFTP
+                    const r = await ctx.itemshop.buy(userId, body.itemId, body.qty, body.vaoRuong === true);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+
+                // ===== 🧰 RƯƠNG ÍCH KỶ (17/09) - 00:00 giờ VN là xoá sạch =====
+                if (ctx.ichKy && path === '/api/ichky/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.ichKy.state(userId) });
+                }
+                if (ctx.ichKy && req.method === 'POST' && path === '/api/ichky/claim') {
+                    const body = await readBody(req);
+                    const me2 = ctx.getUserData(userId);
+                    const r = await ctx.ichKy.claim(userId, String(body.itemId || ''), body.qty, me2.name || userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                if (ctx.ichKy && req.method === 'POST' && path === '/api/ichky/give') {
+                    const body = await readBody(req);
+                    const me2 = ctx.getUserData(userId);
+                    const r = ctx.ichKy.give(userId, String(body.toId || ''), String(body.itemId || ''), body.qty, me2.name || userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -1351,6 +1373,29 @@ const PAGE = [
     // ---- chat ----
     '#chatBox{height:190px;overflow-y:auto;background:#12141a;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:13px}',
     '.cmsg{padding:3px 0;word-break:break-word}.cmsg b{color:var(--gold)}.cmsg .ct{color:var(--muted);font-size:11px;margin-left:6px}',
+    '#ikBtn{background:linear-gradient(180deg,#4a1616,#2e0f0f);border:2px solid var(--red);color:#ffd9d9;font-weight:900;font-size:15px;padding:9px 10px;display:flex;align-items:center;gap:5px}',
+    '#ikBtn .n{background:var(--red);color:#fff;border-radius:8px;font-size:12px;font-weight:900;padding:1px 6px;line-height:1.5;min-width:20px;text-align:center}',
+    '#ikModal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px;z-index:60}',
+    // BẮT BUỘC: #ikModal có display nên luật id (100) đè .hidden (10) -> phải có dòng này mới ẩn được
+    '#ikModal.hidden{display:none}',
+    '#ikBox{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:540px;width:100%;max-height:88vh;overflow:auto;padding:14px}',
+    // 17/09: chủ server bảo nút + ô nhập nhỏ quá -> mỗi hàng 2 thẻ (ô 210px) cho rộng chỗ.
+    '#ikList{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}',
+    '.ikCard{border:1px solid var(--line);border-radius:12px;background:#161a24;padding:8px;display:flex;flex-direction:column;gap:6px}',
+    '.ikPic{position:relative;background:#0f1218;border:1px solid var(--line);border-radius:10px;height:110px;display:flex;align-items:center;justify-content:center;overflow:hidden}',
+    '.ikPic img{width:68px;height:68px;object-fit:contain}',
+    '.ikPic .isPh{font-size:38px}',
+    '.ikQ{position:absolute;right:6px;bottom:6px;background:var(--red);color:#fff;font-weight:900;font-size:14px;border-radius:9px;padding:2px 9px;line-height:1.5}',
+    '.ikNm{font-weight:800;font-size:14px;line-height:1.35;min-height:38px}',
+    '.ikAct{display:flex;gap:7px;align-items:stretch}',
+    '.ikAct input{width:64px;flex:0 0 auto;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:11px 4px;font-size:16px;font-weight:800;text-align:center}',
+    '.ikAct button{flex:1;padding:12px 6px;font-size:14px;font-weight:800;border-radius:10px}',
+    '.ikAct .bn{background:var(--green);color:#0c2417}',
+    '.ikAct .bt{background:linear-gradient(180deg,#7a5c14,#4a3a10);color:#fff3c4;border:1px solid #ffd76a}',
+    '#ikTo{width:100%;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px;font-size:13px;margin-bottom:8px}',
+    '#ikWarn{background:linear-gradient(180deg,#4a3a10,#2e2410);border:1px solid #c9a227;color:#ffe9a8;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.5}',
+    '#ikNhan{background:linear-gradient(180deg,#123a24,#0d2618);border:1px solid var(--green);color:#bff0d4;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.6}',
+    '#ikNhan b{color:#fff}',
     '#lkWarn{background:linear-gradient(180deg,#4a1414,#2e0f0f);border:1px solid #e05a5a;color:#ffd9d9;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;line-height:1.5}',
     '#lkWarn b{color:#fff}',
     '</style></head><body>',
@@ -1385,6 +1430,8 @@ const PAGE = [
     '<div id="debtChip" class="hidden" onclick="debtBarToggle()" title="Bấm để trả nợ"><div class="lb">📒 ĐANG NỢ</div><div class="vl" id="debtChipVal">0</div></div>',
     '<div style="display:flex;gap:6px;align-items:center">',
     // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
+    // 🧰 17/09: Rương Ích Kỷ - đứng ngay trước nút loa, đúng chỗ chủ server chỉ
+    '<button id="ikBtn" title="Rương Ích Kỷ - 00:00 là xoá sạch" onclick="ikOpen()">🧰<span class="n" id="ikNum">0</span></button>',
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
 
@@ -1711,6 +1758,19 @@ const PAGE = [
     // Hộp chọn linh hồn + passive khi NHẬN pal (overlay cố định, dùng chung mọi trang)
     // 26/08: bố cục lại theo góp ý chủ server - máy tính rộng thì chia 2 CỘT (trái:
     // linh hồn + IV, phải: passive), thêm khung 🧾 TỔNG KẾT trước nút nhận.
+    // 🧰 RƯƠNG ÍCH KỶ (17/09)
+    '<div id="ikModal" class="hidden">',
+    '<div id="ikBox">',
+    '<div class="row"><h2 style="margin:0">🧰 RƯƠNG ÍCH KỶ</h2><button onclick="ikClose()" style="background:#232735;padding:4px 12px">✕</button></div>',
+    '<div id="ikWarn">⏰ <b>00:00 là rương XOÁ SẠCH</b> - món nào chưa NHẬN vào game hoặc chưa TẶNG đi là mất trắng. <span id="ikCount"></span></div>',
+    '<div class="muted" style="font-size:12px;margin-bottom:8px" id="ikStat">-</div>',
+    '<div id="ikNhan" class="hidden"></div>',
+    '<div style="font-size:12px;font-weight:700;margin-bottom:4px">🎁 Tặng cho</div>',
+    '<select id="ikTo"><option value="">-- chọn người nhận --</option></select>',
+    '<div id="ikList"></div>',
+    '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Lúc bấm <b>📦 Nhận</b> mới cần nhân vật online để bot giao vào túi.</div>',
+    '</div></div>',
+
     '<div id="pcModal" class="hidden">',
     '<div id="pcBox">',
     '<div class="row"><h2 style="margin:0" id="pcmTitle">Nhận pal</h2><button onclick="pcClose()" style="background:#232735;padding:4px 12px">✕</button></div>',
@@ -2005,7 +2065,7 @@ const PAGE = [
     // 🔒 16/09 KHOÁ CUỘN KHI CÓ POPUP (chủ server: "mở popup thì phần còn lại không được scroll").
     // 6 lớp phủ toàn màn hình - 3 cái bật/tắt bằng class hidden, 3 cái bằng class show.
     // KHÔNG gồm #winpop / #jpFlash / #toast: mấy cái đó pointer-events:none, chỉ là hiệu ứng.
-    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop"],POPY=0;',
+    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","ikModal"],POPY=0;',
     'function popAnyOpen(){for(var i=0;i<POPIDS.length;i++){var e=$(POPIDS[i]);',
     'if(e&&getComputedStyle(e).display!=="none")return true}return false}',
     'function popScrollSync(){var b=document.body,on=popAnyOpen(),dang=b.classList.contains("noscroll");',
@@ -2164,6 +2224,9 @@ const PAGE = [
     'function refresh(){api("/api/state").then(function(j){',
     'MYID=j.me||MYID;',
     'if(typeof j.linked==="boolean")lkSet(j.linked);',
+    // 🧰 17/09: nhãn số trên nút Rương Ích Kỷ. THIẾU dòng này thì F5 xong nút hiện 0 cho tới khi
+    // bấm mở rương mới đúng - máy chủ vẫn gửi ichKyTotal đều, chỉ là không ai đọc. Đã dính thật.
+    'if(typeof j.ichKyTotal==="number")ikBadge(j.ichKyTotal);',
     // 🏆 nhãn hũ trên tab: cập nhật mỗi nhịp 2 giây, kể cả khi người khác đang nuôi hũ
     'if(j.pots){if(typeof j.pots.mines==="number")MPOT=j.pots.mines;if(typeof j.pots.stairs==="number")SPOT=j.pots.stairs}',
     'BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");',
@@ -3424,11 +3487,16 @@ const PAGE = [
     '+isBuyRow(it)+"</div>"}',
     // ⭐ 11/09: nhóm QUAN TRỌNG mua 1 lần/người -> không ô số lượng; đã mua -> nút "✅ ĐÃ MUA" khoá
     'function isBuyRow(it){if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
-    'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua</button></div>"}',
+    'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua</button>"+(ikDuoc(it)?"<button style=\\"background:#3a2e10;border:1px solid #c9a227;color:#ffd76a\\" title=\\"Mua vào Rương Ích Kỷ - không cần đang online\\" onclick=\\"isBuy(\'"+it.id+"\',this,true)\\">🧰 Vào rương</button>":"")+"</div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
     'function isImpLeft(){return IS&&IS.implantMax>0?Math.max(0,IS.implantMax-(IS.implantToday||0)):-1}',
     // 🗂️ 12/09 v2: hạn theo nhóm - server đưa groupQuota {cat:{mode,max}} + 2 sổ đếm
+    // 🧰 17/09: món này có bỏ vào Rương Ích Kỷ được không? = có hạn TOÀN SERVER hay không.
+    // Cùng luật với server (itemShopBuy), client chỉ ẩn nút cho đỡ bấm nhầm.
+    'function ikDuoc(it){if(!IS||!it)return false;if(it.cat==="implant"||isOnceCat(it.cat))return false;',
+    'var g=isGrpQ(it);if(g)return g.mode==="server";',
+    'return IS.dayMax>0&&IS.dayMode!=="user"}',
     'function isGrpQ(it){var g=IS&&IS.groupQuota?IS.groupQuota[it.cat]:null;return g&&g.max>0?g:null}',
     'function isGrpLeft(it){var g=isGrpQ(it);if(!g)return -1;var key=g.per==="item"?("i:"+it.id):it.cat;var used=((g.mode==="server"?IS.groupSrvToday:IS.groupToday)||{})[key]||0;return Math.max(0,g.max-used)}',
     'function isWtLeft(){return IS&&IS.wtMax>0?Math.max(0,IS.wtMax-(IS.wtToday||0)):-1}',
@@ -3454,13 +3522,60 @@ const PAGE = [
     // 🛒 15/09: khoá mọi nút mua khi đang giao, đổi chữ nút vừa bấm cho biết đang chạy
     'function isBtnLock(on,btn){var bs=document.querySelectorAll("#isList .isBuyRow button");',
     'for(var i=0;i<bs.length;i++){if(bs[i].dataset.done)continue;bs[i].disabled=on;bs[i].style.opacity=(on&&bs[i]!==btn)?.5:1}}',
-    'async function isBuy(id,btn){if(ISBUSY){toast("⏳ Đang giao đơn trước - chờ chút nhé");return}if(!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
+    // ===== 🧰 RƯƠNG ÍCH KỶ =====
+    'var IK=null,IKBUSY=false,IKTIMER=null,IKNG=null;',
+    'function ikOpen(){$("ikModal").classList.remove("hidden");ikSync();ikLoadNguoi();if(!IKTIMER)IKTIMER=setInterval(ikTick,1000)}',
+    'function ikClose(){$("ikModal").classList.add("hidden");if(IKTIMER){clearInterval(IKTIMER);IKTIMER=null}}',
+    // đếm ngược tới 00:00 - trừ dần ở client, khỏi gọi server mỗi giây
+    'function ikTick(){if(!IK)return;IK.msLeft=Math.max(0,(IK.msLeft||0)-1000);var e=$("ikCount");if(!e)return;',
+    'if(IK.msLeft<=0){e.innerHTML="<b>Đã qua 00:00 - tải lại trang để thấy rương mới.</b>";return}',
+    'var t=Math.floor(IK.msLeft/1000),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),g=t%60;',
+    'e.innerHTML="Còn <b>"+h+" giờ "+m+" phút "+g+" giây</b>."}',
+    'function ikSync(){api("/api/ichky/state").then(function(j){IK=j;ikDraw()}).catch(function(e){toast("❌ "+e.message)})}',
+    // nhãn số trên nút thanh số dư
+    'function ikBadge(n){var b=$("ikNum");if(!b)return;b.textContent=n;var t=$("ikBtn");if(t)t.title="Rương Ích Kỷ: đang giữ "+n+" món - 00:00 là xoá sạch"}',
+    'function ikLoadNguoi(){if(IKNG)return;api("/api/players").then(function(j){IKNG=(j.list||[]).filter(function(p){return String(p.id)!==String(MYID)});',
+    'var sel=$("ikTo");if(!sel)return;var h="<option value=\\"\\">-- chọn người nhận --</option>";',
+    'IKNG.forEach(function(p){h+="<option value=\\""+p.id+"\\">"+esc(p.name||p.id)+"</option>"});sel.innerHTML=h}).catch(function(){})}',
+    'function ikDraw(){if(!IK)return;ikBadge(IK.total);ikTick();',
+    '$("ikStat").innerHTML="Đang giữ <b>"+IK.total+"/"+IK.holdMax+"</b> món · hôm nay đã mua vào rương <b>"+IK.boughtToday+"/"+IK.dayMax+"</b> (còn "+IK.leftToday+")";',
+    // 🎁 ai tặng mình hôm nay - gọn trong 1 khung, khỏi đẻ thêm màn hình
+    'var nh=$("ikNhan"),NL=IK.nhan||[];nh.classList.toggle("hidden",!NL.length);',
+    'if(NL.length){nh.innerHTML="🎁 <b>Hôm nay bạn được tặng:</b><br>"+NL.map(function(g){return "• <b>"+esc(g.tu)+"</b> tặng "+g.qty+" "+esc(g.ten)+" <span class=\\"muted\\">("+ikGio(g.at)+")</span>"}).join("<br>")}',
+    'var L=IK.items||[];var box=$("ikList");',
+    'if(!L.length){box.innerHTML="<div class=\\"muted\\" style=\\"text-align:center;padding:18px;grid-column:1/-1\\">Rương trống. Qua 🏪 Shop Item bấm <b>🧰 Vào rương</b> để mua đồ vào đây.</div>";return}',
+    // thẻ món kiểu kho đồ: ảnh to, số lượng đè góc ảnh, tên, rồi 2 nút. Dùng lại isImg() của shop.
+    'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+isImg(x.img)+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
+    '+"<div class=\\"ikNm\\">"+esc(x.name)+"</div>"',
+    '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+x.qty+"\\">"',
+    '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
+    '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button></div></div>"});',
+    'box.innerHTML=h}',
+    'function ikGio(ts){var d=new Date(ts);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}',
+    'function ikMon(id){var it=null;(IK&&IK.items||[]).forEach(function(x){if(x.id===id)it=x});return it}',
+    'function ikSoLuong(id,it){var q=parseInt(($("ikq_"+id)||{}).value)||0;if(q<1){toast("Nhập số lượng");return 0}if(q>it.qty){toast("Rương chỉ có "+it.qty+" cái");return 0}return q}',
+    'async function ikClaim(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it)return;',
+    'var q=ikSoLuong(id,it);if(!q)return;',
+    'if(!(await gConfirm("Nhận <b>"+q+" "+esc(it.name)+"</b> vào túi trong game? Nhân vật phải đang <b>ONLINE</b>.","📦 Nhận vào game")))return;',
+    'IKBUSY=true;var chu=btn?btn.textContent:"";if(btn){btn.disabled=true;btn.textContent="⏳ Đang giao..."}',
+    'api("/api/ichky/claim",{itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn){btn.disabled=false;btn.textContent=chu}toast(j.message||"✅ Đã nhận");if(j.state){IK=j.state;ikDraw()}else ikSync()})',
+    '.catch(function(e){IKBUSY=false;if(btn){btn.disabled=false;btn.textContent=chu}toast("❌ "+e.message);ikSync()})}',
+    'async function ikGive(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it)return;',
+    'var sel=$("ikTo");var to=sel?sel.value:"";if(!to)return toast("Chọn người nhận ở ô bên trên đã");',
+    'var ten=sel.selectedOptions[0]?sel.selectedOptions[0].textContent:to;',
+    'var q=ikSoLuong(id,it);if(!q)return;if(q>IK.giveMax)return toast("Mỗi lần tặng tối đa "+IK.giveMax+" món");',
+    'if(!(await gConfirm("Tặng <b>"+q+" "+esc(it.name)+"</b> cho <b>"+esc(ten)+"</b>? Tặng rồi là <b>không lấy lại được</b>.","🎁 Tặng",true)))return;',
+    'IKBUSY=true;if(btn)btn.disabled=true;',
+    'api("/api/ichky/give",{toId:to,itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn)btn.disabled=false;toast(j.message||"🎁 Đã tặng");if(j.state){IK=j.state;ikDraw()}else ikSync()})',
+    '.catch(function(e){IKBUSY=false;if(btn)btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
+    '',
+    'async function isBuy(id,btn,vaoRuong){if(ISBUSY){toast("⏳ Đang giao đơn trước - chờ chút nhé");return}if(!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
     'if(isOnceCat(it.cat)&&isOnceBought(it))return toast("⭐ Bạn đã mua món này rồi - mỗi người chỉ 1 lần");',
     'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
-    'if(!(await gConfirm("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE).","🛒 Mua")))return;',
-    'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent="⏳ Đang giao vào game...";',
-    'api("/api/itemshop/buy",{itemId:id,qty:q}).then(function(j){ISBUSY=false;isBtnLock(false);if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");isSync()}).catch(function(e){ISBUSY=false;isBtnLock(false);if(btn)btn.textContent=chu;toast("❌ "+e.message);isSync()})}',
+    'if(!(await gConfirm(vaoRuong?("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin bỏ vào <b>🧰 Rương Ích Kỷ</b>?<br>Không cần đang online. <b>00:00 chưa xài là mất trắng.</b>"):("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> Dogcoin? Giao thẳng vào túi trong game (phải đang ONLINE)."),vaoRuong?"🧰 Mua vào rương":"🛒 Mua")))return;',
+    'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent=vaoRuong?"⏳ Đang bỏ vào rương...":"⏳ Đang giao vào game...";',
+    'api("/api/itemshop/buy",{itemId:id,qty:q,vaoRuong:!!vaoRuong}).then(function(j){ISBUSY=false;isBtnLock(false);if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");if(j.ruong){IK=j.ruong;ikBadge(IK.total)}isSync()}).catch(function(e){ISBUSY=false;isBtnLock(false);if(btn)btn.textContent=chu;toast("❌ "+e.message);isSync()})}',
     '',
     // ===== 🚀 PHI THUYỀN (crash game, 28/08) - vòng chơi chung, số nhân đồng bộ giờ server =====
     'var SPM=null,SPMOFF=0,SPMBUSY=false,SPMTIMER=null,SPMANIM=null,SPMRID=0,SPMSEEN={},SPMFRESH=false;',

@@ -2190,7 +2190,142 @@ function itemShopToday(user) {
     if (!user.shopDay || user.shopDay.day !== d) user.shopDay = { day: d, bought: {} };
     return user.shopDay.bought;
 }
-async function itemShopBuy(userId, itemId, qty, username) {
+// ===== 🧰 RƯƠNG ÍCH KỶ (17/09) =====
+// Sổ nằm ở userData.ichKy = { day:'d/m/yyyy giờ VN', bought:<số món đã mua hôm nay>, items:{ id: qty } }.
+// RESET bằng cách so ngày: mở rương mà day != hôm nay -> vứt sạch, đếm lại từ 0. Không cần hẹn giờ,
+// không sợ bot tắt qua đêm rồi quên xoá.
+const ICHKY_DAY_MAX = 100;    // mua vào rương tối đa 100 món/người/NGÀY (nhận hết cũng không mua thêm)
+const ICHKY_HOLD_MAX = 100;   // rương giữ tối đa 100 món - chặn dồn quà từ nhiều người vào 1 rương
+const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
+function ichKyOf(user) {
+    const hnay = vnDayStr(Date.now());
+    let k = user.ichKy;
+    if (!k || typeof k !== 'object' || k.day !== hnay) { k = user.ichKy = { day: hnay, bought: 0, items: {} }; }
+    if (!k.items || typeof k.items !== 'object') k.items = {};
+    if (!Number.isFinite(Number(k.bought))) k.bought = 0;
+    // 🎁 sổ "ai tặng mình hôm nay" - nằm CHUNG trong ichKy nên 00:00 tự xoá theo, khỏi dọn riêng
+    if (!Array.isArray(k.nhan)) k.nhan = [];
+    return k;
+}
+function ichKyTotal(k) { return Object.values(k.items).reduce((t, n) => t + (Number(n) || 0), 0); }
+function ichKyAdd(user, itemId, qty) {
+    const k = ichKyOf(user);
+    k.items[itemId] = (Number(k.items[itemId]) || 0) + qty;
+    return k;
+}
+function ichKyTake(user, itemId, qty) {
+    const k = ichKyOf(user);
+    const co = Number(k.items[itemId]) || 0;
+    if (co < qty) return false;
+    if (co === qty) delete k.items[itemId]; else k.items[itemId] = co - qty;
+    return true;
+}
+// còn bao nhiêu mili giây tới 00:00 giờ VN (để web đếm ngược "còn X giờ Y phút là mất")
+function ichKyMsLeft() {
+    const nowVN = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+    return ((24 * 3600) - (nowVN.getHours() * 3600 + nowVN.getMinutes() * 60 + nowVN.getSeconds())) * 1000;
+}
+function ichKyState(userId) {
+    const user = getUserData(userId);
+    const k = ichKyOf(user);
+    const ds = itemShopList();
+    const items = Object.entries(k.items).map(([id, qty]) => {
+        const it = ds.find(x => x.id === id);
+        // ⚠️ tên ảnh của shop nằm ở trường 'img' (vd T_itemicon_Consume_LvUP_01.webp), KHÔNG phải 'icon'.
+        // Trả nhầm tên trường thì web không có ảnh mà cũng chẳng báo lỗi gì.
+        return { id, qty: Number(qty) || 0, name: (it && it.name) || id, img: (it && it.img) || '', cat: (it && it.cat) || '' };
+    }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
+    return {
+        items, total: ichKyTotal(k),
+        nhan: (k.nhan || []).slice(-20).reverse(),   // 🎁 mới nhất lên trước
+        boughtToday: k.bought || 0, dayMax: ICHKY_DAY_MAX,
+        leftToday: Math.max(0, ICHKY_DAY_MAX - (k.bought || 0)),
+        holdMax: ICHKY_HOLD_MAX, giveMax: ICHKY_GIVE_MAX,
+        msLeft: ichKyMsLeft(),
+        linked: daLienKet(userId),
+    };
+}
+// Chỗ trống còn nhận thêm được của MỘT NGƯỜI (dùng cho cả mua lẫn nhận quà tặng)
+function ichKyRoom(userId) { return Math.max(0, ICHKY_HOLD_MAX - ichKyTotal(ichKyOf(getUserData(userId)))); }
+
+// 🎁 TẶNG đồ trong rương cho người khác. Đồ chạy thẳng từ rương mình sang rương họ,
+// KHÔNG qua game, nên không cần ai online. Không tính vào hạn mua 100/ngày của người nhận
+// (đó là hạn MUA), nhưng vẫn phải lọt sức chứa rương họ.
+function ichKyGive(userId, toUserId, itemId, qty, username) {
+    const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
+    const dbErr = debtBlock(userId, 'tặng đồ trong rương'); if (dbErr) return { error: dbErr };
+    toUserId = String(toUserId || '').trim();
+    if (!/^\d{15,20}$/.test(toUserId)) return { error: 'Chưa chọn người nhận' };
+    if (toUserId === String(userId)) return { error: 'Tặng cho chính mình thì tặng làm gì 😄' };
+    if (!dbCache[toUserId] || typeof dbCache[toUserId] !== 'object') return { error: 'Người này chưa có ví trong hệ thống' };
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    if (qty > ICHKY_GIVE_MAX) return { error: `Mỗi lần tặng tối đa ${ICHKY_GIVE_MAX} món` };
+    const me = getUserData(userId);
+    const k = ichKyOf(me);
+    const co = Number(k.items[itemId]) || 0;
+    if (co < 1) return { error: 'Trong rương không có món này' };
+    if (co < qty) return { error: `Rương chỉ còn ${co} cái` };
+    const room = ichKyRoom(toUserId);
+    if (room <= 0) return { error: 'Rương người nhận đang đầy 100 món - bảo họ xài bớt đã' };
+    if (qty > room) return { error: `Rương người nhận chỉ còn chỗ cho ${room} món` };
+    if (!ichKyTake(me, itemId, qty)) return { error: 'Rương không đủ món' };
+    const ban = getUserData(toUserId);
+    ichKyAdd(ban, itemId, qty);
+    const it = itemShopList().find(x => x.id === itemId);
+    const ten = (it && it.name) || itemId;
+    // 🎁 ghi vào sổ của NGƯỜI NHẬN để họ biết ai tặng (giữ 20 lượt gần nhất cho nhẹ db)
+    const soBan = ichKyOf(ban);
+    soBan.nhan.push({ tu: (me.name || username || userId), ten, qty, at: Date.now() });
+    if (soBan.nhan.length > 20) soBan.nhan = soBan.nhan.slice(-20);
+    saveDbNow();
+    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} tặng ${ten} x${qty} cho ${ban.name || toUserId}`);
+    return { ok: true, message: `🎁 Đã tặng ${qty.toLocaleString()} ${ten} sang rương của ${ban.name || toUserId}`, state: ichKyState(userId) };
+}
+
+// 📦 NHẬN đồ từ rương vào túi trong game. Đây mới là chỗ BẮT BUỘC online (bot phải giao qua SFTP).
+// Trừ khỏi rương TRƯỚC, giao hụt thì trả lại - y hệt luật hoàn tiền của shop.
+async function ichKyClaim(userId, itemId, qty, username) {
+    const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    const user = getUserData(userId);
+    const k = ichKyOf(user);
+    const co = Number(k.items[itemId]) || 0;
+    if (co < 1) return { error: 'Trong rương không có món này' };
+    if (co < qty) return { error: `Rương chỉ còn ${co} cái` };
+    const gameName = (user.ingameName || '').trim();
+    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
+    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi nhận nhé (chưa mất gì)' };
+    deliverLock();
+    const on = await requireOnline(gameName);
+    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau (chưa mất gì)` }; }
+    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi bấm NHẬN (chưa mất gì)` }; }
+    if (!ichKyTake(user, itemId, qty)) { deliverUnlock(); return { error: 'Rương không đủ món' }; }
+    saveDbNow();
+    const it = itemShopList().find(x => x.id === itemId);
+    const ten = (it && it.name) || itemId;
+    let r = null, err = null;
+    try { r = await pal.giveItem(gameName, itemId, qty); } catch (e) { err = e; }
+    deliverUnlock();
+    if (r && r.ok) {
+        writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} nhận ${ten} x${qty} vào game (${gameName})`);
+        return { ok: true, message: `✅ Đã giao ${qty.toLocaleString()} ${ten} vào túi ${gameName}!`, state: ichKyState(userId) };
+    }
+    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
+    if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
+        ichKyAdd(user, itemId, qty);   // CHẮC CHẮN chưa giao -> trả lại rương
+        saveDbNow();
+        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã trả lại vào rương`, state: ichKyState(userId) };
+    }
+    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ LỖI] ${username || userId} nhận ${ten} x${qty} -> ${gameName} | ${msg} - kiểm results.log, chưa nhận thì trả tay`);
+    return { error: '⏳ Chưa xác nhận được với game - đồ đã trừ khỏi rương, admin sẽ kiểm. Đừng bấm lại kẻo trùng.', state: ichKyState(userId) };
+}
+
+// ⚠️ vaoRuong = true: KHÔNG kiểm online, KHÔNG giao SFTP - bỏ thẳng vào 🧰 Rương Ích Kỷ.
+// Mọi luật còn lại (công tắc, nợ, giá, ⭐1-lần, implant, hạn nhóm, hạn ngày) dùng CHUNG đoạn
+// dưới, đừng tách ra đường riêng kẻo lệch luật.
+async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const dbErr = debtBlock(userId, 'mua đồ ở shop');   // 📒 14/09: còn nợ là không mua được
     if (dbErr) return { error: dbErr };
@@ -2255,12 +2390,43 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if ((user.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} Dogcoin (bạn có ${(user.points || 0).toLocaleString()})` };
     const gameName = (user.ingameName || '').trim();
     if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
+    // 🧰 mua VÀO RƯƠNG: kiểm TRƯỚC khi trừ tiền
+    const ruong = vaoRuong ? ichKyOf(user) : null;
+    if (ruong) {
+        // (a) CHỈ món có hạn TOÀN SERVER mới vào rương được (chủ server chốt 17/09).
+        // Đọc thẳng cấu hình đang chạy: nhóm để "toàn server" -> được; nhóm để "cá nhân" -> không.
+        // Implant / implant Cây Thế Giới / ⭐ món 1-lần đều là hạn theo NGƯỜI -> loại.
+        const svNhom = gqOn && gq.mode === 'server';
+        const svChung = !isImplantCat && !isOnce && !gqOn && dayMax > 0 && itemShopDayMode() === 'server';
+        if (!svNhom && !svChung) {
+            return { error: isImplantCat
+                ? '🧬 Implant không bỏ vào rương được - hạn implant tính theo TỪNG NGƯỜI, cứ vào game mua thẳng.'
+                : (isOnce
+                    ? '⭐ Món này mỗi người chỉ mua 1 lần nên không cần rương - vào game mua thẳng.'
+                    : '🧰 Món này đang để hạn RIÊNG TỪNG NGƯỜI nên không bỏ vào rương được. Rương chỉ dành cho món có hạn CHUNG cả server (ai nhanh thì được).') };
+        }
+        const conNgay = ICHKY_DAY_MAX - (ruong.bought || 0);
+        if (qty > conNgay) {
+            return { error: conNgay > 0
+                ? `🧰 Mỗi ngày chỉ mua được ${ICHKY_DAY_MAX} món vào rương - hôm nay bạn còn ${conNgay}`
+                : `🧰 Hôm nay bạn đã mua đủ ${ICHKY_DAY_MAX} món vào rương - 00:00 mai mới mua tiếp được` };
+        }
+        const conCho = ICHKY_HOLD_MAX - ichKyTotal(ruong);
+        if (qty > conCho) {
+            return { error: conCho > 0
+                ? `🧰 Rương chỉ còn chỗ cho ${conCho} món - nhận vào game hoặc tặng bớt đã`
+                : '🧰 Rương đang đầy 100 món - nhận vào game hoặc tặng bớt đã' };
+        }
+    }
     // 🚦 đang giao đơn khác (pal/item) -> chặn (khỏi mở nhiều phiên SFTP cùng lúc)
-    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi mua nhé (chưa trừ đồng nào)' };
-    deliverLock();
-    const on = await requireOnline(gameName);
-    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau (chưa trừ đồng nào)` }; }
-    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi mua nhé (chưa trừ đồng nào)` }; }
+    // 🧰 mua vào rương KHÔNG đụng game -> khỏi khoá, khỏi đòi online (đúng ý chủ server)
+    if (!vaoRuong) {
+        if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi mua nhé (chưa trừ đồng nào)' };
+        deliverLock();
+        const on = await requireOnline(gameName);
+        if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau (chưa trừ đồng nào)` }; }
+        if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi mua nhé (chưa trừ đồng nào)` }; }
+    }
 
     updatePoints(userId, -cost);   // trừ TRƯỚC (giữ chỗ)
     today[it.id] = (today[it.id] || 0) + qty;   // 📅 tính vào hạn ngày ngay lúc trừ tiền
@@ -2268,7 +2434,14 @@ async function itemShopBuy(userId, itemId, qty, username) {
     if (wt) wt.n += qty;                         // 🌳 hạn Cây Thế Giới/người
     if (gCnt) gCnt.n[gqKey] = (gCnt.n[gqKey] || 0) + qty;   // 🗂️ hạn nhóm (key theo per)
     if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
-    logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${gameName}`);
+    logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${vaoRuong ? '🧰 rương ích kỷ' : gameName}`);
+    if (vaoRuong) {
+        ruong.bought = (ruong.bought || 0) + qty;
+        ichKyAdd(user, it.id, qty);
+        saveDbNow();
+        writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} mua ${it.name} x${qty} vào rương (-${cost})`);
+        return { ok: true, vaoRuong: true, message: `🧰 Đã bỏ ${qty.toLocaleString()} ${it.name} vào Rương Ích Kỷ - nhớ NHẬN hoặc TẶNG trước 00:00 kẻo mất!`, balance: getUserData(userId).points || 0, ruong: ichKyState(userId) };
+    }
     saveDbNow();
     let r = null, err = null;
     try { r = await pal.giveItem(gameName, it.id, qty); } catch (e) { err = e; }
@@ -6161,6 +6334,12 @@ client.once('ready', async (c) => {
             txNotifyBet,     // 🔔 17/09: báo Discord cho chủ server mỗi lần có người đặt
             featOffList,   // 🔌 15/09: danh sách mục admin đang tắt (web giấu tab)
             daLienKet,     // 🔗 17/09: chưa được admin liên kết tên nhân vật thì không thao tác được
+            // 🧰 17/09 RƯƠNG ÍCH KỶ: mua không cần online, 00:00 xoá sạch
+            ichKy: {
+                state: (uid) => ichKyState(uid),
+                claim: (uid, id, qty, name) => ichKyClaim(uid, id, qty, name),
+                give: (uid, to, id, qty, name) => ichKyGive(uid, to, id, qty, name),
+            },
             lienKetMsg: () => LIENKET_MSG,
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
@@ -6342,7 +6521,10 @@ client.once('ready', async (c) => {
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
                 }),
-                buy: (uid, itemId, qty) => itemShopBuy(uid, itemId, qty, getUserData(uid).name || uid),
+                // ⚠️ 17/09: hàm bọc này TỪNG NUỐT tham số thứ 4 (vaoRuong) vì chỉ khai 3 tham số ->
+                // route gửi cờ mà itemShopBuy không nhận được, mua vào rương vẫn đòi online. Thêm
+                // tham số mới ở itemShopBuy thì PHẢI sửa cả dòng này (ichkytest canh đúng chỗ đó).
+                buy: (uid, itemId, qty, vaoRuong) => itemShopBuy(uid, itemId, qty, getUserData(uid).name || uid, vaoRuong === true),
             },
             // 🚀 Phi Thuyền (crash game, 28/08) - vòng chơi chung
             spm: {
