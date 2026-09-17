@@ -699,6 +699,15 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (tối muộn, vá ngay sau đó)** — 🐞 **Tick "Bật báo" xong 3 giây tự tắt** (chủ server báo).
+  Vòng làm mới 3 giây của panel **ghi đè ô đang sửa mà chưa bấm Lưu** - đúng họ với lỗi ô tên nhóm đồ
+  hôm trước. Ô chữ/số còn đỡ nhờ chốt `value===''`, nhưng **xoá ô để gõ lại thì vẫn bị điền lại giá trị
+  cũ**; ô tick thì không có chốt nào nên lần làm mới nào cũng đạp về giá trị đã lưu.
+  Sửa: `txDirty(el)` đánh dấu khi người dùng chạm vào (gắn `oninput`/`onchange` cho cả 5 ô), vòng làm
+  mới bỏ qua ô đang sửa, `txClean([...])` bỏ dấu sau khi Lưu thành công để ô bám lại số thật.
+  Bộ kiểm mới `txnotidirty-test.js` (20 case) **trích đúng đoạn điền ô rồi CHẠY THẬT với phần tử giả**,
+  diễn lại kịch bản người dùng: tick xong cho chạy 5 vòng làm mới (15 giây) vẫn phải còn tick. Chạy
+  ngược trên bản hỏng: bắt đúng 2 triệu chứng chủ server mô tả (tick bị tắt, ID bị điền lại).
 - **17/09 (tối muộn)** — ⏱️ **Nhịp ván Tài Xỉu chỉnh được** + 🔔 **báo cược về Discord** + 📉 **Dò Mìn RTP 0,90**.
   **(1) Nhịp ván**: `TX_ROUND_S`/`TX_LOCK_S` từ hằng số thành `txTimeCfg()` lưu `dbCache._txTime`
   (`bet` 5-600s, `nan` 3-300s; mặc định giữ nguyên 25 + 15). Panel tab Big Small có 2 ô + nút lưu.
