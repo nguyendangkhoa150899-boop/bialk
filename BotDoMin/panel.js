@@ -1943,7 +1943,7 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','mine','stair','bj','stock','spm','user','pal','log','give'].includes(saved)) tab(saved);
+  if(['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
@@ -1953,7 +1953,9 @@ function showApp(){
 }
 
 function tab(t){
-  ['tx','mine','stair','bj','stock','spm','xs','user','pal','log','gift','give'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));
+  // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
+  // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
+  ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
   if(t==='give')gvLoad();if(t==='gift')giftFill(true);
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);

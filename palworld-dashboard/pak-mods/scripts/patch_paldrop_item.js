@@ -25,12 +25,19 @@ const opt = (p, d) => { const a = args.find(x => x.startsWith(p)); return a ? a.
 const checkOnly = flags.has('--check');
 const ITEM = opt('--item=', '');
 const palSel = opt('--pals=', ''); const rowSel = opt('--rows=', '');
+// 17/09: ngoài TẮT hẳn (mặc định), cho phép GIẢM SỐ LƯỢNG rơi mà giữ nguyên tỉ lệ.
+//   --setmin=1 --setmax=2   -> mọi slot có món đó rơi 1-2 cái thay vì 1-9 tuỳ pal
+// Có --setmin/--setmax thì KHÔNG đụng Rate (không tắt), chỉ sửa số lượng.
+const SETMIN = opt('--setmin=', null), SETMAX = opt('--setmax=', null);
+const DOI_SL = SETMIN !== null || SETMAX !== null;
 if (!ITEM || (!palSel && !rowSel) || files.length < 1 || (!checkOnly && files.length < 2)) {
-    console.log('Dùng: node patch_paldrop_item.js [--check] <in.json> [<out.json>] --item=<StaticItemId> --pals=<CharacterID,...|~regex> [--rows=<tên dòng,...>]');
+    console.log('Dùng: node patch_paldrop_item.js [--check] <in.json> [<out.json>] --item=<StaticItemId> --pals=<CharacterID,...|~regex> [--rows=...] [--setmin=N --setmax=N]');
     process.exit(1);
 }
 const toMatcher = (s) => { if (!s) return null; if (s.startsWith('~')) { const re = new RegExp(s.slice(1)); return (v) => re.test(v); } const set = new Set(s.split(',').map(x => x.trim()).filter(Boolean)); return (v) => set.has(v); };
 const palMatch = toMatcher(palSel), rowMatch = toMatcher(rowSel);
+// 17/09: --item= nhận cả regex (vd --item=~^Blueprint_) vì mỗi boss Alpha rớt một mã bản vẽ riêng.
+const itemMatch = toMatcher(ITEM);
 
 const json = JSON.parse(fs.readFileSync(files[0], 'utf8'));
 const typeOf = (n) => String((n && n.$type) || '');
@@ -57,8 +64,20 @@ for (const r of rows) {
     for (let i = 1; i <= 10; i++) {
         const id = String(val(prop(r, 'ItemId' + i)) ?? 'None'); if (id === 'None' || !id) continue;
         const rp = prop(r, 'Rate' + i); const rate = val(rp);
-        if (id === ITEM) {
-            if (num(rate) === 0) { already++; slots.push(i + ':' + id + '(đã 0)'); }
+        if (itemMatch(id)) {
+            if (DOI_SL) {
+                // GIẢM SỐ LƯỢNG, giữ tỉ lệ. Tên field trong bảng: min<i> (chữ thường) và Max<i> (chữ hoa).
+                const mp = prop(r, 'min' + i), xp = prop(r, 'Max' + i);
+                const cu = val(mp) + '-' + val(xp);
+                const mMoi = SETMIN !== null ? Number(SETMIN) : num(val(mp));
+                const xMoi = SETMAX !== null ? Number(SETMAX) : num(val(xp));
+                if (num(val(mp)) === mMoi && num(val(xp)) === xMoi) { already++; slots.push(i + ':' + id + '(đã ' + cu + ')'); }
+                else {
+                    slots.push(i + ':' + id + '(' + rate + '%, x' + cu + ' → x' + mMoi + '-' + xMoi + ')');
+                    if (!checkOnly) { if (mp) mp.Value = mMoi; if (xp) xp.Value = xMoi; }
+                    patched++;
+                }
+            } else if (num(rate) === 0) { already++; slots.push(i + ':' + id + '(đã 0)'); }
             else { slots.push(i + ':' + id + '(' + rate + '%→0)'); if (!checkOnly && rp) { rp.Value = '+0'; } patched++; }
         } else slots.push(i + ':' + id + '(' + rate + '% giữ)');
     }
@@ -66,7 +85,8 @@ for (const r of rows) {
 }
 console.log('Bảng:', files[0], '·', rows.length, 'dòng · món:', ITEM, '· dòng pal khớp:', hitRows);
 report.forEach(l => console.log(l));
-console.log('=> slot tắt mới:', patched, '· đã 0 sẵn:', already);
+console.log(DOI_SL ? ('=> slot đổi số lượng: ' + patched + ' · đã đúng sẵn: ' + already)
+    : ('=> slot tắt mới: ' + patched + ' · đã 0 sẵn: ' + already));
 if (!hitRows) { console.log('!! Không dòng nào khớp --pals/--rows - kiểm mã CharacterID (vd Jetragon = JetDragon)'); process.exit(2); }
 if (checkOnly) { console.log('(--check: không ghi gì)'); process.exit(0); }
 if (!patched) { console.log('KHÔNG có gì để vá - không ghi file.'); process.exit(2); }

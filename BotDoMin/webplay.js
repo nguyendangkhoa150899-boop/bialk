@@ -147,6 +147,26 @@ function startWebPlay(ctx) {
                     }
                 }
 
+                // 🔗 17/09: CHƯA ĐƯỢC ADMIN LIÊN KẾT thì không chơi minigame / điểm danh được.
+                // Chỉ chặn cửa VÀO VÁN (đặt cược / bắt đầu / quay / điểm danh). KHÔNG chặn đường
+                // xem trạng thái và KHÔNG chặn rút tiền ván đang chơi dở - cùng luật với cổng featOff.
+                // Điểm danh còn được chặn lần nữa ngay trong index.js (claimDaily/claimStreak/claimNghien)
+                // nên lệnh /diemdanh, /nghien bên Discord cũng dính - web sửa gì cũng không lách được.
+                if (ctx.daLienKet && !ctx.daLienKet(userId)) {
+                    const CUA_VAO = [
+                        '/api/bet',
+                        '/api/mines/start',
+                        '/api/stairs/start',
+                        '/api/wheel/ready', '/api/wheel/spin', '/api/wheel/spin1',
+                        '/api/stock/open', '/api/stock/auto',
+                        '/api/spm/bet',
+                        '/api/daily/claim', '/api/daily/nghien', '/api/daily/streak',
+                    ];
+                    if (CUA_VAO.includes(path)) {
+                        return sendJSON(res, 403, { ok: false, chuaLienKet: true, error: ctx.lienKetMsg ? ctx.lienKetMsg() : 'Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn admin liên kết giúp.' });
+                    }
+                }
+
                 if (path === '/api/state') {
                     const tx = ctx.getTX();
                     const me = ctx.getUserData(userId);
@@ -168,6 +188,8 @@ function startWebPlay(ctx) {
                         ok: true,
                         me: userId,
                         balance: me.points || 0,
+                        // 🔗 17/09: false = admin chưa liên kết tên nhân vật -> client hiện banner đỏ
+                        linked: ctx.daLienKet ? !!ctx.daLienKet(userId) : true,
                         // 🏆 hũ 2 minigame gửi kèm nhịp 2 giây -> nhãn hũ trên tab luôn tươi,
                         // thấy người khác nuôi hũ mà không cần bấm sang tab đó
                         pots: {
@@ -1325,6 +1347,8 @@ const PAGE = [
     // ---- chat ----
     '#chatBox{height:190px;overflow-y:auto;background:#12141a;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:13px}',
     '.cmsg{padding:3px 0;word-break:break-word}.cmsg b{color:var(--gold)}.cmsg .ct{color:var(--muted);font-size:11px;margin-left:6px}',
+    '#lkWarn{background:linear-gradient(180deg,#4a1414,#2e0f0f);border:1px solid #e05a5a;color:#ffd9d9;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;line-height:1.5}',
+    '#lkWarn b{color:#fff}',
     '</style></head><body>',
 
     '<div id="login" class="card">',
@@ -1359,6 +1383,11 @@ const PAGE = [
     // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
+
+    // 🔗 17/09: chưa được admin liên kết thì báo ngay, khỏi bấm rồi mới biết.
+    '<div id="lkWarn" class="hidden">🔗 <b>Ví của bạn chưa được liên kết tên nhân vật trong game.</b><br>' +
+    'Nhắn <b>admin</b> liên kết giúp (chỉ cần 1 lần). Chưa liên kết thì <b>chưa chơi minigame và chưa điểm danh</b> được. ' +
+    'Số dư, rương pal và các mục khác vẫn xem bình thường.</div>',
 
     // 25/08: điều hướng 2 TẦNG cho đỡ chồng chéo - tầng 1 chọn NHÓM (Hồ sơ / Mini game),
     // tầng 2 chỉ hiện các trang thuộc nhóm đó. Quay Pal nằm bên nhóm Hồ sơ.
@@ -2125,8 +2154,12 @@ const PAGE = [
     'setTimeout(function(){revealDone();if(CURPAGE==="tx")toast("⏰ Hết giờ nặn - tự mở giùm bạn!")},600)}',
     'function bet(){if(PHASE!=="bet")return toast("Đang khóa sổ - chờ ván sau!");if(!SEL)return toast("Chọn cửa trước!");var v=parseInt(document.getElementById("amt").value);if(!v||v<=0)return toast("Nhập số Dogcoin");api("/api/bet",{choice:SEL,amount:v}).then(function(j){BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");document.getElementById("amt").value="";toast("💸 Đã đặt "+v.toLocaleString("vi-VN")+" vào "+(NAMES[SEL]||SEL));refresh()}).catch(function(e){toast("❌ "+e.message)})}',
     'var NAMES={tai:"TÀI",xiu:"XỈU",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
+    'var LINKED=true;',
+    // 🔗 17/09: bật/tắt banner. Dùng classList chứ KHÔNG đặt style.display, để .hidden còn tác dụng.
+    'function lkSet(v){LINKED=!!v;var b=$("lkWarn");if(b)b.classList.toggle("hidden",LINKED)}',
     'function refresh(){api("/api/state").then(function(j){',
     'MYID=j.me||MYID;',
+    'if(typeof j.linked==="boolean")lkSet(j.linked);',
     // 🏆 nhãn hũ trên tab: cập nhật mỗi nhịp 2 giây, kể cả khi người khác đang nuôi hũ
     'if(j.pots){if(typeof j.pots.mines==="number")MPOT=j.pots.mines;if(typeof j.pots.stairs==="number")SPOT=j.pots.stairs}',
     'BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");',

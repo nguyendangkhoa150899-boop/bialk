@@ -440,6 +440,35 @@ mở sau 60s, cháy thì bỏ qua), mọi trần, và kiểm 25 nhịp/nến + b
 — cộng/trừ tay giờ CHỈ ở panel). `/domin` còn nguyên trong code nhưng **comment lại** (chơi
 web mượt hơn, không dính deadline 3 giây).
 
+### 🔗 CỔNG LIÊN KẾT — chưa được admin liên kết thì KHÔNG chơi được (17/09/2026)
+
+Luật do chủ server chốt: *"ai liên kết tài khoản mới sử dụng được mini game và điểm danh;
+admin chưa liên kết cũng không thao tác được"* + *"login vào vẫn bình thường để hệ thống nhận ID,
+nhưng chưa chơi được tới khi admin liên kết"*.
+
+**Mốc liên kết = `userData.ingameName`** (tên nhân vật trong game, CHỈ admin đặt ở panel, tab
+🎮 Palworld & Dogcoin → `POST /api/pal/set-name`). Rỗng hoặc toàn dấu cách = **chưa liên kết**.
+Không có ngoại lệ cho admin.
+
+| Vẫn làm được khi CHƯA liên kết | Bị chặn |
+|---|---|
+| Đăng nhập web, xem số dư, xem mọi trang | Đặt cược Tài Xỉu · bắt đầu Dò Mìn / Leo Thang · Vòng Quay · mở lệnh Cổ phiếu · Phi Thuyền |
+| Rương pal, shop, chuyển Dogcoin, tab Nợ, Quà | Điểm danh · điểm danh nghiện · nhận thưởng chuỗi (cả trên web lẫn `/diemdanh`, `/nghien` ở Discord) |
+| **Rút tiền ván đang chơi dở** (cashout, đóng lệnh) | |
+
+**Chặn ở HAI tầng, cố ý:**
+1. `index.js`: `lienKetGuard(userId)` gọi ngay dòng đầu `claimDaily` / `claimStreak` / `claimNghien`
+   → bịt luôn đường Discord, web sửa gì cũng không lách được.
+2. `webplay.js`: một cổng chung đặt ngay sau khâu kiểm phiên đăng nhập, danh sách `CUA_VAO`
+   gồm 12 đường hành động, trả **403 kèm cờ `chuaLienKet: true`**. Cùng khuôn với cổng `featOff`.
+
+Người chơi thấy **banner đỏ `#lkWarn`** ngay dưới thanh số dư (mọi tab), bật/tắt theo cờ `linked`
+mà `/api/state` trả về ở nhịp 2 giây. CSS `#lkWarn` **cố tình không có `display`** — để `.hidden`
+(độ ưu tiên thấp hơn) còn tắt được nó; đây là cái bẫy đã dính mấy lần.
+
+⚠️ **Bot test**: `bialk-test.js` bước 7 nay tự đặt `ingameName` cho 3 ví test, không thì **mọi e2e
+đặt cược đều ăn 403**. Muốn thử cảnh chưa liên kết thì gỡ tên ở panel (hoặc chạy `lienket-e2e.js`).
+
 ### Web chơi (cổng 3002)
 
 Tab 📈 **Cổ phiếu** dựng theo app giao dịch thật: thanh 3 ô **SỐ DƯ · ĐANG GỒNG · HÔM NAY**,
@@ -670,6 +699,51 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (tối)** — 🐞 **PANEL CHẾT KHI BẤM TAB** (chủ server báo: *"Uncaught TypeError: Cannot read
+  properties of null (reading 'classList')"*). **Không phải lỗi của cổng liên kết** — do đợt xoá Xổ Số
+  (`f067db4`) gỡ nút + thẻ giao diện nhưng **sót tên `'xs'` trong danh sách ẩn/hiện tab**, nên
+  `document.getElementById('tab-xs')` trả `null` ngay dòng đầu hàm `tab()` → **bấm tab nào cũng chết**.
+  Đã sót từ trưa nay, `node --check` và `panelclient-check` đều không thấy vì cú pháp vẫn đúng.
+  Sửa: bỏ `'xs'`, thêm chốt `if(el)` (gỡ tab lần sau thì tab đó im lặng chứ không làm chết cả panel),
+  và thêm `'gift'` vào danh sách khôi phục tab sau F5 (trước đó F5 ở tab Quà bị nhảy về Big Small).
+  **Hai bộ kiểm MỚI cho loại lỗi lúc-chạy này:**
+  · `paneltabtest.js` (11 case) — đối chiếu danh sách tab trong `tab()` với thẻ `id="tab-*"` và nút
+  `data-tab` có thật; đã thử ngược trên bản hỏng: bắt đúng `thiếu thẻ: xs`.
+  · `dom-null-check.js` — tải trang THẬT từ bot test, dựng `document` giả chỉ trả phần tử cho id **có
+  trong HTML** (id lạ trả `null` y như trình duyệt), chạy script + gọi `tab/go/refresh/lkSet/popWatch`.
+  Panel 3/3, web 10/10.
+- **17/09 (chiều muộn)** — 🔗 **CỔNG LIÊN KẾT: chưa được admin liên kết thì không chơi minigame,
+  không điểm danh** (chi tiết ở mục "🔗 CỔNG LIÊN KẾT" phía trên). Đăng nhập vẫn vào bình thường.
+  Chặn 2 tầng: `lienKetGuard` ngay dòng đầu 3 hàm điểm danh (bịt cả Discord) + cổng chung 12 đường
+  hành động trong `webplay.js` trả 403. Banner đỏ báo cho người chơi, bật theo cờ `linked` của `/api/state`.
+  Kiểm: `lienkettest.js` 48 · `webclient-check.js` 12 (bộ MỚI: dựng lại mảng `PAGE` rồi `new Function`
+  phần `<script>` - `panelclient-check.js` cũ bỏ qua webplay vì trang này là mảng chuỗi, không phải
+  template literal) · `lienket-e2e.js` 40 chạy HTTP thật trên bot test.
+  ⚠️ **Vấp trong lượt này, ghi lại cho khỏi lặp**: chạy `node *test*.js` hàng loạt là SAI - thư mục
+  scratchpad có cả script **VÁ** mang tên `patch-test-*.js` / `add-*-tests.js` / `patch-tab-no*.js`,
+  chạy chúng lần nữa sẽ chèn trùng nội dung, có script còn **ghi thẳng vào `index.js`/`webplay.js`**.
+  Đã khôi phục từ bản sao chụp trước khi vá và đối chiếu `git diff` (chỉ còn đúng 47 dòng thêm mới).
+  Từ nay chỉ chạy đích danh từng bộ test, không dùng ký tự đại diện.
+
+- **17/09 (chiều)** — 💎 **Linh Kiện Văn Minh Cổ Đại rơi 1-2 cái** + 🧾 **máy nghiền cổ vật hết rớt bản vẽ**.
+  Chủ server: *"giảm thay vì chặn, mình đã bán ở web rồi giờ giảm đi về 1-2 hết"* và *"tất cả relic không rớt ra bản vẽ
+  vũ khí trang bị vì mình sẽ bán mấy cái đó"*.
+  **(1) `PalCrystal_Ex`** — đo được **334 slot** trên 1.044 dòng `DT_PalDropItem(_Common)`, **toàn bộ là dòng `BOSS_*`**
+  (290 pal, 0 pal thường), số lượng gốc 1-1…8-9 → ép hết về **1-2**, **giữ nguyên tỉ lệ**. Không chặn hẳn vì **345 công thức**
+  chế đồ cần món này (kể cả đồ tầm trung `Sword_4`, `Katana_2`, `WeakerBow_5`), mà thám hiểm đã bị chặn từ 16/09.
+  Cờ mới `--setmin/--setmax` cho `patch_paldrop_item.js` (có 2 cờ này thì **không đụng `Rate`**); `--item=` nhận thêm regex.
+  Verify bung ngược mỗi bảng: **556 giá trị đổi, 0 khác lạ, 0 Rate bị đụng**, phần `Thermal_Core` của v2 còn nguyên.
+  **(2) Bản vẽ** — `DTMAP` đọc bảng sống: **slot 13** của cả 5 dòng `AncientRelicRecycler_WorldTreeRelic_01..05` chứa
+  **đúng 28 bản vẽ, không lẫn món khác** (7 món × 4 bậc) → đặt `ItemSlot13_ProbabilityPercent` = `+0` (0,13 / 0,59 / 2 /
+  5,33 / **20**%). Verify: 511 dòng, **đúng 5 giá trị đổi, 0 khác lạ**, slot 8/9/14 vẫn 0.
+  Đóng vào **đúng pak cũ** (`BialkNoDrop_P.pak` và `BialkServer_ZExpedition_P.pak`) vì cùng bảng thì tách pak là mất tác dụng.
+  ✅ **Đã đẩy server TEST, đọc lại khớp từng byte, bản cũ để ở `*.bak-1709` ngay trong `~mods`.**
+  ✅ **PROD 13:07** - chủ server tự làm qua File Manager: xoá hết tên cũ, chép sang **4 tên y hệt test**
+  (`BialkNoDrop` · `BialkRaid_NgayThuong` · `BialkServer_ZExpedition` · `BialkShopOff`), không còn cặp đè nhau,
+  không còn `NerfRelic_NoImplant_NoCore_P.pak`. **Từ nay tên pak 2 server giống nhau.** Kích thước khớp, nhưng
+  **chưa so md5** (phiên này không có creds prod) - mà size không phân biệt được đời pak (v1/v2/v3 đều 328.821 B).
+  ⏳ **Chưa đụng**: 24 boss Alpha vẫn rớt bản vẽ bậc `_5` ở 3% (bảng khác, chủ server chưa yêu cầu).
+  Cả hai server vẫn **chờ restart** cho pak EXP tháp 0,5× của lượt trước.
 - **17/09 (trưa)** — 📉 **EXP boss tháp 0,7× → 0,5× gốc** (chủ server: "cho exp tháp về 0.5" - hiểu là 0,5 × gốc, đúng cách nói
   lần 13/09 `f476b76`). 21 dòng `GYM_*`: 21→**15** (13 dòng) · 21,7/22,4/23,1/23,8/24,5→**15,5/16/16,5/17/17,5** · 7→**5** ·
   0,7→**0,5**. Chỉ file `BialkRaid_NgayThuong_P.pak` (đang chạy prod); `BialkRaid_Event_P.pak` vẫn 0,7×.

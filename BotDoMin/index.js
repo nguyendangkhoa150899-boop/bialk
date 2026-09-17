@@ -1043,6 +1043,15 @@ function streakTopUp(u) {
     }
     return run;
 }
+// ===== 🔗 CỔNG LIÊN KẾT (17/09/2026) =====
+// Tên nhân vật do ADMIN đặt ở panel (userData.ingameName). Chưa có tên = chưa liên kết
+// -> KHÔNG chơi minigame, KHÔNG điểm danh. Áp dụng cho MỌI NGƯỜI, admin cũng vậy.
+// Đăng nhập web vẫn cho vào bình thường để hệ thống nhận ID và admin thấy mà liên kết.
+const LIENKET_MSG = '🔗 Ví của bạn CHƯA được liên kết tên nhân vật trong game - nhắn admin liên kết giúp (chỉ 1 lần). Liên kết xong mới chơi minigame và điểm danh được.';
+function daLienKet(userId) { return !!((getUserData(userId).ingameName || '')).trim(); }
+// Trả CHUỖI LỖI nếu chưa liên kết, null nếu đã liên kết. Dùng ở mọi cửa hành động.
+function lienKetGuard(userId) { return daLienKet(userId) ? null : LIENKET_MSG; }
+
 function dailyState(userId) {
     const u = dailyBookOf(getUserData(userId));
     streakTopUp(u);
@@ -1064,6 +1073,7 @@ function dailyState(userId) {
     };
 }
 function claimDaily(userId) {
+    const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
     const u = dailyBookOf(getUserData(userId));
     const { y, m, d } = vnParts();
     const todayVN = new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
@@ -1104,6 +1114,7 @@ function claimDaily(userId) {
 // Bấm nhận thưởng chuỗi: MỖI LẦN BẤM lấy 1 gói 800. Gói dồn lại được - điểm danh 4
 // ngày liên tiếp là 2 gói, bấm 2 lần; hết gói thì ô tắt, không nhận nữa.
 function claimStreak(userId) {
+    const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
     const u = dailyBookOf(getUserData(userId));
     streakTopUp(u);
     const packs = u.streakPacks || 0;
@@ -1125,6 +1136,7 @@ function claimStreak(userId) {
 // ngay tại kênh rồi, đăng thêm là ra 2 tin trùng nội dung. Mặc định TẮT để chỗ gọi
 // mới sau này có quên cũng không tự dưng spam kênh.
 function claimNghien(userId, announce = false) {
+    const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
     const u = getUserData(userId);
     const passed = Date.now() - (u.lastNghien || 0);
     if (passed < NGHIEN_COOLDOWN_MS) {
@@ -6015,6 +6027,8 @@ client.once('ready', async (c) => {
             txMaxBet,        // 💰 trần cược TX/người/ván (hiện trên trang cược)
             txCapCheck,      // 💰 chặn vượt trần (dùng chung luật với Discord)
             featOffList,   // 🔌 15/09: danh sách mục admin đang tắt (web giấu tab)
+            daLienKet,     // 🔗 17/09: chưa được admin liên kết tên nhân vật thì không thao tác được
+            lienKetMsg: () => LIENKET_MSG,
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
             txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)

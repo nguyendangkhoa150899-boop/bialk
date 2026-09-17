@@ -99,7 +99,12 @@ repak pack build BialkServer_P.pak --version V11 -p 764445180
 
 ---
 
-# BialkNoDrop_P.pak v2 (17/09/2026) — thêm: Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`)
+# BialkNoDrop_P.pak — v2 rồi v3 (17/09/2026)
+
+**Bản đang dùng = v3.** v2 = thêm Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`);
+v3 = thêm Linh Kiện Văn Minh Cổ Đại rơi 1-2 cái (mục con cuối). Cả hai nằm chung 1 pak vì cùng bảng.
+
+## v2 — Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`)
 
 Cùng file với Silvance/Dandilord (nhóm B, `DT_PalDropItem` + `_Common`) → phải gộp vào pak này, không tách.
 Khác đời trước: chỉ tắt **đúng slot** có `Thermal_Core`, mọi món khác của 2 pal **giữ nguyên** (Diamond 30%, WorldTreeRelic…).
@@ -116,7 +121,39 @@ Khác đời trước: chỉ tắt **đúng slot** có `Thermal_Core`, mọi mó
 Script: `scripts/patch_paldrop_item.js --check <json> --item=Thermal_Core --pals=JetDragon,DomeArmorDragon` (quét theo
 CharacterID bỏ tiền tố BOSS_ → bắt đủ mọi biến thể 000/070/080/BOSS). Bảng gốc lấy từ pak v1 (repak unpack → tojson).
 Verify bung ngược: mỗi bảng đổi đúng 4 giá trị, 8 dòng Silvance/Dandilord vẫn 0, round-trip khớp byte, V11/seed 2D9081FC.
-Bản v1 (chỉ Silvance/Dandilord) = git trước commit 17/09. Trên **prod** file tên `NoDrop_Silvance_Dandilord_P.pak` → đè đúng file đó.
+Bản v1 (chỉ Silvance/Dandilord) = git trước commit 17/09.
+(Trên prod file này từng tên `NoDrop_Silvance_Dandilord_P.pak`; **từ 17/09 13:07 prod dùng chung tên với test** - xem mục
+"Thứ tự nạp pak nhóm A" bên dưới.)
+
+⚠️ **Size KHÔNG phân biệt được đời pak này**: v1, v2, v3 đều **328.821 B**; `BialkServer_ZExpedition_P.pak` cũ và mới
+đều **20.181 B**. Nhìn kích thước trong File Manager thấy "khớp" **không chứng minh** đã lên đúng bản - chỉ md5 mới chắc.
+
+## v3 (17/09/2026 chiều) — Linh Kiện Văn Minh Cổ Đại (`PalCrystal_Ex`) rơi **1-2 cái** thay vì 1-9
+
+Chủ server chốt **GIẢM, KHÔNG CHẶN** (lý do: món này đang bán trên web shop, chặn hẳn thì 345 công thức chế đồ
+- kể cả đồ tầm trung `Sword_4`, `Katana_2`, `WeakerBow_5`, `BowGun_5`, `CompoundBow_2` - hết đường kiếm trong game,
+vì thám hiểm đã bị `…ZExpedition` chặn và máy nghiền không rớt món này).
+
+Đo trước khi vá (bảng trong pak v2): **334 slot** có `PalCrystal_Ex` trên **1.044 dòng**, tất cả đều là biến thể
+`BOSS_*` (290 pal, **0 dòng pal thường**), 330 slot ở tỉ lệ 100%, 4 slot vốn đã rate 0. Số lượng gốc từ 1-1 đến 8-9.
+
+| Việc | Trước | Sau |
+|---|---|---|
+| `min<i>` / `Max<i>` của slot `PalCrystal_Ex`, mọi dòng `BOSS_*`, cả 2 bảng | 1-1 … 8-9 | **1-2** |
+| `Rate<i>` của chính slot đó | 100 (hoặc 0) | **giữ nguyên** |
+| Mọi slot khác, mọi dòng khác | — | **giữ nguyên** |
+
+Script: `scripts/patch_paldrop_item.js <in> <out> --item=PalCrystal_Ex --pals='~.' --setmin=1 --setmax=2`
+(cờ `--setmin/--setmax` mới: có nó thì **không đụng Rate**, chỉ sửa số lượng; tên field trong bảng là `min<i>`
+chữ thường và `Max<i>` chữ hoa). Chạy cho **cả** `DT_PalDropItem` và `_Common`: mỗi bảng 283 slot đổi, 51 đã đúng sẵn.
+
+Verify bung ngược (`scratchpad tools/crystal/verify_crystal.js`): mỗi bảng 556 giá trị đổi, **0 khác lạ**, 0 Rate bị
+đụng, 334/334 slot ra đúng 1-2, các slot `Thermal_Core` của Jetragon/Aegidron vẫn `+0` (phần v2 còn nguyên).
+
+## v3 — cùng lúc: `--item=` nhận regex
+
+`--item=~^Blueprint_` để quét nhóm món. Dùng để **đo** (không vá) 24 dòng `BOSS_*` rớt bản vẽ 3% - xem mục
+"Bản vẽ" ở pak `…ZExpedition` bên dưới.
 
 ---
 
@@ -587,39 +624,51 @@ dựng lại file NgayThuong với GYM_* khác, KHÔNG thêm pak thứ hai.
 recycler trên prod tên `NerfRelic_…`, mà `BialkServer_Z…` xếp trước chữ `N` → nạp trước → bị đè → **mất tác dụng im lặng**.
 Cùng một file, chỉ khác tên theo server. Luật chung: tên file Z phải xếp sau tên pak recycler **đang có trên server đó**.
 
-## ⏳ VIỆC TREO (16/09 17:40) — ĐO THỨ TỰ NẠP PAK NHÓM A, chủ server làm ở máy khác
+## ✅ Thứ tự nạp pak nhóm A — hết treo (17/09/2026)
 
-**Tình hình:** prod đã restart 17:33 với **cả hai** file nhóm A (`NerfRelic_NoImplant_NoCore_P.pak` + `NerfRelic_ZExpedition_P.pak`).
-Giả định "file xếp sau theo chữ cái thắng" **CHƯA ĐO**. Nếu sai → thám hiểm trên prod **vẫn rơi Lõi**, không báo hiệu; máy nghiền
-thì vẫn bị chặn dù pak nào thắng (cả hai đều chứa). Prod đang có người chơi nên chưa restart thêm.
+Mỗi server giờ chỉ còn **một** file nhóm A nên không còn phụ thuộc thứ tự nạp, không cần đo gì nữa:
 
-**Cập nhật 17/09 sáng:** chủ server đã dọn TEST còn **1 file nhóm A** (`BialkServer_ZExpedition_P.pak`, xoá `BialkServer_P.pak`) →
-test hết phụ thuộc thứ tự nạp, và cũng **không còn cặp để đo** nữa. Khuyến nghị đổi: **làm prod y test** — xoá
-`NerfRelic_NoImplant_NoCore_P.pak` trên prod (Z đã bao gồm phần máy nghiền, đã kiểm trong game trên test), restart 1 lần → khỏi đo gì.
-Muốn tắt thám hiểm sau này: thay Z bằng `BialkServer_P.pak` (đổi tên tuỳ ý) + restart. Hai cách đo dưới chỉ còn cần nếu vẫn muốn giữ cặp.
+- **TEST** `~mods` (đọc SFTP 17/09 chiều): `BialkNoDrop_P.pak` · `BialkServer_ZExpedition_P.pak` ·
+  `BialkRaid_NgayThuong_P.pak` · `BialkShopOff_P.pak` — đúng 4 file, md5 khớp repo.
+- **PROD** (17/09 13:07, chủ server tự làm qua File Manager của Shockbyte): đã **xoá hết tên cũ**
+  (`NoDrop_Silvance_Dandilord_P.pak`, `NerfRelic_ZExpedition_P.pak`, `NerfRelic_NoImplant_NoCore_P.pak`)
+  và chép sang **đúng 4 tên y hệt test**. Kể từ mốc này **tên pak hai server GIỐNG NHAU** - mọi hướng dẫn
+  cũ kiểu "trên prod file tên `NerfRelic_…`" đã hết hiệu lực, cứ chép thẳng tên `Bialk*` sang.
+  Kích thước 4 tệp trên prod khớp test (321,11 / 477,07 / 19,71 / 228 KB).
 
-**Cách đo (chọn 1):**
-- **A (không đụng prod):** trên TEST chép lại `BialkServer_P.pak` vào `~mods` (để có cặp như prod), restart TEST, rồi
-  từ `palworld-dashboard/server`:
-  ```
-  SFTP_USER='<user test>' SFTP_PASS='<pass>' SFTP_MOD_PATH='/1. test mod/Pal/Binaries/Win64/ue4ss/Mods/GiveGoldCommand' \
-  node ../tools/sftp-dtmap.cjs "DTMAP PalMasterDataTableAccess_FieldLotteryNameData ItemSlot11_ProbabilityPercent,ItemSlot12_ProbabilityPercent Expedition_"
-  ```
-  `Expedition_Grass` slot 11 = **0** → Z thắng (giả định đúng, prod OK). = **100** → Z thua.
-- **B:** chép `main.lua` mới (có DTMAP, đang chạy test) lên prod bằng stream tuần tự + so byte, restart prod, chạy lệnh trên với
-  path prod `/1. Cô 4 vui vẻ/...` → đo thẳng prod.
+Muốn bật lại Lõi ở thám hiểm sau này: thay file Z bằng `BialkServer_P.pak` (đổi tên tuỳ ý, vẫn phải xếp sau) + restart.
+Kiểm nhanh pak nào đang thắng: `DTMAP PalMasterDataTableAccess_FieldLotteryNameData ItemSlot11_ProbabilityPercent,ItemSlot12_ProbabilityPercent Expedition_`
+→ `Expedition_Grass` slot 11 = 0 là Z đang thắng.
 
-**Nếu Z thua:** trên prod **xoá `NerfRelic_NoImplant_NoCore_P.pak`** (Z là superset, có sẵn phần máy nghiền) + restart → hết phụ
-thuộc thứ tự. Muốn tắt thám hiểm sau này: thay Z bằng file recycler-only (`BialkServer_P.pak` đổi tên). Làm y vậy trên test.
-**Nếu Z thắng:** giữ nguyên, xoá mục này.
+## 🧾 Bản vẽ vũ khí/trang bị: máy nghiền cổ vật KHÔNG rớt nữa (17/09/2026 chiều)
 
-**Trạng thái 16/09 ~17:30:** ✅ TEST đã kiểm trong game (chuyến Sunreach Isle 38 phút: 7 món, không Lõi/Linh kiện; bảng sống
-đọc bằng DTMAP: slot 11/12 = 0). ✅ PROD đã **chép** `NerfRelic_ZExpedition_P.pak` (byte y hệt), **chưa restart**. Prod có 5 pak:
-`BialkRaid_NgayThuong` · `BialkShopOff` · `NerfRelic_NoImplant_NoCore` · `NerfRelic_ZExpedition` · `NoDrop_Silvance_Dandilord` -
-mỗi nhóm 1 file (A là cặp cố ý), **không có gì trùng để xoá**.
-⏳ Còn phải **đo** giả định "pak xếp sau thắng" khi 2 file nhóm A cùng có mặt (test đã sắp đúng cặp, chờ restart + DTMAP).
-Nếu đo ra pak xếp TRƯỚC thắng → đổi sang cách **không phụ thuộc thứ tự**: chỉ giữ 1 file nhóm A (Z là superset; muốn tắt thám
-hiểm thì thay Z bằng file recycler-only), cũng vẫn bật/tắt được.
+Chủ server bán bản vẽ trên web shop → bỏ nguồn rớt trong game. Đọc bảng sống bằng
+`DTMAP PalMasterDataTableAccess_ItemLotteryData FieldName,SlotNo,StaticItemId,WeightInSlot AncientRelicRecycler_`:
+**slot 13** của cả 5 dòng `AncientRelicRecycler_WorldTreeRelic_01..05` chứa **đúng 28 bản vẽ, không lẫn món nào khác**
+(7 món × 4 bậc `_2.._5`: `WidePenetrateShotgun`, `DroneLauncher`, `ElectricArcAssaultRifle`, `BeamLauncher`,
+`AncientArmorHeat`, `AncientArmorCold`, `AncientArmorWeight`).
+
+| Dòng relic | slot 13 % gốc | sau |
+|---|---|---|
+| `AncientRelicRecycler_WorldTreeRelic_01` | 0.13 | **+0** |
+| `…_02` | 0.59 | **+0** |
+| `…_03` | 2 | **+0** |
+| `…_04` | 5.33 | **+0** |
+| `…_05` | 20 | **+0** |
+
+Vá bằng `scripts/patch_expedition.js` (nhận thẳng `dump.log` của mod làm nguồn ánh xạ slot→món):
+
+```bash
+node scripts/patch_expedition.js --check --keep-recycler recycler-dump.log field.json \
+  --items="<28 mã bản vẽ, phẩy>" --rows='~^AncientRelicRecycler_WorldTreeRelic_'
+```
+
+Verify bung ngược: 511 dòng, **đúng 5 giá trị đổi, 0 khác lạ**; 5 dòng recycler còn nguyên slot 8/9/14 = 0.
+Đóng chung pak `BialkServer_ZExpedition_P.pak` (cùng bảng `DT_FieldLotteryNameDataTable` → **không được tách pak**).
+
+**Chưa đụng**: 24 dòng `BOSS_*` trong `DT_PalDropItem` rớt bản vẽ bậc `_5` ở **3%** (mỗi boss Alpha một mã riêng,
+vd `BOSS_JetDragon000` → `Blueprint_Launcher_Default_5`). Đó là bảng khác (pak `BialkNoDrop_P.pak`), chủ server
+chưa yêu cầu. Muốn tắt: `patch_paldrop_item.js <in> <out> --item=~^Blueprint_ --pals='~.'`.
 
 **Cách dùng (chủ server chốt: KHÔNG đè file cũ, muốn bật/tắt Lõi thám hiểm được):**
 - File này chứa **CẢ** phần chặn máy nghiền (y hệt `BialkServer_P.pak`) **+** phần chặn thám hiểm. Bắt buộc là superset:
