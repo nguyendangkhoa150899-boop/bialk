@@ -3675,16 +3675,28 @@ async function manageHistory(state, sessionMsgs) {
 // ==========================================
 // --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
 // ==========================================
-// 25 ô (lưới 5×5 tròn trịa) + RTP 0.90 (17/09; trước 0.95) - chủ server chốt 20/08: "dễ ăn quá" nên
+// 25 ô (lưới 5×5 tròn trịa) + RTP 0.88 (17/09; 0.95 -> 0.90 -> 0.80 -> chốt 0.88) - chủ server chốt 20/08: "dễ ăn quá" nên
 // nerf. Hai núm này cùng lúc làm HỆ SỐ KHÚC GIỮA giảm rõ (người chơi dừng-sớm-ăn-chắc
 // bị chạm nhiều nhất), còn các mốc CỐ ĐỊNH (trần nổ hũ 100/200/500, trần có khiên
 // 350/700) giữ nguyên. Lịch sử: 19/08 từng chạy 24 ô/RTP 1.0 theo bảng Discord cũ.
 // ⚠️ /domin bản Discord (đang comment) KHÔNG bật lại được với 25 ô: 25 ô + nút DỪNG
 // = 26 nút, vượt trần 25 nút/tin của Discord.
 const TOTAL_TILES = 25;
-// 17/09 (chủ server): 0,95 -> 0,90 => nhà cái ăn 5% -> 10%. Áp cho TẤT CẢ người chơi,
-// không có ngoại lệ theo từng người. Hệ số trả hiện sẵn trên bàn nên không giấu ai.
-const RTP = 0.90;
+// 17/09 (chủ server): 0,95 -> 0,90 -> 0,80 -> CHỐT 0,88. Nhà cái ăn 12%.
+// Áp cho TẤT CẢ người chơi, hệ số trả hiện sẵn trên bàn nên không giấu ai.
+//
+// ⚠️ VÌ SAO ĐÚNG 0,88 - ĐỪNG HẠ THÊM MÀ KHÔNG BIẾT ĐIỀU NÀY:
+// Bàn 3 mìn có 22/25 ô an toàn = 88% mở trúng. Hệ số ô đầu = (1/0,88) × RTP, nên RTP < 0,88
+// là ô ĐẦU TIÊN rơi xuống dưới 1 -> "mở trúng ô an toàn, bấm DỪNG, vẫn NHẬN ÍT HƠN tiền cược".
+// Người chơi thấy ngay vì hệ số hiện trên bàn, và sẽ báo là lỗi. Bảng đã đưa chủ server:
+//   RTP   3 mìn   4 mìn   5 mìn
+//   0,90  x1.02   x1.07   x1.12
+//   0,88  x1.00   x1.04   x1.10   <- mốc THẤP NHẤT mà ô đầu không lỗ (huề)
+//   0,85  x0.96   x1.01   x1.06   <- 3 mìn đã lỗ
+//   0,80  x0.90   x0.95   x1.00   <- 3 và 4 mìn đều lỗ
+// Muốn ăn dày hơn nữa thì ĐỪNG hạ RTP - hạ tiếp là vỡ trải nghiệm ô đầu. Hãy dùng đường khác:
+// trần thắng mỗi ván (MINES_MAX_WIN đang = 0 = không trần), trần cược, hoặc bảng quà hộp 🍀.
+const RTP = 0.88;
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -3801,7 +3813,7 @@ function setMinesLast(userId, g, result, amount, hitIdx) {
 // Rủi ro đã biết khi để 0 - nếu thấy Dogcoin lạm phát thì đây là chỗ siết đầu tiên:
 //   5 mìn mở 15 ô  = tỉ lệ 1/211  -> x204   (chơi vài trăm ván là có người trúng)
 //   12 mìn mở 8 ô  = tỉ lệ 1/840  -> x815
-// RTP 0.90 chỉ đảm bảo nhà cái lãi sau HÀNG CHỤC NGHÌN ván; server nhỏ có thể
+// RTP 0.88 chỉ đảm bảo nhà cái lãi sau HÀNG CHỤC NGHÌN ván; server nhỏ có thể
 // dính một cú trả lớn trước khi tới đó.
 const MINES_MAX_WIN = 0; // 0 = không giới hạn tiền nhận 1 ván
 const MINES_MAX_BET = 0; // 0 = không giới hạn tiền cược 1 ván

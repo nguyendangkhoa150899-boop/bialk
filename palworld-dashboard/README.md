@@ -699,6 +699,26 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (khuya, sau đợt 🍂)** — 📉 **Dò Mìn: hệ số trả CHỐT 0,88** (trong một ngày đi
+  0,95 → 0,90 → 0,80 → **0,88**). Nhà cái ăn **12%**.
+  **🚧 0,88 là SÀN, đừng hạ tiếp.** Bàn 3 mìn có 22/25 ô an toàn = 88%, hệ số ô đầu = (1/0,88)×RTP,
+  nên RTP < 0,88 là **ô ĐẦU TIÊN rơi xuống dưới x1**: mở trúng ô an toàn, bấm DỪNG, vẫn nhận ít hơn
+  tiền cược. Hệ số hiện sẵn trên bàn nên người chơi thấy ngay và sẽ báo là lỗi.
+
+  | Mở đúng 1 ô rồi bấm DỪNG | 3 mìn | 4 mìn | 5 mìn |
+  |---|---|---|---|
+  | 0,95 (cũ) | x1.07 | x1.13 | x1.18 |
+  | **0,88 (đang dùng)** | **x1.00 huề** | x1.04 | x1.10 |
+  | 0,85 | x0.96 ⬅ lỗ | x1.01 | x1.06 |
+  | 0,80 | x0.90 ⬅ lỗ | x0.95 ⬅ lỗ | x1.00 |
+
+  Muốn siết thêm thì **đừng đụng RTP nữa** - dùng trần thắng mỗi ván (`MINES_MAX_WIN` đang = 0 =
+  không trần), trần cược, hoặc bảng quà hộp 🍀. `txtimetest.js` có chốt chặn: quét mọi mức mìn,
+  hỏng ngay nếu ô đầu tiên của bàn nào rơi xuống dưới x1.00.
+  🐞 **Bài kiểm `leaf-e2e.js` từng HÊN XUI**: 25 ô có 3 mìn nhưng chỉ 1 ô cỏ, lật lần lượt từ ô 0
+  thì ~3/4 số lần trúng mìn TRƯỚC khi gặp ô cỏ - lần đầu đậu, lần sau rớt, mà lỗi lại trông y như
+  lỗi thật. Sửa: dùng `/api/mines/force` ép 3 quả mìn về ô 22/23/24 rồi mới chơi. Chạy 3 lần liên
+  tiếp đều 13/13.
 - **17/09 (khuya)** — 🍂 **Dò Mìn: ô HỤT vào lại hộp 🍀, mọi quà khác hạ tỉ lệ** (chủ server:
   *"dò mìn thêm cái lá vô nữa, giảm rate mấy cái còn lại đi"*). Đây là **đảo lại quyết định 12/09**
   (hôm đó bỏ 🍂 vì "trả tiền mua cỏ mà bốc trúng không-có-gì là trải nghiệm tệ nhất").
