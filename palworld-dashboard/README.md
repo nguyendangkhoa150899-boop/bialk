@@ -670,6 +670,15 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (trưa)** — 📉 **EXP boss tháp 0,7× → 0,5× gốc** (chủ server: "cho exp tháp về 0.5" - hiểu là 0,5 × gốc, đúng cách nói
+  lần 13/09 `f476b76`). 21 dòng `GYM_*`: 21→**15** (13 dòng) · 21,7/22,4/23,1/23,8/24,5→**15,5/16/16,5/17/17,5** · 7→**5** ·
+  0,7→**0,5**. Chỉ file `BialkRaid_NgayThuong_P.pak` (đang chạy prod); `BialkRaid_Event_P.pak` vẫn 0,7×.
+  Bảng `DT_PalMonsterParameter(_Common)` vẫn dính bug FName `_2` (`.uasset` round-trip khớp, `.uexp` lệch) → vá byte bằng
+  `surgical_expratio.js`, **mở rộng thêm** `--map=cũ:mới,…` (đặt nhiều mức) + `SURG_TARGETS=` (danh sách giá trị hợp lệ).
+  Kiểm: verify 21 đổi / 0 khác lạ ở cả 2 bảng; bung pak thấy đúng 2 `.uexp` đổi, 8 file kia byte y hệt; RAID_* vanilla nguyên.
+  Đã chép test + prod (so byte ✓), **chờ restart server game**. Rollback bản 0,7× = git `d072375`.
+  Cũng trong lượt này: đồng bộ `~mods` test = prod (gỡ `BialkRecipe_P.pak` khỏi test) - đối chiếu md5 4 pak khớp hết,
+  chỉ khác tên file nhóm A (`BialkServer_ZExpedition` ↔ `NerfRelic_ZExpedition`) là cố ý theo thứ tự nạp từng server.
 - **17/09 (trưa)** — 🧹 **XOÁ HẲN Xổ Số Miền Bắc + dọn sạch tàn dư Bầu Cua / Blackjack / nhánh shop chết**
   (chủ server: "sao còn code xổ số + bầu cua, dọn hết đi, cái nào ở prod không xài tới dọn cho nhẹ").
   **Bằng chứng trước khi xoá**: Xổ số thêm 09/08 (`8054cb5`), không đụng từ đó, và `runXoSoLoop()` +

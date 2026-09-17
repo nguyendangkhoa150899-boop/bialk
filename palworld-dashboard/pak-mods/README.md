@@ -518,8 +518,25 @@ nhiều máu vào**. EXP boss tháp (dòng `GYM_*`) để **0.7 × gốc** ở c
 
 | File | Boss raid | Cấp | EXP tháp |
 |---|---|---|---|
-| `BialkRaid_NgayThuong_P.pak` | **vanilla 100%** — thường 333k–1,41M · ultra 1,95–2,56M, giáp 91%, atk 1000–1300% | vanilla 35/45/55/65/70 · ultra 80 | 21–24,5 (hầu 7) |
-| `BialkRaid_Event_P.pak` | **buff** — thường 2/4/6/10/12M · ultra 19/20/22/25M, giáp 80%, atk 300–420% | tất cả **80** | 21–24,5 (hầu 7) |
+| `BialkRaid_NgayThuong_P.pak` | **vanilla 100%** — thường 333k–1,41M · ultra 1,95–2,56M, giáp 91%, atk 1000–1300% | vanilla 35/45/55/65/70 · ultra 80 | **15–17,5 (hầu 5)** — 0,5× gốc, chốt 17/09 |
+| `BialkRaid_Event_P.pak` | **buff** — thường 2/4/6/10/12M · ultra 19/20/22/25M, giáp 80%, atk 300–420% | tất cả **80** | 21–24,5 (hầu 7) — 0,7×, **chưa hạ** |
+
+### 17/09: EXP boss tháp 0,7× → **0,5× gốc** (chỉ file NgayThuong)
+Chủ server: *"cho exp tháp về 0,5"* — cùng cách nói với lần 13/09 (`f476b76` "MOT NUA so goc 30→15, 35→17.5, 10→5, 1→0.5"),
+tức **0,5 × giá trị gốc của game**, không phải đặt phẳng 0,5.
+
+| Vanilla | 0,7× (cũ) | **0,5× (nay)** | Số dòng |
+|---|---|---|---|
+| 30 | 21 | **15** | 13 |
+| 31 / 32 / 33 / 34 / 35 | 21,7 / 22,4 / 23,1 / 23,8 / 24,5 | **15,5 / 16 / 16,5 / 17 / 17,5** | 1/1/1/2/1 |
+| 10 | 7 | **5** | 1 (`GYM_MoonQueen_2_Servant`) |
+| 1 | 0,7 | **0,5** | 1 (`GYM_ElecPanda_Otomo`) |
+
+Bảng này **vẫn không round-trip được** (bug FName `_2`: `.uasset` khớp byte, `.uexp` lệch) → phải vá byte bằng
+`scripts/surgical_expratio.js`. 17/09 mở rộng script: `makeB … --map=cũ:mới,…` đặt **nhiều mức** khác nhau (trước chỉ ép
+về một số), và `patch` nhận `SURG_TARGETS=` danh sách giá trị mới hợp lệ. Kiểm: `verify` báo *21 ExpRatio GYM đổi, 0 khác
+biệt lạ* ở cả 2 bảng; bung ngược pak thấy **đúng 2 `.uexp` đổi, 8 file còn lại byte y hệt pak cũ**; RAID_* vanilla nguyên.
+Đã chép lên **test + prod** (so byte ✓), **chờ restart server game**. Bản 0,7× rollback = git `d072375`.
 
 Cả hai giữ **timer 4 tiếng** + luật trứng raid nở ra toàn con cái.
 

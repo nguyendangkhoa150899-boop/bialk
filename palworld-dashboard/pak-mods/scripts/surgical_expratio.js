@@ -17,17 +17,33 @@ const fs = require('fs');
 const [cmd, ...a] = process.argv.slice(2);
 
 if (cmd === 'makeB') {
-    const [inF, outF, tgt] = a; const target = Number(tgt ?? 1);
+    // 17/09: thêm --map=cũ:mới,... để đặt NHIỀU mức khác nhau (mỗi bậc boss tháp một số), thay vì
+    // ép tất cả về một giá trị. So khớp theo 4 chữ số thập phân cho khỏi lệch float. Giá trị GYM_*
+    // không có trong map thì GIỮ NGUYÊN và báo ra, không đoán.
+    const mapArg = a.find(x => String(x).startsWith('--map='));
+    const MAP = mapArg ? Object.fromEntries(mapArg.slice(6).split(',').map(p => {
+        const [o, v] = p.split(':'); return [Number(o).toFixed(4), Number(v)];
+    })) : null;
+    const [inF, outF, tgt] = a.filter(x => !String(x).startsWith('--'));
+    const target = Number(tgt ?? 1);
     const j = JSON.parse(fs.readFileSync(inF, 'utf8'));
     let n = 0; const rows = j.Exports[0].Table.Data;
+    const chuaKhop = new Set();
     for (const r of rows) {
         if (!/^GYM_/i.test(r.Name)) continue;
         const p = (r.Value || []).find(x => x.Name === 'ExpRatio');
         if (!p || !/FloatPropertyData/.test(String(p.$type))) continue;
-        if (Number(p.Value) !== target) { console.log('  ', r.Name, p.Value, '->', target); p.Value = target; n++; }
+        let moi = target;
+        if (MAP) {
+            const k = Number(p.Value).toFixed(4);
+            if (!(k in MAP)) { chuaKhop.add(k); continue; }
+            moi = MAP[k];
+        }
+        if (Number(p.Value) !== moi) { console.log('  ', r.Name, p.Value, '->', moi); p.Value = moi; n++; }
     }
+    if (chuaKhop.size) console.log('   ⚠️ GYM_* có giá trị KHÔNG nằm trong --map (giữ nguyên):', [...chuaKhop].join(', '));
     fs.writeFileSync(outF, JSON.stringify(j, null, 2));
-    console.log('makeB: đổi', n, 'dòng GYM_* ExpRatio ->', target, '| ghi', outF);
+    console.log('makeB: đổi', n, 'dòng GYM_* ExpRatio' + (MAP ? ' theo --map' : ' -> ' + target), '| ghi', outF);
     process.exit(0);
 }
 
@@ -39,14 +55,17 @@ if (cmd === 'patch') {
     // Gom theo CỤM byte liên tiếp khác nhau (property trong .uexp KHÔNG canh 4 byte - gom theo
     // mốc 4 sẽ đếm 1 float thành 2). Mỗi cụm = 1 float; tìm điểm đầu float trong [s-3, s] sao cho
     // giá trị mới đọc ra đúng target (mặc định 1) và giá trị cũ là số hữu hạn.
-    const target = Number(process.env.SURG_TARGET ?? 1);
+    // SURG_TARGETS = danh sách giá trị MỚI hợp lệ (phẩy). Dùng khi --map đặt nhiều mức khác nhau.
+    // Vẫn nhận SURG_TARGET (một giá trị) như cũ.
+    const targets = String(process.env.SURG_TARGETS ?? process.env.SURG_TARGET ?? '1').split(',').map(Number);
+    const laTarget = (v) => targets.some(t => Math.abs(v - t) < 1e-9);
     const offs = [];
     for (let i = 0; i < ra.length;) {
         if (ra[i] === rb[i]) { i++; continue; }
         let j = i; while (j < ra.length && ra[j] !== rb[j]) j++;
         let st = -1;
-        for (let c = i - 3; c <= i; c++) { if (c < 0 || c + 4 > ra.length) continue; if (rb.readFloatLE(c) === target && Number.isFinite(ra.readFloatLE(c))) { st = c; break; } }
-        if (st < 0) { console.error('cụm khác @' + i + ' len ' + (j - i) + ' không giải mã được thành float -> ' + target + ' - dừng, không ghi'); process.exit(6); }
+        for (let c = i - 3; c <= i; c++) { if (c < 0 || c + 4 > ra.length) continue; if (laTarget(rb.readFloatLE(c)) && Number.isFinite(ra.readFloatLE(c))) { st = c; break; } }
+        if (st < 0) { console.error('cụm khác @' + i + ' len ' + (j - i) + ' không giải mã được thành float -> một trong [' + targets.join(',') + '] - dừng, không ghi'); process.exit(6); }
         offs.push(st); i = j;
     }
     console.log('patch: số float khác biệt =', offs.length, expected ? '(kỳ vọng ' + expected + ')' : '');
