@@ -99,6 +99,27 @@ repak pack build BialkServer_P.pak --version V11 -p 764445180
 
 ---
 
+# BialkNoDrop_P.pak v2 (17/09/2026) — thêm: Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`)
+
+Cùng file với Silvance/Dandilord (nhóm B, `DT_PalDropItem` + `_Common`) → phải gộp vào pak này, không tách.
+Khác đời trước: chỉ tắt **đúng slot** có `Thermal_Core`, mọi món khác của 2 pal **giữ nguyên** (Diamond 30%, WorldTreeRelic…).
+
+| Dòng | Slot | Rate |
+|---|---|---|
+| `JetDragon000` (Jetragon thường) | 2 | 100 → +0 |
+| `DomeArmorDragon000` (Aegidron <70) | 1 | 100 → +0 |
+| `DomeArmorDragon070` (Aegidron Lv70) | 1 | 100 → +0 |
+| `DomeArmorDragon080` (Aegidron Lv80) | 7 | 100 → +0 |
+| `BOSS_JetDragon000` | 3 | vốn đã +0 (game gốc) |
+| `BOSS_DomeArmorDragon000/070` | — | không có Thermal_Core |
+
+Script: `scripts/patch_paldrop_item.js --check <json> --item=Thermal_Core --pals=JetDragon,DomeArmorDragon` (quét theo
+CharacterID bỏ tiền tố BOSS_ → bắt đủ mọi biến thể 000/070/080/BOSS). Bảng gốc lấy từ pak v1 (repak unpack → tojson).
+Verify bung ngược: mỗi bảng đổi đúng 4 giá trị, 8 dòng Silvance/Dandilord vẫn 0, round-trip khớp byte, V11/seed 2D9081FC.
+Bản v1 (chỉ Silvance/Dandilord) = git trước commit 17/09. Trên **prod** file tên `NoDrop_Silvance_Dandilord_P.pak` → đè đúng file đó.
+
+---
+
 # BialkSilvanceNoDrop_P.pak
 
 Silvance không rớt bất kỳ đồ gì, mọi cấp độ, cả bản thường lẫn boss.

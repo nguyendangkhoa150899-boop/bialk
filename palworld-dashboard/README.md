@@ -670,6 +670,28 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (trưa)** — 🧹 **XOÁ HẲN Xổ Số Miền Bắc + dọn sạch tàn dư Bầu Cua / Blackjack / nhánh shop chết**
+  (chủ server: "sao còn code xổ số + bầu cua, dọn hết đi, cái nào ở prod không xài tới dọn cho nhẹ").
+  **Bằng chứng trước khi xoá**: Xổ số thêm 09/08 (`8054cb5`), không đụng từ đó, và `runXoSoLoop()` +
+  `resumeXosoAfterRestart()` **đã bị comment ở boot** → trên prod trò này **chết hẳn** (không quay, không nối bảng);
+  Bầu Cua gỡ 27/08 (`4e30e3f`); Blackjack hủy 18/08 còn khối dọn bảng chạy mỗi boot; `shop_custom_CU_DA_TAT` là nhánh chết.
+  ✅ `index.js` **8.480 → 8.050 dòng**, `panel.js` **3.540 → 3.387** (bỏ tab 🎰 Xổ Số, 4 route `/api/xs/*`, 3 thẻ giao diện,
+  `renderXS`, khối `state.xs`). `vnNow()` xoá theo vì chỉ xổ số dùng.
+  💰 **Không để mất tiền**: `_xsBets`/`_bcBets` là cược ĐÃ TRỪ VÍ. Thêm `cleanupGoneGames()` chạy 1 lần lúc boot: **hoàn hết**
+  (ghi `logDog('refund')` + log SYSTEM) rồi mới xoá mọi khoá `_xs*`/`_bc*`/`_bj*`. Chạy thật trên bot test: *"Hoàn 0 khoản,
+  xoá 9 khoá db"* - db test không có cược treo; prod có bao nhiêu sẽ tự hoàn lúc restart.
+  🚨 **Suýt hỏng, test bắt được**: lần cắt đầu trong `panel.js` đặt biên `to` là `dogLedger:` → nuốt luôn **19 khoá state**
+  (players, pot, wheel, stock, itemCats, palForced, withdrawRequests…). `mimogtest` kêu `palForced` mất → khôi phục từ backup,
+  cắt lại đúng biên `withdraw:`, diff lại từng dòng bị xoá (100% là xổ số) và đếm đủ 13 khoá state. **Bài học: `cut(from,to)`
+  phải chọn `to` là dòng NGAY SAU khối, không phải mốc xa cho tiện.**
+- **17/09 (sáng)** — 🧊 **Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`)** — `BialkNoDrop_P.pak` **v2** (cùng nhóm B
+  với Silvance/Dandilord nên gộp, không tách). Script mới `pak-mods/scripts/patch_paldrop_item.js`: tắt **đúng slot** có món đó
+  (Rate→"+0"), quét theo CharacterID bỏ tiền tố BOSS_ → bắt đủ 000/070/080/BOSS. 4 slot đổi/bảng, bung ngược đúng 4, Silvance
+  vẫn 0, món khác giữ. Đã đè lên **test** (so byte ✓), repo cập nhật (v1 = git `cf3005a`). **Prod chưa** — file prod tên
+  `NoDrop_Silvance_Dandilord_P.pak`, chờ chủ server gật. Tiện tay đọc SFTP phát hiện README lệch: `BialkRecipe_P.pak` **đã ở prod
+  và đang chạy** từ 01:13 (README ghi "chưa lên prod"), `NerfRelic_NoImplant_NoCore_P.pak` **đã bị gỡ** khỏi prod (prod = 1 file
+  nhóm A như test → hết việc treo thứ tự nạp), PalDefender **có** trên prod. Chủ server quyết **gỡ BialkRecipe** (client không
+  hiện đúng nguyên liệu - đúng giới hạn server-only đã cảnh báo).
 - **16/09 (tối)** — ⏳ **VIỆC TREO: đo thứ tự nạp pak nhóm A trên prod** (chủ server: "prod đang có người chơi, note lại, mình
   làm ở máy local khác"). Prod đã restart 17:33 với cả `NerfRelic_NoImplant_NoCore_P.pak` + `NerfRelic_ZExpedition_P.pak`;
   giả định "xếp sau thắng" **chưa đo** → thám hiểm prod có thể vẫn rơi Lõi (máy nghiền vẫn chặn dù sao). Cách đo + cách sửa ghi
