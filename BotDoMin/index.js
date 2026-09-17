@@ -3539,8 +3539,109 @@ const DICE_EMOJIS = [
 // xí ngầu lắc NGẦM (txState.nan), người chơi lên web tự "nặn" - kéo tờ giấy che
 // tự do 4 chiều, kéo tới đâu lộ tới đó, ai kéo người đó thấy riêng. Đúng giờ mở bát:
 // trả thưởng + đăng kết quả công khai ở Discord.
-const TX_LOCK_S = 15;
-const TX_ROUND_S = 40; // hạ 50 -> 40 (19/08): đặt cược còn 25 giây, nặn giữ nguyên 15
+const TX_LOCK_S = 15;          // mặc định khi admin chưa đặt gì (giây NẶN)
+const TX_BET_S_DEF = 25;       // mặc định giây ĐẶT CƯỢC
+const TX_ROUND_S = 40; // KHÔNG CÒN DÙNG từ 17/09 (giữ cho khỏi lạc khi đọc lịch sử) - xem txRoundS()
+// 17/09: ADMIN CHỈNH ĐƯỢC 2 mốc này ở panel (tab Big Small), lưu dbCache._txTime.
+// Ván = bet + nan. Mọi chỗ tính giờ PHẢI gọi txRoundS()/txLockS(), đừng dùng lại 2 hằng số trên
+// (giữ chúng chỉ để làm giá trị mặc định). Đổi giữa chừng thì ván ĐANG chạy giữ nguyên mốc cũ,
+// ván sau mới theo số mới - targetTime đã chốt từ đầu ván.
+const TX_BET_S_MIN = 5, TX_BET_S_MAX = 600;
+const TX_NAN_S_MIN = 3, TX_NAN_S_MAX = 300;
+function txTimeCfg() {
+    const c = dbCache._txTime || {};
+    const b = Number(c.bet), n = Number(c.nan);
+    return {
+        bet: Number.isFinite(b) && b >= TX_BET_S_MIN && b <= TX_BET_S_MAX ? Math.floor(b) : TX_BET_S_DEF,
+        nan: Number.isFinite(n) && n >= TX_NAN_S_MIN && n <= TX_NAN_S_MAX ? Math.floor(n) : TX_LOCK_S,
+    };
+}
+function txLockS() { return txTimeCfg().nan; }
+function txRoundS() { const c = txTimeCfg(); return c.bet + c.nan; }
+function setTxTimeCfg(bet, nan) {
+    bet = Math.floor(Number(bet)); nan = Math.floor(Number(nan));
+    if (!Number.isFinite(bet) || bet < TX_BET_S_MIN || bet > TX_BET_S_MAX)
+        return { error: `Giây đặt cược phải từ ${TX_BET_S_MIN} đến ${TX_BET_S_MAX}` };
+    if (!Number.isFinite(nan) || nan < TX_NAN_S_MIN || nan > TX_NAN_S_MAX)
+        return { error: `Giây nặn phải từ ${TX_NAN_S_MIN} đến ${TX_NAN_S_MAX}` };
+    dbCache._txTime = { bet, nan };
+    saveDbNow();
+    txState.needsUpdate = true;   // bảng Discord vẽ lại dòng "X giây cuối khóa sổ"
+    writeLog('ADMIN', `[PANEL TX] Đổi nhịp ván: đặt cược ${bet}s + nặn ${nan}s = ván ${bet + nan}s`);
+    return { ok: true, ...txTimeCfg(), round: txRoundS() };
+}
+
+// ---------- 🔔 BÁO CƯỢC TÀI XỈU VỀ DISCORD (17/09) ----------
+// Chủ server muốn biết ngay ai vừa đặt. Gửi tới MỘT ID: thử nhắn riêng (ID người) trước,
+// không được thì gửi vào kênh (ID kênh) - khỏi phải hỏi đó là loại ID nào.
+// minAmount: chỉ báo từ mức này trở lên (0 = báo hết) - để ván đông người khỏi ngập tin.
+const TX_NOTI_DEF = { id: '', on: false, min: 0 };
+let txNotiKieu = null;   // nhớ lần trước gửi được kiểu nào: 'user' | 'channel'
+function txNotiCfg() {
+    const c = dbCache._txNoti || {};
+    const min = Number(c.min);
+    return {
+        id: String(c.id || TX_NOTI_DEF.id).trim(),
+        on: !!c.on,
+        min: Number.isFinite(min) && min >= 0 ? Math.floor(min) : 0,
+    };
+}
+function setTxNoti(id, on, min) {
+    id = String(id == null ? '' : id).trim();
+    if (id && !/^\d{15,20}$/.test(id)) return { error: 'ID Discord phải là dãy 15-20 chữ số' };
+    min = Math.floor(Number(min));
+    if (!Number.isFinite(min) || min < 0) return { error: 'Mức tối thiểu phải là số ≥ 0' };
+    if (on && !id) return { error: 'Bật báo cược thì phải điền ID Discord' };
+    dbCache._txNoti = { id, on: !!on, min };
+    txNotiKieu = null;   // đổi ID thì dò lại từ đầu
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL TX] Báo cược Discord: ${on ? 'BẬT' : 'TẮT'}${id ? ' -> ' + id : ''}${min > 0 ? ' (từ ' + min.toLocaleString() + ' trở lên)' : ''}`);
+    return { ok: true, ...txNotiCfg() };
+}
+// Gửi thử 1 tin để chủ server biết ID có đúng không (nút "Gửi thử" ở panel).
+async function txNotiTest() {
+    const c = txNotiCfg();
+    if (!c.id) return { error: 'Chưa điền ID Discord' };
+    const r = await txNotiSend(`🔔 **Thử báo cược Tài Xỉu** - nếu bạn đọc được tin này thì ID đã đúng.`);
+    return r.ok ? { ok: true, kieu: r.kieu } : { error: r.error || 'Không gửi được - kiểm lại ID' };
+}
+// Gửi tới id: thử người trước, rồi tới kênh. Trả {ok,kieu} hoặc {error}.
+async function txNotiSend(noiDung) {
+    const c = txNotiCfg();
+    if (!c.id) return { error: 'chưa có ID' };
+    const thu = txNotiKieu ? [txNotiKieu] : ['user', 'channel'];
+    let loi = '';
+    for (const kieu of thu) {
+        try {
+            if (kieu === 'user') {
+                const u = await client.users.fetch(c.id);
+                await u.send(noiDung);
+            } else {
+                const ch = await client.channels.fetch(c.id);
+                if (!ch || typeof ch.send !== 'function') throw new Error('kênh không gửi được');
+                await ch.send(noiDung);
+            }
+            txNotiKieu = kieu;
+            return { ok: true, kieu };
+        } catch (e) { loi = e.message; }
+    }
+    txNotiKieu = null;
+    return { error: loi };
+}
+// Gọi sau MỖI lần đặt cược (web + 2 nút Discord). KHÔNG await: gửi hỏng cũng không được
+// làm hỏng ván cược của người chơi.
+function txNotifyBet(userId, ten, cua, soTien) {
+    const c = txNotiCfg();
+    if (!c.on || !c.id || soTien < c.min) return;
+    const tenCua = (TX_CHOICES[cua] && TX_CHOICES[cua].name) || String(cua).toUpperCase();
+    const tong = (txState.bets || []).reduce((t, b) => t + (b.amount || 0), 0);
+    const cuaNguoi = (txState.bets || []).filter(b => b.userId === userId).reduce((t, b) => t + (b.amount || 0), 0);
+    const viCon = (getUserData(userId).points || 0);
+    txNotiSend(
+        `🎲 **${ten}** đặt **${Number(soTien).toLocaleString('vi-VN')}** vào **${tenCua}** · ván #${txState.gameId}\n` +
+        `ván này người đó đã đặt ${cuaNguoi.toLocaleString('vi-VN')} · ví còn ${viCon.toLocaleString('vi-VN')} · tổng bàn ${tong.toLocaleString('vi-VN')}`
+    ).catch(() => { });
+}
 // BÃO = 3 viên giống nhau: chỉ cửa Bão ăn (×TX_BAO_RATE), mọi cửa thường thua sạch.
 const TX_BAO_RATE = 30;
 // txState.nan = { gameId, dice: [d1,d2,d3] } - chỉ tồn tại trong cửa sổ nặn
@@ -3574,14 +3675,16 @@ async function manageHistory(state, sessionMsgs) {
 // ==========================================
 // --- LOGIC DÒ MÌN MỚI TỐI ƯU ---
 // ==========================================
-// 25 ô (lưới 5×5 tròn trịa) + RTP 0.95 - chủ server chốt 20/08: "dễ ăn quá" nên
+// 25 ô (lưới 5×5 tròn trịa) + RTP 0.90 (17/09; trước 0.95) - chủ server chốt 20/08: "dễ ăn quá" nên
 // nerf. Hai núm này cùng lúc làm HỆ SỐ KHÚC GIỮA giảm rõ (người chơi dừng-sớm-ăn-chắc
 // bị chạm nhiều nhất), còn các mốc CỐ ĐỊNH (trần nổ hũ 100/200/500, trần có khiên
 // 350/700) giữ nguyên. Lịch sử: 19/08 từng chạy 24 ô/RTP 1.0 theo bảng Discord cũ.
 // ⚠️ /domin bản Discord (đang comment) KHÔNG bật lại được với 25 ô: 25 ô + nút DỪNG
 // = 26 nút, vượt trần 25 nút/tin của Discord.
 const TOTAL_TILES = 25;
-const RTP = 0.95;
+// 17/09 (chủ server): 0,95 -> 0,90 => nhà cái ăn 5% -> 10%. Áp cho TẤT CẢ người chơi,
+// không có ngoại lệ theo từng người. Hệ số trả hiện sẵn trên bàn nên không giấu ai.
+const RTP = 0.90;
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -3698,7 +3801,7 @@ function setMinesLast(userId, g, result, amount, hitIdx) {
 // Rủi ro đã biết khi để 0 - nếu thấy Dogcoin lạm phát thì đây là chỗ siết đầu tiên:
 //   5 mìn mở 15 ô  = tỉ lệ 1/211  -> x204   (chơi vài trăm ván là có người trúng)
 //   12 mìn mở 8 ô  = tỉ lệ 1/840  -> x815
-// RTP 0.95 chỉ đảm bảo nhà cái lãi sau HÀNG CHỤC NGHÌN ván; server nhỏ có thể
+// RTP 0.90 chỉ đảm bảo nhà cái lãi sau HÀNG CHỤC NGHÌN ván; server nhỏ có thể
 // dính một cú trả lớn trước khi tới đó.
 const MINES_MAX_WIN = 0; // 0 = không giới hạn tiền nhận 1 ván
 const MINES_MAX_BET = 0; // 0 = không giới hạn tiền cược 1 ván
@@ -6022,10 +6125,11 @@ client.once('ready', async (c) => {
     try {
         startWebPlay({
             port: parseInt(process.env.PLAY_PORT) || 3002,
-            lockSeconds: TX_LOCK_S,
+            lockSeconds: () => txLockS(),
             getTX: () => txState,
             txMaxBet,        // 💰 trần cược TX/người/ván (hiện trên trang cược)
             txCapCheck,      // 💰 chặn vượt trần (dùng chung luật với Discord)
+            txNotifyBet,     // 🔔 17/09: báo Discord cho chủ server mỗi lần có người đặt
             featOffList,   // 🔌 15/09: danh sách mục admin đang tắt (web giấu tab)
             daLienKet,     // 🔗 17/09: chưa được admin liên kết tên nhân vật thì không thao tác được
             lienKetMsg: () => LIENKET_MSG,
@@ -6243,7 +6347,12 @@ client.once('ready', async (c) => {
                 txState.needsUpdate = true;   // bảng Discord vẽ lại dòng trần cược
                 return { ok: true, maxBet: txMaxBet() };
             },
-            txLockS: TX_LOCK_S,
+            txLockS: () => txLockS(),
+            getTxTime: () => ({ ...txTimeCfg(), round: txRoundS() }),
+            setTxTime: (bet, nan) => setTxTimeCfg(bet, nan),
+            getTxNoti: () => txNotiCfg(),
+            setTxNoti: (id, on, min) => setTxNoti(id, on, min),
+            txNotiTest: () => txNotiTest(),
             diceEmojis: DICE_EMOJIS,
             totalTiles: TOTAL_TILES,
             getTX: () => txState,
@@ -6614,7 +6723,7 @@ function getTXMessageData(customStatus = null) {
     if (recent.length) {
         desc += `\n\n**🎲 ${recent.length} ván gần đây:**\n` + recent.map(txHistoryLine).join('\n');
     }
-    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${TX_LOCK_S} giây cuối khóa sổ để nặn!${txMaxBet() > 0 ? ` · 💰 Trần cược **${txMaxBet().toLocaleString()}**/người/ván` : ''}`}`;
+    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${txLockS()} giây cuối khóa sổ để nặn!${txMaxBet() > 0 ? ` · 💰 Trần cược **${txMaxBet().toLocaleString()}**/người/ván` : ''}`}`;
 
     const embed = new EmbedBuilder()
         .setTitle(`🎲 TÀI XỈU LIVE - Game #${padId(txState.gameId)}`)
@@ -6647,7 +6756,7 @@ function runTaiXiuLoop() {
         if (!txState.message && txState.channel && !txState.isProcessing) {
             txState.isProcessing = true;
             txState.processingStart = Date.now();
-            txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
+            txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
             txState.status = 'betting';
             txState.bets = [];
             txState.activeChoice = null;
@@ -6670,14 +6779,14 @@ function runTaiXiuLoop() {
                 txState.resultPromise = null;
                 txState.bets = [];
                 txState.activeChoice = null;
-                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
+                txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.message = null;
             }
             return;
         }
 
         const nowSec = Math.floor(Date.now() / 1000);
-        const lockTime = txState.targetTime - TX_LOCK_S;
+        const lockTime = txState.targetTime - txLockS();
 
         if (nowSec >= txState.targetTime) {
             // Mở bát: kết quả đã được tính từ lúc đóng phiên, chỉ cần await
@@ -6691,7 +6800,7 @@ function runTaiXiuLoop() {
 
             try {
                 await (txState.resultPromise || Promise.resolve(null));
-                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
+                txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
                 txState.bets = [];
                 txState.gameId++;
@@ -6721,7 +6830,7 @@ function runTaiXiuLoop() {
             } catch (e) {
                 writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
                 // Recovery: reset để ván tiếp theo vẫn chạy được
-                txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
+                txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
                 txState.bets = [];
                 txState.activeChoice = null;
@@ -6974,7 +7083,7 @@ async function startLonnho(channel) {
     txState.channel = channel;
     txState.gameId++;
     txState.timeLeft = 55;
-    txState.targetTime = Math.floor(Date.now() / 1000) + TX_ROUND_S;
+    txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
     txState.status = 'betting';
     txState.bets = [];
     txState.needsUpdate = false;
@@ -7411,6 +7520,7 @@ client.on('interactionCreate', async interaction => {
 
             updatePoints(userId, -amt);
             txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
+            txNotifyBet(userId, interaction.user.username, sel.choice, amt);
 
             userTXSelections[userId] = null;
             txState.activeChoice = null;
@@ -8009,6 +8119,7 @@ client.on('interactionCreate', async interaction => {
 
         updatePoints(userId, -amt);
         txState.bets.push({ userId, username: interaction.user.username, choice: sel.choice, amount: amt });
+        txNotifyBet(userId, interaction.user.username, sel.choice, amt);
 
         userTXSelections[userId] = null;
         txState.activeChoice = null;

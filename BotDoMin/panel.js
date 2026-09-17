@@ -122,6 +122,8 @@ function startPanel(ctx) {
                     secsToBet,
                     baoRate: ctx.txBaoRate || 30,
                     maxBet: ctx.getTXMaxBet ? ctx.getTXMaxBet() : 0,   // 💰 trần cược/người/ván
+                    time: ctx.getTxTime ? ctx.getTxTime() : null,        // ⏱️ 17/09: giây đặt cược + giây nặn
+                    noti: ctx.getTxNoti ? ctx.getTxNoti() : null,        // 🔔 17/09: báo cược về Discord
                 };
             })(),
             forcedMines: ctx.getForcedMines(),
@@ -453,6 +455,26 @@ function startPanel(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     ctx.writeLog('ADMIN', `[PANEL] Trần cược Big Small: ${r.maxBet.toLocaleString()}/người/ván${r.maxBet ? '' : ' (KHÔNG giới hạn)'}`);
                     return sendJSON(res, 200, { ok: true, maxBet: r.maxBet });
+                }
+                // ⏱️ 17/09: nhịp ván - giây ĐẶT CƯỢC + giây NẶN
+                if (path === '/api/tx/time') {
+                    if (!ctx.setTxTime) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setTxTime(body.bet, body.nan);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, bet: r.bet, nan: r.nan, round: r.round });
+                }
+                // 🔔 17/09: báo cược Tài Xỉu về Discord cho chủ server
+                if (path === '/api/tx/noti') {
+                    if (!ctx.setTxNoti) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setTxNoti(body.id, body.on, body.min);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, id: r.id, on: r.on, min: r.min });
+                }
+                if (path === '/api/tx/notitest') {
+                    if (!ctx.txNotiTest) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = await ctx.txNotiTest();
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, kieu: r.kieu });
                 }
                 if (path === '/api/tx/stop') {
                     ctx.stopTX();
@@ -1103,6 +1125,20 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>💰 Trần cược / người / ván (0 = không giới hạn)</label><input id="txMaxBet" type="number" min="0" placeholder="vd: 400000"></div>
           <button class="btn-green" onclick="txSaveMaxBet()">💾 Lưu trần cược</button>
         </div>
+        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="flex:1"><label>⏱️ Giây ĐẶT CƯỢC (5 - 600)</label><input id="txBetS" type="number" min="5" max="600" placeholder="vd: 25"></div>
+          <div style="flex:1"><label>⏱️ Giây NẶN (3 - 300)</label><input id="txNanS" type="number" min="3" max="300" placeholder="vd: 15"></div>
+          <button class="btn-green" onclick="txSaveTime()">💾 Lưu nhịp ván</button>
+        </div>
+        <div class="note" id="txTimeNow">Một ván = giây đặt cược + giây nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.</div>
+        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="flex:1"><label>🔔 ID Discord nhận báo cược</label><input id="txNotiId" type="text" placeholder="ID người hoặc ID kênh"></div>
+          <div style="flex:1"><label>Chỉ báo từ mức (0 = báo hết)</label><input id="txNotiMin" type="number" min="0" placeholder="vd: 5000"></div>
+          <label style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input id="txNotiOn" type="checkbox"> Bật báo</label>
+          <button class="btn-green" onclick="txSaveNoti()">💾 Lưu</button>
+          <button class="btn-grey" onclick="txTestNoti()">📨 Gửi thử</button>
+        </div>
+        <div class="note" id="txNotiNow">Có người đặt cược là bot nhắn cho bạn: ai, cửa nào, bao nhiêu, ván mấy, ví còn bao nhiêu. Điền <b>ID người</b> thì bot nhắn riêng, điền <b>ID kênh</b> thì bot đăng vào kênh - bot tự dò, không cần chọn. Ván đông người mà ngập tin thì đặt mức tối thiểu.</div>
         <div class="note">Tính TỔNG mọi cửa + mọi lần đặt của 1 người trong 1 ván (đặt lắt nhắt nhiều lần cũng không lách được). Áp cả web lẫn Discord; nút ALL IN tự kẹp về phần trần còn lại. Trần hiện lên bảng Discord + trang web.</div>
       </div>
       <div class="card">
@@ -2203,6 +2239,22 @@ function renderTxBetsLive(){
 
 
 function txStart(){const c=document.getElementById('txChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/tx/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bàn ở #'+j.name);refresh();});}
+function txSaveTime(){
+  const b=parseInt(document.getElementById('txBetS').value),n=parseInt(document.getElementById('txNanS').value);
+  if(!(b>=5&&b<=600))return toast('Giây đặt cược: 5 - 600');
+  if(!(n>=3&&n<=300))return toast('Giây nặn: 3 - 300');
+  api('/api/tx/time',{bet:b,nan:n}).then(j=>{toast('⏱️ Ván '+j.round+'s = '+j.bet+'s đặt cược + '+j.nan+'s nặn');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function txSaveNoti(){
+  const id=(document.getElementById('txNotiId').value||'').trim();
+  const on=document.getElementById('txNotiOn').checked;
+  const min=parseInt(document.getElementById('txNotiMin').value)||0;
+  if(on&&!id)return toast('Bật báo thì phải điền ID Discord');
+  api('/api/tx/noti',{id:id,on:on,min:min}).then(j=>{toast(j.on?'🔔 Đã BẬT báo cược':'🔕 Đã TẮT báo cược');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function txTestNoti(){
+  api('/api/tx/notitest',{}).then(j=>toast('📨 Đã gửi thử - kiểm '+(j.kieu==='user'?'tin nhắn riêng':'kênh')+' xem có nhận được không')).catch(e=>toast('❌ '+e.message));
+}
 function txSaveMaxBet(){const n=parseInt(document.getElementById('txMaxBet').value);if(!(n>=0))return toast('Nhập số ≥ 0 (0 = không giới hạn)');api('/api/tx/maxbet',{maxBet:n}).then(j=>{toast('💰 Trần cược Big Small: '+(j.maxBet?j.maxBet.toLocaleString('vi-VN')+'/người/ván':'KHÔNG giới hạn'));refresh();}).catch(e=>toast('❌ '+e.message));}
 async function txStop(){if(!await uiConfirm('Tắt bàn Big Small?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Big Small');refresh();});}
 async function potAdd(key){
@@ -3236,6 +3288,19 @@ async function refresh(force){
   // CHỈ điền khi ô còn TRỐNG (lần đầu mở trang) - refresh 3s không được đè số admin
   // vừa gõ (kể cả khi đã rời focus qua ô khác; bấm 💾 xong giá trị gõ = giá trị lưu).
   const txM=document.getElementById('txMaxBet'); if(txM&&txM.value===''&&document.activeElement!==txM&&STATE.tx.maxBet!==undefined) txM.value=STATE.tx.maxBet;
+  if(STATE.tx.time){
+    const tb=document.getElementById('txBetS'); if(tb&&tb.value===''&&document.activeElement!==tb) tb.value=STATE.tx.time.bet;
+    const tn=document.getElementById('txNanS'); if(tn&&tn.value===''&&document.activeElement!==tn) tn.value=STATE.tx.time.nan;
+    const tw=document.getElementById('txTimeNow');
+    if(tw) tw.innerHTML='Đang áp dụng: ván <b>'+STATE.tx.time.round+'s</b> = '+STATE.tx.time.bet+'s đặt cược + '+STATE.tx.time.nan+'s nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.';
+  }
+  if(STATE.tx.noti){
+    const ni=document.getElementById('txNotiId'); if(ni&&ni.value===''&&document.activeElement!==ni) ni.value=STATE.tx.noti.id||'';
+    const nm=document.getElementById('txNotiMin'); if(nm&&nm.value===''&&document.activeElement!==nm) nm.value=STATE.tx.noti.min||0;
+    const no=document.getElementById('txNotiOn'); if(no&&document.activeElement!==no) no.checked=!!STATE.tx.noti.on;
+    const nw=document.getElementById('txNotiNow');
+    if(nw) nw.innerHTML=(STATE.tx.noti.on&&STATE.tx.noti.id?'<b style="color:var(--green)">ĐANG BẬT</b> - gửi tới <b>'+STATE.tx.noti.id+'</b>'+(STATE.tx.noti.min>0?' (chỉ báo từ '+Number(STATE.tx.noti.min).toLocaleString('vi-VN')+' trở lên)':' (báo mọi mức)'):'<b style="color:var(--red)">ĐANG TẮT</b>')+'. Điền <b>ID người</b> thì bot nhắn riêng, <b>ID kênh</b> thì bot đăng vào kênh - bot tự dò.';
+  }
   if(STATE.dailyCfg){[['dcDaily','daily'],['dcNghien','nghien'],['dcStreakEvery','streakEvery'],['dcStreakBonus','streakBonus']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&el.value===''&&document.activeElement!==el)el.value=STATE.dailyCfg[k];});}
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';

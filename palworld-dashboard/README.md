@@ -699,6 +699,31 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **17/09 (tối muộn)** — ⏱️ **Nhịp ván Tài Xỉu chỉnh được** + 🔔 **báo cược về Discord** + 📉 **Dò Mìn RTP 0,90**.
+  **(1) Nhịp ván**: `TX_ROUND_S`/`TX_LOCK_S` từ hằng số thành `txTimeCfg()` lưu `dbCache._txTime`
+  (`bet` 5-600s, `nan` 3-300s; mặc định giữ nguyên 25 + 15). Panel tab Big Small có 2 ô + nút lưu.
+  **5 chỗ** đặt mốc kết ván đổi sang `txRoundS()`, chỗ khóa sổ sang `txLockS()`. **Ván ĐANG chạy giữ
+  mốc cũ**, ván sau mới theo số mới (targetTime chốt từ đầu ván). `webplay.js` trước **chốt cứng lúc
+  khởi động** (`const LOCK_S = ctx.lockSeconds || 15`) nên đổi số phải restart bot - nay index truyền
+  HÀM, web đọc lại mỗi lần → sửa ở panel là trang chơi ăn ngay.
+  **(2) Báo cược**: có người đặt Tài Xỉu thì bot nhắn cho chủ server (ai · cửa nào · bao nhiêu · ván
+  mấy · ví còn bao nhiêu · tổng bàn). Panel đặt **ID + bật/tắt + mức tối thiểu** (0 = báo hết, đặt mức
+  để ván đông khỏi ngập tin) + nút **Gửi thử**. Một ô ID duy nhất: bot **thử nhắn riêng trước, không
+  được thì gửi vào kênh**, nhớ kiểu gửi thành công để lần sau khỏi dò. Gắn ở **cả 3 cửa** đặt cược
+  (web + 2 nút Discord); gửi hỏng **không** làm hỏng ván cược (đã kiểm bằng e2e: bot test không có
+  Discord, tin nhắn fail, người chơi vẫn đặt được và trừ tiền đúng).
+  **(3) Dò Mìn**: `RTP` 0,95 → **0,90**, nhà cái ăn 5% → 10%. Áp cho **mọi người**, hệ số hiện sẵn
+  trên bàn nên không giấu ai. Ví dụ 3 mìn mở 5 ô: x1.91 → **x1.81**.
+  Kiểm: `txtimetest.js` 54 (chạy hàm thật trong vm: mặc định, chặn số bậy, db rác, báo cược gửi hỏng
+  không ném lỗi) · `txtime-e2e.js` 17 (đổi nhịp qua panel thật → trang chơi nhận ngay; đặt cược thật
+  trong lúc báo Discord đang lỗi) · 18 bộ tĩnh + 8 bộ e2e cũ đều xanh.
+  ❗ **Đã bàn và KHÔNG làm**: chỉnh cho một người cụ thể thua nhiều hơn (kiểu cho qua vài ô đầu rồi
+  cài mìn ở ô 4-5-6). Lý do ghi lại để lần sau khỏi bàn lại: giá trị của nó nằm ở chỗ người chơi không
+  biết; server nhỏ **dễ lộ hơn** vì ai cũng so kèo; repo đang công khai; và chủ server vốn đã cộng trừ
+  Dogcoin thẳng trong panel nên không cần giấu. Hướng thay thế đã đề xuất: **trần thắng mỗi ván**
+  (hiện `MINES_MAX_WIN = 0` = không trần - đây mới là nguồn "thắng lớn"), hạ hệ số, và **trần cược
+  riêng từng người** (nhìn thấy được, không lừa ai).
+
 - **17/09 (tối)** — 🐞 **PANEL CHẾT KHI BẤM TAB** (chủ server báo: *"Uncaught TypeError: Cannot read
   properties of null (reading 'classList')"*). **Không phải lỗi của cổng liên kết** — do đợt xoá Xổ Số
   (`f067db4`) gỡ nút + thẻ giao diện nhưng **sót tên `'xs'` trong danh sách ẩn/hiện tab**, nên

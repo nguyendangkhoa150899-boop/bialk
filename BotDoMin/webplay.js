@@ -14,7 +14,9 @@ const ASSETS = require('./assets');
 
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
-    const LOCK_S = ctx.lockSeconds || 15;
+    // 17/09: admin chỉnh giây NẶN ở panel -> phải đọc lại mỗi lần, không chốt lúc khởi động.
+    // index.js nay truyền HÀM; vẫn nhận số để bản cũ không vỡ.
+    const LOCK_S = () => (typeof ctx.lockSeconds === 'function' ? ctx.lockSeconds() : (ctx.lockSeconds || 15));
     const mines = ctx.mines;   // toàn bộ logic + tiền của dò mìn nằm ở index.js
     const stairs = ctx.stairs; // leo thang cũng vậy
 
@@ -207,7 +209,7 @@ function startWebPlay(ctx) {
                         txMax: ctx.txMaxBet ? ctx.txMaxBet() : 0,   // 💰 trần cược/người/ván (0 = không giới hạn)
                         // giờ server: client dùng để hiệu chỉnh lệch đồng hồ máy người chơi
                         now: Math.floor(Date.now() / 1000),
-                        lockSeconds: LOCK_S,
+                        lockSeconds: LOCK_S(),
                         totals,
                         myBets: my,
                         // Chỉ đưa xí ngầu ra trong cửa sổ nặn - lúc này sổ ĐÃ khóa,
@@ -546,6 +548,8 @@ function startWebPlay(ctx) {
                     tx.bets.push({ userId, username: me.name || ('web_' + userId.slice(-4)), choice, amount });
                     tx.needsUpdate = true; // bảng Discord tự vẽ lại trong 1 giây
                     ctx.writeLog('BET', `[WEB CƯỢC TX] ${me.name || userId} đặt ${amount} vào ${choice} (ván #${tx.gameId})`);
+                    // 🔔 17/09: nhắn cho chủ server. Gửi hỏng cũng KHÔNG được làm hỏng ván cược.
+                    try { if (ctx.txNotifyBet) ctx.txNotifyBet(userId, me.name || ('web_' + userId.slice(-4)), choice, amount); } catch (e) { }
                     return sendJSON(res, 200, { ok: true, balance: ctx.getUserData(userId).points || 0 });
                 }
 
