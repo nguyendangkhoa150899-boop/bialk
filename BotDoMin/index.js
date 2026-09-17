@@ -292,6 +292,7 @@ const TRANSFER_ANNOUNCE_CHANNEL = '1538752789499347037';
 const transferLastAt = new Map(); // userId -> lần chuyển gần nhất (ms)
 
 function webTransfer(fromId, toId, amount) {
+    const chuaLK = lienKetGuard(fromId); if (chuaLK) return { error: chuaLK };   // 🔗 18/09
     toId = String(toId || '').trim();
     amount = Math.floor(Number(amount));
     if (!/^\d{15,20}$/.test(toId)) return { error: 'ID người nhận không hợp lệ' };
@@ -333,6 +334,7 @@ function webTransfer(fromId, toId, amount) {
 // số tiền, trừ tổng = tiền × số người). Vẫn 10s/lần dùng chung đồng hồ với chuyển đơn;
 // gộp 1 thông báo Discord + 1 dòng chat sòng cho đỡ rác kênh.
 function webTransferMulti(fromId, toIds, amount) {
+    const chuaLK = lienKetGuard(fromId); if (chuaLK) return { error: chuaLK };   // 🔗 18/09
     const ids = [...new Set((Array.isArray(toIds) ? toIds : []).map(x => String(x || '').trim()))];
     amount = Math.floor(Number(amount));
     if (!ids.length) return { error: 'Chọn ít nhất 1 người nhận' };
@@ -1045,9 +1047,13 @@ function streakTopUp(u) {
 }
 // ===== 🔗 CỔNG LIÊN KẾT (17/09/2026) =====
 // Tên nhân vật do ADMIN đặt ở panel (userData.ingameName). Chưa có tên = chưa liên kết
-// -> KHÔNG chơi minigame, KHÔNG điểm danh. Áp dụng cho MỌI NGƯỜI, admin cũng vậy.
-// Đăng nhập web vẫn cho vào bình thường để hệ thống nhận ID và admin thấy mà liên kết.
-const LIENKET_MSG = '🔗 Ví của bạn CHƯA được liên kết tên nhân vật trong game - nhắn admin liên kết giúp (chỉ 1 lần). Liên kết xong mới chơi minigame và điểm danh được.';
+// -> 18/09 chủ server siết hết: KHÔNG LÀM GÌ CẢ - không chơi, không điểm danh, KHÔNG CHUYỂN TIỀN
+// (web lẫn lệnh /chuyentien), không mua shop, không nạp/rút, không tặng rương. Áp dụng cho MỌI
+// NGƯỜI, admin cũng vậy. Chỉ chừa: đăng nhập web + xem số dư/trạng thái (để hệ thống nhận ID và
+// admin thấy mà liên kết) và đường LẤY TIỀN VỀ của ván/nợ đang dở (không thì tiền kẹt trong ván).
+// 3 tầng chặn: cổng chung webplay.js (mọi POST), cổng chung interactionCreate (mọi lệnh/nút/modal),
+// và lienKetGuard() ngay trong hàm nghiệp vụ (điểm danh, chuyển tiền) - sửa client vô ích.
+const LIENKET_MSG = '🔗 Ví của bạn CHƯA được liên kết tên nhân vật trong game - nhắn admin liên kết giúp (chỉ 1 lần). Chưa liên kết thì không chơi, không điểm danh, không chuyển tiền, không mua bán được.';
 function daLienKet(userId) { return !!((getUserData(userId).ingameName || '')).trim(); }
 // Trả CHUỖI LỖI nếu chưa liên kết, null nếu đã liên kết. Dùng ở mọi cửa hành động.
 function lienKetGuard(userId) { return daLienKet(userId) ? null : LIENKET_MSG; }
@@ -7617,6 +7623,21 @@ client.on('interactionCreate', async interaction => {
     // NAME_OVERRIDE không bị ảnh hưởng: getUserData ép lại tên đó ở mỗi lần đọc.
     getUserData(userId).name = interaction.user.username;
 
+    // 🔗 18/09: CHƯA LIÊN KẾT = KHÔNG LÀM GÌ trên Discord - /chuyentien, /diemdanh, /nghien, nút
+    // cược Big Small, nạp/rút, vay, shop, modal... tất cả trả 1 câu ephemeral. Chừa đúng 3 thứ
+    // vô hại: /sodu (xem số dư), nút 🌐 web_pin (lấy PIN vào web để admin thấy ID mà liên kết),
+    // vay_my (xem nợ của mình). Web chặn riêng ở webplay.js.
+    if (!daLienKet(userId)) {
+        const kieu = interaction.isChatInputCommand() || interaction.isButton() || interaction.isModalSubmit()
+            || (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu());
+        const id = interaction.isChatInputCommand() ? interaction.commandName : (interaction.customId || '');
+        const LK_MIEN = ['sodu', 'web_pin', 'vay_my'];
+        if (kieu && !LK_MIEN.includes(id)) {
+            writeLog('SYSTEM', `[LIÊN KẾT] Chặn ${interaction.user.tag} (chưa liên kết) thao tác "${id}"`);
+            return interaction.reply({ content: LIENKET_MSG, ephemeral: true });
+        }
+    }
+
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'diemdanh') {
             // Logic chung với web (claimDaily): reset theo NGÀY LỊCH giờ VN, ghi sổ
@@ -7671,6 +7692,7 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.commandName === 'chuyentien') {
+            const chuaLK = lienKetGuard(userId); if (chuaLK) return interaction.reply({ content: chuaLK, ephemeral: true });   // 🔗 18/09 (cổng chung đã chặn, giữ tầng 2)
             const receiver = interaction.options.getUser('nguoi');
             const amount = interaction.options.getInteger('sotien');
             if (receiver.id === userId) return interaction.reply({ content: "❌ Không thể tự chuyển cho mình!", ephemeral: true });

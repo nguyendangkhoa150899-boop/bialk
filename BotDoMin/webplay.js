@@ -149,22 +149,18 @@ function startWebPlay(ctx) {
                     }
                 }
 
-                // 🔗 17/09: CHƯA ĐƯỢC ADMIN LIÊN KẾT thì không chơi minigame / điểm danh được.
-                // Chỉ chặn cửa VÀO VÁN (đặt cược / bắt đầu / quay / điểm danh). KHÔNG chặn đường
-                // xem trạng thái và KHÔNG chặn rút tiền ván đang chơi dở - cùng luật với cổng featOff.
-                // Điểm danh còn được chặn lần nữa ngay trong index.js (claimDaily/claimStreak/claimNghien)
-                // nên lệnh /diemdanh, /nghien bên Discord cũng dính - web sửa gì cũng không lách được.
+                // 🔗 18/09: CHƯA ĐƯỢC ADMIN LIÊN KẾT = KHÔNG HÀNH ĐỘNG GÌ (chủ server chốt: kể cả
+                // chuyển tiền, mua shop, nạp/rút, chat, tặng rương, đổi pal...). Luật là DANH SÁCH CHỪA,
+                // không phải danh sách chặn - đường mới thêm sau tự động bị chặn, khỏi quên.
+                // Chừa đúng 2 loại: (1) XEM - .../state, /table, /hist, /cd, /api/state, /api/profile,
+                // /api/players (trang đang mở không vỡ, admin thấy ID mà liên kết); (2) LẤY TIỀN VỀ của
+                // ván/nợ đang dở - cashout/dismiss/stock close/debt pay/wheel unready (không thì tiền kẹt).
+                // Điểm danh + chuyển tiền còn bị chặn lần 2 trong index.js -> Discord cũng dính.
                 if (ctx.daLienKet && !ctx.daLienKet(userId)) {
-                    const CUA_VAO = [
-                        '/api/bet',
-                        '/api/mines/start',
-                        '/api/stairs/start',
-                        '/api/wheel/ready', '/api/wheel/spin', '/api/wheel/spin1',
-                        '/api/stock/open', '/api/stock/auto',
-                        '/api/spm/bet',
-                        '/api/daily/claim', '/api/daily/nghien', '/api/daily/streak',
-                    ];
-                    if (CUA_VAO.includes(path)) {
+                    const XEM = /\/(state|table|hist|cd)$/.test(path) || ['/api/state', '/api/profile', '/api/players'].includes(path);
+                    const LAY_VE = ['/api/mines/cashout', '/api/mines/dismiss', '/api/stairs/cashout', '/api/stairs/dismiss',
+                        '/api/spm/cashout', '/api/spm/cancelnext', '/api/stock/close', '/api/debt/pay', '/api/wheel/unready'].includes(path);
+                    if (!XEM && !LAY_VE) {
                         return sendJSON(res, 403, { ok: false, chuaLienKet: true, error: ctx.lienKetMsg ? ctx.lienKetMsg() : 'Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn admin liên kết giúp.' });
                     }
                 }
@@ -1437,8 +1433,8 @@ const PAGE = [
 
     // 🔗 17/09: chưa được admin liên kết thì báo ngay, khỏi bấm rồi mới biết.
     '<div id="lkWarn" class="hidden">🔗 <b>Ví của bạn chưa được liên kết tên nhân vật trong game.</b><br>' +
-    'Nhắn <b>admin</b> liên kết giúp (chỉ cần 1 lần). Chưa liên kết thì <b>chưa chơi minigame và chưa điểm danh</b> được. ' +
-    'Số dư, rương pal và các mục khác vẫn xem bình thường.</div>',
+    'Nhắn <b>admin</b> liên kết giúp (chỉ cần 1 lần). Chưa liên kết thì <b>không làm được gì</b>: không chơi, không điểm danh, ' +
+    'không chuyển tiền, không mua bán, không nạp/rút. Chỉ xem số dư và trạng thái được.</div>',
 
     // 25/08: điều hướng 2 TẦNG cho đỡ chồng chéo - tầng 1 chọn NHÓM (Hồ sơ / Mini game),
     // tầng 2 chỉ hiện các trang thuộc nhóm đó. Quay Pal nằm bên nhóm Hồ sơ.
