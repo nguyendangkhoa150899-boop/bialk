@@ -3483,7 +3483,8 @@ const PAGE = [
     '+isBuyRow(it)+"</div>"}',
     // ⭐ 11/09: nhóm QUAN TRỌNG mua 1 lần/người -> không ô số lượng; đã mua -> nút "✅ ĐÃ MUA" khoá
     'function isBuyRow(it){if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
-    'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua</button>"+(ikDuoc(it)?"<button style=\\"background:#3a2e10;border:1px solid #c9a227;color:#ffd76a\\" title=\\"Mua vào Rương Ích Kỷ - không cần đang online\\" onclick=\\"isBuy(\'"+it.id+"\',this,true)\\">🧰 Vào rương</button>":"")+"</div>"}',
+    // 18/09 (chủ server): đổi chỗ 2 nút - 🧰 Vào rương đứng TRƯỚC, 🛒 Mua đứng sau.
+    'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\">"+(ikDuoc(it)?"<button style=\\"background:#3a2e10;border:1px solid #c9a227;color:#ffd76a\\" title=\\"Mua vào Rương Ích Kỷ - không cần đang online\\" onclick=\\"isBuy(\'"+it.id+"\',this,true)\\">🧰 Vào rương</button>":"")+"<button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua</button></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
     'function isImpLeft(){return IS&&IS.implantMax>0?Math.max(0,IS.implantMax-(IS.implantToday||0)):-1}',

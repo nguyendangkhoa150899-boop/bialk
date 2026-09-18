@@ -699,6 +699,19 @@ cược** + dọn 1 lần lúc boot; UI show **20**. Cầu Dogcoin 2 chiều tr�
 
 ### Nhật ký cô đọng (mốc lớn, mới → cũ)
 
+- **18/09** — 🔀 Hàng nút ở Shop Item đổi thứ tự theo ý chủ server: **ô số lượng → 🧰 Vào rương →
+  🛒 Mua** (trước là Mua trước). Chỉ đổi CHỖ, màu giữ nguyên theo từng nút. Món không đủ điều kiện
+  vào rương thì vẫn chỉ có nút Mua.
+  Cùng lượt: lấy về 5 commit chủ server làm tối 17/09 từ máy khác (siết cổng liên kết, thẻ "Tặng
+  riêng 1 người" ở tab Kho đồ). ⚠️ **5 commit đó CHƯA có dòng nhật ký** - ai đọc lại sau này nhớ tra
+  `git log` khoảng 17/09 22:32-23:10.
+  🔁 **Bộ kiểm `lienkettest.js` phải viết lại** vì commit `fd5f939` đổi hẳn kiểu chặn: từ *liệt kê 12
+  đường cần chặn* sang *chặn hết, chỉ chừa đường XEM (`*/state`, `*/table`, `*/hist`, `*/cd`,
+  `/api/profile`, `/api/players`) và đường LẤY TIỀN VỀ (cashout/dismiss/close/debt-pay/unready)*.
+  Kiểu mới chặt hơn hẳn: **route thêm sau này mặc định bị chặn**, khỏi lo quên cập nhật danh sách.
+  Bài kiểm nay dựng lại đúng luật đó rồi chạy thử từng đường (73 case), có cả một đường bịa ra để
+  chứng minh mặc-định-chặn.
+
 - **17/09 (khuya)** — 🧰 **RƯƠNG ÍCH KỶ**: mua đồ shop **không cần đang online**, để dành trong rương,
   rồi **NHẬN vào game** hoặc **TẶNG người khác**; **00:00 giờ VN xoá sạch**, không xài là mất trắng.
   Nút 🧰 nằm trên thanh số dư (chỗ chủ server chỉ), có nhãn đỏ đếm số món.
