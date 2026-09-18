@@ -705,5 +705,40 @@ muc('XIN NGHỈ phải CẢ BÀN ĐỒNG Ý, mỗi người 1 lần');
     ok('người đã cháy không xin nghỉ được', loi3);
 }
 
+// ---------------------------------------------------------------- nhãn việc vừa làm (18/09)
+muc('nhãn việc vừa làm (vuaLam) - cả bàn thấy ai vừa tố/theo/bỏ');
+{
+    const g = moi();
+    let s = g.batDau(BON, 0);
+    const v = () => g._trong.van;
+    const nhan = (st, id) => st.nguoi.find(p => p.id === id).vuaLam;
+    ok('đầu ván chưa ai có nhãn (blind không tính là hành động)', s.nguoi.every(p => p.vuaLam === null));
+    const L1 = v().luot;
+    s = g.hanhDong(L1, 'to', 200, 0);
+    ok('tố tới 200 -> nhãn "to", tiền = TỔNG cược tới 200', nhan(s, L1) && nhan(s, L1).viec === 'to' && nhan(s, L1).tien === 200, JSON.stringify(nhan(s, L1)));
+    ok('nhãn không mang cờ máy khi người tự bấm', !nhan(s, L1).may);
+    const L2 = v().luot, phaiTheo = v().muc - v().cuoc[L2];
+    s = g.hanhDong(L2, 'theo', 0, 0);
+    ok('theo -> nhãn "theo", tiền = số vừa đẩy (' + phaiTheo + ')', nhan(s, L2).viec === 'theo' && nhan(s, L2).tien === phaiTheo, JSON.stringify(nhan(s, L2)));
+    const L3 = v().luot;
+    s = g.hanhDong(L3, 'bo', 0, 0);
+    ok('bỏ bài -> nhãn "bo" và daBo', nhan(s, L3).viec === 'bo' && s.nguoi.find(p => p.id === L3).daBo);
+    ok('nhãn của người tố vẫn còn nguyên khi người khác đang đi', nhan(s, L1).viec === 'to');
+    let n = 0;
+    while (v().vong === 'PREFLOP' && v().luot && n++ < 20) g.hanhDong(v().luot, 'theo', 0, 0);
+    s = g.xemChung();
+    ok('sang FLOP thì nhãn vòng cũ xoá sạch', s.van.vong === 'FLOP' && s.nguoi.every(p => p.vuaLam === null), s.van.vong + ' ' + JSON.stringify(s.nguoi.map(p => p.vuaLam)));
+    ok('...nhưng người đã bỏ vẫn giữ cờ daBo (web tự vẽ "Bỏ bài")', s.nguoi.find(p => p.id === L3).daBo);
+    const L4 = v().luot;
+    s = g.nhip(1e9);   // hết giờ suy nghĩ -> máy đánh giùm
+    ok('hết giờ, miễn phí -> máy XEM giùm, nhãn mang cờ máy', nhan(s, L4) && nhan(s, L4).viec === 'xem' && nhan(s, L4).may === true, JSON.stringify(nhan(s, L4)));
+    // all-in: người còn ít chip nhất tố hết
+    const g2 = moi();
+    g2.batDau(BON, 0);
+    const v2 = g2._trong.van, La = v2.luot;
+    const s2 = g2.hanhDong(La, 'to', v2.cuoc[La] + g2._trong.nguoi.find(p => p.id === La).chip, 0);
+    ok('tố hết chip -> nhãn "allin"', nhan(s2, La).viec === 'allin' && g2._trong.nguoi.find(p => p.id === La).chip === 0, JSON.stringify(nhan(s2, La)));
+}
+
 console.log('\n🏆 MÁY TRẠNG THÁI GIẢI: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

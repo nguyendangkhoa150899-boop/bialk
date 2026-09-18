@@ -212,6 +212,11 @@ input{width:100%;background:#0e1016;border:1px solid var(--line);color:var(--tx)
 .tt.cho{background:#3a2e10;color:var(--gold)}
 .tt.afk{background:#3a1030;color:#e39bff}
 .tt.bai{background:#0d2740;color:#9ad4ff}
+/* 18/09: nhãn việc vừa làm. .to/.theo có sẵn từ đầu nhưng chưa chỗ nào dùng - giờ mới nối dây. */
+.tt.xem{background:#1c2130;color:#c9d3e6}
+.tt.allin{background:linear-gradient(180deg,#5a1a1a,#3a0f0f);color:#ffd76a;border:1px solid #ff6b6b;letter-spacing:.3px}
+.tt.moi{animation:ttNay .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes ttNay{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
 .cuoc{position:absolute;z-index:2;display:flex;align-items:center;gap:5px;transform:translate(-50%,-50%);
   background:rgba(0,0,0,.42);border-radius:999px;padding:2px 9px 2px 3px;
   font-size:clamp(10px,1.7vw,12px);font-weight:800;color:#fff;white-space:nowrap}
@@ -522,6 +527,16 @@ function banKinhX(san){
   }
   return Math.max(24, Math.min(43, (0.5 - (W / 2 + 4) / CW) * 100));
 }
+// Nhãn việc vừa làm trên ghế: Xem · Theo 200 · Tố 500 · ALL-IN 1.200 (Tố = TỔNG cược tới, đúng số
+// người khác phải theo; Theo = số vừa đẩy). Vừa hiện trong 1,5 giây đầu thì nảy nhẹ để bắt mắt.
+function nhanViec(vl){
+  var TEN = { xem:'Xem', theo:'Theo', to:'Tố', allin:'ALL-IN', bo:'Bỏ bài' };
+  var chu = TEN[vl.viec] || vl.viec;
+  if (vl.tien > 0 && vl.viec !== 'xem' && vl.viec !== 'bo') chu += ' ' + vnd(vl.tien);
+  if (vl.may) chu = '🤖 ' + chu;
+  var moi = (Date.now() - (vl.luc || 0)) < 1500 ? ' moi' : '';
+  return '<div class="tt ' + esc(vl.viec) + moi + '">' + esc(chu) + '</div>';
+}
 function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
@@ -808,12 +823,17 @@ function veGhe(s){
         : theUp(true) + theUp(true);
     }
 
+    // 18/09: nhãn VIỆC VỪA LÀM (server gửi p.vuaLam) - cả bàn nhìn ghế là biết ai vừa
+    // Xem / Theo bao nhiêu / Tố tới bao nhiêu / All-in, không phải suy từ đống chip nữa.
+    // Thứ tự ưu tiên: cháy > bỏ > đã lật > rớt mạng > đang nghĩ > việc vừa làm.
     var tt = '';
+    var may = p.vuaLam && p.vuaLam.may ? '🤖 ' : '';   // máy đánh giùm (hết giờ / rớt mạng)
     if (p.chip <= 0 && !p.trongVan) tt = '<div class="tt bo">Đã cháy</div>';
-    else if (p.daBo) tt = '<div class="tt bo">Bỏ bài</div>';
+    else if (p.daBo) tt = '<div class="tt bo">' + may + 'Bỏ bài</div>';
     else if (cuaHo) tt = '<div class="tt bai">' + esc(cuaHo.cham.ten) + '</div>';
     else if (p.afk) tt = '<div class="tt afk">Mất kết nối</div>';
     else if (toiLuot) tt = '<div class="tt cho">⏳ đang nghĩ</div>';
+    else if (p.vuaLam) tt = nhanViec(p.vuaLam);
 
     var gio = toiLuot && v.hanChot ? '<div class="gio"><i style="width:' +
         Math.max(0, Math.min(100, (v.hanChot-Date.now())/300)) + '%"></i></div>' : '';

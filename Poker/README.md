@@ -76,6 +76,8 @@ POKER_PORT=4003 POKER_DB="c:/Users/nguye/Desktop/bialk-test/database.json" node 
 
 3. Phòng chờ là **bàn oval 8 ghế** — bấm ghế trống để ngồi, bấm ghế mình để rời/đổi. **Trang người chơi không có nút admin.** Admin vào **panel SUPER → tab 🃏 Poker**: chọn **chip khởi điểm** (2.000 / 5.000 / 10.000 / 20.000, thang blind tự sinh theo), **▶️ Bắt đầu (N người)**, **🧹 Giải tán**, **⏸️ Tạm nghỉ / ▶️ Chơi tiếp**, và công tắc **Hiện tab 🃏** trên web.
 4. Trong giải: ghế xoay để **mình luôn ở đáy**. Nút cái ván đầu **ngẫu nhiên**, có **viền vàng** + nhãn **D**; nhãn **SB/BB** cạnh tên. Bài mình vừa chia thì **phóng to giữa màn hình để nặn** (kéo/bấm), mở xong giữ 2 giây rồi hạ về ghế; qua vòng bài chung mà chưa mở thì máy **lật giùm**.
+4b. **Nhãn việc vừa làm** (18/09): ai vừa đi là ghế người đó hiện **Xem / Theo 200 / Tố 500 / ALL-IN 1.200** (Tố = TỔNG cược tới, đúng số người khác phải theo; Theo = số vừa đẩy), nảy nhẹ 1,5 giây đầu; máy đánh giùm (hết giờ/rớt mạng) có 🤖 phía trước. Nhãn là của **vòng đang đánh** — sang flop/turn/river thì xoá sạch, riêng Bỏ bài giữ tới hết ván. Server quyết (`v.vuaLam` trong `giai.js`, gửi qua `nguoi[].vuaLam`), web chỉ vẽ (`nhanViec()`).
+
 5. Hết ván: người thắng có hiệu ứng + số chip bay lên, bài người bỏ **tối đen**, đếm ngược **3 giây** rồi chia ván mới. Cháy hết chip → báo *"Bạn đã bị loại — hạng N/M"*, ngồi xem tiếp (chỉ thấy bài lúc lật).
 6. Giải xong → bảng hạng 1→8. Admin **Giải tán** để mở giải mới.
 

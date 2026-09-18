@@ -196,6 +196,11 @@ function taoGiai(tuyChon = {}) {
             cuoc: {},                            // đã đẩy trong VÒNG này
             tongCuoc: {},                        // đã đẩy cả VÁN (dùng chia hũ phụ)
             daBo: new Set(), daDi: new Set(),
+            // 18/09: NHÃN VIỆC VỪA LÀM — id -> { viec, tien, luc }. Cả bàn nhìn ghế là biết
+            // người đó vừa BỎ / XEM (miễn phí) / THEO / TỐ / ALL-IN bao nhiêu, không phải suy
+            // từ đống chip. Xoá sạch mỗi khi sang vòng mới (flop/turn/river) — đúng như sòng
+            // thật: nhãn là của VÒNG ĐANG ĐÁNH. Riêng người đã bỏ thì web tự giữ nhãn BỎ.
+            vuaLam: {},
             khoe: {},                            // id -> { i, la, den } khoe 1 lá cho cả bàn xem
             muc: 0, toToiThieu: bl.bb,
             luot: null, hanChot: 0,
@@ -251,12 +256,18 @@ function taoGiai(tuyChon = {}) {
         const p = ai(id);
         const canTheo = v.muc - v.cuoc[id];
 
+        // nhãn cho cả bàn xem: tên việc + số chip vừa đẩy (xem mô tả v.vuaLam ở vanMoi)
+        const ghiViec = (viec, tien = 0) => { v.vuaLam[id] = { viec, tien, luc: bayGio }; };
+
         if (kieu === 'bo') {
             // chặn bỏ bài khi đang MIỄN PHÍ - gần như luôn là bấm nhầm
             if (canTheo <= 0) throw new Error('Đang miễn phí, đừng bỏ bài — cứ THEO');
             v.daBo.add(id);
+            ghiViec('bo');
         } else if (kieu === 'theo') {
-            dayChip(id, canTheo);
+            const day = dayChip(id, canTheo);
+            // canTheo = 0 nghĩa là không phải bỏ đồng nào -> đó là "xem bài" (check), không phải "theo"
+            ghiViec(canTheo <= 0 ? 'xem' : (p.chip === 0 ? 'allin' : 'theo'), day);
         } else if (kieu === 'to') {
             const toiDa = v.cuoc[id] + p.chip;
             if (tien > toiDa) throw new Error('Không đủ chip: tối đa tố tới ' + toiDa);
@@ -267,6 +278,7 @@ function taoGiai(tuyChon = {}) {
             v.toToiThieu = Math.max(v.toToiThieu, v.cuoc[id] - v.muc);
             v.muc = v.cuoc[id];
             v.daDi.clear();                       // có người tố -> ai cũng phải đi lại
+            ghiViec(p.chip === 0 ? 'allin' : 'to', v.cuoc[id]);   // tố: hiện TỔNG cược tới, đúng cái người khác phải theo
         } else throw new Error('Kiểu hành động lạ: ' + kieu);
 
         v.daDi.add(id);
@@ -409,8 +421,10 @@ function taoGiai(tuyChon = {}) {
             if (G.trangThai !== 'DANG_CHAY' || !v || !v.luot) break;
             const p = ai(v.luot);
             if (!p.afk && bayGio < v.hanChot) break;
-            const mienPhi = v.muc - v.cuoc[v.luot] <= 0;
-            hanhDong(v.luot, mienPhi ? 'theo' : 'bo', 0, bayGio);
+            const mienPhi = v.muc - v.cuoc[v.luot] <= 0, aiDo = v.luot;
+            hanhDong(aiDo, mienPhi ? 'theo' : 'bo', 0, bayGio);
+            // đánh máy (rớt mạng hoặc hết giờ) -> đánh dấu để cả bàn biết đây không phải người bấm
+            if (V() && V().vuaLam[aiDo]) V().vuaLam[aiDo].may = true;
         }
         return xemChung();
     }
@@ -447,6 +461,7 @@ function taoGiai(tuyChon = {}) {
         v.muc = 0;
         v.toToiThieu = C.lichBlind[G.mucBlind].bb;
         v.daDi.clear();
+        v.vuaLam = {};                            // nhãn việc là của VÒNG vừa xong -> sang vòng mới thì xoá
         // Sau flop người đi đầu là người BÊN TRÁI nút cái, KHÔNG phải nút cái
         // (nút cái đi cuối — đó là cái lợi của vị trí này). Nên gomCaChinh = false.
         v.luot = keTiepDuocDi(G.nguoi[G.nutCai].id, false);
@@ -605,6 +620,7 @@ function taoGiai(tuyChon = {}) {
                 daBo: v ? v.daBo.has(p.id) : false,
                 cuoc: v && v.cuoc[p.id] !== undefined ? v.cuoc[p.id] : 0,
                 trongVan: v ? v.thuTu.includes(p.id) : false,
+                vuaLam: v && v.vuaLam[p.id] ? v.vuaLam[p.id] : null,   // 18/09: nhãn BỎ/XEM/THEO/TỐ/ALL-IN cho cả bàn thấy
             })),
             van: v ? {
                 so: v.so, vong: v.vong, chung: v.chung.slice(),
