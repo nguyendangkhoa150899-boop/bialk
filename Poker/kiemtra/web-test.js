@@ -140,6 +140,36 @@ const dangNhap = async (id) => (await goi('/api/dangnhap', { id, pin: '123456' }
     for (const id of [ADMIN, '900000000000000002', '900000000000000003', '900000000000000004'])
         NG[id] = (await dangNhap(id)).token;
     const IDS = Object.keys(NG);
+    // ------------------------------------------------------------ 18/09: SẴN SÀNG tự mở giải + VÀO MUỐN
+    muc('✅ sẵn sàng -> tự mở giải không cần admin · vào muộn dưới 1 phút');
+    {
+        const [A, B, C] = IDS;
+        const r0 = await goi('/api/sansang', {}, NG[A]);
+        ok('chưa ngồi mà bấm sẵn sàng -> chặn', r0.ma === 400, r0.j && r0.j.error);
+        await goi('/api/ngoi', { ghe: 0 }, NG[A]);
+        await goi('/api/ngoi', { ghe: 1 }, NG[B]);
+        const r1 = await goi('/api/sansang', {}, NG[A]);
+        ok('A sẵn sàng: 1/2, chưa mở giải', r1.ma === 200 && r1.j.toiSanSang === true && r1.j.sanSang.length === 1 && !r1.j.giai, JSON.stringify([r1.j.toiSanSang, r1.j.sanSang, !!r1.j.giai]));
+        const r1b = await goi('/api/sansang', {}, NG[A]);
+        ok('A bấm lại = huỷ sẵn sàng', r1b.j.toiSanSang === false && r1b.j.sanSang.length === 0);
+        await goi('/api/sansang', {}, NG[A]);
+        const r2 = await goi('/api/sansang', {}, NG[B]);
+        ok('B sẵn sàng nốt -> giải MỞ NGAY trong cùng phản hồi, 2 người, không cần admin',
+            r2.ma === 200 && r2.j.giai && r2.j.giai.trangThai === 'DANG_CHAY' && r2.j.giai.nguoi.length === 2,
+            JSON.stringify(r2.j.giai && [r2.j.giai.trangThai, r2.j.giai.nguoi.length]));
+        ok('mở xong thì dấu sẵn sàng xoá sạch', r2.j.sanSang.length === 0);
+        ok('cửa vào muộn còn mở (~60s)', r2.j.giai.vaoMuonDen > Date.now() + 50000 && r2.j.giai.conCho === 6, JSON.stringify([r2.j.giai.vaoMuonDen - Date.now(), r2.j.giai.conCho]));
+        const r3 = await goi('/api/ngoi', { ghe: 5 }, NG[C]);
+        const c = r3.j && r3.j.giai && r3.j.giai.nguoi.find(p => p.id === C);
+        ok('C nhảy vào lúc giải đang chạy -> được, 5.000 chip, chờ ván kế (trongVan=false)', r3.ma === 200 && c && c.chip === 5000 && c.trongVan === false, JSON.stringify(c || r3.j));
+        ok('C thấy trạng thái riêng (xem) chứ không phải khán giả', r3.j.giai.toi && r3.j.giai.toi.id === C);
+        const r4 = await goi('/api/ngoi', { ghe: 6 }, NG[C]);
+        ok('C đòi đổi ghế giữa giải -> chặn', r4.ma === 400, r4.j && r4.j.error);
+        const r5 = await goi('/api/ngoi', { ghe: 5 }, NG[A]);
+        ok('A (đang trong giải) ngồi lại ghế của C -> chặn', r5.ma === 400, r5.j && r5.j.error);
+        const r6 = await goi('/api/giaitan', {}, NG[ADMIN]);
+        ok('admin giải tán để chạy tiếp các bài kiểm cũ', r6.ma === 200 && !r6.j.giai && r6.j.cho.length === 0 && r6.j.sanSang.length === 0);
+    }
     {
         const khach = await dangNhap('900000000000000005');
         const r = await goi('/api/batdau', {}, khach.token);

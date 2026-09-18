@@ -4,7 +4,7 @@
 > Chủ server: **Khoa** — không rành code. Trả lời tiếng Việt, chỉ rõ file và dòng.
 
 Giải poker **loại dần**, chip trong bàn là **chip ảo**. Không ai ăn Dogcoin của ai. Giải chỉ đẻ ra
-**thứ hạng 1→8**; thưởng Pal / phạt là admin tự trao trong game. Bàn tối đa 8, tối thiểu 2, admin mở.
+**thứ hạng 1→8**; thưởng Pal / phạt là admin tự trao trong game. Bàn tối đa 8, tối thiểu 2. **Người chơi tự mở** (ai cũng bấm ✅ Sẵn sàng); admin chỉ đặt chip / giải tán / tạm nghỉ, nút Bắt đầu ở panel là đường tắt.
 
 **Chạy NHÚNG trong web BotDoMin** (chủ server chốt "gộp chung, xài chung 1 link"): cùng cổng web cược,
 tab thứ 3 **🃏 GIẢI POKER** trên trang chính (admin bật/tắt ở panel SUPER), cùng phiên đăng nhập.
@@ -47,7 +47,7 @@ Mã lá = tên file: `As` `Kh` `10d` `2c` → `bai/As.webp`. Chất `s`♠ `h`�
 cd /root/tts-bot && git pull && pm2 restart BotDoMin
 ```
 Thư mục `Poker/` phải nằm **cạnh** `BotDoMin/` trong repo (`BotDoMin/index.js` và `webplay.js` tìm `../Poker`).
-Sau khi lên: panel SUPER → tab **🃏 Poker** → điền **Admin poker** (ID Discord) → tick **Hiện tab** → người chơi thấy tab **GIẢI POKER** trên web cược.
+Sau khi lên: panel SUPER → tab **🃏 Poker** → tick **Hiện tab** → người chơi thấy tab **GIẢI POKER** trên web cược và **tự mở giải bằng nút Sẵn sàng**. Ô **Admin poker** (ID Discord) chỉ cần cho đường tắt `/api/poker/batdau|giaitan` qua web.
 
 **Bản test local:** `node Desktop/bialk-test.js 5 → 3 → 4`. Script này chép 7 file BotDoMin sang `bialk-test/` nhưng **đọc `Poker/` thẳng từ repo** qua biến `POKER_DIR` (đặt sẵn trong bước 4) → sửa `trang.html` là bản test ăn ngay. Bước 6 có nhánh kiểm poker.
 
@@ -74,7 +74,7 @@ POKER_PORT=4003 POKER_DB="c:/Users/nguye/Desktop/bialk-test/database.json" node 
 2. **Cổng vào:** phải có `ingameName` (đã liên kết) **và** ví ≥ `DOGCOIN_VAO_GIAI = 10.000`. **Chỉ kiểm, không trừ.** Kiểm lại lần nữa lúc admin bấm Bắt đầu.
 **Toàn màn hình:** bấm tab 🃏 là khung nhúng phủ kín màn (che thanh số dư + 2 hàng tab của web cược), thoát bằng nút **✕ Thoát poker** góc phải trên. Cơ chế: `go()` bật lớp `body.pokerFull` trong `webplay.js`.
 
-3. Phòng chờ là **bàn oval 8 ghế** — bấm ghế trống để ngồi, bấm ghế mình để rời/đổi. **Trang người chơi không có nút admin.** Admin vào **panel SUPER → tab 🃏 Poker**: chọn **chip khởi điểm** (2.000 / 5.000 / 10.000 / 20.000, thang blind tự sinh theo), **▶️ Bắt đầu (N người)**, **🧹 Giải tán**, **⏸️ Tạm nghỉ / ▶️ Chơi tiếp**, và công tắc **Hiện tab 🃏** trên web.
+3. Phòng chờ là **bàn oval 8 ghế** — bấm ghế trống để ngồi, bấm ghế mình để rời/đổi. **Ngồi rồi thì giữa bàn có nút ✅ SẴN SÀNG** (bấm lại = huỷ; rời ghế là mất dấu). **≥ 2 người ngồi và AI CŨNG sẵn sàng → máy chủ tự mở giải**, không cần admin (`web.js`: `phong.sanSang`, `tuMoGiai()` chạy ngay lúc người cuối bấm và mỗi nhịp 1 giây; ai rớt điều kiện — hết Dogcoin, mất liên kết — thì bị gỡ dấu để bàn không kẹt). **Vào muộn:** giải chạy **dưới 60 giây** (`GIAY_VAO_MUON`, `van.vaoMuonDen`) và còn ghế thì khán giả đủ điều kiện thấy nút **🚪 Vào giải ngay — còn Xs** ở hàng nút → ngồi ghế trống, nhận đủ chip khởi điểm, ghế hiện "🚪 Vào ván sau", đánh từ ván kế (`giai.js: themNguoi()`). Không đổi ghế / rời ghế giữa giải. Admin ở **panel SUPER → tab 🃏 Poker**: **chip khởi điểm** (2.000 / 5.000 / 10.000 / 20.000, thang blind tự sinh theo), **▶️ Bắt đầu** (đường tắt, không cần ai sẵn sàng), **🧹 Giải tán**, **⏸️ Tạm nghỉ / ▶️ Chơi tiếp**, công tắc **Hiện tab 🃏**.
 4. Trong giải: ghế xoay để **mình luôn ở đáy**. Nút cái ván đầu **ngẫu nhiên**, có **viền vàng** + nhãn **D**; nhãn **SB/BB** cạnh tên. Bài mình vừa chia thì **phóng to giữa màn hình để nặn** (kéo/bấm), mở xong giữ 2 giây rồi hạ về ghế; qua vòng bài chung mà chưa mở thì máy **lật giùm**.
 4b. **Nhãn việc vừa làm** (18/09): ai vừa đi là ghế người đó hiện **Xem / Theo 200 / Tố 500 / ALL-IN 1.200** (Tố = TỔNG cược tới, đúng số người khác phải theo; Theo = số vừa đẩy), nảy nhẹ 1,5 giây đầu; máy đánh giùm (hết giờ/rớt mạng) có 🤖 phía trước. Nhãn là của **vòng đang đánh** — sang flop/turn/river thì xoá sạch, riêng Bỏ bài giữ tới hết ván. Server quyết (`v.vuaLam` trong `giai.js`, gửi qua `nguoi[].vuaLam`), web chỉ vẽ (`nhanViec()`).
 

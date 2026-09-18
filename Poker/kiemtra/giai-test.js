@@ -803,5 +803,44 @@ muc('tên tay 2 lá preflop (toi.tenTay)');
     ok('preflop chưa có cham (chưa đủ 5 lá)', g.xem('A').toi.cham === null);
 }
 
+// ---------------------------------------------------------------- vào muộn (18/09)
+muc('VÀO MUỘN — giải chạy dưới 60 giây thì người mới vẫn vào được, đánh từ ván kế');
+{
+    const g = moi({ lichBlind: [{ sb: 10, bb: 20 }], giayLoDan: 0 });
+    let s = g.batDau([{ id: 'A', ten: 'A', ghe: 0 }, { id: 'B', ten: 'B', ghe: 1 }], 1000);
+    ok('vừa mở: cửa vào muộn tới mốc 1000 + 60s, còn 6 chỗ', s.vaoMuonDen === 61000 && s.conCho === 6, JSON.stringify([s.vaoMuonDen, s.conCho]));
+    s = g.themNguoi({ id: 'C', ten: 'C', ghe: 4 }, 30000);
+    const c = s.nguoi.find(p => p.id === 'C');
+    ok('C vào lúc 30s: có trong danh sách, đủ 5.000 chip, KHÔNG dính ván đang đánh', c && c.chip === 5000 && c.trongVan === false && c.cuoc === 0, JSON.stringify(c));
+    ok('ván đang đánh vẫn của A-B (thứ tự 2 người)', g._trong.van.thuTu.length === 2 && !g._trong.van.tay.C);
+    ok('tổng chip = 3 × 5.000', tongChip(g) + s.van.hu === 15000, String(tongChip(g) + s.van.hu));
+    let loi = '';
+    try { g.themNguoi({ id: 'C', ten: 'C', ghe: 5 }, 31000); } catch (e) { loi = e.message; }
+    ok('C vào lần 2 -> chặn "đang trong giải rồi"', /trong giải/.test(loi), loi);
+    loi = '';
+    try { g.themNguoi({ id: 'D', ten: 'D', ghe: 4 }, 32000); } catch (e) { loi = e.message; }
+    ok('D đòi ghế 4 của C -> chặn "ghế có người"', /Ghế/.test(loi), loi);
+    loi = '';
+    try { g.themNguoi({ id: 'D', ten: 'D', ghe: 6 }, 61001); } catch (e) { loi = e.message; }
+    ok('D vào lúc 61s -> hết cửa', /Hết cửa/.test(loi), loi);
+    // hết ván A-B -> ván kế phải có C
+    theoHetVan(g, 35000);
+    s = g.vanKe(36000);
+    ok('ván kế: C được chia bài, thứ tự 3 người', s.van.so === 2 && g._trong.van.thuTu.length === 3 && !!g._trong.van.tay.C, JSON.stringify(g._trong.van.thuTu));
+    ok('C có nhãn trongVan ở ván 2', s.nguoi.find(p => p.id === 'C').trongVan === true);
+    // giải chưa chạy / đã xong thì không thêm được
+    const g2 = moi();
+    loi = '';
+    try { g2.themNguoi({ id: 'Z', ten: 'Z', ghe: 0 }, 0); } catch (e) { loi = e.message; }
+    ok('giải chưa mở -> chặn', /chưa chạy/.test(loi), loi);
+    // đủ 8 người thì chặn
+    const g3 = moi({ lichBlind: [{ sb: 10, bb: 20 }] });
+    g3.batDau(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((x, i) => ({ id: x, ten: x, ghe: i })), 0);
+    loi = '';
+    try { g3.themNguoi({ id: 'I', ten: 'I', ghe: 8 }, 1000); } catch (e) { loi = e.message; }
+    ok('bàn đủ 8 -> chặn', /đủ 8/.test(loi), loi);
+    ok('xemChung báo hết chỗ (conCho = 0)', g3.xemChung().conCho === 0);
+}
+
 console.log('\n🏆 MÁY TRẠNG THÁI GIẢI: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

@@ -44,6 +44,9 @@ const GIAY_MOI_LUOT = 30;
 // lật từng vòng (flop -> turn -> river) cách nhau chừng này giây rồi mới chốt ván, cho người
 // chơi kịp nhìn. Chủ server thử 2 người all-in: "chưa hiểu chuyện gì đã qua tổng kết rồi".
 const GIAY_LO_DAN = 1.6;
+// 18/09: VÀO MUỘN — giải đã bắt đầu dưới chừng này giây thì người khác vẫn ngồi vào được (nhận đủ
+// chip khởi điểm, đánh từ ván KẾ). Chủ server chốt 1 phút. Quá mốc là khoá tới hết giải.
+const GIAY_VAO_MUON = 60;
 const GIAY_KHOE = 4;           // khoe 1 lá thì cả bàn thấy trong chừng này giây
 const CHIP_DAU = 5000;
 const TOI_DA_NGUOI = 8;        // 8 ghế quanh bàn - chủ server chốt
@@ -103,6 +106,7 @@ function taoGiai(tuyChon = {}) {
         phutMoiMuc: tuyChon.phutMoiMuc || PHUT_MOI_MUC,
         giayMoiLuot: tuyChon.giayMoiLuot || GIAY_MOI_LUOT,
         giayLoDan: tuyChon.giayLoDan != null ? tuyChon.giayLoDan : GIAY_LO_DAN,   // 0 = chia nốt ngay (bộ kiểm cũ)
+        giayVaoMuon: tuyChon.giayVaoMuon != null ? tuyChon.giayVaoMuon : GIAY_VAO_MUON,
         vanToiThieuMoiMuc: tuyChon.vanToiThieuMoiMuc != null ? tuyChon.vanToiThieuMoiMuc : VAN_TOI_THIEU_MOI_MUC,
     };
 
@@ -123,6 +127,7 @@ function taoGiai(tuyChon = {}) {
         tongNghiMs: 0,           // tổng thời gian đã nghỉ (để báo cho người chơi)
         nghiXin: null,           // đề nghị đang chờ: { boi, dongY:Set, luc }
         daXinNghi: new Set(),    // ai đã dùng lượt xin nghỉ của mình rồi
+        batDauLuc: null,         // mốc bấm bắt đầu — tính cửa VÀO MUỘN (giayVaoMuon); null = chưa mở
     };
 
     // ---------------------------------------------------------------- tiện ích
@@ -157,6 +162,7 @@ function taoGiai(tuyChon = {}) {
             ghe: Number.isInteger(p.ghe) ? p.ghe : i, afk: false,
         }));
         G.trangThai = 'DANG_CHAY';
+        G.batDauLuc = bayGio;
         G.mucBlind = 0;
         G.gioLenMuc = bayGio + C.phutMoiMuc * 60000;
         // Nút cái ván đầu chọn NGẪU NHIÊN (như sòng thật rút bài cao). vanMoi() sẽ
@@ -605,6 +611,27 @@ function taoGiai(tuyChon = {}) {
         return xemChung();
     }
 
+    /**
+     * 18/09: VÀO MUỘN. Giải đã chạy nhưng chưa quá giayVaoMuon giây kể từ lúc bắt đầu -> thêm người
+     * mới với đủ chip khởi điểm. Người này KHÔNG dính ván đang đánh (không có trong v.thuTu / v.tay /
+     * v.cuoc — mọi chỗ đọc đều đã phòng: chotVan dò chipDauVan, xemChung trả cuoc 0 / trongVan false),
+     * vanMoi() kế tiếp xếp họ vào thứ tự đánh như mọi người. Web hiện "Vào ván sau" ở ghế họ.
+     */
+    function themNguoi(p, bayGio = Date.now()) {
+        if (G.trangThai !== 'DANG_CHAY') throw new Error('Giải chưa chạy hoặc đã xong');
+        // so `== null` chứ không `!G.batDauLuc`: bộ kiểm mở giải ở mốc 0 là hợp lệ
+        if (G.batDauLuc == null || bayGio - G.batDauLuc > C.giayVaoMuon * 1000)
+            throw new Error('Hết cửa vào muộn (chỉ trong ' + C.giayVaoMuon + ' giây đầu) — chờ giải sau');
+        if (G.nguoi.length >= TOI_DA_NGUOI) throw new Error('Bàn đủ ' + TOI_DA_NGUOI + ' người rồi');
+        if (ai(p.id)) throw new Error('Người này đang trong giải rồi');
+        if (G.nguoi.some(q => q.ghe === p.ghe)) throw new Error('Ghế này có người rồi');
+        G.nguoi.push({
+            id: p.id, ten: p.ten || p.id, chip: C.chipDau,
+            ghe: Number.isInteger(p.ghe) ? p.ghe : G.nguoi.length, afk: false,
+        });
+        return xemChung();
+    }
+
     /** Mở ván kế (server gọi sau khi người chơi xem xong màn lật bài). */
     function vanKe(bayGio = Date.now()) {
         if (G.trangThai !== 'DANG_CHAY') return xemChung();
@@ -639,6 +666,9 @@ function taoGiai(tuyChon = {}) {
             // phải tính cả SÀN, không thì bàn 4 người báo "còn 3 ván" trong khi thật ra còn 5
             vanConLai: Math.max(0, Math.max(conSong().length, C.vanToiThieuMoiMuc) - G.vanTuLenMuc),
             nutCai: G.nguoi[G.nutCai] ? G.nguoi[G.nutCai].id : null,
+            // 18/09: cửa VÀO MUỘN — web hiện nút "Vào giải ngay (còn Xs)" cho khán giả tới mốc này
+            vaoMuonDen: G.trangThai === 'DANG_CHAY' && G.batDauLuc != null ? G.batDauLuc + C.giayVaoMuon * 1000 : 0,
+            conCho: Math.max(0, TOI_DA_NGUOI - G.nguoi.length),
             nghi: G.nghi, nghiBoi: G.nghiBoi, tongNghiMs: G.tongNghiMs,
             // đề nghị nghỉ đang chờ: web vẽ nút "Đồng ý / Không" cho ai chưa bỏ phiếu
             xinNghi: G.nghiXin ? {
@@ -699,7 +729,7 @@ function taoGiai(tuyChon = {}) {
 
     return {
         batDau, hanhDong, nhip, vanKe, ketQua, xem, xemChung,
-        roiMang, noiLai,
+        roiMang, noiLai, themNguoi,
         xinNghi, dongYNghi, tuChoiNghi, tamNghi, choiTiep, khoeBai,
         _trong: G, _cauHinh: C,
     };

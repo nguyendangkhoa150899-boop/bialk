@@ -511,8 +511,17 @@ function veCho(s){
   $('choVi').textContent = s.toi.ten + ' · ' + vnd(s.toi.dogcoin) + ' Dogcoin';
   var daNgoi = s.gheCuaToi >= 0;
   $('choDem').textContent = s.cho.length + '/' + s.toiDa + ' người đã ngồi · mỗi người ' + vnd(s.chipDau) + ' chip';
-  $('choGiua').textContent = daNgoi ? 'Bạn đã ngồi — chờ admin bắt đầu' :
-      (s.toi.duocNgoi ? 'Bấm một ghế trống để ngồi' : 'Bạn chưa đủ điều kiện vào giải');
+  // 18/09: không cần admin nữa — ngồi rồi thì giữa bàn có nút ✅ SẴN SÀNG; đủ ≥ 2 người và ai cũng
+  // sẵn sàng là máy chủ tự mở giải. Bấm lại = huỷ sẵn sàng.
+  var ss = s.sanSang || [], soSS = ss.length, soNgoi = s.cho.length;
+  var giua;
+  if (daNgoi){
+    giua = '<button class="b ' + (s.toiSanSang ? 'xam' : 'xanh') + '" style="font-size:15px;padding:9px 18px" onclick="sanSang()">' +
+           (s.toiSanSang ? '↩️ Huỷ sẵn sàng' : '✅ SẴN SÀNG') + '</button>' +
+           '<div class="mo" style="margin-top:6px;color:#bfe7d3">' + soSS + '/' + soNgoi + ' người đã sẵn sàng' +
+           (soNgoi < s.toiThieu ? ' · cần ít nhất ' + s.toiThieu + ' người ngồi' : (soSS === soNgoi ? ' · đang mở giải…' : ' · đủ hết là vào ván ngay')) + '</div>';
+  } else giua = s.toi.duocNgoi ? 'Bấm một ghế trống để ngồi' : 'Bạn chưa đủ điều kiện vào giải';
+  datHTML($('choGiua'), giua);
 
   // 8 ghế cố định quanh bàn (ghế 0 ở đáy), không xoay theo người xem như lúc đánh
   var n = s.ghe.length, o = '';
@@ -537,9 +546,11 @@ function veCho(s){
   $('choThang').textContent = 'Thang blind: ' + (s.lichBlind || []).slice(0, 8).map(vnd).join(' → ') +
       (s.lichBlind && s.lichBlind.length > 8 ? ' → …' : '') + ' · lên mức mỗi 8 phút hoặc mỗi vòng (tối thiểu 6 ván)' +
       (s.toi.admin ? ' · bạn là admin — bấm Bắt đầu ở panel SUPER (tab 🃏 Poker)' : '');
-  $('choPhu').textContent = 'Cần có ' + vnd(s.dogcoinVao) + ' Dogcoin để vào · từ ' + s.toiThieu + ' đến ' + s.toiDa + ' người · admin mở giải từ panel';
+  $('choPhu').textContent = 'Cần có ' + vnd(s.dogcoinVao) + ' Dogcoin để vào · từ ' + s.toiThieu + ' đến ' + s.toiDa + ' người · ai cũng bấm SẴN SÀNG là vào ván · giải chạy dưới 1 phút vẫn nhảy vào được';
 }
 function ngoi(k){ goi('/ngoi', { ghe: k }); }
+function sanSang(){ goi('/sansang', {}); }            // 18/09: bấm lại = huỷ
+function vaoMuon(){ goi('/ngoi', {}); }               // 18/09: giải chạy < 1 phút, ngồi ghế trống đầu tiên
 function roi(){ goi('/roi'); }
 // (đặt chip / bắt đầu / giải tán: PANEL SUPER, không có ở trang người chơi)
 
@@ -929,6 +940,7 @@ function veGhe(s){
     var tt = '';
     var may = p.vuaLam && p.vuaLam.may ? '🤖 ' : '';   // máy đánh giùm (hết giờ / rớt mạng)
     if (p.chip <= 0 && !p.trongVan) tt = '<div class="tt bo">Đã cháy</div>';
+    else if (!p.trongVan && v.vong) tt = '<div class="tt cho">🚪 Vào ván sau</div>';   // 18/09: người vào muộn, chờ ván kế
     else if (p.daBo) tt = '<div class="tt bo">' + may + 'Bỏ bài</div>';
     else if (cuaHo) tt = '<div class="tt bai">' + esc(cuaHo.cham.ten) + '</div>';
     else if (p.afk) tt = '<div class="tt afk">Mất kết nối</div>';
@@ -1063,8 +1075,15 @@ function veAct(s){
   var conLuot = trongGiai && t.toiLuot && !g.nghi;
 
   if (!trongGiai){
+    // 18/09: giải mới chạy dưới 1 phút và còn ghế -> khán giả đủ điều kiện được NHẢY VÀO (đánh từ ván kế)
+    var conMuon = g.vaoMuonDen ? Math.ceil((g.vaoMuonDen - Date.now()) / 1000) : 0;
+    if (conMuon > 0 && g.conCho > 0 && s.toi && s.toi.duocNgoi){
+      return void datHTML(e,
+        '<div class="dong"><button class="b xanh" style="flex:1" onclick="vaoMuon()">🚪 Vào giải ngay — còn ' + conMuon + ' giây · ' + g.conCho + ' ghế trống</button></div>' +
+        '<div class="nho">Nhận đủ ' + vnd(s.chipDau) + ' chip, đánh từ ván kế. Quá 1 phút là khoá tới hết giải.</div>');
+    }
     return void datHTML(e, '<p class="mo" style="text-align:center;margin:0">👀 Bạn đang xem. ' +
-      'Bài của người chơi chỉ hiện khi lật bài.</p>');
+      'Bài của người chơi chỉ hiện khi lật bài.' + (conMuon > 0 && g.conCho > 0 && s.toi && !s.toi.duocNgoi ? ' <span style="color:#ff9a9a">' + esc(s.toi.viSaoKhong || '') + '</span>' : '') + '</p>');
   }
   // Đã cháy: phải nói thẳng ra. Thiếu nhánh này thì người bị loại vẫn thấy thanh
   // "Đang chờ X" y như còn đang đánh, ngồi đợi mãi không tới lượt mình.

@@ -43,6 +43,9 @@ function taoPoker(deps) {
         ghe: Array(TOI_DA_NGUOI).fill(null),   // 8 ghế, null = trống, khác = id
         giai: null,
         cauHinh: { chipDau: CHIP_DAU },
+        // 18/09: ai đã bấm ✅ SẴN SÀNG ở phòng chờ. Đủ ≥ 2 người ngồi và AI CŨNG sẵn sàng -> nhip() tự mở
+        // giải, không cần admin. Rời ghế / giải tán / mở giải là xoá.
+        sanSang: new Set(),
     };
     const chamCuoi = new Map();                 // id -> lần hỏi thăm gần nhất (dò AFK)
     let motVanXongLuc = 0;
@@ -73,8 +76,29 @@ function taoPoker(deps) {
         }
     }
     /** Gọi mỗi giây từ ngoài (webplay/index.js đứng riêng). Nuốt lỗi để không kéo bot theo. */
+    /** Mở giải với những người đang ngồi. Dùng chung cho admin (panel) và tự mở khi ai cũng sẵn sàng. */
+    function moGiai() {
+        if (giaiDangChay()) return { error: 'Giải đang chạy rồi' };
+        const ds = dangNgoi();
+        if (ds.length < TOI_THIEU_NGUOI) return { error: 'Cần ít nhất ' + TOI_THIEU_NGUOI + ' người đang ngồi' };
+        const rot = ds.filter(x => canNgoi(x.id) !== null);    // kiểm lại lúc mở
+        if (rot.length) return { error: tenCua(rot[0].id) + ': ' + canNgoi(rot[0].id), rot: rot.map(x => x.id) };
+        phong.giai = taoGiai({ chipDau: phong.cauHinh.chipDau });
+        phong.giai.batDau(ds.map(x => ({ id: x.id, ten: tenCua(x.id), ghe: x.ghe })));
+        phong.sanSang.clear();
+        motVanXongLuc = 0;
+        return { ok: true, soNguoi: ds.length };
+    }
+    /** 18/09: ≥ 2 người ngồi và AI CŨNG bấm sẵn sàng -> mở luôn, không cần admin. Ai rớt điều kiện
+     *  (hết Dogcoin, bị huỷ liên kết) thì gỡ dấu sẵn sàng của họ để bàn không kẹt mãi. */
+    function tuMoGiai() {
+        const ds = dangNgoi();
+        if (ds.length < TOI_THIEU_NGUOI || !ds.every(x => phong.sanSang.has(x.id))) return;
+        const r = moGiai();
+        if (r.error && r.rot) for (const id of r.rot) phong.sanSang.delete(id);
+    }
     function nhip() {
-        if (!phong.giai) return;
+        if (!phong.giai) { try { tuMoGiai(); } catch (e) { console.error('[poker] tự mở giải lỗi:', e.message); } return; }
         try {
             ratSoatAfk();
             phong.giai.nhip();
@@ -101,6 +125,8 @@ function taoPoker(deps) {
             ghe: phong.ghe.map(x => x ? { id: x, ten: tenCua(x) } : null),
             cho: dangNgoi().map(x => ({ id: x.id, ten: tenCua(x.id), ghe: x.ghe })),
             gheCuaToi: gheCua(id),
+            sanSang: [...phong.sanSang],                 // 18/09: ai đã bấm sẵn sàng (phòng chờ)
+            toiSanSang: phong.sanSang.has(id),
             toiDa: TOI_DA_NGUOI, toiThieu: TOI_THIEU_NGUOI,
             chipDau: phong.cauHinh.chipDau, cauHinh: { ...phong.cauHinh },
             lichBlind: taoLichBlind(phong.cauHinh.chipDau).map(x => x.bb),
@@ -135,19 +161,9 @@ function taoPoker(deps) {
             phong.cauHinh.chipDau = chip;
             return { ok: true, chipDau: chip };
         },
-        batDau() {
-            if (giaiDangChay()) return { error: 'Giải đang chạy rồi' };
-            const ds = dangNgoi();
-            if (ds.length < TOI_THIEU_NGUOI) return { error: 'Cần ít nhất ' + TOI_THIEU_NGUOI + ' người đang ngồi' };
-            const rot = ds.filter(x => canNgoi(x.id) !== null);    // kiểm lại lúc mở
-            if (rot.length) return { error: tenCua(rot[0].id) + ': ' + canNgoi(rot[0].id) };
-            phong.giai = taoGiai({ chipDau: phong.cauHinh.chipDau });
-            phong.giai.batDau(ds.map(x => ({ id: x.id, ten: tenCua(x.id), ghe: x.ghe })));
-            motVanXongLuc = 0;
-            return { ok: true, soNguoi: ds.length };
-        },
+        batDau() { return moGiai(); },   // admin bấm ở panel = đường tắt, không cần ai sẵn sàng
         giaiTan() {
-            phong.giai = null; phong.ghe = Array(TOI_DA_NGUOI).fill(null); motVanXongLuc = 0;
+            phong.giai = null; phong.ghe = Array(TOI_DA_NGUOI).fill(null); phong.sanSang.clear(); motVanXongLuc = 0;
             return { ok: true };
         },
         tamNghi(boi) { if (!phong.giai) return { error: 'Chưa có giải' }; phong.giai.tamNghi(boi || 'admin'); return { ok: true }; },
@@ -169,11 +185,18 @@ function taoPoker(deps) {
             if (duong === '/state') return tra(trangThaiCho(toi));
 
             if (post && duong === '/ngoi') {
-                if (giaiDangChay()) return loi(400, 'Giải đang chạy, chờ giải sau');
                 const vi = canNgoi(toi); if (vi) return loi(400, vi);
                 let ghe = Number.isInteger(body.ghe) ? body.ghe : phong.ghe.indexOf(null);
                 if (ghe < 0 || ghe >= TOI_DA_NGUOI) return loi(400, 'Bàn đủ ' + TOI_DA_NGUOI + ' người rồi');
                 if (phong.ghe[ghe] && phong.ghe[ghe] !== toi) return loi(400, 'Ghế này có người rồi');
+                if (giaiDangChay()) {
+                    // 18/09: VÀO MUỘN — giải chạy chưa quá 1 phút thì vẫn nhận, đánh từ ván kế.
+                    // themNguoi tự chặn: quá mốc / đủ 8 / đã trong giải. Ghế mới KHÔNG được đổi ghế cũ.
+                    if (gheCua(toi) >= 0) return loi(400, 'Đang trong giải thì không đổi ghế được');
+                    phong.giai.themNguoi({ id: toi, ten: tenCua(toi), ghe });
+                    phong.ghe[ghe] = toi;
+                    return tra(trangThaiCho(toi));
+                }
                 const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
                 phong.ghe[ghe] = toi;
                 return tra(trangThaiCho(toi));
@@ -181,6 +204,15 @@ function taoPoker(deps) {
             if (post && duong === '/roi') {
                 if (giaiDangChay()) return loi(400, 'Đang trong giải thì không rời được — rớt mạng thì máy tự bỏ bài giùm');
                 const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
+                phong.sanSang.delete(toi);
+                return tra(trangThaiCho(toi));
+            }
+            // 18/09: ✅ SẴN SÀNG (bấm lại = huỷ). Ai cũng sẵn sàng là nhip() tự mở giải.
+            if (post && duong === '/sansang') {
+                if (giaiDangChay()) return loi(400, 'Giải đang chạy rồi');
+                if (gheCua(toi) < 0) return loi(400, 'Ngồi vào ghế trước đã');
+                if (phong.sanSang.has(toi)) phong.sanSang.delete(toi); else phong.sanSang.add(toi);
+                tuMoGiai();   // người cuối bấm là mở ngay, khỏi chờ nhịp 1 giây
                 return tra(trangThaiCho(toi));
             }
 
