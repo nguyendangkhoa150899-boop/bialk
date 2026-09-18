@@ -111,12 +111,13 @@ Sàn cược chung (trừ Tài Xỉu): `minBet()` mặc định `MIN_BET = 400`,
 - 25 ô, chọn **3–20 mìn**. Hệ số = `1/xác suất × RTP`, cắt 2 số lẻ. **`RTP = 0.88`** → nhà cái ăn 12%.
 - **🚧 0,88 là SÀN, đừng hạ tiếp:** bàn 3 mìn có 22/25 ô an toàn = 88% → RTP < 0,88 là **mở trúng 1 ô rồi DỪNG vẫn nhận ít hơn tiền cược** (0,85 → x0.96; 0,80 → x0.90). Người chơi thấy ngay vì hệ số hiện trên bàn. Muốn siết thêm dùng `MINES_MAX_WIN` (đang 0 = không trần), trần cược, hoặc bảng quà 🍀.
 - Mở đủ ô an toàn = jackpot ván. Admin **ép mìn** từ panel (`forcedMines[userId]` / `_any`).
-- **Trần khi có trợ giúp** (`capIfAssisted`): 3 mìn ×100 · 4 ×300 · 5 ×500 · 6+ ×2000. **La bàn 🧭 và Máy đào ⛏️ tính là trợ giúp ngay khi bốc trúng; Khiên 🛡️ chỉ tính khi thực sự đỡ mìn** (cầm khiên không dùng = tự lực, ăn đủ).
-- **Trần nổ hũ 🏆** (áp LUÔN, không cần trợ giúp): 3 mìn ×50 · 4 ×100 · 5 ×200 · 6+ ×2000, cộng bội số hũ (`_potCfg.mines.mults`, mặc định x10/x15/x20 bốc ngẫu nhiên, người chơi tự chọn hộp).
+- **Trần khi có trợ giúp** (`capIfAssisted` → `assistCapOf`): **×50 tiền cược, PHẲNG cho mọi số mìn** (chủ server chốt "có trợ giúp = nổ hũ luôn, tối đa x50"). **La bàn 🧭 và Máy đào ⛏️ tính là trợ giúp ngay khi bốc trúng; Khiên 🛡️ chỉ tính khi thực sự đỡ mìn** (cầm khiên không dùng = tự lực, ăn đủ, không trần). Ví dụ cược 1.000 mà thắng thô 500.000 nhờ La bàn → nhận 50.000.
+- **Trần nổ hũ 🏆** (`jackpotCapOf`, áp LUÔN, không cần trợ giúp): **×50 tiền cược, phẳng**, cộng bội số hũ (`_potCfg.mines.mults`, mặc định x10/x15/x20 bốc ngẫu nhiên, người chơi tự chọn hộp). Cược 1.000 → nổ hũ = 50.000 + 10.000–20.000 từ hũ.
+- Cả hai trần đọc chung **một hằng `LUCKY_WIN_CAP_MULTI = 50`** (trước là bảng bậc 50/100/200/2000 và 100/300/500/2000 theo số mìn — đã bỏ). Đổi số này là đổi cả hai trần ở cả 2 game.
 
 ### 🪜 Leo Thang (`webStairsApi`)
 - 10 tầng × 8 cột, chọn 1–5 lửa/tầng. **`STAIRS_RTP = 0.92`**. Hệ số = `0.92 × (8/(8−lửa))^tầng`, 2 lửa tầng 9/10 ép tay (`STAIRS_MULTI_OVERRIDE`). Bẫy sinh sẵn cả ván.
-- **Ô vàng 🌟** `STAIRS_GOLDEN_RATE = 2%`/ván, hiện rõ tầng 5–8, đạp là lên đỉnh. Trần trợ giúp `LUCKY_WIN_CAP_MULTI = 2000`.
+- **Ô vàng 🌟** `STAIRS_GOLDEN_RATE = 2%`/ván, hiện rõ tầng 5–8, đạp là lên đỉnh. Trần trợ giúp và trần nổ hũ đều **×50** (`LUCKY_WIN_CAP_MULTI = 50`, chung với Dò Mìn); tự lực lên đỉnh không trần.
 
 ### 🍀 Hộp cỏ 4 lá (dùng chung 2 game)
 Người chơi **mua** cỏ (**40% tiền cược**, cả 2 game, `fee = bet * 0.4`) → 1 ô 🍀 giấu trong bàn → chạm là lật 4 hộp chọn 1. Quà quay ở server lúc chọn; 3 hộp kia là hàng mẫu (không bao giờ ra hũ).
@@ -261,7 +262,7 @@ Bot test **không có game** → mọi lệnh cần online/SFTP trả lỗi — 
 | Cú pháp file | lỗi JS server | `node --check index.js webplay.js panel.js` |
 | Cú pháp **client** | thiếu nháy trong chuỗi HTML (node --check không thấy) | `panelclient-check.js`, `webclient-check.js` (dựng lại mảng `PAGE` rồi `new Function`) |
 | Chạy hàm thật trong `vm` | logic tiền, trần, luật — trích `ex(mốcĐầu, mốcCuối)` từ `index.js`, stub phụ thuộc, ép `Math.random` | `ichkytest` `lienkettest` `txtimetest` `luckywheeltest` `mimogtest` `chestmaxtest` `shopuitest` `txpottest` `notest` `giftstoretest` `bridgetest` `repairtest` `feattest` `pgpicktest` `popupscroll-test` `txnotidirty-test` `boardloop-test` `paneltabtest` `scopecheck` `hiddencheck` |
-| Chạy thật HTTP trên bot test | wiring route ↔ ctx ↔ client, state lệch, 403 | `*-e2e.js` (`ichky` `lienket` `txtime` `leaf` `mimog` `palforce` `chestmax` `itemcats` `catsave` `pgpick` `reveal`), `dom-null-check.js <url>` (DOM giả chỉ trả phần tử cho id có trong HTML) |
+| Chạy thật HTTP trên bot test | wiring route ↔ ctx ↔ client, state lệch, 403 | `*-e2e.js` (`ichky` `lienket` `txtime` `leaf` `cap50` `mimog` `palforce` `chestmax` `itemcats` `catsave` `pgpick` `reveal`), `dom-null-check.js <url>` (DOM giả chỉ trả phần tử cho id có trong HTML) |
 
 Nguyên tắc viết bài kiểm mới: **chứng minh nó bắt được lỗi** bằng cách chạy ngược trên bản hỏng; tính theo **chênh lệch** chứ không giả định trạng thái sạch (rương/ví còn từ lần chạy trước); trò có ngẫu nhiên thì **ép** (`/api/mines/force`, `/api/lucky/force`, `palWheelForce`) cho hết hên xui; trần theo ngày là thật, bài kiểm phải tự thích ứng khi hết lượt.
 
