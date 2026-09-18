@@ -3815,6 +3815,45 @@ function setTxNoti(id, on, min) {
     writeLog('ADMIN', `[PANEL TX] Báo cược Discord: ${on ? 'BẬT' : 'TẮT'}${id ? ' -> ' + id : ''}${min > 0 ? ' (từ ' + min.toLocaleString() + ' trở lên)' : ''}`);
     return { ok: true, ...txNotiCfg() };
 }
+
+// ===== 🃏 ADMIN POKER =====
+// Poker là tiến trình RIÊNG (Poker/index.js), chỉ ĐỌC database.json. Chủ server đặt ai
+// được mở giải ở đây (panel SUPER) thay vì sờ biến môi trường trên VPS; poker đọc khoá
+// _pokerAdmin. Bot không dùng khoá này cho việc gì khác.
+function pokerAdminCfg() {
+    const a = dbCache._pokerAdmin;
+    return Array.isArray(a) ? a.map(String).filter(x => /^\d{15,20}$/.test(x)) : [];
+}
+function setPokerAdmin(danhSach) {
+    const ids = String(danhSach == null ? '' : danhSach).split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    const xau = ids.filter(x => !/^\d{15,20}$/.test(x));
+    if (xau.length) return { error: 'ID Discord phải là dãy 15-20 chữ số, sai: ' + xau.join(', ') };
+    dbCache._pokerAdmin = [...new Set(ids)];
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL POKER] Admin poker: ${dbCache._pokerAdmin.join(', ') || '(trống)'}`);
+    return { ok: true, ids: pokerAdminCfg() };
+}
+// Công tắc tab 🃏 GIẢI POKER trên web người chơi (chủ server chốt: ẩn/hiện ở panel SUPER).
+// Tắt = tab biến mất khỏi trang; API vẫn sống để ván đang đánh không vỡ.
+const pokerOnCfg = () => !!dbCache._pokerOn;
+function setPokerOn(on) {
+    dbCache._pokerOn = !!on;
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL POKER] Tab poker: ${on ? 'HIỆN' : 'ẨN'}`);
+    return { ok: true, on: pokerOnCfg() };
+}
+// Mô-đun poker NHÚNG cùng tiến trình (chủ server chốt "gộp chung, xài chung 1 link").
+// Chỉ đọc dbCache để kiểm điều kiện vào giải; chip trong giải là chip ảo, không đụng ví.
+// Mọi lỗi luật chơi được nuốt ở web.js (trả 400), nhịp 1 giây cũng tự bắt lỗi — poker
+// không có đường nào ném exception ra ngoài để kéo bot theo.
+// POKER_DIR: bản test chạy từ Desktop/bialk-test/ (chỉ chép 7 file BotDoMin) nên ../Poker không có
+// -> bialk-test.js đặt biến này trỏ về repo. Prod chạy trong repo thì mặc định ../Poker là đúng.
+const POKER_DIR = process.env.POKER_DIR || require('path').join(__dirname, '..', 'Poker');
+const pokerMod = require(require('path').join(POKER_DIR, 'web.js')).taoPoker({
+    layNguoi: (id) => (dbCache && dbCache[id] && typeof dbCache[id] === 'object') ? dbCache[id] : null,
+    laAdmin: (id) => pokerAdminCfg().includes(String(id)),
+});
+setInterval(() => pokerMod.nhip(), 1000);
 // Gửi thử 1 tin để chủ server biết ID có đúng không (nút "Gửi thử" ở panel).
 async function txNotiTest() {
     const c = txNotiCfg();
@@ -6377,6 +6416,8 @@ client.once('ready', async (c) => {
                 give: (uid, to, id, qty, name) => ichKyGive(uid, to, id, qty, name),
             },
             lienKetMsg: () => LIENKET_MSG,
+            poker: pokerMod,                 // 🃏 /api/poker/* + /poker/ (Poker/web.js, cùng phiên đăng nhập)
+            pokerOn: () => pokerOnCfg(),     // 🃏 tab GIẢI POKER hiện hay ẩn (admin bật ở panel SUPER)
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
             txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)
@@ -6599,6 +6640,12 @@ client.once('ready', async (c) => {
             setTxTime: (bet, nan) => setTxTimeCfg(bet, nan),
             getTxNoti: () => txNotiCfg(),
             setTxNoti: (id, on, min) => setTxNoti(id, on, min),
+            // 🃏 admin poker (tiến trình Poker/ đọc _pokerAdmin từ database.json)
+            getPokerAdmin: () => pokerAdminCfg(),
+            getPokerOn: () => pokerOnCfg(),            // 🃏 tab poker đang hiện/ẩn
+            setPokerOn: (on) => setPokerOn(on),
+            pokerQuanLy: pokerMod.quanLy,               // 🃏 tomTat / datChip / batDau / giaiTan / tamNghi / choiTiep
+            setPokerAdmin: (ds) => setPokerAdmin(ds),
             txNotiTest: () => txNotiTest(),
             diceEmojis: DICE_EMOJIS,
             totalTiles: TOTAL_TILES,

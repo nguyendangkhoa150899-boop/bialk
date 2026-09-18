@@ -29,7 +29,8 @@ Chủ server: **Khoa** — không rành code. Trả lời tiếng Việt, giải
 | File | Dòng | Việc |
 |---|---|---|
 | `index.js` | ~8.450 | **Toàn bộ logic**: bot Discord, mọi game, tiền, shop, rương, cầu game, wiring `ctx` cho web/panel |
-| `webplay.js` | ~4.000 | Web người chơi (cổng `PLAY_PORT`, mặc định **3002**). HTML/CSS/JS client là **mảng chuỗi** nối lại |
+| `webplay.js` | ~4.000 | Web người chơi (cổng `PLAY_PORT`, mặc định **3002**). HTML/CSS/JS client là **mảng chuỗi** nối lại. Phục vụ thêm **`/poker/`** (file `../Poker/trang.html`), `/poker/bai/*.webp`, và giao `/api/poker/*` cho `ctx.poker` — tab tầng-1 thứ 3 **🃏 GIẢI POKER** (khung nhúng, hiện khi `_pokerOn`) |
+| `../Poker/` | — | **Giải poker nhúng** — `web.js` (mô-đun gắn vào ctx), `giai.js` (máy giải), `bai.js` (chấm bài), `trang.html`, 53 ảnh. Cùng tiến trình, cùng phiên đăng nhập; chip ảo, không đụng ví. Chi tiết: `../Poker/README.md` |
 | `panel.js` | ~3.500 | Panel admin: **SUPER** cổng `PANEL_PORT` (mặc định 1508) · **thường** `PANEL_PUBLIC_PORT` (1234). HTML client là **một template literal khổng lồ** |
 | `palworld.js` | 200 | Cầu tới dashboard: `giveItem` / `takeItem` / `countItem` / `givePal` / `whereIs`. Basic auth, `cleanName` lọc tên |
 | `assets.js` | 75 | Phục vụ file tĩnh: thả file vào `assets/` + restart là xong. Quét cả subfolder (`palimage/`, `itemimage/`). ETag để đổi ảnh không bị cache |
@@ -59,7 +60,7 @@ Chạy ở đâu: **VPS** `/root/tts-bot` (clone của repo, nhánh local `maste
 
 **Mỗi người chơi** `db[discordId]`: `points` (ví) · `name` · `webPin` · `ingameName` (**chỉ admin đặt** — đây là mốc "đã liên kết") · điểm danh: `lastDaily`, `dailyDays[]`, `streakRun`, `streakPacks`, `streakTotal`, `streakRunPaid`, `lastNghien` · `lastWheelKey` · `debt {loan, admin, lastAccrue}` · `shopOnce {itemId: ts}` · `ichKy {day, bought, items{}, nhan[]}` · `palLuck`, `palLuckRate` · `sosAt`. Người mới: `STARTING_DOGCOIN = 20`.
 
-**Cấu hình + trạng thái** dùng khoá gạch dưới: `_dogLedger` · `_pstats` · `_*History` (đều có cap) · `_*ChannelId` / `_*MsgId` (bảng Discord từng game) · `_*Pending` (vé treo) · `_txTime` `_txNoti` `_txMaxBet` `_txHist20` · `_potCfg` `_pots` · `_minBet` `_gameOpen` `_featOff` · `_loanCfg` · `_itemShop` `_itemCats` `_itemShopQuota*` · `_palwheel*` · `_stock*` · `_spm*`.
+**Cấu hình + trạng thái** dùng khoá gạch dưới: `_dogLedger` · `_pstats` · `_*History` (đều có cap) · `_*ChannelId` / `_*MsgId` (bảng Discord từng game) · `_*Pending` (vé treo) · `_txTime` `_txNoti` `_txMaxBet` `_txHist20` · `_potCfg` `_pots` · `_minBet` `_gameOpen` `_featOff` · `_loanCfg` · `_itemShop` `_itemCats` `_itemShopQuota*` · `_palwheel*` · `_stock*` · `_spm*` · **`_pokerAdmin`** (mảng ID được mở giải poker) · **`_pokerOn`** (tab 🃏 hiện/ẩn) — hai khoá này panel ghi, `../Poker/web.js` chỉ đọc.
 
 `NAME_OVERRIDE` ép tên hiển thị cho vài Discord ID quen.
 
@@ -208,7 +209,7 @@ Tab **Quà**: quà mỗi ngày theo danh sách riêng (`giftClaim`, người n�
 
 Tab: `tx` Tài Xỉu · `mine` Dò Mìn · `stair` Leo Thang · `bj` Vòng quay · `stock` · `spm` Phi Thuyền · `user` 👥 Người chơi · `pal` 🎮 Palworld & Dogcoin · `log` · `gift` Quà · `give` Kho đồ. SUPER (cổng `PANEL_PORT`) mới có: ép kết quả/mìn/quà hộp/pal, Kho đồ, can thiệp giá cổ phiếu (`epOk` = so `req.socket.localPort`).
 
-Làm được: bật/tắt + ép kết quả từng game · nhịp ván + báo cược Tài Xỉu · trần cược · sàn cược · cộng/trừ/set ví · phát tiền toàn server · reset điểm danh · **liên kết tên nhân vật** (`/api/pal/set-name`) · cấu hình shop (món, nhóm, hạn, ảnh) · hũ · vay nợ · công tắc chức năng · kênh cho từng bảng · sổ biến động.
+Làm được: bật/tắt + ép kết quả từng game · nhịp ván + báo cược Tài Xỉu · trần cược · sàn cược · cộng/trừ/set ví · phát tiền toàn server · reset điểm danh · **liên kết tên nhân vật** (`/api/pal/set-name`) · cấu hình shop (món, nhóm, hạn, ảnh) · hũ · vay nợ · công tắc chức năng · kênh cho từng bảng · sổ biến động · **tab 🃏 Poker (chỉ SUPER)**: công tắc hiện/ẩn tab GIẢI POKER trên web (`/api/poker/on`), ô "Admin poker" (`/api/poker/admin`), chip khởi điểm (`/api/poker/chip`), Bắt đầu (N người) / Giải tán / Tạm nghỉ / Chơi tiếp (`/api/poker/batdau|giaitan|nghi|tiep`) — 7 route này đều nằm trong `VIEWONLY_PATHS` nên cổng thường bị chặn.
 
 **Vòng làm mới 3 giây ghi đè ô đang sửa** — mọi ô nhập mới phải dùng khuôn: chỉ điền khi `value===''`, hoặc `dataset.dirty` (chạm vào là đánh dấu, Lưu xong bỏ dấu). Ô tick không có chốt nào nếu quên.
 

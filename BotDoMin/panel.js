@@ -131,6 +131,9 @@ function startPanel(ctx) {
             })(),
             forcedMines: ctx.getForcedMines(),
             forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
+            pokerAdmin: ctx.getPokerAdmin ? ctx.getPokerAdmin() : [],   // 🃏 ai mở được giải poker
+            pokerOn: ctx.getPokerOn ? ctx.getPokerOn() : false,          // 🃏 tab poker đang hiện/ẩn trên web
+            poker: ctx.pokerQuanLy ? ctx.pokerQuanLy.tomTat() : null,    // 🃏 ghế, chip, thang, giải đang chạy
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
             dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,   // 📅 11/09
@@ -243,6 +246,10 @@ function startPanel(ctx) {
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg', '/api/itemcats/save',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/itemshop/daymax', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
                     '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
+                    // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
+                    // quên thêm route mới vào đây là cổng thường gọi được luôn)
+                    '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
+                    '/api/poker/giaitan', '/api/poker/nghi', '/api/poker/tiep',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -491,6 +498,31 @@ function startPanel(ctx) {
                     const r = ctx.setTxNoti(body.id, body.on, body.min);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, id: r.id, on: r.on, min: r.min });
+                }
+                // 🃏 admin poker: ai được mở giải ở Poker/ (tiến trình riêng, đọc _pokerAdmin)
+                if (path === '/api/poker/admin') {
+                    if (!ctx.setPokerAdmin) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setPokerAdmin(body.ids);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ids: r.ids });
+                }
+                // 🃏 tab Poker (SUPER): bật/tắt tab trên web, đặt chip, bắt đầu, giải tán, tạm nghỉ.
+                // Toàn bộ thao tác giải ở đây — trang người chơi không có nút admin.
+                if (path === '/api/poker/on') {
+                    if (!ctx.setPokerOn) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    return sendJSON(res, 200, ctx.setPokerOn(!!body.on));
+                }
+                if (path.startsWith('/api/poker/') && ctx.pokerQuanLy) {
+                    const Q = ctx.pokerQuanLy;
+                    const r = path === '/api/poker/chip' ? Q.datChip(body.chipDau)
+                        : path === '/api/poker/batdau' ? Q.batDau()
+                        : path === '/api/poker/giaitan' ? Q.giaiTan()
+                        : path === '/api/poker/nghi' ? Q.tamNghi('admin')
+                        : path === '/api/poker/tiep' ? Q.choiTiep()
+                        : null;
+                    if (r === null) return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r, tomTat: Q.tomTat() });
                 }
                 if (path === '/api/tx/notitest') {
                     if (!ctx.txNotiTest) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
@@ -1124,6 +1156,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="log" onclick="tab('log')">📜 Log</button>
       <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
       <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
+      <button data-tab="poker" class="epOnly" style="display:none" onclick="tab('poker')">🃏 Poker</button>
     </div>
 
     <!-- BIG SMALL -->
@@ -1161,6 +1194,11 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="txSaveNoti()">💾 Lưu</button>
           <button class="btn-grey" onclick="txTestNoti()">📨 Gửi thử</button>
         </div>
+        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="flex:1"><label>🃏 Admin POKER (ID Discord, cách nhau bằng phẩy)</label><input id="pokerAdminIds" type="text" placeholder="vd: 456136500011335698, 111111111111111111" oninput="txDirty(this)"></div>
+          <button class="btn-green" onclick="pokerSaveAdmin()">💾 Lưu</button>
+        </div>
+        <div class="note" id="pokerAdminNow">Ai trong danh sách này mới có nút <b>Bắt đầu / Giải tán</b> ở trang poker. Poker chạy riêng tiến trình, chỉ ĐỌC file dữ liệu của bot — đổi ở đây là ăn ngay, không cần khởi động lại.</div>
         <div class="note" id="txNotiNow">Có người đặt cược là bot nhắn cho bạn: ai, cửa nào, bao nhiêu, ván mấy, ví còn bao nhiêu. Điền <b>ID người</b> thì bot nhắn riêng, điền <b>ID kênh</b> thì bot đăng vào kênh - bot tự dò, không cần chọn. Ván đông người mà ngập tin thì đặt mức tối thiểu.</div>
         <div class="note">Tính TỔNG mọi cửa + mọi lần đặt của 1 người trong 1 ván (đặt lắt nhắt nhiều lần cũng không lách được). Áp cả web lẫn Discord; nút ALL IN tự kẹp về phần trần còn lại. Trần hiện lên bảng Discord + trang web.</div>
       </div>
@@ -1710,6 +1748,33 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- 🃏 POKER (chỉ SUPER): toàn bộ thao tác giải nằm đây - trang người chơi không có nút admin.
+         Chip trong giải là chip ảo, không đụng ví. Trang chơi nhúng ở /poker/ cùng cổng web. -->
+    <div id="tab-poker" class="hidden">
+      <div class="card">
+        <h2>🃏 Giải Poker <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · chip ảo, không ăn Dogcoin)</span></h2>
+        <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;white-space:nowrap"><input id="pkOn" type="checkbox" onchange="pokerOn(this.checked)"> <b>Hiện tab 🃏 GIẢI POKER</b> trên web người chơi</label>
+          <span class="muted" id="pkOnNow" style="font-size:12px"></span>
+        </div>
+        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab GIẢI POKER → bấm ghế trống để ngồi</b> (cần liên kết + ≥ 10.000 Dogcoin, chỉ kiểm không trừ). Đủ người thì bấm <b>Bắt đầu</b> ở đây. <b>Giải tán</b> dọn sạch ghế. Ai được thưởng/phạt thì anh tự trao trong game — bot chỉ báo hạng.</div>
+        <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px"><label>Chip khởi điểm mỗi người</label>
+            <select id="pkChip" onchange="pokerChip()">
+              <option value="2000">2.000</option><option value="5000">5.000 — mặc định</option>
+              <option value="10000">10.000</option><option value="20000">20.000</option>
+            </select></div>
+          <button class="btn-green" id="pkBatDau" onclick="pokerBatDau()">▶️ Bắt đầu</button>
+          <button class="btn-red" onclick="pokerGiaiTan()">🧹 Giải tán</button>
+          <button class="btn-grey" id="pkNghi" onclick="pokerNghi()">⏸️ Tạm nghỉ</button>
+          <button class="btn-grey" id="pkTiep" onclick="pokerTiep()">▶️ Chơi tiếp</button>
+        </div>
+        <div class="muted" id="pkThang" style="font-size:12px;margin-top:6px"></div>
+        <div id="pkGhe" style="margin-top:10px"></div>
+        <div id="pkGiai" style="margin-top:10px"></div>
+      </div>
+    </div>
+
     <!-- 📜 LOG: gom toàn bộ lịch sử thắng/thua về một chỗ (04/09) - mỗi mục 30 ván CÓ CƯỢC.
          Chọn mục nào hiện mục đó, khỏi kéo dài (05/09). -->
     <div id="tab-log" class="hidden">
@@ -2015,8 +2080,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gift')giftFill(true);
+  ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -2280,6 +2345,50 @@ function txSaveNoti(){
   if(on&&!id)return toast('Bật báo thì phải điền ID Discord');
   api('/api/tx/noti',{id:id,on:on,min:min}).then(j=>{txClean(['txNotiId','txNotiMin','txNotiOn']);toast(j.on?'🔔 Đã BẬT báo cược':'🔕 Đã TẮT báo cược');refresh();}).catch(e=>toast('❌ '+e.message));
 }
+function pokerSaveAdmin(){
+  const ids=(document.getElementById('pokerAdminIds').value||'').trim();
+  api('/api/poker/admin',{ids:ids}).then(j=>{txClean(['pokerAdminIds']);toast('🃏 Admin poker: '+(j.ids.length?j.ids.join(', '):'(trống — không ai mở được giải)'));refresh();}).catch(e=>toast('❌ '+e.message));
+}
+// ===== 🃏 TAB POKER (SUPER) =====
+// Vẽ từ STATE.poker (tomTat) mỗi 3 giây. Ô chọn chip: không ghi đè khi admin đang mở nó.
+function pokerFill(){
+  const P=STATE.poker, on=!!STATE.pokerOn;
+  const ck=document.getElementById('pkOn'); if(ck&&document.activeElement!==ck) ck.checked=on;
+  const now=document.getElementById('pkOnNow'); if(now) now.textContent=on?'Đang HIỆN — người chơi thấy tab GIẢI POKER':'Đang ẨN — người chơi không thấy tab (API vẫn sống cho ván đang đánh)';
+  if(!P){ const g=document.getElementById('pkGhe'); if(g) g.innerHTML='<div class="muted">Bot chưa nạp mô-đun poker.</div>'; return; }
+  const sel=document.getElementById('pkChip'); if(sel&&document.activeElement!==sel&&String(sel.value)!==String(P.chipDau)) sel.value=String(P.chipDau);
+  const th=document.getElementById('pkThang'); if(th) th.textContent='Thang blind: '+P.lichBlind.map(x=>x.toLocaleString('vi-VN')).join(' → ')+' · lên mức mỗi 8 phút hoặc mỗi vòng (tối thiểu 6 ván)';
+  const chay=P.giai&&P.giai.trangThai==='DANG_CHAY';
+  const bd=document.getElementById('pkBatDau'); if(bd){ bd.textContent='▶️ Bắt đầu ('+P.soNgoi+' người)'; bd.disabled=chay||P.soNgoi<P.toiThieu; }
+  const ng=document.getElementById('pkNghi'); if(ng) ng.disabled=!chay||P.giai.nghi;
+  const tp=document.getElementById('pkTiep'); if(tp) tp.disabled=!chay||!P.giai.nghi;
+  const ghe=document.getElementById('pkGhe');
+  if(ghe){
+    let h='<div style="font-weight:700;margin-bottom:6px">Ghế ('+P.soNgoi+'/'+P.toiDa+')</div><div class="row" style="flex-wrap:wrap;gap:6px">';
+    P.ghe.forEach((x,i)=>{ h+='<span style="padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:'+(x?'var(--card2)':'transparent')+';font-size:12px">'+(i+1)+'. '+(x?('<b>'+esc(x.ten)+'</b>'):'<span class="muted">trống</span>')+'</span>'; });
+    ghe.innerHTML=h+'</div>';
+  }
+  const gi=document.getElementById('pkGiai');
+  if(gi){
+    if(!P.giai){ gi.innerHTML='<div class="muted">Chưa có giải nào đang chạy.</div>'; }
+    else{
+      const g=P.giai;
+      let h='<div style="font-weight:700;margin-bottom:6px">Giải: '+(g.trangThai==='XONG'?'ĐÃ XONG':(g.nghi?'ĐANG TẠM NGHỈ':'ĐANG CHẠY'))+' · ván #'+g.soVan+' · mức '+g.mucBlind+' ('+g.blind.sb+'/'+g.blind.bb+')</div>';
+      h+='<table style="width:100%;font-size:12.5px"><tr><th style="text-align:left">Người</th><th style="text-align:right">Chip</th><th></th></tr>';
+      g.nguoi.forEach(p=>{ h+='<tr><td>'+esc(p.ten)+'</td><td style="text-align:right;font-variant-numeric:tabular-nums">'+p.chip.toLocaleString('vi-VN')+'</td><td>'+(p.chip<=0?'💀 cháy':(p.afk?'📵 rớt mạng':''))+'</td></tr>'; });
+      h+='</table>';
+      if(g.ketQua){ h+='<div style="margin-top:8px;font-weight:700">🏆 Kết quả</div>'; g.ketQua.forEach(k=>{ h+='<div>'+k.hang+'. '+esc(k.ten)+'</div>'; }); }
+      gi.innerHTML=h;
+    }
+  }
+}
+function pokerOn(on){ api('/api/poker/on',{on:on}).then(j=>{toast(j.on?'🃏 Đã HIỆN tab poker':'🃏 Đã ẨN tab poker');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function pokerChip(){ api('/api/poker/chip',{chipDau:Number(document.getElementById('pkChip').value)}).then(j=>{toast('🃏 Chip khởi điểm: '+j.chipDau.toLocaleString('vi-VN'));refresh();}).catch(e=>toast('❌ '+e.message)); }
+function pokerBatDau(){ api('/api/poker/batdau',{}).then(j=>{toast('▶️ Đã mở giải '+j.soNguoi+' người');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function pokerGiaiTan(){ if(!confirm('Giải tán: dọn sạch bàn, ai muốn thì ngồi lại từ đầu?'))return; api('/api/poker/giaitan',{}).then(()=>{toast('🧹 Đã giải tán');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function pokerNghi(){ api('/api/poker/nghi',{}).then(()=>{toast('⏸️ Cả bàn tạm nghỉ');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function pokerTiep(){ api('/api/poker/tiep',{}).then(()=>{toast('▶️ Chơi tiếp');refresh();}).catch(e=>toast('❌ '+e.message)); }
+setInterval(function(){ if(localStorage.getItem('panel_tab')==='poker'&&STATE&&STATE.poker!==undefined) pokerFill(); },3000);
 function txTestNoti(){
   api('/api/tx/notitest',{}).then(j=>toast('📨 Đã gửi thử - kiểm '+(j.kieu==='user'?'tin nhắn riêng':'kênh')+' xem có nhận được không')).catch(e=>toast('❌ '+e.message));
 }
@@ -3344,6 +3453,11 @@ async function refresh(force){
     const tn=document.getElementById('txNanS'); if(tn&&tn.dataset.dirty!=='1'&&tn.value===''&&document.activeElement!==tn) tn.value=STATE.tx.time.nan;
     const tw=document.getElementById('txTimeNow');
     if(tw) tw.innerHTML='Đang áp dụng: ván <b>'+STATE.tx.time.round+'s</b> = '+STATE.tx.time.bet+'s đặt cược + '+STATE.tx.time.nan+'s nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.';
+  }
+  if(Array.isArray(STATE.pokerAdmin)){
+    // 🃏 cùng kiểu dataset.dirty như ô báo cược: đang gõ thì 3 giây refresh không được ghi đè
+    const pa=document.getElementById('pokerAdminIds'); if(pa&&pa.dataset.dirty!=='1'&&pa.value===''&&document.activeElement!==pa) pa.value=STATE.pokerAdmin.join(', ');
+    const pn=document.getElementById('pokerAdminNow'); if(pn) pn.innerHTML=STATE.pokerAdmin.length?('Đang là admin poker: <b>'+STATE.pokerAdmin.join(', ')+'</b>. Đổi ở đây là poker ăn ngay, không cần khởi động lại.'):'<b>Chưa đặt ai</b> — không ai mở được giải poker. Điền ID Discord của anh vào rồi Lưu.';
   }
   if(STATE.tx.noti){
     const ni=document.getElementById('txNotiId'); if(ni&&ni.dataset.dirty!=='1'&&ni.value===''&&document.activeElement!==ni) ni.value=STATE.tx.noti.id||'';

@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Giải Poker — Bialk</title>
+<style>
+:root{
+  --bg:#12141a; --card:#1b1e27; --line:#2a2e3b; --tx:#e8eaf0; --muted:#8a90a3;
+  --green:#3ddc84; --red:#ff5d5d; --blue:#4da3ff; --gold:#ffcf5c;
+  --ni1:#3a8f60; --ni2:#1d5a3c;
+  --lb:clamp(38px,7.2vw,68px);    /* bài chung + bài mình */
+  --lb2:clamp(28px,5vw,46px);     /* bài úp của người khác */
+}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--tx);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:12px;max-width:980px;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+
+/* ---------- chung ---------- */
+.hop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+h1{font-size:18px;margin:0 0 4px}
+h2{font-size:14px;margin:0 0 10px}
+.mo{color:var(--muted);font-size:12.5px;line-height:1.6}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+input{width:100%;background:#0e1016;border:1px solid var(--line);color:var(--tx);
+  border-radius:10px;padding:11px;font-size:14px;font-family:inherit}
+.b{border:0;border-radius:11px;padding:12px 14px;font-size:13.5px;font-weight:800;cursor:pointer;
+  font-family:inherit;color:#12141a;line-height:1.25}
+.b:disabled{opacity:.4;cursor:not-allowed}
+.b.xam{background:#2a2e3b;color:var(--tx)}
+.b.xanh{background:var(--green)}
+.b.do{background:var(--red);color:#2a0606}
+.b.vang{background:var(--gold)}
+.b.rong{width:100%;margin-top:12px}
+.hang{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;background:#0e1016;border:1px solid var(--line);
+  border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;white-space:nowrap}
+.pill.vang{color:var(--gold);border-color:#4a3c18}
+.pill.xanh{color:var(--green);border-color:#1e4a33}
+.pill.do{color:var(--red);border-color:#4a1e1e}
+#bao{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:99;max-width:92%;
+  background:#2a1f10;border:1px solid #6b4e17;color:#ffd98a;border-radius:11px;padding:11px 15px;
+  font-size:13px;font-weight:700;box-shadow:0 8px 26px rgba(0,0,0,.6)}
+
+/* ---------- thanh trên ---------- */
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.top .ten{font-weight:800;font-size:15px}
+.top .van{color:var(--muted);font-size:12px;margin-top:2px}
+.sp{flex:1 1 auto}
+
+/* ---------- bàn ---------- */
+.san{position:relative;width:100%;aspect-ratio:100/68;min-height:380px}
+.vien{position:absolute;inset:64px 8px;border-radius:999px;
+  background:linear-gradient(180deg,#4a3526 0%,#2a1d13 45%,#120c07 100%);
+  padding:clamp(9px,1.9vw,16px);
+  box-shadow:0 14px 30px rgba(0,0,0,.55),inset 0 2px 2px rgba(255,255,255,.12),inset 0 -3px 6px rgba(0,0,0,.6)}
+.ni{position:absolute;inset:clamp(9px,1.9vw,16px);border-radius:999px;
+  background:radial-gradient(ellipse at 50% 34%,#3f9a68 0%,var(--ni1) 34%,var(--ni2) 74%,#14422c 100%);
+  box-shadow:inset 0 10px 26px rgba(0,0,0,.42),inset 0 0 0 2px rgba(0,0,0,.28)}
+.chumon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:clamp(13px,2.6vw,22px);font-weight:900;letter-spacing:4px;
+  color:rgba(255,255,255,.07);white-space:nowrap;pointer-events:none;user-select:none}
+.giua{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%);text-align:center;width:96%}
+.hu{display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,.42);
+  border:1px solid rgba(255,207,92,.35);border-radius:999px;padding:4px 13px;
+  font-size:clamp(11px,1.9vw,13px);font-weight:800;color:var(--gold);white-space:nowrap}
+.chung{display:flex;gap:clamp(3px,.8vw,6px);justify-content:center;margin-top:9px;min-height:calc(var(--lb)*1.45)}
+
+/* ---------- LÁ BÀI LẬT ĐƯỢC ----------
+   --g = 0° là úp (thấy lưng), 180° là ngửa (thấy mặt). Nặn bài = kéo cho --g chạy dần.
+   Hai mặt chồng lên nhau, backface-visibility giấu mặt quay lưng lại. */
+.the{width:var(--lb);aspect-ratio:222/323;position:relative;flex:0 0 auto;
+  perspective:800px;--g:180deg}
+.the.n2{width:var(--lb2)}
+.the .mat,.the .lung{position:absolute;inset:0;width:100%;height:100%;
+  border-radius:clamp(3px,.8vw,6px);background:#fff;backface-visibility:hidden;
+  box-shadow:0 3px 8px rgba(0,0,0,.55);transition:transform .45s cubic-bezier(.25,.8,.3,1)}
+.the .mat{transform:rotateY(calc(var(--g) - 180deg))}
+.the .lung{transform:rotateY(var(--g))}
+.the.keo .mat,.the.keo .lung{transition:none}       /* đang kéo tay thì bám sát ngón */
+.the.nhanh .mat,.the.nhanh .lung{transition:transform .28s ease}
+
+/* bài của mình lúc chưa nặn: mời gọi bấm vào */
+.the.nan{cursor:grab;touch-action:none}
+.the.nan:active{cursor:grabbing}
+.the.nan .lung{box-shadow:0 3px 8px rgba(0,0,0,.55),0 0 0 2px rgba(255,207,92,.55)}
+
+/* bài đã mở, còn quyền khoe -> bấm được */
+.the.khoeDuoc{cursor:pointer}
+.the.khoeDuoc:hover .mat{box-shadow:0 3px 8px rgba(0,0,0,.55),0 0 0 2px rgba(77,163,255,.9)}
+/* lá ai đó đang khoe cho cả bàn xem */
+@keyframes khoeNhay{0%,100%{box-shadow:0 3px 8px rgba(0,0,0,.55),0 0 0 2px rgba(77,163,255,.95)}
+  50%{box-shadow:0 3px 14px rgba(0,0,0,.6),0 0 0 4px rgba(77,163,255,.5)}}
+.the.khoeRa .mat{animation:khoeNhay 1s ease-in-out infinite}
+.nhac{font-size:10.5px;color:var(--gold);text-align:center;margin-top:3px;font-weight:700}
+
+/* ---------- LỚP NẶN BÀI GIỮA MÀN HÌNH (lúc vừa chia bài) ----------
+   Nền tối KHÔNG chặn bấm (pointer-events:none) để người chơi vẫn bấm được nút
+   Bỏ/Theo/Tố bên dưới — nếu chặn thì ai mải nặn là hết giờ bị xử bỏ bài. */
+#nanLop{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:1;
+  background:radial-gradient(ellipse at 50% 42%,rgba(0,0,0,.72) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.12) 100%);
+  transition:opacity .55s ease}
+#nanLop.tat{opacity:0}
+.nanHop{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+  pointer-events:auto;text-align:center;width:max-content;max-width:94vw;
+  transition:transform .6s cubic-bezier(.45,.05,.55,.95),opacity .5s ease}
+/* nặn xong: bài thu nhỏ rồi TRƯỢT XUỐNG phía ghế của mình, không tắt phụp */
+.nanHop.haXuong{transform:translate(-50%,44vh) scale(.26);opacity:0}
+.nanHop.haXuong .nanTieu,.nanHop.haXuong .nanDay{opacity:0;transition:opacity .2s}
+.nanTieu{font-size:13px;font-weight:800;color:var(--gold);margin-bottom:12px;
+  text-shadow:0 2px 8px rgba(0,0,0,.9)}
+.nanBai{display:flex;gap:clamp(10px,3vw,22px);justify-content:center}
+.the.to{width:clamp(108px,27vw,178px)}
+.the.to .mat,.the.to .lung{border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.75)}
+.the.to.nan .lung{box-shadow:0 14px 34px rgba(0,0,0,.75),0 0 0 3px rgba(255,207,92,.75)}
+.nanDay{margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.nanDay .b2{flex:0 0 auto;padding:9px 14px;background:#12141a}
+
+/* lá bay lúc chia bài */
+.bay{position:absolute;z-index:6;width:var(--lb2);aspect-ratio:222/323;
+  border-radius:clamp(3px,.8vw,6px);background:url(bai/back.webp) center/100% 100% no-repeat;
+  box-shadow:0 6px 16px rgba(0,0,0,.65);transform:translate(-50%,-50%) rotate(0deg);
+  transition:left .42s cubic-bezier(.3,.85,.35,1),top .42s cubic-bezier(.3,.85,.35,1),
+             transform .42s cubic-bezier(.3,.85,.35,1),opacity .18s linear}
+
+/* chỗ ngồi — vị trí do JS tính theo số người, mình LUÔN ở dưới cùng */
+.ghe{position:absolute;width:clamp(96px,17vw,168px);z-index:3;transform:translate(-50%,-50%)}
+.bai2{display:flex;gap:3px;justify-content:center;margin-bottom:-14px;position:relative;z-index:1;
+  min-height:calc(var(--lb2)*1.45)}
+.bang{position:relative;z-index:2;display:flex;align-items:center;gap:7px;
+  background:linear-gradient(180deg,#232836 0%,#12151d 100%);
+  border:1px solid #3a4152;border-radius:9px;padding:5px 8px 5px 5px;
+  box-shadow:0 5px 14px rgba(0,0,0,.55)}
+.av{width:clamp(24px,4.2vw,34px);aspect-ratio:1;border-radius:7px;flex:0 0 auto;display:grid;place-items:center;
+  font-size:clamp(13px,2.4vw,19px);background:linear-gradient(145deg,#394054,#1d2230);border:1px solid #4a5268}
+.ai{min-width:0;flex:1}
+.nt{font-size:clamp(10px,1.7vw,12.5px);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.ck{font-size:clamp(11px,1.9vw,14px);font-weight:900;color:#7fe3ff;font-variant-numeric:tabular-nums;line-height:1.25}
+.ck.it{color:#ff9a9a}
+.ghe.luot .bang{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,207,92,.45),0 6px 18px rgba(0,0,0,.6)}
+
+/* NHÀ CÁI: viền vàng đậm quanh bảng tên (chủ server yêu cầu nhìn phát biết ai chia) */
+.ghe.dealer .bang{border:2px solid var(--gold);padding:4px 7px 4px 4px;
+  box-shadow:0 0 0 1px rgba(255,207,92,.35),0 0 14px rgba(255,207,92,.35),0 6px 18px rgba(0,0,0,.6)}
+.ghe.dealer.luot .bang{box-shadow:0 0 0 3px rgba(255,207,92,.6),0 0 18px rgba(255,207,92,.5),0 6px 18px rgba(0,0,0,.6)}
+/* nhãn D / SB / BB gắn cạnh tên */
+.vt{display:inline-block;margin-left:4px;padding:0 5px;border-radius:999px;font-size:9.5px;
+  font-weight:900;line-height:14px;vertical-align:1px}
+.vt.d{background:var(--gold);color:#3a2a06}
+.vt.sb{background:var(--blue);color:#06121f}
+.vt.bb{background:var(--red);color:#2a0606}
+
+/* phòng chờ: ghế trống bấm được, ghế mình bấm để rời */
+.ghe.ghecho .bang{min-height:44px}
+.ghe.ghecho.trong .bang{background:rgba(18,20,26,.55);border-style:dashed;border-color:#4a5268}
+.ghe.ghecho.trong .av{background:transparent;border-color:transparent;color:var(--gold);font-weight:900}
+.ghe.ghecho.trong .nt{color:var(--muted)}
+.ghe.ghecho.trong .ck{color:var(--gold);font-size:11px;font-weight:700}
+.ghe.ghecho.bamduoc{cursor:pointer}
+.ghe.ghecho.bamduoc:hover .bang{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,207,92,.45),0 6px 18px rgba(0,0,0,.6)}
+.ghe.ghecho.toi .ck{color:#ff9a9a;font-size:11px;font-weight:700}
+.ghe.toi .bang{border-color:#7fe3ff}
+/* BỎ BÀI: hai lá tối đen hẳn, nhìn phát biết ngay ghế này hết cửa */
+.ghe.bo .bang{opacity:.42}
+.ghe.bo .bai2 .the .mat,.ghe.bo .bai2 .the .lung{
+  filter:brightness(.18) saturate(0);box-shadow:0 2px 5px rgba(0,0,0,.7)}
+.ghe.chay .bang{opacity:.3;filter:grayscale(1)}
+
+/* THẮNG VÁN: viền vàng nảy lên + số chip ăn được bay lên */
+@keyframes anVan{
+  0%{transform:translate(-50%,-50%) scale(1)}
+  28%{transform:translate(-50%,-52%) scale(1.09)}
+  100%{transform:translate(-50%,-50%) scale(1)}
+}
+@keyframes hao{
+  0%{opacity:0;transform:translate(-50%,6px) scale(.85)}
+  22%{opacity:1;transform:translate(-50%,-10px) scale(1.05)}
+  75%{opacity:1;transform:translate(-50%,-26px) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-42px) scale(.95)}
+}
+.ghe.thang{animation:anVan .7s ease both;z-index:5}
+.ghe.thang .bang{border-color:var(--gold);
+  box-shadow:0 0 0 3px rgba(255,207,92,.75),0 0 26px 6px rgba(255,207,92,.45),0 6px 18px rgba(0,0,0,.6)}
+.ghe.thang .ck{color:var(--gold)}
+.an{position:absolute;left:50%;top:-6px;transform:translate(-50%,0);white-space:nowrap;
+  font-size:clamp(12px,2.2vw,16px);font-weight:900;color:var(--gold);z-index:7;
+  text-shadow:0 2px 10px rgba(0,0,0,.95),0 0 18px rgba(255,207,92,.6);
+  animation:hao 2.4s ease-out both;pointer-events:none}
+
+/* đếm ngược trước khi chia ván mới */
+#demChia{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;
+  text-align:center;pointer-events:none}
+#demChia .so{font-size:clamp(46px,11vw,84px);font-weight:900;color:var(--gold);line-height:1;
+  text-shadow:0 4px 22px rgba(0,0,0,.95),0 0 40px rgba(255,207,92,.55);
+  animation:anVan .5s ease both}
+#demChia .ch{font-size:clamp(11px,2vw,14px);font-weight:800;color:#ffe6a8;margin-top:6px;
+  text-shadow:0 2px 10px rgba(0,0,0,.95)}
+.gio{height:4px;border-radius:999px;background:rgba(0,0,0,.55);margin:3px 6px 0;overflow:hidden}
+.gio i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));transition:width .9s linear}
+.tt{margin:4px auto 0;width:fit-content;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px}
+.tt.to{background:#4a1414;color:#ff9a9a}
+.tt.theo{background:#123021;color:#9ff0c4}
+.tt.bo{background:#22252e;color:var(--muted)}
+.tt.cho{background:#3a2e10;color:var(--gold)}
+.tt.afk{background:#3a1030;color:#e39bff}
+.tt.bai{background:#0d2740;color:#9ad4ff}
+.cuoc{position:absolute;z-index:2;display:flex;align-items:center;gap:5px;transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.42);border-radius:999px;padding:2px 9px 2px 3px;
+  font-size:clamp(10px,1.7vw,12px);font-weight:800;color:#fff;white-space:nowrap}
+.chip{width:15px;height:15px;border-radius:50%;flex:0 0 auto;
+  background:repeating-conic-gradient(#e8434f 0 18deg,#fff 18deg 36deg);
+  border:2px solid #b9202c;box-shadow:0 1px 3px rgba(0,0,0,.6)}
+.nutd{position:absolute;z-index:4;width:22px;height:22px;border-radius:50%;transform:translate(-50%,-50%);
+  display:grid;place-items:center;font-size:11px;font-weight:900;color:#3a2a06;
+  background:radial-gradient(circle at 34% 30%,#fff2c4,var(--gold) 58%,#c79a24);
+  border:1px solid #8a6a14;box-shadow:0 2px 5px rgba(0,0,0,.6)}
+
+/* ---------- thanh hành động ---------- */
+.act{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px}
+.act .dong{display:flex;gap:7px}
+.act .dong .b{flex:1}
+.muc{display:flex;gap:6px;margin-top:8px;align-items:center}
+.b2{flex:1;border:1px solid var(--line);background:#0e1016;color:var(--muted);border-radius:9px;
+  padding:8px 4px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.b2:disabled{opacity:.35;cursor:not-allowed}
+input[type=range]{width:100%;accent-color:var(--gold)}
+.nho{color:var(--muted);font-size:11.5px;text-align:center;margin-top:8px}
+.nho b{color:var(--gold)}
+
+/* ---------- danh sách / kết quả ---------- */
+.dong1{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.dong1:last-child{border-bottom:0}
+.hang1{font-size:18px;width:26px;text-align:center;flex:0 0 26px}
+.thg{margin-left:auto;font-size:11px;font-weight:800;border-radius:999px;padding:4px 9px;white-space:nowrap}
+.thg.vang{background:#3a2e10;color:var(--gold)}
+.thg.do{background:#3a1717;color:#ff9a9a}
+.thg.xam{background:#22252e;color:var(--muted)}
+
+@media(max-width:520px){
+  body{padding:8px}
+  .san{aspect-ratio:100/96;min-height:440px}
+  .vien{inset:56px 2px}
+  .ghe{width:clamp(88px,26vw,120px)}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ ĐĂNG NHẬP ============ -->
+<div id="manDangNhap" class="hop">
+  <h1>🃏 Giải Poker</h1>
+  <p class="mo">Đăng nhập bằng <b>ID Discord</b> và <b>mã PIN</b> y như web chơi game của bot.
+     Giải này <b>không ăn Dogcoin của ai</b> — chip trong bàn là chip ảo, chỉ để phân hạng.</p>
+  <label>ID Discord</label>
+  <input id="oId" inputmode="numeric" autocomplete="username" placeholder="vd: 111111111111111111">
+  <label>Mã PIN</label>
+  <input id="oPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="mã PIN web">
+  <button class="b xanh rong" onclick="dangNhap()">Vào</button>
+</div>
+
+<!-- ============ PHÒNG CHỜ ============ -->
+<div id="manCho" hidden>
+  <div class="top">
+    <div>
+      <div class="ten">🃏 GIẢI POKER</div>
+      <div class="van" id="choPhu">Đang chờ admin mở giải</div>
+    </div>
+    <div class="sp"></div>
+    <span class="pill vang" id="choVi"></span>
+  </div>
+
+  <!-- bàn với 8 ghế: bấm ghế trống để ngồi, bấm ghế mình để rời -->
+  <div class="san" id="sanCho">
+    <div class="vien"><div class="ni">
+      <div class="chumon">BIALK POKER</div>
+      <div class="giua">
+        <div class="hu" id="choGiua">Chọn một ghế trống để ngồi</div>
+        <div class="mo" id="choDem" style="margin-top:8px;color:#bfe7d3"></div>
+      </div>
+    </div></div>
+    <div id="choGhe"></div>
+  </div>
+  <div id="choVs" class="mo" style="margin-top:8px;text-align:center"></div>
+
+  <!-- Không có nút admin ở đây: đặt chip / Bắt đầu / Giải tán / Tạm nghỉ đều làm ở PANEL SUPER
+       (BotDoMin, tab 🃏 Poker) — chủ server chốt "thao tác bắt đầu ở bên super admin hết". -->
+  <div class="mo" id="choThang" style="margin-top:8px;text-align:center"></div>
+</div>
+
+<!-- ============ BÀN ============ -->
+<div id="manBan" hidden>
+  <div class="top">
+    <div>
+      <div class="ten" id="banTen">🃏 GIẢI POKER</div>
+      <div class="van" id="banPhu"></div>
+    </div>
+    <div class="sp"></div>
+    <span class="pill vang" id="banBlind"></span>
+    <span class="pill" id="banGio"></span>
+  </div>
+
+  <div id="hopNghi" class="hop" hidden style="border-color:#6b4e17;background:#2a1f10"></div>
+
+  <div class="san" id="san">
+    <div class="vien"><div class="ni">
+      <div class="chumon">BIALK POKER</div>
+      <div class="giua">
+        <div class="hu" id="banHu">HŨ · 0</div>
+        <div class="chung" id="banChung"></div>
+      </div>
+      <div id="banCuoc"></div>
+      <div class="nutd" id="banNutD" hidden>D</div>
+      <div id="demChia" hidden><div class="so" id="demSo">3</div><div class="ch">CHIA BÀI VÁN MỚI</div></div>
+    </div></div>
+    <div id="banGhe"></div>
+  </div>
+
+  <div class="act" id="banAct"></div>
+</div>
+
+<!-- ============ KẾT QUẢ ============ -->
+<div id="manKetQua" hidden>
+  <div class="top">
+    <div><div class="ten">🏁 GIẢI ĐÃ KẾT THÚC</div><div class="van" id="kqPhu"></div></div>
+    <div class="sp"></div><span class="pill xanh">Xong</span>
+  </div>
+  <div class="hop">
+    <h2>🏆 KẾT QUẢ</h2>
+    <div id="kqDs"></div>
+    <p class="mo" style="margin-top:12px">Thưởng và phạt do admin tự trao trong game — bot chỉ báo thứ hạng.</p>
+    <p class="mo" style="text-align:center">Admin bấm <b>Giải tán</b> ở panel SUPER để mở giải mới.</p>
+  </div>
+</div>
+
+<!-- lớp nặn bài giữa màn hình, chỉ hiện lúc vừa chia bài -->
+<div id="nanLop" hidden>
+  <div class="nanHop">
+    <div class="nanTieu" id="nanTieu">🎴 BÀI CỦA BẠN — kéo hoặc bấm từng lá để nặn</div>
+    <div class="nanBai" id="nanBai"></div>
+    <div class="nanDay">
+      <button class="b2" onclick="latHet()">👁️ Lật cả hai</button>
+      <button class="b2" onclick="boQuaNan()">Để sau</button>
+    </div>
+  </div>
+</div>
+
+<div id="bao" hidden></div>
+
+<script>
+/* Trang này chạy 2 kiểu:
+   - NHÚNG trong web BotDoMin tại /poker/  -> API ở /api/poker/*, dùng CHUNG play_token (cùng origin)
+   - ĐỨNG RIÊNG (Poker/index.js, dev/test)  -> API ở /api/*, có đăng nhập riêng, token poker_token */
+var NHUNG = /\/poker\/?$/.test(location.pathname);
+var GOC_API = NHUNG ? '/api/poker' : '/api';
+var TOKEN = (NHUNG ? localStorage.getItem('play_token') : localStorage.getItem('poker_token')) || '';
+var S = null;            // trạng thái mới nhất từ máy chủ
+var baoTimer = null;
+
+function $(id){ return document.getElementById(id); }
+function vnd(n){ return Number(n||0).toLocaleString('vi-VN'); }
+function bao(t){
+  var e = $('bao'); e.textContent = t; e.hidden = false;
+  clearTimeout(baoTimer); baoTimer = setTimeout(function(){ e.hidden = true; }, 4000);
+}
+
+function api(duong, than){
+  return fetch(GOC_API + duong, {
+    method: than ? 'POST' : 'GET',
+    headers: { 'Content-Type':'application/json', 'Authorization': TOKEN ? 'Bearer '+TOKEN : '' },
+    body: than ? JSON.stringify(than) : undefined
+  }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){
+      // 401: đứng riêng thì xoá token riêng; NHÚNG thì play_token là của trang chính, không đụng —
+      // chỉ hiện thông báo "đăng nhập ở trang chính" (trang chính sẽ tự dẹp phiên hỏng)
+      if (r.status === 401) { TOKEN=''; if (!NHUNG) localStorage.removeItem('poker_token'); ve(null); }
+      if (!r.ok) throw new Error(j.error || j.loi || ('Lỗi '+r.status));
+      return j;
+    });
+  });
+}
+function goi(duong, than){
+  api(duong, than || {}).then(function(j){ S=j; ve(S); }).catch(function(e){ bao(e.message); });
+}
+
+function dangNhap(){
+  var id = $('oId').value.trim(), pin = $('oPin').value.trim();
+  if (!id || !pin) return bao('Nhập đủ ID và PIN');
+  api('/dangnhap', { id:id, pin:pin }).then(function(j){
+    TOKEN = j.token; localStorage.setItem('poker_token', TOKEN);
+    dongBo();
+  }).catch(function(e){ bao(e.message); });
+}
+
+function dongBo(){
+  if (!TOKEN) return ve(null);
+  api('/state').then(function(j){ S=j; ve(S); }).catch(function(){});
+}
+
+/* ---------------------------------------------------------------- vẽ */
+function ve(s){
+  var coGiai = s && s.giai;
+  var xong = coGiai && s.giai.trangThai === 'XONG';
+  $('manDangNhap').hidden = !!s;
+  // NHÚNG mà chưa có phiên: không hiện form đăng nhập riêng (poker dùng chung phiên trang chính)
+  if (!s && NHUNG) datHTML($('manDangNhap'),
+    '<h1>🃏 Giải Poker</h1><p class="mo">Bạn chưa đăng nhập ở trang chính, hoặc phiên đã hết hạn. ' +
+    'Đăng nhập lại ở trang web cược rồi bấm tab <b>GIẢI POKER</b> lần nữa — không cần đăng nhập riêng cho poker.</p>');
+  $('manCho').hidden = !s || !!coGiai;
+  $('manBan').hidden = !coGiai || xong;
+  $('manKetQua').hidden = !xong;
+  if (!s) return;
+  if (!coGiai) return veCho(s);
+  if (xong) return veKetQua(s);
+  veBan(s);
+}
+
+function veCho(s){
+  $('choVi').textContent = s.toi.ten + ' · ' + vnd(s.toi.dogcoin) + ' Dogcoin';
+  var daNgoi = s.gheCuaToi >= 0;
+  $('choDem').textContent = s.cho.length + '/' + s.toiDa + ' người đã ngồi · mỗi người ' + vnd(s.chipDau) + ' chip';
+  $('choGiua').textContent = daNgoi ? 'Bạn đã ngồi — chờ admin bắt đầu' :
+      (s.toi.duocNgoi ? 'Bấm một ghế trống để ngồi' : 'Bạn chưa đủ điều kiện vào giải');
+
+  // 8 ghế cố định quanh bàn (ghế 0 ở đáy), không xoay theo người xem như lúc đánh
+  var n = s.ghe.length, o = '';
+  for (var k = 0; k < n; k++){
+    var g = s.ghe[k], a = k * 2*Math.PI/n;
+    var x = 50 + 43*Math.sin(a), y = 50 + 40*Math.cos(a);
+    var laToi = g && g.id === s.toi.id;
+    var trong = !g;
+    var bam = trong ? (s.toi.duocNgoi && !daNgoi ? ' onclick="ngoi(' + k + ')"' : (s.toi.duocNgoi ? ' onclick="ngoi(' + k + ')"' : ''))
+                    : (laToi ? ' onclick="roi()"' : '');
+    o += '<div class="ghe ghecho' + (trong ? ' trong' : '') + (laToi ? ' toi' : '') + (bam ? ' bamduoc' : '') +
+         '" style="left:' + x + '%;top:' + y + '%"' + bam + '>' +
+         '<div class="bang"><div class="av">' + (trong ? '＋' : (laToi ? '🐶' : '🙂')) + '</div>' +
+         '<div class="ai"><div class="nt">' + (trong ? 'Ghế ' + (k+1) : esc(g.ten) + (laToi ? ' (bạn)' : '')) + '</div>' +
+         '<div class="ck">' + (trong ? (s.toi.duocNgoi && !daNgoi ? 'bấm để ngồi' : (daNgoi && s.toi.duocNgoi ? 'bấm để đổi' : 'trống')) : (laToi ? 'bấm để rời' : vnd(s.chipDau) + ' chip')) + '</div></div></div></div>';
+  }
+  datHTML($('choGhe'), o);
+  $('choVs').textContent = s.toi.duocNgoi ? '' : ('⚠️ ' + (s.toi.viSaoKhong || ''));
+
+  // thang blind cho mọi người xem trước; admin bắt đầu từ PANEL SUPER, không có nút ở đây
+  $('choThang').textContent = 'Thang blind: ' + (s.lichBlind || []).slice(0, 8).map(vnd).join(' → ') +
+      (s.lichBlind && s.lichBlind.length > 8 ? ' → …' : '') + ' · lên mức mỗi 8 phút hoặc mỗi vòng (tối thiểu 6 ván)' +
+      (s.toi.admin ? ' · bạn là admin — bấm Bắt đầu ở panel SUPER (tab 🃏 Poker)' : '');
+  $('choPhu').textContent = 'Cần có ' + vnd(s.dogcoinVao) + ' Dogcoin để vào · từ ' + s.toiThieu + ' đến ' + s.toiDa + ' người · admin mở giải từ panel';
+}
+function ngoi(k){ goi('/ngoi', { ghe: k }); }
+function roi(){ goi('/roi'); }
+// (đặt chip / bắt đầu / giải tán: PANEL SUPER, không có ở trang người chơi)
+
+function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+/* ===================== LUẬT VÀNG CỦA TRANG NÀY =====================
+   Trang hỏi máy chủ MỖI GIÂY. Nếu cứ thế gán innerHTML thì mọi thứ người chơi
+   đang đụng vào đều bị cuốn phăng: thanh kéo tố nhảy về đầu, ô đang gõ mất chữ,
+   hiệu ứng lật bài đứt ngang, nút vừa bấm thì DOM đã bị thay.
+   -> MỌI chỗ vẽ lại PHẢI đi qua datHTML(): chỉ đụng DOM khi nội dung THỰC SỰ đổi.
+   -> Số đếm lùi (đổi mỗi giây) KHÔNG được nằm trong chuỗi so sánh; tách ra ô riêng
+      rồi cập nhật bằng textContent.
+   -> Thứ người chơi tự đặt (giá trị thanh kéo) giữ trong BIẾN JS, không đọc từ DOM.
+   Bên BotDoMin đã dính đúng lỗi này 2 lần (ô nhập panel bị 3 giây ghi đè). */
+function datHTML(el, html){
+  if (!el || el.__cu === html) return false;
+  el.__cu = html;
+  el.innerHTML = html;
+  return true;
+}
+
+/* ---------------------------------------------------------------- lá bài
+   goc: 0 = úp, 180 = ngửa. them: class thêm (vd 'nan' cho bài mình tự nặn). */
+function theLa(ma, nho, goc, them){
+  return '<div class="the'+(nho?' n2':'')+(them?' '+them:'')+'" style="--g:'+(goc==null?180:goc)+'deg">' +
+         '<img class="mat" src="bai/'+(ma||'back')+'.webp" alt="">' +
+         '<img class="lung" src="bai/back.webp" alt=""></div>';
+}
+function theUp(nho){ return theLa('back', nho, 0); }
+
+function veBan(s){
+  var g = s.giai, v = g.van || {};
+  $('banPhu').textContent = 'Ván #' + (v.so||0) + ' · ' + tenVong(v.vong) +
+      ' · ' + g.nguoi.filter(function(p){return p.chip>0;}).length + ' người còn lại';
+  $('banBlind').textContent = 'Mức ' + g.mucBlind + ' · ' + vnd(g.blind.sb) + '/' + vnd(g.blind.bb) +
+      (g.mucCuoiCung ? ' (mức chót)' : (g.vanConLai ? ' · còn ' + g.vanConLai + ' ván' : ''));
+  $('banGio').textContent = g.nghi ? '⏸️ ĐANG NGHỈ' : ('⏱ ' + conMay(g));
+  $('banHu').textContent = 'HŨ · ' + vnd(v.hu || 0);
+
+  // đếm ngược 3…2…1 trước khi chia ván mới (máy chủ báo còn mấy giây)
+  var dem = $('demChia');
+  if (typeof s.demChiaBai === 'number' && s.demChiaBai > 0){
+    if (dem.hidden || $('demSo').textContent !== String(s.demChiaBai)){
+      $('demSo').textContent = String(s.demChiaBai);
+      $('demSo').style.animation = 'none';
+      void $('demSo').offsetWidth;            // ép trình duyệt chạy lại hoạt ảnh nảy
+      $('demSo').style.animation = '';
+    }
+    dem.hidden = false;
+  } else dem.hidden = true;
+
+  veChung(v.chung || []);
+  veNghi(s);
+  veGhe(s);          // đặt QUA_PREFLOP, nên phải chạy TRƯỚC veNan
+  veNan(s);
+  veAct(s);
+}
+
+/* ---- bài chung: chỉ dựng lại khi có lá MỚI, lá mới thì lật từ úp sang ngửa ----
+   Vẽ lại vô tội vạ mỗi giây là animation đứt ngang, nên phải so trước khi đụng DOM. */
+var CHUNG_CU = [];
+function veChung(chung){
+  if (chung.join() === CHUNG_CU.join()) return;
+  var cu = CHUNG_CU.length, e = $('banChung');
+  // ván mới (bài chung bị xoá sạch) -> dựng lại từ đầu, không hiệu ứng
+  if (chung.length < cu){ CHUNG_CU = chung.slice(); /*CHAN-ROI*/ e.innerHTML = chung.map(function(x){ return theLa(x); }).join(''); return; }
+  /*CHAN-ROI*/ e.innerHTML = chung.map(function(x, i){ return theLa(x, false, i < cu ? 180 : 0); }).join('');
+  // lá mới: úp trước rồi lật, mỗi lá lệch nhau 160ms cho ra kiểu chia bài thật
+  var moi = [];
+  for (var i = cu; i < chung.length; i++) moi.push(i);
+  moi.forEach(function(i, k){
+    setTimeout(function(){
+      var n = e.children[i]; if (n) n.style.setProperty('--g', '180deg');
+    }, 90 + k * 160);
+  });
+  CHUNG_CU = chung.slice();
+}
+function tenVong(x){
+  return { PREFLOP:'Vòng bài riêng', FLOP:'Vòng 3 lá', TURN:'Vòng 4 lá',
+           RIVER:'Vòng 5 lá', LAT:'Lật bài', XONG:'Xong ván' }[x] || (x||'');
+}
+function conMay(g){
+  var v = g.van; if (!v || !v.hanChot) return '—';
+  var s = Math.max(0, Math.ceil((v.hanChot - Date.now())/1000));
+  return s + ' giây';
+}
+
+/* ================= NẶN BÀI =================
+   NAN.goc[i] = góc lá thứ i của MÌNH (0 úp, 180 ngửa). Giữ trong biến JS chứ không
+   trong DOM, vì DOM bị dựng lại mỗi khi trạng thái đổi — lưu ở đây thì nặn xong
+   vẫn còn nguyên sau lần vẽ kế. */
+var NAN = { van: -1, goc: [0, 0], boQua: false };
+var QUA_PREFLOP = false;   // đã qua vòng bài riêng chưa (bài chung đã ra)
+var NAN_KEY = '';          // chữ ký lớp nặn, đổi mới dựng lại (đừng dựng mỗi giây)
+var DANG_KEO = false;      // đang kéo tay -> CẤM vẽ lại, không thì đứt tay giữa chừng
+var GHE_CU = '';           // chữ ký lần vẽ trước, giống hệt thì khỏi đụng DOM
+var VITRI = [];            // vị trí % từng ghế, để lá bài bay đúng chỗ lúc chia
+var VAN_CU = -1;
+
+function gan1La(e, i){
+  var batX = 0, batG = 0, dich = 0;
+  e.addEventListener('pointerdown', function(ev){
+    if (NAN.goc[i] >= 180) return;
+    DANG_KEO = true; dich = 0;
+    batX = ev.clientX; batG = NAN.goc[i];
+    e.classList.add('keo'); e.classList.remove('nhanh');
+    e.setPointerCapture(ev.pointerId);
+  });
+  e.addEventListener('pointermove', function(ev){
+    if (!DANG_KEO) return;
+    var d = ev.clientX - batX;
+    dich = Math.max(dich, Math.abs(d));
+    NAN.goc[i] = Math.max(0, Math.min(180, batG + d * 1.5));
+    e.style.setProperty('--g', NAN.goc[i] + 'deg');
+  });
+  function nha(){
+    if (!DANG_KEO) return;
+    DANG_KEO = false;
+    e.classList.remove('keo'); e.classList.add('nhanh');
+    // bấm phát (không kéo) = lật luôn; kéo quá nửa = lật nốt; chưa tới = thả về úp
+    NAN.goc[i] = (dich < 6 || NAN.goc[i] > 80) ? 180 : 0;
+    e.style.setProperty('--g', NAN.goc[i] + 'deg');
+    if (NAN.goc[i] >= 180) e.classList.remove('nan');
+    // Ép vẽ lại (cho ghế dưới hiện bài đã mở) nhưng phải CHỜ cú lật chạy xong —
+    // vẽ lại ngay là dựng DOM mới, lá bài nhảy phắt sang góc cuối, mất hiệu ứng.
+    setTimeout(function(){ GHE_CU = ''; $('banGhe').__cu = ''; }, 340);
+    // mở hết 2 lá rồi thì GIỮ 2 giây cho nhìn đã, xong mới hạ xuống
+    if (NAN.goc[0] >= 180 && NAN.goc[1] >= 180) dongLopNan();
+  }
+  e.addEventListener('pointerup', nha);
+  e.addEventListener('pointercancel', nha);
+}
+
+/* ================= KHOE BÀI =================
+   Bấm vào lá đã mở của mình -> hỏi lại -> máy chủ lật lá đó cho CẢ BÀN xem 4 giây.
+   Mỗi ván chỉ khoe 1 lá. Quyết định nằm ở máy chủ, đây chỉ là chỗ bấm nút. */
+function gan1Khoe(e){
+  e.addEventListener('click', function(){
+    var i = Number(e.getAttribute('data-khoe'));
+    if (!confirm('Khoe lá này cho cả bàn xem trong 4 giây?\n\nMỗi ván chỉ khoe được 1 lá — khoe rồi là hết lượt.'))
+      return;
+    goi('/khoe', { la: i });
+  });
+}
+
+/* ================= CHIA BÀI =================
+   Lá úp bay từ chỗ nhà cái ra từng ghế, 2 vòng như chia bài thật. Chỉ là lớp phủ
+   chạy bên trên — bài thật đã nằm sẵn dưới, nên có lỡ lỗi cũng không sai ván nào. */
+function chiaBai(){
+  var san = $('san'); if (!san || !VITRI.length) return;
+  var nd = $('banNutD');
+  var tuX = nd && !nd.hidden ? parseFloat(nd.style.left) : 50;
+  var tuY = nd && !nd.hidden ? parseFloat(nd.style.top) : 50;
+  var dem = 0;
+  for (var vong = 0; vong < 2; vong++){
+    for (var k = 0; k < VITRI.length; k++){
+      (function(vt, tre){
+        setTimeout(function(){
+          var e = document.createElement('div');
+          e.className = 'bay';
+          e.style.left = tuX + '%'; e.style.top = tuY + '%';
+          san.appendChild(e);
+          requestAnimationFrame(function(){
+            e.style.left = vt.x + '%';
+            e.style.top = vt.y + '%';
+            e.style.transform = 'translate(-50%,-50%) rotate(' + (Math.random()*30-15) + 'deg)';
+          });
+          setTimeout(function(){ e.style.opacity = '0'; }, 380);
+          setTimeout(function(){ e.remove(); }, 620);
+        }, tre);
+      })(VITRI[k], dem++ * 85);
+    }
+  }
+}
+
+/* ================= LỚP NẶN BÀI GIỮA MÀN HÌNH =================
+   Vừa chia bài xong: 2 lá của mình phóng to ra giữa màn hình, tự kéo/bấm từng lá
+   để mở. Mở xong (hoặc bấm "Để sau", hoặc bài chung đã ra) thì lớp này biến mất,
+   bài về nằm ở ghế dưới cùng như bình thường. */
+/* Đóng lớp nặn: GIỮ LẠI vài giây cho người chơi kịp nhìn lá vừa mở, rồi mới thu
+   nhỏ trượt xuống phía ghế. Trước đây đóng sau 430ms — lật xong chưa kịp thấy gì
+   thì lớp đã biến mất. Phải có cờ DANG_DONG vì veNan() chạy mỗi giây, thấy bài đã
+   mở hết là nó tắt lớp ngay, cắt luôn 2 giây chờ. */
+var DANG_DONG = false;
+var GIU_SAU_NAN = 2000;
+function dongLopNan(cho){
+  if (DANG_DONG) return;
+  DANG_DONG = true;
+  setTimeout(function(){
+    var h = document.querySelector('.nanHop'), lop = $('nanLop');
+    if (h) h.classList.add('haXuong');
+    lop.classList.add('tat');
+    setTimeout(function(){
+      lop.hidden = true; lop.classList.remove('tat');
+      if (h) h.classList.remove('haXuong');
+      NAN_KEY = ''; DANG_DONG = false;
+      GHE_CU = ''; $('banGhe').__cu = '';       // cho ghế dưới vẽ lại với bài đã mở
+    }, 620);
+  }, cho == null ? GIU_SAU_NAN : cho);
+}
+
+function veNan(s){
+  if (DANG_KEO || DANG_DONG) return;           // đang kéo / đang đóng thì đừng đụng
+  var g = s.giai, v = g.van || {}, t = g.toi, lop = $('nanLop');
+  var conUp = NAN.goc[0] < 180 || NAN.goc[1] < 180;
+  var hien = !!(t && t.la) && !QUA_PREFLOP && conUp && !NAN.boQua &&
+             v.vong === 'PREFLOP' && !g.nghi;
+  if (!hien){ lop.hidden = true; NAN_KEY = ''; return; }
+
+  lop.hidden = false;
+  var khoa = v.so + '|' + t.la.join(',');
+  if (khoa !== NAN_KEY){                      // chỉ dựng lại khi sang ván khác
+    NAN_KEY = khoa;
+    /*CHAN-ROI*/ $('nanBai').innerHTML = t.la.map(function(c, i){
+      return theLa(c, false, NAN.goc[i], 'to' + (NAN.goc[i] < 180 ? ' nan' : ''));
+    }).join('');
+    var e = $('nanBai').querySelectorAll('.the');
+    for (var i = 0; i < e.length; i++) gan1La(e[i], i);
+  }
+  $('nanTieu').textContent = t.toiLuot
+    ? '🎴 TỚI LƯỢT BẠN — nặn bài đi, còn ' + conMay(g)
+    : '🎴 BÀI CỦA BẠN — kéo hoặc bấm từng lá để nặn';
+}
+function latHet(){
+  var e = $('nanBai').querySelectorAll('.the');
+  for (var i = 0; i < e.length; i++){
+    NAN.goc[i] = 180;
+    e[i].classList.add('nhanh'); e[i].classList.remove('nan');
+    e[i].style.setProperty('--g', '180deg');
+  }
+  dongLopNan();                       // lật hết cũng giữ 2 giây rồi mới hạ
+}
+// "Để sau" là người chơi CHỦ ĐỘNG muốn cất đi -> hạ ngay, không bắt chờ
+function boQuaNan(){ NAN.boQua = true; dongLopNan(0); }
+
+/* ---- chỗ ngồi: xếp quanh hình bầu dục, MÌNH luôn ở dưới cùng ---- */
+function veGhe(s){
+  if (DANG_KEO) return;                         // đang nặn thì đừng đụng vào DOM
+  var g = s.giai, v = g.van || {};
+  var n = g.nguoi.length;
+  var toiO = 0;
+  for (var i=0;i<n;i++) if (g.nguoi[i].id === s.toi.id) toiO = i;
+  var lat = (v.ketQua && v.ketQua.lat) ? v.ketQua.lat : null;
+  var khoe = v.khoe || [];                                   // ai đang khoe lá nào
+  var daKhoe = (v.daKhoe || []).indexOf(s.toi.id) >= 0;      // mình khoe rồi thì thôi
+  var an = (v.ketQua && v.ketQua.an) ? v.ketQua.an : null;   // ai ăn bao nhiêu chip ván này
+  var oGhe = '', oCuoc = '';
+
+  // ván mới: bài úp lại, mở lại lớp nặn
+  if (NAN.van !== v.so){ NAN = { van: v.so, goc: [0, 0], boQua: false }; NAN_KEY = ''; }
+  // Chỉ được tự nặn ở vòng bài riêng. Bài chung vừa ra là máy LẬT GIÙM — ai quên nặn
+  // thì cả ván đánh mù, mà nhắc mãi cũng phiền.
+  QUA_PREFLOP = !!v.vong && v.vong !== 'PREFLOP';
+
+  VITRI = [];
+  for (var k=0;k<n;k++){
+    var p = g.nguoi[(toiO + k) % n];
+    var a = k * 2*Math.PI/n;                     // 0 = mình, ở đáy
+    var x = 50 + 43*Math.sin(a), y = 50 + 40*Math.cos(a);
+    var laToi = p.id === s.toi.id;
+    var toiLuot = v.luot === p.id;
+    var trongVan = p.trongVan && !p.daBo;
+    if (trongVan) VITRI.push({ x: x, y: y });
+
+    // bài: của mình thì TỰ NẶN; của người khác chỉ ngửa khi ĐÃ LẬT
+    var bai = '', nhac = '';
+    var cuaHo = lat ? lat.filter(function(z){ return z.id === p.id; })[0] : null;
+    if (laToi && g.toi && g.toi.la){
+      // Ở GHẾ chỉ HIỂN THỊ theo góc đang nặn — việc nặn làm ở lớp giữa màn hình,
+      // để hai chỗ cùng cho kéo thì rối tay và dễ lệch góc nhau.
+      // Bài đã mở + chưa khoe lá nào -> bấm vào lá để khoe cho cả bàn xem.
+      bai = g.toi.la.map(function(c, i){
+        var them = (NAN.goc[i] >= 180 && !daKhoe) ? 'khoeDuoc' : '';
+        return theLa(c, false, NAN.goc[i], them).replace('<div class="the',
+          '<div data-khoe="' + i + '" class="the');
+      }).join('');
+    }
+    else if (cuaHo) bai = cuaHo.la.map(function(c){ return theLa(c, true, 0); }).join('');
+    else if (trongVan && v.vong){
+      // ai đang KHOE 1 lá thì lá đó ngửa cho cả bàn xem, lá kia vẫn úp
+      var kh = khoe.filter(function(z){ return z.id === p.id; })[0];
+      bai = kh
+        ? (kh.i === 0 ? theLa(kh.la, true, 180, 'khoeRa') + theUp(true)
+                      : theUp(true) + theLa(kh.la, true, 180, 'khoeRa'))
+        : theUp(true) + theUp(true);
+    }
+
+    var tt = '';
+    if (p.chip <= 0 && !p.trongVan) tt = '<div class="tt bo">Đã cháy</div>';
+    else if (p.daBo) tt = '<div class="tt bo">Bỏ bài</div>';
+    else if (cuaHo) tt = '<div class="tt bai">' + esc(cuaHo.cham.ten) + '</div>';
+    else if (p.afk) tt = '<div class="tt afk">Mất kết nối</div>';
+    else if (toiLuot) tt = '<div class="tt cho">⏳ đang nghĩ</div>';
+
+    var gio = toiLuot && v.hanChot ? '<div class="gio"><i style="width:' +
+        Math.max(0, Math.min(100, (v.hanChot-Date.now())/300)) + '%"></i></div>' : '';
+
+    // ăn chip ván này -> ghế nảy lên, viền vàng, số chip bay lên
+    var thang = an && an[p.id] > 0;
+    var soAn = thang ? '<div class="an">+' + vnd(an[p.id]) + '</div>' : '';
+
+    oGhe += '<div class="ghe' + (toiLuot?' luot':'') + (laToi?' toi':'') +
+            (p.daBo?' bo':'') + (p.chip<=0 && !p.trongVan?' chay':'') + (thang?' thang':'') +
+            (p.id===g.nutCai?' dealer':'') +
+            '" style="left:'+x+'%;top:'+y+'%">' + soAn +
+            '<div class="bai2">'+bai+'</div>' +
+            '<div class="bang"><div class="av">'+(laToi?'🐶':'🙂')+'</div>' +
+            '<div class="ai"><div class="nt">'+esc(p.ten)+(laToi?' (bạn)':'') +
+              (p.id===g.nutCai ? '<span class="vt d">D</span>' : '') +
+              (p.id===v.sb ? '<span class="vt sb">SB</span>' : '') +
+              (p.id===v.bb ? '<span class="vt bb">BB</span>' : '') + '</div>' +
+            '<div class="ck'+(p.chip<1000?' it':'')+'">'+vnd(p.chip)+'</div></div></div>' +
+            gio + tt + nhac + '</div>';
+
+    if (p.cuoc > 0){
+      var cx = 50 + 24*Math.sin(a), cy = 50 + 23*Math.cos(a);
+      oCuoc += '<div class="cuoc" style="left:'+cx+'%;top:'+cy+'%"><span class="chip"></span>'+vnd(p.cuoc)+'</div>';
+    }
+  }
+
+  // Không có gì đổi thì ĐỪNG dựng lại DOM — dựng lại là hiệu ứng lật/nặn đứt ngang.
+  if (datHTML($('banGhe'), oGhe)){
+    GHE_CU = oGhe;
+    // bài của mình: gắn tay nặn + lật ra cho người khác xem lúc showdown
+    var cua = $('banGhe').querySelectorAll('.ghe.toi .the.nan');
+    for (var q=0;q<cua.length;q++) gan1La(cua[q], q);
+    // bấm vào lá đã mở của mình -> hỏi rồi khoe cho cả bàn xem (mỗi ván 1 lá)
+    var kd = $('banGhe').querySelectorAll('.ghe.toi .the.khoeDuoc');
+    for (var z=0;z<kd.length;z++) gan1Khoe(kd[z]);
+    var up = $('banGhe').querySelectorAll('.ghe:not(.toi) .the');
+    for (var w=0;w<up.length;w++){
+      if (lat && up[w].querySelector('.mat').src.indexOf('back.webp') < 0){
+        (function(el, tre){ setTimeout(function(){ el.style.setProperty('--g','180deg'); }, 120 + tre*130); })(up[w], w);
+      }
+    }
+    // Qua vòng bài chung rồi mà bài mình còn úp -> LẬT GIÙM, có hiệu ứng đàng hoàng.
+    // Chờ 420ms cho bài chung lật xong đã, nhìn mới ra thứ tự "bàn mở rồi tới mình".
+    if (QUA_PREFLOP && (NAN.goc[0] < 180 || NAN.goc[1] < 180)){
+      setTimeout(function(){
+        var m = $('banGhe').querySelectorAll('.ghe.toi .the');
+        for (var i=0;i<m.length;i++){
+          if (NAN.goc[i] < 180){ NAN.goc[i] = 180; m[i].style.setProperty('--g','180deg'); }
+        }
+        setTimeout(function(){ GHE_CU = ''; $('banGhe').__cu = ''; }, 520);
+      }, 420);
+    }
+  }
+  datHTML($('banCuoc'), oCuoc);
+
+  // ván mới -> chạy hiệu ứng chia bài
+  if (v.so && v.so !== VAN_CU){ VAN_CU = v.so; setTimeout(chiaBai, 40); }
+
+  // nút nhà cái đặt cạnh ghế người đang giữ nút
+  var nd = $('banNutD');
+  var vt = -1;
+  for (var j=0;j<n;j++) if (g.nguoi[(toiO+j)%n].id === g.nutCai) vt = j;
+  if (vt >= 0){
+    var b = vt * 2*Math.PI/n;
+    nd.hidden = false;
+    nd.style.left = (50 + 31*Math.sin(b)) + '%';
+    nd.style.top  = (50 + 30*Math.cos(b)) + '%';
+  } else nd.hidden = true;
+}
+
+/* ---- xin nghỉ ---- */
+function veNghi(s){
+  var g = s.giai, h = $('hopNghi');
+  if (g.nghi){
+    h.hidden = false;
+    datHTML(h, '<h2>⏸️ Đang tạm ngưng</h2><p class="mo">Cả bàn đang nghỉ' +
+      (g.nghiBoi ? ' (do ' + esc(tenCua(s, g.nghiBoi)) + ' xin)' : '') +
+      '. Đồng hồ suy nghĩ và đồng hồ lên mức blind đều đứng yên.</p>' +
+      '<button class="b xanh rong" onclick="goi(\'/choitiep\')">▶️ Chơi tiếp</button>');
+    return;
+  }
+  if (g.xinNghi){
+    var daBo = g.xinNghi.dongY.indexOf(s.toi.id) >= 0;
+    h.hidden = false;
+    datHTML(h, '<h2>🙋 ' + esc(tenCua(s, g.xinNghi.boi)) + ' xin tạm ngưng</h2>' +
+      '<p class="mo">Phải <b>cả bàn đồng ý</b> mới ngưng. Đã đồng ý: <b>' +
+      g.xinNghi.dongY.length + '</b> · còn chờ: ' +
+      (g.xinNghi.conCho.map(function(x){ return esc(tenCua(s,x)); }).join(', ') || '—') + '</p>' +
+      (daBo ? '<p class="mo">Bạn đã đồng ý, đang chờ người khác.</p>'
+            : '<div class="hang" style="margin-top:10px">' +
+              '<button class="b xanh" onclick="goi(\'/dongy\')">Đồng ý nghỉ</button>' +
+              '<button class="b xam" onclick="goi(\'/tuchoi\')">Không, chơi tiếp</button></div>'));
+    return;
+  }
+  h.hidden = true;
+}
+function tenCua(s, id){
+  var p = s.giai.nguoi.filter(function(x){ return x.id === id; })[0];
+  return p ? p.ten : id;
+}
+
+/* ---- thanh hành động ----
+   Số tiền tố người chơi tự kéo được giữ trong TO.gt (BIẾN JS), không đọc từ DOM.
+   Chỉ đặt lại khi TÌNH HUỐNG CƯỢC đổi thật (sang ván khác, sang vòng khác, có người
+   tố lên, số chip mình đổi) — TO.khoa là chữ ký của tình huống đó.
+   Trước đây thanh kéo lấy value="toiThieu" cứng nên mỗi giây vẽ lại là nhảy về đầu. */
+var TO = { khoa: '', gt: 0 };
+function veAct(s){
+  var g = s.giai, v = g.van || {}, t = g.toi, e = $('banAct');
+  var trongGiai = !!t;
+  var conLuot = trongGiai && t.toiLuot && !g.nghi;
+
+  if (!trongGiai){
+    return void datHTML(e, '<p class="mo" style="text-align:center;margin:0">👀 Bạn đang xem. ' +
+      'Bài của người chơi chỉ hiện khi lật bài.</p>');
+  }
+  // Đã cháy: phải nói thẳng ra. Thiếu nhánh này thì người bị loại vẫn thấy thanh
+  // "Đang chờ X" y như còn đang đánh, ngồi đợi mãi không tới lượt mình.
+  if (t.daChay){
+    return void datHTML(e,
+      '<div class="dong"><button class="b xam" style="flex:1" disabled>💀 Bạn đã bị loại' +
+      (t.hang ? ' — hạng ' + t.hang + '/' + g.nguoi.length : '') + '</button></div>' +
+      '<div class="nho">Cứ ngồi xem tiếp · bài của người chơi chỉ hiện khi lật bài</div>');
+  }
+
+  var duoiCung = '';
+  if (t.cham) duoiCung = '<div class="nho">Bài của bạn đang là: <b>' + esc(t.cham.ten) + '</b></div>';
+
+  if (!conLuot){
+    var vi = g.nghi ? 'Đang tạm ngưng' : (v.luot ? ('Đang chờ ' + esc(tenCua(s, v.luot))) : 'Đang chia bài…');
+    return void datHTML(e, '<div class="dong"><button class="b xam" style="flex:1" disabled>' + vi + '</button></div>' +
+      duoiCung + nutXinNghi(s));
+  }
+
+  var can = t.canTheo, toiDa = t.toiDa || 0, muc = v.muc || 0;
+  var toiThieu = Math.min(toiDa, muc + (v.toToiThieu || g.blind.bb));
+  var coTheTo = toiDa > muc;
+  var hu = v.hu || 0;
+
+  var khoa = v.so + '|' + v.vong + '|' + muc + '|' + toiDa;
+  if (TO.khoa !== khoa){ TO.khoa = khoa; TO.gt = toiThieu; }
+  TO.gt = Math.max(toiThieu, Math.min(toiDa, TO.gt));
+
+  var html =
+    '<div class="dong">' +
+      '<button class="b xam" onclick="danh(\'bo\')"' + (can<=0?' disabled':'') + '>🚫 Bỏ bài</button>' +
+      '<button class="b xanh" onclick="danh(\'theo\')">' + (can<=0 ? '✅ Theo (miễn phí)' : '✅ Theo ' + vnd(can)) + '</button>' +
+      '<button class="b do" onclick="danhTo()"' + (coTheTo?'':' disabled') + '>⬆️ <span id="nhanTo"></span></button>' +
+    '</div>' +
+    (coTheTo ?
+      '<div class="muc"><input type="range" id="thanhTo" min="'+toiThieu+'" max="'+toiDa+'" step="1" oninput="capNhatTo()"></div>' +
+      '<div class="muc">' +
+        nutNhanh('½ hũ', Math.floor(muc + hu/2), toiThieu, toiDa) +
+        nutNhanh('1 hũ', muc + hu, toiThieu, toiDa) +
+        nutNhanh('2 hũ', muc + hu*2, toiThieu, toiDa) +
+        '<button class="b2" onclick="datTo('+toiDa+')">ALL-IN · '+vnd(toiDa)+'</button>' +
+      '</div>' : '') +
+    duoiCung +
+    // số giây đổi MỖI GIÂY -> để riêng ô #actDem, không nhét vào chuỗi so sánh,
+    // không thì lần nào cũng "khác" và DOM bị dựng lại, thanh kéo lại nhảy về đầu
+    '<div class="nho">Còn <b id="actDem">—</b> · hết giờ thì ' + (can<=0?'tự theo':'tự bỏ bài') + '</div>' +
+    nutXinNghi(s);
+
+  datHTML(e, html);
+  var r = $('thanhTo');
+  if (r && Number(r.value) !== TO.gt) r.value = TO.gt;   // trả lại đúng chỗ người chơi đã kéo
+  capNhatTo();
+  capNhatDem(g);
+}
+function capNhatDem(g){
+  var d = $('actDem'); if (d) d.textContent = conMay(g);
+}
+function nutNhanh(nhan, tien, min, max){
+  var t = Math.max(min, Math.min(max, tien));
+  var tat = tien < min || tien > max;
+  return '<button class="b2" onclick="datTo('+t+')"'+(tat?' disabled':'')+'>'+nhan+' · '+vnd(t)+'</button>';
+}
+function capNhatTo(){
+  var r = $('thanhTo'), n = $('nhanTo');
+  if (!r || !n) return;
+  TO.gt = Number(r.value);                               // nhớ lại ngay lúc người chơi kéo
+  n.textContent = (TO.gt >= Number(r.max)) ? ('ALL-IN ' + vnd(TO.gt)) : ('Tố tới ' + vnd(TO.gt));
+}
+function datTo(x){ var r = $('thanhTo'); if (r){ r.value = x; capNhatTo(); } }
+function danh(kieu){ goi('/danh', { kieu: kieu }); }
+function danhTo(){ goi('/danh', { kieu:'to', tien: TO.gt }); }
+function nutXinNghi(s){
+  var toi = s.giai.nguoi.filter(function(p){ return p.id === s.toi.id; })[0];
+  if (!toi || toi.chip <= 0 || s.giai.nghi || s.giai.xinNghi) return '';
+  if (!toi.conLuotXinNghi) return '<div class="nho">Bạn đã dùng lượt xin nghỉ của mình rồi.</div>';
+  return '<div class="muc"><button class="b2" onclick="goi(\'/xinnghi\')">⏸️ Xin cả bàn nghỉ (1 lần duy nhất)</button></div>';
+}
+
+function veKetQua(s){
+  var kq = s.giai.ketQua || [];
+  var HUY = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣'];
+  $('kqPhu').textContent = s.giai.soVan + ' ván · mức cuối ' + vnd(s.giai.blind.sb) + '/' + vnd(s.giai.blind.bb);
+  datHTML($('kqDs'), kq.map(function(p,i){
+    return '<div class="dong1"><div class="hang1">'+(HUY[i]||(i+1))+'</div><div class="av">🙂</div>' +
+      '<div><div class="nt">'+esc(p.ten)+(p.id===s.toi.id?' (bạn)':'')+'</div>' +
+      '<div class="mo">'+vnd(p.chip)+' chip</div></div>' +
+      '<span class="thg '+(i===0?'vang':(i===kq.length-1?'do':'xam'))+'">'+
+      (i===0?'Nhất':(i===kq.length-1?'Bét':'Hạng '+(i+1)))+'</span></div>';
+  }).join(''));
+}
+
+/* ---------------------------------------------------------------- chạy */
+setInterval(dongBo, 1000);
+setInterval(function(){                       // đồng hồ đếm lùi cho mượt
+  if (S && S.giai && S.giai.van && !S.giai.nghi){
+    var e = $('banGio'); if (e && !$('manBan').hidden) e.textContent = '⏱ ' + conMay(S.giai);
+  }
+}, 250);
+$('oPin').addEventListener('keydown', function(e){ if (e.key === 'Enter') dangNhap(); });
+dongBo();
+</script>
+</body>
+</html>
