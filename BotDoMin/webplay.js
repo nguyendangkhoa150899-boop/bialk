@@ -1525,13 +1525,13 @@ const PAGE = [
     '<button id="mPlus" onclick="mStep(1)">+</button>',
     '</div>',
 
-    // 🍀 09/09: KHÔNG còn cỏ free - tick = MUA 1 ô, phí 20% cược (server tự trừ lúc bắt đầu)
+    // 🍀 09/09: KHÔNG còn cỏ free - tick = MUA 1 ô, phí 40% cược (server tự trừ lúc bắt đầu)
     '<label class="muted" id="mExtraWrap" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;margin-top:8px;cursor:pointer">',
     '<input type="checkbox" id="mExtra" onchange="mBand()" style="width:16px;height:16px;accent-color:#2ec26a">',
-    '<span id="mExtraTxt">🍀 Mua 1 cỏ may mắn (phí <b id="mExtraFee">20</b> = 20% cược)</span></label>',
+    '<span id="mExtraTxt">🍀 Mua 1 cỏ may mắn (phí <b id="mExtraFee">40</b> = 40% cược)</span></label>',
     '<div class="capwarn" id="mCapWarn"></div>',
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
-    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao - trúng mìn là mất tiền cược ván đó. Cỏ 🍀 KHÔNG tặng sẵn - muốn thì tick mua (20% cược).</div>',
+    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao - trúng mìn là mất tiền cược ván đó. Cỏ 🍀 KHÔNG tặng sẵn - muốn thì tick mua (40% cược).</div>',
     '<div class="muted" id="mPotLine" style="font-size:12px;margin-top:4px;text-align:center;color:#ffd24a"></div>',
     '<div class="muted" id="mNote" style="font-size:12px;margin-top:3px;text-align:center;color:#ff9a5c"></div>',
     '</div>',
@@ -1556,14 +1556,14 @@ const PAGE = [
     '<div class="box"><div class="lab big" id="sFireLab">🔥 Cầu lửa mỗi tầng</div><input id="sFire" inputmode="numeric" value="2" oninput="sTable()"></div>',
     '<button id="sPlus" onclick="sStep(1)">+</button>',
     '</div>',
-    // 🍀 09/09: Leo Thang hết 3 cỏ free - muốn cỏ thì tick mua 1 ô, phí 20% cược
+    // 🍀 09/09: Leo Thang hết 3 cỏ free - muốn cỏ thì tick mua 1 ô, phí 40% cược
     '<label class="muted" id="sExtraWrap" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;margin-top:8px;cursor:pointer">',
     '<input type="checkbox" id="sExtra" onchange="sBand()" style="width:16px;height:16px;accent-color:#2ec26a">',
-    '<span id="sExtraTxt">🍀 Mua 1 cỏ may mắn (phí <b>20</b> = 20% cược)</span></label>',
+    '<span id="sExtraTxt">🍀 Mua 1 cỏ may mắn (phí <b>40</b> = 40% cược)</span></label>',
     '<div class="capwarn" id="sCapWarn"></div>',
     '<button class="mgo start" id="sGo" onclick="sGoClick()">🪜 BẮT ĐẦU LEO</button>',
     '<div class="muted" id="sPotLine" style="font-size:12px;margin-top:6px;text-align:center;color:#ffd24a"></div>',
-    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Càng nhiều cầu lửa hệ số càng cao - đạp trúng lửa là mất tiền cược ván đó. Cỏ 🍀 KHÔNG tặng sẵn - muốn thì tick mua (20% cược).</div>',
+    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Càng nhiều cầu lửa hệ số càng cao - đạp trúng lửa là mất tiền cược ván đó. Cỏ 🍀 KHÔNG tặng sẵn - muốn thì tick mua (40% cược).</div>',
     '</div>',
     '</div>', // hết #pageStair
 
@@ -2411,14 +2411,14 @@ const PAGE = [
     'function potTab(id,m){var e=$(id);if(e)e.textContent=(m&&m.length?("🏆 NỔ HŨ x"+m.join("/x")):"")}',
     'function mBand(){var go=$("mGo");',
     'potTab("mPotHdr",MPOTMULTS);var mpl=$("mPotLine");if(mpl){var mb0=mNum("mBet")||MINBET;mpl.textContent="🏆 NỔ HŨ: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên x"+MPOTMULTS.join("/x")+" TIỀN CƯỢC (cược "+vnd(mb0)+" → "+vnd(mb0*Math.min.apply(null,MPOTMULTS))+" tới "+vnd(mb0*Math.max.apply(null,MPOTMULTS))+") + kịch khung ván, ván dừng ngay · cược tối thiểu "+vnd(MINBET)+"/ván"}',
-    'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.2));',
+    'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.4));',
     // Ô tick chỉ có tác dụng cho VÁN MỚI. Đang giữa ván thì khoá lại + nói thẳng ván này
     // đang có mấy ô 🍀, hết cảnh tick giữa ván rồi tưởng ván đang chạy được thêm cỏ.
     'var xb=$("mExtra"),xt=$("mExtraTxt"),xw=$("mExtraWrap");',
     'if(xb&&xt&&xw){if(MG){xb.disabled=true;xb.checked=!!MG.extraLucky;xw.style.cursor="default";xw.style.opacity="0.85";',
     'xt.innerHTML=(MG.luckyTotal>0)?("🍀 Ván này giấu <b>"+MG.luckyTotal+"</b> ô cỏ may mắn (đã mua) · còn <b>"+(MG.luckyLeft||0)+"</b> ô chưa mở"):"🍀 Ván này KHÔNG mua cỏ may mắn";',
     '}else{xb.disabled=false;xw.style.cursor="pointer";xw.style.opacity="1";',
-    'xt.innerHTML=\'🍀 Mua 1 cỏ may mắn (phí <b id="mExtraFee">\'+vnd(Math.floor((mNum("mBet")||0)*0.2))+\'</b> = 20% cược)\';}}',
+    'xt.innerHTML=\'🍀 Mua 1 cỏ may mắn (phí <b id="mExtraFee">\'+vnd(Math.floor((mNum("mBet")||0)*0.4))+\'</b> = 40% cược)\';}}',
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
     '$("mBombN").textContent=MG.totalMines;',
@@ -2676,7 +2676,7 @@ const PAGE = [
     'if(sxb&&sxt&&sxw){if(SG){sxb.disabled=true;sxb.checked=!!SG.extraLucky;sxw.style.cursor="default";sxw.style.opacity="0.85";',
     'sxt.innerHTML=(SG.luckyTotal>0)?("🍀 Ván này giấu <b>"+SG.luckyTotal+"</b> ô cỏ may mắn (đã mua) · còn <b>"+(SG.luckyLeft||0)+"</b> ô chưa đạp"):"🍀 Ván này KHÔNG mua cỏ may mắn";}',
     'else{sxb.disabled=false;sxw.style.cursor="pointer";sxw.style.opacity="1";',
-    'sxt.innerHTML=\'🍀 Mua 1 cỏ may mắn (phí <b>\'+vnd(Math.floor((sNum("sBet")||0)*0.2))+\'</b> = 20% cược)\';}}',
+    'sxt.innerHTML=\'🍀 Mua 1 cỏ may mắn (phí <b>\'+vnd(Math.floor((sNum("sBet")||0)*0.4))+\'</b> = 40% cược)\';}}',
     'potTab("sPotHdr",SPOTMULTS);var spl=$("sPotLine");if(spl){var sb0=sNum("sBet")||MINBET;spl.textContent="🏆 NỔ HŨ: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên x"+SPOTMULTS.join("/x")+" TIỀN CƯỢC (cược "+vnd(sb0)+" → "+vnd(sb0*Math.min.apply(null,SPOTMULTS))+" tới "+vnd(sb0*Math.max.apply(null,SPOTMULTS))+") + kịch khung lên đỉnh, ván dừng ngay · cược tối thiểu "+vnd(MINBET)+"/ván"}',
     'if(SG){',
     '$("sStat").textContent=SG.fire+" lửa · cược "+vnd(SG.bet)+" · tầng "+SG.floor+"/"+SF+" · "+fx(SG.multi)+(SG.shield?(" · 🛡️ x"+SG.shield):"")+(SG.assistCapHit?" · ⚠️ leo được nhờ "+(SG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+SG.assistCap+" - leo thêm KHÔNG tăng tiền":"");',

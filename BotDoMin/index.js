@@ -4112,8 +4112,8 @@ const MINES_LUCKY_WHEEL = [
     { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
     { p: 0.03, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
     { p: 0.24, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
-    { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ (2% -> 1%, chủ server chốt 17/09)
-    { p: 0.24, prize: 'none' },     // 🍂 HỤT - không được gì
+    { p: 0.005, prize: 'jackpot' }, // 🏆 NỔ HŨ 0,5% (18/09, chủ server; 0,5% dôi ra dồn vào 🍂)
+    { p: 0.245, prize: 'none' },    // 🍂 HỤT - không được gì
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.13, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
@@ -4121,8 +4121,8 @@ const STAIRS_LUCKY_WHEEL = [
     { p: 0.36, prize: 'cash' },     // 💰 +30% tiền cược tức thì
     { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
     { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô lửa tầng kế (⚠️) - tính là TRỢ GIÚP
-    { p: 0.13, prize: 'refund' },   // ↩️ hoàn phí mua cỏ
-    { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ (1% -> 2% ngày 12/09)
+    { p: 0.145, prize: 'refund' }, // ↩️ hoàn phí mua cỏ (18/09: nhận 1,5% dôi ra từ nổ hũ - Leo Thang không có ô Hụt)
+    { p: 0.005, prize: 'jackpot' }, // 🏆 NỔ HŨ 0,5% (18/09, chủ server - cùng mức với Dò Mìn)
 ];
 // Ô VÀNG 🌟 Leo Thang: 2% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 - thấy mà
 // thèm, phải sống sót leo tới mới đạp được; đạp là lên thẳng đỉnh. Mọi mức lửa đều
@@ -4431,7 +4431,7 @@ const webMinesApi = {
         if (MINES_MAX_BET > 0 && bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} Dogcoin mỗi ván` };
         // 🍀 09/09 (chủ server chốt): KHÔNG còn cỏ miễn phí - muốn cỏ phải MUA,
         // phí 20% tiền cược, TỐI ĐA 1 ô/ván. (Luật cũ 20/08: 1 free + mua thêm 1.)
-        const fee = extraLucky ? Math.floor(bet * 0.2) : 0;
+        const fee = extraLucky ? Math.floor(bet * 0.4) : 0;   // 18/09: 20% -> 40% (chủ server)
         // 🏆 nuôi hũ RIÊNG của Dò Mìn: trích 5% cược, KHÔNG thu thêm (nhà cái bao)
         const potCut = luckyPotCut('mines', bet);
         const me = getUserData(userId);
@@ -4819,7 +4819,7 @@ const webStairsApi = {
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
         if (bet < minBet()) return { error: `Cược tối thiểu ${minBet().toLocaleString()} Dogcoin mỗi ván` };
         // 🍀 09/09: cỏ KHÔNG miễn phí - tick mua 1 ô, phí 20% cược (cùng luật Dò Mìn)
-        const fee = extraLucky ? Math.floor(bet * 0.2) : 0;
+        const fee = extraLucky ? Math.floor(bet * 0.4) : 0;   // 18/09: 20% -> 40% (chủ server)
         // 🏆 nuôi hũ RIÊNG của Leo Thang: trích 5% cược, KHÔNG thu thêm (nhà cái bao)
         const potCut = luckyPotCut('stairs', bet);
         const me = getUserData(userId);
