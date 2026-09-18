@@ -157,6 +157,8 @@ Nguyên tắc: bài kiểm hỏng thì **đọc lý do trước khi sửa** — 
 - **`VIEWONLY_PATHS` là danh sách CHẶN** trên cổng thường — 7 route `/api/poker/*` của panel đều phải ghi vào, quên một cái là cổng thường mở được giải.
 - **Bản test không có `../Poker`** (`bialk-test.js` chỉ chép 7 file BotDoMin) → bot test sập lúc nạp. `POKER_DIR` do bước 4 của script đặt; đừng bỏ.
 - **Tên trường lỗi**: `web.js` trả `{ ok:false, error }` theo BotDoMin, không phải `{ loi }` như bản đứng riêng cũ. `trang.html` đọc `j.error || j.loi`.
+- **Vòng ghế ghim cứng 43% → ghế thò ra ngoài sân.** Ghế đặt `left:x%` + `translate(-50%,-50%)`, hộp ghế rộng 96–168px, nên ghế ngoài cùng chỉ vừa khi sân rộng **≥ ~690px**. Khung nhúng trong web cược rộng ~550px → **Ghế 7 bị cắt mất nửa**, Ghế 3 đội mép phải; điện thoại 380px còn tệ hơn. Đã thay bằng `banKinhX(san)` — đo bề ngang sân + hộp ghế rồi kéo vòng ghế vào (tối đa vẫn 43% như cũ trên màn ≥ ~1280px). Dùng ở **cả 2 chỗ vẽ ghế** (phòng chờ + trong ván). Đổi `width` của `.ghe` thì phải sửa công thức trong `banKinhX` cho khớp.
+- **Mốc `@media` 520px là mốc điện thoại, không phải mốc khung hẹp.** Khung nhúng 550px rơi vào khoảng giữa → ăn bố cục máy tính trong hộp hẹp (bàn dẹp, ghế to). Đã nâng mốc lên **700px**.
 
 ---
 
@@ -168,7 +170,7 @@ Nguyên tắc: bài kiểm hỏng thì **đọc lý do trước khi sửa** — 
 - **Lịch sử ván** (`G.nhatKy`) có ghi nhưng chưa hiện.
 - **Thông đồng** giữa 2 người quen cùng bàn — chưa có hướng xử lý.
 - Hình phạt cho người bét: chủ server tự có cách, bot chỉ báo hạng.
-- Điện thoại: 8 người trên màn ~380px chật; ưu tiên máy tính.
+- Điện thoại: 8 người trên màn ~380px chật (ghế không còn bị cắt từ 18/09, nhưng hộp ghế sát nhau); ưu tiên máy tính. Khung nhúng trong web cược nên để cửa sổ **rộng ≥ 700px** cho dễ nhìn.
 
 ---
 

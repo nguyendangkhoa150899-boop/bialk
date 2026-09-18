@@ -239,7 +239,10 @@ input[type=range]{width:100%;accent-color:var(--gold)}
 .thg.do{background:#3a1717;color:#ff9a9a}
 .thg.xam{background:#22252e;color:var(--muted)}
 
-@media(max-width:520px){
+/* 18/09: mốc cũ 520px chỉ hợp điện thoại. Khung nhúng trong web cược rộng ~550px rơi vào
+   khoảng giữa -> ăn bố cục MÁY TÍNH trong hộp hẹp: bàn bị dẹp, ghế to thò ra ngoài.
+   Nâng mốc lên 700px (dưới mức sân cần ~690px để ghế 43% không thò ra). */
+@media(max-width:700px){
   body{padding:8px}
   .san{aspect-ratio:100/96;min-height:440px}
   .vien{inset:56px 2px}
@@ -426,9 +429,10 @@ function veCho(s){
 
   // 8 ghế cố định quanh bàn (ghế 0 ở đáy), không xoay theo người xem như lúc đánh
   var n = s.ghe.length, o = '';
+  var rx = banKinhX($('sanCho'));
   for (var k = 0; k < n; k++){
     var g = s.ghe[k], a = k * 2*Math.PI/n;
-    var x = 50 + 43*Math.sin(a), y = 50 + 40*Math.cos(a);
+    var x = 50 + rx*Math.sin(a), y = 50 + 40*Math.cos(a);
     var laToi = g && g.id === s.toi.id;
     var trong = !g;
     var bam = trong ? (s.toi.duocNgoi && !daNgoi ? ' onclick="ngoi(' + k + ')"' : (s.toi.duocNgoi ? ' onclick="ngoi(' + k + ')"' : ''))
@@ -452,6 +456,18 @@ function ngoi(k){ goi('/ngoi', { ghe: k }); }
 function roi(){ goi('/roi'); }
 // (đặt chip / bắt đầu / giải tán: PANEL SUPER, không có ở trang người chơi)
 
+// 18/09: BÁN KÍNH NGANG của vòng ghế, tính theo bề ngang THẬT của sân.
+// Trước đây ghim cứng 43% -> ghế ngoài cùng (trái/phải) đặt ở 7%/93% sân, mà hộp ghế rộng
+// 96-168px và kéo về giữa (translate -50%) nên nửa hộp thò ra ngoài khi sân hẹp hơn ~690px:
+// khung nhúng trong web cược rộng ~550px -> Ghế 7 bị cắt mất một nửa, Ghế 3 đội ra mép phải.
+// Giờ đo sân + hộp ghế rồi kéo vòng ghế vào trong đúng mức cần, tối đa vẫn 43% như cũ.
+function banKinhX(san){
+  var CW = (san && san.clientWidth) || 0;
+  if (!CW) return 43;
+  var W = Math.min(168, Math.max(96, 0.17 * (window.innerWidth || CW)));   // khớp .ghe{width:clamp(96px,17vw,168px)}
+  if (window.innerWidth <= 700) W = Math.min(120, Math.max(88, 0.26 * window.innerWidth));  // khớp media query
+  return Math.max(24, Math.min(43, (0.5 - (W / 2 + 4) / CW) * 100));
+}
 function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
@@ -705,10 +721,11 @@ function veGhe(s){
   QUA_PREFLOP = !!v.vong && v.vong !== 'PREFLOP';
 
   VITRI = [];
+  var rx = banKinhX($('san'));
   for (var k=0;k<n;k++){
     var p = g.nguoi[(toiO + k) % n];
     var a = k * 2*Math.PI/n;                     // 0 = mình, ở đáy
-    var x = 50 + 43*Math.sin(a), y = 50 + 40*Math.cos(a);
+    var x = 50 + rx*Math.sin(a), y = 50 + 40*Math.cos(a);
     var laToi = p.id === s.toi.id;
     var toiLuot = v.luot === p.id;
     var trongVan = p.trongVan && !p.daBo;
