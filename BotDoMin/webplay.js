@@ -872,6 +872,19 @@ const PAGE = [
     '#gmCancel{background:#3a4155;color:#fff}',
     '.big{font-size:26px;font-weight:800}',
     '.hidden{display:none}',
+    // ---- 🃏 poker TOÀN MÀN HÌNH (18/09) ----
+    // #pagePoker.hidden vẫn phải tắt được: .hidden 10 điểm thua #id 100 điểm nên phải có
+    // rule #pagePoker.hidden riêng, y như bẫy modal đã dính (xem README mục 11).
+    '#pokerFrame{width:100%;height:calc(100vh - 150px);min-height:640px;border:0;border-radius:14px;background:#12141a}',
+    'body.pokerFull{overflow:hidden}',
+    'body.pokerFull #pagePoker{position:fixed;inset:0;z-index:70;background:#0d0f14}',
+    'body.pokerFull #pagePoker.hidden{display:none}',
+    'body.pokerFull #pokerFrame{width:100%;height:100%;min-height:0;border-radius:0}',
+    '#pokerOut{display:none}',
+    'body.pokerFull #pokerOut{display:block;position:fixed;top:8px;right:10px;z-index:72;',
+    '  padding:5px 10px;font-size:12px;font-weight:800;border-radius:9px;cursor:pointer;',
+    '  background:rgba(18,20,26,.82);color:#ffb4b4;border:1px solid #6b2f2f;backdrop-filter:blur(3px)}',
+    'body.pokerFull #pokerOut:hover{background:#3a1717;color:#fff}',
     '.mine{font-size:13px;margin-top:6px;color:var(--gold)}',
     // ---- thanh chuyển trang (Big Small | Dò Mìn) ----
     // Header + nav ép mỏng (19/08): mobile đỡ phải kéo - trước đây riêng cụm đầu
@@ -2025,8 +2038,14 @@ const PAGE = [
 
     // 🃏 GIẢI POKER: trang riêng (Poker/trang.html) nhúng bằng khung, cùng cổng nên dùng chung
     // play_token. src gán LÚC VÀO TAB (go()) để không tải khi người ta không chơi poker.
+    // 18/09: poker chơi TOÀN MÀN HÌNH (chủ server: "bàn 8 người nhét trong khung nhỏ khó bấm lắm").
+    // Vào tab là #pagePoker nhảy position:fixed phủ kín, che luôn thanh số dư + 2 hàng tab; thoát
+    // bằng nút nổi góc phải. Thân trang phía sau khoá cuộn (body.pokerFull) để không cuộn ngầm.
     '<div id="pagePoker" class="hidden">',
-    '<iframe id="pokerFrame" title="Giải Poker" style="width:100%;height:calc(100vh - 150px);min-height:640px;border:0;border-radius:14px;background:#12141a"></iframe>',
+    '<button id="pokerOut" onclick="grpGo(\'games\')" title="Về mini game">✕ Thoát poker</button>',
+    // ⚠️ KHÔNG đặt style= trên thẻ: style gắn thẳng đè mọi rule CSS, body.pokerFull sẽ không
+    // kéo cao 100% được. Kích thước cả 2 trạng thái để trong khối CSS (#pokerFrame).
+    '<iframe id="pokerFrame" title="Giải Poker"></iframe>',
     '</div>', // hết #pagePoker
 
     // Chat nằm NGOÀI cả ba trang -> mọi game dùng chung một phòng, đổi tab vẫn thấy
@@ -2418,6 +2437,7 @@ const PAGE = [
     '$("ngPoker").classList.toggle("on",g==="poker");',
     // vào nhóm poker thì giấu luôn tầng 2 (không có trang con) - khung nhúng tự lo phần còn lại
     '$("nav").style.display=(g==="poker")?"none":"";',
+    'document.body.classList.toggle("pokerFull",g==="poker");',   // 🃏 18/09: phủ kín màn hình
     '["navTx","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
     '["navDaily","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',

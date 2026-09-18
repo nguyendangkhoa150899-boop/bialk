@@ -72,6 +72,8 @@ POKER_PORT=4003 POKER_DB="c:/Users/nguye/Desktop/bialk-test/database.json" node 
 
 1. Đăng nhập bằng **ID Discord + PIN web** của bot (đối chiếu `webPin` trong DB).
 2. **Cổng vào:** phải có `ingameName` (đã liên kết) **và** ví ≥ `DOGCOIN_VAO_GIAI = 10.000`. **Chỉ kiểm, không trừ.** Kiểm lại lần nữa lúc admin bấm Bắt đầu.
+**Toàn màn hình:** bấm tab 🃏 là khung nhúng phủ kín màn (che thanh số dư + 2 hàng tab của web cược), thoát bằng nút **✕ Thoát poker** góc phải trên. Cơ chế: `go()` bật lớp `body.pokerFull` trong `webplay.js`.
+
 3. Phòng chờ là **bàn oval 8 ghế** — bấm ghế trống để ngồi, bấm ghế mình để rời/đổi. **Trang người chơi không có nút admin.** Admin vào **panel SUPER → tab 🃏 Poker**: chọn **chip khởi điểm** (2.000 / 5.000 / 10.000 / 20.000, thang blind tự sinh theo), **▶️ Bắt đầu (N người)**, **🧹 Giải tán**, **⏸️ Tạm nghỉ / ▶️ Chơi tiếp**, và công tắc **Hiện tab 🃏** trên web.
 4. Trong giải: ghế xoay để **mình luôn ở đáy**. Nút cái ván đầu **ngẫu nhiên**, có **viền vàng** + nhãn **D**; nhãn **SB/BB** cạnh tên. Bài mình vừa chia thì **phóng to giữa màn hình để nặn** (kéo/bấm), mở xong giữ 2 giây rồi hạ về ghế; qua vòng bài chung mà chưa mở thì máy **lật giùm**.
 5. Hết ván: người thắng có hiệu ứng + số chip bay lên, bài người bỏ **tối đen**, đếm ngược **3 giây** rồi chia ván mới. Cháy hết chip → báo *"Bạn đã bị loại — hạng N/M"*, ngồi xem tiếp (chỉ thấy bài lúc lật).
@@ -158,6 +160,8 @@ Nguyên tắc: bài kiểm hỏng thì **đọc lý do trước khi sửa** — 
 - **Bản test không có `../Poker`** (`bialk-test.js` chỉ chép 7 file BotDoMin) → bot test sập lúc nạp. `POKER_DIR` do bước 4 của script đặt; đừng bỏ.
 - **Tên trường lỗi**: `web.js` trả `{ ok:false, error }` theo BotDoMin, không phải `{ loi }` như bản đứng riêng cũ. `trang.html` đọc `j.error || j.loi`.
 - **Vòng ghế ghim cứng 43% → ghế thò ra ngoài sân.** Ghế đặt `left:x%` + `translate(-50%,-50%)`, hộp ghế rộng 96–168px, nên ghế ngoài cùng chỉ vừa khi sân rộng **≥ ~690px**. Khung nhúng trong web cược rộng ~550px → **Ghế 7 bị cắt mất nửa**, Ghế 3 đội mép phải; điện thoại 380px còn tệ hơn. Đã thay bằng `banKinhX(san)` — đo bề ngang sân + hộp ghế rồi kéo vòng ghế vào (tối đa vẫn 43% như cũ trên màn ≥ ~1280px). Dùng ở **cả 2 chỗ vẽ ghế** (phòng chờ + trong ván). Đổi `width` của `.ghe` thì phải sửa công thức trong `banKinhX` cho khớp.
+- **`style=` gắn thẳng trên thẻ đè MỌI rule CSS.** Khung nhúng từng có `style="height:calc(100vh - 150px)"` nên `body.pokerFull #pokerFrame{height:100%}` không ăn — toàn màn hình mà khung vẫn cao cũ. Kích thước cả 2 trạng thái phải nằm trong khối CSS.
+- **Bàn phải vừa CẢ CHIỀU CAO.** Chỉ `width:100%` + `aspect-ratio` thì điện thoại ngang (740×360) ra bàn cao 503px, tràn màn. `.san` nay lấy `width:min(100%, (100dvh − chừa) × tỉ lệ)`; riêng màn ngang thấp (`orientation:landscape` + `max-height:520px`) bỏ tỉ lệ, cho bàn ăn trọn màn.
 - **Mốc `@media` 520px là mốc điện thoại, không phải mốc khung hẹp.** Khung nhúng 550px rơi vào khoảng giữa → ăn bố cục máy tính trong hộp hẹp (bàn dẹp, ghế to). Đã nâng mốc lên **700px**.
 
 ---
@@ -170,7 +174,7 @@ Nguyên tắc: bài kiểm hỏng thì **đọc lý do trước khi sửa** — 
 - **Lịch sử ván** (`G.nhatKy`) có ghi nhưng chưa hiện.
 - **Thông đồng** giữa 2 người quen cùng bàn — chưa có hướng xử lý.
 - Hình phạt cho người bét: chủ server tự có cách, bot chỉ báo hạng.
-- Điện thoại: 8 người trên màn ~380px chật (ghế không còn bị cắt từ 18/09, nhưng hộp ghế sát nhau); ưu tiên máy tính. Khung nhúng trong web cược nên để cửa sổ **rộng ≥ 700px** cho dễ nhìn.
+- Điện thoại **cầm dọc bị che hẳn** (lớp "Xoay ngang điện thoại để chơi", hiện khi rộng < 700px và cao > rộng) — chủ server chốt chỉ chơi PC hoặc điện thoại xoay ngang. Xoay ngang thì bàn ăn trọn màn (844×390 → bàn 836×286). Chưa có ai thử trên điện thoại thật.
 
 ---
 

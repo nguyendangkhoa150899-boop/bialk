@@ -29,7 +29,7 @@ Chủ server: **Khoa** — không rành code. Trả lời tiếng Việt, giải
 | File | Dòng | Việc |
 |---|---|---|
 | `index.js` | ~8.450 | **Toàn bộ logic**: bot Discord, mọi game, tiền, shop, rương, cầu game, wiring `ctx` cho web/panel |
-| `webplay.js` | ~4.000 | Web người chơi (cổng `PLAY_PORT`, mặc định **3002**). HTML/CSS/JS client là **mảng chuỗi** nối lại. Phục vụ thêm **`/poker/`** (file `../Poker/trang.html`), `/poker/bai/*.webp`, và giao `/api/poker/*` cho `ctx.poker` — tab tầng-1 thứ 3 **🃏 GIẢI POKER** (khung nhúng, hiện khi `_pokerOn`) |
+| `webplay.js` | ~4.000 | Web người chơi (cổng `PLAY_PORT`, mặc định **3002**). HTML/CSS/JS client là **mảng chuỗi** nối lại. Phục vụ thêm **`/poker/`** (file `../Poker/trang.html`), `/poker/bai/*.webp`, và giao `/api/poker/*` cho `ctx.poker` — tab tầng-1 thứ 3 **🃏 GIẢI POKER** (khung nhúng, hiện khi `_pokerOn`). Vào tab là bật `body.pokerFull` → khung **phủ kín màn hình**, thoát bằng nút nổi `#pokerOut` |
 | `../Poker/` | — | **Giải poker nhúng** — `web.js` (mô-đun gắn vào ctx), `giai.js` (máy giải), `bai.js` (chấm bài), `trang.html`, 53 ảnh. Cùng tiến trình, cùng phiên đăng nhập; chip ảo, không đụng ví. Chi tiết: `../Poker/README.md` |
 | `panel.js` | ~3.500 | Panel admin: **SUPER** cổng `PANEL_PORT` (mặc định 1508) · **thường** `PANEL_PUBLIC_PORT` (1234). HTML client là **một template literal khổng lồ** |
 | `palworld.js` | 200 | Cầu tới dashboard: `giveItem` / `takeItem` / `countItem` / `givePal` / `whereIs`. Basic auth, `cleanName` lọc tên |

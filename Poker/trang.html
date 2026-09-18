@@ -15,7 +15,7 @@
 *{box-sizing:border-box}
 body{margin:0 auto;background:var(--bg);color:var(--tx);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  padding:12px;max-width:980px;-webkit-text-size-adjust:100%}
+  padding:12px;max-width:1280px;-webkit-text-size-adjust:100%}   /* 18/09: 980 -> 1280, chơi toàn màn hình */
 [hidden]{display:none!important}
 
 /* ---------- chung ---------- */
@@ -52,7 +52,12 @@ input{width:100%;background:#0e1016;border:1px solid var(--line);color:var(--tx)
 .sp{flex:1 1 auto}
 
 /* ---------- bàn ---------- */
-.san{position:relative;width:100%;aspect-ratio:100/68;min-height:380px}
+/* 18/09: bàn phải VỪA CẢ CHIỀU CAO, không chỉ chiều ngang. Trước chỉ có width:100% +
+   aspect-ratio -> điện thoại xoay ngang (740×360) ra bàn cao 503px, tràn khỏi màn, phải cuộn
+   mới thấy nút. Giờ lấy bề ngang = nhỏ hơn giữa (100% khung) và (chiều cao còn lại × 100/68). */
+.san{position:relative;aspect-ratio:100/68;min-height:230px;margin-inline:auto;
+  width:min(100%, calc((100vh - 165px) * 1.47));
+  width:min(100%, calc((100dvh - 165px) * 1.47))}
 .vien{position:absolute;inset:64px 8px;border-radius:999px;
   background:linear-gradient(180deg,#4a3526 0%,#2a1d13 45%,#120c07 100%);
   padding:clamp(9px,1.9vw,16px);
@@ -244,10 +249,36 @@ input[type=range]{width:100%;accent-color:var(--gold)}
    Nâng mốc lên 700px (dưới mức sân cần ~690px để ghế 43% không thò ra). */
 @media(max-width:700px){
   body{padding:8px}
-  .san{aspect-ratio:100/96;min-height:440px}
+  .san{aspect-ratio:100/96;min-height:0;
+    width:min(100%, calc((100vh - 150px) * 1.04));
+    width:min(100%, calc((100dvh - 150px) * 1.04))}
   .vien{inset:56px 2px}
   .ghe{width:clamp(88px,26vw,120px)}
 }
+
+/* 18/09: MÀN NẰM NGANG THẤP (điện thoại xoay ngang, cao ~360-430px). Giữ tỉ lệ 100/68 thì
+   thanh trên + hàng nút ăn hết 165px của 390px -> bàn còn 331px, bé tí. Ở đây bỏ tỉ lệ, cho
+   bàn ĂN TRỌN màn: rộng 100%, cao = phần còn lại -> bàn dẹp và rộng, đúng kiểu app poker. */
+@media(orientation:landscape) and (max-height:520px){
+  body{padding:4px}
+  .top{margin-bottom:5px}
+  .san{aspect-ratio:auto;min-height:0;width:100%;
+    height:calc(100vh - 104px);
+    height:calc(100dvh - 104px)}
+  .vien{inset:44px 6px}
+  .ghe{width:clamp(80px,11.5vw,124px)}
+  .hop{padding:9px;margin-bottom:7px}
+}
+
+/* 18/09: bàn 8 người cần màn NGANG. Điện thoại cầm dọc thì che hẳn lại, bắt xoay máy —
+   chủ server chốt "chỉ chơi PC hoặc điện thoại xoay ngang". Máy tính bảng dọc (≥700px)
+   vẫn chơi được nên không chặn. */
+#xoay{position:fixed;inset:0;z-index:120;background:var(--bg);
+  display:grid;place-items:center;padding:24px;text-align:center}
+#xoay .ic{font-size:64px;line-height:1;margin-bottom:14px;animation:xoayLac 1.8s ease-in-out infinite}
+#xoay .tieu{font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px}
+#xoay .mo2{font-size:13.5px;color:var(--muted);max-width:340px;line-height:1.5}
+@keyframes xoayLac{0%,45%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
 </style>
 </head>
 <body>
@@ -350,6 +381,15 @@ input[type=range]{width:100%;accent-color:var(--gold)}
   </div>
 </div>
 
+<!-- che toàn màn khi cầm điện thoại dọc: bàn 8 ghế không đủ chỗ, thao tác nhầm liên tục -->
+<div id="xoay" hidden>
+  <div>
+    <div class="ic">📱</div>
+    <div class="tieu">Xoay ngang điện thoại để chơi</div>
+    <div class="mo2">Bàn 8 người cần màn hình nằm ngang. Đang chơi trên máy tính thì phóng to cửa sổ trình duyệt.</div>
+  </div>
+</div>
+
 <div id="bao" hidden></div>
 
 <script>
@@ -363,6 +403,14 @@ var S = null;            // trạng thái mới nhất từ máy chủ
 var baoTimer = null;
 
 function $(id){ return document.getElementById(id); }
+// 18/09: điện thoại cầm dọc -> che lớp "xoay ngang". Chỉ chặn máy hẹp (<700px); máy tính
+// bảng dọc và PC cửa sổ hẹp vẫn cho chơi. Gọi lúc mở trang + mỗi lần đổi chiều/đổi cỡ.
+function kiemXoay(){
+  var doc = window.innerHeight > window.innerWidth, hep = window.innerWidth < 700;
+  var e = $('xoay'); if (e) e.hidden = !(doc && hep);
+}
+window.addEventListener('resize', kiemXoay);
+window.addEventListener('orientationchange', function(){ setTimeout(kiemXoay, 120); });
 function vnd(n){ return Number(n||0).toLocaleString('vi-VN'); }
 function bao(t){
   var e = $('bao'); e.textContent = t; e.hidden = false;
@@ -464,8 +512,14 @@ function roi(){ goi('/roi'); }
 function banKinhX(san){
   var CW = (san && san.clientWidth) || 0;
   if (!CW) return 43;
-  var W = Math.min(168, Math.max(96, 0.17 * (window.innerWidth || CW)));   // khớp .ghe{width:clamp(96px,17vw,168px)}
-  if (window.innerWidth <= 700) W = Math.min(120, Math.max(88, 0.26 * window.innerWidth));  // khớp media query
+  // Bề rộng hộp ghế: ĐO ghế thật đang có trên bàn. Có 3 nhánh media query đặt .ghe khác nhau
+  // (thường / ≤700px / màn ngang thấp) — đoán theo innerWidth là sai ngay khi thêm nhánh mới.
+  // Lần vẽ đầu chưa có ghế nào thì mới đoán; 1 giây sau vẽ lại là số đo thật.
+  var mau = san.querySelector('.ghe'), W = mau && mau.offsetWidth;
+  if (!W) {
+    W = Math.min(168, Math.max(96, 0.17 * (window.innerWidth || CW)));
+    if (window.innerWidth <= 700) W = Math.min(120, Math.max(88, 0.26 * window.innerWidth));
+  }
   return Math.max(24, Math.min(43, (0.5 - (W / 2 + 4) / CW) * 100));
 }
 function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
@@ -975,6 +1029,7 @@ setInterval(function(){                       // đồng hồ đếm lùi cho m�
   }
 }, 250);
 $('oPin').addEventListener('keydown', function(e){ if (e.key === 'Enter') dangNhap(); });
+kiemXoay();
 dongBo();
 </script>
 </body>
