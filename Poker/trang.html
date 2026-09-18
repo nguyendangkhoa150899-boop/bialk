@@ -217,6 +217,39 @@ input{width:100%;background:#0e1016;border:1px solid var(--line);color:var(--tx)
 .tt.allin{background:linear-gradient(180deg,#5a1a1a,#3a0f0f);color:#ffd76a;border:1px solid #ff6b6b;letter-spacing:.3px}
 .tt.moi{animation:ttNay .5s cubic-bezier(.2,1.4,.4,1) both}
 @keyframes ttNay{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
+/* 18/09: LẬT BÀI dễ đọc — 5 lá làm nên bài thắng sáng vàng, lá còn lại mờ đi (kiểu GGPoker) */
+.the.trung .mat{box-shadow:0 0 0 3px var(--gold),0 0 22px 4px rgba(255,207,92,.75),0 3px 8px rgba(0,0,0,.6);
+  animation:trungNhay 1.1s ease-in-out infinite}
+.the.lu .mat{filter:brightness(.42) saturate(.5)}
+@keyframes trungNhay{0%,100%{box-shadow:0 0 0 3px var(--gold),0 0 14px 2px rgba(255,207,92,.55)}
+  50%{box-shadow:0 0 0 3px #fff3c4,0 0 30px 8px rgba(255,207,92,.95)}}
+/* chip bay từ hũ vào ghế người thắng (pha 2 kết ván) */
+.chipBay{position:absolute;left:var(--x0);top:47%;width:16px;height:16px;border-radius:50%;z-index:9;pointer-events:none;
+  background:radial-gradient(circle at 35% 35%,#ffe9a3,#e09a12 60%,#7a4d00);border:2px dashed #fff3c4;
+  box-shadow:0 2px 6px rgba(0,0,0,.6);animation:chipBay .9s cubic-bezier(.3,.9,.4,1) both}
+@keyframes chipBay{0%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  70%{opacity:1}100%{left:var(--x1);top:var(--y1);transform:translate(-50%,-50%) scale(.55);opacity:0}}
+/* băng WIN đè lên bài người thắng */
+.win{position:absolute;left:50%;top:6px;transform:translate(-50%,0) rotate(-6deg);z-index:8;pointer-events:none;
+  font-size:clamp(15px,3.4vw,26px);font-weight:900;letter-spacing:2px;line-height:1;padding:3px 12px;border-radius:8px;
+  color:#3a2500;background:linear-gradient(180deg,#ffe9a3 0%,#ffc43d 55%,#e09a12 100%);
+  border:2px solid #fff3c4;box-shadow:0 0 22px 6px rgba(255,207,92,.6),0 4px 12px rgba(0,0,0,.6);
+  animation:winVao .55s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes winVao{0%{transform:translate(-50%,10px) rotate(-6deg) scale(.3);opacity:0}100%{transform:translate(-50%,0) rotate(-6deg) scale(1);opacity:1}}
+/* rank bài của CHÍNH MÌNH: viên nhỏ dưới ghế, cập nhật theo từng vòng */
+.rk{margin:4px auto 0;width:fit-content;max-width:100%;font-size:clamp(10px,1.7vw,12px);font-weight:800;
+  border-radius:999px;padding:2px 9px;background:#0d2740;color:#9ad4ff;border:1px solid #2e5f8c;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* dòng kết quả giữa bàn (ai thắng, bằng bài gì) + dòng "đang lật bài…" */
+.kq{margin:8px auto 0;width:fit-content;max-width:96%;font-size:clamp(12px,2.2vw,16px);font-weight:900;
+  padding:5px 14px;border-radius:999px;background:rgba(0,0,0,.55);color:var(--gold);border:1px solid rgba(255,207,92,.5);
+  text-shadow:0 1px 4px rgba(0,0,0,.8);animation:ttNay .5s cubic-bezier(.2,1.4,.4,1) both}
+.kq.lo{color:#ffb4b4;border-color:#ff6b6b;animation:kqNhay 1s ease-in-out infinite}
+@keyframes kqNhay{0%,100%{opacity:1}50%{opacity:.55}}
+/* ô "Bài của bạn" to rõ trong hàng nút */
+.rankBox{margin-top:8px;text-align:center;font-size:clamp(13px,2.4vw,16px);font-weight:900;color:#9ad4ff;
+  background:#0d2740;border:1px solid #2e5f8c;border-radius:10px;padding:7px 10px}
+.rankBox small{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px}
 .cuoc{position:absolute;z-index:2;display:flex;align-items:center;gap:5px;transform:translate(-50%,-50%);
   background:rgba(0,0,0,.42);border-radius:999px;padding:2px 9px 2px 3px;
   font-size:clamp(10px,1.7vw,12px);font-weight:800;color:#fff;white-space:nowrap}
@@ -349,6 +382,7 @@ input[type=range]{width:100%;accent-color:var(--gold)}
       <div class="giua">
         <div class="hu" id="banHu">HŨ · 0</div>
         <div class="chung" id="banChung"></div>
+        <div class="kq" id="banKq" hidden></div>
       </div>
       <div id="banCuoc"></div>
       <div class="nutd" id="banNutD" hidden>D</div>
@@ -574,9 +608,10 @@ function veBan(s){
   $('banGio').textContent = g.nghi ? '⏸️ ĐANG NGHỈ' : ('⏱ ' + conMay(g));
   $('banHu').textContent = 'HŨ · ' + vnd(v.hu || 0);
 
-  // đếm ngược 3…2…1 trước khi chia ván mới (máy chủ báo còn mấy giây)
+  // đếm ngược 3…2…1 trước khi chia ván mới (máy chủ báo còn mấy giây). Ván có LẬT BÀI được
+  // giữ 6 giây — 3 giây đầu KHÔNG hiện số to giữa bàn để người chơi còn nhìn bài, 3 giây cuối mới đếm.
   var dem = $('demChia');
-  if (typeof s.demChiaBai === 'number' && s.demChiaBai > 0){
+  if (typeof s.demChiaBai === 'number' && s.demChiaBai > 0 && s.demChiaBai <= 3){
     if (dem.hidden || $('demSo').textContent !== String(s.demChiaBai)){
       $('demSo').textContent = String(s.demChiaBai);
       $('demSo').style.animation = 'none';
@@ -586,7 +621,19 @@ function veBan(s){
     dem.hidden = false;
   } else dem.hidden = true;
 
-  veChung(v.chung || []);
+  // 18/09: 5 lá làm nên bài THẮNG (lấy từ ketQua.lat[].cham.nam của người ăn chip) -> tô vàng,
+  // lá khác mờ. Dòng kết quả giữa bàn: đang lật từ từ / ai thắng bằng bài gì / ai ăn hũ vì cả bàn bỏ.
+  var kqb = ketQuaBan(v);
+  veChung(v.chung || [], kqb.trung);
+  var eKq = $('banKq'), chuKq = '', lopKq = 'kq';
+  if (v.loDan){ chuKq = '🔥 Cả bàn all-in — đang lật bài…'; lopKq = 'kq lo'; }
+  else if (v.ketQua && kqb.thang.length){
+    var tenT = kqb.thang.map(function(id){ return esc(tenCua(s, id)); }).join(' & ');
+    var tienT = kqb.thang.reduce(function(t, id){ return t + (v.ketQua.an[id] || 0); }, 0);
+    chuKq = '🏆 ' + tenT + ' thắng ' + vnd(tienT) + (kqb.tenBai ? ' · ' + esc(kqb.tenBai) : ' · cả bàn bỏ bài');
+  }
+  if (chuKq){ datHTML(eKq, chuKq); if (eKq.className !== lopKq) eKq.className = lopKq; eKq.hidden = false; }
+  else eKq.hidden = true;
   veNghi(s);
   veGhe(s);          // đặt QUA_PREFLOP, nên phải chạy TRƯỚC veNan
   veNan(s);
@@ -595,9 +642,54 @@ function veBan(s){
 
 /* ---- bài chung: chỉ dựng lại khi có lá MỚI, lá mới thì lật từ úp sang ngửa ----
    Vẽ lại vô tội vạ mỗi giây là animation đứt ngang, nên phải so trước khi đụng DOM. */
-var CHUNG_CU = [];
-function veChung(chung){
-  if (chung.join() === CHUNG_CU.join()) return;
+// 18/09: rút từ ketQua: ai thắng (an > 0), 5 lá làm nên bài thắng (chỉ khi có LẬT BÀI), tên bài.
+// Dùng chung cho bài chung (veChung) và bài trên ghế (veGhe) để hai chỗ tô cùng một bộ lá.
+function ketQuaBan(v){
+  var kq = v && v.ketQua, ra = { thang: [], trung: {}, tenBai: '' };
+  if (!kq || !kq.an) return ra;
+  ra.thang = Object.keys(kq.an).filter(function(id){ return kq.an[id] > 0; });
+  if (kq.lat) kq.lat.forEach(function(z){
+    if (ra.thang.indexOf(z.id) < 0 || !z.cham) return;
+    (z.cham.nam || []).forEach(function(la){ ra.trung[la] = 1; });
+    if (!ra.tenBai) ra.tenBai = z.cham.ten;
+  });
+  return ra;
+}
+// 18/09: chip từ hũ (giữa bàn) BAY VÀO ghế người thắng - 6 đồng lệch nhau vài chục ms.
+// Tạo thẻ bằng createElement (không đụng innerHTML của sân) rồi tự gỡ sau khi bay xong.
+var THU_VAN = -1;
+function thuChip(x, y){
+  var san = $('san'); if (!san) return;
+  for (var i = 0; i < 6; i++){
+    var c = document.createElement('span');
+    c.className = 'chipBay';
+    c.style.setProperty('--x0', (50 + (i - 2.5) * 2.2) + '%');
+    c.style.setProperty('--x1', x + '%'); c.style.setProperty('--y1', y + '%');
+    c.style.animationDelay = (i * 55) + 'ms';
+    san.appendChild(c);
+    setTimeout(function(el){ if (el.parentNode) el.parentNode.removeChild(el); }.bind(null, c), 1200 + i * 55);
+  }
+}
+function lopLa(la, kqb){   // lớp CSS cho 1 lá lúc lật bài: thắng -> 'trung', còn lại -> 'lu'
+  if (!kqb || !kqb.tenBai) return '';
+  return kqb.trung[la] ? 'trung' : 'lu';
+}
+var CHUNG_CU = [], CHUNG_TRUNG = '';
+function veChung(chung, trung){
+  var khoaTrung = trung ? Object.keys(trung).sort().join() : '';
+  if (chung.join() === CHUNG_CU.join()){
+    // bài không đổi, chỉ đổi phần TÔ (vừa có kết quả / vừa qua ván) -> gắn lớp thẳng, không dựng lại DOM
+    if (khoaTrung !== CHUNG_TRUNG){
+      CHUNG_TRUNG = khoaTrung;
+      var kids = $('banChung').children;
+      for (var q = 0; q < kids.length; q++){
+        kids[q].classList.remove('trung', 'lu');
+        if (khoaTrung) kids[q].classList.add(trung[chung[q]] ? 'trung' : 'lu');
+      }
+    }
+    return;
+  }
+  CHUNG_TRUNG = khoaTrung;
   var cu = CHUNG_CU.length, e = $('banChung');
   // ván mới (bài chung bị xoá sạch) -> dựng lại từ đầu, không hiệu ứng
   if (chung.length < cu){ CHUNG_CU = chung.slice(); /*CHAN-ROI*/ e.innerHTML = chung.map(function(x){ return theLa(x); }).join(''); return; }
@@ -781,6 +873,7 @@ function veGhe(s){
   var khoe = v.khoe || [];                                   // ai đang khoe lá nào
   var daKhoe = (v.daKhoe || []).indexOf(s.toi.id) >= 0;      // mình khoe rồi thì thôi
   var an = (v.ketQua && v.ketQua.an) ? v.ketQua.an : null;   // ai ăn bao nhiêu chip ván này
+  var kqg = ketQuaBan(v);                                     // 18/09: 5 lá thắng để tô vàng / mờ
   var oGhe = '', oCuoc = '';
 
   // ván mới: bài úp lại, mở lại lớp nặn
@@ -808,12 +901,12 @@ function veGhe(s){
       // để hai chỗ cùng cho kéo thì rối tay và dễ lệch góc nhau.
       // Bài đã mở + chưa khoe lá nào -> bấm vào lá để khoe cho cả bàn xem.
       bai = g.toi.la.map(function(c, i){
-        var them = (NAN.goc[i] >= 180 && !daKhoe) ? 'khoeDuoc' : '';
+        var them = ((NAN.goc[i] >= 180 && !daKhoe) ? 'khoeDuoc ' : '') + (lat ? lopLa(c, kqg) : '');
         return theLa(c, false, NAN.goc[i], them).replace('<div class="the',
           '<div data-khoe="' + i + '" class="the');
       }).join('');
     }
-    else if (cuaHo) bai = cuaHo.la.map(function(c){ return theLa(c, true, 0); }).join('');
+    else if (cuaHo) bai = cuaHo.la.map(function(c){ return theLa(c, true, 0, lopLa(c, kqg)); }).join('');
     else if (trongVan && v.vong){
       // ai đang KHOE 1 lá thì lá đó ngửa cho cả bàn xem, lá kia vẫn úp
       var kh = khoe.filter(function(z){ return z.id === p.id; })[0];
@@ -840,7 +933,19 @@ function veGhe(s){
 
     // ăn chip ván này -> ghế nảy lên, viền vàng, số chip bay lên
     var thang = an && an[p.id] > 0;
-    var soAn = thang ? '<div class="an">+' + vnd(an[p.id]) + '</div>' : '';
+    // 18/09 (chủ server chốt nhịp kết ván): (1) lật bài + băng WIN ngay · (2) hết 3 giây xem bài thì
+    // chip từ hũ BAY VÀO người thắng + số "+N" hiện · (3) 3 giây cuối đếm ngược rồi ván mới.
+    // Pha 2 bắt đầu khi máy chủ báo còn ≤ 3 giây (demChiaBai). Ván bỏ bài (không lật) chỉ giữ 3s
+    // nên pha 2 chạy ngay lúc có kết quả.
+    var pha2 = thang && (typeof s.demChiaBai === 'number' ? s.demChiaBai <= 3 : true);
+    var soAn = thang ? ((pha2 ? '<div class="an">+' + vnd(an[p.id]) + '</div>' : '') + '<div class="win">WIN</div>') : '';
+    if (pha2 && THU_VAN !== v.so){ THU_VAN = v.so; thuChip(x, y); }
+    // 18/09: rank bài của CHÍNH MÌNH ngay dưới ghế (preflop: tên tay 2 lá; từ flop: bài chấm được)
+    var rk = '';
+    if (laToi && g.toi && p.trongVan && !p.daBo && !lat){
+      var tenR = g.toi.cham ? g.toi.cham.ten : (g.toi.tenTay || '');
+      if (tenR) rk = '<div class="rk">🂡 ' + esc(tenR) + '</div>';
+    }
 
     oGhe += '<div class="ghe' + (toiLuot?' luot':'') + (laToi?' toi':'') +
             (p.daBo?' bo':'') + (p.chip<=0 && !p.trongVan?' chay':'') + (thang?' thang':'') +
@@ -853,7 +958,7 @@ function veGhe(s){
               (p.id===v.sb ? '<span class="vt sb">SB</span>' : '') +
               (p.id===v.bb ? '<span class="vt bb">BB</span>' : '') + '</div>' +
             '<div class="ck'+(p.chip<1000?' it':'')+'">'+vnd(p.chip)+'</div></div></div>' +
-            gio + tt + nhac + '</div>';
+            gio + rk + tt + nhac + '</div>';
 
     if (p.cuoc > 0){
       var cx = 50 + 24*Math.sin(a), cy = 50 + 23*Math.cos(a);
@@ -960,8 +1065,10 @@ function veAct(s){
       '<div class="nho">Cứ ngồi xem tiếp · bài của người chơi chỉ hiện khi lật bài</div>');
   }
 
+  // 18/09: ô "Bài của bạn" to rõ (trước là dòng chữ nhỏ mờ). Preflop chưa chấm được thì hiện tên tay 2 lá.
   var duoiCung = '';
-  if (t.cham) duoiCung = '<div class="nho">Bài của bạn đang là: <b>' + esc(t.cham.ten) + '</b></div>';
+  var tenBai = t.cham ? t.cham.ten : (t.tenTay || '');
+  if (tenBai) duoiCung = '<div class="rankBox"><small>' + (t.cham ? 'BÀI CỦA BẠN ĐANG LÀ' : 'TAY BÀI CỦA BẠN') + '</small>🂡 ' + esc(tenBai) + '</div>';
 
   if (!conLuot){
     var vi = g.nghi ? 'Đang tạm ngưng' : (v.luot ? ('Đang chờ ' + esc(tenCua(s, v.luot))) : 'Đang chia bài…');

@@ -17,7 +17,10 @@
 const { taoGiai, taoLichBlind, TOI_DA_NGUOI, TOI_THIEU_NGUOI, DOGCOIN_VAO_GIAI, CHIP_DAU } = require('./giai.js');
 
 const GIAY_AFK_MAC_DINH = 25;      // không hỏi thăm quá lâu = rớt mạng
-const GIAY_XEM_LAT_MAC_DINH = 3;   // ván xong -> đếm ngược rồi chia ván mới (chủ server chốt 3s)
+const GIAY_XEM_LAT_MAC_DINH = 3;   // ván xong KHÔNG lật bài (mọi người bỏ) -> 3s rồi chia ván mới
+// 18/09: ván có LẬT BÀI (showdown) giữ lâu hơn để đọc được ai thắng bằng bài gì, 5 lá nào —
+// chủ server thử 2 người all-in: "kết thúc quá lẹ, chưa hiểu chuyện gì đã qua tổng kết".
+const GIAY_XEM_LAT_LAT_MAC_DINH = 6;
 
 /**
  * deps:
@@ -32,6 +35,8 @@ function taoPoker(deps) {
     const tenCua = deps.tenCua || ((id) => { const u = layNguoi(id); return (u && (u.ingameName || u.name)) || id; });
     const GIAY_AFK = deps.giayAfk || GIAY_AFK_MAC_DINH;
     const GIAY_XEM_LAT = deps.giayXemLat || GIAY_XEM_LAT_MAC_DINH;
+    const GIAY_XEM_LAT_LAT = deps.giayXemLatLat || GIAY_XEM_LAT_LAT_MAC_DINH;
+    let motVanGiu = GIAY_XEM_LAT;   // ván đang xong này giữ mấy giây (3 bỏ bài / 6 có lật)
 
     // ------------------------------------------------------------ phòng
     const phong = {
@@ -75,8 +80,11 @@ function taoPoker(deps) {
             phong.giai.nhip();
             const s = phong.giai.xemChung();
             if (s.trangThai === 'DANG_CHAY' && s.van && ['LAT', 'XONG'].includes(s.van.vong)) {
-                if (!motVanXongLuc) motVanXongLuc = Date.now();
-                else if (Date.now() - motVanXongLuc > GIAY_XEM_LAT * 1000) { motVanXongLuc = 0; phong.giai.vanKe(); }
+                if (!motVanXongLuc) {
+                    motVanXongLuc = Date.now();
+                    motVanGiu = (s.van.ketQua && s.van.ketQua.lat) ? GIAY_XEM_LAT_LAT : GIAY_XEM_LAT;
+                }
+                else if (Date.now() - motVanXongLuc > motVanGiu * 1000) { motVanXongLuc = 0; phong.giai.vanKe(); }
             } else motVanXongLuc = 0;
         } catch (e) { console.error('[poker] nhịp lỗi:', e.message); }
     }
@@ -100,7 +108,7 @@ function taoPoker(deps) {
         };
         if (!phong.giai) return { ...nen, giai: null };
         nen.demChiaBai = motVanXongLuc
-            ? Math.max(0, Math.ceil((motVanXongLuc + GIAY_XEM_LAT * 1000 - Date.now()) / 1000)) : null;
+            ? Math.max(0, Math.ceil((motVanXongLuc + motVanGiu * 1000 - Date.now()) / 1000)) : null;
         const trongGiai = phong.giai._trong.nguoi.some(p => p.id === id);
         // khán giả (kể cả người đã cháy) chỉ nhận bản CHUNG — không có bài riêng của ai
         return { ...nen, giai: trongGiai ? phong.giai.xem(id) : phong.giai.xemChung() };

@@ -165,7 +165,10 @@ ok('CHỐNG ĐỨT 2: có hàm datHTML chỉ đụng DOM khi nội dung đổi t
     /function datHTML\(el, html\)\{/.test(JS) && /if \(!el \|\| el\.__cu === html\) return false;/.test(JS));
 ok('CHỐNG ĐỨT 3: thả tay xong chờ hiệu ứng chạy hết mới vẽ lại',
     /setTimeout\(function\(\)\{ GHE_CU = ''; \$\('banGhe'\)\.__cu = ''; \}, 34\d\)/.test(JS));
-ok('bài chung so trước khi dựng lại', /if \(chung\.join\(\) === CHUNG_CU\.join\(\)\) return;/.test(JS));
+// 18/09: veChung nhận thêm bộ lá thắng để tô vàng -> bài không đổi thì chỉ gắn lớp, vẫn KHÔNG dựng lại DOM
+ok('bài chung so trước khi dựng lại', /if \(chung\.join\(\) === CHUNG_CU\.join\(\)\)\{[\s\S]*?return;\s*\}/.test(JS));
+ok('bài chung không đổi nhưng đổi phần tô -> chỉ đổi lớp trên thẻ có sẵn, không đụng innerHTML',
+    /kids\[q\]\.classList\.remove\('trung', 'lu'\)/.test(JS));
 
 // Đây là lỗi chủ server báo: kéo thanh tố xong 1 giây sau nó nhảy về đầu.
 ok('THANH TỐ: giá trị giữ trong biến JS, không đọc từ DOM', /var TO = \{ khoa: '', gt: 0 \}/.test(JS));

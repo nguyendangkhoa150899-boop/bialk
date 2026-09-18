@@ -62,7 +62,7 @@ POKER_PORT=4003 POKER_DB="c:/Users/nguye/Desktop/bialk-test/database.json" node 
 | `POKER_PORT` | 3003 (test 4003) | vỏ đứng riêng |
 | `POKER_DB` | `../BotDoMin/database.json` | vỏ đứng riêng, chỉ đọc |
 | `POKER_ADMIN` | *(trống)* | vỏ đứng riêng. **Prod: đặt ở panel SUPER → tab 🃏 → "Admin poker"** (khoá `_pokerAdmin`) |
-| `POKER_AFK_GIAY` / `POKER_GIAY_LAT` | 25 / 3 | vỏ đứng riêng (test đặt LAT=1) |
+| `POKER_AFK_GIAY` / `POKER_GIAY_LAT` | 25 / 3 | vỏ đứng riêng (test đặt LAT=1). `POKER_GIAY_LAT` áp cho CẢ ván có lật bài (`giayXemLatLat`, prod mặc định 6) |
 
 `trang.html` đọc từ đĩa **mỗi lần gửi** → sửa là ăn ngay, cả prod lẫn test. Sửa `web.js`/`giai.js` phải restart bot.
 
@@ -78,7 +78,9 @@ POKER_PORT=4003 POKER_DB="c:/Users/nguye/Desktop/bialk-test/database.json" node 
 4. Trong giải: ghế xoay để **mình luôn ở đáy**. Nút cái ván đầu **ngẫu nhiên**, có **viền vàng** + nhãn **D**; nhãn **SB/BB** cạnh tên. Bài mình vừa chia thì **phóng to giữa màn hình để nặn** (kéo/bấm), mở xong giữ 2 giây rồi hạ về ghế; qua vòng bài chung mà chưa mở thì máy **lật giùm**.
 4b. **Nhãn việc vừa làm** (18/09): ai vừa đi là ghế người đó hiện **Xem / Theo 200 / Tố 500 / ALL-IN 1.200** (Tố = TỔNG cược tới, đúng số người khác phải theo; Theo = số vừa đẩy), nảy nhẹ 1,5 giây đầu; máy đánh giùm (hết giờ/rớt mạng) có 🤖 phía trước. Nhãn là của **vòng đang đánh** — sang flop/turn/river thì xoá sạch, riêng Bỏ bài giữ tới hết ván. Server quyết (`v.vuaLam` trong `giai.js`, gửi qua `nguoi[].vuaLam`), web chỉ vẽ (`nhanViec()`).
 
-5. Hết ván: người thắng có hiệu ứng + số chip bay lên, bài người bỏ **tối đen**, đếm ngược **3 giây** rồi chia ván mới. Cháy hết chip → báo *"Bạn đã bị loại — hạng N/M"*, ngồi xem tiếp (chỉ thấy bài lúc lật).
+5. **Kết ván theo 3 pha** (18/09, chủ server chốt "hết giờ show bài rồi thu chip vô người đó, xong 3 giây qua ván mới"): (1) lật bài — **5 lá làm nên bài thắng sáng vàng nhấp nháy, lá khác mờ**, băng **WIN** đè lên bài người thắng, dòng giữa bàn "🏆 Tên thắng N · Hai đôi…"; bài người bỏ **tối đen**. Ván có lật giữ **6 giây** (`GIAY_XEM_LAT_LAT`), ván ai cũng bỏ chỉ 3 giây. (2) còn 3 giây: **chip từ hũ bay vào ghế người thắng** + số "+N". (3) đếm ngược 3…2…1 (chỉ hiện 3 giây cuối, không che bài) rồi chia ván mới.
+   **Cả bàn all-in** (không còn ai để đánh): không chia nốt bài chung một cục nữa — máy chủ **lật từng vòng** flop → turn → river cách **1,6 giây** (`GIAY_LO_DAN`, cờ `van.loDan`), river xong đợi thêm 1 nhịp rồi mới chốt; giữa bàn hiện "🔥 Cả bàn all-in — đang lật bài…". Trong lúc lật không ai đánh được.
+   **Rank bài của mình**: viên xanh dưới ghế mình + ô to "BÀI CỦA BẠN ĐANG LÀ" trong hàng nút, cập nhật từng vòng (`toi.cham.ten`); preflop chưa chấm được thì hiện tên tay 2 lá (`toi.tenTay`: "Đôi A" / "K-Q đồng chất" / "9-4 lệch chất"). Cháy hết chip → báo *"Bạn đã bị loại — hạng N/M"*, ngồi xem tiếp (chỉ thấy bài lúc lật).
 6. Giải xong → bảng hạng 1→8. Admin **Giải tán** để mở giải mới.
 
 **Khán giả** (không trong giải, kể cả người đã cháy) nhận `xemChung()` — không có bài riêng của ai.
@@ -164,6 +166,7 @@ Nguyên tắc: bài kiểm hỏng thì **đọc lý do trước khi sửa** — 
 - **Vòng ghế ghim cứng 43% → ghế thò ra ngoài sân.** Ghế đặt `left:x%` + `translate(-50%,-50%)`, hộp ghế rộng 96–168px, nên ghế ngoài cùng chỉ vừa khi sân rộng **≥ ~690px**. Khung nhúng trong web cược rộng ~550px → **Ghế 7 bị cắt mất nửa**, Ghế 3 đội mép phải; điện thoại 380px còn tệ hơn. Đã thay bằng `banKinhX(san)` — đo bề ngang sân + hộp ghế rồi kéo vòng ghế vào (tối đa vẫn 43% như cũ trên màn ≥ ~1280px). Dùng ở **cả 2 chỗ vẽ ghế** (phòng chờ + trong ván). Đổi `width` của `.ghe` thì phải sửa công thức trong `banKinhX` cho khớp.
 - **`style=` gắn thẳng trên thẻ đè MỌI rule CSS.** Khung nhúng từng có `style="height:calc(100vh - 150px)"` nên `body.pokerFull #pokerFrame{height:100%}` không ăn — toàn màn hình mà khung vẫn cao cũ. Kích thước cả 2 trạng thái phải nằm trong khối CSS.
 - **Bàn phải vừa CẢ CHIỀU CAO.** Chỉ `width:100%` + `aspect-ratio` thì điện thoại ngang (740×360) ra bàn cao 503px, tràn màn. `.san` nay lấy `width:min(100%, (100dvh − chừa) × tỉ lệ)`; riêng màn ngang thấp (`orientation:landscape` + `max-height:520px`) bỏ tỉ lệ, cho bàn ăn trọn màn.
+- **Thêm bước chờ vào máy giải là phải sửa MỌI vòng lặp trong bộ kiểm.** `loDan` (lật từ từ) làm `v.luot = null` mà ván chưa `LAT` → `theoHetVan()` và 4 vòng mô phỏng thoát sớm, `vanKe()` ném "Ván hiện tại chưa xong" **chập chờn** (chỉ khi ngẫu nhiên ra ca cả bàn all-in). Đã thêm nhánh `if (v.loDan) g.nhip(t += 2000)` vào cả 5 chỗ; tuỳ chọn `giayLoDan: 0` giữ luật cũ cho bài kiểm cần chốt ngay.
 - **Mốc `@media` 520px là mốc điện thoại, không phải mốc khung hẹp.** Khung nhúng 550px rơi vào khoảng giữa → ăn bố cục máy tính trong hộp hẹp (bàn dẹp, ghế to). Đã nâng mốc lên **700px**.
 
 ---

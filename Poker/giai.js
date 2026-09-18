@@ -40,6 +40,10 @@ const LICH_BLIND_MAC_DINH = [
 // 6 người ≈ 48-52, 8 người ≈ 60-68, tay đôi ≈ 23-26 (tay đôi nhanh là đúng bản chất).
 const PHUT_MOI_MUC = 8;
 const GIAY_MOI_LUOT = 30;
+// 18/09: cả bàn all-in (không còn ai để đánh) thì KHÔNG chia nốt bài chung một cục nữa —
+// lật từng vòng (flop -> turn -> river) cách nhau chừng này giây rồi mới chốt ván, cho người
+// chơi kịp nhìn. Chủ server thử 2 người all-in: "chưa hiểu chuyện gì đã qua tổng kết rồi".
+const GIAY_LO_DAN = 1.6;
 const GIAY_KHOE = 4;           // khoe 1 lá thì cả bàn thấy trong chừng này giây
 const CHIP_DAU = 5000;
 const TOI_DA_NGUOI = 8;        // 8 ghế quanh bàn - chủ server chốt
@@ -49,6 +53,15 @@ const TOI_THIEU_NGUOI = 2;     // admin mở giải, 2 người là chạy đư�
 const DOGCOIN_VAO_GIAI = 10000;
 
 const VONG_SAU = { PREFLOP: 'FLOP', FLOP: 'TURN', TURN: 'RIVER' };
+/** Tên tay 2 lá lúc preflop: "Đôi A" · "A-K đồng chất" · "9-4 lệch chất". Mã lá: 'As', '10d'... */
+function tenTay2La(tay) {
+    if (!tay || tay.length !== 2) return null;
+    const so = (m) => m.slice(0, -1), chat = (m) => m.slice(-1);
+    const THU = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, J: 11, Q: 12, K: 13, A: 14 };
+    const [a, b] = tay.map(so).sort((x, y) => THU[y] - THU[x]);
+    if (a === b) return 'Đôi ' + a;
+    return a + '-' + b + (chat(tay[0]) === chat(tay[1]) ? ' đồng chất' : ' lệch chất');
+}
 const SO_LA_CHIA = { FLOP: 3, TURN: 1, RIVER: 1 };
 
 // Các mốc BB "đẹp" theo kiểu sòng thật (mỗi bậc ×1,33–1,5). Thang của một giải là
@@ -89,6 +102,7 @@ function taoGiai(tuyChon = {}) {
         lichBlind: tuyChon.lichBlind || taoLichBlind(tuyChon.chipDau || CHIP_DAU),
         phutMoiMuc: tuyChon.phutMoiMuc || PHUT_MOI_MUC,
         giayMoiLuot: tuyChon.giayMoiLuot || GIAY_MOI_LUOT,
+        giayLoDan: tuyChon.giayLoDan != null ? tuyChon.giayLoDan : GIAY_LO_DAN,   // 0 = chia nốt ngay (bộ kiểm cũ)
         vanToiThieuMoiMuc: tuyChon.vanToiThieuMoiMuc != null ? tuyChon.vanToiThieuMoiMuc : VAN_TOI_THIEU_MOI_MUC,
     };
 
@@ -252,6 +266,7 @@ function taoGiai(tuyChon = {}) {
         // Ván đã lật bài/chốt xong thì cấm đánh thêm. Thiếu chốt chặn này thì gọi
         // hanhDong() trên ván đã xong vẫn lọt và chạy vô tận (đã dính một lần).
         if (['LAT', 'XONG'].includes(v.vong)) throw new Error('Ván đã xong — chờ ván sau');
+        if (v.loDan) throw new Error('Cả bàn đã all-in — đang lật bài, không còn gì để đánh');
         if (v.luot !== id) throw new Error('Chưa tới lượt ' + id);
         const p = ai(id);
         const canTheo = v.muc - v.cuoc[id];
@@ -416,6 +431,17 @@ function taoGiai(tuyChon = {}) {
      */
     function nhip(bayGio = Date.now()) {
         if (G.nghi) return xemChung();   // đang nghỉ: đồng hồ đứng, không xử ai cả
+        // 18/09: cả bàn all-in -> tới mốc là lật thêm MỘT vòng bài chung; hết river thì
+        // đợi thêm một nhịp nữa rồi mới chốt (cho lá river kịp lật xong trên màn).
+        const vl = V();
+        if (vl && vl.loDan && G.trangThai === 'DANG_CHAY') {
+            if (bayGio < vl.loDan) return xemChung();
+            if (vl.vong === 'RIVER') { vl.loDan = 0; return chotVan(bayGio); }
+            vl.vong = VONG_SAU[vl.vong];
+            vl.chung.push(...B.chia(vl.bo, SO_LA_CHIA[vl.vong]));
+            vl.loDan = bayGio + C.giayLoDan * 1000;
+            return xemChung();
+        }
         for (let vong = 0; vong < TOI_DA_NGUOI + 2; vong++) {
             const v = V();
             if (G.trangThai !== 'DANG_CHAY' || !v || !v.luot) break;
@@ -446,11 +472,17 @@ function taoGiai(tuyChon = {}) {
 
         // hết đường cược (0 hoặc 1 người còn chip) -> chia nốt bài chung rồi lật
         if (phaiDi.length <= 1) {
-            while (v.vong !== 'RIVER') {
-                v.vong = VONG_SAU[v.vong];
-                v.chung.push(...B.chia(v.bo, SO_LA_CHIA[v.vong]));
+            if (v.vong === 'RIVER' || C.giayLoDan <= 0) {
+                while (v.vong !== 'RIVER') {
+                    v.vong = VONG_SAU[v.vong];
+                    v.chung.push(...B.chia(v.bo, SO_LA_CHIA[v.vong]));
+                }
+                return chotVan(bayGio);
             }
-            return chotVan(bayGio);
+            // 18/09: LẬT TỪ TỪ — không ai tới lượt nữa, nhip() sẽ chia từng vòng theo mốc loDan
+            v.luot = null; v.hanChot = 0;
+            v.loDan = bayGio + C.giayLoDan * 1000;
+            return xemChung();
         }
         if (v.vong === 'RIVER') return chotVan(bayGio);
 
@@ -626,6 +658,7 @@ function taoGiai(tuyChon = {}) {
                 so: v.so, vong: v.vong, chung: v.chung.slice(),
                 hu: Object.values(v.tongCuoc).reduce((a, b) => a + b, 0),
                 muc: v.muc, toToiThieu: v.toToiThieu, luot: v.luot, hanChot: v.hanChot,
+                loDan: !!v.loDan,          // 18/09: cả bàn all-in, đang lật từng vòng (web hiện "đang lật bài…")
                 sb: v.sb || null, bb: v.bb || null,   // ai đang là small/big blind ván này
                 khoe: dangKhoe(),          // lá ai tự khoe cho cả bàn xem (tự hết sau 4 giây)
                 daKhoe: Object.keys(v.khoe),
@@ -647,6 +680,9 @@ function taoGiai(tuyChon = {}) {
             la: v && v.tay[id] ? v.tay[id].slice() : null,
             cham: v && v.tay[id] && v.chung.length >= 3
                 ? B.chamBai([...v.tay[id], ...v.chung]) : null,
+            // 18/09: preflop chưa đủ 5 lá để chấm -> gọi tên tay bài 2 lá cho người chơi biết
+            // mình đang cầm gì ("Đôi A" / "A-K đồng chất" / "9-4 lệch chất"). Chỉ là nhãn.
+            tenTay: v && v.tay[id] ? tenTay2La(v.tay[id]) : null,
             toiLuot: v ? v.luot === id : false,
             canTheo: v && v.cuoc[id] !== undefined ? Math.max(0, v.muc - v.cuoc[id]) : 0,
             // trần all-in của chính mình (đã cược trong vòng này + chip còn lại),

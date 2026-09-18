@@ -43,6 +43,7 @@ const poker = taoPoker({
     layNguoi, laAdmin,
     giayAfk: Number(process.env.POKER_AFK_GIAY) || undefined,
     giayXemLat: Number(process.env.POKER_GIAY_LAT) || undefined,
+    giayXemLatLat: Number(process.env.POKER_GIAY_LAT) || undefined,   // 18/09: vỏ dev/test dùng chung một số cho cả ván có lật bài
 });
 setInterval(() => poker.nhip(), 1000);
 

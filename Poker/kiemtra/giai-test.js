@@ -16,7 +16,12 @@ const moi = (tc) => taoGiai(tc);
  *  thành bài kiểm hỏng, chứ không treo cả bộ kiểm. */
 function theoHetVan(g, t = 0) {
     let n = 0;
-    while (g._trong.van && g._trong.van.luot && n++ < 200) g.hanhDong(g._trong.van.luot, 'theo', 0, t);
+    while (g._trong.van && !['LAT', 'XONG'].includes(g._trong.van.vong) && n++ < 200) {
+        const v = g._trong.van;
+        if (v.loDan) g.nhip(t += 2000);                       // 18/09: cả bàn all-in -> lật từ từ theo nhịp
+        else if (v.luot) g.hanhDong(v.luot, 'theo', 0, t);
+        else break;
+    }
     return n < 200;
 }
 const tongChip = (g) => g._trong.nguoi.reduce((s, p) => s + p.chip, 0);
@@ -169,8 +174,11 @@ muc('HŨ PHỤ (side pot) — chỗ dễ sai nhất');
     g.hanhDong('A', 'to', 1000, 0);      // A all-in 1000
     g.hanhDong('B', 'theo', 0, 0);       // B chỉ theo được 300
     g.hanhDong('C', 'theo', 0, 0);       // C chỉ theo được 100
-    ok('ván chốt xong ngay (cả bàn all-in, không còn ai để đánh)',
-        ['LAT', 'XONG'].includes(v.vong), v.vong);
+    // 18/09: cả bàn all-in không chốt ngay nữa mà LẬT TỪ TỪ theo nhịp -> đẩy đồng hồ cho hết
+    ok('cả bàn all-in -> chuyển sang lật từ từ (loDan), chưa chốt', v.loDan > 0 && !['LAT', 'XONG'].includes(v.vong), v.vong);
+    let tLo = 0, nLo = 0;
+    while (!['LAT', 'XONG'].includes(v.vong) && nLo++ < 10) g.nhip(tLo += 2000);
+    ok('lật hết trong 4 nhịp (flop, turn, river, chốt) rồi mới LAT', ['LAT', 'XONG'].includes(v.vong) && nLo === 4, v.vong + ' sau ' + nLo + ' nhịp');
     ok('C đẩy đúng 100, B đúng 300, A đúng 1.000',
         v.tongCuoc.C === 100 && v.tongCuoc.B === 300 && v.tongCuoc.A === 1000,
         JSON.stringify(v.tongCuoc));
@@ -377,7 +385,8 @@ muc('chạy trọn vẹn nhiều giải');
                     else if (r > 0.85 && toiDa > v.muc) {
                         g.hanhDong(v.luot, 'to', Math.min(toiDa, v.muc + v.toToiThieu), t);
                     } else g.hanhDong(v.luot, 'theo', 0, t);
-                } else if (v && ['LAT', 'XONG'].includes(v.vong)) { vanTong++; t += 40000; g.vanKe(t); }
+                } else if (v && v.loDan) { t += 2000; g.nhip(t); }   // 18/09: cả bàn all-in -> đẩy nhịp cho lật hết
+                else if (v && ['LAT', 'XONG'].includes(v.vong)) { vanTong++; t += 40000; g.vanKe(t); }
                 else break;
             }
             if (tongChip(g) !== 20000) chipSai++;
@@ -421,6 +430,7 @@ muc('thứ hạng');
     while (g.xemChung().trangThai === 'DANG_CHAY' && buoc++ < 6000) {
         const v = g._trong.van;
         if (v && v.luot) g.hanhDong(v.luot, 'theo', 0, t);
+        else if (v && v.loDan) { t += 2000; g.nhip(t); }   // 18/09: cả bàn all-in -> đẩy nhịp cho lật hết
         else if (v && ['LAT', 'XONG'].includes(v.vong)) { t += 40000; g.vanKe(t); }
         else break;
     }
@@ -469,7 +479,9 @@ const TAM = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(x => ({ id: x, ten: 'Ng
                     else if (r > 0.88 && toiDa > v.muc) {
                         g.hanhDong(v.luot, 'to', Math.min(toiDa, v.muc + v.toToiThieu), t);
                     } else g.hanhDong(v.luot, 'theo', 0, t);
-                } else if (v && ['LAT', 'XONG'].includes(v.vong)) { t += 40000; g.vanKe(t); }
+                } else if (v && v.loDan) { t += 2000; g.nhip(t); }   // 18/09: cả bàn all-in -> đẩy nhịp cho lật hết
+                else if (v && v.loDan) { t += 2000; g.nhip(t); }   // 18/09: cả bàn all-in -> đẩy nhịp cho lật hết
+        else if (v && ['LAT', 'XONG'].includes(v.vong)) { t += 40000; g.vanKe(t); }
                 else break;
             }
             if (tongChip(g) !== 40000) chipSai++;
@@ -511,6 +523,7 @@ muc('RỚT MẠNG (AFK) — tự bỏ bài tới khi vào lại');
             g.nhip(t + 99999);
             if (g._trong.van.luot) g.hanhDong(g._trong.van.luot, 'theo', 0, t);
         }
+        while (g._trong.van.loDan && n++ < 210) g.nhip(t += 2000);   // 18/09: lật từ từ khi cả bàn all-in
         const v = g._trong.van, bl = g.xemChung().blind;
         if (v.tongCuoc.A !== undefined) {
             soVan++;
@@ -535,6 +548,7 @@ muc('RỚT MẠNG (AFK) — tự bỏ bài tới khi vào lại');
     while (g.xemChung().trangThai === 'DANG_CHAY' && buoc++ < 5000) {
         const v = g._trong.van;
         if (v && v.luot) g.nhip(t);
+        else if (v && v.loDan) { t += 2000; g.nhip(t); }   // 18/09: cả bàn all-in -> đẩy nhịp cho lật hết
         else if (v && ['LAT', 'XONG'].includes(v.vong)) { t += 40000; g.vanKe(t); }
         else break;
     }
@@ -738,6 +752,55 @@ muc('nhãn việc vừa làm (vuaLam) - cả bàn thấy ai vừa tố/theo/bỏ
     const v2 = g2._trong.van, La = v2.luot;
     const s2 = g2.hanhDong(La, 'to', v2.cuoc[La] + g2._trong.nguoi.find(p => p.id === La).chip, 0);
     ok('tố hết chip -> nhãn "allin"', nhan(s2, La).viec === 'allin' && g2._trong.nguoi.find(p => p.id === La).chip === 0, JSON.stringify(nhan(s2, La)));
+}
+
+// ---------------------------------------------------------------- lật từ từ khi cả bàn all-in (18/09)
+muc('cả bàn all-in ngay preflop -> lật flop / turn / river từng nhịp, không chốt một cục');
+{
+    const g = moi({ lichBlind: [{ sb: 10, bb: 20 }] });
+    let s = g.batDau([{ id: 'A', ten: 'A' }, { id: 'B', ten: 'B' }], 0);
+    const v = () => g._trong.van;
+    const L1 = v().luot, L2 = L1 === 'A' ? 'B' : 'A';
+    g.hanhDong(L1, 'to', v().cuoc[L1] + g._trong.nguoi.find(p => p.id === L1).chip, 0);   // all-in
+    s = g.hanhDong(L2, 'theo', 0, 0);
+    ok('cả 2 all-in preflop: vẫn PREFLOP, 0 lá chung, loDan bật, không ai tới lượt',
+        s.van.vong === 'PREFLOP' && s.van.chung.length === 0 && s.van.loDan === true && s.van.luot === null, JSON.stringify([s.van.vong, s.van.chung.length, s.van.loDan, s.van.luot]));
+    let loi = '';
+    try { g.hanhDong(L1, 'theo', 0, 0); } catch (e) { loi = e.message; }
+    ok('đang lật thì không ai đánh được nữa', /all-in/.test(loi), loi);
+    s = g.nhip(1000);
+    ok('chưa tới mốc (1,6s) -> chưa lật gì', s.van.vong === 'PREFLOP' && s.van.chung.length === 0);
+    s = g.nhip(1700);
+    ok('mốc 1: FLOP 3 lá', s.van.vong === 'FLOP' && s.van.chung.length === 3, s.van.vong + ' ' + s.van.chung.length);
+    s = g.nhip(3400);
+    ok('mốc 2: TURN 4 lá', s.van.vong === 'TURN' && s.van.chung.length === 4, s.van.vong + ' ' + s.van.chung.length);
+    s = g.nhip(5100);
+    ok('mốc 3: RIVER 5 lá, vẫn CHƯA chốt (để lá river kịp lật trên màn)', s.van.vong === 'RIVER' && s.van.chung.length === 5 && !s.van.ketQua, s.van.vong);
+    s = g.nhip(6800);
+    ok('mốc 4: chốt ván -> LAT, có ketQua, có bài lật của cả 2, loDan tắt',
+        s.van.vong === 'LAT' && s.van.ketQua && s.van.ketQua.lat && s.van.ketQua.lat.length === 2 && s.van.loDan === false, s.van.vong);
+    ok('5 lá làm nên bài (cham.nam) có đủ cho web tô vàng', s.van.ketQua.lat.every(z => z.cham && Array.isArray(z.cham.nam) && z.cham.nam.length === 5));
+    ok('tổng chip không đẻ không mất', tongChip(g) === 2 * 5000, String(tongChip(g)));
+    // giayLoDan = 0 -> luật cũ: chốt ngay một cục (đường tắt cho bộ kiểm)
+    const g0 = moi({ lichBlind: [{ sb: 10, bb: 20 }], giayLoDan: 0 });
+    g0.batDau([{ id: 'A' }, { id: 'B' }], 0);
+    const v0 = g0._trong.van, M1 = v0.luot, M2 = M1 === 'A' ? 'B' : 'A';
+    g0.hanhDong(M1, 'to', v0.cuoc[M1] + g0._trong.nguoi.find(p => p.id === M1).chip, 0);
+    const s0 = g0.hanhDong(M2, 'theo', 0, 0);
+    ok('giayLoDan = 0 -> chốt ngay như trước', ['LAT', 'XONG'].includes(s0.van.vong) && s0.van.chung.length === 5, s0.van.vong);
+}
+
+muc('tên tay 2 lá preflop (toi.tenTay)');
+{
+    const g = moi();
+    g.batDau(BON, 0);
+    const v = g._trong.van;
+    v.tay.A = ['As', 'Ad']; v.tay.B = ['Kh', 'Qh']; v.tay.C = ['9c', '4s']; v.tay.D = ['10s', 'Jd'];
+    ok('đôi A -> "Đôi A"', g.xem('A').toi.tenTay === 'Đôi A', g.xem('A').toi.tenTay);
+    ok('K-Q cùng cơ -> "K-Q đồng chất"', g.xem('B').toi.tenTay === 'K-Q đồng chất', g.xem('B').toi.tenTay);
+    ok('9-4 khác chất -> "9-4 lệch chất" (lá lớn đứng trước)', g.xem('C').toi.tenTay === '9-4 lệch chất', g.xem('C').toi.tenTay);
+    ok('10-J -> "J-10 lệch chất" (J lớn hơn 10)', g.xem('D').toi.tenTay === 'J-10 lệch chất', g.xem('D').toi.tenTay);
+    ok('preflop chưa có cham (chưa đủ 5 lá)', g.xem('A').toi.cham === null);
 }
 
 console.log('\n🏆 MÁY TRẠNG THÁI GIẢI: ' + P + ' đạt, ' + F + ' hỏng');
