@@ -252,7 +252,13 @@ function dungSanh(vi) {
         tenCua: (id) => id, ghiLog: (d) => log.push(d), giayXemKet: 0,
     });
     const goiS = (p, b, u) => { let r = null; m.xuLy({ path: p, method: b ? 'POST' : 'GET', body: b || {}, userId: u }, null, (x, c, j) => { r = { ma: c, j }; }); return r; };
-    return { m, goiS, log };
+    // ⚠️ TẮT TỚI TRẮNG cho MỌI phòng, kể cả phòng tạo sau. Để bật thì thỉnh thoảng (~1/15 lần)
+    // chia bài xong là có người tới trắng -> ván CHỐT NGAY, bàn về trạng thái CHỜ, và mấy phép
+    // kiểm cần bối cảnh "đang đánh" (vote nằm chờ, đổi phòng bị chặn) đỏ oan.
+    const tatToiTrang = () => { for (const p of m.phong) p.may.quanLy.datCauHinh({ toiTrangOn: false }); };
+    tatToiTrang();
+    const goiT = (p, b, u) => { const r = goiS(p, b, u); tatToiTrang(); return r; };
+    return { m, goiS: goiT, log };
 }
 
 muc('🏠 SẢNH: tạo phòng / thang mức cược / dọn phòng trống');

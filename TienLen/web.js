@@ -19,7 +19,10 @@
 const V = require('./van.js');
 
 const GIAY_AFK_MAC_DINH = 25;       // không hỏi thăm quá lâu = coi như rớt mạng
-const GIAY_XEM_KET_MAC_DINH = 5;    // xem kết quả ván 5 giây (đếm ngược 5-4-3-2-1) rồi chia ván mới
+// 8 giây, KHÔNG phải 5. Cuối ván có nhiều thứ phải nhìn cùng lúc: bài ngửa của người còn
+// cầm (có khi 13 lá), nhãn "THỐI ...", bảng tiền, câu chọc — mà 2,4 giây đầu còn bị chữ
+// "VỀ NHẤT" che giữa bàn. 5 giây là chưa kịp đọc đã chia ván mới (chủ server báo 20/09).
+const GIAY_XEM_KET_MAC_DINH = 8;
 // Vốn tối thiểu = HỆ SỐ × giá 1 cược. Hai chế độ hai hệ số vì thua tối đa một ván khác nhau XA:
 //   · 'hang'  thua đậm nhất ≈ 11 cược (bét cóng −2, nhốt 4 đôi thông + tứ quý + heo ×2) -> 30× là thừa sức.
 //   · 'anhet' thua đậm nhất ≈ 110 cược (cóng: 13 lá ×2 = 26, nhốt tối đa 42 cược ×2 = 84) -> phải 120×.

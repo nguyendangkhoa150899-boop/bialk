@@ -192,7 +192,15 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
     const raGhe = String(els.get('banGhe') ? els.get('banGhe').innerHTML : '');
     ok('ghế B hiện nhãn THỐI HEO', /THỐI[^<]*HEO/i.test(raGhe), raGhe.slice(0, 200));
     ok('ghế D hiện nhãn THỐI TỨ QUÝ', /THỐI[^<]*TỨ QUÝ/i.test(raGhe));
-    ok('ghế ngửa ảnh lá bài thật', raGhe.indexOf('src="bai/2h.webp"') >= 0, raGhe.slice(0, 200));
+    ok('ghế ghi rõ ai đi hết bài / ai còn mấy lá', /đi hết bài/.test(raGhe) && /còn \d+ lá/.test(raGhe), raGhe.slice(0, 300));
+    // ⭐ Bài THẬT lật TO GIỮA BÀN, không nhét vào ghế: nhét vào ghế thì mỗi lá rộng 26px,
+    // 13 lá chồng nhau là nhìn không ra lá gì (chủ server: "chưa show được bài... ý là show
+    // bài của người CÒN ra á" — nó CÓ vẽ, chỉ là bé quá nên trông như chưa vẽ).
+    const raLat = String(els.get('banLat') ? els.get('banLat').innerHTML : '');
+    ok('GIỮA BÀN lật bài thật của người còn cầm', raLat.indexOf('src="bai/2h.webp"') >= 0, raLat.slice(0, 300));
+    ok('...kèm tên chủ bài và còn mấy lá', /class="ai"/.test(raLat) && /còn \d+ lá/.test(raLat), raLat.slice(0, 300));
+    ok('...người ĐÃ đi hết bài thì không có hàng nào (không còn lá để lật)',
+        raLat.indexOf('>Người A<') < 0, raLat.slice(0, 300));
     const raCuoi = String(els.get('kqCuoi') ? els.get('kqCuoi').innerHTML : '');
     ok('có câu chọc nhắc đúng thứ người ta ôm', /heo|tứ quý/i.test(raCuoi), raCuoi);
 }
@@ -341,10 +349,18 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('cỡ bài CỐ ĐỊNH 2×, đã bỏ nút 🔍', /--co:2;/.test(HTML) && !/function coBai\(/.test(JS) && !/onclick="coBai/.test(JS));
     ok('tay bài xoè chồng + tự co cho vừa bề ngang', /function canhTay\(/.test(JS) && /W \* 0\.8/.test(JS));
     // "chọn con 8 bị che con 9": chỉ chừa chỗ ở nơi lá ĐÃ CHỌN đứng cạnh lá CHƯA CHỌN
-    ok('chừa khoảng trống sau lá đã chọn để không che lá kế',
-        /HO_CHON/.test(JS) && /contains\('chon'\) && !k\[i\]\.classList\.contains\('chon'\)/.test(JS));
-    ok('...và khoảng trống đó được tính vào phép chia nên không tràn hàng', /g \* HO_CHON/.test(JS));
-    ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /' cam'/.test(JS));
+    // 20/09: bấm lá là nó NHẢY LÊN KHAY ở trên, rời hẳn khỏi tay bài. Nhờ vậy lá chọn không
+    // thể che lá kế bên nữa — cơ chế chừa khoảng hở HO_CHON cũ đã bỏ hẳn, đừng dựng lại.
+    ok('bấm lá thì lá NHẢY LÊN khay riêng, không nằm chen trong tay nữa',
+        /id="banKhay"/.test(HTML) && /function veKhay\(/.test(JS) &&
+        /CHON\.indexOf\(x\) < 0/.test(JS) && /@keyframes nhayLen\{/.test(HTML));
+    ok('...khay KHÔNG chồng lá nào lên lá nào (ô bấm to cho điện thoại)',
+        /#banKhay\{display:flex[\s\S]{0,120}gap:6px/.test(HTML) && /#banKhay \.the\{cursor:pointer;margin:0/.test(HTML));
+    ok('...bấm lá trong khay là trả về tay bài', /CHON\.indexOf\(ma\); if \(i >= 0\) CHON\.splice\(i, 1\)/.test(JS));
+    ok('...khay nói luôn đang cầm bộ gì + đánh được hay không',
+        /chưa thành bộ/.test(JS) && /#banKhay\.duoc\{/.test(HTML) && /#banKhay\.khong\{/.test(HTML));
+    ok('KHÔNG còn cơ chế chừa khoảng hở cũ (lá chọn đã rời khỏi hàng)', !/HO_CHON/.test(JS));
+    ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /\? 'cam' : ''/.test(JS));
     ok('có dòng gợi ý #banGoi báo đánh được / không', /id="banGoi"/.test(HTML) && /#banGoi\.duoc/.test(HTML) && /#banGoi\.khong/.test(HTML));
     ok('có nút 💡 GỢI Ý', /💡 GỢI Ý/.test(JS));
     // Theo ảnh mẫu Ba Bích: 2 nút TO "Bỏ lượt" (đỏ) / "Đánh" (xanh) + đồng hồ tròn, hiện suốt lượt mình
@@ -389,10 +405,35 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('ghế hiện VỪA ĐÁNH gì, có dấu 💥 khi chặt', /vl\.viec==='danh'/.test(JS) && /💥 CHẶT/.test(JS));
     // 19/09 chủ server: "che bài người khác lại cho không được biết số lá bài của nhau nữa"
     ok('ghế người khác KHÔNG hiện số lá — chỉ xấp úp cố định', /p\.conBai\) \? '<i><\/i><i><\/i><i><\/i>'/.test(JS) && !/dem-la/.test(JS));
-    ok('số lá chỉ hiện cho CHÍNH MÌNH', /laToi && p\.soLa!=null \? p\.soLa\+' lá · ' : ''/.test(JS));
+    ok('số lá chỉ hiện cho CHÍNH MÌNH', /laToi && p\.soLa!=null \? p\.soLa\+' lá' : ''/.test(JS));
+    // 20/09: ghế nói chuyện CỦA VÁN NÀY, không phải tổng cộng dồn cả buổi — về nhất mà ghế
+    // ghi −4.200 (tổng cả buổi) thì chẳng ai hiểu gì.
+    ok('ghế hiện ăn/thua CỦA VÁN NÀY, không phải tổng cộng dồn',
+        /var tienVan = kqv \? \(\(kqv\.tien && kqv\.tien\[p\.id\]\) \|\| 0\) : \(p\.chatVan \|\| 0\)/.test(JS) &&
+        /ván này/.test(JS));
+    ok('...không ghi "+0" cho rối mắt', /var nhanTien = !tienVan \? '' :/.test(JS));
+    ok('...máy chủ gửi kèm tiền chặt đã chuyển trong ván', /chatVan:/.test(fs.readFileSync(path.join(__dirname, '..', 'van.js'), 'utf8')));
     ok('KHÔNG còn nhãn "sắp thắng" / badge đếm lá cũ', !/sapthang/.test(JS) && !/dem-la/.test(HTML));
     ok('đếm ngược số giây trên ghế đang tới lượt, ≤5 giây thì đỏ nhấp nháy', /class="dem'\+\(conGiay<=5\?' gap':''\)/.test(JS));
     ok('tới lượt mình thì sáng viền bàn + kêu 1 lần', /classList\.toggle\('toiluot'/.test(JS) && /LUOT_KEU/.test(JS));
+    // 20/09: "chữ nhảy linh tinh hết" — ghế co giãn theo trạng thái (có lượt thì mọc thanh
+    // đồng hồ, nhãn thì đổi liên tục) nên mỗi giây vẽ lại là cả cụm chữ nhích chỗ.
+    ok('ghim chiều cao ô đồng hồ + ô nhãn để chữ trên ghế KHÔNG nhảy',
+        /\.gioO\{height:7px\}/.test(HTML) && /\.ttO\{min-height:25px\}/.test(HTML) &&
+        JS.indexOf('<div class="gioO">\'+gio+\'</div><div class="ttO">\'+tt+\'</div>') >= 0);
+    // 🏆 "ai về nhất rồi show ra luôn / hiện chữ NHẤT show bự ra / người nhì nữa"
+    ok('🏆 bắn chữ VỀ NHẤT / VỀ NHÌ to giữa bàn',
+        /id="banHang"/.test(HTML) && /function theoDoiHang\(/.test(JS) && /@keyframes hangBung\{/.test(HTML));
+    ok('...mỗi người bắn ĐÚNG MỘT LẦN, sang ván mới thì xoá sạch',
+        /HANG_DA\[ds\[i\]\.id\] = 1;/.test(JS) && /HANG_VAN !== so/.test(JS));
+    ok('...xếp hàng chờ, hai người về cùng lúc không đè chữ lên nhau',
+        /function chayHang\(/.test(JS) && /HANG_CHO\.shift\(\)/.test(JS));
+    ok('...lúc chốt ván chỉ khoe người NHẤT (khỏi bắn tràng dài hơn đếm ngược)',
+        /v\.ketQua && ds\[i\]\.hang !== 1\) continue/.test(JS));
+    ok('..."được hưởng sái": nói luôn còn mấy người tranh hạng kế',
+        /còn ' \+ x\.con \+ ' người tranh '/.test(JS));
+    ok('...mỗi hạng một màu riêng',
+        /#banHang\.h1\{/.test(HTML) && /#banHang\.h2\{/.test(HTML) && /#banHang\.h3\{/.test(HTML));
 }
 
 // ---------------------------------------------------------------- id trùng
@@ -458,9 +499,13 @@ muc('🗳️ VOTE đổi mức cược');
 // ---------------------------------------------------------------- ngửa bài + nhãn thối (20/09)
 muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
 {
-    ok('ghế ngửa bài thật khi có ketQua.lat', /kqv && kqv\.lat/.test(JS) && /class="lat/.test(JS) && /\.lat img\{/.test(HTML));
-    ok('ôm nhiều lá thì đè chặt hơn, không tràn sang ghế bên',
-        /cuaAi\.la\.length > 7 \? ' nhieu'/.test(JS) && /\.lat\.nhieu img\{/.test(HTML));
+    ok('lật bài giữa bàn khi có ketQua.lat',
+        /function veLat\(/.test(JS) && /id="banLat"/.test(HTML) && /\.latD \.bo img\{/.test(HTML));
+    ok('...cỡ lá đọc được (30–56px), không phải xấp tí hon nhét trong ghế',
+        /--llb:clamp\(30px,4\.6vw,56px\)/.test(HTML) && !/--llat/.test(HTML));
+    ok('...chỉ bày người CÒN cầm bài', /x\.la && x\.la\.length/.test(JS));
+    ok('...ghế chỉ ghi nhãn gọn: đi hết bài / còn N lá',
+        /hetbai xong">✅ đi hết bài/.test(JS) && /hetbai con">🃏 còn/.test(JS));
     ok('...trước đó vẫn giấu, chỉ một xấp úp', /!v\.ketQua && p\.conBai/.test(JS));
     ok('nhãn THỐI ghi rõ thối CÁI GÌ, không chỉ "thối 2"',
         /THỐI ' \+ esc\(gomMuc\(ctv\.thoiMuc\)/.test(JS) && /function gomMuc\(/.test(JS));
@@ -475,7 +520,7 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
     //  vì sao KHÔNG được dùng nó — bắt trần trụi là đỏ oan)
     ok('...câu chọc ổn định theo ván (không nhảy mỗi giây)',
         /bam\(id \+ soVan/.test(JS) && !/Math\.random\(\)/.test(JS));
-    ok('lá heo bị phạt có viền cam cho dễ thấy', /\.lat img\.xau\{outline/.test(HTML) && /laXau\[x\]/.test(JS));
+    ok('lá heo bị phạt có viền cam cho dễ thấy', /\.latD \.bo img\.xau\{outline/.test(HTML) && /xau\[c\] = 1/.test(JS));
 
 }
 

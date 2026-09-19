@@ -8,7 +8,7 @@
   --co:2;
   --lb:calc(clamp(38px,7.2vw,60px) * var(--co));      /* lá bài trên bàn */
   --lbt:calc(clamp(30px,5.4vw,46px) * var(--co));     /* lá bài trên tay */
-  --llat:clamp(16px,2.4vw,26px);                      /* lá bài NGỬA trên ghế lúc hết ván */
+  --llb:clamp(30px,4.6vw,56px);                       /* lá bài NGỬA giữa bàn lúc hết ván */
 }
 *{box-sizing:border-box}
 /* 📱 CHẶN VUỐT LÀM TRÔI TRANG (chủ server 20/09).
@@ -157,6 +157,12 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .tt.afk{background:#3a1030;color:#e39bff}
 .tt.hang{background:#0d2740;color:#9ad4ff}
 .tt.nhat{background:linear-gradient(180deg,#ffe9a3,#e0a41a);color:#3a2500}
+/* ⚠️ GHIM CHIỀU CAO hai ô này. Ghế nằm giữa theo translate(-50%,-50%) nên chỉ cần cao thêm
+   vài px là cả cụm chữ nhích chỗ — mà thanh đồng hồ chỉ mọc ở ghế ĐANG tới lượt còn nhãn thì
+   đổi liên tục, nên cứ mỗi giây vẽ lại là chữ nhảy loạn (chủ server báo 20/09).
+   Giữ ô rỗng đúng bằng chiều cao lúc có nội dung là hết nhảy. */
+.gioO{height:7px}
+.ttO{min-height:25px}
 .gio{height:3px;border-radius:2px;background:#2a3140;margin:4px 6px 0;overflow:hidden}
 .gio i{display:block;height:100%;background:var(--gold);transition:width .25s linear}
 
@@ -184,6 +190,21 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 @keyframes chonNay{0%{transform:translateY(-6px)}100%{transform:translateY(-26px)}}
 /* lá KHÔNG thể đánh trong lượt này (khi đang theo bài) thì mờ đi cho dễ nhìn */
 .tay .the.cam{filter:brightness(.52) saturate(.55)}
+
+/* 🗂️ KHAY BÀI ĐÃ CHỌN — lá bấm vào thì NHẢY LÊN đây, rời hẳn khỏi tay bài.
+   Không lá nào chồng lá nào: trên điện thoại mỗi lá là một ô bấm to, bấm lại là trả về tay. */
+#banKhay{display:flex;justify-content:center;align-items:flex-end;gap:6px;flex-wrap:wrap;
+  margin:8px auto 0;padding:8px 10px;width:fit-content;max-width:98%;
+  border-radius:14px;border:2px dashed #7a5d13;background:rgba(58,46,16,.35)}
+#banKhay.duoc{border-color:#1d6b44;background:rgba(18,48,33,.5);border-style:solid}
+#banKhay.khong{border-color:#7a2d2d;background:rgba(46,18,18,.45)}
+#banKhay .the{cursor:pointer;margin:0;animation:nhayLen .26s cubic-bezier(.2,1.5,.4,1) both}
+#banKhay .the img{width:var(--lbt);border-radius:7px;box-shadow:0 6px 16px rgba(0,0,0,.6)}
+#banKhay .the:active{transform:translateY(3px)}
+#banKhay .nhan{align-self:center;font-size:12px;font-weight:800;color:var(--muted);padding:0 4px}
+@keyframes nhayLen{0%{opacity:.2;transform:translateY(46px) scale(.82)}
+  60%{opacity:1;transform:translateY(-6px) scale(1.04)}
+  100%{opacity:1;transform:none}}
 
 /* 🎯 HÀNG NÚT TO (theo ảnh mẫu Ba Bích): ⏱ đồng hồ tròn · Bỏ lượt đỏ · Đánh xanh.
    Hiện suốt lượt của mình — nút Đánh chỉ SÁNG khi mớ lá đang chọn hợp lệ. */
@@ -220,6 +241,25 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   70%{opacity:1;transform:translate(-50%,-62%) scale(1)}
   100%{opacity:0;transform:translate(-50%,-78%) scale(.94)}}
 
+/* 🏆 AI VỀ HẠNG NÀO — bắn chữ TO giữa bàn ngay lúc người đó hết bài, cả bàn cùng thấy. */
+#banHang{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:12;pointer-events:none;
+  text-align:center;white-space:nowrap;font-size:clamp(26px,7vw,64px);font-weight:900;letter-spacing:3px;
+  animation:hangBung 2.3s cubic-bezier(.2,.9,.3,1) both}
+#banHang .ai{display:block;font-size:.42em;letter-spacing:1px;margin-bottom:2px;color:#fff;
+  -webkit-text-stroke:1.5px rgba(0,0,0,.85)}
+#banHang .phu{display:block;font-size:.26em;letter-spacing:.5px;margin-top:6px;font-weight:800;color:#ffe6a8;
+  -webkit-text-stroke:0}
+#banHang.h1{color:#ffd76a;-webkit-text-stroke:3px #4a3000;text-shadow:0 5px 0 #8a6200,0 10px 30px rgba(0,0,0,.9)}
+#banHang.h2{color:#e3ecf8;-webkit-text-stroke:3px #2b3444;text-shadow:0 5px 0 #4b5a72,0 10px 30px rgba(0,0,0,.9)}
+#banHang.h3{color:#f0a86a;-webkit-text-stroke:3px #43220b;text-shadow:0 5px 0 #8a4a18,0 10px 30px rgba(0,0,0,.9)}
+#banHang.h4{color:#9aa6b8;-webkit-text-stroke:3px #1a2029;text-shadow:0 5px 0 #39414f,0 10px 30px rgba(0,0,0,.9)}
+@keyframes hangBung{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.28) rotate(-8deg)}
+  14%{opacity:1;transform:translate(-50%,-50%) scale(1.22) rotate(2deg)}
+  26%{transform:translate(-50%,-50%) scale(1) rotate(0)}
+  80%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-62%) scale(.94)}}
+
 /* ⇄ nút tròn đổi kiểu xếp bài, nằm cạnh tay bài (như ảnh mẫu) */
 .tayHang{display:flex;align-items:center;justify-content:center;gap:10px}
 .tron{width:clamp(42px,6.4vw,56px);height:clamp(42px,6.4vw,56px);border-radius:50%;flex:0 0 auto;
@@ -238,13 +278,29 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .tt.danh{background:#123021;color:#9ff0c4}
 /* 🔍 HẾT VÁN LÀ NGỬA BÀI CẢ BÀN. Bài lật nằm ngay chỗ xấp bài úp, đè lên nhau cho gọn ghế.
    Ai còn heo / còn hàng thì đeo thêm nhãn "THỐI ..." to đùng cho cả bàn cùng cười. */
-.lat{display:flex;justify-content:center;align-items:flex-end;margin-bottom:-6px;min-height:26px;flex-wrap:nowrap}
-.lat img{display:block;width:var(--llat,20px);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.6);
-  margin-left:calc(var(--llat,20px) * -0.55)}
-.lat img:first-child{margin-left:0}
-/* Ôm nhiều lá (đếm lá có khi còn cả 13 lá) thì đè chặt hơn, không thì xấp bài tràn sang ghế bên. */
-.lat.nhieu img{width:calc(var(--llat,20px) * .82);margin-left:calc(var(--llat,20px) * -0.62)}
-.lat img.xau{outline:2px solid #ff9a3c;outline-offset:-1px}
+/* Nhãn gọn trên ghế lúc hết ván. Bài THẬT thì lật TO ở giữa bàn (#banLat) chứ không nhét
+   vào ghế — nhét vào ghế thì mỗi lá rộng 26px, 13 lá chồng nhau là nhìn không ra lá gì. */
+.hetbai{font-size:11px;font-weight:800;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.hetbai.xong{color:#9ff0c4;background:#123021;border:1px solid #1d6b44}
+.hetbai.con{color:#ffd76a;background:#3a2e10;border:1px solid #7a5d13}
+
+/* 🃏 LẬT BÀI GIỮA BÀN — hết ván thì ai CÒN cầm bài được ngửa hết ra đây, cỡ đọc được.
+   Mỗi người một hàng: tên · bài · còn mấy lá · thối gì. */
+#banLat{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:6px;width:96%;
+  animation:latVao .3s cubic-bezier(.2,1.3,.4,1) both}
+@keyframes latVao{0%{opacity:0;transform:translate(-50%,-44%) scale(.94)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.latD{display:flex;align-items:center;gap:9px;max-width:100%;
+  background:rgba(6,11,16,.78);border:1px solid rgba(255,255,255,.16);border-radius:13px;padding:6px 11px;
+  box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.latD .ai{font-size:clamp(11px,1.8vw,15px);font-weight:900;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:24vw}
+.latD .bo{display:flex;align-items:flex-end;flex:0 1 auto;min-width:0}
+.latD .bo img{display:block;width:var(--llb);border-radius:5px;flex:0 0 auto;
+  margin-left:calc(var(--llb) * -0.40);box-shadow:0 3px 9px rgba(0,0,0,.75)}
+.latD .bo img:first-child{margin-left:0}
+.latD .bo img.xau{outline:2px solid #ff9a3c;outline-offset:-1px;border-radius:5px}
+.latD .ph{font-size:clamp(10px,1.5vw,12.5px);font-weight:800;color:#ffb46a;white-space:nowrap}
 .tt.thoi{background:linear-gradient(180deg,#ff9a3c,#b83f12);color:#2a0e00;font-size:11px;letter-spacing:.4px;
   box-shadow:0 2px 8px rgba(255,120,40,.4);animation:rung 1.4s ease-in-out infinite}
 .tt.cong{background:linear-gradient(180deg,#9fe8ff,#2c7fa8);color:#04222e;font-size:11px;letter-spacing:.4px}
@@ -288,7 +344,7 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
    (100dvh − 300px) × 1.61 co bàn còn ~145px trên màn cao 390px, vỡ hẳn. Ở khổ này: hạ cỡ bài,
    bỏ tỉ lệ cố định cho bàn ăn trọn chiều cao còn lại, thu gọn ghế và hàng nút. */
 @media(orientation:landscape) and (max-height:560px){
-  :root{--co:1.25;--llat:14px}
+  :root{--co:1.25;--llb:34px}
   body{padding:4px}
   .san{aspect-ratio:auto;width:100%;height:calc(100vh - 232px);height:calc(100dvh - 232px);min-height:120px}
   .vien{inset:28px 6px}
@@ -400,13 +456,16 @@ body.khoaXoay{position:fixed;inset:0;width:100%;overflow:hidden}
         <div class="nhanbo" id="banNhan"></div>
         <div class="chua" id="banChua"></div>
       </div>
+      <div id="banLat" hidden></div>
       <div id="banTen" hidden></div>
+      <div id="banHang" hidden></div>
       <div id="demNguoc" hidden></div>
     </div></div>
     <div id="banGhe"></div>
   </div>
 
   <div id="banGoi" hidden></div>
+  <div id="banKhay" hidden></div>
   <div id="banDanh" hidden></div>
   <div id="banBoChon" hidden></div>
   <div class="tayHang">
@@ -842,8 +901,10 @@ function veBan(){
   $('banChua').textContent = v.ketQua ? '' :
       (v.bo ? '' : (v.luot ? (v.luot===S.toi.id ? 'Bạn mở lượt — đánh gì cũng được' : tenCua(v.luot)+' đang mở lượt') : ''));
 
+  veLat(v);
   veTay(b, v);
   veNut(b, v);
+  theoDoiHang(b, v);
   veKetQua(b, v);
 
   // ⏱ đếm ngược 5·4·3·2·1 rồi chia ván mới (bàn cứ chạy tới khi còn 1 người)
@@ -872,6 +933,68 @@ function veBan(){
   if (!cuaToi) LUOT_KEU = '';
 }
 var LUOT_KEU = '';
+
+/* 🃏 HẾT VÁN: NGỬA BÀI CỦA NGƯỜI CÒN CẦM, TO GIỮA BÀN.
+   Chủ server 20/09: "show bài của người CÒN ra á". Ai đi hết bài thì chẳng còn lá nào để
+   lật — chuyện đó ghi ở nhãn trên ghế. Ở đây chỉ bày người còn bài, mỗi người một hàng:
+   tên · bài ngửa · còn mấy lá · thối gì. Lá heo bị phạt viền cam cho dễ thấy. */
+function veLat(v){
+  var e = $('banLat'), kq = v.ketQua;
+  var ds = (kq && kq.lat) ? kq.lat.filter(function(x){ return x.la && x.la.length; }) : [];
+  if (!ds.length){ e.hidden = true; datHTML(e, ''); return; }
+  var o = ds.map(function(x){
+    var ct = (kq.chiTiet || {})[x.id] || {};
+    var xau = {};
+    if ((ct.thoiMuc || []).length) x.la.forEach(function(c){ if (cDoc(c).so === '2') xau[c] = 1; });
+    var phu = 'còn ' + x.la.length + ' lá' +
+      ((ct.thoiMuc && ct.thoiMuc.length) ? ' · 🐷 thối ' + esc(gomMuc(ct.thoiMuc)) : '');
+    return '<div class="latD"><span class="ai">' + esc(tenCua(x.id)) + '</span><span class="bo">' +
+      cXep(x.la).map(function(c){
+        return '<img' + (xau[c] ? ' class="xau"' : '') + ' src="bai/' + c + '.webp" alt="' + esc(cTen1(c)) + '">';
+      }).join('') + '</span><span class="ph">' + phu + '</span></div>';
+  }).join('');
+  datHTML(e, o);
+  e.hidden = false;
+}
+
+/* 🏆 BẮN CHỮ "VỀ NHẤT / VỀ NHÌ" TO GIỮA BÀN ngay lúc người đó hết bài — chủ server chốt 20/09.
+   Trong ván thì bắn từng người một khi họ về (đó cũng là lúc vui nhất). Lúc CHỐT VÁN thì máy
+   chủ xếp hạng cho cả bàn cùng lúc, bắn hết 4 người là mất 9 giây, dài hơn cả đếm ngược ván
+   mới — nên lúc đó CHỈ bắn người về nhất nếu chưa kịp bắn, phần còn lại đã có bảng kết quả. */
+var TEN_HANG = ['', 'NHẤT', 'NHÌ', 'BA', 'BÉT'];
+var HUY_HANG = ['', '🏆', '🥈', '🥉', '🍂'];
+var HANG_VAN = 0, HANG_DA = {}, HANG_CHO = [], HANG_DANG = false;
+function theoDoiHang(b, v){
+  var so = v.so || 0;
+  if (HANG_VAN !== so){                       // sang ván mới: xoá sạch, đừng bắn lại của ván cũ
+    HANG_VAN = so; HANG_DA = {}; HANG_CHO = []; HANG_DANG = false;
+    clearTimeout(theoDoiHang._h); $('banHang').hidden = true;
+  }
+  var ds = (b.nguoi || []).filter(function(p){ return p.hang && !HANG_DA[p.id]; })
+                          .sort(function(a, c){ return a.hang - c.hang; });
+  for (var i = 0; i < ds.length; i++){
+    HANG_DA[ds[i].id] = 1;
+    // chốt ván mới biết hạng -> chỉ khoe người NHẤT, khỏi bắn một tràng dài hơn đếm ngược
+    if (v.ketQua && ds[i].hang !== 1) continue;
+    HANG_CHO.push({ id: ds[i].id, ten: ds[i].ten, hang: ds[i].hang, con: b.nguoi.length - ds[i].hang });
+  }
+  chayHang();
+}
+function chayHang(){
+  if (HANG_DANG || !HANG_CHO.length) return;
+  var x = HANG_CHO.shift(), e = $('banHang');
+  HANG_DANG = true;
+  // "được hưởng sái": nhất ra rồi thì mấy người còn lại tranh tiếp nhì/ba — nói luôn cho biết
+  var phu = (x.con >= 2) ? ('còn ' + x.con + ' người tranh ' + (TEN_HANG[x.hang + 1] || '')) : '';
+  datHTML(e, '<span class="ai">' + esc(x.ten) + '</span>' + HUY_HANG[x.hang] + ' VỀ ' + TEN_HANG[x.hang] +
+    (phu ? '<span class="phu">' + phu + '</span>' : ''));
+  e.className = 'h' + Math.min(4, x.hang);
+  e.hidden = false;
+  e.style.animation = 'none'; void e.offsetWidth; e.style.animation = '';
+  theoDoiHang._h = setTimeout(function(){
+    HANG_DANG = false; $('banHang').hidden = true; chayHang();
+  }, 2400);
+}
 var CHAT_LUC = 0, CHAT_NHAY = null;    // cú chặt đang nháy (xem veBan / veGhe)
 
 /* 🗳️ VOTE ĐỔI MỨC CƯỢC — chủ server chốt 20/09: "có thể vote nhau thay đổi ở bàn chơi luôn
@@ -1036,14 +1159,13 @@ function veGhe(b, v){
     var kqv = v.ketQua, ctv = kqv && kqv.chiTiet ? (kqv.chiTiet[p.id] || {}) : {};
     var laCong = !!(kqv && (kqv.cong || []).indexOf(p.id) >= 0);
     if (kqv && kqv.lat){
+      // Bài THẬT lật to ở giữa bàn (veLat). Ghế chỉ ghi một nhãn gọn — nhét 13 lá vào ghế
+      // rộng 150px thì mỗi lá còn 26px, chồng lên nhau, nhìn không ra lá gì (đã thử 20/09).
       var cuaAi = kqv.lat.filter(function(x){ return x.id === p.id; })[0];
-      var laXau = {};                                   // lá nào thuộc mục bị phạt -> viền cam
-      if (cuaAi && cuaAi.la.length){
-        (ctv.thoiMuc || []).length && cuaAi.la.forEach(function(x){ if (cDoc(x).so === '2') laXau[x] = 1; });
-        lung = '<div class="lat' + (cuaAi.la.length > 7 ? ' nhieu' : '') + '">' + cuaAi.la.map(function(x){
-          return '<img' + (laXau[x] ? ' class="xau"' : '') + ' src="bai/' + x + '.webp" alt="' + esc(cTen1(x)) + '">';
-        }).join('') + '</div>';
-      } else lung = '';
+      var soCon = cuaAi ? cuaAi.la.length : 0;
+      lung = soCon
+        ? '<div class="hetbai con">🃏 còn ' + soCon + ' lá</div>'
+        : '<div class="hetbai xong">✅ đi hết bài</div>';
     }
     // nhãn trên ghế, theo thứ tự ưu tiên: hạng > mất kết nối > đang nghĩ > vừa làm gì > bỏ lượt
     var tt = '', vl = p.vuaLam;
@@ -1058,6 +1180,17 @@ function veGhe(b, v){
     else if (p.daBo || (vl && vl.viec==='bo')) tt = '<div class="tt pass">'+((vl&&vl.may)?'🤖 ':'')+'PASS</div>';
     // (cảnh báo "sắp về nhất" giờ nằm ở badge vàng nhấp nháy trên xấp bài, khỏi lặp hai chỗ)
     // đồng hồ: thanh chạy + SỐ GIÂY to trên đầu ghế
+    // 💰 "số +6.100 −4.200 vô nghĩa quá — ăn chia cộng tại chỗ và xong ván đó luôn" (20/09).
+    // Trước ghế ghi TỔNG CỘNG DỒN cả buổi: về nhất mà ghế vẫn ghi −4.200, chẳng ai hiểu gì.
+    // Giờ ghế chỉ nói chuyện CỦA VÁN NÀY:
+    //   · đang đánh   -> chỉ hiện khi đã có tiền chuyển thật (bị chặt / chặt được)
+    //   · chốt ván    -> hiện ăn/thua đã chốt, kèm chữ "ván này"
+    //   · không có gì -> KHÔNG ghi '+0' cho rối mắt
+    // Tổng cộng dồn cả buổi vẫn còn, nằm ở viên thuốc trên đầu trang, có ghi rõ "tại bàn".
+    var tienVan = kqv ? ((kqv.tien && kqv.tien[p.id]) || 0) : (p.chatVan || 0);
+    var nhanTien = !tienVan ? '' :
+      ((tienVan > 0 ? '+' : '') + vnd(tienVan) + (kqv ? ' <i style="opacity:.62;font-style:normal;font-weight:700">ván này</i>' : ''));
+
     var conGiay = (toiLuot && v.hanChot && !v.ketQua) ? Math.max(0, Math.ceil((v.hanChot-Date.now())/1000)) : null;
     var gio = conGiay===null ? '' :
       ('<div class="dem'+(conGiay<=5?' gap':'')+'">'+conGiay+'</div>' +
@@ -1076,8 +1209,10 @@ function veGhe(b, v){
          '<div class="lung">'+lung+'</div>' +
          '<div class="bang"><div class="av">'+(laToi?'🐶':'🙂')+'</div>' +
          '<div class="ai"><div class="nt">'+esc(p.ten)+(laToi?' (bạn)':'')+'</div>' +
-         '<div class="ck'+(p.tong<0?' am':'')+'">'+(laToi && p.soLa!=null ? p.soLa+' lá · ' : '')+(p.tong>=0?'+':'')+vnd(p.tong)+'</div></div></div>' +
-         gio + tt + '</div>';
+         '<div class="ck'+(tienVan<0?' am':(tienVan>0?' duong':''))+'">'+
+           (laToi && p.soLa!=null ? p.soLa+' lá' : '')+
+           (laToi && p.soLa!=null && nhanTien ? ' · ' : '')+nhanTien+'</div></div></div>' +
+         '<div class="gioO">'+gio+'</div><div class="ttO">'+tt+'</div></div>';
   }
   datHTML($('banGhe'), o);
 }
@@ -1110,21 +1245,43 @@ function veTay(b, v){
     for (var q=0;q<nuoc.length;q++) for (var w=0;w<nuoc[q].la.length;w++) dungDuoc[nuoc[q].la[w]] = 1;
   }
   var moLa = toi.toiLuot && v.bo && !v.ketQua;
-  var o = la.map(function(x){
-    return theLa(x, true, (CHON.indexOf(x)>=0 ? 'chon' : '') + (moLa && !dungDuoc[x] ? ' cam' : ''));
+  // 20/09: lá ĐÃ CHỌN không nằm trong hàng này nữa — nó nhảy lên KHAY ở trên (xem veKhay).
+  // Nhờ vậy lá chọn không thể che lá kế bên, và hàng bài dưới luôn đều tăm tắp.
+  var conLai = la.filter(function(x){ return CHON.indexOf(x) < 0; });
+  var o = conLai.map(function(x){
+    return theLa(x, true, (moLa && !dungDuoc[x] ? 'cam' : ''));
   }).join('');
   if (datHTML($('banTay'), o)){
     canhTay();
-    var el = $('banTay').querySelectorAll('.the');
-    for (var i=0;i<el.length;i++) (function(e){
-      e.addEventListener('click', function(){
-        var ma = e.getAttribute('data-la'), i2 = CHON.indexOf(ma);
-        if (i2 >= 0) CHON.splice(i2,1); else CHON.push(ma);
-        e.classList.toggle('chon');
-        ve();   // để nút ĐÁNH cập nhật số lá ngay, khỏi đợi nhịp 1 giây
-      });
-    })(el[i]);
+    bamLa($('banTay'), function(ma){ if (CHON.indexOf(ma) < 0) CHON.push(ma); });
   }
+  veKhay(v);
+}
+
+/** Gắn sự kiện bấm cho mọi lá trong một hộp. Bấm xong vẽ lại ngay, khỏi đợi nhịp 1 giây. */
+function bamLa(hop, lam){
+  var el = hop.querySelectorAll('.the');
+  for (var i = 0; i < el.length; i++) (function(e){
+    e.addEventListener('click', function(){
+      lam(e.getAttribute('data-la'));
+      $('banTay').__cu = ''; $('banKhay').__cu = '';
+      ve();
+    });
+  })(el[i]);
+}
+
+/* 🗂️ KHAY BÀI ĐÃ CHỌN. Hiện ngay cả khi chưa tới lượt (để còn xếp sẵn bộ mà chờ), và nói
+   luôn đang cầm bộ gì / đánh được hay không — người chơi khỏi phải nhìn xuống dòng chữ nhỏ. */
+function veKhay(v){
+  var e = $('banKhay');
+  if (!CHON.length){ e.hidden = true; datHTML(e, ''); return; }
+  var bo = cNhanDang(CHON), kq = cDanhDuoc(bo, v.bo);
+  var cua = S.ban.toi && S.ban.toi.toiLuot && !v.ketQua;
+  var o = cXep(CHON).map(function(x){ return theLa(x, true, ''); }).join('') +
+          '<div class="nhan">' + (bo ? esc(bo.ten) : 'chưa thành bộ') + ' · bấm lá để bỏ ra</div>';
+  if (datHTML(e, o)) bamLa(e, function(ma){ var i = CHON.indexOf(ma); if (i >= 0) CHON.splice(i, 1); });
+  e.className = (cua && kq && kq.ok) ? 'duoc' : (bo ? '' : 'khong');
+  e.hidden = false;
 }
 
 /* Xếp tay bài. Hai việc:
@@ -1133,33 +1290,22 @@ function veTay(b, v){
    2. Lá ĐÃ CHỌN nhô lên và nằm trên lá kế -> phải CHỪA KHOẢNG TRỐNG ngay sau nó, không thì nó
       che mất lá bên cạnh (chủ server báo: "chọn con 8 bị che con 9"). Khoảng trống này được tính
       vào phép chia bên dưới nên chọn bao nhiêu lá hàng bài cũng không tràn ra ngoài. */
-var HO_CHON = 6;      // khoảng trống (px) chừa sau mỗi lá đã chọn
 function canhTay(){
   var e = $('banTay'), k = e.children, n = k.length;
   if (!n) return;
   var W = k[0].offsetWidth || 0, CW = e.clientWidth || 0;
   if (!W || !CW || n < 2) return;
-  // g = số chỗ nối PHẢI chừa trống (vì lá đứng trước nó đang được chọn)
-  // CHỈ chừa chỗ ở nơi lá ĐÃ CHỌN đứng ngay trước lá CHƯA CHỌN — đó mới là chỗ bị che.
-  // Mấy lá chọn liền nhau thì cứ chồng bình thường (đều nhô lên như nhau, không che số của nhau).
-  var g = 0, i, hoO = [];
-  for (i = 1; i < n; i++){
-    hoO[i] = k[i - 1].classList.contains('chon') && !k[i].classList.contains('chon');
-    if (hoO[i]) g++;
-  }
-  var soNoiChong = (n - 1) - g;                       // số chỗ nối còn được phép chồng
+  // 20/09: KHÔNG còn phải chừa khoảng hở cho lá đã chọn nữa — lá chọn đã nhảy lên KHAY,
+  // hàng này chỉ còn lá chưa chọn nên cứ xoè đều tăm tắp. Cơ chế chừa khoảng hở cũ bỏ hẳn.
   // Độ chồng CHỈ siết lại khi THIẾU CHỖ. Bản cũ ghim cứng tối thiểu 42% nên 7 lá trên màn
-  // hình rộng vẫn chồng y như 13 lá — mỗi lá hở hơn nửa, nhìn chật mà chỗ thì thừa
-  // (chủ server chụp lại 20/09). Vẫn giữ một chút chồng cho ra dáng cầm bài trên tay.
+  // hình rộng vẫn chồng y như 13 lá — mỗi lá hở hơn nửa, nhìn chật mà chỗ thì thừa.
   var can = W * 0.14;                                  // xoè thoáng khi dư chỗ
-  if (soNoiChong > 0){
-    var thua = W * n + g * HO_CHON - (CW - 10);       // đang dôi ra bao nhiêu px
-    can = Math.max(can, thua / soNoiChong);
+  var thua = W * n - (CW - 10);                        // đang dôi ra bao nhiêu px
+  if (n > 1){
+    can = Math.max(can, thua / (n - 1));
     can = Math.min(can, W * 0.8);                      // chồng quá 80% là mất góc số
   }
-  for (i = 1; i < n; i++){
-    k[i].style.marginLeft = hoO[i] ? HO_CHON + 'px' : (-Math.round(can)) + 'px';
-  }
+  for (var i = 1; i < n; i++) k[i].style.marginLeft = (-Math.round(can)) + 'px';
 }
 function veNut(b, v){
   var toi = b.toi;

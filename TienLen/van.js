@@ -452,6 +452,11 @@ function taoBan(tuyChon = {}) {
                 trongVan: v ? v.thuTu.includes(p.id) : false,
                 daBo: v ? v.daBo.has(p.id) : false,
                 vuaLam: v && v.vuaLam[p.id] ? v.vuaLam[p.id] : null,   // 19/09: web vẽ nhãn "vừa đánh ..."
+                // 💰 Tiền ĐÃ CHUYỂN THẬT trong ván này (chỉ có chặt — thối/cóng/đếm lá tới lúc
+                // chốt ván mới biết). Ghế hiện con số của VÁN NÀY chứ không phải tổng cộng dồn
+                // cả buổi: về nhất mà ghế ghi −4.200 thì chẳng ai hiểu gì (chủ server 20/09).
+                chatVan: v ? (v.chatHeo || []).reduce((t, c) =>
+                    t + (c.chatBoi === p.id ? c.tien : 0) - (c.bi === p.id ? c.tien : 0), 0) : 0,
                 hang: v && v.veNhat.indexOf(p.id) >= 0 ? v.veNhat.indexOf(p.id) + 1 : null,
             })),
             van: v ? {
