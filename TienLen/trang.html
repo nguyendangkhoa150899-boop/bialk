@@ -8,7 +8,8 @@
   --co:2;
   --lb:calc(clamp(38px,7.2vw,60px) * var(--co));      /* lá bài trên bàn */
   --lbt:calc(clamp(30px,5.4vw,46px) * var(--co));     /* lá bài trên tay */
-  --llb:clamp(34px,5.2vw,64px);                       /* lá bài NGỬA lúc hết ván */
+  --llb:clamp(30px,4vw,52px);                         /* lá bài NGỬA lúc hết ván */
+  --latW:420px;                                       /* bề ngang tối đa của mảng bài lật */
 }
 *{box-sizing:border-box}
 /* 📱 CHẶN VUỐT LÀM TRÔI TRANG (chủ server 20/09).
@@ -122,7 +123,32 @@ body.choiBan .pill{font-size:10.5px;padding:2px 7px}
    --W/--H là cỡ vùng chơi, --leT/--leP là mép trái/phải của nó so với màn. */
 /* Thu vùng chơi lại: 1180×660 trên màn PC vẫn khiến ghế cách chiếu bài hơn 400px — chủ server:
    "icon hình chưa đứng ngay cạnh bài, nó nằm xa quá". 980×560 thì mọi thứ xích vào nhau. */
-body.choiBan{--W:min(100%,980px);--H:min(100%,560px);--leT:calc(50% - min(50%,490px));--leP:calc(50% - min(50%,490px))}
+body.choiBan{
+  --W:min(100%,980px);--H:min(100%,560px);
+  --leT:calc(50% - min(50%,490px));--leP:calc(50% - min(50%,490px));
+
+  /* ┌──────────────────────────────────────────────────────────────────────────────┐
+     │ 🗺️ BẢN ĐỒ MÀN CHƠI — MỌI thứ nổi trên mặt bàn lấy vị trí từ ĐÚNG KHỐI NÀY.   │
+     │ Thêm thứ mới thì tra bảng này xem chỗ nào còn trống, ĐỪNG gõ số lẻ tại chỗ.   │
+     │ Đã dính ba lần "X đè lên Y" vì mỗi chỗ gõ một số riêng (20/09).               │
+     │                                                                              │
+     │  GÓC TRÁI TRÊN   .top            thanh tên ván + cược + luật (một hàng)       │
+     │  GÓC PHẢI TRÊN   #khoiVote 52px  🗳️ đổi mức cược                              │
+     │                  #khoiRa   88px  🚪 rời bàn                                   │
+     │  GIỮA BÀN        .giua 45%       chiếu bài + nhãn bộ                          │
+     │                  #banLat/#banTen/#banHang/#demNguoc  (nổi đè lên chiếu bài)   │
+     │  GHẾ             #banGhe         bảng toạ độ CHO_NGOI trong JS                │
+     │  ĐÁY, giữa       --t1 hàng nút to · --t2 dòng đang chọn · --t3 cảnh báo bí    │
+     │  ĐÁY, trái       #banNut         💡 gợi ý / ✖️ bỏ chọn                         │
+     │  ĐÁY, cả dải     .tayHang        tay bài (chừa lề trái cho ghế mình)          │
+     └──────────────────────────────────────────────────────────────────────────────┘ */
+  --day:5px;                                        /* mép đáy màn */
+  --hTay:calc(var(--lbt) * 1.45);                   /* chiều cao dải tay bài */
+  /* +41 = 26px lá ĐANG CHỌN nhô lên + 15px hở. Thiếu chỗ này là lá chọn đè lên nút. */
+  --t1:calc(var(--day) + var(--hTay) + 41px);       /* tầng 1: hàng nút to */
+  --t2:calc(var(--t1) + 64px);                      /* tầng 2: dòng "đang chọn bộ gì" */
+  --t3:calc(var(--t2) + 32px);                      /* tầng 3: cảnh báo hết nước đánh */
+}
 /* mặt cỏ = cả màn hình */
 body.choiBan .san{position:absolute;inset:0;width:auto;height:auto;aspect-ratio:auto;min-height:0;margin:0}
 body.choiBan .vien{inset:0;border-radius:0;padding:0;
@@ -148,7 +174,7 @@ body.choiBan .bomay{height:calc(var(--lb)*1.5)}
 /* tay bài + nút: NỔI đè lên mặt bàn, không đẩy bàn ngắn lại nữa */
 /* Tay bài bám theo VÙNG CHƠI, chừa bên trái cho ghế của mình (y như ảnh mẫu). */
 body.choiBan .tayHang{position:absolute;left:50%;transform:translateX(-50%);width:var(--W);
-  bottom:5px;z-index:16;padding-left:min(24%,250px);padding-right:6px}
+  bottom:var(--day);z-index:16;padding-left:min(24%,250px);padding-right:6px}
 body.choiBan .tay{margin-top:0;min-height:0}
 body.choiBan .tay .the{margin-top:0}
 /* ⚠️ +46px chứ KHÔNG phải +12px. Lá đang chọn NHÔ LÊN 26px (xem .tay .the.chon) nên đỉnh nó
@@ -156,17 +182,17 @@ body.choiBan .tay .the{margin-top:0}
    chơi (chủ server chụp lại 20/09: "nút K chọn nó đè lên nút khác").
    46 = 26 (lá nhô) + 20 (hở cho thoáng). Mấy tầng chữ phía trên cộng dồn theo. */
 body.choiBan #banDanh{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
-  bottom:calc(var(--lbt) * 1.45 + 46px)}
+  bottom:var(--t1)}
 /* Hai dòng chữ nhỏ xếp CHỒNG TẦNG chứ không cùng một chỗ — cùng chỗ là đè nhau. */
 body.choiBan #banGoi{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
-  bottom:calc(var(--lbt) * 1.45 + 142px)}
+  bottom:var(--t3)}
 body.choiBan #banBoChon{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
-  bottom:calc(var(--lbt) * 1.45 + 110px)}
+  bottom:var(--t2)}
 /* GỢI Ý / BỎ CHỌN nằm ở GÓC TRÁI DƯỚI CÙNG — chỗ đó trống vì tay bài đã chừa lề trái
    (padding-left) cho ghế của mình. Đặt ngang tầm hàng nút to như trước thì nó đè lên nhãn
    PASS của chính ghế mình (chủ server chụp lại 20/09). */
 body.choiBan #banNut{position:absolute;left:calc(var(--leT) + 6px);z-index:17;margin:0;width:auto;
-  bottom:8px;max-width:min(24%,250px)}
+  bottom:var(--day);max-width:min(24%,250px)}
 body.choiBan #banNut .b{padding:6px 11px;font-size:11.5px}
 body.choiBan #banNhac{position:absolute;left:50%;transform:translateX(-50%);top:52px;z-index:18;margin:0;
   background:rgba(8,12,18,.72);border-radius:999px;padding:4px 12px;white-space:nowrap}
@@ -175,10 +201,14 @@ body.choiBan #banNhac:empty{display:none}
 body.choiBan #banKq{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;margin:0;
   width:min(94vw,520px);max-height:86vh;overflow:auto;background:rgba(10,14,20,.94);
   box-shadow:0 20px 60px rgba(0,0,0,.8)}
-/* khối vote + nút rời bàn: gom xuống góc phải dưới, nhỏ lại */
-body.choiBan #khoiVote,body.choiBan #khoiRa{position:absolute;right:calc(var(--leP) + 6px);z-index:18;margin:0;width:auto}
-body.choiBan #khoiVote{bottom:calc(var(--lbt) * 1.45 + 94px)}
-body.choiBan #khoiRa{bottom:calc(var(--lbt) * 1.45 + 50px)}
+/* ⚠️ Khối vote + nút rời bàn lên GÓC PHẢI TRÊN, KHÔNG để ở dải đáy nữa. Hàng nút to căn giữa
+   màn, mà vùng chơi đã thu còn 980px nên hai bên chạm nhau: nút "Đánh" đè lên "RỜI BÀN SAU
+   VÁN NÀY" (chủ server chụp lại 20/09). Trên góc phải thì trống, lại đúng chỗ tay hay với tới
+   trên điện thoại nằm ngang. */
+body.choiBan #khoiVote,body.choiBan #khoiRa{position:absolute;right:calc(var(--leP) + 6px);z-index:18;margin:0;width:auto;
+  justify-content:flex-end}
+body.choiBan #khoiVote{top:52px}
+body.choiBan #khoiRa{top:88px}
 body.choiBan #khoiVote .b,body.choiBan #khoiRa .b{padding:5px 10px;font-size:11px}
 body.choiBan #banVote{font-size:11px;padding:5px 9px}
 
@@ -388,19 +418,20 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
 
 /* 🃏 LẬT BÀI NGAY CẠNH TỪNG NGƯỜI — hết ván thì ai còn cầm bài được xoè ngang bên hông ghế,
    y ảnh mẫu Ba Bích chủ server gửi. Gom một bảng giữa bàn thì không biết bài của AI. */
+/* ⚠️ KHÔNG CHỒNG LÁ NỮA, CHO XUỐNG DÒNG. Chồng 30% thì 11 lá dồn thành một vệt trắng, nhìn
+   không ra lá gì (chủ server: "lá bài bị trắng rồi / show bài giống như ba bích á, có thể
+   xuống dòng"). Bày nguyên lá, cách nhau 3px, hết bề ngang thì tự xuống hàng — mỗi lá thấy
+   trọn vẹn, đúng kiểu Ba Bích. */
 .latGhe{position:absolute;top:50%;transform:translateY(-50%);z-index:14;pointer-events:none;
-  display:flex;align-items:center}
-.ghe.beP .latGhe{left:100%;margin-left:7px}
-.ghe.beT .latGhe{right:100%;margin-right:7px;flex-direction:row-reverse}
+  display:flex;align-items:center;flex-wrap:wrap;gap:3px;
+  width:max-content;max-width:min(40vw,var(--latW,400px))}
+.ghe.beP .latGhe{left:100%;margin-left:8px}
+.ghe.beT .latGhe{right:100%;margin-right:8px;flex-direction:row-reverse;justify-content:flex-start}
 /* ⚠️ Chồng 46% là 8 lá dính thành MỘT KHỐI, nhìn không ra lá nào với lá nào (chủ server chụp
    lại 20/09). Hạ xuống 30% và cho mỗi lá một VIỀN TRẮNG + bóng đổ sang trái: lá sau in bóng
    lên lá trước nên mắt tách được từng lá. */
-.latGhe img{display:block;width:var(--llb);border-radius:4px;flex:0 0 auto;
-  border:1px solid rgba(255,255,255,.85);
-  margin-left:calc(var(--llb) * -0.30);box-shadow:-3px 2px 6px rgba(0,0,0,.6)}
-.latGhe img:first-child{margin-left:0}
-.ghe.beT .latGhe img{margin-left:0;margin-right:calc(var(--llb) * -0.30);box-shadow:3px 2px 6px rgba(0,0,0,.6)}
-.ghe.beT .latGhe img:first-child{margin-right:0}
+.latGhe img{display:block;width:var(--llb);border-radius:5px;flex:0 0 auto;margin:0;
+  box-shadow:0 3px 8px rgba(0,0,0,.7)}
 .latGhe img.xau{outline:2px solid #ff9a3c;outline-offset:-1px;border-radius:4px}
 /* màn hẹp: xoè ngang cạnh ghế là đè lên ghế kế bên -> giấu đi, dùng bảng gom giữa bàn */
 @media(max-width:759px){ .latGhe{display:none} }
@@ -415,10 +446,10 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
   box-shadow:0 8px 24px rgba(0,0,0,.6)}
 .latD .ai{font-size:clamp(11px,1.8vw,15px);font-weight:900;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;max-width:24vw}
-.latD .bo{display:flex;align-items:flex-end;flex:0 1 auto;min-width:0}
-.latD .bo img{display:block;width:var(--llb);border-radius:5px;flex:0 0 auto;
-  margin-left:calc(var(--llb) * -0.40);box-shadow:0 3px 9px rgba(0,0,0,.75)}
-.latD .bo img:first-child{margin-left:0}
+/* Bày NGUYÊN LÁ + xuống dòng, y như mảng bài lật cạnh ghế — chồng lá là thành vệt trắng. */
+.latD .bo{display:flex;align-items:flex-end;flex:0 1 auto;min-width:0;flex-wrap:wrap;gap:3px}
+.latD .bo img{display:block;width:var(--llb);border-radius:5px;flex:0 0 auto;margin:0;
+  box-shadow:0 3px 8px rgba(0,0,0,.7)}
 .latD .bo img.xau{outline:2px solid #ff9a3c;outline-offset:-1px;border-radius:5px}
 .latD .ph{font-size:clamp(10px,1.5vw,12.5px);font-weight:800;color:#ffb46a;white-space:nowrap}
 .tt.thoi{background:linear-gradient(180deg,#ff9a3c,#b83f12);color:#2a0e00;font-size:11px;letter-spacing:.4px;
@@ -465,7 +496,7 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
    bỏ tỉ lệ cố định cho bàn ăn trọn chiều cao còn lại, thu gọn ghế và hàng nút. */
 @media(orientation:landscape) and (max-height:560px){
   /* Bàn giờ phủ kín màn hình nên rộng rãi hơn hẳn; bài to lại được một chút cho dễ bấm. */
-  :root{--co:1.15;--llb:30px}
+  :root{--co:1.15;--llb:26px;--latW:230px}
   body{padding:4px}
   /* Màn BÀN: giữ oval (phải có chỗ bày bài giữa bàn) nhưng chừa đủ cho hàng nút + tay bài.
      240px = thanh trên 34 + gợi ý 22 + hàng nút to 44 + dòng chú 16 + tay bài 92 + nút phụ 32. */

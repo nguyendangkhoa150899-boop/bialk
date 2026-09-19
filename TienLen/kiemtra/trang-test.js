@@ -450,11 +450,11 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('...mặt bàn ăn trọn màn, bỏ oval',
         /body\.choiBan \.san\{position:absolute;inset:0/.test(HTML) && /body\.choiBan \.vien\{inset:0;border-radius:0/.test(HTML));
     ok('...tay bài trải dải đáy, chừa bên trái cho ghế của mình',
-        /body\.choiBan \.tayHang\{position:absolute[\s\S]{0,80}padding-left:min\(24%,250px\)/.test(HTML));
+        /body\.choiBan \.tayHang\{position:absolute[\s\S]{0,140}padding-left:min\(24%,250px\)/.test(HTML));
     // Không có trần thì trên màn PC 2554px, hai ghế đặt ở 13% và 70% cách nhau hơn 700px:
     // tên người chơi văng ra bốn góc, giữa là bãi xanh trống hoác (chủ server chụp 20/09).
     ok('⭐ VÙNG CHƠI có TRẦN kích thước, căn giữa — màn PC không kéo ghế ra bốn góc',
-        /body\.choiBan\{--W:min\(100%,980px\);--H:min\(100%,560px\)/.test(HTML) &&
+        /body\.choiBan\{[\s\S]{0,40}--W:min\(100%,980px\);--H:min\(100%,560px\)/.test(HTML) &&
         /body\.choiBan \.ni\{position:absolute;inset:auto;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML) &&
         /body\.choiBan #banGhe\{position:absolute;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML));
     ok('...nhưng mặt cỏ vẫn phủ kín cả màn cho đẹp',
@@ -462,13 +462,24 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('...nút phụ / vote / rời bàn / thanh trên cũng bám mép VÙNG CHƠI, không dạt ra mép màn',
         /left:calc\(var\(--leT\) \+ 6px\)/.test(HTML) && /right:calc\(var\(--leP\) \+ 6px\)/.test(HTML));
     ok('...nút bấm NỔI trên tay bài chứ không đẩy bàn ngắn lại',
-        /body\.choiBan #banDanh\{position:absolute/.test(HTML) &&
-        HTML.indexOf('bottom:calc(var(--lbt) * 1.45 + 46px)') >= 0);
-    // Lá đang chọn NHÔ LÊN 26px -> để nút ở +12 là lá chọn đè lên "Bỏ lượt / Đánh", bấm nhầm
-    // như chơi (chủ server chụp lại 20/09: "nút K chọn nó đè lên nút khác").
-    ok('...và nút đủ cao để lá ĐANG CHỌN (nhô 26px) không đè lên',
-        HTML.indexOf('bottom:calc(var(--lbt) * 1.45 + 46px)') >= 0 &&
+        /body\.choiBan #banDanh\{position:absolute/.test(HTML) && /bottom:var\(--t1\)/.test(HTML));
+    // 🗺️ BA lần dính "X đè lên Y" (chữ đè ghế · lá chọn đè nút · nút Đánh đè nút Rời bàn) vì
+    // mỗi chỗ gõ một con số riêng. Dựng BẢN ĐỒ TẦNG LỚP: mọi thứ nổi trên mặt bàn lấy vị trí
+    // từ đúng MỘT khối biến, nhìn một chỗ là biết chỗ nào còn trống.
+    ok('🗺️ có bản đồ tầng lớp, mọi tầng lấy từ biến chung',
+        /--day:5px;/.test(HTML) && /--hTay:calc\(var\(--lbt\) \* 1\.45\)/.test(HTML) &&
+        /--t1:calc\(var\(--day\) \+ var\(--hTay\) \+ 41px\)/.test(HTML) &&
+        /--t2:calc\(var\(--t1\) \+ 64px\)/.test(HTML) && /--t3:calc\(var\(--t2\) \+ 32px\)/.test(HTML));
+    ok('...tầng 1 đã cộng 41px cho lá ĐANG CHỌN nhô lên 26px',
+        /26px lá ĐANG CHỌN nhô lên/.test(HTML) &&
         /\.tay \.the\.chon\{transform:translateY\(-26px\);z-index:18/.test(HTML));
+    ok('...KHÔNG còn chỗ nào gõ số lẻ tại chỗ cho dải đáy',
+        HTML.indexOf('bottom:calc(var(--lbt) * 1.45 +') < 0);
+    // Hàng nút to căn giữa màn, ma vùng chơi chỉ 980px nên hai bên chạm nhau: nút "Đánh" đè
+    // lên "RỜI BÀN SAU VÁN NÀY" (chủ server chụp lại 20/09). Cột phải phải lên góc TRÊN.
+    ok('...vote + rời bàn nằm GÓC PHẢI TRÊN, không chen vào dải nút ở đáy',
+        /body.choiBan #khoiVote{top:52px}/.test(HTML) && /body.choiBan #khoiRa{top:88px}/.test(HTML) &&
+        !/body.choiBan #khoiRa{bottom:/.test(HTML));
     ok('...bảng kết quả nổi giữa màn', /body\.choiBan #banKq\{position:absolute;left:50%;top:50%/.test(HTML));
     // Bản cũ xếp ghế theo VÒNG TRÒN (y = 50 + 34·cos) -> màn nằm ngang bóp lại là ghế đè lên bàn.
     ok('🪑 chỗ ngồi theo BẢNG TOẠ ĐỘ cố định, không còn vòng tròn',
@@ -621,8 +632,8 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
 {
     ok('lật bài giữa bàn khi có ketQua.lat',
         /function veLat\(/.test(JS) && /id="banLat"/.test(HTML) && /\.latD \.bo img\{/.test(HTML));
-    ok('...cỡ lá đọc được (34–64px), không phải xấp tí hon nhét trong ghế',
-        /--llb:clamp\(34px,5\.2vw,64px\)/.test(HTML) && !/--llat/.test(HTML));
+    ok('...cỡ lá đọc được, không phải xấp tí hon nhét trong ghế',
+        /--llb:clamp\(30px,4vw,52px\)/.test(HTML) && !/--llat/.test(HTML));
     ok('...chỉ bày người CÒN cầm bài', /x\.la && x\.la\.length/.test(JS));
     ok('...ghế chỉ ghi nhãn gọn: đi hết bài / còn N lá',
         /hetbai xong">✅ đi hết bài/.test(JS) && /hetbai con">🃏 còn/.test(JS));
@@ -642,11 +653,14 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
         /bam\(id \+ soVan/.test(JS) && !/Math\.random\(\)/.test(JS));
     // 8 lá chồng 46% thì dính thành MỘT KHỐI, nhìn không ra lá nào với lá nào (chủ server
     // chụp lại 20/09). Hạ chồng xuống 30% + viền trắng + bóng đổ để mắt tách được từng lá.
-    ok('bài lật ĐỌC ĐƯỢC: chồng vừa phải, có viền trắng và bóng tách lá',
-        HTML.indexOf('margin-left:calc(var(--llb) * -0.30)') >= 0 &&
-        HTML.indexOf('border:1px solid rgba(255,255,255,.85)') >= 0 &&
-        HTML.indexOf('box-shadow:-3px 2px 6px') >= 0);
-    ok('...bày sang trái thì bóng đổ ngược lại', HTML.indexOf('box-shadow:3px 2px 6px') >= 0);
+    // Chồng 30% thì 11 lá dồn thành MỘT VỆT TRẮNG, nhìn không ra lá gì (chủ server: "lá bài bị
+    // trắng rồi / show bài giống như ba bích á, có thể xuống dòng"). Bày nguyên lá, cách nhau
+    // 3px, hết bề ngang thì tự xuống hàng.
+    ok('bài lật bày NGUYÊN CON, KHÔNG chồng lên nhau',
+        /\.latGhe img\{[^}]*margin:0/.test(HTML) && !/margin-left:calc\(var\(--llb\)/.test(HTML));
+    ok('...hết bề ngang thì XUỐNG DÒNG', /\.latGhe\{[\s\S]{0,220}flex-wrap:wrap;gap:3px/.test(HTML) &&
+        /max-width:min\(40vw,var\(--latW,400px\)\)/.test(HTML));
+    ok('...có trần bề ngang riêng cho khổ nằm ngang', /--latW:230px/.test(HTML));
     ok('lá heo bị phạt có viền cam cho dễ thấy', /\.latD \.bo img\.xau\{outline/.test(HTML) && /xau\[c\] = 1/.test(JS));
 
 }
