@@ -293,6 +293,17 @@ quyết vốn tối thiểu. Cái gì lệch là **lỗi thật**, không phải
 
 ## 7. Cạm bẫy đã dính (đừng dính lại)
 
+- **Viết tắt CSS đặt SAU dòng dài thì XOÁ SẠCH dòng dài — vỡ bàn hai lần (20/09).**
+  ```css
+  body.choiBan .ni{position:absolute;left:50%;top:50%;transform:…;inset:auto;…}
+  ```
+  `inset` là **viết tắt của top/right/bottom/left**. Đặt `inset:auto` phía sau là nó **xoá
+  `left:50%;top:50%` vừa ghi ở trên** → khung rơi về vị trí tĩnh = **góc trái trên màn hình**,
+  kéo theo cả chiếu bài. Chủ server báo *"đánh bài nó văng lên góc"* hai lần; lần đầu mình chẩn
+  nhầm sang hiệu ứng bay. **Trình duyệt không hề báo lỗi** — câu CSS hợp lệ hoàn toàn, chỉ là
+  tự ghi đè chính mình. Cùng bẫy: `margin`, `padding`, `background`, `border`, `flex`.
+  → `trang-test` giờ **quét mọi quy tắc CSS** và đỏ nếu có viết tắt đứng sau dòng dài nó bao trùm.
+
 - **`'` trong `panel.js` bị template literal NUỐT — chết cả trang panel (20/09).** Cả trang
   panel là **một template literal khổng lồ**. Viết `onclick="tlLuu(''+T.ma+'')"` thì template
   literal ăn mất dấu gạch, trang đích ra `tlLuu(''+T.ma+'')` — **hai chuỗi dính nhau = lỗi cú

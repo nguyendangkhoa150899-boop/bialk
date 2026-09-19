@@ -120,14 +120,21 @@ body.choiBan .pill{font-size:10.5px;padding:2px 7px}
    Không có trần thì trên màn PC 2554×1301, hai cái ghế đặt ở 13% và 70% cách nhau hơn 700px:
    tên người chơi văng ra bốn góc, giữa là bãi xanh trống hoác (chủ server chụp lại 20/09).
    --W/--H là cỡ vùng chơi, --leT/--leP là mép trái/phải của nó so với màn. */
-body.choiBan{--W:min(100%,1180px);--H:min(100%,660px);--leT:calc(50% - min(50%,590px));--leP:calc(50% - min(50%,590px))}
+/* Thu vùng chơi lại: 1180×660 trên màn PC vẫn khiến ghế cách chiếu bài hơn 400px — chủ server:
+   "icon hình chưa đứng ngay cạnh bài, nó nằm xa quá". 980×560 thì mọi thứ xích vào nhau. */
+body.choiBan{--W:min(100%,980px);--H:min(100%,560px);--leT:calc(50% - min(50%,490px));--leP:calc(50% - min(50%,490px))}
 /* mặt cỏ = cả màn hình */
 body.choiBan .san{position:absolute;inset:0;width:auto;height:auto;aspect-ratio:auto;min-height:0;margin:0}
 body.choiBan .vien{inset:0;border-radius:0;padding:0;
   background:radial-gradient(ellipse at 50% 40%,#3f9a68 0%,#1f7a4d 36%,#155c39 74%,#14422c 100%);
   box-shadow:inset 0 0 170px rgba(0,0,0,.5)}
-/* .ni = VÙNG CHƠI: bài giữa bàn, chữ khoe bộ, đếm ngược, lật bài cuối ván đều neo vào đây */
-body.choiBan .ni{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);inset:auto;
+/* .ni = VÙNG CHƠI: bài giữa bàn, chữ khoe bộ, đếm ngược, lật bài cuối ván đều neo vào đây.
+   ⚠️⚠️ 'inset' PHẢI ĐỨNG TRƯỚC left/top. Nó là VIẾT TẮT của top/right/bottom/left, nên đặt
+   'inset:auto' phía SAU là XOÁ SẠCH left:50%;top:50% vừa ghi ở trên — khung này rơi về vị trí
+   tĩnh của nó, tức GÓC TRÁI TRÊN màn hình, kéo theo cả chiếu bài. Đó chính là cái
+   "đánh bài nó văng lên góc" mà chủ server báo hai lần (20/09). Trình duyệt không hề báo lỗi
+   vì câu CSS hoàn toàn hợp lệ — chỉ là mình tự ghi đè chính mình. */
+body.choiBan .ni{position:absolute;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);
   width:var(--W);height:var(--H);background:none;box-shadow:none;border-radius:0}
 body.choiBan #banGhe{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:var(--W);height:var(--H)}

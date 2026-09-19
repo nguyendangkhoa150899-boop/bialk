@@ -35,6 +35,35 @@ muc('cú pháp + cấu trúc trang');
     // lên thanh trên của trang này, che mất viên thuốc tên + số dư. Trang phải tự chừa chỗ.
     ok('thanh trên chừa chỗ cho nút Thoát nổi của khung ngoài',
         HTML.indexOf('padding:8px 12px;padding-right:clamp(104px,15vw,168px)') >= 0);
+    // ⚠️⚠️ BẪY CSS ĐÃ LÀM VỠ BÀN HAI LẦN (20/09): 'inset' là VIẾT TẮT của top/right/bottom/left.
+    // Viết  .x{left:50%;top:50%;inset:auto}  thì inset XOÁ SẠCH left/top vừa ghi, khung rơi về
+    // vị trí tĩnh = GÓC TRÁI TRÊN màn. Trình duyệt KHÔNG báo lỗi vì câu CSS hợp lệ hoàn toàn —
+    // chỉ là mình tự ghi đè chính mình. Quét mọi quy tắc: viết tắt không được đứng SAU dòng dài
+    // mà nó bao trùm.
+    {
+        const VIET_TAT = {
+            inset: ['top', 'right', 'bottom', 'left'],
+            margin: ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'],
+            padding: ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'],
+            background: ['background-color', 'background-image', 'background-position', 'background-size'],
+            border: ['border-color', 'border-width', 'border-style'],
+            flex: ['flex-grow', 'flex-shrink', 'flex-basis'],
+        };
+        const css = HTML.slice(0, HTML.indexOf('</style>'));
+        const xau = [];
+        for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+            const chon = m[1].trim().split('\n').pop().trim();
+            const khai = m[2].split(';').map(x => x.trim()).filter(Boolean)
+                .map(x => ({ ten: x.split(':')[0].trim().toLowerCase(), raw: x }));
+            khai.forEach((k, i) => {
+                const bao = VIET_TAT[k.ten];
+                if (!bao) return;
+                const truoc = khai.slice(0, i).find(t => bao.indexOf(t.ten) >= 0);
+                if (truoc) xau.push(chon.slice(0, 40) + ' -> "' + k.raw + '" đè mất "' + truoc.raw + '"');
+            });
+        }
+        ok('⭐ KHÔNG có viết tắt CSS đặt SAU dòng dài mà nó bao trùm', xau.length === 0, xau.join(' | '));
+    }
     ok('KHÔNG còn màu CSS gõ hỏng', !/#\d*[a-z]{4,}\s*;/i.test(HTML.slice(0, HTML.indexOf('</style>'))));
 }
 
@@ -425,8 +454,8 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     // Không có trần thì trên màn PC 2554px, hai ghế đặt ở 13% và 70% cách nhau hơn 700px:
     // tên người chơi văng ra bốn góc, giữa là bãi xanh trống hoác (chủ server chụp 20/09).
     ok('⭐ VÙNG CHƠI có TRẦN kích thước, căn giữa — màn PC không kéo ghế ra bốn góc',
-        /body\.choiBan\{--W:min\(100%,1180px\);--H:min\(100%,660px\)/.test(HTML) &&
-        /body\.choiBan \.ni\{position:absolute;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML) &&
+        /body\.choiBan\{--W:min\(100%,980px\);--H:min\(100%,560px\)/.test(HTML) &&
+        /body\.choiBan \.ni\{position:absolute;inset:auto;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML) &&
         /body\.choiBan #banGhe\{position:absolute;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML));
     ok('...nhưng mặt cỏ vẫn phủ kín cả màn cho đẹp',
         /body\.choiBan \.vien\{inset:0;border-radius:0;padding:0;[\s\S]{0,140}radial-gradient/.test(HTML));
