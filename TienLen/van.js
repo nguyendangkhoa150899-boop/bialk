@@ -105,6 +105,10 @@ function taoBan(tuyChon = {}) {
             bo: null, boCua: null,       // bộ đang nằm trên bàn + chủ của nó
             daBo: new Set(),             // ai đã bỏ lượt trong VÒNG này (hết vòng thì xoá)
             veNhat: [],                  // id theo thứ tự về (nhất, nhì, ba, tư)
+            // 19/09: NHÃN VIỆC VỪA LÀM — id -> { viec:'danh'|'bo', ten, soLa, chat, may, luc }.
+            // Cả bàn nhìn ghế là biết người đó vừa đánh bộ gì / vừa bỏ lượt, khỏi phải đoán.
+            // Xoá sạch mỗi ván mới (không xoá theo vòng: biết "vừa bỏ lượt" vẫn có ích ở vòng sau).
+            vuaLam: {},
             luot: null, hanChot: 0,
             batBuoc3Bich: false,         // ván đầu: người đi đầu phải đánh bộ có 3♠
             lichSu: [],                  // [{id, la, bo, chat}] — web vẽ lại nước vừa đánh
@@ -191,6 +195,7 @@ function taoBan(tuyChon = {}) {
         v.batBuoc3Bich = false;
         v.daBo.clear();                                  // có người đánh -> vòng mới mở lại cho mọi người
         v.lichSu.push({ id, la: bo.la.slice(), ten: bo.ten, chat: !!kq.chat, thuong: thuongChat });
+        v.vuaLam[id] = { viec: 'danh', ten: bo.ten, soLa: bo.la.length, chat: !!kq.chat, luc: bayGio };
         if (v.lichSu.length > 30) v.lichSu = v.lichSu.slice(-30);
 
         // ---- hết bài = về hạng ----
@@ -212,6 +217,7 @@ function taoBan(tuyChon = {}) {
         if (!v.bo) throw new Error('Bạn đang mở lượt — phải đánh, không bỏ được');
         v.daBo.add(id);
         v.lichSu.push({ id, la: [], ten: 'bỏ lượt', chat: false, thuong: 0 });
+        v.vuaLam[id] = { viec: 'bo', ten: 'bỏ lượt', soLa: 0, chat: false, luc: bayGio };
         return chuyenLuot(id, bayGio);
     }
 
@@ -355,11 +361,12 @@ function taoBan(tuyChon = {}) {
             if (!p) break;
             if (!p.afk && bayGio < v.hanChot) break;
             const id = v.luot;
-            if (v.bo) boLuot(id, bayGio);
+            if (v.bo) { boLuot(id, bayGio); if (V() && V().vuaLam[id]) V().vuaLam[id].may = true; }
             else {
                 // mở lượt thì buộc phải đánh — chọn lá nhỏ nhất (ván đầu phải là 3♠, mà 3♠ CHÍNH LÀ lá nhỏ nhất)
                 const nho = B.xepBai(v.tay[id])[0];
                 danh(id, [nho], bayGio);
+                if (V() && V().vuaLam[id]) V().vuaLam[id].may = true;
             }
         }
         return xemChung();
@@ -380,6 +387,7 @@ function taoBan(tuyChon = {}) {
                 soLa: v ? (v.tay[p.id] || []).length : 0,
                 trongVan: v ? v.thuTu.includes(p.id) : false,
                 daBo: v ? v.daBo.has(p.id) : false,
+                vuaLam: v && v.vuaLam[p.id] ? v.vuaLam[p.id] : null,   // 19/09: web vẽ nhãn "vừa đánh ..."
                 hang: v && v.veNhat.indexOf(p.id) >= 0 ? v.veNhat.indexOf(p.id) + 1 : null,
             })),
             van: v ? {

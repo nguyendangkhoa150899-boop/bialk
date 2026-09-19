@@ -91,11 +91,39 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .gio i{display:block;height:100%;background:var(--gold);transition:width .25s linear}
 
 /* ---------- tay bài của mình ---------- */
-.tay{display:flex;justify-content:center;flex-wrap:wrap;gap:2px;margin-top:10px;min-height:calc(var(--lbt)*1.5)}
-.tay .the{cursor:pointer;transition:transform .12s ease;margin-top:14px}
-.tay .the.chon{transform:translateY(-14px);box-shadow:0 0 0 3px var(--gold),0 6px 16px rgba(0,0,0,.7)}
-.tay .the:hover{transform:translateY(-6px)}
-.tay .the.chon:hover{transform:translateY(-18px)}
+.tay{display:flex;justify-content:center;flex-wrap:wrap;gap:2px;margin-top:10px;min-height:calc(var(--lbt)*1.85)}
+.tay .the{cursor:pointer;position:relative;margin-top:20px;
+  transition:transform .14s cubic-bezier(.2,1.4,.4,1), box-shadow .14s ease}
+.tay .the:hover{transform:translateY(-7px)}
+/* 👇 lá ĐANG CHỌN: nhô hẳn lên, viền vàng, nảy nhẹ + dấu ✓ góc trên */
+.tay .the.chon{transform:translateY(-20px) scale(1.05);z-index:2;
+  box-shadow:0 0 0 3px var(--gold),0 0 18px 3px rgba(255,207,92,.5),0 10px 20px rgba(0,0,0,.75);
+  animation:chonNay .2s cubic-bezier(.2,1.6,.4,1)}
+.tay .the.chon:hover{transform:translateY(-25px) scale(1.05)}
+.tay .the.chon::after{content:'✓';position:absolute;top:-9px;right:-7px;width:19px;height:19px;border-radius:50%;
+  background:linear-gradient(180deg,#ffe9a3,#e0a41a);color:#3a2500;font-size:12px;font-weight:900;
+  display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:3}
+@keyframes chonNay{0%{transform:translateY(-4px) scale(1)}100%{transform:translateY(-20px) scale(1.05)}}
+/* lá KHÔNG thể đánh trong lượt này (khi đang theo bài) thì mờ đi cho dễ nhìn */
+.tay .the.cam{filter:brightness(.52) saturate(.55)}
+
+/* dòng gợi ý dưới tay bài: đang chọn bộ gì, đánh được hay không */
+#banGoi{margin:8px auto 0;width:fit-content;max-width:96%;font-size:13px;font-weight:800;padding:6px 14px;
+  border-radius:999px;border:1px solid var(--line);background:var(--card2);text-align:center}
+#banGoi.duoc{border-color:#1d6b44;background:#123021;color:#9ff0c4}
+#banGoi.khong{border-color:#7a2d2d;background:#2e1212;color:#ff9a9a}
+
+/* nhãn VỪA LÀM trên ghế + cảnh báo sắp hết bài */
+.tt.danh{background:#123021;color:#9ff0c4}
+.tt.chat{background:linear-gradient(180deg,#ff9a3c,#c9541b);color:#2a0e00}
+.tt.sapthang{background:#4a1414;color:#ff9a9a;animation:nhapNhay 1s ease-in-out infinite}
+@keyframes nhapNhay{0%,100%{opacity:1}50%{opacity:.45}}
+.dem{position:absolute;top:-10px;left:50%;transform:translateX(-50%);z-index:5;
+  min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center;padding:0 6px;
+  font-size:12px;font-weight:900;background:#3a2e10;border:1px solid var(--gold);color:var(--gold)}
+.dem.gap{background:#4a1414;border-color:#ff6b6b;color:#ff9a9a;animation:nhapNhay .7s ease-in-out infinite}
+/* lượt của MÌNH: cả bàn sáng viền để không bỏ lỡ */
+.san.toiluot .vien{box-shadow:0 0 0 3px rgba(255,207,92,.65),0 14px 30px rgba(0,0,0,.55),inset 0 2px 2px rgba(255,255,255,.12)}
 
 /* ---------- bảng kết quả ván ---------- */
 .kqdong{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:9px;
@@ -168,6 +196,7 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   </div>
 
   <div class="tay" id="banTay"></div>
+  <div id="banGoi" hidden></div>
   <div class="dong" style="margin-top:10px" id="banNut"></div>
   <div class="nho" id="banNhac"></div>
 
@@ -234,6 +263,122 @@ function banKinhX(san){
   if (!W) W = Math.min(150, Math.max(92, 0.15 * (window.innerWidth || CW)));
   return Math.max(24, Math.min(40, (0.5 - (W/2 + 4)/CW) * 100));
 }
+/* ============================================================================
+   MÁY LUẬT BẢN CLIENT — bản sao rút gọn của bai.js, CHỈ để gợi ý/tô màu cho dễ chơi.
+   ⚠️ Máy chủ vẫn là nơi quyết định cuối cùng; sai lệch ở đây chỉ làm gợi ý sai, không
+   làm hỏng ván. Bộ kiểm trang-test đối chiếu hàm này với bai.js trên 2.000 ca ngẫu
+   nhiên nên hai bên không thể lệch nhau mà không ai biết.
+   ============================================================================ */
+var CSO = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'], CCHAT = ['s','c','d','h'];
+function cDoc(ma){ var c = ma.slice(-1), so = ma.slice(0,-1);
+  return { so: so, chat: c, hang: CSO.indexOf(so), tri: CSO.indexOf(so)*4 + CCHAT.indexOf(c) }; }
+function cTri(ma){ return cDoc(ma).tri; }
+function cXep(la){ return la.slice().sort(function(a,b){ return cTri(a)-cTri(b); }); }
+function cNhanDang(la){
+  if (!la || !la.length) return null;
+  var i, u = {}; for (i=0;i<la.length;i++){ if(u[la[i]]) return null; u[la[i]]=1; }
+  for (i=0;i<la.length;i++){ var d=cDoc(la[i]); if(d.hang<0||CCHAT.indexOf(d.chat)<0) return null; }
+  var xep = cXep(la), cao = xep[xep.length-1], dem = {};
+  for (i=0;i<la.length;i++){ var so=cDoc(la[i]).so; dem[so]=(dem[so]||0)+1; }
+  var soKhac = Object.keys(dem);
+  if (soKhac.length === 1){
+    var n = la.length;
+    if (n===1) return { kieu:'rac', dai:1, la:xep, cao:cao, ten:cTen1(cao) };
+    if (n===2) return { kieu:'doi', dai:2, la:xep, cao:cao, ten:'đôi '+soKhac[0] };
+    if (n===3) return { kieu:'ba', dai:3, la:xep, cao:cao, ten:'ba '+soKhac[0] };
+    if (n===4) return { kieu:'tu', dai:4, la:xep, cao:cao, ten:'tứ quý '+soKhac[0] };
+    return null;
+  }
+  var moiSo1 = true; for (i=0;i<soKhac.length;i++) if (dem[soKhac[i]]!==1) moiSo1=false;
+  if (moiSo1 && la.length>=3){
+    var h = xep.map(function(x){ return cDoc(x).hang; }), lt = true;
+    for (i=1;i<h.length;i++) if (h[i]!==h[i-1]+1) lt=false;
+    if (lt && soKhac.indexOf('2')<0) return { kieu:'sanh', dai:la.length, la:xep, cao:cao, ten:'sảnh '+la.length+' lá tới '+cTen1(cao) };
+  }
+  var moiSo2 = true; for (i=0;i<soKhac.length;i++) if (dem[soKhac[i]]!==2) moiSo2=false;
+  if (la.length%2===0 && moiSo2 && soKhac.length>=3){
+    var h2 = soKhac.map(function(x){ return CSO.indexOf(x); }).sort(function(a,b){return a-b;}), lt2 = true;
+    for (i=1;i<h2.length;i++) if (h2[i]!==h2[i-1]+1) lt2=false;
+    if (lt2 && soKhac.indexOf('2')<0) return { kieu:'thong', dai:soKhac.length, la:xep, cao:cao, ten:soKhac.length+' đôi thông tới '+cao.slice(0,-1) };
+  }
+  return null;
+}
+var CKY = { s:'♠', c:'♣', d:'♦', h:'♥' };
+function cTen1(ma){ var d = cDoc(ma); return d.so + CKY[d.chat]; }
+function cSoBo(a,b){ if(!a||!b) return null; if(a.kieu!==b.kieu||a.dai!==b.dai) return null;
+  var x=cTri(a.cao), y=cTri(b.cao); return x===y?0:(x>y?1:-1); }
+function cHangBom(bo){ if(!bo) return 0;
+  if (bo.kieu==='thong'&&bo.dai===3) return 1;
+  if (bo.kieu==='tu') return 2;
+  if (bo.kieu==='thong'&&bo.dai>=4) return 3;
+  return 0; }
+function cBoHeo(bo){ if(!bo||['rac','doi','ba'].indexOf(bo.kieu)<0) return 0;
+  for (var i=0;i<bo.la.length;i++) if (cDoc(bo.la[i]).so!=='2') return 0;
+  return bo.la.length; }
+function cChatDuoc(a,b){
+  var ha=cHangBom(a); if(!ha) return false;
+  var heo=cBoHeo(b), hb=cHangBom(b);
+  if (heo){ if(ha===1) return heo===1; if(ha===2) return heo<=2; return heo<=3; }
+  if (!hb) return false;
+  if (ha>hb) return true;
+  if (ha===hb) return cSoBo(a,b)===1;
+  return false;
+}
+function cDanhDuoc(bo, truoc){
+  if (!bo) return { ok:false, vi:'Mấy lá này không thành bộ hợp lệ' };
+  if (!truoc) return { ok:true, chat:false };
+  if (bo.kieu===truoc.kieu && bo.dai===truoc.dai)
+    return cSoBo(bo,truoc)===1 ? { ok:true, chat:false } : { ok:false, vi:'Không lớn hơn '+truoc.ten };
+  if (cChatDuoc(bo,truoc)) return { ok:true, chat:true };
+  return { ok:false, vi:'Phải đánh '+cMoTa(truoc)+' lớn hơn (hoặc chặt)' };
+}
+function cMoTa(bo){
+  if (!bo) return 'bài';
+  if (bo.kieu==='rac') return '1 lá';
+  if (bo.kieu==='doi') return 'một đôi';
+  if (bo.kieu==='ba') return 'ba con';
+  if (bo.kieu==='tu') return 'tứ quý';
+  if (bo.kieu==='sanh') return 'sảnh '+bo.dai+' lá';
+  return bo.dai+' đôi thông';
+}
+/* Liệt kê MỌI bộ đánh được từ tay bài (dùng cho 💡 gợi ý + tô mờ lá vô dụng).
+   Không vét cạn tổ hợp (13 lá là 8.191 tập) mà dựng theo kiểu bài cho nhanh và đủ dùng. */
+function cMoiNuoc(tay, truoc){
+  var ra = [], i, j, k;
+  var theoSo = {}; for (i=0;i<tay.length;i++){ var so=cDoc(tay[i]).so; (theoSo[so]=theoSo[so]||[]).push(tay[i]); }
+  var hangCo = Object.keys(theoSo).map(function(x){ return CSO.indexOf(x); }).sort(function(a,b){return a-b;});
+  var thu = function(mo){ var bo=cNhanDang(mo); if(!bo) return; if(cDanhDuoc(bo,truoc).ok) ra.push(bo); };
+  // rác / đôi / ba / tứ quý
+  for (var so in theoSo){ var g = cXep(theoSo[so]);
+    for (i=0;i<g.length;i++) thu([g[i]]);
+    if (g.length>=2){ thu([g[0],g[1]]); thu(g.slice(-2)); }
+    if (g.length>=3) thu(g.slice(0,3));
+    if (g.length>=4) thu(g.slice(0,4));
+  }
+  // sảnh: mọi cửa sổ hạng liên tiếp (bỏ heo), lấy lá NHỎ NHẤT mỗi hạng
+  var hangKhongHeo = hangCo.filter(function(h){ return CSO[h]!=='2'; });
+  for (i=0;i<hangKhongHeo.length;i++){
+    var day=[hangKhongHeo[i]];
+    for (j=i+1;j<hangKhongHeo.length && hangKhongHeo[j]===hangKhongHeo[j-1]+1;j++) day.push(hangKhongHeo[j]);
+    for (k=3;k<=day.length;k++) thu(day.slice(0,k).map(function(h){ return cXep(theoSo[CSO[h]])[0]; }));
+  }
+  // đôi thông: cửa sổ hạng có ≥2 lá
+  var hangDoi = hangKhongHeo.filter(function(h){ return theoSo[CSO[h]].length>=2; });
+  for (i=0;i<hangDoi.length;i++){
+    var d2=[hangDoi[i]];
+    for (j=i+1;j<hangDoi.length && hangDoi[j]===hangDoi[j-1]+1;j++) d2.push(hangDoi[j]);
+    for (k=3;k<=d2.length;k++){
+      var mo=[]; for (var q=0;q<k;q++) mo=mo.concat(cXep(theoSo[CSO[d2[q]]]).slice(0,2));
+      thu(mo);
+    }
+  }
+  // bỏ trùng + xếp bộ NHỎ NHẤT lên đầu (gợi ý nên là nước rẻ nhất)
+  var thay={}, loc=[];
+  for (i=0;i<ra.length;i++){ var key=ra[i].la.join(); if(thay[key])continue; thay[key]=1; loc.push(ra[i]); }
+  loc.sort(function(a,b){ return (a.la.length-b.la.length) || (cTri(a.cao)-cTri(b.cao)); });
+  return loc;
+}
+
 function theLa(ma, nho, them){
   return '<div class="the'+(nho?' n2':'')+(them?' '+them:'')+'" data-la="'+ma+'">' +
          '<img src="bai/'+ma+'.webp" alt="'+ma+'" loading="lazy"></div>';
@@ -309,7 +454,15 @@ function veBan(){
   veTay(b, v);
   veNut(b, v);
   veKetQua(b, v);
+
+  // 🔔 tới lượt mình: sáng viền cả bàn + kêu MỘT lần cho mỗi lượt (đừng kêu mỗi giây)
+  var cuaToi = !!(toi && toi.toiLuot && !v.ketQua);
+  $('san').classList.toggle('toiluot', cuaToi);
+  var khoa = (v.so||0) + ':' + (v.lichSu ? v.lichSu.length : 0);
+  if (cuaToi && LUOT_KEU !== khoa){ LUOT_KEU = khoa; bao('🔔 Tới lượt bạn!'); }
+  if (!cuaToi) LUOT_KEU = '';
 }
+var LUOT_KEU = '';
 function tenCua(id){
   if (!S || !S.ban) return id;
   var p = S.ban.nguoi.filter(function(x){ return x.id===id; })[0];
@@ -328,13 +481,21 @@ function veGhe(b, v){
 
     var lung = '';
     if (!v.ketQua) for (var q=0;q<Math.min(p.soLa,13);q++) lung += '<i></i>';
-    var tt = '';
+    // nhãn trên ghế, theo thứ tự ưu tiên: hạng > mất kết nối > đang nghĩ > vừa làm gì > bỏ lượt
+    var tt = '', vl = p.vuaLam;
     if (p.hang) tt = '<div class="tt '+(p.hang===1?'nhat':'hang')+'">'+(p.hang===1?'🏆 NHẤT':'hạng '+p.hang)+'</div>';
     else if (p.afk) tt = '<div class="tt afk">Mất kết nối</div>';
-    else if (p.daBo) tt = '<div class="tt bo">Bỏ lượt</div>';
-    else if (toiLuot) tt = '<div class="tt cho">⏳ đang nghĩ</div>';
-    var gio = (toiLuot && v.hanChot && !v.ketQua)
-      ? '<div class="gio"><i style="width:'+Math.max(0,Math.min(100,(v.hanChot-Date.now())/(b.giayMoiLuot*10)))+'%"></i></div>' : '';
+    else if (toiLuot && !v.ketQua) tt = '<div class="tt cho">⏳ đang nghĩ…</div>';
+    else if (vl && vl.viec==='danh') tt = '<div class="tt '+(vl.chat?'chat':'danh')+'">'+(vl.may?'🤖 ':'')+(vl.chat?'💥 CHẶT ':'')+esc(vl.ten)+'</div>';
+    else if (p.daBo || (vl && vl.viec==='bo')) tt = '<div class="tt bo">'+((vl&&vl.may)?'🤖 ':'')+'bỏ lượt</div>';
+    // ⚠️ sắp về nhất: cả bàn phải thấy để còn chặn
+    if (!p.hang && p.soLa > 0 && p.soLa <= 2 && !v.ketQua)
+      tt = '<div class="tt sapthang">⚠️ còn '+p.soLa+' lá!</div>' + tt;
+    // đồng hồ: thanh chạy + SỐ GIÂY to trên đầu ghế
+    var conGiay = (toiLuot && v.hanChot && !v.ketQua) ? Math.max(0, Math.ceil((v.hanChot-Date.now())/1000)) : null;
+    var gio = conGiay===null ? '' :
+      ('<div class="dem'+(conGiay<=5?' gap':'')+'">'+conGiay+'</div>' +
+       '<div class="gio"><i style="width:'+Math.max(0,Math.min(100,(v.hanChot-Date.now())/(b.giayMoiLuot*10)))+'%"></i></div>');
 
     o += '<div class="ghe'+(toiLuot?' luot':'')+(laToi?' toi':'')+(p.daBo?' bo':'')+
          '" style="left:'+x+'%;top:'+y+'%">' +
@@ -358,13 +519,26 @@ function xepTay(la){
     return la.indexOf(a) - la.indexOf(b);                // trong nhóm giữ thứ tự số
   });
 }
+var VAN_CU_TAY = '';
 function veTay(b, v){
   var toi = b.toi;
+  // sang ván mới / vừa đánh xong -> bỏ lựa chọn cũ, không để lá cũ dính lại gây bấm nhầm
+  var khoaVan = (v.so||0) + ':' + ((toi && toi.la) ? toi.la.length : 0);
+  if (VAN_CU_TAY !== khoaVan){ VAN_CU_TAY = khoaVan; GOI_I = 0; }
   if (!toi || !toi.la){ datHTML($('banTay'), '<div class="mo">👀 Bạn đang xem — bài của người chơi chỉ hiện khi hết ván.</div>'); return; }
   var la = xepTay(toi.la);
   // lá đã đánh hết khỏi tay thì bỏ khỏi CHON
   CHON = CHON.filter(function(x){ return la.indexOf(x) >= 0; });
-  var o = la.map(function(x){ return theLa(x, true, CHON.indexOf(x)>=0 ? 'chon' : ''); }).join('');
+  // lá nào KHÔNG nằm trong bất kỳ nước đánh hợp lệ nào (khi đang theo bài) thì làm mờ
+  var dungDuoc = {};
+  if (toi.toiLuot && v.bo && !v.ketQua){
+    var nuoc = cMoiNuoc(la, v.bo);
+    for (var q=0;q<nuoc.length;q++) for (var w=0;w<nuoc[q].la.length;w++) dungDuoc[nuoc[q].la[w]] = 1;
+  }
+  var moLa = toi.toiLuot && v.bo && !v.ketQua;
+  var o = la.map(function(x){
+    return theLa(x, true, (CHON.indexOf(x)>=0 ? 'chon' : '') + (moLa && !dungDuoc[x] ? ' cam' : ''));
+  }).join('');
   if (datHTML($('banTay'), o)){
     var el = $('banTay').querySelectorAll('.the');
     for (var i=0;i<el.length;i++) (function(e){
@@ -380,9 +554,27 @@ function veTay(b, v){
 
 function veNut(b, v){
   var toi = b.toi;
-  if (!toi || !toi.la){ datHTML($('banNut'), ''); $('banNhac').textContent=''; return; }
+  if (!toi || !toi.la){ datHTML($('banNut'), ''); $('banNhac').textContent=''; $('banGoi').hidden=true; return; }
   var cua = toi.toiLuot && !v.ketQua;
+
+  // ---- dòng gợi ý: đang chọn bộ gì, đánh được hay không (máy luật bản client) ----
+  var e = $('banGoi');
+  if (!cua || !CHON.length){
+    if (cua){
+      var so = cMoiNuoc(toi.la, v.bo).length;
+      datHTML(e, so ? ('Bấm lá để chọn — bạn có <b>' + so + '</b> nước đánh được') : '😔 Không có nước nào đánh được — bấm BỎ LƯỢT');
+      e.className = so ? '' : 'khong'; e.hidden = false;
+    } else e.hidden = true;
+  } else {
+    var bo = cNhanDang(CHON), kq = cDanhDuoc(bo, v.bo);
+    datHTML(e, kq.ok ? ('✓ ' + (bo.ten||'') + (kq.chat ? ' — <b>CHẶT!</b>' : '') + ' · đánh được')
+                     : ('✗ ' + (bo ? bo.ten + ' — ' + kq.vi : kq.vi)));
+    e.className = kq.ok ? 'duoc' : 'khong'; e.hidden = false;
+  }
+
   var o = '<button class="b xam" onclick="doiXep()">🔀 XẾP BÀI: ' + (KIEU_XEP==='so'?'theo số':'gom bộ') + '</button>' +
+          '<button class="b vang" onclick="goiY()"' + (cua?'':' disabled') + '>💡 GỢI Ý</button>' +
+          '<button class="b xam" onclick="boChon()"' + (CHON.length?'':' disabled') + '>✖️ BỎ CHỌN</button>' +
           '<button class="b xanh" onclick="danh()"' + (cua?'':' disabled') + '>▶️ ĐÁNH' + (CHON.length?' ('+CHON.length+' lá)':'') + '</button>' +
           '<button class="b do" onclick="boLuot()"' + (cua && v.bo ? '':' disabled') + '>⏭️ BỎ LƯỢT</button>';
   datHTML($('banNut'), o);
@@ -390,6 +582,18 @@ function veNut(b, v){
     (cua ? (v.bo ? ('Phải đánh ' + v.bo.ten + ' lớn hơn, hoặc chặt') : 'Bạn mở lượt — chọn bài rồi bấm ĐÁNH')
          : ('Đang chờ ' + tenCua(v.luot||'')));
 }
+/* 💡 chọn giùm nước RẺ NHẤT đánh được. Bấm tiếp thì xoay sang nước kế (xem hết mọi cách). */
+var GOI_I = 0;
+function goiY(){
+  if (!S || !S.ban || !S.ban.toi || !S.ban.toi.la) return;
+  var v = S.ban.van || {}, nuoc = cMoiNuoc(S.ban.toi.la, v.bo);
+  if (!nuoc.length){ CHON = []; ve(); return bao('😔 Không có nước nào đánh được — bấm BỎ LƯỢT'); }
+  var bo = nuoc[GOI_I % nuoc.length]; GOI_I++;
+  CHON = bo.la.slice();
+  $('banTay').__cu = ''; ve();
+  bao('💡 ' + bo.ten + ' (' + ((GOI_I-1) % nuoc.length + 1) + '/' + nuoc.length + ' cách)');
+}
+function boChon(){ CHON = []; $('banTay').__cu=''; ve(); }
 function doiXep(){ KIEU_XEP = (KIEU_XEP==='so'?'bo':'so'); $('banTay').__cu=''; $('banNut').__cu=''; ve(); }
 function danh(){ if(!CHON.length) return bao('Chọn lá muốn đánh đã'); var g = CHON.slice(); CHON = []; goi('/danh', { la: g }); }
 function boLuot(){ CHON = []; goi('/boluot'); }

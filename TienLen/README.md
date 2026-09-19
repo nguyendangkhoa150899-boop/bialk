@@ -31,7 +31,8 @@ nhập, toàn màn hình. Trang là `trang.html` phục vụ tại `/tienlen/`, 
 | `bai.js` | Bộ 52 lá, xáo (`crypto`), **luật bộ bài TLMN**: nhận dạng rác/đôi/ba/tứ quý/sảnh/đôi thông, so bộ, **chặt**, tới trắng, đếm heo, xếp bài | `kiemtra/bai-test.js` (89) |
 | `van.js` | **Máy bàn + máy ván + TIỀN**: chia bài, lượt, bỏ lượt, hết vòng, thứ hạng, 2 chế độ tính tiền, chặt heo, thối 2, tới trắng, phế 10%. Thuần logic | `kiemtra/van-test.js` (83) |
 | `web.js` | **Mô-đun gắn vào BotDoMin**: phòng chờ 4 ghế, cổng vào, nút sẵn sàng, `xuLy()`, `nhip()`, `quanLy.*` cho panel, và **`traTien()` — cửa duy nhất đụng ví** | `kiemtra/web-test.js` (50) |
-| `trang.html` | Trang người chơi — file HTML thật, không nhét vào chuỗi JS | `kiemtra/trang-test.js` (29) |
+| `trang.html` | Trang người chơi — file HTML thật. Có **bản sao rút gọn của `bai.js`** (`cNhanDang`/`cDanhDuoc`/`cMoiNuoc`) để gợi ý + tô mờ; máy chủ vẫn quyết định cuối cùng | `kiemtra/trang-test.js` (48) |
+| `index.js` | **CHỈ DEV**: vỏ chạy thử tại máy, ví giả trong RAM, có máy đánh cùng. Prod KHÔNG chạy file này | (dùng tay) |
 | — | Phần nối vào BotDoMin (trang, ảnh, route, cổng liên kết) | `kiemtra/noi-test.js` (17) |
 
 **Mã lá = tên file ảnh**: `3s` `10h` `Qd` `2h`. Chất `s`♠ `c`♣ `d`♦ `h`♥.
@@ -59,6 +60,22 @@ Sau khi lên: panel SUPER → tab **🀄 Tiến Lên** → chỉnh mức cược
 
 ---
 
+## 2b. Chạy thử tại máy (không cần bot, không cần Discord)
+
+```bash
+node TienLen/index.js --bot 1        # 1 máy đánh cùng -> chơi 1 mình vẫn thử được
+node TienLen/index.js                # 4 người thật, mở 4 cửa sổ
+node TienLen/index.js --bot 2 --cuoc 500 --chedo anhet
+```
+Rồi mở **http://127.0.0.1:4100/?u=A** (và `?u=B`, `?u=C`, `?u=D` ở **cửa sổ ẩn danh riêng** — cùng
+cửa sổ thì chung `localStorage`, hai người sẽ đá nhau). Ví là **ví giả 1.000.000 trong RAM**, tắt là mất.
+Máy đánh giùm ngồi sẵn các ghế cuối và đã bấm sẵn sàng.
+
+⚠️ Bản dev để `laAdmin: () => true` và **token chính là id người chơi** — tiện lúc thử, nhưng đừng
+bao giờ bê kiểu xác thực đó lên prod.
+
+---
+
 ## 3. Luồng chơi
 
 1. Web cược → tab **🀄 TIẾN LÊN** (admin bật ở panel) → bàn oval 4 ghế.
@@ -68,6 +85,8 @@ Sau khi lên: panel SUPER → tab **🀄 Tiến Lên** → chỉnh mức cược
 4. Trong ván: ghế xoay để **mình luôn ở đáy**. Bài mình nằm ngửa ở dưới, **bấm lá để chọn**
    (lá chọn nhô lên), rồi **▶️ ĐÁNH** hoặc **⏭️ BỎ LƯỢT**. Nút **🔀 XẾP BÀI** đổi giữa
    *theo số* (3→2) và *gom bộ* (tứ quý/ba/đôi đứng trước) — chỉ đổi cách hiển thị, client tự lo.
+4b. **Chỉ dẫn cho người chơi** (19/09, chủ server đặt): lá **đang chọn nhô hẳn lên, viền vàng, nảy nhẹ, có dấu ✓** góc trên · lá **không nằm trong nước đánh nào thì mờ đi** · dòng dưới tay bài báo **"✓ 3 đôi thông · đánh được"** hay **"✗ Không lớn hơn đôi K"** ngay khi chọn · nút **💡 GỢI Ý** tự chọn giùm nước rẻ nhất (bấm tiếp để xoay hết các cách) · nút **✖️ BỎ CHỌN** · ghế hiện **vừa đánh bộ gì** (có 💥 khi chặt, 🤖 khi máy đánh giùm) · **⚠️ còn N lá!** đỏ nhấp nháy khi ai đó sắp về nhất · **số giây đếm ngược** trên ghế đang tới lượt (≤5 giây thì đỏ) · tới lượt mình thì **sáng viền cả bàn + kêu một tiếng**.
+
 5. Hết giờ suy nghĩ (**25 giây**) hoặc rớt mạng: máy đánh giùm — đang theo thì **bỏ lượt**,
    đang mở lượt thì **đánh lá nhỏ nhất**.
 6. Hết ván → bảng hạng + tiền từng người (tách rõ cược / đếm lá / thối 2 / chặt / phế),
@@ -147,10 +166,14 @@ Mỗi lần cộng/trừ đều vào **sổ Dogcoin** (`logDog` loại `tienlen`
 node TienLen/kiemtra/bai-test.js     # luật bộ bài: nhận dạng, so, chặt, tới trắng   (89)
 node TienLen/kiemtra/van-test.js     # máy ván + TIỀN cả 2 chế độ, chạy 3 lần        (83)
 node TienLen/kiemtra/web-test.js     # ghế, sẵn sàng, VÍ, chống lộ bài, lưới an toàn (50)
-node TienLen/kiemtra/trang-test.js   # cú pháp client, id/onclick, vẽ trên DOM giả   (29)
+node TienLen/kiemtra/trang-test.js   # client: cú pháp, id/onclick, vẽ, ĐỐI CHIẾU luật  (48)
 node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route, cổng LK  (17)
 ```
 `van-test` và `web-test` có ngẫu nhiên (chia bài) → **chạy 3 lần** để dò chập chờn.
+
+`trang-test` có mục **⚖️ đối chiếu**: chạy máy luật bản client trong `vm` rồi so với `bai.js` trên
+**1.500 ca ngẫu nhiên + 14 ca dựng tay**, và kiểm **mọi nước 💡 gợi ý đều được server chấp nhận**
+(200 tay ngẫu nhiên). Sửa `bai.js` mà quên sửa bản client là mục này đỏ ngay.
 
 ---
 
@@ -171,6 +194,9 @@ node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route,
 - **Anchor phải DUY NHẤT.** `poker:"poker"};'` có ở cả `PAGE_GRP` lẫn `GRP_LAST`; dòng trong `tab()`
   đã sẵn `'poker'`. Luôn `grep -c` trước khi tin.
 - **Bash nuốt backtick / `${}`** khi viết script vá → viết bằng Write tool (bài học chung của repo).
+- **Máy đánh giùm ở bản dev đi THẲNG vào `van.js`, không qua `xuLy()`** → không kích `thanhToanNeuXong()`,
+  ví không nhảy cho tới nhịp sau. Đã gọi `tienlen.nhip()' ngay sau nước của máy. Prod không có máy
+  đánh nên không dính, nhưng ai thêm đường đánh mới phải nhớ luật này.
 
 ---
 

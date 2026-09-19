@@ -140,5 +140,114 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
         els.get('kqTieu').textContent);
 }
 
+// ---------------------------------------------------------------- máy luật bản client
+// Trang có BẢN SAO rút gọn của bai.js (cNhanDang / cDanhDuoc) để gợi ý và tô mờ lá. Bản sao là
+// chỗ dễ lệch nhất trong cả tính năng: lệch mà không ai biết thì gợi ý sai, người chơi bấm ĐÁNH
+// rồi ăn lỗi đỏ. Ở đây ĐỐI CHIẾU hai bên trên hàng ngàn ca ngẫu nhiên.
+muc('⚖️ máy luật bản client PHẢI khớp bai.js');
+{
+    const B = require('../bai.js');
+    const vm2 = require('vm');
+    const ctx = { console };
+    vm2.createContext(ctx);
+    // chỉ nạp phần máy luật (tới trước theLa) — khỏi kéo theo DOM
+    const phan = JS.slice(JS.indexOf('var CSO ='), JS.indexOf('function theLa('));
+    let loi = '';
+    try { vm2.runInContext(phan, ctx, { filename: 'client-luat.js' }); } catch (e) { loi = e.message; }
+    ok('tách được phần máy luật và nạp sạch', !loi, loi);
+
+    const rnd = (n) => Math.floor(Math.random() * n);
+    const boc = (k) => { const b = B.BO52.slice(); const r = []; for (let i = 0; i < k; i++) r.push(b.splice(rnd(b.length), 1)[0]); return r; };
+    ctx.__so = null;
+    const cND = (la) => { ctx.__la = la; return vm2.runInContext('cNhanDang(__la)', ctx); };
+    const cDD = (la, truoc) => { ctx.__la = la; ctx.__t = truoc; return vm2.runInContext('cDanhDuoc(cNhanDang(__la), __t?cNhanDang(__t):null)', ctx); };
+
+    let lechND = 0, lechDD = 0, viDu = '';
+    // ca ngẫu nhiên
+    for (let i = 0; i < 1500; i++) {
+        const la = boc(1 + rnd(8));
+        const a = B.nhanDang(la), c = cND(la);
+        const bangNhau = (!a && !c) || (a && c && a.kieu === c.kieu && a.dai === c.dai && a.cao === c.cao);
+        if (!bangNhau) { lechND++; viDu = viDu || (la.join(' ') + ' -> server ' + JSON.stringify(a && a.kieu) + ' / client ' + JSON.stringify(c && c.kieu)); }
+    }
+    // ca dựng tay: mọi kiểu bộ + mọi kiểu chặt (ngẫu nhiên khó đụng tới tứ quý / đôi thông)
+    const CA = [
+        ['3s'], ['2h'], ['5s', '5h'], ['9s', '9c', '9d'], ['Ks', 'Kc', 'Kd', 'Kh'],
+        ['3s', '4c', '5d'], ['10s', 'Jc', 'Qd', 'Kh', 'As'], ['Qs', 'Kc', 'Ad', '2h'],
+        ['3s', '3c', '4s', '4c', '5s', '5c'], ['7s', '7c', '8s', '8c', '9s', '9c', '10s', '10c'],
+        ['Ks', 'Kc', 'As', 'Ac', '2s', '2c'], ['3s', '3c', '4s', '4c'], ['3s', '5c'], ['2s', '2c', '2d'],
+    ];
+    for (const la of CA) {
+        const a = B.nhanDang(la), c = cND(la);
+        const bangNhau = (!a && !c) || (a && c && a.kieu === c.kieu && a.dai === c.dai && a.cao === c.cao);
+        if (!bangNhau) { lechND++; viDu = viDu || (la.join(' ') + ' -> server ' + JSON.stringify(a && a.kieu) + ' / client ' + JSON.stringify(c && c.kieu)); }
+    }
+    ok('nhận dạng bộ: client khớp server trên 1.500 ca ngẫu nhiên + 14 ca dựng tay', lechND === 0, lechND + ' lệch · ' + viDu);
+
+    // đánh đè / chặt
+    let viDu2 = '';
+    const DOI = [];
+    for (const x of CA) for (const y of CA) DOI.push([x, y]);
+    for (let i = 0; i < 500; i++) DOI.push([boc(1 + rnd(6)), boc(1 + rnd(6))]);
+    for (const [x, y] of DOI) {
+        const bx = B.nhanDang(x), by = B.nhanDang(y);
+        if (!bx || !by) continue;
+        if (x.some(l => y.includes(l))) continue;          // trùng lá thì bỏ, không phải ca thật
+        const a = B.danhDuoc(bx, by), c = cDD(x, y);
+        if (a.ok !== c.ok || !!a.chat !== !!c.chat) { lechDD++; viDu2 = viDu2 || (x.join(' ') + ' đè ' + y.join(' ') + ' -> server ' + JSON.stringify(a) + ' / client ' + JSON.stringify(c)); }
+    }
+    ok('đánh đè + chặt: client khớp server', lechDD === 0, lechDD + ' lệch · ' + viDu2);
+}
+
+muc('💡 gợi ý nước đánh (cMoiNuoc)');
+{
+    const B = require('../bai.js');
+    const vm2 = require('vm');
+    const ctx = { console };
+    vm2.createContext(ctx);
+    vm2.runInContext(JS.slice(JS.indexOf('var CSO ='), JS.indexOf('function theLa(')), ctx, { filename: 'client-luat.js' });
+    const nuoc = (tay, truoc) => { ctx.__t = tay; ctx.__b = truoc; return vm2.runInContext('cMoiNuoc(__t, __b?cNhanDang(__b):null)', ctx); };
+
+    const tay = ['3s', '3c', '4s', '4c', '5s', '5c', '9d', 'Js', 'Qc', 'Kd', 'Ah', '2s', '2h'];
+    const mo = nuoc(tay, null);
+    ok('mở lượt: gợi ý ra nhiều nước, nước đầu là lá nhỏ nhất', mo.length > 5 && mo[0].la.join() === '3s', mo.length + ' · ' + (mo[0] && mo[0].la.join()));
+    ok('có tìm ra 3 đôi thông trong tay', mo.some(x => x.kieu === 'thong' && x.dai === 3), JSON.stringify(mo.filter(x => x.kieu === 'thong').map(x => x.ten)));
+    ok('có tìm ra sảnh', mo.some(x => x.kieu === 'sanh'), JSON.stringify(mo.filter(x => x.kieu === 'sanh').slice(0, 2).map(x => x.ten)));
+
+    const theo = nuoc(tay, ['6d']);
+    ok('theo 1 lá 6♦: mọi gợi ý đều là 1 lá và đều LỚN HƠN', theo.length > 0 && theo.every(x => x.dai === 1 && B.tri(x.cao) > B.tri('6d')),
+        JSON.stringify(theo.slice(0, 3).map(x => x.ten)));
+    const chat = nuoc(tay, ['2d']);
+    ok('theo heo lẻ: gợi ý có CHẶT bằng 3 đôi thông', chat.some(x => x.kieu === 'thong'), JSON.stringify(chat.map(x => x.ten)));
+    ok('...và cả heo lớn hơn (2♥ > 2♦)', chat.some(x => x.la.join() === '2h'), JSON.stringify(chat.map(x => x.la.join())));
+    const bi = nuoc(['3s', '4c'], ['Ah']);
+    ok('không có nước nào thì trả mảng rỗng', bi.length === 0, JSON.stringify(bi));
+
+    // mọi gợi ý phải được SERVER chấp nhận — đây mới là điều thật sự quan trọng
+    let xau = 0;
+    for (let i = 0; i < 200; i++) {
+        const b = B.BO52.slice(); const t = [];
+        for (let k = 0; k < 13; k++) t.push(b.splice(Math.floor(Math.random() * b.length), 1)[0]);
+        const truoc = b.splice(0, 1 + Math.floor(Math.random() * 3));
+        const bt = B.nhanDang(truoc);
+        for (const g of nuoc(t, bt ? truoc : null)) {
+            if (!B.danhDuoc(B.nhanDang(g.la), bt || null).ok) xau++;
+        }
+    }
+    ok('200 tay ngẫu nhiên: MỌI nước gợi ý đều được server chấp nhận', xau === 0, String(xau));
+}
+
+muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
+{
+    ok('lá đang chọn nhô lên + viền vàng + dấu ✓', /\.tay \.the\.chon\{[\s\S]*?translateY\(-20px\)/.test(HTML) && /\.tay \.the\.chon::after\{content:'✓'/.test(HTML));
+    ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /' cam'/.test(JS));
+    ok('có dòng gợi ý #banGoi báo đánh được / không', /id="banGoi"/.test(HTML) && /#banGoi\.duoc/.test(HTML) && /#banGoi\.khong/.test(HTML));
+    ok('có nút 💡 GỢI Ý và ✖️ BỎ CHỌN', /💡 GỢI Ý/.test(JS) && /✖️ BỎ CHỌN/.test(JS));
+    ok('ghế hiện VỪA ĐÁNH gì, có dấu 💥 khi chặt', /vl\.viec==='danh'/.test(JS) && /💥 CHẶT/.test(JS));
+    ok('cảnh báo ai còn ≤2 lá', /sapthang/.test(JS) && /còn '\+p\.soLa\+' lá!/.test(JS));
+    ok('đếm ngược số giây trên ghế đang tới lượt, ≤5 giây thì đỏ nhấp nháy', /class="dem'\+\(conGiay<=5\?' gap':''\)/.test(JS));
+    ok('tới lượt mình thì sáng viền bàn + kêu 1 lần', /classList\.toggle\('toiluot'/.test(JS) && /LUOT_KEU/.test(JS));
+}
+
 console.log('\n🎬 TRANG TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);
