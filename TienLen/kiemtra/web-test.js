@@ -2,7 +2,7 @@
 // Gọi thẳng xuLy() với req/res giả (không cần dựng máy chủ HTTP).
 // Chạy: node TienLen/kiemtra/web-test.js
 'use strict';
-const { taoTienLen, VON_HE_SO } = require('../web.js');
+const { taoTienLen, taoSanh, VON_HE_SO, MUC_CUOC_CHO_PHEP, TOI_DA_PHONG } = require('../web.js');
 const B = require('../bai.js');
 
 let P = 0, F = 0;
@@ -53,8 +53,11 @@ muc('cổng vào bàn');
     const { tl } = dung({ toiTrangOn: true });
     const s = st(tl, 'A');
     ok('người thường vào xem được', s.ok === true && s.ban === null);
-    ok('vốn tối thiểu = 30 × mức cược', s.vonToiThieu === s.cauHinh.mucCuoc * VON_HE_SO && VON_HE_SO === 30);
-    ok('chế độ mặc định: nhất nhì ba tư', s.cauHinh.cheDo === 'hang' && /Nhất nhì/.test(s.cheDoTen));
+// Hệ số vốn KHÁC NHAU theo chế độ: 'anhet' thua tối đa một ván nặng gấp ~10 lần 'hang'
+    // (cóng 13 lá ×2 + nhốt 4 đôi thông/tứ quý ×2), để chung 30× là có ngày vỡ ví.
+    ok('vốn tối thiểu = hệ số theo chế độ × mức cược', s.vonToiThieu === s.cauHinh.mucCuoc * VON_HE_SO.hang);
+    ok('hệ số vốn: hạng 30× · đếm lá 120×', VON_HE_SO.hang === 30 && VON_HE_SO.anhet === 120, JSON.stringify(VON_HE_SO));
+    ok('chế độ mặc định: truyền thống 1-2-3-4', s.cauHinh.cheDo === 'hang' && /Truyền thống/.test(s.cheDoTen), s.cheDoTen);
     ok('4 luật nâng cao bật sẵn', s.cauHinh.toiTrangOn && s.cauHinh.chatHeoOn && s.cauHinh.thoiHeoOn && s.cauHinh.baBichOn);
 
     const r1 = goi(tl, '/ngoi', { ghe: 0 }, 'CHUALK');
@@ -143,35 +146,41 @@ muc('💰 đánh bài và TIỀN vào ví (chế độ nhất nhì ba tư)');
     ok('đánh lá không có -> chặn', goi(tl, '/danh', { la: ['9h'] }, 'A').ma === 400);
     const r = goi(tl, '/danh', { la: ['3s'] }, 'A');
     ok('A đánh hết bài -> ván chốt luôn (2 người)', r.ma === 200 && r.j.ban.van.ketQua, JSON.stringify(r.j.ban && r.j.ban.trangThai));
-    // A nhất: +1.000 cược, B thối 1 heo đỏ = +2.000 -> 3.000, phế 300 -> +2.700
-    ok('ví A cộng đúng 2.700 (1.000 cược + 2.000 thối heo đỏ − 10% phế)', vi.A - truocA === 2700, String(vi.A - truocA));
-    ok('ví B trừ đúng 3.000', vi.B - truocB === -3000, String(vi.B - truocB));
-    ok('nhà cái thu phế 300', phe() === 300, String(phe()));
+    // B KHÔNG kịp đánh lá nào -> CÓNG, mọi khoản của B nhân đôi (luật Ba Bích):
+    //   cược bét −1 ×2 = −2.000 · nhốt 1 heo đỏ (1 cược) ×2 = −2.000  ->  B −4.000
+    //   A: 1.000 cược + 1.000 phần dôi do B cóng + 2.000 nhốt = 4.000, phế 400 -> +3.600
+    ok('B cóng: ví B trừ đúng 4.000', vi.B - truocB === -4000, String(vi.B - truocB));
+    ok('ví A cộng đúng 3.600', vi.A - truocA === 3600, String(vi.A - truocA));
+    ok('nhà cái thu phế 400', phe() === 400, String(phe()));
     ok('có ghi log ván', log.some(d => /Ván #1/.test(d)), log.join(' | '));
 
     // gọi nhịp nhiều lần: KHÔNG được trả tiền lần 2
     const aSauVan = vi.A, bSauVan = vi.B;
     for (let i = 0; i < 20; i++) tl.nhip();
     ok('gọi nhịp 20 lần vẫn KHÔNG trả tiền lần 2', vi.A === aSauVan && vi.B === bSauVan, vi.A + '/' + aSauVan);
-    ok('phế cũng không thu 2 lần', phe() === 300, String(phe()));
+    ok('phế cũng không thu 2 lần', phe() === 400, String(phe()));
 }
 
-muc('💰 chế độ nhất ăn hết + đếm lá');
+muc('💰 chế độ ĐẾM LÁ');
 {
     const { tl, vi } = dung();
-    goi(tl, '/cauhinh', { cheDo: 'anhet', mucCuoc: 1000, giaLa: 500 }, 'A');
-    ok('admin đổi được chế độ + đơn giá lá', st(tl, 'A').cauHinh.cheDo === 'anhet' && st(tl, 'A').cauHinh.giaLa === 500);
+    // Phòng đếm lá cần vốn 120× mức cược, ví mặc định 100.000 không đủ -> nạp thêm trước.
+    for (const id of ['A', 'B', 'C']) vi[id] = 500000;
+    goi(tl, '/cauhinh', { cheDo: 'anhet', mucCuoc: 1000 }, 'A');
+    ok('admin đổi được chế độ', st(tl, 'A').cauHinh.cheDo === 'anhet');
+    ok('KHÔNG còn ô giá lá riêng (mỗi lá = đúng 1 cược)', st(tl, 'A').cauHinh.giaLa === undefined);
+    ok('vốn tối thiểu nhảy lên 120× khi đổi sang đếm lá', st(tl, 'A').vonToiThieu === 120000, String(st(tl, 'A').vonToiThieu));
     ok('người thường KHÔNG đổi được', goi(tl, '/cauhinh', { cheDo: 'hang' }, 'B').ma === 403);
     goi(tl, '/ngoi', { ghe: 0 }, 'A'); goi(tl, '/ngoi', { ghe: 1 }, 'B'); goi(tl, '/ngoi', { ghe: 2 }, 'C');
     for (const id of ['A', 'B', 'C']) goi(tl, '/sansang', {}, id);
     epBai(tl, { A: ['3s'], B: ['4c', '5c'], C: ['6d', '7d', '8d'] }, 'A');
     const t = { A: vi.A, B: vi.B, C: vi.C };
     goi(tl, '/danh', { la: ['3s'] }, 'A');
-    // B: -1.000 -2×500 = -2.000 · C: -1.000 -3×500 = -2.500 · A: +4.500 - 450 phế = +4.050
-    ok('B mất 2.000 (cược + 2 lá × 500)', vi.B - t.B === -2000, String(vi.B - t.B));
-    ok('C mất 2.500 (cược + 3 lá × 500)', vi.C - t.C === -2500, String(vi.C - t.C));
-    ok('A ăn 4.500, phế 450 -> +4.050', vi.A - t.A === 4050, String(vi.A - t.A));
-    ok('tổng ví bàn hụt đúng bằng phế', (vi.A - t.A) + (vi.B - t.B) + (vi.C - t.C) === -450);
+    // A ra ngay -> B và C chưa đánh lá nào -> CÓNG, mỗi lá tính gấp đôi. KHÔNG có cược nền.
+    ok('B cóng, 2 lá × 1.000 × 2 = −4.000', vi.B - t.B === -4000, String(vi.B - t.B));
+    ok('C cóng, 3 lá × 1.000 × 2 = −6.000', vi.C - t.C === -6000, String(vi.C - t.C));
+    ok('A ăn 10.000, phế 1.000 -> +9.000', vi.A - t.A === 9000, String(vi.A - t.A));
+    ok('tổng ví bàn hụt đúng bằng phế', (vi.A - t.A) + (vi.B - t.B) + (vi.C - t.C) === -1000);
 }
 
 // ---------------------------------------------------------------- bàn chạy liên tục

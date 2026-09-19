@@ -105,8 +105,9 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
         ok: true, toi: { id: 'A', ten: 'Người A', dogcoin: 100000, duocNgoi: true, viSaoKhong: null, admin: false },
         ghe: [{ id: 'A', ten: 'Người A', dogcoin: 100000 }, { id: 'B', ten: 'Người B', dogcoin: 100000 }, null, null],
         gheCuaToi: 0, sanSang: ['A'], toiSanSang: true, toiDa: 4, toiThieu: 2,
-        cauHinh: { mucCuoc: 1000, cheDo: 'hang', giaLa: 1000, toiTrangOn: true, chatHeoOn: true, thoiHeoOn: true, baBichOn: true },
-        cheDoTen: 'Nhất nhì ba tư', vonToiThieu: 30000, pheTram: 0.1, demVanKe: null,
+        cauHinh: { mucCuoc: 10000, cheDo: 'hang', toiTrangOn: true, chatHeoOn: true, thoiHeoOn: true, baBichOn: true },
+        cheDoTen: 'Truyền thống 1-2-3-4', vonToiThieu: 300000, pheTram: 0.1, demVanKe: null,
+        mucChoPhep: [10000, 20000, 40000, 60000, 80000, 100000], vote: null,
     };
 
     const chay = (ten, S) => {
@@ -138,8 +139,14 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
         vm.runInContext('CHON = ["5c","5d"];', ctx);
         chay('...và khi đang CHỌN lá (chạy máy luật client trên bộ của máy chủ)', { ...nen, ban: sA });
         vm.runInContext('CHON = [];', ctx);
+        // Ý: lỗi MẠNG thì S = null (hiện màn "chưa đăng nhập"); lỗi VẼ thì báo riêng.
+        // Hai việc phải nằm ở HAI mắt xích khác nhau của chuỗi, không thì ve() ném lỗi là
+        // rơi vào catch của mạng -> trang báo "chưa đăng nhập", giấu mất lỗi thật (dính 19/09).
+        const iCatch = JS.indexOf('.catch(function(e){'), iVe = JS.indexOf('try { ve(); }');
         ok('lỗi VẼ TRANG không bị báo nhầm thành "chưa đăng nhập"',
-            /\.catch\(function\(\)\{ S = null; \}\)/.test(JS) && /Lỗi vẽ trang/.test(JS));
+            iCatch > 0 && iVe > iCatch && /S = null; SANH = null;/.test(JS) && /Lỗi vẽ trang/.test(JS));
+        ok('...và ve() nằm ở mắt xích SAU, bọc try/catch riêng',
+            /\.then\(function\(\)\{\s*try \{ ve\(\); \}/.test(JS));
     }
 
     // ván chốt -> bảng kết quả
@@ -391,6 +398,35 @@ muc('nhắc nhở cho người chơi dễ biết (20/09)');
         /Bạn đã bỏ lượt — chờ hết vòng này/.test(JS) && /toiTrongDs && toiTrongDs\.daBo/.test(JS));
     ok('...kèm còn mấy người đang tranh vòng này',
         /x\.trongVan && !x\.daBo && x\.conBai/.test(JS) && /người đang tranh/.test(JS));
+}
+
+// ---------------------------------------------------------------- sảnh + vote (20/09)
+muc('🏠 SẢNH chọn phòng / tạo phòng');
+{
+    ok('có màn sảnh riêng', /id="manSanh"/.test(HTML) && /function veSanh\(/.test(JS));
+    ok('nhớ phòng đang mở, tải lại trang không văng ra sảnh',
+        /localStorage\.getItem\('tienlen_phong'\)/.test(JS) && /function datPhong\(/.test(JS));
+    ok('API của phòng có tiền tố mã phòng', /function apiP\(duong, than\)\{ return api\('\/' \+ PHONG \+ duong/.test(JS));
+    ok('ở sảnh thì hỏi /ds, trong phòng thì hỏi /state', /PHONG \? apiP\('\/state'\) : api\('\/ds'\)/.test(JS));
+    ok('phòng tan mất thì quay ra sảnh, KHÔNG báo "chưa đăng nhập"',
+        /không còn nữa\|Phòng/.test(JS) && /datPhong\(null\); return;/.test(JS));
+    ok('hộp tạo phòng: chọn chế độ + mức cược trong thang',
+        /function veTao\(/.test(JS) && /id="taoCheDo"/.test(HTML) && /id="taoMuc"/.test(HTML));
+    ok('...và nói trước cần bao nhiêu vốn, thiếu thì khoá nút',
+        /taoVon/.test(JS) && /taoNut'\)\.disabled = !TAO_MUC \|\| d\.toi\.dogcoin < von/.test(JS));
+    ok('có nút ra sảnh ở phòng chờ', /function raSanh\(/.test(JS) && /onclick="raSanh\(\)"/.test(HTML));
+}
+
+muc('🗳️ VOTE đổi mức cược');
+{
+    ok('khối vote nằm NGOÀI cả màn chờ lẫn màn bàn (tránh id trùng)',
+        /id="khoiVote"/.test(HTML) && HTML.indexOf('id="khoiVote"') > HTML.indexOf('<div id="manBan"'));
+    ok('chỉ hiện khi đang ngồi trong một phòng', /khoiVote'\)\.hidden = !\(S && !oSanh && S\.gheCuaToi >= 0\)/.test(JS));
+    ok('có hàm vẽ vote + gửi phiếu + rút phiếu',
+        /function veVote\(/.test(JS) && /goi\('\/vote'/.test(JS) && /goi\('\/huyvote'/.test(JS));
+    ok('hiện rõ ĐƯỢC MẤY PHIẾU / CẦN MẤY PHIẾU', /vt\.soDong \+ '\/' \+ vt\.can/.test(JS));
+    ok('cảnh báo đổi cược làm đổi VỐN TỐI THIỂU', /vốn tối thiểu mới/.test(JS) && /sẽ bị mời khỏi bàn/.test(JS));
+    ok('mức đang chơi thì khoá, không cho vote lại chính nó', /\(đang chơi\)<\/button>/.test(JS));
 }
 
 console.log('\n🎬 TRANG TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');

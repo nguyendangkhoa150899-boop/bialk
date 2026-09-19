@@ -4,21 +4,38 @@
 //  web.js. Nhờ vậy bộ kiểm chạy được toàn bộ luật tiền mà không cần database.
 //  Chạy kiểm: node TienLen/kiemtra/van-test.js
 //
-//  LUẬT CHỦ SERVER CHỐT 19/09 (đừng tự đổi, hỏi trước):
+//  LUẬT TIỀN — bám theo luật gốc Ba Bích (babichgame.gitbook.io/ba-bich/luat-choi),
+//  chủ server chốt 20/09: "dựa theo cái này nè". ĐỪNG TỰ ĐỔI, hỏi trước.
+//
 //   1. Bàn 2–4 người, mỗi người 13 lá, bàn CHẠY LIÊN TỤC (xong ván chia tiếp).
 //   2. Ván ĐẦU của bàn: ai cầm 3♠ đi trước và BẮT BUỘC đánh bộ có 3♠.
 //      Ván sau: người về nhất ván trước đi đầu, đánh gì cũng được.
-//   3. Hai chế độ tính tiền:
-//      - 'hang'  Nhất nhì ba tư: nhất ăn của tư, nhì ăn của ba (4 người).
-//                3 người: nhất ăn của ba, nhì hoà. 2 người: nhất ăn của nhì.
-//      - 'anhet' Nhất ăn hết + đếm lá: nhất ăn cược của tất cả, CỘNG mỗi lá còn
-//                trên tay người thua × đơn giá lá.
-//   4. Chặt heo có thưởng: chặt trúng heo thì người bị chặt trả NGAY cho người
-//      chặt — heo đen 1 phần cược, heo đỏ 2 phần.
-//   5. Thối 2: hết ván còn heo trên tay thì phạt đúng mức trên, trả cho người nhất.
-//   6. Tới trắng: chia bài xong có bài đẹp là thắng ngay, mỗi người thua trả
-//      số phần cược ghi ở bai.js (TOI_TRANG).
-//   7. PHẾ 10%: ai ăn ròng dương thì nhà cái cắt 10% phần ăn đó. Đây là chỗ DUY
+//
+//   3. MỌI THỨ TÍNH BẰNG "CƯỢC". Một cược đáng bao nhiêu Dogcoin là C.mucCuoc,
+//      mỗi phòng một giá (phòng truyền thống 50.000 · phòng đếm lá 5.000).
+//
+//   4. Hai chế độ, hai bảng tiền HOÀN TOÀN KHÁC NHAU:
+//      · 'hang'  TRUYỀN THỐNG 1-2-3-4 — ăn thua theo vị trí về:
+//           4 người: nhất +1 · nhì +0.5 · ba −0.5 · bét −1
+//           3 người: nhất +1.5 · nhì −0.5 · bét −1
+//           2 người: nhất +1 · bét −1
+//      · 'anhet' ĐẾM LÁ — nhất ăn hết, mỗi lá còn trên tay người thua = 1 cược.
+//           KHÔNG có cược nền: chỉ đếm lá, đúng luật gốc.
+//
+//   5. HEO & HÀNG — một bảng giá dùng cho CẢ HAI việc: bị CHẶT và bị NHỐT (thối).
+//      Giá theo chế độ (đơn vị: cược), xem BANG_CUOC bên dưới. Bị chặt thì trả cho
+//      người chặt ngay trong ván; bị nhốt thì trả cho người về nhất lúc chốt ván.
+//      Sảnh / đôi thường / rác KHÔNG tính tiền.
+//
+//   6. CÓNG — cả ván KHÔNG đánh nổi một lá nào (bỏ lượt không tính là đánh).
+//      · 'hang'  : xử như thua bét nhưng mất GẤP ĐÔI, phần lệch dồn cho người nhất.
+//      · 'anhet' : mỗi lá còn trên tay tính GẤP ĐÔI.
+//      · Cả hai : heo và hàng bị nhốt cũng GẤP ĐÔI.
+//
+//   7. Tới trắng: chia bài xong có bài đẹp là thắng ngay, mỗi người thua trả
+//      số cược ghi ở bai.js (TOI_TRANG).
+//
+//   8. PHẾ 10%: ai ăn ròng dương thì nhà cái cắt 10% phần ăn đó. Đây là chỗ DUY
 //      NHẤT bàn này không phải tổng bằng 0 — cũng là chỗ duy nhất nhà cái có thu.
 // ============================================================================
 'use strict';
@@ -29,22 +46,33 @@ const TOI_THIEU_NGUOI = 2;
 const SO_LA_CHIA = 13;
 const GIAY_MOI_LUOT = 25;        // hết giờ: đang mở lượt -> đánh lá nhỏ nhất; đang theo -> bỏ lượt
 const PHE_TRAM = 0.10;           // nhà cái cắt 10% TIỀN ĂN RÒNG của người thắng
-const CHE_DO = { hang: 'Nhất nhì ba tư', anhet: 'Nhất ăn hết + đếm lá' };
-// phạt heo tính theo PHẦN CƯỢC: heo đen 1 phần, heo đỏ 2 phần (dùng cho cả chặt heo lẫn thối 2)
-const PHAT_HEO_DEN = 1, PHAT_HEO_DO = 2;
+const CHE_DO = { hang: 'Truyền thống 1-2-3-4', anhet: 'Đếm lá' };
 
-/** Tiền phạt heo của một mớ lá (đơn vị: phần cược). */
-function phanHeo(la) {
-    const h = B.demHeo(la);
-    return h.den * PHAT_HEO_DEN + h.do * PHAT_HEO_DO;
+// ---------------------------------------------------------------------------
+//  💰 BẢNG GIÁ HEO & HÀNG (đơn vị: CƯỢC) — chép thẳng từ luật gốc Ba Bích.
+//  Dùng cho CẢ hai việc: bộ bị CHẶT, và heo/hàng còn trên tay lúc hết ván (NHỐT).
+//  Hai chế độ hai bảng, chênh nhau rất xa — phòng đếm lá nặng gấp 6 lần (theo cược),
+//  bù lại một cược ở đó chỉ 5.000 còn phòng truyền thống 50.000.
+// ---------------------------------------------------------------------------
+const BANG_CUOC = {
+    hang:  { heoDen: 0.5, heoDo: 1, thong3: 1,  tu: 1.5, thong4: 2 },
+    anhet: { heoDen: 3,   heoDo: 6, thong3: 12, tu: 12,  thong4: 24 },
+};
+// Ăn thua theo VỊ TRÍ VỀ ở chế độ 'hang' (đơn vị: cược). Khoá = số người trong ván.
+const BANG_VI_TRI = { 2: [1, -1], 3: [1.5, -0.5, -1], 4: [1, 0.5, -0.5, -1] };
+const CONG_NHAN = 2;             // cóng thì mọi khoản của người đó nhân đôi
+
+/** Mớ khoá giá (từ B.doTay / B.doBoBiChat) đáng bao nhiêu CƯỢC theo bảng của chế độ. */
+function cuocCuaMuc(muc, bang) {
+    return (muc || []).reduce((a, k) => a + (bang[k] || 0), 0);
 }
 
 function taoBan(tuyChon = {}) {
     const C = {
         mucCuoc: Math.max(1, Math.floor(tuyChon.mucCuoc || 1000)),
         cheDo: CHE_DO[tuyChon.cheDo] ? tuyChon.cheDo : 'hang',
-        // đơn giá mỗi lá còn lại ở chế độ 'anhet'. Mặc định = 1 phần cược / lá.
-        giaLa: tuyChon.giaLa != null ? Math.max(0, Math.floor(tuyChon.giaLa)) : Math.max(1, Math.floor(tuyChon.mucCuoc || 1000)),
+        // ⚠️ KHÔNG còn 'giaLa' riêng nữa. Luật gốc: mỗi lá còn trên tay = ĐÚNG 1 cược.
+        // Để hai con số rời nhau chỉ tổ có ngày chỉnh lệch rồi tính sai tiền cả bàn.
         giayMoiLuot: tuyChon.giayMoiLuot || GIAY_MOI_LUOT,
         pheTram: tuyChon.pheTram != null ? tuyChon.pheTram : PHE_TRAM,
         toiTrangOn: tuyChon.toiTrangOn !== false,     // 4 luật nâng cao, mặc định BẬT hết
@@ -62,6 +90,8 @@ function taoBan(tuyChon = {}) {
         nhatTruoc: null,         // ai về nhất ván trước (ván sau người này đi đầu)
     };
 
+    /** Bảng giá heo/hàng của chế độ đang chơi. Gọi qua hàm vì cấu hình đổi được giữa chừng. */
+    const BANG = () => BANG_CUOC[C.cheDo] || BANG_CUOC.hang;
     const ai = (id) => T.nguoi.find(p => p.id === id);
     const V = () => T.van;
     const dangChoi = () => T.nguoi.filter(p => p.trongVan);
@@ -107,6 +137,9 @@ function taoBan(tuyChon = {}) {
             // (nước cũ vẽ mờ, nước mới vẽ sáng). Hết vòng là xoá sạch cùng lúc với v.bo.
             chongBai: [],
             daBo: new Set(),             // ai đã bỏ lượt trong VÒNG này (hết vòng thì xoá)
+            // CÓNG: ai CẢ VÁN không đánh nổi một lá nào. Bỏ lượt KHÔNG tính là đánh.
+            // Máy đánh giùm lúc hết giờ thì có tính (xem nhip) — coi như người đó đã đánh.
+            daDanh: new Set(),
             veNhat: [],                  // id theo thứ tự về (nhất, nhì, ba, tư)
             // 19/09: NHÃN VIỆC VỪA LÀM — id -> { viec:'danh'|'bo', ten, soLa, chat, may, luc }.
             // Cả bàn nhìn ghế là biết người đó vừa đánh bộ gì / vừa bỏ lượt, khỏi phải đoán.
@@ -182,18 +215,22 @@ function taoBan(tuyChon = {}) {
         const kq = B.danhDuoc(bo, v.bo);
         if (!kq.ok) throw new Error(kq.vi);
 
-        // ---- 💥 CHẶT HEO: người bị chặt trả ngay cho người chặt ----
-        let thuongChat = 0;
+        // ---- 💥 CHẶT: người bị chặt trả NGAY cho người chặt, theo bảng giá của chế độ.
+        // Khác bản cũ: giờ chặt trúng HÀNG (3 đôi thông / tứ quý / 4 đôi thông) cũng ăn tiền,
+        // không chỉ riêng heo. Chặt sảnh / đôi thường thì 0 — nhưng sảnh vốn không chặt được.
+        let thuongChat = 0, mucChat = [];
         if (kq.chat && C.chatHeoOn && v.bo) {
-            const phan = phanHeo(v.bo.la);              // chỉ heo mới có thưởng; chặt tứ quý/thông thì 0
+            mucChat = B.doBoBiChat(v.bo);
+            const phan = cuocCuaMuc(mucChat, BANG());
             if (phan > 0) {
-                thuongChat = phan * C.mucCuoc;
+                thuongChat = Math.round(phan * C.mucCuoc);
                 v.chatHeo = v.chatHeo || [];
-                v.chatHeo.push({ chatBoi: id, bi: v.boCua, tien: thuongChat, la: v.bo.la.slice() });
+                v.chatHeo.push({ chatBoi: id, bi: v.boCua, tien: thuongChat, la: v.bo.la.slice(), muc: mucChat });
             }
         }
 
         v.tay[id] = tay.filter(x => !la.includes(x));
+        v.daDanh.add(id);                                // đã đánh -> không bị tính cóng
         v.bo = bo; v.boCua = id;
         v.batBuoc3Bich = false;
         v.daBo.clear();                                  // có người đánh -> vòng mới mở lại cho mọi người
@@ -265,14 +302,20 @@ function taoBan(tuyChon = {}) {
         }
 
         const n = v.thuTu.length;
+        const bang = BANG();
         const tien = {};                       // id -> ăn/thua RÒNG trước phế
         for (const id of v.thuTu) tien[id] = 0;
         const chiTiet = {};
-        for (const id of v.thuTu) chiTiet[id] = { cuoc: 0, la: 0, demLa: 0, thoi: 0, chat: 0, toiTrang: 0 };
+        for (const id of v.thuTu) chiTiet[id] = { cuoc: 0, la: 0, demLa: 0, thoi: 0, thoiMuc: [], chat: 0, toiTrang: 0, cong: false };
+
+        // ---- CÓNG: cả ván không đánh nổi lá nào. Tới trắng thì KHÔNG ai đánh, không tính cóng. ----
+        const cong = new Set();
+        if (!tt) for (const id of v.thuTu) if (!v.daDanh.has(id)) { cong.add(id); chiTiet[id].cong = true; }
+        const heSo = (id) => (cong.has(id) ? CONG_NHAN : 1);
 
         if (tt) {
-            // ---- TỚI TRẮNG: mỗi người thua trả `thuong` phần cược cho người tới trắng ----
-            const moiNguoi = tt.thuong * C.mucCuoc;
+            // ---- TỚI TRẮNG: mỗi người thua trả `thuong` cược cho người tới trắng ----
+            const moiNguoi = Math.round(tt.thuong * C.mucCuoc);
             for (const id of v.thuTu) {
                 if (id === tt.id) continue;
                 tien[id] -= moiNguoi; chiTiet[id].toiTrang = -moiNguoi;
@@ -280,35 +323,46 @@ function taoBan(tuyChon = {}) {
             }
             chiTiet[tt.id].toiTrang = tien[tt.id];
         } else {
+            // Người CÓNG bị xử như thua bét -> đẩy xuống cuối bảng hạng. Luật gốc nói rõ:
+            // "ván 4 người, khi có một người bị cóng, 2 người còn lại sẽ tranh Nhì và Ba".
+            if (cong.size) {
+                const thuong = v.veNhat.filter(id => !cong.has(id));
+                const bi = v.veNhat.filter(id => cong.has(id));
+                v.veNhat = [...thuong, ...bi];
+            }
             const nhat = v.veNhat[0];
             if (C.cheDo === 'hang') {
-                // ---- NHẤT NHÌ BA TƯ: nhất ăn của bét, nhì ăn của áp bét; lẻ người thì giữa hoà ----
-                for (let i = 0; i < Math.floor(n / 2); i++) {
-                    const an = v.veNhat[i], tra = v.veNhat[n - 1 - i];
-                    tien[an] += C.mucCuoc; chiTiet[an].cuoc += C.mucCuoc;
-                    tien[tra] -= C.mucCuoc; chiTiet[tra].cuoc -= C.mucCuoc;
+                // ---- TRUYỀN THỐNG 1-2-3-4: ăn thua theo VỊ TRÍ VỀ ----
+                const vt = BANG_VI_TRI[n] || BANG_VI_TRI[4];
+                let lech = 0;                       // cóng mất gấp đôi -> bảng không còn cân
+                for (let i = 0; i < n; i++) {
+                    const id = v.veNhat[i];
+                    // cóng: xét như bét (lấy ô cuối bảng) rồi nhân đôi
+                    const phan = cong.has(id) ? vt[n - 1] * CONG_NHAN : vt[i];
+                    const p = Math.round(phan * C.mucCuoc);
+                    tien[id] += p; chiTiet[id].cuoc += p; lech += p;
                 }
+                // phần dôi ra do cóng dồn hết cho người về nhất (luật gốc không nói chia cho ai)
+                if (lech !== 0) { tien[nhat] -= lech; chiTiet[nhat].cuoc -= lech; }
             } else {
-                // ---- NHẤT ĂN HẾT + ĐẾM LÁ ----
+                // ---- ĐẾM LÁ: nhất ăn hết, mỗi lá còn trên tay = 1 cược. KHÔNG có cược nền. ----
                 for (const id of v.thuTu) {
                     if (id === nhat) continue;
-                    tien[id] -= C.mucCuoc; chiTiet[id].cuoc -= C.mucCuoc;
-                    tien[nhat] += C.mucCuoc; chiTiet[nhat].cuoc += C.mucCuoc;
                     const soLa = (v.tay[id] || []).length;
-                    if (soLa > 0) {
-                        const p = soLa * C.giaLa;
-                        tien[id] -= p; chiTiet[id].la = soLa; chiTiet[id].demLa = -p;
-                        tien[nhat] += p; chiTiet[nhat].demLa += p;
-                    }
+                    if (!soLa) continue;
+                    const p = Math.round(soLa * C.mucCuoc * heSo(id));
+                    tien[id] -= p; chiTiet[id].la = soLa; chiTiet[id].demLa = -p;
+                    tien[nhat] += p; chiTiet[nhat].demLa += p;
                 }
             }
-            // ---- THỐI 2: còn heo trên tay thì phạt, trả cho người nhất ----
+            // ---- NHỐT (thối): heo VÀ hàng còn trên tay -> trả cho người nhất ----
             if (C.thoiHeoOn) {
                 for (const id of v.thuTu) {
                     if (id === nhat) continue;
-                    const p = phanHeo(v.tay[id] || []) * C.mucCuoc;
+                    const muc = B.doTay(v.tay[id] || []).muc;
+                    const p = Math.round(cuocCuaMuc(muc, bang) * C.mucCuoc * heSo(id));
                     if (!p) continue;
-                    tien[id] -= p; chiTiet[id].thoi = -p;
+                    tien[id] -= p; chiTiet[id].thoi = -p; chiTiet[id].thoiMuc = muc;
                     tien[nhat] += p; chiTiet[nhat].thoi += p;
                 }
             }
@@ -336,6 +390,7 @@ function taoBan(tuyChon = {}) {
         v.ketQua = {
             hang: v.veNhat.slice(), tien, phe, pheTong, chiTiet,
             toiTrang: tt ? { id: tt.id, ten: tt.ten } : null,
+            cong: [...cong],
             chatHeo: (v.chatHeo || []).slice(),
             // bài của mọi người lộ hết khi chốt ván (web vẽ ngửa)
             lat: v.thuTu.map(id => ({ id, la: (v.tay[id] || []).slice() })),
@@ -383,7 +438,8 @@ function taoBan(tuyChon = {}) {
         const v = V();
         return {
             trangThai: T.trangThai, soVan: T.soVan,
-            cheDo: C.cheDo, cheDoTen: CHE_DO[C.cheDo], mucCuoc: C.mucCuoc, giaLa: C.giaLa,
+            cheDo: C.cheDo, cheDoTen: CHE_DO[C.cheDo], mucCuoc: C.mucCuoc,
+            bangCuoc: BANG(), bangViTri: BANG_VI_TRI[T.nguoi.length] || null, congNhan: CONG_NHAN,
             pheTram: C.pheTram, giayMoiLuot: C.giayMoiLuot,
             luat: { toiTrang: C.toiTrangOn, chatHeo: C.chatHeoOn, thoiHeo: C.thoiHeoOn, baBich: C.baBichOn },
             toiDa: TOI_DA_NGUOI, toiThieu: TOI_THIEU_NGUOI,
@@ -435,5 +491,5 @@ function taoBan(tuyChon = {}) {
 
 module.exports = {
     taoBan, CHE_DO, TOI_DA_NGUOI, TOI_THIEU_NGUOI, SO_LA_CHIA,
-    GIAY_MOI_LUOT, PHE_TRAM, PHAT_HEO_DEN, PHAT_HEO_DO, phanHeo,
+    GIAY_MOI_LUOT, PHE_TRAM, BANG_CUOC, BANG_VI_TRI, CONG_NHAN, cuocCuaMuc,
 };

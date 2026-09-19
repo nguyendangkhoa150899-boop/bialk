@@ -7,7 +7,9 @@
 //  Chạy:
 //      node TienLen/index.js              -> 4 người thật, tự mở 4 cửa sổ
 //      node TienLen/index.js --bot 1      -> 1 máy đánh cùng (chơi 1 mình vẫn test được)
-//      node TienLen/index.js --bot 3 --cuoc 500 --chedo anhet
+//      node TienLen/index.js --bot 3 --cuoc 10000 --chedo anhet
+//
+//  Vào trang là thấy SẢNH. Máy đánh (nếu có) ngồi sẵn ở phòng đầu tiên.
 //
 //  Rồi mở: http://127.0.0.1:4100/?u=A   (và ?u=B, ?u=C, ?u=D ở cửa sổ ẩn danh khác)
 // ============================================================================
@@ -16,21 +18,21 @@ const http = require('http');
 const fs = require('fs');
 const nodePath = require('path');
 const B = require('./bai.js');
-const { taoTienLen } = require('./web.js');
+const { taoSanh } = require('./web.js');
 
 const args = process.argv.slice(2);
 const lay = (ten, mm) => { const i = args.indexOf('--' + ten); return i >= 0 && args[i + 1] ? args[i + 1] : mm; };
 const CONG = Number(lay('cong', 4100));
 const SO_BOT = Math.max(0, Math.min(3, Number(lay('bot', 0))));
-const MUC_CUOC = Number(lay('cuoc', 1000));
 const CHE_DO = lay('chedo', 'hang');
+const MUC_CUOC = Number(lay('cuoc', CHE_DO === 'anhet' ? 1000 : 10000));
 
 // ---- ví giả: A/B/C/D là người, M1..M3 là máy ----
 const NGUOI = { A: 'An', B: 'Bình', C: 'Cường', D: 'Dũng', M1: 'Máy 1', M2: 'Máy 2', M3: 'Máy 3' };
 const db = {};
 for (const id of Object.keys(NGUOI)) db[id] = { name: NGUOI[id], points: 1000000, ingameName: NGUOI[id] };
 
-const tienlen = taoTienLen({
+const tienlen = taoSanh({
     layNguoi: (id) => db[id] || null,
     congVi: (id, tien) => { db[id].points += tien; },
     thuPhe: (t, ly) => console.log('  💰 nhà cái thu', t.toLocaleString('vi-VN'), '-', ly),
@@ -38,8 +40,9 @@ const tienlen = taoTienLen({
     tenCua: (id) => (db[id] || {}).name || id,
     ghiLog: (d) => console.log('  ' + d),
     giayAfk: 999999,                           // dev: đừng đá ai ra vì "rớt mạng"
-});
-tienlen.quanLy.datCauHinh({ mucCuoc: MUC_CUOC, cheDo: CHE_DO });
+}, [{ cheDo: CHE_DO, mucCuoc: MUC_CUOC }, { cheDo: CHE_DO === 'hang' ? 'anhet' : 'hang', mucCuoc: CHE_DO === 'hang' ? 1000 : 10000 }]);
+/** Phòng máy đánh ngồi = phòng đầu sảnh (phòng dựng theo --chedo / --cuoc). */
+const phongMay = () => tienlen.phong[0];
 
 // ---------------------------------------------------------------- máy đánh giùm (chỉ dev)
 /** Tìm một nước đánh được từ tay bài. Trả mảng lá, hoặc null nếu phải bỏ lượt. */
@@ -78,7 +81,8 @@ function nuocMay(tay, boTruoc) {
 }
 let botBan = 0;
 function botDanh() {
-    const ban = tienlen.phong.ban;
+    const p = phongMay();
+    const ban = p && p.may.phong.ban;
     if (!ban || Date.now() < botBan) return;
     const s = ban.xemChung();
     if (s.trangThai !== 'DANG_CHAY' || !s.van || !s.van.luot) return;
@@ -91,7 +95,7 @@ function botDanh() {
         if (nuoc) ban.danh(id, nuoc); else ban.boLuot(id);
         // ⚠️ máy đánh THẲNG vào máy ván, KHÔNG đi qua xuLy() nên không tự kích thanh toán.
         // Gọi nhịp ngay để ván do máy kết thúc cũng trả tiền liền, không phải đợi tới nhịp sau.
-        tienlen.nhip();
+        phongMay().may.nhip();
     } catch (e) { console.log('  🤖 máy lỗi:', e.message); }
 }
 
@@ -144,22 +148,27 @@ setInterval(() => { tienlen.nhip(); botDanh(); }, 400);
 
 if (require.main === module) {
     // cho máy ngồi sẵn + bấm sẵn sàng luôn, người vào là đủ bàn
+    const maMay = phongMay().ma;
     for (let i = 1; i <= SO_BOT; i++) {
         const id = 'M' + i;
-        tienlen.xuLy({ path: '/ngoi', method: 'POST', body: { ghe: 4 - i }, userId: id }, null, () => { });
-        tienlen.xuLy({ path: '/sansang', method: 'POST', body: {}, userId: id }, null, () => { });
+        tienlen.xuLy({ path: '/' + maMay + '/ngoi', method: 'POST', body: { ghe: 4 - i }, userId: id }, null, () => { });
+        tienlen.xuLy({ path: '/' + maMay + '/sansang', method: 'POST', body: {}, userId: id }, null, () => { });
     }
     may.listen(CONG, () => {
-        const c = tienlen.phong.cauHinh;
         console.log('\n🀄 TIẾN LÊN — bản CHẠY THỬ TẠI MÁY (ví giả, không đụng Dogcoin thật)');
-        console.log('   Cược ' + c.mucCuoc.toLocaleString('vi-VN') + ' · chế độ ' +
-            (c.cheDo === 'hang' ? 'Nhất nhì ba tư' : 'Nhất ăn hết + đếm lá') +
-            ' · ' + SO_BOT + ' máy đánh cùng · ví mỗi người 1.000.000');
+        console.log('   Ví mỗi người 1.000.000 · ' + SO_BOT + ' máy đánh cùng (ngồi phòng ' + maMay + ')');
+        console.log('   Sảnh đang có:');
+        for (const p of tienlen.phong) {
+            const c = p.may.phong.cauHinh;
+            console.log('     ' + p.ma + '  ' + (c.cheDo === 'hang' ? 'Truyền thống 1-2-3-4' : 'Đếm lá').padEnd(22) +
+                ' cược ' + c.mucCuoc.toLocaleString('vi-VN').padStart(8) +
+                ' · vốn tối thiểu ' + p.may.trangThai('A').vonToiThieu.toLocaleString('vi-VN'));
+        }
         console.log('\n   Mở các đường này (mỗi người MỘT cửa sổ ẩn danh riêng):');
         for (const id of ['A', 'B', 'C', 'D'].slice(0, 4 - SO_BOT))
             console.log('     http://127.0.0.1:' + CONG + '/?u=' + id + '   (' + NGUOI[id] + ')');
-        console.log('\n   Ngồi ghế → bấm ✅ SẴN SÀNG. Đủ 2 người sẵn sàng là bài chia liền.');
-        console.log('   Ctrl+C để tắt.\n');
+        console.log('\n   Chọn phòng ở sảnh (hoặc ➕ TẠO PHÒNG MỚI) → bấm ✅ SẴN SÀNG.');
+        console.log('   Đủ 2 người sẵn sàng là bài chia liền. Ctrl+C để tắt.\n');
     });
 }
 module.exports = { may, tienlen, db, nuocMay };

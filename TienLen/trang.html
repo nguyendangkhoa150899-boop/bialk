@@ -32,6 +32,30 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .pill.vang{background:#3a2e10;border-color:#7a5d13;color:var(--gold)}
 .pill.xanh{background:#123021;border-color:#1d6b44;color:#9ff0c4}
 
+/* ---------- SẢNH: danh sách phòng + tạo phòng ---------- */
+.phg{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);
+  border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .12s}
+.phg:hover{border-color:#41506a}
+.phg.khong{opacity:.55;cursor:default}
+.phg.khong:hover{border-color:var(--line)}
+.phg .mo1{font-size:22px;line-height:1}
+.phg .th{flex:1;min-width:0}
+.phg .t1{font-weight:900;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phg .t2{font-size:11.5px;color:var(--muted);margin-top:2px}
+.phg .sn{font-weight:900;font-size:13px;white-space:nowrap}
+.phg .sn i{font-style:normal;color:var(--muted);font-weight:700}
+/* ô chọn mức cược lúc tạo phòng / lúc vote */
+.muc{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.muc button{padding:7px 12px;font-size:13px;background:#2c3444}
+.muc button.chon{background:linear-gradient(180deg,#ffd76a,#e0a41a);color:#3a2500}
+.chedo{display:flex;gap:8px;justify-content:center;margin-top:6px}
+.chedo button{flex:1;max-width:220px;padding:10px;font-size:13px;line-height:1.35}
+.chedo button.chon{background:linear-gradient(180deg,#2fbf7c,#1d8d59);color:#04140c}
+/* 🗳️ thanh vote đổi cược ở bàn */
+#banVote{background:#2b2410;border:1px solid #7a5d13;border-radius:12px;padding:8px 12px;margin-bottom:8px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;font-size:12.5px;font-weight:800}
+#banVote .sd{color:var(--gold)}
+
 /* ---------- thanh trên ---------- */
 .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);
   border-radius:12px;padding:8px 12px;margin-bottom:8px}
@@ -257,6 +281,32 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   bấm tab <b>TIẾN LÊN</b> lần nữa — không cần đăng nhập riêng.</p>
 </div>
 
+<!-- ============ SẢNH: chọn phòng / tạo phòng ============ -->
+<div id="manSanh" hidden>
+  <div class="top">
+    <div><div class="ten">🀄 TIẾN LÊN MIỀN NAM</div><div class="van" id="sanhPhu"></div></div>
+    <div class="sp"></div>
+    <span class="pill vang" id="sanhVi"></span>
+  </div>
+  <div id="sanhDs"></div>
+  <div class="dong" style="margin-top:10px">
+    <button class="b xanh" onclick="moTao()">➕ TẠO PHÒNG MỚI</button>
+  </div>
+  <div class="hop" id="sanhTao" hidden style="margin-top:10px">
+    <div style="font-weight:900;font-size:14px;text-align:center">➕ Tạo phòng mới</div>
+    <div class="mo" style="text-align:center;margin-top:6px">Chọn kiểu chơi</div>
+    <div class="chedo" id="taoCheDo"></div>
+    <div class="mo" style="text-align:center;margin-top:10px" id="taoNhan"></div>
+    <div class="muc" id="taoMuc"></div>
+    <div class="nho" id="taoVon"></div>
+    <div class="dong" style="margin-top:10px">
+      <button class="b xam" onclick="dongTao()">Thôi</button>
+      <button class="b xanh" id="taoNut" onclick="taoPhong()">Tạo phòng</button>
+    </div>
+  </div>
+  <div class="nho">Mỗi lúc chỉ ngồi được một phòng. Vào phòng khác thì tự đứng dậy khỏi phòng cũ.</div>
+</div>
+
 <!-- ============ PHÒNG CHỜ ============ -->
 <div id="manCho" hidden>
   <div class="top">
@@ -272,6 +322,7 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
     <div id="choGhe"></div>
   </div>
   <div class="mo" id="choLuat" style="margin-top:8px;text-align:center"></div>
+  <div class="dong" style="margin-top:10px"><button class="b xam" onclick="raSanh()">↩️ Ra sảnh chọn phòng khác</button></div>
   <div class="nho" id="choVs"></div>
 </div>
 
@@ -319,6 +370,14 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   </div>
 </div>
 
+<!-- ============ 🗳️ VOTE ĐỔI MỨC CƯỢC ============
+     MỘT khối duy nhất, nằm NGOÀI cả màn chờ lẫn màn bàn vì cả hai đều cần. Đặt trong từng
+     màn là sinh ID TRÙNG — thứ đã một lần làm mất tiêu đề trang (xem phép kiểm "id trùng"). -->
+<div id="khoiVote" hidden>
+  <div id="banVote" hidden></div>
+  <div class="dong" style="margin-top:8px" id="banVoteNut"></div>
+</div>
+
 <div id="xoay" hidden><div>
   <div class="ic">📱</div>
   <div class="tieu">Xoay ngang điện thoại để chơi</div>
@@ -330,6 +389,17 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 /* Trang chạy NHÚNG trong web BotDoMin tại /tienlen/ -> API ở /api/tienlen/*, dùng CHUNG
    play_token (cùng origin). Ảnh lá bài dùng chung với Poker: /tienlen/bai/<mã>.webp */
 var GOC_API = '/api/tienlen';
+/* Mã phòng đang mở. null = đang ở SẢNH.
+   Nhớ vào localStorage để tải lại trang không bị văng ra sảnh giữa ván. Máy chủ vẫn là nơi
+   quyết định: nếu phòng tan mất thì /state trả 404 và ta tự quay ra sảnh (xem dongBo). */
+var PHONG = null;
+try { PHONG = localStorage.getItem('tienlen_phong') || null; } catch (e) { }
+function datPhong(ma){
+  PHONG = ma || null;
+  try { if (ma) localStorage.setItem('tienlen_phong', ma); else localStorage.removeItem('tienlen_phong'); } catch (e) { }
+  S = null; SANH = null;
+}
+var SANH = null;            // danh sách phòng (khi đang ở sảnh)
 var S = null;               // trạng thái mới nhất từ máy chủ
 var CHON = [];              // mã lá đang chọn trên tay
 var KIEU_XEP = 'so';        // 'so' = theo số · 'bo' = gom bộ (đôi/ba/tứ đứng trước)
@@ -344,6 +414,8 @@ function bao(t){ var e=$('bao'); e.textContent=t; e.hidden=false; clearTimeout(b
 /* Chỉ đụng DOM khi nội dung ĐỔI THẬT — vẽ lại vô tội vạ mỗi giây là mất chỗ đang bấm. */
 function datHTML(el, html){ if(!el || el.__cu === html) return false; el.__cu = html; el.innerHTML = html; return true; }
 
+/** Đường API của PHÒNG đang mở. Ở sảnh thì gọi api() thẳng. */
+function apiP(duong, than){ return api('/' + PHONG + duong, than); }
 function api(duong, than){
   return fetch(GOC_API + duong, {
     method: than ? 'POST' : 'GET',
@@ -353,7 +425,7 @@ function api(duong, than){
 }
 function goi(duong, than){
   if (BUSY) return; BUSY = true;
-  api(duong, than || {}).then(function(j){ BUSY=false; S=j; ve(); })
+  apiP(duong, than || {}).then(function(j){ BUSY=false; S=j; ve(); })
     .catch(function(e){ BUSY=false; bao('❌ ' + e.message); });
 }
 /* ⚠️ Tách LỖI MẠNG khỏi LỖI VẼ TRANG. Bản đầu gộp chung:
@@ -361,9 +433,14 @@ function goi(duong, than){
    nên chỉ cần ve() ném lỗi là rơi vào catch -> S=null -> trang báo "Bạn chưa đăng nhập",
    giấu mất lỗi thật. Đã dính 19/09 (máy chủ quên gửi trường 'cao' của bộ bài). */
 function dongBo(){
-  api('/state')
-    .then(function(j){ S = j; })
-    .catch(function(){ S = null; })
+  // Đang ở SẢNH thì hỏi danh sách phòng; đang trong phòng thì hỏi trạng thái phòng đó.
+  var xin = PHONG ? apiP('/state') : api('/ds');
+  xin.then(function(j){ if (PHONG) { S = j; SANH = null; } else { SANH = j; S = j; } })
+    .catch(function(e){
+      // Phòng tan mất (máy chủ dọn phòng trống) -> ĐỪNG báo "chưa đăng nhập", quay ra sảnh.
+      if (PHONG && /không còn nữa|Phòng ".*"/.test(e.message || '')){ bao('🏠 ' + e.message); datPhong(null); return; }
+      S = null; SANH = null;
+    })
     .then(function(){
       try { ve(); }
       catch (e){ console.error('[tienlen] lỗi vẽ trang:', e); bao('⚠️ Lỗi vẽ trang: ' + e.message); }
@@ -508,11 +585,80 @@ function theLa(ma, nho, them){
 
 // ============================================================ vẽ
 function ve(){
+  var oSanh = !PHONG;
   $('manChuaVao').hidden = !!S;
-  $('manCho').hidden = !S || !!(S && S.ban);
-  $('manBan').hidden = !(S && S.ban);
+  $('manSanh').hidden = !S || !oSanh;
+  $('manCho').hidden = !S || oSanh || !!(S && S.ban);
+  $('manBan').hidden = !S || oSanh || !(S && S.ban);
+  $('khoiVote').hidden = !(S && !oSanh && S.gheCuaToi >= 0);
   if (!S) return;
-  if (S.ban) veBan(); else veCho();
+  if (oSanh) veSanh(); else if (S.ban) veBan(); else veCho();
+  if (!$('khoiVote').hidden) veVote();
+}
+
+// ---------------------------------------------------------- SẢNH
+function veSanh(){
+  var d = SANH; if (!d || !d.phong) return;
+  $('sanhVi').textContent = d.toi.ten + ' · ' + vnd(d.toi.dogcoin) + ' Dogcoin';
+  $('sanhPhu').textContent = d.phong.length + '/' + d.toiDaPhong + ' phòng đang mở · bấm một phòng để vào';
+  var o = d.phong.map(function(p){
+    var duoc = p.duocNgoi && p.soNgoi < p.toiDa;
+    var vi = !p.duocNgoi ? (p.viSaoKhong || '') : (p.soNgoi >= p.toiDa ? 'Phòng đã đủ 4 người' : '');
+    return '<div class="phg' + (duoc ? '' : ' khong') + '"' + (duoc ? ' onclick="vaoPhong(\'' + p.ma + '\')"' : '') + '>' +
+      '<div class="mo1">' + p.mo + '</div>' +
+      '<div class="th"><div class="t1">' + esc(p.cheDoTen) + ' · ' + vnd(p.mucCuoc) + '</div>' +
+      '<div class="t2">' + (p.cheDo === 'anhet' ? 'mỗi lá ' + vnd(p.mucCuoc) : 'giải nhất ' + vnd(p.mucCuoc) + ' · nhì ' + vnd(p.mucCuoc / 2)) +
+      ' · cần vốn ' + vnd(p.vonToiThieu) + (p.boi ? ' · do ' + esc(p.boi) + ' tạo' : '') +
+      (vi ? ' · ⛔ ' + esc(vi) : '') + '</div></div>' +
+      '<div class="sn">' + p.soNgoi + '<i>/' + p.toiDa + '</i>' +
+      (p.dangDanh ? '<br><i style="font-size:10.5px">đang đánh</i>' : '') + '</div></div>';
+  }).join('');
+  datHTML($('sanhDs'), o || '<div class="mo" style="text-align:center">Chưa có phòng nào — bấm TẠO PHÒNG MỚI</div>');
+  if (!$('sanhTao').hidden) veTao();
+}
+/* --- hộp tạo phòng --- */
+var TAO_CHEDO = 'hang', TAO_MUC = null;
+function moTao(){ $('sanhTao').hidden = false; TAO_MUC = null; veTao(); }
+function dongTao(){ $('sanhTao').hidden = true; }
+function datCheDo(c){ TAO_CHEDO = c; TAO_MUC = null; veTao(); }
+function datMuc(m){ TAO_MUC = m; veTao(); }
+function veTao(){
+  var d = SANH; if (!d) return;
+  var ds = d.mucChoPhep[TAO_CHEDO] || [];
+  datHTML($('taoCheDo'), ['hang','anhet'].map(function(c){
+    return '<button class="b' + (TAO_CHEDO===c?' chon':' xam') + '" onclick="datCheDo(\'' + c + '\')">' +
+      d.moCheDo[c] + ' ' + esc(d.tenCheDo[c]) + '</button>';
+  }).join(''));
+  $('taoNhan').textContent = TAO_CHEDO === 'anhet'
+    ? 'Giá mỗi lá còn trên tay (nhất ăn hết)'
+    : 'Tiền giải NHẤT (nhì ăn đúng một nửa)';
+  datHTML($('taoMuc'), ds.map(function(m){
+    return '<button class="b' + (TAO_MUC===m?' chon':' xam') + '" onclick="datMuc(' + m + ')">' + vnd(m) + '</button>';
+  }).join(''));
+  var von = TAO_MUC ? TAO_MUC * d.heSoVon[TAO_CHEDO] : 0;
+  $('taoVon').textContent = !TAO_MUC ? 'Chọn một mức cược' :
+    ('Cần ' + vnd(von) + ' Dogcoin mới vào được phòng này — bạn đang có ' + vnd(d.toi.dogcoin) +
+      (d.toi.dogcoin >= von ? ' ✅' : ' ⛔ không đủ'));
+  $('taoNut').disabled = !TAO_MUC || d.toi.dogcoin < von;
+}
+function taoPhong(){
+  if (!TAO_MUC) return bao('Chọn mức cược đã');
+  if (BUSY) return; BUSY = true;
+  api('/tao', { cheDo: TAO_CHEDO, mucCuoc: TAO_MUC }).then(function(j){
+    BUSY = false; dongTao();
+    if (j.vaoPhong) { datPhong(j.vaoPhong); dongBo(); } else { SANH = j; ve(); }
+  }).catch(function(e){ BUSY = false; bao('❌ ' + e.message); });
+}
+function vaoPhong(ma){
+  if (BUSY) return; BUSY = true;
+  api('/' + ma + '/ngoi', {}).then(function(j){ BUSY = false; datPhong(ma); S = j; dongBo(); })
+    .catch(function(e){ BUSY = false; bao('❌ ' + e.message); });
+}
+/** Về sảnh. Đang cầm bài giữa ván thì máy chủ chặn — cứ để nó chặn, đừng tự đoán. */
+function raSanh(){
+  if (BUSY) return; BUSY = true;
+  apiP('/roi', {}).then(function(){ BUSY = false; datPhong(null); dongBo(); })
+    .catch(function(e){ BUSY = false; bao('❌ ' + e.message); });
 }
 
 // ---------------------------------------------------------- phòng chờ
@@ -619,6 +765,37 @@ function veBan(){
   if (!cuaToi) LUOT_KEU = '';
 }
 var LUOT_KEU = '';
+
+/* 🗳️ VOTE ĐỔI MỨC CƯỢC — chủ server chốt 20/09: "có thể vote nhau thay đổi ở bàn chơi luôn
+   sau mỗi ván hoặc ngay tại lúc chơi xong rồi ván sau sẽ áp dụng".
+   Quá nửa số người đang ngồi đồng ý là xong. Đang giữa ván thì máy chủ giữ lại, chia ván sau
+   mới áp (xem apVote ở web.js). Đổi cược là đổi luôn VỐN TỐI THIỂU, nên phải nói thẳng con số
+   mới và cảnh báo ai sắp không đủ — không thì có người bị mời khỏi bàn mà không hiểu vì sao. */
+var MO_VOTE = false;
+function moVote(){ MO_VOTE = !MO_VOTE; $('banVoteNut').__cu = ''; ve(); }
+function vote(m){ MO_VOTE = false; $('banVoteNut').__cu = ''; goi('/vote', { mucCuoc: m }); }
+function huyVote(){ goi('/huyvote', {}); }
+function veVote(){
+  var e = $('banVote'), n = $('banVoteNut'), vt = S.vote;
+  if (vt){
+    datHTML(e, '🗳️ <b>' + esc(vt.boi) + '</b> đề nghị đổi cược thành <span class="sd">' + vnd(vt.mucCuoc) + '</span>' +
+      ' — <span class="sd">' + vt.soDong + '/' + vt.can + '</span> phiếu · vốn tối thiểu mới <b>' + vnd(vt.vonMoi) + '</b>' +
+      (S.toi.dogcoin < vt.vonMoi ? ' <span style="color:var(--do)">⛔ bạn không đủ, sẽ bị mời khỏi bàn</span>' : ''));
+    e.hidden = false;
+  } else e.hidden = true;
+
+  var o = '';
+  if (vt && !vt.toiDaDong) o += '<button class="b xanh" onclick="vote(' + vt.mucCuoc + ')">👍 Đồng ý ' + vnd(vt.mucCuoc) + '</button>';
+  if (vt && vt.toiDaDong) o += '<button class="b xam" onclick="huyVote()">↩️ Rút phiếu</button>';
+  o += '<button class="b' + (MO_VOTE ? ' vang' : ' xam') + '" onclick="moVote()">🗳️ Đổi mức cược</button>';
+  if (MO_VOTE){
+    o += '<div class="muc" style="width:100%">' + (S.mucChoPhep || []).map(function(m){
+      if (m === S.cauHinh.mucCuoc) return '<button class="b xam" disabled>' + vnd(m) + ' (đang chơi)</button>';
+      return '<button class="b' + (vt && vt.mucCuoc === m ? ' chon' : ' xam') + '" onclick="vote(' + m + ')">' + vnd(m) + '</button>';
+    }).join('') + '</div>';
+  }
+  datHTML(n, o);
+}
 /* Ghi lại kết quả ván vừa xong để ván sau còn khoe "ván trước ai nhất, mình ăn thua nhiêu".
    Làm ở client vì máy chủ xoá sạch ván cũ khi chia ván mới — thêm trường ở máy chủ chỉ tổ
    phải giữ thêm trạng thái, mà thứ này mất khi tải lại trang cũng không sao. */

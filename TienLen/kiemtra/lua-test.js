@@ -5,6 +5,8 @@
 'use strict';
 const { taoTienLen, VON_HE_SO } = require('../web.js');
 const B = require('../bai.js');
+const V = require('../van.js');
+const CUOC = 1000;                              // 1 cược = 1.000 cho dễ nhẩm
 
 const SO_VAN = Number(process.argv[2]) || 300;
 let P = 0, F = 0; const loi = [];
@@ -21,7 +23,7 @@ function dung(cfg) {
         laAdmin: (id) => id === 'A', tenCua: (id) => id, ghiLog: (d) => log.push(d),
         giayXemKet: 0,
     });
-    tl.quanLy.datCauHinh(Object.assign({ mucCuoc: 1000, giaLa: 500 }, cfg));
+    tl.quanLy.datCauHinh(Object.assign({ mucCuoc: CUOC }, cfg));
     return { tl, vi, log, phe: () => phe };
 }
 function goi(tl, duong, than, toi) {
@@ -55,7 +57,8 @@ function moiNuoc(tay, truoc) {
 }
 
 // ---------------------------------------------------------------- chạy
-const thongKe = { van: 0, nuoc: 0, chat: 0, thoi: 0, toiTrang: 0, bay: 0, moiRa: 0, tanBan: 0, anhet: 0, hang: 0 };
+const thongKe = { van: 0, nuoc: 0, chat: 0, thoi: 0, toiTrang: 0, bay: 0, moiRa: 0, tanBan: 0, anhet: 0, hang: 0,
+    cong: 0, vanCoCong: 0, congHang: 0, congAnhet: 0, nhotHang: 0, thuaNhatHang: 0, thuaNhatAnhet: 0 };
 let banIdx = 0;
 while (thongKe.van < SO_VAN) {
     banIdx++;
@@ -151,21 +154,48 @@ while (thongKe.van < SO_VAN) {
         ok('tổng tiền ván = −phế', tongTien === -kq.pheTong, tongTien + ' vs ' + kq.pheTong);
         ok('phế chỉ cắt người ăn dương', Object.keys(kq.phe).every(id => kq.phe[id] === 0 || kq.tien[id] + kq.phe[id] > 0));
         ok('phế = 10% phần ăn (làm tròn xuống)', Object.keys(kq.phe).every(id => kq.phe[id] === 0 || kq.phe[id] === Math.floor((kq.tien[id] + kq.phe[id]) * 0.1)));
-        if (cheDo === 'hang') {
-            ok('hạng: nhất ăn của bét', kq.chiTiet[kq.hang[0]].cuoc === 1000 && kq.chiTiet[kq.hang[n - 1]].cuoc === -1000 || !!kq.toiTrang, JSON.stringify(kq.chiTiet));
-            if (n === 3) ok('3 người: nhì hoà cược', kq.chiTiet[kq.hang[1]].cuoc === 0 || !!kq.toiTrang);
+        const bangGia = V.BANG_CUOC[cheDo];
+        const cong = new Set(kq.cong || []);
+        thongKe.cong += cong.size;
+        if (cong.size) thongKe.vanCoCong++;
+        if (cheDo === 'hang') thongKe.congHang += cong.size; else thongKe.congAnhet += cong.size;
+        for (const id of nguoi) { const k = cheDo === 'hang' ? 'thuaNhatHang' : 'thuaNhatAnhet'; thongKe[k] = Math.min(thongKe[k], kq.tien[id] || 0); }
+        if (!kq.toiTrang) {
+            ok('người về NHẤT không bao giờ bị cóng', !cong.has(kq.hang[0]), kq.hang[0]);
+            ok('người cóng bị xếp xuống cuối bảng hạng',
+                [...cong].every(id => kq.hang.indexOf(id) >= n - cong.size), JSON.stringify(kq.hang) + ' cóng ' + JSON.stringify([...cong]));
+        }
+        if (cheDo === 'hang' && !kq.toiTrang) {
+            const vt = V.BANG_VI_TRI[n];
+            let lech = 0;
+            for (let i = 1; i < n; i++) {                       // bỏ qua nhất: nhất ôm phần dôi
+                const id = kq.hang[i];
+                const mong = Math.round((cong.has(id) ? vt[n - 1] * V.CONG_NHAN : vt[i]) * CUOC);
+                ok('hạng: ăn thua theo đúng bảng vị trí', kq.chiTiet[id].cuoc === mong,
+                    id + ' hạng ' + (i + 1) + (cong.has(id) ? ' (cóng)' : '') + ': ' + kq.chiTiet[id].cuoc + ' vs ' + mong);
+                lech += kq.chiTiet[id].cuoc;
+            }
+            ok('hạng: khoản cược của cả bàn cộng lại bằng 0', kq.chiTiet[kq.hang[0]].cuoc + lech === 0,
+                JSON.stringify(nguoi.map(id => kq.chiTiet[id].cuoc)));
         } else if (!kq.toiTrang) {
             const nhat = kq.hang[0];
-            ok('anhet: nhất ăn cược của mọi người', kq.chiTiet[nhat].cuoc === 1000 * (n - 1));
-            for (const id of nguoi) if (id !== nhat) ok('anhet: đếm lá = số lá × 500', kq.chiTiet[id].demLa === -kq.chiTiet[id].la * 500, JSON.stringify(kq.chiTiet[id]));
-            ok('anhet: nhất không còn lá', (v.tay[nhat] || []).length === 0);
+            ok('đếm lá: KHÔNG còn khoản cược nền', nguoi.every(id => kq.chiTiet[id].cuoc === 0), JSON.stringify(nguoi.map(id => kq.chiTiet[id].cuoc)));
+            for (const id of nguoi) {
+                if (id === nhat) continue;
+                const mong = -kq.chiTiet[id].la * CUOC * (cong.has(id) ? V.CONG_NHAN : 1);
+                ok('đếm lá: mỗi lá 1 cược, cóng thì gấp đôi', kq.chiTiet[id].demLa === mong, id + ': ' + kq.chiTiet[id].demLa + ' vs ' + mong);
+            }
+            ok('đếm lá: nhất không còn lá', (v.tay[nhat] || []).length === 0);
         }
         for (const id of nguoi) { if (kq.chiTiet[id].thoi) thongKe.thoi++; }
-        // thối 2 đúng luật
+        // NHỐT (thối) đúng bảng giá: heo TỪNG LÁ + hàng, cóng thì gấp đôi
         if (!kq.toiTrang) for (const id of nguoi) {
             if (id === kq.hang[0]) continue;
-            const h = B.demHeo(v.tay[id] || []); const mong = -(h.den + h.do * 2) * 1000;
-            ok('thối 2 đúng mức (đen 1, đỏ 2)', kq.chiTiet[id].thoi === mong, id + ' ' + kq.chiTiet[id].thoi + ' vs ' + mong);
+            const muc = B.doTay(v.tay[id] || []).muc;
+            const mong = -Math.round(V.cuocCuaMuc(muc, bangGia) * CUOC * (cong.has(id) ? V.CONG_NHAN : 1));
+            ok('nhốt đúng bảng giá của chế độ', kq.chiTiet[id].thoi === mong,
+                id + ' [' + muc.join(' ') + '] ' + kq.chiTiet[id].thoi + ' vs ' + mong);
+            if (muc.length) thongKe.nhotHang += muc.filter(k => k === 'tu' || k === 'thong3' || k === 'thong4').length;
         }
         // ví thật khớp kết quả
         const tongViSau = nguoi.reduce((a, id) => a + vi[id], 0);
@@ -191,21 +221,46 @@ while (thongKe.van < SO_VAN) {
     }
     // ---- hết vốn thì bị mời ra ----
     if (tl.phong.ban) {
-        const nan = nguoi[1]; vi[nan] = 100;
+        const nan = nguoi[1];
         const truoc = tl.phong.ban.xemChung().nguoi.length;
-        // kết thúc ván hiện tại bằng nhịp AFK
-        for (let k = 0; k < 400 && tl.phong.ban && tl.phong.ban._trong.van && !tl.phong.ban._trong.van.ketQua; k++) { tl.phong.ban.roiMang(tl.phong.ban._trong.van.luot); tl.phong.ban.nhip(); }
-        tl.nhip(); tl.nhip();
+        // Vét ví rồi đẩy bàn chạy tới lúc chia ván kế. Phải VÉT LẠI mỗi vòng vì ván đang chạy
+        // vẫn trả tiền — về nhất ăn hơn 30 cược là ví đủ trở lại, không bị mời ra, rồi phép
+        // kiểm đỏ oan. Đặt số vòng có trần để hỏng thật thì vẫn hỏng chứ không treo.
+        let daMoi = false;
+        for (let vong = 0; vong < 6 && !daMoi && tl.phong.ban; vong++) {
+            vi[nan] = 100;
+            for (let k = 0; k < 400 && tl.phong.ban && tl.phong.ban._trong.van && !tl.phong.ban._trong.van.ketQua; k++) {
+                tl.phong.ban.roiMang(tl.phong.ban._trong.van.luot); tl.phong.ban.nhip();
+            }
+            vi[nan] = 100;
+            tl.nhip(); tl.nhip();        // nhịp 1 đặt mốc xem kết quả, nhịp 2 gọi vanKe() -> mời ra
+            daMoi = tl.phong.ghe.indexOf(nan) < 0;
+        }
         const sau = tl.phong.ban ? tl.phong.ban.xemChung().nguoi.length : 0;
-        ok('người hết vốn bị mời ra trước ván kế', sau === truoc - 1 || (truoc === 2 && !tl.phong.ban), truoc + ' -> ' + sau);
+        // Chạy vài ván nên người KHÁC cũng có thể tụt dưới vốn và bị mời ra cùng — đừng đòi
+        // đúng một người. Điều phải đúng là: kẻ bị vét ví KHÔNG còn ngồi đó nữa, và ai còn
+        // ngồi thì đều đủ vốn.
+        ok('người hết vốn bị mời ra trước ván kế', daMoi || !tl.phong.ban, truoc + ' -> ' + sau);
+        const von = tl.phong.cauHinh.mucCuoc * (VON_HE_SO[tl.phong.cauHinh.cheDo] || 30);
+        ok('ai còn ngồi lại đều đủ vốn tối thiểu',
+            tl.phong.ghe.filter(Boolean).every(id => vi[id] >= von),
+            JSON.stringify(tl.phong.ghe.filter(Boolean).map(id => id + '=' + vi[id])) + ' cần ' + von);
         ok('có log mời ra', log.some(d => /Mời .* rời bàn/.test(d)));
         if (!tl.phong.ban) thongKe.tanBan++; thongKe.moiRa++;
         ok('ghế của người bị mời trống lại', tl.phong.ghe.indexOf(nan) < 0);
     }
 }
 
-console.log('\n📊 ' + thongKe.van + ' ván · ' + thongKe.nuoc + ' nước · ' + thongKe.chat + ' lần chặt · ' + thongKe.thoi + ' lượt thối 2 · ' +
-    thongKe.toiTrang + ' tới trắng · hạng ' + thongKe.hang + ' / ăn hết ' + thongKe.anhet + ' · mời ra ' + thongKe.moiRa + ' · tan bàn ' + thongKe.tanBan);
+console.log('\n📊 ' + thongKe.van + ' ván · ' + thongKe.nuoc + ' nước · ' + thongKe.chat + ' lần chặt · ' + thongKe.thoi + ' lượt nhốt · ' +
+    thongKe.nhotHang + ' lần nhốt HÀNG · ' + thongKe.toiTrang + ' tới trắng');
+console.log('   truyền thống ' + thongKe.hang + ' ván / đếm lá ' + thongKe.anhet + ' ván · mời ra ' + thongKe.moiRa + ' · tan bàn ' + thongKe.tanBan);
+console.log('🧊 CÓNG: ' + thongKe.cong + ' lượt người, ở ' + thongKe.vanCoCong + '/' + thongKe.van + ' ván (' +
+    Math.round(thongKe.vanCoCong / Math.max(1, thongKe.van) * 100) + '% số ván)' +
+    '  ·  truyền thống ' + thongKe.congHang + ' lượt / đếm lá ' + thongKe.congAnhet + ' lượt');
+const quy = (c, that) => Math.round(-c / CUOC) + ' cược = ' + Math.round(-c / CUOC * that).toLocaleString('vi-VN') + ' Dogcoin';
+console.log('💸 THUA ĐẬM NHẤT MỘT VÁN (quy ra giá bàn thật):');
+console.log('   truyền thống (1 cược 50.000): ' + quy(thongKe.thuaNhatHang, 50000) + '   · vốn tối thiểu 1.500.000');
+console.log('   đếm lá      (1 cược  5.000): ' + quy(thongKe.thuaNhatAnhet, 5000) + '   · vốn tối thiểu   150.000');
 if (loi.length) { console.log('\n❌ LỖI (' + F + '):'); loi.forEach(l => console.log('  ' + l)); }
 console.log('\n🐛 LÙA BUG TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

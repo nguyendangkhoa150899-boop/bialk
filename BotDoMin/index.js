@@ -3880,7 +3880,11 @@ function setTienlenOn(on) {
     return { ok: true, on: tienlenOnCfg() };
 }
 const TIENLEN_DIR = process.env.TIENLEN_DIR || require('path').join(__dirname, '..', 'TienLen');
-const tienlenMod = require(require('path').join(TIENLEN_DIR, 'web.js')).taoTienLen({
+// 20/09: KHÔNG còn một bàn duy nhất nữa. taoSanh() dựng cả SẢNH — hai phòng có sẵn (truyền
+// thống 10.000 / đếm lá 1.000) cộng phòng người chơi tự tạo. Đường API thành
+//   /api/tienlen/ds            danh sách phòng
+//   /api/tienlen/<ma>/...      trong một phòng
+const tienlenMod = require(require('path').join(TIENLEN_DIR, 'web.js')).taoSanh({
     layNguoi: (id) => (dbCache && dbCache[id] && typeof dbCache[id] === 'object') ? dbCache[id] : null,
     laAdmin: (id) => tienlenAdminCfg().includes(String(id)),
     tenCua: (id) => (getUserData(id).name || id),

@@ -540,15 +540,26 @@ function startPanel(ctx) {
                     if (!ctx.setTienlenOn) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     return sendJSON(res, 200, ctx.setTienlenOn(!!body.on));
                 }
+                // 🀄 Tiến Lên giờ có NHIỀU PHÒNG -> đường phải kèm mã phòng:
+                //    /api/tienlen/<ma>/cauhinh | /batdau | /giaitan      · /api/tienlen/tao
                 if (path.startsWith('/api/tienlen/') && ctx.tienlenQuanLy) {
                     const Q = ctx.tienlenQuanLy;
-                    const r = path === '/api/tienlen/cauhinh' ? Q.datCauHinh(body || {})
-                        : path === '/api/tienlen/batdau' ? Q.batDau()
-                            : path === '/api/tienlen/giaitan' ? Q.giaiTan()
-                                : null;
-                    if (r === null) return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r, tomTat: Q.tomTat() });
+                    if (path === '/api/tienlen/tao') {
+                        const r = Q.taoPhong(String(body.cheDo || ''), body.mucCuoc, null);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        ctx.writeLog('ADMIN', `[PANEL TIẾN LÊN] Mở phòng ${r.ma} · ${body.cheDo} · cược ${body.mucCuoc}`);
+                        return sendJSON(res, 200, { ok: true, ma: r.ma, tomTat: Q.tomTat() });
+                    }
+                    const m = path.match(/^\/api\/tienlen\/([A-Za-z0-9_-]+)\/(cauhinh|batdau|giaitan)$/);
+                    if (m) {
+                        const q = Q.cua(m[1]);
+                        if (!q) return sendJSON(res, 404, { ok: false, error: 'Phòng ' + m[1] + ' không còn nữa' });
+                        const r = m[2] === 'cauhinh' ? q.datCauHinh(body || {})
+                            : m[2] === 'batdau' ? q.batDau() : q.giaiTan();
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, { ok: true, ...r, tomTat: Q.tomTat() });
+                    }
+                    return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
                 }
                 if (path === '/api/tx/notitest') {
                     if (!ctx.txNotiTest) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
@@ -1809,30 +1820,20 @@ const HTML = `<!DOCTYPE html>
           <label style="display:flex;align-items:center;gap:8px;white-space:nowrap"><input id="tlOn" type="checkbox" onchange="tlBat(this.checked)"> <b>Hiện tab 🀄 TIẾN LÊN</b> trên web người chơi</label>
           <span class="muted" id="tlOnNow" style="font-size:12px"></span>
         </div>
-        <div class="note" style="margin-top:8px">Bàn <b>2–4 người</b>, mỗi người 13 lá, <b>chạy liên tục</b> (xong ván chia tiếp). Người chơi vào <b>web cược → tab TIẾN LÊN → bấm ghế trống → ✅ SẴN SÀNG</b>; ai cũng sẵn sàng là vào ván, <b>không cần admin bấm gì</b>. Muốn ngồi phải <b>đã liên kết</b> và có <b>vốn ≥ 30× mức cược</b> — ai tụt dưới mức đó bị mời khỏi bàn trước ván kế. Nhà cái ăn <b>10% tiền thắng</b> mỗi ván.</div>
+        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab TIẾN LÊN</b>, thấy <b>SẢNH</b> liệt kê các phòng. Bấm một phòng để ngồi, hoặc <b>➕ TẠO PHÒNG MỚI</b> rồi chọn kiểu chơi + mức cược. Đủ 2–4 người cùng bấm ✅ SẴN SÀNG là vào ván, <b>không cần admin bấm gì</b>. Ở bàn, người chơi <b>vote đổi mức cược</b> — quá nửa đồng ý thì ván sau áp dụng. Nhà cái ăn <b>10% tiền thắng</b> mỗi ván.
+        <br>Thang cược: <b>Đếm lá</b> 1.000–6.000 (mỗi lá) · <b>Truyền thống 1-2-3-4</b> 10.000–100.000 (giải nhất, nhì ăn một nửa).
+        <br>Vốn tối thiểu: đếm lá <b>120×</b> mức cược, truyền thống <b>30×</b> — khác nhau vì thua đậm nhất một ván ở đếm lá nặng hơn nhiều (cóng + nhốt hàng đều nhân đôi).</div>
+
         <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap">
-          <div style="flex:1;min-width:150px"><label>Mức cược mỗi ván</label><input class="mini-in" id="tlCuoc" type="number" min="100" max="1000000" step="100"></div>
-          <div style="flex:1;min-width:160px"><label>Chế độ tính tiền</label>
-            <select id="tlCheDo">
-              <option value="hang">Nhất nhì ba tư</option>
-              <option value="anhet">Nhất ăn hết + đếm lá</option>
+          <div style="flex:1;min-width:160px"><label>Mở thêm phòng — kiểu chơi</label>
+            <select id="tlTaoCheDo">
+              <option value="hang">🏅 Truyền thống 1-2-3-4</option>
+              <option value="anhet">🔢 Đếm lá</option>
             </select></div>
-          <div style="flex:1;min-width:150px"><label>Đơn giá mỗi lá còn lại <span class="muted">(chỉ dùng cho "nhất ăn hết")</span></label><input class="mini-in" id="tlGiaLa" type="number" min="0" max="1000000" step="100"></div>
-          <button class="btn-green" onclick="tlLuu()">💾 Lưu cấu hình</button>
+          <div style="flex:1;min-width:150px"><label>Mức cược</label><input class="mini-in" id="tlTaoMuc" type="number" min="1000" max="1000000" step="1000" value="10000"></div>
+          <button class="btn-green" onclick="tlTaoPhong()">➕ Mở phòng</button>
         </div>
-        <div class="row" style="margin-top:10px;gap:14px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlBaBich"> 3♠ đi đầu ván đầu</label>
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlToiTrang"> Tới trắng</label>
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlChatHeo"> Chặt heo có thưởng</label>
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlThoiHeo"> Thối 2</label>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn-green" id="tlBatDau" onclick="tlBatDau()">▶️ Mở bàn</button>
-          <button class="btn-red" onclick="tlGiaiTan()">🧹 Giải tán</button>
-        </div>
-        <div class="muted" id="tlNhac" style="font-size:12px;margin-top:6px"></div>
-        <div id="tlGhe" style="margin-top:10px"></div>
-        <div id="tlBan" style="margin-top:10px"></div>
+        <div id="tlDs" style="margin-top:12px"></div>
       </div>
       <div class="card">
         <h3>🔑 Admin Tiến Lên</h3>
@@ -2419,54 +2420,56 @@ function pokerSaveAdmin(){
 // Vẽ từ STATE.tienlen (tomTat) mỗi 3 giây. Mọi ô nhập đều theo khuôn "đang sửa thì đừng ghi đè"
 // (document.activeElement) — không thì vòng làm mới 3 giây cướp chữ đang gõ.
 function tlFill(){
-  const T=STATE.tienlen, on=!!STATE.tienlenOn;
+  const DS=STATE.tienlen, on=!!STATE.tienlenOn;
   const ck=document.getElementById('tlOn'); if(ck&&document.activeElement!==ck) ck.checked=on;
   const now=document.getElementById('tlOnNow'); if(now) now.textContent=on?'Đang HIỆN — người chơi thấy tab TIẾN LÊN':'Đang ẨN — người chơi không thấy tab';
   const ai=document.getElementById('tlAdminIds'); if(ai&&document.activeElement!==ai&&!ai.value) ai.value=(STATE.tienlenAdmin||[]).join(', ');
-  if(!T){ const g=document.getElementById('tlGhe'); if(g) g.innerHTML='<div class="muted">Bot chưa nạp mô-đun Tiến Lên.</div>'; return; }
-  const C=T.cauHinh||{};
-  const dat=(id,v)=>{const e=document.getElementById(id); if(e&&document.activeElement!==e&&String(e.value)!==String(v)) e.value=v;};
-  dat('tlCuoc',C.mucCuoc); dat('tlGiaLa',C.giaLa); dat('tlCheDo',C.cheDo);
-  [['tlBaBich','baBichOn'],['tlToiTrang','toiTrangOn'],['tlChatHeo','chatHeoOn'],['tlThoiHeo','thoiHeoOn']].forEach(([id,k])=>{
-    const e=document.getElementById(id); if(e&&document.activeElement!==e) e.checked=!!C[k];
-  });
-  const chay=T.ban&&T.ban.trangThai==='DANG_CHAY';
-  const bd=document.getElementById('tlBatDau'); if(bd){ bd.textContent='▶️ Mở bàn ('+T.soNgoi+' người)'; bd.disabled=chay||T.soNgoi<T.toiThieu; }
-  const nh=document.getElementById('tlNhac');
-  if(nh) nh.textContent=T.cheDoTen+' · cược '+(C.mucCuoc||0).toLocaleString('vi-VN')+
-    (C.cheDo==='anhet'?(' · đếm lá '+(C.giaLa||0).toLocaleString('vi-VN')+'/lá'):'')+
-    ' · vốn tối thiểu '+(T.vonToiThieu||0).toLocaleString('vi-VN')+' · phế '+Math.round((T.pheTram||0)*100)+'%';
-  const ghe=document.getElementById('tlGhe');
-  if(ghe){
-    let h='<div style="font-weight:700;margin-bottom:6px">Ghế ('+T.soNgoi+'/'+T.toiDa+')</div><div class="row" style="flex-wrap:wrap;gap:6px">';
-    T.ghe.forEach((x,i)=>{ h+='<span style="padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:'+(x?'var(--card2)':'transparent')+';font-size:12px">'+(i+1)+'. '+(x?('<b>'+esc(x.ten)+'</b>'):'<span class="muted">trống</span>')+'</span>'; });
-    ghe.innerHTML=h+'</div>';
-  }
-  const ban=document.getElementById('tlBan');
-  if(ban){
-    if(!T.ban){ ban.innerHTML='<div class="muted">Chưa có bàn nào đang chạy.</div>'; }
-    else{
-      let h='<div style="font-weight:700;margin-bottom:6px">Bàn: ván #'+T.ban.soVan+' · '+(chay?'đang đánh':'nghỉ giữa ván')+'</div>';
-      h+='<div class="row" style="flex-wrap:wrap;gap:6px">'+T.ban.nguoi.map(p=>'<span style="padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);font-size:12px">'+esc(p.ten)+' · '+p.soLa+' lá · <b style="color:'+(p.tong>=0?'#3dd68c':'#ff6b6b')+'">'+(p.tong>=0?'+':'')+p.tong.toLocaleString('vi-VN')+'</b>'+(p.afk?' 📵':'')+'</span>').join('')+'</div>';
+  const ds=document.getElementById('tlDs'); if(!ds) return;
+  if(!DS||!DS.length){ ds.innerHTML='<div class="muted">'+(DS?'Chưa có phòng nào đang mở.':'Bot chưa nạp mô-đun Tiến Lên.')+'</div>'; return; }
+  // Vẽ lại cả khối mỗi 3 giây thì cướp mất ô đang gõ -> chỉ vẽ khi KHÔNG ai đang gõ trong đó.
+  const dangGo=document.activeElement&&ds.contains(document.activeElement);
+  if(dangGo) return;
+  ds.innerHTML=DS.map(T=>{
+    const C=T.cauHinh||{}, chay=T.ban&&T.ban.trangThai==='DANG_CHAY';
+    let h='<div class="card" style="margin-bottom:10px;padding:12px">';
+    h+='<div style="font-weight:800;font-size:14px">'+esc(T.ten||T.ma)+' <span class="muted" style="font-weight:400;font-size:12px">('+T.ma+')</span></div>';
+    h+='<div class="muted" style="font-size:12px;margin-top:2px">'+esc(T.cheDoTen)+' · cược '+(C.mucCuoc||0).toLocaleString('vi-VN')+
+       ' · vốn tối thiểu '+(T.vonToiThieu||0).toLocaleString('vi-VN')+' · phế '+Math.round((T.pheTram||0)*100)+'%</div>';
+    h+='<div class="row" style="margin-top:8px;gap:12px;flex-wrap:wrap">'+
+       [['baBichOn','3♠ đi đầu'],['toiTrangOn','Tới trắng'],['chatHeoOn','Chặt có thưởng'],['thoiHeoOn','Nhốt (thối)']].map(([k,t])=>
+         '<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" data-tl="'+T.ma+'" data-k="'+k+'"'+(C[k]?' checked':'')+'> '+t+'</label>').join('')+
+       '<input class="mini-in" style="width:120px" type="number" min="100" max="1000000" step="1000" data-tl="'+T.ma+'" data-k="mucCuoc" value="'+(C.mucCuoc||0)+'">'+
+       '<button class="btn-green" onclick="tlLuu(\''+T.ma+'\')">💾 Lưu</button>'+
+       '<button class="btn-green" onclick="tlBatDau(\''+T.ma+'\')"'+((chay||T.soNgoi<T.toiThieu)?' disabled':'')+'>▶️ Mở bàn ('+T.soNgoi+')</button>'+
+       '<button class="btn-red" onclick="tlGiaiTan(\''+T.ma+'\')">🧹 Giải tán</button></div>';
+    h+='<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">'+T.ghe.map((x,k)=>
+       '<span style="padding:5px 9px;border-radius:9px;border:1px solid var(--line);background:'+(x?'var(--card2)':'transparent')+';font-size:12px">'+
+       (k+1)+'. '+(x?('<b>'+esc(x.ten)+'</b>'):'<span class="muted">trống</span>')+'</span>').join('')+'</div>';
+    if(T.ban){
+      h+='<div style="margin-top:8px;font-size:12px"><b>Ván #'+T.ban.soVan+'</b> · '+(chay?'đang đánh':'nghỉ giữa ván')+'</div>';
+      h+='<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:4px">'+T.ban.nguoi.map(p=>
+         '<span style="padding:5px 9px;border-radius:9px;border:1px solid var(--line);background:var(--card2);font-size:12px">'+
+         esc(p.ten)+' · '+p.soLa+' lá · <b style="color:'+(p.tong>=0?'#3dd68c':'#ff6b6b')+'">'+(p.tong>=0?'+':'')+p.tong.toLocaleString('vi-VN')+'</b>'+(p.afk?' 📵':'')+'</span>').join('')+'</div>';
       const nk=T.ban.nhatKy||[];
-      if(nk.length) h+='<div class="muted" style="font-size:12px;margin-top:8px">Ván gần đây: '+nk.slice(0,5).map(x=>'#'+x.van+' '+Object.keys(x.tien).map(id=>(x.tien[id]>=0?'+':'')+x.tien[id].toLocaleString('vi-VN')).join('/').slice(0,40)).join(' · ')+'</div>';
-      ban.innerHTML=h;
+      if(nk.length) h+='<div class="muted" style="font-size:11.5px;margin-top:6px">Ván gần đây: '+nk.slice(0,5).map(x=>'#'+x.van+' '+Object.keys(x.tien).map(id=>(x.tien[id]>=0?'+':'')+x.tien[id].toLocaleString('vi-VN')).join('/').slice(0,40)).join(' · ')+'</div>';
     }
-  }
+    return h+'</div>';
+  }).join('');
 }
 function tlBat(on){ api('/api/tienlen/on',{on:on}).then(j=>{toast(j.on?'🀄 Đã HIỆN tab Tiến Lên':'🀄 Đã ẨN tab Tiến Lên');refresh();}).catch(e=>toast('❌ '+e.message)); }
-function tlLuu(){
-  const o={ mucCuoc:parseInt(document.getElementById('tlCuoc').value)||0,
-            giaLa:parseInt(document.getElementById('tlGiaLa').value)||0,
-            cheDo:document.getElementById('tlCheDo').value,
-            baBichOn:document.getElementById('tlBaBich').checked,
-            toiTrangOn:document.getElementById('tlToiTrang').checked,
-            chatHeoOn:document.getElementById('tlChatHeo').checked,
-            thoiHeoOn:document.getElementById('tlThoiHeo').checked };
-  api('/api/tienlen/cauhinh',o).then(j=>{toast('💾 Đã lưu cấu hình bàn Tiến Lên');refresh();}).catch(e=>toast('❌ '+e.message));
+function tlTaoPhong(){
+  const o={cheDo:document.getElementById('tlTaoCheDo').value, mucCuoc:parseInt(document.getElementById('tlTaoMuc').value)||0};
+  api('/api/tienlen/tao',o).then(j=>{toast('➕ Đã mở phòng '+j.ma);refresh();}).catch(e=>toast('❌ '+e.message));
 }
-function tlBatDau(){ api('/api/tienlen/batdau',{}).then(j=>{toast('▶️ Đã mở bàn '+j.soNguoi+' người');refresh();}).catch(e=>toast('❌ '+e.message)); }
-function tlGiaiTan(){ api('/api/tienlen/giaitan',{}).then(()=>{toast('🧹 Đã giải tán bàn');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function tlLuu(ma){
+  const o={};
+  document.querySelectorAll('[data-tl="'+ma+'"]').forEach(e=>{
+    o[e.dataset.k] = e.type==='checkbox' ? e.checked : (parseInt(e.value)||0);
+  });
+  api('/api/tienlen/'+ma+'/cauhinh',o).then(()=>{toast('💾 Đã lưu cấu hình phòng '+ma);refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function tlBatDau(ma){ api('/api/tienlen/'+ma+'/batdau',{}).then(j=>{toast('▶️ Đã mở bàn '+j.soNguoi+' người');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function tlGiaiTan(ma){ api('/api/tienlen/'+ma+'/giaitan',{}).then(()=>{toast('🧹 Đã giải tán bàn '+ma);refresh();}).catch(e=>toast('❌ '+e.message)); }
 function tlLuuAdmin(){
   const ids=(document.getElementById('tlAdminIds').value||'').trim();
   api('/api/tienlen/admin',{ids:ids}).then(j=>{toast('🀄 Admin Tiến Lên: '+(j.ids.length?j.ids.join(', '):'(trống)'));refresh();}).catch(e=>toast('❌ '+e.message));

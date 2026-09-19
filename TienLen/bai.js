@@ -231,8 +231,77 @@ function demHeo(tay) {
     return { den, do: do_, tong: den + do_ };
 }
 
+// ---------------------------------------------------------------------------
+//  🧾 TỔ HỢP ĐÁNG TIỀN — dùng cho hai việc TRẢ TIỀN, cùng một bảng giá:
+//    · BỊ CHẶT : bộ vừa bị chặt đáng bao nhiêu -> người bị chặt trả cho người chặt
+//    · BỊ NHỐT : hết ván còn gì trên tay -> trả cho người về nhất (dân gian gọi "thối")
+//  Luật gốc (babichgame.gitbook.io) chỉ tính 5 thứ: heo đen · heo đỏ · 3 đôi thông ·
+//  tứ quý · 4 đôi thông. Sảnh, đôi thường, rác... KHÔNG tính tiền.
+//
+//  ⚠️ HAI CHỖ TỰ QUYẾT, ghi rõ ra đây để sau khỏi cãi:
+//   1. HEO LUÔN TÍNH TỪNG LÁ, kể cả khi 4 con 2 thành tứ quý. Bốn con 2 = 2 heo đen +
+//      2 heo đỏ (đắt hơn tính là một tứ quý). Đúng tinh thần "thối 2": kẹt heo là chết.
+//      Vì heo bị tách ra trước nên hàng (3/4 đôi thông, tứ quý) không bao giờ đè lên heo
+//      — sảnh và đôi thông vốn đã cấm heo, chỉ tứ quý heo là đụng, và nó đã thành heo rồi.
+//   2. Lá đã dùng cho một hàng thì KHÔNG dùng lại cho hàng khác. Nhặt hàng ĐẮT TRƯỚC
+//      (4 đôi thông > tứ quý ≥ 3 đôi thông — thứ tự này đúng ở CẢ HAI bảng giá), nhặt
+//      được thì bỏ mấy lá đó ra rồi nhặt tiếp. Tham lam đơn giản, không tìm cách tối ưu:
+//      luật gốc không nói gì, mà đơn giản thì người chơi còn tự nhẩm lại được.
+// ---------------------------------------------------------------------------
+/** 4 đôi thông / tứ quý / 3 đôi thông nằm trong mớ lá (không heo). Trả mảng lá, hoặc null. */
+function timHang(la, kieu) {
+    const theoSo = {};
+    for (const ma of la) { const l = doc(ma); (theoSo[l.so] = theoSo[l.so] || []).push(ma); }
+    if (kieu === 'tu') {
+        for (const so of SO) if (so !== HEO && (theoSo[so] || []).length >= 4) return theoSo[so].slice(0, 4);
+        return null;
+    }
+    const canDoi = kieu === 'thong4' ? 4 : 3;                  // mấy đôi liên tiếp
+    for (let i = 0; i + canDoi <= SO.length; i++) {
+        const day = SO.slice(i, i + canDoi);
+        if (day.includes(HEO)) continue;                        // đôi thông cấm heo
+        if (!day.every(so => (theoSo[so] || []).length >= 2)) continue;
+        let ra = [];
+        for (const so of day) ra = ra.concat(theoSo[so].slice(0, 2));
+        return ra;
+    }
+    return null;
+}
+/**
+ * Mọi thứ đáng tiền trong mớ lá. Trả { muc: [...], heo: {den, do} } với muc là mảng
+ * khoá giá: 'heoDen' | 'heoDo' | 'thong3' | 'tu' | 'thong4' (một khoá lặp lại nếu có
+ * nhiều cái). Nhân với bảng giá của chế độ đang chơi là ra tiền.
+ */
+function doTay(la) {
+    const tay = (la || []).slice();
+    const muc = [];
+    // ---- 1. heo tách ra trước, tính TỪNG LÁ ----
+    const h = demHeo(tay);
+    for (let i = 0; i < h.den; i++) muc.push('heoDen');
+    for (let i = 0; i < h.do; i++) muc.push('heoDo');
+    // ---- 2. phần còn lại: nhặt hàng đắt trước, lá đã dùng thì loại ra ----
+    let con = tay.filter(x => !laHeo(x));
+    for (const kieu of ['thong4', 'tu', 'thong3']) {
+        for (;;) {
+            const duoc = timHang(con, kieu);
+            if (!duoc) break;
+            muc.push(kieu);
+            con = con.filter(x => !duoc.includes(x));
+        }
+    }
+    return { muc, heo: { den: h.den, do: h.do } };
+}
+/** Bộ VỪA BỊ CHẶT đáng những khoá giá nào. Bộ thường (sảnh, đôi, rác không heo) = rỗng. */
+function doBoBiChat(bo) {
+    if (!bo) return [];
+    if (bo.kieu === 'thong') return bo.dai >= 4 ? ['thong4'] : (bo.dai === 3 ? ['thong3'] : []);
+    if (bo.kieu === 'tu') return bo.la.every(laHeo) ? doTay(bo.la).muc : ['tu'];
+    return doTay(bo.la).muc.filter(k => k === 'heoDen' || k === 'heoDo');
+}
+
 module.exports = {
     BO52, SO, CHAT, CHAT_KY_TU, HEO, HANG_SO, HANG_CHAT, TOI_TRANG,
     doc, tri, laHeo, ten1, tenBai, xao, boMoi, chia, xepBai,
     nhanDang, soBo, chatDuoc, danhDuoc, moTaKieu, toiTrang, demHeo,
+    timHang, doTay, doBoBiChat,
 };

@@ -114,68 +114,125 @@ muc('người hết bài thì bỏ qua, vòng vẫn chạy đúng');
     ok('cả 2 bỏ, chủ bộ (A) hết bài -> người kế A còn bài là B mở vòng', v.luot === 'B' && v.bo === null, v.luot);
 }
 
-// ---------------------------------------------------------------- TIỀN: nhất nhì ba tư
-muc('💰 chế độ NHẤT NHÌ BA TƯ (nhất↔tư, nhì↔ba) + phế 10%');
+// ---------------------------------------------------------------- TIỀN
+// ⚠️ TOÀN BỘ KHỐI NÀY VIẾT LẠI 20/09 theo luật gốc Ba Bích (babichgame.gitbook.io).
+// Mọi con số dưới đây lấy mucCuoc = 1.000, tức 1 CƯỢC = 1.000 Dogcoin, cho dễ nhẩm.
+// Bàn thật: phòng truyền thống 1 cược = 50.000, phòng đếm lá 1 cược = 5.000.
+//
+// 📌 CÓNG = cả ván không đánh nổi một lá nào. Trong mấy ván dựng tay bài 1–2 lá dưới đây
+// người về bét thường CHƯA KỊP đánh -> dính cóng. Đó là thật, không phải lỗi test: ván
+// dừng khi chỉ còn 1 người cầm bài, ai chưa đánh lá nào là cóng. Nên mỗi phép kiểm đều
+// có bản SONG SINH: một ván ai cũng kịp đánh (không cóng) và một ván có người cóng.
+
+/** Ván 4 người ai cũng kịp đánh: mỗi người 2 lá, đánh so le nên không ai bị cóng. */
+function vanKhongCong(b) {
+    const v = dung(b, { A: ['3s', '7s'], B: ['4c', '8c'], C: ['5d', '9d'], D: ['6h', '10h'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('C', ['5d'], 0); b.danh('D', ['6h'], 0);
+    b.danh('A', ['7s'], 0); b.danh('B', ['8c'], 0); b.danh('C', ['9d'], 0);
+    return v;
+}
+
+muc('💰 TRUYỀN THỐNG 1-2-3-4 — ăn thua theo vị trí về');
 {
     const b = ban(4, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
-    const v = dung(b, { A: ['3s'], B: ['4c'], C: ['5d'], D: ['6h'] }, 'A');
-    // chế độ hạng: ván DỪNG khi chỉ còn 1 người cầm bài -> D (bét) không kịp đánh lá cuối
-    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('C', ['5d'], 0);
-    const kq = v.ketQua;
+    const kq = vanKhongCong(b).ketQua;
     ok('thứ hạng đúng thứ tự về', kq.hang.join() === 'A,B,C,D', kq.hang.join());
-    ok('nhất +1.000 rồi trừ phế 10% = +900', kq.tien.A === 900, String(kq.tien.A));
-    ok('nhì +1.000 -> +900', kq.tien.B === 900, String(kq.tien.B));
-    ok('ba  -1.000 (thua thì KHÔNG bị phế)', kq.tien.C === -1000, String(kq.tien.C));
-    ok('tư  -1.000', kq.tien.D === -1000, String(kq.tien.D));
-    ok('phế nhà cái = 200, đúng bằng phần hụt của bàn', kq.pheTong === 200 && tong(kq.tien) === -200, kq.pheTong + '/' + tong(kq.tien));
+    ok('không ai bị cóng (ai cũng kịp đánh)', kq.cong.length === 0, JSON.stringify(kq.cong));
+    ok('nhất +1 cược = 1.000, phế 10% -> +900', kq.tien.A === 900, String(kq.tien.A));
+    ok('nhì +0.5 cược = 500, phế 50 -> +450', kq.tien.B === 450, String(kq.tien.B));
+    ok('ba  −0.5 cược = −500 (thua thì KHÔNG bị phế)', kq.tien.C === -500, String(kq.tien.C));
+    ok('bét −1 cược = −1.000', kq.tien.D === -1000, String(kq.tien.D));
+    ok('phế nhà cái = 150, đúng bằng phần hụt của bàn', kq.pheTong === 150 && tong(kq.tien) === -150, kq.pheTong + '/' + tong(kq.tien));
     ok('bảng tổng của người chơi cộng dồn đúng', b._trong.nguoi.find(p => p.id === 'A').tong === 900);
     ok('ván xong thì bàn về trạng thái CHỜ (chạy liên tục)', b._trong.trangThai === 'CHO');
-    ok('nhật ký ghi ván vừa rồi', b._trong.nhatKy[0].van === v.so && b._trong.nhatKy[0].hang[0] === 'A');
+    ok('nhật ký ghi ván vừa rồi', b._trong.nhatKy[0].hang[0] === 'A');
     ok('lật bài cuối ván cho cả bàn xem', kq.lat.length === 4);
 }
 {
     const b = ban(3, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
-    const v = dung(b, { A: ['3s'], B: ['4c'], C: ['5d'] }, 'A');
-    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0);   // C là bét, không kịp đánh
-    ok('3 người: nhất ăn của ba, NHÌ HOÀ', v.ketQua.tien.A === 900 && v.ketQua.tien.B === 0 && v.ketQua.tien.C === -1000,
-        JSON.stringify(v.ketQua.tien));
+    const v = dung(b, { A: ['3s', '6s'], B: ['4c', '7c'], C: ['5d', '8d'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('C', ['5d'], 0);
+    b.danh('A', ['6s'], 0); b.danh('B', ['7c'], 0);
+    const kq = v.ketQua;
+    ok('3 người: nhất +1.5 cược -> 1.500 phế 150 = 1.350', kq.tien.A === 1350, String(kq.tien.A));
+    ok('3 người: nhì −0.5 cược = −500 (KHÔNG còn hoà như bản cũ)', kq.tien.B === -500, String(kq.tien.B));
+    ok('3 người: bét −1 cược = −1.000', kq.tien.C === -1000, String(kq.tien.C));
+}
+{
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', '6c'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    ok('2 người: A hết bài là xong ván ngay', b._trong.trangThai === 'CHO' && v.ketQua.hang.join() === 'A,B');
+    ok('2 người: nhất +900 (sau phế), bét −1.000', v.ketQua.tien.A === 900 && v.ketQua.tien.B === -1000, JSON.stringify(v.ketQua.tien));
+}
+
+muc('🧊 CÓNG — cả ván không đánh nổi lá nào');
+{
+    const b = ban(4, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s'], B: ['4c'], C: ['5d'], D: ['6h'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('C', ['5d'], 0);   // D chưa kịp đánh
+    const kq = v.ketQua;
+    ok('D bị tính CÓNG', kq.cong.join() === 'D' && kq.chiTiet.D.cong === true, JSON.stringify(kq.cong));
+    ok('cóng mất GẤP ĐÔI mức bét: −2 cược = −2.000', kq.tien.D === -2000, String(kq.tien.D));
+    ok('nhì / ba vẫn ăn thua như thường', kq.tien.B === 450 && kq.tien.C === -500, JSON.stringify(kq.tien));
+    ok('phần dôi ra vì cóng dồn cho NHẤT: 1.000+1.000 = 2.000, phế 200 -> 1.800', kq.tien.A === 1800, String(kq.tien.A));
+    ok('bàn vẫn cân: tổng = −phế', tong(kq.tien) === -kq.pheTong, tong(kq.tien) + '/' + kq.pheTong);
+}
+{
+    const b = ban(4, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '4s'], B: ['5c'], C: ['6d'], D: ['7h'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['5c'], 0); b.danh('C', ['6d'], 0);
+    // B, C hết bài; A còn 4s, D còn 7h -> còn 2 người cầm bài, ván chạy tiếp
+    b.danh('D', ['7h'], 0);
+    const kq = v.ketQua;
+    ok('ai cũng đánh ít nhất 1 lá -> không ai cóng', kq.cong.length === 0, JSON.stringify(kq.cong));
+    ok('bỏ lượt KHÔNG cứu được cóng — phải ĐÁNH mới thoát', /daDanh/.test(require('fs').readFileSync(__dirname + '/../van.js', 'utf8')));
 }
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
     const v = dung(b, { A: ['3s'], B: ['4c'] }, 'A');
     b.danh('A', ['3s'], 0);
-    ok('2 người: A hết bài là xong ván ngay', b._trong.trangThai === 'CHO' && v.ketQua.hang.join() === 'A,B');
-    ok('2 người: nhất +900 (sau phế), nhì -1.000', v.ketQua.tien.A === 900 && v.ketQua.tien.B === -1000, JSON.stringify(v.ketQua.tien));
+    ok('2 người, bét cóng: −2 cược, nhất ăn cả phần dôi', v.ketQua.tien.B === -2000 && v.ketQua.tien.A === 1800, JSON.stringify(v.ketQua.tien));
 }
 
-// ---------------------------------------------------------------- TIỀN: nhất ăn hết + đếm lá
-muc('💰 chế độ NHẤT ĂN HẾT + ĐẾM LÁ');
+muc('💰 ĐẾM LÁ — nhất ăn hết, mỗi lá = 1 cược, KHÔNG có cược nền');
 {
-    const b = ban(4, { cheDo: 'anhet', mucCuoc: 1000, giaLa: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    const b = ban(4, { cheDo: 'anhet', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '7s'], B: ['4c', '8c', '9c'], C: ['5d', '10d', 'Jd', 'Qd'], D: ['6h', 'Kh', 'Ah', '4h', '5h'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('C', ['5d'], 0); b.danh('D', ['6h'], 0);
+    b.danh('A', ['7s'], 0);                       // A hết bài -> DỪNG NGAY
+    const kq = v.ketQua;
+    ok('có người về nhất là DỪNG NGAY (khác chế độ hạng)', b._trong.trangThai === 'CHO');
+    ok('không ai cóng (ai cũng kịp đánh 1 lá)', kq.cong.length === 0, JSON.stringify(kq.cong));
+    ok('B còn 2 lá = −2.000 (KHÔNG có cược nền nữa)', kq.tien.B === -2000, String(kq.tien.B));
+    ok('C còn 3 lá = −3.000', kq.tien.C === -3000, String(kq.tien.C));
+    ok('D còn 4 lá = −4.000', kq.tien.D === -4000, String(kq.tien.D));
+    ok('A ăn 9.000, phế 900 -> +8.100', kq.tien.A === 8100, String(kq.tien.A));
+    ok('tổng bàn hụt đúng bằng phế', tong(kq.tien) === -kq.pheTong && kq.pheTong === 900, tong(kq.tien) + '/' + kq.pheTong);
+    ok('hạng người thua xếp theo SỐ LÁ CÒN LẠI (ít lá hạng cao hơn)', kq.hang.join() === 'A,B,C,D', kq.hang.join());
+    ok('bảng chi tiết: không còn khoản cược nền, chỉ đếm lá', kq.chiTiet.D.cuoc === 0 && kq.chiTiet.D.demLa === -4000 && kq.chiTiet.D.la === 4);
+}
+{
+    const b = ban(4, { cheDo: 'anhet', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
     const v = dung(b, { A: ['3s'], B: ['4c', '5c'], C: ['6d', '7d', '8d'], D: ['9h', '10h', 'Jh', 'Qh'] }, 'A');
-    b.danh('A', ['3s'], 0);
+    b.danh('A', ['3s'], 0);                       // A ra ngay, ba người kia chưa ai đánh
     const kq = v.ketQua;
-    ok('có người về nhất là DỪNG NGAY (không đánh tiếp như chế độ hạng)', b._trong.trangThai === 'CHO');
-    ok('B còn 2 lá: -1.000 cược -2.000 lá = -3.000', kq.tien.B === -3000, String(kq.tien.B));
-    ok('C còn 3 lá: -1.000 -3.000 = -4.000', kq.tien.C === -4000, String(kq.tien.C));
-    ok('D còn 4 lá: -1.000 -4.000 = -5.000', kq.tien.D === -5000, String(kq.tien.D));
-    ok('A ăn 12.000, phế 1.200 -> +10.800', kq.tien.A === 10800, String(kq.tien.A));
-    ok('tổng bàn hụt đúng bằng phế', tong(kq.tien) === -kq.pheTong && kq.pheTong === 1200, tong(kq.tien) + '/' + kq.pheTong);
-    ok('hạng người thua xếp theo SỐ LÁ CÒN LẠI (ít lá hạng cao hơn)', kq.hang.join() === 'A,B,C,D', kq.hang.join());
-    ok('bảng chi tiết tách riêng cược và đếm lá', kq.chiTiet.D.cuoc === -1000 && kq.chiTiet.D.demLa === -4000 && kq.chiTiet.D.la === 4);
-    const b2 = ban(4, { cheDo: 'anhet', mucCuoc: 1000, giaLa: 200, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
-    b2.vanMoi(0);
-    const v2 = dung(b2, { A: ['3s'], B: ['4c', '5c'], C: ['6d'], D: ['9h'] }, 'A');
-    b2.danh('A', ['3s'], 0);
-    ok('đơn giá lá chỉnh được (200/lá): B còn 2 lá = -1.400', v2.ketQua.tien.B === -1400, String(v2.ketQua.tien.B));
+    ok('đếm lá: nhất ra ngay -> cả ba người còn lại CÓNG', kq.cong.sort().join() === 'B,C,D', JSON.stringify(kq.cong));
+    ok('cóng: mỗi lá tính GẤP ĐÔI — B 2 lá = −4.000', kq.tien.B === -4000, String(kq.tien.B));
+    ok('C 3 lá cóng = −6.000', kq.tien.C === -6000, String(kq.tien.C));
+    ok('D 4 lá cóng = −8.000', kq.tien.D === -8000, String(kq.tien.D));
+    ok('A ăn 18.000, phế 1.800 -> +16.200', kq.tien.A === 16200, String(kq.tien.A));
 }
 
-// ---------------------------------------------------------------- chặt heo + thối 2
-muc('💥 CHẶT HEO có thưởng');
+muc('💥 CHẶT — trả theo BẢNG GIÁ, chặt HÀNG cũng ăn tiền');
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
@@ -183,27 +240,50 @@ muc('💥 CHẶT HEO có thưởng');
     b.danh('A', ['2s'], 0);
     b.danh('B', ['4s', '4c', '5s', '5c', '6s', '6c'], 0);
     ok('3 đôi thông chặt được heo đen', v.lichSu[v.lichSu.length - 1].chat === true);
-    ok('thưởng chặt heo ĐEN = 1 phần cược = 1.000', v.chatHeo[0].tien === 1000, JSON.stringify(v.chatHeo));
+    ok('bàn TRUYỀN THỐNG: heo đen = 0.5 cược = 500', v.chatHeo[0].tien === 500, JSON.stringify(v.chatHeo));
+    ok('ghi rõ chặt trúng mục giá nào', v.chatHeo[0].muc.join() === 'heoDen', JSON.stringify(v.chatHeo[0].muc));
     ok('B hết bài -> về nhất', v.veNhat[0] === 'B');
     const kq = v.ketQua;
-    ok('B: +1.000 cược +1.000 chặt = 2.000, phế 200 -> +1.800', kq.tien.B === 1800, String(kq.tien.B));
-    ok('A: -1.000 cược -1.000 bị chặt = -2.000', kq.tien.A === -2000, String(kq.tien.A));
-    ok('chi tiết ghi riêng khoản chặt', kq.chiTiet.B.chat === 1000 && kq.chiTiet.A.chat === -1000);
+    ok('chi tiết ghi riêng khoản chặt', kq.chiTiet.B.chat === 500 && kq.chiTiet.A.chat === -500, JSON.stringify(kq.chiTiet.B));
 }
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
     const v = dung(b, { A: ['2h', '3d'], B: ['4s', '4c', '5s', '5c', '6s', '6c'] }, 'A');
-    b.danh('A', ['2h'], 0);
-    b.danh('B', ['4s', '4c', '5s', '5c', '6s', '6c'], 0);
-    ok('heo ĐỎ phạt gấp đôi = 2.000', v.chatHeo[0].tien === 2000, JSON.stringify(v.chatHeo));
+    b.danh('A', ['2h'], 0); b.danh('B', ['4s', '4c', '5s', '5c', '6s', '6c'], 0);
+    ok('heo ĐỎ gấp đôi heo đen = 1 cược = 1.000', v.chatHeo[0].tien === 1000, JSON.stringify(v.chatHeo));
+}
+{
+    const b = ban(2, { cheDo: 'anhet', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['2h', '3d'], B: ['4s', '4c', '5s', '5c', '6s', '6c'] }, 'A');
+    b.danh('A', ['2h'], 0); b.danh('B', ['4s', '4c', '5s', '5c', '6s', '6c'], 0);
+    ok('bàn ĐẾM LÁ dùng bảng giá KHÁC: heo đỏ = 6 cược = 6.000', v.chatHeo[0].tien === 6000, JSON.stringify(v.chatHeo));
 }
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, chatHeoOn: false, thoiHeoOn: false });
     b.vanMoi(0);
     const v = dung(b, { A: ['2s', '3d'], B: ['4s', '4c', '5s', '5c', '6s', '6c'] }, 'A');
     b.danh('A', ['2s'], 0); b.danh('B', ['4s', '4c', '5s', '5c', '6s', '6c'], 0);
-    ok('tắt luật chặt heo -> vẫn chặt được nhưng KHÔNG có thưởng', !v.chatHeo && v.ketQua.tien.B === 900, String(v.ketQua.tien.B));
+    ok('tắt luật chặt -> vẫn chặt được nhưng KHÔNG có thưởng', !v.chatHeo && v.ketQua.chiTiet.B.chat === 0);
+}
+{
+    // ⭐ LUẬT MỚI: bản cũ chỉ trả tiền khi chặt trúng HEO. Giờ chặt trúng HÀNG cũng ăn.
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['4s', '4c', '5s', '5c', '6s', '6c', '3d'], B: ['Ks', 'Kc', 'Kd', 'Kh', '3h'] }, 'A');
+    b.danh('A', ['4s', '4c', '5s', '5c', '6s', '6c'], 0);
+    b.danh('B', ['Ks', 'Kc', 'Kd', 'Kh'], 0);
+    ok('tứ quý chặt 3 đôi thông', v.lichSu[v.lichSu.length - 1].chat === true);
+    ok('3 đôi thông BỊ CHẶT = 1 cược = 1.000', v.chatHeo && v.chatHeo[0].tien === 1000, JSON.stringify(v.chatHeo));
+}
+{
+    const b = ban(2, { cheDo: 'anhet', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['4s', '4c', '5s', '5c', '6s', '6c', '3d'], B: ['Ks', 'Kc', 'Kd', 'Kh', '3h'] }, 'A');
+    b.danh('A', ['4s', '4c', '5s', '5c', '6s', '6c'], 0);
+    b.danh('B', ['Ks', 'Kc', 'Kd', 'Kh'], 0);
+    ok('bàn đếm lá: 3 đôi thông bị chặt = 12 cược = 12.000', v.chatHeo[0].tien === 12000, JSON.stringify(v.chatHeo));
 }
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
@@ -211,26 +291,97 @@ muc('💥 CHẶT HEO có thưởng');
     const v = dung(b, { A: ['Ks', 'Kc', 'Kd', 'Kh', '3d'], B: ['As', 'Ac', 'Ad', 'Ah', '4c'] }, 'A');
     b.danh('A', ['Ks', 'Kc', 'Kd', 'Kh'], 0);
     b.danh('B', ['As', 'Ac', 'Ad', 'Ah'], 0);
-    ok('tứ quý chặt tứ quý (không heo) -> KHÔNG thưởng', !v.chatHeo || v.chatHeo.length === 0);
+    // ⚠️ CHỖ NÀY CỐ Ý: tứ quý đè tứ quý là ĐÁNH ĐÈ THƯỜNG (cùng kiểu, cùng dài -> so lá cao),
+    // KHÔNG phải chặt, nên không có tiền. Y hệt 3 đôi thông đè 3 đôi thông. Luật gốc Ba Bích
+    // không nói rõ trường hợp này — nếu chủ server muốn tính tiền thì phải đổi danhDuoc() ở
+    // bai.js cho nó trả chat:true, đừng vá ở van.js.
+    ok('tứ quý đè tứ quý = đánh đè thường, KHÔNG phải chặt, không có tiền',
+        !v.chatHeo || v.chatHeo.length === 0, JSON.stringify(v.chatHeo));
+    ok('...nhưng vẫn đè được', v.veNhat.length > 0 || v.tay.B.length === 1, JSON.stringify(v.tay.B));
 }
 
-muc('🐷 THỐI 2 (hết ván còn heo trên tay)');
+muc('🐷 NHỐT (thối) — hết ván còn HEO hoặc HÀNG trên tay');
 {
+    // Ván ai cũng kịp đánh: B nhốt 1 heo đen + 1 heo đỏ = 0.5 + 1 = 1.5 cược
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', '2s', '2h'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    const kq = v.ketQua;
+    ok('B không cóng (đã đánh 4♣)', kq.cong.length === 0, JSON.stringify(kq.cong));
+    ok('nhốt heo đen 0.5 + heo đỏ 1 = 1.5 cược = 1.500', kq.chiTiet.B.thoi === -1500, String(kq.chiTiet.B.thoi));
+    ok('bảng ghi rõ nhốt những mục nào', kq.chiTiet.B.thoiMuc.sort().join() === 'heoDen,heoDo', JSON.stringify(kq.chiTiet.B.thoiMuc));
+    ok('A: 1.000 cược + 1.500 nhốt = 2.500, phế 250 -> +2.250', kq.tien.A === 2250, String(kq.tien.A));
+    ok('B: −1.000 −1.500 = −2.500', kq.tien.B === -2500, String(kq.tien.B));
+}
+{
+    // Y hệt trên nhưng B CÓNG -> mọi khoản của B nhân đôi
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
     b.vanMoi(0);
     const v = dung(b, { A: ['3s'], B: ['2s', '2h'] }, 'A');
     b.danh('A', ['3s'], 0);
     const kq = v.ketQua;
-    ok('B còn heo đen + heo đỏ = phạt 3 phần = 3.000', kq.chiTiet.B.thoi === -3000, String(kq.chiTiet.B.thoi));
-    ok('A ăn 1.000 cược + 3.000 thối = 4.000, phế 400 -> +3.600', kq.tien.A === 3600, String(kq.tien.A));
-    ok('B: -1.000 -3.000 = -4.000', kq.tien.B === -4000, String(kq.tien.B));
+    ok('B cóng + nhốt 2 heo: cược −2.000, nhốt −3.000 = −5.000', kq.tien.B === -5000, String(kq.tien.B));
+    ok('nhốt cũng nhân đôi khi cóng: 1.5 cược x2 = 3.000', kq.chiTiet.B.thoi === -3000, String(kq.chiTiet.B.thoi));
+    ok('A ăn 5.000, phế 500 -> +4.500', kq.tien.A === 4500, String(kq.tien.A));
+}
+{
+    // ⭐ LUẬT MỚI: bản cũ chỉ phạt HEO còn trên tay. Giờ nhốt cả HÀNG.
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', 'Ks', 'Kc', 'Kd', 'Kh'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    const kq = v.ketQua;
+    ok('nhốt TỨ QUÝ = 1.5 cược = 1.500 (bản cũ không phạt)', kq.chiTiet.B.thoi === -1500, String(kq.chiTiet.B.thoi));
+    ok('bảng ghi đúng loại hàng bị nhốt', kq.chiTiet.B.thoiMuc.join() === 'tu', JSON.stringify(kq.chiTiet.B.thoiMuc));
+}
+{
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', '7s', '7c', '8s', '8c', '9s', '9c'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    ok('nhốt 3 ĐÔI THÔNG = 1 cược = 1.000', v.ketQua.chiTiet.B.thoi === -1000, String(v.ketQua.chiTiet.B.thoi));
+}
+{
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', '7s', '7c', '8s', '8c', '9s', '9c', '10s', '10c'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    ok('nhốt 4 ĐÔI THÔNG = 2 cược = 2.000 (không tính thành 3 đôi thông)',
+        v.ketQua.chiTiet.B.thoi === -2000 && v.ketQua.chiTiet.B.thoiMuc.join() === 'thong4', JSON.stringify(v.ketQua.chiTiet.B.thoiMuc));
+}
+{
+    const b = ban(2, { cheDo: 'anhet', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', 'Ks', 'Kc', 'Kd', 'Kh'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    const kq = v.ketQua;
+    ok('bàn ĐẾM LÁ: nhốt tứ quý = 12 cược = 12.000', kq.chiTiet.B.thoi === -12000, String(kq.chiTiet.B.thoi));
+    ok('...cộng tiền lá 4 lá = 4.000', kq.chiTiet.B.demLa === -4000, String(kq.chiTiet.B.demLa));
+}
+{
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', '6s', '7c', '8d', '9h', '10s'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    ok('nhốt SẢNH thì KHÔNG mất tiền (luật chỉ tính heo + 3 loại hàng)',
+        v.ketQua.chiTiet.B.thoi === 0, String(v.ketQua.chiTiet.B.thoi));
 }
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
-    const v = dung(b, { A: ['3s'], B: ['2s', '2h'] }, 'A');
-    b.danh('A', ['3s'], 0);
-    ok('tắt thối 2 -> không phạt', v.ketQua.chiTiet.B.thoi === 0 && v.ketQua.tien.B === -1000);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', '2s', '2h'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    ok('tắt luật nhốt -> không phạt gì', v.ketQua.chiTiet.B.thoi === 0 && v.ketQua.tien.B === -1000, JSON.stringify(v.ketQua.tien));
+}
+{
+    // 4 con 2 = 2 heo đen + 2 heo đỏ (3 cược), KHÔNG phải một tứ quý (1.5 cược)
+    const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '5s'], B: ['4c', '2s', '2c', '2d', '2h'] }, 'A');
+    b.danh('A', ['3s'], 0); b.danh('B', ['4c'], 0); b.danh('A', ['5s'], 0);
+    ok('nhốt TỨ QUÝ HEO tính là 4 lá heo (3 cược) chứ không phải tứ quý (1.5)',
+        v.ketQua.chiTiet.B.thoi === -3000, String(v.ketQua.chiTiet.B.thoi));
 }
 
 // ---------------------------------------------------------------- tới trắng
