@@ -128,7 +128,16 @@ while (thongKe.van < SO_VAN) {
                     ok('tay bớt đúng số lá', (v.tay[id] || []).length === soLaTruoc - mo.length);
                     const vl = v.vuaLam[id]; ok('có nhãn vừa làm', vl && vl.viec === 'danh');
                     if (vl && vl.chat) thongKe.chat++;
-                    ok('chongBai có nước vừa đánh', v.chongBai.length > 0 && v.chongBai[v.chongBai.length - 1].la.join() === B.xepBai(mo).join());
+                    // Đánh xong có HAI ngả: (1) vòng còn chạy -> nước vừa đánh nằm cuối chồng bài;
+                    // (2) mọi người còn lại đã bỏ hoặc hết bài -> ĂN LUÔN VÒNG, bàn dọn sạch và
+                    // chính mình mở vòng mới. Ngả (2) chỉ xuất hiện sau khi sửa luật bỏ lượt
+                    // (bỏ là nghỉ hết vòng) — trước đó daBo bị xoá mỗi nước nên không bao giờ gặp.
+                    if (v.bo && v.boCua === id)
+                        ok('chongBai có nước vừa đánh', v.chongBai.length > 0 && v.chongBai[v.chongBai.length - 1].la.join() === B.xepBai(mo).join());
+                    else if (!v.ketQua)
+                        ok('đánh xong ăn luôn vòng -> bàn dọn sạch, tự mở vòng mới',
+                            v.bo === null && v.chongBai.length === 0 && v.daBo.size === 0,
+                            JSON.stringify({ bo: !!v.bo, chong: v.chongBai.length, daBo: [...v.daBo] }));
                 }
             } else {
                 r = goi(tl, '/boluot', {}, id);

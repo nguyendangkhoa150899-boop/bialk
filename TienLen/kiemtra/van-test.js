@@ -105,6 +105,69 @@ muc('đánh bài + bỏ lượt + hết vòng');
     ok('lịch sử ghi lại nước đi', v.lichSu.length >= 5 && v.lichSu[0].id === 'A');
 }
 
+muc('🚫 BỎ LƯỢT LÀ NGHỈ HẾT VÒNG (chủ server chỉ ca này 20/09)');
+{
+    // Ca chủ server đưa nguyên văn:
+    //    vòng 1: A đánh · B BỎ   · C đánh · D đánh
+    //    vòng 2: A đánh · B NGHỈ · C đánh · D bỏ
+    //    vòng 3: A đánh · B NGHỈ · C đánh · D NGHỈ
+    //    "tới khi nào bỏ hết thì mới được vô vòng lại"
+    // Bản cũ có dòng daBo.clear() trong danh() nên cứ ai đánh một lá là B được đánh lại ngay.
+    const b = ban(4, { toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    // Mỗi người chừa DƯ một lá nhỏ: hết ba vòng mà ai cũng còn bài thì vòng mới thật sự
+    // kết thúc vì CẢ BÀN BỎ, chứ không phải vì có người đi hết bài (hai chuyện khác nhau).
+    const v = dung(b, {
+        A: ['3s', '7s', 'Js', '3c'], B: ['4c', '8c', 'Qc', '4d'],
+        C: ['5d', '9d', 'Kd', '5c'], D: ['6h', '10h', 'Ah', '6c'],
+    }, 'A');
+
+    // ---------- vòng 1 ----------
+    b.danh('A', ['3s'], 0);
+    ok('vòng 1: A đánh -> tới B', v.luot === 'B', v.luot);
+    b.boLuot('B', 0);
+    ok('vòng 1: B BỎ -> tới C', v.luot === 'C' && v.daBo.has('B'), v.luot);
+    b.danh('C', ['5d'], 0);
+    ok('vòng 1: C đánh -> tới D (B vẫn nằm trong sổ bỏ)', v.luot === 'D' && v.daBo.has('B'),
+        v.luot + ' · daBo=' + [...v.daBo].join());
+    b.danh('D', ['6h'], 0);
+
+    // ---------- vòng 2: phải NHẢY QUA B ----------
+    ok('vòng 2: quay lại A, KHÔNG phải B', v.luot === 'A', v.luot);
+    let loi = ''; try { b.danh('B', ['8c'], 0); } catch (e) { loi = e.message; }
+    ok('⭐ B đã bỏ thì KHÔNG được đánh nữa dù có người đánh tiếp', /Chưa tới lượt/.test(loi), loi || '(B đánh được — SAI LUẬT)');
+    b.danh('A', ['7s'], 0);
+    ok('⭐ A đánh xong NHẢY QUA B, tới thẳng C', v.luot === 'C', v.luot);
+    b.danh('C', ['9d'], 0);
+    ok('vòng 2: tới D', v.luot === 'D', v.luot);
+    b.boLuot('D', 0);
+    ok('vòng 2: D bỏ -> sổ bỏ có cả B và D', v.daBo.has('B') && v.daBo.has('D'), [...v.daBo].join());
+
+    // ---------- vòng 3: nhảy qua cả B lẫn D ----------
+    ok('vòng 3: tới A', v.luot === 'A', v.luot);
+    b.danh('A', ['Js'], 0);
+    ok('⭐ nhảy qua B, tới C', v.luot === 'C', v.luot);
+    b.danh('C', ['Kd'], 0);
+    ok('⭐ nhảy qua D, quay về A', v.luot === 'A', v.luot);
+    ok('B và D vẫn đang nghỉ', v.daBo.has('B') && v.daBo.has('D'), [...v.daBo].join());
+
+    // ---------- A bỏ nốt -> cả vòng bỏ hết -> C ăn vòng, sổ bỏ XOÁ SẠCH ----------
+    b.boLuot('A', 0);
+    ok('⭐ cả vòng bỏ hết -> C (chủ bộ) ăn vòng và mở vòng mới', v.luot === 'C' && v.bo === null, v.luot);
+    ok('⭐ "tới khi nào bỏ hết thì mới được vô vòng lại" — sổ bỏ xoá sạch',
+        v.daBo.size === 0, [...v.daBo].join());
+    ok('bàn dọn sạch bài vòng cũ', v.chongBai.length === 0);
+}
+{
+    // 2 người: B bỏ là A ăn vòng luôn, không phải chờ thêm
+    const b = ban(2, { toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
+    b.vanMoi(0);
+    const v = dung(b, { A: ['3s', '7s'], B: ['4c', '8c'] }, 'A');
+    b.danh('A', ['3s'], 0);
+    b.boLuot('B', 0);
+    ok('2 người: B bỏ -> A ăn vòng, mở vòng mới ngay', v.luot === 'A' && v.bo === null && v.daBo.size === 0, v.luot);
+}
+
 muc('người hết bài thì bỏ qua, vòng vẫn chạy đúng');
 {
     const b = ban(3, { toiTrangOn: false, baBichOn: false });

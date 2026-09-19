@@ -24,6 +24,12 @@ muc('cú pháp + cấu trúc trang');
         /id="manChuaVao"/.test(HTML) && /id="manCho"/.test(HTML) && /id="manBan"/.test(HTML));
     ok('gọi API đúng gốc /api/tienlen', /GOC_API = '\/api\/tienlen'/.test(JS));
     ok('dùng chung play_token của web cược', /localStorage\.getItem\('play_token'\)/.test(JS));
+    // 'giaLa' đã bỏ hẳn ở máy chủ (mỗi lá = ĐÚNG 1 cược). Trang còn đọc là ra undefined, in
+    // thành "đếm lá 0/lá" / "· lá 0" — người chơi tưởng bàn không tính tiền lá. Đã sót đúng
+    // vậy tới lúc soi lại trước khi deploy 20/09.
+    ok('KHÔNG còn đọc trường giaLa đã bỏ', !/giaLa/.test(JS));
+    ok('phòng đếm lá nói rõ mỗi lá = 1 cược', /mỗi lá còn trên tay = 1 cược/.test(JS) && /🔢 mỗi lá/.test(JS));
+    ok('phòng truyền thống nói rõ nhất / nhì bao nhiêu', /🏅 nhất/.test(JS) && /nhì ăn một nửa/.test(JS));
     ok('ảnh lá bài lấy theo mã lá', /src="bai\/'\+ma\+'\.webp"/.test(JS));
     ok('KHÔNG còn màu CSS gõ hỏng', !/#\d*[a-z]{4,}\s*;/i.test(HTML.slice(0, HTML.indexOf('</style>'))));
 }
@@ -326,18 +332,17 @@ muc('📣 CHỈ bài đặc biệt mới bắn tên to giữa bàn (chủ server
 
 muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
 {
-    ok('lá đang chọn nhô lên + viền vàng + dấu ✓', /\.tay \.the\.chon\{[\s\S]*?translateY\(-26px\)/.test(HTML) && /\.tay \.the\.chon::after\{content:'✓'/.test(HTML));
-    // 19/09: phóng to lá chọn thì nó lấn che lá bên cạnh trong hàng xoè chồng -> chỉ nhô, không phóng
-    ok('lá chọn KHÔNG phóng to', !/\.tay \.the\.chon\{[^}]*scale\(/.test(HTML));
-    ok('dấu ✓ nằm góc TRÁI (phần luôn nhìn thấy khi xoè chồng)', /\.chon::after\{[^}]*left:-6px/.test(HTML));
+    // 20/09: KHÔNG còn lá .chon nằm trong hàng tay — bấm lá là nó nhảy hẳn lên KHAY ở trên,
+    // nên mọi mẹo "nhô lên / dấu ✓ / chừa khoảng hở" của bản cũ đều đã bỏ.
+    ok('hàng tay không còn lá nào mang lớp .chon', !/\.tay \.the\.chon/.test(HTML));
     // 20/09: "để chuột vị trí này thì lá bài bị giật giật" — hover mà nhấc lá lên thì mép dưới
     // chạy khỏi con trỏ -> mất hover -> tụt -> dính lại: rung vô tận. Hover PHẢI đứng yên.
     {
         const luatHover = HTML.match(/\.tay \.the[^\n{]*:hover\{[^}]*\}/g) || [];
         ok('có luật hover cho tay bài', luatHover.length > 0, JSON.stringify(luatHover));
         ok('hover KHÔNG di chuyển lá (chống rung)', luatHover.every(r => !/transform|translate|margin/.test(r)), JSON.stringify(luatHover));
-        ok('hover KHÔNG đụng lá đã chọn (đẩy lên là che lá chọn kế bên)',
-            luatHover.every(r => /:not\(\.chon\)/.test(r)), JSON.stringify(luatHover));
+        ok('hover KHÔNG phóng to / không đổi lề (chỉ z-index + viền)',
+            luatHover.every(r => !/scale\(|margin/.test(r)), JSON.stringify(luatHover));
         ok('...nhưng vẫn đưa lá đang trỏ lên trên để nhìn trọn', luatHover.some(r => /z-index:\s*\d/.test(r)));
     }
     // 20/09: dòng gợi ý từng in 2 lần "Mấy lá này không thành bộ · ... không thành bộ hợp lệ"
@@ -394,7 +399,12 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
         /bam\(ma, 29\) % 7\) - 3/.test(JS) && /rLa = \(bam\(ma, 11\) % 9\) - 4/.test(JS));
     // trang này từng THIẾU nhánh điện thoại nằm ngang (nhầm với trang Poker) -> bàn co còn ~145px
     ok('có nhánh CSS cho điện thoại NẰM NGANG', /@media\(orientation:landscape\) and \(max-height:560px\)\{/.test(HTML));
-    ok('...ở khổ đó bàn ăn trọn chiều cao còn lại, bài nhỏ lại', /aspect-ratio:auto;width:100%;height:calc\(100vh - 232px\)/.test(HTML) && /--co:1\.25/.test(HTML));
+    ok('...ở khổ đó bàn ăn trọn chiều cao còn lại, bài nhỏ lại',
+        /aspect-ratio:auto;width:100%;height:calc\(100vh - 292px\)/.test(HTML) && /--co:1\.25/.test(HTML));
+    // Khay bài đã chọn là HÀNG MỚI, chiếm thêm chiều cao. Màn nằm ngang chỉ cao ~390px nên phải
+    // thu gọn khay + trừ thêm chiều cao bàn, không thì trang bị cuộn — mà ta vừa chặn vuốt cuộn.
+    ok('...khay bài đã chọn cũng thu gọn theo',
+        /#banKhay\{padding:4px 7px/.test(HTML) && /#banKhay \.the img\{width:calc\(var\(--lbt\) \* \.78\)\}/.test(HTML));
     ok('lệch tính theo var(--lb) nên đổi cỡ bài là cả đống co theo', /calc\(var\(--lb\) \* ' \+ mx/.test(JS));
     // "đánh bài có animation lá bài từ chỗ người chơi bay lên"
     ok('✈️ lá bay từ chỗ người đánh vào giữa bàn', /\.ola\.bay\{animation:bayVao/.test(HTML) && /@keyframes bayVao\{/.test(HTML) && /GHE_VT\[tuAi\]/.test(JS));

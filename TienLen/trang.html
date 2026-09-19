@@ -176,18 +176,10 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .tay .the:first-child{margin-left:0}
 /* ⚠️ HOVER TUYỆT ĐỐI KHÔNG ĐƯỢC DI CHUYỂN LÁ. Nhấc lá lên khi hover là mép dưới chạy khỏi con
    trỏ -> mất hover -> tụt xuống -> dính hover lại: lá RUNG LIÊN TỤC (chủ server báo 20/09).
-   Chỉ đưa lên trên + viền xanh: vẫn nhìn trọn lá đang trỏ mà hộp thì đứng yên.
-   Và KHÔNG áp cho lá đã chọn (:not(.chon)) — đẩy lá chọn lên trên là nó che lá chọn kế bên. */
-.tay .the:not(.chon):hover{z-index:6;box-shadow:0 0 0 2px #7fe3ff,0 10px 20px rgba(0,0,0,.72)}
-/* 👇 lá ĐANG CHỌN: CHỈ nhô lên, KHÔNG phóng to — phóng to là nó lấn che lá bên cạnh trong hàng
-   xoè chồng (chủ server báo 19/09). Dấu ✓ đặt góc TRÁI vì đó là phần luôn nhìn thấy của mỗi lá. */
-.tay .the.chon{transform:translateY(-26px);z-index:3;
-  box-shadow:0 0 0 3px var(--gold),0 0 18px 3px rgba(255,207,92,.5),0 10px 20px rgba(0,0,0,.75);
-  animation:chonNay .2s cubic-bezier(.2,1.6,.4,1)}
-.tay .the.chon::after{content:'✓';position:absolute;top:-9px;left:-6px;width:19px;height:19px;border-radius:50%;
-  background:linear-gradient(180deg,#ffe9a3,#e0a41a);color:#3a2500;font-size:12px;font-weight:900;
-  display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:3}
-@keyframes chonNay{0%{transform:translateY(-6px)}100%{transform:translateY(-26px)}}
+   Chỉ đưa lên trên + viền xanh: vẫn nhìn trọn lá đang trỏ mà hộp thì đứng yên. */
+.tay .the:hover{z-index:6;box-shadow:0 0 0 2px #7fe3ff,0 10px 20px rgba(0,0,0,.72)}
+/* (CSS cho lá .chon NẰM TRONG TAY đã bỏ 20/09: lá chọn giờ nhảy hẳn lên KHAY ở trên, trong
+   hàng tay không còn lá nào mang lớp .chon nữa. Xem #banKhay.) */
 /* lá KHÔNG thể đánh trong lượt này (khi đang theo bài) thì mờ đi cho dễ nhìn */
 .tay .the.cam{filter:brightness(.52) saturate(.55)}
 
@@ -346,7 +338,14 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 @media(orientation:landscape) and (max-height:560px){
   :root{--co:1.25;--llb:34px}
   body{padding:4px}
-  .san{aspect-ratio:auto;width:100%;height:calc(100vh - 232px);height:calc(100dvh - 232px);min-height:120px}
+  .san{aspect-ratio:auto;width:100%;height:calc(100vh - 292px);height:calc(100dvh - 292px);min-height:112px}
+  /* khay bài đã chọn: thu gọn hết cỡ, màn nằm ngang cao có 390px thôi */
+  #banKhay{padding:4px 7px;gap:4px;margin-top:5px;border-width:1px}
+  #banKhay .the img{width:calc(var(--lbt) * .78)}
+  #banKhay .nhan{font-size:10.5px}
+  #banGoi{margin-top:5px;padding:4px 11px;font-size:12px}
+  #banBoChon{margin-top:4px;font-size:12px}
+  #banNut{margin-top:6px!important}
   .vien{inset:28px 6px}
   .ghe{width:clamp(74px,11vw,110px)}
   .tay .the{margin-top:12px}
@@ -851,7 +850,8 @@ function veCho(){
   $('choLuat').textContent = 'Luật: ' + [L.baBichOn?'3♠ đi đầu':'', L.toiTrangOn?'tới trắng':'',
       L.chatHeoOn?'chặt heo có thưởng':'', L.thoiHeoOn?'thối 2':''].filter(Boolean).join(' · ') +
       ' · phế ' + Math.round(S.pheTram*100) + '% tiền thắng' +
-      (L.cheDo==='anhet' ? ' · đếm lá ' + vnd(L.giaLa) + '/lá' : '');
+      (L.cheDo==='anhet' ? ' · mỗi lá còn trên tay = 1 cược (' + vnd(L.mucCuoc) + ')'
+                         : ' · nhì ăn một nửa (' + vnd(Math.round(L.mucCuoc/2)) + ')');
   $('choVs').textContent = S.toi.duocNgoi ? '' : ('⚠️ ' + (S.toi.viSaoKhong||''));
 }
 function ngoi(k){ goi('/ngoi', { ghe: k }); }
@@ -863,7 +863,9 @@ function veBan(){
   var b = S.ban, v = b.van || {}, toi = b.toi;
   $('banPhu').textContent = 'Ván #' + (b.soVan||0) + ' · ' + b.cheDoTen +
       (v.batBuoc3Bich ? ' · phải đánh bộ có 3♠' : '');
-  $('banCuoc').textContent = '💵 cược ' + vnd(b.mucCuoc) + (b.cheDo==='anhet' ? ' · lá ' + vnd(b.giaLa) : '');
+  $('banCuoc').textContent = b.cheDo==='anhet'
+      ? ('🔢 mỗi lá ' + vnd(b.mucCuoc))
+      : ('🏅 nhất ' + vnd(b.mucCuoc) + ' · nhì ' + vnd(Math.round(b.mucCuoc/2)));
   var tg = toi ? toi.tong : 0;
   $('banTong').textContent = (tg>=0?'▲ +':'▼ ') + vnd(tg) + ' tại bàn';
   // 📜 luật đang bật — phòng chờ có rồi, vào bàn thì mất; ai vào muộn không biết bàn này chơi luật gì

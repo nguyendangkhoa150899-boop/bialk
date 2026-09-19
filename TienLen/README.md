@@ -123,6 +123,23 @@ bao giờ bê kiểu xác thực đó lên prod.
 
 ---
 
+## 3c. Bỏ lượt là NGHỈ HẾT VÒNG
+
+Bỏ lượt rồi thì **không được đánh nữa trong vòng đó**, dù người khác có đánh tiếp bao nhiêu nước.
+Tới khi **cả bàn bỏ hết**, chủ bộ ăn vòng và mở vòng mới thì mọi người mới được vô lại.
+
+```
+vòng 1:  A đánh · B BỎ   · C đánh · D đánh
+vòng 2:  A đánh · B NGHỈ · C đánh · D bỏ
+vòng 3:  A đánh · B NGHỈ · C đánh · D NGHỈ
+→ A bỏ nốt = cả bàn bỏ hết → C (chủ bộ) ăn vòng, mở vòng mới, sổ bỏ xoá sạch
+```
+
+Máy chủ giữ danh sách này ở `van.chongBai`/`van.daBo`; `keTiep()` nhảy qua ai đang nghỉ. Trang
+báo rõ *"🚫 Bạn đã bỏ lượt — chờ hết vòng này"* kèm còn mấy người đang tranh.
+
+---
+
 ## 4. Luật bài (chủ server chốt 19/09)
 
 **Bộ hợp lệ:** 1 lá · đôi · ba · tứ quý · **sảnh** ≥3 lá liên tiếp · **đôi thông** ≥3 đôi liên tiếp.
@@ -274,6 +291,15 @@ quyết vốn tối thiểu. Cái gì lệch là **lỗi thật**, không phải
 ---
 
 ## 7. Cạm bẫy đã dính (đừng dính lại)
+
+- **`daBo.clear()` trong `danh()` — SAI LUẬT, sửa 20/09.** Dòng cũ có lời chú *"có người đánh ->
+  vòng mới mở lại cho mọi người"*, nghĩa là cứ ai đánh một lá là xoá sạch sổ bỏ lượt. Hậu quả:
+  người vừa bỏ lượt được đánh lại ngay vòng sau. Luật đúng: **bỏ lượt là nghỉ hết vòng**, tới khi
+  **cả bàn bỏ hết** thì vòng mới mở lại mới được vô. Chỗ xoá đúng là `chuyenLuot()`.
+  `van-test` có mục dựng nguyên ca chủ server đưa.
+- **Quên xoá chỗ ĐỌC khi bỏ một trường ở máy chủ.** Bỏ `giaLa` ở `van.js`/`web.js` nhưng trang
+  vẫn `vnd(b.giaLa)` → `undefined` → in ra **"· lá 0"**, người chơi tưởng bàn không tính tiền lá.
+  Lặng lẽ sai, không nổ. Giờ có phép kiểm `!/giaLa/.test(JS)`.
 
 - **Hai thẻ cùng `id`.** Tiêu đề trang và chữ-to-giữa-bàn cùng mang `id="banTen"`.
   `getElementById` trả thẻ **đầu tiên** nên hàm bắn chữ ghi đè lên **tiêu đề**, còn thẻ giữa bàn

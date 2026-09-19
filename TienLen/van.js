@@ -234,7 +234,15 @@ function taoBan(tuyChon = {}) {
         v.daDanh.add(id);                                // đã đánh -> không bị tính cóng
         v.bo = bo; v.boCua = id;
         v.batBuoc3Bich = false;
-        v.daBo.clear();                                  // có người đánh -> vòng mới mở lại cho mọi người
+        // ⚠️ TUYỆT ĐỐI KHÔNG xoá v.daBo ở đây. Bản cũ có dòng daBo.clear() với lời chú
+        // "có người đánh -> vòng mới mở lại cho mọi người" — SAI LUẬT. Bỏ lượt là NGHỈ HẾT
+        // VÒNG, tới khi cả bàn bỏ hết thì vòng mới mở lại mới được vô. Chủ server chỉ đúng
+        // ca này 20/09:
+        //    vòng 1: A đánh · B BỎ   · C đánh · D đánh
+        //    vòng 2: A đánh · B NGHỈ · C đánh · D bỏ
+        //    vòng 3: A đánh · B NGHỈ · C đánh · D NGHỈ
+        // Với dòng clear() cũ thì cứ C đánh một lá là B được đánh lại ngay vòng sau.
+        // Chỗ xoá ĐÚNG là chuyenLuot(), lúc cả vòng đã bỏ hết và chủ bộ ăn vòng.
         v.lichSu.push({ id, la: bo.la.slice(), ten: bo.ten, chat: !!kq.chat, thuong: thuongChat });
         v.vuaLam[id] = { viec: 'danh', ten: bo.ten, soLa: bo.la.length, chat: !!kq.chat, thuong: thuongChat, luc: bayGio };
         v.chongBai.push({ id: id, la: bo.la.slice(), ten: bo.ten, chat: !!kq.chat });
