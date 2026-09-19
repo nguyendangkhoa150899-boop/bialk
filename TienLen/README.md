@@ -91,10 +91,10 @@ bao giờ bê kiểu xác thực đó lên prod.
 |---|---|
 | **Cỡ bài** | Gấp đôi bản đầu (`--co` mặc định 2). Nút **🔍− / 🔍+** chỉnh 5 nấc (1.2→3), nhớ trong `localStorage`. |
 | **Tay bài** | **Xoè chồng** như cầm bài thật; `canhTay()` đo bề ngang thật rồi tự tăng độ chồng để **13 lá luôn vừa một hàng** (chặn ở 72%, chồng hơn là mất góc số). |
-| **Chọn lá** | Lá nhô hẳn lên, phóng 1.06, **viền vàng + quầng sáng**, nảy nhẹ, có **dấu ✓** góc trên, và nổi lên trên lá bên cạnh. |
+| **Chọn lá** | Lá **chỉ NHÔ LÊN, không phóng to** (phóng to là lấn che lá bên cạnh trong hàng xoè chồng — chủ server báo 19/09), **viền vàng + quầng sáng**, nảy nhẹ, **dấu ✓ góc TRÁI** (phần luôn nhìn thấy), nổi lên trên lá bên cạnh. |
 | **Hàng nút to** | ⏱ **đồng hồ tròn vàng** (≤5 giây đỏ nhấp nháy) · **Bỏ lượt** (đỏ) · **Đánh** (xanh). Hiện suốt lượt mình; nút Đánh **chỉ sáng khi mớ lá hợp lệ**. Nằm **trên** tay bài cho dễ với. |
 | **Dòng dưới** | "3 đôi thông · 💥 CHẶT được!" / "· Không lớn hơn đôi K" / "· chưa tới lượt bạn". |
-| **Giữa bàn** | Bài đã đánh **xoè quạt** (nghiêng dần từ giữa ra). Có người đánh thì **tên bộ bắn to giữa bàn** ("4 ĐÔI THÔNG"), hàng chặt đổi **màu cam**. |
+| **Giữa bàn** | Bài đã đánh **xoè quạt** (nghiêng dần từ giữa ra). **CHỈ bài đặc biệt** mới bắn tên to giữa bàn: **đôi heo · ba heo · 3–4 đôi thông · tứ quý · sảnh từ 5 lá** (hàm `dangKhoe()`); hàng chặt đổi **màu cam**. Heo lẻ, đôi thường, sảnh 3–4 lá thì im — trước bắn mọi nước nên chữ chồng lên nhau, loạn mắt. |
 | **Ghế người khác** | Xấp lưng bài + **badge ĐỎ đếm lá** (≤2 lá thì **badge vàng nhấp nháy** = sắp về nhất) · **PASS** trắng to khi bỏ lượt · nhãn **vừa đánh bộ gì** (💥 khi chặt, 🤖 khi máy đánh giùm). |
 | **Trợ giúp** | Lá **không nằm trong nước đánh nào thì mờ đi** · **💡 GỢI Ý** tự chọn nước rẻ nhất, bấm tiếp xoay hết các cách · **✖️ BỎ CHỌN** · **⇄** nút tròn đổi kiểu xếp (theo số / gom bộ). |
 | **Tới lượt bạn** | Sáng viền cả bàn + kêu **một tiếng** (không kêu lặp mỗi giây). |

@@ -261,9 +261,34 @@ muc('💡 gợi ý nước đánh (cMoiNuoc)');
     ok('200 tay ngẫu nhiên: MỌI nước gợi ý đều được server chấp nhận', xau === 0, String(xau));
 }
 
+muc('📣 CHỈ bài đặc biệt mới bắn tên to giữa bàn (chủ server chốt 19/09)');
+{
+    const B = require('../bai.js');
+    const vm2 = require('vm');
+    const ctx = { console };
+    vm2.createContext(ctx);
+    vm2.runInContext(JS.slice(JS.indexOf('var CSO ='), JS.indexOf('function theLa(')), ctx, { filename: 'client-luat.js' });
+    vm2.runInContext(JS.slice(JS.indexOf('function dangKhoe('), JS.indexOf('/* 📣 Tên bộ bài bắn to')), ctx, { filename: 'client-khoe.js' });
+    const khoe = (t) => { ctx.__b = B.nhanDang(t.split(' ')); return vm2.runInContext('dangKhoe(__b)', ctx); };
+    // ĐÁNG khoe
+    for (const [t, ten] of [['2s 2c', 'đôi heo'], ['2s 2c 2d', 'ba heo'], ['Ks Kc Kd Kh', 'tứ quý'],
+    ['3s 3c 4s 4c 5s 5c', '3 đôi thông'], ['7s 7c 8s 8c 9s 9c 10s 10c', '4 đôi thông'],
+    ['3s 4c 5d 6h 7s', 'sảnh 5 lá'], ['10s Jc Qd Kh As', 'sảnh tới A']])
+        ok('BẮN tên: ' + ten, khoe(t) === true, t);
+    // KHÔNG khoe (đánh suốt ván, bắn là loạn mắt)
+    for (const [t, ten] of [['3s', '1 lá'], ['2h', 'heo LẺ'], ['5s 5h', 'đôi thường'],
+    ['9s 9c 9d', 'ba thường'], ['3s 4c 5d', 'sảnh 3 lá'], ['3s 4c 5d 6h', 'sảnh 4 lá']])
+        ok('im lặng: ' + ten, khoe(t) === false, t);
+    ok('bộ rỗng / null không nổ', khoe.bind(null, '3s') && (() => { ctx.__b = null; return vm2.runInContext('dangKhoe(__b)', ctx) === false; })());
+    ok('veBan chỉ gọi banhTen khi dangKhoe', /khoaBo !== BO_CU && dangKhoe\(v\.bo\)/.test(JS));
+}
+
 muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
 {
     ok('lá đang chọn nhô lên + viền vàng + dấu ✓', /\.tay \.the\.chon\{[\s\S]*?translateY\(-26px\)/.test(HTML) && /\.tay \.the\.chon::after\{content:'✓'/.test(HTML));
+    // 19/09: phóng to lá chọn thì nó lấn che lá bên cạnh trong hàng xoè chồng -> chỉ nhô, không phóng
+    ok('lá chọn KHÔNG phóng to', !/\.tay \.the\.chon\{[^}]*scale\(/.test(HTML));
+    ok('dấu ✓ nằm góc TRÁI (phần luôn nhìn thấy khi xoè chồng)', /\.chon::after\{[^}]*left:-6px/.test(HTML));
     ok('🔍 chỉnh cỡ bài được, nhớ trong localStorage', /function coBai\(/.test(JS) && /tl_co/.test(JS) && /--co:2/.test(HTML));
     ok('tay bài xoè chồng + tự co cho vừa bề ngang', /function canhTay\(/.test(JS) && /W \* 0\.72/.test(JS));
     ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /' cam'/.test(JS));

@@ -112,15 +112,16 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   transition:transform .14s cubic-bezier(.2,1.4,.4,1), box-shadow .14s ease}
 .tay .the:first-child{margin-left:0}
 .tay .the:hover{transform:translateY(-9px);z-index:4}
-/* 👇 lá ĐANG CHỌN: nhô hẳn lên, viền vàng, nảy nhẹ + dấu ✓ góc trên */
-.tay .the.chon{transform:translateY(-26px) scale(1.06);z-index:3;
+/* 👇 lá ĐANG CHỌN: CHỈ nhô lên, KHÔNG phóng to — phóng to là nó lấn che lá bên cạnh trong hàng
+   xoè chồng (chủ server báo 19/09). Dấu ✓ đặt góc TRÁI vì đó là phần luôn nhìn thấy của mỗi lá. */
+.tay .the.chon{transform:translateY(-26px);z-index:3;
   box-shadow:0 0 0 3px var(--gold),0 0 18px 3px rgba(255,207,92,.5),0 10px 20px rgba(0,0,0,.75);
   animation:chonNay .2s cubic-bezier(.2,1.6,.4,1)}
-.tay .the.chon:hover{transform:translateY(-32px) scale(1.06);z-index:5}
-.tay .the.chon::after{content:'✓';position:absolute;top:-9px;right:-7px;width:19px;height:19px;border-radius:50%;
+.tay .the.chon:hover{transform:translateY(-32px);z-index:5}
+.tay .the.chon::after{content:'✓';position:absolute;top:-9px;left:-6px;width:19px;height:19px;border-radius:50%;
   background:linear-gradient(180deg,#ffe9a3,#e0a41a);color:#3a2500;font-size:12px;font-weight:900;
   display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:3}
-@keyframes chonNay{0%{transform:translateY(-6px) scale(1)}100%{transform:translateY(-26px) scale(1.06)}}
+@keyframes chonNay{0%{transform:translateY(-6px)}100%{transform:translateY(-26px)}}
 /* lá KHÔNG thể đánh trong lượt này (khi đang theo bài) thì mờ đi cho dễ nhìn */
 .tay .the.cam{filter:brightness(.52) saturate(.55)}
 
@@ -521,9 +522,9 @@ function veBan(){
 
   // ---- bộ đang trên bàn: XOÈ QUẠT (nghiêng dần từ giữa ra, chồng nhẹ) ----
   if (datHTML($('banBo'), v.bo ? v.bo.la.map(function(x){ return theLa(x); }).join('') : '')) xoeQuat();
-  // 📣 có bộ MỚI lên bàn -> bắn tên bộ to giữa bàn
+  // 📣 có bộ MỚI lên bàn -> CHỈ bắn tên với bài đáng khoe (xem dangKhoe)
   var khoaBo = v.bo ? v.bo.la.join() : '';
-  if (khoaBo && khoaBo !== BO_CU) banhTen(v.bo);
+  if (khoaBo && khoaBo !== BO_CU && dangKhoe(v.bo)) banhTen(v.bo);
   BO_CU = khoaBo;
   $('banNhan').textContent = v.bo ? (v.bo.ten + ' · ' + tenCua(v.boCua)) : '';
   $('banChua').textContent = v.ketQua ? '' :
@@ -551,6 +552,21 @@ function xoeQuat(){
     k[i].style.marginLeft = i ? 'calc(var(--lb) * -0.16)' : '0';
     k[i].style.zIndex = i;
   }
+}
+/* 📣 Chủ server chốt 19/09: CHỈ bài đặc biệt mới bắn tên to giữa bàn. Trước đó nước nào cũng bắn
+   nên chữ chồng lên nhau, loạn mắt. Danh sách đáng khoe:
+     đôi heo · ba heo · 3 đôi thông · 4 đôi thông · tứ quý · sảnh dài (từ 5 lá).
+   Heo LẺ không tính (đánh suốt ván), sảnh 3-4 lá cũng không (quá thường). */
+function dangKhoe(bo){
+  if (!bo || !bo.kieu) return false;
+  if (bo.kieu === 'tu') return true;                                  // tứ quý
+  if (bo.kieu === 'thong' && bo.dai >= 3) return true;                // 3 / 4 đôi thông
+  if (bo.kieu === 'sanh' && bo.dai >= 5) return true;                 // sảnh dài
+  if (bo.kieu === 'doi' || bo.kieu === 'ba'){                          // đôi heo / ba heo
+    for (var i = 0; i < bo.la.length; i++) if (cDoc(bo.la[i]).so !== '2') return false;
+    return true;
+  }
+  return false;
 }
 /* 📣 Tên bộ bài bắn to giữa bàn (hàng chặt thì màu cam). Gán lại animation để chạy lại từ đầu. */
 var BO_CU = '';
