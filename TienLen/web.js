@@ -1,0 +1,322 @@
+// ============================================================================
+//  web.js — MÔ-ĐUN TIẾN LÊN GẮN VÀO WEB BOTDOMIN (cùng cổng, cùng phiên đăng nhập)
+//
+//  Giống hệt cách Poker/web.js gắn vào: webplay.js phục vụ ../TienLen/trang.html tại
+//  /tienlen/ và giao mọi /api/tienlen/* cho xuLy() ở đây (SAU cổng liên kết).
+//
+//  ⚠️ KHÁC POKER Ở CHỖ QUAN TRỌNG NHẤT: bàn này ĂN DOGCOIN THẬT. Mọi phép cộng/trừ ví
+//  nằm GỌN trong hàm traTien() ở file này; van.js chỉ tính ra con số, không đụng ví.
+//  Ba chốt an toàn:
+//    1. VỐN TỐI THIỂU 30× mức cược mới được ngồi, và kiểm LẠI trước mỗi ván. Thua nặng
+//       nhất một ván (cược + 13 lá + thối 2 + bị chặt) vẫn < 30 phần -> không ai âm ví.
+//    2. traTien() chạy ĐÚNG MỘT LẦN cho mỗi ván (khoá bằng daTraVan = số ván).
+//    3. Ai tụt dưới vốn tối thiểu thì bị mời khỏi bàn TRƯỚC ván kế, không phải giữa ván.
+//  Nuốt mọi lỗi (trả 400) vì chạy chung tiến trình với bot — ném ra là kéo cả bot theo.
+// ============================================================================
+'use strict';
+const V = require('./van.js');
+
+const GIAY_AFK_MAC_DINH = 25;       // không hỏi thăm quá lâu = coi như rớt mạng
+const GIAY_XEM_KET_MAC_DINH = 7;    // xem bảng kết quả ván bao lâu rồi chia ván mới
+const VON_HE_SO = 30;               // vốn tối thiểu = 30 × mức cược (xem chốt an toàn 1)
+const MUC_CUOC_MAC_DINH = 1000;
+
+/**
+ * deps:
+ *   layNguoi(id)            -> { name, points, ingameName } hoặc null
+ *   congVi(id, tien, lyDo)  -> cộng (âm = trừ) Dogcoin vào ví người chơi
+ *   thuPhe(tien, lyDo)      -> nhà cái thu phế (tuỳ chọn, chỉ để ghi sổ)
+ *   laAdmin(id)             -> true nếu được chỉnh cấu hình bàn
+ *   tenCua(id), ghiLog(dong), giayAfk, giayXemKet (tuỳ chọn)
+ */
+function taoTienLen(deps) {
+    const layNguoi = deps.layNguoi;
+    const congVi = deps.congVi || (() => { });
+    const thuPhe = deps.thuPhe || (() => { });
+    const laAdmin = deps.laAdmin || (() => false);
+    const ghiLog = deps.ghiLog || (() => { });
+    const tenCua = deps.tenCua || ((id) => { const u = layNguoi(id); return (u && (u.ingameName || u.name)) || id; });
+    // ⚠️ dùng != null chứ KHÔNG dùng || : giayXemKet = 0 (chia ván kế ngay) sẽ bị || nuốt thành mặc định.
+    const GIAY_AFK = deps.giayAfk != null ? deps.giayAfk : GIAY_AFK_MAC_DINH;
+    const GIAY_XEM_KET = deps.giayXemKet != null ? deps.giayXemKet : GIAY_XEM_KET_MAC_DINH;
+
+    const phong = {
+        ghe: Array(V.TOI_DA_NGUOI).fill(null),    // 4 ghế, null = trống
+        ban: null,
+        sanSang: new Set(),                        // ai đã bấm ✅ Sẵn sàng ở phòng chờ
+        cauHinh: {
+            mucCuoc: MUC_CUOC_MAC_DINH, cheDo: 'hang', giaLa: MUC_CUOC_MAC_DINH,
+            toiTrangOn: true, chatHeoOn: true, thoiHeoOn: true, baBichOn: true,
+        },
+    };
+    const chamCuoi = new Map();     // id -> lần hỏi thăm gần nhất (dò AFK)
+    let vanXongLuc = 0;             // mốc ván vừa chốt, để đếm ngược chia ván mới
+    let daTraVan = 0;               // số ván đã TRẢ TIỀN xong (khoá chống trả 2 lần)
+
+    const dangNgoi = () => phong.ghe.map((id, ghe) => id ? { id, ghe } : null).filter(Boolean);
+    const gheCua = (id) => phong.ghe.indexOf(id);
+    const vonToiThieu = () => phong.cauHinh.mucCuoc * VON_HE_SO;
+    const banDangDanh = () => !!(phong.ban && phong.ban.xemChung().trangThai === 'DANG_CHAY');
+
+    /** Đủ điều kiện ngồi chưa? null = được, chuỗi = lý do không. */
+    function canNgoi(id) {
+        const u = layNguoi(id);
+        if (!u) return 'Chưa có tài khoản trong bot';
+        if (!u.ingameName) return 'Chưa liên kết tên nhân vật — nhờ admin liên kết trước đã';
+        const von = vonToiThieu();
+        if ((u.points || 0) < von)
+            return 'Cần ít nhất ' + von.toLocaleString('vi-VN') + ' Dogcoin mới vào bàn cược ' +
+                phong.cauHinh.mucCuoc.toLocaleString('vi-VN') + ' (đang có ' + (u.points || 0).toLocaleString('vi-VN') + ')';
+        return null;
+    }
+
+    // ------------------------------------------------------------ TIỀN (chỗ duy nhất đụng ví)
+    /**
+     * Trả tiền một ván ĐÚNG MỘT LẦN. van.js đã tính sẵn ketQua.tien (đã trừ phế) và ketQua.phe.
+     * Có lưới an toàn: nếu ví ai đó không đủ trả (đáng lẽ không xảy ra vì có vốn tối thiểu) thì
+     * kẹp lại đúng số họ có, ghi log để chủ server biết, và cắt bớt phần ăn của người thắng cho khớp.
+     */
+    function traTien(kq, soVan) {
+        if (!kq || daTraVan >= soVan) return;
+        daTraVan = soVan;
+        const tien = { ...kq.tien };
+
+        // lưới an toàn: không để ai âm ví
+        let hut = 0;
+        for (const id of Object.keys(tien)) {
+            if (tien[id] >= 0) continue;
+            const co = (layNguoi(id) || {}).points || 0;
+            if (co < -tien[id]) {
+                hut += (-tien[id]) - co;
+                ghiLog('[TIẾN LÊN] ⚠️ ' + tenCua(id) + ' thua ' + (-tien[id]).toLocaleString('vi-VN') +
+                    ' nhưng ví chỉ có ' + co.toLocaleString('vi-VN') + ' — kẹp lại, xem lại vốn tối thiểu');
+                tien[id] = -co;
+            }
+        }
+        if (hut > 0) {
+            // cắt bớt phần ăn của người thắng theo tỉ lệ cho khớp số tiền thật sự thu được
+            const an = Object.keys(tien).filter(id => tien[id] > 0);
+            const tongAn = an.reduce((s, id) => s + tien[id], 0);
+            for (const id of an) tien[id] = Math.max(0, tien[id] - Math.round(hut * tien[id] / tongAn));
+        }
+
+        for (const id of Object.keys(tien)) {
+            if (!tien[id]) continue;
+            congVi(id, tien[id], 'Tiến Lên ván #' + soVan + (tien[id] > 0 ? ' (thắng)' : ' (thua)'));
+        }
+        if (kq.pheTong > 0) thuPhe(kq.pheTong, 'phế 10% Tiến Lên ván #' + soVan);
+        const bang = Object.keys(tien).map(id => tenCua(id) + ' ' + (tien[id] >= 0 ? '+' : '') + tien[id].toLocaleString('vi-VN')).join(' · ');
+        ghiLog('[TIẾN LÊN] Ván #' + soVan + ' (' + (kq.toiTrang ? 'tới trắng ' + tenCua(kq.toiTrang.id) : 'nhất ' + tenCua(kq.hang[0])) +
+            '): ' + bang + ' · phế ' + (kq.pheTong || 0).toLocaleString('vi-VN'));
+    }
+
+    // ------------------------------------------------------------ mở bàn / ván
+    function moBan() {
+        if (banDangDanh()) return { error: 'Bàn đang đánh rồi' };
+        const ds = dangNgoi();
+        if (ds.length < V.TOI_THIEU_NGUOI) return { error: 'Cần ít nhất ' + V.TOI_THIEU_NGUOI + ' người đang ngồi' };
+        const rot = ds.filter(x => canNgoi(x.id) !== null);
+        if (rot.length) return { error: tenCua(rot[0].id) + ': ' + canNgoi(rot[0].id), rot: rot.map(x => x.id) };
+        phong.ban = V.taoBan({ ...phong.cauHinh });
+        for (const x of ds) phong.ban.themNguoi({ id: x.id, ten: tenCua(x.id), ghe: x.ghe });
+        phong.sanSang.clear();
+        vanXongLuc = 0; daTraVan = 0;
+        phong.ban.vanMoi();
+        thanhToanNeuXong();   // tới trắng: ván chốt ngay trong vanMoi
+        return { ok: true, soNguoi: ds.length };
+    }
+    /**
+     * Ván vừa chốt thì TRẢ TIỀN NGAY, không đợi nhịp kế. Phải gọi sau MỌI nước có thể kết thúc ván:
+     * đánh bài, bỏ lượt, và cả lúc chia bài (tới trắng chốt ván ngay trong vanMoi). traTien tự khoá
+     * theo số ván nên gọi thừa bao nhiêu lần cũng vô hại.
+     */
+    function thanhToanNeuXong() {
+        const s = phong.ban && phong.ban.xemChung();
+        if (!s || !s.van || !s.van.ketQua) return;
+        traTien(s.van.ketQua, s.van.so);
+        if (!vanXongLuc) vanXongLuc = Date.now();
+    }
+    /** ≥2 người ngồi và AI CŨNG sẵn sàng -> mở bàn, không cần admin (giống Poker). */
+    function tuMoBan() {
+        const ds = dangNgoi();
+        if (ds.length < V.TOI_THIEU_NGUOI || !ds.every(x => phong.sanSang.has(x.id))) return;
+        const r = moBan();
+        if (r.error && r.rot) for (const id of r.rot) phong.sanSang.delete(id);
+    }
+
+    /** Chia ván kế: mời ra ai hết vốn / rớt điều kiện, còn đủ 2 người thì chia tiếp. */
+    function vanKe() {
+        const b = phong.ban;
+        if (!b) return;
+        for (const p of b.xemChung().nguoi.slice()) {
+            const vi = canNgoi(p.id);
+            if (!vi) continue;
+            b.roiBan(p.id);
+            phong.ghe[gheCua(p.id)] = null;
+            phong.sanSang.delete(p.id);
+            ghiLog('[TIẾN LÊN] Mời ' + tenCua(p.id) + ' rời bàn: ' + vi);
+        }
+        if (b.xemChung().nguoi.length < V.TOI_THIEU_NGUOI) { phong.ban = null; return; }
+        vanXongLuc = 0;
+        b.vanKe();
+        thanhToanNeuXong();   // ván kế có thể tới trắng -> chốt ngay
+    }
+
+    // ------------------------------------------------------------ nhịp
+    function ratSoatAfk() {
+        if (!phong.ban) return;
+        const bayGio = Date.now();
+        for (const p of phong.ban._trong.nguoi) {
+            const mat = bayGio - (chamCuoi.get(p.id) || 0) > GIAY_AFK * 1000;
+            if (mat && !p.afk) phong.ban.roiMang(p.id);
+            if (!mat && p.afk) phong.ban.noiLai(p.id);
+        }
+    }
+    /** Gọi mỗi giây từ ngoài. Nuốt lỗi để không kéo bot theo. */
+    function nhip() {
+        try {
+            if (!phong.ban) { tuMoBan(); return; }
+            ratSoatAfk();
+            phong.ban.nhip();
+            const s = phong.ban.xemChung();
+            if (s.van && s.van.ketQua) {
+                const cu = vanXongLuc;
+                thanhToanNeuXong();                      // tự khoá, gọi bao nhiêu lần cũng chỉ trả 1 lần
+                if (cu && Date.now() - cu >= GIAY_XEM_KET * 1000) vanKe();
+            }
+        } catch (e) { console.error('[tienlen] nhịp lỗi:', e.message); }
+    }
+
+    // ------------------------------------------------------------ trạng thái gửi cho web
+    function trangThai(id) {
+        const u = layNguoi(id);
+        const nen = {
+            ok: true,
+            toi: {
+                id, ten: tenCua(id), dogcoin: (u && u.points) || 0,
+                admin: laAdmin(id), duocNgoi: canNgoi(id) === null, viSaoKhong: canNgoi(id),
+            },
+            ghe: phong.ghe.map(x => x ? { id: x, ten: tenCua(x), dogcoin: (layNguoi(x) || {}).points || 0 } : null),
+            gheCuaToi: gheCua(id),
+            sanSang: [...phong.sanSang], toiSanSang: phong.sanSang.has(id),
+            toiDa: V.TOI_DA_NGUOI, toiThieu: V.TOI_THIEU_NGUOI,
+            cauHinh: { ...phong.cauHinh }, cheDoTen: V.CHE_DO[phong.cauHinh.cheDo],
+            vonToiThieu: vonToiThieu(), pheTram: V.PHE_TRAM,
+        };
+        if (!phong.ban) return { ...nen, ban: null };
+        const trongBan = phong.ban._trong.nguoi.some(p => p.id === id);
+        nen.demVanKe = vanXongLuc
+            ? Math.max(0, Math.ceil((vanXongLuc + GIAY_XEM_KET * 1000 - Date.now()) / 1000)) : null;
+        // khán giả chỉ nhận bản CHUNG — không có bài riêng của ai
+        return { ...nen, ban: trongBan ? phong.ban.xem(id) : phong.ban.xemChung() };
+    }
+
+    // ------------------------------------------------------------ panel SUPER
+    const quanLy = {
+        tomTat() {
+            const s = phong.ban ? phong.ban.xemChung() : null;
+            return {
+                ghe: phong.ghe.map(x => x ? { id: x, ten: tenCua(x) } : null),
+                soNgoi: dangNgoi().length, toiDa: V.TOI_DA_NGUOI, toiThieu: V.TOI_THIEU_NGUOI,
+                cauHinh: { ...phong.cauHinh }, cheDoTen: V.CHE_DO[phong.cauHinh.cheDo],
+                vonToiThieu: vonToiThieu(), pheTram: V.PHE_TRAM,
+                ban: s ? {
+                    trangThai: s.trangThai, soVan: s.soVan,
+                    nguoi: s.nguoi.map(p => ({ id: p.id, ten: p.ten, soLa: p.soLa, tong: p.tong, afk: p.afk })),
+                    nhatKy: s.nhatKy,
+                } : null,
+            };
+        },
+        datCauHinh(o) {
+            if (banDangDanh()) return { error: 'Bàn đang đánh, chỉnh sau' };
+            const c = phong.cauHinh;
+            if (o.mucCuoc != null) {
+                const m = Math.floor(Number(o.mucCuoc));
+                if (!(m >= 100 && m <= 1000000)) return { error: 'Mức cược từ 100 đến 1.000.000' };
+                c.mucCuoc = m;
+                if (o.giaLa == null) c.giaLa = m;          // đơn giá lá mặc định bám theo mức cược
+            }
+            if (o.giaLa != null) {
+                const g = Math.floor(Number(o.giaLa));
+                if (!(g >= 0 && g <= 1000000)) return { error: 'Đơn giá lá từ 0 đến 1.000.000' };
+                c.giaLa = g;
+            }
+            if (o.cheDo != null) {
+                if (!V.CHE_DO[o.cheDo]) return { error: 'Chế độ lạ' };
+                c.cheDo = o.cheDo;
+            }
+            for (const k of ['toiTrangOn', 'chatHeoOn', 'thoiHeoOn', 'baBichOn'])
+                if (o[k] != null) c[k] = !!o[k];
+            return { ok: true, cauHinh: { ...c } };
+        },
+        batDau() { return moBan(); },
+        giaiTan() {
+            phong.ban = null; phong.ghe = Array(V.TOI_DA_NGUOI).fill(null);
+            phong.sanSang.clear(); vanXongLuc = 0; daTraVan = 0;
+            return { ok: true };
+        },
+    };
+
+    // ------------------------------------------------------------ API người chơi
+    function xuLy(req, res, sendJSON) {
+        const { path: duong, body, userId: toi } = req;
+        const post = req.method === 'POST';
+        chamCuoi.set(toi, Date.now());
+        const tra = () => sendJSON(res, 200, trangThai(toi));
+        const loi = (ma, msg) => sendJSON(res, ma, { ok: false, error: msg });
+        try {
+            if (duong === '/state') return tra();
+
+            if (post && duong === '/ngoi') {
+                if (banDangDanh()) return loi(400, 'Bàn đang đánh — chờ hết ván rồi vào');
+                const vi = canNgoi(toi); if (vi) return loi(400, vi);
+                let ghe = Number.isInteger(body.ghe) ? body.ghe : phong.ghe.indexOf(null);
+                if (ghe < 0 || ghe >= V.TOI_DA_NGUOI) return loi(400, 'Bàn đủ ' + V.TOI_DA_NGUOI + ' người rồi');
+                if (phong.ghe[ghe] && phong.ghe[ghe] !== toi) return loi(400, 'Ghế này có người rồi');
+                const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
+                phong.ghe[ghe] = toi;
+                // bàn đang nghỉ giữa 2 ván -> vào luôn cho ván kế
+                if (phong.ban) { try { phong.ban.themNguoi({ id: toi, ten: tenCua(toi), ghe }); } catch (e) { } }
+                return tra();
+            }
+            if (post && duong === '/roi') {
+                if (banDangDanh() && phong.ban._trong.van && (phong.ban._trong.van.tay[toi] || []).length > 0)
+                    return loi(400, 'Đang giữa ván — đánh hết bài rồi mới rời được (rớt mạng thì máy đánh giùm)');
+                const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
+                phong.sanSang.delete(toi);
+                if (phong.ban) { try { phong.ban.roiBan(toi); } catch (e) { } }
+                if (phong.ban && phong.ban.xemChung().nguoi.length < V.TOI_THIEU_NGUOI) phong.ban = null;
+                return tra();
+            }
+            if (post && duong === '/sansang') {
+                if (banDangDanh()) return loi(400, 'Bàn đang đánh rồi');
+                if (gheCua(toi) < 0) return loi(400, 'Ngồi vào ghế trước đã');
+                if (phong.sanSang.has(toi)) phong.sanSang.delete(toi); else phong.sanSang.add(toi);
+                tuMoBan();
+                return tra();
+            }
+
+            // ⚠️ Khối admin phải đứng TRƯỚC chốt "chưa có bàn" — không thì đổi cấu hình lúc bàn
+            // chưa mở lại báo "chưa có bàn nào đang chạy", mà đó chính là lúc cần đổi nhất.
+            if (post && ['/cauhinh', '/batdau', '/giaitan'].includes(duong)) {
+                if (!laAdmin(toi)) return loi(403, 'Chỉ admin mới làm được — vào panel SUPER');
+                const r = duong === '/cauhinh' ? quanLy.datCauHinh(body || {})
+                    : duong === '/batdau' ? quanLy.batDau() : quanLy.giaiTan();
+                if (r.error) return loi(400, r.error);
+                return tra();
+            }
+
+            if (!phong.ban) return loi(400, 'Chưa có bàn nào đang chạy');
+            if (post && duong === '/danh') { phong.ban.danh(toi, Array.isArray(body.la) ? body.la : []); thanhToanNeuXong(); return tra(); }
+            if (post && duong === '/boluot') { phong.ban.boLuot(toi); thanhToanNeuXong(); return tra(); }
+
+            return loi(404, 'Đường lạ: ' + duong);
+        } catch (e) {
+            return loi(400, e.message || 'Lỗi lạ');
+        }
+    }
+
+    return { xuLy, nhip, quanLy, phong, trangThai };
+}
+
+module.exports = { taoTienLen, VON_HE_SO, GIAY_XEM_KET_MAC_DINH };

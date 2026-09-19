@@ -3854,6 +3854,45 @@ const pokerMod = require(require('path').join(POKER_DIR, 'web.js')).taoPoker({
     laAdmin: (id) => pokerAdminCfg().includes(String(id)),
 });
 setInterval(() => pokerMod.nhip(), 1000);
+
+// ===== 🀄 TIẾN LÊN MIỀN NAM (19/09) =====
+// KHÁC POKER Ở CHỖ CHẾT NGƯỜI: bàn này ĂN DOGCOIN THẬT. Mô-đun TienLen/ chỉ TÍNH ra số tiền;
+// mọi phép cộng/trừ ví đi qua ĐÚNG hàm congVi bên dưới (updatePoints + logDog), không có đường
+// nào khác. Nhà cái thu 10% tiền thắng mỗi ván (phế) — ghi log, không vào ví ai.
+function tienlenAdminCfg() {
+    const a = dbCache._tienlenAdmin;
+    return Array.isArray(a) ? a.map(String).filter(x => /^\d{15,20}$/.test(x)) : [];
+}
+function setTienlenAdmin(danhSach) {
+    const ids = String(danhSach == null ? '' : danhSach).split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    const xau = ids.filter(x => !/^\d{15,20}$/.test(x));
+    if (xau.length) return { error: 'ID Discord phải là dãy 15-20 chữ số, sai: ' + xau.join(', ') };
+    dbCache._tienlenAdmin = [...new Set(ids)];
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL TIẾN LÊN] Admin: ${dbCache._tienlenAdmin.join(', ') || '(trống)'}`);
+    return { ok: true, ids: tienlenAdminCfg() };
+}
+const tienlenOnCfg = () => !!dbCache._tienlenOn;
+function setTienlenOn(on) {
+    dbCache._tienlenOn = !!on;
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL TIẾN LÊN] Tab Tiến Lên: ${on ? 'HIỆN' : 'ẨN'}`);
+    return { ok: true, on: tienlenOnCfg() };
+}
+const TIENLEN_DIR = process.env.TIENLEN_DIR || require('path').join(__dirname, '..', 'TienLen');
+const tienlenMod = require(require('path').join(TIENLEN_DIR, 'web.js')).taoTienLen({
+    layNguoi: (id) => (dbCache && dbCache[id] && typeof dbCache[id] === 'object') ? dbCache[id] : null,
+    laAdmin: (id) => tienlenAdminCfg().includes(String(id)),
+    tenCua: (id) => (getUserData(id).name || id),
+    // 👇 CỬA DUY NHẤT đụng ví ở Tiến Lên. Ghi sổ biến động luôn để đối chiếu khi có tranh cãi.
+    congVi: (id, tien, lyDo) => {
+        updatePoints(id, tien);
+        logDog('tienlen', id, getUserData(id).name || id, tien, lyDo || 'Tiến Lên');
+    },
+    thuPhe: (tien, lyDo) => writeLog('ADMIN', `[TIẾN LÊN] Nhà cái thu ${tien.toLocaleString('vi-VN')} - ${lyDo}`),
+    ghiLog: (dong) => writeLog('ADMIN', dong),
+});
+setInterval(() => tienlenMod.nhip(), 1000);
 // Gửi thử 1 tin để chủ server biết ID có đúng không (nút "Gửi thử" ở panel).
 async function txNotiTest() {
     const c = txNotiCfg();
@@ -6432,6 +6471,8 @@ client.once('ready', async (c) => {
             lienKetMsg: () => LIENKET_MSG,
             poker: pokerMod,                 // 🃏 /api/poker/* + /poker/ (Poker/web.js, cùng phiên đăng nhập)
             pokerOn: () => pokerOnCfg(),     // 🃏 tab GIẢI POKER hiện hay ẩn (admin bật ở panel SUPER)
+            tienlen: tienlenMod,                 // 🀄 /api/tienlen/* + /tienlen/ (TienLen/web.js, ăn Dogcoin thật)
+            tienlenOn: () => tienlenOnCfg(),     // 🀄 tab TIẾN LÊN hiện hay ẩn
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
             txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
             txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)
@@ -6659,6 +6700,12 @@ client.once('ready', async (c) => {
             getPokerOn: () => pokerOnCfg(),            // 🃏 tab poker đang hiện/ẩn
             setPokerOn: (on) => setPokerOn(on),
             pokerQuanLy: pokerMod.quanLy,               // 🃏 tomTat / datChip / batDau / giaiTan / tamNghi / choiTiep
+            // 🀄 Tiến Lên: cùng bộ nút với poker + cấu hình bàn (mức cược, chế độ, 4 luật nâng cao)
+            getTienlenAdmin: () => tienlenAdminCfg(),
+            setTienlenAdmin: (ds) => setTienlenAdmin(ds),
+            getTienlenOn: () => tienlenOnCfg(),
+            setTienlenOn: (on) => setTienlenOn(on),
+            tienlenQuanLy: tienlenMod.quanLy,           // 🀄 tomTat / datCauHinh / batDau / giaiTan
             setPokerAdmin: (ds) => setPokerAdmin(ds),
             txNotiTest: () => txNotiTest(),
             diceEmojis: DICE_EMOJIS,

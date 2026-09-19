@@ -29,7 +29,8 @@ Chủ server: **Khoa** — không rành code. Trả lời tiếng Việt, giải
 | File | Dòng | Việc |
 |---|---|---|
 | `index.js` | ~8.450 | **Toàn bộ logic**: bot Discord, mọi game, tiền, shop, rương, cầu game, wiring `ctx` cho web/panel |
-| `webplay.js` | ~4.000 | Web người chơi (cổng `PLAY_PORT`, mặc định **3002**). HTML/CSS/JS client là **mảng chuỗi** nối lại. Phục vụ thêm **`/poker/`** (file `../Poker/trang.html`), `/poker/bai/*.webp`, và giao `/api/poker/*` cho `ctx.poker` — tab tầng-1 thứ 3 **🃏 GIẢI POKER** (khung nhúng, hiện khi `_pokerOn`). Vào tab là bật `body.pokerFull` → khung **phủ kín màn hình**, thoát bằng nút nổi `#pokerOut` |
+| `webplay.js` | ~4.000 | Web người chơi (cổng `PLAY_PORT`, mặc định **3002**). HTML/CSS/JS client là **mảng chuỗi** nối lại. Phục vụ thêm **`/poker/`** (file `../Poker/trang.html`), `/poker/bai/*.webp`, và giao `/api/poker/*` cho `ctx.poker` — tab tầng-1 thứ 3 **🃏 GIẢI POKER** và thứ 4 **🀄 TIẾN LÊN** (`../TienLen/trang.html` tại `/tienlen/`, API `/api/tienlen/*`, ảnh lấy lại từ `../Poker/bai/`) (khung nhúng, hiện khi `_pokerOn`). Vào tab là bật `body.pokerFull` → khung **phủ kín màn hình**, thoát bằng nút nổi `#pokerOut` |
+| `../TienLen/` | — | **Tiến Lên Miền Nam nhúng** — `bai.js` (luật bộ bài) · `van.js` (máy ván + TIỀN, thuần logic) · `web.js` (gắn vào ctx, **cửa duy nhất đụng ví**) · `trang.html`. ⚠️ **ĂN DOGCOIN THẬT**, phế 10%/ván. Dùng chung ảnh lá bài của Poker. Chi tiết: `../TienLen/README.md` |
 | `../Poker/` | — | **Giải poker nhúng** — `web.js` (mô-đun gắn vào ctx), `giai.js` (máy giải), `bai.js` (chấm bài), `trang.html`, 53 ảnh. Cùng tiến trình, cùng phiên đăng nhập; chip ảo, không đụng ví. Chi tiết: `../Poker/README.md` |
 | `panel.js` | ~3.500 | Panel admin: **SUPER** cổng `PANEL_PORT` (mặc định 1508) · **thường** `PANEL_PUBLIC_PORT` (1234). HTML client là **một template literal khổng lồ** |
 | `palworld.js` | 200 | Cầu tới dashboard: `giveItem` / `takeItem` / `countItem` / `givePal` / `whereIs`. Basic auth, `cleanName` lọc tên |
@@ -60,7 +61,7 @@ Chạy ở đâu: **VPS** `/root/tts-bot` (clone của repo, nhánh local `maste
 
 **Mỗi người chơi** `db[discordId]`: `points` (ví) · `name` · `webPin` · `ingameName` (**chỉ admin đặt** — đây là mốc "đã liên kết") · điểm danh: `lastDaily`, `dailyDays[]`, `streakRun`, `streakPacks`, `streakTotal`, `streakRunPaid`, `lastNghien` · `lastWheelKey` · `debt {loan, admin, lastAccrue}` · `shopOnce {itemId: ts}` · `ichKy {day, bought, items{}, nhan[]}` · `palLuck`, `palLuckRate` · `sosAt`. Người mới: `STARTING_DOGCOIN = 20`.
 
-**Cấu hình + trạng thái** dùng khoá gạch dưới: `_dogLedger` · `_pstats` · `_*History` (đều có cap) · `_*ChannelId` / `_*MsgId` (bảng Discord từng game) · `_*Pending` (vé treo) · `_txTime` `_txNoti` `_txMaxBet` `_txHist20` · `_potCfg` `_pots` · `_minBet` `_gameOpen` `_featOff` · `_loanCfg` · `_itemShop` `_itemCats` `_itemShopQuota*` · `_palwheel*` · `_stock*` · `_spm*` · **`_pokerAdmin`** (mảng ID được mở giải poker) · **`_pokerOn`** (tab 🃏 hiện/ẩn) — hai khoá này panel ghi, `../Poker/web.js` chỉ đọc.
+**Cấu hình + trạng thái** dùng khoá gạch dưới: `_dogLedger` · `_pstats` · `_*History` (đều có cap) · `_*ChannelId` / `_*MsgId` (bảng Discord từng game) · `_*Pending` (vé treo) · `_txTime` `_txNoti` `_txMaxBet` `_txHist20` · `_potCfg` `_pots` · `_minBet` `_gameOpen` `_featOff` · `_loanCfg` · `_itemShop` `_itemCats` `_itemShopQuota*` · `_palwheel*` · `_stock*` · `_spm*` · **`_pokerAdmin`** (mảng ID được mở giải poker) · **`_pokerOn`** (tab 🃏 hiện/ẩn) · **`_tienlenAdmin`** / **`_tienlenOn`** (🀄 Tiến Lên, cùng kiểu) — hai khoá này panel ghi, `../Poker/web.js` chỉ đọc.
 
 `NAME_OVERRIDE` ép tên hiển thị cho vài Discord ID quen.
 
@@ -157,6 +158,9 @@ Mỗi vị thế mở là bot **đang nợ** người đó. Giá đi theo **neo 
 ### 📒 Vay nợ (`loanCfg`)
 Phí **1 lần** 20% (`feePct`), không lãi kép. Vay tối đa 20.000/ngày, ôm tối đa 60.000. **Còn nợ một đồng là khoá 2 việc** (vay thêm, mua/quay pal, chuyển vào game…) — nhãn "nợ xấu" đã bỏ. Tab 📒 Nợ đỏ, nút 🆘 cầu cứu đăng kênh `DEBT_SOS_CHANNEL`, nút "Trả nợ giùm" trên `/sodu`. Nghỉ cầu cứu `DEBT_SOS_CD_MS = 1 phút`.
 
+### 🀄 Tiến Lên Miền Nam (thuần web, `../TienLen/`) — game DUY NHẤT người chơi ăn tiền nhau
+Bàn 2–4 người, 13 lá, chạy liên tục, **ăn Dogcoin thật**. Hai chế độ: **nhất nhì ba tư** (nhất ăn của tư, nhì ăn của ba) và **nhất ăn hết + đếm lá**. Bật/tắt 4 luật: 3♠ đi đầu · tới trắng · chặt heo có thưởng · thối 2. **Nhà cái ăn 10% tiền thắng** mỗi ván (`pheTram`) — đây là nguồn thu duy nhất vì người chơi ăn nhau. Ngồi bàn cần **vốn ≥ 30× mức cược**, tụt dưới là bị mời ra trước ván kế. Người chơi **tự mở bàn** bằng nút ✅ Sẵn sàng. Luật đầy đủ + cạm bẫy: `../TienLen/README.md`.
+
 ### 🧧 Lộc lá
 Chuyển Dogcoin giữa người chơi trên web (`/api/transfer`, `/api/transfer/multi`), có đăng công khai.
 
@@ -208,7 +212,7 @@ Tab **Quà**: quà mỗi ngày theo danh sách riêng (`giftClaim`, người n�
 
 Tab: `tx` Tài Xỉu · `mine` Dò Mìn · `stair` Leo Thang · `bj` Vòng quay · `stock` · `spm` Phi Thuyền · `user` 👥 Người chơi · `pal` 🎮 Palworld & Dogcoin · `log` · `gift` Quà · `give` Kho đồ. SUPER (cổng `PANEL_PORT`) mới có: ép kết quả/mìn/quà hộp/pal, Kho đồ, can thiệp giá cổ phiếu (`epOk` = so `req.socket.localPort`).
 
-Làm được: bật/tắt + ép kết quả từng game · nhịp ván + báo cược Tài Xỉu · trần cược · sàn cược · cộng/trừ/set ví · phát tiền toàn server · reset điểm danh · **liên kết tên nhân vật** (`/api/pal/set-name`) · cấu hình shop (món, nhóm, hạn, ảnh) · hũ · vay nợ · công tắc chức năng · kênh cho từng bảng · sổ biến động · **tab 🃏 Poker (chỉ SUPER)**: công tắc hiện/ẩn tab GIẢI POKER trên web (`/api/poker/on`), ô "Admin poker" (`/api/poker/admin`), chip khởi điểm (`/api/poker/chip`), Bắt đầu (N người) / Giải tán / Tạm nghỉ / Chơi tiếp (`/api/poker/batdau|giaitan|nghi|tiep`) — 7 route này đều nằm trong `VIEWONLY_PATHS` nên cổng thường bị chặn.
+Làm được: bật/tắt + ép kết quả từng game · nhịp ván + báo cược Tài Xỉu · trần cược · sàn cược · cộng/trừ/set ví · phát tiền toàn server · reset điểm danh · **liên kết tên nhân vật** (`/api/pal/set-name`) · cấu hình shop (món, nhóm, hạn, ảnh) · hũ · vay nợ · công tắc chức năng · kênh cho từng bảng · sổ biến động · **tab 🀄 Tiến Lên (chỉ SUPER)**: mức cược · chế độ · đơn giá lá · 4 công tắc luật · Mở bàn / Giải tán · công tắc hiện tab (5 route `/api/tienlen/*` đều nằm trong `VIEWONLY_PATHS`) · **tab 🃏 Poker (chỉ SUPER)**: công tắc hiện/ẩn tab GIẢI POKER trên web (`/api/poker/on`), ô "Admin poker" (`/api/poker/admin`), chip khởi điểm (`/api/poker/chip`), Bắt đầu (N người) / Giải tán / Tạm nghỉ / Chơi tiếp (`/api/poker/batdau|giaitan|nghi|tiep`) — 7 route này đều nằm trong `VIEWONLY_PATHS` nên cổng thường bị chặn.
 
 **Vòng làm mới 3 giây ghi đè ô đang sửa** — mọi ô nhập mới phải dùng khuôn: chỉ điền khi `value===''`, hoặc `dataset.dirty` (chạm vào là đánh dấu, Lưu xong bỏ dấu). Ô tick không có chốt nào nếu quên.
 
@@ -262,6 +266,7 @@ Bot test **không có game** → mọi lệnh cần online/SFTP trả lỗi — 
 | Cú pháp file | lỗi JS server | `node --check index.js webplay.js panel.js` |
 | Cú pháp **client** | thiếu nháy trong chuỗi HTML (node --check không thấy) | `panelclient-check.js`, `webclient-check.js` (dựng lại mảng `PAGE` rồi `new Function`) |
 | Chạy hàm thật trong `vm` | logic tiền, trần, luật — trích `ex(mốcĐầu, mốcCuối)` từ `index.js`, stub phụ thuộc, ép `Math.random` | `ichkytest` `lienkettest` `txtimetest` `luckywheeltest` `mimogtest` `chestmaxtest` `shopuitest` `txpottest` `notest` `giftstoretest` `bridgetest` `repairtest` `feattest` `pgpicktest` `popupscroll-test` `txnotidirty-test` `boardloop-test` `paneltabtest` `scopecheck` `hiddencheck` |
+| Bộ kiểm 🀄 Tiến Lên (trong repo, KHÔNG ở scratchpad) | luật bài, tiền 2 chế độ, ví, chống lộ bài, nối vào bot | `node TienLen/kiemtra/{bai,van,web,trang,noi}-test.js` (268 bài) |
 | Chạy thật HTTP trên bot test | wiring route ↔ ctx ↔ client, state lệch, 403 | `*-e2e.js` (`ichky` `lienket` `txtime` `leaf` `mimog` `palforce` `chestmax` `itemcats` `catsave` `pgpick` `reveal`), `dom-null-check.js <url>` (DOM giả chỉ trả phần tử cho id có trong HTML) |
 
 Nguyên tắc viết bài kiểm mới: **chứng minh nó bắt được lỗi** bằng cách chạy ngược trên bản hỏng; tính theo **chênh lệch** chứ không giả định trạng thái sạch (rương/ví còn từ lần chạy trước); trò có ngẫu nhiên thì **ép** (`/api/mines/force`, `/api/lucky/force`, `palWheelForce`) cho hết hên xui; trần theo ngày là thật, bài kiểm phải tự thích ứng khi hết lượt.

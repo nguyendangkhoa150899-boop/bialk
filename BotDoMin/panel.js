@@ -134,6 +134,9 @@ function startPanel(ctx) {
             pokerAdmin: ctx.getPokerAdmin ? ctx.getPokerAdmin() : [],   // 🃏 ai mở được giải poker
             pokerOn: ctx.getPokerOn ? ctx.getPokerOn() : false,          // 🃏 tab poker đang hiện/ẩn trên web
             poker: ctx.pokerQuanLy ? ctx.pokerQuanLy.tomTat() : null,    // 🃏 ghế, chip, thang, giải đang chạy
+            tienlenAdmin: ctx.getTienlenAdmin ? ctx.getTienlenAdmin() : [],   // 🀄 ai chỉnh được bàn Tiến Lên
+            tienlenOn: ctx.getTienlenOn ? ctx.getTienlenOn() : false,          // 🀄 tab Tiến Lên hiện/ẩn
+            tienlen: ctx.tienlenQuanLy ? ctx.tienlenQuanLy.tomTat() : null,    // 🀄 ghế, cấu hình, bàn đang đánh
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
             dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,   // 📅 11/09
@@ -249,6 +252,8 @@ function startPanel(ctx) {
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
+                    // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
+                    '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
                     '/api/poker/giaitan', '/api/poker/nghi', '/api/poker/tiep',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
@@ -520,6 +525,27 @@ function startPanel(ctx) {
                         : path === '/api/poker/nghi' ? Q.tamNghi('admin')
                         : path === '/api/poker/tiep' ? Q.choiTiep()
                         : null;
+                    if (r === null) return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r, tomTat: Q.tomTat() });
+                }
+                // ===== 🀄 TIẾN LÊN =====
+                if (path === '/api/tienlen/admin') {
+                    if (!ctx.setTienlenAdmin) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setTienlenAdmin(body.ids);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
+                if (path === '/api/tienlen/on') {
+                    if (!ctx.setTienlenOn) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    return sendJSON(res, 200, ctx.setTienlenOn(!!body.on));
+                }
+                if (path.startsWith('/api/tienlen/') && ctx.tienlenQuanLy) {
+                    const Q = ctx.tienlenQuanLy;
+                    const r = path === '/api/tienlen/cauhinh' ? Q.datCauHinh(body || {})
+                        : path === '/api/tienlen/batdau' ? Q.batDau()
+                            : path === '/api/tienlen/giaitan' ? Q.giaiTan()
+                                : null;
                     if (r === null) return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r, tomTat: Q.tomTat() });
@@ -1157,6 +1183,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
       <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       <button data-tab="poker" class="epOnly" style="display:none" onclick="tab('poker')">🃏 Poker</button>
+      <button data-tab="tienlen" class="epOnly" style="display:none" onclick="tab('tienlen')">🀄 Tiến Lên</button>
     </div>
 
     <!-- BIG SMALL -->
@@ -1775,6 +1802,45 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <div id="tab-tienlen" class="hidden">
+      <div class="card">
+        <h2>🀄 Tiến Lên Miền Nam <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · ⚠️ ĂN DOGCOIN THẬT)</span></h2>
+        <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;white-space:nowrap"><input id="tlOn" type="checkbox" onchange="tlBat(this.checked)"> <b>Hiện tab 🀄 TIẾN LÊN</b> trên web người chơi</label>
+          <span class="muted" id="tlOnNow" style="font-size:12px"></span>
+        </div>
+        <div class="note" style="margin-top:8px">Bàn <b>2–4 người</b>, mỗi người 13 lá, <b>chạy liên tục</b> (xong ván chia tiếp). Người chơi vào <b>web cược → tab TIẾN LÊN → bấm ghế trống → ✅ SẴN SÀNG</b>; ai cũng sẵn sàng là vào ván, <b>không cần admin bấm gì</b>. Muốn ngồi phải <b>đã liên kết</b> và có <b>vốn ≥ 30× mức cược</b> — ai tụt dưới mức đó bị mời khỏi bàn trước ván kế. Nhà cái ăn <b>10% tiền thắng</b> mỗi ván.</div>
+        <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:150px"><label>Mức cược mỗi ván</label><input class="mini-in" id="tlCuoc" type="number" min="100" max="1000000" step="100"></div>
+          <div style="flex:1;min-width:160px"><label>Chế độ tính tiền</label>
+            <select id="tlCheDo">
+              <option value="hang">Nhất nhì ba tư</option>
+              <option value="anhet">Nhất ăn hết + đếm lá</option>
+            </select></div>
+          <div style="flex:1;min-width:150px"><label>Đơn giá mỗi lá còn lại <span class="muted">(chỉ dùng cho "nhất ăn hết")</span></label><input class="mini-in" id="tlGiaLa" type="number" min="0" max="1000000" step="100"></div>
+          <button class="btn-green" onclick="tlLuu()">💾 Lưu cấu hình</button>
+        </div>
+        <div class="row" style="margin-top:10px;gap:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlBaBich"> 3♠ đi đầu ván đầu</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlToiTrang"> Tới trắng</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlChatHeo"> Chặt heo có thưởng</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="tlThoiHeo"> Thối 2</label>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-green" id="tlBatDau" onclick="tlBatDau()">▶️ Mở bàn</button>
+          <button class="btn-red" onclick="tlGiaiTan()">🧹 Giải tán</button>
+        </div>
+        <div class="muted" id="tlNhac" style="font-size:12px;margin-top:6px"></div>
+        <div id="tlGhe" style="margin-top:10px"></div>
+        <div id="tlBan" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h3>🔑 Admin Tiến Lên</h3>
+        <div class="note">ID Discord (cách nhau bởi dấu phẩy) được phép chỉnh cấu hình bàn qua web. Panel SUPER thì luôn chỉnh được, ô này chỉ để mở thêm đường web.</div>
+        <div class="row" style="margin-top:8px"><input class="mini-in" id="tlAdminIds" placeholder="123456789012345678, ..."><button class="btn-blue" onclick="tlLuuAdmin()">💾 Lưu</button></div>
+      </div>
+    </div>
+
     <!-- 📜 LOG: gom toàn bộ lịch sử thắng/thua về một chỗ (04/09) - mỗi mục 30 ván CÓ CƯỢC.
          Chọn mục nào hiện mục đó, khỏi kéo dài (05/09). -->
     <div id="tab-log" class="hidden">
@@ -2068,7 +2134,7 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give'].includes(saved)) tab(saved);
+  if(['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
@@ -2080,7 +2146,7 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
   if(t==='give')gvLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
@@ -2349,6 +2415,63 @@ function pokerSaveAdmin(){
   const ids=(document.getElementById('pokerAdminIds').value||'').trim();
   api('/api/poker/admin',{ids:ids}).then(j=>{txClean(['pokerAdminIds']);toast('🃏 Admin poker: '+(j.ids.length?j.ids.join(', '):'(trống — không ai mở được giải)'));refresh();}).catch(e=>toast('❌ '+e.message));
 }
+// ===== 🀄 TAB TIẾN LÊN (SUPER) — bàn ăn Dogcoin thật =====
+// Vẽ từ STATE.tienlen (tomTat) mỗi 3 giây. Mọi ô nhập đều theo khuôn "đang sửa thì đừng ghi đè"
+// (document.activeElement) — không thì vòng làm mới 3 giây cướp chữ đang gõ.
+function tlFill(){
+  const T=STATE.tienlen, on=!!STATE.tienlenOn;
+  const ck=document.getElementById('tlOn'); if(ck&&document.activeElement!==ck) ck.checked=on;
+  const now=document.getElementById('tlOnNow'); if(now) now.textContent=on?'Đang HIỆN — người chơi thấy tab TIẾN LÊN':'Đang ẨN — người chơi không thấy tab';
+  const ai=document.getElementById('tlAdminIds'); if(ai&&document.activeElement!==ai&&!ai.value) ai.value=(STATE.tienlenAdmin||[]).join(', ');
+  if(!T){ const g=document.getElementById('tlGhe'); if(g) g.innerHTML='<div class="muted">Bot chưa nạp mô-đun Tiến Lên.</div>'; return; }
+  const C=T.cauHinh||{};
+  const dat=(id,v)=>{const e=document.getElementById(id); if(e&&document.activeElement!==e&&String(e.value)!==String(v)) e.value=v;};
+  dat('tlCuoc',C.mucCuoc); dat('tlGiaLa',C.giaLa); dat('tlCheDo',C.cheDo);
+  [['tlBaBich','baBichOn'],['tlToiTrang','toiTrangOn'],['tlChatHeo','chatHeoOn'],['tlThoiHeo','thoiHeoOn']].forEach(([id,k])=>{
+    const e=document.getElementById(id); if(e&&document.activeElement!==e) e.checked=!!C[k];
+  });
+  const chay=T.ban&&T.ban.trangThai==='DANG_CHAY';
+  const bd=document.getElementById('tlBatDau'); if(bd){ bd.textContent='▶️ Mở bàn ('+T.soNgoi+' người)'; bd.disabled=chay||T.soNgoi<T.toiThieu; }
+  const nh=document.getElementById('tlNhac');
+  if(nh) nh.textContent=T.cheDoTen+' · cược '+(C.mucCuoc||0).toLocaleString('vi-VN')+
+    (C.cheDo==='anhet'?(' · đếm lá '+(C.giaLa||0).toLocaleString('vi-VN')+'/lá'):'')+
+    ' · vốn tối thiểu '+(T.vonToiThieu||0).toLocaleString('vi-VN')+' · phế '+Math.round((T.pheTram||0)*100)+'%';
+  const ghe=document.getElementById('tlGhe');
+  if(ghe){
+    let h='<div style="font-weight:700;margin-bottom:6px">Ghế ('+T.soNgoi+'/'+T.toiDa+')</div><div class="row" style="flex-wrap:wrap;gap:6px">';
+    T.ghe.forEach((x,i)=>{ h+='<span style="padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:'+(x?'var(--card2)':'transparent')+';font-size:12px">'+(i+1)+'. '+(x?('<b>'+esc(x.ten)+'</b>'):'<span class="muted">trống</span>')+'</span>'; });
+    ghe.innerHTML=h+'</div>';
+  }
+  const ban=document.getElementById('tlBan');
+  if(ban){
+    if(!T.ban){ ban.innerHTML='<div class="muted">Chưa có bàn nào đang chạy.</div>'; }
+    else{
+      let h='<div style="font-weight:700;margin-bottom:6px">Bàn: ván #'+T.ban.soVan+' · '+(chay?'đang đánh':'nghỉ giữa ván')+'</div>';
+      h+='<div class="row" style="flex-wrap:wrap;gap:6px">'+T.ban.nguoi.map(p=>'<span style="padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);font-size:12px">'+esc(p.ten)+' · '+p.soLa+' lá · <b style="color:'+(p.tong>=0?'#3dd68c':'#ff6b6b')+'">'+(p.tong>=0?'+':'')+p.tong.toLocaleString('vi-VN')+'</b>'+(p.afk?' 📵':'')+'</span>').join('')+'</div>';
+      const nk=T.ban.nhatKy||[];
+      if(nk.length) h+='<div class="muted" style="font-size:12px;margin-top:8px">Ván gần đây: '+nk.slice(0,5).map(x=>'#'+x.van+' '+Object.keys(x.tien).map(id=>(x.tien[id]>=0?'+':'')+x.tien[id].toLocaleString('vi-VN')).join('/').slice(0,40)).join(' · ')+'</div>';
+      ban.innerHTML=h;
+    }
+  }
+}
+function tlBat(on){ api('/api/tienlen/on',{on:on}).then(j=>{toast(j.on?'🀄 Đã HIỆN tab Tiến Lên':'🀄 Đã ẨN tab Tiến Lên');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function tlLuu(){
+  const o={ mucCuoc:parseInt(document.getElementById('tlCuoc').value)||0,
+            giaLa:parseInt(document.getElementById('tlGiaLa').value)||0,
+            cheDo:document.getElementById('tlCheDo').value,
+            baBichOn:document.getElementById('tlBaBich').checked,
+            toiTrangOn:document.getElementById('tlToiTrang').checked,
+            chatHeoOn:document.getElementById('tlChatHeo').checked,
+            thoiHeoOn:document.getElementById('tlThoiHeo').checked };
+  api('/api/tienlen/cauhinh',o).then(j=>{toast('💾 Đã lưu cấu hình bàn Tiến Lên');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function tlBatDau(){ api('/api/tienlen/batdau',{}).then(j=>{toast('▶️ Đã mở bàn '+j.soNguoi+' người');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function tlGiaiTan(){ api('/api/tienlen/giaitan',{}).then(()=>{toast('🧹 Đã giải tán bàn');refresh();}).catch(e=>toast('❌ '+e.message)); }
+function tlLuuAdmin(){
+  const ids=(document.getElementById('tlAdminIds').value||'').trim();
+  api('/api/tienlen/admin',{ids:ids}).then(j=>{toast('🀄 Admin Tiến Lên: '+(j.ids.length?j.ids.join(', '):'(trống)'));refresh();}).catch(e=>toast('❌ '+e.message));
+}
+
 // ===== 🃏 TAB POKER (SUPER) =====
 // Vẽ từ STATE.poker (tomTat) mỗi 3 giây. Ô chọn chip: không ghi đè khi admin đang mở nó.
 function pokerFill(){
@@ -3545,7 +3668,7 @@ async function refresh(force){
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();
   pcToggleApply();
-  itemShopFill();giftFill();featRender();
+  itemShopFill();giftFill();featRender();tlFill();
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
   // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)

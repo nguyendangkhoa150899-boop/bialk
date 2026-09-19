@@ -17,6 +17,8 @@ const nodePath = require('path');
 // POKER_DIR: bản test chạy từ Desktop/bialk-test/ (chỉ chép 7 file BotDoMin) nên ../Poker không có
 // -> bialk-test.js đặt biến này trỏ về repo. Prod chạy trong repo thì mặc định ../Poker là đúng.
 const POKER_DIR = process.env.POKER_DIR || nodePath.join(__dirname, '..', 'Poker');
+// 🀄 Tiến Lên dùng CHUNG 53 ảnh lá bài với Poker (POKER_DIR/bai/) — đừng nhân đôi thư mục ảnh.
+const TIENLEN_DIR = process.env.TIENLEN_DIR || nodePath.join(__dirname, '..', 'TienLen');
 
 // Toàn bộ ảnh + âm thanh gom ở assets.js (tự quét thư mục assets/) - thêm file mới
 // chỉ cần thả vào thư mục đó, không phải đụng vào file này nữa.
@@ -121,6 +123,25 @@ function startWebPlay(ctx) {
                 });
             }
 
+            // 🀄 trang Tiến Lên. Ảnh lá bài trỏ về THƯ MỤC ẢNH CỦA POKER (dùng chung bộ 52 lá).
+            if (req.method === 'GET' && path === '/tienlen') {
+                res.writeHead(302, { Location: '/tienlen/' }); return res.end();
+            }
+            if (req.method === 'GET' && path === '/tienlen/') {
+                return fs.readFile(nodePath.join(TIENLEN_DIR, 'trang.html'), (e, b) => {
+                    if (e) return sendJSON(res, 404, { ok: false, error: 'Chưa có trang Tiến Lên' });
+                    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+                    res.end(b);
+                });
+            }
+            if (req.method === 'GET' && /^\/tienlen\/bai\/[A-Za-z0-9]{1,4}\.webp$/.test(path)) {
+                return fs.readFile(nodePath.join(POKER_DIR, 'bai', path.slice('/tienlen/bai/'.length)), (e, b) => {
+                    if (e) return sendJSON(res, 404, { ok: false, error: 'Không có lá này' });
+                    res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=604800' });
+                    res.end(b);
+                });
+            }
+
             if (req.method === 'POST' && path === '/api/login') {
                 const ip = req.socket.remoteAddress || '?';
                 if (tooManyFails(ip)) return sendJSON(res, 429, { ok: false, error: 'Sai quá nhiều lần, chờ 10 phút' });
@@ -204,6 +225,14 @@ function startWebPlay(ctx) {
                     return ctx.poker.xuLy({ path: path.slice('/api/poker'.length), method: req.method, body, userId }, res, sendJSON);
                 }
 
+                // 🀄 TIẾN LÊN: mọi /api/tienlen/* giao cho TienLen/web.js. Cũng đặt SAU cổng liên kết
+                // nên người chưa liên kết chỉ qua được /api/tienlen/state (khớp regex XEM).
+                if (path.startsWith('/api/tienlen/')) {
+                    if (!ctx.tienlen) return sendJSON(res, 503, { ok: false, error: 'Tiến Lên chưa bật' });
+                    const body = req.method === 'POST' ? await readBody(req) : {};
+                    return ctx.tienlen.xuLy({ path: path.slice('/api/tienlen'.length), method: req.method, body, userId }, res, sendJSON);
+                }
+
                 if (path === '/api/state') {
                     const tx = ctx.getTX();
                     const me = ctx.getUserData(userId);
@@ -239,6 +268,7 @@ function startWebPlay(ctx) {
                         featOff: ctx.featOffList ? ctx.featOffList() : [],   // 🔌 15/09: mục admin đang tắt
                         // 🃏 tab GIẢI POKER (tầng 1, nhóm thứ 3): admin bật/tắt ở panel SUPER
                         pokerOn: ctx.pokerOn ? !!ctx.pokerOn() : false,
+                        tienlenOn: ctx.tienlenOn ? !!ctx.tienlenOn() : false,   // 🀄 tab Tiến Lên hiện/ẩn
                         txPot: ctx.txPot ? ctx.txPot() : 0,
                         txPotX: (typeof ctx.txPotX === 'function' ? ctx.txPotX() : ctx.txPotX) || 10,
                         txBaoRate: ctx.txBaoRate || 30,
@@ -880,6 +910,14 @@ const PAGE = [
     'body.pokerFull #pagePoker{position:fixed;inset:0;z-index:70;background:#0d0f14}',
     'body.pokerFull #pagePoker.hidden{display:none}',
     'body.pokerFull #pokerFrame{width:100%;height:100%;min-height:0;border-radius:0}',
+    '#tlFrame{width:100%;height:calc(100vh - 150px);min-height:640px;border:0;border-radius:14px;background:#12141a}',
+    'body.pokerFull #pageTienlen{position:fixed;inset:0;z-index:70;background:#0d0f14}',
+    'body.pokerFull #pageTienlen.hidden{display:none}',
+    'body.pokerFull #tlFrame{width:100%;height:100%;min-height:0;border-radius:0}',
+    '#tlOut{display:none}',
+    'body.pokerFull #tlOut{display:block;position:fixed;top:8px;right:10px;z-index:72;',
+    '  padding:5px 10px;font-size:12px;font-weight:800;border-radius:9px;cursor:pointer;',
+    '  background:rgba(18,20,26,.82);color:#ffb4b4;border:1px solid #6b2f2f;backdrop-filter:blur(3px)}',
     '#pokerOut{display:none}',
     'body.pokerFull #pokerOut{display:block;position:fixed;top:8px;right:10px;z-index:72;',
     '  padding:5px 10px;font-size:12px;font-weight:800;border-radius:9px;cursor:pointer;',
@@ -1497,6 +1535,8 @@ const PAGE = [
     '<button id="ngGames" class="on" onclick="grpGo(\'games\')">🎮 MINI GAME</button>',
     // 🃏 nhóm thứ 3 — chỉ hiện khi admin bật ở panel SUPER (refresh() đọc j.pokerOn)
     '<button id="ngPoker" style="display:none" onclick="grpGo(\'poker\')">🃏 GIẢI POKER</button>',
+    // 🀄 nhóm thứ 4 — cũng chỉ hiện khi admin bật ở panel SUPER (refresh() đọc j.tienlenOn)
+    '<button id="ngTienlen" style="display:none" onclick="grpGo(\'tienlen\')">🀄 TIẾN LÊN</button>',
     '</div>',
     '<div id="nav">',
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
@@ -2041,6 +2081,11 @@ const PAGE = [
     // 18/09: poker chơi TOÀN MÀN HÌNH (chủ server: "bàn 8 người nhét trong khung nhỏ khó bấm lắm").
     // Vào tab là #pagePoker nhảy position:fixed phủ kín, che luôn thanh số dư + 2 hàng tab; thoát
     // bằng nút nổi góc phải. Thân trang phía sau khoá cuộn (body.pokerFull) để không cuộn ngầm.
+    // 🀄 Tiến Lên: khung nhúng y hệt poker, dùng chung lớp toàn màn hình body.pokerFull
+    '<div id="pageTienlen" class="hidden">',
+    '<button id="tlOut" onclick="grpGo(\'games\')" title="Về mini game">✕ Thoát Tiến Lên</button>',
+    '<iframe id="tlFrame" title="Tiến Lên Miền Nam"></iframe>',
+    '</div>',
     '<div id="pagePoker" class="hidden">',
     '<button id="pokerOut" onclick="grpGo(\'games\')" title="Về mini game">✕ Thoát poker</button>',
     // ⚠️ KHÔNG đặt style= trên thẻ: style gắn thẳng đè mọi rule CSS, body.pokerFull sẽ không
@@ -2290,6 +2335,7 @@ const PAGE = [
     'if(typeof j.linked==="boolean")lkSet(j.linked);',
     // 🃏 tab GIẢI POKER: hiện/ẩn theo công tắc admin; đang đứng trong tab mà bị tắt thì về MINI GAME
     '$("ngPoker").style.display=j.pokerOn?"":"none";',
+    '$("ngTienlen").style.display=j.tienlenOn?"":"none";',
     'if(!j.pokerOn&&PAGE_GRP[CURPAGE]==="poker")grpGo("games");',
     // 🧰 17/09: nhãn số trên nút Rương Ích Kỷ. THIẾU dòng này thì F5 xong nút hiện 0 cho tới khi
     // bấm mở rương mới đúng - máy chủ vẫn gửi ichKyTotal đều, chỉ là không ai đọc. Đã dính thật.
@@ -2398,8 +2444,8 @@ const PAGE = [
     'if(v<1){c.textContent="Gõ số tiền để xem ra Bão ăn bao nhiêu";return}',
     'var bu=Math.min(v*BPX,BPOT);',
     'c.textContent="Đặt "+vnd(v)+" → ra Bão ăn "+vnd(v*BPR)+" + bú hũ "+vnd(bu)+" = "+vnd(v*BPR+bu);}',
-    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker"};',
-    'var GRP_LAST={games:"tx",profile:"daily",poker:"poker"};',
+    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
@@ -2416,6 +2462,7 @@ const PAGE = [
     '$("pageStock").classList.toggle("hidden",p!=="stock");',
     '$("pageSpm").classList.toggle("hidden",p!=="spm");',
     '$("pagePoker").classList.toggle("hidden",p!=="poker");',   // 🃏 khung nhúng /poker/
+    '$("pageTienlen").classList.toggle("hidden",p!=="tienlen");',   // 🀄 khung nhúng /tienlen/
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
     '$("navTx").classList.toggle("on",p==="tx");',
     '$("navMine").classList.toggle("on",p==="mine");',
@@ -2435,13 +2482,15 @@ const PAGE = [
     '$("ngProfile").classList.toggle("on",g==="profile");',
     '$("ngGames").classList.toggle("on",g==="games");',
     '$("ngPoker").classList.toggle("on",g==="poker");',
+    '$("ngTienlen").classList.toggle("on",g==="tienlen");',
     // vào nhóm poker thì giấu luôn tầng 2 (không có trang con) - khung nhúng tự lo phần còn lại
-    '$("nav").style.display=(g==="poker")?"none":"";',
-    'document.body.classList.toggle("pokerFull",g==="poker");',   // 🃏 18/09: phủ kín màn hình
+    '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
+    'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
     '["navTx","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
     '["navDaily","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
+    'if(p==="tienlen"){var tf=$("tlFrame");if(tf&&!/\\/tienlen\\/$/.test(tf.src))tf.src="/tienlen/"}',   // 🀄
     'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
