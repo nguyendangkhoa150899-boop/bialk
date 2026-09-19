@@ -3,8 +3,8 @@
 :root{
   --bg:#0d0f14; --card:#161a22; --card2:#1b2029; --line:#2a3140; --tx:#e7ecf3; --muted:#8c97a8;
   --gold:#ffcf5c; --xanh:#3dd68c; --do:#ff6b6b; --ni1:#1f7a4d; --ni2:#155c39;
-  /* --co = HỆ SỐ CỠ BÀI, người chơi tự kéo bằng nút 🔍 (nhớ trong localStorage).
-     2 = gấp đôi bản đầu (chủ server chốt 19/09 vì bản đầu nhìn quá nhỏ). */
+  /* --co = HỆ SỐ CỠ BÀI. Chủ server chốt 19/09: CỐ ĐỊNH 2× (gấp đôi bản đầu), bỏ nút kính lúp
+     vì "dư nhiều nút quá". Muốn đổi cỡ thì sửa đúng số này. */
   --co:2;
   --lb:calc(clamp(38px,7.2vw,60px) * var(--co));      /* lá bài trên bàn */
   --lbt:calc(clamp(30px,5.4vw,46px) * var(--co));     /* lá bài trên tay */
@@ -53,7 +53,12 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .chumon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   font-size:clamp(16px,3.4vw,30px);font-weight:900;letter-spacing:4px;color:rgba(255,255,255,.07);pointer-events:none}
 .giua{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:94%}
-.bomay{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;min-height:calc(var(--lb)*1.45)}
+/* Bài trên bàn: các nước trong VÒNG đang đánh xếp ĐÈ lên nhau (nước cũ mờ, nước mới sáng),
+   giữ nguyên tới hết vòng để ai cũng thấy diễn biến — chủ server chốt 19/09. */
+.bomay{display:flex;gap:0;justify-content:center;align-items:flex-start;flex-wrap:nowrap;
+  min-height:calc(var(--lb)*1.5);padding-top:6px}
+.bomay .the{transition:filter .2s ease}
+.bomay .the.cu{filter:brightness(.58) saturate(.62)}
 .nhanbo{margin-top:6px;font-size:clamp(11px,1.9vw,13.5px);font-weight:800;color:var(--gold)}
 .chua{font-size:clamp(11px,2vw,14px);color:#bfe7d3;font-weight:700}
 
@@ -520,8 +525,13 @@ function veBan(){
   var tg = toi ? toi.tong : 0;
   $('banTong').textContent = (tg>=0?'▲ +':'▼ ') + vnd(tg) + ' tại bàn';
 
-  // ---- bộ đang trên bàn: XOÈ QUẠT (nghiêng dần từ giữa ra, chồng nhẹ) ----
-  if (datHTML($('banBo'), v.bo ? v.bo.la.map(function(x){ return theLa(x); }).join('') : '')) xoeQuat();
+  // ---- bài trên bàn: MỌI NƯỚC của vòng này, xếp đè, nước cũ mờ, nước mới sáng ----
+  var nuocBan = (v.chongBai && v.chongBai.length) ? v.chongBai : (v.bo ? [{ la: v.bo.la }] : []);
+  var moiNhat = nuocBan.length - 1;
+  var htmlBan = nuocBan.map(function(nc, gi){
+    return nc.la.map(function(x){ return theLa(x, false, gi < moiNhat ? 'cu' : ''); }).join('');
+  }).join('');
+  if (datHTML($('banBo'), htmlBan)) chongLen();
   // 📣 có bộ MỚI lên bàn -> CHỈ bắn tên với bài đáng khoe (xem dangKhoe)
   var khoaBo = v.bo ? v.bo.la.join() : '';
   if (khoaBo && khoaBo !== BO_CU && dangKhoe(v.bo)) banhTen(v.bo);
@@ -543,13 +553,18 @@ function veBan(){
   if (!cuaToi) LUOT_KEU = '';
 }
 var LUOT_KEU = '';
-/* Xoè quạt bài giữa bàn: lá giữa đứng thẳng, càng ra rìa càng nghiêng và tụt xuống. */
-function xoeQuat(){
-  var k = $('banBo').children, n = k.length;
+/* Xếp đè bài trên bàn: lá sau đè lên lá trước, chỉ hở MÉP TRÁI (chỗ in số + chất), tụt dần
+   xuống một chút cho thấy thứ tự. Lá cuối (nước mới nhất) hở trọn vẹn. Độ chồng tự co để
+   một vòng nhiều nước vẫn không tràn khỏi mặt bàn. */
+function chongLen(){
+  var e = $('banBo'), k = e.children, n = k.length;
+  if (!n) return;
+  var W = k[0].offsetWidth || 0, CW = e.clientWidth || 0;
+  var can = W * 0.62;
+  if (n > 1 && W && CW) can = Math.min(W * 0.82, Math.max(can, (W * n - CW + 8) / (n - 1)));
   for (var i = 0; i < n; i++){
-    var g = i - (n - 1) / 2;
-    k[i].style.transform = 'rotate(' + (g * 5.5).toFixed(1) + 'deg) translateY(' + (Math.abs(g) * 3.4).toFixed(1) + 'px)';
-    k[i].style.marginLeft = i ? 'calc(var(--lb) * -0.16)' : '0';
+    k[i].style.marginLeft = i ? (-Math.round(can)) + 'px' : '0';
+    k[i].style.transform = 'translateY(' + Math.min(i * 2, 14) + 'px)';
     k[i].style.zIndex = i;
   }
 }
@@ -669,16 +684,36 @@ function veTay(b, v){
   }
 }
 
-/* Bài to thì 13 lá không nằm vừa hàng -> ĐO bề ngang thật rồi tự tăng độ chồng cho vừa.
-   Chặn ở 72%: chồng quá mức đó là mất góc số, nhìn không ra lá gì. */
+/* Xếp tay bài. Hai việc:
+   1. Bài to thì 13 lá không nằm vừa hàng -> ĐO bề ngang thật rồi tự tăng độ chồng cho vừa.
+      Chặn ở 80%: chồng quá mức đó là mất góc số, nhìn không ra lá gì.
+   2. Lá ĐÃ CHỌN nhô lên và nằm trên lá kế -> phải CHỪA KHOẢNG TRỐNG ngay sau nó, không thì nó
+      che mất lá bên cạnh (chủ server báo: "chọn con 8 bị che con 9"). Khoảng trống này được tính
+      vào phép chia bên dưới nên chọn bao nhiêu lá hàng bài cũng không tràn ra ngoài. */
+var HO_CHON = 6;      // khoảng trống (px) chừa sau mỗi lá đã chọn
 function canhTay(){
   var e = $('banTay'), k = e.children, n = k.length;
   if (!n) return;
   var W = k[0].offsetWidth || 0, CW = e.clientWidth || 0;
   if (!W || !CW || n < 2) return;
-  var can = Math.max(W * 0.42, W - (CW - 10 - W) / (n - 1));
-  can = Math.min(can, W * 0.72);
-  for (var i = 1; i < n; i++) k[i].style.marginLeft = (-Math.round(can)) + 'px';
+  // g = số chỗ nối PHẢI chừa trống (vì lá đứng trước nó đang được chọn)
+  // CHỈ chừa chỗ ở nơi lá ĐÃ CHỌN đứng ngay trước lá CHƯA CHỌN — đó mới là chỗ bị che.
+  // Mấy lá chọn liền nhau thì cứ chồng bình thường (đều nhô lên như nhau, không che số của nhau).
+  var g = 0, i, hoO = [];
+  for (i = 1; i < n; i++){
+    hoO[i] = k[i - 1].classList.contains('chon') && !k[i].classList.contains('chon');
+    if (hoO[i]) g++;
+  }
+  var soNoiChong = (n - 1) - g;                       // số chỗ nối còn được phép chồng
+  var can = W * 0.42;
+  if (soNoiChong > 0){
+    var thua = W * n + g * HO_CHON - (CW - 10);       // đang dôi ra bao nhiêu px
+    can = Math.max(can, thua / soNoiChong);
+    can = Math.min(can, W * 0.8);
+  }
+  for (i = 1; i < n; i++){
+    k[i].style.marginLeft = hoO[i] ? HO_CHON + 'px' : (-Math.round(can)) + 'px';
+  }
 }
 function veNut(b, v){
   var toi = b.toi;
@@ -713,9 +748,7 @@ function veNut(b, v){
     bc.className = danhDuoc ? 'duoc' : 'khong'; bc.hidden = false;
   } else bc.hidden = true;
 
-  var o = '<button class="b xam" onclick="coBai(-1)" title="Bài nhỏ lại">🔍−</button>' +
-          '<button class="b xam" onclick="coBai(1)" title="Bài to lên">🔍+</button>' +
-          '<button class="b vang" onclick="goiY()"' + (cua?'':' disabled') + '>💡 GỢI Ý</button>' +
+  var o = '<button class="b vang" onclick="goiY()"' + (cua?'':' disabled') + '>💡 GỢI Ý</button>' +
           '<button class="b xam" onclick="boChon()"' + (CHON.length?'':' disabled') + '>✖️ BỎ CHỌN</button>';
   datHTML($('banNut'), o);
   $('banNhac').textContent = v.ketQua ? '' :
@@ -741,20 +774,7 @@ function doiXep(){
   bao('🔀 Xếp bài ' + (KIEU_XEP==='so'?'theo số':'gom bộ'));
   ve();
 }
-/* 🔍 cỡ bài: 5 nấc, nhớ trong localStorage. Mặc định nấc 2.0 (gấp đôi bản đầu). */
-var CO_NAC = [1.2, 1.6, 2, 2.5, 3];
-function coHienTai(){
-  var n = parseFloat(localStorage.getItem('tl_co'));
-  return CO_NAC.indexOf(n) >= 0 ? n : 2;
-}
-function apCo(){ document.documentElement.style.setProperty('--co', coHienTai()); }
-function coBai(huong){
-  var i = CO_NAC.indexOf(coHienTai()) + huong;
-  if (i < 0 || i >= CO_NAC.length) return bao(huong > 0 ? 'Đã to hết cỡ' : 'Đã nhỏ hết cỡ');
-  try { localStorage.setItem('tl_co', String(CO_NAC[i])); } catch(e){}
-  apCo();
-  bao('🔍 Cỡ bài: ' + Math.round(CO_NAC[i] * 100) + '%');
-}
+/* (Nút 🔍 chỉnh cỡ bài đã BỎ 19/09 — chủ server thấy dư nút. Cỡ cố định ở biến --co trong CSS.) */
 function danh(){ if(!CHON.length) return bao('Chọn lá muốn đánh đã'); var g = CHON.slice(); CHON = []; goi('/danh', { la: g }); }
 function boLuot(){ CHON = []; goi('/boluot'); }
 
@@ -785,7 +805,6 @@ function veKetQua(b, v){
 
 /* ---------------------------------------------------------------- chạy */
 setInterval(dongBo, 1000);
-apCo();
 kiemXoay();
 dongBo();
 </script>

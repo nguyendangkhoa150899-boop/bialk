@@ -89,12 +89,12 @@ bao giờ bê kiểu xác thực đó lên prod.
 
 | Thứ | Chi tiết |
 |---|---|
-| **Cỡ bài** | Gấp đôi bản đầu (`--co` mặc định 2). Nút **🔍− / 🔍+** chỉnh 5 nấc (1.2→3), nhớ trong `localStorage`. |
+| **Cỡ bài** | **Cố định gấp đôi** bản đầu (`--co: 2` trong CSS). Nút 🔍 đã bỏ 19/09 — chủ server: *"dư nhiều nút quá"*. Đổi cỡ thì sửa đúng biến đó. |
 | **Tay bài** | **Xoè chồng** như cầm bài thật; `canhTay()` đo bề ngang thật rồi tự tăng độ chồng để **13 lá luôn vừa một hàng** (chặn ở 72%, chồng hơn là mất góc số). |
-| **Chọn lá** | Lá **chỉ NHÔ LÊN, không phóng to** (phóng to là lấn che lá bên cạnh trong hàng xoè chồng — chủ server báo 19/09), **viền vàng + quầng sáng**, nảy nhẹ, **dấu ✓ góc TRÁI** (phần luôn nhìn thấy), nổi lên trên lá bên cạnh. |
+| **Chọn lá** | Lá **chỉ NHÔ LÊN, không phóng to**, **viền vàng + quầng sáng**, **dấu ✓ góc TRÁI**. Lá chọn nổi lên trên lá kế nên `canhTay()` **chừa khoảng trống ngay sau nó** — đúng chỗ lá đã chọn đứng cạnh lá chưa chọn (chủ server: *"chọn con 8 bị che con 9"*). Khoảng trống được tính vào phép chia nên chọn bao nhiêu lá hàng bài cũng không tràn. |
 | **Hàng nút to** | ⏱ **đồng hồ tròn vàng** (≤5 giây đỏ nhấp nháy) · **Bỏ lượt** (đỏ) · **Đánh** (xanh). Hiện suốt lượt mình; nút Đánh **chỉ sáng khi mớ lá hợp lệ**. Nằm **trên** tay bài cho dễ với. |
 | **Dòng dưới** | "3 đôi thông · 💥 CHẶT được!" / "· Không lớn hơn đôi K" / "· chưa tới lượt bạn". |
-| **Giữa bàn** | Bài đã đánh **xoè quạt** (nghiêng dần từ giữa ra). **CHỈ bài đặc biệt** mới bắn tên to giữa bàn: **đôi heo · ba heo · 3–4 đôi thông · tứ quý · sảnh từ 5 lá** (hàm `dangKhoe()`); hàng chặt đổi **màu cam**. Heo lẻ, đôi thường, sảnh 3–4 lá thì im — trước bắn mọi nước nên chữ chồng lên nhau, loạn mắt. |
+| **Giữa bàn** | Giữ **CẢ DIỄN BIẾN vòng đang đánh**: mọi nước xếp **đè lên nhau** (chỉ hở mép trái = chỗ in số), **nước cũ mờ, nước mới sáng**, hết vòng mới dọn (`van.chongBai` bên máy chủ, `chongLen()` bên web). **CHỈ bài đặc biệt** mới bắn tên to giữa bàn: **đôi heo · ba heo · 3–4 đôi thông · tứ quý · sảnh từ 5 lá** (`dangKhoe()`); hàng chặt đổi **màu cam**. |
 | **Ghế người khác** | Xấp lưng bài + **badge ĐỎ đếm lá** (≤2 lá thì **badge vàng nhấp nháy** = sắp về nhất) · **PASS** trắng to khi bỏ lượt · nhãn **vừa đánh bộ gì** (💥 khi chặt, 🤖 khi máy đánh giùm). |
 | **Trợ giúp** | Lá **không nằm trong nước đánh nào thì mờ đi** · **💡 GỢI Ý** tự chọn nước rẻ nhất, bấm tiếp xoay hết các cách · **✖️ BỎ CHỌN** · **⇄** nút tròn đổi kiểu xếp (theo số / gom bộ). |
 | **Tới lượt bạn** | Sáng viền cả bàn + kêu **một tiếng** (không kêu lặp mỗi giây). |
@@ -206,6 +206,11 @@ node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route,
 - **Anchor phải DUY NHẤT.** `poker:"poker"};'` có ở cả `PAGE_GRP` lẫn `GRP_LAST`; dòng trong `tab()`
   đã sẵn `'poker'`. Luôn `grep -c` trước khi tin.
 - **Bash nuốt backtick / `${}`** khi viết script vá → viết bằng Write tool (bài học chung của repo).
+- **Bộ kiểm CHẬP CHỜN vì tới trắng.** Chia bài ngẫu nhiên nên ~1/15 lần có người tới trắng ngay lúc
+  chia → ván **chốt luôn** trong `moBan()`, mọi bài kiểm giả định "ván đang đánh" đỏ oan (từng làm bài
+  **chống lộ bài** đỏ vì `ketQua.lat` lật bài cả bàn — đó là showdown, đúng thiết kế). `web-test` nay
+  **tắt tới trắng trong `dung()`**; bài nào cần soi mặc định thì gọi `dung({ toiTrangOn: true })`.
+  Luật tới trắng có bộ kiểm riêng ở `van-test`. Đã hammer 20 lần liên tiếp: 0 hỏng.
 - **Máy chủ quên gửi một trường là VỠ TRANG.** Bộ trên bàn từng gửi thiếu `cao` (lá lớn nhất);
   máy luật bản client gọi `cTri(b.cao)` → `undefined.slice()` → ném lỗi. Bộ kiểm cũ không bắt được vì
   ca "bàn đang đánh" lúc đó **bàn còn trống**. Đã thêm ca **có bộ trên bàn + tới lượt mình + đang chọn lá**.

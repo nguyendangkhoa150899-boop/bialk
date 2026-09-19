@@ -103,6 +103,9 @@ function taoBan(tuyChon = {}) {
             so: T.soVan, tay,
             thuTu,                       // thứ tự ghế, dùng để tìm người kế tiếp
             bo: null, boCua: null,       // bộ đang nằm trên bàn + chủ của nó
+            // 19/09: MỌI NƯỚC ĐÃ ĐÁNH TRONG VÒNG NÀY, để web xếp đè lên nhau cho thấy cả diễn biến
+            // (nước cũ vẽ mờ, nước mới vẽ sáng). Hết vòng là xoá sạch cùng lúc với v.bo.
+            chongBai: [],
             daBo: new Set(),             // ai đã bỏ lượt trong VÒNG này (hết vòng thì xoá)
             veNhat: [],                  // id theo thứ tự về (nhất, nhì, ba, tư)
             // 19/09: NHÃN VIỆC VỪA LÀM — id -> { viec:'danh'|'bo', ten, soLa, chat, may, luc }.
@@ -196,6 +199,8 @@ function taoBan(tuyChon = {}) {
         v.daBo.clear();                                  // có người đánh -> vòng mới mở lại cho mọi người
         v.lichSu.push({ id, la: bo.la.slice(), ten: bo.ten, chat: !!kq.chat, thuong: thuongChat });
         v.vuaLam[id] = { viec: 'danh', ten: bo.ten, soLa: bo.la.length, chat: !!kq.chat, luc: bayGio };
+        v.chongBai.push({ id: id, la: bo.la.slice(), ten: bo.ten, chat: !!kq.chat });
+        if (v.chongBai.length > 6) v.chongBai = v.chongBai.slice(-6);
         if (v.lichSu.length > 30) v.lichSu = v.lichSu.slice(-30);
 
         // ---- hết bài = về hạng ----
@@ -230,6 +235,7 @@ function taoBan(tuyChon = {}) {
         // ---- hết vòng: chủ bộ ăn vòng, được mở vòng mới ----
         const chu = v.boCua;
         v.bo = null; v.boCua = null; v.daBo.clear();
+        v.chongBai = [];                          // hết vòng: dọn bàn, vòng sau xếp lại từ đầu
         // chủ bộ vừa đánh hết bài -> người kế tiếp (theo ghế) còn bài mở vòng
         const moVong = (v.tay[chu] || []).length > 0 ? chu : keTiepConBai(chu);
         if (!moVong) return chotVan(bayGio);
@@ -396,6 +402,7 @@ function taoBan(tuyChon = {}) {
                 // Thieu truong nay -> client goi cTri(undefined) -> vo trang. Da dinh 19/09.
                 bo: v.bo ? { kieu: v.bo.kieu, dai: v.bo.dai, la: v.bo.la.slice(), cao: v.bo.cao, ten: v.bo.ten } : null,
                 boCua: v.boCua, batBuoc3Bich: v.batBuoc3Bich,
+                chongBai: v.chongBai.map(x => ({ id: x.id, la: x.la.slice(), ten: x.ten, chat: x.chat })),
                 lichSu: v.lichSu.slice(-8),
                 ketQua: v.ketQua,
             } : null,

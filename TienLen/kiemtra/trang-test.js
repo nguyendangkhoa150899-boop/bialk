@@ -289,8 +289,13 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     // 19/09: phóng to lá chọn thì nó lấn che lá bên cạnh trong hàng xoè chồng -> chỉ nhô, không phóng
     ok('lá chọn KHÔNG phóng to', !/\.tay \.the\.chon\{[^}]*scale\(/.test(HTML));
     ok('dấu ✓ nằm góc TRÁI (phần luôn nhìn thấy khi xoè chồng)', /\.chon::after\{[^}]*left:-6px/.test(HTML));
-    ok('🔍 chỉnh cỡ bài được, nhớ trong localStorage', /function coBai\(/.test(JS) && /tl_co/.test(JS) && /--co:2/.test(HTML));
-    ok('tay bài xoè chồng + tự co cho vừa bề ngang', /function canhTay\(/.test(JS) && /W \* 0\.72/.test(JS));
+    // 19/09: chủ server "cứ làm bài to x2 thôi, không cần kính lúp, dư nhiều nút quá"
+    ok('cỡ bài CỐ ĐỊNH 2×, đã bỏ nút 🔍', /--co:2;/.test(HTML) && !/function coBai\(/.test(JS) && !/onclick="coBai/.test(JS));
+    ok('tay bài xoè chồng + tự co cho vừa bề ngang', /function canhTay\(/.test(JS) && /W \* 0\.8/.test(JS));
+    // "chọn con 8 bị che con 9": chỉ chừa chỗ ở nơi lá ĐÃ CHỌN đứng cạnh lá CHƯA CHỌN
+    ok('chừa khoảng trống sau lá đã chọn để không che lá kế',
+        /HO_CHON/.test(JS) && /contains\('chon'\) && !k\[i\]\.classList\.contains\('chon'\)/.test(JS));
+    ok('...và khoảng trống đó được tính vào phép chia nên không tràn hàng', /g \* HO_CHON/.test(JS));
     ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /' cam'/.test(JS));
     ok('có dòng gợi ý #banGoi báo đánh được / không', /id="banGoi"/.test(HTML) && /#banGoi\.duoc/.test(HTML) && /#banGoi\.khong/.test(HTML));
     ok('có nút 💡 GỢI Ý', /💡 GỢI Ý/.test(JS));
@@ -303,7 +308,10 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('dòng dưới nói rõ bộ gì + vì sao chưa đánh được', /id="banBoChon"/.test(HTML) && /💥 CHẶT được!/.test(JS) && /chưa tới lượt bạn/.test(JS));
     ok('📣 tên bộ bài bắn TO giữa bàn khi có người đánh', /id="banTen"/.test(HTML) && /function banhTen\(/.test(JS) && /@keyframes tenBo\{/.test(HTML));
     ok('...hàng chặt (tứ quý / đôi thông) đổi màu cam', /bo\.kieu === 'tu' \|\| bo\.kieu === 'thong'/.test(JS) && /#banTen\.bom\{/.test(HTML));
-    ok('bài giữa bàn XOÈ QUẠT (nghiêng dần từ giữa ra)', /function xoeQuat\(/.test(JS) && /rotate\(' \+ \(g \* 5\.5\)/.test(JS));
+    // 19/09: bàn giữ CẢ DIỄN BIẾN vòng đang đánh — các nước xếp đè, nước cũ mờ, nước mới sáng
+    ok('bài trên bàn XẾP ĐÈ lên nhau (không xoè quạt nữa)', /function chongLen\(/.test(JS) && !/function xoeQuat\(/.test(JS));
+    ok('vẽ MỌI nước của vòng (v.chongBai), không chỉ bộ mới nhất', /v\.chongBai && v\.chongBai\.length/.test(JS));
+    ok('nước cũ vẽ mờ, nước mới vẽ sáng', /gi < moiNhat \? 'cu' : ''/.test(JS) && /\.bomay \.the\.cu\{filter/.test(HTML));
     ok('ghế có badge ĐỎ đếm lá, ≤2 lá thì vàng nhấp nháy', /dem-la/.test(JS) && /.dem-la.it{/.test(HTML));
     ok('bỏ lượt hiện PASS to rõ', /class="tt pass"/.test(JS) && /.tt.pass{/.test(HTML));
     ok('ghế hiện VỪA ĐÁNH gì, có dấu 💥 khi chặt', /vl\.viec==='danh'/.test(JS) && /💥 CHẶT/.test(JS));

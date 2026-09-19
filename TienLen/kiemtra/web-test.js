@@ -23,6 +23,10 @@ function dung(tuyChon = {}) {
         ghiLog: (d) => log.push(d),
         giayXemKet: tuyChon.giayXemKet != null ? tuyChon.giayXemKet : 9999,   // mặc định KHÔNG tự chia ván kế
     });
+    // ⚠️ TẮT TỚI TRẮNG cho mọi bài kiểm ở file này. Bật thì thỉnh thoảng (~1/15 lần) chia bài xong
+    // là có người tới trắng -> ván CHỐT NGAY trong moBan(), mọi bài kiểm phía sau mất bối cảnh
+    // "ván đang đánh" và đỏ oan. Luật tới trắng đã có bộ kiểm riêng ở van-test.
+    if (tuyChon.toiTrangOn !== true) tl.quanLy.datCauHinh({ toiTrangOn: false });
     return { tl, vi, log, phe: () => phe, ten };
 }
 /** Gọi API như webplay.js gọi: trả { ma, j }. */
@@ -45,7 +49,8 @@ function epBai(tl, tay, luot) {
 // ---------------------------------------------------------------- cổng vào
 muc('cổng vào bàn');
 {
-    const { tl } = dung();
+    // toiTrangOn: true = KHÔNG đụng vào cấu hình mặc định (xem dung()), vì đoạn này soi đúng mặc định
+    const { tl } = dung({ toiTrangOn: true });
     const s = st(tl, 'A');
     ok('người thường vào xem được', s.ok === true && s.ban === null);
     ok('vốn tối thiểu = 30 × mức cược', s.vonToiThieu === s.cauHinh.mucCuoc * VON_HE_SO && VON_HE_SO === 30);
@@ -91,6 +96,7 @@ muc('🔒 CHỐNG LỘ BÀI — soi từng lá trong JSON trả về');
     goi(tl, '/ngoi', { ghe: 2 }, 'C'); goi(tl, '/ngoi', { ghe: 3 }, 'D');
     for (const id of ['A', 'B', 'C', 'D']) goi(tl, '/sansang', {}, id);
     const v = tl.phong.ban._trong.van;
+    ok('ván đang ĐÁNH (chưa chốt) — đúng bối cảnh cần soi', !v.ketQua);
     let lo = [];
     for (const id of ['A', 'B', 'C', 'D']) {
         const tho = JSON.stringify(st(tl, id));
@@ -107,6 +113,15 @@ muc('🔒 CHỐNG LỘ BÀI — soi từng lá trong JSON trả về');
     ok('nhưng thấy SỐ LÁ của người khác', st(tl, 'A').ban.nguoi.every(p => p.soLa === 13));
     const khach = st(tl, 'NGHEO');
     ok('khán giả nhận bản chung, không có bài của ai', !khach.ban.toi && !JSON.stringify(khach.ban.nguoi).includes('"la"'));
+
+    // Ngược lại: HẾT ván thì lật bài cả bàn là ĐÚNG (showdown). Chốt lại để sau này ai siết
+    // chống lộ bài không lỡ tay bịt luôn màn lật bài cuối ván.
+    v.tay.A = ['3s']; v.tay.B = ['4c']; v.tay.C = ['5d']; v.tay.D = ['6h'];
+    v.bo = null; v.boCua = null; v.daBo.clear(); v.veNhat = []; v.batBuoc3Bich = false; v.luot = 'A';
+    goi(tl, '/danh', { la: ['3s'] }, 'A'); goi(tl, '/danh', { la: ['4c'] }, 'B'); goi(tl, '/danh', { la: ['5d'] }, 'C');
+    const sauVan = st(tl, 'A');
+    ok('hết ván thì lật bài cả bàn (cố ý)', sauVan.ban.van.ketQua && sauVan.ban.van.ketQua.lat.length === 4,
+        JSON.stringify(sauVan.ban.van.ketQua && sauVan.ban.van.ketQua.lat));
 }
 
 // ---------------------------------------------------------------- đánh bài + VÍ
