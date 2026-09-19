@@ -31,6 +31,10 @@ muc('cú pháp + cấu trúc trang');
     ok('phòng đếm lá nói rõ mỗi lá = 1 cược', /mỗi lá còn trên tay = 1 cược/.test(JS) && /🔢 mỗi lá/.test(JS));
     ok('phòng truyền thống nói rõ nhất / nhì bao nhiêu', /🏅 nhất/.test(JS) && /nhì ăn một nửa/.test(JS));
     ok('ảnh lá bài lấy theo mã lá', /src="bai\/'\+ma\+'\.webp"/.test(JS));
+    // Nút "✕ Thoát Tiến Lên" của khung bọc ngoài là position:fixed góc phải trên -> nó NỔI ĐÈ
+    // lên thanh trên của trang này, che mất viên thuốc tên + số dư. Trang phải tự chừa chỗ.
+    ok('thanh trên chừa chỗ cho nút Thoát nổi của khung ngoài',
+        HTML.indexOf('padding:8px 12px;padding-right:clamp(104px,15vw,168px)') >= 0);
     ok('KHÔNG còn màu CSS gõ hỏng', !/#\d*[a-z]{4,}\s*;/i.test(HTML.slice(0, HTML.indexOf('</style>'))));
 }
 
@@ -399,8 +403,18 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
         /bam\(ma, 29\) % 7\) - 3/.test(JS) && /rLa = \(bam\(ma, 11\) % 9\) - 4/.test(JS));
     // trang này từng THIẾU nhánh điện thoại nằm ngang (nhầm với trang Poker) -> bàn co còn ~145px
     ok('có nhánh CSS cho điện thoại NẰM NGANG', /@media\(orientation:landscape\) and \(max-height:560px\)\{/.test(HTML));
-    ok('...ở khổ đó bàn ăn trọn chiều cao còn lại, bài nhỏ lại',
-        /aspect-ratio:auto;width:100%;height:calc\(100vh - 292px\)/.test(HTML) && /--co:1\.25/.test(HTML));
+    ok('...màn BÀN ăn trọn chiều cao còn lại, bài nhỏ lại',
+        /aspect-ratio:auto;width:100%;height:calc\(100vh - 240px\)/.test(HTML) && /--co:1\.25/.test(HTML));
+    // iPhone nằm ngang cao ~400px: ép bàn oval vào phòng chờ thì 4 ghế đè lên nhau và nút
+    // SẴN SÀNG nằm chồng lên ghế (chủ server chụp lại 20/09). Oval ở phòng chờ chỉ là trang
+    // trí -> bỏ hẳn, xếp ghế thành một hàng ngang.
+    ok('...PHÒNG CHỜ bỏ bàn oval, xếp ghế thành hàng ngang',
+        /#sanCho\{aspect-ratio:auto;height:auto/.test(HTML) &&
+        /#sanCho #choGhe\{order:1;display:flex/.test(HTML));
+    ok('...và phải !important mới đè được style left/top gắn thẳng vào thẻ ghế',
+        /#sanCho \.ghe\{position:static!important;left:auto!important;top:auto!important/.test(HTML));
+    ok('...nút SẴN SÀNG rơi xuống dưới hàng ghế, không nằm chồng lên',
+        /#sanCho \.vien\{order:2;position:static/.test(HTML) && /#sanCho \.giua\{position:static;transform:none/.test(HTML));
     // Khay bài đã chọn là HÀNG MỚI, chiếm thêm chiều cao. Màn nằm ngang chỉ cao ~390px nên phải
     // thu gọn khay + trừ thêm chiều cao bàn, không thì trang bị cuộn — mà ta vừa chặn vuốt cuộn.
     ok('...khay bài đã chọn cũng thu gọn theo',
