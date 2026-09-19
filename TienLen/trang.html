@@ -430,8 +430,11 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
 /* ⚠️ Chồng 46% là 8 lá dính thành MỘT KHỐI, nhìn không ra lá nào với lá nào (chủ server chụp
    lại 20/09). Hạ xuống 30% và cho mỗi lá một VIỀN TRẮNG + bóng đổ sang trái: lá sau in bóng
    lên lá trước nên mắt tách được từng lá. */
-.latGhe img{display:block;width:var(--llb);border-radius:5px;flex:0 0 auto;margin:0;
-  box-shadow:0 3px 8px rgba(0,0,0,.7)}
+/* ⚠️ PHẢI CÓ background:#fff. Ảnh lá bài (.webp) có NỀN TRONG SUỐT — mặt trắng của lá là do
+   CSS vẽ, xem .the{background:#fff}. Bày <img> trần lên mặt cỏ thì cỏ xanh lọt qua, lá bài
+   thành màu xanh (chủ server: "sao lá bài show ra nó không màu trắng vậy"). */
+.latGhe img{display:block;width:var(--llb);aspect-ratio:222/323;border-radius:5px;flex:0 0 auto;margin:0;
+  background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.7)}
 .latGhe img.xau{outline:2px solid #ff9a3c;outline-offset:-1px;border-radius:4px}
 /* màn hẹp: xoè ngang cạnh ghế là đè lên ghế kế bên -> giấu đi, dùng bảng gom giữa bàn */
 @media(max-width:759px){ .latGhe{display:none} }
@@ -448,8 +451,8 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
   overflow:hidden;text-overflow:ellipsis;max-width:24vw}
 /* Bày NGUYÊN LÁ + xuống dòng, y như mảng bài lật cạnh ghế — chồng lá là thành vệt trắng. */
 .latD .bo{display:flex;align-items:flex-end;flex:0 1 auto;min-width:0;flex-wrap:wrap;gap:3px}
-.latD .bo img{display:block;width:var(--llb);border-radius:5px;flex:0 0 auto;margin:0;
-  box-shadow:0 3px 8px rgba(0,0,0,.7)}
+.latD .bo img{display:block;width:var(--llb);aspect-ratio:222/323;border-radius:5px;flex:0 0 auto;margin:0;
+  background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.7)}
 .latD .bo img.xau{outline:2px solid #ff9a3c;outline-offset:-1px;border-radius:5px}
 .latD .ph{font-size:clamp(10px,1.5vw,12.5px);font-weight:800;color:#ffb46a;white-space:nowrap}
 .tt.thoi{background:linear-gradient(180deg,#ff9a3c,#b83f12);color:#2a0e00;font-size:11px;letter-spacing:.4px;

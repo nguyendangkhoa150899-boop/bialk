@@ -658,6 +658,11 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
     // 3px, hết bề ngang thì tự xuống hàng.
     ok('bài lật bày NGUYÊN CON, KHÔNG chồng lên nhau',
         /\.latGhe img\{[^}]*margin:0/.test(HTML) && !/margin-left:calc\(var\(--llb\)/.test(HTML));
+    // Ảnh lá bài (.webp) có NỀN TRONG SUỐT — mặt trắng là do CSS vẽ (.the{background:#fff}).
+    // Bày <img> trần lên mặt cỏ thì cỏ xanh lọt qua, lá bài thành MÀU XANH (chủ server 20/09).
+    ok('⭐ lá lật có NỀN TRẮNG (ảnh .webp nền trong suốt)',
+        /\.latGhe img\{[^}]*background:#fff/.test(HTML) && /\.latD \.bo img\{[^}]*background:#fff/.test(HTML));
+    ok('...và giữ đúng tỉ lệ lá bài', /\.latGhe img\{[^}]*aspect-ratio:222\/323/.test(HTML));
     ok('...hết bề ngang thì XUỐNG DÒNG', /\.latGhe\{[\s\S]{0,220}flex-wrap:wrap;gap:3px/.test(HTML) &&
         /max-width:min\(40vw,var\(--latW,400px\)\)/.test(HTML));
     ok('...có trần bề ngang riêng cho khổ nằm ngang', /--latW:230px/.test(HTML));
