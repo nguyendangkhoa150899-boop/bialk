@@ -2439,9 +2439,9 @@ function tlFill(){
        [['baBichOn','3♠ đi đầu'],['toiTrangOn','Tới trắng'],['chatHeoOn','Chặt có thưởng'],['thoiHeoOn','Nhốt (thối)']].map(([k,t])=>
          '<label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" data-tl="'+T.ma+'" data-k="'+k+'"'+(C[k]?' checked':'')+'> '+t+'</label>').join('')+
        '<input class="mini-in" style="width:120px" type="number" min="100" max="1000000" step="1000" data-tl="'+T.ma+'" data-k="mucCuoc" value="'+(C.mucCuoc||0)+'">'+
-       '<button class="btn-green" onclick="tlLuu(\''+T.ma+'\')">💾 Lưu</button>'+
-       '<button class="btn-green" onclick="tlBatDau(\''+T.ma+'\')"'+((chay||T.soNgoi<T.toiThieu)?' disabled':'')+'>▶️ Mở bàn ('+T.soNgoi+')</button>'+
-       '<button class="btn-red" onclick="tlGiaiTan(\''+T.ma+'\')">🧹 Giải tán</button></div>';
+       '<button class="btn-green" onclick="tlLuu(\\''+T.ma+'\\')">💾 Lưu</button>'+
+       '<button class="btn-green" onclick="tlBatDau(\\''+T.ma+'\\')"'+((chay||T.soNgoi<T.toiThieu)?' disabled':'')+'>▶️ Mở bàn ('+T.soNgoi+')</button>'+
+       '<button class="btn-red" onclick="tlGiaiTan(\\''+T.ma+'\\')">🧹 Giải tán</button></div>';
     h+='<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">'+T.ghe.map((x,k)=>
        '<span style="padding:5px 9px;border-radius:9px;border:1px solid var(--line);background:'+(x?'var(--card2)':'transparent')+';font-size:12px">'+
        (k+1)+'. '+(x?('<b>'+esc(x.ten)+'</b>'):'<span class="muted">trống</span>')+'</span>').join('')+'</div>';

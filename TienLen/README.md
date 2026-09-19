@@ -271,7 +271,8 @@ node TienLen/kiemtra/bai-test.js     # luật bộ bài: nhận dạng, so, ch�
 node TienLen/kiemtra/van-test.js     # máy ván + TIỀN cả 2 chế độ, cóng, nhốt          (117)
 node TienLen/kiemtra/web-test.js     # ghế, VÍ, SẢNH, VOTE, chống lộ bài, lưới an toàn  (86)
 node TienLen/kiemtra/trang-test.js   # client: cú pháp, id trùng, vẽ, ĐỐI CHIẾU luật   (154)
-node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route, cổng LK     (17)
+node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route, cổng LK     (30)
+node TienLen/kiemtra/panel-test.js   # TRANG PANEL: cú pháp JS của trang + đăng nhập    (12)
 node TienLen/kiemtra/lua-test.js 400 # 🐛 LÙA BUG: 400 ván thật, ~170.000 phép kiểm
 ```
 
@@ -291,6 +292,15 @@ quyết vốn tối thiểu. Cái gì lệch là **lỗi thật**, không phải
 ---
 
 ## 7. Cạm bẫy đã dính (đừng dính lại)
+
+- **`'` trong `panel.js` bị template literal NUỐT — chết cả trang panel (20/09).** Cả trang
+  panel là **một template literal khổng lồ**. Viết `onclick="tlLuu(''+T.ma+'')"` thì template
+  literal ăn mất dấu gạch, trang đích ra `tlLuu(''+T.ma+'')` — **hai chuỗi dính nhau = lỗi cú
+  pháp = CHẾT TOÀN BỘ JS của trang**. Admin **bấm đăng nhập không ăn**, bấm gì cũng không ăn, mà
+  log bot thì im ru vì lỗi nằm phía trình duyệt. `node --check panel.js` **không bắt được**:
+  bản thân file đúng cú pháp, thứ hỏng là cái **chuỗi nó sinh ra**.
+  → Muốn ra `'` ở trang đích thì nguồn phải viết **`\'`** (xem `palSetName`, `gvGive`).
+  → Giờ có `kiemtra/panel-test.js`: dựng panel thật, lấy trang về, **kiểm cú pháp JS của trang**.
 
 - **`daBo.clear()` trong `danh()` — SAI LUẬT, sửa 20/09.** Dòng cũ có lời chú *"có người đánh ->
   vòng mới mở lại cho mọi người"*, nghĩa là cứ ai đánh một lá là xoá sạch sổ bỏ lượt. Hậu quả:
