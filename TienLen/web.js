@@ -80,6 +80,11 @@ function taoTienLen(deps) {
     const chamCuoi = new Map();     // id -> lần hỏi thăm gần nhất (dò AFK)
     let vanXongLuc = 0;             // mốc ván vừa chốt, để đếm ngược chia ván mới
     let daTraVan = 0;               // số ván đã TRẢ TIỀN xong (khoá chống trả 2 lần)
+    // 💥 CHẶT TRẢ NGAY GIỮA VÁN (chủ server chốt 20/09: "bị chặt hay bị gì trừ dogcoin tại chỗ").
+    // traChatNgay() cộng/trừ ví liền, ghi lại đã trả cho ai bao nhiêu; chotVan vẫn tính chặt vào
+    // ketQua.tien như thường, nên traTien() phải TRỪ ĐI phần đã trả trước, không thì trả hai lần.
+    let daTraChat = {};             // id -> đã cộng/trừ trước bao nhiêu trong ván này
+    let vanChat = 0;                // bảng trên thuộc ván số mấy
 
     const dangNgoi = () => phong.ghe.map((id, ghe) => id ? { id, ghe } : null).filter(Boolean);
     const gheCua = (id) => phong.ghe.indexOf(id);
@@ -104,10 +109,42 @@ function taoTienLen(deps) {
      * Có lưới an toàn: nếu ví ai đó không đủ trả (đáng lẽ không xảy ra vì có vốn tối thiểu) thì
      * kẹp lại đúng số họ có, ghi log để chủ server biết, và cắt bớt phần ăn của người thắng cho khớp.
      */
+    /**
+     * 💥 Trả tiền CHẶT ngay lúc nó xảy ra. Gọi sau mỗi nước đánh (và trong nhịp, vì máy có thể
+     * đánh giùm). Mỗi cú chặt chỉ trả MỘT LẦN — khoá bằng cờ daTra ghi thẳng vào máy ván.
+     * Có kẹp ví y như traTien: người bị chặt không đủ tiền thì lấy đúng số họ có.
+     */
+    function traChatNgay() {
+        const b = phong.ban; if (!b) return;
+        const v = b._trong.van; if (!v || !v.chatHeo || !v.chatHeo.length) return;
+        if (vanChat !== v.so) { daTraChat = {}; vanChat = v.so; }
+        for (const c of v.chatHeo) {
+            if (c.daTra) continue;
+            c.daTra = true;
+            const co = (layNguoi(c.bi) || {}).points || 0;
+            const tien = Math.min(c.tien, co);       // kẹp: không để ai âm ví giữa ván
+            if (tien < c.tien)
+                ghiLog('[TIẾN LÊN] ⚠️ ' + tenCua(c.bi) + ' bị chặt ' + c.tien.toLocaleString('vi-VN') +
+                    ' nhưng ví chỉ có ' + co.toLocaleString('vi-VN') + ' — trả tại chỗ ' + tien.toLocaleString('vi-VN'));
+            if (!tien) continue;
+            congVi(c.bi, -tien, 'Tiến Lên ván #' + v.so + ' (bị chặt)');
+            congVi(c.chatBoi, tien, 'Tiến Lên ván #' + v.so + ' (chặt được)');
+            daTraChat[c.bi] = (daTraChat[c.bi] || 0) - tien;
+            daTraChat[c.chatBoi] = (daTraChat[c.chatBoi] || 0) + tien;
+            ghiLog('[TIẾN LÊN] 💥 ' + tenCua(c.chatBoi) + ' chặt ' + tenCua(c.bi) + ' — trả ngay ' +
+                tien.toLocaleString('vi-VN'));
+        }
+    }
+
     function traTien(kq, soVan) {
         if (!kq || daTraVan >= soVan) return;
         daTraVan = soVan;
         const tien = { ...kq.tien };
+        // Trừ đi phần CHẶT đã trả tại chỗ. chotVan vẫn cộng chặt vào ketQua.tien (phế tính trên
+        // tổng ăn ròng, kể cả tiền chặt), ở đây chỉ trả nốt phần CÒN LẠI.
+        if (vanChat === soVan) for (const id of Object.keys(daTraChat)) {
+            if (tien[id] !== undefined) tien[id] -= daTraChat[id];
+        }
 
         // lưới an toàn: không để ai âm ví
         let hut = 0;
@@ -223,6 +260,7 @@ function taoTienLen(deps) {
             if (!phong.ban) { tuMoBan(); return; }
             ratSoatAfk();
             phong.ban.nhip();
+            traChatNgay();          // máy đánh giùm cũng có thể chặt -> trả ngay như người thật
             const s = phong.ban.xemChung();
             if (s.van && s.van.ketQua) {
                 const cu = vanXongLuc;
@@ -384,7 +422,7 @@ function taoTienLen(deps) {
             }
 
             if (!phong.ban) return loi(400, 'Chưa có bàn nào đang chạy');
-            if (post && duong === '/danh') { phong.ban.danh(toi, Array.isArray(body.la) ? body.la : []); thanhToanNeuXong(); return tra(); }
+            if (post && duong === '/danh') { phong.ban.danh(toi, Array.isArray(body.la) ? body.la : []); traChatNgay(); thanhToanNeuXong(); return tra(); }
             if (post && duong === '/boluot') { phong.ban.boLuot(toi); thanhToanNeuXong(); return tra(); }
 
             return loi(404, 'Đường lạ: ' + duong);

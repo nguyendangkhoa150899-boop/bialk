@@ -351,5 +351,59 @@ muc('🗳️ VOTE đổi mức cược');
     ok('chia ván kế thì mức cược mới áp dụng', m.cua(p).may.phong.cauHinh.mucCuoc === 1000, String(m.cua(p).may.phong.cauHinh.mucCuoc));
 }
 
+muc('💥 CHẶT TRỪ TIỀN TẠI CHỖ (chủ server chốt 20/09)');
+{
+    const { tl, vi, log } = dung();
+    goi(tl, '/ngoi', { ghe: 0 }, 'A'); goi(tl, '/ngoi', { ghe: 1 }, 'B');
+    goi(tl, '/sansang', {}, 'A'); goi(tl, '/sansang', {}, 'B');
+    // A cầm heo đen + vài lá, B cầm 3 đôi thông để chặt. Bàn 'hang' cược 1.000 -> heo đen 0.5 cược = 500.
+    epBai(tl, { A: ['2s', '3d', '4d'], B: ['4s', '4c', '5s', '5c', '6s', '6c', '7d'] }, 'A');
+    const t = { A: vi.A, B: vi.B };
+    goi(tl, '/danh', { la: ['2s'] }, 'A');
+    ok('đánh heo ra: ví chưa ai đổi', vi.A === t.A && vi.B === t.B, (vi.A - t.A) + '/' + (vi.B - t.B));
+
+    const r = goi(tl, '/danh', { la: ['4s', '4c', '5s', '5c', '6s', '6c'] }, 'B');
+    ok('3 đôi thông chặt được heo đen', r.ma === 200 && r.j.ban.van.chatMoi, JSON.stringify(r.j && r.j.error));
+    // ⭐ ĐIỂM CHÍNH: tiền phải nhảy NGAY, ván vẫn đang chạy (chưa có ketQua)
+    ok('ván VẪN ĐANG CHẠY (chưa chốt)', !r.j.ban.van.ketQua);
+    ok('người chặt ĐƯỢC CỘNG NGAY 500', vi.B - t.B === 500, String(vi.B - t.B));
+    ok('người bị chặt BỊ TRỪ NGAY 500', vi.A - t.A === -500, String(vi.A - t.A));
+    ok('có ghi sổ ngay lúc chặt', log.some(d => /💥.*chặt.*trả ngay/.test(d)), log.join(' | '));
+    ok('máy chủ gửi kèm cú chặt mới nhất cho web nháy hiệu ứng',
+        r.j.ban.van.chatMoi.tien === 500 && r.j.ban.van.chatMoi.chatBoi === 'B' && r.j.ban.van.chatMoi.bi === 'A' &&
+        typeof r.j.ban.van.chatMoi.luc === 'number', JSON.stringify(r.j.ban.van.chatMoi));
+
+    // gọi nhịp nhiều lần: KHÔNG được trả cú chặt lần 2
+    const giua = { A: vi.A, B: vi.B };
+    for (let i = 0; i < 15; i++) tl.nhip();
+    ok('gọi nhịp nhiều lần KHÔNG trả cú chặt lần 2', vi.A === giua.A && vi.B === giua.B,
+        (vi.A - giua.A) + '/' + (vi.B - giua.B));
+
+    // đánh nốt cho hết ván rồi soi tổng: chặt KHÔNG được tính hai lần
+    const ban = tl.phong.ban;
+    for (let k = 0; k < 400 && ban._trong.van && !ban._trong.van.ketQua; k++) { ban.roiMang(ban._trong.van.luot); ban.nhip(); }
+    tl.nhip();
+    const kq = ban._trong.van.ketQua;
+    ok('ván chốt được', !!kq);
+    ok('TỔNG ví khớp đúng kết quả ván (chặt không bị tính hai lần)',
+        (vi.A - t.A) === kq.tien.A && (vi.B - t.B) === kq.tien.B,
+        JSON.stringify({ viA: vi.A - t.A, kqA: kq.tien.A, viB: vi.B - t.B, kqB: kq.tien.B }));
+    ok('bàn vẫn hụt đúng bằng phế', (vi.A - t.A) + (vi.B - t.B) === -kq.pheTong,
+        ((vi.A - t.A) + (vi.B - t.B)) + ' vs ' + kq.pheTong);
+}
+{
+    // Người bị chặt không đủ tiền -> kẹp lại đúng số họ có, KHÔNG để ví âm giữa ván
+    const { tl, vi, log } = dung();
+    goi(tl, '/ngoi', { ghe: 0 }, 'A'); goi(tl, '/ngoi', { ghe: 1 }, 'B');
+    goi(tl, '/sansang', {}, 'A'); goi(tl, '/sansang', {}, 'B');
+    epBai(tl, { A: ['2h', '3d', '4d'], B: ['4s', '4c', '5s', '5c', '6s', '6c', '7d'] }, 'A');
+    goi(tl, '/danh', { la: ['2h'] }, 'A');
+    vi.A = 300;                                   // vét ví A, heo đỏ = 1 cược = 1.000
+    goi(tl, '/danh', { la: ['4s', '4c', '5s', '5c', '6s', '6c'] }, 'B');
+    ok('ví người bị chặt KHÔNG âm', vi.A >= 0, String(vi.A));
+    ok('chỉ lấy đúng số họ có', vi.A === 0, String(vi.A));
+    ok('có ghi log ⚠️ để chủ server biết', log.some(d => /⚠️.*bị chặt/.test(d)), log.join(' | '));
+}
+
 console.log('\n🌐 MÁY CHỦ TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

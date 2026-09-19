@@ -479,6 +479,16 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
 
 }
 
+muc('💥 CHẶT: trừ tiền tại chỗ thì phải THẤY nó trừ');
+{
+    ok('số tiền bay lên trên ghế hai người liên quan', /class="bay /.test(JS) && /.bay{position:absolute/.test(HTML) && /@keyframes tienBay{/.test(HTML));
+    ok('xanh cho người ăn, đỏ cho người mất', /.bay.an{/.test(HTML) && /.bay.mat{/.test(HTML) && JS.indexOf("(an ? 'an' : 'mat')") >= 0);
+    ok('kêu MỘT lần cho mỗi cú chặt, so theo mốc luc', /cm.luc !== CHAT_LUC/.test(JS) && /CHAT_LUC = cm.luc/.test(JS));
+    ok('...vẽ lại mỗi giây KHÔNG làm hiệu ứng chạy lại từ đầu', /CHAT_NHAY/.test(JS) && /veBan._chat/.test(JS));
+    ok('nhãn trên ghế người chặt ghi luôn số tiền ăn', JS.indexOf("(vl.thuong?' +'+vnd(vl.thuong):'')") >= 0);
+    ok('dòng thông báo nói rõ ai chặt ai, lấy bao nhiêu', JS.indexOf("' chặt ' + tenCua(cm.bi) + ' — lấy ngay '") >= 0);
+}
+
 muc('📱 MOBILE: bắt xoay ngang + chặn vuốt trôi trang');
 {
     ok('chặn nảy mép / kéo-xuống-tải-lại', /html\{overscroll-behavior:none/.test(HTML) && /overscroll-behavior:none;touch-action:manipulation/.test(HTML));
@@ -487,6 +497,9 @@ muc('📱 MOBILE: bắt xoay ngang + chặn vuốt trôi trang');
         /@media \(orientation:portrait\) and \(max-width:820px\)\{/.test(HTML) && /#xoay\{display:grid!important\}/.test(HTML));
     ok('...và khoá cuộn trang lúc đang che', /body\{position:fixed;inset:0;width:100%;overflow:hidden\}/.test(HTML));
     ok('JS dùng ĐÚNG ngưỡng của CSS (820px), không lệch nhau', /innerWidth <= 820 && window\.innerHeight > window\.innerWidth/.test(JS));
+    ok('bàn có TRẦN bề ngang, không phình hết màn hình lớn',
+        HTML.indexOf('width:min(100%, 1000px, calc((100dvh - 300px) * 1.61))') >= 0);
+    ok('tay bài chỉ siết độ chồng KHI THIẾU CHỖ, dư chỗ thì xoè thoáng', JS.indexOf('var can = W * 0.14;') >= 0);
     ok('JS bật thêm lớp khoá cho máy không nhận @media orientation',
         /classList\.toggle\('khoaXoay', che\)/.test(JS) && /body\.khoaXoay\{/.test(HTML));
 }

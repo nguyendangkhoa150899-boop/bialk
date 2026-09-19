@@ -225,7 +225,8 @@ function taoBan(tuyChon = {}) {
             if (phan > 0) {
                 thuongChat = Math.round(phan * C.mucCuoc);
                 v.chatHeo = v.chatHeo || [];
-                v.chatHeo.push({ chatBoi: id, bi: v.boCua, tien: thuongChat, la: v.bo.la.slice(), muc: mucChat });
+                // luc = mốc để web nháy hiệu ứng, daTra = web.js đã trả tiền tại chỗ chưa
+                v.chatHeo.push({ chatBoi: id, bi: v.boCua, tien: thuongChat, la: v.bo.la.slice(), muc: mucChat, luc: bayGio, daTra: false });
             }
         }
 
@@ -235,7 +236,7 @@ function taoBan(tuyChon = {}) {
         v.batBuoc3Bich = false;
         v.daBo.clear();                                  // có người đánh -> vòng mới mở lại cho mọi người
         v.lichSu.push({ id, la: bo.la.slice(), ten: bo.ten, chat: !!kq.chat, thuong: thuongChat });
-        v.vuaLam[id] = { viec: 'danh', ten: bo.ten, soLa: bo.la.length, chat: !!kq.chat, luc: bayGio };
+        v.vuaLam[id] = { viec: 'danh', ten: bo.ten, soLa: bo.la.length, chat: !!kq.chat, thuong: thuongChat, luc: bayGio };
         v.chongBai.push({ id: id, la: bo.la.slice(), ten: bo.ten, chat: !!kq.chat });
         if (v.chongBai.length > 6) v.chongBai = v.chongBai.slice(-6);
         if (v.lichSu.length > 30) v.lichSu = v.lichSu.slice(-30);
@@ -460,6 +461,8 @@ function taoBan(tuyChon = {}) {
                 bo: v.bo ? { kieu: v.bo.kieu, dai: v.bo.dai, la: v.bo.la.slice(), cao: v.bo.cao, ten: v.bo.ten } : null,
                 boCua: v.boCua, batBuoc3Bich: v.batBuoc3Bich,
                 chongBai: v.chongBai.map(x => ({ id: x.id, la: x.la.slice(), ten: x.ten, chat: x.chat })),
+                // cú chặt MỚI NHẤT — web nháy "💥 +50.000 / −50.000" trên hai cái ghế liên quan
+                chatMoi: (v.chatHeo && v.chatHeo.length) ? { ...v.chatHeo[v.chatHeo.length - 1] } : null,
                 lichSu: v.lichSu.slice(-8),
                 ketQua: v.ketQua,
             } : null,

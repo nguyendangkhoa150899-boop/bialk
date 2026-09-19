@@ -208,7 +208,10 @@ function startWebPlay(ctx) {
                 // ván/nợ đang dở - cashout/dismiss/stock close/debt pay/wheel unready (không thì tiền kẹt).
                 // Điểm danh + chuyển tiền còn bị chặn lần 2 trong index.js -> Discord cũng dính.
                 if (ctx.daLienKet && !ctx.daLienKet(userId)) {
-                    const XEM = /\/(state|table|hist|cd)$/.test(path) || ['/api/state', '/api/profile', '/api/players'].includes(path);
+                    // 'ds' = SẢNH Tiến Lên (danh sách phòng). Thêm 20/09: sảnh là màn ĐẦU TIÊN
+                    // của trò chơi, chặn nó thì người chưa liên kết mở tab ra chỉ thấy lỗi mà
+                    // không biết mình thiếu gì. Vẫn chỉ XEM — ngồi / tạo phòng / vote vẫn bị chặn.
+                    const XEM = /\/(state|table|hist|cd|ds)$/.test(path) || ['/api/state', '/api/profile', '/api/players'].includes(path);
                     const LAY_VE = ['/api/mines/cashout', '/api/mines/dismiss', '/api/stairs/cashout', '/api/stairs/dismiss',
                         '/api/spm/cashout', '/api/spm/cancelnext', '/api/stock/close', '/api/debt/pay', '/api/wheel/unready'].includes(path);
                     if (!XEM && !LAY_VE) {
@@ -225,8 +228,11 @@ function startWebPlay(ctx) {
                     return ctx.poker.xuLy({ path: path.slice('/api/poker'.length), method: req.method, body, userId }, res, sendJSON);
                 }
 
-                // 🀄 TIẾN LÊN: mọi /api/tienlen/* giao cho TienLen/web.js. Cũng đặt SAU cổng liên kết
-                // nên người chưa liên kết chỉ qua được /api/tienlen/state (khớp regex XEM).
+                // 🀄 TIẾN LÊN: mọi /api/tienlen/* giao cho TienLen/web.js (SẢNH nhiều phòng — xem
+                // taoSanh). Cũng đặt SAU cổng liên kết nên người chưa liên kết chỉ qua được
+                //   /api/tienlen/ds           xem danh sách phòng
+                //   /api/tienlen/<ma>/state   xem một phòng
+                // còn /tao · /<ma>/ngoi · /<ma>/vote · /<ma>/danh… bị chặn sẵn, khỏi viết chốt riêng.
                 if (path.startsWith('/api/tienlen/')) {
                     if (!ctx.tienlen) return sendJSON(res, 503, { ok: false, error: 'Tiến Lên chưa bật' });
                     const body = req.method === 'POST' ? await readBody(req) : {};

@@ -73,9 +73,12 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .sp{flex:1}
 
 /* ---------- bàn oval (mượn y khuôn Poker) ---------- */
+/* ⚠️ PHẢI CÓ TRẦN. Không có thì trên màn hình cao (máy tính, tablet) bàn phình tới cả ngàn
+   px: bài giữa bàn lọt thỏm, tay bài bị đẩy xuống đáy, ở giữa toàn khoảng trống xanh —
+   đúng cái chủ server chụp lại 20/09. 1000px là vừa mắt mà 4 ghế vẫn thoáng. */
 .san{position:relative;aspect-ratio:100/62;min-height:230px;margin-inline:auto;
-  width:min(100%, calc((100vh - 300px) * 1.61));
-  width:min(100%, calc((100dvh - 300px) * 1.61))}
+  width:min(100%, 1000px, calc((100vh - 300px) * 1.61));
+  width:min(100%, 1000px, calc((100dvh - 300px) * 1.61))}
 .vien{position:absolute;inset:58px 8px;border-radius:999px;
   background:linear-gradient(180deg,#4a3526 0%,#2a1d13 45%,#120c07 100%);
   padding:clamp(8px,1.7vw,14px);
@@ -249,6 +252,21 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 /* câu chọc dưới bảng kết quả */
 #kqCuoi{margin-top:6px;font-size:12.5px;font-weight:800;color:#ffb46a;text-align:center;line-height:1.5}
 .tt.chat{background:linear-gradient(180deg,#ff9a3c,#c9541b);color:#2a0e00}
+/* 💥 TIỀN BAY LÊN khi có người bị chặt — trừ tại chỗ thì phải THẤY nó trừ, không thì
+   chẳng vui gì. Xanh cho người ăn, đỏ cho người mất. pointer-events:none để không
+   chắn mất cái ghế phía dưới. */
+.bay{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);z-index:11;pointer-events:none;
+  font-size:clamp(15px,2.6vw,22px);font-weight:900;white-space:nowrap;
+  -webkit-text-stroke:2px rgba(0,0,0,.8);text-shadow:0 3px 10px rgba(0,0,0,.9);
+  animation:tienBay 2.2s cubic-bezier(.2,.9,.3,1) both}
+.bay.an{color:#7dffb0}
+.bay.mat{color:#ff8f8f}
+@keyframes tienBay{
+  0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.5)}
+  14%{opacity:1;transform:translateX(-50%) translateY(-4px) scale(1.2)}
+  26%{transform:translateX(-50%) translateY(0) scale(1)}
+  72%{opacity:1;transform:translateX(-50%) translateY(-34px) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(.92)}}
 @keyframes nhapNhay{0%,100%{opacity:1}50%{opacity:.45}}
 .dem{position:absolute;top:-10px;left:50%;transform:translateX(-50%);z-index:5;
   min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center;padding:0 6px;
@@ -358,7 +376,6 @@ body.khoaXoay{position:fixed;inset:0;width:100%;overflow:hidden}
     <div id="choGhe"></div>
   </div>
   <div class="mo" id="choLuat" style="margin-top:8px;text-align:center"></div>
-  <div class="dong" style="margin-top:10px"><button class="b xam" onclick="raSanh()">↩️ Ra sảnh chọn phòng khác</button></div>
   <div class="nho" id="choVs"></div>
 </div>
 
@@ -414,11 +431,18 @@ body.khoaXoay{position:fixed;inset:0;width:100%;overflow:hidden}
   <div id="banVote" hidden></div>
   <div class="dong" style="margin-top:8px" id="banVoteNut"></div>
 </div>
+<!-- 🚪 ĐƯỜNG RA — dùng chung cho màn chờ lẫn màn bàn. Thiếu nó thì ngồi vào bàn rồi là kẹt,
+     muốn đổi sang phòng cược khác cũng không ra được (chủ server báo 20/09). -->
+<div class="dong" id="khoiRa" hidden style="margin-top:10px"></div>
 
 <div id="xoay" hidden><div>
   <div class="ic">📱</div>
   <div class="tieu">Xoay ngang điện thoại để chơi</div>
   <div class="mo" style="max-width:340px">Bàn 4 người cần màn hình nằm ngang. Trên máy tính thì phóng to cửa sổ.</div>
+  <div class="dong" style="margin-top:14px">
+    <button class="b xanh" style="font-size:15px;padding:12px 20px" onclick="epXoay()">🔄 CHUYỂN SANG MÀN HÌNH NGANG</button>
+  </div>
+  <div class="nho" id="xoayNhac">Máy nào không cho tự xoay thì bạn xoay tay giúp nhé — nhớ mở khoá xoay màn hình.</div>
 </div></div>
 <div id="bao" hidden></div>
 
@@ -492,6 +516,24 @@ function kiemXoay(){
   var che = window.innerWidth <= 820 && window.innerHeight > window.innerWidth;
   e.hidden = !che;
   if (document.body) document.body.classList.toggle('khoaXoay', che);
+}
+/* 🔄 Xin TOÀN MÀN HÌNH rồi KHOÁ HƯỚNG NGANG. Phải nằm trong một cú bấm thật — trình duyệt
+   chặn xoay tự động. Android/Chrome thường cho; iPhone/Safari không có screen.orientation.lock
+   nên sẽ rơi vào catch, lúc đó nói thẳng cho người chơi biết thay vì im re. */
+function epXoay(){
+  var e = document.documentElement;
+  var xinTMH = e.requestFullscreen || e.webkitRequestFullscreen || e.mozRequestFullScreen || e.msRequestFullscreen;
+  var b = $('xoayNhac');
+  Promise.resolve(xinTMH ? xinTMH.call(e) : null)
+    .then(function(){
+      if (screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape');
+      throw new Error('máy không có khoá hướng');
+    })
+    .then(function(){ setTimeout(kiemXoay, 150); })
+    .catch(function(){
+      if (b) b.textContent = '⚠️ Máy bạn không cho trang tự xoay. Bạn xoay ngang điện thoại giúp nhé — nhớ mở khoá xoay màn hình trong phần cài đặt.';
+      setTimeout(kiemXoay, 150);
+    });
 }
 window.addEventListener('resize', kiemXoay);
 window.addEventListener('orientationchange', function(){ setTimeout(kiemXoay, 120); });
@@ -633,9 +675,21 @@ function ve(){
   $('manCho').hidden = !S || oSanh || !!(S && S.ban);
   $('manBan').hidden = !S || oSanh || !(S && S.ban);
   $('khoiVote').hidden = !(S && !oSanh && S.gheCuaToi >= 0);
+  $('khoiRa').hidden = !(S && !oSanh);
   if (!S) return;
   if (oSanh) veSanh(); else if (S.ban) veBan(); else veCho();
   if (!$('khoiVote').hidden) veVote();
+  if (!$('khoiRa').hidden) veRa();
+}
+
+/* 🚪 Nút rời bàn. Đang CẦM BÀI giữa ván thì máy chủ không cho rời (bỏ bàn giữa chừng là
+   quỵt tiền người khác) — nói thẳng ra nút luôn, đừng để người ta bấm rồi ăn dòng lỗi đỏ. */
+function veRa(){
+  var b = S.ban, v = b && b.van, ketQua = !!(v && v.ketQua);
+  var camBai = !!(b && b.toi && b.toi.la && b.toi.la.length && !ketQua);
+  datHTML($('khoiRa'), camBai
+    ? '<button class="b xam" disabled>🚪 Đang giữa ván — đánh hết bài mới rời được</button>'
+    : '<button class="b xam" onclick="raSanh()">🚪 RỜI BÀN — ra sảnh chọn mức cược khác</button>');
 }
 
 // ---------------------------------------------------------- SẢNH
@@ -799,6 +853,17 @@ function veBan(){
     dn.hidden = false;
   } else dn.hidden = true;
 
+  // 💥 CÚ CHẶT MỚI: kêu MỘT lần rồi giữ hiệu ứng 2,2 giây. Phải so theo mốc 'luc' chứ không
+  // so theo nội dung — hai cú chặt giống hệt nhau trong một ván là có thật.
+  var cm = v.chatMoi;
+  if (cm && cm.luc !== CHAT_LUC){
+    CHAT_LUC = cm.luc; CHAT_NHAY = cm;
+    bao('💥 ' + tenCua(cm.chatBoi) + ' chặt ' + tenCua(cm.bi) + ' — lấy ngay ' + vnd(cm.tien) + ' Dogcoin!');
+    clearTimeout(veBan._chat);
+    veBan._chat = setTimeout(function(){ CHAT_NHAY = null; $('banGhe').__cu = ''; try { ve(); } catch(e){} }, 2300);
+  }
+  if (!cm) { CHAT_LUC = 0; CHAT_NHAY = null; }
+
   // 🔔 tới lượt mình: sáng viền cả bàn + kêu MỘT lần cho mỗi lượt (đừng kêu mỗi giây)
   var cuaToi = !!(toi && toi.toiLuot && !v.ketQua);
   $('san').classList.toggle('toiluot', cuaToi);
@@ -807,6 +872,7 @@ function veBan(){
   if (!cuaToi) LUOT_KEU = '';
 }
 var LUOT_KEU = '';
+var CHAT_LUC = 0, CHAT_NHAY = null;    // cú chặt đang nháy (xem veBan / veGhe)
 
 /* 🗳️ VOTE ĐỔI MỨC CƯỢC — chủ server chốt 20/09: "có thể vote nhau thay đổi ở bàn chơi luôn
    sau mỗi ván hoặc ngay tại lúc chơi xong rồi ván sau sẽ áp dụng".
@@ -987,7 +1053,8 @@ function veGhe(b, v){
     else if (p.hang) tt = '<div class="tt '+(p.hang===1?'nhat':'hang')+'">'+(p.hang===1?'🏆 NHẤT':'hạng '+p.hang)+'</div>';
     else if (p.afk) tt = '<div class="tt afk">Mất kết nối</div>';
     else if (toiLuot && !v.ketQua) tt = '<div class="tt cho">⏳ đang nghĩ…</div>';
-    else if (vl && vl.viec==='danh') tt = '<div class="tt '+(vl.chat?'chat':'danh')+'">'+(vl.may?'🤖 ':'')+(vl.chat?'💥 CHẶT ':'')+esc(vl.ten)+'</div>';
+    else if (vl && vl.viec==='danh') tt = '<div class="tt '+(vl.chat?'chat':'danh')+'">'+(vl.may?'🤖 ':'')+
+      (vl.chat?'💥 CHẶT ':'')+esc(vl.ten)+(vl.thuong?' +'+vnd(vl.thuong):'')+'</div>';
     else if (p.daBo || (vl && vl.viec==='bo')) tt = '<div class="tt pass">'+((vl&&vl.may)?'🤖 ':'')+'PASS</div>';
     // (cảnh báo "sắp về nhất" giờ nằm ở badge vàng nhấp nháy trên xấp bài, khỏi lặp hai chỗ)
     // đồng hồ: thanh chạy + SỐ GIÂY to trên đầu ghế
@@ -996,8 +1063,16 @@ function veGhe(b, v){
       ('<div class="dem'+(conGiay<=5?' gap':'')+'">'+conGiay+'</div>' +
        '<div class="gio"><i style="width:'+Math.max(0,Math.min(100,(v.hanChot-Date.now())/(b.giayMoiLuot*10)))+'%"></i></div>');
 
+    // 💥 vừa có người bị chặt -> bắn số tiền lên trên hai cái ghế liên quan, giữ ~2,2 giây.
+    // Khoá theo mốc 'luc' của cú chặt để vẽ lại mỗi giây KHÔNG làm hiệu ứng chạy lại từ đầu.
+    var bay = '';
+    if (CHAT_NHAY && (CHAT_NHAY.chatBoi === p.id || CHAT_NHAY.bi === p.id)){
+      var an = CHAT_NHAY.chatBoi === p.id;
+      bay = '<div class="bay ' + (an ? 'an' : 'mat') + '">' + (an ? '💥 +' : '−') + vnd(CHAT_NHAY.tien) + '</div>';
+    }
+
     o += '<div class="ghe'+(toiLuot?' luot':'')+(laToi?' toi':'')+(p.daBo?' bo':'')+
-         '" style="left:'+x+'%;top:'+y+'%">' +
+         '" style="left:'+x+'%;top:'+y+'%">' + bay +
          '<div class="lung">'+lung+'</div>' +
          '<div class="bang"><div class="av">'+(laToi?'🐶':'🙂')+'</div>' +
          '<div class="ai"><div class="nt">'+esc(p.ten)+(laToi?' (bạn)':'')+'</div>' +
@@ -1073,11 +1148,14 @@ function canhTay(){
     if (hoO[i]) g++;
   }
   var soNoiChong = (n - 1) - g;                       // số chỗ nối còn được phép chồng
-  var can = W * 0.42;
+  // Độ chồng CHỈ siết lại khi THIẾU CHỖ. Bản cũ ghim cứng tối thiểu 42% nên 7 lá trên màn
+  // hình rộng vẫn chồng y như 13 lá — mỗi lá hở hơn nửa, nhìn chật mà chỗ thì thừa
+  // (chủ server chụp lại 20/09). Vẫn giữ một chút chồng cho ra dáng cầm bài trên tay.
+  var can = W * 0.14;                                  // xoè thoáng khi dư chỗ
   if (soNoiChong > 0){
     var thua = W * n + g * HO_CHON - (CW - 10);       // đang dôi ra bao nhiêu px
     can = Math.max(can, thua / soNoiChong);
-    can = Math.min(can, W * 0.8);
+    can = Math.min(can, W * 0.8);                      // chồng quá 80% là mất góc số
   }
   for (i = 1; i < n; i++){
     k[i].style.marginLeft = hoO[i] ? HO_CHON + 'px' : (-Math.round(can)) + 'px';
