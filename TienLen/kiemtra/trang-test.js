@@ -403,13 +403,33 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
         /bam\(ma, 29\) % 7\) - 3/.test(JS) && /rLa = \(bam\(ma, 11\) % 9\) - 4/.test(JS));
     // trang này từng THIẾU nhánh điện thoại nằm ngang (nhầm với trang Poker) -> bàn co còn ~145px
     ok('có nhánh CSS cho điện thoại NẰM NGANG', /@media\(orientation:landscape\) and \(max-height:560px\)\{/.test(HTML));
-    ok('...màn BÀN ăn trọn chiều cao còn lại, bài nhỏ lại',
-        /aspect-ratio:auto;width:100%;height:calc\(100vh - 214px\)/.test(HTML) && /--co:1\.05/.test(HTML));
-    // Màn nằm ngang cao ~390px: bàn chỉ còn ~176px mà một ô ghế đầy đủ cao tới 92px -> ghế
-    // trên và ghế dưới chạm nhau, ghế đè lên mặt bàn và lên chữ giữa bàn (chủ server chụp 20/09).
-    ok('...ô ghế thấp lại để KHÔNG chồng lên mặt bàn',
-        /\.ghe \.lung\{display:none\}/.test(HTML) && /\.ttO\{min-height:18px\}/.test(HTML) &&
-        /\.av\{width:22px;height:22px/.test(HTML));
+
+    // 🟢 MÀN CHƠI PHỦ KÍN — chủ server gửi ảnh mẫu game Tiến Lên mobile 20/09: mặt bàn là NỀN
+    // của cả màn hình, ghế sát mép, tay bài trải hết dải đáy, gần như không có chữ.
+    ok('màn chơi PHỦ KÍN màn hình, bật bằng lớp body.choiBan',
+        /body\.choiBan\{padding:0;max-width:none;overflow:hidden\}/.test(HTML) &&
+        /body\.choiBan #manBan\{position:fixed;inset:0\}/.test(HTML) &&
+        /classList\.toggle\('choiBan'/.test(JS));
+    ok('...chỉ bật ở màn BÀN, sảnh và phòng chờ vẫn cuộn bình thường',
+        /classList\.toggle\('choiBan', !!\(S && !oSanh && S\.ban\)\)/.test(JS));
+    ok('...mặt bàn ăn trọn màn, bỏ oval',
+        /body\.choiBan \.san\{position:absolute;inset:0/.test(HTML) && /body\.choiBan \.vien\{inset:0;border-radius:0/.test(HTML));
+    ok('...tay bài trải dải đáy, chừa bên trái cho ghế của mình',
+        /body\.choiBan \.tayHang\{position:absolute;left:min\(24%,250px\)/.test(HTML));
+    ok('...nút bấm NỔI trên tay bài chứ không đẩy bàn ngắn lại',
+        /body\.choiBan #banDanh\{position:absolute/.test(HTML) && /bottom:calc\(var\(--lbt\) \* 1\.45 \+ 12px\)/.test(HTML));
+    ok('...bảng kết quả nổi giữa màn', /body\.choiBan #banKq\{position:absolute;left:50%;top:50%/.test(HTML));
+    // Bản cũ xếp ghế theo VÒNG TRÒN (y = 50 + 34·cos) -> màn nằm ngang bóp lại là ghế đè lên bàn.
+    ok('🪑 chỗ ngồi theo BẢNG TOẠ ĐỘ cố định, không còn vòng tròn',
+        /var CHO_NGOI = \{/.test(JS) && !/34\*Math\.cos/.test(JS) && !/rx\*Math\.sin/.test(JS));
+    ok('...mình luôn ở GÓC TRÁI DƯỚI để chừa dải đáy cho tay bài', /2: \[\[13, 70\]/.test(JS) && /4: \[\[13, 70\]/.test(JS));
+    ok('...đủ bảng cho 2 / 3 / 4 người',
+        /CHO_NGOI\[n\] \|\| CHO_NGOI\[4\]/.test(JS) && /3: \[\[13, 70\], \[12, 32\], \[86, 32\]\]/.test(JS));
+    ok('📜 luật chi tiết gom vào tooltip, không chiếm chỗ', /el\.textContent = '📜 luật'/.test(JS) && /el\.title = luatDay/.test(JS));
+    ok('...bài nhỏ lại cho vừa màn thấp', /--co:1\.15/.test(HTML));
+    ok('...ô ghế gọn lại (nhãn + xấp bài úp thu nhỏ)',
+        /\.ttO\{min-height:18px\}/.test(HTML) && /\.av\{width:22px;height:22px/.test(HTML) &&
+        /\.lung i\{width:12px;height:17px\}/.test(HTML));
     // iPhone nằm ngang cao ~400px: ép bàn oval vào phòng chờ thì 4 ghế đè lên nhau và nút
     // SẴN SÀNG nằm chồng lên ghế (chủ server chụp lại 20/09). Oval ở phòng chờ chỉ là trang
     // trí -> bỏ hẳn, xếp ghế thành một hàng ngang.

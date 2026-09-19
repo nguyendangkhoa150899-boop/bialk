@@ -83,6 +83,58 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .van{font-size:11.5px;color:var(--muted)}
 .sp{flex:1}
 
+/* ============================================================================
+   🟢 MÀN CHƠI PHỦ KÍN — bật bằng lớp body.choiBan (chỉ khi đang ở BÀN, không áp cho
+   sảnh và phòng chờ). Mặt bàn là NỀN của cả màn hình, ghế nằm sát mép, tay bài trải
+   hết dải đáy, nút bấm nổi ngay trên tay bài. Mẫu: game Tiến Lên mobile chủ server gửi.
+   ============================================================================ */
+body.choiBan{padding:0;max-width:none;overflow:hidden}
+body.choiBan #manBan{position:fixed;inset:0}
+/* thanh thông tin: thu nhỏ, dán góc TRÁI TRÊN, nền mờ — không chiếm hàng riêng nữa */
+body.choiBan .top{position:absolute;top:6px;left:6px;right:auto;z-index:20;margin:0;
+  max-width:min(62vw,560px);padding:5px 10px;border-radius:10px;
+  background:rgba(8,12,18,.62);border-color:rgba(255,255,255,.12);backdrop-filter:blur(3px)}
+body.choiBan .top .sp{display:none}
+body.choiBan .ten{font-size:12.5px}
+body.choiBan .van{font-size:10.5px}
+body.choiBan .pill{font-size:10.5px;padding:2px 7px}
+/* mặt bàn = cả màn hình */
+body.choiBan .san{position:absolute;inset:0;width:auto;height:auto;aspect-ratio:auto;min-height:0;margin:0}
+body.choiBan .vien{inset:0;border-radius:0;padding:0;box-shadow:none}
+body.choiBan .ni{inset:0;border-radius:0;box-shadow:inset 0 0 120px rgba(0,0,0,.45)}
+body.choiBan .chumon{top:34%;font-size:clamp(20px,5vw,44px)}
+body.choiBan .giua{top:38%}
+/* tay bài + nút: NỔI đè lên mặt bàn, không đẩy bàn ngắn lại nữa */
+/* Tay bài trải hết dải đáy, chừa bên trái cho ghế của mình (y như ảnh mẫu). */
+body.choiBan .tayHang{position:absolute;left:min(24%,250px);right:6px;bottom:5px;z-index:16}
+body.choiBan .tay{margin-top:0;min-height:0}
+body.choiBan .tay .the{margin-top:0}
+body.choiBan #banDanh{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
+  bottom:calc(var(--lbt) * 1.45 + 12px)}
+/* Hai dòng chữ nhỏ xếp CHỒNG TẦNG chứ không cùng một chỗ — cùng chỗ là đè nhau. */
+body.choiBan #banGoi{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
+  bottom:calc(var(--lbt) * 1.45 + 104px)}
+body.choiBan #banBoChon{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
+  bottom:calc(var(--lbt) * 1.45 + 72px)}
+/* GỢI Ý / BỎ CHỌN nằm cùng tầng với hàng nút to nhưng dạt sang TRÁI — dưới đáy là đụng tay
+   bài, còn góc trái dưới thì đã có ghế của mình. */
+body.choiBan #banNut{position:absolute;left:6px;z-index:17;margin:0;width:auto;
+  bottom:calc(var(--lbt) * 1.45 + 12px)}
+body.choiBan #banNut .b{padding:6px 11px;font-size:11.5px}
+body.choiBan #banNhac{position:absolute;left:50%;transform:translateX(-50%);top:52px;z-index:18;margin:0;
+  background:rgba(8,12,18,.72);border-radius:999px;padding:4px 12px;white-space:nowrap}
+body.choiBan #banNhac:empty{display:none}
+/* bảng kết quả: nổi giữa màn, không đẩy trang dài ra */
+body.choiBan #banKq{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;margin:0;
+  width:min(94vw,520px);max-height:86vh;overflow:auto;background:rgba(10,14,20,.94);
+  box-shadow:0 20px 60px rgba(0,0,0,.8)}
+/* khối vote + nút rời bàn: gom xuống góc phải dưới, nhỏ lại */
+body.choiBan #khoiVote,body.choiBan #khoiRa{position:absolute;right:6px;z-index:18;margin:0;width:auto}
+body.choiBan #khoiVote{bottom:calc(var(--lbt) * 1.45 + 60px)}
+body.choiBan #khoiRa{bottom:calc(var(--lbt) * 1.45 + 16px)}
+body.choiBan #khoiVote .b,body.choiBan #khoiRa .b{padding:5px 10px;font-size:11px}
+body.choiBan #banVote{font-size:11px;padding:5px 9px}
+
 /* ---------- bàn oval (mượn y khuôn Poker) ---------- */
 /* ⚠️ PHẢI CÓ TRẦN. Không có thì trên màn hình cao (máy tính, tablet) bàn phình tới cả ngàn
    px: bài giữa bàn lọt thỏm, tay bài bị đẩy xuống đáy, ở giữa toàn khoảng trống xanh —
@@ -343,20 +395,19 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
    (100dvh − 300px) × 1.61 co bàn còn ~145px trên màn cao 390px, vỡ hẳn. Ở khổ này: hạ cỡ bài,
    bỏ tỉ lệ cố định cho bàn ăn trọn chiều cao còn lại, thu gọn ghế và hàng nút. */
 @media(orientation:landscape) and (max-height:560px){
-  /* Cỡ bài nhỏ lại nữa: màn nằm ngang chỉ cao ~390–470px, bài to là ghế đè lên bàn. */
-  :root{--co:1.05;--llb:30px}
+  /* Bàn giờ phủ kín màn hình nên rộng rãi hơn hẳn; bài to lại được một chút cho dễ bấm. */
+  :root{--co:1.15;--llb:30px}
   body{padding:4px}
   /* Màn BÀN: giữ oval (phải có chỗ bày bài giữa bàn) nhưng chừa đủ cho hàng nút + tay bài.
      240px = thanh trên 34 + gợi ý 22 + hàng nút to 44 + dòng chú 16 + tay bài 92 + nút phụ 32. */
   /* Chừa cho phần dưới: thanh trên 32 + gợi ý 22 + hàng nút to 44 + dòng chú 14 + tay bài 79
      + nút phụ 28 ≈ 214. Còn lại bao nhiêu thì bàn ăn hết. */
   .san{aspect-ratio:auto;width:100%;height:calc(100vh - 214px);height:calc(100dvh - 214px);min-height:150px}
-  /* ⚠️ Ô GHẾ PHẢI THẤP LẠI, không thì nó CHỒNG LÊN MẶT BÀN và lên chữ giữa bàn (chủ server
-     chụp lại 20/09). Trên màn cao ~390px, bàn chỉ còn ~176px mà một ô ghế đầy đủ cao tới 92px
-     (xấp bài úp 22 + bảng tên 38 + đồng hồ 7 + nhãn 25) -> ghế trên và ghế dưới chạm nhau.
-     Bỏ xấp bài úp (chỉ là trang trí) và thu nhãn lại: ô ghế còn ~63px, vừa khít. */
-  .ghe .lung{display:none}
+  /* Ô ghế gọn lại cho vừa màn thấp. Xấp bài úp GIỮ LẠI (ảnh mẫu có) vì bàn đã phủ kín màn,
+     không còn cảnh ghế chồng lên mặt bàn nữa — chỗ ngồi giờ theo bảng toạ độ cố định. */
   .ttO{min-height:18px}
+  .lung{min-height:16px;margin-bottom:-6px}
+  .lung i{width:12px;height:17px}
   .tt{font-size:10px;padding:1px 7px}
   .bang{padding:4px 6px}
   .av{width:22px;height:22px;font-size:13px}
@@ -388,7 +439,10 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   #banDanh{gap:8px;margin-top:6px}
   #banDanh .nutTo{padding:9px 22px;font-size:15px}
   #banDanh .dongHo{width:36px;height:36px;font-size:14px}
-  .bomay{height:calc(var(--lb)*1.9)}
+  /* Chiếu bài THẤP LẠI và NHÍCH LÊN: bàn chỉ cao ~176px, chiếu bài cao 120px nằm giữa thì
+     mép dưới của nó đụng ngay ô ghế của mình (ở 84% chiều cao bàn) — chủ server chụp lại 20/09. */
+  .bomay{height:calc(var(--lb)*1.2)}
+  .giua{top:42%}
 }
 @media(max-width:700px){
   body{padding:7px}
@@ -413,7 +467,10 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 /* JS bật lớp này song song với nhánh CSS trên — để máy nào không nhận @media orientation
    (vài trình duyệt trong ứng dụng) thì vẫn khoá được trang. */
 body.khoaXoay{position:fixed;inset:0;width:100%;overflow:hidden}
-#bao{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:99;max-width:92%;
+/* ⚠️ Thông báo neo TRÊN ĐẦU, không phải dưới đáy. Ở đáy là nó nằm đè lên TAY BÀI — đúng chỗ
+   người chơi đang nhìn để chọn lá ("🔔 Tới lượt bạn!" che mất nửa hàng bài, chủ server chụp
+   lại 20/09). Trên đầu thì chỉ đè thanh tiêu đề, không cản thao tác. */
+#bao{position:fixed;left:50%;transform:translateX(-50%);top:10px;z-index:99;max-width:92%;
   background:#12151d;border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;
   box-shadow:0 8px 24px rgba(0,0,0,.6)}
 </style>
@@ -631,14 +688,6 @@ function epXoay(){
 window.addEventListener('resize', kiemXoay);
 window.addEventListener('orientationchange', function(){ setTimeout(kiemXoay, 120); });
 
-/* Bán kính vòng ghế co theo bề ngang sân — y bài học bên Poker: ghim cứng là ghế thò ra ngoài. */
-function banKinhX(san){
-  var CW = (san && san.clientWidth) || 0;
-  if (!CW) return 40;
-  var mau = san.querySelector('.ghe'), W = mau && mau.offsetWidth;
-  if (!W) W = Math.min(150, Math.max(92, 0.15 * (window.innerWidth || CW)));
-  return Math.max(24, Math.min(40, (0.5 - (W/2 + 4)/CW) * 100));
-}
 /* ============================================================================
    MÁY LUẬT BẢN CLIENT — bản sao rút gọn của bai.js, CHỈ để gợi ý/tô màu cho dễ chơi.
    ⚠️ Máy chủ vẫn là nơi quyết định cuối cùng; sai lệch ở đây chỉ làm gợi ý sai, không
@@ -767,6 +816,8 @@ function ve(){
   $('manSanh').hidden = !S || !oSanh;
   $('manCho').hidden = !S || oSanh || !!(S && S.ban);
   $('manBan').hidden = !S || oSanh || !(S && S.ban);
+  // Màn CHƠI thì phủ kín màn hình (xem body.choiBan). Sảnh và phòng chờ vẫn cuộn bình thường.
+  document.body.classList.toggle('choiBan', !!(S && !oSanh && S.ban));
   $('khoiVote').hidden = !(S && !oSanh && S.gheCuaToi >= 0);
   $('khoiRa').hidden = !(S && !oSanh);
   if (!S) return;
@@ -880,10 +931,10 @@ function veCho(){
   } else giua = '<div class="chua">' + (S.toi.duocNgoi ? 'Bấm một ghế trống để ngồi' : 'Bạn chưa đủ điều kiện vào bàn') + '</div>';
   datHTML($('choGiua'), giua);
 
-  var rx = banKinhX($('sanCho')), o = '';
+  var cho = CHO_NGOI[S.toiDa] || CHO_NGOI[4], o = '';
   for (var k = 0; k < S.toiDa; k++){
-    var g = S.ghe[k], a = k * 2*Math.PI/S.toiDa;
-    var x = 50 + rx*Math.sin(a), y = 50 + 34*Math.cos(a);
+    var g = S.ghe[k];
+    var x = cho[k][0], y = cho[k][1];
     var laToi = g && g.id === S.toi.id, trong = !g;
     var bam = (trong && S.toi.duocNgoi) ? ' onclick="ngoi('+k+')"' : (laToi ? ' onclick="roi()"' : '');
     var ss = g && (S.sanSang||[]).indexOf(g.id) >= 0;
@@ -910,7 +961,8 @@ function sanSang(){ goi('/sansang'); }
 // ---------------------------------------------------------- bàn
 function veBan(){
   var b = S.ban, v = b.van || {}, toi = b.toi;
-  $('banPhu').textContent = 'Ván #' + (b.soVan||0) + ' · ' + b.cheDoTen +
+  // Thanh trên ở màn chơi chỉ còn một dòng ngắn — màn hình để chơi, không để đọc.
+  $('banPhu').textContent = 'Ván #' + (b.soVan||0) +
       (v.batBuoc3Bich ? ' · phải đánh bộ có 3♠' : '');
   $('banCuoc').textContent = b.cheDo==='anhet'
       ? ('🔢 mỗi lá ' + vnd(b.mucCuoc))
@@ -918,10 +970,14 @@ function veBan(){
   var tg = toi ? toi.tong : 0;
   $('banTong').textContent = (tg>=0?'▲ +':'▼ ') + vnd(tg) + ' tại bàn';
   // 📜 luật đang bật — phòng chờ có rồi, vào bàn thì mất; ai vào muộn không biết bàn này chơi luật gì
+  // Luật chi tiết chuyển thành TOOLTIP: cần thì rê chuột / giữ vào là thấy, khỏi chiếm chỗ.
   var L = b.luat || {};
-  $('banLuat').textContent = '📜 ' + ([L.baBich?'3♠ đi đầu':'', L.toiTrang?'tới trắng':'',
+  var luatDay = ([L.baBich?'3♠ đi đầu':'', L.toiTrang?'tới trắng':'',
       L.chatHeo?'chặt heo thưởng':'', L.thoiHeo?'thối 2':''].filter(Boolean).join(' · ') || 'luật cơ bản') +
       ' · phế ' + Math.round(b.pheTram*100) + '%';
+  var el = $('banLuat');
+  el.textContent = '📜 luật';
+  el.title = luatDay;
   // 🕘 ván trước ai nhất / mình ăn thua bao nhiêu (nhớ ở client, máy chủ không phải gửi thêm gì)
   nhoVanTruoc(b, v);
   var e = $('banTruoc');
@@ -949,8 +1005,9 @@ function veBan(){
   if (khoaBo && khoaBo !== BO_CU && dangKhoe(v.bo)) banhTen(v.bo);
   BO_CU = khoaBo;
   $('banNhan').textContent = v.bo ? (v.bo.ten + ' · ' + tenCua(v.boCua)) : '';
-  $('banChua').textContent = v.ketQua ? '' :
-      (v.bo ? '' : (v.luot ? (v.luot===S.toi.id ? 'Bạn mở lượt — đánh gì cũng được' : tenCua(v.luot)+' đang mở lượt') : ''));
+  // Bỏ hẳn chữ giữa bàn: ai đang nghĩ thì GHẾ đã ghi "⏳ đang nghĩ…", bàn trống thì nhìn là
+  // biết đang mở lượt. Chữ ở đây chỉ chồng thêm lên bài vừa đánh (chủ server chụp lại 20/09).
+  $('banChua').textContent = '';
 
   veLat(v);
   veTay(b, v);
@@ -1192,14 +1249,24 @@ function tenCua(id){
   return p ? p.ten : id;
 }
 
+/* 🪑 CHỖ NGỒI — bảng toạ độ CỐ ĐỊNH (phần trăm bề ngang/cao của mặt bàn), chép theo ảnh mẫu
+   chủ server gửi: MÌNH ở GÓC TRÁI DƯỚI để chừa nguyên dải đáy cho tay bài, đối thủ dàn ra
+   trái / trên / phải sát mép.
+   ⚠️ Bản cũ xếp theo VÒNG TRÒN (y = 50 + 34·cos). Trên màn nằm ngang cao ~390px cái vòng đó
+   bóp lại còn vài chục px, ghế đè lên mặt bàn và lên bài giữa bàn (chủ server chụp 20/09). */
+var CHO_NGOI = {
+  2: [[13, 70], [50, 13]],
+  3: [[13, 70], [12, 32], [86, 32]],
+  4: [[13, 70], [10, 38], [50, 13], [90, 38]],
+};
 function veGhe(b, v){
-  var n = b.nguoi.length, rx = banKinhX($('san')), o = '';
+  var n = b.nguoi.length, o = '';
+  var cho = CHO_NGOI[n] || CHO_NGOI[4];
   var toiO = 0;
   for (var i=0;i<n;i++) if (b.nguoi[i].id === S.toi.id) toiO = i;
   for (var k=0;k<n;k++){
-    var p = b.nguoi[(toiO + k) % n];                 // xoay để MÌNH luôn ở đáy
-    var a = k * 2*Math.PI/n;
-    var x = 50 + rx*Math.sin(a), y = 50 + 34*Math.cos(a);
+    var p = b.nguoi[(toiO + k) % n];                 // xoay để MÌNH luôn là chỗ đầu tiên
+    var x = cho[k][0], y = cho[k][1];
     GHE_VT[p.id] = { x: x, y: y };                   // lá bay cần biết ghế này nằm đâu
     var laToi = p.id === S.toi.id, toiLuot = v.luot === p.id;
 
@@ -1352,12 +1419,14 @@ function veNut(b, v){
   if (!toi || !toi.la){ datHTML($('banNut'), ''); $('banNhac').textContent=''; $('banGoi').hidden=true; return; }
   var cua = toi.toiLuot && !v.ketQua;
 
-  // ---- dòng gợi ý (khi CHƯA chọn lá nào): nhắc còn mấy nước đánh được ----
+  // ---- CHỈ báo khi BÍ: không còn nước nào đánh được ----
+  // Bỏ câu "Bấm lá để chọn — bạn có N nước đánh được" (chủ server 20/09): lá không đánh được
+  // đã tự mờ, nút ĐÁNH đã tự sáng/tắt — đếm thêm số nước chỉ tổ chiếm một dòng. Còn ca BÍ thì
+  // phải nói, vì nhìn vào không tài nào biết mình hết đường.
   var e = $('banGoi');
-  if (cua && !CHON.length){
-    var so = cMoiNuoc(toi.la, v.bo).length;
-    datHTML(e, so ? ('Bấm lá để chọn — bạn có <b>' + so + '</b> nước đánh được') : '😔 Không có nước nào đánh được — bấm BỎ LƯỢT');
-    e.className = so ? '' : 'khong'; e.hidden = false;
+  if (cua && !CHON.length && !cMoiNuoc(toi.la, v.bo).length){
+    datHTML(e, '😔 Không còn nước nào đánh được — bấm BỎ LƯỢT');
+    e.className = 'khong'; e.hidden = false;
   } else e.hidden = true;
 
   // ---- 🎯 HÀNG NÚT TO: ⏱ · Bỏ lượt · Đánh (hiện suốt lượt mình, theo ảnh mẫu) ----
@@ -1386,15 +1455,15 @@ function veNut(b, v){
   var o = '<button class="b vang" onclick="goiY()"' + (cua?'':' disabled') + '>💡 GỢI Ý</button>' +
           '<button class="b xam" onclick="boChon()"' + (CHON.length?'':' disabled') + '>✖️ BỎ CHỌN</button>';
   datHTML($('banNut'), o);
-  // Trước chỉ ghi "Đang chờ X" nên người đã bỏ lượt tưởng mình vẫn còn được đánh trong vòng này.
-  // Nói thẳng: đã bỏ thì ngồi ngoài tới hết vòng, và còn mấy người nữa đang tranh.
+  // CHỈ giữ câu nói điều KHÔNG NHÌN THẤY ĐƯỢC: đã bỏ lượt thì phải ngồi ngoài tới hết vòng.
+  // Bỏ "Đang chờ X" (ghế đã ghi ⏳ đang nghĩ…) và "Bạn mở lượt — chọn bài rồi bấm ĐÁNH"
+  // (nút ĐÁNH đã nằm ngay đó rồi) — chủ server 20/09: "bỏ mấy cái dư thừa đi".
   var toiTrongDs = (b.nguoi || []).filter(function(x){ return x.id === S.toi.id; })[0];
+  var daBoRoi = !!(toiTrongDs && toiTrongDs.daBo && !v.ketQua);
   var conTranh = (b.nguoi || []).filter(function(x){ return x.trongVan && !x.daBo && x.conBai; }).length;
-  $('banNhac').textContent = v.ketQua ? '' :
-    (cua ? (v.bo ? ('Phải đánh ' + v.bo.ten + ' lớn hơn, hoặc chặt') : 'Bạn mở lượt — chọn bài rồi bấm ĐÁNH')
-     : (toiTrongDs && toiTrongDs.daBo
-         ? ('🚫 Bạn đã bỏ lượt — chờ hết vòng này mới được đánh tiếp · còn ' + conTranh + ' người đang tranh')
-         : ('Đang chờ ' + tenCua(v.luot||'') + ' · còn ' + conTranh + ' người trong vòng')));
+  $('banNhac').textContent = daBoRoi
+    ? ('🚫 Bạn đã bỏ lượt — chờ hết vòng này mới được đánh tiếp · còn ' + conTranh + ' người đang tranh')
+    : '';
 }
 /* 💡 chọn giùm nước RẺ NHẤT đánh được. Bấm tiếp thì xoay sang nước kế (xem hết mọi cách). */
 var GOI_I = 0;
