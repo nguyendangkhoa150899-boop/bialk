@@ -336,17 +336,22 @@ muc('📣 CHỈ bài đặc biệt mới bắn tên to giữa bàn (chủ server
 
 muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
 {
-    // 20/09: KHÔNG còn lá .chon nằm trong hàng tay — bấm lá là nó nhảy hẳn lên KHAY ở trên,
-    // nên mọi mẹo "nhô lên / dấu ✓ / chừa khoảng hở" của bản cũ đều đã bỏ.
-    ok('hàng tay không còn lá nào mang lớp .chon', !/\.tay \.the\.chon/.test(HTML));
+    // Kiểu Ba Bích — chủ server chốt LẠI 20/09 sau khi thử khay: bấm lá thì lá NHÔ LÊN TẠI CHỖ
+    // trong hàng bài, không phóng to. Khay riêng đã BỎ (chiếm nguyên một hàng, điện thoại nằm
+    // ngang là mọi thứ dồn chật): "cho về lại bản chọn giống như game Ba Bích, đừng chồng chéo".
+    ok('lá đang chọn NHÔ LÊN TẠI CHỖ + viền vàng + dấu ✓',
+        /\.tay \.the\.chon\{[\s\S]{0,200}translateY\(-26px\)/.test(HTML) && /\.tay \.the\.chon::after\{content:'✓'/.test(HTML));
+    ok('lá chọn KHÔNG phóng to (phóng to là lấn che lá kế bên)', !/\.tay \.the\.chon\{[^}]*scale\(/.test(HTML));
+    ok('dấu ✓ nằm góc TRÁI (phần luôn nhìn thấy khi xoè chồng)', /\.chon::after\{[^}]*left:-6px/.test(HTML));
+    ok('KHÔNG còn khay bài đã chọn', !/banKhay/.test(HTML) && !/function veKhay\(/.test(JS));
     // 20/09: "để chuột vị trí này thì lá bài bị giật giật" — hover mà nhấc lá lên thì mép dưới
     // chạy khỏi con trỏ -> mất hover -> tụt -> dính lại: rung vô tận. Hover PHẢI đứng yên.
     {
         const luatHover = HTML.match(/\.tay \.the[^\n{]*:hover\{[^}]*\}/g) || [];
         ok('có luật hover cho tay bài', luatHover.length > 0, JSON.stringify(luatHover));
         ok('hover KHÔNG di chuyển lá (chống rung)', luatHover.every(r => !/transform|translate|margin/.test(r)), JSON.stringify(luatHover));
-        ok('hover KHÔNG phóng to / không đổi lề (chỉ z-index + viền)',
-            luatHover.every(r => !/scale\(|margin/.test(r)), JSON.stringify(luatHover));
+        ok('hover KHÔNG đụng lá đã chọn (đẩy lên là che lá chọn kế bên)',
+            luatHover.every(r => /:not\(\.chon\)/.test(r)), JSON.stringify(luatHover));
         ok('...nhưng vẫn đưa lá đang trỏ lên trên để nhìn trọn', luatHover.some(r => /z-index:\s*\d/.test(r)));
     }
     // 20/09: dòng gợi ý từng in 2 lần "Mấy lá này không thành bộ · ... không thành bộ hợp lệ"
@@ -358,18 +363,13 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('cỡ bài CỐ ĐỊNH 2×, đã bỏ nút 🔍', /--co:2;/.test(HTML) && !/function coBai\(/.test(JS) && !/onclick="coBai/.test(JS));
     ok('tay bài xoè chồng + tự co cho vừa bề ngang', /function canhTay\(/.test(JS) && /W \* 0\.8/.test(JS));
     // "chọn con 8 bị che con 9": chỉ chừa chỗ ở nơi lá ĐÃ CHỌN đứng cạnh lá CHƯA CHỌN
-    // 20/09: bấm lá là nó NHẢY LÊN KHAY ở trên, rời hẳn khỏi tay bài. Nhờ vậy lá chọn không
-    // thể che lá kế bên nữa — cơ chế chừa khoảng hở HO_CHON cũ đã bỏ hẳn, đừng dựng lại.
-    ok('bấm lá thì lá NHẢY LÊN khay riêng, không nằm chen trong tay nữa',
-        /id="banKhay"/.test(HTML) && /function veKhay\(/.test(JS) &&
-        /CHON\.indexOf\(x\) < 0/.test(JS) && /@keyframes nhayLen\{/.test(HTML));
-    ok('...khay KHÔNG chồng lá nào lên lá nào (ô bấm to cho điện thoại)',
-        /#banKhay\{display:flex[\s\S]{0,120}gap:6px/.test(HTML) && /#banKhay \.the\{cursor:pointer;margin:0/.test(HTML));
-    ok('...bấm lá trong khay là trả về tay bài', /CHON\.indexOf\(ma\); if \(i >= 0\) CHON\.splice\(i, 1\)/.test(JS));
-    ok('...khay nói luôn đang cầm bộ gì + đánh được hay không',
-        /chưa thành bộ/.test(JS) && /#banKhay\.duoc\{/.test(HTML) && /#banKhay\.khong\{/.test(HTML));
-    ok('KHÔNG còn cơ chế chừa khoảng hở cũ (lá chọn đã rời khỏi hàng)', !/HO_CHON/.test(JS));
-    ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /\? 'cam' : ''/.test(JS));
+    // "chọn con 8 bị che con 9": lá chọn nhô lên nằm đè lên lá kế -> phải chừa khoảng trống
+    // NGAY SAU nó, và chỉ ở chỗ lá ĐÃ CHỌN đứng trước lá CHƯA CHỌN.
+    ok('chừa khoảng trống sau lá đã chọn để không che lá kế',
+        /HO_CHON/.test(JS) && /contains\('chon'\) && !k\[i\]\.classList\.contains\('chon'\)/.test(JS));
+    ok('...và khoảng trống đó được tính vào phép chia nên không tràn hàng', /g \* HO_CHON/.test(JS));
+    ok('...bấm lá là canh lại hàng NGAY, khỏi đợi nhịp 1 giây', /classList\.toggle\('chon'\);\s*\n\s*canhTay\(\);/.test(JS));
+    ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /' cam'/.test(JS));
     ok('có dòng gợi ý #banGoi báo đánh được / không', /id="banGoi"/.test(HTML) && /#banGoi\.duoc/.test(HTML) && /#banGoi\.khong/.test(HTML));
     ok('có nút 💡 GỢI Ý', /💡 GỢI Ý/.test(JS));
     // Theo ảnh mẫu Ba Bích: 2 nút TO "Bỏ lượt" (đỏ) / "Đánh" (xanh) + đồng hồ tròn, hiện suốt lượt mình
@@ -404,7 +404,12 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     // trang này từng THIẾU nhánh điện thoại nằm ngang (nhầm với trang Poker) -> bàn co còn ~145px
     ok('có nhánh CSS cho điện thoại NẰM NGANG', /@media\(orientation:landscape\) and \(max-height:560px\)\{/.test(HTML));
     ok('...màn BÀN ăn trọn chiều cao còn lại, bài nhỏ lại',
-        /aspect-ratio:auto;width:100%;height:calc\(100vh - 240px\)/.test(HTML) && /--co:1\.25/.test(HTML));
+        /aspect-ratio:auto;width:100%;height:calc\(100vh - 214px\)/.test(HTML) && /--co:1\.05/.test(HTML));
+    // Màn nằm ngang cao ~390px: bàn chỉ còn ~176px mà một ô ghế đầy đủ cao tới 92px -> ghế
+    // trên và ghế dưới chạm nhau, ghế đè lên mặt bàn và lên chữ giữa bàn (chủ server chụp 20/09).
+    ok('...ô ghế thấp lại để KHÔNG chồng lên mặt bàn',
+        /\.ghe \.lung\{display:none\}/.test(HTML) && /\.ttO\{min-height:18px\}/.test(HTML) &&
+        /\.av\{width:22px;height:22px/.test(HTML));
     // iPhone nằm ngang cao ~400px: ép bàn oval vào phòng chờ thì 4 ghế đè lên nhau và nút
     // SẴN SÀNG nằm chồng lên ghế (chủ server chụp lại 20/09). Oval ở phòng chờ chỉ là trang
     // trí -> bỏ hẳn, xếp ghế thành một hàng ngang.
@@ -415,10 +420,7 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
         /#sanCho \.ghe\{position:static!important;left:auto!important;top:auto!important/.test(HTML));
     ok('...nút SẴN SÀNG rơi xuống dưới hàng ghế, không nằm chồng lên',
         /#sanCho \.vien\{order:2;position:static/.test(HTML) && /#sanCho \.giua\{position:static;transform:none/.test(HTML));
-    // Khay bài đã chọn là HÀNG MỚI, chiếm thêm chiều cao. Màn nằm ngang chỉ cao ~390px nên phải
-    // thu gọn khay + trừ thêm chiều cao bàn, không thì trang bị cuộn — mà ta vừa chặn vuốt cuộn.
-    ok('...khay bài đã chọn cũng thu gọn theo',
-        /#banKhay\{padding:4px 7px/.test(HTML) && /#banKhay \.the img\{width:calc\(var\(--lbt\) \* \.78\)\}/.test(HTML));
+    ok('...KHÔNG còn vết tích khay trong nhánh nằm ngang', !/banKhay/.test(HTML));
     ok('lệch tính theo var(--lb) nên đổi cỡ bài là cả đống co theo', /calc\(var\(--lb\) \* ' \+ mx/.test(JS));
     // "đánh bài có animation lá bài từ chỗ người chơi bay lên"
     ok('✈️ lá bay từ chỗ người đánh vào giữa bàn', /\.ola\.bay\{animation:bayVao/.test(HTML) && /@keyframes bayVao\{/.test(HTML) && /GHE_VT\[tuAi\]/.test(JS));
@@ -506,6 +508,15 @@ muc('🏠 SẢNH chọn phòng / tạo phòng');
     ok('...và nói trước cần bao nhiêu vốn, thiếu thì khoá nút',
         /taoVon/.test(JS) && /taoNut'\)\.disabled = !TAO_MUC \|\| d\.toi\.dogcoin < von/.test(JS));
     ok('có nút ra sảnh ở phòng chờ', /function raSanh\(/.test(JS) && /onclick="raSanh\(\)"/.test(HTML));
+    // "pc mình không bấm được vào bàn" — KHÔNG phải lỗi: ví 20 Dogcoin, phòng rẻ nhất cần
+    // 120.000. Lý do vốn đã ghi trong dòng xám của từng phòng nhưng lẫn giữa đống chữ, người
+    // chơi chỉ thấy bấm không ăn rồi bỏ đi. Phải nói thẳng ngay đầu sảnh.
+    ok('⛔ băng báo đầu sảnh khi KHÔNG vào được phòng nào',
+        /id="sanhChan"/.test(HTML) && /#sanhChan\{background:#2e1212/.test(HTML) && /var kho = d\.phong\.length/.test(JS));
+    ok('...nói rõ ví có bao nhiêu và phòng rẻ nhất cần bao nhiêu',
+        /Ví bạn chỉ có/.test(JS) && /phòng rẻ nhất cũng cần/.test(JS));
+    ok('...lý do của từng phòng tách riêng một dòng, tô đỏ',
+        /class="t3">⛔/.test(JS) && /\.phg \.t3\{[^}]*#ff9a9a/.test(HTML));
 }
 
 muc('🗳️ VOTE đổi mức cược');

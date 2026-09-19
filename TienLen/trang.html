@@ -46,11 +46,17 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .12s}
 .phg:hover{border-color:#41506a}
 .phg.khong{opacity:.55;cursor:default}
+/* Băng báo đầu sảnh khi KHÔNG vào được phòng nào — "bấm không được" mà không biết vì sao là
+   thứ làm người chơi bỏ đi (chủ server báo 20/09). */
+#sanhChan{background:#2e1212;border:1px solid #7a2d2d;color:#ffb4b4;border-radius:12px;
+  padding:10px 13px;margin-bottom:10px;font-size:13px;font-weight:700;line-height:1.5;text-align:center}
+#sanhChan b{color:#fff}
 .phg.khong:hover{border-color:var(--line)}
 .phg .mo1{font-size:22px;line-height:1}
 .phg .th{flex:1;min-width:0}
 .phg .t1{font-weight:900;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .phg .t2{font-size:11.5px;color:var(--muted);margin-top:2px}
+.phg .t3{font-size:11.5px;color:#ff9a9a;font-weight:700;margin-top:2px}
 .phg .sn{font-weight:900;font-size:13px;white-space:nowrap}
 .phg .sn i{font-style:normal;color:var(--muted);font-weight:700}
 /* ô chọn mức cược lúc tạo phòng / lúc vote */
@@ -181,27 +187,23 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .tay .the:first-child{margin-left:0}
 /* ⚠️ HOVER TUYỆT ĐỐI KHÔNG ĐƯỢC DI CHUYỂN LÁ. Nhấc lá lên khi hover là mép dưới chạy khỏi con
    trỏ -> mất hover -> tụt xuống -> dính hover lại: lá RUNG LIÊN TỤC (chủ server báo 20/09).
-   Chỉ đưa lên trên + viền xanh: vẫn nhìn trọn lá đang trỏ mà hộp thì đứng yên. */
-.tay .the:hover{z-index:6;box-shadow:0 0 0 2px #7fe3ff,0 10px 20px rgba(0,0,0,.72)}
-/* (CSS cho lá .chon NẰM TRONG TAY đã bỏ 20/09: lá chọn giờ nhảy hẳn lên KHAY ở trên, trong
-   hàng tay không còn lá nào mang lớp .chon nữa. Xem #banKhay.) */
+   Chỉ đưa lên trên + viền xanh: vẫn nhìn trọn lá đang trỏ mà hộp thì đứng yên.
+   Và KHÔNG áp cho lá đã chọn (:not(.chon)) — đẩy lá chọn lên trên là nó che lá chọn kế bên. */
+.tay .the:not(.chon):hover{z-index:6;box-shadow:0 0 0 2px #7fe3ff,0 10px 20px rgba(0,0,0,.72)}
+/* 👇 LÁ ĐANG CHỌN — kiểu Ba Bích, chủ server chốt lại 20/09 sau khi thử khay: bấm là lá NHÔ
+   LÊN TẠI CHỖ, không phóng to (phóng to là lấn che lá bên cạnh trong hàng xoè chồng), viền
+   vàng + quầng sáng, dấu ✓ góc TRÁI vì đó là phần luôn nhìn thấy của mỗi lá.
+   ⚠️ Đã thử tách lá chọn ra một KHAY riêng ở trên (20/09) — chủ server bảo bỏ: khay chiếm
+   nguyên một hàng, điện thoại nằm ngang là mọi thứ dồn chật, tay bài bị cắt mất đáy. */
+.tay .the.chon{transform:translateY(-26px);z-index:3;
+  box-shadow:0 0 0 3px var(--gold),0 0 18px 3px rgba(255,207,92,.5),0 10px 20px rgba(0,0,0,.75);
+  animation:chonNay .2s cubic-bezier(.2,1.6,.4,1)}
+.tay .the.chon::after{content:'✓';position:absolute;top:-9px;left:-6px;width:19px;height:19px;border-radius:50%;
+  background:linear-gradient(180deg,#ffe9a3,#e0a41a);color:#3a2500;font-size:12px;font-weight:900;
+  display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:3}
+@keyframes chonNay{0%{transform:translateY(-6px)}100%{transform:translateY(-26px)}}
 /* lá KHÔNG thể đánh trong lượt này (khi đang theo bài) thì mờ đi cho dễ nhìn */
 .tay .the.cam{filter:brightness(.52) saturate(.55)}
-
-/* 🗂️ KHAY BÀI ĐÃ CHỌN — lá bấm vào thì NHẢY LÊN đây, rời hẳn khỏi tay bài.
-   Không lá nào chồng lá nào: trên điện thoại mỗi lá là một ô bấm to, bấm lại là trả về tay. */
-#banKhay{display:flex;justify-content:center;align-items:flex-end;gap:6px;flex-wrap:wrap;
-  margin:8px auto 0;padding:8px 10px;width:fit-content;max-width:98%;
-  border-radius:14px;border:2px dashed #7a5d13;background:rgba(58,46,16,.35)}
-#banKhay.duoc{border-color:#1d6b44;background:rgba(18,48,33,.5);border-style:solid}
-#banKhay.khong{border-color:#7a2d2d;background:rgba(46,18,18,.45)}
-#banKhay .the{cursor:pointer;margin:0;animation:nhayLen .26s cubic-bezier(.2,1.5,.4,1) both}
-#banKhay .the img{width:var(--lbt);border-radius:7px;box-shadow:0 6px 16px rgba(0,0,0,.6)}
-#banKhay .the:active{transform:translateY(3px)}
-#banKhay .nhan{align-self:center;font-size:12px;font-weight:800;color:var(--muted);padding:0 4px}
-@keyframes nhayLen{0%{opacity:.2;transform:translateY(46px) scale(.82)}
-  60%{opacity:1;transform:translateY(-6px) scale(1.04)}
-  100%{opacity:1;transform:none}}
 
 /* 🎯 HÀNG NÚT TO (theo ảnh mẫu Ba Bích): ⏱ đồng hồ tròn · Bỏ lượt đỏ · Đánh xanh.
    Hiện suốt lượt của mình — nút Đánh chỉ SÁNG khi mớ lá đang chọn hợp lệ. */
@@ -341,11 +343,25 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
    (100dvh − 300px) × 1.61 co bàn còn ~145px trên màn cao 390px, vỡ hẳn. Ở khổ này: hạ cỡ bài,
    bỏ tỉ lệ cố định cho bàn ăn trọn chiều cao còn lại, thu gọn ghế và hàng nút. */
 @media(orientation:landscape) and (max-height:560px){
-  :root{--co:1.25;--llb:34px}
+  /* Cỡ bài nhỏ lại nữa: màn nằm ngang chỉ cao ~390–470px, bài to là ghế đè lên bàn. */
+  :root{--co:1.05;--llb:30px}
   body{padding:4px}
   /* Màn BÀN: giữ oval (phải có chỗ bày bài giữa bàn) nhưng chừa đủ cho hàng nút + tay bài.
      240px = thanh trên 34 + gợi ý 22 + hàng nút to 44 + dòng chú 16 + tay bài 92 + nút phụ 32. */
-  .san{aspect-ratio:auto;width:100%;height:calc(100vh - 240px);height:calc(100dvh - 240px);min-height:140px}
+  /* Chừa cho phần dưới: thanh trên 32 + gợi ý 22 + hàng nút to 44 + dòng chú 14 + tay bài 79
+     + nút phụ 28 ≈ 214. Còn lại bao nhiêu thì bàn ăn hết. */
+  .san{aspect-ratio:auto;width:100%;height:calc(100vh - 214px);height:calc(100dvh - 214px);min-height:150px}
+  /* ⚠️ Ô GHẾ PHẢI THẤP LẠI, không thì nó CHỒNG LÊN MẶT BÀN và lên chữ giữa bàn (chủ server
+     chụp lại 20/09). Trên màn cao ~390px, bàn chỉ còn ~176px mà một ô ghế đầy đủ cao tới 92px
+     (xấp bài úp 22 + bảng tên 38 + đồng hồ 7 + nhãn 25) -> ghế trên và ghế dưới chạm nhau.
+     Bỏ xấp bài úp (chỉ là trang trí) và thu nhãn lại: ô ghế còn ~63px, vừa khít. */
+  .ghe .lung{display:none}
+  .ttO{min-height:18px}
+  .tt{font-size:10px;padding:1px 7px}
+  .bang{padding:4px 6px}
+  .av{width:22px;height:22px;font-size:13px}
+  .nt{font-size:11px}
+  .ck{font-size:10.5px}
 
   /* 🪑 PHÒNG CHỜ ở khổ nằm ngang: BỎ BÀN OVAL, xếp 4 ghế thành MỘT HÀNG NGANG.
      Oval ở phòng chờ chỉ là trang trí quanh 4 ô ghế; ép nó vào màn cao 400px thì ghế đè lên
@@ -359,10 +375,6 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   #sanCho #choGhe{order:1;display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
   #sanCho .ghe{position:static!important;left:auto!important;top:auto!important;
     transform:none;width:auto;min-width:96px;max-width:170px}
-  /* khay bài đã chọn: thu gọn hết cỡ, màn nằm ngang cao có 390px thôi */
-  #banKhay{padding:4px 7px;gap:4px;margin-top:5px;border-width:1px}
-  #banKhay .the img{width:calc(var(--lbt) * .78)}
-  #banKhay .nhan{font-size:10.5px}
   #banGoi{margin-top:5px;padding:4px 11px;font-size:12px}
   #banBoChon{margin-top:4px;font-size:12px}
   #banNut{margin-top:6px!important;gap:6px}
@@ -420,6 +432,7 @@ body.khoaXoay{position:fixed;inset:0;width:100%;overflow:hidden}
     <div class="sp"></div>
     <span class="pill vang" id="sanhVi"></span>
   </div>
+  <div id="sanhChan" hidden></div>
   <div id="sanhDs"></div>
   <div class="dong" style="margin-top:10px">
     <button class="b xanh" onclick="moTao()">➕ TẠO PHÒNG MỚI</button>
@@ -487,7 +500,6 @@ body.khoaXoay{position:fixed;inset:0;width:100%;overflow:hidden}
   </div>
 
   <div id="banGoi" hidden></div>
-  <div id="banKhay" hidden></div>
   <div id="banDanh" hidden></div>
   <div id="banBoChon" hidden></div>
   <div class="tayHang">
@@ -778,6 +790,20 @@ function veSanh(){
   var d = SANH; if (!d || !d.phong) return;
   $('sanhVi').textContent = d.toi.ten + ' · ' + vnd(d.toi.dogcoin) + ' Dogcoin';
   $('sanhPhu').textContent = d.phong.length + '/' + d.toiDaPhong + ' phòng đang mở · bấm một phòng để vào';
+  // ⛔ Ví không đủ vào BẤT KỲ phòng nào -> nói thẳng ngay đầu sảnh. Lý do vốn đã ghi trong
+  // dòng xám của từng phòng nhưng lẫn giữa đống chữ, người chơi chỉ thấy "bấm không được"
+  // (chủ server báo đúng vậy 20/09).
+  var re = d.phong.reduce(function(m, p){ return Math.min(m, p.vonToiThieu); }, Infinity);
+  var kho = d.phong.length && d.phong.every(function(p){ return !p.duocNgoi; });
+  var bc = $('sanhChan');
+  if (kho){
+    var thieuTien = d.toi.dogcoin < re;
+    datHTML(bc, thieuTien
+      ? ('⛔ <b>Ví bạn chỉ có ' + vnd(d.toi.dogcoin) + ' Dogcoin</b> — phòng rẻ nhất cũng cần <b>' +
+         vnd(re) + '</b>. Nạp thêm rồi quay lại, hoặc nhờ admin mở phòng cược thấp hơn.')
+      : ('⛔ ' + esc(d.phong[0].viSaoKhong || 'Bạn chưa vào bàn được')));
+    bc.hidden = false;
+  } else bc.hidden = true;
   var o = d.phong.map(function(p){
     var duoc = p.duocNgoi && p.soNgoi < p.toiDa;
     var vi = !p.duocNgoi ? (p.viSaoKhong || '') : (p.soNgoi >= p.toiDa ? 'Phòng đã đủ 4 người' : '');
@@ -786,7 +812,7 @@ function veSanh(){
       '<div class="th"><div class="t1">' + esc(p.cheDoTen) + ' · ' + vnd(p.mucCuoc) + '</div>' +
       '<div class="t2">' + (p.cheDo === 'anhet' ? 'mỗi lá ' + vnd(p.mucCuoc) : 'giải nhất ' + vnd(p.mucCuoc) + ' · nhì ' + vnd(p.mucCuoc / 2)) +
       ' · cần vốn ' + vnd(p.vonToiThieu) + (p.boi ? ' · do ' + esc(p.boi) + ' tạo' : '') +
-      (vi ? ' · ⛔ ' + esc(vi) : '') + '</div></div>' +
+      '</div>' + (vi ? '<div class="t3">⛔ ' + esc(vi) + '</div>' : '') + '</div>' +
       '<div class="sn">' + p.soNgoi + '<i>/' + p.toiDa + '</i>' +
       (p.dangDanh ? '<br><i style="font-size:10.5px">đang đánh</i>' : '') + '</div></div>';
   }).join('');
@@ -1253,6 +1279,7 @@ function xepTay(la){
     return la.indexOf(a) - la.indexOf(b);                // trong nhóm giữ thứ tự số
   });
 }
+var HO_CHON = 6;      // khoảng trống (px) chừa sau mỗi lá đã chọn
 var VAN_CU_TAY = '';
 function veTay(b, v){
   var toi = b.toi;
@@ -1270,43 +1297,23 @@ function veTay(b, v){
     for (var q=0;q<nuoc.length;q++) for (var w=0;w<nuoc[q].la.length;w++) dungDuoc[nuoc[q].la[w]] = 1;
   }
   var moLa = toi.toiLuot && v.bo && !v.ketQua;
-  // 20/09: lá ĐÃ CHỌN không nằm trong hàng này nữa — nó nhảy lên KHAY ở trên (xem veKhay).
-  // Nhờ vậy lá chọn không thể che lá kế bên, và hàng bài dưới luôn đều tăm tắp.
-  var conLai = la.filter(function(x){ return CHON.indexOf(x) < 0; });
-  var o = conLai.map(function(x){
-    return theLa(x, true, (moLa && !dungDuoc[x] ? 'cam' : ''));
+  // Kiểu Ba Bích: lá đã chọn VẪN nằm trong hàng, chỉ nhô lên tại chỗ (xem CSS .tay .the.chon).
+  var o = la.map(function(x){
+    return theLa(x, true, (CHON.indexOf(x)>=0 ? 'chon' : '') + (moLa && !dungDuoc[x] ? ' cam' : ''));
   }).join('');
   if (datHTML($('banTay'), o)){
     canhTay();
-    bamLa($('banTay'), function(ma){ if (CHON.indexOf(ma) < 0) CHON.push(ma); });
+    var el = $('banTay').querySelectorAll('.the');
+    for (var i=0;i<el.length;i++) (function(e){
+      e.addEventListener('click', function(){
+        var ma = e.getAttribute('data-la'), i2 = CHON.indexOf(ma);
+        if (i2 >= 0) CHON.splice(i2,1); else CHON.push(ma);
+        e.classList.toggle('chon');
+        canhTay();      // chừa/thu khoảng hở NGAY, khỏi đợi nhịp 1 giây
+        ve();           // để nút ĐÁNH cập nhật số lá ngay
+      });
+    })(el[i]);
   }
-  veKhay(v);
-}
-
-/** Gắn sự kiện bấm cho mọi lá trong một hộp. Bấm xong vẽ lại ngay, khỏi đợi nhịp 1 giây. */
-function bamLa(hop, lam){
-  var el = hop.querySelectorAll('.the');
-  for (var i = 0; i < el.length; i++) (function(e){
-    e.addEventListener('click', function(){
-      lam(e.getAttribute('data-la'));
-      $('banTay').__cu = ''; $('banKhay').__cu = '';
-      ve();
-    });
-  })(el[i]);
-}
-
-/* 🗂️ KHAY BÀI ĐÃ CHỌN. Hiện ngay cả khi chưa tới lượt (để còn xếp sẵn bộ mà chờ), và nói
-   luôn đang cầm bộ gì / đánh được hay không — người chơi khỏi phải nhìn xuống dòng chữ nhỏ. */
-function veKhay(v){
-  var e = $('banKhay');
-  if (!CHON.length){ e.hidden = true; datHTML(e, ''); return; }
-  var bo = cNhanDang(CHON), kq = cDanhDuoc(bo, v.bo);
-  var cua = S.ban.toi && S.ban.toi.toiLuot && !v.ketQua;
-  var o = cXep(CHON).map(function(x){ return theLa(x, true, ''); }).join('') +
-          '<div class="nhan">' + (bo ? esc(bo.ten) : 'chưa thành bộ') + ' · bấm lá để bỏ ra</div>';
-  if (datHTML(e, o)) bamLa(e, function(ma){ var i = CHON.indexOf(ma); if (i >= 0) CHON.splice(i, 1); });
-  e.className = (cua && kq && kq.ok) ? 'duoc' : (bo ? '' : 'khong');
-  e.hidden = false;
 }
 
 /* Xếp tay bài. Hai việc:
@@ -1320,17 +1327,25 @@ function canhTay(){
   if (!n) return;
   var W = k[0].offsetWidth || 0, CW = e.clientWidth || 0;
   if (!W || !CW || n < 2) return;
-  // 20/09: KHÔNG còn phải chừa khoảng hở cho lá đã chọn nữa — lá chọn đã nhảy lên KHAY,
-  // hàng này chỉ còn lá chưa chọn nên cứ xoè đều tăm tắp. Cơ chế chừa khoảng hở cũ bỏ hẳn.
-  // Độ chồng CHỈ siết lại khi THIẾU CHỖ. Bản cũ ghim cứng tối thiểu 42% nên 7 lá trên màn
-  // hình rộng vẫn chồng y như 13 lá — mỗi lá hở hơn nửa, nhìn chật mà chỗ thì thừa.
-  var can = W * 0.14;                                  // xoè thoáng khi dư chỗ
-  var thua = W * n - (CW - 10);                        // đang dôi ra bao nhiêu px
-  if (n > 1){
-    can = Math.max(can, thua / (n - 1));
+  // Lá ĐÃ CHỌN nhô lên và nằm đè lên lá kế -> phải CHỪA KHOẢNG TRỐNG ngay sau nó, không thì
+  // nó che mất lá bên cạnh (chủ server: "chọn con 8 bị che con 9"). Chỉ chừa ở chỗ lá ĐÃ CHỌN
+  // đứng ngay trước lá CHƯA CHỌN; mấy lá chọn liền nhau thì cứ chồng bình thường (đều nhô lên
+  // như nhau nên không che số của nhau). Khoảng trống này được TÍNH VÀO phép chia bên dưới nên
+  // chọn bao nhiêu lá hàng bài cũng không tràn ra ngoài.
+  var g = 0, i, hoO = [];
+  for (i = 1; i < n; i++){
+    hoO[i] = k[i - 1].classList.contains('chon') && !k[i].classList.contains('chon');
+    if (hoO[i]) g++;
+  }
+  var soNoiChong = (n - 1) - g;
+  // Độ chồng CHỈ siết lại khi THIẾU CHỖ — dư chỗ thì xoè thoáng cho dễ bấm.
+  var can = W * 0.14;
+  if (soNoiChong > 0){
+    var thua = W * n + g * HO_CHON - (CW - 10);
+    can = Math.max(can, thua / soNoiChong);
     can = Math.min(can, W * 0.8);                      // chồng quá 80% là mất góc số
   }
-  for (var i = 1; i < n; i++) k[i].style.marginLeft = (-Math.round(can)) + 'px';
+  for (i = 1; i < n; i++) k[i].style.marginLeft = hoO[i] ? HO_CHON + 'px' : (-Math.round(can)) + 'px';
 }
 function veNut(b, v){
   var toi = b.toi;
