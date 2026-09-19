@@ -124,16 +124,16 @@ Người chơi **mua** cỏ (**30% tiền cược**, cả 2 game, `fee = bet * 0
 
 | Quà | Dò Mìn | Leo Thang |
 |---|---|---|
-| 💰 Lì xì **+200% cược** (`LUCKY_CASH_RATE = 2.0`, 19/09; trước 30%) | **15%** | 36% |
-| 🛡️ Khiên | **15%** | 18% |
-| ↩️ Hoàn vé cỏ | **15%** | 13% |
-| ⛏️ Máy đào / 🚀 Thang máy | **10%** | 13% |
-| 🎲 Gấp đôi hoặc không | 10% | 10% |
-| 🧭 La bàn (lộ 1 mìn/lửa) | **10%** | 8% |
+| 💰 Lì xì **+100% cược** (`LUCKY_CASH_RATE = 1.0`, 19/09; trước 30%) | **17%** | 36% |
+| 🛡️ Khiên | **17%** | 18% |
+| ↩️ Hoàn vé cỏ | **17%** | 13% |
+| ⛏️ Máy đào / 🚀 Thang máy | **12%** | 13% |
+| 🎲 Gấp đôi hoặc không | **— (bỏ 19/09)** | 10% |
+| 🧭 La bàn (lộ 1 mìn/lửa) | **12%** | 8% |
 | 🏆 Nổ hũ | **1%** | **2%** |
 | 🍂 Hụt (không gì) | **24%** | — |
 
-⚠️ **Tổng mỗi bảng phải đúng 1.00.** `spinWheel` trừ dần → thiếu bao nhiêu là **dồn hết vào ô CUỐI bảng** không báo gì. `luckywheeltest.js` canh. Đổi nổ hũ thì bù/trừ ở ô "hãm" (Dò Mìn: 🍂 Hụt; Leo Thang không có Hụt nên vào ↩️ Hoàn vé) — 18/09 từng hạ xuống 0,5% cả 2 game, 19/09 chủ server phục hồi 1%/2%. Dò Mìn 19/09 (chủ server chốt bảng mới): 39% hộp hụt/hoàn phí, **35% là trợ giúp** (khiên/đào/la bàn) — bốc trúng là ván dính trần "trợ giúp" (×100/×300/×500 theo mìn). ⚠️ Kỳ vọng tiền mặt mỗi lần mua cỏ Dò Mìn: lì xì 15%×200% = 30% + hoàn vé 15%×30% = 4,5% + gấp đôi 10% ≈ **44,5% cược, trả lại NHIỀU HƠN phí 30%** → cỏ dương kỳ vọng cho người chơi, nhà cái chỉ còn ăn 12% RTP ván. Chủ server biết và chốt. Leo Thang giữ bảng cũ (lì xì cũng 200% vì chung một quà). Đổi phí cỏ thì sửa **cả 2** dòng `fee` trong `index.js` và mọi chữ "30% cược" + phép `*0.3` ở `webplay.js` (8 chỗ chữ + 3 phép).
+⚠️ **Tổng mỗi bảng phải đúng 1.00.** `spinWheel` trừ dần → thiếu bao nhiêu là **dồn hết vào ô CUỐI bảng** không báo gì. `luckywheeltest.js` canh. Đổi nổ hũ thì bù/trừ ở ô "hãm" (Dò Mìn: 🍂 Hụt; Leo Thang không có Hụt nên vào ↩️ Hoàn vé) — 18/09 từng hạ xuống 0,5% cả 2 game, 19/09 chủ server phục hồi 1%/2%. Dò Mìn 19/09 (chủ server chốt, lần 3): **bỏ 🎲 Gấp đôi**, 10% chia đều 5 ô còn lại; 41% hộp hụt/hoàn phí, **41% là trợ giúp** (khiên/đào/la bàn) — bốc trúng là ván dính trần "trợ giúp" (×100/×300/×500 theo mìn). Kỳ vọng tiền mặt mỗi lần mua cỏ Dò Mìn: lì xì 17%×100% = 17% + hoàn vé 17%×30% ≈ 5% = **~22% cược trên phí 30%** → nhà cái giữ ~8% phí cỏ, phần còn lại là giá trị khiên/đào/la bàn/nổ hũ. Leo Thang giữ bảng cũ nhưng lì xì cũng 100% (chung một quà): 36%×100% = 36% + hoàn vé 4% + gấp đôi 10% = **~50% cược trên phí 30% → cỏ Leo Thang DƯƠNG kỳ vọng cho người chơi**, chủ server chưa đụng. Mã `dbl` vẫn còn vì Leo Thang dùng. Đổi phí cỏ thì sửa **cả 2** dòng `fee` trong `index.js` và mọi chữ "30% cược" + phép `*0.3` ở `webplay.js` (8 chỗ chữ + 3 phép).
 
 ### 🎲 Tài Xỉu (Discord + web, `txState`)
 - Ván = **giây đặt cược + giây nặn**, admin chỉnh panel (`_txTime`, mặc định **25 + 15**, phạm vi 5–600 / 3–300). Ván đang chạy giữ mốc cũ. Dùng `txRoundS()` / `txLockS()`, **không dùng lại hằng `TX_ROUND_S`**.
