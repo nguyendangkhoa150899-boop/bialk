@@ -124,19 +124,48 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 /* lá KHÔNG thể đánh trong lượt này (khi đang theo bài) thì mờ đi cho dễ nhìn */
 .tay .the.cam{filter:brightness(.52) saturate(.55)}
 
-/* 🎯 THANH ĐÁNH NỔI — chỉ hiện khi đã chọn lá (chủ server: "chọn xong show nút đánh").
-   Nằm NGAY TRÊN tay bài để ngón tay với tới, đúng kiểu app bài trên điện thoại. */
-#banDanh{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px auto 0;width:fit-content;
-  max-width:96%;padding:7px 10px 7px 16px;border-radius:999px;
-  background:linear-gradient(180deg,#1e2531,#141922);border:1px solid #3a4152;
-  box-shadow:0 8px 22px rgba(0,0,0,.55);animation:danhVao .22s cubic-bezier(.2,1.5,.4,1) both}
-@keyframes danhVao{0%{transform:translateY(14px) scale(.9);opacity:0}100%{transform:none;opacity:1}}
-#banDanh .bo{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#banDanh .bo small{display:block;font-size:11px;font-weight:700;color:var(--muted)}
-#banDanh.duoc .bo{color:#9ff0c4}
-#banDanh.khong .bo{color:#ff9a9a}
-#banDanh .b{font-size:16px;padding:11px 26px;border-radius:999px}
-#banDanh .x{padding:9px 13px;border-radius:999px;background:#2c3444;color:var(--muted);font-size:15px}
+/* 🎯 HÀNG NÚT TO (theo ảnh mẫu Ba Bích): ⏱ đồng hồ tròn · Bỏ lượt đỏ · Đánh xanh.
+   Hiện suốt lượt của mình — nút Đánh chỉ SÁNG khi mớ lá đang chọn hợp lệ. */
+#banDanh{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px auto 0;width:fit-content;max-width:98%;
+  animation:danhVao .22s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes danhVao{0%{transform:translateY(14px) scale(.92);opacity:0}100%{transform:none;opacity:1}}
+#banDanh .nutTo{font-size:clamp(15px,2.6vw,20px);font-weight:900;padding:12px clamp(20px,4.4vw,44px);border-radius:14px;
+  letter-spacing:.5px;box-shadow:0 5px 0 rgba(0,0,0,.35),0 10px 22px rgba(0,0,0,.5);transition:transform .1s ease}
+#banDanh .nutTo:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.35)}
+#banDanh .nutBo{background:linear-gradient(180deg,#ff6b5e,#d83a2c);color:#fff}
+#banDanh .nutDanh{background:linear-gradient(180deg,#4fb6f5,#1f7fc4);color:#fff}
+#banDanh .nutTo:disabled{filter:grayscale(.7) brightness(.62);box-shadow:0 3px 0 rgba(0,0,0,.3)}
+/* đồng hồ tròn vàng, ≤5 giây thì đỏ nhấp nháy */
+#banDanh .dongHo{width:clamp(38px,6vw,50px);height:clamp(38px,6vw,50px);border-radius:50%;display:grid;place-items:center;
+  font-size:clamp(14px,2.4vw,18px);font-weight:900;color:#3a2500;flex:0 0 auto;
+  background:radial-gradient(circle at 38% 32%,#ffe9a3,#e0a41a);border:3px solid #fff3c4;
+  box-shadow:0 4px 12px rgba(0,0,0,.5)}
+#banDanh .dongHo.gap{background:radial-gradient(circle at 38% 32%,#ffb0b0,#c52020);color:#fff;border-color:#ffd9d9;
+  animation:nhapNhay .7s ease-in-out infinite}
+/* dòng nhỏ dưới hàng nút: đang chọn bộ gì / vì sao chưa đánh được */
+#banBoChon{margin:7px auto 0;width:fit-content;max-width:96%;font-size:13px;font-weight:800;text-align:center}
+#banBoChon.duoc{color:#9ff0c4}
+#banBoChon.khong{color:#ff9a9a}
+
+/* 📣 TÊN BỘ BÀI hiện TO giữa bàn khi có người đánh, rồi tự mờ */
+#banTen{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:9;pointer-events:none;
+  font-size:clamp(20px,5.2vw,46px);font-weight:900;letter-spacing:2px;white-space:nowrap;
+  color:#ffd76a;-webkit-text-stroke:2px #2a1a00;text-shadow:0 4px 0 #6b4a00,0 8px 26px rgba(0,0,0,.85);
+  animation:tenBo 1.7s ease-out both}
+#banTen.bom{color:#ff9a3c;-webkit-text-stroke:2px #3a1200}
+@keyframes tenBo{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}
+  16%{opacity:1;transform:translate(-50%,-50%) scale(1.14)}
+  28%{transform:translate(-50%,-50%) scale(1)}
+  70%{opacity:1;transform:translate(-50%,-62%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-78%) scale(.94)}}
+
+/* ⇄ nút tròn đổi kiểu xếp bài, nằm cạnh tay bài (như ảnh mẫu) */
+.tayHang{display:flex;align-items:center;justify-content:center;gap:10px}
+.tron{width:clamp(42px,6.4vw,56px);height:clamp(42px,6.4vw,56px);border-radius:50%;flex:0 0 auto;
+  font-size:clamp(17px,3vw,23px);display:grid;place-items:center;
+  background:radial-gradient(circle at 38% 32%,#5a4622,#2b2112);border:2px solid #7a5d13;color:var(--gold);
+  box-shadow:0 4px 12px rgba(0,0,0,.55)}
+.tron:active{transform:translateY(2px)}
 
 /* dòng gợi ý dưới tay bài: đang chọn bộ gì, đánh được hay không */
 #banGoi{margin:8px auto 0;width:fit-content;max-width:96%;font-size:13px;font-weight:800;padding:6px 14px;
@@ -221,13 +250,18 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
         <div class="nhanbo" id="banNhan"></div>
         <div class="chua" id="banChua"></div>
       </div>
+      <div id="banTen" hidden></div>
     </div></div>
     <div id="banGhe"></div>
   </div>
 
   <div id="banGoi" hidden></div>
   <div id="banDanh" hidden></div>
-  <div class="tay" id="banTay"></div>
+  <div id="banBoChon" hidden></div>
+  <div class="tayHang">
+    <div class="tay" id="banTay"></div>
+    <button class="tron" id="nutXep" onclick="doiXep()" title="Đổi kiểu xếp bài">⇄</button>
+  </div>
   <div class="dong" style="margin-top:10px" id="banNut"></div>
   <div class="nho" id="banNhac"></div>
 
@@ -475,8 +509,12 @@ function veBan(){
   var tg = toi ? toi.tong : 0;
   $('banTong').textContent = (tg>=0?'▲ +':'▼ ') + vnd(tg) + ' tại bàn';
 
-  // ---- bộ đang trên bàn ----
-  datHTML($('banBo'), v.bo ? v.bo.la.map(function(x){ return theLa(x); }).join('') : '');
+  // ---- bộ đang trên bàn: XOÈ QUẠT (nghiêng dần từ giữa ra, chồng nhẹ) ----
+  if (datHTML($('banBo'), v.bo ? v.bo.la.map(function(x){ return theLa(x); }).join('') : '')) xoeQuat();
+  // 📣 có bộ MỚI lên bàn -> bắn tên bộ to giữa bàn
+  var khoaBo = v.bo ? v.bo.la.join() : '';
+  if (khoaBo && khoaBo !== BO_CU) banhTen(v.bo);
+  BO_CU = khoaBo;
   $('banNhan').textContent = v.bo ? (v.bo.ten + ' · ' + tenCua(v.boCua)) : '';
   $('banChua').textContent = v.ketQua ? '' :
       (v.bo ? '' : (v.luot ? (v.luot===S.toi.id ? 'Bạn mở lượt — đánh gì cũng được' : tenCua(v.luot)+' đang mở lượt') : ''));
@@ -494,6 +532,25 @@ function veBan(){
   if (!cuaToi) LUOT_KEU = '';
 }
 var LUOT_KEU = '';
+/* Xoè quạt bài giữa bàn: lá giữa đứng thẳng, càng ra rìa càng nghiêng và tụt xuống. */
+function xoeQuat(){
+  var k = $('banBo').children, n = k.length;
+  for (var i = 0; i < n; i++){
+    var g = i - (n - 1) / 2;
+    k[i].style.transform = 'rotate(' + (g * 5.5).toFixed(1) + 'deg) translateY(' + (Math.abs(g) * 3.4).toFixed(1) + 'px)';
+    k[i].style.marginLeft = i ? 'calc(var(--lb) * -0.16)' : '0';
+    k[i].style.zIndex = i;
+  }
+}
+/* 📣 Tên bộ bài bắn to giữa bàn (hàng chặt thì màu cam). Gán lại animation để chạy lại từ đầu. */
+var BO_CU = '';
+function banhTen(bo){
+  var e = $('banTen'); if (!e || !bo) return;
+  e.textContent = (bo.ten || '').toUpperCase();
+  e.className = (bo.kieu === 'tu' || bo.kieu === 'thong') ? 'bom' : '';
+  e.hidden = false;
+  e.style.animation = 'none'; void e.offsetWidth; e.style.animation = '';
+}
 function tenCua(id){
   if (!S || !S.ban) return id;
   var p = S.ban.nguoi.filter(function(x){ return x.id===id; })[0];
@@ -610,26 +667,30 @@ function veNut(b, v){
     e.className = so ? '' : 'khong'; e.hidden = false;
   } else e.hidden = true;
 
-  // ---- 🎯 CHỌN XONG LÀ HIỆN NÚT ĐÁNH (chủ server đặt) — thanh nổi ngay trên tay bài ----
-  var d = $('banDanh');
-  if (CHON.length){
-    var bo = cNhanDang(CHON), kq = cDanhDuoc(bo, v.bo);
-    var duoc = cua && kq.ok;
+  // ---- 🎯 HÀNG NÚT TO: ⏱ · Bỏ lượt · Đánh (hiện suốt lượt mình, theo ảnh mẫu) ----
+  var d = $('banDanh'), bc = $('banBoChon');
+  var bo = CHON.length ? cNhanDang(CHON) : null;
+  var kq = CHON.length ? cDanhDuoc(bo, v.bo) : null;
+  var danhDuoc = cua && !!kq && kq.ok;
+  if (cua || CHON.length){
+    var giay = (cua && v.hanChot) ? Math.max(0, Math.ceil((v.hanChot - Date.now())/1000)) : null;
     datHTML(d,
-      '<div class="bo">' + (bo ? esc(bo.ten) : 'Không thành bộ') +
-        '<small>' + (!cua ? 'chưa tới lượt bạn'
-                   : (kq.ok ? (kq.chat ? '💥 CHẶT được!' : 'đánh được') : esc(kq.vi || ''))) + '</small></div>' +
-      '<button class="b xanh" onclick="danh()"' + (duoc?'':' disabled') + '>▶️ ĐÁNH ' + CHON.length + ' lá</button>' +
-      '<button class="x" onclick="boChon()" title="Bỏ chọn">✖️</button>');
-    d.className = duoc ? 'duoc' : 'khong';
+      (giay===null ? '' : '<div class="dongHo'+(giay<=5?' gap':'')+'">'+giay+'</div>') +
+      '<button class="nutTo nutBo" onclick="boLuot()"' + ((cua && v.bo)?'':' disabled') + '>Bỏ lượt</button>' +
+      '<button class="nutTo nutDanh" onclick="danh()"' + (danhDuoc?'':' disabled') + '>Đánh' + (CHON.length?' ('+CHON.length+')':'') + '</button>');
     d.hidden = false;
   } else d.hidden = true;
+  // dòng nhỏ: đang chọn bộ gì / vì sao chưa đánh được
+  if (CHON.length){
+    datHTML(bc, (bo ? esc(bo.ten) : 'Mấy lá này không thành bộ') +
+      (!cua ? ' · chưa tới lượt bạn' : (kq.ok ? (kq.chat ? ' · 💥 CHẶT được!' : ' · đánh được') : ' · ' + esc(kq.vi || ''))));
+    bc.className = danhDuoc ? 'duoc' : 'khong'; bc.hidden = false;
+  } else bc.hidden = true;
 
   var o = '<button class="b xam" onclick="coBai(-1)" title="Bài nhỏ lại">🔍−</button>' +
           '<button class="b xam" onclick="coBai(1)" title="Bài to lên">🔍+</button>' +
-          '<button class="b xam" onclick="doiXep()">🔀 XẾP BÀI: ' + (KIEU_XEP==='so'?'theo số':'gom bộ') + '</button>' +
           '<button class="b vang" onclick="goiY()"' + (cua?'':' disabled') + '>💡 GỢI Ý</button>' +
-          '<button class="b do" onclick="boLuot()"' + (cua && v.bo ? '':' disabled') + '>⏭️ BỎ LƯỢT</button>';
+          '<button class="b xam" onclick="boChon()"' + (CHON.length?'':' disabled') + '>✖️ BỎ CHỌN</button>';
   datHTML($('banNut'), o);
   $('banNhac').textContent = v.ketQua ? '' :
     (cua ? (v.bo ? ('Phải đánh ' + v.bo.ten + ' lớn hơn, hoặc chặt') : 'Bạn mở lượt — chọn bài rồi bấm ĐÁNH')
@@ -647,7 +708,13 @@ function goiY(){
   bao('💡 ' + bo.ten + ' (' + ((GOI_I-1) % nuoc.length + 1) + '/' + nuoc.length + ' cách)');
 }
 function boChon(){ CHON = []; $('banTay').__cu=''; ve(); }
-function doiXep(){ KIEU_XEP = (KIEU_XEP==='so'?'bo':'so'); $('banTay').__cu=''; $('banNut').__cu=''; ve(); }
+function doiXep(){
+  KIEU_XEP = (KIEU_XEP==='so'?'bo':'so');
+  $('banTay').__cu=''; $('banNut').__cu='';
+  var n = $('nutXep'); if (n) n.title = 'Đang xếp ' + (KIEU_XEP==='so'?'theo số':'gom bộ') + ' — bấm để đổi';
+  bao('🔀 Xếp bài ' + (KIEU_XEP==='so'?'theo số':'gom bộ'));
+  ve();
+}
 /* 🔍 cỡ bài: 5 nấc, nhớ trong localStorage. Mặc định nấc 2.0 (gấp đôi bản đầu). */
 var CO_NAC = [1.2, 1.6, 2, 2.5, 3];
 function coHienTai(){

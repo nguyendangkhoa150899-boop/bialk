@@ -85,7 +85,19 @@ bao giờ bê kiểu xác thực đó lên prod.
 4. Trong ván: ghế xoay để **mình luôn ở đáy**. Bài mình nằm ngửa ở dưới, **bấm lá để chọn**
    (lá chọn nhô lên), rồi **▶️ ĐÁNH** hoặc **⏭️ BỎ LƯỢT**. Nút **🔀 XẾP BÀI** đổi giữa
    *theo số* (3→2) và *gom bộ* (tứ quý/ba/đôi đứng trước) — chỉ đổi cách hiển thị, client tự lo.
-4b. **Chỉ dẫn cho người chơi** (19/09, chủ server đặt — mẫu UI lấy từ game Ba Bích): **cỡ bài gấp đôi bản đầu**, tay bài **xoè chồng** như cầm bài thật (độ chồng tự co cho 13 lá luôn vừa một hàng, ), nút **🔍− / 🔍+** chỉnh cỡ 5 nấc nhớ trong  · **chọn xong là hiện THANH ĐÁNH nổi ngay trên tay bài** (: tên bộ + lý do không đánh được + nút ▶️ ĐÁNH N lá + ✖️) · ghế người khác có **xấp lưng bài + badge ĐỎ đếm lá** (≤2 lá thì badge vàng nhấp nháy) · bỏ lượt hiện **PASS** trắng to · lá **đang chọn nhô hẳn lên, viền vàng, nảy nhẹ, có dấu ✓** góc trên · lá **không nằm trong nước đánh nào thì mờ đi** · dòng dưới tay bài báo **"✓ 3 đôi thông · đánh được"** hay **"✗ Không lớn hơn đôi K"** ngay khi chọn · nút **💡 GỢI Ý** tự chọn giùm nước rẻ nhất (bấm tiếp để xoay hết các cách) · nút **✖️ BỎ CHỌN** · ghế hiện **vừa đánh bộ gì** (có 💥 khi chặt, 🤖 khi máy đánh giùm) · **⚠️ còn N lá!** đỏ nhấp nháy khi ai đó sắp về nhất · **số giây đếm ngược** trên ghế đang tới lượt (≤5 giây thì đỏ) · tới lượt mình thì **sáng viền cả bàn + kêu một tiếng**.
+4b. **Giao diện cho người chơi** — chủ server chốt 19/09, mẫu lấy từ game **Ba Bích**:
+
+| Thứ | Chi tiết |
+|---|---|
+| **Cỡ bài** | Gấp đôi bản đầu (`--co` mặc định 2). Nút **🔍− / 🔍+** chỉnh 5 nấc (1.2→3), nhớ trong `localStorage`. |
+| **Tay bài** | **Xoè chồng** như cầm bài thật; `canhTay()` đo bề ngang thật rồi tự tăng độ chồng để **13 lá luôn vừa một hàng** (chặn ở 72%, chồng hơn là mất góc số). |
+| **Chọn lá** | Lá nhô hẳn lên, phóng 1.06, **viền vàng + quầng sáng**, nảy nhẹ, có **dấu ✓** góc trên, và nổi lên trên lá bên cạnh. |
+| **Hàng nút to** | ⏱ **đồng hồ tròn vàng** (≤5 giây đỏ nhấp nháy) · **Bỏ lượt** (đỏ) · **Đánh** (xanh). Hiện suốt lượt mình; nút Đánh **chỉ sáng khi mớ lá hợp lệ**. Nằm **trên** tay bài cho dễ với. |
+| **Dòng dưới** | "3 đôi thông · 💥 CHẶT được!" / "· Không lớn hơn đôi K" / "· chưa tới lượt bạn". |
+| **Giữa bàn** | Bài đã đánh **xoè quạt** (nghiêng dần từ giữa ra). Có người đánh thì **tên bộ bắn to giữa bàn** ("4 ĐÔI THÔNG"), hàng chặt đổi **màu cam**. |
+| **Ghế người khác** | Xấp lưng bài + **badge ĐỎ đếm lá** (≤2 lá thì **badge vàng nhấp nháy** = sắp về nhất) · **PASS** trắng to khi bỏ lượt · nhãn **vừa đánh bộ gì** (💥 khi chặt, 🤖 khi máy đánh giùm). |
+| **Trợ giúp** | Lá **không nằm trong nước đánh nào thì mờ đi** · **💡 GỢI Ý** tự chọn nước rẻ nhất, bấm tiếp xoay hết các cách · **✖️ BỎ CHỌN** · **⇄** nút tròn đổi kiểu xếp (theo số / gom bộ). |
+| **Tới lượt bạn** | Sáng viền cả bàn + kêu **một tiếng** (không kêu lặp mỗi giây). |
 
 5. Hết giờ suy nghĩ (**25 giây**) hoặc rớt mạng: máy đánh giùm — đang theo thì **bỏ lượt**,
    đang mở lượt thì **đánh lá nhỏ nhất**.

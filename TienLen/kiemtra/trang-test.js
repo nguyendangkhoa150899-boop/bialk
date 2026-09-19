@@ -60,7 +60,7 @@ muc('mọi id JS gọi đều có trong HTML · mọi onclick đều có hàm');
 muc('🔀 nút xếp bài');
 {
     ok('có 2 kiểu xếp: theo số / gom bộ', /KIEU_XEP/.test(JS) && /gom bộ/.test(JS) && /theo số/.test(JS));
-    ok('nút XẾP BÀI gọi doiXep()', /onclick="doiXep\(\)"/.test(JS));
+    ok('nút ⇄ tròn cạnh tay bài gọi doiXep()', /id="nutXep"[^>]*onclick="doiXep\(\)"/.test(HTML));
     ok('đổi kiểu xếp thì ép vẽ lại tay bài', /doiXep\(\)\{[\s\S]*?banTay'\)\.__cu\s*=\s*''/.test(JS));
 }
 
@@ -247,10 +247,16 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /' cam'/.test(JS));
     ok('có dòng gợi ý #banGoi báo đánh được / không', /id="banGoi"/.test(HTML) && /#banGoi\.duoc/.test(HTML) && /#banGoi\.khong/.test(HTML));
     ok('có nút 💡 GỢI Ý', /💡 GỢI Ý/.test(JS));
-    ok('🎯 chọn xong là hiện thanh ĐÁNH nổi trên tay bài',
-        /id="banDanh"/.test(HTML) && JS.includes('▶️ ĐÁNH ') && JS.includes('d.hidden = false') && JS.includes('} else d.hidden = true;'));
-    ok('thanh ĐÁNH nằm TRÊN tay bài (ngón tay với tới)', HTML.indexOf('id="banDanh"') < HTML.indexOf('id="banTay"'));
-    ok('thanh ĐÁNH nói rõ bộ gì + vì sao không đánh được', /💥 CHẶT được!/.test(JS) && /chưa tới lượt bạn/.test(JS));
+    // Theo ảnh mẫu Ba Bích: 2 nút TO "Bỏ lượt" (đỏ) / "Đánh" (xanh) + đồng hồ tròn, hiện suốt lượt mình
+    ok('🎯 hàng nút TO Bỏ lượt / Đánh', /id="banDanh"/.test(HTML) && JS.includes('nutTo nutBo') && JS.includes('nutTo nutDanh')
+        && /\.nutBo\{background[\s\S]*?#d83a2c/.test(HTML) && /\.nutDanh\{background[\s\S]*?#1f7fc4/.test(HTML));
+    ok('nút Đánh chỉ SÁNG khi mớ lá đang chọn hợp lệ', JS.includes('danhDuoc = cua && !!kq && kq.ok') && JS.includes("(danhDuoc?'':' disabled')"));
+    ok('hàng nút nằm TRÊN tay bài (ngón tay với tới)', HTML.indexOf('id="banDanh"') < HTML.indexOf('id="banTay"'));
+    ok('có đồng hồ tròn đếm ngược, ≤5 giây thì đỏ', /class="dongHo/.test(JS) && /\.dongHo\.gap\{/.test(HTML));
+    ok('dòng dưới nói rõ bộ gì + vì sao chưa đánh được', /id="banBoChon"/.test(HTML) && /💥 CHẶT được!/.test(JS) && /chưa tới lượt bạn/.test(JS));
+    ok('📣 tên bộ bài bắn TO giữa bàn khi có người đánh', /id="banTen"/.test(HTML) && /function banhTen\(/.test(JS) && /@keyframes tenBo\{/.test(HTML));
+    ok('...hàng chặt (tứ quý / đôi thông) đổi màu cam', /bo\.kieu === 'tu' \|\| bo\.kieu === 'thong'/.test(JS) && /#banTen\.bom\{/.test(HTML));
+    ok('bài giữa bàn XOÈ QUẠT (nghiêng dần từ giữa ra)', /function xoeQuat\(/.test(JS) && /rotate\(' \+ \(g \* 5\.5\)/.test(JS));
     ok('ghế có badge ĐỎ đếm lá, ≤2 lá thì vàng nhấp nháy', /dem-la/.test(JS) && /.dem-la.it{/.test(HTML));
     ok('bỏ lượt hiện PASS to rõ', /class="tt pass"/.test(JS) && /.tt.pass{/.test(HTML));
     ok('ghế hiện VỪA ĐÁNH gì, có dấu 💥 khi chặt', /vl\.viec==='danh'/.test(JS) && /💥 CHẶT/.test(JS));
