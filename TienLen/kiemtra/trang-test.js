@@ -415,7 +415,17 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('...mặt bàn ăn trọn màn, bỏ oval',
         /body\.choiBan \.san\{position:absolute;inset:0/.test(HTML) && /body\.choiBan \.vien\{inset:0;border-radius:0/.test(HTML));
     ok('...tay bài trải dải đáy, chừa bên trái cho ghế của mình',
-        /body\.choiBan \.tayHang\{position:absolute;left:min\(24%,250px\)/.test(HTML));
+        /body\.choiBan \.tayHang\{position:absolute[\s\S]{0,80}padding-left:min\(24%,250px\)/.test(HTML));
+    // Không có trần thì trên màn PC 2554px, hai ghế đặt ở 13% và 70% cách nhau hơn 700px:
+    // tên người chơi văng ra bốn góc, giữa là bãi xanh trống hoác (chủ server chụp 20/09).
+    ok('⭐ VÙNG CHƠI có TRẦN kích thước, căn giữa — màn PC không kéo ghế ra bốn góc',
+        /body\.choiBan\{--W:min\(100%,1180px\);--H:min\(100%,660px\)/.test(HTML) &&
+        /body\.choiBan \.ni\{position:absolute;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML) &&
+        /body\.choiBan #banGhe\{position:absolute;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML));
+    ok('...nhưng mặt cỏ vẫn phủ kín cả màn cho đẹp',
+        /body\.choiBan \.vien\{inset:0;border-radius:0;padding:0;[\s\S]{0,140}radial-gradient/.test(HTML));
+    ok('...nút phụ / vote / rời bàn / thanh trên cũng bám mép VÙNG CHƠI, không dạt ra mép màn',
+        /left:calc\(var\(--leT\) \+ 6px\)/.test(HTML) && /right:calc\(var\(--leP\) \+ 6px\)/.test(HTML));
     ok('...nút bấm NỔI trên tay bài chứ không đẩy bàn ngắn lại',
         /body\.choiBan #banDanh\{position:absolute/.test(HTML) && /bottom:calc\(var\(--lbt\) \* 1\.45 \+ 12px\)/.test(HTML));
     ok('...bảng kết quả nổi giữa màn', /body\.choiBan #banKq\{position:absolute;left:50%;top:50%/.test(HTML));

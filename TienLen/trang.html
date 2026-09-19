@@ -91,22 +91,35 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 body.choiBan{padding:0;max-width:none;overflow:hidden}
 body.choiBan #manBan{position:fixed;inset:0}
 /* thanh thông tin: thu nhỏ, dán góc TRÁI TRÊN, nền mờ — không chiếm hàng riêng nữa */
-body.choiBan .top{position:absolute;top:6px;left:6px;right:auto;z-index:20;margin:0;
+body.choiBan .top{position:absolute;top:6px;left:calc(var(--leT) + 6px);right:auto;z-index:20;margin:0;
   max-width:min(62vw,560px);padding:5px 10px;border-radius:10px;
   background:rgba(8,12,18,.62);border-color:rgba(255,255,255,.12);backdrop-filter:blur(3px)}
 body.choiBan .top .sp{display:none}
 body.choiBan .ten{font-size:12.5px}
 body.choiBan .van{font-size:10.5px}
 body.choiBan .pill{font-size:10.5px;padding:2px 7px}
-/* mặt bàn = cả màn hình */
+/* ⚠️ VÙNG CHƠI CÓ TRẦN. Mặt cỏ phủ kín cả màn cho đẹp, nhưng mọi thứ CHƠI ĐƯỢC (ghế, bài
+   giữa bàn, tay bài, nút) nằm trong một khung cỡ tối đa 1180×660, CĂN GIỮA.
+   Không có trần thì trên màn PC 2554×1301, hai cái ghế đặt ở 13% và 70% cách nhau hơn 700px:
+   tên người chơi văng ra bốn góc, giữa là bãi xanh trống hoác (chủ server chụp lại 20/09).
+   --W/--H là cỡ vùng chơi, --leT/--leP là mép trái/phải của nó so với màn. */
+body.choiBan{--W:min(100%,1180px);--H:min(100%,660px);--leT:calc(50% - min(50%,590px));--leP:calc(50% - min(50%,590px))}
+/* mặt cỏ = cả màn hình */
 body.choiBan .san{position:absolute;inset:0;width:auto;height:auto;aspect-ratio:auto;min-height:0;margin:0}
-body.choiBan .vien{inset:0;border-radius:0;padding:0;box-shadow:none}
-body.choiBan .ni{inset:0;border-radius:0;box-shadow:inset 0 0 120px rgba(0,0,0,.45)}
+body.choiBan .vien{inset:0;border-radius:0;padding:0;
+  background:radial-gradient(ellipse at 50% 40%,#3f9a68 0%,#1f7a4d 36%,#155c39 74%,#14422c 100%);
+  box-shadow:inset 0 0 170px rgba(0,0,0,.5)}
+/* .ni = VÙNG CHƠI: bài giữa bàn, chữ khoe bộ, đếm ngược, lật bài cuối ván đều neo vào đây */
+body.choiBan .ni{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);inset:auto;
+  width:var(--W);height:var(--H);background:none;box-shadow:none;border-radius:0}
+body.choiBan #banGhe{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:var(--W);height:var(--H)}
 body.choiBan .chumon{top:34%;font-size:clamp(20px,5vw,44px)}
 body.choiBan .giua{top:38%}
 /* tay bài + nút: NỔI đè lên mặt bàn, không đẩy bàn ngắn lại nữa */
-/* Tay bài trải hết dải đáy, chừa bên trái cho ghế của mình (y như ảnh mẫu). */
-body.choiBan .tayHang{position:absolute;left:min(24%,250px);right:6px;bottom:5px;z-index:16}
+/* Tay bài bám theo VÙNG CHƠI, chừa bên trái cho ghế của mình (y như ảnh mẫu). */
+body.choiBan .tayHang{position:absolute;left:50%;transform:translateX(-50%);width:var(--W);
+  bottom:5px;z-index:16;padding-left:min(24%,250px);padding-right:6px}
 body.choiBan .tay{margin-top:0;min-height:0}
 body.choiBan .tay .the{margin-top:0}
 body.choiBan #banDanh{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
@@ -118,7 +131,7 @@ body.choiBan #banBoChon{position:absolute;left:50%;transform:translateX(-50%);z-
   bottom:calc(var(--lbt) * 1.45 + 72px)}
 /* GỢI Ý / BỎ CHỌN nằm cùng tầng với hàng nút to nhưng dạt sang TRÁI — dưới đáy là đụng tay
    bài, còn góc trái dưới thì đã có ghế của mình. */
-body.choiBan #banNut{position:absolute;left:6px;z-index:17;margin:0;width:auto;
+body.choiBan #banNut{position:absolute;left:calc(var(--leT) + 6px);z-index:17;margin:0;width:auto;
   bottom:calc(var(--lbt) * 1.45 + 12px)}
 body.choiBan #banNut .b{padding:6px 11px;font-size:11.5px}
 body.choiBan #banNhac{position:absolute;left:50%;transform:translateX(-50%);top:52px;z-index:18;margin:0;
@@ -129,7 +142,7 @@ body.choiBan #banKq{position:absolute;left:50%;top:50%;transform:translate(-50%,
   width:min(94vw,520px);max-height:86vh;overflow:auto;background:rgba(10,14,20,.94);
   box-shadow:0 20px 60px rgba(0,0,0,.8)}
 /* khối vote + nút rời bàn: gom xuống góc phải dưới, nhỏ lại */
-body.choiBan #khoiVote,body.choiBan #khoiRa{position:absolute;right:6px;z-index:18;margin:0;width:auto}
+body.choiBan #khoiVote,body.choiBan #khoiRa{position:absolute;right:calc(var(--leP) + 6px);z-index:18;margin:0;width:auto}
 body.choiBan #khoiVote{bottom:calc(var(--lbt) * 1.45 + 60px)}
 body.choiBan #khoiRa{bottom:calc(var(--lbt) * 1.45 + 16px)}
 body.choiBan #khoiVote .b,body.choiBan #khoiRa .b{padding:5px 10px;font-size:11px}
