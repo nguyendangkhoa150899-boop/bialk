@@ -242,5 +242,114 @@ muc('đường lạ + giải tán');
     ok('panel đọc được tóm tắt', typeof tl.quanLy.tomTat().soNgoi === 'number');
 }
 
+// ---------------------------------------------------------------- SẢNH nhiều phòng (20/09)
+/** Dựng một sảnh với ví giả. */
+function dungSanh(vi) {
+    const log = [];
+    const m = taoSanh({
+        layNguoi: (id) => vi[id] === undefined ? null : { name: id, points: vi[id], ingameName: id },
+        congVi: (id, t) => { vi[id] += t; }, thuPhe: () => { }, laAdmin: (id) => id === 'A',
+        tenCua: (id) => id, ghiLog: (d) => log.push(d), giayXemKet: 0,
+    });
+    const goiS = (p, b, u) => { let r = null; m.xuLy({ path: p, method: b ? 'POST' : 'GET', body: b || {}, userId: u }, null, (x, c, j) => { r = { ma: c, j }; }); return r; };
+    return { m, goiS, log };
+}
+
+muc('🏠 SẢNH: tạo phòng / thang mức cược / dọn phòng trống');
+{
+    const vi = { A: 5000000, B: 5000000, NGHEO: 200000 };
+    const { m, goiS } = dungSanh(vi);
+    const ds = goiS('/ds', null, 'A').j;
+    ok('sảnh dựng sẵn 2 phòng: truyền thống + đếm lá', ds.phong.length === 2 &&
+        ds.phong.some(p => p.cheDo === 'hang') && ds.phong.some(p => p.cheDo === 'anhet'), JSON.stringify(ds.phong.map(p => p.ten)));
+    ok('phòng dựng sẵn ở bậc THẤP NHẤT để ai cũng vào được',
+        ds.phong.find(p => p.cheDo === 'hang').mucCuoc === MUC_CUOC_CHO_PHEP.hang[0] &&
+        ds.phong.find(p => p.cheDo === 'anhet').mucCuoc === MUC_CUOC_CHO_PHEP.anhet[0]);
+    ok('vốn tối thiểu tính đúng hệ số từng chế độ',
+        ds.phong.find(p => p.cheDo === 'hang').vonToiThieu === 10000 * VON_HE_SO.hang &&
+        ds.phong.find(p => p.cheDo === 'anhet').vonToiThieu === 1000 * VON_HE_SO.anhet);
+    ok('sảnh gửi kèm THANG mức cược cho trang vẽ nút',
+        ds.mucChoPhep.hang.join() === MUC_CUOC_CHO_PHEP.hang.join() && ds.mucChoPhep.anhet.join() === MUC_CUOC_CHO_PHEP.anhet.join());
+
+    ok('mức ngoài thang -> chặn', /Mức cược phải chọn trong/.test(goiS('/tao', { cheDo: 'anhet', mucCuoc: 7000 }, 'A').j.error || ''));
+    ok('chế độ lạ -> chặn', /Chế độ lạ/.test(goiS('/tao', { cheDo: 'xyz', mucCuoc: 1000 }, 'A').j.error || ''));
+    // Không đủ tiền mà tạo phòng -> chặn NGAY, không thì tạo xong bị đá ra, phòng rỗng nằm giữa sảnh
+    ok('không đủ vốn -> KHÔNG cho tạo phòng',
+        /cần ít nhất/.test(goiS('/tao', { cheDo: 'hang', mucCuoc: 100000 }, 'NGHEO').j.error || ''),
+        JSON.stringify(goiS('/tao', { cheDo: 'hang', mucCuoc: 100000 }, 'NGHEO').j));
+
+    const r = goiS('/tao', { cheDo: 'anhet', mucCuoc: 4000 }, 'A');
+    ok('tạo phòng hợp lệ -> có mã phòng', !!r.j.vaoPhong, JSON.stringify(r.j.error));
+    ok('...và người tạo NGỒI LUÔN, không phải bấm thêm nhát nữa', goiS('/ds', null, 'A').j.dangO === r.j.vaoPhong);
+    ok('phòng lạ -> 404 có lời dẫn ra sảnh', goiS('/khongco/state', null, 'A').ma === 404 &&
+        /quay ra sảnh/.test(goiS('/khongco/state', null, 'A').j.error));
+
+    let het = null;
+    for (let k = 0; k < 20; k++) het = goiS('/tao', { cheDo: 'anhet', mucCuoc: 1000 }, 'B');
+    ok('có TRẦN số phòng, không cho tạo tràn sảnh',
+        /đủ \d+ phòng/.test(het.j.error || '') || goiS('/ds', null, 'A').j.phong.length <= TOI_DA_PHONG,
+        String(goiS('/ds', null, 'A').j.phong.length));
+}
+
+muc('🚪 MỖI LÚC CHỈ NGỒI MỘT PHÒNG');
+{
+    const vi = { A: 5000000, B: 5000000 };
+    const { m, goiS } = dungSanh(vi);
+    const ds = goiS('/ds', null, 'A').j;
+    const p1 = ds.phong[0].ma, p2 = ds.phong[1].ma;
+    goiS('/' + p1 + '/ngoi', { ghe: 0 }, 'A');
+    ok('ngồi phòng 1', goiS('/ds', null, 'A').j.dangO === p1);
+    goiS('/' + p2 + '/ngoi', { ghe: 0 }, 'A');
+    ok('ngồi phòng 2 -> tự đứng dậy khỏi phòng 1', goiS('/ds', null, 'A').j.dangO === p2);
+    ok('ghế phòng 1 trống lại', m.cua(p1).may.phong.ghe.indexOf('A') < 0, JSON.stringify(m.cua(p1).may.phong.ghe));
+
+    // 🐞 LỖI THẬT 20/09: bản đầu gọi /roi phòng cũ rồi VỨT kết quả đi. Đang giữa ván thì phòng
+    // cũ từ chối, người đó VẪN ngồi phòng cũ mà VẪN được ngồi phòng mới -> một ví hai bàn cùng
+    // trừ, đúng cái mà luật "mỗi lúc một phòng" sinh ra để chặn.
+    goiS('/' + p2 + '/ngoi', { ghe: 1 }, 'B');
+    goiS('/' + p2 + '/sansang', {}, 'A'); goiS('/' + p2 + '/sansang', {}, 'B');
+    ok('bàn phòng 2 đã vào ván', !!m.cua(p2).may.phong.ban);
+    const r = goiS('/' + p1 + '/ngoi', { ghe: 0 }, 'A');
+    ok('đang giữa ván mà đòi đổi phòng -> CHẶN', r.ma === 400 && /giữa ván ở phòng khác/.test(r.j.error || ''), JSON.stringify(r.j));
+    ok('...và KHÔNG bị ngồi hai phòng cùng lúc',
+        m.cua(p1).may.phong.ghe.indexOf('A') < 0 && m.cua(p2).may.phong.ghe.indexOf('A') >= 0,
+        JSON.stringify([m.cua(p1).may.phong.ghe, m.cua(p2).may.phong.ghe]));
+}
+
+muc('🗳️ VOTE đổi mức cược');
+{
+    const vi = { A: 5000000, B: 5000000, C: 5000000 };
+    const { m, goiS, log } = dungSanh(vi);
+    const p = goiS('/tao', { cheDo: 'anhet', mucCuoc: 2000 }, 'A').j.vaoPhong;
+    goiS('/' + p + '/ngoi', { ghe: 1 }, 'B');
+    goiS('/' + p + '/ngoi', { ghe: 2 }, 'C');
+    ok('chưa ngồi thì không vote được', goiS('/' + p + '/vote', { mucCuoc: 5000 }, 'KHACH').ma === 400);
+    ok('mức ngoài thang -> chặn', /Mức cược phải nằm trong/.test(goiS('/' + p + '/vote', { mucCuoc: 9999 }, 'A').j.error || ''));
+    ok('vote đúng mức đang chơi -> chặn', /đang chơi đúng mức/.test(goiS('/' + p + '/vote', { mucCuoc: 2000 }, 'A').j.error || ''));
+
+    const s1 = goiS('/' + p + '/vote', { mucCuoc: 5000 }, 'A').j;
+    ok('mở vote: 1/2 phiếu (3 người -> cần quá nửa = 2)', s1.vote && s1.vote.soDong === 1 && s1.vote.can === 2, JSON.stringify(s1.vote));
+    ok('vote nói rõ VỐN TỐI THIỂU MỚI', s1.vote.vonMoi === 5000 * VON_HE_SO.anhet, String(s1.vote.vonMoi));
+    ok('bấm lại không cộng thành 2 phiếu', goiS('/' + p + '/vote', { mucCuoc: 5000 }, 'A').j.vote.soDong === 1);
+    ok('rút phiếu -> vote tắt', goiS('/' + p + '/huyvote', {}, 'A').j.vote === null);
+
+    goiS('/' + p + '/vote', { mucCuoc: 5000 }, 'A');
+    const s2 = goiS('/' + p + '/vote', { mucCuoc: 5000 }, 'B').j;
+    ok('đủ quá nửa -> áp NGAY vì đang nghỉ giữa ván', s2.cauHinh.mucCuoc === 5000 && s2.vote === null, JSON.stringify(s2.cauHinh));
+    ok('có ghi log đổi cược', log.some(d => /đồng ý đổi mức cược/.test(d)), log.join(' | '));
+
+    // đang ĐÁNH thì giữ lại, chia ván sau mới áp
+    goiS('/' + p + '/sansang', {}, 'A'); goiS('/' + p + '/sansang', {}, 'B'); goiS('/' + p + '/sansang', {}, 'C');
+    const ban = m.cua(p).may.phong.ban;
+    ok('bàn đã vào ván', !!ban);
+    goiS('/' + p + '/vote', { mucCuoc: 1000 }, 'A');
+    goiS('/' + p + '/vote', { mucCuoc: 1000 }, 'B');
+    ok('đang đánh thì CHƯA đổi, vote nằm chờ', m.cua(p).may.phong.cauHinh.mucCuoc === 5000 &&
+        !!goiS('/' + p + '/state', null, 'A').j.vote, String(m.cua(p).may.phong.cauHinh.mucCuoc));
+    for (let k = 0; k < 400 && ban._trong.van && !ban._trong.van.ketQua; k++) { ban.roiMang(ban._trong.van.luot); ban.nhip(); }
+    m.nhip(); m.nhip();
+    ok('chia ván kế thì mức cược mới áp dụng', m.cua(p).may.phong.cauHinh.mucCuoc === 1000, String(m.cua(p).may.phong.cauHinh.mucCuoc));
+}
+
 console.log('\n🌐 MÁY CHỦ TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

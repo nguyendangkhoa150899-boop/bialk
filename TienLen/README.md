@@ -78,10 +78,18 @@ bao giờ bê kiểu xác thực đó lên prod.
 
 ## 3. Luồng chơi
 
-1. Web cược → tab **🀄 TIẾN LÊN** (admin bật ở panel) → bàn oval 4 ghế.
-2. **Cổng vào:** phải **đã liên kết** tên nhân vật **và** ví ≥ **30× mức cược** (xem mục 5).
-3. Bấm ghế trống để ngồi → nút **✅ SẴN SÀNG** ở giữa bàn. **≥2 người ngồi và ai cũng sẵn sàng →
+1. Web cược → tab **🀄 TIẾN LÊN** (admin bật ở panel) → **SẢNH** liệt kê các phòng đang mở.
+2. **Sảnh:** bấm một phòng để ngồi, hoặc **➕ TẠO PHÒNG MỚI** rồi chọn kiểu chơi + mức cược
+   trong thang có sẵn (mục 5). Mỗi lúc **chỉ ngồi một phòng** — vào phòng khác thì tự đứng dậy
+   khỏi phòng cũ, trừ khi đang giữa ván (lúc đó bị chặn). Phòng người chơi tạo mà hết người thì
+   tự tan; hai phòng dựng sẵn thì luôn còn để sảnh không bao giờ trắng.
+3. **Cổng vào:** phải **đã liên kết** tên nhân vật **và** đủ **vốn tối thiểu** (mục 5).
+   Bấm ghế trống để ngồi → nút **✅ SẴN SÀNG**. **≥2 người ngồi và ai cũng sẵn sàng →
    máy chủ tự chia bài**, không cần admin bấm gì.
+3b. **🗳️ Vote đổi mức cược ngay tại bàn:** ai đang ngồi cũng đề nghị được một mức khác trong
+   thang. **Quá nửa** số người ngồi đồng ý là xong — đang nghỉ giữa ván thì áp ngay, đang đánh
+   thì **ván sau** mới áp. Thanh vote nói rõ **vốn tối thiểu mới** và cảnh báo ai sắp không đủ
+   (đổi cược là đổi luôn vốn, không cảnh báo thì có người bị mời ra mà không hiểu vì sao).
 4. Trong ván: ghế xoay để **mình luôn ở đáy**. Bài mình nằm ngửa ở dưới, **bấm lá để chọn**
    (lá chọn nhô lên), rồi **▶️ ĐÁNH** hoặc **⏭️ BỎ LƯỢT**. Nút **🔀 XẾP BÀI** đổi giữa
    *theo số* (3→2) và *gom bộ* (tứ quý/ba/đôi đứng trước) — chỉ đổi cách hiển thị, client tự lo.
@@ -101,8 +109,17 @@ bao giờ bê kiểu xác thực đó lên prod.
 
 5. Hết giờ suy nghĩ (**25 giây**) hoặc rớt mạng: máy đánh giùm — đang theo thì **bỏ lượt**,
    đang mở lượt thì **đánh lá nhỏ nhất**.
-6. Hết ván → bảng hạng + tiền từng người (tách rõ cược / đếm lá / thối 2 / chặt / phế),
+6. Hết ván → **NGỬA BÀI CẢ BÀN** ngay trên từng ghế. Ai còn heo hoặc còn hàng thì đeo nhãn
+   **🐷 THỐI 2 HEO ĐỎ** / **💣 THỐI TỨ QUÝ**… (ghi rõ thối *cái gì*, không phải chỉ "thối 2"),
+   ai cóng thì **🧊 CÓNG ×2**. Dưới bảng kết quả có **câu chọc** cho cả bàn cùng cười —
+   câu chọn theo *(tên + số ván)* nên ổn định, không nhảy mỗi giây.
+   Kèm bảng hạng + tiền từng người (tách rõ cược / đếm lá / nhốt / chặt / phế),
    **đếm ngược 5·4·3·2·1** giữa bàn rồi chia ván mới (bàn chạy liên tục tới khi còn dưới 2 người). Ai tụt dưới vốn tối thiểu bị **mời khỏi bàn** trước ván kế.
+7. **📱 Điện thoại:** cầm **dọc** là bị màn che *"Xoay ngang điện thoại để chơi"* — chốt bằng
+   **CSS** (`@media (orientation:portrait) and (max-width:820px)`) chứ không chỉ JS, JS hỏng thì
+   vẫn che, và thân trang bị khoá cuộn luôn. Vuốt trên **bàn** hoặc **tay bài** không kéo trang
+   (`touch-action:none`); cả trang tắt nảy mép và tắt "kéo xuống để tải lại"
+   (`overscroll-behavior:none`). Ngưỡng 820px trong JS phải **khớp** nhánh CSS.
 
 ---
 
@@ -146,27 +163,85 @@ Bài thường (không heo) **không bị chặt** — tứ quý không ăn đư
 
 ## 5. Tiền (đọc kỹ — chỗ này ăn Dogcoin thật)
 
-**Hai chế độ** (admin chọn ở panel), ví dụ 4 người cược 1.000:
+Nguồn luật: **babichgame.gitbook.io/ba-bich/luat-choi** — chủ server chốt 20/09 *"dựa theo cái
+này nè"*. Mọi thứ tính bằng **CƯỢC**; một cược đáng bao nhiêu Dogcoin là `cauHinh.mucCuoc`.
 
-| Chế độ | Cách trả |
-|---|---|
-| **`hang` Nhất nhì ba tư** | Nhất ăn của tư, nhì ăn của ba → nhất +1.000, nhì +1.000, ba −1.000, tư −1.000. **3 người**: nhất ăn của ba, nhì hoà. **2 người**: nhất ăn của nhì. Ván chạy tới khi **chỉ còn 1 người cầm bài**. |
-| **`anhet` Nhất ăn hết + đếm lá** | Có người về nhất là **DỪNG NGAY**. Nhất ăn cược của tất cả, **cộng** mỗi lá còn trên tay người thua × **đơn giá lá** (admin đặt, mặc định = mức cược). Ví dụ còn 4 lá = −1.000 cược −4.000 lá. |
+### Thang mức cược người chơi được chọn (`MUC_CUOC_CHO_PHEP`)
 
-Cộng thêm (nếu bật): **chặt heo** trả ngay trong ván · **thối 2** trả cho người nhất · **tới trắng** thay
-toàn bộ luật thường.
+| Kiểu chơi | Con số nghĩa là gì | Các bậc |
+|---|---|---|
+| 🔢 **Đếm lá** (`anhet`) | giá **mỗi lá** còn trên tay (cũng chính là 1 cược) | 1.000 · 2.000 · 3.000 · 4.000 · 5.000 · 6.000 |
+| 🏅 **Truyền thống 1-2-3-4** (`hang`) | tiền **giải nhất** (1 cược), nhì ăn đúng một nửa | 10.000 · 20.000 · 40.000 · 60.000 · 80.000 · 100.000 |
 
-**Phế 10%:** ai ăn **ròng dương** thì nhà cái cắt 10% phần ăn đó (người thua **không** bị cắt).
-Đây là chỗ duy nhất bàn không tổng-bằng-0. `ketQua.pheTong` đúng bằng phần hụt của cả bàn —
-`van-test` canh đẳng thức này ở **mọi** ván mô phỏng.
+Admin ở panel vẫn đặt được số bất kỳ (100 – 1.000.000); thang chỉ ràng người chơi.
 
-**Ba chốt an toàn về ví** (`web.js`):
-1. **Vốn tối thiểu 30× mức cược** mới được ngồi, kiểm **lại trước mỗi ván**. Thua nặng nhất một ván
-   (cược + 13 lá + thối 2 + bị chặt) vẫn dưới 30 phần → không ai âm ví.
+### Ăn thua theo vị trí về — chỉ chế độ `hang`
+
+| Số người | Nhất | Nhì | Ba | Bét |
+|---|---|---|---|---|
+| 4 | **+1** | +0.5 | −0.5 | −1 |
+| 3 | **+1.5** | −0.5 | −1 | — |
+| 2 | **+1** | −1 | — | — |
+
+Ván chạy tới khi **chỉ còn 1 người cầm bài**.
+
+### Đếm lá — chế độ `anhet`
+
+Có người về nhất là **DỪNG NGAY**. Mỗi lá còn trên tay người thua = **1 cược**, trả hết cho
+người nhất. **KHÔNG có cược nền** — đúng luật gốc, và ô `giaLa` riêng đã bị **bỏ hẳn** (để hai
+con số rời nhau thì có ngày chỉnh lệch rồi tính sai tiền cả bàn).
+
+### Heo & Hàng — MỘT bảng giá cho CẢ hai việc
+
+Dùng khi bộ **bị chặt** (trả ngay trong ván cho người chặt) và khi **bị nhốt** — còn trên tay
+lúc hết ván, dân gian gọi *"thối"* (trả cho người nhất). Đơn vị: **cược**.
+
+| | heo đen | heo đỏ | 3 đôi thông | tứ quý | 4 đôi thông |
+|---|---|---|---|---|---|
+| 🏅 Truyền thống | 0.5 | 1 | 1 | 1.5 | 2 |
+| 🔢 Đếm lá | 3 | 6 | 12 | 12 | 24 |
+
+Sảnh, đôi thường, rác **không** tính tiền. Hai chỗ tự quyết, ghi rõ để sau khỏi cãi:
+- **Heo luôn tính từng lá**, kể cả 4 con 2 — đó là 2 heo đen + 2 heo đỏ (3 cược ở bàn truyền
+  thống) chứ không phải *một tứ quý* (1.5). Đúng tinh thần "thối 2": kẹt heo là chết.
+- Lá đã dùng cho một hàng thì **không dùng lại**; nhặt hàng **đắt trước** (4 đôi thông > tứ quý ≥
+  3 đôi thông — thứ tự này đúng ở cả hai bảng). Tham lam đơn giản, không tìm cách tối ưu.
+
+### 🧊 Cóng — cả ván không đánh nổi một lá nào
+
+Bỏ lượt **không** tính là đánh; máy đánh giùm lúc hết giờ thì **có** tính.
+
+- `hang`: xử như **thua bét** nhưng mất **gấp đôi**; phần dôi ra dồn cho người nhất.
+  Luật gốc: *"ván 4 người, khi có một người bị cóng, 2 người còn lại sẽ tranh Nhì và Ba"*.
+- `anhet`: **mỗi lá gấp đôi**.
+- Cả hai: heo và hàng bị nhốt cũng **gấp đôi**.
+
+Đo thật bằng `lua-test`: cóng xảy ra **~0–1 lượt trên 400 ván**. Nó nặng nhưng hiếm.
+
+### Phế 10%
+
+Ai ăn **ròng dương** thì nhà cái cắt 10% phần ăn đó (người thua **không** bị cắt). Đây là chỗ duy
+nhất bàn không tổng-bằng-0. `ketQua.pheTong` đúng bằng phần hụt của cả bàn — `van-test` và
+`lua-test` canh đẳng thức này ở **mọi** ván.
+
+### Bốn chốt an toàn về ví (`web.js`)
+
+1. **Vốn tối thiểu**, kiểm **lại trước mỗi ván**. Hệ số **khác nhau theo chế độ**:
+
+   | Chế độ | Hệ số | Thua đậm nhất một ván (lý thuyết) |
+   |---|---|---|
+   | `hang` | **30×** | ~11 cược (bét cóng −2, nhốt 4 đôi thông + tứ quý + heo, ×2) |
+   | `anhet` | **120×** | ~110 cược (cóng: 13 lá ×2 = 26, nhốt tối đa 42 cược ×2 = 84) |
+
+   Để chung 30× thì phòng đếm lá có ngày người chơi **thua nhiều hơn số tiền họ có** → ví bị kẹp
+   về 0 và **người thắng** lãnh đủ (không được trả hết). Đổi mức cược (kể cả do vote) là đổi luôn
+   vốn tối thiểu — `vanKe()` áp vote **trước** rồi mới mời người thiếu vốn ra.
 2. `traTien()` chạy **đúng một lần** mỗi ván (khoá bằng `daTraVan = số ván`) — gọi từ cả `nhip()`
    lẫn ngay sau nước đánh, gọi thừa bao nhiêu lần cũng vô hại.
-3. **Lưới an toàn**: nếu ví ai đó vẫn không đủ trả (đáng lẽ không xảy ra), kẹp lại đúng số họ có,
-   cắt phần ăn của người thắng theo tỉ lệ, và **ghi log ⚠️** để chủ server biết mà xem lại vốn tối thiểu.
+3. **Lưới an toàn**: nếu ví ai đó vẫn không đủ trả, kẹp lại đúng số họ có, cắt phần ăn của người
+   thắng theo tỉ lệ, và **ghi log ⚠️** để chủ server biết mà xem lại vốn tối thiểu.
+4. **Mỗi lúc chỉ ngồi MỘT phòng.** Hai bàn cùng trừ một ví là vỡ. `taoSanh` tự cho đứng dậy khỏi
+   phòng cũ, và **phải kiểm phòng cũ có thả ra thật không** — xem cạm bẫy ở mục 7.
 
 Mỗi lần cộng/trừ đều vào **sổ Dogcoin** (`logDog` loại `tienlen`) để đối chiếu khi có tranh cãi.
 
@@ -175,12 +250,21 @@ Mỗi lần cộng/trừ đều vào **sổ Dogcoin** (`logDog` loại `tienlen`
 ## 6. Kiểm thử — chạy đích danh, không wildcard
 
 ```bash
-node TienLen/kiemtra/bai-test.js     # luật bộ bài: nhận dạng, so, chặt, tới trắng   (89)
-node TienLen/kiemtra/van-test.js     # máy ván + TIỀN cả 2 chế độ, chạy 3 lần        (83)
-node TienLen/kiemtra/web-test.js     # ghế, sẵn sàng, VÍ, chống lộ bài, lưới an toàn (50)
-node TienLen/kiemtra/trang-test.js   # client: cú pháp, id/onclick, vẽ, ĐỐI CHIẾU luật  (48)
-node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route, cổng LK  (17)
+node TienLen/kiemtra/bai-test.js     # luật bộ bài: nhận dạng, so, chặt, tới trắng      (89)
+node TienLen/kiemtra/van-test.js     # máy ván + TIỀN cả 2 chế độ, cóng, nhốt          (117)
+node TienLen/kiemtra/web-test.js     # ghế, VÍ, SẢNH, VOTE, chống lộ bài, lưới an toàn  (86)
+node TienLen/kiemtra/trang-test.js   # client: cú pháp, id trùng, vẽ, ĐỐI CHIẾU luật   (154)
+node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route, cổng LK     (17)
+node TienLen/kiemtra/lua-test.js 400 # 🐛 LÙA BUG: 400 ván thật, ~170.000 phép kiểm
 ```
+
+**`lua-test` là bộ quan trọng nhất.** Nó đánh hàng trăm ván THẬT qua `xuLy()` (đúng đường HTTP
+đi) với 2–4 máy đánh ngẫu nhiên, cả hai chế độ, kèm **mưa yêu cầu bậy** (đánh sai lượt, đánh lá
+của người khác, lá trùng, mã lá bịa, ngồi/rời giữa ván). Sau **mỗi nước** và **mỗi ván** nó soi
+bất biến: tổng tiền ván = −phế · ví thật hụt đúng bằng phế · không ví nào âm · ăn thua đúng bảng
+vị trí · nhốt đúng bảng giá · cóng nhân đôi · không ai thấy số lá của nhau · không kẹt lượt ·
+người hết vốn bị mời ra. Nó in luôn **thua đậm nhất một ván** quy ra giá bàn thật — con số để
+quyết vốn tối thiểu. Cái gì lệch là **lỗi thật**, không phải chuyện xác suất.
 `van-test` và `web-test` có ngẫu nhiên (chia bài) → **chạy 3 lần** để dò chập chờn.
 
 `trang-test` có mục **⚖️ đối chiếu**: chạy máy luật bản client trong `vm` rồi so với `bai.js` trên
@@ -191,6 +275,20 @@ node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route,
 
 ## 7. Cạm bẫy đã dính (đừng dính lại)
 
+- **Hai thẻ cùng `id`.** Tiêu đề trang và chữ-to-giữa-bàn cùng mang `id="banTen"`.
+  `getElementById` trả thẻ **đầu tiên** nên hàm bắn chữ ghi đè lên **tiêu đề**, còn thẻ giữa bàn
+  nằm chết; CSS `#banTen` (absolute + animation mờ dần) cũng dính vào tiêu đề, mà `.top` không
+  `position` nên tiêu đề bị ném ra giữa màn hình rồi **tan biến sau 1,7 giây**. Nhìn mắt không ra
+  vì nó *trông như* đang chạy đúng. `trang-test` giờ **quét id trùng cả trang**.
+- **Đổi phòng mà vứt kết quả của `/roi` phòng cũ.** Đang giữa ván thì phòng cũ từ chối, người đó
+  **vẫn ngồi phòng cũ** mà **vẫn được** ngồi phòng mới → một ví hai bàn cùng trừ, đúng cái mà luật
+  *"mỗi lúc một phòng"* sinh ra để chặn. Phải **kiểm lại ghế phòng cũ** sau khi gọi `/roi`.
+  `web-test` có phép kiểm dựng đúng cảnh này.
+- **Bỏ `giaLa` thì phải bỏ ở CẢ panel, trang, và bộ kiểm.** Sót một chỗ là ô rỗng ghi đè 0 vào
+  cấu hình rồi cả bàn tính sai tiền mà không ai thấy. Giờ `datCauHinh` **trả lỗi** nếu ai còn gửi
+  `giaLa` — thà đỏ ngay còn hơn im lặng tính sai.
+- **`panel.js` lưu kiểu CRLF**, mấy file trong `TienLen/` thì LF. Tệp vá viết bằng LF sẽ **không
+  khớp mỏ neo nào** trong panel. Chuẩn hoá về LF, vá xong đổi lại CRLF.
 - **`deps.giayXemKet || MẶC_ĐỊNH` nuốt số 0.** Cấu hình "chia ván kế ngay" (0 giây) bị `||` biến
   thành mặc định 7 giây, làm 6 bài kiểm hỏng mà nhìn như lỗi logic. Dùng `!= null`.
 - **Khối route admin phải đứng TRƯỚC chốt "chưa có bàn".** Để sau thì đổi cấu hình lúc bàn chưa mở

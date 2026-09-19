@@ -169,6 +169,32 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
     chay('vẽ ván TỚI TRẮNG không nổ', { ...nen, ban: b2.xem('A') });
     ok('tiêu đề tới trắng nói rõ kiểu bài', /TỚI TRẮNG/.test(els.get('kqTieu').textContent) && /Tứ quý heo/.test(els.get('kqTieu').textContent),
         els.get('kqTieu').textContent);
+
+    muc('🔍 chạy thật: ván có người NHỐT HEO / NHỐT TỨ QUÝ');
+    // ---- chạy thật: dựng ván NHIỀU NGƯỜI CÙNG BỊ NHỐT rồi vẽ ra xem ----
+    // Dùng chế độ ĐẾM LÁ: ván dừng NGAY khi người đầu tiên hết bài, nên cả ba người còn lại
+    // đều ôm bài về. Chế độ 'hang' thì chỉ còn ĐÚNG MỘT người cầm bài lúc chốt -> không dựng
+    // nổi cảnh hai người cùng thối.
+    const b3 = taoBan({ mucCuoc: 1000, cheDo: 'anhet', toiTrangOn: false, baBichOn: false });
+    ['A', 'B', 'C', 'D'].forEach((id, i) => b3.themNguoi({ id, ten: 'Người ' + id, ghe: i }));
+    b3.vanMoi(0);
+    const v3 = b3._trong.van;
+    v3.tay.A = ['3s', '7s']; v3.tay.B = ['4c', '2h', '2s']; v3.tay.C = ['5d', '9d']; v3.tay.D = ['6h', 'Ks', 'Kc', 'Kd', 'Kh'];
+    v3.bo = null; v3.boCua = null; v3.daBo.clear(); v3.veNhat = []; v3.batBuoc3Bich = false; v3.luot = 'A';
+    b3.danh('A', ['3s'], 0); b3.danh('B', ['4c'], 0); b3.danh('C', ['5d'], 0); b3.danh('D', ['6h'], 0);
+    b3.danh('A', ['7s'], 0);          // A hết bài -> đếm lá: chốt ngay, B/C/D ôm bài về
+    const kq3 = v3.ketQua;
+    ok('dựng được ván thật có người nhốt heo và nhốt tứ quý', !!kq3 &&
+        kq3.chiTiet.B.thoiMuc.length > 0 && kq3.chiTiet.D.thoiMuc.join() === 'tu',
+        JSON.stringify({ B: kq3 && kq3.chiTiet.B.thoiMuc, D: kq3 && kq3.chiTiet.D.thoiMuc }));
+    ok('máy chủ lật bài CẢ BÀN lúc chốt ván', kq3.lat.length === 4 && kq3.lat.some(x => x.la.length > 0));
+    chay('vẽ ván có người NHỐT HEO + NHỐT TỨ QUÝ không nổ', { ...nen, ban: b3.xem('A'), demVanKe: 5 });
+    const raGhe = String(els.get('banGhe') ? els.get('banGhe').innerHTML : '');
+    ok('ghế B hiện nhãn THỐI HEO', /THỐI[^<]*HEO/i.test(raGhe), raGhe.slice(0, 200));
+    ok('ghế D hiện nhãn THỐI TỨ QUÝ', /THỐI[^<]*TỨ QUÝ/i.test(raGhe));
+    ok('ghế ngửa ảnh lá bài thật', raGhe.indexOf('src="bai/2h.webp"') >= 0, raGhe.slice(0, 200));
+    const raCuoi = String(els.get('kqCuoi') ? els.get('kqCuoi').innerHTML : '');
+    ok('có câu chọc nhắc đúng thứ người ta ôm', /heo|tứ quý/i.test(raCuoi), raCuoi);
 }
 
 // ---------------------------------------------------------------- máy luật bản client
@@ -427,6 +453,42 @@ muc('🗳️ VOTE đổi mức cược');
     ok('hiện rõ ĐƯỢC MẤY PHIẾU / CẦN MẤY PHIẾU', /vt\.soDong \+ '\/' \+ vt\.can/.test(JS));
     ok('cảnh báo đổi cược làm đổi VỐN TỐI THIỂU', /vốn tối thiểu mới/.test(JS) && /sẽ bị mời khỏi bàn/.test(JS));
     ok('mức đang chơi thì khoá, không cho vote lại chính nó', /\(đang chơi\)<\/button>/.test(JS));
+}
+
+// ---------------------------------------------------------------- ngửa bài + nhãn thối (20/09)
+muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
+{
+    ok('ghế ngửa bài thật khi có ketQua.lat', /kqv && kqv\.lat/.test(JS) && /class="lat/.test(JS) && /\.lat img\{/.test(HTML));
+    ok('ôm nhiều lá thì đè chặt hơn, không tràn sang ghế bên',
+        /cuaAi\.la\.length > 7 \? ' nhieu'/.test(JS) && /\.lat\.nhieu img\{/.test(HTML));
+    ok('...trước đó vẫn giấu, chỉ một xấp úp', /!v\.ketQua && p\.conBai/.test(JS));
+    ok('nhãn THỐI ghi rõ thối CÁI GÌ, không chỉ "thối 2"',
+        /THỐI ' \+ esc\(gomMuc\(ctv\.thoiMuc\)/.test(JS) && /function gomMuc\(/.test(JS));
+    ok('gom nhiều lá cùng loại: "2 heo đỏ" chứ không phải "heo đỏ · heo đỏ"',
+        /dem\[k\] > 1 \? dem\[k\] \+ ' ' : ''/.test(JS));
+    ok('có nhãn CÓNG ×2 riêng', /🧊 CÓNG ×2/.test(JS) && /\.tt\.cong\{/.test(HTML));
+    ok('nhãn thối/cóng đứng TRƯỚC nhãn hạng (thứ cả bàn muốn nhìn)',
+        JS.indexOf('🧊 CÓNG ×2') < JS.indexOf("'🏆 NHẤT'"));
+    ok('bảng kết quả cũng ghi rõ thối gì', /thối ' \+ \(ct\.thoiMuc && ct\.thoiMuc\.length/.test(JS));
+    ok('😂 có câu chọc cuối ván', /function choc\(/.test(JS) && /id="kqCuoi"/.test(HTML) && /CHOC_THOI/.test(JS));
+    // (dấu ngoặc là cố ý: chữ "Math.random" còn nằm trong một dòng bình luận giải thích
+    //  vì sao KHÔNG được dùng nó — bắt trần trụi là đỏ oan)
+    ok('...câu chọc ổn định theo ván (không nhảy mỗi giây)',
+        /bam\(id \+ soVan/.test(JS) && !/Math\.random\(\)/.test(JS));
+    ok('lá heo bị phạt có viền cam cho dễ thấy', /\.lat img\.xau\{outline/.test(HTML) && /laXau\[x\]/.test(JS));
+
+}
+
+muc('📱 MOBILE: bắt xoay ngang + chặn vuốt trôi trang');
+{
+    ok('chặn nảy mép / kéo-xuống-tải-lại', /html\{overscroll-behavior:none/.test(HTML) && /overscroll-behavior:none;touch-action:manipulation/.test(HTML));
+    ok('vuốt trên BÀN và TAY BÀI không kéo trang', /\.san,\.tayHang,\.tay,#banBo,#banGhe\{touch-action:none\}/.test(HTML));
+    ok('bắt xoay ngang bằng CSS, không chỉ dựa vào JS',
+        /@media \(orientation:portrait\) and \(max-width:820px\)\{/.test(HTML) && /#xoay\{display:grid!important\}/.test(HTML));
+    ok('...và khoá cuộn trang lúc đang che', /body\{position:fixed;inset:0;width:100%;overflow:hidden\}/.test(HTML));
+    ok('JS dùng ĐÚNG ngưỡng của CSS (820px), không lệch nhau', /innerWidth <= 820 && window\.innerHeight > window\.innerWidth/.test(JS));
+    ok('JS bật thêm lớp khoá cho máy không nhận @media orientation',
+        /classList\.toggle\('khoaXoay', che\)/.test(JS) && /body\.khoaXoay\{/.test(HTML));
 }
 
 console.log('\n🎬 TRANG TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');

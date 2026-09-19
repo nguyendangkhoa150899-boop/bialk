@@ -8,11 +8,20 @@
   --co:2;
   --lb:calc(clamp(38px,7.2vw,60px) * var(--co));      /* lá bài trên bàn */
   --lbt:calc(clamp(30px,5.4vw,46px) * var(--co));     /* lá bài trên tay */
+  --llat:clamp(16px,2.4vw,26px);                      /* lá bài NGỬA trên ghế lúc hết ván */
 }
 *{box-sizing:border-box}
+/* 📱 CHẶN VUỐT LÀM TRÔI TRANG (chủ server 20/09).
+   overscroll-behavior:none  -> hết nảy mép + hết "kéo xuống để tải lại" của trình duyệt.
+   touch-action:manipulation -> hết phóng to khi bấm hai lần liên tiếp vào lá bài. */
+html{overscroll-behavior:none;height:100%}
 body{margin:0 auto;background:var(--bg);color:var(--tx);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  padding:10px;max-width:1280px;-webkit-text-size-adjust:100%}
+  padding:10px;max-width:1280px;-webkit-text-size-adjust:100%;
+  overscroll-behavior:none;touch-action:manipulation}
+/* Vuốt TRÊN BÀN hoặc TRÊN TAY BÀI thì KHÔNG được kéo trang — hay lỡ tay lắm, đang chọn lá
+   mà trang trôi mất là bấm nhầm. Ngoài hai vùng này vẫn cuộn bình thường. */
+.san,.tayHang,.tay,#banBo,#banGhe{touch-action:none}
 [hidden]{display:none!important}
 .hop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
 .mo{color:var(--muted);font-size:12.5px;line-height:1.55}
@@ -224,6 +233,21 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 
 /* nhãn VỪA LÀM trên ghế + cảnh báo sắp hết bài */
 .tt.danh{background:#123021;color:#9ff0c4}
+/* 🔍 HẾT VÁN LÀ NGỬA BÀI CẢ BÀN. Bài lật nằm ngay chỗ xấp bài úp, đè lên nhau cho gọn ghế.
+   Ai còn heo / còn hàng thì đeo thêm nhãn "THỐI ..." to đùng cho cả bàn cùng cười. */
+.lat{display:flex;justify-content:center;align-items:flex-end;margin-bottom:-6px;min-height:26px;flex-wrap:nowrap}
+.lat img{display:block;width:var(--llat,20px);border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.6);
+  margin-left:calc(var(--llat,20px) * -0.55)}
+.lat img:first-child{margin-left:0}
+/* Ôm nhiều lá (đếm lá có khi còn cả 13 lá) thì đè chặt hơn, không thì xấp bài tràn sang ghế bên. */
+.lat.nhieu img{width:calc(var(--llat,20px) * .82);margin-left:calc(var(--llat,20px) * -0.62)}
+.lat img.xau{outline:2px solid #ff9a3c;outline-offset:-1px}
+.tt.thoi{background:linear-gradient(180deg,#ff9a3c,#b83f12);color:#2a0e00;font-size:11px;letter-spacing:.4px;
+  box-shadow:0 2px 8px rgba(255,120,40,.4);animation:rung 1.4s ease-in-out infinite}
+.tt.cong{background:linear-gradient(180deg,#9fe8ff,#2c7fa8);color:#04222e;font-size:11px;letter-spacing:.4px}
+@keyframes rung{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+/* câu chọc dưới bảng kết quả */
+#kqCuoi{margin-top:6px;font-size:12.5px;font-weight:800;color:#ffb46a;text-align:center;line-height:1.5}
 .tt.chat{background:linear-gradient(180deg,#ff9a3c,#c9541b);color:#2a0e00}
 @keyframes nhapNhay{0%,100%{opacity:1}50%{opacity:.45}}
 .dem{position:absolute;top:-10px;left:50%;transform:translateX(-50%);z-index:5;
@@ -246,7 +270,7 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
    (100dvh − 300px) × 1.61 co bàn còn ~145px trên màn cao 390px, vỡ hẳn. Ở khổ này: hạ cỡ bài,
    bỏ tỉ lệ cố định cho bàn ăn trọn chiều cao còn lại, thu gọn ghế và hàng nút. */
 @media(orientation:landscape) and (max-height:560px){
-  :root{--co:1.25}
+  :root{--co:1.25;--llat:14px}
   body{padding:4px}
   .san{aspect-ratio:auto;width:100%;height:calc(100vh - 232px);height:calc(100dvh - 232px);min-height:120px}
   .vien{inset:28px 6px}
@@ -265,10 +289,22 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   .ghe{width:clamp(84px,25vw,120px)}
 }
 /* bàn 4 người cần màn NGANG — điện thoại cầm dọc thì che lại, y như Poker */
+/* 📱 BẮT XOAY NGANG — đặt bằng CSS chứ không chỉ dựa vào JS. Điện thoại cầm DỌC (ngang ≤
+   820px) là màn che bật lên, JS có hỏng thì vẫn che. Luật [hidden]{display:none!important}
+   thua ở đây vì #xoay là id (độ ưu tiên 100) còn [hidden] chỉ là thuộc tính (10).
+   ⚠️ Chốt ở max-width để máy tính cửa sổ hẹp KHÔNG dính — desktop dọc vẫn chơi được. */
 #xoay{position:fixed;inset:0;z-index:120;background:var(--bg);display:grid;place-items:center;padding:24px;text-align:center}
+@media (orientation:portrait) and (max-width:820px){
+  #xoay{display:grid!important}
+  /* khoá cứng trang lúc đang che: không cuộn, không nảy, không thấy gì phía sau */
+  body{position:fixed;inset:0;width:100%;overflow:hidden}
+}
 #xoay .ic{font-size:60px;margin-bottom:12px;animation:xoayLac 1.8s ease-in-out infinite}
 #xoay .tieu{font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px}
 @keyframes xoayLac{0%,45%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
+/* JS bật lớp này song song với nhánh CSS trên — để máy nào không nhận @media orientation
+   (vài trình duyệt trong ứng dụng) thì vẫn khoá được trang. */
+body.khoaXoay{position:fixed;inset:0;width:100%;overflow:hidden}
 #bao{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:99;max-width:92%;
   background:#12151d;border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;
   box-shadow:0 8px 24px rgba(0,0,0,.6)}
@@ -366,6 +402,7 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   <div class="hop" id="banKq" hidden style="margin-top:10px">
     <div style="font-weight:900;font-size:14px;margin-bottom:4px" id="kqTieu"></div>
     <div id="kqDs"></div>
+    <div id="kqCuoi"></div>
     <div class="nho" id="kqDem"></div>
   </div>
 </div>
@@ -447,9 +484,14 @@ function dongBo(){
     });
 }
 
-/* Điện thoại cầm dọc -> che lại (chỉ chặn máy hẹp; tablet dọc vẫn chơi). */
+/* Điện thoại cầm dọc -> che lại. Ngưỡng phải KHỚP nhánh CSS @media(orientation:portrait)
+   and (max-width:820px) ở trên, không thì CSS che mà JS lại bảo không che (hoặc ngược lại)
+   và trang rơi vào cảnh "màn che đang bật nhưng thân trang vẫn cuộn được". */
 function kiemXoay(){
-  var e=$('xoay'); if(e) e.hidden = !(window.innerWidth < 700 && window.innerHeight > window.innerWidth);
+  var e=$('xoay'); if(!e) return;
+  var che = window.innerWidth <= 820 && window.innerHeight > window.innerWidth;
+  e.hidden = !che;
+  if (document.body) document.body.classList.toggle('khoaXoay', che);
 }
 window.addEventListener('resize', kiemXoay);
 window.addEventListener('orientationchange', function(){ setTimeout(kiemXoay, 120); });
@@ -877,6 +919,33 @@ function banhTen(bo){
   e.hidden = false;
   e.style.animation = 'none'; void e.offsetWidth; e.style.animation = '';
 }
+/* Tên đọc được của từng mục giá (khoá lấy từ B.doTay ở máy chủ). */
+var TEN_MUC = { heoDen: 'heo đen', heoDo: 'heo đỏ', thong3: '3 đôi thông', tu: 'tứ quý', thong4: '4 đôi thông' };
+/** Gộp ['heoDo','heoDo','tu'] -> '2 heo đỏ · tứ quý' */
+function gomMuc(muc){
+  var dem = {}, thu = [];
+  (muc || []).forEach(function(k){ if (!dem[k]) thu.push(k); dem[k] = (dem[k] || 0) + 1; });
+  return thu.map(function(k){ return (dem[k] > 1 ? dem[k] + ' ' : '') + (TEN_MUC[k] || k); }).join(' · ');
+}
+/* 😂 Câu chọc cuối ván. Chọn theo ván + tên nên CẢ BÀN thấy giống nhau và không nhảy mỗi giây. */
+var CHOC_THOI = ['ôm {x} về nhà nuôi', 'giữ {x} tới phút chót, tiếc ghê', 'cất {x} kỹ quá quên đánh luôn',
+  'nuôi {x} cả ván, giờ trả tiền chuồng', 'thương {x} nên không nỡ đánh'];
+var CHOC_CONG = ['{a} ngồi im cả ván, không ra nổi một lá', '{a} cầm bài xem cho vui thôi',
+  '{a} cóng cứng, bài đẹp mà không có cửa ra'];
+function choc(kq, soVan){
+  if (!kq) return '';
+  var cau = [];
+  (kq.cong || []).forEach(function(id){
+    cau.push('🧊 ' + CHOC_CONG[bam(id + soVan, 7) % CHOC_CONG.length].replace('{a}', tenCua(id)));
+  });
+  (kq.hang || []).forEach(function(id){
+    var ct = (kq.chiTiet || {})[id] || {};
+    if (!ct.thoiMuc || !ct.thoiMuc.length) return;
+    if ((kq.cong || []).indexOf(id) >= 0) return;          // đã có câu cóng rồi, khỏi chọc hai lần
+    cau.push('🐷 ' + tenCua(id) + ' ' + CHOC_THOI[bam(id + soVan, 11) % CHOC_THOI.length].replace('{x}', gomMuc(ct.thoiMuc)));
+  });
+  return cau.slice(0, 3).join('<br>');
+}
 function tenCua(id){
   if (!S || !S.ban) return id;
   var p = S.ban.nguoi.filter(function(x){ return x.id===id; })[0];
@@ -896,10 +965,26 @@ function veGhe(b, v){
 
     // 19/09 chủ server: KHÔNG cho biết số lá của nhau. Chỉ một xấp úp cố định, còn bài thì có,
     // hết bài thì thôi — máy chủ cũng không gửi số lá của người khác nữa (xem van.js xemChung).
+    // 20/09: HẾT VÁN thì ngửa hết — máy chủ gửi ketQua.lat cho cả bàn xem ai giấu cái gì.
     var lung = (!v.ketQua && p.conBai) ? '<i></i><i></i><i></i>' : '';
+    var kqv = v.ketQua, ctv = kqv && kqv.chiTiet ? (kqv.chiTiet[p.id] || {}) : {};
+    var laCong = !!(kqv && (kqv.cong || []).indexOf(p.id) >= 0);
+    if (kqv && kqv.lat){
+      var cuaAi = kqv.lat.filter(function(x){ return x.id === p.id; })[0];
+      var laXau = {};                                   // lá nào thuộc mục bị phạt -> viền cam
+      if (cuaAi && cuaAi.la.length){
+        (ctv.thoiMuc || []).length && cuaAi.la.forEach(function(x){ if (cDoc(x).so === '2') laXau[x] = 1; });
+        lung = '<div class="lat' + (cuaAi.la.length > 7 ? ' nhieu' : '') + '">' + cuaAi.la.map(function(x){
+          return '<img' + (laXau[x] ? ' class="xau"' : '') + ' src="bai/' + x + '.webp" alt="' + esc(cTen1(x)) + '">';
+        }).join('') + '</div>';
+      } else lung = '';
+    }
     // nhãn trên ghế, theo thứ tự ưu tiên: hạng > mất kết nối > đang nghĩ > vừa làm gì > bỏ lượt
     var tt = '', vl = p.vuaLam;
-    if (p.hang) tt = '<div class="tt '+(p.hang===1?'nhat':'hang')+'">'+(p.hang===1?'🏆 NHẤT':'hạng '+p.hang)+'</div>';
+    // Hết ván: nhãn THỐI / CÓNG đứng TRƯỚC cả nhãn hạng — đó là thứ cả bàn muốn nhìn.
+    if (kqv && laCong) tt = '<div class="tt cong">🧊 CÓNG ×2</div>';
+    else if (kqv && ctv.thoiMuc && ctv.thoiMuc.length) tt = '<div class="tt thoi">🐷 THỐI ' + esc(gomMuc(ctv.thoiMuc).toUpperCase()) + '</div>';
+    else if (p.hang) tt = '<div class="tt '+(p.hang===1?'nhat':'hang')+'">'+(p.hang===1?'🏆 NHẤT':'hạng '+p.hang)+'</div>';
     else if (p.afk) tt = '<div class="tt afk">Mất kết nối</div>';
     else if (toiLuot && !v.ketQua) tt = '<div class="tt cho">⏳ đang nghĩ…</div>';
     else if (vl && vl.viec==='danh') tt = '<div class="tt '+(vl.chat?'chat':'danh')+'">'+(vl.may?'🤖 ':'')+(vl.chat?'💥 CHẶT ':'')+esc(vl.ten)+'</div>';
@@ -1082,7 +1167,8 @@ function veKetQua(b, v){
     var t = kq.tien[id] || 0, ct = kq.chiTiet[id] || {};
     var them = [];
     if (ct.la) them.push(ct.la + ' lá');
-    if (ct.thoi) them.push('thối 2 ' + vnd(ct.thoi));
+    if (ct.thoi) them.push('thối ' + (ct.thoiMuc && ct.thoiMuc.length ? gomMuc(ct.thoiMuc) + ' ' : '') + vnd(ct.thoi));
+    if ((kq.cong || []).indexOf(id) >= 0) them.push('🧊 cóng ×2');
     if (ct.chat) them.push('chặt ' + (ct.chat>0?'+':'') + vnd(ct.chat));
     if (kq.phe && kq.phe[id]) them.push('phế ' + vnd(kq.phe[id]));
     return '<div class="kqdong"><div class="kqhang'+(i===0?' h1':'')+'">'+(HUY[i]||(i+1))+'</div>' +
@@ -1091,6 +1177,7 @@ function veKetQua(b, v){
       '<div class="kqtien '+(t>=0?'duong':'am')+'">'+(t>=0?'+':'')+vnd(t)+'</div></div>';
   }).join('');
   datHTML($('kqDs'), o);
+  datHTML($('kqCuoi'), choc(kq, v.so || b.soVan || 0));
   $('kqDem').textContent = (typeof S.demVanKe === 'number' && S.demVanKe > 0)
       ? ('Ván mới sau ' + S.demVanKe + ' giây…') : 'Đang chia ván mới…';
 }

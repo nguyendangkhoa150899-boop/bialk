@@ -6,11 +6,13 @@
 //
 //  ⚠️ KHÁC POKER Ở CHỖ QUAN TRỌNG NHẤT: bàn này ĂN DOGCOIN THẬT. Mọi phép cộng/trừ ví
 //  nằm GỌN trong hàm traTien() ở file này; van.js chỉ tính ra con số, không đụng ví.
-//  Ba chốt an toàn:
-//    1. VỐN TỐI THIỂU 30× mức cược mới được ngồi, và kiểm LẠI trước mỗi ván. Thua nặng
-//       nhất một ván (cược + 13 lá + thối 2 + bị chặt) vẫn < 30 phần -> không ai âm ví.
+//  Bốn chốt an toàn:
+//    1. VỐN TỐI THIỂU mới được ngồi, và kiểm LẠI trước mỗi ván. Hệ số theo chế độ (xem
+//       VON_HE_SO): truyền thống 30×, đếm lá 120×. Thua nặng nhất một ván vẫn nằm dưới mức
+//       đó -> không ai âm ví, và người thắng luôn được trả đủ.
 //    2. traTien() chạy ĐÚNG MỘT LẦN cho mỗi ván (khoá bằng daTraVan = số ván).
 //    3. Ai tụt dưới vốn tối thiểu thì bị mời khỏi bàn TRƯỚC ván kế, không phải giữa ván.
+//    4. MỖI LÚC CHỈ NGỒI MỘT PHÒNG (xem taoSanh) — hai bàn cùng trừ một ví là vỡ.
 //  Nuốt mọi lỗi (trả 400) vì chạy chung tiến trình với bot — ném ra là kéo cả bot theo.
 // ============================================================================
 'use strict';
@@ -336,6 +338,9 @@ function taoTienLen(deps) {
                 const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
                 phong.sanSang.delete(toi);
                 if (phong.vote) { phong.vote.dong.delete(toi); if (!phong.vote.dong.size) phong.vote = null; }
+                // Bớt một người ngồi là NGƯỠNG QUÁ NỬA tụt theo -> vote đang treo có thể vừa đủ
+                // phiếu ngay lúc này. Không chốt lại ở đây thì nó nằm im tới tận ván sau.
+                if (!banDangDanh()) apVote();
                 if (phong.ban) { try { phong.ban.roiBan(toi); } catch (e) { } }
                 if (phong.ban && phong.ban.xemChung().nguoi.length < V.TOI_THIEU_NGUOI) phong.ban = null;
                 return tra();
@@ -502,7 +507,15 @@ function taoSanh(deps, ds) {
         // không thì vốn tối thiểu tính hai nơi mà ví chỉ có một, hai bàn cùng trừ là vỡ ví.
         if (post && con === '/ngoi') {
             const cu = dangNgoiO(req.userId);
-            if (cu && cu.ma !== p.ma) cu.may.xuLy({ ...req, path: '/roi' }, res, () => { });
+            if (cu && cu.ma !== p.ma) {
+                // ⚠️ PHẢI XEM PHÒNG CŨ CÓ THẢ RA THẬT KHÔNG. Bản đầu bỏ qua kết quả:
+                // đang giữa ván thì /roi trả 400, người đó VẪN ngồi phòng cũ, mà vẫn được
+                // ngồi tiếp phòng mới -> một ví hai bàn cùng trừ, đúng cái vỡ ví mà luật
+                // "mỗi lúc một phòng" sinh ra để chặn.
+                cu.may.xuLy({ ...req, path: '/roi' }, res, () => { });
+                if (cu.may.phong.ghe.indexOf(req.userId) >= 0)
+                    return loi(400, 'Bạn đang giữa ván ở phòng khác — đánh hết bài rồi mới đổi phòng được');
+            }
         }
         return p.may.xuLy({ ...req, path: con }, res, sendJSON);
     }

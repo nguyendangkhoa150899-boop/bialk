@@ -29,7 +29,10 @@ const tong = (t) => Object.values(t).reduce((a, x) => a + x, 0);
 // ---------------------------------------------------------------- ngồi bàn
 muc('ngồi bàn / rời bàn');
 {
-    const b = taoBan({ mucCuoc: 1000 });
+    // ⚠️ TẮT TỚI TRẮNG: để bật thì thỉnh thoảng (~1/15 lần) chia bài xong là có người tới trắng
+    // -> ván CHỐT NGAY, trạng thái về CHO, và hai phép kiểm "đang giữa ván" ở dưới đỏ oan.
+    // Luật tới trắng có mục kiểm riêng ở cuối file.
+    const b = taoBan({ mucCuoc: 1000, toiTrangOn: false });
     b.themNguoi(BON[0]);
     const s = b.themNguoi(BON[1]);
     ok('2 người ngồi được, xếp theo ghế', s.nguoi.length === 2 && s.nguoi[0].id === 'A');
