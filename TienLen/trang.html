@@ -8,7 +8,7 @@
   --co:2;
   --lb:calc(clamp(38px,7.2vw,60px) * var(--co));      /* lá bài trên bàn */
   --lbt:calc(clamp(30px,5.4vw,46px) * var(--co));     /* lá bài trên tay */
-  --llb:clamp(30px,4.6vw,56px);                       /* lá bài NGỬA giữa bàn lúc hết ván */
+  --llb:clamp(34px,5.2vw,64px);                       /* lá bài NGỬA lúc hết ván */
 }
 *{box-sizing:border-box}
 /* 📱 CHẶN VUỐT LÀM TRÔI TRANG (chủ server 20/09).
@@ -101,6 +101,16 @@ body.choiBan .top{position:absolute;top:6px;left:calc(var(--leT) + 6px);right:au
 body.choiBan .top > div:first-child{min-width:0;flex:0 1 auto}
 body.choiBan .ten,body.choiBan .van{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.choiBan .pill{white-space:nowrap;flex:0 0 auto}
+/* 🧑 Ảnh đại diện TO hẳn ra (chủ server 20/09) — bàn đã phủ kín màn thì cái avatar 30px nhìn
+   như hạt đậu. To lên, bo tròn, có viền cho ra dáng người chơi. */
+body.choiBan .av{width:clamp(34px,4.6vw,52px);border-radius:50%;font-size:clamp(18px,3vw,28px);
+  border:2px solid #5c667f}
+body.choiBan .bang{gap:8px;padding:6px 12px 6px 6px;border-radius:14px}
+body.choiBan .nt{font-size:clamp(11px,1.5vw,14px)}
+body.choiBan .ck{font-size:clamp(11px,1.6vw,14px)}
+body.choiBan .ghe{width:clamp(120px,15vw,190px)}
+body.choiBan .ghe.luot .av{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,207,92,.35)}
+body.choiBan .ghe.toi .av{border-color:#7fe3ff}
 body.choiBan .top .sp{display:none}
 body.choiBan .ten{font-size:12.5px}
 body.choiBan .van{font-size:10.5px}
@@ -121,21 +131,30 @@ body.choiBan .ni{position:absolute;left:50%;top:50%;transform:translate(-50%,-50
   width:var(--W);height:var(--H);background:none;box-shadow:none;border-radius:0}
 body.choiBan #banGhe{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:var(--W);height:var(--H)}
-body.choiBan .chumon{top:34%;font-size:clamp(20px,5vw,44px)}
-body.choiBan .giua{top:38%}
+body.choiBan .chumon{top:46%;font-size:clamp(20px,5vw,44px)}
+/* ⚠️ Chiếu bài phải nằm GIỮA hai hàng ghế. Ghế trên ở 17% chiều cao vùng chơi, ghế mình ở 70%.
+   Để .giua ở 38% mà chiếu bài cao 2.2 lá (~264px trên màn PC) thì mép trên của nó chui tuốt
+   lên dưới ghế trên cùng — chủ server chụp lại: "hình người chơi chưa nằm đúng vị trí bài".
+   Hạ xuống 45% và thu chiếu bài lại còn 1.5 lá: cả cụm nằm gọn trong khoảng trống giữa bàn. */
+body.choiBan .giua{top:45%}
+body.choiBan .bomay{height:calc(var(--lb)*1.5)}
 /* tay bài + nút: NỔI đè lên mặt bàn, không đẩy bàn ngắn lại nữa */
 /* Tay bài bám theo VÙNG CHƠI, chừa bên trái cho ghế của mình (y như ảnh mẫu). */
 body.choiBan .tayHang{position:absolute;left:50%;transform:translateX(-50%);width:var(--W);
   bottom:5px;z-index:16;padding-left:min(24%,250px);padding-right:6px}
 body.choiBan .tay{margin-top:0;min-height:0}
 body.choiBan .tay .the{margin-top:0}
+/* ⚠️ +46px chứ KHÔNG phải +12px. Lá đang chọn NHÔ LÊN 26px (xem .tay .the.chon) nên đỉnh nó
+   cao hơn hàng bài 26px — để nút ở +12 là lá chọn ĐÈ LÊN NÚT "Bỏ lượt / Đánh", bấm nhầm như
+   chơi (chủ server chụp lại 20/09: "nút K chọn nó đè lên nút khác").
+   46 = 26 (lá nhô) + 20 (hở cho thoáng). Mấy tầng chữ phía trên cộng dồn theo. */
 body.choiBan #banDanh{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
-  bottom:calc(var(--lbt) * 1.45 + 12px)}
+  bottom:calc(var(--lbt) * 1.45 + 46px)}
 /* Hai dòng chữ nhỏ xếp CHỒNG TẦNG chứ không cùng một chỗ — cùng chỗ là đè nhau. */
 body.choiBan #banGoi{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
-  bottom:calc(var(--lbt) * 1.45 + 104px)}
+  bottom:calc(var(--lbt) * 1.45 + 142px)}
 body.choiBan #banBoChon{position:absolute;left:50%;transform:translateX(-50%);z-index:17;margin:0;
-  bottom:calc(var(--lbt) * 1.45 + 72px)}
+  bottom:calc(var(--lbt) * 1.45 + 110px)}
 /* GỢI Ý / BỎ CHỌN nằm ở GÓC TRÁI DƯỚI CÙNG — chỗ đó trống vì tay bài đã chừa lề trái
    (padding-left) cho ghế của mình. Đặt ngang tầm hàng nút to như trước thì nó đè lên nhãn
    PASS của chính ghế mình (chủ server chụp lại 20/09). */
@@ -151,8 +170,8 @@ body.choiBan #banKq{position:absolute;left:50%;top:50%;transform:translate(-50%,
   box-shadow:0 20px 60px rgba(0,0,0,.8)}
 /* khối vote + nút rời bàn: gom xuống góc phải dưới, nhỏ lại */
 body.choiBan #khoiVote,body.choiBan #khoiRa{position:absolute;right:calc(var(--leP) + 6px);z-index:18;margin:0;width:auto}
-body.choiBan #khoiVote{bottom:calc(var(--lbt) * 1.45 + 60px)}
-body.choiBan #khoiRa{bottom:calc(var(--lbt) * 1.45 + 16px)}
+body.choiBan #khoiVote{bottom:calc(var(--lbt) * 1.45 + 94px)}
+body.choiBan #khoiRa{bottom:calc(var(--lbt) * 1.45 + 50px)}
 body.choiBan #khoiVote .b,body.choiBan #khoiRa .b{padding:5px 10px;font-size:11px}
 body.choiBan #banVote{font-size:11px;padding:5px 9px}
 
@@ -268,7 +287,7 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
    vàng + quầng sáng, dấu ✓ góc TRÁI vì đó là phần luôn nhìn thấy của mỗi lá.
    ⚠️ Đã thử tách lá chọn ra một KHAY riêng ở trên (20/09) — chủ server bảo bỏ: khay chiếm
    nguyên một hàng, điện thoại nằm ngang là mọi thứ dồn chật, tay bài bị cắt mất đáy. */
-.tay .the.chon{transform:translateY(-26px);z-index:3;
+.tay .the.chon{transform:translateY(-26px);z-index:18;
   box-shadow:0 0 0 3px var(--gold),0 0 18px 3px rgba(255,207,92,.5),0 10px 20px rgba(0,0,0,.75);
   animation:chonNay .2s cubic-bezier(.2,1.6,.4,1)}
 .tay .the.chon::after{content:'✓';position:absolute;top:-9px;left:-6px;width:19px;height:19px;border-radius:50%;
@@ -366,10 +385,14 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
   display:flex;align-items:center}
 .ghe.beP .latGhe{left:100%;margin-left:7px}
 .ghe.beT .latGhe{right:100%;margin-right:7px;flex-direction:row-reverse}
+/* ⚠️ Chồng 46% là 8 lá dính thành MỘT KHỐI, nhìn không ra lá nào với lá nào (chủ server chụp
+   lại 20/09). Hạ xuống 30% và cho mỗi lá một VIỀN TRẮNG + bóng đổ sang trái: lá sau in bóng
+   lên lá trước nên mắt tách được từng lá. */
 .latGhe img{display:block;width:var(--llb);border-radius:4px;flex:0 0 auto;
-  margin-left:calc(var(--llb) * -0.46);box-shadow:0 3px 9px rgba(0,0,0,.75)}
+  border:1px solid rgba(255,255,255,.85);
+  margin-left:calc(var(--llb) * -0.30);box-shadow:-3px 2px 6px rgba(0,0,0,.6)}
 .latGhe img:first-child{margin-left:0}
-.ghe.beT .latGhe img{margin-left:0;margin-right:calc(var(--llb) * -0.46)}
+.ghe.beT .latGhe img{margin-left:0;margin-right:calc(var(--llb) * -0.30);box-shadow:3px 2px 6px rgba(0,0,0,.6)}
 .ghe.beT .latGhe img:first-child{margin-right:0}
 .latGhe img.xau{outline:2px solid #ff9a3c;outline-offset:-1px;border-radius:4px}
 /* màn hẹp: xoè ngang cạnh ghế là đè lên ghế kế bên -> giấu đi, dùng bảng gom giữa bàn */
@@ -1232,8 +1255,14 @@ function laBan(ma, cu, tuAi, j, soLaNuoc, laDau){
   var st = '--r:' + r + 'deg;--tx:calc(var(--lb) * ' + mx + ');--ty:calc(var(--lb) * ' + my + ')';
   var lop = 'ola' + (cu ? ' cu' : '');
   if (tuAi && GHE_VT[tuAi]){
-    var san = $('san');
-    var SW = (san && san.clientWidth) || 600, SH = (san && san.clientHeight) || 360;
+    // 🐞 LỖI NẶNG 20/09 — "đánh bài nó văng lên góc".
+    // GHE_VT ghi toạ độ theo % của VÙNG CHƠI (#banGhe, trần 1180×660), nhưng chỗ này lại quy
+    // ra px theo .san — mà từ lúc bàn phủ kín màn thì .san CHÍNH LÀ CẢ MÀN HÌNH (2547×1301).
+    // Ghế ở 13% -> lệch (13−50)% × 2547 = −942px: lá bài bắt đầu bay từ NGOÀI MÀN, và vì
+    // animation dùng 'both' nên nếu chưa kịp chạy xong là nó nằm chết ở đó.
+    // Phải đo đúng cái hộp mà % kia thuộc về: #banGhe.
+    var hop = $('banGhe');
+    var SW = (hop && hop.clientWidth) || 600, SH = (hop && hop.clientHeight) || 360;
     st += ';--bx:' + Math.round((GHE_VT[tuAi].x - 50) / 100 * SW) + 'px' +
           ';--by:' + Math.round((GHE_VT[tuAi].y - 50) / 100 * SH) + 'px';
     lop += ' bay';

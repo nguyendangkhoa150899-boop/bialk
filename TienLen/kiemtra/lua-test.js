@@ -266,10 +266,19 @@ console.log('   truyền thống ' + thongKe.hang + ' ván / đếm lá ' + thon
 console.log('🧊 CÓNG: ' + thongKe.cong + ' lượt người, ở ' + thongKe.vanCoCong + '/' + thongKe.van + ' ván (' +
     Math.round(thongKe.vanCoCong / Math.max(1, thongKe.van) * 100) + '% số ván)' +
     '  ·  truyền thống ' + thongKe.congHang + ' lượt / đếm lá ' + thongKe.congAnhet + ' lượt');
-const quy = (c, that) => Math.round(-c / CUOC) + ' cược = ' + Math.round(-c / CUOC * that).toLocaleString('vi-VN') + ' Dogcoin';
+// ⚠️ Vốn tối thiểu phải TÍNH RA, đừng gõ tay: gõ tay là có ngày in sai rồi tự mình tin
+// nhầm là đang vỡ ví (đã in nhầm 150.000 thay vì 600.000 cho phòng đếm lá 5.000).
+const quy = (c, that, cheDo) => {
+    const soCuoc = Math.round(-c / CUOC);
+    const von = that * (VON_HE_SO[cheDo] || 30);
+    const mat = soCuoc * that;
+    return soCuoc + ' cược = ' + mat.toLocaleString('vi-VN') +
+        '  ·  vốn tối thiểu ' + von.toLocaleString('vi-VN') +
+        (mat > von ? '  ⚠️ VƯỢT VỐN!' : '  ✅');
+};
 console.log('💸 THUA ĐẬM NHẤT MỘT VÁN (quy ra giá bàn thật):');
-console.log('   truyền thống (1 cược 50.000): ' + quy(thongKe.thuaNhatHang, 50000) + '   · vốn tối thiểu 1.500.000');
-console.log('   đếm lá      (1 cược  5.000): ' + quy(thongKe.thuaNhatAnhet, 5000) + '   · vốn tối thiểu   150.000');
+console.log('   truyền thống (1 cược 50.000): ' + quy(thongKe.thuaNhatHang, 50000, 'hang'));
+console.log('   đếm lá      (1 cược  5.000): ' + quy(thongKe.thuaNhatAnhet, 5000, 'anhet'));
 if (loi.length) { console.log('\n❌ LỖI (' + F + '):'); loi.forEach(l => console.log('  ' + l)); }
 console.log('\n🐛 LÙA BUG TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

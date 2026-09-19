@@ -433,7 +433,13 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('...nút phụ / vote / rời bàn / thanh trên cũng bám mép VÙNG CHƠI, không dạt ra mép màn',
         /left:calc\(var\(--leT\) \+ 6px\)/.test(HTML) && /right:calc\(var\(--leP\) \+ 6px\)/.test(HTML));
     ok('...nút bấm NỔI trên tay bài chứ không đẩy bàn ngắn lại',
-        /body\.choiBan #banDanh\{position:absolute/.test(HTML) && /bottom:calc\(var\(--lbt\) \* 1\.45 \+ 12px\)/.test(HTML));
+        /body\.choiBan #banDanh\{position:absolute/.test(HTML) &&
+        HTML.indexOf('bottom:calc(var(--lbt) * 1.45 + 46px)') >= 0);
+    // Lá đang chọn NHÔ LÊN 26px -> để nút ở +12 là lá chọn đè lên "Bỏ lượt / Đánh", bấm nhầm
+    // như chơi (chủ server chụp lại 20/09: "nút K chọn nó đè lên nút khác").
+    ok('...và nút đủ cao để lá ĐANG CHỌN (nhô 26px) không đè lên',
+        HTML.indexOf('bottom:calc(var(--lbt) * 1.45 + 46px)') >= 0 &&
+        /\.tay \.the\.chon\{transform:translateY\(-26px\);z-index:18/.test(HTML));
     ok('...bảng kết quả nổi giữa màn', /body\.choiBan #banKq\{position:absolute;left:50%;top:50%/.test(HTML));
     // Bản cũ xếp ghế theo VÒNG TRÒN (y = 50 + 34·cos) -> màn nằm ngang bóp lại là ghế đè lên bàn.
     ok('🪑 chỗ ngồi theo BẢNG TOẠ ĐỘ cố định, không còn vòng tròn',
@@ -459,6 +465,11 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('...KHÔNG còn vết tích khay trong nhánh nằm ngang', !/banKhay/.test(HTML));
     ok('lệch tính theo var(--lb) nên đổi cỡ bài là cả đống co theo', /calc\(var\(--lb\) \* ' \+ mx/.test(JS));
     // "đánh bài có animation lá bài từ chỗ người chơi bay lên"
+    // 🐞 LỖI NẶNG 20/09: GHE_VT ghi % của VÙNG CHƠI nhưng laBan quy ra px theo .san — mà từ
+    // lúc bàn phủ kín màn thì .san CHÍNH LÀ CẢ MÀN HÌNH. Ghế ở 13% -> lệch −942px trên màn
+    // 2547px: lá bài bay từ NGOÀI MÀN và nằm chết ở góc ("đánh bài nó văng lên góc").
+    ok('⭐ lá bay đo theo ĐÚNG hộp mà % toạ độ ghế thuộc về (#banGhe), KHÔNG phải .san',
+        JS.indexOf("var hop = $('banGhe');") >= 0 && JS.indexOf("var san = $('san');") < 0);
     ok('✈️ lá bay từ chỗ người đánh vào giữa bàn', /\.ola\.bay\{animation:bayVao/.test(HTML) && /@keyframes bayVao\{/.test(HTML) && /GHE_VT\[tuAi\]/.test(JS));
     ok('...ghế phải vẽ TRƯỚC để biết toạ độ', JS.indexOf('veGhe(b, v);') < JS.indexOf('var nuocBan ='));
     // "đếm ngược 5 4 3 2 1 rồi chia ván mới"
@@ -581,8 +592,8 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
 {
     ok('lật bài giữa bàn khi có ketQua.lat',
         /function veLat\(/.test(JS) && /id="banLat"/.test(HTML) && /\.latD \.bo img\{/.test(HTML));
-    ok('...cỡ lá đọc được (30–56px), không phải xấp tí hon nhét trong ghế',
-        /--llb:clamp\(30px,4\.6vw,56px\)/.test(HTML) && !/--llat/.test(HTML));
+    ok('...cỡ lá đọc được (34–64px), không phải xấp tí hon nhét trong ghế',
+        /--llb:clamp\(34px,5\.2vw,64px\)/.test(HTML) && !/--llat/.test(HTML));
     ok('...chỉ bày người CÒN cầm bài', /x\.la && x\.la\.length/.test(JS));
     ok('...ghế chỉ ghi nhãn gọn: đi hết bài / còn N lá',
         /hetbai xong">✅ đi hết bài/.test(JS) && /hetbai con">🃏 còn/.test(JS));
@@ -600,6 +611,13 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
     //  vì sao KHÔNG được dùng nó — bắt trần trụi là đỏ oan)
     ok('...câu chọc ổn định theo ván (không nhảy mỗi giây)',
         /bam\(id \+ soVan/.test(JS) && !/Math\.random\(\)/.test(JS));
+    // 8 lá chồng 46% thì dính thành MỘT KHỐI, nhìn không ra lá nào với lá nào (chủ server
+    // chụp lại 20/09). Hạ chồng xuống 30% + viền trắng + bóng đổ để mắt tách được từng lá.
+    ok('bài lật ĐỌC ĐƯỢC: chồng vừa phải, có viền trắng và bóng tách lá',
+        HTML.indexOf('margin-left:calc(var(--llb) * -0.30)') >= 0 &&
+        HTML.indexOf('border:1px solid rgba(255,255,255,.85)') >= 0 &&
+        HTML.indexOf('box-shadow:-3px 2px 6px') >= 0);
+    ok('...bày sang trái thì bóng đổ ngược lại', HTML.indexOf('box-shadow:3px 2px 6px') >= 0);
     ok('lá heo bị phạt có viền cam cho dễ thấy', /\.latD \.bo img\.xau\{outline/.test(HTML) && /xau\[c\] = 1/.test(JS));
 
 }
