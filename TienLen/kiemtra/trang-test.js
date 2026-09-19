@@ -315,6 +315,23 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     // 19/09: "đè bài nhau thì phải đè random chứ đừng xếp hàng"
     ok('bài trên bàn nằm NGẪU NHIÊN (xoay + lệch)', /function laBan\(/.test(JS) && /--r:' \+ r \+ 'deg/.test(JS) && /rotate\(var\(--r/.test(HTML));
     ok('...nhưng ổn định theo mã lá, không nhảy mỗi giây', /function bam\(ma, tron\)/.test(JS) && !/Math\.random\(\)/.test(JS));
+    // 20/09: "đè nhau xáo trộn chứ không phải đè qua 1 bên phải"
+    ok('đống bài xếp quanh TÂM bàn, không xếp thành hàng',
+        /\.bomay\{position:relative/.test(HTML) && /\.ola\{position:absolute;left:50%;top:50%/.test(HTML));
+    ok('chongLen() chỉ còn xếp tầng, không đẩy lề nữa',
+        /function chongLen\(\)\{[\s\S]{0,300}?zIndex = i;/.test(JS) &&
+        !JS.slice(JS.indexOf('function chongLen'), JS.indexOf('function chongLen') + 300).includes('marginLeft'));
+    // 20/09 chủ server nói rõ: TRONG một nước thì thẳng hàng (lệch nhẹ thôi); LỘN XỘN là giữa các nước
+    ok('trong một nước: xếp thẳng hàng, khoảng cách đều', /giua = \(j - \(soLaNuoc - 1\) \/ 2\) \* 0\.40/.test(JS));
+    ok('cả nước nghiêng theo một góc riêng (±18°)', /rNuoc = laDau \? \(\(bam\(laDau, 13\) % 37\) - 18\)/.test(JS));
+    ok('...và hàng bài nằm nghiêng THEO góc đó (không gãy)', /nghieng = giua \* Math\.tan\(rNuoc/.test(JS));
+    ok('giữa các nước: xô lệch MẠNH (±0.35 lá) -> đè lộn xộn', /bam\(laDau, 71\) % 71\) - 35/.test(JS));
+    ok('từng lá chỉ rung RẤT nhẹ (±0.03 lá, ±4°) — không phá hàng',
+        /bam\(ma, 29\) % 7\) - 3/.test(JS) && /rLa = \(bam\(ma, 11\) % 9\) - 4/.test(JS));
+    // trang này từng THIẾU nhánh điện thoại nằm ngang (nhầm với trang Poker) -> bàn co còn ~145px
+    ok('có nhánh CSS cho điện thoại NẰM NGANG', /@media\(orientation:landscape\) and \(max-height:560px\)\{/.test(HTML));
+    ok('...ở khổ đó bàn ăn trọn chiều cao còn lại, bài nhỏ lại', /aspect-ratio:auto;width:100%;height:calc\(100vh - 232px\)/.test(HTML) && /--co:1\.25/.test(HTML));
+    ok('lệch tính theo var(--lb) nên đổi cỡ bài là cả đống co theo', /calc\(var\(--lb\) \* ' \+ mx/.test(JS));
     // "đánh bài có animation lá bài từ chỗ người chơi bay lên"
     ok('✈️ lá bay từ chỗ người đánh vào giữa bàn', /\.ola\.bay\{animation:bayVao/.test(HTML) && /@keyframes bayVao\{/.test(HTML) && /GHE_VT\[tuAi\]/.test(JS));
     ok('...ghế phải vẽ TRƯỚC để biết toạ độ', JS.indexOf('veGhe(b, v);') < JS.indexOf('var nuocBan ='));
