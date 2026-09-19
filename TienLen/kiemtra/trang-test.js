@@ -289,6 +289,21 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     // 19/09: phóng to lá chọn thì nó lấn che lá bên cạnh trong hàng xoè chồng -> chỉ nhô, không phóng
     ok('lá chọn KHÔNG phóng to', !/\.tay \.the\.chon\{[^}]*scale\(/.test(HTML));
     ok('dấu ✓ nằm góc TRÁI (phần luôn nhìn thấy khi xoè chồng)', /\.chon::after\{[^}]*left:-6px/.test(HTML));
+    // 20/09: "để chuột vị trí này thì lá bài bị giật giật" — hover mà nhấc lá lên thì mép dưới
+    // chạy khỏi con trỏ -> mất hover -> tụt -> dính lại: rung vô tận. Hover PHẢI đứng yên.
+    {
+        const luatHover = HTML.match(/\.tay \.the[^\n{]*:hover\{[^}]*\}/g) || [];
+        ok('có luật hover cho tay bài', luatHover.length > 0, JSON.stringify(luatHover));
+        ok('hover KHÔNG di chuyển lá (chống rung)', luatHover.every(r => !/transform|translate|margin/.test(r)), JSON.stringify(luatHover));
+        ok('hover KHÔNG đụng lá đã chọn (đẩy lên là che lá chọn kế bên)',
+            luatHover.every(r => /:not\(\.chon\)/.test(r)), JSON.stringify(luatHover));
+        ok('...nhưng vẫn đưa lá đang trỏ lên trên để nhìn trọn', luatHover.some(r => /z-index:\s*\d/.test(r)));
+    }
+    // 20/09: dòng gợi ý từng in 2 lần "Mấy lá này không thành bộ · ... không thành bộ hợp lệ"
+    // đếm CHUỖI THẬT trong code, không đếm dòng chú thích
+    ok('không còn câu "không thành bộ" tự ghép (chỉ còn câu của kq.vi)',
+        !JS.includes("'Mấy lá này không thành bộ'") && (JS.match(/'Mấy lá này không thành bộ hợp lệ'/g) || []).length === 1);
+    ok('...vì đã để kq.vi tự nói, không ghép thêm câu của mình', /datHTML\(bc, bo \? \(esc\(bo\.ten\) \+ ' · ' \+ phu\) : phu\)/.test(JS));
     // 19/09: chủ server "cứ làm bài to x2 thôi, không cần kính lúp, dư nhiều nút quá"
     ok('cỡ bài CỐ ĐỊNH 2×, đã bỏ nút 🔍', /--co:2;/.test(HTML) && !/function coBai\(/.test(JS) && !/onclick="coBai/.test(JS));
     ok('tay bài xoè chồng + tự co cho vừa bề ngang', /function canhTay\(/.test(JS) && /W \* 0\.8/.test(JS));

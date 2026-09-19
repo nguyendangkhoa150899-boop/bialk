@@ -132,13 +132,16 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .tay .the{cursor:pointer;position:relative;margin-top:22px;margin-left:calc(var(--lbt) * -0.42);/*canhTay() ghi de*/
   transition:transform .14s cubic-bezier(.2,1.4,.4,1), box-shadow .14s ease}
 .tay .the:first-child{margin-left:0}
-.tay .the:hover{transform:translateY(-9px);z-index:4}
+/* ⚠️ HOVER TUYỆT ĐỐI KHÔNG ĐƯỢC DI CHUYỂN LÁ. Nhấc lá lên khi hover là mép dưới chạy khỏi con
+   trỏ -> mất hover -> tụt xuống -> dính hover lại: lá RUNG LIÊN TỤC (chủ server báo 20/09).
+   Chỉ đưa lên trên + viền xanh: vẫn nhìn trọn lá đang trỏ mà hộp thì đứng yên.
+   Và KHÔNG áp cho lá đã chọn (:not(.chon)) — đẩy lá chọn lên trên là nó che lá chọn kế bên. */
+.tay .the:not(.chon):hover{z-index:6;box-shadow:0 0 0 2px #7fe3ff,0 10px 20px rgba(0,0,0,.72)}
 /* 👇 lá ĐANG CHỌN: CHỈ nhô lên, KHÔNG phóng to — phóng to là nó lấn che lá bên cạnh trong hàng
    xoè chồng (chủ server báo 19/09). Dấu ✓ đặt góc TRÁI vì đó là phần luôn nhìn thấy của mỗi lá. */
 .tay .the.chon{transform:translateY(-26px);z-index:3;
   box-shadow:0 0 0 3px var(--gold),0 0 18px 3px rgba(255,207,92,.5),0 10px 20px rgba(0,0,0,.75);
   animation:chonNay .2s cubic-bezier(.2,1.6,.4,1)}
-.tay .the.chon:hover{transform:translateY(-32px);z-index:5}
 .tay .the.chon::after{content:'✓';position:absolute;top:-9px;left:-6px;width:19px;height:19px;border-radius:50%;
   background:linear-gradient(180deg,#ffe9a3,#e0a41a);color:#3a2500;font-size:12px;font-weight:900;
   display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:3}
@@ -815,10 +818,13 @@ function veNut(b, v){
       '<button class="nutTo nutDanh" onclick="danh()"' + (danhDuoc?'':' disabled') + '>Đánh' + (CHON.length?' ('+CHON.length+')':'') + '</button>');
     d.hidden = false;
   } else d.hidden = true;
-  // dòng nhỏ: đang chọn bộ gì / vì sao chưa đánh được
+  // dòng nhỏ: đang chọn bộ gì / vì sao chưa đánh được.
+  // Mớ lá không thành bộ thì kq.vi ĐÃ nói rồi — đừng ghép thêm câu của mình vào, không thì ra
+  // "Mấy lá này không thành bộ · Mấy lá này không thành bộ hợp lệ" (chủ server thấy 20/09).
   if (CHON.length){
-    datHTML(bc, (bo ? esc(bo.ten) : 'Mấy lá này không thành bộ') +
-      (!cua ? ' · chưa tới lượt bạn' : (kq.ok ? (kq.chat ? ' · 💥 CHẶT được!' : ' · đánh được') : ' · ' + esc(kq.vi || ''))));
+    var phu = !cua ? 'chưa tới lượt bạn'
+            : (kq.ok ? (kq.chat ? '💥 CHẶT được!' : 'đánh được') : esc(kq.vi || ''));
+    datHTML(bc, bo ? (esc(bo.ten) + ' · ' + phu) : phu);
     bc.className = danhDuoc ? 'duoc' : 'khong'; bc.hidden = false;
   } else bc.hidden = true;
 

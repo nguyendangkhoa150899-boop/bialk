@@ -206,6 +206,13 @@ node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route,
 - **Anchor phải DUY NHẤT.** `poker:"poker"};'` có ở cả `PAGE_GRP` lẫn `GRP_LAST`; dòng trong `tab()`
   đã sẵn `'poker'`. Luôn `grep -c` trước khi tin.
 - **Bash nuốt backtick / `${}`** khi viết script vá → viết bằng Write tool (bài học chung của repo).
+- **Hover mà DI CHUYỂN lá là lá RUNG vô tận.** Rê chuột vào mép dưới lá bài: lá nhấc lên → mép dưới
+  chạy khỏi con trỏ → mất hover → tụt xuống → dính hover lại → lặp mãi. Luật: hover **chỉ được** đổi
+  `z-index` / viền / màu, **cấm** `transform`/`margin`. `trang-test` dò mọi luật `.tay .the…:hover`.
+- **Hover cũng không được đụng lá ĐÃ CHỌN.** Đẩy `z-index` lá chọn đầu lên là nó che lá chọn kế bên
+  (chọn 3 lá, rê vào lá đầu thì lá giữa biến mất). Luật hover phải có `:not(.chon)`.
+- **Đừng ghép câu lỗi của mình vào câu `kq.vi` đã có.** Từng ra *"Mấy lá này không thành bộ · Mấy lá
+  này không thành bộ hợp lệ"*. Mớ lá không thành bộ thì để `cDanhDuoc` nói, web chỉ in lại.
 - **Bộ kiểm CHẬP CHỜN vì tới trắng.** Chia bài ngẫu nhiên nên ~1/15 lần có người tới trắng ngay lúc
   chia → ván **chốt luôn** trong `moBan()`, mọi bài kiểm giả định "ván đang đánh" đỏ oan (từng làm bài
   **chống lộ bài** đỏ vì `ketQua.lat` lật bài cả bàn — đó là showdown, đúng thiết kế). `web-test` nay
