@@ -60,7 +60,9 @@ muc('chia bài + ai đi đầu');
     ok('ván đầu: người cầm 3♠ đi trước', v.tay[v.luot].includes('3s'), v.luot);
     ok('ván đầu bắt buộc đánh 3♠', v.batBuoc3Bich === true);
     ok('bài trên tay đã xếp sẵn nhỏ -> lớn', Object.values(v.tay).every(t => t.join() === B.xepBai(t).join()));
-    ok('web KHÔNG thấy lá của người khác', s.nguoi.every(p => p.la === undefined) && s.nguoi.every(p => p.soLa === 13));
+    // 19/09 chủ server: giấu luôn SỐ LÁ của nhau — bản chung chỉ nói còn bài hay hết bài
+    ok('bản chung KHÔNG có lá và KHÔNG có số lá của ai', s.nguoi.every(p => p.la === undefined && p.soLa === undefined));
+    ok('bản chung chỉ nói CÒN BÀI hay không', s.nguoi.every(p => p.conBai === true));
     const rieng = b.xem('A');
     ok('xem riêng thì thấy bài của CHÍNH MÌNH', Array.isArray(rieng.toi.la) && rieng.toi.la.length === 13);
     ok('...và không kèm bài người khác', JSON.stringify(rieng.nguoi).indexOf('"la"') < 0);

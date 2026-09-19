@@ -17,7 +17,7 @@
 const V = require('./van.js');
 
 const GIAY_AFK_MAC_DINH = 25;       // không hỏi thăm quá lâu = coi như rớt mạng
-const GIAY_XEM_KET_MAC_DINH = 7;    // xem bảng kết quả ván bao lâu rồi chia ván mới
+const GIAY_XEM_KET_MAC_DINH = 5;    // xem kết quả ván 5 giây (đếm ngược 5-4-3-2-1) rồi chia ván mới
 const VON_HE_SO = 30;               // vốn tối thiểu = 30 × mức cược (xem chốt an toàn 1)
 const MUC_CUOC_MAC_DINH = 1000;
 
@@ -222,7 +222,11 @@ function taoTienLen(deps) {
                 vonToiThieu: vonToiThieu(), pheTram: V.PHE_TRAM,
                 ban: s ? {
                     trangThai: s.trangThai, soVan: s.soVan,
-                    nguoi: s.nguoi.map(p => ({ id: p.id, ten: p.ten, soLa: p.soLa, tong: p.tong, afk: p.afk })),
+                    // panel là của ADMIN nên vẫn cho thấy số lá (người chơi thì không) — đọc thẳng máy ván
+                    nguoi: s.nguoi.map(p => ({
+                        id: p.id, ten: p.ten, tong: p.tong, afk: p.afk,
+                        soLa: (phong.ban._trong.van && (phong.ban._trong.van.tay[p.id] || []).length) || 0,
+                    })),
                     nhatKy: s.nhatKy,
                 } : null,
             };

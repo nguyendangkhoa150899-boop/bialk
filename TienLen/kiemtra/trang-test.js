@@ -311,13 +311,21 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     // 19/09: bàn giữ CẢ DIỄN BIẾN vòng đang đánh — các nước xếp đè, nước cũ mờ, nước mới sáng
     ok('bài trên bàn XẾP ĐÈ lên nhau (không xoè quạt nữa)', /function chongLen\(/.test(JS) && !/function xoeQuat\(/.test(JS));
     ok('vẽ MỌI nước của vòng (v.chongBai), không chỉ bộ mới nhất', /v\.chongBai && v\.chongBai\.length/.test(JS));
-    ok('nước cũ vẽ mờ, nước mới vẽ sáng', /gi < moiNhat \? 'cu' : ''/.test(JS) && /\.bomay \.the\.cu\{filter/.test(HTML));
-    ok('ghế có badge ĐỎ đếm lá, ≤2 lá thì vàng nhấp nháy', /dem-la/.test(JS) && /.dem-la.it{/.test(HTML));
+    ok('nước cũ vẽ mờ, nước mới vẽ sáng', /gi < moiNhat/.test(JS) && /\.ola\.cu \.the\{filter/.test(HTML));
+    // 19/09: "đè bài nhau thì phải đè random chứ đừng xếp hàng"
+    ok('bài trên bàn nằm NGẪU NHIÊN (xoay + lệch)', /function laBan\(/.test(JS) && /--r:' \+ r \+ 'deg/.test(JS) && /rotate\(var\(--r/.test(HTML));
+    ok('...nhưng ổn định theo mã lá, không nhảy mỗi giây', /function bam\(ma, tron\)/.test(JS) && !/Math\.random\(\)/.test(JS));
+    // "đánh bài có animation lá bài từ chỗ người chơi bay lên"
+    ok('✈️ lá bay từ chỗ người đánh vào giữa bàn', /\.ola\.bay\{animation:bayVao/.test(HTML) && /@keyframes bayVao\{/.test(HTML) && /GHE_VT\[tuAi\]/.test(JS));
+    ok('...ghế phải vẽ TRƯỚC để biết toạ độ', JS.indexOf('veGhe(b, v);') < JS.indexOf('var nuocBan ='));
+    // "đếm ngược 5 4 3 2 1 rồi chia ván mới"
+    ok('⏱ đếm ngược 5·4·3·2·1 giữa bàn', /id="demNguoc"/.test(HTML) && /con > 0 && con <= 5/.test(JS));
     ok('bỏ lượt hiện PASS to rõ', /class="tt pass"/.test(JS) && /.tt.pass{/.test(HTML));
     ok('ghế hiện VỪA ĐÁNH gì, có dấu 💥 khi chặt', /vl\.viec==='danh'/.test(JS) && /💥 CHẶT/.test(JS));
-    // cảnh báo "sắp về nhất" giờ nằm ở badge vàng nhấp nháy trên xấp bài (.dem-la.it), không còn nhãn riêng
-    ok('cảnh báo ai còn ≤2 lá bằng badge vàng nhấp nháy', JS.includes("(p.soLa<=2?' it':'')") && /\.dem-la\.it\{[\s\S]*?nhapNhay/.test(HTML));
-    ok('KHÔNG còn nhãn "sắp thắng" cũ (đã gộp vào badge, đừng báo 2 chỗ)', !/sapthang/.test(JS));
+    // 19/09 chủ server: "che bài người khác lại cho không được biết số lá bài của nhau nữa"
+    ok('ghế người khác KHÔNG hiện số lá — chỉ xấp úp cố định', /p\.conBai\) \? '<i><\/i><i><\/i><i><\/i>'/.test(JS) && !/dem-la/.test(JS));
+    ok('số lá chỉ hiện cho CHÍNH MÌNH', /laToi && p\.soLa!=null \? p\.soLa\+' lá · ' : ''/.test(JS));
+    ok('KHÔNG còn nhãn "sắp thắng" / badge đếm lá cũ', !/sapthang/.test(JS) && !/dem-la/.test(HTML));
     ok('đếm ngược số giây trên ghế đang tới lượt, ≤5 giây thì đỏ nhấp nháy', /class="dem'\+\(conGiay<=5\?' gap':''\)/.test(JS));
     ok('tới lượt mình thì sáng viền bàn + kêu 1 lần', /classList\.toggle\('toiluot'/.test(JS) && /LUOT_KEU/.test(JS));
 }

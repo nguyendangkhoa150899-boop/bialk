@@ -54,11 +54,30 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
   font-size:clamp(16px,3.4vw,30px);font-weight:900;letter-spacing:4px;color:rgba(255,255,255,.07);pointer-events:none}
 .giua{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:94%}
 /* Bài trên bàn: các nước trong VÒNG đang đánh xếp ĐÈ lên nhau (nước cũ mờ, nước mới sáng),
-   giữ nguyên tới hết vòng để ai cũng thấy diễn biến — chủ server chốt 19/09. */
-.bomay{display:flex;gap:0;justify-content:center;align-items:flex-start;flex-wrap:nowrap;
-  min-height:calc(var(--lb)*1.5);padding-top:6px}
-.bomay .the{transition:filter .2s ease}
-.bomay .the.cu{filter:brightness(.58) saturate(.62)}
+   giữ nguyên tới hết vòng để ai cũng thấy diễn biến — chủ server chốt 19/09.
+   Mỗi lá bọc trong .ola để tách hai việc: .ola giữ thế nằm NGẪU NHIÊN (xoay/lệch) và hiệu ứng
+   BAY VÀO, còn .the bên trong chỉ lo hình lá bài. Trộn hai transform vào một thẻ là đá nhau. */
+.bomay{display:flex;gap:0;justify-content:center;align-items:center;flex-wrap:nowrap;
+  min-height:calc(var(--lb)*1.7);padding-top:6px}
+.ola{flex:0 0 auto;display:block;transform:rotate(var(--r,0deg)) translate(var(--tx,0px),var(--ty,0px))}
+.ola .the{transition:filter .2s ease;box-shadow:0 4px 12px rgba(0,0,0,.65)}
+.ola.cu .the{filter:brightness(.55) saturate(.6)}
+/* ✈️ lá bay từ CHỖ NGƯỜI ĐÁNH vào giữa bàn (--bx/--by = lệch từ giữa bàn tới ghế họ) */
+.ola.bay{animation:bayVao .42s cubic-bezier(.22,.9,.3,1) both}
+@keyframes bayVao{
+  0%{transform:translate(var(--bx,0px),var(--by,0px)) rotate(0deg) scale(.62);opacity:.25}
+  60%{opacity:1}
+  100%{transform:rotate(var(--r,0deg)) translate(var(--tx,0px),var(--ty,0px)) scale(1);opacity:1}}
+
+/* ⏱ đếm ngược 5·4·3·2·1 trước khi chia ván mới */
+#demNguoc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;pointer-events:none;
+  text-align:center}
+#demNguoc .so{font-size:clamp(46px,10vw,96px);font-weight:900;line-height:1;color:#ffd76a;
+  -webkit-text-stroke:3px #2a1a00;text-shadow:0 5px 0 #6b4a00,0 10px 30px rgba(0,0,0,.85);
+  animation:demNhay .9s ease-out both}
+#demNguoc .ch{margin-top:4px;font-size:clamp(11px,2vw,14px);font-weight:800;color:#ffe6a8;
+  text-shadow:0 2px 8px rgba(0,0,0,.9)}
+@keyframes demNhay{0%{transform:scale(1.7);opacity:0}22%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:1}}
 .nhanbo{margin-top:6px;font-size:clamp(11px,1.9vw,13.5px);font-weight:800;color:var(--gold)}
 .chua{font-size:clamp(11px,2vw,14px);color:#bfe7d3;font-weight:700}
 
@@ -91,11 +110,6 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .lung i{display:block;width:15px;height:21px;border-radius:3px;background:linear-gradient(145deg,#3b5ea8,#16223f);
   border:1px solid #0d1526;margin-left:-6px;box-shadow:0 2px 4px rgba(0,0,0,.5)}
 .lung i:first-child{margin-left:0}
-.dem-la{margin-left:5px;min-width:24px;height:22px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;
-  font-size:12.5px;font-weight:900;color:#fff;background:linear-gradient(180deg,#e04a4a,#a81f1f);
-  border:1px solid #ff8a8a;box-shadow:0 2px 6px rgba(0,0,0,.55)}
-.dem-la.it{background:linear-gradient(180deg,#ffd76a,#e0a41a);color:#3a2500;border-color:#fff3c4;
-  animation:nhapNhay .8s ease-in-out infinite}
 /* PASS to rõ như ảnh mẫu */
 .tt.pass{background:linear-gradient(180deg,#f2f4f8,#c9d0dc);color:#2a3140;font-size:12px;letter-spacing:1px;
   padding:3px 12px;box-shadow:0 3px 8px rgba(0,0,0,.5)}
@@ -257,6 +271,7 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
         <div class="chua" id="banChua"></div>
       </div>
       <div id="banTen" hidden></div>
+      <div id="demNguoc" hidden></div>
     </div></div>
     <div id="banGhe"></div>
   </div>
@@ -525,11 +540,14 @@ function veBan(){
   var tg = toi ? toi.tong : 0;
   $('banTong').textContent = (tg>=0?'▲ +':'▼ ') + vnd(tg) + ' tại bàn';
 
-  // ---- bài trên bàn: MỌI NƯỚC của vòng này, xếp đè, nước cũ mờ, nước mới sáng ----
-  var nuocBan = (v.chongBai && v.chongBai.length) ? v.chongBai : (v.bo ? [{ la: v.bo.la }] : []);
+  // ---- ghế vẽ TRƯỚC: lá bay cần biết ghế người đánh nằm chỗ nào ----
+  veGhe(b, v);
+
+  // ---- bài trên bàn: MỌI NƯỚC của vòng này, đè NGẪU NHIÊN, nước cũ mờ, nước mới sáng ----
+  var nuocBan = (v.chongBai && v.chongBai.length) ? v.chongBai : (v.bo ? [{ la: v.bo.la, id: v.boCua }] : []);
   var moiNhat = nuocBan.length - 1;
   var htmlBan = nuocBan.map(function(nc, gi){
-    return nc.la.map(function(x){ return theLa(x, false, gi < moiNhat ? 'cu' : ''); }).join('');
+    return nc.la.map(function(x){ return laBan(x, gi < moiNhat, gi === moiNhat ? nc.id : null); }).join('');
   }).join('');
   if (datHTML($('banBo'), htmlBan)) chongLen();
   // 📣 có bộ MỚI lên bàn -> CHỈ bắn tên với bài đáng khoe (xem dangKhoe)
@@ -540,10 +558,16 @@ function veBan(){
   $('banChua').textContent = v.ketQua ? '' :
       (v.bo ? '' : (v.luot ? (v.luot===S.toi.id ? 'Bạn mở lượt — đánh gì cũng được' : tenCua(v.luot)+' đang mở lượt') : ''));
 
-  veGhe(b, v);
   veTay(b, v);
   veNut(b, v);
   veKetQua(b, v);
+
+  // ⏱ đếm ngược 5·4·3·2·1 rồi chia ván mới (bàn cứ chạy tới khi còn 1 người)
+  var dn = $('demNguoc'), con = S.demVanKe;
+  if (typeof con === 'number' && con > 0 && con <= 5){
+    if (datHTML(dn, '<div class="so">' + con + '</div><div class="ch">VÁN MỚI</div>')) { /*CHAN-ROI*/ }
+    dn.hidden = false;
+  } else dn.hidden = true;
 
   // 🔔 tới lượt mình: sáng viền cả bàn + kêu MỘT lần cho mỗi lượt (đừng kêu mỗi giây)
   var cuaToi = !!(toi && toi.toiLuot && !v.ketQua);
@@ -553,18 +577,41 @@ function veBan(){
   if (!cuaToi) LUOT_KEU = '';
 }
 var LUOT_KEU = '';
-/* Xếp đè bài trên bàn: lá sau đè lên lá trước, chỉ hở MÉP TRÁI (chỗ in số + chất), tụt dần
-   xuống một chút cho thấy thứ tự. Lá cuối (nước mới nhất) hở trọn vẹn. Độ chồng tự co để
-   một vòng nhiều nước vẫn không tràn khỏi mặt bàn. */
+/* Số "ngẫu nhiên" NHƯNG ỔN ĐỊNH theo mã lá: cùng một lá luôn nằm cùng một thế. Dùng Math.random
+   thì mỗi giây vẽ lại là bài nhảy loạn (trang tự làm mới mỗi giây). */
+function bam(ma, tron){
+  var h = tron || 7;
+  for (var i = 0; i < ma.length; i++) h = (h * 33 + ma.charCodeAt(i)) & 0x7fffffff;
+  return h;
+}
+var GHE_VT = {};        // id -> {x,y} tính theo % của mặt bàn, veGhe() ghi vào
+/* Một lá trên bàn: .ola giữ thế nằm ngẫu nhiên (xoay ±11°, lệch vài px) + hiệu ứng bay vào;
+   .the bên trong chỉ là hình lá. tuAi != null nghĩa là lá này vừa được người đó đánh -> bay từ ghế họ. */
+function laBan(ma, cu, tuAi){
+  var r = (bam(ma, 11) % 23) - 11;                 // xoay -11..+11 độ
+  var tx = (bam(ma, 29) % 13) - 6;                 // lệch ngang -6..+6 px
+  var ty = (bam(ma, 53) % 15) - 7;                 // lệch dọc  -7..+7 px
+  var st = '--r:' + r + 'deg;--tx:' + tx + 'px;--ty:' + ty + 'px';
+  var lop = 'ola' + (cu ? ' cu' : '');
+  if (tuAi && GHE_VT[tuAi]){
+    var san = $('san');
+    var SW = (san && san.clientWidth) || 600, SH = (san && san.clientHeight) || 360;
+    st += ';--bx:' + Math.round((GHE_VT[tuAi].x - 50) / 100 * SW) + 'px' +
+          ';--by:' + Math.round((GHE_VT[tuAi].y - 50) / 100 * SH) + 'px';
+    lop += ' bay';
+  }
+  return '<span class="' + lop + '" style="' + st + '">' + theLa(ma) + '</span>';
+}
+/* Xếp đè bài trên bàn: lá sau đè lên lá trước, chỉ hở MÉP TRÁI (chỗ in số + chất). Độ chồng tự
+   co để một vòng nhiều nước vẫn không tràn khỏi mặt bàn. Thế nằm nghiêng/lệch do laBan lo. */
 function chongLen(){
   var e = $('banBo'), k = e.children, n = k.length;
   if (!n) return;
   var W = k[0].offsetWidth || 0, CW = e.clientWidth || 0;
-  var can = W * 0.62;
+  var can = W * 0.58;
   if (n > 1 && W && CW) can = Math.min(W * 0.82, Math.max(can, (W * n - CW + 8) / (n - 1)));
   for (var i = 0; i < n; i++){
     k[i].style.marginLeft = i ? (-Math.round(can)) + 'px' : '0';
-    k[i].style.transform = 'translateY(' + Math.min(i * 2, 14) + 'px)';
     k[i].style.zIndex = i;
   }
 }
@@ -606,14 +653,12 @@ function veGhe(b, v){
     var p = b.nguoi[(toiO + k) % n];                 // xoay để MÌNH luôn ở đáy
     var a = k * 2*Math.PI/n;
     var x = 50 + rx*Math.sin(a), y = 50 + 34*Math.cos(a);
+    GHE_VT[p.id] = { x: x, y: y };                   // lá bay cần biết ghế này nằm đâu
     var laToi = p.id === S.toi.id, toiLuot = v.luot === p.id;
 
-    // xấp lưng bài (tối đa 5 lá cho gọn) + badge ĐỎ số lá còn lại; ≤2 lá thì badge vàng nhấp nháy
-    var lung = '';
-    if (!v.ketQua && p.soLa > 0){
-      for (var q=0;q<Math.min(p.soLa,5);q++) lung += '<i></i>';
-      lung += '<span class="dem-la'+(p.soLa<=2?' it':'')+'">'+p.soLa+'</span>';
-    }
+    // 19/09 chủ server: KHÔNG cho biết số lá của nhau. Chỉ một xấp úp cố định, còn bài thì có,
+    // hết bài thì thôi — máy chủ cũng không gửi số lá của người khác nữa (xem van.js xemChung).
+    var lung = (!v.ketQua && p.conBai) ? '<i></i><i></i><i></i>' : '';
     // nhãn trên ghế, theo thứ tự ưu tiên: hạng > mất kết nối > đang nghĩ > vừa làm gì > bỏ lượt
     var tt = '', vl = p.vuaLam;
     if (p.hang) tt = '<div class="tt '+(p.hang===1?'nhat':'hang')+'">'+(p.hang===1?'🏆 NHẤT':'hạng '+p.hang)+'</div>';
@@ -633,7 +678,7 @@ function veGhe(b, v){
          '<div class="lung">'+lung+'</div>' +
          '<div class="bang"><div class="av">'+(laToi?'🐶':'🙂')+'</div>' +
          '<div class="ai"><div class="nt">'+esc(p.ten)+(laToi?' (bạn)':'')+'</div>' +
-         '<div class="ck'+(p.tong<0?' am':'')+'">'+p.soLa+' lá · '+(p.tong>=0?'+':'')+vnd(p.tong)+'</div></div></div>' +
+         '<div class="ck'+(p.tong<0?' am':'')+'">'+(laToi && p.soLa!=null ? p.soLa+' lá · ' : '')+(p.tong>=0?'+':'')+vnd(p.tong)+'</div></div></div>' +
          gio + tt + '</div>';
   }
   datHTML($('banGhe'), o);

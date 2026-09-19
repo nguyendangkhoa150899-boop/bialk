@@ -110,7 +110,13 @@ muc('🔒 CHỐNG LỘ BÀI — soi từng lá trong JSON trả về');
         }
     }
     ok('KHÔNG ai thấy lá của người khác', lo.length === 0, lo.slice(0, 3).join(' | '));
-    ok('nhưng thấy SỐ LÁ của người khác', st(tl, 'A').ban.nguoi.every(p => p.soLa === 13));
+    // 19/09: giấu cả SỐ LÁ. A chỉ biết số lá của chính A; người khác chỉ biết "còn bài".
+    const sA = st(tl, 'A').ban;
+    ok('KHÔNG ai thấy SỐ LÁ của người khác', sA.nguoi.filter(p => p.id !== 'A').every(p => p.soLa === undefined && p.conBai === true),
+        JSON.stringify(sA.nguoi.map(p => [p.id, p.soLa, p.conBai])));
+    ok('...nhưng thấy số lá của CHÍNH MÌNH', sA.nguoi.find(p => p.id === 'A').soLa === 13);
+    ok('JSON gửi cho A chỉ chứa đúng MỘT chữ "soLa"', (JSON.stringify(sA).match(/"soLa"/g) || []).length === 1,
+        String((JSON.stringify(sA).match(/"soLa"/g) || []).length));
     const khach = st(tl, 'NGHEO');
     ok('khán giả nhận bản chung, không có bài của ai', !khach.ban.toi && !JSON.stringify(khach.ban.nguoi).includes('"la"'));
 

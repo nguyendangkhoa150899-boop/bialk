@@ -389,8 +389,9 @@ function taoBan(tuyChon = {}) {
             toiDa: TOI_DA_NGUOI, toiThieu: TOI_THIEU_NGUOI,
             nguoi: T.nguoi.map(p => ({
                 id: p.id, ten: p.ten, ghe: p.ghe, afk: p.afk, tong: p.tong,
-                // chỉ LỘ SỐ LÁ của người khác, không bao giờ lộ lá nào
-                soLa: v ? (v.tay[p.id] || []).length : 0,
+                // 19/09 chủ server: KHÔNG cho biết số lá của nhau nữa. Bản chung chỉ nói CÒN BÀI hay
+                // HẾT BÀI; số lá thật chỉ có trong xem(id) và chỉ của CHÍNH người đó.
+                conBai: v ? (v.tay[p.id] || []).length > 0 : false,
                 trongVan: v ? v.thuTu.includes(p.id) : false,
                 daBo: v ? v.daBo.has(p.id) : false,
                 vuaLam: v && v.vuaLam[p.id] ? v.vuaLam[p.id] : null,   // 19/09: web vẽ nhãn "vừa đánh ..."
@@ -412,6 +413,9 @@ function taoBan(tuyChon = {}) {
     /** Trạng thái CHO RIÊNG 1 người: thêm bài trên tay của chính họ. */
     function xem(id) {
         const v = V(), s = xemChung();
+        // số lá của CHÍNH MÌNH thì được biết (gắn vào đúng dòng của mình trong danh sách)
+        const toiTrongDs = s.nguoi.find(x => x.id === id);
+        if (toiTrongDs && v) toiTrongDs.soLa = (v.tay[id] || []).length;
         s.toi = {
             id,
             la: v && v.tay[id] ? B.xepBai(v.tay[id]) : null,

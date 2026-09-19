@@ -18,7 +18,7 @@ nhập, toàn màn hình. Trang là `trang.html` phục vụ tại `/tienlen/`, 
 | Luật | Vì sao |
 |---|---|
 | **`van.js` KHÔNG được đụng ví.** Nó chỉ *tính ra* ai ăn thua bao nhiêu. Mọi phép cộng/trừ Dogcoin nằm gọn trong `traTien()` của `web.js`, gọi qua `deps.congVi`. | Nhờ vậy bộ kiểm chạy được toàn bộ luật tiền mà không cần database, và chỉ có **một chỗ** để soi khi nghi sai tiền. |
-| **Client không bao giờ tự quyết lộ bài.** Máy chủ chỉ gửi `soLa` của người khác; bài riêng chỉ có trong `xem(id)` của chính người đó. | `web-test` soi **từng lá** trong JSON trả về cho từng người. |
+| **Client không bao giờ tự quyết lộ bài.** Bản chung (`xemChung`) **không có lá, cũng không có số lá** của ai — chỉ `conBai: true/false`. Bài riêng **và số lá** chỉ nằm trong `xem(id)` của chính người đó. | `web-test` soi **từng lá** trong JSON trả về cho từng người, và chốt JSON gửi cho A chỉ chứa đúng **một** chữ `"soLa"`. |
 | **Mọi chỗ vẽ lại trang phải qua `datHTML()`.** | Trang hỏi máy chủ mỗi giây; gán thẳng `innerHTML` là cuốn mất lá đang chọn. `trang-test` dò chỗ vi phạm. |
 | Chỉ commit / push khi chủ server nói. Sửa xong chạy đủ **5 bộ kiểm** (mục 6). | Bàn ăn tiền thật. |
 
@@ -94,15 +94,15 @@ bao giờ bê kiểu xác thực đó lên prod.
 | **Chọn lá** | Lá **chỉ NHÔ LÊN, không phóng to**, **viền vàng + quầng sáng**, **dấu ✓ góc TRÁI**. Lá chọn nổi lên trên lá kế nên `canhTay()` **chừa khoảng trống ngay sau nó** — đúng chỗ lá đã chọn đứng cạnh lá chưa chọn (chủ server: *"chọn con 8 bị che con 9"*). Khoảng trống được tính vào phép chia nên chọn bao nhiêu lá hàng bài cũng không tràn. |
 | **Hàng nút to** | ⏱ **đồng hồ tròn vàng** (≤5 giây đỏ nhấp nháy) · **Bỏ lượt** (đỏ) · **Đánh** (xanh). Hiện suốt lượt mình; nút Đánh **chỉ sáng khi mớ lá hợp lệ**. Nằm **trên** tay bài cho dễ với. |
 | **Dòng dưới** | "3 đôi thông · 💥 CHẶT được!" / "· Không lớn hơn đôi K" / "· chưa tới lượt bạn". |
-| **Giữa bàn** | Giữ **CẢ DIỄN BIẾN vòng đang đánh**: mọi nước xếp **đè lên nhau** (chỉ hở mép trái = chỗ in số), **nước cũ mờ, nước mới sáng**, hết vòng mới dọn (`van.chongBai` bên máy chủ, `chongLen()` bên web). **CHỈ bài đặc biệt** mới bắn tên to giữa bàn: **đôi heo · ba heo · 3–4 đôi thông · tứ quý · sảnh từ 5 lá** (`dangKhoe()`); hàng chặt đổi **màu cam**. |
-| **Ghế người khác** | Xấp lưng bài + **badge ĐỎ đếm lá** (≤2 lá thì **badge vàng nhấp nháy** = sắp về nhất) · **PASS** trắng to khi bỏ lượt · nhãn **vừa đánh bộ gì** (💥 khi chặt, 🤖 khi máy đánh giùm). |
+| **Giữa bàn** | Giữ **CẢ DIỄN BIẾN vòng đang đánh**: mọi nước xếp **đè NGẪU NHIÊN** lên nhau (xoay ±11°, lệch vài px — ngẫu nhiên nhưng **ổn định theo mã lá** qua `bam()`, không thì mỗi giây vẽ lại là bài nhảy loạn), **nước cũ mờ, nước mới sáng**, hết vòng mới dọn (`van.chongBai` máy chủ, `laBan()` + `chongLen()` web). Lá vừa đánh **bay từ ghế người đánh** vào giữa bàn (`GHE_VT` lưu toạ độ ghế nên `veGhe()` phải chạy TRƯỚC). **CHỈ bài đặc biệt** mới bắn tên to giữa bàn: **đôi heo · ba heo · 3–4 đôi thông · tứ quý · sảnh từ 5 lá** (`dangKhoe()`); hàng chặt đổi **màu cam**. |
+| **Ghế người khác** | Chỉ một **xấp úp cố định** — 19/09 chủ server chốt **giấu số lá của nhau** (máy chủ cũng ngừng gửi). Số lá chỉ hiện ở ghế **của mình**. **PASS** trắng to khi bỏ lượt · nhãn **vừa đánh bộ gì** (💥 khi chặt, 🤖 khi máy đánh giùm). |
 | **Trợ giúp** | Lá **không nằm trong nước đánh nào thì mờ đi** · **💡 GỢI Ý** tự chọn nước rẻ nhất, bấm tiếp xoay hết các cách · **✖️ BỎ CHỌN** · **⇄** nút tròn đổi kiểu xếp (theo số / gom bộ). |
 | **Tới lượt bạn** | Sáng viền cả bàn + kêu **một tiếng** (không kêu lặp mỗi giây). |
 
 5. Hết giờ suy nghĩ (**25 giây**) hoặc rớt mạng: máy đánh giùm — đang theo thì **bỏ lượt**,
    đang mở lượt thì **đánh lá nhỏ nhất**.
 6. Hết ván → bảng hạng + tiền từng người (tách rõ cược / đếm lá / thối 2 / chặt / phế),
-   đếm ngược **7 giây** rồi chia ván mới. Ai tụt dưới vốn tối thiểu bị **mời khỏi bàn** trước ván kế.
+   **đếm ngược 5·4·3·2·1** giữa bàn rồi chia ván mới (bàn chạy liên tục tới khi còn dưới 2 người). Ai tụt dưới vốn tối thiểu bị **mời khỏi bàn** trước ván kế.
 
 ---
 
