@@ -120,6 +120,28 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
     chay('vẽ BÀN đang đánh không nổ', { ...nen, ban: b.xem('A') });
     chay('vẽ bàn dưới góc nhìn KHÁN GIẢ (không có toi.la) không nổ', { ...nen, ban: b.xemChung() });
 
+    // ⚠️ CA ĐÃ LÀM VỠ TRANG THẬT (19/09): có bộ TRÊN BÀN + tới lượt mình. Lúc đó client chạy
+    // cMoiNuoc/cDanhDuoc trên bộ ĐÃ SERIALIZE của máy chủ — thiếu một trường là nổ. Ca "bàn đang
+    // đánh" ở trên không bắt được vì bàn còn trống (chưa ai đánh lá nào).
+    {
+        const vv = b._trong.van;
+        vv.tay.A = ['3s', '5c', '5d', '9h']; vv.tay.B = ['4c', '6d'];
+        vv.tay.C = ['7s', '8c']; vv.tay.D = ['10d', 'Jh'];
+        vv.bo = null; vv.boCua = null; vv.daBo.clear(); vv.veNhat = []; vv.batBuoc3Bich = false; vv.luot = 'B';
+        b.danh('B', ['4c'], 0);                       // B đánh 1 lá -> tới lượt C... đẩy tiếp cho tới A
+        while (b._trong.van.luot && b._trong.van.luot !== 'A') b.boLuot(b._trong.van.luot, 0);
+        const sA = b.xem('A');
+        ok('máy chủ gửi bộ trên bàn KÈM trường "cao" (client cần để so bài)',
+            sA.van.bo && sA.van.bo.cao === '4c', JSON.stringify(sA.van.bo));
+        chay('vẽ bàn khi CÓ BỘ TRÊN BÀN + tới lượt mình không nổ', { ...nen, ban: sA });
+        ctx.S = { ...nen, ban: sA };
+        vm.runInContext('CHON = ["5c","5d"];', ctx);
+        chay('...và khi đang CHỌN lá (chạy máy luật client trên bộ của máy chủ)', { ...nen, ban: sA });
+        vm.runInContext('CHON = [];', ctx);
+        ok('lỗi VẼ TRANG không bị báo nhầm thành "chưa đăng nhập"',
+            /\.catch\(function\(\)\{ S = null; \}\)/.test(JS) && /Lỗi vẽ trang/.test(JS));
+    }
+
     // ván chốt -> bảng kết quả
     const v = b._trong.van;
     v.tay.A = ['3s']; v.tay.B = ['4c']; v.tay.C = ['5d']; v.tay.D = ['6h'];

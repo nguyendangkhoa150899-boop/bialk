@@ -392,7 +392,9 @@ function taoBan(tuyChon = {}) {
             })),
             van: v ? {
                 so: v.so, luot: v.luot, hanChot: v.hanChot,
-                bo: v.bo ? { kieu: v.bo.kieu, dai: v.bo.dai, la: v.bo.la.slice(), ten: v.bo.ten } : null,
+                // ⚠️ PHAI co 'cao' (la lon nhat): may luat ban client (trang.html) so bo bang no.
+                // Thieu truong nay -> client goi cTri(undefined) -> vo trang. Da dinh 19/09.
+                bo: v.bo ? { kieu: v.bo.kieu, dai: v.bo.dai, la: v.bo.la.slice(), cao: v.bo.cao, ten: v.bo.ten } : null,
                 boCua: v.boCua, batBuoc3Bich: v.batBuoc3Bich,
                 lichSu: v.lichSu.slice(-8),
                 ketQua: v.ketQua,

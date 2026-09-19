@@ -206,6 +206,12 @@ node TienLen/kiemtra/noi-test.js     # nối vào BotDoMin: trang, ảnh, route,
 - **Anchor phải DUY NHẤT.** `poker:"poker"};'` có ở cả `PAGE_GRP` lẫn `GRP_LAST`; dòng trong `tab()`
   đã sẵn `'poker'`. Luôn `grep -c` trước khi tin.
 - **Bash nuốt backtick / `${}`** khi viết script vá → viết bằng Write tool (bài học chung của repo).
+- **Máy chủ quên gửi một trường là VỠ TRANG.** Bộ trên bàn từng gửi thiếu `cao` (lá lớn nhất);
+  máy luật bản client gọi `cTri(b.cao)` → `undefined.slice()` → ném lỗi. Bộ kiểm cũ không bắt được vì
+  ca "bàn đang đánh" lúc đó **bàn còn trống**. Đã thêm ca **có bộ trên bàn + tới lượt mình + đang chọn lá**.
+- **Đừng gộp lỗi MẠNG với lỗi VẼ TRANG.** `dongBo()` bản đầu để `ve()` bên trong `.then`, nên `ve()` ném lỗi
+  là rơi vào `.catch` → `S=null` → trang báo **"Bạn chưa đăng nhập"**, giấu mất lỗi thật. Giờ tách hẳn:
+  lỗi mạng mới cho `S=null`, lỗi vẽ thì hiện "⚠️ Lỗi vẽ trang: ...".
 - **Máy đánh giùm ở bản dev đi THẲNG vào `van.js`, không qua `xuLy()`** → không kích `thanhToanNeuXong()`,
   ví không nhảy cho tới nhịp sau. Đã gọi `tienlen.nhip()' ngay sau nước của máy. Prod không có máy
   đánh nên không dính, nhưng ai thêm đường đánh mới phải nhớ luật này.

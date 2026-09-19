@@ -309,8 +309,18 @@ function goi(duong, than){
   api(duong, than || {}).then(function(j){ BUSY=false; S=j; ve(); })
     .catch(function(e){ BUSY=false; bao('❌ ' + e.message); });
 }
+/* ⚠️ Tách LỖI MẠNG khỏi LỖI VẼ TRANG. Bản đầu gộp chung:
+      api('/state').then(j => { S=j; ve(); }).catch(() => { S=null; ve(); })
+   nên chỉ cần ve() ném lỗi là rơi vào catch -> S=null -> trang báo "Bạn chưa đăng nhập",
+   giấu mất lỗi thật. Đã dính 19/09 (máy chủ quên gửi trường 'cao' của bộ bài). */
 function dongBo(){
-  api('/state').then(function(j){ S=j; ve(); }).catch(function(){ S=null; ve(); });
+  api('/state')
+    .then(function(j){ S = j; })
+    .catch(function(){ S = null; })
+    .then(function(){
+      try { ve(); }
+      catch (e){ console.error('[tienlen] lỗi vẽ trang:', e); bao('⚠️ Lỗi vẽ trang: ' + e.message); }
+    });
 }
 
 /* Điện thoại cầm dọc -> che lại (chỉ chặn máy hẹp; tablet dọc vẫn chơi). */
@@ -335,7 +345,7 @@ function banKinhX(san){
    nhiên nên hai bên không thể lệch nhau mà không ai biết.
    ============================================================================ */
 var CSO = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'], CCHAT = ['s','c','d','h'];
-function cDoc(ma){ var c = ma.slice(-1), so = ma.slice(0,-1);
+function cDoc(ma){ var t = String(ma == null ? '' : ma), c = t.slice(-1), so = t.slice(0,-1);
   return { so: so, chat: c, hang: CSO.indexOf(so), tri: CSO.indexOf(so)*4 + CCHAT.indexOf(c) }; }
 function cTri(ma){ return cDoc(ma).tri; }
 function cXep(la){ return la.slice().sort(function(a,b){ return cTri(a)-cTri(b); }); }
