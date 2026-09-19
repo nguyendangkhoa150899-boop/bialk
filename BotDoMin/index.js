@@ -4151,8 +4151,8 @@ const MINES_LUCKY_WHEEL = [
     { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
     { p: 0.03, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
     { p: 0.24, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
-    { p: 0.005, prize: 'jackpot' }, // 🏆 NỔ HŨ 0,5% (18/09, chủ server; 0,5% dôi ra dồn vào 🍂)
-    { p: 0.245, prize: 'none' },    // 🍂 HỤT - không được gì
+    { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ 1% (19/09 chủ server phục hồi; 18/09 từng hạ 0,5% rồi bỏ)
+    { p: 0.24, prize: 'none' },     // 🍂 HỤT - không được gì
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.13, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
@@ -4160,8 +4160,8 @@ const STAIRS_LUCKY_WHEEL = [
     { p: 0.36, prize: 'cash' },     // 💰 +30% tiền cược tức thì
     { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
     { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô lửa tầng kế (⚠️) - tính là TRỢ GIÚP
-    { p: 0.145, prize: 'refund' }, // ↩️ hoàn phí mua cỏ (18/09: nhận 1,5% dôi ra từ nổ hũ - Leo Thang không có ô Hụt)
-    { p: 0.005, prize: 'jackpot' }, // 🏆 NỔ HŨ 0,5% (18/09, chủ server - cùng mức với Dò Mìn)
+    { p: 0.13, prize: 'refund' },   // ↩️ hoàn phí mua cỏ
+    { p: 0.02, prize: 'jackpot' },  // 🏆 NỔ HŨ 2% (19/09 chủ server phục hồi; 18/09 từng hạ 0,5% rồi bỏ)
 ];
 // Ô VÀNG 🌟 Leo Thang: 2% ván MỚI xuất hiện, HIỆN RÕ trên bàn ở tầng 5–8 - thấy mà
 // thèm, phải sống sót leo tới mới đạp được; đạp là lên thẳng đỉnh. Mọi mức lửa đều
@@ -4171,9 +4171,7 @@ const STAIRS_GOLDEN_RATE = 0.02;
 // TRẦN THƯỞNG x2000 tiền cược - CHỈ áp cho ván ĂN NHỜ ô may mắn (🚀/🌟/⛏️ hoặc
 // khiên ĐÃ dùng để thoát chết). Tự lực 100% thì trả đủ như bảng - cày thật ăn thật.
 // Lý do: một cú nhảy 🌟 trong ván 5 lửa ăn nguyên x17k là bơm lạm phát cả server.
-// 18/09 (chủ server): 2000 -> 50. Một trần DUY NHẤT cho cả "thắng nhờ trợ giúp" lẫn "nổ hũ",
-// mọi số mìn, cả Leo Thang. Tự lực vẫn không trần. Đổi số này là đổi cả hai trần.
-const LUCKY_WIN_CAP_MULTI = 50;
+const LUCKY_WIN_CAP_MULTI = 2000;
 
 // ===== 🏆 SỔ HŨ (dbCache._pots) =====
 // Lịch sử: 20/08 mỗi trò một hũ nuôi 5%/nổ 1% (mines · stairs · gacha) -> 09/09 Dò Mìn/Leo
@@ -4357,16 +4355,26 @@ function luckyAssisted(g) {
     return (g.luck || []).some(x => x === '🚀' || x === '🌟' || x === '⛏️' || x === '🧭')
         || (g.defused || []).length > 0 || (g.burned || []).length > 0;
 }
-// Hai TRẦN may mắn (Dò Mìn + Leo Thang) - chủ server chốt: "có trợ giúp = nổ hũ luôn, x tối đa x50":
-// - Trần NỔ HŨ 🏆 (áp luôn):                         ×50 tiền cược, mọi số mìn, cả Leo Thang.
-// - Trần THẮNG CUỐI VÁN khi TRỢ GIÚP ĐÃ DÙNG:        ×50 tiền cược, mọi số mìn, cả Leo Thang.
-//   Trợ giúp = bốc 🧭/⛏️/🚀/🌟, hoặc khiên 🛡️ ĐÃ đỡ mìn. Khiên cầm mà chưa dùng vẫn là tự lực.
-// Tự lực trả đủ theo bảng, KHÔNG trần (calculateMulti không có Math.min).
-// Cả hai đều đọc LUCKY_WIN_CAP_MULTI - đổi 1 số là đổi cả hai.
-// 18/09: PHẲNG x50 cho mọi bàn (trước: nổ hũ 50/100/200/2000, trợ giúp 100/300/500/2000 theo số
-// mìn). Giữ 2 hàm riêng vì có ~10 chỗ gọi và web hiện "assistCap" - đổi luật sau này chỉ sửa ở đây.
-function jackpotCapOf(g) { return LUCKY_WIN_CAP_MULTI; }
-function assistCapOf(g) { return LUCKY_WIN_CAP_MULTI; }
+// Hai TRẦN may mắn riêng cho Dò Mìn - CHỐT CUỐI của chủ server 20/08:
+// - Trần NỔ HŨ 🏆:  3 mìn ×50 · 4 mìn ×100 · 5 mìn ×200 · 6+ không can thiệp (×2000)
+// - Trần THẮNG CUỐI VÁN khi TRỢ GIÚP ĐÃ DÙNG (khiên đỡ mìn/⛏️): 3 mìn ×100 ·
+//   4 mìn ×300 · 5 mìn ×500 · 6+ không can thiệp (×2000).
+// Tự lực (khiên chưa dùng cũng tính tự lực) trả đủ theo bảng, chỉ đụng trần tuyệt
+// đối ×2000 trong calculateMulti. Leo Thang giữ ×2000 cho cả hai.
+function jackpotCapOf(g) {
+    if (g.totalMines === undefined) return LUCKY_WIN_CAP_MULTI;   // Leo Thang
+    if (g.totalMines <= 3) return 50;
+    if (g.totalMines === 4) return 100;
+    if (g.totalMines === 5) return 200;
+    return LUCKY_WIN_CAP_MULTI;
+}
+function assistCapOf(g) {
+    if (g.totalMines === undefined) return LUCKY_WIN_CAP_MULTI;   // Leo Thang
+    if (g.totalMines <= 3) return 100;
+    if (g.totalMines === 4) return 300;
+    if (g.totalMines === 5) return 500;
+    return LUCKY_WIN_CAP_MULTI;
+}
 // 09/09: liệt kê trợ giúp ĐÃ DÙNG trong ván để câu cảnh báo nói đúng lý do bị trần
 // ("mở được nhờ KHIÊN đỡ mìn nên chỉ thưởng tối đa x2000"). Rỗng = ván tự lực.
 function assistWhyOf(g) {
@@ -4462,7 +4470,7 @@ const webMinesApi = {
         if (MINES_MAX_BET > 0 && bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} Dogcoin mỗi ván` };
         // 🍀 09/09 (chủ server chốt): KHÔNG còn cỏ miễn phí - muốn cỏ phải MUA,
         // phí 20% tiền cược, TỐI ĐA 1 ô/ván. (Luật cũ 20/08: 1 free + mua thêm 1.)
-        const fee = extraLucky ? Math.floor(bet * 0.4) : 0;   // 18/09: 20% -> 40% (chủ server)
+        const fee = extraLucky ? Math.floor(bet * 0.3) : 0;   // 19/09: 30% (20% -> 40% hôm 18/09 -> chủ server chốt 30%)
         // 🏆 nuôi hũ RIÊNG của Dò Mìn: trích 5% cược, KHÔNG thu thêm (nhà cái bao)
         const potCut = luckyPotCut('mines', bet);
         const me = getUserData(userId);
@@ -4850,7 +4858,7 @@ const webStairsApi = {
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số Dogcoin không hợp lệ' };
         if (bet < minBet()) return { error: `Cược tối thiểu ${minBet().toLocaleString()} Dogcoin mỗi ván` };
         // 🍀 09/09: cỏ KHÔNG miễn phí - tick mua 1 ô, phí 20% cược (cùng luật Dò Mìn)
-        const fee = extraLucky ? Math.floor(bet * 0.4) : 0;   // 18/09: 20% -> 40% (chủ server)
+        const fee = extraLucky ? Math.floor(bet * 0.3) : 0;   // 19/09: 30% (20% -> 40% hôm 18/09 -> chủ server chốt 30%)
         // 🏆 nuôi hũ RIÊNG của Leo Thang: trích 5% cược, KHÔNG thu thêm (nhà cái bao)
         const potCut = luckyPotCut('stairs', bet);
         const me = getUserData(userId);
@@ -4985,7 +4993,7 @@ const webStairsApi = {
         if (!g.jpPending) return { error: 'Không có hộp nổ hũ nào đang chờ' };
         g.jpPending = false;
         const top = stairsWin(g.bet, STAIRS_FLOORS, g.fire);
-        const jp = Math.min(g.bet * jackpotCapOf(g), top);
+        const jp = Math.min(g.bet * LUCKY_WIN_CAP_MULTI, top);
         const pt = jackpotMult('stairs', g.bet);
         const potWin = pt.win;
         const n = pt.mults.length;
