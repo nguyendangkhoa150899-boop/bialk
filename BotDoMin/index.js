@@ -4144,20 +4144,22 @@ function webMinesLog(g, result, amount, hitIdx) {
 // đây là cú hãm mạnh, muốn nới thì kéo 2 ô 24% xuống rồi bù lại cho cash/dig.
 // TỔNG PHẢI BẰNG 1.00 - spinWheel trừ dần, thiếu thì DỒN HẾT vào ô CUỐI bảng (luckywheeltest canh).
 // Leo Thang giữ nguyên, chủ server chỉ đổi Dò Mìn.
+// 19/09 chủ server chốt bảng mới: Khiên 15 · Đào 10 · Lì xì 15 · Gấp đôi 10 · La bàn 10 · Hoàn vé 15 · Nổ hũ 1
+// = 76, còn 24 vào 🍂 Hụt. Trợ giúp (khiên/đào/la bàn) 35% - bốc trúng là ván dính trần "trợ giúp".
 const MINES_LUCKY_WHEEL = [
-    { p: 0.13, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
-    { p: 0.05, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
-    { p: 0.20, prize: 'cash' },     // 💰 +30% tiền cược tức thì
+    { p: 0.15, prize: 'shield' },   // 🛡️ trúng mìn 1 lần không chết (cộng dồn)
+    { p: 0.10, prize: 'dig' },      // ⛏️ mở ngay 1–2 ô an toàn ngẫu nhiên
+    { p: 0.15, prize: 'cash' },     // 💰 +200% tiền cược tức thì (19/09: 30% -> 200%)
     { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
-    { p: 0.03, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
-    { p: 0.24, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
+    { p: 0.10, prize: 'scout' },    // 🧭 lộ 1 ô mìn thật (⚠️) - tính là TRỢ GIÚP (trần kịch khung)
+    { p: 0.15, prize: 'refund' },   // ↩️ hoàn phí mua cỏ - hụt mà không thiệt
     { p: 0.01, prize: 'jackpot' },  // 🏆 NỔ HŨ 1% (19/09 chủ server phục hồi; 18/09 từng hạ 0,5% rồi bỏ)
-    { p: 0.24, prize: 'none' },     // 🍂 HỤT - không được gì
+    { p: 0.24, prize: 'none' },     // 🍂 HỤT - không được gì (= phần còn lại)
 ];
 const STAIRS_LUCKY_WHEEL = [
     { p: 0.13, prize: 'rocket' },   // 🚀 thang máy: +2 tầng ngay
     { p: 0.18, prize: 'shield' },   // 🛡️ đạp lửa 1 lần không cháy
-    { p: 0.36, prize: 'cash' },     // 💰 +30% tiền cược tức thì
+    { p: 0.36, prize: 'cash' },     // 💰 +200% tiền cược tức thì (19/09, cùng mức Dò Mìn)
     { p: 0.10, prize: 'dbl' },      // 🎲 tung xu ngay: thắng +X2 CƯỢC, thua 0
     { p: 0.08, prize: 'scout' },    // 🧭 lộ 1 ô lửa tầng kế (⚠️) - tính là TRỢ GIÚP
     { p: 0.13, prize: 'refund' },   // ↩️ hoàn phí mua cỏ
@@ -4172,6 +4174,10 @@ const STAIRS_GOLDEN_RATE = 0.02;
 // khiên ĐÃ dùng để thoát chết). Tự lực 100% thì trả đủ như bảng - cày thật ăn thật.
 // Lý do: một cú nhảy 🌟 trong ván 5 lửa ăn nguyên x17k là bơm lạm phát cả server.
 const LUCKY_WIN_CAP_MULTI = 2000;
+// 💰 Lì xì = % tiền cược cộng thẳng vào ví khi bốc trúng, dùng cho CẢ 2 game (cùng một quà 'cash').
+// 20/08: 0.3 -> 19/09 chủ server: 2.0 (+200% cược). Kỳ vọng riêng ô này ở Dò Mìn = 15% × 200% = +30%
+// cược = bằng đúng phí cỏ 30% -> cỏ Dò Mìn dương kỳ vọng cho người chơi (xem README mục 🍀).
+const LUCKY_CASH_RATE = 2.0;
 
 // ===== 🏆 SỔ HŨ (dbCache._pots) =====
 // Lịch sử: 20/08 mỗi trò một hũ nuôi 5%/nổ 1% (mines · stairs · gacha) -> 09/09 Dò Mìn/Leo
@@ -4626,7 +4632,7 @@ const webMinesApi = {
             g.luck.push('⛏️');
         }
         else if (prize === 'cash') {
-            const bonus = Math.max(1, Math.floor(g.bet * 0.3));   // lì xì 20% -> 30% (20/08)
+            const bonus = Math.max(1, Math.floor(g.bet * LUCKY_CASH_RATE));   // lì xì 20% -> 30% (20/08) -> 200% (19/09)
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn
@@ -5041,7 +5047,7 @@ const webStairsApi = {
         }
         else if (prize === 'shield') { g.shield = (g.shield || 0) + 1; g.luck.push('🛡️'); }   // cộng dồn
         else if (prize === 'cash') {
-            const bonus = Math.max(1, Math.floor(g.bet * 0.3));   // lì xì 20% -> 30% (20/08, cùng Dò Mìn)
+            const bonus = Math.max(1, Math.floor(g.bet * LUCKY_CASH_RATE));   // lì xì cùng mức Dò Mìn (19/09: 200%)
             updatePoints(userId, bonus);
             lucky.bonus = bonus;
             g.bonus = (g.bonus || 0) + bonus;   // để lịch sử cuối ván ghi đúng tổng tiền ăn

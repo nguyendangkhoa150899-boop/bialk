@@ -124,16 +124,16 @@ Người chơi **mua** cỏ (**30% tiền cược**, cả 2 game, `fee = bet * 0
 
 | Quà | Dò Mìn | Leo Thang |
 |---|---|---|
-| 💰 Lì xì +30% cược | 20% | 36% |
-| 🛡️ Khiên | 13% | 18% |
-| ↩️ Hoàn vé cỏ | 24% | 13% |
-| ⛏️ Máy đào / 🚀 Thang máy | 5% | 13% |
+| 💰 Lì xì **+200% cược** (`LUCKY_CASH_RATE = 2.0`, 19/09; trước 30%) | **15%** | 36% |
+| 🛡️ Khiên | **15%** | 18% |
+| ↩️ Hoàn vé cỏ | **15%** | 13% |
+| ⛏️ Máy đào / 🚀 Thang máy | **10%** | 13% |
 | 🎲 Gấp đôi hoặc không | 10% | 10% |
-| 🧭 La bàn (lộ 1 mìn/lửa) | 3% | 8% |
+| 🧭 La bàn (lộ 1 mìn/lửa) | **10%** | 8% |
 | 🏆 Nổ hũ | **1%** | **2%** |
 | 🍂 Hụt (không gì) | **24%** | — |
 
-⚠️ **Tổng mỗi bảng phải đúng 1.00.** `spinWheel` trừ dần → thiếu bao nhiêu là **dồn hết vào ô CUỐI bảng** không báo gì. `luckywheeltest.js` canh. Đổi nổ hũ thì bù/trừ ở ô "hãm" (Dò Mìn: 🍂 Hụt; Leo Thang không có Hụt nên vào ↩️ Hoàn vé) — 18/09 từng hạ xuống 0,5% cả 2 game, 19/09 chủ server phục hồi 1%/2%. Dò Mìn: 48% số hộp là hụt hoặc chỉ hoàn phí — cố ý hãm mạnh; muốn nới thì kéo 2 ô đó xuống bù cho 💰/⛏️. Đổi phí cỏ thì sửa **cả 2** dòng `fee` trong `index.js` và mọi chữ "30% cược" + phép `*0.3` ở `webplay.js` (8 chỗ chữ + 3 phép).
+⚠️ **Tổng mỗi bảng phải đúng 1.00.** `spinWheel` trừ dần → thiếu bao nhiêu là **dồn hết vào ô CUỐI bảng** không báo gì. `luckywheeltest.js` canh. Đổi nổ hũ thì bù/trừ ở ô "hãm" (Dò Mìn: 🍂 Hụt; Leo Thang không có Hụt nên vào ↩️ Hoàn vé) — 18/09 từng hạ xuống 0,5% cả 2 game, 19/09 chủ server phục hồi 1%/2%. Dò Mìn 19/09 (chủ server chốt bảng mới): 39% hộp hụt/hoàn phí, **35% là trợ giúp** (khiên/đào/la bàn) — bốc trúng là ván dính trần "trợ giúp" (×100/×300/×500 theo mìn). ⚠️ Kỳ vọng tiền mặt mỗi lần mua cỏ Dò Mìn: lì xì 15%×200% = 30% + hoàn vé 15%×30% = 4,5% + gấp đôi 10% ≈ **44,5% cược, trả lại NHIỀU HƠN phí 30%** → cỏ dương kỳ vọng cho người chơi, nhà cái chỉ còn ăn 12% RTP ván. Chủ server biết và chốt. Leo Thang giữ bảng cũ (lì xì cũng 200% vì chung một quà). Đổi phí cỏ thì sửa **cả 2** dòng `fee` trong `index.js` và mọi chữ "30% cược" + phép `*0.3` ở `webplay.js` (8 chỗ chữ + 3 phép).
 
 ### 🎲 Tài Xỉu (Discord + web, `txState`)
 - Ván = **giây đặt cược + giây nặn**, admin chỉnh panel (`_txTime`, mặc định **25 + 15**, phạm vi 5–600 / 3–300). Ván đang chạy giữ mốc cũ. Dùng `txRoundS()` / `txLockS()`, **không dùng lại hằng `TX_ROUND_S`**.
