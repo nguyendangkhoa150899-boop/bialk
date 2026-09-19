@@ -278,10 +278,15 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 <!-- ============ BÀN ============ -->
 <div id="manBan" hidden>
   <div class="top">
-    <div><div class="ten" id="banTen">🀄 TIẾN LÊN</div><div class="van" id="banPhu"></div></div>
+    <!-- ⚠️ id phải là banTieu, KHÔNG phải banTen: id banTen là của chữ TO bắn giữa bàn ở dưới.
+         Trùng id thì getElementById lấy thẻ này, banhTen() ghi đè tiêu đề và CSS #banTen
+         (absolute + animation mờ dần) làm tiêu đề bay mất. Đã dính đúng lỗi đó. -->
+    <div><div class="ten" id="banTieu">🀄 TIẾN LÊN</div><div class="van" id="banPhu"></div></div>
     <div class="sp"></div>
     <span class="pill" id="banCuoc"></span>
     <span class="pill vang" id="banTong"></span>
+    <span class="pill" id="banTruoc" hidden></span>
+    <span class="pill" id="banLuat"></span>
   </div>
   <div class="san" id="san">
     <div class="vien"><div class="ni">
@@ -560,6 +565,20 @@ function veBan(){
   $('banCuoc').textContent = '💵 cược ' + vnd(b.mucCuoc) + (b.cheDo==='anhet' ? ' · lá ' + vnd(b.giaLa) : '');
   var tg = toi ? toi.tong : 0;
   $('banTong').textContent = (tg>=0?'▲ +':'▼ ') + vnd(tg) + ' tại bàn';
+  // 📜 luật đang bật — phòng chờ có rồi, vào bàn thì mất; ai vào muộn không biết bàn này chơi luật gì
+  var L = b.luat || {};
+  $('banLuat').textContent = '📜 ' + ([L.baBich?'3♠ đi đầu':'', L.toiTrang?'tới trắng':'',
+      L.chatHeo?'chặt heo thưởng':'', L.thoiHeo?'thối 2':''].filter(Boolean).join(' · ') || 'luật cơ bản') +
+      ' · phế ' + Math.round(b.pheTram*100) + '%';
+  // 🕘 ván trước ai nhất / mình ăn thua bao nhiêu (nhớ ở client, máy chủ không phải gửi thêm gì)
+  nhoVanTruoc(b, v);
+  var e = $('banTruoc');
+  if (VAN_TRUOC && VAN_TRUOC.so !== (b.soVan||0)){
+    e.textContent = '🕘 ván ' + VAN_TRUOC.so + ': ' + VAN_TRUOC.nhat + ' nhất · bạn ' +
+        (VAN_TRUOC.tien>=0?'+':'') + vnd(VAN_TRUOC.tien);
+    e.className = 'pill' + (VAN_TRUOC.tien>=0 ? ' vang' : '');
+    e.hidden = false;
+  } else e.hidden = true;
 
   // ---- ghế vẽ TRƯỚC: lá bay cần biết ghế người đánh nằm chỗ nào ----
   veGhe(b, v);
@@ -600,6 +619,16 @@ function veBan(){
   if (!cuaToi) LUOT_KEU = '';
 }
 var LUOT_KEU = '';
+/* Ghi lại kết quả ván vừa xong để ván sau còn khoe "ván trước ai nhất, mình ăn thua nhiêu".
+   Làm ở client vì máy chủ xoá sạch ván cũ khi chia ván mới — thêm trường ở máy chủ chỉ tổ
+   phải giữ thêm trạng thái, mà thứ này mất khi tải lại trang cũng không sao. */
+var VAN_TRUOC = null;
+function nhoVanTruoc(b, v){
+  if (!v.ketQua || !v.ketQua.hang || !v.ketQua.hang.length) return;
+  var so = v.so || b.soVan || 0;
+  if (VAN_TRUOC && VAN_TRUOC.so === so) return;        // đã ghi ván này rồi
+  VAN_TRUOC = { so: so, nhat: tenCua(v.ketQua.hang[0]), tien: (v.ketQua.tien||{})[S.toi.id] || 0 };
+}
 /* Số "ngẫu nhiên" NHƯNG ỔN ĐỊNH theo mã lá: cùng một lá luôn nằm cùng một thế. Dùng Math.random
    thì mỗi giây vẽ lại là bài nhảy loạn (trang tự làm mới mỗi giây). */
 function bam(ma, tron){
@@ -831,9 +860,15 @@ function veNut(b, v){
   var o = '<button class="b vang" onclick="goiY()"' + (cua?'':' disabled') + '>💡 GỢI Ý</button>' +
           '<button class="b xam" onclick="boChon()"' + (CHON.length?'':' disabled') + '>✖️ BỎ CHỌN</button>';
   datHTML($('banNut'), o);
+  // Trước chỉ ghi "Đang chờ X" nên người đã bỏ lượt tưởng mình vẫn còn được đánh trong vòng này.
+  // Nói thẳng: đã bỏ thì ngồi ngoài tới hết vòng, và còn mấy người nữa đang tranh.
+  var toiTrongDs = (b.nguoi || []).filter(function(x){ return x.id === S.toi.id; })[0];
+  var conTranh = (b.nguoi || []).filter(function(x){ return x.trongVan && !x.daBo && x.conBai; }).length;
   $('banNhac').textContent = v.ketQua ? '' :
     (cua ? (v.bo ? ('Phải đánh ' + v.bo.ten + ' lớn hơn, hoặc chặt') : 'Bạn mở lượt — chọn bài rồi bấm ĐÁNH')
-         : ('Đang chờ ' + tenCua(v.luot||'')));
+     : (toiTrongDs && toiTrongDs.daBo
+         ? ('🚫 Bạn đã bỏ lượt — chờ hết vòng này mới được đánh tiếp · còn ' + conTranh + ' người đang tranh')
+         : ('Đang chờ ' + tenCua(v.luot||'') + ' · còn ' + conTranh + ' người trong vòng')));
 }
 /* 💡 chọn giùm nước RẺ NHẤT đánh được. Bấm tiếp thì xoay sang nước kế (xem hết mọi cách). */
 var GOI_I = 0;

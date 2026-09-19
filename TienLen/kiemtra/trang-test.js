@@ -362,5 +362,36 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('tới lượt mình thì sáng viền bàn + kêu 1 lần', /classList\.toggle\('toiluot'/.test(JS) && /LUOT_KEU/.test(JS));
 }
 
+// ---------------------------------------------------------------- id trùng
+// 20/09: tiêu đề trang và chữ-to-giữa-bàn CÙNG mang id="banTen". getElementById trả thẻ đầu
+// tiên nên banhTen() ghi đè tiêu đề, còn thẻ giữa bàn chết; CSS #banTen (absolute + animation
+// mờ dần) cũng dính vào tiêu đề -> vào trang là tiêu đề bay mất. Loại lỗi này nhìn mắt không ra.
+muc('KHÔNG được có id trùng');
+{
+    const dem = {};
+    (HTML.match(/id="[A-Za-z0-9_-]+"/g) || []).forEach(x => { dem[x] = (dem[x] || 0) + 1; });
+    const trung = Object.keys(dem).filter(k => dem[k] > 1);
+    ok('mỗi id chỉ xuất hiện MỘT lần trong trang', trung.length === 0, trung.join(', '));
+    ok('tiêu đề trên đầu trang mang id riêng (banTieu), không giành id banTen',
+        /<div class="ten" id="banTieu">/.test(HTML));
+    ok('id banTen để dành cho chữ TO giữa bàn, nằm trong lòng bàn (.ni)',
+        HTML.indexOf('<div id="banTen" hidden>') > HTML.indexOf('<div class="ni">'));
+}
+
+// ---------------------------------------------------------------- nhắc cho người chơi dễ biết
+muc('nhắc nhở cho người chơi dễ biết (20/09)');
+{
+    ok('📜 luật đang bật hiện NGAY TRÊN BÀN (trước chỉ có ở phòng chờ)',
+        /id="banLuat"/.test(HTML) && /L\.baBich\?'3♠ đi đầu'/.test(JS) && /phế ' \+ Math\.round\(b\.pheTram\*100\)/.test(JS));
+    ok('🕘 khoe ván TRƯỚC: ai nhất, mình ăn thua bao nhiêu',
+        /id="banTruoc"/.test(HTML) && /function nhoVanTruoc\(/.test(JS) && /VAN_TRUOC\.nhat/.test(JS));
+    ok('...ghi một lần cho mỗi ván, không đè chồng', /VAN_TRUOC\.so === so\) return;/.test(JS));
+    ok('...và giấu đi khi đang ở chính ván đó', /VAN_TRUOC\.so !== \(b\.soVan\|\|0\)/.test(JS));
+    ok('🚫 nói rõ "bạn đã bỏ lượt, chờ hết vòng" thay vì chỉ "đang chờ X"',
+        /Bạn đã bỏ lượt — chờ hết vòng này/.test(JS) && /toiTrongDs && toiTrongDs\.daBo/.test(JS));
+    ok('...kèm còn mấy người đang tranh vòng này',
+        /x\.trongVan && !x\.daBo && x\.conBai/.test(JS) && /người đang tranh/.test(JS));
+}
+
 console.log('\n🎬 TRANG TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);
