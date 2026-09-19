@@ -3,8 +3,11 @@
 :root{
   --bg:#0d0f14; --card:#161a22; --card2:#1b2029; --line:#2a3140; --tx:#e7ecf3; --muted:#8c97a8;
   --gold:#ffcf5c; --xanh:#3dd68c; --do:#ff6b6b; --ni1:#1f7a4d; --ni2:#155c39;
-  --lb:clamp(38px,7.2vw,60px);      /* lá bài trên bàn */
-  --lbt:clamp(30px,5.4vw,46px);     /* lá bài trên tay */
+  /* --co = HỆ SỐ CỠ BÀI, người chơi tự kéo bằng nút 🔍 (nhớ trong localStorage).
+     2 = gấp đôi bản đầu (chủ server chốt 19/09 vì bản đầu nhìn quá nhỏ). */
+  --co:2;
+  --lb:calc(clamp(38px,7.2vw,60px) * var(--co));      /* lá bài trên bàn */
+  --lbt:calc(clamp(30px,5.4vw,46px) * var(--co));     /* lá bài trên tay */
 }
 *{box-sizing:border-box}
 body{margin:0 auto;background:var(--bg);color:var(--tx);
@@ -50,7 +53,7 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .chumon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   font-size:clamp(16px,3.4vw,30px);font-weight:900;letter-spacing:4px;color:rgba(255,255,255,.07);pointer-events:none}
 .giua{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:94%}
-.bomay{display:flex;gap:4px;justify-content:center;min-height:calc(var(--lb)*1.45);align-items:center}
+.bomay{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;min-height:calc(var(--lb)*1.45)}
 .nhanbo{margin-top:6px;font-size:clamp(11px,1.9vw,13.5px);font-weight:800;color:var(--gold)}
 .chua{font-size:clamp(11px,2vw,14px);color:#bfe7d3;font-weight:700}
 
@@ -78,9 +81,19 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .ghe.trong .av{background:transparent;border-color:transparent;color:var(--gold);font-weight:900}
 .ghe.bamduoc{cursor:pointer}
 .ghe.bamduoc:hover .bang{border-color:var(--gold)}
-.lung{display:flex;gap:2px;justify-content:center;margin-bottom:-8px;min-height:18px}
-.lung i{display:block;width:12px;height:17px;border-radius:2px;background:linear-gradient(145deg,#3b5ea8,#16223f);
-  border:1px solid #0d1526}
+/* xấp lưng bài + badge ĐỎ đếm lá (giống app bài: nhìn phát biết ai sắp hết bài) */
+.lung{display:flex;gap:0;justify-content:center;align-items:flex-end;margin-bottom:-8px;min-height:22px;position:relative}
+.lung i{display:block;width:15px;height:21px;border-radius:3px;background:linear-gradient(145deg,#3b5ea8,#16223f);
+  border:1px solid #0d1526;margin-left:-6px;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.lung i:first-child{margin-left:0}
+.dem-la{margin-left:5px;min-width:24px;height:22px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;
+  font-size:12.5px;font-weight:900;color:#fff;background:linear-gradient(180deg,#e04a4a,#a81f1f);
+  border:1px solid #ff8a8a;box-shadow:0 2px 6px rgba(0,0,0,.55)}
+.dem-la.it{background:linear-gradient(180deg,#ffd76a,#e0a41a);color:#3a2500;border-color:#fff3c4;
+  animation:nhapNhay .8s ease-in-out infinite}
+/* PASS to rõ như ảnh mẫu */
+.tt.pass{background:linear-gradient(180deg,#f2f4f8,#c9d0dc);color:#2a3140;font-size:12px;letter-spacing:1px;
+  padding:3px 12px;box-shadow:0 3px 8px rgba(0,0,0,.5)}
 .tt{margin:4px auto 0;width:fit-content;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px}
 .tt.bo{background:#22252e;color:var(--muted)}
 .tt.cho{background:#3a2e10;color:var(--gold)}
@@ -91,21 +104,39 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 .gio i{display:block;height:100%;background:var(--gold);transition:width .25s linear}
 
 /* ---------- tay bài của mình ---------- */
-.tay{display:flex;justify-content:center;flex-wrap:wrap;gap:2px;margin-top:10px;min-height:calc(var(--lbt)*1.85)}
-.tay .the{cursor:pointer;position:relative;margin-top:20px;
+/* Xoè chồng: mỗi lá đè lên lá trước ~42% bề ngang. Lá sau vẽ đè lên lá trước (thứ tự DOM),
+   nên phần còn thấy của mỗi lá là MÉP TRÁI — đúng chỗ in số + chất. Rê/chọn thì lá nhảy lên trên. */
+.tay{display:flex;justify-content:center;flex-wrap:nowrap;margin-top:10px;
+  min-height:calc(var(--lbt)*1.9);padding:0 4px}
+.tay .the{cursor:pointer;position:relative;margin-top:22px;margin-left:calc(var(--lbt) * -0.42);/*canhTay() ghi de*/
   transition:transform .14s cubic-bezier(.2,1.4,.4,1), box-shadow .14s ease}
-.tay .the:hover{transform:translateY(-7px)}
+.tay .the:first-child{margin-left:0}
+.tay .the:hover{transform:translateY(-9px);z-index:4}
 /* 👇 lá ĐANG CHỌN: nhô hẳn lên, viền vàng, nảy nhẹ + dấu ✓ góc trên */
-.tay .the.chon{transform:translateY(-20px) scale(1.05);z-index:2;
+.tay .the.chon{transform:translateY(-26px) scale(1.06);z-index:3;
   box-shadow:0 0 0 3px var(--gold),0 0 18px 3px rgba(255,207,92,.5),0 10px 20px rgba(0,0,0,.75);
   animation:chonNay .2s cubic-bezier(.2,1.6,.4,1)}
-.tay .the.chon:hover{transform:translateY(-25px) scale(1.05)}
+.tay .the.chon:hover{transform:translateY(-32px) scale(1.06);z-index:5}
 .tay .the.chon::after{content:'✓';position:absolute;top:-9px;right:-7px;width:19px;height:19px;border-radius:50%;
   background:linear-gradient(180deg,#ffe9a3,#e0a41a);color:#3a2500;font-size:12px;font-weight:900;
   display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:3}
-@keyframes chonNay{0%{transform:translateY(-4px) scale(1)}100%{transform:translateY(-20px) scale(1.05)}}
+@keyframes chonNay{0%{transform:translateY(-6px) scale(1)}100%{transform:translateY(-26px) scale(1.06)}}
 /* lá KHÔNG thể đánh trong lượt này (khi đang theo bài) thì mờ đi cho dễ nhìn */
 .tay .the.cam{filter:brightness(.52) saturate(.55)}
+
+/* 🎯 THANH ĐÁNH NỔI — chỉ hiện khi đã chọn lá (chủ server: "chọn xong show nút đánh").
+   Nằm NGAY TRÊN tay bài để ngón tay với tới, đúng kiểu app bài trên điện thoại. */
+#banDanh{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px auto 0;width:fit-content;
+  max-width:96%;padding:7px 10px 7px 16px;border-radius:999px;
+  background:linear-gradient(180deg,#1e2531,#141922);border:1px solid #3a4152;
+  box-shadow:0 8px 22px rgba(0,0,0,.55);animation:danhVao .22s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes danhVao{0%{transform:translateY(14px) scale(.9);opacity:0}100%{transform:none;opacity:1}}
+#banDanh .bo{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#banDanh .bo small{display:block;font-size:11px;font-weight:700;color:var(--muted)}
+#banDanh.duoc .bo{color:#9ff0c4}
+#banDanh.khong .bo{color:#ff9a9a}
+#banDanh .b{font-size:16px;padding:11px 26px;border-radius:999px}
+#banDanh .x{padding:9px 13px;border-radius:999px;background:#2c3444;color:var(--muted);font-size:15px}
 
 /* dòng gợi ý dưới tay bài: đang chọn bộ gì, đánh được hay không */
 #banGoi{margin:8px auto 0;width:fit-content;max-width:96%;font-size:13px;font-weight:800;padding:6px 14px;
@@ -116,7 +147,6 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
 /* nhãn VỪA LÀM trên ghế + cảnh báo sắp hết bài */
 .tt.danh{background:#123021;color:#9ff0c4}
 .tt.chat{background:linear-gradient(180deg,#ff9a3c,#c9541b);color:#2a0e00}
-.tt.sapthang{background:#4a1414;color:#ff9a9a;animation:nhapNhay 1s ease-in-out infinite}
 @keyframes nhapNhay{0%,100%{opacity:1}50%{opacity:.45}}
 .dem{position:absolute;top:-10px;left:50%;transform:translateX(-50%);z-index:5;
   min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center;padding:0 6px;
@@ -195,8 +225,9 @@ input{font:inherit;background:#0f1218;border:1px solid var(--line);color:var(--t
     <div id="banGhe"></div>
   </div>
 
-  <div class="tay" id="banTay"></div>
   <div id="banGoi" hidden></div>
+  <div id="banDanh" hidden></div>
+  <div class="tay" id="banTay"></div>
   <div class="dong" style="margin-top:10px" id="banNut"></div>
   <div class="nho" id="banNhac"></div>
 
@@ -479,18 +510,20 @@ function veGhe(b, v){
     var x = 50 + rx*Math.sin(a), y = 50 + 34*Math.cos(a);
     var laToi = p.id === S.toi.id, toiLuot = v.luot === p.id;
 
+    // xấp lưng bài (tối đa 5 lá cho gọn) + badge ĐỎ số lá còn lại; ≤2 lá thì badge vàng nhấp nháy
     var lung = '';
-    if (!v.ketQua) for (var q=0;q<Math.min(p.soLa,13);q++) lung += '<i></i>';
+    if (!v.ketQua && p.soLa > 0){
+      for (var q=0;q<Math.min(p.soLa,5);q++) lung += '<i></i>';
+      lung += '<span class="dem-la'+(p.soLa<=2?' it':'')+'">'+p.soLa+'</span>';
+    }
     // nhãn trên ghế, theo thứ tự ưu tiên: hạng > mất kết nối > đang nghĩ > vừa làm gì > bỏ lượt
     var tt = '', vl = p.vuaLam;
     if (p.hang) tt = '<div class="tt '+(p.hang===1?'nhat':'hang')+'">'+(p.hang===1?'🏆 NHẤT':'hạng '+p.hang)+'</div>';
     else if (p.afk) tt = '<div class="tt afk">Mất kết nối</div>';
     else if (toiLuot && !v.ketQua) tt = '<div class="tt cho">⏳ đang nghĩ…</div>';
     else if (vl && vl.viec==='danh') tt = '<div class="tt '+(vl.chat?'chat':'danh')+'">'+(vl.may?'🤖 ':'')+(vl.chat?'💥 CHẶT ':'')+esc(vl.ten)+'</div>';
-    else if (p.daBo || (vl && vl.viec==='bo')) tt = '<div class="tt bo">'+((vl&&vl.may)?'🤖 ':'')+'bỏ lượt</div>';
-    // ⚠️ sắp về nhất: cả bàn phải thấy để còn chặn
-    if (!p.hang && p.soLa > 0 && p.soLa <= 2 && !v.ketQua)
-      tt = '<div class="tt sapthang">⚠️ còn '+p.soLa+' lá!</div>' + tt;
+    else if (p.daBo || (vl && vl.viec==='bo')) tt = '<div class="tt pass">'+((vl&&vl.may)?'🤖 ':'')+'PASS</div>';
+    // (cảnh báo "sắp về nhất" giờ nằm ở badge vàng nhấp nháy trên xấp bài, khỏi lặp hai chỗ)
     // đồng hồ: thanh chạy + SỐ GIÂY to trên đầu ghế
     var conGiay = (toiLuot && v.hanChot && !v.ketQua) ? Math.max(0, Math.ceil((v.hanChot-Date.now())/1000)) : null;
     var gio = conGiay===null ? '' :
@@ -540,6 +573,7 @@ function veTay(b, v){
     return theLa(x, true, (CHON.indexOf(x)>=0 ? 'chon' : '') + (moLa && !dungDuoc[x] ? ' cam' : ''));
   }).join('');
   if (datHTML($('banTay'), o)){
+    canhTay();
     var el = $('banTay').querySelectorAll('.the');
     for (var i=0;i<el.length;i++) (function(e){
       e.addEventListener('click', function(){
@@ -552,30 +586,49 @@ function veTay(b, v){
   }
 }
 
+/* Bài to thì 13 lá không nằm vừa hàng -> ĐO bề ngang thật rồi tự tăng độ chồng cho vừa.
+   Chặn ở 72%: chồng quá mức đó là mất góc số, nhìn không ra lá gì. */
+function canhTay(){
+  var e = $('banTay'), k = e.children, n = k.length;
+  if (!n) return;
+  var W = k[0].offsetWidth || 0, CW = e.clientWidth || 0;
+  if (!W || !CW || n < 2) return;
+  var can = Math.max(W * 0.42, W - (CW - 10 - W) / (n - 1));
+  can = Math.min(can, W * 0.72);
+  for (var i = 1; i < n; i++) k[i].style.marginLeft = (-Math.round(can)) + 'px';
+}
 function veNut(b, v){
   var toi = b.toi;
   if (!toi || !toi.la){ datHTML($('banNut'), ''); $('banNhac').textContent=''; $('banGoi').hidden=true; return; }
   var cua = toi.toiLuot && !v.ketQua;
 
-  // ---- dòng gợi ý: đang chọn bộ gì, đánh được hay không (máy luật bản client) ----
+  // ---- dòng gợi ý (khi CHƯA chọn lá nào): nhắc còn mấy nước đánh được ----
   var e = $('banGoi');
-  if (!cua || !CHON.length){
-    if (cua){
-      var so = cMoiNuoc(toi.la, v.bo).length;
-      datHTML(e, so ? ('Bấm lá để chọn — bạn có <b>' + so + '</b> nước đánh được') : '😔 Không có nước nào đánh được — bấm BỎ LƯỢT');
-      e.className = so ? '' : 'khong'; e.hidden = false;
-    } else e.hidden = true;
-  } else {
-    var bo = cNhanDang(CHON), kq = cDanhDuoc(bo, v.bo);
-    datHTML(e, kq.ok ? ('✓ ' + (bo.ten||'') + (kq.chat ? ' — <b>CHẶT!</b>' : '') + ' · đánh được')
-                     : ('✗ ' + (bo ? bo.ten + ' — ' + kq.vi : kq.vi)));
-    e.className = kq.ok ? 'duoc' : 'khong'; e.hidden = false;
-  }
+  if (cua && !CHON.length){
+    var so = cMoiNuoc(toi.la, v.bo).length;
+    datHTML(e, so ? ('Bấm lá để chọn — bạn có <b>' + so + '</b> nước đánh được') : '😔 Không có nước nào đánh được — bấm BỎ LƯỢT');
+    e.className = so ? '' : 'khong'; e.hidden = false;
+  } else e.hidden = true;
 
-  var o = '<button class="b xam" onclick="doiXep()">🔀 XẾP BÀI: ' + (KIEU_XEP==='so'?'theo số':'gom bộ') + '</button>' +
+  // ---- 🎯 CHỌN XONG LÀ HIỆN NÚT ĐÁNH (chủ server đặt) — thanh nổi ngay trên tay bài ----
+  var d = $('banDanh');
+  if (CHON.length){
+    var bo = cNhanDang(CHON), kq = cDanhDuoc(bo, v.bo);
+    var duoc = cua && kq.ok;
+    datHTML(d,
+      '<div class="bo">' + (bo ? esc(bo.ten) : 'Không thành bộ') +
+        '<small>' + (!cua ? 'chưa tới lượt bạn'
+                   : (kq.ok ? (kq.chat ? '💥 CHẶT được!' : 'đánh được') : esc(kq.vi || ''))) + '</small></div>' +
+      '<button class="b xanh" onclick="danh()"' + (duoc?'':' disabled') + '>▶️ ĐÁNH ' + CHON.length + ' lá</button>' +
+      '<button class="x" onclick="boChon()" title="Bỏ chọn">✖️</button>');
+    d.className = duoc ? 'duoc' : 'khong';
+    d.hidden = false;
+  } else d.hidden = true;
+
+  var o = '<button class="b xam" onclick="coBai(-1)" title="Bài nhỏ lại">🔍−</button>' +
+          '<button class="b xam" onclick="coBai(1)" title="Bài to lên">🔍+</button>' +
+          '<button class="b xam" onclick="doiXep()">🔀 XẾP BÀI: ' + (KIEU_XEP==='so'?'theo số':'gom bộ') + '</button>' +
           '<button class="b vang" onclick="goiY()"' + (cua?'':' disabled') + '>💡 GỢI Ý</button>' +
-          '<button class="b xam" onclick="boChon()"' + (CHON.length?'':' disabled') + '>✖️ BỎ CHỌN</button>' +
-          '<button class="b xanh" onclick="danh()"' + (cua?'':' disabled') + '>▶️ ĐÁNH' + (CHON.length?' ('+CHON.length+' lá)':'') + '</button>' +
           '<button class="b do" onclick="boLuot()"' + (cua && v.bo ? '':' disabled') + '>⏭️ BỎ LƯỢT</button>';
   datHTML($('banNut'), o);
   $('banNhac').textContent = v.ketQua ? '' :
@@ -595,6 +648,20 @@ function goiY(){
 }
 function boChon(){ CHON = []; $('banTay').__cu=''; ve(); }
 function doiXep(){ KIEU_XEP = (KIEU_XEP==='so'?'bo':'so'); $('banTay').__cu=''; $('banNut').__cu=''; ve(); }
+/* 🔍 cỡ bài: 5 nấc, nhớ trong localStorage. Mặc định nấc 2.0 (gấp đôi bản đầu). */
+var CO_NAC = [1.2, 1.6, 2, 2.5, 3];
+function coHienTai(){
+  var n = parseFloat(localStorage.getItem('tl_co'));
+  return CO_NAC.indexOf(n) >= 0 ? n : 2;
+}
+function apCo(){ document.documentElement.style.setProperty('--co', coHienTai()); }
+function coBai(huong){
+  var i = CO_NAC.indexOf(coHienTai()) + huong;
+  if (i < 0 || i >= CO_NAC.length) return bao(huong > 0 ? 'Đã to hết cỡ' : 'Đã nhỏ hết cỡ');
+  try { localStorage.setItem('tl_co', String(CO_NAC[i])); } catch(e){}
+  apCo();
+  bao('🔍 Cỡ bài: ' + Math.round(CO_NAC[i] * 100) + '%');
+}
 function danh(){ if(!CHON.length) return bao('Chọn lá muốn đánh đã'); var g = CHON.slice(); CHON = []; goi('/danh', { la: g }); }
 function boLuot(){ CHON = []; goi('/boluot'); }
 
@@ -625,6 +692,7 @@ function veKetQua(b, v){
 
 /* ---------------------------------------------------------------- chạy */
 setInterval(dongBo, 1000);
+apCo();
 kiemXoay();
 dongBo();
 </script>

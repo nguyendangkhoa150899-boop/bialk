@@ -71,8 +71,10 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
     const idHTML = new Set([...HTML.matchAll(/id="([A-Za-z0-9_-]+)"/g)].map(m => m[1]));
     const els = new Map();
     const makeEl = (id) => ({
-        id, style: {}, dataset: {}, hidden: false, textContent: '', innerHTML: '', className: '', value: '',
-        clientWidth: 900, offsetWidth: 120,
+        // style phải có setProperty: trang gọi documentElement.style.setProperty('--co', ...)
+        id, style: { setProperty() { }, removeProperty() { } }, dataset: {}, hidden: false,
+        textContent: '', innerHTML: '', className: '', value: '',
+        clientWidth: 900, offsetWidth: 120, children: [],
         classList: { toggle() { }, add() { }, remove() { }, contains() { return false } },
         addEventListener() { }, getAttribute() { return '3s' }, setAttribute() { },
         querySelectorAll() { return [] }, querySelector() { return null }, appendChild() { }, remove() { },
@@ -239,12 +241,22 @@ muc('💡 gợi ý nước đánh (cMoiNuoc)');
 
 muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
 {
-    ok('lá đang chọn nhô lên + viền vàng + dấu ✓', /\.tay \.the\.chon\{[\s\S]*?translateY\(-20px\)/.test(HTML) && /\.tay \.the\.chon::after\{content:'✓'/.test(HTML));
+    ok('lá đang chọn nhô lên + viền vàng + dấu ✓', /\.tay \.the\.chon\{[\s\S]*?translateY\(-26px\)/.test(HTML) && /\.tay \.the\.chon::after\{content:'✓'/.test(HTML));
+    ok('🔍 chỉnh cỡ bài được, nhớ trong localStorage', /function coBai\(/.test(JS) && /tl_co/.test(JS) && /--co:2/.test(HTML));
+    ok('tay bài xoè chồng + tự co cho vừa bề ngang', /function canhTay\(/.test(JS) && /W \* 0\.72/.test(JS));
     ok('lá không đánh được thì làm mờ (.cam)', /\.tay \.the\.cam\{filter/.test(HTML) && /' cam'/.test(JS));
     ok('có dòng gợi ý #banGoi báo đánh được / không', /id="banGoi"/.test(HTML) && /#banGoi\.duoc/.test(HTML) && /#banGoi\.khong/.test(HTML));
-    ok('có nút 💡 GỢI Ý và ✖️ BỎ CHỌN', /💡 GỢI Ý/.test(JS) && /✖️ BỎ CHỌN/.test(JS));
+    ok('có nút 💡 GỢI Ý', /💡 GỢI Ý/.test(JS));
+    ok('🎯 chọn xong là hiện thanh ĐÁNH nổi trên tay bài',
+        /id="banDanh"/.test(HTML) && JS.includes('▶️ ĐÁNH ') && JS.includes('d.hidden = false') && JS.includes('} else d.hidden = true;'));
+    ok('thanh ĐÁNH nằm TRÊN tay bài (ngón tay với tới)', HTML.indexOf('id="banDanh"') < HTML.indexOf('id="banTay"'));
+    ok('thanh ĐÁNH nói rõ bộ gì + vì sao không đánh được', /💥 CHẶT được!/.test(JS) && /chưa tới lượt bạn/.test(JS));
+    ok('ghế có badge ĐỎ đếm lá, ≤2 lá thì vàng nhấp nháy', /dem-la/.test(JS) && /.dem-la.it{/.test(HTML));
+    ok('bỏ lượt hiện PASS to rõ', /class="tt pass"/.test(JS) && /.tt.pass{/.test(HTML));
     ok('ghế hiện VỪA ĐÁNH gì, có dấu 💥 khi chặt', /vl\.viec==='danh'/.test(JS) && /💥 CHẶT/.test(JS));
-    ok('cảnh báo ai còn ≤2 lá', /sapthang/.test(JS) && /còn '\+p\.soLa\+' lá!/.test(JS));
+    // cảnh báo "sắp về nhất" giờ nằm ở badge vàng nhấp nháy trên xấp bài (.dem-la.it), không còn nhãn riêng
+    ok('cảnh báo ai còn ≤2 lá bằng badge vàng nhấp nháy', JS.includes("(p.soLa<=2?' it':'')") && /\.dem-la\.it\{[\s\S]*?nhapNhay/.test(HTML));
+    ok('KHÔNG còn nhãn "sắp thắng" cũ (đã gộp vào badge, đừng báo 2 chỗ)', !/sapthang/.test(JS));
     ok('đếm ngược số giây trên ghế đang tới lượt, ≤5 giây thì đỏ nhấp nháy', /class="dem'\+\(conGiay<=5\?' gap':''\)/.test(JS));
     ok('tới lượt mình thì sáng viền bàn + kêu 1 lần', /classList\.toggle\('toiluot'/.test(JS) && /LUOT_KEU/.test(JS));
 }
