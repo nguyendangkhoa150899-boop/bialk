@@ -119,6 +119,15 @@ const may = http.createServer((req, res) => {
             res.end(nhet + t);
         });
     }
+    // 🪙 icon Dogcoin — prod web cược phục vụ sẵn ở /dogcoin.png; bản chạy thử phải tự lấy
+    // từ BotDoMin/assets, không thì mọi con số tiền hiện ảnh vỡ.
+    if (req.method === 'GET' && duong === '/dogcoin.png') {
+        return fs.readFile(nodePath.join(__dirname, '..', 'BotDoMin', 'assets', 'dogcoin.png'), (e, b) => {
+            if (e) return traJson(res, 404, { ok: false, error: 'Không có icon Dogcoin' });
+            res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=300' });
+            res.end(b);
+        });
+    }
     // ảnh lá bài lấy từ thư mục của Poker (dùng chung)
     if (req.method === 'GET' && /^\/(tienlen\/)?bai\/[A-Za-z0-9]{1,4}\.webp$/.test(duong)) {
         const ten = duong.slice(duong.lastIndexOf('/') + 1);

@@ -411,5 +411,41 @@ muc('💥 CHẶT TRỪ TIỀN TẠI CHỖ (chủ server chốt 20/09)');
     ok('có ghi log ⚠️ để chủ server biết', log.some(d => /⚠️.*bị chặt/.test(d)), log.join(' | '));
 }
 
+muc('🚪 RỜI BÀN SAU VÁN NÀY');
+{
+    // Chủ server 20/09: "thêm nút thoát trận, đánh xong thoát luôn thay vì bị mất mạng".
+    // Đang cầm bài thì không rời giữa chừng được (bỏ bàn giữa ván là quỵt tiền người khác),
+    // nhưng bắt ngồi đực chờ hết ván thì người ta đóng tab -> thành "mất kết nối", máy đánh
+    // giùm, thua oan. Nên ghi tên vào sổ, hết ván máy chủ TỰ cho ra.
+    const { tl, vi, log } = dung({ giayXemKet: 0 });
+    goi(tl, '/ngoi', { ghe: 0 }, 'A'); goi(tl, '/ngoi', { ghe: 1 }, 'B'); goi(tl, '/ngoi', { ghe: 2 }, 'C');
+    for (const id of ['A', 'B', 'C']) goi(tl, '/sansang', {}, id);
+    ok('bàn đã vào ván', !!tl.phong.ban);
+
+    ok('người ngoài phòng không xin rời được', goi(tl, '/roisau', {}, 'D').ma === 400);
+    const r = goi(tl, '/roisau', {}, 'C');
+    ok('đang giữa ván: xin rời được nhận (KHÔNG báo lỗi đỏ)', r.ma === 200 && r.j.xinRoi === true,
+        r.ma + ' ' + JSON.stringify(r.j && (r.j.error || r.j.xinRoi)));
+    ok('...nhưng vẫn CÒN NGỒI cho tới hết ván', tl.phong.ghe.indexOf('C') >= 0, JSON.stringify(tl.phong.ghe));
+    ok('bấm lại là huỷ xin rời', goi(tl, '/roisau', {}, 'C').j.xinRoi === false);
+    goi(tl, '/roisau', {}, 'C');           // xin lại
+
+    const truocC = vi.C;
+    const ban = tl.phong.ban;
+    for (let k = 0; k < 500 && ban._trong.van && !ban._trong.van.ketQua; k++) { ban.roiMang(ban._trong.van.luot); ban.nhip(); }
+    tl.nhip(); tl.nhip();
+    ok('⭐ hết ván là TỰ CHO RA, không phải bấm lại', tl.phong.ghe.indexOf('C') < 0, JSON.stringify(tl.phong.ghe));
+    ok('...và ván vừa rồi VẪN tính tiền đầy đủ cho C', vi.C !== truocC, String(vi.C - truocC));
+    ok('có ghi sổ', log.some(d => /đã xin rời sau ván/.test(d)), log.join(' | '));
+    ok('hai người còn lại vẫn ngồi', tl.phong.ghe.filter(Boolean).length === 2, JSON.stringify(tl.phong.ghe));
+}
+{
+    // Không đang đánh thì cho ra LUÔN, khỏi bắt chờ tới ván sau
+    const { tl } = dung();
+    goi(tl, '/ngoi', { ghe: 0 }, 'A');
+    const r = goi(tl, '/roisau', {}, 'A');
+    ok('chưa vào ván: xin rời = rời luôn', r.ma === 200 && tl.phong.ghe.indexOf('A') < 0, JSON.stringify(tl.phong.ghe));
+}
+
 console.log('\n🌐 MÁY CHỦ TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

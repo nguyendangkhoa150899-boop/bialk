@@ -75,6 +75,11 @@ function taoTienLen(deps) {
         // 🗳️ VOTE ĐỔI MỨC CƯỢC — { mucCuoc, boi, dong:Set<id> }. Quá nửa số người ngồi đồng ý
         // thì ván SAU áp dụng (đang giữa ván thì chờ, xem vanKe). Ai rời bàn thì bỏ phiếu theo.
         vote: null,
+        // 🚪 XIN RỜI SAU VÁN NÀY. Đang cầm bài thì không rời giữa chừng được (bỏ bàn giữa ván
+        // là quỵt tiền người khác), nhưng bắt ngồi đực chờ hết ván rồi mới bấm được thì người
+        // ta đóng tab luôn — và đóng tab là thành "mất kết nối", máy đánh giùm, thua oan.
+        // Bấm nút này là ghi tên vào sổ, hết ván tự cho ra (xem vanKe).
+        xinRoi: new Set(),
         cauHinh: {
             mucCuoc: MUC_CUOC_MAC_DINH, cheDo: 'hang',   // KHÔNG còn giaLa: mỗi lá = đúng 1 cược
             toiTrangOn: true, chatHeoOn: true, thoiHeoOn: true, baBichOn: true,
@@ -226,8 +231,24 @@ function taoTienLen(deps) {
         return true;
     }
 
-    /** Chia ván kế: áp vote đổi cược, mời ra ai hết vốn / rớt điều kiện, còn đủ 2 người thì chia tiếp. */
+    /** Cho ra những ai đã bấm "rời sau ván này". Gọi lúc GIỮA HAI VÁN. */
+    function choRaNhungAiXin() {
+        if (!phong.xinRoi.size) return;
+        for (const id of [...phong.xinRoi]) {
+            phong.xinRoi.delete(id);
+            const ghe = gheCua(id);
+            if (ghe >= 0) phong.ghe[ghe] = null;
+            phong.sanSang.delete(id);
+            if (phong.vote) { phong.vote.dong.delete(id); if (!phong.vote.dong.size) phong.vote = null; }
+            if (phong.ban) { try { phong.ban.roiBan(id); } catch (e) { } }
+            ghiLog('[TIẾN LÊN] ' + tenCua(id) + ' rời bàn (đã xin rời sau ván)');
+        }
+        if (phong.ban && phong.ban.xemChung().nguoi.length < V.TOI_THIEU_NGUOI) phong.ban = null;
+    }
+
+    /** Chia ván kế: cho ra ai xin rời, áp vote đổi cược, mời ra ai hết vốn, còn đủ 2 người thì chia tiếp. */
     function vanKe() {
+        choRaNhungAiXin();
         const b = phong.ban;
         if (!b) return;
         // Áp vote TRƯỚC khi mời người ra: đổi cược là đổi luôn vốn tối thiểu, ai không đủ
@@ -285,6 +306,7 @@ function taoTienLen(deps) {
             ghe: phong.ghe.map(x => x ? { id: x, ten: tenCua(x), dogcoin: (layNguoi(x) || {}).points || 0 } : null),
             gheCuaToi: gheCua(id),
             sanSang: [...phong.sanSang], toiSanSang: phong.sanSang.has(id),
+            xinRoi: phong.xinRoi.has(id),          // 🚪 đã bấm "rời sau ván này" chưa
             toiDa: V.TOI_DA_NGUOI, toiThieu: V.TOI_THIEU_NGUOI,
             cauHinh: { ...phong.cauHinh }, cheDoTen: V.CHE_DO[phong.cauHinh.cheDo],
             vonToiThieu: vonToiThieu(), pheTram: V.PHE_TRAM,
@@ -378,6 +400,7 @@ function taoTienLen(deps) {
                     return loi(400, 'Đang giữa ván — đánh hết bài rồi mới rời được (rớt mạng thì máy đánh giùm)');
                 const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
                 phong.sanSang.delete(toi);
+                phong.xinRoi.delete(toi);
                 if (phong.vote) { phong.vote.dong.delete(toi); if (!phong.vote.dong.size) phong.vote = null; }
                 // Bớt một người ngồi là NGƯỠNG QUÁ NỬA tụt theo -> vote đang treo có thể vừa đủ
                 // phiếu ngay lúc này. Không chốt lại ở đây thì nó nằm im tới tận ván sau.
@@ -398,6 +421,13 @@ function taoTienLen(deps) {
                 phong.vote.dong.add(toi);
                 // giữa hai ván mà đủ phiếu thì áp luôn, khỏi bắt chờ thêm một ván
                 if (!banDangDanh()) apVote();
+                return tra();
+            }
+            // 🚪 Xin rời sau ván này. Không đang đánh thì cho ra LUÔN, khỏi bắt chờ.
+            if (post && duong === '/roisau') {
+                if (gheCua(toi) < 0) return loi(400, 'Bạn không ngồi trong phòng này');
+                if (!banDangDanh()) return xuLy({ ...req, path: '/roi' }, res, sendJSON);
+                if (phong.xinRoi.has(toi)) phong.xinRoi.delete(toi); else phong.xinRoi.add(toi);
                 return tra();
             }
             if (post && duong === '/huyvote') {

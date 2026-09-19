@@ -206,11 +206,17 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
     // ⭐ Bài THẬT lật TO GIỮA BÀN, không nhét vào ghế: nhét vào ghế thì mỗi lá rộng 26px,
     // 13 lá chồng nhau là nhìn không ra lá gì (chủ server: "chưa show được bài... ý là show
     // bài của người CÒN ra á" — nó CÓ vẽ, chỉ là bé quá nên trông như chưa vẽ).
+    // Màn rộng (bài kiểm dựng window.innerWidth = 1200): bài xoè NGAY CẠNH TỪNG GHẾ, đúng
+    // ảnh mẫu Ba Bích — gom một bảng giữa bàn thì không biết bài đó của AI.
+    ok('cạnh mỗi ghế có xoè bài thật của người đó', raGhe.indexOf('class="latGhe"') >= 0 &&
+        raGhe.indexOf('src="bai/2h.webp"') >= 0, raGhe.slice(0, 300));
+    ok('...ghế nửa phải màn thì bày bài sang TRÁI, khỏi tràn ra ngoài mép',
+        /class="ghe[^"]*beT/.test(raGhe) || /class="ghe[^"]*beP/.test(raGhe), raGhe.slice(0, 200));
+    ok('...người ĐÃ đi hết bài thì không xoè gì (không còn lá để lật)',
+        (raGhe.match(/class="latGhe"/g) || []).length === 3, String((raGhe.match(/class="latGhe"/g) || []).length));
     const raLat = String(els.get('banLat') ? els.get('banLat').innerHTML : '');
-    ok('GIỮA BÀN lật bài thật của người còn cầm', raLat.indexOf('src="bai/2h.webp"') >= 0, raLat.slice(0, 300));
-    ok('...kèm tên chủ bài và còn mấy lá', /class="ai"/.test(raLat) && /còn \d+ lá/.test(raLat), raLat.slice(0, 300));
-    ok('...người ĐÃ đi hết bài thì không có hàng nào (không còn lá để lật)',
-        raLat.indexOf('>Người A<') < 0, raLat.slice(0, 300));
+    ok('...bảng gom giữa bàn TẮT khi màn rộng (đã có xoè cạnh ghế)',
+        els.get('banLat').hidden === true, raLat.slice(0, 120));
     const raCuoi = String(els.get('kqCuoi') ? els.get('kqCuoi').innerHTML : '');
     ok('có câu chọc nhắc đúng thứ người ta ôm', /heo|tứ quý/i.test(raCuoi), raCuoi);
 }
@@ -434,7 +440,7 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
         /var CHO_NGOI = \{/.test(JS) && !/34\*Math\.cos/.test(JS) && !/rx\*Math\.sin/.test(JS));
     ok('...mình luôn ở GÓC TRÁI DƯỚI để chừa dải đáy cho tay bài', /2: \[\[13, 70\]/.test(JS) && /4: \[\[13, 70\]/.test(JS));
     ok('...đủ bảng cho 2 / 3 / 4 người',
-        /CHO_NGOI\[n\] \|\| CHO_NGOI\[4\]/.test(JS) && /3: \[\[13, 70\], \[12, 32\], \[86, 32\]\]/.test(JS));
+        /CHO_NGOI\[n\] \|\| CHO_NGOI\[4\]/.test(JS) && /3: \[\[13, 70\], \[12, 34\], \[86, 34\]\]/.test(JS));
     ok('📜 luật chi tiết gom vào tooltip, không chiếm chỗ', /el\.textContent = '📜 luật'/.test(JS) && /el\.title = luatDay/.test(JS));
     ok('...bài nhỏ lại cho vừa màn thấp', /--co:1\.15/.test(HTML));
     ok('...ô ghế gọn lại (nhãn + xấp bài úp thu nhỏ)',
@@ -537,6 +543,15 @@ muc('🏠 SẢNH chọn phòng / tạo phòng');
         /function veTao\(/.test(JS) && /id="taoCheDo"/.test(HTML) && /id="taoMuc"/.test(HTML));
     ok('...và nói trước cần bao nhiêu vốn, thiếu thì khoá nút',
         /taoVon/.test(JS) && /taoNut'\)\.disabled = !TAO_MUC \|\| d\.toi\.dogcoin < von/.test(JS));
+    // 🪙 chủ server: "trừ dogcoin sử dụng icon dogcoin có sẵn hết nha"
+    ok('🪙 mọi con số tiền kèm icon Dogcoin',
+        /function xu\(n, kemDau\)/.test(JS) && JS.indexOf('src="/dogcoin.png"') >= 0 && /\.dc\{width:1\.05em/.test(HTML));
+    ok('...không còn chỗ nào ghi chữ "Dogcoin" suông', JS.indexOf("' Dogcoin'") < 0);
+    // 🚪 chủ server: "thêm nút thoát trận, đánh xong thoát luôn thay vì bị mất mạng"
+    ok('🚪 giữa ván có nút XIN RỜI SAU VÁN NÀY, không để nút chết trơ',
+        /function roiSau\(/.test(JS) && /RỜI BÀN SAU VÁN NÀY/.test(JS) && JS.indexOf("goi('/roisau'") >= 0);
+    ok('...bấm lại là huỷ, có nói rõ đang chờ rời',
+        /Sẽ rời bàn khi hết ván — bấm để ở lại/.test(JS) && /S\.xinRoi/.test(JS));
     ok('có nút ra sảnh ở phòng chờ', /function raSanh\(/.test(JS) && /onclick="raSanh\(\)"/.test(HTML));
     // "pc mình không bấm được vào bàn" — KHÔNG phải lỗi: ví 20 Dogcoin, phòng rẻ nhất cần
     // 120.000. Lý do vốn đã ghi trong dòng xám của từng phòng nhưng lẫn giữa đống chữ, người
@@ -595,7 +610,7 @@ muc('💥 CHẶT: trừ tiền tại chỗ thì phải THẤY nó trừ');
     ok('xanh cho người ăn, đỏ cho người mất', /.bay.an{/.test(HTML) && /.bay.mat{/.test(HTML) && JS.indexOf("(an ? 'an' : 'mat')") >= 0);
     ok('kêu MỘT lần cho mỗi cú chặt, so theo mốc luc', /cm.luc !== CHAT_LUC/.test(JS) && /CHAT_LUC = cm.luc/.test(JS));
     ok('...vẽ lại mỗi giây KHÔNG làm hiệu ứng chạy lại từ đầu', /CHAT_NHAY/.test(JS) && /veBan._chat/.test(JS));
-    ok('nhãn trên ghế người chặt ghi luôn số tiền ăn', JS.indexOf("(vl.thuong?' +'+vnd(vl.thuong):'')") >= 0);
+    ok('nhãn trên ghế người chặt ghi luôn số tiền ăn', JS.indexOf("(vl.thuong?' +'+xu(vl.thuong):'')") >= 0);
     ok('dòng thông báo nói rõ ai chặt ai, lấy bao nhiêu', JS.indexOf("' chặt ' + tenCua(cm.bi) + ' — lấy ngay '") >= 0);
 }
 
