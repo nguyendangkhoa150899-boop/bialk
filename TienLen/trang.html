@@ -7,7 +7,7 @@
      vì "dư nhiều nút quá". Muốn đổi cỡ thì sửa đúng số này. */
   --co:2;
   --lb:calc(clamp(38px,7.2vw,60px) * var(--co));      /* lá bài trên bàn */
-  --lbt:calc(clamp(30px,5.4vw,46px) * var(--co));     /* lá bài trên tay */
+  --lbt:calc(clamp(32px,6vw,52px) * var(--co));       /* lá bài trên tay */
   --llb:clamp(30px,4vw,52px);                         /* lá bài NGỬA lúc hết ván */
   --latW:420px;                                       /* bề ngang tối đa của mảng bài lật */
 }
@@ -139,9 +139,16 @@ body.choiBan{
      │                  #banLat/#banTen/#banHang/#demNguoc  (nổi đè lên chiếu bài)   │
      │  GHẾ             #banGhe         bảng toạ độ CHO_NGOI trong JS                │
      │  ĐÁY, giữa       --t1 hàng nút to · --t2 dòng đang chọn · --t3 cảnh báo bí    │
-     │  ĐÁY, trái       #banNut         💡 gợi ý / ✖️ bỏ chọn                         │
-     │  ĐÁY, cả dải     .tayHang        tay bài (chừa lề trái cho ghế mình)          │
+     │  ĐÁY, trái       #banNut         💡 gợi ý / ✖️ bỏ chọn (xếp DỌC)                │
+     │  ĐÁY, cả dải     .tayHang        tay bài — rộng --dai, mép trái --leDai       │
+     │                                  ⚠️ #banNut neo theo --leDai CHỨ KHÔNG --leT  │
      └──────────────────────────────────────────────────────────────────────────────┘ */
+  /* 🃏 DẢI TAY BÀI — cố ý RỘNG HƠN mặt bàn (--W 980px) để lá lộ ra nhiều hơn.
+     ⚠️ Nút GỢI Ý / BỎ CHỌN PHẢI neo theo --leDai, KHÔNG neo theo --leT (mép bàn): hai mốc
+     lệch nhau 80px, neo nhầm là nút đè lên mấy lá đầu, màn càng rộng càng văng xa. */
+  --dai:min(100%,1140px);
+  --leDai:calc(50% - min(50%,570px));               /* mép TRÁI của dải tay bài */
+  --leNut:170px;                                    /* chỗ chừa cho hai nút, đo từ --leDai */
   --day:5px;                                        /* mép đáy màn */
   --hTay:calc(var(--lbt) * 1.45);                   /* chiều cao dải tay bài */
   /* +41 = 26px lá ĐANG CHỌN nhô lên + 15px hở. Thiếu chỗ này là lá chọn đè lên nút. */
@@ -173,8 +180,13 @@ body.choiBan .giua{top:45%}
 body.choiBan .bomay{height:calc(var(--lb)*1.5)}
 /* tay bài + nút: NỔI đè lên mặt bàn, không đẩy bàn ngắn lại nữa */
 /* Tay bài bám theo VÙNG CHƠI, chừa bên trái cho ghế của mình (y như ảnh mẫu). */
-body.choiBan .tayHang{position:absolute;left:50%;transform:translateX(-50%);width:var(--W);
-  bottom:var(--day);z-index:16;padding-left:min(24%,250px);padding-right:6px}
+/* 📏 PHẦN LỘ RA CỦA MỖI LÁ = (bề ngang dải − bề ngang 1 lá) / 12 (xem canhTay). Muốn lá lộ
+   ra nhiều hơn thì phải NỚI DẢI, phóng to lá không giúp gì — canhTay sẽ chồng chặt lại cho vừa.
+   · width vượt --W (bàn 980px): mặt bàn phủ kín màn rồi, dải bài chạy rộng hơn mặt bàn vẫn đẹp,
+     mà màn PC rộng thì được thêm cả trăm px.
+   · lề trái tụt 250 -> 150px: hai nút GỢI Ý / BỎ CHỌN đã xếp DỌC nên không cần chừa rộng nữa. */
+body.choiBan .tayHang{position:absolute;left:50%;transform:translateX(-50%);width:var(--dai);
+  bottom:var(--day);z-index:16;padding-left:min(19%,var(--leNut));padding-right:10px}
 body.choiBan .tay{margin-top:0;min-height:0}
 body.choiBan .tay .the{margin-top:0}
 /* ⚠️ +46px chứ KHÔNG phải +12px. Lá đang chọn NHÔ LÊN 26px (xem .tay .the.chon) nên đỉnh nó
@@ -191,9 +203,14 @@ body.choiBan #banBoChon{position:absolute;left:50%;transform:translateX(-50%);z-
 /* GỢI Ý / BỎ CHỌN nằm ở GÓC TRÁI DƯỚI CÙNG — chỗ đó trống vì tay bài đã chừa lề trái
    (padding-left) cho ghế của mình. Đặt ngang tầm hàng nút to như trước thì nó đè lên nhãn
    PASS của chính ghế mình (chủ server chụp lại 20/09). */
-body.choiBan #banNut{position:absolute;left:calc(var(--leT) + 6px);z-index:17;margin:0;width:auto;
-  bottom:var(--day);max-width:min(24%,250px)}
-body.choiBan #banNut .b{padding:6px 11px;font-size:11.5px}
+/* 🔘 Hai nút XẾP DỌC. Trước để NGANG: muốn nút to thì phải chừa lề trái rộng, mà lề rộng thì
+   tay bài hẹp lại -> lá phải chồng chặt. Xếp dọc thì bề ngang chỉ còn ~130px mà mỗi nút lại
+   CAO và RỘNG HẲN RA, ngón tay bấm trúng dễ hơn hẳn (chủ server: "nút gợi ý bỏ chọn nó nhỏ quá"). */
+body.choiBan #banNut{position:absolute;left:calc(var(--leDai) + 8px);z-index:17;margin:0;width:auto;
+  bottom:var(--day);max-width:min(15%,130px);
+  flex-direction:column;align-items:stretch;gap:8px}
+body.choiBan #banNut .b{padding:11px 10px;font-size:13.5px;font-weight:900;border-radius:12px;
+  width:100%;white-space:nowrap;box-shadow:0 5px 14px rgba(0,0,0,.5)}
 body.choiBan #banNhac{position:absolute;left:50%;transform:translateX(-50%);top:52px;z-index:18;margin:0;
   background:rgba(8,12,18,.72);border-radius:999px;padding:4px 12px;white-space:nowrap}
 body.choiBan #banNhac:empty{display:none}
@@ -265,6 +282,18 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
 .the img{width:100%;height:100%;display:block}
 .the.n2{width:var(--lbt)}
 .the.lu{filter:brightness(.5) saturate(.6)}
+
+/* ✨ KHOE BÀI MẠNH ĐẦU VÁN — sáng vàng mấy giây rồi tắt (chủ server chốt 20/09).
+   Chỉ dùng outline + box-shadow, TUYỆT ĐỐI không đụng transform/margin: hàng bài xoè chồng
+   tính từng px trong canhTay(), nhích một lá là cả hàng lệch. */
+.tay .the.manh{z-index:7;animation:khoeNhap 1.15s ease-in-out infinite}
+@keyframes khoeNhap{
+  0%,100%{box-shadow:0 0 0 2px rgba(255,207,92,.55),0 0 10px 1px rgba(255,207,92,.28),0 3px 8px rgba(0,0,0,.6)}
+  50%    {box-shadow:0 0 0 3px #ffcf5c,0 0 22px 5px rgba(255,207,92,.72),0 3px 8px rgba(0,0,0,.6)}}
+#banGoi.khoe{border-color:#7a5d13;background:linear-gradient(180deg,#3a2e10,#241d09);color:#ffe6a8;
+  animation:khoeHien .3s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes khoeHien{0%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.9)}
+  100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
 
 /* ---------- ghế ---------- */
 .ghe{position:absolute;width:clamp(92px,15vw,150px);z-index:3;transform:translate(-50%,-50%)}
@@ -531,8 +560,11 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
     transform:none;width:auto;min-width:96px;max-width:170px}
   #banGoi{margin-top:5px;padding:4px 11px;font-size:12px}
   #banBoChon{margin-top:4px;font-size:12px}
-  #banNut{margin-top:6px!important;gap:6px}
-  #banNut .b{padding:6px 12px;font-size:12px}
+  /* ⚠️ PHẢI dùng đúng selector 'body.choiBan #banNut .b', không thì thua độ ưu tiên của khối
+     body.choiBan ở trên và rule này nằm chơi (bản cũ đúng như vậy). Màn thấp thì bớt một chút
+     thôi, ĐỪNG thu lại như cũ — chủ server báo 20/09 nút nhỏ quá khó bấm. */
+  body.choiBan #banNut{gap:6px;max-width:min(18%,124px)}
+  body.choiBan #banNut .b{padding:9px 8px;font-size:12px}
   #banBoChon{margin-top:3px;font-size:11.5px}
   #khoiRa .b,#banVoteNut .b{padding:6px 12px;font-size:12px}
   .vien{inset:28px 6px}
@@ -1324,6 +1356,84 @@ function chongLen(){
    nên chữ chồng lên nhau, loạn mắt. Danh sách đáng khoe:
      đôi heo · ba heo · 3 đôi thông · 4 đôi thông · tứ quý · sảnh dài (từ 5 lá).
    Heo LẺ không tính (đánh suốt ván), sảnh 3-4 lá cũng không (quá thường). */
+/* ✨ Dò những thứ ĐÁNG KHOE trên tay mình, mạnh xuống yếu, KHÔNG chồng lá:
+      tứ quý → 4 đôi thông → 3 đôi thông → sảnh dài nhất (≥5) → đôi/ba/tứ heo.
+   Lấy mạnh trước vì cùng mấy lá đó có khi vừa là 3 đôi thông vừa là sảnh — phải khoe cái
+   đáng tiền hơn (hàng thì chặt được và bị nhốt là ăn tiền, sảnh thì không). */
+var SANH_KHOE = 6;                      // sảnh phải từ mấy lá mới đáng khoe (xem chú thích dưới)
+function doBaiManh(la){
+  var con = (la || []).slice(), ra = [], i, q;
+  function bot(nhom){ for (var j=0;j<nhom.length;j++){ var k=con.indexOf(nhom[j]); if(k>=0) con.splice(k,1); } }
+  function theoSo(){ var d={}; for (var j=0;j<con.length;j++){ var x=cDoc(con[j]).so; (d[x]=d[x]||[]).push(con[j]); } return d; }
+
+  // 1. tứ quý (kể cả tứ quý heo)
+  for(;;){
+    var d = theoSo(), tu = null, k;
+    for (i=0;i<CSO.length;i++){ k = CSO[i]; if (d[k] && d[k].length >= 4){ tu = d[k].slice(0,4); break; } }
+    if (!tu) break;
+    ra.push({ la: tu, ten: 'TỨ QUÝ ' + cDoc(tu[0]).so }); bot(tu);
+  }
+  // 2. đôi thông: 4 đôi trước rồi mới 3 đôi (4 đôi ăn tiền gấp đôi)
+  for (var can = 4; can >= 3; can--){
+    for(;;){
+      var d2 = theoSo(), thay = null;
+      for (i=0; i + can <= CSO.length; i++){
+        var day = CSO.slice(i, i+can);
+        if (day.indexOf('2') >= 0) continue;              // đôi thông cấm heo
+        var du = true;
+        for (q=0;q<can;q++) if (!d2[day[q]] || d2[day[q]].length < 2) du = false;
+        if (du){ thay = []; for (q=0;q<can;q++) thay = thay.concat(d2[day[q]].slice(0,2)); break; }
+      }
+      if (!thay) break;
+      ra.push({ la: thay, ten: can + ' ĐÔI THÔNG' }); bot(thay);
+    }
+  }
+  // 3. sảnh DÀI NHẤT còn lại, từ SANH_KHOE lá trở lên.
+  //    ⚠️ ĐỪNG hạ xuống 5. Đo 200.000 tay: sảnh >=5 lá có ở 47% số tay (5 lá là bộ sảnh NGẮN
+  //    NHẤT hợp lệ nên gần như ván nào cũng dính) -> sáng đèn suốt, hết đáng khoe.
+  //    >=6 lá còn 27% (một phần tư số ván), >=7 lá 14%. Muốn thưa/dày hơn thì đổi ĐÚNG số này.
+  for(;;){
+    var d3 = theoSo(), dai = 0, dau = -1, cur = 0, batDau = -1;
+    for (i=0;i<CSO.length;i++){
+      if (CSO[i] === '2' || !d3[CSO[i]]){ cur = 0; batDau = -1; continue; }   // sảnh cấm heo
+      if (batDau < 0) batDau = i;
+      cur++;
+      if (cur > dai){ dai = cur; dau = batDau; }
+    }
+    if (dai < SANH_KHOE) break;
+    var sanh = [];
+    for (i=dau;i<dau+dai;i++) sanh.push(d3[CSO[i]][0]);
+    ra.push({ la: sanh, ten: 'SẢNH ' + dai + ' LÁ' }); bot(sanh);
+  }
+  // 4. heo còn lại — từ ĐÔI trở lên mới đáng khoe, heo lẻ thì ai cũng thấy
+  var heo = con.filter(function(x){ return cDoc(x).so === '2'; });
+  if (heo.length >= 2) ra.push({ la: heo, ten: (heo.length===2?'ĐÔI':heo.length===3?'BA':'TỨ QUÝ') + ' HEO' });
+  return ra;
+}
+
+/* Sổ khoe của ván hiện tại. KHOE_HET = mốc tắt; qua mốc là hàng bài vẽ lại không còn lớp .manh. */
+var KHOE_VAN = -1, KHOE_LA = {}, KHOE_TEN = '', KHOE_HET = 0, KHOE_HEN = 0;
+var KHOE_GIAY = 3.6;                    // "cỡ 3 4 giây" — chủ server
+function khoeConHien(){ return KHOE_HET > Date.now() && !!KHOE_TEN; }
+/** Chia bài xong thì soi tay mình một lần, hẹn giờ tắt. Gọi mỗi lần vẽ, tự khoá theo số ván. */
+function khoeVanMoi(v, la){
+  if (KHOE_VAN === (v.so||0)) return;
+  KHOE_VAN = (v.so||0); KHOE_LA = {}; KHOE_TEN = ''; KHOE_HET = 0;
+  clearTimeout(KHOE_HEN);
+  if (v.ketQua || !la || la.length < 13) return;      // tới trắng / vào giữa ván -> khỏi khoe
+  var manh = doBaiManh(la);
+  if (!manh.length) return;
+  var ten = [];
+  for (var i=0;i<manh.length;i++){
+    ten.push(manh[i].ten);
+    for (var j=0;j<manh[i].la.length;j++) KHOE_LA[manh[i].la[j]] = 1;
+  }
+  KHOE_TEN = ten.join(' · ');
+  KHOE_HET = Date.now() + KHOE_GIAY * 1000;
+  // vẽ lại đúng lúc hết giờ để tắt đèn — không thì phải đợi nhịp 1 giây kế tiếp
+  KHOE_HEN = setTimeout(function(){ KHOE_TEN = ''; ve(); }, KHOE_GIAY * 1000 + 40);
+}
+
 function dangKhoe(bo){
   if (!bo || !bo.kieu) return false;
   if (bo.kieu === 'tu') return true;                                  // tứ quý
@@ -1503,9 +1613,12 @@ function veTay(b, v){
     for (var q=0;q<nuoc.length;q++) for (var w=0;w<nuoc[q].la.length;w++) dungDuoc[nuoc[q].la[w]] = 1;
   }
   var moLa = toi.toiLuot && v.bo && !v.ketQua;
+  khoeVanMoi(v, la);                       // ✨ chia bài xong: soi tay, sáng mấy lá đáng khoe
+  var sang = khoeConHien();
   // Kiểu Ba Bích: lá đã chọn VẪN nằm trong hàng, chỉ nhô lên tại chỗ (xem CSS .tay .the.chon).
   var o = la.map(function(x){
-    return theLa(x, true, (CHON.indexOf(x)>=0 ? 'chon' : '') + (moLa && !dungDuoc[x] ? ' cam' : ''));
+    return theLa(x, true, (CHON.indexOf(x)>=0 ? 'chon' : '') + (moLa && !dungDuoc[x] ? ' cam' : '') +
+                          (sang && KHOE_LA[x] ? ' manh' : ''));
   }).join('');
   if (datHTML($('banTay'), o)){
     canhTay();
@@ -1563,7 +1676,12 @@ function veNut(b, v){
   // đã tự mờ, nút ĐÁNH đã tự sáng/tắt — đếm thêm số nước chỉ tổ chiếm một dòng. Còn ca BÍ thì
   // phải nói, vì nhìn vào không tài nào biết mình hết đường.
   var e = $('banGoi');
-  if (cua && !CHON.length && !cMoiNuoc(toi.la, v.bo).length){
+  // ✨ Mấy giây đầu ván thì nhường chỗ cho lời khoe bài. Không sợ đè nhau: đầu ván ai cũng
+  // còn 13 lá nên không thể "bí", hai câu này không bao giờ cùng lúc.
+  if (khoeConHien()){
+    datHTML(e, '✨ Bài bạn có <b>' + esc(KHOE_TEN) + '</b>');
+    e.className = 'khoe'; e.hidden = false;
+  } else if (cua && !CHON.length && !cMoiNuoc(toi.la, v.bo).length){
     datHTML(e, '😔 Không còn nước nào đánh được — bấm BỎ LƯỢT');
     e.className = 'khong'; e.hidden = false;
   } else e.hidden = true;

@@ -97,7 +97,10 @@ bao giờ bê kiểu xác thực đó lên prod.
 
 | Thứ | Chi tiết |
 |---|---|
-| **Cỡ bài** | **Cố định gấp đôi** bản đầu (`--co: 2` trong CSS). Nút 🔍 đã bỏ 19/09 — chủ server: *"dư nhiều nút quá"*. Đổi cỡ thì sửa đúng biến đó. |
+| **Cỡ bài** | **Cố định gấp đôi** bản đầu (`--co: 2` trong CSS). Nút 🔍 đã bỏ 19/09 — chủ server: *"dư nhiều nút quá"*. Đổi cỡ thì sửa đúng biến đó. **20/09 nới thêm một nấc** (`--lbt` trần 46→52px) — xem *Lá bài lộ ra bao nhiêu* dưới. |
+| **Lá bài lộ ra bao nhiêu** | Phần nhìn thấy của mỗi lá = **(bề ngang dải bài − bề ngang 1 lá) ÷ 12** (`canhTay()` tự siết độ chồng cho 13 lá luôn vừa một hàng). ⚠️ Nghĩa là **phóng to lá KHÔNG làm nó lộ ra nhiều hơn** — trái lại còn ít đi. Muốn lộ nhiều hơn thì phải **nới dải bài**: `--dai` (rộng hơn mặt bàn 980px) và thu `--leNut` (chỗ chừa cho 2 nút bên trái). PC: lộ ra **52→70px**, lá **92→104px**. Điện thoại ngang: **39,5→43px** / **46→51px**. |
+| **Nút GỢI Ý / BỎ CHỌN** | **Xếp DỌC** (20/09, chủ server: *"nút gợi ý bỏ chọn nó nhỏ quá"*). Để ngang thì muốn nút to phải chừa lề trái rộng, mà lề rộng là tay bài hẹp lại → lá chồng chặt. Dọc thì bề ngang chỉ ~130px mà nút lại cao và rộng hẳn. ⚠️ Nút neo theo `--leDai` (mép **dải bài**) chứ **không** phải `--leT` (mép **bàn**) — hai mốc lệch 80px, neo nhầm là nút đè lên mấy lá đầu. |
+| **✨ Khoe bài mạnh** | Chia bài xong, bài mạnh trên tay **sáng vàng nhấp nháy ~3,6 giây** rồi tắt, kèm băng chữ *"✨ Bài bạn có TỨ QUÝ K · ĐÔI HEO"* (20/09). `doBaiManh()` dò **không chồng lá**, mạnh xuống yếu: tứ quý → 4 đôi thông → 3 đôi thông → sảnh → đôi/ba/tứ heo. Cùng mấy lá vừa là *3 đôi thông* vừa là *sảnh* thì khoe **hàng** (đáng tiền hơn). Hiệu ứng **chỉ dùng** `box-shadow`, tuyệt đối không đụng `transform`/`margin` vì hàng bài tính từng px. |
 | **Tay bài** | **Xoè chồng** như cầm bài thật; `canhTay()` đo bề ngang thật rồi tự tăng độ chồng để **13 lá luôn vừa một hàng** (chặn ở 72%, chồng hơn là mất góc số). |
 | **Chọn lá** | **Kiểu Ba Bích.** Bấm lá thì lá **NHÔ LÊN TẠI CHỖ** trong hàng bài, **không phóng to** (phóng to là lấn che lá kế bên), **viền vàng + quầng sáng**, **dấu ✓ góc TRÁI**. `canhTay()` **chừa khoảng trống ngay sau lá đã chọn** — đúng chỗ lá đã chọn đứng cạnh lá chưa chọn (*"chọn con 8 bị che con 9"*); khoảng trống được tính vào phép chia nên chọn bao nhiêu lá hàng bài cũng không tràn. ⚠️ **Đã thử tách lá chọn ra một KHAY riêng (20/09) rồi BỎ** — chủ server: *"cho về lại bản chọn giống như game Ba Bích, dễ thao tác, đừng bị chồng chéo nhau quá"*. Khay chiếm nguyên một hàng, điện thoại nằm ngang là mọi thứ dồn chật, tay bài bị cắt mất đáy. **Đừng dựng lại.** |
 | **Hàng nút to** | ⏱ **đồng hồ tròn vàng** (≤5 giây đỏ nhấp nháy) · **Bỏ lượt** (đỏ) · **Đánh** (xanh). Hiện suốt lượt mình; nút Đánh **chỉ sáng khi mớ lá hợp lệ**. Nằm **trên** tay bài cho dễ với. |
@@ -105,6 +108,11 @@ bao giờ bê kiểu xác thực đó lên prod.
 | **Giữa bàn** | Giữ **CẢ DIỄN BIẾN vòng đang đánh**: các nước **đè lộn xộn** lên nhau như bài vứt trên bàn thật — **trong một nước thì xếp THẲNG HÀNG** đều nhau (lệch rất nhẹ ±0.03 lá, ±4°), **giữa các nước** mới xô lệch mạnh (±0.35 lá) và mỗi nước **nghiêng một góc riêng ±18°** (hàng bài nằm nghiêng theo đúng góc đó). Mọi số lấy từ mã lá qua `bam()` nên **ổn định** — dùng `Math.random` thì mỗi giây vẽ lại là bài nhảy loạn. Lá nằm **tuyệt đối quanh tâm bàn**, không xếp hàng lệch sang phải, **nước cũ mờ, nước mới sáng**, hết vòng mới dọn (`van.chongBai` máy chủ, `laBan()` + `chongLen()` web). Lá vừa đánh **bay từ ghế người đánh** vào giữa bàn (`GHE_VT` lưu toạ độ ghế nên `veGhe()` phải chạy TRƯỚC). **CHỈ bài đặc biệt** mới bắn tên to giữa bàn: **đôi heo · ba heo · 3–4 đôi thông · tứ quý · sảnh từ 5 lá** (`dangKhoe()`); hàng chặt đổi **màu cam**. |
 | **Ghế người khác** | Chỉ một **xấp úp cố định** — 19/09 chủ server chốt **giấu số lá của nhau** (máy chủ cũng ngừng gửi). Số lá chỉ hiện ở ghế **của mình**. **PASS** trắng to khi bỏ lượt · nhãn **vừa đánh bộ gì** (💥 khi chặt, 🤖 khi máy đánh giùm). |
 | **Trợ giúp** | Lá **không nằm trong nước đánh nào thì mờ đi** · **💡 GỢI Ý** tự chọn nước rẻ nhất, bấm tiếp xoay hết các cách · **✖️ BỎ CHỌN** · **⇄** nút tròn đổi kiểu xếp (theo số / gom bộ). |
+
+**Ngưỡng sảnh đáng khoe** = `SANH_KHOE` **6 lá**. ⚠️ **Đừng hạ xuống 5.** Đo 200.000 tay 13 lá,
+sảnh dài nhất trên tay: **≥5 lá 47,3%** · ≥6 lá **27,0%** · ≥7 lá 14,3% · ≥8 lá 6,9% · ≥10 lá 1,1%.
+5 lá là bộ sảnh *ngắn nhất hợp lệ* nên gần nửa số tay có — sáng đèn ván nào cũng sáng thì hết
+đáng khoe. Muốn thưa/dày hơn thì đổi **đúng một số** đó.
 | **Tới lượt bạn** | Sáng viền cả bàn + kêu **một tiếng** (không kêu lặp mỗi giây). |
 
 5. Hết giờ suy nghĩ (**25 giây**) hoặc rớt mạng: máy đánh giùm — đang theo thì **bỏ lượt**,

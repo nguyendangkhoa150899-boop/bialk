@@ -449,8 +449,9 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
         /classList\.toggle\('choiBan', !!\(S && !oSanh && S\.ban\)\)/.test(JS));
     ok('...mặt bàn ăn trọn màn, bỏ oval',
         /body\.choiBan \.san\{position:absolute;inset:0/.test(HTML) && /body\.choiBan \.vien\{inset:0;border-radius:0/.test(HTML));
-    ok('...tay bài trải dải đáy, chừa bên trái cho ghế của mình',
-        /body\.choiBan \.tayHang\{position:absolute[\s\S]{0,140}padding-left:min\(24%,250px\)/.test(HTML));
+    ok('...tay bài trải dải đáy, vẫn chừa lề trái cho hai nút GỢI Ý / BỎ CHỌN',
+        /body\.choiBan \.tayHang\{position:absolute[\s\S]{0,200}padding-left:min\([0-9]+%,var\(--leNut\)\)/.test(HTML),
+        (HTML.match(/body\.choiBan \.tayHang\{[^}]*\}/) || [''])[0]);
     // Không có trần thì trên màn PC 2554px, hai ghế đặt ở 13% và 70% cách nhau hơn 700px:
     // tên người chơi văng ra bốn góc, giữa là bãi xanh trống hoác (chủ server chụp 20/09).
     ok('⭐ VÙNG CHƠI có TRẦN kích thước, căn giữa — màn PC không kéo ghế ra bốn góc',
@@ -678,6 +679,107 @@ muc('💥 CHẶT: trừ tiền tại chỗ thì phải THẤY nó trừ');
     ok('...vẽ lại mỗi giây KHÔNG làm hiệu ứng chạy lại từ đầu', /CHAT_NHAY/.test(JS) && /veBan._chat/.test(JS));
     ok('nhãn trên ghế người chặt ghi luôn số tiền ăn', JS.indexOf("(vl.thuong?' +'+xu(vl.thuong):'')") >= 0);
     ok('dòng thông báo nói rõ ai chặt ai, lấy bao nhiêu', JS.indexOf("' chặt ' + tenCua(cm.bi) + ' — lấy ngay '") >= 0);
+}
+
+// ---------------------------------------------------------------- 🃏 BÀI TO + NÚT TO (20/09)
+// Chủ server: "tăng size lá bài lộ ra thêm xíu cho bự" + "nút gợi ý bỏ chọn nó nhỏ quá".
+// ⚠️ HAI VIỆC NÀY KÉO NGƯỢC NHAU. Phần LỘ RA của mỗi lá = (bề ngang dải − 1 lá) / 12, mà dải
+// bài phải chừa lề trái cho đúng hai cái nút đó. Nút to ra theo chiều NGANG là tay bài hẹp lại
+// -> canhTay() chồng chặt hơn -> lá lộ ra ÍT hơn, đúng cái chủ server đang than.
+muc('🃏 LÁ BÀI TO RA MÀ VẪN LỘ NHIỀU HƠN');
+{
+    const soLbt = (HTML.match(/--lbt:calc\(clamp\((\d+)px,([\d.]+)vw,(\d+)px\)/) || []);
+    ok('lá bài trên tay to hơn bản cũ (trần 46px -> lớn hơn)', Number(soLbt[3]) > 46, soLbt[0]);
+    ok('...và mức sàn/giữa cũng nhích lên', Number(soLbt[1]) >= 32 && Number(soLbt[2]) >= 6, soLbt[0]);
+
+    const dai = (HTML.match(/body\.choiBan \.tayHang\{[^}]*\}/) || [''])[0];
+    const bien = (HTML.match(/--dai:min\(100%,(\d+)px\)/) || []);
+    ok('⭐ dải bài NỚI RỘNG hơn mặt bàn 980px để lá lộ ra nhiều hơn',
+        Number(bien[1]) > 980, bien[0]);
+    ok('...và dải bài dùng ĐÚNG biến đó', /width:var\(--dai\)/.test(dai), dai);
+    ok('⭐ lề trái thu lại (cũ 250px)', Number((HTML.match(/--leNut:(\d+)px/) || [])[1]) < 200,
+        (HTML.match(/--leNut:\d+px/) || [''])[0]);
+
+    // ⚠️ BẪY ĐÃ DÍNH MỘT LẦN 20/09: dải bài rộng 1140 mà nút neo theo MÉP BÀN (--leT, 980px).
+    // Hai mốc lệch 80px -> nút đè lên mấy lá đầu; màn càng rộng nút càng văng ra xa tay bài.
+    ok('⭐ nút neo theo MÉP DẢI BÀI (--leDai), KHÔNG phải mép bàn (--leT)',
+        /body\.choiBan #banNut\{position:absolute;left:calc\(var\(--leDai\)/.test(HTML),
+        (HTML.match(/body\.choiBan #banNut\{[^}]*\}/) || [''])[0]);
+    ok('...và --leDai đúng bằng nửa --dai (mép trái của dải)',
+        /--leDai:calc\(50% - min\(50%,(\d+)px\)\)/.test(HTML) &&
+        Number((HTML.match(/--leDai:calc\(50% - min\(50%,(\d+)px\)\)/) || [])[1]) * 2 === Number(bien[1]),
+        (HTML.match(/--leDai:[^;]*/) || [''])[0]);
+    // chỗ chừa cho nút phải RỘNG HƠN bề ngang tối đa của nút, không thì lại đè
+    ok('...chỗ chừa (--leNut) rộng hơn bề ngang tối đa của nút',
+        Number((HTML.match(/--leNut:(\d+)px/) || [])[1]) >
+        Number((HTML.match(/body\.choiBan #banNut\{[^}]*max-width:min\([0-9]+%,(\d+)px\)/) || [])[1]) + 8);
+
+    const nut = (HTML.match(/body\.choiBan #banNut\{[^}]*\}/) || [''])[0];
+    const nutB = (HTML.match(/body\.choiBan #banNut \.b\{[^}]*\}/) || [''])[0];
+    ok('⭐ hai nút GỢI Ý / BỎ CHỌN xếp DỌC (nhờ vậy mới vừa to vừa hẹp bề ngang)',
+        /flex-direction:column/.test(nut), nut);
+    ok('...bề ngang gọn lại nhường chỗ cho tay bài', /max-width:min\(1[0-6]%,1[0-4]0px\)/.test(nut), nut);
+    ok('⭐ mỗi nút TO HẲN ra (cũ: padding 6px, chữ 11.5px)',
+        /padding:1[0-9]px/.test(nutB) && /font-size:1[3-9]/.test(nutB), nutB);
+    ok('...và ở khổ nằm ngang vẫn to, không thu về cỡ cũ',
+        /body\.choiBan #banNut \.b\{padding:9px/.test(HTML));
+    ok('⚠️ rule màn thấp phải dùng ĐÚNG selector body.choiBan, không thì thua độ ưu tiên',
+        !/\n  #banNut \.b\{/.test(HTML));
+}
+
+// ---------------------------------------------------------------- ✨ KHOE BÀI MẠNH ĐẦU VÁN
+// "khi có bài mạnh hoặc sảnh thì hilight lên lúc đầu cỡ 3 4 giây xong tắt cho người dùng thấy"
+muc('✨ CHIA BÀI XONG: SÁNG BÀI MẠNH MẤY GIÂY');
+{
+    ok('có hàm dò bài mạnh trên tay', /function doBaiManh\(/.test(JS));
+    ok('sáng 3–4 giây rồi tắt', /KHOE_GIAY = 3\.6/.test(JS) && /setTimeout\(function\(\)\{ KHOE_TEN = ''; ve\(\); \}/.test(JS));
+    ok('khoá theo SỐ VÁN (không khoe lại mỗi giây)', /if \(KHOE_VAN === \(v\.so\|\|0\)\) return/.test(JS));
+    ok('vào giữa ván / tới trắng thì không khoe', /v\.ketQua \|\| !la \|\| la\.length < 13/.test(JS));
+    ok('lá được khoe có lớp .manh', /' manh'/.test(JS) && /\.tay \.the\.manh\{/.test(HTML));
+    ok('⚠️ hiệu ứng CHỈ dùng box-shadow, không đụng transform (hàng bài tính từng px)',
+        !/@keyframes khoeNhap\{[^}]*transform/.test(HTML));
+    ok('có băng chữ nói bài mạnh là gì', /✨ Bài bạn có/.test(JS) && /#banGoi\.khoe\{/.test(HTML));
+    ok('...và không đè câu "hết nước đánh" (đầu ván 13 lá thì không thể bí)',
+        JS.indexOf('khoeConHien()') < JS.indexOf('Không còn nước nào đánh được'));
+
+    // ---- chạy THẬT doBaiManh: nạp máy luật + đúng hàm này vào context riêng ----
+    const vm3 = require('vm');
+    const c3 = { console };
+    vm3.createContext(c3);
+    const phanLuat = JS.slice(JS.indexOf('var CSO ='), JS.indexOf('function theLa('));
+    const phanKhoe = JS.slice(JS.indexOf('var SANH_KHOE'), JS.indexOf('var KHOE_VAN'));
+    let loiK = '';
+    try { vm3.runInContext(phanLuat + phanKhoe, c3, { filename: 'khoe.js' }); } catch (e) { loiK = e.message; }
+    ok('nạp được doBaiManh vào context riêng', !loiK, loiK);
+    const dbm = (t) => c3.doBaiManh(t.split(' ')).map(x => x.ten).join(' · ');
+    ok('tứ quý', dbm('Ks Kc Kd Kh 3s 4c 5d 6h 8s 9c 10d Jh Qs').indexOf('TỨ QUÝ K') === 0, dbm('Ks Kc Kd Kh 3s 4c 5d 6h 8s 9c 10d Jh Qs'));
+    ok('3 đôi thông', dbm('3s 3c 4s 4c 5s 5c 8d 10h Qc Ad 7d 9s Jh').indexOf('3 ĐÔI THÔNG') >= 0, dbm('3s 3c 4s 4c 5s 5c 8d 10h Qc Ad 7d 9s Jh'));
+    ok('4 đôi thông được gọi đúng tên (không tách thành 3 đôi)',
+        /4 ĐÔI THÔNG/.test(dbm('3s 3c 4s 4c 5s 5c 6s 6c 8d 10h Qc Ad Jh')), dbm('3s 3c 4s 4c 5s 5c 6s 6c 8d 10h Qc Ad Jh'));
+    // ⚠️ DỰNG TAY BÀI CẨN THẬN: 13 lá rải đều là rất dễ có 10–12 hạng LIỀN NHAU, tức một
+    // sảnh khổng lồ, và bài kiểm sẽ xanh/đỏ vì lý do khác hẳn cái mình định kiểm. Mấy tay dưới
+    // đây đều cố ý CHẶT ĐỨT dãy hạng (bỏ trống 6, 10, A...) cho sảnh ngắn lại.
+    ok('sảnh 6 lá (3-4-5-6-7-8, đứt ở 9-10)',
+        /SẢNH 6 LÁ/.test(dbm('3s 4c 5d 6h 7s 8c Jh Qs Kc 2d 2h 3c 4d')), dbm('3s 4c 5d 6h 7s 8c Jh Qs Kc 2d 2h 3c 4d'));
+    ok('sảnh 5 lá thì THÔI, không khoe (gần nửa số tay có -> hết đáng khoe)',
+        dbm('3s 4c 5d 6h 7s Jh Qs Kc 3c 4d 6s 7d Jd').indexOf('SẢNH') < 0,
+        dbm('3s 4c 5d 6h 7s Jh Qs Kc 3c 4d 6s 7d Jd'));
+    ok('đôi heo', dbm('2d 2h 3s 5c 7d 9h Js Kc 3d 5h 7s 9c Jd') === 'ĐÔI HEO',
+        dbm('2d 2h 3s 5c 7d 9h Js Kc 3d 5h 7s 9c Jd'));
+    ok('heo LẺ thì không khoe (ai chẳng thấy)',
+        dbm('2d 3s 5c 7d 9h Js Kc 3d 5h 7s 9c Jd Qs') === '',
+        dbm('2d 3s 5c 7d 9h Js Kc 3d 5h 7s 9c Jd Qs'));
+    ok('bài thường -> không khoe gì',
+        dbm('3s 3c 4c 5d 7h 7s 8s 9c Jd Jc Qh Ks As') === '',
+        dbm('3s 3c 4c 5d 7h 7s 8s 9c Jd Jc Qh Ks As'));
+    ok('⭐ cùng mớ lá vừa là 3 đôi thông vừa là sảnh -> khoe HÀNG (đáng tiền hơn)',
+        dbm('3s 3c 4s 4c 5s 5c 6d 7h 8s 9c 10d Jh Qs').indexOf('3 ĐÔI THÔNG') === 0,
+        dbm('3s 3c 4s 4c 5s 5c 6d 7h 8s 9c 10d Jh Qs'));
+    ok('không lá nào bị khoe hai lần', (() => {
+        const r = c3.doBaiManh('Ks Kc Kd Kh 3s 3c 4s 4c 5s 5c 2d 2h 7s'.split(' '));
+        const all = r.reduce((a, x) => a.concat(x.la), []);
+        return new Set(all).size === all.length;
+    })());
 }
 
 muc('📵 GHẾ MA: phòng chờ phải nói ai đang mất kết nối');
