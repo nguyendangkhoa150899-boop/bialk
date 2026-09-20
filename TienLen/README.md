@@ -175,15 +175,43 @@ Bài thường (không heo) **không bị chặt** — tứ quý không ăn đư
 
 **Bảng tới trắng** (thưởng = số phần cược mỗi người thua phải trả), xét từ mạnh xuống:
 
-| Bài | Thưởng |
-|---|---|
-| Đồng chất (13 lá cùng chất) | 12 phần |
-| Sảnh rồng (đủ 12 hạng 3→A) | 10 phần |
-| Tứ quý heo | 8 phần |
-| 5 đôi thông | 6 phần |
-| 6 đôi bất kỳ | 4 phần |
+| Bài | Thưởng | Ghi chú |
+|---|---|---|
+| Đồng chất (13 lá cùng chất) | 12 phần | |
+| Sảnh rồng (đủ 12 hạng 3→A) | 10 phần | |
+| Tứ quý heo | 8 phần | |
+| 5 đôi thông | 6 phần | |
+| 6 đôi bất kỳ | 4 phần | |
+| **Ván đầu: hàng chứa 3♠** | **2 phần** | **CHỈ ván đầu của bàn**, và chỉ khi bật luật 3♠ |
 
 ⚠️ Xét theo **thứ tự trên**: 6 đôi **liên tiếp** sẽ tính là *5 đôi thông* (mạnh hơn), không phải *6 đôi*.
+Ai vừa có *6 đôi* vừa có *hàng chứa 3♠* thì ăn theo **6 đôi**.
+
+### ♠️ Ván đầu: hàng chứa 3♠
+
+Luật gốc Ba Bích (trang **Tổng quan**), dòng **đầu tiên** của danh sách tới trắng:
+*"Ván đầu có Hàng chứa Ba bích"*. Trang này **không nằm trong** phần luật chủ server dán
+hôm 20/09 (hôm đó chỉ dán *Truyền thống 1-2-3-4* và *Đếm lá*) nên bị sót tới 20/09 mới bổ sung.
+
+**Vì sao có luật này:** ván đầu người cầm 3♠ **bị buộc** mở bằng bộ có 3♠. Nếu con 3♠ đang nằm
+trong một **hàng** — *tứ quý 3*, *3 đôi thông 3-4-5*, *4 đôi thông 3-4-5-6* — thì mở bài là
+**phải phá hàng**. Luật đền bằng cách cho **thắng trắng** luôn.
+
+Phải là hàng **chứa đúng con 3♠**: có 3♠ lẻ mà hàng nằm ở 7-8-9 thì **không** tính; hàng chứa
+con 3 khác chất (không có 3♠) cũng **không** tính. Xem `hangChua3Bich()` ở `bai.js`.
+
+⚠️ **Số 2 phần cược là do bên mình đặt** — luật gốc chỉ liệt kê trường hợp, **không ghi tiền**.
+Đặt thấp nhất thang vì đây là trường hợp **dễ ra nhất**: đo 300.000 ván thì **2,85%** (1 trong 35)
+tay của người cầm 3♠ có hàng chứa 3♠, dễ gấp ~1,8 lần *6 đôi bất kỳ* (đang ăn 4). Bù lại nó
+**chỉ nổ ở ván đầu của bàn** nên cả buổi nhiều lắm một lần. Muốn đổi thì sửa đúng một số trong
+`TOI_TRANG` ở `bai.js`.
+
+📌 **Hai chỗ bản mình còn LỆCH luật gốc, chủ server chưa chốt:**
+- Luật gốc liệt kê **"Sảnh xám chi"** trong tới trắng — bản mình **chưa có**; ngược lại bản mình
+  có **"Đồng chất 13 lá"** mà luật gốc **không liệt kê**.
+- Luật gốc chỉ ghi *"Lá Ba Bích ưu tiên được đi trước ở ván đầu tiên"*, **không nói** người đi đầu
+  bắt buộc phải đánh bộ có 3♠. Bản mình **có bắt buộc** (chủ server chốt 19/09) — giữ nguyên tới
+  khi có lệnh khác.
 
 ---
 

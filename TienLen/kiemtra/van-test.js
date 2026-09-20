@@ -477,6 +477,43 @@ muc('🎴 TỚI TRẮNG');
     ok('trạng thái về CHỜ để chia ván kế', s.trangThai === 'CHO');
 }
 
+muc('♠️ TỚI TRẮNG: VÁN ĐẦU CÓ HÀNG CHỨA 3♠');
+{
+    // A cầm 3 đôi thông 3-4-5 trong đó có 3♠. B/C/D dựng sao cho KHÔNG ai tới trắng kiểu khác,
+    // không thì chẳng biết ván chốt vì lý do nào.
+    const DAT = [
+        ['3s', '3c', '4s', '4c', '5s', '5c', '6h', '7d', '8d', '9s', '10h', 'Qc', 'Ad'],
+        ['3d', '3h', '4d', '4h', '5d', '5h', '6s', '6c', '6d', '8s', '8c', '8h', '10s'],
+        ['7s', '7c', '7h', '9c', '9d', '9h', '10c', '10d', 'Js', 'Jc', 'Jd', 'Jh', '2s'],
+        ['Qs', 'Qd', 'Qh', 'Ks', 'Kc', 'Kd', 'Kh', 'As', 'Ac', 'Ah', '2c', '2d', '2h'],
+    ];
+    const chiaEp = (b) => { const goc = B.chia; let i = 0; B.chia = () => DAT[i++].slice(); try { return b.vanMoi(0); } finally { B.chia = goc; } };
+
+    const b = ban(4, { cheDo: 'hang', mucCuoc: 1000 });
+    chiaEp(b);
+    const kq = b._trong.van.ketQua;
+    ok('⭐ ván ĐẦU: A có 3 đôi thông chứa 3♠ -> tới trắng ngay',
+        !!kq && !!kq.toiTrang && kq.toiTrang.id === 'A' && kq.toiTrang.ma === 'hang_3bich',
+        JSON.stringify(kq && kq.toiTrang));
+    ok('không ai đánh lá nào', b._trong.van.lichSu.length === 0);
+    ok('thưởng 2 cược: mỗi người trả 2.000', kq.chiTiet.B.toiTrang === -2000, String(kq.chiTiet.B.toiTrang));
+    ok('A ăn 6.000, phế 600 -> +5.400', kq.tien.A === 5400, String(kq.tien.A));
+
+    // ⭐ ván SAU: đã có người về nhất ván trước -> 3♠ không còn đi đầu, luật này tắt
+    const b2 = ban(4, { cheDo: 'hang', mucCuoc: 1000 });
+    b2._trong.nhatTruoc = 'B';
+    chiaEp(b2);
+    const kq2 = b2._trong.van.ketQua;
+    ok('⭐ ván SAU: CÙNG tay bài đó KHÔNG còn tới trắng', !kq2, JSON.stringify(kq2 && kq2.toiTrang));
+    ok('...và ván chạy bình thường, B đi đầu', b2._trong.van.luot === 'B', b2._trong.van.luot);
+
+    // tắt luật 3♠ thì cũng tắt luôn cái này (3♠ hết đi đầu thì có phá hàng đâu mà đền)
+    const b3 = ban(4, { cheDo: 'hang', mucCuoc: 1000, baBichOn: false });
+    chiaEp(b3);
+    ok('tắt luật 3♠ -> không tới trắng kiểu này', !b3._trong.van.ketQua,
+        JSON.stringify(b3._trong.van.ketQua && b3._trong.van.ketQua.toiTrang));
+}
+
 // ---------------------------------------------------------------- nhịp / AFK
 muc('⏰ hết giờ + rớt mạng thì máy đánh giùm');
 {

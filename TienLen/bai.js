@@ -198,8 +198,37 @@ const TOI_TRANG = [
     { ma: 'tu_quy_heo', ten: 'Tứ quý heo', thuong: 8 },
     { ma: 'nam_doi_thong', ten: '5 đôi thông', thuong: 6 },
     { ma: 'sau_doi', ten: '6 đôi bất kỳ', thuong: 4 },
+    // ♠️ VÁN ĐẦU CÓ HÀNG CHỨA 3♠ — luật gốc Ba Bích, trang "Tổng quan", dòng ĐẦU TIÊN của
+    // danh sách tới trắng. Ý nghĩa: ván đầu người cầm 3♠ BỊ BUỘC mở bằng bộ có 3♠; nếu con
+    // 3♠ đang nằm trong một HÀNG (tứ quý 3 / 3-4 đôi thông bắt đầu từ 3) thì mở bài là phải
+    // phá hàng — nên luật đền bằng cách cho thắng trắng luôn.
+    //
+    // ⚠️ SỐ 2 LÀ SỐ DO BÊN MÌNH ĐẶT, luật gốc KHÔNG ghi tiền từng trường hợp. Đặt thấp nhất
+    // thang vì đây là trường hợp DỄ RA NHẤT: đo 300.000 ván thì 2,85% (1 trong 35) tay của
+    // người cầm 3♠ có hàng chứa 3♠ — dễ gấp ~1,8 lần "6 đôi bất kỳ" (đang ăn 4).
+    // Bù lại nó CHỈ nổ ở ván ĐẦU của bàn, nên cả buổi nhiều lắm một lần.
+    { ma: 'hang_3bich', ten: 'Ván đầu: hàng chứa 3♠', thuong: 2, vanDau: true },
 ];
-function toiTrang(tay) {
+/**
+ * Con 3♠ có đang nằm trong một HÀNG trên tay không? Trả kiểu hàng ('tu' | 'thong3' | 'thong4')
+ * hoặc null. Xét từ hàng TO xuống: 4 đôi thông > tứ quý > 3 đôi thông — cùng một con 3♠ có thể
+ * vừa nằm trong tứ quý 3 vừa nằm trong 3 đôi thông, lấy cái to hơn cho đúng tinh thần "phá hàng".
+ */
+function hangChua3Bich(tay) {
+    if (!Array.isArray(tay) || !tay.includes('3s')) return null;
+    for (const kieu of ['thong4', 'tu', 'thong3']) {
+        const h = timHang(tay, kieu);
+        if (h && h.includes('3s')) return kieu;
+    }
+    return null;
+}
+
+/**
+ * Tay bài này có tới trắng không?
+ * @param vanDau true nếu đang là VÁN ĐẦU của bàn (ván mà 3♠ đi trước). Chỉ ván đầu mới xét
+ *        'hang_3bich'; ván sau 3♠ chẳng còn đặc biệt nên không tính.
+ */
+function toiTrang(tay, vanDau) {
     if (!Array.isArray(tay) || tay.length < 12) return null;
     const c = tay.map(doc);
     const dem = {}; for (const x of c) dem[x.so] = (dem[x.so] || 0) + 1;
@@ -217,6 +246,9 @@ function toiTrang(tay) {
         if (hangDoi[i + 4] === hangDoi[i] + 4) return tim('nam_doi_thong');
     }
     if (Object.values(dem).filter(n => n >= 2).length >= 6) return tim('sau_doi');
+    // ⚠️ XÉT CUỐI CÙNG: đây là loại rẻ nhất thang, ai vừa có 6 đôi vừa có hàng chứa 3♠ thì
+    // phải ăn theo cái TO hơn. Đứng trên là ăn hụt tiền người ta.
+    if (vanDau && hangChua3Bich(tay)) return tim('hang_3bich');
     return null;
 }
 
@@ -302,6 +334,6 @@ function doBoBiChat(bo) {
 module.exports = {
     BO52, SO, CHAT, CHAT_KY_TU, HEO, HANG_SO, HANG_CHAT, TOI_TRANG,
     doc, tri, laHeo, ten1, tenBai, xao, boMoi, chia, xepBai,
-    nhanDang, soBo, chatDuoc, danhDuoc, moTaKieu, toiTrang, demHeo,
+    nhanDang, soBo, chatDuoc, danhDuoc, moTaKieu, toiTrang, demHeo, hangChua3Bich,
     timHang, doTay, doBoBiChat,
 };

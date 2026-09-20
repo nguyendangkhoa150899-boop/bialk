@@ -153,10 +153,15 @@ function taoBan(tuyChon = {}) {
         const v = T.van;
         T.trangThai = 'DANG_CHAY';
 
+        // VÁN ĐẦU của bàn = chưa có ai về nhất trước đó. Phải tính TRƯỚC khối tới trắng vì
+        // luật 'hang_3bich' chỉ đúng ở ván đầu (ván đó 3♠ mới bị buộc đi trước). Cùng một
+        // biểu thức với khối "ai đi đầu" ngay dưới — đừng để hai chỗ lệch nhau.
+        const vanDau = !(T.nhatTruoc && thuTu.includes(T.nhatTruoc)) && C.baBichOn;
+
         // ---- TỚI TRẮNG: chia xong là có người thắng luôn, không ai đánh lá nào ----
         if (C.toiTrangOn) {
             for (const id of thuTu) {
-                const tt = B.toiTrang(tay[id]);
+                const tt = B.toiTrang(tay[id], vanDau);
                 if (tt) return chotVan(bayGio, { toiTrang: { id, ...tt } });
             }
         }
@@ -398,7 +403,7 @@ function taoBan(tuyChon = {}) {
         for (const id of v.thuTu) { const p = ai(id); if (p) p.tong += tien[id]; }
         v.ketQua = {
             hang: v.veNhat.slice(), tien, phe, pheTong, chiTiet,
-            toiTrang: tt ? { id: tt.id, ten: tt.ten } : null,
+            toiTrang: tt ? { id: tt.id, ten: tt.ten, ma: tt.ma, thuong: tt.thuong } : null,
             cong: [...cong],
             chatHeo: (v.chatHeo || []).slice(),
             // bài của mọi người lộ hết khi chốt ván (web vẽ ngửa)

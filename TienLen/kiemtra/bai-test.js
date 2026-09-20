@@ -145,6 +145,54 @@ muc('TỚI TRẮNG');
     ok('mỗi kiểu tới trắng có thưởng > 0', B.TOI_TRANG.every(x => x.thuong > 0));
 }
 
+// ---------------------------------------------------------------- ♠️ hàng chứa 3 bích
+// Luật gốc Ba Bích (trang Tổng quan), dòng ĐẦU của danh sách tới trắng: "Ván đầu có Hàng
+// chứa Ba bích". Ván đầu người cầm 3♠ bị BUỘC mở bằng bộ có 3♠; nếu 3♠ đang nằm trong một
+// HÀNG thì mở bài là phải phá hàng -> luật đền bằng cách cho thắng trắng luôn.
+muc('♠️ VÁN ĐẦU: HÀNG CHỨA 3♠');
+{
+    const v1 = (s) => B.toiTrang(s.split(' '), true);      // ván đầu
+    const v2 = (s) => B.toiTrang(s.split(' '), false);     // ván sau
+    const TU_QUY_3 = '3s 3c 3d 3h 5s 6c 7d 8h 9s 10c Jd Qh Ks';
+    const THONG3 = '3s 3c 4s 4c 5s 5c 6h 7d 8d 9s 10h Qc Ad';
+    const THONG4 = '3s 3c 4s 4c 5s 5c 6s 6c 8d 9h 10c Jd Qh';
+
+    ok('tứ quý 3 (có 3♠) -> tới trắng', v1(TU_QUY_3).ma === 'hang_3bich', JSON.stringify(v1(TU_QUY_3)));
+    ok('3 đôi thông 3-4-5 (có 3♠) -> tới trắng', v1(THONG3).ma === 'hang_3bich', JSON.stringify(v1(THONG3)));
+    ok('4 đôi thông 3-4-5-6 (có 3♠) -> tới trắng', v1(THONG4).ma === 'hang_3bich', JSON.stringify(v1(THONG4)));
+
+    ok('⭐ VÁN SAU thì KHÔNG tính (3♠ hết đặc biệt)', v2(TU_QUY_3) === null && v2(THONG3) === null,
+        JSON.stringify([v2(TU_QUY_3), v2(THONG3)]));
+
+    // ⚠️ phải là hàng CHỨA 3♠, không phải "có 3♠ và có hàng ở đâu đó"
+    ok('có 3♠ lẻ + hàng ở chỗ khác (7-8-9) -> KHÔNG tính',
+        v1('3s 4d 5c 7s 7c 8s 8c 9s 9c Jd Qh Ks Ad') === null,
+        JSON.stringify(v1('3s 4d 5c 7s 7c 8s 8c 9s 9c Jd Qh Ks Ad')));
+    ok('hàng chứa 3 nhưng KHÔNG phải 3♠ -> không tính',
+        v1('3c 3d 4s 4c 5s 5c 6h 7d 8d 9s 10h Qc Ad') === null,
+        JSON.stringify(v1('3c 3d 4s 4c 5s 5c 6h 7d 8d 9s 10h Qc Ad')));
+    // ⚠️ tay này phải DƯỚI 12 hạng, không thì nó thành SẢNH RỒNG và bài kiểm xanh nhầm lý do
+    ok('đôi 3 thường (không thành hàng) -> không tính',
+        v1('3s 3c 5d 5h 7s 8c 9d 10h Js Qc Kd Ah 4s') === null,
+        JSON.stringify(v1('3s 3c 5d 5h 7s 8c 9d 10h Js Qc Kd Ah 4s')));
+
+    // thang giá: cái này RẺ NHẤT nên ai có cả hai phải ăn theo cái to hơn
+    ok('⭐ vừa 6 đôi vừa có hàng chứa 3♠ -> ăn theo 6 ĐÔI (to hơn)',
+        v1('3s 3c 4s 4c 5s 5c 7s 7c 9s 9c Js Jc Kd').ma === 'sau_doi',
+        JSON.stringify(v1('3s 3c 4s 4c 5s 5c 7s 7c 9s 9c Js Jc Kd')));
+    ok('...và nó là mức thưởng THẤP NHẤT thang',
+        B.TOI_TRANG.find(x => x.ma === 'hang_3bich').thuong ===
+        Math.min(...B.TOI_TRANG.map(x => x.thuong)));
+    ok('chỉ mình nó mang cờ vanDau', B.TOI_TRANG.filter(x => x.vanDau).length === 1);
+
+    ok('hangChua3Bich trả đúng kiểu hàng',
+        B.hangChua3Bich(TU_QUY_3.split(' ')) === 'tu' &&
+        B.hangChua3Bich(THONG3.split(' ')) === 'thong3' &&
+        B.hangChua3Bich(THONG4.split(' ')) === 'thong4',
+        [B.hangChua3Bich(TU_QUY_3.split(' ')), B.hangChua3Bich(THONG3.split(' ')), B.hangChua3Bich(THONG4.split(' '))].join('/'));
+    ok('không cầm 3♠ -> null', B.hangChua3Bich('3c 3d 3h 4s 5c 6d 7h 8s 9c 10d Jh Qs Kc'.split(' ')) === null);
+}
+
 // ---------------------------------------------------------------- thối 2
 muc('đếm heo còn trên tay (thối 2)');
 {
