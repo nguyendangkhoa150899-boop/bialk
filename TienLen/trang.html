@@ -338,7 +338,13 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
 /* ---------- tay bài của mình ---------- */
 /* Xoè chồng: mỗi lá đè lên lá trước ~42% bề ngang. Lá sau vẽ đè lên lá trước (thứ tự DOM),
    nên phần còn thấy của mỗi lá là MÉP TRÁI — đúng chỗ in số + chất. Rê/chọn thì lá nhảy lên trên. */
-.tay{display:flex;justify-content:center;flex-wrap:nowrap;margin-top:10px;
+/* ⚠️ PHẢI CÓ flex:1 1 auto + min-width:0. .tay là flex item trong .tayHang; KHÔNG ghi flex
+   thì nó co theo NỘI DUNG (shrink-to-fit), mà canhTay() lại đo đúng clientWidth đó để quyết
+   độ chồng -> vòng luẩn quẩn: chồng chặt thì hàng hẹp lại, hàng hẹp lại thì tính ra phải chồng
+   chặt hơn nữa. Kết quả bài chồng sát hơn mức cần dù hai bên còn thừa cả trăm px.
+   Đo bằng trình duyệt thật (kiemtra/chup.js) mới lòi ra: điện thoại ngang lộ ra 29px / lá 51px,
+   trong khi thừa chỗ. Có flex:1 thì .tay ăn trọn dải, canhTay() mới thấy đúng chỗ trống. */
+.tay{display:flex;justify-content:center;flex-wrap:nowrap;margin-top:10px;flex:1 1 auto;min-width:0;
   min-height:calc(var(--lbt)*1.9);padding:0 4px}
 .tay .the{cursor:pointer;position:relative;margin-top:22px;margin-left:calc(var(--lbt) * -0.42);/*canhTay() ghi de*/
   transition:transform .14s cubic-bezier(.2,1.4,.4,1), box-shadow .14s ease}

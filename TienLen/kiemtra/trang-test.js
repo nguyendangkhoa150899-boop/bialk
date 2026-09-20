@@ -725,6 +725,17 @@ muc('🃏 LÁ BÀI TO RA MÀ VẪN LỘ NHIỀU HƠN');
         /body\.choiBan #banNut \.b\{padding:9px/.test(HTML));
     ok('⚠️ rule màn thấp phải dùng ĐÚNG selector body.choiBan, không thì thua độ ưu tiên',
         !/\n  #banNut \.b\{/.test(HTML));
+
+    // ⚠️ BẪY ĐÃ DÍNH 20/09, chỉ lòi ra khi CHỤP MÀN HÌNH THẬT (kiemtra/chup.js):
+    // .tay là flex item trong .tayHang. Không ghi flex thì nó co theo NỘI DUNG, mà canhTay()
+    // lại đo đúng clientWidth đó để quyết độ chồng -> vòng luẩn quẩn: chồng chặt thì hàng hẹp
+    // lại, hàng hẹp lại thì tính ra phải chồng chặt hơn nữa. Bài chồng sát hơn mức cần dù hai
+    // bên còn thừa cả trăm px. Đo thật: điện thoại ngang chỉ lộ 29px trên lá 51px.
+    ok('⭐ .tay phải ĂN TRỌN dải bài (flex:1), không co theo nội dung',
+        /\.tay\{[^}]*flex:1 1 auto/.test(HTML), (HTML.match(/\n\.tay\{[^}]*\}/) || [''])[0]);
+    ok('...kèm min-width:0 để flex item được phép hẹp hơn nội dung',
+        /\.tay\{[^}]*min-width:0/.test(HTML));
+    ok('...và .tayHang vẫn là flex (chỗ .tay nằm trong)', /\.tayHang\{display:flex/.test(HTML));
 }
 
 // ---------------------------------------------------------------- ✨ KHOE BÀI MẠNH ĐẦU VÁN

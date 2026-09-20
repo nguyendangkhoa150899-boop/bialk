@@ -19,3 +19,4 @@ BotDoMin/assets/itemimage/*.webp
 # Ban sao cua .env (chua mat khau SFTP that) - khong bao gio commit
 .env.*
 *.env.bak*
+TienLen/kiemtra/anh/
