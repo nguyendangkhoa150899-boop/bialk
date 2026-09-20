@@ -290,14 +290,38 @@ nhất bàn không tổng-bằng-0. `ketQua.pheTong` đúng bằng phần hụt 
 
 1. **Vốn tối thiểu**, kiểm **lại trước mỗi ván**. Hệ số **khác nhau theo chế độ**:
 
-   | Chế độ | Hệ số | Thua đậm nhất một ván (lý thuyết) |
-   |---|---|---|
-   | `hang` | **30×** | ~11 cược (bét cóng −2, nhốt 4 đôi thông + tứ quý + heo, ×2) |
-   | `anhet` | **120×** | ~110 cược (cóng: 13 lá ×2 = 26, nhốt tối đa 42 cược ×2 = 84) |
+   | Chế độ | Hệ số | Thua tối đa một ván | Tay tệ nhất |
+   |---|---|---|---|
+   | `hang` | **15×** | **14 cược** = (bét 1 + nhốt 6) × 2 cóng | 2 tứ quý + cả 4 heo |
+   | `anhet` | **120×** | **110 cược** = (13 lá + nhốt 42) × 2 cóng | 3 tứ quý + heo đỏ |
 
-   Để chung 30× thì phòng đếm lá có ngày người chơi **thua nhiều hơn số tiền họ có** → ví bị kẹp
-   về 0 và **người thắng** lãnh đủ (không được trả hết). Đổi mức cược (kể cả do vote) là đổi luôn
-   vốn tối thiểu — `vanKe()` áp vote **trước** rồi mới mời người thiếu vốn ra.
+   📐 Hai con số "thua tối đa" là **trần tuyệt đối**, lấy bằng cách **quét cạn 3.598.180 hình dáng
+   tay 13 lá** (`TienLen/kiemtra/do-von.js`), không phải ước lượng. Bộ kiểm canh bất biến
+   **hệ số ≥ thua tối đa** chứ không ghim con số — chỉnh cược thoải mái, hạ hệ số xuống dưới mức
+   an toàn thì nó đỏ.
+
+   ⚠️ **Hai tay tệ nhất KHÁC NHAU theo chế độ**, đừng lấy một tay xài chung: đếm lá tứ quý 12 /
+   heo đỏ 6 → gom **tứ quý** mới đắt; truyền thống tứ quý chỉ 1,5 mà heo đỏ 1 **mỗi lá** → ôm đủ
+   **4 con heo** lời hơn.
+
+   ⚠️ `hang` **trước để 30×** — hơn gấp đôi mức cần, đệm thừa 16 cược. Chủ server báo
+   20/09 là nó **khoá cửa oan**: bàn 80.000 đòi 2.400.000 trong khi thua đậm nhất chỉ 1.120.000.
+   Hạ về **15×** (14 + 1 đệm). `anhet` **giữ 120×** — chỗ dư chỉ còn 9%, hạ nữa là vỡ.
+
+   Vì sao phải có sàn: thua quá số tiền trong ví thì `traTien()` **kẹp ví về 0** và
+   **người thắng không được trả đủ** — cả bàn chịu thiệt vì một người vào thiếu vốn. Đổi mức cược
+   (kể cả do vote) là đổi luôn vốn tối thiểu — `vanKe()` áp vote **trước** rồi mới mời
+   người thiếu vốn ra.
+
+   🔒 **Không cho vote lên mức chính mình không đủ vốn.** Ngồi một mình thì `canPhieu()`
+   = 1 → tự vote tự thắng → nâng cược lên mức mình không kham nổi → ván sau bị mời ra **bằng
+   phiếu của chính mình**, rồi đứng ngoài không vào lại được (chủ server dính 20/09).
+
+   🔄 **Phòng dựng sẵn hết người thì trả cược về mức gốc.** Phòng dựng sẵn **không bao giờ bị xoá**
+   (để sảnh không trắng), nên nếu kẹt ở mức vote lên thì kẹt **vĩnh viễn**: một phòng 0/4 người,
+   cần vốn 2,4 triệu, cả sảnh đứng nhìn. `taoPhong()` ghi lại `p.goc`,
+   `donPhongTrong()` thấy phòng rỗng lệch mức gốc thì đặt lại và dọn phiếu treo.
+   Phòng **người chơi tự tạo** thì không cần — nó bị xoá hẳn.
 2. `traTien()` chạy **đúng một lần** mỗi ván (khoá bằng `daTraVan = số ván`) — gọi từ cả `nhip()`
    lẫn ngay sau nước đánh, gọi thừa bao nhiêu lần cũng vô hại.
 3. **Lưới an toàn**: nếu ví ai đó vẫn không đủ trả, kẹp lại đúng số họ có, cắt phần ăn của người

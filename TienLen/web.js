@@ -28,12 +28,22 @@ const GIAY_DUOI_MAC_DINH = 70;
 // cầm (có khi 13 lá), nhãn "THỐI ...", bảng tiền, câu chọc — mà 2,4 giây đầu còn bị chữ
 // "VỀ NHẤT" che giữa bàn. 5 giây là chưa kịp đọc đã chia ván mới (chủ server báo 20/09).
 const GIAY_XEM_KET_MAC_DINH = 8;
-// Vốn tối thiểu = HỆ SỐ × giá 1 cược. Hai chế độ hai hệ số vì thua tối đa một ván khác nhau XA:
-//   · 'hang'  thua đậm nhất ≈ 11 cược (bét cóng −2, nhốt 4 đôi thông + tứ quý + heo ×2) -> 30× là thừa sức.
-//   · 'anhet' thua đậm nhất ≈ 110 cược (cóng: 13 lá ×2 = 26, nhốt tối đa 42 cược ×2 = 84) -> phải 120×.
-// Để chung 30× thì phòng đếm lá có ngày người chơi thua nhiều hơn số tiền họ có, ví bị kẹp
-// về 0 và NGƯỜI THẮNG lãnh đủ (không được trả hết). Xem traTien().
-const VON_HE_SO = { hang: 30, anhet: 120 };
+// Vốn tối thiểu = HỆ SỐ × giá 1 cược. Lý do phải có: thua quá số tiền trong ví thì traTien()
+// kẹp ví về 0 và NGƯỜI THẮNG KHÔNG ĐƯỢC TRẢ ĐỦ — cả bàn chịu thiệt vì một người vào thiếu vốn.
+//
+// 📐 HAI SỐ DƯỚI ĐÂY LÀ THUA TỐI ĐA THẬT, QUÉT CẠN 3.598.180 hình dáng tay 13 lá (20/09),
+//    không phải ước lượng:
+//      · 'hang'  nhốt tối đa  6 cược + nền bét 1, CÓNG ×2  =>  14 cược
+//      · 'anhet' nhốt tối đa 42 cược + 13 lá     , CÓNG ×2  => 110 cược
+//    (tay tệ nhất: tứ quý 3 + tứ quý 4 + tứ quý 5 + heo)
+//
+// ⚠️ 'hang' TRƯỚC ĐỂ 30× — hơn gấp đôi mức cần, đệm thừa 16 cược. Chủ server báo 20/09 là
+//    nó khoá cửa oan: bàn 80.000 đòi 2.400.000 trong khi thua đậm nhất chỉ 1.120.000.
+//    Hạ về 15× = thua tối đa 14 + 1 cược đệm. KHÔNG hạ thấp hơn nữa.
+// ⚠️ 'anhet' GIỮ NGUYÊN 120×. Thua tối đa đã là 110 — chỗ dư chỉ còn 9%, hạ nữa là vỡ.
+const VON_HE_SO = { hang: 15, anhet: 120 };
+// Thua tối đa một ván (đơn vị CƯỢC) — dùng cho bộ kiểm canh chừng hai số trên.
+const THUA_TOI_DA = { hang: 14, anhet: 110 };
 const MUC_CUOC_MAC_DINH = 1000;
 
 // THANG MỨC CƯỢC chủ server chốt 20/09. Người chơi chỉ được chọn trong thang này (lúc tạo
@@ -475,6 +485,16 @@ function taoTienLen(deps) {
                 const thang = MUC_CUOC_CHO_PHEP[phong.cauHinh.cheDo] || [];
                 if (!thang.includes(m)) return loi(400, 'Mức cược phải nằm trong: ' + thang.map(x => x.toLocaleString('vi-VN')).join(' · '));
                 if (m === phong.cauHinh.mucCuoc) return loi(400, 'Bàn đang chơi đúng mức đó rồi');
+                // ⚠️ KHÔNG CHO TỰ KHOÁ CỬA NHÀ MÌNH. Ngồi một mình thì cần đúng 1 phiếu là
+                // vote thắng -> nâng cược lên mức chính mình không đủ vốn -> ván sau bị mời ra
+                // bằng phiếu của chính mình, rồi đứng ngoài không vào lại được. Chủ server
+                // dính đúng cảnh này 20/09.
+                const vonMoi = m * (VON_HE_SO[phong.cauHinh.cheDo] || 30);
+                const uV = layNguoi(toi);
+                if (!uV || (uV.points || 0) < vonMoi)
+                    return loi(400, 'Bạn không đủ vốn cho mức ' + m.toLocaleString('vi-VN') +
+                        ' (cần ' + vonMoi.toLocaleString('vi-VN') + ', đang có ' +
+                        (((uV && uV.points) || 0)).toLocaleString('vi-VN') + ') — nâng lên là tự đá mình ra');
                 // vote mức KHÁC với vote đang mở -> mở lại từ đầu, người đổi ý tính là phiếu đầu
                 if (!phong.vote || phong.vote.mucCuoc !== m) phong.vote = { mucCuoc: m, boi: toi, dong: new Set() };
                 phong.vote.dong.add(toi);
@@ -561,7 +581,10 @@ function taoSanh(deps, ds) {
         const may = taoTienLen(deps);
         const r = may.quanLy.datCauHinh({ cheDo, mucCuoc: m });
         if (r.error) return r;
-        const p = { ma: 'p' + (++dem), cheDo, boi: boiAi || null, luc: Date.now(), may };
+        // goc = mức cược LÚC DỰNG. Phòng dựng sẵn bị vote đổi cược thì hết người phải trả về
+        // mức này (xem donPhongTrong), không thì sảnh đọng lại một phòng giá trên trời mà
+        // không ai vào nổi, và nó KHÔNG bao giờ tự xoá vì phòng dựng sẵn được giữ mãi.
+        const p = { ma: 'p' + (++dem), cheDo, boi: boiAi || null, luc: Date.now(), goc: { cheDo, mucCuoc: m }, may };
         dsPhong.push(p);
         return p;
     }
@@ -578,8 +601,24 @@ function taoSanh(deps, ds) {
     function donPhongTrong() {
         for (let k = dsPhong.length - 1; k >= 0; k--) {
             const p = dsPhong[k];
-            if (!p.boi) continue;                                   // phòng dựng sẵn: giữ
-            if (p.may.phong.ghe.some(Boolean)) continue;            // còn người ngồi: giữ
+            const rong = !p.may.phong.ghe.some(Boolean);
+            if (!p.boi) {
+                // 🔄 PHÒNG DỰNG SẴN KHÔNG XOÁ, nhưng hết người thì TRẢ VỀ MỨC CƯỢC GỐC.
+                // Không có bước này thì một ván vote nâng cược là phòng kẹt ở mức đó VĨNH VIỄN:
+                // chủ server nâng lên 80.000 (cần vốn 2,4 triệu), thoát ra, rồi đứng ngoài nhìn
+                // cái phòng 0/4 người mà không ai vào nổi (báo 20/09).
+                if (rong && p.goc && p.may.phong.cauHinh.mucCuoc !== p.goc.mucCuoc) {
+                    const cu = p.may.phong.cauHinh.mucCuoc;
+                    const r = p.may.quanLy.datCauHinh({ mucCuoc: p.goc.mucCuoc });
+                    if (!r.error) {
+                        p.may.phong.vote = null;
+                        deps.ghiLog && deps.ghiLog('[TIẾN LÊN] Phòng ' + p.ma + ' hết người — trả cược về mức gốc ' +
+                            cu.toLocaleString('vi-VN') + ' -> ' + p.goc.mucCuoc.toLocaleString('vi-VN'));
+                    }
+                }
+                continue;
+            }
+            if (!rong) continue;                                    // còn người ngồi: giữ
             if (Date.now() - p.luc < 30000) continue;               // mới tạo 30 giây: chờ người tạo vào
             dsPhong.splice(k, 1);
         }
@@ -666,6 +705,6 @@ function taoSanh(deps, ds) {
 
 module.exports = {
     taoTienLen, taoSanh, VON_HE_SO, PHONG_MAC_DINH, MUC_CUOC_CHO_PHEP,
-    TOI_DA_PHONG, TEN_CHE_DO, MO_CHE_DO, GIAY_XEM_KET_MAC_DINH,
+    TOI_DA_PHONG, TEN_CHE_DO, MO_CHE_DO, GIAY_XEM_KET_MAC_DINH, THUA_TOI_DA,
     GIAY_AFK_MAC_DINH, GIAY_DUOI_MAC_DINH,
 };

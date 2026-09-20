@@ -3,7 +3,7 @@
 // Chạy: node TienLen/kiemtra/web-test.js
 'use strict';
 const { taoTienLen, taoSanh, VON_HE_SO, MUC_CUOC_CHO_PHEP, TOI_DA_PHONG,
-    GIAY_AFK_MAC_DINH, GIAY_DUOI_MAC_DINH } = require('../web.js');
+    GIAY_AFK_MAC_DINH, GIAY_DUOI_MAC_DINH, THUA_TOI_DA, PHONG_MAC_DINH } = require('../web.js');
 const B = require('../bai.js');
 
 let P = 0, F = 0;
@@ -60,14 +60,41 @@ muc('cổng vào bàn');
 // Hệ số vốn KHÁC NHAU theo chế độ: 'anhet' thua tối đa một ván nặng gấp ~10 lần 'hang'
     // (cóng 13 lá ×2 + nhốt 4 đôi thông/tứ quý ×2), để chung 30× là có ngày vỡ ví.
     ok('vốn tối thiểu = hệ số theo chế độ × mức cược', s.vonToiThieu === s.cauHinh.mucCuoc * VON_HE_SO.hang);
-    ok('hệ số vốn: hạng 30× · đếm lá 120×', VON_HE_SO.hang === 30 && VON_HE_SO.anhet === 120, JSON.stringify(VON_HE_SO));
+    // ⚠️ ĐỪNG ghim con số. Ghim số thì mỗi lần chỉnh cược là phải sửa bài kiểm, mà sửa bài
+    // kiểm theo thì nó hết canh được gì. Kiểm ĐÚNG CÁI PHẢI ĐÚNG: vốn tối thiểu KHÔNG ĐƯỢC
+    // THẤP HƠN thua tối đa một ván — thấp hơn là có ngày ví kẹp về 0 và người thắng lãnh đủ.
+    for (const cd of ['hang', 'anhet'])
+        ok('⭐ vốn tối thiểu (' + cd + ' ' + VON_HE_SO[cd] + '×) đủ trả thua tối đa (' + THUA_TOI_DA[cd] + ' cược)',
+            VON_HE_SO[cd] >= THUA_TOI_DA[cd], VON_HE_SO[cd] + ' < ' + THUA_TOI_DA[cd]);
+    ok('...nhưng cũng đừng đệm quá tay (khoá cửa oan): dưới 2 lần mức cần',
+        VON_HE_SO.hang < THUA_TOI_DA.hang * 2 && VON_HE_SO.anhet < THUA_TOI_DA.anhet * 2,
+        JSON.stringify(VON_HE_SO));
+    // THUA_TOI_DA phải khớp máy tiền thật, không thì hai số trên canh nhầm. Quét cạn ở
+    // scratchpad/do-von.js (3.598.180 hình dáng tay); đây kiểm lại mấy mốc chốt.
+    {
+        const Vn = require('../van.js'), Bn = require('../bai.js');
+        const gia = (la, cd) => Bn.doTay(la).muc.reduce((t, m) => t + (Vn.BANG_CUOC[cd][m] || 0), 0);
+        // ⚠️ HAI CHẾ ĐỘ HAI TAY TỆ NHẤT KHÁC NHAU, đừng lấy một tay xài chung (đã dính 20/09).
+        // Bảng giá lệch nhau: đếm lá tứ quý 12 / heo đỏ 6 -> gom TỨ QUÝ mới đắt; truyền thống
+        // tứ quý chỉ 1,5 mà heo đỏ 1 MỖI LÁ -> ôm đủ 4 con heo lời hơn.
+        const teAnhet = '3s 3c 3d 3h 4s 4c 4d 4h 5s 5c 5d 5h 2d'.split(' ');   // 3 tứ quý + 1 heo đỏ
+        const teHang = '3s 3c 3d 3h 4s 4c 4d 4h 5s 2d 2h 2s 2c'.split(' ');    // 2 tứ quý + cả 4 heo
+        ok('tay tệ nhất ĐẾM LÁ = 3 tứ quý + heo đỏ -> 42 cược', gia(teAnhet, 'anhet') === 42, String(gia(teAnhet, 'anhet')));
+        ok('tay tệ nhất TRUYỀN THỐNG = 2 tứ quý + 4 heo -> 6 cược', gia(teHang, 'hang') === 6, String(gia(teHang, 'hang')));
+        ok('...quy ra thua tối đa đếm lá = (13 lá + 42) × 2 cóng',
+            (13 + gia(teAnhet, 'anhet')) * Vn.CONG_NHAN === THUA_TOI_DA.anhet);
+        ok('...truyền thống = (1 bét + 6) × 2 cóng',
+            (1 + gia(teHang, 'hang')) * Vn.CONG_NHAN === THUA_TOI_DA.hang,
+            String((1 + gia(teHang, 'hang')) * Vn.CONG_NHAN));
+    }
     ok('chế độ mặc định: truyền thống 1-2-3-4', s.cauHinh.cheDo === 'hang' && /Truyền thống/.test(s.cheDoTen), s.cheDoTen);
     ok('4 luật nâng cao bật sẵn', s.cauHinh.toiTrangOn && s.cauHinh.chatHeoOn && s.cauHinh.thoiHeoOn && s.cauHinh.baBichOn);
 
     const r1 = goi(tl, '/ngoi', { ghe: 0 }, 'CHUALK');
     ok('chưa liên kết nhân vật -> chặn', r1.ma === 400 && /liên kết/.test(r1.j.error), r1.j.error);
     const r2 = goi(tl, '/ngoi', { ghe: 0 }, 'NGHEO');
-    ok('không đủ vốn -> chặn, câu báo nói rõ cần bao nhiêu', r2.ma === 400 && /30.000/.test(r2.j.error), r2.j.error);
+    ok('không đủ vốn -> chặn, câu báo nói rõ cần bao nhiêu',
+        r2.ma === 400 && r2.j.error.indexOf((1000 * VON_HE_SO.hang).toLocaleString('vi-VN')) >= 0, r2.j.error);
     ok('người không có ví -> chặn', goi(tl, '/ngoi', { ghe: 0 }, 'LA').ma === 400);
 }
 
@@ -546,6 +573,66 @@ muc('🧹 phòng rỗng thì tự xoá');
     sanh.nhip();
     ok('phòng mới tạo có 30 giây ân hạn, không bị dọn ngay', sanh.phong.length === soNen + 1,
         sanh.phong.length + ' / ' + (soNen + 1));
+}
+
+// ---------------------------------------------------------------- 🔒 TỰ KHOÁ CỬA NHÀ MÌNH (20/09)
+// Chủ server: "hiện tại mình nâng xong thoát ra và không vào được nè". Ngồi một mình thì
+// canPhieu() = 1 -> tự vote tự thắng, nâng cược lên mức chính mình không đủ vốn.
+muc('🔒 không cho vote lên mức chính mình không đủ vốn');
+{
+    const { tl, vi } = dung();
+    tl.quanLy.datCauHinh({ cheDo: 'hang', mucCuoc: 10000 });
+    vi.A = 400000;                                   // đủ cho 10.000 (15×=150.000), thiếu cho 40.000 (600.000)
+    goi(tl, '/ngoi', { ghe: 0 }, 'A');
+    const r = goi(tl, '/vote', { mucCuoc: 40000 }, 'A');
+    ok('⭐ vote lên mức mình không đủ vốn -> CHẶN', r.ma === 400, r.ma + ' ' + JSON.stringify(r.j.error));
+    ok('...và nói rõ vì sao', /không đủ vốn|tự đá mình ra/.test(r.j.error || ''), r.j.error);
+    ok('...bàn vẫn ở mức cũ', tl.phong.cauHinh.mucCuoc === 10000, String(tl.phong.cauHinh.mucCuoc));
+    ok('...không để lại phiếu treo', !tl.phong.vote);
+    const r2 = goi(tl, '/vote', { mucCuoc: 20000 }, 'A');
+    ok('mức mình ĐỦ vốn thì vẫn vote bình thường', r2.ma === 200, JSON.stringify(r2.j.error));
+    ok('...ngồi một mình thì đủ phiếu, áp luôn', tl.phong.cauHinh.mucCuoc === 20000, String(tl.phong.cauHinh.mucCuoc));
+}
+
+// ---------------------------------------------------------------- 🔄 PHÒNG DỰNG SẴN VỀ MỨC GỐC
+// Phòng dựng sẵn KHÔNG bao giờ bị xoá, nên nếu nó kẹt ở mức cược vote lên thì kẹt VĨNH VIỄN.
+// Ảnh chủ server: phòng "Truyền thống · 80.000" 0/4 người, cần vốn 2,4 triệu, cả sảnh đứng nhìn.
+muc('🔄 phòng dựng sẵn hết người thì trả cược về mức gốc');
+{
+    const sanh = taoSanh({
+        layNguoi: () => ({ name: 'An', points: 100000000, ingameName: 'An' }),
+        congVi: () => { }, laAdmin: () => false, tenCua: (id) => id, ghiLog: () => { }, giayDuoi: -1,
+    });
+    const p0 = sanh.phong[0];
+    const goc = p0.may.phong.cauHinh.mucCuoc;
+    ok('phòng dựng sẵn có ghi mức cược GỐC', !!p0.goc && p0.goc.mucCuoc === goc, JSON.stringify(p0.goc));
+
+    const g = (duong, than, toi) => { let r = null; sanh.xuLy({ path: duong, method: than ? 'POST' : 'GET', body: than || {}, userId: toi }, null, (res, ma, j) => { r = { ma, j }; }); return r; };
+    g('/' + p0.ma + '/ngoi', { ghe: 0 }, 'A');
+    const rv = g('/' + p0.ma + '/vote', { mucCuoc: 80000 }, 'A');
+    ok('nâng cược lên 80.000 (ví to nên vote được)', rv.ma === 200 && p0.may.phong.cauHinh.mucCuoc === 80000,
+        rv.ma + ' ' + p0.may.phong.cauHinh.mucCuoc);
+    g('/' + p0.ma + '/roi', {}, 'A');
+    ok('người cuối rời bàn', !p0.may.phong.ghe.some(Boolean));
+    sanh.nhip();
+    ok('⭐ hết người -> TỤT LẠI mức gốc, không kẹt 80.000 vĩnh viễn',
+        p0.may.phong.cauHinh.mucCuoc === goc, String(p0.may.phong.cauHinh.mucCuoc));
+    ok('...phòng vẫn còn trong sảnh (dựng sẵn thì không xoá)', sanh.phong.indexOf(p0) >= 0);
+    ok('...phiếu treo cũng bị dọn', !p0.may.phong.vote);
+}
+{
+    // còn người ngồi thì ĐỪNG đụng vào mức cược của người ta
+    const sanh = taoSanh({
+        layNguoi: () => ({ name: 'An', points: 100000000, ingameName: 'An' }),
+        congVi: () => { }, laAdmin: () => false, tenCua: (id) => id, ghiLog: () => { },
+    });
+    const p0 = sanh.phong[0];
+    const g = (duong, than, toi) => { let r = null; sanh.xuLy({ path: duong, method: than ? 'POST' : 'GET', body: than || {}, userId: toi }, null, (res, ma, j) => { r = { ma, j }; }); return r; };
+    g('/' + p0.ma + '/ngoi', { ghe: 0 }, 'A');
+    g('/' + p0.ma + '/vote', { mucCuoc: 80000 }, 'A');
+    sanh.nhip(); sanh.nhip();
+    ok('còn người ngồi -> GIỮ NGUYÊN mức họ vừa vote', p0.may.phong.cauHinh.mucCuoc === 80000,
+        String(p0.may.phong.cauHinh.mucCuoc));
 }
 
 console.log('\n🌐 MÁY CHỦ TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
