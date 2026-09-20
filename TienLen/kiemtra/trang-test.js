@@ -680,6 +680,16 @@ muc('💥 CHẶT: trừ tiền tại chỗ thì phải THẤY nó trừ');
     ok('dòng thông báo nói rõ ai chặt ai, lấy bao nhiêu', JS.indexOf("' chặt ' + tenCua(cm.bi) + ' — lấy ngay '") >= 0);
 }
 
+muc('📵 GHẾ MA: phòng chờ phải nói ai đang mất kết nối');
+{
+    // Không nói ra thì cả phòng ngồi đợi một cái tên không bao giờ bấm "sẵn sàng".
+    ok('ghế phòng chờ hiện nhãn mất kết nối', /g\.rot/.test(JS) && /📵 mất kết nối/.test(JS));
+    ok('...kèm đếm ngược còn mấy giây nữa thì máy chủ nhấc ra', /g\.giayDuoi/.test(JS) && /ra ghế sau/.test(JS));
+    ok('...dùng đúng kiểu .tt.afk đã có, không đẻ màu mới', /\.tt\.afk\{/.test(HTML));
+    ok('nhãn mất kết nối ĐÈ nhãn sẵn sàng (đang rớt thì chữ "sẵn sàng" là dối)',
+        JS.indexOf('📵 mất kết nối') < JS.indexOf("✅ sẵn sàng"));
+}
+
 muc('📱 MOBILE: bắt xoay ngang + chặn vuốt trôi trang');
 {
     ok('chặn nảy mép / kéo-xuống-tải-lại', /html\{overscroll-behavior:none/.test(HTML) && /overscroll-behavior:none;touch-action:manipulation/.test(HTML));

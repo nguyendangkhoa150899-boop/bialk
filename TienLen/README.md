@@ -109,6 +109,15 @@ bao giờ bê kiểu xác thực đó lên prod.
 
 5. Hết giờ suy nghĩ (**25 giây**) hoặc rớt mạng: máy đánh giùm — đang theo thì **bỏ lượt**,
    đang mở lượt thì **đánh lá nhỏ nhất**.
+   **📵 Đóng tab quá 70 giây thì bị NHẤC KHỎI GHẾ** (`duoiNguoiRot`, chạy mỗi nhịp,
+   **kể cả lúc chưa mở bàn** — phòng chờ mới là chỗ ghế treo lâu nhất). Hai mốc khác nhau có lý
+   do: **25 giây = rớt mạng**, chập wifi vài giây thì máy đánh giùm chứ **không** đuổi oan;
+   **70 giây = đi ngủ rồi**, nhả ghế cho người khác. Đang dính ván **chưa trả tiền xong** thì
+   **không nhấc ngay** — ghi vào sổ `xinRoi`, đánh nốt, hết ván mới cho ra, **tiền
+   ván đó vẫn trả đủ**. Phòng chờ hiện nhãn **📵 mất kết nối · ra ghế sau Ns** để cả phòng khỏi
+   ngồi đợi một cái ghế ma. Ghế nhả hết → **phòng người chơi tự tạo tự xoá**
+   (`donPhongTrong`, chừa 30 giây đầu cho người tạo kịp vào); hai phòng dựng sẵn thì
+   giữ lại để sảnh không bao giờ trắng.
 6. Hết ván → **NGỬA BÀI CẢ BÀN** ngay trên từng ghế. Ai còn heo hoặc còn hàng thì đeo nhãn
    **🐷 THỐI 2 HEO ĐỎ** / **💣 THỐI TỨ QUÝ**… (ghi rõ thối *cái gì*, không phải chỉ "thối 2"),
    ai cóng thì **🧊 CÓNG ×2**. Dưới bảng kết quả có **câu chọc** cho cả bàn cùng cười —

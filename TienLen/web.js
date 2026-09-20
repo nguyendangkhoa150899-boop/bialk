@@ -19,6 +19,11 @@
 const V = require('./van.js');
 
 const GIAY_AFK_MAC_DINH = 25;       // không hỏi thăm quá lâu = coi như rớt mạng
+// 📵 ĐUỔI HẲN KHỎI GHẾ sau ngần này giây không hỏi thăm. Phải DÀI HƠN GIAY_AFK nhiều:
+// 25 giây đầu chỉ là "rớt mạng, máy đánh giùm" — sóng 4G chập chờn hay chuyển wifi là dính,
+// đuổi luôn thì oan. Qua 70 giây thì coi như người ta đóng tab đi ngủ rồi: nhả ghế ra cho
+// người khác vào, và nhờ đó phòng rỗng mới tự xoá được (chủ server báo 20/09).
+const GIAY_DUOI_MAC_DINH = 70;
 // 8 giây, KHÔNG phải 5. Cuối ván có nhiều thứ phải nhìn cùng lúc: bài ngửa của người còn
 // cầm (có khi 13 lá), nhãn "THỐI ...", bảng tiền, câu chọc — mà 2,4 giây đầu còn bị chữ
 // "VỀ NHẤT" che giữa bàn. 5 giây là chưa kịp đọc đã chia ván mới (chủ server báo 20/09).
@@ -67,6 +72,7 @@ function taoTienLen(deps) {
     // ⚠️ dùng != null chứ KHÔNG dùng || : giayXemKet = 0 (chia ván kế ngay) sẽ bị || nuốt thành mặc định.
     const GIAY_AFK = deps.giayAfk != null ? deps.giayAfk : GIAY_AFK_MAC_DINH;
     const GIAY_XEM_KET = deps.giayXemKet != null ? deps.giayXemKet : GIAY_XEM_KET_MAC_DINH;
+    const GIAY_DUOI = deps.giayDuoi != null ? deps.giayDuoi : GIAY_DUOI_MAC_DINH;
 
     const phong = {
         ghe: Array(V.TOI_DA_NGUOI).fill(null),    // 4 ghế, null = trống
@@ -231,19 +237,69 @@ function taoTienLen(deps) {
         return true;
     }
 
+    /**
+     * Nhả ghế một người: xoá khỏi ghế, khỏi sổ sẵn sàng, khỏi phiếu vote, khỏi máy ván.
+     * ⚠️ KHÔNG kiểm tra gì hết — nơi gọi phải tự lo là người này KHÔNG đang cầm bài giữa ván
+     * (bỏ ngang giữa ván là quỵt tiền người khác). Dùng chung cho /roi, xin rời, và đuổi rớt mạng.
+     */
+    function nhaGhe(id) {
+        const ghe = gheCua(id);
+        if (ghe >= 0) phong.ghe[ghe] = null;
+        phong.sanSang.delete(id);
+        phong.xinRoi.delete(id);
+        if (phong.vote) { phong.vote.dong.delete(id); if (!phong.vote.dong.size) phong.vote = null; }
+        if (phong.ban) { try { phong.ban.roiBan(id); } catch (e) { } }
+        if (phong.ban && phong.ban.xemChung().nguoi.length < V.TOI_THIEU_NGUOI) phong.ban = null;
+    }
+
+    /** Bao lâu rồi người này chưa hỏi thăm máy chủ? (mili-giây) */
+    function langBaoLau(id) {
+        // Chưa có sổ thì ghi bây giờ chứ ĐỪNG coi là lặng từ năm 1970 — không thì ai vừa
+        // được xếp ghế bằng đường khác (ví dụ /tao tự cho ngồi) là bị đuổi ngay giây đầu.
+        if (!chamCuoi.has(id)) chamCuoi.set(id, Date.now());
+        return Date.now() - chamCuoi.get(id);
+    }
+    /** Mất kết nối (máy đang đánh giùm) — chỉ để hiện nhãn cho cả bàn thấy. */
+    const rotMang = (id) => langBaoLau(id) > GIAY_AFK * 1000;
+
+    /**
+     * 📵 ĐUỔI NGƯỜI ĐÓNG TAB. Chạy mỗi nhịp, kể cả lúc CHƯA MỞ BÀN — chỗ thủng nặng nhất là
+     * phòng chờ: ratSoatAfk() chỉ soi người TRONG ván, nên ai ngồi phòng chờ rồi đóng tab là
+     * giữ ghế vĩnh viễn, phòng chẳng bao giờ rỗng để mà xoá.
+     *   · đang cầm bài giữa ván -> KHÔNG đuổi ngay (bỏ ngang là quỵt tiền cả bàn). Ghi vào sổ
+     *     xinRoi, máy đánh nốt bài giùm, hết ván choRaNhungAiXin() cho ra — đúng đường đã có.
+     *   · còn lại (phòng chờ, hoặc đang có bàn nhưng người này hết bài / chưa vào ván) -> ra luôn.
+     */
+    function duoiNguoiRot() {
+        for (const { id } of dangNgoi()) {
+            if (langBaoLau(id) <= GIAY_DUOI * 1000) continue;
+            const v = phong.ban && phong.ban._trong.van;
+            // ⚠️ "Còn dính ván" = ván hiện tại CHƯA TRẢ TIỀN XONG, chứ KHÔNG phải "còn cầm bài".
+            // Lúc ván vừa chốt thì chẳng ai còn bài, nhưng tiền mới trả ở bước sau của cùng nhịp
+            // này — nhả ghế trước là roiBan() gạch tên khỏi máy ván và người đó MẤT TIỀN VÁN VỪA
+            // THẮNG. Bộ kiểm bắt được đúng cảnh đó, đừng đổi lại.
+            const dinhVan = !!(v && v.so > daTraVan);
+            if (dinhVan) {
+                if (!phong.xinRoi.has(id)) {
+                    phong.xinRoi.add(id);
+                    ghiLog('[TIẾN LÊN] ' + tenCua(id) + ' mất kết nối quá lâu — đánh nốt ván này rồi cho ra ghế');
+                }
+                continue;
+            }
+            nhaGhe(id);
+            chamCuoi.delete(id);
+            ghiLog('[TIẾN LÊN] Đuổi ' + tenCua(id) + ' khỏi ghế: mất kết nối quá ' + GIAY_DUOI + ' giây');
+        }
+    }
+
     /** Cho ra những ai đã bấm "rời sau ván này". Gọi lúc GIỮA HAI VÁN. */
     function choRaNhungAiXin() {
         if (!phong.xinRoi.size) return;
         for (const id of [...phong.xinRoi]) {
-            phong.xinRoi.delete(id);
-            const ghe = gheCua(id);
-            if (ghe >= 0) phong.ghe[ghe] = null;
-            phong.sanSang.delete(id);
-            if (phong.vote) { phong.vote.dong.delete(id); if (!phong.vote.dong.size) phong.vote = null; }
-            if (phong.ban) { try { phong.ban.roiBan(id); } catch (e) { } }
-            ghiLog('[TIẾN LÊN] ' + tenCua(id) + ' rời bàn (đã xin rời sau ván)');
+            const rot = rotMang(id);
+            nhaGhe(id);
+            ghiLog('[TIẾN LÊN] ' + tenCua(id) + ' rời bàn (' + (rot ? 'mất kết nối, bị cho ra' : 'đã xin rời sau ván') + ')');
         }
-        if (phong.ban && phong.ban.xemChung().nguoi.length < V.TOI_THIEU_NGUOI) phong.ban = null;
     }
 
     /** Chia ván kế: cho ra ai xin rời, áp vote đổi cược, mời ra ai hết vốn, còn đủ 2 người thì chia tiếp. */
@@ -281,6 +337,8 @@ function taoTienLen(deps) {
     /** Gọi mỗi giây từ ngoài. Nuốt lỗi để không kéo bot theo. */
     function nhip() {
         try {
+            // ⚠️ PHẢI ĐỨNG TRƯỚC chốt "chưa có bàn". Phòng chờ mới là chỗ ghế treo lâu nhất.
+            duoiNguoiRot();
             if (!phong.ban) { tuMoBan(); return; }
             ratSoatAfk();
             phong.ban.nhip();
@@ -303,7 +361,13 @@ function taoTienLen(deps) {
                 id, ten: tenCua(id), dogcoin: (u && u.points) || 0,
                 admin: laAdmin(id), duocNgoi: canNgoi(id) === null, viSaoKhong: canNgoi(id),
             },
-            ghe: phong.ghe.map(x => x ? { id: x, ten: tenCua(x), dogcoin: (layNguoi(x) || {}).points || 0 } : null),
+            // 📵 rot = đang mất kết nối (để phòng chờ hiện nhãn, khỏi ngồi đợi một cái ghế ma).
+            //    giayDuoi = còn mấy giây nữa thì bị đuổi hẳn khỏi ghế.
+            ghe: phong.ghe.map(x => x ? {
+                id: x, ten: tenCua(x), dogcoin: (layNguoi(x) || {}).points || 0,
+                rot: rotMang(x),
+                giayDuoi: Math.max(0, Math.ceil((GIAY_DUOI * 1000 - langBaoLau(x)) / 1000)),
+            } : null),
             gheCuaToi: gheCua(id),
             sanSang: [...phong.sanSang], toiSanSang: phong.sanSang.has(id),
             xinRoi: phong.xinRoi.has(id),          // 🚪 đã bấm "rời sau ván này" chưa
@@ -398,15 +462,10 @@ function taoTienLen(deps) {
             if (post && duong === '/roi') {
                 if (banDangDanh() && phong.ban._trong.van && (phong.ban._trong.van.tay[toi] || []).length > 0)
                     return loi(400, 'Đang giữa ván — đánh hết bài rồi mới rời được (rớt mạng thì máy đánh giùm)');
-                const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
-                phong.sanSang.delete(toi);
-                phong.xinRoi.delete(toi);
-                if (phong.vote) { phong.vote.dong.delete(toi); if (!phong.vote.dong.size) phong.vote = null; }
+                nhaGhe(toi);
                 // Bớt một người ngồi là NGƯỠNG QUÁ NỬA tụt theo -> vote đang treo có thể vừa đủ
                 // phiếu ngay lúc này. Không chốt lại ở đây thì nó nằm im tới tận ván sau.
                 if (!banDangDanh()) apVote();
-                if (phong.ban) { try { phong.ban.roiBan(toi); } catch (e) { } }
-                if (phong.ban && phong.ban.xemChung().nguoi.length < V.TOI_THIEU_NGUOI) phong.ban = null;
                 return tra();
             }
             // 🗳️ Vote đổi mức cược. Ai đang ngồi cũng mở hoặc theo được.
@@ -608,4 +667,5 @@ function taoSanh(deps, ds) {
 module.exports = {
     taoTienLen, taoSanh, VON_HE_SO, PHONG_MAC_DINH, MUC_CUOC_CHO_PHEP,
     TOI_DA_PHONG, TEN_CHE_DO, MO_CHE_DO, GIAY_XEM_KET_MAC_DINH,
+    GIAY_AFK_MAC_DINH, GIAY_DUOI_MAC_DINH,
 };

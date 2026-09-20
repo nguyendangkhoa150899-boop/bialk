@@ -1059,7 +1059,11 @@ function veCho(){
          '<div class="bang"><div class="av">'+(trong?'＋':(laToi?'🐶':'🙂'))+'</div>' +
          '<div class="ai"><div class="nt">'+(trong?('Ghế '+(k+1)):esc(g.ten)+(laToi?' (bạn)':''))+'</div>' +
          '<div class="ck">'+(trong?(S.toi.duocNgoi?'bấm để ngồi':'trống'):xu(g.dogcoin))+'</div></div></div>' +
-         (ss ? '<div class="tt nhat">✅ sẵn sàng</div>' : '') + '</div>';
+         // 📵 Ghế ma: người đó đóng tab rồi mà tên vẫn nằm đây. Phải nói ra, không thì cả
+         // phòng ngồi đợi một người không bao giờ bấm "sẵn sàng". Máy chủ tự đuổi sau ít giây.
+         ((g && g.rot) ? '<div class="tt afk">📵 mất kết nối' +
+             (g.giayDuoi ? ' · ra ghế sau ' + g.giayDuoi + 's' : '') + '</div>'
+          : ss ? '<div class="tt nhat">✅ sẵn sàng</div>' : '') + '</div>';
   }
   datHTML($('choGhe'), o);
   var L = S.cauHinh;

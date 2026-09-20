@@ -2,7 +2,8 @@
 // Gọi thẳng xuLy() với req/res giả (không cần dựng máy chủ HTTP).
 // Chạy: node TienLen/kiemtra/web-test.js
 'use strict';
-const { taoTienLen, taoSanh, VON_HE_SO, MUC_CUOC_CHO_PHEP, TOI_DA_PHONG } = require('../web.js');
+const { taoTienLen, taoSanh, VON_HE_SO, MUC_CUOC_CHO_PHEP, TOI_DA_PHONG,
+    GIAY_AFK_MAC_DINH, GIAY_DUOI_MAC_DINH } = require('../web.js');
 const B = require('../bai.js');
 
 let P = 0, F = 0;
@@ -22,6 +23,9 @@ function dung(tuyChon = {}) {
         tenCua: (id) => ten[id] || id,
         ghiLog: (d) => log.push(d),
         giayXemKet: tuyChon.giayXemKet != null ? tuyChon.giayXemKet : 9999,   // mặc định KHÔNG tự chia ván kế
+        // -1 = "lặng bao lâu cũng tính là quá hạn" -> khỏi phải ngồi đợi 70 giây thật trong bài kiểm
+        giayAfk: tuyChon.giayAfk,
+        giayDuoi: tuyChon.giayDuoi,
     });
     // ⚠️ TẮT TỚI TRẮNG cho mọi bài kiểm ở file này. Bật thì thỉnh thoảng (~1/15 lần) chia bài xong
     // là có người tới trắng -> ván CHỐT NGAY trong moBan(), mọi bài kiểm phía sau mất bối cảnh
@@ -445,6 +449,103 @@ muc('🚪 RỜI BÀN SAU VÁN NÀY');
     goi(tl, '/ngoi', { ghe: 0 }, 'A');
     const r = goi(tl, '/roisau', {}, 'A');
     ok('chưa vào ván: xin rời = rời luôn', r.ma === 200 && tl.phong.ghe.indexOf('A') < 0, JSON.stringify(tl.phong.ghe));
+}
+
+// ---------------------------------------------------------------- 📵 ĐUỔI NGƯỜI MẤT KẾT NỐI (20/09)
+// Chủ server: "khi người chơi mất kết nối thì vẫn bị treo ở đó có cách nào đá người đó ra ko"
+// + "bàn tạo trống thì tự xóa bàn đó đi". Hai cái CHUNG MỘT GỐC: ghế không tự nhả thì phòng
+// không bao giờ rỗng, mà phòng không rỗng thì donPhongTrong chẳng có gì để xoá.
+muc('📵 đuổi người mất kết nối khỏi ghế');
+{
+    ok('mốc đuổi DÀI HƠN mốc rớt mạng (chập wifi vài giây không bị đuổi oan)',
+        GIAY_DUOI_MAC_DINH > GIAY_AFK_MAC_DINH, GIAY_AFK_MAC_DINH + ' -> ' + GIAY_DUOI_MAC_DINH);
+}
+{
+    // ⭐ CHỖ THỦNG NẶNG NHẤT: PHÒNG CHỜ. ratSoatAfk() cũ có dòng "if (!phong.ban) return;"
+    // nên chưa mở bàn là không soi ai hết -> ngồi rồi đóng tab = giữ ghế vĩnh viễn.
+    const { tl, log } = dung({ giayDuoi: -1 });
+    goi(tl, '/ngoi', { ghe: 0 }, 'A');
+    goi(tl, '/ngoi', { ghe: 1 }, 'B');
+    ok('hai người đang ngồi phòng chờ', tl.phong.ghe.filter(Boolean).length === 2);
+    tl.nhip();
+    ok('⭐ PHÒNG CHỜ: đóng tab quá hạn là bị nhả ghế', tl.phong.ghe.filter(Boolean).length === 0,
+        JSON.stringify(tl.phong.ghe));
+    ok('có ghi sổ rõ lý do', log.some(d => /Đuổi .* mất kết nối/.test(d)), log.join(' | '));
+}
+{
+    // chưa quá hạn thì TUYỆT ĐỐI không được đụng vào ghế
+    const { tl } = dung();
+    goi(tl, '/ngoi', { ghe: 0 }, 'A');
+    for (let k = 0; k < 5; k++) tl.nhip();
+    ok('vừa hỏi thăm xong thì KHÔNG bị đuổi', tl.phong.ghe.indexOf('A') === 0, JSON.stringify(tl.phong.ghe));
+}
+{
+    // rớt mạng ngắn (đã quá mốc afk nhưng CHƯA tới mốc đuổi) -> máy đánh giùm, ghế giữ nguyên
+    const { tl } = dung({ giayAfk: -1 });          // đuổi vẫn để mặc định 70s
+    goi(tl, '/ngoi', { ghe: 0 }, 'A');
+    goi(tl, '/ngoi', { ghe: 1 }, 'B');
+    goi(tl, '/sansang', {}, 'A'); goi(tl, '/sansang', {}, 'B');
+    tl.nhip();
+    ok('rớt mạng NGẮN: vẫn giữ ghế, chỉ máy đánh giùm', tl.phong.ghe.filter(Boolean).length === 2,
+        JSON.stringify(tl.phong.ghe));
+    ok('...và /state báo cờ rớt mạng cho cả phòng thấy', st(tl, 'A').ghe[1].rot === true,
+        JSON.stringify(st(tl, 'A').ghe[1]));
+    ok('...kèm đếm ngược còn mấy giây nữa thì ra ghế', st(tl, 'A').ghe[1].giayDuoi > 0);
+}
+{
+    // ⚠️ ĐANG CẦM BÀI thì KHÔNG được nhấc ra giữa chừng — bỏ ngang là quỵt tiền cả bàn.
+    // Phải đánh nốt (máy đánh giùm) rồi hết ván mới cho ra.
+    const { tl, vi, log } = dung({ giayDuoi: -1, giayXemKet: 0 });
+    goi(tl, '/ngoi', { ghe: 0 }, 'A');
+    goi(tl, '/ngoi', { ghe: 1 }, 'B');
+    goi(tl, '/ngoi', { ghe: 2 }, 'C');
+    goi(tl, '/sansang', {}, 'A'); goi(tl, '/sansang', {}, 'B'); goi(tl, '/sansang', {}, 'C');
+    ok('bàn đã mở', !!tl.phong.ban && tl.phong.ban.xemChung().trangThai === 'DANG_CHAY');
+    const truoc = vi.C;
+    tl.nhip();
+    ok('⭐ đang cầm bài: KHÔNG bị nhấc ra giữa ván', tl.phong.ghe.indexOf('C') >= 0, JSON.stringify(tl.phong.ghe));
+    ok('...mà được ghi vào sổ xin rời', tl.phong.xinRoi.has('C'));
+    ok('...có báo rõ trong sổ', log.some(d => /đánh nốt ván này rồi cho ra ghế/.test(d)), log.join(' | '));
+    const ban = tl.phong.ban;
+    for (let k = 0; k < 800 && ban._trong.van && !ban._trong.van.ketQua; k++) { ban.roiMang(ban._trong.van.luot); ban.nhip(); }
+    tl.nhip(); tl.nhip();
+    ok('...hết ván mới nhả ghế', tl.phong.ghe.indexOf('C') < 0, JSON.stringify(tl.phong.ghe));
+    ok('...và ván đó VẪN tính tiền đủ cho người bị đuổi', vi.C !== truoc, String(vi.C - truoc));
+}
+
+muc('🧹 phòng rỗng thì tự xoá');
+{
+    // ví phải DƯ SỨC vốn tối thiểu (phòng 'hang' 10.000 cần 30× = 300.000), không thì /tao
+    // bị chặn ngay ở cổng vốn và bài kiểm đỏ vì lý do chẳng liên quan.
+    const sanh = taoSanh({
+        layNguoi: () => ({ name: 'An', points: 10000000, ingameName: 'An' }),
+        congVi: () => { }, laAdmin: () => false, tenCua: (id) => id, ghiLog: () => { },
+        giayXemKet: 9999, giayDuoi: -1,
+    });
+    const g = (duong, than, toi) => { let r = null; sanh.xuLy({ path: duong, method: than ? 'POST' : 'GET', body: than || {}, userId: toi }, null, (res, ma, j) => { r = { ma, j }; }); return r; };
+    const soNen = sanh.phong.length;
+    const tao = g('/tao', { cheDo: 'hang', mucCuoc: 10000 }, 'A');
+    ok('tạo được phòng mới', tao.ma === 200 && !!tao.j.vaoPhong, JSON.stringify(tao.j && tao.j.error));
+    const ma = tao.j.vaoPhong;
+    ok('người tạo được cho ngồi luôn', !!sanh.cua(ma) && sanh.cua(ma).may.phong.ghe.indexOf('A') >= 0);
+    // lùi mốc tạo về quá khứ: donPhongTrong chừa 30 giây đầu cho người tạo kịp vào
+    sanh.cua(ma).luc = Date.now() - 60000;
+    sanh.nhip();
+    ok('⭐ người tạo mất kết nối -> bị nhả ghế -> PHÒNG TỰ XOÁ', !sanh.cua(ma), JSON.stringify(sanh.phong.map(p => p.ma)));
+    ok('...phòng dựng sẵn thì KHÔNG bị xoá theo (sảnh không được trắng)', sanh.phong.length === soNen,
+        sanh.phong.length + ' / ' + soNen);
+}
+{
+    // phòng vừa tạo chưa kịp ai vào thì ĐỪNG xoá ngay, người ta đang bấm dở
+    const sanh = taoSanh({
+        layNguoi: () => ({ name: 'An', points: 10000000, ingameName: 'An' }),
+        congVi: () => { }, laAdmin: () => false, tenCua: (id) => id, ghiLog: () => { }, giayDuoi: -1,
+    });
+    const soNen = sanh.phong.length;
+    let r = null; sanh.xuLy({ path: '/tao', method: 'POST', body: { cheDo: 'hang', mucCuoc: 10000 }, userId: 'A' }, null, (res, ma, j) => { r = { ma, j }; });
+    sanh.nhip();
+    ok('phòng mới tạo có 30 giây ân hạn, không bị dọn ngay', sanh.phong.length === soNen + 1,
+        sanh.phong.length + ' / ' + (soNen + 1));
 }
 
 console.log('\n🌐 MÁY CHỦ TIẾN LÊN: ' + P + ' đạt, ' + F + ' hỏng');
