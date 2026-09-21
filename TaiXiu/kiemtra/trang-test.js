@@ -214,16 +214,27 @@ ok('lúc ĐANG ĐẶT vẫn hiện chip mọi ô đã đặt (không giấu sớ
 
 muc('lịch sử kể được ô nào nhân, ô nào mình ăn');
 // Chủ server: dòng lịch sử cũ dài không đọc nổi và KHÔNG kể ô nào được nhân.
-ok('máy chủ lưu bảng nhân vào lịch sử ván',
-    IDX.includes('nhan: (txState.nhan && txState.nhan.gameId === gameId)'));
+// Chủ server: "chỉ show x ván đó mà RA TRÚNG thôi". Mỗi ván ~7 ô sáng nhưng đa số
+// không ra — kể hết là rác. Lọc ngay lúc chốt ván cho nhẹ DB và mọi chỗ đều sạch.
+ok('lịch sử CHỈ lưu ô nhân ĐÃ RA TRÚNG',
+    IDX.includes('const trung = new Set(TX_CUA.cuaThang([d1, d2, d3]));') &&
+    IDX.includes('for (const k of Object.keys(bn)) if (trung.has(k)) r[k] = bn[k];'));
+ok('ván không ô nhân nào ra thì KHÔNG có dòng ⚡', IDX.includes("let dongNhan = '';"));
+// 2 lỗi chữ chủ server chụp được trên bảng Discord
+ok('không còn in "(, trượt hết)" khi người đó chỉ đặt 1 ô',
+    IDX.includes('const so = ` (${p.soO} ô`;'));
+ok('tiền HOÀN 30% lúc ra bão gọi đúng là "hoàn", không gọi "trúng"',
+    IDX.includes('const thang = an.filter(x => x.lai > 0);') && IDX.includes('`hoàn ${hoan}`'));
 ok('kế hoạch trả tiền giữ luôn bảng nhân (phòng khi đã dọn)', IDX.includes('bangNhan,'));
 ok('web nhận được bảng nhân của ván cũ',
     SRC.includes('winners: h.winners || [], nhan: h.nhan || {}'));
 ok('bảng 20 ván có dòng phụ ⚡', SRC.includes('function hSub(h)') && SRC.includes("'.hsub{"));
 // Chủ server kêu 'vướng mắt': hiện ⚡ ở mọi ván với 5 huy hiệu vàng thì át mất
 // dãy kết quả - thứ chính của bảng soi cầu. Nên MẶC ĐỊNH TẮT, có công tắc.
-ok('hệ số nhân MẶC ĐỊNH TẮT, có công tắc nhớ lựa chọn',
-    SRC.includes('var HNHAN=localStorage.getItem("tx_hnhan")==="1";') &&
+// Chủ server chốt lại: lúc deploy phải BẬT sẵn, nhưng ai tự tắt thì F5 vẫn tắt.
+// Điều kiện phải là !== "0" (chưa chọn -> bật). Viết === "1" là người mới vào bị tắt.
+ok('mặc định BẬT, ai tự tắt thì F5 vẫn nhớ là tắt',
+    SRC.includes('var HNHAN=localStorage.getItem("tx_hnhan")!=="0";') &&
     SRC.includes('function hNhanBat(v)') && SRC.includes('id="hNhanOn"'));
 // Trong hSub, phần "bạn ăn" phải nằm TRƯỚC nhánh if(HNHAN) thì mới luôn hiện.
 {
@@ -232,12 +243,14 @@ ok('hệ số nhân MẶC ĐỊNH TẮT, có công tắc nhớ lựa chọn',
         than.indexOf('🎯 ') > 0 && than.indexOf('🎯 ') < than.indexOf('if(HNHAN){'),
         'vị trí trong hSub: ' + than.indexOf('🎯 ') + ' vs ' + than.indexOf('if(HNHAN){'));
 }
+ok('ô tick không bị lệch (margin 0 + line-height khớp chữ)',
+    SRC.includes("'.hTog input{width:14px;height:14px;margin:0") && SRC.includes("'line-height:1;',"));
 ok('huy hiệu ⚡ làm nhỏ + xỉn, không viền vàng tranh chỗ',
     SRC.includes("'.hsub .xx{display:inline-block;background:#2b2f3c") && !SRC.includes('.hsub .xx{display:inline-block;background:#3a2e10'));
 // Dòng Discord: mỗi người CHỈ kể ô ăn được, ô thua gói lại thành một con số
 ok('dòng Discord rút gọn tiền (k / tr)', IDX.includes('function txTienNgan(n)'));
 ok('dòng Discord chỉ kể ô ĂN, ô thua gói thành số',
-    IDX.includes('trượt hết') && IDX.includes('trúng ${an.length}'));
+    IDX.includes('trượt hết') && IDX.includes('`trúng ${thang.length}`'));
 ok('dòng Discord có kể ô được nhân', IDX.includes("dongNhan = ' · ⚡ '"));
 
 muc('nút MAX CƯỢC + hiệu ứng chip bay');

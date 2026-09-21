@@ -7430,14 +7430,14 @@ function txHistoryLine(h) {
             per[u].total = (nhan[u] || 0) - per[u].cuoc;
         });
     }
-    // ⚡ Ô được bốc hệ số nhân ván này, hệ số to xếp trước (đây là thứ người chơi
-    // muốn biết nhất mà bản cũ không hề kể).
+    // ⚡ Chỉ kể ô nhân ĐÃ RA TRÚNG (h.nhan đã lọc sẵn lúc chốt ván). Ván nào hệ số
+    // nhân không ăn vào đâu thì KHÔNG có dòng này — đỡ dài.
     let dongNhan = '';
     const nh = h.nhan || {};
     const idNhan = Object.keys(nh).sort((a, b) => nh[b] - nh[a]);
     if (idNhan.length) {
-        dongNhan = ' · ⚡ ' + idNhan.slice(0, 4).map(k => `x${nh[k]} ${txTenCua(k)}`).join(' · ')
-            + (idNhan.length > 4 ? ` +${idNhan.length - 4} ô` : '');
+        dongNhan = ' · ⚡ ' + idNhan.slice(0, 3).map(k => `x${nh[k]} ${txTenCua(k)}`).join(' · ')
+            + (idNhan.length > 3 ? ` +${idNhan.length - 3}` : '');
     }
 
     const parts = Object.values(per).map(p => {
@@ -7445,10 +7445,15 @@ function txHistoryLine(h) {
         const dau = `${icon} **${p.name}** ${txTienNgan(p.total)}`;
         if (!cuMoi) return dau;                       // ván cũ: chỉ có tổng
         const an = p.an.sort((a, b) => b.lai - a.lai);
-        const so = p.soO > 1 ? ` (${p.soO} ô` : ' (';
-        if (!an.length) return dau + so + `, trượt hết)`;
+        // BẢN CŨ in "(, trượt hết)" khi người đó chỉ đặt 1 ô — thiếu hẳn con số.
+        const so = ` (${p.soO} ô`;
+        if (!an.length) return dau + so + ', trượt hết)';
+        // Ô "ăn" mà lãi ÂM là tiền HOÀN 30% lúc ra bão, không phải trúng. Gọi đúng tên.
+        const thang = an.filter(x => x.lai > 0);
+        const hoan = an.length - thang.length;
         const ke = an.slice(0, 3).map(x => `${x.ten} ${txTienNgan(x.lai)}`).join(' · ');
-        return dau + so + `, trúng ${an.length}: ${ke}${an.length > 3 ? '…' : ''})`;
+        const nhan2 = thang.length ? `trúng ${thang.length}` : `hoàn ${hoan}`;
+        return dau + so + `, ${nhan2}: ${ke}${an.length > 3 ? '…' : ''})`;
     });
     return line + dongNhan + (parts.length ? `\n   ${parts.join(' | ')}` : '');
 }
@@ -7845,10 +7850,17 @@ function ketSoTXPayout(gameId, bets, d1, d2, d3, p) {
         cl: isStorm ? TX_CHOICES.bao.name : (isChan ? TX_CHOICES.chan.name : TX_CHOICES.le.name),
         bets: betAgg,
         winners,
-        // ⚡ Ô nào được bốc hệ số nhân ván này — để bảng lịch sử kể lại được.
-        // Chỉ vài ô mỗi ván nên không phình DB.
-        nhan: (txState.nhan && txState.nhan.gameId === gameId) ? (txState.nhan.o || {})
-            : ((p && p.bangNhan) || {}),
+        // ⚡ CHỈ giữ ô vừa được bốc hệ số nhân VỪA RA TRÚNG. Mỗi ván có ~7 ô sáng
+        // nhưng đa số không ra — kể hết là rác, đọc không nổi (chủ server đã kêu).
+        // Lọc ở đây luôn: nhẹ DB, và mọi chỗ hiển thị đều sạch mà không phải lọc lại.
+        nhan: (() => {
+            const bn = (txState.nhan && txState.nhan.gameId === gameId) ? (txState.nhan.o || {})
+                : ((p && p.bangNhan) || {});
+            const trung = new Set(TX_CUA.cuaThang([d1, d2, d3]));
+            const r = {};
+            for (const k of Object.keys(bn)) if (trung.has(k)) r[k] = bn[k];
+            return r;
+        })(),
         time: new Date().toLocaleTimeString('vi-VN')
     };
     // 27/08 (dọn cho nhẹ RAM): soi cầu RAM giữ 100 ván (trước 1000).

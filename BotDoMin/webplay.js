@@ -923,9 +923,13 @@ const PAGE = [
     // phần MÌNH ăn mới là thứ đáng nổi
     '.hsub .an{color:#8fe0a8;font-weight:700}',
     // công tắc bật/tắt chi tiết hệ số nhân
-    '.hTog{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;',
+    // 🔲 Ô tick từng bị lệch lên trên: input có margin mặc định của trình duyệt, lại
+    // không cùng line-height với chữ. Ép margin 0 + line-height 1 cho hai bên bằng nhau.
+    '.hTog{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;',
+    'line-height:1;',
     'user-select:none;margin:-4px 0 8px}',
-    '.hTog input{width:14px;height:14px;accent-color:var(--gold)}',
+    '.hTog input{width:14px;height:14px;margin:0;flex:0 0 auto;accent-color:var(--gold);',
+    'vertical-align:middle;position:relative;top:0}',
     '.hrow:last-child{border-bottom:0}',
     '.hrow .gid{color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}',
     '.hrow .dd{display:flex;gap:3px;flex:0 0 auto}',
@@ -2586,8 +2590,11 @@ const PAGE = [
     '\'<span class="kq">\'+kq+"</span>"+',
     '(joined?\'<span class="net \'+(net>=0?"w":"l")+\'">\'+(net>=0?"+":"")+net.toLocaleString("vi-VN")+"</span>":"")+',
     '"</div>"+hSub(h)}).join("")}',
-    // Công tắc ⚡ nhớ trong máy người chơi. MẶC ĐỊNH TẮT cho bảng sạch.
-    'var HNHAN=localStorage.getItem("tx_hnhan")==="1";',
+    // Công tắc ⚡ nhớ trong máy người chơi.
+    //   chưa từng chọn (null) -> BẬT (mặc định lúc deploy, chủ server chốt)
+    //   "0" -> tắt · "1" -> bật
+    // Phải viết !== "0". Viết === "1" là người mới vào bị tắt, sai ý.
+    'var HNHAN=localStorage.getItem("tx_hnhan")!=="0";',
     'function hNhanBat(v){HNHAN=!!v;localStorage.setItem("tx_hnhan",v?"1":"0");refresh()}',
     // Dòng phụ: phần "bạn ăn" LUÔN hiện (thứ người chơi cần), phần ⚡ chỉ khi bật
     // công tắc — và chỉ 3 ô to nhất, để nó là chú thích chứ không át dãy kết quả.

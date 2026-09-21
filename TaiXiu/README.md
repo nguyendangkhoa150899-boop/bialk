@@ -139,6 +139,11 @@ là dòng dài không đọc nổi, mà lại **không hề kể ô nào đượ
   người chơi qua `localStorage tx_hnhan`). Phần `🎯` kể ô MÌNH ăn thì **luôn hiện** vì đó
   mới là thứ người chơi cần. Huy hiệu ⚡ cố tình nhỏ và xỉn, chỉ kể 3 ô to nhất — bản đầu
   để 5 huy hiệu vàng chóe ở mọi ván, chủ server kêu ngay là vướng mắt.
+- ⚡ **CHỈ kể ô nhân ĐÃ RA TRÚNG.** Mỗi ván có ~7 ô được bốc nhân nhưng đa số không ra;
+  kể hết là rác, đọc không nổi. `histEntry.nhan` **lọc sẵn lúc chốt ván** (giao với
+  `cuaThang(dice)`) nên mọi chỗ hiển thị đều sạch mà không phải lọc lại. Ván nào hệ số
+  nhân không ăn vào đâu thì **không có dòng ⚡** luôn.
+- Ô "ăn" mà lãi ÂM là tiền **hoàn 30%** lúc ra bão, dòng ghi `hoàn N` chứ không ghi `trúng N`.
 - `histEntry.nhan` lưu bảng hệ số nhân của ván (chỉ vài ô nên không phình DB);
   `plan.bangNhan` giữ bản sao phòng khi `txState.nhan` đã bị dọn.
 - Ván CŨ ghi trước bản vá không có 2 trường này → chỉ hiện tổng, **không bịa**.
