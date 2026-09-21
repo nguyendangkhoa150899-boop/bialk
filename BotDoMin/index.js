@@ -1782,8 +1782,9 @@ function itemShopList() {
         off: !!x.off,   // 09/09: ẨN khỏi web (admin tắt bán từng món, giữ nguyên dòng trong bảng)
     }));
 }
+const ITEM_SHOP_MAX = 800;   // trần số dòng trong bảng shop (xem chú thích ở cuối setItemShop)
 function setItemShop(list) {
-    dbCache._itemShop = (Array.isArray(list) ? list : [])
+    const sach = (Array.isArray(list) ? list : [])
         .map(x => ({
             id: String((x && x.id) || '').trim().replace(/[^A-Za-z0-9_]/g, ''),   // StaticItemId: chỉ chữ/số/_
             name: String((x && x.name) || (x && x.id) || '').trim().slice(0, 60),
@@ -1794,8 +1795,16 @@ function setItemShop(list) {
             note: String((x && x.note) || '').trim().slice(0, 240),
             off: !!(x && x.off),
         }))
-        .filter(x => x.id)
-        .slice(0, 300);   // 10/09: trần 100 -> 300 (84 món + 32 đạn = 116 đã vượt 100)
+        .filter(x => x.id);
+    // ⚠️ TRẦN PHẢI BÁO RA KHI CẮT. Bản cũ .slice(0,300) cắt ÂM THẦM: admin bấm Lưu, thấy
+    // "đã lưu N món", đóng panel — mai mở ra mất đồ mà không hiểu vì sao.
+    // 10/09 trần 100 -> 300 · 21/09 300 -> 800 (thêm 68 implant + 184 nguyên liệu cho pal
+    // là đã 368, vượt trần cũ).
+    if (sach.length > ITEM_SHOP_MAX) {
+        writeLog('SYSTEM', `[SHOP ITEM] ⚠️ Danh sách ${sach.length} món VƯỢT TRẦN ${ITEM_SHOP_MAX} - đã cắt bỏ ${sach.length - ITEM_SHOP_MAX} món cuối`);
+        sach.length = ITEM_SHOP_MAX;
+    }
+    dbCache._itemShop = sach;
     saveDbNow();
     return itemShopList();
 }

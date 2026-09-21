@@ -181,6 +181,35 @@ Chuyển Dogcoin giữa người chơi trên web (`/api/transfer`, `/api/transfe
 
 ## 7. 🏪 Shop Item + 🧰 Rương Ích Kỷ + 🎁 Quà
 
+### ➕ Thêm CẢ NHÓM từ kho game (21/09)
+
+Bảng shop nằm trong **database trên máy chủ** (`_itemShop`) nên không ai ngồi gõ tay được
+danh sách 2.299 món của kho game. Panel (tab Shop Item) có nút **➕ Thêm CẢ NHÓM từ kho game**:
+chọn nhóm → nhặt hết món của nhóm đó vào bảng, **tự bỏ qua món đã có** (so theo `id`) nên
+bấm lại bao nhiêu lần cũng không trùng; game ra đồ mới thì cứ bấm lại.
+
+Điền sẵn: tên tiếng Việt, nhóm shop, tên ảnh theo texture, ghi chú lấy từ mô tả, và **giá gợi ý
+theo độ hiếm** (r≥4 → 200.000 · r=3 → 100.000 · r=2 → 50.000 · còn lại 20.000).
+⚠️ **Giá chỉ là gợi ý — admin xem lại rồi mới bấm 💾 Lưu shop.** Nút không tự lưu.
+
+| Nhóm | Nhặt theo | Số món | max/lần |
+|---|---|---|---|
+| 🧬 Implant | id bắt đầu `PalPassiveSkillChange_` | 68 | 5 |
+| 🐾 Nguyên liệu cho Pal | `t === "Material"` | 184 | 999 |
+| 🔮 Module cầu · 🔫 Đạn · 🍖 Đồ ăn · 💍 Phụ kiện · 🪂 Dù lượn | theo `t` | | |
+
+⚠️ **Trần bảng shop 300 → 800** (21/09). 116 món đang có + 68 + 184 = 368 đã vượt trần cũ, mà
+`.slice(0, 300)` **cắt âm thầm**: admin bấm Lưu, thấy "đã lưu", mai mở ra mất đồ mà không
+hiểu vì sao. Giờ vượt trần là **ghi sổ** rõ cắt mất mấy món.
+
+⚠️ **Ảnh: ba nấc** — file trong `assets/itemimage/` → **CDN paldb theo tên texture** → ô 📦.
+Máy chủ chỉ có 146 file ảnh (implant 41%, nguyên liệu 11%), không có nấc CDN thì thêm 252 món là
+web ra một rừng 📦. Tên file nội bộ vốn đã là tên texture + `.webp` nên bỏ đuôi ra là có
+luôn đường ảnh gốc — panel dùng cách này từ lâu, giờ trang cược dùng chung.
+
+Bộ kiểm: `TaiXiu/kiemtra/shopnhom-test.js` (chạy THẬT hàm thêm nhóm trong DOM giả: đúng
+số món, bấm hai lần không trùng, không id trùng, có chạy lại bộ lọc).
+
 ### Shop Item (`itemShopBuy`)
 - Món có `cat`, `price`, `max`, `img` (tên ảnh trong `assets/itemimage/`). Nhóm do admin tự đặt (`_itemCats`, `ITEM_CAT_DEF` là mặc định; `itemCatHas()` là **nguồn sự thật duy nhất** — từng có whitelist thứ 5 giấu trong `ITEM_SHOP_CATS` làm mất cấu hình, đã xoá).
 - **Hạn mua** nhiều tầng, kiểm TRƯỚC khi trừ tiền: ⭐ `important` mỗi người 1 lần vĩnh viễn · 🧬 implant N/người/ngày (`_itemShopImplantMax`) · 🌳 implant Cây Thế Giới riêng · 🗂️ hạn theo nhóm (`_itemShopGroupQuota[cat] = {mode:'server'|'user', per:'group'|'item', max}`) · 📅 hạn chung mỗi món/ngày (`_itemShopDayMax` + `dayMode`). Nhóm có hạn riêng thì MIỄN hạn chung.

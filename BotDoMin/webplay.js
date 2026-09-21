@@ -4005,8 +4005,20 @@ const PAGE = [
     '$("isStat").textContent=j.items.length+" món · ví "+vnd(j.balance);',
     '$("isLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - item giao thẳng vào túi (phải đang ONLINE trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới mua được";',
     'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
-    // hình item: file trong assets/itemimage/ (thả file + restart như palimage); thiếu -> ô 📦
-    'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
+    // 🖼️ HÌNH ITEM — BA NẤC: file nội bộ -> CDN paldb -> ô 📦.
+    //   ① assets/itemimage/<img>   admin tự up, đẹp nhất, dùng được ngay không cần restart
+    //   ② CDN paldb theo TÊN TEXTURE   tên file nội bộ vốn đã là tên texture + .webp, nên
+    //      bỏ đuôi ra là có luôn đường ảnh gốc. Panel (tab Kho đồ) xài cách này từ lâu.
+    //   ③ ô 📦   khi cả hai đều không có
+    // ⚠️ Không có nấc ② thì mỗi món mới thêm phải up tay một ảnh; thêm 252 món implant +
+    // nguyên liệu là web ra một rừng 📦 (chủ server nhờ thêm hàng loạt 21/09).
+    'function isImgLoi(el){var c=el.getAttribute("data-cdn");',
+    'if(c&&el.getAttribute("data-b")!=="1"){el.setAttribute("data-b","1");el.src=c;return}',
+    'el.outerHTML=\'<div class="isPh">📦</div>\'}',
+    'function isImg(f){if(!f)return "<div class=\\"isPh\\">📦</div>";',
+    'var stem=String(f).replace(/\\.[A-Za-z0-9]+$/,"");',
+    'var cdn="https://cdn.paldb.cc/image/Others/InventoryItemIcon/Texture/"+encodeURIComponent(stem)+".webp";',
+    'return "<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" loading=\\"lazy\\" data-cdn=\\""+cdn+"\\" onerror=\\"isImgLoi(this)\\">"}',
     // 07/09: shop kiểu 4 NÚT NHÓM - bấm nhóm nào hiện đồ nhóm đó (nhớ qua F5);
     // gõ ô tìm là quét TÊN + GHI CHÚ trên mọi nhóm (kèm đề mục nhóm cho khỏi lạc)
     // 🏷️ 16/09: nhóm hàng do ADMIN đặt ở panel, server gửi kèm state. Dưới đây chỉ là bản dự phòng
