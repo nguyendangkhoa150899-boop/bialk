@@ -127,6 +127,7 @@ function startPanel(ctx) {
                     maxBet: ctx.getTXMaxBet ? ctx.getTXMaxBet() : 0,   // 💰 trần cược/người/ván
                     time: ctx.getTxTime ? ctx.getTxTime() : null,        // ⏱️ 17/09: giây đặt cược + giây nặn
                     noti: ctx.getTxNoti ? ctx.getTxNoti() : null,        // 🔔 17/09: báo cược về Discord
+                    tran: ctx.getTxTran ? ctx.getTxTran() : null,        // 🎲 trần cược 5 nhóm cửa Sic Bo
                 };
             })(),
             forcedMines: ctx.getForcedMines(),
@@ -251,6 +252,8 @@ function startPanel(ctx) {
                     '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
+                    // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
+                    '/api/tx/tran',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -493,9 +496,16 @@ function startPanel(ctx) {
                 // ⏱️ 17/09: nhịp ván - giây ĐẶT CƯỢC + giây NẶN
                 if (path === '/api/tx/time') {
                     if (!ctx.setTxTime) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    const r = ctx.setTxTime(body.bet, body.nan);
+                    const r = ctx.setTxTime(body.bet, body.nan, body.nhan);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, bet: r.bet, nan: r.nan, round: r.round });
+                    return sendJSON(res, 200, { ok: true, bet: r.bet, nhan: r.nhan, nan: r.nan, round: r.round });
+                }
+                // 🎲 trần cược từng nhóm cửa của bàn Sic Bo 52 cửa
+                if (path === '/api/tx/tran') {
+                    if (!ctx.setTxTran) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setTxTran(body.tran || {});
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...ctx.getTxTran() });
                 }
                 // 🔔 17/09: báo cược Tài Xỉu về Discord cho chủ server
                 if (path === '/api/tx/noti') {
@@ -1220,8 +1230,9 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="txSaveMaxBet()">💾 Lưu trần cược</button>
         </div>
         <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
-          <div style="flex:1"><label>⏱️ Giây ĐẶT CƯỢC (5 - 600)</label><input id="txBetS" type="number" min="5" max="600" placeholder="vd: 25" oninput="txDirty(this)"></div>
-          <div style="flex:1"><label>⏱️ Giây NẶN (3 - 300)</label><input id="txNanS" type="number" min="3" max="300" placeholder="vd: 15" oninput="txDirty(this)"></div>
+          <div style="flex:1"><label>⏱️ Giây ĐẶT CƯỢC (5 - 600)</label><input id="txBetS" type="number" min="5" max="600" placeholder="vd: 35" oninput="txDirty(this)"></div>
+          <div style="flex:1"><label>⚡ Giây HIỆN NHÂN (0 - 60)</label><input id="txNhanS" type="number" min="0" max="60" placeholder="vd: 4" oninput="txDirty(this)"></div>
+          <div style="flex:1"><label>⏱️ Giây NẶN (6 - 300)</label><input id="txNanS" type="number" min="6" max="300" placeholder="vd: 20" oninput="txDirty(this)"></div>
           <button class="btn-green" onclick="txSaveTime()">💾 Lưu nhịp ván</button>
         </div>
         <div class="note" id="txTimeNow">Một ván = giây đặt cược + giây nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.</div>
@@ -1232,6 +1243,12 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="txSaveNoti()">💾 Lưu</button>
           <button class="btn-grey" onclick="txTestNoti()">📨 Gửi thử</button>
         </div>
+        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="flex:1"><label>🎲 TRẦN CƯỢC TỪNG CỬA (bàn Sic Bo 52 cửa)</label></div>
+        </div>
+        <div class="row" id="txTranHang" style="flex-wrap:wrap;gap:8px"></div>
+        <div class="note" id="txTranNow">Cửa trả càng cao thì trần càng thấp — cửa Bão trả tới 999:1 nên chỉ cho đặt 5.000/ván, không thì một ván xui mất gần 400 triệu. Các cửa cùng mức gom chung một ô: sửa một ô là cả nhóm nhảy theo.</div>
+        <div class="row" style="margin-top:8px"><button class="btn-green" onclick="txSaveTran()">💾 Lưu trần cược</button></div>
         <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
           <div style="flex:1"><label>🃏 Admin POKER (ID Discord, cách nhau bằng phẩy)</label><input id="pokerAdminIds" type="text" placeholder="vd: 456136500011335698, 111111111111111111" oninput="txDirty(this)"></div>
           <button class="btn-green" onclick="pokerSaveAdmin()">💾 Lưu</button>
@@ -2401,9 +2418,25 @@ function txDirty(el){ if(el) el.dataset.dirty='1'; }
 function txClean(ids){ ids.forEach(function(id){ const el=document.getElementById(id); if(el) el.dataset.dirty=''; }); }
 function txSaveTime(){
   const b=parseInt(document.getElementById('txBetS').value),n=parseInt(document.getElementById('txNanS').value);
+  const h=parseInt(document.getElementById('txNhanS').value);
   if(!(b>=5&&b<=600))return toast('Giây đặt cược: 5 - 600');
-  if(!(n>=3&&n<=300))return toast('Giây nặn: 3 - 300');
-  api('/api/tx/time',{bet:b,nan:n}).then(j=>{txClean(['txBetS','txNanS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'s đặt cược + '+j.nan+'s nặn');refresh();}).catch(e=>toast('❌ '+e.message));
+  if(!(h>=0&&h<=60))return toast('Giây hiện nhân: 0 - 60');
+  if(!(n>=6&&n<=300))return toast('Giây nặn: 6 - 300 (4 giây cuối là lúc bàn tự mở kết quả)');
+  api('/api/tx/time',{bet:b,nan:n,nhan:h}).then(j=>{txClean(['txBetS','txNanS','txNhanS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'s đặt + '+j.nhan+'s nhân + '+j.nan+'s nặn');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+// 🎲 trần cược từng nhóm cửa — 5 ô, sửa 1 ô là cả nhóm nhảy theo
+function txSaveTran(){
+  const tran={}; let xau=null;
+  document.querySelectorAll('.txTranO').forEach(function(el){
+    const v=parseInt(el.value);
+    if(!(v>=1&&v<=100000000)) xau=el.dataset.ten;
+    tran[el.dataset.nhom]=v;
+  });
+  if(xau)return toast('Trần nhóm "'+xau+'" phải từ 1 đến 100.000.000');
+  api('/api/tx/tran',{tran:tran}).then(function(){
+    document.querySelectorAll('.txTranO').forEach(function(el){el.dataset.dirty='';});
+    toast('💾 Đã lưu trần cược từng cửa');refresh();
+  }).catch(e=>toast('❌ '+e.message));
 }
 function txSaveNoti(){
   const id=(document.getElementById('txNotiId').value||'').trim();
@@ -3577,8 +3610,27 @@ async function refresh(force){
   if(STATE.tx.time){
     const tb=document.getElementById('txBetS'); if(tb&&tb.dataset.dirty!=='1'&&tb.value===''&&document.activeElement!==tb) tb.value=STATE.tx.time.bet;
     const tn=document.getElementById('txNanS'); if(tn&&tn.dataset.dirty!=='1'&&tn.value===''&&document.activeElement!==tn) tn.value=STATE.tx.time.nan;
+    const th=document.getElementById('txNhanS'); if(th&&th.dataset.dirty!=='1'&&th.value===''&&document.activeElement!==th) th.value=STATE.tx.time.nhan;
     const tw=document.getElementById('txTimeNow');
-    if(tw) tw.innerHTML='Đang áp dụng: ván <b>'+STATE.tx.time.round+'s</b> = '+STATE.tx.time.bet+'s đặt cược + '+STATE.tx.time.nan+'s nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.';
+    if(tw) tw.innerHTML='Đang áp dụng: ván <b>'+STATE.tx.time.round+'s</b> = '+STATE.tx.time.bet+'s đặt cược + <b>'+STATE.tx.time.nhan+'s hiện nhân (cấm đặt)</b> + '+STATE.tx.time.nan+'s nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.';
+  }
+  // 🎲 trần cược 5 nhóm cửa — dựng 1 lần, sau đó chỉ đổ giá trị (ô đang gõ thì chừa ra)
+  if(STATE.tx&&STATE.tx.tran){
+    const T=STATE.tx.tran, hang=document.getElementById('txTranHang');
+    if(hang&&!hang.dataset.xong){
+      hang.dataset.xong='1';
+      hang.innerHTML=Object.keys(T.nhom).map(function(k){
+        return '<div style="flex:1 1 180px"><label>'+esc(T.nhom[k].ten)+'</label>'+
+          '<input class="txTranO" data-nhom="'+k+'" data-ten="'+esc(T.nhom[k].ten)+'" type="number" min="1" oninput="txDirty(this)"></div>';
+      }).join('');
+    }
+    document.querySelectorAll('.txTranO').forEach(function(el){
+      if(el.dataset.dirty!=='1'&&document.activeElement!==el) el.value=T.tran[el.dataset.nhom];
+    });
+    const tn=document.getElementById('txTranNow');
+    if(tn) tn.innerHTML='Thắng tối đa mỗi cửa theo trần đang đặt: '+
+      Object.keys(T.nhom).map(function(k){return '<b>'+esc(T.nhom[k].ten.split(' · ')[0])+'</b> '+(T.thangToiDa[k]||0).toLocaleString('vi-VN');}).join(' · ')+
+      '. Cửa trả càng cao trần càng thấp — sửa một ô là cả nhóm nhảy theo.';
   }
   if(Array.isArray(STATE.pokerAdmin)){
     // 🃏 cùng kiểu dataset.dirty như ô báo cược: đang gõ thì 3 giây refresh không được ghi đè

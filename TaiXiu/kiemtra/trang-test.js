@@ -1,0 +1,147 @@
+// Bộ kiểm GIAO DIỆN bàn Sic Bo trong webplay.js — chạy: node TaiXiu/kiemtra/trang-test.js
+//
+// Không mở được trình duyệt ở đây nên kiểm 3 tầng:
+//   1. Cú pháp JS phía người chơi (mảng chuỗi PAGE nối lại rồi bắt máy đọc thử)
+//   2. Hình học xúc xắc mini — tính tay xem chấm có chồng nhau / tràn viền không
+//      (chủ server từng báo "hột xí ngầu méo mó" đúng vì chấm đè nhau)
+//   3. Luật giao diện: không còn giỏ cược, mọi id JS gọi đều tồn tại
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const F = path.join(__dirname, '..', '..', 'BotDoMin', 'webplay.js');
+const SRC = fs.readFileSync(F, 'utf8');
+
+let P = 0, F_ = 0;
+const ok = (t, dk, them) => {
+    if (dk) { P++; console.log('  OK   ' + t); }
+    else { F_++; console.log('  HỎNG ' + t + (them ? '  ->  ' + them : '')); }
+};
+const muc = (t) => console.log('\n== ' + t + ' ==');
+
+// ---------------------------------------------------------------- cú pháp
+muc('cú pháp phần người chơi');
+{
+    let loi = null;
+    try { new vm.Script(SRC, { filename: 'webplay.js' }); } catch (e) { loi = e.message; }
+    ok('webplay.js không lỗi cú pháp', loi === null, loi);
+}
+
+// ---------------------------------------------------------------- hình học xúc xắc
+muc('🎲 hình học xúc xắc mini (chấm không được chồng / tràn)');
+function doHinhHoc(nhan) {
+    const mO = SRC.match(new RegExp("'\\." + nhan + "\\{[^']*width:(\\d+(?:\\.\\d+)?)px"));
+    const mCh = SRC.match(new RegExp("'\\." + nhan + " i\\{[^']*width:(\\d+(?:\\.\\d+)?)px"));
+    return { o: mO && parseFloat(mO[1]), cham: mCh && parseFloat(mCh[1]) };
+}
+function kiemCo(ten, oPx, chamPx) {
+    const trong = oPx - 2;                       // box-sizing:border-box, viền 1px mỗi bên
+    const tam = [25, 50, 75].map(p => trong * p / 100);
+    const khoang = tam[1] - tam[0];              // 2 hàng chấm liền nhau
+    const bien = tam[0] - chamPx / 2;            // chấm ngoài cùng cách mép
+    ok(ten + ': chấm không chồng nhau (cách ' + khoang.toFixed(1) + 'px > chấm ' + chamPx + 'px)', khoang > chamPx,
+        'ô ' + oPx + 'px, chấm ' + chamPx + 'px');
+    ok(ten + ': chấm không tràn viền (còn ' + bien.toFixed(1) + 'px)', bien > 0.5, String(bien));
+    return { khoang, bien };
+}
+{
+    const d = doHinhHoc('sbXx');
+    ok('đọc được cỡ ô + cỡ chấm từ CSS', d.o > 0 && d.cham > 0, JSON.stringify(d));
+    kiemCo('máy tính', d.o, d.cham);
+    ok('ô xúc xắc LUÔN vuông (có aspect-ratio, không để flex kéo méo)',
+        /\.sbXx\{[^']*aspect-ratio:1/.test(SRC));
+    // bản điện thoại khai trong @media
+    const mm = SRC.match(/@media \(max-width:430px\)\{\.sbXx\{width:(\d+(?:\.\d+)?)px/);
+    const mc = SRC.match(/\.sbXx i\{width:(\d+(?:\.\d+)?)px;height:(\d+(?:\.\d+)?)px\}\}/);
+    ok('có cỡ riêng cho điện thoại', !!mm, 'không thấy @media');
+    if (mm && mc) kiemCo('điện thoại', parseFloat(mm[1]), parseFloat(mc[1]));
+}
+
+// ---------------------------------------------------------------- dựng bàn
+muc('bàn 52 ô');
+ok('vẽ xúc xắc bằng hàm riêng, dùng lại bảng chấm PIPS sẵn có',
+    /function sbXx\(n\)/.test(SRC) && /PIPS\[n\]/.test(SRC));
+ok('có 6 dải tiêu đề khu (khu\\(...\\))', (SRC.match(/h\+=khu\(/g) || []).length === 6,
+    String((SRC.match(/h\+=khu\(/g) || []).length));
+ok('4 cửa đều tiền + bộ ba bất kỳ nằm hàng đầu, ô to (sbDeu)',
+    /o\(g\("xiu"\),"sbDeu sbXiu"\)/.test(SRC) && /o\(g\("tai"\),"sbDeu sbTai"\)/.test(SRC) &&
+    /o\(g\("baoany"\),"sbDeu sbBaoAny"\)/.test(SRC));
+ok('đôi vẽ 2 viên, bộ ba vẽ 3 viên, đơn vẽ 1 viên',
+    /sbBoXx\(\[n,n\]\)/.test(SRC) && /sbBoXx\(\[n,n,n\]\)/.test(SRC) && /sbBoXx\(\[n\]\)/.test(SRC));
+ok('kết hợp 2 lá vẽ 2 viên KHÁC nhau, số lấy từ id cửa', /sbBoXx\(\[a,d\]\)/.test(SRC));
+ok('tổng điểm hiện số to + tỉ lệ nhỏ', /o\(c,"sbTong"/.test(SRC));
+
+// Chủ server bắt lỗi: ô Tổng 4 in "50-499:1" trong khi ăn thật là 50:1, số 499 chỉ
+// xảy ra khi ô đó được bốc trúng hệ số nhân. Ô KHÔNG được in mức cao nhất như mức ăn.
+ok('ô chỉ in tỉ lệ GỐC, không in dải tới mức nhân cao nhất',
+    /'var tl=c\.goc\+":1";'/.test(SRC) && !/c\.goc\+"-"\+c\.max/.test(SRC));
+{
+    const dai = [];
+    let m; const re = /khu\("([^"]*)"\)/g;
+    while ((m = re.exec(SRC))) if (/\d+-\d+:1/.test(m[1])) dai.push(m[1]);
+    ok('dải tiêu đề khu cũng không in dải "gốc-nhân:1"', dai.length === 0, dai.join(' | '));
+}
+ok('thanh hệ số nhân nói rõ ăn THAY tỉ lệ in trên ô', /ăn THAY tỉ lệ/.test(SRC));
+ok('bàn lấy từ bảng cửa máy chủ gửi, không gõ cứng 52 ô', /SBCUA=j\.txCua/.test(SRC));
+
+// ---------------------------------------------------------------- bấm là đặt
+muc('bấm ô là đặt luôn (đã bỏ giỏ cược)');
+ok('không còn hàm giỏ: sbHoanTac / sbGapDoi / sbXoaGio / sbGui',
+    !/function sbHoanTac/.test(SRC) && !/function sbGapDoi/.test(SRC) &&
+    !/function sbXoaGio/.test(SRC) && !/function sbGui/.test(SRC));
+ok('không còn biến giỏ SBGIO / SBLICH', !/SBGIO/.test(SRC) && !/SBLICH/.test(SRC));
+ok('bấm ô gọi thẳng /api/bet', /function sbChon\(id\)/.test(SRC) && /api\("\/api\/bet",\{gio:\[\{choice:id,amount:SBCHIP\}\]\}\)/.test(SRC));
+ok('chặn bấm dồn 2 lần lúc mạng chậm (SBDANGGUI)', /if\(SBDANGGUI\)return;/.test(SRC));
+ok('nút betBtn cũ nếu còn thì phải có if (tránh null.disabled làm vỡ refresh)',
+    !/getElementById\("betBtn"\)\.disabled/.test(SRC));
+
+// ---------------------------------------------------------------- pha hiện nhân
+muc('pha hiện nhân');
+ok('có nhánh hiển thị riêng, không rơi vào "bàn đang tắt"', /PHASE==="nhan"\)\{stt\.textContent/.test(SRC));
+ok('chén VẪN nằm đó và bị khoá (không giấu đi)',
+    /PHASE==="nhan"[\s\S]{0,400}?paper\.classList\.add\("locked"\)/.test(SRC));
+ok('máy chủ chỉ gửi xúc xắc khi phase là "nan"', /phase === 'nan' && tx\.nan/.test(SRC));
+ok('bảng nhân chỉ gửi sau khi đã khoá sổ', /tx\.status !== 'betting'\) \? tx\.nhan\.o : null/.test(SRC));
+
+// ---------------------------------------------------------------- id
+muc('mọi id JS gọi tới đều có trong trang');
+{
+    const idCo = new Set();
+    let m; const reId = /id=\\?"([A-Za-z0-9_]+)\\?"/g;
+    while ((m = reId.exec(SRC))) idCo.add(m[1]);
+    const canCo = ['sbBan', 'sbChips', 'sbNhanBar', 'sbNhac'];
+    const thieu = canCo.filter(x => !idCo.has(x));
+    ok('đủ id then chốt của bàn Sic Bo', thieu.length === 0, thieu.join(', '));
+}
+
+// ---------------------------------------------------------------- tô kết quả
+muc('bàn tô kết quả sau khi nặn');
+ok('có hàm tô kết quả + hàm xoá màu', /function sbToKetQua\(nan\)/.test(SRC) && /function sbXoaKetQua\(\)/.test(SRC));
+ok('ô trúng / ô trượt có kiểu riêng trong CSS',
+    /\.sbO\.sbTrung[,{]/.test(SRC) && /\.sbO\.sbTruot[,{]/.test(SRC));
+// Lỗi thật đã dính: .sbO.sbKhoa đặt opacity .5 cho MỌI ô lúc khoá sổ, ô trúng cũng
+// mờ theo nên tô sáng bằng thừa. Và .sbNhan khai sau .sbTruot nên ô trượt có hệ số
+// nhân vẫn vàng chóe. Hai điều kiện dưới khoá lại đúng hai cái bẫy đó.
+ok('kiểu kết quả đủ mạnh để thắng .sbKhoa và .sbNhan',
+    /\.sbO\.sbTrung\.sbKhoa/.test(SRC) && /\.sbO\.sbTrung\.sbNhan/.test(SRC) &&
+    /\.sbO\.sbTruot\.sbKhoa/.test(SRC) && /\.sbO\.sbTruot\.sbNhan/.test(SRC));
+ok('kiểu kết quả khai SAU .sbNhan (khai trước là bị đè)',
+    SRC.lastIndexOf('.sbO.sbTruot,') > SRC.indexOf(".sbO.sbNhan{"));
+ok('khoá sổ không còn mờ nửa ô (opacity .5 nuốt hết tương phản)',
+    !/\.sbO\.sbKhoa\{opacity:\.5/.test(SRC));
+ok('ô nền TRẮNG ngay từ lúc đặt', /'\.sbO\{flex:1;min-width:0;position:relative;background:#fff;/.test(SRC));
+// ảnh sòng thật: ô trượt chỉ xám NỀN, xúc xắc trong ô vẫn đỏ tươi
+ok('ô trượt KHÔNG đổi màu xúc xắc (giống ảnh sòng thật)',
+    !/\.sbO\.sbTruot \.sbXx/.test(SRC));
+ok('KHÔNG tự đoán luật thắng ở máy người chơi — lấy danh sách máy chủ gửi',
+    /nan\.thang\.forEach/.test(SRC));
+ok('nặn xong (tay hoặc tự) là tô bàn ngay', /revealDone\(\)\{[\s\S]{0,400}?sbToKetQua\(NAN\)/.test(SRC));
+ok('mở ván mới thì xoá màu cũ', /PHASE==="bet"\)sbXoaKetQua\(\)/.test(SRC));
+ok('giây cuối tự mở lấy theo số máy chủ gửi, không gõ cứng 3',
+    /s2<=TXKQS&&NAN/.test(SRC) && /j\.txKqS==="number"\)TXKQS=j\.txKqS/.test(SRC));
+ok('vào lại giữa chừng vẫn thấy màu ván mình đã nặn',
+    /revealedGame===j\.nan\.gameId\)sbToKetQua\(j\.nan\)/.test(SRC));
+
+console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');
+process.exit(F_ ? 1 : 0);

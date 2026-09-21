@@ -3701,7 +3701,29 @@ function txBetTotalOf(userId) {
     return (txState.bets || []).reduce((s, b) => s + (b.userId === userId ? (b.amount || 0) : 0), 0);
 }
 // Trả chuỗi lỗi nếu đặt thêm `amount` là vượt trần; null = ok. Dùng chung web + Discord.
-function txCapCheck(userId, amount) {
+/** Tiền người này đã đặt vào ĐÚNG một cửa trong ván hiện tại. */
+function txBetCuaCua(userId, cua) {
+    return (txState.bets || []).reduce((s, b) => s + (b.userId === userId && b.choice === cua ? (b.amount || 0) : 0), 0);
+}
+/**
+ * Chặn 2 tầng, tầng nào vượt cũng trả câu báo lỗi:
+ *   1. TRẦN TỪNG CỬA — cửa trả càng cao trần càng thấp (Bão 999:1 chỉ 5.000).
+ *      Không có tầng này thì một ván xui mất tới 400 triệu.
+ *   2. TRẦN TỔNG cả ván (_txMaxBet) — giữ nguyên như cũ.
+ * cua = null nghĩa là chỉ kiểm tầng tổng (đường gọi cũ).
+ */
+function txCapCheck(userId, amount, cua) {
+    if (cua) {
+        const tranO = TX_CUA.tranCua(cua, txTranCfg());
+        if (tranO > 0) {
+            const curO = txBetCuaCua(userId, cua);
+            if (curO + amount > tranO) {
+                const c = TX_CUA.THEO_ID[cua];
+                return `Cửa ${c ? c.ten : cua} tối đa ${tranO.toLocaleString('vi-VN')} Dogcoin/ván (trả tới ${TX_CUA.tiLeToiDa(cua)}:1 nên trần thấp)` +
+                    `${curO > 0 ? ` - bạn đã đặt ${curO.toLocaleString('vi-VN')}` : ''}${tranO > curO ? `, còn ${(tranO - curO).toLocaleString('vi-VN')}` : ''}.`;
+            }
+        }
+    }
     const cap = txMaxBet();
     if (cap <= 0) return null;
     const cur = txBetTotalOf(userId);
@@ -3709,6 +3731,61 @@ function txCapCheck(userId, amount) {
         return `Giới hạn cược ${cap.toLocaleString()} Dogcoin/người/ván - ván này bạn đã đặt ${cur.toLocaleString()}${cap > cur ? `, còn đặt được ${(cap - cur).toLocaleString()}` : ''}.`;
     }
     return null;
+}
+
+/**
+ * 🎲 ĐẶT CẢ GIỎ một lần (bàn 52 cửa). Người chơi xếp chip vào nhiều ô rồi bấm một
+ * nút, nên phải kiểm TOÀN BỘ giỏ trước, hợp lệ hết mới trừ tiền — không trừ nửa
+ * chừng rồi báo lỗi. Tiền tính ở đây, web chỉ chuyển tiếp (nguyên tắc 1 của repo).
+ *   gio = [{ choice, amount }]
+ */
+function txDatLo(userId, username, gio) {
+    if (!Array.isArray(gio) || !gio.length) return { error: 'Chưa xếp cược nào' };
+    if (gio.length > 60) return { error: 'Một lần đặt tối đa 60 ô' };
+    if (!txState.message || txState.status !== 'betting') {
+        return { error: txState.status === 'nhan' ? '⚡ Đang hiện hệ số nhân - hết cửa đặt rồi, đợi ván sau!' : 'Đã khoá sổ - đợi ván sau!' };
+    }
+    // gộp trùng cửa để người chơi bấm 5 lần vào một ô vẫn tính là một lệnh
+    const gop = {};
+    for (const g of gio) {
+        const cua = String(g.choice || '');
+        const tien = Math.floor(Number(g.amount));
+        if (!TX_CUA.THEO_ID[cua]) return { error: 'Cửa không hợp lệ: ' + cua };
+        if (!Number.isFinite(tien) || tien <= 0) return { error: 'Số tiền không hợp lệ' };
+        gop[cua] = (gop[cua] || 0) + tien;
+    }
+    const cuaList = Object.keys(gop);
+    const tong = cuaList.reduce((s, k) => s + gop[k], 0);
+
+    const u = getUserData(userId);
+    if ((u.points || 0) < tong) return { error: `Không đủ Dogcoin! Cần ${tong.toLocaleString('vi-VN')}, ví có ${(u.points || 0).toLocaleString('vi-VN')}` };
+    const san = minBet();
+    for (const k of cuaList) if (gop[k] < san) return { error: `Mỗi cửa tối thiểu ${san.toLocaleString('vi-VN')} Dogcoin (cửa ${TX_CUA.THEO_ID[k].ten} mới ${gop[k].toLocaleString('vi-VN')})` };
+
+    // TRẦN TỪNG CỬA: cộng dồn với phần đã đặt trước đó trong ván
+    const tranCfg = txTranCfg();
+    for (const k of cuaList) {
+        const tranO = TX_CUA.tranCua(k, tranCfg);
+        const daCo = txBetCuaCua(userId, k);
+        if (tranO > 0 && daCo + gop[k] > tranO) {
+            return { error: `Cửa ${TX_CUA.THEO_ID[k].ten} tối đa ${tranO.toLocaleString('vi-VN')}/ván (trả tới ${TX_CUA.tiLeToiDa(k)}:1)` +
+                `${daCo > 0 ? ` - đã đặt ${daCo.toLocaleString('vi-VN')}` : ''}, giỏ đang xếp ${gop[k].toLocaleString('vi-VN')}.` };
+        }
+    }
+    // TRẦN TỔNG cả ván
+    const capErr = txCapCheck(userId, tong, null);
+    if (capErr) return { error: capErr };
+
+    // qua hết mới đụng tiền
+    updatePoints(userId, -tong);
+    for (const k of cuaList) {
+        txState.bets.push({ userId, username, choice: k, amount: gop[k] });
+        try { txNotifyBet(userId, username, k, gop[k]); } catch (e) { }
+    }
+    txState.needsUpdate = true;
+    writeLog('BET', `[WEB CƯỢC TX] ${username} đặt ${tong.toLocaleString('vi-VN')} vào ${cuaList.length} cửa (ván #${txState.gameId}): ` +
+        cuaList.map(k => TX_CUA.THEO_ID[k].ten + ' ' + gop[k].toLocaleString('vi-VN')).join(' · '));
+    return { ok: true, tong, soCua: cuaList.length, balance: getUserData(userId).points || 0 };
 }
 
 // Lịch sử các ván dò mìn (để hiển thị trên web panel)
@@ -3752,40 +3829,83 @@ const DICE_EMOJIS = [
 ];
 
 // ===== NẶN XÍ NGẦU TRÊN WEB (Big Small) =====
-// Ván TX_ROUND_S (40) giây = 25 giây đặt cược + TX_LOCK_S (15) giây nặn. Lúc khóa sổ
+// Ván = giây ĐẶT CƯỢC + giây HIỆN NHÂN + giây NẶN (mặc định 30 + 4 + 20). Lúc khóa sổ
 // xí ngầu lắc NGẦM (txState.nan), người chơi lên web tự "nặn" - kéo tờ giấy che
 // tự do 4 chiều, kéo tới đâu lộ tới đó, ai kéo người đó thấy riêng. Đúng giờ mở bát:
 // trả thưởng + đăng kết quả công khai ở Discord.
-const TX_LOCK_S = 15;          // mặc định khi admin chưa đặt gì (giây NẶN)
-const TX_BET_S_DEF = 25;       // mặc định giây ĐẶT CƯỢC
+const TX_LOCK_S = 20;          // mặc định khi admin chưa đặt gì (giây NẶN)
+const TX_BET_S_DEF = 30;       // mặc định giây ĐẶT CƯỢC
 const TX_ROUND_S = 40; // KHÔNG CÒN DÙNG từ 17/09 (giữ cho khỏi lạc khi đọc lịch sử) - xem txRoundS()
 // 17/09: ADMIN CHỈNH ĐƯỢC 2 mốc này ở panel (tab Big Small), lưu dbCache._txTime.
 // Ván = bet + nan. Mọi chỗ tính giờ PHẢI gọi txRoundS()/txLockS(), đừng dùng lại 2 hằng số trên
 // (giữ chúng chỉ để làm giá trị mặc định). Đổi giữa chừng thì ván ĐANG chạy giữ nguyên mốc cũ,
 // ván sau mới theo số mới - targetTime đã chốt từ đầu ván.
 const TX_BET_S_MIN = 5, TX_BET_S_MAX = 600;
-const TX_NAN_S_MIN = 3, TX_NAN_S_MAX = 300;
+const TX_NAN_S_MIN = 6, TX_NAN_S_MAX = 300;   // >= TX_KQ_S + 2: còn chỗ mà nặn tay
+// 🎲 BÀN SIC BO 52 CỬA + HỆ SỐ NHÂN (chủ server chốt 21/09, thay bàn 5 cửa cũ).
+// Ván 3 mốc: ĐẶT CƯỢC -> HIỆN NHÂN (khoá, không đặt được gì) -> NẶN -> mở bát.
+// Bảng nhân sinh ra ngay lúc khoá sổ, TRƯỚC khi quay xúc xắc, cả bàn thấy giống nhau.
+const TX_NHAN_S_DEF = 4;                       // giây hiện nhân
+// 4 GIÂY CUỐI pha nặn: chén tự rơi, bàn tô ô trúng/ô trượt cho cả bàn cùng xem.
+// Ai nặn tay xong sớm hơn thì thấy ngay, khỏi chờ.
+const TX_KQ_S = 4;
+const TX_NHAN_S_MIN = 0, TX_NHAN_S_MAX = 60;   // 0 = tắt hẳn pha hiện nhân
+// TAIXIU_DIR: bản test chỉ chép 7 file BotDoMin nên ../TaiXiu không có -> bialk-test.js trỏ về repo.
+const TX_CUA = require(require('path').join(
+    process.env.TAIXIU_DIR || require('path').join(__dirname, '..', 'TaiXiu'), 'cua.js'));
 function txTimeCfg() {
     const c = dbCache._txTime || {};
-    const b = Number(c.bet), n = Number(c.nan);
+    const b = Number(c.bet), n = Number(c.nan), h = Number(c.nhan);
     return {
         bet: Number.isFinite(b) && b >= TX_BET_S_MIN && b <= TX_BET_S_MAX ? Math.floor(b) : TX_BET_S_DEF,
+        nhan: Number.isFinite(h) && h >= TX_NHAN_S_MIN && h <= TX_NHAN_S_MAX ? Math.floor(h) : TX_NHAN_S_DEF,
         nan: Number.isFinite(n) && n >= TX_NAN_S_MIN && n <= TX_NAN_S_MAX ? Math.floor(n) : TX_LOCK_S,
     };
 }
 function txLockS() { return txTimeCfg().nan; }
-function txRoundS() { const c = txTimeCfg(); return c.bet + c.nan; }
-function setTxTimeCfg(bet, nan) {
+function txNhanS() { return txTimeCfg().nhan; }
+// Ván = ĐẶT CƯỢC + HIỆN NHÂN + NẶN. Cửa sổ đặt cược đóng sớm hơn mở bát đúng (nhan + nan) giây.
+function txRoundS() { const c = txTimeCfg(); return c.bet + c.nhan + c.nan; }
+function setTxTimeCfg(bet, nan, nhan) {
     bet = Math.floor(Number(bet)); nan = Math.floor(Number(nan));
+    nhan = nhan === undefined || nhan === null || nhan === '' ? txTimeCfg().nhan : Math.floor(Number(nhan));
     if (!Number.isFinite(bet) || bet < TX_BET_S_MIN || bet > TX_BET_S_MAX)
         return { error: `Giây đặt cược phải từ ${TX_BET_S_MIN} đến ${TX_BET_S_MAX}` };
+    if (!Number.isFinite(nhan) || nhan < TX_NHAN_S_MIN || nhan > TX_NHAN_S_MAX)
+        return { error: `Giây hiện nhân phải từ ${TX_NHAN_S_MIN} đến ${TX_NHAN_S_MAX}` };
     if (!Number.isFinite(nan) || nan < TX_NAN_S_MIN || nan > TX_NAN_S_MAX)
         return { error: `Giây nặn phải từ ${TX_NAN_S_MIN} đến ${TX_NAN_S_MAX}` };
-    dbCache._txTime = { bet, nan };
+    dbCache._txTime = { bet, nhan, nan };
     saveDbNow();
     txState.needsUpdate = true;   // bảng Discord vẽ lại dòng "X giây cuối khóa sổ"
-    writeLog('ADMIN', `[PANEL TX] Đổi nhịp ván: đặt cược ${bet}s + nặn ${nan}s = ván ${bet + nan}s`);
+    writeLog('ADMIN', `[PANEL TX] Đổi nhịp ván: đặt ${bet}s + hiện nhân ${nhan}s + nặn ${nan}s = ván ${bet + nhan + nan}s`);
     return { ok: true, ...txTimeCfg(), round: txRoundS() };
+}
+
+// ---------------------------------------------------------------- trần cược từng cửa
+// Trần tỉ lệ NGHỊCH với tỉ lệ trả (cửa 999:1 chỉ đặt được 5.000). 5 nhóm, admin sửa
+// 1 ô là cả nhóm nhảy theo. Trần phẳng cũ (_txMaxBet) giữ nguyên làm trần TỔNG cả ván.
+function txTranCfg() {
+    const c = dbCache._txTran || {};
+    const out = TX_CUA.tranMacDinh();
+    for (const k of Object.keys(out)) {
+        const n = Number(c[k]);
+        if (Number.isFinite(n) && n > 0) out[k] = Math.floor(n);
+    }
+    return out;
+}
+function setTxTran(obj) {
+    const cur = txTranCfg(), moi = {};
+    for (const k of Object.keys(cur)) {
+        const n = Math.floor(Number(obj && obj[k] !== undefined ? obj[k] : cur[k]));
+        if (!Number.isFinite(n) || n < 1 || n > 100000000)
+            return { error: `Trần nhóm "${TX_CUA.NHOM_TRAN[k].ten}" phải từ 1 đến 100.000.000` };
+        moi[k] = n;
+    }
+    dbCache._txTran = moi;
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL TX] Đổi trần cược từng cửa: ${Object.entries(moi).map(([k, v]) => k + '=' + v.toLocaleString('vi-VN')).join(' · ')}`);
+    return { ok: true, tran: moi };
 }
 
 // ---------- 🔔 BÁO CƯỢC TÀI XỈU VỀ DISCORD (17/09) ----------
@@ -6478,8 +6598,17 @@ client.once('ready', async (c) => {
             tienlen: tienlenMod,                 // 🀄 /api/tienlen/* + /tienlen/ (TienLen/web.js, ăn Dogcoin thật)
             tienlenOn: () => tienlenOnCfg(),     // 🀄 tab TIẾN LÊN hiện hay ẩn
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
-            txPot: () => potGet('tx'),   // 🌪️ 14/09 hũ Bão cho web hiện
-            txPotX: () => txPotCfg().x,  // bội số bú hũ (admin chỉnh được -> phải gọi hàm)
+            // 🌪️ Hũ Bão ĐÃ BỎ 21/09 — trả 0 để web giấu hẳn ô hũ. Số dư cũ trong
+            // dbCache._pots.tx KHÔNG bị xoá (admin tự xử ở panel), chỉ là không ai bú được nữa.
+            txPot: () => 0,
+            txPotX: () => 0,
+            // 🎲 bàn 52 cửa: web cần bảng cửa + trần từng nhóm để vẽ và chặn tại chỗ
+            txCua: () => TX_CUA.DS.map(c => ({
+                id: c.id, ten: c.ten, nhom: c.nhom, goc: c.goc, max: TX_CUA.tiLeToiDa(c.id),
+            })),
+            txTran: () => txTranCfg(),
+            txNhomTran: () => TX_CUA.NHOM_TRAN,
+            txDatLo: (uid, ten, gio) => txDatLo(uid, ten, gio),
             txBaoRate: TX_BAO_RATE,      // 🌪️ 14/09: nút Bão tự tính "đặt X ăn Y" theo đúng tỉ lệ
             getDb: () => dbCache,
             getUserData,
@@ -6695,8 +6824,19 @@ client.once('ready', async (c) => {
                 return { ok: true, maxBet: txMaxBet() };
             },
             txLockS: () => txLockS(),
-            getTxTime: () => ({ ...txTimeCfg(), round: txRoundS() }),
-            setTxTime: (bet, nan) => setTxTimeCfg(bet, nan),
+            getTxTime: () => ({ ...txTimeCfg(), round: txRoundS(), kq: TX_KQ_S }),
+            // webplay.js là MODULE KHÁC — hằng số của index.js không tự nhìn thấy được,
+            // muốn dùng thì phải đưa qua ctx như thế này.
+            txKqS: () => TX_KQ_S,
+            setTxTime: (bet, nan, nhan) => setTxTimeCfg(bet, nan, nhan),
+            // 🎲 trần cược từng nhóm cửa (bàn Sic Bo 52 cửa)
+            getTxTran: () => ({
+                tran: txTranCfg(), nhom: TX_CUA.NHOM_TRAN,
+                // thắng tối đa mỗi nhóm = trần × tỉ lệ trả cao nhất trong nhóm (panel hiện cho admin thấy)
+                thangToiDa: Object.fromEntries(Object.keys(TX_CUA.NHOM_TRAN).map(k => [k,
+                    Math.max(...TX_CUA.DS.filter(c => c.nhom === k).map(c => TX_CUA.tiLeToiDa(c.id))) * txTranCfg()[k]])),
+            }),
+            setTxTran: (o) => setTxTran(o),
             getTxNoti: () => txNotiCfg(),
             setTxNoti: (id, on, min) => setTxNoti(id, on, min),
             // 🃏 admin poker (tiến trình Poker/ đọc _pokerAdmin từ database.json)
@@ -7083,7 +7223,7 @@ function getTXMessageData(customStatus = null) {
     if (recent.length) {
         desc += `\n\n**🎲 ${recent.length} ván gần đây:**\n` + recent.map(txHistoryLine).join('\n');
     }
-    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${txLockS()} giây cuối khóa sổ để nặn!${txMaxBet() > 0 ? ` · 💰 Trần cược **${txMaxBet().toLocaleString()}**/người/ván` : ''}`}`;
+    desc += `\n\n${customStatus || `👉 Bấm **🌐 Cược trên web** lấy link + PIN - đặt cược và **nặn xí ngầu** (kéo tờ giấy) đều trên web, ${txNhanS() + txLockS()} giây cuối khóa sổ (${txNhanS()}s hiện hệ số nhân + ${txLockS()}s nặn)!${txMaxBet() > 0 ? ` · 💰 Trần cược **${txMaxBet().toLocaleString()}**/người/ván` : ''}`}`;
 
     const embed = new EmbedBuilder()
         .setTitle(`🎲 TÀI XỈU LIVE - Game #${padId(txState.gameId)}`)
@@ -7146,7 +7286,9 @@ function runTaiXiuLoop() {
         }
 
         const nowSec = Math.floor(Date.now() / 1000);
-        const lockTime = txState.targetTime - txLockS();
+        // Ván 3 mốc:  [đặt cược] --lockTime--> [hiện nhân] --nanTime--> [nặn] --targetTime--> mở bát
+        const nanTime = txState.targetTime - txLockS();
+        const lockTime = nanTime - txNhanS();
 
         if (nowSec >= txState.targetTime) {
             // Mở bát: kết quả đã được tính từ lúc đóng phiên, chỉ cần await
@@ -7201,14 +7343,26 @@ function runTaiXiuLoop() {
             txState.processingStart = 0;
 
         } else if (nowSec >= lockTime && txState.status === 'betting') {
-            txState.status = 'ending';
+            // 🎲 KHOÁ SỔ -> pha HIỆN NHÂN. Sinh bảng nhân NGAY ĐÂY, trước khi quay xúc xắc,
+            // để cả bàn thấy cùng một bảng và không ai đặt thêm được nữa (status khác
+            // 'betting' là mọi đường đặt cược đều chặn).
+            txState.status = 'nhan';
             txState.activeChoice = null;
+            txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
+            const soO = Object.keys(txState.nhan.o).length;
+            writeLog('RESULT', `[TÀI XỈU] Ván #${txState.gameId} khoá sổ - sáng ${soO} ô nhân: ` +
+                Object.entries(txState.nhan.o).map(([k, v]) => k + ' x' + v).join(', '));
+            updateTXMessage().catch(() => {});
+
+        } else if (nowSec >= nanTime && txState.status === 'nhan') {
+            // Hết 4 giây khoe nhân -> quay xúc xắc ngầm, mở cửa sổ nặn như cũ
+            txState.status = 'ending';
             const snapGameId = txState.gameId;
             const snapBets = txState.bets.slice();
             txState.resultPromise = finishTXGame(snapGameId, snapBets);
             updateTXMessage().catch(() => {});
 
-        } else if (txState.status === 'betting' && txState.needsUpdate) {
+        } else if ((txState.status === 'betting' || txState.status === 'nhan') && txState.needsUpdate) {
             updateTXMessage().catch(() => {});
             txState.needsUpdate = false;
         }
@@ -7243,56 +7397,37 @@ function txPlanPayout(gameId, bets, d1, d2, d3) {
 
     const resultTX = isTai ? 'tai' : 'xiu';
     const resultCL = isChan ? 'chan' : 'le';
+    // 🎲 BÀN 52 CỬA: mỗi lệnh cược tự tính qua TX_CUA.tinhTra, ăn theo bảng nhân đã
+    // CHỐT TỪ LÚC KHOÁ SỔ (txState.nhan). Lấy lại bảng nhân của đúng ván này, không
+    // lấy bảng đang hiện trên màn hình - ván sau đã sinh bảng khác rồi.
+    const bangNhan = (txState.nhan && txState.nhan.gameId === gameId) ? (txState.nhan.o || {}) : {};
+    const xx = [d1, d2, d3];
 
     // Gộp tiền thắng theo người (1 người đặt nhiều lần / nhiều cửa -> 1 dòng)
     // Luật BÃO: ra 3 viên giống nhau thì CHỈ cửa Bão ăn ×TX_BAO_RATE, mọi cửa
     // thường (tài/xỉu/chẵn/lẻ) thua sạch. Không bão thì cửa Bão thua, cửa thường ×2.
-    // 🌪️ nuôi HŨ BÃO: % tổng cược ván này (mặc định 2%), nhà cái bao - người chơi vẫn trừ đúng số đã đặt.
-    // Nuôi TRƯỚC khi trả để tiền ván này cũng nằm trong hũ người trúng bú được.
-    potFeed('tx', luckyPotCut('tx', bets.reduce((s, b) => s + (b.amount || 0), 0)));
+    // 🌪️ HŨ BÃO ĐÃ BỎ (21/09, chủ server chốt): bàn 52 cửa đã có Bão bất kỳ 30:1 và
+    // Bão từng số 150:1 (nhân tới 999:1) — giữ thêm hũ là hai hệ thống thưởng chồng nhau,
+    // không cân nổi. Không nuôi, không trích, không bú. Giữ 3 biến dưới = 0 để mọi chỗ
+    // đang đọc chúng (log, bảng Discord, web) khỏi vỡ.
     const winAgg = {};
-    let txPotPaid = 0;               // tổng tiền bú hũ đã trả ván này (cho log + báo Discord)
+    const txPotPaid = 0;
     const txPotWinners = [];
-    // 🌪️ BÚ HŨ (bản 2): gom TRƯỚC mọi cửa Bão trúng rồi mới chia, để hũ không đủ thì chia theo
-    // TỈ LỆ TIỀN CƯỢC chứ không phải ai đứng trước ăn trước. Nhà cái không bù: lấy tối đa bằng hũ.
-    const TXPX = txPotCfg().x;
-    const txPotShare = {};           // vị trí lệnh cược -> số bú được
-    if (isStorm) {
-        const hit = [];
-        bets.forEach((b, i) => { if (b.choice === 'bao' && b.amount > 0) hit.push({ i, need: b.amount * TXPX }); });
-        const need = hit.reduce((t, h) => t + h.need, 0);
-        const pool = Math.min(need, potGet('tx'));
-        if (pool > 0) {
-            if (pool >= need) hit.forEach(h => { txPotShare[h.i] = h.need; });
-            else {
-                let left = pool;
-                hit.forEach((h, k) => {
-                    const part = (k === hit.length - 1) ? left : Math.floor(pool * h.need / need);
-                    txPotShare[h.i] = part; left -= part;
-                });
-            }
-            potTake('tx', pool);
-        }
-    }
     // 🌪️ refAgg: tiền HOÀN khi ra bão mà đặt đúng bên - tách khỏi winAgg để log không ghi
     // nhầm thành "thắng", nhưng vẫn cộng vào winners để web tính lãi/lỗ ván đúng.
     const refAgg = {};
     const byUser = {};               // uid -> { name, stake, win, refund } : tiền của TỪNG NGƯỜI, chưa trả
     bets.forEach((b, idx) => {
         let win = 0, refund = 0;
-        if (isStorm) {
-            if (b.choice === 'bao') {
-                win = b.amount * TX_BAO_RATE;
-                const fromPot = txPotShare[idx] || 0;
-                if (fromPot > 0) {
-                    win += fromPot; txPotPaid += fromPot;
-                    txPotWinners.push({ userId: b.userId, name: b.username, take: fromPot });
-                }
-            } else if (b.choice === resultTX || b.choice === resultCL) {
-                refund = Math.floor(b.amount * TX_STORM_REFUND);   // đặt đúng bên với bão: thua 70%
-            }
-        } else if (b.choice === resultTX || b.choice === resultCL) {
-            win = b.amount * 2;
+        // Cửa cũ 'bao' (bàn 5 cửa) = 'baoany' của bàn mới. Ván treo từ bản cũ vẫn trả đúng.
+        const cua = b.choice === 'bao' ? 'baoany' : b.choice;
+        if (TX_CUA.THEO_ID[cua]) {
+            win = TX_CUA.tinhTra(cua, b.amount, xx, bangNhan);   // đã gồm vốn; 0 = thua
+        }
+        // 🌪️ Ra bão mà đặt đúng bên Tài/Xỉu/Chẵn/Lẻ: hoàn lại một phần (luật riêng của
+        // server này, sòng thật thì thua sạch). Giữ vì người chơi đang có quyền lợi đó.
+        if (win === 0 && isStorm && (cua === resultTX || cua === resultCL)) {
+            refund = Math.floor(b.amount * TX_STORM_REFUND);
         }
         const got = win + refund;
         if (got > 0) {
@@ -7419,7 +7554,8 @@ async function finishTXGame(gameId, bets) {
     // Ai nặn xong trước thì /api/tx/reveal trả riêng cho người đó ngay.
     txPlanPayout(gameId, bets, d1, d2, d3);
     // Mở cửa sổ nặn trên web: ai đăng nhập cũng kéo giấy xem riêng được
-    txState.nan = { gameId, dice: [d1, d2, d3] };
+    // kèm luôn danh sách ô TRÚNG để bàn web tô màu - lấy từ lõi tiền, không tính lại
+    txState.nan = { gameId, dice: [d1, d2, d3], thang: TX_CUA.cuaThang([d1, d2, d3]) };
 
     const revealAtMs = txState.targetTime * 1000;
     const waitMs = revealAtMs - Date.now();

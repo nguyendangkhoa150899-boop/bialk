@@ -253,9 +253,11 @@ function startWebPlay(ctx) {
                         whoAgg[k].amount += b.amount;
                     }
                     const live = !!tx.message && tx.status !== 'stopped';
-                    // phase: bet (đang nhận cược) | nan (khóa sổ, kéo chén xem riêng) | wait
+                    // phase: bet (đang nhận cược) | nhan (khoá sổ, khoe hệ số nhân, CẤM đặt)
+                    //      | nan (kéo chén xem riêng) | wait
                     let phase = 'off';
-                    if (live) phase = tx.status === 'betting' ? 'bet' : (tx.nan ? 'nan' : 'wait');
+                    if (live) phase = tx.status === 'betting' ? 'bet'
+                        : (tx.status === 'nhan' ? 'nhan' : (tx.nan ? 'nan' : 'wait'));
                     return sendJSON(res, 200, {
                         ok: true,
                         me: userId,
@@ -274,6 +276,11 @@ function startWebPlay(ctx) {
                         featOff: ctx.featOffList ? ctx.featOffList() : [],   // 🔌 15/09: mục admin đang tắt
                         // 🃏 tab GIẢI POKER (tầng 1, nhóm thứ 3): admin bật/tắt ở panel SUPER
                         pokerOn: ctx.pokerOn ? !!ctx.pokerOn() : false,
+                        // 🎲 BÀN SIC BO 52 CỬA: danh sách cửa + trần từng nhóm (vẽ bàn, chặn tại chỗ),
+                        // và BẢNG NHÂN của ván đang chạy — chỉ gửi khi đã KHOÁ SỔ, không thì lộ sớm.
+                        txCua: ctx.txCua ? ctx.txCua() : null,
+                        txTran: ctx.txTran ? ctx.txTran() : null,
+                        txNhan: (tx.nhan && tx.nhan.gameId === tx.gameId && tx.status !== 'betting') ? tx.nhan.o : null,
                         tienlenOn: ctx.tienlenOn ? !!ctx.tienlenOn() : false,   // 🀄 tab Tiến Lên hiện/ẩn
                         txPot: ctx.txPot ? ctx.txPot() : 0,
                         txPotX: (typeof ctx.txPotX === 'function' ? ctx.txPotX() : ctx.txPotX) || 10,
@@ -289,7 +296,11 @@ function startWebPlay(ctx) {
                         myBets: my,
                         // Chỉ đưa xí ngầu ra trong cửa sổ nặn - lúc này sổ ĐÃ khóa,
                         // biết trước vài giây cũng không đặt thêm được gì.
-                        nan: (phase === 'nan' && tx.nan) ? { gameId: tx.nan.gameId, dice: tx.nan.dice } : null,
+                        nan: (phase === 'nan' && tx.nan)
+                            ? { gameId: tx.nan.gameId, dice: tx.nan.dice, thang: tx.nan.thang || [] }
+                            : null,
+                        // 4 giây cuối pha nặn là lúc chén tự rơi + bàn tô kết quả
+                        txKqS: ctx.txKqS ? ctx.txKqS() : 4,
                         betsList: Object.values(whoAgg),
                         // kèm bets/winners (có u) để client tính thắng/thua CÁ NHÂN từng ván
                         history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [] })),
@@ -629,15 +640,33 @@ function startWebPlay(ctx) {
                 if (req.method === 'POST' && path === '/api/bet') {
                     const body = await readBody(req);
                     const tx = ctx.getTX();
+                    // 🎲 GIỎ CƯỢC: bàn 52 cửa gửi nhiều ô một lần. Toàn bộ luật + tiền ở
+                    // index.js (txDatLo) — hợp lệ hết mới trừ, không trừ nửa chừng.
+                    if (Array.isArray(body.gio)) {
+                        if (!ctx.txDatLo) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ giỏ cược' });
+                        const me2 = ctx.getUserData(userId);
+                        const r = ctx.txDatLo(userId, me2.name || ('web_' + userId.slice(-4)), body.gio);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, { ok: true, ...r });
+                    }
                     const choice = String(body.choice || '');
                     const amount = Math.floor(Number(body.amount));
-                    if (!['tai', 'xiu', 'chan', 'le', 'bao'].includes(choice)) return sendJSON(res, 400, { ok: false, error: 'Cửa không hợp lệ' });
+                    // 🎲 bàn 52 cửa: danh sách cửa hợp lệ lấy THẲNG từ index.js, không gõ cứng ở đây
+                    // (gõ cứng là mỗi lần thêm cửa lại quên sửa một chỗ).
+                    const dsCua = ctx.txCua ? ctx.txCua().map(c => c.id) : ['tai', 'xiu', 'chan', 'le', 'bao'];
+                    if (!dsCua.includes(choice)) return sendJSON(res, 400, { ok: false, error: 'Cửa không hợp lệ' });
                     if (!Number.isFinite(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Số tiền không hợp lệ' });
-                    if (!tx.message || tx.status !== 'betting') return sendJSON(res, 400, { ok: false, error: 'Đã khóa sổ - đợi ván sau, giờ là lúc NẶN!' });
+                    if (!tx.message || tx.status !== 'betting') {
+                        return sendJSON(res, 400, {
+                            ok: false,
+                            error: tx.status === 'nhan' ? '⚡ Đang hiện hệ số nhân - hết cửa đặt rồi, đợi ván sau!'
+                                : 'Đã khóa sổ - đợi ván sau, giờ là lúc NẶN!',
+                        });
+                    }
                     const me = ctx.getUserData(userId);
                     if ((me.points || 0) < amount) return sendJSON(res, 400, { ok: false, error: 'Không đủ Dogcoin! Số dư: ' + (me.points || 0).toLocaleString() });
-                    // 💰 trần cược/người/ván - luật tính ở index.js (txCapCheck), web chỉ chuyển tiếp
-                    const capErr = ctx.txCapCheck ? ctx.txCapCheck(userId, amount) : null;
+                    // 💰 trần TỪNG CỬA + trần tổng/ván - luật ở index.js (txCapCheck), web chỉ chuyển tiếp
+                    const capErr = ctx.txCapCheck ? ctx.txCapCheck(userId, amount, choice) : null;
                     if (capErr) return sendJSON(res, 400, { ok: false, error: capErr });
                     ctx.updatePoints(userId, -amount);
                     tx.bets.push({ userId, username: me.name || ('web_' + userId.slice(-4)), choice, amount });
@@ -1352,6 +1381,63 @@ const PAGE = [
     '@keyframes chenIdle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-1.5deg)}}',
     // 🌪️ 14/09: khung hũ Bão ngay dưới cửa BÃO
     // 🌪️ 14/09: gom hết lên NÚT BÃO - số hũ, luật hoàn 30%, và câu nhẩm "đặt X ăn Y"
+    // ===== BÀN SIC BO 52 Ô — bố cục theo ảnh sòng: nền đỏ sẫm, ô kem, có dải tiêu đề khu =====
+    '#sbBan{background:#4a1418;border:2px solid #7d2a2a;border-radius:12px;padding:7px;margin-bottom:10px;',
+    'display:flex;flex-direction:column;gap:4px}',
+    '.sbHang{display:flex;gap:4px}',
+    // dải tiêu đề từng khu (8:1 MỖI ĐÔI, 150:1 MỖI BỘ BA...)
+    '.sbKhu{background:#6b1f22;color:#ffdca8;font-size:10.5px;font-weight:800;text-align:center;',
+    'border-radius:5px;padding:3px 6px;letter-spacing:.3px;margin-top:2px}',
+    '.sbO{flex:1;min-width:0;position:relative;background:#fff;color:#1a1208;border:1px solid #b09268;border-radius:6px;',
+    'padding:6px 2px;cursor:pointer;text-align:center;font-family:inherit;font-weight:900;line-height:1.1;user-select:none;',
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:44px}',
+    '.sbO:active{transform:scale(.95)}',
+    '.sbO .sbTen{font-size:12.5px;display:block;white-space:nowrap}',
+    '.sbO .sbTl{font-size:9.5px;font-weight:700;color:#7a6440;display:block}',
+    // ô to cho 4 cửa đều tiền (hay đặt nhất -> phải nổi nhất)
+    '.sbO.sbDeu{min-height:56px;background:#fff}',
+    '.sbO.sbDeu .sbTen{font-size:15px}',
+    '.sbO.sbTai .sbTen{color:#b3241f}',
+    '.sbO.sbXiu .sbTen{color:#1d4f9c}',
+    '.sbO.sbBaoAny{background:#fff6e0}',
+    // số tổng điểm to cho dễ nhắm
+    '.sbO.sbTong .sbTen{font-size:17px}',
+    '.sbO .sbGio{position:absolute;top:-5px;right:-3px;background:var(--blue);color:#06121f;font-size:10px;font-weight:900;',
+    'border-radius:999px;padding:1px 6px;box-shadow:0 2px 6px rgba(0,0,0,.5);z-index:2}',
+    '.sbO .sbBan2{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);background:#2a2e3b;color:#e8eaf0;',
+    'font-size:9px;font-weight:800;border-radius:999px;padding:0 5px;white-space:nowrap;z-index:2}',
+    '.sbO.sbKhoa{opacity:.94;cursor:not-allowed}',
+    // ---- xúc xắc mini vẽ bằng chấm, giống bàn thật (đỏ trên nền trắng) ----
+    // Ô xúc xắc PHẢI vuông: aspect-ratio giữ vuông kể cả khi flex co kéo. Cỡ 20px
+    // (trong lòng 18px vì box-sizing:border-box) đủ chỗ cho 3 hàng chấm của mặt 6.
+    '.sbXx{display:inline-block;width:20px;aspect-ratio:1;background:#fff;border:1px solid #9c3b3b;border-radius:3px;',
+    'position:relative;margin:0 1.5px;flex:0 0 auto;box-shadow:0 1px 2px rgba(0,0,0,.25)}',
+    '.sbXx i{position:absolute;width:3px;height:3px;border-radius:50%;background:#d0241c;transform:translate(-50%,-50%)}',
+    '.sbBoXx{display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;line-height:0}',
+    // ô đang sáng hệ số nhân
+    '@keyframes sbNhay{0%,100%{box-shadow:0 0 0 2px #ffcf5c,0 0 12px rgba(255,207,92,.8)}50%{box-shadow:0 0 0 4px #ffcf5c,0 0 24px rgba(255,207,92,1)}}',
+    '.sbO.sbNhan{background:linear-gradient(180deg,#fff3ca,#ffd978);animation:sbNhay 1s ease-in-out infinite;border-color:#ffcf5c}',
+    '.sbO .sbX{position:absolute;top:-7px;left:-3px;background:#c62430;color:#fff;font-size:10.5px;font-weight:900;',
+    'border-radius:999px;padding:1px 6px;box-shadow:0 2px 8px rgba(0,0,0,.65);z-index:3}',
+    // 🎯 BÀN LÚC ĐÃ MỞ KẾT QUẢ — theo đúng ảnh sòng thật chủ server gửi:
+    //    ô trượt = NỀN XÁM (xúc xắc vẫn đỏ) · ô trúng = NỀN TRẮNG.
+    // Phải khai SAU .sbNhan, và dùng 2-3 lớp để thắng opacity của .sbKhoa.
+    '@keyframes sbTrungNhay{0%,100%{box-shadow:0 0 0 2px #ffd76a,0 0 14px rgba(255,215,106,.85)}',
+    '50%{box-shadow:0 0 0 5px #ffd76a,0 0 30px rgba(255,215,106,1)}}',
+    '.sbO.sbTruot,.sbO.sbTruot.sbKhoa,.sbO.sbTruot.sbNhan{background:#bcc0c6;border-color:#90969e;',
+    'opacity:1;animation:none;box-shadow:none}',
+    '.sbO.sbTruot .sbTen,.sbO.sbTruot .sbTl{color:#5c6168}',
+    '.sbO.sbTrung,.sbO.sbTrung.sbKhoa,.sbO.sbTrung.sbNhan{background:#fff;border-color:#ffd76a;opacity:1;',
+    'animation:sbTrungNhay 1s ease-in-out infinite;z-index:4;transform:translateY(-1px)}',
+    '.sbO.sbTrung .sbTen,.sbO.sbTrung .sbTl{color:#111}',
+    '@media (max-width:430px){.sbXx{width:16px;margin:0 1px}.sbXx i{width:2.4px;height:2.4px}',
+    '.sbO{min-height:38px;padding:4px 1px}.sbO .sbTen{font-size:11px}.sbO.sbDeu{min-height:48px}',
+    '.sbO.sbDeu .sbTen{font-size:13px}.sbO.sbTong .sbTen{font-size:15px}.sbO .sbTl{font-size:8.5px}}',
+    '#sbNhanBar{background:linear-gradient(90deg,#3a2e10,#6b4f16);border:1px solid #ffcf5c;border-radius:11px;',
+    'padding:9px 12px;margin-bottom:9px;font-size:13px;font-weight:800;color:#ffe9a8;text-align:center}',
+    '#sbChips{margin-top:4px}',
+    '#sbChips .chip.on{background:var(--gold);color:#3a2a06;border-color:var(--gold)}',
+    '@media (max-width:520px){.sbO .sbTen{font-size:10.5px}.sbO .sbTl{font-size:9px}.sbO{padding:6px 2px}}',
     '#baoPot{display:inline-block;margin-left:7px;padding:2px 10px;border-radius:9px;background:#6b4f16;color:#ffe9a8;font-size:16px;font-weight:900;letter-spacing:0;vertical-align:2px;white-space:nowrap}',
     '#baoPot img{width:16px;height:16px;vertical-align:-3px;margin-left:3px}',
     '.cbtn.bao small{line-height:1.55}',
@@ -1573,26 +1659,16 @@ const PAGE = [
     '<div id="stageCap"></div>',
     '</div>',
 
+    // 🎲 BÀN SIC BO 52 CỬA — toàn bộ ô do JS sinh bằng vòng lặp (sbVe), không gõ tay 52 ô.
+    // Cách đặt: chọn mệnh giá chip -> bấm vào ô -> chip xếp vào GIỎ (chưa trừ tiền).
+    // Bấm ĐẶT CƯỢC mới gửi cả giỏ lên máy chủ. HOÀN TÁC / GẤP ĐÔI chỉ sửa giỏ, không đụng ví.
     '<div class="card" id="betCard">',
-    '<div class="grid2">',
-    '<button class="cbtn tai" id="c_tai" onclick="pick(\'tai\')">TÀI<small>11 - 17</small><div class="muted" id="t_tai">0</div></button>',
-    '<button class="cbtn xiu" id="c_xiu" onclick="pick(\'xiu\')">XỈU<small>4 - 10</small><div class="muted" id="t_xiu">0</div></button>',
-    '</div>',
-    '<button class="cbtn bao" id="c_bao" style="width:100%" onclick="pick(\'bao\')">🌪️ BÃO<span id="baoPot">HŨ -</span>',
-    '<small><span class="bl">Bão 111, 222, 333 = <b>XỈU</b> · 444, 555, 666 = <b>TÀI</b></span><span class="bl">Đặt đúng cửa Bão hoàn <b>30%</b> xu, sai mất hết</span></small>',
-    '<div id="baoCalc"></div>',
-    '<div class="muted" id="t_bao">0</div></button>',
-    '<div class="grid2">',
-    '<button class="cbtn chan" id="c_chan" onclick="pick(\'chan\')">CHẴN<small>tổng chẵn</small><div class="muted" id="t_chan">0</div></button>',
-    '<button class="cbtn le" id="c_le" onclick="pick(\'le\')">LẺ<small>tổng lẻ</small><div class="muted" id="t_le">0</div></button>',
-    '</div>',
-    '<input id="amt" inputmode="numeric" placeholder="Số Dogcoin đặt" oninput="baoCalcDraw()">',
-    '<div class="chips">',
-    '<button class="chip" onclick="addAmt(1000)">+1.000</button><button class="chip" onclick="addAmt(5000)">+5.000</button>',
-    '<button class="chip" onclick="addAmt(10000)">+10.000</button><button class="chip" onclick="addAmt(20000)">+20.000</button>',
-    '<button class="chip" onclick="allIn()">ALL IN</button>',
-    '</div>',
-    '<button class="bet-btn" id="betBtn" onclick="bet()">ĐẶT CƯỢC</button>',
+    '<div id="sbNhanBar" class="hidden"></div>',
+    '<div id="sbBan"></div>',
+    // Chọn mệnh giá rồi BẤM THẲNG vào ô là đặt luôn (chủ server chốt: bỏ giỏ, bỏ 3 nút
+    // Hoàn tác/Gấp đôi/Xoá giỏ). Không có hoàn tác - bấm nhầm là mất tiền thật.
+    '<div id="sbChips" class="chips"></div>',
+    '<div class="muted" id="sbNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn</div>',
     '<div class="muted" id="txCapNote" style="font-size:12px;margin-top:6px;text-align:center"></div>',
     '<div class="mine" id="mine"></div>',
     '</div>',
@@ -2169,6 +2245,7 @@ const PAGE = [
     '</div></div>',
     '<script>',
     'var TOKEN=localStorage.getItem("play_token")||"";var SEL="";var TT=0;var LOCKS=10;var PHASE="off";var BAL=0;',
+    'var TXKQS=4;var SBKQ=0;',   // TXKQS: giây cuối tự mở · SBKQ: ván đang tô kết quả trên bàn
     'var NAN=null;var revealedGame=0;var dragging=false;var paperX=0,paperY=0,baseX=0,baseY=0,dragX0=0,dragY0=0;',
     'var MYID="";var lastSettled=-1;',
     // đồng hồ máy người chơi có thể lệch server vài giây -> đếm giờ theo GIỜ SERVER
@@ -2273,11 +2350,7 @@ const PAGE = [
     // đúng cho cả tab thêm sau này như 🛒 Shop Item), không còn whitelist cứng thiếu tab.
     'var saved=localStorage.getItem("play_page");',
     'go(PAGE_GRP[saved]?saved:"tx")}',
-    'function pick(c){SEL=c;["tai","xiu","chan","le","bao"].forEach(function(x){document.getElementById("c_"+x).classList.toggle("sel",x===c)});baoCalcDraw()}',
-    // 14/09: bấm nhanh mà vượt số dư thì tự hạ xuống đúng số dư (y như nút ALL IN)
-    'function addAmt(n){var a=document.getElementById("amt");var v=(parseInt(a.value||"0")||0)+n;',
-    'if(v>BAL){v=BAL;toast("Chỉ còn "+vnd(BAL)+" Dogcoin - đặt hết luôn")}a.value=v;baoCalcDraw()}',
-    'function allIn(){document.getElementById("amt").value=BAL;baoCalcDraw()}',
+    // (pick/addAmt/allIn của bàn 5 cửa đã bỏ - bàn 52 cửa dùng chip + giỏ, xem cụm sb* bên dưới)
     // vẽ 1 viên xí ngầu bằng chấm CSS
     'var PIPS={1:[[50,50]],2:[[25,25],[75,75]],3:[[25,25],[50,50],[75,75]],4:[[25,25],[75,25],[25,75],[75,75]],5:[[25,25],[75,25],[50,50],[25,75],[75,75]],6:[[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]};',
     'function dieHTML(v){var s=\'<div class="die">\';PIPS[v].forEach(function(p){s+=\'<div class="pip" style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></div>\'});return s+"</div>"}',
@@ -2294,6 +2367,7 @@ const PAGE = [
     'function rectOverlap(a,b){return !(a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom)}',
     'function checkReveal(){if(!NAN||revealedGame===NAN.gameId)return;var pr=document.getElementById("paper").getBoundingClientRect();var dies=document.querySelectorAll("#diceRow .die");if(dies.length<3)return;for(var i=0;i<dies.length;i++){if(rectOverlap(pr,dies[i].getBoundingClientRect()))return}revealDone()}',
     'function revealDone(){if(!NAN||revealedGame===NAN.gameId)return;revealedGame=NAN.gameId;var p=document.getElementById("paper");p.classList.add("hidden");showDice(NAN.dice,true);',
+    'sbToKetQua(NAN);',
     'var storm=(NAN.dice[0]===NAN.dice[1]&&NAN.dice[1]===NAN.dice[2]);var g=NAN.gameId;',
     // 🀫 14/09: nặn xong là tiền về ví ngay, không phải chờ hết giờ mở bát nữa
     'api("/api/tx/reveal",{gameId:g}).then(function(j){',
@@ -2323,15 +2397,16 @@ const PAGE = [
     'function tick(){var now=srvNow();var el=document.getElementById("clock");',
     'if(PHASE==="bet"){var s=TT-LOCKS-now;el.textContent=(s>0?s:0)+"s";el.style.color=""}',
     'else if(PHASE==="nan"){var s2=TT-now;el.textContent="🀫 "+(s2>0?s2:0)+"s";el.style.color="#ffcf5c";',
-    // 3 giây cuối chưa nặn -> tự kéo chén giùm để kịp thấy kết quả
-    'if(s2<=3&&NAN&&revealedGame!==NAN.gameId)autoReveal()}',
+    // TXKQS giây cuối chưa nặn -> chén tự rơi, bàn tô kết quả cho cả bàn cùng thấy
+    'if(s2<=TXKQS&&NAN&&revealedGame!==NAN.gameId)autoReveal()}',
     'else{el.textContent="--";el.style.color=""}}',
     'var autoRevealing=0;',
     'function autoReveal(){if(!NAN||autoRevealing===NAN.gameId)return;autoRevealing=NAN.gameId;',
     'var p=document.getElementById("paper");var h=document.getElementById("stage").offsetHeight;',
     'p.style.transition="transform .6s ease-in";p.style.transform="translate("+paperX+"px,"+(h+60)+"px)";',
     'setTimeout(function(){revealDone();if(CURPAGE==="tx")toast("⏰ Hết giờ nặn - tự mở giùm bạn!")},600)}',
-    'function bet(){if(PHASE!=="bet")return toast("Đang khóa sổ - chờ ván sau!");if(!SEL)return toast("Chọn cửa trước!");var v=parseInt(document.getElementById("amt").value);if(!v||v<=0)return toast("Nhập số Dogcoin");api("/api/bet",{choice:SEL,amount:v}).then(function(j){BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");document.getElementById("amt").value="";toast("💸 Đã đặt "+v.toLocaleString("vi-VN")+" vào "+(NAMES[SEL]||SEL));refresh()}).catch(function(e){toast("❌ "+e.message)})}',
+    // NAMES: tên hiển thị từng cửa. 5 cửa cũ gõ sẵn cho lịch sử ván cũ đọc được,
+    // 52 cửa của bàn mới đổ thêm vào lúc máy chủ gửi bảng cửa (sbNapCua).
     'var NAMES={tai:"TÀI",xiu:"XỈU",chan:"CHẴN",le:"LẺ",bao:"BÃO"};',
     'var LINKED=true;',
     // 🔗 17/09: bật/tắt banner. Dùng classList chứ KHÔNG đặt style.display, để .hidden còn tác dụng.
@@ -2361,7 +2436,10 @@ const PAGE = [
     'featDraw(j.featOff||[]);',   // 🔌 15/09: giấu tab mục đang tắt
     'if(j.now)CLOCK_OFF=j.now-Math.floor(Date.now()/1000);',
     'TT=j.targetTime;LOCKS=j.lockSeconds;var prevPhase=PHASE;PHASE=j.phase;NAN=j.nan;',
-    'document.getElementById("betBtn").disabled=(PHASE!=="bet");',
+    // betBtn đã bỏ (bấm ô là đặt luôn) -> phải có if, không thì null.disabled làm vỡ cả refresh
+    'var bb=document.getElementById("betBtn");if(bb)bb.disabled=(PHASE!=="bet");',
+    'var nhac=document.getElementById("sbNhac");',
+    'if(nhac)nhac.textContent=PHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn":(PHASE==="nhan"?"⚡ Đang quay hệ số nhân — không đặt được nữa":"Đã khoá sổ — chờ ván sau");',
     // 💰 trần cược/người/ván + đã đặt bao nhiêu ván này (server chặn, đây chỉ là nhắc)
     'var cpn=document.getElementById("txCapNote");if(cpn){var myTot=0;(j.myBets||[]).forEach(function(b){myTot+=b.amount||0});',
     'cpn.textContent=(j.txMax>0)?("💰 Giới hạn cược "+j.txMax.toLocaleString("vi-VN")+"/người/ván"+(myTot>0?" · ván này bạn đã đặt "+myTot.toLocaleString("vi-VN"):"")):""}',
@@ -2375,10 +2453,21 @@ const PAGE = [
     'if(revealedGame===NAN.gameId){paper.classList.add("hidden");showDice(NAN.dice,true);cap.textContent="Bạn nặn xong rồi - tiền đã về ví, chờ ván sau"}',
     'else{showDice(NAN.dice,false);paper.classList.remove("hidden","locked");paper.classList.add("open");',
     'cap.textContent="Giữ và kéo chén ra - lộ đủ 3 viên là ra điểm · ai kéo người đó thấy, người khác KHÔNG thấy của bạn 🤫"}}',
+    // ⚡ pha HIỆN NHÂN: chén vẫn NẰM ĐÓ và KHOÁ (y như lúc đang đặt), chỉ đổi dòng chữ.
+    // Giấu chén ở đây là sai - người chơi tưởng mất chén. Chưa được kéo vì máy chủ
+    // CHƯA QUAY xúc xắc: /api/state chỉ gửi 3 viên khi phase==="nan", nên có mở F12
+    // xoá chén cũng không moi ra được gì.
+    'else if(PHASE==="nhan"){stt.textContent="⚡ KHÓA SỔ - đang quay hệ số nhân!";',
+    'cap.textContent="Xúc xắc CHƯA lắc - hết 4 giây này mới tới lượt nặn chén.";',
+    'resetPaper();paper.classList.remove("hidden","open");paper.classList.add("locked")}',
     'else if(PHASE==="wait"){stt.textContent="⏳ Đang mở bát...";cap.textContent="";paper.classList.add("hidden")}',
     'else{stt.textContent="🔴 Bàn Tài Xỉu đang tắt";cap.textContent="";paper.classList.add("hidden")}',
     'if(prevPhase==="nan"&&PHASE!=="nan"){resetPaper()}',
-    '["tai","xiu","chan","le","bao"].forEach(function(c){document.getElementById("t_"+c).textContent=(j.totals[c]||0).toLocaleString("vi-VN")});',
+    'if(typeof j.txKqS==="number")TXKQS=j.txKqS;',
+    'sbNapCua(j);sbTong(j.totals||{},j.myBets||[]);sbNhanVe(j.txNhan);',
+    // đã nặn xong ván nào thì bàn giữ màu ván đó tới khi mở ván mới
+    'if(j.nan&&revealedGame===j.nan.gameId)sbToKetQua(j.nan);',
+    'if(PHASE==="bet")sbXoaKetQua();',
     'var m=j.myBets.map(function(b){return NAMES[b.choice]+": "+b.amount.toLocaleString("vi-VN")}).join(" · ");',
     'document.getElementById("mine").textContent=m?("🧾 Ván này bạn đặt - "+m):"";',
     'renderWho(j.betsList||[]);',
@@ -2409,10 +2498,12 @@ const PAGE = [
     '"</div>"}).join("")}',
     // danh sách ai đang đặt ván này, gộp theo cửa, tên tô màu riêng từng người
     'var CHOICE_COLOR={tai:"#ff7b86",xiu:"#7db4ff",chan:"#6fd3b8",le:"#c39bf0",bao:"#ffcf5c"};',
+    'function cuaMau(c){return CHOICE_COLOR[c]||"#ffcf5c"}',
     'function renderWho(list){var box=document.getElementById("whoBox");if(!list.length){box.innerHTML="Chưa ai đặt.";return}',
     'var by={};list.forEach(function(b){(by[b.choice]=by[b.choice]||[]).push(b)});',
-    'box.innerHTML=["tai","xiu","chan","le","bao"].filter(function(c){return by[c]}).map(function(c){',
-    'return \'<div style="padding:3px 0"><b style="color:\'+CHOICE_COLOR[c]+\'">\'+NAMES[c]+"</b>: "+by[c].map(function(b){return \'<span style="color:\'+userColor(b.u)+\'">\'+esc(b.name)+"</span> "+b.amount.toLocaleString("vi-VN")}).join(" · ")+"</div>"}).join("")}',
+    // bàn 52 cửa: liệt kê mọi cửa CÓ người đặt, theo đúng thứ tự bảng cửa máy chủ gửi
+    'box.innerHTML=(SBCUA.length?SBCUA.map(function(x){return x.id}):["tai","xiu","chan","le","bao"]).filter(function(c){return by[c]}).map(function(c){',
+    'return \'<div style="padding:3px 0"><b style="color:\'+cuaMau(c)+\'">\'+(NAMES[c]||c)+"</b>: "+by[c].map(function(b){return \'<span style="color:\'+userColor(b.u)+\'">\'+esc(b.name)+"</span> "+b.amount.toLocaleString("vi-VN")}).join(" · ")+"</div>"}).join("")}',
     'function esc(s){return String(s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;"})}',
     // mỗi user 1 màu cố định: băm userId ra hue HSL, sáng vừa đủ đọc trên nền tối
     'function userColor(u){var h=0;u=String(u||"");for(var i=0;i<u.length;i++){h=(h*31+u.charCodeAt(i))>>>0}return "hsl("+(h%360)+",75%,68%)"}',
@@ -2437,19 +2528,117 @@ const PAGE = [
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
-    // 🌪️ 14/09 hũ Bão - PHẢI ở top-level, trước đây lọt vào trong renderHist20 làm treo trang
-    // 🌪️ 14/09: mọi thứ về hũ Bão nằm ngay trên NÚT BÃO. Dòng tính tiền CHỈ hiện khi
-    // người chơi đã BẤM chọn cửa Bão và có gõ số - chưa chọn thì để trống cho gọn.
-    'var BPOT=0,BPX=10,BPR=30;',
-    'function txPotDraw(j){BPOT=j.txPot||0;BPX=j.txPotX||10;BPR=j.txBaoRate||30;',
-    'var p=$("baoPot");if(p)p.innerHTML="HŨ "+vnd(BPOT)+\' <img src="/dogcoin.png" alt="">\';',
-    'baoCalcDraw()}',
-    'function baoCalcDraw(){var c=$("baoCalc");if(!c)return;',
-    'if(SEL!=="bao"){c.textContent="";return}',
-    'var a=$("amt"),v=a?Math.floor(Number(String(a.value).replace(/[^0-9]/g,""))||0):0;',
-    'if(v<1){c.textContent="Gõ số tiền để xem ra Bão ăn bao nhiêu";return}',
-    'var bu=Math.min(v*BPX,BPOT);',
-    'c.textContent="Đặt "+vnd(v)+" → ra Bão ăn "+vnd(v*BPR)+" + bú hũ "+vnd(bu)+" = "+vnd(v*BPR+bu);}',
+    // 🌪️ HŨ BÃO ĐÃ BỎ 21/09 - bàn 52 cửa có sẵn Bão bất kỳ 30:1 và Bão từng số 150:1
+    // (nhân tới 999:1). Giữ hàm rỗng để chỗ gọi cũ khỏi vỡ.
+    'function txPotDraw(j){}',
+
+    // ======================= 🎲 BÀN SIC BO 52 Ô =======================
+    // SBCUA  = bảng cửa máy chủ gửi (id, tên, trả gốc, trả tối đa) - KHÔNG gõ cứng ở client
+    // SBTONG = tiền cả bàn từng cửa + khoá "_toi_<cửa>" là tiền của chính mình.
+    // SBCHIP = mệnh giá chip đang chọn.
+    'var SBCUA=[],SBTRAN={},SBCHIP=0,SBVEROI=false,SBNHAN=null,SBDANGGUI=false;',
+    'var SBMENH=[1000,5000,10000,20000,50000,100000];',
+    // nạp bảng cửa 1 lần rồi vẽ bàn; các lần sau chỉ cập nhật số
+    'function sbNapCua(j){if(!j.txCua||!j.txCua.length)return;',
+    'SBTRAN=j.txTran||{};',
+    'if(SBVEROI)return;',
+    'SBCUA=j.txCua;SBCUA.forEach(function(c){NAMES[c.id]=c.ten});',
+    'sbVe();sbVeChip();SBVEROI=true}',
+    // 1 viên xúc xắc mini (dùng lại bảng chấm PIPS của phần lắc xí ngầu)
+    'function sbXx(n){var s=\'<span class="sbXx">\';PIPS[n].forEach(function(p){s+=\'<i style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></i>\'});return s+"</span>"}',
+    'function sbBoXx(ds){return \'<span class="sbBoXx">\'+ds.map(sbXx).join("")+"</span>"}',
+    // dựng bàn theo ĐÚNG bố cục ảnh sòng: mỗi khu có dải tiêu đề, ô đôi/ba/cặp/đơn vẽ xúc xắc
+    'function sbVe(){var b=$("sbBan");if(!b)return;',
+    'var g=function(id){return SBCUA.filter(function(c){return c.id===id})[0]};',
+    // ruot = nội dung trong ô (mặc định tên + tỉ lệ); truyền vào để thay bằng hình xúc xắc
+    'var o=function(c,them,ruot){if(!c)return "";',
+    // CHỈ in tỉ lệ ăn THẬT của ô. c.max là mức cao nhất mà hệ số nhân CÓ THỂ bốc trúng,
+    // in ra đây thì người chơi tưởng ô nào cũng ăn mức đó -> chỉ hiện khi ô thực sự sáng.
+    'var tl=c.goc+":1";',
+    'var trong=ruot!==undefined?ruot:(\'<span class="sbTen">\'+c.ten+\'</span><span class="sbTl">\'+tl+\'</span>\');',
+    'return \'<button type="button" class="sbO \'+(them||"")+\'" id="sb_\'+c.id+\'" onclick="sbChon(&quot;\'+c.id+\'&quot;)">\'+trong+\'</button>\'};',
+    'var khu=function(t){return \'<div class="sbKhu">\'+t+"</div>"};',
+    'var h="";',
+    // khu 1: 4 cửa đều tiền + bộ ba bất kỳ, ô to nhất vì hay đặt nhất
+    'h+=khu("1:1 · THUA NẾU RA BÃO — riêng BỘ BA BẤT KỲ 30:1");',
+    'h+=\'<div class="sbHang">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("baoany"),"sbDeu sbBaoAny")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";',
+    // khu 2: 6 ô gấp đôi — vẽ 2 viên giống nhau
+    'h+=khu("8:1 · MỖI ĐÔI");',
+    'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("doi"+n),"",sbBoXx([n,n]))}).join("")+"</div>";',
+    // khu 3: 6 ô gấp ba — vẽ 3 viên giống nhau
+    'h+=khu("150:1 · MỖI BỘ BA");',
+    'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("bao"+n),"",sbBoXx([n,n,n]))}).join("")+"</div>";',
+    // khu 4: tổng điểm 4..17 — số to, tỉ lệ nhỏ bên dưới; cắt 2 dòng cho vừa điện thoại
+    'h+=khu("TỔNG ĐIỂM 3 VIÊN");',
+    'var oTong=function(n){var c=g("tong"+n);if(!c)return "";',
+    'return o(c,"sbTong",\'<span class="sbTen">\'+n+\'</span><span class="sbTl">\'+c.goc+\':1</span>\')};',
+    'h+=\'<div class="sbHang">\'+[4,5,6,7,8,9,10].map(oTong).join("")+"</div>";',
+    'h+=\'<div class="sbHang">\'+[11,12,13,14,15,16,17].map(oTong).join("")+"</div>";',
+    // khu 5: 15 cửa kết hợp 2 lá — vẽ 2 viên khác nhau
+    'h+=khu("5:1 · KẾT HỢP 2 VIÊN");',
+    'var cap=SBCUA.filter(function(c){return c.id.indexOf("cap")===0});',
+    'var oCap=function(c){var a=+c.id[3],d=+c.id[4];return o(c,"",sbBoXx([a,d]))};',
+    'h+=\'<div class="sbHang">\'+cap.slice(0,8).map(oCap).join("")+"</div>";',
+    'h+=\'<div class="sbHang">\'+cap.slice(8).map(oCap).join("")+"</div>";',
+    // khu 6: 6 cửa số đơn — 1 viên + chữ số
+    'h+=khu("ĐƠN · 1 viên 1:1 · 2 viên 2:1 · 3 viên 3:1");',
+    'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("don"+n),"",sbBoXx([n]))}).join("")+"</div>";',
+    'b.innerHTML=h}',
+    // hàng chip: mệnh giá nào vượt số dư thì vẫn hiện, bấm mới báo
+    'function sbVeChip(){var e=$("sbChips");if(!e)return;',
+    'if(!SBCHIP)SBCHIP=SBMENH[0];',
+    'e.innerHTML=SBMENH.map(function(v){return \'<button class="chip\'+(v===SBCHIP?" on":"")+\'" onclick="sbDatChip(\'+v+\')">\'+vnd(v)+"</button>"}).join("")}',
+    'function sbDatChip(v){SBCHIP=v;sbVeChip()}',
+    // BẤM Ô = ĐẶT LUÔN. Chặn sơ ở client cho đỡ gọi phí, nhưng luật thật vẫn ở máy chủ.
+    // SBDANGGUI: chặn bấm dồn 2 lần lúc mạng chậm -> khỏi đặt trùng.
+    'function sbChon(id){if(PHASE!=="bet")return toast(PHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!");',
+    'if(!LINKED)return toast("Ví chưa được liên kết - nhắn admin");',
+    'if(SBDANGGUI)return;',
+    'if(SBCHIP>BAL)return toast("Không đủ Dogcoin - ví còn "+vnd(BAL));',
+    'var tran=sbTranCua(id),daCo=SBTONG&&SBTONG["_toi_"+id]||0;',
+    'if(tran>0&&daCo+SBCHIP>tran)return toast("Cửa "+(NAMES[id]||id)+" tối đa "+vnd(tran)+"/ván");',
+    'SBDANGGUI=true;',
+    'api("/api/bet",{gio:[{choice:id,amount:SBCHIP}]}).then(function(j){SBDANGGUI=false;',
+    'BAL=j.balance;$("bal").textContent=vnd(j.balance);',
+    'toast("💸 "+vnd(SBCHIP)+" vào "+(NAMES[id]||id));refresh()})',
+    '.catch(function(e){SBDANGGUI=false;toast("❌ "+e.message)})}',
+    'function sbTranCua(id){var c=SBCUA.filter(function(x){return x.id===id})[0];return c&&SBTRAN[c.nhom]?SBTRAN[c.nhom]:0}',
+    // vẽ nhãn giỏ + nhãn tiền cả bàn lên từng ô
+    // SBTONG: tiền CẢ BÀN từng cửa. Thêm khoá "_toi_<cửa>" = tiền CỦA MÌNH ở cửa đó,
+    // để chặn trần ngay tại client trước khi gọi máy chủ.
+    'var SBTONG={};',
+    'function sbTong(t,cuaToi){SBTONG=t||{};',
+    'if(cuaToi)cuaToi.forEach(function(b){SBTONG["_toi_"+b.choice]=(SBTONG["_toi_"+b.choice]||0)+b.amount});',
+    'sbVeGio()}',
+    'function sbVeGio(){SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
+    'var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
+    'var cu2=e.querySelector(".sbBan2");if(cu2)cu2.remove();',
+    'var toi=SBTONG["_toi_"+c.id]||0;',
+    'if(toi){var d=document.createElement("span");d.className="sbGio";d.textContent=vnd(toi);e.appendChild(d)}',
+    'if(SBTONG[c.id]){var d2=document.createElement("span");d2.className="sbBan2";d2.textContent="bàn "+vnd(SBTONG[c.id]);e.appendChild(d2)}',
+    'e.classList.toggle("sbKhoa",PHASE!=="bet")})}',
+    // 🎯 Tô kết quả lên bàn: ô trúng sáng, ô trượt xám. Danh sách ô trúng do MÁY CHỦ
+    // gửi (tính từ lõi tiền), phía người chơi không tự đoán luật.
+    'function sbToKetQua(nan){if(!nan||!nan.thang||SBKQ===nan.gameId)return;SBKQ=nan.gameId;',
+    'var an={};nan.thang.forEach(function(k){an[k]=1});',
+    'SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
+    'e.classList.toggle("sbTrung",!!an[c.id]);e.classList.toggle("sbTruot",!an[c.id])})}',
+    'function sbXoaKetQua(){if(!SBKQ)return;SBKQ=0;',
+    'SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
+    'e.classList.remove("sbTrung","sbTruot")})}',
+    // hệ số nhân: máy chủ chỉ gửi sau khi KHOÁ SỔ nên không lộ sớm
+    'function sbNhanVe(nh){SBNHAN=nh||null;var bar=$("sbNhanBar");',
+    'SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
+    'var cu=e.querySelector(".sbX");if(cu)cu.remove();',
+    'var co=nh&&nh[c.id];e.classList.toggle("sbNhan",!!co);',
+    'if(co){var d=document.createElement("span");d.className="sbX";d.textContent="x"+co;e.appendChild(d)}});',
+    'if(!bar)return;',
+    'var ids=nh?Object.keys(nh):[];',
+    'if(!ids.length){bar.classList.add("hidden");return}',
+    'bar.classList.remove("hidden");',
+    'ids.sort(function(a,b){return nh[b]-nh[a]});',
+    'bar.innerHTML="⚡ HỆ SỐ NHÂN VÁN NÀY (ăn THAY tỉ lệ in trên ô): "+ids.slice(0,6).map(function(k){return (NAMES[k]||k)+" <b>x"+nh[k]+"</b>"}).join(" · ")+(ids.length>6?" · +"+(ids.length-6)+" ô nữa":"")}',
+    // (không còn giỏ cược — bấm ô là gửi thẳng, xem sbChon bên trên)
     'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
