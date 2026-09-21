@@ -1760,8 +1760,7 @@ const HTML = `<!DOCTYPE html>
           </div>
           <div class="note">🔒 = nhóm có luật riêng trong code (⭐ mua 1 lần · 🧬 hạn implant · 🏪 nhóm mặc định khi món chưa rõ nhóm) - đổi tên được, <b>xoá thì không</b>. Nhóm đang có món cũng không xoá được: đổi nhóm cho mấy món đó trước đã. <b>Mã nhóm</b> (chữ xám) là thứ lưu trong từng món - server tự đặt, không sửa được, đổi là món mất nhóm.</div>
         </div>
-        <div class="note">🎁 Quà admin tặng đã chuyển sang tab riêng <b>🎁 Quà tặng</b> cạnh Kho đồ (danh sách riêng, không dính shop) - đừng tạo quà ở đây nữa. Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.
-          <br><b>➕ Thêm CẢ NHÓM</b>: nhặt luôn mọi món của nhóm đó trong kho game vào bảng, <b>tự bỏ qua món đã có</b> nên bấm lại bao nhiêu lần cũng không trùng. Giá điền sẵn là <b>giá gợi ý theo độ hiếm</b> — <b>xem lại giá rồi mới bấm Lưu</b>. Ảnh để trống vẫn hiện được: trang cược tự lấy icon gốc từ paldb khi máy chủ chưa có file.</div>
+        <div class="note">🎁 Quà admin tặng đã chuyển sang tab riêng <b>🎁 Quà tặng</b> cạnh Kho đồ (danh sách riêng, không dính shop) - đừng tạo quà ở đây nữa. Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
           <span>📅 Giới hạn mua <b>mỗi món / ngày</b>:</span>
           <input class="mini-in" id="isDayMax" type="number" min="0" max="100000" placeholder="99" style="width:90px">
@@ -1801,16 +1800,6 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:10px">
           <button class="btn-blue" onclick="itemShopAddRow();itemShopDirty(true)">➕ Thêm món</button>
-          <select id="isBulkPick" style="max-width:260px">
-            <option value="implant">🧬 Implant (cấy ghép 1 lần)</option>
-            <option value="material">🐾 Nguyên liệu cho Pal</option>
-            <option value="sphere">🔮 Module cầu</option>
-            <option value="ammo">🔫 Đạn</option>
-            <option value="food">🍖 Đồ ăn</option>
-            <option value="accessory">💍 Phụ kiện</option>
-            <option value="glider">🪂 Dù lượn</option>
-          </select>
-          <button class="btn-blue" id="isBulkBtn" onclick="itemShopThemNhom()">➕ Thêm CẢ NHÓM từ kho game</button>
           <button class="btn-green" id="itemShopSaveBtn" onclick="itemShopSave()">💾 Lưu shop</button>
         </div>
       </div>
@@ -3353,51 +3342,6 @@ function itemShopUpload(inp){
   rd.readAsDataURL(f);
 }
 function itemShopDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();itemShopDirty(true);}
-// ➕ THÊM CẢ NHÓM TỪ KHO GAME (chỉ cổng SUPER - /api/gameitems bị chặn ở cổng thường)
-//   · lọc theo nhóm đã chọn · BỎ QUA món đã có trong bảng (so theo id) · điền sẵn
-//     tên tiếng Việt, nhóm shop, tên ảnh, giá gợi ý theo độ hiếm, và ghi chú lấy từ mô tả.
-//   · KHÔNG tự lưu. Admin xem lại giá rồi bấm 💾 Lưu shop.
-var IS_NHOM={
-  // nhóm shop <- cách nhặt trong kho game
-  implant:  {cat:'implant',  ten:'🧬 Implant',           loc:function(x){return /^PalPassiveSkillChange_/.test(x.id)}, max:5},
-  material: {cat:'material', ten:'🐾 Nguyên liệu cho Pal',loc:function(x){return x.t==='Material'},                    max:999},
-  sphere:   {cat:'consume',  ten:'🔮 Module cầu',         loc:function(x){return x.t==='SphereModule'},                max:99},
-  ammo:     {cat:'ammo',     ten:'🔫 Đạn',                loc:function(x){return x.t==='Ammo'},                        max:999},
-  food:     {cat:'food',     ten:'🍖 Đồ ăn',              loc:function(x){return x.t==='Food'},                        max:999},
-  accessory:{cat:'accessory',ten:'💍 Phụ kiện',           loc:function(x){return x.t==='Accessory'},                   max:20},
-  glider:   {cat:'consume',  ten:'🪂 Dù lượn',            loc:function(x){return x.t==='Glider'},                      max:10}
-};
-// Giá GỢI Ý theo độ hiếm - admin sửa trước khi Lưu. Không phải giá chốt.
-function isGiaGoiY(r){r=Number(r)||0;return r>=4?200000:(r===3?100000:(r===2?50000:20000))}
-async function itemShopThemNhom(){
-  var key=document.getElementById('isBulkPick').value;
-  var N=IS_NHOM[key];if(!N)return toast('❌ Không có nhóm này');
-  var btn=document.getElementById('isBulkBtn');
-  try{
-    if(!GV){btn.textContent='⏳ Đang tải kho game...';await gvLoad();}
-    if(!GV||!GV.items)return toast('❌ Chưa tải được kho game (tab này chỉ chạy ở cổng SUPER)');
-    // món ĐÃ CÓ trong bảng -> bỏ qua, để bấm lại nhiều lần vẫn không trùng
-    var daCo={};
-    [].slice.call(document.querySelectorAll('#itemShopBody .isf-id')).forEach(function(i){
-      var v=(i.value||'').trim();if(v)daCo[v]=1;
-    });
-    var ds=GV.items.filter(N.loc).filter(function(x){return !daCo[x.id]});
-    if(!ds.length)return toast('✅ '+N.ten+': đã có đủ trong bảng rồi, không thêm gì');
-    ds.forEach(function(x){
-      itemShopAddRow({id:x.id,name:x.n||x.id,cat:N.cat,price:isGiaGoiY(x.r),max:N.max,
-        img:x.i?(x.i+'.webp'):'',note:String(x.d||'').slice(0,240)});
-    });
-    // ⚠️ itemShopAddRow() tính bộ lọc NGAY LÚC TẠO DÒNG, lúc đó ô id/tên còn rỗng nên dòng
-    // mới bị ẩn hết nếu admin đang gõ lọc. Thêm 184 món mà màn hình trống trơn thì tưởng hỏng.
-    // Chạy lại bộ lọc SAU KHI đã điền giá trị, và nhảy tới cuối bảng cho thấy hàng vừa thêm.
-    if(typeof itemShopFilter==='function')itemShopFilter();
-    itemShopDirty(true);
-    var cuoi=document.querySelector('#itemShopBody tr:last-child');
-    if(cuoi&&cuoi.scrollIntoView)cuoi.scrollIntoView({block:'center'});
-    toast('➕ Đã thêm '+ds.length+' món '+N.ten+' - XEM LẠI GIÁ rồi bấm 💾 Lưu shop');
-  }catch(e){toast('❌ '+e.message)}
-  finally{btn.textContent='➕ Thêm CẢ NHÓM từ kho game'}
-}
 function itemShopSave(){
   var items=[].slice.call(document.querySelectorAll('#itemShopBody tr')).map(function(tr){
     return {id:tr.querySelector('.isf-id').value.trim(),
