@@ -102,6 +102,8 @@ Chạy được ngay, **không cần bot**:
 node TaiXiu/kiemtra/cua-test.js       # lõi tiền: RTP, xác suất, trần, danh sách ô trúng
 node TaiXiu/kiemtra/trang-test.js     # giao diện: hình học xúc xắc, kiểu ô trúng/trượt, 3 nút
 node TaiXiu/kiemtra/pham-vi-test.js   # biến xuyên file (webplay/panel gọi hằng của index)
+node TaiXiu/kiemtra/tienkhongmat-test.js  # mọi chỗ xoá cược phải trả tiền trước
+node TaiXiu/kiemtra/restart-test.js   # bật lại bot giữa ván: không hoàn kép, không mất
 ```
 
 **Cần bot test đang chạy** (`node Desktop/bialk-test.js 4`):
@@ -124,7 +126,31 @@ Nhịp bot test: bật bằng `node Desktop/bialk-test.js` các bước `5` (t�
 
 ---
 
-## 9. Cạm bẫy đã dính, đừng dính lại
+## 9. Luật TIỀN KHÔNG ĐƯỢC MẤT
+
+Cược là tiền **đã trừ khỏi ví**. Vì vậy:
+
+- **Chỗ nào xoá `txState.bets` đều PHẢI gọi `txDonSoCuoc(lyDo)` trước.** Hàm đó tự quyết:
+  ván đã quay thì trả nốt theo bảng trả tiền, ván chưa quay thì hoàn nguyên cược.
+  Trước đây có 5 chỗ xoá thẳng (admin khởi tạo lại bàn, admin dừng bàn, watchdog kẹt,
+  mất bảng Discord, nhảy cóc mốc nặn) — cả 5 đều mất trắng hoặc treo tiền người chơi.
+- **Không bao giờ dựng lại bảng trả tiền khi không tìm thấy bảng cũ.** Bảng mới có cờ
+  `paid` rỗng nên sẽ trả lại từ đầu cho cả bàn. Không thấy bảng = ván đã chốt rồi.
+- **Cờ `paid` phải ghi xuống đĩa ngay.** Để trong RAM thì bot chết trước nhịp lưu 10 giây
+  là lúc bật lại tưởng chưa ai nhận, trả thêm một lần nữa.
+- **Watchdog reset thì phải tăng `gameId`.** Giữ số cũ là ván mới trùng số ván cũ, bảng
+  trả tiền khớp nhầm ván.
+- **Hai đường cứu tiền lúc bật lại không được giẫm chân nhau**: hoàn cược theo `_txBets`
+  và trả thắng theo `_txPlan` từng cùng tồn tại ~24 giây mỗi ván, restart trúng quãng đó
+  là người thắng ăn 2 lần, người thua được hoàn trắng.
+- **Mọi đường đặt cược phải đi qua `txDatLo`** (web lẫn Discord). Chỉ nó kiểm đủ ví,
+  sàn cược, trần từng cửa, trần tổng, và tất-cả-hoặc-không.
+- **Mốc "hết giờ đặt" = hiện nhân + nặn**, không phải chỉ giây nặn. Trừ thiếu thì đồng hồ
+  người chơi không về 0 và panel báo còn giờ ép trong khi sổ đã đóng.
+
+Bộ kiểm khoá lại: `tienkhongmat-test.js` và `restart-test.js` (đều không cần bot).
+
+## 10. Cạm bẫy đã dính, đừng dính lại
 
 **① Tên cửa tra bằng bảng 5 cửa cũ → VỠ KHÂU CHỐT VÁN, MẤT TIỀN NGƯỜI CHƠI.**
 `TX_CHOICES` chỉ còn 5 cửa cũ. Ai đặt ô mới như `tong9` mà đi tra `TX_CHOICES[id].name` là

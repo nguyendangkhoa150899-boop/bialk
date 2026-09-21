@@ -104,12 +104,19 @@ function startPanel(ctx) {
             tx: (() => {
                 const bets = Array.isArray(tx.bets) ? tx.bets : [];
                 // gộp theo cửa cho admin thấy tiền đang gánh ở đâu (ép cho cửa nặng thua)
-                const agg = { tai: 0, xiu: 0, chan: 0, le: 0, bao: 0 };
-                bets.forEach(b => { if (agg[b.choice] !== undefined) agg[b.choice] += (b.amount || 0); });
+                // ⚠️ Gộp ĐỦ MỌI CỬA. Bản cũ khởi tạo sẵn 5 khoá rồi lọc
+                // `if (agg[b.choice] !== undefined)` nên tiền đặt vào 47 cửa mới bị
+                // VỨT SẠCH — admin nhìn panel tưởng bàn trống.
+                const agg = {};
+                bets.forEach(b => { agg[b.choice] = (agg[b.choice] || 0) + (b.amount || 0); });
                 // ⚠️ 17/09: index.js đổi txLockS thành HÀM (admin chỉnh giây nặn ở panel).
                 // Quên gọi thì lockS là cả cái hàm -> phép trừ dưới ra NaN -> secsToBet = NaN ->
                 // panel LÚC NÀO CŨNG báo "ĐÃ KHÓA SỔ", admin không ép được kết quả. Đã dính đúng lỗi này.
-                const lockS = Number(typeof ctx.txLockS === 'function' ? ctx.txLockS() : ctx.txLockS) || 15;
+                // Sổ đóng trước giờ mở bát (hiện nhân + nặn) giây. Lấy thẳng từ index,
+                // đừng chỉ trừ giây nặn — trừ thiếu là panel báo còn giờ ép trong khi
+                // sổ đã đóng, admin ép nhầm sang ván sau.
+                const lockS = Number(ctx.txKhoaSoS ? ctx.txKhoaSoS()
+                    : (typeof ctx.txLockS === 'function' ? ctx.txLockS() : ctx.txLockS)) || 24;
                 const secsToBet = Math.max(0, (tx.targetTime || 0) - lockS - Math.floor(Date.now() / 1000));
                 return {
                     gameId: tx.gameId,
@@ -121,6 +128,9 @@ function startPanel(ctx) {
                     channelId: (tx.channel && tx.channel.id) || db._txChannelId || '',
                     // 27/08: cho admin xem cược trực tiếp + ép tối ưu + biết cửa sổ còn mấy giây
                     betAgg: agg,
+                    // 🎯 gợi ý ép: MÁY CHỦ tính bằng lõi tiền trên đủ 216 kết quả
+                    epGoiY: ctx.txTimEpReNhat ? ctx.txTimEpReNhat() : null,
+                    tenCua: ctx.txCua ? Object.fromEntries(ctx.txCua().map(c => [c.id, c.ten])) : {},
                     bets: bets.slice(-40).map(b => ({ name: b.username || b.userId, choice: b.choice, amount: b.amount || 0 })),
                     secsToBet,
                     baoRate: ctx.txBaoRate || 30,
@@ -2379,20 +2389,18 @@ function txForce(){
   api('/api/tx/force',{values:v}).then(()=>{toast('⚡ Đã ép Big Small: '+v);refresh();}).catch(e=>toast('❌ '+e.message));
 }
 // 27/08: chọn 3 xúc xắc khiến nhà cái trả ÍT NHẤT (cửa gánh nhiều tiền nhất thua)
+// 🎯 Gợi ý ép: lấy THẲNG kết quả máy chủ đã duyệt đủ 216 kết cục bằng lõi tiền.
+// KHÔNG tự đoán ở đây nữa — bản cũ chỉ tính 5 cửa và luôn ra 1-1-1 (cửa 'bao' của
+// bàn cũ không còn nên tiền cửa đó vĩnh viễn 0), tức là luôn ép ra BÃO, tự bơm tiền.
 function txAutoForce(){
-  if(!STATE||!STATE.tx)return; const a=STATE.tx.betAgg||{tai:0,xiu:0,chan:0,le:0,bao:0}; const br=STATE.tx.baoRate||30;
-  // 5 kết cục ứng viên: [nhãn, xúc xắc, tiền phải trả]
-  const opts=[
-    ['Tài+Chẵn',[6,6,4],a.tai*2+a.chan*2],
-    ['Tài+Lẻ',[6,5,4],a.tai*2+a.le*2],
-    ['Xỉu+Chẵn',[1,2,3],a.xiu*2+a.chan*2],
-    ['Xỉu+Lẻ',[1,2,2],a.xiu*2+a.le*2],
-    ['Bão',[1,1,1],a.bao*br],
-  ];
-  opts.sort((x,y)=>x[2]-y[2]); const best=opts[0];
-  setDice(best[1][0],best[1][1],best[1][2]);
-  const totalBet=a.tai+a.xiu+a.chan+a.le+a.bao;
-  toast('🎯 '+best[0]+': nhà cái chỉ trả '+best[2].toLocaleString()+' (tổng cược '+totalBet.toLocaleString()+'). Bấm ⚡ Ép để chốt.');
+  if(!STATE||!STATE.tx)return;
+  const g=STATE.tx.epGoiY;
+  if(!g||!g.dice){toast('❌ Máy chủ chưa gửi gợi ý ép - thử lại sau vài giây');return;}
+  if(!g.soCuoc){toast('Ván này chưa ai đặt - ép kiểu gì cũng như nhau');return;}
+  setDice(g.dice[0],g.dice[1],g.dice[2]);
+  const sum=g.dice[0]+g.dice[1]+g.dice[2];
+  toast('🎯 '+g.dice.join('-')+' (tổng '+sum+'): nhà cái trả ít nhất '+g.tra.toLocaleString()
+    +' / tổng cược '+g.tongDat.toLocaleString()+'. Bấm ⚡ Ép để chốt.');
 }
 function renderTxBetsLive(){
   const box=document.getElementById('txBetsLive'); if(!box||!STATE||!STATE.tx)return;
@@ -2400,9 +2408,19 @@ function renderTxBetsLive(){
   const win=t.secsToBet>0
     ? '<span style="color:#3ddc84;font-weight:800">🟢 CÒN '+t.secsToBet+'s ĐỂ ÉP - ép giờ ĂN ván này</span>'
     : '<span style="color:#ff7a7a;font-weight:800">🔒 ĐÃ KHÓA SỔ - ép giờ sẽ vào VÁN SAU</span>';
-  const cua='🟢 Tài <b>'+(a.tai||0).toLocaleString()+'</b> · 🔴 Xỉu <b>'+(a.xiu||0).toLocaleString()+'</b> · 🔵 Chẵn <b>'+(a.chan||0).toLocaleString()+'</b> · 🟣 Lẻ <b>'+(a.le||0).toLocaleString()+'</b> · 🌩️ Bão <b>'+(a.bao||0).toLocaleString()+'</b>';
+  // Bàn 52 cửa: liệt kê MỌI cửa đang có tiền, nặng nhất lên đầu (admin cần thấy
+  // đúng chỗ đang gánh). Bản cũ in cứng 5 cửa nên 47 cửa mới vô hình.
+  const ten=(t.tenCua)||{};
+  const tenOf=function(id){return ten[id]||id;};
+  const co=Object.keys(a).filter(function(k){return (a[k]||0)>0;}).sort(function(x,y){return a[y]-a[x];});
+  const tong=co.reduce(function(s2,k){return s2+a[k];},0);
+  const cua=co.length
+    ? ('💰 tổng <b>'+tong.toLocaleString()+'</b> · '+co.slice(0,12).map(function(k){
+        return esc(tenOf(k))+' <b>'+a[k].toLocaleString()+'</b>';}).join(' · ')
+        +(co.length>12?(' · +'+(co.length-12)+' cửa nữa'):''))
+    : 'chưa ai đặt';
   const list=(t.bets||[]).length
-    ? (t.bets||[]).slice().reverse().map(b=>esc(b.name)+': '+({tai:'Tài',xiu:'Xỉu',chan:'Chẵn',le:'Lẻ',bao:'Bão'}[b.choice]||b.choice)+' '+Number(b.amount).toLocaleString()).join(' • ')
+    ? (t.bets||[]).slice().reverse().map(b=>esc(b.name)+': '+esc(tenOf(b.choice))+' '+Number(b.amount).toLocaleString()).join(' • ')
     : 'chưa ai đặt';
   box.innerHTML='<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#141824">'
     +'<div style="margin-bottom:5px">'+win+' &nbsp;·&nbsp; Ván #'+padId(t.gameId)+' · '+t.betsCount+' lượt đặt</div>'

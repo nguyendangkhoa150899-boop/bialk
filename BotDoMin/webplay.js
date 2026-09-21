@@ -673,7 +673,9 @@ function startWebPlay(ctx) {
                     const amount = Math.floor(Number(body.amount));
                     // 🎲 bàn 52 cửa: danh sách cửa hợp lệ lấy THẲNG từ index.js, không gõ cứng ở đây
                     // (gõ cứng là mỗi lần thêm cửa lại quên sửa một chỗ).
-                    const dsCua = ctx.txCua ? ctx.txCua().map(c => c.id) : ['tai', 'xiu', 'chan', 'le', 'bao'];
+                    // KHÔNG có danh sách dự phòng 5 cửa cũ: thiếu bảng cửa thì CHẶN hẳn, chứ
+                    // nhận bừa 5 cửa cũ là lọt cả id 'bao' mà txDatLo đã cấm.
+                    const dsCua = ctx.txCua ? ctx.txCua().map(c => c.id) : [];
                     if (!dsCua.includes(choice)) return sendJSON(res, 400, { ok: false, error: 'Cửa không hợp lệ' });
                     if (!Number.isFinite(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Số tiền không hợp lệ' });
                     if (!tx.message || tx.status !== 'betting') {
@@ -2552,7 +2554,7 @@ const PAGE = [
     '(joined?\'<span class="net \'+(net>=0?"w":"l")+\'">\'+(net>=0?"+":"")+net.toLocaleString("vi-VN")+"</span>":"")+',
     '"</div>"}).join("")}',
     // danh sách ai đang đặt ván này, gộp theo cửa, tên tô màu riêng từng người
-    'var CHOICE_COLOR={tai:"#ff7b86",xiu:"#7db4ff",chan:"#6fd3b8",le:"#c39bf0",bao:"#ffcf5c"};',
+    'var CHOICE_COLOR={tai:"#ff7b86",xiu:"#7db4ff",chan:"#6fd3b8",le:"#c39bf0",baoany:"#ffcf5c",bao:"#ffcf5c"};',
     'function cuaMau(c){return CHOICE_COLOR[c]||"#ffcf5c"}',
     'function renderWho(list){var box=document.getElementById("whoBox");if(!list.length){box.innerHTML="Chưa ai đặt.";return}',
     'var by={};list.forEach(function(b){(by[b.choice]=by[b.choice]||[]).push(b)});',
