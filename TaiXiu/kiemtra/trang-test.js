@@ -220,14 +220,23 @@ ok('lịch sử CHỈ lưu ô nhân ĐÃ RA TRÚNG',
     IDX.includes('const trung = new Set(TX_CUA.cuaThang([d1, d2, d3]));') &&
     IDX.includes('for (const k of Object.keys(bn)) if (trung.has(k)) r[k] = bn[k];'));
 ok('ván không ô nhân nào ra thì KHÔNG có dòng ⚡', IDX.includes("let dongNhan = '';"));
+// Lọc 2 TẦNG: tầng ghi cho nhẹ DB, tầng hiển thị để 20 ván CŨ (ghi trước bản vá,
+// còn nguyên bảng nhân đầy đủ trong DB) hiện đúng ngay, khỏi chờ trôi.
+ok('Discord lọc LẠI lúc hiển thị, ván cũ cũng sạch',
+    IDX.includes('const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? TX_CUA.cuaThang(h.dice) : []);') &&
+    IDX.includes('Object.keys(nh).filter(k => oTrung.has(k))'));
+ok('web cũng lọc trước khi gửi xuống trang',
+    SRC.includes('const locNhanTrung = (h) =>') && SRC.includes('nhan: locNhanTrung(h) })),'));
+ok('danh sách ô trúng lấy từ lõi tiền qua ctx, không tự đoán',
+    SRC.includes('ctx.txCuaThang ? ctx.txCuaThang(h.dice) : []') && IDX.includes('txCuaThang: (xx) => TX_CUA.cuaThang(xx),'));
 // 2 lỗi chữ chủ server chụp được trên bảng Discord
 ok('không còn in "(, thua hết)" khi người đó chỉ đặt 1 ô',
     IDX.includes('const so = ` (${p.soO} ô`;'));
 ok('tiền HOÀN 30% lúc ra bão gọi đúng là "hoàn", không gọi "trúng"',
     IDX.includes('const thang = an.filter(x => x.lai > 0);') && IDX.includes('`hoàn ${hoan}`'));
 ok('kế hoạch trả tiền giữ luôn bảng nhân (phòng khi đã dọn)', IDX.includes('bangNhan,'));
-ok('web nhận được bảng nhân của ván cũ',
-    SRC.includes('winners: h.winners || [], nhan: h.nhan || {}'));
+ok('web nhận được bảng nhân của ván (đã lọc chỉ ô ra trúng)',
+    SRC.includes('winners: h.winners || [], nhan: locNhanTrung(h) })),'));
 ok('bảng 20 ván có dòng phụ ⚡', SRC.includes('function hSub(h)') && SRC.includes("'.hsub{"));
 // Chủ server kêu 'vướng mắt': hiện ⚡ ở mọi ván với 5 huy hiệu vàng thì át mất
 // dãy kết quả - thứ chính của bảng soi cầu. Nên MẶC ĐỊNH TẮT, có công tắc.

@@ -29,6 +29,19 @@ function startWebPlay(ctx) {
     // 17/09: admin chỉnh giây NẶN ở panel -> phải đọc lại mỗi lần, không chốt lúc khởi động.
     // index.js nay truyền HÀM; vẫn nhận số để bản cũ không vỡ.
     const LOCK_S = () => (typeof ctx.lockSeconds === 'function' ? ctx.lockSeconds() : (ctx.lockSeconds || 15));
+    // ⚡ Chỉ gửi xuống trang những ô nhân ĐÃ RA TRÚNG. Ván CŨ (ghi trước bản vá) còn
+    // nguyên bảng nhân đầy đủ trong DB — lọc ở đây thì chúng hiện đúng ngay, khỏi
+    // chờ trôi. Danh sách ô trúng lấy từ lõi tiền, không tự đoán luật.
+    const locNhanTrung = (h) => {
+        const nh = h && h.nhan;
+        if (!nh || !Array.isArray(h.dice) || h.dice.length !== 3) return {};
+        try {
+            const trung = new Set(ctx.txCuaThang ? ctx.txCuaThang(h.dice) : []);
+            const r = {};
+            for (const k of Object.keys(nh)) if (trung.has(k)) r[k] = nh[k];
+            return r;
+        } catch (e) { return {}; }
+    };
     const mines = ctx.mines;   // toàn bộ logic + tiền của dò mìn nằm ở index.js
     const stairs = ctx.stairs; // leo thang cũng vậy
 
@@ -311,7 +324,7 @@ function startWebPlay(ctx) {
                         txVanTruoc: ctx.txCoVanTruoc ? !!ctx.txCoVanTruoc(userId) : false,
                         betsList: Object.values(whoAgg),
                         // kèm bets/winners (có u) để client tính thắng/thua CÁ NHÂN từng ván
-                        history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [], nhan: h.nhan || {} })),
+                        history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [], nhan: locNhanTrung(h) })),
                         chat: chatLog().slice(-30),
                     });
                 }

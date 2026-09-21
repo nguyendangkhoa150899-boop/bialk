@@ -7044,6 +7044,7 @@ client.once('ready', async (c) => {
             // webplay.js là MODULE KHÁC — hằng số của index.js không tự nhìn thấy được,
             // muốn dùng thì phải đưa qua ctx như thế này.
             txKqS: () => TX_KQ_S,
+            txCuaThang: (xx) => TX_CUA.cuaThang(xx),
             txRTP: () => TX_CUA.thongKeRTP(),
             setTxRTP: (r) => setTxRTP(r),
             txThang: () => TX_CUA.thangHienTai(),
@@ -7430,11 +7431,13 @@ function txHistoryLine(h) {
             per[u].total = (nhan[u] || 0) - per[u].cuoc;
         });
     }
-    // ⚡ Chỉ kể ô nhân ĐÃ RA TRÚNG (h.nhan đã lọc sẵn lúc chốt ván). Ván nào hệ số
-    // nhân không ăn vào đâu thì KHÔNG có dòng này — đỡ dài.
+    // ⚡ Chỉ kể ô nhân ĐÃ RA TRÚNG. Lọc LẠI ở đây dù lúc chốt ván đã lọc: ván CŨ ghi
+    // trước bản vá còn nguyên bảng nhân đầy đủ trong DB, không lọc là chúng vẫn hiện
+    // hết cho tới khi trôi khỏi 20 ván.
     let dongNhan = '';
     const nh = h.nhan || {};
-    const idNhan = Object.keys(nh).sort((a, b) => nh[b] - nh[a]);
+    const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? TX_CUA.cuaThang(h.dice) : []);
+    const idNhan = Object.keys(nh).filter(k => oTrung.has(k)).sort((a, b) => nh[b] - nh[a]);
     if (idNhan.length) {
         dongNhan = ' · ⚡ ' + idNhan.slice(0, 3).map(k => `x${nh[k]} ${txTenCua(k)}`).join(' · ')
             + (idNhan.length > 3 ? ` +${idNhan.length - 3}` : '');
