@@ -4010,6 +4010,25 @@ const TX_NHAN_S_MIN = 0, TX_NHAN_S_MAX = 60;   // 0 = tắt hẳn pha hiện nh�
 // TAIXIU_DIR: bản test chỉ chép 7 file BotDoMin nên ../TaiXiu không có -> bialk-test.js trỏ về repo.
 const TX_CUA = require(require('path').join(
     process.env.TAIXIU_DIR || require('path').join(__dirname, '..', 'TaiXiu'), 'cua.js'));
+// 🎯 RTP admin chỉnh được (lưu dbCache._txRTP). Đổi RTP = tính lại tần suất sáng đèn
+// cho cả 48 cửa: hạ RTP thì ÍT ô được bốc nhân hơn, nhà cái ăn dày hơn.
+// Ván ĐANG chạy đã bốc bảng nhân từ lúc khoá sổ nên không bị ảnh hưởng giữa chừng.
+function txNapRTP() {
+    const r = Number(dbCache._txRTP);
+    const kq = TX_CUA.datRTP(Number.isFinite(r) ? r : TX_CUA.RTP_MUC_TIEU);
+    if (kq.error) TX_CUA.datRTP(TX_CUA.RTP_MUC_TIEU);
+    return TX_CUA.thongKeRTP();
+}
+function setTxRTP(rtp) {
+    const kq = TX_CUA.datRTP(rtp);
+    if (kq.error) return { error: kq.error };
+    dbCache._txRTP = kq.rtp;
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL TX] Đổi RTP thành ${(kq.rtp * 100).toFixed(1)}% - nhà cái ăn ~${(kq.nhaCaiAn * 100).toFixed(2)}%, trung bình ${kq.oSangMoiVan.toFixed(1)} ô sáng/ván`);
+    return { ok: true, ...kq };
+}
+txNapRTP();   // nạp ngay lúc đọc file, trước khi ván đầu tiên chạy
+
 function txTimeCfg() {
     const c = dbCache._txTime || {};
     const b = Number(c.bet), n = Number(c.nan), h = Number(c.nhan);
@@ -7009,6 +7028,8 @@ client.once('ready', async (c) => {
             // webplay.js là MODULE KHÁC — hằng số của index.js không tự nhìn thấy được,
             // muốn dùng thì phải đưa qua ctx như thế này.
             txKqS: () => TX_KQ_S,
+            txRTP: () => TX_CUA.thongKeRTP(),
+            setTxRTP: (r) => setTxRTP(r),
             txTimEpReNhat: () => txTimEpReNhat(),
             setTxTime: (bet, nan, nhan) => setTxTimeCfg(bet, nan, nhan),
             // 🎲 trần cược từng nhóm cửa (bàn Sic Bo 52 cửa)

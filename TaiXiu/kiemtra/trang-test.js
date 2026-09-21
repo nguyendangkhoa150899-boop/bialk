@@ -12,6 +12,8 @@ const vm = require('vm');
 
 const F = path.join(__dirname, '..', '..', 'BotDoMin', 'webplay.js');
 const SRC = fs.readFileSync(F, 'utf8');
+// panel.js: phần admin chỉnh RTP nằm ở đây
+const PANEL = fs.readFileSync(path.join(__dirname, '..', '..', 'BotDoMin', 'panel.js'), 'utf8');
 
 let P = 0, F_ = 0;
 const ok = (t, dk, them) => {
@@ -195,6 +197,23 @@ ok('nút tự khoá khi không dùng được (hết giờ / chưa đặt / chư
     /b2\.disabled=!\(mo&&coCuoc\)/.test(SRC) && /b3\.disabled=!\(mo&&coCuoc\)/.test(SRC));
 ok('sang ván mới thì dọn dòng báo cũ', /prevPhase!=="bet"&&PHASE==="bet"\)sbBao\(""/.test(SRC));
 ok('máy chủ cho biết có giỏ ván trước không', /SBCOVT=!!j\.txVanTruoc/.test(SRC));
+
+// Chủ server: ra kết quả rồi thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG — rải 47 ô mà
+// giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
+muc('ra kết quả: chip chỉ nằm ở ô trả thưởng');
+ok('ô trượt giấu hẳn đồng xu + nhãn tiền bàn',
+    SRC.includes("'.sbO.sbTruot .sbGio,.sbO.sbTruot .sbBan2{display:none}'"));
+ok('ô trúng thì đồng xu to hơn cho nổi', SRC.includes("'.sbO.sbTrung .sbGio img{width:26px"));
+ok('lúc ĐANG ĐẶT vẫn hiện chip mọi ô đã đặt (không giấu sớm)',
+    SRC.includes('d.className="sbGio"+(toi>=CHIP_DEN'));
+
+muc('RTP admin chỉnh được');
+ok('panel có ô nhập RTP + nút lưu',
+    /id="txRTP"/.test(PANEL) && /function txSaveRTP\(\)/.test(PANEL));
+ok('route /api/tx/rtp bị chặn ở cổng thường', /'\/api\/tx\/tran', '\/api\/tx\/rtp',/.test(PANEL));
+ok('panel nhận cả 95 lẫn 0.95 cho đỡ nhầm', /if \(Number\.isFinite\(r\) && r > 1\) r = r \/ 100;/.test(PANEL));
+ok('panel hiện luôn tác động: nhà cái ăn + số ô sáng mỗi ván',
+    /nhà cái ăn ~'\+\(STATE\.tx\.rtp\.nhaCaiAn\*100\)/.test(PANEL));
 
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');
 process.exit(F_ ? 1 : 0);

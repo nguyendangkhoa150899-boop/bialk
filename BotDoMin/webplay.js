@@ -1473,6 +1473,11 @@ const PAGE = [
     '.sbO.sbTruot,.sbO.sbTruot.sbKhoa,.sbO.sbTruot.sbNhan{background:#bcc0c6;border-color:#90969e;',
     'opacity:1;animation:none;box-shadow:none}',
     '.sbO.sbTruot .sbTen,.sbO.sbTruot .sbTl{color:#5c6168}',
+    // 🪙 Ra kết quả rồi thì đồng Dogcoin CHỈ nằm ở ô đang trả thưởng. Ô trượt giấu
+    // chip + nhãn tiền bàn đi, kẻo rải 47 ô là 47 đồng xu che kín bàn.
+    '.sbO.sbTruot .sbGio,.sbO.sbTruot .sbBan2{display:none}',
+    // ô trúng thì đồng xu to hơn chút cho nổi
+    '.sbO.sbTrung .sbGio img{width:26px;height:26px;box-shadow:0 2px 8px rgba(0,0,0,.6),0 0 0 2px #ffcf5c,0 0 10px rgba(255,207,92,.8)}',
     '.sbO.sbTrung,.sbO.sbTrung.sbKhoa,.sbO.sbTrung.sbNhan{background:#fff;border-color:#ffd76a;opacity:1;',
     'animation:sbTrungNhay 1s ease-in-out infinite;z-index:4;transform:translateY(-1px)}',
     '.sbO.sbTrung .sbTen,.sbO.sbTrung .sbTl{color:#111}',
@@ -2702,6 +2707,8 @@ const PAGE = [
     'function sbTong(t,cuaToi){SBTONG=t||{};',
     'if(cuaToi)cuaToi.forEach(function(b){SBTONG["_toi_"+b.choice]=(SBTONG["_toi_"+b.choice]||0)+b.amount});',
     'sbVeGio()}',
+    // Lưu ý: hàm này chạy lại mỗi nhịp làm mới. Nó CHỈ thêm/bớt chip, KHÔNG đụng tới
+    // class sbTrung/sbTruot — nhờ vậy khi đã tô kết quả thì CSS tự giấu chip ô trượt.
     'function sbVeGio(){SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
     'var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
     'var cu2=e.querySelector(".sbBan2");if(cu2)cu2.remove();',

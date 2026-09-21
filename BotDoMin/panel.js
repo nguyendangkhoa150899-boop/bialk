@@ -130,6 +130,7 @@ function startPanel(ctx) {
                     betAgg: agg,
                     // 🎯 gợi ý ép: MÁY CHỦ tính bằng lõi tiền trên đủ 216 kết quả
                     epGoiY: ctx.txTimEpReNhat ? ctx.txTimEpReNhat() : null,
+                    rtp: ctx.txRTP ? ctx.txRTP() : null,
                     tenCua: ctx.txCua ? Object.fromEntries(ctx.txCua().map(c => [c.id, c.ten])) : {},
                     bets: bets.slice(-40).map(b => ({ name: b.username || b.userId, choice: b.choice, amount: b.amount || 0 })),
                     secsToBet,
@@ -263,7 +264,7 @@ function startPanel(ctx) {
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
-                    '/api/tx/tran',
+                    '/api/tx/tran', '/api/tx/rtp',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -516,6 +517,16 @@ function startPanel(ctx) {
                     const r = ctx.setTxTran(body.tran || {});
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...ctx.getTxTran() });
+                }
+                // 🎯 RTP: đổi là cả 48 cửa tính lại tần suất được bốc hệ số nhân
+                if (path === '/api/tx/rtp') {
+                    if (!ctx.setTxRTP) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    // nhận cả 95 lẫn 0.95 cho đỡ nhầm
+                    let r = Number(body.rtp);
+                    if (Number.isFinite(r) && r > 1) r = r / 100;
+                    const kq = ctx.setTxRTP(r);
+                    if (kq.error) return sendJSON(res, 400, { ok: false, error: kq.error });
+                    return sendJSON(res, 200, { ok: true, ...kq });
                 }
                 // 🔔 17/09: báo cược Tài Xỉu về Discord cho chủ server
                 if (path === '/api/tx/noti') {
@@ -1259,6 +1270,13 @@ const HTML = `<!DOCTYPE html>
         <div class="row" id="txTranHang" style="flex-wrap:wrap;gap:8px"></div>
         <div class="note" id="txTranNow">Cửa trả càng cao thì trần càng thấp — cửa Bão trả tới 999:1 nên chỉ cho đặt 5.000/ván, không thì một ván xui mất gần 400 triệu. Các cửa cùng mức gom chung một ô: sửa một ô là cả nhóm nhảy theo.</div>
         <div class="row" style="margin-top:8px"><button class="btn-green" onclick="txSaveTran()">💾 Lưu trần cược</button></div>
+        <div class="row" style="margin-top:14px;align-items:flex-end">
+          <div style="flex:1"><label>🎯 RTP - phần trăm trả lại người chơi (80 - 99)</label>
+            <input id="txRTP" type="number" min="80" max="99" step="0.5" placeholder="vd: 95" oninput="txDirty(this)"></div>
+          <div style="flex:0 0 auto"><button class="btn-green" onclick="txSaveRTP()">💾 Lưu RTP</button></div>
+        </div>
+        <div class="note" id="txRTPNote"></div>
+        <div class="note">Hạ RTP = <b>ít ô được bốc hệ số nhân hơn</b>, nhà cái ăn dày hơn. Máy tự tính lại tần suất sáng đèn cho cả 48 cửa, KHÔNG đụng vào bảng trả gốc in trên bàn. Ván đang chạy đã bốc bảng nhân từ lúc khoá sổ nên không đổi giữa chừng.</div>
         <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
           <div style="flex:1"><label>🃏 Admin POKER (ID Discord, cách nhau bằng phẩy)</label><input id="pokerAdminIds" type="text" placeholder="vd: 456136500011335698, 111111111111111111" oninput="txDirty(this)"></div>
           <button class="btn-green" onclick="pokerSaveAdmin()">💾 Lưu</button>
@@ -2443,6 +2461,15 @@ function txSaveTime(){
   api('/api/tx/time',{bet:b,nan:n,nhan:h}).then(j=>{txClean(['txBetS','txNanS','txNhanS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'s đặt + '+j.nhan+'s nhân + '+j.nan+'s nặn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 // 🎲 trần cược từng nhóm cửa — 5 ô, sửa 1 ô là cả nhóm nhảy theo
+function txSaveRTP(){
+  const v=parseFloat(document.getElementById('txRTP').value);
+  if(!(v>=80&&v<=99))return toast('RTP: 80 - 99');
+  api('/api/tx/rtp',{rtp:v}).then(j=>{
+    txClean(['txRTP']);
+    toast('🎯 RTP '+(j.rtp*100).toFixed(1)+'% · nhà cái ăn ~'+(j.nhaCaiAn*100).toFixed(2)+'% · trung bình '+j.oSangMoiVan.toFixed(1)+' ô sáng/ván');
+    refresh();
+  }).catch(e=>toast('❌ '+e.message));
+}
 function txSaveTran(){
   const tran={}; let xau=null;
   document.querySelectorAll('.txTranO').forEach(function(el){
@@ -3628,6 +3655,12 @@ async function refresh(force){
   if(STATE.tx.time){
     const tb=document.getElementById('txBetS'); if(tb&&tb.dataset.dirty!=='1'&&tb.value===''&&document.activeElement!==tb) tb.value=STATE.tx.time.bet;
     const tn=document.getElementById('txNanS'); if(tn&&tn.dataset.dirty!=='1'&&tn.value===''&&document.activeElement!==tn) tn.value=STATE.tx.time.nan;
+    const rt=document.getElementById('txRTP');
+    if(rt&&STATE.tx.rtp){
+      if(rt.dataset.dirty!=='1'&&rt.value===''&&document.activeElement!==rt) rt.value=(STATE.tx.rtp.rtp*100).toFixed(1).replace(/\.0$/,'');
+      const nt=document.getElementById('txRTPNote');
+      if(nt)nt.textContent='Đang chạy RTP '+(STATE.tx.rtp.rtp*100).toFixed(1)+'% → nhà cái ăn ~'+(STATE.tx.rtp.nhaCaiAn*100).toFixed(2)+'% · trung bình '+STATE.tx.rtp.oSangMoiVan.toFixed(1)+' ô sáng hệ số nhân mỗi ván · '+STATE.tx.rtp.soCuaDuocNhan+'/52 cửa có cơ hội được nhân';
+    }
     const th=document.getElementById('txNhanS'); if(th&&th.dataset.dirty!=='1'&&th.value===''&&document.activeElement!==th) th.value=STATE.tx.time.nhan;
     const tw=document.getElementById('txTimeNow');
     if(tw) tw.innerHTML='Đang áp dụng: ván <b>'+STATE.tx.time.round+'s</b> = '+STATE.tx.time.bet+'s đặt cược + <b>'+STATE.tx.time.nhan+'s hiện nhân (cấm đặt)</b> + '+STATE.tx.time.nan+'s nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.';

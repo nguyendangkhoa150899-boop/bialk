@@ -24,7 +24,12 @@
 // ============================================================================
 'use strict';
 
-const RTP_MUC_TIEU = 0.95;   // chủ server chốt: nhà cái ăn ~5%
+const RTP_MUC_TIEU = 0.95;   // mặc định khi admin chưa chỉnh: nhà cái ăn ~5%
+// RTP ĐANG ÁP DỤNG. Admin chỉnh ở panel -> datRTP() tính lại q cho cả 48 cửa.
+// Hạ RTP => q tụt => ÍT ô được bốc nhân hơn (nhà cái ăn dày hơn). Nâng thì ngược lại.
+let RTP_HIEN = RTP_MUC_TIEU;
+// Chặn 2 đầu cho khỏi lỡ tay: dưới 80% là ăn dày quá người chơi bỏ, trên 99% là lỗ.
+const RTP_MIN = 0.80, RTP_MAX = 0.99;
 
 // ---------------------------------------------------------------- 216 kết quả
 const MOI_KET_QUA = [];
@@ -129,7 +134,7 @@ function doGoc(c) {
  */
 function giaiQ(c) {
     const { p, rtpGoc } = doGoc(c);
-    if (!c.thangNhan || rtpGoc >= RTP_MUC_TIEU) return { p, rtpGoc, q: 0, rtpSau: rtpGoc };
+    if (!c.thangNhan || rtpGoc >= RTP_HIEN) return { p, rtpGoc, q: 0, rtpSau: rtpGoc };
     let them_;
     if (c.donSo) {
         let d2 = 0, d3 = 0;
@@ -138,9 +143,39 @@ function giaiQ(c) {
     } else {
         them_ = p * (c.thangNhan.E - c.goc);
     }
-    const q = Math.max(0, Math.min(1, (RTP_MUC_TIEU - rtpGoc) / them_));
+    const q = Math.max(0, Math.min(1, (RTP_HIEN - rtpGoc) / them_));
     return { p, rtpGoc, q, rtpSau: rtpGoc + q * them_ };
 }
+/**
+ * Đặt RTP mục tiêu rồi TÍNH LẠI q cho toàn bộ bàn. Gọi lúc bot khởi động (đọc từ DB)
+ * và mỗi lần admin chỉnh ở panel. Trả về vài con số để panel hiện cho admin thấy
+ * hạ/nâng RTP thì bàn đổi thế nào.
+ */
+function datRTP(rtp) {
+    const r = Number(rtp);
+    if (!Number.isFinite(r) || r < RTP_MIN || r > RTP_MAX) {
+        return { error: `RTP phải từ ${(RTP_MIN * 100).toFixed(0)}% đến ${(RTP_MAX * 100).toFixed(0)}%` };
+    }
+    RTP_HIEN = r;
+    for (const c of DS) Object.assign(c, giaiQ(c));
+    return { ok: true, ...thongKeRTP() };
+}
+/** Vài con số tóm tắt bàn hiện tại, để panel in cho admin. */
+function thongKeRTP() {
+    const coNhan = DS.filter(c => c.q > 0);
+    const oSang = DS.reduce((s2, c) => s2 + (c.q || 0), 0);        // kỳ vọng số ô sáng / ván
+    // RTP trung bình khi đặt đều mọi cửa
+    const rtpTB = DS.reduce((s2, c) => s2 + (c.rtpSau || c.rtpGoc || 0), 0) / DS.length;
+    return {
+        rtp: RTP_HIEN,
+        nhaCaiAn: 1 - rtpTB,
+        soCuaDuocNhan: coNhan.length,
+        oSangMoiVan: oSang,
+        min: RTP_MIN, max: RTP_MAX, macDinh: RTP_MUC_TIEU,
+    };
+}
+const rtpHienTai = () => RTP_HIEN;
+
 for (const c of DS) Object.assign(c, giaiQ(c));
 
 // ---------------------------------------------------------------- sinh nhân
@@ -213,6 +248,7 @@ function tiLeToiDa(cuaId) {
 }
 
 module.exports = {
-    RTP_MUC_TIEU, DS, THEO_ID, NHOM_TRAN, MOI_KET_QUA, DON_BAO_NHAN,
+    RTP_MUC_TIEU, RTP_MIN, RTP_MAX, datRTP, thongKeRTP, rtpHienTai,
+    DS, THEO_ID, NHOM_TRAN, MOI_KET_QUA, DON_BAO_NHAN,
     tongXx, laBao, demMat, taoNhan, tinhTra, cuaThang, tranCua, tranMacDinh, tiLeToiDa, doGoc,
 };

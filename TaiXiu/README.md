@@ -49,26 +49,43 @@ nhất chỉ xảy ra khi ô đó được bốc trúng — in ra là hứa mứ
 
 Bảng nhân sinh ra **ngay lúc khoá sổ, TRƯỚC khi quay xúc xắc**, cả bàn thấy giống nhau.
 
-## 3. Trần cược
+## 3. RTP — ADMIN CHỈNH ĐƯỢC
+
+Panel SUPER, tab Big Small, ô **🎯 RTP (80 - 99)**. Lưu ở `_txRTP`, nạp lúc bot khởi động.
+Đổi RTP là `datRTP()` **tính lại q cho cả 48 cửa ngay lập tức** — vẫn tuyệt đối không gõ tay q.
+
+| RTP | Nhà cái ăn | Ô sáng hệ số nhân / ván | Số cửa có cơ hội được nhân |
+|---|---|---|---|
+| 99% | 1,1% | 9,2 | 48 |
+| 95% (mặc định) | 4,8% | 7,2 | 48 |
+| 92% | 7,6% | 5,7 | 42 |
+| 90% | 9,2% | 4,8 | 40 |
+| 85% | 12,8% | 2,9 | 35 |
+| 80% | 15,2% | 1,8 | 18 |
+
+Hạ RTP **không** đụng vào bảng trả gốc in trên bàn — nó chỉ làm **ít ô được bốc hệ số nhân
+hơn**. Ván đang chạy đã bốc bảng nhân từ lúc khoá sổ nên không đổi giữa chừng.
+
+## 4. Trần cược
 
 Trần tỉ lệ **nghịch** với tỉ lệ trả, giống sòng thật: trần ≈ 5 triệu ÷ tỉ lệ trả cao nhất.
 Các cửa trùng mức gom thành 5 nhóm trong `NHOM_TRAN` để admin sửa 1 ô là cả nhóm nhảy theo.
 Chặn 2 tầng trong `txCapCheck`: trần từng cửa, rồi trần tổng cả ván (`_txMaxBet`).
 
-## 4. Ai trúng thì ai quyết
+## 5. Ai trúng thì ai quyết
 
 `cuaThang(xx)` trả về danh sách id ô trúng. Máy chủ gửi kèm (`nan.thang`) xuống trang để tô
 ô trúng sáng / ô trượt xám. **Phía người chơi không được tự đoán luật thắng** — chép luật
 sang đó là có ngày bàn tô một đằng, ví trả một nẻo. `cua-test.js` đối chiếu `cuaThang` với
 `tinhTra` trên toàn bộ 11.232 trường hợp (216 kết quả × 52 cửa).
 
-## 5. Chống soi bài
+## 6. Chống soi bài
 
 `/api/state` **chỉ gửi 3 viên xúc xắc khi `phase === 'nan'`**. Ở pha hiện hệ số nhân, máy
 chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi ra được gì. `web-test.js`
 **đo thật** điều này chứ không đọc code suông.
 
-## 6. Giao diện bàn
+## 7. Giao diện bàn
 
 - **Bấm ô là đặt luôn**, không có giỏ cược.
 - Tiền đã đặt hiện bằng **đồng Dogcoin** đè giữa ô, số tiền là chú thích nhỏ dưới đồng xu.
@@ -78,8 +95,10 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
   xắc trong ô **vẫn đỏ** (theo đúng ảnh sòng thật chủ server gửi).
 - Huy hiệu `x…` gắn ngay trên ô được bốc. **Không** có thanh liệt kê phía trên bàn nữa.
 - Máy chủ **gộp `myBets` theo cửa** trước khi gửi, kẻo bấm 20 phát vào một ô là 20 dòng.
+- **Ra kết quả thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG**, ô trượt ẩn chip + nhãn tiền bàn.
+  Rải 47 ô mà giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
 
-## 7. 3 nút thao tác nhanh
+## 8. 3 nút thao tác nhanh
 
 `🔁 Đặt lại` · `✖️2` · `🗑️ Xoá cược` → `/api/tx/datlai` · `/api/tx/x2` · `/api/tx/xoacuoc`.
 
@@ -94,7 +113,7 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
 
 ---
 
-## 8. Bộ kiểm
+## 9. Bộ kiểm
 
 Chạy được ngay, **không cần bot**:
 
@@ -126,7 +145,7 @@ Nhịp bot test: bật bằng `node Desktop/bialk-test.js` các bước `5` (t�
 
 ---
 
-## 9. Luật TIỀN KHÔNG ĐƯỢC MẤT
+## 10. Luật TIỀN KHÔNG ĐƯỢC MẤT
 
 Cược là tiền **đã trừ khỏi ví**. Vì vậy:
 
@@ -150,7 +169,7 @@ Cược là tiền **đã trừ khỏi ví**. Vì vậy:
 
 Bộ kiểm khoá lại: `tienkhongmat-test.js` và `restart-test.js` (đều không cần bot).
 
-## 10. Cạm bẫy đã dính, đừng dính lại
+## 11. Cạm bẫy đã dính, đừng dính lại
 
 **① Tên cửa tra bằng bảng 5 cửa cũ → VỠ KHÂU CHỐT VÁN, MẤT TIỀN NGƯỜI CHƠI.**
 `TX_CHOICES` chỉ còn 5 cửa cũ. Ai đặt ô mới như `tong9` mà đi tra `TX_CHOICES[id].name` là
