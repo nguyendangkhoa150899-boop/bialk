@@ -1477,8 +1477,6 @@ const PAGE = [
     '@media (max-width:430px){.sbXx{width:16px;margin:0 1px}.sbXx i{width:2.4px;height:2.4px}',
     '.sbO{min-height:38px;padding:4px 1px}.sbO .sbTen{font-size:11px}.sbO.sbDeu{min-height:48px}',
     '.sbO.sbDeu .sbTen{font-size:13px}.sbO.sbTong .sbTen{font-size:15px}.sbO .sbTl{font-size:8.5px}}',
-    '#sbNhanBar{background:linear-gradient(90deg,#3a2e10,#6b4f16);border:1px solid #ffcf5c;border-radius:11px;',
-    'padding:9px 12px;margin-bottom:9px;font-size:13px;font-weight:800;color:#ffe9a8;text-align:center}',
     '#sbChips{margin-top:4px}',
     '#sbChips .chip.on{background:var(--gold);color:#3a2a06;border-color:var(--gold)}',
     '@media (max-width:520px){.sbO .sbTen{font-size:10.5px}.sbO .sbTl{font-size:9px}.sbO{padding:6px 2px}}',
@@ -1707,7 +1705,6 @@ const PAGE = [
     // Cách đặt: chọn mệnh giá chip -> bấm vào ô -> chip xếp vào GIỎ (chưa trừ tiền).
     // Bấm ĐẶT CƯỢC mới gửi cả giỏ lên máy chủ. HOÀN TÁC / GẤP ĐÔI chỉ sửa giỏ, không đụng ví.
     '<div class="card" id="betCard">',
-    '<div id="sbNhanBar" class="hidden"></div>',
     '<div id="sbBan"></div>',
     // Chọn mệnh giá rồi BẤM THẲNG vào ô là đặt luôn (chủ server chốt: bỏ giỏ, bỏ 3 nút
     // Hoàn tác/Gấp đôi/Xoá giỏ). Không có hoàn tác - bấm nhầm là mất tiền thật.
@@ -2723,17 +2720,13 @@ const PAGE = [
     'SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
     'e.classList.remove("sbTrung","sbTruot")})}',
     // hệ số nhân: máy chủ chỉ gửi sau khi KHOÁ SỔ nên không lộ sớm
-    'function sbNhanVe(nh){SBNHAN=nh||null;var bar=$("sbNhanBar");',
+    // Chỉ gắn huy hiệu x… lên đúng ô được bốc. KHÔNG liệt kê lại thành một dòng
+    // phía trên nữa (chủ server: "nhân ở dưới show là được rồi").
+    'function sbNhanVe(nh){SBNHAN=nh||null;',
     'SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
     'var cu=e.querySelector(".sbX");if(cu)cu.remove();',
     'var co=nh&&nh[c.id];e.classList.toggle("sbNhan",!!co);',
-    'if(co){var d=document.createElement("span");d.className="sbX";d.textContent="x"+co;e.appendChild(d)}});',
-    'if(!bar)return;',
-    'var ids=nh?Object.keys(nh):[];',
-    'if(!ids.length){bar.classList.add("hidden");return}',
-    'bar.classList.remove("hidden");',
-    'ids.sort(function(a,b){return nh[b]-nh[a]});',
-    'bar.innerHTML="⚡ HỆ SỐ NHÂN VÁN NÀY (ăn THAY tỉ lệ in trên ô): "+ids.slice(0,6).map(function(k){return (NAMES[k]||k)+" <b>x"+nh[k]+"</b>"}).join(" · ")+(ids.length>6?" · +"+(ids.length-6)+" ô nữa":"")}',
+    'if(co){var d=document.createElement("span");d.className="sbX";d.textContent="x"+co;e.appendChild(d)}})}',
     // (không còn giỏ cược — bấm ô là gửi thẳng, xem sbChon bên trên)
     'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',

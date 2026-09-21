@@ -4135,7 +4135,7 @@ async function txNotiSend(noiDung) {
 function txNotifyBet(userId, ten, cua, soTien) {
     const c = txNotiCfg();
     if (!c.on || !c.id || soTien < c.min) return;
-    const tenCua = (TX_CHOICES[cua] && TX_CHOICES[cua].name) || String(cua).toUpperCase();
+    const tenCua = txTenCua(cua);
     const tong = (txState.bets || []).reduce((t, b) => t + (b.amount || 0), 0);
     const cuaNguoi = (txState.bets || []).filter(b => b.userId === userId).reduce((t, b) => t + (b.amount || 0), 0);
     const viCon = (getUserData(userId).points || 0);
@@ -4153,6 +4153,19 @@ const TX_BAO_RATE = 30;
 // PHẢI so sánh qua TX_CHOICES.* chứ không viết chữ cứng, kẻo cửa Bão hết được trả.
 // 14/09: đổi tên cửa cho người Việt dễ đọc. Lịch sử cũ lưu 'BIG'/'SMALL' vẫn đọc được
 // vì chỗ tô màu ở web nhận cả 2 tên (h.tx === "BIG" || h.tx === "TÀI").
+/**
+ * Tên hiển thị của MỘT CỬA BẤT KỲ trong 52 cửa.
+ * ⚠️ ĐỪNG tra thẳng TX_CHOICES[id].name nữa: bảng đó chỉ còn 5 cửa cũ, ô mới như
+ * "tong9" tra ra undefined và làm vỡ cả khâu chốt ván (đã mất tiền người chơi 1 lần).
+ */
+function txTenCua(id) {
+    const k = id === 'bao' ? 'baoany' : id;                 // ván treo từ bàn 5 cửa
+    const c = TX_CUA.THEO_ID[k];
+    if (c) return c.ten;
+    if (TX_CHOICES[id]) return TX_CHOICES[id].name;
+    return String(id || '?').toUpperCase();
+}
+
 const TX_CHOICES = {
     'tai': { name: 'TÀI' },
     'xiu': { name: 'XỈU' },
@@ -7282,14 +7295,16 @@ function getTXMessageData(customStatus = null) {
 
     desc += `📝 **Người đặt hiện tại:**\n`;
 
-    const groups = { 'tai': [], 'xiu': [], 'chan': [], 'le': [], 'bao': [] };
+    const groups = {};
     txState.bets.forEach(b => (groups[b.choice] || (groups[b.choice] = [])).push(b));
 
+    // Duyệt theo ĐÚNG thứ tự bảng 52 cửa; cửa 'bao' của bàn cũ xếp cuối cho khỏi sót.
+    const thuTu = TX_CUA.DS.map(c => c.id).concat(['bao']);
     let hasBets = false;
-    ['tai', 'xiu', 'chan', 'le', 'bao'].forEach(c => {
-        if (groups[c].length > 0) {
+    thuTu.forEach(c => {
+        if (groups[c] && groups[c].length > 0) {
             hasBets = true;
-            desc += `**${TX_CHOICES[c].name}:**\n`;
+            desc += `**${txTenCua(c)}:**\n`;
             // Gộp cược trùng của cùng 1 người vào cùng 1 cửa
             const byUser = {};
             groups[c].forEach(b => {
@@ -7419,6 +7434,17 @@ function runTaiXiuLoop() {
                 }
             } catch (e) {
                 writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
+                // ⚠️ TRƯỚC KHI XOÁ CƯỢC phải trả nốt cho mọi người trong kế hoạch,
+                // kẻo reset xong là tiền người chơi bốc hơi (đã xảy ra thật).
+                try {
+                    const p0 = txState.plan;
+                    if (p0 && p0.byUser) {
+                        let n = 0;
+                        Object.keys(p0.byUser).forEach(uid => { if (txPayUser(p0.gameId, uid)) n++; });
+                        if (n) writeLog('SYSTEM', `[CỨU TIỀN TX] ván #${p0.gameId}: trả nốt cho ${n} người trước khi reset`);
+                    }
+                } catch (e2) { writeLog('SYSTEM', `[LỖI CỨU TIỀN TX] ${e2.message}`); }
+                txState.plan = null; delete dbCache._txPlan;
                 // Recovery: reset để ván tiếp theo vẫn chạy được
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
@@ -7565,7 +7591,26 @@ function txRevealClaim(userId) {
 function settleTXPayout(gameId, bets, d1, d2, d3) {
     const p = (txState.plan && txState.plan.gameId === gameId)
         ? txState.plan : txPlanPayout(gameId, bets, d1, d2, d3);
-    Object.keys(p.byUser).forEach(uid => txPayUser(gameId, uid));
+    // 💸 TRẢ TIỀN LÀ VIỆC ĐẦU TIÊN, và từng người một được bọc riêng: một người lỗi
+    // thì người còn lại vẫn nhận đủ. Mọi thứ phía dưới chỉ là log/lịch sử/bảng Discord.
+    Object.keys(p.byUser).forEach(uid => {
+        try { txPayUser(gameId, uid); }
+        catch (e) { writeLog('SYSTEM', `[LỖI TRẢ TIỀN TX] ván #${gameId} người ${uid}: ${e.message}`); }
+    });
+    try {
+        return ketSoTXPayout(gameId, bets, d1, d2, d3, p);
+    } catch (e) {
+        // Hỏng khâu ghi chép thì KỆ nó — tiền đã trả xong ở trên rồi. Tuyệt đối
+        // không để lỗi hiển thị ném ngược ra làm chết vòng ván (đã kẹt bàn 1 lần).
+        const vet = String(e.stack || '').split(/\r?\n/).slice(0, 4).join(' ⇢ ');
+        writeLog('SYSTEM', `[LỖI GHI SỔ TX] ván #${gameId}: ${e.message} - tiền ĐÃ trả xong, chỉ hỏng phần ghi chép | ${vet}`);
+        txState.plan = null; delete dbCache._txPlan;
+        return { sum: d1 + d2 + d3, txIcon: '🎲', clIcon: '', winLog: '', txPotPaid: 0 };
+    }
+}
+
+/** Phần ghi log + lịch sử + dựng chữ cho bảng Discord. Không đụng tới ví ai cả. */
+function ketSoTXPayout(gameId, bets, d1, d2, d3, p) {
     const { sum, isStorm, isTai, isChan, winAgg, refAgg, txPotPaid, txPotWinners } = p;
 
     // winners = thắng THẬT + tiền hoàn, gộp theo người (web lấy đây tính net của ván)
@@ -7592,7 +7637,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     writeLog('RESULT', `[KẾT QUẢ BIG SMALL] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? TX_CHOICES.tai.name : TX_CHOICES.xiu.name)} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
 
     if (bets.length > 0) {
-        let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${TX_CHOICES[b.choice].name}`).join(' | ');
+        let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${txTenCua(b.choice)}`).join(' | ');
         writeLog('BET', `[CƯỢC BIG SMALL] Game #${gameId} | Đặt: ${betLogDetails} | KQ: ${d1}-${d2}-${d3} (${sum})`);
     }
 
@@ -7602,7 +7647,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     const betAgg = {};
     bets.forEach(b => {
         const k = `${b.userId}_${b.choice}`;
-        if (!betAgg[k]) betAgg[k] = { u: b.userId, name: b.username, choice: TX_CHOICES[b.choice].name, amount: 0 };
+        if (!betAgg[k]) betAgg[k] = { u: b.userId, name: b.username, choice: txTenCua(b.choice), amount: 0 };
         betAgg[k].amount += b.amount;
     });
     const histEntry = {
@@ -8136,7 +8181,7 @@ client.on('interactionCreate', async interaction => {
             // đông người là chờ quá 3s -> interaction chết. Vòng lặp 1s tự vẽ lại.
             txState.needsUpdate = true;
 
-            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+            return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${txTenCua(sel.choice)}**!`, ephemeral: true });
         }
 
         // ===== SHOP PAL TỰ CHỌN: nhận đơn =====
@@ -8673,7 +8718,7 @@ client.on('interactionCreate', async interaction => {
         txState.activeChoice = choice;
         txState.needsUpdate = true; // vòng lặp 1s tự vẽ lại - không await edit kẻo trễ 3s
 
-        return interaction.reply({ content: `✅ Đã chọn **${TX_CHOICES[choice].name}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
+        return interaction.reply({ content: `✅ Đã chọn **${txTenCua(choice)}**. Nhấn nút số Dogcoin ở dưới để chốt!`, ephemeral: true });
     }
 
     if (interaction.customId === 'tx_soicau') {
@@ -8733,7 +8778,7 @@ client.on('interactionCreate', async interaction => {
         txState.activeChoice = null;
         txState.needsUpdate = true; // reply ngay, vòng lặp 1s vẽ lại bảng
 
-        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${TX_CHOICES[sel.choice].name}**!`, ephemeral: true });
+        return interaction.reply({ content: `💸 Đã đặt **${amt.toLocaleString()}** ${DOGCOIN_EMOJI} vào **${txTenCua(sel.choice)}**!`, ephemeral: true });
     }
   } catch (e) {
     if (e.code !== 10062) writeLog('SYSTEM', `[LỖI INTERACTION] ${e.message}`);

@@ -82,7 +82,10 @@ ok('ô chỉ in tỉ lệ GỐC, không in dải tới mức nhân cao nhất',
     while ((m = re.exec(SRC))) if (/\d+-\d+:1/.test(m[1])) dai.push(m[1]);
     ok('dải tiêu đề khu cũng không in dải "gốc-nhân:1"', dai.length === 0, dai.join(' | '));
 }
-ok('thanh hệ số nhân nói rõ ăn THAY tỉ lệ in trên ô', /ăn THAY tỉ lệ/.test(SRC));
+// Chủ server bỏ thanh liệt kê hệ số nhân: huy hiệu x… đã nằm ngay trên từng ô.
+ok('KHÔNG còn thanh liệt kê hệ số nhân phía trên bàn', !/sbNhanBar/.test(SRC));
+ok('huy hiệu x… vẫn gắn lên đúng ô được bốc',
+    SRC.includes('d.className="sbX";d.textContent="x"+co') && SRC.includes("'.sbO .sbX{"));
 ok('bàn lấy từ bảng cửa máy chủ gửi, không gõ cứng 52 ô', /SBCUA=j\.txCua/.test(SRC));
 
 // ---------------------------------------------------------------- bấm là đặt
@@ -110,7 +113,7 @@ muc('mọi id JS gọi tới đều có trong trang');
     const idCo = new Set();
     let m; const reId = /id=\\?"([A-Za-z0-9_]+)\\?"/g;
     while ((m = reId.exec(SRC))) idCo.add(m[1]);
-    const canCo = ['sbBan', 'sbChips', 'sbNhanBar', 'sbNhac'];
+    const canCo = ['sbBan', 'sbChips', 'sbNhac', 'sbBao'];
     const thieu = canCo.filter(x => !idCo.has(x));
     ok('đủ id then chốt của bàn Sic Bo', thieu.length === 0, thieu.join(', '));
 }
