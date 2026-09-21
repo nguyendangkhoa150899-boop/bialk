@@ -221,7 +221,7 @@ ok('lịch sử CHỈ lưu ô nhân ĐÃ RA TRÚNG',
     IDX.includes('for (const k of Object.keys(bn)) if (trung.has(k)) r[k] = bn[k];'));
 ok('ván không ô nhân nào ra thì KHÔNG có dòng ⚡', IDX.includes("let dongNhan = '';"));
 // 2 lỗi chữ chủ server chụp được trên bảng Discord
-ok('không còn in "(, trượt hết)" khi người đó chỉ đặt 1 ô',
+ok('không còn in "(, thua hết)" khi người đó chỉ đặt 1 ô',
     IDX.includes('const so = ` (${p.soO} ô`;'));
 ok('tiền HOÀN 30% lúc ra bão gọi đúng là "hoàn", không gọi "trúng"',
     IDX.includes('const thang = an.filter(x => x.lai > 0);') && IDX.includes('`hoàn ${hoan}`'));
@@ -250,7 +250,7 @@ ok('huy hiệu ⚡ làm nhỏ + xỉn, không viền vàng tranh chỗ',
 // Dòng Discord: mỗi người CHỈ kể ô ăn được, ô thua gói lại thành một con số
 ok('dòng Discord rút gọn tiền (k / tr)', IDX.includes('function txTienNgan(n)'));
 ok('dòng Discord chỉ kể ô ĂN, ô thua gói thành số',
-    IDX.includes('trượt hết') && IDX.includes('`trúng ${thang.length}`'));
+    IDX.includes('thua hết') && IDX.includes('`trúng ${thang.length}`'));
 ok('dòng Discord có kể ô được nhân', IDX.includes("dongNhan = ' · ⚡ '"));
 
 muc('nút MAX CƯỢC + hiệu ứng chip bay');

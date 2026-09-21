@@ -7445,9 +7445,9 @@ function txHistoryLine(h) {
         const dau = `${icon} **${p.name}** ${txTienNgan(p.total)}`;
         if (!cuMoi) return dau;                       // ván cũ: chỉ có tổng
         const an = p.an.sort((a, b) => b.lai - a.lai);
-        // BẢN CŨ in "(, trượt hết)" khi người đó chỉ đặt 1 ô — thiếu hẳn con số.
+        // BẢN CŨ in "(, thua hết)" khi người đó chỉ đặt 1 ô — thiếu hẳn con số.
         const so = ` (${p.soO} ô`;
-        if (!an.length) return dau + so + ', trượt hết)';
+        if (!an.length) return dau + so + ', thua hết)';
         // Ô "ăn" mà lãi ÂM là tiền HOÀN 30% lúc ra bão, không phải trúng. Gọi đúng tên.
         const thang = an.filter(x => x.lai > 0);
         const hoan = an.length - thang.length;

@@ -129,10 +129,10 @@ là dòng dài không đọc nổi, mà lại **không hề kể ô nào đượ
 
 ```
 🔺 🎲🎲🎲 · Tổng 13 · TÀI · LẺ · ⚡ x300 Bão 3 · x33 Đôi 5 · x24 Cặp 3-6 +1 ô
-   💰 Anh Vinh Q +440k (4 ô, trúng 3: Cặp 3-6 +300k · Cặp 4-6 +100k · TÀI +60k) | 💥 BiaLK −50k (4 ô, trượt hết)
+   💰 Anh Vinh Q +440k (4 ô, trúng 3: Cặp 3-6 +300k · Cặp 4-6 +100k · TÀI +60k) | 💥 BiaLK −50k (4 ô, thua hết)
 ```
 
-- Mỗi người **chỉ kể ô ĂN ĐƯỢC** (tối đa 3), ô thua gói thành "N ô, trượt hết".
+- Mỗi người **chỉ kể ô ĂN ĐƯỢC** (tối đa 3), ô thua gói thành "N ô, thua hết".
 - Tiền rút gọn `k / tr` cho vừa giới hạn 4000 ký tự của Discord.
 - Bảng **20 ván trên web**: bảng này để **soi cầu** nên dãy kết quả phải liếc là thấy.
   Vì vậy dòng ⚡ **MẶC ĐỊNH TẮT**, có công tắc `⚡ Hiện hệ số nhân từng ván` (nhớ trong máy
