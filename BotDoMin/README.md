@@ -147,6 +147,7 @@ Người chơi **mua** cỏ (**30% tiền cược**, cả 2 game, `fee = bet * 0
 - **3 nút thao tác nhanh** (`/api/tx/datlai` · `/api/tx/x2` · `/api/tx/xoacuoc`): 🔁 Đặt lại xếp y giỏ ván trước (`txVanTruoc`, RAM, chụp lúc chốt ván; **chặn nếu ván này đã đặt** kẻo cộng dồn tiêu oan tiền) · ✖️2 đặt thêm đúng số đang có ở mọi cửa · 🗑️ Xoá cược gỡ hết cược của **riêng người đó** rồi hoàn đúng số đã trừ. Hai nút đầu **gọi lại `txDatLo`** nên luật tiền chỉ nằm một chỗ và vẫn tất-cả-hoặc-không. Báo lỗi hiện bằng **dòng đứng yên** dưới nút, **không dùng toast** (chủ server chốt: phải đọc kịp).
 - ⚠️ **Tên cửa PHẢI tra bằng `txTenCua(id)`**, đừng tra `TX_CHOICES[id].name`: bảng đó chỉ còn 5 cửa cũ, ô mới như `tong9` tra ra undefined và từng làm **vỡ khâu chốt ván** (mất lịch sử, kẹt bàn, mất tiền người chơi). `settleTXPayout` giờ **trả tiền trước**, phần ghi sổ bọc try/catch riêng; nhánh phục hồi của vòng ván **trả nốt tiền rồi mới reset**.
 - Bộ kiểm riêng: `node TaiXiu/kiemtra/cua-test.js` (lõi tiền) · `trang-test.js` (giao diện) · `pham-vi-test.js` (biến xuyên file) · `chotvan-test.js` (đặt ô bàn mới rồi bỏ đi, ván vẫn phải chốt + trả thưởng) · `web-test.js` + `tratien-test.js` (cần bot test đang chạy).
+- Bảng Tài Xỉu trên Discord liệt kê người đặt theo **đúng thứ tự 52 cửa** (trước chỉ đọc 5 cửa cũ nên ai đặt ô mới là biến mất khỏi bảng). Dòng đếm giờ ghi cả 2 mốc khoá sổ (hiện nhân + nặn).
 - **🔔 Báo cược về Discord** (`_txNoti`): có người đặt là bot nhắn chủ server (ai/cửa/bao nhiêu/ván/ví/tổng bàn). Một ô ID: thử DM trước, hụt thì gửi kênh, nhớ kiểu gửi được. Có mức tối thiểu để khỏi ngập. Gắn ở **cả 3 cửa** đặt (web + 2 nút Discord); gửi hỏng **không** làm hỏng ván. Panel có nút Gửi thử. **Mặc định TẮT** — chủ server tự bật.
 - Tự khởi động lại bàn ở `_txChannelId` khi boot; lịch sử 20 ván sống qua restart (`_txHist20`).
 
@@ -302,6 +303,8 @@ pm2 logs BotDoMin --lines 50
 `/root/tts-bot` chứa `.env`, `database.json` sống — **không bao giờ** `reset --hard`/xoá.
 
 Sau restart bot, kiểm nhanh: log có `Bot ... online`, web `:3002` vào được, panel bấm tab không lỗi.
+
+⚠️ **Riêng bàn Sic Bo**: nhịp ván lưu trong `database.json` (`_txTime`) **thắng** số mặc định trong code. Deploy xong phải vào **panel SUPER → tab Big Small** set lại **30 / 4 / 20** thì mới ăn nhịp mới. Kiểm thêm: đặt thử 1 ô của bàn mới (ví dụ Tổng 9) rồi **để yên không nặn**, hết ván phải thấy ván đó trong bảng soi cầu và tiền về ví — nếu không thấy thì xem `log_system.txt` có dòng `[LỖI GHI SỔ TX]` không.
 
 ---
 
