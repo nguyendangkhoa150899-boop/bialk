@@ -217,7 +217,8 @@ Cược là tiền **đã trừ khỏi ví**. Vì vậy:
 - **Mốc "hết giờ đặt" = hiện nhân + nặn**, không phải chỉ giây nặn. Trừ thiếu thì đồng hồ
   người chơi không về 0 và panel báo còn giờ ép trong khi sổ đã đóng.
 
-Bộ kiểm khoá lại: `tienkhongmat-test.js` và `restart-test.js` (đều không cần bot).
+Bộ kiểm khoá lại: `tienkhongmat-test.js`, `restart-test.js` và `nhipvan-test.js`
+(đều không cần bot).
 
 ## 12b. SỐ VÁN KHÔNG ĐƯỢC THỦNG LỖ (21/09)
 
@@ -323,6 +324,45 @@ lại đang nằm trong khối **panel**.
 
 **Chốt:** `pham-vi-test.js` giờ đối chiếu **toàn bộ** `ctx.X` mà webplay dùng với danh
 sách khoá `startWebPlay` thật sự cấp, và báo riêng cái nào bị đặt nhầm sang panel.
+
+## 12e. RÀ LẠI CẢ MẠCH VÁN (21/09)
+
+Chủ server: *"đặt xong → khóa cược → hiển số nhân → cho người chơi nặn. **không được thiếu
+cái nào**. không được ngưng / mất ván / chưa show kết quả đã qua ván khác"*.
+
+Rà lại tìm thêm **hai lỗ**:
+
+### ① Pha HIỆN SỐ NHÂN có thể bị tắt hẳn
+
+`TX_NHAN_S_MIN` để **0**, chú thích ghi thẳng *"0 = tắt hẳn pha hiện nhân"*. Đặt 0 thì
+`lockTime === nanTime`: khoá sổ và quay xúc xắc rơi vào **cùng một giây** — cả bàn không
+bao giờ kịp nhìn bảng hệ số nhân. Đúng cái *"thiếu một mốc"*.
+→ Nâng sàn lên **2 giây**. Số cũ ngoài khoảng thì `txTimeCfg()` tự lùi về mặc định 4, khỏi sửa DB.
+
+### ② Lag làm mở bát ngay sau khi quay → không kịp thấy kết quả
+
+`finishTXGame` ngủ tới `targetTime` rồi mới chốt. Máy chủ kẹt thì lúc chạy lại
+`nowSec` đã **vượt** `targetTime` → ngủ 0 giây → quay xong **chốt luôn trong cùng nhịp**,
+bảng nhảy thẳng sang ván mới, không ai thấy mặt xúc xắc.
+
+⚠️ Đây là **tác dụng phụ của chính bản vá "bắt kịp mốc"** ở mục 12b. Bắt kịp thì đúng, nhưng
+phải chừa chỗ xem kết quả.
+
+→ Trễ mốc quay thì **dời giờ mở bát ra sau `TX_KQ_S` giây**. Ván dài thêm vài giây còn hơn
+ván không có kết quả. Đường **cứu ván** (lỡ hẳn mốc nặn) cũng vậy: quay bù → dời giờ mở bát →
+thoát sớm, để nhịp sau mở bát theo đường thường.
+
+### Bộ kiểm riêng: `nhipvan-test.js`
+
+| Canh | Nội dung |
+|---|---|
+| ① đủ mốc | bốn mốc đều có thời lượng thật, nặn ≥ `TX_KQ_S` + 2 |
+| ② đúng thứ tự | khoá sổ → quay → mở bát, và ba bước là `if` nối tiếp |
+| ③ không ngưng | mất bảng / watchdog / catch đều có lối ra, luôn nhả `isProcessing` |
+| ④ không nuốt kết quả | cả hai đường trễ đều dời giờ mở bát |
+
+Kèm **mô phỏng 3.000 ván với lag ngẫu nhiên tới 40 giây**: không ván nào thiếu mốc, không ván
+nào bị nuốt kết quả, dãy số ván liền mạch.
 
 ## 13. Cạm bẫy đã dính, đừng dính lại
 

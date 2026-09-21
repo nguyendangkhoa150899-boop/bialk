@@ -4052,7 +4052,12 @@ const TX_NHAN_S_DEF = 4;                       // giây hiện nhân
 // 4 GIÂY CUỐI pha nặn: chén tự rơi, bàn tô ô trúng/ô trượt cho cả bàn cùng xem.
 // Ai nặn tay xong sớm hơn thì thấy ngay, khỏi chờ.
 const TX_KQ_S = 4;
-const TX_NHAN_S_MIN = 0, TX_NHAN_S_MAX = 60;   // 0 = tắt hẳn pha hiện nhân
+// ⚠️ SÀN 2 GIÂY, KHÔNG PHẢI 0. Chủ server chốt 21/09: mạch ván BẮT BUỘC đủ bốn mốc
+// "đặt cược -> khoá cược -> hiện số nhân -> nặn", không được thiếu cái nào.
+// Để 0 thì lockTime === nanTime: khoá sổ và quay xúc xắc rơi vào CÙNG MỘT GIÂY, cả bàn
+// không bao giờ kịp nhìn bảng hệ số nhân trước khi quay — pha đó coi như không tồn tại.
+// (Số cũ nằm ngoài khoảng thì txTimeCfg() tự lùi về mặc định 4 giây, không cần sửa DB.)
+const TX_NHAN_S_MIN = 2, TX_NHAN_S_MAX = 60;
 // TAIXIU_DIR: bản test chỉ chép 7 file BotDoMin nên ../TaiXiu không có -> bialk-test.js trỏ về repo.
 const TX_CUA = require(require('path').join(
     process.env.TAIXIU_DIR || require('path').join(__dirname, '..', 'TaiXiu'), 'cua.js'));
@@ -7654,8 +7659,32 @@ function runTaiXiuLoop() {
             txState.status = 'ending';
             const snapGameId = txState.gameId;
             const snapBets = txState.bets.slice();
+            // ⏳ CHỪA CHỖ XEM KẾT QUẢ. finishTXGame ngủ tới targetTime rồi mới chốt; máy chủ
+            // kẹt thì lúc chạy lại nowSec đã VƯỢT targetTime -> ngủ 0 giây -> quay xong chốt
+            // luôn trong cùng nhịp, bảng nhảy thẳng sang ván mới, không ai kịp thấy mặt xúc
+            // xắc. Dời giờ mở bát ra sau TX_KQ_S giây: ván dài thêm vài giây còn hơn ván
+            // không có kết quả (chủ server dặn 21/09).
+            if (nowSec >= txState.targetTime - TX_KQ_S) txState.targetTime = nowSec + TX_KQ_S;
             txState.resultPromise = finishTXGame(snapGameId, snapBets);
-            if (nowSec < txState.targetTime) updateTXMessage().catch(() => { });
+            updateTXMessage().catch(() => { });
+        }
+
+        // ②b 🛟 CỨU VÁN: tới giờ mở bát mà ván CHƯA HỀ QUAY (kẹt lâu hơn cả pha nặn).
+        //     Quay bù tại chỗ rồi DỜI giờ mở bát ra sau TX_KQ_S giây, để nhịp sau mở bát theo
+        //     đường thường và người chơi vẫn có chỗ xem kết quả. Huỷ ván là mất ID, mất kết quả.
+        if (nowSec >= txState.targetTime && !txState.resultPromise && !txState.isProcessing) {
+            if (!txState.nhan || txState.nhan.gameId !== txState.gameId) {
+                // lỡ luôn mốc khoá sổ -> sinh bù, không thì txPlanPayout thấy bangNhan rỗng
+                // và người chơi mất phần nhân một cách lặng lẽ
+                txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
+                writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ luôn mốc khoá sổ - sinh bù bảng hệ số nhân`);
+            }
+            writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ mốc nặn (máy chủ kẹt) - QUAY BÙ tại chỗ, KHÔNG huỷ ván`);
+            txState.status = 'ending';
+            txState.targetTime = nowSec + TX_KQ_S;
+            txState.resultPromise = finishTXGame(txState.gameId, txState.bets.slice());
+            updateTXMessage().catch(() => { });
+            return;
         }
 
         // ③ MỞ BÁT
@@ -7670,24 +7699,10 @@ function runTaiXiuLoop() {
             const txIsLast = !!prevMsgId && txState.channel?.lastMessageId === prevMsgId;
 
             try {
-                // 🛟 CỨU VÁN, KHÔNG HUỶ VÁN.
-                // resultPromise rỗng = mốc nặn bị nhảy cóc (máy chủ kẹt lâu hơn cả pha nặn).
-                // Bản cũ hoàn cược rồi bỏ ván -> MẤT KẾT QUẢ, MẤT LUÔN ID trong lịch sử, đúng
-                // cái chủ server than 21/09. Nhưng ván có hỏng đâu: sổ cược đã khoá, chỉ là
-                // chưa kịp quay. Quay BÙ ngay tại đây ra một ván THẬT, công bằng y như quay
-                // đúng giờ (xúc xắc vẫn ngẫu nhiên, sổ cược vẫn nguyên). Hoàn cược chỉ là
-                // đường cùng, để dành cho nhánh catch bên dưới.
-                if (!txState.resultPromise) {
-                    // Thiếu cả bảng hệ số nhân (lỡ luôn mốc khoá sổ) thì sinh bù — không thì
-                    // txPlanPayout thấy bangNhan rỗng và người chơi mất phần nhân lặng lẽ.
-                    if (!txState.nhan || txState.nhan.gameId !== txState.gameId) {
-                        txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
-                        writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ luôn mốc khoá sổ - sinh bù bảng hệ số nhân`);
-                    }
-                    writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ mốc nặn (máy chủ kẹt) - QUAY BÙ tại chỗ, KHÔNG huỷ ván`);
-                    txState.resultPromise = finishTXGame(txState.gameId, txState.bets.slice());
-                }
-                await txState.resultPromise;
+                // Tới đây resultPromise CHẮC CHẮN có: bước ②b ở trên đã lo ca "chưa kịp quay"
+                // (quay bù + dời giờ mở bát) và thoát sớm. Giữ Promise.resolve() làm lưới cuối
+                // cho khỏi nổ, KHÔNG huỷ ván ở đây nữa — huỷ là mất ID, mất kết quả.
+                await (txState.resultPromise || Promise.resolve());
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
                 txState.bets = [];

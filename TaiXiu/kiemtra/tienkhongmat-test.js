@@ -78,9 +78,8 @@ muc('⏱️ ba mốc của ván phải BẮT KỊP được, không nhảy cóc 
         than.indexOf('else if (nowSec >= txState.targetTime') < 0);
 
     // lag trong cùng một nhịp thì đừng vẽ bảng Discord ba lần liên tiếp
-    ok('bắt kịp trong cùng nhịp thì bỏ qua mấy lần vẽ bảng dở dang',
-        /if \(nowSec < nanTime\) updateTXMessage/.test(than) &&
-        /if \(nowSec < txState\.targetTime\) updateTXMessage/.test(than));
+    ok('bắt kịp trong cùng nhịp thì bỏ qua lần vẽ bảng dở dang',
+        /if \(nowSec < nanTime\) updateTXMessage/.test(than));
 
     ok('có ghi rõ trong mã là CẤM đổi lại thành else if',
         /KHÔNG ĐỔI LẠI THÀNH .?else if/.test(than));
@@ -125,16 +124,19 @@ muc('🛟 lỡ mốc nặn thì QUAY BÙ, không huỷ ván');
 {
     const i0 = SRC.indexOf('function runTaiXiuLoop()');
     const than = i0 >= 0 ? SRC.slice(i0, i0 + 9000) : '';
+    // 21/09: bước ②b (cứu ván) nằm TRƯỚC nhánh mở bát và tự thoát sớm, nên trong try chỉ còn await.
     ok('⭐ resultPromise rỗng thì QUAY BÙ tại chỗ (ván vẫn ra kết quả thật)',
-        /if \(!txState\.resultPromise\)[\s\S]{0,900}?txState\.resultPromise = finishTXGame\(txState\.gameId/.test(than));
+        /!txState\.resultPromise && !txState\.isProcessing[\s\S]{0,900}?txState\.resultPromise = finishTXGame\(txState\.gameId/.test(than));
+    ok('⭐ quay bù xong DỜI giờ mở bát ra sau, để còn chỗ xem kết quả',
+        /txState\.targetTime = nowSec \+ TX_KQ_S;[\s\S]{0,200}?finishTXGame\(txState\.gameId/.test(than));
     ok('⭐ KHÔNG còn hoàn-cược-rồi-bỏ-ván ở đường thường (đó là chỗ mất ID)',
         !/nhảy cóc mốc nặn/.test(than), 'vẫn còn nhánh huỷ ván trong vòng lặp');
     ok('...lỡ luôn mốc khoá sổ thì SINH BÙ bảng hệ số nhân',
         /txState\.nhan\.gameId !== txState\.gameId[\s\S]{0,260}?TX_CUA\.taoNhan\(\)/.test(than));
     ok('...nếu không sinh bù thì người chơi mất phần nhân lặng lẽ (có ghi chú)',
-        /mất phần nhân lặng lẽ/.test(than));
-    ok('quay bù xong vẫn await như đường thường (để settle ghi lịch sử + trả tiền)',
-        /await txState\.resultPromise;/.test(than));
+        /mất phần nhân một cách lặng lẽ/.test(than));
+    ok('nhánh mở bát chỉ còn await, KHÔNG huỷ ván (huỷ là mất ID + mất kết quả)',
+        /await \(txState\.resultPromise \|\| Promise\.resolve\(\)\);/.test(than));
     ok('có ghi sổ để soi lại được khi bàn lag', /QUAY BÙ tại chỗ, KHÔNG huỷ ván/.test(than));
 }
 
@@ -166,7 +168,7 @@ ok('soi cầu Discord không in "undefined" cho ván huỷ (ván huỷ không c�
 // Hoàn cược là đúng về tiền nhưng MẤT KẾT QUẢ VÀ MẤT ID — đúng cái chủ server than.
 // Quay bù ra một ván thật, tiền trả theo kết quả thật. Xem khối 🛟 ở trên.
 ok('lỡ mốc nặn: QUAY BÙ (không còn hoàn-cược-rồi-bỏ-ván ở đường thường)',
-    /if \(!txState\.resultPromise\) \{[\s\S]{0,900}?txState\.resultPromise = finishTXGame\(/.test(SRC) &&
+    /!txState\.resultPromise && !txState\.isProcessing[\s\S]{0,900}?finishTXGame\(/.test(SRC) &&
     !/txDonSoCuoc\('nhảy cóc mốc nặn/.test(SRC));
 ok('mất bảng phải dựng lại: cũng dọn tiền', /txDonSoCuoc\('mất bảng, dựng lại ván/.test(SRC));
 ok('lỗi vòng ván: cũng dọn tiền', /txDonSoCuoc\('lỗi vòng ván/.test(SRC));
