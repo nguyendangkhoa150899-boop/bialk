@@ -96,7 +96,8 @@ ok('không còn hàm giỏ: sbHoanTac / sbGapDoi / sbXoaGio / sbGui',
     !/function sbHoanTac/.test(SRC) && !/function sbGapDoi/.test(SRC) &&
     !/function sbXoaGio/.test(SRC) && !/function sbGui/.test(SRC));
 ok('không còn biến giỏ SBGIO / SBLICH', !/SBGIO/.test(SRC) && !/SBLICH/.test(SRC));
-ok('bấm ô gọi thẳng /api/bet', /function sbChon\(id\)/.test(SRC) && /api\("\/api\/bet",\{gio:\[\{choice:id,amount:SBCHIP\}\]\}\)/.test(SRC));
+ok('bấm ô gọi thẳng /api/bet', /function sbChon\(id\)/.test(SRC) &&
+    SRC.includes('api("/api/bet",{gio:[{choice:id,amount:tien}]})'));
 ok('chặn bấm dồn 2 lần lúc mạng chậm (SBDANGGUI)', /if\(SBDANGGUI\)return;/.test(SRC));
 ok('nút betBtn cũ nếu còn thì phải có if (tránh null.disabled làm vỡ refresh)',
     !/getElementById\("betBtn"\)\.disabled/.test(SRC));
@@ -167,8 +168,10 @@ ok('số tiền là chú thích nhỏ NGAY DƯỚI đồng xu',
 ok('đồng nặng >= 50.000 đổi sang viền đen',
     /var CHIP_DEN=50000;/.test(SRC) && /toi>=CHIP_DEN\?" sbGioDen":""/.test(SRC) &&
     /'\.sbO \.sbGio\.sbGioDen img\{/.test(SRC) && /'\.sbO \.sbGio\.sbGioDen b\{/.test(SRC));
+// markup nút mệnh giá giờ tách nhiều dòng (thêm nhánh MAX), nên soi cả cụm
 ok('hàng mệnh giá chọn cũng kèm đồng Dogcoin',
-    SRC.split(/\r?\n/).some(d => d.includes('sbDatChip(') && d.includes('src="/dogcoin.png"')));
+    SRC.includes('onclick="sbDatChip(') && SRC.includes('MAX CƯỢC') &&
+    /function sbVeChip\(\)[\s\S]{0,700}?src="\/dogcoin\.png"/.test(SRC));
 ok('đồng xu không chắn chuột (bấm xuyên qua để đặt tiếp)', /pointer-events:none;line-height:1\}/.test(SRC));
 ok('số tiền được rút gọn cho vừa (chipNgan)', /function chipNgan\(n\)/.test(SRC));
 ok('rê chuột vào chip vẫn xem được số tiền đầy đủ', /d\.title=vnd\(toi\)\+" Dogcoin"/.test(SRC));
@@ -206,6 +209,25 @@ ok('ô trượt giấu hẳn đồng xu + nhãn tiền bàn',
 ok('ô trúng thì đồng xu to hơn cho nổi', SRC.includes("'.sbO.sbTrung .sbGio img{width:26px"));
 ok('lúc ĐANG ĐẶT vẫn hiện chip mọi ô đã đặt (không giấu sớm)',
     SRC.includes('d.className="sbGio"+(toi>=CHIP_DEN'));
+
+muc('nút MAX CƯỢC + hiệu ứng chip bay');
+ok('đã bỏ mệnh giá 5.000, thêm max ở cuối',
+    SRC.includes('var SBMENH=[1000,10000,20000,50000,100000,"max"];'));
+ok('nút MAX có kiểu riêng màu đỏ', SRC.includes('.chip.chipMax{') && SRC.includes('chipMax'));
+// Chủ server: trần ô 200.000 mà ví 400.000 thì CHỈ 200.000 được vào.
+// MAX phải bị chặn bởi cả 3: ví còn, trần riêng của ô, trần tổng cả ván.
+ok('MAX bị chặn bởi VÍ + TRẦN Ô + TRẦN TỔNG VÁN',
+    SRC.includes('function sbTienMax(id)') && SRC.includes('var con=BAL;') &&
+    SRC.includes('con=Math.min(con,Math.max(0,tran-daCo))') &&
+    SRC.includes('con=Math.min(con,Math.max(0,TXMAX-tong))'));
+ok('client biết trần tổng ván (TXMAX lấy từ máy chủ)', SRC.includes('TXMAX=j.txMax||0;'));
+ok('ví dưới 1.000 vẫn đặt được bằng MAX (không kẹt mệnh giá nhỏ nhất)',
+    SRC.includes('if(SBCHIP==="max"){tien=sbTienMax(id);'));
+ok('có hiệu ứng chip bay vào ô, tự dọn sau khi bay',
+    SRC.includes('function sbChipBay(id,tien)') && SRC.includes("'.sbBay{") &&
+    SRC.includes('b.remove()},520)'));
+ok('chip bay KHÔNG chắn chuột',
+    SRC.includes("'.sbBay{position:fixed;z-index:9999;pointer-events:none"));
 
 muc('thang hệ số nhân admin chỉnh được');
 ok('panel có ô nhập thang + nút lưu + về mặc định',

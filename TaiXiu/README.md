@@ -113,6 +113,12 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
   xắc trong ô **vẫn đỏ** (theo đúng ảnh sòng thật chủ server gửi).
 - Huy hiệu `x…` gắn ngay trên ô được bốc. **Không** có thanh liệt kê phía trên bàn nữa.
 - Máy chủ **gộp `myBets` theo cửa** trước khi gửi, kẻo bấm 20 phát vào một ô là 20 dòng.
+- Hàng mệnh giá: `1.000 / 10.000 / 20.000 / 50.000 / 100.000` + nút **MAX CƯỢC** màu đỏ ở cuối.
+  MAX đổ nhiều nhất có thể vào ĐÚNG ô vừa bấm, bị chặn bởi **3 thứ cùng lúc**: ví còn bao nhiêu,
+  trần riêng của ô, trần tổng cả ván của một người. Trần ô 200.000 mà ví 400.000 thì chỉ 200.000
+  vào. Nhờ MAX mà người có **dưới 1.000** vẫn đặt được (mệnh giá nhỏ nhất là 1.000 nên họ từng kẹt).
+- Bấm ô thì có **đồng xu bay** từ hàng mệnh giá vào ô, tự dọn sau 0,5 giây. Thuần trang trí,
+  không chắn chuột, không đụng DOM của bàn (chip thật do `sbVeGio` vẽ ở nhịp làm mới sau).
 - **Ra kết quả thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG**, ô trượt ẩn chip + nhãn tiền bàn.
   Rải 47 ô mà giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
 

@@ -933,6 +933,15 @@ const PAGE = [
     '.cbtn.sel{border-color:var(--gold);border-bottom-width:2px;transform:translateY(3px);box-shadow:0 0 0 3px var(--gold),0 0 16px #ffcf5c88}',
     '.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}',
     '.chip{flex:1;background:#232735;padding:9px 0;font-size:13px;min-width:56px}',
+    // 🔴 MAX CƯỢC - đỏ cho khác hẳn mấy nút mệnh giá
+    '.chip.chipMax{background:linear-gradient(180deg,#8e2330,#5d141d);border-color:#c0394b;color:#ffd9de;font-weight:800}',
+    '.chip.chipMax.on{background:linear-gradient(180deg,#d3374a,#96202f);border-color:#ff8a9c;color:#fff}',
+    // ✨ đồng xu bay từ hàng mệnh giá vào ô vừa đặt
+    '.sbBay{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-50%);',
+    'transition:transform .5s cubic-bezier(.2,.75,.3,1),opacity .5s ease-in;',
+    'display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1}',
+    '.sbBay img{width:26px;height:26px;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 0 2px #ffcf5c}',
+    '.sbBay b{font-size:10px;font-weight:900;padding:1px 5px;border-radius:999px;background:#2a1f05;color:#ffd76a;border:1px solid #ffcf5c;white-space:nowrap}',
     '.bet-btn{width:100%;margin-top:10px;background:var(--green);color:#0c2417;font-size:17px}',
     '.bet-btn:disabled{background:#2a2e3b;color:var(--muted)}',
     '.row{display:flex;justify-content:space-between;align-items:center}',
@@ -2301,6 +2310,8 @@ const PAGE = [
     '</div></div>',
     '<script>',
     'var TOKEN=localStorage.getItem("play_token")||"";var SEL="";var TT=0;var LOCKS=10;var PHASE="off";var BAL=0;',
+    'var TXMAX=0;',   // trần cược mỗi người mỗi ván (0 = không giới hạn) - nút MAX cần
+
     'var TXKQS=4;var SBKQ=0;',   // TXKQS: giây cuối tự mở · SBKQ: ván đang tô kết quả trên bàn
     'var NAN=null;var revealedGame=0;var dragging=false;var paperX=0,paperY=0,baseX=0,baseY=0,dragX0=0,dragY0=0;',
     'var MYID="";var lastSettled=-1;',
@@ -2498,6 +2509,7 @@ const PAGE = [
     'if(nhac)nhac.textContent=PHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn":(PHASE==="nhan"?"⚡ Đang quay hệ số nhân — không đặt được nữa":"Đã khoá sổ — chờ ván sau");',
     // 💰 trần cược/người/ván + đã đặt bao nhiêu ván này (server chặn, đây chỉ là nhắc)
     'var cpn=document.getElementById("txCapNote");if(cpn){var myTot=0;(j.myBets||[]).forEach(function(b){myTot+=b.amount||0});',
+    'TXMAX=j.txMax||0;',
     'cpn.textContent=(j.txMax>0)?("💰 Giới hạn cược "+j.txMax.toLocaleString("vi-VN")+"/người/ván"+(myTot>0?" · ván này bạn đã đặt "+myTot.toLocaleString("vi-VN"):"")):""}',
     'var stt=document.getElementById("stt");var cap=document.getElementById("stageCap");var paper=document.getElementById("paper");',
     'if(PHASE==="bet"){stt.textContent="🟢 Đang nhận cược";',
@@ -2606,7 +2618,8 @@ const PAGE = [
     // SBTONG = tiền cả bàn từng cửa + khoá "_toi_<cửa>" là tiền của chính mình.
     // SBCHIP = mệnh giá chip đang chọn.
     'var SBCUA=[],SBTRAN={},SBCHIP=0,SBVEROI=false,SBNHAN=null,SBDANGGUI=false;',
-    'var SBMENH=[1000,5000,10000,20000,50000,100000];',
+    // Bỏ 5.000 (chủ server), thêm "max" ở cuối — nút MAX CƯỢC màu đỏ.
+    'var SBMENH=[1000,10000,20000,50000,100000,"max"];',
     // nạp bảng cửa 1 lần rồi vẽ bàn; các lần sau chỉ cập nhật số
     'function sbNapCua(j){if(!j.txCua||!j.txCua.length)return;',
     'SBTRAN=j.txTran||{};',
@@ -2656,8 +2669,21 @@ const PAGE = [
     // hàng chip: mệnh giá nào vượt số dư thì vẫn hiện, bấm mới báo
     'function sbVeChip(){var e=$("sbChips");if(!e)return;',
     'if(!SBCHIP)SBCHIP=SBMENH[0];',
-    'e.innerHTML=SBMENH.map(function(v){return \'<button class="chip\'+(v===SBCHIP?" on":"")+\'" onclick="sbDatChip(\'+v+\')"><img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v)+"</button>"}).join("")}',
+    'e.innerHTML=SBMENH.map(function(v){',
+    'var mx=(v==="max");',
+    'var nhan=mx?(\'<img class="dc" src="/dogcoin.png" alt=""> MAX CƯỢC\'):(\'<img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v));',
+    'return \'<button class="chip\'+(mx?" chipMax":"")+(v===SBCHIP?" on":"")+\'" onclick="sbDatChip(\'+(mx?\'&quot;max&quot;\':v)+\')">\'+nhan+"</button>"}).join("")}',
     'function sbDatChip(v){SBCHIP=v;sbVeChip()}',
+    // MAX CƯỢC = đổ nhiều nhất CÓ THỂ vào ĐÚNG ô đó, chặn bởi 3 thứ:
+    //   ví còn bao nhiêu · trần riêng của ô · trần tổng cả ván của một người
+    // Nhờ vậy trần ô 200.000 mà ví 400.000 thì chỉ 200.000 vào, không tràn.
+    'function sbTienMax(id){',
+    'var con=BAL;',
+    'var tran=sbTranCua(id),daCo=(SBTONG&&SBTONG["_toi_"+id])||0;',
+    'if(tran>0)con=Math.min(con,Math.max(0,tran-daCo));',
+    'if(TXMAX>0){var tong=0;for(var k in SBTONG){if(k.indexOf("_toi_")===0)tong+=SBTONG[k]||0}',
+    'con=Math.min(con,Math.max(0,TXMAX-tong))}',
+    'return Math.floor(con)}',
     // ---- 3 nút thao tác nhanh ----
     // Báo bằng dòng chữ nằm yên dưới nút. Chỉ tự xoá khi thao tác sau thành công,
     // để người chơi đọc kịp câu "không đủ Dogcoin" thay vì popup loé một cái rồi mất.
@@ -2691,14 +2717,33 @@ const PAGE = [
     'function sbChon(id){if(PHASE!=="bet")return toast(PHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!");',
     'if(!LINKED)return toast("Ví chưa được liên kết - nhắn admin");',
     'if(SBDANGGUI)return;',
-    'if(SBCHIP>BAL)return toast("Không đủ Dogcoin - ví còn "+vnd(BAL));',
+    // MAX: tính ngay tại ô vừa bấm. Mệnh giá thường: kiểm như cũ.
+    'var tien;',
+    'if(SBCHIP==="max"){tien=sbTienMax(id);',
+    'if(tien<=0)return toast(BAL<=0?"Ví hết Dogcoin rồi":"Cửa "+(NAMES[id]||id)+" đã kịch trần của bạn")}',
+    'else{tien=SBCHIP;',
+    'if(tien>BAL)return toast("Không đủ Dogcoin - ví còn "+vnd(BAL)+" · bấm MAX CƯỢC để đặt hết");',
     'var tran=sbTranCua(id),daCo=SBTONG&&SBTONG["_toi_"+id]||0;',
-    'if(tran>0&&daCo+SBCHIP>tran)return toast("Cửa "+(NAMES[id]||id)+" tối đa "+vnd(tran)+"/ván");',
-    'SBDANGGUI=true;',
-    'api("/api/bet",{gio:[{choice:id,amount:SBCHIP}]}).then(function(j){SBDANGGUI=false;',
+    'if(tran>0&&daCo+tien>tran)return toast("Cửa "+(NAMES[id]||id)+" tối đa "+vnd(tran)+"/ván")}',
+    'SBDANGGUI=true;sbChipBay(id,tien);',
+    'api("/api/bet",{gio:[{choice:id,amount:tien}]}).then(function(j){SBDANGGUI=false;',
     'BAL=j.balance;$("bal").textContent=vnd(j.balance);',
-    'toast("💸 "+vnd(SBCHIP)+" vào "+(NAMES[id]||id));refresh()})',
+    'toast("💸 "+vnd(tien)+" vào "+(NAMES[id]||id));refresh()})',
     '.catch(function(e){SBDANGGUI=false;toast("❌ "+e.message)})}',
+    // ✨ Chip BAY từ hàng mệnh giá vào ô vừa bấm. Thuần trang trí: tự dọn sau khi
+    // bay xong, không đụng gì tới DOM của bàn (chip thật do sbVeGio vẽ ở nhịp sau).
+    'function sbChipBay(id,tien){',
+    'var o=$("sb_"+id),hang=$("sbChips");if(!o||!hang)return;',
+    'var d=o.getBoundingClientRect(),n=hang.getBoundingClientRect();',
+    'var b=document.createElement("div");b.className="sbBay";',
+    'b.innerHTML=\'<img src="/dogcoin.png" alt=""><b>\'+chipNgan(tien)+"</b>";',
+    'b.style.left=(n.left+n.width/2)+"px";b.style.top=(n.top+n.height/2)+"px";',
+    'document.body.appendChild(b);',
+    // ép trình duyệt vẽ vị trí đầu rồi mới đổi -> mới thấy được đường bay
+    'void b.offsetWidth;',
+    'b.style.transform="translate(-50%,-50%) translate("+((d.left+d.width/2)-(n.left+n.width/2))+"px,"+((d.top+d.height/2)-(n.top+n.height/2))+"px) scale(.8)";',
+    'b.style.opacity="0";',
+    'setTimeout(function(){b.remove()},520)}',
     'function sbTranCua(id){var c=SBCUA.filter(function(x){return x.id===id})[0];return c&&SBTRAN[c.nhom]?SBTRAN[c.nhom]:0}',
     // vẽ nhãn giỏ + nhãn tiền cả bàn lên từng ô
     // SBTONG: tiền CẢ BÀN từng cửa. Thêm khoá "_toi_<cửa>" = tiền CỦA MÌNH ở cửa đó,
