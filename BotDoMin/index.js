@@ -3969,6 +3969,22 @@ function txGhiVanHuy(gameId, lyDo, hoanPhieu, hoanTien) {
     }
 }
 
+/**
+ * 🚪 CỬA DUY NHẤT ĐƯỢC TĂNG SỐ VÁN. Mọi nơi muốn sang ván mới PHẢI đi qua đây.
+ *
+ * Vì sao phải gom về một chỗ: dãy số ván thủng lỗ là do một đường nào đó tăng gameId mà
+ * quên ghi lịch sử. Vá từng đường thì đường mới thêm sau lại quên tiếp. Gom về một cửa thì
+ * cửa đó tự bảo đảm: ván sắp rời đi PHẢI có một dòng lịch sử, chưa có thì ghi ngay dòng
+ * "VÁN HUỶ". Chủ server báo 21/09 lịch sử nhảy #52975 -> #52973.
+ *
+ * ⚠️ ĐỪNG viết txState.gameId++ ở bất kỳ đâu khác. Bộ kiểm quét mã và sẽ đỏ.
+ */
+function txSangVanMoi(lyDo, hoanPhieu, hoanTien) {
+    // txGhiVanHuy tự bỏ qua nếu ván này ĐÃ có lịch sử (đường thường: settle ghi rồi).
+    txGhiVanHuy(txState.gameId, lyDo || 'ván không hoàn tất', hoanPhieu, hoanTien);
+    txState.gameId++;
+}
+
 /** Có giỏ ván trước để bấm Đặt lại không (web dùng để bật/tắt nút). */
 function txCoVanTruoc(userId) {
     const cu = txVanTruoc.get(userId);
@@ -7044,6 +7060,17 @@ client.once('ready', async (c) => {
                 cashout: (uid) => spmCashout(uid),
                 cancelNext: (uid) => spmCancelNext(uid),
             },
+            // ⚠️ webplay.js là MODULE KHÁC — hằng số / hàm của index.js nó KHÔNG tự thấy,
+            // muốn dùng thì phải đưa qua ctx NÀY (ctx của startWebPlay), không phải ctx
+            // của startPanel ở dưới. Hai khoá này từng bị đăng ký nhầm sang khối panel:
+            //   · txCuaThang — locNhanTrung() lọc "chỉ kể ô nhân RA TRÚNG". Thiếu nó thì
+            //     ctx.txCuaThang undefined -> tập ô trúng RỖNG -> lọc sạch mọi ô của mọi
+            //     ván -> dòng ⚡ trống trơn. Hỏng LẶNG LẼ, không lỗi không log.
+            //     (chủ server báo 21/09: "số 9 x18 nhưng ở dưới ko hiện")
+            //   · txKqS — số dự phòng 4 trùng TX_KQ_S nên chưa ai thấy, nhưng admin đổi
+            //     hằng đó là trang sai ngay.
+            txKqS: () => TX_KQ_S,
+            txCuaThang: (xx) => TX_CUA.cuaThang(xx),
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -7071,10 +7098,8 @@ client.once('ready', async (c) => {
             },
             txLockS: () => txLockS(),
             getTxTime: () => ({ ...txTimeCfg(), round: txRoundS(), kq: TX_KQ_S }),
-            // webplay.js là MODULE KHÁC — hằng số của index.js không tự nhìn thấy được,
-            // muốn dùng thì phải đưa qua ctx như thế này.
-            txKqS: () => TX_KQ_S,
-            txCuaThang: (xx) => TX_CUA.cuaThang(xx),
+            // (txKqS + txCuaThang đã CHUYỂN sang ctx của startWebPlay — panel không dùng
+            //  cái nào, mà để ở đây thì webplay không thấy. Xem chú thích ở trên đó.)
             txRTP: () => TX_CUA.thongKeRTP(),
             setTxRTP: (r) => setTxRTP(r),
             txThang: () => TX_CUA.thangHienTai(),
@@ -7587,9 +7612,8 @@ function runTaiXiuLoop() {
                 // trả hai lần cho cả bàn.
                 {
                     const r = txDonSoCuoc('watchdog reset ván #' + txState.gameId);
-                    txGhiVanHuy(txState.gameId, 'máy chủ kẹt quá 120 giây', r.hoan, r.tienHoan);
+                    txSangVanMoi('máy chủ kẹt quá 120 giây', r.hoan, r.tienHoan);
                 }
-                txState.gameId++;
                 txState.activeChoice = null;
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.message = null;
@@ -7646,19 +7670,28 @@ function runTaiXiuLoop() {
             const txIsLast = !!prevMsgId && txState.channel?.lastMessageId === prevMsgId;
 
             try {
-                // ⚠️ resultPromise rỗng = mốc nặn BỊ NHẢY CÓC (event loop kẹt lâu hơn
-                // cả pha nặn). Ván không hề quay xúc xắc -> xoá cược thẳng là mất trắng
-                // tiền người chơi mà không một dòng log. Hoàn lại cho họ.
+                // 🛟 CỨU VÁN, KHÔNG HUỶ VÁN.
+                // resultPromise rỗng = mốc nặn bị nhảy cóc (máy chủ kẹt lâu hơn cả pha nặn).
+                // Bản cũ hoàn cược rồi bỏ ván -> MẤT KẾT QUẢ, MẤT LUÔN ID trong lịch sử, đúng
+                // cái chủ server than 21/09. Nhưng ván có hỏng đâu: sổ cược đã khoá, chỉ là
+                // chưa kịp quay. Quay BÙ ngay tại đây ra một ván THẬT, công bằng y như quay
+                // đúng giờ (xúc xắc vẫn ngẫu nhiên, sổ cược vẫn nguyên). Hoàn cược chỉ là
+                // đường cùng, để dành cho nhánh catch bên dưới.
                 if (!txState.resultPromise) {
-                    const r = txDonSoCuoc('nhảy cóc mốc nặn ván #' + txState.gameId + ' - ván không quay được');
-                    txGhiVanHuy(txState.gameId, 'máy chủ kẹt, ván không quay được', r.hoan, r.tienHoan);
-                } else {
-                    await txState.resultPromise;
+                    // Thiếu cả bảng hệ số nhân (lỡ luôn mốc khoá sổ) thì sinh bù — không thì
+                    // txPlanPayout thấy bangNhan rỗng và người chơi mất phần nhân lặng lẽ.
+                    if (!txState.nhan || txState.nhan.gameId !== txState.gameId) {
+                        txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
+                        writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ luôn mốc khoá sổ - sinh bù bảng hệ số nhân`);
+                    }
+                    writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ mốc nặn (máy chủ kẹt) - QUAY BÙ tại chỗ, KHÔNG huỷ ván`);
+                    txState.resultPromise = finishTXGame(txState.gameId, txState.bets.slice());
                 }
+                await txState.resultPromise;
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
                 txState.bets = [];
-                txState.gameId++;
+                txSangVanMoi('ván kết thúc mà không có kết quả');
                 txState.activeChoice = null;
                 txState.resultPromise = null;
                 txState.needsUpdate = false;
@@ -7688,14 +7721,13 @@ function runTaiXiuLoop() {
                 // ván chưa quay thì hoàn cược. Reset thẳng là tiền bốc hơi (đã xảy ra thật).
                 {
                     const r = txDonSoCuoc('lỗi vòng ván #' + txState.gameId);
-                    // Ván đã quay thì settle đã ghi lịch sử rồi -> txGhiVanHuy tự bỏ qua vì
-                    // thấy gameId đã có. Chỉ ván chưa quay mới thực sự được ghi là HUỶ.
-                    txGhiVanHuy(txState.gameId, 'lỗi giữa vòng ván: ' + e.message, r.hoan, r.tienHoan);
+                    // Ván đã quay thì settle đã ghi lịch sử rồi -> txSangVanMoi tự bỏ qua phần
+                    // ghi vì thấy gameId đã có. Chỉ ván chưa quay mới thực sự ghi là HUỶ.
+                    txSangVanMoi('lỗi giữa vòng ván: ' + e.message, r.hoan, r.tienHoan);
                 }
                 // Recovery: reset để ván tiếp theo vẫn chạy được
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
-                txState.gameId++;
                 txState.activeChoice = null;
                 txState.resultPromise = null;
             }
@@ -7981,8 +8013,10 @@ async function startLonnho(channel) {
     // ⚠️ Admin hay bấm Khởi tạo lại khi bảng Discord lỗi. Ván đang chạy có thể đang
     // ôm vài triệu tiền cược ĐÃ TRỪ VÍ — xoá thẳng là mất trắng của người chơi.
     // Giải quyết xong tiền rồi mới sang ván mới.
-    txDonSoCuoc('admin khởi tạo lại bàn (ván #' + txState.gameId + ')');
-    txState.gameId++;
+    {
+        const r = txDonSoCuoc('admin khởi tạo lại bàn (ván #' + txState.gameId + ')');
+        txSangVanMoi('admin khởi tạo lại bàn', r.hoan, r.tienHoan);
+    }
     txState.timeLeft = 55;
     txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
     txState.status = 'betting';

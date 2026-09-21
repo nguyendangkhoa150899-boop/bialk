@@ -244,6 +244,34 @@ soi cầu Discord in `🚫 VÁN HUỶ` thay vì `undefined undefined`.
 **Vì sao phải kể ra ván huỷ:** tiền *có* được hoàn, nhưng người chơi thấy số ván nhảy cóc thì
 tưởng bị nuốt. Không tra được thì không tin được.
 
+### Vá 3 — CỨU VÁN, đừng huỷ ván
+
+Lỡ mốc nặn thì **ván có hỏng đâu**: sổ cược đã khoá, chỉ là chưa kịp quay. Bản cũ hoàn cược rồi
+bỏ ván — đúng về tiền nhưng **mất kết quả và mất ID**. Giờ **quay bù ngay tại chỗ**, ra một ván
+**thật**, công bằng y như quay đúng giờ (xúc xắc vẫn ngẫu nhiên, sổ cược vẫn nguyên).
+Lỡ luôn mốc khoá sổ thì **sinh bù bảng hệ số nhân** — không thì `txPlanPayout` thấy
+`bangNhan` rỗng và người chơi **mất phần nhân một cách lặng lẽ**.
+Hoàn cược giờ chỉ còn là đường cùng, để dành cho nhánh `catch`.
+
+### Vá 4 — MỘT CỬA DUY NHẤT được tăng số ván ⭐
+
+Ba vá trên vẫn là **vá từng đường**: mỗi chỗ tăng `gameId` phải *tự nhớ* ghi lịch sử.
+Thêm một đường mới mà quên là **lỗ thủng quay lại**. Nên gom hết về `txSangVanMoi()`:
+nó **tự bảo đảm** ván sắp rời đi đã có một dòng lịch sử (chưa có thì ghi ván huỷ) rồi mới tăng số.
+
+⚠️ **Không được viết `txState.gameId++` ở bất kỳ đâu khác.** Bộ kiểm quét cả file và
+đỏ nếu thấy quá một chỗ. Đây mới là thứ làm lỗ thủng **không thể** quay lại, kể cả với đường
+chưa ai nghĩ ra.
+
+Bốn cửa hiện đi qua nó: **mở bát** (đường thường) · **watchdog kẹt 120s** · **lỗi giữa vòng ván** ·
+**admin khởi tạo lại bàn**.
+
+**Kiểm bằng hành vi, không chỉ bằng regex:** `tienkhongmat-test.js` **bóc mã thật** của
+`txGhiVanHuy` + `txSangVanMoi` ra chạy trong `vm` với
+`txState` giả, bắn **500 ván** rơi ngẫu nhiên vào cả 4 đường, rồi khẳng định dãy ID
+**liền mạch tuyệt đối**. Cộng thêm ca gọi chồng (hai đường cùng báo huỷ một ván → chỉ một dòng,
+giữ lần ghi **đầu**).
+
 ## 12c. UI TRÀN Ở HÀNG 3 VIÊN (21/09)
 
 Chủ server: *"UI xí ngầu 3 viên bị đẩy nhau đa số UI bị tràn ra ngoài"*.
@@ -269,6 +297,33 @@ biến (`clamp(9px,3vw,16px)`), không ghim số. Chữ dài (*Bão bất kỳ*)
 
 Bộ kiểm tính lại ca chật nhất **390px**: cần 45,1px / có 55px ✅.
 
+## 12d. ĐẶT NHẦM NHÀ: khoá ctx của webplay bỏ sang panel (21/09)
+
+Chủ server: *"nút hiện hệ số nhân từng ván nó không show nữa · số 9 x18 nhưng ở dưới ko hiện"*.
+
+index.js gọi **hai** module với **hai** đối tượng ctx riêng — `startWebPlay({...})` (trang cược)
+và `startPanel({...})` (trang quản trị). Bản vá lọc *"chỉ kể ô nhân ra trúng"* đăng ký
+`txCuaThang` vào **nhầm khối panel**. webplay thấy `undefined`, mà nó viết phòng hờ:
+
+    new Set(ctx.txCuaThang ? ctx.txCuaThang(h.dice) : [])
+
+→ tập rỗng → **lọc sạch mọi ô của mọi ván** → dòng ⚡ trống trơn từ đó.
+
+⚠️ **Hỏng LẶNG LẼ**: không lỗi, không log, chỉ là dữ liệu biến mất. Kiểu phòng hờ
+`ctx.x ? ctx.x() : mặc-định` có mặt khắp webplay (đúng, để bản cũ không vỡ) nên nó
+**không bao giờ nổ** để mà biết. Panel không dùng `txCuaThang` lần nào — nằm sai chỗ hoàn toàn.
+Cùng lỗi còn dính `txKqS`, may là số dự phòng 4 trùng `TX_KQ_S` nên chưa ai thấy.
+
+Mỉa mai: đúng dòng chú thích *"webplay.js là MODULE KHÁC — phải đưa qua ctx như thế này"*
+lại đang nằm trong khối **panel**.
+
+**Cách tìm ra:** dựng webplay thật với ctx giả rồi gọi `/api/state` → thấy máy chủ gửi
+**đúng** `{tong9:18,don6:11}`; chạy `renderHist20` thật trong DOM giả → trang vẽ
+**đúng**; chạy `ketSoTXPayout` thật → ghi **đúng**. Ba tầng đều đúng ⇒ lỗi ở chỗ nối.
+
+**Chốt:** `pham-vi-test.js` giờ đối chiếu **toàn bộ** `ctx.X` mà webplay dùng với danh
+sách khoá `startWebPlay` thật sự cấp, và báo riêng cái nào bị đặt nhầm sang panel.
+
 ## 13. Cạm bẫy đã dính, đừng dính lại
 
 **① Tên cửa tra bằng bảng 5 cửa cũ → VỠ KHÂU CHỐT VÁN, MẤT TIỀN NGƯỜI CHƠI.**
@@ -282,6 +337,11 @@ ra `undefined` → `TypeError` → `settleTXPayout` vỡ giữa chừng: lịch 
 `ketSoTXPayout()` bọc `try/catch`. Nhánh phục hồi của vòng ván **trả nốt tiền rồi mới**
 reset `txState.bets`. Giữ nguyên thứ tự này.
 
+**③b Đưa qua ctx rồi nhưng ĐẶT NHẦM NHÀ.** Xem mục 12d. index.js gọi HAI module với
+HAI ctx riêng (`startWebPlay` và `startPanel`). Bỏ khoá vào nhầm khối thì webplay thấy
+`undefined`, mà mọi chỗ đều viết phòng hờ `ctx.x ? ctx.x() : mặc-định` nên KHÔNG BAO GIỜ NỔ —
+dữ liệu chỉ lặng lẽ biến mất. `pham-vi-test.js` đối chiếu đủ hai chiều.
+
 **③ Hằng số của `index.js` gọi thẳng trong `webplay.js`.**
 Hai module khác nhau → `/api/state` văng lỗi → bàn trắng trơn, mà `node --check` vẫn báo
 sạch. Mọi thứ phải đi qua `ctx`. `pham-vi-test.js` sinh ra từ lỗi này.
@@ -294,7 +354,9 @@ chuỗi là lỗi cú pháp.
 
 **⑥ Trang tự làm mới thì cấm gán thẳng `innerHTML`** cho vùng đang có hiệu ứng / ô nhập.
 
-**⑧ Máy trạng thái của ván: `if` nối tiếp, KHÔNG phải `else if`.** Xem mục 12b. Chuỗi
+**⑧ Máy trạng thái của ván: `if` nối tiếp, KHÔNG phải `else if`.** Xem mục 12b. Và
+số ván chỉ được tăng qua `txSangVanMoi()` — viết `txState.gameId++` ở chỗ khác là mở lại
+lỗ thủng, bộ kiểm quét cả file và sẽ đỏ. Chuỗi
 else-if làm mỗi nhịp chỉ đi được một mốc → máy chủ lag là ván bị nhảy cóc, huỷ oan, mất ID.
 
 **⑨ CSS: đừng ghim số cố định cho thứ nằm trong flex co giãn.** Xem mục 12c. Ghim số là

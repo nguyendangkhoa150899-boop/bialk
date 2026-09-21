@@ -71,5 +71,51 @@ muc('ctx có sẵn thứ bàn Sic Bo cần');
     ok('ctx.txCua / ctx.txTran có thật', /txCua:/.test(idx) && /txTran:/.test(idx));
 }
 
+
+// ============================================================================
+// 🏠 ĐẶT ĐÚNG NHÀ: mọi khoá ctx mà webplay.js dùng phải nằm trong ctx của startWebPlay
+//
+// 21/09 — chủ server: "nút hiện hệ số nhân từng ván nó không show nữa / số 9 x18 nhưng
+// ở dưới ko hiện". index.js gọi HAI module với HAI ctx riêng:
+//     startWebPlay({...})   ← trang cược
+//     startPanel({...})     ← trang quản trị
+// Bản vá lọc "chỉ kể ô nhân RA TRÚNG" đăng ký txCuaThang vào NHẦM khối panel. webplay
+// thấy undefined, mà nó viết phòng hờ `ctx.txCuaThang ? ... : []` -> tập rỗng -> LỌC SẠCH
+// mọi ô của MỌI ván -> ⚡ trống trơn. Hỏng LẶNG LẼ: không lỗi, không log, chỉ mất dữ liệu.
+//
+// Kiểu phòng hờ `ctx.x ? ctx.x() : mặc-định` có mặt khắp webplay (đúng, để bản cũ không vỡ)
+// — nên KHÔNG BAO GIỜ nổ để mà biết. Chỉ phép kiểm này bắt được.
+// ============================================================================
+muc('🏠 khoá ctx phải đặt ĐÚNG NHÀ (webplay vs panel)');
+{
+    const IDX = fs.readFileSync(path.join(GOC, 'index.js'), 'utf8');
+    const WP = fs.readFileSync(path.join(GOC, 'webplay.js'), 'utf8');
+    const iW = IDX.indexOf('startWebPlay({');
+    const iP = IDX.indexOf('startPanel({');
+    ok('tìm được cả hai lời gọi module', iW > 0 && iP > iW, 'webplay@' + iW + ' panel@' + iP);
+
+    // khoá cấp cho webplay = các khoá ở CẤP NGOÀI CÙNG của đối tượng đó (thụt đúng 12 dấu cách)
+    const capCho = (tu, den) => new Set(
+        [...IDX.slice(tu, den).matchAll(/^\s{12}([A-Za-z_][\w]*)\s*[:,(]/gm)].map(m => m[1]));
+    const capWeb = capCho(iW, iP);
+    const capPanel = capCho(iP, iP + 6000);
+    const dungWeb = new Set([...WP.matchAll(/ctx\.([A-Za-z_][\w]*)/g)].map(m => m[1]));
+    ok('đọc được danh sách khoá hai bên', capWeb.size > 20 && dungWeb.size > 20,
+        'cấp ' + capWeb.size + ', dùng ' + dungWeb.size);
+
+    const thieu = [...dungWeb].filter(k => !capWeb.has(k)).sort();
+    ok('⭐⭐ webplay.js KHÔNG dùng khoá ctx nào mà startWebPlay quên cấp',
+        thieu.length === 0, 'THIẾU: ' + thieu.join(', '));
+
+    // và cái thiếu đó có đang nằm nhầm bên panel không — câu trả lời cho "vì sao lặng lẽ"
+    const nhamNha = thieu.filter(k => capPanel.has(k));
+    ok('...và không khoá nào bị đặt NHẦM sang khối panel',
+        nhamNha.length === 0, 'nhầm nhà: ' + nhamNha.join(', '));
+
+    // hai khoá đã từng dính, ghim lại cho chắc
+    for (const k of ['txCuaThang', 'txKqS'])
+        ok('khoá "' + k + '" nằm trong ctx của startWebPlay (đã dính nhầm nhà 21/09)', capWeb.has(k));
+}
+
 console.log('\n🔍 PHẠM VI BIẾN: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);
