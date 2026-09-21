@@ -324,7 +324,7 @@ function startWebPlay(ctx) {
                         txVanTruoc: ctx.txCoVanTruoc ? !!ctx.txCoVanTruoc(userId) : false,
                         betsList: Object.values(whoAgg),
                         // kèm bets/winners (có u) để client tính thắng/thua CÁ NHÂN từng ván
-                        history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [], nhan: locNhanTrung(h) })),
+                        history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [], nhan: locNhanTrung(h), huy: !!h.huy, lyDo: h.lyDo || '' })),
                         chat: chatLog().slice(-30),
                     });
                 }
@@ -944,6 +944,11 @@ const PAGE = [
     '.hTog input{width:14px;height:14px;margin:0;flex:0 0 auto;accent-color:var(--gold);',
     'vertical-align:middle;position:relative;top:0}',
     '.hrow:last-child{border-bottom:0}',
+    // 🚫 ván huỷ: xám và mờ hẳn để không lẫn với dãy kết quả thật, nhưng VẪN CÓ MẶT
+    // cho số ván liền mạch (trước đây biến mất luôn -> người chơi tưởng bị nuốt tiền).
+    '.hrow.huy{opacity:.65;font-style:italic}',
+    '.hrow.huy .kq{color:#ffb35c;font-style:normal;font-weight:800}',
+    '.hrow .lydo{color:var(--muted);font-size:11.5px;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.hrow .gid{color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}',
     '.hrow .dd{display:flex;gap:3px;flex:0 0 auto}',
     // inline-block để 3 viên LUÔN nằm ngang kể cả khi flex của .dd không ăn
@@ -1461,10 +1466,13 @@ const PAGE = [
     '.sbKhu{background:#6b1f22;color:#ffdca8;font-size:10.5px;font-weight:800;text-align:center;',
     'border-radius:5px;padding:3px 6px;letter-spacing:.3px;margin-top:2px}',
     '.sbO{flex:1;min-width:0;position:relative;background:#fff;color:#1a1208;border:1px solid #b09268;border-radius:6px;',
-    'padding:6px 2px;cursor:pointer;text-align:center;font-family:inherit;font-weight:900;line-height:1.1;user-select:none;',
+    'padding:6px 1px;cursor:pointer;text-align:center;font-family:inherit;font-weight:900;line-height:1.1;user-select:none;',
     'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:44px}',
     '.sbO:active{transform:scale(.95)}',
-    '.sbO .sbTen{font-size:12.5px;display:block;white-space:nowrap}',
+    // ⚠️ nowrap KHÔNG kèm đường lùi = chữ dài ("Bão bất kỳ") tràn đè ô bên cạnh.
+    // Cho chữ co theo màn, và chốt chặn cuối bằng cắt-ba-chấm chứ đừng tràn.
+    '.sbO .sbTen{font-size:clamp(10px,2.7vw,12.5px);display:block;white-space:nowrap;',
+    'max-width:100%;overflow:hidden;text-overflow:ellipsis}',
     '.sbO .sbTl{font-size:9.5px;font-weight:700;color:#7a6440;display:block}',
     // ô to cho 4 cửa đều tiền (hay đặt nhất -> phải nổi nhất)
     '.sbO.sbDeu{min-height:56px;background:#fff}',
@@ -1493,12 +1501,22 @@ const PAGE = [
     'font-size:9px;font-weight:800;border-radius:999px;padding:0 5px;white-space:nowrap;z-index:2}',
     '.sbO.sbKhoa{opacity:.94;cursor:not-allowed}',
     // ---- xúc xắc mini vẽ bằng chấm, giống bàn thật (đỏ trên nền trắng) ----
-    // Ô xúc xắc PHẢI vuông: aspect-ratio giữ vuông kể cả khi flex co kéo. Cỡ 20px
-    // (trong lòng 18px vì box-sizing:border-box) đủ chỗ cho 3 hàng chấm của mặt 6.
-    '.sbXx{display:inline-block;width:20px;aspect-ratio:1;background:#fff;border:1px solid #9c3b3b;border-radius:3px;',
-    'position:relative;margin:0 1.5px;flex:0 0 auto;box-shadow:0 1px 2px rgba(0,0,0,.25)}',
-    '.sbXx i{position:absolute;width:3px;height:3px;border-radius:50%;background:#d0241c;transform:translate(-50%,-50%)}',
-    '.sbBoXx{display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;line-height:0}',
+    // Ô xúc xắc PHẢI vuông: aspect-ratio giữ vuông kể cả khi flex co kéo.
+    //
+    // ⚠️ CỠ VIÊN PHẢI CO ĐƯỢC THEO BỀ NGANG MÀN. Bản cũ để width:20px + flex:0 0 auto:
+    // hàng "MỖI BỘ BA" có 6 ô × 3 viên nên mỗi ô cần tối thiểu
+    //     3×20 + 6×1.5 lề + 2×2 padding + 2 viền = 75px
+    // mà điện thoại dọc chỉ chia được ~60px/ô -> xí ngầu đẩy nhau, lòi hẳn ra ngoài ô
+    // (chủ server chụp lại 21/09). Hàng 2 viên chỉ cần 46px nên không vỡ — đúng ảnh.
+    // Giờ cỡ viên nằm ở MỘT biến --xx, co theo vw, và chấm co theo viên.
+    //   3,1vw: màn 430px -> 13,3px/viên -> 3 viên cả lề = 46px, lọt ô 60px.
+    //   Trần 20px giữ nguyên cỡ cũ trên màn rộng.
+    '.sbBoXx{--xx:clamp(11px,3.1vw,20px);display:flex;align-items:center;justify-content:center;',
+    'flex-wrap:nowrap;line-height:0;max-width:100%}',
+    '.sbXx{display:inline-block;width:var(--xx);aspect-ratio:1;background:#fff;border:1px solid #9c3b3b;border-radius:3px;',
+    'position:relative;margin:0 1px;flex:0 1 auto;min-width:0;box-shadow:0 1px 2px rgba(0,0,0,.25)}',
+    '.sbXx i{position:absolute;width:calc(var(--xx) * .16);height:calc(var(--xx) * .16);',
+    'border-radius:50%;background:#d0241c;transform:translate(-50%,-50%)}',
     // ô đang sáng hệ số nhân
     '@keyframes sbNhay{0%,100%{box-shadow:0 0 0 2px #ffcf5c,0 0 12px rgba(255,207,92,.8)}50%{box-shadow:0 0 0 4px #ffcf5c,0 0 24px rgba(255,207,92,1)}}',
     '.sbO.sbNhan{background:linear-gradient(180deg,#fff3ca,#ffd978);animation:sbNhay 1s ease-in-out infinite;border-color:#ffcf5c}',
@@ -1520,7 +1538,10 @@ const PAGE = [
     '.sbO.sbTrung,.sbO.sbTrung.sbKhoa,.sbO.sbTrung.sbNhan{background:#fff;border-color:#ffd76a;opacity:1;',
     'animation:sbTrungNhay 1s ease-in-out infinite;z-index:4;transform:translateY(-1px)}',
     '.sbO.sbTrung .sbTen,.sbO.sbTrung .sbTl{color:#111}',
-    '@media (max-width:430px){.sbXx{width:16px;margin:0 1px}.sbXx i{width:2.4px;height:2.4px}',
+    // ⚠️ ĐỪNG ghim lại width cố định ở đây. Ghim số là chọn đúng MỘT cỡ máy; máy hẹp hơn
+    // vẫn tràn (390px thiếu 3px mỗi ô — chính là ảnh chủ server gửi 21/09). Ở đây chỉ hạ
+    // TRẦN của biến --xx, còn co giãn để clamp lo.
+    '@media (max-width:430px){.sbBoXx{--xx:clamp(9px,3vw,16px)}.sbXx{margin:0 1px}',
     '.sbO{min-height:38px;padding:4px 1px}.sbO .sbTen{font-size:11px}.sbO.sbDeu{min-height:48px}',
     '.sbO.sbDeu .sbTen{font-size:13px}.sbO.sbTong .sbTen{font-size:15px}.sbO .sbTl{font-size:8.5px}}',
     '#sbChips{margin-top:4px}',
@@ -2596,6 +2617,12 @@ const PAGE = [
     'var tai=(h.tx==="BIG"||h.tx==="TÀI"||h.tx==="TAI");',
     'var chan=(h.cl==="CHẴN");',
     'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span><span class="\'+(chan?"ce":"od")+\'">\'+h.cl+\'</span>\');',
+    // 🚫 VÁN HUỶ: máy chủ kẹt nên ván không quay được, cược đã hoàn nguyên. Vẫn kể ra
+    // để dãy số ván LIỀN MẠCH - trước đây ván huỷ biến mất luôn, người chơi thấy số
+    // nhảy cóc và tưởng bị nuốt tiền (chủ server báo 21/09).
+    'if(h.huy)return \'<div class="hrow huy"><span class="gid">#\'+String(h.gameId).padStart(5,"0")+\'</span>\'+',
+    '\'<span class="kq">🚫 VÁN HUỶ — đã hoàn cược</span>\'+',
+    '\'<span class="lydo">\'+esc(h.lyDo||"")+\'</span></div>\';',
     'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
     '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
     '\'<span class="dd">\'+h.dice.map(mdie).join("")+"</span>"+',

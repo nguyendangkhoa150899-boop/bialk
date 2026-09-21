@@ -3939,6 +3939,36 @@ function txDonSoCuoc(lyDo) {
     return { traKeHoach, hoan, tienHoan };
 }
 
+/**
+ * 🕳️ GHI MỘT DÒNG CHO VÁN BỊ HUỶ — để số ván KHÔNG BAO GIỜ THỦNG LỖ.
+ * Chủ server báo 21/09: lịch sử nhảy #52975 -> #52973, người chơi không biết ván #52974
+ * đi đâu và tiền mình có về không. Ván huỷ vẫn là một ván: phải kể ra, kèm lý do và số
+ * phiếu đã hoàn, thì người ta mới đối chiếu được.
+ * Giữ ĐỦ mọi trường mà chỗ hiển thị đang đọc (dice/sum/tx/cl/bets/winners/nhan) để không
+ * chỗ nào phải thêm kiểm tra null — chỉ thêm cờ huy + lyDo.
+ */
+function txGhiVanHuy(gameId, lyDo, hoanPhieu, hoanTien) {
+    try {
+        if (!Array.isArray(txState.history)) txState.history = [];
+        // đã ghi rồi thì thôi (mấy đường phục hồi có thể gọi chồng nhau)
+        if (txState.history.some(h => h && h.gameId === gameId)) return;
+        txState.history.unshift({
+            gameId, huy: true, lyDo: String(lyDo || 'ván không hoàn tất'),
+            hoanPhieu: hoanPhieu || 0, hoanTien: hoanTien || 0,
+            dice: [0, 0, 0], sum: 0, storm: false,
+            tx: 'VÁN HUỶ', cl: 'hoàn cược',
+            bets: [], winners: [], nhan: {},
+            time: new Date().toLocaleTimeString('vi-VN'),
+        });
+        if (txState.history.length > 100) txState.history.pop();
+        dbCache._txHist20 = txState.history.slice(0, 20);
+        writeLog('SYSTEM', `[TÀI XỈU] Ván #${gameId} HUỶ - ${lyDo}` +
+            (hoanPhieu ? ` (hoàn ${hoanPhieu} phiếu, ${(hoanTien || 0).toLocaleString('vi-VN')} Dogcoin)` : ''));
+    } catch (e) {
+        writeLog('SYSTEM', `[LỖI GHI VÁN HUỶ] #${gameId}: ${e.message}`);
+    }
+}
+
 /** Có giỏ ván trước để bấm Đặt lại không (web dùng để bật/tắt nút). */
 function txCoVanTruoc(userId) {
     const cu = txVanTruoc.get(userId);
@@ -7555,7 +7585,10 @@ function runTaiXiuLoop() {
                 // ⚠️ Trả tiền TRƯỚC khi xoá sổ cược, và BẮT BUỘC tăng gameId: giữ nguyên
                 // số ván cũ thì ván mới trùng số -> kế hoạch trả tiền khớp nhầm ván ->
                 // trả hai lần cho cả bàn.
-                txDonSoCuoc('watchdog reset ván #' + txState.gameId);
+                {
+                    const r = txDonSoCuoc('watchdog reset ván #' + txState.gameId);
+                    txGhiVanHuy(txState.gameId, 'máy chủ kẹt quá 120 giây', r.hoan, r.tienHoan);
+                }
                 txState.gameId++;
                 txState.activeChoice = null;
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
@@ -7569,6 +7602,39 @@ function runTaiXiuLoop() {
         const nanTime = txState.targetTime - txLockS();
         const lockTime = nanTime - txNhanS();
 
+        // ⚠️⚠️ BA BƯỚC NÀY PHẢI LÀ `if` NỐI TIẾP, TUYỆT ĐỐI KHÔNG ĐỔI LẠI THÀNH `else if`.
+        // Bản cũ là chuỗi else-if và kiểm targetTime TRƯỚC -> mỗi nhịp chỉ đi được MỘT mốc.
+        // Máy chủ kẹt (lag) làm nhịp trễ; trễ đủ lâu thì lúc chạy lại nowSec đã vượt
+        // targetTime trong khi status còn 'betting' -> nhảy thẳng vào nhánh mở bát mà ván
+        // CHƯA QUAY XÚC XẮC -> huỷ ván, hoàn cược, gameId++ nhưng KHÔNG ghi lịch sử.
+        // Chủ server báo 21/09: 4 ván biến mất trong 24 ván, đúng lúc bàn lag.
+        // Xếp nối tiếp thì một nhịp trễ BẮT KỊP đủ cả ba bước: ván vẫn quay, vẫn trả tiền,
+        // vẫn vào lịch sử. Thứ tự khoá sổ -> quay -> mở bát là bắt buộc.
+
+        // ① KHOÁ SỔ -> pha HIỆN NHÂN. Sinh bảng nhân NGAY ĐÂY, trước khi quay xúc xắc, để cả
+        //    bàn thấy cùng một bảng và không ai đặt thêm được nữa (status khác 'betting' là
+        //    mọi đường đặt cược đều chặn).
+        if (nowSec >= lockTime && txState.status === 'betting') {
+            txState.status = 'nhan';
+            txState.activeChoice = null;
+            txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
+            const soO = Object.keys(txState.nhan.o).length;
+            writeLog('RESULT', `[TÀI XỈU] Ván #${txState.gameId} khoá sổ - sáng ${soO} ô nhân: ` +
+                Object.entries(txState.nhan.o).map(([k, v]) => k + ' x' + v).join(', '));
+            // đuổi kịp trong cùng nhịp thì khỏi vẽ bảng dở dang, bước sau vẽ luôn
+            if (nowSec < nanTime) updateTXMessage().catch(() => { });
+        }
+
+        // ② HẾT KHOE NHÂN -> quay xúc xắc ngầm, mở cửa sổ nặn.
+        if (nowSec >= nanTime && txState.status === 'nhan') {
+            txState.status = 'ending';
+            const snapGameId = txState.gameId;
+            const snapBets = txState.bets.slice();
+            txState.resultPromise = finishTXGame(snapGameId, snapBets);
+            if (nowSec < txState.targetTime) updateTXMessage().catch(() => { });
+        }
+
+        // ③ MỞ BÁT
         if (nowSec >= txState.targetTime) {
             // Mở bát: kết quả đã được tính từ lúc đóng phiên, chỉ cần await
             txState.status = 'ending';
@@ -7585,7 +7651,7 @@ function runTaiXiuLoop() {
                 // tiền người chơi mà không một dòng log. Hoàn lại cho họ.
                 if (!txState.resultPromise) {
                     const r = txDonSoCuoc('nhảy cóc mốc nặn ván #' + txState.gameId + ' - ván không quay được');
-                    if (r.hoan) writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ mốc nặn, đã hoàn cược cho ${r.hoan} phiếu`);
+                    txGhiVanHuy(txState.gameId, 'máy chủ kẹt, ván không quay được', r.hoan, r.tienHoan);
                 } else {
                     await txState.resultPromise;
                 }
@@ -7620,7 +7686,12 @@ function runTaiXiuLoop() {
                 writeLog('SYSTEM', `[LỖI LOOP TX] ${e.message}`);
                 // ⚠️ Giải quyết tiền TRƯỚC KHI reset: ván đã quay thì trả nốt theo bảng,
                 // ván chưa quay thì hoàn cược. Reset thẳng là tiền bốc hơi (đã xảy ra thật).
-                txDonSoCuoc('lỗi vòng ván #' + txState.gameId);
+                {
+                    const r = txDonSoCuoc('lỗi vòng ván #' + txState.gameId);
+                    // Ván đã quay thì settle đã ghi lịch sử rồi -> txGhiVanHuy tự bỏ qua vì
+                    // thấy gameId đã có. Chỉ ván chưa quay mới thực sự được ghi là HUỶ.
+                    txGhiVanHuy(txState.gameId, 'lỗi giữa vòng ván: ' + e.message, r.hoan, r.tienHoan);
+                }
                 // Recovery: reset để ván tiếp theo vẫn chạy được
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
@@ -7631,26 +7702,6 @@ function runTaiXiuLoop() {
 
             txState.isProcessing = false;
             txState.processingStart = 0;
-
-        } else if (nowSec >= lockTime && txState.status === 'betting') {
-            // 🎲 KHOÁ SỔ -> pha HIỆN NHÂN. Sinh bảng nhân NGAY ĐÂY, trước khi quay xúc xắc,
-            // để cả bàn thấy cùng một bảng và không ai đặt thêm được nữa (status khác
-            // 'betting' là mọi đường đặt cược đều chặn).
-            txState.status = 'nhan';
-            txState.activeChoice = null;
-            txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
-            const soO = Object.keys(txState.nhan.o).length;
-            writeLog('RESULT', `[TÀI XỈU] Ván #${txState.gameId} khoá sổ - sáng ${soO} ô nhân: ` +
-                Object.entries(txState.nhan.o).map(([k, v]) => k + ' x' + v).join(', '));
-            updateTXMessage().catch(() => {});
-
-        } else if (nowSec >= nanTime && txState.status === 'nhan') {
-            // Hết 4 giây khoe nhân -> quay xúc xắc ngầm, mở cửa sổ nặn như cũ
-            txState.status = 'ending';
-            const snapGameId = txState.gameId;
-            const snapBets = txState.bets.slice();
-            txState.resultPromise = finishTXGame(snapGameId, snapBets);
-            updateTXMessage().catch(() => {});
 
         } else if ((txState.status === 'betting' || txState.status === 'nhan') && txState.needsUpdate) {
             updateTXMessage().catch(() => {});
@@ -8939,6 +8990,8 @@ client.on('interactionCreate', async interaction => {
         if (txState.history.length === 0) return interaction.reply({ content: "Chưa có lịch sử ván nào!", ephemeral: true });
         
         let hisDesc = txState.history.slice(0, 10).map(h => {
+            // ván huỷ không có xúc xắc -> tra DICE_EMOJIS[0] ra undefined, in ra "undefined undefined"
+            if (h.huy) return `Game ${padId(h.gameId)}: 🚫 VÁN HUỶ - ${h.lyDo || 'không hoàn tất'} (đã hoàn cược)`;
             return `Game ${padId(h.gameId)}: ${DICE_EMOJIS[h.dice[0]]} ${DICE_EMOJIS[h.dice[1]]} ${DICE_EMOJIS[h.dice[2]]} (${h.sum}) - ${h.tx} | ${h.cl}`;
         }).join('\n');
 

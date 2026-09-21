@@ -44,7 +44,67 @@ ok('admin dừng bàn giữa ván: không để tiền treo',
     /txDonSoCuoc\('admin dừng bàn giữa ván/.test(SRC));
 ok('watchdog kẹt: dọn tiền + TĂNG số ván (giữ số cũ là khớp nhầm bảng trả tiền)',
     /txDonSoCuoc\('watchdog reset ván/.test(SRC) &&
-    /txDonSoCuoc\('watchdog reset ván[^\n]*\n\s*txState\.gameId\+\+;/.test(SRC));
+    // ⚠️ Cho phép vài dòng xen giữa (21/09 chèn txGhiVanHuy vào đây). Cái PHẢI đúng là
+    // "dọn tiền xong thì gameId phải tăng", không phải hai dòng dính nhau y nguyên.
+    /txDonSoCuoc\('watchdog reset ván[\s\S]{0,400}?txState\.gameId\+\+;/.test(SRC));
+
+// 🕳️ 21/09 — chủ server: "lâu lâu bị mất ID mất luôn kết quả ván đó làm người chơi mất dogcoin".
+// Ván bị huỷ vẫn tăng gameId nhưng không ghi gì -> dãy số ván thủng lỗ, người chơi không tra
+// được tiền mình đi đâu. Mọi đường huỷ ván giờ phải để lại một dòng lịch sử.
+// ⏱️ 21/09 — GỐC của "mất ID mất luôn kết quả ván". Máy trạng thái 3 mốc trước đây là một
+// chuỗi else-if KIỂM targetTime TRƯỚC, nên mỗi nhịp chỉ đi được MỘT mốc. Máy chủ kẹt (lag)
+// làm nhịp trễ; trễ đủ lâu thì lúc chạy lại nowSec đã vượt targetTime trong khi status còn
+// 'betting' -> rơi thẳng vào nhánh mở bát mà ván CHƯA QUAY -> huỷ ván. Chủ server đo được
+// 4 ván biến mất trong 24 ván, đúng lúc khung chat báo "Lag rồi".
+muc('⏱️ ba mốc của ván phải BẮT KỊP được, không nhảy cóc khi máy chủ lag');
+{
+    // lấy đúng thân vòng lặp ván để soi thứ tự, khỏi dính mấy chỗ khác trong file
+    const i0 = SRC.indexOf('function runTaiXiuLoop()');
+    const than = i0 >= 0 ? SRC.slice(i0, i0 + 9000) : '';
+    ok('tìm được vòng lặp ván', !!than);
+
+    const iKhoa = than.indexOf("if (nowSec >= lockTime && txState.status === 'betting')");
+    const iQuay = than.indexOf("if (nowSec >= nanTime && txState.status === 'nhan')");
+    const iMo = than.indexOf('if (nowSec >= txState.targetTime)');
+    ok('⭐ KHOÁ SỔ đứng TRƯỚC mở bát (không thì lag một cái là ván chưa quay đã bị mở)',
+        iKhoa > 0 && iMo > 0 && iKhoa < iMo, 'khoá@' + iKhoa + ' mở@' + iMo);
+    ok('⭐ QUAY XÚC XẮC đứng TRƯỚC mở bát', iQuay > 0 && iQuay < iMo, 'quay@' + iQuay + ' mở@' + iMo);
+    ok('⭐ và KHOÁ SỔ đứng trước QUAY (sai thứ tự là quay bằng bảng nhân ván cũ)', iKhoa < iQuay);
+
+    ok('⭐⭐ ba mốc là "if" NỐI TIẾP, KHÔNG phải "else if" — else if là nhảy cóc trở lại',
+        than.indexOf('else if (nowSec >= lockTime') < 0 &&
+        than.indexOf('else if (nowSec >= nanTime') < 0 &&
+        than.indexOf('else if (nowSec >= txState.targetTime') < 0);
+
+    // lag trong cùng một nhịp thì đừng vẽ bảng Discord ba lần liên tiếp
+    ok('bắt kịp trong cùng nhịp thì bỏ qua mấy lần vẽ bảng dở dang',
+        /if \(nowSec < nanTime\) updateTXMessage/.test(than) &&
+        /if \(nowSec < txState\.targetTime\) updateTXMessage/.test(than));
+
+    ok('có ghi rõ trong mã là CẤM đổi lại thành else if',
+        /KHÔNG ĐỔI LẠI THÀNH .?else if/.test(than));
+}
+
+muc('🕳️ ván huỷ vẫn phải để lại dấu (số ván không được thủng lỗ)');
+ok('có hàm ghi ván huỷ', /function txGhiVanHuy\(gameId, lyDo, hoanPhieu, hoanTien\)/.test(SRC));
+ok('...ghi vào ĐÚNG sổ lịch sử mà web đọc',
+    /txGhiVanHuy[\s\S]{0,1200}?txState\.history\.unshift/.test(SRC) &&
+    /txGhiVanHuy[\s\S]{0,1400}?dbCache\._txHist20 = txState\.history\.slice\(0, 20\)/.test(SRC));
+ok('...không ghi chồng nếu ván đó đã có lịch sử (ván đã quay thì thôi)',
+    /txGhiVanHuy[\s\S]{0,600}?history\.some\(h => h && h\.gameId === gameId\)/.test(SRC));
+ok('...có đủ trường mà chỗ hiển thị đang đọc (khỏi phải thêm kiểm tra null)',
+    /txGhiVanHuy[\s\S]{0,900}?dice: \[0, 0, 0\][\s\S]{0,200}?bets: \[\], winners: \[\], nhan: \{\}/.test(SRC));
+{
+    // cả BA đường huỷ ván đều phải gọi
+    const duong = [
+        ['watchdog kẹt 120 giây', /txDonSoCuoc\('watchdog reset ván[\s\S]{0,300}?txGhiVanHuy\(/],
+        ['lỡ mốc nặn', /txDonSoCuoc\('nhảy cóc mốc nặn[\s\S]{0,300}?txGhiVanHuy\(/],
+        ['lỗi giữa vòng ván', /txDonSoCuoc\('lỗi vòng ván[\s\S]{0,400}?txGhiVanHuy\(/],
+    ];
+    for (const [ten, re] of duong) ok('đường huỷ "' + ten + '" có ghi lại', re.test(SRC));
+}
+ok('soi cầu Discord không in "undefined" cho ván huỷ (ván huỷ không có xúc xắc)',
+    /if \(h\.huy\) return .*VÁN HUỶ/.test(SRC));
 ok('nhảy cóc mốc nặn: hoàn cược chứ không xoá trắng',
     /if \(!txState\.resultPromise\) \{[\s\S]{0,200}?txDonSoCuoc\('nhảy cóc mốc nặn/.test(SRC));
 ok('mất bảng phải dựng lại: cũng dọn tiền', /txDonSoCuoc\('mất bảng, dựng lại ván/.test(SRC));

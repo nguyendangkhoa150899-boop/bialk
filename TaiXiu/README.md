@@ -219,6 +219,56 @@ Cược là tiền **đã trừ khỏi ví**. Vì vậy:
 
 Bộ kiểm khoá lại: `tienkhongmat-test.js` và `restart-test.js` (đều không cần bot).
 
+## 12b. SỐ VÁN KHÔNG ĐƯỢC THỦNG LỖ (21/09)
+
+Chủ server: *"lâu lâu bị mất ID mất luôn kết quả ván đó làm người chơi mất dogcoin"* —
+lịch sử nhảy **#52975 → #52973**, 4 ván biến mất trong 24 ván, đúng lúc khung chat báo *"Lag rồi"*.
+
+**Gốc:** máy trạng thái 3 mốc trước đây là một chuỗi `else if` và **kiểm**
+`targetTime` **trước**, nên mỗi nhịp chỉ đi được **một** mốc. Máy chủ kẹt làm nhịp trễ;
+trễ đủ lâu thì lúc chạy lại `nowSec` đã vượt `targetTime` trong khi
+`status` còn `'betting'` → rơi thẳng vào nhánh mở bát mà **ván chưa quay xúc
+xắc** → huỷ ván, hoàn cược, `gameId++` nhưng **không ghi lịch sử**.
+
+**Vá 1 — ba mốc phải BẮT KỊP được.** Xếp `if` **nối tiếp** theo thứ tự
+**khoá sổ → quay → mở bát**. Một nhịp trễ giờ chạy đủ cả ba bước: ván vẫn quay, vẫn trả tiền,
+vẫn vào lịch sử.
+⚠️ **TUYỆT ĐỐI KHÔNG đổi lại thành `else if`** — đó chính là con bug. Bộ kiểm chặn.
+
+**Vá 2 — ván huỷ vẫn phải để lại dấu.** Vẫn còn 3 đường huỷ thật (watchdog kẹt 120s, lỡ mốc
+nặn vì lý do khác, lỗi giữa vòng ván). Cả ba giờ gọi `txGhiVanHuy()`, ghi một dòng
+**🚫 VÁN HUỶ — đã hoàn cược** kèm lý do vào đúng sổ lịch sử mà web đọc. Hàm tự bỏ qua nếu
+ván đó đã có lịch sử (ván đã quay thì settle ghi rồi). Bảng 20 ván ở web vẽ dòng này màu xám,
+soi cầu Discord in `🚫 VÁN HUỶ` thay vì `undefined undefined`.
+
+**Vì sao phải kể ra ván huỷ:** tiền *có* được hoàn, nhưng người chơi thấy số ván nhảy cóc thì
+tưởng bị nuốt. Không tra được thì không tin được.
+
+## 12c. UI TRÀN Ở HÀNG 3 VIÊN (21/09)
+
+Chủ server: *"UI xí ngầu 3 viên bị đẩy nhau đa số UI bị tràn ra ngoài"*.
+
+Ô (`.sbO`) co được vì có `flex:1;min-width:0`, nhưng **xúc xắc bên trong
+thì không**: `width:20px` + `flex:0 0 auto`. Hàng *150:1 · MỖI BỘ BA* có
+**6 ô × 3 viên**, mỗi ô cần tối thiểu
+
+    3×20 + 6×1.5 lề + 2×2 padding + 2 viền = 75px
+
+mà điện thoại dọc chỉ chia được **~60px/ô** → xí ngầu đẩy nhau, lòi ra ngoài. Hàng 2 viên
+chỉ cần 46px nên **không** vỡ — khớp đúng ảnh.
+
+⚠️ Đã **có sẵn** `@media (max-width:430px){.sbXx{width:16px}}` mà vẫn tràn, vì
+**ghim một con số cố định là chọn đúng một cỡ máy**. Máy 390px (iPhone 12–15 thường):
+ô rộng 55px, 3 viên 16px cần 58px → vẫn thiếu 3px.
+
+**Vá:** cỡ viên nằm ở **một biến** `--xx: clamp(11px, 3.1vw, 20px)` khai trên
+`.sbBoXx`; viên dùng `width:var(--xx)` + `flex:0 1 auto`;
+chấm dùng `calc(var(--xx) * .16)` nên co theo. `@media` chỉ **hạ trần**
+biến (`clamp(9px,3vw,16px)`), không ghim số. Chữ dài (*Bão bất kỳ*) được
+`font-size:clamp()` + `text-overflow:ellipsis` làm đường lùi.
+
+Bộ kiểm tính lại ca chật nhất **390px**: cần 45,1px / có 55px ✅.
+
 ## 13. Cạm bẫy đã dính, đừng dính lại
 
 **① Tên cửa tra bằng bảng 5 cửa cũ → VỠ KHÂU CHỐT VÁN, MẤT TIỀN NGƯỜI CHƠI.**
@@ -243,6 +293,15 @@ phải khai **sau** `.sbNhan` và đủ lớp để thắng `.sbKhoa`.
 chuỗi là lỗi cú pháp.
 
 **⑥ Trang tự làm mới thì cấm gán thẳng `innerHTML`** cho vùng đang có hiệu ứng / ô nhập.
+
+**⑧ Máy trạng thái của ván: `if` nối tiếp, KHÔNG phải `else if`.** Xem mục 12b. Chuỗi
+else-if làm mỗi nhịp chỉ đi được một mốc → máy chủ lag là ván bị nhảy cóc, huỷ oan, mất ID.
+
+**⑨ CSS: đừng ghim số cố định cho thứ nằm trong flex co giãn.** Xem mục 12c. Ghim số là
+chọn đúng một cỡ máy; máy hẹp hơn vẫn tràn. Dùng biến + `clamp()`, `@media` chỉ hạ trần.
+
+**⑩ Mỗi rule CSS trong mảng `PAGE` có thể bị cắt làm nhiều chuỗi.** Regex kiểu
+`/\.sbXx\{[^']*flex/` không bao giờ khớp qua ranh giới hai phần tử — soi từng mảnh.
 
 **⑦ Viết script vá bằng Write/Edit, đừng nhét qua Bash.** Bash nuốt `\`, backtick và `${}` —
 đã làm hỏng `index.js` một lần.

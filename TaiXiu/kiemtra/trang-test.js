@@ -34,10 +34,19 @@ muc('cú pháp phần người chơi');
 
 // ---------------------------------------------------------------- hình học xúc xắc
 muc('🎲 hình học xúc xắc mini (chấm không được chồng / tràn)');
+// 21/09: cỡ viên KHÔNG còn là số cố định mà là biến --xx co theo màn (ghim số là chọn
+// đúng một cỡ máy, máy hẹp hơn vẫn tràn). Nên kiểm ở CA XẤU NHẤT = cận dưới của clamp:
+// viên nhỏ nhất mà chấm vẫn không chồng, không tràn viền thì mọi cỡ lớn hơn đều yên.
+function clampMin(chuoi) {
+    const m = chuoi && chuoi.match(/clamp\(\s*([\d.]+)px/);
+    return m ? parseFloat(m[1]) : null;
+}
 function doHinhHoc(nhan) {
-    const mO = SRC.match(new RegExp("'\\." + nhan + "\\{[^']*width:(\\d+(?:\\.\\d+)?)px"));
-    const mCh = SRC.match(new RegExp("'\\." + nhan + " i\\{[^']*width:(\\d+(?:\\.\\d+)?)px"));
-    return { o: mO && parseFloat(mO[1]), cham: mCh && parseFloat(mCh[1]) };
+    // --xx khai ở .sbBoXx; .sbXx dùng width:var(--xx); chấm = tỉ lệ của --xx
+    const mBien = SRC.match(/\.sbBoXx\{--xx:(clamp\([^)]*\))/);
+    const mTi = SRC.match(/\.sbXx i\{[^']*width:calc\(var\(--xx\) \* ([\d.]+)\)/);
+    const o = clampMin(mBien && mBien[1]);
+    return { o, cham: (o != null && mTi) ? o * parseFloat(mTi[1]) : null };
 }
 function kiemCo(ten, oPx, chamPx) {
     const trong = oPx - 2;                       // box-sizing:border-box, viền 1px mỗi bên
@@ -56,10 +65,32 @@ function kiemCo(ten, oPx, chamPx) {
     ok('ô xúc xắc LUÔN vuông (có aspect-ratio, không để flex kéo méo)',
         /\.sbXx\{[^']*aspect-ratio:1/.test(SRC));
     // bản điện thoại khai trong @media
-    const mm = SRC.match(/@media \(max-width:430px\)\{\.sbXx\{width:(\d+(?:\.\d+)?)px/);
-    const mc = SRC.match(/\.sbXx i\{width:(\d+(?:\.\d+)?)px;height:(\d+(?:\.\d+)?)px\}\}/);
-    ok('có cỡ riêng cho điện thoại', !!mm, 'không thấy @media');
-    if (mm && mc) kiemCo('điện thoại', parseFloat(mm[1]), parseFloat(mc[1]));
+    const mm = SRC.match(/@media \(max-width:430px\)\{\.sbBoXx\{--xx:(clamp\([^)]*\))\}/);
+    ok('có cỡ riêng cho điện thoại', !!mm, 'không thấy @media hạ trần --xx');
+    const tiCham = parseFloat((SRC.match(/\.sbXx i\{[^']*width:calc\(var\(--xx\) \* ([\d.]+)\)/) || [])[1]);
+    if (mm) { const dt = clampMin(mm[1]); kiemCo('điện thoại', dt, dt * tiCham); }
+
+    // ⚠️ 21/09 — CÁI GÂY RA LỖI TRÀN: viên xúc xắc không co được.
+    // ⚠️ mỗi phần tử của mảng PAGE là MỘT chuỗi, nên một rule CSS bị cắt làm nhiều dòng —
+    // regex kiểu /\.sbXx\{[^']*flex/ không bao giờ khớp qua ranh giới. Soi từng mảnh.
+    ok('⭐ viên xúc xắc CO ĐƯỢC (không flex:0 0 auto, không width cố định)',
+        /\.sbXx\{[^']*width:var\(--xx\)/.test(SRC) &&
+        SRC.includes('flex:0 1 auto;min-width:0') && !/\.sbXx\{width:\d/.test(SRC) &&
+        !SRC.includes('flex:0 0 auto;box-shadow:0 1px 2px'));
+    ok('...và @media điện thoại KHÔNG ghim lại số cố định (ghim là chọn đúng một cỡ máy)',
+        !/@media \(max-width:430px\)\{\.sbXx\{width:\d/.test(SRC));
+    ok('⭐ chữ dài ("Bão bất kỳ") có đường lùi, không tràn đè ô bên cạnh',
+        /\.sbO \.sbTen\{font-size:clamp\(/.test(SRC) &&
+        SRC.includes('max-width:100%;overflow:hidden;text-overflow:ellipsis'));
+    {
+        // Máy 390px là ca chật nhất còn phổ biến. Tính đúng phép mà bản cũ tính thiếu.
+        const vw = 390, khungTrong = 350, soO = 6, khe = 4;
+        const oRong = (khungTrong - (soO - 1) * khe) / soO;
+        const xx = Math.min(Math.max(9, vw * 0.03), 16);       // clamp(9px,3vw,16px)
+        const can = 3 * xx + 6 * 1 + 2 * 1 + 2;                 // 3 viên + lề + padding + viền
+        ok('⭐ máy 390px: hàng 3 viên VỪA ô (cần ' + can.toFixed(1) + 'px, có ' + oRong.toFixed(1) + 'px)',
+            can <= oRong, can.toFixed(1) + ' > ' + oRong.toFixed(1));
+    }
 }
 
 // ---------------------------------------------------------------- dựng bàn
@@ -226,7 +257,7 @@ ok('Discord lọc LẠI lúc hiển thị, ván cũ cũng sạch',
     IDX.includes('const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? TX_CUA.cuaThang(h.dice) : []);') &&
     IDX.includes('Object.keys(nh).filter(k => oTrung.has(k))'));
 ok('web cũng lọc trước khi gửi xuống trang',
-    SRC.includes('const locNhanTrung = (h) =>') && SRC.includes('nhan: locNhanTrung(h) })),'));
+    SRC.includes('const locNhanTrung = (h) =>') && SRC.includes('nhan: locNhanTrung(h)'));
 ok('danh sách ô trúng lấy từ lõi tiền qua ctx, không tự đoán',
     SRC.includes('ctx.txCuaThang ? ctx.txCuaThang(h.dice) : []') && IDX.includes('txCuaThang: (xx) => TX_CUA.cuaThang(xx),'));
 // 2 lỗi chữ chủ server chụp được trên bảng Discord
@@ -236,7 +267,12 @@ ok('tiền HOÀN 30% lúc ra bão gọi đúng là "hoàn", không gọi "trúng
     IDX.includes('const thang = an.filter(x => x.lai > 0);') && IDX.includes('`hoàn ${hoan}`'));
 ok('kế hoạch trả tiền giữ luôn bảng nhân (phòng khi đã dọn)', IDX.includes('bangNhan,'));
 ok('web nhận được bảng nhân của ván (đã lọc chỉ ô ra trúng)',
-    SRC.includes('winners: h.winners || [], nhan: locNhanTrung(h) })),'));
+    SRC.includes('winners: h.winners || [], nhan: locNhanTrung(h)'));
+
+// 🚫 ván huỷ phải HIỆN RA trên bảng 20 ván, không được biến mất (21/09)
+ok('web gửi kèm cờ huỷ + lý do', SRC.includes('huy: !!h.huy') && SRC.includes("lyDo: h.lyDo || ''"));
+ok('bảng 20 ván vẽ riêng dòng VÁN HUỶ', /if\(h\.huy\)return/.test(SRC) && SRC.includes('VÁN HUỶ'));
+ok('...và có kiểu riêng cho nó', SRC.includes("'.hrow.huy{") && SRC.includes(".hrow .lydo{"));
 ok('bảng 20 ván có dòng phụ ⚡', SRC.includes('function hSub(h)') && SRC.includes("'.hsub{"));
 // Chủ server kêu 'vướng mắt': hiện ⚡ ở mọi ván với 5 huy hiệu vàng thì át mất
 // dãy kết quả - thứ chính của bảng soi cầu. Nên MẶC ĐỊNH TẮT, có công tắc.
