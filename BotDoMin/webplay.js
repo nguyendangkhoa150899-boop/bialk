@@ -4029,11 +4029,14 @@ const PAGE = [
     'function isDayLeft(id){return IS&&IS.dayMax>0?Math.max(0,IS.dayMax-((IS.today||{})[id]||0)):-1}',
     'function isImpLeft(){return IS&&IS.implantMax>0?Math.max(0,IS.implantMax-(IS.implantToday||0)):-1}',
     // 🗂️ 12/09 v2: hạn theo nhóm - server đưa groupQuota {cat:{mode,max}} + 2 sổ đếm
-    // 🧰 17/09: món này có bỏ vào Rương Ích Kỷ được không? = có hạn TOÀN SERVER hay không.
-    // Cùng luật với server (itemShopBuy), client chỉ ẩn nút cho đỡ bấm nhầm.
-    'function ikDuoc(it){if(!IS||!it)return false;if(it.cat==="implant"||isOnceCat(it.cat))return false;',
-    'var g=isGrpQ(it);if(g)return g.mode==="server";',
-    'return IS.dayMax>0&&IS.dayMode!=="user"}',
+    // 🧰 MÓN NÀY CÓ BỎ VÀO RƯƠNG ĐƯỢC KHÔNG?
+    // 21/09 (chủ server): MỌI NHÓM đều được — implant, nguyên liệu cho pal, đạn...
+    // Trước chỉ cho món có hạn TOÀN SERVER; gỡ được vì hạn theo NGƯỜI vẫn bị trừ ngay lúc
+    // mua nên vào rương không lách được hạn nào (xem itemShopBuy ở index.js).
+    // ⚠️ Chừa đúng ⭐ món 1-LẦN-VĨNH-VIỄN: quên nhận trước 00:00 là mất cả tiền lẫn suất mua.
+    // ⚠️ PHẢI CÙNG LUẬT VỚI MÁY CHỦ. Client chỉ ẩn nút cho đỡ bấm nhầm — nới ở đây mà quên
+    // nới bên kia thì người chơi bấm được nút rồi ăn lỗi đỏ.
+    'function ikDuoc(it){if(!IS||!it)return false;return !isOnceCat(it.cat)}',
     'function isGrpQ(it){var g=IS&&IS.groupQuota?IS.groupQuota[it.cat]:null;return g&&g.max>0?g:null}',
     'function isGrpLeft(it){var g=isGrpQ(it);if(!g)return -1;var key=g.per==="item"?("i:"+it.id):it.cat;var used=((g.mode==="server"?IS.groupSrvToday:IS.groupToday)||{})[key]||0;return Math.max(0,g.max-used)}',
     'function isWtLeft(){return IS&&IS.wtMax>0?Math.max(0,IS.wtMax-(IS.wtToday||0)):-1}',

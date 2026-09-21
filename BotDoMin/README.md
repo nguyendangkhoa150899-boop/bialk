@@ -181,6 +181,32 @@ Chuyển Dogcoin giữa người chơi trên web (`/api/transfer`, `/api/transfe
 
 ## 7. 🏪 Shop Item + 🧰 Rương Ích Kỷ + 🎁 Quà
 
+### 🧰 Món nào bỏ vào Rương Ích Kỷ được? (21/09: MỌI NHÓM, trừ ⭐)
+
+Luật cũ (17/09): **chỉ món có hạn mua TOÀN SERVER** mới vào rương được. Hệ quả: nhóm
+🐾 Nguyên liệu cho Pal (hạn theo *từng người*) và 🧬 Implant (chặn cứng) **không có nút
+🧰 Vào rương** — chủ server chụp lại 21/09.
+
+**Gỡ được vì hạn theo NGƯỜI vẫn bị trừ NGAY LÚC MUA**, dù vào rương hay giao thẳng —
+xem ngay dưới lệnh trừ tiền trong `itemShopBuy`:
+
+    today[it.id] += qty · imp.n += qty · wt.n += qty · gCnt.n[gqKey] += qty
+
+Nên vào rương **không lách được hạn nào**. Chặn cũ là quyết định sản phẩm, không phải chốt
+an toàn. Rương vẫn giữ hạn riêng: **100 món/người/ngày**, **giữ tối đa 100**.
+
+⚠️ **Riêng ⭐ QUAN TRỌNG (1 lần cả đời) thì VẪN CHẶN.** Bỏ vào rương mà quên nhận trước
+00:00 là mất **cả tiền lẫn suất mua**, không cách nào lấy lại. Implant / nguyên liệu mai
+mua lại được nên mở thoải mái.
+
+⚠️ **Luật này nằm ở HAI NƠI, sửa phải sửa cả hai:** `itemShopBuy` (index.js —
+chốt thật) và `ikDuoc()` (webplay.js — chỉ ẩn nút cho đỡ bấm nhầm). Nới trang mà
+quên máy chủ → bấm được nút rồi ăn lỗi đỏ. Nới máy chủ mà quên trang → mở rồi mà nút vẫn
+không hiện (đúng cảnh 21/09).
+
+Bộ kiểm: `TaiXiu/kiemtra/ruong-test.js` — canh hai phía cùng luật, canh mấy dòng trừ
+hạn còn nguyên (mất là mở cửa hậu), và **chạy thật** `ikDuoc` cho từng nhóm.
+
 ### Shop Item (`itemShopBuy`)
 - Món có `cat`, `price`, `max`, `img` (tên ảnh trong `assets/itemimage/`). Nhóm do admin tự đặt (`_itemCats`, `ITEM_CAT_DEF` là mặc định; `itemCatHas()` là **nguồn sự thật duy nhất** — từng có whitelist thứ 5 giấu trong `ITEM_SHOP_CATS` làm mất cấu hình, đã xoá).
 - **Hạn mua** nhiều tầng, kiểm TRƯỚC khi trừ tiền: ⭐ `important` mỗi người 1 lần vĩnh viễn · 🧬 implant N/người/ngày (`_itemShopImplantMax`) · 🌳 implant Cây Thế Giới riêng · 🗂️ hạn theo nhóm (`_itemShopGroupQuota[cat] = {mode:'server'|'user', per:'group'|'item', max}`) · 📅 hạn chung mỗi món/ngày (`_itemShopDayMax` + `dayMode`). Nhóm có hạn riêng thì MIỄN hạn chung.

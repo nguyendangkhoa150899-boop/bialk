@@ -2446,17 +2446,19 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     // 🧰 mua VÀO RƯƠNG: kiểm TRƯỚC khi trừ tiền
     const ruong = vaoRuong ? ichKyOf(user) : null;
     if (ruong) {
-        // (a) CHỈ món có hạn TOÀN SERVER mới vào rương được (chủ server chốt 17/09).
-        // Đọc thẳng cấu hình đang chạy: nhóm để "toàn server" -> được; nhóm để "cá nhân" -> không.
-        // Implant / implant Cây Thế Giới / ⭐ món 1-lần đều là hạn theo NGƯỜI -> loại.
-        const svNhom = gqOn && gq.mode === 'server';
-        const svChung = !isImplantCat && !isOnce && !gqOn && dayMax > 0 && itemShopDayMode() === 'server';
-        if (!svNhom && !svChung) {
-            return { error: isImplantCat
-                ? '🧬 Implant không bỏ vào rương được - hạn implant tính theo TỪNG NGƯỜI, cứ vào game mua thẳng.'
-                : (isOnce
-                    ? '⭐ Món này mỗi người chỉ mua 1 lần nên không cần rương - vào game mua thẳng.'
-                    : '🧰 Món này đang để hạn RIÊNG TỪNG NGƯỜI nên không bỏ vào rương được. Rương chỉ dành cho món có hạn CHUNG cả server (ai nhanh thì được).') };
+        // 🧰 21/09 (chủ server): MỞ RƯƠNG CHO MỌI NHÓM — implant, nguyên liệu cho pal, đạn...
+        //
+        // Luật cũ (17/09) chỉ cho món có hạn TOÀN SERVER vào rương. Gỡ được vì hạn theo NGƯỜI
+        // VẪN BỊ TRỪ NGAY LÚC MUA, dù vào rương hay giao thẳng — xem ngay dưới lệnh trừ tiền:
+        //     today[it.id] += qty · imp.n += qty · wt.n += qty · gCnt.n[gqKey] += qty
+        // Nên vào rương KHÔNG lách được hạn nào. Chặn cũ là quyết định sản phẩm, không phải
+        // chốt an toàn. Rương vẫn giữ hạn riêng của nó ở mấy dòng dưới.
+        //
+        // ⚠️ RIÊNG ⭐ MÓN 1-LẦN-VĨNH-VIỄN THÌ VẪN CHẶN. Mỗi người mua đúng một lần cả đời; bỏ
+        // vào rương mà quên nhận trước 00:00 là mất CẢ TIỀN LẪN SUẤT MUA, không lấy lại được.
+        // Implant / nguyên liệu mai mua lại được nên mở thoải mái.
+        if (isOnce) {
+            return { error: '⭐ Món này mỗi người chỉ mua 1 LẦN cả đời - để trong rương quên nhận là mất trắng cả suất. Vào game rồi bấm 🛒 Mua để nhận thẳng vào túi.' };
         }
         const conNgay = ICHKY_DAY_MAX - (ruong.bought || 0);
         if (qty > conNgay) {
