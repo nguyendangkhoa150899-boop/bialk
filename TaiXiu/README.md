@@ -55,6 +55,16 @@ với `tinhTra` trên toàn bộ 11.232 trường hợp (216 kết quả × 52 c
 chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi ra được gì. `web-test.js`
 đo thật điều này chứ không đọc code suông.
 
+## 3 nút thao tác nhanh
+
+`🔁 Đặt lại` · `✖️2` · `🗑️ Xoá cược` (route `/api/tx/datlai` · `/api/tx/x2` · `/api/tx/xoacuoc`).
+Đặt lại và ✖️2 **gọi lại `txDatLo`** chứ không tự trừ tiền, nên luật tiền (ví, sàn cược,
+trần từng cửa, trần tổng, tất-cả-hoặc-không) chỉ nằm một chỗ. Xoá cược chỉ gỡ phiếu của
+đúng người đó rồi hoàn đúng số đã trừ.
+
+Giỏ ván trước để trong RAM (`txVanTruoc`), chụp lúc chốt ván, chỉ giữ một ván. Đã đặt rồi
+mà bấm Đặt lại thì **chặn** — cộng dồn là tiêu oan tiền người chơi.
+
 ## Bộ kiểm
 
 Chạy được ngay, không cần bot:

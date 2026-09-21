@@ -3788,6 +3788,89 @@ function txDatLo(userId, username, gio) {
     return { ok: true, tong, soCua: cuaList.length, balance: getUserData(userId).points || 0 };
 }
 
+// ============================================================================
+//  3 NÚT THAO TÁC NHANH TRÊN BÀN SIC BO
+//  Bàn 52 ô bấm-là-đặt nên người chơi hay xếp cả chục ô. Không có 3 nút này thì
+//  muốn gấp đôi phải bấm lại từng ô, muốn huỷ phải ngồi chờ hết ván.
+// ============================================================================
+
+// Giỏ cược ván TRƯỚC của từng người (RAM thôi, mất sau restart là chấp nhận được).
+// Chỉ giữ đúng một ván nên không phình bộ nhớ.
+const txVanTruoc = new Map();   // userId -> { cua: tien }
+
+/** Gộp cược của một người trong ván ĐANG chạy thành { cua: tien }. */
+function txCuocCuaToi(userId) {
+    const g = {};
+    for (const b of (txState.bets || [])) {
+        if (b.userId === userId) g[b.choice] = (g[b.choice] || 0) + (b.amount || 0);
+    }
+    return g;
+}
+
+/** null = đang nhận cược; ngược lại trả câu báo lỗi để 3 nút dùng chung một lời. */
+function txDangNhanCuoc() {
+    if (!txState.message || txState.status !== 'betting') {
+        return txState.status === 'nhan'
+            ? '⚡ Đang hiện hệ số nhân - hết cửa đặt rồi, đợi ván sau!'
+            : 'Đã khoá sổ - đợi ván sau!';
+    }
+    return null;
+}
+
+/**
+ * 🗑️ XOÁ SẠCH cược của một người trong ván đang chạy, hoàn đúng số đã trừ.
+ * Chỉ đụng đúng phiếu của người đó, cược người khác giữ nguyên.
+ */
+function txXoaCuoc(userId) {
+    const chan = txDangNhanCuoc();
+    if (chan) return { error: chan };
+    let hoan = 0; const giu = [];
+    for (const b of (txState.bets || [])) {
+        if (b.userId === userId) hoan += (b.amount || 0);
+        else giu.push(b);
+    }
+    if (hoan <= 0) return { error: 'Ván này bạn chưa đặt cửa nào' };
+    txState.bets = giu;
+    updatePoints(userId, hoan);
+    txState.needsUpdate = true;
+    const u = getUserData(userId);
+    writeLog('BET', `[WEB TX] ${u.name || userId} XOÁ CƯỢC ván #${txState.gameId}, hoàn ${hoan.toLocaleString('vi-VN')} Dogcoin`);
+    return { ok: true, hoan, balance: u.points || 0 };
+}
+
+/**
+ * ✖️2 — đặt THÊM đúng số đang có ở mọi cửa, thành ra gấp đôi.
+ * Dồn hết cho txDatLo kiểm: thiếu ví hay vượt trần là hỏng CẢ LƯỢT, không nhân
+ * được ô nào rồi kẹt ô nào.
+ */
+function txNhanDoi(userId, username) {
+    const chan = txDangNhanCuoc();
+    if (chan) return { error: chan };
+    const cur = txCuocCuaToi(userId);
+    const ks = Object.keys(cur);
+    if (!ks.length) return { error: 'Ván này bạn chưa đặt cửa nào để nhân đôi' };
+    return txDatLo(userId, username, ks.map(k => ({ choice: k, amount: cur[k] })));
+}
+
+/** 🔁 ĐẶT LẠI — xếp y giỏ ván trước. */
+function txDatLai(userId, username) {
+    const chan = txDangNhanCuoc();
+    if (chan) return { error: chan };
+    const cu = txVanTruoc.get(userId);
+    if (!cu || !Object.keys(cu).length) return { error: 'Chưa có ván trước để đặt lại' };
+    // Đã đặt rồi mà bấm Đặt lại thì thành cộng dồn, dễ tiêu oan tiền -> chặn hẳn.
+    if (Object.keys(txCuocCuaToi(userId)).length) {
+        return { error: 'Ván này bạn đã đặt rồi - bấm 🗑️ Xoá cược trước nếu muốn xếp y ván trước' };
+    }
+    return txDatLo(userId, username, Object.keys(cu).map(k => ({ choice: k, amount: cu[k] })));
+}
+
+/** Có giỏ ván trước để bấm Đặt lại không (web dùng để bật/tắt nút). */
+function txCoVanTruoc(userId) {
+    const cu = txVanTruoc.get(userId);
+    return !!(cu && Object.keys(cu).length);
+}
+
 // Lịch sử các ván dò mìn (để hiển thị trên web panel)
 let minesHistory = [];
 
@@ -6609,6 +6692,11 @@ client.once('ready', async (c) => {
             txTran: () => txTranCfg(),
             txNhomTran: () => TX_CUA.NHOM_TRAN,
             txDatLo: (uid, ten, gio) => txDatLo(uid, ten, gio),
+            // 3 nút thao tác nhanh trên bàn Sic Bo
+            txNhanDoi: (uid, ten) => txNhanDoi(uid, ten),
+            txDatLai: (uid, ten) => txDatLai(uid, ten),
+            txXoaCuoc: (uid) => txXoaCuoc(uid),
+            txCoVanTruoc: (uid) => txCoVanTruoc(uid),
             txBaoRate: TX_BAO_RATE,      // 🌪️ 14/09: nút Bão tự tính "đặt X ăn Y" theo đúng tỉ lệ
             getDb: () => dbCache,
             getUserData,
@@ -7549,6 +7637,14 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
 // (bỏ 19/08): kết quả hiện thẳng trên bảng cược dạng dòng 🎲 như bảng Dò Mìn/Leo
 // Thang - hết spam "không ai thắng" mỗi 50 giây, đỡ nửa số Discord API call.
 async function finishTXGame(gameId, bets) {
+    // Nhớ giỏ ván này cho nút 🔁 ĐẶT LẠI của ván sau. Chụp TRƯỚC khi quay xúc xắc
+    // cho khỏi lẫn, và clear trước nên chỉ giữ đúng một ván.
+    txVanTruoc.clear();
+    for (const b of (bets || [])) {
+        const g = txVanTruoc.get(b.userId) || {};
+        g[b.choice] = (g[b.choice] || 0) + (b.amount || 0);
+        txVanTruoc.set(b.userId, g);
+    }
     const [d1, d2, d3] = rollTXDice();
     // 🀫 14/09: tính sẵn bảng tiền cả ván (nuôi + rút hũ ở đây, đúng 1 lần) nhưng CHƯA trả ai.
     // Ai nặn xong trước thì /api/tx/reveal trả riêng cho người đó ngay.

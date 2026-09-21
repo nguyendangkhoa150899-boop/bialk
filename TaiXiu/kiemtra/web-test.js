@@ -95,6 +95,74 @@ function goi(port, duong, than, token) {
     const viSau2 = (await goi(WEB, '/api/state', {}, T)).j.balance;
     ok('giỏ có cửa bậy cũng không trừ đồng nào', viSau2 === viSau, viSau2 + ' vs ' + viSau);
 
+    // Bàn bấm-là-đặt: chủ server bấm cả chục phát vào một ô. Máy chủ phải gộp theo
+    // cửa, kẻo dòng "ván này bạn đặt" liệt kê 20 lần cùng một cửa.
+    {
+        const truoc = (await goi(WEB, '/api/state', {}, T)).j.myBets.length;
+        for (let i = 0; i < 6; i++) await goi(WEB, '/api/bet', { gio: [{ choice: 'chan', amount: 1000 }] }, T);
+        const mb = (await goi(WEB, '/api/state', {}, T)).j.myBets;
+        const chan = mb.filter(b => b.choice === 'chan');
+        ok('bấm 6 lần cùng một cửa chỉ ra MỘT dòng', chan.length === 1, JSON.stringify(chan));
+        ok('dòng đó cộng đủ 6.000', chan.length === 1 && chan[0].amount === 6000, chan[0] && String(chan[0].amount));
+        ok('số dòng chỉ tăng thêm 1 (không phải 6)', mb.length === truoc + 1, truoc + ' -> ' + mb.length);
+        const giam = mb.every((b, i) => i === 0 || mb[i - 1].amount >= b.amount);
+        ok('cửa nhiều tiền xếp lên trước', giam, mb.map(b => b.choice + ':' + b.amount).join(', '));
+    }
+
+
+    // ---------------------------------------------------------------- 3 nút thao tác nhanh
+    muc('3 nút: 🔁 đặt lại · ✖️2 · 🗑️ xoá cược');
+    {
+        // dọn sạch rồi xếp lại cho gọn, mọi phép dưới đây đo bằng SỐ DƯ THẬT
+        await goi(WEB, '/api/tx/xoacuoc', {}, T);
+        const v0 = (await goi(WEB, '/api/state', {}, T)).j.balance;
+        await goi(WEB, '/api/bet', {
+            gio: [{ choice: 'tai', amount: 2000 }, { choice: 'tong9', amount: 1000 }, { choice: 'don5', amount: 1000 }],
+        }, T);
+        const v1 = (await goi(WEB, '/api/state', {}, T)).j.balance;
+        ok('xếp 3 ô trừ đúng 4.000', v0 - v1 === 4000, String(v0 - v1));
+
+        const x2 = await goi(WEB, '/api/tx/x2', {}, T);
+        const s2 = (await goi(WEB, '/api/state', {}, T)).j;
+        ok('✖️2 trừ thêm đúng 4.000 nữa', v1 - s2.balance === 4000, String(v1 - s2.balance));
+        const map2 = {}; s2.myBets.forEach(b => { map2[b.choice] = b.amount; });
+        ok('✖️2 nhân đôi ĐÚNG từng ô, không sót ô nào',
+            map2.tai === 4000 && map2.tong9 === 2000 && map2.don5 === 2000, JSON.stringify(map2));
+        ok('✖️2 không đẻ thêm ô mới', s2.myBets.length === 3, String(s2.myBets.length));
+
+        const xo = await goi(WEB, '/api/tx/xoacuoc', {}, T);
+        const s3 = (await goi(WEB, '/api/state', {}, T)).j;
+        ok('🗑️ hoàn đúng 8.000', xo.j && xo.j.hoan === 8000, xo.j && String(xo.j.hoan));
+        ok('🗑️ ví về ĐÚNG mức trước khi đặt', s3.balance === v0, s3.balance + ' vs ' + v0);
+        ok('🗑️ không còn ô nào của mình', s3.myBets.length === 0, String(s3.myBets.length));
+
+        const xo2 = await goi(WEB, '/api/tx/xoacuoc', {}, T);
+        ok('🗑️ lúc chưa đặt gì thì báo lỗi, không hoàn khống', xo2.ma === 400, JSON.stringify(xo2.j));
+        const s4 = (await goi(WEB, '/api/state', {}, T)).j;
+        ok('ví không nhúc nhích sau lần xoá hụt', s4.balance === v0, s4.balance + ' vs ' + v0);
+
+        const x2r = await goi(WEB, '/api/tx/x2', {}, T);
+        ok('✖️2 lúc chưa đặt gì thì báo lỗi', x2r.ma === 400, JSON.stringify(x2r.j));
+
+        // ✖️2 phải tôn trọng TRẦN CỬA: cửa Bão trần 5.000, đặt 3.000 rồi x2 là vượt
+        await goi(WEB, '/api/bet', { gio: [{ choice: 'bao3', amount: 3000 }] }, T);
+        const vTran = (await goi(WEB, '/api/state', {}, T)).j.balance;
+        const x2t = await goi(WEB, '/api/tx/x2', {}, T);
+        ok('✖️2 vượt trần cửa thì CHẶN CẢ LƯỢT', x2t.ma === 400 && /tối đa/i.test((x2t.j || {}).error || ''),
+            JSON.stringify(x2t.j));
+        const sTran = (await goi(WEB, '/api/state', {}, T)).j;
+        ok('✖️2 bị chặn thì KHÔNG trừ đồng nào', sTran.balance === vTran, sTran.balance + ' vs ' + vTran);
+        ok('✖️2 bị chặn thì cược cũ giữ nguyên',
+            sTran.myBets.length === 1 && sTran.myBets[0].amount === 3000, JSON.stringify(sTran.myBets));
+        await goi(WEB, '/api/tx/xoacuoc', {}, T);
+
+        // Để lại một giỏ BIẾT TRƯỚC cho ván này, lát ván sau bấm 🔁 Đặt lại phải ra
+        // đúng giỏ này. Không để lại thì ván trước rỗng, không có gì mà đặt lại.
+        await goi(WEB, '/api/bet', {
+            gio: [{ choice: 'xiu', amount: 3000 }, { choice: 'tong13', amount: 2000 }],
+        }, T);
+    }
+
     // ---------------------------------------------------------------- pha hiện nhân
     let sn = null;
     for (let i = 0; i < 300; i++) {
@@ -115,6 +183,10 @@ function goi(port, duong, than, token) {
     }
     const chan = await goi(WEB, '/api/bet', { gio: [{ choice: 'tai', amount: 1000 }] }, T);
     ok('pha hiện nhân CẤM đặt', chan.ma === 400 && /nhân|khoá|khóa/i.test(chan.j.error || ''), chan.j && chan.j.error);
+    for (const d of ['/api/tx/x2', '/api/tx/datlai', '/api/tx/xoacuoc']) {
+        const r = await goi(WEB, d, {}, T);
+        ok('pha hiện nhân cấm luôn ' + d, r.ma === 400, JSON.stringify(r.j));
+    }
 
     // 🔒 CHỐNG SOI BÀI: người chơi mở F12 xoá cái chén cũng không được lợi gì, vì máy
     // chủ CHƯA quay xúc xắc ở pha này — dữ liệu gửi xuống không hề có 3 viên.
@@ -164,6 +236,28 @@ function goi(port, duong, than, token) {
     }
     ok('ván chốt xong, sang ván mới', xong && xong.phase === 'bet');
     ok('ván mới lại giấu hệ số nhân', xong && xong.txNhan === null, JSON.stringify(xong && xong.txNhan));
+
+    muc('🔁 đặt lại giỏ ván trước');
+    {
+        const s = (await goi(WEB, '/api/state', {}, T)).j;
+        ok('máy chủ báo CÓ giỏ ván trước', s.txVanTruoc === true, String(s.txVanTruoc));
+        const vTruoc = s.balance;
+        const dl = await goi(WEB, '/api/tx/datlai', {}, T);
+        const sau = (await goi(WEB, '/api/state', {}, T)).j;
+        ok('🔁 xếp lại được giỏ ván trước', dl.ma === 200 && dl.j.soCua > 0, JSON.stringify(dl.j));
+        ok('🔁 trừ đúng bằng tổng giỏ vừa xếp', vTruoc - sau.balance === dl.j.tong,
+            (vTruoc - sau.balance) + ' vs ' + (dl.j && dl.j.tong));
+        // ván trước cố tình để lại đúng giỏ Xỉu 3.000 + Tổng 13 2.000
+        const m = {}; sau.myBets.forEach(b => { m[b.choice] = b.amount; });
+        ok('🔁 ra ĐÚNG giỏ ván trước (Xỉu 3.000 · Tổng 13 2.000)',
+            sau.myBets.length === 2 && m.xiu === 3000 && m.tong13 === 2000, JSON.stringify(m));
+        // Đã đặt rồi mà bấm tiếp là cộng dồn -> dễ tiêu oan tiền, phải chặn
+        const lan2 = await goi(WEB, '/api/tx/datlai', {}, T);
+        ok('🔁 bấm lần hai khi đã có cược thì CHẶN', lan2.ma === 400, JSON.stringify(lan2.j));
+        const sau2 = (await goi(WEB, '/api/state', {}, T)).j;
+        ok('🔁 bị chặn thì không trừ thêm', sau2.balance === sau.balance, sau2.balance + ' vs ' + sau.balance);
+        await goi(WEB, '/api/tx/xoacuoc', {}, T);
+    }
 
     // trả nhịp ván về mặc định chủ server chốt
     const ve = await goi(PANEL, '/api/tx/time', { bet: 30, nhan: 4, nan: 20 }, PT);

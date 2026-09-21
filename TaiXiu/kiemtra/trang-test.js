@@ -143,5 +143,55 @@ ok('giây cuối tự mở lấy theo số máy chủ gửi, không gõ cứng 3
 ok('vào lại giữa chừng vẫn thấy màu ván mình đã nặn',
     /revealedGame===j\.nan\.gameId\)sbToKetQua\(j\.nan\)/.test(SRC));
 
+// ---------------------------------------------------------------- dòng tóm tắt
+muc('tiền đặt hiện bằng CHIP trên ô');
+// Chủ server: bàn 52 ô mà liệt kê cược thành dòng chữ thì kiểu gì cũng tràn màn hình.
+// Tiền đặt là của riêng từng người -> đọc thẳng trên ô nhanh hơn nhiều.
+ok('KHÔNG còn liệt kê từng cửa thành dòng chữ',
+    !/j\.myBets\.map\(function\(b\)\{return NAMES/.test(SRC) && !/mb\.length>8/.test(SRC));
+ok('dòng còn lại chỉ kể tổng tiền + số ô',
+    /Ván này bạn đặt "\+vnd\(mTong\)\+" Dogcoin vào "\+mb\.length\+" ô/.test(SRC));
+// Chủ server chốt: dấu cược là ĐỒNG DOGCOIN thật, số tiền là chú thích nhỏ dưới
+// đồng xu; đồng nào từ 50.000 Dogcoin trở lên thì viền/nền đen cho nổi.
+ok('dấu cược là ĐỒNG DOGCOIN thật, không phải chấm màu',
+    /'\.sbO \.sbGio\{position:absolute;top:50%;left:50%/.test(SRC) &&
+    /im\.src="\/dogcoin\.png"/.test(SRC) && /'\.sbO \.sbGio img\{/.test(SRC));
+ok('số tiền là chú thích nhỏ NGAY DƯỚI đồng xu',
+    /flex-direction:column/.test(SRC) && /'\.sbO \.sbGio b\{/.test(SRC) &&
+    /sn\.textContent=chipNgan\(toi\)/.test(SRC));
+ok('đồng nặng >= 50.000 đổi sang viền đen',
+    /var CHIP_DEN=50000;/.test(SRC) && /toi>=CHIP_DEN\?" sbGioDen":""/.test(SRC) &&
+    /'\.sbO \.sbGio\.sbGioDen img\{/.test(SRC) && /'\.sbO \.sbGio\.sbGioDen b\{/.test(SRC));
+ok('hàng mệnh giá chọn cũng kèm đồng Dogcoin',
+    SRC.split(/\r?\n/).some(d => d.includes('sbDatChip(') && d.includes('src="/dogcoin.png"')));
+ok('đồng xu không chắn chuột (bấm xuyên qua để đặt tiếp)', /pointer-events:none;line-height:1\}/.test(SRC));
+ok('số tiền được rút gọn cho vừa (chipNgan)', /function chipNgan\(n\)/.test(SRC));
+ok('rê chuột vào chip vẫn xem được số tiền đầy đủ', /d\.title=vnd\(toi\)\+" Dogcoin"/.test(SRC));
+// Tiền bạc: rút gọn phải làm tròn XUỐNG, không được khai khống (999.999 -> 999K chứ không phải 1000K)
+ok('rút gọn làm tròn XUỐNG, không khai khống tiền',
+    /Math\.floor\(t\):Math\.floor\(t\*10\)/.test(SRC) && /Math\.floor\(k\):Math\.floor\(k\*10\)/.test(SRC) &&
+    !/Math\.round\(k\)/.test(SRC));
+
+// ---------------------------------------------------------------- 3 nút thao tác nhanh
+muc('3 nút: 🔁 đặt lại · ✖️2 · 🗑️ xoá cược');
+ok('có đủ 3 nút trên trang',
+    /id="sbBtnLai"/.test(SRC) && /id="sbBtnX2"/.test(SRC) && /id="sbBtnXoa"/.test(SRC));
+ok('mỗi nút gọi đúng đường của nó',
+    /sbDatLai\(\)\{sbNutGoi\("\/api\/tx\/datlai"/.test(SRC) &&
+    /sbX2\(\)\{sbNutGoi\("\/api\/tx\/x2"/.test(SRC) &&
+    /sbXoaCuoc\(\)\{sbNutGoi\("\/api\/tx\/xoacuoc"/.test(SRC));
+// Chủ server dặn rõ: thiếu số dư thì "show nhẹ, đừng show theo popup rồi tắt".
+ok('báo lỗi bằng DÒNG ĐỨNG YÊN, không dùng toast tự tắt',
+    /function sbBao\(chu,loi\)/.test(SRC) &&
+    /\.catch\(function\(e\)\{SBNUTBAN=false;sbBao\(String\(e\.message\|\|e\),true\)/.test(SRC));
+ok('dòng báo có ô riêng trên trang + kiểu lỗi/thành công',
+    /id="sbBao"/.test(SRC) && /'\.sbBao\.loi\{/.test(SRC) && /'\.sbBao\.oke\{/.test(SRC));
+ok('chặn bấm dồn lúc mạng chậm (SBNUTBAN)', /if\(SBNUTBAN\)return;SBNUTBAN=true/.test(SRC));
+ok('nút tự khoá khi không dùng được (hết giờ / chưa đặt / chưa có ván trước)',
+    /function sbNutVe\(\)/.test(SRC) && /b1\.disabled=!\(mo&&SBCOVT&&!coCuoc\)/.test(SRC) &&
+    /b2\.disabled=!\(mo&&coCuoc\)/.test(SRC) && /b3\.disabled=!\(mo&&coCuoc\)/.test(SRC));
+ok('sang ván mới thì dọn dòng báo cũ', /prevPhase!=="bet"&&PHASE==="bet"\)sbBao\(""/.test(SRC));
+ok('máy chủ cho biết có giỏ ván trước không', /SBCOVT=!!j\.txVanTruoc/.test(SRC));
+
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');
 process.exit(F_ ? 1 : 0);

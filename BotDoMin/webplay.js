@@ -243,15 +243,21 @@ function startWebPlay(ctx) {
                     const tx = ctx.getTX();
                     const me = ctx.getUserData(userId);
                     const totals = { tai: 0, xiu: 0, chan: 0, le: 0, bao: 0 };
-                    const my = [];
+                    // Bàn 52 cửa bấm-là-đặt nên một người bấm cả chục phát vào cùng
+                    // một ô là chuyện thường -> GỘP THEO CỬA trước khi gửi, kẻo dòng
+                    // "ván này bạn đặt" dài lê thê mà phản hồi cũng phình ra vô ích.
+                    const myAgg = {};
                     const whoAgg = {}; // ai đang đặt ván này (gộp theo người + cửa)
                     for (const b of (tx.bets || [])) {
                         totals[b.choice] = (totals[b.choice] || 0) + b.amount;
-                        if (b.userId === userId) my.push({ choice: b.choice, amount: b.amount });
+                        if (b.userId === userId) myAgg[b.choice] = (myAgg[b.choice] || 0) + b.amount;
                         const k = b.userId + '_' + b.choice;
                         if (!whoAgg[k]) whoAgg[k] = { u: b.userId, name: b.username, choice: b.choice, amount: 0 };
                         whoAgg[k].amount += b.amount;
                     }
+                    // cửa nhiều tiền lên trước cho dễ đọc
+                    const my = Object.keys(myAgg).map(k => ({ choice: k, amount: myAgg[k] }))
+                        .sort((a, b) => b.amount - a.amount);
                     const live = !!tx.message && tx.status !== 'stopped';
                     // phase: bet (đang nhận cược) | nhan (khoá sổ, khoe hệ số nhân, CẤM đặt)
                     //      | nan (kéo chén xem riêng) | wait
@@ -301,6 +307,8 @@ function startWebPlay(ctx) {
                             : null,
                         // 4 giây cuối pha nặn là lúc chén tự rơi + bàn tô kết quả
                         txKqS: ctx.txKqS ? ctx.txKqS() : 4,
+                        // có giỏ ván trước để bấm 🔁 ĐẶT LẠI không
+                        txVanTruoc: ctx.txCoVanTruoc ? !!ctx.txCoVanTruoc(userId) : false,
                         betsList: Object.values(whoAgg),
                         // kèm bets/winners (có u) để client tính thắng/thua CÁ NHÂN từng ván
                         history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [] })),
@@ -635,6 +643,18 @@ function startWebPlay(ctx) {
                     const r = ctx.wheel.spin(userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r.state });
+                }
+
+                // 🔁✖️🗑️ Ba nút thao tác nhanh. Toàn bộ luật + tiền ở index.js, đây chỉ
+                // chuyển tiếp rồi trả lỗi nguyên văn cho người chơi đọc.
+                if (req.method === 'POST' && (path === '/api/tx/datlai' || path === '/api/tx/x2' || path === '/api/tx/xoacuoc')) {
+                    const ham = path === '/api/tx/datlai' ? ctx.txDatLai
+                        : (path === '/api/tx/x2' ? ctx.txNhanDoi : ctx.txXoaCuoc);
+                    if (!ham) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const me3 = ctx.getUserData(userId);
+                    const r = ham(userId, me3.name || ('web_' + userId.slice(-4)));
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
 
                 if (req.method === 'POST' && path === '/api/bet') {
@@ -1385,6 +1405,17 @@ const PAGE = [
     '#sbBan{background:#4a1418;border:2px solid #7d2a2a;border-radius:12px;padding:7px;margin-bottom:10px;',
     'display:flex;flex-direction:column;gap:4px}',
     '.sbHang{display:flex;gap:4px}',
+    // 3 nút thao tác nhanh dưới hàng mệnh giá
+    '.sbNut{display:flex;gap:6px;margin-top:8px}',
+    '.sbNut button{flex:1;min-width:0;padding:9px 4px;border-radius:9px;font-size:12.5px;font-weight:800;',
+    'background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border:1px solid #3a4258;cursor:pointer}',
+    '.sbNut button.xoa{background:linear-gradient(180deg,#472531,#331a22);border-color:#7a3b4a;color:#ffb3c0}',
+    '.sbNut button:disabled{opacity:.42;cursor:not-allowed}',
+    '.sbNut button:active:not(:disabled){transform:translateY(1px)}',
+    // dòng báo ĐỨNG YÊN (không tự tắt kiểu toast)
+    '.sbBao{margin-top:7px;padding:7px 10px;border-radius:8px;font-size:12.5px;font-weight:700;text-align:center}',
+    '.sbBao.loi{background:#3a1d22;color:#ff9aa6;border:1px solid #7a3b4a}',
+    '.sbBao.oke{background:#16301f;color:#8fe0a8;border:1px solid #2f6b45}',
     // dải tiêu đề từng khu (8:1 MỖI ĐÔI, 150:1 MỖI BỘ BA...)
     '.sbKhu{background:#6b1f22;color:#ffdca8;font-size:10.5px;font-weight:800;text-align:center;',
     'border-radius:5px;padding:3px 6px;letter-spacing:.3px;margin-top:2px}',
@@ -1402,9 +1433,22 @@ const PAGE = [
     '.sbO.sbBaoAny{background:#fff6e0}',
     // số tổng điểm to cho dễ nhắm
     '.sbO.sbTong .sbTen{font-size:17px}',
-    '.sbO .sbGio{position:absolute;top:-5px;right:-3px;background:var(--blue);color:#06121f;font-size:10px;font-weight:900;',
+    // 🪙 DẤU CƯỢC CỦA CHÍNH MÌNH — ĐỒNG DOGCOIN thật đè giữa ô, số tiền là dòng
+    // chú thích nhỏ ngay dưới đồng xu. Chỉ mình thấy phần của mình (máy chủ gửi
+    // myBets riêng từng người). pointer-events:none để bấm xuyên qua đặt tiếp.
+    '.sbO .sbGio{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;',
+    'display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none;line-height:1}',
+    '.sbO .sbGio img{width:22px;height:22px;display:block;border-radius:50%;',
+    'box-shadow:0 2px 6px rgba(0,0,0,.6),0 0 0 2px #ffcf5c}',
+    '.sbO .sbGio b{font-size:9.5px;font-weight:900;padding:1px 4px;border-radius:999px;',
+    'background:#2a1f05;color:#ffd76a;border:1px solid #ffcf5c;white-space:nowrap;',
+    'box-shadow:0 1px 3px rgba(0,0,0,.6)}',
+    // đồng NẶNG (>= CHIP_DEN Dogcoin): viền đen, chú thích nền đen chữ vàng
+    '.sbO .sbGio.sbGioDen img{box-shadow:0 2px 8px rgba(0,0,0,.85),0 0 0 2px #000,0 0 0 3px #ffcf5c}',
+    '.sbO .sbGio.sbGioDen b{background:#000;color:#ffd76a;border-color:#ffcf5c}',
+    '.sbO .sbGioCu{position:absolute;top:-5px;right:-3px;background:var(--blue);color:#06121f;font-size:10px;font-weight:900;',
     'border-radius:999px;padding:1px 6px;box-shadow:0 2px 6px rgba(0,0,0,.5);z-index:2}',
-    '.sbO .sbBan2{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);background:#2a2e3b;color:#e8eaf0;',
+    '.sbO .sbBan2{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:#2a2e3b;color:#e8eaf0;z-index:4;',
     'font-size:9px;font-weight:800;border-radius:999px;padding:0 5px;white-space:nowrap;z-index:2}',
     '.sbO.sbKhoa{opacity:.94;cursor:not-allowed}',
     // ---- xúc xắc mini vẽ bằng chấm, giống bàn thật (đỏ trên nền trắng) ----
@@ -1668,6 +1712,14 @@ const PAGE = [
     // Chọn mệnh giá rồi BẤM THẲNG vào ô là đặt luôn (chủ server chốt: bỏ giỏ, bỏ 3 nút
     // Hoàn tác/Gấp đôi/Xoá giỏ). Không có hoàn tác - bấm nhầm là mất tiền thật.
     '<div id="sbChips" class="chips"></div>',
+    // 3 nút thao tác nhanh + DÒNG BÁO đứng yên (không dùng toast: chủ server muốn
+    // đọc kịp, không phải popup loé rồi tắt).
+    '<div id="sbNut" class="sbNut">',
+    '<button type="button" id="sbBtnLai" onclick="sbDatLai()">🔁 Đặt lại</button>',
+    '<button type="button" id="sbBtnX2" onclick="sbX2()">✖️2 Gấp đôi</button>',
+    '<button type="button" id="sbBtnXoa" class="xoa" onclick="sbXoaCuoc()">🗑️ Xoá cược</button>',
+    '</div>',
+    '<div id="sbBao" class="sbBao hidden"></div>',
     '<div class="muted" id="sbNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn</div>',
     '<div class="muted" id="txCapNote" style="font-size:12px;margin-top:6px;text-align:center"></div>',
     '<div class="mine" id="mine"></div>',
@@ -2464,12 +2516,18 @@ const PAGE = [
     'else{stt.textContent="🔴 Bàn Tài Xỉu đang tắt";cap.textContent="";paper.classList.add("hidden")}',
     'if(prevPhase==="nan"&&PHASE!=="nan"){resetPaper()}',
     'if(typeof j.txKqS==="number")TXKQS=j.txKqS;',
+    'SBCOVT=!!j.txVanTruoc;',
     'sbNapCua(j);sbTong(j.totals||{},j.myBets||[]);sbNhanVe(j.txNhan);',
     // đã nặn xong ván nào thì bàn giữ màu ván đó tới khi mở ván mới
     'if(j.nan&&revealedGame===j.nan.gameId)sbToKetQua(j.nan);',
     'if(PHASE==="bet")sbXoaKetQua();',
-    'var m=j.myBets.map(function(b){return NAMES[b.choice]+": "+b.amount.toLocaleString("vi-VN")}).join(" · ");',
-    'document.getElementById("mine").textContent=m?("🧾 Ván này bạn đặt - "+m):"";',
+    'sbNutVe();',
+    // sang ván mới thì dọn dòng báo của ván cũ đi
+    'if(prevPhase!=="bet"&&PHASE==="bet")sbBao("",false);',
+    // KHÔNG liệt kê cược thành dòng chữ nữa: bàn 52 ô thì dòng nào cũng tràn.
+    // Tiền đặt hiện bằng CHIP ngay trên từng ô (sbVeGio), chỉ còn kể tổng cho gọn.
+    'var mb=j.myBets||[],mTong=0;mb.forEach(function(b){mTong+=b.amount||0});',
+    'document.getElementById("mine").textContent=mb.length?("🧾 Ván này bạn đặt "+vnd(mTong)+" Dogcoin vào "+mb.length+" ô"):"";',
     'renderWho(j.betsList||[]);',
     'renderHist20(j.history||[]);',
     'renderChat(j.chat||[]);',
@@ -2528,6 +2586,13 @@ const PAGE = [
     // (cắt xuống 2 số lẻ sau khi chia, tự bỏ số 0 thừa)
     'function fx(m){if(m>=1e6)return "x"+(Math.floor(m/1e4)/100)+"M";if(m>=1e3)return "x"+(Math.floor(m/10)/100)+"k";return "x"+m.toFixed(2)}',
     'function vnd(n){return Math.floor(n).toLocaleString("vi-VN")}',
+    // rút gọn cho vừa đồng chip: 1.000 -> 1K · 50.000 -> 50K · 2.500.000 -> 2.5TR
+    // từ mức này trở lên chip chuyển sang màu đen (chủ server chốt)
+    'var CHIP_DEN=50000;',
+    'function chipNgan(n){n=Math.floor(n||0);',
+    'if(n>=1000000){var t=n/1000000;return (t>=10?Math.floor(t):Math.floor(t*10)/10)+"TR"}',
+    'if(n>=1000){var k=n/1000;return (k>=10?Math.floor(k):Math.floor(k*10)/10)+"K"}',
+    'return String(n)}',
     // 🌪️ HŨ BÃO ĐÃ BỎ 21/09 - bàn 52 cửa có sẵn Bão bất kỳ 30:1 và Bão từng số 150:1
     // (nhân tới 999:1). Giữ hàm rỗng để chỗ gọi cũ khỏi vỡ.
     'function txPotDraw(j){}',
@@ -2587,8 +2652,36 @@ const PAGE = [
     // hàng chip: mệnh giá nào vượt số dư thì vẫn hiện, bấm mới báo
     'function sbVeChip(){var e=$("sbChips");if(!e)return;',
     'if(!SBCHIP)SBCHIP=SBMENH[0];',
-    'e.innerHTML=SBMENH.map(function(v){return \'<button class="chip\'+(v===SBCHIP?" on":"")+\'" onclick="sbDatChip(\'+v+\')">\'+vnd(v)+"</button>"}).join("")}',
+    'e.innerHTML=SBMENH.map(function(v){return \'<button class="chip\'+(v===SBCHIP?" on":"")+\'" onclick="sbDatChip(\'+v+\')"><img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v)+"</button>"}).join("")}',
     'function sbDatChip(v){SBCHIP=v;sbVeChip()}',
+    // ---- 3 nút thao tác nhanh ----
+    // Báo bằng dòng chữ nằm yên dưới nút. Chỉ tự xoá khi thao tác sau thành công,
+    // để người chơi đọc kịp câu "không đủ Dogcoin" thay vì popup loé một cái rồi mất.
+    'function sbBao(chu,loi){var e=$("sbBao");if(!e)return;',
+    'if(!chu){e.classList.add("hidden");e.textContent="";return}',
+    'e.textContent=chu;e.classList.remove("hidden","loi","oke");e.classList.add(loi?"loi":"oke")}',
+    'var SBNUTBAN=false;',
+    'function sbNutGoi(duong,chuXong){',
+    'if(PHASE!=="bet")return sbBao("Hết giờ đặt rồi - chờ ván sau nhé",true);',
+    'if(!LINKED)return sbBao("Ví chưa được liên kết - nhắn admin",true);',
+    'if(SBNUTBAN)return;SBNUTBAN=true;sbNutVe();',
+    'api(duong,{}).then(function(j){SBNUTBAN=false;',
+    'BAL=j.balance;$("bal").textContent=vnd(j.balance);',
+    'sbBao(chuXong(j),false);refresh()})',
+    '.catch(function(e){SBNUTBAN=false;sbBao(String(e.message||e),true);sbNutVe()})}',
+    'function sbDatLai(){sbNutGoi("/api/tx/datlai",function(j){return "🔁 Đã xếp lại giỏ ván trước: "+vnd(j.tong)+" vào "+j.soCua+" ô"})}',
+    'function sbX2(){sbNutGoi("/api/tx/x2",function(j){return "✖️2 Đã gấp đôi: đặt thêm "+vnd(j.tong)+" vào "+j.soCua+" ô"})}',
+    'function sbXoaCuoc(){sbNutGoi("/api/tx/xoacuoc",function(j){return "🗑️ Đã xoá cược, hoàn lại "+vnd(j.hoan)+" Dogcoin"})}',
+    // bật/tắt 3 nút theo tình hình: hết giờ đặt thì khoá hết, chưa đặt gì thì
+    // x2 và xoá vô nghĩa, chưa có ván trước thì không đặt lại được.
+    'var SBCOVT=false;',
+    'function sbNutVe(){var coCuoc=false;',
+    'for(var k in SBTONG){if(k.indexOf("_toi_")===0&&SBTONG[k]>0){coCuoc=true;break}}',
+    'var mo=(PHASE==="bet")&&!SBNUTBAN;',
+    'var b1=$("sbBtnLai"),b2=$("sbBtnX2"),b3=$("sbBtnXoa");',
+    'if(b1)b1.disabled=!(mo&&SBCOVT&&!coCuoc);',
+    'if(b2)b2.disabled=!(mo&&coCuoc);',
+    'if(b3)b3.disabled=!(mo&&coCuoc)}',
     // BẤM Ô = ĐẶT LUÔN. Chặn sơ ở client cho đỡ gọi phí, nhưng luật thật vẫn ở máy chủ.
     // SBDANGGUI: chặn bấm dồn 2 lần lúc mạng chậm -> khỏi đặt trùng.
     'function sbChon(id){if(PHASE!=="bet")return toast(PHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!");',
@@ -2614,7 +2707,10 @@ const PAGE = [
     'var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
     'var cu2=e.querySelector(".sbBan2");if(cu2)cu2.remove();',
     'var toi=SBTONG["_toi_"+c.id]||0;',
-    'if(toi){var d=document.createElement("span");d.className="sbGio";d.textContent=vnd(toi);e.appendChild(d)}',
+    'if(toi){var d=document.createElement("span");d.className="sbGio"+(toi>=CHIP_DEN?" sbGioDen":"");',
+    'var im=document.createElement("img");im.src="/dogcoin.png";im.alt="";',
+    'var sn=document.createElement("b");sn.textContent=chipNgan(toi);',
+    'd.appendChild(im);d.appendChild(sn);d.title=vnd(toi)+" Dogcoin";e.appendChild(d)}',
     'if(SBTONG[c.id]){var d2=document.createElement("span");d2.className="sbBan2";d2.textContent="bàn "+vnd(SBTONG[c.id]);e.appendChild(d2)}',
     'e.classList.toggle("sbKhoa",PHASE!=="bet")})}',
     // 🎯 Tô kết quả lên bàn: ô trúng sáng, ô trượt xám. Danh sách ô trúng do MÁY CHỦ
