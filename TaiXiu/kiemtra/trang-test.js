@@ -14,6 +14,8 @@ const F = path.join(__dirname, '..', '..', 'BotDoMin', 'webplay.js');
 const SRC = fs.readFileSync(F, 'utf8');
 // panel.js: phần admin chỉnh RTP nằm ở đây
 const PANEL = fs.readFileSync(path.join(__dirname, '..', '..', 'BotDoMin', 'panel.js'), 'utf8');
+// index.js: dòng lịch sử gửi lên Discord dựng ở đây
+const IDX = fs.readFileSync(path.join(__dirname, '..', '..', 'BotDoMin', 'index.js'), 'utf8');
 
 let P = 0, F_ = 0;
 const ok = (t, dk, them) => {
@@ -209,6 +211,21 @@ ok('ô trượt giấu hẳn đồng xu + nhãn tiền bàn',
 ok('ô trúng thì đồng xu to hơn cho nổi', SRC.includes("'.sbO.sbTrung .sbGio img{width:26px"));
 ok('lúc ĐANG ĐẶT vẫn hiện chip mọi ô đã đặt (không giấu sớm)',
     SRC.includes('d.className="sbGio"+(toi>=CHIP_DEN'));
+
+muc('lịch sử kể được ô nào nhân, ô nào mình ăn');
+// Chủ server: dòng lịch sử cũ dài không đọc nổi và KHÔNG kể ô nào được nhân.
+ok('máy chủ lưu bảng nhân vào lịch sử ván',
+    IDX.includes('nhan: (txState.nhan && txState.nhan.gameId === gameId)'));
+ok('kế hoạch trả tiền giữ luôn bảng nhân (phòng khi đã dọn)', IDX.includes('bangNhan,'));
+ok('web nhận được bảng nhân của ván cũ',
+    SRC.includes('winners: h.winners || [], nhan: h.nhan || {}'));
+ok('bảng 20 ván có dòng phụ ⚡', SRC.includes('function hSub(h)') && SRC.includes("'.hsub{"));
+ok('dòng phụ kể ô MÌNH ăn được', SRC.includes('🎯 bạn ăn:'));
+// Dòng Discord: mỗi người CHỈ kể ô ăn được, ô thua gói lại thành một con số
+ok('dòng Discord rút gọn tiền (k / tr)', IDX.includes('function txTienNgan(n)'));
+ok('dòng Discord chỉ kể ô ĂN, ô thua gói thành số',
+    IDX.includes('trượt hết') && IDX.includes('trúng ${an.length}'));
+ok('dòng Discord có kể ô được nhân', IDX.includes("dongNhan = ' · ⚡ '"));
 
 muc('nút MAX CƯỢC + hiệu ứng chip bay');
 ok('đã bỏ mệnh giá 5.000, thêm max ở cuối',

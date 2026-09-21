@@ -7391,6 +7391,18 @@ client.once('ready', async (c) => {
 // icon đầu theo TỔNG của người đó: 💰 lời · 💥 lỗ · ⚖️ hòa.
 // ⚠️ TUYỆT ĐỐI KHÔNG tính lại tiền ở đây. Số nhận về (b.nhan) đã do lõi tiền chốt
 // sẵn lúc chốt ván. Bản cũ tự tính theo luật bàn 5 cửa nên bàn 52 cửa in ai cũng THUA.
+//
+// 📏 GỌN LÀ YÊU CẦU CỨNG: bàn 52 ô, một người rải 24 ô là dòng dài không đọc nổi
+// (chủ server đã kêu). Nên mỗi người CHỈ kể ô ĂN ĐƯỢC, còn lại gói thành "trượt N ô".
+/** Rút gọn tiền cho dòng Discord: 1.500.000 -> 1,5tr · 60.000 -> 60k */
+function txTienNgan(n) {
+    const am = n < 0; n = Math.abs(Math.floor(n));
+    let t;
+    if (n >= 1000000) { const x = n / 1000000; t = (x >= 10 ? Math.round(x) : Math.round(x * 10) / 10) + 'tr'; }
+    else if (n >= 1000) { const x = n / 1000; t = (x >= 10 ? Math.round(x) : Math.round(x * 10) / 10) + 'k'; }
+    else t = String(n);
+    return (am ? '−' : '+') + t.replace('.', ',');
+}
 function txHistoryLine(h) {
     const head = h.storm ? '🌪️' : (h.tx === TX_CHOICES.tai.name ? '🔺' : '🔻');
     const dice = (h.dice || []).map(d => DICE_EMOJIS[d] || d).join(' ');
@@ -7402,24 +7414,43 @@ function txHistoryLine(h) {
     const per = {};
     (h.bets || []).forEach(b => {
         const cua = String(b.choice || '');
-        if (!per[b.u]) per[b.u] = { name: b.name, total: 0, cuoc: 0, parts: [] };
+        if (!per[b.u]) per[b.u] = { name: b.name, total: 0, cuoc: 0, soO: 0, an: [], parts: [] };
         per[b.u].cuoc += b.amount;
+        per[b.u].soO++;
         if (!cuMoi) return;
         const net = (Number(b.nhan) || 0) - b.amount;
         per[b.u].total += net;
-        per[b.u].parts.push(`${cua.toLowerCase()} ${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()}`);
+        // chỉ giữ ô ĂN ĐƯỢC; ô thua gói thành con số cho gọn
+        if ((Number(b.nhan) || 0) > 0) per[b.u].an.push({ ten: cua, lai: net });
     });
     if (!cuMoi) {
         const nhan = {};
         (h.winners || []).forEach(w => { nhan[w.u] = (nhan[w.u] || 0) + (w.amount || 0); });
         Object.keys(per).forEach(u => {
             per[u].total = (nhan[u] || 0) - per[u].cuoc;
-            per[u].parts = [`${per[u].total >= 0 ? '+' : '−'}${Math.abs(per[u].total).toLocaleString()}`];
         });
     }
-    const parts = Object.values(per).map(p =>
-        `${p.total > 0 ? '💰' : p.total < 0 ? '💥' : '⚖️'} **${p.name}** đặt ${p.parts.join(' · ')}`);
-    return line + (parts.length ? ` - ${parts.join(' | ')}` : '');
+    // ⚡ Ô được bốc hệ số nhân ván này, hệ số to xếp trước (đây là thứ người chơi
+    // muốn biết nhất mà bản cũ không hề kể).
+    let dongNhan = '';
+    const nh = h.nhan || {};
+    const idNhan = Object.keys(nh).sort((a, b) => nh[b] - nh[a]);
+    if (idNhan.length) {
+        dongNhan = ' · ⚡ ' + idNhan.slice(0, 4).map(k => `x${nh[k]} ${txTenCua(k)}`).join(' · ')
+            + (idNhan.length > 4 ? ` +${idNhan.length - 4} ô` : '');
+    }
+
+    const parts = Object.values(per).map(p => {
+        const icon = p.total > 0 ? '💰' : p.total < 0 ? '💥' : '⚖️';
+        const dau = `${icon} **${p.name}** ${txTienNgan(p.total)}`;
+        if (!cuMoi) return dau;                       // ván cũ: chỉ có tổng
+        const an = p.an.sort((a, b) => b.lai - a.lai);
+        const so = p.soO > 1 ? ` (${p.soO} ô` : ' (';
+        if (!an.length) return dau + so + `, trượt hết)`;
+        const ke = an.slice(0, 3).map(x => `${x.ten} ${txTienNgan(x.lai)}`).join(' · ');
+        return dau + so + `, trúng ${an.length}: ${ke}${an.length > 3 ? '…' : ''})`;
+    });
+    return line + dongNhan + (parts.length ? `\n   ${parts.join(' | ')}` : '');
 }
 
 function getTXMessageData(customStatus = null) {
@@ -7703,6 +7734,7 @@ function txPlanPayout(gameId, bets, d1, d2, d3) {
         gameId, dice: [d1, d2, d3], sum, isStorm, isTai, isChan,
         byUser, winAgg, refAgg, txPotPaid, txPotWinners, paid: {},
         cuaAgg: Object.values(cuaAgg),
+        bangNhan,
     };
     txState.plan = plan; dbCache._txPlan = plan;
     return plan;
@@ -7813,6 +7845,10 @@ function ketSoTXPayout(gameId, bets, d1, d2, d3, p) {
         cl: isStorm ? TX_CHOICES.bao.name : (isChan ? TX_CHOICES.chan.name : TX_CHOICES.le.name),
         bets: betAgg,
         winners,
+        // ⚡ Ô nào được bốc hệ số nhân ván này — để bảng lịch sử kể lại được.
+        // Chỉ vài ô mỗi ván nên không phình DB.
+        nhan: (txState.nhan && txState.nhan.gameId === gameId) ? (txState.nhan.o || {})
+            : ((p && p.bangNhan) || {}),
         time: new Date().toLocaleTimeString('vi-VN')
     };
     // 27/08 (dọn cho nhẹ RAM): soi cầu RAM giữ 100 ván (trước 1000).

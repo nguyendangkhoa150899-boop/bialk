@@ -311,7 +311,7 @@ function startWebPlay(ctx) {
                         txVanTruoc: ctx.txCoVanTruoc ? !!ctx.txCoVanTruoc(userId) : false,
                         betsList: Object.values(whoAgg),
                         // kèm bets/winners (có u) để client tính thắng/thua CÁ NHÂN từng ván
-                        history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [] })),
+                        history: (tx.history || []).slice(0, 20).map(h => ({ gameId: h.gameId, dice: h.dice, sum: h.sum, tx: h.tx, cl: h.cl, storm: !!h.storm, bets: h.bets || [], winners: h.winners || [], nhan: h.nhan || {} })),
                         chat: chatLog().slice(-30),
                     });
                 }
@@ -912,7 +912,11 @@ const PAGE = [
     '#lolaList .lid{color:#6f7a90;font-size:11px}',
     '@keyframes fxfall{to{transform:translateY(115vh) rotate(680deg)}}',
     // bảng 20 ván gần nhất (kiểu soi cầu trong Discord: mã ván · 3 viên · tổng · kết quả)
-    '.hrow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}',
+    '.hrow{display:flex;align-items:center;gap:7px;padding:6px 0 2px;font-size:13px}',
+    // dòng phụ: ⚡ ô được nhân + ô mình ăn. Tách hẳn ra cho dòng chính khỏi dài.
+    '.hsub{padding:0 0 6px 2px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.5}',
+    '.hsub .xx{display:inline-block;background:#3a2e10;color:#ffd76a;border:1px solid #ffcf5c;border-radius:5px;padding:0 4px;margin-right:4px;font-weight:800}',
+    '.hsub .an{color:#8fe0a8;font-weight:700}',
     '.hrow:last-child{border-bottom:0}',
     '.hrow .gid{color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}',
     '.hrow .dd{display:flex;gap:3px;flex:0 0 auto}',
@@ -2569,7 +2573,17 @@ const PAGE = [
     '\'<span class="sum">(\'+h.sum+")</span>"+',
     '\'<span class="kq">\'+kq+"</span>"+',
     '(joined?\'<span class="net \'+(net>=0?"w":"l")+\'">\'+(net>=0?"+":"")+net.toLocaleString("vi-VN")+"</span>":"")+',
-    '"</div>"}).join("")}',
+    '"</div>"+hSub(h)}).join("")}',
+    // ⚡ ô được bốc hệ số nhân ván đó (to nhất trước) + ô MÌNH ăn được.
+    // Ván cũ ghi trước bản vá không có 2 thứ này -> bỏ qua, không bịa.
+    'function hSub(h){var p=[];',
+    'var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
+    'if(ids.length)p.push(ids.slice(0,5).map(function(k){',
+    'return \'<span class="xx">x\'+nh[k]+"</span>"+(NAMES[k]||k)}).join(" · ")+(ids.length>5?(" +"+(ids.length-5)+" ô"):""));',
+    'var an=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0});',
+    'if(an.length)p.push(\'<span class="an">🎯 bạn ăn: \'+an.slice(0,4).map(function(b){',
+    'return b.choice+" +"+vnd((b.nhan||0)-b.amount)}).join(" · ")+(an.length>4?" …":"")+"</span>");',
+    'return p.length?(\'<div class="hsub">\'+p.join(" &nbsp;|&nbsp; ")+"</div>"):\'<div class="hsub"></div>\'}',
     // danh sách ai đang đặt ván này, gộp theo cửa, tên tô màu riêng từng người
     'var CHOICE_COLOR={tai:"#ff7b86",xiu:"#7db4ff",chan:"#6fd3b8",le:"#c39bf0",baoany:"#ffcf5c",bao:"#ffcf5c"};',
     'function cuaMau(c){return CHOICE_COLOR[c]||"#ffcf5c"}',

@@ -122,7 +122,24 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
 - **Ra kết quả thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG**, ô trượt ẩn chip + nhãn tiền bàn.
   Rải 47 ô mà giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
 
-## 9. 3 nút thao tác nhanh
+## 9. Lịch sử ván — kể được ô nào nhân, ai ăn gì
+
+Dòng lịch sử trên **bảng Discord** từng liệt kê MỌI ô người chơi đặt, một người rải 24 ô
+là dòng dài không đọc nổi, mà lại **không hề kể ô nào được nhân**. Nay:
+
+```
+🔺 🎲🎲🎲 · Tổng 13 · TÀI · LẺ · ⚡ x300 Bão 3 · x33 Đôi 5 · x24 Cặp 3-6 +1 ô
+   💰 Anh Vinh Q +440k (4 ô, trúng 3: Cặp 3-6 +300k · Cặp 4-6 +100k · TÀI +60k) | 💥 BiaLK −50k (4 ô, trượt hết)
+```
+
+- Mỗi người **chỉ kể ô ĂN ĐƯỢC** (tối đa 3), ô thua gói thành "N ô, trượt hết".
+- Tiền rút gọn `k / tr` cho vừa giới hạn 4000 ký tự của Discord.
+- Bảng **20 ván trên web** cũng có dòng phụ ⚡ kể ô được nhân và ô MÌNH ăn.
+- `histEntry.nhan` lưu bảng hệ số nhân của ván (chỉ vài ô nên không phình DB);
+  `plan.bangNhan` giữ bản sao phòng khi `txState.nhan` đã bị dọn.
+- Ván CŨ ghi trước bản vá không có 2 trường này → chỉ hiện tổng, **không bịa**.
+
+## 10. 3 nút thao tác nhanh
 
 `🔁 Đặt lại` · `✖️2` · `🗑️ Xoá cược` → `/api/tx/datlai` · `/api/tx/x2` · `/api/tx/xoacuoc`.
 
@@ -137,7 +154,7 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
 
 ---
 
-## 10. Bộ kiểm
+## 11. Bộ kiểm
 
 Chạy được ngay, **không cần bot**:
 
@@ -169,7 +186,7 @@ Nhịp bot test: bật bằng `node Desktop/bialk-test.js` các bước `5` (t�
 
 ---
 
-## 11. Luật TIỀN KHÔNG ĐƯỢC MẤT
+## 12. Luật TIỀN KHÔNG ĐƯỢC MẤT
 
 Cược là tiền **đã trừ khỏi ví**. Vì vậy:
 
@@ -193,7 +210,7 @@ Cược là tiền **đã trừ khỏi ví**. Vì vậy:
 
 Bộ kiểm khoá lại: `tienkhongmat-test.js` và `restart-test.js` (đều không cần bot).
 
-## 12. Cạm bẫy đã dính, đừng dính lại
+## 13. Cạm bẫy đã dính, đừng dính lại
 
 **① Tên cửa tra bằng bảng 5 cửa cũ → VỠ KHÂU CHỐT VÁN, MẤT TIỀN NGƯỜI CHƠI.**
 `TX_CHOICES` chỉ còn 5 cửa cũ. Ai đặt ô mới như `tong9` mà đi tra `TX_CHOICES[id].name` là
