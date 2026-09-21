@@ -4013,6 +4013,21 @@ const TX_CUA = require(require('path').join(
 // 🎯 RTP admin chỉnh được (lưu dbCache._txRTP). Đổi RTP = tính lại tần suất sáng đèn
 // cho cả 48 cửa: hạ RTP thì ÍT ô được bốc nhân hơn, nhà cái ăn dày hơn.
 // Ván ĐANG chạy đã bốc bảng nhân từ lúc khoá sổ nên không bị ảnh hưởng giữa chừng.
+// 🎰 Thang hệ số nhân admin chỉnh được (lưu dbCache._txThang).
+function txNapThang() {
+    const t = dbCache._txThang;
+    if (t && typeof t === 'object') { const r = TX_CUA.datThang(t); if (r.error) delete dbCache._txThang; }
+}
+function setTxThang(bang) {
+    // bang = null -> về mặc định
+    const kq = TX_CUA.datThang(bang || TX_CUA.thangMacDinh());
+    if (kq.error) return { error: kq.error };
+    if (bang) dbCache._txThang = kq.thang; else delete dbCache._txThang;
+    saveDbNow();
+    writeLog('ADMIN', `[PANEL TX] Đổi thang hệ số nhân - nhà cái ăn ~${(kq.nhaCaiAn * 100).toFixed(2)}%, trung bình ${kq.oSangMoiVan.toFixed(1)} ô sáng/ván`);
+    return { ok: true, ...kq };
+}
+
 function txNapRTP() {
     const r = Number(dbCache._txRTP);
     const kq = TX_CUA.datRTP(Number.isFinite(r) ? r : TX_CUA.RTP_MUC_TIEU);
@@ -4027,6 +4042,7 @@ function setTxRTP(rtp) {
     writeLog('ADMIN', `[PANEL TX] Đổi RTP thành ${(kq.rtp * 100).toFixed(1)}% - nhà cái ăn ~${(kq.nhaCaiAn * 100).toFixed(2)}%, trung bình ${kq.oSangMoiVan.toFixed(1)} ô sáng/ván`);
     return { ok: true, ...kq };
 }
+txNapThang(); // thang trước, RTP sau — vì q giải theo thang
 txNapRTP();   // nạp ngay lúc đọc file, trước khi ván đầu tiên chạy
 
 function txTimeCfg() {
@@ -7030,6 +7046,8 @@ client.once('ready', async (c) => {
             txKqS: () => TX_KQ_S,
             txRTP: () => TX_CUA.thongKeRTP(),
             setTxRTP: (r) => setTxRTP(r),
+            txThang: () => TX_CUA.thangHienTai(),
+            setTxThang: (b) => setTxThang(b),
             txTimEpReNhat: () => txTimEpReNhat(),
             setTxTime: (bet, nan, nhan) => setTxTimeCfg(bet, nan, nhan),
             // 🎲 trần cược từng nhóm cửa (bàn Sic Bo 52 cửa)

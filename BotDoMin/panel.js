@@ -131,6 +131,7 @@ function startPanel(ctx) {
                     // 🎯 gợi ý ép: MÁY CHỦ tính bằng lõi tiền trên đủ 216 kết quả
                     epGoiY: ctx.txTimEpReNhat ? ctx.txTimEpReNhat() : null,
                     rtp: ctx.txRTP ? ctx.txRTP() : null,
+                    thang: ctx.txThang ? ctx.txThang() : null,
                     tenCua: ctx.txCua ? Object.fromEntries(ctx.txCua().map(c => [c.id, c.ten])) : {},
                     bets: bets.slice(-40).map(b => ({ name: b.username || b.userId, choice: b.choice, amount: b.amount || 0 })),
                     secsToBet,
@@ -264,7 +265,7 @@ function startPanel(ctx) {
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
-                    '/api/tx/tran', '/api/tx/rtp',
+                    '/api/tx/tran', '/api/tx/rtp', '/api/tx/thang',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -525,6 +526,13 @@ function startPanel(ctx) {
                     let r = Number(body.rtp);
                     if (Number.isFinite(r) && r > 1) r = r / 100;
                     const kq = ctx.setTxRTP(r);
+                    if (kq.error) return sendJSON(res, 400, { ok: false, error: kq.error });
+                    return sendJSON(res, 200, { ok: true, ...kq });
+                }
+                // 🎰 Thang hệ số nhân: admin chỉnh giá trị + độ hiếm từng bậc
+                if (path === '/api/tx/thang') {
+                    if (!ctx.setTxThang) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const kq = ctx.setTxThang(body.macDinh ? null : body.thang);
                     if (kq.error) return sendJSON(res, 400, { ok: false, error: kq.error });
                     return sendJSON(res, 200, { ok: true, ...kq });
                 }
@@ -1277,11 +1285,16 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note" id="txRTPNote"></div>
         <div class="note">Hạ RTP = <b>ít ô được bốc hệ số nhân hơn</b>, nhà cái ăn dày hơn. Máy tự tính lại tần suất sáng đèn cho cả 48 cửa, KHÔNG đụng vào bảng trả gốc in trên bàn. Ván đang chạy đã bốc bảng nhân từ lúc khoá sổ nên không đổi giữa chừng.</div>
-        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
-          <div style="flex:1"><label>🃏 Admin POKER (ID Discord, cách nhau bằng phẩy)</label><input id="pokerAdminIds" type="text" placeholder="vd: 456136500011335698, 111111111111111111" oninput="txDirty(this)"></div>
-          <button class="btn-green" onclick="pokerSaveAdmin()">💾 Lưu</button>
+        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+          <label>🎰 Thang hệ số nhân — mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code></label>
+          <textarea id="txThang" rows="13" spellcheck="false" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px" oninput="txDirty(this)"></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="btn-green" onclick="txSaveThang()">💾 Lưu thang nhân</button>
+            <button class="btn-grey" onclick="txThangMacDinh()">↩️ Về mặc định</button>
+          </div>
+          <div class="note" id="txThangNote"></div>
+          <div class="note"><b>Độ hiếm</b> là trọng số: số càng nhỏ càng ít ra. Ví dụ <code>200×45</code> và <code>999×1</code> nghĩa là x200 ra nhiều gấp 45 lần x999. Hệ số phải <b>tăng dần</b>, mỗi nhóm 2-12 bậc. Sửa xong máy <b>tự tính lại tần suất sáng đèn</b> theo RTP đang đặt nên nhà cái không lệch. ⚠️ Nâng <b>hệ số cao nhất</b> của nhóm nào thì nhớ hạ trần cược nhóm đó, vì thắng tối đa một ô = trần × hệ số cao nhất.</div>
         </div>
-        <div class="note" id="pokerAdminNow">Ai trong danh sách này mới có nút <b>Bắt đầu / Giải tán</b> ở trang poker. Poker chạy riêng tiến trình, chỉ ĐỌC file dữ liệu của bot — đổi ở đây là ăn ngay, không cần khởi động lại.</div>
         <div class="note" id="txNotiNow">Có người đặt cược là bot nhắn cho bạn: ai, cửa nào, bao nhiêu, ván mấy, ví còn bao nhiêu. Điền <b>ID người</b> thì bot nhắn riêng, điền <b>ID kênh</b> thì bot đăng vào kênh - bot tự dò, không cần chọn. Ván đông người mà ngập tin thì đặt mức tối thiểu.</div>
         <div class="note">Tính TỔNG mọi cửa + mọi lần đặt của 1 người trong 1 ván (đặt lắt nhắt nhiều lần cũng không lách được). Áp cả web lẫn Discord; nút ALL IN tự kẹp về phần trần còn lại. Trần hiện lên bảng Discord + trang web.</div>
       </div>
@@ -1852,6 +1865,11 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" id="pkNghi" onclick="pokerNghi()">⏸️ Tạm nghỉ</button>
           <button class="btn-grey" id="pkTiep" onclick="pokerTiep()">▶️ Chơi tiếp</button>
         </div>
+        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="flex:1"><label>🃏 Admin POKER (ID Discord, cách nhau bằng phẩy)</label><input id="pokerAdminIds" type="text" placeholder="vd: 456136500011335698, 111111111111111111" oninput="txDirty(this)"></div>
+          <button class="btn-green" onclick="pokerSaveAdmin()">💾 Lưu</button>
+        </div>
+        <div class="note" id="pokerAdminNow">Ai trong danh sách này mới có nút <b>Bắt đầu / Giải tán</b> ở trang poker. Poker chạy riêng tiến trình, chỉ ĐỌC file dữ liệu của bot — đổi ở đây là ăn ngay, không cần khởi động lại.</div>
         <div class="muted" id="pkThang" style="font-size:12px;margin-top:6px"></div>
         <div id="pkGhe" style="margin-top:10px"></div>
         <div id="pkGiai" style="margin-top:10px"></div>
@@ -2461,6 +2479,39 @@ function txSaveTime(){
   api('/api/tx/time',{bet:b,nan:n,nhan:h}).then(j=>{txClean(['txBetS','txNanS','txNhanS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'s đặt + '+j.nhan+'s nhân + '+j.nan+'s nặn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 // 🎲 trần cược từng nhóm cửa — 5 ô, sửa 1 ô là cả nhóm nhảy theo
+// Thang nhân: mỗi dòng "tên: hệ_số×độ_hiếm, ...". Chấp nhận cả x, *, X thay cho ×.
+function txDocThang(){
+  const chu=(document.getElementById('txThang').value||'').trim();
+  const bang={}; const dong=chu.split(/\\r?\\n/).filter(d=>d.trim()&&!d.trim().startsWith('#'));
+  for(const d of dong){
+    const i=d.indexOf(':'); if(i<0) throw new Error('Thiếu dấu hai chấm ở dòng: '+d.trim());
+    const ten=d.slice(0,i).trim();
+    const bac=d.slice(i+1).split(',').map(x=>x.trim()).filter(Boolean).map(x=>{
+      const m=x.match(/^(\\d+)\\s*[x×*X]\\s*(\\d+)$/);
+      if(!m) throw new Error('Sai kiểu "'+x+'" (phải là hệ_số×độ_hiếm, ví dụ 200×45)');
+      return [parseInt(m[1]),parseInt(m[2])];
+    });
+    if(!bac.length) throw new Error('Nhóm "'+ten+'" trống');
+    bang[ten]=bac;
+  }
+  if(!Object.keys(bang).length) throw new Error('Chưa nhập gì');
+  return bang;
+}
+function txSaveThang(){
+  let bang; try{bang=txDocThang();}catch(e){return toast('❌ '+e.message);}
+  api('/api/tx/thang',{thang:bang}).then(j=>{
+    txClean(['txThang']);
+    toast('🎰 Đã lưu thang nhân · nhà cái ăn ~'+(j.nhaCaiAn*100).toFixed(2)+'% · '+j.oSangMoiVan.toFixed(1)+' ô sáng/ván');
+    refresh();
+  }).catch(e=>toast('❌ '+e.message));
+}
+function txThangMacDinh(){
+  if(!confirm('Trả thang hệ số nhân về mặc định?'))return;
+  api('/api/tx/thang',{macDinh:true}).then(j=>{
+    const t=document.getElementById('txThang'); if(t){t.dataset.dirty='';t.value='';}
+    toast('↩️ Đã về thang mặc định');refresh();
+  }).catch(e=>toast('❌ '+e.message));
+}
 function txSaveRTP(){
   const v=parseFloat(document.getElementById('txRTP').value);
   if(!(v>=80&&v<=99))return toast('RTP: 80 - 99');
@@ -3655,6 +3706,12 @@ async function refresh(force){
   if(STATE.tx.time){
     const tb=document.getElementById('txBetS'); if(tb&&tb.dataset.dirty!=='1'&&tb.value===''&&document.activeElement!==tb) tb.value=STATE.tx.time.bet;
     const tn=document.getElementById('txNanS'); if(tn&&tn.dataset.dirty!=='1'&&tn.value===''&&document.activeElement!==tn) tn.value=STATE.tx.time.nan;
+    const tt=document.getElementById('txThang');
+    if(tt&&STATE.tx.thang&&tt.dataset.dirty!=='1'&&tt.value===''&&document.activeElement!==tt){
+      tt.value=Object.keys(STATE.tx.thang).map(k=>k+': '+STATE.tx.thang[k].map(b=>b[0]+'×'+b[1]).join(', ')).join('\\n');
+    }
+    const tnt=document.getElementById('txThangNote');
+    if(tnt&&STATE.tx.rtp) tnt.textContent='Đang có '+STATE.tx.rtp.soCuaDuocNhan+'/52 cửa được nhân · trung bình '+STATE.tx.rtp.oSangMoiVan.toFixed(1)+' ô sáng mỗi ván.';
     const rt=document.getElementById('txRTP');
     if(rt&&STATE.tx.rtp){
       if(rt.dataset.dirty!=='1'&&rt.value===''&&document.activeElement!==rt) rt.value=(STATE.tx.rtp.rtp*100).toFixed(1).replace(/\.0$/,'');

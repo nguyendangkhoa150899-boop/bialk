@@ -207,6 +207,13 @@ ok('ô trúng thì đồng xu to hơn cho nổi', SRC.includes("'.sbO.sbTrung .s
 ok('lúc ĐANG ĐẶT vẫn hiện chip mọi ô đã đặt (không giấu sớm)',
     SRC.includes('d.className="sbGio"+(toi>=CHIP_DEN'));
 
+muc('thang hệ số nhân admin chỉnh được');
+ok('panel có ô nhập thang + nút lưu + về mặc định',
+    /id="txThang"/.test(PANEL) && /function txSaveThang()/.test(PANEL) && /function txThangMacDinh()/.test(PANEL));
+ok('route /api/tx/thang bị chặn ở cổng thường', PANEL.includes("'/api/tx/thang'"));
+ok('ô Admin POKER đã rời khỏi tab Tài Xỉu, nằm trong tab Poker',
+    PANEL.indexOf('pokerAdminIds') > PANEL.indexOf('id="tab-poker"'));
+
 muc('RTP admin chỉnh được');
 ok('panel có ô nhập RTP + nút lưu',
     /id="txRTP"/.test(PANEL) && /function txSaveRTP\(\)/.test(PANEL));

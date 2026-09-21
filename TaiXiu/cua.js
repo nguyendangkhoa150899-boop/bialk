@@ -56,20 +56,31 @@ const thang = (arr) => {
     const w = arr.reduce((s, x) => s + x[1], 0);
     return { bac: arr, tong: w, E: arr.reduce((s, x) => s + x[0] * x[1], 0) / w };
 };
-const T = {
-    tong4: thang([[75, 40], [100, 25], [150, 20], [250, 10], [499, 5]]),
-    tong5: thang([[30, 40], [50, 25], [88, 20], [150, 10], [249, 5]]),
-    tong6: thang([[20, 45], [30, 30], [50, 18], [87, 7]]),
-    tong7: thang([[15, 45], [20, 30], [25, 18], [29, 7]]),
-    tong8: thang([[10, 45], [14, 30], [18, 18], [24, 7]]),
-    tong9: thang([[10, 45], [15, 30], [25, 18], [49, 7]]),
-    tong10: thang([[8, 45], [12, 30], [18, 18], [24, 7]]),
-    doi: thang([[15, 45], [25, 30], [50, 18], [87, 7]]),
-    bao: thang([[200, 45], [300, 30], [500, 18], [999, 7]]),
-    baoAny: thang([[40, 45], [55, 30], [70, 18], [87, 7]]),
-    cap: thang([[8, 45], [12, 30], [18, 18], [24, 7]]),
-    don: thang([[10, 45], [14, 30], [17, 18], [19, 7]]),   // nhân cho phần ĐÔI của cửa đơn
+// ⚠️ ĐỔI THANG THÌ GIỮ NGUYÊN MỨC ĐẦU VÀ MỨC CUỐI. Trần cược tính theo mức CAO NHẤT
+// (trần ≈ 5 triệu ÷ mức cao nhất) nên nâng mức cuối là phải dựng lại cả bảng trần.
+// Thêm bậc ở GIỮA thì thoải mái — máy tự giải lại q, nhà cái không lệch đồng nào.
+// Bảng GỐC, giữ nguyên để admin bấm "về mặc định" là quay lại được.
+const THANG_GOC = {
+    tong4: [[75, 40], [88, 30], [100, 24], [128, 18], [150, 14], [188, 9], [250, 6], [333, 4], [499, 2]],
+    tong5: [[30, 40], [40, 30], [50, 24], [66, 18], [88, 13], [120, 8], [150, 5], [199, 3], [249, 2]],
+    tong6: [[20, 45], [25, 32], [30, 24], [38, 17], [50, 12], [66, 8], [77, 5], [87, 3]],
+    tong7: [[15, 45], [17, 33], [20, 25], [22, 18], [25, 12], [27, 8], [29, 5]],
+    tong8: [[10, 45], [12, 33], [14, 25], [16, 18], [18, 12], [21, 8], [24, 5]],
+    tong9: [[10, 45], [13, 32], [15, 24], [18, 17], [25, 12], [33, 7], [40, 4], [49, 3]],
+    tong10: [[8, 45], [10, 33], [12, 25], [15, 18], [18, 12], [21, 8], [24, 5]],
+    doi: [[15, 45], [18, 33], [25, 25], [33, 18], [50, 12], [66, 7], [77, 4], [87, 3]],
+    // 🌪️ BỘ BA — chủ server chốt: dao động 200 tới 999, thêm 250 / 600 / 700
+    bao: [[200, 45], [250, 33], [300, 25], [400, 18], [500, 12], [600, 7], [700, 4], [888, 2], [999, 1]],
+    baoAny: [[40, 45], [45, 33], [55, 25], [60, 18], [66, 12], [70, 8], [77, 5], [87, 3]],
+    cap: [[8, 45], [10, 33], [12, 25], [15, 18], [18, 12], [21, 8], [24, 5]],
+    // nhân cho phần ĐÔI của cửa đơn (phần 3 mặt ăn cố định DON_BAO_NHAN)
+    don: [[10, 45], [11, 33], [12, 25], [14, 18], [15, 12], [17, 8], [19, 5]],
 };
+// T = thang ĐANG ÁP DỤNG (đã tính sẵn tổng trọng số + kỳ vọng E).
+const T = {};
+function dungT(bang) { for (const k of Object.keys(bang)) T[k] = thang(bang[k]); }
+dungT(THANG_GOC);
+let THANG_HIEN = JSON.parse(JSON.stringify(THANG_GOC));
 
 // ---------------------------------------------------------------- 52 cửa
 // tra(xx) trả về SỐ LẦN ăn (0 = thua). Cửa đơn trả 1/2/3 theo số mặt trúng.
@@ -84,36 +95,36 @@ them({ id: 'le', ten: 'LẺ', nhom: 'deu', goc: 1, thangNhan: null, tra: x => (!
 
 // 14 cửa tổng điểm 4..17
 const TONG_CAU = {
-    4: { goc: 50, t: T.tong4, nhom: 'cuchiem' }, 17: { goc: 50, t: T.tong4, nhom: 'cuchiem' },
-    5: { goc: 20, t: T.tong5, nhom: 'hiem' }, 16: { goc: 20, t: T.tong5, nhom: 'hiem' },
-    6: { goc: 15, t: T.tong6, nhom: 'cao' }, 15: { goc: 15, t: T.tong6, nhom: 'cao' },
-    7: { goc: 12, t: T.tong7, nhom: 'vua' }, 14: { goc: 12, t: T.tong7, nhom: 'vua' },
-    8: { goc: 8, t: T.tong8, nhom: 'vua' }, 13: { goc: 8, t: T.tong8, nhom: 'vua' },
-    9: { goc: 6, t: T.tong9, nhom: 'vua' }, 12: { goc: 6, t: T.tong9, nhom: 'vua' },
-    10: { goc: 6, t: T.tong10, nhom: 'vua' }, 11: { goc: 6, t: T.tong10, nhom: 'vua' },
+    4: { goc: 50, t: T.tong4, tn: 'tong4', nhom: 'cuchiem' }, 17: { goc: 50, t: T.tong4, tn: 'tong4', nhom: 'cuchiem' },
+    5: { goc: 20, t: T.tong5, tn: 'tong5', nhom: 'hiem' }, 16: { goc: 20, t: T.tong5, tn: 'tong5', nhom: 'hiem' },
+    6: { goc: 15, t: T.tong6, tn: 'tong6', nhom: 'cao' }, 15: { goc: 15, t: T.tong6, tn: 'tong6', nhom: 'cao' },
+    7: { goc: 12, t: T.tong7, tn: 'tong7', nhom: 'vua' }, 14: { goc: 12, t: T.tong7, tn: 'tong7', nhom: 'vua' },
+    8: { goc: 8, t: T.tong8, tn: 'tong8', nhom: 'vua' }, 13: { goc: 8, t: T.tong8, tn: 'tong8', nhom: 'vua' },
+    9: { goc: 6, t: T.tong9, tn: 'tong9', nhom: 'vua' }, 12: { goc: 6, t: T.tong9, tn: 'tong9', nhom: 'vua' },
+    10: { goc: 6, t: T.tong10, tn: 'tong10', nhom: 'vua' }, 11: { goc: 6, t: T.tong10, tn: 'tong10', nhom: 'vua' },
 };
 for (let s = 4; s <= 17; s++) {
     const c = TONG_CAU[s];
-    them({ id: 'tong' + s, ten: 'Tổng ' + s, nhom: c.nhom, goc: c.goc, thangNhan: c.t, tra: x => tongXx(x) === s ? c.goc : 0, _goc: c.goc });
+    them({ id: 'tong' + s, ten: 'Tổng ' + s, nhom: c.nhom, goc: c.goc, thangNhan: c.t, _thang: c.tn, tra: x => tongXx(x) === s ? c.goc : 0, _goc: c.goc });
 }
 
 // 6 cửa gấp đôi + 6 cửa gấp ba (bão từng số)
 for (let n = 1; n <= 6; n++) {
-    them({ id: 'doi' + n, ten: 'Đôi ' + n, nhom: 'cao', goc: 8, thangNhan: T.doi, tra: x => demMat(x, n) >= 2 ? 8 : 0 });
-    them({ id: 'bao' + n, ten: 'Bão ' + n, nhom: 'cuchiem', goc: 150, thangNhan: T.bao, tra: x => (laBao(x) && x[0] === n) ? 150 : 0 });
+    them({ id: 'doi' + n, ten: 'Đôi ' + n, nhom: 'cao', goc: 8, thangNhan: T.doi, _thang: 'doi', tra: x => demMat(x, n) >= 2 ? 8 : 0 });
+    them({ id: 'bao' + n, ten: 'Bão ' + n, nhom: 'cuchiem', goc: 150, thangNhan: T.bao, _thang: 'bao', tra: x => (laBao(x) && x[0] === n) ? 150 : 0 });
 }
-them({ id: 'baoany', ten: 'Bão bất kỳ', nhom: 'cao', goc: 30, thangNhan: T.baoAny, tra: x => laBao(x) ? 30 : 0 });
+them({ id: 'baoany', ten: 'Bão bất kỳ', nhom: 'cao', goc: 30, thangNhan: T.baoAny, _thang: 'baoAny', tra: x => laBao(x) ? 30 : 0 });
 
 // 15 cửa kết hợp 2 lá khác nhau
 for (let a = 1; a <= 6; a++) for (let b = a + 1; b <= 6; b++) {
-    them({ id: 'cap' + a + b, ten: 'Cặp ' + a + '-' + b, nhom: 'vua', goc: 5, thangNhan: T.cap, tra: x => (x.includes(a) && x.includes(b)) ? 5 : 0 });
+    them({ id: 'cap' + a + b, ten: 'Cặp ' + a + '-' + b, nhom: 'vua', goc: 5, thangNhan: T.cap, _thang: 'cap', tra: x => (x.includes(a) && x.includes(b)) ? 5 : 0 });
 }
 
 // 6 cửa số đơn — ăn theo SỐ MẶT trúng: 1 mặt 1:1, 2 mặt 2:1, 3 mặt 3:1.
 // Nhân chỉ ăn vào phần 2 mặt / 3 mặt (bảng sòng: đơn 1:1, đôi 2-19:1, bão 3-87:1).
 const DON_BAO_NHAN = 87;
 for (let n = 1; n <= 6; n++) {
-    them({ id: 'don' + n, ten: 'Đơn ' + n, nhom: 'cao', goc: 1, thangNhan: T.don, donSo: n, tra: x => demMat(x, n) });
+    them({ id: 'don' + n, ten: 'Đơn ' + n, nhom: 'cao', goc: 1, thangNhan: T.don, _thang: 'don', donSo: n, tra: x => demMat(x, n) });
 }
 
 const THEO_ID = Object.fromEntries(DS.map(c => [c.id, c]));
@@ -175,6 +186,45 @@ function thongKeRTP() {
     };
 }
 const rtpHienTai = () => RTP_HIEN;
+
+/** Thang đang chạy, dạng { ten: [[giá trị, độ hiếm], ...] } — panel đọc để hiện cho admin. */
+const thangHienTai = () => JSON.parse(JSON.stringify(THANG_HIEN));
+const thangMacDinh = () => JSON.parse(JSON.stringify(THANG_GOC));
+
+/**
+ * Admin đặt lại thang nhân. Nhận { ten: [[giá trị, độ hiếm], ...] }, thiếu họ nào thì
+ * giữ nguyên họ đó. Kiểm rất chặt vì đây là bảng quyết định tiền trả ra:
+ *   · giá trị nguyên dương, tăng dần, tối đa 9999
+ *   · độ hiếm nguyên dương (1-1000) — số càng nhỏ càng hiếm
+ *   · 2-12 bậc mỗi họ
+ * Xong là tính lại q cho cả bàn theo RTP đang đặt.
+ */
+function datThang(bangMoi) {
+    if (!bangMoi || typeof bangMoi !== 'object') return { error: 'Thiếu bảng thang nhân' };
+    const moi = JSON.parse(JSON.stringify(THANG_HIEN));
+    for (const ten of Object.keys(bangMoi)) {
+        if (!THANG_GOC[ten]) return { error: 'Không có nhóm nhân tên "' + ten + '"' };
+        const bac = bangMoi[ten];
+        if (!Array.isArray(bac) || bac.length < 2 || bac.length > 12) {
+            return { error: 'Nhóm "' + ten + '": phải có từ 2 đến 12 bậc' };
+        }
+        let truoc = 0;
+        for (const b of bac) {
+            if (!Array.isArray(b) || b.length !== 2) return { error: 'Nhóm "' + ten + '": mỗi bậc phải là (hệ số, độ hiếm)' };
+            const gt = Math.floor(Number(b[0])), ts = Math.floor(Number(b[1]));
+            if (!Number.isFinite(gt) || gt < 1 || gt > 9999) return { error: 'Nhóm "' + ten + '": hệ số x' + b[0] + ' phải từ 1 đến 9999' };
+            if (!Number.isFinite(ts) || ts < 1 || ts > 1000) return { error: 'Nhóm "' + ten + '": độ hiếm của x' + gt + ' phải từ 1 đến 1000' };
+            if (gt <= truoc) return { error: 'Nhóm "' + ten + '": hệ số phải TĂNG DẦN (x' + gt + ' đứng sau x' + truoc + ')' };
+            truoc = gt;
+        }
+        moi[ten] = bac.map(b => [Math.floor(Number(b[0])), Math.floor(Number(b[1]))]);
+    }
+    THANG_HIEN = moi;
+    dungT(THANG_HIEN);
+    for (const c of DS) if (c.thangNhan) c.thangNhan = T[c._thang];
+    for (const c of DS) Object.assign(c, giaiQ(c));
+    return { ok: true, thang: thangHienTai(), ...thongKeRTP() };
+}
 
 for (const c of DS) Object.assign(c, giaiQ(c));
 
@@ -249,6 +299,7 @@ function tiLeToiDa(cuaId) {
 
 module.exports = {
     RTP_MUC_TIEU, RTP_MIN, RTP_MAX, datRTP, thongKeRTP, rtpHienTai,
+    datThang, thangHienTai, thangMacDinh,
     DS, THEO_ID, NHOM_TRAN, MOI_KET_QUA, DON_BAO_NHAN,
     tongXx, laBao, demMat, taoNhan, tinhTra, cuaThang, tranCua, tranMacDinh, tiLeToiDa, doGoc,
 };
