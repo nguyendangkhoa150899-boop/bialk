@@ -220,7 +220,20 @@ ok('kế hoạch trả tiền giữ luôn bảng nhân (phòng khi đã dọn)',
 ok('web nhận được bảng nhân của ván cũ',
     SRC.includes('winners: h.winners || [], nhan: h.nhan || {}'));
 ok('bảng 20 ván có dòng phụ ⚡', SRC.includes('function hSub(h)') && SRC.includes("'.hsub{"));
-ok('dòng phụ kể ô MÌNH ăn được', SRC.includes('🎯 bạn ăn:'));
+// Chủ server kêu 'vướng mắt': hiện ⚡ ở mọi ván với 5 huy hiệu vàng thì át mất
+// dãy kết quả - thứ chính của bảng soi cầu. Nên MẶC ĐỊNH TẮT, có công tắc.
+ok('hệ số nhân MẶC ĐỊNH TẮT, có công tắc nhớ lựa chọn',
+    SRC.includes('var HNHAN=localStorage.getItem("tx_hnhan")==="1";') &&
+    SRC.includes('function hNhanBat(v)') && SRC.includes('id="hNhanOn"'));
+// Trong hSub, phần "bạn ăn" phải nằm TRƯỚC nhánh if(HNHAN) thì mới luôn hiện.
+{
+    const than = SRC.slice(SRC.indexOf('function hSub(h)'), SRC.indexOf('function hSub(h)') + 900);
+    ok('phần MÌNH ăn vẫn luôn hiện dù tắt công tắc',
+        than.indexOf('🎯 ') > 0 && than.indexOf('🎯 ') < than.indexOf('if(HNHAN){'),
+        'vị trí trong hSub: ' + than.indexOf('🎯 ') + ' vs ' + than.indexOf('if(HNHAN){'));
+}
+ok('huy hiệu ⚡ làm nhỏ + xỉn, không viền vàng tranh chỗ',
+    SRC.includes("'.hsub .xx{display:inline-block;background:#2b2f3c") && !SRC.includes('.hsub .xx{display:inline-block;background:#3a2e10'));
 // Dòng Discord: mỗi người CHỈ kể ô ăn được, ô thua gói lại thành một con số
 ok('dòng Discord rút gọn tiền (k / tr)', IDX.includes('function txTienNgan(n)'));
 ok('dòng Discord chỉ kể ô ĂN, ô thua gói thành số',

@@ -914,9 +914,18 @@ const PAGE = [
     // bảng 20 ván gần nhất (kiểu soi cầu trong Discord: mã ván · 3 viên · tổng · kết quả)
     '.hrow{display:flex;align-items:center;gap:7px;padding:6px 0 2px;font-size:13px}',
     // dòng phụ: ⚡ ô được nhân + ô mình ăn. Tách hẳn ra cho dòng chính khỏi dài.
-    '.hsub{padding:0 0 6px 2px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.5}',
-    '.hsub .xx{display:inline-block;background:#3a2e10;color:#ffd76a;border:1px solid #ffcf5c;border-radius:5px;padding:0 4px;margin-right:4px;font-weight:800}',
+    // Dòng phụ là CHÚ THÍCH, không được tranh chỗ với dãy kết quả.
+    '.hsub{padding:0 0 6px 2px;border-bottom:1px solid var(--line);font-size:11px;color:#6b7183;line-height:1.5}',
+    '.hsub:empty{padding:0;border-bottom:1px solid var(--line)}',
+    // huy hiệu hệ số nhân: nhỏ, xỉn, KHÔNG viền vàng - liếc qua là lướt được
+    '.hsub .xx{display:inline-block;background:#2b2f3c;color:#b9a06a;border-radius:4px;',
+    'padding:0 3px;margin-right:3px;font-weight:700;font-size:10.5px}',
+    // phần MÌNH ăn mới là thứ đáng nổi
     '.hsub .an{color:#8fe0a8;font-weight:700}',
+    // công tắc bật/tắt chi tiết hệ số nhân
+    '.hTog{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;',
+    'user-select:none;margin:-4px 0 8px}',
+    '.hTog input{width:14px;height:14px;accent-color:var(--gold)}',
     '.hrow:last-child{border-bottom:0}',
     '.hrow .gid{color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}',
     '.hrow .dd{display:flex;gap:3px;flex:0 0 auto}',
@@ -2255,6 +2264,8 @@ const PAGE = [
 
     // Bảng lịch sử Big Small: nằm dưới cùng, chỉ hiện khi đang ở trang Big Small.
     '<div class="card" id="histCard"><h2>🔮 Lịch sử 20 ván gần nhất</h2>',
+    // Mặc định TẮT: bảng này để soi cầu, hiện hệ số nhân ở mọi ván là rối mắt.
+    '<label class="hTog"><input type="checkbox" id="hNhanOn" onchange="hNhanBat(this.checked)"> ⚡ Hiện hệ số nhân từng ván</label>',
     '<div id="hist20" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
 
     '<div id="winpop"></div>',
@@ -2558,6 +2569,7 @@ const PAGE = [
     'function mdie(v){var s=\'<div class="mdie">\';(PIPS[v]||[]).forEach(function(p){',
     's+=\'<div class="p" style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></div>\'});return s+"</div>"}',
     'function renderHist20(list){var box=document.getElementById("hist20");',
+    'var tg=$("hNhanOn");if(tg&&tg.checked!==HNHAN)tg.checked=HNHAN;',
     'if(!list.length){box.innerHTML="Chưa có ván nào.";return}',
     'box.innerHTML=list.slice(0,20).map(function(h){',
     'var stake=0,winAmt=0,joined=false;',
@@ -2574,16 +2586,19 @@ const PAGE = [
     '\'<span class="kq">\'+kq+"</span>"+',
     '(joined?\'<span class="net \'+(net>=0?"w":"l")+\'">\'+(net>=0?"+":"")+net.toLocaleString("vi-VN")+"</span>":"")+',
     '"</div>"+hSub(h)}).join("")}',
-    // ⚡ ô được bốc hệ số nhân ván đó (to nhất trước) + ô MÌNH ăn được.
-    // Ván cũ ghi trước bản vá không có 2 thứ này -> bỏ qua, không bịa.
+    // Công tắc ⚡ nhớ trong máy người chơi. MẶC ĐỊNH TẮT cho bảng sạch.
+    'var HNHAN=localStorage.getItem("tx_hnhan")==="1";',
+    'function hNhanBat(v){HNHAN=!!v;localStorage.setItem("tx_hnhan",v?"1":"0");refresh()}',
+    // Dòng phụ: phần "bạn ăn" LUÔN hiện (thứ người chơi cần), phần ⚡ chỉ khi bật
+    // công tắc — và chỉ 3 ô to nhất, để nó là chú thích chứ không át dãy kết quả.
     'function hSub(h){var p=[];',
-    'var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
-    'if(ids.length)p.push(ids.slice(0,5).map(function(k){',
-    'return \'<span class="xx">x\'+nh[k]+"</span>"+(NAMES[k]||k)}).join(" · ")+(ids.length>5?(" +"+(ids.length-5)+" ô"):""));',
     'var an=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0});',
-    'if(an.length)p.push(\'<span class="an">🎯 bạn ăn: \'+an.slice(0,4).map(function(b){',
-    'return b.choice+" +"+vnd((b.nhan||0)-b.amount)}).join(" · ")+(an.length>4?" …":"")+"</span>");',
-    'return p.length?(\'<div class="hsub">\'+p.join(" &nbsp;|&nbsp; ")+"</div>"):\'<div class="hsub"></div>\'}',
+    'if(an.length)p.push(\'<span class="an">🎯 \'+an.slice(0,3).map(function(b){',
+    'return b.choice+" +"+vnd((b.nhan||0)-b.amount)}).join(" · ")+(an.length>3?" …":"")+"</span>");',
+    'if(HNHAN){var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
+    'if(ids.length)p.push(ids.slice(0,3).map(function(k){',
+    'return \'<span class="xx">x\'+nh[k]+"</span>"+(NAMES[k]||k)}).join(" · ")+(ids.length>3?(" +"+(ids.length-3)):""))}',
+    'return \'<div class="hsub">\'+p.join(" &nbsp;·&nbsp; ")+"</div>"}',
     // danh sách ai đang đặt ván này, gộp theo cửa, tên tô màu riêng từng người
     'var CHOICE_COLOR={tai:"#ff7b86",xiu:"#7db4ff",chan:"#6fd3b8",le:"#c39bf0",baoany:"#ffcf5c",bao:"#ffcf5c"};',
     'function cuaMau(c){return CHOICE_COLOR[c]||"#ffcf5c"}',

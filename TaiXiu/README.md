@@ -134,7 +134,11 @@ là dòng dài không đọc nổi, mà lại **không hề kể ô nào đượ
 
 - Mỗi người **chỉ kể ô ĂN ĐƯỢC** (tối đa 3), ô thua gói thành "N ô, trượt hết".
 - Tiền rút gọn `k / tr` cho vừa giới hạn 4000 ký tự của Discord.
-- Bảng **20 ván trên web** cũng có dòng phụ ⚡ kể ô được nhân và ô MÌNH ăn.
+- Bảng **20 ván trên web**: bảng này để **soi cầu** nên dãy kết quả phải liếc là thấy.
+  Vì vậy dòng ⚡ **MẶC ĐỊNH TẮT**, có công tắc `⚡ Hiện hệ số nhân từng ván` (nhớ trong máy
+  người chơi qua `localStorage tx_hnhan`). Phần `🎯` kể ô MÌNH ăn thì **luôn hiện** vì đó
+  mới là thứ người chơi cần. Huy hiệu ⚡ cố tình nhỏ và xỉn, chỉ kể 3 ô to nhất — bản đầu
+  để 5 huy hiệu vàng chóe ở mọi ván, chủ server kêu ngay là vướng mắt.
 - `histEntry.nhan` lưu bảng hệ số nhân của ván (chỉ vài ô nên không phình DB);
   `plan.bangNhan` giữ bản sao phòng khi `txState.nhan` đã bị dọn.
 - Ván CŨ ghi trước bản vá không có 2 trường này → chỉ hiện tổng, **không bịa**.
