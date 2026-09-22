@@ -97,8 +97,13 @@ function kiemCo(ten, oPx, chamPx) {
 muc('bàn 52 ô');
 ok('vẽ xúc xắc bằng hàm riêng, dùng lại bảng chấm PIPS sẵn có',
     /function sbXx\(n\)/.test(SRC) && /PIPS\[n\]/.test(SRC));
-ok('có 6 dải tiêu đề khu (khu\\(...\\))', (SRC.match(/h\+=khu\(/g) || []).length === 6,
-    String((SRC.match(/h\+=khu\(/g) || []).length));
+// ⚠️ Đếm trong THÂN sbVe() thôi. Từ 22/09 file còn có bàn Siêu Tài Xỉu (stVe) cũng
+// dùng khu() — đếm cả file là ra 12, tưởng hỏng mà thật ra không phải.
+{
+    const than = SRC.slice(SRC.indexOf('function sbVe()'), SRC.indexOf('function sbVeChip()'));
+    ok('bàn thường có 6 dải tiêu đề khu', (than.match(/h\+=khu\(/g) || []).length === 6,
+        String((than.match(/h\+=khu\(/g) || []).length));
+}
 ok('4 cửa đều tiền + bộ ba bất kỳ nằm hàng đầu, ô to (sbDeu)',
     /o\(g\("xiu"\),"sbDeu sbXiu"\)/.test(SRC) && /o\(g\("tai"\),"sbDeu sbTai"\)/.test(SRC) &&
     /o\(g\("baoany"\),"sbDeu sbBaoAny"\)/.test(SRC));

@@ -142,6 +142,9 @@ function startPanel(ctx) {
                     tran: ctx.getTxTran ? ctx.getTxTran() : null,        // 🎲 trần cược 5 nhóm cửa Sic Bo
                 };
             })(),
+            // ⚡ SIÊU TÀI XỈU — game RIÊNG, để ngang hàng poker/tienlen chứ đừng nhét
+            // vào trong cục tx (nhét vào đó thì panel phải đọc STATE.tx.stx, dễ nhầm).
+            stx: (ctx.stx && ctx.stx.adminXem) ? ctx.stx.adminXem() : null,
             forcedMines: ctx.getForcedMines(),
             forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
             pokerAdmin: ctx.getPokerAdmin ? ctx.getPokerAdmin() : [],   // 🃏 ai mở được giải poker
@@ -266,6 +269,9 @@ function startPanel(ctx) {
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
                     '/api/tx/tran', '/api/tx/rtp', '/api/tx/thang',
+                    // ⚡ Siêu Tài Xỉu — ĂN DOGCOIN THẬT, càng phải chặn chắc
+                    '/api/stx/on', '/api/stx/time', '/api/stx/tran', '/api/stx/an',
+                    '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -535,6 +541,22 @@ function startPanel(ctx) {
                     const kq = ctx.setTxThang(body.macDinh ? null : body.thang);
                     if (kq.error) return sendJSON(res, 400, { ok: false, error: kq.error });
                     return sendJSON(res, 200, { ok: true, ...kq });
+                }
+                // ⚡ SIÊU TÀI XỈU: toàn bộ luật nằm ở SieuTaiXiu/ban.js
+                if (path.indexOf('/api/stx/') === 0) {
+                    const B = ctx.stx;
+                    if (!B) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ Siêu Tài Xỉu' });
+                    let r = null;
+                    if (path === '/api/stx/on') r = B.datBatTat(!!body.on);
+                    else if (path === '/api/stx/time') r = B.datGio(body.bet, body.nhan, body.nan);
+                    else if (path === '/api/stx/tran') r = B.datTran(body.tran || {});
+                    else if (path === '/api/stx/an') r = B.datMucAn(body.an);
+                    else if (path === '/api/stx/thang') r = B.datThang(body.macDinh ? null : body.thang);
+                    else if (path === '/api/stx/maxbet') r = B.datMaxBet(body.maxBet);
+                    else if (path === '/api/stx/ep') r = B.epKetQua(body.d1, body.d2, body.d3);
+                    else return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
+                    if (r && r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 // 🔔 17/09: báo cược Tài Xỉu về Discord cho chủ server
                 if (path === '/api/tx/noti') {
@@ -1232,6 +1254,7 @@ const HTML = `<!DOCTYPE html>
       <button data-tab="log" onclick="tab('log')">📜 Log</button>
       <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
       <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
+      <button data-tab="stx" class="epOnly" style="display:none" onclick="tab('stx')">⚡ Siêu Tài Xỉu</button>
       <button data-tab="poker" class="epOnly" style="display:none" onclick="tab('poker')">🃏 Poker</button>
       <button data-tab="tienlen" class="epOnly" style="display:none" onclick="tab('tienlen')">🀄 Tiến Lên</button>
     </div>
@@ -1846,6 +1869,52 @@ const HTML = `<!DOCTYPE html>
 
     <!-- 🃏 POKER (chỉ SUPER): toàn bộ thao tác giải nằm đây - trang người chơi không có nút admin.
          Chip trong giải là chip ảo, không đụng ví. Trang chơi nhúng ở /poker/ cùng cổng web. -->
+    <div id="tab-stx" class="hidden">
+      <div class="card">
+        <h2>⚡ Siêu Tài Xỉu <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · PHÍ 20% · Tài/Xỉu cũng được nhân tới 14:1)</span></h2>
+        <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap">
+          <label style="display:inline-flex;align-items:center;gap:7px;line-height:1"><input id="stxOn" type="checkbox" style="margin:0" onchange="stxBat(this.checked)"> <b>BẬT bàn Siêu Tài Xỉu</b></label>
+          <span class="muted" id="stxNow" style="font-size:12px"></span>
+        </div>
+        <div class="note" id="stxLive"></div>
+
+        <div class="row" style="margin-top:12px;align-items:flex-end">
+          <div style="flex:1"><label>⏱️ Giây ĐẶT CƯỢC (5 - 600)</label><input id="stxBetS" type="number" min="5" max="600" placeholder="vd: 30" oninput="txDirty(this)"></div>
+          <div style="flex:1"><label>⚡ Giây HIỆN NHÂN (0 - 60)</label><input id="stxNhanS" type="number" min="0" max="60" placeholder="vd: 4" oninput="txDirty(this)"></div>
+          <div style="flex:1"><label>⏱️ Giây NẶN (6 - 300)</label><input id="stxNanS" type="number" min="6" max="300" placeholder="vd: 20" oninput="txDirty(this)"></div>
+          <div style="flex:0 0 auto"><button class="btn-green" onclick="stxSaveTime()">💾 Lưu nhịp</button></div>
+        </div>
+
+        <div class="row" style="margin-top:12px;align-items:flex-end">
+          <div style="flex:1"><label>🎯 Nhà cái ăn bao nhiêu % (2 - 30)</label><input id="stxAn" type="number" min="2" max="30" step="0.5" placeholder="vd: 10" oninput="txDirty(this)"></div>
+          <div style="flex:1"><label>💰 Trần cược mỗi người mỗi ván (0 = không giới hạn)</label><input id="stxMax" type="number" min="0" placeholder="vd: 300000" oninput="txDirty(this)"></div>
+          <div style="flex:0 0 auto"><button class="btn-green" onclick="stxSaveAn()">💾 Lưu</button></div>
+        </div>
+        <div class="note" id="stxAnNote"></div>
+        <div class="note">Bàn này thu <b>PHÍ 20%</b> trên tiền cược — đó là nguồn thu duy nhất. Bảng trả cố tình vượt 100% (nhà cái lỗ trên bàn rồi lấy lại bằng phí). Hạ "nhà cái ăn" thì bảng trả rộng ra, ít ô sáng hơn.</div>
+
+        <div style="margin-top:12px"><label>🧱 Trần cược từng nhóm cửa</label><div id="stxTran" class="row" style="flex-wrap:wrap"></div>
+          <div class="row" style="margin-top:8px"><button class="btn-green" onclick="stxSaveTran()">💾 Lưu trần</button></div></div>
+
+        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+          <label>🎰 Thang hệ số nhân — mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code></label>
+          <textarea id="stxThang" rows="13" spellcheck="false" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px" oninput="txDirty(this)"></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="btn-green" onclick="stxSaveThang()">💾 Lưu thang</button>
+            <button class="btn-grey" onclick="stxThangMacDinh()">↩️ Về mặc định</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;align-items:flex-end">
+          <div style="flex:1"><label>🎲 Ép kết quả ván sau</label>
+            <div class="row"><input id="stxD1" type="number" min="1" max="6" value="1" style="width:70px">
+            <input id="stxD2" type="number" min="1" max="6" value="2" style="width:70px">
+            <input id="stxD3" type="number" min="1" max="6" value="3" style="width:70px"></div></div>
+          <button class="btn-red" onclick="stxEp()">⚡ Ép</button>
+        </div>
+        <div class="note" id="stxEpNow"></div>
+      </div>
+    </div>
     <div id="tab-poker" class="hidden">
       <div class="card">
         <h2>🃏 Giải Poker <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · chip ảo, không ăn Dogcoin)</span></h2>
@@ -2198,7 +2267,7 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
+  if(['tx','stx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
@@ -2210,7 +2279,7 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  ['tx','stx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
   if(t==='give')gvLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
@@ -2438,6 +2507,31 @@ function txAutoForce(){
   toast('🎯 '+g.dice.join('-')+' (tổng '+sum+'): nhà cái trả ít nhất '+g.tra.toLocaleString()
     +' / tổng cược '+g.tongDat.toLocaleString()+'. Bấm ⚡ Ép để chốt.');
 }
+// đổ trạng thái bàn Siêu vào tab (chỉ điền ô nào admin chưa gõ dở)
+function stxDo(){
+  const S=STATE&&STATE.stx; if(!S)return;
+  const cb=document.getElementById('stxOn'); if(cb&&cb.checked!==S.on)cb.checked=S.on;
+  const now=document.getElementById('stxNow');
+  if(now)now.textContent=S.on?('Ván #'+S.gameId+' · '+(S.secsToBet>0?('còn '+S.secsToBet+'s để ép'):'ĐÃ KHOÁ SỔ')):'bàn đang tắt';
+  const live=document.getElementById('stxLive');
+  if(live){const co=Object.keys(S.betAgg||{}).filter(k=>S.betAgg[k]>0).sort((a,b)=>S.betAgg[b]-S.betAgg[a]);
+    const tong=co.reduce((s,k)=>s+S.betAgg[k],0);
+    live.innerHTML=co.length?('💰 tổng cược <b>'+tong.toLocaleString()+'</b> · '+co.slice(0,10).map(k=>esc((S.tenCua||{})[k]||k)+' <b>'+S.betAgg[k].toLocaleString()+'</b>').join(' · ')+(co.length>10?(' · +'+(co.length-10)+' cửa'):'')):'chưa ai đặt';}
+  const put=(id,v)=>{const e=document.getElementById(id);if(e&&e.dataset.dirty!=='1'&&e.value===''&&document.activeElement!==e)e.value=v;};
+  put('stxBetS',S.time.bet);put('stxNhanS',S.time.nhan);put('stxNanS',S.time.nan);
+  put('stxMax',S.maxBet);
+  if(S.rtp)put('stxAn',(S.rtp.an*100).toFixed(1).replace(/\.0$/,''));
+  const an=document.getElementById('stxAnNote');
+  if(an&&S.rtp)an.textContent='Đang chạy: nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · người chơi thực nhận '+(S.rtp.rtpThuc*100).toFixed(2)+'% · '+S.rtp.oSangMoiVan.toFixed(1)+' ô sáng/ván · phí '+(S.rtp.phi*100)+'%';
+  const box=document.getElementById('stxTran');
+  if(box&&!box.dataset.xong){box.dataset.xong='1';
+    box.innerHTML=Object.keys(S.tran||{}).map(k=>'<div style="flex:1;min-width:150px"><label style="font-size:11px">'+esc(k)+'</label><input data-stxtran="'+k+'" type="number" min="1000" placeholder="'+S.tran[k]+'" oninput="txDirty(this)"></div>').join('');}
+  const tt=document.getElementById('stxThang');
+  if(tt&&S.thang&&tt.dataset.dirty!=='1'&&tt.value===''&&document.activeElement!==tt)
+    tt.value=Object.keys(S.thang).map(k=>k+': '+S.thang[k].map(b=>b[0]+'×'+b[1]).join(', ')).join('\\n');
+  const ep=document.getElementById('stxEpNow');
+  if(ep)ep.textContent=S.ep?('⚡ Ván sau đã bị ép ra '+S.ep.join('-')):'';
+}
 function renderTxBetsLive(){
   const box=document.getElementById('txBetsLive'); if(!box||!STATE||!STATE.tx)return;
   const a=STATE.tx.betAgg||{}; const t=STATE.tx;
@@ -2511,6 +2605,57 @@ function txThangMacDinh(){
     const t=document.getElementById('txThang'); if(t){t.dataset.dirty='';t.value='';}
     toast('↩️ Đã về thang mặc định');refresh();
   }).catch(e=>toast('❌ '+e.message));
+}
+// ================= ⚡ SIÊU TÀI XỈU =================
+function stxBat(v){api('/api/stx/on',{on:v}).then(j=>{toast(j.on?'⚡ Đã BẬT bàn Siêu':'⚡ Đã TẮT bàn Siêu (cược đang có đã hoàn đủ)');refresh();}).catch(e=>toast('❌ '+e.message));}
+function stxSaveTime(){
+  const b=parseInt(document.getElementById('stxBetS').value),h=parseInt(document.getElementById('stxNhanS').value),n=parseInt(document.getElementById('stxNanS').value);
+  if(!(b>=5&&b<=600))return toast('Giây đặt: 5 - 600');
+  if(!(h>=0&&h<=60))return toast('Giây hiện nhân: 0 - 60');
+  if(!(n>=6&&n<=300))return toast('Giây nặn: 6 - 300');
+  api('/api/stx/time',{bet:b,nhan:h,nan:n}).then(j=>{txClean(['stxBetS','stxNhanS','stxNanS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'+'+j.nhan+'+'+j.nan);refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function stxSaveAn(){
+  const a=parseFloat(document.getElementById('stxAn').value);
+  const m=parseInt(document.getElementById('stxMax').value);
+  const xong=()=>{txClean(['stxAn','stxMax']);refresh();};
+  if(!isNaN(a)){ if(!(a>=2&&a<=30))return toast('Nhà cái ăn: 2 - 30%');
+    api('/api/stx/an',{an:a}).then(j=>{toast('🎯 Nhà cái ăn '+(j.an*100).toFixed(1)+'% · người chơi thực nhận '+(j.rtpThuc*100).toFixed(2)+'% · '+j.oSangMoiVan.toFixed(1)+' ô sáng/ván');xong();}).catch(e=>toast('❌ '+e.message)); }
+  if(!isNaN(m)) api('/api/stx/maxbet',{maxBet:m}).then(()=>{toast('💰 Đã lưu trần mỗi người');xong();}).catch(e=>toast('❌ '+e.message));
+}
+function stxSaveTran(){
+  const t={};document.querySelectorAll('[data-stxtran]').forEach(el=>{const v=parseInt(el.value);if(v>0)t[el.dataset.stxtran]=v;});
+  api('/api/stx/tran',{tran:t}).then(j=>{document.querySelectorAll('[data-stxtran]').forEach(el=>{el.dataset.dirty='';el.value='';});toast('🧱 Đã lưu trần Siêu');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function stxSaveThang(){
+  let bang;try{bang=txDocThangO('stxThang');}catch(e){return toast('❌ '+e.message);}
+  api('/api/stx/thang',{thang:bang}).then(j=>{txClean(['stxThang']);toast('🎰 Đã lưu thang · nhà cái ăn ~'+(j.anThuc*100).toFixed(2)+'%');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function stxThangMacDinh(){
+  if(!confirm('Trả thang hệ số nhân của bàn SIÊU về mặc định?'))return;
+  api('/api/stx/thang',{macDinh:true}).then(()=>{const t=document.getElementById('stxThang');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function stxEp(){
+  const d1=+document.getElementById('stxD1').value,d2=+document.getElementById('stxD2').value,d3=+document.getElementById('stxD3').value;
+  api('/api/stx/ep',{d1:d1,d2:d2,d3:d3}).then(j=>{toast('⚡ Ván sau ra '+j.ep.join('-'));refresh();}).catch(e=>toast('❌ '+e.message));
+}
+// đọc ô văn bản thang nhân (dùng chung cho cả 2 bàn)
+function txDocThangO(id){
+  const chu=(document.getElementById(id).value||'').trim();
+  const bang={}; const dong=chu.split(/\\r?\\n/).filter(d=>d.trim()&&!d.trim().startsWith('#'));
+  for(const d of dong){
+    const i=d.indexOf(':'); if(i<0) throw new Error('Thiếu dấu hai chấm ở dòng: '+d.trim());
+    const ten=d.slice(0,i).trim();
+    const bac=d.slice(i+1).split(',').map(x=>x.trim()).filter(Boolean).map(x=>{
+      const m=x.match(/^(\\d+)\\s*[x×*X]\\s*(\\d+)$/);
+      if(!m) throw new Error('Sai kiểu "'+x+'" (phải là hệ_số×độ_hiếm, ví dụ 200×45)');
+      return [parseInt(m[1]),parseInt(m[2])];
+    });
+    if(!bac.length) throw new Error('Nhóm "'+ten+'" trống');
+    bang[ten]=bac;
+  }
+  if(!Object.keys(bang).length) throw new Error('Chưa nhập gì');
+  return bang;
 }
 function txSaveRTP(){
   const v=parseFloat(document.getElementById('txRTP').value);
@@ -3712,6 +3857,7 @@ async function refresh(force){
     }
     const tnt=document.getElementById('txThangNote');
     if(tnt&&STATE.tx.rtp) tnt.textContent='Đang có '+STATE.tx.rtp.soCuaDuocNhan+'/52 cửa được nhân · trung bình '+STATE.tx.rtp.oSangMoiVan.toFixed(1)+' ô sáng mỗi ván.';
+    stxDo();
     const rt=document.getElementById('txRTP');
     if(rt&&STATE.tx.rtp){
       if(rt.dataset.dirty!=='1'&&rt.value===''&&document.activeElement!==rt) rt.value=(STATE.tx.rtp.rtp*100).toFixed(1).replace(/\.0$/,'');

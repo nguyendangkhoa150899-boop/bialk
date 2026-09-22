@@ -156,6 +156,13 @@ Người chơi **mua** cỏ (**30% tiền cược**, cả 2 game, `fee = bet * 0
 - **🔔 Báo cược về Discord** (`_txNoti`): có người đặt là bot nhắn chủ server (ai/cửa/bao nhiêu/ván/ví/tổng bàn). Một ô ID: thử DM trước, hụt thì gửi kênh, nhớ kiểu gửi được. Có mức tối thiểu để khỏi ngập. Gắn ở **cả 3 cửa** đặt (web + 2 nút Discord); gửi hỏng **không** làm hỏng ván. Panel có nút Gửi thử. **Mặc định TẮT** — chủ server tự bật.
 - Tự khởi động lại bàn ở `_txChannelId` khi boot; lịch sử 20 ván sống qua restart (`_txHist20`).
 
+### ⚡ Siêu Tài Xỉu (thuần web, `../SieuTaiXiu/`) — bàn thứ hai, CÓ PHÍ 20%
+Cùng luật + cùng nhịp 3 mốc với Tài Xỉu thường, khác **hai chỗ quyết định**:
+1. **Tài/Xỉu/Chẵn/Lẻ CŨNG được nhân** (tới 14:1) — bàn thường không bao giờ nhân 4 cửa này.
+2. **Phí 20%**: đặt 1.000 trừ ví 1.200, thắng ăn trên 1.000. Phí là **nguồn thu duy nhất**.
+Vì có phí nên bảng trả **cố tình vượt 100%** (nhà cái lỗ trên bàn, lấy lại bằng phí — kiểu hoa hồng Baccarat): `người chơi thực nhận = RTP_bàn / 1,2`. Chủ server chốt nhà cái ăn **10%** → RTP bàn 108%; đo thật 200.000 ván: **9,96%**. Admin nhập thẳng "nhà cái ăn %" (2–30) ở panel, máy tự giải lại `q`.
+Máy bàn nằm gọn ở `SieuTaiXiu/ban.js` (`taoBan(ctx)` + `setInterval(nhip,1000)`, đúng khuôn Tiến Lên) nên index.js không phình. Trạng thái lưu `_stx*` trong DB; đường web riêng `/api/stx/*`; tab web chỉ hiện khi admin bật. **Trần cược lấy đúng bảng hạn mức của bàn này, KHÔNG bê trần bàn thường sang** (trả cao gấp mấy lần = phơi nhiễm gấp mấy lần). Giao diện tông ĐEN, phí hiện ở 3 chỗ, ô nhân **giật như có sét**. Luật + cạm bẫy: `../SieuTaiXiu/README.md`.
+
 ### 🎡 Vòng quay nhóm 2 tầng (`wheelRoom`) — thay Blackjack
 Vào bàn miễn phí, đủ N người (`_wheelMinPlayers`) thì tự bấm quay. Vòng 1 VÉ (3.000/4.000/5.000, khoá lượt ngay khi quay), vòng 2 HỆ SỐ 27 nan 3 mũi tên, sàn ×1.5 chắc thắng, kỳ vọng ~×2.33 vé (nhà cái chịu lỗ vòng này). **1 lượt/người/khung 12 tiếng**, admin reset được.
 
@@ -249,7 +256,7 @@ Tab **Quà**: quà mỗi ngày theo danh sách riêng (`giftClaim`, người n�
 
 ## 10. Panel admin (`panel.js`)
 
-Tab: `tx` Tài Xỉu · `mine` Dò Mìn · `stair` Leo Thang · `bj` Vòng quay · `stock` · `spm` Phi Thuyền · `user` 👥 Người chơi · `pal` 🎮 Palworld & Dogcoin · `log` · `gift` Quà · `give` Kho đồ. SUPER (cổng `PANEL_PORT`) mới có: ép kết quả/mìn/quà hộp/pal, Kho đồ, can thiệp giá cổ phiếu (`epOk` = so `req.socket.localPort`).
+Tab: `tx` Tài Xỉu · `stx` ⚡ Siêu Tài Xỉu (chỉ SUPER) · `mine` Dò Mìn · `stair` Leo Thang · `bj` Vòng quay · `stock` · `spm` Phi Thuyền · `user` 👥 Người chơi · `pal` 🎮 Palworld & Dogcoin · `log` · `gift` Quà · `give` Kho đồ. SUPER (cổng `PANEL_PORT`) mới có: ép kết quả/mìn/quà hộp/pal, Kho đồ, can thiệp giá cổ phiếu (`epOk` = so `req.socket.localPort`).
 
 Làm được: bật/tắt + ép kết quả từng game · **nhịp ván Tài Xỉu 3 mốc** (đặt / hiện nhân / nặn) + **trần cược 5 nhóm cửa Sic Bo** (`/api/tx/tran`, nằm trong `VIEWONLY_PATHS`) + báo cược · sàn cược · cộng/trừ/set ví · phát tiền toàn server · reset điểm danh · **liên kết tên nhân vật** (`/api/pal/set-name`) · cấu hình shop (món, nhóm, hạn, ảnh) · hũ · vay nợ · công tắc chức năng · kênh cho từng bảng · sổ biến động · **tab 🀄 Tiến Lên (chỉ SUPER)**: mức cược · chế độ · đơn giá lá · 4 công tắc luật · Mở bàn / Giải tán · công tắc hiện tab (5 route `/api/tienlen/*` đều nằm trong `VIEWONLY_PATHS`) · **tab 🃏 Poker (chỉ SUPER)**: công tắc hiện/ẩn tab GIẢI POKER trên web (`/api/poker/on`), ô "Admin poker" (`/api/poker/admin`), chip khởi điểm (`/api/poker/chip`), Bắt đầu (N người) / Giải tán / Tạm nghỉ / Chơi tiếp (`/api/poker/batdau|giaitan|nghi|tiep`) — 7 route này đều nằm trong `VIEWONLY_PATHS` nên cổng thường bị chặn.
 

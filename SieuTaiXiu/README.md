@@ -1,0 +1,108 @@
+# ⚡ SieuTaiXiu — bàn Sic Bo "SIÊU", có phí 20%
+
+Bàn thứ hai, nằm cạnh Tài Xỉu thường trên web. Cùng luật chơi, cùng nhịp 3 mốc, nhưng
+**khác hai chỗ quyết định** và có giao diện tông đen riêng.
+
+- `cua.js` — lõi tiền (52 cửa, bảng trả, phí, giải RTP). Thuần logic.
+- `ban.js` — máy bàn: vòng ván, đặt cược, trả tiền, lịch sử. Không đụng Discord.
+- `kiemtra/` — bộ kiểm, **chạy được mà không cần bot**.
+
+BotDoMin chỉ nối vào, không phình: `index.js` dựng bàn bằng `taoBan(ctx)` rồi
+`setInterval(nhip, 1000)`, giống hệt cách Tiến Lên được nối.
+
+---
+
+## 1. Khác bàn thường ở hai chỗ
+
+**① Tài/Xỉu/Chẵn/Lẻ CŨNG ĐƯỢC NHÂN, tới 14:1.**
+Bàn thường bốn cửa này không bao giờ nhân vì tỉ lệ gốc đã trả 97,2%. Đây chính là chữ
+"siêu". Bốn cửa vẫn **thua sạch khi ra bão**, đúng dòng "* Thua bất kỳ Bộ Ba nào".
+
+**② Phí 20% trên tiền cược.** Đặt 1.000 thì trừ ví 1.200, thắng thì ăn trên 1.000.
+Phí là **nguồn thu duy nhất** của nhà cái.
+
+## 2. Bài toán RTP lật ngược
+
+Vì có phí, bảng trả **cố tình vượt 100%**: nhà cái lỗ trên bàn rồi lấy lại bằng phí,
+đúng kiểu thu hoa hồng bên Baccarat.
+
+```
+người chơi thực nhận = RTP_BÀN / (1 + PHÍ)
+nhà cái ăn           = 1 − RTP_BÀN / (1 + PHÍ)
+```
+
+Chủ server chốt nhà cái ăn **10%** → `RTP_BÀN = 0,90 × 1,20 = 1,08` (108%).
+Đo thật 200.000 ván: nhà cái ăn **9,96%**.
+
+Admin nhập thẳng **"nhà cái ăn bao nhiêu %"** (2–30) chứ không nhập RTP — đó mới là con
+số admin nghĩ trong đầu. Máy tự suy ra `RTP_BÀN` rồi giải lại `q` cho cả 52 cửa.
+
+⚠️ `q` (tần suất ô sáng đèn) **máy tự giải**, đừng bao giờ gõ tay.
+
+## 3. Bảng trả (khớp ảnh "Trả thưởng & Hạn mức")
+
+| Cửa | Gốc | Nhân tối đa | Trần cược |
+|---|---|---|---|
+| Tài/Xỉu · Chẵn/Lẻ | 1:1 | **14:1** | 50.000 |
+| Gấp đôi | 8:1 | 149:1 | 5.000 |
+| Gấp ba | 150:1 | **1.999:1** | 1.000 |
+| Bộ ba bất kỳ | 30:1 | 499:1 | 5.000 |
+| Tổng 4 / 17 | 50:1 | 999:1 | 1.000 |
+| Tổng 5 / 16 | 20:1 | 499:1 | 2.000 |
+| Tổng 6 / 15 | 15:1 | 249:1 | 5.000 |
+| Tổng 7 / 14 | 12:1 | 149:1 | 10.000 |
+| Tổng 8-13 · 9-12 · 10-11 | 8/6/6:1 | 87:1 | 10.000 |
+| Kết hợp 2 viên | 5:1 | 99:1 | 10.000 |
+| Đơn (1 / 2 / 3 mặt) | 1/2/3:1 | 9 / 19 / **87**:1 | 5.000 |
+
+⚠️ **Trần lấy đúng cột "Giới hạn đặt cược" trong ảnh.** Đừng bê trần của bàn thường
+sang: bàn này trả cao gấp mấy lần nên cùng trần là phơi nhiễm gấp mấy lần. Ô nặng nhất
+là Bộ ba bất kỳ (5.000 × 499 = 2,5 triệu).
+
+## 4. Luật TIỀN KHÔNG ĐƯỢC MẤT
+
+Chép đúng bài học đau của bàn thường. Cược là tiền **đã trừ khỏi ví**, nên:
+
+- Mọi chỗ xoá `S.bets` đều qua **`donSoCuoc()`**: ván đã quay thì trả nốt theo bảng,
+  ván chưa quay thì **hoàn nguyên cược KÈM PHÍ**.
+- **Không bao giờ** dựng lại bảng trả tiền khi không thấy bảng cũ (cờ `paid` rỗng = trả
+  hai lần cho cả bàn).
+- Cờ `paid` ghi xuống đĩa **ngay**, không để trong RAM.
+- Bot bật lại giữa ván: hoàn theo `_stxBets` **nhưng bỏ qua ai đã có phần trong
+  `_stxPlan`** — không vừa hoàn vừa trả.
+- Admin tắt bàn / lỡ mốc chốt / lỗi vòng ván: đều hoàn cược đủ cả phí.
+
+**Phí có hoàn không?** Xoá cược hoặc bàn bị tắt thì **hoàn đủ cả phí**, vì ván chưa diễn
+ra. Chỉ khi ván đã quay thì phí mới coi như đã thu.
+
+## 5. Giao diện
+
+- Tông **ĐEN** hẳn để nhìn phát biết mình đang ở bàn nào (bàn thường đỏ/kem).
+- **Phí 20% hiện ở 3 chỗ**: dải đỏ trên bàn, dòng ngay dưới hàng mệnh giá (ghi luôn số
+  tiền thật sẽ bị trừ), và trong lời báo sau khi đặt.
+- Ô được bốc hệ số nhân thì **giật như có sét** (`@keyframes stSet`), không chỉ nhấp nháy.
+- Còn lại y bàn thường: bấm ô là đặt, đồng Dogcoin trên ô, nút MAX CƯỢC, 3 nút thao tác
+  nhanh, nặn chén, 4 giây cuối tự mở, ô trúng sáng / ô trượt chìm.
+
+Mọi id trên trang bắt đầu bằng `st` để không đụng bàn thường (`sb`).
+
+## 6. Admin
+
+Panel SUPER, tab **⚡ Siêu Tài Xỉu**: bật/tắt bàn · 3 mốc giờ · trần từng nhóm · trần
+mỗi người mỗi ván · **nhà cái ăn %** · thang hệ số nhân · ép kết quả.
+Mọi route `/api/stx/*` nằm trong `VIEWONLY_PATHS` (cổng thường không chỉnh được).
+
+Tab trên web chỉ hiện khi admin **bật bàn**.
+
+## 7. Bộ kiểm
+
+```
+node SieuTaiXiu/kiemtra/cua-test.js   # lõi tiền: bảng trả, phí, RTP, trần (34 phép)
+node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/trọn ván/cứu tiền (45 phép)
+```
+
+Cả hai **không cần bot**. `ban-test` ép mốc giờ nên chạy trọn một ván trong tích tắc.
+
+⚠️ Vòng ván xét **chốt trước, quay sau**. Muốn ép tới mốc quay thì `targetTime` phải còn
+ở phía trước ít nhất 1 giây — đặt bằng `now` là rơi thẳng vào nhánh chốt, ván chưa kịp
+quay. Bộ kiểm từng dính đúng bẫy này.

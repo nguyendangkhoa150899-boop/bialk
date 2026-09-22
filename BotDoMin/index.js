@@ -4262,6 +4262,24 @@ const tienlenMod = require(require('path').join(TIENLEN_DIR, 'web.js')).taoSanh(
     ghiLog: (dong) => writeLog('ADMIN', dong),
 });
 setInterval(() => tienlenMod.nhip(), 1000);
+
+// ⚡ SIÊU TÀI XỈU — bàn thứ hai, cùng luật chơi nhưng CÓ PHÍ 20% và trả thưởng khủng
+// (Tài/Xỉu/Chẵn/Lẻ cũng được nhân, tới 14:1). Mô-đun SieuTaiXiu/ban.js tự lo vòng
+// ván + tiền; ở đây chỉ đưa cho nó ví, log và chỗ lưu. SIEUTX_DIR để bản test (chỉ
+// chép mấy file BotDoMin) vẫn trỏ về được thư mục thật trong repo.
+const SIEUTX_DIR = process.env.SIEUTX_DIR || require('path').join(__dirname, '..', 'SieuTaiXiu');
+const stxBan = require(require('path').join(SIEUTX_DIR, 'ban.js')).taoBan({
+    db: () => dbCache,
+    layNguoi: (id) => getUserData(id),
+    // 👇 CỬA DUY NHẤT đụng ví ở Siêu Tài Xỉu. Ghi sổ biến động để còn đối chiếu.
+    congVi: (id, tien, lyDo) => {
+        updatePoints(id, tien);
+        logDog('sieutx', id, getUserData(id).name || id, tien, lyDo || 'Siêu Tài Xỉu');
+    },
+    ghiLog: (dong) => writeLog(/LỖI|MẤT|DỌN SỔ/.test(dong) ? 'SYSTEM' : 'ADMIN', dong),
+    luuDb: () => saveDbNow(),
+});
+setInterval(() => stxBan.nhip(), 1000);
 // Gửi thử 1 tin để chủ server biết ID có đúng không (nút "Gửi thử" ở panel).
 async function txNotiTest() {
     const c = txNotiCfg();
@@ -6790,6 +6808,8 @@ client.once('ready', async (c) => {
     cleanupGoneGames();   // 🧹 17/09: hoàn cược + xoá khoá db của Bầu Cua / Blackjack / Xổ Số
     // 💸 hoàn tiền cược ván dở (Big Small / Dò Mìn / Leo Thang) của phiên trước
     refundBootPendingBets();
+    // ⚡ Siêu Tài Xỉu: hoàn cược ván dở + trả nốt bảng tiền còn treo, rồi mở ván mới.
+    try { stxBan.khoiDong(); } catch (e) { writeLog('SYSTEM', `[SIÊU TX] Không khởi động được: ${e.message}`); }
     // 🎲 27/08: TỰ KHỞI ĐỘNG Big Small ở kênh đã lưu (_txChannelId) - khỏi cần admin
     // bấm mở bảng lại mỗi lần restart. Chưa từng mở (không có kênh lưu) thì bỏ qua.
     (async () => {
@@ -7077,6 +7097,8 @@ client.once('ready', async (c) => {
             //   · txKqS — số dự phòng 4 trùng TX_KQ_S nên chưa ai thấy, nhưng admin đổi
             //     hằng đó là trang sai ngay.
             txKqS: () => TX_KQ_S,
+            // ⚡ SIÊU TÀI XỈU — bàn thứ hai
+            stx: stxBan,
             txCuaThang: (xx) => TX_CUA.cuaThang(xx),
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
@@ -7088,6 +7110,9 @@ client.once('ready', async (c) => {
             publicPort: parseInt(process.env.PANEL_PUBLIC_PORT) || 1234,
             // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.
             // Muốn bật lại thì đặt PANEL_PASSWORD=<mật khẩu> trong .env.
+            // ⚡ SIÊU TÀI XỈU — panel.js là MODULE KHÁC, phải đưa qua ĐÚNG ctx này.
+            // Gắn vào ctx của startWebPlay thì web chạy nhưng panel báo 'Bot chưa hỗ trợ'.
+            stx: stxBan,
             password: process.env.PANEL_PASSWORD || '',
             // 10/09: mật khẩu RIÊNG cổng SUPER (đặt trong .env, KHÔNG hardcode vào repo)
             superPassword: process.env.PANEL_SUPER_PASSWORD || '',

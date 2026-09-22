@@ -301,6 +301,7 @@ function startWebPlay(ctx) {
                         txTran: ctx.txTran ? ctx.txTran() : null,
                         txNhan: (tx.nhan && tx.nhan.gameId === tx.gameId && tx.status !== 'betting') ? tx.nhan.o : null,
                         tienlenOn: ctx.tienlenOn ? !!ctx.tienlenOn() : false,   // 🀄 tab Tiến Lên hiện/ẩn
+                        stxOn: (ctx.stx && ctx.stx.adminXem) ? !!ctx.stx.adminXem().on : false,  // ⚡ tab Siêu Tài Xỉu
                         txPot: ctx.txPot ? ctx.txPot() : 0,
                         txPotX: (typeof ctx.txPotX === 'function' ? ctx.txPotX() : ctx.txPotX) || 10,
                         txBaoRate: ctx.txBaoRate || 30,
@@ -335,6 +336,29 @@ function startWebPlay(ctx) {
                     if (!ctx.txReveal) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     return sendJSON(res, 200, ctx.txReveal(userId));
                 }
+                // ⚡ SIÊU TÀI XỈU — bàn thứ hai. Toàn bộ luật + tiền nằm ở
+                // SieuTaiXiu/ban.js, đây chỉ chuyển tiếp và trả lỗi nguyên văn.
+                if (path.indexOf('/api/stx/') === 0) {
+                    const B = ctx.stx;
+                    if (!B) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ Siêu Tài Xỉu' });
+                    const me3 = ctx.getUserData(userId);
+                    const ten = me3.name || ('web_' + userId.slice(-4));
+                    if (path === '/api/stx/state') return sendJSON(res, 200, { ok: true, ...B.trangThai(userId) });
+                    if (req.method !== 'POST') return sendJSON(res, 405, { ok: false, error: 'Sai cách gọi' });
+                    let r = null;
+                    if (path === '/api/stx/bet') {
+                        const body = await readBody(req);
+                        r = B.dat(userId, ten, body.gio);
+                    }
+                    else if (path === '/api/stx/x2') r = B.nhanDoi(userId, ten);
+                    else if (path === '/api/stx/datlai') r = B.datLai(userId, ten);
+                    else if (path === '/api/stx/xoacuoc') r = B.xoaCuoc(userId);
+                    else if (path === '/api/stx/reveal') r = B.nanXong(userId);
+                    else return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
+                    if (r && r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+
                 if (req.method === 'POST' && path === '/api/chat') {
                     const body = await readBody(req);
                     const text = String(body.text || '').trim().slice(0, 200);
@@ -1451,6 +1475,48 @@ const PAGE = [
     '#sbBan{background:#4a1418;border:2px solid #7d2a2a;border-radius:12px;padding:7px;margin-bottom:10px;',
     'display:flex;flex-direction:column;gap:4px}',
     '.sbHang{display:flex;gap:4px}',
+    // ================= ⚡ BÀN SIÊU TÀI XỈU — tông ĐEN =================
+    // Theo ảnh chủ server gửi: nền gần như đen, ô đen viền vàng đồng, chữ trắng ngà.
+    // Cố tình KHÁC HẲN bàn thường (đỏ/kem) để nhìn phát biết mình đang ở bàn nào.
+    '.stCard{background:linear-gradient(180deg,#0d0d10,#141216);border-color:#3a2f1a}',
+    '#stBan{background:linear-gradient(180deg,#151317,#0b0b0d);border:1px solid #4a3a1c;border-radius:12px;',
+    'padding:7px 6px;box-shadow:inset 0 0 40px rgba(0,0,0,.8)}',
+    '.stKhu{background:linear-gradient(90deg,#3a2f14,#5a4720,#3a2f14);color:#ffe9a8;font-size:10.5px;font-weight:800;',
+    'text-align:center;border-radius:6px;padding:3px 0;margin:6px 0 4px;letter-spacing:.3px}',
+    '.stO{flex:1;min-width:0;position:relative;background:linear-gradient(180deg,#1c1a20,#0e0d11);color:#f2ead8;',
+    'border:1px solid #5a4720;border-radius:6px;padding:7px 2px;cursor:pointer;display:flex;flex-direction:column;',
+    'align-items:center;justify-content:center;gap:2px;min-height:44px;transition:transform .08s}',
+    '.stO:active{transform:scale(.95)}',
+    '.stO .sbTen{color:#f7f0dd}.stO .sbTl{color:#b99a55}',
+    '.stO.sbDeu{min-height:56px;background:linear-gradient(180deg,#241f16,#121016)}',
+    '.stO.sbTai .sbTen{color:#ff8a7a}.stO.sbXiu .sbTen{color:#8ab8ff}',
+    '.stO.sbKhoa{opacity:.94;cursor:not-allowed}',
+    // ⚡ Ô được bốc hệ số nhân: GIẬT NHƯ CÓ SÉT (chủ server chốt), không chỉ nhấp nháy.
+    '@keyframes stSet{0%,100%{box-shadow:0 0 0 2px #ffd76a,0 0 12px rgba(255,215,106,.7);filter:none;transform:none}',
+    '46%{box-shadow:0 0 0 3px #fff6d0,0 0 26px rgba(255,246,208,1);filter:brightness(1.9) saturate(1.3);transform:translate(-1px,1px)}',
+    '52%{box-shadow:0 0 0 2px #ffd76a,0 0 10px rgba(255,215,106,.8);filter:brightness(1);transform:translate(1px,-1px)}',
+    '58%{box-shadow:0 0 0 4px #fff,0 0 30px #fff;filter:brightness(2.2);transform:translate(-1px,0)}}',
+    '.stO.sbNhan{background:linear-gradient(180deg,#4a3a12,#241b06);border-color:#ffcf5c;',
+    'animation:stSet 1.5s ease-in-out infinite}',
+    '.stO .sbX{position:absolute;top:-7px;left:-3px;background:linear-gradient(180deg,#ffe9a8,#e8b923);color:#2a1f05;',
+    'font-size:10.5px;font-weight:900;border-radius:999px;padding:1px 6px;z-index:3;',
+    'box-shadow:0 2px 10px rgba(255,207,92,.8)}',
+    // kết quả: ô trúng sáng, ô trượt chìm — khai SAU .sbNhan để thắng nó
+    '@keyframes stTrungNhay{0%,100%{box-shadow:0 0 0 2px #ffd76a,0 0 14px rgba(255,215,106,.85)}',
+    '50%{box-shadow:0 0 0 5px #ffd76a,0 0 32px rgba(255,215,106,1)}}',
+    '.stO.sbTruot,.stO.sbTruot.sbKhoa,.stO.sbTruot.sbNhan{background:#17161a;border-color:#2e2a22;',
+    'opacity:1;animation:none;box-shadow:none}',
+    '.stO.sbTruot .sbTen,.stO.sbTruot .sbTl{color:#5c5850}',
+    '.stO.sbTrung,.stO.sbTrung.sbKhoa,.stO.sbTrung.sbNhan{background:linear-gradient(180deg,#fff8e4,#f3e3b6);',
+    'border-color:#ffd76a;color:#2a1f05;opacity:1;animation:stTrungNhay 1s ease-in-out infinite;z-index:4}',
+    '.stO.sbTrung .sbTen,.stO.sbTrung .sbTl{color:#2a1f05}',
+    // xúc xắc trên bàn đen: viền sáng hơn cho nổi
+    '.stO .sbXx{border-color:#c0562f}',
+    // 💸 dải phí — đỏ, to, không ai bỏ sót
+    '.stPhi{background:linear-gradient(90deg,#4a1218,#7a1d27,#4a1218);border:1px solid #c0394b;color:#ffd9de;',
+    'border-radius:9px;padding:8px 10px;margin:8px 0;font-size:12.5px;text-align:center;line-height:1.55}',
+    '.stPhi b{color:#fff}',
+    '.stPhiNho{margin-top:6px;font-size:12px;text-align:center;color:#ffb3c0}',
     // 3 nút thao tác nhanh dưới hàng mệnh giá
     '.sbNut{display:flex;gap:6px;margin-top:8px}',
     '.sbNut button{flex:1;min-width:0;padding:9px 4px;border-radius:9px;font-size:12.5px;font-weight:800;',
@@ -1741,6 +1807,7 @@ const PAGE = [
     '</div>',
     '<div id="nav">',
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
+    '<button id="navStx" class="hidden" onclick="go(\'stx\')">⚡ Siêu Tài Xỉu</button>',
     '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
     '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
@@ -1792,6 +1859,41 @@ const PAGE = [
     '<div class="card"><h2>👥 Ai đang đặt ván này</h2><div id="whoBox" class="muted" style="font-size:13px">Chưa ai đặt.</div></div>',
 
     '</div>', // hết #pageTx
+
+    // ================= ⚡ TRANG SIÊU TÀI XỈU =================
+    // Cùng luật chơi với bàn thường nhưng CÓ PHÍ 20% và trả thưởng khủng hơn nhiều.
+    // Mọi id ở đây bắt đầu bằng "st" để không đụng bàn thường.
+    '<div id="pageStx" class="hidden">',
+    '<div class="card stCard">',
+    '<div class="row"><h2 id="stRound" style="margin:0">Ván #-</h2><div id="stClock" class="big">--</div></div>',
+    '<div id="stStt" class="muted"></div>',
+    // 💸 Dải PHÍ — chỗ đập vào mắt nhất, ngay trên sân khấu
+    '<div class="stPhi">💸 Bàn này có <b>PHÍ 20%</b> · đặt <b>1.000</b> thì trừ ví <b>1.200</b> · đổi lại <b>Tài/Xỉu/Chẵn/Lẻ cũng được nhân tới 14:1</b></div>',
+    '<div id="stStage">',
+    '<div id="stDiceRow"></div>',
+    '<div id="stSumBadge" class="hidden"></div>',
+    '<div id="stPaper" class="hidden locked"><img src="/chennantaixiu.png" alt="" draggable="false"></div>',
+    '</div>',
+    '<div id="stStageCap"></div>',
+    '</div>',
+
+    '<div class="card stCard" id="stBetCard">',
+    '<div id="stBan"></div>',
+    '<div id="stChips" class="chips"></div>',
+    '<div class="stPhiNho" id="stPhiNho"></div>',
+    '<div id="stNut" class="sbNut">',
+    '<button type="button" id="stBtnLai" onclick="stDatLai()">🔁 Đặt lại</button>',
+    '<button type="button" id="stBtnX2" onclick="stX2()">✖️2 Gấp đôi</button>',
+    '<button type="button" id="stBtnXoa" class="xoa" onclick="stXoaCuoc()">🗑️ Xoá cược</button>',
+    '</div>',
+    '<div id="stBao" class="sbBao hidden"></div>',
+    '<div class="muted" id="stNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn</div>',
+    '<div class="mine" id="stMine"></div>',
+    '</div>',
+
+    '<div class="card stCard"><h2>🔮 Lịch sử 20 ván gần nhất</h2>',
+    '<div id="stHist" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
+    '</div>', // hết #pageStx
 
     // ================= TRANG DÒ MÌN =================
     '<div id="pageMine" class="hidden">',
@@ -2538,6 +2640,8 @@ const PAGE = [
     '$("ngPoker").style.display=j.pokerOn?"":"none";',
     '$("ngTienlen").style.display=j.tienlenOn?"":"none";',
     'if(!j.pokerOn&&PAGE_GRP[CURPAGE]==="poker")grpGo("games");',
+    'var nst=$("navStx");if(nst){nst.classList.toggle("hidden",!j.stxOn);',
+    'if(!j.stxOn&&CURPAGE==="stx")go("tx")}',
     // 🧰 17/09: nhãn số trên nút Rương Ích Kỷ. THIẾU dòng này thì F5 xong nút hiện 0 cho tới khi
     // bấm mở rương mới đúng - máy chủ vẫn gửi ichKyTotal đều, chỉ là không ai đọc. Đã dính thật.
     'if(typeof j.ichKyTotal==="number")ikBadge(j.ichKyTotal);',
@@ -2858,11 +2962,231 @@ const PAGE = [
     'var co=nh&&nh[c.id];e.classList.toggle("sbNhan",!!co);',
     'if(co){var d=document.createElement("span");d.className="sbX";d.textContent="x"+co;e.appendChild(d)}})}',
     // (không còn giỏ cược — bấm ô là gửi thẳng, xem sbChon bên trên)
-    'var PAGE_GRP={tx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    // ================= ⚡ BÀN SIÊU TÀI XỈU (phía người chơi) =================
+    // Bàn riêng, nhịp riêng, đường gọi riêng /api/stx/*. Chỉ hỏi máy chủ khi đang
+    // ĐỨNG Ở TAB NÀY, khỏi tốn băng thông cho người không chơi.
+    'var STCUA=[],STTRAN={},STNAMES={},STCHIP=0,STMENH=[1000,10000,20000,50000,100000,"max"];',
+    'var STPHASE="off",STTT=0,STKHOA=24,STKQ=4,STPHI=0.2,STSAN=1000,STMAX=0,STTONG={},STVEROI=false;',
+    'var STNAN=null,STDANGGUI=false,STKQVAN=0,STDANAN=0,STCOVT=false,STPHITOI=0;',
+
+    // ---- dựng bàn (cùng bố cục bàn thường, chỉ khác lớp CSS) ----
+    'function stVe(){var b=$("stBan");if(!b)return;',
+    'var g=function(id){return STCUA.filter(function(c){return c.id===id})[0]};',
+    'var o=function(c,them,ruot){if(!c)return "";',
+    'var tl=c.goc+":1";',
+    'var trong=ruot!==undefined?ruot:(\'<span class="sbTen">\'+c.ten+\'</span><span class="sbTl">\'+tl+\'</span>\');',
+    'return \'<button type="button" class="stO \'+(them||"")+\'" id="st_\'+c.id+\'" onclick="stChon(&quot;\'+c.id+\'&quot;)">\'+trong+"</button>"};',
+    'var khu=function(t){return \'<div class="stKhu">\'+t+"</div>"};',
+    'var h="";',
+    'h+=khu("1:1 tới 14:1 · THUA NẾU RA BÃO — riêng BỘ BA BẤT KỲ 30:1");',
+    'h+=\'<div class="sbHang">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("baoany"),"sbDeu sbBaoAny")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";',
+    'h+=khu("8:1 · MỖI ĐÔI");',
+    'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("doi"+n),"",sbBoXx([n,n]))}).join("")+"</div>";',
+    'h+=khu("150:1 · MỖI BỘ BA");',
+    'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("bao"+n),"",sbBoXx([n,n,n]))}).join("")+"</div>";',
+    'h+=khu("TỔNG ĐIỂM 3 VIÊN");',
+    'var oTong=function(n){var c=g("tong"+n);if(!c)return "";',
+    'return o(c,"sbTong",\'<span class="sbTen">\'+n+\'</span><span class="sbTl">\'+c.goc+\':1</span>\')};',
+    'h+=\'<div class="sbHang">\'+[4,5,6,7,8,9,10].map(oTong).join("")+"</div>";',
+    'h+=\'<div class="sbHang">\'+[11,12,13,14,15,16,17].map(oTong).join("")+"</div>";',
+    'h+=khu("5:1 · KẾT HỢP 2 VIÊN");',
+    'var cap=STCUA.filter(function(c){return c.id.indexOf("cap")===0});',
+    'var oCap=function(c){var a=+c.id[3],d=+c.id[4];return o(c,"",sbBoXx([a,d]))};',
+    'h+=\'<div class="sbHang">\'+cap.slice(0,8).map(oCap).join("")+"</div>";',
+    'h+=\'<div class="sbHang">\'+cap.slice(8).map(oCap).join("")+"</div>";',
+    'h+=khu("ĐƠN · 1 viên 1:1 · 2 viên 2:1 · 3 viên 3:1");',
+    'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("don"+n),"",sbBoXx([n]))}).join("")+"</div>";',
+    'b.innerHTML=h}',
+
+    // ---- hàng mệnh giá (có MAX như bàn thường) ----
+    'function stVeChip(){var e=$("stChips");if(!e)return;',
+    'if(!STCHIP)STCHIP=STMENH[0];',
+    'e.innerHTML=STMENH.map(function(v){var mx=(v==="max");',
+    'var nhan=mx?(\'<img class="dc" src="/dogcoin.png" alt=""> MAX CƯỢC\'):(\'<img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v));',
+    'return \'<button class="chip\'+(mx?" chipMax":"")+(v===STCHIP?" on":"")+\'" onclick="stDatChip(\'+(mx?\'&quot;max&quot;\':v)+\')">\'+nhan+"</button>"}).join("");',
+    // 💸 nhắc phí NGAY DƯỚI hàng mệnh giá, kèm số tiền thật sẽ bị trừ
+    'var p=$("stPhiNho");if(p){var m=(STCHIP==="max")?null:STCHIP;',
+    'p.innerHTML=m?("💸 Bấm 1 ô là trừ <b>"+vnd(Math.floor(m*(1+STPHI)))+"</b> (cược "+vnd(m)+" + phí "+vnd(Math.floor(m*STPHI))+")")',
+    ':("💸 MAX CƯỢC: đổ hết mức cho phép, ví bị trừ thêm <b>"+Math.round(STPHI*100)+"% phí</b>")}}',
+    'function stDatChip(v){STCHIP=v;stVeChip()}',
+    'function stTranCua(id){var c=STCUA.filter(function(x){return x.id===id})[0];return c&&STTRAN[c.nhom]?STTRAN[c.nhom]:0}',
+    // MAX: chặn bởi VÍ (đã tính phí) + trần ô + trần tổng ván
+    'function stTienMax(id){var con=Math.floor(BAL/(1+STPHI));',
+    'var tran=stTranCua(id),daCo=STTONG["_toi_"+id]||0;',
+    'if(tran>0)con=Math.min(con,Math.max(0,tran-daCo));',
+    'if(STMAX>0){var t=0;for(var k in STTONG){if(k.indexOf("_toi_")===0)t+=STTONG[k]||0}',
+    'con=Math.min(con,Math.max(0,STMAX-t))}',
+    'return Math.floor(con)}',
+
+    // ---- bấm ô là đặt ----
+    'function stChon(id){if(STPHASE!=="bet")return stBao(STPHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!",true);',
+    'if(!LINKED)return stBao("Ví chưa được liên kết - nhắn admin",true);',
+    'if(STDANGGUI)return;',
+    'var tien;',
+    'if(STCHIP==="max"){tien=stTienMax(id);',
+    'if(tien<STSAN)return stBao(tien<=0?"Ví hết Dogcoin rồi":("Còn quá ít - mỗi ô tối thiểu "+vnd(STSAN)),true)}',
+    'else{tien=STCHIP;',
+    'var can=Math.floor(tien*(1+STPHI));',
+    'if(can>BAL)return stBao("Không đủ Dogcoin - cần "+vnd(can)+" (đã gồm phí), ví còn "+vnd(BAL),true);',
+    'var tran=stTranCua(id),daCo=STTONG["_toi_"+id]||0;',
+    'if(tran>0&&daCo+tien>tran)return stBao("Cửa "+(STNAMES[id]||id)+" tối đa "+vnd(tran)+"/ván",true)}',
+    'STDANGGUI=true;sbChipBay2(id,tien);',
+    'api("/api/stx/bet",{gio:[{choice:id,amount:tien}]}).then(function(j){STDANGGUI=false;',
+    'BAL=j.balance;$("bal").textContent=vnd(j.balance);',
+    'stBao("💸 Đặt "+vnd(j.tong)+" + phí "+vnd(j.phi)+" = trừ "+vnd(j.truVi),false);stLoad()})',
+    '.catch(function(e){STDANGGUI=false;stBao(String(e.message||e),true)})}',
+    // đồng xu bay — dùng lại hiệu ứng của bàn thường, chỉ đổi ô đích
+    'function sbChipBay2(id,tien){var o=$("st_"+id),hang=$("stChips");if(!o||!hang)return;',
+    'var d=o.getBoundingClientRect(),n=hang.getBoundingClientRect();',
+    'var b=document.createElement("div");b.className="sbBay";',
+    'b.innerHTML=\'<img src="/dogcoin.png" alt=""><b>\'+chipNgan(tien)+"</b>";',
+    'b.style.left=(n.left+n.width/2)+"px";b.style.top=(n.top+n.height/2)+"px";',
+    'document.body.appendChild(b);void b.offsetWidth;',
+    'b.style.transform="translate(-50%,-50%) translate("+((d.left+d.width/2)-(n.left+n.width/2))+"px,"+((d.top+d.height/2)-(n.top+n.height/2))+"px) scale(.8)";',
+    'b.style.opacity="0";setTimeout(function(){b.remove()},520)}',
+
+    // ---- dòng báo đứng yên + 3 nút ----
+    'function stBao(chu,loi){var e=$("stBao");if(!e)return;',
+    'if(!chu){e.classList.add("hidden");e.textContent="";return}',
+    'e.textContent=chu;e.classList.remove("hidden","loi","oke");e.classList.add(loi?"loi":"oke")}',
+    'var STNUTBAN=false;',
+    'function stNutGoi(duong,chuXong){',
+    'if(STPHASE!=="bet")return stBao("Hết giờ đặt rồi - chờ ván sau nhé",true);',
+    'if(!LINKED)return stBao("Ví chưa được liên kết - nhắn admin",true);',
+    'if(STNUTBAN)return;STNUTBAN=true;stNutVe();',
+    'api(duong,{}).then(function(j){STNUTBAN=false;BAL=j.balance;$("bal").textContent=vnd(j.balance);',
+    'stBao(chuXong(j),false);stLoad()})',
+    '.catch(function(e){STNUTBAN=false;stBao(String(e.message||e),true);stNutVe()})}',
+    'function stDatLai(){stNutGoi("/api/stx/datlai",function(j){return "🔁 Xếp lại giỏ ván trước: "+vnd(j.tong)+" + phí "+vnd(j.phi)})}',
+    'function stX2(){stNutGoi("/api/stx/x2",function(j){return "✖️2 Đặt thêm "+vnd(j.tong)+" + phí "+vnd(j.phi)})}',
+    'function stXoaCuoc(){stNutGoi("/api/stx/xoacuoc",function(j){return "🗑️ Đã xoá cược, hoàn "+vnd(j.hoan)+" (gồm cả phí)"})}',
+    'function stNutVe(){var coCuoc=false;',
+    'for(var k in STTONG){if(k.indexOf("_toi_")===0&&STTONG[k]>0){coCuoc=true;break}}',
+    'var mo=(STPHASE==="bet")&&!STNUTBAN;',
+    'var b1=$("stBtnLai"),b2=$("stBtnX2"),b3=$("stBtnXoa");',
+    'if(b1)b1.disabled=!(mo&&STCOVT&&!coCuoc);',
+    'if(b2)b2.disabled=!(mo&&coCuoc);',
+    'if(b3)b3.disabled=!(mo&&coCuoc)}',
+
+    // ---- chip tiền trên ô + hệ số nhân + tô kết quả ----
+    'function stVeGio(){STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',
+    'var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
+    'var cu2=e.querySelector(".sbBan2");if(cu2)cu2.remove();',
+    'var toi=STTONG["_toi_"+c.id]||0;',
+    'if(toi){var d=document.createElement("span");d.className="sbGio"+(toi>=CHIP_DEN?" sbGioDen":"");',
+    'var im=document.createElement("img");im.src="/dogcoin.png";im.alt="";',
+    'var sn=document.createElement("b");sn.textContent=chipNgan(toi);',
+    'd.appendChild(im);d.appendChild(sn);d.title=vnd(toi)+" Dogcoin";e.appendChild(d)}',
+    'if(STTONG[c.id]){var d2=document.createElement("span");d2.className="sbBan2";d2.textContent="bàn "+vnd(STTONG[c.id]);e.appendChild(d2)}',
+    'e.classList.toggle("sbKhoa",STPHASE!=="bet")})}',
+    'function stNhanVe(nh){STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',
+    'var cu=e.querySelector(".sbX");if(cu)cu.remove();',
+    'var co=nh&&nh[c.id];e.classList.toggle("sbNhan",!!co);',
+    'if(co){var d=document.createElement("span");d.className="sbX";d.textContent="x"+co;e.appendChild(d)}})}',
+    'function stToKetQua(nan){if(!nan||!nan.thang||STKQVAN===nan.gameId)return;STKQVAN=nan.gameId;',
+    'var an={};nan.thang.forEach(function(k){an[k]=1});',
+    'STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',
+    'e.classList.toggle("sbTrung",!!an[c.id]);e.classList.toggle("sbTruot",!an[c.id])})}',
+    'function stXoaKetQua(){if(!STKQVAN)return;STKQVAN=0;',
+    'STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;e.classList.remove("sbTrung","sbTruot")})}',
+
+    // ---- nặn chén (dùng lại cơ chế kéo của bàn thường, id riêng) ----
+    'var stDrag=false,stX=0,stY=0,stBX=0,stBY=0,stX0=0,stY0=0;',
+    'function stInitPaper(){var p=$("stPaper");if(!p)return;',
+    'p.addEventListener("pointerdown",function(e){if(STPHASE!=="nan"||!STNAN||STDANAN===STNAN.gameId)return;',
+    'stDrag=true;stX0=e.clientX;stY0=e.clientY;stBX=stX;stBY=stY;p.setPointerCapture(e.pointerId);e.preventDefault()});',
+    'p.addEventListener("pointermove",function(e){if(!stDrag)return;var st=$("stStage");',
+    'var mw=st.offsetWidth+30,mh=st.offsetHeight+30;',
+    'stX=Math.max(-mw,Math.min(mw,stBX+(e.clientX-stX0)));stY=Math.max(-mh,Math.min(mh,stBY+(e.clientY-stY0)));',
+    'p.style.transform="translate("+stX+"px,"+stY+"px)";stCheck()});',
+    'function up(){stDrag=false}p.addEventListener("pointerup",up);p.addEventListener("pointercancel",up)}',
+    'function stCheck(){if(!STNAN||STDANAN===STNAN.gameId)return;',
+    'var pr=$("stPaper").getBoundingClientRect(),dies=document.querySelectorAll("#stDiceRow .die");',
+    'if(dies.length<3)return;',
+    'for(var i=0;i<dies.length;i++){if(rectOverlap(pr,dies[i].getBoundingClientRect()))return}stNanXong()}',
+    'function stNanXong(){if(!STNAN||STDANAN===STNAN.gameId)return;STDANAN=STNAN.gameId;',
+    'var p=$("stPaper");p.classList.add("hidden");stShowDice(STNAN.dice,true);stToKetQua(STNAN);',
+    'api("/api/stx/reveal",{}).then(function(j){',
+    'if(typeof j.balance==="number"){BAL=j.balance;$("bal").textContent=vnd(j.balance)}',
+    'if(j.stake>0)showNet(j.net)}).catch(function(){})}',
+    'function stShowDice(dice,co){$("stDiceRow").innerHTML=dice.map(dieHTML).join("");',
+    'var b=$("stSumBadge");if(co){var s2=dice[0]+dice[1]+dice[2];',
+    'b.innerHTML="Tổng "+s2+" - <span class=\'"+(s2>=11?"t":"x")+"\'>"+(s2>=11?"TÀI":"XỈU")+"</span> · <span class=\'"+(s2%2===0?"ce":"od")+"\'>"+(s2%2===0?"CHẴN":"LẺ")+"</span>";',
+    'b.classList.remove("hidden")}else b.classList.add("hidden")}',
+    'function stResetPaper(){stX=0;stY=0;stDrag=false;var p=$("stPaper");p.style.transition="";p.style.transform="translate(0,0)"}',
+    'var stTuMo=0;',
+    'function stAutoMo(){if(!STNAN||stTuMo===STNAN.gameId)return;stTuMo=STNAN.gameId;',
+    'var p=$("stPaper"),h=$("stStage").offsetHeight;',
+    'p.style.transition="transform .6s ease-in";p.style.transform="translate("+stX+"px,"+(h+60)+"px)";',
+    'setTimeout(function(){stNanXong()},600)}',
+
+    // ---- nhịp: chỉ hỏi máy chủ khi đang ở tab này ----
+    'function stLoad(){if(CURPAGE!=="stx")return;',
+    'api("/api/stx/state").then(stVeTrang).catch(function(){})}',
+    'function stVeTrang(j){',
+    'STCUA=j.cua||[];STTRAN=j.tran||{};STMAX=j.maxBet||0;STPHI=j.phi||0.2;STSAN=j.sanCuoc||1000;',
+    'STKHOA=j.khoaSoS||24;STKQ=j.kqS||4;STCOVT=!!j.coVanTruoc;STPHITOI=j.phiToi||0;',
+    'STCUA.forEach(function(c){STNAMES[c.id]=c.ten});',
+    'if(!STVEROI&&STCUA.length){stVe();stVeChip();stInitPaper();STVEROI=true}',
+    'var truoc=STPHASE;STPHASE=j.phase;STTT=j.targetTime;STNAN=j.nan;',
+    'STTONG={};for(var k in (j.totals||{}))STTONG[k]=j.totals[k];',
+    '(j.myBets||[]).forEach(function(b){STTONG["_toi_"+b.choice]=b.amount});',
+    'stVeGio();stNhanVe(j.nhan);',
+    'if(j.nan&&STDANAN===j.nan.gameId)stToKetQua(j.nan);',
+    'if(STPHASE==="bet")stXoaKetQua();',
+    'if(truoc!=="bet"&&STPHASE==="bet"){stBao("",false);stResetPaper();stTuMo=0}',
+    '$("stRound").textContent="Ván #"+String(j.gameId).padStart(5,"0");',
+    'var stt=$("stStt"),cap=$("stStageCap"),paper=$("stPaper");',
+    'if(STPHASE==="bet"){stt.textContent="🟢 Đang nhận cược";',
+    'stResetPaper();paper.classList.remove("hidden","open");paper.classList.add("locked");',
+    'var h0=(j.history||[])[0];cap.textContent=h0?("Ván trước #"+String(h0.gameId).padStart(5,"0")+": "+h0.dice.join("-")+" = "+h0.sum+" ("+h0.tx+")"):"Đặt cược đi!";',
+    'if(h0)stShowDice(h0.dice,false);else $("stDiceRow").innerHTML="";$("stSumBadge").classList.add("hidden")}',
+    'else if(STPHASE==="nhan"){stt.textContent="⚡ KHÓA SỔ - đang quay hệ số nhân!";',
+    'cap.textContent="Xúc xắc CHƯA lắc - hết mấy giây này mới tới lượt nặn chén.";',
+    'stResetPaper();paper.classList.remove("hidden","open");paper.classList.add("locked")}',
+    'else if(STPHASE==="nan"&&STNAN){stt.textContent="🀫 Khóa sổ - GIỜ NẶN ĐÂY!";',
+    'if(STDANAN===STNAN.gameId){paper.classList.add("hidden");stShowDice(STNAN.dice,true);cap.textContent="Bạn nặn xong rồi - tiền đã về ví"}',
+    'else{stShowDice(STNAN.dice,false);paper.classList.remove("hidden","locked");paper.classList.add("open");',
+    'cap.textContent="Giữ và kéo chén ra - lộ đủ 3 viên là ra điểm 🤫"}}',
+    'else if(STPHASE==="wait"){stt.textContent="⏳ Đang mở bát...";cap.textContent=""}',
+    'else{stt.textContent="🔴 Bàn Siêu Tài Xỉu đang tắt";cap.textContent="";paper.classList.add("hidden")}',
+    'var m=(j.myBets||[]),tong=0;m.forEach(function(b){tong+=b.amount});',
+    '$("stMine").textContent=m.length?("🧾 Ván này bạn đặt "+vnd(tong)+" + phí "+vnd(STPHITOI)+" vào "+m.length+" ô"):"";',
+    'stNutVe();stHist(j.history||[])}',
+    'function stHist(list){var box=$("stHist");if(!box)return;',
+    'if(!list.length){box.innerHTML="Chưa có ván nào.";return}',
+    'box.innerHTML=list.slice(0,20).map(function(h){',
+    'var cuoc=0,an=0,co=false;',
+    '(h.bets||[]).forEach(function(b){if(b.u===MYID){cuoc+=b.amount;co=true}});',
+    '(h.winners||[]).forEach(function(w){if(w.u===MYID)an+=w.amount});',
+    'var net=an-Math.floor(cuoc*(1+STPHI));',
+    'var tai=(h.tx==="TÀI"),chan=(h.cl==="CHẴN");',
+    'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span><span class="\'+(chan?"ce":"od")+\'">\'+h.cl+"</span>");',
+    'var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
+    'var phu=ids.length?(\'<div class="hsub">\'+ids.slice(0,3).map(function(k){return \'<span class="xx">x\'+nh[k]+"</span>"+(STNAMES[k]||k)}).join(" · ")+"</div>"):\'<div class="hsub"></div>\';',
+    'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
+    '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
+    '\'<span class="dd">\'+h.dice.map(mdie).join("")+"</span>"+',
+    '\'<span class="sum">(\'+h.sum+")</span>"+',
+    '\'<span class="kq">\'+kq+"</span>"+',
+    '(co?\'<span class="net \'+(net>=0?"w":"l")+\'">\'+(net>=0?"+":"")+vnd(net)+"</span>":"")+',
+    '"</div>"+phu}).join("")}',
+    // đồng hồ riêng cho bàn siêu
+    'setInterval(function(){if(CURPAGE!=="stx")return;var el=$("stClock");if(!el)return;',
+    'var now=srvNow();',
+    'if(STPHASE==="bet"){var s2=STTT-STKHOA-now;el.textContent=(s2>0?s2:0)+"s";el.style.color=""}',
+    'else if(STPHASE==="nan"){var s3=STTT-now;el.textContent="🀫 "+(s3>0?s3:0)+"s";el.style.color="#ffcf5c";',
+    'if(s3<=STKQ&&STNAN&&STDANAN!==STNAN.gameId)stAutoMo()}',
+    'else{el.textContent="--";el.style.color=""}},1000);',
+    'setInterval(stLoad,2000);',
+
+    'var PAGE_GRP={tx:"games",stx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
+    '$("pageStx").classList.toggle("hidden",p!=="stx");',
+    'if(p==="stx")stLoad();',
     '$("pageMine").classList.toggle("hidden",p!=="mine");',
     '$("pageStair").classList.toggle("hidden",p!=="stair");',
     '$("pageWheel").classList.toggle("hidden",p!=="wheel");',
@@ -2879,6 +3203,7 @@ const PAGE = [
     '$("pageTienlen").classList.toggle("hidden",p!=="tienlen");',   // 🀄 khung nhúng /tienlen/
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
     '$("navTx").classList.toggle("on",p==="tx");',
+    '$("navStx").classList.toggle("on",p==="stx");',
     '$("navMine").classList.toggle("on",p==="mine");',
     '$("navStair").classList.toggle("on",p==="stair");',
     '$("navWheel").classList.toggle("on",p==="wheel");',
@@ -2900,7 +3225,7 @@ const PAGE = [
     // vào nhóm poker thì giấu luôn tầng 2 (không có trang con) - khung nhúng tự lo phần còn lại
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
-    '["navTx","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){$(id).style.display=(g==="games")?"":"none"});',
+    '["navTx","navStx","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
     '["navDaily","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
