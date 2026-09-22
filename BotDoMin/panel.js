@@ -273,6 +273,7 @@ function startPanel(ctx) {
                     // ⚡ Siêu Tài Xỉu — ĂN DOGCOIN THẬT, càng phải chặn chắc
                     '/api/stx/on', '/api/stx/time', '/api/stx/tran', '/api/stx/an',
                     '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep', '/api/stx/epclear',
+                    '/api/stx/epnhan', '/api/stx/epnhanclear',
                     '/api/stx/board/start', '/api/stx/board/stop',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
@@ -577,6 +578,8 @@ function startPanel(ctx) {
                     else if (path === '/api/stx/maxbet') r = B.datMaxBet(body.maxBet);
                     else if (path === '/api/stx/ep') r = B.epKetQua(body.d1, body.d2, body.d3);
                     else if (path === '/api/stx/epclear') r = B.huyEp();
+                    else if (path === '/api/stx/epnhan') r = B.epNhan(body.nhan || {});
+                    else if (path === '/api/stx/epnhanclear') r = B.huyEpNhan();
                     else return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
                     if (r && r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
@@ -1962,6 +1965,24 @@ const HTML = `<!DOCTYPE html>
           </div>
           <div class="note" id="stxEpNow"></div>
         </div>
+
+        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+          <label>✋ Ép HỆ SỐ NHÂN cho 4 cửa TÀI · XỈU · CHẴN · LẺ</label>
+          <div class="note" style="margin-bottom:8px">Bấm lúc bàn <b>còn nhận cược</b> thì hệ số này hiện ra ngay ở <b>4 giây khoe hệ số nhân</b> của ván đang chạy. Bấm lúc đã khoá sổ thì phải chờ ván sau. <b>Dùng MỘT LẦN rồi tự xoá</b> — ép x14 mà để thường trực là nhà cái đổ tiền mỗi ván.<br>Mỗi ô: <b>để trống</b> = máy tự bốc · <b>0</b> = TẮT, ô không sáng · <b>số</b> = ép đúng hệ số đó.</div>
+          <div id="stxNhanO" class="row" style="flex-wrap:wrap;gap:10px"></div>
+          <div class="quick" style="margin-top:8px">
+            <button onclick="stxNhanDat(14)">Tất cả x14</button>
+            <button onclick="stxNhanDat(8)">Tất cả x8</button>
+            <button onclick="stxNhanDat(2)">Tất cả x2</button>
+            <button onclick="stxNhanDat(0)">Tắt hết 4 ô</button>
+            <button onclick="stxNhanDat('')">Xoá ô nhập</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn-red" style="flex:2" onclick="stxEpNhan()">✋ Ép hệ số nhân</button>
+            <button class="btn-grey" style="flex:1" onclick="stxHuyEpNhan()">↩️ Huỷ ép</button>
+          </div>
+          <div class="note" id="stxNhanNow"></div>
+        </div>
       </div>
     </div>
     <div id="tab-poker" class="hidden">
@@ -2595,6 +2616,22 @@ function stxDo(){
     tt.value=Object.keys(S.thang).map(k=>k+': '+S.thang[k].map(b=>b[0]+'×'+b[1]).join(', ')).join('\\n');
   const ep=document.getElementById('stxEpNow');
   if(ep)ep.textContent=S.ep?('⚡ Ván sau đã bị ép ra '+S.ep.join('-')):'';
+  // ✋ bảng ép hệ số nhân: dựng 4 ô theo danh sách máy bàn gửi + kể lệnh đang chờ
+  stxVeNhanO(S);
+  const nn=document.getElementById('stxNhanNow');
+  if(nn){
+    const kh=S.epNhanKhoang||{min:2,max:14};
+    const TEN2=Object.fromEntries((S.cuaDeu||[]).map(c=>[c.id,c.ten]));
+    // Bàn còn nhận cược -> lệnh ép ăn ngay ván này (4 giây khoe nhân sắp tới).
+    // Đã khoá sổ -> ăn ván sau. Nói rõ ra, y khối ép kết quả của bàn thường.
+    const khi=S.secsToBet>0
+      ? '<span style="color:#3ddc84;font-weight:800">🟢 CÒN '+S.secsToBet+'s - ép giờ HIỆN NGAY ván #'+S.gameId+'</span>'
+      : '<span style="color:#ff7a7a;font-weight:800">🔒 ĐÃ KHOÁ SỔ - ép giờ vào VÁN SAU</span>';
+    const dang=S.epNhan
+      ? ('<br>✋ <b>Đang chờ áp:</b> '+Object.keys(S.epNhan).map(k=>esc(TEN2[k]||k)+(S.epNhan[k]===0?' TẮT':' x'+S.epNhan[k])).join(' · '))
+      : '';
+    nn.innerHTML=khi+' &nbsp;·&nbsp; ép được <b>x'+kh.min+'</b> → <b>x'+kh.max+'</b> (0 = tắt ô)'+dang;
+  }
   const bi=document.getElementById('stxBoardInfo'), sb=STATE.stxBoard;
   if(bi&&sb)bi.innerHTML='<span class="run '+(sb.on?'on':'off')+'">'+(sb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(sb.channelId?' &nbsp; kênh <code>'+esc(sb.channelId)+'</code>':'');
   const ci=document.getElementById('stxChannel');
@@ -2706,6 +2743,48 @@ function stxSaveThang(){
 function stxThangMacDinh(){
   if(!confirm('Trả thang hệ số nhân của bàn SIÊU về mặc định?'))return;
   api('/api/stx/thang',{macDinh:true}).then(()=>{const t=document.getElementById('stxThang');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+// ---------------------------------------------------------------- ✋ ÉP HỆ SỐ NHÂN (22/09)
+// 4 ô nhập cho TÀI · XỈU · CHẴN · LẺ. Tên cửa + khoảng hệ số đều LẤY TỪ MÁY BÀN gửi lên
+// (stx.cuaDeu / stx.epNhanKhoang) — panel KHÔNG tự bịa, y như khối trần cược đã chốt.
+var STX_NHAN_VE='';
+function stxVeNhanO(stx){
+  var box=document.getElementById('stxNhanO');if(!box||!stx)return;
+  var ds=stx.cuaDeu||[],kh=stx.epNhanKhoang||{min:2,max:14};
+  // chỉ vẽ lại khi DANH SÁCH đổi - vẽ mỗi 3 giây là admin đang gõ bị mất chữ
+  var sig=JSON.stringify([ds,kh]);if(sig===STX_NHAN_VE)return;STX_NHAN_VE=sig;
+  box.innerHTML=ds.map(function(c){
+    return '<label style="display:flex;align-items:center;gap:6px;white-space:nowrap">'+
+      '<b style="min-width:86px">'+esc(c.ten)+'</b>'+
+      '<input id="stxN_'+c.id+'" type="number" min="0" max="'+kh.max+'" placeholder="tự bốc" style="width:92px">'+
+      '</label>';
+  }).join('');
+}
+function stxNhanDat(v){
+  var ds=((STATE&&STATE.stx&&STATE.stx.cuaDeu))||[];
+  ds.forEach(function(c){var e=document.getElementById('stxN_'+c.id);if(e)e.value=(v===''?'':v)});
+}
+function stxEpNhan(){
+  var ds=((STATE&&STATE.stx&&STATE.stx.cuaDeu))||[],nhan={},co=false;
+  ds.forEach(function(c){
+    var e=document.getElementById('stxN_'+c.id);if(!e)return;
+    var v=(e.value||'').trim();if(v==='')return;
+    nhan[c.id]=parseInt(v,10);co=true;
+  });
+  if(!co)return toast('❌ Chưa nhập ô nào - để trống hết thì có gì mà ép');
+  api('/api/stx/epnhan',{nhan:nhan}).then(function(j){
+    var ke=Object.keys(j.epNhan).map(function(k){
+      var c=(ds.filter(function(x){return x.id===k})[0]||{ten:k});
+      return c.ten+(j.epNhan[k]===0?' TẮT':' x'+j.epNhan[k]);
+    }).join(' · ');
+    toast('✋ '+(j.ngay?('Áp NGAY ván #'+j.gameId):'Áp từ ván sau')+': '+ke);
+    refresh();
+  }).catch(function(e){toast('❌ '+e.message)});
+}
+function stxHuyEpNhan(){
+  api('/api/stx/epnhanclear',{}).then(function(j){
+    toast(j.daHuy?'↩️ Đã huỷ lệnh ép hệ số nhân':'(không có lệnh ép nào đang chờ)');refresh();
+  }).catch(function(e){toast('❌ '+e.message)});
 }
 function stxEp(){
   const d1=+document.getElementById('stxD1').value,d2=+document.getElementById('stxD2').value,d3=+document.getElementById('stxD3').value;

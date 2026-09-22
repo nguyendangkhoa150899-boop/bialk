@@ -166,11 +166,43 @@ kêu ngay là không thao tác được.
 
 Tab trên web chỉ hiện khi admin **bật bàn**.
 
+## 6b. ✋ Ép HỆ SỐ NHÂN cho 4 cửa TÀI · XỈU · CHẴN · LẺ (22/09)
+
+Bảng RIÊNG trong tab ⚡ Siêu Tài Xỉu. Admin ép thẳng hệ số nhân của bốn cửa `deu` —
+chỗ người chơi đổ tiền nhiều nhất. 52 cửa còn lại vẫn để máy bốc.
+
+| Nhập | Nghĩa |
+|---|---|
+| (để trống) | máy tự bốc như thường |
+| **0** | TẮT — ô không sáng ván đó |
+| **2 → 14** | ép đúng hệ số đó |
+
+⚠️ **Ép được cả bậc thang KHÔNG có** (x7, x9, x11, x13). Thang chỉ quy định máy **bốc ngẫu
+nhiên** ra số nào; admin ép là cố ý nên không bị bó theo bậc. Trần lấy theo hệ số cao nhất
+của thang `deu` đang chạy → nâng thang thì trần tự nới, khỏi sửa hai chỗ.
+
+⚠️ **DÙNG MỘT LẦN rồi tự xoá**, y khuôn ép kết quả (`_stxEpNhan` xoá ngay lúc áp).
+Ép x14 cửa TÀI mà để thường trực là nhà cái đổ tiền mỗi ván.
+
+**Khi nào ăn:** áp đúng lúc **khoá sổ**, tức hệ số hiện ra ngay ở **4 giây khoe hệ số nhân**.
+Bấm lúc bàn còn nhận cược → ăn ván đang chạy. Bấm lúc đã khoá sổ → ván sau. Panel ghi rõ
+bằng dòng 🟢 CÒN Ns / 🔒 ĐÃ KHOÁ SỔ, giống khối ép kết quả.
+
+⚠️ **Phải áp NGAY khi sinh bảng nhân.** Cả ván tính tiền theo đúng bảng đó; áp muộn hơn là
+người chơi thấy một đằng, trả tiền một nẻo.
+
+Panel **không tự bịa** tên cửa hay khoảng hệ số — lấy từ `cuaDeu` / `epNhanKhoang`,
+y cách khối trần cược đã chốt. Ô nhập chỉ vẽ lại khi danh sách đổi (`STX_NHAN_VE`),
+không thì admin đang gõ bị mất chữ mỗi 3 giây.
+
+Route: `/api/stx/epnhan` · `/api/stx/epnhanclear` — đều nằm trong `VIEWONLY_PATHS`.
+
 ## 7. Bộ kiểm
 
 ```
 node SieuTaiXiu/kiemtra/cua-test.js   # lõi tiền: bảng trả, phí, RTP, trần (34 phép)
 node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/kéo thả/ép/báo cược/trọn ván/cứu tiền (74 phép)
+node SieuTaiXiu/kiemtra/epnhan-test.js # ✋ ép hệ số nhân 4 cửa đều: chạy bàn thật, soi bảng nhân + tiền (46 phép)
 # bảng Discord + dòng kết quả gọn: TaiXiu/kiemtra/trang-test.js soi (khối "bảng Discord bàn Siêu")
 ```
 

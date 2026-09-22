@@ -453,7 +453,7 @@ function taoBan(ctx) {
             }
             if (now >= lockTime && S.status === 'betting') {
                 S.status = 'nhan';
-                S.nhan = { gameId: S.gameId, o: CUA.taoNhan(), luc: Date.now() };
+                S.nhan = { gameId: S.gameId, o: apEpNhan(CUA.taoNhan()), luc: Date.now() };
                 const soO = Object.keys(S.nhan.o).length;
                 log(`[SIÊU TX] Ván #${S.gameId} khoá sổ - sáng ${soO} ô nhân`);
                 return;
@@ -562,6 +562,8 @@ function taoBan(ctx) {
             betAgg: agg, tenCua: Object.fromEntries(CUA.DS.map(c => [c.id, c.ten])),
             bets: S.bets.map(b => ({ name: b.username, choice: b.choice, amount: b.amount })),
             ep: db()._stxEp || null,
+            // ✋ lệnh ép hệ số nhân đang chờ + danh sách hệ số hợp lệ (panel không tự bịa)
+            epNhan: db()._stxEpNhan || null, epNhanKhoang: bacDeu(), cuaDeu: CUA_DEU.map(id => ({ id, ten: CUA_TEN(id) })),
             epGoiY: timEpReNhat(), betsCount: S.bets.length,
         };
     }
@@ -577,6 +579,80 @@ function taoBan(ctx) {
             // ván trống chỉ tổ chiếm chỗ trên bảng — lịch sử đầy đủ vẫn nằm trong _stxHist
             history: S.history.filter(h => (h.bets || []).length).slice(0, soVan || 10),
         };
+    }
+
+    // ---------------------------------------------------------------- ✋ ÉP HỆ SỐ NHÂN
+    // Bốn cửa TÀI · XỈU · CHẴN · LẺ (nhóm 'deu') — chỗ người chơi đổ tiền nhiều nhất, nên
+    // chỉ mở can thiệp đúng bốn ô này, không mở cả 52 cửa (chủ server 22/09).
+    const CUA_DEU = ['tai', 'xiu', 'chan', 'le'];
+    /**
+     * Khoảng hệ số ép được: 2 → hệ số CAO NHẤT của thang 'deu' đang chạy (mặc định 14).
+     * ⚠️ Chủ server chốt 22/09 là "từ 2 đến 14", tức LIỀN MẠCH — không chỉ mấy bậc có sẵn
+     * trong thang (2·3·4·5·6·8·10·12·14). Ép x7 hay x13 là hợp lệ dù thang không có bậc đó:
+     * thang chỉ quy định máy BỐC NGẪU NHIÊN ra số nào, còn admin ép là cố ý, chịu trách nhiệm.
+     * Trần lấy theo thang nên admin nâng thang thì trần tự nới, khỏi sửa hai chỗ.
+     */
+    function bacDeu() {
+        const t = CUA.thangHienTai().deu || [];
+        const cao = t.reduce((m, b) => Math.max(m, Math.floor(Number(b[0])) || 0), 0);
+        return { min: 2, max: cao > 2 ? cao : 14 };
+    }
+    /**
+     * Áp lệnh ép của admin lên bảng nhân vừa bốc. DÙNG MỘT LẦN rồi xoá — y như ép kết quả.
+     * ⚠️ Phải gọi NGAY khi sinh bảng nhân (lúc khoá sổ), vì từ đó trở đi cả ván tính tiền
+     * theo đúng bảng này; áp muộn hơn là người chơi thấy một đằng, trả tiền một nẻo.
+     */
+    function apEpNhan(o) {
+        const ep = db()._stxEpNhan;
+        if (!ep || typeof ep !== 'object') return o;
+        const ke = [];
+        for (const id of CUA_DEU) {
+            const v = ep[id];
+            if (v === undefined || v === null || v === '') continue;   // để máy tự bốc
+            const n = Math.floor(Number(v));
+            if (n === 0) { delete o[id]; ke.push(CUA_TEN(id) + ' TẮT'); }
+            else if (n > 1) { o[id] = n; ke.push(CUA_TEN(id) + ' x' + n); }
+        }
+        delete db()._stxEpNhan; luu();
+        if (ke.length) log(`[SIÊU TX] Ván #${S.gameId} ÁP LỆNH ÉP HỆ SỐ NHÂN của admin: ${ke.join(' · ')}`);
+        return o;
+    }
+    const CUA_TEN = (id) => { const c = CUA.DS.find(x => x.id === id); return c ? c.ten : id; };
+
+    /**
+     * Đặt lệnh ép hệ số nhân cho VÁN SAU.
+     * map = { tai: 14, xiu: 0, chan: '', le: undefined }
+     *   số > 1 -> ép đúng hệ số đó (phải có trong thang)  ·  0 -> TẮT ô  ·  rỗng -> máy tự bốc
+     */
+    function epNhan(map) {
+        if (!map || typeof map !== 'object') return { error: 'Thiếu bảng ép hệ số nhân' };
+        const { min, max } = bacDeu();
+        const ra = {}; const ke = [];
+        for (const id of CUA_DEU) {
+            const v = map[id];
+            if (v === undefined || v === null || v === '') continue;
+            const n = Math.floor(Number(v));
+            if (!Number.isFinite(n) || n < 0) return { error: CUA_TEN(id) + ': hệ số phải là số ≥ 0 (0 = tắt ô)' };
+            if (n > 0 && (n < min || n > max)) {
+                return { error: CUA_TEN(id) + ': x' + n + ' ngoài khoảng - ép được từ x' + min + ' đến x' + max +
+                    ' (hoặc 0 để TẮT ô). Muốn cao hơn thì nâng thang hệ số nhân trước.' };
+            }
+            ra[id] = n; ke.push(CUA_TEN(id) + (n === 0 ? ' TẮT' : ' x' + n));
+        }
+        if (!ke.length) return { error: 'Chưa chọn ô nào - để trống hết thì có gì mà ép' };
+        db()._stxEpNhan = ra; luu();
+        // Bấm lúc CÒN NHẬN CƯỢC -> áp ngay khi khoá sổ ván NÀY, tức 4 giây hiện nhân sắp tới.
+        // Bấm lúc ĐÃ khoá sổ -> phải chờ ván sau. Nói rõ ra, kẻo admin tưởng nút hỏng.
+        const ngay = S.status === 'betting';
+        log(`[SIÊU TX] Admin ép hệ số nhân (${ngay ? 'ván #' + S.gameId : 'ván sau'}): ${ke.join(' · ')}`);
+        return { ok: true, epNhan: ra, min, max, ngay, gameId: S.gameId };
+    }
+    /** ↩️ Huỷ ép hệ số nhân: ván sau lại bốc ngẫu nhiên cả bốn ô. */
+    function huyEpNhan() {
+        const co = !!db()._stxEpNhan;
+        delete db()._stxEpNhan; luu();
+        if (co) log('[SIÊU TX] Admin HUỶ ép hệ số nhân ván sau');
+        return { ok: true, daHuy: co };
     }
 
     function epKetQua(a, b, c) {
@@ -614,6 +690,7 @@ function taoBan(ctx) {
         nhip, khoiDong, trangThai, adminXem, bangDiscord,
         dat, nhanDoi, datLai, xoaCuoc, xoaCua, doiCua, nanXong,
         datGio, datTran, datMaxBet, datMucAn, datThang, datBatTat, epKetQua, huyEp, timEpReNhat,
+        epNhan, huyEpNhan,
         thangMacDinh: () => CUA.thangMacDinh(),
         cuaThang: (xx) => CUA.cuaThang(xx),
         _S: S,
