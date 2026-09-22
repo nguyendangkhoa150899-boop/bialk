@@ -529,9 +529,10 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
     // ---- ③ lịch sử: dòng từng ô phải khớp dòng tổng ----
     const iH = SRC.indexOf("'function stHist(list)");
     const hist = iH >= 0 ? SRC.slice(iH, iH + 2200) : '';
-    ok('⭐ dòng từng ô trừ CẢ PHÍ: nhận − cược − phí (khớp dòng tổng bên phải)',
-        /vnd\(\(b\.nhan\|\|0\)-b\.amount-\(b\.phi\|\|0\)\)/.test(hist), hist.slice(0, 120));
-    ok('...dòng tổng vẫn tính theo đúng số ví bị trừ', /var net=an-Math\.floor\(cuoc\*\(1\+STPHI\)\);/.test(hist));
+    // 22/09 chốt lại (chủ server: "chỉ trừ 20% lúc đầu thôi"): SO VỚI TIỀN CƯỢC, không trừ phí lần nữa.
+    ok('⭐ dòng từng ô = nhận − cược (KHÔNG trừ phí lần nữa)',
+        /vnd\(\(b\.nhan\|\|0\)-b\.amount\)\}\)/.test(hist) && !/-b\.amount-\(b\.phi/.test(hist), hist.slice(0, 120));
+    ok('⭐ dòng tổng cũng = nhận − cược, KHỚP dòng từng ô', /var net=an-cuoc;/.test(hist) && !/an-Math\.floor\(cuoc\*\(1\+STPHI\)\)/.test(hist));
     ok('...máy bàn có gửi b.phi trong từng ô của lịch sử (cuaAgg)',
         /cuaAgg\[k\] = \{ u: b\.userId, name: b\.username, choice: [^}]*phi: 0, nhan: 0 \}/.test(BAN) &&
         /cuaAgg\[k\]\.phi \+= \(b\.phi \|\| 0\);/.test(BAN));
@@ -542,6 +543,61 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
     ok('README có mục 5c giải thích ca 100.000 -> 83.333', /## 5c\./.test(RM) && /83\.333/.test(RM) && /166\.667/.test(RM));
     ok('...và nói rõ muốn MAX = trọn ví thì phải đổi mô hình phí (chưa làm, chờ chủ server)',
         /đổi mô hình phí/.test(RM) && /Chưa làm/.test(RM));
+
+    // ---- 22/09 #2: "đặt 1.200.000 thành 1.000.000, lúc ăn hiển thị 800.000" ----
+    // 800.000 = LÃI (về ví 2.000.000 − cược 1.000.000 − phí 200.000). Đúng, nhưng đứng một mình
+    // thì đọc thành "chỉ nhận 800.000". Số bay phải là TIỀN VỀ VÍ, lãi/cược/phí dòng nhỏ.
+    ok('máy bàn trả đủ 4 số cho web lúc nặn xong: got · stake · phi · net',
+        /return \{ got: e\.win, stake: e\.stake, phi: e\.phi, net: e\.win - e\.stake - e\.phi \};/.test(BAN) &&
+        /return \{ ok: true, gameId: p\.gameId, \.\.\.r, balance: bal \};/.test(BAN));
+    ok('⭐ nặn xong bàn Siêu gọi stShowKet(j) (không còn showNet(net) trần trụi)',
+        /if\(j\.stake>0\)stShowKet\(j\)/.test(SRC) && !/if\(j\.stake>0\)showNet\(j\.net\)\}\)\.catch\(function\(\)\{\}\)\}',\s*'function stShowDice/.test(SRC));
+    {
+        const iK = SRC.indexOf("'function stShowKet(j){");
+        const ket = iK >= 0 ? SRC.slice(iK, iK + 900) : '';
+        ok('⭐ số bay to = THẮNG SO VỚI CƯỢC (got − stake), không trừ phí lần nữa',
+            /thang=got-stake;/.test(ket) && /vnd\(thang\)/.test(ket), ket.slice(0, 160));
+        ok('...dòng nhỏ nhắc "về ví X · phí Y đã trừ lúc đặt"', /"về ví "\+vnd\(got\)/.test(ket) && /đã trừ lúc đặt/.test(ket));
+        ok('...KHÔNG còn in "lãi" trừ phí vào số to', !/vnd\(net\)/.test(ket));
+        // chạy thật: ví 1.200.000 -> MAX -> cược 1.000.000 + phí 200.000, thắng 1:1
+        const els = { winpop: { innerHTML: '', style: {}, classList: { add() { }, remove() { } }, offsetWidth: 0 } };
+        const c4 = { document: { getElementById: (id) => els[id] || null }, vnd: (n) => Number(n).toLocaleString('vi-VN'), Number, console };
+        vm.createContext(c4);
+        let loi4 = '';
+        // ⚠️ Mỗi dòng PAGE là một chuỗi JS có escape ('\\'' , '\\\\"'). Nối chuỗi bằng tay là sai
+        // cú pháp ngay (đã dính: "Invalid or unexpected token"). Cách đúng: bọc đúng lát cắt
+        // nguồn thành MẢNG LITERAL rồi cho JS tự đọc — ra y giá trị mà trình duyệt nhận.
+        try {
+            const i1 = SRC.indexOf("    'function stShowKet(j){"), i2 = SRC.indexOf("    'function stShowDice(");
+            const manh = vm.runInContext('[' + SRC.slice(i1, i2) + ']', vm.createContext({}));
+            vm.runInContext(manh.join('\n'), c4);
+        } catch (e) { loi4 = e.message; }
+        if (!loi4) {
+            try { vm.runInContext('stShowKet(' + JSON.stringify({ got: 2000000, stake: 1000000, phi: 200000, net: 800000 }) + ')', c4); } catch (e) { loi4 = e.message; }
+        }
+        const chu = String(els.winpop.innerHTML).replace(/<[^>]+>/g, ' ');
+        ok('chạy thật stShowKet với ca 1.200.000', !loi4, loi4);
+        ok('⭐⭐ ca 1.200.000: số to là +1.000.000 (thắng 1:1 so với cược), KHÔNG phải +800.000',
+            /\+1\.000\.000/.test(chu) && !/\+800\.000/.test(chu), chu);
+        ok('...dòng nhỏ: về ví 2.000.000 · phí 200.000 đã trừ lúc đặt',
+            /về ví 2\.000\.000/.test(chu) && /phí 200\.000 đã trừ lúc đặt/.test(chu), chu);
+        // ca trong ảnh chủ server: cược 100.000, phí 20.000, thắng 1:1 -> phải thấy +100.000
+        {
+            let l5 = '';
+            try { vm.runInContext('stShowKet(' + JSON.stringify({ got: 200000, stake: 100000, phi: 20000, net: 80000 }) + ')', c4); } catch (e) { l5 = e.message; }
+            const c5 = String(els.winpop.innerHTML).replace(/<[^>]+>/g, ' ');
+            ok('⭐⭐ ca trong ảnh (cược 100.000, thắng 1:1): thấy +100.000, không phải +80.000',
+                !l5 && /\+100\.000/.test(c5) && !/\+80\.000/.test(c5), l5 || c5);
+            try { vm.runInContext('stShowKet(' + JSON.stringify({ got: 0, stake: 100000, phi: 20000, net: -120000 }) + ')', c4); } catch (e) { l5 = e.message; }
+            const c6 = String(els.winpop.innerHTML).replace(/<[^>]+>/g, ' ');
+            ok('...thua: −100.000 (so với cược) + nhắc phí đã trừ, không in "về ví 0"',
+                /-100\.000/.test(c6) && /phí 20\.000 đã trừ lúc đặt/.test(c6) && !/về ví 0/.test(c6), c6);
+        }
+    }
+    ok('⭐ lịch sử Siêu: ô lãi có tooltip "Về ví X · cược Y · phí Z đã trừ lúc đặt"',
+        /title="Về ví \\'\+vnd\(an\)\+" · cược "\+vnd\(cuoc\)\+" · phí "/.test(SRC) && /đã trừ lúc đặt">/.test(SRC));
+    ok('...bàn thường không bị vạ lây (vẫn net.toLocaleString, không tooltip phí)',
+        /\(joined\?\\'<span class="net \\'\+\(net>=0\?"w":"l"\)\+\\'">\\'\+\(net>=0\?"\+":""\)\+net\.toLocaleString\("vi-VN"\)/.test(SRC));
 }
 
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');

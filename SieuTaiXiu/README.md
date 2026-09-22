@@ -135,11 +135,53 @@ Cái **sai thật với người chơi** là ba chỗ **nói dối**, đã sửa
 |---|---|---|
 | Dòng preview khi chọn MAX | *"ví bị trừ **thêm** 20% phí"* → ngụ ý cược trọn ví rồi phí cộng thêm | tính thẳng từ ví đang có: *"đổ trọn ví 100.000: cược 83.333 + phí 16.666. Không cược được trọn 100.000 vì phí 20% cộng THÊM"* |
 | Tooltip đồng chip trên ô | chỉ số cược | *"Cược 83.333 + phí 16.666 = trừ ví 99.999"* |
-| Lịch sử, dòng từng ô | `nhận − cược` = **+83.333**, trong khi dòng tổng bên phải ghi **+66.667** → hai số lệch trên cùng một dòng | `nhận − cược − phí` = **+66.667**, khớp dòng tổng |
+| Lịch sử, dòng từng ô | `nhận − cược` = **+83.333**, trong khi dòng tổng bên phải ghi **+66.667** → hai số lệch trên cùng một dòng | cả hai cùng `nhận − cược` = **+83.334**, khớp nhau (xem §5d vì sao KHÔNG trừ phí) |
 
 **Nếu muốn MAX = cược trọn 100.000** thì phải đổi mô hình phí (thu phí từ tiền THẮNG thay vì
 cộng thêm lúc đặt) — đó là đổi kinh tế cả bàn, RTP phải giải lại (§2). **Chưa làm**, chờ chủ
 server quyết. Bộ kiểm: `TaiXiu/kiemtra/trang-test.js` khối *"MAX bàn Siêu nói thật"*.
+
+## 5d. "Đặt 1.200.000 thành 1.000.000, lúc ăn chỉ hiện 800.000" (22/09, cùng ngày)
+
+Cùng gốc với §5c, lần này ở **số bay lúc nặn xong**. Ví 1.200.000 → MAX → cược 1.000.000 + phí
+200.000. Thắng 1:1: máy chủ trả **về ví 2.000.000** (`traNguoi → congVi(e.win)`). Số bay là
+`showNet(j.net)` = 2.000.000 − 1.000.000 − 200.000 = **+800.000 = lãi thật**. Đúng, nhưng đứng một
+mình thì đọc thành *"chỉ nhận 800.000"*.
+
+Chủ server chốt ngay sau đó: *"**chỉ trừ 20% lúc đầu thôi** chứ sao trừ thêm 20% sau cược nữa"*
+(ảnh: cược XỈU 100.000, phí 20.000 đã trừ lúc đặt, thắng về ví 200.000, số dư 1.080.001 =
+1.000.001 − 120.000 + 200.000 — **tiền đúng**, nhưng số bay in **+80.000** vì đem phí trừ thêm
+lần nữa trên màn hình).
+
+### Nguyên tắc hiển thị (chốt 22/09): PHÍ LÀ GIAO DỊCH RIÊNG, XONG LÚC ĐẶT
+
+Mọi con số **sau** lúc đặt so với **TIỀN CƯỢC**, không trừ phí lần nữa:
+
+| Chỗ | In gì |
+|---|---|
+| Lúc đặt | *"Đặt 100.000 + phí 20.000 = trừ 120.000"* — phí xuất hiện **một lần, ở đây** |
+| Số bay khi nặn xong (`stShowKet`) | **+100.000** to (= về ví − cược); dòng nhỏ *"về ví 200.000 · phí 20.000 đã trừ lúc đặt"*. Thua: **−100.000** |
+| Lịch sử, dòng tổng | `nhận − cược` = **+100.000**; tooltip *"Về ví 200.000 · cược 100.000 · phí 20.000 đã trừ lúc đặt"* |
+| Lịch sử, dòng từng ô | `nhận − cược` — **cùng cách tính** với dòng tổng, không lệch nhau |
+
+⚠️ Bản vá đầu ngày (trừ phí vào dòng lịch sử) **đi sai hướng** và đã lật lại — nó làm hai chỗ
+khớp nhau nhưng đều khớp ở con số khiến người chơi tưởng bị ăn 20% lần hai. **Không đổi một đồng.**
+
+### Quyết định còn treo: mô hình phí
+
+Hai báo cáo liên tiếp trong một ngày đều cùng một kiểu: **phí 20% ăn mất phần người chơi tưởng
+là tiền thắng**. Với mô hình *phí cộng thêm lúc đặt*, cửa 1:1 mà "thắng" chỉ lãi **0,8× tiền
+bỏ ra**. Đây là **thiết kế** (§1–§2), không phải lỗi. Ba đường, chủ server chọn:
+
+| | Phí lúc đặt (hiện tại) | Phí trừ vào tiền THẮNG | Bỏ phí, hạ bảng trả |
+|---|---|---|---|
+| Bỏ 1.200.000 vào cửa 1:1, thắng | cược 1.000.000 · về ví 2.000.000 · **lãi +800.000** | cược 1.200.000 · thắng 1.200.000 − phí 240.000 · **lãi +960.000** | cược 1.200.000 · trả theo bảng mới |
+| Thua | mất 1.200.000 | mất 1.200.000 | mất 1.200.000 |
+| Nhà cái ăn ở đâu | phí mọi ván, thắng thua đều thu | chỉ khi người chơi thắng | chênh bảng trả |
+| Việc phải làm | không | giải lại RTP (§2), đổi `tienTru/tinhTra`, hoàn cược, bộ kiểm | giải lại toàn bộ bảng |
+
+**Chưa đổi.** Đổi là đổi túi tiền cả bàn — chủ server nói một câu, dựng bản đề xuất kèm số đo
+200.000 ván trước khi đụng mã.
 
 ## 5b. Bảng kết quả trên Discord (22/09)
 

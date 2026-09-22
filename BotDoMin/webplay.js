@@ -3219,7 +3219,20 @@ const PAGE = [
     'var p=$("stPaper");p.classList.add("hidden");stShowDice(STNAN.dice,true);stToKetQua(STNAN);',
     'api("/api/stx/reveal",{}).then(function(j){',
     'if(typeof j.balance==="number"){BAL=j.balance;$("bal").textContent=vnd(j.balance)}',
-    'if(j.stake>0)showNet(j.net)}).catch(function(){})}',
+    'if(j.stake>0)stShowKet(j)}).catch(function(){})}',
+    // 💸 Bàn Siêu: số bay phải là TIỀN VỀ VÍ (got), lãi/cược/phí xuống dòng nhỏ. showNet(net) của
+    // bàn thường chỉ in "+800.000" — với phí 20% thì 800.000 là LÃI (2.000.000 về ví − 1.000.000
+    // cược − 200.000 phí), người chơi đọc thành "chỉ nhận 800.000" (chủ server báo 22/09).
+    // ⚠️ SO VỚI TIỀN CƯỢC, KHÔNG TRỪ PHÍ LẦN NỮA. Phí đã trừ (và đã báo) lúc đặt; đem trừ tiếp vào
+    // số to là người chơi thấy như bị ăn 20% lần hai (chủ server 22/09: "chỉ trừ 20% lúc đầu thôi
+    // chứ sao trừ thêm 20% sau cược nữa"). Thắng 1:1 cược 100.000 -> in +100.000, dòng nhỏ nhắc
+    // "về ví 200.000 · phí 20.000 đã trừ lúc đặt". Thua -> −100.000.
+    'function stShowKet(j){var el=document.getElementById("winpop");if(!el)return;',
+    'var got=Number(j.got)||0,stake=Number(j.stake)||0,phi=Number(j.phi)||0,thang=got-stake;',
+    'el.innerHTML=(thang>=0?"+":"")+vnd(thang)+\' <img class="dc" src="/dogcoin.png" alt="">\'+',
+    '\'<small style="display:block;font-size:.42em;font-weight:700;opacity:.9;margin-top:4px">\'+(got>0?("về ví "+vnd(got)+" · "):"")+"phí "+vnd(phi)+" đã trừ lúc đặt</small>";',
+    'el.style.color=thang>=0?"#3ddc84":"#ff5d5d";',
+    'el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}',
     'function stShowDice(dice,co){$("stDiceRow").innerHTML=dice.map(dieHTML).join("");',
     'var b=$("stSumBadge");if(co){var s2=dice[0]+dice[1]+dice[2];',
     'b.innerHTML="Tổng "+s2+" - <span class=\'"+(s2>=11?"t":"x")+"\'>"+(s2>=11?"TÀI":"XỈU")+"</span> · <span class=\'"+(s2%2===0?"ce":"od")+"\'>"+(s2%2===0?"CHẴN":"LẺ")+"</span>";',
@@ -3277,14 +3290,15 @@ const PAGE = [
     'var cuoc=0,an=0,co=false;',
     '(h.bets||[]).forEach(function(b){if(b.u===MYID){cuoc+=b.amount;co=true}});',
     '(h.winners||[]).forEach(function(w){if(w.u===MYID)an+=w.amount});',
-    'var net=an-Math.floor(cuoc*(1+STPHI));',
+    // ⚠️ SO VỚI TIỀN CƯỢC, không trừ phí lần nữa — cùng nguyên tắc với số bay stShowKet (22/09).
+    'var net=an-cuoc;',
     'var tai=(h.tx==="TÀI"),chan=(h.cl==="CHẴN");',
     'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span><span class="\'+(chan?"ce":"od")+\'">\'+h.cl+"</span>");',
     'var p2=[],an2=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0});',
-    // ⚠️ TRỪ CẢ PHÍ của ô đó (b.phi máy bàn gửi kèm trong cuaAgg). Bản cũ chỉ trừ tiền cược -> ô
-    // ghi "+83.333" mà dòng tổng bên phải ghi "+66.667": hai số lệch nhau trên cùng một dòng,
-    // ai nhìn cũng tưởng bị ăn chặn (22/09). Giờ hai chỗ cùng một cách tính: nhận về − cược − phí.
-    'if(an2.length)p2.push(\'<span class="an">🎯 \'+an2.slice(0,3).map(function(b){return b.choice+" +"+vnd((b.nhan||0)-b.amount-(b.phi||0))}).join(" · ")+(an2.length>3?" …":"")+"</span>");',
+    // Dòng từng ô và dòng tổng PHẢI cùng một cách tính, không thì hai số lệch trên cùng một dòng
+    // (từng dính: ô +83.333 mà tổng +66.667). Cách tính chung: nhận về − cược, KHÔNG trừ phí —
+    // phí là giao dịch riêng đã xong lúc đặt (chủ server chốt 22/09).
+    'if(an2.length)p2.push(\'<span class="an">🎯 \'+an2.slice(0,3).map(function(b){return b.choice+" +"+vnd((b.nhan||0)-b.amount)}).join(" · ")+(an2.length>3?" …":"")+"</span>");',
     'if(HNHAN){var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
     'if(ids.length)p2.push(ids.slice(0,3).map(function(k){return \'<span class="xx">x\'+nh[k]+"</span>"+(STNAMES[k]||k)}).join(" · ")+(ids.length>3?(" +"+(ids.length-3)):""))}',
     'var phu=\'<div class="hsub">\'+p2.join(" &nbsp;·&nbsp; ")+"</div>";',
@@ -3293,7 +3307,8 @@ const PAGE = [
     '\'<span class="dd">\'+h.dice.map(mdie).join("")+"</span>"+',
     '\'<span class="sum">(\'+h.sum+")</span>"+',
     '\'<span class="kq">\'+kq+"</span>"+',
-    '(co?\'<span class="net \'+(net>=0?"w":"l")+\'">\'+(net>=0?"+":"")+vnd(net)+"</span>":"")+',
+    // ô lãi ghi đủ "về ví · cược · phí" trong tooltip — số +800.000 trần trụi dễ đọc nhầm là tiền nhận (22/09)
+    '(co?\'<span class="net \'+(net>=0?"w":"l")+\'" title="Về ví \'+vnd(an)+" · cược "+vnd(cuoc)+" · phí "+vnd(Math.floor(cuoc*STPHI))+\' đã trừ lúc đặt">\'+(net>=0?"+":"")+vnd(net)+"</span>":"")+',
     '"</div>"+phu}).join("")}',
     // đồng hồ riêng cho bàn siêu
     'setInterval(function(){if(CURPAGE!=="stx")return;var el=$("stClock");if(!el)return;',
