@@ -444,10 +444,12 @@ nó; huy hiệu ô Đơn ghi *"x19 · 2-3 viên"*; tiêu đề khu Đơn ghi *"1
 Bộ kiểm cố định: `nhan-2ban-test.js`.
 
 **🪙 4 mệnh giá sửa được** (chủ server chốt lần 2: *"ô đầu thành ô Sửa và Lưu; bấm Sửa thì chọn vô
-chip sẽ bắt nhập số; Lưu thì lưu được 4 ô chip kia"*): hàng chip = **[✏️ Sửa] [c1] [c2] [c3] [c4] [MAX]**,
-6 ô cùng class `.chip` nên cao bằng nhau. Bấm Sửa → 4 ô viền nét đứt, bấm ô nào thì ô đó thành ô nhập
-ngay tại chỗ (Enter = xong ô, Esc = huỷ ô, rời ô = xong ô); nút đầu thành **💾 Lưu**, bung dưới có
-✖ Huỷ / ↩ Mặc định (position:absolute, không đẩy hàng). Lưu ghi cả 4 vào `localStorage`
+chip sẽ bắt nhập số; Lưu thì lưu được 4 ô chip kia"*, rồi lần 3: *"cho nút Sửa xuống nằm chung Đặt lại
+/ ×2… bấm vô thì thành nút Lưu cho đồng bộ UI/UX"*): hàng chip = **[c1] [c2] [c3] [c4] [MAX]**; hàng nút
+dưới = **[✏️ Sửa chip] [🔁 Đặt lại] [✖️2 Gấp đôi] [🗑️ Xoá cược]**. Bấm Sửa chip → 4 ô viền nét đứt, bấm ô
+nào thì ô đó thành ô nhập ngay tại chỗ (Enter = xong ô, Esc = huỷ ô, rời ô = xong ô); hàng nút đổi thành
+**[💾 Lưu chip] [✖ Huỷ] [↩ Mặc định] [Xoá cược (khoá)]** — cùng hàng, cùng cỡ (`sbNutVe`/`stNutVe` vẽ,
+`.hidden` ẩn Đặt lại/×2). Lưu ghi cả 4 vào `localStorage`
 (`tx_chips` / `stx_chips`) → F5 không mất; chặn trùng số; mệnh giá đang chọn mà không còn thì về ô đầu.
 Kho hỏng/thiếu ô/có số bậy/bị chặn → về mặc định 10k·20k·50k·100k. Trong chế độ sửa mọi nút dùng
 `onpointerdown` + `preventDefault` — bấm sang ô khác không làm ô nhập văng blur rồi mất click.

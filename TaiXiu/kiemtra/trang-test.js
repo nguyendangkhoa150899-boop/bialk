@@ -237,7 +237,7 @@ ok('dòng báo có ô riêng trên trang + kiểu lỗi/thành công',
 ok('chặn bấm dồn lúc mạng chậm (SBNUTBAN)', /if\(SBNUTBAN\)return;SBNUTBAN=true/.test(SRC));
 ok('nút tự khoá khi không dùng được (hết giờ / chưa đặt / chưa có ván trước)',
     /function sbNutVe\(\)/.test(SRC) && /b1\.disabled=!\(mo&&SBCOVT&&!coCuoc\)/.test(SRC) &&
-    /b2\.disabled=!\(mo&&coCuoc\)/.test(SRC) && /b3\.disabled=!\(mo&&coCuoc\)/.test(SRC));
+    /b2\.disabled=!\(mo&&coCuoc\)/.test(SRC) && /b3\.disabled=!!SBSUA\|\|!\(mo&&coCuoc\)/.test(SRC));   // 22/09: đang sửa chip thì Xoá cược cũng khoá
 ok('sang ván mới thì dọn dòng báo cũ', /prevPhase!=="bet"&&PHASE==="bet"\)sbBao\(""/.test(SRC));
 ok('máy chủ cho biết có giỏ ván trước không', /SBCOVT=!!j\.txVanTruoc/.test(SRC));
 
@@ -458,7 +458,8 @@ ok('panel Siêu: gợi ý ép rẻ nhất + huỷ ép + xem trước tổng + 4 
     PANEL.includes('onclick="stxTuEp()"') && PANEL.includes('onclick="stxHuyEp()"') && PANEL.includes('id="stxPrev"') &&
     PANEL.includes('onclick="stxSetDice(6,6,4)"') && PANEL.includes("path === '/api/stx/epclear'") && PANEL.includes("'/api/stx/epclear'"));
 ok('panel Siêu liệt kê từng người đặt + số lượt (không chỉ tổng theo cửa)',
-    PANEL.includes("(S.bets||[]).slice().reverse().map(b=>esc(b.name)") && PANEL.includes("(S.betsCount||0)+' lượt đặt"));
+    // 22/09: gộp theo NGƯỜI, một dòng một người (tên · tổng · từng ô), nằm kế nút ép kết quả
+    PANEL.includes("(S.bets||[]).forEach(b=>{const k=b.name||'?';if(!per[k])per[k]={tong:0,o:[]}") && PANEL.includes("(S.betsCount||0)+' lượt đặt"));
 ok('gợi ý ép Siêu lấy THẲNG từ máy chủ (epGoiY), không tự đoán ở trình duyệt',
     PANEL.includes('const g=S.epGoiY;') && !/function stxTuEp\(\)[\s\S]{0,400}for\s*\(/.test(PANEL));
 ok('xem trước ép báo BÃO khi 3 viên giống nhau — cả 2 bàn', PANEL.split('BÃO — Tài/Xỉu/Chẵn/Lẻ thua sạch').length - 1 === 2);
@@ -612,8 +613,17 @@ muc('🪙 ô đầu = Sửa/Lưu, 4 ô chip sửa được, lưu qua F5 - 2 bàn
     ok('cả 2 bàn đọc 4 mệnh giá từ localStorage (tx_chips / stx_chips), mặc định 10k·20k·50k·100k',
         SRC.includes('SBCHIPS=chipsDoc("tx_chips")') && SRC.includes('STCHIPS=chipsDoc("stx_chips")') && SRC.includes("'var CHIP_MAC=[10000,20000,50000,100000];'"));
     ok('một hàm chipHangHTML vẽ cả hàng cho 2 bàn (p = sb | st)', /chipHangHTML\("sb",SBCHIPS,SBCHIP,SBSUA,SBSUAI,SBNHAP\)/.test(SRC) && /chipHangHTML\("st",STCHIPS,STCHIP,STSUA,STSUAI,STNHAP\)/.test(SRC));
-    ok('ô đầu: ✏️ Sửa (thường) / 💾 Lưu + ✖ Huỷ + ↩ Mặc định (đang sửa) - cùng class chip nên cao bằng nhau',
-        /class="chip chipSuaNut" onclick="\\'\+p\+\\'SuaBat\(\)"/.test(SRC) && /class="chip chipSuaNut dang"/.test(SRC) && /✖ Huỷ/.test(SRC) && /↩ Mặc định/.test(SRC) && !/chipSua"/.test(SRC));
+    // chủ server chốt lần 3: nút Sửa xuống hàng nút dưới: [Sửa chip] [Đặt lại] [×2] [Xoá cược]
+    ok('⭐ hàng chip KHÔNG còn ô Sửa (chỉ 4 ô + MAX); nút ✏️ Sửa chip nằm đầu hàng nút dưới ở CẢ 2 bàn',
+        !/chipSuaNut/.test(SRC) &&
+        /id="sbBtnSua" class="sua" onpointerdown="event\.preventDefault\(\);sbSuaNut\(\)">✏️ Sửa chip<\/button>',\s*'<button[^']*id="sbBtnSuaHuy"[^']*'\s*,\s*'<button[^']*id="sbBtnSuaMac"[^']*',\s*'<button type="button" id="sbBtnLai"/.test(SRC) &&
+        /id="stBtnSua" class="sua" onpointerdown="event\.preventDefault\(\);stSuaNut\(\)">✏️ Sửa chip<\/button>'/.test(SRC) && /id="stBtnLai"/.test(SRC));
+    ok('đang sửa: nút thành "💾 Lưu chip" xanh, Đặt lại/×2 ẩn nhường ✖ Huỷ / ↩ Mặc định, Xoá cược khoá (2 bàn)',
+        SRC.includes('bs.textContent=SBSUA?"💾 Lưu chip":"✏️ Sửa chip";bs.classList.toggle("dang",!!SBSUA)') && SRC.includes('b1.classList.toggle("hidden",!!SBSUA)') && SRC.includes('b3.disabled=!!SBSUA||!(mo&&coCuoc)') &&
+        SRC.includes('bs.textContent=STSUA?"💾 Lưu chip":"✏️ Sửa chip";bs.classList.toggle("dang",!!STSUA)') && SRC.includes('b3.disabled=!!STSUA||!(mo&&coCuoc)'));
+    ok('một nút hai việc (thường = vào sửa, đang sửa = lưu) và vẽ chip xong là vẽ lại hàng nút',
+        SRC.includes("'function sbSuaNut(){if(SBSUA)sbSuaLuu();else sbSuaBat()}'") && SRC.includes("'function stSuaNut(){if(STSUA)stSuaLuu();else stSuaBat()}'") &&
+        SRC.includes('SBSUA,SBSUAI,SBNHAP);sbNutVe()}') && SRC.includes('STSUA,STSUAI,STNHAP);stNutVe();'));
     ok('đang sửa: ô chip viền nét đứt (chipEdit), bấm bằng pointerdown+preventDefault (không văng blur mất click)',
         /class="chip chipEdit" onpointerdown="event\.preventDefault\(\);\\'\+p\+\\'SuaChon\(/.test(SRC) && /\.chip\.chipEdit\{border:1px dashed/.test(SRC));
     ok('ô đang gõ = ô nhập ngay tại chỗ; Enter = xong ô, Esc = huỷ ô, rời ô = xong ô',
@@ -642,11 +652,11 @@ muc('🪙 ô đầu = Sửa/Lưu, 4 ô chip sửa được, lưu qua F5 - 2 bàn
     // vẽ hàng: bình thường 6 nút cao bằng nhau (đều class chip), đang sửa vẫn 6 ô, ô đang gõ là input
     const cV = { vnd: (n) => Number(n).toLocaleString('vi-VN') }; vm.createContext(cV); vm.runInContext(manh.join('\n'), cV);
     const h0 = vm.runInContext('chipHangHTML("sb",[10000,20000,50000,100000],20000,false,-1,null)', cV);
-    ok('hàng thường: 6 phần tử đều class "chip" (Sửa + 4 chip + MAX), 20.000 đang on, không ô nào cao hơn',
-        (h0.match(/class="chip[ "]/g) || []).length === 6 && /✏️ Sửa/.test(h0) && /class="chip on"[^>]*>[^<]*<img[^>]*> 20\.000</.test(h0) && !/chipGan/.test(h0), h0);
+    ok('hàng thường: 5 phần tử đều class "chip" (4 chip + MAX), không có nút Sửa trong hàng, 20.000 đang on',
+        (h0.match(/class="chip[ "]/g) || []).length === 5 && !/Sửa/.test(h0) && /class="chip on"[^>]*>[^<]*<img[^>]*> 20\.000</.test(h0) && !/chipGan/.test(h0), h0);
     const h1 = vm.runInContext('chipHangHTML("sb",[10000,20000,50000,100000],20000,true,2,[10000,20000,7000,100000])', cV);
-    ok('đang sửa ô thứ 3: nút Lưu + 2 ô chipEdit + 1 ô nhập (giá trị nháp 7000) + ô chipEdit + MAX',
-        /💾 Lưu/.test(h1) && (h1.match(/class="chip chipEdit"/g) || []).length === 3 && /id="sbTuyIn"[^>]*value="7000"/.test(h1) && /MAX CƯỢC/.test(h1), h1);
+    ok('đang sửa ô thứ 3: 3 ô chipEdit + 1 ô nhập (giá trị nháp 7000) + MAX, không có nút Lưu trong hàng chip',
+        !/Lưu/.test(h1) && (h1.match(/class="chip chipEdit"/g) || []).length === 3 && /id="sbTuyIn"[^>]*value="7000"/.test(h1) && /MAX CƯỢC/.test(h1), h1);
 }
 
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');

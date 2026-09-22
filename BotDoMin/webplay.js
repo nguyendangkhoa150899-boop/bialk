@@ -1008,8 +1008,11 @@ const PAGE = [
     // 🪙 22/09 (chủ server chốt): ô đầu = nút ✏️ Sửa / 💾 Lưu, 4 ô chip đều sửa được. Mọi thứ cao BẰNG
     // nhau - hàng chip không gãy. Đang sửa: 4 ô viền nét đứt; ô đang gõ là ô nhập ngay tại chỗ; Huỷ /
     // Mặc định bung dưới nút Lưu bằng position:absolute nên không đẩy hàng.
-    '.chip.chipSuaNut{background:#151926;border:1px dashed #4a5570;color:#cfd6e6;font-size:12.5px}',
-    '.chip.chipSuaNut.dang{background:linear-gradient(180deg,#2f8f4f,#256e3e);border:1px solid #6fdc93;color:#fff}',
+    // nút ✏️ Sửa chip nằm trong hàng nút dưới (cùng Đặt lại / ×2 / Xoá) - chủ server chốt 22/09.
+    // Đang sửa: nút xanh "💾 Lưu chip", Đặt lại/×2 nhường chỗ cho ✖ Huỷ / ↩ Mặc định.
+    '.sbNut button.sua{background:#151926;border:1px dashed #4a5570;color:#cfd6e6}',
+    '.sbNut button.sua.dang{background:linear-gradient(180deg,#2f8f4f,#256e3e);border:1px solid #6fdc93;color:#fff}',
+    '.sbNut button.hidden{display:none}',
     '.chip.chipEdit{border:1px dashed #e3b33a;background:#1b1a14;cursor:text}',
     '.chip.chipTuyEdit{padding:3px 3px;background:#111;border:1px solid #e3b33a;overflow:visible;cursor:default}',
     '.chipTuyEdit input{width:100%;box-sizing:border-box;border:0;background:transparent;color:#fff;font-weight:800;text-align:center;font-size:14px;padding:6px 0;outline:none;-moz-appearance:textfield}',
@@ -1907,6 +1910,10 @@ const PAGE = [
     // 3 nút thao tác nhanh + DÒNG BÁO đứng yên (không dùng toast: chủ server muốn
     // đọc kịp, không phải popup loé rồi tắt).
     '<div id="sbNut" class="sbNut">',
+    // ✏️ Sửa chip ở đầu hàng nút (pointerdown+preventDefault: đang gõ ô chip mà bấm Lưu thì ô nhập không văng blur trước)
+    '<button type="button" id="sbBtnSua" class="sua" onpointerdown="event.preventDefault();sbSuaNut()">✏️ Sửa chip</button>',
+    '<button type="button" id="sbBtnSuaHuy" class="hidden" onpointerdown="event.preventDefault();sbSuaHuy()">✖ Huỷ</button>',
+    '<button type="button" id="sbBtnSuaMac" class="hidden" onpointerdown="event.preventDefault();sbSuaMac()">↩ Mặc định</button>',
     '<button type="button" id="sbBtnLai" onclick="sbDatLai()">🔁 Đặt lại</button>',
     '<button type="button" id="sbBtnX2" onclick="sbX2()">✖️2 Gấp đôi</button>',
     '<button type="button" id="sbBtnXoa" class="xoa" onclick="sbXoaCuoc()">🗑️ Xoá cược</button>',
@@ -1945,6 +1952,9 @@ const PAGE = [
     '<div id="stChips" class="chips"></div>',
     '<div class="stPhiNho" id="stPhiNho"></div>',
     '<div id="stNut" class="sbNut">',
+    '<button type="button" id="stBtnSua" class="sua" onpointerdown="event.preventDefault();stSuaNut()">✏️ Sửa chip</button>',
+    '<button type="button" id="stBtnSuaHuy" class="hidden" onpointerdown="event.preventDefault();stSuaHuy()">✖ Huỷ</button>',
+    '<button type="button" id="stBtnSuaMac" class="hidden" onpointerdown="event.preventDefault();stSuaMac()">↩ Mặc định</button>',
     '<button type="button" id="stBtnLai" onclick="stDatLai()">🔁 Đặt lại</button>',
     '<button type="button" id="stBtnX2" onclick="stX2()">✖️2 Gấp đôi</button>',
     '<button type="button" id="stBtnXoa" class="xoa" onclick="stXoaCuoc()">🗑️ Xoá cược</button>',
@@ -2874,13 +2884,12 @@ const PAGE = [
     'function chipTuyHopLe(v){v=Math.floor(Number(v));return (isFinite(v)&&v>=1000&&v<=1e9)?v:0}',
     'function chipsDoc(k){try{var a=JSON.parse(localStorage.getItem(k)||"[]");if(Array.isArray(a)&&a.length===4){a=a.map(chipTuyHopLe);if(a.every(Boolean)&&new Set(a).size===4)return a}}catch(e){}return CHIP_MAC.slice()}',
     'function chipsLuu(k,a){try{localStorage.setItem(k,JSON.stringify(a))}catch(e){}}',
-    // Vẽ cả hàng cho 2 bàn: p = "sb" | "st". chips = 4 số đang dùng; chip = mệnh giá đang chọn;
+    // Vẽ hàng chip cho 2 bàn: p = "sb" | "st". chips = 4 số đang dùng; chip = mệnh giá đang chọn;
     // sua = đang ở chế độ sửa; suaI = ô đang gõ (-1 = không); nhap = bản nháp 4 số khi sửa.
+    // Hàng chip CHỈ có 4 ô + MAX; nút Sửa/Lưu/Huỷ/Mặc định nằm ở hàng nút dưới (sbNutVe/stNutVe vẽ).
     // Trong chế độ sửa mọi nút dùng onpointerdown + preventDefault: bấm sang ô khác / bấm Lưu không làm
     // ô nhập văng blur trước rồi mất click (blur vẽ lại hàng là nút vừa bấm biến mất).
     'function chipHangHTML(p,chips,chip,sua,suaI,nhap){var h="";',
-    'if(!sua)h+=\'<button class="chip chipSuaNut" onclick="\'+p+\'SuaBat()" title="Đổi 4 mệnh giá">✏️ Sửa</button>\';',
-    'else h+=\'<div class="chip chipSuaNut dang" onpointerdown="event.preventDefault();\'+p+\'SuaLuu()">💾 Lưu<div class="chipGan"><button type="button" onpointerdown="event.preventDefault();event.stopPropagation();\'+p+\'SuaHuy()">✖ Huỷ</button><button type="button" onpointerdown="event.preventDefault();event.stopPropagation();\'+p+\'SuaMac()">↩ Mặc định</button></div></div>\';',
     'for(var i=0;i<4;i++){var v=sua?nhap[i]:chips[i];',
     'if(sua&&suaI===i)h+=\'<div class="chip chipTuyEdit"><input id="\'+p+\'TuyIn" type="number" inputmode="numeric" min="1000" step="1000" value="\'+v+\'" onkeydown="chipTuyKey(event,&quot;\'+p+\'&quot;)" onblur="\'+p+\'NhapXong(true)"></div>\';',
     'else if(sua)h+=\'<button class="chip chipEdit" onpointerdown="event.preventDefault();\'+p+\'SuaChon(\'+i+\')"><img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v)+"</button>";',
@@ -2984,10 +2993,12 @@ const PAGE = [
     // hàng chip: mệnh giá nào vượt số dư thì vẫn hiện, bấm mới báo
     'function sbVeChip(){var e=$("sbChips");if(!e)return;',
     'SBMENH=SBCHIPS.concat(["max"]);if(!SBCHIP||(SBCHIP!=="max"&&SBCHIPS.indexOf(SBCHIP)<0))SBCHIP=SBCHIPS[0];',
-    'e.innerHTML=chipHangHTML("sb",SBCHIPS,SBCHIP,SBSUA,SBSUAI,SBNHAP)}',
+    'e.innerHTML=chipHangHTML("sb",SBCHIPS,SBCHIP,SBSUA,SBSUAI,SBNHAP);sbNutVe()}',
     'function sbDatChip(v){SBCHIP=v;sbVeChip()}',
+    // một nút hai việc: thường = vào chế độ sửa, đang sửa = lưu
+    'function sbSuaNut(){if(SBSUA)sbSuaLuu();else sbSuaBat()}',
     // ---- chế độ sửa 4 mệnh giá ----
-    'function sbSuaBat(){SBSUA=true;SBSUAI=-1;SBNHAP=SBCHIPS.slice();sbVeChip();toast("✏️ Bấm vào ô chip muốn đổi, gõ số, xong bấm 💾 Lưu")}',
+    'function sbSuaBat(){SBSUA=true;SBSUAI=-1;SBNHAP=SBCHIPS.slice();sbVeChip();toast("✏️ Bấm vào ô chip muốn đổi, gõ số, xong bấm 💾 Lưu chip")}',
     'function sbSuaChon(i){sbNhapXong(true);SBSUAI=i;sbVeChip();var e=$("sbTuyIn");if(e){e.focus();e.select()}}',
     // gõ xong một ô: hợp lệ thì ghi vào bản nháp; rời ô mà số bậy thì lặng lẽ giữ số cũ, Enter mà bậy thì báo
     'function sbNhapXong(tuBlur){if(SBSUAI<0)return;var e=$("sbTuyIn"),v=chipTuyHopLe(e&&e.value),i=SBSUAI;SBSUAI=-1;',
@@ -3033,10 +3044,13 @@ const PAGE = [
     'function sbNutVe(){var coCuoc=false;',
     'for(var k in SBTONG){if(k.indexOf("_toi_")===0&&SBTONG[k]>0){coCuoc=true;break}}',
     'var mo=(PHASE==="bet")&&!SBNUTBAN;',
-    'var b1=$("sbBtnLai"),b2=$("sbBtnX2"),b3=$("sbBtnXoa");',
-    'if(b1)b1.disabled=!(mo&&SBCOVT&&!coCuoc);',
-    'if(b2)b2.disabled=!(mo&&coCuoc);',
-    'if(b3)b3.disabled=!(mo&&coCuoc)}',
+    'var b1=$("sbBtnLai"),b2=$("sbBtnX2"),b3=$("sbBtnXoa"),bs=$("sbBtnSua"),bh=$("sbBtnSuaHuy"),bm=$("sbBtnSuaMac");',
+    // đang sửa chip: Sửa -> 💾 Lưu (xanh), Đặt lại/×2 ẩn nhường chỗ ✖ Huỷ / ↩ Mặc định, Xoá cược khoá
+    'if(bs){bs.textContent=SBSUA?"💾 Lưu chip":"✏️ Sửa chip";bs.classList.toggle("dang",!!SBSUA)}',
+    'if(bh)bh.classList.toggle("hidden",!SBSUA);if(bm)bm.classList.toggle("hidden",!SBSUA);',
+    'if(b1){b1.classList.toggle("hidden",!!SBSUA);b1.disabled=!(mo&&SBCOVT&&!coCuoc)}',
+    'if(b2){b2.classList.toggle("hidden",!!SBSUA);b2.disabled=!(mo&&coCuoc)}',
+    'if(b3)b3.disabled=!!SBSUA||!(mo&&coCuoc)}',
     // BẤM Ô = ĐẶT LUÔN. Chặn sơ ở client cho đỡ gọi phí, nhưng luật thật vẫn ở máy chủ.
     // SBDANGGUI: chặn bấm dồn 2 lần lúc mạng chậm -> khỏi đặt trùng.
     'function sbChon(id){if(KEO||Date.now()-KEOCLICK<500)return;if(PHASE!=="bet")return toast(PHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!");',
@@ -3149,7 +3163,7 @@ const PAGE = [
     // ---- hàng mệnh giá (có MAX như bàn thường) ----
     'function stVeChip(){var e=$("stChips");if(!e)return;',
     'STMENH=STCHIPS.concat(["max"]);if(!STCHIP||(STCHIP!=="max"&&STCHIPS.indexOf(STCHIP)<0))STCHIP=STCHIPS[0];',
-    'e.innerHTML=chipHangHTML("st",STCHIPS,STCHIP,STSUA,STSUAI,STNHAP);',
+    'e.innerHTML=chipHangHTML("st",STCHIPS,STCHIP,STSUA,STSUAI,STNHAP);stNutVe();',
     // 💸 nhắc phí NGAY DƯỚI hàng mệnh giá, kèm số tiền thật sẽ bị trừ
     // ⚠️ MAX PHẢI NÓI THẬT (22/09). Bản cũ ghi "ví bị trừ THÊM 20% phí" -> người chơi hiểu là
     // cược trọn ví rồi phí cộng thêm; thực tế cược bị CO LẠI để chứa phí (ví 100.000 -> cược
@@ -3162,7 +3176,8 @@ const PAGE = [
     'p.innerHTML=BAL>0?("💸 MAX CƯỢC = đổ trọn ví <b>"+vnd(BAL)+"</b>: cược <b>"+vnd(mc)+"</b> + phí <b>"+vnd(mp)+"</b>. Không cược được trọn "+vnd(BAL)+" vì phí "+Math.round(STPHI*100)+"% cộng THÊM trên tiền cược. (Trần ô / trần ván có thể chặn thấp hơn.)")',
     ':"💸 MAX CƯỢC: ví hết Dogcoin rồi"}}}',
     'function stDatChip(v){STCHIP=v;stVeChip()}',
-    'function stSuaBat(){STSUA=true;STSUAI=-1;STNHAP=STCHIPS.slice();stVeChip();toast("✏️ Bấm vào ô chip muốn đổi, gõ số, xong bấm 💾 Lưu")}',
+    'function stSuaNut(){if(STSUA)stSuaLuu();else stSuaBat()}',
+    'function stSuaBat(){STSUA=true;STSUAI=-1;STNHAP=STCHIPS.slice();stVeChip();toast("✏️ Bấm vào ô chip muốn đổi, gõ số, xong bấm 💾 Lưu chip")}',
     'function stSuaChon(i){stNhapXong(true);STSUAI=i;stVeChip();var e=$("stTuyIn");if(e){e.focus();e.select()}}',
     'function stNhapXong(tuBlur){if(STSUAI<0)return;var e=$("stTuyIn"),v=chipTuyHopLe(e&&e.value),i=STSUAI;STSUAI=-1;',
     'if(v)STNHAP[i]=v;else if(!tuBlur)toast("❌ Nhập số nguyên từ 1.000 trở lên");stVeChip()}',
@@ -3231,10 +3246,12 @@ const PAGE = [
     'function stNutVe(){var coCuoc=false;',
     'for(var k in STTONG){if(k.indexOf("_toi_")===0&&STTONG[k]>0){coCuoc=true;break}}',
     'var mo=(STPHASE==="bet")&&!STNUTBAN;',
-    'var b1=$("stBtnLai"),b2=$("stBtnX2"),b3=$("stBtnXoa");',
-    'if(b1)b1.disabled=!(mo&&STCOVT&&!coCuoc);',
-    'if(b2)b2.disabled=!(mo&&coCuoc);',
-    'if(b3)b3.disabled=!(mo&&coCuoc)}',
+    'var b1=$("stBtnLai"),b2=$("stBtnX2"),b3=$("stBtnXoa"),bs=$("stBtnSua"),bh=$("stBtnSuaHuy"),bm=$("stBtnSuaMac");',
+    'if(bs){bs.textContent=STSUA?"💾 Lưu chip":"✏️ Sửa chip";bs.classList.toggle("dang",!!STSUA)}',
+    'if(bh)bh.classList.toggle("hidden",!STSUA);if(bm)bm.classList.toggle("hidden",!STSUA);',
+    'if(b1){b1.classList.toggle("hidden",!!STSUA);b1.disabled=!(mo&&STCOVT&&!coCuoc)}',
+    'if(b2){b2.classList.toggle("hidden",!!STSUA);b2.disabled=!(mo&&coCuoc)}',
+    'if(b3)b3.disabled=!!STSUA||!(mo&&coCuoc)}',
 
     // ---- chip tiền trên ô + hệ số nhân + tô kết quả ----
     'function stVeGio(){STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',
