@@ -337,5 +337,23 @@ ok('panel nhận cả 95 lẫn 0.95 cho đỡ nhầm', /if \(Number\.isFinite\(r
 ok('panel hiện luôn tác động: nhà cái ăn + số ô sáng mỗi ván',
     /nhà cái ăn ~'\+\(STATE\.tx\.rtp\.nhaCaiAn\*100\)/.test(PANEL));
 
+// ---------------------------------------------------------------- ⚡ bàn Siêu
+muc('⚡ bàn Siêu Tài Xỉu dùng chung CSS sân khấu');
+// 22/09 chủ server chụp: xúc xắc bàn Siêu xếp DỌC, chén to đùng — vì CSS sân khấu
+// khoá theo ID bàn thường (#stage, #diceRow, #paper...) mà bàn Siêu dùng id khác.
+// Mỗi rule sân khấu phải LIỆT KÊ cả id bàn Siêu.
+for (const [a, b] of [['#stage', '#stStage'], ['#diceRow', '#stDiceRow'], ['#paper', '#stPaper'],
+    ['#sumBadge', '#stSumBadge'], ['#stageCap', '#stStageCap']]) {
+    ok('rule ' + a + '{ cũng áp cho ' + b, SRC.includes("'" + a + ',' + b + '{'), 'thiếu ' + a + ',' + b);
+}
+ok('chén bàn Siêu ẩn được (#stPaper.hidden)', SRC.includes('#stPaper.hidden{display:none}'));
+ok('chén bàn Siêu kéo được (#stPaper.open)', SRC.includes('#stPaper.open{cursor:grab}'));
+ok('xúc xắc bàn Siêu xếp tam giác (first-child span 2)', SRC.includes('#stDiceRow .die:first-child{grid-column:1 / span 2}'));
+ok('dải phí gọn "PHÍ 20%" (chủ server bỏ dòng dài)', SRC.includes("'<div class=\"stPhi\">💸 PHÍ 20%</div>'"));
+ok('phí vẫn hiện số tiền thật ngay dưới hàng mệnh giá', SRC.includes('id="stPhiNho"') && SRC.includes('Bấm 1 ô là trừ <b>'));
+ok('ô nhân bàn Siêu GIẬT NHƯ CÓ SÉT', SRC.includes('@keyframes stSet{') && SRC.includes('animation:stSet 1.5s'));
+ok('bàn Siêu chỉ hỏi máy chủ khi đang đứng ở tab đó', SRC.includes('function stLoad(){if(CURPAGE!=="stx")return;'));
+ok('mọi id bàn Siêu bắt đầu bằng st, không đụng bàn thường', !/id="sb[A-Z]/.test(SRC.slice(SRC.indexOf('id="pageStx"'), SRC.indexOf('hết #pageStx'))));
+
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');
 process.exit(F_ ? 1 : 0);

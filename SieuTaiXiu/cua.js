@@ -17,7 +17,7 @@
 //      người chơi thực nhận = RTP_BAN / (1 + PHI)
 //      nhà cái ăn           = 1 − RTP_BAN / (1 + PHI)
 //
-//  Chủ server chốt nhà cái ăn 10% => RTP_BAN = 0,90 × 1,20 = 1,08 (108%).
+//  Chủ server chốt nhà cái ăn 8% (mở màn) => RTP_BAN = 0,92 × 1,20 = 1,104 (110,4%).
 //  Admin chỉnh "nhà cái ăn" ở panel, máy tự suy ra RTP_BAN rồi giải lại q.
 //
 //  ── q VẪN LÀ THỨ MÁY TỰ GIẢI ────────────────────────────────────────────────
@@ -36,7 +36,7 @@
 const PHI = 0.20;
 
 // Nhà cái ăn bao nhiêu (SAU khi đã tính phí). Admin chỉnh ở panel.
-const AN_MUC_TIEU = 0.10;              // chủ server chốt: 10%
+const AN_MUC_TIEU = 0.08;              // chủ server chốt 22/09: 8% cho mọi người chơi trước, sau nâng
 const AN_MIN = 0.02, AN_MAX = 0.30;    // chặn 2 đầu cho khỏi lỡ tay
 let AN_HIEN = AN_MUC_TIEU;
 

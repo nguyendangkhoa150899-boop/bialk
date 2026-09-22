@@ -136,6 +136,29 @@ muc('tiền không được mất');
     ok('bật lại lần hai không cộng thêm đồng nào', VI.A === 30000 && VI.B === 0, VI.A + '/' + VI.B);
 }
 
+// ---------------------------------------------------------------- 2 sơ hở đã rà
+muc('2 sơ hở rà được khi đọc lại');
+{
+    // ① nhip() trước khoiDong() phải là no-op
+    const DB = { _stxOn: true };
+    const ban = taoBan({ db: () => DB, layNguoi: () => ({ points: 0 }), congVi: () => { }, ghiLog: () => { }, luuDb: () => { } });
+    const gidTruoc = ban._S.gameId;
+    ban.nhip(); ban.nhip(); ban.nhip();
+    ok('nhip() TRƯỚC khoiDong() không mở ván, không nhảy số', ban._S.gameId === gidTruoc && ban._S.status === 'off',
+        'gameId ' + gidTruoc + ' -> ' + ban._S.gameId + ' · ' + ban._S.status);
+    ban.khoiDong();
+    ok('khoiDong() xong mới có ván', ban._S.status === 'betting');
+}
+{
+    // ② đặt cược xong sổ trên đĩa phải có NGAY
+    const { ban, DB } = dungBan({ A: 1000000 });
+    ban.dat('A', 'A', [{ choice: 'tai', amount: 10000 }]);
+    ok('đặt xong _stxBets có ngay, không chờ nhịp sau', Array.isArray(DB._stxBets) && DB._stxBets.length === 1,
+        JSON.stringify(DB._stxBets));
+    ban.xoaCuoc('A');
+    ok('xoá xong _stxBets rỗng ngay', Array.isArray(DB._stxBets) && DB._stxBets.length === 0);
+}
+
 // ---------------------------------------------------------------- 3 nút
 muc('3 nút thao tác nhanh');
 {
@@ -166,7 +189,7 @@ muc('admin chỉnh');
     ok('ép số bậy thì chặn', !!ban.epKetQua(0, 2, 9).error);
     const a = ban.adminXem();
     ok('admin xem được mức ăn + thang + tổng cược', !!a.rtp && !!a.thang && !!a.betAgg);
-    ban.datMucAn(10);
+    ban.datMucAn(8);
 }
 
 // ---------------------------------------------------------------- chống soi bài

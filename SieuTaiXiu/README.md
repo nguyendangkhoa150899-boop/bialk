@@ -31,8 +31,8 @@ người chơi thực nhận = RTP_BÀN / (1 + PHÍ)
 nhà cái ăn           = 1 − RTP_BÀN / (1 + PHÍ)
 ```
 
-Chủ server chốt nhà cái ăn **10%** → `RTP_BÀN = 0,90 × 1,20 = 1,08` (108%).
-Đo thật 200.000 ván: nhà cái ăn **9,96%**.
+Chủ server chốt nhà cái ăn **8%** để mở màn (sau nâng) → `RTP_BÀN = 0,92 × 1,20 = 1,104`.
+Đo thật 200.000 ván ở mức 10%: nhà cái ăn **9,96%** — máy giải đúng.
 
 Admin nhập thẳng **"nhà cái ăn bao nhiêu %"** (2–30) chứ không nhập RTP — đó mới là con
 số admin nghĩ trong đầu. Máy tự suy ra `RTP_BÀN` rồi giải lại `q` cho cả 52 cửa.
@@ -78,13 +78,27 @@ ra. Chỉ khi ván đã quay thì phí mới coi như đã thu.
 ## 5. Giao diện
 
 - Tông **ĐEN** hẳn để nhìn phát biết mình đang ở bàn nào (bàn thường đỏ/kem).
-- **Phí 20% hiện ở 3 chỗ**: dải đỏ trên bàn, dòng ngay dưới hàng mệnh giá (ghi luôn số
-  tiền thật sẽ bị trừ), và trong lời báo sau khi đặt.
+- **Phí 20% hiện ở 3 chỗ**: dải đỏ gọn "💸 PHÍ 20%" trên bàn (chủ server bỏ dòng dài), dòng ngay
+  dưới hàng mệnh giá (ghi luôn số tiền thật sẽ bị trừ), và trong lời báo sau khi đặt.
 - Ô được bốc hệ số nhân thì **giật như có sét** (`@keyframes stSet`), không chỉ nhấp nháy.
 - Còn lại y bàn thường: bấm ô là đặt, đồng Dogcoin trên ô, nút MAX CƯỢC, 3 nút thao tác
   nhanh, nặn chén, 4 giây cuối tự mở, ô trúng sáng / ô trượt chìm.
 
 Mọi id trên trang bắt đầu bằng `st` để không đụng bàn thường (`sb`).
+
+### ⚠️ Hai cạm bẫy CSS đã dính ngay ngày đầu (22/09)
+
+**① Sân khấu không có CSS.** Rule sân khấu của bàn thường khoá theo ID (`#stage`,
+`#diceRow`, `#paper`, `#sumBadge`, `#stageCap`) mà bàn Siêu dùng id khác → xúc xắc xếp
+dọc, chén to đùng. Sửa: **mỗi rule sân khấu liệt kê cả id bàn Siêu** (`#stage,#stStage{`).
+Thêm phần tử sân khấu mới là phải thêm vào cả hai.
+
+**② Ô không ăn phụ kiện.** Chip Dogcoin, nhãn tiền bàn, chữ, co chữ điện thoại… đều khoá
+theo lớp `.sbO`; ô bàn Siêu lúc đầu chỉ có `.stO` → chip không được định vị, kéo ô dài.
+Sửa tận gốc: **ô bàn Siêu mang cả hai lớp `sbO stO`** — `.sbO` để ăn mọi phụ kiện dùng
+chung, còn tông đen viết bằng `.sbO.stO…` (đặc hiệu cao hơn một bậc nên thắng màu bàn
+thường dù khai trước). Một hệ, không phải hai bản chép song song. Bàn Siêu KHÔNG được có
+rule `.stO` trần — `trang-test` soi.
 
 ## 6. Admin
 

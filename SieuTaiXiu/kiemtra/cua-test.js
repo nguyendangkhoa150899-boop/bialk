@@ -63,9 +63,9 @@ ok('thắng thì ăn trên tiền cược GỐC, không ăn trên tiền đã tr
 muc('nhà cái ăn bao nhiêu (admin chỉnh)');
 {
     const k = S.thongKe();
-    ok('mặc định nhà cái ăn 10%', Math.abs(k.an - 0.10) < 1e-9, String(k.an));
-    ok('RTP bàn = (1 − ăn) × (1 + phí) = 108%', Math.abs(k.rtpBan - 1.08) < 1e-9, String(k.rtpBan));
-    ok('người chơi thực nhận đúng 90%', Math.abs(k.rtpThuc - 0.90) < 0.002, (k.rtpThuc * 100).toFixed(3) + '%');
+    ok('mặc định nhà cái ăn 8% (chủ server chốt 22/09)', Math.abs(k.an - 0.08) < 1e-9, String(k.an));
+    ok('RTP bàn = (1 − ăn) × (1 + phí) = 110,4%', Math.abs(k.rtpBan - 1.104) < 1e-9, String(k.rtpBan));
+    ok('người chơi thực nhận đúng 92%', Math.abs(k.rtpThuc - 0.92) < 0.002, (k.rtpThuc * 100).toFixed(3) + '%');
     ok('KHÔNG cửa nào kẹt trần (muốn sáng 100% ván mà vẫn thiếu RTP)',
         k.cuaKetTran.length === 0, k.cuaKetTran.join(', '));
     ok('cả 52 cửa đều có cơ hội được nhân', k.soCuaDuocNhan === 52, String(k.soCuaDuocNhan));
@@ -75,7 +75,7 @@ muc('nhà cái ăn bao nhiêu (admin chỉnh)');
     ok('đặt mức ăn ngoài khoảng thì chặn', !!xau.error, JSON.stringify(xau));
     const a = S.datMucAn(8);          // nhận cả 8 lẫn 0.08
     ok('nhận cả "8" lẫn "0.08"', a.ok && Math.abs(a.an - 0.08) < 1e-9, JSON.stringify(a.an));
-    S.datMucAn(0.10);
+    S.datMucAn(0.08);
 }
 
 // ĐO THẬT bằng mô phỏng, không tin công thức suông.
@@ -89,7 +89,7 @@ muc('đo thật bằng mô phỏng (đặt đều 52 cửa, đã tính phí)');
         for (const c of S.DS) { tru += S.tienTru(1000); tra += S.tinhTra(c.id, 1000, x, nhan); }
     }
     const an = (tru - tra) / tru;
-    ok('nhà cái ăn thật 9-11% (đặt 10%)', an > 0.09 && an < 0.11, (an * 100).toFixed(2) + '%');
+    ok('nhà cái ăn thật 7-9% (đặt 8%)', an > 0.07 && an < 0.09, (an * 100).toFixed(2) + '%');
     console.log('       => đo được ' + (an * 100).toFixed(2) + '% trên ' + N.toLocaleString('vi-VN') + ' ván');
 }
 
@@ -122,7 +122,7 @@ muc('thang hệ số nhân (admin chỉnh)');
 {
     const r = S.datThang({ bao: [[200, 50], [999, 10], [1999, 1]] });
     ok('sửa được thang', r.ok, r.error);
-    ok('sửa xong nhà cái vẫn ăn đúng 10%', Math.abs(r.anThuc - 0.10) < 0.01, (r.anThuc * 100).toFixed(2) + '%');
+    ok('sửa xong nhà cái vẫn ăn đúng 8%', Math.abs(r.anThuc - 0.08) < 0.01, (r.anThuc * 100).toFixed(2) + '%');
     ok('hệ số không tăng dần thì chặn', !!S.datThang({ bao: [[999, 1], [200, 5]] }).error);
     ok('nhóm lạ thì chặn', !!S.datThang({ khongco: [[1, 1], [2, 2]] }).error);
     S.datThang(S.thangMacDinh());

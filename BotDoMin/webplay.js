@@ -984,7 +984,7 @@ const PAGE = [
     '.hrow .kq .t{color:#ff7b86}.hrow .kq .x{color:#7db4ff}.hrow .kq .sep{color:var(--muted);font-weight:400}',
     // 14/09: CHẴN/LẺ cũng có màu riêng (trước chỉ TÀI/XỈU có màu, chẵn lẻ trắng trơn)
     '.hrow .kq .ce{color:#4fd6a0}.hrow .kq .od{color:#c79bff}',
-    '#sumBadge .t{color:#ff7b86}#sumBadge .x{color:#7db4ff}#sumBadge .ce{color:#4fd6a0}#sumBadge .od{color:#c79bff}',
+    '#sumBadge .t,#stSumBadge .t{color:#ff7b86}#sumBadge .x,#stSumBadge .x{color:#7db4ff}#sumBadge .ce,#stSumBadge .ce{color:#4fd6a0}#sumBadge .od,#stSumBadge .od{color:#c79bff}',
     '.hrow .net{flex:0 0 auto;font-weight:800;font-variant-numeric:tabular-nums}',
     '.hrow .net.w{color:var(--green)}.hrow .net.l{color:var(--red)}',
     '.hrow.storm{background:linear-gradient(90deg,#4a3a1033,transparent);border-radius:6px;padding-left:5px}',
@@ -1448,26 +1448,28 @@ const PAGE = [
     // vẫn hiện trên tháp như thường (HEROIMG trong ô).
     '#heroBase{display:none}',
     // ---- sân khấu xí ngầu + chén nặn ----
-    '#stage{position:relative;height:206px;border-radius:12px;background:radial-gradient(ellipse at center,#242424 0%,#080808 100%);border:1px solid #3a3a3a;overflow:hidden;margin-top:10px;touch-action:none}',
+    // ⚠️ Mấy rule sân khấu dưới đây khoá theo ID nên phải LIỆT KÊ CẢ id của bàn Siêu
+    // (#st...). Quên là bàn Siêu vỡ bố cục: xúc xắc xếp dọc, chén to đùng (đã dính 22/09).
+    '#stage,#stStage{position:relative;height:206px;border-radius:12px;background:radial-gradient(ellipse at center,#242424 0%,#080808 100%);border:1px solid #3a3a3a;overflow:hidden;margin-top:10px;touch-action:none}',
     // 14/09: xếp TAM GIÁC (1 trên · 2 dưới) cho gọn dưới chén, nặn hé một góc là thấy được
-    '#diceRow{position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,56px);grid-auto-rows:56px;gap:6px;align-content:center;justify-content:center}',
-    '#diceRow .die:first-child{grid-column:1 / span 2}',
-    '#diceRow .die{justify-self:center;align-self:center}',
+    '#diceRow,#stDiceRow{position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,56px);grid-auto-rows:56px;gap:6px;align-content:center;justify-content:center}',
+    '#diceRow .die:first-child,#stDiceRow .die:first-child{grid-column:1 / span 2}',
+    '#diceRow .die,#stDiceRow .die{justify-self:center;align-self:center}',
     '.die{width:56px;height:56px;aspect-ratio:1/1;flex:0 0 auto;background:linear-gradient(160deg,#e0463a 0%,#c0271c 55%,#9c1b13 100%);border:1px solid #ff8b7a44;border-radius:12px;position:relative;box-shadow:0 3px 10px #000a,inset 0 1px 2px #ffffff33}',
     // 14/09 chủ sòng chốt: hột ĐỎ · nút TRẮNG · nền ĐEN - thuần CSS, không cần hình
     '.pip{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0006;transform:translate(-50%,-50%)}',
     // ⚠️ left:50% mà không có right -> bề ngang chỉ còn nửa sân khấu, phải nowrap kẻo rớt dòng
-    '#sumBadge{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:#000a;border-radius:8px;padding:3px 12px;font-weight:800;font-size:15px;white-space:nowrap;max-width:96%;overflow:hidden;text-overflow:ellipsis}',
-    '@media (max-width:420px){#sumBadge{font-size:13px;padding:3px 9px}}',
+    '#sumBadge,#stSumBadge{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:#000a;border-radius:8px;padding:3px 12px;font-weight:800;font-size:15px;white-space:nowrap;max-width:96%;overflow:hidden;text-overflow:ellipsis}',
+    '@media (max-width:420px){#sumBadge,#stSumBadge{font-size:13px;padding:3px 9px}}',
     // 14/09: CHÉN THẬT (assets/chennantaixiu.png) thay tờ giấy - kéo chén hé ra để nặn.
     // Chén 176px phủ trọn cụm xí ngầu 118px (góc xa tâm 83,4px < bán kính 88px) nên không lộ trước.
-    '#paper{position:absolute;left:50%;top:50%;width:176px;height:176px;margin:-88px 0 0 -88px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;will-change:transform}',
-    '#paper.hidden{display:none}',   // ⚠️ phải có, không thì class hidden vô tác dụng
-    '#paper img{width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 8px 18px #000b)}',
+    '#paper,#stPaper{position:absolute;left:50%;top:50%;width:176px;height:176px;margin:-88px 0 0 -88px;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;will-change:transform}',
+    '#paper.hidden,#stPaper.hidden{display:none}',   // ⚠️ phải có, không thì class hidden vô tác dụng
+    '#paper img,#stPaper img{width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 8px 18px #000b)}',
     // xám+mờ = CHƯA cho mở (đang giờ đặt cược) - sáng + viền xanh = tới giờ nặn
-    '#paper.locked{cursor:not-allowed}#paper.locked img{filter:grayscale(.7) brightness(.55)}',
-    '#paper.open{cursor:grab}#paper.open:active{cursor:grabbing}',
-    '#paper.open img{animation:chenIdle 1.8s ease-in-out infinite}',
+    '#paper.locked,#stPaper.locked{cursor:not-allowed}#paper.locked img,#stPaper.locked img{filter:grayscale(.7) brightness(.55)}',
+    '#paper.open,#stPaper.open{cursor:grab}#paper.open:active,#stPaper.open:active{cursor:grabbing}',
+    '#paper.open img,#stPaper.open img{animation:chenIdle 1.8s ease-in-out infinite}',
     '@keyframes chenIdle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-1.5deg)}}',
     // 🌪️ 14/09: khung hũ Bão ngay dưới cửa BÃO
     // 🌪️ 14/09: gom hết lên NÚT BÃO - số hũ, luật hoàn 30%, và câu nhẩm "đặt X ăn Y"
@@ -1483,38 +1485,39 @@ const PAGE = [
     'padding:7px 6px;box-shadow:inset 0 0 40px rgba(0,0,0,.8)}',
     '.stKhu{background:linear-gradient(90deg,#3a2f14,#5a4720,#3a2f14);color:#ffe9a8;font-size:10.5px;font-weight:800;',
     'text-align:center;border-radius:6px;padding:3px 0;margin:6px 0 4px;letter-spacing:.3px}',
-    '.stO{flex:1;min-width:0;position:relative;background:linear-gradient(180deg,#1c1a20,#0e0d11);color:#f2ead8;',
+    '.sbO.stO{flex:1;min-width:0;position:relative;background:linear-gradient(180deg,#1c1a20,#0e0d11);color:#f2ead8;',
     'border:1px solid #5a4720;border-radius:6px;padding:7px 2px;cursor:pointer;display:flex;flex-direction:column;',
     'align-items:center;justify-content:center;gap:2px;min-height:44px;transition:transform .08s}',
-    '.stO:active{transform:scale(.95)}',
-    '.stO .sbTen{color:#f7f0dd}.stO .sbTl{color:#b99a55}',
-    '.stO.sbDeu{min-height:56px;background:linear-gradient(180deg,#241f16,#121016)}',
-    '.stO.sbTai .sbTen{color:#ff8a7a}.stO.sbXiu .sbTen{color:#8ab8ff}',
-    '.stO.sbKhoa{opacity:.94;cursor:not-allowed}',
+    '.sbO.stO:active{transform:scale(.95)}',
+    '.sbO.stO .sbTen{color:#f7f0dd}.sbO.stO .sbTl{color:#b99a55}',
+    '.sbO.stO.sbDeu{background:linear-gradient(180deg,#241f16,#121016)}',
+    '.sbO.stO.sbBaoAny{background:linear-gradient(180deg,#2c2414,#171209)}',
+    '.sbO.stO.sbTai .sbTen{color:#ff8a7a}.sbO.stO.sbXiu .sbTen{color:#8ab8ff}',
+    '.sbO.stO.sbKhoa{opacity:.94;cursor:not-allowed}',
     // ⚡ Ô được bốc hệ số nhân: GIẬT NHƯ CÓ SÉT (chủ server chốt), không chỉ nhấp nháy.
     '@keyframes stSet{0%,100%{box-shadow:0 0 0 2px #ffd76a,0 0 12px rgba(255,215,106,.7);filter:none;transform:none}',
     '46%{box-shadow:0 0 0 3px #fff6d0,0 0 26px rgba(255,246,208,1);filter:brightness(1.9) saturate(1.3);transform:translate(-1px,1px)}',
     '52%{box-shadow:0 0 0 2px #ffd76a,0 0 10px rgba(255,215,106,.8);filter:brightness(1);transform:translate(1px,-1px)}',
     '58%{box-shadow:0 0 0 4px #fff,0 0 30px #fff;filter:brightness(2.2);transform:translate(-1px,0)}}',
-    '.stO.sbNhan{background:linear-gradient(180deg,#4a3a12,#241b06);border-color:#ffcf5c;',
+    '.sbO.stO.sbNhan{background:linear-gradient(180deg,#4a3a12,#241b06);border-color:#ffcf5c;',
     'animation:stSet 1.5s ease-in-out infinite}',
-    '.stO .sbX{position:absolute;top:-7px;left:-3px;background:linear-gradient(180deg,#ffe9a8,#e8b923);color:#2a1f05;',
+    '.sbO.stO .sbX{position:absolute;top:-7px;left:-3px;background:linear-gradient(180deg,#ffe9a8,#e8b923);color:#2a1f05;',
     'font-size:10.5px;font-weight:900;border-radius:999px;padding:1px 6px;z-index:3;',
     'box-shadow:0 2px 10px rgba(255,207,92,.8)}',
     // kết quả: ô trúng sáng, ô trượt chìm — khai SAU .sbNhan để thắng nó
     '@keyframes stTrungNhay{0%,100%{box-shadow:0 0 0 2px #ffd76a,0 0 14px rgba(255,215,106,.85)}',
     '50%{box-shadow:0 0 0 5px #ffd76a,0 0 32px rgba(255,215,106,1)}}',
-    '.stO.sbTruot,.stO.sbTruot.sbKhoa,.stO.sbTruot.sbNhan{background:#17161a;border-color:#2e2a22;',
+    '.sbO.stO.sbTruot,.sbO.stO.sbTruot.sbKhoa,.sbO.stO.sbTruot.sbNhan{background:#17161a;border-color:#2e2a22;',
     'opacity:1;animation:none;box-shadow:none}',
-    '.stO.sbTruot .sbTen,.stO.sbTruot .sbTl{color:#5c5850}',
-    '.stO.sbTrung,.stO.sbTrung.sbKhoa,.stO.sbTrung.sbNhan{background:linear-gradient(180deg,#fff8e4,#f3e3b6);',
+    '.sbO.stO.sbTruot .sbTen,.sbO.stO.sbTruot .sbTl{color:#5c5850}',
+    '.sbO.stO.sbTrung,.sbO.stO.sbTrung.sbKhoa,.sbO.stO.sbTrung.sbNhan{background:linear-gradient(180deg,#fff8e4,#f3e3b6);',
     'border-color:#ffd76a;color:#2a1f05;opacity:1;animation:stTrungNhay 1s ease-in-out infinite;z-index:4}',
-    '.stO.sbTrung .sbTen,.stO.sbTrung .sbTl{color:#2a1f05}',
+    '.sbO.stO.sbTrung .sbTen,.sbO.stO.sbTrung .sbTl{color:#2a1f05}',
     // xúc xắc trên bàn đen: viền sáng hơn cho nổi
-    '.stO .sbXx{border-color:#c0562f}',
+    '.sbO.stO .sbXx{border-color:#c0562f}',
     // 💸 dải phí — đỏ, to, không ai bỏ sót
-    '.stPhi{background:linear-gradient(90deg,#4a1218,#7a1d27,#4a1218);border:1px solid #c0394b;color:#ffd9de;',
-    'border-radius:9px;padding:8px 10px;margin:8px 0;font-size:12.5px;text-align:center;line-height:1.55}',
+    '.stPhi{background:linear-gradient(90deg,#4a1218,#7a1d27,#4a1218);border:1px solid #c0394b;color:#fff;',
+    'border-radius:9px;padding:7px 10px;margin:8px 0;font-size:15px;font-weight:900;letter-spacing:.5px;text-align:center}',
     '.stPhi b{color:#fff}',
     '.stPhiNho{margin-top:6px;font-size:12px;text-align:center;color:#ffb3c0}',
     // 3 nút thao tác nhanh dưới hàng mệnh giá
@@ -1618,7 +1621,7 @@ const PAGE = [
     '.cbtn.bao small{line-height:1.55}',
     '#baoCalc{font-size:14px;font-weight:900;color:#0f4d22;margin-top:5px;line-height:1.45;letter-spacing:0;padding:0 6px}',
     '@media (max-width:420px){#baoPot{font-size:14px;padding:2px 8px}#baoCalc{font-size:12.5px}}',
-    '#stageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
+    '#stageCap,#stStageCap{margin-top:8px;font-size:13px;color:var(--muted);text-align:center}',
     // ---- 🎡 vòng quay ----
     // bánh xe chiếm gần hết bề ngang điện thoại, máy tính thì trần 520px cho khỏi lố.
     // KHÔNG dựa aspect-ratio: svg có viewBox vuông + width 100% tự giữ khung vuông,
@@ -1868,7 +1871,9 @@ const PAGE = [
     '<div class="row"><h2 id="stRound" style="margin:0">Ván #-</h2><div id="stClock" class="big">--</div></div>',
     '<div id="stStt" class="muted"></div>',
     // 💸 Dải PHÍ — chỗ đập vào mắt nhất, ngay trên sân khấu
-    '<div class="stPhi">💸 Bàn này có <b>PHÍ 20%</b> · đặt <b>1.000</b> thì trừ ví <b>1.200</b> · đổi lại <b>Tài/Xỉu/Chẵn/Lẻ cũng được nhân tới 14:1</b></div>',
+    // 💸 Chủ server chốt: chỉ một chữ PHÍ 20% ở giữa, gọn. Chi tiết số tiền thật sẽ bị
+    // trừ đã nằm ở dòng ngay dưới hàng mệnh giá rồi.
+    '<div class="stPhi">💸 PHÍ 20%</div>',
     '<div id="stStage">',
     '<div id="stDiceRow"></div>',
     '<div id="stSumBadge" class="hidden"></div>',
@@ -1891,6 +1896,7 @@ const PAGE = [
     '<div class="mine" id="stMine"></div>',
     '</div>',
 
+    '<div class="card stCard"><h2>👥 Ai đang đặt ván này</h2><div id="stWho" class="muted" style="font-size:13px">Chưa ai đặt.</div></div>',
     '<div class="card stCard"><h2>🔮 Lịch sử 20 ván gần nhất</h2>',
     '<div id="stHist" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
     '</div>', // hết #pageStx
@@ -2975,7 +2981,8 @@ const PAGE = [
     'var o=function(c,them,ruot){if(!c)return "";',
     'var tl=c.goc+":1";',
     'var trong=ruot!==undefined?ruot:(\'<span class="sbTen">\'+c.ten+\'</span><span class="sbTl">\'+tl+\'</span>\');',
-    'return \'<button type="button" class="stO \'+(them||"")+\'" id="st_\'+c.id+\'" onclick="stChon(&quot;\'+c.id+\'&quot;)">\'+trong+"</button>"};',
+    // "sbO stO": sbO để ăn mọi phụ kiện dùng chung (chip, nhãn, chữ), stO để tô tông đen.
+    'return \'<button type="button" class="sbO stO \'+(them||"")+\'" id="st_\'+c.id+\'" onclick="stChon(&quot;\'+c.id+\'&quot;)">\'+trong+"</button>"};',
     'var khu=function(t){return \'<div class="stKhu">\'+t+"</div>"};',
     'var h="";',
     'h+=khu("1:1 tới 14:1 · THUA NẾU RA BÃO — riêng BỘ BA BẤT KỲ 30:1");',
@@ -3152,7 +3159,11 @@ const PAGE = [
     'else{stt.textContent="🔴 Bàn Siêu Tài Xỉu đang tắt";cap.textContent="";paper.classList.add("hidden")}',
     'var m=(j.myBets||[]),tong=0;m.forEach(function(b){tong+=b.amount});',
     '$("stMine").textContent=m.length?("🧾 Ván này bạn đặt "+vnd(tong)+" + phí "+vnd(STPHITOI)+" vào "+m.length+" ô"):"";',
-    'stNutVe();stHist(j.history||[])}',
+    'stNutVe();stWho(j.betsList||[]);stHist(j.history||[])}',
+    'function stWho(list){var box=$("stWho");if(!box)return;if(!list.length){box.innerHTML="Chưa ai đặt.";return}',
+    'var by={};list.forEach(function(b){(by[b.choice]=by[b.choice]||[]).push(b)});',
+    'box.innerHTML=STCUA.map(function(x){return x.id}).filter(function(c){return by[c]}).map(function(c){',
+    'return \'<div style="padding:3px 0"><b style="color:\'+cuaMau(c)+\'">\'+(STNAMES[c]||c)+"</b>: "+by[c].map(function(b){return \'<span style="color:\'+userColor(b.u)+\'">\'+esc(b.name)+"</span> "+vnd(b.amount)}).join(" · ")+"</div>"}).join("")}',
     'function stHist(list){var box=$("stHist");if(!box)return;',
     'if(!list.length){box.innerHTML="Chưa có ván nào.";return}',
     'box.innerHTML=list.slice(0,20).map(function(h){',

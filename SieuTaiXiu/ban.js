@@ -45,6 +45,9 @@ function taoBan(ctx) {
         bets: [], nhan: null, nan: null, plan: null, history: [],
         vanTruoc: new Map(),      // giỏ ván trước của từng người (cho nút Đặt lại)
         dangChot: false,
+        // nhip() là no-op cho tới khi khoiDong() cứu tiền ván dở xong. Không có cờ này
+        // thì mấy giây đầu sau khi nạp file, nhip() tự mở ván / dọn sổ trước cả khoiDong().
+        daKhoiDong: false,
     };
 
     // ---------------------------------------------------------------- cấu hình
@@ -204,6 +207,7 @@ function taoBan(ctx) {
         // qua hết mới đụng ví
         ctx.congVi(userId, -tongTru, `Siêu Tài Xỉu ván #${S.gameId} (cược ${tongCuoc.toLocaleString('vi-VN')} + phí ${(tongTru - tongCuoc).toLocaleString('vi-VN')})`);
         for (const k of ds) S.bets.push({ userId, username: ten, choice: k, amount: gop[k], phi: CUA.tienPhi(gop[k]) });
+        db()._stxBets = S.bets;   // ghi sổ NGAY, đừng chờ nhịp sau (đây là tiền đã trừ ví)
         log(`[SIÊU TX CƯỢC] ${ten} đặt ${tongCuoc.toLocaleString('vi-VN')} (+phí ${(tongTru - tongCuoc).toLocaleString('vi-VN')}) vào ${ds.length} cửa (ván #${S.gameId})`);
         return { ok: true, tong: tongCuoc, phi: tongTru - tongCuoc, truVi: tongTru, soCua: ds.length, balance: nguoi(userId).points || 0 };
     }
@@ -233,6 +237,7 @@ function taoBan(ctx) {
         }
         if (hoan <= 0) return { error: 'Ván này bạn chưa đặt cửa nào' };
         S.bets = giu;
+        db()._stxBets = S.bets;
         ctx.congVi(userId, hoan, `Siêu Tài Xỉu ván #${S.gameId} - xoá cược, hoàn cả phí`);
         log(`[SIÊU TX] ${nguoi(userId).name || userId} xoá cược ván #${S.gameId}, hoàn ${hoan.toLocaleString('vi-VN')} (gồm phí)`);
         return { ok: true, hoan, balance: nguoi(userId).points || 0 };
@@ -366,6 +371,7 @@ function taoBan(ctx) {
 
     // ---------------------------------------------------------------- nhịp 1 giây
     function nhip() {
+        if (!S.daKhoiDong) return;
         try {
             if (!batTat()) { if (S.status !== 'off') S.status = 'off'; return; }
             if (S.status === 'off') { moVanMoi(); return; }
@@ -447,6 +453,7 @@ function taoBan(ctx) {
         }
         db()._stxBets = []; S.bets = []; luu();
         if (batTat()) moVanMoi(); else S.status = 'off';
+        S.daKhoiDong = true;
     }
 
     // ---------------------------------------------------------------- web đọc
@@ -456,6 +463,13 @@ function taoBan(ctx) {
         for (const b of S.bets) if (b.userId === userId) { my[b.choice] = (my[b.choice] || 0) + b.amount; phiToi += (b.phi || 0); }
         const totals = {};
         for (const b of S.bets) totals[b.choice] = (totals[b.choice] || 0) + b.amount;
+        // ai đang đặt ván này — gộp theo người + cửa (giống bàn thường)
+        const who = {};
+        for (const b of S.bets) {
+            const k = b.userId + '_' + b.choice;
+            if (!who[k]) who[k] = { u: b.userId, name: b.username, choice: b.choice, amount: 0 };
+            who[k].amount += b.amount;
+        }
         const trung = (h) => {
             const nh = h.nhan || {};
             if (!Array.isArray(h.dice) || h.dice.length !== 3) return {};
@@ -482,6 +496,7 @@ function taoBan(ctx) {
             phiToi,
             totals,
             coVanTruoc: coVanTruoc(userId),
+            betsList: Object.values(who),
             history: S.history.slice(0, HIST_WEB).map(h => ({ ...h, nhan: trung(h) })),
         };
     }
