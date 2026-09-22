@@ -145,6 +145,7 @@ function startPanel(ctx) {
             // ⚡ SIÊU TÀI XỈU — game RIÊNG, để ngang hàng poker/tienlen chứ đừng nhét
             // vào trong cục tx (nhét vào đó thì panel phải đọc STATE.tx.stx, dễ nhầm).
             stx: (ctx.stx && ctx.stx.adminXem) ? ctx.stx.adminXem() : null,
+            stxBoard: ctx.getStxBoard ? ctx.getStxBoard() : null,   // 📋 bảng Siêu trên Discord
             forcedMines: ctx.getForcedMines(),
             forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
             pokerAdmin: ctx.getPokerAdmin ? ctx.getPokerAdmin() : [],   // 🃏 ai mở được giải poker
@@ -272,6 +273,7 @@ function startPanel(ctx) {
                     // ⚡ Siêu Tài Xỉu — ĂN DOGCOIN THẬT, càng phải chặn chắc
                     '/api/stx/on', '/api/stx/time', '/api/stx/tran', '/api/stx/an',
                     '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep', '/api/stx/epclear',
+                    '/api/stx/board/start', '/api/stx/board/stop',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -542,6 +544,26 @@ function startPanel(ctx) {
                     if (kq.error) return sendJSON(res, 400, { ok: false, error: kq.error });
                     return sendJSON(res, 200, { ok: true, ...kq });
                 }
+                // 📋 BẢNG SIÊU TÀI XỈU trên Discord. Phải đứng TRƯỚC khối '/api/stx/'
+                // chung ở dưới, không thì rơi vào đó rồi trả "Không có đường này".
+                if (path === '/api/stx/board/start') {
+                    const channelId = String(body.channelId || '').trim();
+                    if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
+                    if (!ctx.startStxBoard) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    try {
+                        const name = await ctx.startStxBoard(channelId);
+                        ctx.writeLog('ADMIN', `[PANEL] Đăng bảng Siêu Tài Xỉu tại #${name}`);
+                        return sendJSON(res, 200, { ok: true, name });
+                    } catch (e) {
+                        return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' });
+                    }
+                }
+                if (path === '/api/stx/board/stop') {
+                    if (ctx.stopStxBoard) ctx.stopStxBoard();
+                    ctx.writeLog('ADMIN', '[PANEL] Gỡ bảng Siêu Tài Xỉu');
+                    return sendJSON(res, 200, { ok: true });
+                }
+
                 // ⚡ SIÊU TÀI XỈU: toàn bộ luật nằm ở SieuTaiXiu/ban.js
                 if (path.indexOf('/api/stx/') === 0) {
                     const B = ctx.stx;
@@ -1909,6 +1931,17 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+          <label>📋 Bảng kết quả trên Discord</label>
+          <div class="muted" id="stxBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
+          <div class="row">
+            <input id="stxChannel" placeholder="Channel ID (dán chung kênh với bảng Tài Xỉu cũng được)" style="flex:1">
+            <button class="btn-green" onclick="stxBoardStart()">▶️ Đăng bảng</button>
+            <button class="btn-red" onclick="stxBoardStop()">⏹️ Gỡ bảng</button>
+          </div>
+          <div class="note">Bảng này chỉ KHOE kết quả + rủ vào web, không đặt cược được từ Discord. Chung kênh với bảng Tài Xỉu thường thì hai bảng nằm cạnh nhau, chỉ nhảy xuống cuối khi có người nhắn đè.</div>
+        </div>
+
+        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
           <label>🎲 Ép kết quả ván sau</label>
           <div class="row"><input id="stxD1" type="number" min="1" max="6" value="1" style="width:70px" oninput="stxPreview()">
             <input id="stxD2" type="number" min="1" max="6" value="2" style="width:70px" oninput="stxPreview()">
@@ -2562,7 +2595,15 @@ function stxDo(){
     tt.value=Object.keys(S.thang).map(k=>k+': '+S.thang[k].map(b=>b[0]+'×'+b[1]).join(', ')).join('\\n');
   const ep=document.getElementById('stxEpNow');
   if(ep)ep.textContent=S.ep?('⚡ Ván sau đã bị ép ra '+S.ep.join('-')):'';
+  const bi=document.getElementById('stxBoardInfo'), sb=STATE.stxBoard;
+  if(bi&&sb)bi.innerHTML='<span class="run '+(sb.on?'on':'off')+'">'+(sb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(sb.channelId?' &nbsp; kênh <code>'+esc(sb.channelId)+'</code>':'');
+  const ci=document.getElementById('stxChannel');
+  if(ci&&sb&&sb.channelId&&!ci.value&&document.activeElement!==ci)ci.value=sb.channelId;
 }
+function stxBoardStart(){const c=document.getElementById('stxChannel').value.trim();if(!c)return toast('Nhập Channel ID');
+  api('/api/stx/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Siêu ở #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
+async function stxBoardStop(){if(!await uiConfirm('Gỡ bảng Siêu Tài Xỉu khỏi Discord?','Gỡ bảng','btn-red'))return;
+  api('/api/stx/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Siêu');refresh();}).catch(e=>toast('❌ '+e.message));}
 function renderTxBetsLive(){
   const box=document.getElementById('txBetsLive'); if(!box||!STATE||!STATE.tx)return;
   const a=STATE.tx.betAgg||{}; const t=STATE.tx;

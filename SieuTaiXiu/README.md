@@ -109,6 +109,32 @@ chung, còn tông đen viết bằng `.sbO.stO…` (đặc hiệu cao hơn một
 thường dù khai trước). Một hệ, không phải hai bản chép song song. Bàn Siêu KHÔNG được có
 rule `.stO` trần — `trang-test` soi.
 
+## 5b. Bảng kết quả trên Discord (22/09)
+
+Bàn Siêu đặt cược **thuần web**, nên bảng Discord này chỉ để **khoe kết quả + rủ vào chơi**:
+đếm ngược, ai đang đặt ván này, **10 ván gần đây**, nhắc phí 20%, một nút 🌐 lấy link + PIN.
+**Không có nút đặt cược ⇒ không đụng tới tiền**, bảng hỏng cũng không mất đồng nào.
+
+Admin đăng/gỡ ở panel SUPER tab ⚡ (`/api/stx/board/start|stop`, đều trong `VIEWONLY_PATHS`).
+Dữ liệu lấy từ `bangDiscord(soVan)` — tách khỏi `adminXem()` (panel hỏi 3 giây/lần, không
+cần lịch sử) và khỏi `trangThai()` (của riêng từng người chơi). Dòng kết quả dùng chung
+`dongVanDiscord` với bàn thường, xem `../TaiXiu/README.md` §9b.
+
+Bảng chỉ vẽ lại khi **dấu vết** (bật/tắt · ván · pha · số lượt · tổng cược) đổi, và
+`repostBoard` còn chặn thêm 10 giây/lần — không đụng trần lệnh của Discord.
+
+### Chạy CHUNG MỘT KÊNH với bảng Tài Xỉu thường
+
+Được. Cả hai bảng chỉ **nhảy xuống cuối kênh khi có NGƯỜI nhắn đè**, chứ không nhảy vì
+bảng kia vừa cập nhật:
+
+- `repostBoard(..., idAnhEm)` — tin cuối kênh là bảng anh em thì vẫn coi như "chưa ai
+  nhắn đè" ⇒ sửa tại chỗ.
+- Vòng ván bàn thường cũng xét thêm `stxBoard.message.id` khi tính `txIsLast`.
+
+Thiếu hai chỗ này thì mỗi ván hai bảng **thay nhau xoá–đăng lại**: kênh nhấp nháy và tốn
+gấp đôi lệnh Discord.
+
 ## 6. Admin
 
 Panel SUPER, tab **⚡ Siêu Tài Xỉu**: bật/tắt bàn · 3 mốc giờ · trần từng nhóm · trần
@@ -145,6 +171,7 @@ Tab trên web chỉ hiện khi admin **bật bàn**.
 ```
 node SieuTaiXiu/kiemtra/cua-test.js   # lõi tiền: bảng trả, phí, RTP, trần (34 phép)
 node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/kéo thả/ép/báo cược/trọn ván/cứu tiền (74 phép)
+# bảng Discord + dòng kết quả gọn: TaiXiu/kiemtra/trang-test.js soi (khối "bảng Discord bàn Siêu")
 ```
 
 Cả hai **không cần bot**. `ban-test` ép mốc giờ nên chạy trọn một ván trong tích tắc.

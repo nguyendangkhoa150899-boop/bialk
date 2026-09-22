@@ -4316,6 +4316,7 @@ setInterval(() => tienlenMod.nhip(), 1000);
 // ván + tiền; ở đây chỉ đưa cho nó ví, log và chỗ lưu. SIEUTX_DIR để bản test (chỉ
 // chép mấy file BotDoMin) vẫn trỏ về được thư mục thật trong repo.
 const SIEUTX_DIR = process.env.SIEUTX_DIR || require('path').join(__dirname, '..', 'SieuTaiXiu');
+const SIEU_CUA = require(require('path').join(SIEUTX_DIR, 'cua.js'));
 const stxBan = require(require('path').join(SIEUTX_DIR, 'ban.js')).taoBan({
     db: () => dbCache,
     layNguoi: (id) => getUserData(id),
@@ -4329,7 +4330,18 @@ const stxBan = require(require('path').join(SIEUTX_DIR, 'ban.js')).taoBan({
     // 🔔 báo cược về Discord — dùng chung ID / công tắc / mức tối thiểu _txNoti với bàn thường
     baoCuoc: (id, ten, cua, tien) => stxNotifyBet(id, ten, cua, tien),
 });
-setInterval(() => stxBan.nhip(), 1000);
+// Nhịp bàn Siêu + đánh dấu bảng Discord cần vẽ lại. So DẤU VẾT (ván/pha/tổng cược)
+// chứ không vẽ mỗi giây: repostBoard còn tự chặn 10s/lần, khỏi đụng trần Discord.
+let stxDauVet = '';
+setInterval(() => {
+    stxBan.nhip();
+    try {
+        const b = stxBan.bangDiscord(0);
+        const vet = [b.on, b.gameId, b.status, b.bets.length,
+            b.bets.reduce((s, x) => s + x.amount, 0)].join('|');
+        if (vet !== stxDauVet) { stxDauVet = vet; stxBoard.needsUpdate = true; }
+    } catch (e) { }
+}, 1000);
 // Gửi thử 1 tin để chủ server biết ID có đúng không (nút "Gửi thử" ở panel).
 async function txNotiTest() {
     const c = txNotiCfg();
@@ -6773,10 +6785,15 @@ async function sweepBoards(channel, keepId, titleMatch, label) {
     }
 }
 
-async function repostBoard(board, getData, msgKey, label, titleMatch) {
+async function repostBoard(board, getData, msgKey, label, titleMatch, idAnhEm) {
     if (!board.channel || !board.needsUpdate) return;
     // lastMessageId do gateway đẩy về (bot có intent GuildMessages) - không tốn API call
-    const isLast = !!board.message && board.channel.lastMessageId === board.message.id;
+    // idAnhEm: id mấy bảng CÙNG KÊNH của bot. Tin cuối là bảng anh em thì vẫn coi như
+    // chưa ai nhắn đè -> sửa tại chỗ. Thiếu cái này, 2 bảng chung kênh sẽ thay nhau
+    // xoá-đăng-lại mỗi ván (kênh nhấp nháy, tốn gấp đôi lệnh Discord).
+    const idCuoi = board.channel.lastMessageId;
+    const anhEm = (typeof idAnhEm === 'function' ? idAnhEm() : idAnhEm) || [];
+    const isLast = !!board.message && (idCuoi === board.message.id || anhEm.includes(idCuoi));
     if (Date.now() - board.lastEdit < (isLast ? BOARD_EDIT_MS : BOARD_REPOST_MS)) return;
     board.needsUpdate = false;
     board.lastEdit = Date.now();
@@ -6810,6 +6827,107 @@ function runStairsBoardLoop() {
 // Discord lẫn tab panel. Dữ liệu _pstats vẫn được statAdd đếm ngầm; muốn dựng lại
 // thì lục git history: getStatsBoardData/start/stop/resume/runStatsBoardLoop,
 // resetStats, addJackpotStat + tab-st bên panel.js.)
+
+// ===== ⚡ BẢNG SIÊU TÀI XỈU TRÊN DISCORD =====
+// Bàn Siêu đặt cược THUẦN WEB, nên bảng này chỉ để KHOE KẾT QUẢ + rủ vào chơi.
+// Không có nút đặt cược => không đụng tới tiền, hỏng bảng cũng không mất đồng nào.
+// Chạy chung kênh với bảng Tài Xỉu thường được: xem repostBoard/idAnhEm.
+const stxBoard = { channel: null, message: null, needsUpdate: false, lastEdit: 0 };
+
+function getStxBoardData() {
+    const b = stxBan.bangDiscord(BOARD_HISTORY_N);
+    const vn = (n) => Number(n || 0).toLocaleString('vi-VN');
+    let desc = '';
+    if (!b.on) {
+        desc += '🔴 **Bàn đang tắt** — admin bật lại ở panel.\n\n';
+    } else if (b.status === 'betting') {
+        desc += `⏳ **Khoá sổ:** <t:${b.targetTime - b.khoaSoS}:R> · **Mở bát:** <t:${b.targetTime}:R>\n`;
+    } else {
+        desc += `🔒 **Đã khoá sổ** · **Mở bát:** <t:${b.targetTime}:R>\n`;
+    }
+    desc += `💸 Bàn này thu **PHÍ ${Math.round(b.phi * 100)}%** trên tiền cược — đặt ${vn(1000)} thì ví trừ ${vn(Math.floor(1000 * (1 + b.phi)))}.\n\n`;
+
+    desc += '📝 **Người đặt ván này:**\n';
+    const nhom = {};
+    b.bets.forEach(x => (nhom[x.choice] || (nhom[x.choice] = [])).push(x));
+    let coAi = false;
+    for (const c of SIEU_CUA.DS.map(x => x.id)) {
+        if (!nhom[c] || !nhom[c].length) continue;
+        coAi = true;
+        const theoNguoi = {};
+        nhom[c].forEach(x => {
+            if (!theoNguoi[x.u]) theoNguoi[x.u] = { name: x.name, amount: 0 };
+            theoNguoi[x.u].amount += x.amount;
+        });
+        desc += `**${nhom[c][0].tenCua}:** ` + Object.values(theoNguoi)
+            .map(u => `${u.name} ${vn(u.amount)}`).join(' · ') + '\n';
+    }
+    if (!coAi) desc += '*Chưa có ai đặt*\n';
+
+    if (b.history.length) {
+        desc += `\n**🎲 ${b.history.length} ván gần đây:**\n`
+            + b.history.map(h => dongVanDiscord(h, {
+                tenCua: (id) => (SIEU_CUA.THEO_ID[id] || {}).ten || id,
+                cuaThang: (d) => SIEU_CUA.cuaThang(d),
+            })).join('\n');
+    }
+    desc += `\n\n👉 Bấm **🌐 Chơi trên web** lấy link + PIN. Đặt cược và **nặn xí ngầu** đều trên web.`
+        + (b.maxBet > 0 ? ` · 💰 Trần cược **${vn(b.maxBet)}**/người/ván` : '');
+
+    const embed = new EmbedBuilder()
+        .setTitle(`⚡ SIÊU TÀI XỈU LIVE - Ván #${padId(b.gameId)}`)
+        .setColor(b.on ? (b.status === 'betting' ? 0xd4a017 : 0x8b5a00) : 0x555555)
+        .setDescription(desc.slice(0, 4000));
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Siêu Tài Xỉu trên web').setStyle(ButtonStyle.Success)
+    );
+    return { embeds: [embed], components: [row] };
+}
+
+async function startStxBoard(channel) {
+    if (stxBoard.message) await stxBoard.message.delete().catch(() => { });
+    stxBoard.channel = channel;
+    stxBoard.message = await channel.send(getStxBoardData());
+    stxBoard.needsUpdate = false;
+    stxBoard.lastEdit = Date.now();
+    dbCache._stxChannelId = channel.id;
+    dbCache._stxMsgId = stxBoard.message.id;
+    saveDbNow();
+}
+
+function stopStxBoard() {
+    if (stxBoard.message) stxBoard.message.delete().catch(() => { });
+    stxBoard.channel = null;
+    stxBoard.message = null;
+    dbCache._stxChannelId = null;
+    dbCache._stxMsgId = null;
+    saveDbNow();
+}
+
+async function resumeStxBoard() {
+    const chId = dbCache._stxChannelId;
+    if (!chId) return;
+    const ch = await client.channels.fetch(chId);
+    const old = dbCache._stxMsgId ? await ch.messages.fetch(dbCache._stxMsgId).catch(() => null) : null;
+    if (old) {
+        stxBoard.channel = ch;
+        stxBoard.message = old;
+        stxBoard.lastEdit = Date.now();
+        await old.edit(getStxBoardData()).catch(() => { });
+        writeLog('SYSTEM', `[BẢNG SIÊU TX] Nối lại bảng cũ ở #${ch.name}`);
+        return;
+    }
+    await startStxBoard(ch);
+    writeLog('SYSTEM', `[BẢNG SIÊU TX] Bảng cũ mất, đã đăng bảng mới ở #${ch.name}`);
+}
+
+function runStxBoardLoop() {
+    // anh em = bảng Tài Xỉu thường: nó nằm dưới thì KHÔNG tính là "có người nhắn đè"
+    setInterval(() => {
+        repostBoard(stxBoard, getStxBoardData, '_stxMsgId', 'BẢNG SIÊU TX', 'SIÊU TÀI XỈU',
+            () => (txState.message ? [txState.message.id] : [])).catch(() => { });
+    }, 5000);
+}
 
 function runMinesBoardLoop() {
     setInterval(() => { repostBoard(minesBoard, getMinesBoardData, '_minesMsgId', 'BẢNG DÒ MÌN', 'DÒ MÌN').catch(() => { }); }, 5000);
@@ -6867,6 +6985,8 @@ client.once('ready', async (c) => {
     // rỗng, repostBoard thoát ngay dòng đầu). Bộ kiểm boardloop-test.js canh đúng chỗ này.
     runMinesBoardLoop();
     resumeMinesBoard().catch(e => writeLog('SYSTEM', `[BẢNG DÒ MÌN] Không nối lại được: ${e.message}`));
+    runStxBoardLoop();
+    resumeStxBoard().catch(e => writeLog('SYSTEM', `[BẢNG SIÊU TX] Không nối lại được: ${e.message}`));
     runSpmBoardLoop();
     resumeSpmBoard().catch(e => writeLog('SYSTEM', `[BẢNG PHI THUYỀN] Không nối lại được: ${e.message}`));
     // 🎡 hoàn vé vòng quay còn treo từ trước khi restart
@@ -7325,6 +7445,9 @@ client.once('ready', async (c) => {
             setPotCfg: (key, o) => setPotCfg(key, o),   // 🏆 09/09: danh sách bội số nổ hũ (x10/x15/x20) của Dò Mìn/Leo Thang
             setTxPotCfg: (o) => setTxPotCfg(o),         // 🌪️ 14/09: % nuôi + bội số bú hũ Bão
             getMines: () => ({ on: !!minesBoard.message, channelId: dbCache._minesChannelId || '' }),
+            startStxBoard: async (channelId) => { const ch = await client.channels.fetch(channelId); await startStxBoard(ch); return ch.name; },
+            stopStxBoard: () => stopStxBoard(),
+            getStxBoard: () => ({ on: !!stxBoard.message, channelId: dbCache._stxChannelId || '' }),
             startMines: async (channelId) => { const ch = await client.channels.fetch(channelId); await startMinesBoard(ch); return ch.name; },
             stopMines: () => stopMinesBoard(),
             // 🚀 Bảng Phi Thuyền: khoe kết quả từng chuyến (thắng/thua) + nút vào web
@@ -7541,10 +7664,6 @@ client.once('ready', async (c) => {
 // --- UI BIG SMALL ---
 // Big Small đã CHUYỂN HẾT LÊN WEB: bảng Discord chỉ hiển thị tình hình + nút lấy link/PIN.
 // Đặt cược + nặn xí ngầu (kéo tờ giấy) đều làm trên web (webplay.js).
-// Big Small: 🔺 🎲🎲🎲 · Tổng 16 · TÀI · CHẴN - ⚖️ BiaLK đặt tài +100 · lẻ −100
-// Xí ngầu dùng icon thật (DICE_EMOJIS). Net tính TỪNG CỬA của từng người (đặt
-// tài+lẻ mà ra TÀI CHẴN thì thấy rõ "tài +100 · lẻ −100" chứ không gộp một cục);
-// icon đầu theo TỔNG của người đó: 💰 lời · 💥 lỗ · ⚖️ hòa.
 // ⚠️ TUYỆT ĐỐI KHÔNG tính lại tiền ở đây. Số nhận về (b.nhan) đã do lõi tiền chốt
 // sẵn lúc chốt ván. Bản cũ tự tính theo luật bàn 5 cửa nên bàn 52 cửa in ai cũng THUA.
 //
@@ -7559,62 +7678,66 @@ function txTienNgan(n) {
     else t = String(n);
     return (am ? '−' : '+') + t.replace('.', ',');
 }
-function txHistoryLine(h) {
-    const head = h.storm ? '🌪️' : (h.tx === TX_CHOICES.tai.name ? '🔺' : '🔻');
-    const dice = (h.dice || []).map(d => DICE_EMOJIS[d] || d).join(' ');
-    const line = `${head} ${dice} · Tổng **${h.sum}** · **${h.tx}${h.storm ? '' : ' · ' + h.cl}**`;
-    // Ván CŨ (ghi trước bản vá) không có trường `nhan`. Coi 0 là thua thì bảng in
-    // ai cũng thua — đúng cái lỗi vừa bị tố. Thiếu `nhan` thì chuyển sang tính TỔNG
-    // theo h.winners (do lõi tiền chốt), bỏ phần chi tiết từng cửa.
+/**
+ * MỘT DÒNG KẾT QUẢ VÁN cho bảng Discord — DÙNG CHUNG bàn thường và bàn Siêu.
+ *
+ * Chủ server chốt 22/09: "show kết quả ván đó + người chơi + thắng hoặc thua + số
+ * dogcoin là được". Nên bỏ hẳn mặt xúc xắc và phần kể từng ô ("3 ô, trúng 2: …") —
+ * hai thứ đó làm dòng dài gấp đôi mà người đọc vẫn phải tự cộng trừ. Giữ ⚡ hệ số
+ * nhân ĐÃ TRÚNG vì nó chỉ hiện khi thật sự có ô nhân ăn tiền, và đó là thứ đáng hóng.
+ *
+ *   🔻 Tổng 8 · XỈU · CHẴN · ⚡ x200 Tổng 5
+ *      💰 Khoa +1,2tr · 💥 Nam −50k
+ *
+ * opt.tenCua(id)     -> tên hiển thị của một cửa (mỗi bàn một bảng cửa)
+ * opt.cuaThang(dice) -> danh sách cửa thắng, để lọc ⚡ theo ĐÚNG lõi tiền từng bàn
+ *
+ * ⚠️ Lãi/lỗ = nhận − cược − PHÍ. Bàn Siêu thu phí 20%, bỏ phí ra ngoài là bảng khoe
+ * lãi cao hơn tiền thật trong ví, người chơi soi ví thấy lệch là mất tin ngay.
+ */
+function dongVanDiscord(h, opt) {
+    opt = opt || {};
+    const tenCua = opt.tenCua || ((id) => id);
+    const cuaThang = opt.cuaThang || (() => []);
+    const head = h.storm ? '🌪️' : (/TÀI|BIG/i.test(String(h.tx)) ? '🔺' : '🔻');
+    const kq = h.storm
+        ? `Tổng **${h.sum}** · **BÃO** — cửa thường thua hết`
+        : `Tổng **${h.sum}** · **${h.tx}** · **${h.cl}**`;
+
+    // ⚡ chỉ kể ô nhân ĐÃ RA TRÚNG (ván cũ trong DB còn bảng nhân đầy đủ nên lọc lại ở đây)
+    let dongNhan = '';
+    const nh = h.nhan || {};
+    const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? cuaThang(h.dice) : []);
+    const idNhan = Object.keys(nh).filter(k => oTrung.has(k)).sort((a, b) => nh[b] - nh[a]);
+    if (idNhan.length) {
+        dongNhan = ' · ⚡ ' + idNhan.slice(0, 2).map(k => `x${nh[k]} ${tenCua(k)}`).join(' · ')
+            + (idNhan.length > 2 ? ` +${idNhan.length - 2}` : '');
+    }
+
+    // Gộp theo NGƯỜI. Ván cũ (ghi trước bản vá) không có trường nhan -> tính tổng
+    // bằng h.winners, đừng coi 0 là thua kẻo bảng in ai cũng thua.
     const cuMoi = (h.bets || []).every(b => b && b.nhan !== undefined);
     const per = {};
     (h.bets || []).forEach(b => {
-        const cua = String(b.choice || '');
-        if (!per[b.u]) per[b.u] = { name: b.name, total: 0, cuoc: 0, soO: 0, an: [], parts: [] };
-        per[b.u].cuoc += b.amount;
-        per[b.u].soO++;
-        if (!cuMoi) return;
-        const net = (Number(b.nhan) || 0) - b.amount;
-        per[b.u].total += net;
-        // chỉ giữ ô ĂN ĐƯỢC; ô thua gói thành con số cho gọn
-        if ((Number(b.nhan) || 0) > 0) per[b.u].an.push({ ten: cua, lai: net });
+        if (!per[b.u]) per[b.u] = { name: b.name, net: 0, bo: 0 };
+        per[b.u].bo += (b.amount || 0) + (b.phi || 0);      // tiền thật đã rời ví
+        if (cuMoi) per[b.u].net += (Number(b.nhan) || 0) - (b.amount || 0) - (b.phi || 0);
     });
     if (!cuMoi) {
         const nhan = {};
         (h.winners || []).forEach(w => { nhan[w.u] = (nhan[w.u] || 0) + (w.amount || 0); });
-        Object.keys(per).forEach(u => {
-            per[u].total = (nhan[u] || 0) - per[u].cuoc;
-        });
+        Object.keys(per).forEach(u => { per[u].net = (nhan[u] || 0) - per[u].bo; });
     }
-    // ⚡ Chỉ kể ô nhân ĐÃ RA TRÚNG. Lọc LẠI ở đây dù lúc chốt ván đã lọc: ván CŨ ghi
-    // trước bản vá còn nguyên bảng nhân đầy đủ trong DB, không lọc là chúng vẫn hiện
-    // hết cho tới khi trôi khỏi 20 ván.
-    let dongNhan = '';
-    const nh = h.nhan || {};
-    const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? TX_CUA.cuaThang(h.dice) : []);
-    const idNhan = Object.keys(nh).filter(k => oTrung.has(k)).sort((a, b) => nh[b] - nh[a]);
-    if (idNhan.length) {
-        dongNhan = ' · ⚡ ' + idNhan.slice(0, 3).map(k => `x${nh[k]} ${txTenCua(k)}`).join(' · ')
-            + (idNhan.length > 3 ? ` +${idNhan.length - 3}` : '');
-    }
-
-    const parts = Object.values(per).map(p => {
-        const icon = p.total > 0 ? '💰' : p.total < 0 ? '💥' : '⚖️';
-        const dau = `${icon} **${p.name}** ${txTienNgan(p.total)}`;
-        if (!cuMoi) return dau;                       // ván cũ: chỉ có tổng
-        const an = p.an.sort((a, b) => b.lai - a.lai);
-        // BẢN CŨ in "(, thua hết)" khi người đó chỉ đặt 1 ô — thiếu hẳn con số.
-        const so = ` (${p.soO} ô`;
-        if (!an.length) return dau + so + ', thua hết)';
-        // Ô "ăn" mà lãi ÂM là tiền HOÀN 30% lúc ra bão, không phải trúng. Gọi đúng tên.
-        const thang = an.filter(x => x.lai > 0);
-        const hoan = an.length - thang.length;
-        const ke = an.slice(0, 3).map(x => `${x.ten} ${txTienNgan(x.lai)}`).join(' · ');
-        const nhan2 = thang.length ? `trúng ${thang.length}` : `hoàn ${hoan}`;
-        return dau + so + `, ${nhan2}: ${ke}${an.length > 3 ? '…' : ''})`;
-    });
-    return line + dongNhan + (parts.length ? `\n   ${parts.join(' | ')}` : '');
+    // Ai nhúc nhích mạnh nhất lên trước (cả thắng đậm lẫn thua đậm), cắt còn 6 người
+    // cho khỏi vỡ trần 4096 ký tự của embed khi bàn đông.
+    const ds = Object.values(per).sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+    const parts = ds.slice(0, 6).map(p =>
+        `${p.net > 0 ? '💰' : p.net < 0 ? '💥' : '⚖️'} **${p.name}** ${txTienNgan(p.net)}`);
+    if (ds.length > 6) parts.push(`… +${ds.length - 6} người`);
+    return `${head} ${kq}${dongNhan}` + (parts.length ? `\n   ${parts.join(' · ')}` : '');
 }
+
+const txHistoryLine = (h) => dongVanDiscord(h, { tenCua: txTenCua, cuaThang: (d) => TX_CUA.cuaThang(d) });
 
 function getTXMessageData(customStatus = null) {
     let desc = `⏳ **Mở bát:** <t:${txState.targetTime}:R>\n\n`;
@@ -7791,7 +7914,11 @@ function runTaiXiuLoop() {
             const prevMsgId = txState.message?.id;
 
             // Bảng còn nằm cuối kênh thì ván mới SỬA TẠI CHỖ, khỏi xoá-tạo (21/08).
-            const txIsLast = !!prevMsgId && txState.channel?.lastMessageId === prevMsgId;
+            // 22/09: hai bàn chạy CHUNG MỘT KÊNH được. Tin cuối là BẢNG SIÊU thì vẫn coi
+            // như "chưa ai nhắn đè" -> sửa tại chỗ. Không có nhánh này thì mỗi ván hai
+            // bảng thay nhau xoá-đăng-lại, kênh nhấp nháy và tốn gấp đôi lệnh Discord.
+            const idCuoi = txState.channel?.lastMessageId;
+            const txIsLast = !!prevMsgId && (idCuoi === prevMsgId || (!!stxBoard.message && idCuoi === stxBoard.message.id));
 
             try {
                 // Tới đây resultPromise CHẮC CHẮN có: bước ②b ở trên đã lo ca "chưa kịp quay"

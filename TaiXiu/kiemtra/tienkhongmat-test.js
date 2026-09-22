@@ -198,8 +198,8 @@ muc('bàn 52 cửa: tên cửa và lịch sử');
 ok('tên cửa luôn tra qua txTenCua, không tra thẳng bảng 5 cửa cũ',
     /function txTenCua\(id\)/.test(SRC) &&
     !/TX_CHOICES\[b\.choice\]\.name/.test(SRC) && !/TX_CHOICES\[sel\.choice\]\.name/.test(SRC));
-ok('bảng lịch sử KHÔNG tự tính lại tiền (đọc số nhận về từ lõi tiền)',
-    /const net = \(Number\(b\.nhan\) \|\| 0\) - b\.amount;/.test(SRC) &&
+ok('bảng lịch sử KHÔNG tự tính lại tiền (đọc số nhận về từ lõi tiền), và TRỪ CẢ PHÍ',
+    /per\[b\.u\]\.net \+= \(Number\(b\.nhan\) \|\| 0\) - \(b\.amount \|\| 0\) - \(b\.phi \|\| 0\);/.test(SRC) &&
     !/win = b\.amount \* TX_BAO_RATE/.test(SRC));
 ok('ván CŨ thiếu số nhận về thì tính tổng theo winners, không in ai cũng thua',
     /const cuMoi = \(h\.bets \|\| \[\]\)\.every/.test(SRC) && /if \(!cuMoi\) \{/.test(SRC));

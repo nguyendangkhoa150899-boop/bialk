@@ -297,8 +297,10 @@ function taoBan(ctx) {
             const e = byUser[b.userId];
             e.stake += b.amount; e.phi += (b.phi || 0); e.win += an;
             const k = b.userId + '_' + b.choice;
-            if (!cuaAgg[k]) cuaAgg[k] = { u: b.userId, name: b.username, choice: CUA.THEO_ID[b.choice].ten, amount: b.amount, nhan: 0 };
+            if (!cuaAgg[k]) cuaAgg[k] = { u: b.userId, name: b.username, choice: CUA.THEO_ID[b.choice].ten, amount: b.amount, phi: 0, nhan: 0 };
             else cuaAgg[k].amount += b.amount;
+            // phí ghi theo từng ô: bảng Discord lấy đây để tính lãi/lỗ THẬT (cược + phí)
+            cuaAgg[k].phi += (b.phi || 0);
             cuaAgg[k].nhan += an;
         }
         const plan = { gameId, dice: xx, byUser, paid: {}, cuaAgg: Object.values(cuaAgg), bangNhan };
@@ -563,6 +565,20 @@ function taoBan(ctx) {
             epGoiY: timEpReNhat(), betsCount: S.bets.length,
         };
     }
+    /**
+     * 📋 Dữ liệu cho BẢNG DISCORD. Tách khỏi adminXem (panel hỏi 3 giây/lần, không cần
+     * lịch sử) và khỏi trangThai (của riêng từng người chơi).
+     */
+    function bangDiscord(soVan) {
+        return {
+            on: batTat(), gameId: S.gameId, status: S.status, targetTime: S.targetTime,
+            khoaSoS: khoaSoS(), phi: CUA.PHI, maxBet: tranToiDaNguoi(), sanCuoc: SAN_CUOC,
+            bets: S.bets.map(b => ({ u: b.userId, name: b.username, choice: b.choice, tenCua: CUA.THEO_ID[b.choice].ten, amount: b.amount })),
+            // ván trống chỉ tổ chiếm chỗ trên bảng — lịch sử đầy đủ vẫn nằm trong _stxHist
+            history: S.history.filter(h => (h.bets || []).length).slice(0, soVan || 10),
+        };
+    }
+
     function epKetQua(a, b, c) {
         const v = [a, b, c].map(x => Math.floor(Number(x)));
         if (v.some(x => !Number.isFinite(x) || x < 1 || x > 6)) return { error: 'Mỗi viên phải từ 1 đến 6' };
@@ -595,7 +611,7 @@ function taoBan(ctx) {
     }
 
     return {
-        nhip, khoiDong, trangThai, adminXem,
+        nhip, khoiDong, trangThai, adminXem, bangDiscord,
         dat, nhanDoi, datLai, xoaCuoc, xoaCua, doiCua, nanXong,
         datGio, datTran, datMaxBet, datMucAn, datThang, datBatTat, epKetQua, huyEp, timEpReNhat,
         thangMacDinh: () => CUA.thangMacDinh(),

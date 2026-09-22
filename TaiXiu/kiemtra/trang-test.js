@@ -260,17 +260,23 @@ ok('ván không ô nhân nào ra thì KHÔNG có dòng ⚡', IDX.includes("let d
 // Lọc 2 TẦNG: tầng ghi cho nhẹ DB, tầng hiển thị để 20 ván CŨ (ghi trước bản vá,
 // còn nguyên bảng nhân đầy đủ trong DB) hiện đúng ngay, khỏi chờ trôi.
 ok('Discord lọc LẠI lúc hiển thị, ván cũ cũng sạch',
-    IDX.includes('const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? TX_CUA.cuaThang(h.dice) : []);') &&
+    IDX.includes('const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? cuaThang(h.dice) : []);') &&
     IDX.includes('Object.keys(nh).filter(k => oTrung.has(k))'));
 ok('web cũng lọc trước khi gửi xuống trang',
     SRC.includes('const locNhanTrung = (h) =>') && SRC.includes('nhan: locNhanTrung(h)'));
 ok('danh sách ô trúng lấy từ lõi tiền qua ctx, không tự đoán',
     SRC.includes('ctx.txCuaThang ? ctx.txCuaThang(h.dice) : []') && IDX.includes('txCuaThang: (xx) => TX_CUA.cuaThang(xx),'));
 // 2 lỗi chữ chủ server chụp được trên bảng Discord
-ok('không còn in "(, thua hết)" khi người đó chỉ đặt 1 ô',
-    IDX.includes('const so = ` (${p.soO} ô`;'));
-ok('tiền HOÀN 30% lúc ra bão gọi đúng là "hoàn", không gọi "trúng"',
-    IDX.includes('const thang = an.filter(x => x.lai > 0);') && IDX.includes('`hoàn ${hoan}`'));
+// 22/09 chủ server chốt: dòng Discord chỉ cần KẾT QUẢ + AI + THẮNG/THUA BAO NHIÊU.
+// Phần kể từng ô ("3 ô, trúng 2: …") và mặt xúc xắc đã BỎ — dài gấp đôi mà vẫn phải
+// tự cộng trừ. Mấy phép dưới canh để không ai lỡ tay dựng lại.
+ok('bỏ hẳn phần kể từng ô và mặt xúc xắc khỏi dòng Discord',
+    !IDX.includes('const so = ` (${p.soO} ô`;') && !IDX.includes('`trúng ${thang.length}`') &&
+    !/const dice = \(h\.dice \|\| \[\]\)\.map\(d => DICE_EMOJIS/.test(IDX));
+ok('dòng gọn: đầu dòng kết quả, xuống dòng là người + lãi/lỗ',
+    IDX.includes("const kq = h.storm") && /return `\${head} \${kq}\${dongNhan}` \+ \(parts\.length \? `\\n {3}\${parts\.join\(' · '\)}` : ''\);/.test(IDX));
+ok('ai nhúc nhích mạnh nhất lên trước, cắt 6 người cho khỏi vỡ trần embed',
+    IDX.includes('.sort((a, b) => Math.abs(b.net) - Math.abs(a.net))') && IDX.includes("parts.push(`… +${ds.length - 6} người`)"));
 ok('kế hoạch trả tiền giữ luôn bảng nhân (phòng khi đã dọn)', IDX.includes('bangNhan,'));
 ok('web nhận được bảng nhân của ván (đã lọc chỉ ô ra trúng)',
     SRC.includes('winners: h.winners || [], nhan: locNhanTrung(h)'));
@@ -300,8 +306,9 @@ ok('huy hiệu ⚡ làm nhỏ + xỉn, không viền vàng tranh chỗ',
     SRC.includes("'.hsub .xx{display:inline-block;background:#2b2f3c") && !SRC.includes('.hsub .xx{display:inline-block;background:#3a2e10'));
 // Dòng Discord: mỗi người CHỈ kể ô ăn được, ô thua gói lại thành một con số
 ok('dòng Discord rút gọn tiền (k / tr)', IDX.includes('function txTienNgan(n)'));
-ok('dòng Discord chỉ kể ô ĂN, ô thua gói thành số',
-    IDX.includes('thua hết') && IDX.includes('`trúng ${thang.length}`'));
+ok('ván CŨ thiếu số nhận về vẫn tính đúng theo winners (không in ai cũng thua)',
+    IDX.includes('const cuMoi = (h.bets || []).every(b => b && b.nhan !== undefined);') &&
+    IDX.includes('Object.keys(per).forEach(u => { per[u].net = (nhan[u] || 0) - per[u].bo; });'));
 ok('dòng Discord có kể ô được nhân', IDX.includes("dongNhan = ' · ⚡ '"));
 
 muc('nút MAX CƯỢC + hiệu ứng chip bay');
@@ -398,6 +405,40 @@ ok('máy tắt hiệu ứng chuyển động thì bỏ nảy, vẫn giữ nền 
     SRC.includes("'@media (prefers-reduced-motion:reduce){#sbChips .chip.on,#stChips .chip.on{animation:none;transform:none}}'"));
 ok('cả 2 bàn vẫn gắn lớp on đúng mệnh giá đang chọn',
     SRC.includes('(v===SBCHIP?" on":"")') && SRC.includes('(v===STCHIP?" on":"")'));
+
+// 22/09: bàn Siêu có BẢNG DISCORD riêng, chạy chung kênh với bàn thường được.
+muc('bảng Discord bàn Siêu + chung một kênh');
+ok('một hàm dòng kết quả DÙNG CHUNG hai bàn (tên cửa + cửa thắng truyền vào)',
+    IDX.includes('function dongVanDiscord(h, opt)') &&
+    IDX.includes('const txHistoryLine = (h) => dongVanDiscord(h, { tenCua: txTenCua, cuaThang: (d) => TX_CUA.cuaThang(d) });') &&
+    IDX.includes('tenCua: (id) => (SIEU_CUA.THEO_ID[id] || {}).ten || id,'));
+ok('lãi/lỗ trừ CẢ PHÍ — bàn Siêu không được khoe lãi cao hơn tiền thật trong ví',
+    IDX.includes("per[b.u].bo += (b.amount || 0) + (b.phi || 0);") &&
+    BAN.includes('cuaAgg[k].phi += (b.phi || 0);'));
+ok('máy bàn Siêu có bangDiscord (tách khỏi adminXem/trangThai) và lọc ván trống',
+    BAN.includes('function bangDiscord(soVan)') &&
+    BAN.includes('history: S.history.filter(h => (h.bets || []).length).slice(0, soVan || 10),') &&
+    BAN.includes('nhip, khoiDong, trangThai, adminXem, bangDiscord,'));
+ok('bảng Siêu: dựng/gỡ/nối-lại-sau-restart đủ bộ, có vòng lặp 5 giây',
+    /function getStxBoardData\(\)/.test(IDX) && /async function startStxBoard\(channel\)/.test(IDX) &&
+    /function stopStxBoard\(\)/.test(IDX) && /async function resumeStxBoard\(\)/.test(IDX) &&
+    /function runStxBoardLoop\(\)/.test(IDX) && IDX.includes('runStxBoardLoop();') &&
+    IDX.includes("resumeStxBoard().catch(e => writeLog('SYSTEM'"));
+ok('bảng Siêu KHÔNG có nút đặt cược (thuần khoe kết quả, không đụng tiền)',
+    /setCustomId\('web_pin'\)\.setLabel\('🌐 Chơi Siêu Tài Xỉu trên web'\)/.test(IDX) &&
+    !/stx.*setCustomId\('bet/.test(IDX));
+ok('bảng Siêu vẽ lại theo DẤU VẾT, không vẽ mỗi giây',
+    IDX.includes("let stxDauVet = '';") && IDX.includes('if (vet !== stxDauVet) { stxDauVet = vet; stxBoard.needsUpdate = true; }'));
+ok('CHUNG KÊNH: bảng thường không nhảy xuống cuối chỉ vì bảng Siêu vừa cập nhật',
+    IDX.includes('const txIsLast = !!prevMsgId && (idCuoi === prevMsgId || (!!stxBoard.message && idCuoi === stxBoard.message.id));'));
+ok('CHUNG KÊNH: repostBoard nhận danh sách bảng anh em',
+    IDX.includes('async function repostBoard(board, getData, msgKey, label, titleMatch, idAnhEm) {') &&
+    IDX.includes('const isLast = !!board.message && (idCuoi === board.message.id || anhEm.includes(idCuoi));') &&
+    IDX.includes('() => (txState.message ? [txState.message.id] : [])'));
+ok('panel bật/tắt được bảng Siêu, route nằm trong VIEWONLY',
+    IDX.includes('startStxBoard: async (channelId)') && IDX.includes('getStxBoard: () =>') &&
+    PANEL.includes("path === '/api/stx/board/start'") && PANEL.includes("path === '/api/stx/board/stop'") &&
+    PANEL.includes("'/api/stx/board/start', '/api/stx/board/stop'"));
 
 // 22/09 rà: bàn Siêu phải NGANG bàn thường ở cả panel lẫn trang người chơi
 muc('bàn Siêu ngang bàn thường (rà 22/09)');

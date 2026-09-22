@@ -148,6 +148,34 @@ là dòng dài không đọc nổi, mà lại **không hề kể ô nào đượ
   `plan.bangNhan` giữ bản sao phòng khi `txState.nhan` đã bị dọn.
 - Ván CŨ ghi trước bản vá không có 2 trường này → chỉ hiện tổng, **không bịa**.
 
+## 9b. Dòng kết quả trên Discord (22/09) — dùng chung 2 bàn
+
+Chủ server chốt: *"show kết quả ván đó + người chơi + thắng hoặc thua + số dogcoin là được"*.
+
+```
+🔻 Tổng 8 · XỈU · CHẴN · ⚡ x200 Tổng 8
+   💰 Khoa +2,1tr · 💥 Nam −50k
+```
+
+Một hàm `dongVanDiscord(h, {tenCua, cuaThang})` lo cho **cả bàn thường lẫn bàn Siêu**;
+mỗi bàn truyền bảng cửa và hàm `cuaThang` của lõi tiền mình vào.
+
+- **Đã bỏ**: mặt xúc xắc và phần kể từng ô (`(3 ô, trúng 2: tong9 +50k · tai +20k…)`).
+  Dài gấp đôi mà người đọc vẫn phải tự cộng trừ.
+- **Giữ ⚡** hệ số nhân ĐÃ RA TRÚNG (tối đa 2 ô) — nó chỉ hiện khi có ô nhân thật sự ăn
+  tiền, và đó là thứ đáng hóng.
+- **Lãi/lỗ = nhận − cược − PHÍ.** Bàn Siêu thu 20%: bỏ phí ra ngoài là bảng khoe lãi cao
+  hơn tiền thật trong ví, người chơi soi ví thấy lệch là mất tin ngay. Phí ghi theo từng
+  ô trong `cuaAgg[].phi`.
+- Xếp theo **biến động mạnh nhất** (cả thắng đậm lẫn thua đậm), cắt còn **6 người** +
+  `… +N người` — embed Discord chỉ chứa 4096 ký tự.
+- ⚠️ **TUYỆT ĐỐI KHÔNG tính lại tiền ở đây.** Số nhận về (`b.nhan`) do lõi tiền chốt sẵn
+  lúc chốt ván. Bản cũ tự tính theo luật bàn 5 cửa nên bàn 52 cửa in ai cũng THUA.
+- Ván CŨ (ghi trước bản vá) không có `b.nhan` → tính tổng theo `h.winners`, đừng coi 0
+  là thua.
+
+---
+
 ## 10. 3 nút thao tác nhanh
 
 `🔁 Đặt lại` · `✖️2` · `🗑️ Xoá cược` → `/api/tx/datlai` · `/api/tx/x2` · `/api/tx/xoacuoc`.
