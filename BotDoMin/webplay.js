@@ -1925,6 +1925,7 @@ const PAGE = [
 
     '<div class="card stCard"><h2>👥 Ai đang đặt ván này</h2><div id="stWho" class="muted" style="font-size:13px">Chưa ai đặt.</div></div>',
     '<div class="card stCard"><h2>🔮 Lịch sử 20 ván gần nhất</h2>',
+    '<label class="hTog"><input type="checkbox" id="stHNhanOn" onchange="hNhanBat(this.checked)"> ⚡ Hiện hệ số nhân từng ván</label>',
     '<div id="stHist" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
     '</div>', // hết #pageStx
 
@@ -2696,7 +2697,7 @@ const PAGE = [
     // betBtn đã bỏ (bấm ô là đặt luôn) -> phải có if, không thì null.disabled làm vỡ cả refresh
     'var bb=document.getElementById("betBtn");if(bb)bb.disabled=(PHASE!=="bet");',
     'var nhac=document.getElementById("sbNhac");',
-    'if(nhac)nhac.textContent=PHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn":(PHASE==="nhan"?"⚡ Đang quay hệ số nhân — không đặt được nữa":"Đã khoá sổ — chờ ván sau");',
+    'if(nhac)nhac.textContent=PHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn · giữ chip để kéo sang ô khác":(PHASE==="nhan"?"⚡ Đang quay hệ số nhân — không đặt được nữa":"Đã khoá sổ — chờ ván sau");',
     // 💰 trần cược/người/ván + đã đặt bao nhiêu ván này (server chặn, đây chỉ là nhắc)
     'var cpn=document.getElementById("txCapNote");if(cpn){var myTot=0;(j.myBets||[]).forEach(function(b){myTot+=b.amount||0});',
     'TXMAX=j.txMax||0;',
@@ -2772,7 +2773,7 @@ const PAGE = [
     //   "0" -> tắt · "1" -> bật
     // Phải viết !== "0". Viết === "1" là người mới vào bị tắt, sai ý.
     'var HNHAN=localStorage.getItem("tx_hnhan")!=="0";',
-    'function hNhanBat(v){HNHAN=!!v;localStorage.setItem("tx_hnhan",v?"1":"0");refresh()}',
+    'function hNhanBat(v){HNHAN=!!v;localStorage.setItem("tx_hnhan",v?"1":"0");if(CURPAGE==="stx")stLoad();else refresh()}',
     // Dòng phụ: phần "bạn ăn" LUÔN hiện (thứ người chơi cần), phần ⚡ chỉ khi bật
     // công tắc — và chỉ 3 ô to nhất, để nó là chú thích chứ không át dãy kết quả.
     'function hSub(h){var p=[];',
@@ -3229,8 +3230,11 @@ const PAGE = [
     'cap.textContent="Giữ và kéo chén ra - lộ đủ 3 viên là ra điểm 🤫"}}',
     'else if(STPHASE==="wait"){stt.textContent="⏳ Đang mở bát...";cap.textContent=""}',
     'else{stt.textContent="🔴 Bàn Siêu Tài Xỉu đang tắt";cap.textContent="";paper.classList.add("hidden")}',
+    'var tg2=$("stHNhanOn");if(tg2&&tg2.checked!==HNHAN)tg2.checked=HNHAN;',
+    'var nh3=$("stNhac");if(nh3)nh3.textContent=STPHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn · giữ chip để kéo sang ô khác":(STPHASE==="nhan"?"⚡ Đang quay hệ số nhân — không đặt được nữa":"Đã khoá sổ — chờ ván sau");',
     'var m=(j.myBets||[]),tong=0;m.forEach(function(b){tong+=b.amount});',
-    '$("stMine").textContent=m.length?("🧾 Ván này bạn đặt "+vnd(tong)+" + phí "+vnd(STPHITOI)+" vào "+m.length+" ô"):"";',
+    'var gh=STMAX>0?("💰 Giới hạn cược "+vnd(STMAX)+"/người/ván"):"";',
+    '$("stMine").textContent=m.length?("🧾 Ván này bạn đặt "+vnd(tong)+" + phí "+vnd(STPHITOI)+" vào "+m.length+" ô"+(gh?" · "+gh:"")):gh;',
     'stNutVe();stWho(j.betsList||[]);stHist(j.history||[])}',
     'function stWho(list){var box=$("stWho");if(!box)return;if(!list.length){box.innerHTML="Chưa ai đặt.";return}',
     'var by={};list.forEach(function(b){(by[b.choice]=by[b.choice]||[]).push(b)});',
@@ -3245,8 +3249,11 @@ const PAGE = [
     'var net=an-Math.floor(cuoc*(1+STPHI));',
     'var tai=(h.tx==="TÀI"),chan=(h.cl==="CHẴN");',
     'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span><span class="\'+(chan?"ce":"od")+\'">\'+h.cl+"</span>");',
-    'var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
-    'var phu=ids.length?(\'<div class="hsub">\'+ids.slice(0,3).map(function(k){return \'<span class="xx">x\'+nh[k]+"</span>"+(STNAMES[k]||k)}).join(" · ")+"</div>"):\'<div class="hsub"></div>\';',
+    'var p2=[],an2=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0});',
+    'if(an2.length)p2.push(\'<span class="an">🎯 \'+an2.slice(0,3).map(function(b){return b.choice+" +"+vnd((b.nhan||0)-b.amount)}).join(" · ")+(an2.length>3?" …":"")+"</span>");',
+    'if(HNHAN){var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
+    'if(ids.length)p2.push(ids.slice(0,3).map(function(k){return \'<span class="xx">x\'+nh[k]+"</span>"+(STNAMES[k]||k)}).join(" · ")+(ids.length>3?(" +"+(ids.length-3)):""))}',
+    'var phu=\'<div class="hsub">\'+p2.join(" &nbsp;·&nbsp; ")+"</div>";',
     'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
     '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
     '\'<span class="dd">\'+h.dice.map(mdie).join("")+"</span>"+',

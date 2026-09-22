@@ -16,6 +16,7 @@ const SRC = fs.readFileSync(F, 'utf8');
 const PANEL = fs.readFileSync(path.join(__dirname, '..', '..', 'BotDoMin', 'panel.js'), 'utf8');
 // index.js: dòng lịch sử gửi lên Discord dựng ở đây
 const IDX = fs.readFileSync(path.join(__dirname, '..', '..', 'BotDoMin', 'index.js'), 'utf8');
+const BAN = fs.readFileSync(path.join(__dirname, '..', '..', 'SieuTaiXiu', 'ban.js'), 'utf8');
 
 let P = 0, F_ = 0;
 const ok = (t, dk, them) => {
@@ -379,6 +380,34 @@ ok('dời chip trên máy chủ kiểm trần ô đích RỒI MỚI đụng sổ
     /const tranO = TX_CUA\.tranCua\(den, txTranCfg\(\)\);\s*const daCo = txBetCuaCua\(userId, den\);\s*if \(tranO > 0 && daCo \+ tien > tranO\)/.test(IDX));
 ok('huỷ 1 ô / dời ô đều câm ngoài pha đặt (txDangNhanCuoc)',
     /function txXoaCua\(userId, cua\) \{\s*const chan = txDangNhanCuoc\(\);/.test(IDX) && /function txDoiCua\(userId, tu, den\) \{\s*const chan = txDangNhanCuoc\(\);/.test(IDX));
+
+// 22/09 rà: bàn Siêu phải NGANG bàn thường ở cả panel lẫn trang người chơi
+muc('bàn Siêu ngang bàn thường (rà 22/09)');
+ok('lịch sử Siêu có công tắc ⚡ riêng, dùng chung HNHAN, bật/tắt tải lại đúng bàn',
+    SRC.includes('id="stHNhanOn" onchange="hNhanBat(this.checked)"') && SRC.includes('if(CURPAGE==="stx")stLoad();else refresh()'));
+ok('lịch sử Siêu: "🎯 bạn ăn" LUÔN hiện, ⚡ chỉ khi bật, tối đa 3 ô',
+    SRC.includes('an2=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0})') &&
+    SRC.includes("'if(HNHAN){var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',") &&
+    SRC.includes('if(ids.length)p2.push(ids.slice(0,3)'));
+ok('dòng nhắc bàn Siêu đổi theo pha (bàn thường đã làm từ trước)', SRC.includes('var nh3=$("stNhac");if(nh3)nh3.textContent=STPHASE==="bet"?'));
+ok('bàn Siêu nhắc giới hạn cược/người/ván như bàn thường', SRC.includes('var gh=STMAX>0?("💰 Giới hạn cược "+vnd(STMAX)+"/người/ván"):""'));
+ok('cả 2 bàn nhắc "giữ chip để kéo sang ô khác"', SRC.split('giữ chip để kéo sang ô khác').length - 1 === 2);
+ok('panel Siêu: gợi ý ép rẻ nhất + huỷ ép + xem trước tổng + 4 nút nhanh',
+    PANEL.includes('onclick="stxTuEp()"') && PANEL.includes('onclick="stxHuyEp()"') && PANEL.includes('id="stxPrev"') &&
+    PANEL.includes('onclick="stxSetDice(6,6,4)"') && PANEL.includes("path === '/api/stx/epclear'") && PANEL.includes("'/api/stx/epclear'"));
+ok('panel Siêu liệt kê từng người đặt + số lượt (không chỉ tổng theo cửa)',
+    PANEL.includes("(S.bets||[]).slice().reverse().map(b=>esc(b.name)") && PANEL.includes("(S.betsCount||0)+' lượt đặt"));
+ok('gợi ý ép Siêu lấy THẲNG từ máy chủ (epGoiY), không tự đoán ở trình duyệt',
+    PANEL.includes('const g=S.epGoiY;') && !/function stxTuEp\(\)[\s\S]{0,400}for\s*\(/.test(PANEL));
+ok('xem trước ép báo BÃO khi 3 viên giống nhau — cả 2 bàn', PANEL.split('BÃO — Tài/Xỉu/Chẵn/Lẻ thua sạch').length - 1 === 2);
+ok('"ô sáng/ván" ở panel luôn ghi rõ TRUNG BÌNH (từng ván lệch quanh số đó)',
+    PANEL.split('ô sáng/ván').slice(0, -1).every(s => s.slice(-90).includes('trung bình')));
+ok('index.js: báo cược Siêu về Discord dùng chung _txNoti, nối qua ctx.baoCuoc',
+    /function stxNotifyBet\(userId, ten, cua, soTien\)/.test(IDX) && /baoCuoc: \(id, ten, cua, tien\) => stxNotifyBet\(id, ten, cua, tien\)/.test(IDX) &&
+    /const c = txNotiCfg\(\);\s*if \(!c\.on \|\| !c\.id \|\| soTien < c\.min\) return;\s*const CUA_S/.test(IDX));
+ok('ban.js: epGoiY + betsCount + huyEp + baoCuoc bọc try/catch',
+    BAN.includes('epGoiY: timEpReNhat(), betsCount: S.bets.length,') && BAN.includes('function huyEp()') &&
+    BAN.includes('if (ctx.baoCuoc) for (const k of ds) { try { ctx.baoCuoc(userId, ten, k, gop[k]); } catch (e) { } }'));
 
 ok('mọi id bàn Siêu bắt đầu bằng st, không đụng bàn thường', !/id="sb[A-Z]/.test(SRC.slice(SRC.indexOf('id="pageStx"'), SRC.indexOf('hết #pageStx'))));
 

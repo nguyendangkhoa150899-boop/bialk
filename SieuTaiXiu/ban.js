@@ -208,6 +208,8 @@ function taoBan(ctx) {
         ctx.congVi(userId, -tongTru, `Siêu Tài Xỉu ván #${S.gameId} (cược ${tongCuoc.toLocaleString('vi-VN')} + phí ${(tongTru - tongCuoc).toLocaleString('vi-VN')})`);
         for (const k of ds) S.bets.push({ userId, username: ten, choice: k, amount: gop[k], phi: CUA.tienPhi(gop[k]) });
         db()._stxBets = S.bets;   // ghi sổ NGAY, đừng chờ nhịp sau (đây là tiền đã trừ ví)
+        // 🔔 báo cược cho chủ server (bot nối vào qua ctx.baoCuoc). Gửi hỏng KHÔNG được làm hỏng ván.
+        if (ctx.baoCuoc) for (const k of ds) { try { ctx.baoCuoc(userId, ten, k, gop[k]); } catch (e) { } }
         log(`[SIÊU TX CƯỢC] ${ten} đặt ${tongCuoc.toLocaleString('vi-VN')} (+phí ${(tongTru - tongCuoc).toLocaleString('vi-VN')}) vào ${ds.length} cửa (ván #${S.gameId})`);
         return { ok: true, tong: tongCuoc, phi: tongTru - tongCuoc, truVi: tongTru, soCua: ds.length, balance: nguoi(userId).points || 0 };
     }
@@ -558,6 +560,7 @@ function taoBan(ctx) {
             betAgg: agg, tenCua: Object.fromEntries(CUA.DS.map(c => [c.id, c.ten])),
             bets: S.bets.map(b => ({ name: b.username, choice: b.choice, amount: b.amount })),
             ep: db()._stxEp || null,
+            epGoiY: timEpReNhat(), betsCount: S.bets.length,
         };
     }
     function epKetQua(a, b, c) {
@@ -567,11 +570,34 @@ function taoBan(ctx) {
         log(`[SIÊU TX] Admin ép kết quả ván sau: ${v.join('-')}`);
         return { ok: true, ep: v };
     }
+    /** ↩️ Huỷ ép: ván sau lại quay ngẫu nhiên. */
+    function huyEp() {
+        const co = Array.isArray(db()._stxEp);
+        delete db()._stxEp; luu();
+        if (co) log('[SIÊU TX] Admin HUỶ ép kết quả ván sau');
+        return { ok: true, daHuy: co };
+    }
+    /**
+     * 🎯 Gợi ý ép: duyệt đủ 216 kết cục bằng LÕI TIỀN, tìm bộ ba nhà cái TRẢ ÍT NHẤT với sổ
+     * cược hiện tại. Đã khoá sổ (có bảng nhân của ván) thì tính theo bảng đó. Panel bấm là lấy
+     * thẳng, không tự đoán ở trình duyệt — y bàn thường (txTimEpReNhat).
+     */
+    function timEpReNhat() {
+        const nhan = (S.nhan && S.nhan.gameId === S.gameId) ? (S.nhan.o || null) : null;
+        const tongDat = S.bets.reduce((s, b) => s + b.amount, 0);
+        let re = null;
+        for (const x of CUA.MOI_KET_QUA) {
+            let tra = 0;
+            for (const b of S.bets) tra += CUA.tinhTra(b.choice, b.amount, x, nhan);
+            if (!re || tra < re.tra) re = { dice: x.slice(), tra };
+        }
+        return re ? { ...re, tongDat, soCuoc: S.bets.length } : { dice: [1, 2, 3], tra: 0, tongDat: 0, soCuoc: 0 };
+    }
 
     return {
         nhip, khoiDong, trangThai, adminXem,
         dat, nhanDoi, datLai, xoaCuoc, xoaCua, doiCua, nanXong,
-        datGio, datTran, datMaxBet, datMucAn, datThang, datBatTat, epKetQua,
+        datGio, datTran, datMaxBet, datMucAn, datThang, datBatTat, epKetQua, huyEp, timEpReNhat,
         thangMacDinh: () => CUA.thangMacDinh(),
         cuaThang: (xx) => CUA.cuaThang(xx),
         _S: S,

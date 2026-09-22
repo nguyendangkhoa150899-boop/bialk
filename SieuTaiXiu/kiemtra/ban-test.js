@@ -82,6 +82,36 @@ muc('kéo thả chip: huỷ đúng 1 ô / dời chip sang ô khác');
     ok('ngoài pha đặt: cấm cả dời lẫn huỷ ô', !!ban.doiCua('A', 'A', 'tai', 'xiu').error && !!ban.xoaCua('A', 'tai').error);
 }
 
+// ---------------------------------------------------------------- admin: gợi ý ép + huỷ ép + báo cược
+muc('gợi ý ép rẻ nhất · huỷ ép · báo cược');
+{
+    const { ban, DB } = dungBan({ A: 1000000 });
+    ban.dat('A', 'A', [{ choice: 'tai', amount: 10000 }]);
+    const g = ban.timEpReNhat();
+    ok('gợi ý ép: có bộ ba làm Tài thua sạch (trả 0), kể đủ soCuoc/tongDat', g.tra === 0 && g.soCuoc === 1 && g.tongDat === 10000, JSON.stringify(g));
+    const s = g.dice[0] + g.dice[1] + g.dice[2], bao = g.dice[0] === g.dice[1] && g.dice[1] === g.dice[2];
+    ok('bộ ba gợi ý thật sự là Xỉu hoặc Bão', bao || s <= 10, g.dice.join('-'));
+    const ax = ban.adminXem();
+    ok('adminXem gửi epGoiY + betsCount cho panel', ax.epGoiY && ax.epGoiY.tra === 0 && ax.betsCount === 1);
+    ban.epKetQua(6, 6, 5);
+    ok('ép xong adminXem.ep = 6-6-5', JSON.stringify(ban.adminXem().ep) === '[6,6,5]');
+    const h = ban.huyEp();
+    ok('huỷ ép: xoá _stxEp, báo daHuy=true, adminXem.ep về null', h.ok && h.daHuy === true && !DB._stxEp && ban.adminXem().ep === null);
+    ok('huỷ khi không có ép: ok nhưng daHuy=false', ban.huyEp().daHuy === false);
+    ok('bàn trống: gợi ý vẫn trả về, soCuoc 0', dungBan({}).ban.timEpReNhat().soCuoc === 0);
+}
+{
+    const goi = [];
+    const dung = (baoCuoc) => { const b = taoBan({ db: () => ({ _stxOn: true }), layNguoi: () => ({ points: 1e6, name: 'A' }), congVi: () => { }, ghiLog: () => { }, luuDb: () => { }, baoCuoc }); b.khoiDong(); return b; };
+    const b1 = dung((u, t, c, tien) => goi.push([u, c, tien]));
+    b1.dat('A', 'A', [{ choice: 'tai', amount: 5000 }, { choice: 'le', amount: 2000 }]);
+    ok('đặt 2 ô -> báo cược 2 lần, đúng ô + tiền gốc (chưa gồm phí)', goi.length === 2 && goi[0][1] === 'tai' && goi[0][2] === 5000 && goi[1][1] === 'le' && goi[1][2] === 2000, JSON.stringify(goi));
+    const b2 = dung(() => { throw new Error('discord chết'); });
+    const d = b2.dat('A', 'A', [{ choice: 'tai', amount: 5000 }]);
+    ok('báo cược nổ KHÔNG làm hỏng ván đặt', d.ok === true, d.error);
+    ok('không nối baoCuoc thì vẫn đặt bình thường', dungBan({ A: 1e6 }).ban.dat('A', 'A', [{ choice: 'tai', amount: 5000 }]).ok);
+}
+
 // ---------------------------------------------------------------- luật đặt
 muc('luật đặt cược');
 {

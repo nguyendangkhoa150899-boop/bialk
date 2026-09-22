@@ -88,6 +88,11 @@ ra. Chỉ khi ván đã quay thì phí mới coi như đã thu.
   chỉ kiểm trần ô đích; `xoaCua(user, cua)` huỷ đúng một ô, **hoàn cả phí** (ván chưa quay).
   Route `/api/stx/doicua` · `/api/stx/xoacua`. Cả hai ghi `_stxBets` ngay.
 
+- **Lịch sử ván** y bàn thường: dòng phụ "🎯 bạn ăn" (ô + tiền lời, tối đa 3) **luôn hiện**;
+  phần ⚡ hệ số nhân **chỉ khi bật công tắc** — công tắc riêng `stHNhanOn` nhưng **dùng chung
+  `HNHAN`/`localStorage tx_hnhan`** với bàn thường (bật một nơi là bật cả hai). Dòng nhắc dưới
+  hàng mệnh giá đổi theo pha; có nhắc "Giới hạn cược X/người/ván" khi admin đặt trần.
+
 Mọi id trên trang bắt đầu bằng `st` để không đụng bàn thường (`sb`).
 
 ### ⚠️ Hai cạm bẫy CSS đã dính ngay ngày đầu (22/09)
@@ -110,6 +115,24 @@ Panel SUPER, tab **⚡ Siêu Tài Xỉu**: bật/tắt bàn · 3 mốc giờ · 
 mỗi người mỗi ván · **nhà cái ăn %** · thang hệ số nhân · ép kết quả.
 Mọi route `/api/stx/*` nằm trong `VIEWONLY_PATHS` (cổng thường không chỉnh được).
 
+Khối **ép kết quả** làm y bàn thường (rà 22/09, trước đó chỉ có 3 ô số + nút Ép):
+- gõ 3 viên là **xem trước** tổng / Tài-Xỉu / Chẵn-Lẻ, 3 viên giống nhau báo **BÃO**;
+- 4 nút nhanh (Tài+Chẵn 16 …);
+- **🎯 Chọn xúc xắc cho nhà cái ĂN NHIỀU NHẤT**: lấy thẳng `epGoiY` máy bàn gửi —
+  `timEpReNhat()` duyệt đủ 216 kết cục bằng lõi tiền với sổ cược hiện tại (đã khoá sổ thì
+  tính theo bảng nhân của ván). Panel **không tự đoán**;
+- **↩️ Huỷ ép** (`/api/stx/epclear` → `huyEp()`), `daHuy` cho biết có ép nào bị xoá không.
+
+Khung "ai đang đặt" liệt kê **từng người** (mới nhất lên đầu) + số lượt, không chỉ tổng theo cửa.
+
+**🔔 Báo cược về Discord** dùng **chung cấu hình `_txNoti`** (ID, công tắc, mức tối thiểu) với
+bàn thường — chủ server bật một chỗ là nhận cả hai bàn. Máy bàn gọi `ctx.baoCuoc(user, tên,
+cửa, tiền)` sau mỗi ô đặt (x2 / Đặt lại đi qua `dat()` nên cũng báo); bọc try/catch — Discord
+chết không được làm hỏng ván. Dòng chữ ghi rõ ⚡ SIÊU và số phí.
+
+Nhãn "ô sáng/ván" là **TRUNG BÌNH** (tổng `q` của 52 cửa): mỗi ô bốc độc lập nên từng ván lệch
+quanh số đó — mức 8% đo 200.000 ván: thường gặp 7–11 ô, hiếm <4 hay >15.
+
 Khối **trần cược** vẽ y bàn thường: nhãn tiếng Việt lấy từ `tenNhom` máy bàn gửi (panel
 KHÔNG tự bịa tên), đổ sẵn giá trị đang chạy, và dòng "Thắng tối đa mỗi cửa theo trần
 đang đặt" tính từ `thangToiDa`. Bản đầu để lộ tên khoá thô `deu/vua/cao` — chủ server
@@ -121,7 +144,7 @@ Tab trên web chỉ hiện khi admin **bật bàn**.
 
 ```
 node SieuTaiXiu/kiemtra/cua-test.js   # lõi tiền: bảng trả, phí, RTP, trần (34 phép)
-node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/kéo thả/trọn ván/cứu tiền (64 phép)
+node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/kéo thả/ép/báo cược/trọn ván/cứu tiền (74 phép)
 ```
 
 Cả hai **không cần bot**. `ban-test` ép mốc giờ nên chạy trọn một ván trong tích tắc.

@@ -271,7 +271,7 @@ function startPanel(ctx) {
                     '/api/tx/tran', '/api/tx/rtp', '/api/tx/thang',
                     // ⚡ Siêu Tài Xỉu — ĂN DOGCOIN THẬT, càng phải chặn chắc
                     '/api/stx/on', '/api/stx/time', '/api/stx/tran', '/api/stx/an',
-                    '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep',
+                    '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep', '/api/stx/epclear',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -554,6 +554,7 @@ function startPanel(ctx) {
                     else if (path === '/api/stx/thang') r = B.datThang(body.macDinh ? null : body.thang);
                     else if (path === '/api/stx/maxbet') r = B.datMaxBet(body.maxBet);
                     else if (path === '/api/stx/ep') r = B.epKetQua(body.d1, body.d2, body.d3);
+                    else if (path === '/api/stx/epclear') r = B.huyEp();
                     else return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
                     if (r && r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
@@ -1907,14 +1908,27 @@ const HTML = `<!DOCTYPE html>
           </div>
         </div>
 
-        <div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;align-items:flex-end">
-          <div style="flex:1"><label>🎲 Ép kết quả ván sau</label>
-            <div class="row"><input id="stxD1" type="number" min="1" max="6" value="1" style="width:70px">
-            <input id="stxD2" type="number" min="1" max="6" value="2" style="width:70px">
-            <input id="stxD3" type="number" min="1" max="6" value="3" style="width:70px"></div></div>
-          <button class="btn-red" onclick="stxEp()">⚡ Ép</button>
+        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+          <label>🎲 Ép kết quả ván sau</label>
+          <div class="row"><input id="stxD1" type="number" min="1" max="6" value="1" style="width:70px" oninput="stxPreview()">
+            <input id="stxD2" type="number" min="1" max="6" value="2" style="width:70px" oninput="stxPreview()">
+            <input id="stxD3" type="number" min="1" max="6" value="3" style="width:70px" oninput="stxPreview()"></div>
+          <div class="preview" id="stxPrev"></div>
+          <div class="quick">
+            <button onclick="stxSetDice(6,6,4)">Tài + Chẵn (16)</button>
+            <button onclick="stxSetDice(6,5,4)">Tài + Lẻ (15)</button>
+            <button onclick="stxSetDice(1,2,3)">Xỉu + Chẵn (6)</button>
+            <button onclick="stxSetDice(1,2,2)">Xỉu + Lẻ (5)</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn-yellow" style="flex:1" onclick="stxTuEp()">🎯 Chọn xúc xắc cho nhà cái ĂN NHIỀU NHẤT</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn-red" style="flex:2" onclick="stxEp()">⚡ Ép kết quả ván sau</button>
+            <button class="btn-grey" style="flex:1" onclick="stxHuyEp()">↩️ Huỷ ép</button>
+          </div>
+          <div class="note" id="stxEpNow"></div>
         </div>
-        <div class="note" id="stxEpNow"></div>
       </div>
     </div>
     <div id="tab-poker" class="hidden">
@@ -2488,8 +2502,8 @@ function clearGrid(){mineSel.clear();document.querySelectorAll('#mineGrid .tile'
 function setDice(a,b,c){document.getElementById('d1').value=a;document.getElementById('d2').value=b;document.getElementById('d3').value=c;txPreview();}
 function txPreview(){
   const a=+document.getElementById('d1').value,b=+document.getElementById('d2').value,c=+document.getElementById('d3').value;
-  const sum=a+b+c;const tai=sum>=11;const chan=sum%2===0;
-  document.getElementById('txPrev').textContent='Tổng '+sum+' → '+(tai?'TÀI 🟢':'XỈU 🔴')+' | '+(chan?'CHẴN 🔵':'LẺ 🟣');
+  const sum=a+b+c;const tai=sum>=11;const chan=sum%2===0;const bao=(a===b&&b===c);
+  document.getElementById('txPrev').textContent='Tổng '+sum+' → '+(bao?'🌪️ BÃO — Tài/Xỉu/Chẵn/Lẻ thua sạch':((tai?'TÀI 🟢':'XỈU 🔴')+' | '+(chan?'CHẴN 🔵':'LẺ 🟣')));
 }
 function txForce(){
   const v=[document.getElementById('d1').value,document.getElementById('d2').value,document.getElementById('d3').value].join(',');
@@ -2518,13 +2532,21 @@ function stxDo(){
   const live=document.getElementById('stxLive');
   if(live){const co=Object.keys(S.betAgg||{}).filter(k=>S.betAgg[k]>0).sort((a,b)=>S.betAgg[b]-S.betAgg[a]);
     const tong=co.reduce((s,k)=>s+S.betAgg[k],0);
-    live.innerHTML=co.length?('💰 tổng cược <b>'+tong.toLocaleString()+'</b> · '+co.slice(0,10).map(k=>esc((S.tenCua||{})[k]||k)+' <b>'+S.betAgg[k].toLocaleString()+'</b>').join(' · ')+(co.length>10?(' · +'+(co.length-10)+' cửa'):'')):'chưa ai đặt';}
+    const TC=S.tenCua||{};
+    const cua=co.length?('💰 tổng cược <b>'+tong.toLocaleString()+'</b> · '+co.slice(0,12).map(k=>esc(TC[k]||k)+' <b>'+S.betAgg[k].toLocaleString()+'</b>').join(' · ')+(co.length>12?(' · +'+(co.length-12)+' cửa nữa'):'')):'chưa ai đặt';
+    // từng người (mới nhất lên đầu) — y bàn thường, admin cần thấy ai đang gánh ô nào
+    const list=(S.bets||[]).length?(S.bets||[]).slice().reverse().map(b=>esc(b.name)+': '+esc(TC[b.choice]||b.choice)+' '+Number(b.amount).toLocaleString()).join(' • '):'chưa ai đặt';
+    live.innerHTML='<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#141824">'
+      +'<div style="margin-bottom:5px">Ván #'+S.gameId+' · '+(S.betsCount||0)+' lượt đặt</div>'
+      +'<div style="margin-bottom:5px">'+cua+'</div>'
+      +'<div class="muted" style="font-size:12px">'+list+'</div></div>';}
+  const pv=document.getElementById('stxPrev'); if(pv&&!pv.textContent)stxPreview();
   const put=(id,v)=>{const e=document.getElementById(id);if(e&&e.dataset.dirty!=='1'&&e.value===''&&document.activeElement!==e)e.value=v;};
   put('stxBetS',S.time.bet);put('stxNhanS',S.time.nhan);put('stxNanS',S.time.nan);
   put('stxMax',S.maxBet);
   if(S.rtp)put('stxAn',(S.rtp.an*100).toFixed(1).replace(/\.0$/,''));
   const an=document.getElementById('stxAnNote');
-  if(an&&S.rtp)an.textContent='Đang chạy: nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · người chơi thực nhận '+(S.rtp.rtpThuc*100).toFixed(2)+'% · '+S.rtp.oSangMoiVan.toFixed(1)+' ô sáng/ván · phí '+(S.rtp.phi*100)+'%';
+  if(an&&S.rtp)an.textContent='Đang chạy: nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · người chơi thực nhận '+(S.rtp.rtpThuc*100).toFixed(2)+'% · trung bình '+S.rtp.oSangMoiVan.toFixed(1)+' ô sáng/ván (từng ván lệch quanh số này) · phí '+(S.rtp.phi*100)+'%';
   // trần cược: dựng 1 lần với NHÃN TIẾNG VIỆT máy bàn gửi, sau đó chỉ đổ giá trị
   // (ô đang gõ thì chừa ra) — đúng cách khối trần của bàn thường đang làm.
   const box=document.getElementById('stxTran'), TEN=S.tenNhom||{};
@@ -2604,7 +2626,7 @@ function txSaveThang(){
   let bang; try{bang=txDocThang();}catch(e){return toast('❌ '+e.message);}
   api('/api/tx/thang',{thang:bang}).then(j=>{
     txClean(['txThang']);
-    toast('🎰 Đã lưu thang nhân · nhà cái ăn ~'+(j.nhaCaiAn*100).toFixed(2)+'% · '+j.oSangMoiVan.toFixed(1)+' ô sáng/ván');
+    toast('🎰 Đã lưu thang nhân · nhà cái ăn ~'+(j.nhaCaiAn*100).toFixed(2)+'% · trung bình '+j.oSangMoiVan.toFixed(1)+' ô sáng/ván');
     refresh();
   }).catch(e=>toast('❌ '+e.message));
 }
@@ -2629,7 +2651,7 @@ function stxSaveAn(){
   const m=parseInt(document.getElementById('stxMax').value);
   const xong=()=>{txClean(['stxAn','stxMax']);refresh();};
   if(!isNaN(a)){ if(!(a>=2&&a<=30))return toast('Nhà cái ăn: 2 - 30%');
-    api('/api/stx/an',{an:a}).then(j=>{toast('🎯 Nhà cái ăn '+(j.an*100).toFixed(1)+'% · người chơi thực nhận '+(j.rtpThuc*100).toFixed(2)+'% · '+j.oSangMoiVan.toFixed(1)+' ô sáng/ván');xong();}).catch(e=>toast('❌ '+e.message)); }
+    api('/api/stx/an',{an:a}).then(j=>{toast('🎯 Nhà cái ăn '+(j.an*100).toFixed(1)+'% · người chơi thực nhận '+(j.rtpThuc*100).toFixed(2)+'% · trung bình '+j.oSangMoiVan.toFixed(1)+' ô sáng/ván');xong();}).catch(e=>toast('❌ '+e.message)); }
   if(!isNaN(m)) api('/api/stx/maxbet',{maxBet:m}).then(()=>{toast('💰 Đã lưu trần mỗi người');xong();}).catch(e=>toast('❌ '+e.message));
 }
 function stxSaveTran(){
@@ -2648,6 +2670,23 @@ function stxEp(){
   const d1=+document.getElementById('stxD1').value,d2=+document.getElementById('stxD2').value,d3=+document.getElementById('stxD3').value;
   api('/api/stx/ep',{d1:d1,d2:d2,d3:d3}).then(j=>{toast('⚡ Ván sau ra '+j.ep.join('-'));refresh();}).catch(e=>toast('❌ '+e.message));
 }
+function stxSetDice(a,b,c){document.getElementById('stxD1').value=a;document.getElementById('stxD2').value=b;document.getElementById('stxD3').value=c;stxPreview();}
+function stxPreview(){
+  const e=document.getElementById('stxPrev'); if(!e)return;
+  const a=+document.getElementById('stxD1').value,b=+document.getElementById('stxD2').value,c=+document.getElementById('stxD3').value;
+  const sum=a+b+c, bao=(a===b&&b===c);
+  e.textContent='Tổng '+sum+' → '+(bao?'🌪️ BÃO — Tài/Xỉu/Chẵn/Lẻ thua sạch':((sum>=11?'TÀI 🟢':'XỈU 🔴')+' | '+(sum%2===0?'CHẴN 🔵':'LẺ 🟣')));
+}
+// 🎯 lấy THẲNG gợi ý máy chủ đã duyệt 216 kết cục bằng lõi tiền — không tự đoán ở đây
+function stxTuEp(){
+  const S=STATE&&STATE.stx; if(!S)return;
+  const g=S.epGoiY;
+  if(!g||!g.dice){toast('❌ Máy chủ chưa gửi gợi ý ép - thử lại sau vài giây');return;}
+  if(!g.soCuoc){toast('Ván này chưa ai đặt - ép kiểu gì cũng như nhau');return;}
+  stxSetDice(g.dice[0],g.dice[1],g.dice[2]);
+  toast('🎯 '+g.dice.join('-')+' (tổng '+(g.dice[0]+g.dice[1]+g.dice[2])+'): nhà cái trả ít nhất '+g.tra.toLocaleString()+' / tổng cược '+g.tongDat.toLocaleString()+'. Bấm ⚡ Ép để chốt.');
+}
+function stxHuyEp(){api('/api/stx/epclear',{}).then(j=>{toast(j.daHuy?'↩️ Đã huỷ ép - ván sau quay ngẫu nhiên':'Không có ép nào đang chờ');refresh();}).catch(e=>toast('❌ '+e.message));}
 // đọc ô văn bản thang nhân (dùng chung cho cả 2 bàn)
 function txDocThangO(id){
   const chu=(document.getElementById(id).value||'').trim();

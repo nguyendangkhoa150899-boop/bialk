@@ -4326,6 +4326,8 @@ const stxBan = require(require('path').join(SIEUTX_DIR, 'ban.js')).taoBan({
     },
     ghiLog: (dong) => writeLog(/LỖI|MẤT|DỌN SỔ/.test(dong) ? 'SYSTEM' : 'ADMIN', dong),
     luuDb: () => saveDbNow(),
+    // 🔔 báo cược về Discord — dùng chung ID / công tắc / mức tối thiểu _txNoti với bàn thường
+    baoCuoc: (id, ten, cua, tien) => stxNotifyBet(id, ten, cua, tien),
 });
 setInterval(() => stxBan.nhip(), 1000);
 // Gửi thử 1 tin để chủ server biết ID có đúng không (nút "Gửi thử" ở panel).
@@ -4370,6 +4372,22 @@ function txNotifyBet(userId, ten, cua, soTien) {
     txNotiSend(
         `🎲 **${ten}** đặt **${Number(soTien).toLocaleString('vi-VN')}** vào **${tenCua}** · ván #${txState.gameId}\n` +
         `ván này người đó đã đặt ${cuaNguoi.toLocaleString('vi-VN')} · ví còn ${viCon.toLocaleString('vi-VN')} · tổng bàn ${tong.toLocaleString('vi-VN')}`
+    ).catch(() => { });
+}
+/** 🔔 Báo cược bàn SIÊU. Cùng cấu hình _txNoti với bàn thường, chỉ khác dòng chữ (ghi rõ ⚡ SIÊU + phí). */
+function stxNotifyBet(userId, ten, cua, soTien) {
+    const c = txNotiCfg();
+    if (!c.on || !c.id || soTien < c.min) return;
+    const CUA_S = require(require('path').join(SIEUTX_DIR, 'cua.js'));
+    const tenCua = (CUA_S.THEO_ID[cua] || {}).ten || cua;
+    const S = stxBan._S || {}, bets = S.bets || [];
+    const tong = bets.reduce((t, b) => t + (b.amount || 0), 0);
+    const cuaNguoi = bets.filter(b => b.userId === userId).reduce((t, b) => t + (b.amount || 0), 0);
+    const viCon = (getUserData(userId).points || 0);
+    const vn = (n) => Number(n).toLocaleString('vi-VN');
+    txNotiSend(
+        '⚡ **SIÊU TX** · **' + ten + '** đặt **' + vn(soTien) + '** (+phí ' + vn(CUA_S.tienPhi(soTien)) + ') vào **' + tenCua + '** · ván #' + S.gameId + '\n' +
+        'ván này người đó đã đặt ' + vn(cuaNguoi) + ' · ví còn ' + vn(viCon) + ' · tổng bàn ' + vn(tong)
     ).catch(() => { });
 }
 // BÃO = 3 viên giống nhau: chỉ cửa Bão ăn (×TX_BAO_RATE), mọi cửa thường thua sạch.
