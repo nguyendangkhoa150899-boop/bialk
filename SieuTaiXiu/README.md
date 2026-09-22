@@ -83,6 +83,10 @@ ra. Chỉ khi ván đã quay thì phí mới coi như đã thu.
 - Ô được bốc hệ số nhân thì **giật như có sét** (`@keyframes stSet`), không chỉ nhấp nháy.
 - Còn lại y bàn thường: bấm ô là đặt, đồng Dogcoin trên ô, nút MAX CƯỢC, 3 nút thao tác
   nhanh, nặn chén, 4 giây cuối tự mở, ô trúng sáng / ô trượt chìm.
+- **Kéo thả chip** dùng chung bộ `keo*` của bàn thường (xem `TaiXiu/README.md` §10b):
+  `doiCua(user, ten, tu, den)` dời **cả tiền lẫn phần phí đã thu** sang ô mới, không đụng ví,
+  chỉ kiểm trần ô đích; `xoaCua(user, cua)` huỷ đúng một ô, **hoàn cả phí** (ván chưa quay).
+  Route `/api/stx/doicua` · `/api/stx/xoacua`. Cả hai ghi `_stxBets` ngay.
 
 Mọi id trên trang bắt đầu bằng `st` để không đụng bàn thường (`sb`).
 
@@ -117,7 +121,7 @@ Tab trên web chỉ hiện khi admin **bật bàn**.
 
 ```
 node SieuTaiXiu/kiemtra/cua-test.js   # lõi tiền: bảng trả, phí, RTP, trần (34 phép)
-node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/trọn ván/cứu tiền (45 phép)
+node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/kéo thả/trọn ván/cứu tiền (64 phép)
 ```
 
 Cả hai **không cần bot**. `ban-test` ép mốc giờ nên chạy trọn một ván trong tích tắc.

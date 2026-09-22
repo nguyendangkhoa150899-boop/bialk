@@ -243,6 +243,48 @@ function taoBan(ctx) {
         return { ok: true, hoan, balance: nguoi(userId).points || 0 };
     }
 
+    /** 🗑️ Huỷ cược ĐÚNG MỘT ô (thả chip vào vùng huỷ). Ván chưa quay → hoàn ĐỦ cả phí. */
+    function xoaCua(userId, cua) {
+        const chan = dangNhanCuoc(); if (chan) return { error: chan };
+        cua = String(cua || '');
+        if (!CUA.THEO_ID[cua]) return { error: 'Cửa không hợp lệ: ' + cua };
+        let hoan = 0; const giu = [];
+        for (const b of S.bets) {
+            if (b.userId === userId && b.choice === cua) hoan += CUA.tienTru(b.amount);
+            else giu.push(b);
+        }
+        if (hoan <= 0) return { error: 'Bạn chưa đặt gì ở cửa ' + CUA.THEO_ID[cua].ten };
+        S.bets = giu;
+        db()._stxBets = S.bets;
+        ctx.congVi(userId, hoan, `Siêu Tài Xỉu ván #${S.gameId} - huỷ cược ô ${CUA.THEO_ID[cua].ten}, hoàn cả phí`);
+        log(`[SIÊU TX] ${nguoi(userId).name || userId} huỷ cược ô ${CUA.THEO_ID[cua].ten} ván #${S.gameId}, hoàn ${hoan.toLocaleString('vi-VN')} (gồm phí)`);
+        return { ok: true, hoan, cua, balance: nguoi(userId).points || 0 };
+    }
+
+    /**
+     * 🔀 Dời toàn bộ tiền (kèm phần phí đã thu) từ ô `tu` sang ô `den` — kéo chip thả sang ô khác.
+     * Không đi qua ví, tổng cược không đổi → chỉ phải kiểm TRẦN RIÊNG của ô đích. Kiểm xong mới đụng sổ.
+     */
+    function doiCua(userId, ten, tu, den) {
+        const chan = dangNhanCuoc(); if (chan) return { error: chan };
+        tu = String(tu || ''); den = String(den || '');
+        if (!CUA.THEO_ID[tu]) return { error: 'Cửa không hợp lệ: ' + tu };
+        if (!CUA.THEO_ID[den]) return { error: 'Cửa không hợp lệ: ' + den };
+        if (tu === den) return { error: 'Thả lại đúng ô cũ - không dời' };
+        const tien = cuocOCua(userId, tu);
+        if (tien <= 0) return { error: 'Bạn chưa đặt gì ở cửa ' + CUA.THEO_ID[tu].ten };
+        const tO = CUA.tranCua(den, tranCfg()), daCo = cuocOCua(userId, den);
+        if (tO > 0 && daCo + tien > tO) {
+            return { error: `Cửa ${CUA.THEO_ID[den].ten} tối đa ${tO.toLocaleString('vi-VN')}/ván (trả tới ${CUA.tiLeToiDa(den)}:1)` + (daCo ? ` - đã đặt ${daCo.toLocaleString('vi-VN')}` : '') + `, dời thêm ${tien.toLocaleString('vi-VN')} là vượt.` };
+        }
+        let phi = 0;
+        S.bets = S.bets.filter(b => { if (b.userId === userId && b.choice === tu) { phi += (b.phi || 0); return false; } return true; });
+        S.bets.push({ userId, username: ten || nguoi(userId).name || ('web_' + String(userId).slice(-4)), choice: den, amount: tien, phi });
+        db()._stxBets = S.bets;
+        log(`[SIÊU TX] ${ten || userId} dời ${tien.toLocaleString('vi-VN')} từ ${CUA.THEO_ID[tu].ten} sang ${CUA.THEO_ID[den].ten} (ván #${S.gameId})`);
+        return { ok: true, tien, tu, den, balance: nguoi(userId).points || 0 };
+    }
+
     // ---------------------------------------------------------------- chốt ván
     function lapKeHoach(gameId, bets, xx) {
         const bangNhan = (S.nhan && S.nhan.gameId === gameId) ? (S.nhan.o || {}) : {};
@@ -528,7 +570,7 @@ function taoBan(ctx) {
 
     return {
         nhip, khoiDong, trangThai, adminXem,
-        dat, nhanDoi, datLai, xoaCuoc, nanXong,
+        dat, nhanDoi, datLai, xoaCuoc, xoaCua, doiCua, nanXong,
         datGio, datTran, datMaxBet, datMucAn, datThang, datBatTat, epKetQua,
         thangMacDinh: () => CUA.thangMacDinh(),
         cuaThang: (xx) => CUA.cuaThang(xx),

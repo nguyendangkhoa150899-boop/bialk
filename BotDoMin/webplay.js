@@ -353,6 +353,9 @@ function startWebPlay(ctx) {
                     else if (path === '/api/stx/x2') r = B.nhanDoi(userId, ten);
                     else if (path === '/api/stx/datlai') r = B.datLai(userId, ten);
                     else if (path === '/api/stx/xoacuoc') r = B.xoaCuoc(userId);
+                    // 🖐️ kéo thả chip: huỷ đúng 1 ô / dời chip sang ô khác
+                    else if (path === '/api/stx/xoacua') { const body = await readBody(req); r = B.xoaCua(userId, body.cua); }
+                    else if (path === '/api/stx/doicua') { const body = await readBody(req); r = B.doiCua(userId, ten, body.tu, body.den); }
                     else if (path === '/api/stx/reveal') r = B.nanXong(userId);
                     else return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
                     if (r && r.error) return sendJSON(res, 400, { ok: false, error: r.error });
@@ -680,6 +683,16 @@ function startWebPlay(ctx) {
                     const r = ctx.wheel.spin(userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r.state });
+                }
+
+                // 🖐️ KÉO THẢ CHIP: huỷ đúng 1 ô / dời chip sang ô khác. Luật + tiền ở index.js.
+                if (req.method === 'POST' && (path === '/api/tx/xoacua' || path === '/api/tx/doicua')) {
+                    const body = await readBody(req);
+                    const ham = path === '/api/tx/xoacua' ? ctx.txXoaCua : ctx.txDoiCua;
+                    if (!ham) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = path === '/api/tx/xoacua' ? ham(userId, body.cua) : ham(userId, body.tu, body.den);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
 
                 // 🔁✖️🗑️ Ba nút thao tác nhanh. Toàn bộ luật + tiền ở index.js, đây chỉ
@@ -1538,6 +1551,20 @@ const PAGE = [
     'padding:6px 1px;cursor:pointer;text-align:center;font-family:inherit;font-weight:900;line-height:1.1;user-select:none;',
     'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:44px}',
     '.sbO:active{transform:scale(.95)}',
+    // 🖐️ KÉO THẢ CHIP. Chỉ ô ĐANG CÓ chip của mình mới khoá cuộn (touch-action:none) — ô trống
+    // vẫn cho vuốt trang như thường. Con ma (ghost) nằm ngoài .sbO nên phải tự đủ CSS.
+    '.sbO.sbCoChip{touch-action:none;-webkit-touch-callout:none}',
+    '.sbO.sbKeoNguon .sbGio{opacity:.35}',
+    '.sbO.sbKeoDich{outline:3px solid #ffcf5c;outline-offset:-2px;box-shadow:0 0 14px rgba(255,207,92,.85);transform:scale(1.05);z-index:6}',
+    '.sbKeoGhost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-50%) scale(1.35);',
+    'display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1;filter:drop-shadow(0 10px 10px rgba(0,0,0,.65))}',
+    '.sbKeoGhost img{width:22px;height:22px;display:block;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.6),0 0 0 2px #ffcf5c}',
+    '.sbKeoGhost b{font-size:9.5px;font-weight:900;padding:1px 4px;border-radius:999px;background:#2a1f05;color:#ffd76a;border:1px solid #ffcf5c;white-space:nowrap}',
+    '.sbKeoGhost.sbGioDen img{box-shadow:0 2px 8px rgba(0,0,0,.85),0 0 0 2px #000,0 0 0 3px #ffcf5c}',
+    '.sbKeoGhost.sbGioDen b{background:#000}',
+    '#sbKeoHuy{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9998;background:#7a1c1c;color:#fff;font-weight:900;font-size:13px;',
+    'padding:14px 18px;border-radius:14px;border:2px dashed #ffb3b3;box-shadow:0 6px 20px rgba(0,0,0,.6);max-width:92vw;text-align:center;touch-action:none}',
+    '#sbKeoHuy.hot{background:#c62828;border-style:solid;transform:translateX(-50%) scale(1.07)}',
     // ⚠️ nowrap KHÔNG kèm đường lùi = chữ dài ("Bão bất kỳ") tràn đè ô bên cạnh.
     // Cho chữ co theo màn, và chốt chặn cuối bằng cắt-ba-chấm chứ đừng tràn.
     '.sbO .sbTen{font-size:clamp(10px,2.7vw,12.5px);display:block;white-space:nowrap;',
@@ -2811,11 +2838,56 @@ const PAGE = [
     'SBTRAN=j.txTran||{};',
     'if(SBVEROI)return;',
     'SBCUA=j.txCua;SBCUA.forEach(function(c){NAMES[c.id]=c.ten});',
-    'sbVe();sbVeChip();SBVEROI=true}',
+    'sbVe();sbVeChip();keoGan("sb");SBVEROI=true}',
     // 1 viên xúc xắc mini (dùng lại bảng chấm PIPS của phần lắc xí ngầu)
     'function sbXx(n){var s=\'<span class="sbXx">\';PIPS[n].forEach(function(p){s+=\'<i style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></i>\'});return s+"</span>"}',
     'function sbBoXx(ds){return \'<span class="sbBoXx">\'+ds.map(sbXx).join("")+"</span>"}',
     // dựng bàn theo ĐÚNG bố cục ảnh sòng: mỗi khu có dải tiêu đề, ô đôi/ba/cặp/đơn vẽ xúc xắc
+    // ===== 🖐️ KÉO THẢ CHIP — dùng chung cho 2 bàn, chỉ khác tiền tố id (sb_/st_) và bộ biến =====
+    // Vòng đời: pointerdown lên ô có chip -> CHỜ 0,28s (KEOCHO; nhích >8px hay nhả sớm = bấm thường)
+    // -> KÉO (KEO: con ma bay theo tay, hiện vùng huỷ) -> THẢ: ô khác = dời, vùng huỷ = huỷ ô đó,
+    // chỗ khác = về chỗ cũ. KEOCLICK chặn cái click trình duyệt bắn ra sau khi nhả tay.
+    'var KEO=null,KEOCHO=null,KEOCLICK=0;',
+    'function keoBan(pre){return pre==="sb"?{ban:$("sbBan"),phase:PHASE,tong:SBTONG,duong:"/api/tx/",bao:sbBao,tai:refresh}:{ban:$("stBan"),phase:STPHASE,tong:STTONG,duong:"/api/stx/",bao:stBao,tai:stLoad}}',
+    'function keoGan(pre){var ban=$(pre+"Ban");if(!ban||ban.dataset.keo)return;ban.dataset.keo="1";',
+    'ban.addEventListener("pointerdown",function(ev){keoXuong(pre,ev)});',
+    'ban.addEventListener("contextmenu",function(ev){if(KEO||KEOCHO)ev.preventDefault()})}',
+    'function keoXuong(pre,ev){if(ev.button&&ev.button!==0)return;var o=ev.target&&ev.target.closest?ev.target.closest(".sbO"):null;if(!o||!o.querySelector(".sbGio"))return;',
+    'var B=keoBan(pre);if(B.phase!=="bet")return;var id=o.id.slice(3),tien=B.tong["_toi_"+id]||0;if(!tien)return;',
+    'keoHuyCho();var x0=ev.clientX,y0=ev.clientY,pid=ev.pointerId;',
+    'var c={pre:pre,o:o,id:id,tien:tien,x:x0,y:y0,pid:pid};',
+    'c.move=function(e){if(e.pointerId!==pid)return;c.x=e.clientX;c.y=e.clientY;if(Math.abs(e.clientX-x0)>8||Math.abs(e.clientY-y0)>8)keoHuyCho()};',
+    'c.up=function(e){if(e.pointerId!==pid)return;keoHuyCho()};',
+    'c.timer=setTimeout(function(){keoHuyCho();keoBatDau(c)},280);',
+    'KEOCHO=c;document.addEventListener("pointermove",c.move);document.addEventListener("pointerup",c.up);document.addEventListener("pointercancel",c.up)}',
+    'function keoHuyCho(){if(!KEOCHO)return;var c=KEOCHO;KEOCHO=null;clearTimeout(c.timer);document.removeEventListener("pointermove",c.move);document.removeEventListener("pointerup",c.up);document.removeEventListener("pointercancel",c.up)}',
+    'function keoVungHuy(){var h=$("sbKeoHuy");if(h)return h;h=document.createElement("div");h.id="sbKeoHuy";h.className="hidden";document.body.appendChild(h);return h}',
+    'function keoTen(o){var t=o&&o.querySelector(".sbTen");return t?t.textContent:"?"}',
+    'function keoBatDau(c){if(KEO)return;KEOCLICK=Date.now();try{c.o.setPointerCapture(c.pid)}catch(e){}',
+    'var g=c.o.querySelector(".sbGio").cloneNode(true);g.classList.add("sbKeoGhost");document.body.appendChild(g);',
+    'var huy=keoVungHuy();huy.textContent="🗑️ Thả vào đây để HUỶ cược ô "+keoTen(c.o)+" ("+vnd(c.tien)+")";huy.classList.remove("hidden","hot");',
+    'c.o.classList.add("sbKeoNguon");',
+    'var k={pre:c.pre,o:c.o,id:c.id,tien:c.tien,pid:c.pid,g:g,huy:huy,dich:null,trenHuy:false};',
+    'k.move=function(e){if(e.pointerId!==k.pid)return;if(e.cancelable)e.preventDefault();keoTheo(e.clientX,e.clientY)};',
+    'k.up=function(e){if(e.pointerId!==k.pid)return;keoTha(e.clientX,e.clientY)};',
+    'k.cancel=function(e){if(e.pointerId!==k.pid)return;keoXong()};',
+    'KEO=k;document.addEventListener("pointermove",k.move);document.addEventListener("pointerup",k.up);document.addEventListener("pointercancel",k.cancel);',
+    'keoTheo(c.x,c.y);if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}}',
+    'function keoTheo(x,y){if(!KEO)return;KEO.g.style.left=x+"px";KEO.g.style.top=y+"px";',
+    'var el=document.elementFromPoint(x,y),o=el&&el.closest?el.closest(".sbO"):null,B=keoBan(KEO.pre);',
+    'if(o&&!(B.ban&&B.ban.contains(o)))o=null;var trenHuy=!!(el&&el.closest&&el.closest("#sbKeoHuy"));',
+    'var dich=(o&&o!==KEO.o)?o:null;if(KEO.dich&&KEO.dich!==dich)KEO.dich.classList.remove("sbKeoDich");KEO.dich=dich;if(dich)dich.classList.add("sbKeoDich");',
+    'KEO.huy.classList.toggle("hot",trenHuy);KEO.trenHuy=trenHuy}',
+    'function keoXong(){if(!KEO)return;var k=KEO;KEO=null;KEOCLICK=Date.now();',
+    'document.removeEventListener("pointermove",k.move);document.removeEventListener("pointerup",k.up);document.removeEventListener("pointercancel",k.cancel);',
+    'k.g.remove();k.huy.classList.add("hidden");k.huy.classList.remove("hot");k.o.classList.remove("sbKeoNguon");if(k.dich)k.dich.classList.remove("sbKeoDich");',
+    'try{k.o.releasePointerCapture(k.pid)}catch(e){}return k}',
+    'function keoTha(x,y){if(!KEO)return;keoTheo(x,y);var k=keoXong(),B=keoBan(k.pre);',
+    'if(k.trenHuy){keoGoi(B,"xoacua",{cua:k.id},function(j){return "🗑️ Đã huỷ cược ô "+keoTen(k.o)+", hoàn "+vnd(j.hoan)+(k.pre==="st"?" (gồm cả phí)":" Dogcoin")});return}',
+    'if(k.dich){keoGoi(B,"doicua",{tu:k.id,den:k.dich.id.slice(3)},function(j){return "🔀 Đã dời "+vnd(j.tien)+" từ "+keoTen(k.o)+" sang "+keoTen(k.dich)})}}',
+    'function keoGoi(B,duong,body,chuXong){if(B.phase!=="bet")return B.bao("Hết giờ đặt rồi - chờ ván sau nhé",true);',
+    'api(B.duong+duong,body).then(function(j){BAL=j.balance;$("bal").textContent=vnd(j.balance);B.bao(chuXong(j),false);B.tai()})',
+    '.catch(function(e){B.bao(String(e.message||e),true)})}',
     'function sbVe(){var b=$("sbBan");if(!b)return;',
     'var g=function(id){return SBCUA.filter(function(c){return c.id===id})[0]};',
     // ruot = nội dung trong ô (mặc định tên + tỉ lệ); truyền vào để thay bằng hình xúc xắc
@@ -2900,7 +2972,7 @@ const PAGE = [
     'if(b3)b3.disabled=!(mo&&coCuoc)}',
     // BẤM Ô = ĐẶT LUÔN. Chặn sơ ở client cho đỡ gọi phí, nhưng luật thật vẫn ở máy chủ.
     // SBDANGGUI: chặn bấm dồn 2 lần lúc mạng chậm -> khỏi đặt trùng.
-    'function sbChon(id){if(PHASE!=="bet")return toast(PHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!");',
+    'function sbChon(id){if(KEO||Date.now()-KEOCLICK<500)return;if(PHASE!=="bet")return toast(PHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!");',
     'if(!LINKED)return toast("Ví chưa được liên kết - nhắn admin");',
     'if(SBDANGGUI)return;',
     // MAX: tính ngay tại ô vừa bấm. Mệnh giá thường: kiểm như cũ.
@@ -2943,7 +3015,7 @@ const PAGE = [
     'function sbVeGio(){SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
     'var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
     'var cu2=e.querySelector(".sbBan2");if(cu2)cu2.remove();',
-    'var toi=SBTONG["_toi_"+c.id]||0;',
+    'var toi=SBTONG["_toi_"+c.id]||0;e.classList.toggle("sbCoChip",toi>0);',
     'if(toi){var d=document.createElement("span");d.className="sbGio"+(toi>=CHIP_DEN?" sbGioDen":"");',
     'var im=document.createElement("img");im.src="/dogcoin.png";im.alt="";',
     'var sn=document.createElement("b");sn.textContent=chipNgan(toi);',
@@ -3026,7 +3098,7 @@ const PAGE = [
     'return Math.floor(con)}',
 
     // ---- bấm ô là đặt ----
-    'function stChon(id){if(STPHASE!=="bet")return stBao(STPHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!",true);',
+    'function stChon(id){if(KEO||Date.now()-KEOCLICK<500)return;if(STPHASE!=="bet")return stBao(STPHASE==="nhan"?"⚡ Đang hiện hệ số nhân - hết cửa đặt rồi!":"Đang khoá sổ - chờ ván sau!",true);',
     'if(!LINKED)return stBao("Ví chưa được liên kết - nhắn admin",true);',
     'if(STDANGGUI)return;',
     'var tien;',
@@ -3079,7 +3151,7 @@ const PAGE = [
     'function stVeGio(){STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',
     'var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
     'var cu2=e.querySelector(".sbBan2");if(cu2)cu2.remove();',
-    'var toi=STTONG["_toi_"+c.id]||0;',
+    'var toi=STTONG["_toi_"+c.id]||0;e.classList.toggle("sbCoChip",toi>0);',
     'if(toi){var d=document.createElement("span");d.className="sbGio"+(toi>=CHIP_DEN?" sbGioDen":"");',
     'var im=document.createElement("img");im.src="/dogcoin.png";im.alt="";',
     'var sn=document.createElement("b");sn.textContent=chipNgan(toi);',
@@ -3134,7 +3206,7 @@ const PAGE = [
     'STCUA=j.cua||[];STTRAN=j.tran||{};STMAX=j.maxBet||0;STPHI=j.phi||0.2;STSAN=j.sanCuoc||1000;',
     'STKHOA=j.khoaSoS||24;STKQ=j.kqS||4;STCOVT=!!j.coVanTruoc;STPHITOI=j.phiToi||0;',
     'STCUA.forEach(function(c){STNAMES[c.id]=c.ten});',
-    'if(!STVEROI&&STCUA.length){stVe();stVeChip();stInitPaper();STVEROI=true}',
+    'if(!STVEROI&&STCUA.length){stVe();stVeChip();stInitPaper();keoGan("st");STVEROI=true}',
     'var truoc=STPHASE;STPHASE=j.phase;STTT=j.targetTime;STNAN=j.nan;',
     'STTONG={};for(var k in (j.totals||{}))STTONG[k]=j.totals[k];',
     '(j.myBets||[]).forEach(function(b){STTONG["_toi_"+b.choice]=b.amount});',

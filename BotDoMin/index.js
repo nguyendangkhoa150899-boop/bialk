@@ -3879,6 +3879,54 @@ function txXoaCuoc(userId) {
     return { ok: true, hoan, balance: u.points || 0 };
 }
 
+/** 🗑️ Huỷ cược ĐÚNG MỘT ô (thả chip vào vùng huỷ). Hoàn đúng số đã đặt ở ô đó. */
+function txXoaCua(userId, cua) {
+    const chan = txDangNhanCuoc();
+    if (chan) return { error: chan };
+    cua = String(cua || '');
+    if (!TX_CUA.THEO_ID[cua]) return { error: 'Cửa không hợp lệ: ' + cua };
+    let hoan = 0; const giu = [];
+    for (const b of (txState.bets || [])) {
+        if (b.userId === userId && b.choice === cua) hoan += (b.amount || 0);
+        else giu.push(b);
+    }
+    if (hoan <= 0) return { error: 'Bạn chưa đặt gì ở cửa ' + TX_CUA.THEO_ID[cua].ten };
+    txState.bets = giu;
+    updatePoints(userId, hoan);
+    txState.needsUpdate = true;
+    const u = getUserData(userId);
+    writeLog('BET', `[WEB TX] ${u.name || userId} huỷ cược ô ${TX_CUA.THEO_ID[cua].ten} ván #${txState.gameId}, hoàn ${hoan.toLocaleString('vi-VN')}`);
+    return { ok: true, hoan, cua, balance: u.points || 0 };
+}
+
+/**
+ * 🔀 Dời toàn bộ tiền đang đặt ở ô `tu` sang ô `den` (kéo chip thả sang ô khác).
+ * Không đi qua ví — tổng tiền đặt của người đó không đổi — nên chỉ phải kiểm TRẦN
+ * RIÊNG của ô đích. Kiểm xong mới đụng sổ, không dời nửa chừng.
+ */
+function txDoiCua(userId, tu, den) {
+    const chan = txDangNhanCuoc();
+    if (chan) return { error: chan };
+    tu = String(tu || ''); den = String(den || '');
+    if (!TX_CUA.THEO_ID[tu]) return { error: 'Cửa không hợp lệ: ' + tu };
+    if (!TX_CUA.THEO_ID[den]) return { error: 'Cửa không hợp lệ: ' + den };
+    if (tu === den) return { error: 'Thả lại đúng ô cũ - không dời' };
+    const tien = txBetCuaCua(userId, tu);
+    if (tien <= 0) return { error: 'Bạn chưa đặt gì ở cửa ' + TX_CUA.THEO_ID[tu].ten };
+    const tranO = TX_CUA.tranCua(den, txTranCfg());
+    const daCo = txBetCuaCua(userId, den);
+    if (tranO > 0 && daCo + tien > tranO) {
+        return { error: `Cửa ${TX_CUA.THEO_ID[den].ten} tối đa ${tranO.toLocaleString('vi-VN')}/ván` + (daCo ? ` - đã đặt ${daCo.toLocaleString('vi-VN')}` : '') + `, dời thêm ${tien.toLocaleString('vi-VN')} là vượt.` };
+    }
+    const u = getUserData(userId);
+    const ten = u.name || ('web_' + String(userId).slice(-4));
+    txState.bets = (txState.bets || []).filter(b => !(b.userId === userId && b.choice === tu));
+    txState.bets.push({ userId, username: ten, choice: den, amount: tien });
+    txState.needsUpdate = true;
+    writeLog('BET', `[WEB TX] ${ten} dời ${tien.toLocaleString('vi-VN')} từ ${TX_CUA.THEO_ID[tu].ten} sang ${TX_CUA.THEO_ID[den].ten} (ván #${txState.gameId})`);
+    return { ok: true, tien, tu, den, balance: u.points || 0 };
+}
+
 /**
  * ✖️2 — đặt THÊM đúng số đang có ở mọi cửa, thành ra gấp đôi.
  * Dồn hết cho txDatLo kiểm: thiếu ví hay vượt trần là hỏng CẢ LƯỢT, không nhân
@@ -6897,6 +6945,8 @@ client.once('ready', async (c) => {
             txNhanDoi: (uid, ten) => txNhanDoi(uid, ten),
             txDatLai: (uid, ten) => txDatLai(uid, ten),
             txXoaCuoc: (uid) => txXoaCuoc(uid),
+            txXoaCua: (uid, cua) => txXoaCua(uid, cua),           // 🗑️ huỷ 1 ô (kéo chip vào vùng huỷ)
+            txDoiCua: (uid, tu, den) => txDoiCua(uid, tu, den),   // 🔀 dời chip sang ô khác
             txCoVanTruoc: (uid) => txCoVanTruoc(uid),
             txBaoRate: TX_BAO_RATE,      // 🌪️ 14/09: nút Bão tự tính "đặt X ăn Y" theo đúng tỉ lệ
             getDb: () => dbCache,

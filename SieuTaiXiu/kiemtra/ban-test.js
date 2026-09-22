@@ -52,6 +52,36 @@ muc('phí 20% trừ đúng, xoá cược hoàn đủ');
     ok('xoá lần hai thì báo lỗi, không hoàn khống', !!ban.xoaCuoc('A').error && VI.A === 1000000, String(VI.A));
 }
 
+// ---------------------------------------------------------------- kéo thả chip
+muc('kéo thả chip: huỷ đúng 1 ô / dời chip sang ô khác');
+{
+    const cuoc = (b, u) => Object.fromEntries(b.trangThai(u).myBets.map(x => [x.choice, x.amount]));
+    const { ban, VI, DB } = dungBan({ A: 1000000, B: 1000000 });
+    ban.dat('A', 'A', [{ choice: 'chan', amount: 10000 }, { choice: 'tai', amount: 5000 }]);   // trừ 18.000
+    ban.dat('B', 'B', [{ choice: 'le', amount: 3000 }]);
+    const d = ban.doiCua('A', 'A', 'chan', 'le');
+    ok('dời Chẵn -> Lẻ ok, mang đủ 10.000', d.ok && d.tien === 10000, JSON.stringify(d));
+    ok('dời KHÔNG đụng ví (vẫn 982.000)', VI.A === 982000, String(VI.A));
+    const c = cuoc(ban,'A');
+    ok('sổ A: Lẻ 10.000 + Tài 5.000, hết Chẵn', c.le === 10000 && c.tai === 5000 && !c.chan, JSON.stringify(c));
+    ok('phí đi theo chip (phiToi vẫn 3.000)', ban.trangThai('A').phiToi === 3000, String(ban.trangThai('A').phiToi));
+    ok('không đụng cược người khác', cuoc(ban,'B').le === 3000);
+    ok('ghi sổ _stxBets NGAY', (DB._stxBets || []).some(b => b.userId === 'A' && b.choice === 'le' && b.amount === 10000));
+    ok('dời ô trống -> lỗi', !!ban.doiCua('A', 'A', 'chan', 'tai').error);
+    ok('dời vào chính ô cũ -> lỗi', !!ban.doiCua('A', 'A', 'le', 'le').error);
+    ok('ô bịa (đi hoặc đến) -> lỗi', !!ban.doiCua('A', 'A', 'le', 'xyz').error && !!ban.doiCua('A', 'A', 'xyz', 'le').error);
+    const t = ban.doiCua('A', 'A', 'le', 'bao1');   // Bão 1 trần 1.000, mang 10.000 sang là vượt
+    ok('dời vượt trần ô đích -> chặn, sổ giữ nguyên (không dời nửa chừng)',
+        /tối đa/.test(t.error || '') && cuoc(ban,'A').le === 10000, t.error);
+    const x = ban.xoaCua('A', 'le');
+    ok('huỷ ô Lẻ hoàn 12.000 (cả phí), ví 994.000', x.ok && x.hoan === 12000 && VI.A === 994000, JSON.stringify(x) + ' ' + VI.A);
+    ok('ô Tài còn nguyên 5.000', cuoc(ban,'A').tai === 5000);
+    ok('huỷ ô trống -> lỗi, không hoàn khống', !!ban.xoaCua('A', 'le').error && VI.A === 994000, String(VI.A));
+    ok('huỷ ô bịa -> lỗi', !!ban.xoaCua('A', 'xyz').error);
+    toiMocQuay(ban);
+    ok('ngoài pha đặt: cấm cả dời lẫn huỷ ô', !!ban.doiCua('A', 'A', 'tai', 'xiu').error && !!ban.xoaCua('A', 'tai').error);
+}
+
 // ---------------------------------------------------------------- luật đặt
 muc('luật đặt cược');
 {

@@ -161,6 +161,25 @@ là dòng dài không đọc nổi, mà lại **không hề kể ô nào đượ
 - Báo lỗi bằng **dòng chữ đứng yên** dưới nút, **không dùng toast** (chủ server chốt: phải
   đọc kịp câu "không đủ Dogcoin", đừng loé rồi tắt).
 
+## 10b. Kéo thả chip (22/09) — dời ô / huỷ đúng một ô
+
+Lỡ đặt Chẵn thì **giữ ngón/chuột ~0,28s** lên ô đó: đồng Dogcoin nhấc lên bay theo tay, ô đích
+sáng viền vàng, và **vùng "🗑️ Thả vào đây để HUỶ" hiện ở giữa đáy màn**. Thả lên ô khác =
+dời, thả vào vùng huỷ = huỷ đúng ô đó, thả chỗ khác = chip về chỗ cũ. Bấm nhanh vẫn là đặt.
+
+Máy chủ: `txDoiCua(user, tu, den)` và `txXoaCua(user, cua)` → `/api/tx/doicua` · `/api/tx/xoacua`.
+
+- **Dời không đi qua ví** (tổng cược không đổi) nên chỉ kiểm **trần riêng của ô đích**
+  (`txBetCuaCua(den) + tiền ≤ tranCua(den)`). Kiểm xong mới đụng sổ — không dời nửa chừng.
+- Huỷ một ô chỉ gỡ phiếu **đúng người, đúng ô**, hoàn đúng số đã trừ; ô khác còn nguyên.
+- Cả hai **câm ngoài pha đặt cược** (`txDangNhanCuoc`), ô bịa / ô trống / thả lại ô cũ đều lỗi.
+- Phía trang: **một bộ `keo*` dùng chung cho hai bàn**, chỉ khác tiền tố id (`sb_`/`st_`)
+  và bộ biến (`keoBan(pre)`). Con ma là bản sao `.sbGio` gắn vào `body` nên phải **tự đủ
+  CSS** (`.sbKeoGhost`). Chỉ ô **đang có chip của mình** mới mang `sbCoChip`
+  (`touch-action:none`) — ô trống vẫn vuốt trang được. Sau khi nhả tay trình duyệt còn bắn
+  `click`, `KEOCLICK` chặn nó ở `sbChon`/`stChon` kẻo thả xong lại đặt thêm một cục.
+- Kết quả/lỗi báo bằng **dòng đứng yên** dưới nút (`sbBao`/`stBao`), y ba nút.
+
 ---
 
 ## 11. Bộ kiểm
@@ -169,7 +188,7 @@ Chạy được ngay, **không cần bot**:
 
 ```
 node TaiXiu/kiemtra/cua-test.js       # lõi tiền: RTP, xác suất, trần, danh sách ô trúng
-node TaiXiu/kiemtra/trang-test.js     # giao diện: hình học xúc xắc, kiểu ô trúng/trượt, 3 nút
+node TaiXiu/kiemtra/trang-test.js     # giao diện: hình học xúc xắc, kiểu ô trúng/trượt, 3 nút, kéo thả chip
 node TaiXiu/kiemtra/pham-vi-test.js   # biến xuyên file (webplay/panel gọi hằng của index)
 node TaiXiu/kiemtra/tienkhongmat-test.js  # mọi chỗ xoá cược phải trả tiền trước
 node TaiXiu/kiemtra/restart-test.js   # bật lại bot giữa ván: không hoàn kép, không mất

@@ -353,6 +353,33 @@ ok('dải phí gọn "PHÍ 20%" (chủ server bỏ dòng dài)', SRC.includes("'
 ok('phí vẫn hiện số tiền thật ngay dưới hàng mệnh giá', SRC.includes('id="stPhiNho"') && SRC.includes('Bấm 1 ô là trừ <b>'));
 ok('ô nhân bàn Siêu GIẬT NHƯ CÓ SÉT', SRC.includes('@keyframes stSet{') && SRC.includes('animation:stSet 1.5s'));
 ok('bàn Siêu chỉ hỏi máy chủ khi đang đứng ở tab đó', SRC.includes('function stLoad(){if(CURPAGE!=="stx")return;'));
+// 22/09: giữ chip để nhấc lên, thả sang ô khác = dời, thả vào vùng huỷ giữa đáy màn = huỷ ô đó.
+muc('kéo thả chip (một bộ dùng chung cho 2 bàn)');
+ok('bộ kéo thả gắn vào CẢ HAI bàn', SRC.includes('keoGan("sb")') && SRC.includes('keoGan("st")'));
+ok('giữ 0,28s mới nhấc; nhích >8px hay nhả sớm = bấm thường',
+    /setTimeout\(function\(\)\{keoHuyCho\(\);keoBatDau\(c\)\},280\)/.test(SRC) && /Math\.abs\(e\.clientX-x0\)>8/.test(SRC));
+ok('chỉ nhấc được ô ĐANG CÓ chip của mình, và chỉ trong pha đặt',
+    /if\(!o\|\|!o\.querySelector\("\.sbGio"\)\)return;/.test(SRC) && /if\(B\.phase!=="bet"\)return;var id=o\.id\.slice\(3\)/.test(SRC));
+ok('vùng huỷ nằm GIỮA ĐÁY màn, chỉ hiện khi đang kéo',
+    SRC.includes("'#sbKeoHuy{position:fixed;left:50%;bottom:18px;transform:translateX(-50%)") && /h\.className="hidden";document\.body\.appendChild\(h\)/.test(SRC));
+ok('thả vào vùng huỷ -> xoacua đúng ô; thả lên ô khác -> doicua',
+    /keoGoi\(B,"xoacua",\{cua:k\.id\}/.test(SRC) && /keoGoi\(B,"doicua",\{tu:k\.id,den:k\.dich\.id\.slice\(3\)\}/.test(SRC));
+ok('click trình duyệt bắn ra sau khi nhả tay bị chặn ở cả sbChon và stChon',
+    /function sbChon\(id\)\{if\(KEO\|\|Date\.now\(\)-KEOCLICK<500\)return;/.test(SRC) && /function stChon\(id\)\{if\(KEO\|\|Date\.now\(\)-KEOCLICK<500\)return;/.test(SRC));
+ok('chỉ ô có chip mới khoá cuộn (touch-action:none) — ô trống vẫn vuốt trang được',
+    SRC.includes("'.sbO.sbCoChip{touch-action:none") && /e\.classList\.toggle\("sbCoChip",toi>0\)/.test(SRC) && !/'\.sbO\{[^']*touch-action:none/.test(SRC));
+ok('con ma tự đủ CSS (nằm ngoài .sbO), giữ viền đen cho chip nặng',
+    SRC.includes("'.sbKeoGhost{position:fixed;z-index:9999;pointer-events:none") && SRC.includes("'.sbKeoGhost.sbGioDen img{"));
+ok('4 route kéo thả có mặt (tx + stx)',
+    /path === '\/api\/tx\/xoacua' \|\| path === '\/api\/tx\/doicua'/.test(SRC) && SRC.includes("path === '/api/stx/xoacua'") && SRC.includes("path === '/api/stx/doicua'"));
+ok('index.js có txXoaCua + txDoiCua và đưa vào ctx web',
+    /function txXoaCua\(userId, cua\)/.test(IDX) && /function txDoiCua\(userId, tu, den\)/.test(IDX) &&
+    /txXoaCua: \(uid, cua\) => txXoaCua\(uid, cua\)/.test(IDX) && /txDoiCua: \(uid, tu, den\) => txDoiCua\(uid, tu, den\)/.test(IDX));
+ok('dời chip trên máy chủ kiểm trần ô đích RỒI MỚI đụng sổ',
+    /const tranO = TX_CUA\.tranCua\(den, txTranCfg\(\)\);\s*const daCo = txBetCuaCua\(userId, den\);\s*if \(tranO > 0 && daCo \+ tien > tranO\)/.test(IDX));
+ok('huỷ 1 ô / dời ô đều câm ngoài pha đặt (txDangNhanCuoc)',
+    /function txXoaCua\(userId, cua\) \{\s*const chan = txDangNhanCuoc\(\);/.test(IDX) && /function txDoiCua\(userId, tu, den\) \{\s*const chan = txDangNhanCuoc\(\);/.test(IDX));
+
 ok('mọi id bàn Siêu bắt đầu bằng st, không đụng bàn thường', !/id="sb[A-Z]/.test(SRC.slice(SRC.indexOf('id="pageStx"'), SRC.indexOf('hết #pageStx'))));
 
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');
