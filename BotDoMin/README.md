@@ -5,8 +5,6 @@
 > `git log`; bản README cũ dài 2.300 dòng (có nhật ký từng ngày) nằm ở commit `385e5f6`,
 > file `palworld-dashboard/README.md`. Phần server game / mod / pak: xem `../palworld-dashboard/README.md`.
 
-Chủ server: **Khoa** — không rành code. Trả lời tiếng Việt, giải thích dễ hiểu, chỉ rõ file và dòng.
-
 ---
 
 ## 0. Luật làm việc (vi phạm là hỏng tiền thật hoặc hỏng prod)
