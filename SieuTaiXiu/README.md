@@ -240,7 +240,7 @@ kêu ngay là không thao tác được.
 
 Tab trên web chỉ hiện khi admin **bật bàn**.
 
-## 6b. ✋ Ép HỆ SỐ NHÂN cho 4 cửa TÀI · XỈU · CHẴN · LẺ (22/09)
+## 6b. ✋ Ép HỆ SỐ NHÂN — TÀI · XỈU · CHẴN · LẺ + 🌪️ BÃO (22/09)
 
 Bảng RIÊNG trong tab ⚡ Siêu Tài Xỉu. Admin ép thẳng hệ số nhân của bốn cửa `deu` —
 chỗ người chơi đổ tiền nhiều nhất. 52 cửa còn lại vẫn để máy bốc.
@@ -249,7 +249,21 @@ chỗ người chơi đổ tiền nhiều nhất. 52 cửa còn lại vẫn đ�
 |---|---|
 | (để trống) | máy tự bốc như thường |
 | **0** | TẮT — ô không sáng ván đó |
-| **2 → 14** | ép đúng hệ số đó |
+| **số** | ép đúng hệ số đó, trong khoảng riêng của ô |
+
+**Khoảng ép = (gốc + 1) → bậc cao nhất của thang riêng ô đó** (22/09 mở thêm bão — chủ server:
+*"can thiệp luôn hệ số nhân của 3 con giống nhau nữa"*):
+
+| Ô | Gốc | Ép được |
+|---|---|---|
+| TÀI · XỈU · CHẴN · LẺ | 1:1 | **x2 → x14** |
+| 🌪️ Bão bất kỳ | 30:1 | **x31 → x499** |
+| 🌪️ Bão 1 … Bão 6 | 150:1 | **x151 → x1999** |
+
+Dưới gốc là vô nghĩa (thắng còn ít hơn không nhân), trên thang là phá bài toán RTP. Máy bàn gửi
+`cuaEp` (11 ô, mỗi ô kèm min/max/nhóm) — panel vẽ **hai hàng** (đều tiền / bão), trần và placeholder
+từng ô lấy theo đó, **không tự bịa**. Nút nhanh riêng: *🌪️ Bão: tối đa* (mỗi ô đúng trần của nó) /
+*🌪️ Bão: tắt hết*.
 
 ⚠️ **Ép được cả bậc thang KHÔNG có** (x7, x9, x11, x13). Thang chỉ quy định máy **bốc ngẫu
 nhiên** ra số nào; admin ép là cố ý nên không bị bó theo bậc. Trần lấy theo hệ số cao nhất
@@ -276,7 +290,7 @@ Route: `/api/stx/epnhan` · `/api/stx/epnhanclear` — đều nằm trong `VIEWO
 ```
 node SieuTaiXiu/kiemtra/cua-test.js   # lõi tiền: bảng trả, phí, RTP, trần (34 phép)
 node SieuTaiXiu/kiemtra/ban-test.js   # máy bàn: đặt/xoá/3 nút/kéo thả/ép/báo cược/trọn ván/cứu tiền (74 phép)
-node SieuTaiXiu/kiemtra/epnhan-test.js # ✋ ép hệ số nhân 4 cửa đều: chạy bàn thật, soi bảng nhân + tiền (46 phép)
+node SieuTaiXiu/kiemtra/epnhan-test.js # ✋ ép hệ số nhân 4 cửa đều + 7 ô bão: chạy bàn thật, soi bảng nhân + tiền (70 phép)
 # bảng Discord + dòng kết quả gọn: TaiXiu/kiemtra/trang-test.js soi (khối "bảng Discord bàn Siêu")
 ```
 

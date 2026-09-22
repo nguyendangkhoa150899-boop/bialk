@@ -564,6 +564,8 @@ function taoBan(ctx) {
             ep: db()._stxEp || null,
             // ✋ lệnh ép hệ số nhân đang chờ + danh sách hệ số hợp lệ (panel không tự bịa)
             epNhan: db()._stxEpNhan || null, epNhanKhoang: bacDeu(), cuaDeu: CUA_DEU.map(id => ({ id, ten: CUA_TEN(id) })),
+            // 🌪️ đủ 11 ô ép được, mỗi ô kèm khoảng riêng + nhóm để panel xếp hàng (đều tiền / bão)
+            cuaEp: CUA_EP.map(id => ({ id, ten: CUA_TEN(id), nhom: CUA_BAO.includes(id) ? 'bao' : 'deu', ...khoangEp(id) })),
             epGoiY: timEpReNhat(), betsCount: S.bets.length,
         };
     }
@@ -585,18 +587,30 @@ function taoBan(ctx) {
     // Bốn cửa TÀI · XỈU · CHẴN · LẺ (nhóm 'deu') — chỗ người chơi đổ tiền nhiều nhất, nên
     // chỉ mở can thiệp đúng bốn ô này, không mở cả 52 cửa (chủ server 22/09).
     const CUA_DEU = ['tai', 'xiu', 'chan', 'le'];
+    // 🌪️ 22/09 mở rộng: 7 ô BÃO (3 con giống nhau) cũng ép được (chủ server: "can thiệp luôn
+    // hệ số nhân của 3 con giống nhau nữa").
+    const CUA_BAO = ['baoany', 'bao1', 'bao2', 'bao3', 'bao4', 'bao5', 'bao6'];
+    const CUA_EP = CUA_DEU.concat(CUA_BAO);
     /**
-     * Khoảng hệ số ép được: 2 → hệ số CAO NHẤT của thang 'deu' đang chạy (mặc định 14).
-     * ⚠️ Chủ server chốt 22/09 là "từ 2 đến 14", tức LIỀN MẠCH — không chỉ mấy bậc có sẵn
-     * trong thang (2·3·4·5·6·8·10·12·14). Ép x7 hay x13 là hợp lệ dù thang không có bậc đó:
-     * thang chỉ quy định máy BỐC NGẪU NHIÊN ra số nào, còn admin ép là cố ý, chịu trách nhiệm.
-     * Trần lấy theo thang nên admin nâng thang thì trần tự nới, khỏi sửa hai chỗ.
+     * Khoảng ép được của MỘT ô = (gốc + 1) → bậc CAO NHẤT trong thang riêng của ô đó.
+     *   · deu   gốc 1   -> x2..x14      (đúng "từ 2 đến 14" chủ server chốt)
+     *   · baoany gốc 30 -> x31..x499
+     *   · bao1-6 gốc 150-> x151..x1999
+     * Dưới gốc là vô nghĩa (thắng còn ít hơn không nhân); trên thang là phá bài toán RTP.
+     * LIỀN MẠCH, không bó theo bậc có sẵn: thang chỉ quy định máy BỐC ra số nào, admin ép là
+     * cố ý. Đọc c.thangNhan.bac (thang ĐANG CHẠY) nên admin nâng thang thì trần tự nới.
      */
-    function bacDeu() {
-        const t = CUA.thangHienTai().deu || [];
-        const cao = t.reduce((m, b) => Math.max(m, Math.floor(Number(b[0])) || 0), 0);
-        return { min: 2, max: cao > 2 ? cao : 14 };
+    function khoangEp(id) {
+        const c = CUA.DS.find(x => x.id === id);
+        if (!c) return { min: 2, max: 14 };
+        const bac = (c.thangNhan && Array.isArray(c.thangNhan.bac)) ? c.thangNhan.bac
+            : ((CUA.thangHienTai()[c._thang]) || []);
+        const cao = bac.reduce((m, b) => Math.max(m, Math.floor(Number(b[0])) || 0), 0);
+        const goc = Math.floor(Number(c.goc)) || 1;
+        return { min: goc + 1, max: cao > goc + 1 ? cao : goc + 1 };
     }
+    /** Giữ tên cũ cho panel/bộ kiểm: khoảng của nhóm đều tiền. */
+    function bacDeu() { return khoangEp('tai'); }
     /**
      * Áp lệnh ép của admin lên bảng nhân vừa bốc. DÙNG MỘT LẦN rồi xoá — y như ép kết quả.
      * ⚠️ Phải gọi NGAY khi sinh bảng nhân (lúc khoá sổ), vì từ đó trở đi cả ván tính tiền
@@ -606,7 +620,7 @@ function taoBan(ctx) {
         const ep = db()._stxEpNhan;
         if (!ep || typeof ep !== 'object') return o;
         const ke = [];
-        for (const id of CUA_DEU) {
+        for (const id of CUA_EP) {
             const v = ep[id];
             if (v === undefined || v === null || v === '') continue;   // để máy tự bốc
             const n = Math.floor(Number(v));
@@ -626,19 +640,20 @@ function taoBan(ctx) {
      */
     function epNhan(map) {
         if (!map || typeof map !== 'object') return { error: 'Thiếu bảng ép hệ số nhân' };
-        const { min, max } = bacDeu();
         const ra = {}; const ke = [];
-        for (const id of CUA_DEU) {
+        for (const id of CUA_EP) {
             const v = map[id];
             if (v === undefined || v === null || v === '') continue;
             const n = Math.floor(Number(v));
             if (!Number.isFinite(n) || n < 0) return { error: CUA_TEN(id) + ': hệ số phải là số ≥ 0 (0 = tắt ô)' };
+            const { min, max } = khoangEp(id);          // mỗi ô một khoảng riêng
             if (n > 0 && (n < min || n > max)) {
-                return { error: CUA_TEN(id) + ': x' + n + ' ngoài khoảng - ép được từ x' + min + ' đến x' + max +
+                return { error: CUA_TEN(id) + ': x' + n + ' ngoài khoảng - ô này ép được từ x' + min + ' đến x' + max +
                     ' (hoặc 0 để TẮT ô). Muốn cao hơn thì nâng thang hệ số nhân trước.' };
             }
             ra[id] = n; ke.push(CUA_TEN(id) + (n === 0 ? ' TẮT' : ' x' + n));
         }
+        const { min, max } = bacDeu();               // trả kèm cho panel (khoảng nhóm đều tiền)
         if (!ke.length) return { error: 'Chưa chọn ô nào - để trống hết thì có gì mà ép' };
         db()._stxEpNhan = ra; luu();
         // Bấm lúc CÒN NHẬN CƯỢC -> áp ngay khi khoá sổ ván NÀY, tức 4 giây hiện nhân sắp tới.

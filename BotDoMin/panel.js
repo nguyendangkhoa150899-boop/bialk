@@ -1967,7 +1967,7 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-          <label>✋ Ép HỆ SỐ NHÂN cho 4 cửa TÀI · XỈU · CHẴN · LẺ</label>
+          <label>✋ Ép HỆ SỐ NHÂN — TÀI · XỈU · CHẴN · LẺ và 🌪️ BÃO (3 con giống nhau)</label>
           <div class="note" style="margin-bottom:8px">Bấm lúc bàn <b>còn nhận cược</b> thì hệ số này hiện ra ngay ở <b>4 giây khoe hệ số nhân</b> của ván đang chạy. Bấm lúc đã khoá sổ thì phải chờ ván sau. <b>Dùng MỘT LẦN rồi tự xoá</b> — ép x14 mà để thường trực là nhà cái đổ tiền mỗi ván.<br>Mỗi ô: <b>để trống</b> = máy tự bốc · <b>0</b> = TẮT, ô không sáng · <b>số</b> = ép đúng hệ số đó.</div>
           <div id="stxNhanO" class="row" style="flex-wrap:wrap;gap:10px"></div>
           <div class="quick" style="margin-top:8px">
@@ -1975,7 +1975,9 @@ const HTML = `<!DOCTYPE html>
             <button onclick="stxNhanDat(8)">Tất cả x8</button>
             <button onclick="stxNhanDat(2)">Tất cả x2</button>
             <button onclick="stxNhanDat(0)">Tắt hết 4 ô</button>
-            <button onclick="stxNhanDat('')">Xoá ô nhập</button>
+            <button onclick="stxNhanDatBao('max')">🌪️ Bão: tối đa</button>
+            <button onclick="stxNhanDatBao(0)">🌪️ Bão: tắt hết</button>
+            <button onclick="stxNhanDat('');stxNhanDatBao('')">Xoá ô nhập</button>
           </div>
           <div class="row" style="margin-top:10px">
             <button class="btn-red" style="flex:2" onclick="stxEpNhan()">✋ Ép hệ số nhân</button>
@@ -2620,8 +2622,7 @@ function stxDo(){
   stxVeNhanO(S);
   const nn=document.getElementById('stxNhanNow');
   if(nn){
-    const kh=S.epNhanKhoang||{min:2,max:14};
-    const TEN2=Object.fromEntries((S.cuaDeu||[]).map(c=>[c.id,c.ten]));
+    const TEN2=Object.fromEntries(stxDsEp(S).map(c=>[c.id,c.ten]));
     // Bàn còn nhận cược -> lệnh ép ăn ngay ván này (4 giây khoe nhân sắp tới).
     // Đã khoá sổ -> ăn ván sau. Nói rõ ra, y khối ép kết quả của bàn thường.
     const khi=S.secsToBet>0
@@ -2630,7 +2631,7 @@ function stxDo(){
     const dang=S.epNhan
       ? ('<br>✋ <b>Đang chờ áp:</b> '+Object.keys(S.epNhan).map(k=>esc(TEN2[k]||k)+(S.epNhan[k]===0?' TẮT':' x'+S.epNhan[k])).join(' · '))
       : '';
-    nn.innerHTML=khi+' &nbsp;·&nbsp; ép được <b>x'+kh.min+'</b> → <b>x'+kh.max+'</b> (0 = tắt ô)'+dang;
+    nn.innerHTML=khi+' &nbsp;·&nbsp; 0 = tắt ô · khoảng ép ghi sẵn trong từng ô'+dang;
   }
   const bi=document.getElementById('stxBoardInfo'), sb=STATE.stxBoard;
   if(bi&&sb)bi.innerHTML='<span class="run '+(sb.on?'on':'off')+'">'+(sb.on?'🟢 ĐANG HIỆN':'🔴 CHƯA ĐĂNG')+'</span>'+(sb.channelId?' &nbsp; kênh <code>'+esc(sb.channelId)+'</code>':'');
@@ -2745,27 +2746,43 @@ function stxThangMacDinh(){
   api('/api/stx/thang',{macDinh:true}).then(()=>{const t=document.getElementById('stxThang');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 // ---------------------------------------------------------------- ✋ ÉP HỆ SỐ NHÂN (22/09)
-// 4 ô nhập cho TÀI · XỈU · CHẴN · LẺ. Tên cửa + khoảng hệ số đều LẤY TỪ MÁY BÀN gửi lên
-// (stx.cuaDeu / stx.epNhanKhoang) — panel KHÔNG tự bịa, y như khối trần cược đã chốt.
+// 4 ô đều tiền (TÀI · XỈU · CHẴN · LẺ) + 7 ô bão (22/09 mở thêm). Tên cửa + khoảng hệ số TỪNG Ô
+// đều LẤY TỪ MÁY BÀN gửi lên (stx.cuaEp) — panel KHÔNG tự bịa, y như khối trần cược đã chốt.
 var STX_NHAN_VE='';
+// 22/09: danh sách ô ép = S.cuaEp (11 ô, mỗi ô kèm min/max/nhóm). Bản cũ chỉ có cuaDeu (4 ô)
+// - vẫn nhận làm dự phòng để bot cũ không vỡ bảng.
+function stxDsEp(stx){
+  var s=stx||(STATE&&STATE.stx)||{};
+  if(Array.isArray(s.cuaEp)&&s.cuaEp.length)return s.cuaEp;
+  var kh=s.epNhanKhoang||{min:2,max:14};
+  return (s.cuaDeu||[]).map(function(c){return {id:c.id,ten:c.ten,nhom:'deu',min:kh.min,max:kh.max}});
+}
 function stxVeNhanO(stx){
   var box=document.getElementById('stxNhanO');if(!box||!stx)return;
-  var ds=stx.cuaDeu||[],kh=stx.epNhanKhoang||{min:2,max:14};
+  var ds=stxDsEp(stx);
   // chỉ vẽ lại khi DANH SÁCH đổi - vẽ mỗi 3 giây là admin đang gõ bị mất chữ
-  var sig=JSON.stringify([ds,kh]);if(sig===STX_NHAN_VE)return;STX_NHAN_VE=sig;
-  box.innerHTML=ds.map(function(c){
-    return '<label style="display:flex;align-items:center;gap:6px;white-space:nowrap">'+
-      '<b style="min-width:86px">'+esc(c.ten)+'</b>'+
-      '<input id="stxN_'+c.id+'" type="number" min="0" max="'+kh.max+'" placeholder="tự bốc" style="width:92px">'+
-      '</label>';
-  }).join('');
+  var sig=JSON.stringify(ds);if(sig===STX_NHAN_VE)return;STX_NHAN_VE=sig;
+  var hang=function(nhom,nhan){
+    var l=ds.filter(function(c){return c.nhom===nhom});if(!l.length)return '';
+    return '<div style="flex:1 1 100%;font-size:12px;color:var(--muted);margin-top:'+(nhom==='deu'?0:6)+'px">'+nhan+'</div>'+
+      l.map(function(c){
+        return '<label style="display:flex;align-items:center;gap:6px;white-space:nowrap">'+
+          '<b style="min-width:86px">'+esc(c.ten)+'</b>'+
+          '<input id="stxN_'+c.id+'" type="number" min="0" max="'+c.max+'" placeholder="x'+c.min+'–x'+c.max+'" title="để trống = tự bốc · 0 = tắt · x'+c.min+' đến x'+c.max+'" style="width:110px">'+
+          '</label>';
+      }).join('');
+  };
+  box.innerHTML=hang('deu','Đều tiền (x2 → x14)')+hang('bao','🌪️ Bão — 3 con giống nhau (Bão bất kỳ x31 → x499 · Bão 1–6 x151 → x1999)');
 }
 function stxNhanDat(v){
-  var ds=((STATE&&STATE.stx&&STATE.stx.cuaDeu))||[];
-  ds.forEach(function(c){var e=document.getElementById('stxN_'+c.id);if(e)e.value=(v===''?'':v)});
+  stxDsEp().filter(function(c){return c.nhom==='deu'}).forEach(function(c){var e=document.getElementById('stxN_'+c.id);if(e)e.value=(v===''?'':v)});
+}
+// 🌪️ nút nhanh cho hàng bão: 'max' = từng ô đúng trần riêng của nó, 0 = tắt, '' = xoá
+function stxNhanDatBao(v){
+  stxDsEp().filter(function(c){return c.nhom==='bao'}).forEach(function(c){var e=document.getElementById('stxN_'+c.id);if(!e)return;e.value=(v===''?'':(v==='max'?c.max:v))});
 }
 function stxEpNhan(){
-  var ds=((STATE&&STATE.stx&&STATE.stx.cuaDeu))||[],nhan={},co=false;
+  var ds=stxDsEp(),nhan={},co=false;
   ds.forEach(function(c){
     var e=document.getElementById('stxN_'+c.id);if(!e)return;
     var v=(e.value||'').trim();if(v==='')return;

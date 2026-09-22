@@ -149,17 +149,70 @@ muc('↩️ huỷ ép');
     ok('huỷ khi không có gì -> báo daHuy=false, không nổ', ban.huyEpNhan().daHuy === false);
 }
 
+// ---------------------------------------------------------------- 🌪️ 3 CON GIỐNG NHAU (22/09)
+// Chủ server: "can thiệp luôn hệ số nhân của 3 con giống nhau nữa". 7 ô bão, mỗi ô khoảng riêng.
+muc('🌪️ BÃO cũng ép được — khoảng riêng từng ô');
+{
+    const { ban } = dungBan();
+    const t = ban.adminXem();
+    ok('máy bàn gửi đủ 11 ô ép được (4 đều + 7 bão)', Array.isArray(t.cuaEp) && t.cuaEp.length === 11,
+        JSON.stringify((t.cuaEp || []).map(c => c.id)));
+    const kh = Object.fromEntries((t.cuaEp || []).map(c => [c.id, c]));
+    ok('...mỗi ô có min/max/nhóm/tên', (t.cuaEp || []).every(c => c.min > 0 && c.max >= c.min && c.nhom && c.ten));
+    ok('⭐ TÀI vẫn x2 → x14 (không đổi lời hứa cũ)', kh.tai && kh.tai.min === 2 && kh.tai.max === 14 && kh.tai.nhom === 'deu', JSON.stringify(kh.tai));
+    ok('⭐ Bão bất kỳ: x31 → x499 (gốc 30:1, thang tới 499)', kh.baoany && kh.baoany.min === 31 && kh.baoany.max === 499 && kh.baoany.nhom === 'bao', JSON.stringify(kh.baoany));
+    ok('⭐ Bão 1..6: x151 → x1999 (gốc 150:1, thang tới 1999)',
+        [1, 2, 3, 4, 5, 6].every(n => kh['bao' + n] && kh['bao' + n].min === 151 && kh['bao' + n].max === 1999 && kh['bao' + n].nhom === 'bao'),
+        JSON.stringify(kh.bao1));
+    ok('...trần đọc từ THANG ĐANG CHẠY (nâng thang là trần tự nới)',
+        kh.bao1.max === Math.max(...CUA.thangHienTai().bao.map(b => b[0])) &&
+        kh.baoany.max === Math.max(...CUA.thangHienTai().baoAny.map(b => b[0])));
+}
+{
+    const { ban, DB } = dungBan();
+    const r = ban.epNhan({ baoany: 499, bao3: 1999, bao5: 0, tai: 14 });
+    ok('nhận lệnh ép trộn bão + đều', r.ok === true, JSON.stringify(r.error));
+    const S = toiKhoaSo(ban);
+    const o = (S.nhan && S.nhan.o) || {};
+    ok('⭐⭐ Bão bất kỳ ra ĐÚNG x499', o.baoany === 499, JSON.stringify(o.baoany));
+    ok('⭐⭐ Bão 3 ra ĐÚNG x1999', o.bao3 === 1999, JSON.stringify(o.bao3));
+    ok('⭐⭐ Bão 5 bị TẮT hẳn', o.bao5 === undefined, JSON.stringify(o.bao5));
+    ok('...TÀI vẫn x14 cùng lúc', o.tai === 14);
+    ok('lệnh dùng một lần rồi xoá', !DB._stxEpNhan);
+    // tiền thật: ra 3-3-3, cược 1.000 vào Bão 3 -> ăn 1999× + vốn; Bão bất kỳ -> 499× + vốn
+    ok('⭐⭐ ra 3-3-3: Bão 3 trả 1.000 + 1.000×1999 = 2.000.000', CUA.tinhTra('bao3', 1000, [3, 3, 3], o) === 2000000,
+        String(CUA.tinhTra('bao3', 1000, [3, 3, 3], o)));
+    ok('...Bão bất kỳ trả 1.000 + 1.000×499 = 500.000', CUA.tinhTra('baoany', 1000, [3, 3, 3], o) === 500000,
+        String(CUA.tinhTra('baoany', 1000, [3, 3, 3], o)));
+    ok('...Bão 5 (đã tắt) ra 5-5-5 vẫn ăn GỐC 150:1 = 151.000, không nhân', CUA.tinhTra('bao5', 1000, [5, 5, 5], o) === 151000,
+        String(CUA.tinhTra('bao5', 1000, [5, 5, 5], o)));
+}
+{
+    const { ban } = dungBan();
+    ok('Bão 1 x150 (= gốc) -> chặn: ép dưới/bằng gốc là vô nghĩa', !!ban.epNhan({ bao1: 150 }).error);
+    ok('Bão 1 x151 -> nhận (sàn)', !ban.epNhan({ bao1: 151 }).error);
+    ok('Bão 1 x2000 -> chặn (trên thang)', !!ban.epNhan({ bao1: 2000 }).error);
+    ok('Bão bất kỳ x30 (= gốc) -> chặn', !!ban.epNhan({ baoany: 30 }).error);
+    ok('Bão bất kỳ x499 -> nhận (trần)', !ban.epNhan({ baoany: 499 }).error);
+    ok('câu báo nói đúng khoảng CỦA Ô ĐÓ', /x151.*x1999/.test(ban.epNhan({ bao1: 5 }).error || ''), ban.epNhan({ bao1: 5 }).error);
+    ok('TÀI x20 vẫn bị chặn theo khoảng riêng của nó (x2–x14), không lây trần bão', !!ban.epNhan({ tai: 20 }).error);
+}
+
 muc('🖥️ bảng RIÊNG trong panel');
 {
-    ok('⭐ có khối riêng "Ép HỆ SỐ NHÂN"', /Ép HỆ SỐ NHÂN cho 4 cửa/.test(PANEL));
+    ok('⭐ có khối riêng "Ép HỆ SỐ NHÂN" (nhãn kể cả 4 cửa đều + BÃO)', /✋ Ép HỆ SỐ NHÂN — TÀI · XỈU · CHẴN · LẺ và 🌪️ BÃO/.test(PANEL));
     ok('...nằm trong tab Siêu Tài Xỉu, không lẫn sang bàn thường',
-        PANEL.indexOf('Ép HỆ SỐ NHÂN cho 4 cửa') > PANEL.indexOf('id="tab-stx"') &&
-        PANEL.indexOf('Ép HỆ SỐ NHÂN cho 4 cửa') < PANEL.indexOf('id="tab-poker"'));
+        PANEL.indexOf('✋ Ép HỆ SỐ NHÂN —') > PANEL.indexOf('id="tab-stx"') &&
+        PANEL.indexOf('✋ Ép HỆ SỐ NHÂN —') < PANEL.indexOf('id="tab-poker"'));
     ok('có khung 4 ô nhập + nút ép + nút huỷ',
         /id="stxNhanO"/.test(PANEL) && /onclick="stxEpNhan\(\)"/.test(PANEL) && /onclick="stxHuyEpNhan\(\)"/.test(PANEL));
     ok('có nút bấm nhanh (x14 / x8 / x2 / tắt hết)', (PANEL.match(/onclick="stxNhanDat\(/g) || []).length >= 4);
-    ok('⭐ ô nhập dựng từ danh sách máy bàn gửi, panel KHÔNG tự bịa tên cửa', /S\.cuaDeu/.test(PANEL));
-    ok('⭐ trần ô nhập lấy theo khoảng máy bàn gửi', /epNhanKhoang/.test(PANEL));
+    ok('🌪️ có nút nhanh riêng cho hàng bão (tối đa / tắt hết)', /stxNhanDatBao\('max'\)/.test(PANEL) && /stxNhanDatBao\(0\)/.test(PANEL));
+    ok('⭐ ô nhập dựng từ danh sách máy bàn gửi (cuaEp, dự phòng cuaDeu), panel KHÔNG tự bịa',
+        /function stxDsEp\(/.test(PANEL) && /s\.cuaEp/.test(PANEL) && /s\.cuaDeu/.test(PANEL));
+    ok('⭐ trần + placeholder từng ô lấy theo khoảng RIÊNG máy bàn gửi',
+        /max="'\+c\.max\+'"/.test(PANEL) && /placeholder="x'\+c\.min\+'–x'\+c\.max\+'"/.test(PANEL));
+    ok('vẽ thành 2 hàng: đều tiền + bão', /hang\('deu'/.test(PANEL) && /hang\('bao'/.test(PANEL) && /3 con giống nhau/.test(PANEL));
     ok('nói rõ ép giờ ăn ván NÀY hay ván SAU',
         /ép giờ HIỆN NGAY ván/.test(PANEL) && /ép giờ vào VÁN SAU/.test(PANEL));
     ok('kể lệnh đang chờ áp', /Đang chờ áp:/.test(PANEL));
