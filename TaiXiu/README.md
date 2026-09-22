@@ -443,9 +443,16 @@ rồi chạy `txPlanPayout`+`txPayUser` thật 2.000 ván và máy bàn Siêu th
 nó; huy hiệu ô Đơn ghi *"x19 · 2-3 viên"*; tiêu đề khu Đơn ghi *"1 viên 1:1 (không nhân)"*.
 Bộ kiểm cố định: `nhan-2ban-test.js`.
 
-**🪙 Chip tuỳ chọn**: ô mệnh giá đầu của cả 2 bàn = số người chơi tự gõ (nút ✏️ Sửa bên dưới, Enter
-hoặc 💾 Lưu), lưu `localStorage` (`tx_chipTuy` / `stx_chipTuy`) nên F5 không mất; hợp lệ 1.000 → 1 tỉ,
-localStorage hỏng/bị chặn thì về 1.000. Đang chọn ô tuỳ chọn mà đổi số thì mệnh giá đang chọn đi theo.
+**🪙 4 mệnh giá sửa được** (chủ server chốt lần 2: *"ô đầu thành ô Sửa và Lưu; bấm Sửa thì chọn vô
+chip sẽ bắt nhập số; Lưu thì lưu được 4 ô chip kia"*): hàng chip = **[✏️ Sửa] [c1] [c2] [c3] [c4] [MAX]**,
+6 ô cùng class `.chip` nên cao bằng nhau. Bấm Sửa → 4 ô viền nét đứt, bấm ô nào thì ô đó thành ô nhập
+ngay tại chỗ (Enter = xong ô, Esc = huỷ ô, rời ô = xong ô); nút đầu thành **💾 Lưu**, bung dưới có
+✖ Huỷ / ↩ Mặc định (position:absolute, không đẩy hàng). Lưu ghi cả 4 vào `localStorage`
+(`tx_chips` / `stx_chips`) → F5 không mất; chặn trùng số; mệnh giá đang chọn mà không còn thì về ô đầu.
+Kho hỏng/thiếu ô/có số bậy/bị chặn → về mặc định 10k·20k·50k·100k. Trong chế độ sửa mọi nút dùng
+`onpointerdown` + `preventDefault` — bấm sang ô khác không làm ô nhập văng blur rồi mất click.
+Một hàm `chipHangHTML(p, …)` vẽ chung cho 2 bàn (`p = "sb" | "st"`). Bản đầu (ô tuỳ chọn + nút Sửa
+dưới ô) đã bỏ vì làm hàng chip gãy.
 
 **📜 LOG** (chủ server: *"chỉ quan tâm ván đó người nào đặt nhiêu ăn thua nhiêu kết quả"*):
 - File `log_result.txt`: **một dòng mỗi ván** `[TÀI XỈU] Ván #id: 3-4-5 (Tổng 12 | TÀI | CHẴN) · Khoa đặt 50.000 → +10.000 · …`
