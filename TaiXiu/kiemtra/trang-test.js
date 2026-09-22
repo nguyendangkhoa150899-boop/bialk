@@ -555,10 +555,12 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
     {
         const iK = SRC.indexOf("'function stShowKet(j){");
         const ket = iK >= 0 ? SRC.slice(iK, iK + 900) : '';
-        ok('⭐ số bay to = THẮNG SO VỚI CƯỢC (got − stake), không trừ phí lần nữa',
-            /thang=got-stake;/.test(ket) && /vnd\(thang\)/.test(ket), ket.slice(0, 160));
-        ok('...dòng nhỏ nhắc "về ví X · phí Y đã trừ lúc đặt"', /"về ví "\+vnd\(got\)/.test(ket) && /đã trừ lúc đặt/.test(ket));
-        ok('...KHÔNG còn in "lãi" trừ phí vào số to', !/vnd\(net\)/.test(ket));
+        // 22/09 chốt tiếp: "chỉ cần show tiền ăn thôi không cần chú thích đâu"
+        ok('⭐ số bay = THẮNG SO VỚI CƯỢC (got − stake), không trừ phí lần nữa',
+            /showNet\(\(Number\(j\.got\)\|\|0\)-\(Number\(j\.stake\)\|\|0\)\)/.test(ket), ket.slice(0, 160));
+        ok('...KHÔNG có dòng chú thích nào (không <small>, không "về ví", không "phí")',
+            !/<small/.test(ket) && !/về ví/.test(ket) && !/phí/.test(ket));
+        ok('...KHÔNG dùng net (số đã trừ phí) làm số hiện', !/j\.net/.test(ket));
         // chạy thật: ví 1.200.000 -> MAX -> cược 1.000.000 + phí 200.000, thắng 1:1
         const els = { winpop: { innerHTML: '', style: {}, classList: { add() { }, remove() { } }, offsetWidth: 0 } };
         const c4 = { document: { getElementById: (id) => els[id] || null }, vnd: (n) => Number(n).toLocaleString('vi-VN'), Number, console };
@@ -569,7 +571,8 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
         // nguồn thành MẢNG LITERAL rồi cho JS tự đọc — ra y giá trị mà trình duyệt nhận.
         try {
             const i1 = SRC.indexOf("    'function stShowKet(j){"), i2 = SRC.indexOf("    'function stShowDice(");
-            const manh = vm.runInContext('[' + SRC.slice(i1, i2) + ']', vm.createContext({}));
+            const s1 = SRC.indexOf("    'function showNet(net){"), s2 = SRC.indexOf("    'function resetPaper(){");
+            const manh = vm.runInContext('[' + SRC.slice(s1, s2) + SRC.slice(i1, i2) + ']', vm.createContext({}));
             vm.runInContext(manh.join('\n'), c4);
         } catch (e) { loi4 = e.message; }
         if (!loi4) {
@@ -577,10 +580,9 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
         }
         const chu = String(els.winpop.innerHTML).replace(/<[^>]+>/g, ' ');
         ok('chạy thật stShowKet với ca 1.200.000', !loi4, loi4);
-        ok('⭐⭐ ca 1.200.000: số to là +1.000.000 (thắng 1:1 so với cược), KHÔNG phải +800.000',
+        ok('⭐⭐ ca 1.200.000: hiện +1.000.000 (thắng 1:1 so với cược), KHÔNG phải +800.000',
             /\+1\.000\.000/.test(chu) && !/\+800\.000/.test(chu), chu);
-        ok('...dòng nhỏ: về ví 2.000.000 · phí 200.000 đã trừ lúc đặt',
-            /về ví 2\.000\.000/.test(chu) && /phí 200\.000 đã trừ lúc đặt/.test(chu), chu);
+        ok('...và CHỈ con số đó, không chú thích', !/về ví/.test(chu) && !/phí/.test(chu), chu);
         // ca trong ảnh chủ server: cược 100.000, phí 20.000, thắng 1:1 -> phải thấy +100.000
         {
             let l5 = '';
@@ -590,8 +592,7 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
                 !l5 && /\+100\.000/.test(c5) && !/\+80\.000/.test(c5), l5 || c5);
             try { vm.runInContext('stShowKet(' + JSON.stringify({ got: 0, stake: 100000, phi: 20000, net: -120000 }) + ')', c4); } catch (e) { l5 = e.message; }
             const c6 = String(els.winpop.innerHTML).replace(/<[^>]+>/g, ' ');
-            ok('...thua: −100.000 (so với cược) + nhắc phí đã trừ, không in "về ví 0"',
-                /-100\.000/.test(c6) && /phí 20\.000 đã trừ lúc đặt/.test(c6) && !/về ví 0/.test(c6), c6);
+            ok('...thua: −100.000 (so với cược), không chú thích', /-100\.000/.test(c6) && !/phí/.test(c6), c6);
         }
     }
     ok('⭐ lịch sử Siêu: ô lãi có tooltip "Về ví X · cược Y · phí Z đã trừ lúc đặt"',

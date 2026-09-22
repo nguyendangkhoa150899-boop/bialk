@@ -160,7 +160,7 @@ Mọi con số **sau** lúc đặt so với **TIỀN CƯỢC**, không trừ ph�
 | Chỗ | In gì |
 |---|---|
 | Lúc đặt | *"Đặt 100.000 + phí 20.000 = trừ 120.000"* — phí xuất hiện **một lần, ở đây** |
-| Số bay khi nặn xong (`stShowKet`) | **+100.000** to (= về ví − cược); dòng nhỏ *"về ví 200.000 · phí 20.000 đã trừ lúc đặt"*. Thua: **−100.000** |
+| Số bay khi nặn xong (`stShowKet`) | **+100.000** (= về ví − cược), **không chú thích** — chủ server: *"chỉ cần show tiền ăn thôi"*. Thua: **−100.000**. Dùng chung popup `showNet` của bàn thường |
 | Lịch sử, dòng tổng | `nhận − cược` = **+100.000**; tooltip *"Về ví 200.000 · cược 100.000 · phí 20.000 đã trừ lúc đặt"* |
 | Lịch sử, dòng từng ô | `nhận − cược` — **cùng cách tính** với dòng tổng, không lệch nhau |
 

@@ -3227,12 +3227,9 @@ const PAGE = [
     // số to là người chơi thấy như bị ăn 20% lần hai (chủ server 22/09: "chỉ trừ 20% lúc đầu thôi
     // chứ sao trừ thêm 20% sau cược nữa"). Thắng 1:1 cược 100.000 -> in +100.000, dòng nhỏ nhắc
     // "về ví 200.000 · phí 20.000 đã trừ lúc đặt". Thua -> −100.000.
-    'function stShowKet(j){var el=document.getElementById("winpop");if(!el)return;',
-    'var got=Number(j.got)||0,stake=Number(j.stake)||0,phi=Number(j.phi)||0,thang=got-stake;',
-    'el.innerHTML=(thang>=0?"+":"")+vnd(thang)+\' <img class="dc" src="/dogcoin.png" alt="">\'+',
-    '\'<small style="display:block;font-size:.42em;font-weight:700;opacity:.9;margin-top:4px">\'+(got>0?("về ví "+vnd(got)+" · "):"")+"phí "+vnd(phi)+" đã trừ lúc đặt</small>";',
-    'el.style.color=thang>=0?"#3ddc84":"#ff5d5d";',
-    'el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}',
+    // Chủ server chốt tiếp 22/09: "chỉ cần show tiền ăn thôi không cần chú thích đâu" -> bỏ dòng
+    // nhỏ, dùng chung popup showNet của bàn thường. Số = về ví − cược (không trừ phí lần nữa).
+    'function stShowKet(j){showNet((Number(j.got)||0)-(Number(j.stake)||0))}',
     'function stShowDice(dice,co){$("stDiceRow").innerHTML=dice.map(dieHTML).join("");',
     'var b=$("stSumBadge");if(co){var s2=dice[0]+dice[1]+dice[2];',
     'b.innerHTML="Tổng "+s2+" - <span class=\'"+(s2>=11?"t":"x")+"\'>"+(s2>=11?"TÀI":"XỈU")+"</span> · <span class=\'"+(s2%2===0?"ce":"od")+"\'>"+(s2%2===0?"CHẴN":"LẺ")+"</span>";',
