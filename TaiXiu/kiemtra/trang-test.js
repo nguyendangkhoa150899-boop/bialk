@@ -381,6 +381,24 @@ ok('dời chip trên máy chủ kiểm trần ô đích RỒI MỚI đụng sổ
 ok('huỷ 1 ô / dời ô đều câm ngoài pha đặt (txDangNhanCuoc)',
     /function txXoaCua\(userId, cua\) \{\s*const chan = txDangNhanCuoc\(\);/.test(IDX) && /function txDoiCua\(userId, tu, den\) \{\s*const chan = txDangNhanCuoc\(\);/.test(IDX));
 
+// Chủ server 22/09: "chọn mức cược nào thì highlight lên cho họ biết đang chọn".
+muc('mệnh giá ĐANG CHỌN phải nhìn phát biết');
+ok('rule chọn liệt kê CẢ HAI bàn (bản cũ chỉ #sbChips nên bàn Siêu không có dấu hiệu gì)',
+    SRC.includes("'#sbChips .chip.on,#stChips .chip.on{"));
+ok('dấu hiệu KHÔNG chỉ dựa vào màu: có ✓ ở góc',
+    SRC.includes("'#sbChips .chip.on::after,#stChips .chip.on::after{content:\"✓\""));
+ok('nhấc lên + viền sáng + nảy một cái khi bấm',
+    /transform:translateY\(-3px\)/.test(SRC) && /box-shadow:0 0 0 3px rgba\(255,207,92,\.45\)/.test(SRC) &&
+    SRC.includes('animation:chipNay .28s ease}') && SRC.includes("'@keyframes chipNay{"));
+ok('.chip có position:relative (không thì ✓ bay ra góc màn) + transition',
+    /'\.chip\{flex:1;position:relative;/.test(SRC) && /transition:transform \.12s ease,box-shadow \.12s ease,background \.12s ease\}/.test(SRC));
+ok('MAX CƯỢC lúc chọn vẫn ĐỎ, không hoá vàng như mệnh giá thường',
+    SRC.includes("'#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on{background:linear-gradient(180deg,#ff4d63,#a51e30);"));
+ok('máy tắt hiệu ứng chuyển động thì bỏ nảy, vẫn giữ nền vàng + ✓',
+    SRC.includes("'@media (prefers-reduced-motion:reduce){#sbChips .chip.on,#stChips .chip.on{animation:none;transform:none}}'"));
+ok('cả 2 bàn vẫn gắn lớp on đúng mệnh giá đang chọn',
+    SRC.includes('(v===SBCHIP?" on":"")') && SRC.includes('(v===STCHIP?" on":"")'));
+
 // 22/09 rà: bàn Siêu phải NGANG bàn thường ở cả panel lẫn trang người chơi
 muc('bàn Siêu ngang bàn thường (rà 22/09)');
 ok('lịch sử Siêu có công tắc ⚡ riêng, dùng chung HNHAN, bật/tắt tải lại đúng bàn',

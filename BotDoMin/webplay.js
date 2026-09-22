@@ -1004,7 +1004,8 @@ const PAGE = [
     '.hrow.storm .kq{color:var(--gold)}',
     '.cbtn.sel{border-color:var(--gold);border-bottom-width:2px;transform:translateY(3px);box-shadow:0 0 0 3px var(--gold),0 0 16px #ffcf5c88}',
     '.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}',
-    '.chip{flex:1;background:#232735;padding:9px 0;font-size:13px;min-width:56px}',
+    '.chip{flex:1;position:relative;background:#232735;padding:9px 0;font-size:13px;min-width:56px;',
+    'transition:transform .12s ease,box-shadow .12s ease,background .12s ease}',
     // 🔴 MAX CƯỢC - đỏ cho khác hẳn mấy nút mệnh giá
     '.chip.chipMax{background:linear-gradient(180deg,#8e2330,#5d141d);border-color:#c0394b;color:#ffd9de;font-weight:800}',
     '.chip.chipMax.on{background:linear-gradient(180deg,#d3374a,#96202f);border-color:#ff8a9c;color:#fff}',
@@ -1641,7 +1642,23 @@ const PAGE = [
     '.sbO{min-height:38px;padding:4px 1px}.sbO .sbTen{font-size:11px}.sbO.sbDeu{min-height:48px}',
     '.sbO.sbDeu .sbTen{font-size:13px}.sbO.sbTong .sbTen{font-size:15px}.sbO .sbTl{font-size:8.5px}}',
     '#sbChips{margin-top:4px}',
-    '#sbChips .chip.on{background:var(--gold);color:#3a2a06;border-color:var(--gold)}',
+    // 🪙 MỆNH GIÁ ĐANG CHỌN — nhìn phát biết: nền vàng, chữ đậm, nhấc lên, viền sáng
+    // quanh nút, kèm ✓ ở góc. Liệt kê CẢ HAI bàn: bản cũ chỉ có #sbChips nên bàn Siêu
+    // bấm mệnh giá xong không có dấu hiệu gì.
+    '#sbChips .chip.on,#stChips .chip.on{background:linear-gradient(180deg,#ffe193,#e3b33a);color:#3a2a06;',
+    'border-color:#fff1c2;font-weight:900;transform:translateY(-3px);',
+    'box-shadow:0 0 0 3px rgba(255,207,92,.45),0 6px 14px rgba(0,0,0,.45);animation:chipNay .28s ease}',
+    // ✓ góc phải: dấu hiệu KHÔNG phụ thuộc màu (người mù màu / màn ám vàng vẫn thấy)
+    '#sbChips .chip.on::after,#stChips .chip.on::after{content:"✓";position:absolute;top:-6px;right:-4px;',
+    'background:#1c8b4b;color:#fff;font-size:10px;font-weight:900;line-height:1;padding:3px 5px;',
+    'border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.55)}',
+    // MAX CƯỢC giữ nguyên màu ĐỎ khi được chọn — nó là nút nguy hiểm, đừng cho hoá vàng
+    // như mệnh giá thường (rule #sbChips 1 id vốn đè .chip.chipMax.on 3 lớp).
+    '#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on{background:linear-gradient(180deg,#ff4d63,#a51e30);',
+    'border-color:#ffc2cb;color:#fff;box-shadow:0 0 0 3px rgba(255,90,110,.45),0 6px 14px rgba(0,0,0,.45)}',
+    '@keyframes chipNay{0%{transform:translateY(0) scale(1)}45%{transform:translateY(-5px) scale(1.09)}100%{transform:translateY(-3px) scale(1)}}',
+    // máy nào tắt hiệu ứng chuyển động thì bỏ nảy + bỏ nhấc, vẫn giữ nền vàng và ✓
+    '@media (prefers-reduced-motion:reduce){#sbChips .chip.on,#stChips .chip.on{animation:none;transform:none}}',
     '@media (max-width:520px){.sbO .sbTen{font-size:10.5px}.sbO .sbTl{font-size:9px}.sbO{padding:6px 2px}}',
     '#baoPot{display:inline-block;margin-left:7px;padding:2px 10px;border-radius:9px;background:#6b4f16;color:#ffe9a8;font-size:16px;font-weight:900;letter-spacing:0;vertical-align:2px;white-space:nowrap}',
     '#baoPot img{width:16px;height:16px;vertical-align:-3px;margin-left:3px}',
