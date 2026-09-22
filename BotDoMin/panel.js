@@ -1904,8 +1904,6 @@ const HTML = `<!DOCTYPE html>
           <label style="display:inline-flex;align-items:center;gap:7px;line-height:1"><input id="stxOn" type="checkbox" style="margin:0" onchange="stxBat(this.checked)"> <b>BẬT bàn Siêu Tài Xỉu</b></label>
           <span class="muted" id="stxNow" style="font-size:12px"></span>
         </div>
-        <div class="note" id="stxLive"></div>
-
         <div class="row" style="margin-top:12px;align-items:flex-end">
           <div style="flex:1"><label>⏱️ Giây ĐẶT CƯỢC (5 - 600)</label><input id="stxBetS" type="number" min="5" max="600" placeholder="vd: 30" oninput="txDirty(this)"></div>
           <div style="flex:1"><label>⚡ Giây HIỆN NHÂN (0 - 60)</label><input id="stxNhanS" type="number" min="0" max="60" placeholder="vd: 4" oninput="txDirty(this)"></div>
@@ -1948,6 +1946,8 @@ const HTML = `<!DOCTYPE html>
 
         <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
           <label>🎲 Ép kết quả ván sau</label>
+          <!-- 22/09: AI ĐANG ĐẶT GÌ nằm NGAY TRÊN bộ xúc xắc ép (chủ server: "kế nút ép kết quả cho dễ nhìn") -->
+          <div class="note" id="stxLive" style="margin:6px 0 10px"></div>
           <div class="row"><input id="stxD1" type="number" min="1" max="6" value="1" style="width:70px" oninput="stxPreview()">
             <input id="stxD2" type="number" min="1" max="6" value="2" style="width:70px" oninput="stxPreview()">
             <input id="stxD3" type="number" min="1" max="6" value="3" style="width:70px" oninput="stxPreview()"></div>
@@ -2601,12 +2601,18 @@ function stxDo(){
     const tong=co.reduce((s,k)=>s+S.betAgg[k],0);
     const TC=S.tenCua||{};
     const cua=co.length?('💰 tổng cược <b>'+tong.toLocaleString()+'</b> · '+co.slice(0,12).map(k=>esc(TC[k]||k)+' <b>'+S.betAgg[k].toLocaleString()+'</b>').join(' · ')+(co.length>12?(' · +'+(co.length-12)+' cửa nữa'):'')):'chưa ai đặt';
-    // từng người (mới nhất lên đầu) — y bàn thường, admin cần thấy ai đang gánh ô nào
-    const list=(S.bets||[]).length?(S.bets||[]).slice().reverse().map(b=>esc(b.name)+': '+esc(TC[b.choice]||b.choice)+' '+Number(b.amount).toLocaleString()).join(' • '):'chưa ai đặt';
+    // 22/09: TỪNG NGƯỜI MỘT DÒNG (tên · tổng · từng ô), người đặt nhiều lên đầu — admin nhìn phát biết ai
+    // đang gánh ô nào trước khi bấm ép. Bản cũ nối hết bằng "•" thành một dải chữ, không đọc nổi.
+    const per={};
+    (S.bets||[]).forEach(b=>{const k=b.name||'?';if(!per[k])per[k]={tong:0,o:[]};per[k].tong+=Number(b.amount)||0;per[k].o.push(esc(TC[b.choice]||b.choice)+' <b>'+Number(b.amount).toLocaleString()+'</b>');});
+    const ds=Object.keys(per).sort((a,b)=>per[b].tong-per[a].tong);
+    const list=ds.length?ds.map(k=>'<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;border-top:1px dashed #263159">'
+      +'<b style="min-width:110px;color:#ffe193">'+esc(k)+'</b><span style="min-width:90px;color:#3ddc84;font-weight:800">'+per[k].tong.toLocaleString()+'</span>'
+      +'<span class="muted" style="font-size:12px;flex:1">'+per[k].o.join(' · ')+'</span></div>').join(''):'<div class="muted" style="font-size:12px">chưa ai đặt</div>';
     live.innerHTML='<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#141824">'
-      +'<div style="margin-bottom:5px">Ván #'+S.gameId+' · '+(S.betsCount||0)+' lượt đặt</div>'
-      +'<div style="margin-bottom:5px">'+cua+'</div>'
-      +'<div class="muted" style="font-size:12px">'+list+'</div></div>';}
+      +'<div style="margin-bottom:5px">👥 <b>Ván #'+S.gameId+'</b> · '+ds.length+' người · '+(S.betsCount||0)+' lượt đặt'+(S.secsToBet>0?' · <span style="color:#3ddc84">còn '+S.secsToBet+'s</span>':' · <span style="color:#ff7a7a">đã khoá sổ</span>')+'</div>'
+      +'<div style="margin-bottom:6px;font-size:12.5px">'+cua+'</div>'
+      +list+'</div>';}
   const pv=document.getElementById('stxPrev'); if(pv&&!pv.textContent)stxPreview();
   const put=(id,v)=>{const e=document.getElementById(id);if(e&&e.dataset.dirty!=='1'&&e.value===''&&document.activeElement!==e)e.value=v;};
   put('stxBetS',S.time.bet);put('stxNhanS',S.time.nhan);put('stxNanS',S.time.nan);
