@@ -246,6 +246,8 @@ node TaiXiu/kiemtra/restart-test.js   # bật lại bot giữa ván: không hoà
 node TaiXiu/kiemtra/web-test.js       # 3 mốc giờ, giấu hệ số nhân, trần cửa, chống soi bài, 3 nút
 node TaiXiu/kiemtra/chotvan-test.js   # đặt ô bàn mới rồi BỎ ĐI: ván vẫn phải chốt + trả thưởng
 node TaiXiu/kiemtra/tratien-test.js   # ép xúc xắc rồi tính tay xem trả đúng từng đồng
+node TaiXiu/kiemtra/nhan-2ban-test.js # 22/09 rà nhân 2 bàn: tham chiếu độc lập, 216×52×nhân, máy bàn thật 2.600 ván, Đơn 1 viên không khoe ⚡ (48 phép)
+node TaiXiu/kiemtra/log-test.js       # 22/09 📜 LOG: Sổ Dogcoin chặn mini game, 1 dòng/ván ai đặt nhiêu ăn thua nhiêu, mục Siêu riêng (41 phép)
 ```
 
 Nhịp bot test: bật bằng `node Desktop/bialk-test.js` các bước `5` (tắt) → `3` (đồng bộ) →
@@ -428,6 +430,33 @@ thoát sớm, để nhịp sau mở bát theo đường thường.
 
 Kèm **mô phỏng 3.000 ván với lag ngẫu nhiên tới 40 giây**: không ván nào thiếu mốc, không ván
 nào bị nuốt kết quả, dãy số ván liền mạch.
+
+## 12f. RÀ NHÂN 2 BÀN + Ô ĐƠN + CHIP TUỲ CHỌN + LOG (22/09)
+
+**Rà trả thưởng × hệ số nhân** (chủ server: *"rà soát thật kỹ"*): viết lại luật từ README thành hàm
+tham chiếu độc lập, so với `tinhTra` của 2 bàn qua 216 kết cục × 52 ô × 5 bảng nhân (56.160 phép/bàn),
+rồi chạy `txPlanPayout`+`txPayUser` thật 2.000 ván và máy bàn Siêu thật 600 ván, cân ví từng đồng.
+**Tiền đúng, 0 lệch.** Chỗ sai duy nhất là CHỮ: ô **Đơn** có nhân mà ra **1 viên** thì trả 1:1
+(đúng thiết kế, `tinhTra` chỉ áp nhân vào 2–3 viên) nhưng huy hiệu vẫn "x19", lịch sử/Discord vẫn in
+"⚡ x19 Đơn 3" cạnh "+1.000". Sửa: thêm `cuaAnNhan(xx, nhan)` (ô **thật sự được nhân**) vào cả 2
+`cua.js`; mọi chỗ lọc ⚡ (`locNhanTrung`, `histEntry`, `dongVanDiscord`, `ghiSo`/`trangThai` Siêu) dùng
+nó; huy hiệu ô Đơn ghi *"x19 · 2-3 viên"*; tiêu đề khu Đơn ghi *"1 viên 1:1 (không nhân)"*.
+Bộ kiểm cố định: `nhan-2ban-test.js`.
+
+**🪙 Chip tuỳ chọn**: ô mệnh giá đầu của cả 2 bàn = số người chơi tự gõ (nút ✏️ Sửa bên dưới, Enter
+hoặc 💾 Lưu), lưu `localStorage` (`tx_chipTuy` / `stx_chipTuy`) nên F5 không mất; hợp lệ 1.000 → 1 tỉ,
+localStorage hỏng/bị chặn thì về 1.000. Đang chọn ô tuỳ chọn mà đổi số thì mệnh giá đang chọn đi theo.
+
+**📜 LOG** (chủ server: *"chỉ quan tâm ván đó người nào đặt nhiêu ăn thua nhiêu kết quả"*):
+- File `log_result.txt`: **một dòng mỗi ván** `[TÀI XỈU] Ván #id: 3-4-5 (Tổng 12 | TÀI | CHẴN) · Khoa đặt 50.000 → +10.000 · …`
+  (số từ kế hoạch trả tiền, không tính lại). Bỏ log từng phiếu đặt/xoá/huỷ/dời và dòng khoá sổ.
+- Siêu: `ghiLog` tách loại — phiếu lẻ không ghi; `[SIÊU TX KẾT QUẢ]` → RESULT (kèm *"A đặt 10.000
+  (+phí 2.000) → +8.000"*); lỗi/hoàn → SYSTEM; ép/đổi nhịp/trần/thang/bật tắt → ADMIN.
+- Panel tab 📜: mục **⚡ Siêu Tài Xỉu riêng** (`stxHistory` từ `bangDiscord(30)`), dòng ván **gộp theo
+  người** (đặt · +phí · nhận · lãi/lỗ, kèm từng ô) dùng chung 2 bàn.
+- **💰 Sổ Dogcoin chỉ giữ chuyển / nạp / rút / admin** (+ mua pal, vay/trả nợ, hoàn rút — không phải mini
+  game). `DOG_LEDGER_BO_QUA = bet · jackpot · cophieu · tienlen · sieutx` chặn ở cửa ghi **và** lọc khi
+  đọc nên dòng cũ trong DB cũng biến. 3 khoản hoàn cược mini game đổi nhãn `bet` để bị chặn theo.
 
 ## 13. Cạm bẫy đã dính, đừng dính lại
 

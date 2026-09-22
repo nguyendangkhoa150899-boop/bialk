@@ -144,7 +144,7 @@ function cleanupGoneGames() {
         const a = Math.floor(Number(amount) || 0);
         if (!uid || !dbCache[uid] || typeof dbCache[uid] !== 'object' || a <= 0) return;
         updatePoints(uid, a); n++; tien += a;
-        logDog('refund', uid, getUserData(uid).name || uid, a, `hoàn cược ${nhan} (trò đã gỡ)`);
+        logDog('bet', uid, getUserData(uid).name || uid, a, `hoàn cược ${nhan} (trò đã gỡ)`);   // mini game -> không vào Sổ Dogcoin
         writeLog('SYSTEM', `[DỌN TRÒ CŨ] Hoàn ${a.toLocaleString()} cho ${uid} - ${nhan}`);
     };
     for (const b of (Array.isArray(dbCache._bcBets) ? dbCache._bcBets : [])) tra(b && b.userId, b && b.amount, 'Bầu Cua');
@@ -251,7 +251,12 @@ function updatePoints(userId, amount) {
 // Chỉ ghi các khoản ĐIỀU CHỈNH và CHUYỂN ĐỔI (admin cộng/trừ, chuyển giữa người chơi,
 // chuyển vào/ra game, mua pal). CỐ TÌNH không ghi tiền cược thắng/thua của mini game -
 // mỗi ván 3 game đều sinh giao dịch, ghi hết thì sổ thành rác không tra được gì.
+// 💰 22/09 chủ server: "Sổ Dogcoin chỉ lưu chuyển / nạp / rút / admin thêm - không lưu log gì của
+// mấy mini game hết". Từng ván thắng thua đã có lịch sử riêng từng trò ở tab 📜 LOG.
+// Giữ: transfer · to-game/from-game (nạp/rút) · admin+/- · shop/vay/trano/refund (không phải mini game).
+const DOG_LEDGER_BO_QUA = new Set(['bet', 'jackpot', 'cophieu', 'tienlen', 'sieutx']);
 function logDog(type, userId, username, amount, note) {
+    if (DOG_LEDGER_BO_QUA.has(type)) return;
     if (!Array.isArray(dbCache._dogLedger)) dbCache._dogLedger = [];
     dbCache._dogLedger.unshift({
         time: new Date().toLocaleString('vi-VN'),
@@ -2697,7 +2702,7 @@ function spmCancelNext(uid) {
     updatePoints(uid, b.amount);
     delete spmState.nextBets[uid];
     if (dbCache._spmBets) delete dbCache._spmBets[uid];
-    logDog('refund', uid, b.name || uid, b.amount, `Huỷ đặt cược trước Phi Thuyền - hoàn ${b.amount}`);
+    logDog('bet', uid, b.name || uid, b.amount, `Huỷ đặt cược trước Phi Thuyền - hoàn ${b.amount}`);
     saveDbNow();
     return { ok: true, balance: getUserData(uid).points || 0 };
 }
@@ -2740,7 +2745,7 @@ function runSpmLoop() {
     if (dbCache._spmBets && Object.keys(dbCache._spmBets).length) {
         for (const [uid, b] of Object.entries(dbCache._spmBets)) {
             updatePoints(uid, b.amount);
-            logDog('refund', uid, (getUserData(uid).name) || uid, b.amount, `hoàn cược Phi Thuyền (bot restart giữa vòng)`);
+            logDog('bet', uid, (getUserData(uid).name) || uid, b.amount, `hoàn cược Phi Thuyền (bot restart giữa vòng)`);
         }
         dbCache._spmBets = {}; saveDbNow();
     }
@@ -3824,8 +3829,6 @@ function txDatLo(userId, username, gio) {
         try { txNotifyBet(userId, username, k, gop[k]); } catch (e) { }
     }
     txState.needsUpdate = true;
-    writeLog('BET', `[WEB CƯỢC TX] ${username} đặt ${tong.toLocaleString('vi-VN')} vào ${cuaList.length} cửa (ván #${txState.gameId}): ` +
-        cuaList.map(k => TX_CUA.THEO_ID[k].ten + ' ' + gop[k].toLocaleString('vi-VN')).join(' · '));
     return { ok: true, tong, soCua: cuaList.length, balance: getUserData(userId).points || 0 };
 }
 
@@ -3875,7 +3878,6 @@ function txXoaCuoc(userId) {
     updatePoints(userId, hoan);
     txState.needsUpdate = true;
     const u = getUserData(userId);
-    writeLog('BET', `[WEB TX] ${u.name || userId} XOÁ CƯỢC ván #${txState.gameId}, hoàn ${hoan.toLocaleString('vi-VN')} Dogcoin`);
     return { ok: true, hoan, balance: u.points || 0 };
 }
 
@@ -3895,7 +3897,6 @@ function txXoaCua(userId, cua) {
     updatePoints(userId, hoan);
     txState.needsUpdate = true;
     const u = getUserData(userId);
-    writeLog('BET', `[WEB TX] ${u.name || userId} huỷ cược ô ${TX_CUA.THEO_ID[cua].ten} ván #${txState.gameId}, hoàn ${hoan.toLocaleString('vi-VN')}`);
     return { ok: true, hoan, cua, balance: u.points || 0 };
 }
 
@@ -3923,7 +3924,6 @@ function txDoiCua(userId, tu, den) {
     txState.bets = (txState.bets || []).filter(b => !(b.userId === userId && b.choice === tu));
     txState.bets.push({ userId, username: ten, choice: den, amount: tien });
     txState.needsUpdate = true;
-    writeLog('BET', `[WEB TX] ${ten} dời ${tien.toLocaleString('vi-VN')} từ ${TX_CUA.THEO_ID[tu].ten} sang ${TX_CUA.THEO_ID[den].ten} (ván #${txState.gameId})`);
     return { ok: true, tien, tu, den, balance: u.points || 0 };
 }
 
@@ -4325,7 +4325,13 @@ const stxBan = require(require('path').join(SIEUTX_DIR, 'ban.js')).taoBan({
         updatePoints(id, tien);
         logDog('sieutx', id, getUserData(id).name || id, tien, lyDo || 'Siêu Tài Xỉu');
     },
-    ghiLog: (dong) => writeLog(/LỖI|MẤT|DỌN SỔ/.test(dong) ? 'SYSTEM' : 'ADMIN', dong),
+    // 📜 22/09: log Siêu TÁCH RIÊNG theo loại. Từng phiếu cược/xoá/huỷ/dời + dòng khoá sổ -> KHÔNG ghi
+    // file (chủ server chỉ cần mỗi ván ai đặt nhiêu ăn thua nhiêu). Kết quả ván -> RESULT. Lỗi/hoàn ->
+    // SYSTEM. Còn lại (ép, đổi nhịp/trần/thang, bật tắt) là thao tác admin -> ADMIN.
+    ghiLog: (dong) => {
+        if (/^\[SIÊU TX CƯỢC\]|xoá cược ván|huỷ cược ô|\] .* dời .* từ |khoá sổ - sáng/.test(dong)) return;
+        writeLog(/LỖI|MẤT|DỌN SỔ|lỡ mốc|Bật lại/.test(dong) ? 'SYSTEM' : (/KẾT QUẢ\]/.test(dong) ? 'RESULT' : 'ADMIN'), dong);
+    },
     luuDb: () => saveDbNow(),
     // 🔔 báo cược về Discord — dùng chung ID / công tắc / mức tối thiểu _txNoti với bàn thường
     baoCuoc: (id, ten, cua, tien) => stxNotifyBet(id, ten, cua, tien),
@@ -6869,6 +6875,7 @@ function getStxBoardData() {
             + b.history.map(h => dongVanDiscord(h, {
                 tenCua: (id) => (SIEU_CUA.THEO_ID[id] || {}).ten || id,
                 cuaThang: (d) => SIEU_CUA.cuaThang(d),
+                cuaAnNhan: (d, nh) => SIEU_CUA.cuaAnNhan(d, nh),
             })).join('\n');
     }
     desc += `\n\n👉 Bấm **🌐 Chơi trên web** lấy link + PIN. Đặt cược và **nặn xí ngầu** đều trên web.`
@@ -7288,6 +7295,7 @@ client.once('ready', async (c) => {
             // ⚡ SIÊU TÀI XỈU — bàn thứ hai
             stx: stxBan,
             txCuaThang: (xx) => TX_CUA.cuaThang(xx),
+            txCuaAnNhan: (xx, nh) => TX_CUA.cuaAnNhan(xx, nh),   // ⚡ lọc "ô thật sự được nhân" (Đơn 1 viên không kể)
         });
     } catch (e) { writeLog('SYSTEM', `[WEB CƯỢC] Không khởi động được: ${e.message}`); }
 
@@ -7375,7 +7383,8 @@ client.once('ready', async (c) => {
             getUserData,
             updatePoints,
             logDog,
-            getDogLedger: () => dbCache._dogLedger || [],
+            // lọc cả dòng CŨ đã nằm trong DB từ trước 22/09
+            getDogLedger: () => (dbCache._dogLedger || []).filter(r => r && !DOG_LEDGER_BO_QUA.has(r.type)),
             getPalOrders: () => dbCache._palOrders || [],
             completePalOrder,
             // 🎁 rương pal + vòng quay web (25/08)
@@ -7707,7 +7716,8 @@ function dongVanDiscord(h, opt) {
     // ⚡ chỉ kể ô nhân ĐÃ RA TRÚNG (ván cũ trong DB còn bảng nhân đầy đủ nên lọc lại ở đây)
     let dongNhan = '';
     const nh = h.nhan || {};
-    const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? cuaThang(h.dice) : []);
+    // ưu tiên cuaAnNhan (ô thật sự được nhân); bàn chưa nối thì lùi về cuaThang
+    const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? (opt.cuaAnNhan ? opt.cuaAnNhan(h.dice, nh) : cuaThang(h.dice)) : []);
     const idNhan = Object.keys(nh).filter(k => oTrung.has(k)).sort((a, b) => nh[b] - nh[a]);
     if (idNhan.length) {
         dongNhan = ' · ⚡ ' + idNhan.slice(0, 2).map(k => `x${nh[k]} ${tenCua(k)}`).join(' · ')
@@ -7737,7 +7747,7 @@ function dongVanDiscord(h, opt) {
     return `${head} ${kq}${dongNhan}` + (parts.length ? `\n   ${parts.join(' · ')}` : '');
 }
 
-const txHistoryLine = (h) => dongVanDiscord(h, { tenCua: txTenCua, cuaThang: (d) => TX_CUA.cuaThang(d) });
+const txHistoryLine = (h) => dongVanDiscord(h, { tenCua: txTenCua, cuaThang: (d) => TX_CUA.cuaThang(d), cuaAnNhan: (d, nh) => TX_CUA.cuaAnNhan(d, nh) });
 
 function getTXMessageData(customStatus = null) {
     let desc = `⏳ **Mở bát:** <t:${txState.targetTime}:R>\n\n`;
@@ -7866,8 +7876,7 @@ function runTaiXiuLoop() {
             txState.activeChoice = null;
             txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
             const soO = Object.keys(txState.nhan.o).length;
-            writeLog('RESULT', `[TÀI XỈU] Ván #${txState.gameId} khoá sổ - sáng ${soO} ô nhân: ` +
-                Object.entries(txState.nhan.o).map(([k, v]) => k + ' x' + v).join(', '));
+            void soO;   // 22/09: bỏ dòng log khoá sổ - chủ server chỉ cần dòng kết quả mỗi ván
             // đuổi kịp trong cùng nhịp thì khỏi vẽ bảng dở dang, bước sau vẽ luôn
             if (nowSec < nanTime) updateTXMessage().catch(() => { });
         }
@@ -8152,12 +8161,14 @@ function ketSoTXPayout(gameId, bets, d1, d2, d3, p) {
 
     const txIcon = isStorm ? `🌪️ BÃO ${d1}-${d1}-${d1}` : (isTai ? `${TX_CHOICES.tai.name} 🔺` : `${TX_CHOICES.xiu.name} 🔻`);
     const clIcon = isStorm ? `cửa ${isTai ? 'TÀI' : 'XỈU'}/${isChan ? 'CHẴN' : 'LẺ'} hoàn 30% · cửa ngược thua hết` : (isChan ? 'CHẴN 🔵' : 'LẺ 🟣');
-    writeLog('RESULT', `[KẾT QUẢ BIG SMALL] Game #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? TX_CHOICES.tai.name : TX_CHOICES.xiu.name)} | ${isStorm ? 'BÃO' : (isChan ? 'CHẴN' : 'LẺ')})`);
-
-    if (bets.length > 0) {
-        let betLogDetails = bets.map(b => `${b.username} đặt ${b.amount} vào ${txTenCua(b.choice)}`).join(' | ');
-        writeLog('BET', `[CƯỢC BIG SMALL] Game #${gameId} | Đặt: ${betLogDetails} | KQ: ${d1}-${d2}-${d3} (${sum})`);
-    }
+    // 📜 22/09 chủ server: "log tài xỉu chỉ quan tâm ván đó người nào đặt nhiêu ăn thua nhiêu, kết quả".
+    // MỘT dòng mỗi ván, gộp theo NGƯỜI, số lấy thẳng từ kế hoạch trả tiền (không tính lại).
+    const dongNguoi = Object.values(p.byUser || {}).map(e => {
+        const net = (e.win || 0) + (e.refund || 0) - (e.stake || 0);
+        return `${e.name} đặt ${(e.stake || 0).toLocaleString('vi-VN')} → ${net >= 0 ? '+' : ''}${net.toLocaleString('vi-VN')}`;
+    });
+    writeLog('RESULT', `[TÀI XỈU] Ván #${gameId}: ${d1}-${d2}-${d3} (Tổng ${sum} | ${isStorm ? 'BÃO' : (isTai ? 'TÀI' : 'XỈU')}${isStorm ? '' : ' | ' + (isChan ? 'CHẴN' : 'LẺ')})`
+        + (dongNguoi.length ? ' · ' + dongNguoi.join(' · ') : ' · không ai đặt'));
 
     // (lastGameInfo đã bỏ 19/08 - kết quả vòng trước giờ nằm trong danh sách
     //  "🎲 ván gần đây" ngay trên bảng, vẽ từ txState.history)
@@ -8179,7 +8190,7 @@ function ketSoTXPayout(gameId, bets, d1, d2, d3, p) {
         nhan: (() => {
             const bn = (txState.nhan && txState.nhan.gameId === gameId) ? (txState.nhan.o || {})
                 : ((p && p.bangNhan) || {});
-            const trung = new Set(TX_CUA.cuaThang([d1, d2, d3]));
+            const trung = new Set(TX_CUA.cuaAnNhan([d1, d2, d3], bn));   // Đơn 1 viên trả 1:1 -> không kể ⚡
             const r = {};
             for (const k of Object.keys(bn)) if (trung.has(k)) r[k] = bn[k];
             return r;

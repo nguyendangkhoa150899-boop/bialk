@@ -53,7 +53,14 @@ số admin nghĩ trong đầu. Máy tự suy ra `RTP_BÀN` rồi giải lại `q
 | Tổng 7 / 14 | 12:1 | 149:1 | 10.000 |
 | Tổng 8-13 · 9-12 · 10-11 | 8/6/6:1 | 87:1 | 10.000 |
 | Kết hợp 2 viên | 5:1 | 99:1 | 10.000 |
-| Đơn (1 / 2 / 3 mặt) | 1/2/3:1 | 9 / 19 / **87**:1 | 5.000 |
+| Đơn (1 / 2 / 3 mặt) | 1/2/3:1 | 1 mặt **không nhân** · 2 mặt tới 19:1 · 3 mặt **87**:1 | 5.000 |
+
+⚠️ **Đơn 1 viên KHÔNG nhân** (rà soát 22/09). `tinhTra` chỉ áp hệ số vào 2 viên (= hệ số bốc) và
+3 viên (= 87); 1 viên luôn 1:1, bài toán RTP cũng tính đúng như vậy. Bản cũ ghi "1 mặt tới 9:1"
+là sai (thang `don` bắt đầu từ 10). Để chữ khớp tiền: huy hiệu ô Đơn ghi *"x19 · 2-3 viên"*, tiêu đề
+khu ghi *"1 viên 1:1 (không nhân)"*, và lịch sử web / bảng Discord lọc ⚡ bằng `cuaAnNhan(xx, nhan)`
+(ô **thật sự được nhân**) thay cho `cuaThang` — ván ra 3-1-2 không còn in "⚡ x19 Đơn 3" cạnh "+1.000".
+Bộ kiểm: `node TaiXiu/kiemtra/nhan-2ban-test.js` (tham chiếu độc lập, 2 bàn).
 
 ⚠️ **Trần lấy đúng cột "Giới hạn đặt cược" trong ảnh.** Đừng bê trần của bàn thường
 sang: bàn này trả cao gấp mấy lần nên cùng trần là phơi nhiễm gấp mấy lần. Ô nặng nhất

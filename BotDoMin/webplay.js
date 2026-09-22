@@ -36,7 +36,8 @@ function startWebPlay(ctx) {
         const nh = h && h.nhan;
         if (!nh || !Array.isArray(h.dice) || h.dice.length !== 3) return {};
         try {
-            const trung = new Set(ctx.txCuaThang ? ctx.txCuaThang(h.dice) : []);
+            // ⚡ ô THẬT SỰ được nhân (Đơn 1 viên trả 1:1 thì không kể) - bot cũ chưa có thì lùi về ô trúng
+            const trung = new Set(ctx.txCuaAnNhan ? ctx.txCuaAnNhan(h.dice, nh) : (ctx.txCuaThang ? ctx.txCuaThang(h.dice) : []));
             const r = {};
             for (const k of Object.keys(nh)) if (trung.has(k)) r[k] = nh[k];
             return r;
@@ -1004,6 +1005,10 @@ const PAGE = [
     '.hrow.storm .kq{color:var(--gold)}',
     '.cbtn.sel{border-color:var(--gold);border-bottom-width:2px;transform:translateY(3px);box-shadow:0 0 0 3px var(--gold),0 0 16px #ffcf5c88}',
     '.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}',
+    // 🪙 22/09 ô mệnh giá TUỲ CHỌN: nút tiền + nút ✏️ Sửa xếp dọc; đang sửa thì thành ô nhập + 💾 Lưu
+    '.chipTuy{flex:1;min-width:64px;display:flex;flex-direction:column;gap:3px}.chipTuy .chip{width:100%;flex:0 0 auto}',
+    '.chipSua{background:#151926;border:1px dashed #3a4155;color:var(--muted);font-size:11px;font-weight:700;padding:4px 0;border-radius:6px;line-height:1.2}',
+    '.chipTuy input{width:100%;box-sizing:border-box;padding:8px 4px;border-radius:8px;border:1px solid #e3b33a;background:#111;color:#fff;font-weight:800;text-align:center;font-size:14px}',
     '.chip{flex:1;position:relative;background:#232735;padding:9px 0;font-size:13px;min-width:56px;',
     'transition:transform .12s ease,box-shadow .12s ease,background .12s ease}',
     // 🔴 MAX CƯỢC - đỏ cho khác hẳn mấy nút mệnh giá
@@ -1642,6 +1647,8 @@ const PAGE = [
     '.sbO{min-height:38px;padding:4px 1px}.sbO .sbTen{font-size:11px}.sbO.sbDeu{min-height:48px}',
     '.sbO.sbDeu .sbTen{font-size:13px}.sbO.sbTong .sbTen{font-size:15px}.sbO .sbTl{font-size:8.5px}}',
     '#sbChips{margin-top:4px}',
+    // ô Đơn: dòng nhỏ "2-3 viên" dưới hệ số - nhân chỉ áp khi ra ≥ 2 viên (22/09)
+    '.sbX .sbX2{display:block;font-style:normal;font-size:7.5px;line-height:1;opacity:.95;margin-top:1px;letter-spacing:0}',
     // 🪙 MỆNH GIÁ ĐANG CHỌN — nhìn phát biết: nền vàng, chữ đậm, nhấc lên, viền sáng
     // quanh nút, kèm ✓ ở góc. Liệt kê CẢ HAI bàn: bản cũ chỉ có #sbChips nên bàn Siêu
     // bấm mệnh giá xong không có dấu hiệu gì.
@@ -2850,7 +2857,14 @@ const PAGE = [
     // SBCHIP = mệnh giá chip đang chọn.
     'var SBCUA=[],SBTRAN={},SBCHIP=0,SBVEROI=false,SBNHAN=null,SBDANGGUI=false;',
     // Bỏ 5.000 (chủ server), thêm "max" ở cuối — nút MAX CƯỢC màu đỏ.
-    'var SBMENH=[1000,10000,20000,50000,100000,"max"];',
+    // 🪙 22/09: ô mệnh giá ĐẦU là TUỲ CHỌN - người chơi gõ số, lưu localStorage nên F5 không mất
+    // (chủ server: "nút 1000 sửa thành nút custom cho người chơi nhập số, ở dưới nút đó là nút sửa").
+    // Hợp lệ: số nguyên từ 1.000 (sàn mỗi ô) tới 1 tỉ. Hỏng localStorage thì về 1.000, không nổ.
+    'function chipTuyHopLe(v){v=Math.floor(Number(v));return (isFinite(v)&&v>=1000&&v<=1e9)?v:0}',
+    'function chipTuyDoc(k,mac){try{return chipTuyHopLe(localStorage.getItem(k))||mac}catch(e){return mac}}',
+    'function chipTuyLuu(k,v){try{localStorage.setItem(k,String(v))}catch(e){}}',
+    'var SBTUY=chipTuyDoc("tx_chipTuy",1000),SBSUA=false;',
+    'var SBMENH=[SBTUY,10000,20000,50000,100000,"max"];',
     // nạp bảng cửa 1 lần rồi vẽ bàn; các lần sau chỉ cập nhật số
     'function sbNapCua(j){if(!j.txCua||!j.txCua.length)return;',
     'SBTRAN=j.txTran||{};',
@@ -2939,17 +2953,27 @@ const PAGE = [
     'h+=\'<div class="sbHang">\'+cap.slice(0,8).map(oCap).join("")+"</div>";',
     'h+=\'<div class="sbHang">\'+cap.slice(8).map(oCap).join("")+"</div>";',
     // khu 6: 6 cửa số đơn — 1 viên + chữ số
-    'h+=khu("ĐƠN · 1 viên 1:1 · 2 viên 2:1 · 3 viên 3:1");',
+    // 22/09: nói rõ nhân chỉ áp vào 2-3 viên, 1 viên luôn 1:1 (người chơi thấy x19 rồi ăn 1:1 là cãi)
+    'h+=khu("ĐƠN · 1 viên 1:1 (không nhân) · 2 viên 2:1 hoặc ×nhân · 3 viên 3:1 hoặc ×87");',
     'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("don"+n),"",sbBoXx([n]))}).join("")+"</div>";',
     'b.innerHTML=h}',
     // hàng chip: mệnh giá nào vượt số dư thì vẫn hiện, bấm mới báo
     'function sbVeChip(){var e=$("sbChips");if(!e)return;',
     'if(!SBCHIP)SBCHIP=SBMENH[0];',
-    'e.innerHTML=SBMENH.map(function(v){',
+    'e.innerHTML=SBMENH.map(function(v,i){',
     'var mx=(v==="max");',
     'var nhan=mx?(\'<img class="dc" src="/dogcoin.png" alt=""> MAX CƯỢC\'):(\'<img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v));',
-    'return \'<button class="chip\'+(mx?" chipMax":"")+(v===SBCHIP?" on":"")+\'" onclick="sbDatChip(\'+(mx?\'&quot;max&quot;\':v)+\')">\'+nhan+"</button>"}).join("")}',
+    'var nut=\'<button class="chip\'+(mx?" chipMax":"")+(v===SBCHIP?" on":"")+\'" onclick="sbDatChip(\'+(mx?\'&quot;max&quot;\':v)+\')">\'+nhan+"</button>";',
+    // ô đầu = tuỳ chọn: nút tiền + ✏️ Sửa bên dưới; đang sửa thì ô nhập (Enter = lưu) + 💾 Lưu
+    'if(i===0){if(SBSUA)return \'<div class="chipTuy"><input id="sbTuyIn" type="number" inputmode="numeric" min="1000" step="1000" value="\'+SBTUY+\'" onkeydown="if(event.key===&quot;Enter&quot;)sbLuuChip()"><button class="chipSua" onclick="sbLuuChip()">💾 Lưu</button></div>\';',
+    'return \'<div class="chipTuy">\'+nut+\'<button class="chipSua" onclick="sbSuaChip()">✏️ Sửa</button></div>\'}',
+    'return nut}).join("")}',
     'function sbDatChip(v){SBCHIP=v;sbVeChip()}',
+    'function sbSuaChip(){SBSUA=true;sbVeChip();var i=$("sbTuyIn");if(i){i.focus();i.select()}}',
+    // Lưu: đang chọn ô tuỳ chọn thì mệnh giá đang chọn đi theo số mới luôn, khỏi bấm lại
+    'function sbLuuChip(){var i=$("sbTuyIn"),v=chipTuyHopLe(i&&i.value);',
+    'if(!v){toast("❌ Nhập số nguyên từ 1.000 trở lên");return}',
+    'if(SBCHIP===SBTUY)SBCHIP=v;SBTUY=v;SBMENH[0]=v;chipTuyLuu("tx_chipTuy",v);SBSUA=false;sbVeChip();toast("🪙 Mệnh giá tuỳ chọn: "+vnd(v))}',
     // MAX CƯỢC = đổ nhiều nhất CÓ THỂ vào ĐÚNG ô đó, chặn bởi 3 thứ:
     //   ví còn bao nhiêu · trần riêng của ô · trần tổng cả ván của một người
     // Nhờ vậy trần ô 200.000 mà ví 400.000 thì chỉ 200.000 vào, không tràn.
@@ -3056,12 +3080,13 @@ const PAGE = [
     'SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
     'var cu=e.querySelector(".sbX");if(cu)cu.remove();',
     'var co=nh&&nh[c.id];e.classList.toggle("sbNhan",!!co);',
-    'if(co){var d=document.createElement("span");d.className="sbX";d.textContent="x"+co;e.appendChild(d)}})}',
+    'if(co){var d=document.createElement("span");d.className="sbX";d.innerHTML="x"+co+(String(c.id).indexOf("don")===0?\'<i class="sbX2">2-3 viên</i>\':"");e.appendChild(d)}})}',
     // (không còn giỏ cược — bấm ô là gửi thẳng, xem sbChon bên trên)
     // ================= ⚡ BÀN SIÊU TÀI XỈU (phía người chơi) =================
     // Bàn riêng, nhịp riêng, đường gọi riêng /api/stx/*. Chỉ hỏi máy chủ khi đang
     // ĐỨNG Ở TAB NÀY, khỏi tốn băng thông cho người không chơi.
-    'var STCUA=[],STTRAN={},STNAMES={},STCHIP=0,STMENH=[1000,10000,20000,50000,100000,"max"];',
+    // 🪙 ô đầu tuỳ chọn riêng cho bàn Siêu (khoá stx_chipTuy) - hai bàn mức cược khác nhau
+    'var STCUA=[],STTRAN={},STNAMES={},STCHIP=0,STTUY=chipTuyDoc("stx_chipTuy",1000),STSUA=false,STMENH=[STTUY,10000,20000,50000,100000,"max"];',
     'var STPHASE="off",STTT=0,STKHOA=24,STKQ=4,STPHI=0.2,STSAN=1000,STMAX=0,STTONG={},STVEROI=false;',
     'var STNAN=null,STDANGGUI=false,STKQVAN=0,STDANAN=0,STCOVT=false,STPHITOI=0;',
 
@@ -3091,16 +3116,20 @@ const PAGE = [
     'var oCap=function(c){var a=+c.id[3],d=+c.id[4];return o(c,"",sbBoXx([a,d]))};',
     'h+=\'<div class="sbHang">\'+cap.slice(0,8).map(oCap).join("")+"</div>";',
     'h+=\'<div class="sbHang">\'+cap.slice(8).map(oCap).join("")+"</div>";',
-    'h+=khu("ĐƠN · 1 viên 1:1 · 2 viên 2:1 · 3 viên 3:1");',
+    // 22/09: nói rõ nhân chỉ áp vào 2-3 viên, 1 viên luôn 1:1 (người chơi thấy x19 rồi ăn 1:1 là cãi)
+    'h+=khu("ĐƠN · 1 viên 1:1 (không nhân) · 2 viên 2:1 hoặc ×nhân · 3 viên 3:1 hoặc ×87");',
     'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("don"+n),"",sbBoXx([n]))}).join("")+"</div>";',
     'b.innerHTML=h}',
 
     // ---- hàng mệnh giá (có MAX như bàn thường) ----
     'function stVeChip(){var e=$("stChips");if(!e)return;',
     'if(!STCHIP)STCHIP=STMENH[0];',
-    'e.innerHTML=STMENH.map(function(v){var mx=(v==="max");',
+    'e.innerHTML=STMENH.map(function(v,i){var mx=(v==="max");',
     'var nhan=mx?(\'<img class="dc" src="/dogcoin.png" alt=""> MAX CƯỢC\'):(\'<img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v));',
-    'return \'<button class="chip\'+(mx?" chipMax":"")+(v===STCHIP?" on":"")+\'" onclick="stDatChip(\'+(mx?\'&quot;max&quot;\':v)+\')">\'+nhan+"</button>"}).join("");',
+    'var nut=\'<button class="chip\'+(mx?" chipMax":"")+(v===STCHIP?" on":"")+\'" onclick="stDatChip(\'+(mx?\'&quot;max&quot;\':v)+\')">\'+nhan+"</button>";',
+    'if(i===0){if(STSUA)return \'<div class="chipTuy"><input id="stTuyIn" type="number" inputmode="numeric" min="1000" step="1000" value="\'+STTUY+\'" onkeydown="if(event.key===&quot;Enter&quot;)stLuuChip()"><button class="chipSua" onclick="stLuuChip()">💾 Lưu</button></div>\';',
+    'return \'<div class="chipTuy">\'+nut+\'<button class="chipSua" onclick="stSuaChip()">✏️ Sửa</button></div>\'}',
+    'return nut}).join("");',
     // 💸 nhắc phí NGAY DƯỚI hàng mệnh giá, kèm số tiền thật sẽ bị trừ
     // ⚠️ MAX PHẢI NÓI THẬT (22/09). Bản cũ ghi "ví bị trừ THÊM 20% phí" -> người chơi hiểu là
     // cược trọn ví rồi phí cộng thêm; thực tế cược bị CO LẠI để chứa phí (ví 100.000 -> cược
@@ -3113,6 +3142,10 @@ const PAGE = [
     'p.innerHTML=BAL>0?("💸 MAX CƯỢC = đổ trọn ví <b>"+vnd(BAL)+"</b>: cược <b>"+vnd(mc)+"</b> + phí <b>"+vnd(mp)+"</b>. Không cược được trọn "+vnd(BAL)+" vì phí "+Math.round(STPHI*100)+"% cộng THÊM trên tiền cược. (Trần ô / trần ván có thể chặn thấp hơn.)")',
     ':"💸 MAX CƯỢC: ví hết Dogcoin rồi"}}}',
     'function stDatChip(v){STCHIP=v;stVeChip()}',
+    'function stSuaChip(){STSUA=true;stVeChip();var i=$("stTuyIn");if(i){i.focus();i.select()}}',
+    'function stLuuChip(){var i=$("stTuyIn"),v=chipTuyHopLe(i&&i.value);',
+    'if(!v){toast("❌ Nhập số nguyên từ 1.000 trở lên");return}',
+    'if(STCHIP===STTUY)STCHIP=v;STTUY=v;STMENH[0]=v;chipTuyLuu("stx_chipTuy",v);STSUA=false;stVeChip();toast("🪙 Mệnh giá tuỳ chọn: "+vnd(v))}',
     'function stTranCua(id){var c=STCUA.filter(function(x){return x.id===id})[0];return c&&STTRAN[c.nhom]?STTRAN[c.nhom]:0}',
     // 💸 Cược LỚN NHẤT mà ví còn trả nổi phí. Máy chủ tính phí = floor(cược × phí) rồi trừ
     // (cược + phí), nên floor(ví / 1,2) CHƯA phải max: ví 100.000 -> 83.333 trừ 99.999, dư 1;
@@ -3193,7 +3226,7 @@ const PAGE = [
     'function stNhanVe(nh){STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',
     'var cu=e.querySelector(".sbX");if(cu)cu.remove();',
     'var co=nh&&nh[c.id];e.classList.toggle("sbNhan",!!co);',
-    'if(co){var d=document.createElement("span");d.className="sbX";d.textContent="x"+co;e.appendChild(d)}})}',
+    'if(co){var d=document.createElement("span");d.className="sbX";d.innerHTML="x"+co+(String(c.id).indexOf("don")===0?\'<i class="sbX2">2-3 viên</i>\':"");e.appendChild(d)}})}',
     'function stToKetQua(nan){if(!nan||!nan.thang||STKQVAN===nan.gameId)return;STKQVAN=nan.gameId;',
     'var an={};nan.thang.forEach(function(k){an[k]=1});',
     'STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',

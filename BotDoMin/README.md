@@ -49,7 +49,7 @@ Chạy ở đâu: **VPS** `/root/tts-bot` (clone của repo, nhánh local `maste
 3. **Deadline Discord 3 giây.** Không gọi API nào (SFTP mất ~6s) trước `showModal`/reply đầu. Cần lâu thì `deferReply` → `editReply`.
 4. **Ván nằm trong RAM** (`webMines` / `webStairs` / `wheelRoom` là `Map`). Restart là mất ván → có **sổ vé treo** (`_*Pending`) để boot **tự hoàn cược** ván treo. Cổ phiếu là ngoại lệ: vị thế `saveDbNow()` mỗi lần mở/đóng.
 5. **Trả tiền một lần.** Mọi đường kết ván phải: xoá ván khỏi Map → xoá vé treo → cộng tiền → ghi lịch sử. Bug "nổ hũ ăn x2" là nhánh quên xoá ván.
-6. **`logDog` chỉ ghi khoản CHUYỂN / ĐIỀU CHỈNH** (admin cộng trừ, chuyển giữa người chơi, vào/ra game, mua, hoàn). Cố tình không ghi cược minigame.
+6. **`logDog` chỉ ghi khoản CHUYỂN / ĐIỀU CHỈNH** (admin cộng trừ, chuyển giữa người chơi, nạp/rút vào ra game, mua pal, vay/trả nợ, hoàn). **22/09 chủ server chốt: KHÔNG ghi bất cứ gì của mini game** — `DOG_LEDGER_BO_QUA` (`bet · jackpot · cophieu · tienlen · sieutx`) chặn ở cửa ghi và `getDogLedger` lọc luôn dòng cũ. Từng ván thắng thua tra ở tab 📜 LOG (mục riêng từng trò, Siêu Tài Xỉu có mục riêng). Bộ kiểm: `node TaiXiu/kiemtra/log-test.js`.
 
 **Cấu trúc client (web + panel):** HTML/CSS/JS nằm trong chuỗi JS. `node --check` **không** kiểm được phần client. Xem mục 12 để biết bộ kiểm nào bắt được lỗi ở đó.
 

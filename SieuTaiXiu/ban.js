@@ -359,7 +359,8 @@ function taoBan(ctx) {
 
     function ghiSo(gameId, bets, xx, p) {
         const tong = CUA.tongXx(xx), bao = CUA.laBao(xx);
-        const trung = new Set(CUA.cuaThang(xx));
+        // ⚡ chỉ kể ô THẬT SỰ được nhân (Đơn 1 viên trả 1:1 thì không kể, 22/09)
+        const trung = new Set(CUA.cuaAnNhan(xx, p.bangNhan || {}));
         const nh = {};
         for (const k of Object.keys(p.bangNhan || {})) if (trung.has(k)) nh[k] = p.bangNhan[k];
         const winners = Object.keys(p.byUser).filter(u => p.byUser[u].win > 0)
@@ -374,7 +375,13 @@ function taoBan(ctx) {
         S.history.unshift(h);
         if (S.history.length > HIST_N) S.history.pop();
         db()._stxHist = S.history.slice(0, HIST_WEB);
-        log(`[SIÊU TX KẾT QUẢ] Ván #${gameId}: ${xx.join('-')} (Tổng ${tong} | ${h.tx}${bao ? '' : ' | ' + h.cl})`);
+        // 📜 22/09 một dòng mỗi ván: ai đặt nhiêu (+phí) ăn thua nhiêu - đúng thứ chủ server cần tra
+        const dongNguoi = Object.values(p.byUser || {}).map(e => {
+            const net = (e.win || 0) - (e.stake || 0) - (e.phi || 0);
+            return `${e.name} đặt ${(e.stake || 0).toLocaleString('vi-VN')} (+phí ${(e.phi || 0).toLocaleString('vi-VN')}) → ${net >= 0 ? '+' : ''}${net.toLocaleString('vi-VN')}`;
+        });
+        log(`[SIÊU TX KẾT QUẢ] Ván #${gameId}: ${xx.join('-')} (Tổng ${tong} | ${h.tx}${bao ? '' : ' | ' + h.cl})`
+            + (dongNguoi.length ? ' · ' + dongNguoi.join(' · ') : ' · không ai đặt'));
     }
 
     function chotVan(gameId, bets) {
@@ -519,7 +526,7 @@ function taoBan(ctx) {
         const trung = (h) => {
             const nh = h.nhan || {};
             if (!Array.isArray(h.dice) || h.dice.length !== 3) return {};
-            const t = new Set(CUA.cuaThang(h.dice)); const r = {};
+            const t = new Set(CUA.cuaAnNhan(h.dice, nh)); const r = {};
             for (const k of Object.keys(nh)) if (t.has(k)) r[k] = nh[k];
             return r;
         };

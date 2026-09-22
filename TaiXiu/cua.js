@@ -277,6 +277,21 @@ function tinhTra(cuaId, tien, xx, nhan) {
 function cuaThang(xx) {
     return DS.filter(c => c.tra(xx) > 0).map(c => c.id);
 }
+/**
+ * Ô THẬT SỰ ĐƯỢC NHÂN trong ván: trúng VÀ hệ số có áp vào tiền. Khác cuaThang ở ô Đơn:
+ * Đơn 1 mặt vẫn "trúng" nhưng trả 1:1, nhân KHÔNG áp (xem tinhTra) - lịch sử/Discord in
+ * "⚡ x19 Đơn 3" cạnh "+1.000" là tự mâu thuẫn (rà soát 22/09). Mọi chỗ lọc ⚡ dùng hàm này.
+ */
+function cuaAnNhan(xx, nhan) {
+    if (!nhan || typeof nhan !== 'object') return [];
+    return Object.keys(nhan).filter(id => {
+        const c = THEO_ID[id];
+        if (!c || !(Number(nhan[id]) > 1)) return false;
+        const k = c.tra(xx);
+        if (k <= 0) return false;
+        return c.donSo ? k >= 2 : true;
+    });
+}
 
 /** Trần cược của một cửa, theo nhóm. tranNhom = { deu: 200000, ... } (admin set). */
 function tranCua(cuaId, tranNhom) {
@@ -301,5 +316,5 @@ module.exports = {
     RTP_MUC_TIEU, RTP_MIN, RTP_MAX, datRTP, thongKeRTP, rtpHienTai,
     datThang, thangHienTai, thangMacDinh,
     DS, THEO_ID, NHOM_TRAN, MOI_KET_QUA, DON_BAO_NHAN,
-    tongXx, laBao, demMat, taoNhan, tinhTra, cuaThang, tranCua, tranMacDinh, tiLeToiDa, doGoc,
+    tongXx, laBao, demMat, taoNhan, tinhTra, cuaThang, cuaAnNhan, tranCua, tranMacDinh, tiLeToiDa, doGoc,
 };

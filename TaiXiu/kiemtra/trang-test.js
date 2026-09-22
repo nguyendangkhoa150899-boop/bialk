@@ -126,7 +126,7 @@ ok('ô chỉ in tỉ lệ GỐC, không in dải tới mức nhân cao nhất',
 // Chủ server bỏ thanh liệt kê hệ số nhân: huy hiệu x… đã nằm ngay trên từng ô.
 ok('KHÔNG còn thanh liệt kê hệ số nhân phía trên bàn', !/sbNhanBar/.test(SRC));
 ok('huy hiệu x… vẫn gắn lên đúng ô được bốc',
-    SRC.includes('d.className="sbX";d.textContent="x"+co') && SRC.includes("'.sbO .sbX{"));
+    SRC.includes('d.className="sbX";d.innerHTML="x"+co') && SRC.includes("'.sbO .sbX{"));
 ok('bàn lấy từ bảng cửa máy chủ gửi, không gõ cứng 52 ô', /SBCUA=j\.txCua/.test(SRC));
 
 // ---------------------------------------------------------------- bấm là đặt
@@ -254,13 +254,13 @@ muc('lịch sử kể được ô nào nhân, ô nào mình ăn');
 // Chủ server: "chỉ show x ván đó mà RA TRÚNG thôi". Mỗi ván ~7 ô sáng nhưng đa số
 // không ra — kể hết là rác. Lọc ngay lúc chốt ván cho nhẹ DB và mọi chỗ đều sạch.
 ok('lịch sử CHỈ lưu ô nhân ĐÃ RA TRÚNG',
-    IDX.includes('const trung = new Set(TX_CUA.cuaThang([d1, d2, d3]));') &&
+    IDX.includes('const trung = new Set(TX_CUA.cuaAnNhan([d1, d2, d3], bn));') &&   // 22/09: ô THẬT SỰ được nhân
     IDX.includes('for (const k of Object.keys(bn)) if (trung.has(k)) r[k] = bn[k];'));
 ok('ván không ô nhân nào ra thì KHÔNG có dòng ⚡', IDX.includes("let dongNhan = '';"));
 // Lọc 2 TẦNG: tầng ghi cho nhẹ DB, tầng hiển thị để 20 ván CŨ (ghi trước bản vá,
 // còn nguyên bảng nhân đầy đủ trong DB) hiện đúng ngay, khỏi chờ trôi.
 ok('Discord lọc LẠI lúc hiển thị, ván cũ cũng sạch',
-    IDX.includes('const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? cuaThang(h.dice) : []);') &&
+    IDX.includes('const oTrung = new Set(Array.isArray(h.dice) && h.dice.length === 3 ? (opt.cuaAnNhan ? opt.cuaAnNhan(h.dice, nh) : cuaThang(h.dice)) : []);') &&
     IDX.includes('Object.keys(nh).filter(k => oTrung.has(k))'));
 ok('web cũng lọc trước khi gửi xuống trang',
     SRC.includes('const locNhanTrung = (h) =>') && SRC.includes('nhan: locNhanTrung(h)'));
@@ -312,8 +312,8 @@ ok('ván CŨ thiếu số nhận về vẫn tính đúng theo winners (không in
 ok('dòng Discord có kể ô được nhân', IDX.includes("dongNhan = ' · ⚡ '"));
 
 muc('nút MAX CƯỢC + hiệu ứng chip bay');
-ok('đã bỏ mệnh giá 5.000, thêm max ở cuối',
-    SRC.includes('var SBMENH=[1000,10000,20000,50000,100000,"max"];'));
+ok('đã bỏ mệnh giá 5.000, thêm max ở cuối; ô đầu là TUỲ CHỌN (22/09)',
+    SRC.includes('var SBMENH=[SBTUY,10000,20000,50000,100000,"max"];'));
 ok('nút MAX có kiểu riêng màu đỏ', SRC.includes('.chip.chipMax{') && SRC.includes('chipMax'));
 // Chủ server: trần ô 200.000 mà ví 400.000 thì CHỈ 200.000 được vào.
 // MAX phải bị chặn bởi cả 3: ví còn, trần riêng của ô, trần tổng cả ván.
@@ -410,7 +410,7 @@ ok('cả 2 bàn vẫn gắn lớp on đúng mệnh giá đang chọn',
 muc('bảng Discord bàn Siêu + chung một kênh');
 ok('một hàm dòng kết quả DÙNG CHUNG hai bàn (tên cửa + cửa thắng truyền vào)',
     IDX.includes('function dongVanDiscord(h, opt)') &&
-    IDX.includes('const txHistoryLine = (h) => dongVanDiscord(h, { tenCua: txTenCua, cuaThang: (d) => TX_CUA.cuaThang(d) });') &&
+    IDX.includes('const txHistoryLine = (h) => dongVanDiscord(h, { tenCua: txTenCua, cuaThang: (d) => TX_CUA.cuaThang(d), cuaAnNhan: (d, nh) => TX_CUA.cuaAnNhan(d, nh) });') &&
     IDX.includes('tenCua: (id) => (SIEU_CUA.THEO_ID[id] || {}).ten || id,'));
 ok('lãi/lỗ trừ CẢ PHÍ — bàn Siêu không được khoe lãi cao hơn tiền thật trong ví',
     IDX.includes("per[b.u].bo += (b.amount || 0) + (b.phi || 0);") &&
@@ -599,6 +599,38 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
         /title="Về ví \\'\+vnd\(an\)\+" · cược "\+vnd\(cuoc\)\+" · phí "/.test(SRC) && /đã trừ lúc đặt">/.test(SRC));
     ok('...bàn thường không bị vạ lây (vẫn net.toLocaleString, không tooltip phí)',
         /\(joined\?\\'<span class="net \\'\+\(net>=0\?"w":"l"\)\+\\'">\\'\+\(net>=0\?"\+":""\)\+net\.toLocaleString\("vi-VN"\)/.test(SRC));
+}
+
+// ---------------------------------------------------------------- 🪙 Ô MỆNH GIÁ TUỲ CHỌN (22/09)
+// Chủ server: "nút 1000 sửa thành nút custom cho người chơi nhập số, ở dưới nút đó là nút sửa,
+// mặc định 1000, bấm sửa edit được số chip, lưu luôn F5 không mất".
+muc('🪙 ô mệnh giá tuỳ chọn - 2 bàn, lưu qua F5');
+{
+    ok('cả 2 bàn: ô đầu lấy từ localStorage (tx_chipTuy / stx_chipTuy), mặc định 1.000',
+        SRC.includes('SBTUY=chipTuyDoc("tx_chipTuy",1000)') && SRC.includes('STTUY=chipTuyDoc("stx_chipTuy",1000)'));
+    ok('có nút ✏️ Sửa dưới ô đầu và 💾 Lưu khi đang sửa (2 bàn)',
+        (SRC.match(/class="chipSua" onclick="s[bt]SuaChip\(\)">✏️ Sửa/g) || []).length === 2 &&
+        (SRC.match(/class="chipSua" onclick="s[bt]LuuChip\(\)">💾 Lưu/g) || []).length === 2);
+    ok('Enter trong ô nhập = lưu', /onkeydown="if\(event\.key===&quot;Enter&quot;\)sbLuuChip\(\)"/.test(SRC) && /stLuuChip\(\)"/.test(SRC));
+    // chạy thật: đọc/lưu/hợp lệ với localStorage giả, kể cả localStorage hỏng
+    const iA = SRC.indexOf("    'function chipTuyHopLe("), iB = SRC.indexOf("    'var SBTUY=");
+    const manh = vm.runInContext('[' + SRC.slice(iA, iB) + ']', vm.createContext({}));
+    const kho = {}; const c9 = { localStorage: { getItem: (k) => (k in kho ? kho[k] : null), setItem: (k, v) => { kho[k] = v; } } };
+    vm.createContext(c9); vm.runInContext(manh.join('\n'), c9);
+    ok('chưa lưu gì -> 1.000', vm.runInContext('chipTuyDoc("tx_chipTuy",1000)', c9) === 1000);
+    vm.runInContext('chipTuyLuu("tx_chipTuy",chipTuyHopLe("25000"))', c9);
+    ok('⭐ lưu 25.000 rồi đọc lại (= F5) vẫn 25.000', vm.runInContext('chipTuyDoc("tx_chipTuy",1000)', c9) === 25000, kho.tx_chipTuy);
+    ok('bàn Siêu có khoá riêng, không dính bàn thường', vm.runInContext('chipTuyDoc("stx_chipTuy",1000)', c9) === 1000);
+    ok('số bậy bị chặn: 999 / -5 / "abc" / 1e10 -> 0', ['999', '-5', 'abc', '1e10'].every(v => vm.runInContext('chipTuyHopLe(' + JSON.stringify(v) + ')', c9) === 0));
+    ok('12.345,9 -> làm tròn xuống 12.345', vm.runInContext('chipTuyHopLe("12345.9")', c9) === 12345);
+    kho.tx_chipTuy = 'rác';
+    ok('localStorage chứa rác -> về 1.000, không nổ', vm.runInContext('chipTuyDoc("tx_chipTuy",1000)', c9) === 1000);
+    const c10 = { localStorage: { getItem() { throw new Error('bị chặn'); }, setItem() { throw new Error('bị chặn'); } } };
+    vm.createContext(c10); vm.runInContext(manh.join('\n'), c10);
+    ok('localStorage bị chặn (riêng tư) -> vẫn 1.000, lưu không nổ', vm.runInContext('chipTuyDoc("tx_chipTuy",1000)', c10) === 1000 && (vm.runInContext('chipTuyLuu("a",1)', c10), true));
+    ok('lưu xong: ô đang chọn đi theo số mới, ghi localStorage, tắt chế độ sửa (2 bàn)',
+        SRC.includes('if(SBCHIP===SBTUY)SBCHIP=v;SBTUY=v;SBMENH[0]=v;chipTuyLuu("tx_chipTuy",v);SBSUA=false;sbVeChip()') &&
+        SRC.includes('if(STCHIP===STTUY)STCHIP=v;STTUY=v;STMENH[0]=v;chipTuyLuu("stx_chipTuy",v);STSUA=false;stVeChip()'));
 }
 
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');

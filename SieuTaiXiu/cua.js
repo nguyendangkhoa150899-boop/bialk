@@ -129,7 +129,8 @@ for (let a = 1; a <= 6; a++) for (let b = a + 1; b <= 6; b++) {
     them({ id: 'cap' + a + b, ten: 'Cặp ' + a + '-' + b, nhom: 'vua', goc: 5, thangNhan: T.cap, _thang: 'cap', tra: x => (x.includes(a) && x.includes(b)) ? 5 : 0 });
 }
 
-// 6 cửa số đơn — 1 mặt 1:1 (tới 9:1), 2 mặt 2:1 (tới 19:1), 3 mặt 3:1 (tới 87:1)
+// 6 cửa số đơn — 1 mặt 1:1 (KHÔNG nhân), 2 mặt 2:1 (nhân tới 19:1), 3 mặt 3:1 (nhân = 87:1).
+// Bản cũ ghi "1 mặt tới 9:1" là SAI: tinhTra không bao giờ nhân 1 mặt, thang don cũng bắt đầu từ 10.
 const DON_BAO_NHAN = 87;
 for (let n = 1; n <= 6; n++) {
     them({ id: 'don' + n, ten: 'Đơn ' + n, nhom: 'cao', goc: 1, thangNhan: T.don, _thang: 'don', donSo: n, tra: x => demMat(x, n) });
@@ -270,6 +271,21 @@ function tinhTra(cuaId, tien, xx, nhan) {
 function cuaThang(xx) {
     return DS.filter(c => c.tra(xx) > 0).map(c => c.id);
 }
+/**
+ * Ô THẬT SỰ ĐƯỢC NHÂN trong ván: trúng VÀ hệ số có áp vào tiền. Khác cuaThang ở ô Đơn:
+ * Đơn 1 mặt vẫn "trúng" nhưng trả 1:1, nhân KHÔNG áp (xem tinhTra) - lịch sử/Discord in
+ * "⚡ x19 Đơn 3" cạnh "+1.000" là tự mâu thuẫn (rà soát 22/09). Mọi chỗ lọc ⚡ dùng hàm này.
+ */
+function cuaAnNhan(xx, nhan) {
+    if (!nhan || typeof nhan !== 'object') return [];
+    return Object.keys(nhan).filter(id => {
+        const c = THEO_ID[id];
+        if (!c || !(Number(nhan[id]) > 1)) return false;
+        const k = c.tra(xx);
+        if (k <= 0) return false;
+        return c.donSo ? k >= 2 : true;
+    });
+}
 
 function tranCua(cuaId, tranNhom) {
     const c = THEO_ID[cuaId];
@@ -291,7 +307,7 @@ module.exports = {
     PHI, AN_MUC_TIEU, AN_MIN, AN_MAX, datMucAn, thongKe, mucAnHienTai, rtpBan,
     datThang, thangHienTai, thangMacDinh,
     DS, THEO_ID, NHOM_TRAN, MOI_KET_QUA, DON_BAO_NHAN,
-    tongXx, laBao, demMat, taoNhan, tinhTra, cuaThang,
+    tongXx, laBao, demMat, taoNhan, tinhTra, cuaThang, cuaAnNhan,
     tienTru, tienPhi,
     tranCua, tranMacDinh, tiLeToiDa, doGoc,
 };

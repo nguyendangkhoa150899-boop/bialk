@@ -170,6 +170,8 @@ function startPanel(ctx) {
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
             txHistory: (ctx.getTXDash ? ctx.getTXDash() : []),
+            // ⚡ 22/09 log Siêu TÁCH RIÊNG (30 ván có cược, đúng thứ bangDiscord đã lọc)
+            stxHistory: (ctx.stx && ctx.stx.bangDiscord) ? (ctx.stx.bangDiscord(30).history || []) : [],
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
@@ -2052,6 +2054,7 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <div class="row" style="flex-wrap:wrap;gap:6px">
           <button class="btn-grey logPick" data-log="tx" onclick="logPick('tx')">🎲 Tài Xỉu</button>
+          <button class="btn-grey logPick" data-log="stx" onclick="logPick('stx')">⚡ Siêu Tài Xỉu</button>
           <button class="btn-grey logPick" data-log="mine" onclick="logPick('mine')">💣 Dò Mìn</button>
           <button class="btn-grey logPick" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
           <button class="btn-grey logPick" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
@@ -2060,7 +2063,14 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card logSec" id="logSec-tx">
         <h3>📜 Lịch sử Big Small</h3>
+        <div class="note">Mỗi ván: kết quả, ai đặt bao nhiêu, nhận về bao nhiêu, lãi/lỗ. Số lấy từ sổ trả tiền, không tính lại.</div>
         <div id="txHist" class="hist"></div>
+      </div>
+      <!-- ⚡ 22/09: log Siêu Tài Xỉu TÁCH RIÊNG (chủ server: "làm thêm 1 siêu tài xỉu log nữa rồi tách log ra") -->
+      <div class="card logSec hidden" id="logSec-stx">
+        <h3>⚡ Lịch sử Siêu Tài Xỉu</h3>
+        <div class="note">Mỗi ván: kết quả, ai đặt bao nhiêu (kèm phí 20%), nhận về bao nhiêu, lãi/lỗ so với tiền đã rời ví.</div>
+        <div id="stxHist" class="hist"></div>
       </div>
       <div class="card logSec hidden" id="logSec-mine">
         <h3>📜 Lịch sử Dò Mìn</h3>
@@ -2076,7 +2086,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card logSec hidden" id="logSec-dog">
         <h3>💰 Sổ biến động Dogcoin</h3>
-        <div class="note">Ghi mọi khoản <b>điều chỉnh và chuyển đổi</b>: admin cộng/trừ tay, chuyển giữa người chơi, chuyển vào/ra game, mua pal, hoàn tiền. <b>Không</b> ghi tiền cược thắng/thua mini game (mỗi ván đều sinh giao dịch, ghi hết thì không tra được gì).</div>
+        <div class="note">Chỉ ghi: <b>chuyển</b> giữa người chơi · <b>nạp / rút</b> Dogcoin (vào/ra game) · <b>admin cộng/trừ</b> · mua pal, vay/trả nợ, hoàn tiền. <b>Không</b> ghi bất cứ gì của mini game (Tài Xỉu, Siêu Tài Xỉu, Phi Thuyền, Tiến Lên, Cổ phiếu, hũ) - từng ván tra ở mục riêng bên trên (22/09).</div>
         <div id="dogLedger" class="hist"></div>
       </div>
     </div>
@@ -2437,7 +2447,8 @@ function renderGacha(){
 // Sổ biến động Dogcoin - dữ liệu đến từ STATE (poll mỗi 3s) nên không cần gọi riêng.
 const DOG_TYPE_LABEL = {
   'admin+':'➕ Admin cộng', 'admin-':'➖ Admin trừ', 'transfer':'🔁 Chuyển',
-  'to-game':'🎮 Vào game', 'from-game':'💬 Ra Discord', 'shop':'🐾 Mua pal', 'refund':'↩️ Hoàn tiền',
+  'to-game':'🎮 Rút vào game', 'from-game':'💬 Nạp ra Discord', 'shop':'🐾 Mua pal', 'refund':'↩️ Hoàn tiền',
+  'vay':'🏦 Vay', 'trano':'💳 Trả nợ',
 };
 
 function renderDogLedger(){
@@ -3805,13 +3816,27 @@ function renderHistories(){
   if(!STATE)return;
   // 04/09: tab 📜 Log - mỗi mục CHỈ HIỆN 30 ván có cược cho gọn
   // Big Small
+  // 📜 22/09 chủ server: "ván đó người nào đặt nhiêu ăn thua nhiêu, kết quả là được" - gộp theo NGƯỒI,
+  // số lấy từ sổ b.nhan (đã gồm vốn) của kế hoạch trả tiền, KHÔNG tính lại. Dùng chung 2 bàn (Siêu có b.phi).
+  const TENCUA=(STATE.stx&&STATE.stx.tenCua)||{};
+  const veVanLog=(g)=>{
+    const per={};
+    (g.bets||[]).forEach(b=>{const k=b.u||b.name;if(!per[k])per[k]={name:b.name,dat:0,phi:0,nhan:0,cua:[],cu:false};
+      per[k].dat+=(b.amount||0);per[k].phi+=(b.phi||0);per[k].cua.push(b.choice+' '+Number(b.amount||0).toLocaleString());
+      if(b.nhan===undefined)per[k].cu=true;else per[k].nhan+=(Number(b.nhan)||0);});
+    // ván ghi trước bản vá không có b.nhan -> lấy tổng nhận từ winners
+    (g.winners||[]).forEach(w=>{const k=w.u||w.name;if(per[k]&&per[k].cu)per[k].nhan+=(w.amount||0);});
+    const ds=Object.values(per).map(p=>({...p,net:p.nhan-p.dat-p.phi})).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net));
+    const nh=g.nhan||{};const nhanTxt=Object.keys(nh).length?' · ⚡ '+Object.keys(nh).map(k=>'x'+nh[k]+' '+(TENCUA[k]||k)).join(' · '):'';
+    const dong=ds.map(p=>'<div class="'+(p.net>0?'win':(p.net<0?'lose':'b'))+'">'+(p.net>0?'💰':(p.net<0?'💥':'⚖️'))+' <b>'+esc(p.name)+'</b> đặt '+p.dat.toLocaleString()+(p.phi?' (+phí '+p.phi.toLocaleString()+')':'')+' → nhận '+p.nhan.toLocaleString()+' · <b>'+fmtAmt(p.net)+'</b>'+
+      '<span class="muted" style="font-size:11px"> · '+esc(p.cua.join(', '))+'</span></div>').join('');
+    return '<div class="h"><div class="top"><span>Ván #'+padId(g.gameId)+' · 🎲 '+(g.dice||[]).join('-')+' (Tổng '+g.sum+') · '+esc(g.tx)+(g.storm?'':' | '+esc(g.cl))+esc(nhanTxt)+'</span><span class="t">'+(g.time||'')+'</span></div>'+(dong||'<div class="b">không ai đặt</div>')+'</div>';
+  };
   const tx=(STATE.txHistory||[]).slice(0,30);
-  document.getElementById('txHist').innerHTML = tx.length? tx.map(g=>{
-    const bets=(g.bets||[]).map(b=>esc(b.name)+': '+b.amount.toLocaleString()+' ('+b.choice+')').join(' • ')||'không ai đặt';
-    const wins=(g.winners||[]).map(w=>esc(w.name)+' +'+w.amount.toLocaleString()).join(' • ');
-    return '<div class="h"><div class="top"><span>Game #'+padId(g.gameId)+' - 🎲 '+g.dice.join('-')+' (Tổng '+g.sum+') · '+g.tx+' | '+g.cl+'</span><span class="t">'+(g.time||'')+'</span></div>'+
-      '<div class="b">📝 '+bets+'</div>'+(wins?'<div class="win">🏆 '+wins+'</div>':'<div class="lose">🚫 không ai thắng</div>')+'</div>';
-  }).join('') : '<div class="empty">Chưa có ván nào.</div>';
+  document.getElementById('txHist').innerHTML = tx.length? tx.map(veVanLog).join('') : '<div class="empty">Chưa có ván nào.</div>';
+  // ⚡ Siêu Tài Xỉu - mục riêng
+  const sx=(STATE.stxHistory||[]).slice(0,30), sxEl=document.getElementById('stxHist');
+  if(sxEl)sxEl.innerHTML = sx.length? sx.map(veVanLog).join('') : '<div class="empty">Chưa có ván nào.</div>';
   // Dò Mìn
   const mn=(STATE.minesHistory||[]).slice(0,30);
   document.getElementById('mineHist').innerHTML = mn.length? mn.map(g=>{
