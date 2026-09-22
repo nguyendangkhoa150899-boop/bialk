@@ -470,5 +470,79 @@ ok('ban.js: epGoiY + betsCount + huyEp + baoCuoc bọc try/catch',
 
 ok('mọi id bàn Siêu bắt đầu bằng st, không đụng bàn thường', !/id="sb[A-Z]/.test(SRC.slice(SRC.indexOf('id="pageStx"'), SRC.indexOf('hết #pageStx'))));
 
+// ============================================================================
+// 💸 MAX BÀN SIÊU PHẢI NÓI THẬT (22/09)
+// Bạn chủ server: ví tròn 100.000, bấm MAX vào XỈU -> ô hiện 83.333, thắng nhận 166.667,
+// tưởng bug. Máy tính KHÔNG sai (phí 20% cộng thêm: floor(100.000/1,2)=83.333, phí 16.666,
+// trừ 99.999; thắng 1:1 = 166.667, lãi +66.667). Sai là ba chỗ NÓI DỐI người chơi.
+// ============================================================================
+muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.666 = trừ đúng 100.000)');
+{
+    const STX = require(path.join(__dirname, '..', '..', 'SieuTaiXiu', 'cua.js'));
+
+    // ---- toán học: chạy ĐÚNG hàm stMaxTheoVi của trang (bóc từ SRC), đối chiếu phí máy chủ ----
+    const mHam = SRC.match(/'function stMaxTheoVi\(bal\)\{([^']*)\}'/);
+    ok('trang có hàm stMaxTheoVi (một chỗ tính MAX cho cả nút lẫn preview)', !!mHam, 'không thấy');
+    const maxCua = mHam ? new Function('bal', 'STPHI', mHam[1].replace(/^\{|\}$/g, '')) : (() => 0);
+    const mc0 = maxCua(100000, STX.PHI);
+    ok('⭐ ví 100.000: cược 83.334 · phí 16.666 · trừ ĐÚNG 100.000 (không dư 1 như floor(ví/1,2))',
+        mc0 === 83334 && STX.tienPhi(mc0) === 16666 && STX.tienTru(mc0) === 100000,
+        JSON.stringify({ cuoc: mc0, phi: STX.tienPhi(mc0), tru: STX.tienTru(mc0) }));
+    ok('...thắng 1:1 nhận 166.668 (ăn 83.334 + vốn 83.334) -> lãi thật +66.668',
+        STX.tinhTra('xiu', mc0, [1, 2, 3], {}) === 166668 && 166668 - 100000 === 66668,
+        String(STX.tinhTra('xiu', mc0, [1, 2, 3], {})));
+    {
+        let lo = 0, khongMax = 0, thu = 0;
+        for (let bal = 1000; bal <= 2000000; bal += 997) {          // bước lẻ để quét đủ số dư
+            thu++;
+            const mc = maxCua(bal, STX.PHI);
+            if (STX.tienTru(mc) > bal) lo++;                            // rút lố ví
+            if (STX.tienTru(mc + 1) <= bal) khongMax++;                 // còn nhét thêm được -> chưa phải max
+        }
+        ok('⭐ quét ' + thu + ' mức ví: MAX KHÔNG BAO GIỜ rút lố ví (cược + phí ≤ ví)', lo === 0, lo + ' ca lố');
+        ok('⭐ ...và luôn là mức LỚN NHẤT trả nổi phí (thêm 1 là vượt ví)', khongMax === 0, khongMax + ' ca chưa max');
+    }
+    ok('nút MAX và dòng preview cùng gọi stMaxTheoVi (không ai tự chia 1,2 riêng)',
+        /function stTienMax\(id\)\{var con=stMaxTheoVi\(BAL\);/.test(SRC) &&
+        /var mc=stMaxTheoVi\(BAL\),mp=Math\.floor\(mc\*STPHI\);/.test(SRC) &&
+        (SRC.match(/Math\.floor\(BAL\/\(1\+STPHI\)\)/g) || []).length === 0);
+
+    // ---- ① dòng preview khi chọn MAX ----
+    const iP = SRC.indexOf("'var p=$(\"stPhiNho\")");
+    const preview = iP >= 0 ? SRC.slice(iP, iP + 900) : '';
+    ok('tìm được dòng preview phí của bàn Siêu', !!preview);
+    ok('⭐ KHÔNG còn câu "ví bị trừ thêm 20% phí" (ngụ ý cược trọn ví rồi phí cộng thêm)',
+        !/trừ thêm/.test(preview), preview.slice(0, 160));
+    ok('⭐ MAX in đủ ba con số tính từ ví đang có: trọn ví · cược · phí',
+        /đổ trọn ví/.test(preview) && /stMaxTheoVi\(BAL\)/.test(preview) && /phí <b>/.test(preview));
+    ok('...và nói thẳng VÌ SAO không cược được trọn ví', /phí .*cộng THÊM trên tiền cược/.test(preview));
+    ok('...ví hết tiền thì nói hết, không in số âm/0 vô nghĩa', /ví hết Dogcoin rồi/.test(preview));
+
+    // ---- ② tooltip đồng chip trên ô Siêu ----
+    const iG = SRC.indexOf("'function stVeGio(){");
+    const veGio = iG >= 0 ? SRC.slice(iG, iG + 1200) : '';
+    ok('⭐ tooltip trên ô ghi đủ "Cược X + phí Y = trừ ví Z"',
+        /d\.title="Cược "\+vnd\(toi\)\+" \+ phí "\+vnd\(Math\.floor\(toi\*STPHI\)\)/.test(veGio), veGio.slice(0, 120));
+    ok('...bàn THƯỚNG không bị vạ lây (không có phí, tooltip vẫn "X Dogcoin")',
+        /'d\.appendChild\(im\);d\.appendChild\(sn\);d\.title=vnd\(toi\)\+" Dogcoin";e\.appendChild\(d\)\}',/.test(SRC));
+
+    // ---- ③ lịch sử: dòng từng ô phải khớp dòng tổng ----
+    const iH = SRC.indexOf("'function stHist(list)");
+    const hist = iH >= 0 ? SRC.slice(iH, iH + 2200) : '';
+    ok('⭐ dòng từng ô trừ CẢ PHÍ: nhận − cược − phí (khớp dòng tổng bên phải)',
+        /vnd\(\(b\.nhan\|\|0\)-b\.amount-\(b\.phi\|\|0\)\)/.test(hist), hist.slice(0, 120));
+    ok('...dòng tổng vẫn tính theo đúng số ví bị trừ', /var net=an-Math\.floor\(cuoc\*\(1\+STPHI\)\);/.test(hist));
+    ok('...máy bàn có gửi b.phi trong từng ô của lịch sử (cuaAgg)',
+        /cuaAgg\[k\] = \{ u: b\.userId, name: b\.username, choice: [^}]*phi: 0, nhan: 0 \}/.test(BAN) &&
+        /cuaAgg\[k\]\.phi \+= \(b\.phi \|\| 0\);/.test(BAN));
+
+    // ---- README không được hứa sai ----
+    const RM = fs.readFileSync(path.join(__dirname, '..', '..', 'SieuTaiXiu', 'README.md'), 'utf8');
+    ok('README không còn nói MAX "y bàn thường"', !/nút MAX CƯỢC, 3 nút thao tác/.test(RM));
+    ok('README có mục 5c giải thích ca 100.000 -> 83.333', /## 5c\./.test(RM) && /83\.333/.test(RM) && /166\.667/.test(RM));
+    ok('...và nói rõ muốn MAX = trọn ví thì phải đổi mô hình phí (chưa làm, chờ chủ server)',
+        /đổi mô hình phí/.test(RM) && /Chưa làm/.test(RM));
+}
+
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');
 process.exit(F_ ? 1 : 0);

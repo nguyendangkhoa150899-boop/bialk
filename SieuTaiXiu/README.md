@@ -81,8 +81,10 @@ ra. Chỉ khi ván đã quay thì phí mới coi như đã thu.
 - **Phí 20% hiện ở 3 chỗ**: dải đỏ gọn "💸 PHÍ 20%" trên bàn (chủ server bỏ dòng dài), dòng ngay
   dưới hàng mệnh giá (ghi luôn số tiền thật sẽ bị trừ), và trong lời báo sau khi đặt.
 - Ô được bốc hệ số nhân thì **giật như có sét** (`@keyframes stSet`), không chỉ nhấp nháy.
-- Còn lại y bàn thường: bấm ô là đặt, đồng Dogcoin trên ô, nút MAX CƯỢC, 3 nút thao tác
-  nhanh, nặn chén, 4 giây cuối tự mở, ô trúng sáng / ô trượt chìm.
+- Còn lại y bàn thường: bấm ô là đặt, đồng Dogcoin trên ô, 3 nút thao tác nhanh, nặn chén,
+  4 giây cuối tự mở, ô trúng sáng / ô trượt chìm.
+- ⚠️ **Nút MAX CƯỢC KHÁC bàn thường** — xem §5c. Bàn thường không phí nên MAX = trọn ví; bàn
+  Siêu MAX = `floor(ví / 1,2)` để còn chỗ trả phí.
 - **Kéo thả chip** dùng chung bộ `keo*` của bàn thường (xem `TaiXiu/README.md` §10b):
   `doiCua(user, ten, tu, den)` dời **cả tiền lẫn phần phí đã thu** sang ô mới, không đụng ví,
   chỉ kiểm trần ô đích; `xoaCua(user, cua)` huỷ đúng một ô, **hoàn cả phí** (ván chưa quay).
@@ -108,6 +110,36 @@ Sửa tận gốc: **ô bàn Siêu mang cả hai lớp `sbO stO`** — `.sbO` đ
 chung, còn tông đen viết bằng `.sbO.stO…` (đặc hiệu cao hơn một bậc nên thắng màu bàn
 thường dù khai trước). Một hệ, không phải hai bản chép song song. Bàn Siêu KHÔNG được có
 rule `.stO` trần — `trang-test` soi.
+
+## 5c. "Có tròn 100.000, bấm MAX, sao chỉ cược 83.333?" (22/09)
+
+Bạn của chủ server báo *bug*: ví tròn **100.000**, bấm **MAX CƯỢC** vào XỈU → ô hiện **83.333**,
+thắng nhận **166.667**. **Máy tính không sai về nguyên lý.** Phí 20% **cộng thêm** trên tiền
+cược (§1), nên với 100.000 trong ví KHÔNG THỂ cược trọn 100.000 — phải chừa chỗ cho phí.
+
+Nhưng bộ kiểm quét 2.006 mức ví lại lòi thêm một lệch nhỏ: trang tính MAX bằng
+`floor(ví / 1,2)` trong khi máy chủ tính phí bằng `floor(cược × 0,2)`, nên MAX **bỏ sót
+1 Dogcoin** ở 2/3 số ví. Với ví 100.000:
+
+    bản CŨ  floor(100.000/1,2) = 83.333 · phí 16.666 · trừ  99.999 (dư 1) · thắng 1:1 = 166.667
+    bản MỚI stMaxTheoVi(100.000) = 83.334 · phí 16.666 · trừ 100.000 (đúng) · thắng 1:1 = 166.668
+                                                                              → lãi thật +66.668
+
+`stMaxTheoVi(bal)`: bắt đầu từ `floor(bal/1,2)` rồi nhích lên tới khi thêm 1 là vượt ví (tối đa
+1–2 vòng). **Cả nút MAX lẫn dòng preview cùng gọi hàm này** — hai chỗ tự tính riêng là lại lệch
+số như vụ +83.333 / +66.667 bên dưới.
+
+Cái **sai thật với người chơi** là ba chỗ **nói dối**, đã sửa:
+
+| Chỗ | Trước | Sau |
+|---|---|---|
+| Dòng preview khi chọn MAX | *"ví bị trừ **thêm** 20% phí"* → ngụ ý cược trọn ví rồi phí cộng thêm | tính thẳng từ ví đang có: *"đổ trọn ví 100.000: cược 83.333 + phí 16.666. Không cược được trọn 100.000 vì phí 20% cộng THÊM"* |
+| Tooltip đồng chip trên ô | chỉ số cược | *"Cược 83.333 + phí 16.666 = trừ ví 99.999"* |
+| Lịch sử, dòng từng ô | `nhận − cược` = **+83.333**, trong khi dòng tổng bên phải ghi **+66.667** → hai số lệch trên cùng một dòng | `nhận − cược − phí` = **+66.667**, khớp dòng tổng |
+
+**Nếu muốn MAX = cược trọn 100.000** thì phải đổi mô hình phí (thu phí từ tiền THẮNG thay vì
+cộng thêm lúc đặt) — đó là đổi kinh tế cả bàn, RTP phải giải lại (§2). **Chưa làm**, chờ chủ
+server quyết. Bộ kiểm: `TaiXiu/kiemtra/trang-test.js` khối *"MAX bàn Siêu nói thật"*.
 
 ## 5b. Bảng kết quả trên Discord (22/09)
 

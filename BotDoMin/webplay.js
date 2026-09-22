@@ -3102,13 +3102,26 @@ const PAGE = [
     'var nhan=mx?(\'<img class="dc" src="/dogcoin.png" alt=""> MAX CƯỢC\'):(\'<img class="dc" src="/dogcoin.png" alt=""> \'+vnd(v));',
     'return \'<button class="chip\'+(mx?" chipMax":"")+(v===STCHIP?" on":"")+\'" onclick="stDatChip(\'+(mx?\'&quot;max&quot;\':v)+\')">\'+nhan+"</button>"}).join("");',
     // 💸 nhắc phí NGAY DƯỚI hàng mệnh giá, kèm số tiền thật sẽ bị trừ
+    // ⚠️ MAX PHẢI NÓI THẬT (22/09). Bản cũ ghi "ví bị trừ THÊM 20% phí" -> người chơi hiểu là
+    // cược trọn ví rồi phí cộng thêm; thực tế cược bị CO LẠI để chứa phí (ví 100.000 -> cược
+    // 83.333 + phí 16.666). Chủ server nhận ngay một báo "bug" từ bạn mình vì câu này.
+    // Giờ tính thẳng từ ví đang có và in đủ ba con số, kèm câu giải thích vì sao không cược
+    // được trọn ví.
     'var p=$("stPhiNho");if(p){var m=(STCHIP==="max")?null:STCHIP;',
-    'p.innerHTML=m?("💸 Bấm 1 ô là trừ <b>"+vnd(Math.floor(m*(1+STPHI)))+"</b> (cược "+vnd(m)+" + phí "+vnd(Math.floor(m*STPHI))+")")',
-    ':("💸 MAX CƯỢC: đổ hết mức cho phép, ví bị trừ thêm <b>"+Math.round(STPHI*100)+"% phí</b>")}}',
+    'if(m){p.innerHTML="💸 Bấm 1 ô là trừ <b>"+vnd(Math.floor(m*(1+STPHI)))+"</b> (cược "+vnd(m)+" + phí "+vnd(Math.floor(m*STPHI))+")"}',
+    'else{var mc=stMaxTheoVi(BAL),mp=Math.floor(mc*STPHI);',
+    'p.innerHTML=BAL>0?("💸 MAX CƯỢC = đổ trọn ví <b>"+vnd(BAL)+"</b>: cược <b>"+vnd(mc)+"</b> + phí <b>"+vnd(mp)+"</b>. Không cược được trọn "+vnd(BAL)+" vì phí "+Math.round(STPHI*100)+"% cộng THÊM trên tiền cược. (Trần ô / trần ván có thể chặn thấp hơn.)")',
+    ':"💸 MAX CƯỢC: ví hết Dogcoin rồi"}}}',
     'function stDatChip(v){STCHIP=v;stVeChip()}',
     'function stTranCua(id){var c=STCUA.filter(function(x){return x.id===id})[0];return c&&STTRAN[c.nhom]?STTRAN[c.nhom]:0}',
+    // 💸 Cược LỚN NHẤT mà ví còn trả nổi phí. Máy chủ tính phí = floor(cược × phí) rồi trừ
+    // (cược + phí), nên floor(ví / 1,2) CHƯA phải max: ví 100.000 -> 83.333 trừ 99.999, dư 1;
+    // đúng ra 83.334 + 16.666 = ĐÚNG 100.000. Bộ kiểm quét 2.006 mức ví thấy 1.337 ca sót 1.
+    // Bắt đầu từ floor(ví/1,2) rồi nhích lên tới khi thêm 1 là vượt ví — tối đa 1-2 vòng.
+    // ⚠️ MỌI chỗ tính MAX (nút + dòng preview) phải gọi hàm này, đừng tự chia 1,2 nữa.
+    'function stMaxTheoVi(bal){var t=Math.floor(bal/(1+STPHI));while((t+1)+Math.floor((t+1)*STPHI)<=bal)t++;return Math.max(0,t)}',
     // MAX: chặn bởi VÍ (đã tính phí) + trần ô + trần tổng ván
-    'function stTienMax(id){var con=Math.floor(BAL/(1+STPHI));',
+    'function stTienMax(id){var con=stMaxTheoVi(BAL);',
     'var tran=stTranCua(id),daCo=STTONG["_toi_"+id]||0;',
     'if(tran>0)con=Math.min(con,Math.max(0,tran-daCo));',
     'if(STMAX>0){var t=0;for(var k in STTONG){if(k.indexOf("_toi_")===0)t+=STTONG[k]||0}',
@@ -3173,7 +3186,8 @@ const PAGE = [
     'if(toi){var d=document.createElement("span");d.className="sbGio"+(toi>=CHIP_DEN?" sbGioDen":"");',
     'var im=document.createElement("img");im.src="/dogcoin.png";im.alt="";',
     'var sn=document.createElement("b");sn.textContent=chipNgan(toi);',
-    'd.appendChild(im);d.appendChild(sn);d.title=vnd(toi)+" Dogcoin";e.appendChild(d)}',
+    // tooltip ghi đủ cược + phí: ô chỉ in số cược (83.333) nên người chơi hỏi "16.666 đi đâu" (22/09)
+    'd.appendChild(im);d.appendChild(sn);d.title="Cược "+vnd(toi)+" + phí "+vnd(Math.floor(toi*STPHI))+" = trừ ví "+vnd(toi+Math.floor(toi*STPHI));e.appendChild(d)}',
     'if(STTONG[c.id]){var d2=document.createElement("span");d2.className="sbBan2";d2.textContent="bàn "+vnd(STTONG[c.id]);e.appendChild(d2)}',
     'e.classList.toggle("sbKhoa",STPHASE!=="bet")})}',
     'function stNhanVe(nh){STCUA.forEach(function(c){var e=$("st_"+c.id);if(!e)return;',
@@ -3267,7 +3281,10 @@ const PAGE = [
     'var tai=(h.tx==="TÀI"),chan=(h.cl==="CHẴN");',
     'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span><span class="\'+(chan?"ce":"od")+\'">\'+h.cl+"</span>");',
     'var p2=[],an2=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0});',
-    'if(an2.length)p2.push(\'<span class="an">🎯 \'+an2.slice(0,3).map(function(b){return b.choice+" +"+vnd((b.nhan||0)-b.amount)}).join(" · ")+(an2.length>3?" …":"")+"</span>");',
+    // ⚠️ TRỪ CẢ PHÍ của ô đó (b.phi máy bàn gửi kèm trong cuaAgg). Bản cũ chỉ trừ tiền cược -> ô
+    // ghi "+83.333" mà dòng tổng bên phải ghi "+66.667": hai số lệch nhau trên cùng một dòng,
+    // ai nhìn cũng tưởng bị ăn chặn (22/09). Giờ hai chỗ cùng một cách tính: nhận về − cược − phí.
+    'if(an2.length)p2.push(\'<span class="an">🎯 \'+an2.slice(0,3).map(function(b){return b.choice+" +"+vnd((b.nhan||0)-b.amount-(b.phi||0))}).join(" · ")+(an2.length>3?" …":"")+"</span>");',
     'if(HNHAN){var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
     'if(ids.length)p2.push(ids.slice(0,3).map(function(k){return \'<span class="xx">x\'+nh[k]+"</span>"+(STNAMES[k]||k)}).join(" · ")+(ids.length>3?(" +"+(ids.length-3)):""))}',
     'var phu=\'<div class="hsub">\'+p2.join(" &nbsp;·&nbsp; ")+"</div>";',
