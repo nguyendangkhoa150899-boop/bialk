@@ -1893,8 +1893,10 @@ const HTML = `<!DOCTYPE html>
         <div class="note" id="stxAnNote"></div>
         <div class="note">Bàn này thu <b>PHÍ 20%</b> trên tiền cược — đó là nguồn thu duy nhất. Bảng trả cố tình vượt 100% (nhà cái lỗ trên bàn rồi lấy lại bằng phí). Hạ "nhà cái ăn" thì bảng trả rộng ra, ít ô sáng hơn.</div>
 
-        <div style="margin-top:12px"><label>🧱 Trần cược từng nhóm cửa</label><div id="stxTran" class="row" style="flex-wrap:wrap"></div>
-          <div class="row" style="margin-top:8px"><button class="btn-green" onclick="stxSaveTran()">💾 Lưu trần</button></div></div>
+        <div style="margin-top:12px"><label>🧱 TRẦN CƯỢC TỪNG CỬA (bàn Siêu, trả cao gấp mấy lần nên trần thấp hơn hẳn)</label>
+          <div id="stxTran" class="row" style="flex-wrap:wrap;gap:8px"></div>
+          <div class="note" id="stxTranNow"></div>
+          <div class="row" style="margin-top:8px"><button class="btn-green" onclick="stxSaveTran()">💾 Lưu trần cược</button></div></div>
 
         <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
           <label>🎰 Thang hệ số nhân — mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code></label>
@@ -2523,9 +2525,16 @@ function stxDo(){
   if(S.rtp)put('stxAn',(S.rtp.an*100).toFixed(1).replace(/\.0$/,''));
   const an=document.getElementById('stxAnNote');
   if(an&&S.rtp)an.textContent='Đang chạy: nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · người chơi thực nhận '+(S.rtp.rtpThuc*100).toFixed(2)+'% · '+S.rtp.oSangMoiVan.toFixed(1)+' ô sáng/ván · phí '+(S.rtp.phi*100)+'%';
-  const box=document.getElementById('stxTran');
-  if(box&&!box.dataset.xong){box.dataset.xong='1';
-    box.innerHTML=Object.keys(S.tran||{}).map(k=>'<div style="flex:1;min-width:150px"><label style="font-size:11px">'+esc(k)+'</label><input data-stxtran="'+k+'" type="number" min="1000" placeholder="'+S.tran[k]+'" oninput="txDirty(this)"></div>').join('');}
+  // trần cược: dựng 1 lần với NHÃN TIẾNG VIỆT máy bàn gửi, sau đó chỉ đổ giá trị
+  // (ô đang gõ thì chừa ra) — đúng cách khối trần của bàn thường đang làm.
+  const box=document.getElementById('stxTran'), TEN=S.tenNhom||{};
+  if(box&&!box.dataset.xong&&S.tran){box.dataset.xong='1';
+    box.innerHTML=Object.keys(S.tran).map(k=>'<div style="flex:1 1 180px"><label>'+esc(TEN[k]||k)+'</label><input data-stxtran="'+k+'" type="number" min="1000" oninput="txDirty(this)"></div>').join('');}
+  document.querySelectorAll('[data-stxtran]').forEach(el=>{if(el.dataset.dirty!=='1'&&document.activeElement!==el)el.value=S.tran[el.dataset.stxtran];});
+  const tn=document.getElementById('stxTranNow');
+  if(tn&&S.thangToiDa)tn.innerHTML='Thắng tối đa mỗi cửa theo trần đang đặt: '+
+    Object.keys(S.tran||{}).map(k=>'<b>'+esc((TEN[k]||k).split(' · ')[0].replace(/ \\(.*$/,''))+'</b> '+(S.thangToiDa[k]||0).toLocaleString('vi-VN')).join(' · ')+
+    '. Cửa trả càng cao trần càng thấp — sửa một ô là cả nhóm nhảy theo.';
   const tt=document.getElementById('stxThang');
   if(tt&&S.thang&&tt.dataset.dirty!=='1'&&tt.value===''&&document.activeElement!==tt)
     tt.value=Object.keys(S.thang).map(k=>k+': '+S.thang[k].map(b=>b[0]+'×'+b[1]).join(', ')).join('\\n');
@@ -2625,7 +2634,7 @@ function stxSaveAn(){
 }
 function stxSaveTran(){
   const t={};document.querySelectorAll('[data-stxtran]').forEach(el=>{const v=parseInt(el.value);if(v>0)t[el.dataset.stxtran]=v;});
-  api('/api/stx/tran',{tran:t}).then(j=>{document.querySelectorAll('[data-stxtran]').forEach(el=>{el.dataset.dirty='';el.value='';});toast('🧱 Đã lưu trần Siêu');refresh();}).catch(e=>toast('❌ '+e.message));
+  api('/api/stx/tran',{tran:t}).then(j=>{document.querySelectorAll('[data-stxtran]').forEach(el=>{el.dataset.dirty='';});toast('🧱 Đã lưu trần Siêu');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function stxSaveThang(){
   let bang;try{bang=txDocThangO('stxThang');}catch(e){return toast('❌ '+e.message);}

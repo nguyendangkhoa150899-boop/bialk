@@ -106,6 +106,11 @@ Panel SUPER, tab **⚡ Siêu Tài Xỉu**: bật/tắt bàn · 3 mốc giờ · 
 mỗi người mỗi ván · **nhà cái ăn %** · thang hệ số nhân · ép kết quả.
 Mọi route `/api/stx/*` nằm trong `VIEWONLY_PATHS` (cổng thường không chỉnh được).
 
+Khối **trần cược** vẽ y bàn thường: nhãn tiếng Việt lấy từ `tenNhom` máy bàn gửi (panel
+KHÔNG tự bịa tên), đổ sẵn giá trị đang chạy, và dòng "Thắng tối đa mỗi cửa theo trần
+đang đặt" tính từ `thangToiDa`. Bản đầu để lộ tên khoá thô `deu/vua/cao` — chủ server
+kêu ngay là không thao tác được.
+
 Tab trên web chỉ hiện khi admin **bật bàn**.
 
 ## 7. Bộ kiểm

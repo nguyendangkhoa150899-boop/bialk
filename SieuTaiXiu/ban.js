@@ -510,6 +510,7 @@ function taoBan(ctx) {
             secsToBet: Math.max(0, S.targetTime - khoaSoS() - Math.floor(Date.now() / 1000)),
             time: { ...gio(), round: vanS(), kq: KQ_S },
             tran: tranCfg(), thangToiDa: thangToiDaNhom(tranCfg()),
+            tenNhom: Object.fromEntries(Object.keys(CUA.NHOM_TRAN).map(k => [k, CUA.NHOM_TRAN[k].ten])),
             maxBet: tranToiDaNguoi(),
             rtp: CUA.thongKe(), thang: CUA.thangHienTai(),
             betAgg: agg, tenCua: Object.fromEntries(CUA.DS.map(c => [c.id, c.ten])),
