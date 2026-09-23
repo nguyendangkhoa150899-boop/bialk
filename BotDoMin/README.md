@@ -102,8 +102,11 @@ Phiên nằm ở `db._webSessions` (`{token: {u, ts, lanCuoi}}`), sống qua res
   ghi mỗi nhịp là bẩn database vô ích).
 - Thu hồi bằng tay, thay cho kiểu đá-máy-cũ đã bỏ:
   `POST /api/logout` (máy này) · `POST /api/logout-khac` (mọi máy KHÁC, máy này ở lại) ·
-  `GET /api/thietbi` (đếm). Nút **🚪 Máy khác** nằm cạnh nút **Thoát**.
-  Mất điện thoại thì bấm một nút là xong, không cần đổi PIN.
+  `GET /api/thietbi` (đếm).
+  ⚠️ **Không có nút** cho `logout-khac` trên trang — chủ server bỏ 23/09 vì thấy thừa.
+  Đường vẫn sống và vẫn có bộ kiểm canh: mất máy đã lưu sẵn ID+PIN thì gọi thẳng
+  `POST /api/logout-khac` (kèm token của máy còn giữ) là cắt sạch máy kia, khỏi đổi PIN.
+  Muốn dựng lại nút thì chỉ là một dòng HTML + một hàm `thoatKhac()`.
 - Nút **Thoát** giờ gọi `/api/logout` để **thu hồi phiên ở máy chủ**; bản cũ chỉ xoá token
   trong máy nên phiên treo tới 30 ngày và vẫn chiếm một suất thiết bị.
 - ⚠️ Vẫn **KHÔNG gọi `saveDbNow()`** trong đường đăng nhập (ghi đồng bộ cả database, ai

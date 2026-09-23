@@ -1907,7 +1907,6 @@ const PAGE = [
     // 🧰 17/09: Rương Ích Kỷ - đứng ngay trước nút loa, đúng chỗ chủ server chỉ
     '<button id="ikBtn" title="Rương Ích Kỷ - 00:00 là xoá sạch" onclick="ikOpen()">🧰<span class="n" id="ikNum">0</span></button>',
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
-    '<button style="background:#232735;font-size:12px" title="Đăng xuất MỌI máy khác đang dùng ví này (máy này vẫn ở lại)" onclick="thoatKhac()">🚪 Máy khác</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
 
     // 🔗 17/09: chưa được admin liên kết thì báo ngay, khỏi bấm rồi mới biết.
@@ -2698,9 +2697,6 @@ const PAGE = [
     'var vuaThoat=nhoLay(NHO_THOAT);nhoDat(NHO_THOAT,"");',
     'if(!vuaThoat&&u&&p&&ag&&nhoLay(NHO_OK)==="1"){ag.checked=true;agreeChg();login();return}',
     'if(ip&&!p)try{ip.focus()}catch(e){}}',
-    'function thoatKhac(){api("/api/logout-khac",{}).then(function(j){',
-    'toast(j.so?("🚪 Đã đăng xuất "+j.so+" máy khác - máy này vẫn ở lại"):"Chỉ có mỗi máy này đang đăng nhập")})',
-    '.catch(function(e){toast("❌ "+((e&&e.message)||"lỗi"))})}',
     'function login(){var c=document.getElementById("agree");if(c&&!c.checked)return loginErr("⚠️ Phải tick đồng ý điều khoản trước đã");',
     'var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return loginErr("⚠️ Nhập đủ Discord ID + mã PIN");',
     'var b=document.getElementById("loginBtn");if(b.disabled&&b._busy)return;var ot=b.textContent;b._busy=true;b.disabled=true;b.textContent="⏳ Đang kiểm tra...";loginErr("");',

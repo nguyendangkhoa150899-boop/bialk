@@ -698,7 +698,10 @@ ok('có sẵn ID+PIN thì đổ vào 2 ô rồi vào thẳng; thiếu PIN thì n
     SRC.includes("'if(ip&&!p)try{ip.focus()}catch(e){}}',"));
 ok('lưu thì lưu CẢ BỘ, bỏ thì xoá CẢ BỘ (không để sót PIN mồ côi)',
     SRC.includes("'nhoDat(NHO_U,nho?u:\"\");nhoDat(NHO_P,nho?p:\"\");nhoDat(NHO_OK,nho?\"1\":\"\");',"));
-ok('nút đăng xuất máy khác vẫn còn', SRC.includes('function thoatKhac()'));
+// Chủ server bỏ nút 🚪 Máy khác khỏi thanh (23/09). Đường máy chủ thì GIỮ — mất máy đã
+// lưu sẵn ID+PIN thì đó là cách duy nhất cắt, khỏi phải đổi PIN.
+ok('nút 🚪 Máy khác đã gỡ khỏi thanh', !SRC.includes('thoatKhac'));
+ok('nhưng đường /api/logout-khac vẫn còn ở máy chủ', SRC.includes("path === '/api/logout-khac'"));
 ok('mọi lần đụng localStorage đều bọc try/catch (ẩn danh / chặn cookie là ném lỗi)',
     SRC.includes("function nhoLay(k){try{return localStorage.getItem(k)||\"\"}catch(e){return \"\"}}") &&
     SRC.includes("function nhoDat(k,v){try{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k)}catch(e){}}"));
