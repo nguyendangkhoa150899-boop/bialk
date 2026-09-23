@@ -267,7 +267,7 @@ function startPanel(ctx) {
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
                     '/api/pal/order-done', '/api/pal/set-name', '/api/gacha/channel', '/api/palwheel/cfg', '/api/itemcats/save',
                     '/api/itemshop/save', '/api/itemshop/upload', '/api/itemshop/daymax', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
-                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/txpot/cfg', '/api/gift/save', '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
+                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/gift/save', '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
@@ -676,19 +676,6 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, r);
                 }
                 // 🎯 14/09: đặt THẲNG số tiền trong hũ (khác /api/pot/add là cộng thêm)
-                if (path === '/api/pot/set') {
-                    if (!ctx.setPot) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    const r = ctx.setPot(String(body.key || ''), body.amount);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, r);
-                }
-                // 🌪️ 14/09: hũ Bão Tài Xỉu - % nuôi mỗi ván + bội số bú hũ (SUPER)
-                if (path === '/api/txpot/cfg') {
-                    if (!ctx.setTxPotCfg) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
-                    const r = ctx.setTxPotCfg({ rate: body.rate, x: body.x });
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, r);
-                }
                 // ---- BẢNG MỜI CHƠI DÒ MÌN (không có ván chung, chỉ nút vào web) ----
                 if (path === '/api/mines/board/start') {
                     const channelId = String(body.channelId || '').trim();
@@ -1156,8 +1143,9 @@ const HTML = `<!DOCTYPE html>
   input,select,button{font-family:inherit;font-size:15px}
   input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--txt);margin-top:6px}
   button{cursor:pointer;border:0;border-radius:8px;padding:10px 14px;font-weight:600;color:#fff;background:#3a4155}
-  .btn-green{background:var(--green)} .btn-red{background:var(--red)} .btn-blue{background:var(--blue)}
-  .btn-grey{background:#4e5058} .btn-yellow{background:var(--yellow);color:#000}
+  /* CHỈ 3 MÀU NÚT (23/09). Thêm màu thứ 4 là panel loạn lại — đừng dựng lại btn-blue/btn-yellow.
+     xanh lá = lưu / thêm / bật · đỏ = xoá / tắt / ép (việc nguy hiểm) · xám = phụ trợ */
+  .btn-green{background:var(--green)} .btn-red{background:var(--red)} .btn-grey{background:#4e5058}
   button:active{transform:translateY(1px)}
   /* layout */
   header{background:var(--card);padding:14px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
@@ -1177,9 +1165,20 @@ const HTML = `<!DOCTYPE html>
   .skpct{padding:6px 12px;border-radius:8px;background:#232735;font-size:12.5px}
   .skrow2:last-child{border-bottom:0}
   .skrow2 b{font-variant-numeric:tabular-nums}
-  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  /* THANH CHỌN gom nhóm 23/09: mỗi nhóm một hàng, nhãn nhóm nằm bên trái.
+     Vẫn MỘT cú bấm tới mọi tab — nhóm chỉ để mắt quét cho nhanh, không phải menu 2 tầng. */
+  .tabs{margin-bottom:16px}
+  .grp{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+  .grp .glb{flex:0 0 92px;padding-top:13px;text-align:right;font-size:11px;font-weight:800;
+            color:var(--mut);letter-spacing:.6px;white-space:nowrap}
+  .grp .gbt{flex:1;min-width:0;display:flex;gap:6px;flex-wrap:wrap}
   .tabs button{background:var(--card);color:var(--mut)}
   .tabs button.active{background:var(--blue);color:#fff}
+  /* màn hẹp: nhãn nhóm xuống dòng riêng cho khỏi bóp mất chỗ của nút */
+  @media(max-width:820px){
+    .grp{display:block;margin-bottom:12px}
+    .grp .glb{display:block;flex:none;text-align:left;padding:0 0 5px}
+  }
   .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:16px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
   .row>div{flex:1;min-width:90px}
@@ -1200,6 +1199,38 @@ const HTML = `<!DOCTYPE html>
   td .mini{padding:6px 8px;font-size:13px}
   .mini-in{width:110px;padding:6px 8px;margin:0}
   .note{font-size:13px;color:var(--mut);background:var(--card2);padding:10px 12px;border-radius:8px;margin-top:10px;line-height:1.5}
+  /* ===== BỘ KHUNG CHUNG CHO CẢ PANEL (23/09) =====
+     Trước đây mỗi tab tự bịa cỡ chữ + khoảng cách nên nhìn như mấy phần mềm khác nhau.
+     Khoảng cách chỉ 3 mức: 8 (trong khối) · 14 (giữa phần) · 22 (giữa khối).
+     ⚠️ Thêm khối cài đặt mới thì DÙNG LẠI mấy lớp này, đừng dán style vào thẻ. */
+  h2{margin:0 0 4px;font-size:19px}
+  .sub{font-size:13px;font-weight:400;color:var(--mut)}
+  /* 37 thẻ h3 trước đây ăn cỡ mặc định của trình duyệt (to đùng, thưa, lệch nhau) */
+  h3{margin:0 0 8px;font-size:14.5px;font-weight:700;color:var(--txt);letter-spacing:.2px}
+  /* mỗi KHỐI cách nhau 22px + một vạch mảnh; khối đầu trong thẻ không có vạch */
+  .blk{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+  .blk:first-of-type{margin-top:0;padding-top:0;border-top:0}
+  /* một ô cài đặt: tự co, nhưng không bóp hẹp tới mức đọc không ra nhãn */
+  .fld{flex:1 1 180px;min-width:0}
+  /* dòng "đang chạy" — MỌI khối dùng đúng kiểu này, đúng chỗ này (ngay trên hàng nút) */
+  .stat{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.5}
+  .stat b{color:var(--txt);font-weight:700}
+  .stat:empty{display:none}
+  /* hàng nút cuối khối: nút chính bên trái, nút phụ bên phải */
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .acts button{flex:0 0 auto}
+  .acts .wide{flex:1 1 auto}
+  /* công tắc bật/tắt - một dải bấm được cả hàng, không phải ô vuông tí xíu */
+  .sw{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;
+      background:var(--card2);border:1px solid var(--line);cursor:pointer;user-select:none}
+  .sw input{flex:0 0 auto;width:18px;height:18px;margin:0;accent-color:var(--green);cursor:pointer}
+  .note{margin-top:8px}
+  .quick{margin-top:8px}
+  .quick button{background:#4e5058;font-size:13px;padding:8px 12px}
+  .preview{margin-top:8px}
+  textarea{width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px;
+           padding:10px 12px;border-radius:8px;border:1px solid var(--line);
+           background:var(--card2);color:var(--txt);margin-top:6px}
   /* 08/09: toast XẾP CHỒNG (nhiều tin cùng lúc không đè nhau), hiện lâu theo độ dài chữ,
      lỗi viền đỏ + ở lâu hơn, thành công viền xanh, bấm vào là tắt. Trước đây 1 ô duy nhất
      1.8s là biến - admin phải F12 mới đọc kịp kết quả giao đồ. */
@@ -1252,7 +1283,7 @@ const HTML = `<!DOCTYPE html>
     <h2>🔐 Đăng nhập</h2>
     <label>Mật khẩu quản trị</label>
     <input id="pw" type="password" placeholder="••••••••" autocomplete="current-password">
-    <button class="btn-blue" style="width:100%;margin-top:14px" onclick="login()">Vào</button>
+    <button class="btn-green" style="width:100%;margin-top:14px" onclick="login()">Vào</button>
     <div id="loginErr" class="muted" style="margin-top:10px;color:var(--red)"></div>
   </div>
 </div>
@@ -1269,22 +1300,31 @@ const HTML = `<!DOCTYPE html>
 
   <div class="wrap">
     <div class="tabs">
-      <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
-      <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
-      <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
-      <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
-      <button data-tab="stock" onclick="tab('stock')">📈 Cổ phiếu</button>
-      <button data-tab="spm" onclick="tab('spm')">🚀 Phi Thuyền</button>
-      <!-- TẠM TẮT (bot không chạy 2 game này nữa, bỏ comment là hiện lại):
-      -->
-      <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-      <button data-tab="pal" onclick="tab('pal')">🎮 Palworld & Dogcoin<span id="wdBadge" class="hidden"></span></button>
-      <button data-tab="log" onclick="tab('log')">📜 Log</button>
-      <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
-      <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
-      <button data-tab="stx" class="epOnly" style="display:none" onclick="tab('stx')">⚡ Siêu Tài Xỉu</button>
-      <button data-tab="poker" class="epOnly" style="display:none" onclick="tab('poker')">🃏 Poker</button>
-      <button data-tab="tienlen" class="epOnly" style="display:none" onclick="tab('tienlen')">🀄 Tiến Lên</button>
+      <!-- Xếp theo NHÓM VIỆC. Hai bàn Sic Bo đứng cạnh nhau (trước Siêu bị đẩy xuống
+           cuối chỉ vì là tab SUPER). Nhóm nào cũng có ít nhất 1 nút luôn hiện, nên
+           cổng thường không bao giờ thấy hàng trống. -->
+      <div class="grp"><span class="glb">TRÒ CHƠI</span><div class="gbt">
+        <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
+        <button data-tab="stx" class="epOnly" style="display:none" onclick="tab('stx')">⚡ Siêu Tài Xỉu</button>
+        <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
+        <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
+        <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
+        <button data-tab="spm" onclick="tab('spm')">🚀 Phi Thuyền</button>
+        <button data-tab="stock" onclick="tab('stock')">📈 Cổ phiếu</button>
+        <button data-tab="poker" class="epOnly" style="display:none" onclick="tab('poker')">🃏 Poker</button>
+        <button data-tab="tienlen" class="epOnly" style="display:none" onclick="tab('tienlen')">🀄 Tiến Lên</button>
+      </div></div>
+      <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
+        <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
+        <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
+        <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
+      </div></div>
+      <div class="grp"><span class="glb">PALWORLD</span><div class="gbt">
+        <button data-tab="pal" onclick="tab('pal')">🎮 Palworld &amp; Dogcoin<span id="wdBadge" class="hidden"></span></button>
+      </div></div>
+      <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
+        <button data-tab="log" onclick="tab('log')">📜 Log</button>
+      </div></div>
     </div>
 
     <!-- BIG SMALL -->
@@ -1297,7 +1337,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><input id="txSaveId" placeholder="Channel ID"></div>
           <div style="flex:3"><input id="txSaveNote" placeholder="Ghi chú"></div>
-          <button class="btn-blue" onclick="saveChannel('tx')">💾 Lưu kênh</button>
+          <button class="btn-green" onclick="saveChannel('tx')">💾 Lưu kênh</button>
         </div>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="txStart()">▶️ Bật / Tạo bàn mới</button>
@@ -1305,30 +1345,30 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="chatDelete('txChannel',this)">🧹 Xóa chat bot</button>
         </div>
         <div class="note">Lấy Channel ID: bật <b>Developer Mode</b> (Cài đặt Discord → Advanced) → chuột phải kênh → <b>Copy Channel ID</b>. "Bật" sẽ tạo bàn mới ngay trong kênh đó.</div>
-        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="row blk">
           <div style="flex:1"><label>💰 Trần cược / người / ván (0 = không giới hạn)</label><input id="txMaxBet" type="number" min="0" placeholder="vd: 400000"></div>
-          <button class="btn-green" onclick="txSaveMaxBet()">💾 Lưu trần cược</button>
+          <button class="btn-green" onclick="txSaveMaxBet()">💾 Lưu trần mỗi người</button>
         </div>
-        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="row blk">
           <div style="flex:1"><label>⏱️ Giây ĐẶT CƯỢC (5 - 600)</label><input id="txBetS" type="number" min="5" max="600" placeholder="vd: 35" oninput="txDirty(this)"></div>
           <div style="flex:1"><label>⚡ Giây HIỆN NHÂN (0 - 60)</label><input id="txNhanS" type="number" min="0" max="60" placeholder="vd: 4" oninput="txDirty(this)"></div>
           <div style="flex:1"><label>⏱️ Giây NẶN (6 - 300)</label><input id="txNanS" type="number" min="6" max="300" placeholder="vd: 20" oninput="txDirty(this)"></div>
           <button class="btn-green" onclick="txSaveTime()">💾 Lưu nhịp ván</button>
         </div>
         <div class="note" id="txTimeNow">Một ván = giây đặt cược + giây nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.</div>
-        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="row blk">
           <div style="flex:1"><label>🔔 ID Discord nhận báo cược</label><input id="txNotiId" type="text" placeholder="ID người hoặc ID kênh" oninput="txDirty(this)"></div>
           <div style="flex:1"><label>Chỉ báo từ mức (0 = báo hết)</label><input id="txNotiMin" type="number" min="0" placeholder="vd: 5000" oninput="txDirty(this)"></div>
           <label style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input id="txNotiOn" type="checkbox" onchange="txDirty(this)"> Bật báo</label>
           <button class="btn-green" onclick="txSaveNoti()">💾 Lưu</button>
           <button class="btn-grey" onclick="txTestNoti()">📨 Gửi thử</button>
         </div>
-        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
-          <div style="flex:1"><label>🎲 TRẦN CƯỢC TỪNG CỬA (bàn Sic Bo 52 cửa)</label></div>
+        <div class="blk">
+          <h3>🎲 Trần cược từng cửa (bàn Sic Bo 52 cửa)</h3>
+          <div class="row" id="txTranHang" style="flex-wrap:wrap;gap:8px"></div>
+          <div class="note" id="txTranNow">Cửa trả càng cao thì trần càng thấp — cửa Bão trả tới 999:1 nên chỉ cho đặt 5.000/ván, không thì một ván xui mất gần 400 triệu. Các cửa cùng mức gom chung một ô: sửa một ô là cả nhóm nhảy theo.</div>
+          <div class="acts"><button class="btn-green" onclick="txSaveTran()">💾 Lưu trần từng cửa</button></div>
         </div>
-        <div class="row" id="txTranHang" style="flex-wrap:wrap;gap:8px"></div>
-        <div class="note" id="txTranNow">Cửa trả càng cao thì trần càng thấp — cửa Bão trả tới 999:1 nên chỉ cho đặt 5.000/ván, không thì một ván xui mất gần 400 triệu. Các cửa cùng mức gom chung một ô: sửa một ô là cả nhóm nhảy theo.</div>
-        <div class="row" style="margin-top:8px"><button class="btn-green" onclick="txSaveTran()">💾 Lưu trần cược</button></div>
         <div class="row" style="margin-top:14px;align-items:flex-end">
           <div style="flex:1"><label>🎯 RTP - phần trăm trả lại người chơi (80 - 99)</label>
             <input id="txRTP" type="number" min="80" max="99" step="0.5" placeholder="vd: 95" oninput="txDirty(this)"></div>
@@ -1336,7 +1376,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note" id="txRTPNote"></div>
         <div class="note">Hạ RTP = <b>ít ô được bốc hệ số nhân hơn</b>, nhà cái ăn dày hơn. Máy tự tính lại tần suất sáng đèn cho cả 48 cửa, KHÔNG đụng vào bảng trả gốc in trên bàn. Ván đang chạy đã bốc bảng nhân từ lúc khoá sổ nên không đổi giữa chừng.</div>
-        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="blk">
           <label>🎰 Thang hệ số nhân — mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code></label>
           <textarea id="txThang" rows="13" spellcheck="false" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px" oninput="txDirty(this)"></textarea>
           <div class="row" style="margin-top:8px">
@@ -1353,11 +1393,12 @@ const HTML = `<!DOCTYPE html>
         <h2>🎲 Big Small</h2>
         <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
         <div class="epOnly" style="display:none">
-        <div id="txBetsLive" style="margin-bottom:10px"></div>
-        <div class="row">
-          <div><label>Xúc xắc 1</label><select id="d1"></select></div>
-          <div><label>Xúc xắc 2</label><select id="d2"></select></div>
-          <div><label>Xúc xắc 3</label><select id="d3"></select></div>
+        <h3>🎲 Ép kết quả ván tới</h3>
+        <div class="note" id="txBetsLive"></div>
+        <div class="row" style="margin-top:14px">
+          <div class="fld" style="max-width:110px"><label>Xúc xắc 1</label><select id="d1"></select></div>
+          <div class="fld" style="max-width:110px"><label>Xúc xắc 2</label><select id="d2"></select></div>
+          <div class="fld" style="max-width:110px"><label>Xúc xắc 3</label><select id="d3"></select></div>
         </div>
         <div class="preview" id="txPrev"></div>
         <div class="quick">
@@ -1365,13 +1406,11 @@ const HTML = `<!DOCTYPE html>
           <button onclick="setDice(6,5,4)">Tài + Lẻ (15)</button>
           <button onclick="setDice(1,2,3)">Xỉu + Chẵn (6)</button>
           <button onclick="setDice(1,2,2)">Xỉu + Lẻ (5)</button>
+          <button onclick="txAutoForce()">🎯 Cho nhà cái ăn nhiều nhất</button>
         </div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn-yellow" style="flex:1" onclick="txAutoForce()">🎯 Chọn xúc xắc cho nhà cái ĂN NHIỀU NHẤT</button>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn-green" style="flex:2" onclick="txForce()">⚡ Ép kết quả ván tới</button>
-          <button class="btn-grey" onclick="api('/api/tx/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">Hủy ép</button>
+        <div class="acts">
+          <button class="btn-red wide" onclick="txForce()">⚡ Ép kết quả ván tới</button>
+          <button class="btn-grey" onclick="api('/api/tx/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">↩️ Huỷ ép</button>
         </div>
         <div class="note">Ép cứng 100% cho <b>lần khóa sổ kế tiếp</b>. ⚠️ Chỉ ăn nếu ép <b>lúc còn MỞ CƯỢC</b> (xem đồng hồ ở khung cược trên); khóa sổ rồi mới ép thì trôi sang ván sau. Nút 🎯 tự tính 3 xúc xắc khiến cửa đang gánh nhiều tiền nhất bị thua.</div>
         </div>
@@ -1382,8 +1421,8 @@ const HTML = `<!DOCTYPE html>
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
       <div class="card">
-        <h3>🏆 Hũ nuôi - mỗi trò một hũ riêng</h3>
-        <div class="muted" id="potInfo" style="font-size:13px;margin-bottom:8px"></div>
+        <h3>🏆 Bội số nổ hũ 🍀 (Dò Mìn · Leo Thang)</h3>
+        <div class="stat" id="potInfo"></div>
         <div id="potRows"></div>
         <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới. <b>Quay Pal (15/09) cũng KHÔNG còn hũ nuôi</b>: quay trúng đích danh <b>Mimog (#144)</b> là ăn giải cố định 25.000 + thưởng 10.000 = 35.000, nhà cái trả thẳng (2 ô Mimog trên vòng).</div>
       </div>
@@ -1575,7 +1614,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note" id="skWaveNow" style="margin-top:4px"></div>
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
-          <button id="skOpenBtn" onclick="skToggle()">⏸ Tạm đóng sàn</button>
+          <button id="skOpenBtn" class="btn-red" onclick="skToggle()">⏸ Tạm đóng sàn</button>
         </div>
         <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền - mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn. ⚠️ Tăng sức nặng thì hạ chênh mua–bán theo (mặc định 0,1%/chiều). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>. <b>Chôn vốn</b>: vào lệnh phải giữ đủ giây mới đóng được, 0 là tắt. Sàn đóng <b>vẫn cho đóng lệnh</b>, chỉ chặn mở mới.</div>
       </div>
@@ -1599,7 +1638,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:12px"><button class="btn-green" onclick="spSave()">💾 Lưu cấu hình</button></div>
         <div class="note" id="spNow">-</div>
-        <div id="spSuper" class="epOnly" style="display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+        <div id="spSuper" class="epOnly blk" style="display:none">
           <div class="note">⚡ <b>NHÀ CÁI CAN THIỆP</b> - ép điểm nổ chuyến TỚI (chuyến đang bay không đổi được). Nhập x thấp (vd 1.10) để bào cả sàn, hoặc cao để thả cho ăn. Chỉ hiện ở cổng SUPER.</div>
           <div id="spLive" style="font-size:13px;margin:6px 0">-</div>
           <div class="row"><input id="spForce" type="number" step="0.1" min="1" placeholder="vd 1.10 (nổ sớm)" style="flex:2"><button class="btn-red" onclick="spForceCrash()">⚡ Ép điểm nổ</button></div>
@@ -1646,7 +1685,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Nút 🆘 trên Hồ sơ web dịch chuyển người chơi về điểm này (1 tiếng/lần). <b>Chưa đặt = game tự chọn PlayerStart - đo ra đang rơi ở World Tree!</b> Cách đặt: đứng nhân vật của bạn ở chỗ muốn làm điểm về (vd bãi tân thủ), gõ tên nhân vật, bấm 📍 rồi 💾 Lưu. Đổi điểm KHÔNG cần restart gì.</div>
         <div class="row" style="gap:6px">
           <input id="rpName" placeholder="tên nhân vật ĐANG online" style="flex:2">
-          <button onclick="rpGrab()" style="flex:1">📍 Lấy toạ độ người này</button>
+          <button class="btn-grey" onclick="rpGrab()" style="flex:1">📍 Lấy toạ độ người này</button>
         </div>
         <div class="row" style="gap:6px;margin-top:8px">
           <input id="rpX" type="number" placeholder="X" style="flex:1">
@@ -1655,7 +1694,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:10px">
           <button class="btn-green" onclick="rpSave()">💾 Lưu điểm</button>
-          <button onclick="rpTest()">🧪 Thử dịch chuyển ngay</button>
+          <button class="btn-grey" onclick="rpTest()">🧪 Thử dịch chuyển ngay</button>
           <button class="btn-red" onclick="rpClear()">🗑️ Về mặc định</button>
         </div>
         <div class="note" id="rpNow">-</div>
@@ -1677,7 +1716,7 @@ const HTML = `<!DOCTYPE html>
         <label>Code hoặc tên pal (mặc định Mimog = ô nổ hũ)</label>
         <input id="pwForceCode" placeholder="MimicDog" value="MimicDog">
         <div class="row" style="margin-top:12px">
-          <button class="btn-yellow" onclick="pwForce()">⚡ Ép lượt kế tiếp</button>
+          <button class="btn-red" onclick="pwForce()">⚡ Ép lượt kế tiếp</button>
           <button class="btn-grey" onclick="pwForceClear()">Hủy ép</button>
         </div>
         <div class="note">Chỉ SUPER. Lượt quay ngẫu nhiên <b>kế tiếp của BẤT KỲ ai</b> sẽ ra đúng con này, dùng <b>1 lần</b> rồi tự hủy; restart bot cũng hết. Ra Mimog thì trả nổ hũ thật (25.000 + 10.000) và đăng kênh khoe như thật - <b>thử xong nhớ Hủy ép nếu chưa ai quay</b>. 🎯 Chọn Pal mua đích danh không bị ảnh hưởng.</div>
@@ -1757,7 +1796,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> 👑 Mở bán bản PAL BOSS (mặc định giao bản thường, chọn BOSS trả thêm giá ở ô 👑)</label>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
-          <button onclick="pwCfgSave()">💾 Lưu</button>
+          <button class="btn-green" onclick="pwCfgSave()">💾 Lưu vòng quay</button>
           <span class="muted" style="font-size:12px">(chế độ 🔒 PAL GỐC có card riêng bên dưới)</span>
         </div>
         <div class="note" id="pwCfgNow">-</div>
@@ -1790,7 +1829,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:8px">
           <button class="btn-grey" onclick="pgPickLoad(true)">🔄 Cập nhật ai đang online</button>
-          <button onclick="pgGrant()">🎁 Tặng vào rương</button>
+          <button class="btn-green" onclick="pgGrant()">🎁 Tặng vào rương</button>
         </div>
         <div class="note">Người nhận chỉ hiện <b>người đã liên kết tên game</b>: 🟢 đang trong game · ⚪ offline · ❔ không hỏi được dashboard. Pal chọn từ danh sách thật (🔥 = boss raid), gửi theo <b>code</b> nên không còn tặng nhầm con vì gõ sai tên. Danh sách online lấy lúc mở panel, bấm 🔄 để hỏi lại.</div>
         <div class="row" style="margin-top:10px">
@@ -1816,7 +1855,7 @@ const HTML = `<!DOCTYPE html>
           <span>📅 Giới hạn mua <b>mỗi món / ngày</b>:</span>
           <input class="mini-in" id="isDayMax" type="number" min="0" max="100000" placeholder="99" style="width:90px">
           <select class="mini-in" id="isDayMode" style="width:auto"><option value="server">🌐 gộp CẢ SERVER</option><option value="user">👤 mỗi người riêng</option></select>
-          <button class="btn-green mini" onclick="isDayMaxSave(this)">💾 Lưu</button>
+          <button class="btn-green mini" onclick="isDayMaxSave(this)">💾 Lưu hạn mua</button>
           <span class="muted" style="font-size:12px">áp cho TẤT CẢ món · 0 = không giới hạn · đếm lại 00:00 giờ VN · "cả server" = ai mua trước được trước</span>
         </div>
         <div class="row" style="margin-top:6px;align-items:center;gap:8px">
@@ -1850,7 +1889,7 @@ const HTML = `<!DOCTYPE html>
           </table>
         </div>
         <div class="row" style="margin-top:10px">
-          <button class="btn-blue" onclick="itemShopAddRow();itemShopDirty(true)">➕ Thêm món</button>
+          <button class="btn-green" onclick="itemShopAddRow();itemShopDirty(true)">➕ Thêm món</button>
           <button class="btn-green" id="itemShopSaveBtn" onclick="itemShopSave()">💾 Lưu shop</button>
         </div>
       </div>
@@ -1863,7 +1902,7 @@ const HTML = `<!DOCTYPE html>
         <h2>🎁 Quà admin tặng <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
         <div class="note">Danh sách <b>riêng</b>, không dính shop item - nên cùng một StaticItemId vừa bán ở shop vừa làm quà cũng không lẫn nhau nữa. Mỗi người <b>mỗi ngày nhận 1 lần</b> một quà (qua 00:00 nhận lại), số cái mỗi lần ở cột <b>Số cái/lần</b>. Bỏ tick <b>Phát</b> là quà biến mất với mọi người (dòng vẫn giữ). Người chơi nhận ở web: tab vàng <b>🎁 Quà</b> trong Hồ sơ, chỉ hiện khi còn quà chưa nhận hôm nay. Phải <b>online trong game</b> mới nhận được. Không dính tiền, không dính hạn ngày hay nợ.</div>
         <div class="row" style="margin-top:8px;gap:8px">
-          <button class="btn-blue" onclick="giftAddRow();giftDirty(true)">➕ Thêm quà</button>
+          <button class="btn-green" onclick="giftAddRow();giftDirty(true)">➕ Thêm quà</button>
           <button class="btn-green" id="giftSaveBtn" onclick="giftSave()">💾 Lưu quà</button>
           <span class="muted" id="giftN" style="font-size:12px"></span>
         </div>
@@ -1897,97 +1936,120 @@ const HTML = `<!DOCTYPE html>
 
     <!-- 🃏 POKER (chỉ SUPER): toàn bộ thao tác giải nằm đây - trang người chơi không có nút admin.
          Chip trong giải là chip ảo, không đụng ví. Trang chơi nhúng ở /poker/ cùng cổng web. -->
+    <!-- ⚡ TAB MẪU giao diện 23/09. Xếp theo VIỆC HAY LÀM: công tắc + 2 ô ép nằm trên
+         (ngày nào cũng đụng), cài đặt bàn nằm dưới (chỉnh một lần rồi thôi). -->
     <div id="tab-stx" class="hidden">
+
       <div class="card">
-        <h2>⚡ Siêu Tài Xỉu <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · PHÍ 20% · Tài/Xỉu cũng được nhân tới 14:1)</span></h2>
-        <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap">
-          <label style="display:inline-flex;align-items:center;gap:7px;line-height:1"><input id="stxOn" type="checkbox" style="margin:0" onchange="stxBat(this.checked)"> <b>BẬT bàn Siêu Tài Xỉu</b></label>
-          <span class="muted" id="stxNow" style="font-size:12px"></span>
+        <h2>⚡ Siêu Tài Xỉu</h2>
+        <div class="sub">Chỉ cổng SUPER · phí 20% trên tiền cược · Tài/Xỉu/Chẵn/Lẻ cũng được nhân tới 14:1</div>
+        <div class="acts">
+          <label class="sw wide"><input id="stxOn" type="checkbox" onchange="stxBat(this.checked)"><b>BẬT bàn Siêu Tài Xỉu</b></label>
         </div>
-        <div class="row" style="margin-top:12px;align-items:flex-end">
-          <div style="flex:1"><label>⏱️ Giây ĐẶT CƯỢC (5 - 600)</label><input id="stxBetS" type="number" min="5" max="600" placeholder="vd: 30" oninput="txDirty(this)"></div>
-          <div style="flex:1"><label>⚡ Giây HIỆN NHÂN (0 - 60)</label><input id="stxNhanS" type="number" min="0" max="60" placeholder="vd: 4" oninput="txDirty(this)"></div>
-          <div style="flex:1"><label>⏱️ Giây NẶN (6 - 300)</label><input id="stxNanS" type="number" min="6" max="300" placeholder="vd: 20" oninput="txDirty(this)"></div>
-          <div style="flex:0 0 auto"><button class="btn-green" onclick="stxSaveTime()">💾 Lưu nhịp</button></div>
-        </div>
+        <div class="stat" id="stxNow"></div>
+        <div class="note" id="stxLive"></div>
+      </div>
 
-        <div class="row" style="margin-top:12px;align-items:flex-end">
-          <div style="flex:1"><label>🎯 Nhà cái ăn bao nhiêu % (2 - 30)</label><input id="stxAn" type="number" min="2" max="30" step="0.5" placeholder="vd: 10" oninput="txDirty(this)"></div>
-          <div style="flex:1"><label>💰 Trần cược mỗi người mỗi ván (0 = không giới hạn)</label><input id="stxMax" type="number" min="0" placeholder="vd: 300000" oninput="txDirty(this)"></div>
-          <div style="flex:0 0 auto"><button class="btn-green" onclick="stxSaveAn()">💾 Lưu</button></div>
-        </div>
-        <div class="note" id="stxAnNote"></div>
-        <div class="note">Bàn này thu <b>PHÍ 20%</b> trên tiền cược — đó là nguồn thu duy nhất. Bảng trả cố tình vượt 100% (nhà cái lỗ trên bàn rồi lấy lại bằng phí). Hạ "nhà cái ăn" thì bảng trả rộng ra, ít ô sáng hơn.</div>
-
-        <div style="margin-top:12px"><label>🧱 TRẦN CƯỢC TỪNG CỬA (bàn Siêu, trả cao gấp mấy lần nên trần thấp hơn hẳn)</label>
-          <div id="stxTran" class="row" style="flex-wrap:wrap;gap:8px"></div>
-          <div class="note" id="stxTranNow"></div>
-          <div class="row" style="margin-top:8px"><button class="btn-green" onclick="stxSaveTran()">💾 Lưu trần cược</button></div></div>
-
-        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-          <label>🎰 Thang hệ số nhân — mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code></label>
-          <textarea id="stxThang" rows="13" spellcheck="false" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px" oninput="txDirty(this)"></textarea>
-          <div class="row" style="margin-top:8px">
-            <button class="btn-green" onclick="stxSaveThang()">💾 Lưu thang</button>
-            <button class="btn-grey" onclick="stxThangMacDinh()">↩️ Về mặc định</button>
-          </div>
-        </div>
-
-        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-          <label>📋 Bảng kết quả trên Discord</label>
-          <div class="muted" id="stxBoardInfo" style="font-size:13px;margin-bottom:8px"></div>
+      <div class="card">
+        <div class="blk">
+          <h3>🎲 Ép kết quả ván sau</h3>
           <div class="row">
-            <input id="stxChannel" placeholder="Channel ID (dán chung kênh với bảng Tài Xỉu cũng được)" style="flex:1">
-            <button class="btn-green" onclick="stxBoardStart()">▶️ Đăng bảng</button>
-            <button class="btn-red" onclick="stxBoardStop()">⏹️ Gỡ bảng</button>
+            <div class="fld" style="max-width:110px"><label>Xúc xắc 1</label><input id="stxD1" type="number" min="1" max="6" value="1" oninput="stxPreview()"></div>
+            <div class="fld" style="max-width:110px"><label>Xúc xắc 2</label><input id="stxD2" type="number" min="1" max="6" value="2" oninput="stxPreview()"></div>
+            <div class="fld" style="max-width:110px"><label>Xúc xắc 3</label><input id="stxD3" type="number" min="1" max="6" value="3" oninput="stxPreview()"></div>
           </div>
-          <div class="note">Bảng này chỉ KHOE kết quả + rủ vào web, không đặt cược được từ Discord. Chung kênh với bảng Tài Xỉu thường thì hai bảng nằm cạnh nhau, chỉ nhảy xuống cuối khi có người nhắn đè.</div>
-        </div>
-
-        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-          <label>🎲 Ép kết quả ván sau</label>
-          <!-- 22/09: AI ĐANG ĐẶT GÌ nằm NGAY TRÊN bộ xúc xắc ép (chủ server: "kế nút ép kết quả cho dễ nhìn") -->
-          <div class="note" id="stxLive" style="margin:6px 0 10px"></div>
-          <div class="row"><input id="stxD1" type="number" min="1" max="6" value="1" style="width:70px" oninput="stxPreview()">
-            <input id="stxD2" type="number" min="1" max="6" value="2" style="width:70px" oninput="stxPreview()">
-            <input id="stxD3" type="number" min="1" max="6" value="3" style="width:70px" oninput="stxPreview()"></div>
           <div class="preview" id="stxPrev"></div>
           <div class="quick">
             <button onclick="stxSetDice(6,6,4)">Tài + Chẵn (16)</button>
             <button onclick="stxSetDice(6,5,4)">Tài + Lẻ (15)</button>
             <button onclick="stxSetDice(1,2,3)">Xỉu + Chẵn (6)</button>
             <button onclick="stxSetDice(1,2,2)">Xỉu + Lẻ (5)</button>
+            <button onclick="stxTuEp()">🎯 Cho nhà cái ăn nhiều nhất</button>
           </div>
-          <div class="row" style="margin-top:10px">
-            <button class="btn-yellow" style="flex:1" onclick="stxTuEp()">🎯 Chọn xúc xắc cho nhà cái ĂN NHIỀU NHẤT</button>
+          <div class="stat" id="stxEpNow"></div>
+          <div class="acts">
+            <button class="btn-red wide" onclick="stxEp()">⚡ Ép kết quả ván sau</button>
+            <button class="btn-grey" onclick="stxHuyEp()">↩️ Huỷ ép xúc xắc</button>
           </div>
-          <div class="row" style="margin-top:10px">
-            <button class="btn-red" style="flex:2" onclick="stxEp()">⚡ Ép kết quả ván sau</button>
-            <button class="btn-grey" style="flex:1" onclick="stxHuyEp()">↩️ Huỷ ép</button>
-          </div>
-          <div class="note" id="stxEpNow"></div>
         </div>
 
-        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-          <label>✋ Ép HỆ SỐ NHÂN — TÀI · XỈU · CHẴN · LẺ và 🌪️ BÃO (3 con giống nhau)</label>
-          <div class="note" style="margin-bottom:8px">Bấm lúc bàn <b>còn nhận cược</b> thì hệ số này hiện ra ngay ở <b>4 giây khoe hệ số nhân</b> của ván đang chạy. Bấm lúc đã khoá sổ thì phải chờ ván sau. <b>Dùng MỘT LẦN rồi tự xoá</b> — ép x14 mà để thường trực là nhà cái đổ tiền mỗi ván.<br>Mỗi ô: <b>để trống</b> = máy tự bốc · <b>0</b> = TẮT, ô không sáng · <b>số</b> = ép đúng hệ số đó.</div>
-          <div id="stxNhanO" class="row" style="flex-wrap:wrap;gap:10px"></div>
-          <div class="quick" style="margin-top:8px">
+        <div class="blk">
+          <h3>✋ Ép hệ số nhân — Tài · Xỉu · Chẵn · Lẻ và 🌪️ Bão</h3>
+          <div class="note">Bấm lúc bàn <b>còn nhận cược</b> thì hệ số hiện ngay ở 4 giây khoe nhân của ván đang chạy; bấm lúc đã khoá sổ thì chờ ván sau. <b>Dùng một lần rồi tự xoá</b> — để thường trực x14 là nhà cái đổ tiền mỗi ván.<br>Mỗi ô: <b>để trống</b> = máy tự bốc · <b>0</b> = tắt, ô không sáng · <b>số</b> = ép đúng hệ số đó.</div>
+          <div id="stxNhanO" class="row" style="margin-top:14px"></div>
+          <div class="quick">
             <button onclick="stxNhanDat(14)">Tất cả x14</button>
             <button onclick="stxNhanDat(8)">Tất cả x8</button>
             <button onclick="stxNhanDat(2)">Tất cả x2</button>
             <button onclick="stxNhanDat(0)">Tắt hết 4 ô</button>
-            <button onclick="stxNhanDatBao('max')">🌪️ Bão: tối đa</button>
-            <button onclick="stxNhanDatBao(0)">🌪️ Bão: tắt hết</button>
+            <button onclick="stxNhanDatBao('max')">🌪️ Bão tối đa</button>
+            <button onclick="stxNhanDatBao(0)">🌪️ Bão tắt hết</button>
             <button onclick="stxNhanDat('');stxNhanDatBao('')">Xoá ô nhập</button>
           </div>
-          <div class="row" style="margin-top:10px">
-            <button class="btn-red" style="flex:2" onclick="stxEpNhan()">✋ Ép hệ số nhân</button>
-            <button class="btn-grey" style="flex:1" onclick="stxHuyEpNhan()">↩️ Huỷ ép</button>
+          <div class="stat" id="stxNhanNow"></div>
+          <div class="acts">
+            <button class="btn-red wide" onclick="stxEpNhan()">✋ Ép hệ số nhân</button>
+            <button class="btn-grey" onclick="stxHuyEpNhan()">↩️ Huỷ ép hệ số</button>
           </div>
-          <div class="note" id="stxNhanNow"></div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="blk">
+          <h3>⏱️ Nhịp ván</h3>
+          <div class="row">
+            <div class="fld"><label>Giây ĐẶT CƯỢC (5 – 600)</label><input id="stxBetS" type="number" min="5" max="600" placeholder="vd: 30" oninput="txDirty(this)"></div>
+            <div class="fld"><label>Giây HIỆN NHÂN (0 – 60)</label><input id="stxNhanS" type="number" min="0" max="60" placeholder="vd: 4" oninput="txDirty(this)"></div>
+            <div class="fld"><label>Giây NẶN (6 – 300)</label><input id="stxNanS" type="number" min="6" max="300" placeholder="vd: 20" oninput="txDirty(this)"></div>
+          </div>
+          <div class="acts"><button class="btn-green" onclick="stxSaveTime()">💾 Lưu nhịp ván</button></div>
+        </div>
+
+        <div class="blk">
+          <h3>🎯 Nhà cái ăn & trần cược mỗi người</h3>
+          <div class="row">
+            <div class="fld"><label>Nhà cái ăn bao nhiêu % (2 – 30)</label><input id="stxAn" type="number" min="2" max="30" step="0.5" placeholder="vd: 8" oninput="txDirty(this)"></div>
+            <div class="fld"><label>Trần cược mỗi người mỗi ván (0 = không giới hạn)</label><input id="stxMax" type="number" min="0" placeholder="vd: 300000" oninput="txDirty(this)"></div>
+          </div>
+          <div class="stat" id="stxAnNote"></div>
+          <div class="note">Bàn này thu <b>phí 20%</b> trên tiền cược — đó là nguồn thu duy nhất, nên bảng trả cố tình vượt 100%. Hạ "nhà cái ăn" thì bảng trả rộng ra và ít ô sáng hơn.</div>
+          <div class="acts"><button class="btn-green" onclick="stxSaveAn()">💾 Lưu</button></div>
+        </div>
+
+        <div class="blk">
+          <h3>🧱 Trần cược từng cửa</h3>
+          <div class="note">Bàn Siêu trả cao gấp mấy lần bàn thường nên trần phải thấp hơn hẳn. Cửa trả càng cao trần càng thấp — sửa một ô là cả nhóm nhảy theo.</div>
+          <div id="stxTran" class="row" style="margin-top:14px"></div>
+          <div class="stat" id="stxTranNow"></div>
+          <div class="acts"><button class="btn-green" onclick="stxSaveTran()">💾 Lưu trần cược</button></div>
+        </div>
+
+        <div class="blk">
+          <h3>🎰 Thang hệ số nhân</h3>
+          <div class="note">Mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code> — số sau dấu × là "vé số", chỉ quyết định bậc nào hay ra, <b>không</b> đổi phần trăm nhà cái ăn.</div>
+          <textarea id="stxThang" rows="13" spellcheck="false" oninput="txDirty(this)"></textarea>
+          <div class="acts">
+            <button class="btn-green" onclick="stxSaveThang()">💾 Lưu thang</button>
+            <button class="btn-grey" onclick="stxThangMacDinh()">↩️ Về mặc định</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="blk">
+          <h3>📋 Bảng kết quả trên Discord</h3>
+          <div class="note">Bảng chỉ khoe kết quả và rủ vào web, <b>không đặt cược được từ Discord</b>. Dán chung kênh với bảng Tài Xỉu thường cũng được — hai bảng nằm cạnh nhau, chỉ nhảy xuống cuối khi có người nhắn đè.</div>
+          <div class="row" style="margin-top:14px">
+            <div class="fld"><label>Channel ID</label><input id="stxChannel" placeholder="vd: 1234567890123456789"></div>
+          </div>
+          <div class="stat" id="stxBoardInfo"></div>
+          <div class="acts">
+            <button class="btn-green" onclick="stxBoardStart()">▶️ Đăng bảng</button>
+            <button class="btn-red" onclick="stxBoardStop()">⏹️ Gỡ bảng</button>
+          </div>
+        </div>
+      </div>
+
     </div>
     <div id="tab-poker" class="hidden">
       <div class="card">
@@ -2008,7 +2070,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" id="pkNghi" onclick="pokerNghi()">⏸️ Tạm nghỉ</button>
           <button class="btn-grey" id="pkTiep" onclick="pokerTiep()">▶️ Chơi tiếp</button>
         </div>
-        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="row blk">
           <div style="flex:1"><label>🃏 Admin POKER (ID Discord, cách nhau bằng phẩy)</label><input id="pokerAdminIds" type="text" placeholder="vd: 456136500011335698, 111111111111111111" oninput="txDirty(this)"></div>
           <button class="btn-green" onclick="pokerSaveAdmin()">💾 Lưu</button>
         </div>
@@ -2044,7 +2106,7 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h3>🔑 Admin Tiến Lên</h3>
         <div class="note">ID Discord (cách nhau bởi dấu phẩy) được phép chỉnh cấu hình bàn qua web. Panel SUPER thì luôn chỉnh được, ô này chỉ để mở thêm đường web.</div>
-        <div class="row" style="margin-top:8px"><input class="mini-in" id="tlAdminIds" placeholder="123456789012345678, ..."><button class="btn-blue" onclick="tlLuuAdmin()">💾 Lưu</button></div>
+        <div class="row" style="margin-top:8px"><input class="mini-in" id="tlAdminIds" placeholder="123456789012345678, ..."><button class="btn-green" onclick="tlLuuAdmin()">💾 Lưu</button></div>
       </div>
     </div>
 
@@ -2115,7 +2177,7 @@ const HTML = `<!DOCTYPE html>
           <span style="margin-left:10px">💱 Nạp game→web: <b>1</b> Dogcoin game =</span>
           <input class="mini-in" id="gsNapRate" type="number" min="0.1" max="100" step="0.1" placeholder="2" style="width:70px" title="Tỉ lệ nạp: 2 = lấy 1 Dogcoin trong game cộng 2 Dogcoin ví web. Rút web→game luôn 1:1. Hạn ngày chiều nạp đếm theo số web nhận.">
           <span>Dogcoin web</span>
-          <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu</button>
+          <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu hạn & tỉ lệ</button>
           <span class="muted" style="font-size:12px">đếm theo Dogcoin TRONG GAME (rút = số vào game, nạp = số lấy ra khỏi game, web nhận × tỉ lệ) · 2 chiều đếm RIÊNG · 0 = không giới hạn · 00:00 giờ VN · 🪙 ĐỔI VÀNG dùng CHUNG hạn chiều nạp: 100 vàng = 1 Dogcoin game, nên 10.000 vàng = tỉ lệ × 100 Dogcoin web</span>
         </div>
         <div class="row" style="gap:10px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
@@ -2135,17 +2197,17 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <div style="flex:2"><label>📢 Kênh thông báo phát (Channel ID)</label><input id="gaChannel" placeholder="vd: 123456789012345678"></div>
           <div style="flex:2"><label>🔔 Role được tag (Role ID, trống = không tag)</label><input id="gaRole" placeholder="vd: 123456789012345678"></div>
-          <button class="btn-blue" onclick="gaSave()">💾 Lưu</button>
+          <button class="btn-green" onclick="gaSave()">💾 Lưu kênh phát</button>
         </div>
         <div class="note">Đổi qua Discord khác chỉ cần lưu lại <b>kênh + role</b> ở đây (bot gửi 1 tin xác nhận vào kênh, không tag ai). Chưa lưu thì bot vẫn dùng kênh/role của server cũ.</div>
         <div class="row" style="margin-top:12px">
-          <button class="btn-blue" style="flex:1" onclick="resetDaily()">🔄 Reset điểm danh cả danh sách - ai cũng /diemdanh nhận lại được ngay</button>
+          <button class="btn-red" style="flex:1" onclick="resetDaily()">🔄 Reset điểm danh cả danh sách - ai cũng /diemdanh nhận lại được ngay</button>
         </div>
         <div class="row" style="margin-top:12px">
           <div style="flex:3"><label>Set tất cả người chơi về</label><input id="setAllAmount" type="number" placeholder="vd: 50000"></div>
           <button class="btn-red" onclick="setAll()">Set tất cả</button>
         </div>
-        <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="row blk">
           <div style="flex:1"><label>🪪 Điểm danh/ngày</label><input id="dcDaily" type="number" min="0" placeholder="vd: 600"></div>
           <div style="flex:1"><label>💉 Nghiện/giờ</label><input id="dcNghien" type="number" min="0" placeholder="vd: 200"></div>
           <div style="flex:1"><label>🔥 Đủ chuỗi (ngày)</label><input id="dcStreakEvery" type="number" min="1" placeholder="vd: 2"></div>
@@ -2180,7 +2242,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>💰 Vay tối đa / ngày</label><input id="loanDaily" type="number" placeholder="vd: 20000"></div>
           <div style="flex:1"><label>📦 Ôm nợ tối đa (trần)</label><input id="loanCap" type="number" placeholder="vd: 60000"></div>
           <div style="flex:1"><label>🩸 Phí vay + lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
-          <button class="btn-blue" onclick="loanCfgSave()">💾 Lưu</button>
+          <button class="btn-green" onclick="loanCfgSave()">💾 Lưu cấu hình vay</button>
         </div>
         <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. <b>14/09 bỏ hẳn nhãn NỢ XẤU</b>: giờ cứ CÒN NỢ MỘT ĐỒNG là bị khoá đúng 2 việc - không mua đồ ở <b>shop item</b> và không chuyển <b>pal vào game</b>. Chuyển tiền, chuyển Dogcoin vào game, minigame, quay pal, cổ phiếu, vay thêm đều KHÔNG bị đụng. Trả sạch nợ là mở khoá ngay.</div>
       </div>
@@ -2427,7 +2489,7 @@ function renderGiveaway(){
   const r=document.getElementById('gaRole'); if(r&&!r.value&&STATE.giveaway.roleId)r.value=STATE.giveaway.roleId;
 }
 async function resetDaily(){
-  if(!await uiConfirm('Reset điểm danh cho CẢ danh sách? Mọi người /diemdanh nhận thưởng lại được ngay hôm nay.','🔄 Reset','btn-blue'))return;
+  if(!await uiConfirm('Reset điểm danh cho CẢ danh sách? Mọi người /diemdanh nhận thưởng lại được ngay hôm nay.','🔄 Reset','btn-red'))return;
   api('/api/points/reset-daily',{}).then(j=>{toast('🔄 Đã reset điểm danh cho '+j.count+' ví');refresh();}).catch(()=>{});
 }
 function renderGacha(){
@@ -2996,24 +3058,8 @@ function txTestNoti(){
 }
 function txSaveMaxBet(){const n=parseInt(document.getElementById('txMaxBet').value);if(!(n>=0))return toast('Nhập số ≥ 0 (0 = không giới hạn)');api('/api/tx/maxbet',{maxBet:n}).then(j=>{toast('💰 Trần cược Big Small: '+(j.maxBet?j.maxBet.toLocaleString('vi-VN')+'/người/ván':'KHÔNG giới hạn'));refresh();}).catch(e=>toast('❌ '+e.message));}
 async function txStop(){if(!await uiConfirm('Tắt bàn Big Small?','Tắt bàn','btn-red'))return;api('/api/tx/stop',{}).then(()=>{toast('⏹️ Đã tắt bàn Big Small');refresh();});}
-async function potAdd(key){
-  const el=document.getElementById('potAmt_'+key);
-  const n=parseInt(el.value,10);
-  if(!n)return toast('Nhập số Dogcoin (âm = rút bớt)');
-  const lb=(STATE.pot&&STATE.pot.labels&&STATE.pot.labels[key])||key;
-  if(!await uiConfirm((n>0?'Nạp ':'Rút ')+Math.abs(n).toLocaleString('vi-VN')+' Dogcoin '+(n>0?'vào':'khỏi')+' hũ '+lb+'?',n>0?'➕ Nạp hũ':'➖ Rút hũ',n>0?'btn-green':'btn-red'))return;
-  try{const j=await api('/api/pot/add',{key:key,amount:n});toast('🏆 Hũ '+lb+' hiện có '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
-}
+
 // 🎯 14/09: đặt THẲNG số tiền trong hũ - gõ số rồi bấm, hũ thành đúng số đó
-async function potSet(key){
-  const el=document.getElementById('potAmt_'+key);
-  const n=parseInt(el.value,10);
-  if(!(n>=0))return toast('Nhập số Dogcoin từ 0 trở lên');
-  const lb=(STATE.pot&&STATE.pot.labels&&STATE.pot.labels[key])||key;
-  const cur=Number((STATE.pot&&STATE.pot.pots&&STATE.pot.pots[key])||0);
-  if(!await uiConfirm('Đặt hũ '+lb+' thành ĐÚNG '+n.toLocaleString('vi-VN')+' Dogcoin? Hiện đang '+cur.toLocaleString('vi-VN')+'.','🎯 Đặt số hũ','btn-blue'))return;
-  try{const j=await api('/api/pot/set',{key:key,amount:n});toast('🎯 Hũ '+lb+' giờ đúng '+Number(j.pot).toLocaleString('vi-VN'));el.value='';refresh();}catch(e){}
-}
 // 🏆 09/09: bội số nổ hũ (Dò Mìn/Leo Thang) - danh sách "10,15,20", trúng 🏆 bốc ngẫu nhiên 1 số × tiền cược
 async function potCfgSave(key,btn){
   const raw=(document.getElementById('potMults_'+key).value||'').trim();
@@ -3022,18 +3068,6 @@ async function potCfgSave(key,btn){
   const lb=(STATE.pot&&STATE.pot.labels&&STATE.pot.labels[key])||key;
   if(!await uiConfirm(lb+': trúng 🏆 bốc ngẫu nhiên x'+mults.join(' / x')+' tiền cược (cược 1.000 → '+(1000*mults[0]).toLocaleString('vi-VN')+' tới '+(1000*mults[mults.length-1]).toLocaleString('vi-VN')+') + trần ván?','💾 Lưu bội số','btn-green'))return;
   await runBtn(btn,'Lưu...',()=>api('/api/pot/cfg',{key:key,mults:mults}).then(j=>{toast('💾 '+lb+': nổ hũ bốc x'+j.cfg.mults.join(' / x')+' tiền cược');refresh();}));
-}
-// 🌪️ 14/09: hũ Bão Tài Xỉu - nuôi bao nhiêu % tổng cược mỗi ván + trúng Bão bú tối đa x mấy tiền cược
-async function txPotCfgSave(btn){
-  const r=(document.getElementById('txPotRate').value||'').trim();
-  const x=(document.getElementById('txPotX').value||'').trim();
-  if(!r&&!x)return toast('Nhập % nuôi hoặc bội số bú hũ');
-  if(r&&!(Number(r.replace(',','.'))>=0&&Number(r.replace(',','.'))<=20))return toast('❌ % nuôi từ 0 đến 20');
-  if(x&&!(parseInt(x,10)>=1&&parseInt(x,10)<=1000))return toast('❌ Bội số từ 1 đến 1000');
-  const cur=(STATE.pot&&STATE.pot.txPot)||{rate:0.02,x:10};
-  const nr=r?Number(r.replace(',','.')):cur.rate*100, nx=x?parseInt(x,10):cur.x;
-  if(!await uiConfirm('Hũ Bão: nuôi '+nr+'% tổng cược mỗi ván · trúng Bão bú tối đa x'+nx+' tiền cược (không quá số hũ đang có)?','💾 Lưu hũ Bão','btn-green'))return;
-  await runBtn(btn,'Lưu...',()=>api('/api/txpot/cfg',{rate:r,x:x}).then(j=>{toast('🌪️ Hũ Bão: nuôi '+(j.cfg.rate*100).toFixed(2)+'%/ván · bú tối đa x'+j.cfg.x);refresh();}));
 }
 function mineBoardStart(){const c=document.getElementById('mineChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/mines/board/start',{channelId:c}).then(j=>{toast('▶️ Đã đăng bảng Dò Mìn ở #'+j.name);refresh();});}
 async function mineBoardStop(){if(!await uiConfirm('Gỡ bảng Dò Mìn khỏi Discord?','Gỡ bảng','btn-red'))return;api('/api/mines/board/stop',{}).then(()=>{toast('⏹️ Đã gỡ bảng Dò Mìn');refresh();});}
@@ -3720,7 +3754,9 @@ function useChannel(prefix,id){document.getElementById(prefix+'Channel').value=i
 function renderSavedChannels(){
   if(!STATE)return;
   const list=STATE.savedChannels||[];
-  ['tx','bc','mine','stair','bj','spm'].forEach(prefix=>{
+  // 4 tab có ô "kênh đã lưu". Trước còn 'bc' (trò đã gỡ) và 'bj' (Vòng Quay không có
+  // ô kênh) — chạy không rồi thoát, chỉ tổ làm người đọc tưởng còn 6 chỗ.
+  ['tx','mine','stair','spm'].forEach(prefix=>{
     const el=document.getElementById(prefix+'Saved');if(!el)return;
     if(!list.length){el.innerHTML='<span class="empty">Chưa lưu kênh nào. Nhập ID + ghi chú rồi bấm 💾 Lưu kênh.</span>';return;}
     el.innerHTML=list.map(c=>
@@ -3804,7 +3840,7 @@ function renderPlayers(){
     tbHtml+='<tr><td>'+esc(p.name)+'</td><td class="muted" style="font-size:12px">'+p.id+'</td><td><b>'+p.points.toLocaleString()+'</b></td>'+
       '<td>'+debtCell+'</td>'+
       '<td><input class="mini-in" type="number" placeholder="số" id="amt_'+p.id+'">'+
-      ' <button class="mini btn-blue" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
+      ' <button class="mini btn-green" onclick="pSet(\\''+p.id+'\\')">Set</button>'+
       ' <button class="mini btn-green" onclick="pAdd(\\''+p.id+'\\')">Cộng</button>'+
       ' <button class="mini btn-red" onclick="pSub(\\''+p.id+'\\')">Trừ</button>'+
       ' <button class="mini btn-red" onclick="pDebt(\\''+p.id+'\\')">📒 Ghi nợ</button>'+
@@ -4119,49 +4155,27 @@ async function refresh(force){
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');
   renderTxBetsLive();
-  // 🏆 hu nuoi: moi tro mot hu rieng
+  // 🏆 BỘI SỐ NỔ HŨ 🍀 (Dò Mìn / Leo Thang). Hũ NUÔI đã gỡ 23/09: tiền vào không, ra
+  // không (potFeed luôn nạp 0 · potTake không ai gọi · txPotPaid hằng số 0).
   const pt=STATE.pot;
-  if(pt&&pt.pots){
+  if(pt){
     const pj=pt.palJack||{};
     const mu=pt.mults||{}, muTxt=(k)=>'x'+((mu[k]&&mu[k].length)?mu[k]:[10,15,20]).join(' / x');
-    document.getElementById('potInfo').textContent='Dò Mìn/Leo Thang KHÔNG còn hũ nuôi (09/09): trúng 🏆 trong hộp 🍀 bốc ngẫu nhiên '+muTxt('mines')+' (mìn) · '+muTxt('stairs')+' (thang) NHÂN tiền cược + trần ván, ván dừng ngay'
-      +' · 💰 Quay Pal (15/09) KHÔNG còn hũ nuôi: quay trúng '+(pj.name||'Mimog')+' = '+Number(pj.pot||0).toLocaleString('vi-VN')+' + thưởng '+Number(pj.bonus||0).toLocaleString('vi-VN')+' cố định'
-      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván'
-      +(pt.txPot?' · 🌪️ Hũ Bão: nuôi '+(pt.txPot.rate*100).toFixed(2)+'% tổng cược mỗi ván Tài Xỉu, trúng Bão bú min(cược × '+pt.txPot.x+', hũ đang có) - nhà cái không bù':'');
+    document.getElementById('potInfo').innerHTML='Trúng 🏆 trong hộp 🍀 bốc ngẫu nhiên <b>'+muTxt('mines')
+      +'</b> (Dò Mìn) · <b>'+muTxt('stairs')+'</b> (Leo Thang) nhân tiền cược'
+      +' · quay trúng <b>'+esc(pj.name||'Mimog')+'</b> = '+Number(pj.pot||0).toLocaleString('vi-VN')+' 🐕'
+      +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván';
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
     // không vẽ lại cả khối - vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
-    const keys=Object.keys(pt.pots), box=document.getElementById('potRows');
-    if(box.dataset.built!==keys.join(',')){
-      box.innerHTML=keys.map(k=>
-        '<div class="row" style="align-items:center;margin-bottom:8px">'+
-          '<div style="flex:3"><b>'+esc((pt.labels&&pt.labels[k])||k)+'</b><br>'+
-            '<span id="potVal_'+k+'" style="font-size:20px;color:#f0b90b">-</span>'+
-            '<span id="potFull_'+k+'" class="badge on" style="display:none"> đầy - ngừng tự trích</span></div>'+
-          '<div style="flex:3"><input id="potAmt_'+k+'" inputmode="numeric" placeholder="Số Dogcoin · cộng thêm (âm = rút) hoặc đặt đúng số"></div>'+
-          '<button class="btn-green" onclick="potAdd(\\''+k+'\\')">➕ Cộng thêm</button>'+
-          '<button class="btn-blue" onclick="potSet(\\''+k+'\\')">🎯 Đặt đúng số</button>'+
-        '</div>').join('')
+    const box=document.getElementById('potRows');
+    if(!box.dataset.built){
+      box.innerHTML=''
         // 🏆 09/09: bội số nổ hũ 2 minigame (hết hũ nuôi) - ô text "10,15,20", SUPER
         +['mines','stairs'].map(k=>'<div class="row epOnly" style="align-items:center;margin-bottom:8px"><div style="flex:3"><b>'+(k==='mines'?'💣 Dò Mìn':'🪜 Leo Thang')+'</b><br><span class="muted" style="font-size:12px">🏆 bội số nổ hũ (bốc ngẫu nhiên × tiền cược)'+(pt.leftover&&pt.leftover[k]>0?' · hũ cũ còn '+Number(pt.leftover[k]).toLocaleString('vi-VN')+' không dùng':'')+'</span></div>'
           +'<div style="flex:3"><input id="potMults_'+k+'" placeholder="vd: 10,15,20" title="1-6 số, cách nhau bằng dấu phẩy"></div>'
           +'<button class="btn-green" onclick="potCfgSave(\\''+k+'\\',this)">💾 Lưu</button></div>').join('')
-        // 🌪️ 14/09: luật hũ Bão Tài Xỉu
-        +'<div class="row epOnly" style="align-items:center;margin-bottom:8px"><div style="flex:3"><b>🌪️ Hũ Bão (Tài Xỉu)</b><br><span class="muted" style="font-size:12px">Trúng Bão = x'+((pt.baoRate)||30)+' tiền cửa + bú hũ min(cược × bội số, hũ đang có). Nhà cái KHÔNG bù thêm.</span></div>'
-          +'<div style="flex:1.5"><input id="txPotRate" inputmode="decimal" placeholder="% nuôi/ván" title="Phần trăm tổng cược mỗi ván nuôi vào hũ (khuyên 1)"></div>'
-          +'<div style="flex:1.5"><input id="txPotX" inputmode="numeric" placeholder="Bội số bú hũ" title="Trúng Bão bú tối đa cược × số này"></div>'
-          +'<button class="btn-green" onclick="txPotCfgSave(this)">💾 Lưu</button></div>';
-      box.dataset.built=keys.join(',');
+      box.dataset.built='1';
     }
-    keys.forEach(k=>{
-      const mx=Number((pt.maxBy&&pt.maxBy[k])||pt.max||0), v=Number(pt.pots[k]||0), full=mx>0&&v>=mx;
-      if(k==='tx'&&pt.txPot){const ri=document.getElementById('txPotRate'),xi=document.getElementById('txPotX');
-        if(ri&&document.activeElement!==ri)ri.placeholder='% nuôi/ván (đang '+(pt.txPot.rate*100).toFixed(2)+')';
-        if(xi&&document.activeElement!==xi)xi.placeholder='Bội số bú hũ (đang '+pt.txPot.x+')';}
-      const el=document.getElementById('potVal_'+k);
-      if(el){el.textContent=v.toLocaleString('vi-VN')+' 🐕';el.style.color=full?'#ff9a5c':'#f0b90b';}
-      const fg=document.getElementById('potFull_'+k);
-      if(fg)fg.style.display=full?'':'none';
-    });
     // ô bội số: chỉ điền khi còn TRỐNG và không đang gõ (poll 3s không cuốn số đang sửa)
     ['mines','stairs'].forEach(k=>{const m=document.getElementById('potMults_'+k);if(m&&m.value===''&&document.activeElement!==m&&pt.mults&&pt.mults[k])m.value=pt.mults[k].join(',');});
   }
