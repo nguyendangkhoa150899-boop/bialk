@@ -112,6 +112,50 @@ muc('gợi ý ép rẻ nhất · huỷ ép · báo cược');
     ok('không nối baoCuoc thì vẫn đặt bình thường', dungBan({ A: 1e6 }).ban.dat('A', 'A', [{ choice: 'tai', amount: 5000 }]).ok);
 }
 
+// ---------------------------------------------------------------- lịch sử sống qua deploy
+muc('lịch sử KHÔNG được mất khi bot bật lại (deploy)');
+{
+    // Giả bộ đã chạy 60 ván: xen kẽ ván CÓ người đặt và ván trống, đúng như bàn thật
+    // lúc vắng khách. Mục log ⚡ ở panel đọc bangDiscord(30) và lọc bỏ ván trống.
+    const DB = { _stxOn: true };
+    DB._stxHist = [];
+    for (let i = 60; i >= 1; i--) {
+        DB._stxHist.push({
+            gameId: i, dice: [1, 2, 3], sum: 6, tx: 'XỈU', cl: 'CHẴN', storm: false, nhan: {},
+            bets: (i % 2 === 0) ? [{ u: 'A', name: 'A', choice: 'TÀI', amount: 1000, phi: 200, nhan: 0 }] : [],
+            winners: [], time: '10:00:00',
+        });
+    }
+    DB._stxHist.sort((a, b) => b.gameId - a.gameId);
+    const VI = { A: 1000000 };
+    const ban = taoBan({
+        db: () => DB, layNguoi: (id) => ({ points: VI[id] || 0, name: id }),
+        congVi: (id, t) => { VI[id] = (VI[id] || 0) + t; }, ghiLog: () => { }, luuDb: () => { },
+    });
+    ban.khoiDong();
+    ok('bật lại nạp đủ 60 ván từ đĩa', ban._S.history.length === 60, String(ban._S.history.length));
+    ok('⭐ mục log panel (30 ván CÓ người đặt) vẫn đủ 30', ban.bangDiscord(30).history.length === 30,
+        String(ban.bangDiscord(30).history.length));
+    ok('...và đúng là ván có cược, không lẫn ván trống',
+        ban.bangDiscord(30).history.every(h => (h.bets || []).length > 0));
+    ok('dải kết quả cho người chơi vẫn 20 ván (kể cả ván trống)', ban.trangThai('A').history.length === 20,
+        String(ban.trangThai('A').history.length));
+}
+{
+    // Ghi mới thì xuống đĩa phải giữ ĐỦ, không cắt còn 20 như bản cũ
+    const { ban, DB } = dungBan({ A: 1000000 });
+    ban._S.history = [];
+    for (let i = 1; i <= 45; i++) ban._S.history.unshift({ gameId: i, dice: [1, 2, 3], sum: 6, tx: 'XỈU', cl: 'CHẴN', bets: [{ u: 'A', name: 'A', choice: 'TÀI', amount: 1000, nhan: 0 }], winners: [], nhan: {} });
+    ban._S.plan = null;
+    // gọi thẳng đường ghi sổ qua một ván thật thì chậm; ở đây chỉ cần khẳng định hằng số
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'ban.js'), 'utf8');
+    ok('⭐ lưu xuống đĩa dùng HIST_LUU (= HIST_N), KHÔNG dùng HIST_WEB',
+        /db\(\)\._stxHist = S\.history\.slice\(0, HIST_LUU\);/.test(src) && /const HIST_LUU = HIST_N;/.test(src) &&
+        !/_stxHist = S\.history\.slice\(0, HIST_WEB\)/.test(src));
+    ok('bật lại vẫn cắt theo HIST_N', /S\.history = db\(\)\._stxHist\.slice\(0, HIST_N\)/.test(src));
+    void DB;
+}
+
 // ---------------------------------------------------------------- luật đặt
 muc('luật đặt cược');
 {

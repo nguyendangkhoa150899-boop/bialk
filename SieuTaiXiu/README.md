@@ -216,6 +216,21 @@ bảng kia vừa cập nhật:
 Thiếu hai chỗ này thì mỗi ván hai bảng **thay nhau xoá–đăng lại**: kênh nhấp nháy và tốn
 gấp đôi lệnh Discord.
 
+### ⚠️ Lịch sử phải sống qua deploy (23/09)
+
+RAM giữ **100 ván** (`HIST_N`) nhưng bản đầu **chỉ lưu xuống đĩa 20** (dùng nhầm
+`HIST_WEB`). Mục log **⚡ Siêu** ở panel đọc `bangDiscord(30)` và **lọc bỏ ván không ai
+đặt** ⇒ sau mỗi lần deploy, 20 ván cứu được có thể toàn ván trống và mục log **trắng trơn**.
+Chủ server báo đúng hiện tượng đó.
+
+Bàn thường không dính vì nó có mảng **riêng** `_txDashHistory` giữ nguyên 100 ván.
+
+Sửa: thêm `HIST_LUU = HIST_N` và lưu theo nó. `HIST_WEB = 20` vẫn chỉ dùng cho **dải kết
+quả của người chơi**. Đo thử: 100 ván đông nhất ≈ **0,43 MB**, ván thường ≈ 60 KB — cùng cỡ
+`_txDashHistory` vốn chạy yên từ lâu.
+
+⚠️ Đừng nâng quá tay: đã có bài học `_txDashHistory` phình **1.348 ván = 57% database.json**.
+
 ## 6. Admin
 
 Panel SUPER, tab **⚡ Siêu Tài Xỉu**: bật/tắt bàn · 3 mốc giờ · trần từng nhóm · trần

@@ -30,7 +30,12 @@ const NHAN_S_MIN = 0, NHAN_S_MAX = 60;
 const NAN_S_MIN = 6, NAN_S_MAX = 300;
 const KQ_S = 4;              // giây cuối pha nặn: bàn tự mở kết quả
 const HIST_N = 100;          // lịch sử giữ trong RAM
-const HIST_WEB = 20;         // gửi xuống web
+const HIST_WEB = 20;         // gửi xuống web (dải kết quả cho người chơi)
+// ⚠️ 23/09: LƯU XUỐNG ĐĨA phải bằng RAM, đừng lấy HIST_WEB cho tiện.
+// Bản cũ chỉ lưu 20 ván -> deploy xong mục log ⚡ Siêu ở panel (đọc 30 ván CÓ NGƯỜI ĐẶT)
+// gần như trắng, vì 20 ván cứu được có thể toàn ván trống. Bàn thường không dính vì nó
+// có mảng riêng _txDashHistory giữ 100 ván.
+const HIST_LUU = HIST_N;
 const SAN_CUOC = 1000;       // sàn cược mỗi ô
 
 function taoBan(ctx) {
@@ -374,7 +379,7 @@ function taoBan(ctx) {
         };
         S.history.unshift(h);
         if (S.history.length > HIST_N) S.history.pop();
-        db()._stxHist = S.history.slice(0, HIST_WEB);
+        db()._stxHist = S.history.slice(0, HIST_LUU);
         // 📜 22/09 một dòng mỗi ván: ai đặt nhiêu (+phí) ăn thua nhiêu - đúng thứ chủ server cần tra
         const dongNguoi = Object.values(p.byUser || {}).map(e => {
             const net = (e.win || 0) - (e.stake || 0) - (e.phi || 0);
