@@ -92,14 +92,26 @@ function startWebPlay(ctx) {
     // Hạn 30 ngày phải kiểm ở ĐÂY. Trước chỉ dọn lúc có người đăng nhập, nên token cũ
     // vẫn dùng được vô thời hạn nếu không ai đăng nhập để kích hoạt vòng dọn.
     const SESSION_TTL = 30 * 24 * 3600 * 1000;
-    const getSessionUser = (req) => {
+    // Mỗi ví giữ được ngần này thiết bị cùng lúc (máy tính + điện thoại + máy bảng…).
+    // Vượt thì đuổi máy LÂU KHÔNG DÙNG NHẤT, chứ không đuổi máy cũ theo kiểu đăng nhập
+    // mới đá sạch máy cũ — đó chính là lỗi "vào điện thoại là máy tính văng ra".
+    const MAX_THIET_BI = 5;
+    const layToken = (req) => {
         const h = req.headers['authorization'] || '';
-        const t = h.startsWith('Bearer ') ? h.slice(7) : '';
+        return h.startsWith('Bearer ') ? h.slice(7) : '';
+    };
+    const getSessionUser = (req) => {
+        const t = layToken(req);
         if (!t) return null;
         const ss = sessions();
         const s = ss[t];
         if (!s) return null;
-        if (Date.now() - (s.ts || 0) > SESSION_TTL) { delete ss[t]; return null; }
+        const cuoi = s.lanCuoi || s.ts || 0;
+        if (Date.now() - cuoi > SESSION_TTL) { delete ss[t]; return null; }
+        // Hạn TRƯỢT theo lần dùng cuối: ai còn chơi thì phiên còn sống, khỏi đăng nhập lại
+        // mỗi tháng. Chỉ ghi lại tối đa 1 giờ/lần — trang tự làm mới 2 giây/lần, ghi mỗi
+        // nhịp là bẩn database vô ích.
+        if (Date.now() - cuoi > 3600 * 1000) s.lanCuoi = Date.now();
         return s.u;
     };
 
@@ -171,11 +183,17 @@ function startWebPlay(ctx) {
                 const token = crypto.randomBytes(24).toString('hex');
                 const ss = sessions();
                 const now = Date.now();
-                // dọn phiên quá hạn + phiên cũ của chính người này (đăng nhập lại = thu hồi máy cũ)
+                // Dọn phiên quá hạn. ⚠️ TUYỆT ĐỐI KHÔNG xoá phiên cũ của chính người này nữa:
+                // bản cũ có "|| s.u === userId" nên đăng nhập điện thoại là máy tính văng ra,
+                // phải đăng nhập lại vòng vo (chủ server báo 23/09).
                 for (const [t, s] of Object.entries(ss)) {
-                    if (now - (s.ts || 0) > 30 * 24 * 3600 * 1000 || s.u === userId) delete ss[t];
+                    if (now - (s.lanCuoi || s.ts || 0) > SESSION_TTL) delete ss[t];
                 }
-                ss[token] = { u: userId, ts: now };
+                // Giữ tối đa MAX_THIET_BI máy: dôi ra thì đuổi máy LÂU KHÔNG DÙNG NHẤT.
+                const cuaToi = Object.entries(ss).filter(([, s]) => s.u === userId)
+                    .sort((a, b) => (b[1].lanCuoi || b[1].ts || 0) - (a[1].lanCuoi || a[1].ts || 0));
+                for (let i = MAX_THIET_BI - 1; i < cuaToi.length; i++) delete ss[cuaToi[i][0]];
+                ss[token] = { u: userId, ts: now, lanCuoi: now };
                 // CỐ TÌNH không gọi saveDbNow ở đây: hàm đó ghi ĐỒNG BỘ cả database, ai spam
                 // đăng nhập là chặn đứng cả bot. Phiên nằm trong dbCache nên vòng lưu tự động
                 // (10 giây/lần) vẫn giữ được qua restart.
@@ -686,6 +704,31 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, { ok: true, ...r.state });
                 }
 
+                // 🔐 23/09: ĐĂNG XUẤT. Vì đăng nhập không còn tự đá máy cũ, phải có đường
+                // thu hồi bằng tay — mất điện thoại thì bấm "máy khác" là xong, khỏi đổi PIN.
+                if (req.method === 'POST' && path === '/api/logout') {
+                    const t = layToken(req);
+                    const ss = sessions();
+                    if (t && ss[t]) delete ss[t];
+                    return sendJSON(res, 200, { ok: true });
+                }
+                if (req.method === 'POST' && path === '/api/logout-khac') {
+                    const t = layToken(req);
+                    const ss = sessions();
+                    let so = 0;
+                    for (const [k, s] of Object.entries(ss)) if (s.u === userId && k !== t) { delete ss[k]; so++; }
+                    if (so) ctx.writeLog('ADMIN', `[WEB] ${ctx.getUserData(userId).name || userId} đăng xuất ${so} thiết bị khác`);
+                    return sendJSON(res, 200, { ok: true, so });
+                }
+                if (req.method === 'GET' && path === '/api/thietbi') {
+                    const ss = sessions();
+                    const ds = Object.values(ss).filter(s => s.u === userId);
+                    return sendJSON(res, 200, {
+                        ok: true, so: ds.length, max: MAX_THIET_BI,
+                        may: ds.map(s => ({ vao: s.ts || 0, dung: s.lanCuoi || s.ts || 0 })).sort((a, b) => b.dung - a.dung),
+                    });
+                }
+
                 // 🖐️ KÉO THẢ CHIP: huỷ đúng 1 ô / dời chip sang ô khác. Luật + tiền ở index.js.
                 if (req.method === 'POST' && (path === '/api/tx/xoacua' || path === '/api/tx/doicua')) {
                     const body = await readBody(req);
@@ -922,6 +965,14 @@ const PAGE = [
     '#terms .tt{color:#ffb26b;font-weight:900;font-size:14px;margin-bottom:6px}',
     '#terms .tb{font-size:12.5px;color:#e6d3c4;line-height:1.65}',
     '#terms .tk{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px;color:#fff;cursor:pointer}',
+    // 💾 hàng "nhớ Discord ID": cả dải là vùng bấm (label bọc ô vuông), nên không còn
+    // cảnh ô vuông một nơi chữ một nẻo. flex:0 0 auto giữ ô vuông khỏi bị bóp méo,
+    // align-items:center cho ô vuông thẳng hàng với chữ.
+    '.nhoRow{display:flex;align-items:center;gap:9px;margin:9px 0;padding:10px 12px;border-radius:10px;',
+    'background:#191d27;border:1px solid #2a3040;cursor:pointer;font-size:13px;color:#c9cede;user-select:none}',
+    '.nhoRow:hover{border-color:#3a4256}',
+    '.nhoRow input{flex:0 0 auto;width:17px;height:17px;margin:0;accent-color:#ffcf5c;cursor:pointer}',
+    '.nhoRow span{line-height:1.35}',
     '#terms .tk input{width:18px;height:18px;margin:1px 0 0;flex:0 0 auto}',
     '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}',
     // nút kiểu sòng bài thật: nền ngà 3D, chữ đen đậm (theo hình mẫu SMALL 4-10)
@@ -1838,6 +1889,10 @@ const PAGE = [
     '<input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số" onkeydown="if(event.key===\'Enter\')login()">',
     // 08/09: lỗi login hiện NGAY DƯỚI ô PIN và đứng yên tới lần thử sau (toast đáy màn hình bị
     // bàn phím điện thoại che, người chơi nhập sai PIN mà tưởng web không phản hồi)
+    // 💾 23/09: nhớ CẢ Discord ID + PIN trên máy này (chủ server chốt: máy riêng, không
+    // ai dùng chung, khỏi phải đi copy PIN mỗi lần). Mặc định TẮT. Gỡ tick là xoá ngay,
+    // nên không cần thêm nút "quên".
+    '<label class="nhoRow"><input type="checkbox" id="nhoTk" onchange="nhoChg(this.checked)"><span>💾 Nhớ <b>Discord ID + PIN</b> trên máy này (lần sau vào thẳng)</span></label>',
     '<div id="loginErr" class="lerr"></div>',
     '<button class="btn-full" id="loginBtn" onclick="login()" disabled>✅ ĐỒNG Ý VÀ VÀO CHƠI</button>',
     '</div>',
@@ -1852,6 +1907,7 @@ const PAGE = [
     // 🧰 17/09: Rương Ích Kỷ - đứng ngay trước nút loa, đúng chỗ chủ server chỉ
     '<button id="ikBtn" title="Rương Ích Kỷ - 00:00 là xoá sạch" onclick="ikOpen()">🧰<span class="n" id="ikNum">0</span></button>',
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
+    '<button style="background:#232735;font-size:12px" title="Đăng xuất MỌI máy khác đang dùng ví này (máy này vẫn ở lại)" onclick="thoatKhac()">🚪 Máy khác</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
 
     // 🔗 17/09: chưa được admin liên kết thì báo ngay, khỏi bấm rồi mới biết.
@@ -2625,15 +2681,39 @@ const PAGE = [
     'function agreeChg(){var c=document.getElementById("agree"),b=document.getElementById("loginBtn");if(c&&b)b.disabled=!c.checked}',
     // loginErr(m): ghi lỗi vào khung đỏ dưới ô PIN + toast; loginErr("") xoá khung.
     'function loginErr(m){var e=document.getElementById("loginErr");if(e){e.textContent=m||"";e.style.display=m?"block":"none"}if(m)toast(m)}',
+    // ---- 💾 nhớ Discord ID + PIN trên máy này ----
+    // Bọc try/catch: chế độ ẩn danh / chặn cookie là localStorage NÉM LỖI, không bọc thì
+    // vỡ luôn trang đăng nhập.
+    'var NHO_U="play_uid",NHO_P="play_pin",NHO_OK="play_nho",NHO_THOAT="play_thoat";',
+    'function nhoLay(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}',
+    'function nhoDat(k,v){try{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k)}catch(e){}}',
+    // gỡ tick = xoá NGAY cả ID lẫn PIN, khỏi phải bấm thêm nút nào
+    'function nhoChg(bat){if(!bat){nhoDat(NHO_U,"");nhoDat(NHO_P,"");nhoDat(NHO_OK,"")}}',
+    // Có sẵn thì đổ vào 2 ô rồi VÀO THẲNG (điều khoản đã tick lúc bấm lưu).
+    // ⚠️ Trừ khi vừa bấm Thoát: cờ NHO_THOAT chặn đúng MỘT lần, không thì bấm Thoát
+    // xong trang tải lại là nhảy vào ngay, người chơi không tài nào thoát được.
+    'function nhoDoVao(){var u=nhoLay(NHO_U),p=nhoLay(NHO_P);if(!u&&!p)return;',
+    'var iu=document.getElementById("uid"),ip=document.getElementById("pin"),ck=document.getElementById("nhoTk"),ag=document.getElementById("agree");',
+    'if(iu&&u)iu.value=u;if(ip&&p)ip.value=p;if(ck)ck.checked=true;',
+    'var vuaThoat=nhoLay(NHO_THOAT);nhoDat(NHO_THOAT,"");',
+    'if(!vuaThoat&&u&&p&&ag&&nhoLay(NHO_OK)==="1"){ag.checked=true;agreeChg();login();return}',
+    'if(ip&&!p)try{ip.focus()}catch(e){}}',
+    'function thoatKhac(){api("/api/logout-khac",{}).then(function(j){',
+    'toast(j.so?("🚪 Đã đăng xuất "+j.so+" máy khác - máy này vẫn ở lại"):"Chỉ có mỗi máy này đang đăng nhập")})',
+    '.catch(function(e){toast("❌ "+((e&&e.message)||"lỗi"))})}',
     'function login(){var c=document.getElementById("agree");if(c&&!c.checked)return loginErr("⚠️ Phải tick đồng ý điều khoản trước đã");',
     'var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return loginErr("⚠️ Nhập đủ Discord ID + mã PIN");',
     'var b=document.getElementById("loginBtn");if(b.disabled&&b._busy)return;var ot=b.textContent;b._busy=true;b.disabled=true;b.textContent="⏳ Đang kiểm tra...";loginErr("");',
     'function done(){b._busy=false;b.disabled=false;b.textContent=ot}',
     'fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})})',
     '.then(function(r){return r.json().catch(function(){return{ok:false,error:"Bot trả về lỗi HTTP "+r.status}})})',
-    '.then(function(j){done();if(!j.ok)return loginErr("❌ "+(j.error||"Sai thông tin"));TOKEN=j.token;localStorage.setItem("play_token",TOKEN);show(j.name)})',
+    '.then(function(j){done();if(!j.ok)return loginErr("❌ "+(j.error||"Sai thông tin"));TOKEN=j.token;localStorage.setItem("play_token",TOKEN);',
+    'var ck=document.getElementById("nhoTk"),nho=!!(ck&&ck.checked);',
+    'nhoDat(NHO_U,nho?u:"");nhoDat(NHO_P,nho?p:"");nhoDat(NHO_OK,nho?"1":"");',
+    'show(j.name)})',
     '.catch(function(e){done();loginErr("❌ Không gọi được bot ("+((e&&e.message)||"mạng đứt")+") - bot tắt hay mất mạng? Thử lại sau")})}',
-    'function logout(){TOKEN="";localStorage.removeItem("play_token");location.reload()}',
+    'function logout(){function xong(){TOKEN="";try{localStorage.removeItem("play_token")}catch(e){}nhoDat(NHO_THOAT,"1");location.reload()}',
+    'api("/api/logout",{}).then(xong,xong)}',
     'function show(n){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");',
     'if(n)document.getElementById("myName").textContent=n;initPaper();',
     'document.getElementById("sndBtn").textContent=SND?"🔊":"🔇";',   // nhớ lựa chọn tắt tiếng lần trước
@@ -5052,7 +5132,7 @@ const PAGE = [
     '["gesturestart","gesturechange","gestureend"].forEach(function(ev){',
     'document.addEventListener(ev,function(e){e.preventDefault()},{passive:false})});',
     'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
-    'if(TOKEN){show("")}',
+    'if(TOKEN){show("")}else{nhoDoVao()}',
     'document.getElementById("pin").addEventListener("keydown",function(e){if(e.key==="Enter")login()});',
     '</script></body></html>',
 ].join('\n');

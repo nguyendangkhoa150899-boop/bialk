@@ -88,6 +88,53 @@ Chỉ đếm Dog Coin **trong túi**, không tính hòm. Pal giao vào save **d�
 
 ---
 
+## 4b. 🔐 Đăng nhập web — NHIỀU THIẾT BỊ cùng lúc (23/09)
+
+Phiên nằm ở `db._webSessions` (`{token: {u, ts, lanCuoi}}`), sống qua restart.
+
+- **Một ví dùng được tối đa 5 máy cùng lúc** (`MAX_THIET_BI`). Vượt thì đuổi máy **lâu
+  không dùng nhất**.
+- ⚠️ **Bản cũ có `|| s.u === userId` trong vòng dọn phiên lúc đăng nhập** → đăng nhập máy
+  nào là **đá sạch** mọi máy khác của chính người đó. Chủ server báo: mở điện thoại là máy
+  tính văng ra, phải đăng nhập lại vòng vo. **Đừng dựng lại mệnh đề đó**, `trang-test` soi.
+- **Hạn 30 ngày TRƯỢT theo lần dùng cuối** (`lanCuoi`), không phải từ lúc đăng nhập — ai
+  còn chơi thì phiên còn sống. Chỉ ghi lại tối đa **1 giờ/lần** (trang tự làm mới 2 giây,
+  ghi mỗi nhịp là bẩn database vô ích).
+- Thu hồi bằng tay, thay cho kiểu đá-máy-cũ đã bỏ:
+  `POST /api/logout` (máy này) · `POST /api/logout-khac` (mọi máy KHÁC, máy này ở lại) ·
+  `GET /api/thietbi` (đếm). Nút **🚪 Máy khác** nằm cạnh nút **Thoát**.
+  Mất điện thoại thì bấm một nút là xong, không cần đổi PIN.
+- Nút **Thoát** giờ gọi `/api/logout` để **thu hồi phiên ở máy chủ**; bản cũ chỉ xoá token
+  trong máy nên phiên treo tới 30 ngày và vẫn chiếm một suất thiết bị.
+- ⚠️ Vẫn **KHÔNG gọi `saveDbNow()`** trong đường đăng nhập (ghi đồng bộ cả database, ai
+  spam đăng nhập là chặn đứng bot). Phiên nằm trong `dbCache`, vòng lưu 10 giây tự giữ.
+
+### 💾 Nhớ Discord ID + PIN trên máy này
+
+Ô tick dưới ô PIN, **mặc định TẮT**. Bật thì lưu `play_uid` + `play_pin` + `play_nho` vào
+`localStorage`; lần sau mở trang là điền sẵn cả hai ô và **vào thẳng**.
+
+Chủ server chốt lưu cả PIN (máy riêng, không ai dùng chung, khỏi đi copy PIN mỗi lần).
+Đánh đổi phải biết: token 30 ngày thì thu hồi được từ máy chủ (`/api/logout-khac`), còn
+**PIN nằm trong máy thì không** — nó dùng được tới khi đổi PIN. Ai mượn máy là vào được ví.
+
+**Gỡ tick là xoá NGAY cả bộ** (`nhoChg`) — không đẻ thêm nút "quên". Lưu thì lưu cả bộ,
+bỏ thì xoá cả bộ, đừng để PIN mồ côi nằm lại.
+
+⚠️ **Bẫy: bấm Thoát xong tự đăng nhập lại.** Thoát gọi `location.reload()`, trang tải lại
+thấy có ID+PIN lưu sẵn là nhảy vào ngay ⇒ **không tài nào thoát được**. Nên Thoát cắm cờ
+một-lần `play_thoat`; lần tải kế tiếp thấy cờ thì chỉ đổ sẵn chứ không tự vào, rồi xoá cờ.
+`trang-test` canh đúng chỗ này.
+
+Giao diện: ô tick là **một hàng `.nhoRow` bấm được cả dải** (`<label>` bọc ô vuông), ô vuông
+`flex:0 0 auto` cho khỏi bị bóp méo. Bản đầu mượn `.tk` của khối điều khoản
+(`align-items:flex-start`) nên ô vuông lệch hẳn lên trên, chữ tràn xuống dòng.
+
+Mọi lần đụng `localStorage` đều bọc `try/catch`: chế độ ẩn danh / chặn cookie là nó **ném
+lỗi**, không bọc thì vỡ luôn trang đăng nhập.
+
+---
+
 ## 5. 🔗 Cổng liên kết — chưa liên kết thì KHÔNG LÀM GÌ được
 
 Mốc = `userData.ingameName` khác rỗng (admin đặt ở panel, tab 🎮 → `POST /api/pal/set-name`). Không ngoại lệ cho admin. **Đăng nhập web vẫn vào bình thường** để hệ thống nhận ID và admin thấy ai cần liên kết.

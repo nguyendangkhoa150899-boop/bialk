@@ -659,5 +659,51 @@ muc('🪙 ô đầu = Sửa/Lưu, 4 ô chip sửa được, lưu qua F5 - 2 bàn
         !/Lưu/.test(h1) && (h1.match(/class="chip chipEdit"/g) || []).length === 3 && /id="sbTuyIn"[^>]*value="7000"/.test(h1) && /MAX CƯỢC/.test(h1), h1);
 }
 
+// 23/09 chủ server: "login máy tính, vào điện thoại là bị đá ra". Nguyên nhân nằm ở
+// đúng một mệnh đề trong vòng dọn phiên lúc đăng nhập.
+muc('đăng nhập nhiều thiết bị + nhớ tài khoản');
+ok('★ đăng nhập KHÔNG còn xoá phiên cũ của chính người đó',
+    !/\|\| s\.u === userId\) delete ss\[t\]/.test(SRC) &&
+    SRC.includes('for (const [t, s] of Object.entries(ss)) {') &&
+    SRC.includes('if (now - (s.lanCuoi || s.ts || 0) > SESSION_TTL) delete ss[t];'));
+ok('mỗi ví giữ tối đa 5 máy, dôi ra thì đuổi máy LÂU KHÔNG DÙNG NHẤT',
+    SRC.includes('const MAX_THIET_BI = 5;') &&
+    SRC.includes('.sort((a, b) => (b[1].lanCuoi || b[1].ts || 0) - (a[1].lanCuoi || a[1].ts || 0));') &&
+    SRC.includes('for (let i = MAX_THIET_BI - 1; i < cuaToi.length; i++) delete ss[cuaToi[i][0]];'));
+ok('phiên ghi mốc lanCuoi lúc đăng nhập', SRC.includes("ss[token] = { u: userId, ts: now, lanCuoi: now };"));
+ok('hạn 30 ngày TRƯỢT theo lần dùng cuối, và chỉ ghi lại 1 giờ/lần',
+    SRC.includes('const cuoi = s.lanCuoi || s.ts || 0;') &&
+    SRC.includes('if (Date.now() - cuoi > SESSION_TTL) { delete ss[t]; return null; }') &&
+    SRC.includes('if (Date.now() - cuoi > 3600 * 1000) s.lanCuoi = Date.now();'));
+ok('có đường thu hồi: /api/logout (máy này) + /api/logout-khac (máy khác) + /api/thietbi',
+    SRC.includes("path === '/api/logout'") && SRC.includes("path === '/api/logout-khac'") &&
+    SRC.includes("path === '/api/thietbi'") &&
+    SRC.includes("for (const [k, s] of Object.entries(ss)) if (s.u === userId && k !== t) { delete ss[k]; so++; }"));
+ok('nút Thoát thu hồi phiên Ở MÁY CHỦ, không chỉ xoá token trong máy',
+    SRC.includes('api("/api/logout",{}).then(xong,xong)'));
+ok('ô tick nhớ Discord ID + PIN, mặc định TẮT', SRC.includes('id="nhoTk" onchange="nhoChg(this.checked)"') &&
+    !/id="nhoTk"[^>]*checked=/.test(SRC) && SRC.includes('Nhớ <b>Discord ID + PIN</b> trên máy này'));
+ok('gỡ tick là xoá NGAY cả ID lẫn PIN, khỏi cần nút quên riêng',
+    SRC.includes('function nhoChg(bat){if(!bat){nhoDat(NHO_U,"");nhoDat(NHO_P,"");nhoDat(NHO_OK,"")}}') &&
+    !SRC.includes('nhoQuenBtn'));
+ok('★ bấm Thoát thì lần tải sau KHÔNG tự đăng nhập lại (kẻo không thoát nổi)',
+    SRC.includes('nhoDat(NHO_THOAT,"1");location.reload()') &&
+    SRC.includes("'var vuaThoat=nhoLay(NHO_THOAT);nhoDat(NHO_THOAT,\"\");',") &&
+    SRC.includes('if(!vuaThoat&&u&&p&&ag&&nhoLay(NHO_OK)==="1")'));
+ok('ô tick là MỘT HÀNG bấm được cả dải, ô vuông không bị bóp',
+    SRC.includes("'.nhoRow{display:flex;align-items:center;") && SRC.includes("'.nhoRow input{flex:0 0 auto;width:17px;height:17px;margin:0;"));
+ok('có sẵn ID+PIN thì đổ vào 2 ô rồi vào thẳng; thiếu PIN thì nhảy con trỏ xuống ô PIN',
+    SRC.includes('function nhoDoVao()') && SRC.includes("'if(TOKEN){show(\"\")}else{nhoDoVao()}',") &&
+    SRC.includes('if(iu&&u)iu.value=u;if(ip&&p)ip.value=p;') &&
+    SRC.includes("'if(ip&&!p)try{ip.focus()}catch(e){}}',"));
+ok('lưu thì lưu CẢ BỘ, bỏ thì xoá CẢ BỘ (không để sót PIN mồ côi)',
+    SRC.includes("'nhoDat(NHO_U,nho?u:\"\");nhoDat(NHO_P,nho?p:\"\");nhoDat(NHO_OK,nho?\"1\":\"\");',"));
+ok('nút đăng xuất máy khác vẫn còn', SRC.includes('function thoatKhac()'));
+ok('mọi lần đụng localStorage đều bọc try/catch (ẩn danh / chặn cookie là ném lỗi)',
+    SRC.includes("function nhoLay(k){try{return localStorage.getItem(k)||\"\"}catch(e){return \"\"}}") &&
+    SRC.includes("function nhoDat(k,v){try{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k)}catch(e){}}"));
+ok('KHÔNG gọi saveDbNow trong đường đăng nhập (ghi đồng bộ = spam là chặn cả bot)',
+    !/path === '\/api\/login'[\s\S]{0,1800}saveDbNow\(\)/.test(SRC));
+
 console.log('\n🎨 GIAO DIỆN BÀN SIC BO: ' + P + ' đạt, ' + F_ + ' hỏng');
 process.exit(F_ ? 1 : 0);
