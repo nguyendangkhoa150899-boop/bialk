@@ -200,10 +200,14 @@ muc('🌪️ BÃO cũng ép được — khoảng riêng từng ô');
 
 muc('🖥️ bảng RIÊNG trong panel');
 {
-    ok('⭐ có khối riêng "Ép HỆ SỐ NHÂN" (nhãn kể cả 4 cửa đều + BÃO)', /✋ Ép HỆ SỐ NHÂN — TÀI · XỈU · CHẴN · LẺ và 🌪️ BÃO/.test(PANEL));
+    // ⚠️ KHÔNG ghim nguyên văn chữ hoa/thường: 24/09 bản "điều chỉnh UI UX admin portal" đổi
+    // <label>✋ Ép HỆ SỐ NHÂN — …</label> thành <h3>✋ Ép hệ số nhân — …</h3> và 2 phép này đỏ oan.
+    // Thứ cần giữ là: khối CÓ TỒN TẠI, nhãn kể cả 4 cửa đều lẫn bão, và nằm trong tab Siêu.
+    const iNhan = PANEL.search(/✋ Ép hệ số nhân/i);
+    ok('⭐ có khối riêng "Ép hệ số nhân" (nhãn kể cả 4 cửa đều + BÃO)',
+        iNhan >= 0 && /✋ Ép hệ số nhân[^<]*Bão/i.test(PANEL), PANEL.slice(iNhan, iNhan + 80));
     ok('...nằm trong tab Siêu Tài Xỉu, không lẫn sang bàn thường',
-        PANEL.indexOf('✋ Ép HỆ SỐ NHÂN —') > PANEL.indexOf('id="tab-stx"') &&
-        PANEL.indexOf('✋ Ép HỆ SỐ NHÂN —') < PANEL.indexOf('id="tab-poker"'));
+        iNhan > PANEL.indexOf('id="tab-stx"') && iNhan < PANEL.indexOf('id="tab-poker"'));
     ok('có khung 4 ô nhập + nút ép + nút huỷ',
         /id="stxNhanO"/.test(PANEL) && /onclick="stxEpNhan\(\)"/.test(PANEL) && /onclick="stxHuyEpNhan\(\)"/.test(PANEL));
     ok('có nút bấm nhanh (x14 / x8 / x2 / tắt hết)', (PANEL.match(/onclick="stxNhanDat\(/g) || []).length >= 4);
