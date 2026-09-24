@@ -420,7 +420,10 @@ ok('lãi/lỗ trừ CẢ PHÍ — bàn Siêu không được khoe lãi cao hơn 
     BAN.includes('cuaAgg[k].phi += (b.phi || 0);'));
 ok('máy bàn Siêu có bangDiscord (tách khỏi adminXem/trangThai) và lọc ván trống',
     BAN.includes('function bangDiscord(soVan)') &&
-    BAN.includes('history: S.history.filter(h => (h.bets || []).length).slice(0, soVan || 10),') &&
+    // 24/09: đọc thẳng sổ ván CÓ CƯỢC. Lọc từ S.history như bản cũ là sai — ván trống đẩy hết ván
+    // có cược ra khỏi 100 slot nên lọc xong còn 0 (bug "log Siêu bị xóa mất hết").
+    BAN.includes('history: S.hisCuoc.slice(0, soVan || 10),') &&
+    BAN.includes('const HIST_CUOC_N = 100;') &&
     BAN.includes('nhip, khoiDong, trangThai, adminXem, bangDiscord,'));
 ok('bảng Siêu: dựng/gỡ/nối-lại-sau-restart đủ bộ, có vòng lặp 5 giây',
     /function getStxBoardData\(\)/.test(IDX) && /async function startStxBoard\(channel\)/.test(IDX) &&

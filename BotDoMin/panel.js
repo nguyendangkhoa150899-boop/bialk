@@ -192,6 +192,7 @@ function startPanel(ctx) {
             spmState: ctx.getSpmState ? ctx.getSpmState() : null,
             spmBoard: ctx.getSpmBoard ? ctx.getSpmBoard() : { on: false, channelId: '' },
             dailyCfg: ctx.getDailyCfg ? ctx.getDailyCfg() : null,   // 🪪 mức điểm danh/nghiện/chuỗi
+            taxiCfg: ctx.getTaxiCfg ? ctx.getTaxiCfg() : null,       // 🚕 vé "Xu đi taxi về"
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
             giftShop: ctx.getGiftShop ? ctx.getGiftShop() : [],   // 🎁 15/09: quà admin tặng (danh sách riêng)
             feats: ctx.featList ? ctx.featList() : [],   // 🔌 15/09: công tắc chức năng người chơi
@@ -407,6 +408,20 @@ function startPanel(ctx) {
                     if (!Object.keys(o).length) return sendJSON(res, 400, { ok: false, error: 'Không có số hợp lệ' });
                     const r = ctx.setDailyCfg(o);
                     ctx.writeLog('ADMIN', `[PANEL] Mức điểm danh: ngày ${r.cfg.daily} · nghiện ${r.cfg.nghien} · đủ ${r.cfg.streakEvery} ngày thưởng ${r.cfg.streakBonus}`);
+                    return sendJSON(res, 200, { ok: true, cfg: r.cfg });
+                }
+                // 🚕 vé "Xu đi taxi về" (tab 👥)
+                if (ctx.setTaxiCfg && req.method === 'POST' && path === '/api/taxi/cfg') {
+                    const num = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n >= 0 ? n : null; };
+                    const o = {};
+                    if (body.on !== undefined) o.on = !!body.on;
+                    if (num(body.tien) !== null) o.tien = num(body.tien);
+                    if (num(body.loMin) !== null) o.loMin = num(body.loMin);
+                    if (num(body.viMax) !== null) o.viMax = num(body.viMax);
+                    if (num(body.gioCho) !== null && num(body.gioCho) >= 1) o.gioCho = num(body.gioCho);
+                    if (!Object.keys(o).length) return sendJSON(res, 400, { ok: false, error: 'Không có số hợp lệ' });
+                    const r = ctx.setTaxiCfg(o);
+                    ctx.writeLog('ADMIN', `[PANEL] Xu đi taxi về: ${r.cfg.on ? 'BẬT' : 'TẮT'} · phát ${r.cfg.tien} · cần thua ${r.cfg.loMin}/ngày · ví còn ≤ ${r.cfg.viMax} · cách ${r.cfg.gioCho}h`);
                     return sendJSON(res, 200, { ok: true, cfg: r.cfg });
                 }
                 // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (UI đã gỡ 04/09 - route giữ cho tương lai)
@@ -1803,7 +1818,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card">
         <h3>🔒 PAL GỐC (tắt chỉ số pal)</h3>
-        <div class="note">Bật là MỌI pal giao ra <b>Lv1 · 0 sao · không passive · bản thường</b> (chỉ chọn giới tính, khoá mua raid đích danh) - nhưng vẫn kèm <b>nền chỉ số</b> đặt ở 2 ô dưới. Vòng quay vẫn đủ 6 huyền thoại (tô vàng) + pal tím; pal raid chỉ ra qua ô RAID vòng may mắn. Đặt 0/0 = trần trụi tuyệt đối. Linh hồn đi bước 3% (20 không chia hết nên mặc định 21). Đổi số chỉ áp cho pal nhận TỪ GIỜ - pal đã giao không đổi.</div>
+        <div class="note">Bật là MỌI pal giao ra <b>cấp đặt ở ô 🆙 · 0 sao · không passive · bản thường</b> (chỉ chọn giới tính, khoá mua raid đích danh) - nhưng vẫn kèm <b>nền chỉ số</b> đặt ở 2 ô dưới. Vòng quay vẫn đủ 6 huyền thoại (tô vàng) + pal tím; pal raid chỉ ra qua ô RAID vòng may mắn. Đặt 0/0 = trần trụi tuyệt đối. Linh hồn đi bước 3% (20 không chia hết nên mặc định 21). Đổi số chỉ áp cho pal nhận TỪ GIỜ - pal đã giao không đổi.</div>
         <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700;margin-top:6px"><input type="checkbox" id="pwRaw" style="width:auto"> BẬT chế độ PAL GỐC</label>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
           <span>💠 Linh hồn</span>
@@ -1812,6 +1827,9 @@ const HTML = `<!DOCTYPE html>
           <span>· 🎯 IV</span>
           <input class="mini-in" id="pwRawIv" type="number" min="0" max="255" placeholder="40" style="width:70px">
           <span>cả 3 chỉ số</span>
+          <span>· 🆙 Cấp</span>
+          <input class="mini-in" id="pwRawLevel" type="number" min="1" max="100" placeholder="1" style="width:70px">
+          <span>pal giao ra</span>
           <button class="btn-green" onclick="pwRawSave(this)">💾 Lưu PAL GỐC</button>
         </div>
         <div class="note" id="pwRawNow">-</div>
@@ -2214,6 +2232,18 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>🎁 Thưởng chuỗi</label><input id="dcStreakBonus" type="number" min="0" placeholder="vd: 800"></div>
           <button class="btn-green" onclick="dcSave()">💾 Lưu mức thưởng</button>
         </div>
+        <div class="row blk">
+          <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px">
+            <label style="display:inline-flex;align-items:center;gap:7px;line-height:1;margin:0"><input id="txOn" type="checkbox" style="margin:0"> <b>🚕 Bật "Xu đi taxi về"</b></label>
+          </div>
+          <div style="flex:1"><label>💸 Phát mỗi lần</label><input id="txTien" type="number" min="0" placeholder="vd: 10000"></div>
+          <div style="flex:1"><label>📉 Phải thua tối thiểu / ngày</label><input id="txLoMin" type="number" min="0" placeholder="vd: 2000000"></div>
+          <div style="flex:1"><label>👛 Ví còn tối đa</label><input id="txViMax" type="number" min="0" placeholder="0 = phải hết sạch"></div>
+          <div style="flex:1"><label>⏳ Cách nhau (giờ)</label><input id="txGio" type="number" min="1" placeholder="vd: 24"></div>
+          <button class="btn-green" onclick="txSave()">💾 Lưu vé taxi</button>
+        </div>
+        <div class="note">🚕 Người chơi <b>cháy ví</b> (còn ≤ "ví còn tối đa") và hôm nay đã <b>thua từ mức trên trở lên</b> thì thấy nút <b>🚕 Xu đi taxi về</b> cạnh số dư, bấm là nhận. Nhận xong phải chờ đủ số giờ đặt ở đây mới nhận lại được (mặc định 24h = mỗi ngày một lần).<br>
+          <b>Tiền thua đếm theo ví thật</b>: tổng mọi đồng ra vào ví trong ngày, trừ đi nạp/rút/chuyển/admin cộng/mua pal/vay/hoàn — nên đúng với mọi trò, kể cả trò thêm sau này. Sổ về 0 lúc <b>00:00 giờ VN</b>.</div>
         <div class="note">Áp NGAY cho lượt nhận kế tiếp (cả Discord lẫn web), không cần restart. <b>Đủ chuỗi</b>: điểm danh đủ ngần này ngày LIÊN TIẾP là được ghi 1 gói thưởng chuỗi chờ nhận trên web. Số hiện trong mô tả lệnh /diemdanh, /nghien chỉ cập nhật sau restart bot (không ảnh hưởng số tiền thật).</div>
         <input id="search" placeholder="🔍 Tìm theo tên hoặc ID..." oninput="renderPlayers()" style="margin-top:12px">
         <div style="overflow-x:auto">
@@ -2510,7 +2540,7 @@ function renderGacha(){
 const DOG_TYPE_LABEL = {
   'admin+':'➕ Admin cộng', 'admin-':'➖ Admin trừ', 'transfer':'🔁 Chuyển',
   'to-game':'🎮 Rút vào game', 'from-game':'💬 Nạp ra Discord', 'shop':'🐾 Mua pal', 'refund':'↩️ Hoàn tiền',
-  'vay':'🏦 Vay', 'trano':'💳 Trả nợ',
+  'vay':'🏦 Vay', 'trano':'💳 Trả nợ', 'taxi':'🚕 Xu đi taxi về',
 };
 
 function renderDogLedger(){
@@ -3311,11 +3341,11 @@ function pwCfgFill(k){
   set('pwUpWt',k.upWtPassive);set('pwUpT4',k.upTier4);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
   set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
   set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);set('pwLuckyRaidPct',k.luckyRaidPct);
-  set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);set('pwRawSoul',k.rawSoulPct);set('pwRawIv',k.rawIv);pwRawNow(k);
+  set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);set('pwRawSoul',k.rawSoulPct);set('pwRawIv',k.rawIv);set('pwRawLevel',k.rawLevel);pwRawNow(k);
   if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;document.getElementById('pwRaw').checked=!!k.raw;}
   document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
     '</b> · linh hồn <b>'+k.soulMax+'</b> dòng miễn phí × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
-    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: Lv1 · 0 sao · linh hồn '+(k.rawSoulPct||0)+'%/dòng · IV '+(k.rawIv||0)+' · không passive · khoá mua raid đích danh</b>':'');
+    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: Lv'+(k.rawLevel||1)+' · 0 sao · linh hồn '+(k.rawSoulPct||0)+'%/dòng · IV '+(k.rawIv||0)+' · không passive · khoá mua raid đích danh</b>':'');
 }
 // 🔒 card PAL GỐC riêng (13/09): chỉ gửi 3 trường, server merge - không đụng giá vé/cooldown...
 async function pwRawSave(btn){
@@ -3325,10 +3355,12 @@ async function pwRawSave(btn){
   if(sp%3!==0)return toast('❌ Linh hồn phải chia hết cho 3 (bước 3%: 18, 21, 24...)');
   if(!(iv>=0&&iv<=255))return toast('❌ IV 0–255');
   const raw=document.getElementById('pwRaw').checked;
-  await runBtn(btn,'Lưu...',()=>api('/api/palwheel/cfg',{raw,rawSoulPct:sp,rawIv:iv}).then(()=>{toast('💾 PAL GỐC: '+(raw?'BẬT':'TẮT')+' · linh hồn '+sp+'%/dòng · IV '+iv);refresh();}));
+  const lv=parseInt(document.getElementById('pwRawLevel').value);
+  if(!(lv>=1&&lv<=100))return toast('❌ Cấp pal 1–100');
+  await runBtn(btn,'Lưu...',()=>api('/api/palwheel/cfg',{raw,rawSoulPct:sp,rawIv:iv,rawLevel:lv}).then(()=>{toast('💾 PAL GỐC: '+(raw?'BẬT':'TẮT')+' · Lv'+lv+' · linh hồn '+sp+'%/dòng · IV '+iv);refresh();}));
 }
 function pwRawNow(k){const e=document.getElementById('pwRawNow');if(!e||!k)return;
-  e.innerHTML=k.raw?('Đang <b style="color:var(--red)">BẬT</b>: pal giao ra Lv1 · 0 sao · linh hồn <b>'+(k.rawSoulPct||0)+'%</b> cả 4 dòng · IV <b>'+(k.rawIv||0)+'</b> cả 3 · không passive'):('Đang <b style="color:#3dd68c">TẮT</b>: pal giao theo cấu hình thường (Lv'+(k.level||80)+' · '+(k.stars||4)+' sao · IV '+(k.ivs||100)+')');}
+  e.innerHTML=k.raw?('Đang <b style="color:var(--red)">BẬT</b>: pal giao ra <b>Lv'+(k.rawLevel||1)+'</b> · 0 sao · linh hồn <b>'+(k.rawSoulPct||0)+'%</b> cả 4 dòng · IV <b>'+(k.rawIv||0)+'</b> cả 3 · không passive'):('Đang <b style="color:#3dd68c">TẮT</b>: pal giao theo cấu hình thường (Lv'+(k.level||80)+' · '+(k.stars||4)+' sao · IV '+(k.ivs||100)+')');}
 function pwCfgSave(){
   const o={price:parseInt(document.getElementById('pwPrice').value),
            customPrice:parseInt(document.getElementById('pwCustom').value),
@@ -3369,6 +3401,7 @@ function pwCfgSave(){
            raw:document.getElementById('pwRaw').checked,
            rawSoulPct:parseInt(document.getElementById('pwRawSoul').value),
            rawIv:parseInt(document.getElementById('pwRawIv').value),
+           rawLevel:parseInt(document.getElementById('pwRawLevel').value),
            open:document.getElementById('pwOpen').checked};
   if(!(o.price>=100))return toast('Vé phải từ 100');
   if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
@@ -3916,6 +3949,12 @@ function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')ret
 // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) - trống = báo lỗi, dùng nút ↺ để về mặc định
 // (pLuck/pLuckClear đã gỡ 04/09 cùng cột 🍀 - route /api/palwheel/luckrate vẫn còn nếu cần dựng lại)
 // 🪪 mức điểm danh / nghiện / thưởng chuỗi
+function txSave(){
+  const g=id=>{const v=document.getElementById(id).value.trim();return v===''?null:Math.floor(Number(v))};
+  const o={on:document.getElementById('txOn').checked,tien:g('txTien'),loMin:g('txLoMin'),viMax:g('txViMax'),gioCho:g('txGio')};
+  if(!(o.tien>=0&&o.loMin>=0&&o.viMax>=0&&o.gioCho>=1))return toast('Điền đủ 4 ô (giờ ≥ 1, còn lại ≥ 0)');
+  api('/api/taxi/cfg',o).then(j=>{toast('🚕 '+(j.cfg.on?'BẬT':'TẮT')+' · phát '+j.cfg.tien.toLocaleString('vi-VN')+' khi thua ≥ '+j.cfg.loMin.toLocaleString('vi-VN')+'/ngày · ví còn ≤ '+j.cfg.viMax.toLocaleString('vi-VN')+' · cách '+j.cfg.gioCho+'h');refresh();}).catch(e=>toast('❌ '+e.message));
+}
 function dcSave(){
   const g=id=>parseInt(document.getElementById(id).value);
   const o={daily:g('dcDaily'),nghien:g('dcNghien'),streakEvery:g('dcStreakEvery'),streakBonus:g('dcStreakBonus')};
@@ -4151,6 +4190,9 @@ async function refresh(force){
     if(nw) nw.innerHTML=(STATE.tx.noti.on&&STATE.tx.noti.id?'<b style="color:var(--green)">ĐANG BẬT</b> - gửi tới <b>'+STATE.tx.noti.id+'</b>'+(STATE.tx.noti.min>0?' (chỉ báo từ '+Number(STATE.tx.noti.min).toLocaleString('vi-VN')+' trở lên)':' (báo mọi mức)'):'<b style="color:var(--red)">ĐANG TẮT</b>')+'. Điền <b>ID người</b> thì bot nhắn riêng, <b>ID kênh</b> thì bot đăng vào kênh - bot tự dò.';
   }
   if(STATE.dailyCfg){[['dcDaily','daily'],['dcNghien','nghien'],['dcStreakEvery','streakEvery'],['dcStreakBonus','streakBonus']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&el.value===''&&document.activeElement!==el)el.value=STATE.dailyCfg[k];});}
+  // 🚕 vé taxi: ô đang gõ thì chừa ra, công tắc luôn theo máy chủ
+  if(STATE.taxiCfg){[['txTien','tien'],['txLoMin','loMin'],['txViMax','viMax'],['txGio','gioCho']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&el.value===''&&document.activeElement!==el)el.value=STATE.taxiCfg[k];});
+    const sw=document.getElementById('txOn');if(sw&&document.activeElement!==sw)sw.checked=!!STATE.taxiCfg.on;}
   // tx info
   const txRun=STATE.tx.live&&STATE.tx.status!=='stopped';
   document.getElementById('txInfo').innerHTML='<span class="run '+(txRun?'on':'off')+'">'+(txRun?'🟢 ĐANG CHẠY':'🔴 ĐÃ TẮT')+'</span> &nbsp; Game #'+padId(STATE.tx.gameId)+' • <span class="badge '+(STATE.tx.status==='betting'?'on':'off')+'">'+STATE.tx.status+'</span> • '+fmtTime(STATE.tx.targetTime)+' • '+STATE.tx.betsCount+' cược'+(STATE.tx.forced?' • <span class="badge on">ĐANG ÉP: '+STATE.tx.forced+'</span>':'');

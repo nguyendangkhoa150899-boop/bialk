@@ -231,6 +231,17 @@ quả của người chơi**. Đo thử: 100 ván đông nhất ≈ **0,43 MB**,
 
 ⚠️ Đừng nâng quá tay: đã có bài học `_txDashHistory` phình **1.348 ván = 57% database.json**.
 
+## 5e. Log bị "xoá mất hết" vì ván trống (24/09)
+
+`_stxHist` giữ 100 ván gần nhất **kể cả ván trống**. Bàn chạy 24/7 ~44 giây/ván nên 100 ván chỉ bằng
+**~73 phút** — một đêm vắng khách là ván trống đẩy sạch ván có cược, sáng admin mở panel thấy trắng.
+Bàn thường không dính vì `txDashHistory` chỉ nhận ván có người đặt.
+
+→ Sổ riêng `S.hisCuoc` / `db()._stxHistCuoc` giữ **100 ván CÓ CƯỢC**; `bangDiscord()` đọc thẳng sổ đó
+(bản cũ lọc từ `S.history`, lọc xong còn 0). `S.history` vẫn giữ mọi ván cho dải soi cầu trên web.
+Bot nâng từ bản cũ thì vớt tạm ván có cược từ `_stxHist` để panel không trắng ngay sau khi deploy.
+Đo trong `kiemtra/ban-test.js`: 5 ván có cược + 150 ván trống → bản cũ **0**, bản mới **5**.
+
 ## 6. Admin
 
 Panel SUPER, tab **⚡ Siêu Tài Xỉu**: bật/tắt bàn · 3 mốc giờ · trần từng nhóm · trần

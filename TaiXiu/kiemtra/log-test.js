@@ -22,7 +22,9 @@ const cat = (S, tu, den) => { const i = S.indexOf(tu), j = S.indexOf(den, i); if
 muc('💰 Sổ Dogcoin: chỉ chuyển / nạp / rút / admin - chạy thật logDog');
 {
     const code = cat(IDX, 'const DOG_LEDGER_BO_QUA = new Set(', '// ===== THỐNG KÊ TÍCH LŨY THEO NGƯỜI CHƠI');
-    const c = { dbCache: {}, getUserData: () => ({ points: 7 }), statAdd: () => { }, Date, Array, Set, Number, Math, console };
+    // loNgayCong: sổ lãi-lỗ ngày của vé 🚕 taxi (24/09) nằm ngoài vùng cắt này. Ở đây chỉ kiểm
+    // "loại nào vào Sổ Dogcoin" nên cho nó rỗng; hành vi thật của sổ lỗ do taxi-test.js đo.
+    const c = { dbCache: {}, getUserData: () => ({ points: 7 }), statAdd: () => { }, loNgayCong: () => { }, Date, Array, Set, Number, Math, console };
     vm.createContext(c); vm.runInContext(code, c);
     // const ở đầu script vm không thành thuộc tính context -> hỏi thẳng trong context
     ok('cắt được logDog + danh sách loại bị chặn', typeof c.logDog === 'function' && vm.runInContext('DOG_LEDGER_BO_QUA instanceof Set', c) === true);

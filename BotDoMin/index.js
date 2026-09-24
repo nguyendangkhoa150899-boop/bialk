@@ -245,6 +245,10 @@ function getUserData(userId) {
 function updatePoints(userId, amount) {
     const data = getUserData(userId);
     data.points += amount;
+    // 🚕 24/09: mọi đồng ra/vào ví đều cộng vào sổ lãi-lỗ NGÀY (cho nút "Xu đi taxi về").
+    // Khoản KHÔNG phải mini game (nạp/rút/chuyển/admin/shop/vay/hoàn) sẽ bị TRỪ NGƯỢC ở logDog,
+    // nên cuối cùng sổ chỉ còn đúng phần thắng thua do CHƠI. Xem loNgayCong().
+    loNgayCong(userId, amount);
 }
 
 // ===== SỔ GHI BIẾN ĐỘNG DOGCOIN =====
@@ -256,7 +260,11 @@ function updatePoints(userId, amount) {
 // Giữ: transfer · to-game/from-game (nạp/rút) · admin+/- · shop/vay/trano/refund (không phải mini game).
 const DOG_LEDGER_BO_QUA = new Set(['bet', 'jackpot', 'cophieu', 'tienlen', 'sieutx']);
 function logDog(type, userId, username, amount, note) {
+    // 🚕 Tới được đây nghĩa là khoản này KHÔNG phải mini game (mini game đã return ở trên) ->
+    // trừ ngược khỏi sổ lãi-lỗ ngày, vì nạp/rút/chuyển/admin/mua pal/vay/hoàn không phải "thua bạc".
+    // Cố tình để SAU dòng chặn: thêm loại mini game mới vào DOG_LEDGER_BO_QUA là tự động tính đúng.
     if (DOG_LEDGER_BO_QUA.has(type)) return;
+    loNgayCong(userId, -amount);
     if (!Array.isArray(dbCache._dogLedger)) dbCache._dogLedger = [];
     dbCache._dogLedger.unshift({
         time: new Date().toLocaleString('vi-VN'),
@@ -295,6 +303,106 @@ function statAdd(userId, key, delta) {
     statsOf(userId)[key] += delta;
     // (bảng 📊 hiển thị đã bỏ 19/08 - số liệu vẫn đếm ngầm trong _pstats, muốn xem
     //  lại thì dựng bảng từ git history là có dữ liệu đầy đủ từ trước tới giờ)
+}
+
+// ===== 🚕 "XU ĐI TAXI VỀ" - vé cứu người cháy ví (24/09) =====
+// Chủ server: "người chơi về 0 dogcoin thì bấm nút được +10.000 (admin set), điều kiện: thua
+// 2.000.000 trở lên trong ngày (admin set) và 24 tiếng reset 1 lần, 1 ngày chỉ nhận 1 lần".
+//
+// ⚠️ "Thua trong ngày" đếm từ VÍ THẬT, không đếm từ sổ Dogcoin. Lý do: sổ ghi cho người đọc nên
+// số của nó không phải lúc nào cũng bằng số tiền ví đổi — Phi Thuyền ghi -amount lúc cược RỒI ghi
+// -amount lần nữa lúc nổ (ví chỉ trừ 1 lần). Đếm theo sổ là thổi phồng tiền thua gấp đôi, tức phát
+// tiền cho người chưa đủ điều kiện. Đếm theo ví thì mọi trò (kể cả trò thêm sau này) đều đúng.
+const TAXI_CFG_DEF = { on: true, tien: 10000, loMin: 2000000, viMax: 0, gioCho: 24 };
+function taxiCfg() {
+    const c = dbCache._taxiCfg && typeof dbCache._taxiCfg === 'object' ? dbCache._taxiCfg : {};
+    const num = (v, mac, min, max) => {
+        const n = Math.floor(Number(v));
+        return Number.isFinite(n) && n >= min && n <= max ? n : mac;
+    };
+    return {
+        on: c.on === undefined ? TAXI_CFG_DEF.on : !!c.on,
+        tien: num(c.tien, TAXI_CFG_DEF.tien, 0, 100000000),
+        loMin: num(c.loMin, TAXI_CFG_DEF.loMin, 0, 1000000000),
+        viMax: num(c.viMax, TAXI_CFG_DEF.viMax, 0, 100000000),
+        gioCho: num(c.gioCho, TAXI_CFG_DEF.gioCho, 1, 720),
+    };
+}
+function setTaxiCfg(o) {
+    const c = dbCache._taxiCfg && typeof dbCache._taxiCfg === 'object' ? dbCache._taxiCfg : {};
+    dbCache._taxiCfg = { ...c, ...o };
+    return { cfg: taxiCfg() };
+}
+/**
+ * Sổ lãi-lỗ NGÀY: { uid: { n: 'ngày VN', v: net } }. v ÂM = đang thua.
+ * Sang ngày mới (00:00 giờ VN) là tự về 0 — không cần hẹn giờ dọn.
+ */
+function loNgayO(userId) {
+    if (!dbCache._loNgay || typeof dbCache._loNgay !== 'object') dbCache._loNgay = {};
+    const hom = vnDayStr(Date.now());
+    let e = dbCache._loNgay[userId];
+    if (!e || typeof e !== 'object' || e.n !== hom) { e = { n: hom, v: 0 }; dbCache._loNgay[userId] = e; }
+    if (typeof e.v !== 'number' || !Number.isFinite(e.v)) e.v = 0;
+    return e;
+}
+function loNgayCong(userId, delta) {
+    if (!userId || !Number.isFinite(delta) || !delta) return;
+    // chỉ ghi cho ví CÓ THẬT, kẻo id rác tạo entry rồi phình database.json
+    if (!dbCache[userId] || typeof dbCache[userId] !== 'object') return;
+    loNgayO(userId).v += delta;
+}
+/** Thua ròng hôm nay (số DƯƠNG). Lãi thì trả 0. */
+function taxiLoHomNay(userId) { return Math.max(0, -loNgayO(userId).v); }
+/** Dọn entry của ngày cũ - gọi lúc bot khởi động, khỏi phình DB theo thời gian. */
+function taxiDonSo() {
+    const hom = vnDayStr(Date.now());
+    const s = dbCache._loNgay;
+    if (s && typeof s === 'object') for (const k of Object.keys(s)) if (!s[k] || s[k].n !== hom) delete s[k];
+    const n = dbCache._taxiNhan;
+    if (n && typeof n === 'object') {
+        const han = Date.now() - 7 * 86400000;
+        for (const k of Object.keys(n)) if (!(Number(n[k]) > han)) delete n[k];
+    }
+}
+/** Trạng thái nút cho web: đủ điều kiện chưa, còn thiếu gì. */
+function taxiState(userId) {
+    const c = taxiCfg();
+    const vi = getUserData(userId).points || 0;
+    const lo = taxiLoHomNay(userId);
+    const lan = Number((dbCache._taxiNhan || {})[userId]) || 0;
+    const choS = Math.max(0, Math.ceil((lan + c.gioCho * 3600000 - Date.now()) / 1000));
+    let vuong = '';
+    if (!c.on) vuong = 'tat';
+    else if (choS > 0) vuong = 'cho';
+    else if (vi > c.viMax) vuong = 'conTien';
+    else if (lo < c.loMin) vuong = 'chuaDuLo';
+    return {
+        on: c.on, tien: c.tien, loMin: c.loMin, viMax: c.viMax, gioCho: c.gioCho,
+        vi, lo, thieuLo: Math.max(0, c.loMin - lo), choS, vuong, nhanDuoc: vuong === '',
+    };
+}
+/** Bấm nhận. Kiểm lại TOÀN BỘ điều kiện ở máy chủ - web chỉ là cái nút. */
+function taxiNhan(userId) {
+    const s = taxiState(userId);
+    const vnd = (n) => Number(n).toLocaleString('vi-VN');
+    if (s.vuong === 'tat') return { error: 'Nút "Xu đi taxi về" đang tắt.' };
+    if (s.vuong === 'cho') {
+        const h = Math.floor(s.choS / 3600), p = Math.ceil((s.choS % 3600) / 60);
+        return { error: `Mỗi ${s.gioCho} tiếng mới nhận được một lần - còn ${h > 0 ? h + ' tiếng ' : ''}${p} phút nữa.` };
+    }
+    if (s.vuong === 'conTien') return { error: `Nút này dành cho người CHÁY VÍ - ví bạn còn ${vnd(s.vi)} Dogcoin${s.viMax > 0 ? ` (phải còn tối đa ${vnd(s.viMax)})` : ''}.` };
+    if (s.vuong === 'chuaDuLo') return { error: `Hôm nay bạn mới thua ${vnd(s.lo)} - phải thua từ ${vnd(s.loMin)} trở lên mới nhận được (còn thiếu ${vnd(s.thieuLo)}).` };
+
+    if (!dbCache._taxiNhan || typeof dbCache._taxiNhan !== 'object') dbCache._taxiNhan = {};
+    dbCache._taxiNhan[userId] = Date.now();          // ghi mốc TRƯỚC khi cộng tiền: bấm dồn 2 lần chỉ ăn 1
+    const ten = getUserData(userId).name || userId;
+    updatePoints(userId, s.tien);
+    // logDog loại 'taxi' (không nằm trong DOG_LEDGER_BO_QUA) -> vừa vào Sổ Dogcoin, vừa TỰ TRỪ NGƯỢC
+    // khỏi sổ lãi-lỗ ngày, nên tiền cứu trợ không tự làm giảm số tiền thua đã ghi.
+    logDog('taxi', userId, ten, s.tien, `🚕 Xu đi taxi về (hôm nay thua ${vnd(s.lo)})`);
+    saveDbNow();
+    writeLog('ADMIN', `[XU ĐI TAXI] ${ten} nhận ${vnd(s.tien)} (hôm nay thua ${vnd(s.lo)}, ví trước khi nhận ${vnd(s.vi)})`);
+    return { ok: true, tien: s.tien, lo: s.lo, balance: getUserData(userId).points || 0, gioCho: s.gioCho };
 }
 
 // ===== CHUYỂN DOGCOIN GIỮA NGƯỜI CHƠI - nút 🧧 Lộc lá trên web =====
@@ -1364,6 +1472,9 @@ function palWheelCfg() {
         // linh hồn đi bước 3% nên 20 -> 21). Admin chỉnh 2 ô này ở panel, chỉ áp khi raw bật.
         rawSoulPct: Math.floor(num(c.rawSoulPct, 21, 0, 201)),    // % linh hồn MỖI DÒNG (cả 4 dòng), rank = %/3
         rawIv: Math.floor(num(c.rawIv, 40, 0, 255)),              // IV cả 3 chỉ số
+        // 24/09 chủ server: "admin setup được cấp của pal nữa". Trước cứng Lv1. Cùng phạm vi 1-100
+        // với cfg.level của chế độ thường để hai ô không lệch luật nhau.
+        rawLevel: Math.floor(num(c.rawLevel, 1, 1, 100)),         // CẤP pal giao ra khi bật PAL GỐC
         open: c.open === undefined ? true : !!c.open,
         // 🍀 THANH MAY MẮN + VÒNG RAID (27/08): mỗi lượt quay thường nạp luckMin..luckMax %
         // (admin còn đặt riêng %/quay TỪNG NGƯỜI ở panel - xem palLuckStep). Đầy 100% được
@@ -3471,7 +3582,7 @@ async function palChestClaim(userId, itemId, soulsIn, passivesIn, username, extr
     const rawSoul = Math.max(0, Math.min(255, Math.round((cfg.rawSoulPct || 0) / 3)));
     const rawIv = Math.max(0, Math.min(255, cfg.rawIv || 0));
     const specBase = cfg.raw ? {
-        level: 1, rank: 0,
+        level: Math.max(1, Math.min(100, Math.floor(cfg.rawLevel) || 1)), rank: 0,
         ivHp: rawIv, ivMelee: rawIv, ivShot: rawIv, ivDef: rawIv,
         soulHp: rawSoul, soulAtk: rawSoul, soulDef: rawSoul, soulWork: rawSoul,
         gender,
@@ -7001,6 +7112,7 @@ client.once('ready', async (c) => {
     cleanupGoneGames();   // 🧹 17/09: hoàn cược + xoá khoá db của Bầu Cua / Blackjack / Xổ Số
     // 💸 hoàn tiền cược ván dở (Big Small / Dò Mìn / Leo Thang) của phiên trước
     refundBootPendingBets();
+    taxiDonSo();   // 🚕 dọn sổ lãi-lỗ của NGÀY CŨ + mốc nhận quá 7 ngày, khỏi phình database.json
     // ⚡ Siêu Tài Xỉu: hoàn cược ván dở + trả nốt bảng tiền còn treo, rồi mở ván mới.
     try { stxBan.khoiDong(); } catch (e) { writeLog('SYSTEM', `[SIÊU TX] Không khởi động được: ${e.message}`); }
     // 🎲 27/08: TỰ KHỞI ĐỘNG Big Small ở kênh đã lưu (_txChannelId) - khỏi cần admin
@@ -7116,6 +7228,8 @@ client.once('ready', async (c) => {
             },
             // 📅 điểm danh tháng + 💉 nghiện - cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
+            // 🚕 nút "Xu đi taxi về" (24/09)
+            taxi: { state: taxiState, nhan: taxiNhan },
             daily: {
                 state: dailyState, claim: claimDaily, streak: claimStreak,
                 nghien: (uid) => claimNghien(uid, true),   // lụm từ WEB thì đăng công khai
@@ -7215,7 +7329,7 @@ client.once('ready', async (c) => {
                         // 💎 bảng giá nâng cấp để client tính phí y hệt server
                         up: { slot5: cfg.upSlot5, slot6: cfg.upSlot6, slot7: cfg.upSlot7, slot8: cfg.upSlot8, slotLow: cfg.upSlotLow, iv: cfg.upIv, soulLine: cfg.upSoulLine, wt: cfg.upWtPassive, t4: cfg.upTier4, boss: cfg.upBoss, soul: [cfg.upSoul1, cfg.upSoul2, cfg.upSoul3, cfg.upSoul4, cfg.upSoul5] },
                         level: cfg.level, stars: cfg.stars, boss: cfg.boss, raw: cfg.raw,   // 🔒 tắt chỉ số
-                        rawSoulPct: cfg.rawSoulPct, rawIv: cfg.rawIv,   // 13/09: nền PAL GỐC cho web hiện đúng
+                        rawSoulPct: cfg.rawSoulPct, rawIv: cfg.rawIv, rawLevel: cfg.rawLevel,   // 13/09: nền PAL GỐC cho web hiện đúng
                         noBoss: Array.isArray(dbCache._noBossCodes) ? dbCache._noBossCodes : [],   // 👑 code không có bản BOSS (bot tự học) - client ẩn nút
                         // ⏳ cooldown nhận pal CHUNG toàn server (ms còn lại + quy tắc giây/lần)
                         claimCdLeft: Math.max(0, (dbCache._palClaimCdUntil || 0) - Date.now()),
@@ -7394,6 +7508,8 @@ client.once('ready', async (c) => {
             setPalLuckRate,   // 🍀 đặt %/quay may mắn riêng từng người (rig cho bạn bè)
             // 🪪 mức điểm danh/nghiện/thưởng chuỗi (panel tab 👥 chỉnh)
             getDailyCfg: dailyCfg,
+            getTaxiCfg: () => taxiCfg(),
+            setTaxiCfg: (o) => setTaxiCfg(o),
             setDailyCfg: (o) => {
                 const cur = dailyCfg();
                 dbCache._dailyCfg = { ...cur, ...(o && typeof o === 'object' ? o : {}) };

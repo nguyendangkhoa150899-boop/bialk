@@ -311,5 +311,45 @@ muc('chống soi bài');
         !!ban.nhanDoi('A', 'A').error && !!ban.datLai('A', 'A').error && !!ban.xoaCuoc('A').error);
 }
 
+// ---------------------------------------------------------------- 📜 LOG KHÔNG ĐƯỢC TRẮNG (24/09)
+// Chủ server: "bug log của ⚡ Siêu Tài Xỉu bị xóa mất hết".
+// Gốc: sổ cũ giữ 100 ván gần nhất KỂ CẢ VÁN TRỐNG. Bàn chạy 24/7 ~44 giây/ván nên 100 ván chỉ bằng
+// ~73 phút — một đêm vắng khách là ván trống đẩy sạch ván có cược. Sổ ván CÓ CƯỢC phải nằm riêng.
+muc('📜 log ván có cược không bị ván trống đẩy trắng');
+{
+    const { ban, DB } = dungBan({ A: 100000000 });
+    const S = ban._S, t = ban.adminXem().time;
+    const now = () => Math.floor(Date.now() / 1000);
+    const chayVan = (coCuoc) => {
+        S.status = 'betting'; S.targetTime = now() + t.bet + t.nhan + t.nan;
+        S.bets = []; S.nhan = null; S.nan = null; S.plan = null;
+        if (coCuoc) ban.dat('A', 'A', [{ choice: 'tai', amount: 5000 }]);
+        S.targetTime = now() + t.nan + t.nhan; ban.nhip();   // khoá sổ
+        S.targetTime = now() + t.nan; ban.nhip();            // quay
+        S.targetTime = now() - 1; ban.nhip();                // mở bát + ghi sổ
+    };
+    for (let i = 0; i < 5; i++) chayVan(true);
+    ok('5 ván có cược -> panel thấy đủ 5', ban.bangDiscord(30).history.length === 5, String(ban.bangDiscord(30).history.length));
+    for (let i = 0; i < 150; i++) chayVan(false);            // một đêm không ai chơi
+    ok('⭐⭐ sau 150 ván TRỐNG, log vẫn còn nguyên 5 ván có cược (trước đây về 0 = "bị xóa mất hết")',
+        ban.bangDiscord(30).history.length === 5, String(ban.bangDiscord(30).history.length));
+    ok('...và đúng là 5 ván CÓ người đặt, không lẫn ván trống',
+        ban.bangDiscord(30).history.every(h => (h.bets || []).length > 0));
+    ok('sổ ván có cược được lưu xuống đĩa (sống qua restart)', Array.isArray(DB._stxHistCuoc) && DB._stxHistCuoc.length === 5, String((DB._stxHistCuoc || []).length));
+    ok('dải soi cầu cho người chơi vẫn là lịch sử ĐẦY ĐỦ (có cả ván trống)', S.history.length === 100 && S.history.filter(h => (h.bets || []).length).length === 0);
+
+    // restart: bàn mới cùng DB
+    const ban2 = taoBan({ db: () => DB, layNguoi: (id) => ({ points: 1e8, name: id }), congVi: () => { }, ghiLog: () => { }, luuDb: () => { } });
+    ban2.khoiDong();
+    ok('⭐ bật lại bot: log vẫn còn 5 ván', ban2.bangDiscord(30).history.length === 5, String(ban2.bangDiscord(30).history.length));
+
+    // bot nâng cấp từ bản cũ: chưa có _stxHistCuoc -> vớt tạm từ _stxHist cho đỡ trắng
+    const DB2 = { _stxOn: true, _stxHist: [{ gameId: 9, dice: [1, 2, 3], sum: 6, bets: [{ u: 'A', name: 'A', amount: 1000, nhan: 0 }] }, { gameId: 8, dice: [1, 1, 2], sum: 4, bets: [] }] };
+    const ban3 = taoBan({ db: () => DB2, layNguoi: () => ({ points: 0 }), congVi: () => { }, ghiLog: () => { }, luuDb: () => { } });
+    ban3.khoiDong();
+    ok('bản cũ nâng lên: vớt được ván có cược từ sổ cũ, không bắt admin chờ ván mới',
+        ban3.bangDiscord(30).history.length === 1, String(ban3.bangDiscord(30).history.length));
+}
+
 console.log('\n⚡ MÁY BÀN SIÊU TÀI XỈU: ' + P + ' đạt, ' + F + ' hỏng');
 process.exit(F ? 1 : 0);

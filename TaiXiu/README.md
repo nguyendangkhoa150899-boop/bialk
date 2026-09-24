@@ -248,6 +248,7 @@ node TaiXiu/kiemtra/chotvan-test.js   # đặt ô bàn mới rồi BỎ ĐI: vá
 node TaiXiu/kiemtra/tratien-test.js   # ép xúc xắc rồi tính tay xem trả đúng từng đồng
 node TaiXiu/kiemtra/nhan-2ban-test.js # 22/09 rà nhân 2 bàn: tham chiếu độc lập, 216×52×nhân, máy bàn thật 2.600 ván, Đơn 1 viên không khoe ⚡ (48 phép)
 node TaiXiu/kiemtra/log-test.js       # 22/09 📜 LOG: Sổ Dogcoin chặn mini game, 1 dòng/ván ai đặt nhiêu ăn thua nhiêu, mục Siêu riêng (41 phép)
+node TaiXiu/kiemtra/taxi-test.js      # 24/09 🚕 vé "Xu đi taxi về": chạy mã thật, soi từng đồng (52 phép)
 ```
 
 Nhịp bot test: bật bằng `node Desktop/bialk-test.js` các bước `5` (tắt) → `3` (đồng bộ) →
@@ -466,6 +467,51 @@ dưới ô) đã bỏ vì làm hàng chip gãy.
 - **💰 Sổ Dogcoin chỉ giữ chuyển / nạp / rút / admin** (+ mua pal, vay/trả nợ, hoàn rút — không phải mini
   game). `DOG_LEDGER_BO_QUA = bet · jackpot · cophieu · tienlen · sieutx` chặn ở cửa ghi **và** lọc khi
   đọc nên dòng cũ trong DB cũng biến. 3 khoản hoàn cược mini game đổi nhãn `bet` để bị chặn theo.
+
+## 12g. 🚕 VÉ "XU ĐI TAXI VỀ" (24/09)
+
+Chủ server: *"người chơi về 0 dogcoin thì bấm nút được +10.000 (admin set số), thoả 2 điều kiện:
+1. thua 2.000.000 trở lên trong ngày (admin set) · 2. 24 tiếng reset 1 lần, 1 ngày chỉ nhận 1 lần"*.
+
+Nút **🚕 XU ĐI TAXI VỀ** nằm cạnh số dư trên web, **chỉ hiện khi đã đủ điều kiện**. Panel SUPER tab
+👥 có 4 ô + công tắc: *phát mỗi lần · phải thua tối thiểu/ngày · ví còn tối đa · cách nhau (giờ)*.
+Máy chủ kiểm lại toàn bộ điều kiện khi bấm — web chỉ là cái nút. Bấm dồn nhiều lần chỉ ăn một
+(ghi mốc nhận **trước** khi cộng tiền).
+
+### "Thua trong ngày" đếm từ VÍ, không đếm từ sổ Dogcoin
+
+`updatePoints` cộng mọi đồng ra/vào ví vào `_loNgay[uid]`, rồi `logDog` **trừ ngược** những khoản
+**không phải mini game** (nạp/rút/chuyển/admin cộng/mua pal/vay/trả nợ/hoàn). Còn lại đúng bằng
+thắng thua do chơi — **mọi trò, kể cả trò thêm sau này**, không phải khai báo gì thêm.
+
+⚠️ **Đừng đếm theo sổ Dogcoin.** Sổ ghi cho người đọc nên số của nó không phải lúc nào cũng bằng
+tiền ví đổi: Phi Thuyền ghi `-amount` lúc cược **rồi ghi `-amount` lần nữa lúc nổ** (ví chỉ trừ một
+lần), lúc rút thì ghi `win − cược` trong khi ví `+win`. Đếm theo sổ là **thổi phồng tiền thua gấp
+đôi** → phát tiền cho người chưa đủ điều kiện. `taxi-test.js` có phép đo đúng ca này.
+
+Sổ về 0 lúc **00:00 giờ VN**. `taxiDonSo()` chạy lúc bot khởi động dọn entry ngày cũ + mốc nhận quá
+7 ngày. Tiền taxi đi qua `logDog('taxi', …)` nên **vào Sổ Dogcoin** (admin tra được) và **tự trừ
+ngược** khỏi sổ lỗ — nhận 10.000 không làm số đã thua tụt xuống.
+
+**Mốc 24 giờ là mốc TRƯỢT, không phải nửa đêm.** Nhận lúc 23h55 rồi 00h05 hôm sau bấm lại vẫn phải
+chờ đủ 24 tiếng — đúng câu *"24 tiếng reset 1 lần"* và bịt luôn kẽ hở nhận 2 lần trong 10 phút.
+
+## 12h. 📜 LOG SIÊU TÀI XỈU BỊ "XOÁ MẤT HẾT" (24/09)
+
+Sổ `_stxHist` giữ 100 ván gần nhất **kể cả ván trống**. Bàn chạy 24/7, ~44 giây/ván → 100 ván chỉ
+bằng **~73 phút**. Một đêm vắng khách là ván trống đẩy sạch ván có cược, sáng mở panel thấy **trắng**.
+Bàn thường không dính vì `txDashHistory` chỉ nhận ván **có người đặt**.
+
+→ Thêm sổ riêng `S.hisCuoc` / `_stxHistCuoc` (100 ván **có cược**), `bangDiscord()` đọc thẳng sổ này.
+`S.history` vẫn giữ mọi ván cho dải soi cầu 20 ván trên web. Bot nâng cấp từ bản cũ thì vớt tạm ván
+có cược từ `_stxHist` để panel không trắng ngay sau khi deploy. Đo: 5 ván có cược + 150 ván trống →
+bản cũ còn **0**, bản mới còn **5** (`SieuTaiXiu/kiemtra/ban-test.js`).
+
+## 12i. 🆙 CẤP PAL Ở CHẾ ĐỘ PAL GỐC (24/09)
+
+`rawLevel` (mặc định 1, kẹp 1–100 — cùng phạm vi với `cfg.level` của chế độ thường). Trước đây
+`specBase` cứng `level: 1`. Ô 🆙 **Cấp** nằm trong card 🔒 PAL GỐC ở panel, cạnh Linh hồn và IV.
+Đổi số chỉ áp cho pal nhận **từ lúc đổi**; pal đã giao không đụng tới.
 
 ## 13. Cạm bẫy đã dính, đừng dính lại
 

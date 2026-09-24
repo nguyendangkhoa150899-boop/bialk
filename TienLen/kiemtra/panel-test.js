@@ -108,6 +108,22 @@ function xin(duong, than, token) {
     const trung = Object.keys(dem).filter(k => dem[k] > 1);
     ok('không có id trùng trong trang panel', trung.length === 0, trung.join(', '));
 
+    // ---------------------------------------------------------------- 🆙 CẤP PAL GỐC + 🚕 VÉ TAXI (24/09)
+    // Hai ô admin mới. Trang đích phải có thật (phép "getElementById trỏ vào id CÓ THẬT" ở trên đã
+    // canh sẵn), và index.js phải thật sự DÙNG số đó chứ không phải chỉ lưu cho vui.
+    const IDX = require('fs').readFileSync(path.join(__dirname, '..', '..', 'BotDoMin', 'index.js'), 'utf8');
+    ok('🆙 PAL GỐC: trang có ô nhập CẤP pal', /id="pwRawLevel"/.test(trang.b));
+    ok('...gửi lên máy chủ kèm rawLevel và chặn ngoài 1–100',
+        /rawLevel:lv/.test(trang.b) && /Cấp pal 1–100/.test(trang.b));
+    ok('⭐ index KHÔNG còn cứng Lv1 — pal gốc giao ra theo cfg.rawLevel',
+        /level: Math\.max\(1, Math\.min\(100, Math\.floor\(cfg\.rawLevel\) \|\| 1\)\), rank: 0,/.test(IDX) && !/\n\s+level: 1, rank: 0,/.test(IDX));
+    ok('...cấu hình có rawLevel, mặc định 1, kẹp 1–100 (cùng phạm vi với cấp của chế độ thường)',
+        /rawLevel: Math\.floor\(num\(c\.rawLevel, 1, 1, 100\)\)/.test(IDX));
+    ok('...dòng trạng thái trên panel hiện đúng cấp đang đặt, không in cứng "Lv1"',
+        /Lv'\+\(k\.rawLevel\|\|1\)\+'/.test(trang.b) && !/pal giao ra Lv1 ·/.test(trang.b));
+    ok('🚕 vé taxi: trang có đủ 4 ô + công tắc + nút lưu',
+        ['txTien', 'txLoMin', 'txViMax', 'txGio', 'txOn'].every(id => trang.b.includes('id="' + id + '"')) && /onclick="txSave\(\)"/.test(trang.b));
+
     console.log('\n🛠️ TRANG PANEL SUPER: ' + P + ' đạt, ' + F + ' hỏng');
     process.exit(F ? 1 : 0);
 })();

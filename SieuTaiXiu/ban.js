@@ -36,6 +36,11 @@ const HIST_WEB = 20;         // gửi xuống web (dải kết quả cho ngườ
 // gần như trắng, vì 20 ván cứu được có thể toàn ván trống. Bàn thường không dính vì nó
 // có mảng riêng _txDashHistory giữ 100 ván.
 const HIST_LUU = HIST_N;
+// ⚠️ 24/09 (bug "log Siêu bị xóa mất hết"): sổ trên KỂ CẢ VÁN TRỐNG. Bàn chạy 24/7 ~44 giây/ván nên
+// 100 ván chỉ bằng ~73 phút — một đêm vắng khách là ván trống đẩy sạch ván có cược, sáng mở panel
+// thấy trắng. Nên phải có sổ RIÊNG chỉ chứa ván CÓ NGƯỜI ĐẶT (đúng cách bàn thường làm với
+// txDashHistory). Sổ này mới là thứ panel/bảng Discord đọc.
+const HIST_CUOC_N = 100;     // ván CÓ CƯỢC giữ lại - không bị ván trống đẩy đi
 const SAN_CUOC = 1000;       // sàn cược mỗi ô
 
 function taoBan(ctx) {
@@ -47,7 +52,7 @@ function taoBan(ctx) {
     // ---------------------------------------------------------------- trạng thái
     const S = {
         gameId: 1, targetTime: 0, status: 'off',
-        bets: [], nhan: null, nan: null, plan: null, history: [],
+        bets: [], nhan: null, nan: null, plan: null, history: [], hisCuoc: [],
         vanTruoc: new Map(),      // giỏ ván trước của từng người (cho nút Đặt lại)
         dangChot: false,
         // nhip() là no-op cho tới khi khoiDong() cứu tiền ván dở xong. Không có cờ này
@@ -380,6 +385,12 @@ function taoBan(ctx) {
         S.history.unshift(h);
         if (S.history.length > HIST_N) S.history.pop();
         db()._stxHist = S.history.slice(0, HIST_LUU);
+        // 📜 sổ ván CÓ CƯỢC: ván trống không chen vào nên log không bao giờ bị đẩy trắng
+        if ((h.bets || []).length) {
+            S.hisCuoc.unshift(h);
+            if (S.hisCuoc.length > HIST_CUOC_N) S.hisCuoc.pop();
+            db()._stxHistCuoc = S.hisCuoc;
+        }
         // 📜 22/09 một dòng mỗi ván: ai đặt nhiêu (+phí) ăn thua nhiêu - đúng thứ chủ server cần tra
         const dongNguoi = Object.values(p.byUser || {}).map(e => {
             const net = (e.win || 0) - (e.stake || 0) - (e.phi || 0);
@@ -486,6 +497,9 @@ function taoBan(ctx) {
         const gid = Number(db()._stxGameId);
         if (Number.isFinite(gid) && gid > 0) S.gameId = Math.floor(gid);
         if (Array.isArray(db()._stxHist)) S.history = db()._stxHist.slice(0, HIST_N);
+        // sổ ván có cược: bản cũ chưa có -> vớt tạm từ _stxHist cho panel đỡ trắng ngay sau khi nâng cấp
+        if (Array.isArray(db()._stxHistCuoc)) S.hisCuoc = db()._stxHistCuoc.slice(0, HIST_CUOC_N);
+        else S.hisCuoc = S.history.filter(h => (h.bets || []).length).slice(0, HIST_CUOC_N);
 
         // ⚠️ Hai đường cứu tiền KHÔNG được giẫm chân nhau: ai đã có phần trong bảng
         // trả tiền thì KHÔNG hoàn cược nữa (hoàn nữa là vừa hoàn vừa trả).
@@ -590,8 +604,9 @@ function taoBan(ctx) {
             on: batTat(), gameId: S.gameId, status: S.status, targetTime: S.targetTime,
             khoaSoS: khoaSoS(), phi: CUA.PHI, maxBet: tranToiDaNguoi(), sanCuoc: SAN_CUOC,
             bets: S.bets.map(b => ({ u: b.userId, name: b.username, choice: b.choice, tenCua: CUA.THEO_ID[b.choice].ten, amount: b.amount })),
-            // ván trống chỉ tổ chiếm chỗ trên bảng — lịch sử đầy đủ vẫn nằm trong _stxHist
-            history: S.history.filter(h => (h.bets || []).length).slice(0, soVan || 10),
+            // đọc thẳng sổ ván CÓ CƯỢC (24/09). Lọc từ S.history như bản cũ là sai: ván trống đã
+            // đẩy hết ván có cược ra khỏi 100 slot, lọc xong còn số 0 — đúng bug "log bị xóa mất hết".
+            history: S.hisCuoc.slice(0, soVan || 10),
         };
     }
 

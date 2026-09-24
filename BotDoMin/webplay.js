@@ -442,6 +442,16 @@ function startWebPlay(ctx) {
                 // ===== 📅 ĐIỂM DANH THÁNG + 💉 NGHIỆN =====
                 // Toàn bộ luật + tiền nằm ở index.js (ctx.daily) - dùng chung với
                 // /diemdanh, /nghien bên Discord nên không bao giờ lệch nhau.
+                // 🚕 24/09 "Xu đi taxi về": /state khớp regex XEM nên người chưa liên kết vẫn xem được
+                // (thấy nút xám + lý do), còn /nhan là POST -> cổng liên kết phía trên đã chặn sẵn.
+                if (ctx.taxi && path === '/api/taxi/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.taxi.state(userId) });
+                }
+                if (ctx.taxi && req.method === 'POST' && path === '/api/taxi/nhan') {
+                    const r = ctx.taxi.nhan(userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 if (ctx.daily && path === '/api/daily/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.daily.state(userId) });
                 }
@@ -1141,6 +1151,14 @@ const PAGE = [
     '#debtChip .lb{font-size:10px;color:#ffb3b3;letter-spacing:.3px}',
     '#debtChip .vl{font-size:15px;font-weight:900;color:#ff8b8b}',
     '#debtChip:active{transform:translateY(1px)}',
+    // 🚕 24/09: ô "Xu đi taxi về" cạnh số dư - CHỈ hiện khi đã đủ điều kiện nhận, bấm là nhận luôn.
+    // Vàng nhạt + nhấp nháy nhẹ để người cháy ví nhìn thấy ngay, nhưng không chói như nút cược.
+    '#taxiChip{flex:0 0 auto;white-space:nowrap;cursor:pointer;user-select:none;padding:6px 10px;border-radius:10px;border:1px solid #e0b64a;background:linear-gradient(180deg,#3b3115,#2a2310);line-height:1.15;text-align:center;animation:taxiNhay 1.6s ease-in-out infinite}',
+    '#taxiChip .lb{font-size:10px;color:#ffe193;letter-spacing:.3px}',
+    '#taxiChip .vl{font-size:15px;font-weight:900;color:#ffcf5c}',
+    '#taxiChip:active{transform:translateY(1px)}',
+    '@keyframes taxiNhay{0%,100%{box-shadow:0 0 0 0 rgba(255,207,92,.0)}50%{box-shadow:0 0 0 4px rgba(255,207,92,.22)}}',
+    '@media (prefers-reduced-motion:reduce){#taxiChip{animation:none}}',
     '#nav{display:flex;gap:6px;margin-bottom:8px}',
     '#nav button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);font-size:13px;padding:9px 2px}',
     '#nav button.on{background:linear-gradient(180deg,#2b3346,#222839);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
@@ -1902,6 +1920,7 @@ const PAGE = [
     '<div class="big"><img class="dc" src="/dogcoin.png" alt=""> <span id="bal">0</span></div></div>',
     // 📒 14/09: ô NỢ kế bên số dư - chỉ hiện khi đang nợ, bấm vào là trả được luôn
     '<div id="debtChip" class="hidden" onclick="debtBarToggle()" title="Bấm để trả nợ"><div class="lb">📒 ĐANG NỢ</div><div class="vl" id="debtChipVal">0</div></div>',
+    '<div id="taxiChip" class="hidden" onclick="taxiNhan()" title="Cháy ví mà hôm nay thua nhiều - bấm nhận tiền về"><div class="lb">🚕 XU ĐI TAXI VỀ</div><div class="vl" id="taxiChipVal">0</div></div>',
     '<div style="display:flex;gap:6px;align-items:center">',
     // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
     // 🧰 17/09: Rương Ích Kỷ - đứng ngay trước nút loa, đúng chỗ chủ server chỉ
@@ -2717,7 +2736,8 @@ const PAGE = [
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
     'debtSync();setInterval(function(){if(TOKEN)debtSync()},15000);',
-    'giftSync();setInterval(function(){if(TOKEN)giftSync()},30000);',   // 🎁 15/09: tab Quà luôn đúng, qua 00:00 tự hiện lại   // 📒 14/09: ô nợ trên thanh luôn tươi
+    'giftSync();setInterval(function(){if(TOKEN)giftSync()},30000);',
+    'taxiSync();setInterval(taxiSync,20000);',   // 🎁 15/09: tab Quà luôn đúng, qua 00:00 tự hiện lại   // 📒 14/09: ô nợ trên thanh luôn tươi
     'mSync();sSync();',
     // 28/08: F5 giữ nguyên tab đang xem - khôi phục MỌI tab hợp lệ (theo PAGE_GRP, tự
     // đúng cho cả tab thêm sau này như 🛒 Shop Item), không còn whitelist cứng thiếu tab.
@@ -2746,7 +2766,9 @@ const PAGE = [
     'api("/api/tx/reveal",{gameId:g}).then(function(j){',
     // đánh dấu đã ăn tiền ván này để lát bảng lịch sử về không hiện popup lần hai
     'if(g>lastSettled)lastSettled=g;',
-    'if(typeof j.balance==="number"){BAL=j.balance;$("bal").textContent=j.balance.toLocaleString("vi-VN")}',
+    'if(typeof j.balance==="number"){BAL=j.balance;$("bal").textContent=j.balance.toLocaleString("vi-VN");',
+    // cháy ví xong hiện nút ngay, và vừa có tiền lại thì giấu nút đi (khỏi đợi hết 20 giây)
+    'if((TAXI&&TAXI.nhanDuoc)!==(BAL<=((TAXI&&TAXI.viMax)||0)))taxiSync()}',
     'if(j.stake>0)showNet(j.net);else if(!storm)toast("🀫 Bạn nặn xong - ván này bạn không đặt");',
     '}).catch(function(){});',
     'if(storm)stormFx(g)}',
@@ -4375,6 +4397,17 @@ const PAGE = [
     'if(DEBTNOW>0){if(ch){ch.classList.remove("hidden");$("debtChipVal").textContent=DEBTNOW.toLocaleString("vi-VN")}if(tb)tb.classList.remove("hidden")}',
     // sạch nợ: giấu cả ô trên thanh lẫn tab, đang đứng ở trang Nợ thì tự về Cá nhân
     'else{if(ch)ch.classList.add("hidden");if(tb)tb.classList.add("hidden");if(CURPAGE==="debt")go("daily")}}',
+    // 🚕 "Xu đi taxi về": hỏi máy chủ 20 giây/lần + hỏi lại ngay sau mỗi lần ví đổi (thua sạch xong
+    // là thấy nút, khỏi chờ). Máy chủ mới là nơi quyết - ở đây chỉ ẩn/hiện.
+    'var TAXI=null;',
+    'function taxiVe(){var ch=$("taxiChip");if(!ch)return;',
+    'if(TAXI&&TAXI.nhanDuoc){ch.classList.remove("hidden");$("taxiChipVal").textContent="+"+vnd(TAXI.tien)}',
+    'else ch.classList.add("hidden")}',
+    'function taxiSync(){if(!TOKEN)return;api("/api/taxi/state").then(function(j){TAXI=j;taxiVe()}).catch(function(){})}',
+    'function taxiNhan(){api("/api/taxi/nhan",{}).then(function(j){',
+    'BAL=j.balance;$("bal").textContent=vnd(j.balance);',
+    'toast("🚕 Xu đi taxi về: +"+vnd(j.tien)+" Dogcoin. "+j.gioCho+" tiếng nữa mới nhận lại được.");',
+    'taxiSync()}).catch(function(e){toast("❌ "+e.message);taxiSync()})}',
     'function debtSync(){api("/api/debt/state").then(function(j){',
     'DEBTNOW=j.total||0;debtChipDraw();',
     'var c=$("debtCard");if(!c)return;',
