@@ -3061,6 +3061,12 @@ function palChestFullErr(userId, viec) {
     if (palChestRoom(userId) > 0) return null;
     return `🎒 Mục CHƯA NHẬN đang đầy ${PAL_CHEST_MAX} pal - bán bớt hoặc nhận vào game rồi ${viec}. (Mỗi ngày nhận được ${palWheelCfg().dayMax} con vào game)`;
 }
+// ⏱️ 25/09: người chơi TÍCH "bỏ hiệu ứng" thì khoá chỉ 1 giây (kết quả hiện ngay, không
+// có gì để chờ); không tích thì giữ 10,5s cho khớp reel chạy xong.
+// ⚠️ Chỉ nhận CỜ ĐÚNG/SAI từ client rồi tự chọn số — KHÔNG bao giờ lấy số client gửi lên.
+const PAL_REVEAL_MS = 10500, PAL_REVEAL_NHANH_MS = 1000;
+const palRevealMs = (nhanh) => (nhanh === true ? PAL_REVEAL_NHANH_MS : PAL_REVEAL_MS);
+
 // 🚫 CHỐNG SPAM: đang có 1 lượt quay CHƯA HIỆN kết quả (revealAt còn tương lai) thì khoá
 // quay lượt mới - chặn kiểu "quay → F5 → quay → F5" tạo cả đống lượt chồng chéo gây lỗi.
 // Tự mở khoá sau khi reel hiện xong (~10,5s). Enforce ở SERVER nên F5/gọi tay đều vô ích.
@@ -3076,7 +3082,7 @@ function deliverBusy() { return Date.now() < _deliverBusyUntil; }
 function deliverLock() { _deliverBusyUntil = Date.now() + 120000; }
 function deliverUnlock() { _deliverBusyUntil = 0; }
 
-function palWheelSpin(userId, username) {
+function palWheelSpin(userId, username, nhanh) {
     const ftErr = featGuard('pal'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const cfg = palWheelCfg();
     if (!cfg.open) return { error: 'Vòng quay pal đang đóng bảo trì' };
@@ -3110,7 +3116,8 @@ function palWheelSpin(userId, username) {
 
     // 27/08: gộp 1 reel (raid ra thẳng) nên cả thường lẫn raid đều ~10,5s. revealAt vẫn
     // chặn F5 sang tab Cá nhân xem trộm giữa chừng + là mốc tự mở khoá chống spam.
-    const revealMs = 10500;
+    // 25/09: bỏ hiệu ứng thì còn 1s — không còn gì để chờ xem.
+    const revealMs = palRevealMs(nhanh);
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
         code: win.code, name: win.name, dex: win.dex || 0, raid: isRaid, legend: palIsLegend(win.code), epic: palIsEpic(win.code),
@@ -3163,7 +3170,7 @@ function palWheelSpin(userId, username) {
 
 // 🍀 QUAY VÒNG RAID (27/08): đầy thanh may mắn (100%) mới quay được. Trúng đều 1/4 boss
 // + thưởng raidBonus Dogcoin. Quay xong THANH VỀ 0. Pal vào rương như quay thường.
-function palRaidSpin(userId, username) {
+function palRaidSpin(userId, username, nhanh) {
     const cfg = palWheelCfg();
     if (!cfg.raidWheelOn) return { error: 'Vòng quay RAID đang tắt' };
     // 11/09: PAL GỐC vẫn quay được vòng may mắn (pal ra vẫn Lv1/0 sao/không passive theo luật raw lúc nhận)
@@ -3183,7 +3190,7 @@ function palRaidSpin(userId, username) {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
         code: win.code, name: win.name, dex: win.dex || 0, raid: raidHit, legend: !raidHit,
         wonAt: new Date().toLocaleString('vi-VN') + ' (thưởng may mắn)', status: 'chest',
-        revealAt: Date.now() + 10500,
+        revealAt: Date.now() + palRevealMs(nhanh),
     };
     palChest(userId).unshift(item);
     const bonus = cfg.raidBonus;
@@ -7286,8 +7293,8 @@ client.once('ready', async (c) => {
                         chestCount: palChest(uid).filter(i => i.status === 'chest' && (!i.revealAt || i.revealAt <= Date.now())).length,
                     };
                 },
-                spin: (uid) => palWheelSpin(uid, getUserData(uid).name || uid),
-                raidSpin: (uid) => palRaidSpin(uid, getUserData(uid).name || uid),
+                spin: (uid, nhanh) => palWheelSpin(uid, getUserData(uid).name || uid, nhanh),
+                raidSpin: (uid, nhanh) => palRaidSpin(uid, getUserData(uid).name || uid, nhanh),
                 // 🎯 chọn pal đích danh (danh sách + mua)
                 pickState: (uid) => {
                     const cfg = palWheelCfg();

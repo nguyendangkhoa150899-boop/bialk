@@ -477,14 +477,18 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, { ok: true, ...ctx.palwheel.state(userId) });
                 }
                 if (ctx.palwheel && req.method === 'POST' && path === '/api/palwheel/spin') {
-                    const r = ctx.palwheel.spin(userId);
+                    // ⚡ 25/09: body.nhanh = người chơi đang TÍCH "bỏ hiệu ứng".
+                    // === true mới tính, mọi giá trị khác đều coi là quay thường.
+                    const body = await readBody(req);
+                    const r = ctx.palwheel.spin(userId, body.nhanh === true);
                     // 🎒 16/09: kèm cờ chestFull xuống client để nút 🔁 tự động quay biết vì sao dừng
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error, chestFull: !!r.chestFull });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
                 // 🍀 quay vòng RAID (tốn 1 vé đầy thanh may mắn) - 27/08
                 if (ctx.palwheel && ctx.palwheel.raidSpin && req.method === 'POST' && path === '/api/palwheel/raidspin') {
-                    const r = ctx.palwheel.raidSpin(userId);
+                    const body = await readBody(req);
+                    const r = ctx.palwheel.raidSpin(userId, body.nhanh === true);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -2149,6 +2153,7 @@ const PAGE = [
     '<div id="pwWrap"><div id="pwMark"></div><div id="pwStrip"></div></div>',
     '<div id="pwRes" class="hidden"></div>',
     '<button class="btn-full" id="pwGo" onclick="pwSpin()">🎁 QUAY</button>',
+    '<label class="nhoRow" style="margin-top:8px"><input type="checkbox" id="pwSkip" onchange="pwSkipTog(this.checked)"><span>⚡ <b>Bỏ qua hiệu ứng quay</b> — hiện pal trúng ngay và <b>không phải chờ 10 giây</b> mới quay tiếp</span></label>',
     '<button class="btn-full" id="pwAuto" onclick="pwAutoTog()" style="margin-top:6px;background:linear-gradient(180deg,#5a6ad0,#3f4ca3)">🔁 TỰ ĐỘNG QUAY</button>',
     '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center" id="pwPot">-</div>',
     // 🍀 THANH MAY MẮN
@@ -4484,6 +4489,10 @@ const PAGE = [
     // Server chốt kết quả TRƯỚC (trong /spin), client chỉ diễn hoạt hình dải thẻ
     // chạy ngang rồi dừng đúng thẻ kết quả. Thẻ 128px + khe 6px = bước 134px.
     'var PW=null,PWBUSY=false,PWRBUSY=false,PWLOCK=0,PWTICKING=false;',
+    // ⚡ 25/09: bỏ qua hiệu ứng cuộn reel - nhớ lựa chọn qua F5
+    'var PWSKIP=false;try{PWSKIP=localStorage.getItem("pw_skip")==="1"}catch(e){}',
+    'function pwSkipTog(bat){PWSKIP=!!bat;try{localStorage.setItem("pw_skip",bat?"1":"0")}catch(e){}',
+    'toast(bat?"⚡ Đã bỏ hiệu ứng - bấm QUAY là ra pal ngay":"🎞️ Đã bật lại hiệu ứng vòng quay")}',
     // keepMain/keepRaid: sau khi quay xong GIỮ NGUYÊN dải ở ô trúng (không chạy lại idle),
     // để pal trúng đứng yên tại chỗ cho người chơi nhìn - quay lượt mới mới dựng dải mới.
     'function pwSync(keepMain,keepRaid){api("/api/palwheel/state").then(function(j){PW=j;',
@@ -4496,7 +4505,8 @@ const PAGE = [
     'if(!PWBUSY&&!keepMain)pwIdle();if(!PWRBUSY&&!keepRaid)pwRaidIdle()}).catch(function(e){toast("❌ "+e.message)})}',
     // ⏳ nút quay + nút raid: hiện đếm ngược khoá (~10,5s/lượt) rồi mới bấm lại được -
     // khớp khoá chống-spam ở server. F5 xong pwSync đọc spinRemain dựng lại đếm ngược này.
-    'function pwGoLabel(){if(!PW)return;var now=Date.now(),lk=PWLOCK>now,w=Math.ceil((PWLOCK-now)/1000);var g=$("pwGo");',
+    'function pwGoLabel(){var sk=$("pwSkip");if(sk&&sk.checked!==PWSKIP)sk.checked=PWSKIP;',
+    'if(!PW)return;var now=Date.now(),lk=PWLOCK>now,w=Math.ceil((PWLOCK-now)/1000);var g=$("pwGo");',
     'if(!PW.open){g.textContent="⛔ ĐANG ĐÓNG BẢO TRÌ";g.disabled=true}',
     'else if(lk){g.textContent="⏳ Chờ "+w+"s để quay tiếp";g.disabled=true}',
     'else if(PWBUSY){g.textContent="⏳ Đang quay...";g.disabled=true}',
@@ -4505,7 +4515,8 @@ const PAGE = [
     'else if(PWRBUSY){rg.textContent="⏳ Đang quay...";rg.disabled=true}',
     'else if(PW.raidReady){rg.textContent="🍀 QUAY MAY MẮN (đầy 100%)";rg.disabled=false}',
     'else{rg.textContent="🔒 Đầy 100% may mắn mới quay được";rg.disabled=true}}}',
-    'function pwLockStart(){PWLOCK=Date.now()+10800;pwLockKick()}',
+    // khớp máy chủ: 10,5s + 0,3s đệm mạng · bỏ hiệu ứng thì 1s + 0,2s
+    'function pwLockStart(){PWLOCK=Date.now()+(PWSKIP?1200:10800);pwLockKick()}',
     // kick: cập nhật nút + chạy ticker nếu đang khoá mà chưa chạy (tránh 2 ticker chồng nhau)
     'function pwLockKick(){pwGoLabel();if(PWLOCK>Date.now()&&!PWTICKING){PWTICKING=true;pwLockTick()}}',
     'function pwLockTick(){pwGoLabel();if(Date.now()<PWLOCK){setTimeout(pwLockTick,300)}else{PWTICKING=false;pwGoLabel()}}',
@@ -4533,9 +4544,10 @@ const PAGE = [
     'function pwRollEl(strip,wrap,cards,cb){var s=$(strip),W=$(wrap).clientWidth;',
     's.innerHTML=cards.join("");s.style.transition="none";s.style.transform="translateX(0px)";void s.offsetWidth;',
     'var STEP=116,HALF=55;var jit=Math.floor(Math.random()*70)-35;var target=52*STEP+HALF-W/2+jit;',
-    's.style.transition="transform 10s cubic-bezier(.06,.72,.05,1)";',
+    // ⚡ tích "bỏ hiệu ứng" -> KHÔNG chuyển động, nhảy thẳng tới ô trúng
+    's.style.transition=PWSKIP?"none":"transform 10s cubic-bezier(.06,.72,.05,1)";',
     // 11/09: viền sáng ô trúng gắn SAU khi dừng (raid/legend/epic) - lúc quay mọi thẻ trông như nhau, không lộ kết quả
-    's.style.transform="translateX("+(-target)+"px)";if(strip==="pwStrip")PWDX=-target;setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("jack"))c.classList.add("jackhit");else if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},10300)}',
+    's.style.transform="translateX("+(-target)+"px)";if(strip==="pwStrip")PWDX=-target;setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("jack"))c.classList.add("jackhit");else if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},PWSKIP?60:10300)}',
     // 27/08: GỘP 1 reel - raid ra thẳng ở vòng thường, ô trúng (thẻ 52) gắn hiệu ứng lửa nếu là raid
     'function pwStrip1(it){var out=[];for(var i=0;i<60;i++){',
     'if(i===52)out.push(pwCardHtml(it,!!it.raid,false));',   // hit=false: viền sáng gắn lúc dừng (pwRollEl)
@@ -4554,7 +4566,7 @@ const PAGE = [
     'function pwAutoTick(){if(!PWAUTO)return;if(PWBUSY)return;',
     'if(PWLOCK>Date.now()){setTimeout(pwAutoTick,400);return}pwSpin()}',
     'function pwSpin(){if(PWBUSY||!PW||!PW.open||PWLOCK>Date.now())return;PWBUSY=true;PWSPUN=true;var pww=$("pwWrap");if(pww)pww.classList.add("nodrag");pwGoLabel();$("pwRes").classList.add("hidden");',
-    'api("/api/palwheel/spin",{}).then(function(j){setBal(j.balance);pwLockStart();',
+    'api("/api/palwheel/spin",{nhanh:PWSKIP}).then(function(j){setBal(j.balance);pwLockStart();',
     'pwRollEl("pwStrip","pwWrap",pwStrip1(j.item),function(){pwDone(j)})',
     '}).catch(function(e){PWBUSY=false;pwGoLabel();pwAutoStop(e.message);toast("❌ "+e.message)})}',
     'function pwDone(j){PWBUSY=false;pwGoLabel();var it=j.item;var res=$("pwRes");',
@@ -4584,7 +4596,7 @@ const PAGE = [
     'function pwRaidStrip1(j){var out=[];for(var i=0;i<60;i++)out.push(i===52?(j.raidHit?pwRaidSlotHtml(false):pwCardHtml(j.item,false,false)):pwLuckyCard());return out}',
     'function pwRaidStrip2(it){var out=[];for(var i=0;i<60;i++)out.push(pwCardHtml(i===52?it:pwPick(PW.raidWheelPals),true,false));return out}',
     'function pwRaidSpin(){if(PWRBUSY||!PW||!PW.raidReady||PWLOCK>Date.now())return;PWRBUSY=true;pwGoLabel();$("pwRaidRes").classList.add("hidden");',
-    'api("/api/palwheel/raidspin",{}).then(function(j){setBal(j.balance);pwLockStart();',
+    'api("/api/palwheel/raidspin",{nhanh:PWSKIP}).then(function(j){setBal(j.balance);pwLockStart();',
     'pwRollEl("pwRaidStrip","pwRaidWrap",pwRaidStrip1(j),function(){pwRaidDone(j)})',
     '}).catch(function(e){PWRBUSY=false;pwGoLabel();toast("❌ "+e.message)})}',
     // reel 1 dừng: trúng Ô RAID -> báo rồi quay reel 2 (toàn boss, dừng đúng con server đã chọn); huyền thoại -> kết quả luôn
