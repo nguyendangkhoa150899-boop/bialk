@@ -325,6 +325,7 @@ Mật khẩu panel/dashboard **đang TẮT** theo yêu cầu chủ server (`PANE
 **Client trong chuỗi JS**
 - `webplay.js` là **mảng chuỗi** (dùng `\\"` trong file để ra `\"` cho client), `panel.js` là **một template literal** (tuyệt đối không chèn backtick / `${}`; dùng `\\'`). Sửa bằng **script vá exact-match viết qua Write tool** (Bash heredoc/`node -e` nuốt backslash và `${}`).
 - CSS: `#id{display:...}` (100 điểm) **đè** `.hidden{display:none}` (10 điểm). Modal có `display` phải kèm `#id.hidden{display:none}`. `hiddencheck.js` canh.
+- **iPhone chỉ hiểu `-webkit-user-select`** (mọi trình duyệt trên iPhone cùng lõi WebKit). Viết mỗi `user-select:none` là trên iPhone coi như không chặn: giữ chip để kéo là bôi đen chữ trên bàn (26/09). Vùng bàn 3 bàn (`#stage #stStage #sbBan #stBan #rlSan #sbChips #stChips #rlChips #sbNut #stNut #rlNut`) có một rule chặn chung + `-webkit-touch-callout:none`, và JS `trongBanCuoc()` chặn `contextmenu`/`selectstart`; **danh sách ở CSS và `VUNG_BAN` ở JS phải khớp**. Thêm bàn mới thì thêm id vào cả hai. Ô `input` trong vùng phải mở lại `user-select:text`, không thì iPhone không gõ được. `TaiXiu/kiemtra/trang-test.js` canh.
 - `button{}` gốc **không đặt background** → nút mới quên cho màu là trắng nhợt chữ chìm.
 - Đừng re-render khối chứa `<input>` đang gõ.
 - Đổi ảnh xong phải Ctrl+Shift+R; ETag đã xử phần server.

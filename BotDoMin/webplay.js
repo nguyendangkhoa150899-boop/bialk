@@ -988,6 +988,16 @@ const PAGE = [
     // Tab Blackjack trên MÀN RỘNG (máy tính): bung ra khỏi cột 520px cho bàn 5 ghế đủ chỗ.
     // nút/ô bấm: tắt hẳn double-tap zoom + không bôi đen chữ khi bấm nhanh
     'button,.mtile,.mstep,.cbtn,.chip{touch-action:manipulation;-webkit-user-select:none;user-select:none}',
+    // 🚫 ĐÈ GIỮ TAY LÊN BÀN CƯỢC KHÔNG BÔI ĐEN GÌ (26/09, chủ server: "giữ chip để kéo là bị
+    // tô màu chữ", dính nhất ở điện thoại). Phủ CẢ VÙNG của 3 bàn: sân khấu nặn, bàn ô, hàng
+    // mệnh giá, hàng nút. ⚠️ iPhone (Safari và mọi trình duyệt trên iPhone, cùng lõi WebKit)
+    // CHỈ hiểu -webkit-user-select; bản cũ .sbO chỉ có user-select:none nên trên iPhone coi như
+    // không chặn. -webkit-touch-callout:none tắt kính lúp + menu "Lưu ảnh" khi giữ lâu (bản cũ
+    // chỉ áp cho ô ĐANG có chip). Chặn menu chuột phải / selectstart ở JS: xem trongBanCuoc().
+    '#stage,#stStage,#sbBan,#stBan,#rlSan,#sbChips,#stChips,#rlChips,#sbNut,#stNut,#rlNut{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}',
+    // ...trừ ô nhập số lúc ✏️ Sửa chip: iPhone chặn chọn chữ ở khung cha là ô nhập bên trong
+    // KHÔNG GÕ ĐƯỢC. Mở lại riêng cho input.
+    '#sbChips input,#stChips input,#rlChips input{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}',
     '.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}',
     'h1{font-size:19px;margin-bottom:4px}h2{font-size:15px;margin-bottom:10px}',
     '.muted{color:var(--muted);font-size:13px}',
@@ -3161,6 +3171,14 @@ const PAGE = [
     // -> KÉO (KEO: con ma bay theo tay, hiện vùng huỷ) -> THẢ: ô khác = dời, vùng huỷ = huỷ ô đó,
     // chỗ khác = về chỗ cũ. KEOCLICK chặn cái click trình duyệt bắn ra sau khi nhả tay.
     'var KEO=null,KEOCHO=null,KEOCLICK=0;',
+    // 🚫 Tầng JS của lớp chặn bôi đen (CSS ở đầu trang, cùng danh sách vùng): giữ lâu trên
+    // Android là hiện menu "Tải ảnh" ở đồng Dogcoin, chuột phải trên máy tính cũng vậy -> chặn
+    // LUÔN trong vùng bàn (bản cũ chỉ chặn lúc đang kéo). selectstart chặn nốt trình duyệt nào
+    // lờ CSS. Chừa ô nhập (✏️ Sửa chip). Target của selectstart có thể là NÚT CHỮ (không có closest).
+    'var VUNG_BAN="#stage,#stStage,#sbBan,#stBan,#rlSan,#sbChips,#stChips,#rlChips,#sbNut,#stNut,#rlNut";',
+    'function trongBanCuoc(t){if(t&&t.nodeType===3)t=t.parentNode;if(!t||!t.closest)return false;return !!t.closest(VUNG_BAN)&&!t.closest("input,textarea")}',
+    'document.addEventListener("contextmenu",function(e){if(trongBanCuoc(e.target))e.preventDefault()});',
+    'document.addEventListener("selectstart",function(e){if(trongBanCuoc(e.target))e.preventDefault()});',
     'function keoBan(pre){if(pre==="rl")return {ban:$("rlBan"),phase:RLPHASE,tong:RLTONG,duong:"/api/rl/",bao:rlBao,tai:rlLoad};',
     'return pre==="sb"?{ban:$("sbBan"),phase:PHASE,tong:SBTONG,duong:"/api/tx/",bao:sbBao,tai:refresh}:{ban:$("stBan"),phase:STPHASE,tong:STTONG,duong:"/api/stx/",bao:stBao,tai:stLoad}}',
     'function keoGan(pre){var ban=$(pre+"Ban");if(!ban||ban.dataset.keo)return;ban.dataset.keo="1";',

@@ -410,6 +410,46 @@ ok('cả 3 bàn vẫn gắn lớp on đúng mệnh giá đang chọn',
     SRC.includes('chipHangHTML("sb",SBCHIPS,SBCHIP,') && SRC.includes('chipHangHTML("st",STCHIPS,STCHIP,') &&
     SRC.includes('chipHangHTML("rl",RLCHIPS,RLCHIP,'));
 
+// Chủ server 26/09: "đè yên vô bàn cược cũng không bị tô chữ" (giữ chip để kéo là bôi đen, dính nhất ở điện thoại).
+muc('🚫 đè giữ tay lên bàn cược KHÔNG bôi đen / không hiện menu (cả 3 bàn)');
+{
+    const VUNG = ['#stage', '#stStage', '#sbBan', '#stBan', '#rlSan', '#sbChips', '#stChips', '#rlChips', '#sbNut', '#stNut', '#rlNut'];
+    const mCss = SRC.match(/'(#stage,#stStage,[^{']*)\{([^}']*)\}'/);
+    const selCss = mCss ? mCss[1].split(',') : [];
+    ok('CSS phủ đủ vùng của CẢ 3 bàn (sân nặn, bàn ô, hàng mệnh giá, hàng nút)', VUNG.every(v => selCss.includes(v)), mCss && mCss[1]);
+    ok('⭐ có bản -webkit-user-select (iPhone CHỈ hiểu bản này) + bản chuẩn',
+        !!mCss && mCss[2].includes('-webkit-user-select:none') && /(^|;)user-select:none/.test(mCss[2]));
+    ok('tắt kính lúp / menu "Lưu ảnh" khi giữ lâu (-webkit-touch-callout:none) trên CẢ vùng, không chỉ ô có chip',
+        !!mCss && mCss[2].includes('-webkit-touch-callout:none'));
+    ok('⭐ ô nhập lúc ✏️ Sửa chip vẫn gõ được (iPhone chặn chọn chữ ở khung cha là input không gõ nổi)',
+        SRC.includes("'#sbChips input,#stChips input,#rlChips input{-webkit-user-select:text;user-select:text;"));
+    ok('mọi vùng trong danh sách đều có id thật trên trang', VUNG.every(v => SRC.includes('id="' + v.slice(1) + '"')));
+    const mJs = SRC.match(/var VUNG_BAN="([^"]*)"/);
+    ok('danh sách vùng ở JS KHỚP danh sách ở CSS (sửa một bên quên bên kia là hở)',
+        !!mJs && !!mCss && mJs[1] === mCss[1], mJs && mJs[1]);
+    ok('chặn menu chuột phải / giữ lâu và selectstart LUÔN trong vùng bàn (không chỉ lúc đang kéo)',
+        SRC.includes('document.addEventListener("contextmenu",function(e){if(trongBanCuoc(e.target))e.preventDefault()});') &&
+        SRC.includes('document.addEventListener("selectstart",function(e){if(trongBanCuoc(e.target))e.preventDefault()});'));
+    // chạy thật trongBanCuoc với nút giả: chain = các selector mà nút / tổ tiên của nó khớp
+    const a = SRC.indexOf("    'var VUNG_BAN="), b = SRC.indexOf("    'document.addEventListener(\"contextmenu\"");
+    let chay = null;
+    if (a > 0 && b > a) {
+        const manh = vm.runInContext('[' + SRC.slice(a, b) + ']', vm.createContext({}));
+        const cx = {}; vm.createContext(cx); vm.runInContext(manh.join('\n'), cx);
+        const nut = (chain) => ({ nodeType: 1, closest: (sel) => sel.split(',').some(s => chain.includes(s.trim())) ? {} : null });
+        const chu = (cha) => ({ nodeType: 3, parentNode: cha });
+        cx.T = { trongO: nut(['#rlSan', '.sbO']), chuTrongO: chu(nut(['#sbBan', '.sbKhu'])), oNhap: nut(['#rlChips', 'input']),
+            ngoai: nut(['#whoBox']), chuNgoai: chu(nut(['.card'])), rong: null, chuMoCoi: chu(null) };
+        chay = vm.runInContext('({trongO:trongBanCuoc(T.trongO),chuTrongO:trongBanCuoc(T.chuTrongO),oNhap:trongBanCuoc(T.oNhap),' +
+            'ngoai:trongBanCuoc(T.ngoai),chuNgoai:trongBanCuoc(T.chuNgoai),rong:trongBanCuoc(T.rong),chuMoCoi:trongBanCuoc(T.chuMoCoi)})', cx);
+    }
+    ok('chạy thật: phần tử trong bàn -> chặn', !!chay && chay.trongO === true, JSON.stringify(chay));
+    ok('⭐ chạy thật: NÚT CHỮ trong bàn (selectstart hay bắn vào đây, không có closest) -> vẫn chặn, không nổ', !!chay && chay.chuTrongO === true);
+    ok('chạy thật: ô nhập Sửa chip -> KHÔNG chặn', !!chay && chay.oNhap === false);
+    ok('chạy thật: ngoài bàn (danh sách người đặt, lịch sử) -> KHÔNG chặn, vẫn bôi đen copy được', !!chay && chay.ngoai === false && chay.chuNgoai === false);
+    ok('chạy thật: target rỗng / nút chữ mồ côi -> false, không nổ', !!chay && chay.rong === false && chay.chuMoCoi === false);
+}
+
 // 22/09: bàn Siêu có BẢNG DISCORD riêng, chạy chung kênh với bàn thường được.
 muc('bảng Discord bàn Siêu + chung một kênh');
 ok('một hàm dòng kết quả DÙNG CHUNG hai bàn (tên cửa + cửa thắng truyền vào)',
