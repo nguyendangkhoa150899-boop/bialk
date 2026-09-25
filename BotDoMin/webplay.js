@@ -1754,22 +1754,22 @@ const PAGE = [
     // ô Đơn: dòng nhỏ "2-3 viên" dưới hệ số - nhân chỉ áp khi ra ≥ 2 viên (22/09)
     '.sbX .sbX2{display:block;font-style:normal;font-size:7.5px;line-height:1;opacity:.95;margin-top:1px;letter-spacing:0}',
     // 🪙 MỆNH GIÁ ĐANG CHỌN, nhìn phát biết: nền vàng, chữ đậm, nhấc lên, viền sáng
-    // quanh nút, kèm ✓ ở góc. Liệt kê CẢ HAI bàn: bản cũ chỉ có #sbChips nên bàn Siêu
-    // bấm mệnh giá xong không có dấu hiệu gì.
-    '#sbChips .chip.on,#stChips .chip.on{background:linear-gradient(180deg,#ffe193,#e3b33a);color:#3a2a06;',
+    // quanh nút, kèm ✓ ở góc. Liệt kê CẢ BA bàn (Tài Xỉu, Siêu, Roulette): bản cũ chỉ có
+    // #sbChips nên bàn Siêu rồi Roulette bấm mệnh giá xong không có dấu hiệu gì.
+    '#sbChips .chip.on,#stChips .chip.on,#rlChips .chip.on{background:linear-gradient(180deg,#ffe193,#e3b33a);color:#3a2a06;',
     'border-color:#fff1c2;font-weight:900;transform:translateY(-3px);',
     'box-shadow:0 0 0 3px rgba(255,207,92,.45),0 6px 14px rgba(0,0,0,.45);animation:chipNay .28s ease}',
     // ✓ góc phải: dấu hiệu KHÔNG phụ thuộc màu (người mù màu / màn ám vàng vẫn thấy)
-    '#sbChips .chip.on::after,#stChips .chip.on::after{content:"✓";position:absolute;top:-6px;right:-4px;',
+    '#sbChips .chip.on::after,#stChips .chip.on::after,#rlChips .chip.on::after{content:"✓";position:absolute;top:-6px;right:-4px;',
     'background:#1c8b4b;color:#fff;font-size:10px;font-weight:900;line-height:1;padding:3px 5px;',
     'border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.55)}',
     // MAX CƯỢC giữ nguyên màu ĐỎ khi được chọn, nó là nút nguy hiểm, đừng cho hoá vàng
     // như mệnh giá thường (rule #sbChips 1 id vốn đè .chip.chipMax.on 3 lớp).
-    '#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on{background:linear-gradient(180deg,#ff4d63,#a51e30);',
+    '#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on,#rlChips .chip.chipMax.on{background:linear-gradient(180deg,#ff4d63,#a51e30);',
     'border-color:#ffc2cb;color:#fff;box-shadow:0 0 0 3px rgba(255,90,110,.45),0 6px 14px rgba(0,0,0,.45)}',
     '@keyframes chipNay{0%{transform:translateY(0) scale(1)}45%{transform:translateY(-5px) scale(1.09)}100%{transform:translateY(-3px) scale(1)}}',
     // máy nào tắt hiệu ứng chuyển động thì bỏ nảy + bỏ nhấc, vẫn giữ nền vàng và ✓
-    '@media (prefers-reduced-motion:reduce){#sbChips .chip.on,#stChips .chip.on{animation:none;transform:none}}',
+    '@media (prefers-reduced-motion:reduce){#sbChips .chip.on,#stChips .chip.on,#rlChips .chip.on{animation:none;transform:none}}',
     '@media (max-width:520px){.sbO .sbTen{font-size:10.5px}.sbO .sbTl{font-size:9px}.sbO{padding:6px 2px}}',
     '#baoPot{display:inline-block;margin-left:7px;padding:2px 10px;border-radius:9px;background:#6b4f16;color:#ffe9a8;font-size:16px;font-weight:900;letter-spacing:0;vertical-align:2px;white-space:nowrap}',
     '#baoPot img{width:16px;height:16px;vertical-align:-3px;margin-left:3px}',

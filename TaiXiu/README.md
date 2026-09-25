@@ -195,14 +195,15 @@ Nút mệnh giá đang chọn mang lớp `on`: **nền vàng, chữ đậm, nh�
 ✓ xanh ở góc phải**, và **nảy một cái** (`@keyframes chipNay`) mỗi lần bấm, hàng mệnh giá vẽ
 lại sau mỗi lần chọn nên hoạt ảnh tự chạy lại.
 
-- Rule viết **liệt kê cả hai bàn** (`#sbChips .chip.on,#stChips .chip.on`). Bản đầu chỉ có
-  `#sbChips` nên **bàn Siêu bấm mệnh giá xong không có dấu hiệu gì**, thêm bàn mới là phải
-  thêm id vào đúng rule này, `trang-test` soi.
+- Rule viết **liệt kê cả ba bàn** (`#sbChips .chip.on,#stChips .chip.on,#rlChips .chip.on`).
+  Bản đầu chỉ có `#sbChips` nên **bàn Siêu bấm mệnh giá xong không có dấu hiệu gì**; Roulette
+  dựng sau cũng dính y hệt (26/09). Thêm bàn mới là phải thêm id vào **cả 4 rule** (`.on`,
+  `.on::after`, `.chipMax.on`, `prefers-reduced-motion`), `trang-test` soi.
 - ✓ ở góc là dấu hiệu **không phụ thuộc màu** (người mù màu / màn ám vàng vẫn thấy). Cần
   `.chip{position:relative}`, thiếu là ✓ bay ra góc màn hình.
 - **MAX CƯỢC lúc chọn vẫn ĐỎ**: `#sbChips .chip.on` (1 id) có độ ưu tiên cao hơn
   `.chip.chipMax.on` (3 lớp) nên trước đó nút MAX được chọn hoá vàng, mất màu nhận diện của
-  nút nguy hiểm. Phải có rule `#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on` riêng.
+  nút nguy hiểm. Phải có rule `#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on,#rlChips .chip.chipMax.on` riêng.
 - Máy bật "giảm chuyển động" thì bỏ nảy + bỏ nhấc, giữ nguyên nền vàng và ✓.
 
 ---

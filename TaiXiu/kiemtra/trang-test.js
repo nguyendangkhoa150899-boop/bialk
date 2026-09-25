@@ -391,23 +391,24 @@ ok('huỷ 1 ô / dời ô đều câm ngoài pha đặt (txDangNhanCuoc)',
 
 // Chủ server 22/09: "chọn mức cược nào thì highlight lên cho họ biết đang chọn".
 muc('mệnh giá ĐANG CHỌN phải nhìn phát biết');
-ok('rule chọn liệt kê CẢ HAI bàn (bản cũ chỉ #sbChips nên bàn Siêu không có dấu hiệu gì)',
-    SRC.includes("'#sbChips .chip.on,#stChips .chip.on{"));
+ok('rule chọn liệt kê CẢ BA bàn (bản cũ chỉ #sbChips nên bàn Siêu rồi Roulette không có dấu hiệu gì)',
+    SRC.includes("'#sbChips .chip.on,#stChips .chip.on,#rlChips .chip.on{"));
 ok('dấu hiệu KHÔNG chỉ dựa vào màu: có ✓ ở góc',
-    SRC.includes("'#sbChips .chip.on::after,#stChips .chip.on::after{content:\"✓\""));
+    SRC.includes("'#sbChips .chip.on::after,#stChips .chip.on::after,#rlChips .chip.on::after{content:\"✓\""));
 ok('nhấc lên + viền sáng + nảy một cái khi bấm',
     /transform:translateY\(-3px\)/.test(SRC) && /box-shadow:0 0 0 3px rgba\(255,207,92,\.45\)/.test(SRC) &&
     SRC.includes('animation:chipNay .28s ease}') && SRC.includes("'@keyframes chipNay{"));
 ok('.chip có position:relative (không thì ✓ bay ra góc màn) + transition',
     /'\.chip\{flex:1;position:relative;/.test(SRC) && /transition:transform \.12s ease,box-shadow \.12s ease,background \.12s ease\}/.test(SRC));
 ok('MAX CƯỢC lúc chọn vẫn ĐỎ, không hoá vàng như mệnh giá thường',
-    SRC.includes("'#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on{background:linear-gradient(180deg,#ff4d63,#a51e30);"));
+    SRC.includes("'#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on,#rlChips .chip.chipMax.on{background:linear-gradient(180deg,#ff4d63,#a51e30);"));
 ok('máy tắt hiệu ứng chuyển động thì bỏ nảy, vẫn giữ nền vàng + ✓',
-    SRC.includes("'@media (prefers-reduced-motion:reduce){#sbChips .chip.on,#stChips .chip.on{animation:none;transform:none}}'"));
-ok('cả 2 bàn vẫn gắn lớp on đúng mệnh giá đang chọn',
+    SRC.includes("'@media (prefers-reduced-motion:reduce){#sbChips .chip.on,#stChips .chip.on,#rlChips .chip.on{animation:none;transform:none}}'"));
+ok('cả 3 bàn vẫn gắn lớp on đúng mệnh giá đang chọn',
     // 22/09: lớp on gắn trong chipHangHTML dùng chung, mỗi bàn truyền mệnh giá đang chọn của mình vào
     SRC.includes('(v===chip?" on":"")') && SRC.includes('(chip==="max"?" on":"")') &&
-    SRC.includes('chipHangHTML("sb",SBCHIPS,SBCHIP,') && SRC.includes('chipHangHTML("st",STCHIPS,STCHIP,'));
+    SRC.includes('chipHangHTML("sb",SBCHIPS,SBCHIP,') && SRC.includes('chipHangHTML("st",STCHIPS,STCHIP,') &&
+    SRC.includes('chipHangHTML("rl",RLCHIPS,RLCHIP,'));
 
 // 22/09: bàn Siêu có BẢNG DISCORD riêng, chạy chung kênh với bàn thường được.
 muc('bảng Discord bàn Siêu + chung một kênh');
