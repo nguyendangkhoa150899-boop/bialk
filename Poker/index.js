@@ -1,9 +1,9 @@
 // ============================================================================
-//  index.js — MÁY CHỦ POKER ĐỨNG RIÊNG (dev local + bộ kiểm web-test.js)
+//  index.js, MÁY CHỦ POKER ĐỨNG RIÊNG (dev local + bộ kiểm web-test.js)
 //
 //  PRODUCTION KHÔNG CHẠY FILE NÀY. Poker nhúng thẳng vào web BotDoMin (cùng cổng, cùng
 //  phiên): xem BotDoMin/webplay.js (/poker/, /api/poker/*) và BotDoMin/index.js (ctx.poker).
-//  Toàn bộ logic phòng/giải nằm ở Poker/web.js — file này chỉ thêm đăng nhập riêng + phục vụ
+//  Toàn bộ logic phòng/giải nằm ở Poker/web.js, file này chỉ thêm đăng nhập riêng + phục vụ
 //  file để chạy một mình được:
 //
 //     POKER_PORT=4003 POKER_DB="c:/Users/nguye/Desktop/bialk-test/database.json" node Poker/index.js

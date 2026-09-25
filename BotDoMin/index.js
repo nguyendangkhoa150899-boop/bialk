@@ -172,7 +172,7 @@ function refundBootPendingBets() {
         writeLog('SYSTEM', `[HOÀN CƯỢC RESTART] ${label}: hoàn ${amount.toLocaleString()} cho ${uid}`);
     };
     // ⚠️ Big Small: nếu ván đó ĐÃ CHỐT SỔ (có _txPlan) thì kế hoạch trả tiền mới là
-    // nguồn sự thật — hoàn cược ở đây nữa là TRẢ KÉP (người thắng ăn 2 lần, người
+    // nguồn sự thật, hoàn cược ở đây nữa là TRẢ KÉP (người thắng ăn 2 lần, người
     // thua được hoàn trắng). Chỉ hoàn cho ai kế hoạch KHÔNG có phần.
     const keHoach = (dbCache._txPlan && dbCache._txPlan.byUser) ? dbCache._txPlan.byUser : null;
     let boQua = 0;
@@ -310,7 +310,7 @@ function statAdd(userId, key, delta) {
 // 2.000.000 trở lên trong ngày (admin set) và 24 tiếng reset 1 lần, 1 ngày chỉ nhận 1 lần".
 //
 // ⚠️ "Thua trong ngày" đếm từ VÍ THẬT, không đếm từ sổ Dogcoin. Lý do: sổ ghi cho người đọc nên
-// số của nó không phải lúc nào cũng bằng số tiền ví đổi — Phi Thuyền ghi -amount lúc cược RỒI ghi
+// số của nó không phải lúc nào cũng bằng số tiền ví đổi, Phi Thuyền ghi -amount lúc cược RỒI ghi
 // -amount lần nữa lúc nổ (ví chỉ trừ 1 lần). Đếm theo sổ là thổi phồng tiền thua gấp đôi, tức phát
 // tiền cho người chưa đủ điều kiện. Đếm theo ví thì mọi trò (kể cả trò thêm sau này) đều đúng.
 const TAXI_CFG_DEF = { on: true, tien: 10000, loMin: 2000000, viMax: 0, gioCho: 24 };
@@ -335,7 +335,7 @@ function setTaxiCfg(o) {
 }
 /**
  * Sổ lãi-lỗ NGÀY: { uid: { n: 'ngày VN', v: net } }. v ÂM = đang thua.
- * Sang ngày mới (00:00 giờ VN) là tự về 0 — không cần hẹn giờ dọn.
+ * Sang ngày mới (00:00 giờ VN) là tự về 0, không cần hẹn giờ dọn.
  */
 function loNgayO(userId) {
     if (!dbCache._loNgay || typeof dbCache._loNgay !== 'object') dbCache._loNgay = {};
@@ -2562,10 +2562,10 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     // 🧰 mua VÀO RƯƠNG: kiểm TRƯỚC khi trừ tiền
     const ruong = vaoRuong ? ichKyOf(user) : null;
     if (ruong) {
-        // 🧰 21/09 (chủ server): MỞ RƯƠNG CHO MỌI NHÓM — implant, nguyên liệu cho pal, đạn...
+        // 🧰 21/09 (chủ server): MỞ RƯƠNG CHO MỌI NHÓM, implant, nguyên liệu cho pal, đạn...
         //
         // Luật cũ (17/09) chỉ cho món có hạn TOÀN SERVER vào rương. Gỡ được vì hạn theo NGƯỜI
-        // VẪN BỊ TRỪ NGAY LÚC MUA, dù vào rương hay giao thẳng — xem ngay dưới lệnh trừ tiền:
+        // VẪN BỊ TRỪ NGAY LÚC MUA, dù vào rương hay giao thẳng, xem ngay dưới lệnh trừ tiền:
         //     today[it.id] += qty · imp.n += qty · wt.n += qty · gCnt.n[gqKey] += qty
         // Nên vào rương KHÔNG lách được hạn nào. Chặn cũ là quyết định sản phẩm, không phải
         // chốt an toàn. Rương vẫn giữ hạn riêng của nó ở mấy dòng dưới.
@@ -2702,7 +2702,7 @@ function spmStartFlight() {
     spmState.maxWin = cp >= cfg.maxMult - 1e-9;
     const T = Math.log(cp) / cfg.growth;   // số giây bay tới điểm nổ
     spmState.crashAt = spmState.flightStart + Math.max(0, T) * 1000;
-    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} cất cánh - điểm nổ ${cp}x (kín)${spmState.maxWin ? ' — TRÚNG TRẦN, chuyến THẮNG TUYỆT ĐỐI' : ''} · ${Object.keys(spmState.bets).length} người cược`);
+    writeLog('ADMIN', `[PHI THUYỀN] Chuyến #${spmState.roundId} cất cánh - điểm nổ ${cp}x (kín)${spmState.maxWin ? ', TRÚNG TRẦN, chuyến THẮNG TUYỆT ĐỐI' : ''} · ${Object.keys(spmState.bets).length} người cược`);
 }
 function spmCashoutInternal(uid, m) {
     const b = spmState.bets[uid];
@@ -2714,7 +2714,7 @@ function spmCashoutInternal(uid, m) {
     logDog('bet', uid, b.name || uid, win - b.amount, `Phi Thuyền #${spmState.roundId} rút ${m}x (cược ${b.amount} → +${win})`);
     return { m, win };
 }
-// 05/09: bay chạm TRẦN — tự rút cho MỌI người còn trên tàu ở đúng trần rồi mới
+// 05/09: bay chạm TRẦN, tự rút cho MỌI người còn trên tàu ở đúng trần rồi mới
 // settle; không ai thua, client nhìn cờ won để bung hiệu ứng chiến thắng thay vì nổ.
 function spmWin() {
     const cp = spmState.crashPoint;
@@ -3063,7 +3063,7 @@ function palChestFullErr(userId, viec) {
 }
 // ⏱️ 25/09: người chơi TÍCH "bỏ hiệu ứng" thì khoá chỉ 1 giây (kết quả hiện ngay, không
 // có gì để chờ); không tích thì giữ 10,5s cho khớp reel chạy xong.
-// ⚠️ Chỉ nhận CỜ ĐÚNG/SAI từ client rồi tự chọn số — KHÔNG bao giờ lấy số client gửi lên.
+// ⚠️ Chỉ nhận CỜ ĐÚNG/SAI từ client rồi tự chọn số, KHÔNG bao giờ lấy số client gửi lên.
 const PAL_REVEAL_MS = 10500, PAL_REVEAL_NHANH_MS = 1000;
 const palRevealMs = (nhanh) => (nhanh === true ? PAL_REVEAL_NHANH_MS : PAL_REVEAL_MS);
 
@@ -3116,7 +3116,7 @@ function palWheelSpin(userId, username, nhanh) {
 
     // 27/08: gộp 1 reel (raid ra thẳng) nên cả thường lẫn raid đều ~10,5s. revealAt vẫn
     // chặn F5 sang tab Cá nhân xem trộm giữa chừng + là mốc tự mở khoá chống spam.
-    // 25/09: bỏ hiệu ứng thì còn 1s — không còn gì để chờ xem.
+    // 25/09: bỏ hiệu ứng thì còn 1s, không còn gì để chờ xem.
     const revealMs = palRevealMs(nhanh);
     const item = {
         id: dbCache._palChestSeq = (dbCache._palChestSeq || 0) + 1,
@@ -3830,7 +3830,7 @@ const TX_MAX_BET_DEF = 400000;
 /**
  * 🎯 Tìm bộ xúc xắc khiến nhà cái TRẢ RA ÍT NHẤT với sổ cược hiện tại.
  * Duyệt đủ 216 kết quả và tính bằng CHÍNH lõi tiền (có tính bảng hệ số nhân của
- * ván nếu đã bốc), thay cho bản cũ ở panel chỉ đoán trên 5 cửa — bản đó luôn ra
+ * ván nếu đã bốc), thay cho bản cũ ở panel chỉ đoán trên 5 cửa, bản đó luôn ra
  * 1-1-1 vì cửa 'bao' của bàn cũ không còn nên tiền cửa đó vĩnh viễn = 0.
  */
 function txTimEpReNhat() {
@@ -3871,9 +3871,9 @@ function txBetCuaCua(userId, cua) {
 }
 /**
  * Chặn 2 tầng, tầng nào vượt cũng trả câu báo lỗi:
- *   1. TRẦN TỪNG CỬA — cửa trả càng cao trần càng thấp (Bão 999:1 chỉ 5.000).
+ *   1. TRẦN TỪNG CỬA, cửa trả càng cao trần càng thấp (Bão 999:1 chỉ 5.000).
  *      Không có tầng này thì một ván xui mất tới 400 triệu.
- *   2. TRẦN TỔNG cả ván (_txMaxBet) — giữ nguyên như cũ.
+ *   2. TRẦN TỔNG cả ván (_txMaxBet), giữ nguyên như cũ.
  * cua = null nghĩa là chỉ kiểm tầng tổng (đường gọi cũ).
  */
 function txCapCheck(userId, amount, cua) {
@@ -3899,7 +3899,7 @@ function txCapCheck(userId, amount, cua) {
 
 /**
  * 🎲 ĐẶT CẢ GIỎ một lần (bàn 52 cửa). Người chơi xếp chip vào nhiều ô rồi bấm một
- * nút, nên phải kiểm TOÀN BỘ giỏ trước, hợp lệ hết mới trừ tiền — không trừ nửa
+ * nút, nên phải kiểm TOÀN BỘ giỏ trước, hợp lệ hết mới trừ tiền, không trừ nửa
  * chừng rồi báo lỗi. Tiền tính ở đây, web chỉ chuyển tiếp (nguyên tắc 1 của repo).
  *   gio = [{ choice, amount }]
  */
@@ -4020,7 +4020,7 @@ function txXoaCua(userId, cua) {
 
 /**
  * 🔀 Dời toàn bộ tiền đang đặt ở ô `tu` sang ô `den` (kéo chip thả sang ô khác).
- * Không đi qua ví — tổng tiền đặt của người đó không đổi — nên chỉ phải kiểm TRẦN
+ * Không đi qua ví, tổng tiền đặt của người đó không đổi, nên chỉ phải kiểm TRẦN
  * RIÊNG của ô đích. Kiểm xong mới đụng sổ, không dời nửa chừng.
  */
 function txDoiCua(userId, tu, den) {
@@ -4046,7 +4046,7 @@ function txDoiCua(userId, tu, den) {
 }
 
 /**
- * ✖️2 — đặt THÊM đúng số đang có ở mọi cửa, thành ra gấp đôi.
+ * ✖️2, đặt THÊM đúng số đang có ở mọi cửa, thành ra gấp đôi.
  * Dồn hết cho txDatLo kiểm: thiếu ví hay vượt trần là hỏng CẢ LƯỢT, không nhân
  * được ô nào rồi kẹt ô nào.
  */
@@ -4059,7 +4059,7 @@ function txNhanDoi(userId, username) {
     return txDatLo(userId, username, ks.map(k => ({ choice: k, amount: cur[k] })));
 }
 
-/** 🔁 ĐẶT LẠI — xếp y giỏ ván trước. */
+/** 🔁 ĐẶT LẠI, xếp y giỏ ván trước. */
 function txDatLai(userId, username) {
     const chan = txDangNhanCuoc();
     if (chan) return { error: chan };
@@ -4073,7 +4073,7 @@ function txDatLai(userId, username) {
 }
 
 /**
- * 🧯 DỌN SỔ CƯỢC AN TOÀN — dùng ở MỌI chỗ muốn xoá txState.bets.
+ * 🧯 DỌN SỔ CƯỢC AN TOÀN, dùng ở MỌI chỗ muốn xoá txState.bets.
  * Cược là tiền đã trừ khỏi ví, nên trước khi xoá phải giải quyết xong:
  *   · ván ĐÃ quay (có kế hoạch trả tiền)  -> trả nốt theo kế hoạch
  *   · ván CHƯA quay                        -> hoàn nguyên tiền cược
@@ -4108,12 +4108,12 @@ function txDonSoCuoc(lyDo) {
 }
 
 /**
- * 🕳️ GHI MỘT DÒNG CHO VÁN BỊ HUỶ — để số ván KHÔNG BAO GIỜ THỦNG LỖ.
+ * 🕳️ GHI MỘT DÒNG CHO VÁN BỊ HUỶ, để số ván KHÔNG BAO GIỜ THỦNG LỖ.
  * Chủ server báo 21/09: lịch sử nhảy #52975 -> #52973, người chơi không biết ván #52974
  * đi đâu và tiền mình có về không. Ván huỷ vẫn là một ván: phải kể ra, kèm lý do và số
  * phiếu đã hoàn, thì người ta mới đối chiếu được.
  * Giữ ĐỦ mọi trường mà chỗ hiển thị đang đọc (dice/sum/tx/cl/bets/winners/nhan) để không
- * chỗ nào phải thêm kiểm tra null — chỉ thêm cờ huy + lyDo.
+ * chỗ nào phải thêm kiểm tra null, chỉ thêm cờ huy + lyDo.
  */
 function txGhiVanHuy(gameId, lyDo, hoanPhieu, hoanTien) {
     try {
@@ -4223,7 +4223,7 @@ const TX_KQ_S = 4;
 // ⚠️ SÀN 2 GIÂY, KHÔNG PHẢI 0. Chủ server chốt 21/09: mạch ván BẮT BUỘC đủ bốn mốc
 // "đặt cược -> khoá cược -> hiện số nhân -> nặn", không được thiếu cái nào.
 // Để 0 thì lockTime === nanTime: khoá sổ và quay xúc xắc rơi vào CÙNG MỘT GIÂY, cả bàn
-// không bao giờ kịp nhìn bảng hệ số nhân trước khi quay — pha đó coi như không tồn tại.
+// không bao giờ kịp nhìn bảng hệ số nhân trước khi quay, pha đó coi như không tồn tại.
 // (Số cũ nằm ngoài khoảng thì txTimeCfg() tự lùi về mặc định 4 giây, không cần sửa DB.)
 const TX_NHAN_S_MIN = 2, TX_NHAN_S_MAX = 60;
 // TAIXIU_DIR: bản test chỉ chép 7 file BotDoMin nên ../TaiXiu không có -> bialk-test.js trỏ về repo.
@@ -4261,7 +4261,7 @@ function setTxRTP(rtp) {
     writeLog('ADMIN', `[PANEL TX] Đổi RTP thành ${(kq.rtp * 100).toFixed(1)}% - nhà cái ăn ~${(kq.nhaCaiAn * 100).toFixed(2)}%, trung bình ${kq.oSangMoiVan.toFixed(1)} ô sáng/ván`);
     return { ok: true, ...kq };
 }
-txNapThang(); // thang trước, RTP sau — vì q giải theo thang
+txNapThang(); // thang trước, RTP sau, vì q giải theo thang
 txNapRTP();   // nạp ngay lúc đọc file, trước khi ván đầu tiên chạy
 
 function txTimeCfg() {
@@ -4375,7 +4375,7 @@ function setPokerOn(on) {
 }
 // Mô-đun poker NHÚNG cùng tiến trình (chủ server chốt "gộp chung, xài chung 1 link").
 // Chỉ đọc dbCache để kiểm điều kiện vào giải; chip trong giải là chip ảo, không đụng ví.
-// Mọi lỗi luật chơi được nuốt ở web.js (trả 400), nhịp 1 giây cũng tự bắt lỗi — poker
+// Mọi lỗi luật chơi được nuốt ở web.js (trả 400), nhịp 1 giây cũng tự bắt lỗi, poker
 // không có đường nào ném exception ra ngoài để kéo bot theo.
 // POKER_DIR: bản test chạy từ Desktop/bialk-test/ (chỉ chép 7 file BotDoMin) nên ../Poker không có
 // -> bialk-test.js đặt biến này trỏ về repo. Prod chạy trong repo thì mặc định ../Poker là đúng.
@@ -4389,7 +4389,7 @@ setInterval(() => pokerMod.nhip(), 1000);
 // ===== 🀄 TIẾN LÊN MIỀN NAM (19/09) =====
 // KHÁC POKER Ở CHỖ CHẾT NGƯỜI: bàn này ĂN DOGCOIN THẬT. Mô-đun TienLen/ chỉ TÍNH ra số tiền;
 // mọi phép cộng/trừ ví đi qua ĐÚNG hàm congVi bên dưới (updatePoints + logDog), không có đường
-// nào khác. Nhà cái thu 10% tiền thắng mỗi ván (phế) — ghi log, không vào ví ai.
+// nào khác. Nhà cái thu 10% tiền thắng mỗi ván (phế), ghi log, không vào ví ai.
 function tienlenAdminCfg() {
     const a = dbCache._tienlenAdmin;
     return Array.isArray(a) ? a.map(String).filter(x => /^\d{15,20}$/.test(x)) : [];
@@ -4411,7 +4411,7 @@ function setTienlenOn(on) {
     return { ok: true, on: tienlenOnCfg() };
 }
 const TIENLEN_DIR = process.env.TIENLEN_DIR || require('path').join(__dirname, '..', 'TienLen');
-// 20/09: KHÔNG còn một bàn duy nhất nữa. taoSanh() dựng cả SẢNH — hai phòng có sẵn (truyền
+// 20/09: KHÔNG còn một bàn duy nhất nữa. taoSanh() dựng cả SẢNH, hai phòng có sẵn (truyền
 // thống 10.000 / đếm lá 1.000) cộng phòng người chơi tự tạo. Đường API thành
 //   /api/tienlen/ds            danh sách phòng
 //   /api/tienlen/<ma>/...      trong một phòng
@@ -4429,7 +4429,7 @@ const tienlenMod = require(require('path').join(TIENLEN_DIR, 'web.js')).taoSanh(
 });
 setInterval(() => tienlenMod.nhip(), 1000);
 
-// ⚡ SIÊU TÀI XỈU — bàn thứ hai, cùng luật chơi nhưng CÓ PHÍ 20% và trả thưởng khủng
+// ⚡ SIÊU TÀI XỈU, bàn thứ hai, cùng luật chơi nhưng CÓ PHÍ 20% và trả thưởng khủng
 // (Tài/Xỉu/Chẵn/Lẻ cũng được nhân, tới 14:1). Mô-đun SieuTaiXiu/ban.js tự lo vòng
 // ván + tiền; ở đây chỉ đưa cho nó ví, log và chỗ lưu. SIEUTX_DIR để bản test (chỉ
 // chép mấy file BotDoMin) vẫn trỏ về được thư mục thật trong repo.
@@ -4451,7 +4451,7 @@ const stxBan = require(require('path').join(SIEUTX_DIR, 'ban.js')).taoBan({
         writeLog(/LỖI|MẤT|DỌN SỔ|lỡ mốc|Bật lại/.test(dong) ? 'SYSTEM' : (/KẾT QUẢ\]/.test(dong) ? 'RESULT' : 'ADMIN'), dong);
     },
     luuDb: () => saveDbNow(),
-    // 🔔 báo cược về Discord — dùng chung ID / công tắc / mức tối thiểu _txNoti với bàn thường
+    // 🔔 báo cược về Discord, dùng chung ID / công tắc / mức tối thiểu _txNoti với bàn thường
     baoCuoc: (id, ten, cua, tien) => stxNotifyBet(id, ten, cua, tien),
 });
 // Nhịp bàn Siêu + đánh dấu bảng Discord cần vẽ lại. So DẤU VẾT (ván/pha/tổng cược)
@@ -6963,13 +6963,13 @@ function getStxBoardData() {
     const vn = (n) => Number(n || 0).toLocaleString('vi-VN');
     let desc = '';
     if (!b.on) {
-        desc += '🔴 **Bàn đang tắt** — admin bật lại ở panel.\n\n';
+        desc += '🔴 **Bàn đang tắt**, admin bật lại ở panel.\n\n';
     } else if (b.status === 'betting') {
         desc += `⏳ **Khoá sổ:** <t:${b.targetTime - b.khoaSoS}:R> · **Mở bát:** <t:${b.targetTime}:R>\n`;
     } else {
         desc += `🔒 **Đã khoá sổ** · **Mở bát:** <t:${b.targetTime}:R>\n`;
     }
-    desc += `💸 Bàn này thu **PHÍ ${Math.round(b.phi * 100)}%** trên tiền cược — đặt ${vn(1000)} thì ví trừ ${vn(Math.floor(1000 * (1 + b.phi)))}.\n\n`;
+    desc += `💸 Bàn này thu **PHÍ ${Math.round(b.phi * 100)}%** trên tiền cược, đặt ${vn(1000)} thì ví trừ ${vn(Math.floor(1000 * (1 + b.phi)))}.\n\n`;
 
     desc += '📝 **Người đặt ván này:**\n';
     const nhom = {};
@@ -7172,7 +7172,7 @@ client.once('ready', async (c) => {
         startWebPlay({
             port: parseInt(process.env.PLAY_PORT) || 3002,
             // ⚠️ Ý NGHĨA: "sổ đóng trước giờ mở bát bao nhiêu giây" = hiện nhân + nặn.
-            // KHÔNG phải mỗi giây nặn — trừ thiếu là đồng hồ đặt cược không về 0 và
+            // KHÔNG phải mỗi giây nặn, trừ thiếu là đồng hồ đặt cược không về 0 và
             // panel báo còn giờ ép trong khi sổ đã đóng.
             lockSeconds: () => txNhanS() + txLockS(),
             txKhoaSoS: () => txNhanS() + txLockS(),
@@ -7194,7 +7194,7 @@ client.once('ready', async (c) => {
             tienlen: tienlenMod,                 // 🀄 /api/tienlen/* + /tienlen/ (TienLen/web.js, ăn Dogcoin thật)
             tienlenOn: () => tienlenOnCfg(),     // 🀄 tab TIẾN LÊN hiện hay ẩn
             txReveal: (userId) => txRevealClaim(userId),   // 🀫 14/09: nặn xong trả tiền ngay
-            // 🌪️ Hũ Bão ĐÃ BỎ 21/09 — trả 0 để web giấu hẳn ô hũ. Số dư cũ trong
+            // 🌪️ Hũ Bão ĐÃ BỎ 21/09, trả 0 để web giấu hẳn ô hũ. Số dư cũ trong
             // dbCache._pots.tx KHÔNG bị xoá (admin tự xử ở panel), chỉ là không ai bú được nữa.
             txPot: () => 0,
             txPotX: () => 0,
@@ -7403,17 +7403,17 @@ client.once('ready', async (c) => {
                 cashout: (uid) => spmCashout(uid),
                 cancelNext: (uid) => spmCancelNext(uid),
             },
-            // ⚠️ webplay.js là MODULE KHÁC — hằng số / hàm của index.js nó KHÔNG tự thấy,
+            // ⚠️ webplay.js là MODULE KHÁC, hằng số / hàm của index.js nó KHÔNG tự thấy,
             // muốn dùng thì phải đưa qua ctx NÀY (ctx của startWebPlay), không phải ctx
             // của startPanel ở dưới. Hai khoá này từng bị đăng ký nhầm sang khối panel:
-            //   · txCuaThang — locNhanTrung() lọc "chỉ kể ô nhân RA TRÚNG". Thiếu nó thì
+            //   · txCuaThang, locNhanTrung() lọc "chỉ kể ô nhân RA TRÚNG". Thiếu nó thì
             //     ctx.txCuaThang undefined -> tập ô trúng RỖNG -> lọc sạch mọi ô của mọi
             //     ván -> dòng ⚡ trống trơn. Hỏng LẶNG LẼ, không lỗi không log.
             //     (chủ server báo 21/09: "số 9 x18 nhưng ở dưới ko hiện")
-            //   · txKqS — số dự phòng 4 trùng TX_KQ_S nên chưa ai thấy, nhưng admin đổi
+            //   · txKqS, số dự phòng 4 trùng TX_KQ_S nên chưa ai thấy, nhưng admin đổi
             //     hằng đó là trang sai ngay.
             txKqS: () => TX_KQ_S,
-            // ⚡ SIÊU TÀI XỈU — bàn thứ hai
+            // ⚡ SIÊU TÀI XỈU, bàn thứ hai
             stx: stxBan,
             txCuaThang: (xx) => TX_CUA.cuaThang(xx),
             txCuaAnNhan: (xx, nh) => TX_CUA.cuaAnNhan(xx, nh),   // ⚡ lọc "ô thật sự được nhân" (Đơn 1 viên không kể)
@@ -7427,7 +7427,7 @@ client.once('ready', async (c) => {
             publicPort: parseInt(process.env.PANEL_PUBLIC_PORT) || 1234,
             // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.
             // Muốn bật lại thì đặt PANEL_PASSWORD=<mật khẩu> trong .env.
-            // ⚡ SIÊU TÀI XỈU — panel.js là MODULE KHÁC, phải đưa qua ĐÚNG ctx này.
+            // ⚡ SIÊU TÀI XỈU, panel.js là MODULE KHÁC, phải đưa qua ĐÚNG ctx này.
             // Gắn vào ctx của startWebPlay thì web chạy nhưng panel báo 'Bot chưa hỗ trợ'.
             stx: stxBan,
             password: process.env.PANEL_PASSWORD || '',
@@ -7447,7 +7447,7 @@ client.once('ready', async (c) => {
             },
             txLockS: () => txLockS(),
             getTxTime: () => ({ ...txTimeCfg(), round: txRoundS(), kq: TX_KQ_S }),
-            // (txKqS + txCuaThang đã CHUYỂN sang ctx của startWebPlay — panel không dùng
+            // (txKqS + txCuaThang đã CHUYỂN sang ctx của startWebPlay, panel không dùng
             //  cái nào, mà để ở đây thì webplay không thấy. Xem chú thích ở trên đó.)
             txRTP: () => TX_CUA.thongKeRTP(),
             setTxRTP: (r) => setTxRTP(r),
@@ -7811,10 +7811,10 @@ function txTienNgan(n) {
     return (am ? '−' : '+') + t.replace('.', ',');
 }
 /**
- * MỘT DÒNG KẾT QUẢ VÁN cho bảng Discord — DÙNG CHUNG bàn thường và bàn Siêu.
+ * MỘT DÒNG KẾT QUẢ VÁN cho bảng Discord, DÙNG CHUNG bàn thường và bàn Siêu.
  *
  * Chủ server chốt 22/09: "show kết quả ván đó + người chơi + thắng hoặc thua + số
- * dogcoin là được". Nên bỏ hẳn mặt xúc xắc và phần kể từng ô ("3 ô, trúng 2: …") —
+ * dogcoin là được". Nên bỏ hẳn mặt xúc xắc và phần kể từng ô ("3 ô, trúng 2: …")
  * hai thứ đó làm dòng dài gấp đôi mà người đọc vẫn phải tự cộng trừ. Giữ ⚡ hệ số
  * nhân ĐÃ TRÚNG vì nó chỉ hiện khi thật sự có ô nhân ăn tiền, và đó là thứ đáng hóng.
  *
@@ -7833,7 +7833,7 @@ function dongVanDiscord(h, opt) {
     const cuaThang = opt.cuaThang || (() => []);
     const head = h.storm ? '🌪️' : (/TÀI|BIG/i.test(String(h.tx)) ? '🔺' : '🔻');
     const kq = h.storm
-        ? `Tổng **${h.sum}** · **BÃO** — cửa thường thua hết`
+        ? `Tổng **${h.sum}** · **BÃO**, cửa thường thua hết`
         : `Tổng **${h.sum}** · **${h.tx}** · **${h.cl}**`;
 
     // ⚡ chỉ kể ô nhân ĐÃ RA TRÚNG (ván cũ trong DB còn bảng nhân đầy đủ nên lọc lại ở đây)
@@ -8055,7 +8055,7 @@ function runTaiXiuLoop() {
             try {
                 // Tới đây resultPromise CHẮC CHẮN có: bước ②b ở trên đã lo ca "chưa kịp quay"
                 // (quay bù + dời giờ mở bát) và thoát sớm. Giữ Promise.resolve() làm lưới cuối
-                // cho khỏi nổ, KHÔNG huỷ ván ở đây nữa — huỷ là mất ID, mất kết quả.
+                // cho khỏi nổ, KHÔNG huỷ ván ở đây nữa, huỷ là mất ID, mất kết quả.
                 await (txState.resultPromise || Promise.resolve());
                 txState.targetTime = Math.floor(Date.now() / 1000) + txRoundS();
                 txState.status = 'betting';
@@ -8149,7 +8149,7 @@ function txPlanPayout(gameId, bets, d1, d2, d3) {
     // Luật BÃO: ra 3 viên giống nhau thì CHỈ cửa Bão ăn ×TX_BAO_RATE, mọi cửa
     // thường (tài/xỉu/chẵn/lẻ) thua sạch. Không bão thì cửa Bão thua, cửa thường ×2.
     // 🌪️ HŨ BÃO ĐÃ BỎ (21/09, chủ server chốt): bàn 52 cửa đã có Bão bất kỳ 30:1 và
-    // Bão từng số 150:1 (nhân tới 999:1) — giữ thêm hũ là hai hệ thống thưởng chồng nhau,
+    // Bão từng số 150:1 (nhân tới 999:1), giữ thêm hũ là hai hệ thống thưởng chồng nhau,
     // không cân nổi. Không nuôi, không trích, không bú. Giữ 3 biến dưới = 0 để mọi chỗ
     // đang đọc chúng (log, bảng Discord, web) khỏi vỡ.
     const winAgg = {};
@@ -8234,7 +8234,7 @@ function txRevealClaim(userId) {
 // Giữ nguyên tên + tham số + giá trị trả về như bản cũ để mọi chỗ gọi và bộ test không phải đổi.
 function settleTXPayout(gameId, bets, d1, d2, d3) {
     // ⚠️ KHÔNG tự dựng kế hoạch mới khi không tìm thấy kế hoạch cũ. Kế hoạch mới có
-    // cờ paid RỖNG nên sẽ trả lại từ đầu cho tất cả — đó là cửa hậu trả-hai-lần duy
+    // cờ paid RỖNG nên sẽ trả lại từ đầu cho tất cả, đó là cửa hậu trả-hai-lần duy
     // nhất của hệ thống. Không thấy kế hoạch = ván này đã chốt rồi, đừng đụng ví ai.
     if (!txState.plan || txState.plan.gameId !== gameId) {
         writeLog('SYSTEM', `[TÀI XỈU] Ván #${gameId} đã chốt sổ rồi (không còn bảng trả tiền) - bỏ qua, KHÔNG trả lại lần nữa`);
@@ -8250,7 +8250,7 @@ function settleTXPayout(gameId, bets, d1, d2, d3) {
     try {
         return ketSoTXPayout(gameId, bets, d1, d2, d3, p);
     } catch (e) {
-        // Hỏng khâu ghi chép thì KỆ nó — tiền đã trả xong ở trên rồi. Tuyệt đối
+        // Hỏng khâu ghi chép thì KỆ nó, tiền đã trả xong ở trên rồi. Tuyệt đối
         // không để lỗi hiển thị ném ngược ra làm chết vòng ván (đã kẹt bàn 1 lần).
         const vet = String(e.stack || '').split(/\r?\n/).slice(0, 4).join(' ⇢ ');
         writeLog('SYSTEM', `[LỖI GHI SỔ TX] ván #${gameId}: ${e.message} - tiền ĐÃ trả xong, chỉ hỏng phần ghi chép | ${vet}`);
@@ -8295,7 +8295,7 @@ function ketSoTXPayout(gameId, bets, d1, d2, d3, p) {
 
     // (lastGameInfo đã bỏ 19/08 - kết quả vòng trước giờ nằm trong danh sách
     //  "🎲 ván gần đây" ngay trên bảng, vẽ từ txState.history)
-    // Cược của ván, gộp theo (người × cửa), KÈM số nhận về — lấy thẳng từ kế hoạch
+    // Cược của ván, gộp theo (người × cửa), KÈM số nhận về, lấy thẳng từ kế hoạch
     // trả tiền, không gộp lại từ đầu (gộp lại = mở đường cho sai lệch lần nữa).
     const betAgg = Array.isArray(p.cuaAgg) ? p.cuaAgg : [];
     const histEntry = {
@@ -8308,7 +8308,7 @@ function ketSoTXPayout(gameId, bets, d1, d2, d3, p) {
         bets: betAgg,
         winners,
         // ⚡ CHỈ giữ ô vừa được bốc hệ số nhân VỪA RA TRÚNG. Mỗi ván có ~7 ô sáng
-        // nhưng đa số không ra — kể hết là rác, đọc không nổi (chủ server đã kêu).
+        // nhưng đa số không ra, kể hết là rác, đọc không nổi (chủ server đã kêu).
         // Lọc ở đây luôn: nhẹ DB, và mọi chỗ hiển thị đều sạch mà không phải lọc lại.
         nhan: (() => {
             const bn = (txState.nhan && txState.nhan.gameId === gameId) ? (txState.nhan.o || {})
@@ -8382,7 +8382,7 @@ async function startLonnho(channel) {
     txState.message = null;
     txState.channel = channel;
     // ⚠️ Admin hay bấm Khởi tạo lại khi bảng Discord lỗi. Ván đang chạy có thể đang
-    // ôm vài triệu tiền cược ĐÃ TRỪ VÍ — xoá thẳng là mất trắng của người chơi.
+    // ôm vài triệu tiền cược ĐÃ TRỪ VÍ, xoá thẳng là mất trắng của người chơi.
     // Giải quyết xong tiền rồi mới sang ván mới.
     {
         const r = txDonSoCuoc('admin khởi tạo lại bàn (ván #' + txState.gameId + ')');

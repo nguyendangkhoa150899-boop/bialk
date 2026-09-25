@@ -1,5 +1,5 @@
 // ============================================================================
-//  web.js — MÔ-ĐUN POKER GẮN VÀO WEB BOTDOMIN (cùng cổng, cùng phiên đăng nhập)
+//  web.js, MÔ-ĐUN POKER GẮN VÀO WEB BOTDOMIN (cùng cổng, cùng phiên đăng nhập)
 //
 //  Chủ server chốt "gộp chung lên BotDoMin, xài chung 1 link". webplay.js:
 //    - phục vụ ../Poker/trang.html tại /poker/ và ảnh tại /poker/bai/*
@@ -8,7 +8,7 @@
 //
 //  Không đụng ví Dogcoin. Chỉ ĐỌC hồ sơ (qua deps.layNguoi) để kiểm điều kiện vào giải.
 //  Mọi thao tác admin (đặt chip, bắt đầu, giải tán, bật/tắt tab) làm ở PANEL SUPER qua
-//  các hàm quanLy.* — trang người chơi không có nút admin.
+//  các hàm quanLy.*, trang người chơi không có nút admin.
 //
 //  Poker/index.js (máy chủ đứng riêng cổng 3003) vẫn dùng chung mô-đun này để chạy
 //  bộ kiểm web-test.js; production chạy nhúng.
@@ -18,7 +18,7 @@ const { taoGiai, taoLichBlind, TOI_DA_NGUOI, TOI_THIEU_NGUOI, DOGCOIN_VAO_GIAI, 
 
 const GIAY_AFK_MAC_DINH = 25;      // không hỏi thăm quá lâu = rớt mạng
 const GIAY_XEM_LAT_MAC_DINH = 3;   // ván xong KHÔNG lật bài (mọi người bỏ) -> 3s rồi chia ván mới
-// 18/09: ván có LẬT BÀI (showdown) giữ lâu hơn để đọc được ai thắng bằng bài gì, 5 lá nào —
+// 18/09: ván có LẬT BÀI (showdown) giữ lâu hơn để đọc được ai thắng bằng bài gì, 5 lá nào
 // chủ server thử 2 người all-in: "kết thúc quá lẹ, chưa hiểu chuyện gì đã qua tổng kết".
 const GIAY_XEM_LAT_LAT_MAC_DINH = 6;
 
@@ -58,7 +58,7 @@ function taoPoker(deps) {
     function canNgoi(id) {
         const u = layNguoi(id);
         if (!u) return 'Chưa có tài khoản trong bot';
-        if (!u.ingameName) return 'Chưa liên kết tên nhân vật — nhờ admin liên kết trước đã';
+        if (!u.ingameName) return 'Chưa liên kết tên nhân vật, nhờ admin liên kết trước đã';
         if ((u.points || 0) < DOGCOIN_VAO_GIAI)
             return 'Cần có ít nhất ' + DOGCOIN_VAO_GIAI.toLocaleString('vi-VN') +
                    ' Dogcoin mới được vào giải (đang có ' + (u.points || 0).toLocaleString('vi-VN') + ')';
@@ -136,7 +136,7 @@ function taoPoker(deps) {
         nen.demChiaBai = motVanXongLuc
             ? Math.max(0, Math.ceil((motVanXongLuc + motVanGiu * 1000 - Date.now()) / 1000)) : null;
         const trongGiai = phong.giai._trong.nguoi.some(p => p.id === id);
-        // khán giả (kể cả người đã cháy) chỉ nhận bản CHUNG — không có bài riêng của ai
+        // khán giả (kể cả người đã cháy) chỉ nhận bản CHUNG, không có bài riêng của ai
         return { ...nen, giai: trongGiai ? phong.giai.xem(id) : phong.giai.xemChung() };
     }
 
@@ -172,7 +172,7 @@ function taoPoker(deps) {
 
     // ------------------------------------------------------------ API người chơi
     /**
-     * req = { path ('/state', '/ngoi', ...), method, body, userId } — userId ĐÃ được xác thực ở ngoài.
+     * req = { path ('/state', '/ngoi', ...), method, body, userId }, userId ĐÃ được xác thực ở ngoài.
      * res + sendJSON(res, code, obj) là của máy chủ gọi vào. Luôn trả { ok:true, ... } hoặc { ok:false, error }.
      */
     function xuLy(req, res, sendJSON) {
@@ -190,7 +190,7 @@ function taoPoker(deps) {
                 if (ghe < 0 || ghe >= TOI_DA_NGUOI) return loi(400, 'Bàn đủ ' + TOI_DA_NGUOI + ' người rồi');
                 if (phong.ghe[ghe] && phong.ghe[ghe] !== toi) return loi(400, 'Ghế này có người rồi');
                 if (giaiDangChay()) {
-                    // 18/09: VÀO MUỘN — giải chạy chưa quá 1 phút thì vẫn nhận, đánh từ ván kế.
+                    // 18/09: VÀO MUỘN, giải chạy chưa quá 1 phút thì vẫn nhận, đánh từ ván kế.
                     // themNguoi tự chặn: quá mốc / đủ 8 / đã trong giải. Ghế mới KHÔNG được đổi ghế cũ.
                     if (gheCua(toi) >= 0) return loi(400, 'Đang trong giải thì không đổi ghế được');
                     phong.giai.themNguoi({ id: toi, ten: tenCua(toi), ghe });
@@ -202,7 +202,7 @@ function taoPoker(deps) {
                 return tra(trangThaiCho(toi));
             }
             if (post && duong === '/roi') {
-                if (giaiDangChay()) return loi(400, 'Đang trong giải thì không rời được — rớt mạng thì máy tự bỏ bài giùm');
+                if (giaiDangChay()) return loi(400, 'Đang trong giải thì không rời được, rớt mạng thì máy tự bỏ bài giùm');
                 const cu = gheCua(toi); if (cu >= 0) phong.ghe[cu] = null;
                 phong.sanSang.delete(toi);
                 return tra(trangThaiCho(toi));
@@ -218,7 +218,7 @@ function taoPoker(deps) {
 
             // ---- admin qua web (dự phòng; đường chính là panel SUPER) ----
             if (post && ['/cauhinh', '/batdau', '/giaitan'].includes(duong)) {
-                if (!laAdmin(toi)) return loi(403, 'Chỉ admin mới làm được — vào panel SUPER');
+                if (!laAdmin(toi)) return loi(403, 'Chỉ admin mới làm được, vào panel SUPER');
                 const r = duong === '/cauhinh' ? quanLy.datChip(body.chipDau)
                         : duong === '/batdau' ? quanLy.batDau() : quanLy.giaiTan();
                 if (r.error) return loi(400, r.error);

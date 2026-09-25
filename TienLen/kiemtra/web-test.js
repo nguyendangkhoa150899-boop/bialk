@@ -1,4 +1,4 @@
-// Bộ kiểm cho TienLen/web.js — cổng vào, ghế, sẵn sàng, VÍ DOGCOIN, chống lộ bài.
+// Bộ kiểm cho TienLen/web.js, cổng vào, ghế, sẵn sàng, VÍ DOGCOIN, chống lộ bài.
 // Gọi thẳng xuLy() với req/res giả (không cần dựng máy chủ HTTP).
 // Chạy: node TienLen/kiemtra/web-test.js
 'use strict';
@@ -62,7 +62,7 @@ muc('cổng vào bàn');
     ok('vốn tối thiểu = hệ số theo chế độ × mức cược', s.vonToiThieu === s.cauHinh.mucCuoc * VON_HE_SO.hang);
     // ⚠️ ĐỪNG ghim con số. Ghim số thì mỗi lần chỉnh cược là phải sửa bài kiểm, mà sửa bài
     // kiểm theo thì nó hết canh được gì. Kiểm ĐÚNG CÁI PHẢI ĐÚNG: vốn tối thiểu KHÔNG ĐƯỢC
-    // THẤP HƠN thua tối đa một ván — thấp hơn là có ngày ví kẹp về 0 và người thắng lãnh đủ.
+    // THẤP HƠN thua tối đa một ván, thấp hơn là có ngày ví kẹp về 0 và người thắng lãnh đủ.
     for (const cd of ['hang', 'anhet'])
         ok('⭐ vốn tối thiểu (' + cd + ' ' + VON_HE_SO[cd] + '×) đủ trả thua tối đa (' + THUA_TOI_DA[cd] + ' cược)',
             VON_HE_SO[cd] >= THUA_TOI_DA[cd], VON_HE_SO[cd] + ' < ' + THUA_TOI_DA[cd]);
@@ -123,14 +123,14 @@ muc('ngồi ghế + ✅ sẵn sàng tự mở bàn (không cần admin)');
 }
 
 // ---------------------------------------------------------------- chống lộ bài
-muc('🔒 CHỐNG LỘ BÀI — soi từng lá trong JSON trả về');
+muc('🔒 CHỐNG LỘ BÀI, soi từng lá trong JSON trả về');
 {
     const { tl } = dung();
     goi(tl, '/ngoi', { ghe: 0 }, 'A'); goi(tl, '/ngoi', { ghe: 1 }, 'B');
     goi(tl, '/ngoi', { ghe: 2 }, 'C'); goi(tl, '/ngoi', { ghe: 3 }, 'D');
     for (const id of ['A', 'B', 'C', 'D']) goi(tl, '/sansang', {}, id);
     const v = tl.phong.ban._trong.van;
-    ok('ván đang ĐÁNH (chưa chốt) — đúng bối cảnh cần soi', !v.ketQua);
+    ok('ván đang ĐÁNH (chưa chốt), đúng bối cảnh cần soi', !v.ketQua);
     let lo = [];
     for (const id of ['A', 'B', 'C', 'D']) {
         const tho = JSON.stringify(st(tl, id));
@@ -520,7 +520,7 @@ muc('📵 đuổi người mất kết nối khỏi ghế');
     ok('...kèm đếm ngược còn mấy giây nữa thì ra ghế', st(tl, 'A').ghe[1].giayDuoi > 0);
 }
 {
-    // ⚠️ ĐANG CẦM BÀI thì KHÔNG được nhấc ra giữa chừng — bỏ ngang là quỵt tiền cả bàn.
+    // ⚠️ ĐANG CẦM BÀI thì KHÔNG được nhấc ra giữa chừng, bỏ ngang là quỵt tiền cả bàn.
     // Phải đánh nốt (máy đánh giùm) rồi hết ván mới cho ra.
     const { tl, vi, log } = dung({ giayDuoi: -1, giayXemKet: 0 });
     goi(tl, '/ngoi', { ghe: 0 }, 'A');

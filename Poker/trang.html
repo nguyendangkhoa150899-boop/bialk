@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Giải Poker — Bialk</title>
+<title>Giải Poker, Bialk</title>
 <style>
 :root{
   --bg:#12141a; --card:#1b1e27; --line:#2a2e3b; --tx:#e8eaf0; --muted:#8a90a3;
@@ -104,7 +104,7 @@ input{width:100%;background:#0e1016;border:1px solid var(--line);color:var(--tx)
 
 /* ---------- LỚP NẶN BÀI GIỮA MÀN HÌNH (lúc vừa chia bài) ----------
    Nền tối KHÔNG chặn bấm (pointer-events:none) để người chơi vẫn bấm được nút
-   Bỏ/Theo/Tố bên dưới — nếu chặn thì ai mải nặn là hết giờ bị xử bỏ bài. */
+   Bỏ/Theo/Tố bên dưới, nếu chặn thì ai mải nặn là hết giờ bị xử bỏ bài. */
 #nanLop{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:1;
   background:radial-gradient(ellipse at 50% 42%,rgba(0,0,0,.72) 0%,rgba(0,0,0,.55) 45%,rgba(0,0,0,.12) 100%);
   transition:opacity .55s ease}
@@ -131,7 +131,7 @@ input{width:100%;background:#0e1016;border:1px solid var(--line);color:var(--tx)
   transition:left .42s cubic-bezier(.3,.85,.35,1),top .42s cubic-bezier(.3,.85,.35,1),
              transform .42s cubic-bezier(.3,.85,.35,1),opacity .18s linear}
 
-/* chỗ ngồi — vị trí do JS tính theo số người, mình LUÔN ở dưới cùng */
+/* chỗ ngồi, vị trí do JS tính theo số người, mình LUÔN ở dưới cùng */
 .ghe{position:absolute;width:clamp(96px,17vw,168px);z-index:3;transform:translate(-50%,-50%)}
 .bai2{display:flex;gap:3px;justify-content:center;margin-bottom:-14px;position:relative;z-index:1;
   min-height:calc(var(--lb2)*1.45)}
@@ -217,7 +217,7 @@ input{width:100%;background:#0e1016;border:1px solid var(--line);color:var(--tx)
 .tt.allin{background:linear-gradient(180deg,#5a1a1a,#3a0f0f);color:#ffd76a;border:1px solid #ff6b6b;letter-spacing:.3px}
 .tt.moi{animation:ttNay .5s cubic-bezier(.2,1.4,.4,1) both}
 @keyframes ttNay{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
-/* 18/09: LẬT BÀI dễ đọc — 5 lá làm nên bài thắng sáng vàng, lá còn lại mờ đi (kiểu GGPoker) */
+/* 18/09: LẬT BÀI dễ đọc, 5 lá làm nên bài thắng sáng vàng, lá còn lại mờ đi (kiểu GGPoker) */
 /* chủ server chốt: "chỉ show bài thôi, không cần lấp lánh" -> viền vàng ĐỨNG YÊN, lá không dùng mờ nhẹ */
 .the.trung .mat{box-shadow:0 0 0 3px var(--gold),0 3px 8px rgba(0,0,0,.6)}
 .the.lu .mat{filter:brightness(.55) saturate(.6)}
@@ -308,7 +308,7 @@ input[type=range]{width:100%;accent-color:var(--gold)}
   .hop{padding:9px;margin-bottom:7px}
 }
 
-/* 18/09: bàn 8 người cần màn NGANG. Điện thoại cầm dọc thì che hẳn lại, bắt xoay máy —
+/* 18/09: bàn 8 người cần màn NGANG. Điện thoại cầm dọc thì che hẳn lại, bắt xoay máy
    chủ server chốt "chỉ chơi PC hoặc điện thoại xoay ngang". Máy tính bảng dọc (≥700px)
    vẫn chơi được nên không chặn. */
 #xoay{position:fixed;inset:0;z-index:120;background:var(--bg);
@@ -325,7 +325,7 @@ input[type=range]{width:100%;accent-color:var(--gold)}
 <div id="manDangNhap" class="hop">
   <h1>🃏 Giải Poker</h1>
   <p class="mo">Đăng nhập bằng <b>ID Discord</b> và <b>mã PIN</b> y như web chơi game của bot.
-     Giải này <b>không ăn Dogcoin của ai</b> — chip trong bàn là chip ảo, chỉ để phân hạng.</p>
+     Giải này <b>không ăn Dogcoin của ai</b>, chip trong bàn là chip ảo, chỉ để phân hạng.</p>
   <label>ID Discord</label>
   <input id="oId" inputmode="numeric" autocomplete="username" placeholder="vd: 111111111111111111">
   <label>Mã PIN</label>
@@ -358,7 +358,7 @@ input[type=range]{width:100%;accent-color:var(--gold)}
   <div id="choVs" class="mo" style="margin-top:8px;text-align:center"></div>
 
   <!-- Không có nút admin ở đây: đặt chip / Bắt đầu / Giải tán / Tạm nghỉ đều làm ở PANEL SUPER
-       (BotDoMin, tab 🃏 Poker) — chủ server chốt "thao tác bắt đầu ở bên super admin hết". -->
+       (BotDoMin, tab 🃏 Poker), chủ server chốt "thao tác bắt đầu ở bên super admin hết". -->
   <div class="mo" id="choThang" style="margin-top:8px;text-align:center"></div>
 </div>
 
@@ -403,7 +403,7 @@ input[type=range]{width:100%;accent-color:var(--gold)}
   <div class="hop">
     <h2>🏆 KẾT QUẢ</h2>
     <div id="kqDs"></div>
-    <p class="mo" style="margin-top:12px">Thưởng và phạt do admin tự trao trong game — bot chỉ báo thứ hạng.</p>
+    <p class="mo" style="margin-top:12px">Thưởng và phạt do admin tự trao trong game, bot chỉ báo thứ hạng.</p>
     <p class="mo" style="text-align:center">Admin bấm <b>Giải tán</b> ở panel SUPER để mở giải mới.</p>
   </div>
 </div>
@@ -411,7 +411,7 @@ input[type=range]{width:100%;accent-color:var(--gold)}
 <!-- lớp nặn bài giữa màn hình, chỉ hiện lúc vừa chia bài -->
 <div id="nanLop" hidden>
   <div class="nanHop">
-    <div class="nanTieu" id="nanTieu">🎴 BÀI CỦA BẠN — kéo hoặc bấm từng lá để nặn</div>
+    <div class="nanTieu" id="nanTieu">🎴 BÀI CỦA BẠN, kéo hoặc bấm từng lá để nặn</div>
     <div class="nanBai" id="nanBai"></div>
     <div class="nanDay">
       <button class="b2" onclick="latHet()">👁️ Lật cả hai</button>
@@ -463,7 +463,7 @@ function api(duong, than){
     body: than ? JSON.stringify(than) : undefined
   }).then(function(r){
     return r.json().catch(function(){ return {}; }).then(function(j){
-      // 401: đứng riêng thì xoá token riêng; NHÚNG thì play_token là của trang chính, không đụng —
+      // 401: đứng riêng thì xoá token riêng; NHÚNG thì play_token là của trang chính, không đụng
       // chỉ hiện thông báo "đăng nhập ở trang chính" (trang chính sẽ tự dẹp phiên hỏng)
       if (r.status === 401) { TOKEN=''; if (!NHUNG) localStorage.removeItem('poker_token'); ve(null); }
       if (!r.ok) throw new Error(j.error || j.loi || ('Lỗi '+r.status));
@@ -497,7 +497,7 @@ function ve(s){
   // NHÚNG mà chưa có phiên: không hiện form đăng nhập riêng (poker dùng chung phiên trang chính)
   if (!s && NHUNG) datHTML($('manDangNhap'),
     '<h1>🃏 Giải Poker</h1><p class="mo">Bạn chưa đăng nhập ở trang chính, hoặc phiên đã hết hạn. ' +
-    'Đăng nhập lại ở trang web cược rồi bấm tab <b>GIẢI POKER</b> lần nữa — không cần đăng nhập riêng cho poker.</p>');
+    'Đăng nhập lại ở trang web cược rồi bấm tab <b>GIẢI POKER</b> lần nữa, không cần đăng nhập riêng cho poker.</p>');
   $('manCho').hidden = !s || !!coGiai;
   $('manBan').hidden = !coGiai || xong;
   $('manKetQua').hidden = !xong;
@@ -511,7 +511,7 @@ function veCho(s){
   $('choVi').textContent = s.toi.ten + ' · ' + vnd(s.toi.dogcoin) + ' Dogcoin';
   var daNgoi = s.gheCuaToi >= 0;
   $('choDem').textContent = s.cho.length + '/' + s.toiDa + ' người đã ngồi · mỗi người ' + vnd(s.chipDau) + ' chip';
-  // 18/09: không cần admin nữa — ngồi rồi thì giữa bàn có nút ✅ SẴN SÀNG; đủ ≥ 2 người và ai cũng
+  // 18/09: không cần admin nữa, ngồi rồi thì giữa bàn có nút ✅ SẴN SÀNG; đủ ≥ 2 người và ai cũng
   // sẵn sàng là máy chủ tự mở giải. Bấm lại = huỷ sẵn sàng.
   var ss = s.sanSang || [], soSS = ss.length, soNgoi = s.cho.length;
   var giua;
@@ -545,7 +545,7 @@ function veCho(s){
   // thang blind cho mọi người xem trước; admin bắt đầu từ PANEL SUPER, không có nút ở đây
   $('choThang').textContent = 'Thang blind: ' + (s.lichBlind || []).slice(0, 8).map(vnd).join(' → ') +
       (s.lichBlind && s.lichBlind.length > 8 ? ' → …' : '') + ' · lên mức mỗi 8 phút hoặc mỗi vòng (tối thiểu 6 ván)' +
-      (s.toi.admin ? ' · bạn là admin — bấm Bắt đầu ở panel SUPER (tab 🃏 Poker)' : '');
+      (s.toi.admin ? ' · bạn là admin, bấm Bắt đầu ở panel SUPER (tab 🃏 Poker)' : '');
   $('choPhu').textContent = 'Cần có ' + vnd(s.dogcoinVao) + ' Dogcoin để vào · từ ' + s.toiThieu + ' đến ' + s.toiDa + ' người · ai cũng bấm SẴN SÀNG là vào ván · giải chạy dưới 1 phút vẫn nhảy vào được';
 }
 function ngoi(k){ goi('/ngoi', { ghe: k }); }
@@ -563,7 +563,7 @@ function banKinhX(san){
   var CW = (san && san.clientWidth) || 0;
   if (!CW) return 43;
   // Bề rộng hộp ghế: ĐO ghế thật đang có trên bàn. Có 3 nhánh media query đặt .ghe khác nhau
-  // (thường / ≤700px / màn ngang thấp) — đoán theo innerWidth là sai ngay khi thêm nhánh mới.
+  // (thường / ≤700px / màn ngang thấp), đoán theo innerWidth là sai ngay khi thêm nhánh mới.
   // Lần vẽ đầu chưa có ghế nào thì mới đoán; 1 giây sau vẽ lại là số đo thật.
   var mau = san.querySelector('.ghe'), W = mau && mau.offsetWidth;
   if (!W) {
@@ -620,7 +620,7 @@ function veBan(s){
   $('banHu').textContent = 'HŨ · ' + vnd(v.hu || 0);
 
   // đếm ngược 3…2…1 trước khi chia ván mới (máy chủ báo còn mấy giây). Ván có LẬT BÀI được
-  // giữ 6 giây — 3 giây đầu KHÔNG hiện số to giữa bàn để người chơi còn nhìn bài, 3 giây cuối mới đếm.
+  // giữ 6 giây, 3 giây đầu KHÔNG hiện số to giữa bàn để người chơi còn nhìn bài, 3 giây cuối mới đếm.
   var dem = $('demChia');
   if (typeof s.demChiaBai === 'number' && s.demChiaBai > 0 && s.demChiaBai <= 3){
     if (dem.hidden || $('demSo').textContent !== String(s.demChiaBai)){
@@ -637,7 +637,7 @@ function veBan(s){
   var kqb = ketQuaBan(v);
   veChung(v.chung || [], kqb.trung);
   var eKq = $('banKq'), chuKq = '', lopKq = 'kq';
-  if (v.loDan){ chuKq = '🔥 Cả bàn all-in — đang lật bài…'; lopKq = 'kq lo'; }
+  if (v.loDan){ chuKq = '🔥 Cả bàn all-in, đang lật bài…'; lopKq = 'kq lo'; }
   else if (v.ketQua && kqb.thang.length){
     var tenT = kqb.thang.map(function(id){ return esc(tenCua(s, id)); }).join(' & ');
     var tienT = kqb.thang.reduce(function(t, id){ return t + (v.ketQua.an[id] || 0); }, 0);
@@ -727,14 +727,14 @@ function tenVong(x){
            RIVER:'Vòng 5 lá', LAT:'Lật bài', XONG:'Xong ván' }[x] || (x||'');
 }
 function conMay(g){
-  var v = g.van; if (!v || !v.hanChot) return '—';
+  var v = g.van; if (!v || !v.hanChot) return '-';
   var s = Math.max(0, Math.ceil((v.hanChot - Date.now())/1000));
   return s + ' giây';
 }
 
 /* ================= NẶN BÀI =================
    NAN.goc[i] = góc lá thứ i của MÌNH (0 úp, 180 ngửa). Giữ trong biến JS chứ không
-   trong DOM, vì DOM bị dựng lại mỗi khi trạng thái đổi — lưu ở đây thì nặn xong
+   trong DOM, vì DOM bị dựng lại mỗi khi trạng thái đổi, lưu ở đây thì nặn xong
    vẫn còn nguyên sau lần vẽ kế. */
 var NAN = { van: -1, goc: [0, 0], boQua: false };
 var QUA_PREFLOP = false;   // đã qua vòng bài riêng chưa (bài chung đã ra)
@@ -768,7 +768,7 @@ function gan1La(e, i){
     NAN.goc[i] = (dich < 6 || NAN.goc[i] > 80) ? 180 : 0;
     e.style.setProperty('--g', NAN.goc[i] + 'deg');
     if (NAN.goc[i] >= 180) e.classList.remove('nan');
-    // Ép vẽ lại (cho ghế dưới hiện bài đã mở) nhưng phải CHỜ cú lật chạy xong —
+    // Ép vẽ lại (cho ghế dưới hiện bài đã mở) nhưng phải CHỜ cú lật chạy xong
     // vẽ lại ngay là dựng DOM mới, lá bài nhảy phắt sang góc cuối, mất hiệu ứng.
     setTimeout(function(){ GHE_CU = ''; $('banGhe').__cu = ''; }, 340);
     // mở hết 2 lá rồi thì GIỮ 2 giây cho nhìn đã, xong mới hạ xuống
@@ -784,7 +784,7 @@ function gan1La(e, i){
 function gan1Khoe(e){
   e.addEventListener('click', function(){
     var i = Number(e.getAttribute('data-khoe'));
-    if (!confirm('Khoe lá này cho cả bàn xem trong 4 giây?\n\nMỗi ván chỉ khoe được 1 lá — khoe rồi là hết lượt.'))
+    if (!confirm('Khoe lá này cho cả bàn xem trong 4 giây?\n\nMỗi ván chỉ khoe được 1 lá, khoe rồi là hết lượt.'))
       return;
     goi('/khoe', { la: i });
   });
@@ -792,7 +792,7 @@ function gan1Khoe(e){
 
 /* ================= CHIA BÀI =================
    Lá úp bay từ chỗ nhà cái ra từng ghế, 2 vòng như chia bài thật. Chỉ là lớp phủ
-   chạy bên trên — bài thật đã nằm sẵn dưới, nên có lỡ lỗi cũng không sai ván nào. */
+   chạy bên trên, bài thật đã nằm sẵn dưới, nên có lỡ lỗi cũng không sai ván nào. */
 function chiaBai(){
   var san = $('san'); if (!san || !VITRI.length) return;
   var nd = $('banNutD');
@@ -825,7 +825,7 @@ function chiaBai(){
    để mở. Mở xong (hoặc bấm "Để sau", hoặc bài chung đã ra) thì lớp này biến mất,
    bài về nằm ở ghế dưới cùng như bình thường. */
 /* Đóng lớp nặn: GIỮ LẠI vài giây cho người chơi kịp nhìn lá vừa mở, rồi mới thu
-   nhỏ trượt xuống phía ghế. Trước đây đóng sau 430ms — lật xong chưa kịp thấy gì
+   nhỏ trượt xuống phía ghế. Trước đây đóng sau 430ms, lật xong chưa kịp thấy gì
    thì lớp đã biến mất. Phải có cờ DANG_DONG vì veNan() chạy mỗi giây, thấy bài đã
    mở hết là nó tắt lớp ngay, cắt luôn 2 giây chờ. */
 var DANG_DONG = false;
@@ -865,8 +865,8 @@ function veNan(s){
     for (var i = 0; i < e.length; i++) gan1La(e[i], i);
   }
   $('nanTieu').textContent = t.toiLuot
-    ? '🎴 TỚI LƯỢT BẠN — nặn bài đi, còn ' + conMay(g)
-    : '🎴 BÀI CỦA BẠN — kéo hoặc bấm từng lá để nặn';
+    ? '🎴 TỚI LƯỢT BẠN, nặn bài đi, còn ' + conMay(g)
+    : '🎴 BÀI CỦA BẠN, kéo hoặc bấm từng lá để nặn';
 }
 function latHet(){
   var e = $('nanBai').querySelectorAll('.the');
@@ -896,7 +896,7 @@ function veGhe(s){
 
   // ván mới: bài úp lại, mở lại lớp nặn
   if (NAN.van !== v.so){ NAN = { van: v.so, goc: [0, 0], boQua: false }; NAN_KEY = ''; }
-  // Chỉ được tự nặn ở vòng bài riêng. Bài chung vừa ra là máy LẬT GIÙM — ai quên nặn
+  // Chỉ được tự nặn ở vòng bài riêng. Bài chung vừa ra là máy LẬT GIÙM, ai quên nặn
   // thì cả ván đánh mù, mà nhắc mãi cũng phiền.
   QUA_PREFLOP = !!v.vong && v.vong !== 'PREFLOP';
 
@@ -915,7 +915,7 @@ function veGhe(s){
     var bai = '', nhac = '';
     var cuaHo = lat ? lat.filter(function(z){ return z.id === p.id; })[0] : null;
     if (laToi && g.toi && g.toi.la){
-      // Ở GHẾ chỉ HIỂN THỊ theo góc đang nặn — việc nặn làm ở lớp giữa màn hình,
+      // Ở GHẾ chỉ HIỂN THỊ theo góc đang nặn, việc nặn làm ở lớp giữa màn hình,
       // để hai chỗ cùng cho kéo thì rối tay và dễ lệch góc nhau.
       // Bài đã mở + chưa khoe lá nào -> bấm vào lá để khoe cho cả bàn xem.
       bai = g.toi.la.map(function(c, i){
@@ -988,7 +988,7 @@ function veGhe(s){
     }
   }
 
-  // Không có gì đổi thì ĐỪNG dựng lại DOM — dựng lại là hiệu ứng lật/nặn đứt ngang.
+  // Không có gì đổi thì ĐỪNG dựng lại DOM, dựng lại là hiệu ứng lật/nặn đứt ngang.
   if (datHTML($('banGhe'), oGhe)){
     GHE_CU = oGhe;
     // bài của mình: gắn tay nặn + lật ra cho người khác xem lúc showdown
@@ -1049,7 +1049,7 @@ function veNghi(s){
     datHTML(h, '<h2>🙋 ' + esc(tenCua(s, g.xinNghi.boi)) + ' xin tạm ngưng</h2>' +
       '<p class="mo">Phải <b>cả bàn đồng ý</b> mới ngưng. Đã đồng ý: <b>' +
       g.xinNghi.dongY.length + '</b> · còn chờ: ' +
-      (g.xinNghi.conCho.map(function(x){ return esc(tenCua(s,x)); }).join(', ') || '—') + '</p>' +
+      (g.xinNghi.conCho.map(function(x){ return esc(tenCua(s,x)); }).join(', ') || '-') + '</p>' +
       (daBo ? '<p class="mo">Bạn đã đồng ý, đang chờ người khác.</p>'
             : '<div class="hang" style="margin-top:10px">' +
               '<button class="b xanh" onclick="goi(\'/dongy\')">Đồng ý nghỉ</button>' +
@@ -1066,7 +1066,7 @@ function tenCua(s, id){
 /* ---- thanh hành động ----
    Số tiền tố người chơi tự kéo được giữ trong TO.gt (BIẾN JS), không đọc từ DOM.
    Chỉ đặt lại khi TÌNH HUỐNG CƯỢC đổi thật (sang ván khác, sang vòng khác, có người
-   tố lên, số chip mình đổi) — TO.khoa là chữ ký của tình huống đó.
+   tố lên, số chip mình đổi), TO.khoa là chữ ký của tình huống đó.
    Trước đây thanh kéo lấy value="toiThieu" cứng nên mỗi giây vẽ lại là nhảy về đầu. */
 var TO = { khoa: '', gt: 0 };
 function veAct(s){
@@ -1079,7 +1079,7 @@ function veAct(s){
     var conMuon = g.vaoMuonDen ? Math.ceil((g.vaoMuonDen - Date.now()) / 1000) : 0;
     if (conMuon > 0 && g.conCho > 0 && s.toi && s.toi.duocNgoi){
       return void datHTML(e,
-        '<div class="dong"><button class="b xanh" style="flex:1" onclick="vaoMuon()">🚪 Vào giải ngay — còn ' + conMuon + ' giây · ' + g.conCho + ' ghế trống</button></div>' +
+        '<div class="dong"><button class="b xanh" style="flex:1" onclick="vaoMuon()">🚪 Vào giải ngay, còn ' + conMuon + ' giây · ' + g.conCho + ' ghế trống</button></div>' +
         '<div class="nho">Nhận đủ ' + vnd(s.chipDau) + ' chip, đánh từ ván kế. Quá 1 phút là khoá tới hết giải.</div>');
     }
     return void datHTML(e, '<p class="mo" style="text-align:center;margin:0">👀 Bạn đang xem. ' +
@@ -1090,7 +1090,7 @@ function veAct(s){
   if (t.daChay){
     return void datHTML(e,
       '<div class="dong"><button class="b xam" style="flex:1" disabled>💀 Bạn đã bị loại' +
-      (t.hang ? ' — hạng ' + t.hang + '/' + g.nguoi.length : '') + '</button></div>' +
+      (t.hang ? ', hạng ' + t.hang + '/' + g.nguoi.length : '') + '</button></div>' +
       '<div class="nho">Cứ ngồi xem tiếp · bài của người chơi chỉ hiện khi lật bài</div>');
   }
 
@@ -1132,7 +1132,7 @@ function veAct(s){
     duoiCung +
     // số giây đổi MỖI GIÂY -> để riêng ô #actDem, không nhét vào chuỗi so sánh,
     // không thì lần nào cũng "khác" và DOM bị dựng lại, thanh kéo lại nhảy về đầu
-    '<div class="nho">Còn <b id="actDem">—</b> · hết giờ thì ' + (can<=0?'tự theo':'tự bỏ bài') + '</div>' +
+    '<div class="nho">Còn <b id="actDem">-</b> · hết giờ thì ' + (can<=0?'tự theo':'tự bỏ bài') + '</div>' +
     nutXinNghi(s);
 
   datHTML(e, html);

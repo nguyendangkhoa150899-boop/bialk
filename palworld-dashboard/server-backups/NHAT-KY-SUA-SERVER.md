@@ -1,11 +1,11 @@
-# Nhật ký thay đổi trên SERVER — để khôi phục về mặc định khi cần
+# Nhật ký thay đổi trên SERVER, để khôi phục về mặc định khi cần
 
 > Mỗi lần sửa file trên server Palworld, ghi vào đây kèm bản gốc trong thư mục này.
 > Server: `1. MOD PALWORLD TEST` (Shockbyte, SFTP).
 
 ---
 
-## 2026-08-07 — Bật debug logging + auto reload cho PalSchema
+## 2026-08-07, Bật debug logging + auto reload cho PalSchema
 
 **File trên server:**
 `/1. MOD PALWORLD TEST/Pal/Binaries/Win64/ue4ss/Mods/PalSchema/config/config.json`
@@ -30,7 +30,7 @@
 }
 ```
 
-**Lý do:** khi JSON mod sai định dạng, PalSchema **bỏ qua im lặng** — không bật debug log thì
+**Lý do:** khi JSON mod sai định dạng, PalSchema **bỏ qua im lặng**, không bật debug log thì
 không cách nào biết mod có được nạp hay không. `enableAutoReload` cho phép nạp lại mod
 mà (có thể) không cần restart server.
 
@@ -45,7 +45,7 @@ node putfile.js "../server-backups/PalSchema_config.json.goc" \
 
 ---
 
-## 2026-08-07 — Mod PalSchema `BialkServer` (nerf recycler + drop Silvance)
+## 2026-08-07, Mod PalSchema `BialkServer` (nerf recycler + drop Silvance)
 
 **Thư mục trên server:**
 `/1. MOD PALWORLD TEST/Pal/Binaries/Win64/ue4ss/Mods/PalSchema/mods/BialkServer/`
@@ -56,17 +56,17 @@ node putfile.js "../server-backups/PalSchema_config.json.goc" \
 |---|---|
 | `metadata.json` | Khai báo mod |
 | `raw/recycler.json` | Tắt slot **8, 9, 14** của cả 5 dòng `AncientRelicRecycler_WorldTreeRelic_01..05` trong `DT_FieldLotteryNameDataTable` → máy recycler không còn cho **Ancient Civilization Core**, **Disposable Implants**, **Mutation Disposable Implants**. Các pool khác (Awakening Materials, Skill Cards, Ancient Blueprints, Mythical Wood, Paloxite) giữ nguyên. |
-| `raw/drop_silvance.json` | `DT_PalDropItem` → `Mothman000` và `BOSS_Mothman000`, đặt `Rate1..5 = 0`. **⚠️ TÁC DỤNG CHƯA CHẮC CHẮN — đọc phần bên dưới.** |
-| `raw/drop_probe.json` | `{}` — file rỗng còn sót từ lúc dò, có thể xoá. |
+| `raw/drop_silvance.json` | `DT_PalDropItem` → `Mothman000` và `BOSS_Mothman000`, đặt `Rate1..5 = 0`. **⚠️ TÁC DỤNG CHƯA CHẮC CHẮN, đọc phần bên dưới.** |
+| `raw/drop_probe.json` | `{}`, file rỗng còn sót từ lúc dò, có thể xoá. |
 
-### ⚠️ Về `drop_silvance.json` — mức độ chắc chắn THẤP
+### ⚠️ Về `drop_silvance.json`, mức độ chắc chắn THẤP
 
 **Quan sát thực tế:** Silvance **Lv70+ VẪN rơi** Ancient Civilization Core (cả khi giết lẫn khi xẻ),
 dù đã đặt `Rate = 0`, đã thử thêm `ItemId = "None"`, và đã restart. Pal **dưới Lv70 thì không rơi**.
 
 **Chưa xác định được** ngưỡng Lv70 đó là do config này tạo ra hay là cơ chế sẵn có của game.
 Chủ server quyết định **giữ lại** vì: nếu nó thật sự tạo ngưỡng thì gỡ đi sẽ khiến pal level thấp
-cũng rơi Core. Để lại thì xấu nhất là vô tác dụng — không gây hại.
+cũng rơi Core. Để lại thì xấu nhất là vô tác dụng, không gây hại.
 
 **Những cách ĐÃ THỬ và THẤT BẠI** (đừng lặp lại):
 - `Rate = 0` → không chặn được pal Lv70+
@@ -79,11 +79,11 @@ cũng rơi Core. Để lại thì xấu nhất là vô tác dụng — không g�
 để xem chính xác dòng nào / ô nào. Đoán mò đã tốn rất nhiều lượt thử-sai mà không ra.
 
 **Bối cảnh thiết kế:** nguồn Core lớn nhất là **máy recycler** (x5–10 mỗi lần, 41%, cày relic vô hạn)
-— cái đó **đã chặn xong và kiểm chứng hoạt động**. Silvance Lv70+ còn rơi x1 mỗi con, nhưng phải
+cái đó **đã chặn xong và kiểm chứng hoạt động**. Silvance Lv70+ còn rơi x1 mỗi con, nhưng phải
 breed rồi **nuôi lên Lv70** nên là công sức có thật, chấp nhận được.
 
 **Cách gỡ hoàn toàn:** xoá thư mục `BialkServer` trên server rồi restart.
-PalSchema **không sửa file gốc của game** — nó vá lúc chạy, nên gỡ mod là về mặc định 100%.
+PalSchema **không sửa file gốc của game**, nó vá lúc chạy, nên gỡ mod là về mặc định 100%.
 
 **Cách sửa giá trị:** sửa file JSON trong `palschema-mods/BialkServer/raw/` rồi:
 ```bash
@@ -94,7 +94,7 @@ node putfile.js "../palschema-mods/BialkServer/raw/<file>.json" \
 PalSchema **tự nạp lại ngay**, không cần restart (nhờ `enableAutoReload`).
 
 ⚠️ **Hai cạm bẫy đã dính:**
-1. **Không đặt khoá chú thích** (kiểu `"_ghi_chu"`) ở cấp cao nhất của JSON — PalSchema tưởng đó là
+1. **Không đặt khoá chú thích** (kiểu `"_ghi_chu"`) ở cấp cao nhất của JSON, PalSchema tưởng đó là
    tên DataTable và báo lỗi `Failed to find UDataTable '_ghi_chu'`, làm hỏng cả lần nạp.
 2. PalSchema **vá vào bộ nhớ, không tự hoàn tác**. Bỏ một field khỏi JSON thì giá trị cũ **vẫn còn**
    cho tới khi **restart**. Trong lúc dò slot đã ghi đè cả 15 slot → phải restart mới sạch.
@@ -108,5 +108,5 @@ Khi thêm mod JSON vào `PalSchema/mods/`, ghi vào đây:
 - Nội dung
 - Cách gỡ (thường chỉ cần **xoá thư mục mod** đó rồi restart)
 
-Lưu ý: mod PalSchema **không sửa file gốc của game** — nó nạp đè lúc chạy. Nên gỡ mod = xoá
+Lưu ý: mod PalSchema **không sửa file gốc của game**, nó nạp đè lúc chạy. Nên gỡ mod = xoá
 thư mục là về mặc định hoàn toàn, không cần backup file game.

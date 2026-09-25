@@ -1,4 +1,4 @@
-// Bộ kiểm TIỀN KHÔNG ĐƯỢC MẤT — chạy: node TaiXiu/kiemtra/tienkhongmat-test.js
+// Bộ kiểm TIỀN KHÔNG ĐƯỢC MẤT, chạy: node TaiXiu/kiemtra/tienkhongmat-test.js
 // Không cần bot: đọc luật thẳng từ index.js + chạy thử phần logic thuần.
 //
 // Cược là tiền ĐÃ TRỪ KHỎI VÍ. Mọi chỗ xoá sổ cược đều phải giải quyết tiền trước.
@@ -28,7 +28,7 @@ ok('hàm đó: ván ĐÃ quay thì trả theo bảng, CHƯA quay thì hoàn cư�
     d.forEach((ln, i) => {
         if (!/^\s*txState\.bets = \[\];\s*$/.test(ln)) return;
         const truoc = d.slice(Math.max(0, i - 12), i).join('\n');
-        // thân CHÍNH hàm dọn sổ thì tất nhiên được xoá — nhìn xa hơn để nhận ra nó
+        // thân CHÍNH hàm dọn sổ thì tất nhiên được xoá, nhìn xa hơn để nhận ra nó
         const than = d.slice(Math.max(0, i - 30), i).join('\n');
         const an = /txDonSoCuoc\(/.test(truoc)            // đã dọn tiền ngay trước
             || /function txDonSoCuoc/.test(than)           // chính thân hàm đó
@@ -45,14 +45,14 @@ ok('admin dừng bàn giữa ván: không để tiền treo',
 ok('watchdog kẹt: dọn tiền + TĂNG số ván (giữ số cũ là khớp nhầm bảng trả tiền)',
     /txDonSoCuoc\('watchdog reset ván/.test(SRC) &&
     // ⚠️ ĐỪNG đòi đúng dòng `txState.gameId++` ở đây. 21/09 gom mọi đường tăng số ván về
-    // MỘT cửa txSangVanMoi() (nó tự lo ghi lịch sử) — đòi dòng cũ là ép phá cái chốt đó.
+    // MỘT cửa txSangVanMoi() (nó tự lo ghi lịch sử), đòi dòng cũ là ép phá cái chốt đó.
     // Cái PHẢI đúng vẫn nguyên: dọn tiền xong thì phải sang ván mới.
     /txDonSoCuoc\('watchdog reset ván[\s\S]{0,400}?txSangVanMoi\(/.test(SRC));
 
-// 🕳️ 21/09 — chủ server: "lâu lâu bị mất ID mất luôn kết quả ván đó làm người chơi mất dogcoin".
+// 🕳️ 21/09, chủ server: "lâu lâu bị mất ID mất luôn kết quả ván đó làm người chơi mất dogcoin".
 // Ván bị huỷ vẫn tăng gameId nhưng không ghi gì -> dãy số ván thủng lỗ, người chơi không tra
 // được tiền mình đi đâu. Mọi đường huỷ ván giờ phải để lại một dòng lịch sử.
-// ⏱️ 21/09 — GỐC của "mất ID mất luôn kết quả ván". Máy trạng thái 3 mốc trước đây là một
+// ⏱️ 21/09, GỐC của "mất ID mất luôn kết quả ván". Máy trạng thái 3 mốc trước đây là một
 // chuỗi else-if KIỂM targetTime TRƯỚC, nên mỗi nhịp chỉ đi được MỘT mốc. Máy chủ kẹt (lag)
 // làm nhịp trễ; trễ đủ lâu thì lúc chạy lại nowSec đã vượt targetTime trong khi status còn
 // 'betting' -> rơi thẳng vào nhánh mở bát mà ván CHƯA QUAY -> huỷ ván. Chủ server đo được
@@ -72,7 +72,7 @@ muc('⏱️ ba mốc của ván phải BẮT KỊP được, không nhảy cóc 
     ok('⭐ QUAY XÚC XẮC đứng TRƯỚC mở bát', iQuay > 0 && iQuay < iMo, 'quay@' + iQuay + ' mở@' + iMo);
     ok('⭐ và KHOÁ SỔ đứng trước QUAY (sai thứ tự là quay bằng bảng nhân ván cũ)', iKhoa < iQuay);
 
-    ok('⭐⭐ ba mốc là "if" NỐI TIẾP, KHÔNG phải "else if" — else if là nhảy cóc trở lại',
+    ok('⭐⭐ ba mốc là "if" NỐI TIẾP, KHÔNG phải "else if", else if là nhảy cóc trở lại',
         than.indexOf('else if (nowSec >= lockTime') < 0 &&
         than.indexOf('else if (nowSec >= nanTime') < 0 &&
         than.indexOf('else if (nowSec >= txState.targetTime') < 0);
@@ -152,7 +152,7 @@ ok('...có đủ trường mà chỗ hiển thị đang đọc (khỏi phải th
 {
     // cả BA đường huỷ ván đều phải gọi
     // ⚠️ Không kiểm từng đường gọi thẳng txGhiVanHuy nữa. 21/09 gom hết về MỘT cửa
-    // txSangVanMoi() — chính nó gọi txGhiVanHuy. Kiểm từng đường lại là ép quay về kiểu
+    // txSangVanMoi(), chính nó gọi txGhiVanHuy. Kiểm từng đường lại là ép quay về kiểu
     // "mỗi chỗ tự nhớ ghi", đúng cái kiểu đã đẻ ra lỗ thủng. Khối 🚪 ở trên đã canh việc
     // mọi đường đi qua cửa chung; ở đây chỉ canh cửa đó làm đúng phận sự.
     const i0 = SRC.indexOf('function txSangVanMoi(');
@@ -165,7 +165,7 @@ ok('...có đủ trường mà chỗ hiển thị đang đọc (khỏi phải th
 ok('soi cầu Discord không in "undefined" cho ván huỷ (ván huỷ không có xúc xắc)',
     /if \(h\.huy\) return .*VÁN HUỶ/.test(SRC));
 // ⚠️ 21/09 ĐỔI THIẾT KẾ: lỡ mốc nặn giờ QUAY BÙ chứ không hoàn-cược-rồi-bỏ-ván nữa.
-// Hoàn cược là đúng về tiền nhưng MẤT KẾT QUẢ VÀ MẤT ID — đúng cái chủ server than.
+// Hoàn cược là đúng về tiền nhưng MẤT KẾT QUẢ VÀ MẤT ID, đúng cái chủ server than.
 // Quay bù ra một ván thật, tiền trả theo kết quả thật. Xem khối 🛟 ở trên.
 ok('lỡ mốc nặn: QUAY BÙ (không còn hoàn-cược-rồi-bỏ-ván ở đường thường)',
     /!txState\.resultPromise && !txState\.isProcessing[\s\S]{0,900}?finishTXGame\(/.test(SRC) &&
@@ -238,7 +238,7 @@ muc('chạy thử hàm dọn sổ cược');
 // ============================================================================
 // 🔬 CHẠY MÃ THẬT: dãy số ván KHÔNG ĐƯỢC THỦNG LỖ, dù đường nào kết thúc ván.
 // Mấy khối trên đọc mã (soi chữ). Khối này BÓC ĐÚNG HAI HÀM txGhiVanHuy + txSangVanMoi
-// ra khỏi index.js rồi chạy thật với txState giả — chứng minh bằng hành vi chứ không
+// ra khỏi index.js rồi chạy thật với txState giả, chứng minh bằng hành vi chứ không
 // bằng niềm tin vào regex.
 // ============================================================================
 muc('🔬 chạy mã THẬT: bắn 500 ván đủ kiểu, dãy ID phải liền mạch');

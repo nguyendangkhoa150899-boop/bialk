@@ -1,4 +1,4 @@
-// Bộ kiểm MÁY BÀN SIÊU TÀI XỈU — chạy: node SieuTaiXiu/kiemtra/ban-test.js
+// Bộ kiểm MÁY BÀN SIÊU TÀI XỈU, chạy: node SieuTaiXiu/kiemtra/ban-test.js
 // Không cần bot: dựng DB giả + ví giả, ép mốc giờ để chạy trọn ván trong tích tắc.
 'use strict';
 const { taoBan } = require('../ban.js');
@@ -29,7 +29,7 @@ function dungBan(viDau) {
  * Đưa bàn tới ĐÚNG mốc quay xúc xắc.
  * Vòng ván xét theo thứ tự: chốt (now ≥ targetTime) TRƯỚC, rồi mới tới quay
  * (now ≥ nanTime). Nên muốn quay mà chưa chốt thì phải để targetTime còn Ở PHÍA
- * TRƯỚC 1 giây — đặt bằng now là rơi thẳng vào nhánh chốt, ván chưa kịp quay.
+ * TRƯỚC 1 giây, đặt bằng now là rơi thẳng vào nhánh chốt, ván chưa kịp quay.
  */
 function toiMocQuay(ban) {
     const S = ban._S;
@@ -314,7 +314,7 @@ muc('chống soi bài');
 // ---------------------------------------------------------------- 📜 LOG KHÔNG ĐƯỢC TRẮNG (24/09)
 // Chủ server: "bug log của ⚡ Siêu Tài Xỉu bị xóa mất hết".
 // Gốc: sổ cũ giữ 100 ván gần nhất KỂ CẢ VÁN TRỐNG. Bàn chạy 24/7 ~44 giây/ván nên 100 ván chỉ bằng
-// ~73 phút — một đêm vắng khách là ván trống đẩy sạch ván có cược. Sổ ván CÓ CƯỢC phải nằm riêng.
+// ~73 phút, một đêm vắng khách là ván trống đẩy sạch ván có cược. Sổ ván CÓ CƯỢC phải nằm riêng.
 muc('📜 log ván có cược không bị ván trống đẩy trắng');
 {
     const { ban, DB } = dungBan({ A: 100000000 });

@@ -1,6 +1,6 @@
 // Tắt xác thực bằng cách để DASHBOARD_PASSWORD trống (hoặc bỏ hẳn biến đó).
 //
-// Chỉ nên tắt khi dashboard nghe 127.0.0.1 (mặc định) — lúc đó chỉ tiến trình trên
+// Chỉ nên tắt khi dashboard nghe 127.0.0.1 (mặc định), lúc đó chỉ tiến trình trên
 // cùng máy gọi được, ví dụ bot Discord. Nếu đổi HOST thành 0.0.0.0 mà không có mật
 // khẩu thì bất kỳ ai trên internet cũng tặng được item vô hạn.
 export function dashboardAuth(req, res, next) {

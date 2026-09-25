@@ -1,8 +1,8 @@
-// Bộ kiểm GIAO DIỆN bàn Sic Bo trong webplay.js — chạy: node TaiXiu/kiemtra/trang-test.js
+// Bộ kiểm GIAO DIỆN bàn Sic Bo trong webplay.js, chạy: node TaiXiu/kiemtra/trang-test.js
 //
 // Không mở được trình duyệt ở đây nên kiểm 3 tầng:
 //   1. Cú pháp JS phía người chơi (mảng chuỗi PAGE nối lại rồi bắt máy đọc thử)
-//   2. Hình học xúc xắc mini — tính tay xem chấm có chồng nhau / tràn viền không
+//   2. Hình học xúc xắc mini, tính tay xem chấm có chồng nhau / tràn viền không
 //      (chủ server từng báo "hột xí ngầu méo mó" đúng vì chấm đè nhau)
 //   3. Luật giao diện: không còn giỏ cược, mọi id JS gọi đều tồn tại
 'use strict';
@@ -71,8 +71,8 @@ function kiemCo(ten, oPx, chamPx) {
     const tiCham = parseFloat((SRC.match(/\.sbXx i\{[^']*width:calc\(var\(--xx\) \* ([\d.]+)\)/) || [])[1]);
     if (mm) { const dt = clampMin(mm[1]); kiemCo('điện thoại', dt, dt * tiCham); }
 
-    // ⚠️ 21/09 — CÁI GÂY RA LỖI TRÀN: viên xúc xắc không co được.
-    // ⚠️ mỗi phần tử của mảng PAGE là MỘT chuỗi, nên một rule CSS bị cắt làm nhiều dòng —
+    // ⚠️ 21/09, CÁI GÂY RA LỖI TRÀN: viên xúc xắc không co được.
+    // ⚠️ mỗi phần tử của mảng PAGE là MỘT chuỗi, nên một rule CSS bị cắt làm nhiều dòng
     // regex kiểu /\.sbXx\{[^']*flex/ không bao giờ khớp qua ranh giới. Soi từng mảnh.
     ok('⭐ viên xúc xắc CO ĐƯỢC (không flex:0 0 auto, không width cố định)',
         /\.sbXx\{[^']*width:var\(--xx\)/.test(SRC) &&
@@ -99,7 +99,7 @@ muc('bàn 52 ô');
 ok('vẽ xúc xắc bằng hàm riêng, dùng lại bảng chấm PIPS sẵn có',
     /function sbXx\(n\)/.test(SRC) && /PIPS\[n\]/.test(SRC));
 // ⚠️ Đếm trong THÂN sbVe() thôi. Từ 22/09 file còn có bàn Siêu Tài Xỉu (stVe) cũng
-// dùng khu() — đếm cả file là ra 12, tưởng hỏng mà thật ra không phải.
+// dùng khu(), đếm cả file là ra 12, tưởng hỏng mà thật ra không phải.
 {
     const than = SRC.slice(SRC.indexOf('function sbVe()'), SRC.indexOf('function sbVeChip()'));
     ok('bàn thường có 6 dải tiêu đề khu', (than.match(/h\+=khu\(/g) || []).length === 6,
@@ -179,7 +179,7 @@ ok('ô nền TRẮNG ngay từ lúc đặt', /'\.sbO\{flex:1;min-width:0;positio
 // ảnh sòng thật: ô trượt chỉ xám NỀN, xúc xắc trong ô vẫn đỏ tươi
 ok('ô trượt KHÔNG đổi màu xúc xắc (giống ảnh sòng thật)',
     !/\.sbO\.sbTruot \.sbXx/.test(SRC));
-ok('KHÔNG tự đoán luật thắng ở máy người chơi — lấy danh sách máy chủ gửi',
+ok('KHÔNG tự đoán luật thắng ở máy người chơi, lấy danh sách máy chủ gửi',
     /nan\.thang\.forEach/.test(SRC));
 ok('nặn xong (tay hoặc tự) là tô bàn ngay', /revealDone\(\)\{[\s\S]{0,400}?sbToKetQua\(NAN\)/.test(SRC));
 ok('mở ván mới thì xoá màu cũ', /PHASE==="bet"\)sbXoaKetQua\(\)/.test(SRC));
@@ -241,7 +241,7 @@ ok('nút tự khoá khi không dùng được (hết giờ / chưa đặt / chư
 ok('sang ván mới thì dọn dòng báo cũ', /prevPhase!=="bet"&&PHASE==="bet"\)sbBao\(""/.test(SRC));
 ok('máy chủ cho biết có giỏ ván trước không', /SBCOVT=!!j\.txVanTruoc/.test(SRC));
 
-// Chủ server: ra kết quả rồi thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG — rải 47 ô mà
+// Chủ server: ra kết quả rồi thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG, rải 47 ô mà
 // giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
 muc('ra kết quả: chip chỉ nằm ở ô trả thưởng');
 ok('ô trượt giấu hẳn đồng xu + nhãn tiền bàn',
@@ -253,7 +253,7 @@ ok('lúc ĐANG ĐẶT vẫn hiện chip mọi ô đã đặt (không giấu sớ
 muc('lịch sử kể được ô nào nhân, ô nào mình ăn');
 // Chủ server: dòng lịch sử cũ dài không đọc nổi và KHÔNG kể ô nào được nhân.
 // Chủ server: "chỉ show x ván đó mà RA TRÚNG thôi". Mỗi ván ~7 ô sáng nhưng đa số
-// không ra — kể hết là rác. Lọc ngay lúc chốt ván cho nhẹ DB và mọi chỗ đều sạch.
+// không ra, kể hết là rác. Lọc ngay lúc chốt ván cho nhẹ DB và mọi chỗ đều sạch.
 ok('lịch sử CHỈ lưu ô nhân ĐÃ RA TRÚNG',
     IDX.includes('const trung = new Set(TX_CUA.cuaAnNhan([d1, d2, d3], bn));') &&   // 22/09: ô THẬT SỰ được nhân
     IDX.includes('for (const k of Object.keys(bn)) if (trung.has(k)) r[k] = bn[k];'));
@@ -269,7 +269,7 @@ ok('danh sách ô trúng lấy từ lõi tiền qua ctx, không tự đoán',
     SRC.includes('ctx.txCuaThang ? ctx.txCuaThang(h.dice) : []') && IDX.includes('txCuaThang: (xx) => TX_CUA.cuaThang(xx),'));
 // 2 lỗi chữ chủ server chụp được trên bảng Discord
 // 22/09 chủ server chốt: dòng Discord chỉ cần KẾT QUẢ + AI + THẮNG/THUA BAO NHIÊU.
-// Phần kể từng ô ("3 ô, trúng 2: …") và mặt xúc xắc đã BỎ — dài gấp đôi mà vẫn phải
+// Phần kể từng ô ("3 ô, trúng 2: …") và mặt xúc xắc đã BỎ, dài gấp đôi mà vẫn phải
 // tự cộng trừ. Mấy phép dưới canh để không ai lỡ tay dựng lại.
 ok('bỏ hẳn phần kể từng ô và mặt xúc xắc khỏi dòng Discord',
     !IDX.includes('const so = ` (${p.soO} ô`;') && !IDX.includes('`trúng ${thang.length}`') &&
@@ -348,7 +348,7 @@ ok('panel hiện luôn tác động: nhà cái ăn + số ô sáng mỗi ván',
 
 // ---------------------------------------------------------------- ⚡ bàn Siêu
 muc('⚡ bàn Siêu Tài Xỉu dùng chung CSS sân khấu');
-// 22/09 chủ server chụp: xúc xắc bàn Siêu xếp DỌC, chén to đùng — vì CSS sân khấu
+// 22/09 chủ server chụp: xúc xắc bàn Siêu xếp DỌC, chén to đùng, vì CSS sân khấu
 // khoá theo ID bàn thường (#stage, #diceRow, #paper...) mà bàn Siêu dùng id khác.
 // Mỗi rule sân khấu phải LIỆT KÊ cả id bàn Siêu.
 for (const [a, b] of [['#stage', '#stStage'], ['#diceRow', '#stDiceRow'], ['#paper', '#stPaper'],
@@ -375,7 +375,7 @@ ok('thả vào vùng huỷ -> xoacua đúng ô; thả lên ô khác -> doicua',
     /keoGoi\(B,"xoacua",\{cua:k\.id\}/.test(SRC) && /keoGoi\(B,"doicua",\{tu:k\.id,den:k\.dich\.id\.slice\(3\)\}/.test(SRC));
 ok('click trình duyệt bắn ra sau khi nhả tay bị chặn ở cả sbChon và stChon',
     /function sbChon\(id\)\{if\(KEO\|\|Date\.now\(\)-KEOCLICK<500\)return;/.test(SRC) && /function stChon\(id\)\{if\(KEO\|\|Date\.now\(\)-KEOCLICK<500\)return;/.test(SRC));
-ok('chỉ ô có chip mới khoá cuộn (touch-action:none) — ô trống vẫn vuốt trang được',
+ok('chỉ ô có chip mới khoá cuộn (touch-action:none), ô trống vẫn vuốt trang được',
     SRC.includes("'.sbO.sbCoChip{touch-action:none") && /e\.classList\.toggle\("sbCoChip",toi>0\)/.test(SRC) && !/'\.sbO\{[^']*touch-action:none/.test(SRC));
 ok('con ma tự đủ CSS (nằm ngoài .sbO), giữ viền đen cho chip nặng',
     SRC.includes("'.sbKeoGhost{position:fixed;z-index:9999;pointer-events:none") && SRC.includes("'.sbKeoGhost.sbGioDen img{"));
@@ -415,12 +415,12 @@ ok('một hàm dòng kết quả DÙNG CHUNG hai bàn (tên cửa + cửa thắn
     IDX.includes('function dongVanDiscord(h, opt)') &&
     IDX.includes('const txHistoryLine = (h) => dongVanDiscord(h, { tenCua: txTenCua, cuaThang: (d) => TX_CUA.cuaThang(d), cuaAnNhan: (d, nh) => TX_CUA.cuaAnNhan(d, nh) });') &&
     IDX.includes('tenCua: (id) => (SIEU_CUA.THEO_ID[id] || {}).ten || id,'));
-ok('lãi/lỗ trừ CẢ PHÍ — bàn Siêu không được khoe lãi cao hơn tiền thật trong ví',
+ok('lãi/lỗ trừ CẢ PHÍ, bàn Siêu không được khoe lãi cao hơn tiền thật trong ví',
     IDX.includes("per[b.u].bo += (b.amount || 0) + (b.phi || 0);") &&
     BAN.includes('cuaAgg[k].phi += (b.phi || 0);'));
 ok('máy bàn Siêu có bangDiscord (tách khỏi adminXem/trangThai) và lọc ván trống',
     BAN.includes('function bangDiscord(soVan)') &&
-    // 24/09: đọc thẳng sổ ván CÓ CƯỢC. Lọc từ S.history như bản cũ là sai — ván trống đẩy hết ván
+    // 24/09: đọc thẳng sổ ván CÓ CƯỢC. Lọc từ S.history như bản cũ là sai, ván trống đẩy hết ván
     // có cược ra khỏi 100 slot nên lọc xong còn 0 (bug "log Siêu bị xóa mất hết").
     BAN.includes('history: S.hisCuoc.slice(0, soVan || 10),') &&
     BAN.includes('const HIST_CUOC_N = 100;') &&
@@ -465,7 +465,7 @@ ok('panel Siêu liệt kê từng người đặt + số lượt (không chỉ t
     PANEL.includes("(S.bets||[]).forEach(b=>{const k=b.name||'?';if(!per[k])per[k]={tong:0,o:[]}") && PANEL.includes("(S.betsCount||0)+' lượt đặt"));
 ok('gợi ý ép Siêu lấy THẲNG từ máy chủ (epGoiY), không tự đoán ở trình duyệt',
     PANEL.includes('const g=S.epGoiY;') && !/function stxTuEp\(\)[\s\S]{0,400}for\s*\(/.test(PANEL));
-ok('xem trước ép báo BÃO khi 3 viên giống nhau — cả 2 bàn', PANEL.split('BÃO — Tài/Xỉu/Chẵn/Lẻ thua sạch').length - 1 === 2);
+ok('xem trước ép báo BÃO khi 3 viên giống nhau, cả 2 bàn', PANEL.split('BÃO, Tài/Xỉu/Chẵn/Lẻ thua sạch').length - 1 === 2);
 ok('"ô sáng/ván" ở panel luôn ghi rõ TRUNG BÌNH (từng ván lệch quanh số đó)',
     PANEL.split('ô sáng/ván').slice(0, -1).every(s => s.slice(-90).includes('trung bình')));
 ok('index.js: báo cược Siêu về Discord dùng chung _txNoti, nối qua ctx.baoCuoc',
@@ -575,7 +575,7 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
         let loi4 = '';
         // ⚠️ Mỗi dòng PAGE là một chuỗi JS có escape ('\\'' , '\\\\"'). Nối chuỗi bằng tay là sai
         // cú pháp ngay (đã dính: "Invalid or unexpected token"). Cách đúng: bọc đúng lát cắt
-        // nguồn thành MẢNG LITERAL rồi cho JS tự đọc — ra y giá trị mà trình duyệt nhận.
+        // nguồn thành MẢNG LITERAL rồi cho JS tự đọc, ra y giá trị mà trình duyệt nhận.
         try {
             const i1 = SRC.indexOf("    'function stShowKet(j){"), i2 = SRC.indexOf("    'function stShowDice(");
             const s1 = SRC.indexOf("    'function showNet(net){"), s2 = SRC.indexOf("    'function resetPaper(){");
@@ -701,7 +701,7 @@ ok('có sẵn ID+PIN thì đổ vào 2 ô rồi vào thẳng; thiếu PIN thì n
     SRC.includes("'if(ip&&!p)try{ip.focus()}catch(e){}}',"));
 ok('lưu thì lưu CẢ BỘ, bỏ thì xoá CẢ BỘ (không để sót PIN mồ côi)',
     SRC.includes("'nhoDat(NHO_U,nho?u:\"\");nhoDat(NHO_P,nho?p:\"\");nhoDat(NHO_OK,nho?\"1\":\"\");',"));
-// Chủ server bỏ nút 🚪 Máy khác khỏi thanh (23/09). Đường máy chủ thì GIỮ — mất máy đã
+// Chủ server bỏ nút 🚪 Máy khác khỏi thanh (23/09). Đường máy chủ thì GIỮ, mất máy đã
 // lưu sẵn ID+PIN thì đó là cách duy nhất cắt, khỏi phải đổi PIN.
 ok('nút 🚪 Máy khác đã gỡ khỏi thanh', !SRC.includes('thoatKhac'));
 ok('nhưng đường /api/logout-khac vẫn còn ở máy chủ', SRC.includes("path === '/api/logout-khac'"));

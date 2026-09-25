@@ -1,11 +1,11 @@
 // ============================================================================
-//  Bộ kiểm ✋ ÉP HỆ SỐ NHÂN — chạy: node SieuTaiXiu/kiemtra/epnhan-test.js  (không cần bot)
+//  Bộ kiểm ✋ ÉP HỆ SỐ NHÂN, chạy: node SieuTaiXiu/kiemtra/epnhan-test.js  (không cần bot)
 //
 //  Chủ server 22/09: "giúp mình can thiệp được hệ số nhân của siêu tài xỉu, can thiệp được
 //  x tài xỉu + chẵn lẻ" → "1 bảng nằm riêng để ép hệ số nhân TỪ 2 ĐẾN 14 cho tài xỉu chẵn lẻ,
 //  khi bấm thì trong 4 giây số nhân sẽ có nó".
 //
-//  Chạy MÁY BÀN THẬT với đồng hồ tự lái, ép rồi soi bảng nhân của ván — không đọc chữ suông.
+//  Chạy MÁY BÀN THẬT với đồng hồ tự lái, ép rồi soi bảng nhân của ván, không đọc chữ suông.
 // ============================================================================
 'use strict';
 const fs = require('fs');
@@ -78,8 +78,8 @@ muc('✋ ÉP RỒI PHẢI RA ĐÚNG SỐ ĐÓ (chạy thật)');
     ok('bàn đã qua mốc khoá sổ', S.status === 'nhan', S.status);
     const o = (S.nhan && S.nhan.o) || {};
     ok('⭐⭐ TÀI ra ĐÚNG x14', o.tai === 14, JSON.stringify(o.tai));
-    ok('⭐⭐ XỈU ra ĐÚNG x7 — thang không có bậc 7, ép vẫn phải ra', o.xiu === 7, JSON.stringify(o.xiu));
-    ok('⭐⭐ LẺ ra ĐÚNG x13 — bậc lẻ cũng ép được', o.le === 13, JSON.stringify(o.le));
+    ok('⭐⭐ XỈU ra ĐÚNG x7, thang không có bậc 7, ép vẫn phải ra', o.xiu === 7, JSON.stringify(o.xiu));
+    ok('⭐⭐ LẺ ra ĐÚNG x13, bậc lẻ cũng ép được', o.le === 13, JSON.stringify(o.le));
     ok('⭐⭐ CHẴN bị TẮT hẳn (ép 0)', o.chan === undefined, JSON.stringify(o.chan));
     ok('⭐ lệnh ép DÙNG MỘT LẦN rồi tự xoá', !DB._stxEpNhan, JSON.stringify(DB._stxEpNhan));
     ok('...và bảng nhân gắn đúng số ván', S.nhan.gameId === S.gameId);
@@ -91,12 +91,12 @@ muc('💰 hệ số ép phải ĂN VÀO TIỀN THẬT, không chỉ hiện cho �
     const { ban, VI } = dungBan();
     VI.A = 1000000;
     // ⚠️ ÉP LUÔN CHẴN = 0. Không ép thì máy vẫn bốc ngẫu nhiên cho CHẴN, có ván nó sáng x2
-    // và phép so "ô không sáng ăn 1:1" đỏ oan — đúng cái vừa dính.
+    // và phép so "ô không sáng ăn 1:1" đỏ oan, đúng cái vừa dính.
     ban.epNhan({ tai: 14, chan: 0 });
     ban.dat('A', 'A', [{ choice: 'tai', amount: 10000 }]);
     const S = toiKhoaSo(ban);
     ok('bảng nhân ván này có TÀI x14', (S.nhan.o || {}).tai === 14, JSON.stringify(S.nhan.o));
-    // ⚠️ tinhTra trả `tien + tien * ti` — tức "x14" là ĂN 14 LẦN rồi HOÀN VỐN, nhận về 15 lần.
+    // ⚠️ tinhTra trả `tien + tien * ti`, tức "x14" là ĂN 14 LẦN rồi HOÀN VỐN, nhận về 15 lần.
     // Đừng kỳ vọng 140.000 (mình từng kỳ vọng sai ở đây): bảng trả ghi 14:1 theo lối cược,
     // ăn 14 ăn thêm vốn về.
     const tra = CUA.tinhTra('tai', 10000, [6, 6, 4], S.nhan.o);   // tổng 16 = TÀI
@@ -151,7 +151,7 @@ muc('↩️ huỷ ép');
 
 // ---------------------------------------------------------------- 🌪️ 3 CON GIỐNG NHAU (22/09)
 // Chủ server: "can thiệp luôn hệ số nhân của 3 con giống nhau nữa". 7 ô bão, mỗi ô khoảng riêng.
-muc('🌪️ BÃO cũng ép được — khoảng riêng từng ô');
+muc('🌪️ BÃO cũng ép được, khoảng riêng từng ô');
 {
     const { ban } = dungBan();
     const t = ban.adminXem();
@@ -201,7 +201,7 @@ muc('🌪️ BÃO cũng ép được — khoảng riêng từng ô');
 muc('🖥️ bảng RIÊNG trong panel');
 {
     // ⚠️ KHÔNG ghim nguyên văn chữ hoa/thường: 24/09 bản "điều chỉnh UI UX admin portal" đổi
-    // <label>✋ Ép HỆ SỐ NHÂN — …</label> thành <h3>✋ Ép hệ số nhân — …</h3> và 2 phép này đỏ oan.
+    // <label>✋ Ép HỆ SỐ NHÂN, …</label> thành <h3>✋ Ép hệ số nhân, …</h3> và 2 phép này đỏ oan.
     // Thứ cần giữ là: khối CÓ TỒN TẠI, nhãn kể cả 4 cửa đều lẫn bão, và nằm trong tab Siêu.
     const iNhan = PANEL.search(/✋ Ép hệ số nhân/i);
     ok('⭐ có khối riêng "Ép hệ số nhân" (nhãn kể cả 4 cửa đều + BÃO)',

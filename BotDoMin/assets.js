@@ -1,12 +1,12 @@
 // ===== FILE TĨNH: TẤT CẢ NẰM TRONG THƯ MỤC assets/ =====
 //
 // THÊM ẢNH / ÂM THANH MỚI = THẢ FILE VÀO assets/ RỒI KHỞI ĐỘNG LẠI BOT. Hết. Không
-// phải khai biến, không phải sửa router, không phải sửa cả file này — thư mục tự
+// phải khai biến, không phải sửa router, không phải sửa cả file này, thư mục tự
 // được quét. Trong trang web gọi thẳng bằng tên file:
 //     <img src="/thang100.png">        fetch("/dry-fart.mp3")
 //
 // Đọc 1 lần lúc khởi động rồi giữ trong RAM (tổng vài trăm KB, nhẹ hơn nhiều so với
-// mỗi lượt tải lại đọc đĩa). Thư mục thiếu hoặc rỗng thì trang VẪN CHẠY — chỗ đó chỉ
+// mỗi lượt tải lại đọc đĩa). Thư mục thiếu hoặc rỗng thì trang VẪN CHẠY, chỗ đó chỉ
 // trống ảnh/mất tiếng chứ không vỡ giao diện, không làm sập bot.
 
 const fs = require('fs');
@@ -26,7 +26,7 @@ const MIME = {
 // { '/dogcoin.png': { buf, type }, '/palimage/T_Anubis_icon_normal.png': {...} }
 // 27/08: quét THÊM thư mục con 1 cấp (vd assets/palimage/ chứa 287 icon pal) rồi phục vụ
 // theo đường dẫn có tiền tố: <img src="/palimage/T_Anubis_icon_normal.png">. Vẫn "thả
-// file vào rồi restart" như cũ — chỉ khác là icon pal gom riêng 1 thư mục cho gọn.
+// file vào rồi restart" như cũ, chỉ khác là icon pal gom riêng 1 thư mục cho gọn.
 const store = {};
 let names = [];
 function scanDir(dir, prefix) {
@@ -61,7 +61,7 @@ function serve(req, res, urlPath) {
     return true;
 }
 
-// 04/09: cho bot THÊM file lúc đang chạy (panel up hình item) — chỗ gọi tự ghi đĩa,
+// 04/09: cho bot THÊM file lúc đang chạy (panel up hình item), chỗ gọi tự ghi đĩa,
 // hàm này chỉ đăng ký vào RAM để phục vụ NGAY không cần restart. Chỉ nhận đuôi trong MIME.
 function add(relPath, buf) {
     const type = MIME[path.extname(relPath).toLowerCase()];

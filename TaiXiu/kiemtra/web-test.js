@@ -189,7 +189,7 @@ function goi(port, duong, than, token) {
     }
 
     // 🔒 CHỐNG SOI BÀI: người chơi mở F12 xoá cái chén cũng không được lợi gì, vì máy
-    // chủ CHƯA quay xúc xắc ở pha này — dữ liệu gửi xuống không hề có 3 viên.
+    // chủ CHƯA quay xúc xắc ở pha này, dữ liệu gửi xuống không hề có 3 viên.
     {
         let lo = [], soLan = 0;
         for (let i = 0; i < 25; i++) {
@@ -197,7 +197,7 @@ function goi(port, duong, than, token) {
             if (!q.j || q.j.phase !== 'nhan') break;
             soLan++;
             if (q.j.nan) lo.push('có trường nan: ' + JSON.stringify(q.j.nan));
-            // history CHỨA dice của 20 ván CŨ — đó là thông tin công khai, không tính là rò.
+            // history CHỨA dice của 20 ván CŨ, đó là thông tin công khai, không tính là rò.
             // Chỉ soi phần CÒN LẠI của phản hồi.
             const ngoaiLichSu = JSON.stringify(Object.fromEntries(
                 Object.entries(q.j).filter(([k]) => k !== 'history')));

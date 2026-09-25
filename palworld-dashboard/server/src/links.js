@@ -42,7 +42,7 @@ export function getLinkByDiscordId(discordId) {
   return found ? { discordId, ...found } : null;
 }
 
-// Ai đang giữ SteamID này (chặn 2 Discord trỏ cùng 1 nhân vật — sẽ giao sai người).
+// Ai đang giữ SteamID này (chặn 2 Discord trỏ cùng 1 nhân vật, sẽ giao sai người).
 export function findBySteamId(steamId) {
   return listLinks().find((l) => l.steamId === steamId) || null;
 }

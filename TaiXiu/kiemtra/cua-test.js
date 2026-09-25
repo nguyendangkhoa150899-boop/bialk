@@ -1,4 +1,4 @@
-// Bộ kiểm lõi tiền Tài Xỉu — chạy: node TaiXiu/kiemtra/cua-test.js
+// Bộ kiểm lõi tiền Tài Xỉu, chạy: node TaiXiu/kiemtra/cua-test.js
 //
 // Không tin công thức suông: quay THẬT hàng triệu ván rồi đếm tiền vào/ra, đối
 // chiếu với RTP mục tiêu. Sai ở file này là sai tiền thật của người chơi.
@@ -54,7 +54,7 @@ ok('bão bất kỳ = 6/216', Math.abs(xs('baoany') - 6 / 216) < 1e-9);
 ok('tổng 4 = 3/216', Math.abs(xs('tong4') - 3 / 216) < 1e-9);
 ok('tổng 10 = 27/216', Math.abs(xs('tong10') - 27 / 216) < 1e-9);
 ok('cặp 2 lá = 30/216', Math.abs(xs('cap12') - 30 / 216) < 1e-9);
-// Bàn Sic Bo CỐ TÌNH không có ô tổng 3 và tổng 18 — hai kết quả đó chỉ ra được khi
+// Bàn Sic Bo CỐ TÌNH không có ô tổng 3 và tổng 18, hai kết quả đó chỉ ra được khi
 // bão 1 (1-1-1) và bão 6 (6-6-6), đã có cửa Bão lo. Nên 14 ô tổng cộng lại là 214/216.
 ok('tổng 4..17 cộng lại = 214/216 (thiếu đúng tổng 3 và 18)',
     Math.abs(C.DS.filter(c => /^tong\d+$/.test(c.id)).reduce((s, c) => s + c.p, 0) - 214 / 216) < 1e-9);
@@ -133,7 +133,7 @@ muc('sinh hệ số nhân');
 }
 
 // ---------------------------------------------------------------- RTP thật
-muc('🎯 RTP THẬT — quay 3 triệu ván, đặt 1 đồng mọi cửa');
+muc('🎯 RTP THẬT, quay 3 triệu ván, đặt 1 đồng mọi cửa');
 {
     const N = 3000000;
     const dat = {}, an = {};
@@ -166,7 +166,7 @@ muc('🎯 RTP THẬT — quay 3 triệu ván, đặt 1 đồng mọi cửa');
 
 // ---------------------------------------------------------------- ô trúng
 // Bàn web tô sáng/xám theo cuaThang(). Nếu nó lệch với tinhTra() thì bàn báo
-// trúng mà ví không tăng (hoặc ngược lại) — phải khớp TUYỆT ĐỐI, không sai 1 ô.
+// trúng mà ví không tăng (hoặc ngược lại), phải khớp TUYỆT ĐỐI, không sai 1 ô.
 muc('danh sách ô TRÚNG dùng để tô bàn');
 {
     let lech = [], tong = 0;

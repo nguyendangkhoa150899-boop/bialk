@@ -1,5 +1,5 @@
 // ============================================================================
-//  cua.js — LÕI TIỀN "SIÊU TÀI XỈU" (52 cửa, có PHÍ 20%, trả thưởng khủng)
+//  cua.js, LÕI TIỀN "SIÊU TÀI XỈU" (52 cửa, có PHÍ 20%, trả thưởng khủng)
 //
 //  Thuần logic: không web, không DB, không Discord. Bộ kiểm riêng:
 //      node SieuTaiXiu/kiemtra/cua-test.js
@@ -26,7 +26,7 @@
 //
 //  ── TRẦN CƯỢC ───────────────────────────────────────────────────────────────
 //  Lấy ĐÚNG cột "Giới hạn đặt cược" trong bảng chủ server gửi. Trả thưởng ở đây
-//  to hơn bàn thường rất nhiều (gấp ba tới 1.999:1) nên trần phải thấp hơn hẳn —
+//  to hơn bàn thường rất nhiều (gấp ba tới 1.999:1) nên trần phải thấp hơn hẳn
 //  bê trần của bàn thường sang là phơi nhiễm gấp mấy lần. Thắng đậm nhất một ô
 //  quanh 2,5 triệu (Bộ ba bất kỳ: 5.000 × 499).
 // ============================================================================
@@ -69,7 +69,7 @@ const thang = (arr) => {
 // ⚠️ GIỮ NGUYÊN MỨC ĐẦU VÀ MỨC CUỐI khi sửa: mức cuối quyết định trần cược.
 // Mức cuối lấy đúng bảng "Trả thưởng & Hạn mức" chủ server gửi.
 const THANG_GOC = {
-    // 4 cửa đều tiền — bàn thường KHÔNG có, đây là điểm ăn tiền của bàn SIÊU
+    // 4 cửa đều tiền, bàn thường KHÔNG có, đây là điểm ăn tiền của bàn SIÊU
     deu: [[2, 45], [3, 30], [4, 22], [5, 15], [6, 10], [8, 6], [10, 4], [12, 2], [14, 1]],
     tong4: [[75, 40], [100, 30], [150, 22], [200, 15], [300, 10], [400, 6], [600, 4], [800, 2], [999, 1]],
     tong5: [[30, 40], [50, 30], [80, 22], [120, 15], [180, 10], [250, 6], [350, 4], [450, 2], [499, 1]],
@@ -95,7 +95,7 @@ let THANG_HIEN = JSON.parse(JSON.stringify(THANG_GOC));
 const DS = [];
 const them = (o) => { DS.push(o); return o; };
 
-// 4 cửa đều tiền — VẪN thua sạch nếu ra bão (đúng dòng "* Thua bất kỳ Bộ Ba nào"),
+// 4 cửa đều tiền, VẪN thua sạch nếu ra bão (đúng dòng "* Thua bất kỳ Bộ Ba nào"),
 // nhưng KHÁC bàn thường: ở đây CÓ ĐƯỢC NHÂN, tới 14:1.
 them({ id: 'xiu', ten: 'XỈU 4-10', nhom: 'deu', goc: 1, thangNhan: T.deu, _thang: 'deu', tra: x => (!laBao(x) && tongXx(x) <= 10) ? 1 : 0 });
 them({ id: 'tai', ten: 'TÀI 11-17', nhom: 'deu', goc: 1, thangNhan: T.deu, _thang: 'deu', tra: x => (!laBao(x) && tongXx(x) >= 11) ? 1 : 0 });
@@ -129,7 +129,7 @@ for (let a = 1; a <= 6; a++) for (let b = a + 1; b <= 6; b++) {
     them({ id: 'cap' + a + b, ten: 'Cặp ' + a + '-' + b, nhom: 'vua', goc: 5, thangNhan: T.cap, _thang: 'cap', tra: x => (x.includes(a) && x.includes(b)) ? 5 : 0 });
 }
 
-// 6 cửa số đơn — 1 mặt 1:1 (KHÔNG nhân), 2 mặt 2:1 (nhân tới 19:1), 3 mặt 3:1 (nhân = 87:1).
+// 6 cửa số đơn, 1 mặt 1:1 (KHÔNG nhân), 2 mặt 2:1 (nhân tới 19:1), 3 mặt 3:1 (nhân = 87:1).
 // Bản cũ ghi "1 mặt tới 9:1" là SAI: tinhTra không bao giờ nhân 1 mặt, thang don cũng bắt đầu từ 10.
 const DON_BAO_NHAN = 87;
 for (let n = 1; n <= 6; n++) {
@@ -251,7 +251,7 @@ const tienTru = (tien) => Math.floor(tien) + Math.floor(Math.floor(tien) * PHI);
 const tienPhi = (tien) => Math.floor(Math.floor(tien) * PHI);
 
 /**
- * Tiền một cửa ăn về (ĐÃ gồm vốn GỐC, KHÔNG gồm phí — phí không hoàn).
+ * Tiền một cửa ăn về (ĐÃ gồm vốn GỐC, KHÔNG gồm phí, phí không hoàn).
  * 0 = thua sạch.
  */
 function tinhTra(cuaId, tien, xx, nhan) {

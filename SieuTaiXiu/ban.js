@@ -1,5 +1,5 @@
 // ============================================================================
-//  ban.js — MÁY BÀN "SIÊU TÀI XỈU": vòng ván + tiền nong, gói gọn một chỗ.
+//  ban.js, MÁY BÀN "SIÊU TÀI XỈU": vòng ván + tiền nong, gói gọn một chỗ.
 //
 //  Dựng theo đúng khuôn TienLen/web.js: một hàm taoBan(ctx) nhận mấy cửa đụng
 //  ví/ghi log/lưu DB từ BotDoMin, rồi tự lo phần còn lại. index.js chỉ nối vào,
@@ -7,7 +7,7 @@
 //
 //  ── LUẬT TIỀN KHÔNG ĐƯỢC MẤT (chép đúng bài học đau của bàn Tài Xỉu thường) ──
 //  Cược là tiền ĐÃ TRỪ KHỎI VÍ. Vì vậy:
-//   · Chỗ nào xoá sổ cược đều phải gọi donSoCuoc() trước — ván đã quay thì trả
+//   · Chỗ nào xoá sổ cược đều phải gọi donSoCuoc() trước, ván đã quay thì trả
 //     nốt theo bảng, ván chưa quay thì hoàn nguyên cược (KÈM phí).
 //   · KHÔNG bao giờ dựng lại bảng trả tiền khi không tìm thấy bảng cũ (bảng mới
 //     có cờ paid rỗng = trả hai lần cho cả bàn).
@@ -23,7 +23,7 @@
 'use strict';
 const CUA = require('./cua.js');
 
-// 3 mốc giờ mặc định — y bàn thường để người chơi khỏi phải học lại nhịp.
+// 3 mốc giờ mặc định, y bàn thường để người chơi khỏi phải học lại nhịp.
 const BET_S_DEF = 30, NHAN_S_DEF = 4, NAN_S_DEF = 20;
 const BET_S_MIN = 5, BET_S_MAX = 600;
 const NHAN_S_MIN = 0, NHAN_S_MAX = 60;
@@ -37,7 +37,7 @@ const HIST_WEB = 20;         // gửi xuống web (dải kết quả cho ngườ
 // có mảng riêng _txDashHistory giữ 100 ván.
 const HIST_LUU = HIST_N;
 // ⚠️ 24/09 (bug "log Siêu bị xóa mất hết"): sổ trên KỂ CẢ VÁN TRỐNG. Bàn chạy 24/7 ~44 giây/ván nên
-// 100 ván chỉ bằng ~73 phút — một đêm vắng khách là ván trống đẩy sạch ván có cược, sáng mở panel
+// 100 ván chỉ bằng ~73 phút, một đêm vắng khách là ván trống đẩy sạch ván có cược, sáng mở panel
 // thấy trắng. Nên phải có sổ RIÊNG chỉ chứa ván CÓ NGƯỜI ĐẶT (đúng cách bàn thường làm với
 // txDashHistory). Sổ này mới là thứ panel/bảng Discord đọc.
 const HIST_CUOC_N = 100;     // ván CÓ CƯỢC giữ lại - không bị ván trống đẩy đi
@@ -174,7 +174,7 @@ function taoBan(ctx) {
     }
 
     /**
-     * Đặt cả giỏ một lần. Kiểm HẾT rồi mới trừ tiền — không trừ nửa chừng.
+     * Đặt cả giỏ một lần. Kiểm HẾT rồi mới trừ tiền, không trừ nửa chừng.
      * Trừ ví = tiền cược + PHÍ 20%.
      */
     function dat(userId, ten, giohang) {
@@ -274,7 +274,7 @@ function taoBan(ctx) {
     }
 
     /**
-     * 🔀 Dời toàn bộ tiền (kèm phần phí đã thu) từ ô `tu` sang ô `den` — kéo chip thả sang ô khác.
+     * 🔀 Dời toàn bộ tiền (kèm phần phí đã thu) từ ô `tu` sang ô `den`, kéo chip thả sang ô khác.
      * Không đi qua ví, tổng cược không đổi → chỉ phải kiểm TRẦN RIÊNG của ô đích. Kiểm xong mới đụng sổ.
      */
     function doiCua(userId, ten, tu, den) {
@@ -341,7 +341,7 @@ function taoBan(ctx) {
     }
 
     /**
-     * 🧯 Dọn sổ cược an toàn — MỌI chỗ xoá S.bets phải đi qua đây.
+     * 🧯 Dọn sổ cược an toàn, MỌI chỗ xoá S.bets phải đi qua đây.
      * Ván đã quay: trả nốt theo bảng. Ván chưa quay: hoàn nguyên cược KÈM phí.
      */
     function donSoCuoc(lyDo) {
@@ -535,7 +535,7 @@ function taoBan(ctx) {
         for (const b of S.bets) if (b.userId === userId) { my[b.choice] = (my[b.choice] || 0) + b.amount; phiToi += (b.phi || 0); }
         const totals = {};
         for (const b of S.bets) totals[b.choice] = (totals[b.choice] || 0) + b.amount;
-        // ai đang đặt ván này — gộp theo người + cửa (giống bàn thường)
+        // ai đang đặt ván này, gộp theo người + cửa (giống bàn thường)
         const who = {};
         for (const b of S.bets) {
             const k = b.userId + '_' + b.choice;
@@ -605,13 +605,13 @@ function taoBan(ctx) {
             khoaSoS: khoaSoS(), phi: CUA.PHI, maxBet: tranToiDaNguoi(), sanCuoc: SAN_CUOC,
             bets: S.bets.map(b => ({ u: b.userId, name: b.username, choice: b.choice, tenCua: CUA.THEO_ID[b.choice].ten, amount: b.amount })),
             // đọc thẳng sổ ván CÓ CƯỢC (24/09). Lọc từ S.history như bản cũ là sai: ván trống đã
-            // đẩy hết ván có cược ra khỏi 100 slot, lọc xong còn số 0 — đúng bug "log bị xóa mất hết".
+            // đẩy hết ván có cược ra khỏi 100 slot, lọc xong còn số 0, đúng bug "log bị xóa mất hết".
             history: S.hisCuoc.slice(0, soVan || 10),
         };
     }
 
     // ---------------------------------------------------------------- ✋ ÉP HỆ SỐ NHÂN
-    // Bốn cửa TÀI · XỈU · CHẴN · LẺ (nhóm 'deu') — chỗ người chơi đổ tiền nhiều nhất, nên
+    // Bốn cửa TÀI · XỈU · CHẴN · LẺ (nhóm 'deu'), chỗ người chơi đổ tiền nhiều nhất, nên
     // chỉ mở can thiệp đúng bốn ô này, không mở cả 52 cửa (chủ server 22/09).
     const CUA_DEU = ['tai', 'xiu', 'chan', 'le'];
     // 🌪️ 22/09 mở rộng: 7 ô BÃO (3 con giống nhau) cũng ép được (chủ server: "can thiệp luôn
@@ -639,7 +639,7 @@ function taoBan(ctx) {
     /** Giữ tên cũ cho panel/bộ kiểm: khoảng của nhóm đều tiền. */
     function bacDeu() { return khoangEp('tai'); }
     /**
-     * Áp lệnh ép của admin lên bảng nhân vừa bốc. DÙNG MỘT LẦN rồi xoá — y như ép kết quả.
+     * Áp lệnh ép của admin lên bảng nhân vừa bốc. DÙNG MỘT LẦN rồi xoá, y như ép kết quả.
      * ⚠️ Phải gọi NGAY khi sinh bảng nhân (lúc khoá sổ), vì từ đó trở đi cả ván tính tiền
      * theo đúng bảng này; áp muộn hơn là người chơi thấy một đằng, trả tiền một nẻo.
      */
@@ -714,7 +714,7 @@ function taoBan(ctx) {
     /**
      * 🎯 Gợi ý ép: duyệt đủ 216 kết cục bằng LÕI TIỀN, tìm bộ ba nhà cái TRẢ ÍT NHẤT với sổ
      * cược hiện tại. Đã khoá sổ (có bảng nhân của ván) thì tính theo bảng đó. Panel bấm là lấy
-     * thẳng, không tự đoán ở trình duyệt — y bàn thường (txTimEpReNhat).
+     * thẳng, không tự đoán ở trình duyệt, y bàn thường (txTimEpReNhat).
      */
     function timEpReNhat() {
         const nhan = (S.nhan && S.nhan.gameId === S.gameId) ? (S.nhan.o || null) : null;

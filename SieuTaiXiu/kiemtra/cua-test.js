@@ -1,4 +1,4 @@
-// Bộ kiểm LÕI TIỀN SIÊU TÀI XỈU — chạy: node SieuTaiXiu/kiemtra/cua-test.js
+// Bộ kiểm LÕI TIỀN SIÊU TÀI XỈU, chạy: node SieuTaiXiu/kiemtra/cua-test.js
 // Không cần bot. Đây là bàn CÓ PHÍ 20% nên mọi phép tính tiền phải tính cả phí.
 'use strict';
 const S = require('../cua.js');
@@ -50,7 +50,7 @@ ok('tỉ lệ GỐC đúng bảng: đôi 8:1 · bão 150:1 · bão bất kỳ 30
     S.THEO_ID.tong4.goc === 50 && S.THEO_ID.cap12.goc === 5);
 
 // ---------------------------------------------------------------- phí 20%
-muc('phí 20% — nguồn thu duy nhất của nhà cái');
+muc('phí 20%, nguồn thu duy nhất của nhà cái');
 ok('phí đúng 20%', S.PHI === 0.20, String(S.PHI));
 ok('đặt 1.000 thì trừ ví 1.200', S.tienTru(1000) === 1200, String(S.tienTru(1000)));
 ok('riêng phần phí là 200', S.tienPhi(1000) === 200, String(S.tienPhi(1000)));

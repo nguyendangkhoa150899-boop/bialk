@@ -1,5 +1,5 @@
 // Chạy: node Poker/kiemtra/mo-phong-blind.js  (~1-2 phút). Đây là bằng chứng cho các con số
-// ở README §5 — muốn đổi PHUT_MOI_MUC / VAN_TOI_THIEU_MOI_MUC / thang BB_DEP thì chạy lại, đừng chỉnh mò.
+// ở README §5, muốn đổi PHUT_MOI_MUC / VAN_TOI_THIEU_MOI_MUC / thang BB_DEP thì chạy lại, đừng chỉnh mò.
 // MÔ PHỎNG vòng 2: thang blind "số đẹp" sinh từ chipDau (taoLichBlind) + SÀN ván mỗi mức.
 // Đo giải kéo dài bao lâu với lối chơi gần người thật. Mục tiêu: 30-60 phút.
 const { taoGiai, taoLichBlind } = require('../giai.js');

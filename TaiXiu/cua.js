@@ -1,5 +1,5 @@
 // ============================================================================
-//  cua.js — 52 CỬA CƯỢC SIC BO + HỆ SỐ NHÂN (thuần logic, không web, không DB)
+//  cua.js, 52 CỬA CƯỢC SIC BO + HỆ SỐ NHÂN (thuần logic, không web, không DB)
 //
 //  Đây là LÕI TIỀN của Tài Xỉu bàn lớn. Sai ở đây là sai tiền thật của người chơi,
 //  nên file này không đụng I/O gì cả và có bộ kiểm riêng:
@@ -50,7 +50,7 @@ const NHOM_TRAN = {
 };
 
 // ---------------------------------------------------------------- thang nhân
-// [giá trị, trọng số] — số đẹp, càng to càng hiếm. Giá trị cuối = mức TỐI ĐA in
+// [giá trị, trọng số], số đẹp, càng to càng hiếm. Giá trị cuối = mức TỐI ĐA in
 // trên bảng trả thưởng, nên đừng vượt quá kẻo quảng cáo một đằng trả một nẻo.
 const thang = (arr) => {
     const w = arr.reduce((s, x) => s + x[1], 0);
@@ -58,7 +58,7 @@ const thang = (arr) => {
 };
 // ⚠️ ĐỔI THANG THÌ GIỮ NGUYÊN MỨC ĐẦU VÀ MỨC CUỐI. Trần cược tính theo mức CAO NHẤT
 // (trần ≈ 5 triệu ÷ mức cao nhất) nên nâng mức cuối là phải dựng lại cả bảng trần.
-// Thêm bậc ở GIỮA thì thoải mái — máy tự giải lại q, nhà cái không lệch đồng nào.
+// Thêm bậc ở GIỮA thì thoải mái, máy tự giải lại q, nhà cái không lệch đồng nào.
 // Bảng GỐC, giữ nguyên để admin bấm "về mặc định" là quay lại được.
 const THANG_GOC = {
     tong4: [[75, 40], [88, 30], [100, 24], [128, 18], [150, 14], [188, 9], [250, 6], [333, 4], [499, 2]],
@@ -69,7 +69,7 @@ const THANG_GOC = {
     tong9: [[10, 45], [13, 32], [15, 24], [18, 17], [25, 12], [33, 7], [40, 4], [49, 3]],
     tong10: [[8, 45], [10, 33], [12, 25], [15, 18], [18, 12], [21, 8], [24, 5]],
     doi: [[15, 45], [18, 33], [25, 25], [33, 18], [50, 12], [66, 7], [77, 4], [87, 3]],
-    // 🌪️ BỘ BA — chủ server chốt: dao động 200 tới 999, thêm 250 / 600 / 700
+    // 🌪️ BỘ BA, chủ server chốt: dao động 200 tới 999, thêm 250 / 600 / 700
     bao: [[200, 45], [250, 33], [300, 25], [400, 18], [500, 12], [600, 7], [700, 4], [888, 2], [999, 1]],
     baoAny: [[40, 45], [45, 33], [55, 25], [60, 18], [66, 12], [70, 8], [77, 5], [87, 3]],
     cap: [[8, 45], [10, 33], [12, 25], [15, 18], [18, 12], [21, 8], [24, 5]],
@@ -87,7 +87,7 @@ let THANG_HIEN = JSON.parse(JSON.stringify(THANG_GOC));
 const DS = [];
 const them = (o) => { DS.push(o); return o; };
 
-// 4 cửa đều tiền — thua sạch nếu ra bão, KHÔNG được nhân (RTP gốc đã 97,2%)
+// 4 cửa đều tiền, thua sạch nếu ra bão, KHÔNG được nhân (RTP gốc đã 97,2%)
 them({ id: 'xiu', ten: 'XỈU 4-10', nhom: 'deu', goc: 1, thangNhan: null, tra: x => (!laBao(x) && tongXx(x) <= 10) ? 1 : 0 });
 them({ id: 'tai', ten: 'TÀI 11-17', nhom: 'deu', goc: 1, thangNhan: null, tra: x => (!laBao(x) && tongXx(x) >= 11) ? 1 : 0 });
 them({ id: 'chan', ten: 'CHẴN', nhom: 'deu', goc: 1, thangNhan: null, tra: x => (!laBao(x) && tongXx(x) % 2 === 0) ? 1 : 0 });
@@ -120,7 +120,7 @@ for (let a = 1; a <= 6; a++) for (let b = a + 1; b <= 6; b++) {
     them({ id: 'cap' + a + b, ten: 'Cặp ' + a + '-' + b, nhom: 'vua', goc: 5, thangNhan: T.cap, _thang: 'cap', tra: x => (x.includes(a) && x.includes(b)) ? 5 : 0 });
 }
 
-// 6 cửa số đơn — ăn theo SỐ MẶT trúng: 1 mặt 1:1, 2 mặt 2:1, 3 mặt 3:1.
+// 6 cửa số đơn, ăn theo SỐ MẶT trúng: 1 mặt 1:1, 2 mặt 2:1, 3 mặt 3:1.
 // Nhân chỉ ăn vào phần 2 mặt / 3 mặt (bảng sòng: đơn 1:1, đôi 2-19:1, bão 3-87:1).
 const DON_BAO_NHAN = 87;
 for (let n = 1; n <= 6; n++) {
@@ -187,7 +187,7 @@ function thongKeRTP() {
 }
 const rtpHienTai = () => RTP_HIEN;
 
-/** Thang đang chạy, dạng { ten: [[giá trị, độ hiếm], ...] } — panel đọc để hiện cho admin. */
+/** Thang đang chạy, dạng { ten: [[giá trị, độ hiếm], ...] }, panel đọc để hiện cho admin. */
 const thangHienTai = () => JSON.parse(JSON.stringify(THANG_HIEN));
 const thangMacDinh = () => JSON.parse(JSON.stringify(THANG_GOC));
 
@@ -195,7 +195,7 @@ const thangMacDinh = () => JSON.parse(JSON.stringify(THANG_GOC));
  * Admin đặt lại thang nhân. Nhận { ten: [[giá trị, độ hiếm], ...] }, thiếu họ nào thì
  * giữ nguyên họ đó. Kiểm rất chặt vì đây là bảng quyết định tiền trả ra:
  *   · giá trị nguyên dương, tăng dần, tối đa 9999
- *   · độ hiếm nguyên dương (1-1000) — số càng nhỏ càng hiếm
+ *   · độ hiếm nguyên dương (1-1000), số càng nhỏ càng hiếm
  *   · 2-12 bậc mỗi họ
  * Xong là tính lại q cho cả bàn theo RTP đang đặt.
  */
@@ -238,7 +238,7 @@ function bocThang(t, rnd) {
 /**
  * Sinh bảng nhân của MỘT ván: { cuaId: giáTrị }. Mỗi ô tự bốc độc lập theo q của
  * nó, nên số ô sáng mỗi ván không cố định (trung bình ~7). Gọi lúc KHOÁ SỔ, trước
- * khi xúc xắc quay — cả bàn phải thấy nhân giống nhau.
+ * khi xúc xắc quay, cả bàn phải thấy nhân giống nhau.
  * rnd: hàm sinh số 0..1 (mặc định crypto cho khỏi đoán được).
  */
 function taoNhan(rnd) {
@@ -300,7 +300,7 @@ function tranCua(cuaId, tranNhom) {
     const n = tranNhom && tranNhom[c.nhom];
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : NHOM_TRAN[c.nhom].mac;
 }
-/** Bảng trần mặc định — dùng khi admin chưa đặt gì. */
+/** Bảng trần mặc định, dùng khi admin chưa đặt gì. */
 const tranMacDinh = () => Object.fromEntries(Object.keys(NHOM_TRAN).map(k => [k, NHOM_TRAN[k].mac]));
 
 /** Tỉ lệ trả cao nhất của cửa (để web in "50-499:1" và tính trần). */

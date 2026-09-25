@@ -1,4 +1,4 @@
-// Bộ kiểm trang web — chạy: node Poker/kiemtra/trang-test.js
+// Bộ kiểm trang web, chạy: node Poker/kiemtra/trang-test.js
 //
 // Không mở được trình duyệt thật ở đây, nên kiểm 3 tầng:
 //   1. Cú pháp JS của trang (tách phần <script> ra rồi bắt máy đọc thử)
@@ -183,7 +183,7 @@ ok('SỐ ĐẾM LÙI tách ra ô riêng, không nằm trong chuỗi so sánh',
 {
     // Quy ước: mọi chỗ vẽ lại phải qua datHTML(). Chỗ nào buộc phải gán thẳng
     // innerHTML thì phải TỰ CÓ chốt chặn riêng và đánh dấu /*CHAN-ROI*/ ngay trước
-    // — có dấu này nghĩa là "đã nghĩ tới chuyện dựng lại DOM rồi". Không dấu = lọt lưới.
+    //, có dấu này nghĩa là "đã nghĩ tới chuyện dựng lại DOM rồi". Không dấu = lọt lưới.
     const xau = [];
     JS.split('\n').forEach(function (d, i) {
         if (!/\.innerHTML\s*=/.test(d)) return;

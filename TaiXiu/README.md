@@ -1,4 +1,4 @@
-# 🎲 TaiXiu — bàn Sic Bo 52 cửa
+# 🎲 TaiXiu, bàn Sic Bo 52 cửa
 
 Thư mục này chứa **lõi tiền** (`cua.js`) và **bộ kiểm** (`kiemtra/`). Không web, không DB,
 không Discord. Bàn chơi nằm ở `../BotDoMin/webplay.js`, admin ở `../BotDoMin/panel.js`,
@@ -19,7 +19,7 @@ Sai một con số ở đây là sai **tiền thật** của người chơi. Đ�
 - Admin chỉnh cả 3 mốc ở **panel SUPER, tab Big Small**. Phạm vi `5–600 / 0–60 / 6–300`.
 - Giây nặn tối thiểu **6** vì phải chừa `TX_KQ_S = 4` giây cuối cho bàn tự mở kết quả.
 - ⚠️ **Số lưu trong `database.json` (`_txTime`) THẮNG số mặc định trong code.** Sửa hằng số
-  mà `_txTime` đã có sẵn thì không ăn thua gì — phải set ở panel.
+  mà `_txTime` đã có sẵn thì không ăn thua gì, phải set ở panel.
 - Ván đang chạy giữ mốc cũ. Mọi chỗ tính giờ gọi `txRoundS()` / `txLockS()` / `txNhanS()`,
   **đừng dùng lại hằng `TX_ROUND_S`** (đã bỏ).
 
@@ -27,14 +27,14 @@ Sai một con số ở đây là sai **tiền thật** của người chơi. Đ�
 
 Bảng trả gốc lấy từ sòng thật nên cố tình thấp (nhà cái ăn 10–42% tuỳ cửa). Thứ kéo ngược
 về mức chơi được là hệ số nhân: mỗi ván máy bốc ngẫu nhiên vài ô sáng đèn, ô sáng ăn theo
-hệ số đó **THAY** tỉ lệ gốc — **không cộng thêm**.
+hệ số đó **THAY** tỉ lệ gốc, **không cộng thêm**.
 
 > Ví dụ: ô Bão 3 gốc `150:1`. Ván nào ô đó sáng `x500` thì đặt 1.000 ăn về 501.000
 > (vốn 1.000 + lãi 500.000), **không phải** 150+500=650.
 
 ```
 RTP = p·(g+1) + p·q·(E_m − g)
-  p   xác suất cửa trúng — đếm thật trên 216 kết quả, không ước lượng
+  p   xác suất cửa trúng, đếm thật trên 216 kết quả, không ước lượng
   g   tỉ lệ trả gốc
   E_m tỉ lệ trung bình khi được nhân
   q   xác suất ô sáng đèn  ← MÁY TỰ GIẢI, đừng gõ tay
@@ -45,14 +45,14 @@ RTP gốc đã đạt mục tiêu (Tài/Xỉu/Chẵn/Lẻ, 97,2%) thì **không 
 đặt đều mọi cửa thì nhà cái ăn ~4,9%.
 
 ⚠️ Tỉ lệ in trên ô là **tỉ lệ GỐC**. Đừng in dải "gốc–nhân" (ví dụ `50-499:1`) vì mức cao
-nhất chỉ xảy ra khi ô đó được bốc trúng — in ra là hứa mức nhà cái không trả.
+nhất chỉ xảy ra khi ô đó được bốc trúng, in ra là hứa mức nhà cái không trả.
 
 Bảng nhân sinh ra **ngay lúc khoá sổ, TRƯỚC khi quay xúc xắc**, cả bàn thấy giống nhau.
 
-## 3. RTP — ADMIN CHỈNH ĐƯỢC
+## 3. RTP, ADMIN CHỈNH ĐƯỢC
 
 Panel SUPER, tab Big Small, ô **🎯 RTP (80 - 99)**. Lưu ở `_txRTP`, nạp lúc bot khởi động.
-Đổi RTP là `datRTP()` **tính lại q cho cả 48 cửa ngay lập tức** — vẫn tuyệt đối không gõ tay q.
+Đổi RTP là `datRTP()` **tính lại q cho cả 48 cửa ngay lập tức**, vẫn tuyệt đối không gõ tay q.
 
 | RTP | Nhà cái ăn | Ô sáng hệ số nhân / ván | Số cửa có cơ hội được nhân |
 |---|---|---|---|
@@ -63,10 +63,10 @@ Panel SUPER, tab Big Small, ô **🎯 RTP (80 - 99)**. Lưu ở `_txRTP`, nạp 
 | 85% | 12,8% | 2,9 | 35 |
 | 80% | 15,2% | 1,8 | 18 |
 
-Hạ RTP **không** đụng vào bảng trả gốc in trên bàn — nó chỉ làm **ít ô được bốc hệ số nhân
+Hạ RTP **không** đụng vào bảng trả gốc in trên bàn, nó chỉ làm **ít ô được bốc hệ số nhân
 hơn**. Ván đang chạy đã bốc bảng nhân từ lúc khoá sổ nên không đổi giữa chừng.
 
-## 4. Thang hệ số nhân — ADMIN CHỈNH ĐƯỢC
+## 4. Thang hệ số nhân, ADMIN CHỈNH ĐƯỢC
 
 Panel SUPER, tab Big Small, ô **🎰 Thang hệ số nhân**. Lưu ở `_txThang`, mỗi dòng một nhóm:
 
@@ -93,7 +93,7 @@ Chặn 2 tầng trong `txCapCheck`: trần từng cửa, rồi trần tổng c�
 ## 6. Ai trúng thì ai quyết
 
 `cuaThang(xx)` trả về danh sách id ô trúng. Máy chủ gửi kèm (`nan.thang`) xuống trang để tô
-ô trúng sáng / ô trượt xám. **Phía người chơi không được tự đoán luật thắng** — chép luật
+ô trúng sáng / ô trượt xám. **Phía người chơi không được tự đoán luật thắng**, chép luật
 sang đó là có ngày bàn tô một đằng, ví trả một nẻo. `cua-test.js` đối chiếu `cuaThang` với
 `tinhTra` trên toàn bộ 11.232 trường hợp (216 kết quả × 52 cửa).
 
@@ -122,7 +122,7 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
 - **Ra kết quả thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG**, ô trượt ẩn chip + nhãn tiền bàn.
   Rải 47 ô mà giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
 
-## 9. Lịch sử ván — kể được ô nào nhân, ai ăn gì
+## 9. Lịch sử ván, kể được ô nào nhân, ai ăn gì
 
 Dòng lịch sử trên **bảng Discord** từng liệt kê MỌI ô người chơi đặt, một người rải 24 ô
 là dòng dài không đọc nổi, mà lại **không hề kể ô nào được nhân**. Nay:
@@ -137,7 +137,7 @@ là dòng dài không đọc nổi, mà lại **không hề kể ô nào đượ
 - Bảng **20 ván trên web**: bảng này để **soi cầu** nên dãy kết quả phải liếc là thấy.
   Vì vậy dòng ⚡ **MẶC ĐỊNH TẮT**, có công tắc `⚡ Hiện hệ số nhân từng ván` (nhớ trong máy
   người chơi qua `localStorage tx_hnhan`). Phần `🎯` kể ô MÌNH ăn thì **luôn hiện** vì đó
-  mới là thứ người chơi cần. Huy hiệu ⚡ cố tình nhỏ và xỉn, chỉ kể 3 ô to nhất — bản đầu
+  mới là thứ người chơi cần. Huy hiệu ⚡ cố tình nhỏ và xỉn, chỉ kể 3 ô to nhất, bản đầu
   để 5 huy hiệu vàng chóe ở mọi ván, chủ server kêu ngay là vướng mắt.
 - ⚡ **CHỈ kể ô nhân ĐÃ RA TRÚNG.** Mỗi ván có ~7 ô được bốc nhân nhưng đa số không ra;
   kể hết là rác, đọc không nổi. `histEntry.nhan` **lọc sẵn lúc chốt ván** (giao với
@@ -148,7 +148,7 @@ là dòng dài không đọc nổi, mà lại **không hề kể ô nào đượ
   `plan.bangNhan` giữ bản sao phòng khi `txState.nhan` đã bị dọn.
 - Ván CŨ ghi trước bản vá không có 2 trường này → chỉ hiện tổng, **không bịa**.
 
-## 9b. Dòng kết quả trên Discord (22/09) — dùng chung 2 bàn
+## 9b. Dòng kết quả trên Discord (22/09), dùng chung 2 bàn
 
 Chủ server chốt: *"show kết quả ván đó + người chơi + thắng hoặc thua + số dogcoin là được"*.
 
@@ -162,13 +162,13 @@ mỗi bàn truyền bảng cửa và hàm `cuaThang` của lõi tiền mình và
 
 - **Đã bỏ**: mặt xúc xắc và phần kể từng ô (`(3 ô, trúng 2: tong9 +50k · tai +20k…)`).
   Dài gấp đôi mà người đọc vẫn phải tự cộng trừ.
-- **Giữ ⚡** hệ số nhân ĐÃ RA TRÚNG (tối đa 2 ô) — nó chỉ hiện khi có ô nhân thật sự ăn
+- **Giữ ⚡** hệ số nhân ĐÃ RA TRÚNG (tối đa 2 ô), nó chỉ hiện khi có ô nhân thật sự ăn
   tiền, và đó là thứ đáng hóng.
 - **Lãi/lỗ = nhận − cược − PHÍ.** Bàn Siêu thu 20%: bỏ phí ra ngoài là bảng khoe lãi cao
   hơn tiền thật trong ví, người chơi soi ví thấy lệch là mất tin ngay. Phí ghi theo từng
   ô trong `cuaAgg[].phi`.
 - Xếp theo **biến động mạnh nhất** (cả thắng đậm lẫn thua đậm), cắt còn **6 người** +
-  `… +N người` — embed Discord chỉ chứa 4096 ký tự.
+  `… +N người`, embed Discord chỉ chứa 4096 ký tự.
 - ⚠️ **TUYỆT ĐỐI KHÔNG tính lại tiền ở đây.** Số nhận về (`b.nhan`) do lõi tiền chốt sẵn
   lúc chốt ván. Bản cũ tự tính theo luật bàn 5 cửa nên bàn 52 cửa in ai cũng THUA.
 - Ván CŨ (ghi trước bản vá) không có `b.nhan` → tính tổng theo `h.winners`, đừng coi 0
@@ -184,7 +184,7 @@ mỗi bàn truyền bảng cửa và hàm `cuaThang` của lõi tiền mình và
   trần từng cửa, trần tổng, tất-cả-hoặc-không) chỉ nằm một chỗ.
 - Xoá cược chỉ gỡ phiếu của **đúng người đó** rồi hoàn đúng số đã trừ.
 - Giỏ ván trước để trong RAM (`txVanTruoc`), chụp lúc chốt ván, chỉ giữ một ván. Đã đặt rồi
-  mà bấm Đặt lại thì **chặn** — cộng dồn là tiêu oan tiền người chơi.
+  mà bấm Đặt lại thì **chặn**, cộng dồn là tiêu oan tiền người chơi.
 - Cả 3 **câm ngoài pha đặt cược**.
 - Báo lỗi bằng **dòng chữ đứng yên** dưới nút, **không dùng toast** (chủ server chốt: phải
   đọc kịp câu "không đủ Dogcoin", đừng loé rồi tắt).
@@ -192,11 +192,11 @@ mỗi bàn truyền bảng cửa và hàm `cuaThang` của lõi tiền mình và
 ### Mệnh giá đang chọn (22/09)
 
 Nút mệnh giá đang chọn mang lớp `on`: **nền vàng, chữ đậm, nhấc lên 3px, viền sáng quanh nút,
-✓ xanh ở góc phải**, và **nảy một cái** (`@keyframes chipNay`) mỗi lần bấm — hàng mệnh giá vẽ
+✓ xanh ở góc phải**, và **nảy một cái** (`@keyframes chipNay`) mỗi lần bấm, hàng mệnh giá vẽ
 lại sau mỗi lần chọn nên hoạt ảnh tự chạy lại.
 
 - Rule viết **liệt kê cả hai bàn** (`#sbChips .chip.on,#stChips .chip.on`). Bản đầu chỉ có
-  `#sbChips` nên **bàn Siêu bấm mệnh giá xong không có dấu hiệu gì** — thêm bàn mới là phải
+  `#sbChips` nên **bàn Siêu bấm mệnh giá xong không có dấu hiệu gì**, thêm bàn mới là phải
   thêm id vào đúng rule này, `trang-test` soi.
 - ✓ ở góc là dấu hiệu **không phụ thuộc màu** (người mù màu / màn ám vàng vẫn thấy). Cần
   `.chip{position:relative}`, thiếu là ✓ bay ra góc màn hình.
@@ -207,7 +207,7 @@ lại sau mỗi lần chọn nên hoạt ảnh tự chạy lại.
 
 ---
 
-## 10b. Kéo thả chip (22/09) — dời ô / huỷ đúng một ô
+## 10b. Kéo thả chip (22/09), dời ô / huỷ đúng một ô
 
 Lỡ đặt Chẵn thì **giữ ngón/chuột ~0,28s** lên ô đó: đồng Dogcoin nhấc lên bay theo tay, ô đích
 sáng viền vàng, và **vùng "🗑️ Thả vào đây để HUỶ" hiện ở giữa đáy màn**. Thả lên ô khác =
@@ -216,13 +216,13 @@ dời, thả vào vùng huỷ = huỷ đúng ô đó, thả chỗ khác = chip v
 Máy chủ: `txDoiCua(user, tu, den)` và `txXoaCua(user, cua)` → `/api/tx/doicua` · `/api/tx/xoacua`.
 
 - **Dời không đi qua ví** (tổng cược không đổi) nên chỉ kiểm **trần riêng của ô đích**
-  (`txBetCuaCua(den) + tiền ≤ tranCua(den)`). Kiểm xong mới đụng sổ — không dời nửa chừng.
+  (`txBetCuaCua(den) + tiền ≤ tranCua(den)`). Kiểm xong mới đụng sổ, không dời nửa chừng.
 - Huỷ một ô chỉ gỡ phiếu **đúng người, đúng ô**, hoàn đúng số đã trừ; ô khác còn nguyên.
 - Cả hai **câm ngoài pha đặt cược** (`txDangNhanCuoc`), ô bịa / ô trống / thả lại ô cũ đều lỗi.
 - Phía trang: **một bộ `keo*` dùng chung cho hai bàn**, chỉ khác tiền tố id (`sb_`/`st_`)
   và bộ biến (`keoBan(pre)`). Con ma là bản sao `.sbGio` gắn vào `body` nên phải **tự đủ
   CSS** (`.sbKeoGhost`). Chỉ ô **đang có chip của mình** mới mang `sbCoChip`
-  (`touch-action:none`) — ô trống vẫn vuốt trang được. Sau khi nhả tay trình duyệt còn bắn
+  (`touch-action:none`), ô trống vẫn vuốt trang được. Sau khi nhả tay trình duyệt còn bắn
   `click`, `KEOCLICK` chặn nó ở `sbChon`/`stChon` kẻo thả xong lại đặt thêm một cục.
 - Kết quả/lỗi báo bằng **dòng đứng yên** dưới nút (`sbBao`/`stBao`), y ba nút.
 
@@ -256,9 +256,9 @@ Nhịp bot test: bật bằng `node Desktop/bialk-test.js` các bước `5` (t�
 Đăng nhập test: ID `111111111111111111`, PIN `123456`.
 
 ⚠️ Mấy bộ kiểm cần bot đều **đổi nhịp ván** để chạy nhanh rồi trả về `30/4/20` ở cuối.
-Đứt giữa chừng thì nhịp còn nguyên mức ngắn — set lại ở panel.
+Đứt giữa chừng thì nhịp còn nguyên mức ngắn, set lại ở panel.
 
-⚠️ **Đừng gài lại lỗi cũ để thử bộ kiểm trong lúc chủ server đang chơi trên bot test** —
+⚠️ **Đừng gài lại lỗi cũ để thử bộ kiểm trong lúc chủ server đang chơi trên bot test**
 đã lỡ một lần, người chơi dính đúng mấy ván hỏng đó.
 
 ---
@@ -270,7 +270,7 @@ Cược là tiền **đã trừ khỏi ví**. Vì vậy:
 - **Chỗ nào xoá `txState.bets` đều PHẢI gọi `txDonSoCuoc(lyDo)` trước.** Hàm đó tự quyết:
   ván đã quay thì trả nốt theo bảng trả tiền, ván chưa quay thì hoàn nguyên cược.
   Trước đây có 5 chỗ xoá thẳng (admin khởi tạo lại bàn, admin dừng bàn, watchdog kẹt,
-  mất bảng Discord, nhảy cóc mốc nặn) — cả 5 đều mất trắng hoặc treo tiền người chơi.
+  mất bảng Discord, nhảy cóc mốc nặn), cả 5 đều mất trắng hoặc treo tiền người chơi.
 - **Không bao giờ dựng lại bảng trả tiền khi không tìm thấy bảng cũ.** Bảng mới có cờ
   `paid` rỗng nên sẽ trả lại từ đầu cho cả bàn. Không thấy bảng = ván đã chốt rồi.
 - **Cờ `paid` phải ghi xuống đĩa ngay.** Để trong RAM thì bot chết trước nhịp lưu 10 giây
@@ -290,7 +290,7 @@ Bộ kiểm khoá lại: `tienkhongmat-test.js`, `restart-test.js` và `nhipvan-
 
 ## 12b. SỐ VÁN KHÔNG ĐƯỢC THỦNG LỖ (21/09)
 
-Chủ server: *"lâu lâu bị mất ID mất luôn kết quả ván đó làm người chơi mất dogcoin"* —
+Chủ server: *"lâu lâu bị mất ID mất luôn kết quả ván đó làm người chơi mất dogcoin"*
 lịch sử nhảy **#52975 → #52973**, 4 ván biến mất trong 24 ván, đúng lúc khung chat báo *"Lag rồi"*.
 
 **Gốc:** máy trạng thái 3 mốc trước đây là một chuỗi `else if` và **kiểm**
@@ -299,30 +299,30 @@ trễ đủ lâu thì lúc chạy lại `nowSec` đã vượt `targetTime` trong
 `status` còn `'betting'` → rơi thẳng vào nhánh mở bát mà **ván chưa quay xúc
 xắc** → huỷ ván, hoàn cược, `gameId++` nhưng **không ghi lịch sử**.
 
-**Vá 1 — ba mốc phải BẮT KỊP được.** Xếp `if` **nối tiếp** theo thứ tự
+**Vá 1, ba mốc phải BẮT KỊP được.** Xếp `if` **nối tiếp** theo thứ tự
 **khoá sổ → quay → mở bát**. Một nhịp trễ giờ chạy đủ cả ba bước: ván vẫn quay, vẫn trả tiền,
 vẫn vào lịch sử.
-⚠️ **TUYỆT ĐỐI KHÔNG đổi lại thành `else if`** — đó chính là con bug. Bộ kiểm chặn.
+⚠️ **TUYỆT ĐỐI KHÔNG đổi lại thành `else if`**, đó chính là con bug. Bộ kiểm chặn.
 
-**Vá 2 — ván huỷ vẫn phải để lại dấu.** Vẫn còn 3 đường huỷ thật (watchdog kẹt 120s, lỡ mốc
+**Vá 2, ván huỷ vẫn phải để lại dấu.** Vẫn còn 3 đường huỷ thật (watchdog kẹt 120s, lỡ mốc
 nặn vì lý do khác, lỗi giữa vòng ván). Cả ba giờ gọi `txGhiVanHuy()`, ghi một dòng
-**🚫 VÁN HUỶ — đã hoàn cược** kèm lý do vào đúng sổ lịch sử mà web đọc. Hàm tự bỏ qua nếu
+**🚫 VÁN HUỶ, đã hoàn cược** kèm lý do vào đúng sổ lịch sử mà web đọc. Hàm tự bỏ qua nếu
 ván đó đã có lịch sử (ván đã quay thì settle ghi rồi). Bảng 20 ván ở web vẽ dòng này màu xám,
 soi cầu Discord in `🚫 VÁN HUỶ` thay vì `undefined undefined`.
 
 **Vì sao phải kể ra ván huỷ:** tiền *có* được hoàn, nhưng người chơi thấy số ván nhảy cóc thì
 tưởng bị nuốt. Không tra được thì không tin được.
 
-### Vá 3 — CỨU VÁN, đừng huỷ ván
+### Vá 3, CỨU VÁN, đừng huỷ ván
 
 Lỡ mốc nặn thì **ván có hỏng đâu**: sổ cược đã khoá, chỉ là chưa kịp quay. Bản cũ hoàn cược rồi
-bỏ ván — đúng về tiền nhưng **mất kết quả và mất ID**. Giờ **quay bù ngay tại chỗ**, ra một ván
+bỏ ván, đúng về tiền nhưng **mất kết quả và mất ID**. Giờ **quay bù ngay tại chỗ**, ra một ván
 **thật**, công bằng y như quay đúng giờ (xúc xắc vẫn ngẫu nhiên, sổ cược vẫn nguyên).
-Lỡ luôn mốc khoá sổ thì **sinh bù bảng hệ số nhân** — không thì `txPlanPayout` thấy
+Lỡ luôn mốc khoá sổ thì **sinh bù bảng hệ số nhân**, không thì `txPlanPayout` thấy
 `bangNhan` rỗng và người chơi **mất phần nhân một cách lặng lẽ**.
 Hoàn cược giờ chỉ còn là đường cùng, để dành cho nhánh `catch`.
 
-### Vá 4 — MỘT CỬA DUY NHẤT được tăng số ván ⭐
+### Vá 4, MỘT CỬA DUY NHẤT được tăng số ván ⭐
 
 Ba vá trên vẫn là **vá từng đường**: mỗi chỗ tăng `gameId` phải *tự nhớ* ghi lịch sử.
 Thêm một đường mới mà quên là **lỗ thủng quay lại**. Nên gom hết về `txSangVanMoi()`:
@@ -352,7 +352,7 @@ thì không**: `width:20px` + `flex:0 0 auto`. Hàng *150:1 · MỖI BỘ BA* c�
     3×20 + 6×1.5 lề + 2×2 padding + 2 viền = 75px
 
 mà điện thoại dọc chỉ chia được **~60px/ô** → xí ngầu đẩy nhau, lòi ra ngoài. Hàng 2 viên
-chỉ cần 46px nên **không** vỡ — khớp đúng ảnh.
+chỉ cần 46px nên **không** vỡ, khớp đúng ảnh.
 
 ⚠️ Đã **có sẵn** `@media (max-width:430px){.sbXx{width:16px}}` mà vẫn tràn, vì
 **ghim một con số cố định là chọn đúng một cỡ máy**. Máy 390px (iPhone 12–15 thường):
@@ -370,7 +370,7 @@ Bộ kiểm tính lại ca chật nhất **390px**: cần 45,1px / có 55px ✅.
 
 Chủ server: *"nút hiện hệ số nhân từng ván nó không show nữa · số 9 x18 nhưng ở dưới ko hiện"*.
 
-index.js gọi **hai** module với **hai** đối tượng ctx riêng — `startWebPlay({...})` (trang cược)
+index.js gọi **hai** module với **hai** đối tượng ctx riêng, `startWebPlay({...})` (trang cược)
 và `startPanel({...})` (trang quản trị). Bản vá lọc *"chỉ kể ô nhân ra trúng"* đăng ký
 `txCuaThang` vào **nhầm khối panel**. webplay thấy `undefined`, mà nó viết phòng hờ:
 
@@ -380,10 +380,10 @@ và `startPanel({...})` (trang quản trị). Bản vá lọc *"chỉ kể ô nh
 
 ⚠️ **Hỏng LẶNG LẼ**: không lỗi, không log, chỉ là dữ liệu biến mất. Kiểu phòng hờ
 `ctx.x ? ctx.x() : mặc-định` có mặt khắp webplay (đúng, để bản cũ không vỡ) nên nó
-**không bao giờ nổ** để mà biết. Panel không dùng `txCuaThang` lần nào — nằm sai chỗ hoàn toàn.
+**không bao giờ nổ** để mà biết. Panel không dùng `txCuaThang` lần nào, nằm sai chỗ hoàn toàn.
 Cùng lỗi còn dính `txKqS`, may là số dự phòng 4 trùng `TX_KQ_S` nên chưa ai thấy.
 
-Mỉa mai: đúng dòng chú thích *"webplay.js là MODULE KHÁC — phải đưa qua ctx như thế này"*
+Mỉa mai: đúng dòng chú thích *"webplay.js là MODULE KHÁC, phải đưa qua ctx như thế này"*
 lại đang nằm trong khối **panel**.
 
 **Cách tìm ra:** dựng webplay thật với ctx giả rồi gọi `/api/state` → thấy máy chủ gửi
@@ -403,7 +403,7 @@ Rà lại tìm thêm **hai lỗ**:
 ### ① Pha HIỆN SỐ NHÂN có thể bị tắt hẳn
 
 `TX_NHAN_S_MIN` để **0**, chú thích ghi thẳng *"0 = tắt hẳn pha hiện nhân"*. Đặt 0 thì
-`lockTime === nanTime`: khoá sổ và quay xúc xắc rơi vào **cùng một giây** — cả bàn không
+`lockTime === nanTime`: khoá sổ và quay xúc xắc rơi vào **cùng một giây**, cả bàn không
 bao giờ kịp nhìn bảng hệ số nhân. Đúng cái *"thiếu một mốc"*.
 → Nâng sàn lên **2 giây**. Số cũ ngoài khoảng thì `txTimeCfg()` tự lùi về mặc định 4, khỏi sửa DB.
 
@@ -449,22 +449,22 @@ chip sẽ bắt nhập số; Lưu thì lưu được 4 ô chip kia"*, rồi lầ
 / ×2… bấm vô thì thành nút Lưu cho đồng bộ UI/UX"*): hàng chip = **[c1] [c2] [c3] [c4] [MAX]**; hàng nút
 dưới = **[✏️ Sửa chip] [🔁 Đặt lại] [✖️2 Gấp đôi] [🗑️ Xoá cược]**. Bấm Sửa chip → 4 ô viền nét đứt, bấm ô
 nào thì ô đó thành ô nhập ngay tại chỗ (Enter = xong ô, Esc = huỷ ô, rời ô = xong ô); hàng nút đổi thành
-**[💾 Lưu chip] [✖ Huỷ] [↩ Mặc định] [Xoá cược (khoá)]** — cùng hàng, cùng cỡ (`sbNutVe`/`stNutVe` vẽ,
+**[💾 Lưu chip] [✖ Huỷ] [↩ Mặc định] [Xoá cược (khoá)]**, cùng hàng, cùng cỡ (`sbNutVe`/`stNutVe` vẽ,
 `.hidden` ẩn Đặt lại/×2). Lưu ghi cả 4 vào `localStorage`
 (`tx_chips` / `stx_chips`) → F5 không mất; chặn trùng số; mệnh giá đang chọn mà không còn thì về ô đầu.
 Kho hỏng/thiếu ô/có số bậy/bị chặn → về mặc định 10k·20k·50k·100k. Trong chế độ sửa mọi nút dùng
-`onpointerdown` + `preventDefault` — bấm sang ô khác không làm ô nhập văng blur rồi mất click.
+`onpointerdown` + `preventDefault`, bấm sang ô khác không làm ô nhập văng blur rồi mất click.
 Một hàm `chipHangHTML(p, …)` vẽ chung cho 2 bàn (`p = "sb" | "st"`). Bản đầu (ô tuỳ chọn + nút Sửa
 dưới ô) đã bỏ vì làm hàng chip gãy.
 
 **📜 LOG** (chủ server: *"chỉ quan tâm ván đó người nào đặt nhiêu ăn thua nhiêu kết quả"*):
 - File `log_result.txt`: **một dòng mỗi ván** `[TÀI XỈU] Ván #id: 3-4-5 (Tổng 12 | TÀI | CHẴN) · Khoa đặt 50.000 → +10.000 · …`
   (số từ kế hoạch trả tiền, không tính lại). Bỏ log từng phiếu đặt/xoá/huỷ/dời và dòng khoá sổ.
-- Siêu: `ghiLog` tách loại — phiếu lẻ không ghi; `[SIÊU TX KẾT QUẢ]` → RESULT (kèm *"A đặt 10.000
+- Siêu: `ghiLog` tách loại, phiếu lẻ không ghi; `[SIÊU TX KẾT QUẢ]` → RESULT (kèm *"A đặt 10.000
   (+phí 2.000) → +8.000"*); lỗi/hoàn → SYSTEM; ép/đổi nhịp/trần/thang/bật tắt → ADMIN.
 - Panel tab 📜: mục **⚡ Siêu Tài Xỉu riêng** (`stxHistory` từ `bangDiscord(30)`), dòng ván **gộp theo
   người** (đặt · +phí · nhận · lãi/lỗ, kèm từng ô) dùng chung 2 bàn.
-- **💰 Sổ Dogcoin chỉ giữ chuyển / nạp / rút / admin** (+ mua pal, vay/trả nợ, hoàn rút — không phải mini
+- **💰 Sổ Dogcoin chỉ giữ chuyển / nạp / rút / admin** (+ mua pal, vay/trả nợ, hoàn rút, không phải mini
   game). `DOG_LEDGER_BO_QUA = bet · jackpot · cophieu · tienlen · sieutx` chặn ở cửa ghi **và** lọc khi
   đọc nên dòng cũ trong DB cũng biến. 3 khoản hoàn cược mini game đổi nhãn `bet` để bị chặn theo.
 
@@ -475,14 +475,14 @@ Chủ server: *"người chơi về 0 dogcoin thì bấm nút được +10.000 (
 
 Nút **🚕 XU ĐI TAXI VỀ** nằm cạnh số dư trên web, **chỉ hiện khi đã đủ điều kiện**. Panel SUPER tab
 👥 có 4 ô + công tắc: *phát mỗi lần · phải thua tối thiểu/ngày · ví còn tối đa · cách nhau (giờ)*.
-Máy chủ kiểm lại toàn bộ điều kiện khi bấm — web chỉ là cái nút. Bấm dồn nhiều lần chỉ ăn một
+Máy chủ kiểm lại toàn bộ điều kiện khi bấm, web chỉ là cái nút. Bấm dồn nhiều lần chỉ ăn một
 (ghi mốc nhận **trước** khi cộng tiền).
 
 ### "Thua trong ngày" đếm từ VÍ, không đếm từ sổ Dogcoin
 
 `updatePoints` cộng mọi đồng ra/vào ví vào `_loNgay[uid]`, rồi `logDog` **trừ ngược** những khoản
 **không phải mini game** (nạp/rút/chuyển/admin cộng/mua pal/vay/trả nợ/hoàn). Còn lại đúng bằng
-thắng thua do chơi — **mọi trò, kể cả trò thêm sau này**, không phải khai báo gì thêm.
+thắng thua do chơi, **mọi trò, kể cả trò thêm sau này**, không phải khai báo gì thêm.
 
 ⚠️ **Đừng đếm theo sổ Dogcoin.** Sổ ghi cho người đọc nên số của nó không phải lúc nào cũng bằng
 tiền ví đổi: Phi Thuyền ghi `-amount` lúc cược **rồi ghi `-amount` lần nữa lúc nổ** (ví chỉ trừ một
@@ -491,10 +491,10 @@ lần), lúc rút thì ghi `win − cược` trong khi ví `+win`. Đếm theo s
 
 Sổ về 0 lúc **00:00 giờ VN**. `taxiDonSo()` chạy lúc bot khởi động dọn entry ngày cũ + mốc nhận quá
 7 ngày. Tiền taxi đi qua `logDog('taxi', …)` nên **vào Sổ Dogcoin** (admin tra được) và **tự trừ
-ngược** khỏi sổ lỗ — nhận 10.000 không làm số đã thua tụt xuống.
+ngược** khỏi sổ lỗ, nhận 10.000 không làm số đã thua tụt xuống.
 
 **Mốc 24 giờ là mốc TRƯỢT, không phải nửa đêm.** Nhận lúc 23h55 rồi 00h05 hôm sau bấm lại vẫn phải
-chờ đủ 24 tiếng — đúng câu *"24 tiếng reset 1 lần"* và bịt luôn kẽ hở nhận 2 lần trong 10 phút.
+chờ đủ 24 tiếng, đúng câu *"24 tiếng reset 1 lần"* và bịt luôn kẽ hở nhận 2 lần trong 10 phút.
 
 ## 12h. 📜 LOG SIÊU TÀI XỈU BỊ "XOÁ MẤT HẾT" (24/09)
 
@@ -509,7 +509,7 @@ bản cũ còn **0**, bản mới còn **5** (`SieuTaiXiu/kiemtra/ban-test.js`).
 
 ## 12i. 🆙 CẤP PAL Ở CHẾ ĐỘ PAL GỐC (24/09)
 
-`rawLevel` (mặc định 1, kẹp 1–100 — cùng phạm vi với `cfg.level` của chế độ thường). Trước đây
+`rawLevel` (mặc định 1, kẹp 1–100, cùng phạm vi với `cfg.level` của chế độ thường). Trước đây
 `specBase` cứng `level: 1`. Ô 🆙 **Cấp** nằm trong card 🔒 PAL GỐC ở panel, cạnh Linh hồn và IV.
 Đổi số chỉ áp cho pal nhận **từ lúc đổi**; pal đã giao không đụng tới.
 
@@ -528,7 +528,7 @@ reset `txState.bets`. Giữ nguyên thứ tự này.
 
 **③b Đưa qua ctx rồi nhưng ĐẶT NHẦM NHÀ.** Xem mục 12d. index.js gọi HAI module với
 HAI ctx riêng (`startWebPlay` và `startPanel`). Bỏ khoá vào nhầm khối thì webplay thấy
-`undefined`, mà mọi chỗ đều viết phòng hờ `ctx.x ? ctx.x() : mặc-định` nên KHÔNG BAO GIỜ NỔ —
+`undefined`, mà mọi chỗ đều viết phòng hờ `ctx.x ? ctx.x() : mặc-định` nên KHÔNG BAO GIỜ NỔ
 dữ liệu chỉ lặng lẽ biến mất. `pham-vi-test.js` đối chiếu đủ hai chiều.
 
 **③ Hằng số của `index.js` gọi thẳng trong `webplay.js`.**
@@ -544,7 +544,7 @@ chuỗi là lỗi cú pháp.
 **⑥ Trang tự làm mới thì cấm gán thẳng `innerHTML`** cho vùng đang có hiệu ứng / ô nhập.
 
 **⑧ Máy trạng thái của ván: `if` nối tiếp, KHÔNG phải `else if`.** Xem mục 12b. Và
-số ván chỉ được tăng qua `txSangVanMoi()` — viết `txState.gameId++` ở chỗ khác là mở lại
+số ván chỉ được tăng qua `txSangVanMoi()`, viết `txState.gameId++` ở chỗ khác là mở lại
 lỗ thủng, bộ kiểm quét cả file và sẽ đỏ. Chuỗi
 else-if làm mỗi nhịp chỉ đi được một mốc → máy chủ lag là ván bị nhảy cóc, huỷ oan, mất ID.
 
@@ -552,7 +552,7 @@ else-if làm mỗi nhịp chỉ đi được một mốc → máy chủ lag là 
 chọn đúng một cỡ máy; máy hẹp hơn vẫn tràn. Dùng biến + `clamp()`, `@media` chỉ hạ trần.
 
 **⑩ Mỗi rule CSS trong mảng `PAGE` có thể bị cắt làm nhiều chuỗi.** Regex kiểu
-`/\.sbXx\{[^']*flex/` không bao giờ khớp qua ranh giới hai phần tử — soi từng mảnh.
+`/\.sbXx\{[^']*flex/` không bao giờ khớp qua ranh giới hai phần tử, soi từng mảnh.
 
-**⑦ Viết script vá bằng Write/Edit, đừng nhét qua Bash.** Bash nuốt `\`, backtick và `${}` —
+**⑦ Viết script vá bằng Write/Edit, đừng nhét qua Bash.** Bash nuốt `\`, backtick và `${}`
 đã làm hỏng `index.js` một lần.

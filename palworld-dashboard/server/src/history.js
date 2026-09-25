@@ -13,7 +13,7 @@ export function recordGive(entry) {
     fs.mkdirSync(dataDir, { recursive: true });
     fs.appendFileSync(historyFile, JSON.stringify({ time: new Date().toISOString(), ...entry }) + "\n", "utf8");
   } catch (err) {
-    // Lịch sử là tính năng phụ — không được làm hỏng request tặng quà.
+    // Lịch sử là tính năng phụ, không được làm hỏng request tặng quà.
     console.error("Không ghi được lịch sử:", err.message);
   }
 }

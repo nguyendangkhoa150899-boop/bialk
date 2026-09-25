@@ -1,4 +1,4 @@
-# Nghiên cứu: giao pal XÀI LIỀN (không chờ restart server) — 08/09/2026
+# Nghiên cứu: giao pal XÀI LIỀN (không chờ restart server), 08/09/2026
 
 ## Vấn đề
 Đường giao pal hiện tại của mod (`SpawnNPCForServer` → `PalCaptureSuccess` → ghi
@@ -13,7 +13,7 @@ lại từ save mới đăng ký đủ).
 - ❌ CẤM TUYỆT ĐỐI chạy `DBGPAL` trên server chính.
 
 ## Phát hiện từ mổ CreativeMenu_P.pak (mod give pal xài liền, không sập)
-Pak V11 nén Oodle — đã bung 211/214 file (đồ nghề: `Desktop/palworld-analysis/`,
+Pak V11 nén Oodle, đã bung 211/214 file (đồ nghề: `Desktop/palworld-analysis/`,
 oodle-data-shared.dll từ repo WorkingRobot/OodleUE; 3 file fail là texture/UI
 nhiều block, không cần). Parse name map + import map các blueprint server-side:
 

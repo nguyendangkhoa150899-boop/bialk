@@ -1,5 +1,5 @@
 // ============================================================================
-//  Bộ kiểm 🚕 "XU ĐI TAXI VỀ" — chạy: node TaiXiu/kiemtra/taxi-test.js  (không cần bot)
+//  Bộ kiểm 🚕 "XU ĐI TAXI VỀ", chạy: node TaiXiu/kiemtra/taxi-test.js  (không cần bot)
 //
 //  Chủ server 24/09: "người chơi về 0 dogcoin thì bấm nút được +10.000 (admin set số),
 //  điều kiện: 1. thua 2.000.000 trở lên trong ngày (admin set) · 2. 24 tiếng reset 1 lần,
@@ -88,14 +88,14 @@ muc('② hai điều kiện: cháy ví VÀ thua đủ trong ngày');
 }
 
 // ---------------------------------------------------------------- ③ 24 tiếng / 1 ngày 1 lần
-muc('③ 24 tiếng mới nhận lại được — 1 ngày 1 lần');
+muc('③ 24 tiếng mới nhận lại được, 1 ngày 1 lần');
 {
     const s = dung();
     s.choi('A', -5000000); s.datVi('A', 0);
     ok('lần 1 nhận được', s.taxiNhan('A').ok === true);
     ok('⭐ bấm lại NGAY -> bị chặn, không cộng thêm đồng nào', !!s.taxiNhan('A').error && s.vi('A') === 10000, String(s.vi('A')));
     ok('...câu báo nói còn phải chờ bao lâu', /Mỗi 24 tiếng/.test(s.taxiNhan('A').error), s.taxiNhan('A').error);
-    // bấm dồn 5 phát (mạng lag, bấm liên tục) — chỉ ăn 1
+    // bấm dồn 5 phát (mạng lag, bấm liên tục), chỉ ăn 1
     s.datVi('A', 0);
     for (let i = 0; i < 5; i++) s.taxiNhan('A');
     ok('⭐⭐ bấm dồn 5 phát chỉ ăn 1 lần (ví vẫn 0 vì đã nhận rồi)', s.vi('A') === 0, String(s.vi('A')));
@@ -112,7 +112,7 @@ muc('③ 24 tiếng mới nhận lại được — 1 ngày 1 lần');
 }
 
 // ---------------------------------------------------------------- ④ "thua" đếm đúng: chỉ tiền CHƠI
-muc('④ "thua trong ngày" chỉ tính tiền CHƠI — nạp/rút/chuyển/admin không tính');
+muc('④ "thua trong ngày" chỉ tính tiền CHƠI, nạp/rút/chuyển/admin không tính');
 {
     const s = dung();
     s.choi('A', -800000);
@@ -136,7 +136,7 @@ muc('④ "thua trong ngày" chỉ tính tiền CHƠI — nạp/rút/chuyển/adm
 }
 
 // ---------------------------------------------------------------- ⑤ cái bẫy: sổ Dogcoin ghi lệch ví
-muc('⑤ ⚠️ Phi Thuyền ghi sổ 2 lần — đếm theo VÍ nên không bị thổi gấp đôi');
+muc('⑤ ⚠️ Phi Thuyền ghi sổ 2 lần, đếm theo VÍ nên không bị thổi gấp đôi');
 {
     const s = dung();
     // Phi Thuyền THẬT: cược -> updatePoints(-1tr) + logDog('bet', -1tr); nổ -> logDog('bet', -1tr) LẦN NỮA
@@ -145,7 +145,7 @@ muc('⑤ ⚠️ Phi Thuyền ghi sổ 2 lần — đếm theo VÍ nên không b�
     s.logDog('bet', 'A', 'A', -1000000, 'Phi Thuyền cược');
     s.logDog('bet', 'A', 'A', -1000000, 'Phi Thuyền NỔ - thua');
     ok('⭐⭐ cược 1tr rồi nổ: thua ĐÚNG 1.000.000, không phải 2.000.000', s.taxiLoHomNay('A') === 1000000, String(s.taxiLoHomNay('A')));
-    ok('...tức là KHÔNG đủ điều kiện nhận (ngưỡng 2tr) — đếm sai là phát tiền oan', (s.datVi('A', 0), !s.taxiState('A').nhanDuoc));
+    ok('...tức là KHÔNG đủ điều kiện nhận (ngưỡng 2tr), đếm sai là phát tiền oan', (s.datVi('A', 0), !s.taxiState('A').nhanDuoc));
     // cashout: ví +win, sổ ghi (win - cược)
     const s2 = dung();
     s2.choi('B', -1000000); s2.logDog('bet', 'B', 'B', -1000000, 'cược');

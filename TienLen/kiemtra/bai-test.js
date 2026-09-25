@@ -1,4 +1,4 @@
-// Bộ kiểm cho TienLen/bai.js — chạy: node TienLen/kiemtra/bai-test.js
+// Bộ kiểm cho TienLen/bai.js, chạy: node TienLen/kiemtra/bai-test.js
 'use strict';
 const B = require('../bai.js');
 
@@ -81,7 +81,7 @@ muc('so bộ cùng kiểu');
 }
 
 // ---------------------------------------------------------------- chặt
-muc('CHẶT (bom) — 3 đôi thông / tứ quý / 4 đôi thông');
+muc('CHẶT (bom), 3 đôi thông / tứ quý / 4 đôi thông');
 {
     const heoLe = nd('2s'), doiHeo = nd('2s 2c'), baHeo = nd('2s 2c 2d'), tuHeo = nd('2s 2c 2d 2h');
     const ba3 = nd('3s 3c 4s 4c 5s 5c'), ba4 = nd('6s 6c 7s 7c 8s 8c');

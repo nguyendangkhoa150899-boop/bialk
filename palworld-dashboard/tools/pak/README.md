@@ -1,4 +1,4 @@
-# tools/pak — đồ nghề pak + cài server qua SFTP (09/09/2026, máy văn phòng không có game)
+# tools/pak, đồ nghề pak + cài server qua SFTP (09/09/2026, máy văn phòng không có game)
 
 Mọi script đọc SFTP server TEST từ `server/.env`; server PROD nhận creds qua biến môi trường
 `PROD_USER` / `PROD_PASS` (KHÔNG hardcode). Hard-block UUID `50533a43` (server không phải của mình).

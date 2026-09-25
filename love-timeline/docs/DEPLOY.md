@@ -1,4 +1,4 @@
-# Hướng dẫn Deploy — love-timeline (GitHub + VPS)
+# Hướng dẫn Deploy, love-timeline (GitHub + VPS)
 
 > File DUY NHẤT về deploy. Bàn giao tổng thể dự án xem `CHO-CLAUDE-O-NHA.md`; tạo Firebase cho wishlist xem `WISHLIST-HUONG-DAN.md`.
 
@@ -7,9 +7,9 @@
 ## ⚡ Cập nhật web (việc làm thường xuyên nhất)
 
 **Chỉ sửa code ở máy Windows → đẩy GitHub → VPS kéo về.**
-TUYỆT ĐỐI không sửa code trực tiếp trên VPS (sẽ làm git rẽ nhánh, kéo không vào file, mất công gỡ — đã dính rồi).
+TUYỆT ĐỐI không sửa code trực tiếp trên VPS (sẽ làm git rẽ nhánh, kéo không vào file, mất công gỡ, đã dính rồi).
 
-### 1) Trên máy Windows (thư mục `Desktop/bialk-main/bialk-main` — từ 07/08/2026, folder cũ `Desktop/bialk/bialk` không dùng nữa)
+### 1) Trên máy Windows (thư mục `Desktop/bialk-main/bialk-main`, từ 07/08/2026, folder cũ `Desktop/bialk/bialk` không dùng nữa)
 ```bash
 git add .
 git commit -m "mô tả thay đổi"
@@ -31,7 +31,7 @@ git log --oneline -1     # xem đã đúng commit mới nhất chưa
 
 ## 📍 Sự thật về VPS (nhớ để khỏi lạc)
 - Repo trên VPS ở **`/root/tts-bot`** (KHÔNG phải `/root/bialk`). love-timeline là thư mục con.
-- GitHub: `github.com/nguyendangkhoa150899-boop/bialk` — **monorepo** chung với bot Discord.
+- GitHub: `github.com/nguyendangkhoa150899-boop/bialk`, **monorepo** chung với bot Discord.
 - Branch trên VPS tên **`master`**, GitHub là **`main`** (master đã track `origin/main` → `git pull` chạy đúng).
 - Chạy bằng **pm2**, tên tiến trình `love-timeline`, chung máy với `BotDoMin` và `tts-bot`.
 - Thông tin SSH (IP / port / user / mật khẩu): **Khoa giữ riêng, KHÔNG ghi vào file trong git.**
@@ -40,13 +40,13 @@ git log --oneline -1     # xem đã đúng commit mới nhất chưa
 
 ## ⚠️ 3 cái bẫy đã vấp
 
-**Bẫy 1 — CRLF (Windows ↔ Linux).** File sửa trên Windows lưu kiểu xuống dòng CRLF, VPS Linux dùng LF → `git pull` báo *"Your local changes would be overwritten"* DÙ `git diff` trống (không có nội dung khác thật). Chữa: chạy **một lần** `git config core.autocrlf input`, và luôn `git checkout -- .` trước khi pull.
+**Bẫy 1, CRLF (Windows ↔ Linux).** File sửa trên Windows lưu kiểu xuống dòng CRLF, VPS Linux dùng LF → `git pull` báo *"Your local changes would be overwritten"* DÙ `git diff` trống (không có nội dung khác thật). Chữa: chạy **một lần** `git config core.autocrlf input`, và luôn `git checkout -- .` trước khi pull.
 
-**Bẫy 2 — Cache trình duyệt điện thoại.** css/js là file tĩnh, không có version → điện thoại giữ bản cũ. Mỗi lần sửa css/js phải **tăng `?v=` trong `index.html`**.
+**Bẫy 2, Cache trình duyệt điện thoại.** css/js là file tĩnh, không có version → điện thoại giữ bản cũ. Mỗi lần sửa css/js phải **tăng `?v=` trong `index.html`**.
 
-**Bẫy 3 — Token GitHub.** Đừng bao giờ dán `git remote -v` (kèm token `ghp_…`) hay lệnh chứa token ra ngoài. Lộ token = người khác ghi được vào repo. Token nên để credential helper, không nhúng thẳng vào URL remote.
+**Bẫy 3, Token GitHub.** Đừng bao giờ dán `git remote -v` (kèm token `ghp_…`) hay lệnh chứa token ra ngoài. Lộ token = người khác ghi được vào repo. Token nên để credential helper, không nhúng thẳng vào URL remote.
 
-**Không nên `git reset --hard` trên VPS.** Dữ liệu sống (`du-lieu.json`, `database.json`, ảnh/video) đã gitignore nên reset không xoá chúng — nhưng reset --hard vứt luôn mọi thứ khác không đáng. Cần bỏ thay đổi 1 file thì dùng `git checkout -- <đúng file đó>`.
+**Không nên `git reset --hard` trên VPS.** Dữ liệu sống (`du-lieu.json`, `database.json`, ảnh/video) đã gitignore nên reset không xoá chúng, nhưng reset --hard vứt luôn mọi thứ khác không đáng. Cần bỏ thay đổi 1 file thì dùng `git checkout -- <đúng file đó>`.
 
 ---
 
@@ -68,7 +68,7 @@ pm2 save
 - **PORT**: nếu trùng bot thì đổi số khác (vd 8090). Mở cổng firewall nếu vào thẳng bằng IP.
 - Test nhanh: `http://<IP-VPS>:8090` → web; `/admin` → dashboard.
 
-## 🔒 Tên miền + HTTPS (nên có — PWA & mật khẩu cần HTTPS)
+## 🔒 Tên miền + HTTPS (nên có, PWA & mật khẩu cần HTTPS)
 Dùng **Caddy** (tự xin SSL). `/etc/caddy/Caddyfile`:
 ```
 chuyentinh.tenmien.com {

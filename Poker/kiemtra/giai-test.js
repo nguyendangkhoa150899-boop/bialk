@@ -1,4 +1,4 @@
-// Bộ kiểm cho Poker/giai.js — chạy: node Poker/kiemtra/giai-test.js
+// Bộ kiểm cho Poker/giai.js, chạy: node Poker/kiemtra/giai-test.js
 'use strict';
 const { taoGiai } = require('../giai.js');
 const B = require('../bai.js');
@@ -38,7 +38,7 @@ muc('mở giải');
     ok('đã đặt blind (hũ = 75)', s.van.hu === 75, String(s.van.hu));
     ok('vòng đầu là PREFLOP', s.van.vong === 'PREFLOP');
     ok('có người tới lượt', !!s.van.luot);
-    // nút cái giờ NGẪU NHIÊN nên không được giả định ghế 0 là SB — so với van.sb thật
+    // nút cái giờ NGẪU NHIÊN nên không được giả định ghế 0 là SB, so với van.sb thật
     ok('máy chủ báo rõ ai là SB, ai là BB', !!s.van.sb && !!s.van.bb && s.van.sb !== s.van.bb);
     ok('preflop người đi đầu KHÔNG phải small blind, cũng KHÔNG phải big blind',
         s.van.luot !== s.van.sb && s.van.luot !== s.van.bb, 'đi đầu ' + s.van.luot + ' · SB ' + s.van.sb + ' · BB ' + s.van.bb);
@@ -51,7 +51,7 @@ muc('mở giải');
 }
 
 // ---------------------------------------------------------------- giấu bài
-muc('GIẤU BÀI — không được lộ bài người khác');
+muc('GIẤU BÀI, không được lộ bài người khác');
 {
     const g = moi(); g.batDau(BON, 0);
     const s = g.xem('A');
@@ -126,7 +126,7 @@ muc('đi hết 4 vòng bài');
 {
     const g = moi(); g.batDau(BON, 0);
     const v = g._trong.van;
-    // đi hết MỘT vòng cược rồi dừng — trước đây hàm này chạy tới khi hết lượt nên
+    // đi hết MỘT vòng cược rồi dừng, trước đây hàm này chạy tới khi hết lượt nên
     // phi thẳng từ PREFLOP tới RIVER, làm 3 bài kiểm dưới báo hỏng oan
     const diHet = () => {
         const v0 = v.vong; let n = 0;
@@ -161,7 +161,7 @@ muc('ba người bỏ thì người còn lại ăn trọn, KHÔNG lật bài');
 }
 
 // ---------------------------------------------------------------- hũ phụ
-muc('HŨ PHỤ (side pot) — chỗ dễ sai nhất');
+muc('HŨ PHỤ (side pot), chỗ dễ sai nhất');
 {
     // dựng tay: 3 người all-in với 3 mức chip khác nhau
     const g = moi({ lichBlind: [{ sb: 10, bb: 20 }] });
@@ -221,7 +221,7 @@ muc('CHIA HŨ LẺ CHIP + tiền người bỏ bài để lại');
         Math.max(...['A', 'B', 'C'].map(x => an[x])) - Math.min(...['A', 'B', 'C'].map(x => an[x])) === 1,
         JSON.stringify(an));
     // Nút cái giờ NGẪU NHIÊN nên người sát trái có thể là D (đã bỏ bài, không được chia).
-    // Luật đúng: chip lẻ về người ĐẦU TIÊN CÒN BÀI khi đi từ trái nút cái — tự tìm ra.
+    // Luật đúng: chip lẻ về người ĐẦU TIÊN CÒN BÀI khi đi từ trái nút cái, tự tìm ra.
     let mong = null;
     for (let k = 1; k <= 4 && !mong; k++) {
         const id = G.nguoi[(G.nutCai + k) % 4].id;
@@ -262,7 +262,7 @@ muc('mức blind tăng theo giờ');
     ok('ván chưa xong thì không mở ván mới được', loi);
 }
 
-muc('LÊN MỨC THEO VÒNG — đi giáp bàn là lên, dù chưa hết giờ');
+muc('LÊN MỨC THEO VÒNG, đi giáp bàn là lên, dù chưa hết giờ');
 {
     // ghim giờ cực xa để CHỈ còn luật vòng tác dụng
     const g = moi({ phutMoiMuc: 999999, vanToiThieuMoiMuc: 0 });
@@ -311,7 +311,7 @@ muc('LÊN MỨC THEO VÒNG — đi giáp bàn là lên, dù chưa hết giờ');
 }
 
 // ---------------------------------------------------------------- nút cái
-muc('SÀN VÁN MỖI MỨC — bàn ít người không được lên blind quá nhanh');
+muc('SÀN VÁN MỖI MỨC, bàn ít người không được lên blind quá nhanh');
 {
     // Mô phỏng chỉ ra: không sàn thì 2 người cứ 2 ván lên một mức (~1 phút), giải tàn
     // trong 10 phút. Sàn mặc định 6: lên mức sau max(số người, 6) ván.
@@ -496,7 +496,7 @@ const TAM = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(x => ({ id: x, ten: 'Ng
 }
 
 // ---------------------------------------------------------------- AFK
-muc('RỚT MẠNG (AFK) — tự bỏ bài tới khi vào lại');
+muc('RỚT MẠNG (AFK), tự bỏ bài tới khi vào lại');
 {
     const g = moi(); g.batDau(BON, 0);
     const v = g._trong.van;
@@ -510,7 +510,7 @@ muc('RỚT MẠNG (AFK) — tự bỏ bài tới khi vào lại');
 {
     // Người AFK phải đóng blind như thường, nhưng KHÔNG BAO GIỜ tự bỏ thêm đồng nào.
     //
-    // Đừng đo "chip tụt dần" — đo vậy là chập chờn: khi người AFK làm big blind mà cả
+    // Đừng đo "chip tụt dần", đo vậy là chập chờn: khi người AFK làm big blind mà cả
     // bàn chỉ theo thì lượt về họ MIỄN PHÍ, máy tự theo nên họ vẫn vào lật bài và có
     // thể thắng. Thứ luôn đúng là: tiền họ đẩy vào mỗi ván không bao giờ vượt quá
     // tiền blind bắt buộc của ván đó.
@@ -571,7 +571,7 @@ muc('RỚT MẠNG (AFK) — tự bỏ bài tới khi vào lại');
 }
 
 // ---------------------------------------------------------------- tạm ngưng
-muc('TẠM NGƯNG — đông cứng cả 2 đồng hồ');
+muc('TẠM NGƯNG, đông cứng cả 2 đồng hồ');
 {
     const g = moi({ giayMoiLuot: 30, phutMoiMuc: 10 }); g.batDau(BON, 0);
     const v = g._trong.van;
@@ -610,13 +610,13 @@ muc('TẠM NGƯNG — đông cứng cả 2 đồng hồ');
     ok('bấm chơi tiếp khi không nghỉ cũng không sao', (g.choiTiep(6000), g.choiTiep(7000).nghi === false));
 }
 
-muc('KHOE BÀI — mỗi ván 1 lá, cả bàn xem 4 giây rồi tự đóng');
+muc('KHOE BÀI, mỗi ván 1 lá, cả bàn xem 4 giây rồi tự đóng');
 {
     const g = moi(); g.batDau(BON, 0);
     const v = g._trong.van;
     const baiA = v.tay.A.slice();
     // Khoe bài chạy theo ĐỒNG HỒ THẬT (hết hạn sau 4 giây), nên ở đây không dùng
-    // mốc giờ giả như mấy phép đo khác — dùng giả thì lá coi như hết hạn ngay.
+    // mốc giờ giả như mấy phép đo khác, dùng giả thì lá coi như hết hạn ngay.
     let s = g.khoeBai('A', 1);
     ok('khoe được 1 lá', s.van.khoe.length === 1, JSON.stringify(s.van.khoe));
     ok('khoe đúng lá mình chọn (lá thứ 2)',
@@ -630,7 +630,7 @@ muc('KHOE BÀI — mỗi ván 1 lá, cả bàn xem 4 giây rồi tự đóng');
     ok('khoe lá thứ 2 trong cùng ván thì bị chặn', loi);
     ok('có ghi nhận A đã dùng lượt khoe', g.xemChung().van.daKhoe.indexOf('A') >= 0);
 
-    // hết 4 giây thì tự biến mất — đẩy lùi mốc hết hạn thay vì ngồi chờ thật
+    // hết 4 giây thì tự biến mất, đẩy lùi mốc hết hạn thay vì ngồi chờ thật
     ok('hạn đúng 4 giây kể từ lúc khoe',
         Math.abs(v.khoe.A.den - Date.now() - 4000) < 1500, String(v.khoe.A.den - Date.now()));
     v.khoe.A.den = Date.now() - 1;
@@ -804,7 +804,7 @@ muc('tên tay 2 lá preflop (toi.tenTay)');
 }
 
 // ---------------------------------------------------------------- vào muộn (18/09)
-muc('VÀO MUỘN — giải chạy dưới 60 giây thì người mới vẫn vào được, đánh từ ván kế');
+muc('VÀO MUỘN, giải chạy dưới 60 giây thì người mới vẫn vào được, đánh từ ván kế');
 {
     const g = moi({ lichBlind: [{ sb: 10, bb: 20 }], giayLoDan: 0 });
     let s = g.batDau([{ id: 'A', ten: 'A', ghe: 0 }, { id: 'B', ten: 'B', ghe: 1 }], 1000);

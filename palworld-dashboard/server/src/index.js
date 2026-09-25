@@ -96,7 +96,7 @@ app.post(
 
 // 🎁 Giao PAL (rương pal web, 25/08). Bot gọi khi người chơi bấm NHẬN trong Hồ sơ.
 // species có thể mang tiền tố BOSS_ (pal boss). Linh hồn 0-20 bậc (20 = +60%).
-// Pal dùng được sau restart server — chuyện của game, không phải lỗi giao.
+// Pal dùng được sau restart server, chuyện của game, không phải lỗi giao.
 // 🆘 Tẩu thoát khẩn cấp (09/09): bot gọi khi người chơi bấm nút trên Hồ sơ web.
 app.post(
   "/api/rescue",
@@ -126,7 +126,7 @@ app.post(
     if (!/^[A-Za-z0-9_]+$/.test(species)) throw new ValidationError("Mã pal chỉ gồm chữ/số/gạch dưới");
     // 26/08: MỞ TRẦN theo yêu cầu chủ server (đã kiểm chứng bằng Creative Menu in-game):
     // tối đa 8 passive, IV tới 255, linh hồn tới rank 255 (~765%). Trần THẬT nằm ở
-    // cấu hình bot (panel chỉnh) — đây chỉ là lưới an toàn chống dữ liệu rác.
+    // cấu hình bot (panel chỉnh), đây chỉ là lưới an toàn chống dữ liệu rác.
     const passives = Array.isArray(req.body.passives) ? req.body.passives.map(String) : [];
     if (passives.length > 8) throw new ValidationError("Tối đa 8 passive");
     for (const p of passives) {
@@ -156,7 +156,7 @@ app.post(
 
 
 // ===== Đọc / trừ item trong game (cho luồng nạp: game -> Discord) =====
-// Đếm số dư trong game — chỉ đọc, an toàn.
+// Đếm số dư trong game, chỉ đọc, an toàn.
 app.get(
   "/api/item-count",
   handle(async (req) => {
@@ -166,7 +166,7 @@ app.get(
   })
 );
 
-// Đếm cho tất cả người đang online trong 1 lượt — dùng cho bảng số dư tự cập nhật.
+// Đếm cho tất cả người đang online trong 1 lượt, dùng cho bảng số dư tự cập nhật.
 app.get(
   "/api/item-count-all",
   handle(async (req) => {
@@ -176,7 +176,7 @@ app.get(
 );
 
 // TRỪ item trong túi người chơi. Bên gọi phải kiểm tra `took` đúng bằng số yêu cầu
-// trước khi cộng tiền ở hệ thống ngoài — chỉ tin cờ ok là chưa đủ.
+// trước khi cộng tiền ở hệ thống ngoài, chỉ tin cờ ok là chưa đủ.
 app.post(
   "/api/take-item",
   handle(async (req) => {
@@ -238,7 +238,7 @@ app.post(
         );
       }
       if (matches.length > 1) {
-        throw new ValidationError(`Có ${matches.length} người trùng tên "${ingameName}" — dùng steamId để chỉ rõ.`);
+        throw new ValidationError(`Có ${matches.length} người trùng tên "${ingameName}", dùng steamId để chỉ rõ.`);
       }
       steamId = matches[0].userId;
       ingameName = String(matches[0].name ?? "").replace(/[^\x20-\x7E]/g, "").trim();
@@ -247,7 +247,7 @@ app.post(
     // Chặn 2 Discord trỏ cùng 1 nhân vật: sẽ giao dogcoin cho sai người.
     const taken = findBySteamId(steamId);
     if (taken && taken.discordId !== discordId) {
-      throw new ValidationError(`Nhân vật này đã liên kết với Discord ID ${taken.discordId} — hủy liên kết cũ trước.`);
+      throw new ValidationError(`Nhân vật này đã liên kết với Discord ID ${taken.discordId}, hủy liên kết cũ trước.`);
     }
 
     return { link: saveLink({ discordId, discordName, steamId, ingameName }) };
@@ -261,7 +261,7 @@ app.delete(
 
 const port = process.env.PORT || 3000;
 // Mặc định CHỈ nghe trên localhost. Quan trọng khi chạy trên VPS: nếu nghe mọi
-// interface thì cả internet vào được dashboard, chỉ chặn bằng basic auth — quá rủi ro
+// interface thì cả internet vào được dashboard, chỉ chặn bằng basic auth, quá rủi ro
 // (tặng item vô hạn). Bot Discord chạy cùng máy nên gọi localhost là đủ.
 // Muốn truy cập từ xa: dùng SSH tunnel, đừng đổi HOST thành 0.0.0.0.
 //   ssh -L 3000:localhost:3000 -p <cong-ssh> root@<ip-vps>

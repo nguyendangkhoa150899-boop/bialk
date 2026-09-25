@@ -1,10 +1,10 @@
 // ============================================================================
-//  Bộ kiểm TRANG PANEL SUPER — dựng panel THẬT, lấy trang về, kiểm JS CHẠY TRONG
+//  Bộ kiểm TRANG PANEL SUPER, dựng panel THẬT, lấy trang về, kiểm JS CHẠY TRONG
 //  TRÌNH DUYỆT có lỗi cú pháp không, và thử đăng nhập.
 //
 //  ⚠️ VÌ SAO PHẢI CÓ FILE NÀY (20/09): cả trang panel là MỘT template literal khổng lồ trong
 //  panel.js. Viết \' trong đó thì template literal NUỐT dấu gạch, trang đích ra  tlLuu(''+x+'')
-//  — hai chuỗi dính nhau = LỖI CÚ PHÁP = CHẾT TOÀN BỘ JS CỦA TRANG. Admin bấm đăng nhập không
+// , hai chuỗi dính nhau = LỖI CÚ PHÁP = CHẾT TOÀN BỘ JS CỦA TRANG. Admin bấm đăng nhập không
 //  ăn, bấm gì cũng không ăn, mà console của bot thì im ru vì lỗi nằm ở phía trình duyệt.
 //  `node --check panel.js` KHÔNG bắt được: bản thân panel.js đúng cú pháp, thứ hỏng là cái
 //  CHUỖI nó sinh ra. Muốn ra chữ \' ở trang đích thì trong nguồn phải viết \\'.
@@ -80,7 +80,7 @@ function xin(duong, than, token) {
 
     // Bẫy riêng cho đúng kiểu lỗi đã dính: dấu nháy đóng mở dính nhau trong onclick.
     const dinh = (trang.b.match(/onclick="[A-Za-z0-9_]+\(''\+/g) || []);
-    ok("KHÔNG có onclick kiểu ham(''+x+'') — dấu \\' bị template literal nuốt",
+    ok("KHÔNG có onclick kiểu ham(''+x+''), dấu \\' bị template literal nuốt",
         dinh.length === 0, dinh.join(' | '));
 
     muc('🔑 đăng nhập');
@@ -115,7 +115,7 @@ function xin(duong, than, token) {
     ok('🆙 PAL GỐC: trang có ô nhập CẤP pal', /id="pwRawLevel"/.test(trang.b));
     ok('...gửi lên máy chủ kèm rawLevel và chặn ngoài 1–100',
         /rawLevel:lv/.test(trang.b) && /Cấp pal 1–100/.test(trang.b));
-    ok('⭐ index KHÔNG còn cứng Lv1 — pal gốc giao ra theo cfg.rawLevel',
+    ok('⭐ index KHÔNG còn cứng Lv1, pal gốc giao ra theo cfg.rawLevel',
         /level: Math\.max\(1, Math\.min\(100, Math\.floor\(cfg\.rawLevel\) \|\| 1\)\), rank: 0,/.test(IDX) && !/\n\s+level: 1, rank: 0,/.test(IDX));
     ok('...cấu hình có rawLevel, mặc định 1, kẹp 1–100 (cùng phạm vi với cấp của chế độ thường)',
         /rawLevel: Math\.floor\(num\(c\.rawLevel, 1, 1, 100\)\)/.test(IDX));

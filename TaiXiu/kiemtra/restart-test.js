@@ -1,7 +1,7 @@
-// Bộ kiểm CỨU TIỀN LÚC BOT BẬT LẠI — chạy: node TaiXiu/kiemtra/restart-test.js
+// Bộ kiểm CỨU TIỀN LÚC BOT BẬT LẠI, chạy: node TaiXiu/kiemtra/restart-test.js
 // Không cần bot: trích đúng đoạn logic ra chạy thử với dữ liệu giả.
 //
-// Vì sao có file này — lỗi THẬT có sẵn từ trước:
+// Vì sao có file này, lỗi THẬT có sẵn từ trước:
 //   Lúc bot bật lại có HAI đường cứu tiền chạy nối nhau:
 //     · refundBootPendingBets()  hoàn TIỀN CƯỢC theo dbCache._txBets
 //     · khối khôi phục _txPlan   trả TIỀN THẮNG theo kế hoạch đã chốt

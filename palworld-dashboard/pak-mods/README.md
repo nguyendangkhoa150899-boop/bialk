@@ -1,6 +1,6 @@
 # Pak mods cho server (Linux native)
 
-Mod dạng `.pak` — không cần UE4SS/PalSchema/Wine. Các file độc lập, muốn tắt cái nào
+Mod dạng `.pak`, không cần UE4SS/PalSchema/Wine. Các file độc lập, muốn tắt cái nào
 thì xóa file đó khỏi `~mods/` rồi restart:
 
 | File | Tác dụng |
@@ -21,7 +21,7 @@ chỉ trả 1 entry/thư mục nên không liệt kê được `~mods/` - phải
 (`scratchpad/prod_paks.js`).
 
 **Đồ nghề build đã lưu bền tại `C:\Users\Khoa\Desktop\palworld\pak-tools\`**
-(repak.exe + UAssetCLI + json đã vá) — khỏi tải lại. Game gốc: `E:\SteamLibrary\steamapps\common\Palworld\Pal\Content\Paks\Pal-Windows.pak`.
+(repak.exe + UAssetCLI + json đã vá), khỏi tải lại. Game gốc: `E:\SteamLibrary\steamapps\common\Palworld\Pal\Content\Paks\Pal-Windows.pak`.
 
 ---
 
@@ -42,7 +42,7 @@ Giữ nguyên: slot 10–12 chứa `TechnologyBook_G1/G2/G3` + `AncientTechnolog
 (sách kỹ năng vẫn rơi bình thường), và toàn bộ slot khác.
 
 **Cảnh giác slot 14**: ở dòng `_01..._04` nó bằng 0 sẵn nên nhìn dòng `_01` sẽ tưởng slot này
-"không tồn tại" — nhưng dòng `_05` (relic bậc cao nhất) có 19.44% toàn implant. Danh sách
+"không tồn tại", nhưng dòng `_05` (relic bậc cao nhất) có 19.44% toàn implant. Danh sách
 vật phẩm mỗi slot **khác nhau giữa các dòng**, phải soi đủ cả 5 dòng trong `DT_ItemLotteryDataTable`.
 
 ## Cài đặt
@@ -81,7 +81,7 @@ repak pack build BialkServer_P.pak --version V11 -p 764445180
 
 ## Những chỗ dễ vấp
 
-- **Số 0 phải ghi là `"+0"`**, không phải `0.0` — đó là cách UAssetAPI biểu diễn float 0
+- **Số 0 phải ghi là `"+0"`**, không phải `0.0`, đó là cách UAssetAPI biểu diễn float 0
   trong file này (các slot vốn bằng 0 đều hiện `"+0"`).
 - **Không dùng UAssetGUI CLI**: bản v1.1.0 nhận lệnh `tojson` rồi thoát exit 0 mà không
   tạo file, cũng không báo lỗi. UAssetCLI in lỗi rõ ràng ra stdout.
@@ -99,12 +99,12 @@ repak pack build BialkServer_P.pak --version V11 -p 764445180
 
 ---
 
-# BialkNoDrop_P.pak — v2 rồi v3 (17/09/2026)
+# BialkNoDrop_P.pak, v2 rồi v3 (17/09/2026)
 
 **Bản đang dùng = v3.** v2 = thêm Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`);
 v3 = thêm Linh Kiện Văn Minh Cổ Đại rơi 1-2 cái (mục con cuối). Cả hai nằm chung 1 pak vì cùng bảng.
 
-## v2 — Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`)
+## v2, Jetragon + Aegidron KHÔNG rớt Lõi Siêu Nhiệt (`Thermal_Core`)
 
 Cùng file với Silvance/Dandilord (nhóm B, `DT_PalDropItem` + `_Common`) → phải gộp vào pak này, không tách.
 Khác đời trước: chỉ tắt **đúng slot** có `Thermal_Core`, mọi món khác của 2 pal **giữ nguyên** (Diamond 30%, WorldTreeRelic…).
@@ -116,7 +116,7 @@ Khác đời trước: chỉ tắt **đúng slot** có `Thermal_Core`, mọi mó
 | `DomeArmorDragon070` (Aegidron Lv70) | 1 | 100 → +0 |
 | `DomeArmorDragon080` (Aegidron Lv80) | 7 | 100 → +0 |
 | `BOSS_JetDragon000` | 3 | vốn đã +0 (game gốc) |
-| `BOSS_DomeArmorDragon000/070` | — | không có Thermal_Core |
+| `BOSS_DomeArmorDragon000/070` |, | không có Thermal_Core |
 
 Script: `scripts/patch_paldrop_item.js --check <json> --item=Thermal_Core --pals=JetDragon,DomeArmorDragon` (quét theo
 CharacterID bỏ tiền tố BOSS_ → bắt đủ mọi biến thể 000/070/080/BOSS). Bảng gốc lấy từ pak v1 (repak unpack → tojson).
@@ -128,7 +128,7 @@ Bản v1 (chỉ Silvance/Dandilord) = git trước commit 17/09.
 ⚠️ **Size KHÔNG phân biệt được đời pak này**: v1, v2, v3 đều **328.821 B**; `BialkServer_ZExpedition_P.pak` cũ và mới
 đều **20.181 B**. Nhìn kích thước trong File Manager thấy "khớp" **không chứng minh** đã lên đúng bản - chỉ md5 mới chắc.
 
-## v3 (17/09/2026 chiều) — Linh Kiện Văn Minh Cổ Đại (`PalCrystal_Ex`) rơi **1-2 cái** thay vì 1-9
+## v3 (17/09/2026 chiều), Linh Kiện Văn Minh Cổ Đại (`PalCrystal_Ex`) rơi **1-2 cái** thay vì 1-9
 
 Chủ server chốt **GIẢM, KHÔNG CHẶN** (lý do: món này đang bán trên web shop, chặn hẳn thì 345 công thức chế đồ
 - kể cả đồ tầm trung `Sword_4`, `Katana_2`, `WeakerBow_5`, `BowGun_5`, `CompoundBow_2` - hết đường kiếm trong game,
@@ -141,7 +141,7 @@ vì thám hiểm đã bị `…ZExpedition` chặn và máy nghiền không rớ
 |---|---|---|
 | `min<i>` / `Max<i>` của slot `PalCrystal_Ex`, mọi dòng `BOSS_*`, cả 2 bảng | 1-1 … 8-9 | **1-2** |
 | `Rate<i>` của chính slot đó | 100 (hoặc 0) | **giữ nguyên** |
-| Mọi slot khác, mọi dòng khác | — | **giữ nguyên** |
+| Mọi slot khác, mọi dòng khác |, | **giữ nguyên** |
 
 Script: `scripts/patch_paldrop_item.js <in> <out> --item=PalCrystal_Ex --pals='~.' --setmin=1 --setmax=2`
 (cờ `--setmin/--setmax` mới: có nó thì **không đụng Rate**, chỉ sửa số lượng; tên field trong bảng là `min<i>`
@@ -150,7 +150,7 @@ chữ thường và `Max<i>` chữ hoa). Chạy cho **cả** `DT_PalDropItem` v�
 Verify bung ngược (`scratchpad tools/crystal/verify_crystal.js`): mỗi bảng 556 giá trị đổi, **0 khác lạ**, 0 Rate bị
 đụng, 334/334 slot ra đúng 1-2, các slot `Thermal_Core` của Jetragon/Aegidron vẫn `+0` (phần v2 còn nguyên).
 
-## v3 — cùng lúc: `--item=` nhận regex
+## v3, cùng lúc: `--item=` nhận regex
 
 `--item=~^Blueprint_` để quét nhóm món. Dùng để **đo** (không vá) 24 dòng `BOSS_*` rớt bản vẽ 3% - xem mục
 "Bản vẽ" ở pak `…ZExpedition` bên dưới.
@@ -164,10 +164,10 @@ Silvance không rớt bất kỳ đồ gì, mọi cấp độ, cả bản thư�
 ## Nội dung
 
 Sửa `Pal/Content/Pal/DataTable/Character/DT_PalDropItem` **và** `DT_PalDropItem_Common`
-(vá cả 2 biến thể cho chắc — không rõ server load bản nào).
+(vá cả 2 biến thể cho chắc, không rõ server load bản nào).
 
 Silvance = mã nội bộ **`Mothman`** (xác nhận qua `DT_PalNameText_Common` bản en).
-Bảng rơi đồ có **4 dòng** cho nó — toàn bộ `Rate1..Rate10` đặt về `"+0"`:
+Bảng rơi đồ có **4 dòng** cho nó, toàn bộ `Rate1..Rate10` đặt về `"+0"`:
 
 | Dòng | Áp dụng | Đồ gốc đáng chú ý |
 |---|---|---|
@@ -177,7 +177,7 @@ Bảng rơi đồ có **4 dòng** cho nó — toàn bộ `Rate1..Rate10` đặt 
 | `BOSS_Mothman070` | boss, cấp ≥ 70 | UniqueMaterial_Mothman, WorldTreeRelic_01..05 |
 
 **Bài học quan trọng**: đây là lý do bản PalSchema cũ (`drop_silvance.json`) thất bại với
-Silvance cấp cao — nó chỉ vá 2 dòng `*000`, không biết tồn tại 2 dòng `*070` dành riêng
+Silvance cấp cao, nó chỉ vá 2 dòng `*000`, không biết tồn tại 2 dòng `*070` dành riêng
 cho cấp ≥ 70. Muốn tắt drop một pal phải grep đủ MỌI dòng có `CharacterID` trùng.
 
 ## Lưu ý phạm vi
@@ -207,7 +207,7 @@ lv80, giảm sát thương +20 điểm, attack ×1.2) → **v17 03/09** (Ultra g
 v15 28/08) nằm cạnh file chính → 2 pak đè cùng 4 bảng → đã gỡ khỏi `~mods/` test (bản sao: git
 `e23ae99`). Prod chỉ nên có MỘT file `BialkRaidTimer_P.pak`.
 
-**Bản v18 (09/09/2026, nền v17) — thêm: BOSS THÁP HẾT CÀY EXP.** 21 dòng `GYM_*` (boss tháp + bản Hard
+**Bản v18 (09/09/2026, nền v17), thêm: BOSS THÁP HẾT CÀY EXP.** 21 dòng `GYM_*` (boss tháp + bản Hard
 `_2` + Avatar/Servant/Otomo) trong `DT_PalMonsterParameter` + `_Common`: `ExpRatio` **30–35 → 1**
 (20 dòng đổi mỗi bảng, `GYM_ElecPanda_Otomo` vốn 1). Lý do: game KHÔNG có cooldown tháp
 (`PalBossBattleManager` chỉ có Entry/Cancel/Exit, không có đếm lần) - chặn cứng bằng Lua
@@ -220,9 +220,9 @@ theo mốc 4 byte vì property trong uexp không canh 4 → 20 offset → kiểm
 3333 giữ). 8 file còn lại trong pak byte giống v17. Bản v17 = git `3f00641`. Đã chép lên `~mods/` server TEST, **chưa test trong game**: đánh
 lại tháp phải thấy EXP nhỏ như pal thường; lần đầu vẫn nhận điểm công nghệ.
 
-Boss triệu hồi ở Tế đàn (Summoning Altar) — bản v7 (09/08/2026):
+Boss triệu hồi ở Tế đàn (Summoning Altar), bản v7 (09/08/2026):
 
-0. **CHỈ Ultra/Master thành boss trường kỳ** (mọi boss THƯỜNG nguyên bản game) —
+0. **CHỈ Ultra/Master thành boss trường kỳ** (mọi boss THƯỜNG nguyên bản game)
    chỉnh trong `DT_PalMonsterParameter*` (đường vá phẫu thuật, xem mục FName bên
    dưới). Máu hiệu dụng Ultra ~18-22M, bỏ giáp dày, attack còn 250-350%:
 
@@ -243,7 +243,7 @@ Boss triệu hồi ở Tế đàn (Summoning Altar) — bản v7 (09/08/2026):
 1. Thời gian đánh boss: **4 TIẾNG** (`TimeLimit = 14400`; bản 900 = 15 phút đã test OK
    trong game). Lưu ý: server restart giữa trận là boss biến mất (trạng thái raid
    không lưu vào save).
-2. Trứng rớt **như game gốc** (bản v2 từng xóa trứng — đã bỏ), NHƯNG pal raid nở ra
+2. Trứng rớt **như game gốc** (bản v2 từng xóa trứng, đã bỏ), NHƯNG pal raid nở ra
    **không phối giống được**: 10 dòng (NightLady, NightLady_Dark, KingBahamut_Dragon,
    DarkMechaDragon, LegendDeer + 5 bản BOSS_) đặt `MaleProbability = 0` trong
    `DT_PalMonsterParameter` + `_Common` → toàn con cái, cùng loài không ghép đôi được,
@@ -259,14 +259,14 @@ bàn phẫu thuật (đổi giới tính) là mở lại đường sinh sản.
 Sửa `Pal/Content/Pal/Blueprint/RaidBoss/BP_PalRaidBossManager`: **thêm** property
 `TimeLimit` (float) = `900.0` vào CDO (`Default__BP_PalRaidBossManager_C`).
 
-**Điểm mấu chốt**: `TimeLimit` KHÔNG có sẵn trong blueprint — giá trị mặc định 600 giây
+**Điểm mấu chốt**: `TimeLimit` KHÔNG có sẵn trong blueprint, giá trị mặc định 600 giây
 nằm trong C++ class `PalRaidBossManager` (`/Script/Pal`). Vì Palworld dùng unversioned
 properties + có schema trong `Mappings.usmap`, chỉ cần THÊM property vào CDO là engine
 đọc được và override giá trị C++. Đây là đúng kỹ thuật của mod
 [Longer Boss Battle Timer](https://www.nexusmods.com/palworld/mods/3694) trên Nexus
 (`setOrAddScalar: BP_PalRaidBossManager :: TimeLimit`).
 
-Thứ tự property trong Data không cần lo — UAssetAPI tự xếp theo schema khi ghi
+Thứ tự property trong Data không cần lo, UAssetAPI tự xếp theo schema khi ghi
 (đọc ngược thấy `TimeLimit` nằm sau `RaidBossDataTable`, trước `BattleAreaRadius`).
 
 Muốn đổi thời gian khác: sửa `Value` của `TimeLimit` trong
@@ -274,22 +274,22 @@ Muốn đổi thời gian khác: sửa `Value` của `TimeLimit` trong
 
 ## Nội dung 2: chặn phối giống pal raid (DT_PalMonsterParameter + _Common)
 
-**⚠️ BẢNG NÀY DÍNH BUG FNAME — KHÔNG round-trip qua JSON được.** Các dòng
+**⚠️ BẢNG NÀY DÍNH BUG FNAME, KHÔNG round-trip qua JSON được.** Các dòng
 `RAID_*_2` (boss Ultra) có enum Tribe đuôi `_2` (vd `YakushimaBoss002_2`);
 UAssetAPI tách `_2` thành instance number và ghi lại sai thành `YakushimaBoss002`
 → hỏng Tribe của boss Ultra. Round-trip check đã bắt được (uexp lệch byte).
 
-**Cách vá an toàn đã dùng — VÁ BYTE PHẪU THUẬT** (scripts trong `pak-tools\`):
+**Cách vá an toàn đã dùng, VÁ BYTE PHẪU THUẬT** (scripts trong `pak-tools\`):
 1. `patch_nobreed.js`: sửa JSON MaleProbability=0 (giữ `IsZero=false` để không lệch cấu trúc)
 2. fromjson cả bản gốc lẫn bản sửa → 2 file rebuild CHỈ dùng làm bản đồ định vị
 3. `surgical_patch.js`: diff 2 bản rebuild → ra đúng 10 offset byte → ghi giá trị mới
    vào **file uexp GỐC nguyên vẹn** (kiểm tra byte gốc = byte rebuild-gốc tại từng offset
-   trước khi ghi — lệch là dừng)
+   trước khi ghi, lệch là dừng)
 4. `verify_surgical.js`: tojson file đã vá, so TỪNG DÒNG với gốc → phải ra đúng
    10 khác biệt MaleProbability, 0 khác biệt khác, Tribe nguyên vẹn. Kết quả: ĐẠT cả 2 bảng.
 
 Lịch sử bản v2 (đã bỏ): xóa trứng bằng cách làm rỗng `EggPalIDAndWeight` trong
-`DT_PalRaidBoss*` — script `pak-tools\patch_eggs.js` còn giữ nếu muốn quay lại.
+`DT_PalRaidBoss*`, script `pak-tools\patch_eggs.js` còn giữ nếu muốn quay lại.
 
 ## Cài đặt
 
@@ -307,11 +307,11 @@ Chép vào `Pal/Content/Paks/~mods/` trên server rồi restart. Không cần mo
   2. Ghép 2 con cùng loài ở trại phối giống → phải báo không ghép được (thiếu đực).
   3. Boss thường phải y hệt game gốc (máu/giáp/damage cũ).
   4. Ultra: máu hiển thị ~14-17M, đánh thấy máu tụt rõ (hết giáp 91%), không one-shot.
-  5. Cân bằng 2-3 tiếng là ước tính từ DPS đội — đánh thử 1 trận rồi chỉnh CONFIG
+  5. Cân bằng 2-3 tiếng là ước tính từ DPS đội, đánh thử 1 trận rồi chỉnh CONFIG
      trong `patch_raidhp.js` nếu nhanh/chậm quá.
 
 Ghi chú: pak thay **nguyên bảng** `DT_PalMonsterParameter*` (bảng chỉ số của TOÀN BỘ
-pal). Game update đổi chỉ số pal là phải trích lại bảng mới và vá lại — và nhớ dùng
+pal). Game update đổi chỉ số pal là phải trích lại bảng mới và vá lại, và nhớ dùng
 đường vá phẫu thuật, KHÔNG round-trip JSON (bug FName ở trên).
 
 **Phát hiện từ data gốc**: 2 dòng Moon Lord (`PalSummon_YakushimaBoss002*`) trong game
@@ -323,26 +323,26 @@ với tổng weight `EggPalIDAndWeight` = 0.3 → kết quả **10/10 trận v�
 Code game TỰ CHUẨN HÓA weight → weight chỉ là xổ số chọn con TRONG trứng, không
 phải tỉ lệ rớt. Chốt: trứng raid chỉ có 2 nấc **0% (map rỗng) hoặc 100%**; thứ
 chỉnh được thêm là tỉ lệ ruột (gốc: BOSS 10% / thường 90%). Đừng thử lại "X%".
-(Pak test đã xóa; script scale weight còn ở `pak-tools\patch_eggs_rate.js` — chỉ
+(Pak test đã xóa; script scale weight còn ở `pak-tools\patch_eggs_rate.js`, chỉ
 còn hữu ích nếu muốn đổi tỉ lệ BOSS/thường.)
 
 ---
 
-# (Đã gỡ) Thử nghiệm bàn phẫu thuật — BialkSurgery_P.pak
+# (Đã gỡ) Thử nghiệm bàn phẫu thuật, BialkSurgery_P.pak
 
 Đã thử thêm 7 passive khóa drop (Lucky=`Rare`, Legend, Siren of the Void=`Witch`,
 Eternal Flame, Invader, Lunker=`Nushi`, Savior=`Salvation`) vào
 `DT_OperatingTablePassiveSkillDataTable` (pattern WorldTree: 0 vàng + item
 `PalPassiveSkillChange_Consumable_*`). **Kết quả test 09/08/2026: cài cả client
 (local) vẫn không thấy dòng mới trong menu → đã gỡ pak.** Nghi vấn chưa kiểm chứng:
-UI có thể chỉ hiện ca yêu cầu item khi người chơi ĐANG CÓ item đó trong túi — chưa
+UI có thể chỉ hiện ca yêu cầu item khi người chơi ĐANG CÓ item đó trong túi, chưa
 test lại với item trong túi (spawn `PalPassiveSkillChange_Consumable_Legend` bằng
 CreativeMenu rồi mở bàn là biết).
 
 Bài học đã xác minh (giữ lại để khỏi nghiên cứu lại):
 
 - Struct `PalOperatingTablePassiveSkillData` chỉ có 3 field: `PassiveSkill` (FName),
-  `Price` (int32, **luôn là vàng** — native code trừ, không đổi loại tiền được),
+  `Price` (int32, **luôn là vàng**, native code trừ, không đổi loại tiền được),
   `RequireItemId` (FName, cố định 1 item, **không có field số lượng**).
 - → Không thể đặt giá phẫu thuật bằng "X DogCoin". Tối đa: `RequireItemId = DogCoin`
   = đồng giá 1 xu mọi ca.
@@ -360,7 +360,7 @@ theo giá DogCoin.
 
 **Vô hiệu hóa bàn phẫu thuật trên TOÀN server, phía server, người chơi không cần cài gì.**
 
-Lý do: nghiệp vụ bàn phẫu thuật do CLIENT quyết (đã chứng minh 2 chiều — server thêm
+Lý do: nghiệp vụ bàn phẫu thuật do CLIENT quyết (đã chứng minh 2 chiều, server thêm
 dòng thì client không thấy; client mod bảng thì server vẫn làm theo). Người chơi cài
 mod bàn phẫu thuật local là tự đổi passive thoải mái, không qua shop DogCoin. Không
 chặn được validation (code native) → giải pháp: **giết chức năng cái bàn ở tầng server**.
@@ -369,12 +369,12 @@ chặn được validation (code native) → giải pháp: **giết chức năng
 
 Sửa `Pal/Content/Pal/Blueprint/MapObject/BuildObject/BP_BuildObject_OperatingTable`:
 đổi import `ConcreteModelClass` từ `PalMapObjectOperatingTableModel` (model xử lý
-phẫu thuật phía server) → **`PalMapObjectConcreteModel`** (model trơ — các công trình
+phẫu thuật phía server) → **`PalMapObjectConcreteModel`** (model trơ, các công trình
 không chức năng như tường dùng mặc định này). Bàn vẫn xây/hiển thị bình thường nhưng
 server không còn bộ xử lý phẫu thuật → yêu cầu đổi passive/giới tính từ bất kỳ client
 nào (kể cả client mod) không có nơi nhận.
 
-Đánh đổi: phẫu thuật hợp lệ (đổi giới tính, cấy passive trả vàng) cũng chết theo —
+Đánh đổi: phẫu thuật hợp lệ (đổi giới tính, cấy passive trả vàng) cũng chết theo
 chấp nhận vì kinh tế server đi qua shop pal/ticket.
 
 ## Đã kiểm chứng
@@ -382,7 +382,7 @@ chấp nhận vì kinh tế server đi qua shop pal/ticket.
 - Round-trip blueprint gốc: byte giống hệt. Đọc ngược file vá: `ConcreteModelClass`
   → `PalMapObjectConcreteModel`, không còn tham chiếu model cũ. Pak hash khớp, V11 + seed chuẩn.
 
-**Chưa test trong game.** Quy trình test (LÀM LOCAL TRƯỚC — có rủi ro load save):
+**Chưa test trong game.** Quy trình test (LÀM LOCAL TRƯỚC, có rủi ro load save):
 
 1. Local (single player = mình là server): vào world, **xây bàn phẫu thuật trước khi
    cài pak**, thoát. Cài pak vào `~mods` client. Vào lại world:
@@ -399,7 +399,7 @@ chuyển sang phương án quét save định kỳ tìm passive bất hợp lệ
 
 ---
 
-# BialkShopOff_P.pak — THƯƠNG NHÂN KHÔNG BÁN GÌ (ĐÃ BUILD 09/09/2026, chờ test)
+# BialkShopOff_P.pak, THƯƠNG NHÂN KHÔNG BÁN GÌ (ĐÃ BUILD 09/09/2026, chờ test)
 
 **Mục đích (09/09/2026):** kinh tế server đi hết qua 🛒 Shop Dogcoin trên web, nên thương
 nhân NPC trong game (làng, sa mạc, núi lửa, huy chương, tiền thưởng, đấu trường, đoàn lữ
@@ -468,22 +468,22 @@ và `_Common` phải vá CÙNG bộ lọc; (3) bản pak mới thay thế `Bialk
 - **Khả thi, dễ hơn BialkSurgeryOff**: đây là mod **DataTable** (cùng quy trình
   `BialkServer_P.pak`: UAssetCLI tojson → vá JSON → fromjson → repak), không đụng blueprint.
 - **Hàng bán nằm ở 2 bảng** (đường dẫn theo pwmodding.wiki + các mod Nexus):
-  - `Pal/Content/Pal/DataTable/ItemShop/DT_ItemShopCreateData_Common` — mỗi dòng = 1 shop
+  - `Pal/Content/Pal/DataTable/ItemShop/DT_ItemShopCreateData_Common`, mỗi dòng = 1 shop
     (`Village_Shop_1`, Desert, Volcano, Medal, Bounty, Arena, Caravan, Dungeon…), field
     `ProductDataArray[]` gồm `StaticItemId · ProductType (Normal/OnlyPurchaseOne) ·
     OverridePrice · ProductNum · Stock`. **`Stock = -1` = "not visible in shop"** (0 = vô hạn,
     ≥1 = giới hạn/ngày) → cách tắt sạch nhất là đặt Stock = -1 cho MỌI sản phẩm, giữ cấu trúc.
-  - `Pal/Content/Pal/DataTable/ItemShop/DT_PalShopCreateData_Common` — người buôn Pal +
+  - `Pal/Content/Pal/DataTable/ItemShop/DT_PalShopCreateData_Common`, người buôn Pal +
     chợ đen bán pal. Nếu struct không có Stock thì làm RỖNG mảng sản phẩm (`--empty`).
   - Có thể còn bản KHÔNG hậu tố `_Common` (như DT_PalDropItem) → vá cả 2 cho chắc.
   - Thương nhân **lang thang** có hàng ngẫu nhiên: soi thêm `DT_ItemShopLotteryData*` cùng thư
     mục; nếu sau test mà thương nhân lang thang vẫn bán → vá bảng này (Stock/ mảng) nốt.
 - **Chỉ cần cài SERVER**: các mod đổi `DT_ItemShopCreateData_Common` trên Nexus (Infinitum-Shop,
   Useful Skill Fruit Shop) ghi rõ "on dedicated servers, installing it only on the server is
-  enough" — danh sách hàng do server sinh và replicate xuống client. Đúng mô hình mình cần.
+  enough", danh sách hàng do server sinh và replicate xuống client. Đúng mô hình mình cần.
 - **Không đổi**: người chơi vẫn BÁN đồ cho thương nhân lấy vàng (giá bán nằm ở
   `DT_ItemDataTable.Price`, bảng khác). Muốn chặn luôn thì bảng đó phải đặt Price = 0 cho
-  mọi item — đụng mọi thứ, KHÔNG khuyến nghị.
+  mọi item, đụng mọi thứ, KHÔNG khuyến nghị.
 - Cách khác đã cân và loại: xoá spawn NPC (dữ liệu level, khó, mất luôn nhiệm vụ/đối thoại);
   đổi ConcreteModel như bàn phẫu thuật (NPC không phải BuildObject); hook UE4SS Lua vào RPC mua
   (chạy trên Wine, dễ gãy khi game update). Vá Stock là ít rủi ro nhất.
@@ -529,7 +529,7 @@ Không có `Pal-Windows.pak` local → **rút thẳng 5 bảng từ pak của se
 `fstat` nhưng cho `sftp.read` theo offset → dò kích thước bằng đọc thử (nhân đôi rồi chia
 đôi), đọc footer 204 B → primary index → Full Directory Index (158.565 file) → decode entry
 → đọc đúng block Oodle của 10 file → giải bằng `oodle-data-shared.dll` (P/Invoke PowerShell).
-Script: scratchpad `sftp_pakget.js` (list/get theo regex) + `oodle_unpack.ps1` — nên chép về
+Script: scratchpad `sftp_pakget.js` (list/get theo regex) + `oodle_unpack.ps1`, nên chép về
 `pak-tools` để lần sau khỏi viết lại. Đồ nghề tải nóng: UAssetCLI v1.0.5 + .NET 10 runtime
 portable (dotnet-install.ps1, `-InstallDir`) + repak v0.2.3.
 
@@ -544,7 +544,7 @@ Kết quả kiểm:
 - Đọc ngược file vá: 587/587 Stock = -1, 8/8 CharacterNum = 0. Pak: V11, seed 2D9081FC,
   mount `../../../`, 6 file. Đã chép lên `~mods/` server TEST, đọc lại khớp byte.
 
-**Chưa test trong game** — chủ server restart server test rồi kiểm theo mục Test ở trên.
+**Chưa test trong game**, chủ server restart server test rồi kiểm theo mục Test ở trên.
 
 ---
 
@@ -555,11 +555,11 @@ nhiều máu vào**. EXP boss tháp (dòng `GYM_*`) để **0.7 × gốc** ở c
 
 | File | Boss raid | Cấp | EXP tháp |
 |---|---|---|---|
-| `BialkRaid_NgayThuong_P.pak` | **vanilla 100%** — thường 333k–1,41M · ultra 1,95–2,56M, giáp 91%, atk 1000–1300% | vanilla 35/45/55/65/70 · ultra 80 | **15–17,5 (hầu 5)** — 0,5× gốc, chốt 17/09 |
-| `BialkRaid_Event_P.pak` | **buff** — thường 2/4/6/10/12M · ultra 19/20/22/25M, giáp 80%, atk 300–420% | tất cả **80** | 21–24,5 (hầu 7) — 0,7×, **chưa hạ** |
+| `BialkRaid_NgayThuong_P.pak` | **vanilla 100%**, thường 333k–1,41M · ultra 1,95–2,56M, giáp 91%, atk 1000–1300% | vanilla 35/45/55/65/70 · ultra 80 | **15–17,5 (hầu 5)**, 0,5× gốc, chốt 17/09 |
+| `BialkRaid_Event_P.pak` | **buff**, thường 2/4/6/10/12M · ultra 19/20/22/25M, giáp 80%, atk 300–420% | tất cả **80** | 21–24,5 (hầu 7), 0,7×, **chưa hạ** |
 
 ### 17/09: EXP boss tháp 0,7× → **0,5× gốc** (chỉ file NgayThuong)
-Chủ server: *"cho exp tháp về 0,5"* — cùng cách nói với lần 13/09 (`f476b76` "MOT NUA so goc 30→15, 35→17.5, 10→5, 1→0.5"),
+Chủ server: *"cho exp tháp về 0,5"*, cùng cách nói với lần 13/09 (`f476b76` "MOT NUA so goc 30→15, 35→17.5, 10→5, 1→0.5"),
 tức **0,5 × giá trị gốc của game**, không phải đặt phẳng 0,5.
 
 | Vanilla | 0,7× (cũ) | **0,5× (nay)** | Số dòng |
@@ -578,16 +578,16 @@ biệt lạ* ở cả 2 bảng; bung ngược pak thấy **đúng 2 `.uexp` đ�
 Cả hai giữ **timer 4 tiếng** + luật trứng raid nở ra toàn con cái.
 
 **Giới hạn kỹ thuật (đừng quên):** buff raid và EXP tháp nằm CÙNG một bảng
-`DT_PalMonsterParameter(_Common)` — hai pak cùng chứa bảng đó thì game chỉ nạp
+`DT_PalMonsterParameter(_Common)`, hai pak cùng chứa bảng đó thì game chỉ nạp
 MỘT (pak ưu tiên cao che hẳn pak kia), không cộng dồn. Vì vậy trong `~mods` chỉ
 được có **đúng một** file raid; đổi chế độ = xoá file cũ, chép file kia vào,
 **restart server game**.
 
-Số vanilla dựng lại từ ghi chép các đợt v7/v9/v11 — client 07/09 đổi format
+Số vanilla dựng lại từ ghi chép các đợt v7/v9/v11, client 07/09 đổi format
 bảng nên usmap hiện có đọc bảng gốc mới ra RawExport, không trích trực tiếp
 được. Đối chiếu paldb khớp tới 3 chữ số: 420×5700 = 2,394M ≈ 2,39M · 500×5100 =
 2,55M · 420×6100 = 2,562M ≈ 2,56M · 320×6100 = 1,952M ≈ 1,95M. Sai số máu ultra
-(nếu có) dưới 1% — không nhìn thấy được trong game.
+(nếu có) dưới 1%, không nhìn thấy được trong game.
 
 ---
 
@@ -612,7 +612,7 @@ trước mất tác dụng **im lặng** (không cộng dồn). Cùng nhóm = c�
 → chính là `BialkRaid_NgayThuong_P.pak` (đang chạy prod, EXP 0,7× gốc = 21–24,5). Muốn nerf mạnh hơn (vd =1 như test) thì
 dựng lại file NgayThuong với GYM_* khác, KHÔNG thêm pak thứ hai.
 
-**Trạng thái đọc SFTP 16/09** — PROD `~mods`: `BialkRaid_NgayThuong_P.pak` · `BialkShopOff_P.pak` · `NerfRelic_NoImplant_NoCore_P.pak`
+**Trạng thái đọc SFTP 16/09**, PROD `~mods`: `BialkRaid_NgayThuong_P.pak` · `BialkShopOff_P.pak` · `NerfRelic_NoImplant_NoCore_P.pak`
 · `NoDrop_Silvance_Dandilord_P.pak` (hợp lệ, mỗi nhóm 1). TEST `~mods`: `BialkNoDrop` · `BialkRaidTimer` (v8) · `BialkServer` ·
 `BialkServer_ZExpedition` · `BialkShopOff` · `CreativeMenu` (nên gỡ).
 
@@ -624,12 +624,12 @@ dựng lại file NgayThuong với GYM_* khác, KHÔNG thêm pak thứ hai.
 recycler trên prod tên `NerfRelic_…`, mà `BialkServer_Z…` xếp trước chữ `N` → nạp trước → bị đè → **mất tác dụng im lặng**.
 Cùng một file, chỉ khác tên theo server. Luật chung: tên file Z phải xếp sau tên pak recycler **đang có trên server đó**.
 
-## ✅ Thứ tự nạp pak nhóm A — hết treo (17/09/2026)
+## ✅ Thứ tự nạp pak nhóm A, hết treo (17/09/2026)
 
 Mỗi server giờ chỉ còn **một** file nhóm A nên không còn phụ thuộc thứ tự nạp, không cần đo gì nữa:
 
 - **TEST** `~mods` (đọc SFTP 17/09 chiều): `BialkNoDrop_P.pak` · `BialkServer_ZExpedition_P.pak` ·
-  `BialkRaid_NgayThuong_P.pak` · `BialkShopOff_P.pak` — đúng 4 file, md5 khớp repo.
+  `BialkRaid_NgayThuong_P.pak` · `BialkShopOff_P.pak`, đúng 4 file, md5 khớp repo.
 - **PROD** (17/09 13:07, chủ server tự làm qua File Manager của Shockbyte): đã **xoá hết tên cũ**
   (`NoDrop_Silvance_Dandilord_P.pak`, `NerfRelic_ZExpedition_P.pak`, `NerfRelic_NoImplant_NoCore_P.pak`)
   và chép sang **đúng 4 tên y hệt test**. Kể từ mốc này **tên pak hai server GIỐNG NHAU** - mọi hướng dẫn
@@ -679,7 +679,7 @@ chưa yêu cầu. Muốn tắt: `patch_paldrop_item.js <in> <out> --item=~^Bluep
 - Kiểm pak nào đang thắng ngay trong game bằng mod: `DTMAP PalMasterDataTableAccess_FieldLotteryNameData ItemSlot11_ProbabilityPercent,ItemSlot12_ProbabilityPercent Expedition_` → Expedition_Grass slot 11 = 0 là Z đang thắng, = 100 là chưa.
 
 Mục tiêu: **Trạm Thám Hiểm Pal không rớt `AncientParts2` (Lõi Văn Minh Cổ Đại) và `PalCrystal_Ex`
-(Linh Kiện Văn Minh Cổ Đại = "Ancient Civilization Parts")** — nguồn thứ 3 sau máy nghiền (BialkServer_P)
+(Linh Kiện Văn Minh Cổ Đại = "Ancient Civilization Parts")**, nguồn thứ 3 sau máy nghiền (BialkServer_P)
 và Silvance/Dandilord (BialkNoDrop_P).
 
 ## Đã xác minh (DTINFO trên server test, 16/09)
@@ -687,7 +687,7 @@ và Silvance/Dandilord (BialkNoDrop_P).
 Thám hiểm dùng **đúng hệ xổ số của máy nghiền**: `DT_FieldLotteryNameDataTable` có **18 dòng**
 `Expedition_{Grass,Forest,Volcano,Desert,Snow,Sakurajima,DarkIsland,SkyIsland,WorldTree}` + bản `_Hard`.
 Bảng `DT_ItemLotteryDataTable` (8.782 dòng đánh số 1..N) nối với bảng trên qua **field `FieldName`**
-trong từng dòng — không qua tên dòng, nên grep tên dòng không ra gì.
+trong từng dòng, không qua tên dòng, nên grep tên dòng không ra gì.
 
 Mod `DTROW` **không đọc được nội dung dòng** (BP_FindRow fail cả 3 cách, kể cả dòng recycler đã biết)
 → ánh xạ slot→món **phải làm offline** bằng UAssetCLI trên máy có game, y như lần recycler.
@@ -704,7 +704,7 @@ Sakura Cavern, Dark Cave of Feybreak, Sunreach Isle, World Tree Subterranean Cit
 | Expedition_Snow / _Sakurajima / _DarkIsland / _SkyIsland / _WorldTree | 12 | AncientParts2 | 100 → +0 |
 | Expedition_Forest / _Volcano / _Desert | 12 | PalCrystal_Ex | 100 → +0 |
 | Expedition_WorldTree_Hard | 7 | PalCrystal_Ex + AncientParts2 | 100 → +0 |
-| 7 dòng _Hard còn lại | — | không có 2 món này | giữ nguyên |
+| 7 dòng _Hard còn lại |, | không có 2 món này | giữ nguyên |
 
 Đối chiếu độ tin: khối DTMAP của `AncientRelicRecycler_WorldTreeRelic_05` ra đúng y phần recycler ở trên (slot 8 = 16 implant,
 slot 9 = AncientParts2, slot 14 = implant đột biến + RideJumpCount); 18/18 dòng Expedition trong game sống khớp bảng trong
@@ -727,7 +727,7 @@ node scripts/patch_expedition.js --check --keep-recycler item.json field.json   
 node scripts/patch_expedition.js item.json field.json field.patched.json           # vá
 ```
 Mặc định **chỉ tắt slot mà mọi món đều là món cần tắt**; slot lẫn món khác thì báo ⚠️ và GIỮ
-(bài học slot 14 recycler) — thấy chấp nhận mất kèm thì thêm `--force`. In % gốc từng slot, kể cả
+(bài học slot 14 recycler), thấy chấp nhận mất kèm thì thêm `--force`. In % gốc từng slot, kể cả
 slot giữ lại. `--items=`, `--rows=~regex` đổi món/dòng. Idempotent, sai bảng thì báo và không ghi.
 
 **⚠️ Đóng CHUNG 1 pak với recycler**: hai pak cùng sửa `DT_FieldLotteryNameDataTable` thì pak load
@@ -736,13 +736,13 @@ rồi vá tiếp thám hiểm trên **cùng json**, đóng **1 pak** thay `Bialk
 kiểm giúp 5 dòng đó đã "+0" chưa.
 
 Kiểm logic bằng dữ liệu giả theo hình dạng JSON UAssetCLI (22 case, scratchpad `expedition-fixture-test.js`);
-**chưa chạy trên bảng thật** — đọc kỹ log `--check` + round-trip fromjson→tojson như phần recycler trước khi lên server.
+**chưa chạy trên bảng thật**, đọc kỹ log `--check` + round-trip fromjson→tojson như phần recycler trước khi lên server.
 
 ---
 
-# BialkRecipe_P.pak — Lõi Văn Minh Cổ Đại gắn vào công thức (17/09/2026)
+# BialkRecipe_P.pak, Lõi Văn Minh Cổ Đại gắn vào công thức (17/09/2026)
 
-**Một pak duy nhất cho MỌI chỉnh sửa công thức** — bảng `DT_ItemRecipeDataTable` +
+**Một pak duy nhất cho MỌI chỉnh sửa công thức**, bảng `DT_ItemRecipeDataTable` +
 `_Common` (vật phẩm) **và** `DT_BuildObjectDataTable` + `_Common` (công trình, mục 5); 4 bảng, vá cả 4. Có món mới thì sửa tiếp pak này, KHÔNG tách
 pak (cùng bảng = chỉ 1 pak được nạp). Thay cho `BialkWingFuel_P.pak` đời trước.
 
@@ -802,7 +802,7 @@ người mới không chế nổi áo vải). Cung Cơ Khí dùng Linh Kiện n�
 | `SphereModule_Homing` | Thiết Bị Tự Ngắm Mục Tiêu | 5 → **45** |
 
 **Cố ý KHÔNG cộng `AIcore` (Lõi AI, giữ ×1):** nguyên liệu trung gian nằm trong hầu hết
-súng cấp cao (5–12 Lõi AI/cây) — +40 vào nó là Súng Tán Xạ bậc 5 tốn ~460 lõi/cây.
+súng cấp cao (5–12 Lõi AI/cây), +40 vào nó là Súng Tán Xạ bậc 5 tốn ~460 lõi/cây.
 
 ## 3. Toàn bộ đạn: +1 lõi mỗi lần chế (32 loại)
 | Dòng | Đạn | Mỗi lần chế ra | Thêm |
@@ -840,7 +840,7 @@ súng cấp cao (5–12 Lõi AI/cây) — +40 vào nó là Súng Tán Xạ bậc
 | `SkyAssaultRifleBullet` | Đạn Súng Trường Tấn Công Hạng Nặng | x20 | **+1 lõi** |
 | `SkyGrenadeLauncherBullet` | Đạn Súng Phóng Lựu Chiến Thuật | x10 | **+1 lõi** |
 
-⚠️ Gồm cả Mũi Tên / Đạn Thô đầu game — người mới **không có Dogcoin mua lõi thì không
+⚠️ Gồm cả Mũi Tên / Đạn Thô đầu game, người mới **không có Dogcoin mua lõi thì không
 chế được đạn**. Chủ server chốt "tất cả đạn", ghi lại để biết nguồn khiếu nại.
 
 ## 4. Mọi món dùng Lõi AI (`AIcore`): +10 Lõi Văn Minh (79 món)
@@ -848,12 +848,12 @@ chế được đạn**. Chủ server chốt "tất cả đạn", ghi lại đ�
 - **32 món chưa có lõi, còn ô trống** → thêm ô Lõi ×10: Kiếm Laser, Cung Cơ Khí, Súng Săn Nguyên Mẫu, Súng Trường Tấn Công Hạng Nặng, Súng Tiểu Liên Chiến Đấu, Súng Phóng Lựu Chiến Thuật, Áo Giáp Cổ Đại, Áo Giáp Cổ Đại Chịu Nhiệt, Áo Giáp Cổ Đại Chịu Lạnh, Áo Giáp Cổ Đại Hạng Nhẹ, Mũ Cổ Đại, Súng Phóng Tên Lửa Điều Khiển Jetragon.
 - **24 món ĐẦY 5 ô** (bậc 2→5 của 6 vũ khí Sky: Kiếm Laser, Cung Cơ Khí, Súng Săn Nguyên Mẫu, Súng Trường Tấn Công Hạng Nặng, Súng Tiểu Liên Chiến Đấu, Súng Phóng Lựu Chiến Thuật) → game không có ô thứ 6, chủ server chốt **+10 Lõi AI** thay thế (Lõi AI vốn cũng tốn 1 Lõi Văn Minh/viên).
 
-## 5. CÔNG TRÌNH (máy Văn Minh Cổ Đại, Lv66+) — bảng riêng `DT_BuildObjectDataTable` (+`_Common`)
+## 5. CÔNG TRÌNH (máy Văn Minh Cổ Đại, Lv66+), bảng riêng `DT_BuildObjectDataTable` (+`_Common`)
 Phát hiện 17/09 khi chủ server soi Máy Tạo Vật Chất vẫn 10 lõi: **công trình KHÔNG nằm trong
 bảng chế vật phẩm** mà ở `Pal/Content/Pal/DataTable/MapObject/Building/` (chỉ **4 ô** nguyên liệu).
 Cùng luật: có Lõi → +40; có Lõi AI → +10 Lõi nữa (chưa có Lõi mà còn ô → thêm ô Lõi ×10;
 đầy 4 ô → +10 Lõi AI thay thế). 15 công trình đổi, 483 dòng còn lại nguyên (tường/mái/nền
-Cổ Đại chỉ tốn Thỏi Skyisland — không đụng). 19 công trình dùng Linh Kiện giữ nguyên.
+Cổ Đại chỉ tốn Thỏi Skyisland, không đụng). 19 công trình dùng Linh Kiện giữ nguyên.
 
 | Mã | Công trình | Lõi cũ → mới |
 |---|---|---|
@@ -873,8 +873,8 @@ Cổ Đại chỉ tốn Thỏi Skyisland — không đụng). 19 công trình d�
 | `AncientWorkBench` | Bàn Chế Văn Minh Cổ Đại | 0 → **10** (thêm ô Lõi vì có Lõi AI) |
 | `Ancient_AirConditioner` | Máy Điều Hoà Văn Minh Cổ Đại | không có ô trống (4/4) → **Lõi AI 10 → 20** thay thế |
 
-## ⏸️ TRẠNG THÁI 17/09 — CHƯA CHỐT, mai tính tiếp
-Pak đã build xong (md5 a72b4066), đã nằm trên **server TEST** (`~mods`, 376 734 byte) — **chưa lên prod**.
+## ⏸️ TRẠNG THÁI 17/09, CHƯA CHỐT, mai tính tiếp
+Pak đã build xong (md5 a72b4066), đã nằm trên **server TEST** (`~mods`, 376 734 byte), **chưa lên prod**.
 
 **Vướng mắc phát hiện 17/09:** menu chế/xây do CLIENT vẽ từ file game của client → người chơi
 không cài pak sẽ **mãi thấy 10 Lõi** dù server đòi 50 (y hệt vụ máu tối đa boss). Chủ server
@@ -882,7 +882,7 @@ có luật **không cho client cài mod** → pak này chỉ có 2 đường:
 1. Whitelist đúng 1 file `BialkRecipe_P.pak` cho client (pak thuần, chép `~mods`, không gian được gì
    vì server mới quyết tiêu hao; PalDefender không kiểm pak client nên luật "cấm mod" chỉ là chính sách).
 2. Bỏ pak công thức, dùng đòn bẩy **giá + quota Lõi trong shop** (rớt lõi đã chặn → shop là nguồn duy nhất)
-   — minh bạch, không cần ai cài gì. (Khuyến nghị của Claude.)
+  , minh bạch, không cần ai cài gì. (Khuyến nghị của Claude.)
 
 **Bài test quyết định (chưa chạy):** trên server test, client KHÔNG pak, cầm 10–49 Lõi, đặt Máy Tạo
 Vật Chất. Không đặt được = server có kiểm (pak ăn, chỉ vướng hiển thị). Đặt được mất 10 = server
@@ -898,9 +898,9 @@ cầu 1 lần khi Lv66+ ~190/người + ~425 cho bộ máy base → 300/ngày KH
 người mạnh mua sạch (nên chuyển 👤 cá nhân ~60/ngày); (c) Lò Ấp Điện 2→42, Máy Nghiền 20→60 quét
 nhầm; (d) sửa đồ chưa đo tỉ lệ. Nếu giữ pak: miễn 3 đạn đầu game, hạ lò ấp/máy nghiền.
 
-## Sửa đồ (repair) — không có bảng riêng
+## Sửa đồ (repair), không có bảng riêng
 Chi phí sửa = nguyên liệu công thức × `RequiredRepairItemRate` (chỉ có trong C++, không
-nằm trong BP nào để vá pak — đã soi BP_PalGameSetting: NameMap không có). Nên lõi cộng vào
+nằm trong BP nào để vá pak, đã soi BP_PalGameSetting: NameMap không có). Nên lõi cộng vào
 công thức **tự kéo theo vào sửa đồ**. Muốn biết chính xác mỗi lần sửa tốn bao nhiêu lõi:
 đo trong game 1 lần (sửa 1 món từ hỏng hẳn, đếm lõi mất ÷ lõi công thức = tỉ lệ).
 

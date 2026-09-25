@@ -1,4 +1,4 @@
-// Bộ kiểm PHẠM VI BIẾN — chạy: node TaiXiu/kiemtra/pham-vi-test.js
+// Bộ kiểm PHẠM VI BIẾN, chạy: node TaiXiu/kiemtra/pham-vi-test.js
 //
 // Vì sao có file này: 21/09 mình thêm hằng số TX_KQ_S vào index.js rồi gọi thẳng
 // trong webplay.js. Hai file là HAI MODULE khác nhau nên webplay không thấy nó ->
@@ -75,7 +75,7 @@ muc('ctx có sẵn thứ bàn Sic Bo cần');
 // ============================================================================
 // 🏠 ĐẶT ĐÚNG NHÀ: mọi khoá ctx mà webplay.js dùng phải nằm trong ctx của startWebPlay
 //
-// 21/09 — chủ server: "nút hiện hệ số nhân từng ván nó không show nữa / số 9 x18 nhưng
+// 21/09, chủ server: "nút hiện hệ số nhân từng ván nó không show nữa / số 9 x18 nhưng
 // ở dưới ko hiện". index.js gọi HAI module với HAI ctx riêng:
 //     startWebPlay({...})   ← trang cược
 //     startPanel({...})     ← trang quản trị
@@ -84,7 +84,7 @@ muc('ctx có sẵn thứ bàn Sic Bo cần');
 // mọi ô của MỌI ván -> ⚡ trống trơn. Hỏng LẶNG LẼ: không lỗi, không log, chỉ mất dữ liệu.
 //
 // Kiểu phòng hờ `ctx.x ? ctx.x() : mặc-định` có mặt khắp webplay (đúng, để bản cũ không vỡ)
-// — nên KHÔNG BAO GIỜ nổ để mà biết. Chỉ phép kiểm này bắt được.
+//, nên KHÔNG BAO GIỜ nổ để mà biết. Chỉ phép kiểm này bắt được.
 // ============================================================================
 muc('🏠 khoá ctx phải đặt ĐÚNG NHÀ (webplay vs panel)');
 {
@@ -107,7 +107,7 @@ muc('🏠 khoá ctx phải đặt ĐÚNG NHÀ (webplay vs panel)');
     ok('⭐⭐ webplay.js KHÔNG dùng khoá ctx nào mà startWebPlay quên cấp',
         thieu.length === 0, 'THIẾU: ' + thieu.join(', '));
 
-    // và cái thiếu đó có đang nằm nhầm bên panel không — câu trả lời cho "vì sao lặng lẽ"
+    // và cái thiếu đó có đang nằm nhầm bên panel không, câu trả lời cho "vì sao lặng lẽ"
     const nhamNha = thieu.filter(k => capPanel.has(k));
     ok('...và không khoá nào bị đặt NHẦM sang khối panel',
         nhamNha.length === 0, 'nhầm nhà: ' + nhamNha.join(', '));

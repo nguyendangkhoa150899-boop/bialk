@@ -1,4 +1,4 @@
-/* Server test trên điện thoại — chạy: node _server.js
+/* Server test trên điện thoại, chạy: node _server.js
    Rồi mở trên điện thoại (CÙNG WIFI):  http://<IP-máy>:8080
    Bấm Ctrl+C ở cửa sổ lệnh để tắt. File này có thể xoá trước khi up Drive. */
 const http = require("http");

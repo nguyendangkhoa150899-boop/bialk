@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================================
-// patch_paldrop_item.js — TẮT rớt MỘT MÓN ở MỘT SỐ PAL trong bảng rơi đồ DT_PalDropItem(_Common),
+// patch_paldrop_item.js, TẮT rớt MỘT MÓN ở MỘT SỐ PAL trong bảng rơi đồ DT_PalDropItem(_Common),
 // bằng cách đặt Rate<N> = "+0" ở đúng slot có ItemId<N> == món đó. Các món khác của pal GIỮ NGUYÊN
 // (khác BialkNoDrop đời trước: tắt CẢ dòng Silvance/Dandilord).
 //

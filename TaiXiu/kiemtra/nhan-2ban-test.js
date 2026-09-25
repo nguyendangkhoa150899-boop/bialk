@@ -1,5 +1,5 @@
 // ============================================================================
-//  RÀ SOÁT TRẢ THƯỜNG × HỆ SỐ NHÂN — 2 bàn (Tài Xỉu thường + Siêu Tài Xỉu)
+//  RÀ SOÁT TRẢ THƯỜNG × HỆ SỐ NHÂN, 2 bàn (Tài Xỉu thường + Siêu Tài Xỉu)
 //  chạy: node TaiXiu/kiemtra/nhan-2ban-test.js   (không cần bot)
 //
 //  Chủ server 22/09: "rà soát lại 2 bên tài xỉu coi trả thưởng nhân đúng chưa, rà soát thật kỹ".
@@ -66,7 +66,7 @@ function thamChieuAnNhan(CUA, xx, nhan) {
 
 // ---------------------------------------------------------------- A. LÕI TIỀN 2 BÀN vs THAM CHIẾU
 for (const [ten, CUA] of [['TÀI XỈU THƯỜNG', TX], ['SIÊU TÀI XỈU', STX]]) {
-    muc('A. lõi ' + ten + ': tinhTra vs tham chiếu — 216 kết cục × ' + CUA.DS.length + ' ô × nhân');
+    muc('A. lõi ' + ten + ': tinhTra vs tham chiếu, 216 kết cục × ' + CUA.DS.length + ' ô × nhân');
     ok('có đúng 52 ô', CUA.DS.length === 52, String(CUA.DS.length));
     let so = 0, sai = 0, viDu = '';
     const bangs = [{}, CUA.taoNhan(rnd), CUA.taoNhan(rnd)];
@@ -193,7 +193,7 @@ muc('B. bàn thường: txPlanPayout + txPayUser chạy thật, 2.000 ván, cân
 }
 
 // ---------------------------------------------------------------- C. SIÊU: máy bàn thật, ví thật, 600 ván
-muc('C. Siêu Tài Xỉu: máy bàn thật chạy 600 ván — cân ví (phí + cược + ăn) từng đồng');
+muc('C. Siêu Tài Xỉu: máy bàn thật chạy 600 ván, cân ví (phí + cược + ăn) từng đồng');
 {
     const DB = { _stxOn: true }; const VI = { A: 5e9, B: 5e9, C: 5e9 };
     const ban = taoBan({ db: () => DB, layNguoi: (id) => ({ points: VI[id] || 0, name: id }), congVi: (id, t) => { VI[id] = (VI[id] || 0) + t; }, ghiLog: () => { }, luuDb: () => { } });
@@ -239,7 +239,7 @@ muc('C. Siêu Tài Xỉu: máy bàn thật chạy 600 ván — cân ví (phí + 
         const tongNhanSo = (h.bets || []).reduce((s, b) => s + (b.nhan || 0), 0), tongKy = Object.values(kyVong).reduce((s, v) => s + v, 0);
         if (tongNhanSo !== tongKy) lechHist++;
     }
-    ok('⭐⭐ 600 ván: ví từng người = −(cược + phí 20%) lúc đặt, +ăn (theo nhân + ép) lúc mở bát — khớp từng đồng', lechVi === 0, lechVi + ' lệch, vd: ' + viDu);
+    ok('⭐⭐ 600 ván: ví từng người = −(cược + phí 20%) lúc đặt, +ăn (theo nhân + ép) lúc mở bát, khớp từng đồng', lechVi === 0, lechVi + ' lệch, vd: ' + viDu);
     ok('...độ phủ: ' + phieu + ' phiếu, ' + an + ' ăn, ' + anNhan + ' ăn theo nhân, ' + soEp + ' ván ép', phieu > 2000 && an > 300 && anNhan > 30 && soEp > 100);
     ok('⭐ lệnh ÉP nhân (tai / bao3 / tắt baoany) ăn đúng vào bảng nhân ván', epKhongAn === 0, String(epKhongAn));
     ok('⭐ nặn xong trả đúng {got, stake, phi}; nặn 2 lần không trả 2 lần', lechNan === 0, String(lechNan));

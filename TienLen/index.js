@@ -1,5 +1,5 @@
 // ============================================================================
-//  index.js — VỎ CHẠY THỬ TẠI MÁY (DEV). **PROD KHÔNG CHẠY FILE NÀY.**
+//  index.js, VỎ CHẠY THỬ TẠI MÁY (DEV). **PROD KHÔNG CHẠY FILE NÀY.**
 //  Prod là mô-đun web.js nhúng trong BotDoMin; file này chỉ để chủ server mở trình
 //  duyệt bấm thử luật bài + giao diện mà không cần bot, không cần Discord, không
 //  cần database thật. Ví ở đây là ví GIẢ trong RAM, tắt là mất.
@@ -119,7 +119,7 @@ const may = http.createServer((req, res) => {
             res.end(nhet + t);
         });
     }
-    // 🪙 icon Dogcoin — prod web cược phục vụ sẵn ở /dogcoin.png; bản chạy thử phải tự lấy
+    // 🪙 icon Dogcoin, prod web cược phục vụ sẵn ở /dogcoin.png; bản chạy thử phải tự lấy
     // từ BotDoMin/assets, không thì mọi con số tiền hiện ảnh vỡ.
     if (req.method === 'GET' && duong === '/dogcoin.png') {
         return fs.readFile(nodePath.join(__dirname, '..', 'BotDoMin', 'assets', 'dogcoin.png'), (e, b) => {
@@ -164,7 +164,7 @@ if (require.main === module) {
         tienlen.xuLy({ path: '/' + maMay + '/sansang', method: 'POST', body: {}, userId: id }, null, () => { });
     }
     may.listen(CONG, () => {
-        console.log('\n🀄 TIẾN LÊN — bản CHẠY THỬ TẠI MÁY (ví giả, không đụng Dogcoin thật)');
+        console.log('\n🀄 TIẾN LÊN, bản CHẠY THỬ TẠI MÁY (ví giả, không đụng Dogcoin thật)');
         console.log('   Ví mỗi người 1.000.000 · ' + SO_BOT + ' máy đánh cùng (ngồi phòng ' + maMay + ')');
         console.log('   Sảnh đang có:');
         for (const p of tienlen.phong) {

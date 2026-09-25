@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================================
-// surgical_expratio.js — hạ ExpRatio boss THÁP (dòng GYM_*) trong DT_PalMonsterParameter(_Common)
+// surgical_expratio.js, hạ ExpRatio boss THÁP (dòng GYM_*) trong DT_PalMonsterParameter(_Common)
 // bằng VÁ BYTE vào .uexp GỐC (bảng này dính bug FName "_2" nên KHÔNG round-trip JSON được).
 //
 // Cách: (1) từ A.json (tojson của uexp gốc) tạo B.json với ExpRatio GYM_* -> TARGET;

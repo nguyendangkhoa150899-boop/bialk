@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================================
-// patch_shopoff.js — VÁ JSON (UAssetCLI tojson) của bảng shop thương nhân Palworld
+// patch_shopoff.js, VÁ JSON (UAssetCLI tojson) của bảng shop thương nhân Palworld
 // để THƯƠNG NHÂN KHÔNG BÁN GÌ (kinh tế server đi hết qua Shop Dogcoin trên web).
 //
 // Dùng cho: DT_ItemShopCreateData(_Common)  (shop item: làng, sa mạc, núi lửa, huy chương,

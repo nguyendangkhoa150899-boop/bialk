@@ -1,4 +1,4 @@
-# Palworld — dashboard, mod Lua, pak mods, server Shockbyte
+# Palworld, dashboard, mod Lua, pak mods, server Shockbyte
 
 > **Viết cho người/AI tiếp nhận.** Đây là **trạng thái hiện tại**, không phải nhật ký.
 > Lịch sử theo ngày: `git log`. Bản README cũ 2.300 dòng (nhật ký từng ngày từ 08/08 → 18/09)
@@ -13,7 +13,7 @@ Chủ server: **Khoa**, không rành code. Trả lời tiếng Việt, chỉ rõ
 
 - `server/.env` chứa **mật khẩu SFTP thật**. Gitignore, kể cả bản sao `.env.bak-*`. **Không bao giờ commit, không ghi vào README.** Tài khoản 2 server + danh sách server **cấm đụng** (hard-block) nằm trong bộ nhớ Claude và trong `.env`, không ở đây.
 - Có **hai server game** trên Shockbyte: **TEST** ("1. test mod") và **CHÍNH** ("1. Cô 4 vui vẻ"). `server/.env` trỏ TEST. Tool nào ghi lên prod phải nhận tài khoản prod qua biến môi trường `PROD_USER`/`PROD_PASS`, và **chỉ khi chủ server bảo**. Mọi tool đều có hard-block UUID server không phải của mình.
-- **SFTP Shockbyte: cấm `fastPut`/`fastGet` của ssh2** — nó xáo khúc 32 KB (cùng kích thước, sai nội dung, `main.lua` báo lỗi cú pháp ở dòng vô can, mod chết). Ghi bằng `createWriteStream` tuần tự và **đọc lại so từng byte** sau khi ghi. Readdir Shockbyte trả theo đợt — phải gọi lặp tới hết (ghi chú cũ "chỉ trả 1 entry" là do gọi 1 lần).
+- **SFTP Shockbyte: cấm `fastPut`/`fastGet` của ssh2**, nó xáo khúc 32 KB (cùng kích thước, sai nội dung, `main.lua` báo lỗi cú pháp ở dòng vô can, mod chết). Ghi bằng `createWriteStream` tuần tự và **đọc lại so từng byte** sau khi ghi. Readdir Shockbyte trả theo đợt, phải gọi lặp tới hết (ghi chú cũ "chỉ trả 1 entry" là do gọi 1 lần).
 - **Kích thước file KHÔNG chứng minh đúng bản**: các đời pak cùng bảng thường **bằng byte nhau** (v1/v2/v3 của `BialkNoDrop_P.pak` đều 328.821 B). Chỉ md5 mới chắc.
 - Chỉ commit/push khi chủ server nói. Sửa xong cập nhật README này (mục liên quan), không viết nhật ký theo ngày.
 
@@ -33,17 +33,17 @@ cd /root/tts-bot && git checkout -- . && git pull
 pm2 restart palworld-dashboard        # chỉ khi sửa dashboard
 pm2 restart BotDoMin --update-env     # khi sửa bot
 ```
-Dashboard **phải sống** thì bot mới giao/đếm được — lỗi `fetch failed` khi bấm nhận pal/mua đồ = dashboard chưa chạy. Local: `cd server && node src/index.js` (cổng 3010 theo `.env` local).
+Dashboard **phải sống** thì bot mới giao/đếm được, lỗi `fetch failed` khi bấm nhận pal/mua đồ = dashboard chưa chạy. Local: `cd server && node src/index.js` (cổng 3010 theo `.env` local).
 
 ⚠️ **Tên server trên Shockbyte = đường dẫn SFTP.** Đổi tên server là `SFTP_MOD_PATH` sai → mọi give/count báo "Dashboard server error" mà không ai hiểu vì sao. Đổi tên xong phải sửa `.env` (prod + test) và restart dashboard.
 
 ---
 
-## 2. Kiến trúc — hai đường tới server game
+## 2. Kiến trúc, hai đường tới server game
 
-**Đường 1 — REST API chính thức** (`palworldClient.js`): `info` `players` `metrics` `announce` `kick` `ban` `unban` `save` `shutdown`. **Không có lệnh tặng/trừ item.** Hiện **TẮT** (server không bật REST) → các endpoint cần nó trả 503. Bật lại: điền `PALWORLD_HOST/PORT/ADMIN_PASSWORD` vào `server/.env`.
+**Đường 1, REST API chính thức** (`palworldClient.js`): `info` `players` `metrics` `announce` `kick` `ban` `unban` `save` `shutdown`. **Không có lệnh tặng/trừ item.** Hiện **TẮT** (server không bật REST) → các endpoint cần nó trả 503. Bật lại: điền `PALWORLD_HOST/PORT/ADMIN_PASSWORD` vào `server/.env`.
 
-**Đường 2 — Mod Lua UE4SS + cầu SFTP** (đường sống duy nhất để đụng túi/pal):
+**Đường 2, Mod Lua UE4SS + cầu SFTP** (đường sống duy nhất để đụng túi/pal):
 ```
 bot / dashboard → POST /api/give-item …  → sftpBridge.js
    → ghi 1 dòng vào queue.txt (SFTP)  →  mod GiveGoldCommand (trong game) poll 2s/lần
@@ -63,13 +63,13 @@ COUNT <itemId> <playerName>                 COUNTALL <itemId>
 PAL2 <species> <level> <rank> <iv×4> <soul×4> <gender> <lucky> <passiveCsv> <playerName>
 RESCUE <playerName> | RESCUEAT … | WHEREIS <playerName> | PASSCHK …
 ```
-Chẩn đoán (chỉ đọc): `DUMP <class>` `DUMPP <class>` `INSPECT <player>` `INVDBG <item> <player>` `DBGPAL` `DTINFO <class>` · **`DTMAP <class> <Prop1,Prop2,…> [tiềnTố]`** đọc **cả cột** một DataTable đang sống trong game (dùng để tra bảng game mà không cần file game — vd `DTMAP PalMasterDataTableAccess_ItemLotteryData FieldName,SlotNo,StaticItemId,WeightInSlot AncientRelicRecycler_`). `DTROW` **hỏng** (BP_FindRow fail), đừng dùng.
+Chẩn đoán (chỉ đọc): `DUMP <class>` `DUMPP <class>` `INSPECT <player>` `INVDBG <item> <player>` `DBGPAL` `DTINFO <class>` · **`DTMAP <class> <Prop1,Prop2,…> [tiềnTố]`** đọc **cả cột** một DataTable đang sống trong game (dùng để tra bảng game mà không cần file game, vd `DTMAP PalMasterDataTableAccess_ItemLotteryData FieldName,SlotNo,StaticItemId,WeightInSlot AncientRelicRecycler_`). `DTROW` **hỏng** (BP_FindRow fail), đừng dùng.
 
-**Hai quy tắc bắt buộc:** (1) `playerName` luôn **cuối dòng** (tên có dấu cách); (2) field rỗng gửi sentinel **`-`**. Mọi dòng kết quả có tiền tố `[playerName] ` (`appendPlayerResult`) — dashboard ghép theo đó, **không đoán theo câu chữ**.
+**Hai quy tắc bắt buộc:** (1) `playerName` luôn **cuối dòng** (tên có dấu cách); (2) field rỗng gửi sentinel **`-`**. Mọi dòng kết quả có tiền tố `[playerName] ` (`appendPlayerResult`), dashboard ghép theo đó, **không đoán theo câu chữ**.
 
-`species` = code nội bộ (`DomeArmorDragon`, `BOSS_DomeArmorDragon` là bản alpha; Fuack = `BluePlatypus`…), tra `../BotDoMin/pals.json` hoặc paldb.cc mục "Code". `gender` 0 random / 1 đực / 2 cái (số nguyên, không phải FName). Passive `id` phải là FName thật (nguồn: save-editor `oMaN-Rod/palworld-save-pal`) — **1 id sai là game từ chối cả lô**.
+`species` = code nội bộ (`DomeArmorDragon`, `BOSS_DomeArmorDragon` là bản alpha; Fuack = `BluePlatypus`…), tra `../BotDoMin/pals.json` hoặc paldb.cc mục "Code". `gender` 0 random / 1 đực / 2 cái (số nguyên, không phải FName). Passive `id` phải là FName thật (nguồn: save-editor `oMaN-Rod/palworld-save-pal`), **1 id sai là game từ chối cả lô**.
 
-Deploy mod: `cd tools && node upload.js` (đẩy `main.lua` + bật trong `mods.txt`, ghi stream tuần tự + so byte) → **restart server game** → `results.log` có `mod loaded`. Kiểm Lua trước khi đẩy: chạy qua `wasmoon` (Lua 5.4) — chỉ `luac`-kiểu syntax là chưa đủ vì đã có lần file lên server bị xáo khúc.
+Deploy mod: `cd tools && node upload.js` (đẩy `main.lua` + bật trong `mods.txt`, ghi stream tuần tự + so byte) → **restart server game** → `results.log` có `mod loaded`. Kiểm Lua trước khi đẩy: chạy qua `wasmoon` (Lua 5.4), chỉ `luac`-kiểu syntax là chưa đủ vì đã có lần file lên server bị xáo khúc.
 
 ---
 
@@ -86,11 +86,11 @@ PORT=3000   HOST=127.0.0.1   DASHBOARD_PASSWORD=          # trống = không m�
 ```
 `BotDoMin/.env`: `PAL_DASHBOARD_URL=http://127.0.0.1:3000`, `PAL_DASHBOARD_PASSWORD` (khớp trên), `PANEL_PASSWORD` (trống = panel mở).
 
-Xác thực **đang tắt** theo yêu cầu chủ server. Dashboard nghe localhost nên ít rủi ro; panel bot nghe `0.0.0.0` là mở cho internet — bật lại bằng điền mật khẩu + restart, hoặc `ufw deny <cổng>` + SSH tunnel `ssh -L 3001:localhost:3001 -p 24700 root@103.72.98.37`.
+Xác thực **đang tắt** theo yêu cầu chủ server. Dashboard nghe localhost nên ít rủi ro; panel bot nghe `0.0.0.0` là mở cho internet, bật lại bằng điền mật khẩu + restart, hoặc `ufw deny <cổng>` + SSH tunnel `ssh -L 3001:localhost:3001 -p 24700 root@103.72.98.37`.
 
 ---
 
-## 5. `tools/` — đồ nghề SFTP (chạy từ `tools/` hoặc `server/` để có ssh2)
+## 5. `tools/`, đồ nghề SFTP (chạy từ `tools/` hoặc `server/` để có ssh2)
 
 | Tool | Việc |
 |---|---|
@@ -99,25 +99,25 @@ Xác thực **đang tắt** theo yêu cầu chủ server. Dashboard nghe localho
 | `giveitem.js <player> <itemId> <qty>` · `rawcmd.js "<lệnh>"` | gửi lệnh cho mod và in `results.log` mới |
 | `sftp-dtmap.cjs "DTMAP …"` | gửi lệnh đọc bảng sống, tải `dump.log` về (creds qua ENV `SFTP_USER/PASS/MOD_PATH`; Git Bash cần `MSYS_NO_PATHCONV=1`) |
 | `soi-nguoi-choi.js` | đọc `database.json` của bot: lời/lỗ từng người theo trò (offline) |
-| `pak/sftp_pakget.js` `pak/oodle_unpack.ps1` | rút 1 entry từ pak game 4,9 GB trên server qua SFTP theo offset (cần `oodle-data-shared.dll` — **máy hiện tại không có**, dùng `DTMAP` thay) |
+| `pak/sftp_pakget.js` `pak/oodle_unpack.ps1` | rút 1 entry từ pak game 4,9 GB trên server qua SFTP theo offset (cần `oodle-data-shared.dll`, **máy hiện tại không có**, dùng `DTMAP` thay) |
 | `pak/prod_*.js` | chỉ-đọc/cài lại prod, creds qua `PROD_USER/PROD_PASS`, hard-block server lạ |
 
 Tất cả dùng stream tuần tự, không `fastPut`.
 
 ---
 
-## 6. Pak mods — cái gì đang chạy trên CẢ HAI server
+## 6. Pak mods, cái gì đang chạy trên CẢ HAI server
 
 Tên pak **giống nhau ở test và prod** (chủ server đã dọn prod về cùng tên). Mỗi pak sửa một bộ bảng riêng, **không pak nào đụng bảng của pak khác** (đã đo bằng `repak list`).
 
 | Pak | Bảng | Làm gì |
 |---|---|---|
-| `BialkNoDrop_P.pak` | `DT_PalDropItem` + `_Common` | Silvance/Dandilord không rớt gì · Jetragon + Aegidron không rớt Lõi Siêu Nhiệt (`Thermal_Core`) · **Linh Kiện Văn Minh Cổ Đại (`PalCrystal_Ex`) rơi 1–2 cái** (334 slot, toàn dòng `BOSS_*`) — không chặn hẳn vì 345 công thức cần nó, đang bán ở web |
-| `BialkServer_ZExpedition_P.pak` | `DT_FieldLotteryNameDataTable` | Máy nghiền cổ vật (5 dòng `AncientRelicRecycler_WorldTreeRelic_01..05`) tắt slot 8 implant · 9 Lõi Công Nghệ · 13 **bản vẽ vũ khí/giáp** · 14 implant đột biến; **Trạm Thám Hiểm** không rớt Lõi + Linh kiện. Là superset của `BialkServer_P.pak` cũ — **chỉ để 1 pak nhóm này** trên mỗi server |
+| `BialkNoDrop_P.pak` | `DT_PalDropItem` + `_Common` | Silvance/Dandilord không rớt gì · Jetragon + Aegidron không rớt Lõi Siêu Nhiệt (`Thermal_Core`) · **Linh Kiện Văn Minh Cổ Đại (`PalCrystal_Ex`) rơi 1–2 cái** (334 slot, toàn dòng `BOSS_*`), không chặn hẳn vì 345 công thức cần nó, đang bán ở web |
+| `BialkServer_ZExpedition_P.pak` | `DT_FieldLotteryNameDataTable` | Máy nghiền cổ vật (5 dòng `AncientRelicRecycler_WorldTreeRelic_01..05`) tắt slot 8 implant · 9 Lõi Công Nghệ · 13 **bản vẽ vũ khí/giáp** · 14 implant đột biến; **Trạm Thám Hiểm** không rớt Lõi + Linh kiện. Là superset của `BialkServer_P.pak` cũ, **chỉ để 1 pak nhóm này** trên mỗi server |
 | `BialkRaid_NgayThuong_P.pak` | `DT_PalMonsterParameter` + `_Common`, `DT_PalRaidBoss*`, `BP_PalRaidBossManager` | raid ngày thường + **EXP boss tháp 0,5× gốc** (`GYM_*`). Bản `BialkRaid_Event_P.pak` (0,7×) để dự phòng, không cài chung |
 | `BialkShopOff_P.pak` | `DT_ItemShopCreateData*`, `DT_PalShopCreateData` | thương nhân không bán gì, giữ `Bounty_Shop_1` + `Arena_Shop_1` |
 
-Không cài: `BialkRecipe_P.pak` (đổi nguyên liệu chế đồ) — **pak server không đổi được UI client**: server đòi 50 lõi mà máy người chơi vẫn hiện 10 → bỏ, dùng giá/hạn shop thay. `BialkSurgeryOff_P.pak`, `BialkSilvanceNoDrop_P.pak` là đời cũ đã gộp.
+Không cài: `BialkRecipe_P.pak` (đổi nguyên liệu chế đồ), **pak server không đổi được UI client**: server đòi 50 lõi mà máy người chơi vẫn hiện 10 → bỏ, dùng giá/hạn shop thay. `BialkSurgeryOff_P.pak`, `BialkSilvanceNoDrop_P.pak` là đời cũ đã gộp.
 
 **Luật ở chung:** hai pak sửa **cùng một file bảng** thì pak nạp sau (theo chữ cái) **thay cả file**, pak trước mất tác dụng **im lặng**. Muốn sửa thêm cùng bảng → vá tiếp vào JSON của pak đang có, dựng lại **đúng pak đó**.
 
@@ -125,7 +125,7 @@ Không cài: `BialkRecipe_P.pak` (đổi nguyên liệu chế đồ) — **pak s
 
 Script vá: `patch_paldrop_item.js` (tắt slot theo món / `--setmin --setmax` giảm số lượng / `--item=~regex`), `patch_expedition.js` (nhận `dump.log` của DTMAP làm nguồn ánh xạ slot→món, `--keep-recycler`), `surgical_expratio.js` (`--map=cũ:mới`, `SURG_TARGETS`). Chi tiết từng lần build và số liệu: `pak-mods/README.md`.
 
-Còn mở: 24 boss Alpha vẫn rớt bản vẽ bậc `_5` ở 3% (bảng `DT_PalDropItem`, chủ server chưa yêu cầu — `--item=~^Blueprint_ --pals='~.'` là tắt được). Prod chưa so md5 pak sau lần chủ server tự chép.
+Còn mở: 24 boss Alpha vẫn rớt bản vẽ bậc `_5` ở 3% (bảng `DT_PalDropItem`, chủ server chưa yêu cầu, `--item=~^Blueprint_ --pals='~.'` là tắt được). Prod chưa so md5 pak sau lần chủ server tự chép.
 
 ---
 
@@ -135,15 +135,15 @@ Nguồn `palschema-mods/BialkServer/`, trên server `ue4ss/Mods/PalSchema/mods/B
 
 ---
 
-## 8. Đã thử và THẤT BẠI — đừng lặp lại
+## 8. Đã thử và THẤT BẠI, đừng lặp lại
 
-1. **Pal tặng "xài liền không restart"** — đào tới đáy (mổ pak CreativeMenu, dump chữ ký hàm, gọi thật): UE4SS Lua không dựng được struct param, engine sập; `Debug_CaptureNewMonster_ToServer` vô hiệu ở bản Shipping. **Kết luận: giữ restart.** Toàn bộ bằng chứng: `ue4ss-mod/GHI-CHU-GIVE-PAL-XAI-LIEN.md`. Chỉ còn đường C++ mod.
-2. **Hook chat trong game** (`PalPlayerState:EnterChat`) — không chạy, nghi gãy chat. Đừng hook RPC mạng trên server thật.
-3. **Nút reset server cho người chơi** — REST `/shutdown` chỉ tắt, server không tự dậy; Access Control không cấp API key. Lời giải: **Scheduled Tasks "Send Restart"** trên panel Shockbyte.
-4. **Đổi nguyên liệu chế đồ bằng pak server** — client không thấy (mục 6).
-5. **"Bug level" pal ra cấp 2** — không phải bug, server bật Level Sync.
-6. **Kéo pal từ game ngược lên web** — bỏ, không có đường đọc palbox an toàn.
-7. `DTROW` (BP_FindRow) — fail cả 3 cách → làm `DTMAP`.
+1. **Pal tặng "xài liền không restart"**, đào tới đáy (mổ pak CreativeMenu, dump chữ ký hàm, gọi thật): UE4SS Lua không dựng được struct param, engine sập; `Debug_CaptureNewMonster_ToServer` vô hiệu ở bản Shipping. **Kết luận: giữ restart.** Toàn bộ bằng chứng: `ue4ss-mod/GHI-CHU-GIVE-PAL-XAI-LIEN.md`. Chỉ còn đường C++ mod.
+2. **Hook chat trong game** (`PalPlayerState:EnterChat`), không chạy, nghi gãy chat. Đừng hook RPC mạng trên server thật.
+3. **Nút reset server cho người chơi**, REST `/shutdown` chỉ tắt, server không tự dậy; Access Control không cấp API key. Lời giải: **Scheduled Tasks "Send Restart"** trên panel Shockbyte.
+4. **Đổi nguyên liệu chế đồ bằng pak server**, client không thấy (mục 6).
+5. **"Bug level" pal ra cấp 2**, không phải bug, server bật Level Sync.
+6. **Kéo pal từ game ngược lên web**, bỏ, không có đường đọc palbox an toàn.
+7. `DTROW` (BP_FindRow), fail cả 3 cách → làm `DTMAP`.
 
 ---
 

@@ -5,12 +5,12 @@
 // (chống mất lệnh khi nhiều nơi ghi cùng lúc), và so khớp tên người chơi.
 //
 // YÊU CẦU: dashboard chạy CÙNG máy với bot. Dashboard mặc định chỉ nghe
-// 127.0.0.1 nên không ai từ internet gọi được — đừng đổi thành 0.0.0.0.
+// 127.0.0.1 nên không ai từ internet gọi được, đừng đổi thành 0.0.0.0.
 const DASHBOARD_URL = (process.env.PAL_DASHBOARD_URL || 'http://127.0.0.1:3000').replace(/\/+$/, '');
 const DASHBOARD_PASSWORD = process.env.PAL_DASHBOARD_PASSWORD || '';
 
 // Tặng item phải chờ mod trong game polling queue.txt (2s/lần) rồi trả kết quả
-// qua SFTP — thực tế mất khoảng 5-20 giây, nên timeout phải rộng.
+// qua SFTP, thực tế mất khoảng 5-20 giây, nên timeout phải rộng.
 const GIVE_TIMEOUT_MS = 90000;
 const READ_TIMEOUT_MS = 15000;
 
@@ -71,7 +71,7 @@ async function findOnlineBySteamId(steamId) {
 
 // Trả { ok, message }. ok=true nghĩa là mod TRONG GAME xác nhận đã đưa item.
 // Lưu ý: ok=false có thể là "người chơi offline", "chưa nhận được phản hồi
-// (timeout)" — KHÔNG được coi là chắc chắn thất bại, xem ghi chú ở deliverWithdraw.
+// (timeout)", KHÔNG được coi là chắc chắn thất bại, xem ghi chú ở deliverWithdraw.
 async function giveItem(playerName, itemId, quantity) {
     const data = await call('/api/give-item', {
         method: 'POST',
@@ -85,8 +85,8 @@ async function giveItem(playerName, itemId, quantity) {
 }
 
 // 🎁 Giao PAL vào game (rương pal web, 25/08). spec xem /api/give-pal bên dashboard.
-// Pal vào save ngay nhưng DÙNG ĐƯỢC sau restart server — báo người chơi đúng như vậy.
-// Trả { ok, message }. ok=false CÓ THỂ là timeout chứ chưa chắc thất bại — bên gọi
+// Pal vào save ngay nhưng DÙNG ĐƯỢC sau restart server, báo người chơi đúng như vậy.
+// Trả { ok, message }. ok=false CÓ THỂ là timeout chứ chưa chắc thất bại, bên gọi
 // phải giữ trạng thái 'delivering' cho admin xử, đừng tự trả về rương.
 async function givePal(playerName, spec) {
     const data = await call('/api/give-pal', {
@@ -140,7 +140,7 @@ async function countItemAll(itemId) {
 // TRỪ item trong túi người chơi (game -> Discord). Trả { ok, before, after, took, message }.
 //
 // QUAN TRỌNG: bên gọi phải kiểm tra `took` đúng bằng số yêu cầu rồi mới cộng Dogcoin.
-// Chỉ tin cờ ok là chưa đủ — lệch số ở đây là mất tiền thật của server hoặc người chơi.
+// Chỉ tin cờ ok là chưa đủ, lệch số ở đây là mất tiền thật của server hoặc người chơi.
 async function takeItem(playerName, itemId, quantity) {
     return await call('/api/take-item', {
         method: 'POST',

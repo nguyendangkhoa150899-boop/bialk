@@ -1,5 +1,5 @@
 // Đẩy MỘT file local lên đường dẫn bất kỳ trên server qua SFTP.
-// Khác upload.js (chỉ chuyên main.lua của mod GiveGoldCommand) — cái này dùng chung,
+// Khác upload.js (chỉ chuyên main.lua của mod GiveGoldCommand), cái này dùng chung,
 // cần cho việc đưa file JSON của PalSchema lên.
 //
 //   node putfile.js <file-local> "<duong-dan-tren-server>"

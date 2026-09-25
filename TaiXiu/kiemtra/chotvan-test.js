@@ -1,6 +1,6 @@
-// Bộ kiểm CHỐT VÁN — chạy: node TaiXiu/kiemtra/chotvan-test.js  (cần bot test đang chạy)
+// Bộ kiểm CHỐT VÁN, chạy: node TaiXiu/kiemtra/chotvan-test.js  (cần bot test đang chạy)
 //
-// Vì sao có file này — lỗi THẬT đã làm mất tiền người chơi trên bot chính:
+// Vì sao có file này, lỗi THẬT đã làm mất tiền người chơi trên bot chính:
 //   Đổi sang bàn 52 cửa nhưng khâu ghi log/lịch sử vẫn tra bảng tên 5 CỬA CŨ
 //   (TX_CHOICES). Ai đặt ô mới như "Tổng 9" là tra ra undefined -> TypeError ->
 //   settleTXPayout vỡ giữa chừng -> lịch sử không ghi (không soi được cầu),
@@ -52,7 +52,7 @@ function goi(port, duong, than, token) {
     const PT = (await goi(PANEL, '/api/login', { password: '' })).j.token;
     await goi(PANEL, '/api/tx/time', { bet: 12, nhan: 2, nan: 6 }, PT);
 
-    muc('đặt ô của BÀN MỚI rồi bỏ đi (không nặn) — ván vẫn phải chốt');
+    muc('đặt ô của BÀN MỚI rồi bỏ đi (không nặn), ván vẫn phải chốt');
     // chờ sang ĐẦU một ván mới cho đủ giờ đặt
     let s = null, truoc = null;
     for (let i = 0; i < 400; i++) {
@@ -68,7 +68,7 @@ function goi(port, duong, than, token) {
     const v0 = (await goi(WEB, '/api/state', {}, T)).j.balance;
 
     // 6 ô ĐƠN: ván nào cũng trúng ít nhất một ô, nên chắc chắn có tiền phải trả.
-    // Toàn ô của bàn mới — đúng loại từng làm vỡ khâu chốt ván.
+    // Toàn ô của bàn mới, đúng loại từng làm vỡ khâu chốt ván.
     const gio = [1, 2, 3, 4, 5, 6].map(n => ({ choice: 'don' + n, amount: 2000 }));
     const dat = await goi(WEB, '/api/bet', { gio }, T);
     ok('đặt được 6 ô Đơn (12.000)', dat.ma === 200 && dat.j.tong === 12000, JSON.stringify(dat.j));
@@ -80,7 +80,7 @@ function goi(port, duong, than, token) {
         c = (await goi(WEB, '/api/state', {}, T)).j;
         if (c && c.gameId > van) break;
     }
-    ok('BÀN KHÔNG KẸT — đã sang ván mới', c && c.gameId > van, 'vẫn đứng ở ' + (c && c.gameId));
+    ok('BÀN KHÔNG KẸT, đã sang ván mới', c && c.gameId > van, 'vẫn đứng ở ' + (c && c.gameId));
 
     const h = ((c && c.history) || []).filter(x => x.gameId === van)[0];
     ok('SOI CẦU CÓ ván vừa rồi (lịch sử được ghi)', !!h, 'không thấy ván #' + van);

@@ -1,5 +1,5 @@
 // ============================================================================
-//  bai.js — BỘ BÀI 52 LÁ + CHẤM BÀI (thuần logic, không dính web, không dính giải)
+//  bai.js, BỘ BÀI 52 LÁ + CHẤM BÀI (thuần logic, không dính web, không dính giải)
 //  Đây là móng của cả tính năng poker. Sai ở đây là sai thứ hạng cả giải, nên file
 //  này có bộ kiểm riêng: node Poker/kiemtra/bai-test.js
 //
@@ -140,9 +140,9 @@ function soDiem(a, b) {
 /**
  * Chấm 5–7 lá, tự chọn BỘ 5 LÁ MẠNH NHẤT.
  * Cách làm: thử hết mọi cách chọn 5 trong 7 (21 cách) rồi lấy cái cao nhất.
- * Chậm hơn thuật toán đếm bit nhưng ĐÚNG hiển nhiên và đọc là hiểu — bàn 4 người
+ * Chậm hơn thuật toán đếm bit nhưng ĐÚNG hiển nhiên và đọc là hiểu, bàn 4 người
  * mỗi giải chỉ vài chục ván nên nhanh chậm ở đây không đáng kể.
- * Trả { hang, diem, ten, nam } — nam là 5 lá được chọn, để giao diện tô sáng.
+ * Trả { hang, diem, ten, nam }, nam là 5 lá được chọn, để giao diện tô sáng.
  */
 function chamBai(la) {
     if (la.length < 5 || la.length > 7) throw new Error('chamBai cần 5–7 lá, nhận ' + la.length);

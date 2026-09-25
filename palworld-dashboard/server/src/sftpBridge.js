@@ -109,7 +109,7 @@ function queueAndWait(lines, expectedCount, maxAttempts = 8) {
 }
 
 // Mọi dòng kết quả liên quan tới 1 player đều được mod ghi với tiền tố "[player] "
-// (xem appendPlayerResult trong main.lua) — so khớp theo tiền tố này, KHÔNG đoán
+// (xem appendPlayerResult trong main.lua), so khớp theo tiền tố này, KHÔNG đoán
 // theo nội dung câu chữ (một số lỗi như "spawn failed" trước đây không chứa tên
 // player trong câu, làm dashboard báo nhầm "timeout" dù mod đã trả lời đúng).
 function splitResultsByPlayer(lines, players) {
@@ -124,7 +124,7 @@ function splitResultsByPlayer(lines, players) {
 }
 
 // playerName nằm CUỐI dòng để chịu được tên có dấu cách (tên hiển thị trong game
-// nhiều khi có 2+ từ, vd "Anh Hai") — mod Lua bắt phần còn lại của dòng làm tên.
+// nhiều khi có 2+ từ, vd "Anh Hai"), mod Lua bắt phần còn lại của dòng làm tên.
 export async function giveItem(playerNames, itemId, quantity) {
   const lines = playerNames.map((p) => `ITEM ${itemId} ${quantity} ${p}`);
   const result = await queueAndWait(lines, playerNames.length, 6 + 2 * playerNames.length);
@@ -133,7 +133,7 @@ export async function giveItem(playerNames, itemId, quantity) {
 
 // 🎁 Giao PAL (rương pal web, 25/08). Gửi lệnh PAL2 cho mod (spawn + bắt + ghi chỉ số
 // + hủy bản sao ngoài world). Mod trả NHIỀU dòng cho 1 lệnh (V5..., OK gave pal,
-// DEBUG readback...) nên KHÔNG dùng queueAndWait (nó chốt sớm ở dòng đầu tiên) —
+// DEBUG readback...) nên KHÔNG dùng queueAndWait (nó chốt sớm ở dòng đầu tiên)
 // tự chờ tới khi thấy dòng "OK gave pal" hoặc "ERROR" của đúng người này.
 // Trả { ok, message }.
 export async function givePal(playerName, spec) {
@@ -199,7 +199,7 @@ export async function countItem(playerName, itemId) {
 }
 
 // Đếm item cho TẤT CẢ người đang online trong 1 lượt gửi lệnh.
-// Dùng cho bảng số dư tự cập nhật — đếm từng người sẽ mất ~6 giây mỗi người.
+// Dùng cho bảng số dư tự cập nhật, đếm từng người sẽ mất ~6 giây mỗi người.
 // Trả [{ player, count }].
 export async function countItemAll(itemId) {
   const lines = await queueAndWait([`COUNTALL ${itemId}`], 1, 8);
@@ -214,7 +214,7 @@ export async function countItemAll(itemId) {
 
 // TRỪ item trong túi người chơi (cho luồng nạp: game -> Discord).
 // Mod tự kiểm tra số dư trước, thiếu thì không sửa gì và trả ERROR.
-// Trả { ok, before, after, took, message } — bên gọi PHẢI dựa vào `took` để cộng
+// Trả { ok, before, after, took, message }, bên gọi PHẢI dựa vào `took` để cộng
 // Dogcoin, đừng tin mỗi cờ ok, vì lệch số là mất tiền thật.
 export async function takeItem(playerName, itemId, quantity) {
   const result = await queueAndWait([`TAKE ${itemId} ${quantity} ${playerName}`], 1, 8);

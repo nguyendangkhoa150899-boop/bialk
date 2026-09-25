@@ -1,5 +1,5 @@
 // ============================================================================
-//  bai.js — BỘ BÀI 52 LÁ + LUẬT BỘ BÀI TIẾN LÊN MIỀN NAM
+//  bai.js, BỘ BÀI 52 LÁ + LUẬT BỘ BÀI TIẾN LÊN MIỀN NAM
 //  Thuần logic: không dính web, không dính ván, không dính tiền. Sai ở đây là sai
 //  cả ván nên có bộ kiểm riêng: node TienLen/kiemtra/bai-test.js
 //
@@ -10,13 +10,13 @@
 //      ví dụ: '3s' (3 bích) · '10h' (10 cơ) · 'Qd' (đầm rô) · '2h' (heo cơ)
 //
 //  ⚠️ KHÁC POKER HAI CHỖ, đừng chép nhầm:
-//   1. THỨ TỰ SỐ: 3 nhỏ nhất, 2 (heo) LỚN NHẤT — 3<4<...<10<J<Q<K<A<2.
+//   1. THỨ TỰ SỐ: 3 nhỏ nhất, 2 (heo) LỚN NHẤT, 3<4<...<10<J<Q<K<A<2.
 //   2. CHẤT CÓ THỨ BẬC: ♠ < ♣ < ♦ < ♥. Hai lá cùng số vẫn phân được lớn nhỏ.
 // ============================================================================
 'use strict';
 const crypto = require('crypto');
 
-// xếp từ NHỎ tới LỚN — chỉ số trong mảng chính là "hạng" dùng để so
+// xếp từ NHỎ tới LỚN, chỉ số trong mảng chính là "hạng" dùng để so
 const SO = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
 const CHAT = ['s', 'c', 'd', 'h'];
 const CHAT_KY_TU = { s: '♠', c: '♣', d: '♦', h: '♥' };
@@ -43,7 +43,7 @@ const ten1 = (ma) => { const l = doc(ma); return l.so + CHAT_KY_TU[l.chat]; };
 const tenBai = (la) => (la || []).map(ten1).join(' ');
 
 // ---------------------------------------------------------------------------
-//  XÁO BÀI — crypto.randomInt chứ KHÔNG Math.random: ván này ăn Dogcoin thật,
+//  XÁO BÀI, crypto.randomInt chứ KHÔNG Math.random: ván này ăn Dogcoin thật,
 //  bộ sinh số phải không đoán trước được. Fisher-Yates chuẩn (chạy từ cuối về đầu).
 // ---------------------------------------------------------------------------
 function xao(bo) {
@@ -69,7 +69,7 @@ const xepBai = (la) => la.slice().sort((a, b) => tri(a) - tri(b));
 //    kieu: 'rac' 1 lá · 'doi' 2 · 'ba' 3 · 'tu' tứ quý 4 · 'sanh' ≥3 lá liên tiếp
 //          · 'thong' ≥3 đôi liên tiếp
 //    dai:  số LÁ với rac/doi/ba/tu/sanh · số ĐÔI với thong (3 đôi thông -> dai 3)
-//    cao:  lá lớn nhất của bộ (mã lá) — mọi phép so đều quy về tri(cao)
+//    cao:  lá lớn nhất của bộ (mã lá), mọi phép so đều quy về tri(cao)
 //  Luật: sảnh và đôi thông KHÔNG được chứa heo (2). Sảnh tối thiểu 3 lá, đôi thông
 //  tối thiểu 3 đôi. Tứ quý và đôi thông từ 3 trở lên là HÀNG CHẶT (xem chatDuoc).
 // ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ function nhanDang(la) {
 
 // ---------------------------------------------------------------------------
 //  SO BỘ CÙNG KIỂU: 1 = a lớn hơn, -1 = b lớn hơn, null = không so được
-//  (khác kiểu hoặc khác độ dài thì KHÔNG so — muốn ăn phải đi đường CHẶT).
+//  (khác kiểu hoặc khác độ dài thì KHÔNG so, muốn ăn phải đi đường CHẶT).
 //  Mọi kiểu đều quy về lá cao nhất; vì chất có thứ bậc nên không bao giờ hoà.
 // ---------------------------------------------------------------------------
 function soBo(a, b) {
@@ -128,7 +128,7 @@ function soBo(a, b) {
 }
 
 // ---------------------------------------------------------------------------
-//  CHẶT (bom) — đánh đè lên bộ khác kiểu. Luật chủ server chốt (bản phổ thông):
+//  CHẶT (bom), đánh đè lên bộ khác kiểu. Luật chủ server chốt (bản phổ thông):
 //    3 đôi thông  chặt: 1 heo lẻ · 3 đôi thông nhỏ hơn
 //    tứ quý       chặt: 1 heo lẻ · đôi heo · 3 đôi thông · tứ quý nhỏ hơn
 //    4 đôi thông  chặt: 1 heo lẻ · đôi heo · ba heo · 3 đôi thông · tứ quý · 4 đôi thông nhỏ hơn
@@ -164,7 +164,7 @@ function chatDuoc(a, b) {
 
 /**
  * ĐÁNH ĐƯỢC KHÔNG? bo đè lên boTruoc (boTruoc = null nghĩa là mở lượt, đánh gì cũng được).
- * Trả { ok: true, chat: bool } hoặc { ok: false, vi: 'lý do' } — 'vi' hiện thẳng cho người chơi.
+ * Trả { ok: true, chat: bool } hoặc { ok: false, vi: 'lý do' }, 'vi' hiện thẳng cho người chơi.
  */
 function danhDuoc(bo, boTruoc) {
     if (!bo) return { ok: false, vi: 'Mấy lá này không thành bộ hợp lệ' };
@@ -188,8 +188,8 @@ function moTaKieu(bo) {
 }
 
 // ---------------------------------------------------------------------------
-//  TỚI TRẮNG — chia bài xong có sẵn bài quá đẹp thì thắng ngay, khỏi đánh.
-//  Xếp từ mạnh xuống; trả { ma, ten, thuong } — thuong = số PHẦN CƯỢC mỗi người
+//  TỚI TRẮNG, chia bài xong có sẵn bài quá đẹp thì thắng ngay, khỏi đánh.
+//  Xếp từ mạnh xuống; trả { ma, ten, thuong }, thuong = số PHẦN CƯỢC mỗi người
 //  thua phải trả (ván.js nhân với mức cược). null = không tới trắng.
 // ---------------------------------------------------------------------------
 const TOI_TRANG = [
@@ -198,20 +198,20 @@ const TOI_TRANG = [
     { ma: 'tu_quy_heo', ten: 'Tứ quý heo', thuong: 8 },
     { ma: 'nam_doi_thong', ten: '5 đôi thông', thuong: 6 },
     { ma: 'sau_doi', ten: '6 đôi bất kỳ', thuong: 4 },
-    // ♠️ VÁN ĐẦU CÓ HÀNG CHỨA 3♠ — luật gốc Ba Bích, trang "Tổng quan", dòng ĐẦU TIÊN của
+    // ♠️ VÁN ĐẦU CÓ HÀNG CHỨA 3♠, luật gốc Ba Bích, trang "Tổng quan", dòng ĐẦU TIÊN của
     // danh sách tới trắng. Ý nghĩa: ván đầu người cầm 3♠ BỊ BUỘC mở bằng bộ có 3♠; nếu con
     // 3♠ đang nằm trong một HÀNG (tứ quý 3 / 3-4 đôi thông bắt đầu từ 3) thì mở bài là phải
-    // phá hàng — nên luật đền bằng cách cho thắng trắng luôn.
+    // phá hàng, nên luật đền bằng cách cho thắng trắng luôn.
     //
     // ⚠️ SỐ 2 LÀ SỐ DO BÊN MÌNH ĐẶT, luật gốc KHÔNG ghi tiền từng trường hợp. Đặt thấp nhất
     // thang vì đây là trường hợp DỄ RA NHẤT: đo 300.000 ván thì 2,85% (1 trong 35) tay của
-    // người cầm 3♠ có hàng chứa 3♠ — dễ gấp ~1,8 lần "6 đôi bất kỳ" (đang ăn 4).
+    // người cầm 3♠ có hàng chứa 3♠, dễ gấp ~1,8 lần "6 đôi bất kỳ" (đang ăn 4).
     // Bù lại nó CHỈ nổ ở ván ĐẦU của bàn, nên cả buổi nhiều lắm một lần.
     { ma: 'hang_3bich', ten: 'Ván đầu: hàng chứa 3♠', thuong: 2, vanDau: true },
 ];
 /**
  * Con 3♠ có đang nằm trong một HÀNG trên tay không? Trả kiểu hàng ('tu' | 'thong3' | 'thong4')
- * hoặc null. Xét từ hàng TO xuống: 4 đôi thông > tứ quý > 3 đôi thông — cùng một con 3♠ có thể
+ * hoặc null. Xét từ hàng TO xuống: 4 đôi thông > tứ quý > 3 đôi thông, cùng một con 3♠ có thể
  * vừa nằm trong tứ quý 3 vừa nằm trong 3 đôi thông, lấy cái to hơn cho đúng tinh thần "phá hàng".
  */
 function hangChua3Bich(tay) {
@@ -252,7 +252,7 @@ function toiTrang(tay, vanDau) {
     return null;
 }
 
-/** Đếm heo còn trên tay (thối 2): { den, do } — heo đen ♠♣, heo đỏ ♦♥ (đỏ phạt nặng hơn). */
+/** Đếm heo còn trên tay (thối 2): { den, do }, heo đen ♠♣, heo đỏ ♦♥ (đỏ phạt nặng hơn). */
 function demHeo(tay) {
     let den = 0, do_ = 0;
     for (const ma of (tay || [])) {
@@ -264,7 +264,7 @@ function demHeo(tay) {
 }
 
 // ---------------------------------------------------------------------------
-//  🧾 TỔ HỢP ĐÁNG TIỀN — dùng cho hai việc TRẢ TIỀN, cùng một bảng giá:
+//  🧾 TỔ HỢP ĐÁNG TIỀN, dùng cho hai việc TRẢ TIỀN, cùng một bảng giá:
 //    · BỊ CHẶT : bộ vừa bị chặt đáng bao nhiêu -> người bị chặt trả cho người chặt
 //    · BỊ NHỐT : hết ván còn gì trên tay -> trả cho người về nhất (dân gian gọi "thối")
 //  Luật gốc (babichgame.gitbook.io) chỉ tính 5 thứ: heo đen · heo đỏ · 3 đôi thông ·
@@ -274,9 +274,9 @@ function demHeo(tay) {
 //   1. HEO LUÔN TÍNH TỪNG LÁ, kể cả khi 4 con 2 thành tứ quý. Bốn con 2 = 2 heo đen +
 //      2 heo đỏ (đắt hơn tính là một tứ quý). Đúng tinh thần "thối 2": kẹt heo là chết.
 //      Vì heo bị tách ra trước nên hàng (3/4 đôi thông, tứ quý) không bao giờ đè lên heo
-//      — sảnh và đôi thông vốn đã cấm heo, chỉ tứ quý heo là đụng, và nó đã thành heo rồi.
+//     , sảnh và đôi thông vốn đã cấm heo, chỉ tứ quý heo là đụng, và nó đã thành heo rồi.
 //   2. Lá đã dùng cho một hàng thì KHÔNG dùng lại cho hàng khác. Nhặt hàng ĐẮT TRƯỚC
-//      (4 đôi thông > tứ quý ≥ 3 đôi thông — thứ tự này đúng ở CẢ HAI bảng giá), nhặt
+//      (4 đôi thông > tứ quý ≥ 3 đôi thông, thứ tự này đúng ở CẢ HAI bảng giá), nhặt
 //      được thì bỏ mấy lá đó ra rồi nhặt tiếp. Tham lam đơn giản, không tìm cách tối ưu:
 //      luật gốc không nói gì, mà đơn giản thì người chơi còn tự nhẩm lại được.
 // ---------------------------------------------------------------------------

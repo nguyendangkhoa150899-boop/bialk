@@ -1,4 +1,4 @@
-// Bộ kiểm cho TienLen/trang.html — cú pháp JS client, mọi id/onclick có thật, luật datHTML,
+// Bộ kiểm cho TienLen/trang.html, cú pháp JS client, mọi id/onclick có thật, luật datHTML,
 // và chạy thử hàm vẽ trên DOM giả với trạng thái thật từ van.js (bắt lỗi "vẽ là nổ").
 // Chạy: node TienLen/kiemtra/trang-test.js
 'use strict';
@@ -25,7 +25,7 @@ muc('cú pháp + cấu trúc trang');
     ok('gọi API đúng gốc /api/tienlen', /GOC_API = '\/api\/tienlen'/.test(JS));
     ok('dùng chung play_token của web cược', /localStorage\.getItem\('play_token'\)/.test(JS));
     // 'giaLa' đã bỏ hẳn ở máy chủ (mỗi lá = ĐÚNG 1 cược). Trang còn đọc là ra undefined, in
-    // thành "đếm lá 0/lá" / "· lá 0" — người chơi tưởng bàn không tính tiền lá. Đã sót đúng
+    // thành "đếm lá 0/lá" / "· lá 0", người chơi tưởng bàn không tính tiền lá. Đã sót đúng
     // vậy tới lúc soi lại trước khi deploy 20/09.
     ok('KHÔNG còn đọc trường giaLa đã bỏ', !/giaLa/.test(JS));
     ok('phòng đếm lá nói rõ mỗi lá = 1 cược', /mỗi lá còn trên tay = 1 cược/.test(JS) && /🔢 mỗi lá/.test(JS));
@@ -37,7 +37,7 @@ muc('cú pháp + cấu trúc trang');
         HTML.indexOf('padding:8px 12px;padding-right:clamp(104px,15vw,168px)') >= 0);
     // ⚠️⚠️ BẪY CSS ĐÃ LÀM VỠ BÀN HAI LẦN (20/09): 'inset' là VIẾT TẮT của top/right/bottom/left.
     // Viết  .x{left:50%;top:50%;inset:auto}  thì inset XOÁ SẠCH left/top vừa ghi, khung rơi về
-    // vị trí tĩnh = GÓC TRÁI TRÊN màn. Trình duyệt KHÔNG báo lỗi vì câu CSS hợp lệ hoàn toàn —
+    // vị trí tĩnh = GÓC TRÁI TRÊN màn. Trình duyệt KHÔNG báo lỗi vì câu CSS hợp lệ hoàn toàn
     // chỉ là mình tự ghi đè chính mình. Quét mọi quy tắc: viết tắt không được đứng SAU dòng dài
     // mà nó bao trùm.
     {
@@ -161,7 +161,7 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
     chay('vẽ bàn dưới góc nhìn KHÁN GIẢ (không có toi.la) không nổ', { ...nen, ban: b.xemChung() });
 
     // ⚠️ CA ĐÃ LÀM VỠ TRANG THẬT (19/09): có bộ TRÊN BÀN + tới lượt mình. Lúc đó client chạy
-    // cMoiNuoc/cDanhDuoc trên bộ ĐÃ SERIALIZE của máy chủ — thiếu một trường là nổ. Ca "bàn đang
+    // cMoiNuoc/cDanhDuoc trên bộ ĐÃ SERIALIZE của máy chủ, thiếu một trường là nổ. Ca "bàn đang
     // đánh" ở trên không bắt được vì bàn còn trống (chưa ai đánh lá nào).
     {
         const vv = b._trong.van;
@@ -234,9 +234,9 @@ muc('chạy hàm vẽ với trạng thái THẬT từ van.js (DOM giả)');
     ok('ghế ghi rõ ai đi hết bài / ai còn mấy lá', /đi hết bài/.test(raGhe) && /còn \d+ lá/.test(raGhe), raGhe.slice(0, 300));
     // ⭐ Bài THẬT lật TO GIỮA BÀN, không nhét vào ghế: nhét vào ghế thì mỗi lá rộng 26px,
     // 13 lá chồng nhau là nhìn không ra lá gì (chủ server: "chưa show được bài... ý là show
-    // bài của người CÒN ra á" — nó CÓ vẽ, chỉ là bé quá nên trông như chưa vẽ).
+    // bài của người CÒN ra á", nó CÓ vẽ, chỉ là bé quá nên trông như chưa vẽ).
     // Màn rộng (bài kiểm dựng window.innerWidth = 1200): bài xoè NGAY CẠNH TỪNG GHẾ, đúng
-    // ảnh mẫu Ba Bích — gom một bảng giữa bàn thì không biết bài đó của AI.
+    // ảnh mẫu Ba Bích, gom một bảng giữa bàn thì không biết bài đó của AI.
     ok('cạnh mỗi ghế có xoè bài thật của người đó', raGhe.indexOf('class="latGhe"') >= 0 &&
         raGhe.indexOf('src="bai/2h.webp"') >= 0, raGhe.slice(0, 300));
     ok('...ghế nửa phải màn thì bày bài sang TRÁI, khỏi tràn ra ngoài mép',
@@ -260,7 +260,7 @@ muc('⚖️ máy luật bản client PHẢI khớp bai.js');
     const vm2 = require('vm');
     const ctx = { console };
     vm2.createContext(ctx);
-    // chỉ nạp phần máy luật (tới trước theLa) — khỏi kéo theo DOM
+    // chỉ nạp phần máy luật (tới trước theLa), khỏi kéo theo DOM
     const phan = JS.slice(JS.indexOf('var CSO ='), JS.indexOf('function theLa('));
     let loi = '';
     try { vm2.runInContext(phan, ctx, { filename: 'client-luat.js' }); } catch (e) { loi = e.message; }
@@ -333,7 +333,7 @@ muc('💡 gợi ý nước đánh (cMoiNuoc)');
     const bi = nuoc(['3s', '4c'], ['Ah']);
     ok('không có nước nào thì trả mảng rỗng', bi.length === 0, JSON.stringify(bi));
 
-    // mọi gợi ý phải được SERVER chấp nhận — đây mới là điều thật sự quan trọng
+    // mọi gợi ý phải được SERVER chấp nhận, đây mới là điều thật sự quan trọng
     let xau = 0;
     for (let i = 0; i < 200; i++) {
         const b = B.BO52.slice(); const t = [];
@@ -371,7 +371,7 @@ muc('📣 CHỈ bài đặc biệt mới bắn tên to giữa bàn (chủ server
 
 muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
 {
-    // Kiểu Ba Bích — chủ server chốt LẠI 20/09 sau khi thử khay: bấm lá thì lá NHÔ LÊN TẠI CHỖ
+    // Kiểu Ba Bích, chủ server chốt LẠI 20/09 sau khi thử khay: bấm lá thì lá NHÔ LÊN TẠI CHỖ
     // trong hàng bài, không phóng to. Khay riêng đã BỎ (chiếm nguyên một hàng, điện thoại nằm
     // ngang là mọi thứ dồn chật): "cho về lại bản chọn giống như game Ba Bích, đừng chồng chéo".
     ok('lá đang chọn NHÔ LÊN TẠI CHỖ + viền vàng + dấu ✓',
@@ -379,7 +379,7 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('lá chọn KHÔNG phóng to (phóng to là lấn che lá kế bên)', !/\.tay \.the\.chon\{[^}]*scale\(/.test(HTML));
     ok('dấu ✓ nằm góc TRÁI (phần luôn nhìn thấy khi xoè chồng)', /\.chon::after\{[^}]*left:-6px/.test(HTML));
     ok('KHÔNG còn khay bài đã chọn', !/banKhay/.test(HTML) && !/function veKhay\(/.test(JS));
-    // 20/09: "để chuột vị trí này thì lá bài bị giật giật" — hover mà nhấc lá lên thì mép dưới
+    // 20/09: "để chuột vị trí này thì lá bài bị giật giật", hover mà nhấc lá lên thì mép dưới
     // chạy khỏi con trỏ -> mất hover -> tụt -> dính lại: rung vô tận. Hover PHẢI đứng yên.
     {
         const luatHover = HTML.match(/\.tay \.the[^\n{]*:hover\{[^}]*\}/g) || [];
@@ -416,7 +416,7 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('dòng dưới nói rõ bộ gì + vì sao chưa đánh được', /id="banBoChon"/.test(HTML) && /💥 CHẶT được!/.test(JS) && /chưa tới lượt bạn/.test(JS));
     ok('📣 tên bộ bài bắn TO giữa bàn khi có người đánh', /id="banTen"/.test(HTML) && /function banhTen\(/.test(JS) && /@keyframes tenBo\{/.test(HTML));
     ok('...hàng chặt (tứ quý / đôi thông) đổi màu cam', /bo\.kieu === 'tu' \|\| bo\.kieu === 'thong'/.test(JS) && /#banTen\.bom\{/.test(HTML));
-    // 19/09: bàn giữ CẢ DIỄN BIẾN vòng đang đánh — các nước xếp đè, nước cũ mờ, nước mới sáng
+    // 19/09: bàn giữ CẢ DIỄN BIẾN vòng đang đánh, các nước xếp đè, nước cũ mờ, nước mới sáng
     ok('bài trên bàn XẾP ĐÈ lên nhau (không xoè quạt nữa)', /function chongLen\(/.test(JS) && !/function xoeQuat\(/.test(JS));
     ok('vẽ MỌI nước của vòng (v.chongBai), không chỉ bộ mới nhất', /v\.chongBai && v\.chongBai\.length/.test(JS));
     ok('nước cũ vẽ mờ, nước mới vẽ sáng', /gi < moiNhat/.test(JS) && /\.ola\.cu \.the\{filter/.test(HTML));
@@ -434,12 +434,12 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('cả nước nghiêng theo một góc riêng (±18°)', /rNuoc = laDau \? \(\(bam\(laDau, 13\) % 37\) - 18\)/.test(JS));
     ok('...và hàng bài nằm nghiêng THEO góc đó (không gãy)', /nghieng = giua \* Math\.tan\(rNuoc/.test(JS));
     ok('giữa các nước: xô lệch MẠNH (±0.35 lá) -> đè lộn xộn', /bam\(laDau, 71\) % 71\) - 35/.test(JS));
-    ok('từng lá chỉ rung RẤT nhẹ (±0.03 lá, ±4°) — không phá hàng',
+    ok('từng lá chỉ rung RẤT nhẹ (±0.03 lá, ±4°), không phá hàng',
         /bam\(ma, 29\) % 7\) - 3/.test(JS) && /rLa = \(bam\(ma, 11\) % 9\) - 4/.test(JS));
     // trang này từng THIẾU nhánh điện thoại nằm ngang (nhầm với trang Poker) -> bàn co còn ~145px
     ok('có nhánh CSS cho điện thoại NẰM NGANG', /@media\(orientation:landscape\) and \(max-height:560px\)\{/.test(HTML));
 
-    // 🟢 MÀN CHƠI PHỦ KÍN — chủ server gửi ảnh mẫu game Tiến Lên mobile 20/09: mặt bàn là NỀN
+    // 🟢 MÀN CHƠI PHỦ KÍN, chủ server gửi ảnh mẫu game Tiến Lên mobile 20/09: mặt bàn là NỀN
     // của cả màn hình, ghế sát mép, tay bài trải hết dải đáy, gần như không có chữ.
     ok('màn chơi PHỦ KÍN màn hình, bật bằng lớp body.choiBan',
         /body\.choiBan\{padding:0;max-width:none;overflow:hidden\}/.test(HTML) &&
@@ -454,7 +454,7 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
         (HTML.match(/body\.choiBan \.tayHang\{[^}]*\}/) || [''])[0]);
     // Không có trần thì trên màn PC 2554px, hai ghế đặt ở 13% và 70% cách nhau hơn 700px:
     // tên người chơi văng ra bốn góc, giữa là bãi xanh trống hoác (chủ server chụp 20/09).
-    ok('⭐ VÙNG CHƠI có TRẦN kích thước, căn giữa — màn PC không kéo ghế ra bốn góc',
+    ok('⭐ VÙNG CHƠI có TRẦN kích thước, căn giữa, màn PC không kéo ghế ra bốn góc',
         /body\.choiBan\{[\s\S]{0,40}--W:min\(100%,980px\);--H:min\(100%,560px\)/.test(HTML) &&
         /body\.choiBan \.ni\{position:absolute;inset:auto;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML) &&
         /body\.choiBan #banGhe\{position:absolute;left:50%;top:50%[\s\S]{0,90}width:var\(--W\);height:var\(--H\)/.test(HTML));
@@ -506,7 +506,7 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('...KHÔNG còn vết tích khay trong nhánh nằm ngang', !/banKhay/.test(HTML));
     ok('lệch tính theo var(--lb) nên đổi cỡ bài là cả đống co theo', /calc\(var\(--lb\) \* ' \+ mx/.test(JS));
     // "đánh bài có animation lá bài từ chỗ người chơi bay lên"
-    // 🐞 LỖI NẶNG 20/09: GHE_VT ghi % của VÙNG CHƠI nhưng laBan quy ra px theo .san — mà từ
+    // 🐞 LỖI NẶNG 20/09: GHE_VT ghi % của VÙNG CHƠI nhưng laBan quy ra px theo .san, mà từ
     // lúc bàn phủ kín màn thì .san CHÍNH LÀ CẢ MÀN HÌNH. Ghế ở 13% -> lệch −942px trên màn
     // 2547px: lá bài bay từ NGOÀI MÀN và nằm chết ở góc ("đánh bài nó văng lên góc").
     ok('⭐ lá bay đo theo ĐÚNG hộp mà % toạ độ ghế thuộc về (#banGhe), KHÔNG phải .san',
@@ -518,9 +518,9 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('bỏ lượt hiện PASS to rõ', /class="tt pass"/.test(JS) && /.tt.pass{/.test(HTML));
     ok('ghế hiện VỪA ĐÁNH gì, có dấu 💥 khi chặt', /vl\.viec==='danh'/.test(JS) && /💥 CHẶT/.test(JS));
     // 19/09 chủ server: "che bài người khác lại cho không được biết số lá bài của nhau nữa"
-    ok('ghế người khác KHÔNG hiện số lá — chỉ xấp úp cố định', /p\.conBai\) \? '<i><\/i><i><\/i><i><\/i>'/.test(JS) && !/dem-la/.test(JS));
+    ok('ghế người khác KHÔNG hiện số lá, chỉ xấp úp cố định', /p\.conBai\) \? '<i><\/i><i><\/i><i><\/i>'/.test(JS) && !/dem-la/.test(JS));
     ok('số lá chỉ hiện cho CHÍNH MÌNH', /laToi && p\.soLa!=null \? p\.soLa\+' lá' : ''/.test(JS));
-    // 20/09: ghế nói chuyện CỦA VÁN NÀY, không phải tổng cộng dồn cả buổi — về nhất mà ghế
+    // 20/09: ghế nói chuyện CỦA VÁN NÀY, không phải tổng cộng dồn cả buổi, về nhất mà ghế
     // ghi −4.200 (tổng cả buổi) thì chẳng ai hiểu gì.
     ok('ghế hiện ăn/thua CỦA VÁN NÀY, không phải tổng cộng dồn',
         /var tienVan = kqv \? \(\(kqv\.tien && kqv\.tien\[p\.id\]\) \|\| 0\) : \(p\.chatVan \|\| 0\)/.test(JS) &&
@@ -530,7 +530,7 @@ muc('hiệu ứng chọn bài + chỉ dẫn (thứ chủ server đặt)');
     ok('KHÔNG còn nhãn "sắp thắng" / badge đếm lá cũ', !/sapthang/.test(JS) && !/dem-la/.test(HTML));
     ok('đếm ngược số giây trên ghế đang tới lượt, ≤5 giây thì đỏ nhấp nháy', /class="dem'\+\(conGiay<=5\?' gap':''\)/.test(JS));
     ok('tới lượt mình thì sáng viền bàn + kêu 1 lần', /classList\.toggle\('toiluot'/.test(JS) && /LUOT_KEU/.test(JS));
-    // 20/09: "chữ nhảy linh tinh hết" — ghế co giãn theo trạng thái (có lượt thì mọc thanh
+    // 20/09: "chữ nhảy linh tinh hết", ghế co giãn theo trạng thái (có lượt thì mọc thanh
     // đồng hồ, nhãn thì đổi liên tục) nên mỗi giây vẽ lại là cả cụm chữ nhích chỗ.
     ok('ghim chiều cao ô đồng hồ + ô nhãn để chữ trên ghế KHÔNG nhảy',
         /\.gioO\{height:7px\}/.test(HTML) && /\.ttO\{min-height:25px\}/.test(HTML) &&
@@ -576,7 +576,7 @@ muc('nhắc nhở cho người chơi dễ biết (20/09)');
     ok('...ghi một lần cho mỗi ván, không đè chồng', /VAN_TRUOC\.so === so\) return;/.test(JS));
     ok('...và giấu đi khi đang ở chính ván đó', /VAN_TRUOC\.so !== \(b\.soVan\|\|0\)/.test(JS));
     ok('🚫 nói rõ "bạn đã bỏ lượt, chờ hết vòng" thay vì chỉ "đang chờ X"',
-        /Bạn đã bỏ lượt — chờ hết vòng này/.test(JS) && /toiTrongDs && toiTrongDs\.daBo/.test(JS));
+        /Bạn đã bỏ lượt, chờ hết vòng này/.test(JS) && /toiTrongDs && toiTrongDs\.daBo/.test(JS));
     ok('...kèm còn mấy người đang tranh vòng này',
         /x\.trongVan && !x\.daBo && x\.conBai/.test(JS) && /người đang tranh/.test(JS));
 }
@@ -603,9 +603,9 @@ muc('🏠 SẢNH chọn phòng / tạo phòng');
     ok('🚪 giữa ván có nút XIN RỜI SAU VÁN NÀY, không để nút chết trơ',
         /function roiSau\(/.test(JS) && /RỜI BÀN SAU VÁN NÀY/.test(JS) && JS.indexOf("goi('/roisau'") >= 0);
     ok('...bấm lại là huỷ, có nói rõ đang chờ rời',
-        /Sẽ rời bàn khi hết ván — bấm để ở lại/.test(JS) && /S\.xinRoi/.test(JS));
+        /Sẽ rời bàn khi hết ván, bấm để ở lại/.test(JS) && /S\.xinRoi/.test(JS));
     ok('có nút ra sảnh ở phòng chờ', /function raSanh\(/.test(JS) && /onclick="raSanh\(\)"/.test(HTML));
-    // "pc mình không bấm được vào bàn" — KHÔNG phải lỗi: ví 20 Dogcoin, phòng rẻ nhất cần
+    // "pc mình không bấm được vào bàn", KHÔNG phải lỗi: ví 20 Dogcoin, phòng rẻ nhất cần
     // 120.000. Lý do vốn đã ghi trong dòng xám của từng phòng nhưng lẫn giữa đống chữ, người
     // chơi chỉ thấy bấm không ăn rồi bỏ đi. Phải nói thẳng ngay đầu sảnh.
     ok('⛔ băng báo đầu sảnh khi KHÔNG vào được phòng nào',
@@ -649,7 +649,7 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
     ok('bảng kết quả cũng ghi rõ thối gì', /thối ' \+ \(ct\.thoiMuc && ct\.thoiMuc\.length/.test(JS));
     ok('😂 có câu chọc cuối ván', /function choc\(/.test(JS) && /id="kqCuoi"/.test(HTML) && /CHOC_THOI/.test(JS));
     // (dấu ngoặc là cố ý: chữ "Math.random" còn nằm trong một dòng bình luận giải thích
-    //  vì sao KHÔNG được dùng nó — bắt trần trụi là đỏ oan)
+    //  vì sao KHÔNG được dùng nó, bắt trần trụi là đỏ oan)
     ok('...câu chọc ổn định theo ván (không nhảy mỗi giây)',
         /bam\(id \+ soVan/.test(JS) && !/Math\.random\(\)/.test(JS));
     // 8 lá chồng 46% thì dính thành MỘT KHỐI, nhìn không ra lá nào với lá nào (chủ server
@@ -659,7 +659,7 @@ muc('🔍 HẾT VÁN NGỬA BÀI CẢ BÀN + nhãn THỐI/CÓNG');
     // 3px, hết bề ngang thì tự xuống hàng.
     ok('bài lật bày NGUYÊN CON, KHÔNG chồng lên nhau',
         /\.latGhe img\{[^}]*margin:0/.test(HTML) && !/margin-left:calc\(var\(--llb\)/.test(HTML));
-    // Ảnh lá bài (.webp) có NỀN TRONG SUỐT — mặt trắng là do CSS vẽ (.the{background:#fff}).
+    // Ảnh lá bài (.webp) có NỀN TRONG SUỐT, mặt trắng là do CSS vẽ (.the{background:#fff}).
     // Bày <img> trần lên mặt cỏ thì cỏ xanh lọt qua, lá bài thành MÀU XANH (chủ server 20/09).
     ok('⭐ lá lật có NỀN TRẮNG (ảnh .webp nền trong suốt)',
         /\.latGhe img\{[^}]*background:#fff/.test(HTML) && /\.latD \.bo img\{[^}]*background:#fff/.test(HTML));
@@ -678,7 +678,7 @@ muc('💥 CHẶT: trừ tiền tại chỗ thì phải THẤY nó trừ');
     ok('kêu MỘT lần cho mỗi cú chặt, so theo mốc luc', /cm.luc !== CHAT_LUC/.test(JS) && /CHAT_LUC = cm.luc/.test(JS));
     ok('...vẽ lại mỗi giây KHÔNG làm hiệu ứng chạy lại từ đầu', /CHAT_NHAY/.test(JS) && /veBan._chat/.test(JS));
     ok('nhãn trên ghế người chặt ghi luôn số tiền ăn', JS.indexOf("(vl.thuong?' +'+xu(vl.thuong):'')") >= 0);
-    ok('dòng thông báo nói rõ ai chặt ai, lấy bao nhiêu', JS.indexOf("' chặt ' + tenCua(cm.bi) + ' — lấy ngay '") >= 0);
+    ok('dòng thông báo nói rõ ai chặt ai, lấy bao nhiêu', JS.indexOf("' chặt ' + tenCua(cm.bi) + ', lấy ngay '") >= 0);
 }
 
 // ---------------------------------------------------------------- 🃏 BÀI TO + NÚT TO (20/09)

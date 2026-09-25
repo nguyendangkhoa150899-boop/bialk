@@ -7,7 +7,7 @@ async function call(method, path, body) {
   // theo tên...) trả lỗi rõ ràng thay vì fetch tới http://undefined.
   if (!process.env.PALWORLD_HOST) {
     throw new PalworldApiError(
-      "REST API đã tắt — server này chỉ chạy chuyển Dogcoin qua SFTP. Muốn bật lại: khai PALWORLD_HOST/PORT/ADMIN_PASSWORD trong server/.env.",
+      "REST API đã tắt, server này chỉ chạy chuyển Dogcoin qua SFTP. Muốn bật lại: khai PALWORLD_HOST/PORT/ADMIN_PASSWORD trong server/.env.",
       503
     );
   }

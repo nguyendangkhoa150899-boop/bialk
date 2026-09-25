@@ -1,4 +1,4 @@
-// Bộ kiểm cho TienLen/van.js — máy ván + TIỀN. Chạy: node TienLen/kiemtra/van-test.js
+// Bộ kiểm cho TienLen/van.js, máy ván + TIỀN. Chạy: node TienLen/kiemtra/van-test.js
 // Có ngẫu nhiên (chia bài) nên chạy 3 lần để dò chập chờn.
 'use strict';
 const { taoBan, CHE_DO } = require('../van.js');
@@ -15,7 +15,7 @@ function ban(n = 4, tc = {}) {
     for (const p of BON.slice(0, n)) b.themNguoi(p);
     return b;
 }
-/** Dựng tay bài theo ý muốn rồi chỉnh lượt — dùng để kiểm luật tiền cho chắc ăn. */
+/** Dựng tay bài theo ý muốn rồi chỉnh lượt, dùng để kiểm luật tiền cho chắc ăn. */
 function dung(b, tay, luot) {
     const v = b._trong.van;
     for (const id of Object.keys(tay)) v.tay[id] = tay[id].slice();
@@ -63,7 +63,7 @@ muc('chia bài + ai đi đầu');
     ok('ván đầu: người cầm 3♠ đi trước', v.tay[v.luot].includes('3s'), v.luot);
     ok('ván đầu bắt buộc đánh 3♠', v.batBuoc3Bich === true);
     ok('bài trên tay đã xếp sẵn nhỏ -> lớn', Object.values(v.tay).every(t => t.join() === B.xepBai(t).join()));
-    // 19/09 chủ server: giấu luôn SỐ LÁ của nhau — bản chung chỉ nói còn bài hay hết bài
+    // 19/09 chủ server: giấu luôn SỐ LÁ của nhau, bản chung chỉ nói còn bài hay hết bài
     ok('bản chung KHÔNG có lá và KHÔNG có số lá của ai', s.nguoi.every(p => p.la === undefined && p.soLa === undefined));
     ok('bản chung chỉ nói CÒN BÀI hay không', s.nguoi.every(p => p.conBai === true));
     const rieng = b.xem('A');
@@ -135,7 +135,7 @@ muc('🚫 BỎ LƯỢT LÀ NGHỈ HẾT VÒNG (chủ server chỉ ca này 20/09)
     // ---------- vòng 2: phải NHẢY QUA B ----------
     ok('vòng 2: quay lại A, KHÔNG phải B', v.luot === 'A', v.luot);
     let loi = ''; try { b.danh('B', ['8c'], 0); } catch (e) { loi = e.message; }
-    ok('⭐ B đã bỏ thì KHÔNG được đánh nữa dù có người đánh tiếp', /Chưa tới lượt/.test(loi), loi || '(B đánh được — SAI LUẬT)');
+    ok('⭐ B đã bỏ thì KHÔNG được đánh nữa dù có người đánh tiếp', /Chưa tới lượt/.test(loi), loi || '(B đánh được, SAI LUẬT)');
     b.danh('A', ['7s'], 0);
     ok('⭐ A đánh xong NHẢY QUA B, tới thẳng C', v.luot === 'C', v.luot);
     b.danh('C', ['9d'], 0);
@@ -154,7 +154,7 @@ muc('🚫 BỎ LƯỢT LÀ NGHỈ HẾT VÒNG (chủ server chỉ ca này 20/09)
     // ---------- A bỏ nốt -> cả vòng bỏ hết -> C ăn vòng, sổ bỏ XOÁ SẠCH ----------
     b.boLuot('A', 0);
     ok('⭐ cả vòng bỏ hết -> C (chủ bộ) ăn vòng và mở vòng mới', v.luot === 'C' && v.bo === null, v.luot);
-    ok('⭐ "tới khi nào bỏ hết thì mới được vô vòng lại" — sổ bỏ xoá sạch',
+    ok('⭐ "tới khi nào bỏ hết thì mới được vô vòng lại", sổ bỏ xoá sạch',
         v.daBo.size === 0, [...v.daBo].join());
     ok('bàn dọn sạch bài vòng cũ', v.chongBai.length === 0);
 }
@@ -198,7 +198,7 @@ function vanKhongCong(b) {
     return v;
 }
 
-muc('💰 TRUYỀN THỐNG 1-2-3-4 — ăn thua theo vị trí về');
+muc('💰 TRUYỀN THỐNG 1-2-3-4, ăn thua theo vị trí về');
 {
     const b = ban(4, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
@@ -235,7 +235,7 @@ muc('💰 TRUYỀN THỐNG 1-2-3-4 — ăn thua theo vị trí về');
     ok('2 người: nhất +900 (sau phế), bét −1.000', v.ketQua.tien.A === 900 && v.ketQua.tien.B === -1000, JSON.stringify(v.ketQua.tien));
 }
 
-muc('🧊 CÓNG — cả ván không đánh nổi lá nào');
+muc('🧊 CÓNG, cả ván không đánh nổi lá nào');
 {
     const b = ban(4, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
@@ -257,7 +257,7 @@ muc('🧊 CÓNG — cả ván không đánh nổi lá nào');
     b.danh('D', ['7h'], 0);
     const kq = v.ketQua;
     ok('ai cũng đánh ít nhất 1 lá -> không ai cóng', kq.cong.length === 0, JSON.stringify(kq.cong));
-    ok('bỏ lượt KHÔNG cứu được cóng — phải ĐÁNH mới thoát', /daDanh/.test(require('fs').readFileSync(__dirname + '/../van.js', 'utf8')));
+    ok('bỏ lượt KHÔNG cứu được cóng, phải ĐÁNH mới thoát', /daDanh/.test(require('fs').readFileSync(__dirname + '/../van.js', 'utf8')));
 }
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
@@ -267,7 +267,7 @@ muc('🧊 CÓNG — cả ván không đánh nổi lá nào');
     ok('2 người, bét cóng: −2 cược, nhất ăn cả phần dôi', v.ketQua.tien.B === -2000 && v.ketQua.tien.A === 1800, JSON.stringify(v.ketQua.tien));
 }
 
-muc('💰 ĐẾM LÁ — nhất ăn hết, mỗi lá = 1 cược, KHÔNG có cược nền');
+muc('💰 ĐẾM LÁ, nhất ăn hết, mỗi lá = 1 cược, KHÔNG có cược nền');
 {
     const b = ban(4, { cheDo: 'anhet', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
@@ -292,13 +292,13 @@ muc('💰 ĐẾM LÁ — nhất ăn hết, mỗi lá = 1 cược, KHÔNG có cư
     b.danh('A', ['3s'], 0);                       // A ra ngay, ba người kia chưa ai đánh
     const kq = v.ketQua;
     ok('đếm lá: nhất ra ngay -> cả ba người còn lại CÓNG', kq.cong.sort().join() === 'B,C,D', JSON.stringify(kq.cong));
-    ok('cóng: mỗi lá tính GẤP ĐÔI — B 2 lá = −4.000', kq.tien.B === -4000, String(kq.tien.B));
+    ok('cóng: mỗi lá tính GẤP ĐÔI, B 2 lá = −4.000', kq.tien.B === -4000, String(kq.tien.B));
     ok('C 3 lá cóng = −6.000', kq.tien.C === -6000, String(kq.tien.C));
     ok('D 4 lá cóng = −8.000', kq.tien.D === -8000, String(kq.tien.D));
     ok('A ăn 18.000, phế 1.800 -> +16.200', kq.tien.A === 16200, String(kq.tien.A));
 }
 
-muc('💥 CHẶT — trả theo BẢNG GIÁ, chặt HÀNG cũng ăn tiền');
+muc('💥 CHẶT, trả theo BẢNG GIÁ, chặt HÀNG cũng ăn tiền');
 {
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false, thoiHeoOn: false });
     b.vanMoi(0);
@@ -359,14 +359,14 @@ muc('💥 CHẶT — trả theo BẢNG GIÁ, chặt HÀNG cũng ăn tiền');
     b.danh('B', ['As', 'Ac', 'Ad', 'Ah'], 0);
     // ⚠️ CHỖ NÀY CỐ Ý: tứ quý đè tứ quý là ĐÁNH ĐÈ THƯỜNG (cùng kiểu, cùng dài -> so lá cao),
     // KHÔNG phải chặt, nên không có tiền. Y hệt 3 đôi thông đè 3 đôi thông. Luật gốc Ba Bích
-    // không nói rõ trường hợp này — nếu chủ server muốn tính tiền thì phải đổi danhDuoc() ở
+    // không nói rõ trường hợp này, nếu chủ server muốn tính tiền thì phải đổi danhDuoc() ở
     // bai.js cho nó trả chat:true, đừng vá ở van.js.
     ok('tứ quý đè tứ quý = đánh đè thường, KHÔNG phải chặt, không có tiền',
         !v.chatHeo || v.chatHeo.length === 0, JSON.stringify(v.chatHeo));
     ok('...nhưng vẫn đè được', v.veNhat.length > 0 || v.tay.B.length === 1, JSON.stringify(v.tay.B));
 }
 
-muc('🐷 NHỐT (thối) — hết ván còn HEO hoặc HÀNG trên tay');
+muc('🐷 NHỐT (thối), hết ván còn HEO hoặc HÀNG trên tay');
 {
     // Ván ai cũng kịp đánh: B nhốt 1 heo đen + 1 heo đỏ = 0.5 + 1 = 1.5 cược
     const b = ban(2, { cheDo: 'hang', mucCuoc: 1000, toiTrangOn: false, baBichOn: false });
@@ -538,7 +538,7 @@ muc('⏰ hết giờ + rớt mạng thì máy đánh giùm');
 }
 
 // ---------------------------------------------------------------- chạy trọn vẹn
-muc('chạy trọn vẹn nhiều ván (bàn chạy liên tục) — tiền không đẻ thêm');
+muc('chạy trọn vẹn nhiều ván (bàn chạy liên tục), tiền không đẻ thêm');
 {
     for (const cheDo of ['hang', 'anhet']) {
         let loiNao = '', vanXong = 0, lechTien = 0, treo = 0;

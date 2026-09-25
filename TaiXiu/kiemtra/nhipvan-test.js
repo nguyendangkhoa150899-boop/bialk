@@ -1,5 +1,5 @@
 // ============================================================================
-//  Bộ kiểm MẠCH VÁN — chạy: node TaiXiu/kiemtra/nhipvan-test.js   (không cần bot)
+//  Bộ kiểm MẠCH VÁN, chạy: node TaiXiu/kiemtra/nhipvan-test.js   (không cần bot)
 //
 //  Chủ server dặn 21/09:
 //    "thời gian đặt xong -> khóa cược -> hiển số nhân -> cho người chơi nặn.
@@ -7,10 +7,10 @@
 //     không được ngưng, không được mất ván, không được chưa show kết quả đã qua ván khác"
 //
 //  File này canh đúng bốn điều đó:
-//     ① ĐỦ MỐC   — bốn mốc đều tồn tại và đều có thời lượng thật (không mốc nào 0 giây)
-//     ② ĐÚNG THỨ TỰ — khoá sổ -> quay -> mở bát, và ba bước phải BẮT KỊP được khi lag
-//     ③ KHÔNG NGƯNG — mọi đường kẹt đều có lối ra
-//     ④ KHÔNG MẤT VÁN / KHÔNG NUỐT KẾT QUẢ — luôn chừa chỗ xem kết quả trước ván sau
+//     ① ĐỦ MỐC  , bốn mốc đều tồn tại và đều có thời lượng thật (không mốc nào 0 giây)
+//     ② ĐÚNG THỨ TỰ, khoá sổ -> quay -> mở bát, và ba bước phải BẮT KỊP được khi lag
+//     ③ KHÔNG NGƯNG, mọi đường kẹt đều có lối ra
+//     ④ KHÔNG MẤT VÁN / KHÔNG NUỐT KẾT QUẢ, luôn chừa chỗ xem kết quả trước ván sau
 // ============================================================================
 'use strict';
 const fs = require('fs');
@@ -88,7 +88,7 @@ muc('② ĐÚNG THỨ TỰ, và lag thì BẮT KỊP chứ không nhảy cóc');
 }
 
 // ---------------------------------------------------------------- ③ KHÔNG NGƯNG
-muc('③ BÀN KHÔNG ĐƯỢC NGƯNG — mọi đường kẹt phải có lối ra');
+muc('③ BÀN KHÔNG ĐƯỢC NGƯNG, mọi đường kẹt phải có lối ra');
 {
     ok('mất bảng Discord giữa chừng -> tự dựng lại', /if \(!txState\.message && txState\.channel && !txState\.isProcessing\)/.test(VONG));
     ok('kẹt cờ isProcessing -> watchdog tự gỡ', /Date\.now\(\) - txState\.processingStart > 120000/.test(VONG));
@@ -119,7 +119,7 @@ muc('④ CHƯA SHOW KẾT QUẢ THÌ KHÔNG ĐƯỢC QUA VÁN KHÁC');
 
 // ---------------------------------------------------------------- MÔ PHỎNG LAG
 // Mô hình lại đúng máy trạng thái ở trên rồi bắn lag ngẫu nhiên. Mô hình chỉ đáng tin khi
-// nó khớp mã thật — mấy phép kiểm ② ở trên canh việc đó (thứ tự + "if" nối tiếp + công thức
+// nó khớp mã thật, mấy phép kiểm ② ở trên canh việc đó (thứ tự + "if" nối tiếp + công thức
 // mốc giờ). Ở đây đo thứ mà đọc mã không thấy được: CHẠY RA có ván nào thiếu mốc không.
 muc('🔬 mô phỏng 3.000 ván với lag ngẫu nhiên tới 40 giây');
 {

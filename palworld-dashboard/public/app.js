@@ -32,7 +32,7 @@ async function refreshInfo() {
       if (m.uptime !== undefined) parts.push(`uptime ${formatUptime(m.uptime)}`);
       if (parts.length) extra = " · " + parts.join(" · ");
     } catch {
-      // metrics là phụ — server cũ không có endpoint này thì bỏ qua
+      // metrics là phụ, server cũ không có endpoint này thì bỏ qua
     }
     serverInfo.textContent = `${info.servername || "Server"} · v${info.version || "?"}${extra}`;
   } catch (err) {
@@ -104,7 +104,7 @@ function populatePlayerPicker(container, names) {
   const boxes = () => [...container.querySelectorAll("input[type=checkbox]:not(.picker-toggle-all)")];
   const all = container.querySelector(".picker-toggle-all");
   all.checked = boxes().length > 0 && boxes().every((b) => b.checked);
-  // Listener gắn 1 lần trên container (delegation) — picker được render lại mỗi 10s.
+  // Listener gắn 1 lần trên container (delegation), picker được render lại mỗi 10s.
   if (!container.dataset.bound) {
     container.dataset.bound = "1";
     container.addEventListener("change", (e) => {
@@ -279,7 +279,7 @@ function populateLinkPlayerSelect(players) {
   select.innerHTML = players
     .map((p) => {
       const name = cleanPlayerName(p.name);
-      return `<option value="${escapeHtml(p.userId)}" data-name="${escapeHtml(name)}">${escapeHtml(name)} — ${escapeHtml(p.userId)}</option>`;
+      return `<option value="${escapeHtml(p.userId)}" data-name="${escapeHtml(name)}">${escapeHtml(name)}, ${escapeHtml(p.userId)}</option>`;
     })
     .join("");
   if ([...select.options].some((o) => o.value === current)) select.value = current;

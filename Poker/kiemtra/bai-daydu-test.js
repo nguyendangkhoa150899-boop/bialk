@@ -3,12 +3,12 @@
 // đâu cũng ra). Khớp từng con số = hàm chấm bài không thể sai ở bất cứ trường hợp nào.
 //
 // Chạy:  node Poker/kiemtra/bai-daydu-test.js      (mất khoảng nửa phút)
-// Bài này KHÔNG cần chạy mỗi lần sửa — chỉ chạy khi đụng vào chamNam/sanh trong bai.js.
+// Bài này KHÔNG cần chạy mỗi lần sửa, chỉ chạy khi đụng vào chamNam/sanh trong bai.js.
 'use strict';
 const B = require('../bai.js');
 
 // Số bộ 5 lá cho từng hạng, trên tổng 2.598.960. Đây là hằng số toán học, không phải
-// số mình tự đo — nếu code sai thì số đếm được sẽ lệch.
+// số mình tự đo, nếu code sai thì số đếm được sẽ lệch.
 const CHUAN = {
     9: 40,        // thùng phá sảnh (gồm cả 4 bộ sảnh rồng A-K-Q-J-10)
     8: 624,       // tứ quý

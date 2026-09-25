@@ -1,10 +1,10 @@
-// Bộ kiểm máy chủ web — chạy: node Poker/kiemtra/web-test.js
+// Bộ kiểm máy chủ web, chạy: node Poker/kiemtra/web-test.js
 //
 // Bài quan trọng nhất ở đây là CHỐNG LỘ BÀI: không phải tin hàm xem() sạch, mà gọi
 // HTTP thật bằng phiên của từng người rồi soi TỪNG BYTE trả về xem có lá nào của
 // người khác lọt ra không. Lộ bài là hỏng cả tính năng, không phải lỗi nhỏ.
 //
-// Dùng database.json GIẢ trong thư mục tạm của máy — tuyệt đối không đụng file thật.
+// Dùng database.json GIẢ trong thư mục tạm của máy, tuyệt đối không đụng file thật.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -186,7 +186,7 @@ const dangNhap = async (id) => (await goi('/api/dangnhap', { id, pin: '123456' }
     }
 
     // ------------------------------------------------------------ CHỐNG LỘ BÀI
-    muc('🔒 CHỐNG LỘ BÀI — soi từng byte máy chủ trả về');
+    muc('🔒 CHỐNG LỘ BÀI, soi từng byte máy chủ trả về');
     {
         const tay = may.phong.giai._trong.van.tay;   // bài thật của từng người
         let loLot = [];

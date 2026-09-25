@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ============================================================================
-// patch_expedition.js — TẮT RỚT một số món ở TRẠM THÁM HIỂM PAL (Expedition) bằng cách vá
-// JSON (UAssetCLI tojson) của 2 bảng xổ số Palworld — đúng cơ chế đã dùng cho máy nghiền cổ vật
+// patch_expedition.js, TẮT RỚT một số món ở TRẠM THÁM HIỂM PAL (Expedition) bằng cách vá
+// JSON (UAssetCLI tojson) của 2 bảng xổ số Palworld, đúng cơ chế đã dùng cho máy nghiền cổ vật
 // (BialkServer_P.pak, 08/08): thám hiểm cũng bốc đồ qua DT_FieldLotteryNameDataTable, 18 dòng
 // Expedition_* (xác nhận 16/09 bằng DTINFO trên server test).
 //

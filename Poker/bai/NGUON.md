@@ -1,6 +1,6 @@
-# Bộ bài 52 lá — nguồn và cách tạo
+# Bộ bài 52 lá, nguồn và cách tạo
 
-**Mặt bài (52 lá):** bộ *vector-playing-cards* của Byron Knoll — **public domain**, không ràng
+**Mặt bài (52 lá):** bộ *vector-playing-cards* của Byron Knoll, **public domain**, không ràng
 buộc giấy phép, dùng thoải mái trong repo công khai.
 Tải qua bản mirror `hayeah/playing-cards-assets` (thư mục `png/`), ảnh gốc **222×323**.
 
@@ -23,5 +23,5 @@ Cỡ hiển thị an toàn tối đa **~110px**. Bàn poker dùng 44–68px nên
 
 ## Cách gọi tên file
 
-`<số><chất>.webp` — số là `A K Q J 10 9 8 7 6 5 4 3 2`, chất là `s` bích · `h` cơ ·
+`<số><chất>.webp`, số là `A K Q J 10 9 8 7 6 5 4 3 2`, chất là `s` bích · `h` cơ ·
 `d` rô · `c` chuồn. Ví dụ `As.webp`, `10h.webp`, `Qd.webp`. Lưng bài là `back.webp`.

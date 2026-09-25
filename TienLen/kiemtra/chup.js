@@ -1,9 +1,9 @@
 // ============================================================================
-//  chup.js — CHỤP MÀN HÌNH THẬT CỦA BÀN TIẾN LÊN, KHÔNG CẦN NGƯỜI NGỒI BẤM
+//  chup.js, CHỤP MÀN HÌNH THẬT CỦA BÀN TIẾN LÊN, KHÔNG CẦN NGƯỜI NGỒI BẤM
 //
 //  VÌ SAO CÓ FILE NÀY (chủ server hỏi 20/09: "máy cá nhân mình mạnh có cách nào
 //  lấy AI claude phụ được ko để khai thác được máy mình"):
-//    Suốt mấy ngày làm giao diện, vòng lặp luôn là — chủ server chụp màn hình báo lỗi,
+//    Suốt mấy ngày làm giao diện, vòng lặp luôn là, chủ server chụp màn hình báo lỗi,
 //    bên này sửa MÙ rồi đoán, chủ server chụp lại, sai nữa, lặp. Có bug đi tới 4 vòng
 //    (mảng bài lật, bài văng lên góc). Lý do: bộ kiểm chỉ đọc được CHỮ trong CSS, nó
 //    xác nhận "có viết dòng đó" chứ KHÔNG biết dòng đó vẽ ra cái gì.
@@ -47,7 +47,7 @@ const CHO_CHROME = [
 
 // 📐 CÁC KHỔ MÀN CẦN SOI. Đây đúng là mấy chỗ hay vỡ nhất:
 //    · pc        màn chủ server đang dùng (ảnh báo lỗi đều cỡ này)
-//    · pcRong    màn rộng — chỗ mà mốc neo lệch nhau lộ ra rõ nhất
+//    · pcRong    màn rộng, chỗ mà mốc neo lệch nhau lộ ra rõ nhất
 //    · dtNgang   điện thoại nằm ngang, khổ chật nhất mà vẫn phải chơi được
 //    · dtTo      điện thoại lớn nằm ngang
 const KHUNG = {
@@ -152,7 +152,7 @@ async function anh(cdp, ten) {
         await cdp.goi('Emulation.setDeviceMetricsOverride', { width: kh.w, height: kh.h, deviceScaleFactor: 1, mobile: false });
 
         // ⚠️ CHỈ NGỒI MỘT LẦN, rồi các khổ sau CHỈ ĐỔI CỠ MÀN.
-        // Bản đầu mỗi khổ lại tải lại trang rồi ngồi mới — sai: ngồi xong khổ 1 là người A VẪN
+        // Bản đầu mỗi khổ lại tải lại trang rồi ngồi mới, sai: ngồi xong khổ 1 là người A VẪN
         // CÒN NGỒI, tải lại trang không làm nó đứng dậy. Sang khổ 2 gọi /ngoi thì máy chủ chặn
         // ("bàn đang đánh") và chờ mãi không được -> 3 trên 4 khổ chỉ chụp được mỗi màn sảnh.
         if (!daNgoi) {
@@ -204,7 +204,7 @@ async function anh(cdp, ten) {
         await nghi(400);
         await anh(cdp, k + '-5-hangbai-binhthuong');
 
-        // 📏 đo THẬT bằng trình duyệt — con số này mới là sự thật, không phải phép tính tay
+        // 📏 đo THẬT bằng trình duyệt, con số này mới là sự thật, không phải phép tính tay
         const do_ = await chay(cdp, `
       var t = $('banTay'), k = t.children, n = k.length;
       if (!n) return null;

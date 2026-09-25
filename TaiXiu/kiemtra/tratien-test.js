@@ -1,4 +1,4 @@
-// Bộ kiểm TIỀN TRẢ RA trên bot test đang chạy — chạy: node TaiXiu/kiemtra/tratien-test.js
+// Bộ kiểm TIỀN TRẢ RA trên bot test đang chạy, chạy: node TaiXiu/kiemtra/tratien-test.js
 //
 // Đây là phép đo quan trọng nhất: đặt thật, ÉP xúc xắc ra kết quả biết trước, đọc
 // bảng nhân máy chủ công bố, rồi TỰ TÍNH TAY xem ví phải tăng bao nhiêu và đối chiếu.

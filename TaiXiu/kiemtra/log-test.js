@@ -1,5 +1,5 @@
 // ============================================================================
-//  Bộ kiểm 📜 LOG (22/09) — chạy: node TaiXiu/kiemtra/log-test.js  (không cần bot)
+//  Bộ kiểm 📜 LOG (22/09), chạy: node TaiXiu/kiemtra/log-test.js  (không cần bot)
 //
 //  Chủ server: · "log tài xỉu mình chỉ quan tâm ván đó người nào đặt nhiêu ăn thua nhiêu kết quả"
 //              · "làm thêm 1 siêu tài xỉu log nữa rồi tách log ra"

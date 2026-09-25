@@ -1,8 +1,8 @@
 /* =============================================================
-   SERVER — phục vụ web + Dashboard upload ảnh (chạy: node server.js)
+   SERVER, phục vụ web + Dashboard upload ảnh (chạy: node server.js)
    - Web:       http://localhost:8080
    - Dashboard: http://localhost:8080/admin
-   - Không mật khẩu — chỉ chia sẻ link cho người thân.
+   - Không mật khẩu, chỉ chia sẻ link cho người thân.
    ============================================================= */
 const express = require("express");
 const multer = require("multer");
@@ -12,7 +12,7 @@ const path = require("path");
 // jimp để tạo ảnh thu nhỏ (thumbnail). Nếu chưa cài (chưa npm install) thì bỏ qua, web vẫn chạy.
 let Jimp = null;
 try { Jimp = require("jimp").Jimp; }
-catch { console.log("(Chưa có jimp — tạm bỏ qua thumbnail, chạy 'npm install' để bật.)"); }
+catch { console.log("(Chưa có jimp, tạm bỏ qua thumbnail, chạy 'npm install' để bật.)"); }
 
 const ROOT = __dirname;
 const PORT = process.env.PORT || 8080;
@@ -260,7 +260,7 @@ app.post("/api/sothich", (req, res) => {
 /* ---------- Web tĩnh (đặt cuối) ---------- */
 app.use(express.static(ROOT));
 
-/* ---------- Bắt lỗi upload (multer) — trả thông báo rõ thay vì treo ---------- */
+/* ---------- Bắt lỗi upload (multer), trả thông báo rõ thay vì treo ---------- */
 app.use((err, req, res, next) => {
   if (!err) return next();
   console.log("Upload lỗi:", err.code || "", err.message);

@@ -1,5 +1,5 @@
 // ============================================================================
-//  web.js — MÔ-ĐUN TIẾN LÊN GẮN VÀO WEB BOTDOMIN (cùng cổng, cùng phiên đăng nhập)
+//  web.js, MÔ-ĐUN TIẾN LÊN GẮN VÀO WEB BOTDOMIN (cùng cổng, cùng phiên đăng nhập)
 //
 //  Giống hệt cách Poker/web.js gắn vào: webplay.js phục vụ ../TienLen/trang.html tại
 //  /tienlen/ và giao mọi /api/tienlen/* cho xuLy() ở đây (SAU cổng liên kết).
@@ -12,24 +12,24 @@
 //       đó -> không ai âm ví, và người thắng luôn được trả đủ.
 //    2. traTien() chạy ĐÚNG MỘT LẦN cho mỗi ván (khoá bằng daTraVan = số ván).
 //    3. Ai tụt dưới vốn tối thiểu thì bị mời khỏi bàn TRƯỚC ván kế, không phải giữa ván.
-//    4. MỖI LÚC CHỈ NGỒI MỘT PHÒNG (xem taoSanh) — hai bàn cùng trừ một ví là vỡ.
-//  Nuốt mọi lỗi (trả 400) vì chạy chung tiến trình với bot — ném ra là kéo cả bot theo.
+//    4. MỖI LÚC CHỈ NGỒI MỘT PHÒNG (xem taoSanh), hai bàn cùng trừ một ví là vỡ.
+//  Nuốt mọi lỗi (trả 400) vì chạy chung tiến trình với bot, ném ra là kéo cả bot theo.
 // ============================================================================
 'use strict';
 const V = require('./van.js');
 
 const GIAY_AFK_MAC_DINH = 25;       // không hỏi thăm quá lâu = coi như rớt mạng
 // 📵 ĐUỔI HẲN KHỎI GHẾ sau ngần này giây không hỏi thăm. Phải DÀI HƠN GIAY_AFK nhiều:
-// 25 giây đầu chỉ là "rớt mạng, máy đánh giùm" — sóng 4G chập chờn hay chuyển wifi là dính,
+// 25 giây đầu chỉ là "rớt mạng, máy đánh giùm", sóng 4G chập chờn hay chuyển wifi là dính,
 // đuổi luôn thì oan. Qua 70 giây thì coi như người ta đóng tab đi ngủ rồi: nhả ghế ra cho
 // người khác vào, và nhờ đó phòng rỗng mới tự xoá được (chủ server báo 20/09).
 const GIAY_DUOI_MAC_DINH = 70;
 // 8 giây, KHÔNG phải 5. Cuối ván có nhiều thứ phải nhìn cùng lúc: bài ngửa của người còn
-// cầm (có khi 13 lá), nhãn "THỐI ...", bảng tiền, câu chọc — mà 2,4 giây đầu còn bị chữ
+// cầm (có khi 13 lá), nhãn "THỐI ...", bảng tiền, câu chọc, mà 2,4 giây đầu còn bị chữ
 // "VỀ NHẤT" che giữa bàn. 5 giây là chưa kịp đọc đã chia ván mới (chủ server báo 20/09).
 const GIAY_XEM_KET_MAC_DINH = 8;
 // Vốn tối thiểu = HỆ SỐ × giá 1 cược. Lý do phải có: thua quá số tiền trong ví thì traTien()
-// kẹp ví về 0 và NGƯỜI THẮNG KHÔNG ĐƯỢC TRẢ ĐỦ — cả bàn chịu thiệt vì một người vào thiếu vốn.
+// kẹp ví về 0 và NGƯỜI THẮNG KHÔNG ĐƯỢC TRẢ ĐỦ, cả bàn chịu thiệt vì một người vào thiếu vốn.
 //
 // 📐 HAI SỐ DƯỚI ĐÂY LÀ THUA TỐI ĐA THẬT, QUÉT CẠN 3.598.180 hình dáng tay 13 lá (20/09),
 //    không phải ước lượng:
@@ -37,19 +37,19 @@ const GIAY_XEM_KET_MAC_DINH = 8;
 //      · 'anhet' nhốt tối đa 42 cược + 13 lá     , CÓNG ×2  => 110 cược
 //    (tay tệ nhất: tứ quý 3 + tứ quý 4 + tứ quý 5 + heo)
 //
-// ⚠️ 'hang' TRƯỚC ĐỂ 30× — hơn gấp đôi mức cần, đệm thừa 16 cược. Chủ server báo 20/09 là
+// ⚠️ 'hang' TRƯỚC ĐỂ 30×, hơn gấp đôi mức cần, đệm thừa 16 cược. Chủ server báo 20/09 là
 //    nó khoá cửa oan: bàn 80.000 đòi 2.400.000 trong khi thua đậm nhất chỉ 1.120.000.
 //    Hạ về 15× = thua tối đa 14 + 1 cược đệm. KHÔNG hạ thấp hơn nữa.
-// ⚠️ 'anhet' GIỮ NGUYÊN 120×. Thua tối đa đã là 110 — chỗ dư chỉ còn 9%, hạ nữa là vỡ.
+// ⚠️ 'anhet' GIỮ NGUYÊN 120×. Thua tối đa đã là 110, chỗ dư chỉ còn 9%, hạ nữa là vỡ.
 const VON_HE_SO = { hang: 15, anhet: 120 };
-// Thua tối đa một ván (đơn vị CƯỢC) — dùng cho bộ kiểm canh chừng hai số trên.
+// Thua tối đa một ván (đơn vị CƯỢC), dùng cho bộ kiểm canh chừng hai số trên.
 const THUA_TOI_DA = { hang: 14, anhet: 110 };
 const MUC_CUOC_MAC_DINH = 1000;
 
 // THANG MỨC CƯỢC chủ server chốt 20/09. Người chơi chỉ được chọn trong thang này (lúc tạo
 // phòng và lúc vote đổi cược). Admin ở panel thì vẫn đặt được số bất kỳ.
-//   · 'anhet' ĐẾM LÁ      — con số là giá MỖI LÁ (cũng chính là 1 cược).
-//   · 'hang'  TRUYỀN THỐNG — con số là GIẢI NHẤT (1 cược). Nhì ăn đúng một nửa.
+//   · 'anhet' ĐẾM LÁ     , con số là giá MỖI LÁ (cũng chính là 1 cược).
+//   · 'hang'  TRUYỀN THỐNG, con số là GIẢI NHẤT (1 cược). Nhì ăn đúng một nửa.
 const MUC_CUOC_CHO_PHEP = {
     anhet: [1000, 2000, 3000, 4000, 5000, 6000],
     hang: [10000, 20000, 40000, 60000, 80000, 100000],
@@ -88,12 +88,12 @@ function taoTienLen(deps) {
         ghe: Array(V.TOI_DA_NGUOI).fill(null),    // 4 ghế, null = trống
         ban: null,
         sanSang: new Set(),                        // ai đã bấm ✅ Sẵn sàng ở phòng chờ
-        // 🗳️ VOTE ĐỔI MỨC CƯỢC — { mucCuoc, boi, dong:Set<id> }. Quá nửa số người ngồi đồng ý
+        // 🗳️ VOTE ĐỔI MỨC CƯỢC, { mucCuoc, boi, dong:Set<id> }. Quá nửa số người ngồi đồng ý
         // thì ván SAU áp dụng (đang giữa ván thì chờ, xem vanKe). Ai rời bàn thì bỏ phiếu theo.
         vote: null,
         // 🚪 XIN RỜI SAU VÁN NÀY. Đang cầm bài thì không rời giữa chừng được (bỏ bàn giữa ván
         // là quỵt tiền người khác), nhưng bắt ngồi đực chờ hết ván rồi mới bấm được thì người
-        // ta đóng tab luôn — và đóng tab là thành "mất kết nối", máy đánh giùm, thua oan.
+        // ta đóng tab luôn, và đóng tab là thành "mất kết nối", máy đánh giùm, thua oan.
         // Bấm nút này là ghi tên vào sổ, hết ván tự cho ra (xem vanKe).
         xinRoi: new Set(),
         cauHinh: {
@@ -119,7 +119,7 @@ function taoTienLen(deps) {
     function canNgoi(id) {
         const u = layNguoi(id);
         if (!u) return 'Chưa có tài khoản trong bot';
-        if (!u.ingameName) return 'Chưa liên kết tên nhân vật — nhờ admin liên kết trước đã';
+        if (!u.ingameName) return 'Chưa liên kết tên nhân vật, nhờ admin liên kết trước đã';
         const von = vonToiThieu();
         if ((u.points || 0) < von)
             return 'Cần ít nhất ' + von.toLocaleString('vi-VN') + ' Dogcoin mới vào bàn cược ' +
@@ -135,7 +135,7 @@ function taoTienLen(deps) {
      */
     /**
      * 💥 Trả tiền CHẶT ngay lúc nó xảy ra. Gọi sau mỗi nước đánh (và trong nhịp, vì máy có thể
-     * đánh giùm). Mỗi cú chặt chỉ trả MỘT LẦN — khoá bằng cờ daTra ghi thẳng vào máy ván.
+     * đánh giùm). Mỗi cú chặt chỉ trả MỘT LẦN, khoá bằng cờ daTra ghi thẳng vào máy ván.
      * Có kẹp ví y như traTien: người bị chặt không đủ tiền thì lấy đúng số họ có.
      */
     function traChatNgay() {
@@ -149,13 +149,13 @@ function taoTienLen(deps) {
             const tien = Math.min(c.tien, co);       // kẹp: không để ai âm ví giữa ván
             if (tien < c.tien)
                 ghiLog('[TIẾN LÊN] ⚠️ ' + tenCua(c.bi) + ' bị chặt ' + c.tien.toLocaleString('vi-VN') +
-                    ' nhưng ví chỉ có ' + co.toLocaleString('vi-VN') + ' — trả tại chỗ ' + tien.toLocaleString('vi-VN'));
+                    ' nhưng ví chỉ có ' + co.toLocaleString('vi-VN') + ', trả tại chỗ ' + tien.toLocaleString('vi-VN'));
             if (!tien) continue;
             congVi(c.bi, -tien, 'Tiến Lên ván #' + v.so + ' (bị chặt)');
             congVi(c.chatBoi, tien, 'Tiến Lên ván #' + v.so + ' (chặt được)');
             daTraChat[c.bi] = (daTraChat[c.bi] || 0) - tien;
             daTraChat[c.chatBoi] = (daTraChat[c.chatBoi] || 0) + tien;
-            ghiLog('[TIẾN LÊN] 💥 ' + tenCua(c.chatBoi) + ' chặt ' + tenCua(c.bi) + ' — trả ngay ' +
+            ghiLog('[TIẾN LÊN] 💥 ' + tenCua(c.chatBoi) + ' chặt ' + tenCua(c.bi) + ', trả ngay ' +
                 tien.toLocaleString('vi-VN'));
         }
     }
@@ -178,7 +178,7 @@ function taoTienLen(deps) {
             if (co < -tien[id]) {
                 hut += (-tien[id]) - co;
                 ghiLog('[TIẾN LÊN] ⚠️ ' + tenCua(id) + ' thua ' + (-tien[id]).toLocaleString('vi-VN') +
-                    ' nhưng ví chỉ có ' + co.toLocaleString('vi-VN') + ' — kẹp lại, xem lại vốn tối thiểu');
+                    ' nhưng ví chỉ có ' + co.toLocaleString('vi-VN') + ', kẹp lại, xem lại vốn tối thiểu');
                 tien[id] = -co;
             }
         }
@@ -236,7 +236,7 @@ function taoTienLen(deps) {
     /** Số phiếu cần để vote đổi cược thắng: QUÁ NỬA số người đang ngồi. */
     function canPhieu() { return Math.floor(dangNgoi().length / 2) + 1; }
     function voteXong() { return !!(phong.vote && phong.vote.dong.size >= canPhieu()); }
-    /** Áp mức cược đã vote. Gọi lúc GIỮA HAI VÁN thôi — datCauHinh chặn khi đang đánh. */
+    /** Áp mức cược đã vote. Gọi lúc GIỮA HAI VÁN thôi, datCauHinh chặn khi đang đánh. */
     function apVote() {
         if (!voteXong()) return false;
         const m = phong.vote.mucCuoc;
@@ -249,7 +249,7 @@ function taoTienLen(deps) {
 
     /**
      * Nhả ghế một người: xoá khỏi ghế, khỏi sổ sẵn sàng, khỏi phiếu vote, khỏi máy ván.
-     * ⚠️ KHÔNG kiểm tra gì hết — nơi gọi phải tự lo là người này KHÔNG đang cầm bài giữa ván
+     * ⚠️ KHÔNG kiểm tra gì hết, nơi gọi phải tự lo là người này KHÔNG đang cầm bài giữa ván
      * (bỏ ngang giữa ván là quỵt tiền người khác). Dùng chung cho /roi, xin rời, và đuổi rớt mạng.
      */
     function nhaGhe(id) {
@@ -264,20 +264,20 @@ function taoTienLen(deps) {
 
     /** Bao lâu rồi người này chưa hỏi thăm máy chủ? (mili-giây) */
     function langBaoLau(id) {
-        // Chưa có sổ thì ghi bây giờ chứ ĐỪNG coi là lặng từ năm 1970 — không thì ai vừa
+        // Chưa có sổ thì ghi bây giờ chứ ĐỪNG coi là lặng từ năm 1970, không thì ai vừa
         // được xếp ghế bằng đường khác (ví dụ /tao tự cho ngồi) là bị đuổi ngay giây đầu.
         if (!chamCuoi.has(id)) chamCuoi.set(id, Date.now());
         return Date.now() - chamCuoi.get(id);
     }
-    /** Mất kết nối (máy đang đánh giùm) — chỉ để hiện nhãn cho cả bàn thấy. */
+    /** Mất kết nối (máy đang đánh giùm), chỉ để hiện nhãn cho cả bàn thấy. */
     const rotMang = (id) => langBaoLau(id) > GIAY_AFK * 1000;
 
     /**
-     * 📵 ĐUỔI NGƯỜI ĐÓNG TAB. Chạy mỗi nhịp, kể cả lúc CHƯA MỞ BÀN — chỗ thủng nặng nhất là
+     * 📵 ĐUỔI NGƯỜI ĐÓNG TAB. Chạy mỗi nhịp, kể cả lúc CHƯA MỞ BÀN, chỗ thủng nặng nhất là
      * phòng chờ: ratSoatAfk() chỉ soi người TRONG ván, nên ai ngồi phòng chờ rồi đóng tab là
      * giữ ghế vĩnh viễn, phòng chẳng bao giờ rỗng để mà xoá.
      *   · đang cầm bài giữa ván -> KHÔNG đuổi ngay (bỏ ngang là quỵt tiền cả bàn). Ghi vào sổ
-     *     xinRoi, máy đánh nốt bài giùm, hết ván choRaNhungAiXin() cho ra — đúng đường đã có.
+     *     xinRoi, máy đánh nốt bài giùm, hết ván choRaNhungAiXin() cho ra, đúng đường đã có.
      *   · còn lại (phòng chờ, hoặc đang có bàn nhưng người này hết bài / chưa vào ván) -> ra luôn.
      */
     function duoiNguoiRot() {
@@ -286,13 +286,13 @@ function taoTienLen(deps) {
             const v = phong.ban && phong.ban._trong.van;
             // ⚠️ "Còn dính ván" = ván hiện tại CHƯA TRẢ TIỀN XONG, chứ KHÔNG phải "còn cầm bài".
             // Lúc ván vừa chốt thì chẳng ai còn bài, nhưng tiền mới trả ở bước sau của cùng nhịp
-            // này — nhả ghế trước là roiBan() gạch tên khỏi máy ván và người đó MẤT TIỀN VÁN VỪA
+            // này, nhả ghế trước là roiBan() gạch tên khỏi máy ván và người đó MẤT TIỀN VÁN VỪA
             // THẮNG. Bộ kiểm bắt được đúng cảnh đó, đừng đổi lại.
             const dinhVan = !!(v && v.so > daTraVan);
             if (dinhVan) {
                 if (!phong.xinRoi.has(id)) {
                     phong.xinRoi.add(id);
-                    ghiLog('[TIẾN LÊN] ' + tenCua(id) + ' mất kết nối quá lâu — đánh nốt ván này rồi cho ra ghế');
+                    ghiLog('[TIẾN LÊN] ' + tenCua(id) + ' mất kết nối quá lâu, đánh nốt ván này rồi cho ra ghế');
                 }
                 continue;
             }
@@ -396,7 +396,7 @@ function taoTienLen(deps) {
         const trongBan = phong.ban._trong.nguoi.some(p => p.id === id);
         nen.demVanKe = vanXongLuc
             ? Math.max(0, Math.ceil((vanXongLuc + GIAY_XEM_KET * 1000 - Date.now()) / 1000)) : null;
-        // khán giả chỉ nhận bản CHUNG — không có bài riêng của ai
+        // khán giả chỉ nhận bản CHUNG, không có bài riêng của ai
         return { ...nen, ban: trongBan ? phong.ban.xem(id) : phong.ban.xemChung() };
     }
 
@@ -411,7 +411,7 @@ function taoTienLen(deps) {
                 vonToiThieu: vonToiThieu(), pheTram: V.PHE_TRAM,
                 ban: s ? {
                     trangThai: s.trangThai, soVan: s.soVan,
-                    // panel là của ADMIN nên vẫn cho thấy số lá (người chơi thì không) — đọc thẳng máy ván
+                    // panel là của ADMIN nên vẫn cho thấy số lá (người chơi thì không), đọc thẳng máy ván
                     nguoi: s.nguoi.map(p => ({
                         id: p.id, ten: p.ten, tong: p.tong, afk: p.afk,
                         soLa: (phong.ban._trong.van && (phong.ban._trong.van.tay[p.id] || []).length) || 0,
@@ -430,7 +430,7 @@ function taoTienLen(deps) {
             }
             // ⚠️ Bỏ hẳn ô 'giaLa'. Luật gốc Ba Bích: ở chế độ đếm lá, mỗi lá còn trên tay =
             // ĐÚNG 1 cược. Để hai con số rời nhau thì có ngày chỉnh lệch rồi tính sai tiền cả bàn.
-            if (o.giaLa != null) return { error: 'Không còn ô đơn giá lá — mỗi lá tính đúng 1 cược' };
+            if (o.giaLa != null) return { error: 'Không còn ô đơn giá lá, mỗi lá tính đúng 1 cược' };
             if (o.cheDo != null) {
                 if (!V.CHE_DO[o.cheDo]) return { error: 'Chế độ lạ' };
                 c.cheDo = o.cheDo;
@@ -458,7 +458,7 @@ function taoTienLen(deps) {
             if (duong === '/state') return tra();
 
             if (post && duong === '/ngoi') {
-                if (banDangDanh()) return loi(400, 'Bàn đang đánh — chờ hết ván rồi vào');
+                if (banDangDanh()) return loi(400, 'Bàn đang đánh, chờ hết ván rồi vào');
                 const vi = canNgoi(toi); if (vi) return loi(400, vi);
                 let ghe = Number.isInteger(body.ghe) ? body.ghe : phong.ghe.indexOf(null);
                 if (ghe < 0 || ghe >= V.TOI_DA_NGUOI) return loi(400, 'Bàn đủ ' + V.TOI_DA_NGUOI + ' người rồi');
@@ -471,7 +471,7 @@ function taoTienLen(deps) {
             }
             if (post && duong === '/roi') {
                 if (banDangDanh() && phong.ban._trong.van && (phong.ban._trong.van.tay[toi] || []).length > 0)
-                    return loi(400, 'Đang giữa ván — đánh hết bài rồi mới rời được (rớt mạng thì máy đánh giùm)');
+                    return loi(400, 'Đang giữa ván, đánh hết bài rồi mới rời được (rớt mạng thì máy đánh giùm)');
                 nhaGhe(toi);
                 // Bớt một người ngồi là NGƯỠNG QUÁ NỬA tụt theo -> vote đang treo có thể vừa đủ
                 // phiếu ngay lúc này. Không chốt lại ở đây thì nó nằm im tới tận ván sau.
@@ -494,7 +494,7 @@ function taoTienLen(deps) {
                 if (!uV || (uV.points || 0) < vonMoi)
                     return loi(400, 'Bạn không đủ vốn cho mức ' + m.toLocaleString('vi-VN') +
                         ' (cần ' + vonMoi.toLocaleString('vi-VN') + ', đang có ' +
-                        (((uV && uV.points) || 0)).toLocaleString('vi-VN') + ') — nâng lên là tự đá mình ra');
+                        (((uV && uV.points) || 0)).toLocaleString('vi-VN') + '), nâng lên là tự đá mình ra');
                 // vote mức KHÁC với vote đang mở -> mở lại từ đầu, người đổi ý tính là phiếu đầu
                 if (!phong.vote || phong.vote.mucCuoc !== m) phong.vote = { mucCuoc: m, boi: toi, dong: new Set() };
                 phong.vote.dong.add(toi);
@@ -523,10 +523,10 @@ function taoTienLen(deps) {
                 return tra();
             }
 
-            // ⚠️ Khối admin phải đứng TRƯỚC chốt "chưa có bàn" — không thì đổi cấu hình lúc bàn
+            // ⚠️ Khối admin phải đứng TRƯỚC chốt "chưa có bàn", không thì đổi cấu hình lúc bàn
             // chưa mở lại báo "chưa có bàn nào đang chạy", mà đó chính là lúc cần đổi nhất.
             if (post && ['/cauhinh', '/batdau', '/giaitan'].includes(duong)) {
-                if (!laAdmin(toi)) return loi(403, 'Chỉ admin mới làm được — vào panel SUPER');
+                if (!laAdmin(toi)) return loi(403, 'Chỉ admin mới làm được, vào panel SUPER');
                 const r = duong === '/cauhinh' ? quanLy.datCauHinh(body || {})
                     : duong === '/batdau' ? quanLy.batDau() : quanLy.giaiTan();
                 if (r.error) return loi(400, r.error);
@@ -547,7 +547,7 @@ function taoTienLen(deps) {
 }
 
 // ============================================================================
-//  NHIỀU PHÒNG — mỗi phòng là MỘT taoTienLen() độc lập, ghế riêng, ván riêng, cấu hình
+//  NHIỀU PHÒNG, mỗi phòng là MỘT taoTienLen() độc lập, ghế riêng, ván riêng, cấu hình
 //  riêng. Lớp này chỉ làm hai việc: lái đường dẫn về đúng phòng, và không cho một người
 //  ngồi hai phòng cùng lúc.
 //
@@ -565,7 +565,7 @@ function taoSanh(deps, ds) {
         const thang = MUC_CUOC_CHO_PHEP[cheDo];
         const m = Math.floor(Number(mucCuoc));
         if (!thang.includes(m)) return { error: 'Mức cược phải chọn trong: ' + thang.map(x => x.toLocaleString('vi-VN')).join(' · ') };
-        if (dsPhong.length >= TOI_DA_PHONG) return { error: 'Đang có đủ ' + TOI_DA_PHONG + ' phòng rồi — vào phòng sẵn có hoặc chờ phòng trống tan' };
+        if (dsPhong.length >= TOI_DA_PHONG) return { error: 'Đang có đủ ' + TOI_DA_PHONG + ' phòng rồi, vào phòng sẵn có hoặc chờ phòng trống tan' };
         // Không cho tạo phòng mình không đủ tiền vào. Thiếu chốt này thì người ta bấm tạo xong
         // bị đá ra ngay, phòng rỗng nằm chình ình giữa sảnh tới lúc bị dọn.
         if (boiAi) {
@@ -612,7 +612,7 @@ function taoSanh(deps, ds) {
                     const r = p.may.quanLy.datCauHinh({ mucCuoc: p.goc.mucCuoc });
                     if (!r.error) {
                         p.may.phong.vote = null;
-                        deps.ghiLog && deps.ghiLog('[TIẾN LÊN] Phòng ' + p.ma + ' hết người — trả cược về mức gốc ' +
+                        deps.ghiLog && deps.ghiLog('[TIẾN LÊN] Phòng ' + p.ma + ' hết người, trả cược về mức gốc ' +
                             cu.toLocaleString('vi-VN') + ' -> ' + p.goc.mucCuoc.toLocaleString('vi-VN'));
                     }
                 }
@@ -663,16 +663,16 @@ function taoSanh(deps, ds) {
             const b = req.body || {};
             const p = taoPhong(b.cheDo, b.mucCuoc, req.userId);
             if (p.error) return loi(400, p.error);
-            // tạo xong CHO NGỒI LUÔN — không thì người tạo phải bấm thêm một nhát, mà phòng
+            // tạo xong CHO NGỒI LUÔN, không thì người tạo phải bấm thêm một nhát, mà phòng
             // trống vừa tạo lại dễ bị dọn mất ngay.
             p.may.xuLy({ ...req, path: '/ngoi', method: 'POST', body: { ghe: 0 } }, res, () => { });
             return sendJSON(res, 200, { ...danhSach(req.userId), vaoPhong: p.ma });
         }
         const m = duong.match(/^\/([A-Za-z0-9_-]+)(\/.*)?$/);
         const p = m && tim(m[1]);
-        if (!p) return loi(404, 'Phòng "' + (m ? m[1] : duong) + '" không còn nữa — quay ra sảnh chọn phòng khác');
+        if (!p) return loi(404, 'Phòng "' + (m ? m[1] : duong) + '" không còn nữa, quay ra sảnh chọn phòng khác');
         const con = m[2] || '/state';
-        // Một người CHỈ ngồi được MỘT phòng. Ngồi phòng mới thì tự đứng dậy khỏi phòng cũ —
+        // Một người CHỈ ngồi được MỘT phòng. Ngồi phòng mới thì tự đứng dậy khỏi phòng cũ
         // không thì vốn tối thiểu tính hai nơi mà ví chỉ có một, hai bàn cùng trừ là vỡ ví.
         if (post && con === '/ngoi') {
             const cu = dangNgoiO(req.userId);
@@ -683,7 +683,7 @@ function taoSanh(deps, ds) {
                 // "mỗi lúc một phòng" sinh ra để chặn.
                 cu.may.xuLy({ ...req, path: '/roi' }, res, () => { });
                 if (cu.may.phong.ghe.indexOf(req.userId) >= 0)
-                    return loi(400, 'Bạn đang giữa ván ở phòng khác — đánh hết bài rồi mới đổi phòng được');
+                    return loi(400, 'Bạn đang giữa ván ở phòng khác, đánh hết bài rồi mới đổi phòng được');
             }
         }
         return p.may.xuLy({ ...req, path: con }, res, sendJSON);
@@ -695,7 +695,7 @@ function taoSanh(deps, ds) {
         tomTat: () => dsPhong.map(p => ({ ma: p.ma, ten: tenPhong(p), cheDo: p.cheDo, ...p.may.quanLy.tomTat() })),
         cua: (ma) => { const p = tim(ma); return p ? p.may.quanLy : null; },
         taoPhong, donPhongTrong,
-        /** Dẹp sạch mọi phòng — dùng khi admin tắt trò chơi. */
+        /** Dẹp sạch mọi phòng, dùng khi admin tắt trò chơi. */
         dongHet() { for (const p of dsPhong) { try { p.may.quanLy.giaiTan(); } catch (e) { } } dsPhong.length = 0; },
     };
 

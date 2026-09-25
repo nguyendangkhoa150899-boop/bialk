@@ -1,19 +1,19 @@
 // ============================================================================
-//  giai.js — MÁY TRẠNG THÁI GIẢI POKER 2–8 NGƯỜI (Texas Hold'em, loại dần)
+//  giai.js, MÁY TRẠNG THÁI GIẢI POKER 2–8 NGƯỜI (Texas Hold'em, loại dần)
 //  Thuần logic: không web, không Discord, không đụng ví Dogcoin.
-//  Chip trong đây là CHIP GIẢI (ảo). Không ai ăn tiền thật của ai — giải chỉ đẻ ra
+//  Chip trong đây là CHIP GIẢI (ảo). Không ai ăn tiền thật của ai, giải chỉ đẻ ra
 //  THỨ HẠNG (nhất/nhì/ba/tư...), còn thưởng Pal và phạt là chủ server tự làm tay.
 //
 //  Bộ kiểm:  node Poker/kiemtra/giai-test.js
 //
-//  LUẬT ĐÃ CHỌN (khác sòng thật một chút, cố ý — ghi ra để sau khỏi tưởng là bug):
+//  LUẬT ĐÃ CHỌN (khác sòng thật một chút, cố ý, ghi ra để sau khỏi tưởng là bug):
 //   1. Tố ngắn (all-in nhỏ hơn mức tố tối thiểu) VẪN mở lại lượt cho người đã đi.
 //      Sòng thật thì không. Chọn vậy vì luật thật ở chỗ này đẻ rất nhiều ca hiếm,
 //      mà bàn toàn người quen thì lợi bất cập hại.
 //   2. Mức blind chỉ lên GIỮA HAI VÁN, không bao giờ lên giữa ván đang đánh.
 //   3. Hết giờ suy nghĩ: miễn phí thì tự THEO, phải bỏ tiền thì tự BỎ BÀI.
 //   4. Hai người cháy cùng một ván: ai vào ván với NHIỀU chip hơn thì hạng cao hơn.
-//   5. Rớt mạng (AFK) VẪN đóng blind như thường — ngồi im là chip cụt dần rồi cháy.
+//   5. Rớt mạng (AFK) VẪN đóng blind như thường, ngồi im là chip cụt dần rồi cháy.
 //      Chỉ khác: tới lượt thì máy đánh giùm NGAY, không bắt cả bàn đợi hết 30 giây.
 //   6. Tạm ngưng đông cứng CẢ HAI đồng hồ (giờ suy nghĩ + giờ lên mức blind); lúc
 //      chơi tiếp cộng bù đúng bằng thời gian đã nghỉ, nên không ai bị xử oan.
@@ -22,7 +22,7 @@
 //   7. Khoe bài: mỗi ván ĐÚNG 1 lá, cả bàn thấy 4 giây. Đã bỏ bài vẫn khoe được.
 //   8. Chip lẻ khi chia hũ về người CÒN BÀI sát trái nút cái nhất (bỏ qua người đã bỏ).
 //   9. Nút cái ván đầu NGẪU NHIÊN. Lên mức blind khi hết 8 phút HOẶC đủ max(số người, 6)
-//      ván — cái nào tới trước. Thang blind sinh từ chip khởi điểm, leo tới >= tổng chip bàn.
+//      ván, cái nào tới trước. Thang blind sinh từ chip khởi điểm, leo tới >= tổng chip bàn.
 // ============================================================================
 'use strict';
 const B = require('./bai.js');
@@ -40,11 +40,11 @@ const LICH_BLIND_MAC_DINH = [
 // 6 người ≈ 48-52, 8 người ≈ 60-68, tay đôi ≈ 23-26 (tay đôi nhanh là đúng bản chất).
 const PHUT_MOI_MUC = 8;
 const GIAY_MOI_LUOT = 30;
-// 18/09: cả bàn all-in (không còn ai để đánh) thì KHÔNG chia nốt bài chung một cục nữa —
+// 18/09: cả bàn all-in (không còn ai để đánh) thì KHÔNG chia nốt bài chung một cục nữa
 // lật từng vòng (flop -> turn -> river) cách nhau chừng này giây rồi mới chốt ván, cho người
 // chơi kịp nhìn. Chủ server thử 2 người all-in: "chưa hiểu chuyện gì đã qua tổng kết rồi".
 const GIAY_LO_DAN = 1.6;
-// 18/09: VÀO MUỘN — giải đã bắt đầu dưới chừng này giây thì người khác vẫn ngồi vào được (nhận đủ
+// 18/09: VÀO MUỘN, giải đã bắt đầu dưới chừng này giây thì người khác vẫn ngồi vào được (nhận đủ
 // chip khởi điểm, đánh từ ván KẾ). Chủ server chốt 1 phút. Quá mốc là khoá tới hết giải.
 const GIAY_VAO_MUON = 60;
 const GIAY_KHOE = 4;           // khoe 1 lá thì cả bàn thấy trong chừng này giây
@@ -76,7 +76,7 @@ const BB_DEP = [10, 20, 30, 50, 100, 150, 200, 300, 400, 600, 800, 1000, 1500, 2
 /**
  * Sinh thang blind từ chip khởi điểm. Admin đổi chipDau là thang tự đổi theo, khỏi tự gõ.
  * Thang phải leo tới BB >= TỔNG chip tối đa của bàn (chipDau × 8), KHÔNG dừng ở 1 stack:
- * bộ kiểm "cả bàn AFK" từng lộ ra — thang dừng ở BB 4.000 với stack 5.000 thì bốn bot
+ * bộ kiểm "cả bàn AFK" từng lộ ra, thang dừng ở BB 4.000 với stack 5.000 thì bốn bot
  * chỉ-bỏ-bài cứ BB ăn đúng tiền SB, đi giáp vòng là hoà, không ai cháy, giải treo mãi.
  * BB >= tổng chip thì ai làm BB cũng all-in, ván nào cũng phải có người cháy.
  */
@@ -95,7 +95,7 @@ function taoLichBlind(chipDau) {
 }
 
 // Mỗi mức tối thiểu chừng này ván dù bàn ít người. Không có sàn này thì bàn 2 người
-// cứ 2 ván lên một mức (~1 phút), 4 người ~2,6 phút — giải tàn trong 10-20 phút, trái
+// cứ 2 ván lên một mức (~1 phút), 4 người ~2,6 phút, giải tàn trong 10-20 phút, trái
 // mục tiêu 30-60 phút. Số này do mô phỏng chọn, xem Poker/README.md.
 const VAN_TOI_THIEU_MOI_MUC = 6;
 
@@ -127,7 +127,7 @@ function taoGiai(tuyChon = {}) {
         tongNghiMs: 0,           // tổng thời gian đã nghỉ (để báo cho người chơi)
         nghiXin: null,           // đề nghị đang chờ: { boi, dongY:Set, luc }
         daXinNghi: new Set(),    // ai đã dùng lượt xin nghỉ của mình rồi
-        batDauLuc: null,         // mốc bấm bắt đầu — tính cửa VÀO MUỘN (giayVaoMuon); null = chưa mở
+        batDauLuc: null,         // mốc bấm bắt đầu, tính cửa VÀO MUỘN (giayVaoMuon); null = chưa mở
     };
 
     // ---------------------------------------------------------------- tiện ích
@@ -139,7 +139,7 @@ function taoGiai(tuyChon = {}) {
     /** Những người còn bài VÀ còn chip để đánh tiếp. */
     const conDanh = () => conBai().filter(id => ai(id).chip > 0);
 
-    /** Ghế kế tiếp (vòng tròn) còn chip — dùng để xoay nút cái. */
+    /** Ghế kế tiếp (vòng tròn) còn chip, dùng để xoay nút cái. */
     function gheKe(g) {
         const n = G.nguoi.length;
         for (let i = 1; i <= n; i++) {
@@ -216,9 +216,9 @@ function taoGiai(tuyChon = {}) {
             cuoc: {},                            // đã đẩy trong VÒNG này
             tongCuoc: {},                        // đã đẩy cả VÁN (dùng chia hũ phụ)
             daBo: new Set(), daDi: new Set(),
-            // 18/09: NHÃN VIỆC VỪA LÀM — id -> { viec, tien, luc }. Cả bàn nhìn ghế là biết
+            // 18/09: NHÃN VIỆC VỪA LÀM, id -> { viec, tien, luc }. Cả bàn nhìn ghế là biết
             // người đó vừa BỎ / XEM (miễn phí) / THEO / TỐ / ALL-IN bao nhiêu, không phải suy
-            // từ đống chip. Xoá sạch mỗi khi sang vòng mới (flop/turn/river) — đúng như sòng
+            // từ đống chip. Xoá sạch mỗi khi sang vòng mới (flop/turn/river), đúng như sòng
             // thật: nhãn là của VÒNG ĐANG ĐÁNH. Riêng người đã bỏ thì web tự giữ nhãn BỎ.
             vuaLam: {},
             khoe: {},                            // id -> { i, la, den } khoe 1 lá cho cả bàn xem
@@ -268,11 +268,11 @@ function taoGiai(tuyChon = {}) {
         if (!v || G.trangThai !== 'DANG_CHAY') throw new Error('Không có ván nào đang đánh');
         // "Đang nghỉ" phải xét TRƯỚC mọi chốt khác: nó chặn cả bàn, không riêng ai.
         // Để sau thì người chơi nhận câu báo lỗi lạc đề ("chưa tới lượt", "ván đã xong").
-        if (G.nghi) throw new Error('Đang tạm ngưng — bấm CHƠI TIẾP đã');
+        if (G.nghi) throw new Error('Đang tạm ngưng, bấm CHƠI TIẾP đã');
         // Ván đã lật bài/chốt xong thì cấm đánh thêm. Thiếu chốt chặn này thì gọi
         // hanhDong() trên ván đã xong vẫn lọt và chạy vô tận (đã dính một lần).
-        if (['LAT', 'XONG'].includes(v.vong)) throw new Error('Ván đã xong — chờ ván sau');
-        if (v.loDan) throw new Error('Cả bàn đã all-in — đang lật bài, không còn gì để đánh');
+        if (['LAT', 'XONG'].includes(v.vong)) throw new Error('Ván đã xong, chờ ván sau');
+        if (v.loDan) throw new Error('Cả bàn đã all-in, đang lật bài, không còn gì để đánh');
         if (v.luot !== id) throw new Error('Chưa tới lượt ' + id);
         const p = ai(id);
         const canTheo = v.muc - v.cuoc[id];
@@ -282,7 +282,7 @@ function taoGiai(tuyChon = {}) {
 
         if (kieu === 'bo') {
             // chặn bỏ bài khi đang MIỄN PHÍ - gần như luôn là bấm nhầm
-            if (canTheo <= 0) throw new Error('Đang miễn phí, đừng bỏ bài — cứ THEO');
+            if (canTheo <= 0) throw new Error('Đang miễn phí, đừng bỏ bài, cứ THEO');
             v.daBo.add(id);
             ghiViec('bo');
         } else if (kieu === 'theo') {
@@ -308,10 +308,10 @@ function taoGiai(tuyChon = {}) {
 
     // ------------------------------------------------------- khoe bài
     /**
-     * Tự nguyện lật 1 lá cho CẢ BÀN xem trong vài giây — trò khích tướng kinh điển.
+     * Tự nguyện lật 1 lá cho CẢ BÀN xem trong vài giây, trò khích tướng kinh điển.
      * Luật chủ server chốt: MỖI VÁN CHỈ ĐƯỢC KHOE ĐÚNG 1 LÁ, chọn 1 trong 2.
      * Đã bỏ bài vẫn khoe được (khoe con bài mình vừa bỏ cũng là một kiểu chơi).
-     * Quyết định nằm ở ĐÂY, không phải ở web — client không bao giờ được tự lộ bài.
+     * Quyết định nằm ở ĐÂY, không phải ở web, client không bao giờ được tự lộ bài.
      */
     function khoeBai(id, i, bayGio = Date.now()) {
         const v = V();
@@ -401,7 +401,7 @@ function taoGiai(tuyChon = {}) {
     }
 
     /**
-     * Bật nghỉ. ĐÔNG CỨNG cả hai đồng hồ — giờ suy nghĩ của người đang tới lượt VÀ
+     * Bật nghỉ. ĐÔNG CỨNG cả hai đồng hồ, giờ suy nghĩ của người đang tới lượt VÀ
      * giờ lên mức blind. Lúc chơi tiếp, cả hai mốc được đẩy lùi đúng bằng thời gian
      * đã nghỉ. Không làm vậy thì vừa bấm chơi tiếp là người đang đánh bị xử bỏ bài
      * ngay và blind nhảy mấy mức một lúc.
@@ -430,7 +430,7 @@ function taoGiai(tuyChon = {}) {
     }
 
     /**
-     * Nhịp đồng hồ — server gọi đều đặn. Làm 2 việc:
+     * Nhịp đồng hồ, server gọi đều đặn. Làm 2 việc:
      *   1. Ai rớt mạng mà tới lượt -> đánh giùm NGAY (không đợi hết giờ).
      *   2. Hết 30 giây suy nghĩ -> miễn phí thì THEO, phải bỏ tiền thì BỎ BÀI.
      * Lặp nhiều vòng vì có thể mấy người AFK liền nhau.
@@ -485,7 +485,7 @@ function taoGiai(tuyChon = {}) {
                 }
                 return chotVan(bayGio);
             }
-            // 18/09: LẬT TỪ TỪ — không ai tới lượt nữa, nhip() sẽ chia từng vòng theo mốc loDan
+            // 18/09: LẬT TỪ TỪ, không ai tới lượt nữa, nhip() sẽ chia từng vòng theo mốc loDan
             v.luot = null; v.hanChot = 0;
             v.loDan = bayGio + C.giayLoDan * 1000;
             return xemChung();
@@ -501,7 +501,7 @@ function taoGiai(tuyChon = {}) {
         v.daDi.clear();
         v.vuaLam = {};                            // nhãn việc là của VÒNG vừa xong -> sang vòng mới thì xoá
         // Sau flop người đi đầu là người BÊN TRÁI nút cái, KHÔNG phải nút cái
-        // (nút cái đi cuối — đó là cái lợi của vị trí này). Nên gomCaChinh = false.
+        // (nút cái đi cuối, đó là cái lợi của vị trí này). Nên gomCaChinh = false.
         v.luot = keTiepDuocDi(G.nguoi[G.nutCai].id, false);
         v.hanChot = bayGio + C.giayMoiLuot * 1000;
         return xemChung();
@@ -519,7 +519,7 @@ function taoGiai(tuyChon = {}) {
 
     /**
      * Người kế tiếp được đi, tính từ tuId.
-     * tuId có thể KHÔNG còn trong ván (vd nút cái đã cháy hết chip) — khi đó lùi về
+     * tuId có thể KHÔNG còn trong ván (vd nút cái đã cháy hết chip), khi đó lùi về
      * số ghế, tìm người đầu tiên ngồi sau ghế đó mà còn trong ván, và tính luôn người đó.
      */
     function keTiepDuocDi(tuId, gomCaChinh = false) {
@@ -614,14 +614,14 @@ function taoGiai(tuyChon = {}) {
     /**
      * 18/09: VÀO MUỘN. Giải đã chạy nhưng chưa quá giayVaoMuon giây kể từ lúc bắt đầu -> thêm người
      * mới với đủ chip khởi điểm. Người này KHÔNG dính ván đang đánh (không có trong v.thuTu / v.tay /
-     * v.cuoc — mọi chỗ đọc đều đã phòng: chotVan dò chipDauVan, xemChung trả cuoc 0 / trongVan false),
+     * v.cuoc, mọi chỗ đọc đều đã phòng: chotVan dò chipDauVan, xemChung trả cuoc 0 / trongVan false),
      * vanMoi() kế tiếp xếp họ vào thứ tự đánh như mọi người. Web hiện "Vào ván sau" ở ghế họ.
      */
     function themNguoi(p, bayGio = Date.now()) {
         if (G.trangThai !== 'DANG_CHAY') throw new Error('Giải chưa chạy hoặc đã xong');
         // so `== null` chứ không `!G.batDauLuc`: bộ kiểm mở giải ở mốc 0 là hợp lệ
         if (G.batDauLuc == null || bayGio - G.batDauLuc > C.giayVaoMuon * 1000)
-            throw new Error('Hết cửa vào muộn (chỉ trong ' + C.giayVaoMuon + ' giây đầu) — chờ giải sau');
+            throw new Error('Hết cửa vào muộn (chỉ trong ' + C.giayVaoMuon + ' giây đầu), chờ giải sau');
         if (G.nguoi.length >= TOI_DA_NGUOI) throw new Error('Bàn đủ ' + TOI_DA_NGUOI + ' người rồi');
         if (ai(p.id)) throw new Error('Người này đang trong giải rồi');
         if (G.nguoi.some(q => q.ghe === p.ghe)) throw new Error('Ghế này có người rồi');
@@ -666,7 +666,7 @@ function taoGiai(tuyChon = {}) {
             // phải tính cả SÀN, không thì bàn 4 người báo "còn 3 ván" trong khi thật ra còn 5
             vanConLai: Math.max(0, Math.max(conSong().length, C.vanToiThieuMoiMuc) - G.vanTuLenMuc),
             nutCai: G.nguoi[G.nutCai] ? G.nguoi[G.nutCai].id : null,
-            // 18/09: cửa VÀO MUỘN — web hiện nút "Vào giải ngay (còn Xs)" cho khán giả tới mốc này
+            // 18/09: cửa VÀO MUỘN, web hiện nút "Vào giải ngay (còn Xs)" cho khán giả tới mốc này
             vaoMuonDen: G.trangThai === 'DANG_CHAY' && G.batDauLuc != null ? G.batDauLuc + C.giayVaoMuon * 1000 : 0,
             conCho: Math.max(0, TOI_DA_NGUOI - G.nguoi.length),
             nghi: G.nghi, nghiBoi: G.nghiBoi, tongNghiMs: G.tongNghiMs,
@@ -700,7 +700,7 @@ function taoGiai(tuyChon = {}) {
 
     /**
      * Trạng thái CHO RIÊNG 1 người: chỉ thêm bài của chính họ.
-     * Bài người khác chỉ lộ ở màn lật bài (v.ketQua.lat) — server quyết, không phải client.
+     * Bài người khác chỉ lộ ở màn lật bài (v.ketQua.lat), server quyết, không phải client.
      */
     function xem(id) {
         const v = V();
@@ -720,7 +720,7 @@ function taoGiai(tuyChon = {}) {
             toiDa: v && v.cuoc[id] !== undefined && ai(id) ? v.cuoc[id] + ai(id).chip : 0,
         };
         // Đã cháy chưa, và cháy thì về hạng mấy. Thiếu hai số này thì web vẽ cho người
-        // đã cháy cái thanh "đang chờ X" y như còn đang đánh — nhìn tưởng bị treo.
+        // đã cháy cái thanh "đang chờ X" y như còn đang đánh, nhìn tưởng bị treo.
         const iChay = G.thuTuChay.indexOf(id);
         s.toi.daChay = !!(ai(id) && ai(id).chip <= 0 && iChay >= 0);
         s.toi.hang = iChay >= 0 ? G.nguoi.length - iChay : null;

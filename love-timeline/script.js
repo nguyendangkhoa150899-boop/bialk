@@ -1,4 +1,4 @@
-/* ============ Chuyện tình mình — logic ============ */
+/* ============ Chuyện tình mình, logic ============ */
 /* File này tự chạy, bạn không cần sửa. Sửa nội dung ở noi-dung.js */
 
 // Dữ liệu do dashboard quản lý (sticker + ảnh timeline + album). Không có server -> {}
@@ -24,7 +24,7 @@ tieuDeBia.textContent = THONG_TIN.ten1 + " & " + THONG_TIN.ten2;
   }
 })();
 
-// --- Sticker ảnh mặt 2 đứa (trên tên) — ưu tiên dashboard ---
+// --- Sticker ảnh mặt 2 đứa (trên tên), ưu tiên dashboard ---
 (async function dungSticker() {
   await taiDash;
   const st = (DASH && DASH.sticker) || {};
@@ -64,7 +64,7 @@ tieuDeBia.textContent = THONG_TIN.ten1 + " & " + THONG_TIN.ten2;
 
 function dinhDangNgay(chuoi) {
   // Ghép chuỗi trực tiếp (không qua Date) để tránh lệch ngày do timezone
-  // khi người xem ở nước ngoài (vd Mỹ) — Date("YYYY-MM-DD") bị hiểu là giờ UTC.
+  // khi người xem ở nước ngoài (vd Mỹ), Date("YYYY-MM-DD") bị hiểu là giờ UTC.
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(chuoi);
   if (!m) return chuoi;
   return m[3] + "/" + m[2] + "/" + m[1];
@@ -143,7 +143,7 @@ function mediaThumb(a) {
   const khoi = document.createElement("div");
   khoi.className = "moc " + ben;
 
-  // Phần ảnh — ưu tiên ảnh từ dashboard (theo tiêu đề mốc), không có thì dùng moc.anh
+  // Phần ảnh, ưu tiên ảnh từ dashboard (theo tiêu đề mốc), không có thì dùng moc.anh
   let htmlAnh = "";
   const nguonAnh = (tlAnh[mocKey] && tlAnh[mocKey].length) ? tlAnh[mocKey] : moc.anh;
   const dsAnh = chuanHoaAnh(nguonAnh);
@@ -213,7 +213,7 @@ function mediaThumb(a) {
     '</div>';
 })();
 
-// --- Sở thích / Về hai đứa — sticker ưu tiên dashboard ---
+// --- Sở thích / Về hai đứa, sticker ưu tiên dashboard ---
 (async function dungSoThich() {
   const boc = document.getElementById("sothich");
   if (!boc || typeof SO_THICH === "undefined") return;
@@ -314,7 +314,7 @@ function mediaThumb(a) {
   }
 })();
 
-// --- Chopper 🐩 (album + video) — sticker & album ưu tiên dashboard ---
+// --- Chopper 🐩 (album + video), sticker & album ưu tiên dashboard ---
 (async function dungChopper() {
   const boc = document.getElementById("chopper");
   if (!boc || typeof CHOPPER === "undefined") return;
@@ -408,7 +408,7 @@ const quanSat = new IntersectionObserver((entries) => {
 
 document.querySelectorAll(".moc, .chuong-badge, .qt-the, .st-the, .qt-badge, .chopper-the, .knm-the, .wl-the").forEach(el => quanSat.observe(el));
 
-/* ============ LIGHTBOX — xem ảnh toàn màn hình ============ */
+/* ============ LIGHTBOX, xem ảnh toàn màn hình ============ */
 (function lightbox() {
   // Dựng khung lightbox 1 lần
   const lb = document.createElement("div");
@@ -514,7 +514,7 @@ document.querySelectorAll(".moc, .chuong-badge, .qt-the, .st-the, .qt-badge, .ch
     else if (e.key === "ArrowRight") di(1);
   });
 
-  // vuốt trên điện thoại — theo ngón tay, mượt, và chặn trang nền cuộn theo
+  // vuốt trên điện thoại, theo ngón tay, mượt, và chặn trang nền cuộn theo
   let x0 = null, y0 = null, dxHienTai = 0, dangKeo = false, ngang = null;
 
   function anhDang() { return mediaEl.querySelector(".lb-anh"); }

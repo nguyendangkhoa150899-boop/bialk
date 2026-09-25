@@ -1,4 +1,4 @@
-// Bộ kiểm cho Poker/bai.js — chạy: node Poker/kiemtra/bai-test.js
+// Bộ kiểm cho Poker/bai.js, chạy: node Poker/kiemtra/bai-test.js
 //
 // Để TRONG repo chứ không để ở thư mục tạm: thư mục tạm còn lẫn cả script VÁ mang
 // tên *test*.js, chạy nhầm là hỏng file nguồn (đã xảy ra một lần bên BotDoMin).
@@ -181,15 +181,15 @@ muc('xếp hạng cả bàn lúc lật bài');
     ]);
     ok('trả về nhóm, nhóm đầu là người thắng', Array.isArray(nhom) && Array.isArray(nhom[0]));
     ok('tổng số người không đổi', nhom.flat().length === 3);
-    ok('nhất là Khoa — thùng phá sảnh',
+    ok('nhất là Khoa, thùng phá sảnh',
         nhom[0][0].id === 'Khoa' && nhom[0][0].cham.hang === 9,
-        nhom[0][0].id + ' — ' + nhom[0][0].cham.ten);
-    ok('nhì là Vinh — thùng ăn trên sám cô',
+        nhom[0][0].id + ', ' + nhom[0][0].cham.ten);
+    ok('nhì là Vinh, thùng ăn trên sám cô',
         nhom[1][0].id === 'Vinh' && nhom[1][0].cham.hang === 6,
-        nhom[1][0].id + ' — ' + nhom[1][0].cham.ten);
-    ok('bét là Long — sám cô',
+        nhom[1][0].id + ', ' + nhom[1][0].cham.ten);
+    ok('bét là Long, sám cô',
         nhom[2][0].id === 'Long' && nhom[2][0].cham.hang === 4,
-        nhom[2][0].id + ' — ' + nhom[2][0].cham.ten);
+        nhom[2][0].id + ', ' + nhom[2][0].cham.ten);
     // kiểm thứ tự giảm dần thật sự
     let giam = true;
     for (let i = 1; i < nhom.length; i++)

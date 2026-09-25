@@ -131,7 +131,7 @@ while (thongKe.van < SO_VAN) {
                     // Đánh xong có HAI ngả: (1) vòng còn chạy -> nước vừa đánh nằm cuối chồng bài;
                     // (2) mọi người còn lại đã bỏ hoặc hết bài -> ĂN LUÔN VÒNG, bàn dọn sạch và
                     // chính mình mở vòng mới. Ngả (2) chỉ xuất hiện sau khi sửa luật bỏ lượt
-                    // (bỏ là nghỉ hết vòng) — trước đó daBo bị xoá mỗi nước nên không bao giờ gặp.
+                    // (bỏ là nghỉ hết vòng), trước đó daBo bị xoá mỗi nước nên không bao giờ gặp.
                     if (v.bo && v.boCua === id)
                         ok('chongBai có nước vừa đánh', v.chongBai.length > 0 && v.chongBai[v.chongBai.length - 1].la.join() === B.xepBai(mo).join());
                     else if (!v.ketQua)
@@ -218,7 +218,7 @@ while (thongKe.van < SO_VAN) {
         if (n < 4) { const r = goi(tl, '/ngoi', { ghe: n }, ID[n]); ok('ngồi giữa 2 ván được nhận', r.ma === 200, r.j && r.j.error); goi(tl, '/roi', {}, ID[n]); }
         tl.nhip();           // chia ván kế (giayXemKet 0)
         // Ví chỉ được đổi nếu ván VỪA CHIA đã xong ngay (tới trắng lúc chia). Ngoài ra mà đổi
-        // nghĩa là ván cũ bị trả tiền hai lần — lỗi mất tiền, phải bắt cho bằng được.
+        // nghĩa là ván cũ bị trả tiền hai lần, lỗi mất tiền, phải bắt cho bằng được.
         const vanMoi = tl.phong.ban && tl.phong.ban._trong.van;
         const chiaXongLuon = !!(vanMoi && vanMoi.so !== soVan && vanMoi.ketQua);
         if (chiaXongLuon) { thongKe.toiTrang++; ok('ván chia xong ngay thì phải là tới trắng', !!vanMoi.ketQua.toiTrang); }
@@ -233,7 +233,7 @@ while (thongKe.van < SO_VAN) {
         const nan = nguoi[1];
         const truoc = tl.phong.ban.xemChung().nguoi.length;
         // Vét ví rồi đẩy bàn chạy tới lúc chia ván kế. Phải VÉT LẠI mỗi vòng vì ván đang chạy
-        // vẫn trả tiền — về nhất ăn hơn 30 cược là ví đủ trở lại, không bị mời ra, rồi phép
+        // vẫn trả tiền, về nhất ăn hơn 30 cược là ví đủ trở lại, không bị mời ra, rồi phép
         // kiểm đỏ oan. Đặt số vòng có trần để hỏng thật thì vẫn hỏng chứ không treo.
         let daMoi = false;
         for (let vong = 0; vong < 6 && !daMoi && tl.phong.ban; vong++) {
@@ -246,7 +246,7 @@ while (thongKe.van < SO_VAN) {
             daMoi = tl.phong.ghe.indexOf(nan) < 0;
         }
         const sau = tl.phong.ban ? tl.phong.ban.xemChung().nguoi.length : 0;
-        // Chạy vài ván nên người KHÁC cũng có thể tụt dưới vốn và bị mời ra cùng — đừng đòi
+        // Chạy vài ván nên người KHÁC cũng có thể tụt dưới vốn và bị mời ra cùng, đừng đòi
         // đúng một người. Điều phải đúng là: kẻ bị vét ví KHÔNG còn ngồi đó nữa, và ai còn
         // ngồi thì đều đủ vốn.
         ok('người hết vốn bị mời ra trước ván kế', daMoi || !tl.phong.ban, truoc + ' -> ' + sau);

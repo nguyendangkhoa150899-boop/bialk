@@ -4,10 +4,10 @@
 // (đã kiểm chứng trong game: tặng item -> vào Bàn Phẫu Thuật Pal dùng được).
 //
 // 21 implant này là toàn bộ loại DÙNG ĐƯỢC. Còn 7 loại nữa (Legend, Lucky, Siren of the Void,
-// Eternal Flame, Invader, Lunker, Savior) bị nhà phát hành khoá — có item nhưng bàn phẫu thuật
+// Eternal Flame, Invader, Lunker, Savior) bị nhà phát hành khoá, có item nhưng bàn phẫu thuật
 // không nhận, nên KHÔNG bán. Xem GHI-CHU-BAN-PHAU-THUAT.md của palworld-dashboard.
 //
-// Implant loại "dùng một lần" — cấy xong là mất, nên người chơi phải mua lại mỗi lần đổi passive.
+// Implant loại "dùng một lần", cấy xong là mất, nên người chơi phải mua lại mỗi lần đổi passive.
 
 const IMPLANT_PREFIX = 'PalPassiveSkillChange_Consumable_';
 
@@ -43,7 +43,7 @@ const IMPLANTS = [
 ].map((x) => ({ ...x, itemId: IMPLANT_PREFIX + x.passive }));
 
 // Item khác bán theo số lượng
-// ⚠️ ID nội bộ của "Ancient Civilization Core" là AncientParts2 (tra palmods.gg/paldb) —
+// ⚠️ ID nội bộ của "Ancient Civilization Core" là AncientParts2 (tra palmods.gg/paldb)
 // KHÔNG phải AncientCivilizationCore. ID sai thì mod vẫn báo OK nhưng game không give gì.
 const CORE_ITEM_ID = 'AncientParts2';
 const GOLD_ITEM_ID = 'Money'; // Gold Coin trong game

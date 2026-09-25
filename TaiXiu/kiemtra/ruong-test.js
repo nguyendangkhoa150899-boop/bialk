@@ -1,8 +1,8 @@
 // ============================================================================
-//  Bộ kiểm 🧰 RƯƠNG ÍCH KỶ — chạy: node TaiXiu/kiemtra/ruong-test.js   (không cần bot)
+//  Bộ kiểm 🧰 RƯƠNG ÍCH KỶ, chạy: node TaiXiu/kiemtra/ruong-test.js   (không cần bot)
 //
 //  Chủ server 21/09: "update thêm những item còn lại CHO VÀO RƯƠNG ÍCH KỶ được luôn,
-//  như implant / nguyên liệu cho pal" — ảnh: nhóm ĐẠN có nút 🧰 Vào rương, nhóm
+//  như implant / nguyên liệu cho pal", ảnh: nhóm ĐẠN có nút 🧰 Vào rương, nhóm
 //  NGUYÊN LIỆU và IMPLANT chỉ có 🛒 Mua.
 //
 //  Luật cũ (17/09): chỉ món có hạn mua TOÀN SERVER mới vào rương được.

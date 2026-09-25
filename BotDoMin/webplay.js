@@ -17,7 +17,7 @@ const nodePath = require('path');
 // POKER_DIR: bản test chạy từ Desktop/bialk-test/ (chỉ chép 7 file BotDoMin) nên ../Poker không có
 // -> bialk-test.js đặt biến này trỏ về repo. Prod chạy trong repo thì mặc định ../Poker là đúng.
 const POKER_DIR = process.env.POKER_DIR || nodePath.join(__dirname, '..', 'Poker');
-// 🀄 Tiến Lên dùng CHUNG 53 ảnh lá bài với Poker (POKER_DIR/bai/) — đừng nhân đôi thư mục ảnh.
+// 🀄 Tiến Lên dùng CHUNG 53 ảnh lá bài với Poker (POKER_DIR/bai/), đừng nhân đôi thư mục ảnh.
 const TIENLEN_DIR = process.env.TIENLEN_DIR || nodePath.join(__dirname, '..', 'TienLen');
 
 // Toàn bộ ảnh + âm thanh gom ở assets.js (tự quét thư mục assets/) - thêm file mới
@@ -30,7 +30,7 @@ function startWebPlay(ctx) {
     // index.js nay truyền HÀM; vẫn nhận số để bản cũ không vỡ.
     const LOCK_S = () => (typeof ctx.lockSeconds === 'function' ? ctx.lockSeconds() : (ctx.lockSeconds || 15));
     // ⚡ Chỉ gửi xuống trang những ô nhân ĐÃ RA TRÚNG. Ván CŨ (ghi trước bản vá) còn
-    // nguyên bảng nhân đầy đủ trong DB — lọc ở đây thì chúng hiện đúng ngay, khỏi
+    // nguyên bảng nhân đầy đủ trong DB, lọc ở đây thì chúng hiện đúng ngay, khỏi
     // chờ trôi. Danh sách ô trúng lấy từ lõi tiền, không tự đoán luật.
     const locNhanTrung = (h) => {
         const nh = h && h.nhan;
@@ -94,7 +94,7 @@ function startWebPlay(ctx) {
     const SESSION_TTL = 30 * 24 * 3600 * 1000;
     // Mỗi ví giữ được ngần này thiết bị cùng lúc (máy tính + điện thoại + máy bảng…).
     // Vượt thì đuổi máy LÂU KHÔNG DÙNG NHẤT, chứ không đuổi máy cũ theo kiểu đăng nhập
-    // mới đá sạch máy cũ — đó chính là lỗi "vào điện thoại là máy tính văng ra".
+    // mới đá sạch máy cũ, đó chính là lỗi "vào điện thoại là máy tính văng ra".
     const MAX_THIET_BI = 5;
     const layToken = (req) => {
         const h = req.headers['authorization'] || '';
@@ -109,7 +109,7 @@ function startWebPlay(ctx) {
         const cuoi = s.lanCuoi || s.ts || 0;
         if (Date.now() - cuoi > SESSION_TTL) { delete ss[t]; return null; }
         // Hạn TRƯỢT theo lần dùng cuối: ai còn chơi thì phiên còn sống, khỏi đăng nhập lại
-        // mỗi tháng. Chỉ ghi lại tối đa 1 giờ/lần — trang tự làm mới 2 giây/lần, ghi mỗi
+        // mỗi tháng. Chỉ ghi lại tối đa 1 giờ/lần, trang tự làm mới 2 giây/lần, ghi mỗi
         // nhịp là bẩn database vô ích.
         if (Date.now() - cuoi > 3600 * 1000) s.lanCuoi = Date.now();
         return s.u;
@@ -242,7 +242,7 @@ function startWebPlay(ctx) {
                 if (ctx.daLienKet && !ctx.daLienKet(userId)) {
                     // 'ds' = SẢNH Tiến Lên (danh sách phòng). Thêm 20/09: sảnh là màn ĐẦU TIÊN
                     // của trò chơi, chặn nó thì người chưa liên kết mở tab ra chỉ thấy lỗi mà
-                    // không biết mình thiếu gì. Vẫn chỉ XEM — ngồi / tạo phòng / vote vẫn bị chặn.
+                    // không biết mình thiếu gì. Vẫn chỉ XEM, ngồi / tạo phòng / vote vẫn bị chặn.
                     const XEM = /\/(state|table|hist|cd|ds)$/.test(path) || ['/api/state', '/api/profile', '/api/players'].includes(path);
                     const LAY_VE = ['/api/mines/cashout', '/api/mines/dismiss', '/api/stairs/cashout', '/api/stairs/dismiss',
                         '/api/spm/cashout', '/api/spm/cancelnext', '/api/stock/close', '/api/debt/pay', '/api/wheel/unready'].includes(path);
@@ -253,14 +253,14 @@ function startWebPlay(ctx) {
 
                 // 🃏 POKER: mọi /api/poker/* giao cho mô-đun Poker/web.js. Đặt SAU cổng liên kết nên
                 // người chưa liên kết chỉ qua được /api/poker/state (khớp regex XEM), còn ngồi/đánh
-                // thì bị chặn sẵn — không phải viết chốt riêng. Lỗi luật chơi trả 400 kèm câu tiếng Việt.
+                // thì bị chặn sẵn, không phải viết chốt riêng. Lỗi luật chơi trả 400 kèm câu tiếng Việt.
                 if (path.startsWith('/api/poker/')) {
                     if (!ctx.poker) return sendJSON(res, 503, { ok: false, error: 'Poker chưa bật' });
                     const body = req.method === 'POST' ? await readBody(req) : {};
                     return ctx.poker.xuLy({ path: path.slice('/api/poker'.length), method: req.method, body, userId }, res, sendJSON);
                 }
 
-                // 🀄 TIẾN LÊN: mọi /api/tienlen/* giao cho TienLen/web.js (SẢNH nhiều phòng — xem
+                // 🀄 TIẾN LÊN: mọi /api/tienlen/* giao cho TienLen/web.js (SẢNH nhiều phòng, xem
                 // taoSanh). Cũng đặt SAU cổng liên kết nên người chưa liên kết chỉ qua được
                 //   /api/tienlen/ds           xem danh sách phòng
                 //   /api/tienlen/<ma>/state   xem một phòng
@@ -315,7 +315,7 @@ function startWebPlay(ctx) {
                         // 🃏 tab GIẢI POKER (tầng 1, nhóm thứ 3): admin bật/tắt ở panel SUPER
                         pokerOn: ctx.pokerOn ? !!ctx.pokerOn() : false,
                         // 🎲 BÀN SIC BO 52 CỬA: danh sách cửa + trần từng nhóm (vẽ bàn, chặn tại chỗ),
-                        // và BẢNG NHÂN của ván đang chạy — chỉ gửi khi đã KHOÁ SỔ, không thì lộ sớm.
+                        // và BẢNG NHÂN của ván đang chạy, chỉ gửi khi đã KHOÁ SỔ, không thì lộ sớm.
                         txCua: ctx.txCua ? ctx.txCua() : null,
                         txTran: ctx.txTran ? ctx.txTran() : null,
                         txNhan: (tx.nhan && tx.nhan.gameId === tx.gameId && tx.status !== 'betting') ? tx.nhan.o : null,
@@ -355,7 +355,7 @@ function startWebPlay(ctx) {
                     if (!ctx.txReveal) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     return sendJSON(res, 200, ctx.txReveal(userId));
                 }
-                // ⚡ SIÊU TÀI XỈU — bàn thứ hai. Toàn bộ luật + tiền nằm ở
+                // ⚡ SIÊU TÀI XỈU, bàn thứ hai. Toàn bộ luật + tiền nằm ở
                 // SieuTaiXiu/ban.js, đây chỉ chuyển tiếp và trả lỗi nguyên văn.
                 if (path.indexOf('/api/stx/') === 0) {
                     const B = ctx.stx;
@@ -719,7 +719,7 @@ function startWebPlay(ctx) {
                 }
 
                 // 🔐 23/09: ĐĂNG XUẤT. Vì đăng nhập không còn tự đá máy cũ, phải có đường
-                // thu hồi bằng tay — mất điện thoại thì bấm "máy khác" là xong, khỏi đổi PIN.
+                // thu hồi bằng tay, mất điện thoại thì bấm "máy khác" là xong, khỏi đổi PIN.
                 if (req.method === 'POST' && path === '/api/logout') {
                     const t = layToken(req);
                     const ss = sessions();
@@ -769,7 +769,7 @@ function startWebPlay(ctx) {
                     const body = await readBody(req);
                     const tx = ctx.getTX();
                     // 🎲 GIỎ CƯỢC: bàn 52 cửa gửi nhiều ô một lần. Toàn bộ luật + tiền ở
-                    // index.js (txDatLo) — hợp lệ hết mới trừ, không trừ nửa chừng.
+                    // index.js (txDatLo), hợp lệ hết mới trừ, không trừ nửa chừng.
                     if (Array.isArray(body.gio)) {
                         if (!ctx.txDatLo) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ giỏ cược' });
                         const me2 = ctx.getUserData(userId);
@@ -1575,11 +1575,11 @@ const PAGE = [
     '@keyframes chenIdle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-1.5deg)}}',
     // 🌪️ 14/09: khung hũ Bão ngay dưới cửa BÃO
     // 🌪️ 14/09: gom hết lên NÚT BÃO - số hũ, luật hoàn 30%, và câu nhẩm "đặt X ăn Y"
-    // ===== BÀN SIC BO 52 Ô — bố cục theo ảnh sòng: nền đỏ sẫm, ô kem, có dải tiêu đề khu =====
+    // ===== BÀN SIC BO 52 Ô, bố cục theo ảnh sòng: nền đỏ sẫm, ô kem, có dải tiêu đề khu =====
     '#sbBan{background:#4a1418;border:2px solid #7d2a2a;border-radius:12px;padding:7px;margin-bottom:10px;',
     'display:flex;flex-direction:column;gap:4px}',
     '.sbHang{display:flex;gap:4px}',
-    // ================= ⚡ BÀN SIÊU TÀI XỈU — tông ĐEN =================
+    // ================= ⚡ BÀN SIÊU TÀI XỈU, tông ĐEN =================
     // Theo ảnh chủ server gửi: nền gần như đen, ô đen viền vàng đồng, chữ trắng ngà.
     // Cố tình KHÁC HẲN bàn thường (đỏ/kem) để nhìn phát biết mình đang ở bàn nào.
     '.stCard{background:linear-gradient(180deg,#0d0d10,#141216);border-color:#3a2f1a}',
@@ -1606,7 +1606,7 @@ const PAGE = [
     '.sbO.stO .sbX{position:absolute;top:-7px;left:-3px;background:linear-gradient(180deg,#ffe9a8,#e8b923);color:#2a1f05;',
     'font-size:10.5px;font-weight:900;border-radius:999px;padding:1px 6px;z-index:3;',
     'box-shadow:0 2px 10px rgba(255,207,92,.8)}',
-    // kết quả: ô trúng sáng, ô trượt chìm — khai SAU .sbNhan để thắng nó
+    // kết quả: ô trúng sáng, ô trượt chìm, khai SAU .sbNhan để thắng nó
     '@keyframes stTrungNhay{0%,100%{box-shadow:0 0 0 2px #ffd76a,0 0 14px rgba(255,215,106,.85)}',
     '50%{box-shadow:0 0 0 5px #ffd76a,0 0 32px rgba(255,215,106,1)}}',
     '.sbO.stO.sbTruot,.sbO.stO.sbTruot.sbKhoa,.sbO.stO.sbTruot.sbNhan{background:#17161a;border-color:#2e2a22;',
@@ -1617,7 +1617,7 @@ const PAGE = [
     '.sbO.stO.sbTrung .sbTen,.sbO.stO.sbTrung .sbTl{color:#2a1f05}',
     // xúc xắc trên bàn đen: viền sáng hơn cho nổi
     '.sbO.stO .sbXx{border-color:#c0562f}',
-    // 💸 dải phí — đỏ, to, không ai bỏ sót
+    // 💸 dải phí, đỏ, to, không ai bỏ sót
     '.stPhi{background:linear-gradient(90deg,#4a1218,#7a1d27,#4a1218);border:1px solid #c0394b;color:#fff;',
     'border-radius:9px;padding:7px 10px;margin:8px 0;font-size:15px;font-weight:900;letter-spacing:.5px;text-align:center}',
     '.stPhi b{color:#fff}',
@@ -1640,7 +1640,7 @@ const PAGE = [
     'padding:6px 1px;cursor:pointer;text-align:center;font-family:inherit;font-weight:900;line-height:1.1;user-select:none;',
     'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:44px}',
     '.sbO:active{transform:scale(.95)}',
-    // 🖐️ KÉO THẢ CHIP. Chỉ ô ĐANG CÓ chip của mình mới khoá cuộn (touch-action:none) — ô trống
+    // 🖐️ KÉO THẢ CHIP. Chỉ ô ĐANG CÓ chip của mình mới khoá cuộn (touch-action:none), ô trống
     // vẫn cho vuốt trang như thường. Con ma (ghost) nằm ngoài .sbO nên phải tự đủ CSS.
     '.sbO.sbCoChip{touch-action:none;-webkit-touch-callout:none}',
     '.sbO.sbKeoNguon .sbGio{opacity:.35}',
@@ -1667,7 +1667,7 @@ const PAGE = [
     '.sbO.sbBaoAny{background:#fff6e0}',
     // số tổng điểm to cho dễ nhắm
     '.sbO.sbTong .sbTen{font-size:17px}',
-    // 🪙 DẤU CƯỢC CỦA CHÍNH MÌNH — ĐỒNG DOGCOIN thật đè giữa ô, số tiền là dòng
+    // 🪙 DẤU CƯỢC CỦA CHÍNH MÌNH, ĐỒNG DOGCOIN thật đè giữa ô, số tiền là dòng
     // chú thích nhỏ ngay dưới đồng xu. Chỉ mình thấy phần của mình (máy chủ gửi
     // myBets riêng từng người). pointer-events:none để bấm xuyên qua đặt tiếp.
     '.sbO .sbGio{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;',
@@ -1692,7 +1692,7 @@ const PAGE = [
     // hàng "MỖI BỘ BA" có 6 ô × 3 viên nên mỗi ô cần tối thiểu
     //     3×20 + 6×1.5 lề + 2×2 padding + 2 viền = 75px
     // mà điện thoại dọc chỉ chia được ~60px/ô -> xí ngầu đẩy nhau, lòi hẳn ra ngoài ô
-    // (chủ server chụp lại 21/09). Hàng 2 viên chỉ cần 46px nên không vỡ — đúng ảnh.
+    // (chủ server chụp lại 21/09). Hàng 2 viên chỉ cần 46px nên không vỡ, đúng ảnh.
     // Giờ cỡ viên nằm ở MỘT biến --xx, co theo vw, và chấm co theo viên.
     //   3,1vw: màn 430px -> 13,3px/viên -> 3 viên cả lề = 46px, lọt ô 60px.
     //   Trần 20px giữ nguyên cỡ cũ trên màn rộng.
@@ -1707,7 +1707,7 @@ const PAGE = [
     '.sbO.sbNhan{background:linear-gradient(180deg,#fff3ca,#ffd978);animation:sbNhay 1s ease-in-out infinite;border-color:#ffcf5c}',
     '.sbO .sbX{position:absolute;top:-7px;left:-3px;background:#c62430;color:#fff;font-size:10.5px;font-weight:900;',
     'border-radius:999px;padding:1px 6px;box-shadow:0 2px 8px rgba(0,0,0,.65);z-index:3}',
-    // 🎯 BÀN LÚC ĐÃ MỞ KẾT QUẢ — theo đúng ảnh sòng thật chủ server gửi:
+    // 🎯 BÀN LÚC ĐÃ MỞ KẾT QUẢ, theo đúng ảnh sòng thật chủ server gửi:
     //    ô trượt = NỀN XÁM (xúc xắc vẫn đỏ) · ô trúng = NỀN TRẮNG.
     // Phải khai SAU .sbNhan, và dùng 2-3 lớp để thắng opacity của .sbKhoa.
     '@keyframes sbTrungNhay{0%,100%{box-shadow:0 0 0 2px #ffd76a,0 0 14px rgba(255,215,106,.85)}',
@@ -1724,7 +1724,7 @@ const PAGE = [
     'animation:sbTrungNhay 1s ease-in-out infinite;z-index:4;transform:translateY(-1px)}',
     '.sbO.sbTrung .sbTen,.sbO.sbTrung .sbTl{color:#111}',
     // ⚠️ ĐỪNG ghim lại width cố định ở đây. Ghim số là chọn đúng MỘT cỡ máy; máy hẹp hơn
-    // vẫn tràn (390px thiếu 3px mỗi ô — chính là ảnh chủ server gửi 21/09). Ở đây chỉ hạ
+    // vẫn tràn (390px thiếu 3px mỗi ô, chính là ảnh chủ server gửi 21/09). Ở đây chỉ hạ
     // TRẦN của biến --xx, còn co giãn để clamp lo.
     '@media (max-width:430px){.sbBoXx{--xx:clamp(9px,3vw,16px)}.sbXx{margin:0 1px}',
     '.sbO{min-height:38px;padding:4px 1px}.sbO .sbTen{font-size:11px}.sbO.sbDeu{min-height:48px}',
@@ -1732,7 +1732,7 @@ const PAGE = [
     '#sbChips{margin-top:4px}',
     // ô Đơn: dòng nhỏ "2-3 viên" dưới hệ số - nhân chỉ áp khi ra ≥ 2 viên (22/09)
     '.sbX .sbX2{display:block;font-style:normal;font-size:7.5px;line-height:1;opacity:.95;margin-top:1px;letter-spacing:0}',
-    // 🪙 MỆNH GIÁ ĐANG CHỌN — nhìn phát biết: nền vàng, chữ đậm, nhấc lên, viền sáng
+    // 🪙 MỆNH GIÁ ĐANG CHỌN, nhìn phát biết: nền vàng, chữ đậm, nhấc lên, viền sáng
     // quanh nút, kèm ✓ ở góc. Liệt kê CẢ HAI bàn: bản cũ chỉ có #sbChips nên bàn Siêu
     // bấm mệnh giá xong không có dấu hiệu gì.
     '#sbChips .chip.on,#stChips .chip.on{background:linear-gradient(180deg,#ffe193,#e3b33a);color:#3a2a06;',
@@ -1742,7 +1742,7 @@ const PAGE = [
     '#sbChips .chip.on::after,#stChips .chip.on::after{content:"✓";position:absolute;top:-6px;right:-4px;',
     'background:#1c8b4b;color:#fff;font-size:10px;font-weight:900;line-height:1;padding:3px 5px;',
     'border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.55)}',
-    // MAX CƯỢC giữ nguyên màu ĐỎ khi được chọn — nó là nút nguy hiểm, đừng cho hoá vàng
+    // MAX CƯỢC giữ nguyên màu ĐỎ khi được chọn, nó là nút nguy hiểm, đừng cho hoá vàng
     // như mệnh giá thường (rule #sbChips 1 id vốn đè .chip.chipMax.on 3 lớp).
     '#sbChips .chip.chipMax.on,#stChips .chip.chipMax.on{background:linear-gradient(180deg,#ff4d63,#a51e30);',
     'border-color:#ffc2cb;color:#fff;box-shadow:0 0 0 3px rgba(255,90,110,.45),0 6px 14px rgba(0,0,0,.45)}',
@@ -1942,9 +1942,9 @@ const PAGE = [
     '<div id="navGrp">',
     '<button id="ngProfile" onclick="grpGo(\'profile\')">👤 HỒ SƠ</button>',
     '<button id="ngGames" class="on" onclick="grpGo(\'games\')">🎮 MINI GAME</button>',
-    // 🃏 nhóm thứ 3 — chỉ hiện khi admin bật ở panel SUPER (refresh() đọc j.pokerOn)
+    // 🃏 nhóm thứ 3, chỉ hiện khi admin bật ở panel SUPER (refresh() đọc j.pokerOn)
     '<button id="ngPoker" style="display:none" onclick="grpGo(\'poker\')">🃏 GIẢI POKER</button>',
-    // 🀄 nhóm thứ 4 — cũng chỉ hiện khi admin bật ở panel SUPER (refresh() đọc j.tienlenOn)
+    // 🀄 nhóm thứ 4, cũng chỉ hiện khi admin bật ở panel SUPER (refresh() đọc j.tienlenOn)
     '<button id="ngTienlen" style="display:none" onclick="grpGo(\'tienlen\')">🀄 TIẾN LÊN</button>',
     '</div>',
     '<div id="nav">',
@@ -1977,7 +1977,7 @@ const PAGE = [
     '<div id="stageCap"></div>',
     '</div>',
 
-    // 🎲 BÀN SIC BO 52 CỬA — toàn bộ ô do JS sinh bằng vòng lặp (sbVe), không gõ tay 52 ô.
+    // 🎲 BÀN SIC BO 52 CỬA, toàn bộ ô do JS sinh bằng vòng lặp (sbVe), không gõ tay 52 ô.
     // Cách đặt: chọn mệnh giá chip -> bấm vào ô -> chip xếp vào GIỎ (chưa trừ tiền).
     // Bấm ĐẶT CƯỢC mới gửi cả giỏ lên máy chủ. HOÀN TÁC / GẤP ĐÔI chỉ sửa giỏ, không đụng ví.
     '<div class="card" id="betCard">',
@@ -1997,7 +1997,7 @@ const PAGE = [
     '<button type="button" id="sbBtnXoa" class="xoa" onclick="sbXoaCuoc()">🗑️ Xoá cược</button>',
     '</div>',
     '<div id="sbBao" class="sbBao hidden"></div>',
-    '<div class="muted" id="sbNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn</div>',
+    '<div class="muted" id="sbNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô trên bàn, bấm là đặt luôn</div>',
     '<div class="muted" id="txCapNote" style="font-size:12px;margin-top:6px;text-align:center"></div>',
     '<div class="mine" id="mine"></div>',
     '</div>',
@@ -2013,7 +2013,7 @@ const PAGE = [
     '<div class="card stCard">',
     '<div class="row"><h2 id="stRound" style="margin:0">Ván #-</h2><div id="stClock" class="big">--</div></div>',
     '<div id="stStt" class="muted"></div>',
-    // 💸 Dải PHÍ — chỗ đập vào mắt nhất, ngay trên sân khấu
+    // 💸 Dải PHÍ, chỗ đập vào mắt nhất, ngay trên sân khấu
     // 💸 Chủ server chốt: chỉ một chữ PHÍ 20% ở giữa, gọn. Chi tiết số tiền thật sẽ bị
     // trừ đã nằm ở dòng ngay dưới hàng mệnh giá rồi.
     '<div class="stPhi">💸 PHÍ 20%</div>',
@@ -2038,7 +2038,7 @@ const PAGE = [
     '<button type="button" id="stBtnXoa" class="xoa" onclick="stXoaCuoc()">🗑️ Xoá cược</button>',
     '</div>',
     '<div id="stBao" class="sbBao hidden"></div>',
-    '<div class="muted" id="stNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn</div>',
+    '<div class="muted" id="stNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô trên bàn, bấm là đặt luôn</div>',
     '<div class="mine" id="stMine"></div>',
     '</div>',
 
@@ -2153,7 +2153,7 @@ const PAGE = [
     '<div id="pwWrap"><div id="pwMark"></div><div id="pwStrip"></div></div>',
     '<div id="pwRes" class="hidden"></div>',
     '<button class="btn-full" id="pwGo" onclick="pwSpin()">🎁 QUAY</button>',
-    '<label class="nhoRow" style="margin-top:8px"><input type="checkbox" id="pwSkip" onchange="pwSkipTog(this.checked)"><span>⚡ <b>Bỏ qua hiệu ứng quay</b> — hiện pal trúng ngay và <b>không phải chờ 10 giây</b> mới quay tiếp</span></label>',
+    '<label class="nhoRow" style="margin-top:8px"><input type="checkbox" id="pwSkip" onchange="pwSkipTog(this.checked)"><span>⚡ <b>Bỏ qua hiệu ứng quay</b>, hiện pal trúng ngay và <b>không phải chờ 10 giây</b> mới quay tiếp</span></label>',
     '<button class="btn-full" id="pwAuto" onclick="pwAutoTog()" style="margin-top:6px;background:linear-gradient(180deg,#5a6ad0,#3f4ca3)">🔁 TỰ ĐỘNG QUAY</button>',
     '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center" id="pwPot">-</div>',
     // 🍀 THANH MAY MẮN
@@ -2841,7 +2841,7 @@ const PAGE = [
     // betBtn đã bỏ (bấm ô là đặt luôn) -> phải có if, không thì null.disabled làm vỡ cả refresh
     'var bb=document.getElementById("betBtn");if(bb)bb.disabled=(PHASE!=="bet");',
     'var nhac=document.getElementById("sbNhac");',
-    'if(nhac)nhac.textContent=PHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn · giữ chip để kéo sang ô khác":(PHASE==="nhan"?"⚡ Đang quay hệ số nhân — không đặt được nữa":"Đã khoá sổ — chờ ván sau");',
+    'if(nhac)nhac.textContent=PHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn, bấm là đặt luôn · giữ chip để kéo sang ô khác":(PHASE==="nhan"?"⚡ Đang quay hệ số nhân, không đặt được nữa":"Đã khoá sổ, chờ ván sau");',
     // 💰 trần cược/người/ván + đã đặt bao nhiêu ván này (server chặn, đây chỉ là nhắc)
     'var cpn=document.getElementById("txCapNote");if(cpn){var myTot=0;(j.myBets||[]).forEach(function(b){myTot+=b.amount||0});',
     'TXMAX=j.txMax||0;',
@@ -2903,7 +2903,7 @@ const PAGE = [
     // để dãy số ván LIỀN MẠCH - trước đây ván huỷ biến mất luôn, người chơi thấy số
     // nhảy cóc và tưởng bị nuốt tiền (chủ server báo 21/09).
     'if(h.huy)return \'<div class="hrow huy"><span class="gid">#\'+String(h.gameId).padStart(5,"0")+\'</span>\'+',
-    '\'<span class="kq">🚫 VÁN HUỶ — đã hoàn cược</span>\'+',
+    '\'<span class="kq">🚫 VÁN HUỶ, đã hoàn cược</span>\'+',
     '\'<span class="lydo">\'+esc(h.lyDo||"")+\'</span></div>\';',
     'return \'<div class="hrow\'+(h.storm?" storm":"")+\'">\'+',
     '\'<span class="gid">#\'+String(h.gameId).padStart(5,"0")+"</span>"+',
@@ -2919,7 +2919,7 @@ const PAGE = [
     'var HNHAN=localStorage.getItem("tx_hnhan")!=="0";',
     'function hNhanBat(v){HNHAN=!!v;localStorage.setItem("tx_hnhan",v?"1":"0");if(CURPAGE==="stx")stLoad();else refresh()}',
     // Dòng phụ: phần "bạn ăn" LUÔN hiện (thứ người chơi cần), phần ⚡ chỉ khi bật
-    // công tắc — và chỉ 3 ô to nhất, để nó là chú thích chứ không át dãy kết quả.
+    // công tắc, và chỉ 3 ô to nhất, để nó là chú thích chứ không át dãy kết quả.
     'function hSub(h){var p=[];',
     'var an=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0});',
     'if(an.length)p.push(\'<span class="an">🎯 \'+an.slice(0,3).map(function(b){',
@@ -2976,7 +2976,7 @@ const PAGE = [
     // SBTONG = tiền cả bàn từng cửa + khoá "_toi_<cửa>" là tiền của chính mình.
     // SBCHIP = mệnh giá chip đang chọn.
     'var SBCUA=[],SBTRAN={},SBCHIP=0,SBVEROI=false,SBNHAN=null,SBDANGGUI=false;',
-    // Bỏ 5.000 (chủ server), thêm "max" ở cuối — nút MAX CƯỢC màu đỏ.
+    // Bỏ 5.000 (chủ server), thêm "max" ở cuối, nút MAX CƯỢC màu đỏ.
     // 🪙 22/09: ô mệnh giá ĐẦU là TUỲ CHỌN - người chơi gõ số, lưu localStorage nên F5 không mất
     // (chủ server: "nút 1000 sửa thành nút custom cho người chơi nhập số, ở dưới nút đó là nút sửa").
     // Hợp lệ: số nguyên từ 1.000 (sàn mỗi ô) tới 1 tỉ. Hỏng localStorage thì về 1.000, không nổ.
@@ -3011,7 +3011,7 @@ const PAGE = [
     'function sbXx(n){var s=\'<span class="sbXx">\';PIPS[n].forEach(function(p){s+=\'<i style="left:\'+p[0]+\'%;top:\'+p[1]+\'%"></i>\'});return s+"</span>"}',
     'function sbBoXx(ds){return \'<span class="sbBoXx">\'+ds.map(sbXx).join("")+"</span>"}',
     // dựng bàn theo ĐÚNG bố cục ảnh sòng: mỗi khu có dải tiêu đề, ô đôi/ba/cặp/đơn vẽ xúc xắc
-    // ===== 🖐️ KÉO THẢ CHIP — dùng chung cho 2 bàn, chỉ khác tiền tố id (sb_/st_) và bộ biến =====
+    // ===== 🖐️ KÉO THẢ CHIP, dùng chung cho 2 bàn, chỉ khác tiền tố id (sb_/st_) và bộ biến =====
     // Vòng đời: pointerdown lên ô có chip -> CHỜ 0,28s (KEOCHO; nhích >8px hay nhả sớm = bấm thường)
     // -> KÉO (KEO: con ma bay theo tay, hiện vùng huỷ) -> THẢ: ô khác = dời, vùng huỷ = huỷ ô đó,
     // chỗ khác = về chỗ cũ. KEOCLICK chặn cái click trình duyệt bắn ra sau khi nhả tay.
@@ -3068,27 +3068,27 @@ const PAGE = [
     'var khu=function(t){return \'<div class="sbKhu">\'+t+"</div>"};',
     'var h="";',
     // khu 1: 4 cửa đều tiền + bộ ba bất kỳ, ô to nhất vì hay đặt nhất
-    'h+=khu("1:1 · THUA NẾU RA BÃO — riêng BỘ BA BẤT KỲ 30:1");',
+    'h+=khu("1:1 · THUA NẾU RA BÃO, riêng BỘ BA BẤT KỲ 30:1");',
     'h+=\'<div class="sbHang">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("baoany"),"sbDeu sbBaoAny")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";',
-    // khu 2: 6 ô gấp đôi — vẽ 2 viên giống nhau
+    // khu 2: 6 ô gấp đôi, vẽ 2 viên giống nhau
     'h+=khu("8:1 · MỖI ĐÔI");',
     'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("doi"+n),"",sbBoXx([n,n]))}).join("")+"</div>";',
-    // khu 3: 6 ô gấp ba — vẽ 3 viên giống nhau
+    // khu 3: 6 ô gấp ba, vẽ 3 viên giống nhau
     'h+=khu("150:1 · MỖI BỘ BA");',
     'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("bao"+n),"",sbBoXx([n,n,n]))}).join("")+"</div>";',
-    // khu 4: tổng điểm 4..17 — số to, tỉ lệ nhỏ bên dưới; cắt 2 dòng cho vừa điện thoại
+    // khu 4: tổng điểm 4..17, số to, tỉ lệ nhỏ bên dưới; cắt 2 dòng cho vừa điện thoại
     'h+=khu("TỔNG ĐIỂM 3 VIÊN");',
     'var oTong=function(n){var c=g("tong"+n);if(!c)return "";',
     'return o(c,"sbTong",\'<span class="sbTen">\'+n+\'</span><span class="sbTl">\'+c.goc+\':1</span>\')};',
     'h+=\'<div class="sbHang">\'+[4,5,6,7,8,9,10].map(oTong).join("")+"</div>";',
     'h+=\'<div class="sbHang">\'+[11,12,13,14,15,16,17].map(oTong).join("")+"</div>";',
-    // khu 5: 15 cửa kết hợp 2 lá — vẽ 2 viên khác nhau
+    // khu 5: 15 cửa kết hợp 2 lá, vẽ 2 viên khác nhau
     'h+=khu("5:1 · KẾT HỢP 2 VIÊN");',
     'var cap=SBCUA.filter(function(c){return c.id.indexOf("cap")===0});',
     'var oCap=function(c){var a=+c.id[3],d=+c.id[4];return o(c,"",sbBoXx([a,d]))};',
     'h+=\'<div class="sbHang">\'+cap.slice(0,8).map(oCap).join("")+"</div>";',
     'h+=\'<div class="sbHang">\'+cap.slice(8).map(oCap).join("")+"</div>";',
-    // khu 6: 6 cửa số đơn — 1 viên + chữ số
+    // khu 6: 6 cửa số đơn, 1 viên + chữ số
     // 22/09: nói rõ nhân chỉ áp vào 2-3 viên, 1 viên luôn 1:1 (người chơi thấy x19 rồi ăn 1:1 là cãi)
     'h+=khu("ĐƠN · 1 viên 1:1 (không nhân) · 2 viên 2:1 hoặc ×nhân · 3 viên 3:1 hoặc ×87");',
     'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("don"+n),"",sbBoXx([n]))}).join("")+"</div>";',
@@ -3195,7 +3195,7 @@ const PAGE = [
     'if(cuaToi)cuaToi.forEach(function(b){SBTONG["_toi_"+b.choice]=(SBTONG["_toi_"+b.choice]||0)+b.amount});',
     'sbVeGio()}',
     // Lưu ý: hàm này chạy lại mỗi nhịp làm mới. Nó CHỈ thêm/bớt chip, KHÔNG đụng tới
-    // class sbTrung/sbTruot — nhờ vậy khi đã tô kết quả thì CSS tự giấu chip ô trượt.
+    // class sbTrung/sbTruot, nhờ vậy khi đã tô kết quả thì CSS tự giấu chip ô trượt.
     'function sbVeGio(){SBCUA.forEach(function(c){var e=$("sb_"+c.id);if(!e)return;',
     'var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
     'var cu2=e.querySelector(".sbBan2");if(cu2)cu2.remove();',
@@ -3223,7 +3223,7 @@ const PAGE = [
     'var cu=e.querySelector(".sbX");if(cu)cu.remove();',
     'var co=nh&&nh[c.id];e.classList.toggle("sbNhan",!!co);',
     'if(co){var d=document.createElement("span");d.className="sbX";d.innerHTML="x"+co+(String(c.id).indexOf("don")===0?\'<i class="sbX2">2-3 viên</i>\':"");e.appendChild(d)}})}',
-    // (không còn giỏ cược — bấm ô là gửi thẳng, xem sbChon bên trên)
+    // (không còn giỏ cược, bấm ô là gửi thẳng, xem sbChon bên trên)
     // ================= ⚡ BÀN SIÊU TÀI XỈU (phía người chơi) =================
     // Bàn riêng, nhịp riêng, đường gọi riêng /api/stx/*. Chỉ hỏi máy chủ khi đang
     // ĐỨNG Ở TAB NÀY, khỏi tốn băng thông cho người không chơi.
@@ -3242,7 +3242,7 @@ const PAGE = [
     'return \'<button type="button" class="sbO stO \'+(them||"")+\'" id="st_\'+c.id+\'" onclick="stChon(&quot;\'+c.id+\'&quot;)">\'+trong+"</button>"};',
     'var khu=function(t){return \'<div class="stKhu">\'+t+"</div>"};',
     'var h="";',
-    'h+=khu("1:1 tới 14:1 · THUA NẾU RA BÃO — riêng BỘ BA BẤT KỲ 30:1");',
+    'h+=khu("1:1 tới 14:1 · THUA NẾU RA BÃO, riêng BỘ BA BẤT KỲ 30:1");',
     'h+=\'<div class="sbHang">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("baoany"),"sbDeu sbBaoAny")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";',
     'h+=khu("8:1 · MỖI ĐÔI");',
     'h+=\'<div class="sbHang">\'+[1,2,3,4,5,6].map(function(n){return o(g("doi"+n),"",sbBoXx([n,n]))}).join("")+"</div>";',
@@ -3293,7 +3293,7 @@ const PAGE = [
     // 💸 Cược LỚN NHẤT mà ví còn trả nổi phí. Máy chủ tính phí = floor(cược × phí) rồi trừ
     // (cược + phí), nên floor(ví / 1,2) CHƯA phải max: ví 100.000 -> 83.333 trừ 99.999, dư 1;
     // đúng ra 83.334 + 16.666 = ĐÚNG 100.000. Bộ kiểm quét 2.006 mức ví thấy 1.337 ca sót 1.
-    // Bắt đầu từ floor(ví/1,2) rồi nhích lên tới khi thêm 1 là vượt ví — tối đa 1-2 vòng.
+    // Bắt đầu từ floor(ví/1,2) rồi nhích lên tới khi thêm 1 là vượt ví, tối đa 1-2 vòng.
     // ⚠️ MỌI chỗ tính MAX (nút + dòng preview) phải gọi hàm này, đừng tự chia 1,2 nữa.
     'function stMaxTheoVi(bal){var t=Math.floor(bal/(1+STPHI));while((t+1)+Math.floor((t+1)*STPHI)<=bal)t++;return Math.max(0,t)}',
     // MAX: chặn bởi VÍ (đã tính phí) + trần ô + trần tổng ván
@@ -3321,7 +3321,7 @@ const PAGE = [
     'BAL=j.balance;$("bal").textContent=vnd(j.balance);',
     'stBao("💸 Đặt "+vnd(j.tong)+" + phí "+vnd(j.phi)+" = trừ "+vnd(j.truVi),false);stLoad()})',
     '.catch(function(e){STDANGGUI=false;stBao(String(e.message||e),true)})}',
-    // đồng xu bay — dùng lại hiệu ứng của bàn thường, chỉ đổi ô đích
+    // đồng xu bay, dùng lại hiệu ứng của bàn thường, chỉ đổi ô đích
     'function sbChipBay2(id,tien){var o=$("st_"+id),hang=$("stChips");if(!o||!hang)return;',
     'var d=o.getBoundingClientRect(),n=hang.getBoundingClientRect();',
     'var b=document.createElement("div");b.className="sbBay";',
@@ -3399,7 +3399,7 @@ const PAGE = [
     'if(typeof j.balance==="number"){BAL=j.balance;$("bal").textContent=vnd(j.balance)}',
     'if(j.stake>0)stShowKet(j)}).catch(function(){})}',
     // 💸 Bàn Siêu: số bay phải là TIỀN VỀ VÍ (got), lãi/cược/phí xuống dòng nhỏ. showNet(net) của
-    // bàn thường chỉ in "+800.000" — với phí 20% thì 800.000 là LÃI (2.000.000 về ví − 1.000.000
+    // bàn thường chỉ in "+800.000", với phí 20% thì 800.000 là LÃI (2.000.000 về ví − 1.000.000
     // cược − 200.000 phí), người chơi đọc thành "chỉ nhận 800.000" (chủ server báo 22/09).
     // ⚠️ SO VỚI TIỀN CƯỢC, KHÔNG TRỪ PHÍ LẦN NỮA. Phí đã trừ (và đã báo) lúc đặt; đem trừ tiếp vào
     // số to là người chơi thấy như bị ăn 20% lần hai (chủ server 22/09: "chỉ trừ 20% lúc đầu thôi
@@ -3450,7 +3450,7 @@ const PAGE = [
     'else if(STPHASE==="wait"){stt.textContent="⏳ Đang mở bát...";cap.textContent=""}',
     'else{stt.textContent="🔴 Bàn Siêu Tài Xỉu đang tắt";cap.textContent="";paper.classList.add("hidden")}',
     'var tg2=$("stHNhanOn");if(tg2&&tg2.checked!==HNHAN)tg2.checked=HNHAN;',
-    'var nh3=$("stNhac");if(nh3)nh3.textContent=STPHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn — bấm là đặt luôn · giữ chip để kéo sang ô khác":(STPHASE==="nhan"?"⚡ Đang quay hệ số nhân — không đặt được nữa":"Đã khoá sổ — chờ ván sau");',
+    'var nh3=$("stNhac");if(nh3)nh3.textContent=STPHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô trên bàn, bấm là đặt luôn · giữ chip để kéo sang ô khác":(STPHASE==="nhan"?"⚡ Đang quay hệ số nhân, không đặt được nữa":"Đã khoá sổ, chờ ván sau");',
     'var m=(j.myBets||[]),tong=0;m.forEach(function(b){tong+=b.amount});',
     'var gh=STMAX>0?("💰 Giới hạn cược "+vnd(STMAX)+"/người/ván"):"";',
     '$("stMine").textContent=m.length?("🧾 Ván này bạn đặt "+vnd(tong)+" + phí "+vnd(STPHITOI)+" vào "+m.length+" ô"+(gh?" · "+gh:"")):gh;',
@@ -3465,13 +3465,13 @@ const PAGE = [
     'var cuoc=0,an=0,co=false;',
     '(h.bets||[]).forEach(function(b){if(b.u===MYID){cuoc+=b.amount;co=true}});',
     '(h.winners||[]).forEach(function(w){if(w.u===MYID)an+=w.amount});',
-    // ⚠️ SO VỚI TIỀN CƯỢC, không trừ phí lần nữa — cùng nguyên tắc với số bay stShowKet (22/09).
+    // ⚠️ SO VỚI TIỀN CƯỢC, không trừ phí lần nữa, cùng nguyên tắc với số bay stShowKet (22/09).
     'var net=an-cuoc;',
     'var tai=(h.tx==="TÀI"),chan=(h.cl==="CHẴN");',
     'var kq=h.storm?"🌪️ BÃO":(\'<span class="\'+(tai?"t":"x")+\'">\'+h.tx+\'</span><span class="sep"> | </span><span class="\'+(chan?"ce":"od")+\'">\'+h.cl+"</span>");',
     'var p2=[],an2=(h.bets||[]).filter(function(b){return b.u===MYID&&(b.nhan||0)>0});',
     // Dòng từng ô và dòng tổng PHẢI cùng một cách tính, không thì hai số lệch trên cùng một dòng
-    // (từng dính: ô +83.333 mà tổng +66.667). Cách tính chung: nhận về − cược, KHÔNG trừ phí —
+    // (từng dính: ô +83.333 mà tổng +66.667). Cách tính chung: nhận về − cược, KHÔNG trừ phí
     // phí là giao dịch riêng đã xong lúc đặt (chủ server chốt 22/09).
     'if(an2.length)p2.push(\'<span class="an">🎯 \'+an2.slice(0,3).map(function(b){return b.choice+" +"+vnd((b.nhan||0)-b.amount)}).join(" · ")+(an2.length>3?" …":"")+"</span>");',
     'if(HNHAN){var nh=h.nhan||{},ids=Object.keys(nh).sort(function(a,b){return nh[b]-nh[a]});',
@@ -3482,7 +3482,7 @@ const PAGE = [
     '\'<span class="dd">\'+h.dice.map(mdie).join("")+"</span>"+',
     '\'<span class="sum">(\'+h.sum+")</span>"+',
     '\'<span class="kq">\'+kq+"</span>"+',
-    // ô lãi ghi đủ "về ví · cược · phí" trong tooltip — số +800.000 trần trụi dễ đọc nhầm là tiền nhận (22/09)
+    // ô lãi ghi đủ "về ví · cược · phí" trong tooltip, số +800.000 trần trụi dễ đọc nhầm là tiền nhận (22/09)
     '(co?\'<span class="net \'+(net>=0?"w":"l")+\'" title="Về ví \'+vnd(an)+" · cược "+vnd(cuoc)+" · phí "+vnd(Math.floor(cuoc*STPHI))+\' đã trừ lúc đặt">\'+(net>=0?"+":"")+vnd(net)+"</span>":"")+',
     '"</div>"+phu}).join("")}',
     // đồng hồ riêng cho bàn siêu
@@ -4687,11 +4687,11 @@ const PAGE = [
     'function isImpLeft(){return IS&&IS.implantMax>0?Math.max(0,IS.implantMax-(IS.implantToday||0)):-1}',
     // 🗂️ 12/09 v2: hạn theo nhóm - server đưa groupQuota {cat:{mode,max}} + 2 sổ đếm
     // 🧰 MÓN NÀY CÓ BỎ VÀO RƯƠNG ĐƯỢC KHÔNG?
-    // 21/09 (chủ server): MỌI NHÓM đều được — implant, nguyên liệu cho pal, đạn...
+    // 21/09 (chủ server): MỌI NHÓM đều được, implant, nguyên liệu cho pal, đạn...
     // Trước chỉ cho món có hạn TOÀN SERVER; gỡ được vì hạn theo NGƯỜI vẫn bị trừ ngay lúc
     // mua nên vào rương không lách được hạn nào (xem itemShopBuy ở index.js).
     // ⚠️ Chừa đúng ⭐ món 1-LẦN-VĨNH-VIỄN: quên nhận trước 00:00 là mất cả tiền lẫn suất mua.
-    // ⚠️ PHẢI CÙNG LUẬT VỚI MÁY CHỦ. Client chỉ ẩn nút cho đỡ bấm nhầm — nới ở đây mà quên
+    // ⚠️ PHẢI CÙNG LUẬT VỚI MÁY CHỦ. Client chỉ ẩn nút cho đỡ bấm nhầm, nới ở đây mà quên
     // nới bên kia thì người chơi bấm được nút rồi ăn lỗi đỏ.
     'function ikDuoc(it){if(!IS||!it)return false;return !isOnceCat(it.cat)}',
     'function isGrpQ(it){var g=IS&&IS.groupQuota?IS.groupQuota[it.cat]:null;return g&&g.max>0?g:null}',

@@ -57,7 +57,7 @@ function getLockedChannelName(guild, state) {
   return ch ? `**${ch.name}**` : 'kênh khác';
 }
 
-// Lệnh .join — chỉ join, không đọc gì
+// Lệnh .join, chỉ join, không đọc gì
 async function joinChannel(voiceChannel) {
   const guildId = voiceChannel.guild.id;
   const state = guilds.get(guildId);
@@ -80,7 +80,7 @@ async function joinChannel(voiceChannel) {
   scheduleDisconnect(guildId);
 }
 
-// Lệnh . (TTS) — join nếu chưa có, reject nếu bot đang ở kênh khác
+// Lệnh . (TTS), join nếu chưa có, reject nếu bot đang ở kênh khác
 async function enqueue(voiceChannel, text) {
   const guildId = voiceChannel.guild.id;
   let state = guilds.get(guildId);
@@ -92,7 +92,7 @@ async function enqueue(voiceChannel, text) {
       throw new Error(`Bot đang ở ${getLockedChannelName(voiceChannel.guild, state)} rồi, chờ bot rời kênh đó trước nhé!`);
     }
   } else {
-    // Bot chưa ở đâu hoặc connection đã chết — join kênh của người dùng
+    // Bot chưa ở đâu hoặc connection đã chết, join kênh của người dùng
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
       guildId,
@@ -103,7 +103,7 @@ async function enqueue(voiceChannel, text) {
     setupDisconnectHandler(connection, guildId);
   }
 
-  // Gọi Vbee ngay lập tức — không chờ đến lượt
+  // Gọi Vbee ngay lập tức, không chờ đến lượt
   const streamPromise = ttsRequest(text);
   state.queue.push({ text, streamPromise });
   scheduleDisconnect(guildId);
@@ -132,7 +132,7 @@ async function processNext(guildId) {
     const stream = await streamPromise;
     console.log(`[TTS] Stream sẵn sàng: "${text}"`);
 
-    // Chờ voice connection thật sự Ready trước khi phát — nếu không, các gói
+    // Chờ voice connection thật sự Ready trước khi phát, nếu không, các gói
     // audio đầu tiên bị Discord vứt bỏ và mất chữ đầu (rõ nhất khi stream từ cache về nhanh)
     try {
       await entersState(state.connection, VoiceConnectionStatus.Ready, 10_000);
@@ -155,7 +155,7 @@ async function processNext(guildId) {
   processNext(guildId);
 }
 
-// Gọi từ voiceStateUpdate — tự ngắt khi kênh không còn ai (trừ bot)
+// Gọi từ voiceStateUpdate, tự ngắt khi kênh không còn ai (trừ bot)
 function handleVoiceStateUpdate(oldState, newState) {
   const guildId = oldState.guild.id;
   const state = guilds.get(guildId);

@@ -1,8 +1,8 @@
-// do-von.js — THUA ĐẬM NHẤT MỘT VÁN LÀ BAO NHIÊU CƯỢC? Quét CẠN mọi hình dáng tay 13 lá.
+// do-von.js, THUA ĐẬM NHẤT MỘT VÁN LÀ BAO NHIÊU CƯỢC? Quét CẠN mọi hình dáng tay 13 lá.
 // Chạy: node TienLen/kiemtra/do-von.js
 // Đây là nguồn của hai con số trong VON_HE_SO (web.js). Chỉnh bảng giá xong thì CHẠY LẠI
 // file này rồi mới chỉnh hệ số, đừng đoán.
-// (không phải lấy mẫu ngẫu nhiên — phải là trần tuyệt đối thì mới dám hạ vốn tối thiểu)
+// (không phải lấy mẫu ngẫu nhiên, phải là trần tuyệt đối thì mới dám hạ vốn tối thiểu)
 const B = require('../bai.js');
 const V = require('../van.js');
 const V0 = require('../web.js');

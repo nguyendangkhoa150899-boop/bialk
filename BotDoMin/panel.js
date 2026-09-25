@@ -106,14 +106,14 @@ function startPanel(ctx) {
                 // gộp theo cửa cho admin thấy tiền đang gánh ở đâu (ép cho cửa nặng thua)
                 // ⚠️ Gộp ĐỦ MỌI CỬA. Bản cũ khởi tạo sẵn 5 khoá rồi lọc
                 // `if (agg[b.choice] !== undefined)` nên tiền đặt vào 47 cửa mới bị
-                // VỨT SẠCH — admin nhìn panel tưởng bàn trống.
+                // VỨT SẠCH, admin nhìn panel tưởng bàn trống.
                 const agg = {};
                 bets.forEach(b => { agg[b.choice] = (agg[b.choice] || 0) + (b.amount || 0); });
                 // ⚠️ 17/09: index.js đổi txLockS thành HÀM (admin chỉnh giây nặn ở panel).
                 // Quên gọi thì lockS là cả cái hàm -> phép trừ dưới ra NaN -> secsToBet = NaN ->
                 // panel LÚC NÀO CŨNG báo "ĐÃ KHÓA SỔ", admin không ép được kết quả. Đã dính đúng lỗi này.
                 // Sổ đóng trước giờ mở bát (hiện nhân + nặn) giây. Lấy thẳng từ index,
-                // đừng chỉ trừ giây nặn — trừ thiếu là panel báo còn giờ ép trong khi
+                // đừng chỉ trừ giây nặn, trừ thiếu là panel báo còn giờ ép trong khi
                 // sổ đã đóng, admin ép nhầm sang ván sau.
                 const lockS = Number(ctx.txKhoaSoS ? ctx.txKhoaSoS()
                     : (typeof ctx.txLockS === 'function' ? ctx.txLockS() : ctx.txLockS)) || 24;
@@ -142,7 +142,7 @@ function startPanel(ctx) {
                     tran: ctx.getTxTran ? ctx.getTxTran() : null,        // 🎲 trần cược 5 nhóm cửa Sic Bo
                 };
             })(),
-            // ⚡ SIÊU TÀI XỈU — game RIÊNG, để ngang hàng poker/tienlen chứ đừng nhét
+            // ⚡ SIÊU TÀI XỈU, game RIÊNG, để ngang hàng poker/tienlen chứ đừng nhét
             // vào trong cục tx (nhét vào đó thì panel phải đọc STATE.tx.stx, dễ nhầm).
             stx: (ctx.stx && ctx.stx.adminXem) ? ctx.stx.adminXem() : null,
             stxBoard: ctx.getStxBoard ? ctx.getStxBoard() : null,   // 📋 bảng Siêu trên Discord
@@ -273,7 +273,7 @@ function startPanel(ctx) {
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
                     '/api/tx/tran', '/api/tx/rtp', '/api/tx/thang',
-                    // ⚡ Siêu Tài Xỉu — ĂN DOGCOIN THẬT, càng phải chặn chắc
+                    // ⚡ Siêu Tài Xỉu, ĂN DOGCOIN THẬT, càng phải chặn chắc
                     '/api/stx/on', '/api/stx/time', '/api/stx/tran', '/api/stx/an',
                     '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep', '/api/stx/epclear',
                     '/api/stx/epnhan', '/api/stx/epnhanclear',
@@ -616,7 +616,7 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, ids: r.ids });
                 }
                 // 🃏 tab Poker (SUPER): bật/tắt tab trên web, đặt chip, bắt đầu, giải tán, tạm nghỉ.
-                // Toàn bộ thao tác giải ở đây — trang người chơi không có nút admin.
+                // Toàn bộ thao tác giải ở đây, trang người chơi không có nút admin.
                 if (path === '/api/poker/on') {
                     if (!ctx.setPokerOn) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     return sendJSON(res, 200, ctx.setPokerOn(!!body.on));
@@ -1158,7 +1158,7 @@ const HTML = `<!DOCTYPE html>
   input,select,button{font-family:inherit;font-size:15px}
   input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--txt);margin-top:6px}
   button{cursor:pointer;border:0;border-radius:8px;padding:10px 14px;font-weight:600;color:#fff;background:#3a4155}
-  /* CHỈ 3 MÀU NÚT (23/09). Thêm màu thứ 4 là panel loạn lại — đừng dựng lại btn-blue/btn-yellow.
+  /* CHỈ 3 MÀU NÚT (23/09). Thêm màu thứ 4 là panel loạn lại, đừng dựng lại btn-blue/btn-yellow.
      xanh lá = lưu / thêm / bật · đỏ = xoá / tắt / ép (việc nguy hiểm) · xám = phụ trợ */
   .btn-green{background:var(--green)} .btn-red{background:var(--red)} .btn-grey{background:#4e5058}
   button:active{transform:translateY(1px)}
@@ -1181,7 +1181,7 @@ const HTML = `<!DOCTYPE html>
   .skrow2:last-child{border-bottom:0}
   .skrow2 b{font-variant-numeric:tabular-nums}
   /* THANH CHỌN gom nhóm 23/09: mỗi nhóm một hàng, nhãn nhóm nằm bên trái.
-     Vẫn MỘT cú bấm tới mọi tab — nhóm chỉ để mắt quét cho nhanh, không phải menu 2 tầng. */
+     Vẫn MỘT cú bấm tới mọi tab, nhóm chỉ để mắt quét cho nhanh, không phải menu 2 tầng. */
   .tabs{margin-bottom:16px}
   .grp{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
   .grp .glb{flex:0 0 92px;padding-top:13px;text-align:right;font-size:11px;font-weight:800;
@@ -1227,7 +1227,7 @@ const HTML = `<!DOCTYPE html>
   .blk:first-of-type{margin-top:0;padding-top:0;border-top:0}
   /* một ô cài đặt: tự co, nhưng không bóp hẹp tới mức đọc không ra nhãn */
   .fld{flex:1 1 180px;min-width:0}
-  /* dòng "đang chạy" — MỌI khối dùng đúng kiểu này, đúng chỗ này (ngay trên hàng nút) */
+  /* dòng "đang chạy", MỌI khối dùng đúng kiểu này, đúng chỗ này (ngay trên hàng nút) */
   .stat{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.5}
   .stat b{color:var(--txt);font-weight:700}
   .stat:empty{display:none}
@@ -1381,7 +1381,7 @@ const HTML = `<!DOCTYPE html>
         <div class="blk">
           <h3>🎲 Trần cược từng cửa (bàn Sic Bo 52 cửa)</h3>
           <div class="row" id="txTranHang" style="flex-wrap:wrap;gap:8px"></div>
-          <div class="note" id="txTranNow">Cửa trả càng cao thì trần càng thấp — cửa Bão trả tới 999:1 nên chỉ cho đặt 5.000/ván, không thì một ván xui mất gần 400 triệu. Các cửa cùng mức gom chung một ô: sửa một ô là cả nhóm nhảy theo.</div>
+          <div class="note" id="txTranNow">Cửa trả càng cao thì trần càng thấp, cửa Bão trả tới 999:1 nên chỉ cho đặt 5.000/ván, không thì một ván xui mất gần 400 triệu. Các cửa cùng mức gom chung một ô: sửa một ô là cả nhóm nhảy theo.</div>
           <div class="acts"><button class="btn-green" onclick="txSaveTran()">💾 Lưu trần từng cửa</button></div>
         </div>
         <div class="row" style="margin-top:14px;align-items:flex-end">
@@ -1392,7 +1392,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note" id="txRTPNote"></div>
         <div class="note">Hạ RTP = <b>ít ô được bốc hệ số nhân hơn</b>, nhà cái ăn dày hơn. Máy tự tính lại tần suất sáng đèn cho cả 48 cửa, KHÔNG đụng vào bảng trả gốc in trên bàn. Ván đang chạy đã bốc bảng nhân từ lúc khoá sổ nên không đổi giữa chừng.</div>
         <div class="blk">
-          <label>🎰 Thang hệ số nhân — mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code></label>
+          <label>🎰 Thang hệ số nhân, mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code></label>
           <textarea id="txThang" rows="13" spellcheck="false" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px" oninput="txDirty(this)"></textarea>
           <div class="row" style="margin-top:8px">
             <button class="btn-green" onclick="txSaveThang()">💾 Lưu thang nhân</button>
@@ -1992,8 +1992,8 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div class="blk">
-          <h3>✋ Ép hệ số nhân — Tài · Xỉu · Chẵn · Lẻ và 🌪️ Bão</h3>
-          <div class="note">Bấm lúc bàn <b>còn nhận cược</b> thì hệ số hiện ngay ở 4 giây khoe nhân của ván đang chạy; bấm lúc đã khoá sổ thì chờ ván sau. <b>Dùng một lần rồi tự xoá</b> — để thường trực x14 là nhà cái đổ tiền mỗi ván.<br>Mỗi ô: <b>để trống</b> = máy tự bốc · <b>0</b> = tắt, ô không sáng · <b>số</b> = ép đúng hệ số đó.</div>
+          <h3>✋ Ép hệ số nhân, Tài · Xỉu · Chẵn · Lẻ và 🌪️ Bão</h3>
+          <div class="note">Bấm lúc bàn <b>còn nhận cược</b> thì hệ số hiện ngay ở 4 giây khoe nhân của ván đang chạy; bấm lúc đã khoá sổ thì chờ ván sau. <b>Dùng một lần rồi tự xoá</b>, để thường trực x14 là nhà cái đổ tiền mỗi ván.<br>Mỗi ô: <b>để trống</b> = máy tự bốc · <b>0</b> = tắt, ô không sáng · <b>số</b> = ép đúng hệ số đó.</div>
           <div id="stxNhanO" class="row" style="margin-top:14px"></div>
           <div class="quick">
             <button onclick="stxNhanDat(14)">Tất cả x14</button>
@@ -2030,13 +2030,13 @@ const HTML = `<!DOCTYPE html>
             <div class="fld"><label>Trần cược mỗi người mỗi ván (0 = không giới hạn)</label><input id="stxMax" type="number" min="0" placeholder="vd: 300000" oninput="txDirty(this)"></div>
           </div>
           <div class="stat" id="stxAnNote"></div>
-          <div class="note">Bàn này thu <b>phí 20%</b> trên tiền cược — đó là nguồn thu duy nhất, nên bảng trả cố tình vượt 100%. Hạ "nhà cái ăn" thì bảng trả rộng ra và ít ô sáng hơn.</div>
+          <div class="note">Bàn này thu <b>phí 20%</b> trên tiền cược, đó là nguồn thu duy nhất, nên bảng trả cố tình vượt 100%. Hạ "nhà cái ăn" thì bảng trả rộng ra và ít ô sáng hơn.</div>
           <div class="acts"><button class="btn-green" onclick="stxSaveAn()">💾 Lưu</button></div>
         </div>
 
         <div class="blk">
           <h3>🧱 Trần cược từng cửa</h3>
-          <div class="note">Bàn Siêu trả cao gấp mấy lần bàn thường nên trần phải thấp hơn hẳn. Cửa trả càng cao trần càng thấp — sửa một ô là cả nhóm nhảy theo.</div>
+          <div class="note">Bàn Siêu trả cao gấp mấy lần bàn thường nên trần phải thấp hơn hẳn. Cửa trả càng cao trần càng thấp, sửa một ô là cả nhóm nhảy theo.</div>
           <div id="stxTran" class="row" style="margin-top:14px"></div>
           <div class="stat" id="stxTranNow"></div>
           <div class="acts"><button class="btn-green" onclick="stxSaveTran()">💾 Lưu trần cược</button></div>
@@ -2044,7 +2044,7 @@ const HTML = `<!DOCTYPE html>
 
         <div class="blk">
           <h3>🎰 Thang hệ số nhân</h3>
-          <div class="note">Mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code> — số sau dấu × là "vé số", chỉ quyết định bậc nào hay ra, <b>không</b> đổi phần trăm nhà cái ăn.</div>
+          <div class="note">Mỗi dòng một nhóm: <code>tên: hệ_số×độ_hiếm, ...</code>, số sau dấu × là "vé số", chỉ quyết định bậc nào hay ra, <b>không</b> đổi phần trăm nhà cái ăn.</div>
           <textarea id="stxThang" rows="13" spellcheck="false" oninput="txDirty(this)"></textarea>
           <div class="acts">
             <button class="btn-green" onclick="stxSaveThang()">💾 Lưu thang</button>
@@ -2056,7 +2056,7 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <div class="blk">
           <h3>📋 Bảng kết quả trên Discord</h3>
-          <div class="note">Bảng chỉ khoe kết quả và rủ vào web, <b>không đặt cược được từ Discord</b>. Dán chung kênh với bảng Tài Xỉu thường cũng được — hai bảng nằm cạnh nhau, chỉ nhảy xuống cuối khi có người nhắn đè.</div>
+          <div class="note">Bảng chỉ khoe kết quả và rủ vào web, <b>không đặt cược được từ Discord</b>. Dán chung kênh với bảng Tài Xỉu thường cũng được, hai bảng nằm cạnh nhau, chỉ nhảy xuống cuối khi có người nhắn đè.</div>
           <div class="row" style="margin-top:14px">
             <div class="fld"><label>Channel ID</label><input id="stxChannel" placeholder="vd: 1234567890123456789"></div>
           </div>
@@ -2076,11 +2076,11 @@ const HTML = `<!DOCTYPE html>
           <label style="display:flex;align-items:center;gap:8px;white-space:nowrap"><input id="pkOn" type="checkbox" onchange="pokerOn(this.checked)"> <b>Hiện tab 🃏 GIẢI POKER</b> trên web người chơi</label>
           <span class="muted" id="pkOnNow" style="font-size:12px"></span>
         </div>
-        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab GIẢI POKER → bấm ghế trống để ngồi</b> (cần liên kết + ≥ 10.000 Dogcoin, chỉ kiểm không trừ). Đủ người thì bấm <b>Bắt đầu</b> ở đây. <b>Giải tán</b> dọn sạch ghế. Ai được thưởng/phạt thì anh tự trao trong game — bot chỉ báo hạng.</div>
+        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab GIẢI POKER → bấm ghế trống để ngồi</b> (cần liên kết + ≥ 10.000 Dogcoin, chỉ kiểm không trừ). Đủ người thì bấm <b>Bắt đầu</b> ở đây. <b>Giải tán</b> dọn sạch ghế. Ai được thưởng/phạt thì anh tự trao trong game, bot chỉ báo hạng.</div>
         <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap">
           <div style="flex:1;min-width:160px"><label>Chip khởi điểm mỗi người</label>
             <select id="pkChip" onchange="pokerChip()">
-              <option value="2000">2.000</option><option value="5000">5.000 — mặc định</option>
+              <option value="2000">2.000</option><option value="5000">5.000, mặc định</option>
               <option value="10000">10.000</option><option value="20000">20.000</option>
             </select></div>
           <button class="btn-green" id="pkBatDau" onclick="pokerBatDau()">▶️ Bắt đầu</button>
@@ -2092,7 +2092,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>🃏 Admin POKER (ID Discord, cách nhau bằng phẩy)</label><input id="pokerAdminIds" type="text" placeholder="vd: 456136500011335698, 111111111111111111" oninput="txDirty(this)"></div>
           <button class="btn-green" onclick="pokerSaveAdmin()">💾 Lưu</button>
         </div>
-        <div class="note" id="pokerAdminNow">Ai trong danh sách này mới có nút <b>Bắt đầu / Giải tán</b> ở trang poker. Poker chạy riêng tiến trình, chỉ ĐỌC file dữ liệu của bot — đổi ở đây là ăn ngay, không cần khởi động lại.</div>
+        <div class="note" id="pokerAdminNow">Ai trong danh sách này mới có nút <b>Bắt đầu / Giải tán</b> ở trang poker. Poker chạy riêng tiến trình, chỉ ĐỌC file dữ liệu của bot, đổi ở đây là ăn ngay, không cần khởi động lại.</div>
         <div class="muted" id="pkThang" style="font-size:12px;margin-top:6px"></div>
         <div id="pkGhe" style="margin-top:10px"></div>
         <div id="pkGiai" style="margin-top:10px"></div>
@@ -2106,12 +2106,12 @@ const HTML = `<!DOCTYPE html>
           <label style="display:flex;align-items:center;gap:8px;white-space:nowrap"><input id="tlOn" type="checkbox" onchange="tlBat(this.checked)"> <b>Hiện tab 🀄 TIẾN LÊN</b> trên web người chơi</label>
           <span class="muted" id="tlOnNow" style="font-size:12px"></span>
         </div>
-        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab TIẾN LÊN</b>, thấy <b>SẢNH</b> liệt kê các phòng. Bấm một phòng để ngồi, hoặc <b>➕ TẠO PHÒNG MỚI</b> rồi chọn kiểu chơi + mức cược. Đủ 2–4 người cùng bấm ✅ SẴN SÀNG là vào ván, <b>không cần admin bấm gì</b>. Ở bàn, người chơi <b>vote đổi mức cược</b> — quá nửa đồng ý thì ván sau áp dụng. Nhà cái ăn <b>10% tiền thắng</b> mỗi ván.
+        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab TIẾN LÊN</b>, thấy <b>SẢNH</b> liệt kê các phòng. Bấm một phòng để ngồi, hoặc <b>➕ TẠO PHÒNG MỚI</b> rồi chọn kiểu chơi + mức cược. Đủ 2–4 người cùng bấm ✅ SẴN SÀNG là vào ván, <b>không cần admin bấm gì</b>. Ở bàn, người chơi <b>vote đổi mức cược</b>, quá nửa đồng ý thì ván sau áp dụng. Nhà cái ăn <b>10% tiền thắng</b> mỗi ván.
         <br>Thang cược: <b>Đếm lá</b> 1.000–6.000 (mỗi lá) · <b>Truyền thống 1-2-3-4</b> 10.000–100.000 (giải nhất, nhì ăn một nửa).
-        <br>Vốn tối thiểu: đếm lá <b>120×</b> mức cược, truyền thống <b>30×</b> — khác nhau vì thua đậm nhất một ván ở đếm lá nặng hơn nhiều (cóng + nhốt hàng đều nhân đôi).</div>
+        <br>Vốn tối thiểu: đếm lá <b>120×</b> mức cược, truyền thống <b>30×</b>, khác nhau vì thua đậm nhất một ván ở đếm lá nặng hơn nhiều (cóng + nhốt hàng đều nhân đôi).</div>
 
         <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap">
-          <div style="flex:1;min-width:160px"><label>Mở thêm phòng — kiểu chơi</label>
+          <div style="flex:1;min-width:160px"><label>Mở thêm phòng, kiểu chơi</label>
             <select id="tlTaoCheDo">
               <option value="hang">🏅 Truyền thống 1-2-3-4</option>
               <option value="anhet">🔢 Đếm lá</option>
@@ -2243,7 +2243,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="txSave()">💾 Lưu vé taxi</button>
         </div>
         <div class="note">🚕 Người chơi <b>cháy ví</b> (còn ≤ "ví còn tối đa") và hôm nay đã <b>thua từ mức trên trở lên</b> thì thấy nút <b>🚕 Xu đi taxi về</b> cạnh số dư, bấm là nhận. Nhận xong phải chờ đủ số giờ đặt ở đây mới nhận lại được (mặc định 24h = mỗi ngày một lần).<br>
-          <b>Tiền thua đếm theo ví thật</b>: tổng mọi đồng ra vào ví trong ngày, trừ đi nạp/rút/chuyển/admin cộng/mua pal/vay/hoàn — nên đúng với mọi trò, kể cả trò thêm sau này. Sổ về 0 lúc <b>00:00 giờ VN</b>.</div>
+          <b>Tiền thua đếm theo ví thật</b>: tổng mọi đồng ra vào ví trong ngày, trừ đi nạp/rút/chuyển/admin cộng/mua pal/vay/hoàn, nên đúng với mọi trò, kể cả trò thêm sau này. Sổ về 0 lúc <b>00:00 giờ VN</b>.</div>
         <div class="note">Áp NGAY cho lượt nhận kế tiếp (cả Discord lẫn web), không cần restart. <b>Đủ chuỗi</b>: điểm danh đủ ngần này ngày LIÊN TIẾP là được ghi 1 gói thưởng chuỗi chờ nhận trên web. Số hiện trong mô tả lệnh /diemdanh, /nghien chỉ cập nhật sau restart bot (không ảnh hưởng số tiền thật).</div>
         <input id="search" placeholder="🔍 Tìm theo tên hoặc ID..." oninput="renderPlayers()" style="margin-top:12px">
         <div style="overflow-x:auto">
@@ -2662,7 +2662,7 @@ function setDice(a,b,c){document.getElementById('d1').value=a;document.getElemen
 function txPreview(){
   const a=+document.getElementById('d1').value,b=+document.getElementById('d2').value,c=+document.getElementById('d3').value;
   const sum=a+b+c;const tai=sum>=11;const chan=sum%2===0;const bao=(a===b&&b===c);
-  document.getElementById('txPrev').textContent='Tổng '+sum+' → '+(bao?'🌪️ BÃO — Tài/Xỉu/Chẵn/Lẻ thua sạch':((tai?'TÀI 🟢':'XỈU 🔴')+' | '+(chan?'CHẴN 🔵':'LẺ 🟣')));
+  document.getElementById('txPrev').textContent='Tổng '+sum+' → '+(bao?'🌪️ BÃO, Tài/Xỉu/Chẵn/Lẻ thua sạch':((tai?'TÀI 🟢':'XỈU 🔴')+' | '+(chan?'CHẴN 🔵':'LẺ 🟣')));
 }
 function txForce(){
   const v=[document.getElementById('d1').value,document.getElementById('d2').value,document.getElementById('d3').value].join(',');
@@ -2670,7 +2670,7 @@ function txForce(){
 }
 // 27/08: chọn 3 xúc xắc khiến nhà cái trả ÍT NHẤT (cửa gánh nhiều tiền nhất thua)
 // 🎯 Gợi ý ép: lấy THẲNG kết quả máy chủ đã duyệt đủ 216 kết cục bằng lõi tiền.
-// KHÔNG tự đoán ở đây nữa — bản cũ chỉ tính 5 cửa và luôn ra 1-1-1 (cửa 'bao' của
+// KHÔNG tự đoán ở đây nữa, bản cũ chỉ tính 5 cửa và luôn ra 1-1-1 (cửa 'bao' của
 // bàn cũ không còn nên tiền cửa đó vĩnh viễn 0), tức là luôn ép ra BÃO, tự bơm tiền.
 function txAutoForce(){
   if(!STATE||!STATE.tx)return;
@@ -2693,7 +2693,7 @@ function stxDo(){
     const tong=co.reduce((s,k)=>s+S.betAgg[k],0);
     const TC=S.tenCua||{};
     const cua=co.length?('💰 tổng cược <b>'+tong.toLocaleString()+'</b> · '+co.slice(0,12).map(k=>esc(TC[k]||k)+' <b>'+S.betAgg[k].toLocaleString()+'</b>').join(' · ')+(co.length>12?(' · +'+(co.length-12)+' cửa nữa'):'')):'chưa ai đặt';
-    // 22/09: TỪNG NGƯỜI MỘT DÒNG (tên · tổng · từng ô), người đặt nhiều lên đầu — admin nhìn phát biết ai
+    // 22/09: TỪNG NGƯỜI MỘT DÒNG (tên · tổng · từng ô), người đặt nhiều lên đầu, admin nhìn phát biết ai
     // đang gánh ô nào trước khi bấm ép. Bản cũ nối hết bằng "•" thành một dải chữ, không đọc nổi.
     const per={};
     (S.bets||[]).forEach(b=>{const k=b.name||'?';if(!per[k])per[k]={tong:0,o:[]};per[k].tong+=Number(b.amount)||0;per[k].o.push(esc(TC[b.choice]||b.choice)+' <b>'+Number(b.amount).toLocaleString()+'</b>');});
@@ -2713,7 +2713,7 @@ function stxDo(){
   const an=document.getElementById('stxAnNote');
   if(an&&S.rtp)an.textContent='Đang chạy: nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · người chơi thực nhận '+(S.rtp.rtpThuc*100).toFixed(2)+'% · trung bình '+S.rtp.oSangMoiVan.toFixed(1)+' ô sáng/ván (từng ván lệch quanh số này) · phí '+(S.rtp.phi*100)+'%';
   // trần cược: dựng 1 lần với NHÃN TIẾNG VIỆT máy bàn gửi, sau đó chỉ đổ giá trị
-  // (ô đang gõ thì chừa ra) — đúng cách khối trần của bàn thường đang làm.
+  // (ô đang gõ thì chừa ra), đúng cách khối trần của bàn thường đang làm.
   const box=document.getElementById('stxTran'), TEN=S.tenNhom||{};
   if(box&&!box.dataset.xong&&S.tran){box.dataset.xong='1';
     box.innerHTML=Object.keys(S.tran).map(k=>'<div style="flex:1 1 180px"><label>'+esc(TEN[k]||k)+'</label><input data-stxtran="'+k+'" type="number" min="1000" oninput="txDirty(this)"></div>').join('');}
@@ -2721,7 +2721,7 @@ function stxDo(){
   const tn=document.getElementById('stxTranNow');
   if(tn&&S.thangToiDa)tn.innerHTML='Thắng tối đa mỗi cửa theo trần đang đặt: '+
     Object.keys(S.tran||{}).map(k=>'<b>'+esc((TEN[k]||k).split(' · ')[0].replace(/ \\(.*$/,''))+'</b> '+(S.thangToiDa[k]||0).toLocaleString('vi-VN')).join(' · ')+
-    '. Cửa trả càng cao trần càng thấp — sửa một ô là cả nhóm nhảy theo.';
+    '. Cửa trả càng cao trần càng thấp, sửa một ô là cả nhóm nhảy theo.';
   const tt=document.getElementById('stxThang');
   if(tt&&S.thang&&tt.dataset.dirty!=='1'&&tt.value===''&&document.activeElement!==tt)
     tt.value=Object.keys(S.thang).map(k=>k+': '+S.thang[k].map(b=>b[0]+'×'+b[1]).join(', ')).join('\\n');
@@ -2791,7 +2791,7 @@ function txSaveTime(){
   if(!(n>=6&&n<=300))return toast('Giây nặn: 6 - 300 (4 giây cuối là lúc bàn tự mở kết quả)');
   api('/api/tx/time',{bet:b,nan:n,nhan:h}).then(j=>{txClean(['txBetS','txNanS','txNhanS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'s đặt + '+j.nhan+'s nhân + '+j.nan+'s nặn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
-// 🎲 trần cược từng nhóm cửa — 5 ô, sửa 1 ô là cả nhóm nhảy theo
+// 🎲 trần cược từng nhóm cửa, 5 ô, sửa 1 ô là cả nhóm nhảy theo
 // Thang nhân: mỗi dòng "tên: hệ_số×độ_hiếm, ...". Chấp nhận cả x, *, X thay cho ×.
 function txDocThang(){
   const chu=(document.getElementById('txThang').value||'').trim();
@@ -2856,7 +2856,7 @@ function stxThangMacDinh(){
 }
 // ---------------------------------------------------------------- ✋ ÉP HỆ SỐ NHÂN (22/09)
 // 4 ô đều tiền (TÀI · XỈU · CHẴN · LẺ) + 7 ô bão (22/09 mở thêm). Tên cửa + khoảng hệ số TỪNG Ô
-// đều LẤY TỪ MÁY BÀN gửi lên (stx.cuaEp) — panel KHÔNG tự bịa, y như khối trần cược đã chốt.
+// đều LẤY TỪ MÁY BÀN gửi lên (stx.cuaEp), panel KHÔNG tự bịa, y như khối trần cược đã chốt.
 var STX_NHAN_VE='';
 // 22/09: danh sách ô ép = S.cuaEp (11 ô, mỗi ô kèm min/max/nhóm). Bản cũ chỉ có cuaDeu (4 ô)
 // - vẫn nhận làm dự phòng để bot cũ không vỡ bảng.
@@ -2881,7 +2881,7 @@ function stxVeNhanO(stx){
           '</label>';
       }).join('');
   };
-  box.innerHTML=hang('deu','Đều tiền (x2 → x14)')+hang('bao','🌪️ Bão — 3 con giống nhau (Bão bất kỳ x31 → x499 · Bão 1–6 x151 → x1999)');
+  box.innerHTML=hang('deu','Đều tiền (x2 → x14)')+hang('bao','🌪️ Bão, 3 con giống nhau (Bão bất kỳ x31 → x499 · Bão 1–6 x151 → x1999)');
 }
 function stxNhanDat(v){
   stxDsEp().filter(function(c){return c.nhom==='deu'}).forEach(function(c){var e=document.getElementById('stxN_'+c.id);if(e)e.value=(v===''?'':v)});
@@ -2921,9 +2921,9 @@ function stxPreview(){
   const e=document.getElementById('stxPrev'); if(!e)return;
   const a=+document.getElementById('stxD1').value,b=+document.getElementById('stxD2').value,c=+document.getElementById('stxD3').value;
   const sum=a+b+c, bao=(a===b&&b===c);
-  e.textContent='Tổng '+sum+' → '+(bao?'🌪️ BÃO — Tài/Xỉu/Chẵn/Lẻ thua sạch':((sum>=11?'TÀI 🟢':'XỈU 🔴')+' | '+(sum%2===0?'CHẴN 🔵':'LẺ 🟣')));
+  e.textContent='Tổng '+sum+' → '+(bao?'🌪️ BÃO, Tài/Xỉu/Chẵn/Lẻ thua sạch':((sum>=11?'TÀI 🟢':'XỈU 🔴')+' | '+(sum%2===0?'CHẴN 🔵':'LẺ 🟣')));
 }
-// 🎯 lấy THẲNG gợi ý máy chủ đã duyệt 216 kết cục bằng lõi tiền — không tự đoán ở đây
+// 🎯 lấy THẲNG gợi ý máy chủ đã duyệt 216 kết cục bằng lõi tiền, không tự đoán ở đây
 function stxTuEp(){
   const S=STATE&&STATE.stx; if(!S)return;
   const g=S.epGoiY;
@@ -2982,15 +2982,15 @@ function txSaveNoti(){
 }
 function pokerSaveAdmin(){
   const ids=(document.getElementById('pokerAdminIds').value||'').trim();
-  api('/api/poker/admin',{ids:ids}).then(j=>{txClean(['pokerAdminIds']);toast('🃏 Admin poker: '+(j.ids.length?j.ids.join(', '):'(trống — không ai mở được giải)'));refresh();}).catch(e=>toast('❌ '+e.message));
+  api('/api/poker/admin',{ids:ids}).then(j=>{txClean(['pokerAdminIds']);toast('🃏 Admin poker: '+(j.ids.length?j.ids.join(', '):'(trống, không ai mở được giải)'));refresh();}).catch(e=>toast('❌ '+e.message));
 }
-// ===== 🀄 TAB TIẾN LÊN (SUPER) — bàn ăn Dogcoin thật =====
+// ===== 🀄 TAB TIẾN LÊN (SUPER), bàn ăn Dogcoin thật =====
 // Vẽ từ STATE.tienlen (tomTat) mỗi 3 giây. Mọi ô nhập đều theo khuôn "đang sửa thì đừng ghi đè"
-// (document.activeElement) — không thì vòng làm mới 3 giây cướp chữ đang gõ.
+// (document.activeElement), không thì vòng làm mới 3 giây cướp chữ đang gõ.
 function tlFill(){
   const DS=STATE.tienlen, on=!!STATE.tienlenOn;
   const ck=document.getElementById('tlOn'); if(ck&&document.activeElement!==ck) ck.checked=on;
-  const now=document.getElementById('tlOnNow'); if(now) now.textContent=on?'Đang HIỆN — người chơi thấy tab TIẾN LÊN':'Đang ẨN — người chơi không thấy tab';
+  const now=document.getElementById('tlOnNow'); if(now) now.textContent=on?'Đang HIỆN, người chơi thấy tab TIẾN LÊN':'Đang ẨN, người chơi không thấy tab';
   const ai=document.getElementById('tlAdminIds'); if(ai&&document.activeElement!==ai&&!ai.value) ai.value=(STATE.tienlenAdmin||[]).join(', ');
   const ds=document.getElementById('tlDs'); if(!ds) return;
   if(!DS||!DS.length){ ds.innerHTML='<div class="muted">'+(DS?'Chưa có phòng nào đang mở.':'Bot chưa nạp mô-đun Tiến Lên.')+'</div>'; return; }
@@ -3048,7 +3048,7 @@ function tlLuuAdmin(){
 function pokerFill(){
   const P=STATE.poker, on=!!STATE.pokerOn;
   const ck=document.getElementById('pkOn'); if(ck&&document.activeElement!==ck) ck.checked=on;
-  const now=document.getElementById('pkOnNow'); if(now) now.textContent=on?'Đang HIỆN — người chơi thấy tab GIẢI POKER':'Đang ẨN — người chơi không thấy tab (API vẫn sống cho ván đang đánh)';
+  const now=document.getElementById('pkOnNow'); if(now) now.textContent=on?'Đang HIỆN, người chơi thấy tab GIẢI POKER':'Đang ẨN, người chơi không thấy tab (API vẫn sống cho ván đang đánh)';
   if(!P){ const g=document.getElementById('pkGhe'); if(g) g.innerHTML='<div class="muted">Bot chưa nạp mô-đun poker.</div>'; return; }
   const sel=document.getElementById('pkChip'); if(sel&&document.activeElement!==sel&&String(sel.value)!==String(P.chipDau)) sel.value=String(P.chipDau);
   const th=document.getElementById('pkThang'); if(th) th.textContent='Thang blind: '+P.lichBlind.map(x=>x.toLocaleString('vi-VN')).join(' → ')+' · lên mức mỗi 8 phút hoặc mỗi vòng (tối thiểu 6 ván)';
@@ -3788,7 +3788,7 @@ function renderSavedChannels(){
   if(!STATE)return;
   const list=STATE.savedChannels||[];
   // 4 tab có ô "kênh đã lưu". Trước còn 'bc' (trò đã gỡ) và 'bj' (Vòng Quay không có
-  // ô kênh) — chạy không rồi thoát, chỉ tổ làm người đọc tưởng còn 6 chỗ.
+  // ô kênh), chạy không rồi thoát, chỉ tổ làm người đọc tưởng còn 6 chỗ.
   ['tx','mine','stair','spm'].forEach(prefix=>{
     const el=document.getElementById(prefix+'Saved');if(!el)return;
     if(!list.length){el.innerHTML='<span class="empty">Chưa lưu kênh nào. Nhập ID + ghi chú rồi bấm 💾 Lưu kênh.</span>';return;}
@@ -4159,7 +4159,7 @@ async function refresh(force){
     const tw=document.getElementById('txTimeNow');
     if(tw) tw.innerHTML='Đang áp dụng: ván <b>'+STATE.tx.time.round+'s</b> = '+STATE.tx.time.bet+'s đặt cược + <b>'+STATE.tx.time.nhan+'s hiện nhân (cấm đặt)</b> + '+STATE.tx.time.nan+'s nặn. Đổi lúc nào cũng được; <b>ván đang chạy giữ nguyên mốc cũ</b>, ván sau mới theo số mới.';
   }
-  // 🎲 trần cược 5 nhóm cửa — dựng 1 lần, sau đó chỉ đổ giá trị (ô đang gõ thì chừa ra)
+  // 🎲 trần cược 5 nhóm cửa, dựng 1 lần, sau đó chỉ đổ giá trị (ô đang gõ thì chừa ra)
   if(STATE.tx&&STATE.tx.tran){
     const T=STATE.tx.tran, hang=document.getElementById('txTranHang');
     if(hang&&!hang.dataset.xong){
@@ -4175,12 +4175,12 @@ async function refresh(force){
     const tn=document.getElementById('txTranNow');
     if(tn) tn.innerHTML='Thắng tối đa mỗi cửa theo trần đang đặt: '+
       Object.keys(T.nhom).map(function(k){return '<b>'+esc(T.nhom[k].ten.split(' · ')[0])+'</b> '+(T.thangToiDa[k]||0).toLocaleString('vi-VN');}).join(' · ')+
-      '. Cửa trả càng cao trần càng thấp — sửa một ô là cả nhóm nhảy theo.';
+      '. Cửa trả càng cao trần càng thấp, sửa một ô là cả nhóm nhảy theo.';
   }
   if(Array.isArray(STATE.pokerAdmin)){
     // 🃏 cùng kiểu dataset.dirty như ô báo cược: đang gõ thì 3 giây refresh không được ghi đè
     const pa=document.getElementById('pokerAdminIds'); if(pa&&pa.dataset.dirty!=='1'&&pa.value===''&&document.activeElement!==pa) pa.value=STATE.pokerAdmin.join(', ');
-    const pn=document.getElementById('pokerAdminNow'); if(pn) pn.innerHTML=STATE.pokerAdmin.length?('Đang là admin poker: <b>'+STATE.pokerAdmin.join(', ')+'</b>. Đổi ở đây là poker ăn ngay, không cần khởi động lại.'):'<b>Chưa đặt ai</b> — không ai mở được giải poker. Điền ID Discord của anh vào rồi Lưu.';
+    const pn=document.getElementById('pokerAdminNow'); if(pn) pn.innerHTML=STATE.pokerAdmin.length?('Đang là admin poker: <b>'+STATE.pokerAdmin.join(', ')+'</b>. Đổi ở đây là poker ăn ngay, không cần khởi động lại.'):'<b>Chưa đặt ai</b>, không ai mở được giải poker. Điền ID Discord của anh vào rồi Lưu.';
   }
   if(STATE.tx.noti){
     const ni=document.getElementById('txNotiId'); if(ni&&ni.dataset.dirty!=='1'&&ni.value===''&&document.activeElement!==ni) ni.value=STATE.tx.noti.id||'';
