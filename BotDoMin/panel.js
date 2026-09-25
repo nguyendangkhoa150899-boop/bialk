@@ -145,6 +145,7 @@ function startPanel(ctx) {
             // ⚡ SIÊU TÀI XỈU, game RIÊNG, để ngang hàng poker/tienlen chứ đừng nhét
             // vào trong cục tx (nhét vào đó thì panel phải đọc STATE.tx.stx, dễ nhầm).
             stx: (ctx.stx && ctx.stx.adminXem) ? ctx.stx.adminXem() : null,
+            rl: (ctx.rl && ctx.rl.adminXem) ? ctx.rl.adminXem() : null,   // 🎡 Roulette
             stxBoard: ctx.getStxBoard ? ctx.getStxBoard() : null,   // 📋 bảng Siêu trên Discord
             forcedMines: ctx.getForcedMines(),
             forcedLucky: ctx.getForcedLucky ? ctx.getForcedLucky() : {},
@@ -172,6 +173,7 @@ function startPanel(ctx) {
             txHistory: (ctx.getTXDash ? ctx.getTXDash() : []),
             // ⚡ 22/09 log Siêu TÁCH RIÊNG (30 ván có cược, đúng thứ bangDiscord đã lọc)
             stxHistory: (ctx.stx && ctx.stx.bangDiscord) ? (ctx.stx.bangDiscord(30).history || []) : [],
+            rlHistory: (ctx.rl && ctx.rl.adminXem) ? (ctx.rl.adminXem().hisCuoc || []) : [],   // 🎡 sổ ván CÓ CƯỢC
             minesHistory: ctx.getMinesHistory ? ctx.getMinesHistory() : [],
             totalTiles: ctx.totalTiles || 24, // để lưới ép mìn luôn khớp bot, khỏi sửa 2 chỗ
             minesBoard: ctx.getMines ? ctx.getMines() : { on: false, channelId: '' },
@@ -278,6 +280,9 @@ function startPanel(ctx) {
                     '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep', '/api/stx/epclear',
                     '/api/stx/epnhan', '/api/stx/epnhanclear',
                     '/api/stx/board/start', '/api/stx/board/stop',
+                    // 🎡 Roulette, ĂN DOGCOIN THẬT, chỉ SUPER
+                    '/api/rl/on', '/api/rl/time', '/api/rl/tran', '/api/rl/an', '/api/rl/thang',
+                    '/api/rl/maxbet', '/api/rl/ep', '/api/rl/epclear', '/api/rl/epnhan', '/api/rl/epnhanclear', '/api/rl/set',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -582,6 +587,26 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
 
+                // 🎡 ROULETTE: toàn bộ luật nằm ở Roulette/ban.js
+                if (path.indexOf('/api/rl/') === 0) {
+                    const B = ctx.rl;
+                    if (!B) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ Roulette' });
+                    let r = null;
+                    if (path === '/api/rl/on') r = B.datBatTat(!!body.on);
+                    else if (path === '/api/rl/time') r = B.datGio(body.bet, body.quay, body.roi);
+                    else if (path === '/api/rl/tran') r = B.datTran(body.tran || {});
+                    else if (path === '/api/rl/an') r = B.datMucAn(body.an);
+                    else if (path === '/api/rl/thang') r = B.datThang(body.macDinh ? null : body.thang);
+                    else if (path === '/api/rl/set') r = B.datKhoangSet(body.macDinh ? null : body.set);
+                    else if (path === '/api/rl/maxbet') r = B.datMaxBet(body.maxBet);
+                    else if (path === '/api/rl/ep') r = B.epKetQua(body.so);
+                    else if (path === '/api/rl/epclear') r = B.huyEp();
+                    else if (path === '/api/rl/epnhan') r = B.epNhan(body.nhan || {});
+                    else if (path === '/api/rl/epnhanclear') r = B.huyEpNhan();
+                    else return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
+                    if (r && r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 // ⚡ SIÊU TÀI XỈU: toàn bộ luật nằm ở SieuTaiXiu/ban.js
                 if (path.indexOf('/api/stx/') === 0) {
                     const B = ctx.stx;
@@ -1321,6 +1346,7 @@ const HTML = `<!DOCTYPE html>
       <div class="grp"><span class="glb">TRÒ CHƠI</span><div class="gbt">
         <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
         <button data-tab="stx" class="epOnly" style="display:none" onclick="tab('stx')">⚡ Siêu Tài Xỉu</button>
+        <button data-tab="rl" class="epOnly" style="display:none" onclick="tab('rl')">🎡 Roulette</button>
         <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
         <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
         <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
@@ -1960,6 +1986,104 @@ const HTML = `<!DOCTYPE html>
          Chip trong giải là chip ảo, không đụng ví. Trang chơi nhúng ở /poker/ cùng cổng web. -->
     <!-- ⚡ TAB MẪU giao diện 23/09. Xếp theo VIỆC HAY LÀM: công tắc + 2 ô ép nằm trên
          (ngày nào cũng đụng), cài đặt bàn nằm dưới (chỉnh một lần rồi thôi). -->
+    <div id="tab-rl" class="hidden">
+
+      <div class="card">
+        <h2>🎡 Roulette</h2>
+        <div class="sub">Chỉ cổng SUPER · 154 cửa · hệ số nhân CHỈ rơi vào số đơn (29:1 rồi nhân tới x500) · phí suy từ mức nhà cái ăn</div>
+        <div class="acts">
+          <label class="sw wide"><input id="rlOn" type="checkbox" onchange="rlBat(this.checked)"><b>BẬT bàn Roulette</b></label>
+        </div>
+        <div class="stat" id="rlNow"></div>
+        <div class="note" id="rlLive"></div>
+      </div>
+
+      <div class="card">
+        <div class="blk">
+          <h3>🎯 Ép kết quả</h3>
+          <div class="note">Bấm lúc bàn <b>còn nhận cược</b> thì áp ngay ván này (lúc khoá sổ), đã khoá rồi thì vào ván sau. Dùng một lần rồi tự xoá.</div>
+          <div class="row">
+            <div class="fld" style="max-width:140px"><label>Số ra (0 – 36)</label><input id="rlEpSo" type="number" min="0" max="36" placeholder="vd: 17"></div>
+          </div>
+          <div class="acts">
+            <button class="btn-grey wide" onclick="rlTuEp()">🎯 Chọn số cho nhà cái ĂN NHIỀU NHẤT</button>
+          </div>
+          <div class="stat" id="rlEpNow"></div>
+          <div class="acts">
+            <button class="btn-red wide" onclick="rlEp()">⚡ Ép kết quả</button>
+            <button class="btn-grey" onclick="rlHuyEp()">↩️ Huỷ ép kết quả</button>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3>✋ Ép số sét (hệ số nhân của số đơn)</h3>
+          <div class="note">Ghi <code>số×hệ_số</code>, cách nhau bằng phẩy. <b>0</b> = tắt sét ô đó. Ô không ghi thì máy tự bốc. Khoảng ép ghi ở dòng dưới, muốn cao hơn thì nâng thang trước.</div>
+          <div class="row">
+            <div class="fld"><label>Ví dụ: 7×100, 12×0, 3×500</label><input id="rlEpNhanTxt" type="text" placeholder="7×100, 12×0"></div>
+          </div>
+          <div class="stat" id="rlNhanNow"></div>
+          <div class="acts">
+            <button class="btn-red wide" onclick="rlEpNhan()">✋ Ép số sét</button>
+            <button class="btn-grey" onclick="rlHuyEpNhan()">↩️ Huỷ ép số sét</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="blk">
+          <h3>⏱️ Nhịp ván</h3>
+          <div class="row">
+            <div class="fld"><label>Giây ĐẶT CƯỢC, bi đứng yên (5 – 600)</label><input id="rlBetS" type="number" min="5" max="600" placeholder="vd: 15" oninput="txDirty(this)"></div>
+            <div class="fld"><label>Giây BI CHẠY vẫn nhận cược (0 – 60)</label><input id="rlQuayS" type="number" min="0" max="60" placeholder="vd: 5" oninput="txDirty(this)"></div>
+            <div class="fld"><label>Giây KHOÁ SỔ tới lúc trả tiền (6 – 60)</label><input id="rlRoiS" type="number" min="6" max="60" placeholder="vd: 14" oninput="txDirty(this)"></div>
+          </div>
+          <div class="note">Khoá sổ xong <b>2 giây</b> mới hiện số sét, bi giảm tốc dần rồi rơi vào ô trước <b>3 giây cuối</b> khoe kết quả (mặc định 14 giây thì rơi ở giây 11).</div>
+          <div class="acts"><button class="btn-green" onclick="rlSaveTime()">💾 Lưu nhịp ván</button></div>
+        </div>
+
+        <div class="blk">
+          <h3>🎯 Nhà cái ăn & trần cược mỗi người</h3>
+          <div class="row">
+            <div class="fld"><label>Nhà cái ăn bao nhiêu % (3 – 20)</label><input id="rlAn" type="number" min="3" max="20" step="0.5" placeholder="vd: 8" oninput="txDirty(this)"></div>
+            <div class="fld"><label>Trần cược mỗi người mỗi ván (0 = không giới hạn)</label><input id="rlMax" type="number" min="0" placeholder="vd: 300000" oninput="txDirty(this)"></div>
+          </div>
+          <div class="stat" id="rlAnNote"></div>
+          <div class="note">Roulette chuẩn chỉ ăn 2,70%. Muốn ăn hơn mà không phá bảng trả quen thuộc thì thu <b>phí trên tiền cược</b>, máy tự suy: ăn 8% thì phí 5,76%. <b>Không hạ dưới 3%</b>: phí sẽ âm, bàn tự phát tiền.</div>
+          <div class="acts"><button class="btn-green" onclick="rlSaveAn()">💾 Lưu</button></div>
+        </div>
+
+        <div class="blk">
+          <h3>🧱 Trần cược từng nhóm</h3>
+          <div class="note">Số đơn trần thấp nhất vì có thể x500. Nhóm khác trả chuẩn nên trần cao hơn, thắng đậm nhất một ô quanh 300.000.</div>
+          <div id="rlTran" class="row" style="margin-top:14px"></div>
+          <div class="stat" id="rlTranNow"></div>
+          <div class="acts"><button class="btn-green" onclick="rlSaveTran()">💾 Lưu trần cược</button></div>
+        </div>
+
+        <div class="blk">
+          <h3>🎰 Thang hệ số nhân (số đơn)</h3>
+          <div class="note">Một dòng: <code>so: hệ_số×độ_hiếm, ...</code>, tới 16 bậc. Độ hiếm chỉ quyết định bậc nào hay ra, <b>không</b> đổi phần trăm nhà cái ăn. Bậc thấp nhất phải trên 29. Thang càng cao thì số ô sét mỗi ván càng ít (máy tự tính: <code>37×6 ÷ (trung bình thang − 29)</code>).</div>
+          <textarea id="rlThang" rows="6" spellcheck="false" oninput="txDirty(this)"></textarea>
+          <div class="stat" id="rlThangNow"></div>
+          <div class="acts">
+            <button class="btn-green" onclick="rlSaveThang()">💾 Lưu thang</button>
+            <button class="btn-grey" onclick="rlThangMacDinh()">↩️ Về mặc định</button>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3>🔢 Số ô sét mỗi ván</h3>
+          <div class="note">Mỗi mục <code>số_ô×độ_hiếm</code>, cách nhau bằng phẩy, ví dụ <code>2×10, 3×9, …, 11×5</code>: 2 ô hay gặp, 11 ô hiếm. Máy giữ hình dạng bảng rồi nghiêng nhẹ cho trung bình khớp thang nhân, nên nhà cái vẫn ăn đúng mức. Bảng phải bao được số ô mà thang đòi, không thì máy báo và không lưu.</div>
+          <textarea id="rlSet" rows="2" spellcheck="false" oninput="txDirty(this)"></textarea>
+          <div class="stat" id="rlSetNow"></div>
+          <div class="acts">
+            <button class="btn-green" onclick="rlSaveSet()">💾 Lưu bảng số ô sét</button>
+            <button class="btn-grey" onclick="rlSetMacDinh()">↩️ Về mặc định</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
     <div id="tab-stx" class="hidden">
 
       <div class="card">
@@ -2141,6 +2265,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="flex-wrap:wrap;gap:6px">
           <button class="btn-grey logPick" data-log="tx" onclick="logPick('tx')">🎲 Tài Xỉu</button>
           <button class="btn-grey logPick" data-log="stx" onclick="logPick('stx')">⚡ Siêu Tài Xỉu</button>
+          <button class="btn-grey logPick" data-log="rl" onclick="logPick('rl')">🎡 Roulette</button>
           <button class="btn-grey logPick" data-log="mine" onclick="logPick('mine')">💣 Dò Mìn</button>
           <button class="btn-grey logPick" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
           <button class="btn-grey logPick" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
@@ -2153,6 +2278,11 @@ const HTML = `<!DOCTYPE html>
         <div id="txHist" class="hist"></div>
       </div>
       <!-- ⚡ 22/09: log Siêu Tài Xỉu TÁCH RIÊNG (chủ server: "làm thêm 1 siêu tài xỉu log nữa rồi tách log ra") -->
+      <div class="card logSec hidden" id="logSec-rl">
+        <h3>🎡 Lịch sử Roulette</h3>
+        <div class="note">Mỗi ván: số ra, số sét đã bốc, ai đặt bao nhiêu (kèm phí), nhận về bao nhiêu, lãi/lỗ so với tiền đã rời ví.</div>
+        <div id="rlHist" class="hist"></div>
+      </div>
       <div class="card logSec hidden" id="logSec-stx">
         <h3>⚡ Lịch sử Siêu Tài Xỉu</h3>
         <div class="note">Mỗi ván: kết quả, ai đặt bao nhiêu (kèm phí 20%), nhận về bao nhiêu, lãi/lỗ so với tiền đã rời ví.</div>
@@ -2447,7 +2577,7 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','stx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
+  if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
@@ -2459,7 +2589,7 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
   if(t==='give')gvLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
@@ -2830,6 +2960,166 @@ function txThangMacDinh(){
     const t=document.getElementById('txThang'); if(t){t.dataset.dirty='';t.value='';}
     toast('↩️ Đã về thang mặc định');refresh();
   }).catch(e=>toast('❌ '+e.message));
+}
+// ================= 🎡 ROULETTE (25/09) =================
+function rlBat(v){api('/api/rl/on',{on:v}).then(j=>{toast(j.on?'🎡 Đã BẬT bàn Roulette':'🎡 Đã TẮT bàn Roulette (cược đang có đã hoàn đủ)');refresh();}).catch(e=>toast('❌ '+e.message));}
+function rlSaveTime(){
+  const b=parseInt(document.getElementById('rlBetS').value),q=parseInt(document.getElementById('rlQuayS').value),r=parseInt(document.getElementById('rlRoiS').value);
+  if(!(b>=5&&b<=600))return toast('Giây đặt: 5 - 600');
+  if(!(q>=0&&q<=60))return toast('Giây bi chạy: 0 - 60');
+  if(!(r>=6&&r<=60))return toast('Giây khoá sổ: 6 - 60');
+  api('/api/rl/time',{bet:b,quay:q,roi:r}).then(j=>{txClean(['rlBetS','rlQuayS','rlRoiS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'+'+j.quay+'+'+j.roi);refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function rlSaveAn(){
+  const a=parseFloat(document.getElementById('rlAn').value);
+  const m=parseInt(document.getElementById('rlMax').value);
+  const xong=()=>{txClean(['rlAn','rlMax']);refresh();};
+  if(!isNaN(a)){ if(!(a>=3&&a<=20))return toast('Nhà cái ăn: 3 - 20%');
+    api('/api/rl/an',{an:a}).then(j=>{toast('🎯 Nhà cái ăn '+(j.an*100).toFixed(1)+'% · phí '+(j.phi*100).toFixed(2)+'% · trung bình '+j.oSangMoiVan.toFixed(1)+' số sét/ván');xong();}).catch(e=>toast('❌ '+e.message)); }
+  if(!isNaN(m)) api('/api/rl/maxbet',{maxBet:m}).then(()=>{toast('💰 Đã lưu trần mỗi người');xong();}).catch(e=>toast('❌ '+e.message));
+}
+function rlSaveTran(){
+  const t={};document.querySelectorAll('[data-rltran]').forEach(el=>{const v=parseInt(el.value);if(v>0)t[el.dataset.rltran]=v;});
+  api('/api/rl/tran',{tran:t}).then(j=>{document.querySelectorAll('[data-rltran]').forEach(el=>{el.dataset.dirty='';});toast('🧱 Đã lưu trần Roulette');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function rlSaveThang(){
+  let bang;try{bang=txDocThangO('rlThang');}catch(e){return toast('❌ '+e.message);}
+  api('/api/rl/thang',{thang:bang}).then(j=>{txClean(['rlThang']);toast('🎰 Đã lưu thang · '+j.oSangMoiVan.toFixed(1)+' số sét/ván · nhà cái vẫn ăn '+(j.anThuc*100).toFixed(2)+'%');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function rlThangMacDinh(){
+  if(!confirm('Trả thang hệ số nhân của bàn ROULETTE về mặc định?'))return;
+  api('/api/rl/thang',{macDinh:true}).then(()=>{const t=document.getElementById('rlThang');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function rlEp(){
+  const so=parseInt(document.getElementById('rlEpSo').value,10);
+  if(isNaN(so)||so<0||so>36)return toast('Số phải từ 0 đến 36');
+  api('/api/rl/ep',{so:so}).then(j=>{toast('⚡ '+(j.ngay?('Ván #'+j.gameId+' sẽ ra '):'Ván sau sẽ ra ')+j.ep);refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function rlHuyEp(){api('/api/rl/epclear',{}).then(j=>{toast(j.daHuy?'↩️ Đã huỷ ép - quay ngẫu nhiên':'Không có ép nào đang chờ');refresh();}).catch(e=>toast('❌ '+e.message));}
+// 🎯 lấy THẲNG gợi ý máy chủ đã duyệt 37 số bằng lõi tiền
+function rlTuEp(){
+  const S=STATE&&STATE.rl; if(!S)return;
+  const g=S.epGoiY;
+  if(!g||typeof g.so!=='number'){toast('❌ Máy chủ chưa gửi gợi ý - thử lại sau vài giây');return;}
+  if(!g.soCuoc){toast('Ván này chưa ai đặt - ép kiểu gì cũng như nhau');return;}
+  document.getElementById('rlEpSo').value=g.so;
+  toast('🎯 Số '+g.so+': nhà cái trả ít nhất '+g.tra.toLocaleString()+' / tổng cược '+g.tongDat.toLocaleString()+'. Bấm ⚡ Ép để chốt.');
+}
+// ✋ đọc "7×100, 12×0" -> {s7:100, s12:0}. Không dùng regex có dấu gạch chéo ngược (file này là template literal).
+function rlEpNhan(){
+  const txt=(document.getElementById('rlEpNhanTxt').value||'').trim();
+  if(!txt)return toast('❌ Chưa ghi ô nào - ví dụ 7×100, 12×0');
+  const nhan={};
+  try{
+    txt.split(',').forEach(function(p){
+      p=p.trim(); if(!p)return;
+      const m=p.split(/[x×*X:]/);
+      if(m.length!==2)throw new Error('Sai kiểu "'+p+'" (phải là số×hệ_số, ví dụ 7×100)');
+      const so=parseInt(m[0],10),he=parseInt(m[1],10);
+      if(isNaN(so)||so<0||so>36)throw new Error('Số "'+m[0].trim()+'" phải từ 0 đến 36');
+      if(isNaN(he)||he<0)throw new Error('Hệ số của số '+so+' phải là số ≥ 0 (0 = tắt)');
+      nhan['s'+so]=he;
+    });
+  }catch(e){return toast('❌ '+e.message);}
+  api('/api/rl/epnhan',{nhan:nhan}).then(function(j){
+    const ke=Object.keys(j.epNhan).map(k=>'Số '+k.slice(1)+(j.epNhan[k]===0?' TẮT':' x'+j.epNhan[k])).join(' · ');
+    toast('✋ '+(j.ngay?('Áp NGAY ván #'+j.gameId):'Áp từ ván sau')+': '+ke);
+    document.getElementById('rlEpNhanTxt').value='';
+    refresh();
+  }).catch(function(e){toast('❌ '+e.message)});
+}
+function rlHuyEpNhan(){
+  api('/api/rl/epnhanclear',{}).then(function(j){toast(j.daHuy?'↩️ Đã huỷ lệnh ép số sét':'(không có lệnh ép nào đang chờ)');refresh();}).catch(function(e){toast('❌ '+e.message)});
+}
+// 🔢 đọc "2×10, 3×9" -> [[2,10],[3,9]]. Không dùng regex có dấu gạch chéo ngược (file này là template literal).
+function rlDocSetO(){
+  const txt=(document.getElementById('rlSet').value||'').trim();
+  if(!txt)throw new Error('Chưa nhập gì');
+  return txt.split(',').map(p=>p.trim()).filter(Boolean).map(p=>{
+    const m=p.split(/[x×*X:]/);
+    if(m.length!==2)throw new Error('Sai kiểu "'+p+'" (phải là số_ô×độ_hiếm, ví dụ 2×10)');
+    const k=parseInt(m[0],10),w=parseInt(m[1],10);
+    if(isNaN(k)||isNaN(w))throw new Error('Sai số ở "'+p+'"');
+    return [k,w];
+  });
+}
+function rlSaveSet(){
+  let bang;try{bang=rlDocSetO();}catch(e){return toast('❌ '+e.message);}
+  api('/api/rl/set',{set:bang}).then(j=>{txClean(['rlSet']);toast('🔢 Đã lưu · trung bình '+j.oSangMoiVan.toFixed(1)+' ô sét/ván · nhà cái vẫn ăn '+(j.anThuc*100).toFixed(2)+'%');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+function rlSetMacDinh(){
+  if(!confirm('Trả bảng số ô sét về mặc định (2×30, 3×26, 4×20, 5×13, 6×7, 7×4)?'))return;
+  api('/api/rl/set',{macDinh:true}).then(()=>{const t=document.getElementById('rlSet');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
+}
+// đổ trạng thái bàn Roulette vào tab (chỉ điền ô nào admin chưa gõ dở)
+function rlDo(){
+  const S=STATE&&STATE.rl; if(!S)return;
+  const cb=document.getElementById('rlOn'); if(cb&&cb.checked!==S.on)cb.checked=S.on;
+  const TC=S.tenCua||{};
+  const now=document.getElementById('rlNow');
+  if(now)now.textContent=S.on?('Ván #'+S.gameId+' · '+(S.secsToLock>0?('còn '+S.secsToLock+'s nhận cược'):('ĐÃ KHOÁ SỔ'+(S.kq?' · ra '+S.kq.so:'')))):'bàn đang tắt';
+  const live=document.getElementById('rlLive');
+  if(live){const co=Object.keys(S.betAgg||{}).filter(k=>S.betAgg[k]>0).sort((a,b)=>S.betAgg[b]-S.betAgg[a]);
+    const tong=co.reduce((s,k)=>s+S.betAgg[k],0);
+    const cua=co.length?('💰 tổng cược <b>'+tong.toLocaleString()+'</b> · '+co.slice(0,12).map(k=>esc(TC[k]||k)+' <b>'+S.betAgg[k].toLocaleString()+'</b>').join(' · ')+(co.length>12?(' · +'+(co.length-12)+' cửa nữa'):'')):'chưa ai đặt';
+    const per={};
+    (S.bets||[]).forEach(b=>{const k=b.name||'?';if(!per[k])per[k]={tong:0,o:[]};per[k].tong+=Number(b.amount)||0;per[k].o.push(esc(TC[b.choice]||b.choice)+' <b>'+Number(b.amount).toLocaleString()+'</b>');});
+    const ds=Object.keys(per).sort((a,b)=>per[b].tong-per[a].tong);
+    const list=ds.length?ds.map(k=>'<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;border-top:1px dashed #263159">'
+      +'<b style="min-width:110px;color:#ffe193">'+esc(k)+'</b><span style="min-width:90px;color:#3ddc84;font-weight:800">'+per[k].tong.toLocaleString()+'</span>'
+      +'<span class="muted" style="font-size:12px;flex:1">'+per[k].o.join(' · ')+'</span></div>').join(''):'<div class="muted" style="font-size:12px">chưa ai đặt</div>';
+    const setKe=S.nhanHienTai?Object.keys(S.nhanHienTai).map(k=>'Số '+k.slice(1)+' x'+S.nhanHienTai[k]).join(' · '):'';
+    live.innerHTML='<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#141824">'
+      +'<div style="margin-bottom:5px">👥 <b>Ván #'+S.gameId+'</b> · '+ds.length+' người · '+(S.betsCount||0)+' lượt đặt'+(S.secsToLock>0?' · <span style="color:#3ddc84">còn '+S.secsToLock+'s</span>':' · <span style="color:#ff7a7a">đã khoá sổ</span>')+(setKe?' · ⚡ '+esc(setKe):'')+'</div>'
+      +'<div style="margin-bottom:6px;font-size:12.5px">'+cua+'</div>'
+      +list+'</div>';}
+  const put=(id,v)=>{const e=document.getElementById(id);if(e&&e.dataset.dirty!=='1'&&e.value===''&&document.activeElement!==e)e.value=v;};
+  if(S.time){put('rlBetS',S.time.bet);put('rlQuayS',S.time.quay);put('rlRoiS',S.time.roi);}
+  put('rlMax',S.maxBet);
+  if(S.rtp)put('rlAn',(S.rtp.an*100).toFixed(1).replace('.0',''));
+  const an=document.getElementById('rlAnNote');
+  if(an&&S.rtp)an.textContent='Đang chạy: nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · phí '+(S.rtp.phi*100).toFixed(2)+'% trên tiền cược · trung bình '+S.rtp.oSangMoiVan.toFixed(1)+' số sét/ván · '+S.rtp.soCua+' cửa';
+  const box=document.getElementById('rlTran'), TEN=S.tenNhom||{};
+  if(box&&!box.dataset.xong&&S.tran){box.dataset.xong='1';
+    box.innerHTML=Object.keys(S.tran).map(k=>'<div style="flex:1 1 180px"><label>'+esc(TEN[k]||k)+'</label><input data-rltran="'+k+'" type="number" min="1000" oninput="txDirty(this)"></div>').join('');}
+  document.querySelectorAll('[data-rltran]').forEach(el=>{if(el.dataset.dirty!=='1'&&document.activeElement!==el)el.value=S.tran[el.dataset.rltran];});
+  const tn=document.getElementById('rlTranNow');
+  if(tn&&S.thangToiDa)tn.innerHTML='Thắng tối đa mỗi cửa theo trần đang đặt: '+
+    Object.keys(S.tran||{}).map(k=>'<b>'+esc((TEN[k]||k).split(' (')[0])+'</b> '+(S.thangToiDa[k]||0).toLocaleString('vi-VN')).join(' · ')+'.';
+  const tt=document.getElementById('rlThang');
+  if(tt&&S.thang&&tt.dataset.dirty!=='1'&&tt.value===''&&document.activeElement!==tt)
+    tt.value=Object.keys(S.thang).map(k=>k+': '+S.thang[k].map(b=>b[0]+'×'+b[1]).join(', ')).join(String.fromCharCode(10));
+  const tnw=document.getElementById('rlThangNow');
+  if(tnw&&S.rtp)tnw.textContent='Thang này đòi trung bình '+S.rtp.oSangMoiVan.toFixed(2)+' ô sét mỗi ván.';
+  const ts=document.getElementById('rlSet');
+  if(ts&&S.set&&ts.dataset.dirty!=='1'&&ts.value===''&&document.activeElement!==ts)
+    ts.value=S.set.map(b=>b[0]+'×'+b[1]).join(', ');
+  const snw=document.getElementById('rlSetNow');
+  if(snw&&S.rtp&&S.rtp.phanPhoiSet)snw.innerHTML='Xác suất THẬT mỗi ván (sau khi máy nghiêng cho khớp thang): '+S.rtp.phanPhoiSet.map(x=>'<b>'+x.k+' ô</b> '+(x.p*100).toFixed(1)+'%').join(' · ');
+  const ep=document.getElementById('rlEpNow');
+  if(ep)ep.textContent=(typeof S.ep==='number')?('⚡ Đang chờ áp: ra số '+S.ep):'';
+  const nn=document.getElementById('rlNhanNow');
+  if(nn){
+    const kh=S.epNhanKhoang||{min:30,max:500};
+    const khi=S.secsToLock>0
+      ? '<span style="color:#3ddc84;font-weight:800">🟢 CÒN '+S.secsToLock+'s - ép giờ áp NGAY lúc khoá sổ ván #'+S.gameId+'</span>'
+      : '<span style="color:#ff7a7a;font-weight:800">🔒 ĐÃ KHOÁ SỔ - ép giờ vào VÁN SAU</span>';
+    const dang=S.epNhan?('<br>✋ <b>Đang chờ áp:</b> '+Object.keys(S.epNhan).map(k=>'Số '+k.slice(1)+(S.epNhan[k]===0?' TẮT':' x'+S.epNhan[k])).join(' · ')):'';
+    nn.innerHTML=khi+' &nbsp;·&nbsp; khoảng ép x'+kh.min+' đến x'+kh.max+' · 0 = tắt ô'+dang;
+  }
+}
+// 📜 một ván Roulette trong tab LOG: số ra + số sét + từng người (đặt, phí, nhận, lãi/lỗ)
+function veVanRl(g){
+  const per={};
+  (g.bets||[]).forEach(b=>{const k=b.u||b.name;if(!per[k])per[k]={name:b.name,dat:0,phi:0,nhan:0,cua:[]};
+    per[k].dat+=(b.amount||0);per[k].phi+=(b.phi||0);per[k].nhan+=(Number(b.nhan)||0);per[k].cua.push((b.choice||b.cua)+' '+Number(b.amount||0).toLocaleString());});
+  const ds=Object.values(per).map(p=>({...p,net:p.nhan-p.dat-p.phi})).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net));
+  const nh=g.nhanBoc||g.nhan||{};
+  const setKe=Object.keys(nh).map(k=>'x'+nh[k]+' Số '+k.slice(1)).join(' · ');
+  const mau=g.so===0?'🟢':(g.mau==='r'?'🔴':'⚫');
+  const dong=ds.map(p=>'<div class="'+(p.net>0?'win':(p.net<0?'lose':'b'))+'">'+(p.net>0?'💰':(p.net<0?'💥':'⚖️'))+' <b>'+esc(p.name)+'</b> đặt '+p.dat.toLocaleString()+(p.phi?' (+phí '+p.phi.toLocaleString()+')':'')+' → nhận '+p.nhan.toLocaleString()+' · <b>'+fmtAmt(p.net)+'</b>'+
+    '<span class="muted" style="font-size:11px"> · '+esc(p.cua.join(', '))+'</span></div>').join('');
+  return '<div class="h"><div class="top"><span>Ván #'+padId(g.gameId)+' · 🎡 ra <b>'+g.so+'</b> '+mau+(setKe?' · ⚡ '+esc(setKe):'')+'</span><span class="t">'+(g.time||'')+'</span></div>'+(dong||'<div class="b">không ai đặt</div>')+'</div>';
 }
 // ================= ⚡ SIÊU TÀI XỈU =================
 function stxBat(v){api('/api/stx/on',{on:v}).then(j=>{toast(j.on?'⚡ Đã BẬT bàn Siêu':'⚡ Đã TẮT bàn Siêu (cược đang có đã hoàn đủ)');refresh();}).catch(e=>toast('❌ '+e.message));}
@@ -3921,6 +4211,9 @@ function renderHistories(){
   // ⚡ Siêu Tài Xỉu - mục riêng
   const sx=(STATE.stxHistory||[]).slice(0,30), sxEl=document.getElementById('stxHist');
   if(sxEl)sxEl.innerHTML = sx.length? sx.map(veVanLog).join('') : '<div class="empty">Chưa có ván nào.</div>';
+  // 🎡 Roulette - mục riêng, hàm vẽ riêng vì ván có số ra chứ không có xúc xắc
+  const rlx=(STATE.rlHistory||[]).slice(0,30), rlEl=document.getElementById('rlHist');
+  if(rlEl)rlEl.innerHTML = rlx.length? rlx.map(veVanRl).join('') : '<div class="empty">Chưa có ván nào.</div>';
   // Dò Mìn
   const mn=(STATE.minesHistory||[]).slice(0,30);
   document.getElementById('mineHist').innerHTML = mn.length? mn.map(g=>{
@@ -4158,6 +4451,7 @@ async function refresh(force){
     const tnt=document.getElementById('txThangNote');
     if(tnt&&STATE.tx.rtp) tnt.textContent='Đang có '+STATE.tx.rtp.soCuaDuocNhan+'/52 cửa được nhân · trung bình '+STATE.tx.rtp.oSangMoiVan.toFixed(1)+' ô sáng mỗi ván.';
     stxDo();
+    rlDo();
     const rt=document.getElementById('txRTP');
     if(rt&&STATE.tx.rtp){
       if(rt.dataset.dirty!=='1'&&rt.value===''&&document.activeElement!==rt) rt.value=(STATE.tx.rtp.rtp*100).toFixed(1).replace(/\.0$/,'');

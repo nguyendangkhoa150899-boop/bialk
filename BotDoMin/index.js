@@ -258,7 +258,7 @@ function updatePoints(userId, amount) {
 // 💰 22/09 chủ server: "Sổ Dogcoin chỉ lưu chuyển / nạp / rút / admin thêm - không lưu log gì của
 // mấy mini game hết". Từng ván thắng thua đã có lịch sử riêng từng trò ở tab 📜 LOG.
 // Giữ: transfer · to-game/from-game (nạp/rút) · admin+/- · shop/vay/trano/refund (không phải mini game).
-const DOG_LEDGER_BO_QUA = new Set(['bet', 'jackpot', 'cophieu', 'tienlen', 'sieutx']);
+const DOG_LEDGER_BO_QUA = new Set(['bet', 'jackpot', 'cophieu', 'tienlen', 'sieutx', 'roulette']);
 function logDog(type, userId, username, amount, note) {
     // 🚕 Tới được đây nghĩa là khoản này KHÔNG phải mini game (mini game đã return ở trên) ->
     // trừ ngược khỏi sổ lãi-lỗ ngày, vì nạp/rút/chuyển/admin/mua pal/vay/hoàn không phải "thua bạc".
@@ -4471,6 +4471,45 @@ setInterval(() => {
         if (vet !== stxDauVet) { stxDauVet = vet; stxBoard.needsUpdate = true; }
     } catch (e) { }
 }, 1000);
+// 🎡 ROULETTE (25/09), bàn thứ ba. Mô-đun Roulette/ban.js tự lo vòng ván + tiền, ở đây chỉ
+// đưa ví, log và chỗ lưu, y hệt cách nối bàn Siêu. ROULETTE_DIR để bản test (chỉ chép mấy
+// file BotDoMin) vẫn trỏ về được thư mục thật trong repo.
+const ROULETTE_DIR = process.env.ROULETTE_DIR || require('path').join(__dirname, '..', 'Roulette');
+const RL_CUA = require(require('path').join(ROULETTE_DIR, 'cua.js'));
+const rlBan = require(require('path').join(ROULETTE_DIR, 'ban.js')).taoBan({
+    db: () => dbCache,
+    layNguoi: (id) => getUserData(id),
+    // 👇 CỬA DUY NHẤT đụng ví ở Roulette. Ghi sổ biến động để còn đối chiếu.
+    congVi: (id, tien, lyDo) => {
+        updatePoints(id, tien);
+        logDog('roulette', id, getUserData(id).name || id, tien, lyDo || 'Roulette');
+    },
+    // 📜 log tách theo loại như bàn Siêu: từng phiếu cược/xoá/huỷ/dời + dòng khoá sổ -> KHÔNG ghi file.
+    // Kết quả ván -> RESULT. Lỗi/hoàn -> SYSTEM. Còn lại là thao tác admin -> ADMIN.
+    ghiLog: (dong) => {
+        if (/^\[ROULETTE CƯỢC\]|xoá cược ván|huỷ cược ô|\] .* dời .* từ |khoá sổ - /.test(dong)) return;
+        writeLog(/LỖI|MẤT|DỌN SỔ|lỡ mốc|Bật lại/.test(dong) ? 'SYSTEM' : (/KẾT QUẢ\]/.test(dong) ? 'RESULT' : 'ADMIN'), dong);
+    },
+    luuDb: () => saveDbNow(),
+    // 🔔 báo cược về Discord, dùng chung ID / công tắc / mức tối thiểu _txNoti với hai bàn kia
+    baoCuoc: (id, ten, cua, tien) => rlNotifyBet(id, ten, cua, tien),
+});
+setInterval(() => rlBan.nhip(), 1000);
+/** 🔔 Báo cược bàn ROULETTE. Cùng cấu hình _txNoti, chỉ khác dòng chữ. */
+function rlNotifyBet(userId, ten, cua, soTien) {
+    const c = txNotiCfg();
+    if (!c.on || !c.id || soTien < c.min) return;
+    const tenCua = (RL_CUA.THEO_ID[cua] || {}).ten || cua;
+    const S = rlBan._S || {}, bets = S.bets || [];
+    const tong = bets.reduce((t, b) => t + (b.amount || 0), 0);
+    const cuaNguoi = bets.filter(b => b.userId === userId).reduce((t, b) => t + (b.amount || 0), 0);
+    const viCon = (getUserData(userId).points || 0);
+    const vn = (n) => Number(n).toLocaleString('vi-VN');
+    txNotiSend(
+        '🎡 **ROULETTE** · **' + ten + '** đặt **' + vn(soTien) + '** (+phí ' + vn(RL_CUA.tienPhi(soTien)) + ') vào **' + tenCua + '** · ván #' + S.gameId + '\n' +
+        'ván này người đó đã đặt ' + vn(cuaNguoi) + ' · ví còn ' + vn(viCon) + ' · tổng bàn ' + vn(tong)
+    ).catch(() => { });
+}
 // Gửi thử 1 tin để chủ server biết ID có đúng không (nút "Gửi thử" ở panel).
 async function txNotiTest() {
     const c = txNotiCfg();
@@ -7127,6 +7166,7 @@ client.once('ready', async (c) => {
     taxiDonSo();   // 🚕 dọn sổ lãi-lỗ của NGÀY CŨ + mốc nhận quá 7 ngày, khỏi phình database.json
     // ⚡ Siêu Tài Xỉu: hoàn cược ván dở + trả nốt bảng tiền còn treo, rồi mở ván mới.
     try { stxBan.khoiDong(); } catch (e) { writeLog('SYSTEM', `[SIÊU TX] Không khởi động được: ${e.message}`); }
+    try { rlBan.khoiDong(); } catch (e) { writeLog('SYSTEM', `[ROULETTE] Không khởi động được: ${e.message}`); }
     // 🎲 27/08: TỰ KHỞI ĐỘNG Big Small ở kênh đã lưu (_txChannelId) - khỏi cần admin
     // bấm mở bảng lại mỗi lần restart. Chưa từng mở (không có kênh lưu) thì bỏ qua.
     (async () => {
@@ -7420,6 +7460,8 @@ client.once('ready', async (c) => {
             txKqS: () => TX_KQ_S,
             // ⚡ SIÊU TÀI XỈU, bàn thứ hai
             stx: stxBan,
+            // 🎡 ROULETTE, bàn thứ ba (25/09)
+            rl: rlBan,
             txCuaThang: (xx) => TX_CUA.cuaThang(xx),
             txCuaAnNhan: (xx, nh) => TX_CUA.cuaAnNhan(xx, nh),   // ⚡ lọc "ô thật sự được nhân" (Đơn 1 viên không kể)
         });
@@ -7435,6 +7477,7 @@ client.once('ready', async (c) => {
             // ⚡ SIÊU TÀI XỈU, panel.js là MODULE KHÁC, phải đưa qua ĐÚNG ctx này.
             // Gắn vào ctx của startWebPlay thì web chạy nhưng panel báo 'Bot chưa hỗ trợ'.
             stx: stxBan,
+            rl: rlBan,   // 🎡 ROULETTE, cùng lý do với stx: panel là module khác
             password: process.env.PANEL_PASSWORD || '',
             // 10/09: mật khẩu RIÊNG cổng SUPER (đặt trong .env, KHÔNG hardcode vào repo)
             superPassword: process.env.PANEL_SUPER_PASSWORD || '',

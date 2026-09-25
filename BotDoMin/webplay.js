@@ -321,6 +321,7 @@ function startWebPlay(ctx) {
                         txNhan: (tx.nhan && tx.nhan.gameId === tx.gameId && tx.status !== 'betting') ? tx.nhan.o : null,
                         tienlenOn: ctx.tienlenOn ? !!ctx.tienlenOn() : false,   // 🀄 tab Tiến Lên hiện/ẩn
                         stxOn: (ctx.stx && ctx.stx.adminXem) ? !!ctx.stx.adminXem().on : false,  // ⚡ tab Siêu Tài Xỉu
+                        rlOn: (ctx.rl && ctx.rl.adminXem) ? !!ctx.rl.adminXem().on : false,      // 🎡 tab Roulette
                         txPot: ctx.txPot ? ctx.txPot() : 0,
                         txPotX: (typeof ctx.txPotX === 'function' ? ctx.txPotX() : ctx.txPotX) || 10,
                         txBaoRate: ctx.txBaoRate || 30,
@@ -354,6 +355,26 @@ function startWebPlay(ctx) {
                 if (req.method === 'POST' && path === '/api/tx/reveal') {
                     if (!ctx.txReveal) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     return sendJSON(res, 200, ctx.txReveal(userId));
+                }
+                // 🎡 ROULETTE, bàn thứ ba. Toàn bộ luật + tiền nằm ở Roulette/ban.js,
+                // đây chỉ chuyển tiếp và trả lỗi nguyên văn, y bàn Siêu.
+                if (path.indexOf('/api/rl/') === 0) {
+                    const B = ctx.rl;
+                    if (!B) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ Roulette' });
+                    const me4 = ctx.getUserData(userId);
+                    const ten = me4.name || ('web_' + userId.slice(-4));
+                    if (path === '/api/rl/state') return sendJSON(res, 200, { ok: true, ...B.trangThai(userId) });
+                    if (req.method !== 'POST') return sendJSON(res, 405, { ok: false, error: 'Sai cách gọi' });
+                    let r = null;
+                    if (path === '/api/rl/bet') { const body = await readBody(req); r = B.dat(userId, ten, body.gio); }
+                    else if (path === '/api/rl/x2') r = B.nhanDoi(userId, ten);
+                    else if (path === '/api/rl/datlai') r = B.datLai(userId, ten);
+                    else if (path === '/api/rl/xoacuoc') r = B.xoaCuoc(userId);
+                    else if (path === '/api/rl/xoacua') { const body = await readBody(req); r = B.xoaCua(userId, body.cua); }
+                    else if (path === '/api/rl/doicua') { const body = await readBody(req); r = B.doiCua(userId, ten, body.tu, body.den); }
+                    else return sendJSON(res, 404, { ok: false, error: 'Không có đường này' });
+                    if (r && r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 // ⚡ SIÊU TÀI XỈU, bàn thứ hai. Toàn bộ luật + tiền nằm ở
                 // SieuTaiXiu/ban.js, đây chỉ chuyển tiếp và trả lỗi nguyên văn.
@@ -1890,6 +1911,87 @@ const PAGE = [
     '#ikNhan b{color:#fff}',
     '#lkWarn{background:linear-gradient(180deg,#4a1414,#2e0f0f);border:1px solid #e05a5a;color:#ffd9d9;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;line-height:1.5}',
     '#lkWarn b{color:#fff}',
+    // ===== 🎡 ROULETTE (25/09): bàn cược trong mờ đè lên vòng quay lúc đặt, tụt xuống dưới lúc khoá =====
+    '.rlCard{background:linear-gradient(180deg,#0e1118,#12151d);border-color:#2a3242}',
+    '#rlBanh{display:block;margin:0 auto;max-width:100%;height:auto}',
+    // 25/09 chủ server: thanh cuộn mặc định "màu kì quá" -> ẩn hẳn, dải vẫn kéo tay được
+    '.rlLich{display:flex;gap:4px;overflow-x:auto;padding:6px 2px;margin:6px 0;scrollbar-width:none;-ms-overflow-style:none}',
+    '.rlLich::-webkit-scrollbar{display:none}',
+    '.rlLich i{flex:0 0 auto;min-width:30px;text-align:center;padding:4px 6px;border-radius:6px;font-size:12.5px;font-weight:800;font-style:normal;color:#fff}',
+    '.rlLich i.r{background:#8d181f}.rlLich i.d{background:#1b1f27;border:1px solid #333a47}.rlLich i.x{background:#0f5029}',
+    // số ra TRÚNG số sét: tô vàng + hệ số nhỏ bên dưới, y dải kết quả game thật (chủ server 25/09: "cho gọn")
+    '.rlLich i.sang,.rlVien.sang{background:linear-gradient(180deg,#ffd84a,#c99a12)!important;color:#2a1f05!important;border-color:#fff1b8!important;box-shadow:0 0 10px rgba(255,200,60,.55)}',
+    '.rlLich i.sang small,.rlVien.sang small{display:block;font-size:9px;line-height:1;margin-top:1px;font-weight:900}',
+    '.rlVien.sang small{display:inline;margin-left:4px;font-size:11px}',
+    // bảng 20 ván xếp LƯỚI 2 cột (3 cột khi màn từ 460px) cho khỏi kéo dài (chủ server 25/09)
+    '#rlHist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px}',
+    '@media (min-width:460px){#rlHist{grid-template-columns:repeat(3,minmax(0,1fr))}}',
+    '#rlHist .hrow{gap:5px;padding:4px 0 2px;font-size:12px;min-width:0;border-bottom:1px solid rgba(255,255,255,.05)}',
+    '#rlHist .hrow .gid{font-size:11px}',
+    '#rlHist .hrow .net{margin-left:auto;font-size:11.5px;white-space:nowrap}',
+    // 🏆 DOLLY: cục đánh dấu nhà cái cắm lên ô thắng trên bàn nỉ, y roulette thật (chủ server 25/09).
+    // Thân trụ vàng + núm tròn, rơi từ trên xuống lúc bi nằm vào ô, giữ tới ván mới.
+    '.rlDolly{position:absolute;left:50%;top:50%;transform:translate(-50%,-58%);z-index:8;width:14px;height:26px;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.75));animation:rlDollyRoi .5s cubic-bezier(.2,1.5,.4,1)}',
+    '.rlDolly::before{content:"";position:absolute;left:0;right:0;bottom:0;height:17px;border-radius:3px 3px 6px 6px;background:linear-gradient(90deg,#f7e7b3,#c9a94a 45%,#8a6c22)}',
+    '.rlDolly::after{content:"";position:absolute;left:50%;top:0;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6cf,#d4b24e 55%,#7a5f1c)}',
+    '@keyframes rlDollyRoi{0%{transform:translate(-50%,-170%) scale(1.35);opacity:0}55%{opacity:1}100%{transform:translate(-50%,-58%) scale(1)}}',
+    // Hai trạng thái sân (chủ server giữ, 25/09): ĐANG ĐẶT bàn cược to phủ lên bàn quay (bàn quay
+    // mờ làm nền); KHOÁ SỔ bàn cược tụt xuống dưới, thu 60%, bàn quay hiện trọn. Hàng mệnh giá
+    // nằm DƯỚI bàn cược (y hai bàn Sic Bo) và ẩn khi khoá.
+    '.rlSan{position:relative;transition:height .5s cubic-bezier(.2,.8,.2,1)}',
+    '.rlSan > svg{transition:opacity .45s ease}',
+    '.rlSan.datcuoc > svg{opacity:.55}',
+    '.rlLop{position:absolute;left:0;right:0;top:0;transform-origin:top center;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s}',
+    '.rlLop.dong{opacity:.95;pointer-events:none}',
+    '.rlLop.dong .chips,.rlLop.dong .rlPhiNho{display:none}',
+    '.rlLop .chips{margin-top:8px}',
+    '.rlBanW{margin-top:4px;padding-right:13px}',
+    // 25/09 thử nền nỉ đỏ rồi xanh, đều bị chê lem. Chốt: nền TRUNG TÍNH SÁNG NHẸ để ô đen nổi lên
+    '.rlLuoi{display:grid;grid-template-columns:44px 36px repeat(3,1fr);grid-template-rows:34px repeat(12,minmax(34px,auto)) 30px;gap:2px;padding:0;background:none}',
+    // ô ngoài (1-18 · Chẵn · Tá · 2:1...) nền đỏ đậm trong mờ, chữ kem như bàn nỉ thật
+    '.rlLuoi .sbO{flex:none;min-height:0;padding:0;border-radius:0;font:inherit;border:1px solid rgba(190,205,222,.62);background:rgba(11,14,20,.55);color:#e8eaf0;text-shadow:0 1px 3px rgba(0,0,0,.95);font-weight:800;font-size:17px;cursor:pointer;position:relative;overflow:hidden;touch-action:none}',
+    '.rlLuoi .sbO .sbTen{font-size:inherit}',
+    // ô đỏ tươi hẳn, ô đen đen sâu như hình thoi; nền lưới trung tính sáng nhẹ nên cả hai đều nổi
+    '.rlLuoi .sbO.rlR{background:linear-gradient(180deg,rgba(220,40,50,.93),rgba(150,16,24,.95));color:#fff}',
+    // ô số ĐEN đặc hẳn (bản đầu trong mờ trên nền tối nên "kì kì", lẫn vào nền), viền sáng nhẹ để tách ô
+    // 25/09 thử xám than bị chê xấu -> về nền GỐC: đen trong mờ như bản đầu
+    '.rlLuoi .sbO.rlD{background:linear-gradient(180deg,rgba(22,26,34,.62),rgba(11,14,19,.62))}',
+    '.rlLuoi .sbO.rlDoc{writing-mode:vertical-rl;transform:rotate(180deg);font-size:13.5px;letter-spacing:.5px}',
+    '.rlLuoi .sbO.rlO0{grid-column:3 / 6;grid-row:1;border:0;clip-path:polygon(50% 0,100% 42%,100% 100%,0 100%,0 42%);background:linear-gradient(180deg,rgba(20,113,58,.72),rgba(13,68,35,.72));color:#dff3e6;font-size:19px;padding:9px 0 3px}',
+    '.rlLuoi .sbO.sbKhoa{opacity:.55;cursor:not-allowed}',
+    '.rlThoi{display:inline-block;width:17px;height:26px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}',
+    // hình thoi ĐEN phải là thoi đen ĐẶC (bản đầu chỉ có viền, chủ server bảo "không phải hình thoi")
+    '.rlThoi.r{background:#e02029}.rlThoi.d{background:#04060a;filter:drop-shadow(0 0 1px rgba(255,255,255,.55))}',
+    // giữ chip / rê chuột: ô SẼ ĂN sáng xám, ô đang chạm viền vàng, vùng chữ nhật kín có khung vàng
+    '.rlLuoi .sbO.rlSoi::before{content:"";position:absolute;inset:0;z-index:2;background:rgba(233,236,242,.34);pointer-events:none}',
+    '.rlLuoi .sbO.rlSoiGoc{outline:2px solid #ffd400;outline-offset:-2px;z-index:6}',
+    // cược nằm TRÊN VẠCH (Tác / Dãy / Góc / Hàng): nút trong suốt đè lên đường kẻ
+    '.rlLuoi .sbO.rlVach{border:0;background:transparent;overflow:visible;padding:0;z-index:7}',
+    '.rlLuoi .sbO.rlVach .sbTen{display:none}',
+    '.rlLuoi .sbO.rlVach.rlSoiGoc{outline:0}',
+    '.rlLuoi .sbO.rlVach::after{content:"";position:absolute;inset:-3px;border-radius:7px}',
+    '.rlLuoi .sbO.rlVach:active::after{background:rgba(255,212,0,.22)}',
+    '.rlLuoi .sbO.v-goc{width:26px;height:26px;border-radius:50%;justify-self:end;align-self:end;transform:translate(50%,50%);z-index:9}',
+    '.rlLuoi .sbO.v-tacn{width:26px;height:16px;justify-self:end;align-self:center;transform:translateX(50%)}',
+    '.rlLuoi .sbO.v-tacd{width:34px;height:14px;justify-self:center;align-self:end;transform:translateY(50%)}',
+    '.rlLuoi .sbO.v-tac0{width:34px;height:14px;justify-self:center;align-self:start;transform:translateY(-50%)}',
+    '.rlLuoi .sbO.v-day{width:22px;height:20px;justify-self:end;align-self:center;transform:translateX(50%)}',
+    '.rlLuoi .sbO.v-hang{width:22px;height:22px;border-radius:50%;justify-self:end;align-self:end;transform:translate(50%,50%);z-index:9}',
+    '.rlKhung{display:none;pointer-events:none;z-index:6;outline:2px solid #ffd400;outline-offset:-1px;border-radius:3px}',
+    '.rlKhung.hien{display:block}',
+    '.rlLuoi .sbO.rlVach .sbGio img{width:22px;height:22px}',
+    // số sét: miếng vàng rực giữa ô, đổi qua đổi lại với con số (chủ server chốt 25/09)
+    '.rlNhan{position:absolute;inset:2px;z-index:5;border-radius:5px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffe066,#e39a00);color:#3a2300;border:1px solid #fff4c2;font-weight:900;font-size:15px;box-shadow:0 0 10px rgba(255,200,60,.9),0 0 22px rgba(255,170,0,.5)}',
+    '.rlLuoi .sbO.rlCoNhan{box-shadow:0 0 0 2px #ffd84a inset,0 0 14px rgba(255,200,60,.6)}',
+    '.rlLuoi .sbO.rlTrung{box-shadow:0 0 0 3px #ffe08a inset,0 0 16px rgba(255,215,110,.75)}',
+    '.rlDsNhan{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px}',
+    '.rlDsNhan i{font-style:normal;font-weight:900;font-size:13px;padding:3px 9px;border-radius:999px;background:#3a2a02;color:#ffd76a;border:1px solid #e39a00}',
+    '.rlDsNhan i b{color:#fff4c2}',
+    '.rlKq{text-align:center;margin-top:6px;min-height:30px}',
+    '.rlVien{display:inline-block;min-width:46px;padding:3px 11px;border-radius:9px;font-weight:900;font-size:22px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.5)}',
+    '.rlVien.r{background:linear-gradient(180deg,#d83a42,#9d1b22)}.rlVien.d{background:linear-gradient(180deg,#2b303b,#14171d);border:1px solid #3a4150}.rlVien.x{background:linear-gradient(180deg,#26a055,#135c2f)}',
+    '.rlPhiNho{font-size:12px;color:#98a0b0;margin:4px 0 6px;text-align:center}',
+    '.rlBay{position:fixed;z-index:9999;width:22px;height:22px;border-radius:50%;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.6),0 0 0 2px #f5c542;transition:transform .45s cubic-bezier(.2,.75,.3,1),opacity .45s ease-in}',
     '</style></head><body>',
 
     '<div id="login" class="card">',
@@ -1950,6 +2052,7 @@ const PAGE = [
     '<div id="nav">',
     '<button id="navTx" class="on" onclick="go(\'tx\')">🎲 Tài Xỉu</button>',
     '<button id="navStx" class="hidden" onclick="go(\'stx\')">⚡ Siêu Tài Xỉu</button>',
+    '<button id="navRl" class="hidden" onclick="go(\'rl\')">🎡 Roulette</button>',
     '<button id="navMine" onclick="go(\'mine\')">💣 Dò Mìn</button>',
     '<button id="navStair" onclick="go(\'stair\')">🪜 Leo Thang</button>',
     '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
@@ -2047,6 +2150,46 @@ const PAGE = [
     '<label class="hTog"><input type="checkbox" id="stHNhanOn" onchange="hNhanBat(this.checked)"> ⚡ Hiện hệ số nhân từng ván</label>',
     '<div id="stHist" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
     '</div>', // hết #pageStx
+
+    // ================= 🎡 TRANG ROULETTE (25/09) =================
+    // Vòng quay + bàn cược nằm chung một sân (.rlSan). Đang đặt: bàn cược to phủ lên vòng quay
+    // (vòng quay mờ làm nền). Khoá sổ: bàn cược tụt xuống dưới, thu 60%, vòng quay hiện trọn.
+    '<div id="pageRl" class="hidden">',
+    '<div class="card rlCard">',
+    '<div class="row"><h2 id="rlRound" style="margin:0">Ván #-</h2><div id="rlClock" class="big">--</div></div>',
+    '<div id="rlStt" class="muted"></div>',
+    '<div class="rlLich" id="rlLich"></div>',
+    // 25/09 chủ server: bàn cược nằm HẲN DƯỚI bàn quay (không đè lên nữa), hàng mệnh giá
+    // Dogcoin nằm DƯỚI bàn cược y hai bàn Sic Bo. Bỏ cơ chế phủ / thu nhỏ.
+    '<div class="rlSan" id="rlSan">',
+    '<svg id="rlBanh" viewBox="0 0 400 400" width="400" height="400" aria-label="Vong quay roulette"></svg>',
+    '<div class="rlLop dong" id="rlLop">',
+    '<div id="rlBan" class="rlBanW"><div class="rlLuoi" id="rlLuoi"></div></div>',
+    '<div id="rlChips" class="chips"></div>',
+    '<div class="rlPhiNho" id="rlPhiNho"></div>',
+    '</div>',
+    '</div>',
+    '<div class="rlDsNhan" id="rlDsNhan"></div>',
+    '<div id="rlKq" class="rlKq"></div>',
+    '</div>',
+
+    '<div class="card rlCard" id="rlBetCard">',
+    '<div id="rlNut" class="sbNut">',
+    '<button type="button" id="rlBtnSua" class="sua" onpointerdown="event.preventDefault();rlSuaNut()">✏️ Sửa chip</button>',
+    '<button type="button" id="rlBtnSuaHuy" class="hidden" onpointerdown="event.preventDefault();rlSuaHuy()">✖ Huỷ</button>',
+    '<button type="button" id="rlBtnSuaMac" class="hidden" onpointerdown="event.preventDefault();rlSuaMac()">↩ Mặc định</button>',
+    '<button type="button" id="rlBtnLai" onclick="rlDatLai()">🔁 Đặt lại</button>',
+    '<button type="button" id="rlBtnX2" onclick="rlX2()">✖️2 Gấp đôi</button>',
+    '<button type="button" id="rlBtnXoa" class="xoa" onclick="rlXoaCuoc()">🗑️ Xoá cược</button>',
+    '</div>',
+    '<div id="rlBao" class="sbBao hidden"></div>',
+    '<div class="muted" id="rlNhac" style="font-size:12.5px;margin-top:8px;text-align:center">Chọn mệnh giá rồi bấm vào ô, bấm là đặt luôn · giữ chip để kéo sang ô khác · chạm ô để thấy vùng sẽ ăn</div>',
+    '<div class="mine" id="rlMine"></div>',
+    '</div>',
+
+    '<div class="card rlCard"><h2>👥 Ai đang đặt ván này</h2><div id="rlWho" class="muted" style="font-size:13px">Chưa ai đặt.</div></div>',
+    '<div class="card rlCard"><h2>🔮 Lịch sử 20 ván gần nhất</h2><div id="rlHist" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
+    '</div>', // hết #pageRl
 
     // ================= TRANG DÒ MÌN =================
     '<div id="pageMine" class="hidden">',
@@ -2820,6 +2963,8 @@ const PAGE = [
     'if(!j.pokerOn&&PAGE_GRP[CURPAGE]==="poker")grpGo("games");',
     'var nst=$("navStx");if(nst){nst.classList.toggle("hidden",!j.stxOn);',
     'if(!j.stxOn&&CURPAGE==="stx")go("tx")}',
+    'var nrl=$("navRl");if(nrl){nrl.classList.toggle("hidden",!j.rlOn);',
+    'if(!j.rlOn&&CURPAGE==="rl")go("tx")}',
     // 🧰 17/09: nhãn số trên nút Rương Ích Kỷ. THIẾU dòng này thì F5 xong nút hiện 0 cho tới khi
     // bấm mở rương mới đúng - máy chủ vẫn gửi ichKyTotal đều, chỉ là không ai đọc. Đã dính thật.
     'if(typeof j.ichKyTotal==="number")ikBadge(j.ichKyTotal);',
@@ -3016,7 +3161,8 @@ const PAGE = [
     // -> KÉO (KEO: con ma bay theo tay, hiện vùng huỷ) -> THẢ: ô khác = dời, vùng huỷ = huỷ ô đó,
     // chỗ khác = về chỗ cũ. KEOCLICK chặn cái click trình duyệt bắn ra sau khi nhả tay.
     'var KEO=null,KEOCHO=null,KEOCLICK=0;',
-    'function keoBan(pre){return pre==="sb"?{ban:$("sbBan"),phase:PHASE,tong:SBTONG,duong:"/api/tx/",bao:sbBao,tai:refresh}:{ban:$("stBan"),phase:STPHASE,tong:STTONG,duong:"/api/stx/",bao:stBao,tai:stLoad}}',
+    'function keoBan(pre){if(pre==="rl")return {ban:$("rlBan"),phase:RLPHASE,tong:RLTONG,duong:"/api/rl/",bao:rlBao,tai:rlLoad};',
+    'return pre==="sb"?{ban:$("sbBan"),phase:PHASE,tong:SBTONG,duong:"/api/tx/",bao:sbBao,tai:refresh}:{ban:$("stBan"),phase:STPHASE,tong:STTONG,duong:"/api/stx/",bao:stBao,tai:stLoad}}',
     'function keoGan(pre){var ban=$(pre+"Ban");if(!ban||ban.dataset.keo)return;ban.dataset.keo="1";',
     'ban.addEventListener("pointerdown",function(ev){keoXuong(pre,ev)});',
     'ban.addEventListener("contextmenu",function(ev){if(KEO||KEOCHO)ev.preventDefault()})}',
@@ -3051,7 +3197,7 @@ const PAGE = [
     'k.g.remove();k.huy.classList.add("hidden");k.huy.classList.remove("hot");k.o.classList.remove("sbKeoNguon");if(k.dich)k.dich.classList.remove("sbKeoDich");',
     'try{k.o.releasePointerCapture(k.pid)}catch(e){}return k}',
     'function keoTha(x,y){if(!KEO)return;keoTheo(x,y);var k=keoXong(),B=keoBan(k.pre);',
-    'if(k.trenHuy){keoGoi(B,"xoacua",{cua:k.id},function(j){return "🗑️ Đã huỷ cược ô "+keoTen(k.o)+", hoàn "+vnd(j.hoan)+(k.pre==="st"?" (gồm cả phí)":" Dogcoin")});return}',
+    'if(k.trenHuy){keoGoi(B,"xoacua",{cua:k.id},function(j){return "🗑️ Đã huỷ cược ô "+keoTen(k.o)+", hoàn "+vnd(j.hoan)+((k.pre==="st"||k.pre==="rl")?" (gồm cả phí)":" Dogcoin")});return}',
     'if(k.dich){keoGoi(B,"doicua",{tu:k.id,den:k.dich.id.slice(3)},function(j){return "🔀 Đã dời "+vnd(j.tien)+" từ "+keoTen(k.o)+" sang "+keoTen(k.dich)})}}',
     'function keoGoi(B,duong,body,chuXong){if(B.phase!=="bet")return B.bao("Hết giờ đặt rồi - chờ ván sau nhé",true);',
     'api(B.duong+duong,body).then(function(j){BAL=j.balance;$("bal").textContent=vnd(j.balance);B.bao(chuXong(j),false);B.tai()})',
@@ -3494,13 +3640,249 @@ const PAGE = [
     'else{el.textContent="--";el.style.color=""}},1000);',
     'setInterval(stLoad,2000);',
 
-    'var PAGE_GRP={tx:"games",stx:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    // ===== 🎡 ROULETTE (25/09) =====
+    // Bàn riêng, nhịp riêng, đường gọi /api/rl/*. Chỉ hỏi máy chủ khi đang đứng ở tab này.
+    // Bảng cửa RLPHU dựng y hệt Roulette/cua.js (cùng mã ô, cùng số phủ) để vùng sáng không lệch lõi tiền.
+    'var RLVONG=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];',
+    'var RLDO=[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36],RLN=37,RLBUOC=360/37;',
+    'function rlMau(s){return s===0?"x":(RLDO.indexOf(s)>=0?"r":"d")}',
+    'var RLTEN={},RLTRAN={},RLCHIP=0,RLCHIPS=chipsDoc("rl_chips"),RLSUA=false,RLSUAI=-1,RLNHAP=null,RLMENH=RLCHIPS.concat(["max"]);',
+    'var RLPHASE="off",RLGID=0,RLLOCK=0,RLTT=0,RLGIO={bet:15,quay:5,roi:10,kq:3,nhanTre:2},RLPHI=0.0576,RLSAN=1000,RLMAX=0,RLTONG={},RLVEROI=false,RLCOVT=false,RLPHITOI=0,RLDANGGUI=false;',
+    'var RLNHAN=null,RLNHANHIEN=false,RLNHIP=null,RLROI=false,RLKQ=null,RLLASTPLAY=0,RLEL={},RLKHUNG=null,RLSOIID="";',
+    'var RLPHU={};(function(){var h,c,a,d;for(var n=0;n<=36;n++)RLPHU["s"+n]=[n];',
+    'for(h=1;h<=12;h++){d=(h-1)*3+1;RLPHU["t"+d+"_"+(d+1)]=[d,d+1];RLPHU["t"+(d+1)+"_"+(d+2)]=[d+1,d+2]}',
+    'for(a=1;a<=33;a++)RLPHU["t"+a+"_"+(a+3)]=[a,a+3];RLPHU.t0_1=[0,1];RLPHU.t0_2=[0,2];RLPHU.t0_3=[0,3];',
+    'for(h=1;h<=12;h++){d=(h-1)*3+1;RLPHU["d"+d]=[d,d+1,d+2]}',
+    'for(h=1;h<=11;h++)for(c=1;c<=2;c++){a=(h-1)*3+c;RLPHU["g"+a]=[a,a+1,a+3,a+4]}',
+    'for(h=1;h<=11;h++){d=(h-1)*3+1;RLPHU["h"+d]=[d,d+1,d+2,d+3,d+4,d+5]}',
+    'var L={do:function(n){return RLDO.indexOf(n)>=0},den:function(n){return RLDO.indexOf(n)<0},chan:function(n){return n%2===0},le:function(n){return n%2===1},thap:function(n){return n<=18},cao:function(n){return n>=19},ta1:function(n){return Math.ceil(n/12)===1},ta2:function(n){return Math.ceil(n/12)===2},ta3:function(n){return Math.ceil(n/12)===3},cot1:function(n){return (n-1)%3===0},cot2:function(n){return (n-1)%3===1},cot3:function(n){return (n-1)%3===2}};',
+    'for(var k in L){var r=[];for(var m=1;m<=36;m++)if(L[k](m))r.push(m);RLPHU[k]=r}})();',
+    'function rlTenCua(id){var b=RLPHU[id]||[];if(RLTEN[id])return RLTEN[id];if(id.charAt(0)==="s")return "Số "+b[0];if(id.charAt(0)==="t")return "Tác "+b.join("-");if(id.charAt(0)==="d")return "Dãy "+b[0]+"-"+b[2];if(id.charAt(0)==="g")return "Góc "+b.join("-");if(id.charAt(0)==="h")return "Hàng "+b[0]+"-"+b[5];return id}',
+    'function rlHang(n){return Math.ceil(n/3)+1}function rlCot(n){return 3+((n-1)%3)}',
+    // khung vàng chỉ vẽ khi vùng ăn là hình chữ nhật kín trên lưới (Tác/Dãy/Góc/Hàng)
+    'function rlKhungCho(ds){if(ds.length<2)return null;var h1=99,h2=0,c1=99,c2=0;for(var i=0;i<ds.length;i++){var n=ds[i];if(n===0)return null;var h=rlHang(n),c=rlCot(n);if(h<h1)h1=h;if(h>h2)h2=h;if(c<c1)c1=c;if(c>c2)c2=c}var dh=h2-h1+1,dc=c2-c1+1;if(dh*dc!==ds.length)return null;return {h:h1,c:c1,dh:dh,dc:dc}}',
+    'function rlXoaSoi(){for(var k in RLEL){RLEL[k].classList.remove("rlSoi");RLEL[k].classList.remove("rlSoiGoc")}if(RLKHUNG)RLKHUNG.classList.remove("hien");RLSOIID=""}',
+    'function rlSoi(id){if(id===RLSOIID)return;rlXoaSoi();RLSOIID=id;if(!id)return;var ds=RLPHU[id]||[];',
+    'for(var i=0;i<ds.length;i++){var e=RLEL["s"+ds[i]];if(e)e.classList.add("rlSoi")}',
+    'var k=rlKhungCho(ds);if(k&&RLKHUNG){RLKHUNG.style.gridRow=k.h+" / span "+k.dh;RLKHUNG.style.gridColumn=k.c+" / span "+k.dc;RLKHUNG.classList.add("hien")}else if(RLEL[id])RLEL[id].classList.add("rlSoiGoc")}',
+    // ô nào cũng là .sbO với id rl_<mã> và có .sbTen bên trong, để bộ kéo chung nhận ra
+    'function rlNut(id,cls,noiDung,gc,gr){var b=document.createElement("button");b.type="button";b.className="sbO rlO "+cls;b.id="rl_"+id;b.setAttribute("data-cua",id);',
+    'var t=document.createElement("span");t.className="sbTen";if(noiDung&&noiDung.nodeType)t.appendChild(noiDung);else t.textContent=noiDung;b.appendChild(t);',
+    'if(gc)b.style.gridColumn=gc;if(gr)b.style.gridRow=gr;b.title=rlTenCua(id);',
+    'b.addEventListener("click",function(){rlChon(id)});',
+    'b.addEventListener("pointerenter",function(){if(!KEO&&!KEOCHO&&RLPHASE==="bet")rlSoi(id)});',
+    'b.addEventListener("pointerleave",function(){if(!KEO&&RLSOIID===id)rlXoaSoi()});',
+    'b.addEventListener("pointerdown",function(){if(RLPHASE==="bet")rlSoi(id)});',
+    'RLEL[id]=b;return b}',
+    'function rlThoi(m){var i=document.createElement("i");i.className="rlThoi "+m;return i}',
+    'function rlVe(){var L2=$("rlLuoi");if(!L2||L2.dataset.xong)return;L2.dataset.xong="1";',
+    'L2.appendChild(rlNut("s0","rlO0","0"));',
+    'var NG=[["thap","1-18"],["chan","CHẴN"],["do",rlThoi("r")],["den",rlThoi("d")],["le","LẺ"],["cao","19-36"]];',
+    'for(var g1=0;g1<6;g1++)L2.appendChild(rlNut(NG[g1][0],"rlDoc",NG[g1][1],"1",(g1*2+2)+" / span 2"));',
+    'var TA=[["ta1","1st 12"],["ta2","2nd 12"],["ta3","3rd 12"]];',
+    'for(var g2=0;g2<3;g2++)L2.appendChild(rlNut(TA[g2][0],"rlDoc",TA[g2][1],"2",(g2*4+2)+" / span 4"));',
+    'for(var n1=1;n1<=36;n1++)L2.appendChild(rlNut("s"+n1,rlMau(n1)==="r"?"rlR":"rlD",String(n1),String(rlCot(n1)),String(rlHang(n1))));',
+    'for(var c1=0;c1<3;c1++){var bc=rlNut("cot"+(c1+1),"","2 to 1",String(3+c1),"14");bc.style.fontSize="11px";L2.appendChild(bc)}',
+    // cược trên vạch: neo vào một ô số rồi CSS đẩy ra mép/góc. Đặt SAU cùng để nằm trên ô số.
+    'var vb=function(id,kieu,oNeo){L2.appendChild(rlNut(id,"rlVach "+kieu,rlTenCua(id),String(rlCot(oNeo)),String(rlHang(oNeo))))};',
+    'var hh,cc,aa,dd;for(hh=1;hh<=12;hh++){dd=(hh-1)*3+1;vb("t"+dd+"_"+(dd+1),"v-tacn",dd);vb("t"+(dd+1)+"_"+(dd+2),"v-tacn",dd+1)}',
+    'for(aa=1;aa<=33;aa++)vb("t"+aa+"_"+(aa+3),"v-tacd",aa);for(aa=1;aa<=3;aa++)vb("t0_"+aa,"v-tac0",aa);',
+    'for(hh=1;hh<=12;hh++){dd=(hh-1)*3+1;vb("d"+dd,"v-day",dd+2)}for(hh=1;hh<=11;hh++){dd=(hh-1)*3+1;vb("h"+dd,"v-hang",dd+2)}',
+    'for(hh=1;hh<=11;hh++)for(cc=1;cc<=2;cc++){aa=(hh-1)*3+cc;vb("g"+aa,"v-goc",aa)}',
+    'RLKHUNG=document.createElement("div");RLKHUNG.className="rlKhung";L2.appendChild(RLKHUNG)}',
+    // đang kéo chip bằng bộ kéo chung: soi vùng ăn của ô dưới ngón tay
+    'document.addEventListener("pointermove",function(e){if(!KEO||KEO.pre!=="rl")return;var el=document.elementFromPoint(e.clientX,e.clientY),o=el&&el.closest?el.closest(".rlO"):null;rlSoi(o?o.getAttribute("data-cua"):"")});',
+    'document.addEventListener("pointerup",function(){if(RLSOIID)setTimeout(rlXoaSoi,120)});',
+
+    // ---- hàng mệnh giá (4 chip riêng khoá rl_chips + MAX) ----
+    'function rlVeChip(){var e=$("rlChips");if(!e)return;',
+    'RLMENH=RLCHIPS.concat(["max"]);if(!RLCHIP||(RLCHIP!=="max"&&RLCHIPS.indexOf(RLCHIP)<0))RLCHIP=RLCHIPS[0];',
+    'e.innerHTML=chipHangHTML("rl",RLCHIPS,RLCHIP,RLSUA,RLSUAI,RLNHAP);rlNutVe();',
+    'var p=$("rlPhiNho");if(p){var m=(RLCHIP==="max")?null:RLCHIP,pt=(RLPHI*100).toFixed(2)+"%";',
+    'if(m){p.innerHTML="💸 Phí "+pt+": bấm 1 ô là trừ <b>"+vnd(m+Math.floor(m*RLPHI))+"</b> (cược "+vnd(m)+" + phí "+vnd(Math.floor(m*RLPHI))+")"}',
+    'else{var mc=rlMaxTheoVi(BAL),mp=Math.floor(mc*RLPHI);p.innerHTML=BAL>0?("💸 MAX CƯỢC = đổ trọn ví <b>"+vnd(BAL)+"</b>: cược <b>"+vnd(mc)+"</b> + phí <b>"+vnd(mp)+"</b> ("+pt+")"):"💸 MAX CƯỢC: ví hết Dogcoin rồi"}}}',
+    'function rlDatChip(v){RLCHIP=v;rlVeChip()}',
+    'function rlSuaNut(){if(RLSUA)rlSuaLuu();else rlSuaBat()}',
+    'function rlSuaBat(){RLSUA=true;RLSUAI=-1;RLNHAP=RLCHIPS.slice();rlVeChip();toast("✏️ Bấm vào ô chip muốn đổi, gõ số, xong bấm 💾 Lưu chip")}',
+    'function rlSuaChon(i){rlNhapXong(true);RLSUAI=i;rlVeChip();var e=$("rlTuyIn");if(e){e.focus();e.select()}}',
+    'function rlNhapXong(tuBlur){if(RLSUAI<0)return;var e=$("rlTuyIn"),v=chipTuyHopLe(e&&e.value),i=RLSUAI;RLSUAI=-1;if(v)RLNHAP[i]=v;else if(!tuBlur)toast("❌ Nhập số nguyên từ 1.000 trở lên");rlVeChip()}',
+    'function rlNhapHuy(){RLSUAI=-1;rlVeChip()}',
+    'function rlSuaLuu(){rlNhapXong(true);var a=RLNHAP.slice();if(new Set(a).size!==4){toast("❌ 4 ô không được trùng số");return}RLCHIPS=a;chipsLuu("rl_chips",a);RLSUA=false;rlVeChip();toast("💾 Đã lưu 4 mệnh giá: "+a.map(vnd).join(" · "))}',
+    'function rlSuaHuy(){RLSUA=false;RLSUAI=-1;rlVeChip()}',
+    'function rlSuaMac(){RLNHAP=CHIP_MAC.slice();RLSUAI=-1;rlVeChip()}',
+    'function rlNhom(id){var c=id.charAt(0);if(c==="s")return "so";if(c==="t"&&id.indexOf("ta")!==0)return "tac";if(c==="d"&&id.indexOf("do")!==0&&id.indexOf("den")!==0)return "day";if(c==="g")return "goc";if(c==="h")return "hang";if(id.indexOf("ta")===0||id.indexOf("cot")===0)return "ta";return "deu"}',
+    'function rlTranCua(id){var n=rlNhom(id);return RLTRAN[n]||0}',
+    // cược LỚN NHẤT mà ví còn trả nổi phí (cùng bài toán làm tròn với bàn Siêu)
+    'function rlMaxTheoVi(bal){var t=Math.floor(bal/(1+RLPHI));while((t+1)+Math.floor((t+1)*RLPHI)<=bal)t++;return Math.max(0,t)}',
+    'function rlTienMax(id){var con=rlMaxTheoVi(BAL);var tran=rlTranCua(id),daCo=RLTONG["_toi_"+id]||0;if(tran>0)con=Math.min(con,Math.max(0,tran-daCo));',
+    'if(RLMAX>0){var t=0;for(var k in RLTONG){if(k.indexOf("_toi_")===0)t+=RLTONG[k]||0}con=Math.min(con,Math.max(0,RLMAX-t))}return Math.floor(con)}',
+
+    // ---- bấm ô là đặt ----
+    'function rlChon(id){if(KEO||Date.now()-KEOCLICK<500)return;if(RLPHASE!=="bet")return rlBao("Đã khoá sổ, bi đang rơi - chờ ván sau!",true);',
+    'if(!LINKED)return rlBao("Ví chưa được liên kết - nhắn admin",true);if(RLDANGGUI)return;var tien;',
+    'if(RLCHIP==="max"){tien=rlTienMax(id);if(tien<RLSAN)return rlBao(tien<=0?"Ví hết Dogcoin rồi":("Còn quá ít - mỗi ô tối thiểu "+vnd(RLSAN)),true)}',
+    'else{tien=RLCHIP;var can=tien+Math.floor(tien*RLPHI);if(can>BAL)return rlBao("Không đủ Dogcoin - cần "+vnd(can)+" (đã gồm phí), ví còn "+vnd(BAL),true);',
+    'var tran=rlTranCua(id),daCo=RLTONG["_toi_"+id]||0;if(tran>0&&daCo+tien>tran)return rlBao("Cửa "+rlTenCua(id)+" tối đa "+vnd(tran)+"/ván",true)}',
+    'RLDANGGUI=true;rlChipBay(id,tien);',
+    'api("/api/rl/bet",{gio:[{choice:id,amount:tien}]}).then(function(j){RLDANGGUI=false;BAL=j.balance;$("bal").textContent=vnd(j.balance);rlBao("💸 Đặt "+vnd(j.tong)+" + phí "+vnd(j.phi)+" = trừ "+vnd(j.truVi),false);rlLoad()})',
+    '.catch(function(e){RLDANGGUI=false;rlBao(String(e.message||e),true)})}',
+    'function rlChipBay(id,tien){var o=$("rl_"+id),hang=$("rlChips");if(!o||!hang)return;var d=o.getBoundingClientRect(),n=hang.getBoundingClientRect();',
+    'var b=document.createElement("div");b.className="sbBay";b.innerHTML="<img src=\'/dogcoin.png\' alt=\'\'><b>"+chipNgan(tien)+"</b>";',
+    'b.style.left=(n.left+n.width/2)+"px";b.style.top=(n.top+n.height/2)+"px";document.body.appendChild(b);void b.offsetWidth;',
+    'b.style.transform="translate(-50%,-50%) translate("+((d.left+d.width/2)-(n.left+n.width/2))+"px,"+((d.top+d.height/2)-(n.top+n.height/2))+"px) scale(.8)";b.style.opacity="0";setTimeout(function(){b.remove()},520)}',
+
+    // ---- dòng báo + 3 nút ----
+    'function rlBao(chu,loi){var e=$("rlBao");if(!e)return;if(!chu){e.classList.add("hidden");e.textContent="";return}e.textContent=chu;e.classList.remove("hidden","loi","oke");e.classList.add(loi?"loi":"oke")}',
+    'var RLNUTBAN=false;',
+    'function rlNutGoi(duong,chuXong){if(RLPHASE!=="bet")return rlBao("Hết giờ đặt rồi - chờ ván sau nhé",true);if(!LINKED)return rlBao("Ví chưa được liên kết - nhắn admin",true);if(RLNUTBAN)return;RLNUTBAN=true;rlNutVe();',
+    'api(duong,{}).then(function(j){RLNUTBAN=false;BAL=j.balance;$("bal").textContent=vnd(j.balance);rlBao(chuXong(j),false);rlLoad()}).catch(function(e){RLNUTBAN=false;rlBao(String(e.message||e),true);rlNutVe()})}',
+    'function rlDatLai(){rlNutGoi("/api/rl/datlai",function(j){return "🔁 Xếp lại giỏ ván trước: "+vnd(j.tong)+" + phí "+vnd(j.phi)})}',
+    'function rlX2(){rlNutGoi("/api/rl/x2",function(j){return "✖️2 Đặt thêm "+vnd(j.tong)+" + phí "+vnd(j.phi)})}',
+    'function rlXoaCuoc(){rlNutGoi("/api/rl/xoacuoc",function(j){return "🗑️ Đã xoá cược, hoàn "+vnd(j.hoan)+" (gồm cả phí)"})}',
+    'function rlNutVe(){var coCuoc=false;for(var k in RLTONG){if(k.indexOf("_toi_")===0&&RLTONG[k]>0){coCuoc=true;break}}var mo=(RLPHASE==="bet")&&!RLNUTBAN;',
+    'var b1=$("rlBtnLai"),b2=$("rlBtnX2"),b3=$("rlBtnXoa"),bs=$("rlBtnSua"),bh=$("rlBtnSuaHuy"),bm=$("rlBtnSuaMac");',
+    'if(bs){bs.textContent=RLSUA?"💾 Lưu chip":"✏️ Sửa chip";bs.classList.toggle("dang",!!RLSUA)}if(bh)bh.classList.toggle("hidden",!RLSUA);if(bm)bm.classList.toggle("hidden",!RLSUA);',
+    'if(b1){b1.classList.toggle("hidden",!!RLSUA);b1.disabled=!(mo&&RLCOVT&&!coCuoc)}if(b2){b2.classList.toggle("hidden",!!RLSUA);b2.disabled=!(mo&&coCuoc)}if(b3)b3.disabled=!!RLSUA||!(mo&&coCuoc)}',
+
+    // ---- chip tiền trên ô (chỉ đổi chip, KHÔNG dựng lại bàn) ----
+    'function rlVeGio(){for(var id in RLEL){var e=RLEL[id];var cu=e.querySelector(".sbGio");if(cu)cu.remove();',
+    'var toi=RLTONG["_toi_"+id]||0;e.classList.toggle("sbCoChip",toi>0);',
+    'if(toi){var d=document.createElement("span");d.className="sbGio"+(toi>=CHIP_DEN?" sbGioDen":"");var im=document.createElement("img");im.src="/dogcoin.png";im.alt="";var sn=document.createElement("b");sn.textContent=chipNgan(toi);',
+    'd.appendChild(im);d.appendChild(sn);d.title="Cược "+vnd(toi)+" + phí "+vnd(Math.floor(toi*RLPHI))+" = trừ ví "+vnd(toi+Math.floor(toi*RLPHI));e.appendChild(d)}',
+    'e.classList.toggle("sbKhoa",RLPHASE!=="bet")}}',
+
+    // ---- số sét: hiện ngay trong ô số, đổi qua đổi lại với con số ----
+    'function rlVeNhan(hien){for(var id in (RLNHAN||{})){var e=RLEL[id];if(!e)continue;var cu=e.querySelector(".rlNhan");',
+    'if(hien){if(!cu){var d=document.createElement("span");d.className="rlNhan";d.textContent="x"+RLNHAN[id];e.appendChild(d)}e.classList.add("rlCoNhan")}else if(cu)cu.remove()}}',
+    'function rlVeDsNhan(){var el=$("rlDsNhan");if(!el)return;var ds=[];for(var id in (RLNHAN||{}))ds.push({ten:rlTenCua(id),boi:RLNHAN[id]});ds.sort(function(a,b){return b.boi-a.boi});',
+    'el.innerHTML=ds.map(function(x){return "<i>"+esc(x.ten)+" <b>x"+x.boi+"</b></i>"}).join("")}',
+    'function rlBocNhan(){if(RLNHIP)clearInterval(RLNHIP);var hien=true;rlVeNhan(true);rlVeDsNhan();RLNHIP=setInterval(function(){hien=!hien;rlVeNhan(hien)},900)}',
+    'function rlXoaNhan(){if(RLNHIP){clearInterval(RLNHIP);RLNHIP=null}var nh=RLNHAN;RLNHAN=null;for(var id in (nh||{})){var e=RLEL[id];if(!e)continue;var cu=e.querySelector(".rlNhan");if(cu)cu.remove();e.classList.remove("rlCoNhan")}var el=$("rlDsNhan");if(el)el.innerHTML=""}',
+    'function rlXoaTrung(){for(var id in RLEL){RLEL[id].classList.remove("rlTrung");var d=RLEL[id].querySelector(".rlDolly");if(d)d.remove()}}',
+
+    // ---- vòng quay SVG: chảo đứng yên (đường bi + gờ), rôto quay đều, bi tính theo hệ quy chiếu rôto ----
+    'var RLNS="http://www.w3.org/2000/svg",RLCX=200,RLCY=200,RLR={tuong:197,duongN:190,bi:170,duongT:150,oNgoai:147,so:120,oTrong:102,roi:138};',
+    'var RLSVG=null,RLROTOR=null,RLGBI=null,RLBI=null,RLDUOI=null,RLO=[];',
+    'function rlTao(t,a){var e=document.createElementNS(RLNS,t);for(var k in a)e.setAttribute(k,a[k]);return e}',
+    'function rlVeBanh(){RLSVG=$("rlBanh");if(!RLSVG||RLSVG.dataset.xong)return;RLSVG.dataset.xong="1";var defs=rlTao("defs",{});',
+    'var dai=function(id,loai,stops,extra){var g=rlTao(loai==="r"?"radialGradient":"linearGradient",{id:id});if(extra)for(var k in extra)g.setAttribute(k,extra[k]);for(var i=0;i<stops.length;i++)g.appendChild(rlTao("stop",{offset:stops[i][0],"stop-color":stops[i][1]}));defs.appendChild(g)};',
+    'dai("rlgVien","l",[[0,"#f2dfa2"],[0.28,"#9c7c2c"],[0.5,"#f8ecbc"],[0.72,"#8a6c22"],[1,"#e4c877"]],{x1:"0",y1:"0",x2:"1",y2:"1"});',
+    'dai("rlgChao","r",[[0,"#323b4a"],[0.55,"#1b212b"],[1,"#0c1016"]],{cx:"0.40",cy:"0.32",r:"0.82"});',
+    'dai("rlgDuong","r",[[0,"#3a4350"],[0.6,"#252c37"],[1,"#161b23"]],{cx:"0.38",cy:"0.30",r:"0.85"});',
+    'dai("rlgDo","l",[[0,"#d5343d"],[1,"#8d181f"]],{x1:"0",y1:"0",x2:"0",y2:"1"});dai("rlgDen","l",[[0,"#272c36"],[1,"#101318"]],{x1:"0",y1:"0",x2:"0",y2:"1"});dai("rlgXanh","l",[[0,"#219a52"],[1,"#0f5029"]],{x1:"0",y1:"0",x2:"0",y2:"1"});',
+    'dai("rlgTruc","r",[[0,"#f4e6b0"],[0.45,"#c9a94a"],[1,"#6d5518"]],{cx:"0.35",cy:"0.3",r:"0.8"});dai("rlgBi","r",[[0,"#ffffff"],[0.45,"#e9edf4"],[1,"#9aa3b2"]],{cx:"0.34",cy:"0.3",r:"0.75"});',
+    'var fB=rlTao("filter",{id:"rlfBong",x:"-60%",y:"-60%",width:"220%",height:"220%"});fB.appendChild(rlTao("feDropShadow",{dx:"0",dy:"2",stdDeviation:"2.4","flood-color":"#000","flood-opacity":"0.65"}));defs.appendChild(fB);',
+    'var fS=rlTao("filter",{id:"rlfSang",x:"-40%",y:"-40%",width:"180%",height:"180%"});fS.appendChild(rlTao("feDropShadow",{dx:"0",dy:"0",stdDeviation:"4","flood-color":"#ffd76a","flood-opacity":"0.9"}));defs.appendChild(fS);RLSVG.appendChild(defs);',
+    'var CX=RLCX,CY=RLCY,R=RLR,gChao=rlTao("g",{});',
+    'gChao.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.tuong,fill:"url(#rlgVien)"}));gChao.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.tuong-6,fill:"url(#rlgChao)"}));',
+    'gChao.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.duongN,fill:"url(#rlgDuong)"}));gChao.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.duongT,fill:"#12161d"}));',
+    'gChao.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.duongT,fill:"none",stroke:"#4a5567","stroke-width":1,opacity:0.7}));',
+    'gChao.appendChild(rlTao("path",{d:"M "+(CX-128)+" "+(CY-118)+" A 176 176 0 0 1 "+(CX+108)+" "+(CY-136),fill:"none",stroke:"#ffffff","stroke-width":3,opacity:0.09,"stroke-linecap":"round"}));',
+    'for(var v=0;v<8;v++){var av=(v*45+22)*Math.PI/180,rv=(R.bi+R.duongT)/2;gChao.appendChild(rlTao("circle",{cx:CX+rv*Math.cos(av),cy:CY+rv*Math.sin(av),r:3.4,fill:"#4d5666",stroke:"#20242c","stroke-width":0.8}))}',
+    'RLROTOR=rlTao("g",{});',
+    'var cung=function(i,r1,r2){var a0=(i*RLBUOC-90-RLBUOC/2)*Math.PI/180,a1=((i+1)*RLBUOC-90-RLBUOC/2)*Math.PI/180;var x1=CX+r2*Math.cos(a0),y1=CY+r2*Math.sin(a0),x2=CX+r2*Math.cos(a1),y2=CY+r2*Math.sin(a1),x3=CX+r1*Math.cos(a1),y3=CY+r1*Math.sin(a1),x4=CX+r1*Math.cos(a0),y4=CY+r1*Math.sin(a0);',
+    'return "M"+x1+","+y1+" A"+r2+","+r2+" 0 0 1 "+x2+","+y2+" L"+x3+","+y3+" A"+r1+","+r1+" 0 0 0 "+x4+","+y4+" Z"};',
+    'RLROTOR.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.oNgoai+3,fill:"url(#rlgVien)"}));RLO=[];',
+    'for(var i2=0;i2<RLN;i2++){var so=RLVONG[i2],m=rlMau(so);var o=rlTao("path",{d:cung(i2,R.oTrong,R.oNgoai),fill:m==="x"?"url(#rlgXanh)":(m==="r"?"url(#rlgDo)":"url(#rlgDen)"),stroke:"#7a6526","stroke-width":0.6});RLO.push(o);RLROTOR.appendChild(o);',
+    'var goc=(i2*RLBUOC-90)*Math.PI/180,tx=CX+R.so*Math.cos(goc),ty=CY+R.so*Math.sin(goc);var t=rlTao("text",{x:tx,y:ty,fill:"#f6f8fc","font-size":11.5,"font-weight":700,"text-anchor":"middle","dominant-baseline":"central",transform:"rotate("+(i2*RLBUOC)+" "+tx+" "+ty+")"});t.textContent=so;RLROTOR.appendChild(t)}',
+    'for(var w=0;w<RLN;w++){var aw=(w*RLBUOC-90-RLBUOC/2)*Math.PI/180;RLROTOR.appendChild(rlTao("line",{x1:CX+R.oTrong*Math.cos(aw),y1:CY+R.oTrong*Math.sin(aw),x2:CX+R.oNgoai*Math.cos(aw),y2:CY+R.oNgoai*Math.sin(aw),stroke:"#dcc270","stroke-width":1.3,opacity:0.85}))}',
+    'RLROTOR.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.oTrong,fill:"url(#rlgVien)"}));RLROTOR.appendChild(rlTao("circle",{cx:CX,cy:CY,r:R.oTrong-10,fill:"#171b23"}));',
+    'for(var k2=0;k2<8;k2++){var ak=(k2*45)*Math.PI/180;RLROTOR.appendChild(rlTao("line",{x1:CX+20*Math.cos(ak),y1:CY+20*Math.sin(ak),x2:CX+(R.oTrong-12)*Math.cos(ak),y2:CY+(R.oTrong-12)*Math.sin(ak),stroke:"#2e3542","stroke-width":3}))}',
+    'RLROTOR.appendChild(rlTao("circle",{cx:CX,cy:CY,r:23,fill:"url(#rlgTruc)"}));RLROTOR.appendChild(rlTao("circle",{cx:CX,cy:CY,r:11,fill:"#6d5518"}));',
+    'RLGBI=rlTao("g",{});RLDUOI=rlTao("path",{d:"",fill:"none",stroke:"#ffffff","stroke-width":5,"stroke-linecap":"round",opacity:0});RLGBI.appendChild(RLDUOI);',
+    'RLBI=rlTao("circle",{cx:CX,cy:CY-R.roi,r:7.5,fill:"url(#rlgBi)",filter:"url(#rlfBong)"});RLGBI.appendChild(RLBI);',
+    'RLSVG.appendChild(gChao);RLSVG.appendChild(RLROTOR);RLSVG.appendChild(RLGBI)}',
+    'function rlToSangO(idx){for(var q=0;q<RLO.length;q++){RLO[q].setAttribute("stroke","#7a6526");RLO[q].setAttribute("stroke-width",0.6);RLO[q].removeAttribute("filter")}',
+    'if(idx>=0&&RLO[idx]){RLO[idx].setAttribute("stroke","#ffe08a");RLO[idx].setAttribute("stroke-width",3.2);RLO[idx].setAttribute("filter","url(#rlfSang)")}}',
+    // vòng lặp: rôto luôn quay chậm; bi 4 pha: nghi (nằm trong ô) · quay (chạy trên vành ngoài) · lan (đang rơi về ô đích) · nam
+    // RLTOCBI: tốc độ bi lúc chạy đều (độ/ms). RLK: số mũ đường giảm tốc, TÍNH LẠI mỗi lần thả sao cho
+    // tốc độ đầu pha rơi = đúng tốc độ đang chạy (chủ server 25/09: "banh phải từ từ chậm lại rồi rớt,
+    // giờ quán tính nhanh quá" - bản đầu dùng mũ 3,2 cố định nên lúc khoá sổ bi TĂNG TỐC đột ngột).
+    'var RLBIPHA="nghi",RLGOCROTOR=0,RLGOCTD=0,RLRBI=138,RLT0=0,RLT=0,RLTDDAU=0,RLTDCUOI=0,RLKHIXONG=null,RLTDTRUOC=0,RLLANCUOI=0,RLTOCROTOR=360/26000,RLTOCBI=360/1000,RLQUAYT0=0,RLK=2;',
+    'function rlDiu(p){return 1-Math.pow(1-p,RLK)}',
+    'function rlVeDuoi(td){var g=Math.max(0,Math.min(46,td*0.5));if(g<3){RLDUOI.setAttribute("opacity",0);return}var r=RLRBI;var x1=RLCX+r*Math.cos(-90*Math.PI/180),y1=RLCY+r*Math.sin(-90*Math.PI/180),x2=RLCX+r*Math.cos((-90+g)*Math.PI/180),y2=RLCY+r*Math.sin((-90+g)*Math.PI/180);RLDUOI.setAttribute("d","M"+x1+","+y1+" A"+r+","+r+" 0 0 1 "+x2+","+y2);RLDUOI.setAttribute("opacity",Math.min(0.30,g/150))}',
+    'function rlKhung(t){if(!RLLANCUOI)RLLANCUOI=t;var dt=Math.min(64,t-RLLANCUOI);RLLANCUOI=t;',
+    'if(RLROTOR&&CURPAGE==="rl"){RLGOCROTOR+=RLTOCROTOR*dt;RLROTOR.setAttribute("transform","rotate("+RLGOCROTOR+" "+RLCX+" "+RLCY+")");',
+    // pha quay: 0,8 giây đầu bi vừa bay lên vành ngoài vừa lấy đà, rồi chạy đều
+    'if(RLBIPHA==="quay"){var q=Math.min(1,(t-RLQUAYT0)/800);RLRBI=RLR.roi+(RLR.bi-RLR.roi)*Math.pow(q,0.6);RLTDTRUOC=RLGOCTD;RLGOCTD-=RLTOCBI*(0.35+0.65*q)*dt;rlVeDuoi(Math.abs(RLGOCTD-RLTDTRUOC)*(16/Math.max(1,dt)))}',
+    'else if(RLBIPHA==="lan"){var p=Math.min(1,(t-RLT0)/RLT),e=rlDiu(p);RLTDTRUOC=RLGOCTD;RLGOCTD=RLTDDAU+(RLTDCUOI-RLTDDAU)*e;',
+    // bi giữ trên vành ngoài tới 72% quãng, lúc đó đã chậm hẳn mới trượt xuống ô (28% cuối)
+    'if(p<0.10)RLRBI=RLRBI+(RLR.bi-RLRBI)*Math.min(1,dt/120);else if(p<0.72)RLRBI=RLR.bi;else RLRBI=RLR.bi-(RLR.bi-RLR.roi)*Math.pow((p-0.72)/0.28,1.4);',
+    'rlVeDuoi(Math.abs(RLGOCTD-RLTDTRUOC)*(16/Math.max(1,dt)));',
+    'if(p>=1){RLBIPHA="nam";RLGOCTD=RLTDCUOI;RLRBI=RLR.roi;RLDUOI.setAttribute("opacity",0);var f=RLKHIXONG;RLKHIXONG=null;if(f)f()}}',
+    'RLBI.setAttribute("cy",RLCY-RLRBI);RLGBI.setAttribute("transform","rotate("+(RLGOCROTOR+RLGOCTD)+" "+RLCX+" "+RLCY+")")}',
+    'requestAnimationFrame(rlKhung)}requestAnimationFrame(rlKhung);',
+    'function rlBiQuay(){if(RLBIPHA==="quay"||RLBIPHA==="lan")return;RLBIPHA="quay";RLQUAYT0=performance.now();rlToSangO(-1)}',
+    // SỐ VÒNG PHẢI LÀ SỐ NGUYÊN, không thì bi rơi một nơi mà số báo một nẻo (bài học 25/09)
+    // Giảm tốc LIỀN MẠCH: quãng bi còn đi = v0·T/2 (giảm đều từ v0 về 0), làm tròn thành số vòng
+    // NGUYÊN + góc lệch tới ô đích, rồi chọn số mũ đường giảm tốc sao cho tốc độ đầu = đúng v0.
+    // Mũ 2 là giảm đều; lệch một chút vì ép về ô đích thì kẹp trong [1.3, 3.5] cho khỏi giật.
+    'function rlThaBi(soRa,giay,xong){var i=RLVONG.indexOf(soRa);if(i<0)return;var T=Math.max(1500,giay*1000),v0=RLTOCBI;',
+    'RLBIPHA="lan";RLT0=performance.now();RLT=T;RLTDDAU=RLGOCTD;',
+    'var goc=i*RLBUOC;while(goc>RLTDDAU)goc-=360;while(goc<=RLTDDAU-360)goc+=360;',
+    'var muon=v0*T/2,n=Math.round((muon-(RLTDDAU-goc))/360);if(n<1)n=1;RLTDCUOI=goc-n*360;',
+    'var quang=RLTDDAU-RLTDCUOI;RLK=Math.max(1.3,Math.min(3.5,v0*T/quang));RLKHIXONG=xong||null;rlToSangO(-1)}',
+
+    // ---- hai trạng thái sân: đang đặt (bàn to phủ lên) / khoá (bàn tụt xuống dưới, thu 60%) ----
+    'var RLTILE=0.6,RLCACH=10;',
+    // Đo chiều cao thật rồi đặt thẳng, hai trạng thái trượt mượt. Gọi SAU khi đổi lớp (khoá thì hàng
+    // mệnh giá ẩn đi, chiều cao bàn cược đổi).
+    'function rlDoLop(){var san=$("rlSan"),lop=$("rlLop"),banh=$("rlBanh");if(!san||!lop||!banh)return;var cb=banh.getBoundingClientRect().height,cbn=lop.scrollHeight;',
+    'if(RLPHASE==="bet"){lop.style.transform="translateY(0px) scale(1)";san.style.height=Math.max(cbn,cb*0.4)+"px"}else{lop.style.transform="translateY("+(cb+RLCACH)+"px) scale("+RLTILE+")";san.style.height=(cb+RLCACH+cbn*RLTILE)+"px"}}',
+    // khoá sổ: bỏ chip đang kéo về chỗ cũ, đổi lớp phủ/thu nhỏ rồi đo lại sân
+    'function rlKhoaBan(khoa){if(khoa&&KEO&&KEO.pre==="rl")keoXong();var lop=$("rlLop"),san=$("rlSan");if(!lop)return;lop.classList.toggle("mo",!khoa);lop.classList.toggle("dong",khoa);san.classList.toggle("datcuoc",!khoa);rlDoLop()}',
+    'window.addEventListener("resize",function(){if(CURPAGE==="rl")rlDoLop()});',
+
+    // ---- nhịp: chỉ hỏi máy chủ khi đang ở tab này ----
+    'function rlVao(){rlLoad();setTimeout(rlDoLop,60)}',
+    'function rlLoad(){if(CURPAGE!=="rl")return;api("/api/rl/state").then(rlVeTrang).catch(function(){})}',
+    'function rlBiXong(){var so=RLKQ;if(so===null||so===undefined)return;rlToSangO(RLVONG.indexOf(so));var oT=RLEL["s"+so];if(oT){oT.classList.add("rlTrung");if(!oT.querySelector(".rlDolly")){var dl=document.createElement("span");dl.className="rlDolly";dl.title="Số thắng";oT.appendChild(dl)}}',
+    'var boi=(RLNHAN&&RLNHAN["s"+so])||0;var kq=$("rlKq");if(kq)kq.innerHTML="<span class=\'rlVien "+rlMau(so)+"\'>"+so+"</span>"+(boi?" <b style=\'color:#ffd76a\'>x"+boi+"</b>":"")}',
+    'function rlVeTrang(j){RLTRAN=j.tran||{};RLMAX=j.maxBet||0;RLPHI=(typeof j.phi==="number")?j.phi:RLPHI;RLSAN=j.sanCuoc||1000;RLCOVT=!!j.coVanTruoc;RLPHITOI=j.phiToi||0;RLGIO=j.gio||RLGIO;RLLOCK=j.lockTime||0;RLTT=j.targetTime||0;',
+    'if(!RLVEROI){rlVe();rlVeChip();rlVeBanh();keoGan("rl");RLVEROI=true}',
+    'var truoc=RLPHASE;RLPHASE=j.phase;',
+    // ván mới: khoe lãi/lỗ ván vừa rồi (so tiền về với tiền cược, không trừ phí lần nữa), dọn sạch bàn
+    'if(j.gameId!==RLGID){if(RLGID&&RLLASTPLAY===RLGID){var h0=(j.history||[])[0];if(h0&&h0.gameId===RLGID){var c0=0,a0=0;(h0.bets||[]).forEach(function(b){if(b.u===MYID)c0+=b.amount});(h0.winners||[]).forEach(function(w){if(w.u===MYID)a0+=w.amount});showNet(a0-c0)}}',
+    'RLGID=j.gameId;RLROI=false;RLKQ=null;RLNHANHIEN=false;rlXoaNhan();rlToSangO(-1);rlXoaTrung();RLBIPHA="nghi";var kq0=$("rlKq");if(kq0)kq0.innerHTML="";rlBao("",false)}',
+    'RLTONG={};for(var k in (j.totals||{}))RLTONG[k]=j.totals[k];(j.myBets||[]).forEach(function(b){RLTONG["_toi_"+b.choice]=b.amount});if((j.myBets||[]).length)RLLASTPLAY=j.gameId;',
+    'rlVeGio();',
+    'if(RLPHASE==="bet"){rlKhoaBan(false);if(j.biChay&&RLBIPHA==="nghi")rlBiQuay()}',
+    'else if(RLPHASE==="roi"){rlKhoaBan(true);if(j.nhan)RLNHAN=j.nhan;if(j.kq&&!RLROI){RLROI=true;RLKQ=j.kq.so;var T=Math.max(2,RLTT-(RLGIO.kq||3)-srvNow());if(RLBIPHA==="nghi")rlBiQuay();rlThaBi(RLKQ,T,rlBiXong)}}',
+    'else rlKhoaBan(true);',
+    'if(truoc!==RLPHASE&&RLPHASE==="bet")rlBao("",false);',
+    '$("rlRound").textContent="Ván #"+String(j.gameId).padStart(5,"0");',
+    'var stt=$("rlStt");if(RLPHASE==="bet")stt.textContent=j.biChay?"🟢 Bi đang chạy, VẪN đặt được":"🟢 Đang nhận cược";else if(RLPHASE==="roi")stt.textContent=RLNHANHIEN?"⚡ Số sét đã ra, chờ bi rơi":"🔒 Đã khoá sổ, bi đang chạy";else stt.textContent="🔴 Bàn Roulette đang tắt";',
+    'var nh3=$("rlNhac");if(nh3)nh3.textContent=RLPHASE==="bet"?"Chọn mệnh giá rồi bấm vào ô, bấm là đặt luôn · giữ chip để kéo sang ô khác · chạm ô để thấy vùng sẽ ăn":"Đã khoá sổ, chờ ván sau";',
+    'var m=(j.myBets||[]),tong=0;m.forEach(function(b){tong+=b.amount});var gh=RLMAX>0?("💰 Giới hạn cược "+vnd(RLMAX)+"/người/ván"):"";',
+    '$("rlMine").textContent=m.length?("🧾 Ván này bạn đặt "+vnd(tong)+" + phí "+vnd(RLPHITOI)+" vào "+m.length+" ô"+(gh?" · "+gh:"")):gh;',
+    'rlNutVe();rlWho(j.betsList||[]);rlHist(j.history||[]);rlLich(j.history||[])}',
+    // h.nhan = số sét THẬT SỰ trúng (máy chủ lọc sẵn); nhân chỉ có ở số đơn nên chỉ cần tra s<số ra>
+    'function rlBoiTrung(h){return (h.nhan&&h.nhan["s"+h.so])||0}',
+    'function rlLich(list){var el=$("rlLich");if(!el)return;el.innerHTML=list.slice(0,16).map(function(h){var b=rlBoiTrung(h);return "<i class=\'"+(h.mau||rlMau(h.so))+(b?" sang":"")+"\'>"+h.so+(b?"<small>x"+b+"</small>":"")+"</i>"}).join("")}',
+    'function rlWho(list){var box=$("rlWho");if(!box)return;if(!list.length){box.innerHTML="Chưa ai đặt.";return}var by={};list.forEach(function(b){(by[b.choice]=by[b.choice]||[]).push(b)});',
+    'box.innerHTML=Object.keys(by).map(function(c){return "<div style=\'padding:3px 0\'><b>"+esc(rlTenCua(c))+"</b>: "+by[c].map(function(b){return "<span style=\'color:"+userColor(b.u)+"\'>"+esc(b.name)+"</span> "+vnd(b.amount)}).join(" · ")+"</div>"}).join("")}',
+    'function rlHist(list){var box=$("rlHist");if(!box)return;if(!list.length){box.innerHTML="Chưa có ván nào.";return}',
+    'box.innerHTML=list.slice(0,20).map(function(h){var cuoc=0,an=0,co=false;(h.bets||[]).forEach(function(b){if(b.u===MYID){cuoc+=b.amount;co=true}});(h.winners||[]).forEach(function(w){if(w.u===MYID)an+=w.amount});var net=an-cuoc;',
+    // 25/09 chủ server: "lịch sử không cần show nhân phức tạp, khi nào số đó trúng nhân thì tô vàng là được"
+    'var b2=rlBoiTrung(h);',
+    'return "<div class=\'hrow\'><span class=\'gid\'>#"+String(h.gameId).padStart(5,"0")+"</span><span class=\'rlVien "+(h.mau||rlMau(h.so))+(b2?" sang":"")+"\' style=\'font-size:15px;min-width:34px;padding:1px 8px\'>"+h.so+(b2?"<small>x"+b2+"</small>":"")+"</span>"+(co?"<span class=\'net "+(net>=0?"w":"l")+"\' title=\'Về ví "+vnd(an)+" · cược "+vnd(cuoc)+" · phí đã trừ lúc đặt\'>"+(net>=0?"+":"")+vnd(net)+"</span>":"")+"</div>"}).join("")}',
+    // đồng hồ riêng + mốc hiện số sét (2 giây sau khoá sổ)
+    'setInterval(function(){if(CURPAGE!=="rl")return;var el=$("rlClock");if(!el)return;var now=srvNow();',
+    'if(RLPHASE==="bet"){var s2=RLLOCK-now;el.textContent=(s2>0?s2:0)+"s";el.style.color=""}',
+    'else if(RLPHASE==="roi"){var s3=RLTT-now;el.textContent="🎡 "+(s3>0?s3:0)+"s";el.style.color="#ffcf5c";',
+    'if(RLNHAN&&!RLNHANHIEN&&now>=RLLOCK+(RLGIO.nhanTre||2)){RLNHANHIEN=true;rlBocNhan();var st2=$("rlStt");if(st2)st2.textContent="⚡ Số sét đã ra, chờ bi rơi"}}',
+    'else{el.textContent="--";el.style.color=""}},1000);',
+    'setInterval(rlLoad,2000);',
+
+    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
     '$("pageStx").classList.toggle("hidden",p!=="stx");',
     'if(p==="stx")stLoad();',
+    '$("pageRl").classList.toggle("hidden",p!=="rl");',
+    'if(p==="rl")rlVao();',
     '$("pageMine").classList.toggle("hidden",p!=="mine");',
     '$("pageStair").classList.toggle("hidden",p!=="stair");',
     '$("pageWheel").classList.toggle("hidden",p!=="wheel");',
@@ -3518,6 +3900,7 @@ const PAGE = [
     '$("histCard").classList.toggle("hidden",p!=="tx");', // lịch sử là của Tài Xỉu
     '$("navTx").classList.toggle("on",p==="tx");',
     '$("navStx").classList.toggle("on",p==="stx");',
+    '$("navRl").classList.toggle("on",p==="rl");',
     '$("navMine").classList.toggle("on",p==="mine");',
     '$("navStair").classList.toggle("on",p==="stair");',
     '$("navWheel").classList.toggle("on",p==="wheel");',
@@ -3539,7 +3922,7 @@ const PAGE = [
     // vào nhóm poker thì giấu luôn tầng 2 (không có trang con) - khung nhúng tự lo phần còn lại
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
-    '["navTx","navStx","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
+    '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
     '["navDaily","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
