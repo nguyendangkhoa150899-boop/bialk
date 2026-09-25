@@ -124,6 +124,15 @@ function taoBan(ctx) {
         if (t && typeof t === 'object') { const r = CUA.datThang(t); if (r.error) { delete db()._rlThang; log(`[ROULETTE] Thang nhân lưu trong DB sai, về mặc định: ${r.error}`); } }
         const st = db()._rlSet;
         if (Array.isArray(st)) { const r = CUA.datKhoangSet(st); if (r.error) { delete db()._rlSet; log(`[ROULETTE] Bảng số ô sét lưu trong DB sai, về mặc định: ${r.error}`); } }
+        // chế độ phí: chưa từng lưu thì KHÔNG PHÍ (chủ server chốt 25/09 "bỏ phí nhưng vẫn giống nhà cái")
+        CUA.datKhongPhi(db()._rlKhongPhi === undefined ? true : !!db()._rlKhongPhi);
+    }
+    /** Bật/tắt KHÔNG PHÍ (giống nhà cái, ăn cố định 2,70%). Tắt = có phí, admin chỉnh mức ăn. */
+    function datKhongPhi(on) {
+        const r = CUA.datKhongPhi(!!on);
+        db()._rlKhongPhi = !!on; luu();
+        log(`[ROULETTE] Chế độ ${on ? 'KHÔNG PHÍ giống nhà cái (ăn cố định ' + (r.an * 100).toFixed(2) + '%)' : 'CÓ PHÍ (ăn ' + (r.an * 100).toFixed(1) + '%, phí ' + (r.phi * 100).toFixed(2) + '%)'}`);
+        return r;
     }
     /** Bảng SỐ Ô SÉT mỗi ván (admin): [[số ô, độ hiếm], ...]. null = về mặc định. */
     function datKhoangSet(bang) {
@@ -655,7 +664,7 @@ function taoBan(ctx) {
     return {
         nhip, khoiDong, trangThai, adminXem,
         dat, nhanDoi, datLai, xoaCuoc, xoaCua, doiCua,
-        datGio, datTran, datMaxBet, datMucAn, datThang, datKhoangSet, datBatTat,
+        datGio, datTran, datMaxBet, datMucAn, datThang, datKhoangSet, datKhongPhi, datBatTat,
         epKetQua, huyEp, timEpReNhat, epNhan, huyEpNhan,
         thangMacDinh: () => CUA.thangMacDinh(),
         _S: S,

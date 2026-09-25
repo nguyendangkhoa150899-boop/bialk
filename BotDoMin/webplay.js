@@ -3731,7 +3731,9 @@ const PAGE = [
     'RLMENH=RLCHIPS.concat(["max"]);if(!RLCHIP||(RLCHIP!=="max"&&RLCHIPS.indexOf(RLCHIP)<0))RLCHIP=RLCHIPS[0];',
     'e.innerHTML=chipHangHTML("rl",RLCHIPS,RLCHIP,RLSUA,RLSUAI,RLNHAP);rlNutVe();',
     'var p=$("rlPhiNho");if(p){var m=(RLCHIP==="max")?null:RLCHIP,pt=(RLPHI*100).toFixed(2)+"%";',
-    'if(m){p.innerHTML="💸 Phí "+pt+": bấm 1 ô là trừ <b>"+vnd(m+Math.floor(m*RLPHI))+"</b> (cược "+vnd(m)+" + phí "+vnd(Math.floor(m*RLPHI))+")"}',
+    // 25/09: chế độ KHÔNG PHÍ giống nhà cái -> nói thẳng, đừng in "phí 0,00%"
+    'if(RLPHI<=0){p.innerHTML=m?("✅ Không phí: bấm 1 ô là trừ đúng <b>"+vnd(m)+"</b>"):(BAL>0?("✅ Không phí · MAX CƯỢC = trọn ví <b>"+vnd(BAL)+"</b> (trần ô / trần ván có thể chặn thấp hơn)"):"MAX CƯỢC: ví hết Dogcoin rồi")}',
+    'else if(m){p.innerHTML="💸 Phí "+pt+": bấm 1 ô là trừ <b>"+vnd(m+Math.floor(m*RLPHI))+"</b> (cược "+vnd(m)+" + phí "+vnd(Math.floor(m*RLPHI))+")"}',
     'else{var mc=rlMaxTheoVi(BAL),mp=Math.floor(mc*RLPHI);p.innerHTML=BAL>0?("💸 MAX CƯỢC = đổ trọn ví <b>"+vnd(BAL)+"</b>: cược <b>"+vnd(mc)+"</b> + phí <b>"+vnd(mp)+"</b> ("+pt+")"):"💸 MAX CƯỢC: ví hết Dogcoin rồi"}}}',
     'function rlDatChip(v){RLCHIP=v;rlVeChip()}',
     'function rlSuaNut(){if(RLSUA)rlSuaLuu();else rlSuaBat()}',

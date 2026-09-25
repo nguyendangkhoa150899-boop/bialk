@@ -47,8 +47,16 @@ const AN_MUC_TIEU = 0.08;              // bằng bàn Tài Xỉu thường và b
 const AN_MIN = 0.03, AN_MAX = 0.20;
 let AN_HIEN = AN_MUC_TIEU;
 
-/** Phí thu trên tiền cược, suy ra từ mức nhà cái muốn ăn. KHÔNG gõ tay. */
-const phiSuat = () => RTP_CHUAN / (1 - AN_HIEN) - 1;
+// ── HAI CHẾ ĐỘ (chủ server 25/09: "bỏ phí nhưng vẫn làm giống nhà cái") ──
+//  KHÔNG PHÍ (mặc định): y Lightning Roulette thật. Đặt bao nhiêu trừ bấy nhiêu, mọi cửa trả
+//    chuẩn, số đơn 29:1 + số sét. Nhà cái ăn CỐ ĐỊNH 1 − 36/37 = 2,7027%, không chỉnh được vì
+//    không còn núm nào (trả thưởng chuẩn đã quyết định hết).
+//  CÓ PHÍ: như cũ, admin đặt mức ăn 3-20%, phí suy ra thu trên tiền cược.
+// Hệ số nhân / bảng số ô sét KHÔNG phụ thuộc chế độ (chúng chỉ kéo số đơn về 36/37).
+let KHONG_PHI = true;
+
+/** Phí thu trên tiền cược, suy ra từ mức nhà cái muốn ăn. KHÔNG gõ tay. Không phí thì 0. */
+const phiSuat = () => (KHONG_PHI ? 0 : RTP_CHUAN / (1 - AN_HIEN) - 1);
 
 // ---------------------------------------------------------------- 37 kết quả
 const O_SO = 37;
@@ -93,8 +101,10 @@ const thang = (arr) => {
 // Chốt 25/09 sau khi so với Lightning Roulette thật (1-5 số sét, x50-x500, người đặt 1 số trúng
 // sét 0,25% ván): thang 7 bậc x50-x500, trung bình ~80 -> ~4,4 số sét/ván, trúng sét 0,33% ván.
 // Bản 2-11 ô x30-x500 trước đó cho trúng sét 0,46%, chủ server sợ "nhân nhiều mặc định trúng".
+// 25/09 chủ server "thêm nhiều bậc nữa": 13 bậc x50-x500, trung bình ~82 -> ~4,2 số sét/ván.
 const THANG_GOC = {
-    so: [[50, 100], [75, 50], [100, 28], [150, 12], [200, 6], [300, 3], [500, 1]],
+    so: [[50, 130], [60, 70], [75, 55], [90, 35], [100, 28], [125, 18], [150, 12],
+    [175, 8], [200, 6], [250, 4], [300, 3], [400, 2], [500, 1]],
 };
 // ── SỐ Ô SÉT MỖI VÁN: bảng tỉ lệ admin đặt, KHÔNG rải đều (chủ server 25/09) ──
 // [số ô, độ hiếm]: 2 ô hay gặp nhất, 11 ô hiếm nhất. Độ hiếm là tương đối, như thang nhân.
@@ -238,6 +248,7 @@ giaiHet();
 
 /** Admin đặt MỨC NHÀ CÁI ĂN. Nhận 0.10 hoặc 10 đều được. Chỉ đổi phí, không đụng q. */
 function datMucAn(muc) {
+    if (KHONG_PHI) return { error: 'Đang ở chế độ KHÔNG PHÍ giống nhà cái: nhà cái ăn cố định 2,70% do bảng trả thưởng chuẩn quyết định. Muốn chỉnh mức ăn thì bật phí lên trước.' };
     let a = Number(muc);
     if (Number.isFinite(a) && a > 1) a = a / 100;
     if (!Number.isFinite(a) || a < AN_MIN || a > AN_MAX) {
@@ -254,7 +265,8 @@ function thongKe() {
     const anMoiCua = DS.map(anCua);
     const ket = DS.filter(c => c.thangNhan && c.q >= 1).map(c => c.id);
     return {
-        an: AN_HIEN,                       // mức admin đặt
+        an: mucAnHienTai(),                // mức đang chạy (không phí thì cố định 2,7027%)
+        khongPhi: KHONG_PHI,               // chế độ giống nhà cái, không thu phí
         phi: phiSuat(),                    // phí suy ra, thu trên tiền cược
         rtpChuan: RTP_CHUAN,
         rtpThuc: 1 - Math.max(...anMoiCua), // người chơi thực nhận (cửa tệ nhất)
@@ -270,7 +282,13 @@ function thongKe() {
         min: AN_MIN, max: AN_MAX, macDinh: AN_MUC_TIEU,
     };
 }
-const mucAnHienTai = () => AN_HIEN;
+const mucAnHienTai = () => (KHONG_PHI ? 1 - RTP_CHUAN : AN_HIEN);
+const khongPhi = () => KHONG_PHI;
+/** Bật/tắt chế độ KHÔNG PHÍ giống nhà cái. Không đụng q / bảng sét (chúng độc lập với phí). */
+function datKhongPhi(on) {
+    KHONG_PHI = !!on;
+    return { ok: true, ...thongKe() };
+}
 
 // ---------------------------------------------------------------- thang: admin sửa
 const thangHienTai = () => JSON.parse(JSON.stringify(THANG_HIEN));
@@ -432,7 +450,7 @@ function tiLeToiDa(cuaId) {
 
 module.exports = {
     AN_MUC_TIEU, AN_MIN, AN_MAX, RTP_CHUAN, SO_GOC,
-    datMucAn, thongKe, mucAnHienTai, phiSuat, anCua,
+    datMucAn, thongKe, mucAnHienTai, phiSuat, anCua, datKhongPhi, khongPhi,
     datThang, thangHienTai, thangMacDinh,
     datKhoangSet, setHienTai, setMacDinh, kiemSetKhop,
     DS, THEO_ID, NHOM_TRAN, MOI_KET_QUA, O_SO, VONG, SO_DO,

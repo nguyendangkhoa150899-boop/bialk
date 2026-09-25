@@ -14,7 +14,8 @@ const vn = (n) => Number(n).toLocaleString('vi-VN');
 
 /** Dựng một bàn sạch + ví giả. */
 function dungBan(viDau, dbThem) {
-    const DB = Object.assign({ _rlOn: true }, dbThem || {});
+    // _rlKhongPhi:false -> bàn CÓ PHÍ, để mọi con số cũ (10.575, 3.172...) còn đúng; mục cuối kiểm bàn không phí
+    const DB = Object.assign({ _rlOn: true, _rlKhongPhi: false }, dbThem || {});
     const VI = Object.assign({}, viDau);
     const so = [], logs = [];
     const ban = taoBan({
@@ -270,6 +271,24 @@ muc('nhịp ván và cờ bi chạy');
     ok('đầu ván: bi đứng yên', ban.trangThai('x').biChay === false);
     S.targetTime = Math.floor(Date.now() / 1000) + 14;   // còn 14s: lock sau 4s, bi đã chạy (quay=5)
     ok('5 giây cuối trước khoá: bi chạy, vẫn nhận cược', ban.trangThai('x').biChay === true && ban.trangThai('x').phase === 'bet');
+}
+
+muc('bàn KHÔNG PHÍ giống nhà cái (chưa từng lưu cờ -> mặc định không phí)');
+{
+    const { ban, VI } = dungBan({ A: 1000000 }, { _rlKhongPhi: undefined });
+    ok('trạng thái web: phí 0', ban.trangThai('A').phi === 0);
+    const d = ban.dat('A', 'A', [{ choice: 'do', amount: 10000 }]);
+    ok('đặt 10.000 trừ đúng 10.000, phí 0', d.ok && d.truVi === 10000 && d.phi === 0 && VI.A === 990000, JSON.stringify(d));
+    const x = ban.xoaCuoc('A');
+    ok('xoá cược hoàn đúng 10.000', x.ok && x.hoan === 10000 && VI.A === 1000000);
+    ok('chỉnh mức ăn bị từ chối', /KHÔNG PHÍ/.test(ban.datMucAn(0.08).error || ''));
+    ban.dat('A', 'A', [{ choice: 's7', amount: 1000 }]);
+    ban.epKetQua(7); ban.epNhan({ s7: 0 });
+    khoaSo(ban); traTien(ban);
+    ok('trúng 29:1 không phí: 1.000.000 - 1.000 + 30.000 = 1.029.000', VI.A === 1029000, String(VI.A));
+    const r = ban.datKhongPhi(false);
+    ok('bật phí lên: ăn 8%, phí 5,76%, lưu cờ', !!r.ok && Math.abs(r.phi - 0.057579) < 1e-5 && ban.trangThai('A').phi > 0);
+    ok('đặt 10.000 giờ trừ 10.575', ban.dat('A', 'A', [{ choice: 'do', amount: 10000 }]).truVi === 10575);
 }
 
 console.log('\n' + (F ? '❌ ' + F + ' HỎNG / ' + (P + F) : '✅ ĐẠT HẾT ' + P + ' PHÉP KIỂM'));

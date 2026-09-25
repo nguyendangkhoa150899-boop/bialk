@@ -3,6 +3,8 @@
 'use strict';
 const C = require('../cua.js');
 const { mulberry32 } = require('./rnd.js');
+// Lõi mặc định KHÔNG PHÍ (25/09). Các mục 7 / 10 / 13 viết cho chế độ CÓ PHÍ nên bật lên; mục 16 kiểm không phí.
+C.datKhongPhi(false);
 
 let so = 0, hong = 0;
 function kt(ten, dieu, them) {
@@ -237,6 +239,30 @@ console.log('\n═══ 15. ADMIN ĐẶT BẢNG SỐ Ô SÉT ═══');
     kt('bảng trống thì chặn', !!C.datKhoangSet([]).error);
     C.datKhoangSet(C.setMacDinh());
     kt('về mặc định được', JSON.stringify(C.setHienTai()) === JSON.stringify(C.setMacDinh()));
+}
+
+console.log('\n═══ 16. CHẾ ĐỘ KHÔNG PHÍ, GIỐNG NHÀ CÁI ═══');
+{
+    const r = C.datKhongPhi(true);
+    kt('bật không phí được', !!r.ok && r.khongPhi === true);
+    kt('phí = 0', C.phiSuat() === 0 && C.tienPhi(10000) === 0);
+    kt('đặt 10.000 trừ đúng 10.000', C.tienTru(10000) === 10000);
+    kt('nhà cái ăn cố định 2,7027% (1 − 36/37)', Math.abs(r.an - (1 - 36 / 37)) < 1e-12, pt(r.an));
+    kt('mọi cửa cùng mức ăn (lệch 0)', r.anLech < 1e-12 && Math.abs(r.anThuc - (1 - 36 / 37)) < 1e-12, pt(r.anThuc));
+    kt('chỉnh mức ăn bị từ chối, nói rõ lý do', /KHÔNG PHÍ/.test(C.datMucAn(0.08).error || ''));
+    kt('hệ số nhân / số ô sét không đổi theo chế độ', Math.abs(C.thongKe().oSangMoiVan - r.oSangMoiVan) < 1e-12);
+    {
+        const rnd = mulberry32(4242);
+        let tru = 0, ve = 0;
+        for (let i = 0; i < 300000; i++) {
+            const nhan = C.taoNhan(rnd), ra = Math.floor(rnd() * 37);
+            for (const c of C.DS) { tru += C.tienTru(1000); ve += C.tinhTra(c.id, 1000, ra, nhan); }
+        }
+        kt('mô phỏng 300.000 ván: nhà cái ăn quanh 2,70% (sai số < 0,3 điểm)', Math.abs(1 - ve / tru - (1 - 36 / 37)) < 0.003, pt(1 - ve / tru));
+    }
+    const r2 = C.datKhongPhi(false);
+    kt('tắt không phí thì mức ăn admin đặt trở lại (8%) và phí 5,76%', Math.abs(r2.an - 0.08) < 1e-9 && Math.abs(r2.phi - 0.057579) < 1e-5, pt(r2.an) + ' / ' + pt(r2.phi));
+    C.datKhongPhi(true);   // trả về mặc định của lõi
 }
 
 console.log('\n' + (hong ? '❌ ' + hong + '/' + so + ' PHÉP KIỂM HỎNG' : '✅ ĐẠT HẾT ' + so + ' PHÉP KIỂM'));

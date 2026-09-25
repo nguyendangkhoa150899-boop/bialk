@@ -282,7 +282,7 @@ function startPanel(ctx) {
                     '/api/stx/board/start', '/api/stx/board/stop',
                     // 🎡 Roulette, ĂN DOGCOIN THẬT, chỉ SUPER
                     '/api/rl/on', '/api/rl/time', '/api/rl/tran', '/api/rl/an', '/api/rl/thang',
-                    '/api/rl/maxbet', '/api/rl/ep', '/api/rl/epclear', '/api/rl/epnhan', '/api/rl/epnhanclear', '/api/rl/set',
+                    '/api/rl/maxbet', '/api/rl/ep', '/api/rl/epclear', '/api/rl/epnhan', '/api/rl/epnhanclear', '/api/rl/set', '/api/rl/khongphi',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
                     // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
@@ -598,6 +598,7 @@ function startPanel(ctx) {
                     else if (path === '/api/rl/an') r = B.datMucAn(body.an);
                     else if (path === '/api/rl/thang') r = B.datThang(body.macDinh ? null : body.thang);
                     else if (path === '/api/rl/set') r = B.datKhoangSet(body.macDinh ? null : body.set);
+                    else if (path === '/api/rl/khongphi') r = B.datKhongPhi(!!body.on);
                     else if (path === '/api/rl/maxbet') r = B.datMaxBet(body.maxBet);
                     else if (path === '/api/rl/ep') r = B.epKetQua(body.so);
                     else if (path === '/api/rl/epclear') r = B.huyEp();
@@ -2043,8 +2044,12 @@ const HTML = `<!DOCTYPE html>
 
         <div class="blk">
           <h3>🎯 Nhà cái ăn & trần cược mỗi người</h3>
+          <div class="acts">
+            <label class="sw wide"><input id="rlKhongPhi" type="checkbox" onchange="rlKhongPhiBat(this.checked)"><b>KHÔNG PHÍ, giống nhà cái</b> · đặt bao nhiêu trừ bấy nhiêu, nhà cái ăn cố định 2,70%</label>
+          </div>
+          <div class="note">Tắt công tắc = <b>có phí</b> trên tiền cược, khi đó mới chỉnh được mức ăn ở ô dưới (3 – 20%, phí máy tự suy). Hệ số nhân và số ô sét không đổi theo chế độ.</div>
           <div class="row">
-            <div class="fld"><label>Nhà cái ăn bao nhiêu % (3 – 20)</label><input id="rlAn" type="number" min="3" max="20" step="0.5" placeholder="vd: 8" oninput="txDirty(this)"></div>
+            <div class="fld"><label>Nhà cái ăn bao nhiêu % (3 – 20, chỉ khi CÓ PHÍ)</label><input id="rlAn" type="number" min="3" max="20" step="0.5" placeholder="vd: 8" oninput="txDirty(this)"></div>
             <div class="fld"><label>Trần cược mỗi người mỗi ván (0 = không giới hạn)</label><input id="rlMax" type="number" min="0" placeholder="vd: 300000" oninput="txDirty(this)"></div>
           </div>
           <div class="stat" id="rlAnNote"></div>
@@ -2970,7 +2975,10 @@ function rlSaveTime(){
   if(!(r>=6&&r<=60))return toast('Giây khoá sổ: 6 - 60');
   api('/api/rl/time',{bet:b,quay:q,roi:r}).then(j=>{txClean(['rlBetS','rlQuayS','rlRoiS']);toast('⏱️ Ván '+j.round+'s = '+j.bet+'+'+j.quay+'+'+j.roi);refresh();}).catch(e=>toast('❌ '+e.message));
 }
+function rlKhongPhiBat(v){api('/api/rl/khongphi',{on:v}).then(j=>{toast(j.khongPhi?'✅ KHÔNG PHÍ giống nhà cái · nhà cái ăn cố định '+(j.an*100).toFixed(2)+'%':'💸 CÓ PHÍ · nhà cái ăn '+(j.an*100).toFixed(1)+'% · phí '+(j.phi*100).toFixed(2)+'%');refresh();}).catch(e=>toast('❌ '+e.message));}
 function rlSaveAn(){
+  const S0=STATE&&STATE.rl;
+  if(S0&&S0.rtp&&S0.rtp.khongPhi&&document.getElementById('rlAn').value!==''){toast('❌ Đang KHÔNG PHÍ: mức ăn cố định 2,70%. Tắt công tắc "Không phí" rồi mới chỉnh.');return;}
   const a=parseFloat(document.getElementById('rlAn').value);
   const m=parseInt(document.getElementById('rlMax').value);
   const xong=()=>{txClean(['rlAn','rlMax']);refresh();};
@@ -3076,9 +3084,12 @@ function rlDo(){
   const put=(id,v)=>{const e=document.getElementById(id);if(e&&e.dataset.dirty!=='1'&&e.value===''&&document.activeElement!==e)e.value=v;};
   if(S.time){put('rlBetS',S.time.bet);put('rlQuayS',S.time.quay);put('rlRoiS',S.time.roi);}
   put('rlMax',S.maxBet);
-  if(S.rtp)put('rlAn',(S.rtp.an*100).toFixed(1).replace('.0',''));
+  const kp=document.getElementById('rlKhongPhi'); if(kp&&S.rtp&&kp.checked!==!!S.rtp.khongPhi)kp.checked=!!S.rtp.khongPhi;
+  if(S.rtp&&!S.rtp.khongPhi)put('rlAn',(S.rtp.an*100).toFixed(1).replace('.0',''));
   const an=document.getElementById('rlAnNote');
-  if(an&&S.rtp)an.textContent='Đang chạy: nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · phí '+(S.rtp.phi*100).toFixed(2)+'% trên tiền cược · trung bình '+S.rtp.oSangMoiVan.toFixed(1)+' số sét/ván · '+S.rtp.soCua+' cửa';
+  if(an&&S.rtp)an.textContent=S.rtp.khongPhi
+    ?('Đang chạy: KHÔNG PHÍ giống nhà cái · nhà cái ăn cố định '+(S.rtp.an*100).toFixed(2)+'% (36/37) · trung bình '+S.rtp.oSangMoiVan.toFixed(1)+' số sét/ván · '+S.rtp.soCua+' cửa')
+    :('Đang chạy: CÓ PHÍ · nhà cái ăn '+(S.rtp.an*100).toFixed(1)+'% · phí '+(S.rtp.phi*100).toFixed(2)+'% trên tiền cược · trung bình '+S.rtp.oSangMoiVan.toFixed(1)+' số sét/ván · '+S.rtp.soCua+' cửa');
   const box=document.getElementById('rlTran'), TEN=S.tenNhom||{};
   if(box&&!box.dataset.xong&&S.tran){box.dataset.xong='1';
     box.innerHTML=Object.keys(S.tran).map(k=>'<div style="flex:1 1 180px"><label>'+esc(TEN[k]||k)+'</label><input data-rltran="'+k+'" type="number" min="1000" oninput="txDirty(this)"></div>').join('');}

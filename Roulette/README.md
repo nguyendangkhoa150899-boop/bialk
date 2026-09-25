@@ -22,7 +22,7 @@ Tổng **154 cửa**. Ra **0** thì mọi cửa vòng ngoài, Dãy, Góc, Hàng 
 
 Chủ server chốt 25/09: *"chip đặt được ở ngã 4 chứ không phải nhân ở ngã 4"*. Huy hiệu nhân phải nằm gọn trong một ô số; treo ở giao điểm thì không ai biết nó thuộc ô nào. Đúng luật game thật.
 
-Tiền nuôi hệ số nhân lấy từ chính cửa số đơn: trả **29:1** thay vì 35:1 (RTP gốc tụt từ 97,30% còn 81,08%), phần **16,22 điểm** thiếu do hệ số nhân bù. Số ô sét trung bình mỗi ván do thang quyết định: **T = 37·6 / (E_thang − 29)**. Thang mặc định 7 bậc `so: 50×100, 75×50, 100×28, 150×12, 200×6, 300×3, 500×1` (E ≈ 79,8) cho **≈4,4 số sét mỗi ván**, sát Lightning Roulette thật (1-5 số, x50-x500). Người đặt một số trúng sét khoảng 0,33% ván (game thật 0,25%; bản 2-11 ô x30-x500 thử ngày 25/09 là 0,46%, bị chê "nhân nhiều sợ mặc định trúng"). Hạ thang là nhiều ô sáng hơn nhưng mỗi ô nhỏ hơn; tổng tiền trả cho sét không đổi.
+Tiền nuôi hệ số nhân lấy từ chính cửa số đơn: trả **29:1** thay vì 35:1 (RTP gốc tụt từ 97,30% còn 81,08%), phần **16,22 điểm** thiếu do hệ số nhân bù. Số ô sét trung bình mỗi ván do thang quyết định: **T = 37·6 / (E_thang − 29)**. Thang mặc định 13 bậc `so: 50×130, 60×70, 75×55, 90×35, 100×28, 125×18, 150×12, 175×8, 200×6, 250×4, 300×3, 400×2, 500×1` (E ≈ 82,3) cho **≈4,2 số sét mỗi ván**, sát Lightning Roulette thật (1-5 số, x50-x500). Người đặt một số trúng sét khoảng 0,31% ván (game thật 0,25%; bản 2-11 ô x30-x500 thử ngày 25/09 là 0,46%, bị chê "nhân nhiều sợ mặc định trúng"). Hạ thang là nhiều ô sáng hơn nhưng mỗi ô nhỏ hơn; tổng tiền trả cho sét không đổi.
 
 ### Số ô sét mỗi ván: bảng tỉ lệ, luôn trong khoảng (chủ server 25/09: "không rải đều, ít ô hay gặp, nhiều ô hiếm")
 
@@ -30,7 +30,11 @@ Không bốc từng ô độc lập nữa (kiểu đó hay ra 0 hoặc 1 ô). M�
 
 Mọi cửa khác trả chuẩn nên RTP gốc đều đúng **36/37 = 97,2973%**, không cần nhân.
 
-## Nhà cái ăn: MỘT mức phí duy nhất, suy ra chứ không gõ tay
+## Nhà cái ăn: hai chế độ, công tắc ở panel (`/api/rl/khongphi`, DB `_rlKhongPhi`)
+
+**KHÔNG PHÍ, giống nhà cái (mặc định, chủ server chốt 25/09 "bỏ phí nhưng vẫn giống nhà cái")**: y Lightning Roulette thật. Đặt bao nhiêu trừ bấy nhiêu, mọi cửa trả chuẩn, số đơn 29:1 + số sét kéo về 36/37. Nhà cái ăn **cố định 1 − 36/37 = 2,7027%** ở mọi cửa, không chỉnh được vì không còn núm nào (`datMucAn` từ chối và nói rõ). Thấp hơn hẳn 8% của hai bàn kia, đó là cái giá của "giống nhà cái".
+
+**CÓ PHÍ** (tắt công tắc): như dưới đây, admin đặt mức ăn 3-20%, phí suy ra thu trên tiền cược.
 
 Roulette chuẩn chỉ để nhà cái ăn 2,7027%. Muốn ăn 8% mà không phá bảng trả quen thuộc thì thu phí trên tiền cược:
 
@@ -81,8 +85,8 @@ Web `/api/rl/state|bet|x2|datlai|xoacuoc|xoacua|doicua`. Panel (chỉ SUPER) `/a
 ## Bộ kiểm
 
 ```
-node Roulette/kiemtra/cua-test.js    # 103 phép: 154 cửa, RTP, phí, nhân chỉ số đơn, bảng số ô sét 2..11, mô phỏng 1 triệu ván
-node Roulette/kiemtra/ban-test.js    # 76 phép: đặt/xoá/dời, khoá sổ, trả tiền, ép, bật lại, tắt bàn
+node Roulette/kiemtra/cua-test.js    # 112 phép: 154 cửa, RTP, hai chế độ phí, nhân chỉ số đơn, bảng số ô sét, mô phỏng 1 triệu ván
+node Roulette/kiemtra/ban-test.js    # 83 phép: đặt/xoá/dời, khoá sổ, trả tiền, ép, bật lại, tắt bàn, bàn không phí
 ```
 `kiemtra/rnd.js` là mulberry32 cho bộ kiểm. Bản đầu dùng LCG kiểu C bị tràn 2^53 nên mô phỏng báo sai 3 điểm phần trăm; lõi không sai, cái thước cong.
 
