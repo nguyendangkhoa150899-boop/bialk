@@ -226,6 +226,17 @@ Máy chủ: `txDoiCua(user, tu, den)` và `txXoaCua(user, cua)` → `/api/tx/doi
   (`touch-action:none`), ô trống vẫn vuốt trang được. Sau khi nhả tay trình duyệt còn bắn
   `click`, `KEOCLICK` chặn nó ở `sbChon`/`stChon` kẻo thả xong lại đặt thêm một cục.
 - Kết quả/lỗi báo bằng **dòng đứng yên** dưới nút (`sbBao`/`stBao`), y ba nút.
+- 📱 **Khoá cuộn trang lúc giữ/kéo chip (26/09).** Chủ server báo "giữ chip để move thì màn hình
+  bị kéo xuống chung, không ổn định". Bản cũ chỉ trông vào `touch-action:none`, và nó **chập chờn**:
+  trình duyệt chốt `touch-action` ngay lúc chạm, iPhone lại hay lờ nó; `preventDefault()` trong
+  `pointermove` **không** chặn được cuộn (luật Pointer Events). Hụt một lần là trang cuộn, trình
+  duyệt bắn `pointercancel`, ván kéo chết giữa chừng. Giờ có thêm **`touchmove` KHÔNG passive gắn
+  lên từng bàn** (`keoGan`), `preventDefault` suốt từ lúc chạm ô có chip (`KEOGIU`, bật trong
+  `keoXuong`) tới lúc nhấc hết tay (`touchend`/`touchcancel`). ⚠️ **Đừng dời listener này lên
+  `document`**: không passive ở `document` là cả trang phải chờ JS mới cuộn được (giật).
+  ⚠️ Mọi lớp con **bị xoá/vẽ lại theo nhịp** trong ô (`.sbGio`, `.sbBan2`) phải `pointer-events:none`:
+  ngón tay đè trúng một nút sắp bị xoá thì `touchmove` không còn nổi lên tới bàn, lớp khoá mù.
+  `trang-test` chạy thật `keoGan`/`keoXuong` với bàn giả để canh.
 
 ---
 

@@ -379,6 +379,63 @@ ok('chỉ ô có chip mới khoá cuộn (touch-action:none), ô trống vẫn v
     SRC.includes("'.sbO.sbCoChip{touch-action:none") && /e\.classList\.toggle\("sbCoChip",toi>0\)/.test(SRC) && !/'\.sbO\{[^']*touch-action:none/.test(SRC));
 ok('con ma tự đủ CSS (nằm ngoài .sbO), giữ viền đen cho chip nặng',
     SRC.includes("'.sbKeoGhost{position:fixed;z-index:9999;pointer-events:none") && SRC.includes("'.sbKeoGhost.sbGioDen img{"));
+ok('bộ kéo thả gắn vào CẢ BA bàn (Tài Xỉu, Siêu, Roulette)', SRC.includes('keoGan("sb")') && SRC.includes('keoGan("st")') && SRC.includes('keoGan("rl")'));
+
+// Chủ server 26/09: "giữ chip để move thì màn hình bị kéo xuống chung, không ổn định".
+muc('📱 giữ / kéo chip thì trang KHÔNG được cuộn theo (khoá bằng touchmove, không chỉ trông CSS)');
+{
+    ok('⭐ touchmove gắn lên BÀN với passive:false (passive thì preventDefault vô dụng)',
+        SRC.includes('ban.addEventListener("touchmove",function(ev){if((KEOGIU||KEO)&&ev.cancelable)ev.preventDefault()},{passive:false});'));
+    ok('KHÔNG gắn touchmove không-passive lên document (cả trang phải chờ JS mới cuộn = giật)',
+        !/document\.addEventListener\("touchmove"[^)]*\{passive:false\}/.test(SRC));
+    ok('nhấc tay (touchend / touchcancel, hết ngón) là nhả khoá',
+        SRC.includes('var nhac=function(ev){if(!ev.touches||!ev.touches.length)KEOGIU=false};ban.addEventListener("touchend",nhac);ban.addEventListener("touchcancel",nhac);'));
+    const i2 = SRC.indexOf("'.sbO .sbBan2{"), j2 = i2 > 0 ? SRC.indexOf("}'", i2) : -1;
+    ok('⭐ nhãn tổng cược người khác (.sbBan2, vẽ lại mỗi 2s) cho chạm XUYÊN, không thành điểm chạm mồ côi',
+        i2 > 0 && j2 > i2 && SRC.slice(i2, j2).includes('pointer-events:none'));
+    ok('đồng chip (.sbGio, cũng vẽ lại mỗi nhịp) vẫn chạm xuyên', /'\.sbO \.sbGio\{[^']*'\s*,\s*'[^']*pointer-events:none/.test(SRC));
+    // chạy thật keoGan + keoXuong với bàn giả
+    const a = SRC.indexOf("    'var KEOGIU=false;'"), b = SRC.indexOf("    'function keoHuyCho()");
+    let R = null, loi = '';
+    if (a > 0 && b > a) {
+        try {
+            const manh = vm.runInContext('[' + SRC.slice(a, b) + ']', vm.createContext({}));
+            const ban = { dataset: {}, L: {}, addEventListener(t, f, o) { this.L[t] = { f, o }; } };
+            const cx = { KEO: null, KEOCHO: null, PH: 'bet', ban, $: () => ban, keoHuyCho() {}, setTimeout: () => 1, clearTimeout() {},
+                document: { addEventListener() {}, removeEventListener() {} },
+                keoBan: () => ({ phase: cx.PH, tong: { _toi_tai: 1000 } }) };
+            vm.createContext(cx);
+            vm.runInContext('var KEO=null,KEOCHO=null;' + manh.join('\n'), cx);
+            vm.runInContext('keoGan("sb")', cx);
+            const L = ban.L;
+            const tm = () => { const e = { cancelable: true, chan: false, preventDefault() { this.chan = true; } }; L.touchmove.f(e); return e.chan; };
+            const oChip = { id: 'sb_tai', querySelector: (s) => (s === '.sbGio' ? {} : null) };
+            const oTrong = { id: 'sb_xiu', querySelector: () => null };
+            const xuong = (o) => vm.runInContext('keoXuong("sb",EV)', Object.assign(cx, { EV: { button: 0, target: { closest: () => o }, clientX: 0, clientY: 0, pointerId: 1 } }));
+            R = {};
+            R.passive = L.touchmove && L.touchmove.o && L.touchmove.o.passive;
+            R.chuaCham = tm();
+            xuong(oChip); R.giuChip = tm();
+            L.touchend.f({ touches: [{}] }); R.conMotNgon = tm();
+            L.touchend.f({ touches: [] }); R.nhacTay = tm();
+            xuong(oChip); L.touchcancel.f({ touches: [] }); R.huyCham = tm();
+            xuong(oChip); xuong(oTrong); R.oTrongSauDo = tm();
+            cx.PH = 'nhan'; xuong(oChip); R.hetGio = tm(); cx.PH = 'bet';
+            vm.runInContext('KEO={pid:1}', cx); R.dangKeo = tm(); vm.runInContext('KEO=null', cx);
+            xuong(oChip); { const e = { cancelable: false, chan: false, preventDefault() { this.chan = true; } }; L.touchmove.f(e); R.khongCancelable = e.chan; }
+        } catch (e) { loi = e.message; }
+    }
+    ok('chạy thật: gắn được lên bàn giả, touchmove passive:false', !!R && R.passive === false, loi || JSON.stringify(R));
+    ok('chạy thật: chưa chạm gì -> KHÔNG chặn (vuốt trang bình thường)', !!R && R.chuaCham === false);
+    ok('⭐ chạy thật: đè lên ô CÓ CHIP -> chặn cuộn ngay từ lúc chạm (chưa cần đợi 0,28s)', !!R && R.giuChip === true);
+    ok('chạy thật: nhấc 1 ngón mà còn ngón khác đè -> vẫn khoá', !!R && R.conMotNgon === true);
+    ok('chạy thật: nhấc hết tay -> nhả khoá', !!R && R.nhacTay === false);
+    ok('chạy thật: trình duyệt huỷ chạm (touchcancel) -> nhả khoá', !!R && R.huyCham === false);
+    ok('⭐ chạy thật: khoá cũ còn sót mà chạm ô TRỐNG -> tự xoá, ô trống vẫn vuốt được', !!R && R.oTrongSauDo === false);
+    ok('chạy thật: hết giờ đặt (pha khác bet) -> không khoá, vuốt trang xem kết quả được', !!R && R.hetGio === false);
+    ok('chạy thật: đang kéo (KEO) -> chặn cuộn', !!R && R.dangKeo === true);
+    ok('chạy thật: sự kiện không cancelable -> không gọi preventDefault (tránh cảnh báo đỏ trình duyệt)', !!R && R.khongCancelable === false);
+}
 ok('4 route kéo thả có mặt (tx + stx)',
     /path === '\/api\/tx\/xoacua' \|\| path === '\/api\/tx\/doicua'/.test(SRC) && SRC.includes("path === '/api/stx/xoacua'") && SRC.includes("path === '/api/stx/doicua'"));
 ok('index.js có txXoaCua + txDoiCua và đưa vào ctx web',

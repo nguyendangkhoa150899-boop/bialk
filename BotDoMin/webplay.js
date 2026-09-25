@@ -1714,7 +1714,10 @@ const PAGE = [
     '.sbO .sbGioCu{position:absolute;top:-5px;right:-3px;background:var(--blue);color:#06121f;font-size:10px;font-weight:900;',
     'border-radius:999px;padding:1px 6px;box-shadow:0 2px 6px rgba(0,0,0,.5);z-index:2}',
     '.sbO .sbBan2{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:#2a2e3b;color:#e8eaf0;z-index:4;',
-    'font-size:9px;font-weight:800;border-radius:999px;padding:0 5px;white-space:nowrap;z-index:2}',
+    // pointer-events:none: nhãn này bị xoá + vẽ lại MỖI NHỊP 2s (sbVeGio). Ngón tay đè trúng nó
+    // thì điểm chạm dính vào một nút sắp bị xoá, touchmove không còn nổi lên tới bàn -> lớp khoá
+    // cuộn của bàn mù. Cho chạm xuyên xuống ô như đồng chip .sbGio.
+    'font-size:9px;font-weight:800;border-radius:999px;padding:0 5px;white-space:nowrap;z-index:2;pointer-events:none}',
     '.sbO.sbKhoa{opacity:.94;cursor:not-allowed}',
     // ---- xúc xắc mini vẽ bằng chấm, giống bàn thật (đỏ trên nền trắng) ----
     // Ô xúc xắc PHẢI vuông: aspect-ratio giữ vuông kể cả khi flex co kéo.
@@ -3181,12 +3184,23 @@ const PAGE = [
     'document.addEventListener("selectstart",function(e){if(trongBanCuoc(e.target))e.preventDefault()});',
     'function keoBan(pre){if(pre==="rl")return {ban:$("rlBan"),phase:RLPHASE,tong:RLTONG,duong:"/api/rl/",bao:rlBao,tai:rlLoad};',
     'return pre==="sb"?{ban:$("sbBan"),phase:PHASE,tong:SBTONG,duong:"/api/tx/",bao:sbBao,tai:refresh}:{ban:$("stBan"),phase:STPHASE,tong:STTONG,duong:"/api/stx/",bao:stBao,tai:stLoad}}',
+    // 📱 KHOÁ CUỘN TRANG KHI ĐANG GIỮ / KÉO CHIP (26/09, chủ server: "giữ chip để move thì màn
+    // hình bị kéo xuống chung, không ổn định"). Bản cũ chỉ trông vào CSS touch-action:none, mà
+    // (1) trình duyệt chốt touch-action NGAY LÚC CHẠM, iPhone lại hay lờ nó, (2) e.preventDefault()
+    // trong pointermove KHÔNG chặn được cuộn (luật Pointer Events). Hụt một cái là trang cuộn,
+    // trình duyệt bắn pointercancel, ván kéo chết giữa chừng -> đúng cảnh "lúc được lúc không".
+    // Chốt thật: touchmove KHÔNG passive gắn lên bàn, preventDefault suốt từ lúc chạm ô có chip
+    // (KEOGIU) tới lúc nhấc tay. Gắn lên bàn chứ không lên document: document mà không passive thì
+    // CẢ TRANG phải chờ JS mới cuộn được (giật). Ô trống không đụng tới, vẫn vuốt trang như cũ.
+    'var KEOGIU=false;',
     'function keoGan(pre){var ban=$(pre+"Ban");if(!ban||ban.dataset.keo)return;ban.dataset.keo="1";',
     'ban.addEventListener("pointerdown",function(ev){keoXuong(pre,ev)});',
+    'ban.addEventListener("touchmove",function(ev){if((KEOGIU||KEO)&&ev.cancelable)ev.preventDefault()},{passive:false});',
+    'var nhac=function(ev){if(!ev.touches||!ev.touches.length)KEOGIU=false};ban.addEventListener("touchend",nhac);ban.addEventListener("touchcancel",nhac);',
     'ban.addEventListener("contextmenu",function(ev){if(KEO||KEOCHO)ev.preventDefault()})}',
-    'function keoXuong(pre,ev){if(ev.button&&ev.button!==0)return;var o=ev.target&&ev.target.closest?ev.target.closest(".sbO"):null;if(!o||!o.querySelector(".sbGio"))return;',
+    'function keoXuong(pre,ev){KEOGIU=false;if(ev.button&&ev.button!==0)return;var o=ev.target&&ev.target.closest?ev.target.closest(".sbO"):null;if(!o||!o.querySelector(".sbGio"))return;',
     'var B=keoBan(pre);if(B.phase!=="bet")return;var id=o.id.slice(3),tien=B.tong["_toi_"+id]||0;if(!tien)return;',
-    'keoHuyCho();var x0=ev.clientX,y0=ev.clientY,pid=ev.pointerId;',
+    'KEOGIU=true;keoHuyCho();var x0=ev.clientX,y0=ev.clientY,pid=ev.pointerId;',
     'var c={pre:pre,o:o,id:id,tien:tien,x:x0,y:y0,pid:pid};',
     'c.move=function(e){if(e.pointerId!==pid)return;c.x=e.clientX;c.y=e.clientY;if(Math.abs(e.clientX-x0)>8||Math.abs(e.clientY-y0)>8)keoHuyCho()};',
     'c.up=function(e){if(e.pointerId!==pid)return;keoHuyCho()};',
