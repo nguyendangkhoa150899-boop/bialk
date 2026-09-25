@@ -1345,6 +1345,34 @@ const HTML = `<!DOCTYPE html>
     <!-- BIG SMALL -->
     <div id="tab-tx">
       <div class="card">
+        <h2>🎲 Big Small</h2>
+        <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
+        <div class="epOnly" style="display:none">
+        <h3>🎲 Ép kết quả ván tới</h3>
+        <div class="note" id="txBetsLive"></div>
+        <div class="row" style="margin-top:14px">
+          <div class="fld" style="max-width:110px"><label>Xúc xắc 1</label><select id="d1"></select></div>
+          <div class="fld" style="max-width:110px"><label>Xúc xắc 2</label><select id="d2"></select></div>
+          <div class="fld" style="max-width:110px"><label>Xúc xắc 3</label><select id="d3"></select></div>
+        </div>
+        <div class="preview" id="txPrev"></div>
+        <div class="quick">
+          <button onclick="setDice(6,6,4)">Tài + Chẵn (16)</button>
+          <button onclick="setDice(6,5,4)">Tài + Lẻ (15)</button>
+          <button onclick="setDice(1,2,3)">Xỉu + Chẵn (6)</button>
+          <button onclick="setDice(1,2,2)">Xỉu + Lẻ (5)</button>
+        </div>
+        <div class="acts">
+          <button class="btn-grey wide" onclick="txAutoForce()">🎯 Chọn xúc xắc cho nhà cái ĂN NHIỀU NHẤT</button>
+        </div>
+        <div class="acts">
+          <button class="btn-red wide" onclick="txForce()">⚡ Ép kết quả ván tới</button>
+          <button class="btn-grey" onclick="api('/api/tx/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">↩️ Huỷ ép</button>
+        </div>
+        <div class="note">Ép cứng 100% cho <b>lần khóa sổ kế tiếp</b>. ⚠️ Chỉ ăn nếu ép <b>lúc còn MỞ CƯỢC</b> (xem đồng hồ ở khung cược trên); khóa sổ rồi mới ép thì trôi sang ván sau. Nút 🎯 tự tính 3 xúc xắc khiến cửa đang gánh nhiều tiền nhất bị thua.</div>
+        </div>
+      </div>
+      <div class="card">
         <h3>🎛️ Điều khiển bàn Big Small</h3>
         <label>Channel ID (kênh đăng bàn chơi)</label>
         <input id="txChannel" placeholder="vd: 123456789012345678">
@@ -1403,32 +1431,6 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note" id="txNotiNow">Có người đặt cược là bot nhắn cho bạn: ai, cửa nào, bao nhiêu, ván mấy, ví còn bao nhiêu. Điền <b>ID người</b> thì bot nhắn riêng, điền <b>ID kênh</b> thì bot đăng vào kênh - bot tự dò, không cần chọn. Ván đông người mà ngập tin thì đặt mức tối thiểu.</div>
         <div class="note">Tính TỔNG mọi cửa + mọi lần đặt của 1 người trong 1 ván (đặt lắt nhắt nhiều lần cũng không lách được). Áp cả web lẫn Discord; nút ALL IN tự kẹp về phần trần còn lại. Trần hiện lên bảng Discord + trang web.</div>
-      </div>
-      <div class="card">
-        <h2>🎲 Big Small</h2>
-        <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
-        <div class="epOnly" style="display:none">
-        <h3>🎲 Ép kết quả ván tới</h3>
-        <div class="note" id="txBetsLive"></div>
-        <div class="row" style="margin-top:14px">
-          <div class="fld" style="max-width:110px"><label>Xúc xắc 1</label><select id="d1"></select></div>
-          <div class="fld" style="max-width:110px"><label>Xúc xắc 2</label><select id="d2"></select></div>
-          <div class="fld" style="max-width:110px"><label>Xúc xắc 3</label><select id="d3"></select></div>
-        </div>
-        <div class="preview" id="txPrev"></div>
-        <div class="quick">
-          <button onclick="setDice(6,6,4)">Tài + Chẵn (16)</button>
-          <button onclick="setDice(6,5,4)">Tài + Lẻ (15)</button>
-          <button onclick="setDice(1,2,3)">Xỉu + Chẵn (6)</button>
-          <button onclick="setDice(1,2,2)">Xỉu + Lẻ (5)</button>
-          <button onclick="txAutoForce()">🎯 Cho nhà cái ăn nhiều nhất</button>
-        </div>
-        <div class="acts">
-          <button class="btn-red wide" onclick="txForce()">⚡ Ép kết quả ván tới</button>
-          <button class="btn-grey" onclick="api('/api/tx/clear',{}).then(()=>{toast('Đã hủy ép');refresh()})">↩️ Huỷ ép</button>
-        </div>
-        <div class="note">Ép cứng 100% cho <b>lần khóa sổ kế tiếp</b>. ⚠️ Chỉ ăn nếu ép <b>lúc còn MỞ CƯỢC</b> (xem đồng hồ ở khung cược trên); khóa sổ rồi mới ép thì trôi sang ván sau. Nút 🎯 tự tính 3 xúc xắc khiến cửa đang gánh nhiều tiền nhất bị thua.</div>
-        </div>
       </div>
       <!-- (📜 Lịch sử Big Small đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
@@ -1984,7 +1986,9 @@ const HTML = `<!DOCTYPE html>
             <button onclick="stxSetDice(6,5,4)">Tài + Lẻ (15)</button>
             <button onclick="stxSetDice(1,2,3)">Xỉu + Chẵn (6)</button>
             <button onclick="stxSetDice(1,2,2)">Xỉu + Lẻ (5)</button>
-            <button onclick="stxTuEp()">🎯 Cho nhà cái ăn nhiều nhất</button>
+          </div>
+          <div class="acts">
+            <button class="btn-grey wide" onclick="stxTuEp()">🎯 Chọn xúc xắc cho nhà cái ĂN NHIỀU NHẤT</button>
           </div>
           <div class="stat" id="stxEpNow"></div>
           <div class="acts">
