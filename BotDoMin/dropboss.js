@@ -278,7 +278,8 @@ function saveBox(body, meta) {
     const val = Math.floor(Number(body.val));
     const items = (Array.isArray(body.items) ? body.items : []).map((s) => String(s).trim());
     if (!/^\d+$/.test(id)) return { error: 'ID hộp không hợp lệ' };
-    if (!Number.isFinite(val) || val < 1 || val > 999999999) return { error: 'BoxValue phải từ 1 đến 999.999.999' };
+    // 30/09: BoxValue 1 tung lam hong CA luot roi cua boss (ket luan tu Audit log); du lieu goc nho nhat 4. Ti le roi ~ Mvalue/BoxValue.
+    if (!Number.isFinite(val) || val < 4 || val > 999999999) return { error: 'BoxValue phải từ 4 đến 999.999.999 (BoxValue 1-3 làm boss KHÔNG rơi gì; tỉ lệ ≈ Mvalue ÷ BoxValue)' };
     if (!items.length) return { error: 'Hộp phải có ít nhất 1 món' };
     if (items.some((s) => !/^\d{6,9}$/.test(s))) return { error: 'ID vật phẩm phải là số 6-9 chữ số' };
     const { eol, lines } = readF(F_BOX);

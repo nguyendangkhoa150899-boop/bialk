@@ -3124,7 +3124,7 @@ document.addEventListener('click',function(ev){
     DP.box.items.push({id:it.id,name:it.name});dropDraw();return;}
   if(d.dpsearch){dropItemSearch();return;}
   if(d.dpsave){var val=parseInt(document.getElementById('dpVal').value);
-    if(!(val>=1))return toast('BoxValue phải ≥ 1');
+    if(!(val>=4))return toast('BoxValue phải ≥ 4 (BoxValue 1-3 làm boss KHÔNG rơi gì; tỉ lệ rơi ≈ Mvalue ÷ BoxValue)');
     if(!DP.box.items.length)return toast('Hộp phải có ít nhất 1 món');
     var bx=DP.box;
     api('/api/drop/box',{id:bx.id,val:val,items:bx.items.map(function(x){return x.id;})}).then(function(){
