@@ -86,7 +86,7 @@ function startPanel(ctx) {
         return Object.keys(db)
             .filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object')
             .map(id => ({
-                id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '',
+                id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '', tlbbGuid: db[id].tlbbGuid || '',
                 // 📒 nợ: hiện thẳng số trong db (index.js có vòng quét cộng lãi mỗi giờ)
                 debt: db[id].debt ? ((db[id].debt.loan || 0) + (db[id].debt.admin || 0)) : 0,
                 // 🍀 %/quay may mắn RIÊNG (null = theo mặc định toàn sàn) + thanh hiện tại
@@ -1725,18 +1725,28 @@ const HTML = `<!DOCTYPE html>
     <!-- PALWORLD -->
     <div id="tab-pal" class="hidden">
       <div class="card">
-        <h3>🎛️ Kênh KNB & Shop Pal</h3>
+        <h3>🛠️ GM Thiên Long</h3>
+        <div class="note">Trang GM của server game (tài khoản, phát đồ/KNB/VIP, GM, restart) - nhúng nguyên giao diện gốc từ <b>https://gm.netco4.click</b>, đăng nhập bằng mật khẩu GM. Link này share cho bạn bè test tới khi mở server chính thức (ai có mật khẩu là toàn quyền GM).</div>
+        <div class="row" style="margin:10px 0">
+          <button class="btn-green" onclick="window.open('https://gm.netco4.click/','_blank')">↗️ Mở tab mới</button>
+          <button onclick="navigator.clipboard.writeText('https://gm.netco4.click/').then(function(){toast('📋 Đã chép link GM')})">📋 Chép link</button>
+          <button onclick="var f=document.getElementById('gmFrame');f.src=f.src">🔄 Tải lại</button>
+        </div>
+        <iframe id="gmFrame" src="https://gm.netco4.click/" style="width:100%;height:85vh;border:1px solid #2a2f3d;border-radius:10px;background:#f4f5f7" referrerpolicy="no-referrer"></iframe>
+      </div>
+      <div class="card">
+        <h3>🎛️ Kênh KNB (bảng Discord)</h3>
         <label>Channel ID (kênh đăng bảng)</label>
         <input id="wdChannel" placeholder="vd: 123456789012345678">
         <div class="row" style="margin-top:12px">
           <button class="btn-green" onclick="wdStart()">▶️ Bật / Đăng lại bảng</button>
           <button class="btn-red" onclick="wdStop()">⏹️ Tắt</button>
         </div>
-        <div class="note">MỘT bảng duy nhất với 4 nút: <b>Chuyển vào game</b>, <b>Chuyển ra Discord</b>, <b>Pal ngẫu nhiên 2.000</b>, <b>Pal tùy chọn 6.000</b>. Lõi Văn Minh / cấy ghép / đổi vàng bán ở <b>sạp trong game</b>, không qua Discord. <b>Sửa code xong phải bấm Đăng lại</b> để tin nhắn có nút mới.</div>
+        <div class="note">Đăng 1 bảng vào kênh Discord với 2 nút: <b>🎮 Chuyển vào game</b> (trừ ví, KNB vào túi khi nhân vật đăng nhập / đổi bản đồ, tối đa 30.000/ngày) và <b>💬 Chuyển ra ví</b> (hướng dẫn tới NPC Ví Web trong game, không giới hạn). Sửa code xong bấm <b>Đăng lại</b>.</div>
       </div>
       <div class="card">
         <h3>🔗 Liên kết tên trong game</h3>
-        <div class="note">Cầu chuyển KNB <b>tự động</b> give/take theo bảng này: người chơi bấm 🎮/💬 là bot giao/trừ KNB cho đúng nhân vật đã liên kết. Người chơi <b>không tự đặt tên được</b> - chỉ admin sửa ở đây (chống giả tên rút trộm túi người khác). Gõ <b>ĐÚNG tên nhân vật trong game</b> (không dấu, bỏ ký tự lạ cũng khớp); để trống rồi 💾 = hủy liên kết.</div>
+        <div class="note">Gắn ví mini game với <b>nhân vật Thiên Long</b>: gõ <b>tên nhân vật</b> (hoặc <b>GUID</b>) rồi Lưu, bot tra database game và điền GUID. Cầu KNB chỉ chạy cho ví đã gắn. 1 nhân vật chỉ gắn 1 ví; người chơi không tự gắn được (chống rút trộm). Để trống + Lưu = hủy liên kết.</div>
         <div id="palLinks"></div>
       </div>
       <div class="card pwOff">
@@ -1782,7 +1792,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
-      <div class="card hidden" id="wdPendingCard">
+      <div class="card hidden pwOff" id="wdPendingCard">
         <h3>📨 Đơn đang chờ xử lý</h3>
         <div class="note"><b>🎮 Chuyển vào game</b>: ví đã trừ sẵn - bạn vào game ĐƯA KNB rồi bấm ✅. <b>💬 Chuyển ra Discord</b>: bạn vào game NHẬN KNB rồi bấm ✅ (lúc đó ví mới được cộng). ❌ Từ chối = hoàn ví nếu đã trừ.</div>
         <div id="wdPending"></div>
@@ -2768,10 +2778,11 @@ function renderPalLinks(){
   // Ví đã liên kết lên trước, trong nhóm thì giàu trước
   const rows=(STATE.players||[]).slice().sort((a,b)=>((b.ingameName?1:0)-(a.ingameName?1:0))||(b.points-a.points));
   if(!rows.length){box.innerHTML='<div class="muted">Chưa có ví nào.</div>';return;}
-  box.innerHTML='<table><tr><th>Discord</th><th>Ví</th><th>Tên nhân vật trong game</th><th></th></tr>'+
+  box.innerHTML='<table><tr><th>Discord</th><th>Ví KNB</th><th>Nhân vật Thiên Long</th><th>GUID</th><th></th></tr>'+
     rows.map(p=>'<tr><td>'+esc(p.name)+'<br><span class="muted" style="font-size:11px">'+p.id+'</span></td>'+
       '<td>'+Number(p.points||0).toLocaleString()+'</td>'+
       '<td><input class="mini-in" style="width:150px" placeholder="(chưa liên kết)" id="pn_'+p.id+'" value="'+esc(p.ingameName||'').replace(/"/g,'&quot;')+'"></td>'+
+      '<td class="muted" style="font-size:12px">'+(p.tlbbGuid?esc(p.tlbbGuid):'-')+'</td>'+
       '<td><button class="mini btn-green" onclick="palSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
     '</table>';
 }
