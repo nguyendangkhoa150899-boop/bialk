@@ -68,7 +68,8 @@ function auditWrite(entry) {
 function vnTime(d) { return d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }); }
 let ITEMN = null, BOSSN = null;
 function itemName(id) {
-    if (!ITEMN) { ITEMN = new Map(); try { for (const x of require('./tlbb').items() || []) ITEMN.set(String(x.id), x.n || x.name || ''); } catch { /* thiếu danh mục thì chỉ ghi ID */ } }
+    // danh mục nạp bất đồng bộ lúc bot khởi động (tlbb.loadItems): còn rỗng thì lần sau nạp lại, đừng cache rỗng
+    if (!ITEMN || !ITEMN.size) { ITEMN = new Map(); try { for (const x of require('./tlbb').items() || []) ITEMN.set(String(x.id), x.n || x.name || ''); } catch { /* thiếu danh mục thì chỉ ghi ID */ } }
     return ITEMN.get(String(id)) || '';
 }
 function bossName(id) {
