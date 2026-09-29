@@ -588,7 +588,10 @@ async function webNapGold() {
     return { error: '⛔ Đổi vàng đã tắt (tính năng cũ, không dùng cho Thiên Long)' };
 }
 
-async function webRutGame(userId, amount) {
+// 29/09: kind = 'knb' (mặc định, qua NPC Ví Web .in/.done) hoặc 'vang' = VÀNG KHÔNG KHOÁ 1 KNB = 1 vàng
+// (qua hàng đợi quà panel GM -> quatang.lua AddMoney, giống lệnh !!addmoney). 2 loại CHUNG hạn ngày.
+async function webRutGame(userId, amount, kind) {
+    const vang = kind === 'vang';
     if (!dogBridgeCfg().rut) return { error: '⛔ Chuyển KNB vào game đang ĐÓNG - admin tạm khoá chiều này' };
     amount = Math.floor(Number(amount) || 0);
     if (amount < 1) return { error: 'Số KNB không hợp lệ' };
@@ -604,6 +607,28 @@ async function webRutGame(userId, amount) {
     updatePoints(userId, -amount);
     dogBridgeToday(u).rut += amount;
     let r;
+    if (vang) {
+        let j = null, err = null;
+        try { j = await tlbb.gmCall('POST', '/api/act', { a: 'qua', guid: String(u.tlbbGuid), loai: 'vang', gt: String(amount) }); } catch (e) { err = e; }
+        if (j && j.ok && j.done) {
+            logDog('to-game', userId, u.name || userId, -amount, `đổi ${amount} KNB -> ${amount} vàng không khoá vào game (${gameName} GUID ${u.tlbbGuid})`);
+            saveDbNow();
+            writeLog('ADMIN', `[RÚT WEB VÀNG] ${u.name || userId} đổi ${amount} KNB -> ${amount} vàng vào game "${gameName}"`);
+            return { ok: true, message: `✅ Đã gửi ${amount.toLocaleString()} vàng (không khoá) cho ${gameName}. Vào game hoặc đổi bản đồ để nhận.`, balance: getUserData(userId).points || 0 };
+        }
+        const msg = (err && err.message) || (j && (j.msg || j.error)) || 'không rõ';
+        // hết giờ chờ = panel GM CÓ THỂ đã ghi hàng đợi -> không hoàn kẻo nhận đôi, báo admin kiểm
+        if (err && /không trả lời/.test(msg)) {
+            saveDbNow();
+            writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${msg} - KIỂM hàng đợi quà GUID ${u.tlbbGuid}, chưa có thì hoàn tay`);
+            return { error: '⏳ Chưa xác nhận được với game - ví đã trừ, admin sẽ kiểm (không nhận được sẽ hoàn). Đừng bấm lại kẻo trùng.' };
+        }
+        updatePoints(userId, amount);
+        dogBridgeToday(u).rut = Math.max(0, dogBridgeToday(u).rut - amount);
+        saveDbNow();
+        writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${msg} - đã hoàn`);
+        return { error: `↩️ Chưa gửi được (${msg}) - đã hoàn ${amount.toLocaleString()} KNB` };
+    }
     try {
         r = tlbb.sendKnb(u.tlbbGuid, amount);
     } catch (e) {
@@ -7245,7 +7270,7 @@ client.once('ready', async (c) => {
             transferTargets: listTransferTargets,
             // 🎮 nạp/rút KNB ↔ game qua web (28/08)
             dogbridge: {
-                rut: (uid, amount) => webRutGame(uid, amount),
+                rut: (uid, amount, kind) => webRutGame(uid, amount, kind),
                 nap: (uid, amount) => webNapGame(uid, amount),
                 napGold: (uid, gold) => webNapGold(uid, gold),   // 🪙 14/09
                 state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut, napOpen: dogBridgeCfg().nap,
