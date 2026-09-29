@@ -1269,6 +1269,14 @@ const HTML = `<!DOCTYPE html>
     .grp .glb{display:block;flex:none;text-align:left;padding:0 0 5px}
   }
   .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:16px}
+  /* 29/09 NetCo4: thẻ Shop Item nở ra gần hết màn hình (khung .wrap chỉ 840px nên bảng phải kéo ngang) */
+  @media(min-width:1000px){
+    #shopCard{position:relative;left:50%;transform:translateX(-50%);width:min(1700px,calc(100vw - 32px))}
+    #itemShopTable{table-layout:auto}
+    #itemShopTable td:nth-child(3),#itemShopTable td:nth-child(7){width:auto}
+    #itemShopTable .isf-name{width:100%!important;min-width:160px}
+    #itemShopTable .isf-note{width:100%!important;min-width:240px}
+  }
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
   .row>div{flex:1;min-width:90px}
   label{font-size:13px;color:var(--mut)}
