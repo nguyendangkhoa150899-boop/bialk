@@ -295,7 +295,7 @@ function startPanel(ctx) {
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
                     '/api/poker/giaitan', '/api/poker/nghi', '/api/poker/tiep',
                     // 📜 lịch sử sửa Drop Boss có IP người sửa -> chỉ SUPER (route cũng tự kiểm epOk)
-                    '/api/drop/log',
+                    '/api/drop/log', '/api/drop/rollback',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -1099,7 +1099,7 @@ function startPanel(ctx) {
                     }
                 }
                 // 💥 29/09: Drop Boss - sua bang roi do cua game (ghi thang file VPS, hieu luc sau restart)
-                if (path === '/api/drop/state' || path === '/api/drop/box' || path === '/api/drop/boss' || path === '/api/drop/clone' || path === '/api/drop/log') {
+                if (path === '/api/drop/state' || path === '/api/drop/box' || path === '/api/drop/boss' || path === '/api/drop/clone' || path === '/api/drop/log' || path === '/api/drop/rollback') {
                     let drop;
                     try { drop = require('./dropboss'); } catch (e) { return sendJSON(res, 503, { ok: false, error: 'dropboss.js loi: ' + e.message }); }
                     if (!require('fs').existsSync(drop.F_MDB)) return sendJSON(res, 503, { ok: false, error: 'Không thấy file game - tính năng này chỉ chạy trên VPS game' });
@@ -1114,7 +1114,12 @@ function startPanel(ctx) {
                         // cổng + IP ghi vào nhật ký dropboss-audit.jsonl (ghi TRƯỚC khi sửa file game)
                         const meta = { gate: epOk(req) ? 'SUPER' : 'thường', ip: req.headers['x-real-ip'] || req.socket.remoteAddress };
                         let r;
-                        if (path === '/api/drop/box') r = drop.saveBox(body, meta);
+                        // ↩ 29/09: rollback 1 dòng nhật ký về trạng thái TRƯỚC lần sửa - CHỈ cổng SUPER
+                        if (path === '/api/drop/rollback') {
+                            if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                            r = drop.rollback(body, meta);
+                        }
+                        else if (path === '/api/drop/box') r = drop.saveBox(body, meta);
                         else if (path === '/api/drop/boss') r = drop.saveBossBoxes(body, meta);
                         else r = drop.cloneBox(body, meta);
                         if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
@@ -3014,20 +3019,43 @@ function dpDiffBoxes(b,a){
   return (add.length?'<span style="color:#7ee787">+ gắn hộp '+add.join(', ')+'</span> ':'')+(rm.length?'<span style="color:#ff7b72">− gỡ hộp '+rm.join(', ')+'</span>':'')+(!add.length&&!rm.length?'<span class="muted">không đổi</span>':'')
     +'<br><span class="muted">'+(b.join(', ')||'(trống)')+' → '+(a.join(', ')||'(trống)')+'</span>';
 }
+// ↩ 29/09: rollback 1 dòng nhật ký (SUPER). Xung đột (đã có lần sửa sau / đã rollback) -> hỏi lại rồi force.
+async function dropRollback(id,vn){
+  if(!await uiConfirm('Trả về trạng thái TRƯỚC lần sửa lúc '+vn+'? - Hiệu lực sau RESTART game. Lần rollback cũng ghi nhật ký (rollback lại được).','↩ Rollback','btn-red'))return;
+  var j;
+  try{j=await api('/api/drop/rollback',{id:id});}
+  catch(e){
+    if(String(e.message).indexOf('XUNG ĐỘT')<0){if(!e.toasted)toast('❌ '+e.message);return;}
+    if(!await uiConfirm(e.message+'. - Vẫn rollback (ghi đè)?','↩ Vẫn rollback','btn-red'))return;
+    try{j=await api('/api/drop/rollback',{id:id,force:true});}catch(e2){if(!e2.toasted)toast('❌ '+e2.message);return;}
+  }
+  toast('↩ Đã rollback '+j.n+' dòng'+(j.kept&&j.kept.length?' · giữ hộp '+j.kept.join(', '):'')+' - hiệu lực sau RESTART game');
+  DP.st=null;if(!document.getElementById('tab-drop').classList.contains('hidden'))dropLoad();   // bảng boss đã đổi
+  ['dp','lg'].forEach(function(p){var el=document.getElementById(p+'Log');if(el&&el.innerHTML)dropLogLoad(p);});
+}
+document.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('[data-dprb]');if(b)dropRollback(b.dataset.dprb,b.dataset.dprbvn);});
 // p = 'dp' (khung trong tab Drop Boss) hoặc 'lg' (mục 💥 trong tab 📜 Log): cùng API, khác chỗ hiện
 function dropLogLoad(p){
   p=p||'dp';
   document.getElementById(p+'LogInfo').textContent='đang tải...';
   api('/api/drop/log',{n:300,q:document.getElementById(p+'LogQ').value||''}).then(function(j){
-    var h='<table><tr><th>Lúc</th><th>Cổng / IP</th><th>Việc</th><th>Chi tiết (trước → sau)</th></tr>';
+    var h='<table><tr><th>Lúc</th><th>Cổng / IP</th><th>Việc</th><th>Chi tiết (trước → sau)</th><th>↩</th></tr>';
     for(var i=0;i<j.rows.length;i++){var r=j.rows[i],d='',v='';
       if(r.act==='box'){v='💾 Sửa hộp '+esc(r.box);var b=r.before||{},a=r.after||{};
         d='BoxValue '+(b.val===a.val?b.val+' (không đổi)':'<b>'+b.val+' → '+a.val+'</b>')+' · '+(a.items||[]).length+' món'+dpDiffItems(b.items,a.items);}
       else if(r.act==='boss'){v='🎯 Hộp của boss '+esc(r.boss)+(r.bossName?' <b>'+esc(r.bossName)+'</b>':'');d=dpDiffBoxes(r.before,r.after);}
       else if(r.act==='clone'){v='🧬 Tách hộp '+esc(r.src)+' → '+esc(r.box);d='bản sao '+((r.after&&r.after.items)||[]).length+' món, BoxValue '+((r.after&&r.after.val)||'?')+(r.boss?'<br>boss '+esc(r.boss)+' '+esc(r.bossName||'')+': '+dpDiffBoxes(r.before,r.bossAfter):'');}
       else if(r.act==='loi'){v='<span style="color:#ff7b72">❌ Lỗi ghi file game</span>';d=esc(r.error||'')+' <span class="muted">(lần lưu lúc '+esc(r.ref||'')+' KHÔNG vào file)</span>';}
+      else if(r.act==='rollback'){v='↩ <b>Rollback</b> lần sửa lúc '+esc(r.refVn||'?')+(r.force?' <span style="color:#ffcf5c">(ghi đè)</span>':'');
+        d=(r.show||[]).map(function(s){
+          if(s.f==='box')return 'Hộp '+esc(s.id)+': '+(s.gone?'<span style="color:#ff7b72">xoá hộp bản sao</span>':(s.back?'khôi phục hộp':'BoxValue '+((s.b||{}).val)+' → '+((s.a||{}).val)+dpDiffItems((s.b||{}).items,(s.a||{}).items)));
+          return 'Boss '+esc(s.id)+' '+esc(s.name||'')+': '+dpDiffBoxes(s.b,s.a);}).join('<br>')+((r.kept&&r.kept.length)?'<br><span class="muted">giữ hộp '+esc(r.kept.join(', '))+'</span>':'');}
       else{v=esc(r.act||'?');}
-      h+='<tr><td style="white-space:nowrap">'+esc(r.vn||r.t||'')+'</td><td style="white-space:nowrap">'+esc(r.gate||'')+'<br><span class="muted">'+esc(r.ip||'')+'</span></td><td>'+v+'</td><td style="font-size:12px">'+d+'</td></tr>';}
+      // ↩ nút rollback cuối dòng: chỉ dòng có dữ liệu trước/sau (changes); đã rollback thì ghi chú thay nút
+      var rb=(r.changes&&r.changes.length&&r.act!=='loi')
+        ?(r.rolledBack?'<span class="muted" style="font-size:11px">↩ đã rollback<br>'+esc(r.rolledBack)+'</span>'
+          :'<button class="mini btn-red" data-dprb="'+esc(r.id)+'" data-dprbvn="'+esc(r.vn||'')+'">↩ Rollback</button>'):'';
+      h+='<tr><td style="white-space:nowrap">'+esc(r.vn||r.t||'')+'</td><td style="white-space:nowrap">'+esc(r.gate||'')+'<br><span class="muted">'+esc(r.ip||'')+'</span></td><td>'+v+'</td><td style="font-size:12px">'+d+'</td><td>'+rb+'</td></tr>';}
     document.getElementById(p+'Log').innerHTML=j.rows.length?h+'</table>':'<span class="muted">Chưa có lần sửa nào'+(j.total?' khớp bộ lọc':'')+'.</span>';
     document.getElementById(p+'LogInfo').textContent='hiện '+j.rows.length+' / '+j.total+' dòng (mới nhất trước)';
   }).catch(function(e){document.getElementById(p+'LogInfo').textContent='';toast('❌ '+e.message);});

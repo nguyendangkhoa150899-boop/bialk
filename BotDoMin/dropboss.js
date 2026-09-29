@@ -91,8 +91,11 @@ function saveWithAudit(entry, writes) {
 }
 function meta0(meta) {
     const d = new Date();
-    return { t: d.toISOString(), vn: vnTime(d), gate: (meta && meta.gate) || '?', ip: (meta && meta.ip) || '?' };
+    return { id: d.toISOString() + '-' + Math.random().toString(16).slice(2, 6), t: d.toISOString(), vn: vnTime(d),
+        gate: (meta && meta.gate) || '?', ip: (meta && meta.ip) || '?' };
 }
+// changes = danh sách dòng bị đụng: { f: 'box' (DropBoxContent) | 'mdb' (MonsterDropBoxs), id, before, after }
+// before/after = NGUYÊN dòng file (null = dòng không tồn tại) -> rollback trả đúng từng byte
 // đọc N dòng cuối (mới nhất trước), lọc theo chữ (ID boss/hộp/món, tên, IP)
 function auditTail(n, q) {
     if (!fs.existsSync(AUDIT)) return { file: AUDIT, total: 0, rows: [] };
@@ -102,12 +105,65 @@ function auditTail(n, q) {
     let lines = buf.toString('utf8').split('\n').filter((l) => l.trim());
     if (want < size) lines = lines.slice(1);   // dòng đầu có thể bị cắt giữa
     const qq = kd(String(q || '').trim());
+    // dòng nào đã bị rollback (dòng rollback nằm SAU dòng gốc nên cùng cửa sổ đọc)
+    const rb = {};
+    for (const l of lines) if (l.includes('"rollback"')) { try { const x = JSON.parse(l); if (x.act === 'rollback' && x.ref) rb[x.ref] = x.vn; } catch { /* nt */ } }
     const rows = [];
     for (let i = lines.length - 1; i >= 0 && rows.length < n; i--) {
         if (qq && !kd(lines[i]).includes(qq)) continue;
-        try { rows.push(JSON.parse(lines[i])); } catch { /* dòng hỏng: bỏ qua khi xem, file vẫn giữ */ }
+        try { const x = JSON.parse(lines[i]); if (x.id && rb[x.id]) x.rolledBack = rb[x.id]; rows.push(x); } catch { /* dòng hỏng: bỏ qua khi xem, file vẫn giữ */ }
     }
     return { file: AUDIT, total: lines.length, rows };
+}
+function auditAll() {
+    if (!fs.existsSync(AUDIT)) return [];
+    const out = [];
+    for (const l of fs.readFileSync(AUDIT, 'utf8').split('\n')) if (l.trim()) { try { out.push(JSON.parse(l)); } catch { /* nt */ } }
+    return out;
+}
+// ↩ Rollback 1 dòng nhật ký: đưa đúng các dòng file nó đụng về như TRƯỚC lần sửa đó.
+// - dòng file hiện tại khác "after" (đã có lần sửa sau) -> báo XUNG ĐỘT, chỉ làm khi force
+// - lần rollback cũng ghi nhật ký (act 'rollback', changes before = hiện tại) -> rollback được chính nó
+// - hộp bản sao (tách) chỉ xoá khi không còn quái nào dùng, còn thì giữ dòng hộp
+function rollback(body, meta) {
+    const id = String(body.id || '').trim(), force = body.force === true;
+    const all = auditAll(), e = all.find((x) => x.id === id);
+    if (!e) return { error: 'Không thấy dòng nhật ký ' + id };
+    if (!Array.isArray(e.changes) || !e.changes.length) return { error: 'Dòng này không có dữ liệu để trả về' };
+    const done = all.find((x) => x.act === 'rollback' && x.ref === id);
+    if (done && !force) return { error: '⚠ XUNG ĐỘT: dòng này đã rollback lúc ' + done.vn + ' - làm lại sẽ ghi đè trạng thái hiện tại', conflict: true };
+    const files = {};
+    const get = (f) => files[f] || (files[f] = { path: f === 'box' ? F_BOX : F_MDB, ...readF(f === 'box' ? F_BOX : F_MDB) });
+    const idx = (F, rid) => F.lines.findIndex((l) => l.split('\t')[0] === rid);
+    const conflicts = [], changes = [], kept = [];
+    for (const ch of e.changes) {
+        const F = get(ch.f), i = idx(F, ch.id), cur = i >= 0 ? F.lines[i] : null;
+        if (cur !== ch.after) conflicts.push((ch.f === 'box' ? 'hộp ' : 'boss ') + ch.id);
+        changes.push({ f: ch.f, id: ch.id, before: cur, after: ch.before });
+    }
+    if (conflicts.length && !force) return { error: '⚠ XUNG ĐỘT: đã có lần sửa SAU lần này (' + conflicts.join(', ') + ') - rollback sẽ ghi đè cả lần sửa sau', conflict: true };
+    // áp: MonsterDropBoxs trước (để biết hộp còn ai dùng), rồi DropBoxContent
+    for (const ch of changes.filter((c) => c.f === 'mdb').concat(changes.filter((c) => c.f === 'box'))) {
+        const F = get(ch.f);
+        if (ch.after === null && ch.f === 'box') {   // xoá hộp bản sao: chỉ khi không quái nào còn trỏ tới
+            const users = get('mdb').lines.filter((l) => isRow(l) && l.split('\t').slice(3, 23).includes(ch.id)).length;
+            if (users) { ch.after = ch.before; kept.push(ch.id + ' (còn ' + users + ' quái dùng)'); continue; }
+        }
+        const i = idx(F, ch.id);
+        if (ch.after === null) { if (i >= 0) F.lines.splice(i, 1); }
+        else if (i < 0) insertRows(F.lines, [ch.after]);
+        else F.lines[i] = ch.after;
+    }
+    const real = changes.filter((c) => c.before !== c.after);
+    if (!real.length) return { error: 'Không có gì để trả về (file đã đúng trạng thái trước lần sửa)' };
+    backup();
+    const show = real.map((c) => ({ f: c.f, id: c.id, name: c.f === 'mdb' ? bossName(c.id) : '',
+        b: c.f === 'box' ? boxInfo(c.before) : bossBoxes(c.before), a: c.f === 'box' ? boxInfo(c.after) : bossBoxes(c.after),
+        gone: c.after === null, back: c.before === null }));
+    saveWithAudit({ ...meta0(meta), act: 'rollback', ref: id, refVn: e.vn, of: e.act, force: !!(force && (conflicts.length || done)),
+        box: e.box, boss: e.boss, bossName: e.bossName, show, kept, changes: real },
+        Object.values(files).filter((F) => real.some((c) => (c.f === 'box' ? F_BOX : F_MDB) === F.path)).map((F) => [F.path, F.lines.join(F.eol)]));
+    return { ok: true, n: real.length, kept };
 }
 
 // boss xuất hiện ở đâu (quét 1 lần rồi cache tới khi bot restart)
@@ -227,7 +283,7 @@ function saveBox(body, meta) {
     backup();
     lines[li] = c.join('\t');
     saveWithAudit({ ...meta0(meta), act: 'box', box: id, before: boxInfo(rowBefore), after: boxInfo(lines[li]),
-        raw: { file: 'DropBoxContent.txt', before: rowBefore, after: lines[li] } }, [[F_BOX, lines.join(eol)]]);
+        changes: [{ f: 'box', id, before: rowBefore, after: lines[li] }] }, [[F_BOX, lines.join(eol)]]);
     return { id, val, items };
 }
 
@@ -259,7 +315,7 @@ function saveBossBoxes(body, meta) {
         rowAfter = lines[li] = c.join('\t');
     }
     saveWithAudit({ ...meta0(meta), act: 'boss', boss: id, bossName: bossName(id), before: bossBoxes(rowBefore), after: bossBoxes(rowAfter),
-        raw: { file: 'MonsterDropBoxs.txt', before: rowBefore, after: rowAfter } }, [[F_MDB, lines.join(eol)]]);
+        changes: [{ f: 'mdb', id, before: rowBefore, after: rowAfter }] }, [[F_MDB, lines.join(eol)]]);
     return { id, boxes };
 }
 
@@ -292,10 +348,12 @@ function cloneBox(body, meta) {
             boxes = bc.slice(3, 23).filter((v) => /^\d+$/.test(v));
         }
     }
+    const changes = [{ f: 'box', id: newId, before: null, after: newRow }];
+    if (bossAfter) changes.push({ f: 'mdb', id: boss, before: bossBefore, after: bossAfter });
     saveWithAudit({ ...meta0(meta), act: 'clone', box: newId, src, boss: boss || null, bossName: boss ? bossName(boss) : '',
         after: boxInfo(newRow), before: bossBefore ? bossBoxes(bossBefore) : null, bossAfter: bossAfter ? bossBoxes(bossAfter) : null,
-        raw: { file: 'DropBoxContent.txt + MonsterDropBoxs.txt', newBoxRow: newRow, bossBefore, bossAfter } }, writes);
+        changes }, writes);
     return { newId, boxes };
 }
 
-module.exports = { state, saveBox, saveBossBoxes, cloneBox, auditTail, AUDIT, F_MDB, F_BOX };
+module.exports = { state, saveBox, saveBossBoxes, cloneBox, auditTail, rollback, AUDIT, F_MDB, F_BOX };
