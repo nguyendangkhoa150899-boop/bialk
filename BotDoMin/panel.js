@@ -1810,7 +1810,7 @@ const HTML = `<!DOCTYPE html>
           <div class="row">
             <b>📜 Lịch sử sửa Drop Boss</b>
             <input id="dpLogQ" class="mini-in" style="width:240px" placeholder="lọc: ID/tên boss, ID hộp, ID món, IP">
-            <button class="mini" onclick="dropLogLoad()">🔄 Tải</button>
+            <button class="mini" onclick="dropLogLoad('dp')">🔄 Tải</button>
             <span class="muted" id="dpLogInfo"></span>
           </div>
           <div class="note">Mỗi lần 💾 Lưu / gắn-gỡ hộp / 🧬 Tách riêng ghi 1 dòng: ai (cổng + IP), lúc nào, trước → sau. Ghi <b>trước</b> khi sửa file game (ghi nhật ký lỗi thì không lưu). File <code>/opt/tlbb-backup/dropboss-audit.jsonl</code> chỉ ghi thêm (chattr +a), không bị cắt như log_admin.txt. Chỉ cổng SUPER xem được.</div>
@@ -2429,7 +2429,19 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey logPick" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
           <button class="btn-grey logPick" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
           <button class="btn-grey logPick" data-log="dog" onclick="logPick('dog')">💰 Sổ KNB</button>
+          <button class="btn-grey logPick epOnly" style="display:none" data-log="drop" onclick="logPick('drop')">💥 Drop Boss</button>
         </div>
+      </div>
+      <!-- 💥 29/09: lịch sử sửa Drop Boss (cùng nguồn với nút 📜 trong tab Drop Boss) - có IP nên chỉ SUPER -->
+      <div class="card logSec hidden" id="logSec-drop">
+        <h3>💥 Lịch sử sửa Drop Boss</h3>
+        <div class="note">Mỗi lần 💾 Lưu hộp / gắn-gỡ hộp / 🧬 Tách riêng: ai (cổng + IP), lúc nào, trước → sau. Nhật ký <code>/opt/tlbb-backup/dropboss-audit.jsonl</code> chỉ ghi thêm (chattr +a), không bao giờ bị cắt.</div>
+        <div class="row" style="margin-top:6px">
+          <input id="lgLogQ" class="mini-in" style="width:240px" placeholder="lọc: ID/tên boss, ID hộp, ID món, IP">
+          <button class="mini" onclick="dropLogLoad('lg')">🔄 Tải</button>
+          <span class="muted" id="lgLogInfo"></span>
+        </div>
+        <div id="lgLog" style="margin-top:8px;max-height:640px;overflow:auto"></div>
       </div>
       <div class="card logSec" id="logSec-tx">
         <h3>📜 Lịch sử Big Small</h3>
@@ -2989,7 +3001,7 @@ function dropLoad(){
 }
 function dropBossRow(id){for(var i=0;i<DP.st.bosses.length;i++)if(DP.st.bosses[i].id===id)return DP.st.bosses[i];return null;}
 // 📜 lịch sử sửa (29/09) - /api/drop/log, chỉ cổng SUPER
-function dropLogToggle(){var b=document.getElementById('dpLogBox');b.classList.toggle('hidden');if(!b.classList.contains('hidden'))dropLogLoad();}
+function dropLogToggle(){var b=document.getElementById('dpLogBox');b.classList.toggle('hidden');if(!b.classList.contains('hidden'))dropLogLoad('dp');}
 function dpItems(a){return (a||[]).map(function(x){return x.id+(x.n?' '+esc(x.n):'');}).join(', ');}
 function dpDiffItems(b,a){
   var bi={},ai={},add=[],rm=[];(b||[]).forEach(function(x){bi[x.id]=x;});(a||[]).forEach(function(x){ai[x.id]=x;});
@@ -3002,9 +3014,11 @@ function dpDiffBoxes(b,a){
   return (add.length?'<span style="color:#7ee787">+ gắn hộp '+add.join(', ')+'</span> ':'')+(rm.length?'<span style="color:#ff7b72">− gỡ hộp '+rm.join(', ')+'</span>':'')+(!add.length&&!rm.length?'<span class="muted">không đổi</span>':'')
     +'<br><span class="muted">'+(b.join(', ')||'(trống)')+' → '+(a.join(', ')||'(trống)')+'</span>';
 }
-function dropLogLoad(){
-  document.getElementById('dpLogInfo').textContent='đang tải...';
-  api('/api/drop/log',{n:300,q:document.getElementById('dpLogQ').value||''}).then(function(j){
+// p = 'dp' (khung trong tab Drop Boss) hoặc 'lg' (mục 💥 trong tab 📜 Log): cùng API, khác chỗ hiện
+function dropLogLoad(p){
+  p=p||'dp';
+  document.getElementById(p+'LogInfo').textContent='đang tải...';
+  api('/api/drop/log',{n:300,q:document.getElementById(p+'LogQ').value||''}).then(function(j){
     var h='<table><tr><th>Lúc</th><th>Cổng / IP</th><th>Việc</th><th>Chi tiết (trước → sau)</th></tr>';
     for(var i=0;i<j.rows.length;i++){var r=j.rows[i],d='',v='';
       if(r.act==='box'){v='💾 Sửa hộp '+esc(r.box);var b=r.before||{},a=r.after||{};
@@ -3014,9 +3028,9 @@ function dropLogLoad(){
       else if(r.act==='loi'){v='<span style="color:#ff7b72">❌ Lỗi ghi file game</span>';d=esc(r.error||'')+' <span class="muted">(lần lưu lúc '+esc(r.ref||'')+' KHÔNG vào file)</span>';}
       else{v=esc(r.act||'?');}
       h+='<tr><td style="white-space:nowrap">'+esc(r.vn||r.t||'')+'</td><td style="white-space:nowrap">'+esc(r.gate||'')+'<br><span class="muted">'+esc(r.ip||'')+'</span></td><td>'+v+'</td><td style="font-size:12px">'+d+'</td></tr>';}
-    document.getElementById('dpLog').innerHTML=j.rows.length?h+'</table>':'<span class="muted">Chưa có lần sửa nào'+(j.total?' khớp bộ lọc':'')+'.</span>';
-    document.getElementById('dpLogInfo').textContent='hiện '+j.rows.length+' / '+j.total+' dòng (mới nhất trước)';
-  }).catch(function(e){document.getElementById('dpLogInfo').textContent='';toast('❌ '+e.message);});
+    document.getElementById(p+'Log').innerHTML=j.rows.length?h+'</table>':'<span class="muted">Chưa có lần sửa nào'+(j.total?' khớp bộ lọc':'')+'.</span>';
+    document.getElementById(p+'LogInfo').textContent='hiện '+j.rows.length+' / '+j.total+' dòng (mới nhất trước)';
+  }).catch(function(e){document.getElementById(p+'LogInfo').textContent='';toast('❌ '+e.message);});
 }
 function dropBoxHtml(){
   var b=DP.box;
@@ -4219,6 +4233,7 @@ function logPick(k){
   localStorage.setItem('panel_log',k);
   document.querySelectorAll('.logSec').forEach(el=>el.classList.toggle('hidden',el.id!=='logSec-'+k));
   document.querySelectorAll('.logPick').forEach(b=>{b.style.outline=b.dataset.log===k?'2px solid var(--green)':'';});
+  if(k==='drop'&&typeof dropLogLoad==='function')dropLogLoad('lg');   // 💥 lịch sử Drop Boss: tải khi mở mục
 }
 // 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
 let PCOPEN=false;
