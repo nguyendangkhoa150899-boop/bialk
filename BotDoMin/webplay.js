@@ -2369,14 +2369,21 @@ const PAGE = [
     // Rút vào game
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎮 Rút vào game</h2><div class="muted" id="dogLink">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="dogRutInfo">Trừ ví web, nhận <b>KNB</b> hoặc <b>Vàng không khoá</b> (1 KNB = 1 vàng) vào túi khi <b>đăng nhập / đổi bản đồ</b>. Hai loại chung hạn ngày. Tối đa <span id="dogMax1">-</span>/lần.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px" id="dogRutInfo">Trừ ví web, KNB vào túi khi <b>đăng nhập / đổi bản đồ</b>. Tối đa <span id="dogMax1">-</span>/lần.</div>',
     // 📅 11/09: hạn ngày mỗi chiều (server đếm) - hiện còn bao nhiêu hôm nay
     '<div class="muted" id="dogDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
     '<div id="dogRutPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
-    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogRutAmt" type="number" inputmode="numeric" placeholder="Số KNB" style="flex:1" oninput="dogPreview()"><button class="btn-full" id="dogRutBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#2f8f4f,#256e3e)" onclick="dogRut()">🎮 Nhận KNB</button><button class="btn-full" id="dogVangBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#b8860b,#8a6508)" onclick="dogRut(\'vang\')">🪙 Nhận Vàng</button></div>',
+    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogRutAmt" type="number" inputmode="numeric" placeholder="Số KNB" style="flex:1" oninput="dogPreview()"><button class="btn-full" id="dogRutBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#2f8f4f,#256e3e)" onclick="dogRut()">🎮 Rút vào game</button></div>',
     '</div>',
-    // Nạp từ game
+    // 🪙 29/09: ĐỔI KNB WEB -> VÀNG KHÔNG KHOÁ trong game (1:1, hạn riêng do admin đặt)
     '<div class="card">',
+    '<div class="row"><h2 style="margin:0">🪙 Đổi KNB → Vàng trong game</h2></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px"><b>1 KNB = 1 vàng</b> không khoá. Trừ ví web, vàng vào túi khi <b>đăng nhập / đổi bản đồ</b>.</div>',
+    '<div class="muted" id="dogVangDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
+    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogVangAmt" type="number" inputmode="numeric" placeholder="Số KNB đổi ra vàng" style="flex:1"><button class="btn-full" id="dogVangBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#b8860b,#8a6508)" onclick="dogRut(\'vang\')">🪙 Đổi ra vàng</button></div>',
+    '</div>',
+    // Nạp từ game - 29/09: ẨN, người chơi dùng NPC Ví Web trong game (giữ phần tử cho JS cũ)
+    '<div class="card" style="display:none">',
     '<div class="row"><h2 style="margin:0"><img src="/knb.png" class="tic" alt="">Chuyển KNB từ game ra web</h2></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Trừ KNB <b>trong túi game</b> (không tính đồ trong hòm), cộng thẳng vào ví web. Phải đang ONLINE. Tối đa <span id="dogMax2">-</span>/lần. <span id="dogNapRateInfo" style="color:#7cff9c;font-weight:700"></span></div>',
     '<div class="muted" id="dogNapDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
@@ -5265,6 +5272,7 @@ const PAGE = [
     'DOGRATE=j.napRate>0?j.napRate:1;var nri=$("dogNapRateInfo");if(nri)nri.textContent=DOGRATE!==1?("💱 Tỉ lệ 1 : "+DOGRATE+" - lấy 1 KNB trong game được "+DOGRATE+" KNB web!"):"";',
     // 📅 11/09: mỗi chiều 1 dòng hạn riêng + xem trước khi gõ (chủ server: "nạp ra web không có cảnh báo vượt")
     'DOGST=j;var ddm=j.dayMax>0?j.dayMax:0,ddi=$("dogDayInfo");if(ddi)ddi.innerHTML=ddm?("📅 Hạn rút vào game <b>"+vnd(ddm)+"</b>/ngày · hôm nay còn <b>"+vnd(Math.max(0,ddm-(j.rutToday||0)))+"</b>"):"";',
+    'var vdm=j.vangDayMax>0?j.vangDayMax:0,vdi=$("dogVangDayInfo");if(vdi)vdi.innerHTML=vdm?("📅 Hạn đổi vàng <b>"+vnd(vdm)+"</b>/ngày · hôm nay còn <b>"+vnd(Math.max(0,vdm-(j.vangToday||0)))+"</b>"):"";',
     'var ndi=$("dogNapDayInfo");if(ndi){var nl=Math.max(0,ddm-(j.napToday||0));ndi.innerHTML=ddm?("📅 Hạn nạp ra web <b>"+vnd(ddm)+"</b> KNB TRONG GAME/ngày · hôm nay còn lấy được <b>"+vnd(nl)+"</b> trong game"+(DOGRATE!==1?" (= nhận <b>"+vnd(Math.floor(nl*DOGRATE))+"</b> web)":"")):""}dogPreview();',
     // 🪙 14/09: khung tỉ lệ + dòng giới hạn CHUNG quy ra vàng (per = 100 vàng/1 KNB game, st = bội số nhập)
     'var per=j.goldPerDog||100,st=j.goldStep||10000;',
@@ -5275,7 +5283,7 @@ const PAGE = [
     // 🔁 09/09: admin đóng chiều nào thì nút chiều đó khoá + đổi chữ (không mất nút, người chơi biết lý do)
     'var rb=$("dogRutBtn"),nb=$("dogNapBtn");var rOn=j.rutOpen!==false,nOn=j.napOpen!==false;',
     'rb.disabled=!j.ingameName||!rOn;nb.disabled=!j.ingameName||!nOn;var vb=$("dogVangBtn");if(vb){vb.disabled=rb.disabled;vb.style.display=rOn?"":"none";}',
-    'rb.textContent=rOn?"🎮 Nhận KNB":"⛔ RÚT VÀO GAME ĐANG ĐÓNG";nb.innerHTML=nOn?DOGNAPLB:"⛔ CHUYỂN RA WEB ĐANG ĐÓNG";',
+    'rb.textContent=rOn?"🎮 Rút vào game":"⛔ RÚT VÀO GAME ĐANG ĐÓNG";nb.innerHTML=nOn?DOGNAPLB:"⛔ CHUYỂN RA WEB ĐANG ĐÓNG";',
     '}).catch(function(e){toast("❌ "+e.message)});',
     'api("/api/players").then(function(j){DOGTARGETS=j.list||[];',
     // người rời list (đổi ví...) thì bỏ khỏi lựa chọn cho khỏi gửi nhầm
@@ -5290,9 +5298,9 @@ const PAGE = [
     'function dogTransfer(){if(DOGBUSY)return;var ids=Object.keys(DOGSEL);if(!ids.length)return toast("Bấm chọn ít nhất 1 người nhận đã");',
     'var amt=parseInt($("dogTfAmt").value)||0;if(amt<1)return toast("Nhập số KNB mỗi người");',
     'DOGBUSY=true;api("/api/transfer/multi",{toIds:ids,amount:amt}).then(function(j){DOGBUSY=false;setBal(j.balance);toast("💸 Đã chuyển "+vnd(amt)+"/người cho "+(j.names||[]).join(", ")+(ids.length>1?" - tổng "+vnd(j.total||amt*ids.length):""));$("dogTfAmt").value="";DOGSEL={};dogRenderPick()}).catch(function(e){DOGBUSY=false;toast("❌ "+e.message)})}',
-    'function dogRut(k){if(DOGBUSY)return;k=k==="vang"?"vang":"knb";var amt=parseInt($("dogRutAmt").value)||0;if(amt<1)return toast("Nhập số KNB");',
+    'function dogRut(k){if(DOGBUSY)return;k=k==="vang"?"vang":"knb";var ai=$(k==="vang"?"dogVangAmt":"dogRutAmt"),amt=parseInt(ai.value)||0;if(amt<1)return toast("Nhập số KNB");',
     'if(k==="vang"&&!confirm("Đổi "+amt.toLocaleString("vi-VN")+" KNB web thành "+amt.toLocaleString("vi-VN")+" VÀNG không khoá trong game?"))return;',
-    'DOGBUSY=true;var b=$(k==="vang"?"dogVangBtn":"dogRutBtn"),L=b.textContent;b.disabled=true;b.textContent="⏳ Đang giao...";api("/api/dogbridge/rut",{amount:amt,kind:k}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent=L;setBal(j.balance);toast(j.message||"✅ Đã gửi!");$("dogRutAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent=L;toast("❌ "+e.message);dogSync()})}',
+    'DOGBUSY=true;var b=$(k==="vang"?"dogVangBtn":"dogRutBtn"),L=b.textContent;b.disabled=true;b.textContent="⏳ Đang giao...";api("/api/dogbridge/rut",{amount:amt,kind:k}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent=L;setBal(j.balance);toast(j.message||"✅ Đã gửi!");ai.value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent=L;toast("❌ "+e.message);dogSync()})}',
     'var DOGRATE=1,DOGST=null;',
     'var DOGNAPLB="<img src=\\"/knb.png\\" class=\\"bic\\" alt=\\"\\">Chuyển ra web";',
 

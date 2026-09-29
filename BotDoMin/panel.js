@@ -159,7 +159,7 @@ function startPanel(ctx) {
             tienlen: ctx.tienlenQuanLy ? ctx.tienlenQuanLy.tomTat() : null,    // 🀄 ghế, cấu hình, bàn đang đánh
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
-            dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,   // 📅 11/09
+            dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null, dogVangDayMax: ctx.getDogVangDayMax ? ctx.getDogVangDayMax() : null,   // 📅 11/09
             dogNapRate: ctx.getDogNapRate ? ctx.getDogNapRate() : null,   // 💱 11/09
             withdraw: {
                 live: !!wd.message,
@@ -875,6 +875,11 @@ function startPanel(ctx) {
                     if (!ctx.setDogBridgeDayMax) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     const r = ctx.setDogBridgeDayMax(body.dayMax);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    if (body.vangDayMax !== undefined && ctx.setDogVangDayMax) {   // 🪙 29/09 hạn riêng đổi vàng
+                        const vr = ctx.setDogVangDayMax(body.vangDayMax);
+                        if (vr.error) return sendJSON(res, 400, { ok: false, error: vr.error });
+                        r.vangDayMax = vr.vangDayMax;
+                    }
                     if (body.napRate !== undefined && ctx.setDogNapRate) {   // 💱 lưu chung 1 nút
                         const nr = ctx.setDogNapRate(body.napRate);
                         if (nr.error) return sendJSON(res, 400, { ok: false, error: nr.error });
@@ -2408,14 +2413,14 @@ const HTML = `<!DOCTYPE html>
           <label id="gs_nap_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_nap" style="width:auto;margin:0" onchange="gameSwitch('nap',this)"> 💬 Nạp KNB game → web</label>
         </div>
         <div class="row" style="gap:8px;align-items:center;margin-top:6px">
-          <span>📅 Cầu KNB: <b>mỗi người</b> chuyển tối đa</span>
-          <input class="mini-in" id="gsDogDay" type="number" min="0" placeholder="10000" style="width:110px">
-          <span>KNB <b>/ chiều / ngày</b></span>
-          <span style="margin-left:10px">💱 Nạp game→web: <b>1</b> KNB game =</span>
-          <input class="mini-in" id="gsNapRate" type="number" min="0.1" max="100" step="0.1" placeholder="2" style="width:70px" title="Tỉ lệ nạp: 2 = lấy 1 KNB trong game cộng 2 KNB ví web. Rút web→game luôn 1:1. Hạn ngày chiều nạp đếm theo số web nhận.">
-          <span>KNB web</span>
-          <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu hạn & tỉ lệ</button>
-          <span class="muted" style="font-size:12px">đếm theo KNB TRONG GAME (rút = số vào game, nạp = số lấy ra khỏi game, web nhận × tỉ lệ) · 2 chiều đếm RIÊNG · 0 = không giới hạn · 00:00 giờ VN · 🪙 ĐỔI VÀNG dùng CHUNG hạn chiều nạp: 100 vàng = 1 KNB game, nên 10.000 vàng = tỉ lệ × 100 KNB web</span>
+          <span>📅 <b>Mỗi người</b> rút KNB vào game tối đa</span>
+          <input class="mini-in" id="gsDogDay" type="number" min="0" placeholder="30000" style="width:110px">
+          <span>KNB/ngày</span>
+          <span style="margin-left:10px">🪙 Đổi KNB → <b>vàng không khoá</b> tối đa</span>
+          <input class="mini-in" id="gsVangDay" type="number" min="0" placeholder="30000" style="width:110px">
+          <span>vàng/ngày</span>
+          <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu hạn</button>
+          <span class="muted" style="font-size:12px">1 KNB = 1 vàng · 2 hạn đếm RIÊNG · 0 = không giới hạn · reset 00:00 giờ VN · game → web (NPC Ví Web) không giới hạn</span>
         </div>
         <div class="row" style="gap:10px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
           <div style="flex:2"><label>🎚️ Cược tối thiểu Dò Mìn + Leo Thang (KNB/ván)</label><input id="gsMinBet" type="number" min="1" placeholder="vd: 400"></div>
@@ -4299,12 +4304,13 @@ async function minBetSave(btn){
 async function dogDaySave(btn){
   const v=parseInt(document.getElementById('gsDogDay').value);
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
-  const nrEl=document.getElementById('gsNapRate');const nr=nrEl&&nrEl.value!==''?parseFloat(nrEl.value):undefined;
-  if(nr!==undefined&&!(nr>=0.1&&nr<=100))return toast('❌ Tỉ lệ nạp phải 0.1–100');
-  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,napRate:nr}).then(j=>{toast('📅 Hạn chuyển KNB: '+(j.dayMax?j.dayMax.toLocaleString('vi-VN'):'không giới hạn')+'/người/chiều/ngày'+(j.napRate!==undefined?' · 💱 nạp 1 : '+j.napRate:''));HOLD_SIG='';refresh();}));
+  const vv=parseInt(document.getElementById('gsVangDay').value);
+  if(!(vv>=0))return toast('❌ Hạn vàng: nhập số ≥ 0 (0 = không giới hạn)');
+  const kg=n=>n?n.toLocaleString('vi-VN'):'không giới hạn';
+  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,vangDayMax:vv}).then(j=>{toast('📅 Rút KNB '+kg(j.dayMax)+'/ngày · 🪙 đổi vàng '+kg(j.vangDayMax)+'/ngày');HOLD_SIG='';refresh();}));
 }
 function gsFill(){
-  const nrx=document.getElementById('gsNapRate');if(nrx&&nrx.value===''&&document.activeElement!==nrx&&STATE&&STATE.dogNapRate!==null&&STATE.dogNapRate!==undefined)nrx.value=STATE.dogNapRate;
+  const vgx=document.getElementById('gsVangDay');if(vgx&&vgx.value===''&&document.activeElement!==vgx&&STATE&&STATE.dogVangDayMax!==null&&STATE.dogVangDayMax!==undefined)vgx.value=STATE.dogVangDayMax;
   const dd=document.getElementById('gsDogDay');if(dd&&dd.value===''&&document.activeElement!==dd&&STATE&&STATE.dogBridgeDayMax!==null&&STATE.dogBridgeDayMax!==undefined)dd.value=STATE.dogBridgeDayMax;
   const mb=document.getElementById('gsMinBet');if(mb&&mb.value===''&&document.activeElement!==mb&&STATE&&STATE.pot&&STATE.pot.minBet)mb.value=STATE.pot.minBet;
   const st=gsState();
