@@ -2992,7 +2992,7 @@ function dropDraw(){
   for(var i=0;i<rows.length;i++){var b=rows[i];var chips='';
     for(var j=0;j<b.boxes.length;j++){var x=b.boxes[j];var bx=DP.st.boxes[x]||{};var shared=(bx.nOther||0)>0;
       chips+='<span style="white-space:nowrap"><button class="mini'+(shared?'':' btn-green')+'" data-dpbox="'+x+'" data-dpboss="'+b.id+'" title="'+(bx.missing?'hộp KHÔNG tồn tại':(bx.items?bx.items.length+' món, BoxValue '+bx.val:''))+'">'+x+(shared?'⚠':'')+'</button><button class="mini" style="padding:2px 5px;opacity:.6" title="Gỡ hộp '+x+' khỏi boss này" data-dprm="'+x+'" data-dpboss="'+b.id+'">×</button></span> ';}
-    h+='<tr><td class="muted">'+b.id+'</td><td><b>'+esc(b.name)+'</b></td><td>'+b.lv+'</td><td class="muted" style="font-size:11px;max-width:180px">'+esc(b.sp||'-')+'</td><td>'+(chips||'<span class="muted">không rơi gì</span>')+'</td><td><button class="mini" data-dpadd="'+b.id+'">+ hộp</button></td></tr>';
+    h+='<tr><td class="muted">'+b.id+'</td><td><b>'+esc(b.name)+'</b></td><td>'+b.lv+(b.mv?'<br><span class="muted" style="font-size:11px" title="Mvalue: giá trị quái - so với BoxValue của hộp để đoán tỉ lệ rơi (Mv ÷ BV)">Mv '+b.mv+'</span>':'')+'</td><td class="muted" style="font-size:11px;max-width:180px">'+esc(b.sp||'-')+'</td><td>'+(chips||'<span class="muted">không rơi gì</span>')+'</td><td><button class="mini" data-dpadd="'+b.id+'">+ hộp</button></td></tr>';
     if(DP.open===b.id&&DP.box)h+='<tr><td colspan="6">'+dropBoxHtml()+'</td></tr>';
   }
   document.getElementById('dpList').innerHTML=h+'</table>';
