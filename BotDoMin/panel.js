@@ -1363,6 +1363,8 @@ const HTML = `<!DOCTYPE html>
   body.viewonly #tab-user input,body.viewonly #tab-user button,body.viewonly #tab-user select,
   body.viewonly #tab-pal input,body.viewonly #tab-pal button,body.viewonly #tab-pal select{pointer-events:none;opacity:.4}
   body.viewonly #tab-user #search{pointer-events:auto;opacity:1}
+  /* 29/09 NetCo4: cổng admin THƯỜNG được sửa SHOP (server đã mở 4 route shop) - chỉ thẻ này mở khoá */
+  body.viewonly #tab-pal #shopCard input,body.viewonly #tab-pal #shopCard button,body.viewonly #tab-pal #shopCard select,body.viewonly #tab-pal #shopCard label{pointer-events:auto;opacity:1}
 .pwOff{display:none!important} /* 29/09 NetCo4: muc Palworld da tat */
 </style>
 </head>
@@ -1980,7 +1982,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div id="palChests" class="hist" style="display:none"></div>
       </div>
-      <div class="card">
+      <div class="card" id="shopCard">
         <h3>🛒 Shop Item - đồ vào túi khi nhân vật đăng nhập / đổi bản đồ</h3>
         <div class="card">
           <h3>🏷️ Nhóm hàng trong shop</h3>
