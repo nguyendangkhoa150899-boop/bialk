@@ -1227,6 +1227,7 @@ function claimStreak(userId) {
 // ngay tại kênh rồi, đăng thêm là ra 2 tin trùng nội dung. Mặc định TẮT để chỗ gọi
 // mới sau này có quên cũng không tự dưng spam kênh.
 function claimNghien(userId, announce = false) {
+    return { error: '💉 Nghiện đã tắt trên server NetCo4' };   // 29/09: chủ server bỏ (KNB miễn phí mỗi giờ)
     const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
     const u = getUserData(userId);
     const passed = Date.now() - (u.lastNghien || 0);

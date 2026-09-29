@@ -2384,7 +2384,7 @@ const PAGE = [
     '<div id="dogNapPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
     '</div>',
     // 🪙 14/09: ĐỔI VÀNG trong game -> KNB web. UI riêng nhưng DÙNG CHUNG giới hạn ngày với Chuyển KNB ra web.
-    '<div class="card">',
+    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt (Palworld)
     '<div class="row"><h2 style="margin:0">🪙 Đổi Vàng ra KNB</h2><div class="muted" id="dogGoldStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Trừ <b>Đồng Vàng</b> trong túi game (không tính trong hòm), cộng KNB vào ví web. Phải đang ONLINE. Chỉ nhập <b>bội số 10.000</b> vàng.</div>',
     '<div class="dogRate"><img src="/knb.png" alt=""><span id="dogGoldUnitG">-</span> Đồng Vàng <span class="ar">→</span> <img src="/knb.png" alt=""><span id="dogGoldUnitD" style="color:#ffd76a">-</span> KNB</div>',
@@ -2399,7 +2399,7 @@ const PAGE = [
     // progress đủ tháng ăn bonus. Nghiện = nút đếm ngược 60 phút theo GIỜ SERVER.
     // 🎁 15/09: TRANG QUÀ ADMIN TẶNG - tab vàng ở nhóm Hồ sơ, chỉ hiện khi còn quà chưa nhận hôm nay
     '<div id="pageGift" class="hidden">',
-    '<div class="card">',
+    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt (Palworld)
     '<div class="row"><h2 style="margin:0">🎁 Quà admin tặng hôm nay</h2><div class="muted" id="giftStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Mỗi món nhận <b>1 lần/ngày</b>, số lượng do admin đặt. Nhận xong món ẩn tới 00:00 rồi hiện lại. Phải đang <b>online trong game</b> để bot giao vào túi.</div>',
     '<div id="giftList" style="margin-top:10px"><div class="muted">Đang tải...</div></div>',
@@ -2437,13 +2437,13 @@ const PAGE = [
     '<button class="btn-full" id="dClaim" onclick="dailyClaim()">✨ ĐIỂM DANH NGAY</button>',
     '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center">Điểm danh ở đây hay gõ <b>/diemdanh</b> trong Discord đều tính chung 1 lượt/ngày.</div>',
     '</div>',
-    '<div class="card">',
+    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt
     '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
     '</div>',
     // 🎒 RƯƠNG PAL (25/08): pal quay trúng nằm ở đây - bán lấy KNB hoặc NHẬN vào game
-    '<div class="card">',
+    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt
     '<div class="row"><h2 style="margin:0">🎒 Rương Pal</h2><div class="muted" id="pcStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px" id="pcLink">-</div>',
     // ⏳ cooldown nhận pal CHUNG toàn server (28/08)
