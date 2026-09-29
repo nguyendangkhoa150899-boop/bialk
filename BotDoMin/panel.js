@@ -1329,6 +1329,7 @@ const HTML = `<!DOCTYPE html>
   body.viewonly #tab-user input,body.viewonly #tab-user button,body.viewonly #tab-user select,
   body.viewonly #tab-pal input,body.viewonly #tab-pal button,body.viewonly #tab-pal select{pointer-events:none;opacity:.4}
   body.viewonly #tab-user #search{pointer-events:auto;opacity:1}
+.pwOff{display:none!important} /* 29/09 NetCo4: muc Palworld da tat */
 </style>
 </head>
 <body>
@@ -1372,10 +1373,10 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
-        <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
+        <button data-tab="gift" class="epOnly pwOff" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
+        <button data-tab="give" class="epOnly pwOff" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
-      <div class="grp"><span class="glb">PALWORLD</span><div class="gbt">
+      <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
         <button data-tab="pal" onclick="tab('pal')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
@@ -1738,7 +1739,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Cầu chuyển KNB <b>tự động</b> give/take theo bảng này: người chơi bấm 🎮/💬 là bot giao/trừ KNB cho đúng nhân vật đã liên kết. Người chơi <b>không tự đặt tên được</b> - chỉ admin sửa ở đây (chống giả tên rút trộm túi người khác). Gõ <b>ĐÚNG tên nhân vật trong game</b> (không dấu, bỏ ký tự lạ cũng khớp); để trống rồi 💾 = hủy liên kết.</div>
         <div id="palLinks"></div>
       </div>
-      <div class="card">
+      <div class="card pwOff">
         <h3>🆘 Điểm tẩu thoát khẩn cấp</h3>
         <div class="note">Nút 🆘 trên Hồ sơ web dịch chuyển người chơi về điểm này (1 tiếng/lần). <b>Chưa đặt = game tự chọn PlayerStart - đo ra đang rơi ở World Tree!</b> Cách đặt: đứng nhân vật của bạn ở chỗ muốn làm điểm về (vd bãi tân thủ), gõ tên nhân vật, bấm 📍 rồi 💾 Lưu. Đổi điểm KHÔNG cần restart gì.</div>
         <div class="row" style="gap:6px">
@@ -1757,7 +1758,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note" id="rpNow">-</div>
       </div>
-      <div class="card">
+      <div class="card pwOff">
         <h3>🎲 Kênh khoe kết quả quay Pal</h3>
         <div class="muted" id="gachaInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Channel ID (kênh đăng công khai ai quay trúng con gì)</label>
@@ -1768,7 +1769,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Lưu xong bot gửi 1 tin xác nhận vào kênh đó. Từ đó mỗi lượt quay Pal ngẫu nhiên 2.000 sẽ đăng công khai: <b>ai quay, trúng con gì</b> (tag người quay). Tắt = chỉ người quay tự thấy như cũ.</div>
       </div>
-      <div class="card epOnly">
+      <div class="card epOnly pwOff">
         <h3>⚡ Ép lượt quay Pal kế tiếp (thử nổ hũ)</h3>
         <div id="pwForceNow" style="font-size:13px;margin-bottom:8px">-</div>
         <label>Code hoặc tên pal (mặc định Mimog = ô nổ hũ)</label>
@@ -1794,7 +1795,7 @@ const HTML = `<!DOCTYPE html>
       <!-- 🎁 Vòng quay pal WEB (25/08): quay ở tab Quay Pal trên web chơi, trúng vào
            RƯƠNG trang Hồ sơ. NHẬN = bot tự giao qua dashboard (lệnh PAL2 của mod) -
            KHÔNG cần admin đưa tay nữa. Pal dùng được sau restart server. -->
-      <div class="card">
+      <div class="card pwOff">
         <h3>🎁 Vòng quay Pal web + Rương</h3>
         <div class="note">Vé quay trừ thẳng ví. <b>Nổ hũ (15/09)</b>: quay trúng đích danh <b>Mimog (#144)</b> = 25.000 + thưởng 10.000 = 35.000 cố định (2 ô Mimog trên vòng), không nuôi hũ nữa. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
         <div class="row" style="margin-top:8px">
@@ -1859,7 +1860,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note" id="pwCfgNow">-</div>
       </div>
-      <div class="card">
+      <div class="card pwOff">
         <h3>🔒 PAL GỐC (tắt chỉ số pal)</h3>
         <div class="note">Bật là MỌI pal giao ra <b>cấp đặt ở ô 🆙 · sao đặt ở ô ⭐ · không passive · bản thường</b> (chỉ chọn giới tính, khoá mua raid đích danh) - nhưng vẫn kèm <b>nền chỉ số</b> đặt ở 2 ô dưới. Vòng quay vẫn đủ 6 huyền thoại (tô vàng) + pal tím; pal raid chỉ ra qua ô RAID vòng may mắn. Đặt 0/0 = trần trụi tuyệt đối. Linh hồn đi bước 3% (20 không chia hết nên mặc định 21). Đổi số chỉ áp cho pal nhận TỪ GIỜ - pal đã giao không đổi.</div>
         <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700;margin-top:6px"><input type="checkbox" id="pwRaw" style="width:auto"> BẬT chế độ PAL GỐC</label>
@@ -1901,9 +1902,9 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div id="palChests" class="hist" style="display:none"></div>
       </div>
-      <div class="card">
+      <div class="card pwOff">
         <h3>🛒 Shop Item - item giao thẳng vào game</h3>
-        <div class="card">
+        <div class="card pwOff">
           <h3>🏷️ Nhóm hàng trong shop</h3>
           <div class="muted" style="font-size:13px;margin-bottom:8px">Sửa tên nhóm (kèm emoji) hoặc thêm nhóm mới. Tên này hiện <b>cả trên web người chơi lẫn mọi ô chọn nhóm ở đây</b>.</div>
           <div id="icBody"></div>

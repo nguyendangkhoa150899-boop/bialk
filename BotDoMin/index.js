@@ -1685,7 +1685,7 @@ const DEFAULT_ITEM_SHOP = [
     { cat: 'important', id: 'UnlockEquipmentSlot_Accessory_02', name: 'Hộp Phụ Kiện Bí Ẩn', price: 10000, max: 1, img: 'T_itemicon_Essential_UnlockEquipmentSlot_Accessory_1.webp', note: 'Chiếc hộp bí ẩn có phần bên trong đồng bộ với cơ thể người sở hữu. Sở hữu vật phẩm sẽ mở thêm 1 ô trang bị phụ' },
 ];
 function seedItemShopIfEmpty() {
-    if (dbCache._itemShop === undefined) { setItemShop(DEFAULT_ITEM_SHOP); writeLog('SYSTEM', `[SHOP ITEM] Seed ${DEFAULT_ITEM_SHOP.length} món mặc định (DB chưa có danh mục)`); return; }
+    if (dbCache._itemShop === undefined) { setItemShop([]); return; }   // 29/09 NetCo4: KHONG seed 154 mon Palworld (shop da tat)
     // 04/09: shop ĐÃ có danh mục trong DB -> GHÉP THÊM món mặc định còn thiếu (so theo
     // id, không đè món admin đã sửa). Chạy ĐÚNG 1 LẦN theo cờ - sau đợt này admin xoá
     // món nào thì nó không tự mọc lại; đợt bổ sung sau thì THÊM CỜ MỚI + lọc đúng nhóm
@@ -8446,23 +8446,24 @@ function stopLonnho() {
 function getWithdrawMessageData() {
     // 25/08: SHOP PAL đã DỜI HẾT LÊN WEB (Quay Pal + Chọn Pal ở nhóm 👤 HỒ SƠ).
     // Bảng Discord này giờ CHỈ còn chuyển KNB hai chiều - không nút pal nữa.
+    // 29/09 NetCo4: cau KNB Thien Long (tlbb.js). Chieu ra web lam o NPC trong game, khong lam tu Discord.
     const lines = [
-        `Chuyển KNB **tự động** giữa ví Discord và KNB trong game - xử lý ngay trong ~10 giây, không cần chờ admin.`,
+        `Chuyển **Kim Nguyên Bảo (KNB)** giữa ví mini game và nhân vật Thiên Long, tỉ giá **1:1**.`,
         '',
-        `**🎮 Chuyển vào game** - trừ ví Discord, KNB rơi thẳng vào túi trong game (bạn phải **đang online**). Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
-        `**💬 Chuyển ra Discord** - trừ KNB **trong túi** (không tính đồ trong hòm), cộng thẳng vào ví Discord. Tối đa ${WITHDRAW_MAX_PER_REQUEST.toLocaleString()}/lần.`,
+        `**🎮 Chuyển vào game** - trừ ví, KNB vào túi khi nhân vật **đăng nhập hoặc đổi bản đồ** (không cần đang online). Tối đa **${dogBridgeDayMax().toLocaleString()} KNB/ngày**.`,
+        `**💬 Chuyển ra ví** - vào game gặp ${TLBB_NPC_HINT}, chọn số KNB. Ví tự cộng sau vài giây, không giới hạn.`,
         '',
-        `**🎁 Pal chuyển hết lên WEB**: ${WEB_PLAY_URL} → nhóm 👤 HỒ SƠ có **🎁 Quay Pal** (${palWheelCfg().price.toLocaleString()}/lượt, kiểu CSGO, có ô PAL RAID) và **🎯 Chọn Pal** (${palWheelCfg().customPrice.toLocaleString()}, tự chọn con mình thích, không raid). Trúng/mua xong pal nằm trong 🎒 RƯƠNG: bán lại ${palWheelCfg().sellPrice.toLocaleString()} hoặc chọn linh hồn + passive rồi bot GIAO THẲNG vào game.`,
+        `Chưa liên kết nhân vật thì nhắn admin. Chơi mini game trên web: ${WEB_PLAY_URL}`,
     ];
 
     const embed = new EmbedBuilder()
-        .setTitle('🔄 KNB - CHUYỂN HAI CHIỀU DISCORD ↔ GAME')
+        .setTitle('🐉 KNB - CHUYỂN GIỮA VÍ MINI GAME ↔ THIÊN LONG')
         .setColor(0xf1c40f)
         .setDescription(lines.join('\n'));
 
     const rowTransfer = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('rut_open').setLabel('Chuyển vào game').setEmoji('🎮').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra Discord').setEmoji('💬').setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId('nap_open').setLabel('Chuyển ra ví').setEmoji('💬').setStyle(ButtonStyle.Primary)
     );
     return { embeds: [embed], components: [rowTransfer] };
 }
@@ -9175,6 +9176,9 @@ client.on('interactionCreate', async interaction => {
 
     // ======== NÚT CHUYỂN KNB TỪ GAME RA DISCORD ========
     if (interaction.customId === 'nap_open') {
+        // 29/09 NetCo4: chiều game -> ví làm ở NPC trong game, không hỏi số ở Discord
+        const r = await webNapGame(userId);
+        return interaction.reply({ content: r.error || r.message, ephemeral: true });
         // KHÔNG gọi API nào trước showModal (Discord chỉ cho 3 giây, SFTP mất ~6s).
         if (!(getUserData(userId).ingameName || '').trim()) {
             return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });

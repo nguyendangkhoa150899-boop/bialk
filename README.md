@@ -43,6 +43,7 @@ Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách 
 - Chưa thử chuyển KNB thật cả 2 chiều trong game (NPC Ví Web có hiệu lực từ restart game 29/09 ~11:50).
 - Tab 💸 Chuyển/Rút trên web vẫn còn ô "nạp từ game" kiểu cũ: bấm sẽ hiện hướng dẫn ra NPC. Nên sửa giao diện cho rõ.
 - Tên đơn vị trong code vẫn là `points` / `dog*` (chỉ đổi chữ hiển thị thành KNB).
+- Đã xóa dữ liệu Palworld (29/09): `pals.json`, `passives.json`, `gameitems.json`, `shop_items.js`, `assets/palimage/`, ảnh item trong `assets/itemimage/` (chỉ giữ `kimnguyenbao.jpg`), 154 món shop seed. Code Palworld còn trong `index.js`/`webplay.js`/`panel.js` nhưng tab, mục panel (class `pwOff`) và nút đã ẩn/tắt; log khởi động báo "Khong doc duoc pals.json/passives.json" là bình thường.
 - Poker chạy tiến trình riêng (`Poker/index.js`, cổng 3003), chưa dựng trên VPS.
 
 Chi tiết từng game: README trong từng thư mục (`BotDoMin/README.md`, `TaiXiu/`, `SieuTaiXiu/`, `Roulette/`, `Poker/`, `TienLen/`). Phần Palworld trong `BotDoMin/README.md` là lịch sử, không còn đúng.

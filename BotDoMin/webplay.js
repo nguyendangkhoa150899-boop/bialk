@@ -2387,7 +2387,7 @@ const PAGE = [
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🪙 Đổi Vàng ra KNB</h2><div class="muted" id="dogGoldStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Trừ <b>Đồng Vàng</b> trong túi game (không tính trong hòm), cộng KNB vào ví web. Phải đang ONLINE. Chỉ nhập <b>bội số 10.000</b> vàng.</div>',
-    '<div class="dogRate"><img src="/itemimage/T_itemicon_Material_Money.webp" alt=""><span id="dogGoldUnitG">-</span> Đồng Vàng <span class="ar">→</span> <img src="/knb.png" alt=""><span id="dogGoldUnitD" style="color:#ffd76a">-</span> KNB</div>',
+    '<div class="dogRate"><img src="/knb.png" alt=""><span id="dogGoldUnitG">-</span> Đồng Vàng <span class="ar">→</span> <img src="/knb.png" alt=""><span id="dogGoldUnitD" style="color:#ffd76a">-</span> KNB</div>',
     '<div class="muted" id="dogGoldDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
     '<div class="row" style="gap:8px;margin-top:8px"><input id="dogGoldAmt" type="text" inputmode="numeric" placeholder="Số vàng (vd 10.000)" style="flex:1" oninput="dogGoldFmt(this)"><button class="btn-full" id="dogGoldBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#e0ac3f,#b8862a);color:#241d0a" onclick="dogGold()">🪙 Đổi ra KNB</button></div>',
     '<div id="dogGoldPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
