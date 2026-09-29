@@ -1,4 +1,4 @@
-// Bộ kiểm cho TienLen/web.js, cổng vào, ghế, sẵn sàng, VÍ DOGCOIN, chống lộ bài.
+// Bộ kiểm cho TienLen/web.js, cổng vào, ghế, sẵn sàng, VÍ KNB, chống lộ bài.
 // Gọi thẳng xuLy() với req/res giả (không cần dựng máy chủ HTTP).
 // Chạy: node TienLen/kiemtra/web-test.js
 'use strict';
@@ -10,7 +10,7 @@ let P = 0, F = 0;
 const ok = (t, dk, them) => { if (dk) { P++; console.log('  OK   ' + t); } else { F++; console.log('  HỎNG ' + t + (them ? '  ->  ' + them : '')); } };
 const muc = (t) => console.log('\n== ' + t + ' ==');
 
-/** Dựng một "bot" giả: ví Dogcoin trong RAM + sổ log + sổ phế. */
+/** Dựng một "bot" giả: ví KNB trong RAM + sổ log + sổ phế. */
 function dung(tuyChon = {}) {
     const vi = { A: 100000, B: 100000, C: 100000, D: 100000, NGHEO: 500, CHUALK: 100000 };
     const ten = { A: 'An', B: 'Bình', C: 'Cường', D: 'Dũng', NGHEO: 'Nghèo', CHUALK: 'ChuaLK' };

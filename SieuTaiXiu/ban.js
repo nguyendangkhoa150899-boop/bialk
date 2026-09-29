@@ -196,11 +196,11 @@ function taoBan(ctx) {
         const tongTru = ds.reduce((s, k) => s + CUA.tienTru(gop[k]), 0);
 
         for (const k of ds) if (gop[k] < SAN_CUOC) {
-            return { error: `Mỗi cửa tối thiểu ${SAN_CUOC.toLocaleString('vi-VN')} Dogcoin (cửa ${CUA.THEO_ID[k].ten} mới ${gop[k].toLocaleString('vi-VN')})` };
+            return { error: `Mỗi cửa tối thiểu ${SAN_CUOC.toLocaleString('vi-VN')} KNB (cửa ${CUA.THEO_ID[k].ten} mới ${gop[k].toLocaleString('vi-VN')})` };
         }
         const vi = nguoi(userId).points || 0;
         if (vi < tongTru) {
-            return { error: `Không đủ Dogcoin! Cần ${tongTru.toLocaleString('vi-VN')} (đã gồm phí 20%), ví có ${vi.toLocaleString('vi-VN')}` };
+            return { error: `Không đủ KNB! Cần ${tongTru.toLocaleString('vi-VN')} (đã gồm phí 20%), ví có ${vi.toLocaleString('vi-VN')}` };
         }
         const tran = tranCfg();
         for (const k of ds) {
@@ -211,7 +211,7 @@ function taoBan(ctx) {
         }
         const capTong = tranToiDaNguoi();
         if (capTong > 0 && tongCuocCua(userId) + tongCuoc > capTong) {
-            return { error: `Giới hạn ${capTong.toLocaleString('vi-VN')} Dogcoin/người/ván - ván này bạn đã đặt ${tongCuocCua(userId).toLocaleString('vi-VN')}` };
+            return { error: `Giới hạn ${capTong.toLocaleString('vi-VN')} KNB/người/ván - ván này bạn đã đặt ${tongCuocCua(userId).toLocaleString('vi-VN')}` };
         }
 
         // qua hết mới đụng ví

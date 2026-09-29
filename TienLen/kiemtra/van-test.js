@@ -182,7 +182,7 @@ muc('người hết bài thì bỏ qua, vòng vẫn chạy đúng');
 
 // ---------------------------------------------------------------- TIỀN
 // ⚠️ TOÀN BỘ KHỐI NÀY VIẾT LẠI 20/09 theo luật gốc Ba Bích (babichgame.gitbook.io).
-// Mọi con số dưới đây lấy mucCuoc = 1.000, tức 1 CƯỢC = 1.000 Dogcoin, cho dễ nhẩm.
+// Mọi con số dưới đây lấy mucCuoc = 1.000, tức 1 CƯỢC = 1.000 KNB, cho dễ nhẩm.
 // Bàn thật: phòng truyền thống 1 cược = 50.000, phòng đếm lá 1 cược = 5.000.
 //
 // 📌 CÓNG = cả ván không đánh nổi một lá nào. Trong mấy ván dựng tay bài 1–2 lá dưới đây

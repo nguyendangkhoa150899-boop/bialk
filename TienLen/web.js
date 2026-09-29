@@ -4,7 +4,7 @@
 //  Giống hệt cách Poker/web.js gắn vào: webplay.js phục vụ ../TienLen/trang.html tại
 //  /tienlen/ và giao mọi /api/tienlen/* cho xuLy() ở đây (SAU cổng liên kết).
 //
-//  ⚠️ KHÁC POKER Ở CHỖ QUAN TRỌNG NHẤT: bàn này ĂN DOGCOIN THẬT. Mọi phép cộng/trừ ví
+//  ⚠️ KHÁC POKER Ở CHỖ QUAN TRỌNG NHẤT: bàn này ĂN KNB THẬT. Mọi phép cộng/trừ ví
 //  nằm GỌN trong hàm traTien() ở file này; van.js chỉ tính ra con số, không đụng ví.
 //  Bốn chốt an toàn:
 //    1. VỐN TỐI THIỂU mới được ngồi, và kiểm LẠI trước mỗi ván. Hệ số theo chế độ (xem
@@ -67,7 +67,7 @@ const PHONG_MAC_DINH = [
 /**
  * deps:
  *   layNguoi(id)            -> { name, points, ingameName } hoặc null
- *   congVi(id, tien, lyDo)  -> cộng (âm = trừ) Dogcoin vào ví người chơi
+ *   congVi(id, tien, lyDo)  -> cộng (âm = trừ) KNB vào ví người chơi
  *   thuPhe(tien, lyDo)      -> nhà cái thu phế (tuỳ chọn, chỉ để ghi sổ)
  *   laAdmin(id)             -> true nếu được chỉnh cấu hình bàn
  *   tenCua(id), ghiLog(dong), giayAfk, giayXemKet (tuỳ chọn)
@@ -122,7 +122,7 @@ function taoTienLen(deps) {
         if (!u.ingameName) return 'Chưa liên kết tên nhân vật, nhờ admin liên kết trước đã';
         const von = vonToiThieu();
         if ((u.points || 0) < von)
-            return 'Cần ít nhất ' + von.toLocaleString('vi-VN') + ' Dogcoin mới vào bàn cược ' +
+            return 'Cần ít nhất ' + von.toLocaleString('vi-VN') + ' KNB mới vào bàn cược ' +
                 phong.cauHinh.mucCuoc.toLocaleString('vi-VN') + ' (đang có ' + (u.points || 0).toLocaleString('vi-VN') + ')';
         return null;
     }
@@ -574,7 +574,7 @@ function taoSanh(deps, ds) {
             if (!u || (u.points || 0) < von)
                 return {
                     error: 'Phòng cược ' + m.toLocaleString('vi-VN') + ' cần ít nhất ' +
-                        von.toLocaleString('vi-VN') + ' Dogcoin mới vào được (bạn đang có ' +
+                        von.toLocaleString('vi-VN') + ' KNB mới vào được (bạn đang có ' +
                         (((u && u.points) || 0)).toLocaleString('vi-VN') + ')',
                 };
         }

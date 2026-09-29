@@ -447,8 +447,8 @@ body.choiBan #banVote{font-size:11px;padding:5px 9px}
 .hetbai.xong{color:#9ff0c4;background:#123021;border:1px solid #1d6b44}
 .hetbai.con{color:#ffd76a;background:#3a2e10;border:1px solid #7a5d13}
 
-/* 🪙 Icon Dogcoin, dùng CHUNG ảnh với web cược (/dogcoin.png). Mọi con số tiền trên trang
-   này đều đi kèm nó, đỡ phải viết chữ "Dogcoin" dài dòng. */
+/* 🪙 Icon KNB, dùng CHUNG ảnh với web cược (/knb.png). Mọi con số tiền trên trang
+   này đều đi kèm nó, đỡ phải viết chữ "KNB" dài dòng. */
 .dc{width:1.05em;height:1.05em;vertical-align:-.17em;margin-left:3px;flex:0 0 auto}
 
 /* 🃏 LẬT BÀI NGAY CẠNH TỪNG NGƯỜI, hết ván thì ai còn cầm bài được xoè ngang bên hông ghế,
@@ -759,11 +759,11 @@ var BUSY = false;
 
 function $(id){ return document.getElementById(id); }
 function vnd(n){ return Number(n||0).toLocaleString('vi-VN'); }
-/* 🪙 Số tiền kèm ICON DOGCOIN, dùng chung ảnh với web cược (/dogcoin.png), chủ server chốt
+/* 🪙 Số tiền kèm ICON KNB, dùng chung ảnh với web cược (/knb.png), chủ server chốt
    20/09: "trừ dogcoin sử dụng icon dogcoin có sẵn hết nha". Trả về HTML nên chỗ nào dùng
    phải đi qua datHTML(), đừng gán textContent. */
 function xu(n, kemDau){
-  return (kemDau && Number(n) >= 0 ? '+' : '') + vnd(n) + '<img class="dc" src="/dogcoin.png" alt="Dogcoin">';
+  return (kemDau && Number(n) >= 0 ? '+' : '') + vnd(n) + '<img class="dc" src="/knb.png" alt="KNB">';
 }
 function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -1184,7 +1184,7 @@ function veBan(){
   var cm = v.chatMoi;
   if (cm && cm.luc !== CHAT_LUC){
     CHAT_LUC = cm.luc; CHAT_NHAY = cm;
-    bao('💥 ' + tenCua(cm.chatBoi) + ' chặt ' + tenCua(cm.bi) + ', lấy ngay ' + vnd(cm.tien) + ' Dogcoin!');
+    bao('💥 ' + tenCua(cm.chatBoi) + ' chặt ' + tenCua(cm.bi) + ', lấy ngay ' + vnd(cm.tien) + ' KNB!');
     clearTimeout(veBan._chat);
     veBan._chat = setTimeout(function(){ CHAT_NHAY = null; $('banGhe').__cu = ''; try { ve(); } catch(e){} }, 2300);
   }

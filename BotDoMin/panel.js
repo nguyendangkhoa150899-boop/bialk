@@ -33,7 +33,7 @@ function startPanel(ctx) {
 
     // Để PANEL_PASSWORD trống = TẮT đăng nhập, ai mở được trang là vào được luôn.
     // Panel này nghe mọi interface nên tắt mật khẩu đồng nghĩa mở cho cả internet:
-    // cộng/trừ Dogcoin, ép kết quả game, tặng item thật trong game. Chỉ tắt khi bạn
+    // cộng/trừ KNB, ép kết quả game, tặng item thật trong game. Chỉ tắt khi bạn
     // chấp nhận rủi ro đó, hoặc đã chặn cổng bằng firewall/SSH tunnel.
     const AUTH_OFF = !PASSWORD;
 
@@ -231,7 +231,7 @@ function startPanel(ctx) {
                         superTokens.add(token);
                         return sendJSON(res, 200, { ok: true, token });
                     }
-                    ctx.writeLog('ADMIN', `[PANEL] Đăng nhập SAI mật khẩu SUPER từ ${req.socket.remoteAddress}`);
+                    ctx.writeLog('ADMIN', `[PANEL] Đăng nhập SAI mật khẩu SUPER từ ${req.headers['x-real-ip'] || req.socket.remoteAddress}`);
                     return sendJSON(res, 401, { ok: false, error: 'Sai mật khẩu' });
                 }
                 if (AUTH_OFF) {
@@ -242,7 +242,7 @@ function startPanel(ctx) {
                     tokens.add(token);
                     return sendJSON(res, 200, { ok: true, token });
                 }
-                ctx.writeLog('ADMIN', `[PANEL] Đăng nhập SAI mật khẩu từ ${req.socket.remoteAddress}`);
+                ctx.writeLog('ADMIN', `[PANEL] Đăng nhập SAI mật khẩu từ ${req.headers['x-real-ip'] || req.socket.remoteAddress}`);
                 return sendJSON(res, 401, { ok: false, error: 'Sai mật khẩu' });
             }
 
@@ -259,7 +259,7 @@ function startPanel(ctx) {
                 const body = req.method === 'POST' ? await readBody(req) : {};
 
                 // 04/09: cổng ADMIN THƯỜNG chỉ được XEM 2 tab 👥 Người chơi + 🎮 Palworld
-                // & Dogcoin - mọi route GHI của 2 tab đó phải vào từ cổng SUPER. Chặn ở
+                // & KNB - mọi route GHI của 2 tab đó phải vào từ cổng SUPER. Chặn ở
                 // MỘT chỗ này (kèm ẩn/khoá nút phía client) cho khỏi sót route lẻ.
                 const VIEWONLY_PATHS = [
                     // tab 👥: ví/nợ/phát quà/mức thưởng
@@ -275,16 +275,16 @@ function startPanel(ctx) {
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
                     '/api/tx/tran', '/api/tx/rtp', '/api/tx/thang',
-                    // ⚡ Siêu Tài Xỉu, ĂN DOGCOIN THẬT, càng phải chặn chắc
+                    // ⚡ Siêu Tài Xỉu, ĂN KNB THẬT, càng phải chặn chắc
                     '/api/stx/on', '/api/stx/time', '/api/stx/tran', '/api/stx/an',
                     '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep', '/api/stx/epclear',
                     '/api/stx/epnhan', '/api/stx/epnhanclear',
                     '/api/stx/board/start', '/api/stx/board/stop',
-                    // 🎡 Roulette, ĂN DOGCOIN THẬT, chỉ SUPER
+                    // 🎡 Roulette, ĂN KNB THẬT, chỉ SUPER
                     '/api/rl/on', '/api/rl/time', '/api/rl/tran', '/api/rl/an', '/api/rl/thang',
                     '/api/rl/maxbet', '/api/rl/ep', '/api/rl/epclear', '/api/rl/epnhan', '/api/rl/epnhanclear', '/api/rl/set', '/api/rl/khongphi',
                     '/api/poker/admin', '/api/poker/on', '/api/poker/chip', '/api/poker/batdau',
-                    // 🀄 Tiến Lên ĂN DOGCOIN THẬT -> càng phải chặn chắc ở cổng thường
+                    // 🀄 Tiến Lên ĂN KNB THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
                     '/api/poker/giaitan', '/api/poker/nghi', '/api/poker/tiep',
                 ];
@@ -867,7 +867,7 @@ function startPanel(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
-                // 🔁 09/09: cầu Dogcoin web ↔ game (rut / nap)
+                // 🔁 09/09: cầu KNB web ↔ game (rut / nap)
                 if (path === '/api/dogbridge/daymax') {   // 📅 11/09: hạn chuyển mỗi người/chiều/ngày (SUPER)
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
                     if (!ctx.setDogBridgeDayMax) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
@@ -929,19 +929,19 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Cộng ${amount} cho ${uid}`);
                     return sendJSON(res, 200, { ok: true });
                 }
-                // ---- RÚT DOGCOIN ----
+                // ---- RÚT KNB ----
                 if (path === '/api/withdraw/start') {
                     const channelId = String(body.channelId || '').trim();
                     if (!channelId) return sendJSON(res, 400, { ok: false, error: 'Thiếu Channel ID' });
                     try {
                         const name = await ctx.startWithdraw(channelId);
-                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo kênh Rút Dogcoin tại #${name}`);
+                        ctx.writeLog('ADMIN', `[PANEL] Khởi tạo kênh Rút KNB tại #${name}`);
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
                 }
                 if (path === '/api/withdraw/stop') {
                     ctx.stopWithdraw();
-                    ctx.writeLog('ADMIN', `[PANEL] Dừng kênh Rút Dogcoin`);
+                    ctx.writeLog('ADMIN', `[PANEL] Dừng kênh Rút KNB`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // ---- 📒 VAY NỢ ----
@@ -990,7 +990,7 @@ function startPanel(ctx) {
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
                 }
-                // Kênh + role thông báo khi phát Dogcoin toàn server (đổi Discord mới
+                // Kênh + role thông báo khi phát KNB toàn server (đổi Discord mới
                 // chỉ cần lưu lại ở đây, không phải sửa code)
                 if (path === '/api/giveaway/config') {
                     const channelId = String(body.channelId || '').trim();
@@ -999,7 +999,7 @@ function startPanel(ctx) {
                     if (!ctx.setGiveawayConfig) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
                     try {
                         const name = await ctx.setGiveawayConfig(channelId, roleId);
-                        ctx.writeLog('ADMIN', `[PANEL] Kênh thông báo phát Dogcoin: #${name}${roleId ? ` + tag role ${roleId}` : ' (không tag role)'}`);
+                        ctx.writeLog('ADMIN', `[PANEL] Kênh thông báo phát KNB: #${name}${roleId ? ` + tag role ${roleId}` : ' (không tag role)'}`);
                         return sendJSON(res, 200, { ok: true, name });
                     } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
                 }
@@ -1010,7 +1010,7 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Reset điểm danh cho ${count} ví`);
                     return sendJSON(res, 200, { ok: true, count });
                 }
-                // (Bảng Shop Pal riêng đã gộp vào bảng Rút Dogcoin - không còn API riêng.)
+                // (Bảng Shop Pal riêng đã gộp vào bảng Rút KNB - không còn API riêng.)
                 if (path === '/api/withdraw/approve') {
                     const id = parseInt(body.id);
                     if (!ctx.approveWithdraw(id)) return sendJSON(res, 400, { ok: false, error: 'Yêu cầu không tồn tại hoặc đã xử lý' });
@@ -1030,7 +1030,7 @@ function startPanel(ctx) {
                     return sendJSON(res, r.ok ? 200 : 400, r);
                 }
 
-                // Liên kết Discord ↔ tên nhân vật trong game. Cầu Dogcoin TỰ ĐỘNG
+                // Liên kết Discord ↔ tên nhân vật trong game. Cầu KNB TỰ ĐỘNG
                 // give/take theo ingameName này - CHỈ admin đặt được (người chơi tự
                 // đặt là lỗ hổng: đặt tên nhân vật người khác rồi rút túi họ về ví mình).
                 // Tên rỗng = hủy liên kết. Lọc về ASCII in được cho khớp normalizeName
@@ -1065,13 +1065,27 @@ function startPanel(ctx) {
                 if (path === '/api/pal/set-name') {
                     const uid = String(body.userId || '').trim();
                     if (!uid || !ctx.getDb()[uid]) return sendJSON(res, 400, { ok: false, error: 'Không tìm thấy ví này' });
-                    const name = String(body.name || '').replace(/[^\x20-\x7E]/g, '').trim().slice(0, 50);
-                    ctx.getUserData(uid).ingameName = name;
+                    // 29/09 NetCo4: nhập TÊN nhân vật Thiên Long (hoặc GUID) -> tra MySQL của game -> lưu tên + GUID
+                    const q = String(body.name || '').trim().slice(0, 50);
+                    const u = ctx.getUserData(uid);
+                    if (!q) {
+                        u.ingameName = ''; u.tlbbGuid = '';
+                        ctx.saveDbNow();
+                        ctx.writeLog('ADMIN', `[PANEL TLBB] Hủy liên kết nhân vật của ${uid}`);
+                        return sendJSON(res, 200, { ok: true, name: '' });
+                    }
+                    let ch = null;
+                    try { ch = await ctx.tlbbFindChar(q); } catch (e) { return sendJSON(res, 500, { ok: false, error: 'Không đọc được danh sách nhân vật: ' + String(e.message).slice(0, 120) }); }
+                    if (!ch) return sendJSON(res, 400, { ok: false, error: `Không có nhân vật "${q}" trong game (gõ đúng tên hoặc GUID)` });
+                    for (const [k, v] of Object.entries(ctx.getDb())) {
+                        if (k !== uid && v && typeof v === 'object' && String(v.tlbbGuid || '') === ch.guid) {
+                            return sendJSON(res, 400, { ok: false, error: `Nhân vật ${ch.name} đã liên kết với ví ${v.name || k}` });
+                        }
+                    }
+                    u.ingameName = ch.name; u.tlbbGuid = ch.guid;
                     ctx.saveDbNow();
-                    ctx.writeLog('ADMIN', name
-                        ? `[PANEL PAL] Liên kết ${uid} ↔ nhân vật "${name}"`
-                        : `[PANEL PAL] Hủy liên kết tên nhân vật của ${uid}`);
-                    return sendJSON(res, 200, { ok: true, name });
+                    ctx.writeLog('ADMIN', `[PANEL TLBB] Liên kết ${uid} ↔ nhân vật "${ch.name}" (GUID ${ch.guid}, tài khoản ${ch.account})`);
+                    return sendJSON(res, 200, { ok: true, name: ch.name, guid: ch.guid });
                 }
 
                 if (path === '/api/points/subtract') {
@@ -1080,7 +1094,7 @@ function startPanel(ctx) {
                     if (!uid || isNaN(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Dữ liệu không hợp lệ' });
                     ctx.updatePoints(uid, -amount);
                     if (ctx.logDog) ctx.logDog('admin-', uid, (ctx.getDb()[uid]||{}).name || uid, -amount, 'panel: tru tay');
-                    ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Trừ ${amount} của ${uid} (rút Dogcoin ra ngoài game)`);
+                    ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Trừ ${amount} của ${uid} (rút KNB ra ngoài game)`);
                     return sendJSON(res, 200, { ok: true });
                 }
                 // Xóa 1 ví
@@ -1116,7 +1130,7 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL ĐIỂM] Set tất cả ${ids.length - skipped} người = ${amount}${skipped ? ` (bỏ qua ${skipped} người vượt trần ngày)` : ''}`);
                     return sendJSON(res, 200, { ok: true, count: ids.length - skipped, skipped });
                 }
-                // Phát Dogcoin cho TẤT CẢ ví + bot đăng thông báo tag role vào kênh thông báo
+                // Phát KNB cho TẤT CẢ ví + bot đăng thông báo tag role vào kênh thông báo
                 if (path === '/api/points/addall') {
                     const amount = parseInt(body.amount);
                     if (isNaN(amount) || amount <= 0) return sendJSON(res, 400, { ok: false, error: 'Số không hợp lệ' });
@@ -1362,7 +1376,7 @@ const HTML = `<!DOCTYPE html>
         <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
       <div class="grp"><span class="glb">PALWORLD</span><div class="gbt">
-        <button data-tab="pal" onclick="tab('pal')">🎮 Palworld &amp; Dogcoin<span id="wdBadge" class="hidden"></span></button>
+        <button data-tab="pal" onclick="tab('pal')">🎮 Palworld &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
         <button data-tab="log" onclick="tab('log')">📜 Log</button>
@@ -1540,7 +1554,7 @@ const HTML = `<!DOCTYPE html>
         <div class="muted" id="whInfo" style="font-size:13px;margin-bottom:8px"></div>
         <label>Số người READY để vòng quay khởi động (1–50)</label>
         <input id="whMin" type="number" placeholder="vd: 3">
-        <label style="margin-top:10px">🎫 3 mốc giá vé bánh vòng 1 (Dogcoin) - tự sắp từ thấp tới cao</label>
+        <label style="margin-top:10px">🎫 3 mốc giá vé bánh vòng 1 (KNB) - tự sắp từ thấp tới cao</label>
         <div class="row" style="gap:6px">
           <input id="whP1" type="number" placeholder="8000">
           <input id="whP2" type="number" placeholder="9000">
@@ -1638,7 +1652,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1">
-            <label>Sức nặng lãi/lỗ (x) - 1 đồng giá × 1 CP = bấy nhiêu Dogcoin</label>
+            <label>Sức nặng lãi/lỗ (x) - 1 đồng giá × 1 CP = bấy nhiêu KNB</label>
             <input id="skPoint" type="number" min="1" max="20" placeholder="vd: 5">
           </div>
           <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px">
@@ -1660,7 +1674,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="skSave()">💾 Lưu cấu hình</button>
           <button id="skOpenBtn" class="btn-red" onclick="skToggle()">⏸ Tạm đóng sàn</button>
         </div>
-        <div class="note">Người chơi nhập <b>số Dogcoin làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền - mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn. ⚠️ Tăng sức nặng thì hạ chênh mua–bán theo (mặc định 0,1%/chiều). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>. <b>Chôn vốn</b>: vào lệnh phải giữ đủ giây mới đóng được, 0 là tắt. Sàn đóng <b>vẫn cho đóng lệnh</b>, chỉ chặn mở mới.</div>
+        <div class="note">Người chơi nhập <b>số KNB làm vốn</b> + chọn <b>khối lượng (đòn bẩy)</b>; vốn × đòn bẩy = số CP nắm giữ. <b>Sức nặng lãi/lỗ</b> nhân thẳng vào tiền - mỗi 1% giá đi = <b>đòn bẩy × sức nặng %</b> trên vốn. ⚠️ Tăng sức nặng thì hạ chênh mua–bán theo (mặc định 0,1%/chiều). Muốn siết rủi ro thì hạ <b>trần CP toàn sàn</b> hoặc <b>đòn bẩy tối đa</b>. <b>Chôn vốn</b>: vào lệnh phải giữ đủ giây mới đóng được, 0 là tắt. Sàn đóng <b>vẫn cho đóng lệnh</b>, chỉ chặn mở mới.</div>
       </div>
     </div>
 
@@ -1706,11 +1720,11 @@ const HTML = `<!DOCTYPE html>
     <!-- (tab 📊 THỐNG KÊ đã bỏ 19/08) -->
 
     <!-- NGƯỜI CHƠI -->
-    <!-- RÚT DOGCOIN -->
+    <!-- RÚT KNB -->
     <!-- PALWORLD -->
     <div id="tab-pal" class="hidden">
       <div class="card">
-        <h3>🎛️ Kênh Dogcoin & Shop Pal</h3>
+        <h3>🎛️ Kênh KNB & Shop Pal</h3>
         <label>Channel ID (kênh đăng bảng)</label>
         <input id="wdChannel" placeholder="vd: 123456789012345678">
         <div class="row" style="margin-top:12px">
@@ -1721,7 +1735,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card">
         <h3>🔗 Liên kết tên trong game</h3>
-        <div class="note">Cầu chuyển Dogcoin <b>tự động</b> give/take theo bảng này: người chơi bấm 🎮/💬 là bot giao/trừ Dog Coin cho đúng nhân vật đã liên kết. Người chơi <b>không tự đặt tên được</b> - chỉ admin sửa ở đây (chống giả tên rút trộm túi người khác). Gõ <b>ĐÚNG tên nhân vật trong game</b> (không dấu, bỏ ký tự lạ cũng khớp); để trống rồi 💾 = hủy liên kết.</div>
+        <div class="note">Cầu chuyển KNB <b>tự động</b> give/take theo bảng này: người chơi bấm 🎮/💬 là bot giao/trừ KNB cho đúng nhân vật đã liên kết. Người chơi <b>không tự đặt tên được</b> - chỉ admin sửa ở đây (chống giả tên rút trộm túi người khác). Gõ <b>ĐÚNG tên nhân vật trong game</b> (không dấu, bỏ ký tự lạ cũng khớp); để trống rồi 💾 = hủy liên kết.</div>
         <div id="palLinks"></div>
       </div>
       <div class="card">
@@ -1769,7 +1783,7 @@ const HTML = `<!DOCTYPE html>
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
       <div class="card hidden" id="wdPendingCard">
         <h3>📨 Đơn đang chờ xử lý</h3>
-        <div class="note"><b>🎮 Chuyển vào game</b>: ví đã trừ sẵn - bạn vào game ĐƯA Dog Coin rồi bấm ✅. <b>💬 Chuyển ra Discord</b>: bạn vào game NHẬN Dog Coin rồi bấm ✅ (lúc đó ví mới được cộng). ❌ Từ chối = hoàn ví nếu đã trừ.</div>
+        <div class="note"><b>🎮 Chuyển vào game</b>: ví đã trừ sẵn - bạn vào game ĐƯA KNB rồi bấm ✅. <b>💬 Chuyển ra Discord</b>: bạn vào game NHẬN KNB rồi bấm ✅ (lúc đó ví mới được cộng). ❌ Từ chối = hoàn ví nếu đã trừ.</div>
         <div id="wdPending"></div>
       </div>
       <div id="wdDone" class="hidden"></div>
@@ -1784,9 +1798,9 @@ const HTML = `<!DOCTYPE html>
         <h3>🎁 Vòng quay Pal web + Rương</h3>
         <div class="note">Vé quay trừ thẳng ví. <b>Nổ hũ (15/09)</b>: quay trúng đích danh <b>Mimog (#144)</b> = 25.000 + thưởng 10.000 = 35.000 cố định (2 ô Mimog trên vòng), không nuôi hũ nữa. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
         <div class="row" style="margin-top:8px">
-          <div style="flex:1"><label>Vé mỗi lượt quay (Dogcoin)</label><input id="pwPrice" type="number" placeholder="vd: 2000"></div>
-          <div style="flex:1"><label>🎯 Chọn pal đích danh (Dogcoin)</label><input id="pwCustom" type="number" placeholder="vd: 6000"></div>
-          <div style="flex:1"><label>Bán lại pal (Dogcoin)</label><input id="pwSell" type="number" placeholder="vd: 1000"></div>
+          <div style="flex:1"><label>Vé mỗi lượt quay (KNB)</label><input id="pwPrice" type="number" placeholder="vd: 2000"></div>
+          <div style="flex:1"><label>🎯 Chọn pal đích danh (KNB)</label><input id="pwCustom" type="number" placeholder="vd: 6000"></div>
+          <div style="flex:1"><label>Bán lại pal (KNB)</label><input id="pwSell" type="number" placeholder="vd: 1000"></div>
         </div>
         <div class="row" style="margin-top:8px">
           <div style="flex:1"><label>Dòng linh hồn GỐC miễn phí (1–4, dòng vượt bán theo giá bên dưới)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
@@ -1824,11 +1838,11 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>→102% (mỗi 1%)</label><input id="pwUpS4" type="number" placeholder="vd: 3500"></div>
           <div style="flex:1"><label>→201% (mỗi 1%)</label><input id="pwUpS5" type="number" placeholder="vd: 6000"></div>
         </div>
-        <div class="note" style="margin-top:8px">🍀 <b>THANH MAY MẮN + VÒNG RAID</b> - mỗi lượt quay thường nạp % may mắn (random trong khoảng dưới). Đầy 100% người chơi được quay <b>vòng RAID</b>: trúng 1/4 boss (Hartalis, Bellanoir, Blazamut Ryu, Xenolord) + thưởng Dogcoin, xong thanh về 0. Muốn <b>cài sẵn cho bạn bè</b>: đặt %/quay riêng ở cột 🍀 bảng ví người chơi bên tab 👥.</div>
+        <div class="note" style="margin-top:8px">🍀 <b>THANH MAY MẮN + VÒNG RAID</b> - mỗi lượt quay thường nạp % may mắn (random trong khoảng dưới). Đầy 100% người chơi được quay <b>vòng RAID</b>: trúng 1/4 boss (Hartalis, Bellanoir, Blazamut Ryu, Xenolord) + thưởng KNB, xong thanh về 0. Muốn <b>cài sẵn cho bạn bè</b>: đặt %/quay riêng ở cột 🍀 bảng ví người chơi bên tab 👥.</div>
         <div class="row" style="margin-top:4px">
           <div style="flex:1"><label>🍀 May mắn/quay TỐI THIỂU (%)</label><input id="pwLuckMin" type="number" placeholder="vd: 1"></div>
           <div style="flex:1"><label>🍀 May mắn/quay TỐI ĐA (%)</label><input id="pwLuckMax" type="number" placeholder="vd: 3"></div>
-          <div style="flex:1"><label>🔥 Thưởng trúng vòng may mắn (Dogcoin)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
+          <div style="flex:1"><label>🔥 Thưởng trúng vòng may mắn (KNB)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
           <div style="flex:1"><label title="Vòng may mắn = 6 huyền thoại + ô RAID. % này là xác suất rơi vào ô RAID (trúng thì quay thêm vòng boss). 40 = '10 ô huyền thoại thì 4 ô raid'">🔥 % ô RAID trên vòng may mắn (0–100)</label><input id="pwLuckyRaidPct" type="number" min="0" max="100" placeholder="vd: 40"></div>
           <label style="display:flex;align-items:center;gap:6px;flex:1"><input type="checkbox" id="pwRaidOn" style="width:auto"> Mở vòng RAID</label>
         </div>
@@ -1942,7 +1956,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" id="itemShopSaveBtn" onclick="itemShopSave()">💾 Lưu shop</button>
         </div>
       </div>
-      <!-- (💰 Sổ biến động Dogcoin đã chuyển sang tab 📜 Log - 04/09) -->
+      <!-- (💰 Sổ biến động KNB đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
 
     <!-- 📦 KHO ĐỒ TOÀN GAME (08/09) - CHỈ CỔNG SUPER: thay CreativeMenu client mod -->
@@ -2206,12 +2220,12 @@ const HTML = `<!DOCTYPE html>
     </div>
     <div id="tab-poker" class="hidden">
       <div class="card">
-        <h2>🃏 Giải Poker <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · chip ảo, không ăn Dogcoin)</span></h2>
+        <h2>🃏 Giải Poker <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · chip ảo, không ăn KNB)</span></h2>
         <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:8px;white-space:nowrap"><input id="pkOn" type="checkbox" onchange="pokerOn(this.checked)"> <b>Hiện tab 🃏 GIẢI POKER</b> trên web người chơi</label>
           <span class="muted" id="pkOnNow" style="font-size:12px"></span>
         </div>
-        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab GIẢI POKER → bấm ghế trống để ngồi</b> (cần liên kết + ≥ 10.000 Dogcoin, chỉ kiểm không trừ). Đủ người thì bấm <b>Bắt đầu</b> ở đây. <b>Giải tán</b> dọn sạch ghế. Ai được thưởng/phạt thì anh tự trao trong game, bot chỉ báo hạng.</div>
+        <div class="note" style="margin-top:8px">Người chơi vào <b>web cược → tab GIẢI POKER → bấm ghế trống để ngồi</b> (cần liên kết + ≥ 10.000 KNB, chỉ kiểm không trừ). Đủ người thì bấm <b>Bắt đầu</b> ở đây. <b>Giải tán</b> dọn sạch ghế. Ai được thưởng/phạt thì anh tự trao trong game, bot chỉ báo hạng.</div>
         <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap">
           <div style="flex:1;min-width:160px"><label>Chip khởi điểm mỗi người</label>
             <select id="pkChip" onchange="pokerChip()">
@@ -2236,7 +2250,7 @@ const HTML = `<!DOCTYPE html>
 
     <div id="tab-tienlen" class="hidden">
       <div class="card">
-        <h2>🀄 Tiến Lên Miền Nam <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · ⚠️ ĂN DOGCOIN THẬT)</span></h2>
+        <h2>🀄 Tiến Lên Miền Nam <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER · ⚠️ ĂN KNB THẬT)</span></h2>
         <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:8px;white-space:nowrap"><input id="tlOn" type="checkbox" onchange="tlBat(this.checked)"> <b>Hiện tab 🀄 TIẾN LÊN</b> trên web người chơi</label>
           <span class="muted" id="tlOnNow" style="font-size:12px"></span>
@@ -2274,7 +2288,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey logPick" data-log="mine" onclick="logPick('mine')">💣 Dò Mìn</button>
           <button class="btn-grey logPick" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
           <button class="btn-grey logPick" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
-          <button class="btn-grey logPick" data-log="dog" onclick="logPick('dog')">💰 Sổ Dogcoin</button>
+          <button class="btn-grey logPick" data-log="dog" onclick="logPick('dog')">💰 Sổ KNB</button>
         </div>
       </div>
       <div class="card logSec" id="logSec-tx">
@@ -2306,8 +2320,8 @@ const HTML = `<!DOCTYPE html>
         <div id="spmHist" class="hist"></div>
       </div>
       <div class="card logSec hidden" id="logSec-dog">
-        <h3>💰 Sổ biến động Dogcoin</h3>
-        <div class="note">Chỉ ghi: <b>chuyển</b> giữa người chơi · <b>nạp / rút</b> Dogcoin (vào/ra game) · <b>admin cộng/trừ</b> · mua pal, vay/trả nợ, hoàn tiền. <b>Không</b> ghi bất cứ gì của mini game (Tài Xỉu, Siêu Tài Xỉu, Phi Thuyền, Tiến Lên, Cổ phiếu, hũ) - từng ván tra ở mục riêng bên trên (22/09).</div>
+        <h3>💰 Sổ biến động KNB</h3>
+        <div class="note">Chỉ ghi: <b>chuyển</b> giữa người chơi · <b>nạp / rút</b> KNB (vào/ra game) · <b>admin cộng/trừ</b> · mua pal, vay/trả nợ, hoàn tiền. <b>Không</b> ghi bất cứ gì của mini game (Tài Xỉu, Siêu Tài Xỉu, Phi Thuyền, Tiến Lên, Cổ phiếu, hũ) - từng ván tra ở mục riêng bên trên (22/09).</div>
         <div id="dogLedger" class="hist"></div>
       </div>
     </div>
@@ -2326,30 +2340,30 @@ const HTML = `<!DOCTYPE html>
           <span id="gs_tx" class="muted" style="font-size:13px"></span>
         </div>
         <div class="row" style="gap:18px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
-          <label id="gs_rut_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_rut" style="width:auto;margin:0" onchange="gameSwitch('rut',this)"> 🎮 Rút Dogcoin web → game</label>
-          <label id="gs_nap_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_nap" style="width:auto;margin:0" onchange="gameSwitch('nap',this)"> 💬 Nạp Dogcoin game → web</label>
+          <label id="gs_rut_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_rut" style="width:auto;margin:0" onchange="gameSwitch('rut',this)"> 🎮 Rút KNB web → game</label>
+          <label id="gs_nap_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_nap" style="width:auto;margin:0" onchange="gameSwitch('nap',this)"> 💬 Nạp KNB game → web</label>
         </div>
         <div class="row" style="gap:8px;align-items:center;margin-top:6px">
-          <span>📅 Cầu Dogcoin: <b>mỗi người</b> chuyển tối đa</span>
+          <span>📅 Cầu KNB: <b>mỗi người</b> chuyển tối đa</span>
           <input class="mini-in" id="gsDogDay" type="number" min="0" placeholder="10000" style="width:110px">
-          <span>Dogcoin <b>/ chiều / ngày</b></span>
-          <span style="margin-left:10px">💱 Nạp game→web: <b>1</b> Dogcoin game =</span>
-          <input class="mini-in" id="gsNapRate" type="number" min="0.1" max="100" step="0.1" placeholder="2" style="width:70px" title="Tỉ lệ nạp: 2 = lấy 1 Dogcoin trong game cộng 2 Dogcoin ví web. Rút web→game luôn 1:1. Hạn ngày chiều nạp đếm theo số web nhận.">
-          <span>Dogcoin web</span>
+          <span>KNB <b>/ chiều / ngày</b></span>
+          <span style="margin-left:10px">💱 Nạp game→web: <b>1</b> KNB game =</span>
+          <input class="mini-in" id="gsNapRate" type="number" min="0.1" max="100" step="0.1" placeholder="2" style="width:70px" title="Tỉ lệ nạp: 2 = lấy 1 KNB trong game cộng 2 KNB ví web. Rút web→game luôn 1:1. Hạn ngày chiều nạp đếm theo số web nhận.">
+          <span>KNB web</span>
           <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu hạn & tỉ lệ</button>
-          <span class="muted" style="font-size:12px">đếm theo Dogcoin TRONG GAME (rút = số vào game, nạp = số lấy ra khỏi game, web nhận × tỉ lệ) · 2 chiều đếm RIÊNG · 0 = không giới hạn · 00:00 giờ VN · 🪙 ĐỔI VÀNG dùng CHUNG hạn chiều nạp: 100 vàng = 1 Dogcoin game, nên 10.000 vàng = tỉ lệ × 100 Dogcoin web</span>
+          <span class="muted" style="font-size:12px">đếm theo KNB TRONG GAME (rút = số vào game, nạp = số lấy ra khỏi game, web nhận × tỉ lệ) · 2 chiều đếm RIÊNG · 0 = không giới hạn · 00:00 giờ VN · 🪙 ĐỔI VÀNG dùng CHUNG hạn chiều nạp: 100 vàng = 1 KNB game, nên 10.000 vàng = tỉ lệ × 100 KNB web</span>
         </div>
         <div class="row" style="gap:10px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
-          <div style="flex:2"><label>🎚️ Cược tối thiểu Dò Mìn + Leo Thang (Dogcoin/ván)</label><input id="gsMinBet" type="number" min="1" placeholder="vd: 400"></div>
+          <div style="flex:2"><label>🎚️ Cược tối thiểu Dò Mìn + Leo Thang (KNB/ván)</label><input id="gsMinBet" type="number" min="1" placeholder="vd: 400"></div>
           <button class="btn-green" onclick="minBetSave(this)">💾 Lưu sàn cược</button>
           <div class="muted" style="flex:3;font-size:12px">Áp dụng ngay cho ván MỚI, web tự đổi số. Big Small và Phi Thuyền có sàn/trần riêng ở tab của chúng.</div>
         </div>
-        <div class="note">Bỏ tick = ĐÓNG ngay, không cần Lưu: người chơi không vào ván/đặt cược/quay MỚI (web hiện ⛔ ĐÓNG), ván đang chơi vẫn xong bình thường, không ai mất tiền. Tick lại là mở. Big Small: dùng ▶️ Tạo bàn / ⏹ Tắt bàn ở tab 🎲. Hàng dưới: 2 chiều cầu Dogcoin ↔ game trên web (đóng chiều nào thì nút chiều đó trên web thành ⛔, chống hack trong game rồi chuyển ra).</div>
+        <div class="note">Bỏ tick = ĐÓNG ngay, không cần Lưu: người chơi không vào ván/đặt cược/quay MỚI (web hiện ⛔ ĐÓNG), ván đang chơi vẫn xong bình thường, không ai mất tiền. Tick lại là mở. Big Small: dùng ▶️ Tạo bàn / ⏹ Tắt bàn ở tab 🎲. Hàng dưới: 2 chiều cầu KNB ↔ game trên web (đóng chiều nào thì nút chiều đó trên web thành ⛔, chống hack trong game rồi chuyển ra).</div>
       </div>
       <div class="card">
         <h2>👥 Ví điểm người chơi</h2>
         <div class="row">
-          <div style="flex:1"><label>🎁 Phát Dogcoin cho TẤT CẢ (bot tag role + thông báo)</label><input id="addAllAmount" type="number" placeholder="vd: 500"></div>
+          <div style="flex:1"><label>🎁 Phát KNB cho TẤT CẢ (bot tag role + thông báo)</label><input id="addAllAmount" type="number" placeholder="vd: 500"></div>
           <div style="flex:2"><label>💬 Lời nhắn (trống = câu mặc định)</label><input id="addAllMsg" placeholder="vd: 🎉 Quà 2/9! · Ăn mừng VN vô địch cúp!"></div>
           <button class="btn-green" onclick="addAllCoins()">Phát tất cả</button>
         </div>
@@ -2415,15 +2429,15 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>🩸 Phí vay + lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
           <button class="btn-green" onclick="loanCfgSave()">💾 Lưu cấu hình vay</button>
         </div>
-        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. <b>14/09 bỏ hẳn nhãn NỢ XẤU</b>: giờ cứ CÒN NỢ MỘT ĐỒNG là bị khoá đúng 2 việc - không mua đồ ở <b>shop item</b> và không chuyển <b>pal vào game</b>. Chuyển tiền, chuyển Dogcoin vào game, minigame, quay pal, cổ phiếu, vay thêm đều KHÔNG bị đụng. Trả sạch nợ là mở khoá ngay.</div>
+        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. <b>14/09 bỏ hẳn nhãn NỢ XẤU</b>: giờ cứ CÒN NỢ MỘT ĐỒNG là bị khoá đúng 2 việc - không mua đồ ở <b>shop item</b> và không chuyển <b>pal vào game</b>. Chuyển tiền, chuyển KNB vào game, minigame, quay pal, cổ phiếu, vay thêm đều KHÔNG bị đụng. Trả sạch nợ là mở khoá ngay.</div>
       </div>
 
       <div class="card danger">
         <h3>🧨 Reset mùa mới - xóa sạch ví người chơi cũ</h3>
-        <div class="note">Dùng khi mở lại mini game (vd: chuyển sang Dog Coin của Palworld). Toàn bộ ví hiện tại bị <b>xóa khỏi database</b>, ai chơi lại sẽ được tạo ví mới với số dư khởi điểm mặc định. Yêu cầu rút đang chờ sẽ bị hủy và lệnh ép mìn bị gỡ. Bot tự lưu 1 file <b>database.backup-reset-*.json</b> cạnh database trước khi xóa.</div>
+        <div class="note">Dùng khi mở lại mini game (vd: chuyển sang KNB của Palworld). Toàn bộ ví hiện tại bị <b>xóa khỏi database</b>, ai chơi lại sẽ được tạo ví mới với số dư khởi điểm mặc định. Yêu cầu rút đang chờ sẽ bị hủy và lệnh ép mìn bị gỡ. Bot tự lưu 1 file <b>database.backup-reset-*.json</b> cạnh database trước khi xóa.</div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
           <input type="checkbox" id="resetHistory" style="width:auto;margin:0">
-          Xóa luôn lịch sử Big Small / Dò Mìn + lịch sử rút Dogcoin
+          Xóa luôn lịch sử Big Small / Dò Mìn + lịch sử rút KNB
         </label>
         <div class="row" style="margin-top:12px">
           <button class="btn-red" style="flex:1" onclick="resetAllPlayers()">🗑️ Xóa toàn bộ ví (<span id="resetCount">0</span> người)</button>
@@ -2647,7 +2661,7 @@ async function icSave(btn){
 function gachaSave(){const id=document.getElementById('gachaChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/gacha/channel',{channelId:id}).then(j=>{toast('✅ Đã bật khoe tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
 async function gachaOff(){if(!await uiConfirm('Tắt đăng công khai kết quả quay Pal?','Tắt','btn-red'))return;api('/api/gacha/channel',{channelId:''}).then(()=>{toast('⏹️ Đã tắt');document.getElementById('gachaChannel').value='';refresh();});}
 
-// Kênh + role thông báo phát Dogcoin toàn server (đổi Discord mới chỉ cần lưu lại ở đây)
+// Kênh + role thông báo phát KNB toàn server (đổi Discord mới chỉ cần lưu lại ở đây)
 function gaSave(){
   const c=document.getElementById('gaChannel').value.trim();
   const r=document.getElementById('gaRole').value.trim();
@@ -2677,7 +2691,7 @@ function renderGacha(){
 // (Liên kết Discord ↔ SteamID đã bỏ: server Linux không còn cầu nối tự động,
 //  mọi giao dịch là ticket admin xử lý tay nên không cần biết SteamID nữa.)
 
-// Sổ biến động Dogcoin - dữ liệu đến từ STATE (poll mỗi 3s) nên không cần gọi riêng.
+// Sổ biến động KNB - dữ liệu đến từ STATE (poll mỗi 3s) nên không cần gọi riêng.
 const DOG_TYPE_LABEL = {
   'admin+':'➕ Admin cộng', 'admin-':'➖ Admin trừ', 'transfer':'🔁 Chuyển',
   'to-game':'🎮 Rút vào game', 'from-game':'💬 Nạp ra Discord', 'shop':'🐾 Mua pal', 'refund':'↩️ Hoàn tiền',
@@ -2742,7 +2756,7 @@ async function palOrderDone(id){
   try{ await api('/api/pal/order-done',{id}); toast('✅ Đã đóng đơn #'+id); refresh(); }catch(e){}
 }
 
-// Bảng liên kết Discord ↔ tên nhân vật (cầu Dogcoin tự động đọc ingameName này)
+// Bảng liên kết Discord ↔ tên nhân vật (cầu KNB tự động đọc ingameName này)
 function renderPalLinks(){
   if(!STATE)return;
   const box=document.getElementById('palLinks');
@@ -3291,7 +3305,7 @@ function pokerSaveAdmin(){
   const ids=(document.getElementById('pokerAdminIds').value||'').trim();
   api('/api/poker/admin',{ids:ids}).then(j=>{txClean(['pokerAdminIds']);toast('🃏 Admin poker: '+(j.ids.length?j.ids.join(', '):'(trống, không ai mở được giải)'));refresh();}).catch(e=>toast('❌ '+e.message));
 }
-// ===== 🀄 TAB TIẾN LÊN (SUPER), bàn ăn Dogcoin thật =====
+// ===== 🀄 TAB TIẾN LÊN (SUPER), bàn ăn KNB thật =====
 // Vẽ từ STATE.tienlen (tomTat) mỗi 3 giây. Mọi ô nhập đều theo khuôn "đang sửa thì đừng ghi đè"
 // (document.activeElement), không thì vòng làm mới 3 giây cướp chữ đang gõ.
 function tlFill(){
@@ -3532,7 +3546,7 @@ function skHit(i,win){
   const sign=(p.side==='long')===(win===1)?1:-1;
   const amt=skAmtGet();
   const d=(p.side==='long'?1:-1)*sign*p.shares*amt*(k.pointX||1);
-  skPush(sign,(win?'🎁 Cho ':'💀 Cho ')+p.name+(win?' THẮNG':' THUA')+': '+(sign>0?'➕ cộng ':'➖ trừ ')+amt+' giá ('+k.price.toLocaleString()+' → ~'+(k.price+amt*sign).toLocaleString()+') → '+p.name+' ('+(p.side==='long'?'MUA':'BÁN')+') sẽ '+(d>=0?'+':'')+d.toLocaleString()+' Dogcoin. Ai cùng phe cũng '+(win?'thắng':'thua')+' theo, phe kia ngược lại.');
+  skPush(sign,(win?'🎁 Cho ':'💀 Cho ')+p.name+(win?' THẮNG':' THUA')+': '+(sign>0?'➕ cộng ':'➖ trừ ')+amt+' giá ('+k.price.toLocaleString()+' → ~'+(k.price+amt*sign).toLocaleString()+') → '+p.name+' ('+(p.side==='long'?'MUA':'BÁN')+') sẽ '+(d>=0?'+':'')+d.toLocaleString()+' KNB. Ai cùng phe cũng '+(win?'thắng':'thua')+' theo, phe kia ngược lại.');
 }
 
 // ===== 7 HAM DUOI DAY PHUC HOI TU 053c96a (25/08) =====
@@ -3867,7 +3881,7 @@ function pcToggle(){PCOPEN=!PCOPEN;pcToggleApply();}
 async function pcClearAll(btn){
   const rows=(STATE&&STATE.palChests)||[];
   const n=rows.filter(r=>r.status!=='delivering').length, d=rows.filter(r=>r.status==='delivering').length;
-  if(!await uiConfirm('XÓA SẠCH rương pal của TẤT CẢ người chơi ('+n+' pal đang thấy'+(d?', giữ lại '+d+' đơn ĐANG GIAO':'')+')? KHÔNG hoàn Dogcoin, không khôi phục được.','🗑️ Xóa hết','btn-red','XOA'))return;
+  if(!await uiConfirm('XÓA SẠCH rương pal của TẤT CẢ người chơi ('+n+' pal đang thấy'+(d?', giữ lại '+d+' đơn ĐANG GIAO':'')+')? KHÔNG hoàn KNB, không khôi phục được.','🗑️ Xóa hết','btn-red','XOA'))return;
   await runBtn(btn,'Đang xóa...',()=>api('/api/palchest/clearall',{}).then(j=>{toast('🗑️ Đã xóa '+j.removed+' pal của '+j.users+' người'+(j.kept?' · giữ '+j.kept+' đơn đang giao':''));refresh();}));
 }
 function pcToggleApply(){
@@ -4114,7 +4128,7 @@ function renderMineTarget(){
 }
 // 🍀 09/09: ép quà hộp may mắn kế tiếp (dùng 1 lần) - cùng ô chọn người chơi của ép mìn
 // ⏸️ 09/09: công tắc GOM 5 trò (tab 👥) - mỗi trò gọi đúng API sẵn có của nó
-const GS_LB={mines:'💣 Dò Mìn',stairs:'🪜 Leo Thang',spm:'🚀 Phi Thuyền',pal:'🎁 Vòng quay Pal',stock:'📈 Sàn cổ phiếu',rut:'🎮 Rút Dogcoin web → game',nap:'💬 Nạp Dogcoin game → web'};
+const GS_LB={mines:'💣 Dò Mìn',stairs:'🪜 Leo Thang',spm:'🚀 Phi Thuyền',pal:'🎁 Vòng quay Pal',stock:'📈 Sàn cổ phiếu',rut:'🎮 Rút KNB web → game',nap:'💬 Nạp KNB game → web'};
 function gsState(){const S=STATE||{};return {mines:(S.gameOpen||{}).mines!==false,stairs:(S.gameOpen||{}).stairs!==false,spm:!S.spmCfg||S.spmCfg.open!==false,pal:!S.palWheelCfg||S.palWheelCfg.open!==false,stock:!S.stock||S.stock.open!==false,rut:!S.dogBridge||S.dogBridge.rut!==false,nap:!S.dogBridge||S.dogBridge.nap!==false};}
 async function gameSwitch(key,cb){
   const on=cb.checked, lb=GS_LB[key]||key;
@@ -4130,7 +4144,7 @@ async function gameSwitch(key,cb){
 async function minBetSave(btn){
   const v=parseInt(document.getElementById('gsMinBet').value,10);
   if(!(v>=1))return toast('❌ Nhập số ≥ 1');
-  if(!await uiConfirm('Đặt cược tối thiểu Dò Mìn + Leo Thang = '+v.toLocaleString('vi-VN')+' Dogcoin/ván?','💾 Lưu','btn-green'))return;
+  if(!await uiConfirm('Đặt cược tối thiểu Dò Mìn + Leo Thang = '+v.toLocaleString('vi-VN')+' KNB/ván?','💾 Lưu','btn-green'))return;
   await runBtn(btn,'Lưu...',()=>api('/api/games/minbet',{minBet:v}).then(j=>{toast('🎚️ Sàn cược Dò Mìn/Leo Thang: '+j.minBet.toLocaleString('vi-VN'));refresh();}));
 }
 async function dogDaySave(btn){
@@ -4138,7 +4152,7 @@ async function dogDaySave(btn){
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
   const nrEl=document.getElementById('gsNapRate');const nr=nrEl&&nrEl.value!==''?parseFloat(nrEl.value):undefined;
   if(nr!==undefined&&!(nr>=0.1&&nr<=100))return toast('❌ Tỉ lệ nạp phải 0.1–100');
-  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,napRate:nr}).then(j=>{toast('📅 Hạn chuyển Dogcoin: '+(j.dayMax?j.dayMax.toLocaleString('vi-VN'):'không giới hạn')+'/người/chiều/ngày'+(j.napRate!==undefined?' · 💱 nạp 1 : '+j.napRate:''));HOLD_SIG='';refresh();}));
+  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,napRate:nr}).then(j=>{toast('📅 Hạn chuyển KNB: '+(j.dayMax?j.dayMax.toLocaleString('vi-VN'):'không giới hạn')+'/người/chiều/ngày'+(j.napRate!==undefined?' · 💱 nạp 1 : '+j.napRate:''));HOLD_SIG='';refresh();}));
 }
 function gsFill(){
   const nrx=document.getElementById('gsNapRate');if(nrx&&nrx.value===''&&document.activeElement!==nrx&&STATE&&STATE.dogNapRate!==null&&STATE.dogNapRate!==undefined)nrx.value=STATE.dogNapRate;
@@ -4231,7 +4245,7 @@ function renderHistories(){
     const win=g.amount>=0;
     return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">💣 '+g.mines+' mìn · 💎 '+(g.diamonds||0)+' kim cương · cược '+Number(g.bet).toLocaleString()+'</div>'+
-      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
+      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'💥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' KNB</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
 
   const sh=(STATE.stairsHistory||[]).slice(0,30);
@@ -4239,7 +4253,7 @@ function renderHistories(){
     const win=g.amount>=0;
     return '<div class="h"><div class="top"><span>'+esc(g.name)+'</span><span class="t">'+(g.time||'')+'</span></div>'+
       '<div class="b">🔥 '+g.fire+' lửa/tầng · 🪜 lên '+(g.floor||0)+' tầng · cược '+Number(g.bet).toLocaleString()+'</div>'+
-      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'🔥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' Dogcoin</div></div>';
+      '<div class="'+(win?'win':'lose')+'">'+(win?'✅':'🔥')+' '+esc(g.result)+' '+fmtAmt(g.amount)+' KNB</div></div>';
   }).join('') : '<div class="empty">Chưa có ván nào.</div>';
   // 🚀 Phi Thuyền (04/09): mỗi dòng = 1 lượt cược đã chốt (thắng/thua)
   const spEl=document.getElementById('spmHist');
@@ -4258,7 +4272,7 @@ function renderHistories(){
 function pClear(id){const i=document.getElementById('amt_'+id);if(i)i.value='';}
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');pClear(id);refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');pClear(id);refresh();});}
-function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút Dogcoin)');pClear(id);refresh();}).catch(()=>{});}
+function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút KNB)');pClear(id);refresh();}).catch(()=>{});}
 // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) - trống = báo lỗi, dùng nút ↺ để về mặc định
 // (pLuck/pLuckClear đã gỡ 04/09 cùng cột 🍀 - route /api/palwheel/luckrate vẫn còn nếu cần dựng lại)
 // 🪪 mức điểm danh / nghiện / thưởng chuỗi
@@ -4276,7 +4290,7 @@ function dcSave(){
 }
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
-async function wdStop(){if(!await uiConfirm('Tắt bảng Dogcoin & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
+async function wdStop(){if(!await uiConfirm('Tắt bảng KNB & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
 
 // ---- 📒 VAY NỢ ----
 function vayStart(){const c=document.getElementById('vayChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/vay/start',{channelId:c}).then(j=>{toast('▶️ Đã đặt bảng VAY NỢ ở #'+j.name);refresh();});}
@@ -4302,15 +4316,15 @@ async function pDebtClear(id){
 // Xác nhận theo loại đơn - duyệt 'to-discord' là CỘNG TIỀN vào ví, phải nói rõ.
 async function wdApprove(id,kind){
   const msg=kind==='to-discord'
-    ? 'Xác nhận bạn ĐÃ NHẬN đủ Dog Coin trong game? Ví Discord của người chơi sẽ được CỘNG ngay khi bấm.'
-    : 'Xác nhận bạn ĐÃ ĐƯA đủ Dog Coin trong game? (ví người chơi đã trừ từ lúc tạo đơn)';
+    ? 'Xác nhận bạn ĐÃ NHẬN đủ KNB trong game? Ví Discord của người chơi sẽ được CỘNG ngay khi bấm.'
+    : 'Xác nhận bạn ĐÃ ĐƯA đủ KNB trong game? (ví người chơi đã trừ từ lúc tạo đơn)';
   if(!await uiConfirm(msg,'✅ Xong','btn-green'))return;
   api('/api/withdraw/approve',{id}).then(()=>{toast('✅ Đã duyệt');refresh();});
 }
 async function wdReject(id,kind){
   const msg=kind==='to-discord'
     ? 'Từ chối đơn này? (ví người chơi chưa bị trừ nên không có gì để hoàn)'
-    : 'Từ chối và HOÀN LẠI Dogcoin cho người chơi?';
+    : 'Từ chối và HOÀN LẠI KNB cho người chơi?';
   if(!await uiConfirm(msg,'❌ Từ chối','btn-red'))return;
   api('/api/withdraw/reject',{id}).then(()=>{toast('↩️ Đã từ chối');refresh();});
 }
@@ -4330,13 +4344,13 @@ function renderWithdraw(){
   // danh sách chờ duyệt
   // Nhãn + việc admin cần làm theo loại đơn.
   const kindInfo=r=>r.kind==='to-discord'
-    ? {label:'💬 Ra Discord', act:'NHẬN '+r.amount.toLocaleString()+' Dog Coin trong game rồi bấm ✅ (lúc đó ví mới được cộng)'}
-    : {label:'🎮 Vào game', act:'ĐƯA '+r.amount.toLocaleString()+' Dog Coin trong game (ví đã trừ sẵn)'};
+    ? {label:'💬 Ra Discord', act:'NHẬN '+r.amount.toLocaleString()+' KNB trong game rồi bấm ✅ (lúc đó ví mới được cộng)'}
+    : {label:'🎮 Vào game', act:'ĐƯA '+r.amount.toLocaleString()+' KNB trong game (ví đã trừ sẵn)'};
   const p=document.getElementById('wdPending');
   p.innerHTML=pending.length?pending.map(r=>{
     const k=kindInfo(r);
     return '<div class="wd-row"><div class="info">'+
-      '<span class="amt">'+k.label+' · '+esc(r.username)+(r.ingameName?' <span class="meta">(game: '+esc(r.ingameName)+')</span>':'')+' - <b>'+r.amount.toLocaleString()+' Dogcoin</b></span>'+
+      '<span class="amt">'+k.label+' · '+esc(r.username)+(r.ingameName?' <span class="meta">(game: '+esc(r.ingameName)+')</span>':'')+' - <b>'+r.amount.toLocaleString()+' KNB</b></span>'+
       '<span class="meta">Mã #'+r.id+' · '+esc(r.time||'')+' · '+esc(k.act)+'</span>'+
     '</div><div class="acts">'+
       '<button class="btn-green" onclick="wdApprove('+r.id+',\\''+(r.kind||'to-game')+'\\')">✅ Xong</button>'+
@@ -4347,7 +4361,7 @@ function renderWithdraw(){
   const d=document.getElementById('wdDone');
   d.innerHTML=done.length?done.slice(0,30).map(r=>{
     const k=kindInfo(r);
-    return '<div class="h"><div class="top"><span>#'+r.id+' '+k.label+' '+esc(r.username)+' - '+r.amount.toLocaleString()+' Dogcoin</span><span class="t">'+esc(r.time||'')+'</span></div>'+
+    return '<div class="h"><div class="top"><span>#'+r.id+' '+k.label+' '+esc(r.username)+' - '+r.amount.toLocaleString()+' KNB</span><span class="t">'+esc(r.time||'')+'</span></div>'+
     '<div class="'+(r.status==='approved'?'win':'lose')+'">'+(r.status==='approved'?'✅ Đã xong':'❌ Đã từ chối')+'</div></div>';
   }).join(''):'<div class="empty">Chưa xử lý đơn nào.</div>';
   // prefill channel id
@@ -4357,7 +4371,7 @@ function renderWithdraw(){
 }
 async function pDel(id){
   const p=(STATE&&STATE.players||[]).find(x=>x.id===id);
-  const who=p?(p.name+' - '+p.points.toLocaleString()+' Dogcoin'):id;
+  const who=p?(p.name+' - '+p.points.toLocaleString()+' KNB'):id;
   if(!await uiConfirm('Xóa ví của '+who+'? Ví bị xóa khỏi database, lần chơi sau họ được tạo ví mới từ số dư khởi điểm.','🗑️ Xóa ví','btn-red'))return;
   api('/api/points/delete',{userId:id}).then(()=>{toast('🗑️ Đã xóa ví');refresh();});
 }
@@ -4381,7 +4395,7 @@ async function addAllCoins(){
   const v=document.getElementById('addAllAmount').value;
   if(v===''||+v<=0)return toast('Nhập số dương');
   const msg=(document.getElementById('addAllMsg').value||'').trim();
-  if(!await uiConfirm('Phát '+(+v).toLocaleString()+' Dogcoin cho TẤT CẢ người chơi'+(msg?' với lời nhắn "'+msg+'"':'')+' và tag role?','Phát tất cả','btn-green'))return;
+  if(!await uiConfirm('Phát '+(+v).toLocaleString()+' KNB cho TẤT CẢ người chơi'+(msg?' với lời nhắn "'+msg+'"':'')+' và tag role?','Phát tất cả','btn-green'))return;
   api('/api/points/addall',{amount:+v,msg:msg}).then(j=>{
     toast(j.announced?('✅ Đã phát cho '+j.count+' người + đã thông báo'):('✅ Đã phát cho '+j.count+' người - ⚠️ KHÔNG đăng được thông báo (kiểm tra quyền bot ở kênh)'));
     document.getElementById('addAllAmount').value='';document.getElementById('addAllMsg').value='';
@@ -4602,7 +4616,7 @@ async function refresh(force){
   // xổ số
   // kênh khoe quay pal
   renderGacha();
-  // kênh + role thông báo phát Dogcoin
+  // kênh + role thông báo phát KNB
   renderGiveaway();
   // players table
   renderPlayers();
@@ -4611,7 +4625,7 @@ async function refresh(force){
   renderHistories();
   // kênh đã lưu
   renderSavedChannels();
-  // yêu cầu rút Dogcoin
+  // yêu cầu rút KNB
   renderWithdraw();
   renderDogLedger();
   renderPalOrders();

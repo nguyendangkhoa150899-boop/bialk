@@ -195,10 +195,10 @@ muc('tiền đặt hiện bằng CHIP trên ô');
 ok('KHÔNG còn liệt kê từng cửa thành dòng chữ',
     !/j\.myBets\.map\(function\(b\)\{return NAMES/.test(SRC) && !/mb\.length>8/.test(SRC));
 ok('dòng còn lại chỉ kể tổng tiền + số ô',
-    /Ván này bạn đặt "\+vnd\(mTong\)\+" Dogcoin vào "\+mb\.length\+" ô/.test(SRC));
-// Chủ server chốt: dấu cược là ĐỒNG DOGCOIN thật, số tiền là chú thích nhỏ dưới
-// đồng xu; đồng nào từ 50.000 Dogcoin trở lên thì viền/nền đen cho nổi.
-ok('dấu cược là ĐỒNG DOGCOIN thật, không phải chấm màu',
+    /Ván này bạn đặt "\+vnd\(mTong\)\+" KNB vào "\+mb\.length\+" ô/.test(SRC));
+// Chủ server chốt: dấu cược là ĐỒNG KNB thật, số tiền là chú thích nhỏ dưới
+// đồng xu; đồng nào từ 50.000 KNB trở lên thì viền/nền đen cho nổi.
+ok('dấu cược là ĐỒNG KNB thật, không phải chấm màu',
     /'\.sbO \.sbGio\{position:absolute;top:50%;left:50%/.test(SRC) &&
     /im\.src="\/dogcoin\.png"/.test(SRC) && /'\.sbO \.sbGio img\{/.test(SRC));
 ok('số tiền là chú thích nhỏ NGAY DƯỚI đồng xu',
@@ -208,13 +208,13 @@ ok('đồng nặng >= 50.000 đổi sang viền đen',
     /var CHIP_DEN=50000;/.test(SRC) && /toi>=CHIP_DEN\?" sbGioDen":""/.test(SRC) &&
     /'\.sbO \.sbGio\.sbGioDen img\{/.test(SRC) && /'\.sbO \.sbGio\.sbGioDen b\{/.test(SRC));
 // markup nút mệnh giá giờ tách nhiều dòng (thêm nhánh MAX), nên soi cả cụm
-ok('hàng mệnh giá chọn cũng kèm đồng Dogcoin',
+ok('hàng mệnh giá chọn cũng kèm đồng KNB',
     // 22/09: hàng chip vẽ chung qua chipHangHTML(p,...) -> onclick="<p>DatChip(" và đồng xu nằm trong đó
     /onclick="\\'\+p\+\\'DatChip\(/.test(SRC) && SRC.includes('MAX CƯỢC') &&
     /function chipHangHTML\([\s\S]{0,1600}?src="\/dogcoin\.png"/.test(SRC));
 ok('đồng xu không chắn chuột (bấm xuyên qua để đặt tiếp)', /pointer-events:none;line-height:1\}/.test(SRC));
 ok('số tiền được rút gọn cho vừa (chipNgan)', /function chipNgan\(n\)/.test(SRC));
-ok('rê chuột vào chip vẫn xem được số tiền đầy đủ', /d\.title=vnd\(toi\)\+" Dogcoin"/.test(SRC));
+ok('rê chuột vào chip vẫn xem được số tiền đầy đủ', /d\.title=vnd\(toi\)\+" KNB"/.test(SRC));
 // Tiền bạc: rút gọn phải làm tròn XUỐNG, không được khai khống (999.999 -> 999K chứ không phải 1000K)
 ok('rút gọn làm tròn XUỐNG, không khai khống tiền',
     /Math\.floor\(t\):Math\.floor\(t\*10\)/.test(SRC) && /Math\.floor\(k\):Math\.floor\(k\*10\)/.test(SRC) &&
@@ -241,7 +241,7 @@ ok('nút tự khoá khi không dùng được (hết giờ / chưa đặt / chư
 ok('sang ván mới thì dọn dòng báo cũ', /prevPhase!=="bet"&&PHASE==="bet"\)sbBao\(""/.test(SRC));
 ok('máy chủ cho biết có giỏ ván trước không', /SBCOVT=!!j\.txVanTruoc/.test(SRC));
 
-// Chủ server: ra kết quả rồi thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG, rải 47 ô mà
+// Chủ server: ra kết quả rồi thì đồng KNB chỉ nằm ở ô TRẢ THƯỞNG, rải 47 ô mà
 // giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
 muc('ra kết quả: chip chỉ nằm ở ô trả thưởng');
 ok('ô trượt giấu hẳn đồng xu + nhãn tiền bàn',
@@ -621,15 +621,15 @@ muc('💸 MAX bàn Siêu nói thật (ví 100.000 -> cược 83.334 + phí 16.66
     ok('⭐ MAX in đủ ba con số tính từ ví đang có: trọn ví · cược · phí',
         /đổ trọn ví/.test(preview) && /stMaxTheoVi\(BAL\)/.test(preview) && /phí <b>/.test(preview));
     ok('...và nói thẳng VÌ SAO không cược được trọn ví', /phí .*cộng THÊM trên tiền cược/.test(preview));
-    ok('...ví hết tiền thì nói hết, không in số âm/0 vô nghĩa', /ví hết Dogcoin rồi/.test(preview));
+    ok('...ví hết tiền thì nói hết, không in số âm/0 vô nghĩa', /ví hết KNB rồi/.test(preview));
 
     // ---- ② tooltip đồng chip trên ô Siêu ----
     const iG = SRC.indexOf("'function stVeGio(){");
     const veGio = iG >= 0 ? SRC.slice(iG, iG + 1200) : '';
     ok('⭐ tooltip trên ô ghi đủ "Cược X + phí Y = trừ ví Z"',
         /d\.title="Cược "\+vnd\(toi\)\+" \+ phí "\+vnd\(Math\.floor\(toi\*STPHI\)\)/.test(veGio), veGio.slice(0, 120));
-    ok('...bàn THƯỚNG không bị vạ lây (không có phí, tooltip vẫn "X Dogcoin")',
-        /'d\.appendChild\(im\);d\.appendChild\(sn\);d\.title=vnd\(toi\)\+" Dogcoin";e\.appendChild\(d\)\}',/.test(SRC));
+    ok('...bàn THƯỚNG không bị vạ lây (không có phí, tooltip vẫn "X KNB")',
+        /'d\.appendChild\(im\);d\.appendChild\(sn\);d\.title=vnd\(toi\)\+" KNB";e\.appendChild\(d\)\}',/.test(SRC));
 
     // ---- ③ lịch sử: dòng từng ô phải khớp dòng tổng ----
     const iH = SRC.indexOf("'function stHist(list)");

@@ -1,4 +1,4 @@
-# BotDoMin, bot Discord + sòng minigame web + shop + cầu Dogcoin vào game Palworld
+# BotDoMin, bot Discord + sòng minigame web + shop + cầu KNB vào game Palworld
 
 > **Viết cho người/AI tiếp nhận.** Đọc hết mục 0 → 3 trước khi sửa một dòng nào.
 > Tài liệu này là **trạng thái hiện tại**, không phải nhật ký. Lịch sử theo ngày nằm ở
@@ -28,7 +28,7 @@
 |---|---|---|
 | `index.js` | ~8.450 | **Toàn bộ logic**: bot Discord, mọi game, tiền, shop, rương, cầu game, wiring `ctx` cho web/panel |
 | `webplay.js` | ~4.000 | Web người chơi (cổng `PLAY_PORT`, mặc định **3002**). HTML/CSS/JS client là **mảng chuỗi** nối lại. Phục vụ thêm **`/poker/`** (file `../Poker/trang.html`), `/poker/bai/*.webp`, và giao `/api/poker/*` cho `ctx.poker`, tab tầng-1 thứ 3 **🃏 GIẢI POKER** và thứ 4 **🀄 TIẾN LÊN** (`../TienLen/trang.html` tại `/tienlen/`, API `/api/tienlen/*`, ảnh lấy lại từ `../Poker/bai/`) (khung nhúng, hiện khi `_pokerOn`). Vào tab là bật `body.pokerFull` → khung **phủ kín màn hình**, thoát bằng nút nổi `#pokerOut` |
-| `../TienLen/` |, | **Tiến Lên Miền Nam nhúng**, `bai.js` (luật bộ bài) · `van.js` (máy ván + TIỀN, thuần logic) · `web.js` (gắn vào ctx, **cửa duy nhất đụng ví**) · `trang.html`. ⚠️ **ĂN DOGCOIN THẬT**, phế 10%/ván. Dùng chung ảnh lá bài của Poker. Chi tiết: `../TienLen/README.md` |
+| `../TienLen/` |, | **Tiến Lên Miền Nam nhúng**, `bai.js` (luật bộ bài) · `van.js` (máy ván + TIỀN, thuần logic) · `web.js` (gắn vào ctx, **cửa duy nhất đụng ví**) · `trang.html`. ⚠️ **ĂN KNB THẬT**, phế 10%/ván. Dùng chung ảnh lá bài của Poker. Chi tiết: `../TienLen/README.md` |
 | `../Poker/` |, | **Giải poker nhúng**, `web.js` (mô-đun gắn vào ctx), `giai.js` (máy giải), `bai.js` (chấm bài), `trang.html`, 53 ảnh. Cùng tiến trình, cùng phiên đăng nhập; chip ảo, không đụng ví. Chi tiết: `../Poker/README.md` |
 | `panel.js` | ~3.500 | Panel admin: **SUPER** cổng `PANEL_PORT` (mặc định 1508) · **thường** `PANEL_PUBLIC_PORT` (1234). HTML client là **một template literal khổng lồ** |
 | `palworld.js` | 200 | Cầu tới dashboard: `giveItem` / `takeItem` / `countItem` / `givePal` / `whereIs`. Basic auth, `cleanName` lọc tên |
@@ -57,7 +57,7 @@ Chạy ở đâu: **VPS** `/root/tts-bot` (clone của repo, nhánh local `maste
 
 ## 3. Dữ liệu trong `database.json`
 
-**Mỗi người chơi** `db[discordId]`: `points` (ví) · `name` · `webPin` · `ingameName` (**chỉ admin đặt**, đây là mốc "đã liên kết") · điểm danh: `lastDaily`, `dailyDays[]`, `streakRun`, `streakPacks`, `streakTotal`, `streakRunPaid`, `lastNghien` · `lastWheelKey` · `debt {loan, admin, lastAccrue}` · `shopOnce {itemId: ts}` · `ichKy {day, bought, items{}, nhan[]}` · `palLuck`, `palLuckRate` · `sosAt`. Người mới: `STARTING_DOGCOIN = 20`.
+**Mỗi người chơi** `db[discordId]`: `points` (ví) · `name` · `webPin` · `ingameName` (**chỉ admin đặt**, đây là mốc "đã liên kết") · điểm danh: `lastDaily`, `dailyDays[]`, `streakRun`, `streakPacks`, `streakTotal`, `streakRunPaid`, `lastNghien` · `lastWheelKey` · `debt {loan, admin, lastAccrue}` · `shopOnce {itemId: ts}` · `ichKy {day, bought, items{}, nhan[]}` · `palLuck`, `palLuckRate` · `sosAt`. Người mới: `STARTING_KNB = 20`.
 
 **Cấu hình + trạng thái** dùng khoá gạch dưới: `_dogLedger` · `_pstats` · `_*History` (đều có cap) · `_*ChannelId` / `_*MsgId` (bảng Discord từng game) · `_*Pending` (vé treo) · `_txTime` `_txNoti` `_txMaxBet` `_txHist20` · `_potCfg` `_pots` · `_minBet` `_gameOpen` `_featOff` · `_loanCfg` · `_itemShop` `_itemCats` `_itemShopQuota*` · `_palwheel*` · `_stock*` · `_spm*` · **`_pokerAdmin`** (mảng ID được mở giải poker) · **`_pokerOn`** (tab 🃏 hiện/ẩn) · **`_tienlenAdmin`** / **`_tienlenOn`** (🀄 Tiến Lên, cùng kiểu), hai khoá này panel ghi, `../Poker/web.js` chỉ đọc.
 
@@ -65,7 +65,7 @@ Chạy ở đâu: **VPS** `/root/tts-bot` (clone của repo, nhánh local `maste
 
 ---
 
-## 4. Cầu Dogcoin ↔ game (tiền thật của người chơi đi qua đây)
+## 4. Cầu KNB ↔ game (tiền thật của người chơi đi qua đây)
 
 Đường đi: bot → `palworld.js` → dashboard `/api/give-item|take-item|count-item|give-pal` → `sftpBridge.js` ghi lệnh vào `queue.txt` trên server game qua SFTP → mod Lua UE4SS đọc mỗi 2s → ghi `results.log` → dashboard đọc về. Chi tiết mod: `../palworld-dashboard/README.md`.
 
@@ -80,11 +80,11 @@ Chạy ở đâu: **VPS** `/root/tts-bot` (clone của repo, nhánh local `maste
 |---|---|
 | Trần mỗi lần chuyển, cả 2 chiều | `WITHDRAW_MAX_PER_REQUEST = 500.000` |
 | Tỉ lệ nạp game → web | `DOG_NAP_RATE_DEF = 2` (1 dog game = 2 dog web), admin chỉnh |
-| Đổi vàng → Dogcoin web | `GOLD_PER_DOG = 100`, nhập bội số `GOLD_STEP = 10.000`, dùng chung hạn ngày với nạp |
-| Hạn ngày mỗi chiều | admin đặt ở panel (`_dogDayMax`), đếm theo Dogcoin **trong game** |
+| Đổi vàng → KNB web | `GOLD_PER_DOG = 100`, nhập bội số `GOLD_STEP = 10.000`, dùng chung hạn ngày với nạp |
+| Hạn ngày mỗi chiều | admin đặt ở panel (`_dogDayMax`), đếm theo KNB **trong game** |
 | Công tắc từng chiều | panel tab 👥 |
 
-Chỉ đếm Dog Coin **trong túi**, không tính hòm. Pal giao vào save **dùng được sau restart server game** (giới hạn engine, đã đào tới đáy, kết luận giữ restart; xem `../palworld-dashboard/ue4ss-mod/GHI-CHU-GIVE-PAL-XAI-LIEN.md`).
+Chỉ đếm KNB **trong túi**, không tính hòm. Pal giao vào save **dùng được sau restart server game** (giới hạn engine, đã đào tới đáy, kết luận giữ restart; xem `../palworld-dashboard/ue4ss-mod/GHI-CHU-GIVE-PAL-XAI-LIEN.md`).
 
 ---
 
@@ -194,7 +194,7 @@ Người chơi **mua** cỏ (**30% tiền cược**, cả 2 game, `fee = bet * 0
 - **Trần cược theo nhóm** (`_txTran`, 5 nhóm trong `NHOM_TRAN`): trần ≈ 5 triệu ÷ tỉ lệ trả cao nhất, nên cửa trả càng cao trần càng thấp. Admin sửa 1 ô là cả nhóm nhảy theo.
 - Khoá sổ xong xí ngầu lắc ngầm, người chơi lên web **nặn chén** để lộ; nặn xong tiền về ví ngay (`txRevealClaim`), trả riêng từng người. **`TX_KQ_S = 4` giây cuối** pha nặn: chén tự rơi, bàn **tô ô trúng sáng / ô trượt xám** cho cả bàn cùng xem. Ai nặn tay xong sớm thì thấy ngay. Danh sách ô trúng do **`TX_CUA.cuaThang()`** tính rồi gửi kèm `nan.thang`, phía người chơi **không tự đoán luật thắng**.
 - Xúc xắc **chỉ được gửi xuống khi `phase === 'nan'`**: mở F12 xoá chén ở pha hiện nhân cũng không moi ra được gì.
-- **Bấm ô là đặt luôn** (không có giỏ cược). Mệnh giá `1.000/10.000/20.000/50.000/100.000` + nút **MAX CƯỢC** đỏ ở cuối, MAX bị chặn bởi ví + trần ô + trần tổng ván (trần ô 200.000 mà ví 400.000 thì chỉ 200.000 vào), và là cách duy nhất để người có **dưới 1.000** đặt được. Bấm ô có **đồng xu bay** vào ô (thuần trang trí, tự dọn). Tiền đã đặt hiện bằng **đồng Dogcoin** đè giữa ô, số tiền là chú thích nhỏ dưới đồng xu (rút gọn 1K/50K/2.5TR, **làm tròn XUỐNG** để không bao giờ ghi hơn tiền thật); từ **50.000** trở lên đồng xu đổi viền đen. Máy chủ **gộp `myBets` theo cửa** trước khi gửi, kẻo bấm 20 phát vào một ô là 20 dòng.
+- **Bấm ô là đặt luôn** (không có giỏ cược). Mệnh giá `1.000/10.000/20.000/50.000/100.000` + nút **MAX CƯỢC** đỏ ở cuối, MAX bị chặn bởi ví + trần ô + trần tổng ván (trần ô 200.000 mà ví 400.000 thì chỉ 200.000 vào), và là cách duy nhất để người có **dưới 1.000** đặt được. Bấm ô có **đồng xu bay** vào ô (thuần trang trí, tự dọn). Tiền đã đặt hiện bằng **đồng KNB** đè giữa ô, số tiền là chú thích nhỏ dưới đồng xu (rút gọn 1K/50K/2.5TR, **làm tròn XUỐNG** để không bao giờ ghi hơn tiền thật); từ **50.000** trở lên đồng xu đổi viền đen. Máy chủ **gộp `myBets` theo cửa** trước khi gửi, kẻo bấm 20 phát vào một ô là 20 dòng.
 - **3 nút thao tác nhanh** (`/api/tx/datlai` · `/api/tx/x2` · `/api/tx/xoacuoc`): 🔁 Đặt lại xếp y giỏ ván trước (`txVanTruoc`, RAM, chụp lúc chốt ván; **chặn nếu ván này đã đặt** kẻo cộng dồn tiêu oan tiền) · ✖️2 đặt thêm đúng số đang có ở mọi cửa · 🗑️ Xoá cược gỡ hết cược của **riêng người đó** rồi hoàn đúng số đã trừ. Hai nút đầu **gọi lại `txDatLo`** nên luật tiền chỉ nằm một chỗ và vẫn tất-cả-hoặc-không. Báo lỗi hiện bằng **dòng đứng yên** dưới nút, **không dùng toast** (chủ server chốt: phải đọc kịp).
 - **🪙 Mệnh giá đang chọn** (cả 3 bàn: Tài Xỉu, Siêu, Roulette): nền vàng + chữ đậm + nhấc lên + viền sáng + **✓ ở góc** (dấu hiệu không phụ thuộc màu) + nảy một cái khi bấm. Rule CSS phải liệt kê **cả `#sbChips`, `#stChips` lẫn `#rlChips`**, bản đầu chỉ có bàn thường nên bàn Siêu rồi Roulette bấm mệnh giá xong không có dấu hiệu gì. **MAX CƯỢC lúc chọn vẫn đỏ** (rule id đè rule lớp, phải viết riêng). Chi tiết `../TaiXiu/README.md` §10.
 - **🖐️ Kéo thả chip** (cả 2 bàn, `/api/tx/doicua|xoacua` · `/api/stx/doicua|xoacua`): **giữ ~0,28s** lên ô có chip của mình → chip nhấc lên bay theo tay, thả lên ô khác = **dời** (`txDoiCua`: không qua ví, chỉ kiểm trần ô đích, kiểm xong mới đụng sổ), thả vào **vùng 🗑️ huỷ giữa đáy màn** = huỷ đúng ô đó (`txXoaCua`, hoàn đúng số đã trừ; bàn Siêu hoàn cả phí). Bấm nhanh vẫn là đặt. Một bộ `keo*` dùng chung **ba bàn** (Tài Xỉu, Siêu, Roulette); chỉ ô có chip mới `touch-action:none`, **cộng thêm `touchmove` không passive trên từng bàn** (26/09) vì chỉ trông CSS thì trang vẫn cuộn theo lúc kéo, chập chờn nhất trên iPhone; `KEOCLICK` chặn cái click trình duyệt bắn sau khi nhả tay. Chi tiết `../TaiXiu/README.md` §10b.
@@ -233,10 +233,10 @@ Mỗi vị thế mở là bot **đang nợ** người đó. Giá đi theo **neo 
 Phí **1 lần** 20% (`feePct`), không lãi kép. Vay tối đa 20.000/ngày, ôm tối đa 60.000. **Còn nợ một đồng là khoá 2 việc** (vay thêm, mua/quay pal, chuyển vào game…), nhãn "nợ xấu" đã bỏ. Tab 📒 Nợ đỏ, nút 🆘 cầu cứu đăng kênh `DEBT_SOS_CHANNEL`, nút "Trả nợ giùm" trên `/sodu`. Nghỉ cầu cứu `DEBT_SOS_CD_MS = 1 phút`.
 
 ### 🀄 Tiến Lên Miền Nam (thuần web, `../TienLen/`), game DUY NHẤT người chơi ăn tiền nhau
-Bàn 2–4 người, 13 lá, chạy liên tục, **ăn Dogcoin thật**. Hai chế độ: **nhất nhì ba tư** (nhất ăn của tư, nhì ăn của ba) và **nhất ăn hết + đếm lá**. Bật/tắt 4 luật: 3♠ đi đầu · tới trắng · chặt heo có thưởng · thối 2. **Nhà cái ăn 10% tiền thắng** mỗi ván (`pheTram`), đây là nguồn thu duy nhất vì người chơi ăn nhau. Ngồi bàn cần **vốn ≥ 30× mức cược**, tụt dưới là bị mời ra trước ván kế. Người chơi **tự mở bàn** bằng nút ✅ Sẵn sàng. Luật đầy đủ + cạm bẫy: `../TienLen/README.md`.
+Bàn 2–4 người, 13 lá, chạy liên tục, **ăn KNB thật**. Hai chế độ: **nhất nhì ba tư** (nhất ăn của tư, nhì ăn của ba) và **nhất ăn hết + đếm lá**. Bật/tắt 4 luật: 3♠ đi đầu · tới trắng · chặt heo có thưởng · thối 2. **Nhà cái ăn 10% tiền thắng** mỗi ván (`pheTram`), đây là nguồn thu duy nhất vì người chơi ăn nhau. Ngồi bàn cần **vốn ≥ 30× mức cược**, tụt dưới là bị mời ra trước ván kế. Người chơi **tự mở bàn** bằng nút ✅ Sẵn sàng. Luật đầy đủ + cạm bẫy: `../TienLen/README.md`.
 
 ### 🧧 Lộc lá
-Chuyển Dogcoin giữa người chơi trên web (`/api/transfer`, `/api/transfer/multi`), có đăng công khai.
+Chuyển KNB giữa người chơi trên web (`/api/transfer`, `/api/transfer/multi`), có đăng công khai.
 
 ---
 
@@ -310,7 +310,7 @@ Tab **Quà**: quà mỗi ngày theo danh sách riêng (`giftClaim`, người n�
 
 ## 10. Panel admin (`panel.js`)
 
-Tab: `tx` Tài Xỉu · `stx` ⚡ Siêu Tài Xỉu (chỉ SUPER) · `rl` 🎡 Roulette (chỉ SUPER) · `mine` Dò Mìn · `stair` Leo Thang · `bj` Vòng quay · `stock` · `spm` Phi Thuyền · `user` 👥 Người chơi · `pal` 🎮 Palworld & Dogcoin · `log` · `gift` Quà · `give` Kho đồ. SUPER (cổng `PANEL_PORT`) mới có: ép kết quả/mìn/quà hộp/pal, Kho đồ, can thiệp giá cổ phiếu (`epOk` = so `req.socket.localPort`).
+Tab: `tx` Tài Xỉu · `stx` ⚡ Siêu Tài Xỉu (chỉ SUPER) · `rl` 🎡 Roulette (chỉ SUPER) · `mine` Dò Mìn · `stair` Leo Thang · `bj` Vòng quay · `stock` · `spm` Phi Thuyền · `user` 👥 Người chơi · `pal` 🎮 Palworld & KNB · `log` · `gift` Quà · `give` Kho đồ. SUPER (cổng `PANEL_PORT`) mới có: ép kết quả/mìn/quà hộp/pal, Kho đồ, can thiệp giá cổ phiếu (`epOk` = so `req.socket.localPort`).
 
 Làm được: bật/tắt + ép kết quả từng game · **nhịp ván Tài Xỉu 3 mốc** (đặt / hiện nhân / nặn) + **trần cược 5 nhóm cửa Sic Bo** (`/api/tx/tran`, nằm trong `VIEWONLY_PATHS`) + báo cược · sàn cược · cộng/trừ/set ví · phát tiền toàn server · reset điểm danh · **liên kết tên nhân vật** (`/api/pal/set-name`) · cấu hình shop (món, nhóm, hạn, ảnh) · hũ · vay nợ · công tắc chức năng · kênh cho từng bảng · sổ biến động · **tab 🀄 Tiến Lên (chỉ SUPER)**: mức cược · chế độ · đơn giá lá · 4 công tắc luật · Mở bàn / Giải tán · công tắc hiện tab (5 route `/api/tienlen/*` đều nằm trong `VIEWONLY_PATHS`) · **tab 🃏 Poker (chỉ SUPER)**: công tắc hiện/ẩn tab GIẢI POKER trên web (`/api/poker/on`), ô "Admin poker" (`/api/poker/admin`), chip khởi điểm (`/api/poker/chip`), Bắt đầu (N người) / Giải tán / Tạm nghỉ / Chơi tiếp (`/api/poker/batdau|giaitan|nghi|tiep`), 7 route này đều nằm trong `VIEWONLY_PATHS` nên cổng thường bị chặn.
 

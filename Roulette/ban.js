@@ -204,11 +204,11 @@ function taoBan(ctx) {
         const phiPt = (CUA.phiSuat() * 100).toFixed(2) + '%';
 
         for (const k of ds) if (gop[k] < SAN_CUOC) {
-            return { error: `Mỗi cửa tối thiểu ${vn(SAN_CUOC)} Dogcoin (cửa ${CUA.THEO_ID[k].ten} mới ${vn(gop[k])})` };
+            return { error: `Mỗi cửa tối thiểu ${vn(SAN_CUOC)} KNB (cửa ${CUA.THEO_ID[k].ten} mới ${vn(gop[k])})` };
         }
         const vi = nguoi(userId).points || 0;
         if (vi < tongTru) {
-            return { error: `Không đủ Dogcoin! Cần ${vn(tongTru)} (đã gồm phí ${phiPt}), ví có ${vn(vi)}` };
+            return { error: `Không đủ KNB! Cần ${vn(tongTru)} (đã gồm phí ${phiPt}), ví có ${vn(vi)}` };
         }
         const tran = tranCfg();
         for (const k of ds) {
@@ -219,7 +219,7 @@ function taoBan(ctx) {
         }
         const capTong = tranToiDaNguoi();
         if (capTong > 0 && tongCuocCua(userId) + tongCuoc > capTong) {
-            return { error: `Giới hạn ${vn(capTong)} Dogcoin/người/ván - ván này bạn đã đặt ${vn(tongCuocCua(userId))}` };
+            return { error: `Giới hạn ${vn(capTong)} KNB/người/ván - ván này bạn đã đặt ${vn(tongCuocCua(userId))}` };
         }
 
         // qua hết mới đụng ví

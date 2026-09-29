@@ -119,11 +119,11 @@ const may = http.createServer((req, res) => {
             res.end(nhet + t);
         });
     }
-    // 🪙 icon Dogcoin, prod web cược phục vụ sẵn ở /dogcoin.png; bản chạy thử phải tự lấy
+    // 🪙 icon KNB, prod web cược phục vụ sẵn ở /knb.png; bản chạy thử phải tự lấy
     // từ BotDoMin/assets, không thì mọi con số tiền hiện ảnh vỡ.
-    if (req.method === 'GET' && duong === '/dogcoin.png') {
-        return fs.readFile(nodePath.join(__dirname, '..', 'BotDoMin', 'assets', 'dogcoin.png'), (e, b) => {
-            if (e) return traJson(res, 404, { ok: false, error: 'Không có icon Dogcoin' });
+    if (req.method === 'GET' && duong === '/knb.png') {
+        return fs.readFile(nodePath.join(__dirname, '..', 'BotDoMin', 'assets', 'knb.png'), (e, b) => {
+            if (e) return traJson(res, 404, { ok: false, error: 'Không có icon KNB' });
             res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=300' });
             res.end(b);
         });
@@ -164,7 +164,7 @@ if (require.main === module) {
         tienlen.xuLy({ path: '/' + maMay + '/sansang', method: 'POST', body: {}, userId: id }, null, () => { });
     }
     may.listen(CONG, () => {
-        console.log('\n🀄 TIẾN LÊN, bản CHẠY THỬ TẠI MÁY (ví giả, không đụng Dogcoin thật)');
+        console.log('\n🀄 TIẾN LÊN, bản CHẠY THỬ TẠI MÁY (ví giả, không đụng KNB thật)');
         console.log('   Ví mỗi người 1.000.000 · ' + SO_BOT + ' máy đánh cùng (ngồi phòng ' + maMay + ')');
         console.log('   Sảnh đang có:');
         for (const p of tienlen.phong) {

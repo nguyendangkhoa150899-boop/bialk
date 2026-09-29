@@ -106,7 +106,7 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
 ## 8. Giao diện bàn
 
 - **Bấm ô là đặt luôn**, không có giỏ cược.
-- Tiền đã đặt hiện bằng **đồng Dogcoin** đè giữa ô, số tiền là chú thích nhỏ dưới đồng xu.
+- Tiền đã đặt hiện bằng **đồng KNB** đè giữa ô, số tiền là chú thích nhỏ dưới đồng xu.
   Rút gọn `1K / 50K / 2.5TR` và **làm tròn XUỐNG** để không bao giờ ghi hơn tiền thật.
   Từ **50.000** trở lên đồng xu đổi viền đen.
 - Lúc ra kết quả: ô trúng **nền trắng** viền vàng nhấp nháy, ô trượt **nền xám** nhưng xúc
@@ -119,7 +119,7 @@ chủ còn chưa quay xúc xắc, nên mở F12 xoá cái chén cũng không moi
   vào. Nhờ MAX mà người có **dưới 1.000** vẫn đặt được (mệnh giá nhỏ nhất là 1.000 nên họ từng kẹt).
 - Bấm ô thì có **đồng xu bay** từ hàng mệnh giá vào ô, tự dọn sau 0,5 giây. Thuần trang trí,
   không chắn chuột, không đụng DOM của bàn (chip thật do `sbVeGio` vẽ ở nhịp làm mới sau).
-- **Ra kết quả thì đồng Dogcoin chỉ nằm ở ô TRẢ THƯỞNG**, ô trượt ẩn chip + nhãn tiền bàn.
+- **Ra kết quả thì đồng KNB chỉ nằm ở ô TRẢ THƯỞNG**, ô trượt ẩn chip + nhãn tiền bàn.
   Rải 47 ô mà giữ hết chip thì 47 đồng xu che kín bàn, không thấy ô nào đang ăn.
 
 ## 9. Lịch sử ván, kể được ô nào nhân, ai ăn gì
@@ -187,7 +187,7 @@ mỗi bàn truyền bảng cửa và hàm `cuaThang` của lõi tiền mình và
   mà bấm Đặt lại thì **chặn**, cộng dồn là tiêu oan tiền người chơi.
 - Cả 3 **câm ngoài pha đặt cược**.
 - Báo lỗi bằng **dòng chữ đứng yên** dưới nút, **không dùng toast** (chủ server chốt: phải
-  đọc kịp câu "không đủ Dogcoin", đừng loé rồi tắt).
+  đọc kịp câu "không đủ KNB", đừng loé rồi tắt).
 
 ### Mệnh giá đang chọn (22/09)
 
@@ -210,7 +210,7 @@ lại sau mỗi lần chọn nên hoạt ảnh tự chạy lại.
 
 ## 10b. Kéo thả chip (22/09), dời ô / huỷ đúng một ô
 
-Lỡ đặt Chẵn thì **giữ ngón/chuột ~0,28s** lên ô đó: đồng Dogcoin nhấc lên bay theo tay, ô đích
+Lỡ đặt Chẵn thì **giữ ngón/chuột ~0,28s** lên ô đó: đồng KNB nhấc lên bay theo tay, ô đích
 sáng viền vàng, và **vùng "🗑️ Thả vào đây để HUỶ" hiện ở giữa đáy màn**. Thả lên ô khác =
 dời, thả vào vùng huỷ = huỷ đúng ô đó, thả chỗ khác = chip về chỗ cũ. Bấm nhanh vẫn là đặt.
 
@@ -259,7 +259,7 @@ node TaiXiu/kiemtra/web-test.js       # 3 mốc giờ, giấu hệ số nhân, t
 node TaiXiu/kiemtra/chotvan-test.js   # đặt ô bàn mới rồi BỎ ĐI: ván vẫn phải chốt + trả thưởng
 node TaiXiu/kiemtra/tratien-test.js   # ép xúc xắc rồi tính tay xem trả đúng từng đồng
 node TaiXiu/kiemtra/nhan-2ban-test.js # 22/09 rà nhân 2 bàn: tham chiếu độc lập, 216×52×nhân, máy bàn thật 2.600 ván, Đơn 1 viên không khoe ⚡ (48 phép)
-node TaiXiu/kiemtra/log-test.js       # 22/09 📜 LOG: Sổ Dogcoin chặn mini game, 1 dòng/ván ai đặt nhiêu ăn thua nhiêu, mục Siêu riêng (41 phép)
+node TaiXiu/kiemtra/log-test.js       # 22/09 📜 LOG: Sổ KNB chặn mini game, 1 dòng/ván ai đặt nhiêu ăn thua nhiêu, mục Siêu riêng (41 phép)
 node TaiXiu/kiemtra/taxi-test.js      # 24/09 🚕 vé "Xu đi taxi về": chạy mã thật, soi từng đồng (52 phép)
 ```
 
@@ -476,7 +476,7 @@ dưới ô) đã bỏ vì làm hàng chip gãy.
   (+phí 2.000) → +8.000"*); lỗi/hoàn → SYSTEM; ép/đổi nhịp/trần/thang/bật tắt → ADMIN.
 - Panel tab 📜: mục **⚡ Siêu Tài Xỉu riêng** (`stxHistory` từ `bangDiscord(30)`), dòng ván **gộp theo
   người** (đặt · +phí · nhận · lãi/lỗ, kèm từng ô) dùng chung 2 bàn.
-- **💰 Sổ Dogcoin chỉ giữ chuyển / nạp / rút / admin** (+ mua pal, vay/trả nợ, hoàn rút, không phải mini
+- **💰 Sổ KNB chỉ giữ chuyển / nạp / rút / admin** (+ mua pal, vay/trả nợ, hoàn rút, không phải mini
   game). `DOG_LEDGER_BO_QUA = bet · jackpot · cophieu · tienlen · sieutx` chặn ở cửa ghi **và** lọc khi
   đọc nên dòng cũ trong DB cũng biến. 3 khoản hoàn cược mini game đổi nhãn `bet` để bị chặn theo.
 
@@ -490,19 +490,19 @@ Nút **🚕 XU ĐI TAXI VỀ** nằm cạnh số dư trên web, **chỉ hiện k
 Máy chủ kiểm lại toàn bộ điều kiện khi bấm, web chỉ là cái nút. Bấm dồn nhiều lần chỉ ăn một
 (ghi mốc nhận **trước** khi cộng tiền).
 
-### "Thua trong ngày" đếm từ VÍ, không đếm từ sổ Dogcoin
+### "Thua trong ngày" đếm từ VÍ, không đếm từ sổ KNB
 
 `updatePoints` cộng mọi đồng ra/vào ví vào `_loNgay[uid]`, rồi `logDog` **trừ ngược** những khoản
 **không phải mini game** (nạp/rút/chuyển/admin cộng/mua pal/vay/trả nợ/hoàn). Còn lại đúng bằng
 thắng thua do chơi, **mọi trò, kể cả trò thêm sau này**, không phải khai báo gì thêm.
 
-⚠️ **Đừng đếm theo sổ Dogcoin.** Sổ ghi cho người đọc nên số của nó không phải lúc nào cũng bằng
+⚠️ **Đừng đếm theo sổ KNB.** Sổ ghi cho người đọc nên số của nó không phải lúc nào cũng bằng
 tiền ví đổi: Phi Thuyền ghi `-amount` lúc cược **rồi ghi `-amount` lần nữa lúc nổ** (ví chỉ trừ một
 lần), lúc rút thì ghi `win − cược` trong khi ví `+win`. Đếm theo sổ là **thổi phồng tiền thua gấp
 đôi** → phát tiền cho người chưa đủ điều kiện. `taxi-test.js` có phép đo đúng ca này.
 
 Sổ về 0 lúc **00:00 giờ VN**. `taxiDonSo()` chạy lúc bot khởi động dọn entry ngày cũ + mốc nhận quá
-7 ngày. Tiền taxi đi qua `logDog('taxi', …)` nên **vào Sổ Dogcoin** (admin tra được) và **tự trừ
+7 ngày. Tiền taxi đi qua `logDog('taxi', …)` nên **vào Sổ KNB** (admin tra được) và **tự trừ
 ngược** khỏi sổ lỗ, nhận 10.000 không làm số đã thua tụt xuống.
 
 **Mốc 24 giờ là mốc TRƯỢT, không phải nửa đêm.** Nhận lúc 23h55 rồi 00h05 hôm sau bấm lại vẫn phải

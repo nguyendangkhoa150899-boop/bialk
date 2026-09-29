@@ -24,7 +24,7 @@ const vnd = (n) => Number(n).toLocaleString('vi-VN');
 // Cắt trọn khối từ updatePoints tới hết taxiNhan (gồm logDog, statAdd, sổ lãi-lỗ ngày, vé taxi).
 function dung(ngayDau = '24/9/2026') {
     const i = SRC.indexOf('function updatePoints(userId, amount) {');
-    const j = SRC.indexOf('// ===== CHUYỂN DOGCOIN GIỮA NGƯỜI CHƠI');
+    const j = SRC.indexOf('// ===== CHUYỂN KNB GIỮA NGƯỜI CHƠI');
     if (i < 0 || j < 0) throw new Error('không cắt được khối taxi trong index.js');
     const ma = SRC.slice(i, j);
     const c = {
@@ -45,7 +45,7 @@ function dung(ngayDau = '24/9/2026') {
         datVi: (id, n) => { c.getUserData(id).points = n; },
         // chơi game: ví đổi, KHÔNG đi qua logDog (đúng như Tài Xỉu / Dò Mìn / Leo Thang thật)
         choi: (id, delta) => A.updatePoints(id, delta),
-        // khoản KHÔNG phải game: ví đổi + ghi sổ Dogcoin
+        // khoản KHÔNG phải game: ví đổi + ghi sổ KNB
         ngoaiGame: (id, delta, loai) => { A.updatePoints(id, delta); A.logDog(loai, id, id, delta, ''); },
         // tua đồng hồ: dời mốc nhận lùi về quá khứ
         tuaGio: (id, gio) => { if (c.dbCache._taxiNhan && c.dbCache._taxiNhan[id]) c.dbCache._taxiNhan[id] -= gio * 3600000; },
@@ -135,7 +135,7 @@ muc('④ "thua trong ngày" chỉ tính tiền CHƠI, nạp/rút/chuyển/admin 
     ok('thắng tiếp, đang LÃI -> thua = 0 (không ra số âm)', s.taxiLoHomNay('A') === 0, String(s.taxiLoHomNay('A')));
 }
 
-// ---------------------------------------------------------------- ⑤ cái bẫy: sổ Dogcoin ghi lệch ví
+// ---------------------------------------------------------------- ⑤ cái bẫy: sổ KNB ghi lệch ví
 muc('⑤ ⚠️ Phi Thuyền ghi sổ 2 lần, đếm theo VÍ nên không bị thổi gấp đôi');
 {
     const s = dung();
@@ -167,7 +167,7 @@ muc('⑥ tiền taxi không tự làm giảm số đã thua');
     s.taxiNhan('A');
     ok('⭐ nhận 10.000 xong, sổ vẫn ghi thua 2.500.000 (không bị trừ còn 2.490.000)',
         s.taxiLoHomNay('A') === 2500000, String(s.taxiLoHomNay('A')));
-    ok('...và khoản này CÓ vào Sổ Dogcoin (loại "taxi") để admin tra được',
+    ok('...và khoản này CÓ vào Sổ KNB (loại "taxi") để admin tra được',
         (s.c.dbCache._dogLedger || []).some(r => r.type === 'taxi' && r.amount === 10000),
         JSON.stringify((s.c.dbCache._dogLedger || [])[0]));
 }
@@ -225,7 +225,7 @@ muc('⑨ nối dây web + panel');
         /setInterval\(taxiSync,20000\)/.test(WEB) && /if\(\(TAXI&&TAXI\.nhanDuoc\)!==\(BAL<=\(\(TAXI&&TAXI\.viMax\)\|\|0\)\)\)taxiSync\(\)/.test(WEB));
     ok('panel: 4 ô + công tắc + nút lưu', /id="txTien"/.test(PANEL) && /id="txLoMin"/.test(PANEL) && /id="txViMax"/.test(PANEL) && /id="txGio"/.test(PANEL) && /id="txOn"/.test(PANEL) && /onclick="txSave\(\)"/.test(PANEL));
     ok('panel có đường lưu cấu hình + ghi log admin', /path === '\/api\/taxi\/cfg'/.test(PANEL) && /\[PANEL\] Xu đi taxi về/.test(PANEL));
-    ok('Sổ Dogcoin có nhãn tiếng Việt cho loại "taxi"', /'taxi':'🚕 Xu đi taxi về'/.test(PANEL));
+    ok('Sổ KNB có nhãn tiếng Việt cho loại "taxi"', /'taxi':'🚕 Xu đi taxi về'/.test(PANEL));
     ok('panel đổ giá trị về ô mà KHÔNG đè lúc admin đang gõ', /if\(STATE\.taxiCfg\)\{\[\['txTien','tien'\]/.test(PANEL) && /document\.activeElement!==el/.test(PANEL));
 }
 

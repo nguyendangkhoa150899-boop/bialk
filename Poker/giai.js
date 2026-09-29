@@ -1,6 +1,6 @@
 // ============================================================================
 //  giai.js, MÁY TRẠNG THÁI GIẢI POKER 2–8 NGƯỜI (Texas Hold'em, loại dần)
-//  Thuần logic: không web, không Discord, không đụng ví Dogcoin.
+//  Thuần logic: không web, không Discord, không đụng ví KNB.
 //  Chip trong đây là CHIP GIẢI (ảo). Không ai ăn tiền thật của ai, giải chỉ đẻ ra
 //  THỨ HẠNG (nhất/nhì/ba/tư...), còn thưởng Pal và phạt là chủ server tự làm tay.
 //
@@ -51,7 +51,7 @@ const GIAY_KHOE = 4;           // khoe 1 lá thì cả bàn thấy trong chừng
 const CHIP_DAU = 5000;
 const TOI_DA_NGUOI = 8;        // 8 ghế quanh bàn - chủ server chốt
 const TOI_THIEU_NGUOI = 2;     // admin mở giải, 2 người là chạy được
-// Ví phải CÓ chừng này Dogcoin mới được ngồi vào bàn. CHỈ KIỂM TRA, KHÔNG TRỪ -
+// Ví phải CÓ chừng này KNB mới được ngồi vào bàn. CHỈ KIỂM TRA, KHÔNG TRỪ -
 // giải không đụng tới tiền thật của ai. Tầng web là chỗ kiểm, không phải file này.
 const DOGCOIN_VAO_GIAI = 10000;
 

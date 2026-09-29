@@ -325,7 +325,7 @@ input[type=range]{width:100%;accent-color:var(--gold)}
 <div id="manDangNhap" class="hop">
   <h1>🃏 Giải Poker</h1>
   <p class="mo">Đăng nhập bằng <b>ID Discord</b> và <b>mã PIN</b> y như web chơi game của bot.
-     Giải này <b>không ăn Dogcoin của ai</b>, chip trong bàn là chip ảo, chỉ để phân hạng.</p>
+     Giải này <b>không ăn KNB của ai</b>, chip trong bàn là chip ảo, chỉ để phân hạng.</p>
   <label>ID Discord</label>
   <input id="oId" inputmode="numeric" autocomplete="username" placeholder="vd: 111111111111111111">
   <label>Mã PIN</label>
@@ -508,7 +508,7 @@ function ve(s){
 }
 
 function veCho(s){
-  $('choVi').textContent = s.toi.ten + ' · ' + vnd(s.toi.dogcoin) + ' Dogcoin';
+  $('choVi').textContent = s.toi.ten + ' · ' + vnd(s.toi.dogcoin) + ' KNB';
   var daNgoi = s.gheCuaToi >= 0;
   $('choDem').textContent = s.cho.length + '/' + s.toiDa + ' người đã ngồi · mỗi người ' + vnd(s.chipDau) + ' chip';
   // 18/09: không cần admin nữa, ngồi rồi thì giữa bàn có nút ✅ SẴN SÀNG; đủ ≥ 2 người và ai cũng
@@ -546,7 +546,7 @@ function veCho(s){
   $('choThang').textContent = 'Thang blind: ' + (s.lichBlind || []).slice(0, 8).map(vnd).join(' → ') +
       (s.lichBlind && s.lichBlind.length > 8 ? ' → …' : '') + ' · lên mức mỗi 8 phút hoặc mỗi vòng (tối thiểu 6 ván)' +
       (s.toi.admin ? ' · bạn là admin, bấm Bắt đầu ở panel SUPER (tab 🃏 Poker)' : '');
-  $('choPhu').textContent = 'Cần có ' + vnd(s.dogcoinVao) + ' Dogcoin để vào · từ ' + s.toiThieu + ' đến ' + s.toiDa + ' người · ai cũng bấm SẴN SÀNG là vào ván · giải chạy dưới 1 phút vẫn nhảy vào được';
+  $('choPhu').textContent = 'Cần có ' + vnd(s.dogcoinVao) + ' KNB để vào · từ ' + s.toiThieu + ' đến ' + s.toiDa + ' người · ai cũng bấm SẴN SÀNG là vào ván · giải chạy dưới 1 phút vẫn nhảy vào được';
 }
 function ngoi(k){ goi('/ngoi', { ghe: k }); }
 function sanSang(){ goi('/sansang', {}); }            // 18/09: bấm lại = huỷ

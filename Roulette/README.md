@@ -1,4 +1,4 @@
-# 🎡 Roulette, bàn thứ ba của BotDoMin (thuần web, ăn Dogcoin thật)
+# 🎡 Roulette, bàn thứ ba của BotDoMin (thuần web, ăn KNB thật)
 
 Trạng thái hiện tại. Sửa gì ở `cua.js` / `ban.js` thì sửa đúng mục ở đây, không viết nhật ký ngày.
 

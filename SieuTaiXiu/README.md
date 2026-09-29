@@ -88,7 +88,7 @@ ra. Chỉ khi ván đã quay thì phí mới coi như đã thu.
 - **Phí 20% hiện ở 3 chỗ**: dải đỏ gọn "💸 PHÍ 20%" trên bàn (chủ server bỏ dòng dài), dòng ngay
   dưới hàng mệnh giá (ghi luôn số tiền thật sẽ bị trừ), và trong lời báo sau khi đặt.
 - Ô được bốc hệ số nhân thì **giật như có sét** (`@keyframes stSet`), không chỉ nhấp nháy.
-- Còn lại y bàn thường: bấm ô là đặt, đồng Dogcoin trên ô, 3 nút thao tác nhanh, nặn chén,
+- Còn lại y bàn thường: bấm ô là đặt, đồng KNB trên ô, 3 nút thao tác nhanh, nặn chén,
   4 giây cuối tự mở, ô trúng sáng / ô trượt chìm.
 - ⚠️ **Nút MAX CƯỢC KHÁC bàn thường**, xem §5c. Bàn thường không phí nên MAX = trọn ví; bàn
   Siêu MAX = `floor(ví / 1,2)` để còn chỗ trả phí.
@@ -111,7 +111,7 @@ Mọi id trên trang bắt đầu bằng `st` để không đụng bàn thườn
 dọc, chén to đùng. Sửa: **mỗi rule sân khấu liệt kê cả id bàn Siêu** (`#stage,#stStage{`).
 Thêm phần tử sân khấu mới là phải thêm vào cả hai.
 
-**② Ô không ăn phụ kiện.** Chip Dogcoin, nhãn tiền bàn, chữ, co chữ điện thoại… đều khoá
+**② Ô không ăn phụ kiện.** Chip KNB, nhãn tiền bàn, chữ, co chữ điện thoại… đều khoá
 theo lớp `.sbO`; ô bàn Siêu lúc đầu chỉ có `.stO` → chip không được định vị, kéo ô dài.
 Sửa tận gốc: **ô bàn Siêu mang cả hai lớp `sbO stO`**, `.sbO` để ăn mọi phụ kiện dùng
 chung, còn tông đen viết bằng `.sbO.stO…` (đặc hiệu cao hơn một bậc nên thắng màu bàn
@@ -126,7 +126,7 @@ cược (§1), nên với 100.000 trong ví KHÔNG THỂ cược trọn 100.000,
 
 Nhưng bộ kiểm quét 2.006 mức ví lại lòi thêm một lệch nhỏ: trang tính MAX bằng
 `floor(ví / 1,2)` trong khi máy chủ tính phí bằng `floor(cược × 0,2)`, nên MAX **bỏ sót
-1 Dogcoin** ở 2/3 số ví. Với ví 100.000:
+1 KNB** ở 2/3 số ví. Với ví 100.000:
 
     bản CŨ  floor(100.000/1,2) = 83.333 · phí 16.666 · trừ  99.999 (dư 1) · thắng 1:1 = 166.667
     bản MỚI stMaxTheoVi(100.000) = 83.334 · phí 16.666 · trừ 100.000 (đúng) · thắng 1:1 = 166.668

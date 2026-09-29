@@ -3,7 +3,7 @@
 //
 //  Chủ server: · "log tài xỉu mình chỉ quan tâm ván đó người nào đặt nhiêu ăn thua nhiêu kết quả"
 //              · "làm thêm 1 siêu tài xỉu log nữa rồi tách log ra"
-//              · "💰 Sổ Dogcoin chỉ lưu chuyển nạp rút dogcoin admin thêm dogcoin thôi,
+//              · "💰 Sổ KNB chỉ lưu chuyển nạp rút dogcoin admin thêm dogcoin thôi,
 //                 ngoài ra không lưu log gì của mấy mini game hết"
 // ============================================================================
 'use strict';
@@ -18,12 +18,12 @@ const ok = (t, dk, them) => { if (dk) { P++; console.log('  OK   ' + t); } else 
 const muc = (t) => console.log('\n== ' + t + ' ==');
 const cat = (S, tu, den) => { const i = S.indexOf(tu), j = S.indexOf(den, i); if (i < 0 || j < 0) throw new Error('không cắt được ' + tu); return S.slice(i, j); };
 
-// ---------------------------------------------------------------- 💰 SỔ DOGCOIN
-muc('💰 Sổ Dogcoin: chỉ chuyển / nạp / rút / admin - chạy thật logDog');
+// ---------------------------------------------------------------- 💰 SỔ KNB
+muc('💰 Sổ KNB: chỉ chuyển / nạp / rút / admin - chạy thật logDog');
 {
     const code = cat(IDX, 'const DOG_LEDGER_BO_QUA = new Set(', '// ===== THỐNG KÊ TÍCH LŨY THEO NGƯỜI CHƠI');
     // loNgayCong: sổ lãi-lỗ ngày của vé 🚕 taxi (24/09) nằm ngoài vùng cắt này. Ở đây chỉ kiểm
-    // "loại nào vào Sổ Dogcoin" nên cho nó rỗng; hành vi thật của sổ lỗ do taxi-test.js đo.
+    // "loại nào vào Sổ KNB" nên cho nó rỗng; hành vi thật của sổ lỗ do taxi-test.js đo.
     const c = { dbCache: {}, getUserData: () => ({ points: 7 }), statAdd: () => { }, loNgayCong: () => { }, Date, Array, Set, Number, Math, console };
     vm.createContext(c); vm.runInContext(code, c);
     // const ở đầu script vm không thành thuộc tính context -> hỏi thẳng trong context
@@ -38,7 +38,7 @@ muc('💰 Sổ Dogcoin: chỉ chuyển / nạp / rút / admin - chạy thật lo
         /logDog\('bet', uid, b\.name \|\| uid, b\.amount, `Huỷ đặt cược trước Phi Thuyền/.test(IDX) &&
         /logDog\('bet', uid, \(getUserData\(uid\)\.name\) \|\| uid, b\.amount, `hoàn cược Phi Thuyền \(bot restart giữa vòng\)`\)/.test(IDX));
     ok('...hoàn RÚT / hoàn đơn pal vẫn là refund (vẫn ghi)', /logDog\('refund', userId, u\.name \|\| userId, amount, `hoàn rút web/.test(IDX) && /logDog\('refund', req\.userId, req\.username, deducted, `admin từ chối đơn/.test(IDX));
-    ok('panel: ghi chú Sổ Dogcoin nói rõ không ghi mini game', /Không<\/b> ghi bất cứ gì của mini game/.test(PANEL) && /'vay':'🏦 Vay', 'trano':'💳 Trả nợ'/.test(PANEL));
+    ok('panel: ghi chú Sổ KNB nói rõ không ghi mini game', /Không<\/b> ghi bất cứ gì của mini game/.test(PANEL) && /'vay':'🏦 Vay', 'trano':'💳 Trả nợ'/.test(PANEL));
 }
 
 // ---------------------------------------------------------------- 📜 LOG FILE TÀI XỈU
@@ -108,5 +108,5 @@ muc('🖥️ panel: mục ⚡ Siêu riêng + dòng ván gộp theo người');
     ok('ván trống: "không ai đặt"', /không ai đặt/.test(c.veVanLog({ gameId: 2, dice: [1, 1, 1], sum: 3, tx: 'BÃO', storm: true, bets: [] })));
 }
 
-console.log('\n📜 LOG 2 BÀN + SỔ DOGCOIN: ' + P + ' đạt, ' + F + ' hỏng');
+console.log('\n📜 LOG 2 BÀN + SỔ KNB: ' + P + ' đạt, ' + F + ' hỏng');
 if (F) process.exitCode = 1;

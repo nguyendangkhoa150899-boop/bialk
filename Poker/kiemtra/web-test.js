@@ -82,17 +82,17 @@ const dangNhap = async (id) => (await goi('/api/dangnhap', { id, pin: '123456' }
     }
 
     // ------------------------------------------------------------ cổng vào giải
-    muc('cổng vào giải: 10.000 Dogcoin + đã liên kết');
+    muc('cổng vào giải: 10.000 KNB + đã liên kết');
     {
         const chuaLk = await dangNhap('900000000000000005');
         const r1 = await goi('/api/ngoi', {}, chuaLk.token);
         ok('chưa liên kết nhân vật thì không ngồi được', r1.ma === 400 && /liên kết/i.test(r1.j.error), r1.j.error);
         const ngheo = await dangNhap('900000000000000006');
         const r2 = await goi('/api/ngoi', {}, ngheo.token);
-        ok('dưới 10.000 Dogcoin thì không ngồi được', r2.ma === 400 && /10\.000/.test(r2.j.error), r2.j.error);
+        ok('dưới 10.000 KNB thì không ngồi được', r2.ma === 400 && /10\.000/.test(r2.j.error), r2.j.error);
         const t2 = (await goi('/api/trangthai', null, ngheo.token)).j;
         ok('web nói rõ lý do không ngồi được', t2.toi.duocNgoi === false && !!t2.toi.viSaoKhong, t2.toi.viSaoKhong);
-        ok('KHÔNG trừ Dogcoin của ai (chỉ kiểm tra)',
+        ok('KHÔNG trừ KNB của ai (chỉ kiểm tra)',
             JSON.parse(fs.readFileSync(DUONG, 'utf8'))['900000000000000006'].points === 500);
     }
 

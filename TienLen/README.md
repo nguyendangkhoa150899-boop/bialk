@@ -1,10 +1,10 @@
-# Tiến Lên Miền Nam, bàn 2–4 người ăn Dogcoin thật, nhúng trong web BotDoMin
+# Tiến Lên Miền Nam, bàn 2–4 người ăn KNB thật, nhúng trong web BotDoMin
 
 > **Viết cho người/AI tiếp nhận.** Đây là **trạng thái hiện tại**, không phải nhật ký. Lịch sử: `git log -- TienLen/`.
 > Chủ server: **Khoa**, không rành code. Trả lời tiếng Việt, chỉ rõ file và dòng.
 
 Bàn **2–4 người**, mỗi người **13 lá**, **chạy liên tục** (xong ván chia tiếp). Khác Poker ở chỗ
-quan trọng nhất: **bàn này ăn Dogcoin THẬT**, không phải chip ảo. Nhà cái thu **10% tiền thắng**
+quan trọng nhất: **bàn này ăn KNB THẬT**, không phải chip ảo. Nhà cái thu **10% tiền thắng**
 mỗi ván (phế), đây là chỗ duy nhất nhà cái có thu, còn lại là người chơi ăn nhau.
 
 Chạy **NHÚNG trong web BotDoMin**: tab tầng-1 thứ 4 **🀄 TIẾN LÊN**, cùng cổng, cùng phiên đăng
@@ -17,7 +17,7 @@ nhập, toàn màn hình. Trang là `trang.html` phục vụ tại `/tienlen/`, 
 
 | Luật | Vì sao |
 |---|---|
-| **`van.js` KHÔNG được đụng ví.** Nó chỉ *tính ra* ai ăn thua bao nhiêu. Mọi phép cộng/trừ Dogcoin nằm gọn trong `traTien()` của `web.js`, gọi qua `deps.congVi`. | Nhờ vậy bộ kiểm chạy được toàn bộ luật tiền mà không cần database, và chỉ có **một chỗ** để soi khi nghi sai tiền. |
+| **`van.js` KHÔNG được đụng ví.** Nó chỉ *tính ra* ai ăn thua bao nhiêu. Mọi phép cộng/trừ KNB nằm gọn trong `traTien()` của `web.js`, gọi qua `deps.congVi`. | Nhờ vậy bộ kiểm chạy được toàn bộ luật tiền mà không cần database, và chỉ có **một chỗ** để soi khi nghi sai tiền. |
 | **Client không bao giờ tự quyết lộ bài.** Bản chung (`xemChung`) **không có lá, cũng không có số lá** của ai, chỉ `conBai: true/false`. Bài riêng **và số lá** chỉ nằm trong `xem(id)` của chính người đó. | `web-test` soi **từng lá** trong JSON trả về cho từng người, và chốt JSON gửi cho A chỉ chứa đúng **một** chữ `"soLa"`. |
 | **Mọi chỗ vẽ lại trang phải qua `datHTML()`.** | Trang hỏi máy chủ mỗi giây; gán thẳng `innerHTML` là cuốn mất lá đang chọn. `trang-test` dò chỗ vi phạm. |
 | Chỉ commit / push khi chủ server nói. Sửa xong chạy đủ **5 bộ kiểm** (mục 6). | Bàn ăn tiền thật. |
@@ -223,10 +223,10 @@ tay của người cầm 3♠ có hàng chứa 3♠, dễ gấp ~1,8 lần *6 đ
 
 ---
 
-## 5. Tiền (đọc kỹ, chỗ này ăn Dogcoin thật)
+## 5. Tiền (đọc kỹ, chỗ này ăn KNB thật)
 
 Nguồn luật: **babichgame.gitbook.io/ba-bich/luat-choi**, chủ server chốt 20/09 *"dựa theo cái
-này nè"*. Mọi thứ tính bằng **CƯỢC**; một cược đáng bao nhiêu Dogcoin là `cauHinh.mucCuoc`.
+này nè"*. Mọi thứ tính bằng **CƯỢC**; một cược đáng bao nhiêu KNB là `cauHinh.mucCuoc`.
 
 ### Thang mức cược người chơi được chọn (`MUC_CUOC_CHO_PHEP`)
 
@@ -329,7 +329,7 @@ nhất bàn không tổng-bằng-0. `ketQua.pheTong` đúng bằng phần hụt 
 4. **Mỗi lúc chỉ ngồi MỘT phòng.** Hai bàn cùng trừ một ví là vỡ. `taoSanh` tự cho đứng dậy khỏi
    phòng cũ, và **phải kiểm phòng cũ có thả ra thật không**, xem cạm bẫy ở mục 7.
 
-Mỗi lần cộng/trừ đều vào **sổ Dogcoin** (`logDog` loại `tienlen`) để đối chiếu khi có tranh cãi.
+Mỗi lần cộng/trừ đều vào **sổ KNB** (`logDog` loại `tienlen`) để đối chiếu khi có tranh cãi.
 
 ---
 

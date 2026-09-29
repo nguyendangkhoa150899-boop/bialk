@@ -6,7 +6,7 @@
 //    - giao mọi /api/poker/* cho xuLy() ở đây, SAU khi đã xác thực + qua cổng liên kết
 //  Người đã đăng nhập web bot = đã đăng nhập poker. Không có login riêng nữa.
 //
-//  Không đụng ví Dogcoin. Chỉ ĐỌC hồ sơ (qua deps.layNguoi) để kiểm điều kiện vào giải.
+//  Không đụng ví KNB. Chỉ ĐỌC hồ sơ (qua deps.layNguoi) để kiểm điều kiện vào giải.
 //  Mọi thao tác admin (đặt chip, bắt đầu, giải tán, bật/tắt tab) làm ở PANEL SUPER qua
 //  các hàm quanLy.*, trang người chơi không có nút admin.
 //
@@ -61,7 +61,7 @@ function taoPoker(deps) {
         if (!u.ingameName) return 'Chưa liên kết tên nhân vật, nhờ admin liên kết trước đã';
         if ((u.points || 0) < DOGCOIN_VAO_GIAI)
             return 'Cần có ít nhất ' + DOGCOIN_VAO_GIAI.toLocaleString('vi-VN') +
-                   ' Dogcoin mới được vào giải (đang có ' + (u.points || 0).toLocaleString('vi-VN') + ')';
+                   ' KNB mới được vào giải (đang có ' + (u.points || 0).toLocaleString('vi-VN') + ')';
         return null;
     }
 
@@ -90,7 +90,7 @@ function taoPoker(deps) {
         return { ok: true, soNguoi: ds.length };
     }
     /** 18/09: ≥ 2 người ngồi và AI CŨNG bấm sẵn sàng -> mở luôn, không cần admin. Ai rớt điều kiện
-     *  (hết Dogcoin, bị huỷ liên kết) thì gỡ dấu sẵn sàng của họ để bàn không kẹt mãi. */
+     *  (hết KNB, bị huỷ liên kết) thì gỡ dấu sẵn sàng của họ để bàn không kẹt mãi. */
     function tuMoGiai() {
         const ds = dangNgoi();
         if (ds.length < TOI_THIEU_NGUOI || !ds.every(x => phong.sanSang.has(x.id))) return;

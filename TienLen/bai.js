@@ -43,7 +43,7 @@ const ten1 = (ma) => { const l = doc(ma); return l.so + CHAT_KY_TU[l.chat]; };
 const tenBai = (la) => (la || []).map(ten1).join(' ');
 
 // ---------------------------------------------------------------------------
-//  XÁO BÀI, crypto.randomInt chứ KHÔNG Math.random: ván này ăn Dogcoin thật,
+//  XÁO BÀI, crypto.randomInt chứ KHÔNG Math.random: ván này ăn KNB thật,
 //  bộ sinh số phải không đoán trước được. Fisher-Yates chuẩn (chạy từ cuối về đầu).
 // ---------------------------------------------------------------------------
 function xao(bo) {

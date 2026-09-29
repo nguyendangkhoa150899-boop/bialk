@@ -596,16 +596,16 @@ muc('🏠 SẢNH chọn phòng / tạo phòng');
     ok('...và nói trước cần bao nhiêu vốn, thiếu thì khoá nút',
         /taoVon/.test(JS) && /taoNut'\)\.disabled = !TAO_MUC \|\| d\.toi\.dogcoin < von/.test(JS));
     // 🪙 chủ server: "trừ dogcoin sử dụng icon dogcoin có sẵn hết nha"
-    ok('🪙 mọi con số tiền kèm icon Dogcoin',
-        /function xu\(n, kemDau\)/.test(JS) && JS.indexOf('src="/dogcoin.png"') >= 0 && /\.dc\{width:1\.05em/.test(HTML));
-    ok('...không còn chỗ nào ghi chữ "Dogcoin" suông', JS.indexOf("' Dogcoin'") < 0);
+    ok('🪙 mọi con số tiền kèm icon KNB',
+        /function xu\(n, kemDau\)/.test(JS) && JS.indexOf('src="/knb.png"') >= 0 && /\.dc\{width:1\.05em/.test(HTML));
+    ok('...không còn chỗ nào ghi chữ "KNB" suông', JS.indexOf("' KNB'") < 0);
     // 🚪 chủ server: "thêm nút thoát trận, đánh xong thoát luôn thay vì bị mất mạng"
     ok('🚪 giữa ván có nút XIN RỜI SAU VÁN NÀY, không để nút chết trơ',
         /function roiSau\(/.test(JS) && /RỜI BÀN SAU VÁN NÀY/.test(JS) && JS.indexOf("goi('/roisau'") >= 0);
     ok('...bấm lại là huỷ, có nói rõ đang chờ rời',
         /Sẽ rời bàn khi hết ván, bấm để ở lại/.test(JS) && /S\.xinRoi/.test(JS));
     ok('có nút ra sảnh ở phòng chờ', /function raSanh\(/.test(JS) && /onclick="raSanh\(\)"/.test(HTML));
-    // "pc mình không bấm được vào bàn", KHÔNG phải lỗi: ví 20 Dogcoin, phòng rẻ nhất cần
+    // "pc mình không bấm được vào bàn", KHÔNG phải lỗi: ví 20 KNB, phòng rẻ nhất cần
     // 120.000. Lý do vốn đã ghi trong dòng xám của từng phòng nhưng lẫn giữa đống chữ, người
     // chơi chỉ thấy bấm không ăn rồi bỏ đi. Phải nói thẳng ngay đầu sảnh.
     ok('⛔ băng báo đầu sảnh khi KHÔNG vào được phòng nào',

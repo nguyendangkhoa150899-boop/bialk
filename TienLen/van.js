@@ -1,6 +1,6 @@
 // ============================================================================
 //  van.js, MÁY BÀN + MÁY VÁN TIẾN LÊN MIỀN NAM (thuần logic, KHÔNG đụng ví)
-//  File này chỉ TÍNH ra ai ăn ai thua bao nhiêu; việc cộng/trừ Dogcoin là của
+//  File này chỉ TÍNH ra ai ăn ai thua bao nhiêu; việc cộng/trừ KNB là của
 //  web.js. Nhờ vậy bộ kiểm chạy được toàn bộ luật tiền mà không cần database.
 //  Chạy kiểm: node TienLen/kiemtra/van-test.js
 //
@@ -11,7 +11,7 @@
 //   2. Ván ĐẦU của bàn: ai cầm 3♠ đi trước và BẮT BUỘC đánh bộ có 3♠.
 //      Ván sau: người về nhất ván trước đi đầu, đánh gì cũng được.
 //
-//   3. MỌI THỨ TÍNH BẰNG "CƯỢC". Một cược đáng bao nhiêu Dogcoin là C.mucCuoc,
+//   3. MỌI THỨ TÍNH BẰNG "CƯỢC". Một cược đáng bao nhiêu KNB là C.mucCuoc,
 //      mỗi phòng một giá (phòng truyền thống 50.000 · phòng đếm lá 5.000).
 //
 //   4. Hai chế độ, hai bảng tiền HOÀN TOÀN KHÁC NHAU:
