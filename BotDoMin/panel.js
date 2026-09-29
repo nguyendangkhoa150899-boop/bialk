@@ -273,7 +273,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gacha/channel', '/api/palwheel/cfg',
+                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', /* 29/09 tạm MỞ Drop Boss cho mod cùng test - đóng lại: thêm '/api/drop/box','/api/drop/boss','/api/drop/clone' vào đây + trả epOnly cho nút tab */ '/api/gacha/channel', '/api/palwheel/cfg',
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
@@ -1096,6 +1096,22 @@ function startPanel(ctx) {
                         return sendJSON(res, 502, { ok: false, error: String(e.message).slice(0, 200) });
                     }
                 }
+                // 💥 29/09: Drop Boss - sua bang roi do cua game (ghi thang file VPS, hieu luc sau restart)
+                if (path === '/api/drop/state' || path === '/api/drop/box' || path === '/api/drop/boss' || path === '/api/drop/clone') {
+                    let drop;
+                    try { drop = require('./dropboss'); } catch (e) { return sendJSON(res, 503, { ok: false, error: 'dropboss.js loi: ' + e.message }); }
+                    if (!require('fs').existsSync(drop.F_MDB)) return sendJSON(res, 503, { ok: false, error: 'Không thấy file game - tính năng này chỉ chạy trên VPS game' });
+                    try {
+                        if (path === '/api/drop/state') return sendJSON(res, 200, { ok: true, ...drop.state(require('./tlbb').items()) });
+                        let r;
+                        if (path === '/api/drop/box') r = drop.saveBox(body);
+                        else if (path === '/api/drop/boss') r = drop.saveBossBoxes(body);
+                        else r = drop.cloneBox(body);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        ctx.writeLog('ADMIN', '[DROP BOSS] ' + path.slice(10) + ' ' + JSON.stringify(body).slice(0, 200));
+                        return sendJSON(res, 200, { ok: true, ...r });
+                    } catch (e) { return sendJSON(res, 500, { ok: false, error: String(e.message).slice(0, 200) }); }
+                }
                 if (path === '/api/pal/set-name') {
                     const uid = String(body.userId || '').trim();
                     if (!uid || !ctx.getDb()[uid]) return sendJSON(res, 400, { ok: false, error: 'Không tìm thấy ví này' });
@@ -1271,7 +1287,7 @@ const HTML = `<!DOCTYPE html>
   .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:16px}
   /* 29/09 NetCo4: thẻ Shop Item nở ra gần hết màn hình (khung .wrap chỉ 840px nên bảng phải kéo ngang) */
   @media(min-width:1000px){
-    #shopCard{position:relative;left:50%;transform:translateX(-50%);width:min(1700px,calc(100vw - 32px))}
+    #shopCard,#dropCard{position:relative;left:50%;transform:translateX(-50%);width:min(1700px,calc(100vw - 32px))}
     #itemShopTable{table-layout:auto}
     #itemShopTable td:nth-child(3),#itemShopTable td:nth-child(7){width:auto}
     #itemShopTable .isf-name{width:100%!important;min-width:160px}
@@ -1422,6 +1438,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
         <button data-tab="gm" onclick="tab('gm')">🛠️ GM Thiên Long</button>
+        <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
         <button data-tab="pal" onclick="tab('pal')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
@@ -1768,6 +1785,19 @@ const HTML = `<!DOCTYPE html>
     <!-- NGƯỜI CHƠI -->
     <!-- RÚT KNB -->
     <!-- PALWORLD -->
+    <div id="tab-drop" class="hidden">
+      <div class="card" id="dropCard">
+        <h3>💥 Drop Boss - sửa đồ rơi của boss</h3>
+        <div class="note">Mỗi boss có tối đa 20 <b>hộp rơi</b>; giết boss thì mỗi hộp bốc ra 1 món ngẫu nhiên trong hộp (BoxValue càng <b>nhỏ</b> so với Mvalue của boss thì hộp càng dễ rơi; 1 = gần như chắc chắn). Hộp có dấu <b>⚠</b> là dùng chung với quái thường - sửa nó là đổi cho tất cả, muốn chỉ đổi boss này thì bấm 🧬 Tách riêng. Mọi thay đổi <b>chỉ có hiệu lực sau khi RESTART game</b> (tab 🛠️ GM → Restart server).</div>
+        <div class="row" style="margin-top:8px">
+          <input id="dpQ" class="mini-in" style="width:260px" placeholder="tìm boss (tên không dấu / ID)" oninput="dropDraw()">
+          <label style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="dpSp" checked style="width:auto;margin:0" onchange="dropDraw()"> chỉ boss xuất hiện trong game</label>
+          <button onclick="dropLoad()">🔄 Tải lại</button>
+          <span class="muted" id="dpInfo">chưa tải</span>
+        </div>
+        <div id="dpList" style="margin-top:10px;overflow-x:auto"></div>
+      </div>
+    </div>
     <div id="tab-gm" class="hidden">
       <div class="card">
         <h3>🛠️ GM Thiên Long - Server</h3>
@@ -2685,7 +2715,7 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
+  if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
@@ -2697,8 +2727,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -2930,6 +2960,97 @@ document.addEventListener('click',function(ev){
   gmDo(f,b.dataset.confirm||null);
 });
 document.addEventListener('change',function(ev){var s=ev.target;if(s&&s.dataset&&s.dataset.kindfor&&s.closest('#tab-gm'))gmKind(s.dataset.kindfor);});
+// ===== 💥 DROP BOSS (29/09): sua bang roi do, ghi thang file game qua /api/drop/* =====
+var DP={st:null,open:null,box:null,found:[]};
+function dropLoad(){
+  document.getElementById('dpInfo').textContent='đang tải (lần đầu quét script hơi lâu)...';
+  api('/api/drop/state',{}).then(function(j){DP.st=j;DP.open=null;DP.box=null;dropDraw();}).catch(function(e){document.getElementById('dpInfo').textContent='';toast('❌ '+e.message);});
+}
+function dropBossRow(id){for(var i=0;i<DP.st.bosses.length;i++)if(DP.st.bosses[i].id===id)return DP.st.bosses[i];return null;}
+function dropBoxHtml(){
+  var b=DP.box;
+  if(b.addMode){return '<div class="row" style="border:1px solid #3a4258;border-radius:10px;padding:10px"><b>Thêm hộp cho boss '+DP.open+':</b> <input id="dpNewBox" class="mini-in" style="width:110px" placeholder="ID hộp"> <button class="mini btn-green" data-dpaddgo="1">Thêm</button> <button class="mini" data-dpclose="1">Đóng</button> <span class="muted">nhập ID một hộp CÓ SẴN (xem cột Hộp rơi của boss khác, vd 90001 = phiếu 2000). Muốn hộp mới toanh: mở hộp gần giống rồi 🧬 Tách riêng.</span></div>';}
+  var sh=(b.nOther>0)?'<span style="color:#ffcf5c">⚠ dùng chung với '+b.nOther+' quái thường'+(b.nBoss>1?' + '+(b.nBoss-1)+' boss khác':'')+' - sửa là đổi cho TẤT CẢ</span>':(b.nBoss>1?'<span class="muted">dùng bởi '+b.nBoss+' boss</span>':'<span class="muted">chỉ hộp này của boss này</span>');
+  var rows='';
+  for(var i=0;i<b.items.length;i++){var it=b.items[i];rows+='<tr><td class="muted">'+it.id+'</td><td>'+esc(it.name||'?')+'</td><td><button class="mini btn-red" data-dpdel="'+i+'">×</button></td></tr>';}
+  return '<div style="border:1px solid #3a4258;border-radius:10px;padding:12px;background:rgba(0,0,0,.18)">'
+    +'<div class="row"><b>Hộp '+b.id+'</b> <span>BoxValue</span> <input id="dpVal" class="mini-in" style="width:100px" value="'+b.val+'"> '+sh+'</div>'
+    +'<div class="row" style="margin-top:6px"><button class="mini btn-green" data-dpsave="1">💾 Lưu hộp</button> '
+    +((b.nOther>0||b.nBoss>1)?'<button class="mini" data-dpclone="1">🧬 Tách riêng cho boss '+DP.open+'</button> ':'')
+    +'<button class="mini" data-dpclose="1">Đóng</button> <span class="muted">'+b.items.length+' món - rơi 1 món ngẫu nhiên</span></div>'
+    +'<div style="max-height:300px;overflow:auto;margin-top:8px"><table><tr><th>ID</th><th>Tên</th><th></th></tr>'+rows+'</table></div>'
+    +'<div class="row" style="margin-top:8px"><input id="dpItemQ" class="mini-in" style="width:260px" placeholder="tìm vật phẩm thêm vào (không dấu / ID)"><button class="mini" data-dpsearch="1">Tìm</button></div><div id="dpFound" style="margin-top:6px"></div></div>';
+}
+function dropDraw(){
+  if(!DP.st)return;
+  var q=(document.getElementById('dpQ').value||'').trim().toLowerCase();
+  var sp=document.getElementById('dpSp').checked;
+  var rows=DP.st.bosses.filter(function(b){if(sp&&!b.sp)return false;if(!q)return true;return b.k.indexOf(q)>=0||b.id.indexOf(q)>=0;});
+  document.getElementById('dpInfo').textContent=rows.length+' boss'+(rows.length>150?' (hiện 150 đầu - gõ tên để lọc)':'');
+  rows=rows.slice(0,150);
+  var h='<table><tr><th>ID</th><th>Tên</th><th>Cấp</th><th>Xuất hiện ở</th><th>Hộp rơi (bấm để sửa)</th><th></th></tr>';
+  for(var i=0;i<rows.length;i++){var b=rows[i];var chips='';
+    for(var j=0;j<b.boxes.length;j++){var x=b.boxes[j];var bx=DP.st.boxes[x]||{};var shared=(bx.nOther||0)>0;
+      chips+='<span style="white-space:nowrap"><button class="mini'+(shared?'':' btn-green')+'" data-dpbox="'+x+'" data-dpboss="'+b.id+'" title="'+(bx.missing?'hộp KHÔNG tồn tại':(bx.items?bx.items.length+' món, BoxValue '+bx.val:''))+'">'+x+(shared?'⚠':'')+'</button><button class="mini" style="padding:2px 5px;opacity:.6" title="Gỡ hộp '+x+' khỏi boss này" data-dprm="'+x+'" data-dpboss="'+b.id+'">×</button></span> ';}
+    h+='<tr><td class="muted">'+b.id+'</td><td><b>'+esc(b.name)+'</b></td><td>'+b.lv+'</td><td class="muted" style="font-size:11px;max-width:180px">'+esc(b.sp||'-')+'</td><td>'+(chips||'<span class="muted">không rơi gì</span>')+'</td><td><button class="mini" data-dpadd="'+b.id+'">+ hộp</button></td></tr>';
+    if(DP.open===b.id&&DP.box)h+='<tr><td colspan="6">'+dropBoxHtml()+'</td></tr>';
+  }
+  document.getElementById('dpList').innerHTML=h+'</table>';
+}
+function dropSaveBoss(id,boxes){
+  api('/api/drop/boss',{id:id,boxes:boxes}).then(function(j){
+    var b=dropBossRow(id);if(b)b.boxes=j.boxes;
+    toast('💾 Đã lưu hộp của boss '+id+' - hiệu lực sau RESTART game');dropDraw();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+function dropItemSearch(){
+  var q=(document.getElementById('dpItemQ').value||'').trim();if(!q)return;
+  api('/api/gm/items',{q:q}).then(function(j){
+    DP.found=(j.items||[]).slice(0,20);
+    var h='';for(var i=0;i<DP.found.length;i++){var it=DP.found[i];h+='<button class="mini" data-dpai="'+i+'">➕ '+it.id+' '+esc(it.name)+'</button> ';}
+    document.getElementById('dpFound').innerHTML=h||'<span class="muted">Không thấy</span>';
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+document.addEventListener('click',function(ev){
+  var el=ev.target.closest&&ev.target.closest('#tab-drop [data-dpbox],#tab-drop [data-dprm],#tab-drop [data-dpadd],#tab-drop [data-dpdel],#tab-drop [data-dpsave],#tab-drop [data-dpclone],#tab-drop [data-dpclose],#tab-drop [data-dpaddgo],#tab-drop [data-dpai],#tab-drop [data-dpsearch]');
+  if(!el||!DP.st)return;
+  var d=el.dataset;
+  if(d.dpbox){var src=DP.st.boxes[d.dpbox];if(!src||src.missing)return toast('Hộp '+d.dpbox+' không có trong DropBoxContent');
+    DP.open=d.dpboss;DP.box={id:d.dpbox,val:src.val,nBoss:src.nBoss,nOther:src.nOther,items:src.items.map(function(x){return {id:x.id,name:x.name};})};dropDraw();return;}
+  if(d.dprm){var b=dropBossRow(d.dpboss);if(!b)return;
+    if(!confirm('Gỡ hộp '+d.dprm+' khỏi boss '+b.name+'? (hộp vẫn còn cho quái khác)'))return;
+    dropSaveBoss(b.id,b.boxes.filter(function(x){return x!==d.dprm;}));return;}
+  if(d.dpadd){DP.open=d.dpadd;DP.box={addMode:true};dropDraw();return;}
+  if(d.dpaddgo){var v=(document.getElementById('dpNewBox').value||'').trim();var bb=dropBossRow(DP.open);if(!bb)return;
+    if(!DP.st.boxes[v]||DP.st.boxes[v].missing)return toast('Không có hộp '+v+' - xem ID ở cột Hộp rơi của boss khác');
+    if(bb.boxes.indexOf(v)>=0)return toast('Boss đã có hộp này');
+    DP.box=null;DP.open=null;dropSaveBoss(bb.id,bb.boxes.concat([v]));return;}
+  if(d.dpdel){DP.box.items.splice(+d.dpdel,1);dropDraw();return;}
+  if(d.dpai){var it=DP.found[+d.dpai];if(!it)return;
+    for(var i=0;i<DP.box.items.length;i++)if(DP.box.items[i].id===it.id)return toast('Món này đã có trong hộp');
+    DP.box.items.push({id:it.id,name:it.name});dropDraw();return;}
+  if(d.dpsearch){dropItemSearch();return;}
+  if(d.dpsave){var val=parseInt(document.getElementById('dpVal').value);
+    if(!(val>=1))return toast('BoxValue phải ≥ 1');
+    if(!DP.box.items.length)return toast('Hộp phải có ít nhất 1 món');
+    var bx=DP.box;
+    api('/api/drop/box',{id:bx.id,val:val,items:bx.items.map(function(x){return x.id;})}).then(function(){
+      DP.st.boxes[bx.id]={val:val,items:bx.items.slice(),nBoss:bx.nBoss,nOther:bx.nOther};bx.val=val;
+      toast('💾 Đã lưu hộp '+bx.id+' - hiệu lực sau RESTART game');dropDraw();
+    }).catch(function(e){toast('❌ '+e.message);});return;}
+  if(d.dpclone){var old=DP.box;
+    api('/api/drop/clone',{box:old.id,boss:DP.open}).then(function(j){
+      DP.st.boxes[j.newId]={val:old.val,items:old.items.slice(),nBoss:1,nOther:0};
+      var ob=DP.st.boxes[old.id];if(ob&&ob.nBoss>0)ob.nBoss--;
+      var b=dropBossRow(DP.open);if(b&&j.boxes)b.boxes=j.boxes;
+      DP.box={id:j.newId,val:old.val,nBoss:1,nOther:0,items:old.items.slice()};
+      toast('🧬 Đã tách hộp '+old.id+' → '+j.newId+' riêng cho boss '+DP.open+' - sửa rồi 💾 Lưu');dropDraw();
+    }).catch(function(e){toast('❌ '+e.message);});return;}
+  if(d.dpclose){DP.box=null;DP.open=null;dropDraw();return;}
+});
+document.addEventListener('keydown',function(ev){
+  if(ev.key==='Enter'&&ev.target&&ev.target.id==='dpItemQ'){ev.preventDefault();dropItemSearch();}
+});
 function renderPalLinks(){
   if(!STATE)return;
   const box=document.getElementById('palLinks');
