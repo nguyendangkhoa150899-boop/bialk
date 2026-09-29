@@ -96,6 +96,22 @@ function meta0(meta) {
 }
 // changes = danh sách dòng bị đụng: { f: 'box' (DropBoxContent) | 'mdb' (MonsterDropBoxs), id, before, after }
 // before/after = NGUYÊN dòng file (null = dòng không tồn tại) -> rollback trả đúng từng byte
+// Dòng ghi TRƯỚC khi có rollback (29/09 19:11-19:39: có `raw`, chưa có `id`/`changes`). File chỉ ghi
+// thêm nên không sửa dòng cũ được -> đọc tới đâu quy đổi tới đó.
+function norm(e) {
+    if (!e || typeof e !== 'object') return e;
+    if (!e.id && e.t) e.id = e.t;
+    if (!e.changes && e.raw) {
+        const r = e.raw;
+        if (e.act === 'box') e.changes = [{ f: 'box', id: e.box, before: r.before, after: r.after }];
+        else if (e.act === 'boss') e.changes = [{ f: 'mdb', id: e.boss, before: r.before, after: r.after }];
+        else if (e.act === 'clone') {
+            e.changes = [{ f: 'box', id: e.box, before: null, after: r.newBoxRow }];
+            if (r.bossAfter) e.changes.push({ f: 'mdb', id: e.boss, before: r.bossBefore, after: r.bossAfter });
+        }
+    }
+    return e;
+}
 // đọc N dòng cuối (mới nhất trước), lọc theo chữ (ID boss/hộp/món, tên, IP)
 function auditTail(n, q) {
     if (!fs.existsSync(AUDIT)) return { file: AUDIT, total: 0, rows: [] };
@@ -111,14 +127,14 @@ function auditTail(n, q) {
     const rows = [];
     for (let i = lines.length - 1; i >= 0 && rows.length < n; i--) {
         if (qq && !kd(lines[i]).includes(qq)) continue;
-        try { const x = JSON.parse(lines[i]); if (x.id && rb[x.id]) x.rolledBack = rb[x.id]; rows.push(x); } catch { /* dòng hỏng: bỏ qua khi xem, file vẫn giữ */ }
+        try { const x = norm(JSON.parse(lines[i])); if (x.id && rb[x.id]) x.rolledBack = rb[x.id]; rows.push(x); } catch { /* dòng hỏng: bỏ qua khi xem, file vẫn giữ */ }
     }
     return { file: AUDIT, total: lines.length, rows };
 }
 function auditAll() {
     if (!fs.existsSync(AUDIT)) return [];
     const out = [];
-    for (const l of fs.readFileSync(AUDIT, 'utf8').split('\n')) if (l.trim()) { try { out.push(JSON.parse(l)); } catch { /* nt */ } }
+    for (const l of fs.readFileSync(AUDIT, 'utf8').split('\n')) if (l.trim()) { try { out.push(norm(JSON.parse(l))); } catch { /* nt */ } }
     return out;
 }
 // ↩ Rollback 1 dòng nhật ký: đưa đúng các dòng file nó đụng về như TRƯỚC lần sửa đó.
