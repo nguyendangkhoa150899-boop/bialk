@@ -150,4 +150,73 @@ async function findChar(nameOrGuid) {
     return rows.find((r) => r.name.trim().toLowerCase() === lq) || null;
 }
 
-module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, listChars, findChar, ensureDirs, DIR };
+// ===== GIAO ĐỒ (shop item, quà mỗi ngày, rương) - 29/09 =====
+// Đi qua API nội bộ của panel GM (repo tlbbnetco4, panel/panel.py) ở https://127.0.0.1:8443:
+// panel GM ghi hàng đợi quà NetCo4Qua/<GUID>.txt, game phát khi nhân vật ĐĂNG NHẬP hoặc ĐỔI BẢN ĐỒ
+// (quatang.lua). Không cần online lúc mua. Panel GM chỉ nhận kết nối THẲNG từ 127.0.0.1 + đúng khoá
+// (PANEL_PASS trong secrets.env của game).
+const https = require('https');
+function gmKey() {
+    try {
+        const m = fs.readFileSync(SECRETS, 'utf8').match(/^PANEL_PASS=(.+)$/m);
+        return m ? m[1].trim() : '';
+    } catch { return ''; }
+}
+function gmCall(method, p, body) {
+    return new Promise((resolve, reject) => {
+        const data = body === undefined ? null : Buffer.from(JSON.stringify(body));
+        const req = https.request({
+            host: '127.0.0.1', port: 8443, path: p, method, rejectUnauthorized: false, timeout: 20000,
+            headers: { Host: '127.0.0.1:8443', 'X-NetCo4-Key': gmKey(), 'Content-Type': 'application/json', ...(data ? { 'Content-Length': data.length } : {}) },
+        }, (res) => {
+            const parts = [];
+            res.on('data', (c) => parts.push(c));
+            res.on('end', () => { try { resolve(JSON.parse(Buffer.concat(parts).toString('utf8'))); } catch { reject(new Error('panel GM trả về không phải JSON (HTTP ' + res.statusCode + ')')); } });
+        });
+        req.on('timeout', () => req.destroy(new Error('panel GM không trả lời (20 giây)')));
+        req.on('error', (e) => reject(new Error('không gọi được panel GM: ' + e.message)));
+        if (data) req.write(data);
+        req.end();
+    });
+}
+
+// Danh mục vật phẩm của game (≈23.800 món, tên tiếng Việt) - dạng {id, n} để khớp code shop cũ.
+let ITEMS = [];
+async function loadItems() {
+    const j = await gmCall('GET', '/api/items?all=1');
+    if (!j || !j.ok || !Array.isArray(j.items)) throw new Error((j && j.error) || 'không đọc được danh mục vật phẩm');
+    ITEMS = j.items.map((x) => ({ id: String(x.id), n: String(x.name || x.id), kind: String(x.kind || '') }));
+    return ITEMS.length;
+}
+function items() { return ITEMS; }
+
+// Nhân vật có trong database game thì coi là "online" (quà xếp hàng, không cần đang chơi).
+// Không thấy => 'player not found' để code cũ hiểu là CHẮC CHẮN chưa giao (hoàn tiền).
+async function countItem(nameOrGuid) {
+    const c = await findChar(nameOrGuid);
+    if (!c) throw new Error('Khong thay nhan vat trong game (player not found)');
+    return { ok: true, count: 0 };
+}
+// Mỗi dòng hàng đợi tối đa 999 cái => chia nhiều dòng. Lỗi TRƯỚC khi ghi dòng nào = 'player not
+// found' (hoàn tiền); ghi được một phần rồi lỗi = trả lỗi mơ hồ để admin kiểm (không hoàn kẻo trùng).
+async function giveItem(nameOrGuid, itemId, qty) {
+    const c = await findChar(nameOrGuid);
+    if (!c) throw new Error('Khong thay nhan vat trong game (player not found)');
+    let con = Math.floor(Number(qty) || 0), da = 0;
+    if (con < 1) throw new Error('So luong khong hop le (player not found)');
+    while (con > 0) {
+        const n = Math.min(999, con);
+        let j;
+        try { j = await gmCall('POST', '/api/act', { a: 'qua', guid: c.guid, loai: 'item', gt: String(itemId), sl: String(n) }); }
+        catch (e) { if (!da) throw new Error(e.message + ' (player not found)'); throw e; }
+        if (!j || !j.ok || !j.done) {
+            const m = (j && (j.msg || j.error)) || 'panel GM từ chối';
+            if (!da) throw new Error(m + ' (player not found)');
+            return { ok: false, message: 'Giao được ' + da + '/' + qty + ' rồi lỗi: ' + m };
+        }
+        da += n; con -= n;
+    }
+    return { ok: true, guid: c.guid, name: c.name, message: 'Đã xếp hàng quà cho ' + c.name };
+}
+
+module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem };

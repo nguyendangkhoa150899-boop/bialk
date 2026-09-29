@@ -1970,12 +1970,12 @@ async function giftClaim(userId, gid, username) {
     deliverUnlock();
     if (r && r.ok) {
         writeLog('ADMIN', `[QUÀ TẶNG] ${username || userId} nhận ${g.name} x${g.qty} (${g.id}) -> ${gameName}`);
-        return { ok: true, message: `🎁 Đã nhận ${g.qty.toLocaleString()} ${g.name} vào túi ${gameName}!` };
+        return { ok: true, message: `🎁 Đã gửi ${g.qty.toLocaleString()} ${g.name} cho ${gameName} - vào túi khi đăng nhập hoặc đổi bản đồ` };
     }
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
     giftMark(user, g.gid, false); saveDbNow();
     writeLog('ADMIN', `[QUÀ TẶNG] ${username || userId} nhận ${g.name} THẤT BẠI: ${msg}`);
-    return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - thử lại sau nhé` };
+    return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'không thấy nhân vật / sai ID vật phẩm' : 'hệ thống bảo trì'}) - thử lại sau nhé` };
 }
 // Dọn 1 lần lúc boot: dòng shop có cat 'gift' (bản sáng 15/09) -> chuyển sang _giftShop, gid = item id
 // để dấu "đã nhận hôm nay" (u.shopGift[id]) vẫn khớp. Trả về số dòng đã chuyển.
@@ -1997,8 +1997,10 @@ function giftMigrateFromShop() {
 let GAME_ITEMS = null;
 function gameItems() {
     if (!GAME_ITEMS) {
-        try { GAME_ITEMS = JSON.parse(fs.readFileSync(require('path').join(__dirname, 'gameitems.json'), 'utf8')); }
-        catch (e) { GAME_ITEMS = []; writeLog('SYSTEM', `[KHO ĐỒ] Không đọc được gameitems.json: ${e.message}`); }
+        // 29/09: danh mục vật phẩm Thiên Long (tlbb.loadItems lúc bot khởi động, qua panel GM)
+        const L = tlbb.items();
+        if (!L.length) return L;   // chưa tải xong -> lần sau hỏi lại
+        GAME_ITEMS = L;
     }
     return GAME_ITEMS;
 }
@@ -2033,7 +2035,7 @@ async function adminGiveItem(gameName, itemId, qty) {
     deliverUnlock();
     if (r && r.ok) {
         writeLog('ADMIN', `[KHO ĐỒ] SUPER giao ${it.n} x${qty} (${itemId}) -> ${gameName}`);
-        return { ok: true, message: `✅ Đã giao ${qty} × ${it.n} vào túi ${gameName}` };
+        return { ok: true, message: `✅ Đã gửi ${qty} × ${it.n} cho ${gameName} - vào túi khi đăng nhập hoặc đổi bản đồ` };
     }
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
     writeLog('ADMIN', `[KHO ĐỒ LỖI] giao ${itemId} x${qty} -> ${gameName} | ${msg}`);
@@ -2112,13 +2114,13 @@ const ITEM_CAT_DEF = [
     { key: 'important', label: '⭐ QUAN TRỌNG', lock: true },
     { key: 'admin', label: '🧺 LINH TINH' },
     { key: 'weapon', label: '🗡️ VŨ KHÍ' },
-    { key: 'armor', label: '🛡️ GIÁP' },
-    { key: 'consume', label: '🏪 THƯƠNG NHÂN', lock: true },
-    { key: 'accessory', label: '💍 PHỤ KIỆN' },
-    { key: 'food', label: '🍖 THỨC ĂN' },
-    { key: 'ammo', label: '🔫 ĐẠN' },
-    { key: 'material', label: '🐾 NGUYÊN LIỆU CHO PAL' },
-    { key: 'implant', label: '🧬 IMPLANT', lock: true },
+    { key: 'armor', label: '🛡️ TRANG BỊ' },
+    { key: 'consume', label: '🏪 TẠP HÓA', lock: true },
+    { key: 'accessory', label: '💍 TRANG SỨC' },
+    { key: 'food', label: '💊 DƯỢC PHẨM' },
+    { key: 'ammo', label: '💎 BẢO THẠCH' },
+    { key: 'material', label: '📜 NGUYÊN LIỆU' },
+    { key: 'implant', label: '🔥 HÀNG GIỚI HẠN', lock: true },   // 29/09: nhóm có hạn riêng mỗi người/ngày
 ];
 const ITEM_CAT_LOCKED = ITEM_CAT_DEF.filter(c => c.lock).map(c => c.key);
 const ITEM_CAT_MAX = 30;
@@ -2446,13 +2448,13 @@ async function ichKyClaim(userId, itemId, qty, username) {
     deliverUnlock();
     if (r && r.ok) {
         writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} nhận ${ten} x${qty} vào game (${gameName})`);
-        return { ok: true, message: `✅ Đã giao ${qty.toLocaleString()} ${ten} vào túi ${gameName}!`, state: ichKyState(userId) };
+        return { ok: true, message: `✅ Đã gửi ${qty.toLocaleString()} ${ten} cho ${gameName} - vào túi khi đăng nhập hoặc đổi bản đồ`, state: ichKyState(userId) };
     }
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
     if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
         ichKyAdd(user, itemId, qty);   // CHẮC CHẮN chưa giao -> trả lại rương
         saveDbNow();
-        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã trả lại vào rương`, state: ichKyState(userId) };
+        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'không thấy nhân vật / sai ID vật phẩm' : 'hệ thống bảo trì'}) - đã trả lại vào rương`, state: ichKyState(userId) };
     }
     writeLog('ADMIN', `[RƯƠNG ÍCH KỶ LỖI] ${username || userId} nhận ${ten} x${qty} -> ${gameName} | ${msg} - kiểm results.log, chưa nhận thì trả tay`);
     return { error: '⏳ Chưa xác nhận được với game - đồ đã trừ khỏi rương, admin sẽ kiểm. Đừng bấm lại kẻo trùng.', state: ichKyState(userId) };
@@ -2586,7 +2588,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     deliverUnlock();   // 🚦 SFTP xong -> mở khoá
     if (r && r.ok) {
         writeLog('ADMIN', `[SHOP ITEM] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} (-${cost})`);
-        return { ok: true, message: `✅ Đã giao ${qty.toLocaleString()} ${it.name} vào túi ${gameName} trong game!`, balance: getUserData(userId).points || 0 };
+        return { ok: true, message: `✅ Đã gửi ${qty.toLocaleString()} ${it.name} cho ${gameName} - vào túi khi đăng nhập hoặc đổi bản đồ`, balance: getUserData(userId).points || 0 };
     }
     const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
     // CHẮC CHẮN chưa giao (dashboard chết / mod báo không thấy người) -> hoàn ngay
@@ -2599,7 +2601,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
         if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
         saveDbNow();
-        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'chưa online/sai tên' : 'hệ thống bảo trì'}) - đã hoàn ${cost.toLocaleString()} KNB` };
+        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'không thấy nhân vật / sai ID vật phẩm' : 'hệ thống bảo trì'}) - đã hoàn ${cost.toLocaleString()} KNB` };
     }
     // mơ hồ (timeout) -> KHÔNG hoàn, báo admin kiểm (chống double-give)
     writeLog('ADMIN', `[SHOP ITEM LỖI] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} | ${msg} - kiểm results.log, chưa nhận thì hoàn tay`);
@@ -7085,6 +7087,10 @@ client.once('ready', async (c) => {
     writeLog('SYSTEM', `✅ Bot ${c.user.tag} online!`);
     // 🐉 29/09 cầu KNB Thiên Long: đọc phiếu NPC Ví Web mỗi 5 giây, dọn hàng đợi web->game mỗi 30 giây
     try { tlbb.ensureDirs(); } catch (e) { writeLog('SYSTEM', `[TLBB] Không tạo được thư mục cầu (${e.message}) - bot không chạy cùng VPS game?`); }
+        (function napDanhMuc(lan) {
+            tlbb.loadItems().then((n) => writeLog('SYSTEM', `[SHOP] Đã tải ${n} vật phẩm Thiên Long`))
+                .catch((e) => { writeLog('SYSTEM', `[SHOP] Chưa tải được danh mục vật phẩm (${e.message}) - thử lại sau 60s`); if (lan < 30) setTimeout(() => napDanhMuc(lan + 1), 60000); });
+        })(0);
     setInterval(tlbbPollReceipts, 5000);
     setInterval(tlbbCleanupIn, 30000);
     const rest = new REST({ version: '10' }).setToken(TOKEN);

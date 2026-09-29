@@ -3,35 +3,8 @@
 // ============================================================
 const http = require('http');
 const crypto = require('crypto');
-const https = require('https');
-const fsGm = require('fs');
-
-// 29/09 NetCo4: tab 🛠️ GM Thiên Long gọi API nội bộ của panel GM (repo tlbbnetco4, panel/panel.py)
-// chạy cùng VPS ở https://127.0.0.1:8443. Khoá = PANEL_PASS trong secrets.env của game (bot chạy root).
-// Panel GM chỉ nhận kết nối THẲNG từ 127.0.0.1 (không qua nginx) + đúng khoá.
-function gmKey() {
-    try {
-        const m = fsGm.readFileSync(process.env.TLBB_SECRETS || '/opt/tlbb-deploy/secrets.env', 'utf8').match(/^PANEL_PASS=(.+)$/m);
-        return m ? m[1].trim() : '';
-    } catch { return ''; }
-}
-function gmCall(method, path, body) {
-    return new Promise((resolve, reject) => {
-        const data = body === undefined ? null : Buffer.from(JSON.stringify(body));
-        const req = https.request({
-            host: '127.0.0.1', port: 8443, path, method, rejectUnauthorized: false, timeout: 20000,
-            headers: { Host: '127.0.0.1:8443', 'X-NetCo4-Key': gmKey(), 'Content-Type': 'application/json', ...(data ? { 'Content-Length': data.length } : {}) },
-        }, (res) => {
-            let s = '';
-            res.on('data', (c) => { s += c; });
-            res.on('end', () => { try { resolve(JSON.parse(s)); } catch { reject(new Error('panel GM trả về không phải JSON (HTTP ' + res.statusCode + ')')); } });
-        });
-        req.on('timeout', () => req.destroy(new Error('panel GM không trả lời (20 giây)')));
-        req.on('error', (e) => reject(new Error('không gọi được panel GM: ' + e.message)));
-        if (data) req.write(data);
-        req.end();
-    });
-}
+// 29/09 NetCo4: tab 🛠️ GM Thiên Long gọi API nội bộ panel GM qua tlbb.gmCall (xem tlbb.js)
+const { gmCall } = require('./tlbb');
 
 function startPanel(ctx) {
     const PASSWORD = ctx.password;
@@ -1419,7 +1392,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" class="epOnly pwOff" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
+        <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
         <button data-tab="give" class="epOnly pwOff" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
@@ -1992,9 +1965,9 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div id="palChests" class="hist" style="display:none"></div>
       </div>
-      <div class="card pwOff">
-        <h3>🛒 Shop Item - item giao thẳng vào game</h3>
-        <div class="card pwOff">
+      <div class="card">
+        <h3>🛒 Shop Item - đồ vào túi khi nhân vật đăng nhập / đổi bản đồ</h3>
+        <div class="card">
           <h3>🏷️ Nhóm hàng trong shop</h3>
           <div class="muted" style="font-size:13px;margin-bottom:8px">Sửa tên nhóm (kèm emoji) hoặc thêm nhóm mới. Tên này hiện <b>cả trên web người chơi lẫn mọi ô chọn nhóm ở đây</b>.</div>
           <div id="icBody"></div>
@@ -2013,12 +1986,12 @@ const HTML = `<!DOCTYPE html>
           <span class="muted" style="font-size:12px">áp cho TẤT CẢ món · 0 = không giới hạn · đếm lại 00:00 giờ VN · "cả server" = ai mua trước được trước</span>
         </div>
         <div class="row" style="margin-top:6px;align-items:center;gap:8px">
-          <span>🧬 Implant: <b>mỗi người</b> tối đa</span>
+          <span>🔥 Hàng giới hạn: <b>mỗi người</b> tối đa</span>
           <input class="mini-in" id="isImplantMax" type="number" min="0" max="1000" placeholder="2" style="width:70px">
           <span>cái/ngày</span>
-          <span class="muted" style="font-size:12px">(hạn riêng nhóm 🧬, luôn đếm theo người · lưu bằng nút 💾 ở trên · 0 = không giới hạn)</span>
+          <span class="muted" style="font-size:12px">(hạn riêng nhóm 🔥 Hàng giới hạn, luôn đếm theo người · lưu bằng nút 💾 ở trên · 0 = không giới hạn)</span>
         </div>
-        <div class="row" style="margin-top:6px;align-items:center;gap:8px">
+        <div class="row pwOff" style="margin-top:6px;align-items:center;gap:8px">
           <span>🌳 Implant <b>Cây Thế Giới</b>: <b>mỗi người</b> tối đa</span>
           <input class="mini-in" id="isWtMax" type="number" min="0" max="1000" placeholder="1" style="width:70px">
           <span>cái/ngày</span>
@@ -2038,7 +2011,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="itemShopTable">
-            <thead><tr><th title="Tick = đang bán trên web · bỏ tick = ẩn, người chơi không thấy/không mua được (dòng vẫn giữ)">Bán</th><th>StaticItemId</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Ghi chú tác dụng</th><th>Hình (file)</th><th></th></tr></thead>
+            <thead><tr><th title="Tick = đang bán trên web · bỏ tick = ẩn, người chơi không thấy/không mua được (dòng vẫn giữ)">Bán</th><th>ID vật phẩm</th><th>Tên hiện</th><th>Nhóm</th><th>Giá/cái</th><th>Max/lần</th><th>Ghi chú tác dụng</th><th>Hình (file)</th><th></th></tr></thead>
             <tbody id="itemShopBody"></tbody>
           </table>
         </div>
@@ -2062,7 +2035,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div style="overflow-x:auto;margin-top:8px">
           <table id="giftTable">
-            <thead><tr><th title="Tick = đang phát">Phát</th><th>StaticItemId</th><th>Tên hiện</th><th>Số cái/lần</th><th>Ghi chú</th><th>Hình</th><th></th></tr></thead>
+            <thead><tr><th title="Tick = đang phát">Phát</th><th>ID vật phẩm</th><th>Tên hiện</th><th>Số cái/lần</th><th>Ghi chú</th><th>Hình</th><th></th></tr></thead>
             <tbody id="giftBody"></tbody>
           </table>
         </div>

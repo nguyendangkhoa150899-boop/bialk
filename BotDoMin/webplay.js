@@ -2078,7 +2078,7 @@ const PAGE = [
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
     '<button id="navPal" class="hidden" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" class="hidden" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
-    '<button id="navShop" class="hidden" onclick="go(\'shop\')">🛒 Shop Item</button>',
+    '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
     '<button id="navDog" onclick="go(\'dog\')">💸 Chuyển/Rút</button>',
     '</div>',
 
@@ -2399,7 +2399,7 @@ const PAGE = [
     // progress đủ tháng ăn bonus. Nghiện = nút đếm ngược 60 phút theo GIỜ SERVER.
     // 🎁 15/09: TRANG QUÀ ADMIN TẶNG - tab vàng ở nhóm Hồ sơ, chỉ hiện khi còn quà chưa nhận hôm nay
     '<div id="pageGift" class="hidden">',
-    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt (Palworld)
+    '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎁 Quà admin tặng hôm nay</h2><div class="muted" id="giftStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Mỗi món nhận <b>1 lần/ngày</b>, số lượng do admin đặt. Nhận xong món ẩn tới 00:00 rồi hiện lại. Phải đang <b>online trong game</b> để bot giao vào túi.</div>',
     '<div id="giftList" style="margin-top:10px"><div class="muted">Đang tải...</div></div>',
