@@ -20,6 +20,9 @@ const SCENE_DIR = path.join(GAME, 'Public/Scene');
 const SCRIPT_DIR = path.join(GAME, 'Public/Data/Script');
 const MAP_FILE = process.env.TLBB_VISCII_MAP || '/opt/tlbb-repo/tools/viscii-map.json';
 const BACKUP_DIR = '/opt/tlbb-backup';
+// 📜 Nhật ký Drop Boss: 1 dòng JSON / lần lưu. KHÔNG nằm trong log_admin.txt (file đó chỉ giữ 1000
+//    dòng cuối, Phi Thuyền ghi vài giây 1 lần -> dòng Drop Boss trôi mất sau vài giờ).
+const AUDIT = process.env.DROP_AUDIT || path.join(BACKUP_DIR, 'dropboss-audit.jsonl');
 
 let REV = null;
 function dec(latin1Str) {
@@ -50,6 +53,60 @@ function backup() {
         fs.copyFileSync(F_MDB, path.join(d, 'MonsterDropBoxs.txt'));
         fs.copyFileSync(F_BOX, path.join(d, 'DropBoxContent.txt'));
     } catch { /* sao lưu hỏng không chặn việc lưu */ }
+}
+
+// ---- 📜 nhật ký không bao giờ mất ----
+// - chỉ GHI THÊM (O_APPEND) + fsync; không có code nào cắt/ghi đè file này
+// - lần đầu tạo gắn `chattr +a` (append-only): lệnh nhầm `>` / rm / writeFile cũng bị hệ điều hành chặn
+// - ghi TRƯỚC khi sửa file game: ghi nhật ký lỗi -> KHÔNG lưu (không có thay đổi nào thiếu dấu vết)
+function auditWrite(entry) {
+    const isNew = !fs.existsSync(AUDIT);
+    const fd = fs.openSync(AUDIT, 'a');
+    try { fs.writeSync(fd, JSON.stringify(entry) + '\n'); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    if (isNew) { try { require('child_process').execFileSync('chattr', ['+a', AUDIT], { stdio: 'ignore' }); } catch { /* không có chattr thì thôi */ } }
+}
+function vnTime(d) { return d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }); }
+let ITEMN = null, BOSSN = null;
+function itemName(id) {
+    if (!ITEMN) { ITEMN = new Map(); try { for (const x of require('./tlbb').items() || []) ITEMN.set(String(x.id), x.n || x.name || ''); } catch { /* thiếu danh mục thì chỉ ghi ID */ } }
+    return ITEMN.get(String(id)) || '';
+}
+function bossName(id) {
+    if (!BOSSN) { BOSSN = new Map(); try { for (const l of readF(F_MON).lines) if (isRow(l)) { const c = l.split('\t'); BOSSN.set(c[0], dec(c[1]).trim()); } } catch { /* nt */ } }
+    return BOSSN.get(String(id)) || '';
+}
+function boxInfo(row) {   // dòng DropBoxContent -> { val, items:[{id,n}] }
+    if (!row) return null;
+    const c = row.split('\t'), items = [];
+    for (let i = 4; i + 1 < c.length; i += 2) if (/^\d{6,}$/.test(c[i])) items.push({ id: c[i], n: itemName(c[i]) });
+    return { val: +c[1], items };
+}
+function bossBoxes(row) { return row ? row.split('\t').slice(3, 23).filter((v) => /^\d+$/.test(v)) : []; }
+// ghi file game kèm nhật ký: entry trước, ghi file sau; ghi file hỏng -> thêm dòng 'loi'
+function saveWithAudit(entry, writes) {
+    auditWrite(entry);
+    try { for (const [f, data] of writes) fs.writeFileSync(f, data, 'latin1'); }
+    catch (e) { try { auditWrite({ t: new Date().toISOString(), vn: vnTime(new Date()), act: 'loi', ref: entry.t, error: String(e.message).slice(0, 300) }); } catch { /* nt */ } throw e; }
+}
+function meta0(meta) {
+    const d = new Date();
+    return { t: d.toISOString(), vn: vnTime(d), gate: (meta && meta.gate) || '?', ip: (meta && meta.ip) || '?' };
+}
+// đọc N dòng cuối (mới nhất trước), lọc theo chữ (ID boss/hộp/món, tên, IP)
+function auditTail(n, q) {
+    if (!fs.existsSync(AUDIT)) return { file: AUDIT, total: 0, rows: [] };
+    const size = fs.statSync(AUDIT).size, want = Math.min(size, 8 * 1024 * 1024);   // tối đa 8MB cuối
+    const fd = fs.openSync(AUDIT, 'r'); const buf = Buffer.alloc(want);
+    try { fs.readSync(fd, buf, 0, want, size - want); } finally { fs.closeSync(fd); }
+    let lines = buf.toString('utf8').split('\n').filter((l) => l.trim());
+    if (want < size) lines = lines.slice(1);   // dòng đầu có thể bị cắt giữa
+    const qq = kd(String(q || '').trim());
+    const rows = [];
+    for (let i = lines.length - 1; i >= 0 && rows.length < n; i--) {
+        if (qq && !kd(lines[i]).includes(qq)) continue;
+        try { rows.push(JSON.parse(lines[i])); } catch { /* dòng hỏng: bỏ qua khi xem, file vẫn giữ */ }
+    }
+    return { file: AUDIT, total: lines.length, rows };
 }
 
 // boss xuất hiện ở đâu (quét 1 lần rồi cache tới khi bot restart)
@@ -143,7 +200,7 @@ function state(catalog) {
     return { bosses, boxes };
 }
 
-function saveBox(body) {
+function saveBox(body, meta) {
     const id = String(body.id || '').trim();
     const val = Math.floor(Number(body.val));
     const items = (Array.isArray(body.items) ? body.items : []).map((s) => String(s).trim());
@@ -154,6 +211,7 @@ function saveBox(body) {
     const { eol, lines } = readF(F_BOX);
     const li = lines.findIndex((l) => l.split('\t')[0] === id);
     if (li < 0) return { error: 'Hộp ' + id + ' chưa có trong DropBoxContent - dùng 🧬 Tách riêng từ một hộp có sẵn' };
+    const rowBefore = lines[li];
     const c = lines[li].split('\t');
     const cap = Math.floor((c.length - 4) / 2);
     if (items.length > cap) return { error: 'Dòng hộp này chứa tối đa ' + cap + ' món' };
@@ -167,11 +225,12 @@ function saveBox(body) {
     }
     backup();
     lines[li] = c.join('\t');
-    fs.writeFileSync(F_BOX, lines.join(eol), 'latin1');
+    saveWithAudit({ ...meta0(meta), act: 'box', box: id, before: boxInfo(rowBefore), after: boxInfo(lines[li]),
+        raw: { file: 'DropBoxContent.txt', before: rowBefore, after: lines[li] } }, [[F_BOX, lines.join(eol)]]);
     return { id, val, items };
 }
 
-function saveBossBoxes(body) {
+function saveBossBoxes(body, meta) {
     const id = String(body.id || '').trim();
     let boxes = (Array.isArray(body.boxes) ? body.boxes : []).map((s) => String(s).trim());
     if (!/^\d+$/.test(id)) return { error: 'ID boss không hợp lệ' };
@@ -183,23 +242,27 @@ function saveBossBoxes(body) {
     if (miss.length) return { error: 'Hộp chưa tồn tại: ' + miss.join(', ') };
     const { eol, lines } = readF(F_MDB);
     let li = lines.findIndex((l) => l.split('\t')[0] === id);
+    const rowBefore = li >= 0 ? lines[li] : null;
+    let rowAfter;
     backup();
     if (li < 0) {   // boss chưa từng có dòng rơi đồ -> tạo từ dòng mẫu
         const tplI = lines.findIndex(isRow);
         const c = lines[tplI].split('\t');
         c[0] = id; c[1] = '100'; c[2] = '1';
         for (let k = 0; k < 20; k++) c[3 + k] = boxes[k] || '-1';
-        insertRows(lines, [c.join('\t')]);
+        rowAfter = c.join('\t');
+        insertRows(lines, [rowAfter]);
     } else {
         const c = lines[li].split('\t');
         for (let k = 0; k < 20; k++) c[3 + k] = boxes[k] || '-1';
-        lines[li] = c.join('\t');
+        rowAfter = lines[li] = c.join('\t');
     }
-    fs.writeFileSync(F_MDB, lines.join(eol), 'latin1');
+    saveWithAudit({ ...meta0(meta), act: 'boss', boss: id, bossName: bossName(id), before: bossBoxes(rowBefore), after: bossBoxes(rowAfter),
+        raw: { file: 'MonsterDropBoxs.txt', before: rowBefore, after: rowAfter } }, [[F_MDB, lines.join(eol)]]);
     return { id, boxes };
 }
 
-function cloneBox(body) {
+function cloneBox(body, meta) {
     const src = String(body.box || '').trim();
     const boss = String(body.boss || '').trim();
     const { eol, lines } = readF(F_BOX);
@@ -211,22 +274,27 @@ function cloneBox(body) {
     const newId = String(n);
     const c = lines[li].split('\t');
     c[0] = newId;
+    const newRow = c.join('\t');
     backup();
-    insertRows(lines, [c.join('\t')]);
-    fs.writeFileSync(F_BOX, lines.join(eol), 'latin1');
-    let boxes = null;
+    insertRows(lines, [newRow]);
+    const writes = [[F_BOX, lines.join(eol)]];
+    let boxes = null, bossBefore = null, bossAfter = null;
     if (/^\d+$/.test(boss)) {   // trỏ boss sang bản sao luôn
         const mdb = readF(F_MDB);
         const bi = mdb.lines.findIndex((l) => l.split('\t')[0] === boss);
         if (bi >= 0) {
+            bossBefore = mdb.lines[bi];
             const bc = mdb.lines[bi].split('\t');
             for (let k = 3; k <= 22; k++) if (bc[k] === src) bc[k] = newId;
-            mdb.lines[bi] = bc.join('\t');
-            fs.writeFileSync(F_MDB, mdb.lines.join(mdb.eol), 'latin1');
+            bossAfter = mdb.lines[bi] = bc.join('\t');
+            writes.push([F_MDB, mdb.lines.join(mdb.eol)]);
             boxes = bc.slice(3, 23).filter((v) => /^\d+$/.test(v));
         }
     }
+    saveWithAudit({ ...meta0(meta), act: 'clone', box: newId, src, boss: boss || null, bossName: boss ? bossName(boss) : '',
+        after: boxInfo(newRow), before: bossBefore ? bossBoxes(bossBefore) : null, bossAfter: bossAfter ? bossBoxes(bossAfter) : null,
+        raw: { file: 'DropBoxContent.txt + MonsterDropBoxs.txt', newBoxRow: newRow, bossBefore, bossAfter } }, writes);
     return { newId, boxes };
 }
 
-module.exports = { state, saveBox, saveBossBoxes, cloneBox, F_MDB, F_BOX };
+module.exports = { state, saveBox, saveBossBoxes, cloneBox, auditTail, AUDIT, F_MDB, F_BOX };

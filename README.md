@@ -49,6 +49,7 @@ Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách 
 - **Cổng admin THƯỜNG (`PANEL_PUBLIC_PORT`, mật khẩu `PANEL_PASSWORD`) được sửa SHOP** (giá, nhóm, hạn, hình, tick bán) để bạn bè giúp đặt giá — 29/09. Vẫn bị chặn: liên kết nhân vật, GM, ví, các game. **Khoá phiên bản**: nút Lưu shop gửi cả bảng, nên server từ chối (409) nếu bảng đã cũ so với lần lưu cuối → F5 rồi sửa lại. Log ghi cổng + IP mỗi lần lưu. Chủ server sẽ phát triển tiếp vai admin thường.
 
 - **Tab 💥 Drop Boss** (29/09 tối, cả admin lẫn mod — mod tạm mở để test chung, đóng lại theo chú thích `29/09 tạm MỞ` trong `panel.js`): sửa đồ rơi của 4.247 boss ngay trên web. `dropboss.js` ghi thẳng 2 file drop trên VPS (backup `/opt/tlbb-backup/dropui-*`), **hiệu lực sau restart game**; sửa xong phải đồng bộ về repo game (`lay-tu-server.sh --push`) trước lần `cap-nhat.sh` kế.
+- **📜 Lịch sử sửa Drop Boss** (nút trong tab, **chỉ cổng SUPER** vì có IP): mỗi lần 💾 lưu hộp / gắn-gỡ hộp / 🧬 tách hộp ghi 1 dòng JSON vào `/opt/tlbb-backup/dropboss-audit.jsonl` (thời gian, cổng SUPER/thường, IP, trước → sau kèm tên món/boss, nguyên dòng file trước/sau để khôi phục). Ghi **trước** khi sửa file game + `fsync`; ghi nhật ký lỗi thì **không lưu**. File gắn `chattr +a` (chỉ ghi thêm): không xóa/ghi đè được kể cả bằng lệnh nhầm; muốn dọn phải `chattr -a` trước (đừng). Không dùng `log_admin.txt` cho việc này vì file đó chỉ giữ 1.000 dòng cuối.
 
 ## Còn làm / chưa kiểm chứng
 

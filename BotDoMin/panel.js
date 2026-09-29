@@ -294,6 +294,8 @@ function startPanel(ctx) {
                     // 🀄 Tiến Lên ĂN KNB THẬT -> càng phải chặn chắc ở cổng thường
                     '/api/tienlen/admin', '/api/tienlen/on', '/api/tienlen/cauhinh', '/api/tienlen/batdau', '/api/tienlen/giaitan',
                     '/api/poker/giaitan', '/api/poker/nghi', '/api/poker/tiep',
+                    // 📜 lịch sử sửa Drop Boss có IP người sửa -> chỉ SUPER (route cũng tự kiểm epOk)
+                    '/api/drop/log',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
@@ -1097,16 +1099,24 @@ function startPanel(ctx) {
                     }
                 }
                 // 💥 29/09: Drop Boss - sua bang roi do cua game (ghi thang file VPS, hieu luc sau restart)
-                if (path === '/api/drop/state' || path === '/api/drop/box' || path === '/api/drop/boss' || path === '/api/drop/clone') {
+                if (path === '/api/drop/state' || path === '/api/drop/box' || path === '/api/drop/boss' || path === '/api/drop/clone' || path === '/api/drop/log') {
                     let drop;
                     try { drop = require('./dropboss'); } catch (e) { return sendJSON(res, 503, { ok: false, error: 'dropboss.js loi: ' + e.message }); }
                     if (!require('fs').existsSync(drop.F_MDB)) return sendJSON(res, 503, { ok: false, error: 'Không thấy file game - tính năng này chỉ chạy trên VPS game' });
                     try {
                         if (path === '/api/drop/state') return sendJSON(res, 200, { ok: true, ...drop.state(require('./tlbb').items()) });
+                        // 📜 29/09: lịch sử sửa Drop Boss (có IP) - CHỈ cổng SUPER
+                        if (path === '/api/drop/log') {
+                            if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                            const n = Math.max(1, Math.min(2000, Math.floor(Number(body.n)) || 200));
+                            return sendJSON(res, 200, { ok: true, ...drop.auditTail(n, body.q) });
+                        }
+                        // cổng + IP ghi vào nhật ký dropboss-audit.jsonl (ghi TRƯỚC khi sửa file game)
+                        const meta = { gate: epOk(req) ? 'SUPER' : 'thường', ip: req.headers['x-real-ip'] || req.socket.remoteAddress };
                         let r;
-                        if (path === '/api/drop/box') r = drop.saveBox(body);
-                        else if (path === '/api/drop/boss') r = drop.saveBossBoxes(body);
-                        else r = drop.cloneBox(body);
+                        if (path === '/api/drop/box') r = drop.saveBox(body, meta);
+                        else if (path === '/api/drop/boss') r = drop.saveBossBoxes(body, meta);
+                        else r = drop.cloneBox(body, meta);
                         if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                         ctx.writeLog('ADMIN', '[DROP BOSS] ' + path.slice(10) + ' ' + JSON.stringify(body).slice(0, 200));
                         return sendJSON(res, 200, { ok: true, ...r });
@@ -1793,7 +1803,18 @@ const HTML = `<!DOCTYPE html>
           <input id="dpQ" class="mini-in" style="width:260px" placeholder="tìm boss (tên không dấu / ID)" oninput="dropDraw()">
           <label style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="dpSp" checked style="width:auto;margin:0" onchange="dropDraw()"> chỉ boss xuất hiện trong game</label>
           <button onclick="dropLoad()">🔄 Tải lại</button>
+          <button class="epOnly" style="display:none" onclick="dropLogToggle()">📜 Lịch sử sửa</button>
           <span class="muted" id="dpInfo">chưa tải</span>
+        </div>
+        <div id="dpLogBox" class="hidden" style="margin-top:10px;border:1px solid #3a4258;border-radius:10px;padding:10px;background:rgba(0,0,0,.18)">
+          <div class="row">
+            <b>📜 Lịch sử sửa Drop Boss</b>
+            <input id="dpLogQ" class="mini-in" style="width:240px" placeholder="lọc: ID/tên boss, ID hộp, ID món, IP">
+            <button class="mini" onclick="dropLogLoad()">🔄 Tải</button>
+            <span class="muted" id="dpLogInfo"></span>
+          </div>
+          <div class="note">Mỗi lần 💾 Lưu / gắn-gỡ hộp / 🧬 Tách riêng ghi 1 dòng: ai (cổng + IP), lúc nào, trước → sau. Ghi <b>trước</b> khi sửa file game (ghi nhật ký lỗi thì không lưu). File <code>/opt/tlbb-backup/dropboss-audit.jsonl</code> chỉ ghi thêm (chattr +a), không bị cắt như log_admin.txt. Chỉ cổng SUPER xem được.</div>
+          <div id="dpLog" style="margin-top:8px;max-height:480px;overflow:auto"></div>
         </div>
         <div id="dpList" style="margin-top:10px;overflow-x:auto"></div>
       </div>
@@ -2967,6 +2988,36 @@ function dropLoad(){
   api('/api/drop/state',{}).then(function(j){DP.st=j;DP.open=null;DP.box=null;dropDraw();}).catch(function(e){document.getElementById('dpInfo').textContent='';toast('❌ '+e.message);});
 }
 function dropBossRow(id){for(var i=0;i<DP.st.bosses.length;i++)if(DP.st.bosses[i].id===id)return DP.st.bosses[i];return null;}
+// 📜 lịch sử sửa (29/09) - /api/drop/log, chỉ cổng SUPER
+function dropLogToggle(){var b=document.getElementById('dpLogBox');b.classList.toggle('hidden');if(!b.classList.contains('hidden'))dropLogLoad();}
+function dpItems(a){return (a||[]).map(function(x){return x.id+(x.n?' '+esc(x.n):'');}).join(', ');}
+function dpDiffItems(b,a){
+  var bi={},ai={},add=[],rm=[];(b||[]).forEach(function(x){bi[x.id]=x;});(a||[]).forEach(function(x){ai[x.id]=x;});
+  (a||[]).forEach(function(x){if(!bi[x.id])add.push(x);});(b||[]).forEach(function(x){if(!ai[x.id])rm.push(x);});
+  var s='';if(add.length)s+='<br><span style="color:#7ee787">+ thêm:</span> '+dpItems(add);if(rm.length)s+='<br><span style="color:#ff7b72">− bớt:</span> '+dpItems(rm);
+  return s||'<br><span class="muted">danh sách món không đổi</span>';
+}
+function dpDiffBoxes(b,a){
+  b=b||[];a=a||[];var add=a.filter(function(x){return b.indexOf(x)<0;}),rm=b.filter(function(x){return a.indexOf(x)<0;});
+  return (add.length?'<span style="color:#7ee787">+ gắn hộp '+add.join(', ')+'</span> ':'')+(rm.length?'<span style="color:#ff7b72">− gỡ hộp '+rm.join(', ')+'</span>':'')+(!add.length&&!rm.length?'<span class="muted">không đổi</span>':'')
+    +'<br><span class="muted">'+(b.join(', ')||'(trống)')+' → '+(a.join(', ')||'(trống)')+'</span>';
+}
+function dropLogLoad(){
+  document.getElementById('dpLogInfo').textContent='đang tải...';
+  api('/api/drop/log',{n:300,q:document.getElementById('dpLogQ').value||''}).then(function(j){
+    var h='<table><tr><th>Lúc</th><th>Cổng / IP</th><th>Việc</th><th>Chi tiết (trước → sau)</th></tr>';
+    for(var i=0;i<j.rows.length;i++){var r=j.rows[i],d='',v='';
+      if(r.act==='box'){v='💾 Sửa hộp '+esc(r.box);var b=r.before||{},a=r.after||{};
+        d='BoxValue '+(b.val===a.val?b.val+' (không đổi)':'<b>'+b.val+' → '+a.val+'</b>')+' · '+(a.items||[]).length+' món'+dpDiffItems(b.items,a.items);}
+      else if(r.act==='boss'){v='🎯 Hộp của boss '+esc(r.boss)+(r.bossName?' <b>'+esc(r.bossName)+'</b>':'');d=dpDiffBoxes(r.before,r.after);}
+      else if(r.act==='clone'){v='🧬 Tách hộp '+esc(r.src)+' → '+esc(r.box);d='bản sao '+((r.after&&r.after.items)||[]).length+' món, BoxValue '+((r.after&&r.after.val)||'?')+(r.boss?'<br>boss '+esc(r.boss)+' '+esc(r.bossName||'')+': '+dpDiffBoxes(r.before,r.bossAfter):'');}
+      else if(r.act==='loi'){v='<span style="color:#ff7b72">❌ Lỗi ghi file game</span>';d=esc(r.error||'')+' <span class="muted">(lần lưu lúc '+esc(r.ref||'')+' KHÔNG vào file)</span>';}
+      else{v=esc(r.act||'?');}
+      h+='<tr><td style="white-space:nowrap">'+esc(r.vn||r.t||'')+'</td><td style="white-space:nowrap">'+esc(r.gate||'')+'<br><span class="muted">'+esc(r.ip||'')+'</span></td><td>'+v+'</td><td style="font-size:12px">'+d+'</td></tr>';}
+    document.getElementById('dpLog').innerHTML=j.rows.length?h+'</table>':'<span class="muted">Chưa có lần sửa nào'+(j.total?' khớp bộ lọc':'')+'.</span>';
+    document.getElementById('dpLogInfo').textContent='hiện '+j.rows.length+' / '+j.total+' dòng (mới nhất trước)';
+  }).catch(function(e){document.getElementById('dpLogInfo').textContent='';toast('❌ '+e.message);});
+}
 function dropBoxHtml(){
   var b=DP.box;
   if(b.addMode){return '<div class="row" style="border:1px solid #3a4258;border-radius:10px;padding:10px"><b>Thêm hộp cho boss '+DP.open+':</b> <input id="dpNewBox" class="mini-in" style="width:110px" placeholder="ID hộp"> <button class="mini btn-green" data-dpaddgo="1">Thêm</button> <button class="mini" data-dpclose="1">Đóng</button> <span class="muted">nhập ID một hộp CÓ SẴN (xem cột Hộp rơi của boss khác, vd 90001 = phiếu 2000). Muốn hộp mới toanh: mở hộp gần giống rồi 🧬 Tách riêng.</span></div>';}
