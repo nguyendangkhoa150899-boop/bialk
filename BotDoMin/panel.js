@@ -2699,7 +2699,7 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
   if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
