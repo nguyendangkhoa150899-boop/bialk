@@ -38,10 +38,18 @@ Bot và game cùng máy nên trao đổi qua **file** trong `/opt/tlbb-root/home
 
 Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách từ `assets/itemimage/kimnguyenbao.jpg`). Web dùng đường dẫn `/knb.png`. Tin nhắn Discord dùng `KNB_EMOJI` trong `.env` (đang đặt `<:knb:1554355126167412796>`, emoji server Discord tạo từ `knb.png`; không đặt thì hiện 🪙).
 
+## Đã làm chiều 29/09 — cần test (checklist đầy đủ ở README repo `tlbbnetco4`)
+
+- **Tab 🛠️ GM Thiên Long trong admin** (`panel.js` → `/api/gm/state|items|act` → `tlbb.gmCall` → panel GM `https://127.0.0.1:8443/api/*`, khóa `PANEL_PASS` trong `secrets.env`). Chỉ cổng SUPER thao tác được. Không cần đăng nhập gm.netco4.click nữa (vẫn còn chạy để share tạm).
+- **Shop Item + Quà mỗi ngày mở lại**: `palworld.js` trỏ `giveItem`/`countItem` sang `tlbb.js` → hàng đợi quà panel GM (`quatang.lua`), đồ vào túi khi đăng nhập/đổi bản đồ, không cần online. Danh mục 23.789 món tải lúc khởi động (`tlbb.loadItems`). Đã nạp: 33 ngọc cấp 6 (nhóm 💎 Thuộc Tính `ammo` 4/ngày, 💎 Chỉ Số `material` 5/ngày, **đang tắt, giá tạm 99.999**), 60 Yếu Quyết môn phái (nhóm `yq`, đang bán 60.000 / tiến cấp 120.000, mỗi lần 1). Nhóm hàng đã đổi tên cho Thiên Long. Rương Ích Kỷ vẫn còn (thừa với Thiên Long, nên tắt).
+- **Web → game nhận Vàng không khóa** (thẻ riêng, 1 KNB = 1 vàng, qua hàng đợi `loai=vang`; hạn riêng `_dogVangDayMax`, panel ô "Đổi KNB → vàng", tạm 30.000/ngày). Thẻ "Chuyển KNB từ game ra web" đã ẩn (dùng NPC Ví Web). Chiều vàng → web chưa làm.
+- 30 icon ngọc `assets/itemimage/ngoc_<hàng>_<cột>.png` (96px), chưa gắn món.
+- **Cầu KNB game ↔ web đã test 8 case OK** (29/09).
+
 ## Còn làm / chưa kiểm chứng
 
-- Chưa thử chuyển KNB thật cả 2 chiều trong game (NPC Ví Web có hiệu lực từ restart game 29/09 ~11:50).
-- Tab 💸 Chuyển/Rút trên web vẫn còn ô "nạp từ game" kiểu cũ: bấm sẽ hiện hướng dẫn ra NPC. Nên sửa giao diện cho rõ.
+- Chưa test thật: mua shop → đổi bản đồ nhận đồ; nhận quà mỗi ngày; đổi vàng nhận đúng 1.000 vàng (không phải đồng); tab GM bấm từng nút trong trình duyệt.
+- Chưa đặt giá 33 viên ngọc 6; chưa quyết hạn đổi vàng/ngày; icon ngọc chưa khớp tên.
 - Tên đơn vị trong code vẫn là `points` / `dog*` (chỉ đổi chữ hiển thị thành KNB).
 - Đã xóa dữ liệu Palworld (29/09): `pals.json`, `passives.json`, `gameitems.json`, `shop_items.js`, `assets/palimage/`, ảnh item trong `assets/itemimage/` (chỉ giữ `kimnguyenbao.jpg`), 154 món shop seed. Code Palworld còn trong `index.js`/`webplay.js`/`panel.js` nhưng tab, mục panel (class `pwOff`) và nút đã ẩn/tắt; log khởi động báo "Khong doc duoc pals.json/passives.json" là bình thường.
 - Poker chạy tiến trình riêng (`Poker/index.js`, cổng 3003), chưa dựng trên VPS.
