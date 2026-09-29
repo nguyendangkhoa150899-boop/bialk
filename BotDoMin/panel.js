@@ -8,6 +8,8 @@ const { gmCall } = require('./tlbb');
 
 function startPanel(ctx) {
     const PASSWORD = ctx.password;
+    // 29/09: phiên bản bảng shop = hash nội dung, dùng cho khoá Lưu shop
+    const shopVer = () => crypto.createHash('sha1').update(JSON.stringify(ctx.getItemShop ? ctx.getItemShop() : [])).digest('hex').slice(0, 12);
     // 10/09: mật khẩu RIÊNG cổng SUPER - đặt PANEL_SUPER_PASSWORD trong .env.
     // Có nó thì cổng SUPER bắt đăng nhập BẤT KỂ cổng thường đang mở toang.
     const SUPER_PASSWORD = ctx.superPassword || '';
@@ -198,6 +200,7 @@ function startPanel(ctx) {
             dailyCfg: ctx.getDailyCfg ? ctx.getDailyCfg() : null,   // 🪪 mức điểm danh/nghiện/chuỗi
             taxiCfg: ctx.getTaxiCfg ? ctx.getTaxiCfg() : null,       // 🚕 vé "Xu đi taxi về"
             itemShop: ctx.getItemShop ? ctx.getItemShop() : [],
+            itemShopVer: shopVer(),   // 29/09: khoá phiên bản - Lưu shop với bảng cũ bị từ chối (2 admin cùng sửa)
             giftShop: ctx.getGiftShop ? ctx.getGiftShop() : [],   // 🎁 15/09: quà admin tặng (danh sách riêng)
             feats: ctx.featList ? ctx.featList() : [],   // 🔌 15/09: công tắc chức năng người chơi
             itemShopDayMax: ctx.getItemShopDayMax ? ctx.getItemShopDayMax() : null,   // 📅 10/09
@@ -270,8 +273,10 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gacha/channel', '/api/palwheel/cfg', '/api/itemcats/save',
-                    '/api/itemshop/save', '/api/itemshop/upload', '/api/itemshop/daymax', '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
+                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gacha/channel', '/api/palwheel/cfg',
+                    // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
+                    // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
+                    '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
                     '/api/palwheel/luckrate', '/api/pot/cfg', '/api/gift/save', '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
@@ -382,8 +387,13 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, message: r.message });
                 }
                 if (ctx.setItemShop && req.method === 'POST' && path === '/api/itemshop/save') {
+                    // 29/09: nút Lưu gửi CẢ bảng đang hiển thị -> ai mở panel với bảng cũ mà bấm Lưu là ghi đè
+                    // thay đổi của người khác (đã mất 5 món 17:03). Client gửi ver lúc tải bảng; lệch = từ chối.
+                    if (body.ver !== undefined && String(body.ver) !== shopVer()) {
+                        return sendJSON(res, 409, { ok: false, error: 'Có người vừa lưu shop trước bạn - bảng bạn đang xem đã cũ. Bấm F5 tải lại rồi sửa tiếp (thay đổi của bạn CHƯA được lưu).' });
+                    }
                     const list = ctx.setItemShop(Array.isArray(body.items) ? body.items : []);
-                    ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Lưu ${list.length} món`);
+                    ctx.writeLog('ADMIN', `[PANEL SHOP ITEM] Lưu ${list.length} món (cổng ${epOk(req) ? 'SUPER' : 'thường'}, IP ${req.headers['x-real-ip'] || req.socket.remoteAddress})`);
                     return sendJSON(res, 200, { ok: true, items: list });
                 }
                 // 📦 08/09: KHO ĐỒ TOÀN GAME - CHỈ cổng SUPER (thay CreativeMenu client)
@@ -4079,12 +4089,12 @@ function itemShopFill(){
   // số về mặc định); (2) dữ liệu server không đổi thì cũng không vẽ lại (đỡ nháy, đỡ mất chọn)
   if(ISDIRTY)return;
   var rows=STATE.itemShop||[];
-  var sig=JSON.stringify(rows);if(sig===ISSIG&&body.children.length)return;ISSIG=sig;
+  var sig=JSON.stringify(rows);if(sig===ISSIG&&body.children.length)return;ISSIG=sig;ISVER=STATE.itemShopVer||'';
   body.innerHTML='';
   if(!rows.length){itemShopAddRow();return;}
   rows.forEach(function(it){itemShopAddRow(it)});
 }
-var ISDIRTY=false,ISSIG='';
+var ISDIRTY=false,ISSIG='',ISVER='';
 // 📅 10/09: giới hạn mua mỗi món/người/ngày (SUPER)
 // 🗂️ bảng hạn theo nhóm (12/09 v2)
 // 🏷️ 16/09: lấy từ danh sách nhóm admin đặt. Bỏ 2 nhóm có sổ hạn riêng (⭐ mua 1 lần, 🧬 hạn implant).
@@ -4245,7 +4255,7 @@ function itemShopSave(){
       off:!tr.querySelector('.isf-on').checked,
       img:tr.querySelector('.isf-img').value.trim()};
   }).filter(function(x){return x.id;});
-  api('/api/itemshop/save',{items:items}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');itemShopDirty(false);ISSIG='';HOLD_SIG='';refresh();}).catch(function(e){toast('❌ '+e.message);});
+  api('/api/itemshop/save',{items:items,ver:ISVER}).then(function(j){toast('💾 Đã lưu '+j.items.length+' món shop');itemShopDirty(false);ISSIG='';HOLD_SIG='';refresh();}).catch(function(e){toast('❌ '+e.message);});
 }
 // (stBoardStart/stBoardStop/stReset/jpAdd đã xóa 19/08 cùng tab 📊 Thống kê)
 async function chatDelete(inputId,btn){const c=document.getElementById(inputId).value.trim();if(!c)return toast('❌ Nhập Channel ID');if(!await uiConfirm('Xóa tin nhắn của bot trong kênh này?','Xóa','btn-red'))return;await runBtn(btn,'Đang xóa...',()=>api('/api/chat/delete',{channelId:c}).then(j=>{toast('🧹 Đã xóa '+j.count+' tin nhắn');}));}
