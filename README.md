@@ -36,7 +36,7 @@ Bot và game cùng máy nên trao đổi qua **file** trong `/opt/tlbb-root/home
 
 ## Icon
 
-Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách từ `assets/itemimage/kimnguyenbao.jpg`). Web dùng đường dẫn `/knb.png`. Tin nhắn Discord dùng `KNB_EMOJI` trong `.env` (mặc định 🪙): tải `knb.png` lên làm emoji server Discord rồi đặt `KNB_EMOJI=<:knb:ID>`.
+Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách từ `assets/itemimage/kimnguyenbao.jpg`). Web dùng đường dẫn `/knb.png`. Tin nhắn Discord dùng `KNB_EMOJI` trong `.env` (đang đặt `<:knb:1554355126167412796>`, emoji server Discord tạo từ `knb.png`; không đặt thì hiện 🪙).
 
 ## Còn làm / chưa kiểm chứng
 

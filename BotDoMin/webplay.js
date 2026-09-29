@@ -2010,7 +2010,7 @@ const PAGE = [
     '</style></head><body>',
 
     '<div id="login" class="card">',
-    '<h1>🎮 Minigame Palworld</h1>',
+    '<h1>🐉 Minigame Thiên Long Bát Bộ</h1>',
     '<div class="muted">Có <b>Tài Xỉu</b>, <b>Dò Mìn</b>, <b>Leo Thang</b> và <b>Vòng Quay</b>. Lấy mã PIN bằng nút <b>🌐 Chơi trên web</b> ở bảng trong Discord.</div>',
     // ĐIỀU KHOẢN: phải tick mới bấm được nút vào. Nói rõ KNB là điểm giải trí,
     // nghiêm cấm mua bán bằng tiền thật.
@@ -3177,7 +3177,7 @@ const PAGE = [
     // chỗ khác = về chỗ cũ. KEOCLICK chặn cái click trình duyệt bắn ra sau khi nhả tay.
     'var KEO=null,KEOCHO=null,KEOCLICK=0;',
     // 🚫 Tầng JS của lớp chặn bôi đen (CSS ở đầu trang, cùng danh sách vùng): giữ lâu trên
-    // Android là hiện menu "Tải ảnh" ở đồng Dogcoin, chuột phải trên máy tính cũng vậy -> chặn
+    // Android là hiện menu "Tải ảnh" ở đồng KNB, chuột phải trên máy tính cũng vậy -> chặn
     // LUÔN trong vùng bàn (bản cũ chỉ chặn lúc đang kéo). selectstart chặn nốt trình duyệt nào
     // lờ CSS. Chừa ô nhập (✏️ Sửa chip). Target của selectstart có thể là NÚT CHỮ (không có closest).
     'var VUNG_BAN="#stage,#stStage,#sbBan,#stBan,#rlSan,#sbChips,#stChips,#rlChips,#sbNut,#stNut,#rlNut";',

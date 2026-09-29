@@ -1376,7 +1376,7 @@ const HTML = `<!DOCTYPE html>
         <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
       <div class="grp"><span class="glb">PALWORLD</span><div class="gbt">
-        <button data-tab="pal" onclick="tab('pal')">🎮 Palworld &amp; KNB<span id="wdBadge" class="hidden"></span></button>
+        <button data-tab="pal" onclick="tab('pal')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
         <button data-tab="log" onclick="tab('log')">📜 Log</button>
@@ -2434,7 +2434,7 @@ const HTML = `<!DOCTYPE html>
 
       <div class="card danger">
         <h3>🧨 Reset mùa mới - xóa sạch ví người chơi cũ</h3>
-        <div class="note">Dùng khi mở lại mini game (vd: chuyển sang KNB của Palworld). Toàn bộ ví hiện tại bị <b>xóa khỏi database</b>, ai chơi lại sẽ được tạo ví mới với số dư khởi điểm mặc định. Yêu cầu rút đang chờ sẽ bị hủy và lệnh ép mìn bị gỡ. Bot tự lưu 1 file <b>database.backup-reset-*.json</b> cạnh database trước khi xóa.</div>
+        <div class="note">Dùng khi mở lại mini game (vd: bắt đầu lại ví KNB Thiên Long). Toàn bộ ví hiện tại bị <b>xóa khỏi database</b>, ai chơi lại sẽ được tạo ví mới với số dư khởi điểm mặc định. Yêu cầu rút đang chờ sẽ bị hủy và lệnh ép mìn bị gỡ. Bot tự lưu 1 file <b>database.backup-reset-*.json</b> cạnh database trước khi xóa.</div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
           <input type="checkbox" id="resetHistory" style="width:auto;margin:0">
           Xóa luôn lịch sử Big Small / Dò Mìn + lịch sử rút KNB

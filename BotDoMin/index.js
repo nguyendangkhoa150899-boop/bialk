@@ -585,7 +585,7 @@ function dogBridgeDayCheck(user, key, amount) {
 //  - Liên kết: admin đặt tên nhân vật ở panel -> tlbb.findChar -> lưu user.tlbbGuid.
 const TLBB_NPC_HINT = 'NPC "Ví Web" ở Lạc Dương (203,323) hoặc Đại Lý (154,170)';
 async function webNapGold() {
-    return { error: '⛔ Đổi vàng đã tắt (đó là tính năng của Palworld)' };
+    return { error: '⛔ Đổi vàng đã tắt (tính năng cũ, không dùng cho Thiên Long)' };
 }
 
 async function webRutGame(userId, amount) {
