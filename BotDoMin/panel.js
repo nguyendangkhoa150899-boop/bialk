@@ -2985,7 +2985,7 @@ function dropDraw(){
   if(!DP.st)return;
   var q=(document.getElementById('dpQ').value||'').trim().toLowerCase();
   var sp=document.getElementById('dpSp').checked;
-  var rows=DP.st.bosses.filter(function(b){if(sp&&!b.sp)return false;if(!q)return true;return b.k.indexOf(q)>=0||b.id.indexOf(q)>=0;});
+  var rows=DP.st.bosses.filter(function(b){if(sp&&!b.sp)return false;if(!q)return true;return b.k.indexOf(q)>=0||b.name.toLowerCase().indexOf(q)>=0||b.id.indexOf(q)>=0;});
   document.getElementById('dpInfo').textContent=rows.length+' boss'+(rows.length>150?' (hiện 150 đầu - gõ tên để lọc)':'');
   rows=rows.slice(0,150);
   var h='<table><tr><th>ID</th><th>Tên</th><th>Cấp</th><th>Xuất hiện ở</th><th>Hộp rơi (bấm để sửa)</th><th></th></tr>';
