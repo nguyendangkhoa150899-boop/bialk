@@ -1093,11 +1093,12 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, x: wr.x, y: wr.y, z: wr.z });
                 }
                 // 🛠️ GM Thiên Long (29/09): chuyển tiếp sang panel GM nội bộ
-                if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/act') {
+                if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act') {
                     try {
                         let j;
                         if (path === '/api/gm/state') j = await gmCall('GET', '/api/state');
                         else if (path === '/api/gm/items') j = await gmCall('GET', '/api/items?q=' + encodeURIComponent(String(body.q || '').slice(0, 80)));
+                        else if (path === '/api/gm/pets') j = await gmCall('GET', '/api/pets');   // 30/09: nhom pet cho o chon (V2 / 12000 / tat ca)
                         else {
                             const form = {};
                             for (const [k, v] of Object.entries(body || {})) if (/^[a-z_]{1,12}$/.test(k)) form[k] = String(v).slice(0, 80);
@@ -2953,21 +2954,28 @@ async function palOrderDone(id){
 // Bảng liên kết Discord ↔ tên nhân vật (cầu KNB tự động đọc ingameName này)
 // ===== 🛠️ GM THIÊN LONG (29/09): dùng chung logic panel GM qua /api/gm/* =====
 var GM={st:null,timer:null};
-var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet','🐾 Pet Huyễn Hóa V2 (chọn tên)'],['petid','🐾 Pet theo ID (bản 12000: 253xx, xem docs/pet-huyen-hoa.md)']];
-var GM_PH={item:'ID vật phẩm',xoa:'ID cần xoá',knb:'Số KNB (1-10.000.000)',vang:'Số vàng (1-100.000)',diemtang:'Số Điểm Tặng',level:'Cấp (1-119)',vip:'Cấp VIP 0-10',popup:'ID vật phẩm',petid:'ID pet (vd 25351 Tần Vương bản 12000)',pet:'ID pet (vd 25351 Tần Vương - docs/pet-huyen-hoa.md)'};
+var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet12','🐾 Pet Huyễn Hóa 12000 (admin cấp)'],['petv2','🐾 Pet Huyễn Hóa V2 (chỉ số bình thường)'],['petall','🐾 Pet khác (tất cả)']];
+var GM_PH={item:'ID vật phẩm',xoa:'ID cần xoá',knb:'Số KNB (1-10.000.000)',vang:'Số vàng (1-100.000)',diemtang:'Số Điểm Tặng',level:'Cấp (1-119)',vip:'Cấp VIP 0-10',popup:'ID vật phẩm',pet12:'',petv2:'',petall:'',pet:'ID pet (vd 25351 Tần Vương - docs/pet-huyen-hoa.md)'};
 function gmGiveForm(g){
   var o=GM_KINDS.map(function(k){return '<option value="'+k[0]+'">'+k[1]+'</option>';}).join('');
-  return '<span class="row" style="gap:6px;flex-wrap:nowrap"><select class="mini-in" id="gmL'+g+'" data-kindfor="'+g+'">'+o+'</select>'+
+  return '<span class="row" style="gap:6px;flex-wrap:wrap;min-width:300px"><select class="mini-in" id="gmL'+g+'" data-kindfor="'+g+'" style="max-width:190px">'+o+'</select>'+
     '<input class="mini-in" style="width:130px" id="gmV'+g+'" placeholder="ID vật phẩm">'+
-    '<select class="mini-in" id="gmP'+g+'" style="display:none;max-width:260px"></select>'+   // 🐾 30/09: chọn pet V2 theo tên (từ st.pets)
+    '<select class="mini-in" id="gmP'+g+'" style="display:none;max-width:300px"></select>'+   // 🐾 30/09: chọn pet V2 theo tên (từ st.pets)
     '<input class="mini-in" style="width:52px" id="gmS'+g+'" value="1" placeholder="SL">'+
     '<button class="mini '+(g==='all'?'btn-red':'btn-green')+'" data-give="'+g+'">'+(g==='all'?'Gửi tất cả':'Gửi')+'</button></span>';
+}
+var GM_PETS=null;   // 30/09: nhom pet (V2 / 12000 / tat ca 6.320) tai 1 lan tu /api/gm/pets
+function gmPetsFill(sel,gi){   // gi: 0 = V2, 1 = 12000, 2 = tat ca (thu tu nhom tu /api/gm/pets)
+  var fill=function(){var gr=GM_PETS[gi]||{pets:[]};sel.innerHTML=gr.pets.map(function(x){return '<option value="'+x.id+'">'+x.id+' - '+esc(x.name)+'</option>';}).join('');sel.dataset.gi=String(gi);};
+  if(GM_PETS)return fill();
+  sel.innerHTML='<option value="">đang tải danh sách pet...</option>';
+  api('/api/gm/pets',{}).then(function(j){GM_PETS=j.groups||[];fill();}).catch(function(){sel.innerHTML='<option value="">lỗi tải - bấm 🔄</option>';});
 }
 function gmKind(g){
   var s=document.getElementById('gmL'+g),v=document.getElementById('gmV'+g),q=document.getElementById('gmS'+g);
   if(!s||!v||!q)return;var it=s.value==='item'||s.value==='xoa';v.placeholder=GM_PH[s.value]||'';q.style.display=it?'':'none';
-  var p=document.getElementById('gmP'+g),pet=s.value==='pet';v.style.display=pet?'none':'';
-  if(p){p.style.display=pet?'':'none';if(pet&&GM.st&&GM.st.pets&&p.options.length!==GM.st.pets.length)p.innerHTML=GM.st.pets.map(function(x){return '<option value="'+x.id+'">'+x.id+' - '+esc(x.name)+'</option>';}).join('');}
+  var p=document.getElementById('gmP'+g),gi={pet12:1,petv2:0,petall:2}[s.value],pet=gi!==undefined;v.style.display=pet?'none':'';
+  if(p){p.style.display=pet?'':'none';if(pet&&p.dataset.gi!==String(gi))gmPetsFill(p,gi);}
 }
 function gmRender(){
   var st=GM.st;if(!st)return;
@@ -3018,8 +3026,7 @@ function gmCreateAcc(){
 function gmSaveCapmin(){gmDo({a:'capmin',gt:document.getElementById('gmCapmin').value.trim()});}
 function gmGive(g){
   var k=document.getElementById('gmL'+g).value,v=document.getElementById('gmV'+g).value.trim(),s=document.getElementById('gmS'+g).value.trim()||'1';
-  if(k==='pet'){var p=document.getElementById('gmP'+g);v=p&&p.value?p.value:'';if(!v)return toast('Chưa có danh sách pet - bấm 🔄 Tải lại');}
-  if(k==='petid')k='pet';   // cung loai 'pet' phia server, chi khac cach nhap
+  if(k==='pet12'||k==='petv2'||k==='petall'){var p=document.getElementById('gmP'+g);v=p&&p.value?p.value:'';if(!v)return toast('Chưa có danh sách pet - đợi tải hoặc bấm 🔄');k='pet';}   // 3 o chon cung loai 'pet' phia server
   if(!v)return toast('Nhập '+(GM_PH[k]||'giá trị'));
   gmDo({a:'qua',guid:g,loai:k,gt:v,sl:s},g==='all'?'Gửi cho TẤT CẢ nhân vật?':null);
 }
