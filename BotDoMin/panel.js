@@ -2953,7 +2953,7 @@ async function palOrderDone(id){
 // Bảng liên kết Discord ↔ tên nhân vật (cầu KNB tự động đọc ingameName này)
 // ===== 🛠️ GM THIÊN LONG (29/09): dùng chung logic panel GM qua /api/gm/* =====
 var GM={st:null,timer:null};
-var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet','🐾 Pet (ID pet - event, chỉ admin)']];
+var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet','🐾 Pet Huyễn Hóa V2 (chọn tên)']];
 var GM_PH={item:'ID vật phẩm',xoa:'ID cần xoá',knb:'Số KNB (1-10.000.000)',vang:'Số vàng (1-100.000)',diemtang:'Số Điểm Tặng',level:'Cấp (1-119)',vip:'Cấp VIP 0-10',popup:'ID vật phẩm',pet:'ID pet (vd 25351 Tần Vương - docs/pet-huyen-hoa.md)'};
 function gmGiveForm(g){
   var o=GM_KINDS.map(function(k){return '<option value="'+k[0]+'">'+k[1]+'</option>';}).join('');
@@ -2967,7 +2967,7 @@ function gmKind(g){
   var s=document.getElementById('gmL'+g),v=document.getElementById('gmV'+g),q=document.getElementById('gmS'+g);
   if(!s||!v||!q)return;var it=s.value==='item'||s.value==='xoa';v.placeholder=GM_PH[s.value]||'';q.style.display=it?'':'none';
   var p=document.getElementById('gmP'+g),pet=s.value==='pet';v.style.display=pet?'none':'';
-  if(p){p.style.display=pet?'':'none';if(pet&&!p.options.length&&GM.st&&GM.st.pets)p.innerHTML=GM.st.pets.map(function(x){return '<option value="'+x.id+'">'+x.id+' - '+esc(x.name)+'</option>';}).join('');}
+  if(p){p.style.display=pet?'':'none';if(pet&&GM.st&&GM.st.pets&&p.options.length!==GM.st.pets.length)p.innerHTML=GM.st.pets.map(function(x){return '<option value="'+x.id+'">'+x.id+' - '+esc(x.name)+'</option>';}).join('');}
 }
 function gmRender(){
   var st=GM.st;if(!st)return;
