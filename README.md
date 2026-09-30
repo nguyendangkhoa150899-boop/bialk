@@ -185,6 +185,10 @@ Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách 
 .
 - Bảo mật ở mức "bạn bè": MD5 không muối là của game, không đổi được; `database.json` chứa mật khẩu thô → không bao giờ commit; dặn người chơi không dùng lại mật khẩu email/ngân hàng.
 
+## Phát pet event (30/09)
+
+- Tab GM → Phát quà → loại **🐾 Pet**, nhập ID pet (bảng `PetAttrTable`; 48 pet ngoại hình boss ở `tlbbnetco4/docs/pet-huyen-hoa.md`, vd 25351 Tần Vương). Bot chuyển thẳng cho panel GM (`a=qua, loai=pet`), game tạo pet lúc nhân vật đăng nhập / đổi bản đồ (`quatang.lua`). Chỉ SUPER; mod không gọi được `/api/gm/act`.
+
 ## Còn làm / chưa kiểm chứng
 
 - Chưa test thật: mua shop → đổi bản đồ nhận đồ; nhận quà mỗi ngày; đổi vàng nhận đúng 1.000 vàng (không phải đồng); tab GM bấm từng nút trong trình duyệt.
