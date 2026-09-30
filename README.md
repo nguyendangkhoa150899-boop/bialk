@@ -64,7 +64,7 @@ Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách 
 - Đăng nhập thành công thì lưu `gameAcc` + `gamePass` (chữ thường, chủ server chấp nhận cho 6 người bạn) để nút 🌐 trong Discord hiện lại tài khoản + mật khẩu.
 - Trang **Mỗi ngày** có thẻ 🎮 Tài khoản game: đổi mật khẩu (`/api/doimk`, kiểm mật khẩu cũ rồi gọi panel `doi_mk`) → đổi luôn cho game.
 - Panel admin, tab GM, ô "Tạo tài khoản" có thêm **Discord ID gắn ví (tuỳ chọn)**: tạo xong tự gắn `gameAcc/gamePass` cho ví đó, một bước thay cho tạo + PIN.
-- Vẫn giữ Discord ID + PIN làm đường dự phòng. Mật khẩu game theo regex `^[A-Za-z0-9_@.!-]{6,32}# NetCo4 Mini Game
+- **Đã bỏ hẳn đăng nhập Discord ID + PIN** (chủ server chốt 30/09: PIN không đổi được, lộ là mệt). `/api/login` không có `acc` → 400. Nút 🌐 trong Discord hiện tài khoản + mật khẩu game thay PIN; trường `webPin` cũ trong database không dùng nữa. Mật khẩu game theo regex `^[A-Za-z0-9_@.!-]{6,32}# NetCo4 Mini Game
 
 Mini game (Tài Xỉu, Siêu Tài Xỉu, Roulette, Dò Mìn, Leo Thang, Vòng Quay, Phi Thuyền, Cổ phiếu, Tiến Lên, Poker) cho server **Thiên Long Bát Bộ NetCo4**. Tiền là **Kim Nguyên Bảo (KNB)**, chuyển qua lại với KNB trong game theo tỉ giá **1:1**.
 

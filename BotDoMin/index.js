@@ -2904,7 +2904,7 @@ function getSpmBoardData() {
         .setTitle('🚀 PHI THUYỀN - chơi trên web')
         .setColor(0x22d3ee)
         .setDescription(desc)
-        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
+        .setFooter({ text: 'Bấm nút bên dưới để lấy link + tài khoản game' });
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Phi Thuyền trên web').setStyle(ButtonStyle.Success)
     );
@@ -6846,7 +6846,7 @@ function getMinesBoardData() {
         .setTitle('💣 DÒ MÌN - chơi trên web')
         .setColor(0x8b5cf6)
         .setDescription(desc)
-        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
+        .setFooter({ text: 'Bấm nút bên dưới để lấy link + tài khoản game' });
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Dò Mìn trên web').setStyle(ButtonStyle.Success)
@@ -6924,7 +6924,7 @@ function getStairsBoardData() {
         .setTitle('🪜 LEO THANG - chơi trên web')
         .setColor(0xe67e22)
         .setDescription(desc)
-        .setFooter({ text: 'Bấm nút bên dưới để lấy link + mã PIN' });
+        .setFooter({ text: 'Bấm nút bên dưới để lấy link + tài khoản game' });
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('web_pin').setLabel('🌐 Chơi Leo Thang trên web').setStyle(ButtonStyle.Success)
     );
@@ -9176,19 +9176,18 @@ client.on('interactionCreate', async interaction => {
 
     // ======== NÚT LẤY PIN WEB CƯỢC ========
     if (interaction.customId === 'web_pin') {
+        // 30/09: web đăng nhập bằng TÀI KHOẢN GAME (bỏ Discord ID + PIN). Nút này hiện lại tài khoản + mật khẩu
+        // đã gắn với ví (lưu lúc admin tạo ở panel hoặc lúc người chơi đăng nhập web lần đầu). Tin ẩn, chỉ người bấm thấy.
         const userData = getUserData(userId);
         userData.name = userData.name || interaction.user.username;
-        if (!userData.webPin) {
-            userData.webPin = String(Math.floor(100000 + Math.random() * 900000));
-            saveDbNow();
-        }
+        const tk = userData.gameAcc
+            ? `🎮 Tài khoản game: **${userData.gameAcc}**\n🔑 Mật khẩu: **${userData.gamePass || '(chưa lưu - đăng nhập web bằng mật khẩu game một lần là hiện)'}**\n\n` +
+              `Vào web gõ đúng tài khoản + mật khẩu vào game là chơi được. Đổi mật khẩu ở tab Mỗi ngày trên web (đổi luôn cho game).`
+            : `⚠️ Ví Discord này chưa gắn tài khoản game. Nếu đã có tài khoản: vào web đăng nhập bằng tài khoản + mật khẩu game một lần là tự gắn (cần admin đã liên kết nhân vật). Chưa có tài khoản: nhắn admin tạo.`;
         return interaction.reply({
             content:
                 `🌐 **Chơi trên web - nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
-                `🎲 **Tài Xỉu** - đặt cược + nặn xí ngầu\n💣 **Dò Mìn** - lưới 25 ô, đào tới đâu ăn tới đó\n\n` +
-                (userData.gameAcc ? `🎮 Tài khoản game: **${userData.gameAcc}** · mật khẩu: **${userData.gamePass || '(chưa lưu - đăng nhập web bằng tài khoản game 1 lần)'}**\nVào web gõ đúng tài khoản + mật khẩu này là chơi được (dùng chung với game).\n\n` : '') +
-                `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
-                `Vào web nhập ID + PIN là chơi được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai - ai có PIN là tiêu được ví bạn!`,
+                `🎲 **Tài Xỉu** - đặt cược + nặn xí ngầu\n💣 **Dò Mìn** - lưới 25 ô, đào tới đâu ăn tới đó\n\n` + tk,
             ephemeral: true,
         });
     }

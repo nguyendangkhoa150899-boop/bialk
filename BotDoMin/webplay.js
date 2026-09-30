@@ -202,11 +202,8 @@ function startWebPlay(ctx) {
                     userId = uid; rec = db[uid];
                     if (rec.gameAcc !== gacc || rec.gamePass !== gpass) { rec.gameAcc = gacc; rec.gamePass = gpass; }
                 } else {
-                    rec = /^\d{15,20}$/.test(userId) ? db[userId] : null;
-                    if (!rec || typeof rec !== 'object' || !rec.webPin || rec.webPin !== pin) {
-                        recordFail(ip);
-                        return sendJSON(res, 401, { ok: false, error: 'Sai ID hoặc PIN. Lấy PIN bằng nút 🌐 trên bảng Tài Xỉu trong Discord.' });
-                    }
+                    // 30/09: chủ server bỏ hẳn đăng nhập Discord ID + PIN (PIN không đổi được, lộ là mệt).
+                    return sendJSON(res, 400, { ok: false, error: 'Đăng nhập bằng tài khoản và mật khẩu game' });
                 }
                 const token = crypto.randomBytes(24).toString('hex');
                 const ss = sessions();
@@ -2065,7 +2062,7 @@ const PAGE = [
 
     '<div id="login" class="card">',
     '<h1>🐉 Minigame Thiên Long Bát Bộ</h1>',
-    '<div class="muted">Có <b>Tài Xỉu</b>, <b>Dò Mìn</b>, <b>Leo Thang</b> và <b>Vòng Quay</b>. Lấy mã PIN bằng nút <b>🌐 Chơi trên web</b> ở bảng trong Discord.</div>',
+    '<div class="muted">Đăng nhập bằng <b>đúng tài khoản và mật khẩu vào game</b>. Chưa có tài khoản thì nhắn admin.</div>',
     // ĐIỀU KHOẢN: phải tick mới bấm được nút vào. Nói rõ KNB là điểm giải trí,
     // nghiêm cấm mua bán bằng tiền thật.
     '<div id="terms">',
@@ -2079,11 +2076,8 @@ const PAGE = [
     '<label class="tk"><input type="checkbox" id="agree" onchange="agreeChg()"> Tôi đã đọc và <b>đồng ý</b> các điều khoản trên</label>',
     '</div>',
     // 🎮 30/09: đăng nhập bằng tài khoản game (dùng chung mật khẩu với game). Ô trống thì dùng ID + PIN như cũ.
-    '<input id="gacc" autocomplete="username" placeholder="Tài khoản game (vd bia1)">',
-    '<input id="gpass" type="password" autocomplete="current-password" placeholder="Mật khẩu game" onkeydown="if(event.key===\'Enter\')login()">',
-    '<div class="muted" style="font-size:12px;margin:2px 0 6px">Hoặc cách cũ: Discord ID + mã PIN (nút 🌐 trong Discord)</div>',
-    '<input id="uid" inputmode="numeric" placeholder="Discord ID của bạn">',
-    '<input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số" onkeydown="if(event.key===\'Enter\')login()">',
+    '<input id="gacc" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Tài khoản game">',
+    '<input id="gpass" type="password" autocomplete="current-password" placeholder="Mật khẩu" onkeydown="if(event.key===\'Enter\')login()">',
     // 08/09: lỗi login hiện NGAY DƯỚI ô PIN và đứng yên tới lần thử sau (toast đáy màn hình bị
     // bàn phím điện thoại che, người chơi nhập sai PIN mà tưởng web không phản hồi)
     // 💾 23/09: nhớ CẢ Discord ID + PIN trên máy này (chủ server chốt: máy riêng, không
@@ -2949,26 +2943,26 @@ const PAGE = [
     'function nhoDat(k,v){try{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k)}catch(e){}}',
     // gỡ tick = xoá NGAY cả ID lẫn PIN, khỏi phải bấm thêm nút nào
     'function nhoChg(bat){if(!bat){nhoDat(NHO_U,"");nhoDat(NHO_P,"");nhoDat(NHO_GA,"");nhoDat(NHO_GP,"");nhoDat(NHO_OK,"")}}',
+    'nhoDat(NHO_U,"");nhoDat(NHO_P,"");',   // 30/09: bỏ đăng nhập ID + PIN - xoá PIN cũ đã nhớ trên máy
     // Có sẵn thì đổ vào 2 ô rồi VÀO THẲNG (điều khoản đã tick lúc bấm lưu).
     // ⚠️ Trừ khi vừa bấm Thoát: cờ NHO_THOAT chặn đúng MỘT lần, không thì bấm Thoát
     // xong trang tải lại là nhảy vào ngay, người chơi không tài nào thoát được.
-    'function nhoDoVao(){var u=nhoLay(NHO_U),p=nhoLay(NHO_P),ga=nhoLay(NHO_GA),gp=nhoLay(NHO_GP);if(!u&&!p&&!ga)return;',
-    'var iu=document.getElementById("uid"),ip=document.getElementById("pin"),ck=document.getElementById("nhoTk"),ag=document.getElementById("agree"),iga=document.getElementById("gacc"),igp=document.getElementById("gpass");',
-    'if(iu&&u)iu.value=u;if(ip&&p)ip.value=p;if(iga&&ga)iga.value=ga;if(igp&&gp)igp.value=gp;if(ck)ck.checked=true;',
+    'function nhoDoVao(){var ga=nhoLay(NHO_GA),gp=nhoLay(NHO_GP);if(!ga)return;',
+    'var ck=document.getElementById("nhoTk"),ag=document.getElementById("agree"),iga=document.getElementById("gacc"),igp=document.getElementById("gpass");',
+    'if(iga&&ga)iga.value=ga;if(igp&&gp)igp.value=gp;if(ck)ck.checked=true;',
     'var vuaThoat=nhoLay(NHO_THOAT);nhoDat(NHO_THOAT,"");',
-    'if(!vuaThoat&&((u&&p)||(ga&&gp))&&ag&&nhoLay(NHO_OK)==="1"){ag.checked=true;agreeChg();login();return}',
-    'if(ip&&!p)try{ip.focus()}catch(e){}}',
+    'if(!vuaThoat&&ga&&gp&&ag&&nhoLay(NHO_OK)==="1"){ag.checked=true;agreeChg();login();return}',
+    'if(igp&&!gp)try{igp.focus()}catch(e){}}',
     'function login(){var c=document.getElementById("agree");if(c&&!c.checked)return loginErr("⚠️ Phải tick đồng ý điều khoản trước đã");',
-    'var ga=(document.getElementById("gacc")||{}).value||"",gp=(document.getElementById("gpass")||{}).value||"";ga=ga.trim().toLowerCase();',
-    'var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();',
-    'if(ga){if(!gp)return loginErr("⚠️ Nhập mật khẩu game")}else if(!u||!p)return loginErr("⚠️ Nhập tài khoản game + mật khẩu, hoặc Discord ID + mã PIN");',
+    'var ga=(document.getElementById("gacc")||{}).value||"",gp=(document.getElementById("gpass")||{}).value||"";ga=ga.trim().toLowerCase();var u="",p="";',
+    'if(!ga||!gp)return loginErr("⚠️ Nhập tài khoản và mật khẩu game");',
     'var b=document.getElementById("loginBtn");if(b.disabled&&b._busy)return;var ot=b.textContent;b._busy=true;b.disabled=true;b.textContent="⏳ Đang kiểm tra...";loginErr("");',
     'function done(){b._busy=false;b.disabled=false;b.textContent=ot}',
-    'fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(ga?{acc:ga,pass:gp}:{userId:u,pin:p})})',
+    'fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({acc:ga,pass:gp})})',
     '.then(function(r){return r.json().catch(function(){return{ok:false,error:"Bot trả về lỗi HTTP "+r.status}})})',
     '.then(function(j){done();if(!j.ok)return loginErr("❌ "+(j.error||"Sai thông tin"));TOKEN=j.token;localStorage.setItem("play_token",TOKEN);',
     'var ck=document.getElementById("nhoTk"),nho=!!(ck&&ck.checked);',
-    'nhoDat(NHO_U,nho?u:"");nhoDat(NHO_P,nho?p:"");nhoDat(NHO_GA,nho?ga:"");nhoDat(NHO_GP,nho?gp:"");nhoDat(NHO_OK,nho?"1":"");',
+    'nhoDat(NHO_GA,nho?ga:"");nhoDat(NHO_GP,nho?gp:"");nhoDat(NHO_OK,nho?"1":"");',
     'show(j.name)})',
     '.catch(function(e){done();loginErr("❌ Không gọi được bot ("+((e&&e.message)||"mạng đứt")+") - bot tắt hay mất mạng? Thử lại sau")})}',
     'function logout(){function xong(){TOKEN="";try{localStorage.removeItem("play_token")}catch(e){}nhoDat(NHO_THOAT,"1");location.reload()}',
@@ -5694,7 +5688,7 @@ const PAGE = [
     'document.addEventListener(ev,function(e){e.preventDefault()},{passive:false})});',
     'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
     'if(TOKEN){show("")}else{nhoDoVao()}',
-    'document.getElementById("pin").addEventListener("keydown",function(e){if(e.key==="Enter")login()});',
+    // 30/09: ô PIN đã bỏ - Enter ở ô mật khẩu game đã gắn inline (onkeydown) trên input#gpass
     '</script></body></html>',
 ].join('\n');
 
