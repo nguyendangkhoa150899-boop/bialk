@@ -2245,7 +2245,6 @@ const PAGE = [
     '<span id="mExtraTxt">🍀 Mua 1 cỏ may mắn (phí <b id="mExtraFee">30</b> = 30% cược)</span></label>',
     '<div class="capwarn" id="mCapWarn"></div>',
     '<button class="mgo start" id="mGo" onclick="mGoClick()">⛏️ BẮT ĐẦU ĐÀO</button>',
-    '<div class="muted" style="font-size:12px;margin-top:8px;text-align:center">Mở ô càng nhiều hệ số càng cao - trúng mìn là mất tiền cược ván đó. Cỏ 🍀 KHÔNG tặng sẵn - muốn thì tick mua (30% cược).</div>',
     '<div class="muted" id="mPotLine" style="font-size:12px;margin-top:4px;text-align:center;color:#ffd24a"></div>',
     '<div class="muted" id="mNote" style="font-size:12px;margin-top:3px;text-align:center;color:#ff9a5c"></div>',
     '</div>',
@@ -3271,7 +3270,7 @@ const PAGE = [
     'var h="";',
     // khu 1: 4 cửa đều tiền + bộ ba bất kỳ, ô to nhất vì hay đặt nhất
         // 🎲 30/09: BÀN ĐƠN GIẢN - 4 ô to, 1 ăn 1, bão tính theo tổng điểm (admin bật/tắt ở panel)
-    'if(TXSIMPLE){h+=khu("1 ĂN 1 · TÀI 11-17 · XỈU 4-10 · CHẴN · LẺ · ra bão vẫn tính theo TỔNG ĐIỂM (444/555/666 = Tài, 111/222/333 = Xỉu)");',
+    'if(TXSIMPLE){',   // 30/09: chủ server bỏ dải chữ luật, chỉ 4 ô
     'h+=\'<div class="sbHang sbSimple">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";b.innerHTML=h;return}',
     'h+=khu("1:1 · THUA NẾU RA BÃO, riêng BỘ BA BẤT KỲ 30:1");',
     'h+=\'<div class="sbHang">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("baoany"),"sbDeu sbBaoAny")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";',
@@ -4033,7 +4032,7 @@ const PAGE = [
     // hai cột đếm + nút hành động (nút đổi giữa BẮT ĐẦU và NHẬN TIỀN)
     'function potTab(id,m){var e=$(id);if(e)e.textContent=(m&&m.length?("🏆 NỔ HŨ x"+m.join("/x")):"")}',
     'function mBand(){var go=$("mGo");',
-    'potTab("mPotHdr",MPOTMULTS);var mpl=$("mPotLine");if(mpl){var mb0=mNum("mBet")||MINBET;mpl.textContent="🏆 NỔ HŨ: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên x"+MPOTMULTS.join("/x")+" TIỀN CƯỢC (cược "+vnd(mb0)+" → "+vnd(mb0*Math.min.apply(null,MPOTMULTS))+" tới "+vnd(mb0*Math.max.apply(null,MPOTMULTS))+") + kịch khung ván, ván dừng ngay · cược tối thiểu "+vnd(MINBET)+"/ván"}',
+    'potTab("mPotHdr",MPOTMULTS);var mpl=$("mPotLine");if(mpl){mpl.textContent=""}',   // 30/09: chủ server bỏ dòng mô tả NỔ HŨ (cỏ 🍀 đã tắt)
     'var fe=$("mExtraFee");if(fe)fe.textContent=vnd(Math.floor((mNum("mBet")||0)*0.3));',
     // Ô tick chỉ có tác dụng cho VÁN MỚI. Đang giữa ván thì khoá lại + nói thẳng ván này
     // đang có mấy ô 🍀, hết cảnh tick giữa ván rồi tưởng ván đang chạy được thêm cỏ.
