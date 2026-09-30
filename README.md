@@ -54,6 +54,9 @@ Icon KNB chính: `BotDoMin/assets/knb.png` (256×256, nền trong suốt, tách 
 
 - **🏹 Boss đã hạ (30/09, bước 1 của "nhiệm vụ boss")**: `tlbbaudit.js` đọc `Server/Log/Audit_*.log` của game 10 giây/lần (dòng `ITEM_CREATED,<GUID hex>,…,Dropped by "<boss>",<id>`), gom các dòng cùng boss trong 3 giây thành 1 lượt giết kèm mọi GUID được chia đồ → `dbCache._bossKills` (giữ 30 ngày). Lần chạy đầu nạp các file Audit 3 ngày gần nhất. Web: thẻ "🏹 Boss đã hạ" ở trang Cá nhân (`/api/boss/log`, theo `tlbbGuid` đã liên kết). Giới hạn: chỉ tính người có tên trong dòng rơi. **Bước 2 (chưa làm):** nhiệm vụ do admin đặt (vd Phiêu Miểu Phong = hạ Lý Thu Thủy 9546, 3 lượt/ngày → 3 túi đồ), nút Nhận quà → KNB/vật phẩm qua hàng đợi quà; cân nhắc chèn `OnDie` vào script boss cuối phó bản để ghi cả tổ.
 
+- **🎲 Tài Xỉu ĐƠN GIẢN (30/09, web):** `dbCache._txSimple` (mặc định BẬT, công tắc ở panel tab Tài Xỉu, SUPER): chỉ 4 cửa Tài/Xỉu/Chẵn/Lẻ, **1 ăn 1**, ra bão **vẫn tính theo tổng điểm** (444/555/666 = Tài, 111/222/333 = Xỉu), không pha "hiện nhân" (`txNhanS()` = 0), không hoàn bão. Server chặn cửa khác 4 cửa; web vẽ 4 ô to, giấu công tắc ⚡. Tắt công tắc = bàn 52 cửa như cũ. Siêu Tài Xỉu không liên quan (đang tắt).
+- **💣 Dò Mìn cấu hình (30/09, panel tab 💣, SUPER):** `dbCache._minesCfg` = RTP (mặc định 88%, áp mọi số mìn → hạ RTP là hạ thưởng 3 mìn lẫn các mức khác), **trần hệ số x50** (hệ số dừng ở x50, web báo "CHẠM TRẦN - NÊN DỪNG"), cược tối đa (0 = không giới hạn, chủ server đặt sau), **cỏ 🍀 TẮT** (tick mua cỏ bị bỏ qua, không thu phí; web giấu ô). Leo Thang không đổi.
+
 ## Còn làm / chưa kiểm chứng
 
 - Chưa test thật: mua shop → đổi bản đồ nhận đồ; nhận quà mỗi ngày; đổi vàng nhận đúng 1.000 vàng (không phải đồng); tab GM bấm từng nút trong trình duyệt.

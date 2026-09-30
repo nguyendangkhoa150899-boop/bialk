@@ -161,7 +161,8 @@ function startPanel(ctx) {
             tienlen: ctx.tienlenQuanLy ? ctx.tienlenQuanLy.tomTat() : null,    // 🀄 ghế, cấu hình, bàn đang đánh
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
-            dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null, dogVangDayMax: ctx.getDogVangDayMax ? ctx.getDogVangDayMax() : null,   // 📅 11/09
+            dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,
+            txSimple: ctx.getTxSimple ? ctx.getTxSimple() : null, minesCfg: ctx.getMinesCfg ? ctx.getMinesCfg() : null,   // 30/09 dogVangDayMax: ctx.getDogVangDayMax ? ctx.getDogVangDayMax() : null,   // 📅 11/09
             dogNapRate: ctx.getDogNapRate ? ctx.getDogNapRate() : null,   // 💱 11/09
             withdraw: {
                 live: !!wd.message,
@@ -281,7 +282,7 @@ function startPanel(ctx) {
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
-                    '/api/tx/tran', '/api/tx/rtp', '/api/tx/thang',
+                    '/api/tx/tran', '/api/tx/rtp', '/api/tx/thang', '/api/tx/simple', '/api/mines/cfg',
                     // ⚡ Siêu Tài Xỉu, ĂN KNB THẬT, càng phải chặn chắc
                     '/api/stx/on', '/api/stx/time', '/api/stx/tran', '/api/stx/an',
                     '/api/stx/thang', '/api/stx/maxbet', '/api/stx/ep', '/api/stx/epclear',
@@ -558,6 +559,16 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, bet: r.bet, nhan: r.nhan, nan: r.nan, round: r.round });
                 }
                 // 🎲 trần cược từng nhóm cửa của bàn Sic Bo 52 cửa
+                if (path === '/api/tx/simple') {   // 🎲 30/09: bàn Tài Xỉu đơn giản 4 cửa
+                    if (!ctx.setTxSimple) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    return sendJSON(res, 200, ctx.setTxSimple(!!body.on));
+                }
+                if (path === '/api/mines/cfg') {   // 💣 30/09: RTP / trần hệ số / cược tối đa / cỏ 🍀
+                    if (!ctx.setMinesCfg) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
+                    const r = ctx.setMinesCfg(body);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, r);
+                }
                 if (path === '/api/tx/tran') {
                     if (!ctx.setTxTran) return sendJSON(res, 503, { ok: false, error: 'Bot chưa hỗ trợ' });
                     const r = ctx.setTxTran(body.tran || {});
@@ -1466,6 +1477,10 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h2>🎲 Big Small</h2>
         <div class="muted" id="txInfo" style="font-size:13px;margin-bottom:10px"></div>
+        <div class="row epOnly" style="display:none;align-items:center;gap:8px;margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="txSimpleOn" style="width:auto;margin:0" onchange="txSimpleSave(this)"> 🎲 Bàn ĐƠN GIẢN: chỉ Tài/Xỉu/Chẵn/Lẻ, 1 ăn 1, bão tính theo tổng điểm, không quay nhân</label>
+          <span class="muted" style="font-size:12px">bỏ tick = bàn 52 cửa như cũ (Siêu Tài Xỉu không liên quan)</span>
+        </div>
         <div class="epOnly" style="display:none">
         <h3>🎲 Ép kết quả ván tới</h3>
         <div class="note" id="txBetsLive"></div>
@@ -1556,6 +1571,17 @@ const HTML = `<!DOCTYPE html>
 
     <!-- DÒ MÌN -->
     <div id="tab-mine" class="hidden">
+      <div class="card epOnly" style="display:none">
+        <h3>🎛️ Dò Mìn - luật chơi (30/09)</h3>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+          <span>RTP</span><input class="mini-in" id="mnRtp" type="number" min="50" max="100" step="0.5" style="width:80px"><span>%</span>
+          <span style="margin-left:8px">Trần hệ số</span><input class="mini-in" id="mnMaxMult" type="number" min="0" style="width:80px"><span>x (0 = không trần)</span>
+          <span style="margin-left:8px">Cược tối đa</span><input class="mini-in" id="mnMaxBet" type="number" min="0" style="width:120px"><span>KNB (0 = không giới hạn)</span>
+          <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input type="checkbox" id="mnLucky" style="width:auto;margin:0"> 🍀 cho mua cỏ may mắn</label>
+          <button class="btn-green mini" onclick="minesCfgSave(this)">💾 Lưu</button>
+        </div>
+        <div class="note">RTP = phần trả lại người chơi: 88% = nhà cái ăn 12% trên MỌI số mìn (hạ RTP là hạ thưởng 3 mìn lẫn các mức khác). Trần hệ số: hệ số dừng ở x này, web báo người chơi "chạm trần, nên dừng". Có hiệu lực cho ván MỚI.</div>
+      </div>
       <div class="card">
         <h3>🏆 Bội số nổ hũ 🍀 (Dò Mìn · Leo Thang)</h3>
         <div class="stat" id="potInfo"></div>
@@ -4544,7 +4570,14 @@ async function dogDaySave(btn){
   const kg=n=>n?n.toLocaleString('vi-VN'):'không giới hạn';
   await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,vangDayMax:vv}).then(j=>{toast('📅 Rút KNB '+kg(j.dayMax)+'/ngày · 🪙 đổi vàng '+kg(j.vangDayMax)+'/ngày');HOLD_SIG='';refresh();}));
 }
-function gsFill(){
+function mnFill(){if(!STATE)return;var s=document.getElementById('txSimpleOn');if(s&&document.activeElement!==s&&STATE.txSimple!==null&&STATE.txSimple!==undefined)s.checked=!!STATE.txSimple;
+  var c=STATE.minesCfg;if(!c)return;var f=function(id,v){var e=document.getElementById(id);if(e&&e.value===''&&document.activeElement!==e)e.value=v};
+  f('mnRtp',Math.round(c.rtp*1000)/10);f('mnMaxMult',c.maxMult);f('mnMaxBet',c.maxBet);var l=document.getElementById('mnLucky');if(l&&!l.dataset.touched){l.checked=!!c.luckyOn;l.onchange=function(){l.dataset.touched='1'}}}
+function txSimpleSave(el){api('/api/tx/simple',{on:el.checked}).then(function(j){toast('🎲 Bàn Tài Xỉu: '+(j.simple?'ĐƠN GIẢN 4 cửa':'52 cửa'));refresh();}).catch(function(e){toast('❌ '+e.message);refresh();});}
+async function minesCfgSave(btn){var rtp=parseFloat(document.getElementById('mnRtp').value)/100,mm=parseInt(document.getElementById('mnMaxMult').value),mb=parseInt(document.getElementById('mnMaxBet').value),lk=document.getElementById('mnLucky').checked;
+  if(!(rtp>=0.5&&rtp<=1))return toast('RTP phải 50-100%');if(!(mm>=0))return toast('Trần hệ số ≥ 0');if(!(mb>=0))return toast('Cược tối đa ≥ 0');
+  await runBtn(btn,'Lưu...',()=>api('/api/mines/cfg',{rtp:rtp,maxMult:mm,maxBet:mb,luckyOn:lk}).then(function(j){toast('💣 Dò Mìn: RTP '+Math.round(j.cfg.rtp*100)+'% · trần x'+(j.cfg.maxMult||'∞')+' · cược tối đa '+(j.cfg.maxBet||'∞')+' · cỏ '+(j.cfg.luckyOn?'bật':'tắt'));refresh();}));}
+function gsFill(){mnFill();
   const vgx=document.getElementById('gsVangDay');if(vgx&&vgx.value===''&&document.activeElement!==vgx&&STATE&&STATE.dogVangDayMax!==null&&STATE.dogVangDayMax!==undefined)vgx.value=STATE.dogVangDayMax;
   const dd=document.getElementById('gsDogDay');if(dd&&dd.value===''&&document.activeElement!==dd&&STATE&&STATE.dogBridgeDayMax!==null&&STATE.dogBridgeDayMax!==undefined)dd.value=STATE.dogBridgeDayMax;
   const mb=document.getElementById('gsMinBet');if(mb&&mb.value===''&&document.activeElement!==mb&&STATE&&STATE.pot&&STATE.pot.minBet)mb.value=STATE.pot.minBet;

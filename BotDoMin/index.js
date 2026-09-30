@@ -3927,6 +3927,7 @@ function txDatLo(userId, username, gio) {
         const cua = String(g.choice || '');
         const tien = Math.floor(Number(g.amount));
         if (!TX_CUA.THEO_ID[cua]) return { error: 'Cửa không hợp lệ: ' + cua };
+        if (txSimple() && !TX_SIMPLE_CUA.has(cua)) return { error: 'Bàn đơn giản: chỉ đặt Tài / Xỉu / Chẵn / Lẻ' };
         if (!Number.isFinite(tien) || tien <= 0) return { error: 'Số tiền không hợp lệ' };
         gop[cua] = (gop[cua] || 0) + tien;
     }
@@ -4286,7 +4287,7 @@ function txTimeCfg() {
     };
 }
 function txLockS() { return txTimeCfg().nan; }
-function txNhanS() { return txTimeCfg().nhan; }
+function txNhanS() { return txSimple() ? 0 : txTimeCfg().nhan; }   // bàn đơn giản: không có pha hiện nhân
 // Ván = ĐẶT CƯỢC + HIỆN NHÂN + NẶN. Cửa sổ đặt cược đóng sớm hơn mở bát đúng (nhan + nan) giây.
 function txRoundS() { const c = txTimeCfg(); return c.bet + c.nhan + c.nan; }
 function setTxTimeCfg(bet, nan, nhan) {
@@ -4578,6 +4579,11 @@ function stxNotifyBet(userId, ten, cua, soTien) {
     ).catch(() => { });
 }
 // BÃO = 3 viên giống nhau: chỉ cửa Bão ăn (×TX_BAO_RATE), mọi cửa thường thua sạch.
+// 🎲 30/09 NetCo4: TÀI XỈU ĐƠN GIẢN (web) - chỉ 4 cửa Tài/Xỉu/Chẵn/Lẻ, 1 ăn 1, bão tính theo TỔNG ĐIỂM
+// (444/555/666 = Tài, 111/222/333 = Xỉu), không pha 'hiện nhân', không hoàn bão. dbCache._txSimple (mặc định BẬT).
+const TX_SIMPLE_CUA = new Set(['tai', 'xiu', 'chan', 'le']);
+function txSimple() { return dbCache._txSimple !== false; }
+function setTxSimple(on) { dbCache._txSimple = !!on; saveDbNow(); writeLog('ADMIN', '[PANEL TX] Bàn đơn giản 4 cửa: ' + (on ? 'BẬT' : 'TẮT (52 cửa)')); return { ok: true, simple: txSimple() }; }
 const TX_BAO_RATE = 30;
 // txState.nan = { gameId, dice: [d1,d2,d3] } - chỉ tồn tại trong cửa sổ nặn
 
@@ -4644,7 +4650,33 @@ const TOTAL_TILES = 25;
 //   0,80  x0.90   x0.95   x1.00   <- 3 và 4 mìn đều lỗ
 // Muốn ăn dày hơn nữa thì ĐỪNG hạ RTP - hạ tiếp là vỡ trải nghiệm ô đầu. Hãy dùng đường khác:
 // trần thắng mỗi ván (MINES_MAX_WIN đang = 0 = không trần), trần cược, hoặc bảng quà hộp 🍀.
-const RTP = 0.88;
+const RTP = 0.88;   // (30/09: giá trị mặc định - admin đổi ở panel, xem minesCfg)
+// 🎛️ 30/09 NetCo4: cấu hình Dò Mìn admin chỉnh (panel tab 💣): RTP (biên nhà cái, áp mọi số mìn), trần hệ số, cược tối đa, cỏ 🍀
+const MINES_CFG_DEF = { rtp: RTP, maxMult: 50, maxBet: 0, luckyOn: false };   // chủ server chốt 30/09: trần x50, tắt cỏ
+function minesCfg() {
+    const c = dbCache._minesCfg || {};
+    const rtp = Number(c.rtp), mm = Number(c.maxMult), mb = Number(c.maxBet);
+    return {
+        rtp: Number.isFinite(rtp) && rtp >= 0.5 && rtp <= 1 ? rtp : MINES_CFG_DEF.rtp,
+        maxMult: Number.isFinite(mm) && mm >= 0 ? Math.floor(mm) : MINES_CFG_DEF.maxMult,   // 0 = không trần
+        maxBet: Number.isFinite(mb) && mb >= 0 ? Math.floor(mb) : MINES_CFG_DEF.maxBet,      // 0 = không giới hạn
+        luckyOn: c.luckyOn === true,
+    };
+}
+function setMinesCfg(o) {
+    o = o || {};
+    const cur = minesCfg();
+    const rtp = o.rtp === undefined ? cur.rtp : Number(o.rtp);
+    const mm = o.maxMult === undefined ? cur.maxMult : Math.floor(Number(o.maxMult));
+    const mb = o.maxBet === undefined ? cur.maxBet : Math.floor(Number(o.maxBet));
+    if (!Number.isFinite(rtp) || rtp < 0.5 || rtp > 1) return { error: 'RTP phải từ 50% đến 100%' };
+    if (!Number.isFinite(mm) || mm < 0 || mm > 1000000) return { error: 'Trần hệ số: 0 (không trần) đến 1.000.000' };
+    if (!Number.isFinite(mb) || mb < 0 || mb > 1000000000) return { error: 'Cược tối đa: 0 (không giới hạn) đến 1 tỉ' };
+    dbCache._minesCfg = { rtp, maxMult: mm, maxBet: mb, luckyOn: o.luckyOn === undefined ? cur.luckyOn : !!o.luckyOn };
+    saveDbNow();
+    writeLog('ADMIN', '[PANEL DÒ MÌN] RTP ' + (rtp * 100).toFixed(1) + '% · trần x' + (mm || '∞') + ' · cược tối đa ' + (mb || '∞') + ' · cỏ 🍀 ' + (dbCache._minesCfg.luckyOn ? 'BẬT' : 'TẮT'));
+    return { ok: true, cfg: minesCfg() };
+}
 
 function nCr(n, r) {
     if (r > n) return 0;
@@ -4661,7 +4693,9 @@ function calculateMulti(diamonds, numMines) {
     const totalWays = nCr(TOTAL_TILES, diamonds);
     if (waysToWin === 0) return 1;
     const prob = waysToWin / totalWays;
-    let multi = (1 / prob) * RTP;
+    let multi = (1 / prob) * minesCfg().rtp;
+    // 30/09: TRẦN HỆ SỐ (chủ server chốt x50, đổi ở panel; 0 = không trần) - áp cho bảng, nút nhận tiền, mở hết bàn
+    if (minesCfg().maxMult > 0) multi = Math.min(multi, minesCfg().maxMult);
     // TỰ LỰC ĂN ĐỦ, KHÔNG TRẦN (chủ server chốt CUỐI CÙNG 20/08 sau 3 lần cân
     // nhắc): mở hết bàn cực khó (12-13 mìn = 1/5,2 triệu) nên đủ may mắn thì trả
     // nguyên tỉ lệ x4,9 TRIỆU lần cược - chủ server đã nghe cảnh báo "cú đó in
@@ -5114,7 +5148,8 @@ const webMinesApi = {
     open: () => gameOpen('mines'),   // ⏸️ công tắc panel
     minBet: () => minBet(),   // 09/09 getter - panel đổi là web thấy ngay
     maxWin: MINES_MAX_WIN,
-    maxBet: MINES_MAX_BET,
+    get maxBet() { return minesCfg().maxBet; },
+    cfg: () => minesCfg(),   // 30/09: web ẩn/hiện ô cỏ, hiện trần
     // Bảng hệ số để client hiện trước khi đặt - tính ở server nên client không bịa được.
     table: (numMines) => {
         const max = TOTAL_TILES - numMines;
@@ -5137,6 +5172,7 @@ const webMinesApi = {
             multi: info.multi, nextMulti: info.nextMulti,
             cashout: MINES_MAX_WIN > 0 ? Math.min(raw, MINES_MAX_WIN) : raw,
             capped: MINES_MAX_WIN > 0 && raw > MINES_MAX_WIN, // web nói rõ "chạm trần", đỡ tưởng bị ăn bớt
+            multCap: minesCfg().maxMult, multCapHit: minesCfg().maxMult > 0 && info.multi >= minesCfg().maxMult,   // 30/09: trần hệ số -> web báo NÊN DỪNG
             // 09/09: ván CÓ TRỢ GIÚP (khiên đã đỡ/⛏️/🏆) mà hệ số đã tới trần -> web cảnh báo "mở thêm không tăng tiền"
             assistCap: assistCapOf(g),
             assistCapHit: luckyAssisted(g) && Math.floor(g.bet * info.multi) >= g.bet * assistCapOf(g),
@@ -5165,7 +5201,8 @@ const webMinesApi = {
         }
         if (!Number.isInteger(bet) || bet <= 0) return { error: 'Số KNB không hợp lệ' };
         if (bet < minBet()) return { error: `Cược tối thiểu ${minBet().toLocaleString()} KNB mỗi ván` };
-        if (MINES_MAX_BET > 0 && bet > MINES_MAX_BET) return { error: `Cược tối đa ${MINES_MAX_BET.toLocaleString()} KNB mỗi ván` };
+        if (minesCfg().maxBet > 0 && bet > minesCfg().maxBet) return { error: 'Cược tối đa ' + minesCfg().maxBet.toLocaleString() + ' KNB mỗi ván' };
+        extraLucky = extraLucky && minesCfg().luckyOn;   // 30/09: cỏ 🍀 tắt thì bỏ qua tick + không thu phí
         // 🍀 09/09 (chủ server chốt): KHÔNG còn cỏ miễn phí - muốn cỏ phải MUA,
         // phí 20% tiền cược, TỐI ĐA 1 ô/ván. (Luật cũ 20/08: 1 free + mua thêm 1.)
         const fee = extraLucky ? Math.floor(bet * 0.3) : 0;   // 19/09: 30% (20% -> 40% hôm 18/09 -> chủ server chốt 30%)
@@ -7264,7 +7301,8 @@ client.once('ready', async (c) => {
             txPot: () => 0,
             txPotX: () => 0,
             // 🎲 bàn 52 cửa: web cần bảng cửa + trần từng nhóm để vẽ và chặn tại chỗ
-            txCua: () => TX_CUA.DS.map(c => ({
+            txSimple: () => txSimple(),
+            txCua: () => TX_CUA.DS.filter(c => !txSimple() || TX_SIMPLE_CUA.has(c.id)).map(c => ({
                 id: c.id, ten: c.ten, nhom: c.nhom, goc: c.goc, max: TX_CUA.tiLeToiDa(c.id),
             })),
             txTran: () => txTranCfg(),
@@ -7572,7 +7610,8 @@ client.once('ready', async (c) => {
             getGameOpen: () => ({ mines: gameOpen('mines'), stairs: gameOpen('stairs') }),
             // 🔁 09/09: cầu KNB web ↔ game
             getDogBridge: () => dogBridgeCfg(),
-            getDogBridgeDayMax: dogBridgeDayMax, setDogBridgeDayMax, getDogVangDayMax: dogVangDayMax, setDogVangDayMax,   // 📅 11/09 hạn chuyển/ngày
+            getDogBridgeDayMax: dogBridgeDayMax, setDogBridgeDayMax, getDogVangDayMax: dogVangDayMax, setDogVangDayMax,
+            getTxSimple: txSimple, setTxSimple, getMinesCfg: minesCfg, setMinesCfg,   // 30/09   // 📅 11/09 hạn chuyển/ngày
             getDogNapRate: dogNapRate, setDogNapRate,   // 💱 11/09 tỉ lệ nạp game→web
             // 🎚️ 09/09: sàn cược 2 minigame
             setMinBet: (v) => setMinBet(v),
@@ -8076,7 +8115,7 @@ function runTaiXiuLoop() {
         if (nowSec >= lockTime && txState.status === 'betting') {
             txState.status = 'nhan';
             txState.activeChoice = null;
-            txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
+            txState.nhan = { gameId: txState.gameId, o: txSimple() ? {} : TX_CUA.taoNhan(), luc: Date.now() };
             const soO = Object.keys(txState.nhan.o).length;
             void soO;   // 22/09: bỏ dòng log khoá sổ - chủ server chỉ cần dòng kết quả mỗi ván
             // đuổi kịp trong cùng nhịp thì khỏi vẽ bảng dở dang, bước sau vẽ luôn
@@ -8105,7 +8144,7 @@ function runTaiXiuLoop() {
             if (!txState.nhan || txState.nhan.gameId !== txState.gameId) {
                 // lỡ luôn mốc khoá sổ -> sinh bù, không thì txPlanPayout thấy bangNhan rỗng
                 // và người chơi mất phần nhân một cách lặng lẽ
-                txState.nhan = { gameId: txState.gameId, o: TX_CUA.taoNhan(), luc: Date.now() };
+                txState.nhan = { gameId: txState.gameId, o: txSimple() ? {} : TX_CUA.taoNhan(), luc: Date.now() };
                 writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ luôn mốc khoá sổ - sinh bù bảng hệ số nhân`);
             }
             writeLog('SYSTEM', `[TÀI XỈU] Ván #${txState.gameId} lỡ mốc nặn (máy chủ kẹt) - QUAY BÙ tại chỗ, KHÔNG huỷ ván`);
@@ -8245,12 +8284,15 @@ function txPlanPayout(gameId, bets, d1, d2, d3) {
         let win = 0, refund = 0;
         // Cửa cũ 'bao' (bàn 5 cửa) = 'baoany' của bàn mới. Ván treo từ bản cũ vẫn trả đúng.
         const cua = b.choice === 'bao' ? 'baoany' : b.choice;
-        if (TX_CUA.THEO_ID[cua]) {
+        if (txSimple() && TX_SIMPLE_CUA.has(cua)) {
+            // 🎲 bàn đơn giản: thắng theo TỔNG ĐIỂM kể cả khi ra bão, 1 ăn 1 (nhận về gấp đôi)
+            win = (cua === resultTX || cua === resultCL) ? b.amount * 2 : 0;
+        } else if (TX_CUA.THEO_ID[cua]) {
             win = TX_CUA.tinhTra(cua, b.amount, xx, bangNhan);   // đã gồm vốn; 0 = thua
         }
         // 🌪️ Ra bão mà đặt đúng bên Tài/Xỉu/Chẵn/Lẻ: hoàn lại một phần (luật riêng của
         // server này, sòng thật thì thua sạch). Giữ vì người chơi đang có quyền lợi đó.
-        if (win === 0 && isStorm && (cua === resultTX || cua === resultCL)) {
+        if (!txSimple() && win === 0 && isStorm && (cua === resultTX || cua === resultCL)) {
             refund = Math.floor(b.amount * TX_STORM_REFUND);
         }
         const got = win + refund;

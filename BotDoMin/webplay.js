@@ -319,6 +319,8 @@ function startWebPlay(ctx) {
                         // 🎲 BÀN SIC BO 52 CỬA: danh sách cửa + trần từng nhóm (vẽ bàn, chặn tại chỗ),
                         // và BẢNG NHÂN của ván đang chạy, chỉ gửi khi đã KHOÁ SỔ, không thì lộ sớm.
                         txCua: ctx.txCua ? ctx.txCua() : null,
+                        txSimple: ctx.txSimple ? ctx.txSimple() : false,   // 🎲 30/09 bàn 4 cửa
+                        minesCfg: (ctx.mines && ctx.mines.cfg) ? ctx.mines.cfg() : null,   // 💣 30/09
                         txTran: ctx.txTran ? ctx.txTran() : null,
                         txNhan: (tx.nhan && tx.nhan.gameId === tx.gameId && tx.status !== 'betting') ? tx.nhan.o : null,
                         tienlenOn: ctx.tienlenOn ? !!ctx.tienlenOn() : false,   // 🀄 tab Tiến Lên hiện/ẩn
@@ -1671,6 +1673,7 @@ const PAGE = [
     '.sbBao.loi{background:#3a1d22;color:#ff9aa6;border:1px solid #7a3b4a}',
     '.sbBao.oke{background:#16301f;color:#8fe0a8;border:1px solid #2f6b45}',
     // dải tiêu đề từng khu (8:1 MỖI ĐÔI, 150:1 MỖI BỘ BA...)
+    '.sbSimple .sbO{min-height:72px;font-size:17px}',   // 30/09 bàn 4 cửa: ô to
     '.sbKhu{background:#6b1f22;color:#ffdca8;font-size:10.5px;font-weight:800;text-align:center;',
     'border-radius:5px;padding:3px 6px;letter-spacing:.3px;margin-top:2px}',
     '.sbO{flex:1;min-width:0;position:relative;background:#fff;color:#1a1208;border:1px solid #b09268;border-radius:6px;',
@@ -3002,6 +3005,7 @@ const PAGE = [
     'if(typeof j.ichKyTotal==="number")ikBadge(j.ichKyTotal);',
     // 🏆 nhãn hũ trên tab: cập nhật mỗi nhịp 2 giây, kể cả khi người khác đang nuôi hũ
     'if(j.pots){if(typeof j.pots.mines==="number")MPOT=j.pots.mines;if(typeof j.pots.stairs==="number")SPOT=j.pots.stairs}',
+    'if(j.minesCfg){MCFG=j.minesCfg;var mxw=$("mExtraWrap");if(mxw)mxw.style.display=MCFG.luckyOn?"":"none";if(!MCFG.luckyOn){var mxb=$("mExtra");if(mxb)mxb.checked=false}}',   // 💣 30/09: cỏ tắt thì giấu ô mua
     'BAL=j.balance;document.getElementById("bal").textContent=j.balance.toLocaleString("vi-VN");',
     // ván vừa chốt: tính thắng/thua CÁ NHÂN -> popup; ra bão -> hiệu ứng
     'var h0s=j.history[0];',
@@ -3045,6 +3049,7 @@ const PAGE = [
     'if(prevPhase==="nan"&&PHASE!=="nan"){resetPaper()}',
     'if(typeof j.txKqS==="number")TXKQS=j.txKqS;',
     'SBCOVT=!!j.txVanTruoc;',
+    'TXSIMPLE=!!j.txSimple;var hnw=$("hNhanOn");if(hnw&&hnw.parentNode)hnw.parentNode.style.display=TXSIMPLE?"none":"";if(TXSIMPLE)HNHAN=false;',   // 30/09 bàn đơn giản: giấu công tắc ⚡
     'sbNapCua(j);sbTong(j.totals||{},j.myBets||[]);sbNhanVe(j.txNhan);',
     // đã nặn xong ván nào thì bàn giữ màu ván đó tới khi mở ván mới
     'if(j.nan&&revealedGame===j.nan.gameId)sbToKetQua(j.nan);',
@@ -3127,7 +3132,7 @@ const PAGE = [
     // ===== DÒ MÌN =====
     // Client KHÔNG tự tính tiền: mọi hệ số/thưởng lấy từ server. Ở đây chỉ vẽ.
     'var COINIMG=\'<img class="dc big" src="/knb.png" alt="">\';',
-    'var MT=25;var MOPEN=true;var MCAPWARN=false;var MPOT=-1;var MPOTMULTS=[10,15,20];var MINBET=400;var POTSEED=5000;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
+    'var MCFG=null;var MT=25;var MOPEN=true;var MCAPWARN=false;var MPOT=-1;var MPOTMULTS=[10,15,20];var MINBET=400;var POTSEED=5000;var MG=null;var mBusy=false;var MTAB=[];var MOVER=false;var MLAST=null;var MAXWIN=0;var MAXBET=0;',
     'var MMIN=3,MMAX=20;',   // giới hạn số mìn - server là nguồn chuẩn, mSync ghi đè
     // Bấm nhanh: cú bấm trong lúc chờ server KHÔNG bị nuốt nữa - xếp hàng đào tuần tự.
     // mBusyAt = chốt an toàn: request treo quá 8s thì tự gỡ cờ, không phải F5.
@@ -3152,7 +3157,7 @@ const PAGE = [
     // SBCUA  = bảng cửa máy chủ gửi (id, tên, trả gốc, trả tối đa) - KHÔNG gõ cứng ở client
     // SBTONG = tiền cả bàn từng cửa + khoá "_toi_<cửa>" là tiền của chính mình.
     // SBCHIP = mệnh giá chip đang chọn.
-    'var SBCUA=[],SBTRAN={},SBCHIP=0,SBVEROI=false,SBNHAN=null,SBDANGGUI=false;',
+    'var TXSIMPLE=false,SBCUA=[],SBTRAN={},SBCHIP=0,SBVEROI=false,SBNHAN=null,SBDANGGUI=false;',
     // Bỏ 5.000 (chủ server), thêm "max" ở cuối, nút MAX CƯỢC màu đỏ.
     // 🪙 22/09: ô mệnh giá ĐẦU là TUỲ CHỌN - người chơi gõ số, lưu localStorage nên F5 không mất
     // (chủ server: "nút 1000 sửa thành nút custom cho người chơi nhập số, ở dưới nút đó là nút sửa").
@@ -3181,7 +3186,7 @@ const PAGE = [
     // nạp bảng cửa 1 lần rồi vẽ bàn; các lần sau chỉ cập nhật số
     'function sbNapCua(j){if(!j.txCua||!j.txCua.length)return;',
     'SBTRAN=j.txTran||{};',
-    'if(SBVEROI)return;',
+    'if(SBVEROI&&SBCUA.length===j.txCua.length)return;',   // 30/09: đổi bàn 4 cửa <-> 52 cửa thì vẽ lại
     'SBCUA=j.txCua;SBCUA.forEach(function(c){NAMES[c.id]=c.ten});',
     'sbVe();sbVeChip();keoGan("sb");SBVEROI=true}',
     // 1 viên xúc xắc mini (dùng lại bảng chấm PIPS của phần lắc xí ngầu)
@@ -3265,6 +3270,9 @@ const PAGE = [
     'var khu=function(t){return \'<div class="sbKhu">\'+t+"</div>"};',
     'var h="";',
     // khu 1: 4 cửa đều tiền + bộ ba bất kỳ, ô to nhất vì hay đặt nhất
+        // 🎲 30/09: BÀN ĐƠN GIẢN - 4 ô to, 1 ăn 1, bão tính theo tổng điểm (admin bật/tắt ở panel)
+    'if(TXSIMPLE){h+=khu("1 ĂN 1 · TÀI 11-17 · XỈU 4-10 · CHẴN · LẺ · ra bão vẫn tính theo TỔNG ĐIỂM (444/555/666 = Tài, 111/222/333 = Xỉu)");',
+    'h+=\'<div class="sbHang sbSimple">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";b.innerHTML=h;return}',
     'h+=khu("1:1 · THUA NẾU RA BÃO, riêng BỘ BA BẤT KỲ 30:1");',
     'h+=\'<div class="sbHang">\'+o(g("xiu"),"sbDeu sbXiu")+o(g("le"),"sbDeu")+o(g("baoany"),"sbDeu sbBaoAny")+o(g("chan"),"sbDeu")+o(g("tai"),"sbDeu sbTai")+"</div>";',
     // khu 2: 6 ô gấp đôi, vẽ 2 viên giống nhau
@@ -4037,7 +4045,7 @@ const PAGE = [
     'if(MG){',
     '$("mLeft").textContent=(MG.maxDiamonds-MG.revealed.length);',
     '$("mBombN").textContent=MG.totalMines;',
-    '$("mStat").textContent=MG.totalMines+" mìn · cược "+vnd(MG.bet)+" · "+fx(MG.multi)+(MG.capped?" · kịch khung":"")+(MG.assistCapHit?" · ⚠️ mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" - mở thêm KHÔNG tăng tiền":"");',
+    '$("mStat").textContent=MG.totalMines+" mìn · cược "+vnd(MG.bet)+" · "+fx(MG.multi)+(MG.capped?" · kịch khung":"")+(MG.multCapHit?" · ⚠️ CHẠM TRẦN x"+MG.multCap+" - mở thêm KHÔNG tăng tiền, NÊN DỪNG NHẬN TIỀN":"")+(MG.assistCapHit?" · ⚠️ mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" - mở thêm KHÔNG tăng tiền":"");',
     // 09/09: ván có trợ giúp chạm trần -> toast đỏ 1 lần/ván, nút NHẬN TIỀN ghi thẳng "NÊN DỪNG"
     'var mcw=$("mCapWarn");if(mcw){mcw.classList.toggle("show",!!MG.assistCapHit);if(MG.assistCapHit)mcw.textContent="⚠️ Ván này bạn mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" = "+vnd(MG.cashout)+" KNB. Mở thêm KHÔNG tăng tiền, chỉ thêm rủi ro - NÊN DỪNG!"}',
     'if(MG.assistCapHit&&!MCAPWARN){MCAPWARN=true;toast("⚠️ Ván này bạn mở được nhờ "+(MG.assistWhy||"trợ giúp 🍀")+" nên chỉ thưởng TỐI ĐA ×"+MG.assistCap+" = "+vnd(MG.cashout)+" KNB. Đã chạm mức này - mở thêm KHÔNG tăng tiền, chỉ thêm rủi ro. NÊN DỪNG NHẬN TIỀN!")}if(!MG.assistCapHit)MCAPWARN=false;',
