@@ -2959,12 +2959,15 @@ function gmGiveForm(g){
   var o=GM_KINDS.map(function(k){return '<option value="'+k[0]+'">'+k[1]+'</option>';}).join('');
   return '<span class="row" style="gap:6px;flex-wrap:nowrap"><select class="mini-in" id="gmL'+g+'" data-kindfor="'+g+'">'+o+'</select>'+
     '<input class="mini-in" style="width:130px" id="gmV'+g+'" placeholder="ID vật phẩm">'+
+    '<select class="mini-in" id="gmP'+g+'" style="display:none;max-width:260px"></select>'+   // 🐾 30/09: chọn pet V2 theo tên (từ st.pets)
     '<input class="mini-in" style="width:52px" id="gmS'+g+'" value="1" placeholder="SL">'+
     '<button class="mini '+(g==='all'?'btn-red':'btn-green')+'" data-give="'+g+'">'+(g==='all'?'Gửi tất cả':'Gửi')+'</button></span>';
 }
 function gmKind(g){
   var s=document.getElementById('gmL'+g),v=document.getElementById('gmV'+g),q=document.getElementById('gmS'+g);
   if(!s||!v||!q)return;var it=s.value==='item'||s.value==='xoa';v.placeholder=GM_PH[s.value]||'';q.style.display=it?'':'none';
+  var p=document.getElementById('gmP'+g),pet=s.value==='pet';v.style.display=pet?'none':'';
+  if(p){p.style.display=pet?'':'none';if(pet&&!p.options.length&&GM.st&&GM.st.pets)p.innerHTML=GM.st.pets.map(function(x){return '<option value="'+x.id+'">'+x.id+' - '+esc(x.name)+'</option>';}).join('');}
 }
 function gmRender(){
   var st=GM.st;if(!st)return;
@@ -3015,6 +3018,7 @@ function gmCreateAcc(){
 function gmSaveCapmin(){gmDo({a:'capmin',gt:document.getElementById('gmCapmin').value.trim()});}
 function gmGive(g){
   var k=document.getElementById('gmL'+g).value,v=document.getElementById('gmV'+g).value.trim(),s=document.getElementById('gmS'+g).value.trim()||'1';
+  if(k==='pet'){var p=document.getElementById('gmP'+g);v=p&&p.value?p.value:'';if(!v)return toast('Chưa có danh sách pet - bấm 🔄 Tải lại');}
   if(!v)return toast('Nhập '+(GM_PH[k]||'giá trị'));
   gmDo({a:'qua',guid:g,loai:k,gt:v,sl:s},g==='all'?'Gửi cho TẤT CẢ nhân vật?':null);
 }
