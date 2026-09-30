@@ -7291,6 +7291,10 @@ client.once('ready', async (c) => {
                 give: (uid, to, id, qty, name) => ichKyGive(uid, to, id, qty, name),
             },
             lienKetMsg: () => LIENKET_MSG,
+            // 🎮 30/09: đăng nhập web bằng tài khoản game + đổi mật khẩu (qua panel GM, repo tlbbnetco4 panel/panel.py)
+            tlbbKiemMk: (a, p) => tlbb.kiemMk(a, p),
+            tlbbDoiMk: (a, p) => tlbb.doiMk(a, p),
+            tlbbGuidsOfAcc: (a) => tlbb.guidsOfAcc(a),
             poker: pokerMod,                 // 🃏 /api/poker/* + /poker/ (Poker/web.js, cùng phiên đăng nhập)
             pokerOn: () => pokerOnCfg(),     // 🃏 tab GIẢI POKER hiện hay ẩn (admin bật ở panel SUPER)
             tienlen: tienlenMod,                 // 🀄 /api/tienlen/* + /tienlen/ (TienLen/web.js, ăn KNB thật)
@@ -9182,6 +9186,7 @@ client.on('interactionCreate', async interaction => {
             content:
                 `🌐 **Chơi trên web - nhanh, không lag Discord:**\n${WEB_PLAY_URL}\n\n` +
                 `🎲 **Tài Xỉu** - đặt cược + nặn xí ngầu\n💣 **Dò Mìn** - lưới 25 ô, đào tới đâu ăn tới đó\n\n` +
+                (userData.gameAcc ? `🎮 Tài khoản game: **${userData.gameAcc}** · mật khẩu: **${userData.gamePass || '(chưa lưu - đăng nhập web bằng tài khoản game 1 lần)'}**\nVào web gõ đúng tài khoản + mật khẩu này là chơi được (dùng chung với game).\n\n` : '') +
                 `🆔 Discord ID: \`${userId}\`\n🔑 Mã PIN: **${userData.webPin}**\n\n` +
                 `Vào web nhập ID + PIN là chơi được. PIN dùng mãi, bấm lại nút này để xem lại. ĐỪNG đưa PIN cho ai - ai có PIN là tiêu được ví bạn!`,
             ephemeral: true,

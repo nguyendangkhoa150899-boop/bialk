@@ -174,13 +174,39 @@ function startWebPlay(ctx) {
                 const ip = (/^(::ffff:)?127.0.0.1$|^::1$/.test(_ra) && req.headers['x-real-ip']) ? String(req.headers['x-real-ip']) : _ra;
                 if (tooManyFails(ip)) return sendJSON(res, 429, { ok: false, error: 'Sai quá nhiều lần, chờ 10 phút' });
                 const body = await readBody(req);
-                const userId = String(body.userId || '').trim();
+                let userId = String(body.userId || '').trim();
                 const pin = String(body.pin || '').trim();
                 const db = ctx.getDb();
-                const rec = /^\d{15,20}$/.test(userId) ? db[userId] : null;
-                if (!rec || typeof rec !== 'object' || !rec.webPin || rec.webPin !== pin) {
-                    recordFail(ip);
-                    return sendJSON(res, 401, { ok: false, error: 'Sai ID hoặc PIN. Lấy PIN bằng nút 🌐 trên bảng Tài Xỉu trong Discord.' });
+                let rec = null;
+                const gacc = String(body.acc || '').trim().toLowerCase();
+                if (gacc && ctx.tlbbKiemMk) {
+                    // 🎮 30/09: đăng nhập bằng TÀI KHOẢN GAME (web.account của MySQL game, so MD5 qua panel GM).
+                    // Ví Discord tìm theo: (1) ví đã gắn gameAcc, (2) ví đã liên kết nhân vật thuộc tài khoản này.
+                    // Chưa có ví nào -> báo nhắn admin (chủ server chốt 30/09: không tự tạo ví mới).
+                    const gpass = String(body.pass || '');
+                    if (!/^[a-z0-9_]{3,20}$/.test(gacc) || !/^[A-Za-z0-9_@.!-]{6,32}$/.test(gpass)) {
+                        recordFail(ip);
+                        return sendJSON(res, 401, { ok: false, error: 'Tài khoản 3-20 ký tự (a-z 0-9 _), mật khẩu 6-32 ký tự' });
+                    }
+                    let okMk = false;
+                    try { okMk = await ctx.tlbbKiemMk(gacc, gpass); } catch (e) { return sendJSON(res, 502, { ok: false, error: 'Không kiểm được với server game: ' + String(e.message).slice(0, 120) }); }
+                    if (!okMk) { recordFail(ip); return sendJSON(res, 401, { ok: false, error: 'Sai tài khoản hoặc mật khẩu game' }); }
+                    const laVi = (k) => /^\d{15,20}$/.test(k) && db[k] && typeof db[k] === 'object';
+                    let uid = Object.keys(db).find((k) => laVi(k) && String(db[k].gameAcc || '').toLowerCase() === gacc) || '';
+                    if (!uid && ctx.tlbbGuidsOfAcc) {
+                        let guids = [];
+                        try { guids = await ctx.tlbbGuidsOfAcc(gacc); } catch { guids = []; }
+                        uid = Object.keys(db).find((k) => laVi(k) && db[k].tlbbGuid && guids.includes(String(db[k].tlbbGuid))) || '';
+                    }
+                    if (!uid) return sendJSON(res, 401, { ok: false, error: 'Tài khoản game này chưa gắn với ví Discord nào - nhắn admin liên kết nhân vật trước, hoặc vào bằng Discord ID + PIN' });
+                    userId = uid; rec = db[uid];
+                    if (rec.gameAcc !== gacc || rec.gamePass !== gpass) { rec.gameAcc = gacc; rec.gamePass = gpass; }
+                } else {
+                    rec = /^\d{15,20}$/.test(userId) ? db[userId] : null;
+                    if (!rec || typeof rec !== 'object' || !rec.webPin || rec.webPin !== pin) {
+                        recordFail(ip);
+                        return sendJSON(res, 401, { ok: false, error: 'Sai ID hoặc PIN. Lấy PIN bằng nút 🌐 trên bảng Tài Xỉu trong Discord.' });
+                    }
                 }
                 const token = crypto.randomBytes(24).toString('hex');
                 const ss = sessions();
@@ -200,7 +226,7 @@ function startWebPlay(ctx) {
                 // đăng nhập là chặn đứng cả bot. Phiên nằm trong dbCache nên vòng lưu tự động
                 // (10 giây/lần) vẫn giữ được qua restart.
                 ctx.writeLog('ADMIN', `[WEB CƯỢC] ${rec.name || userId} đăng nhập web`);
-                return sendJSON(res, 200, { ok: true, token, name: rec.name || '', balance: rec.points || 0 });
+                return sendJSON(res, 200, { ok: true, token, name: rec.name || '', balance: rec.points || 0, gacc: rec.gameAcc || '' });
             }
 
             // Các API dưới cần đăng nhập
@@ -745,6 +771,27 @@ function startWebPlay(ctx) {
                     const r = ctx.wheel.spin(userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r.state });
+                }
+
+                // 🎮 30/09: tài khoản game gắn với ví này + đổi mật khẩu game ngay trên web (đổi luôn cho game)
+                if (req.method === 'POST' && path === '/api/gacc') {
+                    const u = ctx.getUserData(userId);
+                    return sendJSON(res, 200, { ok: true, acc: u.gameAcc || '', ingameName: u.ingameName || '' });
+                }
+                if (req.method === 'POST' && path === '/api/doimk') {
+                    const u = ctx.getUserData(userId);
+                    if (!u.gameAcc) return sendJSON(res, 400, { ok: false, error: 'Ví này chưa gắn tài khoản game - đăng nhập web bằng tài khoản game một lần (hoặc nhắn admin gắn)' });
+                    if (!ctx.tlbbKiemMk || !ctx.tlbbDoiMk) return sendJSON(res, 503, { ok: false, error: 'Bot chưa nối panel GM' });
+                    const body = await readBody(req);
+                    const cu = String(body.old || ''), moi = String(body.new || '');
+                    if (!/^[A-Za-z0-9_@.!-]{6,32}$/.test(moi)) return sendJSON(res, 400, { ok: false, error: 'Mật khẩu mới 6-32 ký tự: chữ, số và _ @ . ! -' });
+                    let okMk = false;
+                    try { okMk = await ctx.tlbbKiemMk(u.gameAcc, cu); } catch (e) { return sendJSON(res, 502, { ok: false, error: 'Không kiểm được với server game: ' + String(e.message).slice(0, 120) }); }
+                    if (!okMk) return sendJSON(res, 400, { ok: false, error: 'Mật khẩu hiện tại không đúng' });
+                    try { await ctx.tlbbDoiMk(u.gameAcc, moi); } catch (e) { return sendJSON(res, 502, { ok: false, error: 'Server game không đổi được: ' + String(e.message).slice(0, 120) }); }
+                    u.gamePass = moi;
+                    ctx.writeLog('ADMIN', `[WEB] ${u.name || userId} đổi mật khẩu game (${u.gameAcc})`);
+                    return sendJSON(res, 200, { ok: true });
                 }
 
                 // 🔐 23/09: ĐĂNG XUẤT. Vì đăng nhập không còn tự đá máy cũ, phải có đường
@@ -2031,6 +2078,10 @@ const PAGE = [
     '</div>',
     '<label class="tk"><input type="checkbox" id="agree" onchange="agreeChg()"> Tôi đã đọc và <b>đồng ý</b> các điều khoản trên</label>',
     '</div>',
+    // 🎮 30/09: đăng nhập bằng tài khoản game (dùng chung mật khẩu với game). Ô trống thì dùng ID + PIN như cũ.
+    '<input id="gacc" autocomplete="username" placeholder="Tài khoản game (vd bia1)">',
+    '<input id="gpass" type="password" autocomplete="current-password" placeholder="Mật khẩu game" onkeydown="if(event.key===\'Enter\')login()">',
+    '<div class="muted" style="font-size:12px;margin:2px 0 6px">Hoặc cách cũ: Discord ID + mã PIN (nút 🌐 trong Discord)</div>',
     '<input id="uid" inputmode="numeric" placeholder="Discord ID của bạn">',
     '<input id="pin" inputmode="numeric" placeholder="Mã PIN 6 số" onkeydown="if(event.key===\'Enter\')login()">',
     // 08/09: lỗi login hiện NGAY DƯỚI ô PIN và đứng yên tới lần thử sau (toast đáy màn hình bị
@@ -2038,7 +2089,7 @@ const PAGE = [
     // 💾 23/09: nhớ CẢ Discord ID + PIN trên máy này (chủ server chốt: máy riêng, không
     // ai dùng chung, khỏi phải đi copy PIN mỗi lần). Mặc định TẮT. Gỡ tick là xoá ngay,
     // nên không cần thêm nút "quên".
-    '<label class="nhoRow"><input type="checkbox" id="nhoTk" onchange="nhoChg(this.checked)"><span>💾 Nhớ <b>Discord ID + PIN</b> trên máy này (lần sau vào thẳng)</span></label>',
+    '<label class="nhoRow"><input type="checkbox" id="nhoTk" onchange="nhoChg(this.checked)"><span>💾 Nhớ <b>đăng nhập</b> trên máy này (lần sau vào thẳng)</span></label>',
     '<div id="loginErr" class="lerr"></div>',
     '<button class="btn-full" id="loginBtn" onclick="login()" disabled>✅ ĐỒNG Ý VÀ VÀO CHƠI</button>',
     '</div>',
@@ -2460,6 +2511,12 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">🏹 Boss đã hạ</h2><div class="muted" id="bossStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Tính theo lượt bạn được chia đồ từ boss (ghi trong Audit log của game, cập nhật ~10 giây sau khi boss chết). Sắp có: nhiệm vụ boss + nhận quà tại đây.</div>',
     '<div id="bossList" style="margin-top:8px;max-height:320px;overflow:auto"><div class="muted">Đang tải...</div></div>',
+    '</div>',
+    // 🎮 30/09: tài khoản game + đổi mật khẩu (đổi ở đây = đổi luôn mật khẩu vào game)
+    '<div class="card" id="gaccCard">',
+    '<div class="row"><h2 style="margin:0">🎮 Tài khoản game</h2><div class="muted" id="gaccName">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Một tài khoản dùng chung cho game và web này. Đổi mật khẩu ở đây là đổi luôn mật khẩu vào game.</div>',
+    '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><input id="mkCu" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" style="width:160px"><input id="mkMoi" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (6-32)" style="width:160px"><button class="mini" onclick="doiMk()">🔐 Đổi mật khẩu</button></div>',
     '</div>',
     // 🎒 RƯƠNG PAL (25/08): pal quay trúng nằm ở đây - bán lấy KNB hoặc NHẬN vào game
     '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt
@@ -2884,29 +2941,31 @@ const PAGE = [
     // ---- 💾 nhớ Discord ID + PIN trên máy này ----
     // Bọc try/catch: chế độ ẩn danh / chặn cookie là localStorage NÉM LỖI, không bọc thì
     // vỡ luôn trang đăng nhập.
-    'var NHO_U="play_uid",NHO_P="play_pin",NHO_OK="play_nho",NHO_THOAT="play_thoat";',
+    'var NHO_U="play_uid",NHO_P="play_pin",NHO_OK="play_nho",NHO_THOAT="play_thoat",NHO_GA="play_gacc",NHO_GP="play_gpass";',
     'function nhoLay(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}',
     'function nhoDat(k,v){try{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k)}catch(e){}}',
     // gỡ tick = xoá NGAY cả ID lẫn PIN, khỏi phải bấm thêm nút nào
-    'function nhoChg(bat){if(!bat){nhoDat(NHO_U,"");nhoDat(NHO_P,"");nhoDat(NHO_OK,"")}}',
+    'function nhoChg(bat){if(!bat){nhoDat(NHO_U,"");nhoDat(NHO_P,"");nhoDat(NHO_GA,"");nhoDat(NHO_GP,"");nhoDat(NHO_OK,"")}}',
     // Có sẵn thì đổ vào 2 ô rồi VÀO THẲNG (điều khoản đã tick lúc bấm lưu).
     // ⚠️ Trừ khi vừa bấm Thoát: cờ NHO_THOAT chặn đúng MỘT lần, không thì bấm Thoát
     // xong trang tải lại là nhảy vào ngay, người chơi không tài nào thoát được.
-    'function nhoDoVao(){var u=nhoLay(NHO_U),p=nhoLay(NHO_P);if(!u&&!p)return;',
-    'var iu=document.getElementById("uid"),ip=document.getElementById("pin"),ck=document.getElementById("nhoTk"),ag=document.getElementById("agree");',
-    'if(iu&&u)iu.value=u;if(ip&&p)ip.value=p;if(ck)ck.checked=true;',
+    'function nhoDoVao(){var u=nhoLay(NHO_U),p=nhoLay(NHO_P),ga=nhoLay(NHO_GA),gp=nhoLay(NHO_GP);if(!u&&!p&&!ga)return;',
+    'var iu=document.getElementById("uid"),ip=document.getElementById("pin"),ck=document.getElementById("nhoTk"),ag=document.getElementById("agree"),iga=document.getElementById("gacc"),igp=document.getElementById("gpass");',
+    'if(iu&&u)iu.value=u;if(ip&&p)ip.value=p;if(iga&&ga)iga.value=ga;if(igp&&gp)igp.value=gp;if(ck)ck.checked=true;',
     'var vuaThoat=nhoLay(NHO_THOAT);nhoDat(NHO_THOAT,"");',
-    'if(!vuaThoat&&u&&p&&ag&&nhoLay(NHO_OK)==="1"){ag.checked=true;agreeChg();login();return}',
+    'if(!vuaThoat&&((u&&p)||(ga&&gp))&&ag&&nhoLay(NHO_OK)==="1"){ag.checked=true;agreeChg();login();return}',
     'if(ip&&!p)try{ip.focus()}catch(e){}}',
     'function login(){var c=document.getElementById("agree");if(c&&!c.checked)return loginErr("⚠️ Phải tick đồng ý điều khoản trước đã");',
-    'var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();if(!u||!p)return loginErr("⚠️ Nhập đủ Discord ID + mã PIN");',
+    'var ga=(document.getElementById("gacc")||{}).value||"",gp=(document.getElementById("gpass")||{}).value||"";ga=ga.trim().toLowerCase();',
+    'var u=document.getElementById("uid").value.trim();var p=document.getElementById("pin").value.trim();',
+    'if(ga){if(!gp)return loginErr("⚠️ Nhập mật khẩu game")}else if(!u||!p)return loginErr("⚠️ Nhập tài khoản game + mật khẩu, hoặc Discord ID + mã PIN");',
     'var b=document.getElementById("loginBtn");if(b.disabled&&b._busy)return;var ot=b.textContent;b._busy=true;b.disabled=true;b.textContent="⏳ Đang kiểm tra...";loginErr("");',
     'function done(){b._busy=false;b.disabled=false;b.textContent=ot}',
-    'fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:u,pin:p})})',
+    'fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(ga?{acc:ga,pass:gp}:{userId:u,pin:p})})',
     '.then(function(r){return r.json().catch(function(){return{ok:false,error:"Bot trả về lỗi HTTP "+r.status}})})',
     '.then(function(j){done();if(!j.ok)return loginErr("❌ "+(j.error||"Sai thông tin"));TOKEN=j.token;localStorage.setItem("play_token",TOKEN);',
     'var ck=document.getElementById("nhoTk"),nho=!!(ck&&ck.checked);',
-    'nhoDat(NHO_U,nho?u:"");nhoDat(NHO_P,nho?p:"");nhoDat(NHO_OK,nho?"1":"");',
+    'nhoDat(NHO_U,nho?u:"");nhoDat(NHO_P,nho?p:"");nhoDat(NHO_GA,nho?ga:"");nhoDat(NHO_GP,nho?gp:"");nhoDat(NHO_OK,nho?"1":"");',
     'show(j.name)})',
     '.catch(function(e){done();loginErr("❌ Không gọi được bot ("+((e&&e.message)||"mạng đứt")+") - bot tắt hay mất mạng? Thử lại sau")})}',
     'function logout(){function xong(){TOKEN="";try{localStorage.removeItem("play_token")}catch(e){}nhoDat(NHO_THOAT,"1");location.reload()}',
@@ -4834,7 +4893,10 @@ const PAGE = [
     'var DST=null,DOFF=0;',
     'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync();bossSync()}',
     '// 🏹 30/09: boss đã hạ',
-    'function bossSync(){api("/api/boss/log").then(function(j){var st=$("bossStat"),box=$("bossList");if(!st||!box)return;',
+    'function gaccSync(){api("/api/gacc",{}).then(function(j){var n=$("gaccName");if(!n)return;n.textContent=j.acc?("Tài khoản: "+j.acc):"Chưa gắn tài khoản game - đăng nhập web bằng tài khoản game một lần là gắn"}).catch(function(){})}',
+    'function doiMk(){var c=$("mkCu").value,m=$("mkMoi").value;if(!c||!m)return toast("Nhập mật khẩu hiện tại và mật khẩu mới");',
+    'api("/api/doimk",{old:c,new:m}).then(function(){toast("✅ Đã đổi mật khẩu game - dùng mật khẩu mới cho cả game và web");$("mkCu").value="";$("mkMoi").value="";nhoDat(NHO_GP,"")}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"))})}',
+    'function bossSync(){gaccSync();api("/api/boss/log").then(function(j){var st=$("bossStat"),box=$("bossList");if(!st||!box)return;',
     'if(!j.linked){st.textContent="";box.innerHTML="<div class=\\"muted\\">Chưa liên kết nhân vật trong game - nhắn admin liên kết để tính lượt giết boss.</div>";return}',
     'st.textContent="Hôm nay "+j.today+" · 7 ngày "+j.week;',
     'if(!j.kills.length){box.innerHTML="<div class=\\"muted\\">Chưa có lượt nào ("+j.ingameName+"). Hạ 1 boss rồi quay lại sau 10 giây.</div>";return}',

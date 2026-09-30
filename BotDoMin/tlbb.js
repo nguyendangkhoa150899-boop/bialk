@@ -219,4 +219,30 @@ async function giveItem(nameOrGuid, itemId, qty) {
     return { ok: true, guid: c.guid, name: c.name, message: 'Đã xếp hàng quà cho ' + c.name };
 }
 
-module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem };
+// ===== 30/09: TÀI KHOẢN GAME dùng chung cho web =====
+// Game giữ MD5 trong web.account; panel GM có act kiem_mk (so MD5) và doi_mk. Bot chỉ gửi MD5, không gửi mật khẩu thô.
+const RE_GACC = /^[a-z0-9_]{3,20}$/, RE_GPASS = /^[A-Za-z0-9_@.!-]{6,32}$/;
+async function kiemMk(acc, pass) {
+    acc = String(acc || '').toLowerCase(); pass = String(pass || '');
+    if (!RE_GACC.test(acc) || !RE_GPASS.test(pass)) return false;
+    const md5 = crypto.createHash('md5').update(pass).digest('hex');
+    const j = await gmCall('POST', '/api/act', { a: 'kiem_mk', ten: acc, md5 });
+    if (!j || !j.ok) throw new Error((j && j.error) || 'panel GM lỗi');
+    return /^Da khop/.test(String(j.msg || ''));
+}
+async function doiMk(acc, pass) {
+    acc = String(acc || '').toLowerCase(); pass = String(pass || '');
+    if (!RE_GACC.test(acc) || !RE_GPASS.test(pass)) throw new Error('tên hoặc mật khẩu không hợp lệ');
+    const j = await gmCall('POST', '/api/act', { a: 'doi_mk', ten: acc, mk: pass });
+    if (!j || !j.ok || !j.done) throw new Error((j && (j.error || j.msg)) || 'panel GM lỗi');
+    return true;
+}
+// GUID các nhân vật thuộc tài khoản (để tìm ví Discord đã liên kết nhân vật)
+async function guidsOfAcc(acc) {
+    acc = String(acc || '').toLowerCase();
+    const j = await gmCall('GET', '/api/state');
+    const chars = (j && j.ok && j.state && Array.isArray(j.state.chars)) ? j.state.chars : [];
+    return chars.filter((c) => String(c.account || '').toLowerCase() === acc).map((c) => String(c.guid));
+}
+
+module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem, kiemMk, doiMk, guidsOfAcc, RE_GACC, RE_GPASS };

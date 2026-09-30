@@ -1101,7 +1101,17 @@ function startPanel(ctx) {
                         else {
                             const form = {};
                             for (const [k, v] of Object.entries(body || {})) if (/^[a-z_]{1,12}$/.test(k)) form[k] = String(v).slice(0, 80);
+                            const ganUid = /^\d{15,20}$/.test(String(form.uid || '')) ? String(form.uid) : '';
+                            delete form.uid;
                             j = await gmCall('POST', '/api/act', form);
+                            // 🎮 30/09: tạo tài khoản game kèm Discord ID -> gắn ví luôn (đăng nhập web bằng tài khoản game + Discord hiện lại mật khẩu)
+                            if (j && j.ok && j.done && form.a === 'tao_tk' && ganUid && ctx.getDb()[ganUid]) {
+                                const u = ctx.getUserData(ganUid);
+                                u.gameAcc = String(form.ten || '').toLowerCase(); u.gamePass = String(form.mk || '');
+                                ctx.saveDbNow();
+                                ctx.writeLog('ADMIN', `[GM] tài khoản game ${u.gameAcc} gắn ví Discord ${ganUid} (${u.name || ''})`);
+                                j = { ...j, msg: j.msg + ' - đã gắn ví Discord ' + (u.name || ganUid) };
+                            }
                             if (j && j.ok) ctx.writeLog('ADMIN', `[GM] ${form.a || '?'} ${form.guid || form.ten || ''} ${form.loai || ''} ${form.gt || ''} -> ${String(j.msg || '').slice(0, 160)}`);
                         }
                         return sendJSON(res, j && j.ok ? 200 : 502, j || { ok: false, error: 'panel GM không trả lời' });
@@ -1866,6 +1876,7 @@ const HTML = `<!DOCTYPE html>
         <div class="row">
           <input id="gmNewAcc" class="mini-in" style="width:170px" placeholder="tên đăng nhập (a-z 0-9 _)">
           <input id="gmNewPw" class="mini-in" style="width:170px" placeholder="mật khẩu (6-32 ký tự)">
+          <input id="gmNewUid" class="mini-in" style="width:190px" placeholder="Discord ID gắn ví (tuỳ chọn)">
           <button class="btn-green" onclick="gmCreateAcc()">➕ Tạo tài khoản</button>
         </div>
         <div id="gmAccs" style="margin-top:10px;overflow-x:auto"></div>
@@ -2997,7 +3008,9 @@ function gmDo(form,confirmMsg){
 function gmCreateAcc(){
   var n=document.getElementById('gmNewAcc').value.trim(),p=document.getElementById('gmNewPw').value.trim();
   if(!n||!p)return toast('Nhập tên đăng nhập và mật khẩu');
-  gmDo({a:'tao_tk',ten:n,mk:p});document.getElementById('gmNewPw').value='';
+  var uid=(document.getElementById('gmNewUid')||{}).value||'';uid=uid.trim();
+  if(uid&&!/^[0-9]{15,20}$/.test(uid))return toast('Discord ID phải là 15-20 chữ số');
+  gmDo({a:'tao_tk',ten:n,mk:p,uid:uid});document.getElementById('gmNewPw').value='';
 }
 function gmSaveCapmin(){gmDo({a:'capmin',gt:document.getElementById('gmCapmin').value.trim()});}
 function gmGive(g){
