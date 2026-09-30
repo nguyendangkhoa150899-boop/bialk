@@ -2953,8 +2953,8 @@ async function palOrderDone(id){
 // Bảng liên kết Discord ↔ tên nhân vật (cầu KNB tự động đọc ingameName này)
 // ===== 🛠️ GM THIÊN LONG (29/09): dùng chung logic panel GM qua /api/gm/* =====
 var GM={st:null,timer:null};
-var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet','🐾 Pet Huyễn Hóa V2 (chọn tên)']];
-var GM_PH={item:'ID vật phẩm',xoa:'ID cần xoá',knb:'Số KNB (1-10.000.000)',vang:'Số vàng (1-100.000)',diemtang:'Số Điểm Tặng',level:'Cấp (1-119)',vip:'Cấp VIP 0-10',popup:'ID vật phẩm',pet:'ID pet (vd 25351 Tần Vương - docs/pet-huyen-hoa.md)'};
+var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet','🐾 Pet Huyễn Hóa V2 (chọn tên)'],['petid','🐾 Pet theo ID (bản 12000: 253xx, xem docs/pet-huyen-hoa.md)']];
+var GM_PH={item:'ID vật phẩm',xoa:'ID cần xoá',knb:'Số KNB (1-10.000.000)',vang:'Số vàng (1-100.000)',diemtang:'Số Điểm Tặng',level:'Cấp (1-119)',vip:'Cấp VIP 0-10',popup:'ID vật phẩm',petid:'ID pet (vd 25351 Tần Vương bản 12000)',pet:'ID pet (vd 25351 Tần Vương - docs/pet-huyen-hoa.md)'};
 function gmGiveForm(g){
   var o=GM_KINDS.map(function(k){return '<option value="'+k[0]+'">'+k[1]+'</option>';}).join('');
   return '<span class="row" style="gap:6px;flex-wrap:nowrap"><select class="mini-in" id="gmL'+g+'" data-kindfor="'+g+'">'+o+'</select>'+
@@ -3019,6 +3019,7 @@ function gmSaveCapmin(){gmDo({a:'capmin',gt:document.getElementById('gmCapmin').
 function gmGive(g){
   var k=document.getElementById('gmL'+g).value,v=document.getElementById('gmV'+g).value.trim(),s=document.getElementById('gmS'+g).value.trim()||'1';
   if(k==='pet'){var p=document.getElementById('gmP'+g);v=p&&p.value?p.value:'';if(!v)return toast('Chưa có danh sách pet - bấm 🔄 Tải lại');}
+  if(k==='petid')k='pet';   // cung loai 'pet' phia server, chi khac cach nhap
   if(!v)return toast('Nhập '+(GM_PH[k]||'giá trị'));
   gmDo({a:'qua',guid:g,loai:k,gt:v,sl:s},g==='all'?'Gửi cho TẤT CẢ nhân vật?':null);
 }
