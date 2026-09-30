@@ -2514,9 +2514,12 @@ const PAGE = [
     '</div>',
     // 🎮 30/09: tài khoản game + đổi mật khẩu (đổi ở đây = đổi luôn mật khẩu vào game)
     '<div class="card" id="gaccCard">',
-    '<div class="row"><h2 style="margin:0">🎮 Tài khoản game</h2><div class="muted" id="gaccName">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Một tài khoản dùng chung cho game và web này. Đổi mật khẩu ở đây là đổi luôn mật khẩu vào game.</div>',
-    '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><input id="mkCu" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" style="width:160px"><input id="mkMoi" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (6-32)" style="width:160px"><button class="mini" onclick="doiMk()">🔐 Đổi mật khẩu</button></div>',
+    '<div class="row"><h2 style="margin:0">🎮 Tài khoản game</h2><div id="gaccName" style="font-size:13px;font-weight:800;color:#7ee2a8"></div></div>',
+    '<div id="gaccWarn" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px">Chưa gắn tài khoản game. Đăng nhập web bằng <b>tài khoản + mật khẩu game</b> một lần là tự gắn, hoặc nhắn admin gắn giúp.</div>',
+    '<div id="gaccForm" style="display:none">',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Một mật khẩu dùng chung cho <b>game</b> và <b>web</b>. Đổi ở đây là đổi cho cả hai.</div>',
+    '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><input id="mkCu" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" style="flex:1;min-width:150px;margin-top:0"><input id="mkMoi" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (6-32 ký tự)" style="flex:1;min-width:150px;margin-top:0"><button class="btn-full" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px" onclick="doiMk()">🔐 Đổi mật khẩu</button></div>',
+    '</div>',
     '</div>',
     // 🎒 RƯƠNG PAL (25/08): pal quay trúng nằm ở đây - bán lấy KNB hoặc NHẬN vào game
     '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt
@@ -4893,7 +4896,8 @@ const PAGE = [
     'var DST=null,DOFF=0;',
     'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync();bossSync()}',
     '// 🏹 30/09: boss đã hạ',
-    'function gaccSync(){api("/api/gacc",{}).then(function(j){var n=$("gaccName");if(!n)return;n.textContent=j.acc?("Tài khoản: "+j.acc):"Chưa gắn tài khoản game - đăng nhập web bằng tài khoản game một lần là gắn"}).catch(function(){})}',
+    'function gaccSync(){api("/api/gacc",{}).then(function(j){var n=$("gaccName"),w=$("gaccWarn"),f=$("gaccForm");if(!n||!w||!f)return;',
+    'if(j.acc){n.textContent="🟢 "+j.acc;w.style.display="none";f.style.display="block"}else{n.textContent="";w.style.display="block";f.style.display="none"}}).catch(function(){})}',
     'function doiMk(){var c=$("mkCu").value,m=$("mkMoi").value;if(!c||!m)return toast("Nhập mật khẩu hiện tại và mật khẩu mới");',
     'api("/api/doimk",{old:c,new:m}).then(function(){toast("✅ Đã đổi mật khẩu game - dùng mật khẩu mới cho cả game và web");$("mkCu").value="";$("mkMoi").value="";nhoDat(NHO_GP,"")}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"))})}',
     'function bossSync(){gaccSync();api("/api/boss/log").then(function(j){var st=$("bossStat"),box=$("bossList");if(!st||!box)return;',
