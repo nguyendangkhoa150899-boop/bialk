@@ -475,6 +475,10 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, r);
                 }
+                // 🏹 30/09: boss đã hạ (Audit log game)
+                if (ctx.bossLog && path === '/api/boss/log') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.bossLog(userId) });
+                }
                 if (ctx.daily && path === '/api/daily/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.daily.state(userId) });
                 }
@@ -2448,6 +2452,12 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
+    '</div>',
+    // 🏹 30/09: BOSS ĐÃ HẠ - đọc từ Audit log game (bước 1; bước 2 = nhiệm vụ + quà)
+    '<div class="card" id="bossCard">',
+    '<div class="row"><h2 style="margin:0">🏹 Boss đã hạ</h2><div class="muted" id="bossStat">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Tính theo lượt bạn được chia đồ từ boss (ghi trong Audit log của game, cập nhật ~10 giây sau khi boss chết). Sắp có: nhiệm vụ boss + nhận quà tại đây.</div>',
+    '<div id="bossList" style="margin-top:8px;max-height:320px;overflow:auto"><div class="muted">Đang tải...</div></div>',
     '</div>',
     // 🎒 RƯƠNG PAL (25/08): pal quay trúng nằm ở đây - bán lấy KNB hoặc NHẬN vào game
     '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt
@@ -4815,7 +4825,16 @@ const PAGE = [
     // DOFF = lệch giờ máy người chơi so với server - đồng hồ đếm ngược nghiện chạy
     // theo giờ SERVER, chỉnh đồng hồ máy không ăn gian được.
     'var DST=null,DOFF=0;',
-    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync()}',
+    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync();bossSync()}',
+    '// 🏹 30/09: boss đã hạ',
+    'function bossSync(){api("/api/boss/log").then(function(j){var st=$("bossStat"),box=$("bossList");if(!st||!box)return;',
+    'if(!j.linked){st.textContent="";box.innerHTML="<div class=\\"muted\\">Chưa liên kết nhân vật trong game - nhắn admin liên kết để tính lượt giết boss.</div>";return}',
+    'st.textContent="Hôm nay "+j.today+" · 7 ngày "+j.week;',
+    'if(!j.kills.length){box.innerHTML="<div class=\\"muted\\">Chưa có lượt nào ("+j.ingameName+"). Hạ 1 boss rồi quay lại sau 10 giây.</div>";return}',
+    'var h="<table style=\\"width:100%;font-size:13px\\"><tr><th style=\\"text-align:left\\">Lúc</th><th style=\\"text-align:left\\">Boss</th><th>Tổ</th></tr>";',
+    'for(var i=0;i<j.kills.length;i++){var k=j.kills[i],d=new Date(k.t);var hh=("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2),dd=("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2);',
+    'h+="<tr><td class=\\"muted\\">"+dd+" "+hh+"</td><td><b>"+esc(k.name||k.boss)+"</b> <span class=\\"muted\\">#"+k.boss+"</span></td><td style=\\"text-align:center\\">"+k.team+"</td></tr>"}',
+    'box.innerHTML=h+"</table>"}).catch(function(){})}',
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
     // 🔌 15/09: giấu tab của mục admin tắt. Đang đứng trong mục bị tắt thì đá về Tài Xỉu.
     'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",pal:"navPal",pick:"navPick",shop:"navShop",dog:"navDog"};',

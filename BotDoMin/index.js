@@ -10,7 +10,8 @@ const { startWebPlay } = require('./webplay');
 // Cầu nối tự động nạp/rút KNB với game (qua dashboard -> SFTP -> mod UE4SS).
 // CHỈ dùng giveItem/takeItem (không REST, không polling) để nhẹ VPS.
 const pal = require('./palworld');   // Palworld da tat, xem palworld.js
-const tlbb = require('./tlbb');        // cau KNB Thien Long NetCo4
+const tlbb = require('./tlbb');
+const tlbbAudit = require('./tlbbaudit');   // 🏹 30/09: đọc Audit log -> ai hạ boss nào        // cau KNB Thien Long NetCo4
 
 // Link hiển thị cho người chơi vào web cược (đổi trong .env nếu khác)
 const WEB_PLAY_URL = process.env.WEB_PLAY_URL || 'http://103.72.98.37:3002';
@@ -7133,6 +7134,11 @@ client.once('ready', async (c) => {
         })(0);
     setInterval(tlbbPollReceipts, 5000);
     setInterval(tlbbCleanupIn, 30000);
+    // 🏹 30/09: đọc Audit log game 10 giây/lần -> dbCache._bossKills (lượt giết boss theo GUID)
+    setInterval(() => {
+        try { const s = tlbbAudit.poll(dbCache); if (s && s.kills) { saveDbNow(); writeLog('SYSTEM', `[BOSS] +${s.kills} lượt giết boss (${s.lines} dòng Audit)`); } }
+        catch (e) { writeLog('SYSTEM', `[BOSS] Lỗi đọc Audit: ${e.message}`); }
+    }, 10000);
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     try {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
@@ -7296,6 +7302,16 @@ client.once('ready', async (c) => {
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
             // 🚕 nút "Xu đi taxi về" (24/09)
             taxi: { state: taxiState, nhan: taxiNhan },
+            // 🏹 30/09: nhật ký boss của người chơi (từ Audit log game, theo GUID đã liên kết)
+            bossLog: (uid) => {
+                const u = getUserData(uid);
+                const guid = String(u.tlbbGuid || '');
+                const list = guid ? tlbbAudit.forGuid(dbCache, guid, 100) : [];
+                const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+                const today = list.filter((k) => k.t >= d0.getTime()).length;
+                const week = list.filter((k) => k.t >= Date.now() - 7 * 86400000).length;
+                return { linked: !!guid, ingameName: (u.ingameName || '').trim(), kills: list, today, week };
+            },
             daily: {
                 state: dailyState, claim: claimDaily, streak: claimStreak,
                 nghien: (uid) => claimNghien(uid, true),   // lụm từ WEB thì đăng công khai
