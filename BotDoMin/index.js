@@ -11,7 +11,8 @@ const { startWebPlay } = require('./webplay');
 // CHỈ dùng giveItem/takeItem (không REST, không polling) để nhẹ VPS.
 const pal = require('./palworld');   // Palworld da tat, xem palworld.js
 const tlbb = require('./tlbb');
-const tlbbAudit = require('./tlbbaudit');   // 🏹 30/09: đọc Audit log -> ai hạ boss nào        // cau KNB Thien Long NetCo4
+const tlbbAudit = require('./tlbbaudit');
+const tuiBoss = require('./tuiboss');   // 🎒 01/10: túi đồ giết boss (game ghi Server/txt/NetCo4Web/tuiboss.log)   // 🏹 30/09: đọc Audit log -> ai hạ boss nào        // cau KNB Thien Long NetCo4
 
 // Link hiển thị cho người chơi vào web cược (đổi trong .env nếu khác)
 const WEB_PLAY_URL = process.env.WEB_PLAY_URL || 'http://103.72.98.37:3002';
@@ -7181,6 +7182,8 @@ client.once('ready', async (c) => {
     setInterval(() => {
         try { const s = tlbbAudit.poll(dbCache); if (s && s.kills) { saveDbNow(); writeLog('SYSTEM', `[BOSS] +${s.kills} lượt giết boss (${s.lines} dòng Audit)`); } }
         catch (e) { writeLog('SYSTEM', `[BOSS] Lỗi đọc Audit: ${e.message}`); }
+        try { const n = tuiBoss.poll(dbCache); if (n) { saveDbNow(); writeLog('SYSTEM', `[TÚI BOSS] +${n} túi mới`); } }
+        catch (e) { writeLog('SYSTEM', `[TÚI BOSS] Lỗi đọc tuiboss.log: ${e.message}`); }
     }, 10000);
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     try {
@@ -7492,6 +7495,26 @@ client.once('ready', async (c) => {
                 delBuild: (uid, name) => palBuildDel(uid, name),
             },
             // 🛒 shop item (28/08): mua item game + số lượng -> giao vào túi qua mod
+            // 🎒 01/10: túi đồ giết boss - xem + nhận (đồ vào hàng đợi quà game, KNB vào ví)
+            tuiBoss: {
+                list: (uid) => {
+                    const u = getUserData(uid); const guid = String(u.tlbbGuid || '');
+                    const tui = guid ? tuiBoss.list(dbCache, guid) : [];
+                    const can = new Set(); for (const x of tui) for (const m of x.mon) can.add(String(m[0]));
+                    const ten = {}; for (const it of (tlbb.items ? tlbb.items() : [])) if (can.has(it.id)) ten[it.id] = it.n;
+                    return { linked: !!guid, ingameName: (u.ingameName || '').trim(), tui, ten };
+                },
+                nhan: async (uid, id) => {
+                    const u = getUserData(uid); const guid = String(u.tlbbGuid || '');
+                    if (!guid) return { error: 'Chưa liên kết nhân vật trong game' };
+                    const r = await tuiBoss.nhan(dbCache, guid, String(id || ''), (g, itemId, n) => tlbb.giveItem(g, itemId, n), (knb, tui) => {
+                        updatePoints(uid, knb); logDog('tuiboss', uid, u.name || uid, knb, `🎒 Túi boss ${tui.ten}`);
+                    });
+                    saveDbNow();
+                    if (!r.error) writeLog('SYSTEM', `[TÚI BOSS] ${u.name || uid} (${guid}) nhận túi ${r.tui.ten}: ${r.tui.mon.map((m) => m[0] + 'x' + m[1]).join(', ')}${r.tui.knb ? ' + ' + r.tui.knb + ' KNB' : ''}`);
+                    return r;
+                },
+            },
             gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),

@@ -504,6 +504,16 @@ function startWebPlay(ctx) {
                 if (ctx.bossLog && path === '/api/boss/log') {
                     return sendJSON(res, 200, { ok: true, ...ctx.bossLog(userId) });
                 }
+                // 🎒 01/10: túi đồ giết boss
+                if (ctx.tuiBoss && path === '/api/tuiboss/list') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.tuiBoss.list(userId) });
+                }
+                if (ctx.tuiBoss && req.method === 'POST' && path === '/api/tuiboss/nhan') {
+                    const body = await readBody(req);
+                    const r = await ctx.tuiBoss.nhan(userId, body.id);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true });
+                }
                 if (ctx.daily && path === '/api/daily/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.daily.state(userId) });
                 }
@@ -2534,6 +2544,12 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">🏹 Boss đã hạ</h2><div class="muted" id="bossStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Tính theo lượt bạn được chia đồ từ boss (ghi trong Audit log của game, cập nhật ~10 giây sau khi boss chết). Sắp có: nhiệm vụ boss + nhận quà tại đây.</div>',
     '<div id="bossList" style="margin-top:8px;max-height:320px;overflow:auto"><div class="muted">Đang tải...</div></div>',
+    '</div>',
+    // 🎒 01/10: TÚI ĐỒ GIẾT BOSS - game ghi ai có mặt lúc boss cuối chết, bấm Nhận -> hàng đợi quà + KNB vào ví
+    '<div class="card" id="tbCard">',
+    '<div class="row"><h2 style="margin:0">🎒 Túi đồ boss</h2><div class="muted" id="tbStat">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Hạ boss cuối phó bản / hoạt động là mọi người trong tổ có túi (hiện sau ~10 giây). Bấm <b>Nhận</b>: đồ vào hàng đợi quà, <b>đổi bản đồ</b> trong game để lấy; KNB cộng thẳng vào ví. Túi giữ 7 ngày.</div>',
+    '<div id="tbList" style="margin-top:8px;max-height:420px;overflow:auto"><div class="muted">Đang tải...</div></div>',
     '</div>',
     // 🎮 30/09: tài khoản game + đổi mật khẩu (đổi ở đây = đổi luôn mật khẩu vào game)
     '<div class="card" id="gaccCard">',
@@ -4919,7 +4935,7 @@ const PAGE = [
     // DOFF = lệch giờ máy người chơi so với server - đồng hồ đếm ngược nghiện chạy
     // theo giờ SERVER, chỉnh đồng hồ máy không ăn gian được.
     'var DST=null,DOFF=0;',
-    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync();bossSync()}',
+    'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync();bossSync();tbSync()}',
     '// 🏹 30/09: boss đã hạ',
     'function gaccSync(){api("/api/gacc",{}).then(function(j){var n=$("gaccName"),w=$("gaccWarn"),f=$("gaccForm");if(!n||!w||!f)return;',
     'if(j.acc){n.textContent="🟢 "+j.acc;w.style.display="none";f.style.display="block"}else{n.textContent="";w.style.display="block";f.style.display="none"}}).catch(function(){})}',
@@ -4933,6 +4949,15 @@ const PAGE = [
     'for(var i=0;i<j.kills.length;i++){var k=j.kills[i],d=new Date(k.t);var hh=("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2),dd=("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2);',
     'h+="<tr><td class=\\"muted\\">"+dd+" "+hh+"</td><td><b>"+esc(k.name||k.boss)+"</b> <span class=\\"muted\\">#"+k.boss+"</span></td><td style=\\"text-align:center\\">"+k.team+"</td></tr>"}',
     'box.innerHTML=h+"</table>"}).catch(function(){})}',
+    'function tbSync(){api("/api/tuiboss/list").then(function(j){var st=$("tbStat"),box=$("tbList");if(!st||!box)return;',
+    'if(!j.linked){st.textContent="";box.innerHTML="<div class=\\"muted\\">Chưa liên kết nhân vật trong game - nhắn admin liên kết để nhận túi boss.</div>";return}',
+    'var cho=j.tui.filter(function(x){return !x.nhan});st.textContent=cho.length+" túi chưa nhận";',
+    'if(!j.tui.length){box.innerHTML="<div class=\\"muted\\">Chưa có túi nào ("+esc(j.ingameName)+"). Hạ boss cuối phó bản rồi quay lại sau 10 giây.</div>";return}',
+    'var h="";for(var i=0;i<j.tui.length;i++){var x=j.tui[i],d=new Date(x.t);var tg=("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);',
+    'var m=x.mon.map(function(a){return esc(j.ten[a[0]]||("#"+a[0]))+" ×"+a[1]}).join(", ")+(x.knb?", <b>"+Number(x.knb).toLocaleString()+" KNB</b>":"");',
+    'h+="<div style=\\"border:1px solid #2a3340;border-radius:9px;padding:8px 10px;margin-bottom:6px\\"><div class=\\"row\\" style=\\"gap:8px\\"><b>"+esc(x.ten)+"</b><span class=\\"muted\\" style=\\"font-size:12px\\">"+tg+"</span>"+(x.nhan?"<span style=\\"margin-left:auto;color:#7ee2a8;font-size:12px\\">✅ Đã nhận</span>":"<button style=\\"margin-left:auto\\" onclick=\\"tbNhan(\'"+x.id+"\',this)\\">Nhận</button>")+"</div><div style=\\"font-size:13px;margin-top:4px\\">"+m+"</div></div>"}',
+    'box.innerHTML=h}).catch(function(){})}',
+    'function tbNhan(id,b){if(b)b.disabled=true;api("/api/tuiboss/nhan",{id:id}).then(function(){toast("✅ Đã nhận túi - đổi bản đồ trong game để lấy đồ");dailySync()}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"));if(b)b.disabled=false})}',
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
     // 🔌 15/09: giấu tab của mục admin tắt. Đang đứng trong mục bị tắt thì đá về Tài Xỉu.
     'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",pal:"navPal",pick:"navPick",shop:"navShop",dog:"navDog"};',
