@@ -47,6 +47,8 @@ const HD = {
     tts: { ten: 'Thiếu Thất Sơn', mon: [...CHUNG, [CCHTP, 5]], knb: KNB },
     longquy: { ten: 'Long Quy', mon: [...CHUNG, [CCHTP, 3], [CHI_TON, 5], [CLD, [3, 5]]], knb: KNB, ngay: 3 },
     lltb: { ten: 'Lâu Lan Tầm Bảo', mon: [[TAM_DAC, 15], [TAN_HIET, 10], [VO_HON, 1]], knb: 0, ngay: 2 },
+    // 02/10: "Cờ 12h" = Kỳ Cuộc (Trân Long Kỳ Cuộc, thường 11:30-14:30 / 20:30-22:00 + chế độ nhanh). Game cho 1 lượt/ngày (MD_LAST_QIJU_DAY).
+    kycuoc: { ten: 'Kỳ Cuộc (Cờ 12h)', mon: [[TAM_DAC, 15], [TAN_HIET, 5], [VO_HON, 1]], knb: 0, ngay: 1 },
     actac: { ten: 'Ác Tặc', mon: [[YQ45.concat(YQ80), 1], [CCHTP, [1, 2]], [CLD, [1, 3]], [HON_BANG, [1, 3]]], knb: 0, ngay: 3 },
     acba: { ten: 'Ác Bá', mon: [[YQ65.concat(YQ_TIEN), 1], [CCHTP, [1, 2]], [CLD, [1, 3]], [NHUAN_HON, [1, 3]]], knb: 0, ngay: 3 },
 };
@@ -64,6 +66,8 @@ gan('sattinh', [13447, 13456, 13465, 13474, 13483, 13492, 13501, 13510, 13519, 1
 gan('tts', [14234]);
 gan('longquy', [11353]);
 gan('lltb', range(12138, 12146));
+// Kỳ Cuộc: boss cuối Viễn Cổ Kỳ Hồn - thường / tân thủ 3 / tân thủ 6, mỗi mức 20 bậc cấp (khớp vòng for trong roimap.lua)
+gan('kycuoc', [...range(1850, 1859), ...range(31850, 31859), ...range(12040, 12049), ...range(42040, 42049), ...range(12090, 12099), ...range(42090, 42099)]);
 gan('actac', [473]);
 gan('acba', range(1910, 1919));
 
