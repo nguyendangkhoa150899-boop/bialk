@@ -1073,6 +1073,7 @@ const PAGE = [
     'input{width:100%;background:#12141a;border:1px solid var(--line);border-radius:10px;color:var(--tx);padding:12px;font-size:16px;margin-top:8px}',
     'button{border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;color:#fff}',
     '.btn-full{width:100%;margin-top:10px;background:var(--blue)}',
+    '.tbBtn{margin-left:auto;background:linear-gradient(180deg,#2fbf71,#1f9a57);color:#fff;padding:8px 18px;font-size:14px;border-radius:9px;box-shadow:0 2px 0 #14683a}.tbBtn:hover{filter:brightness(1.1)}.tbBtn:disabled{opacity:.5;cursor:wait}',   // 🎒 01/10 nút Nhận túi boss
     '.btn-full:disabled{opacity:.45;cursor:not-allowed}',
     // ---- khung điều khoản ở trang đăng nhập ----
     '#terms{margin-top:12px;background:#2a1a12;border:1px solid #7a4a22;border-radius:12px;padding:12px}',
@@ -4955,7 +4956,7 @@ const PAGE = [
     'if(!j.tui.length){box.innerHTML="<div class=\\"muted\\">Chưa có túi nào ("+esc(j.ingameName)+"). Hạ boss cuối phó bản rồi quay lại sau 10 giây.</div>";return}',
     'var h="";for(var i=0;i<j.tui.length;i++){var x=j.tui[i],d=new Date(x.t);var tg=("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);',
     'var m=x.mon.map(function(a){return esc(j.ten[a[0]]||("#"+a[0]))+" ×"+a[1]}).join(", ")+(x.knb?", <b>"+Number(x.knb).toLocaleString()+" KNB</b>":"");',
-    'h+="<div style=\\"border:1px solid #2a3340;border-radius:9px;padding:8px 10px;margin-bottom:6px\\"><div class=\\"row\\" style=\\"gap:8px\\"><b>"+esc(x.ten)+"</b><span class=\\"muted\\" style=\\"font-size:12px\\">"+tg+"</span>"+(x.nhan?"<span style=\\"margin-left:auto;color:#7ee2a8;font-size:12px\\">✅ Đã nhận</span>":"<button style=\\"margin-left:auto\\" onclick=\\"tbNhan(\'"+x.id+"\',this)\\">Nhận</button>")+"</div><div style=\\"font-size:13px;margin-top:4px\\">"+m+"</div></div>"}',
+    'h+="<div style=\\"border:1px solid #2a3340;border-radius:9px;padding:8px 10px;margin-bottom:6px\\"><div class=\\"row\\" style=\\"gap:8px\\"><b>"+esc(x.ten)+"</b><span class=\\"muted\\" style=\\"font-size:12px\\">"+tg+"</span>"+(x.nhan?"<span style=\\"margin-left:auto;color:#7ee2a8;font-size:12px\\">✅ Đã nhận</span>":"<button class=\\"tbBtn\\" onclick=\\"tbNhan(\'"+x.id+"\',this)\\">Nhận</button>")+"</div><div style=\\"font-size:13px;margin-top:4px\\">"+m+"</div></div>"}',
     'box.innerHTML=h}).catch(function(){})}',
     'function tbNhan(id,b){if(b)b.disabled=true;api("/api/tuiboss/nhan",{id:id}).then(function(){toast("✅ Đã nhận túi - đổi bản đồ trong game để lấy đồ");dailySync()}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"));if(b)b.disabled=false})}',
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
