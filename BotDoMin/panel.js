@@ -389,6 +389,18 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL QUÀ RIÊNG] ${body.where === 'game' ? 'vào game' : 'vào rương'}: ${body.itemId} x${body.qty} -> ${rec.name || uid}`);
                     return sendJSON(res, 200, { ok: true, message: r.message });
                 }
+                // 🎒 01/10: Túi đồ boss - cấu hình (admin + mod đều sửa được; mọi lần lưu ghi cổng + IP vào lịch sử)
+                if (ctx.tuiBossCfg && path === '/api/tuiboss/cfg') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.tuiBossCfg.state() });
+                }
+                if (ctx.tuiBossCfg && req.method === 'POST' && (path === '/api/tuiboss/save' || path === '/api/tuiboss/reset')) {
+                    const who = (epOk(req) ? 'SUPER' : 'mod') + ' ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                    const laReset = path === '/api/tuiboss/reset';
+                    const r = laReset ? ctx.tuiBossCfg.reset(body && body.hd, who) : ctx.tuiBossCfg.save(body, who);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    ctx.writeLog('ADMIN', `[PANEL TÚI BOSS] ${laReset ? 'Về mặc định' : 'Lưu'} ${String((body && body.hd) || '')} (${who})`);
+                    return sendJSON(res, 200, { ok: true, ...ctx.tuiBossCfg.state() });
+                }
                 // 🐾 01/10: Chọn Pet Boss - cấu hình + danh sách đã nhận (xem petboss.js)
                 if (ctx.petBoss && path === '/api/petboss/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.petBoss.state() });
@@ -1489,7 +1501,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
         <button data-tab="gm" onclick="tab('gm')">🛠️ GM Thiên Long</button>
-        <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
+        <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
         <button data-tab="pal" onclick="tab('pal')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
@@ -1873,6 +1885,21 @@ const HTML = `<!DOCTYPE html>
           <div id="dpLog" style="margin-top:8px;max-height:480px;overflow:auto"></div>
         </div>
         <div id="dpList" style="margin-top:10px;overflow-x:auto"></div>
+      </div>
+    </div>
+    <div id="tab-tb" class="hidden"><!-- 🎒 01/10: Túi đồ boss -->
+      <div class="card">
+        <h3>🎒 Túi đồ boss - đồ người chơi nhận khi hạ boss cuối</h3>
+        <div class="note">Chọn hoạt động bên trái, sửa bảng bên phải rồi bấm <b>💾 Lưu</b>. Áp cho túi <b>tạo sau khi lưu</b> (túi đã có giữ nguyên đồ đã bốc). Mỗi dòng: <b>1 ID</b> = món cố định; <b>nhiều ID cách nhau dấu phẩy</b> = mỗi cái bốc ngẫu nhiên 1 trong các ID (vd Miên Bố / Bí Ngân trộn). Số lượng <b>từ - đến</b> = ngẫu nhiên trong khoảng. <b>Trần/ngày</b> = số túi tối đa mỗi người mỗi ngày (0 = không giới hạn). KNB cộng vào ví web khi bấm Nhận. Mọi lần lưu ghi cổng + IP.</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
+          <div id="tbHd" style="min-width:220px;display:flex;flex-direction:column;gap:6px"><span class="muted">chưa tải</span></div>
+          <div id="tbEd" style="flex:1;min-width:340px"></div>
+        </div>
+        <div style="margin-top:14px;border-top:1px solid #3a4258;padding-top:10px">
+          <div class="row" style="gap:8px;flex-wrap:wrap"><b>🔍 Tìm vật phẩm</b><input id="tbQ" class="mini-in" style="width:240px" placeholder="gõ tên hoặc ID (vd miên bố)" onkeydown="if(event.key==='Enter')tbFind()"><button onclick="tbFind()">Tìm</button><span class="muted">bấm 1 kết quả = thêm vào dòng đang chọn (viền vàng)</span></div>
+          <div id="tbRes" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+        <div style="margin-top:14px"><b>📜 Lịch sử sửa</b><div id="tbLog" style="font-size:12px;margin-top:6px;max-height:240px;overflow:auto"></div></div>
       </div>
     </div>
     <div id="tab-gm" class="hidden">
@@ -2834,7 +2861,7 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
+  if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
   refresh();
@@ -2846,8 +2873,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'&&!TB.st)tbLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -4737,6 +4764,91 @@ function renderPlayers(){
   tb.innerHTML=tbHtml;
   Object.keys(kept).forEach(id=>{const i=document.getElementById(id);if(i)i.value=kept[id];});
 }
+// 🎒 01/10: Túi đồ boss - tải 1 lần, sửa trên bản nháp TB.ed, Lưu gửi cả hoạt động
+let TB={st:null,hd:null,ed:null,row:0,dirty:false};
+function tbLoad(){api('/api/tuiboss/cfg').then(j=>{TB.st=j;if(!TB.hd||!j.ds.find(x=>x.hd===TB.hd))TB.hd=j.ds[0].hd;tbPick(TB.hd,true);}).catch(e=>toast('❌ '+e.message));}
+function tbCur(){return TB.st.ds.find(x=>x.hd===TB.hd);}
+function tbTen(id){return (TB.st&&TB.st.ten[id])||'';}
+function tbHdDraw(){
+  document.getElementById('tbHd').innerHTML=TB.st.ds.map(h=>'<button style="text-align:left;padding:7px 10px;'+(h.hd===TB.hd?'outline:2px solid #ffcf5c;':'')+(h.on?'':'opacity:.55;')+'" onclick="tbPick(\\''+h.hd+'\\')">'+(h.on?'🟢':'⚫')+' '+esc(h.ten)+(h.sua?' <span style="color:#ffcf5c">✎</span>':'')+'</button>').join('')
+    +'<div class="muted" style="font-size:12px">✎ = đã sửa khác mặc định · ⚫ = đang tắt</div>';
+}
+function tbPick(hd,force){
+  if(!force&&TB.dirty&&!confirm('Hoạt động này đang sửa dở chưa Lưu - bỏ thay đổi?'))return;
+  TB.hd=hd;const h=tbCur();
+  TB.ed=JSON.parse(JSON.stringify({on:h.on,knb:h.knb,ngay:h.ngay,mon:h.mon}));
+  TB.dirty=false;TB.row=0;tbHdDraw();tbEdDraw();tbLogDraw();
+}
+function tbNames(r){
+  return r.ids.length?r.ids.map(id=>tbTen(id)?esc(tbTen(id)):'<span style="color:#ff8a8a">#'+id+' (chưa rõ tên, Lưu sẽ kiểm)</span>').join(' · ')
+    :'<span class="muted">trống - gõ ID hoặc dùng ô tìm bên dưới</span>';
+}
+function tbSl(r){return r.min===r.max?r.min:r.min+'-'+r.max;}
+function tbEdDraw(){
+  const h=tbCur(),e=TB.ed;
+  let x='<div class="row" style="gap:14px;flex-wrap:wrap;align-items:center">'
+    +'<b style="font-size:16px">'+esc(h.ten)+'</b>'
+    +'<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" style="width:auto;margin:0" '+(e.on?'checked':'')+' onchange="TB.ed.on=this.checked;TB.dirty=true"> Bật</label>'
+    +'<label>KNB <input class="mini-in" type="number" min="0" max="100000" value="'+e.knb+'" oninput="TB.ed.knb=Number(this.value);TB.dirty=true"></label>'
+    +'<label>Trần/ngày <input class="mini-in" style="width:70px" type="number" min="0" max="50" value="'+e.ngay+'" oninput="TB.ed.ngay=Number(this.value);TB.dirty=true"></label></div>'
+    +'<div class="muted" style="font-size:12px;margin-top:4px">Boss cuối (ID game, cố định): '+h.boss.join(', ')+'</div>'
+    +'<table style="width:100%;margin-top:8px"><tr><th style="text-align:left">Món (ID; nhiều ID = trộn ngẫu nhiên)</th><th>SL từ</th><th>đến</th><th></th></tr>';
+  e.mon.forEach((r,i)=>{
+    x+='<tr onclick="tbRow('+i+')" style="'+(i===TB.row?'outline:2px solid #ffcf5c;':'')+'">'
+      +'<td style="width:60%"><input style="width:100%;margin:0;box-sizing:border-box" value="'+r.ids.join(', ')+'" oninput="tbSet('+i+',\\'ids\\',this.value)"><div id="tbN'+i+'" style="font-size:12px;margin-top:3px">'+tbNames(r)+'</div></td>'
+      +'<td><input class="mini-in" style="width:70px" type="number" min="1" max="999" value="'+r.min+'" oninput="tbSet('+i+',\\'min\\',this.value)"></td>'
+      +'<td><input class="mini-in" style="width:70px" type="number" min="1" max="999" value="'+r.max+'" oninput="tbSet('+i+',\\'max\\',this.value)"></td>'
+      +'<td><button class="btn-red" onclick="event.stopPropagation();tbDel('+i+')">🗑</button></td></tr>';
+  });
+  x+='</table><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button onclick="tbAdd()">➕ Thêm dòng</button><button class="btn-green" onclick="tbSave()">💾 Lưu</button>'
+    +(h.sua?'<button class="btn-grey" onclick="tbReset()">↩ Về mặc định</button>':'')
+    +'<button class="btn-grey" onclick="tbLoad()">🔄 Tải lại</button></div>'
+    +'<div class="muted" style="font-size:12px;margin-top:6px">Mặc định: '+h.macDinh.mon.map(r=>r.ids.map(id=>tbTen(id)||('#'+id)).join('/')+' ×'+tbSl(r)).join(' · ')
+    +(h.macDinh.knb?' · '+h.macDinh.knb+' KNB':'')+(h.macDinh.ngay?' · trần '+h.macDinh.ngay+'/ngày':'')+'</div>';
+  document.getElementById('tbEd').innerHTML=x;
+}
+function tbRow(i){if(TB.row===i)return;TB.row=i;document.querySelectorAll('#tbEd tr[onclick]').forEach((tr,k)=>tr.style.outline=k===i?'2px solid #ffcf5c':'');}
+function tbSet(i,k,v){
+  const r=TB.ed.mon[i];TB.dirty=true;
+  if(k==='ids'){r.ids=String(v).split(/[\\s,;]+/).map(Number).filter(n=>n>0);const d=document.getElementById('tbN'+i);if(d)d.innerHTML=tbNames(r);}
+  else r[k]=Number(v);
+}
+function tbAdd(){TB.ed.mon.push({ids:[],min:1,max:1});TB.row=TB.ed.mon.length-1;TB.dirty=true;tbEdDraw();}
+function tbDel(i){TB.ed.mon.splice(i,1);TB.dirty=true;if(TB.row>=TB.ed.mon.length)TB.row=Math.max(0,TB.ed.mon.length-1);tbEdDraw();}
+function tbSave(){
+  const e=TB.ed;
+  api('/api/tuiboss/save',{hd:TB.hd,on:e.on,knb:e.knb,ngay:e.ngay,mon:e.mon})
+    .then(j=>{TB.st=j;TB.dirty=false;tbPick(TB.hd,true);toast('💾 Đã lưu túi '+tbCur().ten+' - áp cho túi tạo từ giờ');})
+    .catch(e=>toast('❌ '+e.message));
+}
+function tbReset(){
+  if(!confirm('Đưa túi "'+tbCur().ten+'" về mặc định?'))return;
+  api('/api/tuiboss/reset',{hd:TB.hd}).then(j=>{TB.st=j;TB.dirty=false;tbPick(TB.hd,true);toast('↩ Đã về mặc định');}).catch(e=>toast('❌ '+e.message));
+}
+function tbFind(){
+  const q=document.getElementById('tbQ').value.trim();if(!q)return;
+  api('/api/gm/items',{q:q}).then(j=>{
+    const b=document.getElementById('tbRes');
+    if(!j.items||!j.items.length){b.innerHTML='<span class="muted">Không thấy</span>';return;}
+    b.innerHTML=j.items.slice(0,40).map(it=>'<button class="btn-grey" style="font-size:12px;padding:4px 8px" data-n="'+esc(it.name)+'" onclick="tbPut('+Number(it.id)+',this.dataset.n)">'+it.id+' · '+esc(it.name)+'</button>').join('');
+  }).catch(e=>toast('❌ '+e.message));
+}
+function tbPut(id,name){
+  if(!TB.ed)return;TB.st.ten[id]=name;
+  if(!TB.ed.mon[TB.row]){TB.ed.mon.push({ids:[],min:1,max:1});TB.row=TB.ed.mon.length-1;}
+  const r=TB.ed.mon[TB.row];if(!r.ids.includes(id))r.ids.push(id);
+  TB.dirty=true;tbEdDraw();toast('➕ '+name+' vào dòng '+(TB.row+1)+' (nhớ Lưu)');
+}
+function tbTom(c){return (c.on?'bật':'TẮT')+', '+c.knb+' KNB, trần '+(c.ngay||'∞')+', '+c.mon.map(r=>r.ids.map(id=>tbTen(id)||('#'+id)).join('/')+'×'+tbSl(r)).join(' · ');}
+function tbLogDraw(){
+  const ds=TB.st.log||[];
+  document.getElementById('tbLog').innerHTML=ds.length?'<table style="width:100%">'+ds.map(l=>{const d=new Date(l.t);
+    return '<tr style="'+(l.hd===TB.hd?'':'opacity:.6')+'"><td class="muted" style="white-space:nowrap;vertical-align:top">'+d.toLocaleString('vi-VN')+'</td>'
+      +'<td style="vertical-align:top"><b>'+esc(l.ten)+'</b><br><span class="muted">'+esc(l.who)+'</span></td>'
+      +'<td><div class="muted">trước: '+esc(tbTom(l.truoc))+'</div><div>sau: '+esc(tbTom(l.sau))+'</div></td></tr>';}).join('')+'</table>'
+    :'<span class="muted">Chưa ai sửa</span>';
+}
+
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function fmtAmt(n){return (n>0?'+':'')+Number(n).toLocaleString();}
 function padId(n){return String(n).padStart(5,'0');}

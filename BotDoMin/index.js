@@ -7686,6 +7686,24 @@ client.once('ready', async (c) => {
             getItemShopGroupQuota: itemShopGroupQuota, setItemShopGroupQuota,   // 🗂️ hạn theo nhóm (12/09 v2)
             setItemShop,
             petBoss: { state: () => PB.adminState(), save: (x) => PB.setCfg(x), reset: (uid) => PB.resetPick(uid), refresh: () => PB.refresh() },   // 🐾 01/10
+            // 🎒 01/10: cấu hình Túi đồ boss (admin + mod sửa được; ID boss cuối cố định theo game)
+            tuiBossCfg: {
+                state: () => {
+                    const st = tuiBoss.state(dbCache); const can = new Set();
+                    for (const h of st.ds) for (const r of [...h.mon, ...h.macDinh.mon]) for (const id of r.ids) can.add(String(id));
+                    const ten = {}; for (const it of (tlbb.items ? tlbb.items() : [])) if (can.has(it.id)) ten[it.id] = it.n;
+                    return { ...st, ten, soItem: (tlbb.items ? tlbb.items() : []).length };
+                },
+                save: (x, who) => {
+                    const all = tlbb.items ? tlbb.items() : [];
+                    if (!all.length) return { error: 'Bot chưa tải xong danh mục vật phẩm game, thử lại sau 1 phút' };
+                    const ids = new Set(all.map((it) => it.id));
+                    const r = tuiBoss.save(dbCache, x || {}, (id) => ids.has(String(id)), who);
+                    if (!r.error) saveDbNow();
+                    return r;
+                },
+                reset: (hd, who) => { const r = tuiBoss.reset(dbCache, hd, who); if (!r.error) saveDbNow(); return r; },
+            },
             uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
             // 📦 kho đồ toàn game (CHỈ cổng SUPER - panel tự gate epOk)
             gameItems,

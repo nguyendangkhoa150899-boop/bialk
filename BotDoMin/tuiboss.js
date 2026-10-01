@@ -117,7 +117,8 @@ function poll(db) {
             if (g.da.includes(guid)) continue;
             g.da.push(guid);
             const ds = K[guid] || (K[guid] = []);
-            const cfg = HD[hd];
+            const cfg = cfgOf(db, hd);
+            if (cfg.on === false) continue;
             if (cfg.ngay) {   // trần túi/ngày cho hoạt động ngoài phó bản (không có giới hạn lượt của game)
                 const hom = ngayVN(t);
                 if (ds.filter((x) => x.hd === hd && ngayVN(x.t) === hom).length >= cfg.ngay) continue;
@@ -167,4 +168,62 @@ async function nhan(db, guid, tuiId, giveItem, congKnb) {
     } finally { delete tui.dang; }
 }
 
-module.exports = { poll, list, nhan, HD, BOSS, FILE };
+// ===== 01/10: CẤU HÌNH SỬA ĐƯỢC TỪ PANEL (admin + mod) =====
+// db._tuiBossCfg[hd] = { on, mon, knb, ngay } ghi đè mặc định HD[hd]. ID boss cuối KHÔNG sửa ở đây (phải khớp roimap.lua của game).
+// Mỗi dòng món: [id | [id,...], sl | [min,max]]  (nhiều ID = mỗi cái bốc ngẫu nhiên 1 trong danh sách).
+function cfgOf(db, hd) {
+    const d = HD[hd]; const o = (db._tuiBossCfg || {})[hd];
+    return o ? { ...d, ...o, ten: d.ten } : { on: true, ...d };
+}
+const bossCua = (hd) => Object.keys(BOSS).filter((k) => BOSS[k] === hd).map(Number);
+const toRow = ([ids, sl]) => ({ ids: Array.isArray(ids) ? ids.slice() : [ids], min: Array.isArray(sl) ? sl[0] : sl, max: Array.isArray(sl) ? sl[1] : sl });
+function state(db) {
+    return {
+        ds: Object.keys(HD).map((hd) => { const c = cfgOf(db, hd); return { hd, ten: c.ten, on: c.on !== false, knb: c.knb || 0, ngay: c.ngay || 0,
+            mon: c.mon.map(toRow), macDinh: { knb: HD[hd].knb || 0, ngay: HD[hd].ngay || 0, mon: HD[hd].mon.map(toRow) },
+            sua: !!(db._tuiBossCfg || {})[hd], boss: bossCua(hd) }; }),
+        log: (db._tuiBossCfgLog || []).slice(-40).reverse(),
+    };
+}
+function ghiLog(db, hd, who, truoc, sau) {
+    if (!Array.isArray(db._tuiBossCfgLog)) db._tuiBossCfgLog = [];
+    db._tuiBossCfgLog.push({ t: Date.now(), hd, ten: HD[hd].ten, who, truoc, sau });
+    if (db._tuiBossCfgLog.length > 300) db._tuiBossCfgLog.splice(0, db._tuiBossCfgLog.length - 300);
+}
+const tom = (c) => ({ on: c.on !== false, knb: c.knb || 0, ngay: c.ngay || 0, mon: c.mon.map(toRow) });
+// inp = { hd, on, knb, ngay, mon: [{ ids:[...], min, max }] }; coItem(id) -> true nếu ID có trong game
+function save(db, inp, coItem, who) {
+    const hd = String((inp && inp.hd) || '');
+    if (!HD[hd]) return { error: 'Không có hoạt động này' };
+    const int = (v) => (Number.isInteger(Number(v)) ? Number(v) : NaN);
+    const knb = int(inp.knb), ngay = int(inp.ngay);
+    if (!(knb >= 0 && knb <= 100000)) return { error: 'KNB phải là số nguyên 0 - 100.000' };
+    if (!(ngay >= 0 && ngay <= 50)) return { error: 'Trần túi/ngày phải 0 - 50 (0 = không giới hạn)' };
+    if (!Array.isArray(inp.mon) || !inp.mon.length || inp.mon.length > 20) return { error: 'Cần 1 - 20 dòng món' };
+    const mon = [];
+    for (let i = 0; i < inp.mon.length; i++) {
+        const r = inp.mon[i] || {}; const ids = (Array.isArray(r.ids) ? r.ids : String(r.ids || '').split(/[\s,;]+/)).map((x) => int(x)).filter((x) => x > 0);
+        const min = int(r.min), max = int(r.max);
+        if (!ids.length || ids.length > 50) return { error: 'Dòng ' + (i + 1) + ': cần 1 - 50 ID vật phẩm' };
+        const sai = ids.filter((x) => !coItem(x));
+        if (sai.length) return { error: 'Dòng ' + (i + 1) + ': ID không có trong game: ' + sai.join(', ') };
+        if (!(min >= 1 && max >= min && max <= 999)) return { error: 'Dòng ' + (i + 1) + ': số lượng phải 1 - 999, "từ" ≤ "đến"' };
+        mon.push([ids.length === 1 ? ids[0] : ids, min === max ? min : [min, max]]);
+    }
+    const truoc = tom(cfgOf(db, hd));
+    if (!db._tuiBossCfg || typeof db._tuiBossCfg !== 'object') db._tuiBossCfg = {};
+    db._tuiBossCfg[hd] = { on: inp.on !== false, mon, knb, ngay };
+    ghiLog(db, hd, who, truoc, tom(cfgOf(db, hd)));
+    return { ok: true };
+}
+function reset(db, hd, who) {
+    hd = String(hd || '');
+    if (!HD[hd]) return { error: 'Không có hoạt động này' };
+    if (!(db._tuiBossCfg || {})[hd]) return { error: 'Hoạt động này đang dùng mặc định rồi' };
+    const truoc = tom(cfgOf(db, hd));
+    delete db._tuiBossCfg[hd];
+    ghiLog(db, hd, who, truoc, tom(cfgOf(db, hd)));
+    return { ok: true };
+}
+
+module.exports = { poll, list, nhan, state, save, reset, cfgOf, HD, BOSS, FILE };
