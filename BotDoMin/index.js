@@ -1923,6 +1923,12 @@ function setItemShop(list) {
     saveDbNow();
     return itemShopList();
 }
+// 🐾 01/10: shop "Chọn Pet Boss" (1 con/ví, chọn skin + kiểu) - xem petboss.js. Hàm truyền vào đều là
+// function khai báo (hoisted) nên gọi ở đây được dù định nghĩa ở dưới.
+const PB = require('./petboss')({
+    db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, featGuard, debtBlock,
+    deliverBusy, deliverLock, deliverUnlock, tlbb,
+});
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
 // chối - người chơi sửa client cũng không lách được. Lưu ở dbCache._featOff (chỉ lưu mục ĐANG TẮT,
@@ -7507,12 +7513,14 @@ client.once('ready', async (c) => {
                     today: itemShopToday(getUserData(uid)),          // 📅 { itemId: đã mua hôm nay }
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
+                    petBoss: PB.webState(uid),                       // 🐾 01/10: thẻ "Chọn Pet Boss" trong nhóm ⭐
                 }),
                 // ⚠️ 17/09: hàm bọc này TỪNG NUỐT tham số thứ 4 (vaoRuong) vì chỉ khai 3 tham số ->
                 // route gửi cờ mà itemShopBuy không nhận được, mua vào rương vẫn đòi online. Thêm
                 // tham số mới ở itemShopBuy thì PHẢI sửa cả dòng này (ichkytest canh đúng chỗ đó).
                 buy: (uid, itemId, qty, vaoRuong) => itemShopBuy(uid, itemId, qty, getUserData(uid).name || uid, vaoRuong === true),
             },
+            petboss: { pick: (uid, skin, cap, kieu) => PB.pick(uid, skin, cap, kieu) },   // 🐾 01/10 Chọn Pet Boss
             // 🚀 Phi Thuyền (crash game, 28/08) - vòng chơi chung
             spm: {
                 state: (uid) => spmWebState(uid),
@@ -7654,6 +7662,7 @@ client.once('ready', async (c) => {
             getItemShopWtMax: itemShopWtMax, setItemShopWtMax,   // 🌳 hạn implant Cây Thế Giới/người/ngày
             getItemShopGroupQuota: itemShopGroupQuota, setItemShopGroupQuota,   // 🗂️ hạn theo nhóm (12/09 v2)
             setItemShop,
+            petBoss: { state: () => PB.adminState(), save: (x) => PB.setCfg(x), reset: (uid) => PB.resetPick(uid), refresh: () => PB.refresh() },   // 🐾 01/10
             uploadItemImage,   // 🖼️ up hình item từ panel (ghi assets/itemimage/ + nạp RAM, khỏi restart)
             // 📦 kho đồ toàn game (CHỈ cổng SUPER - panel tự gate epOk)
             gameItems,

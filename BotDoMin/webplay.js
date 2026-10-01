@@ -246,7 +246,7 @@ function startWebPlay(ctx) {
                             ['spm', ['/api/spm/bet']],
                             ['pal', ['/api/palwheel/spin', '/api/palwheel/raidspin']],
                             ['pick', ['/api/palpick/buy']],
-                            ['shop', ['/api/itemshop/buy']],
+                            ['shop', ['/api/itemshop/buy', '/api/petboss/pick']],
                             ['dog', ['/api/dogbridge/rut', '/api/dogbridge/nap', '/api/dogbridge/napgold']],
                         ];
                         for (const [key, paths] of HANH_DONG) {
@@ -586,6 +586,13 @@ function startWebPlay(ctx) {
                     // 🧰 17/09: vaoRuong = true -> bỏ vào Rương Ích Kỷ, KHÔNG cần online, không giao SFTP
                     const r = await ctx.itemshop.buy(userId, body.itemId, body.qty, body.vaoRuong === true);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
+                // 🐾 01/10: Chọn Pet Boss (1 con/ví) - danh mục đi kèm /api/itemshop/state (petBoss)
+                if (ctx.petboss && req.method === 'POST' && path === '/api/petboss/pick') {
+                    const body = await readBody(req);
+                    const r = await ctx.petboss.pick(userId, body.skin, body.cap, body.kieu);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error, balance: r.balance });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
 
@@ -1202,6 +1209,28 @@ const PAGE = [
     '#gmActs{display:flex;gap:10px;justify-content:flex-end}',
     '#gmActs button{min-width:100px;padding:10px 14px;font-weight:700;border-radius:9px}',
     '#gmCancel{background:#3a4155;color:#fff}',
+    // 🐾 01/10: Chọn Pet Boss
+    '#pbModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:110;padding:16px}',
+    '#pbModal.hidden{display:none}',
+    '#pbBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;width:560px;max-width:100%;max-height:90vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:gmpop .15s ease}',
+    '.pbTt{font-size:18px;font-weight:800;margin-bottom:4px}',
+    '.pbGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}',
+    '.pbCard{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;color:inherit;cursor:pointer}',
+    '.pbCard:hover{border-color:#c9a227}',
+    '.pbImg{width:90px;height:90px;object-fit:contain;border-radius:10px}',
+    '.pbImgB{width:110px;height:110px;object-fit:contain;border-radius:12px;flex:0 0 auto}',
+    '.pbPh{display:flex;align-items:center;justify-content:center;font-size:40px;background:rgba(255,255,255,.05)}',
+    '.pbNm{font-weight:700;font-size:13px;text-align:center}',
+    '.pbHead{display:flex;gap:12px;align-items:center;margin-bottom:12px}',
+    '.pbOpt{display:block;width:100%;text-align:left;margin:0 0 8px;padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;color:inherit;cursor:pointer}',
+    '.pbOpt.on{border-color:#3ddc84;background:rgba(61,220,132,.12)}',
+    '.pbK{font-weight:800;margin-bottom:3px}',
+    '.pbTc{font-size:12px;color:var(--muted)}',
+    '.pbGo{width:100%;margin-top:6px;padding:12px;font-weight:800;border-radius:10px;background:linear-gradient(180deg,#3ddc84,#2aa564);color:#08210f}',
+    '.pbGo:disabled{opacity:.5}',
+    '.pbBack{background:#3a4155;color:#fff;padding:6px 10px;border-radius:8px}',
+    '.pbActs{display:flex;justify-content:flex-end;margin-top:12px}',
+    '.pbActs button{min-width:100px;padding:10px 14px;font-weight:700;border-radius:9px;background:#3a4155;color:#fff}',
     '.big{font-size:26px;font-weight:800}',
     '.hidden{display:none}',
     // ---- 🃏 poker TOÀN MÀN HÌNH (18/09) ----
@@ -2843,6 +2872,8 @@ const PAGE = [
     '<div class="row" style="gap:8px"><input id="tmPrice" type="number" inputmode="numeric" min="0" placeholder="Giá KNB (0 = tặng)" style="flex:1"><button onclick="tmOffer()" style="flex:0 0 auto;background:linear-gradient(180deg,#4da3ff,#2b74c9)">📤 Gửi lời bán</button></div></div>',
     '<div class="tmActs"><button onclick="tmClose()" style="background:#3a4155;color:#fff">Đóng</button></div>',
     '</div></div>',
+    // 🐾 01/10: popup Chọn Pet Boss (z-index DƯỚI gmodal để hộp xác nhận hiện đè lên)
+    '<div id="pbModal" class="hidden" onclick="if(event.target===this)pbClose()"><div id="pbBox"></div></div>',
     '<div id="gmodal" class="hidden" onclick="if(event.target===this)gmClose(false)">',
     '<div id="gmBox">',
     '<div id="gmMsg"></div>',
@@ -2864,7 +2895,7 @@ const PAGE = [
     // 🔒 16/09 KHOÁ CUỘN KHI CÓ POPUP (chủ server: "mở popup thì phần còn lại không được scroll").
     // 6 lớp phủ toàn màn hình - 3 cái bật/tắt bằng class hidden, 3 cái bằng class show.
     // KHÔNG gồm #winpop / #jpFlash / #toast: mấy cái đó pointer-events:none, chỉ là hiệu ứng.
-    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","ikModal"],POPY=0;',
+    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","ikModal","pbModal"],POPY=0;',
     'function popAnyOpen(){for(var i=0;i<POPIDS.length;i++){var e=$(POPIDS[i]);',
     'if(e&&getComputedStyle(e).display!=="none")return true}return false}',
     'function popScrollSync(){var b=document.body,on=popAnyOpen(),dang=b.classList.contains("noscroll");',
@@ -5170,9 +5201,10 @@ const PAGE = [
     '.catch(function(e){toast("❌ "+e.message);if(btn)btn.textContent=chu})',
     // mở khoá TRƯỚC rồi mới vẽ lại, vì giftDraw đang chặn khi GIFTBUSY
     '.then(function(){GIFTBUSY=false;giftBtnLock(false);giftSync()})}',
-    'function isSync(){api("/api/itemshop/state").then(function(j){IS=j;if(j.cats&&j.cats.length)ISG=j.cats;',
+    'function isSync(){api("/api/itemshop/state").then(function(j){pbInject(j);IS=j;if(j.cats&&j.cats.length)ISG=j.cats;',
     '$("isStat").textContent=j.items.length+" món · ví "+vnd(j.balance);',
     '$("isLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - item giao thẳng vào túi (phải đang ONLINE trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới mua được";',
+    'if(j.petBoss&&j.petBoss.picked)$("isLink").innerHTML+=" · 🐾 Đã nhận pet boss: <b>"+esc(j.petBoss.picked.name)+"</b>";',
     'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
     // hình item: file trong assets/itemimage/ (thả file + restart như palimage); thiếu -> ô 📦
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
@@ -5191,7 +5223,7 @@ const PAGE = [
     'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" KNB / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+isBuyRow(it)+"</div>"}',
     // ⭐ 11/09: nhóm QUAN TRỌNG mua 1 lần/người -> không ô số lượng; đã mua -> nút "✅ ĐÃ MUA" khoá
-    'function isBuyRow(it){if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
+    'function isBuyRow(it){if(it.pet)return "<div class=\\"isBuyRow\\"><button onclick=\\"pbOpen()\\">🐾 Chọn pet</button></div>";if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
     // 18/09 (chủ server): đổi chỗ 2 nút - 🧰 Vào rương đứng TRƯỚC, 🛒 Mua đứng sau.
     'return "<div class=\\"isBuyRow\\"><input class=\\"isQty\\" id=\\"isq_"+it.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+it.max+"\\" value=\\"1\\">"+(ikDuoc(it)?"<button style=\\"background:#3a2e10;border:1px solid #c9a227;color:#ffd76a\\" title=\\"Mua vào Rương Ích Kỷ - không cần đang online\\" onclick=\\"isBuy(\'"+it.id+"\',this,true)\\">🧰 Vào rương</button>":"")+"<button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua</button></div>"}',
     // 📅 10/09: hạn mua mỗi món/người/ngày (server đếm, client chỉ hiện + chặn sớm cho đỡ gọi API)
@@ -5286,6 +5318,29 @@ const PAGE = [
     'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent=vaoRuong?"⏳ Đang bỏ vào rương...":"⏳ Đang giao vào game...";',
     'api("/api/itemshop/buy",{itemId:id,qty:q,vaoRuong:!!vaoRuong}).then(function(j){ISBUSY=false;isBtnLock(false);if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");if(j.ruong){IK=j.ruong;ikBadge(IK.total)}isSync()}).catch(function(e){ISBUSY=false;isBtnLock(false);if(btn)btn.textContent=chu;toast("❌ "+e.message);isSync()})}',
     '',
+    // ===== 🐾 01/10: CHỌN PET BOSS - thẻ giả "__petboss" chèn vào nhóm ⭐ (pbInject), bấm mở popup chọn skin -> kiểu -> Nhận
+    'var PB=null,PBSKIN=null,PBOPT=-1,PBBUSY=false;',
+    'function pbInject(j){var p=j.petBoss;if(!p||!p.on||!j.items)return;j.items.unshift({id:"__petboss",cat:"important",name:p.name,price:p.price,max:1,img:p.img,note:(p.note?p.note+" · ":"")+"Bản "+p.banLabel+" - mỗi người chọn 1 con",pet:1});if(p.picked)j.once=(j.once||[]).concat(["__petboss"])}',
+    'function pbImg(f,big){var c=big?"pbImgB":"pbImg";return f?("<img class=\\""+c+"\\" src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;"+c+" pbPh&quot;>🐾</div>\'\\">"):("<div class=\\""+c+" pbPh\\">🐾</div>")}',
+    'function pbTc(o){var t=(PB&&PB.tcTen)||[];return (o.tc||[]).map(function(n,i){return (t[i]||"")+" <b>"+Number(n).toLocaleString("vi-VN")+"</b>"}).join(" · ")}',
+    'function pbOpen(){if(!IS||!IS.petBoss||!IS.petBoss.on)return;PB=IS.petBoss;if(PB.picked)return toast("🐾 Bạn đã nhận "+PB.picked.name+" rồi - mỗi người 1 con");if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");PBSKIN=null;PBOPT=-1;pbRender();$("pbModal").classList.remove("hidden")}',
+    'function pbClose(){if(PBBUSY)return;$("pbModal").classList.add("hidden")}',
+    'function pbSkin(i){PBSKIN=i;PBOPT=-1;pbRender()}',
+    'function pbOpt(i){PBOPT=i;pbRender()}',
+    'function pbRender(){var h="",s=PB.skins||[];',
+    'if(PBSKIN===null){h+="<div class=\\"pbTt\\">"+esc(PB.name)+"</div><div class=\\"muted\\" style=\\"font-size:12px;margin-bottom:10px\\">Bước 1/2: chọn ngoại hình · Bản "+esc(PB.banLabel)+" · "+(PB.price>0?vnd(PB.price)+" KNB":"🎁 Miễn phí")+" · mỗi người chỉ 1 con</div>";',
+    'if(!s.length)h+="<div class=\\"muted\\">Chưa có pet nào - admin đang cập nhật.</div>";',
+    'h+="<div class=\\"pbGrid\\">"+s.map(function(k,i){return "<button class=\\"pbCard\\" onclick=\\"pbSkin("+i+")\\">"+pbImg(k.img)+"<div class=\\"pbNm\\">"+esc(k.skin)+"</div></button>"}).join("")+"</div>"}',
+    'else{var k=s[PBSKIN];h+="<div style=\\"margin-bottom:10px\\"><button class=\\"pbBack\\" onclick=\\"pbSkin(null)\\">← Đổi ngoại hình</button></div>";',
+    'h+="<div class=\\"pbHead\\">"+pbImg(k.img,true)+"<div><div class=\\"pbTt\\">"+esc(k.skin)+"</div><div class=\\"muted\\" style=\\"font-size:12px\\">Bước 2/2: chọn kiểu (tư chất)</div></div></div>";',
+    'h+=k.opts.map(function(o,i){return "<button class=\\"pbOpt"+(i===PBOPT?" on":"")+"\\" onclick=\\"pbOpt("+i+")\\"><div class=\\"pbK\\">"+esc(o.kieu)+(o.cap!=="5"?" · cấp mang "+esc(o.cap):"")+"</div><div class=\\"pbTc\\">"+pbTc(o)+"</div></button>"}).join("");',
+    'h+="<button class=\\"pbGo\\" id=\\"pbGo\\" onclick=\\"pbGo()\\""+(PBOPT<0?" disabled":"")+">🎁 Nhận</button>"}',
+    'h+="<div class=\\"pbActs\\"><button onclick=\\"pbClose()\\">Đóng</button></div>";',
+    '$("pbBox").innerHTML=h}',
+    'async function pbGo(){if(PBBUSY||PBSKIN===null||PBOPT<0)return;var k=PB.skins[PBSKIN],o=k.opts[PBOPT];',
+    'if(!(await gConfirm("Nhận <b>"+esc(k.skin)+" · "+esc(o.kieu)+"</b>"+(PB.price>0?" với giá <b>"+vnd(PB.price)+"</b> KNB":"")+"?<br>Mỗi người <b>chỉ 1 con</b>, chọn rồi không đổi được. Pet vào túi khi đăng nhập hoặc đổi bản đồ.","🎁 Nhận")))return;',
+    'PBBUSY=true;var b=$("pbGo");if(b){b.disabled=true;b.textContent="⏳ Đang gửi vào game..."}',
+    'api("/api/petboss/pick",{skin:k.skin,cap:o.cap,kieu:o.kieu}).then(function(j){PBBUSY=false;if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã gửi pet!");$("pbModal").classList.add("hidden");isSync()}).catch(function(e){PBBUSY=false;if(b){b.disabled=false;b.textContent="🎁 Nhận"}toast("❌ "+e.message);isSync()})}',
     // ===== 🚀 PHI THUYỀN (crash game, 28/08) - vòng chơi chung, số nhân đồng bộ giờ server =====
     'var SPM=null,SPMOFF=0,SPMBUSY=false,SPMTIMER=null,SPMANIM=null,SPMRID=0,SPMSEEN={},SPMFRESH=false;',
     // 🧑‍🚀 hiệu ứng người rút "nhảy ra khỏi phi thuyền": chữ bay lên rồi tan

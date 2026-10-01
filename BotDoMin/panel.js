@@ -389,6 +389,20 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL QUÀ RIÊNG] ${body.where === 'game' ? 'vào game' : 'vào rương'}: ${body.itemId} x${body.qty} -> ${rec.name || uid}`);
                     return sendJSON(res, 200, { ok: true, message: r.message });
                 }
+                // 🐾 01/10: Chọn Pet Boss - cấu hình + danh sách đã nhận (xem petboss.js)
+                if (ctx.petBoss && path === '/api/petboss/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.petBoss.state() });
+                }
+                if (ctx.petBoss && req.method === 'POST' && path === '/api/petboss/save') {
+                    const s = ctx.petBoss.save(body || {});
+                    ctx.writeLog('ADMIN', `[PANEL PET BOSS] Lưu cấu hình: ${s.cfg.on ? 'BẬT' : 'tắt'}, bản ${s.cfg.ban}, giá ${s.cfg.price} (IP ${req.headers['x-real-ip'] || req.socket.remoteAddress})`);
+                    return sendJSON(res, 200, { ok: true, ...s });
+                }
+                if (ctx.petBoss && req.method === 'POST' && path === '/api/petboss/reset') {
+                    const r = ctx.petBoss.reset(String((body && body.uid) || ''));
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, message: r.message, ...ctx.petBoss.state() });
+                }
                 if (ctx.setItemShop && req.method === 'POST' && path === '/api/itemshop/save') {
                     // 29/09: nút Lưu gửi CẢ bảng đang hiển thị -> ai mở panel với bảng cũ mà bấm Lưu là ghi đè
                     // thay đổi của người khác (đã mất 5 món 17:03). Client gửi ver lúc tải bảng; lệch = từ chối.
@@ -2138,6 +2152,29 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="itemShopAddRow();itemShopDirty(true)">➕ Thêm món</button>
           <button class="btn-green" id="itemShopSaveBtn" onclick="itemShopSave()">💾 Lưu shop</button>
         </div>
+      </div>
+      <div class="card" id="petBossCard">
+        <h3>🐾 Chọn Pet Boss - mỗi người nhận 1 con (thẻ nằm trong nhóm ⭐ Quan trọng của shop web)</h3>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">Người chơi bấm thẻ → chọn <b>ngoại hình</b> → chọn <b>kiểu</b> (Ngoại / Nội / Cân bằng) → <b>Nhận</b>. Mỗi ví đúng 1 lần, pet vào túi khi đăng nhập / đổi bản đồ. Tư chất cố định theo bảng game. Bản Admin 12000 không bao giờ bán. Hình: up từng skin bên dưới (để trống = 🐾).</div>
+        <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:4px;white-space:nowrap"><input type="checkbox" id="pbaOn" style="width:auto;margin:0"> <b>Bật</b> trên web</label>
+          <input class="mini-in" id="pbaName" placeholder="Tên thẻ (vd 🐾 Chọn Pet Boss)" style="width:220px">
+          <select class="mini-in" id="pbaBan" style="width:210px"></select>
+          <input class="mini-in" id="pbaPrice" type="number" min="0" placeholder="Giá KNB (0 = miễn phí)" style="width:170px">
+          <input class="mini-in" id="pbaImg" placeholder="Hình thẻ (file)" style="width:150px">
+          <label class="btn-grey" style="cursor:pointer;padding:6px 10px">🖼️ Up hình thẻ<input type="file" accept="image/*" style="display:none" onchange="pbaUp(this,'pbaImg')"></label>
+        </div>
+        <input class="mini-in" id="pbaNote" placeholder="Ghi chú hiện trên thẻ (vd: Pet boss tân thủ, tư chất cố định)" style="width:100%;margin-top:8px">
+        <div style="overflow-x:auto;margin-top:8px">
+          <table><thead><tr><th>Bán</th><th>Hình</th><th>Skin</th><th>Lựa chọn (kiểu · tư chất Cường/Thể/Nội/Thân/Trí)</th><th>File hình</th><th></th></tr></thead><tbody id="pbaSkins"><tr><td colspan="6" class="muted">Đang tải...</td></tr></tbody></table>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-green" onclick="pbaSave(this)">💾 Lưu Pet Boss</button>
+          <button class="btn-grey" onclick="pbaLoad()">🔄 Tải lại</button>
+          <span class="muted" id="pbaInfo" style="font-size:12px"></span>
+        </div>
+        <h3 style="margin-top:14px">Đã nhận <span class="muted" id="pbaPickN" style="font-size:12px"></span></h3>
+        <div id="pbaPicks" class="muted">-</div>
       </div>
       <!-- (💰 Sổ biến động KNB đã chuyển sang tab 📜 Log - 04/09) -->
     </div>
@@ -4519,6 +4556,43 @@ function itemShopUpload(inp){
   };
   rd.readAsDataURL(f);
 }
+// 🐾 01/10: Chọn Pet Boss - tải 1 lần (khỏi đè chữ admin đang gõ mỗi lần refresh), lưu xong tải lại
+var PBA=null;
+function pbaEl(id){return document.getElementById(id);}
+function pbaEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function pbaLoad(){api('/api/petboss/state').then(function(j){PBA=j;pbaFill();}).catch(function(e){toast('❌ '+e.message);});}
+function pbaFill(){if(!PBA)return;var c=PBA.cfg;
+  pbaEl('pbaOn').checked=!!c.on;pbaEl('pbaName').value=c.name||'';pbaEl('pbaPrice').value=c.price||0;pbaEl('pbaImg').value=c.img||'';pbaEl('pbaNote').value=c.note||'';
+  pbaEl('pbaBan').innerHTML=(PBA.bans||[]).map(function(b){return '<option value="'+b[0]+'"'+(b[0]===c.ban?' selected':'')+'>Bán bản: '+pbaEsc(b[1])+'</option>';}).join('');
+  var sk=PBA.skins||[];
+  pbaEl('pbaSkins').innerHTML=sk.length?sk.map(function(s){
+    var opts=s.opts.map(function(o){return '<div>'+pbaEsc(o.kieu)+(o.cap!=='5'?' · cấp '+pbaEsc(o.cap):'')+' · '+(o.tc||[]).join('/')+'</div>';}).join('');
+    var im=s.img?'<img src="/itemimage/'+encodeURIComponent(s.img)+'" style="width:44px;height:44px;object-fit:contain;border-radius:6px">':'🐾';
+    return '<tr data-skin="'+pbaEsc(s.skin)+'"><td><input type="checkbox" class="pba-on" style="width:auto"'+(s.off?'':' checked')+'></td><td>'+im+'</td><td><b>'+pbaEsc(s.skin)+'</b></td><td style="font-size:12px">'+opts+'</td>'
+      +'<td><input class="mini-in pba-img" value="'+pbaEsc(s.img)+'" style="width:140px"></td>'
+      +'<td><label class="btn-grey" style="cursor:pointer;padding:4px 8px;white-space:nowrap">🖼️ Up<input type="file" accept="image/*" style="display:none" onchange="pbaUp(this)"></label></td></tr>';
+  }).join(''):'<tr><td colspan="6" class="muted">Chưa tải được danh mục pet từ panel GM'+(PBA.catErr?' ('+pbaEsc(PBA.catErr)+')':'')+'</td></tr>';
+  pbaEl('pbaInfo').textContent=PBA.catTs?('Danh mục pet tải lúc '+new Date(PBA.catTs).toLocaleTimeString('vi-VN')):'';
+  var pk=PBA.picks||[];pbaEl('pbaPickN').textContent='('+pk.length+' người)';
+  pbaEl('pbaPicks').innerHTML=pk.length?'<table><thead><tr><th>Ví</th><th>Nhân vật</th><th>Pet</th><th>Lúc</th><th></th></tr></thead><tbody>'+pk.map(function(x){
+    return '<tr><td>'+pbaEsc(x.name)+'</td><td>'+pbaEsc(x.game)+'</td><td>'+pbaEsc(x.pet)+' <span class="muted">('+pbaEsc(x.id)+')</span></td><td>'+new Date(x.ts).toLocaleString('vi-VN')+'</td>'
+      +'<td><button class="btn-grey" onclick="pbaReset(&quot;'+pbaEsc(x.uid)+'&quot;,this)">↩️ Cho chọn lại</button></td></tr>';}).join('')+'</tbody></table>':'Chưa ai nhận.';
+}
+function pbaUp(inp,targetId){var fl=inp.files&&inp.files[0];if(!fl)return;
+  if(fl.size>600*1024){toast('❌ Ảnh quá 600KB - nén nhỏ lại');inp.value='';return;}
+  var tr=inp.closest('tr');var rd=new FileReader();
+  rd.onload=function(){var b64=String(rd.result).split(',')[1]||'';
+    api('/api/itemshop/upload',{name:fl.name,data:b64}).then(function(j){
+      var box=targetId?pbaEl(targetId):(tr&&tr.querySelector('.pba-img'));if(box)box.value=j.file;
+      toast('🖼️ Đã up '+j.file+' - nhớ bấm 💾 Lưu Pet Boss');}).catch(function(e){toast('❌ '+e.message);});
+    inp.value='';};
+  rd.readAsDataURL(fl);}
+function pbaSave(btn){var skins={};
+  [].slice.call(document.querySelectorAll('#pbaSkins tr[data-skin]')).forEach(function(tr){skins[tr.getAttribute('data-skin')]={img:tr.querySelector('.pba-img').value.trim(),off:!tr.querySelector('.pba-on').checked};});
+  var x={on:pbaEl('pbaOn').checked,name:pbaEl('pbaName').value.trim(),ban:pbaEl('pbaBan').value,price:parseInt(pbaEl('pbaPrice').value)||0,img:pbaEl('pbaImg').value.trim(),note:pbaEl('pbaNote').value.trim(),skins:skins};
+  api('/api/petboss/save',x).then(function(j){PBA=j;pbaFill();toast('💾 Đã lưu Pet Boss'+(j.cfg.on?' - đang BẬT trên web':' - đang tắt'));}).catch(function(e){toast('❌ '+e.message);});}
+async function pbaReset(uid,btn){if(!await uiConfirm('Xoá lượt nhận của người này để họ chọn lại? Pet cũ trong game KHÔNG bị thu hồi, KNB KHÔNG tự hoàn.','Cho chọn lại','btn-red'))return;
+  api('/api/petboss/reset',{uid:uid}).then(function(j){PBA=j;pbaFill();toast(j.message);}).catch(function(e){toast('❌ '+e.message);});}
 function itemShopDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();itemShopDirty(true);}
 function itemShopSave(){
   var items=[].slice.call(document.querySelectorAll('#itemShopBody tr')).map(function(tr){
@@ -5025,7 +5099,7 @@ async function refresh(force){
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
   renderPalChests();
   pcToggleApply();
-  itemShopFill();giftFill();featRender();tlFill();
+  itemShopFill();giftFill();featRender();tlFill();if(!PBA)pbaLoad();   // 🐾 Pet Boss: tải 1 lần
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
   // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)

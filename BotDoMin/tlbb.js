@@ -218,6 +218,18 @@ async function giveItem(nameOrGuid, itemId, qty) {
     }
     return { ok: true, guid: c.guid, name: c.name, message: 'Đã xếp hàng quà cho ' + c.name };
 }
+// 🐾 01/10: giao 1 pet (ID PetAttrTable) - panel GM ghi dòng "pet <ID>", game phát khi đăng nhập/đổi bản đồ
+// (ô pet đầy thì giữ lại, lần sau nhận). Lỗi CHẮC CHẮN chưa ghi = 'player not found' (hoàn tiền).
+// Panel GM không trả lời (timeout) thì KHÔNG gắn cờ đó: có thể đã ghi rồi, hoàn là thành 2 con.
+async function givePet(nameOrGuid, petId) {
+    const c = await findChar(nameOrGuid);
+    if (!c) throw new Error('Khong thay nhan vat trong game (player not found)');
+    let j;
+    try { j = await gmCall('POST', '/api/act', { a: 'qua', guid: c.guid, loai: 'pet', gt: String(petId), sl: '1' }); }
+    catch (e) { if (/không trả lời/.test(e.message)) throw e; throw new Error(e.message + ' (player not found)'); }
+    if (!j || !j.ok || !j.done) throw new Error(((j && (j.msg || j.error)) || 'panel GM từ chối') + ' (player not found)');
+    return { ok: true, guid: c.guid, name: c.name, message: 'Đã xếp hàng pet cho ' + c.name };
+}
 
 // ===== 30/09: TÀI KHOẢN GAME dùng chung cho web =====
 // Game giữ MD5 trong web.account; panel GM có act kiem_mk (so MD5) và doi_mk. Bot chỉ gửi MD5, không gửi mật khẩu thô.
@@ -245,4 +257,4 @@ async function guidsOfAcc(acc) {
     return chars.filter((c) => String(c.account || '').toLowerCase() === acc).map((c) => String(c.guid));
 }
 
-module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem, kiemMk, doiMk, guidsOfAcc, RE_GACC, RE_GPASS };
+module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem, givePet, kiemMk, doiMk, guidsOfAcc, RE_GACC, RE_GPASS };
