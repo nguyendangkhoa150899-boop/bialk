@@ -1907,9 +1907,9 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="row" style="margin-top:8px">
           <b>🔒 Cấp tối đa (khóa cấp):</b>
-          <input id="gmCapmax" class="mini-in" style="width:70px" type="number" min="10" max="118">
+          <input id="gmCapmax" class="mini-in" style="width:70px" type="number" min="10" max="119">
           <button class="btn-red" onclick="gmSaveCapmax()">💾 Lưu + Restart</button>
-          <span class="muted">Người chơi cày exp tối đa tới cấp này (10–118, 118 = mở hết). Nhân vật đã cao hơn giữ nguyên. Lưu xong server tự restart (~3 phút, người đang online bị ngắt).</span>
+          <span class="muted">Người chơi cày exp tối đa tới cấp này (10–119, 119 = mở hết). Nhân vật đã cao hơn giữ nguyên. Lưu xong server tự restart (~3 phút, người đang online bị ngắt).</span>
         </div>
         <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
         <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
@@ -3067,7 +3067,7 @@ function gmCreateAcc(){
   if(uid&&!/^[0-9]{15,20}$/.test(uid))return toast('Discord ID phải là 15-20 chữ số');
   gmDo({a:'tao_tk',ten:n,mk:p,uid:uid});document.getElementById('gmNewPw').value='';
 }
-function gmSaveCapmax(){var v=document.getElementById('gmCapmax').value.trim();if(!/^[0-9]{2,3}$/.test(v)||+v<10||+v>118)return toast('Cấp tối đa 10–118');gmDo({a:'capmax',gt:v,restart:'1'},'Khóa cấp tối đa '+v+' rồi RESTART server ngay? Người đang online sẽ bị ngắt khoảng 3 phút.');}
+function gmSaveCapmax(){var v=document.getElementById('gmCapmax').value.trim();if(!/^[0-9]{2,3}$/.test(v)||+v<10||+v>119)return toast('Cấp tối đa 10–119');gmDo({a:'capmax',gt:v,restart:'1'},'Khóa cấp tối đa '+v+' rồi RESTART server ngay? Người đang online sẽ bị ngắt khoảng 3 phút.');}
 function gmSaveCapmin(){gmDo({a:'capmin',gt:document.getElementById('gmCapmin').value.trim()});}
 function gmGive(g){
   var k=document.getElementById('gmL'+g).value,v=document.getElementById('gmV'+g).value.trim(),s=document.getElementById('gmS'+g).value.trim()||'1';
