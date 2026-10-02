@@ -5372,7 +5372,7 @@ const PAGE = [
     // thẻ món kiểu kho đồ: ảnh to, số lượng đè góc ảnh, tên, rồi 2 nút. Dùng lại isImg() của shop.
     'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
     '+"<div class=\\"ikNm\\">"+esc(x.name)+(x.giu?"<br><small>🔒 giữ qua đêm (từ game)</small>":"")+"</div>"',
-    '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+x.qty+"\\">"',
+    '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+(x.rutMax?Math.min(x.qty,x.rutMax):x.qty)+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
     '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button></div></div>"});',
     'box.innerHTML=h}',
@@ -5381,6 +5381,7 @@ const PAGE = [
     'function ikSoLuong(id,it){var q=parseInt(($("ikq_"+id)||{}).value)||0;if(q<1){toast("Nhập số lượng");return 0}if(q>it.qty){toast("Rương chỉ có "+it.qty+" cái");return 0}return q}',
     'async function ikClaim(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it)return;',
     'var q=ikSoLuong(id,it);if(!q)return;',
+    'if(it.rutMax&&q>it.rutMax)return toast("Món này rút tối đa "+it.rutMax+" cái mỗi lần (mỗi cái 1 ô túi) - rút nhiều lần nhé");',
     'if(!(await gConfirm("Nhận <b>"+q+" "+esc(it.name)+"</b> vào túi trong game? Nhân vật phải đang <b>ONLINE</b>.","📦 Nhận vào game")))return;',
     'IKBUSY=true;var chu=btn?btn.textContent:"";if(btn){btn.disabled=true;btn.textContent="⏳ Đang giao..."}',
     'api("/api/ichky/claim",{itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn){btn.disabled=false;btn.textContent=chu}toast(j.message||"✅ Đã nhận");if(j.state){IK=j.state;ikDraw()}else ikSync()})',

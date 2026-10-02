@@ -2394,6 +2394,7 @@ const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
 // 02/10: Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts) là đồ thật của người chơi
 // -> GIỮ QUA ĐÊM, không xoá lúc 00:00 như đồ mua shop. Món khác trong rương vẫn xoá như cũ.
 const ICHKY_GIU = ['10157001', '10157002', '10157003'];
+const ICHKY_GIU_RUT_MAX = 10;   // 03/10: Long Văn rút về game tối đa 10 cái/lần (mỗi cái 1 ô túi, rút nhiều dễ tràn túi -> mất đồ)
 function ichKyOf(user) {
     const hnay = vnDayStr(Date.now());
     let k = user.ichKy;
@@ -2439,7 +2440,8 @@ function ichKyState(userId) {
         // 18/09: quà admin bỏ vào có thể là món KHÔNG bán ở shop -> tên lấy từ kho đồ toàn game (gameitems.json)
         const gi = it ? null : gameItems().find(x => x.id === id);
         return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '', giu: ICHKY_GIU.includes(id),
-            ic: (it && it.img) ? null : ITEMICON.icon(id) };   // 🖼️ 03/10: món không có ảnh shop (vd Long Văn từ game) -> icon game (itemicon.js)
+            ic: (it && it.img) ? null : ITEMICON.icon(id),   // 🖼️ 03/10: món không có ảnh shop (vd Long Văn từ game) -> icon game (itemicon.js)
+            rutMax: ICHKY_GIU.includes(id) ? ICHKY_GIU_RUT_MAX : 0 };   // 0 = không giới hạn riêng
     }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
     return {
         items, total: ichKyTotal(k),
@@ -2531,6 +2533,9 @@ async function ichKyClaim(userId, itemId, qty, username) {
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    if (ICHKY_GIU.includes(String(itemId)) && qty > ICHKY_GIU_RUT_MAX) {
+        return { error: `Long Văn rút tối đa ${ICHKY_GIU_RUT_MAX} cái mỗi lần (mỗi cái chiếm 1 ô túi) - rút nhiều lần nhé` };
+    }
     const user = getUserData(userId);
     const k = ichKyOf(user);
     const co = Number(k.items[itemId]) || 0;
