@@ -1,18 +1,20 @@
 // 🍀 02/10: VÒNG QUAY MAY MẮN trên web (thay vòng quay trong game - giao diện game hiện ô giả, khó dùng).
 // Cách chơi giống game (Vòng Quay Bảo Thạch):
 //   1. MỞ / LÀM MỚI vòng: trả <gia> KNB (admin đặt, mặc định 8.000) -> server bốc 24 món từ bộ thưởng:
-//      <vip> ô VIP (mặc định 2) + phần còn lại món thường, bốc theo trọng số, không trùng nếu bộ đủ món.
+//      bốc theo trọng số, không trùng nếu bộ đủ món. (02/10: bỏ hẳn VIP - món nào cũng như nhau, hiếm hay không do trọng số)
 //   2. RÚT THĂM: tốn 1 LƯỢT QUAY (có từ Túi đồ boss, admin cấp) -> server bốc 1 trong 24 ô theo trọng số
-//      của từng món (VIP trọng số nhỏ = hiếm). Vòng giữ nguyên sau khi quay (giống game), muốn đổi món thì Làm mới.
+//      của từng món (trọng số nhỏ = hiếm). Vòng giữ nguyên sau khi quay (giống game), muốn đổi món thì Làm mới.
+//      02/10: MỖI VÒNG TỐI ĐA <max> LẦN QUAY (mặc định 40) - quay đủ thì phải Làm mới (trả KNB) mới quay tiếp,
+//      tránh 1 vòng có món ngon bị quay mãi. Đếm ở userData.vq.boardN, Làm mới thì về 0.
 //   3. Quà vào RƯƠNG VÒNG QUAY trên web (không hết hạn, tối đa RUONG_MAX dòng). Trúng món đã có trong rương thì CỘNG DỒN
 //      vào dòng cũ. Bấm Nhận -> hàng đợi quà game (đổi bản đồ là có). Người chơi tự xóa món không cần.
-// Cấu hình: dbCache._vqCfg = { on, gia, vip, pool: [{ id, sl, w, vip }] } - sửa ở panel tab 🎁 Quà tặng.
-// Người chơi: userData.vq = { luot, board: [{ id, sl, w, vip }], ruong: [{ k, id, sl, t, vip }], lich: [...] }
+// Cấu hình: dbCache._vqCfg = { on, gia, max, pool: [{ id, sl, w, off }] } - sửa ở panel tab 🎁 Quà tặng.
+// Người chơi: userData.vq = { luot, board: [{ id, sl, w }], boardN, ruong: [{ k, id, sl, t }], lich: [...] }
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const SO_O = 24, RUONG_MAX = 100, LICH_MAX = 30, LOG_MAX = 400;
+const SO_O = 24, RUONG_MAX = 100, LICH_MAX = 30, LOG_MAX = 400, MAX_MD = 40;
 let MAC_DINH = [];
 try { MAC_DINH = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'vongquay-macdinh.json'), 'utf8')); } catch { /* bộ trống */ }
 
@@ -31,7 +33,7 @@ module.exports = function vongQuay(d) {
         return {
             on: !!c.on,
             gia: Number.isInteger(c.gia) ? c.gia : 8000,
-            vip: Number.isInteger(c.vip) ? c.vip : 2,
+            max: Number.isInteger(c.max) && c.max > 0 ? c.max : MAX_MD,   // số lần quay tối đa / 1 vòng
             pool: pool.filter((x) => x && x.id > 0 && x.w > 0 && x.sl > 0 && !x.off),
             poolAll: pool,
             macDinh: !Array.isArray(c.pool),
@@ -45,12 +47,12 @@ module.exports = function vongQuay(d) {
         if (!Array.isArray(v.lich)) v.lich = [];
         if (!v.gop) {   // 02/10: gộp dòng trùng ID có từ trước khi có cộng dồn
             const m = new Map();
-            for (const x of v.ruong) { const y = m.get(x.id); if (y) { y.sl += x.sl; y.t = Math.max(y.t, x.t); y.vip = y.vip || x.vip; } else m.set(x.id, { ...x }); }
+            for (const x of v.ruong) { const y = m.get(x.id); if (y) { y.sl += x.sl; y.t = Math.max(y.t, x.t); } else m.set(x.id, { ...x }); }
             v.ruong = [...m.values()]; v.gop = 1;
         }
         return v;
     }
-    const ra = (x) => ({ id: x.id, sl: x.sl, vip: !!x.vip, ten: ten(x.id), ic: d.icon(x.id) });
+    const ra = (x) => ({ id: x.id, sl: x.sl, ten: ten(x.id), ic: d.icon(x.id) });
 
     // bốc k món theo trọng số, không lặp (thiếu món thì cho lặp lại)
     function bocNhieu(ds, k) {
@@ -66,17 +68,17 @@ module.exports = function vongQuay(d) {
         return out;
     }
     function taoVong(c) {
-        const vipDs = c.pool.filter((x) => x.vip), thuong = c.pool.filter((x) => !x.vip);
-        const nVip = Math.min(c.vip, vipDs.length, SO_O);
-        const ds = bocNhieu(vipDs, nVip).concat(bocNhieu(thuong.length ? thuong : vipDs, SO_O - nVip));
+        const ds = bocNhieu(c.pool, SO_O);
         for (let i = ds.length - 1; i > 0; i--) { const j = rnd(i + 1); [ds[i], ds[j]] = [ds[j], ds[i]]; }   // xáo vị trí
-        return ds.map((x) => ({ id: x.id, sl: x.sl, w: x.w, vip: !!x.vip }));
+        return ds.map((x) => ({ id: x.id, sl: x.sl, w: x.w }));
     }
 
     function webState(uid) {
         const c = cfg(), u = d.getUserData(uid), v = vqOf(u);
+        const coVong = !!(v.board && v.board.length), daQuay = coVong ? Math.min(v.boardN || 0, c.max) : 0;
         return {
             on: c.on, gia: c.gia, luot: v.luot, balance: u.points || 0, ruongMax: RUONG_MAX,
+            max: c.max, daQuay, conLai: coVong ? c.max - daQuay : 0,
             ingameName: (u.ingameName || '').trim(), linked: !!(u.tlbbGuid || u.ingameName),
             board: (v.board || []).map(ra),
             ruong: v.ruong.slice().reverse().map((x) => ({ ...ra(x), k: x.k, t: x.t })),
@@ -92,7 +94,7 @@ module.exports = function vongQuay(d) {
         const u = d.getUserData(uid), v = vqOf(u);
         if ((u.points || 0) < c.gia) return { error: `Cần ${c.gia.toLocaleString()} KNB để ${v.board ? 'làm mới' : 'mở'} vòng (bạn có ${(u.points || 0).toLocaleString()})` };
         if (c.gia) { d.updatePoints(uid, -c.gia); d.logDog('vongquay', uid, u.name || uid, -c.gia, `🍀 ${v.board ? 'Làm mới' : 'Mở'} vòng quay`); }
-        v.board = taoVong(c); v.boardT = Date.now();
+        v.board = taoVong(c); v.boardT = Date.now(); v.boardN = 0;
         d.saveDbNow();
         return { ok: true, ...webState(uid) };
     }
@@ -102,6 +104,7 @@ module.exports = function vongQuay(d) {
         if (!c.on) return { error: '🍀 Vòng quay đang tắt' };
         const u = d.getUserData(uid), v = vqOf(u);
         if (!v.board || !v.board.length) return { error: `Chưa có vòng - bấm Mở vòng (${c.gia.toLocaleString()} KNB) trước` };
+        if ((v.boardN || 0) >= c.max) return { error: `Vòng này đã quay đủ ${c.max} lần - bấm 🔄 Làm mới (${c.gia.toLocaleString()} KNB) để quay tiếp` };
         if (v.luot < 1) return { error: 'Hết lượt quay - đánh boss nhận Túi đồ boss để có thêm lượt' };
         if (v.ruong.length >= RUONG_MAX) return { error: `Rương đầy ${RUONG_MAX} món - nhận bớt vào game hoặc xóa bớt đã` };
         const tong = v.board.reduce((s, x) => s + (x.w > 0 ? x.w : 0), 0);
@@ -109,16 +112,15 @@ module.exports = function vongQuay(d) {
         let r = rnd(tong), o = 0;
         while (r >= v.board[o].w) { r -= v.board[o].w; o++; }
         const x = v.board[o];
-        v.luot -= 1;
-        const q = { k: Date.now().toString(36) + '-' + rnd(1e6).toString(36), id: x.id, sl: x.sl, vip: !!x.vip, t: Date.now() };
+        v.luot -= 1; v.boardN = (v.boardN || 0) + 1;
+        const q = { k: Date.now().toString(36) + '-' + rnd(1e6).toString(36), id: x.id, sl: x.sl, t: Date.now() };
         const cu = v.ruong.find((y) => y.id === x.id);   // trúng món đã có -> cộng dồn
-        if (cu) { cu.sl += x.sl; cu.t = q.t; cu.vip = cu.vip || q.vip; } else v.ruong.push(q);
-        v.lich.push({ id: x.id, sl: x.sl, vip: !!x.vip, t: q.t }); if (v.lich.length > LICH_MAX) v.lich.splice(0, v.lich.length - LICH_MAX);
+        if (cu) { cu.sl += x.sl; cu.t = q.t; } else v.ruong.push(q);
+        v.lich.push({ id: x.id, sl: x.sl, t: q.t }); if (v.lich.length > LICH_MAX) v.lich.splice(0, v.lich.length - LICH_MAX);
         const db = d.db(); if (!Array.isArray(db._vqLog)) db._vqLog = [];
-        db._vqLog.push({ t: q.t, uid, ten: u.name || uid, id: x.id, sl: x.sl, vip: !!x.vip });
+        db._vqLog.push({ t: q.t, uid, ten: u.name || uid, id: x.id, sl: x.sl });
         if (db._vqLog.length > LOG_MAX) db._vqLog.splice(0, db._vqLog.length - LOG_MAX);
         d.saveDbNow();
-        if (x.vip) d.writeLog('ADMIN', `[VÒNG QUAY] ⭐ ${u.name || uid} quay trúng VIP ${ten(x.id)} ×${x.sl}`);
         return { ok: true, o, qua: ra(x), ...webState(uid) };
     }
 
@@ -181,17 +183,17 @@ module.exports = function vongQuay(d) {
         const vi = Object.entries(db).filter(([k, x]) => /^\d{5,20}$/.test(k) && x && typeof x === 'object')
             .map(([k, x]) => ({ uid: k, ten: x.name || k, game: x.ingameName || '' }));
         return {
-            cfg: { on: c.on, gia: c.gia, vip: c.vip, macDinh: c.macDinh },
-            pool: c.poolAll.map((x) => ({ id: x.id, sl: x.sl, w: x.w, vip: !!x.vip, off: !!x.off, ten: ten(x.id), ic: d.icon(x.id) })),
+            cfg: { on: c.on, gia: c.gia, max: c.max, macDinh: c.macDinh },
+            pool: c.poolAll.map((x) => ({ id: x.id, sl: x.sl, w: x.w, off: !!x.off, ten: ten(x.id), ic: d.icon(x.id) })),
             nguoi, vi,
             log: (db._vqLog || []).slice(-80).reverse().map((x) => ({ ...x, tenMon: ten(x.id) })),
         };
     }
     function saveCfg(x, who) {
         x = x || {};
-        const gia = Math.floor(Number(x.gia)), vip = Math.floor(Number(x.vip));
+        const gia = Math.floor(Number(x.gia)), max = Math.floor(Number(x.max));
         if (!(gia >= 0 && gia <= 10000000)) return { error: 'Giá mở/làm mới phải 0 - 10.000.000 KNB' };
-        if (!(vip >= 0 && vip <= 12)) return { error: 'Số ô VIP phải 0 - 12' };
+        if (!(max >= 1 && max <= 1000)) return { error: 'Số lần quay mỗi vòng phải 1 - 1.000' };
         const items = new Set((d.tlbb.items ? d.tlbb.items() : []).map((it) => String(it.id)));
         if (!items.size) return { error: 'Bot chưa tải xong danh mục vật phẩm game, thử lại sau 1 phút' };
         if (!Array.isArray(x.pool) || x.pool.length > 1000) return { error: 'Bộ quà phải là danh sách tối đa 1.000 món' };
@@ -202,17 +204,17 @@ module.exports = function vongQuay(d) {
             if (!(sl >= 1 && sl <= 999)) return { error: `Dòng ${i + 1} (${ten(id)}): số lượng 1 - 999` };
             if (!(w >= 1 && w <= 100000)) return { error: `Dòng ${i + 1} (${ten(id)}): trọng số 1 - 100.000` };
             const key = id + ':' + sl; if (seen.has(key)) continue; seen.add(key);
-            pool.push({ id, sl, w, vip: !!p.vip, off: !!p.off });
+            pool.push({ id, sl, w, off: !!p.off });
         }
         const db = d.db();
-        db._vqCfg = { on: !!x.on, gia, vip, pool };
+        db._vqCfg = { on: !!x.on, gia, max, pool };
         d.saveDbNow();
-        d.writeLog('ADMIN', `[VÒNG QUAY] ${who || 'admin'} lưu cấu hình: ${x.on ? 'BẬT' : 'tắt'}, giá ${gia}, ${vip} ô VIP, ${pool.length} món (${pool.filter((p) => p.vip).length} VIP)`);
+        d.writeLog('ADMIN', `[VÒNG QUAY] ${who || 'admin'} lưu cấu hình: ${x.on ? 'BẬT' : 'tắt'}, giá ${gia}, ${max} lần quay/vòng, ${pool.length} món`);
         return { ok: true, ...adminState() };
     }
     function macDinh(who) {
         const db = d.db(); const c = db._vqCfg || {};
-        db._vqCfg = { on: !!c.on, gia: Number.isInteger(c.gia) ? c.gia : 8000, vip: Number.isInteger(c.vip) ? c.vip : 2 };
+        db._vqCfg = { on: !!c.on, gia: Number.isInteger(c.gia) ? c.gia : 8000, max: Number.isInteger(c.max) && c.max > 0 ? c.max : MAX_MD };
         d.saveDbNow();
         d.writeLog('ADMIN', `[VÒNG QUAY] ${who || 'admin'} đưa bộ quà về mặc định (${MAC_DINH.length} món vòng quay gốc)`);
         return { ok: true, ...adminState() };
