@@ -280,7 +280,7 @@ function startPanel(ctx) {
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
-                    '/api/palwheel/luckrate', '/api/pot/cfg', '/api/gift/save', '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
+                    '/api/palwheel/luckrate', '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
@@ -392,9 +392,10 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, message: r.message });
                 }
                 // 🍀 02/10: Vòng quay may mắn - cấu hình (chỉ cổng SUPER)
+                // 02/10: mod (cổng thường) sửa được cấu hình + bộ quà; CẤP LƯỢT QUAY chỉ SUPER (như cấp tiền)
                 if (ctx.vongQuay && path.startsWith('/api/vq/')) {
-                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
-                    const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                    if (path === '/api/vq/cap' && !epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cấp lượt quay chỉ làm được ở cổng SUPER' });
+                    const who = (epOk(req) ? 'SUPER ' : 'mod ') + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
                     const b = body || {};
                     let r;
                     if (path === '/api/vq/cfg') r = ctx.vongQuay.state();
@@ -1513,7 +1514,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" class="epOnly" style="display:none" onclick="tab('gift')">🎁 Quà tặng</button>
+        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
         <button data-tab="give" class="epOnly pwOff" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
@@ -2232,7 +2233,7 @@ const HTML = `<!DOCTYPE html>
     <!-- 📦 KHO ĐỒ TOÀN GAME (08/09) - CHỈ CỔNG SUPER: thay CreativeMenu client mod -->
     <div id="tab-gift" class="hidden">
       <div class="card">
-        <h2>🎁 Quà admin tặng <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
+        <h2>🎁 Quà admin tặng <span class="muted" style="font-size:13px;font-weight:400">(admin + mod)</span></h2>
         <div class="note">Danh sách <b>riêng</b>, không dính shop item - nên cùng một StaticItemId vừa bán ở shop vừa làm quà cũng không lẫn nhau nữa. Mỗi người <b>mỗi ngày nhận 1 lần</b> một quà (qua 00:00 nhận lại), số cái mỗi lần ở cột <b>Số cái/lần</b>. Bỏ tick <b>Phát</b> là quà biến mất với mọi người (dòng vẫn giữ). Người chơi nhận ở web: tab vàng <b>🎁 Quà</b> trong Hồ sơ, chỉ hiện khi còn quà chưa nhận hôm nay. Phải <b>online trong game</b> mới nhận được. Không dính tiền, không dính hạn ngày hay nợ.</div>
         <div class="row" style="margin-top:8px;gap:8px">
           <button class="btn-green" onclick="giftAddRow();giftDirty(true)">➕ Thêm quà</button>
@@ -2267,8 +2268,8 @@ const HTML = `<!DOCTYPE html>
         <div style="overflow:auto;margin-top:8px;max-height:520px">
           <table><thead><tr><th title="Bỏ tick = không bốc vào vòng (giữ dòng)">Bật</th><th></th><th>Vật phẩm</th><th>SL</th><th>Trọng số</th><th>VIP</th><th title="Xác suất trúng trong 1 lượt NẾU món có trên vòng">~ %/lượt</th><th></th></tr></thead><tbody id="vqaPool"></tbody></table>
         </div>
-        <h3 style="margin-top:14px">🎟️ Cấp lượt quay</h3>
-        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><select id="vqaVi" style="min-width:240px"></select><input class="mini-in" id="vqaN" type="number" value="10" style="width:90px"><button class="btn-green" onclick="vqaCap()">➕ Cấp lượt</button><span class="muted" style="font-size:12px">số âm = trừ lượt</span></div>
+        <h3 class="epOnly" style="display:none;margin-top:14px">🎟️ Cấp lượt quay <span class="muted" style="font-size:12px;font-weight:400">(chỉ cổng SUPER)</span></h3>
+        <div class="row epOnly" style="display:none;gap:8px;flex-wrap:wrap;align-items:center"><select id="vqaVi" style="min-width:240px"></select><input class="mini-in" id="vqaN" type="number" value="10" style="width:90px"><button class="btn-green" onclick="vqaCap()">➕ Cấp lượt</button><span class="muted" style="font-size:12px">số âm = trừ lượt</span></div>
         <div id="vqaNguoi" style="margin-top:8px"></div>
         <h3 style="margin-top:14px">📜 Lượt quay gần đây</h3>
         <div id="vqaLog" class="muted" style="font-size:13px;max-height:260px;overflow:auto"></div>
