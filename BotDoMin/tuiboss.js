@@ -33,19 +33,20 @@ const YQ_TIEN = [30308112, 30308113, 30308114, 30308115, 30308116, 30308117, 303
     30308124, 30308125, 30308126, 30308127, 30308128, 30308130, 30308131, 30308133, 30308139, 30308140];
 
 // Cách viết món: [id, sl] cố định · [[id...], sl] trộn (mỗi cái bốc 1 trong danh sách) · sl có thể là [min, max]
-const CHUNG = [[[MB6, BN6], 10], [PHIEU_QUAY, 2]];
-const KNB = 4000;
+// 02/10: bỏ Hạnh Vận Quả ×2 (vật phẩm game) -> LUOT lượt quay vòng quay trên web (vongquay.js), cộng khi bấm Nhận túi.
+const CHUNG = [[[MB6, BN6], 10]];
+const KNB = 4000, LUOT = 2;
 const HD = {
-    qtc: { ten: 'Q Tô Châu', mon: [...CHUNG, [CUU_THIEN, 1]], knb: KNB },
-    qll: { ten: 'Q Lâu Lan', mon: [...CHUNG, [CUU_THIEN, 1]], knb: KNB },
-    yto: { ten: 'Yến Tử Ổ', mon: [...CHUNG, [TBP[2], [2, 3]], [MA_HUYET, [2, 5]]], knb: KNB },
-    btkt: { ten: 'Binh Thánh Kỳ Trận', mon: [...CHUNG, [LONG_VAN5, 1], [CHUE, 10]], knb: KNB },
-    ttt: { ten: 'Tứ Tuyệt Trang', mon: [...CHUNG, [HON_NGOC, 10]], knb: KNB },
-    pmf: { ten: 'Phiêu Miểu Phong', mon: [...CHUNG, [NGU_DOC, 20], [GIAM_KHANG6, 1]], knb: KNB },
-    pmfkc: { ten: 'Phiêu Miểu Phong (khiêu chiến)', mon: [...CHUNG, [NGU_DOC, 20], [DIEU_VAN5, 1]], knb: KNB },
-    sattinh: { ten: 'Sát Tinh Bang', mon: [...CHUNG, [NGU_DOC, 20], [TBP, 5], [MA_HUYET, [1, 3]]], knb: KNB },
-    tts: { ten: 'Thiếu Thất Sơn', mon: [...CHUNG, [CCHTP, 5]], knb: KNB },
-    longquy: { ten: 'Long Quy', mon: [...CHUNG, [CCHTP, 3], [CHI_TON, 5], [CLD, [3, 5]]], knb: KNB, ngay: 3 },
+    qtc: { ten: 'Q Tô Châu', mon: [...CHUNG, [CUU_THIEN, 1]], knb: KNB, luot: LUOT },
+    qll: { ten: 'Q Lâu Lan', mon: [...CHUNG, [CUU_THIEN, 1]], knb: KNB, luot: LUOT },
+    yto: { ten: 'Yến Tử Ổ', mon: [...CHUNG, [TBP[2], [2, 3]], [MA_HUYET, [2, 5]]], knb: KNB, luot: LUOT },
+    btkt: { ten: 'Binh Thánh Kỳ Trận', mon: [...CHUNG, [LONG_VAN5, 1], [CHUE, 10]], knb: KNB, luot: LUOT },
+    ttt: { ten: 'Tứ Tuyệt Trang', mon: [...CHUNG, [HON_NGOC, 10]], knb: KNB, luot: LUOT },
+    pmf: { ten: 'Phiêu Miểu Phong', mon: [...CHUNG, [NGU_DOC, 20], [GIAM_KHANG6, 1]], knb: KNB, luot: LUOT },
+    pmfkc: { ten: 'Phiêu Miểu Phong (khiêu chiến)', mon: [...CHUNG, [NGU_DOC, 20], [DIEU_VAN5, 1]], knb: KNB, luot: LUOT },
+    sattinh: { ten: 'Sát Tinh Bang', mon: [...CHUNG, [NGU_DOC, 20], [TBP, 5], [MA_HUYET, [1, 3]]], knb: KNB, luot: LUOT },
+    tts: { ten: 'Thiếu Thất Sơn', mon: [...CHUNG, [CCHTP, 5]], knb: KNB, luot: LUOT },
+    longquy: { ten: 'Long Quy', mon: [...CHUNG, [CCHTP, 3], [CHI_TON, 5], [CLD, [3, 5]]], knb: KNB, luot: LUOT, ngay: 3 },
     lltb: { ten: 'Lâu Lan Tầm Bảo', mon: [[TAM_DAC, 15], [TAN_HIET, 10], [VO_HON, 1]], knb: 0, ngay: 2 },
     // 02/10: "Cờ 12h" = Kỳ Cuộc (Trân Long Kỳ Cuộc, thường 11:30-14:30 / 20:30-22:00 + chế độ nhanh). Game cho 1 lượt/ngày (MD_LAST_QIJU_DAY).
     kycuoc: { ten: 'Kỳ Cuộc (Cờ 12h)', mon: [[TAM_DAC, 15], [TAN_HIET, 5], [VO_HON, 1]], knb: 0, ngay: 1 },
@@ -91,8 +92,34 @@ function kho(db) {
 }
 const ngayVN = (t) => new Date(t + 7 * 3600000).toISOString().slice(0, 10);
 
+// 02/10: chuyển đổi 1 lần - Hạnh Vận Quả (30070501) trong cấu hình đã sửa và trong túi CHƯA nhận -> lượt quay web.
+// Dòng món chỉ có Hạnh Vận Quả thì bỏ, số lượng thành luot. Túi đã nhận giữ nguyên (lịch sử).
+const HVQ = 30070501;
+function chuyenHVQ(db) {
+    if (db._vqMigHVQ) return 0;
+    let n = 0;
+    const laHvq = (ids) => (Array.isArray(ids) ? ids.length === 1 && Number(ids[0]) === HVQ : Number(ids) === HVQ);
+    for (const c of Object.values(db._tuiBossCfg || {})) {
+        if (!c || !Array.isArray(c.mon)) continue;
+        let them = 0;
+        c.mon = c.mon.filter(([ids, sl]) => { if (!laHvq(ids)) return true; them += Array.isArray(sl) ? sl[1] : Number(sl) || 0; return false; });
+        if (them) { c.luot = (c.luot || 0) + them; n++; }
+    }
+    for (const ds of Object.values(db._tuiBoss || {})) {
+        for (const tui of ds) {
+            if (tui.nhan || !Array.isArray(tui.mon)) continue;
+            let them = 0;
+            tui.mon = tui.mon.filter(([id, sl]) => { if (Number(id) !== HVQ) return true; if (!(tui.xong || []).includes(id)) them += Number(sl) || 0; return false; });
+            if (them) { tui.luot = (tui.luot || 0) + them; n++; }
+        }
+    }
+    db._vqMigHVQ = Date.now();
+    return n;
+}
+
 // Đọc phần mới của file log. Trả về số túi vừa tạo.
 function poll(db) {
+    chuyenHVQ(db);
     let st;
     try { st = fs.statSync(FILE); } catch { return 0; }
     const pos = db._tuiBossPos || { off: 0, rest: '' };
@@ -128,7 +155,7 @@ function poll(db) {
                 if (ds.filter((x) => x.hd === hd && ngayVN(x.t) === hom).length >= cfg.ngay) continue;
             }
             ds.push({ id: t.toString(36) + '-' + boss + '-' + guid.slice(-4), hd, ten: cfg.ten, boss: Number(boss), t,
-                mon: boc(cfg.mon), knb: cfg.knb, nhan: 0 });
+                mon: boc(cfg.mon), knb: cfg.knb, luot: cfg.luot || 0, nhan: 0 });
             tao++;
         }
     }
@@ -149,7 +176,7 @@ function list(db, guid) {
 
 // Nhận 1 túi. giveItem(guid, id, sl) xếp hàng quà (lỗi chắc chắn chưa ghi = 'player not found').
 // congKnb(n) cộng ví web. Giao từng món, món nào xong đánh dấu, lỗi giữa chừng thì lần sau giao tiếp phần còn lại.
-async function nhan(db, guid, tuiId, giveItem, congKnb) {
+async function nhan(db, guid, tuiId, giveItem, congKnb, congLuot) {
     const ds = kho(db)[String(guid)] || [];
     const tui = ds.find((x) => x.id === tuiId);
     if (!tui) return { error: 'Không thấy túi này (hết hạn hoặc không phải của bạn)' };
@@ -165,6 +192,7 @@ async function nhan(db, guid, tuiId, giveItem, congKnb) {
             tui.xong.push(id);
         }
         if (tui.knb && !tui.daKnb) { congKnb(tui.knb, tui); tui.daKnb = 1; }
+        if (tui.luot && !tui.daLuot && congLuot) { congLuot(tui.luot, tui); tui.daLuot = 1; }
         tui.nhan = Date.now();
         return { ok: true, tui };
     } catch (e) {
@@ -173,7 +201,7 @@ async function nhan(db, guid, tuiId, giveItem, congKnb) {
 }
 
 // ===== 01/10: CẤU HÌNH SỬA ĐƯỢC TỪ PANEL (admin + mod) =====
-// db._tuiBossCfg[hd] = { on, mon, knb, ngay } ghi đè mặc định HD[hd]. ID boss cuối KHÔNG sửa ở đây (phải khớp roimap.lua của game).
+// db._tuiBossCfg[hd] = { on, mon, knb, ngay, luot } ghi đè mặc định HD[hd]. ID boss cuối KHÔNG sửa ở đây (phải khớp roimap.lua của game).
 // Mỗi dòng món: [id | [id,...], sl | [min,max]]  (nhiều ID = mỗi cái bốc ngẫu nhiên 1 trong danh sách).
 function cfgOf(db, hd) {
     const d = HD[hd]; const o = (db._tuiBossCfg || {})[hd];
@@ -183,8 +211,8 @@ const bossCua = (hd) => Object.keys(BOSS).filter((k) => BOSS[k] === hd).map(Numb
 const toRow = ([ids, sl]) => ({ ids: Array.isArray(ids) ? ids.slice() : [ids], min: Array.isArray(sl) ? sl[0] : sl, max: Array.isArray(sl) ? sl[1] : sl });
 function state(db) {
     return {
-        ds: Object.keys(HD).map((hd) => { const c = cfgOf(db, hd); return { hd, ten: c.ten, on: c.on !== false, knb: c.knb || 0, ngay: c.ngay || 0,
-            mon: c.mon.map(toRow), macDinh: { knb: HD[hd].knb || 0, ngay: HD[hd].ngay || 0, mon: HD[hd].mon.map(toRow) },
+        ds: Object.keys(HD).map((hd) => { const c = cfgOf(db, hd); return { hd, ten: c.ten, on: c.on !== false, knb: c.knb || 0, ngay: c.ngay || 0, luot: c.luot || 0,
+            mon: c.mon.map(toRow), macDinh: { knb: HD[hd].knb || 0, ngay: HD[hd].ngay || 0, luot: HD[hd].luot || 0, mon: HD[hd].mon.map(toRow) },
             sua: !!(db._tuiBossCfg || {})[hd], boss: bossCua(hd) }; }),
         log: (db._tuiBossCfgLog || []).slice(-40).reverse(),
     };
@@ -194,13 +222,15 @@ function ghiLog(db, hd, who, truoc, sau) {
     db._tuiBossCfgLog.push({ t: Date.now(), hd, ten: HD[hd].ten, who, truoc, sau });
     if (db._tuiBossCfgLog.length > 300) db._tuiBossCfgLog.splice(0, db._tuiBossCfgLog.length - 300);
 }
-const tom = (c) => ({ on: c.on !== false, knb: c.knb || 0, ngay: c.ngay || 0, mon: c.mon.map(toRow) });
+const tom = (c) => ({ on: c.on !== false, knb: c.knb || 0, ngay: c.ngay || 0, luot: c.luot || 0, mon: c.mon.map(toRow) });
 // inp = { hd, on, knb, ngay, mon: [{ ids:[...], min, max }] }; coItem(id) -> true nếu ID có trong game
 function save(db, inp, coItem, who) {
     const hd = String((inp && inp.hd) || '');
     if (!HD[hd]) return { error: 'Không có hoạt động này' };
     const int = (v) => (Number.isInteger(Number(v)) ? Number(v) : NaN);
     const knb = int(inp.knb), ngay = int(inp.ngay);
+    const luot = inp.luot === undefined ? (cfgOf(db, hd).luot || 0) : int(inp.luot);
+    if (!(luot >= 0 && luot <= 50)) return { error: 'Lượt quay web phải 0 - 50' };
     if (!(knb >= 0 && knb <= 100000)) return { error: 'KNB phải là số nguyên 0 - 100.000' };
     if (!(ngay >= 0 && ngay <= 50)) return { error: 'Trần túi/ngày phải 0 - 50 (0 = không giới hạn)' };
     if (!Array.isArray(inp.mon) || !inp.mon.length || inp.mon.length > 20) return { error: 'Cần 1 - 20 dòng món' };
@@ -216,7 +246,7 @@ function save(db, inp, coItem, who) {
     }
     const truoc = tom(cfgOf(db, hd));
     if (!db._tuiBossCfg || typeof db._tuiBossCfg !== 'object') db._tuiBossCfg = {};
-    db._tuiBossCfg[hd] = { on: inp.on !== false, mon, knb, ngay };
+    db._tuiBossCfg[hd] = { on: inp.on !== false, mon, knb, ngay, luot };
     ghiLog(db, hd, who, truoc, tom(cfgOf(db, hd)));
     return { ok: true };
 }
@@ -230,4 +260,4 @@ function reset(db, hd, who) {
     return { ok: true };
 }
 
-module.exports = { poll, list, nhan, state, save, reset, cfgOf, HD, BOSS, FILE };
+module.exports = { poll, list, nhan, state, save, reset, cfgOf, chuyenHVQ, HD, BOSS, FILE };

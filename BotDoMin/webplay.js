@@ -23,6 +23,7 @@ const TIENLEN_DIR = process.env.TIENLEN_DIR || nodePath.join(__dirname, '..', 'T
 // Toàn bộ ảnh + âm thanh gom ở assets.js (tự quét thư mục assets/) - thêm file mới
 // chỉ cần thả vào thư mục đó, không phải đụng vào file này nữa.
 const ASSETS = require('./assets');
+const ITEMICON = require('./itemicon');   // 🍀 02/10: icon vật phẩm game (tấm ảnh ở /opt/minigame/itemicon)
 
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
@@ -127,6 +128,8 @@ function startWebPlay(ctx) {
 
             // (Blackjack đã hủy 18/08 - /blackjack không còn; tab thay bằng 🎡 Vòng Quay.)
 
+            // 🍀 02/10: icon vật phẩm game - stream từ đĩa, không nạp RAM
+            if (req.method === 'GET' && path.startsWith('/itemicon/')) return ITEMICON.serve(req, res, path.slice(10));
             if (ASSETS.serve(req, res, path)) return;
 
             // 🃏 trang poker + ảnh lá bài. CHỈ 2 dạng đường dẫn, chặn mọi thứ khác (../ vân vân).
@@ -513,6 +516,16 @@ function startWebPlay(ctx) {
                     const r = await ctx.tuiBoss.nhan(userId, body.id);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true });
+                }
+                // 🍀 02/10: vòng quay may mắn
+                if (ctx.vongQuay && path === '/api/vq/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.vongQuay.state(userId) });
+                }
+                if (ctx.vongQuay && req.method === 'POST' && (path === '/api/vq/mo' || path === '/api/vq/quay' || path === '/api/vq/nhan')) {
+                    const body = await readBody(req);
+                    const r = path === '/api/vq/mo' ? ctx.vongQuay.mo(userId) : path === '/api/vq/quay' ? ctx.vongQuay.quay(userId) : await ctx.vongQuay.nhan(userId, String(body.k || ''));
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 if (ctx.daily && path === '/api/daily/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.daily.state(userId) });
@@ -1220,6 +1233,32 @@ const PAGE = [
     '#gmActs{display:flex;gap:10px;justify-content:flex-end}',
     '#gmActs button{min-width:100px;padding:10px 14px;font-weight:700;border-radius:9px}',
     '#gmCancel{background:#3a4155;color:#fff}',
+    // 🍀 02/10: Vòng Quay May Mắn
+    '#vqBoard{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(5,auto);gap:4px;padding:8px;border-radius:14px;background:linear-gradient(180deg,#5a1414,#3a0c0c);border:2px solid #c9a227;box-shadow:inset 0 0 0 1px #ffd76a55,0 6px 24px rgba(0,0,0,.4)}',
+    '.vqO{position:relative;aspect-ratio:1;border-radius:7px;background:#1b1410;border:2px solid #6b4a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:transform .08s}',
+    '.vqO.vip{border-color:#ffd76a;box-shadow:0 0 8px #ffcf5c99,inset 0 0 6px #ffcf5c66}',
+    '.vqO.hl{border-color:#fff;box-shadow:0 0 0 2px #3ddc84,0 0 14px #3ddc84;transform:scale(1.08);z-index:2}',
+    '.vqIc{display:block;width:100%;height:100%;background-repeat:no-repeat}',
+    '.vqIcS{display:block;width:40px;height:40px;flex:0 0 40px;border-radius:6px;background-repeat:no-repeat;border:1px solid #6b4a1a}',
+    '.vqNo{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:20px}',
+    '.vqSl{position:absolute;right:2px;bottom:1px;font-size:11px;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000}',
+    '.vqQ{color:#8a6a3a;font-weight:800;font-size:18px}',
+    '.vqMid{grid-row:2 / span 3;grid-column:2 / span 7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;border-radius:10px;background:radial-gradient(circle,#4a1010,#2a0808);border:1px solid #c9a22788;text-align:center}',
+    '.vqT1{font-size:13px;color:#ffd76a}',
+    '.vqT2{font-size:11px;color:#e8c9a0}',
+    '.vqBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}',
+    '.vqBtns button{display:flex;flex-direction:column;align-items:center;min-width:120px;padding:9px 14px;border-radius:10px;font-weight:900;font-size:15px}',
+    '.vqBtns small{font-weight:600;font-size:11px;opacity:.85}',
+    '.vqMo{background:linear-gradient(180deg,#3a2e10,#2a200a);border:1px solid #c9a227;color:#ffd76a}',
+    '.vqRut{background:linear-gradient(180deg,#e04848,#a61f1f);border:1px solid #ffb0b0;color:#fff}',
+    '.vqBtns button:disabled{opacity:.45}',
+    '.vqList{display:flex;flex-direction:column;gap:6px;max-height:380px;overflow:auto}',
+    '.vqR{display:flex;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--line);border-radius:9px}',
+    '.vqR.vip{border-color:#ffd76a;background:#3a2e1033}',
+    '.vqRn{flex:1;min-width:0;font-size:13px}',
+    '.vqR button{flex:0 0 auto;padding:6px 12px;border-radius:8px}',
+    '.vqNhanAll{background:linear-gradient(180deg,#3ddc84,#2aa564);color:#08210f;font-weight:800;padding:7px 12px;border-radius:9px}',
+    '@media (max-width:520px){#vqBoard{gap:2px;padding:4px}.vqO{border-width:1px;border-radius:5px}.vqSl{font-size:9px}.vqBtns button{min-width:96px;padding:7px 8px;font-size:13px}.vqT1,.vqT2{font-size:11px}}',
     // 🐾 01/10: Chọn Pet Boss
     '#pbModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:110;padding:16px}',
     '#pbModal.hidden{display:none}',
@@ -2171,6 +2210,7 @@ const PAGE = [
     '<button id="navPal" class="hidden" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" class="hidden" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
     '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
+    '<button id="navVq" onclick="go(\'vq\')">🍀 Vòng Quay</button>',
     '<button id="navDog" onclick="go(\'dog\')">💸 Chuyển/Rút</button>',
     '</div>',
 
@@ -2449,6 +2489,15 @@ const PAGE = [
     '</div>', // hết #pageShop
 
     // ================= TRANG 💸 CHUYỂN / RÚT KNB (28/08) =================
+    // 🍀 02/10: Vòng Quay May Mắn (vòng 24 ô kiểu game + rương quà)
+    '<div id="pageVq" class="hidden">',
+    '<div class="card">',
+    '<div class="row"><h2 style="margin:0">🍀 Vòng Quay May Mắn</h2><div class="muted" id="vqStat">-</div></div>',
+    '<div class="muted" style="font-size:12px;margin:4px 0 10px">Mở / làm mới vòng bằng KNB để bốc 24 món · rút thăm bằng lượt quay (có trong 🎒 Túi đồ boss) · ô viền vàng là món VIP, rất hiếm.</div>',
+    '<div id="vqBoard"><div class="muted">Đang tải...</div></div>',
+    '</div>',
+    '<div class="card"><h3 style="margin:0 0 8px">🧰 Rương vòng quay</h3><div id="vqRuong"><div class="muted">Đang tải...</div></div></div>',
+    '</div>',
     '<div id="pageDog" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">💸 Chuyển tiền</h2><div class="muted" id="dogTfStat">-</div></div>',
@@ -4038,7 +4087,7 @@ const PAGE = [
     'else{el.textContent="--";el.style.color=""}},1000);',
     'setInterval(rlLoad,2000);',
 
-    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
@@ -4053,6 +4102,7 @@ const PAGE = [
     '$("pagePal").classList.toggle("hidden",p!=="pal");',
     '$("pagePick").classList.toggle("hidden",p!=="pick");',
     '$("pageShop").classList.toggle("hidden",p!=="shop");',
+    '$("pageVq").classList.toggle("hidden",p!=="vq");',
     '$("pageDog").classList.toggle("hidden",p!=="dog");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("pageDebt").classList.toggle("hidden",p!=="debt");',
@@ -4071,6 +4121,7 @@ const PAGE = [
     '$("navPal").classList.toggle("on",p==="pal");',
     '$("navPick").classList.toggle("on",p==="pick");',
     '$("navShop").classList.toggle("on",p==="shop");',
+    '$("navVq").classList.toggle("on",p==="vq");',
     '$("navDog").classList.toggle("on",p==="dog");',
     '$("navDaily").classList.toggle("on",p==="daily");',
     '$("navDebt").classList.toggle("on",p==="debt");',
@@ -4087,11 +4138,11 @@ const PAGE = [
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
     '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
-    '["navDaily","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navDaily","navPal","navPick","navShop","navVq","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
     'if(p==="tienlen"){var tf=$("tlFrame");if(tf&&!/\\/tienlen\\/$/.test(tf.src))tf.src="/tienlen/"}',   // 🀄
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="vq")vqSync();else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
@@ -4955,7 +5006,7 @@ const PAGE = [
     'var cho=j.tui.filter(function(x){return !x.nhan});st.textContent=cho.length+" túi chưa nhận";',
     'if(!j.tui.length){box.innerHTML="<div class=\\"muted\\">Chưa có túi nào ("+esc(j.ingameName)+"). Hạ boss cuối phó bản rồi quay lại sau 10 giây.</div>";return}',
     'var h="";for(var i=0;i<j.tui.length;i++){var x=j.tui[i],d=new Date(x.t);var tg=("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);',
-    'var m=x.mon.map(function(a){return esc(j.ten[a[0]]||("#"+a[0]))+" ×"+a[1]}).join(", ")+(x.knb?", <b>"+Number(x.knb).toLocaleString()+" KNB</b>":"");',
+    'var m=x.mon.map(function(a){return esc(j.ten[a[0]]||("#"+a[0]))+" ×"+a[1]}).join(", ")+(x.knb?", <b>"+Number(x.knb).toLocaleString()+" KNB</b>":"")+(x.luot?", <b>🍀 "+x.luot+" lượt quay</b>":"");',
     'h+="<div style=\\"border:1px solid #2a3340;border-radius:9px;padding:8px 10px;margin-bottom:6px\\"><div class=\\"row\\" style=\\"gap:8px\\"><b>"+esc(x.ten)+"</b><span class=\\"muted\\" style=\\"font-size:12px\\">"+tg+"</span>"+(x.nhan?"<span style=\\"margin-left:auto;color:#7ee2a8;font-size:12px\\">✅ Đã nhận</span>":"<button class=\\"tbBtn\\" onclick=\\"tbNhan(\'"+x.id+"\',this)\\">Nhận</button>")+"</div><div style=\\"font-size:13px;margin-top:4px\\">"+m+"</div></div>"}',
     'box.innerHTML=h}).catch(function(){})}',
     'function tbNhan(id,b){if(b)b.disabled=true;api("/api/tuiboss/nhan",{id:id}).then(function(){toast("✅ Đã nhận túi - đổi bản đồ trong game để lấy đồ");dailySync()}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"));if(b)b.disabled=false})}',
@@ -5344,6 +5395,37 @@ const PAGE = [
     'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent=vaoRuong?"⏳ Đang bỏ vào rương...":"⏳ Đang giao vào game...";',
     'api("/api/itemshop/buy",{itemId:id,qty:q,vaoRuong:!!vaoRuong}).then(function(j){ISBUSY=false;isBtnLock(false);if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");if(j.ruong){IK=j.ruong;ikBadge(IK.total)}isSync()}).catch(function(e){ISBUSY=false;isBtnLock(false);if(btn)btn.textContent=chu;toast("❌ "+e.message);isSync()})}',
     '',
+    // ===== 🍀 02/10: VÒNG QUAY MAY MẮN - icon cắt từ tấm ảnh game (/itemicon/), đèn chạy quanh 24 ô rồi dừng ở ô server bốc
+    'var VQ=null,VQBUSY=false,VQHL=-1;',
+    'function vqIcon(ic,cls){if(!ic)return "<i class=\\""+(cls||"vqIc")+" vqNo\\">📦</i>";var sx=ic.w/64*100,sy=ic.h/64*100,px=ic.w>64?ic.x/(ic.w-64)*100:0,py=ic.h>64?ic.y/(ic.h-64)*100:0;return "<i class=\\""+(cls||"vqIc")+"\\" style=\\"background-image:url(/itemicon/"+encodeURIComponent(ic.f)+");background-size:"+sx+"% "+sy+"%;background-position:"+px.toFixed(3)+"% "+py.toFixed(3)+"%\\"></i>"}',
+    'function vqPos(i){if(i<9)return [1,i+1];if(i<12)return [i-7,9];if(i<21)return [5,9-(i-12)];return [5-(i-20),1]}',
+    'function vqSync(){api("/api/vq/state").then(function(j){VQ=j;vqRender()}).catch(function(e){toast("❌ "+e.message)})}',
+    'function vqRender(){if(!VQ)return;var j=VQ,h="";',
+    'if(!j.on){$("vqBoard").innerHTML="<div class=\\"muted\\" style=\\"padding:18px\\">🍀 Vòng quay đang tạm tắt - admin sẽ mở sớm.</div>";$("vqRuong").innerHTML="";$("vqStat").textContent="";return}',
+    '$("vqStat").innerHTML="🎟️ <b>"+j.luot+"</b> lượt quay · ví "+vnd(j.balance)+" KNB";',
+    'for(var i=0;i<24;i++){var x=j.board[i],p=vqPos(i);h+="<div class=\\"vqO"+(x&&x.vip?" vip":"")+(i===VQHL?" hl":"")+"\\" id=\\"vqo"+i+"\\" style=\\"grid-row:"+p[0]+";grid-column:"+p[1]+"\\" title=\\""+(x?esc(x.ten)+" ×"+x.sl+(x.vip?" (VIP)":""):"")+"\\">"+(x?vqIcon(x.ic)+(x.sl>1?"<b class=\\"vqSl\\">"+x.sl+"</b>":""):"<span class=\\"vqQ\\">?</span>")+"</div>"}',
+    'var co=j.board.length>0;',
+    'h+="<div class=\\"vqMid\\"><div class=\\"vqT1\\">"+(co?"Mở hoặc <b>làm mới</b> vòng quay tốn <b>"+vnd(j.gia)+" KNB</b>":"Bấm <b>Mở vòng</b> để bốc 24 món (<b>"+vnd(j.gia)+" KNB</b>)")+"</div>";',
+    'h+="<div class=\\"vqBtns\\"><button class=\\"vqMo\\" onclick=\\"vqMo()\\""+(VQBUSY?" disabled":"")+">"+(co?"🔄 Làm mới":"🔓 Mở vòng")+"<small>"+vnd(j.gia)+" KNB</small></button>";',
+    'h+="<button class=\\"vqRut\\" onclick=\\"vqQuay()\\""+(VQBUSY||!co||j.luot<1?" disabled":"")+">🎯 Rút thăm<small>1 lượt · còn "+j.luot+"</small></button></div>";',
+    'h+="<div class=\\"vqT2\\">Mỗi lượt tốn 1 <b>lượt quay</b> (có trong 🎒 Túi đồ boss) · quà vào rương bên dưới</div></div>";',
+    '$("vqBoard").innerHTML=h;',
+    'var r=j.ruong||[];var rh="";',
+    'if(!r.length)rh="<div class=\\"muted\\">Rương trống. Quay trúng gì sẽ nằm ở đây, bấm Nhận để gửi vào game.</div>";',
+    'else{rh="<div class=\\"row\\" style=\\"gap:8px;margin-bottom:8px\\"><b>"+r.length+" món</b>"+(j.linked?"<button class=\\"vqNhanAll\\" onclick=\\"vqNhan(\'all\',this)\\">📥 Nhận tất cả vào game</button>":"<span class=\\"muted\\">Chưa liên kết nhân vật - nhắn admin để nhận vào game</span>")+"</div><div class=\\"vqList\\">";',
+    'for(var k=0;k<r.length;k++){var y=r[k];rh+="<div class=\\"vqR"+(y.vip?" vip":"")+"\\">"+vqIcon(y.ic,"vqIcS")+"<div class=\\"vqRn\\"><div>"+esc(y.ten)+" <b>×"+y.sl+"</b></div><div class=\\"muted\\" style=\\"font-size:11px\\">"+new Date(y.t).toLocaleString("vi-VN")+"</div></div>"+(j.linked?"<button onclick=\\"vqNhan(\'"+y.k+"\',this)\\">Nhận</button>":"")+"</div>"}rh+="</div>"}',
+    '$("vqRuong").innerHTML=rh}',
+    'function vqLock(on){VQBUSY=on;var b=document.querySelectorAll("#vqBoard button");for(var i=0;i<b.length;i++)b[i].disabled=on}',
+    'async function vqMo(){if(VQBUSY||!VQ)return;var co=VQ.board.length>0;',
+    'if(!(await gConfirm((co?"Làm mới":"Mở")+" vòng quay với giá <b>"+vnd(VQ.gia)+" KNB</b>?<br>Server bốc lại 24 món mới"+(co?" (vòng hiện tại sẽ mất)":"")+".",co?"🔄 Làm mới":"🔓 Mở vòng")))return;',
+    'vqLock(true);api("/api/vq/mo",{}).then(function(j){VQBUSY=false;VQHL=-1;VQ=j;if(j.balance!==undefined)setBal(j.balance);vqRender();toast("🍀 Đã bốc 24 món mới")}).catch(function(e){VQBUSY=false;vqRender();toast("❌ "+e.message)})}',
+    'function vqQuay(){if(VQBUSY||!VQ)return;vqLock(true);',
+    'api("/api/vq/quay",{}).then(function(j){var dich=j.o,cur=VQHL<0?0:VQHL,vong=24*3+((dich-cur+24)%24),buoc=0;',
+    'var chay=function(){if(VQHL>=0){var a=$("vqo"+VQHL);if(a)a.classList.remove("hl")}VQHL=(cur+buoc)%24;var b=$("vqo"+VQHL);if(b)b.classList.add("hl");',
+    'if(buoc>=vong){VQBUSY=false;VQ=j;vqRender();var q=j.qua;toast((q.vip?"🌟 VIP! ":"🎉 ")+"Trúng "+q.ten+" ×"+q.sl+" - đã vào rương");return}',
+    'buoc++;var con=vong-buoc;setTimeout(chay,con<6?220+(6-con)*90:(con<16?90:40))};chay()}).catch(function(e){VQBUSY=false;vqRender();toast("❌ "+e.message)})}',
+    'function vqNhan(k,btn){if(VQBUSY)return;if(btn)btn.disabled=true;var chu=btn?btn.textContent:"";if(btn)btn.textContent="⏳...";',
+    'api("/api/vq/nhan",{k:k}).then(function(j){VQ=j;vqRender();toast(j.message||"✅ Đã gửi vào game")}).catch(function(e){if(btn){btn.disabled=false;btn.textContent=chu}toast("❌ "+e.message);vqSync()})}',
     // ===== 🐾 01/10: CHỌN PET BOSS - thẻ giả "__petboss" chèn vào nhóm ⭐ (pbInject), bấm mở popup chọn skin -> kiểu -> Nhận
     'var PB=null,PBSKIN=null,PBOPT=-1,PBBUSY=false;',
     'function pbInject(j){var p=j.petBoss;if(!p||!p.on||!j.items)return;j.items.unshift({id:"__petboss",cat:"important",name:p.name,price:p.price,max:1,img:p.img,note:(p.note?p.note+" · ":"")+"Bản "+p.banLabel+" - mỗi người chọn 1 con",pet:1});if(p.picked)j.once=(j.once||[]).concat(["__petboss"])}',

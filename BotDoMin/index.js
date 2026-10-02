@@ -1930,6 +1930,11 @@ const PB = require('./petboss')({
     db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, featGuard, debtBlock,
     deliverBusy, deliverLock, deliverUnlock, tlbb,
 });
+// 🍀 02/10: vòng quay may mắn trên web (vongquay.js) + icon vật phẩm game (itemicon.js, tấm ảnh ở /opt/minigame/itemicon)
+const ITEMICON = require('./itemicon');
+const VQ = require('./vongquay')({
+    db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, tlbb, icon: ITEMICON.icon,
+});
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
 // chối - người chơi sửa client cũng không lách được. Lưu ở dbCache._featOff (chỉ lưu mục ĐANG TẮT,
@@ -7509,12 +7514,14 @@ client.once('ready', async (c) => {
                     if (!guid) return { error: 'Chưa liên kết nhân vật trong game' };
                     const r = await tuiBoss.nhan(dbCache, guid, String(id || ''), (g, itemId, n) => tlbb.giveItem(g, itemId, n), (knb, tui) => {
                         updatePoints(uid, knb); logDog('tuiboss', uid, u.name || uid, knb, `🎒 Túi boss ${tui.ten}`);
-                    });
+                    }, (luot, tui) => VQ.congLuot(uid, luot, `🎒 Túi boss ${tui.ten}`));   // 🍀 02/10: lượt quay web thay Hạnh Vận Quả
                     saveDbNow();
-                    if (!r.error) writeLog('SYSTEM', `[TÚI BOSS] ${u.name || uid} (${guid}) nhận túi ${r.tui.ten}: ${r.tui.mon.map((m) => m[0] + 'x' + m[1]).join(', ')}${r.tui.knb ? ' + ' + r.tui.knb + ' KNB' : ''}`);
+                    if (!r.error) writeLog('SYSTEM', `[TÚI BOSS] ${u.name || uid} (${guid}) nhận túi ${r.tui.ten}: ${r.tui.mon.map((m) => m[0] + 'x' + m[1]).join(', ')}${r.tui.knb ? ' + ' + r.tui.knb + ' KNB' : ''}${r.tui.luot ? ' + ' + r.tui.luot + ' lượt quay' : ''}`);
                     return r;
                 },
             },
+            // 🍀 02/10: vòng quay may mắn (mở/làm mới bằng KNB, quay bằng lượt từ túi boss, quà vào rương web)
+            vongQuay: { state: (uid) => VQ.webState(uid), mo: (uid) => VQ.mo(uid), quay: (uid) => VQ.quay(uid), nhan: (uid, k) => VQ.nhan(uid, k) },
             gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),
@@ -7687,6 +7694,9 @@ client.once('ready', async (c) => {
             setItemShop,
             petBoss: { state: () => PB.adminState(), save: (x) => PB.setCfg(x), reset: (uid) => PB.resetPick(uid), refresh: () => PB.refresh() },   // 🐾 01/10
             // 🎒 01/10: cấu hình Túi đồ boss (admin + mod sửa được; ID boss cuối cố định theo game)
+            // 🍀 02/10: cấu hình vòng quay (tab 🎁 Quà tặng, chỉ SUPER)
+            vongQuay: { state: () => VQ.adminState(), save: (x, who) => VQ.saveCfg(x, who), macDinh: (who) => VQ.macDinh(who),
+                cap: (uid, n, who) => VQ.capLuot(uid, n, who), tim: (q) => VQ.tim(q) },
             tuiBossCfg: {
                 state: () => {
                     const st = tuiBoss.state(dbCache); const can = new Set();

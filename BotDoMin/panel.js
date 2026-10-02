@@ -5,6 +5,7 @@ const http = require('http');
 const crypto = require('crypto');
 // 29/09 NetCo4: tab 🛠️ GM Thiên Long gọi API nội bộ panel GM qua tlbb.gmCall (xem tlbb.js)
 const { gmCall } = require('./tlbb');
+const ITEMICON = require('./itemicon');   // 🍀 02/10: icon vật phẩm game cho tab Quà tặng (vòng quay)
 
 function startPanel(ctx) {
     const PASSWORD = ctx.password;
@@ -218,6 +219,7 @@ function startPanel(ctx) {
         try {
             const url = new URL(req.url, 'http://localhost');
             const path = url.pathname;
+            if (req.method === 'GET' && path.startsWith('/itemicon/')) return ITEMICON.serve(req, res, path.slice(10));   // 🍀 02/10
 
             // Trang chủ. Nhúng thẳng trạng thái auth vào HTML thay vì để client tự dò
             // - client dò bằng fetch dễ hỏng khi trình duyệt còn cache bản JS cũ.
@@ -388,6 +390,21 @@ function startPanel(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     ctx.writeLog('ADMIN', `[PANEL QUÀ RIÊNG] ${body.where === 'game' ? 'vào game' : 'vào rương'}: ${body.itemId} x${body.qty} -> ${rec.name || uid}`);
                     return sendJSON(res, 200, { ok: true, message: r.message });
+                }
+                // 🍀 02/10: Vòng quay may mắn - cấu hình (chỉ cổng SUPER)
+                if (ctx.vongQuay && path.startsWith('/api/vq/')) {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                    const b = body || {};
+                    let r;
+                    if (path === '/api/vq/cfg') r = ctx.vongQuay.state();
+                    else if (path === '/api/vq/save') r = ctx.vongQuay.save(b, who);
+                    else if (path === '/api/vq/macdinh') r = ctx.vongQuay.macDinh(who);
+                    else if (path === '/api/vq/cap') r = ctx.vongQuay.cap(b.uid, b.n, who);
+                    else if (path === '/api/vq/tim') r = { items: ctx.vongQuay.tim(b.q) };
+                    else return sendJSON(res, 404, { ok: false, error: 'Không có API này' });
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 // 🎒 01/10: Túi đồ boss - cấu hình (admin + mod đều sửa được; mọi lần lưu ghi cổng + IP vào lịch sử)
                 if (ctx.tuiBossCfg && path === '/api/tuiboss/cfg') {
@@ -2229,6 +2246,33 @@ const HTML = `<!DOCTYPE html>
           </table>
         </div>
       </div>
+      <div class="card" id="vqCard">
+        <h2>🍀 Vòng quay may mắn <span class="muted" style="font-size:13px;font-weight:400">(web người chơi → nhóm 🪪 Cá nhân → 🍀 Vòng Quay)</span></h2>
+        <div class="note">Giống vòng quay trong game: người chơi trả <b>KNB</b> để <b>mở / làm mới</b> vòng (server bốc 24 món từ bộ quà dưới đây: số ô VIP + phần còn lại món thường, theo trọng số). Mỗi lần <b>rút thăm</b> tốn <b>1 lượt quay</b> (có trong 🎒 Túi đồ boss, hoặc admin cấp ở dưới), server bốc 1 trong 24 ô theo trọng số. Quà vào <b>rương vòng quay</b> trên web, người chơi bấm Nhận để gửi vào game. Trọng số càng nhỏ càng hiếm.</div>
+        <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="vqOn" style="width:auto;margin:0"> <b>Bật</b> trên web</label>
+          <label>Giá mở / làm mới (KNB) <input class="mini-in" id="vqGia" type="number" min="0" style="width:110px"></label>
+          <label>Số ô VIP <input class="mini-in" id="vqVip" type="number" min="0" max="12" style="width:60px" oninput="vqaDraw()"></label>
+          <button class="btn-green" onclick="vqaSave()">💾 Lưu vòng quay</button>
+          <button class="btn-grey" onclick="vqaMacDinh()">↩ Bộ quà mặc định</button>
+          <button class="btn-grey" onclick="vqaLoad()">🔄 Tải lại</button>
+        </div>
+        <div id="vqaSum" class="muted" style="font-size:12px;margin-top:6px">Bấm vào tab là tải...</div>
+        <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">
+          <input id="vqaQ" placeholder="🔎 Tìm vật phẩm trong game để thêm (tên không dấu hoặc ID)" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')vqaTim()">
+          <button onclick="vqaTim()">Tìm</button>
+          <input id="vqaLoc" placeholder="Lọc bộ quà đang có..." style="width:200px" oninput="vqaDraw()">
+        </div>
+        <div id="vqaKq" style="margin-top:6px"></div>
+        <div style="overflow:auto;margin-top:8px;max-height:520px">
+          <table><thead><tr><th title="Bỏ tick = không bốc vào vòng (giữ dòng)">Bật</th><th></th><th>Vật phẩm</th><th>SL</th><th>Trọng số</th><th>VIP</th><th title="Xác suất trúng trong 1 lượt NẾU món có trên vòng">~ %/lượt</th><th></th></tr></thead><tbody id="vqaPool"></tbody></table>
+        </div>
+        <h3 style="margin-top:14px">🎟️ Cấp lượt quay</h3>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><select id="vqaVi" style="min-width:240px"></select><input class="mini-in" id="vqaN" type="number" value="10" style="width:90px"><button class="btn-green" onclick="vqaCap()">➕ Cấp lượt</button><span class="muted" style="font-size:12px">số âm = trừ lượt</span></div>
+        <div id="vqaNguoi" style="margin-top:8px"></div>
+        <h3 style="margin-top:14px">📜 Lượt quay gần đây</h3>
+        <div id="vqaLog" class="muted" style="font-size:13px;max-height:260px;overflow:auto"></div>
+      </div>
     </div>
     <div id="tab-give" class="hidden">
       <div class="card">
@@ -2874,7 +2918,7 @@ function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
   ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'&&!TB.st)tbLoad();if(t==='gift')giftFill(true);if(t==='poker')pokerFill();
+  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'&&!TB.st)tbLoad();if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -4492,6 +4536,40 @@ async function featSet(key,off){
 // 🎁 15/09 (chiều): QUÀ ADMIN TẶNG - bảng riêng, lưu vào _giftShop, không dính shop item
 var GFDIRTY=false,GFSIG='';
 function giftDirty(on){GFDIRTY=!!on;var b=document.getElementById('giftSaveBtn');if(b)b.textContent=on?'💾 Lưu quà (CHƯA LƯU)':'💾 Lưu quà';}
+// 🍀 02/10: Vòng quay may mắn (tab 🎁 Quà tặng, chỉ SUPER). Tải khi mở tab, lưu xong tải lại.
+var VQA=null,VQAKQ=[];
+function vqaIc(ic){if(!ic)return '<span style="display:inline-block;width:32px;height:32px;line-height:32px;text-align:center">📦</span>';var sx=ic.w/64*100,sy=ic.h/64*100,px=ic.w>64?ic.x/(ic.w-64)*100:0,py=ic.h>64?ic.y/(ic.h-64)*100:0;
+  return '<i style="display:inline-block;width:32px;height:32px;vertical-align:middle;border-radius:5px;background-repeat:no-repeat;background-image:url(/itemicon/'+encodeURIComponent(ic.f)+');background-size:'+sx+'% '+sy+'%;background-position:'+px.toFixed(3)+'% '+py.toFixed(3)+'%"></i>';}
+function vqaEl(id){return document.getElementById(id);}
+function vqaLoad(){api('/api/vq/cfg').then(function(j){VQA=j;vqaFill();}).catch(function(e){toast('❌ '+e.message);});}
+function vqaFill(){var c=VQA.cfg;vqaEl('vqOn').checked=!!c.on;vqaEl('vqGia').value=c.gia;vqaEl('vqVip').value=c.vip;
+  vqaEl('vqaVi').innerHTML=VQA.vi.map(function(v){return '<option value="'+v.uid+'">'+esc(v.ten)+(v.game?' · 🎮 '+esc(v.game):'')+'</option>';}).join('');
+  vqaDraw();vqaNguoi();vqaLogDraw();}
+function vqaTong(){var on=VQA.pool.filter(function(x){return !x.off;});var v=on.filter(function(x){return x.vip;}),t=on.filter(function(x){return !x.vip;});
+  var av=v.length?v.reduce(function(s,x){return s+x.w;},0)/v.length:0,at=t.length?t.reduce(function(s,x){return s+x.w;},0)/t.length:av;
+  var nv=Math.min(Number(vqaEl('vqVip').value)||0,v.length,24);return {nv:nv,v:v.length,t:t.length,E:nv*av+(24-nv)*at};}
+function vqaDraw(){if(!VQA)return;var loc=(vqaEl('vqaLoc').value||'').toLowerCase();var s=vqaTong();
+  vqaEl('vqaSum').innerHTML='Bộ quà: <b>'+VQA.pool.length+'</b> món · đang bật '+s.v+' VIP + '+s.t+' thường'+(VQA.cfg.macDinh?' · <b>đang dùng bộ mặc định</b> (377 món vòng quay gốc của server)':'')+' · tổng trọng số 1 vòng ước tính '+Math.round(s.E)+'. Sửa xong nhớ bấm <b>💾 Lưu vòng quay</b>.';
+  vqaEl('vqaPool').innerHTML=VQA.pool.map(function(x,i){if(loc&&String(x.id).indexOf(loc)<0&&String(x.ten).toLowerCase().indexOf(loc)<0)return '';var pct=s.E>0?x.w/s.E*100:0;
+    return '<tr style="'+(x.vip?'background:#3a2e1055;':'')+(x.off?'opacity:.45;':'')+'"><td><input type="checkbox" style="width:auto" '+(x.off?'':'checked')+' onchange="VQA.pool['+i+'].off=!this.checked;vqaDraw()"></td><td>'+vqaIc(x.ic)+'</td><td>'+esc(x.ten)+' <span class="muted">#'+x.id+'</span></td>'
+    +'<td><input class="mini-in" style="width:64px" type="number" min="1" max="999" value="'+x.sl+'" onchange="VQA.pool['+i+'].sl=Number(this.value)"></td>'
+    +'<td><input class="mini-in" style="width:84px" type="number" min="1" max="100000" value="'+x.w+'" onchange="VQA.pool['+i+'].w=Number(this.value);vqaDraw()"></td>'
+    +'<td><input type="checkbox" style="width:auto" '+(x.vip?'checked':'')+' onchange="VQA.pool['+i+'].vip=this.checked;vqaDraw()"></td>'
+    +'<td>'+(pct>=1?pct.toFixed(1):pct.toFixed(3))+'%</td><td><button class="btn-red" onclick="VQA.pool.splice('+i+',1);vqaDraw()">🗑</button></td></tr>';}).join('');}
+function vqaTim(){var q=vqaEl('vqaQ').value.trim();if(!q)return;api('/api/vq/tim',{q:q}).then(function(j){VQAKQ=j.items;var b=vqaEl('vqaKq');
+  if(!j.items.length){b.innerHTML='<span class="muted">Không thấy vật phẩm nào.</span>';return;}
+  b.innerHTML=j.items.map(function(it,k){return '<button class="btn-grey" style="margin:2px;padding:3px 8px;display:inline-flex;align-items:center;gap:6px" onclick="vqaThem('+k+')">'+vqaIc(it.ic)+esc(it.ten)+' <span class="muted">#'+it.id+'</span> ➕</button>';}).join('');}).catch(function(e){toast('❌ '+e.message);});}
+function vqaThem(k){var it=VQAKQ[k];if(!it||!VQA)return;VQA.pool.unshift({id:it.id,sl:1,w:100,vip:false,off:false,ten:it.ten,ic:it.ic});vqaDraw();toast('➕ Đã thêm '+it.ten+' (trọng số 100) - nhớ bấm 💾 Lưu');}
+function vqaSave(){if(!VQA)return;var x={on:vqaEl('vqOn').checked,gia:Number(vqaEl('vqGia').value),vip:Number(vqaEl('vqVip').value),pool:VQA.pool.map(function(p){return {id:p.id,sl:p.sl,w:p.w,vip:p.vip,off:p.off};})};
+  api('/api/vq/save',x).then(function(j){VQA=j;vqaFill();toast('💾 Đã lưu vòng quay - '+(j.cfg.on?'đang BẬT trên web':'đang tắt'));}).catch(function(e){toast('❌ '+e.message);});}
+async function vqaMacDinh(){if(!await uiConfirm('Đưa bộ quà về mặc định (377 món vòng quay gốc của server)? Bộ quà đang sửa sẽ mất. Giá và số ô VIP giữ nguyên.','Về mặc định','btn-red'))return;
+  api('/api/vq/macdinh',{}).then(function(j){VQA=j;vqaFill();toast('↩ Đã về bộ quà mặc định');}).catch(function(e){toast('❌ '+e.message);});}
+function vqaCap(){var uid=vqaEl('vqaVi').value,n=Number(vqaEl('vqaN').value);if(!uid||!n)return toast('Chọn ví và nhập số lượt');
+  api('/api/vq/cap',{uid:uid,n:n}).then(function(j){VQA=j;vqaFill();toast('🎟️ '+j.message);}).catch(function(e){toast('❌ '+e.message);});}
+function vqaNguoi(){var d=VQA.nguoi;vqaEl('vqaNguoi').innerHTML=d.length?'<table><thead><tr><th>Ví</th><th>Nhân vật</th><th>Lượt quay</th><th>Món trong rương</th><th>Đã mở vòng</th></tr></thead><tbody>'
+  +d.map(function(x){return '<tr><td>'+esc(x.ten)+'</td><td>'+esc(x.game)+'</td><td><b>'+x.luot+'</b></td><td>'+x.ruong+'</td><td>'+(x.coVong?'✅':'-')+'</td></tr>';}).join('')+'</tbody></table>'
+  :'<span class="muted">Chưa ai có lượt quay.</span>';}
+function vqaLogDraw(){var l=VQA.log;vqaEl('vqaLog').innerHTML=l.length?l.map(function(x){return '<div>'+new Date(x.t).toLocaleString('vi-VN')+' · <b>'+esc(x.ten)+'</b> → '+(x.vip?'🌟 ':'')+esc(x.tenMon)+' ×'+x.sl+'</div>';}).join(''):'Chưa có lượt quay nào.';}
 function giftFill(force){
   var body=document.getElementById('giftBody');if(!body||!STATE)return;
   if(!force){if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#giftBody'))return;if(GFDIRTY)return;}
@@ -4776,7 +4854,7 @@ function tbHdDraw(){
 function tbPick(hd,force){
   if(!force&&TB.dirty&&!confirm('Hoạt động này đang sửa dở chưa Lưu - bỏ thay đổi?'))return;
   TB.hd=hd;const h=tbCur();
-  TB.ed=JSON.parse(JSON.stringify({on:h.on,knb:h.knb,ngay:h.ngay,mon:h.mon}));
+  TB.ed=JSON.parse(JSON.stringify({on:h.on,knb:h.knb,ngay:h.ngay,luot:h.luot||0,mon:h.mon}));
   TB.dirty=false;TB.row=0;tbHdDraw();tbEdDraw();tbLogDraw();
 }
 function tbNames(r){
@@ -4790,7 +4868,8 @@ function tbEdDraw(){
     +'<b style="font-size:16px">'+esc(h.ten)+'</b>'
     +'<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" style="width:auto;margin:0" '+(e.on?'checked':'')+' onchange="TB.ed.on=this.checked;TB.dirty=true"> Bật</label>'
     +'<label>KNB <input class="mini-in" type="number" min="0" max="100000" value="'+e.knb+'" oninput="TB.ed.knb=Number(this.value);TB.dirty=true"></label>'
-    +'<label>Trần/ngày <input class="mini-in" style="width:70px" type="number" min="0" max="50" value="'+e.ngay+'" oninput="TB.ed.ngay=Number(this.value);TB.dirty=true"></label></div>'
+    +'<label>Trần/ngày <input class="mini-in" style="width:70px" type="number" min="0" max="50" value="'+e.ngay+'" oninput="TB.ed.ngay=Number(this.value);TB.dirty=true"></label>'
+    +'<label title="Cộng vào vòng quay may mắn trên web khi người chơi bấm Nhận túi (thay Hạnh Vận Quả)">🍀 Lượt quay web <input class="mini-in" style="width:70px" type="number" min="0" max="50" value="'+(e.luot||0)+'" oninput="TB.ed.luot=Number(this.value);TB.dirty=true"></label></div>'
     +'<div class="muted" style="font-size:12px;margin-top:4px">Boss cuối (ID game, cố định): '+h.boss.join(', ')+'</div>'
     +'<table style="width:100%;margin-top:8px"><tr><th style="text-align:left">Món (ID; nhiều ID = trộn ngẫu nhiên)</th><th>SL từ</th><th>đến</th><th></th></tr>';
   e.mon.forEach((r,i)=>{
@@ -4804,7 +4883,7 @@ function tbEdDraw(){
     +(h.sua?'<button class="btn-grey" onclick="tbReset()">↩ Về mặc định</button>':'')
     +'<button class="btn-grey" onclick="tbLoad()">🔄 Tải lại</button></div>'
     +'<div class="muted" style="font-size:12px;margin-top:6px">Mặc định: '+h.macDinh.mon.map(r=>r.ids.map(id=>tbTen(id)||('#'+id)).join('/')+' ×'+tbSl(r)).join(' · ')
-    +(h.macDinh.knb?' · '+h.macDinh.knb+' KNB':'')+(h.macDinh.ngay?' · trần '+h.macDinh.ngay+'/ngày':'')+'</div>';
+    +(h.macDinh.knb?' · '+h.macDinh.knb+' KNB':'')+(h.macDinh.ngay?' · trần '+h.macDinh.ngay+'/ngày':'')+(h.macDinh.luot?' · '+h.macDinh.luot+' lượt quay web':'')+'</div>';
   document.getElementById('tbEd').innerHTML=x;
 }
 function tbRow(i){if(TB.row===i)return;TB.row=i;document.querySelectorAll('#tbEd tr[onclick]').forEach((tr,k)=>tr.style.outline=k===i?'2px solid #ffcf5c':'');}
@@ -4817,7 +4896,7 @@ function tbAdd(){TB.ed.mon.push({ids:[],min:1,max:1});TB.row=TB.ed.mon.length-1;
 function tbDel(i){TB.ed.mon.splice(i,1);TB.dirty=true;if(TB.row>=TB.ed.mon.length)TB.row=Math.max(0,TB.ed.mon.length-1);tbEdDraw();}
 function tbSave(){
   const e=TB.ed;
-  api('/api/tuiboss/save',{hd:TB.hd,on:e.on,knb:e.knb,ngay:e.ngay,mon:e.mon})
+  api('/api/tuiboss/save',{hd:TB.hd,on:e.on,knb:e.knb,ngay:e.ngay,luot:e.luot||0,mon:e.mon})
     .then(j=>{TB.st=j;TB.dirty=false;tbPick(TB.hd,true);toast('💾 Đã lưu túi '+tbCur().ten+' - áp cho túi tạo từ giờ');})
     .catch(e=>toast('❌ '+e.message));
 }
