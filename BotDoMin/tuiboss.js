@@ -59,7 +59,7 @@ const gan = (hd, ids) => { for (const i of ids) BOSS[String(i)] = hd; };
 gan('qtc', [...range(4130, 4139), ...range(34130, 34139)]);
 gan('qll', range(13260, 13269));  // 02/10: Hoa Diem Yeu Ma (boss cuoi ai 3); truoc la Hong Kich Yeu Vuong 13220-13229 (cuoi ai 2)
 gan('yto', [...range(9430, 9439), 39430, 39431, 39432]);
-gan('btkt', [15175, 15073]);
+gan('btkt', [15190, 15073]);  // 02/10: Binh Thanh lon = Gia Luat Lien Thanh 15190 (boss cuoi that); truoc la Gia Luat Dien 15175 (ai 3). Nho: 15073
 gan('ttt', [14145]);
 gan('pmf', [9666]);
 gan('pmfkc', [9546]);
