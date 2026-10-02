@@ -1962,11 +1962,11 @@ const HTML = `<!DOCTYPE html>
           <span class="muted">Người chơi cày exp tối đa tới cấp này (10–119, 119 = mở hết). Nhân vật đã cao hơn giữ nguyên. Lưu xong server tự restart (~3 phút, người đang online bị ngắt).</span>
         </div>
         <div class="row" style="margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
-          <b>🧵 Mẫu đồ chế 8x/9x</b>
+          <b>🧵 Mẫu đồ chế 8x/9x + Thái Cổ Thần Khí</b>
           <button class="btn-grey" onclick="mdLoad()">🔄 Tải</button>
-          <span class="muted">Chọn dòng, số dòng, cấp phẩm chất cho 1 món chế (chỉ trong những gì món đó tự ra được). Áp mẫu → restart → chế + giám định → <b>Trả mẫu</b> → restart. Số mỗi dòng ngẫu nhiên trong khoảng của cấp đã chọn, chốt lúc chế, trả mẫu không đổi. Trong lúc mẫu đang áp, <b>ai chế món đó cũng ra y hệt</b>.</span>
+          <span class="muted">Chọn dòng, số dòng, cấp phẩm chất cho 1 món chế (chỉ trong những gì món đó tự ra được). Áp mẫu → restart → chế + giám định (đồ chế) hoặc tẩy bằng <b>Ma Huyết Thạch 30505813</b> (Thái Cổ Thần Khí 9 sao) → <b>Trả mẫu</b> → restart. Đồ chế: số mỗi dòng ngẫu nhiên trong khoảng của cấp đã chọn. Thái Cổ: số cố định. Chốt lúc chế/tẩy, trả mẫu không đổi. Vũ khí chế không có trong danh sách (vũ khí đi đường thần khí). Trong lúc mẫu đang áp, <b>ai chế / tẩy món đó cũng ra y hệt</b>.</span>
         </div>
-        <div id="mdBox" class="muted" style="margin-top:6px">Bấm 🔄 Tải để xem 78 món đồ chế 8x/9x.</div>
+        <div id="mdBox" class="muted" style="margin-top:6px">Bấm 🔄 Tải để xem đồ chế 8x/9x (trừ vũ khí) và 108 Thái Cổ Thần Khí.</div>
         <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
         <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
       </div>
@@ -3147,11 +3147,11 @@ function mdTen(k){return String(MD.data.dongTen[k]||('dòng '+k)).replace('*',''
 function mdKhoang(m,k,cap){var r=MD.data.rate,v=m.v[String(k)]||0,ra=r[String(cap)],rb=r[String(cap+1)]||ra;if(!ra)return '?';
   var a=ra[k],b=rb[k],lo=Math.ceil(v*a/100),hi=m.T>0?Math.ceil(v*(a+(b-a)*0.99/m.T)/100):lo;return lo===hi?String(lo):lo+'–'+hi;}
 function mdDraw(){if(!MD)return;var box=document.getElementById('mdBox'),h='',ids=Object.keys(MD.mau||{});
-  if(ids.length){h+='<div class="note" style="margin:0 0 8px;border-color:#c0392b"><b>⚠️ Đang áp '+ids.length+' mẫu</b> (ai chế các món này cũng ra y hệt - chế xong nhớ trả):';
+  if(ids.length){h+='<div class="note" style="margin:0 0 8px;border-color:#c0392b"><b>⚠️ Đang áp '+ids.length+' mẫu</b> (ai chế / tẩy các món này cũng ra y hệt - xong nhớ trả):';
     ids.forEach(function(id){var x=MD.mau[id],m=mdMon(id);h+='<div style="margin-top:4px">• <b>'+esc(m?m.ten:id)+'</b> #'+id+' · '+x.dong.length+' dòng: '+x.dong.map(mdTen).map(esc).join(', ')+' · cấp '+x.capPC+(x.tuChat?' · tư chất '+x.tuChat:'')+' · '+new Date(x.t*1000).toLocaleString('vi-VN')
       +' <button class="btn-grey" onclick="mdTra(&quot;'+id+'&quot;,0)">↩ Trả mẫu</button> <button class="btn-red" onclick="mdTra(&quot;'+id+'&quot;,1)">↩ Trả + Restart</button></div>';});
     h+='</div>';}
-  var opt='<option value="">-- chọn món đồ chế --</option>',vt='';
+  var opt='<option value="">-- chọn món --</option>',vt='';
   MD.data.mon.forEach(function(m){if(m.vitri!==vt){if(vt)opt+='</optgroup>';vt=m.vitri;opt+='<optgroup label="'+esc(vt)+'">';}
     opt+='<option value="'+m.id+'"'+(m.id===MDSEL?' selected':'')+'>'+esc(m.ten)+(m.loai&&m.loai!==m.vitri?' ('+esc(m.loai)+')':'')+' · cấp '+m.cap+' · #'+m.id+(MD.mau[m.id]?' ⚠️ đang áp':'')+'</option>';});
   opt+='</optgroup>';
@@ -3176,7 +3176,7 @@ function mdRange(){var m=mdMon(MDSEL);if(!m)return;var cap=Number(document.getEl
 function mdAp(rs){var m=mdMon(MDSEL);if(!m)return;var ks=[].slice.call(document.querySelectorAll('#mdForm .md-k:checked')).map(function(x){return x.value;});
   if(!ks.length)return toast('Chọn ít nhất 1 dòng');if(ks.length>m.max)return toast('Món này tối đa '+m.max+' dòng');
   var cap=document.getElementById('mdCap').value,tc=document.getElementById('mdTc')?document.getElementById('mdTc').value:'';
-  if(!confirm('Áp mẫu '+m.ten+': '+ks.length+' dòng ('+ks.map(function(k){return mdTen(Number(k));}).join(', ')+'), cấp phẩm chất '+cap+(tc?', tư chất '+tc:'')+'?'+(rs?' Server sẽ RESTART ngay (~3 phút, người online bị ngắt).':' Có hiệu lực sau lần restart tới.')+' Trong lúc áp, ai chế món này cũng ra y hệt.'))return;
+  if(!confirm('Áp mẫu '+m.ten+': '+ks.length+' dòng ('+ks.map(function(k){return mdTen(Number(k));}).join(', ')+'), cấp phẩm chất '+cap+(tc?', tư chất '+tc:'')+'?'+(rs?' Server sẽ RESTART ngay (~3 phút, người online bị ngắt).':' Có hiệu lực sau lần restart tới.')+' Trong lúc áp, ai chế / tẩy món này cũng ra y hệt.'))return;
   api('/api/gm/act',{a:'doche_ap',id:m.id,dong:ks.join(','),cap:cap,tc:tc,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
 function mdTra(id,rs){var m=mdMon(id);if(!confirm('Trả mẫu '+(m?m.ten:id)+' về gốc?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')+' Đồ đã chế giữ nguyên dòng và số.'))return;
   api('/api/gm/act',{a:'doche_tra',id:id,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
