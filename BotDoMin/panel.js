@@ -1961,6 +1961,13 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-red" onclick="gmSaveCapmax()">💾 Lưu + Restart</button>
           <span class="muted">Người chơi cày exp tối đa tới cấp này (10–119, 119 = mở hết). Nhân vật đã cao hơn giữ nguyên. Lưu xong server tự restart (~3 phút, người đang online bị ngắt).</span>
         </div>
+        <div class="row" style="margin-top:8px">
+          <b>⚡ EXP toàn server: x</b>
+          <input id="gmExp" class="mini-in" style="width:70px" type="number" min="0.1" max="50" step="0.1">
+          <button class="btn-red" onclick="gmSaveExp()">💾 Lưu + Restart</button>
+          <button onclick="gmResetExp()">↩ Mặc định (x<span id="gmExpDef">?</span>) + Restart</button>
+          <span class="muted">Hệ số EXP đánh quái cả server (ConfigInfo.ini ExpParam), 0.1–50. Lưu xong server tự restart (~3 phút, người đang online bị ngắt). Deploy code sau vẫn giữ số này.</span>
+        </div>
         <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
           <b>🧵 Mẫu đồ chế 8x/9x + Thái Cổ Thần Khí</b>
           <button class="btn-grey" onclick="mdLoad()">🔄 Tải</button>
@@ -3112,6 +3119,8 @@ function gmRender(){
   document.getElementById('gmItemN').textContent=st.itemCount.toLocaleString('vi-VN')+' vật phẩm trong danh mục';
   var cm=document.getElementById('gmCapmin');if(document.activeElement!==cm)cm.value=st.capmin;
   var cx=document.getElementById('gmCapmax');if(cx&&document.activeElement!==cx&&st.capmax!==undefined)cx.value=st.capmax;   // 🔒 01/10 khóa cấp
+  var ex=document.getElementById('gmExp');if(ex&&document.activeElement!==ex&&st.expparam!==undefined)ex.value=st.expparam;   // ⚡ 03/10 EXP toàn server
+  var ed=document.getElementById('gmExpDef');if(ed&&st.expDefault!==undefined)ed.textContent=st.expDefault;
   document.getElementById('gmAccs').innerHTML='<table><tr><th>ID</th><th>Tài khoản</th><th>Online</th><th></th></tr>'+
     st.accounts.map(function(a){
       return '<tr><td>'+esc(a.id)+'</td><td><b>'+esc(a.name)+'</b></td><td>'+(a.online?'<b style="color:#35c46a">online</b>':'<span class="muted">-</span>')+'</td>'+
@@ -3191,6 +3200,8 @@ function gmCreateAcc(){
   if(uid&&!/^[0-9]{15,20}$/.test(uid))return toast('Discord ID phải là 15-20 chữ số');
   gmDo({a:'tao_tk',ten:n,mk:p,uid:uid});document.getElementById('gmNewPw').value='';
 }
+function gmSaveExp(){var v=document.getElementById('gmExp').value.trim();if(!/^[0-9]{1,2}([.][0-9])?$/.test(v)||+v<0.1||+v>50)return toast('EXP 0.1–50, tối đa 1 số lẻ (vd 3 hoặc 2.5)');gmDo({a:'expparam',gt:v,restart:'1'},'Đặt EXP toàn server x'+v+' rồi RESTART server ngay? Người đang online sẽ bị ngắt khoảng 3 phút.');}
+function gmResetExp(){gmDo({a:'expreset',restart:'1'},'Trả EXP toàn server về mặc định rồi RESTART server ngay? Người đang online sẽ bị ngắt khoảng 3 phút.');}
 function gmSaveCapmax(){var v=document.getElementById('gmCapmax').value.trim();if(!/^[0-9]{2,3}$/.test(v)||+v<10||+v>119)return toast('Cấp tối đa 10–119');gmDo({a:'capmax',gt:v,restart:'1'},'Khóa cấp tối đa '+v+' rồi RESTART server ngay? Người đang online sẽ bị ngắt khoảng 3 phút.');}
 function gmSaveCapmin(){gmDo({a:'capmin',gt:document.getElementById('gmCapmin').value.trim()});}
 function gmGive(g){
