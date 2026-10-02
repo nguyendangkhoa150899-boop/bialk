@@ -2280,7 +2280,8 @@ function itemShopWebList() {
     // trong CÙNG bậc implant: giá cao xếp trước (chủ server 10/09: "12000 xếp trước 8000"); nhóm khác giữ thứ tự admin
     const priceKey = (x) => x.cat === 'implant' ? -(Number(x.price) || 0) : 0;
     return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (priceKey(a[0]) - priceKey(b[0])) || (a[1] - b[1]))
-        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : (a[0].cat === 'important' ? { ...a[0], tier: importantTier(a[0].id) } : a[0]));   // web tô màu theo tier
+        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : (a[0].cat === 'important' ? { ...a[0], tier: importantTier(a[0].id) } : a[0]))   // web tô màu theo tier
+        .map(x => (x.img ? x : { ...x, ic: ITEMICON.icon(x.id) }));   // 🖼️ 02/10: chưa up ảnh -> icon game (itemicon.js)
 }
 // ⭐ 11/09: nhóm QUAN TRỌNG - mỗi người mua ĐÚNG 1 lần, vĩnh viễn. user.shopOnce = { itemId: timestamp }.
 // 🩹 15/09 - TỰ CHỮA TÊN MÓN BỊ MẤT DẤU. Dấu hiệu hỏng: có ký tự thay thế "\uFFFD" hoặc có dấu "?"

@@ -1256,7 +1256,9 @@ const PAGE = [
     '.vqR{display:flex;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--line);border-radius:9px}',
     '.vqR.vip{border-color:#ffd76a;background:#3a2e1033}',
     '.vqRn{flex:1;min-width:0;font-size:13px}',
-    '.vqR button{flex:0 0 auto;padding:6px 12px;border-radius:8px}',
+    '.vqR button{flex:0 0 auto;padding:6px 14px;border-radius:8px;border:0;font-weight:800;background:linear-gradient(180deg,#3ddc84,#2aa564);color:#08210f}',
+    '.vqR button:disabled{opacity:.55}',
+    '.isIcG{display:block;width:62px;height:62px;flex:0 0 62px;border:1px solid var(--line);border-radius:11px;background-repeat:no-repeat}',
     '.vqNhanAll{background:linear-gradient(180deg,#3ddc84,#2aa564);color:#08210f;font-weight:800;padding:7px 12px;border-radius:9px}',
     '@media (max-width:520px){#vqBoard{gap:2px;padding:4px}.vqO{border-width:1px;border-radius:5px}.vqSl{font-size:9px}.vqBtns button{min-width:96px;padding:7px 8px;font-size:13px}.vqT1,.vqT2{font-size:11px}}',
     // 🐾 01/10: Chọn Pet Boss
@@ -5297,7 +5299,7 @@ const PAGE = [
     'function isOnceBought(it){return !!(IS&&isOnceCat(it.cat)&&(IS.once||[]).indexOf(it.id)>=0)}',
     'function isTierCls(it){return (isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))))+(it.cat==="admin"?" isMisc":"")+(isOnceBought(it)?" isDone":"")}',
     'function isTierTag(it){return isWT(it)?"<span class=\\"isTier twt\\">🌈 CÂY THẾ GIỚI</span>":(it.tier==="diamond"?"<span class=\\"isTier t4\\">💎 KIM CƯƠNG</span>":(it.tier==="gold"?"<span class=\\"isTier t3\\">🥇 VÀNG</span>":""))}',
-    'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+isImg(it.img)+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" KNB / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
+    'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+(!it.img&&it.ic?vqIcon(it.ic,"isIcG"):isImg(it.img))+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" KNB / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+isBuyRow(it)+"</div>"}',
     // ⭐ 11/09: nhóm QUAN TRỌNG mua 1 lần/người -> không ô số lượng; đã mua -> nút "✅ ĐÃ MUA" khoá
     'function isBuyRow(it){if(it.pet)return "<div class=\\"isBuyRow\\"><button onclick=\\"pbOpen()\\">🐾 Chọn pet</button></div>";if(it.cat==="important"){return isOnceBought(it)?"<div class=\\"isBuyRow\\"><button disabled>✅ ĐÃ MUA (1 lần/người)</button></div>":"<div class=\\"isBuyRow\\"><button onclick=\\"isBuy(\'"+it.id+"\',this)\\">🛒 Mua (1 lần duy nhất)</button></div>"}',
