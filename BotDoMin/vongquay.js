@@ -236,5 +236,16 @@ module.exports = function vongQuay(d) {
         return out;
     }
 
-    return { webState, mo, quay, nhan, xoa, congLuot, adminState, saveCfg, macDinh, capLuot, tim, RUONG_MAX };
+    // 🖼️ 02/10: tra hình + tên game cho danh sách ID (bảng Shop Item / Quà admin tặng trên panel)
+    function tra(ids) {
+        const out = {};
+        for (const id of (Array.isArray(ids) ? ids : []).slice(0, 600)) {
+            const s = String(id || '').trim(); if (!/^\d{4,9}$/.test(s)) continue;
+            const t = ten(s);
+            out[s] = { ic: d.icon(s), ten: t.startsWith('#') ? '' : t };
+        }
+        return out;
+    }
+
+    return { webState, mo, quay, nhan, xoa, congLuot, adminState, saveCfg, macDinh, capLuot, tim, tra, RUONG_MAX };
 };

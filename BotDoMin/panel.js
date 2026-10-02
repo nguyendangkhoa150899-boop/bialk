@@ -391,6 +391,10 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL QUÀ RIÊNG] ${body.where === 'game' ? 'vào game' : 'vào rương'}: ${body.itemId} x${body.qty} -> ${rec.name || uid}`);
                     return sendJSON(res, 200, { ok: true, message: r.message });
                 }
+                // 🖼️ 02/10: hình + tên game theo ID (chỉ đọc, cả 2 cổng) cho bảng Shop Item / Quà admin tặng
+                if (ctx.itemIconTra && path === '/api/itemicon/tra') {
+                    return sendJSON(res, 200, { ok: true, items: ctx.itemIconTra((body || {}).ids) });
+                }
                 // 🍀 02/10: Vòng quay may mắn - cấu hình (chỉ cổng SUPER)
                 // 02/10: mod (cổng thường) sửa được cấu hình + bộ quà; CẤP LƯỢT QUAY chỉ SUPER (như cấp tiền)
                 if (ctx.vongQuay && path.startsWith('/api/vq/')) {
@@ -4486,6 +4490,7 @@ function itemShopFill(){
   body.innerHTML='';
   if(!rows.length){itemShopAddRow();return;}
   rows.forEach(function(it){itemShopAddRow(it)});
+  icAll('itemShopBody','isf');   // 🖼️ 02/10 hình game theo ID
 }
 var ISDIRTY=false,ISSIG='',ISVER='';
 // 📅 10/09: giới hạn mua mỗi món/người/ngày (SUPER)
@@ -4571,22 +4576,37 @@ function vqaNguoi(){var d=VQA.nguoi;vqaEl('vqaNguoi').innerHTML=d.length?'<table
   +d.map(function(x){return '<tr><td>'+esc(x.ten)+'</td><td>'+esc(x.game)+'</td><td><b>'+x.luot+'</b></td><td>'+x.ruong+'</td><td>'+(x.coVong?'✅':'-')+'</td></tr>';}).join('')+'</tbody></table>'
   :'<span class="muted">Chưa ai có lượt quay.</span>';}
 function vqaLogDraw(){var l=VQA.log;vqaEl('vqaLog').innerHTML=l.length?l.map(function(x){return '<div>'+new Date(x.t).toLocaleString('vi-VN')+' · <b>'+esc(x.ten)+'</b> → '+(x.vip?'🌟 ':'')+esc(x.tenMon)+' ×'+x.sl+'</div>';}).join(''):'Chưa có lượt quay nào.';}
+// 🖼️ 02/10: hình game theo ID cho bảng Shop Item + Quà admin tặng. Ảnh up riêng (cột tên file) vẫn ưu tiên.
+// Ô "Tên hiện" đang trống thì tự điền tên game.
+var ICMAP={};
+function icTra(ids,cb){var can=ids.filter(function(x){return x&&!(x in ICMAP);});if(!can.length){if(cb)cb();return;}
+  api('/api/itemicon/tra',{ids:can.slice(0,600)}).then(function(j){can.forEach(function(x){ICMAP[x]=(j.items||{})[x]||null;});if(cb)cb();}).catch(function(){if(cb)cb();});}
+function icPrevHtml(id,img){if(img)return '<img src="/itemimage/'+encodeURIComponent(img)+'" style="width:32px;height:32px;object-fit:contain;vertical-align:middle;border-radius:5px">';
+  var x=ICMAP[id];return x&&x.ic?vqaIc(x.ic):'<span class="muted" title="Không có hình game cho ID này" style="display:inline-block;width:32px;text-align:center">📦</span>';}
+function icRow(tr,pre){if(!tr)return;var ie=tr.querySelector('.'+pre+'-id'),me=tr.querySelector('.'+pre+'-img'),pv=tr.querySelector('.ic-prev');if(!ie||!pv)return;
+  var id=ie.value.trim(),img=me?me.value.trim():'';
+  var ve=function(){pv.innerHTML=icPrevHtml(id,img);var nm=tr.querySelector('.'+pre+'-name'),x=ICMAP[id];if(nm&&!nm.value.trim()&&x&&x.ten){nm.value=x.ten;}};
+  if(id&&!(id in ICMAP))icTra([id],ve);else ve();}
+function icAll(bodyId,pre){var trs=[].slice.call(document.querySelectorAll('#'+bodyId+' tr'));
+  var ids=trs.map(function(tr){var e=tr.querySelector('.'+pre+'-id');return e?e.value.trim():'';});
+  icTra(ids,function(){trs.forEach(function(tr){icRow(tr,pre);});});}
 function giftFill(force){
   var body=document.getElementById('giftBody');if(!body||!STATE)return;
   if(!force){if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#giftBody'))return;if(GFDIRTY)return;}
   var rows=STATE.giftShop||[];var sig=JSON.stringify(rows);if(!force&&sig===GFSIG&&body.children.length)return;GFSIG=sig;
   body.innerHTML='';if(!rows.length){giftAddRow();}else rows.forEach(function(g){giftAddRow(g)});
+  icAll('giftBody','gf');   // 🖼️ 02/10 hình game theo ID
   var n=document.getElementById('giftN');if(n)n.textContent=rows.length+' quà · '+rows.filter(function(g){return !g.off}).length+' đang phát';
 }
 function giftDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();giftDirty(true);}
 function giftAddRow(g){
   g=g||{};var body=document.getElementById('giftBody');if(!body)return;var tr=document.createElement('tr');
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="gf-on" style="width:auto;margin:0" title="Đang phát / tắt" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45;giftDirty(true)"></td>'
-    +'<td><input class="mini-in gf-id" style="width:170px" placeholder="StaticItemId" oninput="giftDirty(true)"></td>'
+    +'<td><input class="mini-in gf-id" style="width:170px" placeholder="StaticItemId" oninput="giftDirty(true)" onchange="icRow(this.closest(&quot;tr&quot;),&quot;gf&quot;)"></td>'
     +'<td><input class="mini-in gf-name" style="width:150px" placeholder="Tên hiện" oninput="giftDirty(true)"></td>'
     +'<td><input class="mini-in gf-qty" type="number" min="1" style="width:80px" placeholder="số cái" oninput="giftDirty(true)"></td>'
     +'<td><input class="mini-in gf-note" style="width:200px" placeholder="ghi chú hiện trên web" oninput="giftDirty(true)"></td>'
-    +'<td style="white-space:nowrap"><input class="mini-in gf-img" style="width:150px" placeholder="tên file hình" oninput="giftDirty(true)">'
+    +'<td style="white-space:nowrap"><span class="ic-prev" style="display:inline-block;width:36px;vertical-align:middle"></span><input class="mini-in gf-img" style="width:150px" placeholder="trống = hình game" oninput="giftDirty(true)" onchange="icRow(this.closest(&quot;tr&quot;),&quot;gf&quot;)">'
     +'<input type="file" class="gf-file" accept=".png,.jpg,.jpeg,.gif,.webp" style="display:none" onchange="giftUpload(this)">'
     +'<button class="mini" style="margin-left:4px" onclick="this.previousElementSibling.click()">📷 Up</button></td>'
     +'<td><button class="mini btn-red" onclick="giftDelRow(this)">🗑️</button></td>';
@@ -4599,7 +4619,7 @@ function giftAddRow(g){
 function giftUpload(inp){
   var f=inp.files&&inp.files[0];if(!f)return;if(f.size>600*1024){toast('❌ Ảnh quá 600KB - nén nhỏ lại');inp.value='';return;}
   var tr=inp.closest('tr');var rd=new FileReader();
-  rd.onload=function(){var b64=String(rd.result).split(',')[1]||'';api('/api/itemshop/upload',{name:f.name,data:b64}).then(function(j){if(tr)tr.querySelector('.gf-img').value=j.file;giftDirty(true);toast('🖼️ Đã up '+j.file+' - nhớ bấm 💾 Lưu quà');}).catch(function(e){toast('❌ '+e.message)});inp.value='';};
+  rd.onload=function(){var b64=String(rd.result).split(',')[1]||'';api('/api/itemshop/upload',{name:f.name,data:b64}).then(function(j){if(tr){tr.querySelector('.gf-img').value=j.file;icRow(tr,'gf');}giftDirty(true);toast('🖼️ Đã up '+j.file+' - nhớ bấm 💾 Lưu quà');}).catch(function(e){toast('❌ '+e.message)});inp.value='';};
   rd.readAsDataURL(f);
 }
 function giftSave(){
@@ -4631,13 +4651,13 @@ function itemShopAddRow(it){
   var body=document.getElementById('itemShopBody');if(!body)return;
   var tr=document.createElement('tr');
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="isf-on" style="width:auto;margin:0" title="Đang bán / ẩn" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45"></td>'
-    +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId"></td>'
+    +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId" onchange="icRow(this.closest(&quot;tr&quot;),&quot;isf&quot;)"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
     +'<td><select class="mini-in isf-cat" style="width:110px">'+icOpts()+'</select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
     +'<td><input class="mini-in isf-max" type="number" style="width:70px"></td>'
     +'<td><input class="mini-in isf-note" style="width:200px" placeholder="tác dụng (hiện trên web + search được)"></td>'
-    +'<td style="white-space:nowrap"><input class="mini-in isf-img" style="width:150px" placeholder="tên file hình">'
+    +'<td style="white-space:nowrap"><span class="ic-prev" style="display:inline-block;width:36px;vertical-align:middle"></span><input class="mini-in isf-img" style="width:150px" placeholder="trống = hình game" onchange="icRow(this.closest(&quot;tr&quot;),&quot;isf&quot;)">'
     +'<input type="file" class="isf-file" accept=".png,.jpg,.jpeg,.gif,.webp" style="display:none" onchange="itemShopUpload(this)">'
     +'<button class="mini" style="margin-left:4px" onclick="this.previousElementSibling.click()">📷 Up</button></td>'
     +'<td><button class="mini btn-red" onclick="itemShopDelRow(this)">🗑️</button></td>';
@@ -4663,7 +4683,7 @@ function itemShopUpload(inp){
   rd.onload=function(){
     var b64=String(rd.result).split(',')[1]||'';
     api('/api/itemshop/upload',{name:f.name,data:b64}).then(function(j){
-      if(tr&&tr.querySelector('.isf-img'))tr.querySelector('.isf-img').value=j.file;
+      if(tr&&tr.querySelector('.isf-img')){tr.querySelector('.isf-img').value=j.file;icRow(tr,'isf');}
       toast('🖼️ Đã up '+j.file+' - nhớ bấm 💾 Lưu shop');
     }).catch(function(e){toast('❌ '+e.message)});
     inp.value='';

@@ -1997,7 +1997,8 @@ function setGiftShop(list) {
 }
 // Cho web: quà đang bật + cờ "hôm nay đã nhận" của riêng người xem. Không lộ gì thừa.
 function giftWebList(user) {
-    return giftList().filter(g => !g.off).map(g => ({ gid: g.gid, id: g.id, name: g.name, qty: g.qty, img: g.img, note: g.note, taken: giftTakenToday(user, g.gid) }));
+    return giftList().filter(g => !g.off).map(g => ({ gid: g.gid, id: g.id, name: g.name, qty: g.qty, img: g.img, note: g.note, taken: giftTakenToday(user, g.gid),
+        ic: g.img ? null : ITEMICON.icon(g.id) }));   // 🖼️ 02/10: chưa up ảnh -> hình game
 }
 async function giftClaim(userId, gid, username) {
     // 📒 15/09: CÒN NỢ thì không nhận quà (chủ server chốt) - cùng luật với mua shop item và
@@ -7698,6 +7699,7 @@ client.once('ready', async (c) => {
             // 🍀 02/10: cấu hình vòng quay (tab 🎁 Quà tặng, chỉ SUPER)
             vongQuay: { state: () => VQ.adminState(), save: (x, who) => VQ.saveCfg(x, who), macDinh: (who) => VQ.macDinh(who),
                 cap: (uid, n, who) => VQ.capLuot(uid, n, who), tim: (q) => VQ.tim(q) },
+            itemIconTra: (ids) => VQ.tra(ids),   // 🖼️ 02/10: hình game theo ID cho bảng Shop Item + Quà admin tặng
             tuiBossCfg: {
                 state: () => {
                     const st = tuiBoss.state(dbCache); const can = new Set();
