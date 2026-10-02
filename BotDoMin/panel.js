@@ -276,7 +276,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', /* 29/09 tạm MỞ Drop Boss cho mod cùng test - đóng lại: thêm '/api/drop/box','/api/drop/boss','/api/drop/clone' vào đây + trả epOnly cho nút tab */ '/api/gacha/channel', '/api/palwheel/cfg',
+                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', /* 29/09 tạm MỞ Drop Boss cho mod cùng test - đóng lại: thêm '/api/drop/box','/api/drop/boss','/api/drop/clone' vào đây + trả epOnly cho nút tab */ '/api/gacha/channel', '/api/palwheel/cfg',
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
@@ -1961,12 +1961,12 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-red" onclick="gmSaveCapmax()">💾 Lưu + Restart</button>
           <span class="muted">Người chơi cày exp tối đa tới cấp này (10–119, 119 = mở hết). Nhân vật đã cao hơn giữ nguyên. Lưu xong server tự restart (~3 phút, người đang online bị ngắt).</span>
         </div>
-        <div class="row" style="margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
+        <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
           <b>🧵 Mẫu đồ chế 8x/9x + Thái Cổ Thần Khí</b>
           <button class="btn-grey" onclick="mdLoad()">🔄 Tải</button>
           <span class="muted">Chọn dòng, số dòng, cấp phẩm chất cho 1 món chế (chỉ trong những gì món đó tự ra được). Áp mẫu → restart → chế + giám định (đồ chế) hoặc tẩy bằng <b>Ma Huyết Thạch 30505813</b> (Thái Cổ Thần Khí 9 sao) → <b>Trả mẫu</b> → restart. Đồ chế: số mỗi dòng ngẫu nhiên trong khoảng của cấp đã chọn. Thái Cổ: số cố định. Chốt lúc chế/tẩy, trả mẫu không đổi. Vũ khí chế không có trong danh sách (vũ khí đi đường thần khí). Trong lúc mẫu đang áp, <b>ai chế / tẩy món đó cũng ra y hệt</b>.</span>
         </div>
-        <div id="mdBox" class="muted" style="margin-top:6px">Bấm 🔄 Tải để xem đồ chế 8x/9x (trừ vũ khí) và 108 Thái Cổ Thần Khí.</div>
+        <div id="mdBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem đồ chế 8x/9x (trừ vũ khí) và 108 Thái Cổ Thần Khí.</div>
         <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
         <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
       </div>
@@ -3148,18 +3148,18 @@ function mdKhoang(m,k,cap){var r=MD.data.rate,v=m.v[String(k)]||0,ra=r[String(ca
   var a=ra[k],b=rb[k],lo=Math.ceil(v*a/100),hi=m.T>0?Math.ceil(v*(a+(b-a)*0.99/m.T)/100):lo;return lo===hi?String(lo):lo+'–'+hi;}
 function mdDraw(){if(!MD)return;var box=document.getElementById('mdBox'),h='',ids=Object.keys(MD.mau||{});
   if(ids.length){h+='<div class="note" style="margin:0 0 8px;border-color:#c0392b"><b>⚠️ Đang áp '+ids.length+' mẫu</b> (ai chế / tẩy các món này cũng ra y hệt - xong nhớ trả):';
-    ids.forEach(function(id){var x=MD.mau[id],m=mdMon(id);h+='<div style="margin-top:4px">• <b>'+esc(m?m.ten:id)+'</b> #'+id+' · '+x.dong.length+' dòng: '+x.dong.map(mdTen).map(esc).join(', ')+' · cấp '+x.capPC+(x.tuChat?' · tư chất '+x.tuChat:'')+' · '+new Date(x.t*1000).toLocaleString('vi-VN')
+    ids.forEach(function(id){var x=MD.mau[id],m=mdMon(id);h+='<div style="margin-top:4px">• <b>'+esc(m?m.ten:id)+'</b> #'+(x.ids||[id]).join(', #')+' · '+x.dong.length+' dòng: '+x.dong.map(mdTen).map(esc).join(', ')+' · cấp '+x.capPC+(x.tuChat?' · tư chất '+x.tuChat:'')+' · '+new Date(x.t*1000).toLocaleString('vi-VN')
       +' <button class="btn-grey" onclick="mdTra(&quot;'+id+'&quot;,0)">↩ Trả mẫu</button> <button class="btn-red" onclick="mdTra(&quot;'+id+'&quot;,1)">↩ Trả + Restart</button></div>';});
     h+='</div>';}
   var opt='<option value="">-- chọn món --</option>',vt='';
   MD.data.mon.forEach(function(m){if(m.vitri!==vt){if(vt)opt+='</optgroup>';vt=m.vitri;opt+='<optgroup label="'+esc(vt)+'">';}
-    opt+='<option value="'+m.id+'"'+(m.id===MDSEL?' selected':'')+'>'+esc(m.ten)+(m.loai&&m.loai!==m.vitri?' ('+esc(m.loai)+')':'')+' · cấp '+m.cap+' · #'+m.id+(MD.mau[m.id]?' ⚠️ đang áp':'')+'</option>';});
+    opt+='<option value="'+m.id+'"'+(m.id===MDSEL?' selected':'')+'>'+esc(m.ten)+(m.loai&&m.loai!==m.vitri?' ('+esc(m.loai)+')':'')+' · cấp '+m.cap+' · #'+m.id+(m.ids&&m.ids.length>1?' (+'+(m.ids.length-1)+' ID giống hệt, áp chung)':'')+(MD.mau[m.id]?' ⚠️ đang áp':'')+'</option>';});
   opt+='</optgroup>';
   h+='<div class="row" style="gap:8px;flex-wrap:wrap"><select id="mdSel" onchange="MDSEL=this.value;mdPick()" style="min-width:320px">'+opt+'</select></div><div id="mdForm" style="margin-top:8px"></div>';
-  box.className='';box.innerHTML=h;mdPick();}
+  box.className='epOnly';box.innerHTML=h;mdPick();}
 function mdPick(){var el=document.getElementById('mdForm');if(!el)return;var m=MDSEL?mdMon(MDSEL):null;if(!m){el.innerHTML='';return;}
   var cur=MD.mau[m.id],cap=cur?cur.capPC:m.capMax,on={};(cur?cur.dong:[]).forEach(function(k){on[k]=1;});
-  var h='<div class="muted" style="margin-bottom:6px">'+esc(m.vitri)+' cấp '+m.cap+' · tự nhiên ra <b>'+m.min+'–'+m.max+' dòng</b> trong '+m.dong.length+' loại dòng dưới đây · cấp phẩm chất tự nhiên '+m.capMin+'–'+m.capMax+(m.coTuChat?' · tư chất '+m.tcMin+'–'+m.tcMax:'')+'</div>';
+  var h='<div class="muted" style="margin-bottom:6px">'+(m.ids&&m.ids.length>1?'<b>Áp chung '+m.ids.length+' ID giống hệt</b> (#'+m.ids.join(', #')+') - cầm ID nào cũng ăn mẫu · ':'')+esc(m.vitri)+' cấp '+m.cap+' · tự nhiên ra <b>'+m.min+'–'+m.max+' dòng</b> trong '+m.dong.length+' loại dòng dưới đây · cấp phẩm chất tự nhiên '+m.capMin+'–'+m.capMax+(m.coTuChat?' · tư chất '+m.tcMin+'–'+m.tcMax:'')+'</div>';
   h+='<div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:6px"><label>Cấp phẩm chất <select id="mdCap" onchange="mdRange()">';
   for(var c=1;c<=m.capMax;c++)h+='<option value="'+c+'"'+(c===cap?' selected':'')+'>'+c+(c===m.capMax?' (cao nhất)':'')+'</option>';
   h+='</select></label>'+(m.coTuChat?'<label>Tư chất <input id="mdTc" class="mini-in" type="number" min="'+m.tcMin+'" max="'+m.tcMax+'" style="width:70px" value="'+(cur&&cur.tuChat?cur.tuChat:m.tcMax)+'"></label>':'')
