@@ -1141,12 +1141,13 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, x: wr.x, y: wr.y, z: wr.z });
                 }
                 // 🛠️ GM Thiên Long (29/09): chuyển tiếp sang panel GM nội bộ
-                if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act') {
+                if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act' || path === '/api/gm/doche') {
                     try {
                         let j;
                         if (path === '/api/gm/state') j = await gmCall('GET', '/api/state');
                         else if (path === '/api/gm/items') j = await gmCall('GET', '/api/items?q=' + encodeURIComponent(String(body.q || '').slice(0, 80)));
-                        else if (path === '/api/gm/pets') j = await gmCall('GET', '/api/pets');   // 30/09: nhom pet cho o chon (V2 / 12000 / tat ca)
+                        else if (path === '/api/gm/pets') j = await gmCall('GET', '/api/pets');
+                        else if (path === '/api/gm/doche') j = await gmCall('GET', '/api/doche');   // 🧵 02/10: mẫu đồ chế 8x/9x (chỉ đọc; áp/trả đi qua /api/gm/act - chỉ SUPER)   // 30/09: nhom pet cho o chon (V2 / 12000 / tat ca)
                         else {
                             const form = {};
                             for (const [k, v] of Object.entries(body || {})) if (/^[a-z_]{1,12}$/.test(k)) form[k] = String(v).slice(0, 80);
@@ -1960,6 +1961,12 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-red" onclick="gmSaveCapmax()">💾 Lưu + Restart</button>
           <span class="muted">Người chơi cày exp tối đa tới cấp này (10–119, 119 = mở hết). Nhân vật đã cao hơn giữ nguyên. Lưu xong server tự restart (~3 phút, người đang online bị ngắt).</span>
         </div>
+        <div class="row" style="margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
+          <b>🧵 Mẫu đồ chế 8x/9x</b>
+          <button class="btn-grey" onclick="mdLoad()">🔄 Tải</button>
+          <span class="muted">Chọn dòng, số dòng, cấp phẩm chất cho 1 món chế (chỉ trong những gì món đó tự ra được). Áp mẫu → restart → chế + giám định → <b>Trả mẫu</b> → restart. Số mỗi dòng ngẫu nhiên trong khoảng của cấp đã chọn, chốt lúc chế, trả mẫu không đổi. Trong lúc mẫu đang áp, <b>ai chế món đó cũng ra y hệt</b>.</span>
+        </div>
+        <div id="mdBox" class="muted" style="margin-top:6px">Bấm 🔄 Tải để xem 78 món đồ chế 8x/9x.</div>
         <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
         <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
       </div>
@@ -3132,6 +3139,47 @@ function gmLoad(){
     api('/api/gm/state',{}).then(function(j){GM.st=j.state;gmRender();}).catch(function(){});
   },15000);
 }
+// 🧵 02/10: Mẫu đồ chế 8x/9x (panel GM maudoche.py). MD = {data:{mon,rate,dongTen}, mau:{id:{dong,capPC,tuChat,t}}}
+var MD=null,MDSEL='';
+function mdLoad(){api('/api/gm/doche',{}).then(function(j){MD=j;mdDraw();}).catch(function(e){toast('❌ '+e.message);});}
+function mdMon(id){var a=MD.data.mon;for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
+function mdTen(k){return String(MD.data.dongTen[k]||('dòng '+k)).replace('*','');}
+function mdKhoang(m,k,cap){var r=MD.data.rate,v=m.v[String(k)]||0,ra=r[String(cap)],rb=r[String(cap+1)]||ra;if(!ra)return '?';
+  var a=ra[k],b=rb[k],lo=Math.ceil(v*a/100),hi=m.T>0?Math.ceil(v*(a+(b-a)*0.99/m.T)/100):lo;return lo===hi?String(lo):lo+'–'+hi;}
+function mdDraw(){if(!MD)return;var box=document.getElementById('mdBox'),h='',ids=Object.keys(MD.mau||{});
+  if(ids.length){h+='<div class="note" style="margin:0 0 8px;border-color:#c0392b"><b>⚠️ Đang áp '+ids.length+' mẫu</b> (ai chế các món này cũng ra y hệt - chế xong nhớ trả):';
+    ids.forEach(function(id){var x=MD.mau[id],m=mdMon(id);h+='<div style="margin-top:4px">• <b>'+esc(m?m.ten:id)+'</b> #'+id+' · '+x.dong.length+' dòng: '+x.dong.map(mdTen).map(esc).join(', ')+' · cấp '+x.capPC+(x.tuChat?' · tư chất '+x.tuChat:'')+' · '+new Date(x.t*1000).toLocaleString('vi-VN')
+      +' <button class="btn-grey" onclick="mdTra(&quot;'+id+'&quot;,0)">↩ Trả mẫu</button> <button class="btn-red" onclick="mdTra(&quot;'+id+'&quot;,1)">↩ Trả + Restart</button></div>';});
+    h+='</div>';}
+  var opt='<option value="">-- chọn món đồ chế --</option>',vt='';
+  MD.data.mon.forEach(function(m){if(m.vitri!==vt){if(vt)opt+='</optgroup>';vt=m.vitri;opt+='<optgroup label="'+esc(vt)+'">';}
+    opt+='<option value="'+m.id+'"'+(m.id===MDSEL?' selected':'')+'>'+esc(m.ten)+(m.loai&&m.loai!==m.vitri?' ('+esc(m.loai)+')':'')+' · cấp '+m.cap+' · #'+m.id+(MD.mau[m.id]?' ⚠️ đang áp':'')+'</option>';});
+  opt+='</optgroup>';
+  h+='<div class="row" style="gap:8px;flex-wrap:wrap"><select id="mdSel" onchange="MDSEL=this.value;mdPick()" style="min-width:320px">'+opt+'</select></div><div id="mdForm" style="margin-top:8px"></div>';
+  box.className='';box.innerHTML=h;mdPick();}
+function mdPick(){var el=document.getElementById('mdForm');if(!el)return;var m=MDSEL?mdMon(MDSEL):null;if(!m){el.innerHTML='';return;}
+  var cur=MD.mau[m.id],cap=cur?cur.capPC:m.capMax,on={};(cur?cur.dong:[]).forEach(function(k){on[k]=1;});
+  var h='<div class="muted" style="margin-bottom:6px">'+esc(m.vitri)+' cấp '+m.cap+' · tự nhiên ra <b>'+m.min+'–'+m.max+' dòng</b> trong '+m.dong.length+' loại dòng dưới đây · cấp phẩm chất tự nhiên '+m.capMin+'–'+m.capMax+(m.coTuChat?' · tư chất '+m.tcMin+'–'+m.tcMax:'')+'</div>';
+  h+='<div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:6px"><label>Cấp phẩm chất <select id="mdCap" onchange="mdRange()">';
+  for(var c=1;c<=m.capMax;c++)h+='<option value="'+c+'"'+(c===cap?' selected':'')+'>'+c+(c===m.capMax?' (cao nhất)':'')+'</option>';
+  h+='</select></label>'+(m.coTuChat?'<label>Tư chất <input id="mdTc" class="mini-in" type="number" min="'+m.tcMin+'" max="'+m.tcMax+'" style="width:70px" value="'+(cur&&cur.tuChat?cur.tuChat:m.tcMax)+'"></label>':'')
+    +'<span id="mdDem" class="muted"></span></div>';
+  h+='<table><thead><tr><th></th><th>Dòng</th><th>Khoảng số ở cấp đã chọn</th></tr></thead><tbody>';
+  m.dong.forEach(function(k){h+='<tr><td><input type="checkbox" class="md-k" value="'+k+'" style="width:auto"'+(on[k]?' checked':'')+' onchange="mdRange()"></td><td>'+esc(mdTen(k))+'</td><td class="md-r" data-k="'+k+'"></td></tr>';});
+  h+='</tbody></table><div class="row" style="gap:8px;margin-top:8px"><button class="btn-green" onclick="mdAp(0)">💾 Áp mẫu</button><button class="btn-red" onclick="mdAp(1)">💾 Áp mẫu + Restart</button>'
+    +(cur?'<button class="btn-grey" onclick="mdTra(&quot;'+m.id+'&quot;,0)">↩ Trả mẫu món này</button>':'')+'</div>';
+  el.innerHTML=h;mdRange();}
+function mdRange(){var m=mdMon(MDSEL);if(!m)return;var cap=Number(document.getElementById('mdCap').value);
+  [].slice.call(document.querySelectorAll('#mdForm .md-r')).forEach(function(td){td.textContent=mdKhoang(m,Number(td.getAttribute('data-k')),cap);});
+  var n=document.querySelectorAll('#mdForm .md-k:checked').length,d=document.getElementById('mdDem');
+  d.innerHTML='Đã chọn <b>'+n+'</b> / tối đa '+m.max+' dòng'+(n>m.max?' <b style="color:#ff7b7b">quá số dòng</b>':'');}
+function mdAp(rs){var m=mdMon(MDSEL);if(!m)return;var ks=[].slice.call(document.querySelectorAll('#mdForm .md-k:checked')).map(function(x){return x.value;});
+  if(!ks.length)return toast('Chọn ít nhất 1 dòng');if(ks.length>m.max)return toast('Món này tối đa '+m.max+' dòng');
+  var cap=document.getElementById('mdCap').value,tc=document.getElementById('mdTc')?document.getElementById('mdTc').value:'';
+  if(!confirm('Áp mẫu '+m.ten+': '+ks.length+' dòng ('+ks.map(function(k){return mdTen(Number(k));}).join(', ')+'), cấp phẩm chất '+cap+(tc?', tư chất '+tc:'')+'?'+(rs?' Server sẽ RESTART ngay (~3 phút, người online bị ngắt).':' Có hiệu lực sau lần restart tới.')+' Trong lúc áp, ai chế món này cũng ra y hệt.'))return;
+  api('/api/gm/act',{a:'doche_ap',id:m.id,dong:ks.join(','),cap:cap,tc:tc,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
+function mdTra(id,rs){var m=mdMon(id);if(!confirm('Trả mẫu '+(m?m.ten:id)+' về gốc?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')+' Đồ đã chế giữ nguyên dòng và số.'))return;
+  api('/api/gm/act',{a:'doche_tra',id:id,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
 function gmDo(form,confirmMsg){
   if(confirmMsg&&!confirm(confirmMsg))return;
   api('/api/gm/act',form).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);gmLoad();}).catch(function(){});
