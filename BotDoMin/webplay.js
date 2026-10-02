@@ -2049,6 +2049,7 @@ const PAGE = [
     '.ikPic{position:relative;background:#0f1218;border:1px solid var(--line);border-radius:10px;height:110px;display:flex;align-items:center;justify-content:center;overflow:hidden}',
     '.ikPic img{width:68px;height:68px;object-fit:contain}',
     '.ikPic .isPh{font-size:38px}',
+    '.ikPic .ikIcG{display:block;width:68px;height:68px;background-repeat:no-repeat;border-radius:8px}',   // 03/10 icon game (vqIcon)
     '.ikQ{position:absolute;right:6px;bottom:6px;background:var(--red);color:#fff;font-weight:900;font-size:14px;border-radius:9px;padding:2px 9px;line-height:1.5}',
     '.ikNm{font-weight:800;font-size:14px;line-height:1.35;min-height:38px}',
     '.ikAct{display:flex;gap:7px;align-items:stretch}',
@@ -5369,7 +5370,7 @@ const PAGE = [
     'var L=IK.items||[];var box=$("ikList");',
     'if(!L.length){box.innerHTML="<div class=\\"muted\\" style=\\"text-align:center;padding:18px;grid-column:1/-1\\">Rương trống. Qua 🏪 Shop Item bấm <b>🧰 Vào rương</b> để mua đồ vào đây.</div>";return}',
     // thẻ món kiểu kho đồ: ảnh to, số lượng đè góc ảnh, tên, rồi 2 nút. Dùng lại isImg() của shop.
-    'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+isImg(x.img)+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
+    'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
     '+"<div class=\\"ikNm\\">"+esc(x.name)+(x.giu?"<br><small>🔒 giữ qua đêm (từ game)</small>":"")+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+x.qty+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',

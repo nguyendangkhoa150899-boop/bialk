@@ -2438,7 +2438,8 @@ function ichKyState(userId) {
         // Trả nhầm tên trường thì web không có ảnh mà cũng chẳng báo lỗi gì.
         // 18/09: quà admin bỏ vào có thể là món KHÔNG bán ở shop -> tên lấy từ kho đồ toàn game (gameitems.json)
         const gi = it ? null : gameItems().find(x => x.id === id);
-        return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '', giu: ICHKY_GIU.includes(id) };
+        return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '', giu: ICHKY_GIU.includes(id),
+            ic: (it && it.img) ? null : ITEMICON.icon(id) };   // 🖼️ 03/10: món không có ảnh shop (vd Long Văn từ game) -> icon game (itemicon.js)
     }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
     return {
         items, total: ichKyTotal(k),
