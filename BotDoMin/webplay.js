@@ -521,9 +521,10 @@ function startWebPlay(ctx) {
                 if (ctx.vongQuay && path === '/api/vq/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.vongQuay.state(userId) });
                 }
-                if (ctx.vongQuay && req.method === 'POST' && (path === '/api/vq/mo' || path === '/api/vq/quay' || path === '/api/vq/nhan')) {
+                if (ctx.vongQuay && req.method === 'POST' && (path === '/api/vq/mo' || path === '/api/vq/quay' || path === '/api/vq/nhan' || path === '/api/vq/xoa')) {
                     const body = await readBody(req);
-                    const r = path === '/api/vq/mo' ? ctx.vongQuay.mo(userId) : path === '/api/vq/quay' ? ctx.vongQuay.quay(userId) : await ctx.vongQuay.nhan(userId, String(body.k || ''));
+                    const r = path === '/api/vq/mo' ? ctx.vongQuay.mo(userId) : path === '/api/vq/quay' ? ctx.vongQuay.quay(userId)
+                        : path === '/api/vq/xoa' ? ctx.vongQuay.xoa(userId, String(body.k || '')) : await ctx.vongQuay.nhan(userId, String(body.k || ''));
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -1261,6 +1262,10 @@ const PAGE = [
     '.isIcG{display:block;width:62px;height:62px;flex:0 0 62px;border:1px solid var(--line);border-radius:11px;background-repeat:no-repeat}',
     '.vqNhanAll{background:linear-gradient(180deg,#3ddc84,#2aa564);color:#08210f;font-weight:800;padding:7px 12px;border-radius:9px}',
     '@media (max-width:520px){#vqBoard{gap:2px;padding:4px}.vqO{border-width:1px;border-radius:5px}.vqSl{font-size:9px}.vqBtns button{min-width:96px;padding:7px 8px;font-size:13px}.vqT1,.vqT2{font-size:11px}}',
+    '.vqAuto{display:flex;align-items:center;gap:6px;font-size:13px;color:#ffd76a;cursor:pointer}',
+    '.vqAuto input{width:auto;margin:0}',
+    '.vqR button.vqXoa{background:#3a4155;color:#fff;padding:6px 10px}',
+    '.vqXoaAll{margin-left:auto;background:#3a4155;color:#fff;padding:7px 12px;border-radius:9px;border:0}',
     // 🐾 01/10: Chọn Pet Boss
     '#pbModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:110;padding:16px}',
     '#pbModal.hidden{display:none}',
@@ -5398,10 +5403,10 @@ const PAGE = [
     'api("/api/itemshop/buy",{itemId:id,qty:q,vaoRuong:!!vaoRuong}).then(function(j){ISBUSY=false;isBtnLock(false);if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");if(j.ruong){IK=j.ruong;ikBadge(IK.total)}isSync()}).catch(function(e){ISBUSY=false;isBtnLock(false);if(btn)btn.textContent=chu;toast("❌ "+e.message);isSync()})}',
     '',
     // ===== 🍀 02/10: VÒNG QUAY MAY MẮN - icon cắt từ tấm ảnh game (/itemicon/), đèn chạy quanh 24 ô rồi dừng ở ô server bốc
-    'var VQ=null,VQBUSY=false,VQHL=-1;',
+    'var VQ=null,VQBUSY=false,VQHL=-1,VQAUTO=false;',
     'function vqIcon(ic,cls){if(!ic)return "<i class=\\""+(cls||"vqIc")+" vqNo\\">📦</i>";var sx=ic.w/64*100,sy=ic.h/64*100,px=ic.w>64?ic.x/(ic.w-64)*100:0,py=ic.h>64?ic.y/(ic.h-64)*100:0;return "<i class=\\""+(cls||"vqIc")+"\\" style=\\"background-image:url(/itemicon/"+encodeURIComponent(ic.f)+");background-size:"+sx+"% "+sy+"%;background-position:"+px.toFixed(3)+"% "+py.toFixed(3)+"%\\"></i>"}',
     'function vqPos(i){if(i<9)return [1,i+1];if(i<12)return [i-7,9];if(i<21)return [5,9-(i-12)];return [5-(i-20),1]}',
-    'function vqSync(){api("/api/vq/state").then(function(j){VQ=j;vqRender()}).catch(function(e){toast("❌ "+e.message)})}',
+    'function vqSync(){VQAUTO=false;api("/api/vq/state").then(function(j){VQ=j;vqRender()}).catch(function(e){toast("❌ "+e.message)})}',
     'function vqRender(){if(!VQ)return;var j=VQ,h="";',
     'if(!j.on){$("vqBoard").innerHTML="<div class=\\"muted\\" style=\\"padding:18px\\">🍀 Vòng quay đang tạm tắt - admin sẽ mở sớm.</div>";$("vqRuong").innerHTML="";$("vqStat").textContent="";return}',
     '$("vqStat").innerHTML="🎟️ <b>"+j.luot+"</b> lượt quay · ví "+vnd(j.balance)+" KNB";',
@@ -5410,24 +5415,27 @@ const PAGE = [
     'h+="<div class=\\"vqMid\\"><div class=\\"vqT1\\">"+(co?"Mở hoặc <b>làm mới</b> vòng quay tốn <b>"+vnd(j.gia)+" KNB</b>":"Bấm <b>Mở vòng</b> để bốc 24 món (<b>"+vnd(j.gia)+" KNB</b>)")+"</div>";',
     'h+="<div class=\\"vqBtns\\"><button class=\\"vqMo\\" onclick=\\"vqMo()\\""+(VQBUSY?" disabled":"")+">"+(co?"🔄 Làm mới":"🔓 Mở vòng")+"<small>"+vnd(j.gia)+" KNB</small></button>";',
     'h+="<button class=\\"vqRut\\" onclick=\\"vqQuay()\\""+(VQBUSY||!co||j.luot<1?" disabled":"")+">🎯 Rút thăm<small>1 lượt · còn "+j.luot+"</small></button></div>";',
-    'h+="<div class=\\"vqT2\\">Mỗi lượt tốn 1 <b>lượt quay</b> (có trong 🎒 Túi đồ boss) · quà vào rương bên dưới</div></div>";',
+    'h+="<label class=\\"vqAuto\\"><input type=\\"checkbox\\" id=\\"vqAutoCb\\""+(VQAUTO?" checked":"")+(co?"":" disabled")+" onchange=\\"vqAutoSet(this.checked)\\"> 🔁 Tự động quay"+(VQAUTO?" <b>(đang chạy)</b>":"")+"</label>";h+="<div class=\\"vqT2\\">Mỗi lượt tốn 1 <b>lượt quay</b> (có trong 🎒 Túi đồ boss) · quà vào rương bên dưới (tối đa "+(j.ruongMax||100)+" món, trúng trùng thì cộng dồn)</div></div>";',
     '$("vqBoard").innerHTML=h;',
     'var r=j.ruong||[];var rh="";',
     'if(!r.length)rh="<div class=\\"muted\\">Rương trống. Quay trúng gì sẽ nằm ở đây, bấm Nhận để gửi vào game.</div>";',
-    'else{rh="<div class=\\"row\\" style=\\"gap:8px;margin-bottom:8px\\"><b>"+r.length+" món</b>"+(j.linked?"<button class=\\"vqNhanAll\\" onclick=\\"vqNhan(\'all\',this)\\">📥 Nhận tất cả vào game</button>":"<span class=\\"muted\\">Chưa liên kết nhân vật - nhắn admin để nhận vào game</span>")+"</div><div class=\\"vqList\\">";',
-    'for(var k=0;k<r.length;k++){var y=r[k];rh+="<div class=\\"vqR"+(y.vip?" vip":"")+"\\">"+vqIcon(y.ic,"vqIcS")+"<div class=\\"vqRn\\"><div>"+esc(y.ten)+" <b>×"+y.sl+"</b></div><div class=\\"muted\\" style=\\"font-size:11px\\">"+new Date(y.t).toLocaleString("vi-VN")+"</div></div>"+(j.linked?"<button onclick=\\"vqNhan(\'"+y.k+"\',this)\\">Nhận</button>":"")+"</div>"}rh+="</div>"}',
+    'else{rh="<div class=\\"row\\" style=\\"gap:8px;margin-bottom:8px;flex-wrap:wrap\\"><b>"+r.length+"/"+(j.ruongMax||100)+" món</b>"+(j.linked?"<button class=\\"vqNhanAll\\" onclick=\\"vqNhan(\'all\',this)\\">📥 Nhận tất cả vào game</button>":"<span class=\\"muted\\">Chưa liên kết nhân vật - nhắn admin để nhận vào game</span>")+"<button class=\\"vqXoaAll\\" onclick=\\"vqXoa(\'all\',this)\\">🗑 Xóa tất cả</button></div><div class=\\"vqList\\">";',
+    'for(var k=0;k<r.length;k++){var y=r[k];rh+="<div class=\\"vqR"+(y.vip?" vip":"")+"\\">"+vqIcon(y.ic,"vqIcS")+"<div class=\\"vqRn\\"><div>"+esc(y.ten)+" <b>×"+y.sl+"</b></div><div class=\\"muted\\" style=\\"font-size:11px\\">"+new Date(y.t).toLocaleString("vi-VN")+"</div></div>"+(j.linked?"<button onclick=\\"vqNhan(\'"+y.k+"\',this)\\">Nhận</button>":"")+"<button class=\\"vqXoa\\" title=\\"Xóa khỏi rương\\" onclick=\\"vqXoa(\'"+y.k+"\',this)\\">🗑</button></div>"}rh+="</div>"}',
     '$("vqRuong").innerHTML=rh}',
     'function vqLock(on){VQBUSY=on;var b=document.querySelectorAll("#vqBoard button");for(var i=0;i<b.length;i++)b[i].disabled=on}',
     'async function vqMo(){if(VQBUSY||!VQ)return;var co=VQ.board.length>0;',
     'if(!(await gConfirm((co?"Làm mới":"Mở")+" vòng quay với giá <b>"+vnd(VQ.gia)+" KNB</b>?<br>Server bốc lại 24 món mới"+(co?" (vòng hiện tại sẽ mất)":"")+".",co?"🔄 Làm mới":"🔓 Mở vòng")))return;',
     'vqLock(true);api("/api/vq/mo",{}).then(function(j){VQBUSY=false;VQHL=-1;VQ=j;if(j.balance!==undefined)setBal(j.balance);vqRender();toast("🍀 Đã bốc 24 món mới")}).catch(function(e){VQBUSY=false;vqRender();toast("❌ "+e.message)})}',
-    'function vqQuay(){if(VQBUSY||!VQ)return;vqLock(true);',
-    'api("/api/vq/quay",{}).then(function(j){var dich=j.o,cur=VQHL<0?0:VQHL,vong=24*3+((dich-cur+24)%24),buoc=0;',
+    'function vqQuay(){if(VQBUSY||!VQ)return;if(VQAUTO&&VQ.luot<1){vqAutoSet(false);toast("🔁 Hết lượt - dừng tự động quay");return}vqLock(true);',
+    'api("/api/vq/quay",{}).then(function(j){var dich=j.o,cur=VQHL<0?0:VQHL,vong=(VQAUTO?24:24*3)+((dich-cur+24)%24),buoc=0;',
     'var chay=function(){if(VQHL>=0){var a=$("vqo"+VQHL);if(a)a.classList.remove("hl")}VQHL=(cur+buoc)%24;var b=$("vqo"+VQHL);if(b)b.classList.add("hl");',
-    'if(buoc>=vong){VQBUSY=false;VQ=j;vqRender();var q=j.qua;toast((q.vip?"🌟 VIP! ":"🎉 ")+"Trúng "+q.ten+" ×"+q.sl+" - đã vào rương");return}',
-    'buoc++;var con=vong-buoc;setTimeout(chay,con<6?220+(6-con)*90:(con<16?90:40))};chay()}).catch(function(e){VQBUSY=false;vqRender();toast("❌ "+e.message)})}',
+    'if(buoc>=vong){VQBUSY=false;VQ=j;vqRender();var q=j.qua;toast((q.vip?"🌟 VIP! ":"🎉 ")+"Trúng "+q.ten+" ×"+q.sl+" - đã vào rương");if(VQAUTO){if(j.luot>0)setTimeout(vqQuay,500);else{vqAutoSet(false);toast("🔁 Hết lượt - dừng tự động quay")}}return}',
+    'buoc++;var con=vong-buoc;setTimeout(chay,VQAUTO?(con<4?120:30):(con<6?220+(6-con)*90:(con<16?90:40)))};chay()}).catch(function(e){VQBUSY=false;if(VQAUTO)vqAutoSet(false);vqRender();toast("❌ "+e.message)})}',
     'function vqNhan(k,btn){if(VQBUSY)return;if(btn)btn.disabled=true;var chu=btn?btn.textContent:"";if(btn)btn.textContent="⏳...";',
     'api("/api/vq/nhan",{k:k}).then(function(j){VQ=j;vqRender();toast(j.message||"✅ Đã gửi vào game")}).catch(function(e){if(btn){btn.disabled=false;btn.textContent=chu}toast("❌ "+e.message);vqSync()})}',
+    'function vqAutoSet(on){VQAUTO=!!on;if(!VQBUSY)vqRender();else{var c=$("vqAutoCb");if(c)c.checked=VQAUTO}if(VQAUTO&&!VQBUSY)vqQuay()}',
+    'async function vqXoa(k,btn){if(VQBUSY)return;var all=k==="all";if(!(await gConfirm(all?"Xóa <b>TẤT CẢ</b> món trong rương? Không lấy lại được.":"Xóa món này khỏi rương? Không lấy lại được.","🗑 Xóa",true)))return;if(btn)btn.disabled=true;',
+    'api("/api/vq/xoa",{k:k}).then(function(j){VQ=j;vqRender();toast(j.message||"🗑 Đã xóa")}).catch(function(e){if(btn)btn.disabled=false;toast("❌ "+e.message)})}',
     // ===== 🐾 01/10: CHỌN PET BOSS - thẻ giả "__petboss" chèn vào nhóm ⭐ (pbInject), bấm mở popup chọn skin -> kiểu -> Nhận
     'var PB=null,PBSKIN=null,PBOPT=-1,PBBUSY=false;',
     'function pbInject(j){var p=j.petBoss;if(!p||!p.on||!j.items)return;j.items.unshift({id:"__petboss",cat:"important",name:p.name,price:p.price,max:1,img:p.img,note:(p.note?p.note+" · ":"")+"Bản "+p.banLabel+" - mỗi người chọn 1 con",pet:1});if(p.picked)j.once=(j.once||[]).concat(["__petboss"])}',

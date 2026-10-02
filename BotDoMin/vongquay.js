@@ -4,14 +4,15 @@
 //      <vip> ô VIP (mặc định 2) + phần còn lại món thường, bốc theo trọng số, không trùng nếu bộ đủ món.
 //   2. RÚT THĂM: tốn 1 LƯỢT QUAY (có từ Túi đồ boss, admin cấp) -> server bốc 1 trong 24 ô theo trọng số
 //      của từng món (VIP trọng số nhỏ = hiếm). Vòng giữ nguyên sau khi quay (giống game), muốn đổi món thì Làm mới.
-//   3. Quà vào RƯƠNG VÒNG QUAY trên web (không hết hạn). Bấm Nhận -> hàng đợi quà game (đổi bản đồ là có).
+//   3. Quà vào RƯƠNG VÒNG QUAY trên web (không hết hạn, tối đa RUONG_MAX dòng). Trúng món đã có trong rương thì CỘNG DỒN
+//      vào dòng cũ. Bấm Nhận -> hàng đợi quà game (đổi bản đồ là có). Người chơi tự xóa món không cần.
 // Cấu hình: dbCache._vqCfg = { on, gia, vip, pool: [{ id, sl, w, vip }] } - sửa ở panel tab 🎁 Quà tặng.
 // Người chơi: userData.vq = { luot, board: [{ id, sl, w, vip }], ruong: [{ k, id, sl, t, vip }], lich: [...] }
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const SO_O = 24, RUONG_MAX = 300, LICH_MAX = 30, LOG_MAX = 400;
+const SO_O = 24, RUONG_MAX = 100, LICH_MAX = 30, LOG_MAX = 400;
 let MAC_DINH = [];
 try { MAC_DINH = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'vongquay-macdinh.json'), 'utf8')); } catch { /* bộ trống */ }
 
@@ -42,6 +43,11 @@ module.exports = function vongQuay(d) {
         if (!Number.isInteger(v.luot)) v.luot = 0;
         if (!Array.isArray(v.ruong)) v.ruong = [];
         if (!Array.isArray(v.lich)) v.lich = [];
+        if (!v.gop) {   // 02/10: gộp dòng trùng ID có từ trước khi có cộng dồn
+            const m = new Map();
+            for (const x of v.ruong) { const y = m.get(x.id); if (y) { y.sl += x.sl; y.t = Math.max(y.t, x.t); y.vip = y.vip || x.vip; } else m.set(x.id, { ...x }); }
+            v.ruong = [...m.values()]; v.gop = 1;
+        }
         return v;
     }
     const ra = (x) => ({ id: x.id, sl: x.sl, vip: !!x.vip, ten: ten(x.id), ic: d.icon(x.id) });
@@ -70,7 +76,7 @@ module.exports = function vongQuay(d) {
     function webState(uid) {
         const c = cfg(), u = d.getUserData(uid), v = vqOf(u);
         return {
-            on: c.on, gia: c.gia, luot: v.luot, balance: u.points || 0,
+            on: c.on, gia: c.gia, luot: v.luot, balance: u.points || 0, ruongMax: RUONG_MAX,
             ingameName: (u.ingameName || '').trim(), linked: !!(u.tlbbGuid || u.ingameName),
             board: (v.board || []).map(ra),
             ruong: v.ruong.slice().reverse().map((x) => ({ ...ra(x), k: x.k, t: x.t })),
@@ -97,7 +103,7 @@ module.exports = function vongQuay(d) {
         const u = d.getUserData(uid), v = vqOf(u);
         if (!v.board || !v.board.length) return { error: `Chưa có vòng - bấm Mở vòng (${c.gia.toLocaleString()} KNB) trước` };
         if (v.luot < 1) return { error: 'Hết lượt quay - đánh boss nhận Túi đồ boss để có thêm lượt' };
-        if (v.ruong.length >= RUONG_MAX) return { error: `Rương đầy ${RUONG_MAX} món - nhận bớt vào game đã` };
+        if (v.ruong.length >= RUONG_MAX) return { error: `Rương đầy ${RUONG_MAX} món - nhận bớt vào game hoặc xóa bớt đã` };
         const tong = v.board.reduce((s, x) => s + (x.w > 0 ? x.w : 0), 0);
         if (tong <= 0) return { error: 'Vòng lỗi trọng số - bấm Làm mới' };
         let r = rnd(tong), o = 0;
@@ -105,7 +111,8 @@ module.exports = function vongQuay(d) {
         const x = v.board[o];
         v.luot -= 1;
         const q = { k: Date.now().toString(36) + '-' + rnd(1e6).toString(36), id: x.id, sl: x.sl, vip: !!x.vip, t: Date.now() };
-        v.ruong.push(q);
+        const cu = v.ruong.find((y) => y.id === x.id);   // trúng món đã có -> cộng dồn
+        if (cu) { cu.sl += x.sl; cu.t = q.t; cu.vip = cu.vip || q.vip; } else v.ruong.push(q);
         v.lich.push({ id: x.id, sl: x.sl, vip: !!x.vip, t: q.t }); if (v.lich.length > LICH_MAX) v.lich.splice(0, v.lich.length - LICH_MAX);
         const db = d.db(); if (!Array.isArray(db._vqLog)) db._vqLog = [];
         db._vqLog.push({ t: q.t, uid, ten: u.name || uid, id: x.id, sl: x.sl, vip: !!x.vip });
@@ -142,6 +149,19 @@ module.exports = function vongQuay(d) {
             d.writeLog('SYSTEM', `[VÒNG QUAY] ${u.name || uid} nhận ${da} món từ rương -> ${target}`);
             return { ok: true, message: `✅ Đã gửi ${da} món vào game - đổi bản đồ để nhận (túi đầy thì lần sau nhận tiếp)`, ...webState(uid) };
         } finally { dangNhan.delete(uid); }
+    }
+
+    // Xóa món trong rương (k = mã 1 món, hoặc 'all')
+    function xoa(uid, k) {
+        const u = d.getUserData(uid), v = vqOf(u);
+        if (dangNhan.has(uid)) return { error: '⏳ Đang giao quà, chờ vài giây' };
+        const truoc = v.ruong.length;
+        const bo = k === 'all' ? v.ruong : v.ruong.filter((x) => x.k === String(k));
+        if (!bo.length) return { error: 'Không thấy món này trong rương' };
+        d.writeLog('SYSTEM', `[VÒNG QUAY] ${u.name || uid} xóa ${bo.length} món khỏi rương: ${bo.map((x) => ten(x.id) + ' x' + x.sl).join(', ').slice(0, 300)}`);
+        v.ruong = k === 'all' ? [] : v.ruong.filter((x) => x.k !== String(k));
+        d.saveDbNow();
+        return { ok: true, message: `🗑 Đã xóa ${truoc - v.ruong.length} món`, ...webState(uid) };
     }
 
     // Túi đồ boss / admin cộng lượt quay
@@ -216,5 +236,5 @@ module.exports = function vongQuay(d) {
         return out;
     }
 
-    return { webState, mo, quay, nhan, congLuot, adminState, saveCfg, macDinh, capLuot, tim };
+    return { webState, mo, quay, nhan, xoa, congLuot, adminState, saveCfg, macDinh, capLuot, tim, RUONG_MAX };
 };

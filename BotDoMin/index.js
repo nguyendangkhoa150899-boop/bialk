@@ -7522,7 +7522,7 @@ client.once('ready', async (c) => {
                 },
             },
             // 🍀 02/10: vòng quay may mắn (mở/làm mới bằng KNB, quay bằng lượt từ túi boss, quà vào rương web)
-            vongQuay: { state: (uid) => VQ.webState(uid), mo: (uid) => VQ.mo(uid), quay: (uid) => VQ.quay(uid), nhan: (uid, k) => VQ.nhan(uid, k) },
+            vongQuay: { state: (uid) => VQ.webState(uid), mo: (uid) => VQ.mo(uid), quay: (uid) => VQ.quay(uid), nhan: (uid, k) => VQ.nhan(uid, k), xoa: (uid, k) => VQ.xoa(uid, k) },
             gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),
