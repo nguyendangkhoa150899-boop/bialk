@@ -2495,7 +2495,7 @@ const PAGE = [
     '<div id="pageVq" class="hidden">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🍀 Vòng Quay May Mắn</h2><div class="muted" id="vqStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin:4px 0 10px">Mở / làm mới vòng bằng KNB để bốc 24 món · rút thăm bằng lượt quay (có trong 🎒 Túi đồ boss) · ô viền vàng là món VIP, rất hiếm.</div>',
+    '<div class="muted" style="font-size:12px;margin:4px 0 10px">Mở / làm mới vòng bằng KNB để bốc 24 món · rút thăm bằng lượt quay (có trong 🎒 Túi đồ boss) · ai cũng trúng được mọi món, món càng quý càng hiếm.</div>',
     '<div id="vqBoard"><div class="muted">Đang tải...</div></div>',
     '</div>',
     '<div class="card"><h3 style="margin:0 0 8px">🧰 Rương vòng quay</h3><div id="vqRuong"><div class="muted">Đang tải...</div></div></div>',
