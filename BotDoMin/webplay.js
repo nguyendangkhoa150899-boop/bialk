@@ -2183,7 +2183,7 @@ const PAGE = [
     '<div style="display:flex;gap:6px;align-items:center">',
     // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
     // 🧰 17/09: Rương Ích Kỷ - đứng ngay trước nút loa, đúng chỗ chủ server chỉ
-    '<button id="ikBtn" title="Rương Ích Kỷ - 00:00 là xoá sạch" onclick="ikOpen()">🧰<span class="n" id="ikNum">0</span></button>',
+    '<button id="ikBtn" title="Rương Ích Kỷ - giữ vĩnh viễn" onclick="ikOpen()">🧰<span class="n" id="ikNum">0</span></button>',
     '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
     '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
 
@@ -2641,7 +2641,7 @@ const PAGE = [
     '<div id="ikModal" class="hidden">',
     '<div id="ikBox">',
     '<div class="row"><h2 style="margin:0">🧰 RƯƠNG ÍCH KỶ</h2><button onclick="ikClose()" style="background:#232735;padding:4px 12px">✕</button></div>',
-    '<div id="ikWarn">⏰ <b>00:00 là rương XOÁ SẠCH</b> - món nào chưa NHẬN vào game hoặc chưa TẶNG đi là mất trắng. <span id="ikCount"></span></div>',
+    '<div id="ikWarn">♾️ Rương giữ <b>vĩnh viễn</b>, không giới hạn số món. Bấm <b>📦 Nhận</b> để đưa vào game (nhân vật phải online), <b>🎁 Tặng</b> để chuyển cho người khác.</div>',
     '<div class="muted" style="font-size:12px;margin-bottom:8px" id="ikStat">-</div>',
     '<div id="ikNhan" class="hidden"></div>',
     '<div style="font-size:12px;font-weight:700;margin-bottom:4px">🎁 Tặng cho</div>',
@@ -5358,12 +5358,12 @@ const PAGE = [
     'e.innerHTML="Còn <b>"+h+" giờ "+m+" phút "+g+" giây</b>."}',
     'function ikSync(){api("/api/ichky/state").then(function(j){IK=j;ikDraw()}).catch(function(e){toast("❌ "+e.message)})}',
     // nhãn số trên nút thanh số dư
-    'function ikBadge(n){var b=$("ikNum");if(!b)return;b.textContent=n;var t=$("ikBtn");if(t)t.title="Rương Ích Kỷ: đang giữ "+n+" món - 00:00 là xoá sạch"}',
+    'function ikBadge(n){var b=$("ikNum");if(!b)return;b.textContent=n;var t=$("ikBtn");if(t)t.title="Rương Ích Kỷ: đang giữ "+n+" món"}',
     'function ikLoadNguoi(){if(IKNG)return;api("/api/players").then(function(j){IKNG=(j.list||[]).filter(function(p){return String(p.id)!==String(MYID)});',
     'var sel=$("ikTo");if(!sel)return;var h="<option value=\\"\\">-- chọn người nhận --</option>";',
     'IKNG.forEach(function(p){h+="<option value=\\""+p.id+"\\">"+esc(p.name||p.id)+"</option>"});sel.innerHTML=h}).catch(function(){})}',
     'function ikDraw(){if(!IK)return;ikBadge(IK.total);ikTick();',
-    '$("ikStat").innerHTML="Đang giữ <b>"+IK.total+"/"+IK.holdMax+"</b> món · hôm nay đã mua vào rương <b>"+IK.boughtToday+"/"+IK.dayMax+"</b> (còn "+IK.leftToday+")";',
+    '$("ikStat").innerHTML="Đang giữ <b>"+IK.total+"</b> món · hôm nay đã mua vào rương <b>"+IK.boughtToday+"/"+IK.dayMax+"</b> (còn "+IK.leftToday+")";',
     // 🎁 ai tặng mình hôm nay - gọn trong 1 khung, khỏi đẻ thêm màn hình
     'var nh=$("ikNhan"),NL=IK.nhan||[];nh.classList.toggle("hidden",!NL.length);',
     'if(NL.length){nh.innerHTML="🎁 <b>Hôm nay bạn được tặng:</b><br>"+NL.map(function(g){return "• <b>"+esc(g.tu)+"</b> tặng "+g.qty+" "+esc(g.ten)+" <span class=\\"muted\\">("+ikGio(g.at)+")</span>"}).join("<br>")}',
@@ -5371,7 +5371,7 @@ const PAGE = [
     'if(!L.length){box.innerHTML="<div class=\\"muted\\" style=\\"text-align:center;padding:18px;grid-column:1/-1\\">Rương trống. Qua 🏪 Shop Item bấm <b>🧰 Vào rương</b> để mua đồ vào đây.</div>";return}',
     // thẻ món kiểu kho đồ: ảnh to, số lượng đè góc ảnh, tên, rồi 2 nút. Dùng lại isImg() của shop.
     'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
-    '+"<div class=\\"ikNm\\">"+esc(x.name)+(x.giu?"<br><small>🔒 giữ qua đêm (từ game)</small>":"")+"</div>"',
+    '+"<div class=\\"ikNm\\">"+esc(x.name)+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+(x.rutMax?Math.min(x.qty,x.rutMax):x.qty)+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
     '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button></div></div>"});',
@@ -5399,7 +5399,7 @@ const PAGE = [
     'if(isOnceCat(it.cat)&&isOnceBought(it))return toast("⭐ Bạn đã mua món này rồi - mỗi người chỉ 1 lần");',
     'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
-    'if(!(await gConfirm(vaoRuong?("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> KNB bỏ vào <b>🧰 Rương Ích Kỷ</b>?<br>Không cần đang online. <b>00:00 chưa xài là mất trắng.</b>"):("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> KNB? Giao thẳng vào túi trong game (phải đang ONLINE)."),vaoRuong?"🧰 Mua vào rương":"🛒 Mua")))return;',
+    'if(!(await gConfirm(vaoRuong?("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> KNB bỏ vào <b>🧰 Rương Ích Kỷ</b>?<br>Không cần đang online. Rương giữ vĩnh viễn."):("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> KNB? Giao thẳng vào túi trong game (phải đang ONLINE)."),vaoRuong?"🧰 Mua vào rương":"🛒 Mua")))return;',
     'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent=vaoRuong?"⏳ Đang bỏ vào rương...":"⏳ Đang giao vào game...";',
     'api("/api/itemshop/buy",{itemId:id,qty:q,vaoRuong:!!vaoRuong}).then(function(j){ISBUSY=false;isBtnLock(false);if(j.balance!==undefined)setBal(j.balance);toast(j.message||"✅ Đã giao!");if(j.ruong){IK=j.ruong;ikBadge(IK.total)}isSync()}).catch(function(e){ISBUSY=false;isBtnLock(false);if(btn)btn.textContent=chu;toast("❌ "+e.message);isSync()})}',
     '',

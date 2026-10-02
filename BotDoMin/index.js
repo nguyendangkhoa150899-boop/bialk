@@ -2386,23 +2386,20 @@ function itemShopToday(user) {
 }
 // ===== 🧰 RƯƠNG ÍCH KỶ (17/09) =====
 // Sổ nằm ở userData.ichKy = { day:'d/m/yyyy giờ VN', bought:<số món đã mua hôm nay>, items:{ id: qty } }.
-// RESET bằng cách so ngày: mở rương mà day != hôm nay -> vứt sạch, đếm lại từ 0. Không cần hẹn giờ,
-// không sợ bot tắt qua đêm rồi quên xoá.
-const ICHKY_DAY_MAX = 100;    // mua vào rương tối đa 100 món/người/NGÀY (nhận hết cũng không mua thêm)
-const ICHKY_HOLD_MAX = 100;   // rương giữ tối đa 100 món - chặn dồn quà từ nhiều người vào 1 rương
+// 03/10 (chủ server chốt): rương GIỮ VĨNH VIỄN, KHÔNG giới hạn số món. Sang ngày mới chỉ đặt lại đếm
+// "đã mua hôm nay" (bought) và sổ "được tặng hôm nay" (nhan) - ĐỒ TRONG RƯƠNG GIỮ NGUYÊN.
+// (17/09 -> 02/10: 00:00 xoá sạch đồ, giữ tối đa 100 món.)
+const ICHKY_DAY_MAX = 100;    // mua vào rương tối đa 100 món/người/NGÀY (giới hạn đầu vào, vẫn giữ)
+const ICHKY_HOLD_MAX = Infinity;   // 03/10: bỏ giới hạn giữ (trước 100). JSON gửi web là null
 const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
-// 02/10: Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts) là đồ thật của người chơi
-// -> GIỮ QUA ĐÊM, không xoá lúc 00:00 như đồ mua shop. Món khác trong rương vẫn xoá như cũ.
+// Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts, 02/10)
 const ICHKY_GIU = ['10157001', '10157002', '10157003'];
 const ICHKY_GIU_RUT_MAX = 10;   // 03/10: Long Văn rút về game tối đa 10 cái/lần (mỗi cái 1 ô túi, rút nhiều dễ tràn túi -> mất đồ)
 function ichKyOf(user) {
     const hnay = vnDayStr(Date.now());
     let k = user.ichKy;
     if (!k || typeof k !== 'object' || k.day !== hnay) {
-        const giu = {};
-        if (k && typeof k === 'object' && k.items && typeof k.items === 'object') {
-            for (const id of ICHKY_GIU) { const n = Number(k.items[id]) || 0; if (n > 0) giu[id] = n; }
-        }
+        const giu = (k && typeof k === 'object' && k.items && typeof k.items === 'object') ? k.items : {};
         k = user.ichKy = { day: hnay, bought: 0, items: giu };
     }
     if (!k.items || typeof k.items !== 'object') k.items = {};
