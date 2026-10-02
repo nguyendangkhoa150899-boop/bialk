@@ -711,6 +711,45 @@ function tlbbCleanupIn() {
         try { tlbb.cleanupIn(v.tlbbGuid); } catch { /* file đang bận, lần sau */ }
     }
 }
+// GAME -> 🧰 RƯƠNG ÍCH KỶ (02/10): Long Văn +1/+2/+3 người chơi gửi ở NPC Ví Web (game đã XOÁ món khỏi túi
+// rồi mới ghi phiếu outlv/). Chống cộng trùng y như phiếu KNB: tên phiếu vào dbCache._tlbbLvSeen + lưu đĩa
+// TRƯỚC khi chuyển phiếu sang outlv/xong/. Long Văn trong rương giữ qua đêm (ICHKY_GIU), rút về game / tặng
+// dùng đúng nút của Rương Ích Kỷ.
+const _tlbbLvWarned = new Set();
+function tlbbPollLvReceipts() {
+    let list;
+    try { list = tlbb.readLvReceipts(); } catch (e) { return; }
+    if (!list.length) return;
+    if (!dbCache._tlbbLvSeen || typeof dbCache._tlbbLvSeen !== 'object') dbCache._tlbbLvSeen = {};
+    const seen = dbCache._tlbbLvSeen;
+    for (const rc of list) {
+        if (seen[rc.file]) { try { tlbb.finishLvReceipt(rc.file); } catch { /* thử lại lần sau */ } continue; }
+        const uid = tlbbUserByGuid(rc.guid);
+        const moTa = rc.items.map(x => `${x.id} x${x.n}`).join(', ');
+        if (!uid) {
+            if (!_tlbbLvWarned.has(rc.file)) {
+                _tlbbLvWarned.add(rc.file);
+                writeLog('ADMIN', `[LONG VĂN TỪ GAME] Phiếu ${rc.file}: ${moTa} của GUID ${rc.guid} CHƯA liên kết người chơi nào - giữ phiếu, liên kết ví xong bot tự cộng`);
+            }
+            continue;
+        }
+        const u = getUserData(uid);
+        const k = ichKyOf(u);
+        const gi = gameItems();
+        for (const x of rc.items) {
+            ichKyAdd(u, x.id, x.n);
+            const g = gi.find(t => t && t.id === x.id);
+            k.nhan.push({ tu: '🎮 Gửi từ game (Ví Web)', ten: (g && g.n) || ('Long Văn ' + x.id), qty: x.n, at: Date.now() });
+        }
+        if (k.nhan.length > 20) k.nhan = k.nhan.slice(-20);
+        seen[rc.file] = Date.now();
+        saveDbNow();
+        writeLog('ADMIN', `[LONG VĂN TỪ GAME] ${u.name || uid} +${moTa} vào Rương Ích Kỷ (GUID ${rc.guid}, ${rc.file})`);
+        try { tlbb.finishLvReceipt(rc.file); } catch { /* đã ghi seen, lần sau chỉ dọn file */ }
+    }
+    const cut = Date.now() - 30 * 86400000;
+    for (const [f, t] of Object.entries(seen)) if (t < cut) delete seen[f];
+}
 
 
 // ===== 📒 VAY NỢ - bảng nút trong kênh Discord, KHÔNG dùng lệnh =====
@@ -2352,10 +2391,19 @@ function itemShopToday(user) {
 const ICHKY_DAY_MAX = 100;    // mua vào rương tối đa 100 món/người/NGÀY (nhận hết cũng không mua thêm)
 const ICHKY_HOLD_MAX = 100;   // rương giữ tối đa 100 món - chặn dồn quà từ nhiều người vào 1 rương
 const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
+// 02/10: Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts) là đồ thật của người chơi
+// -> GIỮ QUA ĐÊM, không xoá lúc 00:00 như đồ mua shop. Món khác trong rương vẫn xoá như cũ.
+const ICHKY_GIU = ['10157001', '10157002', '10157003'];
 function ichKyOf(user) {
     const hnay = vnDayStr(Date.now());
     let k = user.ichKy;
-    if (!k || typeof k !== 'object' || k.day !== hnay) { k = user.ichKy = { day: hnay, bought: 0, items: {} }; }
+    if (!k || typeof k !== 'object' || k.day !== hnay) {
+        const giu = {};
+        if (k && typeof k === 'object' && k.items && typeof k.items === 'object') {
+            for (const id of ICHKY_GIU) { const n = Number(k.items[id]) || 0; if (n > 0) giu[id] = n; }
+        }
+        k = user.ichKy = { day: hnay, bought: 0, items: giu };
+    }
     if (!k.items || typeof k.items !== 'object') k.items = {};
     if (!Number.isFinite(Number(k.bought))) k.bought = 0;
     // 🎁 sổ "ai tặng mình hôm nay" - nằm CHUNG trong ichKy nên 00:00 tự xoá theo, khỏi dọn riêng
@@ -2390,7 +2438,7 @@ function ichKyState(userId) {
         // Trả nhầm tên trường thì web không có ảnh mà cũng chẳng báo lỗi gì.
         // 18/09: quà admin bỏ vào có thể là món KHÔNG bán ở shop -> tên lấy từ kho đồ toàn game (gameitems.json)
         const gi = it ? null : gameItems().find(x => x.id === id);
-        return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '' };
+        return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '', giu: ICHKY_GIU.includes(id) };
     }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
     return {
         items, total: ichKyTotal(k),
@@ -7184,6 +7232,7 @@ client.once('ready', async (c) => {
                 .catch((e) => { writeLog('SYSTEM', `[SHOP] Chưa tải được danh mục vật phẩm (${e.message}) - thử lại sau 60s`); if (lan < 30) setTimeout(() => napDanhMuc(lan + 1), 60000); });
         })(0);
     setInterval(tlbbPollReceipts, 5000);
+    setInterval(tlbbPollLvReceipts, 5000);   // 02/10: Long Văn từ game -> Rương Ích Kỷ
     setInterval(tlbbCleanupIn, 30000);
     // 🏹 30/09: đọc Audit log game 10 giây/lần -> dbCache._bossKills (lượt giết boss theo GUID)
     setInterval(() => {

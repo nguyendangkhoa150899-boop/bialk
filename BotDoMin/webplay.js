@@ -5370,7 +5370,7 @@ const PAGE = [
     'if(!L.length){box.innerHTML="<div class=\\"muted\\" style=\\"text-align:center;padding:18px;grid-column:1/-1\\">Rương trống. Qua 🏪 Shop Item bấm <b>🧰 Vào rương</b> để mua đồ vào đây.</div>";return}',
     // thẻ món kiểu kho đồ: ảnh to, số lượng đè góc ảnh, tên, rồi 2 nút. Dùng lại isImg() của shop.
     'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+isImg(x.img)+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
-    '+"<div class=\\"ikNm\\">"+esc(x.name)+"</div>"',
+    '+"<div class=\\"ikNm\\">"+esc(x.name)+(x.giu?"<br><small>🔒 giữ qua đêm (từ game)</small>":"")+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+x.qty+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
     '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button></div></div>"});',

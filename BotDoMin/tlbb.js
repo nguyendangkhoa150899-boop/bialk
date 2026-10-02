@@ -23,12 +23,17 @@ const GAME = path.join(ROOT, 'home/tlbb');
 const DIR = path.join(GAME, 'Server/txt/NetCo4Web');
 const OUT = path.join(DIR, 'out');
 const OUT_DONE = path.join(OUT, 'xong');
+// 02/10: Long Văn +1/+2/+3 gửi từ NPC Ví Web -> 🧰 Rương Ích Kỷ. Phiếu riêng thư mục outlv/:
+// mỗi dòng "<GUID> <ID Long Văn> <số>", dòng cuối "END". Tên file = mã giao dịch (chống cộng trùng).
+const OUTLV = path.join(DIR, 'outlv');
+const OUTLV_DONE = path.join(OUTLV, 'xong');
+const LONGVAN = ['10157001', '10157002', '10157003'];
 const SECRETS = process.env.TLBB_SECRETS || '/opt/tlbb-deploy/secrets.env';
 const VISCII_MAP = process.env.TLBB_VISCII_MAP || '/opt/tlbb-repo/tools/viscii-map.json';
 const MYSQL = '/usr/local/mysql5.0.45/bin/mysql';
 
 function ensureDirs() {
-    for (const d of [DIR, OUT, OUT_DONE]) fs.mkdirSync(d, { recursive: true });
+    for (const d of [DIR, OUT, OUT_DONE, OUTLV, OUTLV_DONE]) fs.mkdirSync(d, { recursive: true });
 }
 
 function readLines(file) {
@@ -99,6 +104,32 @@ function readReceipts() {
 
 function finishReceipt(file) {
     fs.renameSync(path.join(OUT, file), path.join(OUT_DONE, file));
+}
+
+// Phiếu Long Văn hoàn chỉnh (dòng cuối END, mọi dòng đúng GUID trong tên file, đúng 3 ID Long Văn).
+// [{ file, guid, items: [{ id, n }] }]. Phiếu sai dạng thì bỏ qua (nằm lại cho admin xem), không cộng.
+function readLvReceipts() {
+    ensureDirs();
+    const out = [];
+    for (const f of fs.readdirSync(OUTLV)) {
+        if (!/^\d+_\d+_\d+\.txt$/.test(f)) continue;
+        const lines = readLines(path.join(OUTLV, f)).map((s) => s.trim()).filter(Boolean);
+        if (lines.length < 2 || lines[lines.length - 1] !== 'END') continue;
+        const guid = f.split('_')[0];
+        const items = [];
+        let ok = true;
+        for (const l of lines.slice(0, -1)) {
+            const m = l.match(/^(\d+) (\d+) (\d+)$/);
+            if (!m || m[1] !== guid || !LONGVAN.includes(m[2]) || !(Number(m[3]) > 0 && Number(m[3]) <= 1000)) { ok = false; break; }
+            items.push({ id: m[2], n: Number(m[3]) });
+        }
+        if (ok && items.length) out.push({ file: f, guid, items });
+    }
+    return out;
+}
+
+function finishLvReceipt(file) {
+    fs.renameSync(path.join(OUTLV, file), path.join(OUTLV_DONE, file));
 }
 
 // ----- NHÂN VẬT (đọc MySQL của game, chỉ đọc) -----
@@ -257,4 +288,4 @@ async function guidsOfAcc(acc) {
     return chars.filter((c) => String(c.account || '').toLowerCase() === acc).map((c) => String(c.guid));
 }
 
-module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem, givePet, kiemMk, doiMk, guidsOfAcc, RE_GACC, RE_GPASS };
+module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, readLvReceipts, finishLvReceipt, LONGVAN, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem, givePet, kiemMk, doiMk, guidsOfAcc, RE_GACC, RE_GPASS };
