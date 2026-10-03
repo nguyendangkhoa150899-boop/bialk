@@ -1975,6 +1975,17 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-grey" onclick="gmHuySua()">✖ Hủy thay đổi</button>
           <span id="gmSuaNote" class="muted"></span>
         </div>
+        <div style="margin-top:14px;border-top:1px solid #3a3f4b;padding-top:10px">
+          <b>🎲 Rơi thêm qua script</b> <span class="muted">(hiệu lực ngay, không restart · mỗi người trong tổ đội ở gần roll riêng · nhiều ID = bốc 1 món)</span>
+          <div id="roiBox" style="margin-top:6px;overflow-x:auto"></div>
+          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+            <select id="roiKhoa" class="mini-in"></select>
+            <input id="roiIds" class="mini-in" style="width:260px" placeholder="ID vật phẩm hoặc @ngoc6, cách nhau dấu phẩy">
+            <input id="roiPct" class="mini-in" style="width:80px" placeholder="% (vd 1.75)">
+            <button class="btn-green" onclick="roiThem()">➕ Thêm</button>
+          </div>
+          <div class="muted" id="roiNhom" style="margin-top:4px"></div>
+        </div>
         <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
           <b>🧵 Mẫu đồ chế 8x/9x + Thái Cổ Thần Khí</b>
           <button class="btn-grey" onclick="mdLoad()">🔄 Tải</button>
@@ -3128,6 +3139,7 @@ function gmRender(){
   GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el&&el.dataset.sua!=='1'&&document.activeElement!==el&&st[o[1]]!==undefined)el.value=st[o[1]];});
   var ed=document.getElementById('gmExpDef');if(ed&&st.expDefault!==undefined)ed.textContent=st.expDefault;
   gmSuaNote();
+  roiVe(st.roithem);
   document.getElementById('gmAccs').innerHTML='<table><tr><th>ID</th><th>Tài khoản</th><th>Online</th><th></th></tr>'+
     st.accounts.map(function(a){
       return '<tr><td>'+esc(a.id)+'</td><td><b>'+esc(a.name)+'</b></td><td>'+(a.online?'<b style="color:#35c46a">online</b>':'<span class="muted">-</span>')+'</td>'+
@@ -3207,6 +3219,27 @@ function gmCreateAcc(){
   if(uid&&!/^[0-9]{15,20}$/.test(uid))return toast('Discord ID phải là 15-20 chữ số');
   gmDo({a:'tao_tk',ten:n,mk:p,uid:uid});document.getElementById('gmNewPw').value='';
 }
+// 🎲 03/10: rơi thêm qua script (panel game roi_them / roi_xoa, file Server/txt/NetCo4Cfg/roithem.txt, Lua roimap x950001_RoiCfg)
+var ROI_TEN={kycuoc_co:'Kỳ Cuộc (Cờ 12h) – mỗi quân cờ',kycuoc_boss:'Kỳ Cuộc (Cờ 12h) – boss Viễn Cổ Kỳ Hồn'};
+var ROI_NHOM_TEN={'@ngoc6':'20 loại ngọc cấp 6','@mienbo6':'Miên Bố 6 / Bí Ngân 6'};
+function roiVe(rt){
+  var box=document.getElementById('roiBox'),sel=document.getElementById('roiKhoa');if(!box||!rt)return;
+  if(sel&&!sel.options.length){Object.keys(rt.khoa).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=ROI_TEN[k]||rt.khoa[k].ten;sel.appendChild(o);});}
+  var nh=document.getElementById('roiNhom');if(nh)nh.textContent='Nhóm có sẵn: '+Object.keys(rt.nhom).map(function(g){return g+' = '+(ROI_NHOM_TEN[g]||rt.nhom[g]);}).join(' · ');
+  if(!rt.rows.length){box.innerHTML='<span class="muted">Chưa có dòng nào.</span>';return;}
+  box.innerHTML='<table><tr><th>Hoạt động</th><th>Món</th><th>Tỉ lệ</th><th>Ước tính / người / lượt</th><th></th></tr>'+rt.rows.map(function(r){
+    var kh=rt.khoa[r.k]||{soCon:1},uoc=(parseFloat(r.pct)/100*kh.soCon);
+    var mon=r.ids.map(function(t,i){return esc((ROI_NHOM_TEN[t]||r.ten[i]||'?'))+' <span class="muted">'+esc(t)+'</span>';}).join(r.ids.length>1?' / ':'');
+    return '<tr><td>'+esc(ROI_TEN[r.k]||r.k)+'</td><td>'+(r.ids.length>1?'Bốc 1: ':'')+mon+'</td><td>'+esc(r.pct)+'%</td><td>~'+(uoc>=10?uoc.toFixed(0):uoc.toFixed(2))+' món'+(kh.soCon>1?' <span class="muted">('+kh.soCon+' con)</span>':'')+'</td>'+
+      '<td><button class="mini btn-red" onclick="roiXoa('+r.stt+')">Xóa</button></td></tr>';}).join('')+'</table>';
+}
+function roiThem(){
+  var k=document.getElementById('roiKhoa').value,ids=document.getElementById('roiIds').value.trim(),p=document.getElementById('roiPct').value.trim().replace(',','.');
+  if(!ids)return toast('Nhập ID vật phẩm hoặc nhóm (@ngoc6)');
+  if(!/^[0-9]{1,3}([.][0-9]{1,2})?$/.test(p)||+p<0.01||+p>100)return toast('Tỉ lệ 0.01–100 (%), tối đa 2 số lẻ');
+  gmDo({a:'roi_them',khoa:k,ids:ids,pct:p});document.getElementById('roiIds').value='';document.getElementById('roiPct').value='';
+}
+function roiXoa(stt){gmDo({a:'roi_xoa',stt:String(stt)},'Xóa dòng rơi thêm này? Có hiệu lực ngay.');}
 // ⚙️ 03/10: cấp tối thiểu / khóa cấp / EXP - sửa bao nhiêu ô cũng được, 1 nút Lưu chung (panel game act luu_chung), restart 1 lần nếu có ô cần restart
 var GM_O=[['gmCapmin','capmin','Cấp tối thiểu',''],['gmCapmax','capmax','Cấp tối đa',''],['gmExp','expparam','EXP','x'],['gmTpmax','tpmax','Tâm pháp tối đa','']];   // tpmax: script đọc mỗi lần học, không restart
 function gmDanhDau(el){el.dataset.sua='1';delete el.dataset.macdinh;gmSuaNote();}
