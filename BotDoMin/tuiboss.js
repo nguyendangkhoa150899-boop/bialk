@@ -52,6 +52,9 @@ const HD = {
     kycuoc: { ten: 'Kỳ Cuộc (Cờ 12h)', mon: [[TAM_DAC, 15], [TAN_HIET, 5], [VO_HON, 1]], knb: 0, ngay: 1 },
     actac: { ten: 'Ác Tặc', mon: [[YQ45.concat(YQ80), 1], [CCHTP, [1, 2]], [CLD, [1, 3]], [HON_BANG, [1, 3]]], knb: 0, ngay: 3 },
     acba: { ten: 'Ác Bá', mon: [[YQ65.concat(YQ_TIEN), 1], [CCHTP, [1, 2]], [CLD, [1, 3]], [NHUAN_HON, [1, 3]]], knb: 0, ngay: 3 },
+    // 04/10: Lang Huyên Phúc Địa (thường 002052 / khó 002047). Túi chỉ ghi khi đủ 4 boss chết (odali_lanlan/yahuan OnDie đếm ô 30).
+    // Mặc định tối thiểu, quà riêng chủ server đặt ở Admin -> Túi boss.
+    langhuyen: { ten: 'Lang Huyên Phúc Địa', mon: [...CHUNG], knb: 0, luot: 0 },
 };
 // ID boss cuối -> hoạt động (khớp bảng x950001_TB_g_Boss trong roimap.lua)
 const BOSS = {};
@@ -71,6 +74,7 @@ gan('lltb', range(12138, 12146));
 gan('kycuoc', [...range(1850, 1859), ...range(31850, 31859), ...range(12040, 12049), ...range(42040, 42049), ...range(12090, 12099), ...range(42090, 42099)]);
 gan('actac', [473]);
 gan('acba', range(1910, 1919));
+gan('langhuyen', [43970, 43971, 43973, 43975, 43982, 43983, 43985, 43986]);  // 04/10: boss chet thu 4 (thu tu nao cung duoc) -> 1 tui / luot
 
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 function boc(spec) {
