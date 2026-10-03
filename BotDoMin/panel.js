@@ -276,7 +276,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', /* 29/09 tạm MỞ Drop Boss cho mod cùng test - đóng lại: thêm '/api/drop/box','/api/drop/boss','/api/drop/clone' vào đây + trả epOnly cho nút tab */ '/api/gacha/channel', '/api/palwheel/cfg',
+                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 29/09 tạm MỞ Drop Boss cho mod cùng test - đóng lại: thêm '/api/drop/box','/api/drop/boss','/api/drop/clone' vào đây + trả epOnly cho nút tab */ '/api/gacha/channel', '/api/palwheel/cfg',
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
@@ -1141,12 +1141,13 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, x: wr.x, y: wr.y, z: wr.z });
                 }
                 // 🛠️ GM Thiên Long (29/09): chuyển tiếp sang panel GM nội bộ
-                if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act' || path === '/api/gm/doche') {
+                if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act' || path === '/api/gm/doche' || path === '/api/gm/amkhi') {
                     try {
                         let j;
                         if (path === '/api/gm/state') j = await gmCall('GET', '/api/state');
                         else if (path === '/api/gm/items') j = await gmCall('GET', '/api/items?q=' + encodeURIComponent(String(body.q || '').slice(0, 80)));
                         else if (path === '/api/gm/pets') j = await gmCall('GET', '/api/pets');
+                        else if (path === '/api/gm/amkhi') j = await gmCall('GET', '/api/amkhi');   // 🗡️ 04/10: trọng số tẩy 3 dòng ám khí (chỉ đọc; áp/trả qua /api/gm/act)
                         else if (path === '/api/gm/doche') j = await gmCall('GET', '/api/doche');   // 🧵 02/10: mẫu đồ chế 8x/9x (chỉ đọc; áp/trả đi qua /api/gm/act - chỉ SUPER)   // 30/09: nhom pet cho o chon (V2 / 12000 / tat ca)
                         else {
                             const form = {};
@@ -1992,6 +1993,12 @@ const HTML = `<!DOCTYPE html>
           <span class="muted">Chọn dòng, số dòng, cấp phẩm chất cho 1 món chế (chỉ trong những gì món đó tự ra được). Áp mẫu → restart → chế + giám định (đồ chế) hoặc tẩy bằng <b>Ma Huyết Thạch 30505813</b> (Thái Cổ Thần Khí 9 sao) → <b>Trả mẫu</b> → restart. Đồ chế: số mỗi dòng ngẫu nhiên trong khoảng của cấp đã chọn. Thái Cổ: số cố định. Chốt lúc chế/tẩy, trả mẫu không đổi. Vũ khí chế không có trong danh sách (vũ khí đi đường thần khí). Trong lúc mẫu đang áp, <b>ai chế / tẩy món đó cũng ra y hệt</b>.</span>
         </div>
         <div id="mdBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem đồ chế 8x/9x (trừ vũ khí) và 108 Thái Cổ Thần Khí.</div>
+        <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
+          <b>🗡️ Tẩy 3 dòng ám khí (Pháp bảo)</b>
+          <button class="btn-grey" onclick="akLoad()">🔄 Tải</button>
+          <span class="muted">Ám khí có 3 dòng kỹ năng học ở mốc cấp <b>40 / 70 / 90</b>. Khi người chơi tẩy kỹ năng (vật phẩm <b>30503118</b> + 50.000 tiền), game bốc lại theo <b>trọng số</b> dưới đây: tỉ lệ = trọng số ÷ tổng trọng số của dòng. Đổi trọng số → <b>restart</b> mới có hiệu lực, áp cho mọi lần tẩy / học kỹ năng sau đó (ám khí đã có giữ nguyên).</span>
+        </div>
+        <div id="akBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem 3 dòng ám khí.</div>
         <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
         <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
       </div>
@@ -3208,6 +3215,41 @@ function mdAp(rs){var m=mdMon(MDSEL);if(!m)return;var ks=[].slice.call(document.
   api('/api/gm/act',{a:'doche_ap',id:m.id,dong:ks.join(','),cap:cap,tc:tc,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
 function mdTra(id,rs){var m=mdMon(id);if(!confirm('Trả mẫu '+(m?m.ten:id)+' về gốc?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')+' Đồ đã chế giữ nguyên dòng và số.'))return;
   api('/api/gm/act',{a:'doche_tra',id:id,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
+// 🗡️ 04/10: Tẩy 3 dòng ám khí (panel GM amkhi.py). AK = {dong:[{cap, ds:[{id,ten,goc,hien}]}], dangAp, t}
+var AK=null;
+var AK_TEN_DONG={40:'Dòng 1 · cấp 40 (cộng công)',70:'Dòng 2 · cấp 70 (hiệu ứng lên địch)',90:'Dòng 3 · cấp 90 (chỉ số)'};
+// Gợi ý theo chủ server (04/10): dòng 1 giữ ngẫu nhiên như gốc; dòng 2 chủ yếu hiệu ứng khống chế; dòng 3 chủ yếu % máu / % mana
+var AK_GOIY={70:{32150:20,32166:20,32182:60,32198:100,32214:100,32230:100,32262:100,32278:100,32294:100,32310:100},
+  90:{32328:25,32344:25,32360:25,32376:25,32392:25,32400:400,32401:400,32402:25,32403:25,32404:25,32405:25}};
+function akLoad(){api('/api/gm/amkhi',{}).then(function(j){AK=j.data;akDraw();}).catch(function(e){toast('❌ '+e.message);});}
+function akDraw(){if(!AK)return;var box=document.getElementById('akBox'),h='';
+  h+=AK.dangAp?'<div class="note" style="margin:0 0 8px;border-color:#c0392b"><b>⚠️ Đang dùng trọng số riêng</b> (áp lúc '+new Date(AK.t*1000).toLocaleString('vi-VN')+'). Restart rồi mới có hiệu lực nếu vừa áp.</div>'
+    :'<div class="muted" style="margin-bottom:6px">Đang dùng trọng số gốc của game.</div>';
+  AK.dong.forEach(function(d){
+    h+='<div style="margin-top:8px"><b>'+esc(AK_TEN_DONG[d.cap]||('Dòng cấp '+d.cap))+'</b><table style="width:100%;margin-top:4px"><thead><tr><th style="text-align:left">Kỹ năng</th><th>Gốc</th><th>Trọng số</th><th>Tỉ lệ khi tẩy</th></tr></thead><tbody>';
+    var tg=d.ds.reduce(function(a,o){return a+o.goc;},0);
+    d.ds.forEach(function(o){h+='<tr><td>'+esc(o.ten)+' <span class="muted">#'+o.id+'</span></td><td style="text-align:center">'+o.goc+' <span class="muted">('+(100*o.goc/tg).toFixed(1)+'%)</span></td>'
+      +'<td style="text-align:center"><input class="mini-in ak-w" data-cap="'+d.cap+'" data-id="'+o.id+'" type="number" min="0" max="9999" style="width:80px" value="'+o.hien+'" oninput="akSum()"></td>'
+      +'<td style="text-align:center" class="ak-p" data-cap="'+d.cap+'" data-id="'+o.id+'"></td></tr>';});
+    h+='</tbody></table></div>';});
+  h+='<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button onclick="akGoiY()">✨ Gợi ý: dòng 2 hiệu ứng, dòng 3 % máu / mana</button><button class="btn-grey" onclick="akGoc()">↺ Điền trọng số gốc</button>'
+    +'<button class="btn-green" onclick="akAp(0)">💾 Áp</button><button class="btn-red" onclick="akAp(1)">💾 Áp + Restart</button>'
+    +(AK.dangAp?'<button class="btn-grey" onclick="akTra(0)">↩ Trả về gốc</button>':'')+'</div>';
+  box.className='epOnly';box.innerHTML=h;akSum();}
+function akW(cap){return [].slice.call(document.querySelectorAll('#akBox .ak-w[data-cap="'+cap+'"]'));}
+function akSum(){[40,70,90].forEach(function(cap){var ws=akW(cap),t=ws.reduce(function(a,x){return a+(Number(x.value)||0);},0);
+  ws.forEach(function(x){var td=document.querySelector('#akBox .ak-p[data-cap="'+cap+'"][data-id="'+x.getAttribute('data-id')+'"]');
+    if(td)td.innerHTML=t>0?'<b>'+(100*(Number(x.value)||0)/t).toFixed(1)+'%</b>':'<b style="color:#ff7b7b">tổng = 0</b>';});});}
+function akGoiY(){[70,90].forEach(function(cap){akW(cap).forEach(function(x){var v=AK_GOIY[cap][x.getAttribute('data-id')];if(v!==undefined)x.value=v;});});
+  akW(40).forEach(function(x){var o=null;AK.dong[0].ds.forEach(function(y){if(String(y.id)===x.getAttribute('data-id'))o=y;});if(o)x.value=o.goc;});akSum();toast('Đã điền gợi ý - xem % rồi bấm Áp');}
+function akGoc(){AK.dong.forEach(function(d){akW(d.cap).forEach(function(x){var o=null;d.ds.forEach(function(y){if(String(y.id)===x.getAttribute('data-id'))o=y;});if(o)x.value=o.goc;});});akSum();}
+function akAp(rs){var f={a:'amkhi_ap',restart:rs?'1':''},ten={40:'wa',70:'wb',90:'wc'},loi='';
+  [40,70,90].forEach(function(cap){var ws=akW(cap).map(function(x){return Math.max(0,Math.min(9999,Math.round(Number(x.value)||0)));});if(!ws.reduce(function(a,b){return a+b;},0))loi='Dòng cấp '+cap+' tổng trọng số = 0';f[ten[cap]]=ws.join(',');});
+  if(loi)return toast(loi);
+  if(!confirm('Áp trọng số tẩy 3 dòng ám khí?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')))return;
+  api('/api/gm/act',f).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
+function akTra(rs){if(!confirm('Trả trọng số tẩy ám khí về gốc của game?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')))return;
+  api('/api/gm/act',{a:'amkhi_tra',restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
 function gmDo(form,confirmMsg){
   if(confirmMsg&&!confirm(confirmMsg))return;
   api('/api/gm/act',form).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);gmLoad();}).catch(function(){});
