@@ -5149,7 +5149,7 @@ function tbCur(){return TB.st.ds.find(x=>x.hd===TB.hd);}
 let TBX={st:null,hd:null};
 function tbXemLoad(){api('/api/tuiboss/xem').then(j=>{TBX.st=j;if(!TBX.hd||!j.ds.find(x=>x.hd===TBX.hd)){const b=j.ds.find(x=>x.on)||j.ds[0];TBX.hd=b?b.hd:null;}tbXemDraw();}).catch(()=>{});}
 function tbXemChon(hd){TBX.hd=hd;tbXemDraw();}
-function tbXemMon(id){const s=TBX.st,h=(s.hinh||{})[id]||{},ten=(s.ten||{})[id]||h.ten||('#'+id);
+function tbXemMon(id){const s=TBX.st,h=(s.hinh||{})[id]||{},ten=String((s.ten||{})[id]||h.ten||'').replace(/#c[0-9A-Fa-f]{6}|#e[0-9A-Fa-f]{6}|#[A-Za-z]/g,'')||('#'+id);   // bỏ mã màu game (#G, #cFF0000...)
   return '<span class="tbxMon">'+(h.ic?vqaIc(h.ic):'<span class="tbxNo">📦</span>')+'<span>'+esc(ten)+'</span></span>';}
 function tbXemDraw(){
   const s=TBX.st;if(!s)return;
