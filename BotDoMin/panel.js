@@ -2407,7 +2407,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>Giá 1 cuốn Yếu Quyết</label><input id="ikbGia_yq" type="number" min="0" placeholder="vd: 30000"></div>
           <div style="flex:1"><label>Tối đa bán / người / ngày (món, 0 = không giới hạn)</label><input id="ikbNgay" type="number" min="0" placeholder="vd: 20"></div>
         </div>
-        <label style="margin-top:6px">Giá riêng từng món (mỗi dòng <code>ID=giá</code>, đè giá nhóm · <code>0</code> = không cho bán món đó)</label>
+        <label style="margin-top:6px">Giá riêng từng món (mỗi dòng <code>ID=giá</code>, đè giá nhóm · món <b>ngoài 2 nhóm</b> ghi ở đây cũng bán được · <code>0</code> = không cho bán món đó)</label>
         <textarea id="ikbRieng" rows="3" style="width:100%;font-family:monospace" placeholder="50601001=25000&#10;30308135=50000"></textarea>
         <div class="row" style="margin-top:6px"><button class="btn-green" onclick="ikbSave()">💾 Lưu cấu hình bán</button><span class="muted" id="ikbNow" style="align-self:center;font-size:13px"></span></div>
         <details style="margin-top:8px"><summary>📋 Giá thật từng món (sau khi kẹp theo shop)</summary><div id="ikbDs" style="max-height:320px;overflow:auto;font-size:13px;margin-top:6px"></div></details>
@@ -5393,7 +5393,7 @@ function ikbDraw(dien){
   const ds=IKB.ds||[];
   el('ikbDs').innerHTML=!ds.length?'<span class="muted">Chưa tải danh mục vật phẩm game (bot vừa khởi động?) - mở lại tab sau ít phút.</span>'
     :'<table><thead><tr><th>Nhóm</th><th>ID</th><th>Tên</th><th>Giá shop</th><th>Giá bán thật</th></tr></thead><tbody>'
-    +ds.map(x=>'<tr><td>'+esc(IKB.nhom[x.nhom]||x.nhom)+'</td><td>'+x.id+'</td><td>'+esc(x.n)+(x.rieng!==undefined?' <span class="muted">(giá riêng)</span>':'')+'</td><td>'+(x.shop?x.shop.toLocaleString('vi-VN'):'-')+'</td><td><b>'+(x.gia>0?x.gia.toLocaleString('vi-VN'):'<span class="muted">không bán</span>')+'</b></td></tr>').join('')+'</tbody></table>';
+    +ds.map(x=>'<tr><td>'+esc(IKB.nhom[x.nhom]||(x.nhom==='rieng'?'⭐ Món riêng':x.nhom))+'</td><td>'+x.id+'</td><td>'+esc(x.n)+(x.rieng!==undefined?' <span class="muted">(giá riêng)</span>':'')+'</td><td>'+(x.shop?x.shop.toLocaleString('vi-VN'):'-')+'</td><td><b>'+(x.gia>0?x.gia.toLocaleString('vi-VN'):'<span class="muted">không bán</span>')+'</b></td></tr>').join('')+'</tbody></table>';
 }
 function ikbSave(){
   const el=id=>document.getElementById(id),g=id=>parseInt(el(id).value);

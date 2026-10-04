@@ -2050,7 +2050,14 @@ const PAGE = [
     '#ikBtn .n{background:var(--red);color:#fff;border-radius:8px;font-size:12px;font-weight:900;padding:1px 6px;line-height:1.5;min-width:20px;text-align:center}',
     // 05/10: 🪪 Cá nhân chia 2 tab; Rương Ích Kỷ thành tab riêng, mỗi món 1 HÀNG NGANG (người chơi PC nhiều)
     '#navIk .n{background:var(--red);color:#fff;border-radius:8px;font-size:11px;font-weight:900;padding:0 5px;line-height:1.5;margin-left:2px}',   // số món trên nút menu
-    '.ikHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}',
+    // 🎁 hộp tặng (05/10)
+    '#ikGv{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px;z-index:65}',
+    '#ikGv.hidden{display:none}',   // luật id đè .hidden -> phải có dòng này
+    '#ikGv .box{background:var(--card);border:1px solid #ffd76a;border-radius:14px;max-width:420px;width:100%;padding:16px}',
+    '#ikGv label{display:block;font-size:12px;font-weight:700;margin:10px 0 4px}',
+    '#ikGv input{width:100%;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:9px;font-size:16px;font-weight:800}',
+    '#ikGv .ikAct button{flex:1}',
+    '.ikGvMon{margin-top:10px;font-weight:800;font-size:15px;color:#ffe9a8}',
     '#ikList{display:flex;flex-direction:column;gap:8px}',
     '.ikCard{border:1px solid var(--line);border-radius:12px;background:#161a24;padding:8px 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}',
     '.ikPic{position:relative;flex:0 0 auto;width:64px;height:64px;background:#0f1218;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}',
@@ -2079,7 +2086,7 @@ const PAGE = [
     'body.ikWide .ikAct{flex-wrap:nowrap;justify-content:flex-start}body.ikWide .ikAct button{min-width:92px;padding:10px 12px}body.ikWide .ikAct .bx{min-width:46px}',
     'body.ikWide .ikNoBan{display:block;width:92px;flex:0 0 auto}',
     'body.ikWide #ikList{gap:6px}body.ikWide .ikCard:hover{border-color:#4a5268;background:#1a1f2b}}',
-    '#ikTo{flex:1 1 240px;max-width:360px;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px;font-size:13px}',
+    '#ikTo{width:100%;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:9px;font-size:14px}',
     '#ikWarn{background:linear-gradient(180deg,#4a3a10,#2e2410);border:1px solid #c9a227;color:#ffe9a8;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.5}',
     '#ikNhan{background:linear-gradient(180deg,#123a24,#0d2618);border:1px solid var(--green);color:#bff0d4;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.6}',
     '#ikNhan b{color:#fff}',
@@ -2662,7 +2669,15 @@ const PAGE = [
     '<div class="row"><h2 style="margin:0">🧰 RƯƠNG ÍCH KỶ</h2><div class="muted" id="ikStat" style="font-size:12px">-</div></div>',
     '<div id="ikWarn" style="margin-top:8px">♾️ Rương giữ <b>vĩnh viễn</b>, không giới hạn số món. <b>📦 Nhận</b>: đưa vào game (nhân vật phải online) · <b>🎁 Tặng</b>: chuyển cho người khác · <b>💰 Bán</b>: lấy KNB vào ví web (món admin cho bán) · <b>🗑️ Xoá</b>: bỏ hẳn, không hoàn.</div>',
     '<div id="ikNhan" class="hidden"></div>',
-    '<div class="ikHead"><b>🎁 Tặng cho</b><select id="ikTo"><option value="">-- chọn người nhận --</option></select></div>',
+    // 05/10: bấm 🎁 Tặng ở dòng nào thì hộp này hiện ra (chọn người + số lượng tại chỗ, khỏi kéo lên đầu trang)
+    '<div id="ikGv" class="hidden"><div class="box">',
+    '<div class="row"><h2 style="margin:0">🎁 Tặng đồ</h2><button onclick="ikGvHuy()" style="background:#232735;padding:4px 12px">✕</button></div>',
+    '<div class="ikGvMon" id="ikGvTen">-</div>',
+    '<label>Người nhận</label><select id="ikTo"><option value="">-- chọn người nhận --</option></select>',
+    '<label>Số lượng <span class="muted" id="ikGvCo"></span></label><input id="ikGvQ" type="number" min="1">',
+    '<div class="muted" style="font-size:12px;margin:6px 0 10px">Đồ chuyển thẳng sang rương người nhận, họ không cần online. Tặng rồi là <b>không lấy lại được</b>.</div>',
+    '<div class="ikAct"><button onclick="ikGvHuy()" style="background:#232735;color:var(--tx)">Huỷ</button><button class="bt" id="ikGvOk" onclick="ikGvOk()">🎁 Tặng</button></div>',
+    '</div></div>',
     '<div id="ikList"></div>',
     '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Lúc bấm <b>📦 Nhận</b> mới cần nhân vật online để bot giao vào túi.</div>',
     '</div></div>', // hết #pageIk
@@ -2989,7 +3004,7 @@ const PAGE = [
     // 🔒 16/09 KHOÁ CUỘN KHI CÓ POPUP (chủ server: "mở popup thì phần còn lại không được scroll").
     // 6 lớp phủ toàn màn hình - 3 cái bật/tắt bằng class hidden, 3 cái bằng class show.
     // KHÔNG gồm #winpop / #jpFlash / #toast: mấy cái đó pointer-events:none, chỉ là hiệu ứng.
-    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","pbModal"],POPY=0;',
+    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","pbModal","ikGv"],POPY=0;',
     'function popAnyOpen(){for(var i=0;i<POPIDS.length;i++){var e=$(POPIDS[i]);',
     'if(e&&getComputedStyle(e).display!=="none")return true}return false}',
     'function popScrollSync(){var b=document.body,on=popAnyOpen(),dang=b.classList.contains("noscroll");',
@@ -5418,14 +5433,19 @@ const PAGE = [
     'IKBUSY=true;var chu=btn?btn.textContent:"";if(btn){btn.disabled=true;btn.textContent="⏳ Đang giao..."}',
     'api("/api/ichky/claim",{itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn){btn.disabled=false;btn.textContent=chu}toast(j.message||"✅ Đã nhận");if(j.state){IK=j.state;ikDraw()}else ikSync()})',
     '.catch(function(e){IKBUSY=false;if(btn){btn.disabled=false;btn.textContent=chu}toast("❌ "+e.message);ikSync()})}',
-    'async function ikGive(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it)return;',
-    'var sel=$("ikTo");var to=sel?sel.value:"";if(!to)return toast("Chọn người nhận ở ô bên trên đã");',
-    'var ten=sel.selectedOptions[0]?sel.selectedOptions[0].textContent:to;',
-    'var q=ikSoLuong(id,it);if(!q)return;if(q>IK.giveMax)return toast("Mỗi lần tặng tối đa "+IK.giveMax+" món");',
-    'if(!(await gConfirm("Tặng <b>"+q+" "+esc(it.name)+"</b> cho <b>"+esc(ten)+"</b>? Tặng rồi là <b>không lấy lại được</b>.","🎁 Tặng",true)))return;',
-    'IKBUSY=true;if(btn)btn.disabled=true;',
-    'api("/api/ichky/give",{toId:to,itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn)btn.disabled=false;toast(j.message||"🎁 Đã tặng");if(j.state){IK=j.state;ikDraw()}else ikSync()})',
-    '.catch(function(e){IKBUSY=false;if(btn)btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
+    // 🎁 05/10: bấm Tặng -> mở hộp #ikGv (chọn người + số lượng ngay tại chỗ), bấm 🎁 trong hộp mới gửi
+    'var IKGV=null;',
+    'function ikGive(id){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it)return;IKGV=id;ikLoadNguoi();',
+    '$("ikGvTen").textContent=it.name;$("ikGvCo").textContent="(đang có "+it.qty+", mỗi lần tối đa "+IK.giveMax+")";',
+    'var q=parseInt(($("ikq_"+id)||{}).value)||1;$("ikGvQ").value=Math.max(1,Math.min(q,it.qty,IK.giveMax));$("ikGvQ").max=Math.min(it.qty,IK.giveMax);',
+    '$("ikGv").classList.remove("hidden");var s=$("ikTo");if(s)s.focus()}',
+    'function ikGvHuy(){$("ikGv").classList.add("hidden");IKGV=null}',
+    'function ikGvOk(){var id=IKGV,it=ikMon(id);if(!it)return ikGvHuy();',
+    'var sel=$("ikTo");var to=sel?sel.value:"";if(!to)return toast("Chọn người nhận");',
+    'var q=parseInt($("ikGvQ").value)||0;if(q<1)return toast("Nhập số lượng");if(q>it.qty)return toast("Rương chỉ có "+it.qty+" cái");if(q>IK.giveMax)return toast("Mỗi lần tặng tối đa "+IK.giveMax+" món");',
+    'var btn=$("ikGvOk");IKBUSY=true;btn.disabled=true;',
+    'api("/api/ichky/give",{toId:to,itemId:id,qty:q}).then(function(j){IKBUSY=false;btn.disabled=false;ikGvHuy();toast(j.message||"🎁 Đã tặng");if(j.state){IK=j.state;ikDraw()}else ikSync()})',
+    '.catch(function(e){IKBUSY=false;btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
     // 💰 bán lấy KNB web · 🗑️ xoá khỏi rương (05/10) - dùng chung ô số lượng của thẻ
     'async function ikBan(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it||!(it.ban>0))return;',
     'var q=ikSoLuong(id,it);if(!q)return;',

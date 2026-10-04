@@ -2526,9 +2526,10 @@ function ichKyBanCfg() {
 function ichKyBanGia(id) {
     const c = ichKyBanCfg();
     if (!c.on) return 0;
-    const k = ichKyBanNhomCua(id);
-    if (!k || !c.nhom[k].on) return 0;
-    let gia = c.rieng[id] !== undefined ? c.rieng[id] : c.nhom[k].gia;
+    // 05/10: giá RIÊNG đặt cho món nào thì món đó bán được, kể cả ngoài 2 nhóm (vd 20109101, 20310111); 0 = cấm bán
+    let gia;
+    if (c.rieng[id] !== undefined) gia = c.rieng[id];
+    else { const k = ichKyBanNhomCua(id); if (!k || !c.nhom[k].on) return 0; gia = c.nhom[k].gia; }
     const sp = itemShopList().find(x => x.id === id && !x.off && x.price > 0);
     if (sp) gia = Math.min(gia, Math.floor(sp.price * ICHKY_BAN_TRAN_SHOP));
     return Math.max(0, gia);
@@ -2546,8 +2547,8 @@ function setIchKyBanCfg(o) {
 // Danh sách món bán được (cho admin xem giá thật sau khi kẹp shop)
 function ichKyBanDs() {
     const c = ichKyBanCfg(), shop = itemShopList();
-    return gameItems().filter(x => x && ichKyBanNhomCua(String(x.id))).map(x => {
-        const id = String(x.id), k = ichKyBanNhomCua(id);
+    return gameItems().filter(x => x && (ichKyBanNhomCua(String(x.id)) || c.rieng[String(x.id)] !== undefined)).map(x => {
+        const id = String(x.id), k = ichKyBanNhomCua(id) || 'rieng';
         const sp = shop.find(s => s.id === id && !s.off && s.price > 0);
         return { id, n: x.n, nhom: k, rieng: c.rieng[id], shop: sp ? sp.price : 0, gia: ichKyBanGia(id) };
     }).sort((a, b) => a.nhom.localeCompare(b.nhom) || a.id.localeCompare(b.id));
