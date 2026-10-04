@@ -1599,7 +1599,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
+        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
         <button data-tab="give" class="epOnly pwOff" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
@@ -2395,7 +2395,7 @@ const HTML = `<!DOCTYPE html>
         <div id="vqaLog" class="muted" style="font-size:13px;max-height:260px;overflow:auto"></div>
       </div>
     </div>
-    <div id="tab-give" class="hidden">
+    <div id="tab-ikb" class="hidden"><!-- 🧰 05/10: tab riêng - để trong 📦 Kho đồ thì không thấy (nút đó dính pwOff = ẩn từ 29/09) -->
       <div class="card"><!-- 💰 05/10: người chơi bán ngọc 6 / Yếu Quyết trong Rương Ích Kỷ lấy KNB web -->
         <h2>💰 Rương Ích Kỷ: cho bán lấy KNB <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
         <div class="note">Người chơi mở 🧰 Rương Ích Kỷ trên web, món thuộc nhóm đang bật có nút <b>💰 Bán</b> (KNB vào ví web ngay). Mọi món đều có nút <b>🗑️ Xoá</b>. Rương không ghi món đến từ đâu (shop, túi boss, quà), nên <b>giá bán tự kẹp ≤ <span id="ikbTran">90</span>% giá shop</b> nếu shop đang bán đúng món đó, chặn mua shop rồi bán lại. Áp ngay, không cần restart.</div>
@@ -2412,6 +2412,8 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:6px"><button class="btn-green" onclick="ikbSave()">💾 Lưu cấu hình bán</button><span class="muted" id="ikbNow" style="align-self:center;font-size:13px"></span></div>
         <details style="margin-top:8px"><summary>📋 Giá thật từng món (sau khi kẹp theo shop)</summary><div id="ikbDs" style="max-height:320px;overflow:auto;font-size:13px;margin-top:6px"></div></details>
       </div>
+    </div>
+    <div id="tab-give" class="hidden">
       <div class="card">
         <h2>📦 Kho đồ toàn game <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
         <div class="note">Mỗi món có 2 nút. <b>🎁 Giao</b>: vào túi trong game ngay - họ phải <b>liên kết + đang ONLINE</b>. <b>🧰 Rương</b> (18/09): bỏ thẳng vào <b>Rương Ích Kỷ</b> của họ - <b>không</b> tính hạn mua 100/ngày, <b>không</b> tính sức chứa 100, <b>không</b> cần online, <b>không</b> cần liên kết; họ tự NHẬN vào game hoặc tặng tiếp, <b>00:00 không nhận là mất</b> như mọi món trong rương. Ghi chú hiện ở sổ "ai tặng" trong rương của họ. Dữ liệu 2.299 món kèm tên + mô tả tiếng Việt; icon lấy thẳng từ paldb. Mọi lượt đều ghi log. ⚠️ Dùng cho <b>đền bù / sự kiện</b> - spawn bừa là tự phá giá shop item của chính mình.</div>
@@ -3082,8 +3084,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give'){gvLoad();ikbLoad();}if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
