@@ -494,9 +494,10 @@ function startPanel(ctx) {
                     if (num(body.nghien) !== null) o.nghien = num(body.nghien);
                     if (num(body.streakEvery) !== null && num(body.streakEvery) >= 1) o.streakEvery = num(body.streakEvery);
                     if (num(body.streakBonus) !== null) o.streakBonus = num(body.streakBonus);
+                    if (typeof body.nghienOn === 'boolean') o.nghienOn = body.nghienOn;   // 💉 04/10 công tắc /nghien
                     if (!Object.keys(o).length) return sendJSON(res, 400, { ok: false, error: 'Không có số hợp lệ' });
                     const r = ctx.setDailyCfg(o);
-                    ctx.writeLog('ADMIN', `[PANEL] Mức điểm danh: ngày ${r.cfg.daily} · nghiện ${r.cfg.nghien} · đủ ${r.cfg.streakEvery} ngày thưởng ${r.cfg.streakBonus}`);
+                    ctx.writeLog('ADMIN', `[PANEL] Mức điểm danh: ngày ${r.cfg.daily} · nghiện ${r.cfg.nghien} (${r.cfg.nghienOn ? 'BẬT' : 'TẮT'}) · đủ ${r.cfg.streakEvery} ngày thưởng ${r.cfg.streakBonus}`);
                     return sendJSON(res, 200, { ok: true, cfg: r.cfg });
                 }
                 // 🚕 vé "Xu đi taxi về" (tab 👥)
@@ -2800,6 +2801,12 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:12px">
           <div style="flex:3"><label>Set tất cả người chơi về</label><input id="setAllAmount" type="number" placeholder="vd: 50000"></div>
           <button class="btn-red" onclick="setAll()">Set tất cả</button>
+        </div>
+        <div class="row blk">
+          <div style="flex:0 0 auto;display:flex;align-items:center;padding-bottom:6px">
+            <label style="display:inline-flex;align-items:center;gap:7px;line-height:1;margin:0"><input id="dcNghienOn" type="checkbox" style="margin:0" onchange="dcNghienToggle(this)"> <b>💉 Bật lệnh /nghien</b></label>
+          </div>
+          <div class="muted" id="dcNghienNow" style="flex:1;align-self:center;font-size:13px"></div>
         </div>
         <div class="row blk">
           <div style="flex:1"><label>🪪 Điểm danh/ngày</label><input id="dcDaily" type="number" min="0" placeholder="vd: 600"></div>
@@ -5332,6 +5339,12 @@ function dcSave(){
   if(!(o.daily>=0&&o.nghien>=0&&o.streakBonus>=0&&o.streakEvery>=1))return toast('Điền đủ 4 ô (chuỗi ≥ 1 ngày, còn lại ≥ 0)');
   api('/api/daily/cfg',o).then(j=>{toast('💾 Điểm danh '+j.cfg.daily.toLocaleString('vi-VN')+' · nghiện '+j.cfg.nghien.toLocaleString('vi-VN')+' · đủ '+j.cfg.streakEvery+' ngày thưởng '+j.cfg.streakBonus.toLocaleString('vi-VN'));refresh();}).catch(e=>toast('❌ '+e.message));
 }
+// 💉 04/10: bật/tắt /nghien (Discord + nút web) - lưu ngay khi tick, không cần bấm Lưu
+function dcNghienToggle(el){
+  const on=el.checked;el.disabled=true;
+  api('/api/daily/cfg',{nghienOn:on}).then(j=>{toast('💉 /nghien '+(j.cfg.nghienOn?'BẬT · '+j.cfg.nghien.toLocaleString('vi-VN')+' KNB / 1 tiếng':'TẮT'));el.disabled=false;refresh();})
+    .catch(e=>{el.checked=!on;el.disabled=false;toast('❌ '+e.message);});
+}
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
 async function wdStop(){if(!await uiConfirm('Tắt bảng KNB & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
@@ -5561,7 +5574,9 @@ async function refresh(force){
     const nw=document.getElementById('txNotiNow');
     if(nw) nw.innerHTML=(STATE.tx.noti.on&&STATE.tx.noti.id?'<b style="color:var(--green)">ĐANG BẬT</b> - gửi tới <b>'+STATE.tx.noti.id+'</b>'+(STATE.tx.noti.min>0?' (chỉ báo từ '+Number(STATE.tx.noti.min).toLocaleString('vi-VN')+' trở lên)':' (báo mọi mức)'):'<b style="color:var(--red)">ĐANG TẮT</b>')+'. Điền <b>ID người</b> thì bot nhắn riêng, <b>ID kênh</b> thì bot đăng vào kênh - bot tự dò.';
   }
-  if(STATE.dailyCfg){[['dcDaily','daily'],['dcNghien','nghien'],['dcStreakEvery','streakEvery'],['dcStreakBonus','streakBonus']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&el.value===''&&document.activeElement!==el)el.value=STATE.dailyCfg[k];});}
+  if(STATE.dailyCfg){[['dcDaily','daily'],['dcNghien','nghien'],['dcStreakEvery','streakEvery'],['dcStreakBonus','streakBonus']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&el.value===''&&document.activeElement!==el)el.value=STATE.dailyCfg[k];});
+    const ns=document.getElementById('dcNghienOn');if(ns&&!ns.disabled)ns.checked=!!STATE.dailyCfg.nghienOn;
+    const nn=document.getElementById('dcNghienNow');if(nn)nn.innerHTML=STATE.dailyCfg.nghienOn?'<b style="color:var(--green)">ĐANG BẬT</b> - mỗi người lụm <b>'+Number(STATE.dailyCfg.nghien).toLocaleString('vi-VN')+'</b> KNB / 1 tiếng (gõ /nghien trên Discord hoặc nút 💉 trên web)':'<b style="color:var(--red)">ĐANG TẮT</b> - /nghien báo "đang tắt", nút 💉 trên web bị ẩn';}
   // 🚕 vé taxi: ô đang gõ thì chừa ra, công tắc luôn theo máy chủ
   if(STATE.taxiCfg){[['txTien','tien'],['txLoMin','loMin'],['txViMax','viMax'],['txGio','gioCho']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&el.value===''&&document.activeElement!==el)el.value=STATE.taxiCfg[k];});
     const sw=document.getElementById('txOn');if(sw&&document.activeElement!==sw)sw.checked=!!STATE.taxiCfg.on;}

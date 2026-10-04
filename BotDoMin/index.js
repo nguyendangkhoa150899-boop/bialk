@@ -24,7 +24,8 @@ const STARTING_KNB = 20;
 // 🪪 04/09: mức điểm danh / nghiện / thưởng chuỗi cho ADMIN CHỈNH ở panel
 // (tab 👥 Ví điểm người chơi), lưu dbCache._dailyCfg - trước là hằng cứng.
 // Mặc định giữ nguyên số cũ: điểm danh 600 · nghiện 200 · đủ 2 ngày thưởng 800.
-const DAILY_CFG_DEF = { daily: 600, nghien: 200, streakEvery: 2, streakBonus: 800 };
+// 💉 04/10: nghienOn = công tắc /nghien + nút web (panel tab 👥). Mặc định TẮT như 29/09.
+const DAILY_CFG_DEF = { daily: 600, nghien: 200, streakEvery: 2, streakBonus: 800, nghienOn: false };
 function dailyCfg() {
     const c = dbCache._dailyCfg && typeof dbCache._dailyCfg === 'object' ? dbCache._dailyCfg : {};
     const num = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n >= lo && n <= hi ? Math.floor(n) : d; };
@@ -33,6 +34,7 @@ function dailyCfg() {
         nghien: num(c.nghien, DAILY_CFG_DEF.nghien, 0, 100000000),
         streakEvery: num(c.streakEvery, DAILY_CFG_DEF.streakEvery, 1, 365),
         streakBonus: num(c.streakBonus, DAILY_CFG_DEF.streakBonus, 0, 100000000),
+        nghienOn: c.nghienOn === true,
     };
 }
 const NGHIEN_COOLDOWN_MS = 60 * 60 * 1000;
@@ -1244,7 +1246,7 @@ function dailyState(userId) {
         streakBonus: dailyCfg().streakBonus,
         streakPacks: u.streakPacks || 0,     // số gói ĐANG CHỜ nhận
         streakTotal: u.streakTotal || 0,     // tổng số lần đủ chuỗi từ đầu
-        nghien: { amount: dailyCfg().nghien, nextAt: (u.lastNghien || 0) + NGHIEN_COOLDOWN_MS, now: Date.now() },
+        nghien: { on: dailyCfg().nghienOn, amount: dailyCfg().nghien, nextAt: (u.lastNghien || 0) + NGHIEN_COOLDOWN_MS, now: Date.now() },
         balance: u.points || 0,
     };
 }
@@ -1312,7 +1314,8 @@ function claimStreak(userId) {
 // ngay tại kênh rồi, đăng thêm là ra 2 tin trùng nội dung. Mặc định TẮT để chỗ gọi
 // mới sau này có quên cũng không tự dưng spam kênh.
 function claimNghien(userId, announce = false) {
-    return { error: '💉 Nghiện đã tắt trên server NetCo4' };   // 29/09: chủ server bỏ (KNB miễn phí mỗi giờ)
+    // 29/09 chủ server tắt cứng; 04/10 thành công tắc ở panel (tab 👥, dailyCfg().nghienOn)
+    if (!dailyCfg().nghienOn) return { error: '💉 Nghiện đang tắt trên server NetCo4' };
     const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
     const u = getUserData(userId);
     const passed = Date.now() - (u.lastNghien || 0);

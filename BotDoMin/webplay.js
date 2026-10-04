@@ -2591,7 +2591,7 @@ const PAGE = [
     '<button class="btn-full" id="dClaim" onclick="dailyClaim()">✨ ĐIỂM DANH NGAY</button>',
     '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center">Điểm danh ở đây hay gõ <b>/diemdanh</b> trong Discord đều tính chung 1 lượt/ngày.</div>',
     '</div>',
-    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt
+    '<div class="card" id="ngCard" style="display:none">',   // 04/10: hiện/ẩn theo công tắc panel (DST.nghien.on)
     '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
@@ -5085,6 +5085,7 @@ const PAGE = [
     '$("dprogIn").style.width=Math.round(DST.days.length*100/DST.daysInMonth)+"%";',
     'var b=$("dClaim");b.disabled=DST.checkedToday;',
     'b.textContent=DST.checkedToday?"✅ HÔM NAY ĐIỂM DANH RỒI - MAI QUAY LẠI":"✨ ĐIỂM DANH NGAY (+"+DST.amount.toLocaleString("vi-VN")+")";',
+    '$("ngCard").style.display=DST.nghien.on?"":"none";',
     '$("ngInfo").textContent="+"+DST.nghien.amount.toLocaleString("vi-VN")+" / tiếng";',
     'ngTick()}',
     'function dailyClaim(){var b=$("dClaim");if(b.disabled)return;b.disabled=true;',
