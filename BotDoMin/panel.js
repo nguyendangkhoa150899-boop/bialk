@@ -266,7 +266,7 @@ function startPanel(ctx) {
                 if (path === '/api/nhatky') {
                     const b = req.method === 'POST' ? await readBody(req) : Object.fromEntries(url.searchParams);
                     // cổng mod: che 2 số cuối IP + ẩn dòng kín (điểm nổ, ép kết quả, RTP) + LUÔN bỏ GM/Panel và ván không ai cược (04/10)
-                    const mod = epOk(req) ? {} : { anIP: true, cheKin: true, boAdmin: true, chiCoCuoc: true };
+                    const mod = epOk(req) ? {} : { anIP: true, cheKin: true, boAdmin: true, chiCoCuoc: true, chi3Game: true };
                     return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: false, cheKin: false, ...mod }) });
                 }
                 if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký' });
@@ -2636,11 +2636,12 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="flex-wrap:wrap;gap:6px">
           <button class="btn-grey logPick" data-log="nk" onclick="logPick('nk')">📒 Nhật ký</button>
           <button class="btn-grey logPick" data-log="tx" onclick="logPick('tx')">🎲 Tài Xỉu</button>
-          <button class="btn-grey logPick" data-log="stx" onclick="logPick('stx')">⚡ Siêu Tài Xỉu</button>
+          <!-- 04/10: web người chơi chỉ còn 3 game (Tài Xỉu, Roulette, Dò Mìn) -> ẩn lịch sử Siêu TX / Leo Thang / Phi Thuyền (pwOff = display:none) -->
+          <button class="btn-grey logPick pwOff" data-log="stx" onclick="logPick('stx')">⚡ Siêu Tài Xỉu</button>
           <button class="btn-grey logPick" data-log="rl" onclick="logPick('rl')">🎡 Roulette</button>
           <button class="btn-grey logPick" data-log="mine" onclick="logPick('mine')">💣 Dò Mìn</button>
-          <button class="btn-grey logPick" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
-          <button class="btn-grey logPick" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
+          <button class="btn-grey logPick pwOff" data-log="stair" onclick="logPick('stair')">🪜 Leo Thang</button>
+          <button class="btn-grey logPick pwOff" data-log="spm" onclick="logPick('spm')">🚀 Phi Thuyền</button>
           <button class="btn-grey logPick" data-log="dog" onclick="logPick('dog')">💰 Sổ KNB</button>
           <button class="btn-grey logPick epOnly" style="display:none" data-log="drop" onclick="logPick('drop')">💥 Drop Boss</button>
         </div>
@@ -2659,7 +2660,7 @@ const HTML = `<!DOCTYPE html>
       <!-- 📒 04/10: NHẬT KÝ THEO NGÀY (nhatky.js) - mọi dòng log của bot, giữ 3 ngày. Cổng mod chỉ thấy mục này. -->
       <div class="card logSec hidden" id="logSec-nk">
         <h3>📒 Nhật ký <span class="muted" style="font-size:12px;font-weight:400">theo ngày · giữ 3 ngày · mới nhất trên cùng</span></h3>
-        <div class="note">Mọi việc bot ghi lại: điểm danh, shop, rút/nạp KNB, quà, túi boss, vòng quay, liên kết nhân vật, GM, cược, kết quả, lỗi hệ thống. Mật khẩu luôn bị che. Cổng mod: luôn bỏ GM/Panel, chỉ ván có cược, che 2 số cuối IP, ẩn dòng kín (điểm nổ, ép kết quả).</div>
+        <div class="note">Mọi việc bot ghi lại: điểm danh, shop, rút/nạp KNB, quà, túi boss, vòng quay, liên kết nhân vật, GM, cược, kết quả, lỗi hệ thống. Mật khẩu luôn bị che. Cổng mod: luôn bỏ GM/Panel, chỉ 3 game, chỉ ván có cược, che 2 số cuối IP, ẩn dòng kín (điểm nổ, ép kết quả).</div>
         <div class="row" id="nkNgays" style="gap:6px;flex-wrap:wrap;margin-top:10px"></div>
         <div class="row" id="nkNhoms" style="gap:6px;flex-wrap:wrap;margin-top:6px"></div>
         <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center">
@@ -2667,6 +2668,7 @@ const HTML = `<!DOCTYPE html>
           <input id="nkQ" class="mini-in" style="width:240px;margin-top:0" placeholder="tìm: tên, ID, món, số KNB..." oninput="nkGo()">
           <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkCuoc" style="width:auto;margin:0" checked onchange="nkTai(true)">Chỉ ván có cược</label>
           <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkBoAd" style="width:auto;margin:0" checked onchange="nkTai(true)">Ẩn GM / Panel</label>
+          <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkGame" style="width:auto;margin:0" checked onchange="nkTai(true)">Chỉ 3 game (Tài Xỉu, Roulette, Dò Mìn)</label>
           <label class="muted" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkAuto" style="width:auto;margin:0" checked>Tự cập nhật 10s</label>
           <button class="mini" onclick="nkTai(true)">🔄 Tải</button>
         </div>
@@ -2985,7 +2987,7 @@ function showApp(){
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
   if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
-  logPick(['nk','tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'nk');
+  logPick(['nk','tx','rl','mine','dog'].includes(savedLog)?savedLog:'nk');   // 04/10: bỏ stair/spm (game không dùng, nút đã ẩn)
   refresh();
   // 10/09: nhịp 3s = refresh(false) (tự động, tôn trọng "giữ màn hình"); refresh() sau khi bấm
   // nút = ép vẽ lại ngay (admin vừa thao tác thì muốn thấy kết quả, kể cả đang bôi chữ / ⏸).
@@ -4620,7 +4622,7 @@ const NK={ngay:'',nhom:'',rows:[],dangTai:false,goT:null,chay:false};
 const NK_NHOM={ADMIN:['Thao tác','#7ee2a8'],BET:['Cược','#f0b132'],RESULT:['Kết quả','#8ab4ff'],SYSTEM:['Hệ thống','#ff8a8a']};
 function nkA(x){return esc(x).replace(/"/g,'&quot;');}
 function nkBody(them){return {ngay:NK.ngay,nhom:NK.nhom,tag:document.getElementById('nkTag').value||'',q:document.getElementById('nkQ').value||'',
-  chiCoCuoc:document.getElementById('nkCuoc').checked,boAdmin:document.getElementById('nkBoAd').checked,truoc:them?NK.rows.length:0,gioiHan:300};}
+  chiCoCuoc:document.getElementById('nkCuoc').checked,boAdmin:document.getElementById('nkBoAd').checked,chi3Game:document.getElementById('nkGame').checked,truoc:them?NK.rows.length:0,gioiHan:300};}
 async function nkTai(dau,them){
   if(NK.dangTai){NK.lai=[dau,them];return;}   // đang tải (vd tự cập nhật) mà đổi lọc -> chạy lại ngay sau, không bỏ mất
   NK.dangTai=true;

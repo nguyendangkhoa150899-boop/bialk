@@ -95,6 +95,9 @@ const RE_IP = /\b(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}\b/g;
 const RE_KIN = /\(kín\)|ép|RTP|MAY MẮN|epnhan/i;
 // "Ẩn GM / Panel": thao tác admin ([GM], [PANEL...], dòng ghi "(admin ...)" như cấp lượt quay)
 const laAdmin = (r) => r.tag === 'GM' || r.tag.startsWith('PANEL') || /\(admin\b/i.test(r.msg);
+// "Chỉ 3 game": web người chơi chỉ mở Tài Xỉu, Roulette, Dò Mìn (04/10) -> bỏ dòng của game không dùng
+// (Phi Thuyền, Leo Thang, Cổ phiếu, Siêu TX, Tiến Lên, Poker, Palworld cũ). Dòng không phải game (điểm danh, shop...) giữ.
+const RE_GAME_TAT = /PHI THUYỀN|LEO THANG|CỔ PHIẾU|SIÊU TX|TIẾN LÊN|POKER|\bPAL\b|VÒNG RAID/;
 
 // "Chỉ ván có cược": bỏ ván Tài Xỉu / Roulette "· không ai đặt"; Phi Thuyền bỏ cả chuyến (cất cánh, NỔ, BAY TỚI ĐỈNH)
 // khi lúc cất cánh có 0 người cược. Số chuyến về #1 mỗi lần bot restart -> duyệt theo thời gian, lấy lần cất cánh GẦN NHẤT.
@@ -133,6 +136,7 @@ function doc(o = {}) {
     if (bat(o.chiCoCuoc)) rows = locVanCoCuoc(rows);
     if (o.cheKin === true) rows = rows.filter((r) => !RE_KIN.test(r.msg));
     if (bat(o.boAdmin)) rows = rows.filter((r) => !laAdmin(r));
+    if (bat(o.chi3Game)) rows = rows.filter((r) => !RE_GAME_TAT.test(r.tag));
     const nhoms = {};
     rows.forEach((r) => { nhoms[r.nhom] = (nhoms[r.nhom] || 0) + 1; });
     const boTag = new Set(Array.isArray(o.boTag) ? o.boTag.map(String) : []);
