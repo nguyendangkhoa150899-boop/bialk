@@ -93,6 +93,27 @@ const RE_IP = /\b(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}\b/g;
 // Cổng mod KHÔNG được thấy thông tin kín / can thiệp: Phi Thuyền ghi điểm nổ lúc cất cánh "(kín)", mọi lệnh ÉP kết quả
 // (TX, Roulette, Dò Mìn, điểm nổ), RTP, % may mắn từng người. Lọc TRƯỚC khi đếm để số đếm cũng không lộ.
 const RE_KIN = /\(kín\)|ép|RTP|MAY MẮN|epnhan/i;
+// "Ẩn GM / Panel": thao tác admin ([GM], [PANEL...], dòng ghi "(admin ...)" như cấp lượt quay)
+const laAdmin = (r) => r.tag === 'GM' || r.tag.startsWith('PANEL') || /\(admin\b/i.test(r.msg);
+
+// "Chỉ ván có cược": bỏ ván Tài Xỉu / Roulette "· không ai đặt"; Phi Thuyền bỏ cả chuyến (cất cánh, NỔ, BAY TỚI ĐỈNH)
+// khi lúc cất cánh có 0 người cược. Số chuyến về #1 mỗi lần bot restart -> duyệt theo thời gian, lấy lần cất cánh GẦN NHẤT.
+// Phải chạy TRƯỚC khi lọc dòng kín (dòng cất cánh mang số người cược).
+function locVanCoCuoc(rows) {
+    const nguoi = {};
+    return rows.filter((r) => {
+        if (/không ai đặt\s*$/.test(r.msg)) return false;
+        if (r.tag !== 'PHI THUYỀN') return true;
+        const m = /Chuyến #(\d+) (cất cánh|NỔ|🏆)/.exec(r.msg);
+        if (!m) return true;
+        if (m[2] === 'cất cánh') {
+            const c = /· (\d+) người cược/.exec(r.msg);
+            nguoi[m[1]] = c ? Number(c[1]) : 1;
+            return nguoi[m[1]] > 0;
+        }
+        return nguoi[m[1]] === undefined || nguoi[m[1]] > 0;
+    });
+}
 
 function doc(o = {}) {
     const ds = cacNgay();
@@ -108,7 +129,10 @@ function doc(o = {}) {
         const tm = /^\[([^\]]{1,40})\]/.exec(msg);
         rows.push({ t: dong.slice(0, a), nhom: dong.slice(a + 1, b), tag: tm ? tm[1] : '', msg });
     }
-    if (o.cheKin) rows = rows.filter((r) => !RE_KIN.test(r.msg));
+    const bat = (v) => v === true || v === 'true' || v === '1' || v === 1;   // GET ?x=false là chuỗi -> không được coi là bật
+    if (bat(o.chiCoCuoc)) rows = locVanCoCuoc(rows);
+    if (o.cheKin === true) rows = rows.filter((r) => !RE_KIN.test(r.msg));
+    if (bat(o.boAdmin)) rows = rows.filter((r) => !laAdmin(r));
     const nhoms = {};
     rows.forEach((r) => { nhoms[r.nhom] = (nhoms[r.nhom] || 0) + 1; });
     const boTag = new Set(Array.isArray(o.boTag) ? o.boTag.map(String) : []);

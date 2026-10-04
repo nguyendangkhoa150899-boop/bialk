@@ -265,7 +265,9 @@ function startPanel(ctx) {
                 if (path === '/api/whoami') return sendJSON(res, 200, { ok: true, superAdmin: epOk(req) });
                 if (path === '/api/nhatky') {
                     const b = req.method === 'POST' ? await readBody(req) : Object.fromEntries(url.searchParams);
-                    return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: !epOk(req), cheKin: !epOk(req) }) });   // cổng mod: che 2 số cuối IP + ẩn dòng kín (điểm nổ, ép kết quả, RTP)
+                    // cổng mod: che 2 số cuối IP + ẩn dòng kín (điểm nổ, ép kết quả, RTP) + LUÔN bỏ GM/Panel và ván không ai cược (04/10)
+                    const mod = epOk(req) ? {} : { anIP: true, cheKin: true, boAdmin: true, chiCoCuoc: true };
+                    return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: false, cheKin: false, ...mod }) });
                 }
                 if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký' });
 
@@ -2657,13 +2659,14 @@ const HTML = `<!DOCTYPE html>
       <!-- 📒 04/10: NHẬT KÝ THEO NGÀY (nhatky.js) - mọi dòng log của bot, giữ 3 ngày. Cổng mod chỉ thấy mục này. -->
       <div class="card logSec hidden" id="logSec-nk">
         <h3>📒 Nhật ký <span class="muted" style="font-size:12px;font-weight:400">theo ngày · giữ 3 ngày · mới nhất trên cùng</span></h3>
-        <div class="note">Mọi việc bot ghi lại: điểm danh, shop, rút/nạp KNB, quà, túi boss, vòng quay, liên kết nhân vật, GM, cược, kết quả, lỗi hệ thống. Mật khẩu luôn bị che; cổng mod che thêm 2 số cuối IP.</div>
+        <div class="note">Mọi việc bot ghi lại: điểm danh, shop, rút/nạp KNB, quà, túi boss, vòng quay, liên kết nhân vật, GM, cược, kết quả, lỗi hệ thống. Mật khẩu luôn bị che. Cổng mod: luôn bỏ GM/Panel, chỉ ván có cược, che 2 số cuối IP, ẩn dòng kín (điểm nổ, ép kết quả).</div>
         <div class="row" id="nkNgays" style="gap:6px;flex-wrap:wrap;margin-top:10px"></div>
         <div class="row" id="nkNhoms" style="gap:6px;flex-wrap:wrap;margin-top:6px"></div>
         <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center">
           <select id="nkTag" class="mini-in" style="width:auto;min-width:200px;margin-top:0" onchange="nkTai(true)"></select>
           <input id="nkQ" class="mini-in" style="width:240px;margin-top:0" placeholder="tìm: tên, ID, món, số KNB..." oninput="nkGo()">
-          <label class="muted" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkBoPT" style="width:auto;margin:0" checked onchange="nkTai(true)">Ẩn 🚀 Phi Thuyền</label>
+          <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkCuoc" style="width:auto;margin:0" checked onchange="nkTai(true)">Chỉ ván có cược</label>
+          <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkBoAd" style="width:auto;margin:0" checked onchange="nkTai(true)">Ẩn GM / Panel</label>
           <label class="muted" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkAuto" style="width:auto;margin:0" checked>Tự cập nhật 10s</label>
           <button class="mini" onclick="nkTai(true)">🔄 Tải</button>
         </div>
@@ -4617,7 +4620,7 @@ const NK={ngay:'',nhom:'',rows:[],dangTai:false,goT:null,chay:false};
 const NK_NHOM={ADMIN:['Thao tác','#7ee2a8'],BET:['Cược','#f0b132'],RESULT:['Kết quả','#8ab4ff'],SYSTEM:['Hệ thống','#ff8a8a']};
 function nkA(x){return esc(x).replace(/"/g,'&quot;');}
 function nkBody(them){return {ngay:NK.ngay,nhom:NK.nhom,tag:document.getElementById('nkTag').value||'',q:document.getElementById('nkQ').value||'',
-  boTag:document.getElementById('nkBoPT').checked?['PHI THUYỀN']:[],truoc:them?NK.rows.length:0,gioiHan:300};}
+  chiCoCuoc:document.getElementById('nkCuoc').checked,boAdmin:document.getElementById('nkBoAd').checked,truoc:them?NK.rows.length:0,gioiHan:300};}
 async function nkTai(dau,them){
   if(NK.dangTai){NK.lai=[dau,them];return;}   // đang tải (vd tự cập nhật) mà đổi lọc -> chạy lại ngay sau, không bỏ mất
   NK.dangTai=true;
@@ -4661,6 +4664,7 @@ function modApp(){
   document.querySelectorAll('.tabs .grp').forEach(g=>{const co=g.querySelector('button[data-tab="log"]');g.style.display=co?'':'none';
     if(co)g.querySelectorAll('button').forEach(b=>{b.style.display=b.dataset.tab==='log'?'':'none';});});
   const pc=document.getElementById('logPickCard');if(pc)pc.style.display='none';
+  document.querySelectorAll('.nkSuper').forEach(el=>{el.style.display='none';});   // 2 ô lọc: server luôn ép ở cổng mod
   const hb=document.getElementById('holdBtn');if(hb)hb.style.display='none';
   const ct=document.getElementById('connText');if(ct){ct.style.color='var(--green)';ct.textContent='Cổng mod · chỉ xem 📒 Nhật ký';}
   tab('log');logPick('nk');
