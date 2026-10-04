@@ -2048,30 +2048,30 @@ const PAGE = [
     '.cmsg{padding:3px 0;word-break:break-word}.cmsg b{color:var(--gold)}.cmsg .ct{color:var(--muted);font-size:11px;margin-left:6px}',
     '#ikBtn{background:linear-gradient(180deg,#4a1616,#2e0f0f);border:2px solid var(--red);color:#ffd9d9;font-weight:900;font-size:15px;padding:9px 10px;display:flex;align-items:center;gap:5px}',
     '#ikBtn .n{background:var(--red);color:#fff;border-radius:8px;font-size:12px;font-weight:900;padding:1px 6px;line-height:1.5;min-width:20px;text-align:center}',
-    '#ikModal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px;z-index:60}',
-    // BẮT BUỘC: #ikModal có display nên luật id (100) đè .hidden (10) -> phải có dòng này mới ẩn được
-    '#ikModal.hidden{display:none}',
-    '#ikBox{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:540px;width:100%;max-height:88vh;overflow:auto;padding:14px}',
-    // 17/09: chủ server bảo nút + ô nhập nhỏ quá -> mỗi hàng 2 thẻ (ô 210px) cho rộng chỗ.
-    '#ikList{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}',
-    '.ikCard{border:1px solid var(--line);border-radius:12px;background:#161a24;padding:8px;display:flex;flex-direction:column;gap:6px}',
-    '.ikPic{position:relative;background:#0f1218;border:1px solid var(--line);border-radius:10px;height:110px;display:flex;align-items:center;justify-content:center;overflow:hidden}',
-    '.ikPic img{width:68px;height:68px;object-fit:contain}',
-    '.ikPic .isPh{font-size:38px}',
-    '.ikPic .ikIcG{display:block;width:68px;height:68px;background-repeat:no-repeat;border-radius:8px}',   // 03/10 icon game (vqIcon)
-    '.ikQ{position:absolute;right:6px;bottom:6px;background:var(--red);color:#fff;font-weight:900;font-size:14px;border-radius:9px;padding:2px 9px;line-height:1.5}',
-    '.ikNm{font-weight:800;font-size:14px;line-height:1.35;min-height:38px}',
-    '.ikAct{display:flex;gap:7px;align-items:stretch}',
-    '.ikAct input{width:64px;flex:0 0 auto;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:11px 4px;font-size:16px;font-weight:800;text-align:center}',
-    '.ikAct button{flex:1;padding:12px 6px;font-size:14px;font-weight:800;border-radius:10px}',
+    // 05/10: 🪪 Cá nhân chia 2 tab; Rương Ích Kỷ thành tab riêng, mỗi món 1 HÀNG NGANG (người chơi PC nhiều)
+    '#pdTabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}',
+    '#pdTabs button{padding:10px 18px;font-size:15px;font-weight:800;background:#1b1f2c;color:var(--tx);border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;gap:6px}',
+    '#pdTabs button.on{background:linear-gradient(180deg,#e0b750,#b8902e);color:#1a1405;border-color:#ffd977}',
+    '#pdTabs .n{background:var(--red);color:#fff;border-radius:8px;font-size:12px;font-weight:900;padding:1px 6px;line-height:1.5}',
+    '.ikHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}',
+    '#ikList{display:flex;flex-direction:column;gap:8px}',
+    '.ikCard{border:1px solid var(--line);border-radius:12px;background:#161a24;padding:8px 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}',
+    '.ikPic{position:relative;flex:0 0 auto;width:64px;height:64px;background:#0f1218;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}',
+    '.ikPic img{width:48px;height:48px;object-fit:contain}',
+    '.ikPic .isPh{font-size:28px}',
+    '.ikPic .ikIcG{display:block;width:48px;height:48px;background-repeat:no-repeat;border-radius:8px}',   // 03/10 icon game (vqIcon)
+    '.ikQ{position:absolute;right:2px;bottom:2px;background:var(--red);color:#fff;font-weight:900;font-size:11px;border-radius:7px;padding:0 5px;line-height:1.5}',
+    '.ikNm{flex:1 1 220px;min-width:160px;font-weight:800;font-size:15px;line-height:1.35}',
+    '.ikAct{display:flex;gap:7px;align-items:stretch;flex:0 0 auto;flex-wrap:wrap}',
+    '.ikAct input{width:72px;flex:0 0 auto;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:9px 4px;font-size:16px;font-weight:800;text-align:center}',
+    '.ikAct button{flex:0 0 auto;min-width:92px;padding:10px 12px;font-size:14px;font-weight:800;border-radius:10px}',
     '.ikAct .bn{background:var(--green);color:#0c2417}',
     '.ikAct .bt{background:linear-gradient(180deg,#7a5c14,#4a3a10);color:#fff3c4;border:1px solid #ffd76a}',
-    // 💰 bán / 🗑️ xoá (05/10) - hàng nút thứ 2, nhỏ hơn
-    '.ikAct2 button{padding:8px 6px;font-size:13px}',
-    '.ikAct .bb{background:linear-gradient(180deg,#1d6b4a,#124632);color:#d8ffe9;border:1px solid #4fd39a}',
-    '.ikAct .bx{flex:0 0 auto;background:#3a1a1a;color:#ffb4b4;border:1px solid #7a3434}',
-    '.ikGia{font-size:12px;color:#7ee0b0;font-weight:700}',
-    '#ikTo{width:100%;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px;font-size:13px;margin-bottom:8px}',
+    '.ikAct .bb{background:linear-gradient(180deg,#1d6b4a,#124632);color:#d8ffe9;border:1px solid #4fd39a}',   // 💰 bán
+    '.ikAct .bx{min-width:0;background:#3a1a1a;color:#ffb4b4;border:1px solid #7a3434}',   // 🗑️ xoá
+    '.ikGia{font-size:12px;color:#7ee0b0;font-weight:700;margin-top:2px}',
+    '@media(max-width:640px){.ikAct{width:100%}.ikAct button{flex:1;min-width:0}}',   // điện thoại: nút xuống hàng, chia đều
+    '#ikTo{flex:1 1 240px;max-width:360px;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px;font-size:13px}',
     '#ikWarn{background:linear-gradient(180deg,#4a3a10,#2e2410);border:1px solid #c9a227;color:#ffe9a8;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.5}',
     '#ikNhan{background:linear-gradient(180deg,#123a24,#0d2618);border:1px solid var(--green);color:#bff0d4;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.6}',
     '#ikNhan b{color:#fff}',
@@ -2591,6 +2591,9 @@ const PAGE = [
     '</div>',
 
     '<div id="pageDaily" class="hidden">',
+    // 05/10: 2 tab - Hồ sơ (điểm danh, boss, túi boss, tài khoản) | Rương Ích Kỷ
+    '<div id="pdTabs"><button id="pdT_ho" class="on" onclick="pdTab(\'ho\')">👤 Hồ sơ</button><button id="pdT_ik" onclick="pdTab(\'ik\')">🧰 Rương Ích Kỷ <span class="n" id="pdIkN">0</span></button></div>',
+    '<div id="pdHo">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">📅 Điểm Danh</h2><div class="muted" id="dMonth">Tháng -</div></div>',
     '<div id="dChips">',
@@ -2646,23 +2649,22 @@ const PAGE = [
     '<div id="pcBulk" class="hidden"><label><input type="checkbox" id="pcAll" onchange="pcCkAll(this)"><b>Chọn tất cả</b></label><span class="muted" id="pcSelN" style="font-size:12px">Chưa chọn con nào</span><span style="flex:1"></span><button id="pcSellN" onclick="pcSellMany()" disabled>🧺 Bán đã chọn</button></div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
     '</div>',
+    '</div>', // hết #pdHo
+    // 🧰 RƯƠNG ÍCH KỶ - 05/10: thành TAB RIÊNG trong 🪪 Cá nhân, mỗi món 1 HÀNG NGANG (người chơi PC nhiều).
+    // 17/09 -> 04/10 là popup #ikModal; id bên trong giữ nguyên nên ikDraw/ikClaim/ikGive không phải đổi.
+    '<div id="pdIk" class="hidden"><div class="card">',
+    '<div class="row"><h2 style="margin:0">🧰 RƯƠNG ÍCH KỶ</h2><div class="muted" id="ikStat" style="font-size:12px">-</div></div>',
+    '<div id="ikWarn" style="margin-top:8px">♾️ Rương giữ <b>vĩnh viễn</b>, không giới hạn số món. <b>📦 Nhận</b>: đưa vào game (nhân vật phải online) · <b>🎁 Tặng</b>: chuyển cho người khác · <b>💰 Bán</b>: lấy KNB vào ví web (món admin cho bán) · <b>🗑️ Xoá</b>: bỏ hẳn, không hoàn.</div>',
+    '<div id="ikNhan" class="hidden"></div>',
+    '<div class="ikHead"><b>🎁 Tặng cho</b><select id="ikTo"><option value="">-- chọn người nhận --</option></select></div>',
+    '<div id="ikList"></div>',
+    '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Lúc bấm <b>📦 Nhận</b> mới cần nhân vật online để bot giao vào túi.</div>',
+    '</div></div>',
     '</div>', // hết #pageDaily
 
     // Hộp chọn linh hồn + passive khi NHẬN pal (overlay cố định, dùng chung mọi trang)
     // 26/08: bố cục lại theo góp ý chủ server - máy tính rộng thì chia 2 CỘT (trái:
     // linh hồn + IV, phải: passive), thêm khung 🧾 TỔNG KẾT trước nút nhận.
-    // 🧰 RƯƠNG ÍCH KỶ (17/09)
-    '<div id="ikModal" class="hidden">',
-    '<div id="ikBox">',
-    '<div class="row"><h2 style="margin:0">🧰 RƯƠNG ÍCH KỶ</h2><button onclick="ikClose()" style="background:#232735;padding:4px 12px">✕</button></div>',
-    '<div id="ikWarn">♾️ Rương giữ <b>vĩnh viễn</b>, không giới hạn số món. Bấm <b>📦 Nhận</b> để đưa vào game (nhân vật phải online), <b>🎁 Tặng</b> để chuyển cho người khác.</div>',
-    '<div class="muted" style="font-size:12px;margin-bottom:8px" id="ikStat">-</div>',
-    '<div id="ikNhan" class="hidden"></div>',
-    '<div style="font-size:12px;font-weight:700;margin-bottom:4px">🎁 Tặng cho</div>',
-    '<select id="ikTo"><option value="">-- chọn người nhận --</option></select>',
-    '<div id="ikList"></div>',
-    '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Lúc bấm <b>📦 Nhận</b> mới cần nhân vật online để bot giao vào túi.</div>',
-    '</div></div>',
 
     '<div id="pcModal" class="hidden">',
     '<div id="pcBox">',
@@ -2982,7 +2984,7 @@ const PAGE = [
     // 🔒 16/09 KHOÁ CUỘN KHI CÓ POPUP (chủ server: "mở popup thì phần còn lại không được scroll").
     // 6 lớp phủ toàn màn hình - 3 cái bật/tắt bằng class hidden, 3 cái bằng class show.
     // KHÔNG gồm #winpop / #jpFlash / #toast: mấy cái đó pointer-events:none, chỉ là hiệu ứng.
-    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","ikModal","pbModal"],POPY=0;',
+    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","pbModal"],POPY=0;',
     'function popAnyOpen(){for(var i=0;i<POPIDS.length;i++){var e=$(POPIDS[i]);',
     'if(e&&getComputedStyle(e).display!=="none")return true}return false}',
     'function popScrollSync(){var b=document.body,on=popAnyOpen(),dang=b.classList.contains("noscroll");',
@@ -5364,8 +5366,12 @@ const PAGE = [
     'for(var i=0;i<bs.length;i++){if(bs[i].dataset.done)continue;bs[i].disabled=on;bs[i].style.opacity=(on&&bs[i]!==btn)?.5:1}}',
     // ===== 🧰 RƯƠNG ÍCH KỶ =====
     'var IK=null,IKBUSY=false,IKTIMER=null,IKNG=null;',
-    'function ikOpen(){$("ikModal").classList.remove("hidden");ikSync();ikLoadNguoi();if(!IKTIMER)IKTIMER=setInterval(ikTick,1000)}',
-    'function ikClose(){$("ikModal").classList.add("hidden");if(IKTIMER){clearInterval(IKTIMER);IKTIMER=null}}',
+    // 05/10: rương là tab trong 🪪 Cá nhân - nút 🧰 trên thanh số dư mở thẳng tab đó
+    'function pdTab(t){$("pdHo").classList.toggle("hidden",t!=="ho");$("pdIk").classList.toggle("hidden",t!=="ik");',
+    '$("pdT_ho").classList.toggle("on",t==="ho");$("pdT_ik").classList.toggle("on",t==="ik");',
+    'if(t==="ik"){ikSync();ikLoadNguoi();if(!IKTIMER)IKTIMER=setInterval(ikTick,1000)}else if(IKTIMER){clearInterval(IKTIMER);IKTIMER=null}}',
+    'function ikOpen(){go("daily");pdTab("ik")}',
+    'function ikClose(){pdTab("ho")}',
     // đếm ngược tới 00:00 - trừ dần ở client, khỏi gọi server mỗi giây
     'function ikTick(){if(!IK)return;IK.msLeft=Math.max(0,(IK.msLeft||0)-1000);var e=$("ikCount");if(!e)return;',
     'if(IK.msLeft<=0){e.innerHTML="<b>Đã qua 00:00 - tải lại trang để thấy rương mới.</b>";return}',
@@ -5373,7 +5379,7 @@ const PAGE = [
     'e.innerHTML="Còn <b>"+h+" giờ "+m+" phút "+g+" giây</b>."}',
     'function ikSync(){api("/api/ichky/state").then(function(j){IK=j;ikDraw()}).catch(function(e){toast("❌ "+e.message)})}',
     // nhãn số trên nút thanh số dư
-    'function ikBadge(n){var b=$("ikNum");if(!b)return;b.textContent=n;var t=$("ikBtn");if(t)t.title="Rương Ích Kỷ: đang giữ "+n+" món"}',
+    'function ikBadge(n){var p=$("pdIkN");if(p)p.textContent=n;var b=$("ikNum");if(!b)return;b.textContent=n;var t=$("ikBtn");if(t)t.title="Rương Ích Kỷ: đang giữ "+n+" món"}',
     'function ikLoadNguoi(){if(IKNG)return;api("/api/players").then(function(j){IKNG=(j.list||[]).filter(function(p){return String(p.id)!==String(MYID)});',
     'var sel=$("ikTo");if(!sel)return;var h="<option value=\\"\\">-- chọn người nhận --</option>";',
     'IKNG.forEach(function(p){h+="<option value=\\""+p.id+"\\">"+esc(p.name||p.id)+"</option>"});sel.innerHTML=h}).catch(function(){})}',
@@ -5389,10 +5395,10 @@ const PAGE = [
     '+"<div class=\\"ikNm\\">"+esc(x.name)+(x.ban>0?"<div class=\\"ikGia\\">💰 bán "+vnd(x.ban)+" KNB/cái</div>":"")+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+(x.rutMax?Math.min(x.qty,x.rutMax):x.qty)+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
-    '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button></div>"',
-    // 💰 bán (chỉ món admin cho bán) + 🗑️ xoá (05/10)
-    '+"<div class=\\"ikAct ikAct2\\">"+(x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"")',
-    '+"<button class=\\"bx\\" title=\\"Xoá khỏi rương - không hoàn gì\\" onclick=\\"ikXoa(\'"+x.id+"\',this)\\">🗑️ Xoá</button></div></div>"});',
+    '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button>"',
+    // 💰 bán (chỉ món admin cho bán) + 🗑️ xoá (05/10) - cùng 1 hàng ngang
+    '+(x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"")',
+    '+"<button class=\\"bx\\" title=\\"Xoá khỏi rương - không hoàn gì\\" onclick=\\"ikXoa(\'"+x.id+"\',this)\\">🗑️</button></div></div>"});',
     'box.innerHTML=h}',
     'function ikGio(ts){var d=new Date(ts);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}',
     'function ikMon(id){var it=null;(IK&&IK.items||[]).forEach(function(x){if(x.id===id)it=x});return it}',
