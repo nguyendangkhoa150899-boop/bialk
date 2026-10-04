@@ -2501,10 +2501,17 @@ function ichKyGive(userId, toUserId, itemId, qty, username) {
 // 💰 05/10: BÁN đồ trong rương lấy KNB web - chỉ ngọc cấp 6 + Yếu Quyết môn phái, admin chỉnh ở
 // panel tab 📦 Kho đồ (dbCache._ichKyBan). Rương không ghi món nào từ đâu tới (shop / túi boss / quà),
 // nên giá bán bị KẸP ≤ 90% giá shop nếu shop đang bán đúng món đó - không thì mua shop bán lại là in tiền.
+// khop(id, ten): dải 3030[78]xxx của danh mục bot có ~390 món (không chỉ sách) -> Yếu Quyết phải lọc thêm theo TÊN
 const ICHKY_BAN_NHOM = {
     ngoc6: { ten: '💎 Ngọc cấp 6', khop: id => /^506\d{5}$/.test(id) },
-    yq: { ten: '📜 Yếu Quyết môn phái', khop: id => /^3030[78]\d{3}$/.test(id) },
+    yq: { ten: '📜 Yếu Quyết môn phái', khop: (id, ten) => /^3030[78]\d{3}$/.test(id) && /Yếu Quyết/i.test(ten || '') },
 };
+let _tenGame = null;   // id -> tên (danh mục game nạp 1 lần lúc khởi động)
+function tenGame(id) {
+    if (!_tenGame) { const L = gameItems(); if (!L.length) return ''; _tenGame = new Map(L.map(x => [String(x.id), x.n])); }
+    return _tenGame.get(String(id)) || '';
+}
+const ichKyBanNhomCua = id => Object.keys(ICHKY_BAN_NHOM).find(n => ICHKY_BAN_NHOM[n].khop(id, tenGame(id)));
 const ICHKY_BAN_TRAN_SHOP = 0.9;
 function ichKyBanCfg() {
     const c = dbCache._ichKyBan && typeof dbCache._ichKyBan === 'object' ? dbCache._ichKyBan : {};
@@ -2519,7 +2526,7 @@ function ichKyBanCfg() {
 function ichKyBanGia(id) {
     const c = ichKyBanCfg();
     if (!c.on) return 0;
-    const k = Object.keys(ICHKY_BAN_NHOM).find(n => ICHKY_BAN_NHOM[n].khop(id));
+    const k = ichKyBanNhomCua(id);
     if (!k || !c.nhom[k].on) return 0;
     let gia = c.rieng[id] !== undefined ? c.rieng[id] : c.nhom[k].gia;
     const sp = itemShopList().find(x => x.id === id && !x.off && x.price > 0);
@@ -2539,8 +2546,8 @@ function setIchKyBanCfg(o) {
 // Danh sách món bán được (cho admin xem giá thật sau khi kẹp shop)
 function ichKyBanDs() {
     const c = ichKyBanCfg(), shop = itemShopList();
-    return gameItems().filter(x => x && Object.values(ICHKY_BAN_NHOM).some(g => g.khop(String(x.id)))).map(x => {
-        const id = String(x.id), k = Object.keys(ICHKY_BAN_NHOM).find(n => ICHKY_BAN_NHOM[n].khop(id));
+    return gameItems().filter(x => x && ichKyBanNhomCua(String(x.id))).map(x => {
+        const id = String(x.id), k = ichKyBanNhomCua(id);
         const sp = shop.find(s => s.id === id && !s.off && s.price > 0);
         return { id, n: x.n, nhom: k, rieng: c.rieng[id], shop: sp ? sp.price : 0, gia: ichKyBanGia(id) };
     }).sort((a, b) => a.nhom.localeCompare(b.nhom) || a.id.localeCompare(b.id));
