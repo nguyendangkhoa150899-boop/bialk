@@ -269,7 +269,15 @@ function startPanel(ctx) {
                     const mod = epOk(req) ? {} : { anIP: true, cheKin: true };
                     return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: false, cheKin: false, ...mod }) });
                 }
-                if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký' });
+                // 🎒 04/10: XEM túi đồ boss (cả 2 cổng, CHỈ ĐỌC): hoạt động + món + số lượng + KNB/trần/lượt quay + hình.
+                // Không trả lịch sử sửa (có IP), không lưu được - /api/tuiboss/save|reset vẫn bị chặn ở dòng dưới với cổng mod.
+                if (path === '/api/tuiboss/xem' && ctx.tuiBossCfg) {
+                    const st = ctx.tuiBossCfg.state();
+                    const ds = st.ds.map((h) => ({ hd: h.hd, ten: h.ten, on: h.on, knb: h.knb, ngay: h.ngay, luot: h.luot, mon: h.mon }));
+                    const ids = [...new Set(ds.flatMap((h) => h.mon.flatMap((r) => r.ids.map(String))))];
+                    return sendJSON(res, 200, { ok: true, ds, ten: st.ten || {}, hinh: ctx.itemIconTra ? ctx.itemIconTra(ids) : {} });
+                }
+                if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký và 🎒 Túi đồ boss' });
 
                 if (path === '/api/state') {
                     const st = buildState();
@@ -1504,6 +1512,16 @@ const HTML = `<!DOCTYPE html>
 .nkRaw{display:none;white-space:normal;overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--mut);margin-top:5px;padding:6px 8px;background:var(--bg);border-radius:6px}
 .nkRow.mo .nkB,.nkRow.mo .nkL1,.nkRow.mo .nkL2{white-space:normal}.nkRow.mo .nkRaw{display:block}
 #nkStats{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+/* 🎒 04/10: túi đồ boss bản chỉ xem (cổng mod) */
+#tbxDs{display:flex;flex-direction:column;gap:6px;min-width:220px}
+#tbxDs button{text-align:left;padding:8px 12px;font-size:13.5px}
+.tbxRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:var(--card2)}
+.tbxHint{grid-column:1/-1;font-size:12px;color:var(--yellow)}
+.tbxIds{display:flex;flex-wrap:wrap;gap:6px 16px;min-width:0}
+.tbxMon{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;min-width:0}
+.tbxNo{display:inline-block;width:32px;text-align:center}
+.tbxSl{font-weight:700;font-size:15px;color:#fff;white-space:nowrap}
+@media (max-width:700px){#tbxDs{flex-direction:row;flex-wrap:wrap;min-width:0}#tbxDs button{padding:6px 10px;font-size:13px}}
 .nkStat{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px}
 .nkStat b{font-variant-numeric:tabular-nums}.nkStat .xanh{color:#3ddc84}.nkStat .do{color:#ff6b6b}
 /* điện thoại: hàng trên = tên + cược, hàng dưới = kết quả (mỗi hàng tự cắt ...) - không mất phần BÙM/dừng như khi dồn 1 hàng */
@@ -1946,7 +1964,16 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
     <div id="tab-tb" class="hidden"><!-- 🎒 01/10: Túi đồ boss -->
-      <div class="card">
+      <!-- 🎒 04/10: bản CHỈ XEM cho cổng mod (modApp ẩn thẻ sửa #tbSuaCard, hiện thẻ này) -->
+      <div class="card hidden" id="tbXemCard">
+        <h3>🎒 Túi đồ boss <span class="muted" style="font-size:12px;font-weight:400">đồ người chơi nhận khi hạ boss cuối · chỉ xem</span></h3>
+        <div class="note">Hạ boss cuối → người chơi nhận 1 túi trên web, bấm <b>Nhận</b> để chuyển đồ vào game. Dòng <span style="color:var(--yellow)">🎲 ngẫu nhiên 1 trong…</span> = bốc 1 món trong nhóm đó. Số bên phải là số lượng.</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
+          <div id="tbxDs"><span class="muted">đang tải...</span></div>
+          <div id="tbxCt" style="flex:1;min-width:260px"></div>
+        </div>
+      </div>
+      <div class="card" id="tbSuaCard">
         <h3>🎒 Túi đồ boss - đồ người chơi nhận khi hạ boss cuối</h3>
         <div class="note">Chọn hoạt động bên trái, sửa bảng bên phải rồi bấm <b>💾 Lưu</b>. Áp cho túi <b>tạo sau khi lưu</b> (túi đã có giữ nguyên đồ đã bốc). Mỗi dòng: <b>1 ID</b> = món cố định; <b>nhiều ID cách nhau dấu phẩy</b> = mỗi cái bốc ngẫu nhiên 1 trong các ID (vd Miên Bố / Bí Ngân trộn). Số lượng <b>từ - đến</b> = ngẫu nhiên trong khoảng. <b>Trần/ngày</b> = số túi tối đa mỗi người mỗi ngày (0 = không giới hạn). KNB cộng vào ví web khi bấm Nhận. Mọi lần lưu ghi cổng + IP.</div>
         <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
@@ -3007,7 +3034,7 @@ function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
   ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'&&!TB.st)tbLoad();if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  if(t==='give')gvLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -4679,11 +4706,13 @@ function nkBatDau(){if(NK.chay)return;NK.chay=true;setInterval(()=>{
 // Cổng mod: giấu mọi tab trừ 📜 Log, giấu bảng chọn mục log cũ (cần /api/state), không chạy refresh()
 function modApp(){
   document.body.classList.add('congmod');epApply(false);
-  document.querySelectorAll('.tabs .grp').forEach(g=>{const co=g.querySelector('button[data-tab="log"]');g.style.display=co?'':'none';
-    if(co)g.querySelectorAll('button').forEach(b=>{b.style.display=b.dataset.tab==='log'?'':'none';});});
+  const DUOC=['log','tb'];   // 04/10: cổng mod thấy 📜 Log + 🎒 Túi Boss (bản chỉ xem)
+  document.querySelectorAll('.tabs .grp').forEach(g=>{const bs=[...g.querySelectorAll('button')],co=bs.some(b=>DUOC.includes(b.dataset.tab));g.style.display=co?'':'none';
+    bs.forEach(b=>{b.style.display=DUOC.includes(b.dataset.tab)?'':'none';});});
+  document.getElementById('tbSuaCard').classList.add('hidden');document.getElementById('tbXemCard').classList.remove('hidden');
   const pc=document.getElementById('logPickCard');if(pc)pc.style.display='none';
   const hb=document.getElementById('holdBtn');if(hb)hb.style.display='none';
-  const ct=document.getElementById('connText');if(ct){ct.style.color='var(--green)';ct.textContent='Cổng mod · chỉ xem 📒 Nhật ký';}
+  const ct=document.getElementById('connText');if(ct){ct.style.color='var(--green)';ct.textContent='Cổng mod · chỉ xem';}
   tab('log');logPick('nk');
 }
 // 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
@@ -5116,6 +5145,28 @@ function renderPlayers(){
 let TB={st:null,hd:null,ed:null,row:0,dirty:false};
 function tbLoad(){api('/api/tuiboss/cfg').then(j=>{TB.st=j;if(!TB.hd||!j.ds.find(x=>x.hd===TB.hd))TB.hd=j.ds[0].hd;tbPick(TB.hd,true);}).catch(e=>toast('❌ '+e.message));}
 function tbCur(){return TB.st.ds.find(x=>x.hd===TB.hd);}
+// 🎒 04/10: bản CHỈ XEM cho cổng mod (/api/tuiboss/xem: không lịch sử sửa, không lưu)
+let TBX={st:null,hd:null};
+function tbXemLoad(){api('/api/tuiboss/xem').then(j=>{TBX.st=j;if(!TBX.hd||!j.ds.find(x=>x.hd===TBX.hd)){const b=j.ds.find(x=>x.on)||j.ds[0];TBX.hd=b?b.hd:null;}tbXemDraw();}).catch(()=>{});}
+function tbXemChon(hd){TBX.hd=hd;tbXemDraw();}
+function tbXemMon(id){const s=TBX.st,h=(s.hinh||{})[id]||{},ten=(s.ten||{})[id]||h.ten||('#'+id);
+  return '<span class="tbxMon">'+(h.ic?vqaIc(h.ic):'<span class="tbxNo">📦</span>')+'<span>'+esc(ten)+'</span></span>';}
+function tbXemDraw(){
+  const s=TBX.st;if(!s)return;
+  document.getElementById('tbxDs').innerHTML=s.ds.map(h=>'<button class="btn-grey'+(h.hd===TBX.hd?' nkOn':'')+'" style="'+(h.on?'':'opacity:.5')+'" data-n="'+nkA(h.hd)+'" onclick="tbXemChon(this.dataset.n)">'+(h.on?'🟢 ':'⚫ ')+esc(h.ten)+'</button>').join('');
+  const h=s.ds.find(x=>x.hd===TBX.hd);if(!h){document.getElementById('tbxCt').innerHTML='';return;}
+  const chip=[];
+  if(!h.on)chip.push('⚫ đang tắt - chưa phát túi');
+  if(h.knb)chip.push('💰 '+h.knb.toLocaleString('vi-VN')+' KNB');
+  if(h.luot)chip.push('🍀 +'+h.luot+' lượt quay web');
+  chip.push(h.ngay?('📅 tối đa '+h.ngay+' túi/ngày'):'📅 không giới hạn túi/ngày');
+  document.getElementById('tbxCt').innerHTML='<h3 style="margin:0 0 8px">'+esc(h.ten)+'</h3>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+chip.map(c=>'<span class="nkStat">'+esc(c)+'</span>').join('')+'</div>'
+    +(h.mon.length?h.mon.map(r=>{const sl=r.min===r.max?('×'+r.min):('×'+r.min+'–'+r.max);
+      return '<div class="tbxRow">'+(r.ids.length>1?'<div class="tbxHint">🎲 ngẫu nhiên 1 trong '+r.ids.length+' món</div>':'')
+        +'<div class="tbxIds">'+r.ids.map(tbXemMon).join('')+'</div><div class="tbxSl">'+sl+'</div></div>';}).join('')
+      :'<div class="muted">Túi này chưa có món nào.</div>');
+}
 function tbTen(id){return (TB.st&&TB.st.ten[id])||'';}
 function tbHdDraw(){
   document.getElementById('tbHd').innerHTML=TB.st.ds.map(h=>'<button style="text-align:left;padding:7px 10px;'+(h.hd===TB.hd?'outline:2px solid #ffcf5c;':'')+(h.on?'':'opacity:.55;')+'" onclick="tbPick(\\''+h.hd+'\\')">'+(h.on?'🟢':'⚫')+' '+esc(h.ten)+(h.sua?' <span style="color:#ffcf5c">✎</span>':'')+'</button>').join('')
