@@ -51,6 +51,9 @@ const GIVEAWAY_PING_ROLE_ID = '1535223682857705522';
 const GIVEAWAY_ANNOUNCE_CHANNEL_ID = '1535224374897016862';
 
 // --- HỆ THỐNG GHI LOG CHIA FILE ---
+// 📒 04/10: ghi THÊM mọi dòng vào nhatky/YYYY-MM-DD.log (giữ 3 ngày, không cắt dòng) - tab 📜 Log / cổng mod đọc
+const NHATKY = require('./nhatky');
+NHATKY.khoiDong(process.cwd());
 const LOG_SYSTEM = './log_system.txt'; // lỗi, crash, khởi động bot
 const LOG_RESULT = './log_result.txt'; // kết quả Tài Xỉu + dò mìn + leo thang
 const LOG_BET = './log_bet.txt';       // cược + kết quả ván, 3 game
@@ -73,6 +76,7 @@ function writeLog(category, message) {
     else if (category === 'ADMIN') targetFile = LOG_ADMIN;
 
     console.log(`[${category}] ${entry}`);
+    NHATKY.ghi(['RESULT', 'BET', 'ADMIN'].includes(category) ? category : 'SYSTEM', message);
 
     try {
         let lines = [];

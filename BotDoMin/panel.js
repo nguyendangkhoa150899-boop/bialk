@@ -6,6 +6,7 @@ const crypto = require('crypto');
 // 29/09 NetCo4: tab 🛠️ GM Thiên Long gọi API nội bộ panel GM qua tlbb.gmCall (xem tlbb.js)
 const { gmCall } = require('./tlbb');
 const ITEMICON = require('./itemicon');   // 🍀 02/10: icon vật phẩm game cho tab Quà tặng (vòng quay)
+const NHATKY = require('./nhatky');       // 📒 04/10: nhật ký theo ngày (tab 📜 Log, cổng mod)
 
 function startPanel(ctx) {
     const PASSWORD = ctx.password;
@@ -226,7 +227,7 @@ function startPanel(ctx) {
             // no-store để lần sau sửa panel là thấy ngay, không phải xóa cache.
             if (req.method === 'GET' && path === '/') {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-                return res.end(HTML.replace('__AUTH_OFF__', AUTH_OFF ? 'true' : 'false'));
+                return res.end(HTML.replace('__AUTH_OFF__', AUTH_OFF ? 'true' : 'false').replace('__CONG_MOD__', epOk(req) ? 'false' : 'true'));   // 04/10: cổng mod chỉ hiện 📒 Nhật ký
             }
 
             // Đăng nhập
@@ -258,6 +259,16 @@ function startPanel(ctx) {
             if (path.startsWith('/api/')) {
                 if (!isAuthed(req)) return sendJSON(res, 401, { ok: false, error: 'Chưa đăng nhập' });
 
+                // 📒 04/10 MỞ SERVER: cổng mod (admin thường, mod.netco4.click) CHỈ còn xem 📒 Nhật ký.
+                // Chặn tại ĐÂY = mọi route bên dưới (kể cả ĐỌC /api/state: ví, KNB, cấu hình, shop) đều 403
+                // với cổng mod - thêm route mới cho mod thì phải đặt TRƯỚC dòng chặn này.
+                if (path === '/api/whoami') return sendJSON(res, 200, { ok: true, superAdmin: epOk(req) });
+                if (path === '/api/nhatky') {
+                    const b = req.method === 'POST' ? await readBody(req) : Object.fromEntries(url.searchParams);
+                    return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: !epOk(req) }) });   // cổng mod: che 2 số cuối IP
+                }
+                if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký' });
+
                 if (path === '/api/state') {
                     const st = buildState();
                     st.superAdmin = epOk(req); // cổng SUPER thì client tự hiện cụm can thiệp
@@ -276,7 +287,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 29/09 tạm MỞ Drop Boss cho mod cùng test - đóng lại: thêm '/api/drop/box','/api/drop/boss','/api/drop/clone' vào đây + trả epOnly cho nút tab */ '/api/gacha/channel', '/api/palwheel/cfg',
+                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */ '/api/gacha/channel', '/api/palwheel/cfg',
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
@@ -1477,6 +1488,15 @@ const HTML = `<!DOCTYPE html>
   /* 29/09 NetCo4: cổng admin THƯỜNG được sửa SHOP (server đã mở 4 route shop) - chỉ thẻ này mở khoá */
   body.viewonly #tab-pal #shopCard input,body.viewonly #tab-pal #shopCard button,body.viewonly #tab-pal #shopCard select,body.viewonly #tab-pal #shopCard label{pointer-events:auto;opacity:1}
 .pwOff{display:none!important} /* 29/09 NetCo4: muc Palworld da tat */
+/* 📒 04/10: nhật ký theo ngày */
+.nkRow{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;padding:5px 4px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.45}
+.nkRow:hover{background:var(--card2)}
+.nkT{font-family:ui-monospace,Consolas,monospace;color:var(--mut);flex:0 0 auto}
+.nkG{font-size:11px;border:1px solid;border-radius:6px;padding:0 6px;flex:0 0 auto}
+.nkTag{font-size:12px;color:var(--yellow);flex:0 0 auto}
+.nkM{flex:1 1 260px;min-width:0;overflow-wrap:anywhere;color:var(--txt)}
+.nkOn{outline:2px solid var(--green)}
+#nkNgays button,#nkNhoms button{padding:6px 10px;font-size:13px}
 </style>
 </head>
 <body>
@@ -2610,8 +2630,9 @@ const HTML = `<!DOCTYPE html>
     <!-- 📜 LOG: gom toàn bộ lịch sử thắng/thua về một chỗ (04/09) - mỗi mục 30 ván CÓ CƯỢC.
          Chọn mục nào hiện mục đó, khỏi kéo dài (05/09). -->
     <div id="tab-log" class="hidden">
-      <div class="card">
+      <div class="card" id="logPickCard">
         <div class="row" style="flex-wrap:wrap;gap:6px">
+          <button class="btn-grey logPick" data-log="nk" onclick="logPick('nk')">📒 Nhật ký</button>
           <button class="btn-grey logPick" data-log="tx" onclick="logPick('tx')">🎲 Tài Xỉu</button>
           <button class="btn-grey logPick" data-log="stx" onclick="logPick('stx')">⚡ Siêu Tài Xỉu</button>
           <button class="btn-grey logPick" data-log="rl" onclick="logPick('rl')">🎡 Roulette</button>
@@ -2632,6 +2653,23 @@ const HTML = `<!DOCTYPE html>
           <span class="muted" id="lgLogInfo"></span>
         </div>
         <div id="lgLog" style="margin-top:8px;max-height:640px;overflow:auto"></div>
+      </div>
+      <!-- 📒 04/10: NHẬT KÝ THEO NGÀY (nhatky.js) - mọi dòng log của bot, giữ 3 ngày. Cổng mod chỉ thấy mục này. -->
+      <div class="card logSec hidden" id="logSec-nk">
+        <h3>📒 Nhật ký <span class="muted" style="font-size:12px;font-weight:400">theo ngày · giữ 3 ngày · mới nhất trên cùng</span></h3>
+        <div class="note">Mọi việc bot ghi lại: điểm danh, shop, rút/nạp KNB, quà, túi boss, vòng quay, liên kết nhân vật, GM, cược, kết quả, lỗi hệ thống. Mật khẩu luôn bị che; cổng mod che thêm 2 số cuối IP.</div>
+        <div class="row" id="nkNgays" style="gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+        <div class="row" id="nkNhoms" style="gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center">
+          <select id="nkTag" class="mini-in" style="width:auto;min-width:200px;margin-top:0" onchange="nkTai(true)"></select>
+          <input id="nkQ" class="mini-in" style="width:240px;margin-top:0" placeholder="tìm: tên, ID, món, số KNB..." oninput="nkGo()">
+          <label class="muted" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkBoPT" style="width:auto;margin:0" checked onchange="nkTai(true)">Ẩn 🚀 Phi Thuyền</label>
+          <label class="muted" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkAuto" style="width:auto;margin:0" checked>Tự cập nhật 10s</label>
+          <button class="mini" onclick="nkTai(true)">🔄 Tải</button>
+        </div>
+        <div class="muted" id="nkInfo" style="font-size:12px;margin-top:6px"></div>
+        <div id="nkList" style="margin-top:6px;max-height:70vh;overflow:auto"></div>
+        <div style="margin-top:8px"><button class="mini hidden" id="nkMore" onclick="nkThem()">⬇️ Xem thêm</button></div>
       </div>
       <div class="card logSec" id="logSec-tx">
         <h3>📜 Lịch sử Big Small</h3>
@@ -2816,6 +2854,8 @@ const HTML = `<!DOCTYPE html>
 // Server nhúng giá trị này vào trang (xem handler GET '/'). true = panel không có
 // mật khẩu, vào thẳng, không hiện bảng đăng nhập.
 const AUTH_OFF = __AUTH_OFF__;
+// 04/10: true = đang vào cổng mod (server nhúng theo cổng) -> chỉ hiện 📒 Nhật ký, không gọi /api/state (server chặn 403)
+const CONG_MOD = __CONG_MOD__;
 let TOKEN = localStorage.getItem('panel_token') || '';
 let STATE = null;
 let mineSel = new Set();
@@ -2933,6 +2973,8 @@ function logout(){TOKEN='';localStorage.removeItem('panel_token');document.getEl
 function showApp(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  nkBatDau();
+  if(CONG_MOD){modApp();return;}   // 📒 04/10: cổng mod chỉ có Nhật ký
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
   const saved=localStorage.getItem('panel_tab');
@@ -2940,7 +2982,7 @@ function showApp(){
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
   if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
-  logPick(['tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'tx');
+  logPick(['nk','tx','mine','stair','spm','dog'].includes(savedLog)?savedLog:'nk');
   refresh();
   // 10/09: nhịp 3s = refresh(false) (tự động, tôn trọng "giữ màn hình"); refresh() sau khi bấm
   // nút = ép vẽ lại ngay (admin vừa thao tác thì muốn thấy kết quả, kể cả đang bôi chữ / ⏸).
@@ -4567,6 +4609,61 @@ function logPick(k){
   document.querySelectorAll('.logSec').forEach(el=>el.classList.toggle('hidden',el.id!=='logSec-'+k));
   document.querySelectorAll('.logPick').forEach(b=>{b.style.outline=b.dataset.log===k?'2px solid var(--green)':'';});
   if(k==='drop'&&typeof dropLogLoad==='function')dropLogLoad('lg');   // 💥 lịch sử Drop Boss: tải khi mở mục
+  if(k==='nk')nkTai(true);
+}
+// ===== 📒 04/10: NHẬT KÝ THEO NGÀY (nhatky.js, POST /api/nhatky) =====
+// Cổng SUPER: mục đầu của tab 📜 Log. Cổng mod: thứ DUY NHẤT nhìn thấy (modApp).
+const NK={ngay:'',nhom:'',rows:[],dangTai:false,goT:null,chay:false};
+const NK_NHOM={ADMIN:['Thao tác','#7ee2a8'],BET:['Cược','#f0b132'],RESULT:['Kết quả','#8ab4ff'],SYSTEM:['Hệ thống','#ff8a8a']};
+function nkA(x){return esc(x).replace(/"/g,'&quot;');}
+function nkBody(them){return {ngay:NK.ngay,nhom:NK.nhom,tag:document.getElementById('nkTag').value||'',q:document.getElementById('nkQ').value||'',
+  boTag:document.getElementById('nkBoPT').checked?['PHI THUYỀN']:[],truoc:them?NK.rows.length:0,gioiHan:300};}
+async function nkTai(dau,them){
+  if(NK.dangTai){NK.lai=[dau,them];return;}   // đang tải (vd tự cập nhật) mà đổi lọc -> chạy lại ngay sau, không bỏ mất
+  NK.dangTai=true;
+  try{const j=await api('/api/nhatky',nkBody(them));NK.ngay=j.ngay;NK.rows=them?NK.rows.concat(j.rows):j.rows;nkVe(j);}
+  catch(e){}finally{NK.dangTai=false;if(NK.lai){const l=NK.lai;NK.lai=null;nkTai(l[0],l[1]);}}
+}
+function nkThem(){nkTai(false,true);}
+function nkGo(){clearTimeout(NK.goT);NK.goT=setTimeout(()=>nkTai(true),350);}
+function nkChonNgay(n){if(n===NK.ngay)return;NK.ngay=n;document.getElementById('nkTag').value='';nkTai(true);}
+function nkChonNhom(n){NK.nhom=n;document.getElementById('nkTag').value='';nkTai(true);}
+function nkVe(j){
+  document.getElementById('nkNgays').innerHTML=j.ngays.map(x=>{const p=x.ngay.split('-');
+    return '<button class="btn-grey'+(x.ngay===j.ngay?' nkOn':'')+'" data-n="'+nkA(x.ngay)+'" onclick="nkChonNgay(this.dataset.n)">📅 '+(x.homNay?'Hôm nay ':'')+p[2]+'/'+p[1]+'</button>';}).join('');
+  const tongNhom=Object.values(j.nhoms).reduce((a,b)=>a+b,0);
+  document.getElementById('nkNhoms').innerHTML=[['','Tất cả',tongNhom]].concat(Object.keys(NK_NHOM).map(k=>[k,NK_NHOM[k][0],j.nhoms[k]||0]))
+    .map(x=>'<button class="btn-grey'+(x[0]===NK.nhom?' nkOn':'')+'" data-n="'+x[0]+'" onclick="nkChonNhom(this.dataset.n)">'+esc(x[1])+' <span class="muted">'+x[2].toLocaleString('vi-VN')+'</span></button>').join('');
+  const sel=document.getElementById('nkTag'),cu=sel.value;
+  const tongTag=j.tags.reduce((a,t)=>a+t[1],0);
+  sel.innerHTML='<option value="">Mọi loại ('+tongTag.toLocaleString('vi-VN')+')</option>'+j.tags.map(t=>'<option value="'+nkA(t[0])+'">'+esc(t[0]?'['+t[0]+']':'(không loại)')+' · '+t[1].toLocaleString('vi-VN')+'</option>').join('');
+  if(cu&&j.tags.some(t=>t[0]===cu))sel.value=cu;
+  document.getElementById('nkInfo').textContent='Đang hiện '+NK.rows.length.toLocaleString('vi-VN')+' / '+j.tong.toLocaleString('vi-VN')+' dòng khớp · cả ngày '+j.tongNgay.toLocaleString('vi-VN')+' dòng · tải lúc '+new Date().toLocaleTimeString('vi-VN');
+  document.getElementById('nkList').innerHTML=NK.rows.length?NK.rows.map(r=>{
+    const g=NK_NHOM[r.nhom]||[r.nhom,'#949ba4'];let m=r.msg;
+    if(r.tag&&m.indexOf('['+r.tag+']')===0)m=m.slice(r.tag.length+2).trim();
+    return '<div class="nkRow"><span class="nkT">'+esc(r.t)+'</span><span class="nkG" style="color:'+g[1]+'">'+esc(g[0])+'</span>'+(r.tag?'<b class="nkTag">'+esc(r.tag)+'</b>':'')+'<span class="nkM">'+esc(m)+'</span></div>';
+  }).join(''):'<div class="muted" style="padding:10px 4px">Không có dòng nào khớp.</div>';
+  document.getElementById('nkMore').classList.toggle('hidden',!j.conNua);
+}
+// Tự cập nhật 10s: chỉ khi đang mở mục Nhật ký, xem hôm nay, chưa bấm Xem thêm, chưa cuộn xuống, không bôi chữ
+function nkBatDau(){if(NK.chay)return;NK.chay=true;setInterval(()=>{
+  const sec=document.getElementById('logSec-nk'),tl=document.getElementById('tab-log'),ls=document.getElementById('nkList');
+  if(!sec||sec.classList.contains('hidden')||!tl||tl.classList.contains('hidden'))return;
+  if(!document.getElementById('nkAuto').checked||document.hidden)return;
+  const nb=document.querySelector('#nkNgays .nkOn');if(nb&&nb.textContent.indexOf('Hôm nay')<0)return;
+  if(NK.rows.length>300||(ls&&ls.scrollTop>40)||String(window.getSelection()||''))return;
+  nkTai(true);
+},10000);}
+// Cổng mod: giấu mọi tab trừ 📜 Log, giấu bảng chọn mục log cũ (cần /api/state), không chạy refresh()
+function modApp(){
+  document.body.classList.add('congmod');epApply(false);
+  document.querySelectorAll('.tabs .grp').forEach(g=>{const co=g.querySelector('button[data-tab="log"]');g.style.display=co?'':'none';
+    if(co)g.querySelectorAll('button').forEach(b=>{b.style.display=b.dataset.tab==='log'?'':'none';});});
+  const pc=document.getElementById('logPickCard');if(pc)pc.style.display='none';
+  const hb=document.getElementById('holdBtn');if(hb)hb.style.display='none';
+  const ct=document.getElementById('connText');if(ct){ct.style.color='var(--green)';ct.textContent='Cổng mod · chỉ xem 📒 Nhật ký';}
+  tab('log');logPick('nk');
 }
 // 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
 let PCOPEN=false;
@@ -5515,7 +5612,8 @@ if(AUTH_OFF){
   showApp();
 } else if(TOKEN){
   // auto-login nếu token cũ còn hiệu lực
-  fetch('/api/state',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
+  // 04/10: kiểm token bằng /api/whoami (cổng mod bị chặn /api/state -> trước đây sẽ tự đăng xuất)
+  fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
 </body>
