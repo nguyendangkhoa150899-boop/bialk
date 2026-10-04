@@ -73,7 +73,7 @@ gan('lltb', range(12138, 12146));
 // Kỳ Cuộc: boss cuối Viễn Cổ Kỳ Hồn - thường / tân thủ 3 / tân thủ 6, mỗi mức 20 bậc cấp (khớp vòng for trong roimap.lua)
 gan('kycuoc', [...range(1850, 1859), ...range(31850, 31859), ...range(12040, 12049), ...range(42040, 42049), ...range(12090, 12099), ...range(42090, 42099)]);
 gan('actac', range(3650, 3659));   // 04/10: boss cuoi pho ban Tac binh (truoc 473 = NPC bat tu, khong bao gio ghi)
-gan('acba', range(1910, 1919).concat(range(31910, 31919)));   // 04/10: them 3191x cho cap 110+
+gan('acba', range(1910, 1919).concat(range(31910, 31919), range(3670, 3679), range(33670, 33679)));   // 04/10: + Ác Bá tấn công môn phái (eTouximenpai_NPC_*)   // 04/10: them 3191x cho cap 110+
 gan('langhuyen', [43970, 43971, 43973, 43975, 43982, 43983, 43985, 43986]);  // 04/10: boss chet thu 4 (thu tu nao cung duoc) -> 1 tui / luot
 
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
