@@ -7572,11 +7572,12 @@ client.once('ready', async (c) => {
                 nhan: async (uid, id) => {
                     const u = getUserData(uid); const guid = String(u.tlbbGuid || '');
                     if (!guid) return { error: 'Chưa liên kết nhân vật trong game' };
-                    const r = await tuiBoss.nhan(dbCache, guid, String(id || ''), (g, itemId, n) => tlbb.giveItem(g, itemId, n), (knb, tui) => {
+                    // 04/10 (chủ server): đồ trong túi KHÔNG đẩy thẳng vào game nữa - bỏ hết vào 🧰 Rương Ích Kỷ, người chơi tự rút vào game dần (ichKyClaim)
+                    const r = await tuiBoss.nhan(dbCache, guid, String(id || ''), async (g, itemId, n) => { ichKyAdd(u, String(itemId), Number(n) || 0); return { ok: true }; }, (knb, tui) => {
                         updatePoints(uid, knb); logDog('tuiboss', uid, u.name || uid, knb, `🎒 Túi boss ${tui.ten}`);
                     }, (luot, tui) => VQ.congLuot(uid, luot, `🎒 Túi boss ${tui.ten}`));   // 🍀 02/10: lượt quay web thay Hạnh Vận Quả
                     saveDbNow();
-                    if (!r.error) writeLog('SYSTEM', `[TÚI BOSS] ${u.name || uid} (${guid}) nhận túi ${r.tui.ten}: ${r.tui.mon.map((m) => m[0] + 'x' + m[1]).join(', ')}${r.tui.knb ? ' + ' + r.tui.knb + ' KNB' : ''}${r.tui.luot ? ' + ' + r.tui.luot + ' lượt quay' : ''}`);
+                    if (!r.error) writeLog('SYSTEM', `[TÚI BOSS] ${u.name || uid} (${guid}) nhận túi ${r.tui.ten} → Rương Ích Kỷ: ${r.tui.mon.map((m) => m[0] + 'x' + m[1]).join(', ')}${r.tui.knb ? ' + ' + r.tui.knb + ' KNB' : ''}${r.tui.luot ? ' + ' + r.tui.luot + ' lượt quay' : ''}`);
                     return r;
                 },
             },

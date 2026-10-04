@@ -5016,7 +5016,7 @@ const PAGE = [
     'var m=x.mon.map(function(a){return esc(j.ten[a[0]]||("#"+a[0]))+" ×"+a[1]}).join(", ")+(x.knb?", <b>"+Number(x.knb).toLocaleString()+" KNB</b>":"")+(x.luot?", <b>🍀 "+x.luot+" lượt quay</b>":"");',
     'h+="<div style=\\"border:1px solid #2a3340;border-radius:9px;padding:8px 10px;margin-bottom:6px\\"><div class=\\"row\\" style=\\"gap:8px\\"><b>"+esc(x.ten)+"</b><span class=\\"muted\\" style=\\"font-size:12px\\">"+tg+"</span>"+(x.nhan?"<span style=\\"margin-left:auto;color:#7ee2a8;font-size:12px\\">✅ Đã nhận</span>":"<button class=\\"tbBtn\\" onclick=\\"tbNhan(\'"+x.id+"\',this)\\">Nhận</button>")+"</div><div style=\\"font-size:13px;margin-top:4px\\">"+m+"</div></div>"}',
     'box.innerHTML=h}).catch(function(){})}',
-    'function tbNhan(id,b){if(b)b.disabled=true;api("/api/tuiboss/nhan",{id:id}).then(function(){toast("✅ Đã nhận túi - đổi bản đồ trong game để lấy đồ");dailySync()}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"));if(b)b.disabled=false})}',
+    'function tbNhan(id,b){if(b)b.disabled=true;api("/api/tuiboss/nhan",{id:id}).then(function(){toast("✅ Đã nhận túi - đồ đã vào 🧰 Rương Ích Kỷ (giữ vĩnh viễn). Vào rương bấm NHẬN để đưa vào game lúc nào cũng được");dailySync()}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"));if(b)b.disabled=false})}',
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
     // 🔌 15/09: giấu tab của mục admin tắt. Đang đứng trong mục bị tắt thì đá về Tài Xỉu.
     'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",pal:"navPal",pick:"navPick",shop:"navShop",dog:"navDog"};',
