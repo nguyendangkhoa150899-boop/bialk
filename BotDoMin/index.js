@@ -2393,7 +2393,7 @@ function itemShopToday(user) {
 // 03/10 (chủ server chốt): rương GIỮ VĨNH VIỄN, KHÔNG giới hạn số món. Sang ngày mới chỉ đặt lại đếm
 // "đã mua hôm nay" (bought) và sổ "được tặng hôm nay" (nhan) - ĐỒ TRONG RƯƠNG GIỮ NGUYÊN.
 // (17/09 -> 02/10: 00:00 xoá sạch đồ, giữ tối đa 100 món.)
-const ICHKY_DAY_MAX = 100;    // mua vào rương tối đa 100 món/người/NGÀY (giới hạn đầu vào, vẫn giữ)
+const ICHKY_DAY_MAX = 2000;   // mua vào rương tối đa 2.000 món/người/NGÀY (04/10 chủ server nâng từ 100)
 const ICHKY_HOLD_MAX = Infinity;   // 03/10: bỏ giới hạn giữ (trước 100). JSON gửi web là null
 const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
 // Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts, 02/10)
