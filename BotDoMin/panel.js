@@ -2699,7 +2699,7 @@ const HTML = `<!DOCTYPE html>
       <!-- 📒 04/10: NHẬT KÝ (nhatky.js) - CHỈ 3 mục: Tài Xỉu (ván có người đặt), Dò Mìn, Nạp/Rút web. Giữ 3 ngày. Cổng mod chỉ thấy mục này. -->
       <div class="card logSec hidden" id="logSec-nk">
         <h3>📒 Nhật ký</h3>
-        <div class="note">Chỉ 3 mục: <b>🎲 Tài Xỉu</b> (mỗi người đặt 1 dòng), <b>💣 Dò Mìn</b> (mỗi ván 1 dòng: cược → kết quả), <b>💰 Nạp / Rút</b> (KNB giữa web và game). Số bên phải là <b>lãi/lỗ của người chơi</b>: <span style="color:#3ddc84">+ xanh = thắng</span>, <span style="color:#ff6b6b">− đỏ = thua</span>. Bấm vào 1 dòng để xem log gốc. Giữ 3 ngày.</div>
+        <div class="note">Chỉ 3 mục: <b>🎲 Tài Xỉu</b> (mỗi người đặt 1 dòng), <b>💣 Dò Mìn</b> (mỗi ván 1 dòng: cược → kết quả), <b>💰 Nạp / Rút</b> (KNB giữa web và game), <b>🛒 Shop</b> (mua đồ shop web, số bên phải = KNB đã chi). Với game, số bên phải là <b>lãi/lỗ của người chơi</b>: <span style="color:#3ddc84">+ xanh = thắng</span>, <span style="color:#ff6b6b">− đỏ = thua</span>. Bấm vào 1 dòng để xem log gốc. Giữ 3 ngày.</div>
         <div class="row" id="nkNgays" style="gap:6px;flex-wrap:wrap;margin-top:10px"></div>
         <div class="row" id="nkMucs" style="gap:6px;flex-wrap:wrap;margin-top:6px"></div>
         <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center">
@@ -4655,7 +4655,7 @@ function logPick(k){
 // ===== 📒 04/10: NHẬT KÝ (nhatky.js, POST /api/nhatky) - 3 mục: Tài Xỉu / Dò Mìn / Nạp-Rút =====
 // Cổng SUPER: mục đầu của tab 📜 Log. Cổng mod: thứ DUY NHẤT nhìn thấy (modApp).
 const NK={ngay:'',muc:'',rows:[],dangTai:false,lai:null,goT:null,chay:false};
-const NK_MAU={tx:'#f0b132',mine:'#ff8a8a',naprut:'#7ee2a8'};
+const NK_MAU={tx:'#f0b132',mine:'#ff8a8a',naprut:'#7ee2a8',shop:'#8ab4ff'};
 function nkA(x){return esc(x).replace(/"/g,'&quot;');}
 function nkBody(them){return {ngay:NK.ngay,muc:NK.muc,q:document.getElementById('nkQ').value||'',truoc:them?NK.rows.length:0,gioiHan:300};}
 async function nkTai(dau,them){
@@ -4677,9 +4677,11 @@ function nkVe(j){
     .map(x=>'<button class="btn-grey'+(x[0]===NK.muc?' nkOn':'')+'" data-n="'+x[0]+'" onclick="nkChonMuc(this.dataset.n)">'+esc(x[1])+' <span class="muted">'+x[2].toLocaleString('vi-VN')+'</span></button>').join('');
   const vn=n=>Number(n||0).toLocaleString('vi-VN'),ky=n=>(n>0?'+':n<0?'−':'')+vn(Math.abs(n)),lop=n=>n>0?'xanh':n<0?'do':'';
   const tk=j.thongKe||{},st=[];
-  if(tk.mine&&tk.mine.van&&NK.muc!=='tx'&&NK.muc!=='naprut')st.push('💣 <b>'+vn(tk.mine.van)+'</b> ván · cược <b>'+vn(tk.mine.cuoc)+'</b> · người chơi <b class="'+lop(tk.mine.lai)+'">'+ky(tk.mine.lai)+'</b> <span class="muted">('+tk.mine.thang+' thắng / '+tk.mine.thua+' thua)</span>');
-  if(tk.tx&&tk.tx.luot&&NK.muc!=='mine'&&NK.muc!=='naprut')st.push('🎲 <b>'+vn(tk.tx.luot)+'</b> lượt đặt · đặt <b>'+vn(tk.tx.dat)+'</b> · người chơi <b class="'+lop(tk.tx.lai)+'">'+ky(tk.tx.lai)+'</b>');
-  if(tk.naprut&&tk.naprut.n&&NK.muc!=='mine'&&NK.muc!=='tx')st.push('💰 rút web → game <b>'+vn(tk.naprut.rut)+'</b> · nạp game → web <b>'+vn(tk.naprut.nap)+'</b>');
+  const hien=k=>NK.muc===''||NK.muc===k;
+  if(tk.mine&&tk.mine.van&&hien('mine'))st.push('💣 <b>'+vn(tk.mine.van)+'</b> ván · cược <b>'+vn(tk.mine.cuoc)+'</b> · người chơi <b class="'+lop(tk.mine.lai)+'">'+ky(tk.mine.lai)+'</b> <span class="muted">('+tk.mine.thang+' thắng / '+tk.mine.thua+' thua)</span>');
+  if(tk.tx&&tk.tx.luot&&hien('tx'))st.push('🎲 <b>'+vn(tk.tx.luot)+'</b> lượt đặt · đặt <b>'+vn(tk.tx.dat)+'</b> · người chơi <b class="'+lop(tk.tx.lai)+'">'+ky(tk.tx.lai)+'</b>');
+  if(tk.shop&&tk.shop.luot&&hien('shop'))st.push('🛒 <b>'+vn(tk.shop.luot)+'</b> lượt mua · chi <b>'+vn(tk.shop.knb)+'</b> KNB');
+  if(tk.naprut&&tk.naprut.n&&hien('naprut'))st.push('💰 rút web → game <b>'+vn(tk.naprut.rut)+'</b> · nạp game → web <b>'+vn(tk.naprut.nap)+'</b>');
   document.getElementById('nkStats').innerHTML=st.map(x=>'<span class="nkStat">'+x+'</span>').join('');
   document.getElementById('nkInfo').textContent='Đang hiện '+vn(NK.rows.length)+' / '+vn(j.tong)+' dòng'+(document.getElementById('nkQ').value.trim()?' khớp tìm kiếm (tổng phía trên cũng tính theo tìm kiếm)':'')+' · tải lúc '+new Date().toLocaleTimeString('vi-VN');
   document.getElementById('nkList').innerHTML=NK.rows.length?NK.rows.map(r=>{

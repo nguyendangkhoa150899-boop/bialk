@@ -2690,7 +2690,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
         ichKyAdd(user, it.id, qty);
         saveDbNow();
         writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} mua ${it.name} x${qty} vào rương (-${cost})`);
-        return { ok: true, vaoRuong: true, message: `🧰 Đã bỏ ${qty.toLocaleString()} ${it.name} vào Rương Ích Kỷ - nhớ NHẬN hoặc TẶNG trước 00:00 kẻo mất!`, balance: getUserData(userId).points || 0, ruong: ichKyState(userId) };
+        return { ok: true, vaoRuong: true, message: `🧰 Đã bỏ ${qty.toLocaleString()} ${it.name} vào Rương Ích Kỷ - rương giữ vĩnh viễn, vào rương bấm NHẬN để đưa vào game`, balance: getUserData(userId).points || 0, ruong: ichKyState(userId) };
     }
     saveDbNow();
     let r = null, err = null;

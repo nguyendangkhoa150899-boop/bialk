@@ -101,7 +101,7 @@ const RE_KIN = /\(kín\)|ép|RTP|MAY MẮN|epnhan/i;
 //          [DÒ MÌN VÁN] (bot ghi từ 04/10, đã gồm phí cỏ + thưởng hộp 🍀); ván cũ hơn thì tự tính = nhận − cược − phí
 //   naprut [RÚT WEB] / [RÚT WEB VÀNG] (+ LỖI, đã hoàn) = web -> game; [NẠP GAME] = game -> web
 // Mọi dòng khác không hiện. Thêm mục: sửa mucCua + MUC_TEN + phần dựng mục trong doc().
-const MUC_TEN = { tx: '🎲 Tài Xỉu', mine: '💣 Dò Mìn', naprut: '💰 Nạp / Rút' };
+const MUC_TEN = { tx: '🎲 Tài Xỉu', mine: '💣 Dò Mìn', naprut: '💰 Nạp / Rút', shop: '🛒 Shop' };   // shop: 04/10
 const NAPRUT = ['RÚT WEB', 'RÚT WEB LỖI', 'RÚT WEB VÀNG', 'RÚT WEB VÀNG LỖI', 'NẠP GAME'];
 const MINE_TAG = ['WEB DÒ MÌN', 'DÒ MÌN VÁN', '⚠️ NỔ HŨ DÒ MÌN', '⚠️ DÒ MÌN TRẢ LỚN'];
 function mucCua(r) {
@@ -113,6 +113,10 @@ function mucCua(r) {
     if (t === 'HŨ BÃO') return /Ván #\d+ bú/.test(m) ? 'tx' : null;
     if (MINE_TAG.includes(t)) return 'mine';
     if (NAPRUT.includes(t)) return 'naprut';
+    // 🛒 04/10: mua shop web - giao thẳng vào game ([SHOP ITEM] ... mua X xN (id) -> nhân vật (-giá)), vào rương, hoặc lỗi
+    if (t === 'SHOP ITEM') return /^\[SHOP ITEM\] .+ mua .+ x\d+ \(\d+\) -> /.test(m) ? 'shop' : null;
+    if (t === 'SHOP ITEM LỖI') return 'shop';
+    if (t === 'RƯƠNG ÍCH KỶ') return / mua .+ x\d+ vào rương \(-\d+\)/.test(m) ? 'shop' : null;
     return null;
 }
 
@@ -205,14 +209,26 @@ function dungNapRut(r) {
     return muc('💰', '', boTag(r.msg), '', null, 'khac');
 }
 
+// 🛒 Shop: 1 lần mua -> 1 mục. Số bên phải = KNB đã chi (không tô xanh/đỏ, không phải thắng thua)
+function dungShop(r) {
+    const m = boTag(r.msg);
+    let x;
+    const muc = (icon, ten, chinh, phu, n, kieu) => ({ t: r.t, muc: 'shop', icon, ten, chinh, phu, so: n, mau: kieu === 'loi' ? 'xam' : '', kieu, raw: [r.msg] });
+    if (r.tag === 'SHOP ITEM' && (x = /^(.+?) mua (.+) x(\d+) \((\d+)\) -> (.*) \(-(\d+)\)$/.exec(m))) return muc('🛒', x[1], 'mua ' + x[2] + ' ×' + vn(+x[3]), 'vào game · ' + x[5], +x[6], 'mua');
+    if (r.tag === 'RƯƠNG ÍCH KỶ' && (x = /^(.+?) mua (.+) x(\d+) vào rương \(-(\d+)\)$/.exec(m))) return muc('🧰', x[1], 'mua ' + x[2] + ' ×' + vn(+x[3]), 'vào Rương Ích Kỷ', +x[4], 'mua');
+    if (r.tag === 'SHOP ITEM LỖI' && (x = /^(.+?) mua (.+) x(\d+) \((\d+)\) -> (.*?) \| (.*)$/.exec(m))) return muc('⚠️', x[1], 'mua lỗi: ' + x[2] + ' ×' + vn(+x[3]), x[6], null, 'loi');
+    return muc('🛒', '', m, '', null, 'khac');
+}
+
 function thongKe(ds) {
-    const tk = { tx: { luot: 0, dat: 0, lai: 0 }, mine: { van: 0, cuoc: 0, lai: 0, thang: 0, thua: 0 }, naprut: { rut: 0, nap: 0, n: 0 } };
+    const tk = { tx: { luot: 0, dat: 0, lai: 0 }, mine: { van: 0, cuoc: 0, lai: 0, thang: 0, thua: 0 }, naprut: { rut: 0, nap: 0, n: 0 }, shop: { luot: 0, knb: 0, mon: 0 } };
     for (const d of ds) {
         if (d.muc === 'tx' && d.ten) { tk.tx.luot++; tk.tx.dat += d.dat || 0; tk.tx.lai += d.so || 0; }
         if (d.muc === 'mine' && d.so !== null) {   // ván đã có kết quả (kể cả hoàn = 0); ván đang chơi chưa tính
             tk.mine.van++; tk.mine.cuoc += d.cuoc || 0; tk.mine.lai += d.so || 0;
             if (d.so > 0) tk.mine.thang++; else if (d.so < 0) tk.mine.thua++;
         }
+        if (d.muc === 'shop' && d.kieu === 'mua') { tk.shop.luot++; tk.shop.knb += d.so || 0; }
         if (d.muc === 'naprut') { tk.naprut.n++; if (d.kieu === 'rut') tk.naprut.rut += d.so || 0; if (d.kieu === 'nap') tk.naprut.nap += d.so || 0; }
     }
     return tk;
@@ -244,10 +260,11 @@ function doc(o = {}) {
     for (const r of rows) {
         if (r.muc === 'tx') muc.push(...dungTx(r).map((d) => ({ ...d, i: r.i })));
         else if (r.muc === 'naprut') muc.push({ ...dungNapRut(r), i: r.i });
+        else if (r.muc === 'shop') muc.push({ ...dungShop(r), i: r.i });
     }
     muc.push(...gopDoMin(rows.filter((r) => r.muc === 'mine'), dangChoi));   // mỗi ván mang i = dòng cược đầu tiên
     muc.sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : a.i - b.i));
-    const mucs = { tx: 0, mine: 0, naprut: 0 };
+    const mucs = { tx: 0, mine: 0, naprut: 0, shop: 0 };
     muc.forEach((d) => { mucs[d.muc]++; });
     let loc = MUC_TEN[o.muc] ? muc.filter((d) => d.muc === o.muc) : muc;
     const q = String(o.q || '').trim().toLowerCase();
