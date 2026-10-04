@@ -1490,13 +1490,25 @@ const HTML = `<!DOCTYPE html>
   /* 29/09 NetCo4: cổng admin THƯỜNG được sửa SHOP (server đã mở 4 route shop) - chỉ thẻ này mở khoá */
   body.viewonly #tab-pal #shopCard input,body.viewonly #tab-pal #shopCard button,body.viewonly #tab-pal #shopCard select,body.viewonly #tab-pal #shopCard label{pointer-events:auto;opacity:1}
 .pwOff{display:none!important} /* 29/09 NetCo4: muc Palworld da tat */
-/* 📒 04/10: nhật ký theo ngày */
-.nkRow{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;padding:5px 4px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.45}
+/* 📒 04/10: nhật ký - mỗi dòng 1 hàng gọn: giờ · icon · tên + chi tiết (cắt ...) · số tiền; bấm dòng = mở log gốc */
+.nkRow{display:grid;grid-template-columns:64px 24px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 10px 7px 8px;border-bottom:1px solid var(--line);border-left:3px solid transparent;font-size:13.5px;line-height:1.4;cursor:pointer}
 .nkRow:hover{background:var(--card2)}
-.nkT{font-family:ui-monospace,Consolas,monospace;color:var(--mut);flex:0 0 auto}
-.nkG{font-size:11px;border:1px solid;border-radius:6px;padding:0 6px;flex:0 0 auto}
-.nkTag{font-size:12px;color:var(--yellow);flex:0 0 auto}
-.nkM{flex:1 1 260px;min-width:0;overflow-wrap:anywhere;color:var(--txt)}
+.nkRow.nk-xanh{border-left-color:#23a55a}.nkRow.nk-do{border-left-color:#f23f43}
+.nkT{font-family:ui-monospace,Consolas,monospace;color:var(--mut);font-size:12px}
+.nkI{text-align:center;font-size:15px}
+.nkB{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt)}
+.nkB b{color:#fff;font-weight:600;margin-right:6px}
+.nkL2{color:var(--mut)}
+.nkS{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;min-width:64px}
+.nk-xanh .nkS{color:#3ddc84}.nk-do .nkS{color:#ff6b6b}.nk-xam .nkS{color:var(--mut)}
+.nkRaw{display:none;white-space:normal;overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--mut);margin-top:5px;padding:6px 8px;background:var(--bg);border-radius:6px}
+.nkRow.mo .nkB,.nkRow.mo .nkL1,.nkRow.mo .nkL2{white-space:normal}.nkRow.mo .nkRaw{display:block}
+#nkStats{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.nkStat{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px}
+.nkStat b{font-variant-numeric:tabular-nums}.nkStat .xanh{color:#3ddc84}.nkStat .do{color:#ff6b6b}
+/* điện thoại: hàng trên = tên + cược, hàng dưới = kết quả (mỗi hàng tự cắt ...) - không mất phần BÙM/dừng như khi dồn 1 hàng */
+@media (max-width:560px){.nkRow{grid-template-columns:42px minmax(0,1fr) auto;gap:6px;padding:7px 6px;font-size:13px}.nkI{display:none}.nkT .nkSec{display:none}
+  .nkL1,.nkL2{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nkL2{font-size:12px;margin-top:1px}.nkL2 .nkMuiTen{display:none}}
 .nkOn{outline:2px solid var(--green)}
 #nkNgays button,#nkMucs button{padding:6px 10px;font-size:13px}
 </style>
@@ -2660,7 +2672,7 @@ const HTML = `<!DOCTYPE html>
       <!-- 📒 04/10: NHẬT KÝ (nhatky.js) - CHỈ 3 mục: Tài Xỉu (ván có người đặt), Dò Mìn, Nạp/Rút web. Giữ 3 ngày. Cổng mod chỉ thấy mục này. -->
       <div class="card logSec hidden" id="logSec-nk">
         <h3>📒 Nhật ký</h3>
-        <div class="note">Chỉ 3 mục: <b>🎲 Tài Xỉu</b> (ván có người đặt: ai đặt bao nhiêu, thắng/thua), <b>💣 Dò Mìn</b> (cược, nổ, rút tiền), <b>💰 Nạp / Rút</b> (KNB giữa web và game). Mới nhất ở trên, giữ 3 ngày.</div>
+        <div class="note">Chỉ 3 mục: <b>🎲 Tài Xỉu</b> (mỗi người đặt 1 dòng), <b>💣 Dò Mìn</b> (mỗi ván 1 dòng: cược → kết quả), <b>💰 Nạp / Rút</b> (KNB giữa web và game). Số bên phải là <b>lãi/lỗ của người chơi</b>: <span style="color:#3ddc84">+ xanh = thắng</span>, <span style="color:#ff6b6b">− đỏ = thua</span>. Bấm vào 1 dòng để xem log gốc. Giữ 3 ngày.</div>
         <div class="row" id="nkNgays" style="gap:6px;flex-wrap:wrap;margin-top:10px"></div>
         <div class="row" id="nkMucs" style="gap:6px;flex-wrap:wrap;margin-top:6px"></div>
         <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center">
@@ -2668,6 +2680,7 @@ const HTML = `<!DOCTYPE html>
           <label class="muted" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkAuto" style="width:auto;margin:0" checked>Tự cập nhật 10s</label>
           <button class="mini" onclick="nkTai(true)">🔄 Tải</button>
         </div>
+        <div id="nkStats"></div>
         <div class="muted" id="nkInfo" style="font-size:12px;margin-top:6px"></div>
         <div id="nkList" style="margin-top:6px;max-height:70vh;overflow:auto"></div>
         <div style="margin-top:8px"><button class="mini hidden" id="nkMore" onclick="nkThem()">⬇️ Xem thêm</button></div>
@@ -4625,6 +4638,7 @@ async function nkTai(dau,them){
   catch(e){}finally{NK.dangTai=false;if(NK.lai){const l=NK.lai;NK.lai=null;nkTai(l[0],l[1]);}}
 }
 function nkThem(){nkTai(false,true);}
+function nkMo(el,e){if(e&&String(window.getSelection()||''))return;el.classList.toggle('mo');}   // bấm dòng: mở/đóng log gốc (đang bôi chữ thì thôi)
 function nkGo(){clearTimeout(NK.goT);NK.goT=setTimeout(()=>nkTai(true),350);}
 function nkChonNgay(n){if(n===NK.ngay)return;NK.ngay=n;nkTai(true);}
 function nkChonMuc(m){NK.muc=m;nkTai(true);}
@@ -4634,10 +4648,22 @@ function nkVe(j){
   const T=j.mucTen||{},tong=Object.values(j.mucs||{}).reduce((a,b)=>a+b,0);
   document.getElementById('nkMucs').innerHTML=[['','Tất cả',tong]].concat(Object.keys(T).map(k=>[k,T[k],(j.mucs||{})[k]||0]))
     .map(x=>'<button class="btn-grey'+(x[0]===NK.muc?' nkOn':'')+'" data-n="'+x[0]+'" onclick="nkChonMuc(this.dataset.n)">'+esc(x[1])+' <span class="muted">'+x[2].toLocaleString('vi-VN')+'</span></button>').join('');
-  document.getElementById('nkInfo').textContent='Đang hiện '+NK.rows.length.toLocaleString('vi-VN')+' / '+j.tong.toLocaleString('vi-VN')+' dòng · tải lúc '+new Date().toLocaleTimeString('vi-VN');
+  const vn=n=>Number(n||0).toLocaleString('vi-VN'),ky=n=>(n>0?'+':n<0?'−':'')+vn(Math.abs(n)),lop=n=>n>0?'xanh':n<0?'do':'';
+  const tk=j.thongKe||{},st=[];
+  if(tk.mine&&tk.mine.van&&NK.muc!=='tx'&&NK.muc!=='naprut')st.push('💣 <b>'+vn(tk.mine.van)+'</b> ván · cược <b>'+vn(tk.mine.cuoc)+'</b> · người chơi <b class="'+lop(tk.mine.lai)+'">'+ky(tk.mine.lai)+'</b> <span class="muted">('+tk.mine.thang+' thắng / '+tk.mine.thua+' thua)</span>');
+  if(tk.tx&&tk.tx.luot&&NK.muc!=='mine'&&NK.muc!=='naprut')st.push('🎲 <b>'+vn(tk.tx.luot)+'</b> lượt đặt · đặt <b>'+vn(tk.tx.dat)+'</b> · người chơi <b class="'+lop(tk.tx.lai)+'">'+ky(tk.tx.lai)+'</b>');
+  if(tk.naprut&&tk.naprut.n&&NK.muc!=='mine'&&NK.muc!=='tx')st.push('💰 rút web → game <b>'+vn(tk.naprut.rut)+'</b> · nạp game → web <b>'+vn(tk.naprut.nap)+'</b>');
+  document.getElementById('nkStats').innerHTML=st.map(x=>'<span class="nkStat">'+x+'</span>').join('');
+  document.getElementById('nkInfo').textContent='Đang hiện '+vn(NK.rows.length)+' / '+vn(j.tong)+' dòng'+(document.getElementById('nkQ').value.trim()?' khớp tìm kiếm (tổng phía trên cũng tính theo tìm kiếm)':'')+' · tải lúc '+new Date().toLocaleTimeString('vi-VN');
   document.getElementById('nkList').innerHTML=NK.rows.length?NK.rows.map(r=>{
-    const c=NK_MAU[r.muc]||'#949ba4';
-    return '<div class="nkRow"><span class="nkT">'+esc(r.t)+'</span><span class="nkG" style="color:'+c+'">'+esc(T[r.muc]||r.muc)+'</span>'+(r.nhan?'<b class="nkTag">'+esc(r.nhan)+'</b>':'')+'<span class="nkM">'+esc(r.msg)+'</span></div>';
+    const tien=r.so==null?'':(r.mau==='xanh'||r.mau==='do'?ky(r.so):vn(r.so));
+    const t=String(r.t||'');
+    return '<div class="nkRow nk-'+(r.mau||'tron')+'" onclick="nkMo(this,event)" title="Bấm để xem log gốc">'+
+      '<span class="nkT">'+esc(t.slice(0,5))+'<span class="nkSec">'+esc(t.slice(5))+'</span></span>'+
+      '<span class="nkI">'+esc(r.icon||'')+'</span>'+
+      '<div class="nkB"><span class="nkL1">'+(r.ten?'<b>'+esc(r.ten)+'</b>':'')+esc(r.chinh||'')+'</span>'+(r.phu?'<span class="nkL2"><span class="nkMuiTen"> → </span>'+esc(r.phu)+'</span>':'')+
+        '<div class="nkRaw">'+(r.raw||[]).map(esc).join('<br>')+'</div></div>'+
+      '<span class="nkS">'+tien+'</span></div>';
   }).join(''):'<div class="muted" style="padding:10px 4px">Chưa có dòng nào.</div>';
   document.getElementById('nkMore').classList.toggle('hidden',!j.conNua);
 }
@@ -4647,7 +4673,7 @@ function nkBatDau(){if(NK.chay)return;NK.chay=true;setInterval(()=>{
   if(!sec||sec.classList.contains('hidden')||!tl||tl.classList.contains('hidden'))return;
   if(!document.getElementById('nkAuto').checked||document.hidden)return;
   const nb=document.querySelector('#nkNgays .nkOn');if(nb&&nb.textContent.indexOf('Hôm nay')<0)return;
-  if(NK.rows.length>300||(ls&&ls.scrollTop>40)||String(window.getSelection()||''))return;
+  if(NK.rows.length>300||(ls&&ls.scrollTop>40)||String(window.getSelection()||'')||document.querySelector('#nkList .nkRow.mo'))return;
   nkTai(true);
 },10000);}
 // Cổng mod: giấu mọi tab trừ 📜 Log, giấu bảng chọn mục log cũ (cần /api/state), không chạy refresh()

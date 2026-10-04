@@ -4911,6 +4911,8 @@ function webMinesLog(g, result, amount, hitIdx) {
     if (minesHistory.length > 20) minesHistory.pop();
     minesBoard.needsUpdate = true;        // bảng đăng lại (tối đa 1 phút/lần, xem repostBoard)
     statAdd(g.userId, 'mines', amount);   // net ván này cho bảng 📊
+    // 📒 04/10: 1 dòng tổng kết mỗi ván cho Nhật ký (nhatky.js gộp với dòng cược) - lãi/lỗ CHUẨN đã gồm phí cỏ + thưởng hộp 🍀
+    writeLog('RESULT', `[DÒ MÌN VÁN] ${g.name} | cược ${g.bet} | phí ${g.fee || 0} | ${g.totalMines} mìn | mở ${g.revealed.length} ô | ${result} | lãi ${amount}`);
     // Trần đang tắt nên một ván có thể trả rất lớn - hú còi để admin biết ngay.
     if (amount >= MINES_BIG_WIN_ALERT) {
         writeLog('ADMIN', `[⚠️ DÒ MÌN TRẢ LỚN] ${g.name} +${amount.toLocaleString()} KNB ` +
