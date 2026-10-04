@@ -4,7 +4,8 @@
 //  dòng: "HH:MM:SS<TAB>NHÓM<TAB>nội dung". Không cắt số dòng như log_*.txt (log_admin chỉ
 //  giữ 1.000 dòng, Phi Thuyền chiếm ~95% -> thao tác thật trôi mất sau vài giờ).
 //  Giữ GIU_NGAY ngày (hôm nay + 2 ngày trước), file cũ hơn tự xóa khi sang ngày mới.
-//  Panel đọc qua doc(): lọc ngày / nhóm / loại [TAG] / chữ, mới nhất trước, phân trang.
+//  Panel đọc qua doc(): CHỈ 3 mục (Tài Xỉu ván có cược, Dò Mìn, Nạp/Rút web), lọc ngày / mục / chữ, mới nhất trước.
+//  File vẫn ghi ĐỦ mọi dòng (đổi mục hiển thị chỉ cần sửa mucCua, không mất dữ liệu cũ).
 // ============================================================
 const fs = require('fs');
 const path = require('path');
@@ -93,29 +94,23 @@ const RE_IP = /\b(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}\b/g;
 // Cổng mod KHÔNG được thấy thông tin kín / can thiệp: Phi Thuyền ghi điểm nổ lúc cất cánh "(kín)", mọi lệnh ÉP kết quả
 // (TX, Roulette, Dò Mìn, điểm nổ), RTP, % may mắn từng người. Lọc TRƯỚC khi đếm để số đếm cũng không lộ.
 const RE_KIN = /\(kín\)|ép|RTP|MAY MẮN|epnhan/i;
-// "Ẩn GM / Panel": thao tác admin ([GM], [PANEL...], dòng ghi "(admin ...)" như cấp lượt quay)
-const laAdmin = (r) => r.tag === 'GM' || r.tag.startsWith('PANEL') || /\(admin\b/i.test(r.msg);
-// "Chỉ 3 game": web người chơi chỉ mở Tài Xỉu, Roulette, Dò Mìn (04/10) -> bỏ dòng của game không dùng
-// (Phi Thuyền, Leo Thang, Cổ phiếu, Siêu TX, Tiến Lên, Poker, Palworld cũ). Dòng không phải game (điểm danh, shop...) giữ.
-const RE_GAME_TAT = /PHI THUYỀN|LEO THANG|CỔ PHIẾU|SIÊU TX|TIẾN LÊN|POKER|\bPAL\b|VÒNG RAID/;
-
-// "Chỉ ván có cược": bỏ ván Tài Xỉu / Roulette "· không ai đặt"; Phi Thuyền bỏ cả chuyến (cất cánh, NỔ, BAY TỚI ĐỈNH)
-// khi lúc cất cánh có 0 người cược. Số chuyến về #1 mỗi lần bot restart -> duyệt theo thời gian, lấy lần cất cánh GẦN NHẤT.
-// Phải chạy TRƯỚC khi lọc dòng kín (dòng cất cánh mang số người cược).
-function locVanCoCuoc(rows) {
-    const nguoi = {};
-    return rows.filter((r) => {
-        if (/không ai đặt\s*$/.test(r.msg)) return false;
-        if (r.tag !== 'PHI THUYỀN') return true;
-        const m = /Chuyến #(\d+) (cất cánh|NỔ|🏆)/.exec(r.msg);
-        if (!m) return true;
-        if (m[2] === 'cất cánh') {
-            const c = /· (\d+) người cược/.exec(r.msg);
-            nguoi[m[1]] = c ? Number(c[1]) : 1;
-            return nguoi[m[1]] > 0;
-        }
-        return nguoi[m[1]] === undefined || nguoi[m[1]] > 0;
-    });
+// 04/10 (chủ server: "khó hiểu quá, chỉ show Tài Xỉu ván có người đặt, Dò Mìn, nạp rút web"): nhật ký CHỈ hiện 3 mục.
+//   tx     [TÀI XỈU] Ván #N: ... · ai đặt bao nhiêu → +/- (bỏ "· không ai đặt"); ván HUỶ có hoàn tiền; [HŨ BÃO] Ván #N bú ...
+//   mine   [WEB DÒ MÌN] cược / BÙM / DỪNG nhận / JACKPOT / hộp...; [⚠️ NỔ HŨ DÒ MÌN]; [⚠️ DÒ MÌN TRẢ LỚN]
+//   naprut [RÚT WEB] / [RÚT WEB VÀNG] (+ LỖI, đã hoàn) = web -> game; [NẠP GAME] = game -> web
+// Mọi dòng khác (GM, panel, game khác, hệ thống, điểm danh...) không hiện. Thêm mục: sửa mucCua + MUC_TEN.
+const MUC_TEN = { tx: '🎲 Tài Xỉu', mine: '💣 Dò Mìn', naprut: '💰 Nạp / Rút' };
+const NAPRUT_TEN = { 'RÚT WEB': 'Rút web → game', 'RÚT WEB LỖI': 'Rút web lỗi', 'RÚT WEB VÀNG': 'Đổi vàng → game', 'RÚT WEB VÀNG LỖI': 'Đổi vàng lỗi', 'NẠP GAME': 'Nạp game → web' };
+function mucCua(r) {
+    const t = r.tag, m = r.msg;
+    if (t === 'TÀI XỈU') {
+        if (/^\[TÀI XỈU\] Ván #\d+: /.test(m)) return /không ai đặt\s*$/.test(m) ? null : 'tx';
+        return /HUỶ.*hoàn/.test(m) ? 'tx' : null;
+    }
+    if (t === 'HŨ BÃO') return /Ván #\d+ bú/.test(m) ? 'tx' : null;
+    if (t === 'WEB DÒ MÌN' || t === '⚠️ NỔ HŨ DÒ MÌN' || t === '⚠️ DÒ MÌN TRẢ LỚN') return 'mine';
+    if (NAPRUT_TEN[t]) return 'naprut';
+    return null;
 }
 
 function doc(o = {}) {
@@ -130,20 +125,14 @@ function doc(o = {}) {
         if (a < 0 || b < 0) continue;
         const msg = dong.slice(b + 1);
         const tm = /^\[([^\]]{1,40})\]/.exec(msg);
-        rows.push({ t: dong.slice(0, a), nhom: dong.slice(a + 1, b), tag: tm ? tm[1] : '', msg });
+        const r = { t: dong.slice(0, a), tag: tm ? tm[1] : '', msg };
+        r.muc = mucCua(r);
+        if (r.muc) rows.push(r);
     }
-    const bat = (v) => v === true || v === 'true' || v === '1' || v === 1;   // GET ?x=false là chuỗi -> không được coi là bật
-    if (bat(o.chiCoCuoc)) rows = locVanCoCuoc(rows);
-    if (o.cheKin === true) rows = rows.filter((r) => !RE_KIN.test(r.msg));
-    if (bat(o.boAdmin)) rows = rows.filter((r) => !laAdmin(r));
-    if (bat(o.chi3Game)) rows = rows.filter((r) => !RE_GAME_TAT.test(r.tag));
-    const nhoms = {};
-    rows.forEach((r) => { nhoms[r.nhom] = (nhoms[r.nhom] || 0) + 1; });
-    const boTag = new Set(Array.isArray(o.boTag) ? o.boTag.map(String) : []);
-    let loc = rows.filter((r) => (!o.nhom || r.nhom === o.nhom) && !boTag.has(r.tag));
-    const tags = {};
-    loc.forEach((r) => { tags[r.tag] = (tags[r.tag] || 0) + 1; });
-    if (o.tag) loc = loc.filter((r) => r.tag === o.tag);
+    if (o.cheKin === true) rows = rows.filter((r) => !RE_KIN.test(r.msg));   // cổng mod: lớp phụ, 3 mục vốn không có dòng kín
+    const mucs = { tx: 0, mine: 0, naprut: 0 };
+    rows.forEach((r) => { mucs[r.muc]++; });
+    let loc = MUC_TEN[o.muc] ? rows.filter((r) => r.muc === o.muc) : rows;
     const q = String(o.q || '').trim().toLowerCase();
     if (q) loc = loc.filter((r) => (r.t + ' ' + r.msg).toLowerCase().includes(q));
     loc.reverse();   // mới nhất lên đầu
@@ -152,13 +141,14 @@ function doc(o = {}) {
     const trang = loc.slice(truoc, truoc + gioiHan).map((r) => {
         let msg = r.msg.replace(RE_BIMAT, '$1***');
         if (o.anIP) msg = msg.replace(RE_IP, '$1.$2.*.*');
-        return { ...r, msg };
+        if (r.tag && msg.indexOf('[' + r.tag + ']') === 0) msg = msg.slice(r.tag.length + 2).trim();   // bỏ [TAG] đầu dòng, giao diện đã có nhãn
+        return { t: r.t, muc: r.muc, nhan: r.muc === 'naprut' ? NAPRUT_TEN[r.tag] : (r.tag.startsWith('⚠️') || r.tag === 'HŨ BÃO' ? r.tag : ''), msg };
     });
     return {
         ngay,
         ngays: (ds.length ? ds : [ngay]).map((n) => ({ ngay: n, homNay: n === ngayVN() })),
-        nhoms,
-        tags: Object.entries(tags).sort((x, y) => y[1] - x[1]),
+        mucTen: MUC_TEN,
+        mucs,
         tongNgay: rows.length,
         tong: loc.length,
         truoc,

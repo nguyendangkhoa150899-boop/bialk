@@ -265,8 +265,8 @@ function startPanel(ctx) {
                 if (path === '/api/whoami') return sendJSON(res, 200, { ok: true, superAdmin: epOk(req) });
                 if (path === '/api/nhatky') {
                     const b = req.method === 'POST' ? await readBody(req) : Object.fromEntries(url.searchParams);
-                    // cổng mod: che 2 số cuối IP + ẩn dòng kín (điểm nổ, ép kết quả, RTP) + LUÔN bỏ GM/Panel và ván không ai cược (04/10)
-                    const mod = epOk(req) ? {} : { anIP: true, cheKin: true, boAdmin: true, chiCoCuoc: true, chi3Game: true };
+                    // nhật ký chỉ 3 mục (Tài Xỉu ván có cược, Dò Mìn, Nạp/Rút web) cho cả 2 cổng; cổng mod che thêm 2 số cuối IP
+                    const mod = epOk(req) ? {} : { anIP: true, cheKin: true };
                     return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: false, cheKin: false, ...mod }) });
                 }
                 if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký' });
@@ -1498,7 +1498,7 @@ const HTML = `<!DOCTYPE html>
 .nkTag{font-size:12px;color:var(--yellow);flex:0 0 auto}
 .nkM{flex:1 1 260px;min-width:0;overflow-wrap:anywhere;color:var(--txt)}
 .nkOn{outline:2px solid var(--green)}
-#nkNgays button,#nkNhoms button{padding:6px 10px;font-size:13px}
+#nkNgays button,#nkMucs button{padding:6px 10px;font-size:13px}
 </style>
 </head>
 <body>
@@ -2657,18 +2657,14 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div id="lgLog" style="margin-top:8px;max-height:640px;overflow:auto"></div>
       </div>
-      <!-- 📒 04/10: NHẬT KÝ THEO NGÀY (nhatky.js) - mọi dòng log của bot, giữ 3 ngày. Cổng mod chỉ thấy mục này. -->
+      <!-- 📒 04/10: NHẬT KÝ (nhatky.js) - CHỈ 3 mục: Tài Xỉu (ván có người đặt), Dò Mìn, Nạp/Rút web. Giữ 3 ngày. Cổng mod chỉ thấy mục này. -->
       <div class="card logSec hidden" id="logSec-nk">
-        <h3>📒 Nhật ký <span class="muted" style="font-size:12px;font-weight:400">theo ngày · giữ 3 ngày · mới nhất trên cùng</span></h3>
-        <div class="note">Mọi việc bot ghi lại: điểm danh, shop, rút/nạp KNB, quà, túi boss, vòng quay, liên kết nhân vật, GM, cược, kết quả, lỗi hệ thống. Mật khẩu luôn bị che. Cổng mod: luôn bỏ GM/Panel, chỉ 3 game, chỉ ván có cược, che 2 số cuối IP, ẩn dòng kín (điểm nổ, ép kết quả).</div>
+        <h3>📒 Nhật ký</h3>
+        <div class="note">Chỉ 3 mục: <b>🎲 Tài Xỉu</b> (ván có người đặt: ai đặt bao nhiêu, thắng/thua), <b>💣 Dò Mìn</b> (cược, nổ, rút tiền), <b>💰 Nạp / Rút</b> (KNB giữa web và game). Mới nhất ở trên, giữ 3 ngày.</div>
         <div class="row" id="nkNgays" style="gap:6px;flex-wrap:wrap;margin-top:10px"></div>
-        <div class="row" id="nkNhoms" style="gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+        <div class="row" id="nkMucs" style="gap:6px;flex-wrap:wrap;margin-top:6px"></div>
         <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center">
-          <select id="nkTag" class="mini-in" style="width:auto;min-width:200px;margin-top:0" onchange="nkTai(true)"></select>
-          <input id="nkQ" class="mini-in" style="width:240px;margin-top:0" placeholder="tìm: tên, ID, món, số KNB..." oninput="nkGo()">
-          <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkCuoc" style="width:auto;margin:0" checked onchange="nkTai(true)">Chỉ ván có cược</label>
-          <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkBoAd" style="width:auto;margin:0" checked onchange="nkTai(true)">Ẩn GM / Panel</label>
-          <label class="muted nkSuper" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkGame" style="width:auto;margin:0" checked onchange="nkTai(true)">Chỉ 3 game (Tài Xỉu, Roulette, Dò Mìn)</label>
+          <input id="nkQ" class="mini-in" style="width:240px;margin-top:0" placeholder="tìm tên người chơi, số ván, số KNB..." oninput="nkGo()">
           <label class="muted" style="font-size:13px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="nkAuto" style="width:auto;margin:0" checked>Tự cập nhật 10s</label>
           <button class="mini" onclick="nkTai(true)">🔄 Tải</button>
         </div>
@@ -4616,39 +4612,33 @@ function logPick(k){
   if(k==='drop'&&typeof dropLogLoad==='function')dropLogLoad('lg');   // 💥 lịch sử Drop Boss: tải khi mở mục
   if(k==='nk')nkTai(true);
 }
-// ===== 📒 04/10: NHẬT KÝ THEO NGÀY (nhatky.js, POST /api/nhatky) =====
+// ===== 📒 04/10: NHẬT KÝ (nhatky.js, POST /api/nhatky) - 3 mục: Tài Xỉu / Dò Mìn / Nạp-Rút =====
 // Cổng SUPER: mục đầu của tab 📜 Log. Cổng mod: thứ DUY NHẤT nhìn thấy (modApp).
-const NK={ngay:'',nhom:'',rows:[],dangTai:false,goT:null,chay:false};
-const NK_NHOM={ADMIN:['Thao tác','#7ee2a8'],BET:['Cược','#f0b132'],RESULT:['Kết quả','#8ab4ff'],SYSTEM:['Hệ thống','#ff8a8a']};
+const NK={ngay:'',muc:'',rows:[],dangTai:false,lai:null,goT:null,chay:false};
+const NK_MAU={tx:'#f0b132',mine:'#ff8a8a',naprut:'#7ee2a8'};
 function nkA(x){return esc(x).replace(/"/g,'&quot;');}
-function nkBody(them){return {ngay:NK.ngay,nhom:NK.nhom,tag:document.getElementById('nkTag').value||'',q:document.getElementById('nkQ').value||'',
-  chiCoCuoc:document.getElementById('nkCuoc').checked,boAdmin:document.getElementById('nkBoAd').checked,chi3Game:document.getElementById('nkGame').checked,truoc:them?NK.rows.length:0,gioiHan:300};}
+function nkBody(them){return {ngay:NK.ngay,muc:NK.muc,q:document.getElementById('nkQ').value||'',truoc:them?NK.rows.length:0,gioiHan:300};}
 async function nkTai(dau,them){
-  if(NK.dangTai){NK.lai=[dau,them];return;}   // đang tải (vd tự cập nhật) mà đổi lọc -> chạy lại ngay sau, không bỏ mất
+  if(NK.dangTai){NK.lai=[dau,them];return;}   // đang tải (vd tự cập nhật) mà bấm đổi -> chạy lại ngay sau, không bỏ mất
   NK.dangTai=true;
   try{const j=await api('/api/nhatky',nkBody(them));NK.ngay=j.ngay;NK.rows=them?NK.rows.concat(j.rows):j.rows;nkVe(j);}
   catch(e){}finally{NK.dangTai=false;if(NK.lai){const l=NK.lai;NK.lai=null;nkTai(l[0],l[1]);}}
 }
 function nkThem(){nkTai(false,true);}
 function nkGo(){clearTimeout(NK.goT);NK.goT=setTimeout(()=>nkTai(true),350);}
-function nkChonNgay(n){if(n===NK.ngay)return;NK.ngay=n;document.getElementById('nkTag').value='';nkTai(true);}
-function nkChonNhom(n){NK.nhom=n;document.getElementById('nkTag').value='';nkTai(true);}
+function nkChonNgay(n){if(n===NK.ngay)return;NK.ngay=n;nkTai(true);}
+function nkChonMuc(m){NK.muc=m;nkTai(true);}
 function nkVe(j){
   document.getElementById('nkNgays').innerHTML=j.ngays.map(x=>{const p=x.ngay.split('-');
     return '<button class="btn-grey'+(x.ngay===j.ngay?' nkOn':'')+'" data-n="'+nkA(x.ngay)+'" onclick="nkChonNgay(this.dataset.n)">📅 '+(x.homNay?'Hôm nay ':'')+p[2]+'/'+p[1]+'</button>';}).join('');
-  const tongNhom=Object.values(j.nhoms).reduce((a,b)=>a+b,0);
-  document.getElementById('nkNhoms').innerHTML=[['','Tất cả',tongNhom]].concat(Object.keys(NK_NHOM).map(k=>[k,NK_NHOM[k][0],j.nhoms[k]||0]))
-    .map(x=>'<button class="btn-grey'+(x[0]===NK.nhom?' nkOn':'')+'" data-n="'+x[0]+'" onclick="nkChonNhom(this.dataset.n)">'+esc(x[1])+' <span class="muted">'+x[2].toLocaleString('vi-VN')+'</span></button>').join('');
-  const sel=document.getElementById('nkTag'),cu=sel.value;
-  const tongTag=j.tags.reduce((a,t)=>a+t[1],0);
-  sel.innerHTML='<option value="">Mọi loại ('+tongTag.toLocaleString('vi-VN')+')</option>'+j.tags.map(t=>'<option value="'+nkA(t[0])+'">'+esc(t[0]?'['+t[0]+']':'(không loại)')+' · '+t[1].toLocaleString('vi-VN')+'</option>').join('');
-  if(cu&&j.tags.some(t=>t[0]===cu))sel.value=cu;
-  document.getElementById('nkInfo').textContent='Đang hiện '+NK.rows.length.toLocaleString('vi-VN')+' / '+j.tong.toLocaleString('vi-VN')+' dòng khớp · cả ngày '+j.tongNgay.toLocaleString('vi-VN')+' dòng · tải lúc '+new Date().toLocaleTimeString('vi-VN');
+  const T=j.mucTen||{},tong=Object.values(j.mucs||{}).reduce((a,b)=>a+b,0);
+  document.getElementById('nkMucs').innerHTML=[['','Tất cả',tong]].concat(Object.keys(T).map(k=>[k,T[k],(j.mucs||{})[k]||0]))
+    .map(x=>'<button class="btn-grey'+(x[0]===NK.muc?' nkOn':'')+'" data-n="'+x[0]+'" onclick="nkChonMuc(this.dataset.n)">'+esc(x[1])+' <span class="muted">'+x[2].toLocaleString('vi-VN')+'</span></button>').join('');
+  document.getElementById('nkInfo').textContent='Đang hiện '+NK.rows.length.toLocaleString('vi-VN')+' / '+j.tong.toLocaleString('vi-VN')+' dòng · tải lúc '+new Date().toLocaleTimeString('vi-VN');
   document.getElementById('nkList').innerHTML=NK.rows.length?NK.rows.map(r=>{
-    const g=NK_NHOM[r.nhom]||[r.nhom,'#949ba4'];let m=r.msg;
-    if(r.tag&&m.indexOf('['+r.tag+']')===0)m=m.slice(r.tag.length+2).trim();
-    return '<div class="nkRow"><span class="nkT">'+esc(r.t)+'</span><span class="nkG" style="color:'+g[1]+'">'+esc(g[0])+'</span>'+(r.tag?'<b class="nkTag">'+esc(r.tag)+'</b>':'')+'<span class="nkM">'+esc(m)+'</span></div>';
-  }).join(''):'<div class="muted" style="padding:10px 4px">Không có dòng nào khớp.</div>';
+    const c=NK_MAU[r.muc]||'#949ba4';
+    return '<div class="nkRow"><span class="nkT">'+esc(r.t)+'</span><span class="nkG" style="color:'+c+'">'+esc(T[r.muc]||r.muc)+'</span>'+(r.nhan?'<b class="nkTag">'+esc(r.nhan)+'</b>':'')+'<span class="nkM">'+esc(r.msg)+'</span></div>';
+  }).join(''):'<div class="muted" style="padding:10px 4px">Chưa có dòng nào.</div>';
   document.getElementById('nkMore').classList.toggle('hidden',!j.conNua);
 }
 // Tự cập nhật 10s: chỉ khi đang mở mục Nhật ký, xem hôm nay, chưa bấm Xem thêm, chưa cuộn xuống, không bôi chữ
@@ -4666,7 +4656,6 @@ function modApp(){
   document.querySelectorAll('.tabs .grp').forEach(g=>{const co=g.querySelector('button[data-tab="log"]');g.style.display=co?'':'none';
     if(co)g.querySelectorAll('button').forEach(b=>{b.style.display=b.dataset.tab==='log'?'':'none';});});
   const pc=document.getElementById('logPickCard');if(pc)pc.style.display='none';
-  document.querySelectorAll('.nkSuper').forEach(el=>{el.style.display='none';});   // 2 ô lọc: server luôn ép ở cổng mod
   const hb=document.getElementById('holdBtn');if(hb)hb.style.display='none';
   const ct=document.getElementById('connText');if(ct){ct.style.color='var(--green)';ct.textContent='Cổng mod · chỉ xem 📒 Nhật ký';}
   tab('log');logPick('nk');
