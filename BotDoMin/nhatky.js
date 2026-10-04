@@ -90,13 +90,16 @@ function ghi(nhom, msg) {
 // Che bí mật trong mọi cổng (log không bao giờ cần mật khẩu); cổng mod che thêm 2 số cuối IP.
 const RE_BIMAT = /((?:"?)(?:mk|pass|password|matkhau|mat_khau|token|gamePass)(?:"?)\s*[:=]\s*"?)([^",\s}]+)/gi;
 const RE_IP = /\b(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}\b/g;
+// Cổng mod KHÔNG được thấy thông tin kín / can thiệp: Phi Thuyền ghi điểm nổ lúc cất cánh "(kín)", mọi lệnh ÉP kết quả
+// (TX, Roulette, Dò Mìn, điểm nổ), RTP, % may mắn từng người. Lọc TRƯỚC khi đếm để số đếm cũng không lộ.
+const RE_KIN = /\(kín\)|ép|RTP|MAY MẮN|epnhan/i;
 
 function doc(o = {}) {
     const ds = cacNgay();
     const ngay = ds.includes(o.ngay) ? o.ngay : (ds[0] || ngayVN());
     let txt = '';
     try { txt = fs.readFileSync(path.join(DIR, ngay + '.log'), 'utf8'); } catch { /* ngày chưa có dòng */ }
-    const rows = [];
+    let rows = [];
     for (const dong of txt.split('\n')) {
         if (!dong) continue;
         const a = dong.indexOf('\t'), b = dong.indexOf('\t', a + 1);
@@ -105,6 +108,7 @@ function doc(o = {}) {
         const tm = /^\[([^\]]{1,40})\]/.exec(msg);
         rows.push({ t: dong.slice(0, a), nhom: dong.slice(a + 1, b), tag: tm ? tm[1] : '', msg });
     }
+    if (o.cheKin) rows = rows.filter((r) => !RE_KIN.test(r.msg));
     const nhoms = {};
     rows.forEach((r) => { nhoms[r.nhom] = (nhoms[r.nhom] || 0) + 1; });
     const boTag = new Set(Array.isArray(o.boTag) ? o.boTag.map(String) : []);

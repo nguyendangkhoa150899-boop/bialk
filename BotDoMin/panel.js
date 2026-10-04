@@ -265,7 +265,7 @@ function startPanel(ctx) {
                 if (path === '/api/whoami') return sendJSON(res, 200, { ok: true, superAdmin: epOk(req) });
                 if (path === '/api/nhatky') {
                     const b = req.method === 'POST' ? await readBody(req) : Object.fromEntries(url.searchParams);
-                    return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: !epOk(req) }) });   // cổng mod: che 2 số cuối IP
+                    return sendJSON(res, 200, { ok: true, ...NHATKY.doc({ ...b, anIP: !epOk(req), cheKin: !epOk(req) }) });   // cổng mod: che 2 số cuối IP + ẩn dòng kín (điểm nổ, ép kết quả, RTP)
                 }
                 if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký' });
 
