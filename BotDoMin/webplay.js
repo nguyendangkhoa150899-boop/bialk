@@ -638,6 +638,15 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
+                // 💰 bán ngọc 6 / Yếu Quyết lấy KNB · 🗑️ xoá đồ khỏi rương (05/10)
+                if (ctx.ichKy && ctx.ichKy.ban && req.method === 'POST' && (path === '/api/ichky/ban' || path === '/api/ichky/xoa')) {
+                    const body = await readBody(req);
+                    const me2 = ctx.getUserData(userId);
+                    const fn = path === '/api/ichky/ban' ? ctx.ichKy.ban : ctx.ichKy.xoa;
+                    const r = fn(userId, String(body.itemId || ''), body.qty, me2.name || userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 // 🚀 Phi Thuyền (crash game, 28/08)
                 if (ctx.spm && path === '/api/spm/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.spm.state(userId) });
@@ -2057,6 +2066,11 @@ const PAGE = [
     '.ikAct button{flex:1;padding:12px 6px;font-size:14px;font-weight:800;border-radius:10px}',
     '.ikAct .bn{background:var(--green);color:#0c2417}',
     '.ikAct .bt{background:linear-gradient(180deg,#7a5c14,#4a3a10);color:#fff3c4;border:1px solid #ffd76a}',
+    // 💰 bán / 🗑️ xoá (05/10) - hàng nút thứ 2, nhỏ hơn
+    '.ikAct2 button{padding:8px 6px;font-size:13px}',
+    '.ikAct .bb{background:linear-gradient(180deg,#1d6b4a,#124632);color:#d8ffe9;border:1px solid #4fd39a}',
+    '.ikAct .bx{flex:0 0 auto;background:#3a1a1a;color:#ffb4b4;border:1px solid #7a3434}',
+    '.ikGia{font-size:12px;color:#7ee0b0;font-weight:700}',
     '#ikTo{width:100%;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px;font-size:13px;margin-bottom:8px}',
     '#ikWarn{background:linear-gradient(180deg,#4a3a10,#2e2410);border:1px solid #c9a227;color:#ffe9a8;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.5}',
     '#ikNhan{background:linear-gradient(180deg,#123a24,#0d2618);border:1px solid var(--green);color:#bff0d4;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.6}',
@@ -5364,7 +5378,7 @@ const PAGE = [
     'var sel=$("ikTo");if(!sel)return;var h="<option value=\\"\\">-- chọn người nhận --</option>";',
     'IKNG.forEach(function(p){h+="<option value=\\""+p.id+"\\">"+esc(p.name||p.id)+"</option>"});sel.innerHTML=h}).catch(function(){})}',
     'function ikDraw(){if(!IK)return;ikBadge(IK.total);ikTick();',
-    '$("ikStat").innerHTML="Đang giữ <b>"+IK.total+"</b> món · hôm nay đã mua vào rương <b>"+IK.boughtToday+"/"+IK.dayMax+"</b> (còn "+IK.leftToday+")";',
+    '$("ikStat").innerHTML="Đang giữ <b>"+IK.total+"</b> món · hôm nay đã mua vào rương <b>"+IK.boughtToday+"/"+IK.dayMax+"</b> (còn "+IK.leftToday+")"+(IK.banOn?" · đã bán hôm nay <b>"+IK.banHomNay+(IK.banNgayMax>0?"/"+IK.banNgayMax:"")+"</b>":"");',
     // 🎁 ai tặng mình hôm nay - gọn trong 1 khung, khỏi đẻ thêm màn hình
     'var nh=$("ikNhan"),NL=IK.nhan||[];nh.classList.toggle("hidden",!NL.length);',
     'if(NL.length){nh.innerHTML="🎁 <b>Hôm nay bạn được tặng:</b><br>"+NL.map(function(g){return "• <b>"+esc(g.tu)+"</b> tặng "+g.qty+" "+esc(g.ten)+" <span class=\\"muted\\">("+ikGio(g.at)+")</span>"}).join("<br>")}',
@@ -5372,10 +5386,13 @@ const PAGE = [
     'if(!L.length){box.innerHTML="<div class=\\"muted\\" style=\\"text-align:center;padding:18px;grid-column:1/-1\\">Rương trống. Qua 🏪 Shop Item bấm <b>🧰 Vào rương</b> để mua đồ vào đây.</div>";return}',
     // thẻ món kiểu kho đồ: ảnh to, số lượng đè góc ảnh, tên, rồi 2 nút. Dùng lại isImg() của shop.
     'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
-    '+"<div class=\\"ikNm\\">"+esc(x.name)+"</div>"',
+    '+"<div class=\\"ikNm\\">"+esc(x.name)+(x.ban>0?"<div class=\\"ikGia\\">💰 bán "+vnd(x.ban)+" KNB/cái</div>":"")+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+(x.rutMax?Math.min(x.qty,x.rutMax):x.qty)+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
-    '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button></div></div>"});',
+    '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button></div>"',
+    // 💰 bán (chỉ món admin cho bán) + 🗑️ xoá (05/10)
+    '+"<div class=\\"ikAct ikAct2\\">"+(x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"")',
+    '+"<button class=\\"bx\\" title=\\"Xoá khỏi rương - không hoàn gì\\" onclick=\\"ikXoa(\'"+x.id+"\',this)\\">🗑️ Xoá</button></div></div>"});',
     'box.innerHTML=h}',
     'function ikGio(ts){var d=new Date(ts);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}',
     'function ikMon(id){var it=null;(IK&&IK.items||[]).forEach(function(x){if(x.id===id)it=x});return it}',
@@ -5394,6 +5411,20 @@ const PAGE = [
     'if(!(await gConfirm("Tặng <b>"+q+" "+esc(it.name)+"</b> cho <b>"+esc(ten)+"</b>? Tặng rồi là <b>không lấy lại được</b>.","🎁 Tặng",true)))return;',
     'IKBUSY=true;if(btn)btn.disabled=true;',
     'api("/api/ichky/give",{toId:to,itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn)btn.disabled=false;toast(j.message||"🎁 Đã tặng");if(j.state){IK=j.state;ikDraw()}else ikSync()})',
+    '.catch(function(e){IKBUSY=false;if(btn)btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
+    // 💰 bán lấy KNB web · 🗑️ xoá khỏi rương (05/10) - dùng chung ô số lượng của thẻ
+    'async function ikBan(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it||!(it.ban>0))return;',
+    'var q=ikSoLuong(id,it);if(!q)return;',
+    'if(IK.banNgayMax>0&&IK.banHomNay+q>IK.banNgayMax)return toast("Hôm nay chỉ bán thêm được "+Math.max(0,IK.banNgayMax-IK.banHomNay)+" món");',
+    'if(!(await gConfirm("Bán <b>"+q+" "+esc(it.name)+"</b> lấy <b>"+vnd(it.ban*q)+"</b> KNB vào ví web? Bán rồi là <b>mất món</b>.","💰 Bán")))return;',
+    'IKBUSY=true;if(btn)btn.disabled=true;',
+    'api("/api/ichky/ban",{itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn)btn.disabled=false;toast(j.message||"💰 Đã bán");if(typeof j.balance==="number")setBal(j.balance);if(j.state){IK=j.state;ikDraw()}else ikSync()})',
+    '.catch(function(e){IKBUSY=false;if(btn)btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
+    'async function ikXoa(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it)return;',
+    'var q=ikSoLuong(id,it);if(!q)return;',
+    'if(!(await gConfirm("XOÁ <b>"+q+" "+esc(it.name)+"</b> khỏi rương? <b>Không hoàn gì, không lấy lại được.</b>","🗑️ Xoá",true)))return;',
+    'IKBUSY=true;if(btn)btn.disabled=true;',
+    'api("/api/ichky/xoa",{itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn)btn.disabled=false;toast(j.message||"🗑️ Đã xoá");if(j.state){IK=j.state;ikDraw()}else ikSync()})',
     '.catch(function(e){IKBUSY=false;if(btn)btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
     '',
     'async function isBuy(id,btn,vaoRuong){if(ISBUSY){toast("⏳ Đang giao đơn trước - chờ chút nhé");return}if(!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',

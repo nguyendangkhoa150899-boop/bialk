@@ -2407,10 +2407,11 @@ function ichKyOf(user) {
     let k = user.ichKy;
     if (!k || typeof k !== 'object' || k.day !== hnay) {
         const giu = (k && typeof k === 'object' && k.items && typeof k.items === 'object') ? k.items : {};
-        k = user.ichKy = { day: hnay, bought: 0, items: giu };
+        k = user.ichKy = { day: hnay, bought: 0, ban: 0, items: giu };
     }
     if (!k.items || typeof k.items !== 'object') k.items = {};
     if (!Number.isFinite(Number(k.bought))) k.bought = 0;
+    if (!Number.isFinite(Number(k.ban))) k.ban = 0;   // 💰 05/10: số món đã BÁN hôm nay
     // 🎁 sổ "ai tặng mình hôm nay" - nằm CHUNG trong ichKy nên 00:00 tự xoá theo, khỏi dọn riêng
     if (!Array.isArray(k.nhan)) k.nhan = [];
     return k;
@@ -2445,7 +2446,8 @@ function ichKyState(userId) {
         const gi = it ? null : gameItems().find(x => x.id === id);
         return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '', giu: ICHKY_GIU.includes(id),
             ic: (it && it.img) ? null : ITEMICON.icon(id),   // 🖼️ 03/10: món không có ảnh shop (vd Long Văn từ game) -> icon game (itemicon.js)
-            rutMax: ICHKY_GIU.includes(id) ? ICHKY_GIU_RUT_MAX : 0 };   // 0 = không giới hạn riêng
+            rutMax: ICHKY_GIU.includes(id) ? ICHKY_GIU_RUT_MAX : 0,   // 0 = không giới hạn riêng
+            ban: ichKyBanGia(id) };   // 💰 05/10: giá bán 1 cái (0 = không bán được)
     }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
     return {
         items, total: ichKyTotal(k),
@@ -2453,6 +2455,7 @@ function ichKyState(userId) {
         boughtToday: k.bought || 0, dayMax: ICHKY_DAY_MAX,
         leftToday: Math.max(0, ICHKY_DAY_MAX - (k.bought || 0)),
         holdMax: ICHKY_HOLD_MAX, giveMax: ICHKY_GIVE_MAX,
+        banOn: ichKyBanCfg().on, banNgayMax: ichKyBanCfg().ngayMax, banHomNay: k.ban || 0,
         msLeft: ichKyMsLeft(),
         linked: daLienKet(userId),
     };
@@ -2493,6 +2496,90 @@ function ichKyGive(userId, toUserId, itemId, qty, username) {
     saveDbNow();
     writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} tặng ${ten} x${qty} cho ${ban.name || toUserId}`);
     return { ok: true, message: `🎁 Đã tặng ${qty.toLocaleString()} ${ten} sang rương của ${ban.name || toUserId}`, state: ichKyState(userId) };
+}
+
+// 💰 05/10: BÁN đồ trong rương lấy KNB web - chỉ ngọc cấp 6 + Yếu Quyết môn phái, admin chỉnh ở
+// panel tab 📦 Kho đồ (dbCache._ichKyBan). Rương không ghi món nào từ đâu tới (shop / túi boss / quà),
+// nên giá bán bị KẸP ≤ 90% giá shop nếu shop đang bán đúng món đó - không thì mua shop bán lại là in tiền.
+const ICHKY_BAN_NHOM = {
+    ngoc6: { ten: '💎 Ngọc cấp 6', khop: id => /^506\d{5}$/.test(id) },
+    yq: { ten: '📜 Yếu Quyết môn phái', khop: id => /^3030[78]\d{3}$/.test(id) },
+};
+const ICHKY_BAN_TRAN_SHOP = 0.9;
+function ichKyBanCfg() {
+    const c = dbCache._ichKyBan && typeof dbCache._ichKyBan === 'object' ? dbCache._ichKyBan : {};
+    const so = (v, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n >= 0 ? Math.min(n, hi) : 0; };
+    const nhom = {};
+    for (const k of Object.keys(ICHKY_BAN_NHOM)) { const g = (c.nhom && c.nhom[k]) || {}; nhom[k] = { on: g.on === true, gia: so(g.gia, 100000000) }; }
+    const rieng = {};
+    if (c.rieng && typeof c.rieng === 'object') for (const [id, g] of Object.entries(c.rieng)) if (/^\d{8}$/.test(id)) rieng[id] = so(g, 100000000);
+    return { on: c.on === true, nhom, rieng, ngayMax: so(c.ngayMax, 1000000) };   // ngayMax 0 = không giới hạn
+}
+// Giá bán 1 cái THẬT (đã kẹp theo shop). 0 = không bán được.
+function ichKyBanGia(id) {
+    const c = ichKyBanCfg();
+    if (!c.on) return 0;
+    const k = Object.keys(ICHKY_BAN_NHOM).find(n => ICHKY_BAN_NHOM[n].khop(id));
+    if (!k || !c.nhom[k].on) return 0;
+    let gia = c.rieng[id] !== undefined ? c.rieng[id] : c.nhom[k].gia;
+    const sp = itemShopList().find(x => x.id === id && !x.off && x.price > 0);
+    if (sp) gia = Math.min(gia, Math.floor(sp.price * ICHKY_BAN_TRAN_SHOP));
+    return Math.max(0, gia);
+}
+function setIchKyBanCfg(o) {
+    const cur = ichKyBanCfg();
+    const n = { on: o.on === undefined ? cur.on : o.on === true, nhom: cur.nhom, rieng: cur.rieng, ngayMax: cur.ngayMax };
+    if (o.nhom && typeof o.nhom === 'object') for (const k of Object.keys(ICHKY_BAN_NHOM)) if (o.nhom[k]) n.nhom[k] = { on: o.nhom[k].on === true, gia: o.nhom[k].gia };
+    if (o.rieng && typeof o.rieng === 'object') n.rieng = o.rieng;
+    if (o.ngayMax !== undefined) n.ngayMax = o.ngayMax;
+    dbCache._ichKyBan = n;
+    saveDbNow();
+    return ichKyBanCfg();
+}
+// Danh sách món bán được (cho admin xem giá thật sau khi kẹp shop)
+function ichKyBanDs() {
+    const c = ichKyBanCfg(), shop = itemShopList();
+    return gameItems().filter(x => x && Object.values(ICHKY_BAN_NHOM).some(g => g.khop(String(x.id)))).map(x => {
+        const id = String(x.id), k = Object.keys(ICHKY_BAN_NHOM).find(n => ICHKY_BAN_NHOM[n].khop(id));
+        const sp = shop.find(s => s.id === id && !s.off && s.price > 0);
+        return { id, n: x.n, nhom: k, rieng: c.rieng[id], shop: sp ? sp.price : 0, gia: ichKyBanGia(id) };
+    }).sort((a, b) => a.nhom.localeCompare(b.nhom) || a.id.localeCompare(b.id));
+}
+function ichKyBan(userId, itemId, qty, username) {
+    const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
+    const c = ichKyBanCfg();
+    if (!c.on) return { error: '💰 Bán đồ trong rương đang tắt' };
+    itemId = String(itemId || '');
+    const gia = ichKyBanGia(itemId);
+    if (gia <= 0) return { error: 'Món này không bán được' };
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    const user = getUserData(userId);
+    const k = ichKyOf(user);
+    if (c.ngayMax > 0 && (k.ban || 0) + qty > c.ngayMax) return { error: `Hôm nay chỉ bán thêm được ${Math.max(0, c.ngayMax - (k.ban || 0))} món (tối đa ${c.ngayMax}/ngày)` };
+    if (!ichKyTake(user, itemId, qty)) return { error: 'Rương không đủ món' };
+    const tien = gia * qty;
+    k.ban = (k.ban || 0) + qty;
+    updatePoints(userId, tien);
+    const gi = gameItems().find(x => String(x.id) === itemId);
+    const ten = (gi && gi.n) || itemId;
+    logDog('ichkyban', userId, user.name || username || userId, tien, `💰 Bán ${ten} x${qty} (${gia.toLocaleString('vi-VN')}/cái)`);
+    saveDbNow();
+    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} BÁN ${ten} x${qty} = ${tien.toLocaleString()} KNB | Số dư: ${(user.points || 0).toLocaleString()}`);
+    return { ok: true, message: `💰 Đã bán ${qty.toLocaleString()} ${ten} = +${tien.toLocaleString('vi-VN')} KNB`, balance: user.points || 0, state: ichKyState(userId) };
+}
+// 🗑️ 05/10: người chơi tự XOÁ đồ trong rương (bỏ hẳn, không hoàn gì)
+function ichKyXoa(userId, itemId, qty, username) {
+    itemId = String(itemId || '');
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    const user = getUserData(userId);
+    if (!ichKyTake(user, itemId, qty)) return { error: 'Rương không đủ món' };
+    const gi = gameItems().find(x => String(x.id) === itemId);
+    const ten = (gi && gi.n) || itemId;
+    saveDbNow();
+    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} XOÁ ${ten} x${qty} (${itemId})`);
+    return { ok: true, message: `🗑️ Đã xoá ${qty.toLocaleString()} ${ten}`, state: ichKyState(userId) };
 }
 
 // 🎯 18/09: ADMIN (cổng SUPER, tab 🎁 Quà) bỏ đồ THẲNG vào rương 1 người. Cố ý KHÔNG tính hạn mua
@@ -7366,6 +7453,8 @@ client.once('ready', async (c) => {
                 state: (uid) => ichKyState(uid),
                 claim: (uid, id, qty, name) => ichKyClaim(uid, id, qty, name),
                 give: (uid, to, id, qty, name) => ichKyGive(uid, to, id, qty, name),
+                ban: (uid, id, qty, name) => ichKyBan(uid, id, qty, name),   // 💰 05/10
+                xoa: (uid, id, qty, name) => ichKyXoa(uid, id, qty, name),   // 🗑️ 05/10
             },
             lienKetMsg: () => LIENKET_MSG,
             // 🎮 30/09: đăng nhập web bằng tài khoản game + đổi mật khẩu (qua panel GM, repo tlbbnetco4 panel/panel.py)
@@ -7739,6 +7828,8 @@ client.once('ready', async (c) => {
             setPalLuckRate,   // 🍀 đặt %/quay may mắn riêng từng người (rig cho bạn bè)
             // 🪪 mức điểm danh/nghiện/thưởng chuỗi (panel tab 👥 chỉnh)
             getDailyCfg: dailyCfg,
+            // 💰 05/10: bán ngọc 6 / Yếu Quyết trong Rương Ích Kỷ (tab 📦 Kho đồ, chỉ SUPER)
+            ichKyBan: { cfg: ichKyBanCfg, set: setIchKyBanCfg, ds: ichKyBanDs, nhom: () => Object.fromEntries(Object.entries(ICHKY_BAN_NHOM).map(([k, v]) => [k, v.ten])), tranShop: ICHKY_BAN_TRAN_SHOP },
             getTaxiCfg: () => taxiCfg(),
             setTaxiCfg: (o) => setTaxiCfg(o),
             setDailyCfg: (o) => {
