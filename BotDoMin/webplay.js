@@ -2049,10 +2049,7 @@ const PAGE = [
     '#ikBtn{background:linear-gradient(180deg,#4a1616,#2e0f0f);border:2px solid var(--red);color:#ffd9d9;font-weight:900;font-size:15px;padding:9px 10px;display:flex;align-items:center;gap:5px}',
     '#ikBtn .n{background:var(--red);color:#fff;border-radius:8px;font-size:12px;font-weight:900;padding:1px 6px;line-height:1.5;min-width:20px;text-align:center}',
     // 05/10: 🪪 Cá nhân chia 2 tab; Rương Ích Kỷ thành tab riêng, mỗi món 1 HÀNG NGANG (người chơi PC nhiều)
-    '#pdTabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}',
-    '#pdTabs button{padding:10px 18px;font-size:15px;font-weight:800;background:#1b1f2c;color:var(--tx);border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;gap:6px}',
-    '#pdTabs button.on{background:linear-gradient(180deg,#e0b750,#b8902e);color:#1a1405;border-color:#ffd977}',
-    '#pdTabs .n{background:var(--red);color:#fff;border-radius:8px;font-size:12px;font-weight:900;padding:1px 6px;line-height:1.5}',
+    '#navIk .n{background:var(--red);color:#fff;border-radius:8px;font-size:11px;font-weight:900;padding:0 5px;line-height:1.5;margin-left:2px}',   // số món trên nút menu
     '.ikHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}',
     '#ikList{display:flex;flex-direction:column;gap:8px}',
     '.ikCard{border:1px solid var(--line);border-radius:12px;background:#161a24;padding:8px 10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}',
@@ -2069,8 +2066,19 @@ const PAGE = [
     '.ikAct .bt{background:linear-gradient(180deg,#7a5c14,#4a3a10);color:#fff3c4;border:1px solid #ffd76a}',
     '.ikAct .bb{background:linear-gradient(180deg,#1d6b4a,#124632);color:#d8ffe9;border:1px solid #4fd39a}',   // 💰 bán
     '.ikAct .bx{min-width:0;background:#3a1a1a;color:#ffb4b4;border:1px solid #7a3434}',   // 🗑️ xoá
-    '.ikGia{font-size:12px;color:#7ee0b0;font-weight:700;margin-top:2px}',
+    '.ikGia{font-size:13px;color:#7ee0b0;font-weight:800}',
+    '.ikId{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}',
+    '.ikCo{display:none;font-size:16px;font-weight:900;text-align:center}',
+    '.ikHdr{display:none}.ikNoBan{display:none}',
     '@media(max-width:640px){.ikAct{width:100%}.ikAct button{flex:1;min-width:0}}',   // điện thoại: nút xuống hàng, chia đều
+    // 05/10 PC: khung trang rộng 1180px khi mở tab Rương, mỗi món 1 dòng bảng thẳng cột
+    '@media(min-width:900px){body.ikWide{max-width:1180px}',
+    'body.ikWide .ikHdr{display:grid;grid-template-columns:64px minmax(220px,1fr) 90px 150px 470px;gap:14px;padding:0 10px 6px;font-size:12px;font-weight:800;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:2px}',
+    'body.ikWide .ikCard{display:grid;grid-template-columns:64px minmax(220px,1fr) 90px 150px 470px;gap:14px;align-items:center}',
+    'body.ikWide .ikCo{display:block}body.ikWide .ikQ{display:none}',
+    'body.ikWide .ikAct{flex-wrap:nowrap;justify-content:flex-start}body.ikWide .ikAct button{min-width:92px;padding:10px 12px}body.ikWide .ikAct .bx{min-width:46px}',
+    'body.ikWide .ikNoBan{display:block;width:92px;flex:0 0 auto}',
+    'body.ikWide #ikList{gap:6px}body.ikWide .ikCard:hover{border-color:#4a5268;background:#1a1f2b}}',
     '#ikTo{flex:1 1 240px;max-width:360px;background:#0f1218;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px;font-size:13px}',
     '#ikWarn{background:linear-gradient(180deg,#4a3a10,#2e2410);border:1px solid #c9a227;color:#ffe9a8;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.5}',
     '#ikNhan{background:linear-gradient(180deg,#123a24,#0d2618);border:1px solid var(--green);color:#bff0d4;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:8px;line-height:1.6}',
@@ -2228,6 +2236,7 @@ const PAGE = [
     '<button id="navDebt" class="hidden" onclick="go(\'debt\')">📒 Nợ</button>',
     '<button id="navGift" class="hidden" onclick="go(\'gift\')">🎁 Quà</button>',
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
+    '<button id="navIk" onclick="go(\'ik\')">🧰 Rương Ích Kỷ <span class="n" id="pdIkN">0</span></button>',   // 05/10: trang riêng
     '<button id="navPal" class="hidden" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" class="hidden" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
     '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
@@ -2591,9 +2600,6 @@ const PAGE = [
     '</div>',
 
     '<div id="pageDaily" class="hidden">',
-    // 05/10: 2 tab - Hồ sơ (điểm danh, boss, túi boss, tài khoản) | Rương Ích Kỷ
-    '<div id="pdTabs"><button id="pdT_ho" class="on" onclick="pdTab(\'ho\')">👤 Hồ sơ</button><button id="pdT_ik" onclick="pdTab(\'ik\')">🧰 Rương Ích Kỷ <span class="n" id="pdIkN">0</span></button></div>',
-    '<div id="pdHo">',
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">📅 Điểm Danh</h2><div class="muted" id="dMonth">Tháng -</div></div>',
     '<div id="dChips">',
@@ -2649,18 +2655,17 @@ const PAGE = [
     '<div id="pcBulk" class="hidden"><label><input type="checkbox" id="pcAll" onchange="pcCkAll(this)"><b>Chọn tất cả</b></label><span class="muted" id="pcSelN" style="font-size:12px">Chưa chọn con nào</span><span style="flex:1"></span><button id="pcSellN" onclick="pcSellMany()" disabled>🧺 Bán đã chọn</button></div>',
     '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
     '</div>',
-    '</div>', // hết #pdHo
-    // 🧰 RƯƠNG ÍCH KỶ - 05/10: thành TAB RIÊNG trong 🪪 Cá nhân, mỗi món 1 HÀNG NGANG (người chơi PC nhiều).
-    // 17/09 -> 04/10 là popup #ikModal; id bên trong giữ nguyên nên ikDraw/ikClaim/ikGive không phải đổi.
-    '<div id="pdIk" class="hidden"><div class="card">',
+    '</div>', // hết #pageDaily
+    // 🧰 RƯƠNG ÍCH KỶ - 05/10: TRANG RIÊNG trên thanh menu (chủ server: không nhét chung 🪪 Cá nhân),
+    // dạng bảng ngang cho PC. 17/09 -> 04/10 là popup #ikModal; id bên trong giữ nguyên.
+    '<div id="pageIk" class="hidden"><div class="card">',
     '<div class="row"><h2 style="margin:0">🧰 RƯƠNG ÍCH KỶ</h2><div class="muted" id="ikStat" style="font-size:12px">-</div></div>',
     '<div id="ikWarn" style="margin-top:8px">♾️ Rương giữ <b>vĩnh viễn</b>, không giới hạn số món. <b>📦 Nhận</b>: đưa vào game (nhân vật phải online) · <b>🎁 Tặng</b>: chuyển cho người khác · <b>💰 Bán</b>: lấy KNB vào ví web (món admin cho bán) · <b>🗑️ Xoá</b>: bỏ hẳn, không hoàn.</div>',
     '<div id="ikNhan" class="hidden"></div>',
     '<div class="ikHead"><b>🎁 Tặng cho</b><select id="ikTo"><option value="">-- chọn người nhận --</option></select></div>',
     '<div id="ikList"></div>',
     '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Lúc bấm <b>📦 Nhận</b> mới cần nhân vật online để bot giao vào túi.</div>',
-    '</div></div>',
-    '</div>', // hết #pageDaily
+    '</div></div>', // hết #pageIk
 
     // Hộp chọn linh hồn + passive khi NHẬN pal (overlay cố định, dùng chung mọi trang)
     // 26/08: bố cục lại theo góp ý chủ server - máy tính rộng thì chia 2 CỘT (trái:
@@ -4110,10 +4115,13 @@ const PAGE = [
     'else{el.textContent="--";el.style.color=""}},1000);',
     'setInterval(rlLoad,2000);',
 
-    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
+    // 🧰 trang Rương Ích Kỷ (05/10; F5 giữ trang nhờ ik có trong PAGE_GRP -> play_page): khung rộng 1180px trên PC, đếm ngược + tải rương khi vào
+    'document.body.classList.toggle("ikWide",p==="ik");$("pageIk").classList.toggle("hidden",p!=="ik");$("navIk").classList.toggle("on",p==="ik");',
+    'if(p==="ik"){ikSync();ikLoadNguoi();if(!IKTIMER)IKTIMER=setInterval(ikTick,1000)}else if(IKTIMER){clearInterval(IKTIMER);IKTIMER=null}',
     '$("pageTx").classList.toggle("hidden",p!=="tx");',
     '$("pageStx").classList.toggle("hidden",p!=="stx");',
     'if(p==="stx")stLoad();',
@@ -4161,7 +4169,7 @@ const PAGE = [
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
     '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
-    '["navDaily","navPal","navPick","navShop","navVq","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navDaily","navIk","navPal","navPick","navShop","navVq","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
     'if(p==="tienlen"){var tf=$("tlFrame");if(tf&&!/\\/tienlen\\/$/.test(tf.src))tf.src="/tienlen/"}',   // 🀄
@@ -5366,12 +5374,9 @@ const PAGE = [
     'for(var i=0;i<bs.length;i++){if(bs[i].dataset.done)continue;bs[i].disabled=on;bs[i].style.opacity=(on&&bs[i]!==btn)?.5:1}}',
     // ===== 🧰 RƯƠNG ÍCH KỶ =====
     'var IK=null,IKBUSY=false,IKTIMER=null,IKNG=null;',
-    // 05/10: rương là tab trong 🪪 Cá nhân - nút 🧰 trên thanh số dư mở thẳng tab đó
-    'function pdTab(t){$("pdHo").classList.toggle("hidden",t!=="ho");$("pdIk").classList.toggle("hidden",t!=="ik");',
-    '$("pdT_ho").classList.toggle("on",t==="ho");$("pdT_ik").classList.toggle("on",t==="ik");',
-    'if(t==="ik"){ikSync();ikLoadNguoi();if(!IKTIMER)IKTIMER=setInterval(ikTick,1000)}else if(IKTIMER){clearInterval(IKTIMER);IKTIMER=null}}',
-    'function ikOpen(){go("daily");pdTab("ik")}',
-    'function ikClose(){pdTab("ho")}',
+    // 05/10: rương là TRANG RIÊNG (go("ik")) - nút 🧰 trên thanh số dư mở thẳng trang đó
+    'function ikOpen(){go("ik")}',
+    'function ikClose(){go("daily")}',
     // đếm ngược tới 00:00 - trừ dần ở client, khỏi gọi server mỗi giây
     'function ikTick(){if(!IK)return;IK.msLeft=Math.max(0,(IK.msLeft||0)-1000);var e=$("ikCount");if(!e)return;',
     'if(IK.msLeft<=0){e.innerHTML="<b>Đã qua 00:00 - tải lại trang để thấy rương mới.</b>";return}',
@@ -5390,14 +5395,17 @@ const PAGE = [
     'if(NL.length){nh.innerHTML="🎁 <b>Hôm nay bạn được tặng:</b><br>"+NL.map(function(g){return "• <b>"+esc(g.tu)+"</b> tặng "+g.qty+" "+esc(g.ten)+" <span class=\\"muted\\">("+ikGio(g.at)+")</span>"}).join("<br>")}',
     'var L=IK.items||[];var box=$("ikList");',
     'if(!L.length){box.innerHTML="<div class=\\"muted\\" style=\\"text-align:center;padding:18px;grid-column:1/-1\\">Rương trống. Qua 🏪 Shop Item bấm <b>🧰 Vào rương</b> để mua đồ vào đây.</div>";return}',
-    // thẻ món kiểu kho đồ: ảnh to, số lượng đè góc ảnh, tên, rồi 2 nút. Dùng lại isImg() của shop.
-    'var h="";L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
-    '+"<div class=\\"ikNm\\">"+esc(x.name)+(x.ban>0?"<div class=\\"ikGia\\">💰 bán "+vnd(x.ban)+" KNB/cái</div>":"")+"</div>"',
+    // 05/10: dạng BẢNG cho PC - cột Vật phẩm | Đang có | Giá bán | Số lượng + nút (điện thoại: tiêu đề ẩn, ô tự xuống hàng)
+    'var h="<div class=\\"ikHdr\\"><span></span><span>Vật phẩm</span><span>Đang có</span><span>Giá bán / cái</span><span>Số lượng · thao tác</span></div>";',
+    'L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
+    '+"<div class=\\"ikNm\\">"+esc(x.name)+"<div class=\\"ikId\\">ID "+esc(x.id)+"</div></div>"',
+    '+"<div class=\\"ikCo\\">"+vnd(x.qty)+"</div>"',
+    '+"<div class=\\"ikGia\\">"+(x.ban>0?"💰 "+vnd(x.ban)+" KNB":"<span class=\\"muted\\">không bán</span>")+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+(x.rutMax?Math.min(x.qty,x.rutMax):x.qty)+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
     '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button>"',
     // 💰 bán (chỉ món admin cho bán) + 🗑️ xoá (05/10) - cùng 1 hàng ngang
-    '+(x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"")',
+    '+(x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"<span class=\\"ikNoBan\\"></span>")',   // ô trống giữ thẳng cột trên PC
     '+"<button class=\\"bx\\" title=\\"Xoá khỏi rương - không hoàn gì\\" onclick=\\"ikXoa(\'"+x.id+"\',this)\\">🗑️</button></div></div>"});',
     'box.innerHTML=h}',
     'function ikGio(ts){var d=new Date(ts);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}',
