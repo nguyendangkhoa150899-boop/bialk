@@ -42,6 +42,12 @@ function startPanel(ctx) {
     // cộng/trừ KNB, ép kết quả game, tặng item thật trong game. Chỉ tắt khi bạn
     // chấp nhận rủi ro đó, hoặc đã chặn cổng bằng firewall/SSH tunnel.
     const AUTH_OFF = !PASSWORD;
+    // 05/10 (chủ server): CỔNG MOD MỞ KHÔNG CẦN MẬT KHẨU. An toàn vì ngay sau isAuthed, cổng mod bị chặn MỌI /api/* trừ các route chỉ-xem
+    // (nhật ký che IP, túi boss xem, vòng quay xem, ghép ngọc xem) - không route nào sửa được gì. Cổng SUPER vẫn bắt mật khẩu SUPER riêng.
+    // Muốn bật lại mật khẩu cổng mod: đặt PANEL_MOD_MO=0 trong .env rồi restart bot.
+    const MO_MOD = process.env.PANEL_MOD_MO !== '0';
+    const laCongMod = (req) => req.socket.localPort !== ctx.port;
+    let BR_CACHE = null;   // 📊 05/10 /br-data.json
 
     const isAuthed = (req) => {
         // Cổng SUPER có mật khẩu riêng: bắt buộc token SUPER, kệ AUTH_OFF của cổng thường
@@ -51,6 +57,7 @@ function startPanel(ctx) {
             return !!t0 && superTokens.has(t0);
         }
         if (AUTH_OFF) return true;
+        if (MO_MOD && laCongMod(req)) return true;   // 05/10: cổng mod mở (chỉ xem)
         const h = req.headers['authorization'] || '';
         const t = h.startsWith('Bearer ') ? h.slice(7) : '';
         return t && tokens.has(t);
@@ -221,6 +228,24 @@ function startPanel(ctx) {
             const url = new URL(req.url, 'http://localhost');
             const path = url.pathname;
             if (req.method === 'GET' && path.startsWith('/itemicon/')) return ITEMICON.serve(req, res, path.slice(10));   // 🍀 02/10
+            if (req.method === 'GET' && path === '/br.js') {   // 📊 05/10 giao diện Bảng rơi / đề xuất farm (đọc lại mỗi lần, sửa không cần restart)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'bangroi.panel.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
+            if (req.method === 'GET' && path === '/br-data.json') {   // 📊 05/10 data.json của tools/bang-roi (deploy lên /var/www/netco4/) + icon từng món, cache theo mtime
+                const f = process.env.BANGROI_DATA || '/var/www/netco4/data.json';
+                try {
+                    const mt = require('fs').statSync(f).mtimeMs;
+                    if (!BR_CACHE || BR_CACHE.mt !== mt) {
+                        const d = JSON.parse(require('fs').readFileSync(f, 'utf8')); d.ic = {};
+                        for (const id of Object.keys(d.items || {})) { const x = ITEMICON.icon(id); if (x) d.ic[id] = x; }
+                        BR_CACHE = { mt, body: Buffer.from(JSON.stringify(d)) };
+                    }
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+                    return res.end(BR_CACHE.body);
+                } catch (e) { return sendJSON(res, 404, { ok: false, error: 'Chưa có dữ liệu bảng rơi (' + e.message + ')' }); }
+            }
             if (req.method === 'GET' && path === '/gn-admin.js') {   // 💎 05/10 script admin Ghép Ngọc (API vẫn chỉ SUPER)
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'ghepngoc.admin.js'));
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -232,7 +257,7 @@ function startPanel(ctx) {
             // no-store để lần sau sửa panel là thấy ngay, không phải xóa cache.
             if (req.method === 'GET' && path === '/') {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-                return res.end(HTML.replace('__AUTH_OFF__', AUTH_OFF ? 'true' : 'false').replace('__CONG_MOD__', epOk(req) ? 'false' : 'true'));   // 04/10: cổng mod chỉ hiện 📒 Nhật ký
+                return res.end(HTML.replace('__AUTH_OFF__', (AUTH_OFF || (MO_MOD && laCongMod(req))) ? 'true' : 'false').replace('__CONG_MOD__', epOk(req) ? 'false' : 'true'));   // 04/10: cổng mod chỉ hiện 📒 Nhật ký
             }
 
             // Đăng nhập
@@ -248,7 +273,7 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Đăng nhập SAI mật khẩu SUPER từ ${req.headers['x-real-ip'] || req.socket.remoteAddress}`);
                     return sendJSON(res, 401, { ok: false, error: 'Sai mật khẩu' });
                 }
-                if (AUTH_OFF) {
+                if (AUTH_OFF || (MO_MOD && laCongMod(req))) {
                     return sendJSON(res, 200, { ok: true, token: 'no-auth' });
                 }
                 if (body.password === PASSWORD) {
@@ -2454,8 +2479,8 @@ const HTML = `<!DOCTYPE html>
     </div>
     <div id="tab-br" class="hidden"><!-- 📊 05/10: bảng rơi + đề xuất farm = nhúng https://netco4.click/#farm (1 bản duy nhất, đổi tỉ lệ thì dựng lại trang đó) -->
       <div class="card">
-        <h2>📊 Bảng rơi &amp; đề xuất farm <span class="muted" style="font-size:13px;font-weight:400">chọn món muốn farm → trang gợi ý nên đi đâu, đánh con gì</span> <a href="https://netco4.click/#farm" target="_blank" rel="noopener" style="font-size:13px;font-weight:400;margin-left:8px">mở trang riêng ↗</a></h2>
-        <iframe id="brFrame" title="Bảng rơi NetCo4" style="width:100%;height:calc(100vh - 170px);min-height:560px;border:1px solid var(--line,#2a3340);border-radius:10px;background:#fff" loading="lazy"></iframe>
+        <h2>📊 Bảng rơi &amp; đề xuất farm <span class="muted" style="font-size:13px;font-weight:400">chọn món muốn farm → gợi ý nên đi đâu, đánh con gì</span></h2>
+        <div id="brApp" class="muted">đang tải...</div>
       </div>
     </div>
     <div id="tab-gnx" class="hidden"><!-- 💎 05/10: nhật ký Ghép Ngọc - bản CHỈ XEM cho cổng mod (hoàn đồ / cấu hình ở tab 💎 cổng SUPER) -->
@@ -3148,7 +3173,7 @@ function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
   ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','gn','gnx','vqx','br','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'){const f=document.getElementById('brFrame');if(f&&!f.getAttribute('src'))f.setAttribute('src','https://netco4.click/#farm');}if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -5842,7 +5867,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
-<script src="/gn-admin.js"></script>
+<script src="/gn-admin.js"></script><script src="/br.js"></script>
 </body>
 </html>`;
 
