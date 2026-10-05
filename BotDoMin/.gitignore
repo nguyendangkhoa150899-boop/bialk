@@ -7,3 +7,7 @@ database.backup-*.json
 
 # Log runtime
 log_*.txt
+
+# 05/10 chay thu Ghep Ngoc: anh chup du lieu server + DB thu
+thu/du-lieu-mau.json
+thu/db-thu.json
