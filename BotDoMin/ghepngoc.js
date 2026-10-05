@@ -9,7 +9,10 @@
 //   không có giá nào -> không bỏ vào được.
 // MÓN ĐÍCH (05/10 chủ server chốt): CHỈ ngọc 7 thuộc tính, KHÔNG ngọc kép 7-x (Minh Tinh Thạch công + giảm kháng)
 //   - Thuộc tính (Tinh Thạch thuần tịnh: công băng/hỏa/huyền/độc 230), Kháng thuộc tính (ngọc kháng thuần tịnh 90),
-//     Thể lực / né (Hồng Bảo Thạch, Tổ Mẫu Lục), Chính xác (Tử Ngọc): đều 110.000 = 5 ngọc 6 (giá shop 20.000, game 5 viên 6 lên 1 viên 7) + 10.000
+//     Thể lực / né (Hồng Bảo Thạch, Tổ Mẫu Lục), Chính xác (Tử Ngọc): 120.000; Kháng 110.000
+//     (= 5 ngọc 6 giá shop 20.000 - game 5 viên 6 lên 1 viên 7 - cộng thêm 10.000 / 20.000)
+//   - Nguyên liệu Trùng Lâu (Chi Lệ/Mang/Thương/Dương 20310185-188): THẮNG NHẬN 10 CÁI, giá trị cả gói 50.000
+//   Mỗi nhóm có sl = số cái nhận khi thắng (giá là giá CẢ GÓI).
 //   - Phiếu KNB 1.000 - 50.000 = mệnh giá. Nhóm nào có món gì, bật/tắt, giá - admin sửa.
 // MỌI con số ở dbCache._gnCfg, admin sửa ở panel (cổng SUPER). MAC_DINH chỉ dùng khi chưa từng lưu.
 // Người chơi: userData.gn = { day, luot, lich: [...] }. Nhật ký chung: dbCache._gnLog.
@@ -22,16 +25,17 @@ const MAC_DINH = {
     vao: { giaRuong: true, shop: { on: true, pct: 90 }, rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 } },   // phiếu KNB bỏ vào = mệnh giá
     dich: {
         nhom: {
-            thuocTinh: { on: true, gia: 110000, ids: ['50702005', '50702006', '50702007', '50702008'] },
-            khang: { on: true, gia: 110000, ids: ['50712005', '50712006', '50712007', '50712008'] },
-            theLucNe: { on: true, gia: 110000, ids: ['50713004', '50714001'] },
-            chinhXac: { on: true, gia: 110000, ids: ['50703001'] },
+            thuocTinh: { on: true, gia: 120000, sl: 1, ids: ['50702005', '50702006', '50702007', '50702008'] },
+            khang: { on: true, gia: 110000, sl: 1, ids: ['50712005', '50712006', '50712007', '50712008'] },
+            theLucNe: { on: true, gia: 120000, sl: 1, ids: ['50713004', '50714001'] },
+            chinhXac: { on: true, gia: 120000, sl: 1, ids: ['50703001'] },
+            trungLau: { on: true, gia: 50000, sl: 10, ids: ['20310185', '20310186', '20310187', '20310188'] },
         },
         rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 },
     },
 };
 // Tên nhóm món đích (danh sách ID + giá + bật/tắt nằm trong cấu hình, admin sửa)
-const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7', chinhXac: '🎯 Ngọc chính xác 7 (Tử Ngọc)' };
+const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7', chinhXac: '🎯 Ngọc chính xác 7 (Tử Ngọc)', trungLau: '🧩 Nguyên liệu Trùng Lâu (Chi Lệ/Mang/Thương/Dương)' };
 const idDs = (a) => (Array.isArray(a) ? a : String(a || '').split(/[\s,;]+/)).map((x) => String(x).trim()).filter((x) => /^\d{5,9}$/.test(x));
 
 module.exports = function ghepNgoc(d) {
@@ -50,8 +54,8 @@ module.exports = function ghepNgoc(d) {
         const rieng = (o, md) => { const r = {}; for (const [id, g] of Object.entries(o && typeof o === 'object' ? o : md)) if (/^\d{5,9}$/.test(id)) r[id] = Math.floor(so(g, 0, 1e9, 0)); return r; };
         const nhom = {};
         for (const k of Object.keys(NHOM_DICH)) {
-            const md = M.dich.nhom[k] || { on: false, gia: 0, ids: [] }, g = (di.nhom && di.nhom[k]) || md;
-            nhom[k] = { on: g.on === undefined ? !!md.on : !!g.on, gia: Math.floor(so(g.gia, 0, 1e9, md.gia)), ids: idDs(g.ids === undefined ? md.ids : g.ids) };
+            const md = M.dich.nhom[k] || { on: false, gia: 0, sl: 1, ids: [] }, g = (di.nhom && di.nhom[k]) || md;
+            nhom[k] = { on: g.on === undefined ? !!md.on : !!g.on, gia: Math.floor(so(g.gia, 0, 1e9, md.gia)), sl: Math.floor(so(g.sl, 1, 9999, md.sl || 1)), ids: idDs(g.ids === undefined ? md.ids : g.ids) };
         }
         const sh = v.shop || M.vao.shop;
         return {
@@ -77,9 +81,9 @@ module.exports = function ghepNgoc(d) {
     function dsDich(c) {
         c = c || cfg();
         const m = new Map();
-        for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const id of g.ids) m.set(id, { gia: g.gia, nhom: k });
-        for (const [id, g] of Object.entries(c.dich.rieng)) { if (g > 0) m.set(id, { gia: g, nhom: 'rieng' }); else m.delete(id); }
-        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, nhom: x.nhom })).sort((a, b) => a.gia - b.gia || a.ten.localeCompare(b.ten));
+        for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const id of g.ids) m.set(id, { gia: g.gia, sl: g.sl, nhom: k });
+        for (const [id, g] of Object.entries(c.dich.rieng)) { if (g > 0) m.set(id, { gia: g, sl: 1, nhom: 'rieng' }); else m.delete(id); }
+        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom })).sort((a, b) => a.gia - b.gia || a.ten.localeCompare(b.ten));
     }
     function gnOf(u) {
         const hn = d.dayStr();
@@ -147,27 +151,27 @@ module.exports = function ghepNgoc(d) {
         const lech = Math.round(((Number(body.lech) || 0) % 100 + 100) % 100 * 1000) / 1000;
         const roll = rnd(100000) / 1000;   // 0.000 .. 99.999
         const thang = ((roll - lech) % 100 + 100) % 100 < tiLe;
-        if (thang) d.ichKy.add(u, dich.id, 1);
+        if (thang) d.ichKy.add(u, dich.id, dich.sl);
         g.luot += 1;
         const t = Date.now();
-        const rec = { t, dich: dich.id, gia: dich.gia, tong, tiLe, lech, roll, thang, vao: ds.map((x) => [x.id, x.sl]), knb };
+        const rec = { t, dich: dich.id, sl: dich.sl, gia: dich.gia, tong, tiLe, lech, roll, thang, vao: ds.map((x) => [x.id, x.sl]), knb };
         g.lich.push(rec); if (g.lich.length > LICH_MAX) g.lich.splice(0, g.lich.length - LICH_MAX);
         const db = d.db(); if (!Array.isArray(db._gnLog)) db._gnLog = [];
         db._gnLog.push({ ...rec, uid, ten: u.name || who || uid });
         if (db._gnLog.length > LOG_MAX) db._gnLog.splice(0, db._gnLog.length - LOG_MAX);
         if (knb && d.logDog) d.logDog('ghepngoc', uid, u.name || who || uid, -knb, `💎 Ghép ngọc: bỏ ${knb.toLocaleString('vi-VN')} KNB`);
         d.saveDbNow();
-        d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} (${tiLe}%, tung ${roll}) - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
-        return { ok: true, thang, tiLe, lech, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia }, ...state(uid) };
+        d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} x${dich.sl} (${tiLe}%, tung ${roll}) - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
+        return { ok: true, thang, tiLe, lech, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia, sl: dich.sl }, ...state(uid) };
     }
 
     // ===== ADMIN =====
     function canhBao(c) {
         const w = [];
         for (const x of dsDich(c)) {
-            const ban = Math.floor(Number(d.giaRuong(x.id)) || 0);
-            if (ban > x.gia * (100 - c.phi) / 100) w.push(`${x.ten} #${x.id}: giá bán rương ${ban} > giá đích ${x.gia} trừ phí → luyện rồi bán lại có lời`);
-            const s = shopGia(x.id);
+            const ban = Math.floor(Number(d.giaRuong(x.id)) || 0) * x.sl;
+            if (ban > x.gia * (100 - c.phi) / 100) w.push(`${x.ten} #${x.id} x${x.sl}: giá bán rương ${ban} > giá đích ${x.gia} trừ phí → luyện rồi bán lại có lời`);
+            const s = shopGia(x.id) * x.sl;
             if (s > 0 && x.gia * 100 / (100 - c.phi) < s * c.vao.shop.pct / 100) w.push(`${x.ten} #${x.id}: giá đích ${x.gia} rẻ hơn nhiều so với shop ${s} → mua shop bỏ vào luyện ra chính nó là lời`);
         }
         for (const [id, g] of Object.entries(c.vao.rieng)) { const s = shopGia(id); if (g > 0 && s > 0 && g > s) w.push(`${ten(id)} #${id}: giá bỏ vào ${g} > giá shop ${s} → mua shop bỏ vào là lời`); }
@@ -200,7 +204,7 @@ module.exports = function ghepNgoc(d) {
                 dich: { nhom: {}, rieng: ds(x.dich && x.dich.rieng, 'Món đích') },
             };
             if (c.tiMin > c.tiMax) throw new Error('Tỉ lệ tối thiểu lớn hơn tối đa');
-            for (const k of Object.keys(NHOM_DICH)) { const g = (x.dich && x.dich.nhom && x.dich.nhom[k]) || {}; c.dich.nhom[k] = { on: !!g.on, gia: Math.floor(num(g.gia || 0, 0, 1e9, 'Giá ' + NHOM_DICH[k])), ids: idDs(g.ids) }; }
+            for (const k of Object.keys(NHOM_DICH)) { const g = (x.dich && x.dich.nhom && x.dich.nhom[k]) || {}; c.dich.nhom[k] = { on: !!g.on, gia: Math.floor(num(g.gia || 0, 0, 1e9, 'Giá ' + NHOM_DICH[k])), sl: Math.floor(num(g.sl || 1, 1, 9999, 'Số lượng ' + NHOM_DICH[k])), ids: idDs(g.ids) }; }
             d.db()._gnCfg = c;
         } catch (e) { return { error: e.message }; }
         d.saveDbNow();

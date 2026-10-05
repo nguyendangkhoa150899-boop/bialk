@@ -22,7 +22,7 @@
     h += '<div class="muted" style="font-size:12px;margin:6px 0">Giá riêng (ghi đè; 0 = cấm bỏ vào):</div><div id="gnaVaoR">' + bangRieng('vao', c.vao.rieng) + '</div>';
     h += '<h4 style="margin:14px 0 6px">🎯 Món đích</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">';
     h += '</div>';
-    Object.keys(A.nhomDich).forEach(function (k) { var g = c.dich.nhom[k] || { on: false, gia: 0, ids: [] }; h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0">' + chk('gnaN_' + k, g.on, '<b>' + esc(A.nhomDich[k]) + '</b>') + ' giá trị ' + inp('gnaNG_' + k, g.gia, 90) + ' ID: ' + inp('gnaNI_' + k, (g.ids || []).join(' '), 380) + '<span class="muted" style="font-size:12px">' + (g.ids || []).map(function (id) { var x = (A.dich || []).find(function (y) { return y.id === id; }); return x ? esc(x.ten) : '#' + id; }).join(', ') + '</span></div>'; });
+    Object.keys(A.nhomDich).forEach(function (k) { var g = c.dich.nhom[k] || { on: false, gia: 0, ids: [] }; h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0">' + chk('gnaN_' + k, g.on, '<b>' + esc(A.nhomDich[k]) + '</b>') + ' giá trị ' + inp('gnaNG_' + k, g.gia, 90) + ' thắng nhận ' + inp('gnaNS_' + k, g.sl || 1, 50) + ' cái · ID: ' + inp('gnaNI_' + k, (g.ids || []).join(' '), 380) + '<span class="muted" style="font-size:12px">' + (g.ids || []).map(function (id) { var x = (A.dich || []).find(function (y) { return y.id === id; }); return x ? esc(x.ten) : '#' + id; }).join(', ') + '</span></div>'; });
     h += '<div><div class="muted" style="font-size:12px;margin:6px 0">Món đích riêng / phiếu KNB (giá trị; 0 = gỡ khỏi danh sách đích):</div><div id="gnaDichR">' + bangRieng('dich', c.dich.rieng) + '</div>';
     h += '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input id="gnaQ" placeholder="🔎 Tìm vật phẩm (tên không dấu hoặc ID) để thêm giá riêng" style="flex:1;min-width:220px" onkeydown="if(event.key===\'Enter\')gnaTim()"><button onclick="gnaTim()">Tìm</button></div><div id="gnaKq" style="margin-top:6px">' + kq() + '</div>';
     h += '<div class="row" style="gap:8px;margin-top:12px"><button class="btn-green" onclick="gnaSave()">💾 Lưu Ghép Ngọc</button><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại</button></div>';
@@ -45,7 +45,7 @@
     var c = A.cfg, v = function (id) { return el(id).value; }, b = function (id) { return el(id).checked; };
     var o = { on: b('gnaOn'), phi: v('gnaPhi'), tiMin: v('gnaMin'), tiMax: v('gnaMax'), luotNgay: v('gnaLuot'), monMax: v('gnaMon'), knbOn: b('gnaKnb'), knbMax: v('gnaKnbMax'),
       vao: { giaRuong: b('gnaRuong'), shop: { on: b('gnaRac'), pct: v('gnaRacPct') }, rieng: {} }, dich: { nhom: {}, rieng: {} } };
-    Object.keys(A.nhomDich).forEach(function (k) { o.dich.nhom[k] = { on: b('gnaN_' + k), gia: v('gnaNG_' + k), ids: v('gnaNI_' + k) }; });
+    Object.keys(A.nhomDich).forEach(function (k) { o.dich.nhom[k] = { on: b('gnaN_' + k), gia: v('gnaNG_' + k), sl: v('gnaNS_' + k), ids: v('gnaNI_' + k) }; });
     [].slice.call(document.querySelectorAll('#gnaApp input[data-loai]')).forEach(function (x) { o[x.getAttribute('data-loai')].rieng[x.getAttribute('data-id')] = x.value; });
     return o;
   }
