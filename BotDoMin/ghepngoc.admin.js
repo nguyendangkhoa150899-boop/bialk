@@ -19,6 +19,7 @@
       + '<label>Lượt/ngày (0 = không giới hạn) ' + inp('gnaLuot', c.luotNgay, 70) + '</label><label>Món tối đa/lần ' + inp('gnaMon', c.monMax, 70) + '</label></div>';
     h += '<div class="row" style="gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px">' + chk('gnaKnb', c.knbOn, 'Cho bỏ thêm KNB web') + '<label>KNB tối đa/lần ' + inp('gnaKnbMax', c.knbMax, 100) + '</label></div>';
     h += '<h4 style="margin:14px 0 6px">🧰 Giá đồ bỏ vào</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">' + chk('gnaRac', c.vao.shop.on, 'Món có ở shop web tính = ') + inp('gnaRacPct', c.vao.shop.pct, 50) + ' % giá shop' + chk('gnaRuong', c.vao.giaRuong, 'Món không có ở shop: dùng giá bán Rương Ích Kỷ') + '</div>';
+    h += '<div class="row" style="gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px"><span class="muted" style="font-size:12px">Cấm bỏ vào (kiểm trước cả giá riêng):</span>' + Object.keys(A.nhomCam || {}).map(function (k) { return chk('gnaC_' + k, c.vao.cam && c.vao.cam[k], esc(A.nhomCam[k])); }).join('') + '</div>';
     h += '<div class="muted" style="font-size:12px;margin:6px 0">Giá riêng (ghi đè; 0 = cấm bỏ vào):</div><div id="gnaVaoR">' + bangRieng('vao', c.vao.rieng) + '</div>';
     h += '<h4 style="margin:14px 0 6px">🎯 Món đích</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">';
     h += '</div>';
@@ -44,7 +45,7 @@
   function doc() {
     var c = A.cfg, v = function (id) { return el(id).value; }, b = function (id) { return el(id).checked; };
     var o = { on: b('gnaOn'), phi: v('gnaPhi'), tiMin: v('gnaMin'), tiMax: v('gnaMax'), luotNgay: v('gnaLuot'), monMax: v('gnaMon'), knbOn: b('gnaKnb'), knbMax: v('gnaKnbMax'),
-      vao: { giaRuong: b('gnaRuong'), shop: { on: b('gnaRac'), pct: v('gnaRacPct') }, rieng: {} }, dich: { nhom: {}, rieng: {} } };
+      vao: { cam: Object.fromEntries(Object.keys(A.nhomCam || {}).map(function (k) { return [k, b('gnaC_' + k)]; })), giaRuong: b('gnaRuong'), shop: { on: b('gnaRac'), pct: v('gnaRacPct') }, rieng: {} }, dich: { nhom: {}, rieng: {} } };
     Object.keys(A.nhomDich).forEach(function (k) { o.dich.nhom[k] = { on: b('gnaN_' + k), gia: v('gnaNG_' + k), sl: v('gnaNS_' + k), ids: v('gnaNI_' + k) }; });
     [].slice.call(document.querySelectorAll('#gnaApp input[data-loai]')).forEach(function (x) { o[x.getAttribute('data-loai')].rieng[x.getAttribute('data-id')] = x.value; });
     return o;

@@ -7,6 +7,7 @@
 //   2. giá shop web x vao.shop.pct % (mặc định 90% = rẻ hơn ngoài shop 10%) - món có bán ở shop web
 //   3. giá BÁN trong Rương Ích Kỷ (món không có ở shop mà admin cho bán, vd ngọc 6 ngoài shop)
 //   không có giá nào -> không bỏ vào được.
+//   NHÓM CẤM (vao.cam, kiểm TRƯỚC mọi giá, kể cả giá riêng): mặc định cấm Yếu Quyết - chỉ bán ở Rương Ích Kỷ.
 // MÓN ĐÍCH (05/10 chủ server chốt): CHỈ ngọc 7 thuộc tính, KHÔNG ngọc kép 7-x (Minh Tinh Thạch công + giảm kháng)
 //   - Thuộc tính (Tinh Thạch thuần tịnh: công băng/hỏa/huyền/độc 230), Kháng thuộc tính (ngọc kháng thuần tịnh 90),
 //     Thể lực / né (Hồng Bảo Thạch, Tổ Mẫu Lục), Chính xác (Tử Ngọc): 120.000; Kháng 110.000
@@ -22,7 +23,7 @@ const LICH_MAX = 30, LOG_MAX = 400;
 const MAC_DINH = {
     on: false, phi: 10, tiMin: 1, tiMax: 75, luotNgay: 30, monMax: 50,
     knbOn: false, knbMax: 100000,
-    vao: { giaRuong: true, shop: { on: true, pct: 90 }, rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 } },   // phiếu KNB bỏ vào = mệnh giá
+    vao: { cam: { yq: true }, giaRuong: true, shop: { on: true, pct: 90 }, rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 } },   // phiếu KNB bỏ vào = mệnh giá
     dich: {
         nhom: {
             thuocTinh: { on: true, gia: 120000, sl: 1, ids: ['50702005', '50702006', '50702007', '50702008'] },
@@ -36,6 +37,8 @@ const MAC_DINH = {
 };
 // Tên nhóm món đích (danh sách ID + giá + bật/tắt nằm trong cấu hình, admin sửa)
 const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7', chinhXac: '🎯 Ngọc chính xác 7 (Tử Ngọc)', trungLau: '🧩 Nguyên liệu Trùng Lâu (Chi Lệ/Mang/Thương/Dương)' };
+// Nhóm CẤM bỏ vào (chỉ là cách nhận món; bật/tắt ở vao.cam do admin)
+const NHOM_CAM = { yq: { ten: '📜 Yếu Quyết (chỉ bán ở Rương Ích Kỷ)', khop: (id, ten) => /^3030[78]\d{3}$/.test(id) && /Yếu Quyết/i.test(ten) } };
 const idDs = (a) => (Array.isArray(a) ? a : String(a || '').split(/[\s,;]+/)).map((x) => String(x).trim()).filter((x) => /^\d{5,9}$/.test(x));
 
 module.exports = function ghepNgoc(d) {
@@ -58,12 +61,13 @@ module.exports = function ghepNgoc(d) {
             nhom[k] = { on: g.on === undefined ? !!md.on : !!g.on, gia: Math.floor(so(g.gia, 0, 1e9, md.gia)), sl: Math.floor(so(g.sl, 1, 9999, md.sl || 1)), ids: idDs(g.ids === undefined ? md.ids : g.ids) };
         }
         const sh = v.shop || M.vao.shop;
+        const cam = {}; for (const k of Object.keys(NHOM_CAM)) cam[k] = v.cam && v.cam[k] !== undefined ? !!v.cam[k] : !!M.vao.cam[k];
         return {
             on: c.on === undefined ? M.on : !!c.on,
             phi: so(c.phi, 0, 90, M.phi), tiMin: so(c.tiMin, 0.01, 100, M.tiMin), tiMax: so(c.tiMax, 1, 100, M.tiMax),
             luotNgay: Math.floor(so(c.luotNgay, 0, 100000, M.luotNgay)), monMax: Math.floor(so(c.monMax, 1, 10000, M.monMax)),
             knbOn: c.knbOn === undefined ? M.knbOn : !!c.knbOn, knbMax: Math.floor(so(c.knbMax, 0, 1e9, M.knbMax)),
-            vao: { giaRuong: v.giaRuong === undefined ? M.vao.giaRuong : !!v.giaRuong, shop: { on: sh.on === undefined ? true : !!sh.on, pct: so(sh.pct, 0, 100, M.vao.shop.pct) }, rieng: rieng(v.rieng, M.vao.rieng) },
+            vao: { cam, giaRuong: v.giaRuong === undefined ? M.vao.giaRuong : !!v.giaRuong, shop: { on: sh.on === undefined ? true : !!sh.on, pct: so(sh.pct, 0, 100, M.vao.shop.pct) }, rieng: rieng(v.rieng, M.vao.rieng) },
             dich: { nhom, rieng: rieng(di.rieng, M.dich.rieng) },
             moi: !d.db()._gnCfg,
         };
@@ -72,6 +76,7 @@ module.exports = function ghepNgoc(d) {
     // giá trị 1 món BỎ VÀO + nguồn giá
     function giaVao(id, c) {
         c = c || cfg(); id = String(id);
+        for (const [k, on] of Object.entries(c.vao.cam)) if (on && NHOM_CAM[k].khop(id, ten(id))) return { gia: 0, tu: 'cấm: ' + NHOM_CAM[k].ten };
         if (c.vao.rieng[id] !== undefined) return { gia: c.vao.rieng[id], tu: 'riêng' };
         if (c.vao.shop.on) { const s = shopGia(id); if (s > 0) { const g = Math.floor(s * c.vao.shop.pct / 100); if (g > 0) return { gia: g, tu: c.vao.shop.pct === 100 ? 'giá shop' : 'shop −' + (100 - c.vao.shop.pct) + '%' }; } }
         if (c.vao.giaRuong) { const g = Math.floor(Number(d.giaRuong(id)) || 0); if (g > 0) return { gia: g, tu: 'giá bán rương' }; }
@@ -182,12 +187,12 @@ module.exports = function ghepNgoc(d) {
         c = c || cfg();
         const ids = new Set([...d.shop().map((x) => String(x.id)), ...Object.keys(c.vao.rieng)]);
         for (const it of d.items()) if (/^50[67]\d{5}$/.test(String(it.id))) ids.add(String(it.id));
-        return [...ids].map((id) => ({ id, ten: ten(id), shop: shopGia(id), ...giaVao(id, c) })).filter((x) => x.gia > 0 || c.vao.rieng[x.id] !== undefined)
+        return [...ids].map((id) => ({ id, ten: ten(id), shop: shopGia(id), ...giaVao(id, c) })).filter((x) => x.gia > 0 || c.vao.rieng[x.id] !== undefined || /^cấm/.test(x.tu))
             .sort((a, b) => b.gia - a.gia);
     }
     function adminState() {
         const c = cfg(), db = d.db();
-        return { cfg: c, nhomDich: NHOM_DICH,
+        return { cfg: c, nhomDich: NHOM_DICH, nhomCam: Object.fromEntries(Object.entries(NHOM_CAM).map(([k, v]) => [k, v.ten])),
             dich: dsDich(c), bangGia: bangGia(c), canhBao: canhBao(c),
             log: (db._gnLog || []).slice(-100).reverse().map((x) => ({ ...x, tenDich: ten(x.dich) })) };
     }
@@ -200,7 +205,7 @@ module.exports = function ghepNgoc(d) {
                 on: !!x.on, phi: num(x.phi, 0, 90, 'Phí'), tiMin: num(x.tiMin, 0.01, 100, 'Tỉ lệ tối thiểu'), tiMax: num(x.tiMax, 1, 100, 'Tỉ lệ tối đa'),
                 luotNgay: Math.floor(num(x.luotNgay, 0, 100000, 'Lượt/ngày')), monMax: Math.floor(num(x.monMax, 1, 10000, 'Món tối đa/lần')),
                 knbOn: !!x.knbOn, knbMax: Math.floor(num(x.knbMax, 0, 1e9, 'KNB tối đa')),
-                vao: { giaRuong: !!(x.vao && x.vao.giaRuong), shop: { on: !!(x.vao && x.vao.shop && x.vao.shop.on), pct: num(x.vao && x.vao.shop && x.vao.shop.pct, 0, 100, '% giá shop') }, rieng: ds(x.vao && x.vao.rieng, 'Giá bỏ vào') },
+                vao: { cam: Object.fromEntries(Object.keys(NHOM_CAM).map((k) => [k, !!(x.vao && x.vao.cam && x.vao.cam[k])])), giaRuong: !!(x.vao && x.vao.giaRuong), shop: { on: !!(x.vao && x.vao.shop && x.vao.shop.on), pct: num(x.vao && x.vao.shop && x.vao.shop.pct, 0, 100, '% giá shop') }, rieng: ds(x.vao && x.vao.rieng, 'Giá bỏ vào') },
                 dich: { nhom: {}, rieng: ds(x.dich && x.dich.rieng, 'Món đích') },
             };
             if (c.tiMin > c.tiMax) throw new Error('Tỉ lệ tối thiểu lớn hơn tối đa');
