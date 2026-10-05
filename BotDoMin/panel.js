@@ -3160,7 +3160,8 @@ function showApp(){
   const saved=localStorage.getItem('panel_tab');
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
-  if(['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','give','poker','tienlen'].includes(saved)) tab(saved);
+  // 05/10: khôi phục MỌI tab đang có (trước chỉ 1 danh sách cũ -> F5 ở 🧰 Rương / 💎 Ghép Ngọc / 📊 Bảng rơi nhảy về tab đầu)
+  if(saved&&document.getElementById('tab-'+saved)&&document.querySelector('.tabs button[data-tab="'+saved+'"]')) tab(saved);
   const savedLog=localStorage.getItem('panel_log');
   logPick(['nk','tx','rl','mine','dog'].includes(savedLog)?savedLog:'nk');   // 04/10: bỏ stair/spm (game không dùng, nút đã ẩn)
   refresh();
@@ -4854,7 +4855,8 @@ function modApp(){
   const pc=document.getElementById('logPickCard');if(pc)pc.style.display='none';
   const hb=document.getElementById('holdBtn');if(hb)hb.style.display='none';
   const ct=document.getElementById('connText');if(ct){ct.style.color='var(--green)';ct.textContent='Cổng mod · chỉ xem';}
-  tab('log');logPick('nk');
+  const sv=localStorage.getItem('panel_tab');   // 05/10: F5 giữ nguyên tab đang xem
+  tab(DUOC.includes(sv)?sv:'log');logPick('nk');
 }
 // 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
 let PCOPEN=false;

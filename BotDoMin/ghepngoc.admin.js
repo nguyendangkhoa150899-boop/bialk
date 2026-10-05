@@ -99,5 +99,7 @@
   };
   window.gnaBoR = function (loai, id) { var o = doc(); delete o[loai].rieng[id]; A.cfg = Object.assign({}, A.cfg, o); ve(); };
   window.gnaThuTb = function () { api('/api/gn/thu', {}).then(function (j) { toast(j.message || '📣 Đã gửi'); }).catch(function (e) { toast('❌ ' + e.message); }); };
+  // 05/10: F5 đứng ở tab Ghép Ngọc - panel khôi phục tab TRƯỚC khi file này tải xong -> tự tải
+  setTimeout(function () { var a = document.getElementById('tab-gn'), x = document.getElementById('tab-gnx'); if (a && !a.classList.contains('hidden')) window.gnaLoad(); if (x && !x.classList.contains('hidden')) window.gnxLoad(); }, 0);
   window.gnaSave = function () { api('/api/gn/save', doc()).then(function (j) { A = j; ve(); toast('💾 Đã lưu Ghép Ngọc - ' + (j.cfg.on ? 'đang BẬT' : 'đang tắt')); }).catch(function (e) { toast('❌ ' + e.message); }); };
 })();

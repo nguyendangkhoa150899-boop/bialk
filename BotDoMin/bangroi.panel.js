@@ -10,7 +10,7 @@
     '#brApp .brSeg{display:inline-flex;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}',
     '#brApp .brSeg button{background:transparent;color:var(--mut);padding:8px 14px;border-radius:8px;font-size:14px}',
     '#brApp .brSeg button.on{background:var(--brA);color:#fff}',
-    '#brApp .brBuilt{margin-left:auto;font-size:12px;color:var(--mut)}',
+    '#brApp .brBuilt{margin-left:auto;font-size:12px;color:var(--mut)}#brApp .brBuilt a{color:#9aa8ff;text-decoration:none}#brApp .brBuilt a:hover{text-decoration:underline}',
     '#brApp .brCtl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}',
     '#brApp .brCtl input[type=search]{flex:1;min-width:220px;margin:0}',
     '#brApp .brCtl label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);white-space:nowrap}',
@@ -45,7 +45,7 @@
     '#brApp .brNote{margin-top:12px;font-size:12px;color:var(--mut);line-height:1.5}',
     '@media(max-width:620px){#brApp .brRow{grid-template-columns:26px 76px 1fr}#brApp .brSeg button{padding:7px 9px;font-size:13px}}'
   ].join('');
-  var PRESET = [['💎 Ngọc 6', '50601001-50614001', '50602001'], ['Phục Hi Ngọc', 'phục hi ngọc'], ['Nguyên Bảo Phiếu', 'nguyên bảo phiếu', '39910001'], ['Chí Tôn Cường Hóa', 'chí tôn cường hóa'], ['Long Hồn Ngọc', 'long hồn ngọc'],
+  var PRESET = [['Ngọc 6', '50601001-50614001', '50602001'], ['Phục Hi Ngọc', 'phục hi ngọc'], ['Nguyên Bảo Phiếu', 'nguyên bảo phiếu', '39910001'], ['Chí Tôn Cường Hóa', 'chí tôn cường hóa'], ['Long Hồn Ngọc', 'long hồn ngọc'],
     ['Tử Vi Linh Phách', 'tử vi linh phách'], ['Công Lực Đan', 'công lực đan'], ['Hợp Thành Phù', 'hợp thành phù'], ['Miên Bố / Bí Ngân 8', '20501008, 20502008', '20501008'], ['Cửu Thiên Ngọc Toái', 'cửu thiên ngọc toái']];
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -157,6 +157,8 @@
   window.brTab = function (t) { if (t === 'quai' || ST.tab === 'quai') ST.q = ''; ST.tab = t; ST.shown = 30; luu(); ve(); };   // ô tìm của tab quái (tên quái) khác 2 tab kia (tên món)
   window.brMore = function () { ST.shown += 30; ve(); };
   window.brSet = function (k, v) { if (k === 'plv') v = Math.max(1, Math.min(150, parseInt(v, 10) || 89)); if (k === 'speed') v = Math.max(1, Math.min(60, parseInt(v, 10) || 6)); ST[k] = v; ST.shown = 30; luu(); ve(); };
+  // 05/10: F5 đứng ở tab Bảng rơi - panel khôi phục tab TRƯỚC khi file này tải xong -> tự tải
+  setTimeout(function () { var b = document.getElementById('tab-br'); if (b && !b.classList.contains('hidden')) window.brLoad(); }, 0);
   window.brLoad = function () {
     var el = $('brApp'); if (!el) return;
     if (!document.getElementById('brCss')) { var s = document.createElement('style'); s.id = 'brCss'; s.textContent = css; document.head.appendChild(s); }
