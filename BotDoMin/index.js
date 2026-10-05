@@ -745,12 +745,12 @@ function tlbbPollLvReceipts() {
         for (const x of rc.items) {
             ichKyAdd(u, x.id, x.n);
             const g = gi.find(t => t && t.id === x.id);
-            k.nhan.push({ tu: '🎮 Gửi từ game (Ví Web)', ten: (g && g.n) || ('Long Văn ' + x.id), qty: x.n, at: Date.now() });
+            k.nhan.push({ tu: '🎮 Gửi từ game (Ví Web)', ten: (g && g.n) || ('#' + x.id), qty: x.n, at: Date.now() });
         }
         if (k.nhan.length > 20) k.nhan = k.nhan.slice(-20);
         seen[rc.file] = Date.now();
         saveDbNow();
-        writeLog('ADMIN', `[LONG VĂN TỪ GAME] ${u.name || uid} +${moTa} vào Rương Ích Kỷ (GUID ${rc.guid}, ${rc.file})`);
+        writeLog('ADMIN', `[ĐỒ TỪ GAME] ${u.name || uid} +${moTa} vào Rương Ích Kỷ (GUID ${rc.guid}, ${rc.file})`);
         try { tlbb.finishLvReceipt(rc.file); } catch { /* đã ghi seen, lần sau chỉ dọn file */ }
     }
     const cut = Date.now() - 30 * 86400000;
@@ -2413,6 +2413,8 @@ const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
 // Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts, 02/10)
 const ICHKY_GIU = ['10157001', '10157002', '10157003'];
 const ICHKY_GIU_RUT_MAX = 10;   // 03/10: Long Văn rút về game tối đa 10 cái/lần (mỗi cái 1 ô túi, rút nhiều dễ tràn túi -> mất đồ)
+// 05/10: NGỌC cũng không chồng trong game (mỗi viên 1 ô) -> mọi ngọc 501xxxxx-507xxxxx rút tối đa 10/lần
+const ichKyRutMax = (id) => (ICHKY_GIU.includes(String(id)) || /^50[1-7]\d{5}$/.test(String(id))) ? ICHKY_GIU_RUT_MAX : 0;
 function ichKyOf(user) {
     const hnay = vnDayStr(Date.now());
     let k = user.ichKy;
@@ -2457,7 +2459,7 @@ function ichKyState(userId) {
         const gi = it ? null : gameItems().find(x => x.id === id);
         return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '', giu: ICHKY_GIU.includes(id),
             ic: (it && it.img) ? null : ITEMICON.icon(id),   // 🖼️ 03/10: món không có ảnh shop (vd Long Văn từ game) -> icon game (itemicon.js)
-            rutMax: ICHKY_GIU.includes(id) ? ICHKY_GIU_RUT_MAX : 0,   // 0 = không giới hạn riêng
+            rutMax: ichKyRutMax(id),   // 0 = không giới hạn riêng (Long Văn + ngọc: 10)
             ban: ichKyBanGia(id) };   // 💰 05/10: giá bán 1 cái (0 = không bán được)
     }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
     return {
@@ -2653,8 +2655,8 @@ async function ichKyClaim(userId, itemId, qty, username) {
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
-    if (ICHKY_GIU.includes(String(itemId)) && qty > ICHKY_GIU_RUT_MAX) {
-        return { error: `Long Văn rút tối đa ${ICHKY_GIU_RUT_MAX} cái mỗi lần (mỗi cái chiếm 1 ô túi) - rút nhiều lần nhé` };
+    if (ichKyRutMax(itemId) && qty > ichKyRutMax(itemId)) {
+        return { error: `Món này rút tối đa ${ichKyRutMax(itemId)} cái mỗi lần (mỗi cái chiếm 1 ô túi) - rút nhiều lần nhé` };
     }
     const user = getUserData(userId);
     const k = ichKyOf(user);
