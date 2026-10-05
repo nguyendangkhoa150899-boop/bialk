@@ -77,7 +77,6 @@
       + '<circle cx="120" cy="120" r="116" fill="#11131f" stroke="#262a3d" stroke-width="2"/>' + vach
       + '<circle cx="120" cy="120" r="' + R + '" fill="none" stroke="#2a2440" stroke-width="16"/>'
       + '<circle class="arc" id="gnArc" cx="120" cy="120" r="' + R + '" fill="none" stroke="url(#gnG)" stroke-width="16" stroke-dasharray="' + w.toFixed(2) + ' ' + CIR.toFixed(2) + '" transform="rotate(' + (-90 + (GN.lech || 0) * 3.6).toFixed(2) + ' 120 120)"/>'
-      + '<circle id="gnKnob" cx="' + k[0].toFixed(1) + '" cy="' + k[1].toFixed(1) + '" r="9" fill="#fff" stroke="#f5c542" stroke-width="4"' + (p > 0 ? '' : ' style="display:none"') + '/>'
       + '<g class="gnNeedle" id="gnNeedle" style="transform:rotate(' + (GN.goc || 0) + 'deg)"><polygon points="120,6 112,26 128,26" fill="#ff4d6d" stroke="#fff" stroke-width="1.5"/></g></svg>';
   }
   // xoay vung trung khi dang keo (khong ve lai ca trang)
