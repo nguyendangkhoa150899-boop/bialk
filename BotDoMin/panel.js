@@ -1631,7 +1631,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
+        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button><button data-tab="br" onclick="tab('br')">📊 Bảng rơi</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
         <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button><!-- 05/10: bỏ pwOff - tab này là đồ THIÊN LONG (Giao vào game / 🧰 bỏ vào Rương Ích Kỷ), không phải Palworld -->
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
@@ -2452,6 +2452,12 @@ const HTML = `<!DOCTYPE html>
         <details style="margin-top:8px"><summary>📋 Giá thật từng món (sau khi kẹp theo shop)</summary><div id="ikbDs" style="max-height:320px;overflow:auto;font-size:13px;margin-top:6px"></div></details>
       </div>
     </div>
+    <div id="tab-br" class="hidden"><!-- 📊 05/10: bảng rơi + đề xuất farm = nhúng https://netco4.click/#farm (1 bản duy nhất, đổi tỉ lệ thì dựng lại trang đó) -->
+      <div class="card">
+        <h2>📊 Bảng rơi &amp; đề xuất farm <span class="muted" style="font-size:13px;font-weight:400">chọn món muốn farm → trang gợi ý nên đi đâu, đánh con gì</span> <a href="https://netco4.click/#farm" target="_blank" rel="noopener" style="font-size:13px;font-weight:400;margin-left:8px">mở trang riêng ↗</a></h2>
+        <iframe id="brFrame" title="Bảng rơi NetCo4" style="width:100%;height:calc(100vh - 170px);min-height:560px;border:1px solid var(--line,#2a3340);border-radius:10px;background:#fff" loading="lazy"></iframe>
+      </div>
+    </div>
     <div id="tab-gnx" class="hidden"><!-- 💎 05/10: nhật ký Ghép Ngọc - bản CHỈ XEM cho cổng mod (hoàn đồ / cấu hình ở tab 💎 cổng SUPER) -->
       <div class="card">
         <h2>💎 Ghép Ngọc <span class="muted" style="font-size:13px;font-weight:400">nhật ký luyện · chỉ xem</span></h2>
@@ -3141,8 +3147,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','gn','gnx','vqx','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','gn','gnx','vqx','br','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'){const f=document.getElementById('brFrame');if(f&&!f.getAttribute('src'))f.setAttribute('src','https://netco4.click/#farm');}if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -4816,7 +4822,7 @@ function nkBatDau(){if(NK.chay)return;NK.chay=true;setInterval(()=>{
 // Cổng mod: giấu mọi tab trừ 📜 Log, giấu bảng chọn mục log cũ (cần /api/state), không chạy refresh()
 function modApp(){
   document.body.classList.add('congmod');epApply(false);
-  const DUOC=['log','tb','vqx','gnx'];   // 04/10: cổng mod thấy 📜 Log + 🎒 Túi Boss (bản chỉ xem); 05/10 + 🍀 Vòng quay (chỉ xem)
+  const DUOC=['log','tb','vqx','gnx','br'];   // 05/10 + 📊 Bảng rơi (nhúng netco4.click)   // 04/10: cổng mod thấy 📜 Log + 🎒 Túi Boss (bản chỉ xem); 05/10 + 🍀 Vòng quay (chỉ xem)
   document.querySelectorAll('.tabs .grp').forEach(g=>{const bs=[...g.querySelectorAll('button')],co=bs.some(b=>DUOC.includes(b.dataset.tab));g.style.display=co?'':'none';
     bs.forEach(b=>{b.style.display=DUOC.includes(b.dataset.tab)?'':'none';});});
   document.getElementById('tbSuaCard').classList.add('hidden');document.getElementById('tbXemCard').classList.remove('hidden');
