@@ -43,6 +43,14 @@
     '.gnMul{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:center}#gnApp .gnMul button{padding:4px 10px;font-size:12px}',
     '.gnLich div{font-size:12px;padding:3px 0;border-bottom:1px solid #ffffff0d}',
     '.gnW{color:#3ddc84;font-weight:800}.gnL{color:#ff5d5d;font-weight:800}',
+    // 05/10: khung ket qua giu nguyen sau khi quay (chup man hinh khoe)
+    '.gnKq{margin-top:10px;width:100%;max-width:300px;border-radius:12px;padding:10px;text-align:center;font-size:13px;line-height:1.35}',
+    '.gnKq.thang{background:linear-gradient(180deg,#14361f,#0f2418);border:1px solid #3ddc84;box-shadow:0 0 14px #3ddc8455}',
+    '.gnKq.thua{background:#2a1416;border:1px solid #7a3434}',
+    '.gnKq .t{font-size:20px;font-weight:900;letter-spacing:.5px}.gnKq.thang .t{color:#3ddc84}.gnKq.thua .t{color:#ff8a8a}',
+    '.gnKq .m{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0;font-weight:800}',
+    '.gnKq small{color:var(--muted)}',
+    '.gnRow.da{opacity:.75}',
   ].join('');
   function ic(x, cls) { return typeof vqIcon === 'function' ? vqIcon(x && x.ic, cls) : ''; }
   function S() { return GN.s; }
@@ -104,9 +112,10 @@
   // keo bat cu cho nao tren vong -> xoay vung trung theo tay
   function ganKeo() {
     var sv = document.getElementById('gnSvg'); if (!sv || GN.busy) return;
+    if (GN.kq && GN.kq.vao) { sv.style.cursor = 'default'; return; }   // 05/10: đang hiện kết quả -> đứng yên cho chụp màn hình
     var keo = false, a0 = 0, l0 = 0;
     var mv = function (ev) { if (!keo) return; GN.lech = ((l0 + gocToP(ev) - a0) % 100 + 100) % 100; capNhatVong(tiLe()); };
-    sv.addEventListener('pointerdown', function (ev) { keo = true; a0 = gocToP(ev); l0 = GN.lech || 0; sv.setPointerCapture(ev.pointerId); sv.style.cursor = 'grabbing'; GN.kq = null; });
+    sv.addEventListener('pointerdown', function (ev) { keo = true; a0 = gocToP(ev); l0 = GN.lech || 0; sv.setPointerCapture(ev.pointerId); sv.style.cursor = 'grabbing'; });
     sv.addEventListener('pointermove', mv);
     var het = function () { if (!keo) return; keo = false; sv.style.cursor = 'grab'; };
     sv.addEventListener('pointerup', het); sv.addEventListener('pointercancel', het);
@@ -116,24 +125,32 @@
     var s = S();
     if (!document.getElementById('gnCss')) { var st = document.createElement('style'); st.id = 'gnCss'; st.textContent = css; document.head.appendChild(st); }
     if (!s.on) { el.innerHTML = '<div class="muted" style="padding:18px">💎 Ghép Ngọc đang tạm tắt - admin sẽ mở sớm.</div>'; return; }
-    var p = tiLe(), d = dichObj(), ok = hopLe(), h = '';
+    var p = GN.kq && GN.kq.vao ? GN.kq.p : tiLe(), d = dichObj(), ok = hopLe(), h = '';
     h += '<div class="gnTop">';
     // ---- bỏ vào
     h += '<div class="gnBox"><h4>🧰 BỎ VÀO (' + soMon() + '/' + s.monMax + ' món)</h4>';
     var ids = Object.keys(GN.vao);
-    if (!ids.length && !GN.knb) h += '<div class="muted" style="font-size:13px">Chọn đồ trong rương ở bên dưới (tab 🧰 Rương). Đồ bỏ vào sẽ <b>mất</b> dù thắng hay thua.</div>';
+    var kq = GN.kq && GN.kq.vao ? GN.kq : null;   // 05/10: kết quả lượt vừa luyện (giữ tới khi người chơi đổi)
+    if (kq && !ids.length && !GN.knb) {
+      kq.vao.forEach(function (x) { h += '<div class="gnRow da">' + ic(x, 'vqIcS') + '<div class="n">' + esc(x.ten) + '<br><small>' + vnd(x.gia) + ' / cái · đã dùng</small></div><b>×' + x.sl + '</b></div>'; });
+      if (kq.knb) h += '<div class="gnRow da"><div class="n">💰 KNB web</div><b>' + vnd(kq.knb) + '</b></div>';
+    } else if (!ids.length && !GN.knb) h += '<div class="muted" style="font-size:13px">Chọn đồ trong rương ở bên dưới (tab 🧰 Rương). Đồ bỏ vào sẽ <b>mất</b> dù thắng hay thua.</div>';
     ids.forEach(function (id) {
       var r = (s.ruong || []).find(function (x) { return x.id === id; }); if (!r) return;
       h += '<div class="gnRow">' + ic(r, 'vqIcS') + '<div class="n">' + esc(r.ten) + '<br><small>' + vnd(r.gia) + ' / cái · có ' + r.qty + '</small></div>'
         + '<input type="number" min="1" max="' + r.qty + '" value="' + GN.vao[id] + '" onchange="gnSl(\'' + id + '\',this.value)"><button onclick="gnBo(\'' + id + '\')">✕</button></div>';
     });
     if (s.knbOn) h += '<div class="gnRow"><div class="n">💰 Thêm KNB web<br><small>tối đa ' + vnd(s.knbMax) + ' · ví ' + vnd(s.balance) + '</small></div><input style="width:90px" type="number" min="0" value="' + (GN.knb || 0) + '" onchange="gnKnb(this.value)"></div>';
-    h += '<div class="gnSum"><span>Tổng giá trị</span><span>' + vnd(tong()) + '</span></div>';
+    h += '<div class="gnSum"><span>Tổng giá trị</span><span>' + vnd(kq && !ids.length && !GN.knb ? kq.tong : tong()) + '</span></div>';
     if (ids.length) h += '<button style="margin-top:6px" onclick="gnXoaHet()">🗑 Bỏ hết ra</button>';
     h += '</div>';
     // ---- vòng
     h += '<div class="gnBox gnRingBox"><div class="gnRing' + (GN.kq ? (GN.kq.thang ? ' thang' : ' thua') : '') + '" id="gnRing">' + ringSvg(p)
       + '<div class="gnMid"><div class="gnPct">' + (Math.round(p * 1000) / 1000) + '%</div><div class="gnRisk">' + (GN.kq ? (GN.kq.thang ? '🎉 THÀNH CÔNG' : '💥 THẤT BẠI') + ' · tung ' + GN.kq.roll : 'cơ hội · ' + risk(p)) + '</div></div></div>'
+      + (GN.kq && GN.kq.dich ? '<div class="gnKq ' + (GN.kq.thang ? 'thang' : 'thua') + '">'
+        + (GN.kq.thang ? '<div class="t">🎉 CHÚC MỪNG!</div><div class="m">' + ic(GN.kq.dich, 'vqIcS') + esc(GN.kq.dich.ten) + (GN.kq.dich.sl > 1 ? ' ×' + GN.kq.dich.sl : '') + '</div><small>Luyện thành công với ' + GN.kq.tiLe + '% · tung ' + GN.kq.roll + ' · đã vào 🧰 Rương Ích Kỷ</small>'
+          : '<div class="t">💥 THẤT BẠI</div><div class="m">' + ic(GN.kq.dich, 'vqIcS') + esc(GN.kq.dich.ten) + '</div><small>' + GN.kq.tiLe + '% · tung ' + GN.kq.roll + ' · đồ đã bỏ vào bị mất</small>')
+        + '<br><small>Chọn món đích khác hoặc bỏ đồ vào để luyện tiếp</small></div>' : '')
       + '<div class="muted" style="font-size:12px;text-align:center">Phí ' + s.phi + '% · tỉ lệ ' + s.tiMin + '–' + s.tiMax + '%' + (s.luotNgay ? ' · hôm nay ' + s.luotHomNay + '/' + s.luotNgay : '') + '</div>'
       + '<button class="gnGo" ' + (ok === 'ok' && !GN.busy ? '' : 'disabled') + ' onclick="gnQuay()">💎 LUYỆN</button>'
       + (ok && ok !== 'ok' ? '<div style="font-size:12px;color:#ffb4a8;margin-top:6px;text-align:center">' + esc(ok) + '</div>' : '') + '</div>';
@@ -195,15 +212,17 @@
   window.gnQuay = function () {
     if (GN.busy || hopLe() !== 'ok') return;
     var d = dichObj(), vao = Object.keys(GN.vao).map(function (id) { return { id: id, sl: GN.vao[id] }; });
+    // j.dich bị ...state(uid) đè thành DANH SÁCH món đích -> lấy món đích ở client lúc bấm
+    var chup = { dich: d ? { id: d.id, ten: d.ten, ic: d.ic, gia: d.gia, sl: d.sl } : null, p: tiLe(), tong: tong(), knb: GN.knb || 0, vao: Object.keys(GN.vao).map(function (id) { var r = (S().ruong || []).find(function (x) { return x.id === id; }) || {}; return { id: id, ic: r.ic, ten: r.ten || ('#' + id), gia: r.gia || 0, sl: GN.vao[id] }; }) };
     GN.busy = true; GN.kq = null; ve();
     api('/api/gn/quay', { dich: GN.dich, vao: vao, knb: GN.knb || 0, lech: GN.lech || 0 }).then(function (j) {
       var base = Math.ceil((GN.goc || 0) / 360) * 360 + 360 * 9;
       GN.goc = base + j.roll * 3.6;
       var n = document.getElementById('gnNeedle'); if (n) n.style.transform = 'rotate(' + GN.goc + 'deg)';
       setTimeout(function () {
-        GN.busy = false; GN.s = j; GN.kq = { thang: j.thang, roll: j.roll }; GN.vao = {}; GN.knb = 0; chuanHoa(); ve();
+        GN.busy = false; GN.s = j; GN.kq = { thang: j.thang, roll: j.roll, tiLe: j.tiLe, dich: chup.dich, p: chup.p, tong: chup.tong, knb: chup.knb, vao: chup.vao }; GN.vao = {}; GN.knb = 0; chuanHoa(); ve();
         if (typeof setBal === 'function' && j.balance !== undefined) setBal(j.balance);
-        toast(j.thang ? '🎉 THÀNH CÔNG! Nhận ' + j.dich.ten + (j.dich.sl > 1 ? ' ×' + j.dich.sl : '') + ' - đã vào 🧰 Rương Ích Kỷ' : '💥 Thất bại (' + j.tiLe + '%, tung ' + j.roll + ') - mất đồ đã bỏ vào');
+        toast(j.thang ? '🎉 THÀNH CÔNG! Nhận ' + (chup.dich ? chup.dich.ten + (chup.dich.sl > 1 ? ' ×' + chup.dich.sl : '') : 'món đích') + ' - đã vào 🧰 Rương Ích Kỷ' : '💥 Thất bại (' + j.tiLe + '%, tung ' + j.roll + ') - mất đồ đã bỏ vào');
       }, QUAY_MS + 200);
     }).catch(function (e) { GN.busy = false; ve(); toast('❌ ' + e.message); gnSync(); });
   };
