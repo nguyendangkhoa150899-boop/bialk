@@ -465,6 +465,7 @@ function startPanel(ctx) {
                     else if (path === '/api/gn/save') r = ctx.ghepNgoc.save(b, who);
                     else if (path === '/api/gn/tim') r = { items: ctx.ghepNgoc.tim(b.q) };
                     else if (path === '/api/gn/thu') r = await ctx.ghepNgoc.thu();
+                    else if (path === '/api/gn/hoan') r = ctx.ghepNgoc.hoan(b.k, who);
                     else return sendJSON(res, 404, { ok: false, error: 'Không có API này' });
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });

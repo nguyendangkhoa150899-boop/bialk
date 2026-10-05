@@ -7910,7 +7910,7 @@ client.once('ready', async (c) => {
             petBoss: { state: () => PB.adminState(), save: (x) => PB.setCfg(x), reset: (uid) => PB.resetPick(uid), refresh: () => PB.refresh() },   // 🐾 01/10
             // 🎒 01/10: cấu hình Túi đồ boss (admin + mod sửa được; ID boss cuối cố định theo game)
             // 🍀 02/10: cấu hình vòng quay (tab 🎁 Quà tặng, chỉ SUPER)
-            ghepNgoc: { state: () => GN.adminState(), save: (x, who) => GN.saveCfg(x, who), tim: (q) => GN.tim(q), thu: () => GN.guiThu() },   // 💎 05/10 (chỉ SUPER)
+            ghepNgoc: { state: () => GN.adminState(), save: (x, who) => GN.saveCfg(x, who), tim: (q) => GN.tim(q), thu: () => GN.guiThu(), hoan: (k, who) => GN.hoan(k, who) },   // 💎 05/10 (chỉ SUPER)
             vongQuay: { state: () => VQ.adminState(), save: (x, who) => VQ.saveCfg(x, who), macDinh: (who) => VQ.macDinh(who),
                 cap: (uid, n, who) => VQ.capLuot(uid, n, who), tim: (q) => VQ.tim(q) },
             itemIconTra: (ids) => VQ.tra(ids),   // 🖼️ 02/10: hình game theo ID cho bảng Shop Item + Quà admin tặng

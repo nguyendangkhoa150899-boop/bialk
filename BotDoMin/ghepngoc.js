@@ -240,7 +240,8 @@ module.exports = function ghepNgoc(d) {
         const c = cfg(), db = d.db();
         return { cfg: c, kenh: d.dsKenh ? d.dsKenh() : [], nhomDich: NHOM_DICH, nhomCam: Object.fromEntries(Object.entries(NHOM_CAM).map(([k, v]) => [k, v.ten])),
             dich: dsDich(c), bangGia: bangGia(c), canhBao: canhBao(c),
-            log: (db._gnLog || []).slice(-100).reverse().map((x) => ({ ...x, tenDich: ten(x.dich) })) };
+            log: (db._gnLog || []).slice(-200).reverse().map((x) => ({ ...x, k: x.t + '_' + x.uid, tenDich: ten(x.dich), icDich: d.icon(x.dich),
+                vaoCt: (x.vao || []).map(([id, n]) => ({ id, sl: n, ten: ten(id), ic: d.icon(id) })) })) };
     }
     function saveCfg(x, who) {
         x = x || {};
@@ -265,6 +266,22 @@ module.exports = function ghepNgoc(d) {
         d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} lưu cấu hình: ${c.on ? 'BẬT' : 'tắt'}, phí ${c.phi}%, tỉ lệ ${c.tiMin}-${c.tiMax}%, ${c.luotNgay} lượt/ngày, giá bỏ vào ${c.vao.shop.on ? c.vao.shop.pct + '% shop' : 'không theo shop'}, ${dsDich(c).length} món đích`);
         return { ok: true, ...adminState() };
     }
+    // ↩ 05/10: admin HOÀN đồ đã bỏ vào 1 lượt (bấm nhầm...) - trả về Rương Ích Kỷ (+ KNB nếu có), món đã thắng giữ nguyên. 1 lần/lượt.
+    function hoan(k, who) {
+        const db = d.db(), x = (db._gnLog || []).find((y) => y.t + '_' + y.uid === String(k || ''));
+        if (!x) return { error: 'Không thấy lượt này trong nhật ký' };
+        if (x.hoan) return { error: 'Lượt này đã hoàn lúc ' + new Date(x.hoan.t).toLocaleString('vi-VN') };
+        const u = d.getUserData(x.uid);
+        if (!u) return { error: 'Không thấy ví người chơi' };
+        for (const [id, n] of x.vao || []) d.ichKy.add(u, id, n);
+        if (x.knb) d.updatePoints(x.uid, x.knb);
+        x.hoan = { t: Date.now(), ai: who || 'admin' };
+        const g = u.gn && Array.isArray(u.gn.lich) ? u.gn.lich.find((y) => y.t === x.t) : null; if (g) g.hoan = x.hoan.t;
+        d.saveDbNow();
+        const ds = (x.vao || []).map(([id, n]) => ten(id) + ' x' + n).join(', ') + (x.knb ? ' + ' + x.knb + ' KNB' : '');
+        d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} HOÀN cho ${x.ten || x.uid} lượt ${new Date(x.t).toLocaleString('vi-VN')}: ${ds} -> Rương Ích Kỷ`);
+        return { ok: true, message: '↩ Đã hoàn ' + ds + ' vào Rương Ích Kỷ của ' + (x.ten || x.uid), ...adminState() };
+    }
     function tim(q) {
         q = String(q || '').trim(); if (!q) return [];
         const kd = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase();
@@ -272,5 +289,5 @@ module.exports = function ghepNgoc(d) {
         for (const it of d.items()) { const id = String(it.id); if (id === q || kd(String(it.n)).includes(qk)) { out.push({ id, ten: gon(it.n), ic: d.icon(id), shop: shopGia(id) }); if (out.length >= 60) break; } }
         return out;
     }
-    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, MAC_DINH };
+    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, hoan, MAC_DINH };
 };

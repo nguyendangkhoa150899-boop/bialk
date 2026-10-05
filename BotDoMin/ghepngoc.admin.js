@@ -1,7 +1,7 @@
 // 💎 05/10: admin Ghép Ngọc (phục vụ ở /gn-admin.js, cổng SUPER). Dùng hàm chung của panel: api, toast, esc, vqaIc.
 // Vẽ vào #gnaApp. Gọi gnaLoad() khi mở.
 (function () {
-  var A = null, TIM = [], LOC = '';
+  var A = null, TIM = [], LOC = '', LLOC = '';
   function el(id) { return document.getElementById(id); }
   function ic(x) { return typeof vqaIc === 'function' ? vqaIc(x && x.ic) : ''; }
   function so(v) { return Math.floor(Number(v) || 0).toLocaleString('vi-VN'); }
@@ -35,9 +35,30 @@
     h += '<div class="row" style="gap:8px;margin-top:12px"><button class="btn-green" onclick="gnaSave()">💾 Lưu Ghép Ngọc</button><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại</button></div>';
     h += '<h4 style="margin:16px 0 6px">💰 Bảng giá đang tính (' + A.bangGia.length + ' món bỏ vào được) · ' + A.dich.length + ' món đích</h4>'
       + '<input placeholder="Lọc bảng giá..." value="' + esc(LOC) + '" oninput="gnaLoc(this.value)" style="width:240px"><div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Món</th><th>Giá shop web</th><th>Giá bỏ vào</th><th>Nguồn giá</th></tr></thead><tbody id="gnaBG">' + bangGia() + '</tbody></table></div>';
-    h += '<h4 style="margin:16px 0 6px">📜 Lượt luyện gần đây</h4><div style="max-height:260px;overflow:auto;font-size:12px">' + (A.log.length ? A.log.map(function (x) { return '<div>' + new Date(x.t).toLocaleString('vi-VN') + ' · <b>' + esc(x.ten) + '</b> ' + (x.thang ? '<b style="color:#3ddc84">THẮNG</b>' : '<span style="color:#ff7b7b">thua</span>') + ' ' + esc(x.tenDich) + ' · ' + x.tiLe + '% (tung ' + x.roll + ') · bỏ ' + so(x.tong) + '</div>'; }).join('') : '<span class="muted">Chưa có lượt nào.</span>') + '</div>';
+    h += '<h4 style="margin:16px 0 6px">📜 Nhật ký luyện (' + A.log.length + ' lượt gần nhất)</h4><input placeholder="Lọc theo tên người chơi / món..." value="' + esc(LLOC) + '" oninput="gnaLLoc(this.value)" style="width:280px"><div id="gnaLog" style="max-height:520px;overflow:auto;margin-top:6px">' + nhatKy() + '</div>';
     box.innerHTML = h;
   }
+  // 📜 05/10: mỗi lượt = 1 dòng: giờ · người · [hình đồ bỏ vào ×SL] → [hình món đích ×SL] · tỉ lệ/tung · kết quả · nút Hoàn
+  function nhatKy() {
+    var l = LLOC.toLowerCase();
+    var ds = A.log.filter(function (x) { return !l || String(x.ten || '').toLowerCase().indexOf(l) >= 0 || String(x.tenDich || '').toLowerCase().indexOf(l) >= 0 || (x.vaoCt || []).some(function (v) { return v.ten.toLowerCase().indexOf(l) >= 0; }); });
+    if (!ds.length) return '<span class="muted">Chưa có lượt nào.</span>';
+    return ds.map(function (x) {
+      var vao = (x.vaoCt || []).map(function (v) { return '<span title="' + esc(v.ten) + '" style="display:inline-flex;align-items:center;gap:3px;margin:2px 6px 2px 0">' + ic(v) + '<span style="font-size:12px">' + esc(v.ten) + ' <b>×' + v.sl + '</b></span></span>'; }).join('') + (x.knb ? '<span style="font-size:12px;margin-right:6px">💰 ' + so(x.knb) + ' KNB</span>' : '');
+      var dich = '<span title="' + esc(x.tenDich) + '" style="display:inline-flex;align-items:center;gap:3px">' + ic({ ic: x.icDich }) + '<span style="font-size:12px">' + esc(x.tenDich) + ((x.sl || 1) > 1 ? ' <b>×' + x.sl + '</b>' : '') + '</span></span>';
+      var kq = x.thang ? '<b style="color:#3ddc84">🎉 THẮNG</b>' : '<b style="color:#ff7b7b">💥 thua</b>';
+      var nut = x.hoan ? '<span class="muted" style="font-size:12px">↩ đã hoàn ' + new Date(x.hoan.t).toLocaleString('vi-VN') + '</span>' : '<button class="btn-grey" style="padding:3px 8px;font-size:12px" onclick="gnaHoan(\'' + x.k + '\')">↩ Hoàn đồ</button>';
+      return '<div style="border-bottom:1px solid #2a2e3b;padding:6px 0;' + (x.hoan ? 'opacity:.55' : '') + '"><div style="font-size:12px;margin-bottom:3px"><span class="muted">' + new Date(x.t).toLocaleString('vi-VN') + '</span> · <b>' + esc(x.ten || x.uid) + '</b> · ' + kq + ' · ' + x.tiLe + '% (tung ' + x.roll + ') · bỏ ' + so(x.tong) + ' → giá trị đích ' + so(x.gia) + ' ' + nut + '</div>'
+        + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + vao + '<b style="margin:0 8px;font-size:16px">→</b>' + dich + '</div></div>';
+    }).join('');
+  }
+  window.gnaLLoc = function (s) { LLOC = s; var e = el('gnaLog'); if (e) e.innerHTML = nhatKy(); };
+  window.gnaHoan = function (k) {
+    var x = A.log.find(function (y) { return y.k === k; }); if (!x) return;
+    var ds = (x.vaoCt || []).map(function (v) { return v.ten + ' ×' + v.sl; }).join(', ') + (x.knb ? ' + ' + so(x.knb) + ' KNB' : '');
+    if (!confirm('Hoàn cho ' + (x.ten || x.uid) + ' (lượt ' + new Date(x.t).toLocaleString('vi-VN') + '):\n' + ds + '\n\nĐồ trả về Rương Ích Kỷ của họ. Món đã ' + (x.thang ? 'thắng (' + x.tenDich + ') vẫn giữ.' : 'thua thì thôi.') + ' Mỗi lượt chỉ hoàn 1 lần.')) return;
+    api('/api/gn/hoan', { k: k }).then(function (j) { A = j; ve(); toast(j.message || '↩ Đã hoàn'); }).catch(function (e) { toast('❌ ' + e.message); });
+  };
   function bangRieng(loai, o) {
     var ids = Object.keys(o || {}); if (!ids.length) return '<span class="muted" style="font-size:12px">(chưa có)</span>';
     var ten = function (id) { var x = (A.bangGia || []).concat(A.dich || []).find(function (y) { return y.id === id; }); return x ? x.ten : '#' + id; };
