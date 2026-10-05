@@ -31,7 +31,7 @@
       + '<label>Kênh <select id="gnaTbK" onchange="var i=document.getElementById(\'gnaTbKid\');if(this.value)i.value=this.value"><option value="">-- chọn kênh --</option>' + kenh.map(function (k) { return '<option value="' + k.id + '"' + (k.id === tb.kenh ? ' selected' : '') + '>' + esc(k.guild + ' › #' + k.ten) + '</option>'; }).join('') + '</select></label>'
       + '<label>ID kênh ' + inp('gnaTbKid', tb.kenh || '', 170) + '</label>'
       + chk('gnaTbW', tb.thang, '🎉 báo khi THẮNG (chúc mừng)') + chk('gnaTbL', tb.thua, '💥 báo khi THUA (châm biếm)') + chk('gnaTbTag', tb.tag, 'tag người chơi')
-      + '<label>chỉ báo món đích từ ' + inp('gnaTbMin', tb.minGia || 0, 90) + ' giá trị (0 = báo hết)</label><button class="btn-grey" onclick="gnaThuTb()">🧪 Gửi thử</button></div>';
+      + '<label>chỉ báo món đích từ ' + inp('gnaTbMin', tb.minGia || 0, 90) + ' giá trị (0 = báo hết)</label><label title="Kim trên web quay 7,6 giây - đăng sớm hơn là lộ kết quả trước người chơi">đăng sau ' + inp('gnaTbTre', tb.tre === undefined ? 8 : tb.tre, 50) + ' giây</label><button class="btn-grey" onclick="gnaThuTb()">🧪 Gửi thử</button></div>';
     h += '<div class="row" style="gap:8px;margin-top:12px"><button class="btn-green" onclick="gnaSave()">💾 Lưu Ghép Ngọc</button><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại</button></div>';
     h += '<h4 style="margin:16px 0 6px">💰 Bảng giá đang tính (' + A.bangGia.length + ' món bỏ vào được) · ' + A.dich.length + ' món đích</h4>'
       + '<input placeholder="Lọc bảng giá..." value="' + esc(LOC) + '" oninput="gnaLoc(this.value)" style="width:240px"><div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Món</th><th>Giá shop web</th><th>Giá bỏ vào</th><th>Nguồn giá</th></tr></thead><tbody id="gnaBG">' + bangGia() + '</tbody></table></div>';
@@ -83,7 +83,7 @@
     var o = { on: b('gnaOn'), phi: v('gnaPhi'), tiMin: v('gnaMin'), tiMax: v('gnaMax'), luotNgay: v('gnaLuot'), monMax: v('gnaMon'), knbOn: b('gnaKnb'), knbMax: v('gnaKnbMax'),
       vao: { cam: Object.fromEntries(Object.keys(A.nhomCam || {}).map(function (k) { return [k, b('gnaC_' + k)]; })), giaRuong: b('gnaRuong'), shop: { on: b('gnaRac'), pct: v('gnaRacPct') }, rieng: {} }, dich: { nhom: {}, rieng: {} } };
     Object.keys(A.nhomDich).forEach(function (k) { o.dich.nhom[k] = { on: b('gnaN_' + k), gia: v('gnaNG_' + k), sl: v('gnaNS_' + k), ids: v('gnaNI_' + k) }; });
-    o.thongBao = { on: b('gnaTbOn'), kenh: v('gnaTbKid').trim(), thang: b('gnaTbW'), thua: b('gnaTbL'), minGia: v('gnaTbMin'), tag: b('gnaTbTag') };
+    o.thongBao = { on: b('gnaTbOn'), kenh: v('gnaTbKid').trim(), thang: b('gnaTbW'), thua: b('gnaTbL'), minGia: v('gnaTbMin'), tag: b('gnaTbTag'), tre: v('gnaTbTre') };
     [].slice.call(document.querySelectorAll('#gnaApp input[data-loai]')).forEach(function (x) { o[x.getAttribute('data-loai')].rieng[x.getAttribute('data-id')] = x.value; });
     return o;
   }
