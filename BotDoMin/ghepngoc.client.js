@@ -166,7 +166,13 @@
       h += '<div class="gnLich">' + (L.length ? L.map(function (x) { return '<div>' + new Date(x.t).toLocaleString('vi-VN') + ' · <span class="' + (x.thang ? 'gnW">THẮNG' : 'gnL">thua') + '</span> ' + esc(tenDich(x.dich)) + ' · ' + x.tiLe + '% (tung ' + x.roll + ') · bỏ ' + vnd(x.tong) + '</div>'; }).join('') : '<div class="muted">Chưa luyện lần nào.</div>') + '</div>';
     }
     h += '</div>';
+    // 05/10: vẽ lại cả khung làm điện thoại nhảy về đầu -> giữ chỗ cuộn của trang + danh sách món + ô lịch sử
+    var sx = window.scrollX, sy = window.scrollY, cu = el.querySelector('.gnGrid, .gnLich'), st = cu ? cu.scrollTop : 0, tabCu = GN.chon || 'ruong';
+    el.style.minHeight = el.offsetHeight + 'px';   // giữ chiều cao lúc thay nội dung -> trang không co lại rồi bật lên
     el.innerHTML = h;
+    var moi = el.querySelector('.gnGrid, .gnLich'); if (moi && tabCu === GN.daTab) moi.scrollTop = st;
+    GN.daTab = tabCu; el.style.minHeight = '';
+    if (window.scrollY !== sy) window.scrollTo(sx, sy);
     ganKeo();
   }
   function chuanHoa() { var s = S(); Object.keys(GN.vao).forEach(function (id) { var r = (s.ruong || []).find(function (x) { return x.id === id; }); if (!r) delete GN.vao[id]; else GN.vao[id] = Math.max(1, Math.min(r.qty, GN.vao[id])); }); if (GN.dich && !dichObj()) GN.dich = ''; }
