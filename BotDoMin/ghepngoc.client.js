@@ -17,6 +17,12 @@
     '.gnBox h4{margin:0 0 8px;font-size:14px;color:var(--muted);letter-spacing:.5px}',
     '.gnSum{margin-top:auto;padding-top:8px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;font-weight:800}',
     '.gnRow{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #ffffff0d}',
+    // 💰 05/10: khung KNB web nổi bật
+    '.gnKnb{margin:2px 0 8px;padding:9px 10px;border:1px solid #c9a227;border-radius:10px;background:linear-gradient(180deg,#3a2e0e,#241c08)}',
+    '.gnKnbT{font-weight:900;font-size:15px;color:#ffe08a}.gnKnbT small{display:block;font-weight:600;font-size:12px;color:#d8c68a;margin-top:2px}.gnKnbT small b{color:#fff}',
+    '.gnKnbR{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}',
+    '#gnApp .gnKnbR input{flex:1 1 90px;min-width:80px;padding:7px 8px;font-size:16px;font-weight:900;text-align:right;background:#0f1218;border:1px solid #c9a227;color:#ffe08a;border-radius:8px}',
+    '#gnApp .gnKnbR button{padding:6px 10px;font-size:13px;font-weight:800;border-radius:8px;background:#4a3a10;color:#fff3c4;border:1px solid #c9a227}',
     '.gnRow .n{flex:1;min-width:0;font-size:13px;line-height:1.25}.gnRow .n small{color:var(--muted)}',
     '#gnApp .gnRow input{width:58px;padding:3px 4px;text-align:center}',
     '#gnApp .gnRow button{padding:3px 8px;font-size:12px}',
@@ -129,6 +135,14 @@
     h += '<div class="gnTop">';
     // ---- bỏ vào
     h += '<div class="gnBox"><h4>🧰 BỎ VÀO (' + soMon() + '/' + s.monMax + ' món)</h4>';
+    // 💰 05/10 (chủ server): KNB web thành khung riêng nổi bật ở đầu ô Bỏ vào, có nút bấm nhanh
+    if (s.knbOn) {
+      var kMax = Math.max(0, Math.min(s.knbMax, s.balance || 0));
+      h += '<div class="gnKnb"><div class="gnKnbT">💰 Thêm KNB web <small>tối đa ' + vnd(s.knbMax) + ' / lần · ví <b>' + vnd(s.balance) + '</b></small></div>'
+        + '<div class="gnKnbR"><input type="number" min="0" max="' + kMax + '" value="' + (GN.knb || 0) + '" onchange="gnKnb(this.value)">'
+        + '<button onclick="gnKnb(' + ((GN.knb || 0) + 1000) + ')">+1.000</button><button onclick="gnKnb(' + ((GN.knb || 0) + 5000) + ')">+5.000</button>'
+        + '<button onclick="gnKnb(' + kMax + ')">Tối đa</button><button onclick="gnKnb(0)">✕</button></div></div>';
+    }
     var ids = Object.keys(GN.vao);
     var kq = GN.kq && GN.kq.vao ? GN.kq : null;   // 05/10: kết quả lượt vừa luyện (giữ tới khi người chơi đổi)
     if (kq && !ids.length && !GN.knb) {
@@ -140,7 +154,6 @@
       h += '<div class="gnRow">' + ic(r, 'vqIcS') + '<div class="n">' + esc(r.ten) + '<br><small>' + vnd(r.gia) + ' / cái · có ' + r.qty + '</small></div>'
         + '<input type="number" min="1" max="' + r.qty + '" value="' + GN.vao[id] + '" onchange="gnSl(\'' + id + '\',this.value)"><button onclick="gnBo(\'' + id + '\')">✕</button></div>';
     });
-    if (s.knbOn) h += '<div class="gnRow"><div class="n">💰 Thêm KNB web<br><small>tối đa ' + vnd(s.knbMax) + ' · ví ' + vnd(s.balance) + '</small></div><input style="width:90px" type="number" min="0" value="' + (GN.knb || 0) + '" onchange="gnKnb(this.value)"></div>';
     h += '<div class="gnSum"><span>Tổng giá trị</span><span>' + vnd(kq && !ids.length && !GN.knb ? kq.tong : tong()) + '</span></div>';
     if (ids.length) h += '<button style="margin-top:6px" onclick="gnXoaHet()">🗑 Bỏ hết ra</button>';
     h += '</div>';
@@ -200,7 +213,7 @@
   window.gnSl = function (id, v) { v = Math.floor(Number(v) || 0); if (v <= 0) delete GN.vao[id]; else GN.vao[id] = v; chuanHoa(); while (GN.vao[id] > 1 && thua()) GN.vao[id]--; if (GN.vao[id] === 1 && thua()) delete GN.vao[id]; GN.kq = null; ve(); };
   window.gnBo = function (id) { delete GN.vao[id]; GN.kq = null; ve(); };
   window.gnXoaHet = function () { GN.vao = {}; GN.kq = null; ve(); };
-  window.gnKnb = function (v) { GN.knb = Math.max(0, Math.min(S().knbMax, Math.floor(Number(v) || 0))); GN.kq = null; ve(); };
+  window.gnKnb = function (v) { GN.knb = Math.max(0, Math.min(S().knbMax, S().balance || 0, Math.floor(Number(v) || 0))); GN.kq = null; ve(); };   // 05/10: kẹp cả theo số dư ví
   window.gnDich = function (id) { GN.dich = id; GN.kq = null; ve(); };
   window.gnNhan = function (m) {
     var t = tong(); if (!t) return toast('⚠️ Bỏ đồ vào trước rồi chọn mức nhân');
