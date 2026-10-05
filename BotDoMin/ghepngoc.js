@@ -9,7 +9,7 @@
 //   không có giá nào -> không bỏ vào được.
 // MÓN ĐÍCH (05/10 chủ server chốt): CHỈ ngọc 7 thuộc tính, KHÔNG ngọc kép 7-x (Minh Tinh Thạch công + giảm kháng)
 //   - Thuộc tính (Tinh Thạch thuần tịnh: công băng/hỏa/huyền/độc 230), Kháng thuộc tính (ngọc kháng thuần tịnh 90),
-//     Thể lực / né (Hồng Bảo Thạch, Tổ Mẫu Lục): đều 110.000 = 5 ngọc 6 (giá shop 20.000, game 5 viên 6 lên 1 viên 7) + 10.000
+//     Thể lực / né (Hồng Bảo Thạch, Tổ Mẫu Lục), Chính xác (Tử Ngọc): đều 110.000 = 5 ngọc 6 (giá shop 20.000, game 5 viên 6 lên 1 viên 7) + 10.000
 //   - Phiếu KNB 1.000 - 50.000 = mệnh giá. Nhóm nào có món gì, bật/tắt, giá - admin sửa.
 // MỌI con số ở dbCache._gnCfg, admin sửa ở panel (cổng SUPER). MAC_DINH chỉ dùng khi chưa từng lưu.
 // Người chơi: userData.gn = { day, luot, lich: [...] }. Nhật ký chung: dbCache._gnLog.
@@ -25,12 +25,13 @@ const MAC_DINH = {
             thuocTinh: { on: true, gia: 110000, ids: ['50702005', '50702006', '50702007', '50702008'] },
             khang: { on: true, gia: 110000, ids: ['50712005', '50712006', '50712007', '50712008'] },
             theLucNe: { on: true, gia: 110000, ids: ['50713004', '50714001'] },
+            chinhXac: { on: true, gia: 110000, ids: ['50703001'] },
         },
         rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 },
     },
 };
 // Tên nhóm món đích (danh sách ID + giá + bật/tắt nằm trong cấu hình, admin sửa)
-const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7' };
+const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7', chinhXac: '🎯 Ngọc chính xác 7 (Tử Ngọc)' };
 const idDs = (a) => (Array.isArray(a) ? a : String(a || '').split(/[\s,;]+/)).map((x) => String(x).trim()).filter((x) => /^\d{5,9}$/.test(x));
 
 module.exports = function ghepNgoc(d) {
