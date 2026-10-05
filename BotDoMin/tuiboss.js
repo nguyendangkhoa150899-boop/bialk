@@ -245,7 +245,8 @@ function save(db, inp, coItem, who) {
         if (!ids.length || ids.length > 50) return { error: 'Dòng ' + (i + 1) + ': cần 1 - 50 ID vật phẩm' };
         const sai = ids.filter((x) => !coItem(x));
         if (sai.length) return { error: 'Dòng ' + (i + 1) + ': ID không có trong game: ' + sai.join(', ') };
-        if (!(min >= 1 && max >= min && max <= 999)) return { error: 'Dòng ' + (i + 1) + ': số lượng phải 1 - 999, "từ" ≤ "đến"' };
+        // 05/10: 'từ' được = 0 -> tung ra 0 thì dòng đó không rớt (vd 0-2 = 33% không rớt). 'đến' >= 1 (0-0 là dòng vô nghĩa)
+        if (!(min >= 0 && max >= 1 && max >= min && max <= 999)) return { error: 'Dòng ' + (i + 1) + ': số lượng "từ" 0 - 999, "đến" 1 - 999, "từ" ≤ "đến"' };
         mon.push([ids.length === 1 ? ids[0] : ids, min === max ? min : [min, max]]);
     }
     const truoc = tom(cfgOf(db, hd));

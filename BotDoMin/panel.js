@@ -5316,7 +5316,7 @@ function tbEdDraw(){
   e.mon.forEach((r,i)=>{
     x+='<tr onclick="tbRow('+i+')" style="'+(i===TB.row?'outline:2px solid #ffcf5c;':'')+'">'
       +'<td style="width:60%"><input style="width:100%;margin:0;box-sizing:border-box" value="'+r.ids.join(', ')+'" oninput="tbSet('+i+',\\'ids\\',this.value)"><div id="tbN'+i+'" style="font-size:12px;margin-top:3px">'+tbNames(r)+'</div></td>'
-      +'<td><input class="mini-in" style="width:70px" type="number" min="1" max="999" value="'+r.min+'" oninput="tbSet('+i+',\\'min\\',this.value)"></td>'
+      +'<td><input class="mini-in" style="width:70px" type="number" min="0" max="999" title="0 = có lúc không rớt (vd 0-2: 1/3 không rớt)" value="'+r.min+'" oninput="tbSet('+i+',\\'min\\',this.value)"></td>'
       +'<td><input class="mini-in" style="width:70px" type="number" min="1" max="999" value="'+r.max+'" oninput="tbSet('+i+',\\'max\\',this.value)"></td>'
       +'<td><button class="btn-red" onclick="event.stopPropagation();tbDel('+i+')">🗑</button></td></tr>';
   });
