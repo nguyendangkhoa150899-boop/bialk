@@ -3,16 +3,23 @@
 (function () {
   var GN = { s: null, vao: {}, dich: '', knb: 0, busy: false, chon: '', loc: '' };
   var css = [
-    '#gnApp{--gnA:#8b5cf6;--gnB:#f5c542}',
-    '.gnTop{display:grid;grid-template-columns:1fr 260px 1fr;gap:14px;align-items:stretch}',
-    '@media (max-width:760px){.gnTop{grid-template-columns:1fr}}',
+    '#gnApp{--gnA:#8b5cf6;--gnB:#f5c542;container-type:inline-size}',
+    '@media(min-width:900px){body.gnWide{max-width:1180px}}',
+    // nut + o nhap RIENG (trang choi co button{color:#fff;padding:12px} + input{width:100%} chung -> de len)
+    '#gnApp button{background:#232838;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:700;line-height:1.2;cursor:pointer}',
+    '#gnApp button:hover{border-color:var(--gnB)}#gnApp button:disabled{opacity:.45;cursor:not-allowed}',
+    '#gnApp input{width:auto;margin:0;padding:6px 8px;font-size:14px;border-radius:8px;background:#10131b;color:var(--tx);border:1px solid var(--line)}',
+    '.gnTop{display:grid;grid-template-columns:minmax(0,1fr) 280px minmax(0,1fr);gap:14px;align-items:stretch}',
+    '.gnRingBox{align-items:center}',
+    '@container (max-width:780px){.gnTop{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.gnRingBox{grid-column:1 / -1;order:-1}}',
+    '@container (max-width:430px){.gnTop{grid-template-columns:minmax(0,1fr)}}',
     '.gnBox{background:#151826;border:1px solid var(--line);border-radius:14px;padding:12px;min-height:220px;display:flex;flex-direction:column}',
     '.gnBox h4{margin:0 0 8px;font-size:14px;color:var(--muted);letter-spacing:.5px}',
     '.gnSum{margin-top:auto;padding-top:8px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;font-weight:800}',
     '.gnRow{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #ffffff0d}',
     '.gnRow .n{flex:1;min-width:0;font-size:13px;line-height:1.25}.gnRow .n small{color:var(--muted)}',
-    '.gnRow input{width:58px;padding:3px 4px;text-align:center}',
-    '.gnRow button{padding:2px 8px;font-size:12px}',
+    '#gnApp .gnRow input{width:58px;padding:3px 4px;text-align:center}',
+    '#gnApp .gnRow button{padding:3px 8px;font-size:12px}',
     '.gnTgt{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:6px;text-align:center}',
     '.gnTgt .big{width:72px;height:72px}',
     '.gnRing{position:relative;display:flex;align-items:center;justify-content:center}',
@@ -23,16 +30,17 @@
     '.gnRisk{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}',
     '.gnRing.thang svg circle.arc{stroke:#3ddc84;filter:drop-shadow(0 0 8px #3ddc84)}',
     '.gnRing.thua svg circle.arc{stroke:#ff5d5d}',
-    '.gnGo{margin-top:12px;width:100%;padding:12px;font-size:16px;font-weight:900;background:linear-gradient(180deg,#8b5cf6,#6d3fe0);border:0;color:#fff;border-radius:12px}',
+    '#gnApp .gnGo{margin-top:12px;width:100%;max-width:300px;padding:12px;font-size:16px;font-weight:900;background:linear-gradient(180deg,#8b5cf6,#6d3fe0);border:0;color:#fff;border-radius:12px}',
     '.gnGo:disabled{opacity:.45}',
     '.gnPick{margin-top:14px}',
     '.gnTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}',
-    '.gnTabs button.on{border-color:var(--gold);color:var(--tx)}',
+    '#gnApp .gnTabs button{padding:8px 12px}#gnApp .gnTabs button.on{border-color:var(--gold);background:#2b2f40}',
+    '#gnApp .gnTabs input{flex:1;min-width:140px}',
     '.gnGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:360px;overflow:auto}',
     '.gnCard{background:#1a1f2d;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;gap:8px;align-items:center;cursor:pointer;font-size:12px}',
     '.gnCard:hover{border-color:var(--gnA)}.gnCard.on{border-color:var(--gnB);box-shadow:0 0 0 1px var(--gnB)}',
     '.gnCard.het{opacity:.4;cursor:not-allowed}.gnCard b{display:block;font-size:12px}.gnCard small{color:var(--muted)}',
-    '.gnMul{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:center}.gnMul button{padding:3px 9px;font-size:12px}',
+    '.gnMul{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:center}#gnApp .gnMul button{padding:4px 10px;font-size:12px}',
     '.gnLich div{font-size:12px;padding:3px 0;border-bottom:1px solid #ffffff0d}',
     '.gnW{color:#3ddc84;font-weight:800}.gnL{color:#ff5d5d;font-weight:800}',
   ].join('');
@@ -125,7 +133,7 @@
     if (ids.length) h += '<button style="margin-top:6px" onclick="gnXoaHet()">🗑 Bỏ hết ra</button>';
     h += '</div>';
     // ---- vòng
-    h += '<div class="gnBox" style="align-items:center"><div class="gnRing' + (GN.kq ? (GN.kq.thang ? ' thang' : ' thua') : '') + '" id="gnRing">' + ringSvg(p)
+    h += '<div class="gnBox gnRingBox"><div class="gnRing' + (GN.kq ? (GN.kq.thang ? ' thang' : ' thua') : '') + '" id="gnRing">' + ringSvg(p)
       + '<div class="gnMid"><div class="gnPct">' + (Math.round(p * 1000) / 1000) + '%</div><div class="gnRisk">' + (GN.kq ? (GN.kq.thang ? '🎉 THÀNH CÔNG' : '💥 THẤT BẠI') + ' · tung ' + GN.kq.roll : 'cơ hội · ' + risk(p)) + '</div></div></div>'
       + '<div class="muted" style="font-size:12px;text-align:center">Phí ' + s.phi + '% · tỉ lệ ' + s.tiMin + '–' + s.tiMax + '%' + (s.luotNgay ? ' · hôm nay ' + s.luotHomNay + '/' + s.luotNgay : '') + '</div>'
       + '<button class="gnGo" ' + (ok === 'ok' && !GN.busy ? '' : 'disabled') + ' onclick="gnQuay()">💎 LUYỆN</button>'

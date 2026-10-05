@@ -4164,7 +4164,7 @@ const PAGE = [
     '$("pagePick").classList.toggle("hidden",p!=="pick");',
     '$("pageShop").classList.toggle("hidden",p!=="shop");',
     '$("pageVq").classList.toggle("hidden",p!=="vq");',
-    '$("pageGn").classList.toggle("hidden",p!=="gn");',
+    '$("pageGn").classList.toggle("hidden",p!=="gn");document.body.classList.toggle("gnWide",p==="gn");',
     '$("pageDog").classList.toggle("hidden",p!=="dog");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("pageDebt").classList.toggle("hidden",p!=="debt");',
