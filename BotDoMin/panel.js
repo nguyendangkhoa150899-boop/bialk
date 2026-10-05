@@ -221,6 +221,11 @@ function startPanel(ctx) {
             const url = new URL(req.url, 'http://localhost');
             const path = url.pathname;
             if (req.method === 'GET' && path.startsWith('/itemicon/')) return ITEMICON.serve(req, res, path.slice(10));   // 🍀 02/10
+            if (req.method === 'GET' && path === '/gn-admin.js') {   // 💎 05/10 script admin Ghép Ngọc (API vẫn chỉ SUPER)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'ghepngoc.admin.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
 
             // Trang chủ. Nhúng thẳng trạng thái auth vào HTML thay vì để client tự dò
             // - client dò bằng fetch dễ hỏng khi trình duyệt còn cache bản JS cũ.
@@ -449,6 +454,19 @@ function startPanel(ctx) {
                 // 🖼️ 02/10: hình + tên game theo ID (chỉ đọc, cả 2 cổng) cho bảng Shop Item / Quà admin tặng
                 if (ctx.itemIconTra && path === '/api/itemicon/tra') {
                     return sendJSON(res, 200, { ok: true, items: ctx.itemIconTra((body || {}).ids) });
+                }
+                // 💎 05/10: Ghép Ngọc - cấu hình (CHỈ cổng SUPER, cả xem)
+                if (ctx.ghepNgoc && path.startsWith('/api/gn/')) {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Ghép Ngọc chỉ chỉnh ở cổng SUPER' });
+                    const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                    const b = body || {};
+                    let r;
+                    if (path === '/api/gn/cfg') r = ctx.ghepNgoc.state();
+                    else if (path === '/api/gn/save') r = ctx.ghepNgoc.save(b, who);
+                    else if (path === '/api/gn/tim') r = { items: ctx.ghepNgoc.tim(b.q) };
+                    else return sendJSON(res, 404, { ok: false, error: 'Không có API này' });
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 // 🍀 02/10: Vòng quay may mắn - cấu hình (chỉ cổng SUPER)
                 // 02/10: mod (cổng thường) sửa được cấu hình + bộ quà; CẤP LƯỢT QUAY chỉ SUPER (như cấp tiền)
@@ -2374,6 +2392,11 @@ const HTML = `<!DOCTYPE html>
             <tbody id="giftBody"></tbody>
           </table>
         </div>
+      </div>
+      <div class="card epOnly" id="gnaCard" style="display:none">
+        <h2>💎 Ghép Ngọc <span class="muted" style="font-size:13px;font-weight:400">(web người chơi → 🎮 Mini game → 💎 Ghép Ngọc · chỉ cổng SUPER)</span></h2>
+        <div class="row" style="gap:8px"><button class="btn-grey" onclick="gnaLoad()">🔄 Tải cấu hình Ghép Ngọc</button></div>
+        <div id="gnaApp" class="muted" style="margin-top:8px">Bấm 🔄 Tải để xem / sửa.</div>
       </div>
       <div class="card" id="vqCard">
         <h2>🍀 Vòng quay may mắn <span class="muted" style="font-size:13px;font-weight:400">(web người chơi → nhóm 🪪 Cá nhân → 🍀 Vòng Quay)</span></h2>
@@ -5799,6 +5822,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
+<script src="/gn-admin.js"></script>
 </body>
 </html>`;
 

@@ -33,7 +33,8 @@ const MAC_DINH = {
             chinhXac: { on: true, gia: 120000, sl: 1, ids: ['50703001'] },
             trungLau: { on: true, gia: 50000, sl: 10, ids: ['20310185', '20310186', '20310187', '20310188'] },
         },
-        rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 },
+        // phiếu KNB làm món đích: CHƯA BẬT mặc định (rác túi boss -> KNB game ~81%) - chờ chủ server chốt, admin tự thêm
+        rieng: {},
     },
 };
 // Tên nhóm món đích (danh sách ID + giá + bật/tắt nằm trong cấu hình, admin sửa)

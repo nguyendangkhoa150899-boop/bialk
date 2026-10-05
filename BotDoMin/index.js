@@ -1981,6 +1981,14 @@ const ITEMICON = require('./itemicon');
 const VQ = require('./vongquay')({
     db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, tlbb, icon: ITEMICON.icon,
 });
+// 💎 05/10: GHÉP NGỌC (ghepngoc.js) - bỏ đồ trong 🧰 Rương Ích Kỷ luyện ra ngọc 7 / Trùng Lâu..., thắng vào lại rương.
+// Mọi số liệu ở dbCache._gnCfg (panel SUPER, tab 🎁 Quà tặng). Mặc định TẮT.
+const GN = require('./ghepngoc')({
+    db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
+    items: () => gameItems(), shop: () => itemShopList(), giaRuong: (id) => ichKyBanGiaTho(id),
+    ichKy: { of: (u) => ichKyOf(u), add: (u, id, n) => ichKyAdd(u, id, n), take: (u, id, n) => ichKyTake(u, id, n) },
+    dayStr: () => vnDayStr(Date.now()),
+});
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
 // chối - người chơi sửa client cũng không lách được. Lưu ở dbCache._featOff (chỉ lưu mục ĐANG TẮT,
@@ -2527,6 +2535,16 @@ function ichKyBanGia(id) {
     const c = ichKyBanCfg();
     if (!c.on) return 0;
     // 05/10: giá RIÊNG đặt cho món nào thì món đó bán được, kể cả ngoài 2 nhóm (vd 20109101, 20310111); 0 = cấm bán
+    let gia;
+    if (c.rieng[id] !== undefined) gia = c.rieng[id];
+    else { const k = ichKyBanNhomCua(id); if (!k || !c.nhom[k].on) return 0; gia = c.nhom[k].gia; }
+    const sp = itemShopList().find(x => x.id === id && !x.off && x.price > 0);
+    if (sp) gia = Math.min(gia, Math.floor(sp.price * ICHKY_BAN_TRAN_SHOP));
+    return Math.max(0, gia);
+}
+// 💎 05/10: giá bán rương KHÔNG xét công tắc bán (cho Ghép Ngọc tính giá trị đồ bỏ vào, nếu admin bật nguồn này)
+function ichKyBanGiaTho(id) {
+    const c = ichKyBanCfg();
     let gia;
     if (c.rieng[id] !== undefined) gia = c.rieng[id];
     else { const k = ichKyBanNhomCua(id); if (!k || !c.nhom[k].on) return 0; gia = c.nhom[k].gia; }
@@ -7713,6 +7731,7 @@ client.once('ready', async (c) => {
             },
             // 🍀 02/10: vòng quay may mắn (mở/làm mới bằng KNB, quay bằng lượt từ túi boss, quà vào rương web)
             vongQuay: { state: (uid) => VQ.webState(uid), mo: (uid) => VQ.mo(uid), quay: (uid) => VQ.quay(uid), nhan: (uid, k) => VQ.nhan(uid, k), xoa: (uid, k) => VQ.xoa(uid, k) },
+            ghepNgoc: { state: (uid) => GN.state(uid), quay: (uid, b, who) => GN.quay(uid, b, who) },   // 💎 05/10
             gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),
@@ -7888,6 +7907,7 @@ client.once('ready', async (c) => {
             petBoss: { state: () => PB.adminState(), save: (x) => PB.setCfg(x), reset: (uid) => PB.resetPick(uid), refresh: () => PB.refresh() },   // 🐾 01/10
             // 🎒 01/10: cấu hình Túi đồ boss (admin + mod sửa được; ID boss cuối cố định theo game)
             // 🍀 02/10: cấu hình vòng quay (tab 🎁 Quà tặng, chỉ SUPER)
+            ghepNgoc: { state: () => GN.adminState(), save: (x, who) => GN.saveCfg(x, who), tim: (q) => GN.tim(q) },   // 💎 05/10 (chỉ SUPER)
             vongQuay: { state: () => VQ.adminState(), save: (x, who) => VQ.saveCfg(x, who), macDinh: (who) => VQ.macDinh(who),
                 cap: (uid, n, who) => VQ.capLuot(uid, n, who), tim: (q) => VQ.tim(q) },
             itemIconTra: (ids) => VQ.tra(ids),   // 🖼️ 02/10: hình game theo ID cho bảng Shop Item + Quà admin tặng
