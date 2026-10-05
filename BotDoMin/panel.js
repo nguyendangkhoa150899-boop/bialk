@@ -1625,7 +1625,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
+        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
         <button data-tab="give" class="epOnly pwOff" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
@@ -2393,11 +2393,6 @@ const HTML = `<!DOCTYPE html>
           </table>
         </div>
       </div>
-      <div class="card epOnly" id="gnaCard" style="display:none">
-        <h2>💎 Ghép Ngọc <span class="muted" style="font-size:13px;font-weight:400">(web người chơi → 🎮 Mini game → 💎 Ghép Ngọc · chỉ cổng SUPER)</span></h2>
-        <div class="row" style="gap:8px"><button class="btn-grey" onclick="gnaLoad()">🔄 Tải cấu hình Ghép Ngọc</button></div>
-        <div id="gnaApp" class="muted" style="margin-top:8px">Bấm 🔄 Tải để xem / sửa.</div>
-      </div>
       <div class="card" id="vqCard">
         <h2>🍀 Vòng quay may mắn <span class="muted" style="font-size:13px;font-weight:400">(web người chơi → nhóm 🪪 Cá nhân → 🍀 Vòng Quay)</span></h2>
         <div class="note">Giống vòng quay trong game: người chơi trả <b>KNB</b> để <b>mở / làm mới</b> vòng (server bốc 24 món từ bộ quà dưới đây theo trọng số, không còn VIP - ai cũng quay được mọi món). Mỗi vòng quay tối đa <b>số lần quay / vòng</b> (mặc định 40), đủ thì người chơi phải Làm mới. Mỗi lần <b>rút thăm</b> tốn <b>1 lượt quay</b> (có trong 🎒 Túi đồ boss, hoặc admin cấp ở dưới), server bốc 1 trong 24 ô theo trọng số. Quà vào <b>rương vòng quay</b> trên web, người chơi bấm Nhận để gửi vào game. Trọng số càng nhỏ càng hiếm.</div>
@@ -2424,6 +2419,13 @@ const HTML = `<!DOCTYPE html>
         <div id="vqaNguoi" style="margin-top:8px"></div>
         <h3 style="margin-top:14px">📜 Lượt quay gần đây</h3>
         <div id="vqaLog" class="muted" style="font-size:13px;max-height:260px;overflow:auto"></div>
+      </div>
+    </div>
+    <div id="tab-gn" class="hidden"><!-- 💎 05/10: Ghép Ngọc - tab riêng, chỉ cổng SUPER (API /api/gn/* cũng chặn cổng mod) -->
+      <div class="card">
+        <h2>💎 Ghép Ngọc <span class="muted" style="font-size:13px;font-weight:400">(web người chơi → 🎮 Mini game → 💎 Ghép Ngọc · chỉ cổng SUPER)</span></h2>
+        <div class="row" style="gap:8px"><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại</button></div>
+        <div id="gnaApp" class="muted" style="margin-top:8px">Đang tải...</div>
       </div>
     </div>
     <div id="tab-ikb" class="hidden"><!-- 🧰 05/10: tab riêng - để trong 📦 Kho đồ thì không thấy (nút đó dính pwOff = ẩn từ 29/09) -->
@@ -3127,8 +3129,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','vqx','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='vqx')vqxLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','gn','vqx','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
