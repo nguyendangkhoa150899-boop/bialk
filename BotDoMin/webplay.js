@@ -2240,6 +2240,7 @@ const PAGE = [
     '<button id="navWheel" onclick="go(\'wheel\')">🎡 Vòng Quay</button>',
     '<button id="navStock" onclick="go(\'stock\')">📈 Cổ phiếu</button>',
     '<button id="navSpm" onclick="go(\'spm\')">🚀 Phi Thuyền</button>',
+    '<button id="navVq" onclick="go(\'vq\')">🍀 Vòng May Mắn</button>',   // 05/10: chuyen tu nhom Ho so sang Mini game
     '<button id="navDebt" class="hidden" onclick="go(\'debt\')">📒 Nợ</button>',
     '<button id="navGift" class="hidden" onclick="go(\'gift\')">🎁 Quà</button>',
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
@@ -2247,7 +2248,6 @@ const PAGE = [
     '<button id="navPal" class="hidden" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" class="hidden" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
     '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
-    '<button id="navVq" onclick="go(\'vq\')">🍀 Vòng Quay</button>',
     '<button id="navDog" onclick="go(\'dog\')">💸 Chuyển/Rút</button>',
     '</div>',
 
@@ -4130,7 +4130,7 @@ const PAGE = [
     'else{el.textContent="--";el.style.color=""}},1000);',
     'setInterval(rlLoad,2000);',
 
-    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"profile",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"games",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
@@ -4183,8 +4183,8 @@ const PAGE = [
     // vào nhóm poker thì giấu luôn tầng 2 (không có trang con) - khung nhúng tự lo phần còn lại
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
-    '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
-    '["navDaily","navIk","navPal","navPick","navShop","navVq","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm","navVq"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
+    '["navDaily","navIk","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
     'if(p==="tienlen"){var tf=$("tlFrame");if(tf&&!/\\/tienlen\\/$/.test(tf.src))tf.src="/tienlen/"}',   // 🀄
