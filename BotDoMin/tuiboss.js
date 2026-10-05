@@ -50,6 +50,8 @@ const HD = {
     lltb: { ten: 'Lâu Lan Tầm Bảo', mon: [[TAM_DAC, 15], [TAN_HIET, 10], [VO_HON, 1]], knb: 0, ngay: 2 },
     // 02/10: "Cờ 12h" = Kỳ Cuộc (Trân Long Kỳ Cuộc, thường 11:30-14:30 / 20:30-22:00 + chế độ nhanh). Game cho 1 lượt/ngày (MD_LAST_QIJU_DAY).
     kycuoc: { ten: 'Kỳ Cuộc (Cờ 12h)', mon: [[TAM_DAC, 15], [TAN_HIET, 5], [VO_HON, 1]], knb: 0, ngay: 1 },
+    // 05/10: Túc Cầu (efuben_cuju 402040, boss cuối Tôn Mỹ Mỹ). Game cho 1 lượt / 24 giờ (MD_CUJU_PRE_TIME). Mặc định như phó bản khác, sửa ở Admin -> Túi boss.
+    tuccau: { ten: 'Túc Cầu', mon: [...CHUNG], knb: KNB, luot: LUOT, ngay: 1 },
     actac: { ten: 'Ác Tặc', mon: [[YQ45.concat(YQ80), 1], [CCHTP, [1, 2]], [CLD, [1, 3]], [HON_BANG, [1, 3]]], knb: 0, ngay: 3 },
     acba: { ten: 'Ác Bá', mon: [[YQ65.concat(YQ_TIEN), 1], [CCHTP, [1, 2]], [CLD, [1, 3]], [NHUAN_HON, [1, 3]]], knb: 0, ngay: 3 },
     // 04/10: Lang Huyên Phúc Địa (thường 002052 / khó 002047). Túi chỉ ghi khi đủ 4 boss chết (odali_lanlan/yahuan OnDie đếm ô 30).
@@ -72,6 +74,7 @@ gan('longquy', [11353]);
 gan('lltb', range(12138, 12146));
 // Kỳ Cuộc: boss cuối Viễn Cổ Kỳ Hồn - thường / tân thủ 3 / tân thủ 6, mỗi mức 20 bậc cấp (khớp vòng for trong roimap.lua)
 gan('kycuoc', [...range(1850, 1859), ...range(31850, 31859), ...range(12040, 12049), ...range(42040, 42049), ...range(12090, 12099), ...range(42090, 42099)]);
+gan('tuccau', [...range(3720, 3729), ...range(33720, 33729)]);   // 05/10: Tôn Mỹ Mỹ (khớp roimap.lua, OnDie efuben_cuju gọi TB_Ghi)
 gan('actac', range(3650, 3659));   // 04/10: boss cuoi pho ban Tac binh (truoc 473 = NPC bat tu, khong bao gio ghi)
 gan('acba', range(1910, 1919).concat(range(31910, 31919), range(3670, 3679), range(33670, 33679)));   // 04/10: + Ác Bá tấn công môn phái (eTouximenpai_NPC_*)   // 04/10: them 3191x cho cap 110+
 gan('langhuyen', [43970, 43971, 43973, 43975, 43982, 43983, 43985, 43986]);  // 04/10: boss chet thu 4 (thu tu nao cung duoc) -> 1 tui / luot
