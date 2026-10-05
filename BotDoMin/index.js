@@ -1988,6 +1988,9 @@ const GN = require('./ghepngoc')({
     items: () => gameItems(), shop: () => itemShopList(), giaRuong: (id) => ichKyBanGiaTho(id),
     ichKy: { of: (u) => ichKyOf(u), add: (u, id, n) => ichKyAdd(u, id, n), take: (u, id, n) => ichKyTake(u, id, n) },
     dayStr: () => vnDayStr(Date.now()),
+    // 📣 05/10 thông báo Discord: chỉ ping đúng người chơi được tag
+    guiKenh: async (kenh, noiDung, ping) => { const ch = await client.channels.fetch(kenh); if (!ch || typeof ch.send !== 'function') throw new Error('kênh không gửi được'); return ch.send({ content: noiDung, allowedMentions: { users: ping || [] } }); },
+    dsKenh: () => { const out = []; try { for (const g of client.guilds.cache.values()) for (const ch of g.channels.cache.values()) if (ch.type === 0) out.push({ id: ch.id, ten: ch.name, guild: g.name }); } catch (e) { } return out; },
 });
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
@@ -7907,7 +7910,7 @@ client.once('ready', async (c) => {
             petBoss: { state: () => PB.adminState(), save: (x) => PB.setCfg(x), reset: (uid) => PB.resetPick(uid), refresh: () => PB.refresh() },   // 🐾 01/10
             // 🎒 01/10: cấu hình Túi đồ boss (admin + mod sửa được; ID boss cuối cố định theo game)
             // 🍀 02/10: cấu hình vòng quay (tab 🎁 Quà tặng, chỉ SUPER)
-            ghepNgoc: { state: () => GN.adminState(), save: (x, who) => GN.saveCfg(x, who), tim: (q) => GN.tim(q) },   // 💎 05/10 (chỉ SUPER)
+            ghepNgoc: { state: () => GN.adminState(), save: (x, who) => GN.saveCfg(x, who), tim: (q) => GN.tim(q), thu: () => GN.guiThu() },   // 💎 05/10 (chỉ SUPER)
             vongQuay: { state: () => VQ.adminState(), save: (x, who) => VQ.saveCfg(x, who), macDinh: (who) => VQ.macDinh(who),
                 cap: (uid, n, who) => VQ.capLuot(uid, n, who), tim: (q) => VQ.tim(q) },
             itemIconTra: (ids) => VQ.tra(ids),   // 🖼️ 02/10: hình game theo ID cho bảng Shop Item + Quà admin tặng

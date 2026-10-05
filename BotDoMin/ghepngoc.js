@@ -23,6 +23,8 @@ const LICH_MAX = 30, LOG_MAX = 400;
 const MAC_DINH = {
     on: false, phi: 10, tiMin: 1, tiMax: 75, luotNgay: 30, monMax: 50,
     knbOn: false, knbMax: 100000,
+    // 📣 thông báo Discord mỗi lần luyện: thắng = chúc mừng, thua = châm biếm (câu bốc ngẫu nhiên)
+    thongBao: { on: false, kenh: '', thang: true, thua: true, minGia: 0, tag: true },
     // 05/10 chủ server: món KHÔNG có giá trên chợ (shop web) thì KHÔNG hiện ở mục bỏ vào -> tắt giá bán rương, không giá riêng mặc định
     vao: { cam: { yq: true }, giaRuong: false, shop: { on: true, pct: 90 }, rieng: {} },
     dich: {
@@ -41,6 +43,21 @@ const MAC_DINH = {
 const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7', chinhXac: '🎯 Ngọc chính xác 7 (Tử Ngọc)', trungLau: '🧩 Nguyên liệu Trùng Lâu (Chi Lệ/Mang/Thương/Dương)' };
 // Nhóm CẤM bỏ vào (chỉ là cách nhận món; bật/tắt ở vao.cam do admin)
 const NHOM_CAM = { yq: { ten: '📜 Yếu Quyết (chỉ bán ở Rương Ích Kỷ)', khop: (id, ten) => /^3030[78]\d{3}$/.test(id) && /Yếu Quyết/i.test(ten) } };
+// Câu thông báo ({ten} người chơi, {mon} món, {tl} tỉ lệ, {tung} số tung, {gt} giá trị đã bỏ)
+const CAU_THANG = [
+    '🎉 **{ten}** vừa luyện ra **{mon}** chỉ với **{tl}%**! Đại gia đây rồi, chúc mừng 👏👏',
+    '💎 Trời độ! **{ten}** ra **{mon}** ({tl}%, tung {tung}). Ai chưa luyện thì xin vía đi 🙏',
+    '🔥 **{ten}** đỏ quá trời: **{mon}** về rương ở mức {tl}%. Mai mua vé số chung nha 🎫',
+    '🏆 Chúc mừng **{ten}** luyện thành công **{mon}**! {tl}% mà vẫn ăn, nhân phẩm tràn đầy ✨',
+    '🍀 **{ten}** vừa bỏ {gt} đồ, nhận về **{mon}** ({tl}%). Lời to rồi bạn ơi 💰',
+];
+const CAU_THUA = [
+    '💥 **{ten}** vừa đốt **{gt}** đồ để mơ **{mon}** ({tl}%)... và tạch. Thắp nén nhang 🕯️',
+    '😂 **{ten}** ôm hy vọng {tl}% ra **{mon}**, kim chỉ {tung}. Rương nhẹ hẳn đi rồi kìa 🎒',
+    '🪦 RIP {gt} giá trị đồ của **{ten}**. **{mon}** {tl}% mà cũng không độ nổi 😭',
+    '🤡 **{ten}** tự tin {tl}% là chắc ăn... nhà cái xin cảm ơn đã ủng hộ **{gt}** 🙇',
+    '🫠 **{ten}** luyện **{mon}** thất bại ({tl}%). Không sao, nghèo thêm chút nữa là quen 😌',
+];
 const idDs = (a) => (Array.isArray(a) ? a : String(a || '').split(/[\s,;]+/)).map((x) => String(x).trim()).filter((x) => /^\d{5,9}$/.test(x));
 
 module.exports = function ghepNgoc(d) {
@@ -63,6 +80,7 @@ module.exports = function ghepNgoc(d) {
             nhom[k] = { on: g.on === undefined ? !!md.on : !!g.on, gia: Math.floor(so(g.gia, 0, 1e9, md.gia)), sl: Math.floor(so(g.sl, 1, 9999, md.sl || 1)), ids: idDs(g.ids === undefined ? md.ids : g.ids) };
         }
         const sh = v.shop || M.vao.shop;
+        const tb = Object.assign({}, M.thongBao, c.thongBao || {});
         const cam = {}; for (const k of Object.keys(NHOM_CAM)) cam[k] = v.cam && v.cam[k] !== undefined ? !!v.cam[k] : !!M.vao.cam[k];
         return {
             on: c.on === undefined ? M.on : !!c.on,
@@ -71,6 +89,7 @@ module.exports = function ghepNgoc(d) {
             knbOn: c.knbOn === undefined ? M.knbOn : !!c.knbOn, knbMax: Math.floor(so(c.knbMax, 0, 1e9, M.knbMax)),
             vao: { cam, giaRuong: v.giaRuong === undefined ? M.vao.giaRuong : !!v.giaRuong, shop: { on: sh.on === undefined ? true : !!sh.on, pct: so(sh.pct, 0, 100, M.vao.shop.pct) }, rieng: rieng(v.rieng, M.vao.rieng) },
             dich: { nhom, rieng: rieng(di.rieng, M.dich.rieng) },
+            thongBao: { on: !!tb.on, kenh: /^\d{15,20}$/.test(String(tb.kenh || '')) ? String(tb.kenh) : '', thang: !!tb.thang, thua: !!tb.thua, minGia: Math.floor(so(tb.minGia, 0, 1e9, 0)), tag: !!tb.tag },
             moi: !d.db()._gnCfg,
         };
     }
@@ -169,10 +188,34 @@ module.exports = function ghepNgoc(d) {
         if (db._gnLog.length > LOG_MAX) db._gnLog.splice(0, db._gnLog.length - LOG_MAX);
         if (knb && d.logDog) d.logDog('ghepngoc', uid, u.name || who || uid, -knb, `💎 Ghép ngọc: bỏ ${knb.toLocaleString('vi-VN')} KNB`);
         d.saveDbNow();
+        thongBao(c, uid, u, thang, dich, tiLe, roll, tong);
         d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} x${dich.sl} (${tiLe}%, tung ${roll}) - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
         return { ok: true, thang, tiLe, lech, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia, sl: dich.sl }, ...state(uid) };
     }
 
+    // 📣 gửi Discord (không await - gửi hỏng không ảnh hưởng lượt luyện)
+    const vnd = (n) => Math.floor(n).toLocaleString('vi-VN');
+    function cauTb(ds, o) { return ds[rnd(ds.length)].replace(/\{(\w+)\}/g, (_, k) => (o[k] !== undefined ? o[k] : '')); }
+    function thongBao(c, uid, u, thang, dich, tiLe, roll, tong) {
+        const tb = c.thongBao;
+        if (!tb.on || !tb.kenh || !d.guiKenh || dich.gia < tb.minGia || (thang ? !tb.thang : !tb.thua)) return;
+        const ten = (tb.tag && /^\d{15,20}$/.test(String(uid)) ? '<@' + uid + '> ' : '') + (u.ingameName || u.name || uid);
+        const mon = ten_(dich);
+        const msg = cauTb(thang ? CAU_THANG : CAU_THUA, { ten, mon, tl: tiLe, tung: roll, gt: vnd(tong) });
+        Promise.resolve(d.guiKenh(tb.kenh, msg, tb.tag ? [String(uid)] : [])).catch(() => {});
+    }
+    const ten_ = (dich) => dich.ten + (dich.sl > 1 ? ' ×' + dich.sl : '');
+    async function guiThu() {
+        const c = cfg(), tb = c.thongBao;
+        if (!tb.kenh) return { error: 'Chưa chọn kênh' };
+        if (!d.guiKenh) return { error: 'Bot chưa nối hàm gửi Discord' };
+        const vd = dsDich(c)[0] || { ten: 'Ngọc thử', sl: 1 };
+        try {
+            await d.guiKenh(tb.kenh, '🧪 [THỬ] ' + cauTb(CAU_THANG, { ten: 'Admin', mon: ten_(vd), tl: 42, tung: 12.345, gt: vnd(50000) }), []);
+            await d.guiKenh(tb.kenh, '🧪 [THỬ] ' + cauTb(CAU_THUA, { ten: 'Admin', mon: ten_(vd), tl: 42, tung: 88.8, gt: vnd(50000) }), []);
+        } catch (e) { return { error: 'Gửi lỗi: ' + e.message }; }
+        return { ok: true, message: '📣 Đã gửi 2 tin thử vào kênh' };
+    }
     // ===== ADMIN =====
     function canhBao(c) {
         const w = [];
@@ -195,7 +238,7 @@ module.exports = function ghepNgoc(d) {
     }
     function adminState() {
         const c = cfg(), db = d.db();
-        return { cfg: c, nhomDich: NHOM_DICH, nhomCam: Object.fromEntries(Object.entries(NHOM_CAM).map(([k, v]) => [k, v.ten])),
+        return { cfg: c, kenh: d.dsKenh ? d.dsKenh() : [], nhomDich: NHOM_DICH, nhomCam: Object.fromEntries(Object.entries(NHOM_CAM).map(([k, v]) => [k, v.ten])),
             dich: dsDich(c), bangGia: bangGia(c), canhBao: canhBao(c),
             log: (db._gnLog || []).slice(-100).reverse().map((x) => ({ ...x, tenDich: ten(x.dich) })) };
     }
@@ -210,6 +253,8 @@ module.exports = function ghepNgoc(d) {
                 knbOn: !!x.knbOn, knbMax: Math.floor(num(x.knbMax, 0, 1e9, 'KNB tối đa')),
                 vao: { cam: Object.fromEntries(Object.keys(NHOM_CAM).map((k) => [k, !!(x.vao && x.vao.cam && x.vao.cam[k])])), giaRuong: !!(x.vao && x.vao.giaRuong), shop: { on: !!(x.vao && x.vao.shop && x.vao.shop.on), pct: num(x.vao && x.vao.shop && x.vao.shop.pct, 0, 100, '% giá shop') }, rieng: ds(x.vao && x.vao.rieng, 'Giá bỏ vào') },
                 dich: { nhom: {}, rieng: ds(x.dich && x.dich.rieng, 'Món đích') },
+                thongBao: (() => { const t0 = x.thongBao || {}; const k = String(t0.kenh || '').trim(); if (k && !/^\d{15,20}$/.test(k)) throw new Error('ID kênh Discord phải là 15-20 chữ số');
+                    return { on: !!t0.on, kenh: k, thang: !!t0.thang, thua: !!t0.thua, minGia: Math.floor(num(t0.minGia || 0, 0, 1e9, 'Mức giá báo')), tag: !!t0.tag }; })(),
             };
             if (c.tiMin > c.tiMax) throw new Error('Tỉ lệ tối thiểu lớn hơn tối đa');
             for (const k of Object.keys(NHOM_DICH)) { const g = (x.dich && x.dich.nhom && x.dich.nhom[k]) || {}; c.dich.nhom[k] = { on: !!g.on, gia: Math.floor(num(g.gia || 0, 0, 1e9, 'Giá ' + NHOM_DICH[k])), sl: Math.floor(num(g.sl || 1, 1, 9999, 'Số lượng ' + NHOM_DICH[k])), ids: idDs(g.ids) }; }
@@ -227,5 +272,5 @@ module.exports = function ghepNgoc(d) {
         for (const it of d.items()) { const id = String(it.id); if (id === q || kd(String(it.n)).includes(qk)) { out.push({ id, ten: gon(it.n), ic: d.icon(id), shop: shopGia(id) }); if (out.length >= 60) break; } }
         return out;
     }
-    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, MAC_DINH };
+    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, MAC_DINH };
 };

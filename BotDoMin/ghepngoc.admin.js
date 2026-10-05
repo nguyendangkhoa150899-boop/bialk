@@ -26,6 +26,12 @@
     Object.keys(A.nhomDich).forEach(function (k) { var g = c.dich.nhom[k] || { on: false, gia: 0, ids: [] }; h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0">' + chk('gnaN_' + k, g.on, '<b>' + esc(A.nhomDich[k]) + '</b>') + ' giá trị ' + inp('gnaNG_' + k, g.gia, 90) + ' thắng nhận ' + inp('gnaNS_' + k, g.sl || 1, 50) + ' cái · ID: ' + inp('gnaNI_' + k, (g.ids || []).join(' '), 380) + '<span class="muted" style="font-size:12px">' + (g.ids || []).map(function (id) { var x = (A.dich || []).find(function (y) { return y.id === id; }); return x ? esc(x.ten) : '#' + id; }).join(', ') + '</span></div>'; });
     h += '<div><div class="muted" style="font-size:12px;margin:6px 0">Món đích riêng / phiếu KNB (giá trị; 0 = gỡ khỏi danh sách đích):</div><div id="gnaDichR">' + bangRieng('dich', c.dich.rieng) + '</div>';
     h += '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input id="gnaQ" placeholder="🔎 Tìm vật phẩm (tên không dấu hoặc ID) để thêm giá riêng" style="flex:1;min-width:220px" onkeydown="if(event.key===\'Enter\')gnaTim()"><button onclick="gnaTim()">Tìm</button></div><div id="gnaKq" style="margin-top:6px">' + kq() + '</div>';
+    var tb = c.thongBao || {}, kenh = A.kenh || [];
+    h += '<h4 style="margin:14px 0 6px">📣 Thông báo Discord mỗi lần luyện</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">' + chk('gnaTbOn', tb.on, '<b>Bật</b>')
+      + '<label>Kênh <select id="gnaTbK" onchange="var i=document.getElementById(\'gnaTbKid\');if(this.value)i.value=this.value"><option value="">-- chọn kênh --</option>' + kenh.map(function (k) { return '<option value="' + k.id + '"' + (k.id === tb.kenh ? ' selected' : '') + '>' + esc(k.guild + ' › #' + k.ten) + '</option>'; }).join('') + '</select></label>'
+      + '<label>ID kênh ' + inp('gnaTbKid', tb.kenh || '', 170) + '</label>'
+      + chk('gnaTbW', tb.thang, '🎉 báo khi THẮNG (chúc mừng)') + chk('gnaTbL', tb.thua, '💥 báo khi THUA (châm biếm)') + chk('gnaTbTag', tb.tag, 'tag người chơi')
+      + '<label>chỉ báo món đích từ ' + inp('gnaTbMin', tb.minGia || 0, 90) + ' giá trị (0 = báo hết)</label><button class="btn-grey" onclick="gnaThuTb()">🧪 Gửi thử</button></div>';
     h += '<div class="row" style="gap:8px;margin-top:12px"><button class="btn-green" onclick="gnaSave()">💾 Lưu Ghép Ngọc</button><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại</button></div>';
     h += '<h4 style="margin:16px 0 6px">💰 Bảng giá đang tính (' + A.bangGia.length + ' món bỏ vào được) · ' + A.dich.length + ' món đích</h4>'
       + '<input placeholder="Lọc bảng giá..." value="' + esc(LOC) + '" oninput="gnaLoc(this.value)" style="width:240px"><div style="max-height:360px;overflow:auto;margin-top:6px"><table><thead><tr><th>Món</th><th>Giá shop web</th><th>Giá bỏ vào</th><th>Nguồn giá</th></tr></thead><tbody id="gnaBG">' + bangGia() + '</tbody></table></div>';
@@ -47,6 +53,7 @@
     var o = { on: b('gnaOn'), phi: v('gnaPhi'), tiMin: v('gnaMin'), tiMax: v('gnaMax'), luotNgay: v('gnaLuot'), monMax: v('gnaMon'), knbOn: b('gnaKnb'), knbMax: v('gnaKnbMax'),
       vao: { cam: Object.fromEntries(Object.keys(A.nhomCam || {}).map(function (k) { return [k, b('gnaC_' + k)]; })), giaRuong: b('gnaRuong'), shop: { on: b('gnaRac'), pct: v('gnaRacPct') }, rieng: {} }, dich: { nhom: {}, rieng: {} } };
     Object.keys(A.nhomDich).forEach(function (k) { o.dich.nhom[k] = { on: b('gnaN_' + k), gia: v('gnaNG_' + k), sl: v('gnaNS_' + k), ids: v('gnaNI_' + k) }; });
+    o.thongBao = { on: b('gnaTbOn'), kenh: v('gnaTbKid').trim(), thang: b('gnaTbW'), thua: b('gnaTbL'), minGia: v('gnaTbMin'), tag: b('gnaTbTag') };
     [].slice.call(document.querySelectorAll('#gnaApp input[data-loai]')).forEach(function (x) { o[x.getAttribute('data-loai')].rieng[x.getAttribute('data-id')] = x.value; });
     return o;
   }
@@ -61,5 +68,6 @@
     ve(); toast('➕ Đã thêm - nhớ bấm 💾 Lưu');
   };
   window.gnaBoR = function (loai, id) { var o = doc(); delete o[loai].rieng[id]; A.cfg = Object.assign({}, A.cfg, o); ve(); };
+  window.gnaThuTb = function () { api('/api/gn/thu', {}).then(function (j) { toast(j.message || '📣 Đã gửi'); }).catch(function (e) { toast('❌ ' + e.message); }); };
   window.gnaSave = function () { api('/api/gn/save', doc()).then(function (j) { A = j; ve(); toast('💾 Đã lưu Ghép Ngọc - ' + (j.cfg.on ? 'đang BẬT' : 'đang tắt')); }).catch(function (e) { toast('❌ ' + e.message); }); };
 })();
