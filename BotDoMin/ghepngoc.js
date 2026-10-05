@@ -125,18 +125,22 @@ module.exports = function ghepNgoc(d) {
             tong += gv.gia * sl; ds.push({ id, sl, gia: gv.gia });
         }
         const tho = tiLeTho(tong, dich.gia, c);
-        if (tho > c.tiMax + 1e-9) return { error: `Bỏ dư rồi - tỉ lệ tối đa ${c.tiMax}%, bớt đồ ra cho đỡ phí` };
+        // du tiMax thi khong bo them: chi cho mon CUOI lam vuot moc; bo bot 1 mon re nhat ma van du -> thua
+        const re = ds.length ? Math.min(...ds.map((x) => x.gia)) : knb;
+        if (tiLeTho(tong - re, dich.gia, c) >= c.tiMax - 1e-9) return { error: `Bỏ thừa - đã đủ ${c.tiMax}%, bớt đồ ra cho đỡ phí` };
         const tiLe = Math.round(Math.min(c.tiMax, tho) * 1000) / 1000;
         if (tiLe < c.tiMin) return { error: `Tỉ lệ ${tiLe}% thấp quá - tối thiểu ${c.tiMin}%, bỏ thêm đồ vào` };
         // trừ đồ + KNB rồi mới tung
         for (const x of ds) if (!d.ichKy.take(u, x.id, x.sl)) return { error: 'Rương thay đổi, thử lại' };
         if (knb) d.updatePoints(uid, -knb);
+        // vung trung = cung [lech, lech + tiLe) tren vong 0..100 (nguoi choi keo xoay). So tung deu nen ti le khong doi.
+        const lech = Math.round(((Number(body.lech) || 0) % 100 + 100) % 100 * 1000) / 1000;
         const roll = rnd(100000) / 1000;   // 0.000 .. 99.999
-        const thang = roll < tiLe;
+        const thang = ((roll - lech) % 100 + 100) % 100 < tiLe;
         if (thang) d.ichKy.add(u, dich.id, 1);
         g.luot += 1;
         const t = Date.now();
-        const rec = { t, dich: dich.id, gia: dich.gia, tong, tiLe, roll, thang, vao: ds.map((x) => [x.id, x.sl]), knb };
+        const rec = { t, dich: dich.id, gia: dich.gia, tong, tiLe, lech, roll, thang, vao: ds.map((x) => [x.id, x.sl]), knb };
         g.lich.push(rec); if (g.lich.length > LICH_MAX) g.lich.splice(0, g.lich.length - LICH_MAX);
         const db = d.db(); if (!Array.isArray(db._gnLog)) db._gnLog = [];
         db._gnLog.push({ ...rec, uid, ten: u.name || who || uid });
@@ -144,7 +148,7 @@ module.exports = function ghepNgoc(d) {
         if (knb && d.logDog) d.logDog('ghepngoc', uid, u.name || who || uid, -knb, `💎 Ghép ngọc: bỏ ${knb.toLocaleString('vi-VN')} KNB`);
         d.saveDbNow();
         d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} (${tiLe}%, tung ${roll}) - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
-        return { ok: true, thang, tiLe, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia }, ...state(uid) };
+        return { ok: true, thang, tiLe, lech, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia }, ...state(uid) };
     }
 
     // ===== ADMIN =====

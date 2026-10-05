@@ -31,7 +31,7 @@
     '.gnGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:360px;overflow:auto}',
     '.gnCard{background:#1a1f2d;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;gap:8px;align-items:center;cursor:pointer;font-size:12px}',
     '.gnCard:hover{border-color:var(--gnA)}.gnCard.on{border-color:var(--gnB);box-shadow:0 0 0 1px var(--gnB)}',
-    '.gnCard b{display:block;font-size:12px}.gnCard small{color:var(--muted)}',
+    '.gnCard.het{opacity:.4;cursor:not-allowed}.gnCard b{display:block;font-size:12px}.gnCard small{color:var(--muted)}',
     '.gnMul{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:center}.gnMul button{padding:3px 9px;font-size:12px}',
     '.gnLich div{font-size:12px;padding:3px 0;border-bottom:1px solid #ffffff0d}',
     '.gnW{color:#3ddc84;font-weight:800}.gnL{color:#ff5d5d;font-weight:800}',
@@ -44,37 +44,40 @@
   function dichObj() { return (S().dich || []).find(function (x) { return x.id === GN.dich; }) || null; }
   function tiLeTho() { var d = dichObj(); return d && d.gia > 0 ? tong() / d.gia * (100 - S().phi) : 0; }
   function tiLe() { return Math.min(S().tiMax, tiLeTho()); }
+  function duRoi() { return tiLeTho() >= S().tiMax - 1e-9; }
+  function thua() {
+    var d = dichObj(); if (!d) return false; var ids = Object.keys(GN.vao); if (!ids.length) return false;
+    var re = Math.min.apply(null, ids.map(function (id) { return giaVao(id); }));
+    return (tong() - re) / d.gia * (100 - S().phi) >= S().tiMax - 1e-9;
+  }
   function risk(p) { return p <= 0 ? 'chưa có gì' : p < 10 ? 'rủi ro rất cao' : p < 30 ? 'rủi ro cao' : p < 55 ? 'cân bằng' : 'khá an toàn'; }
   function hopLe() {
     var s = S(), p = tiLeTho(); if (!s.on || !dichObj() || (!soMon() && !GN.knb)) return '';
     if (s.luotNgay > 0 && s.luotHomNay >= s.luotNgay) return 'Hôm nay đã hết lượt';
     if (soMon() > s.monMax) return 'Tối đa ' + s.monMax + ' món/lần';
-    if (p > s.tiMax + 1e-9) return 'Bỏ dư - tối đa ' + s.tiMax + '%, bớt đồ ra';
+    if (thua()) return 'Bỏ thừa - đã đủ ' + s.tiMax + '%, bớt đồ ra';
     if (p < s.tiMin) return 'Tối thiểu ' + s.tiMin + '%, bỏ thêm đồ';
     return 'ok';
   }
   var R = 96, CX = 120, CIR = 2 * Math.PI * R, QUAY_MS = 7600;
   function diem(p) { var g = (p / 100) * 2 * Math.PI - Math.PI / 2; return [CX + R * Math.cos(g), CX + R * Math.sin(g)]; }
+  // VUNG TRUNG = cung dai p% bat dau o vi tri GN.lech (0..100, keo vong de xoay). So tung deu tren ca vong nen xoay khong doi ti le.
   function ringSvg(p) {
-    var w = Math.max(0, Math.min(100, p)) / 100 * CIR, k = diem(p), vach = '';
-    [25, 50, 75].forEach(function (v) { var q = diem(v), q2 = [CX + (R - 16) * Math.cos((v / 100) * 2 * Math.PI - Math.PI / 2), CX + (R - 16) * Math.sin((v / 100) * 2 * Math.PI - Math.PI / 2)]; vach += '<text x="' + q2[0].toFixed(1) + '" y="' + (q2[1] + 3).toFixed(1) + '" fill="#6b6f86" font-size="9" text-anchor="middle">' + v + '%</text>'; });
-    return '<svg viewBox="0 0 240 240" id="gnSvg" style="touch-action:none;cursor:grab"><defs><linearGradient id="gnG" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff4d4d"/><stop offset=".45" stop-color="#f5c542"/><stop offset="1" stop-color="#3ddc84"/></linearGradient></defs>'
-      + '<circle cx="120" cy="120" r="112" fill="#11131f" stroke="#262a3d" stroke-width="2"/>'
-      + '<circle cx="120" cy="120" r="' + R + '" fill="none" stroke="url(#gnG)" stroke-opacity=".18" stroke-width="16"/>'
-      + '<circle class="arc" id="gnArc" cx="120" cy="120" r="' + R + '" fill="none" stroke="url(#gnG)" stroke-width="16" stroke-dasharray="' + w.toFixed(2) + ' ' + CIR.toFixed(2) + '" transform="rotate(-90 120 120)"/>'
-      + vach
-      + '<circle id="gnKnob" cx="' + k[0].toFixed(1) + '" cy="' + k[1].toFixed(1) + '" r="10" fill="#fff" stroke="#f5c542" stroke-width="4" style="cursor:grab"/>'
-      + '<g class="gnNeedle" id="gnNeedle" style="transform:rotate(' + (GN.goc || 0) + 'deg)"><polygon points="120,14 113,34 127,34" fill="#ffcf5c"/></g></svg>';
+    var w = Math.max(0, Math.min(100, p)) / 100 * CIR, k = diem((GN.lech || 0) + p / 2), vach = '';
+    for (var i = 0; i < 40; i++) { var g = i / 40 * 2 * Math.PI, r1 = R + 12, r2 = R + (i % 5 ? 15 : 18); vach += '<line x1="' + (CX + r1 * Math.sin(g)).toFixed(1) + '" y1="' + (CX - r1 * Math.cos(g)).toFixed(1) + '" x2="' + (CX + r2 * Math.sin(g)).toFixed(1) + '" y2="' + (CX - r2 * Math.cos(g)).toFixed(1) + '" stroke="#33384f" stroke-width="2"/>'; }
+    return '<svg viewBox="0 0 240 240" id="gnSvg" style="touch-action:none;cursor:grab"><defs><linearGradient id="gnG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3ddc84"/><stop offset=".5" stop-color="#f5c542"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>'
+      + '<circle cx="120" cy="120" r="116" fill="#11131f" stroke="#262a3d" stroke-width="2"/>' + vach
+      + '<circle cx="120" cy="120" r="' + R + '" fill="none" stroke="#2a2440" stroke-width="16"/>'
+      + '<circle class="arc" id="gnArc" cx="120" cy="120" r="' + R + '" fill="none" stroke="url(#gnG)" stroke-width="16" stroke-dasharray="' + w.toFixed(2) + ' ' + CIR.toFixed(2) + '" transform="rotate(' + (-90 + (GN.lech || 0) * 3.6).toFixed(2) + ' 120 120)"/>'
+      + '<circle id="gnKnob" cx="' + k[0].toFixed(1) + '" cy="' + k[1].toFixed(1) + '" r="9" fill="#fff" stroke="#f5c542" stroke-width="4"' + (p > 0 ? '' : ' style="display:none"') + '/>'
+      + '<g class="gnNeedle" id="gnNeedle" style="transform:rotate(' + (GN.goc || 0) + 'deg)"><polygon points="120,6 112,26 128,26" fill="#ff4d6d" stroke="#fff" stroke-width="1.5"/></g></svg>';
   }
-  // cap nhat vong khi dang keo (khong ve lai ca trang)
+  // xoay vung trung khi dang keo (khong ve lai ca trang)
   function capNhatVong(p) {
-    var arc = document.getElementById('gnArc'), kn = document.getElementById('gnKnob'), pc = document.querySelector('#gnApp .gnPct'), rk = document.querySelector('#gnApp .gnRisk');
-    if (arc) arc.setAttribute('stroke-dasharray', (Math.max(0, Math.min(100, p)) / 100 * CIR).toFixed(2) + ' ' + CIR.toFixed(2));
-    if (kn) { var k = diem(p); kn.setAttribute('cx', k[0].toFixed(1)); kn.setAttribute('cy', k[1].toFixed(1)); }
-    if (pc) pc.textContent = (Math.round(p * 1000) / 1000) + '%';
-    if (rk) rk.textContent = 'cơ hội · ' + risk(p);
+    var arc = document.getElementById('gnArc'), kn = document.getElementById('gnKnob');
+    if (arc) arc.setAttribute('transform', 'rotate(' + (-90 + (GN.lech || 0) * 3.6).toFixed(2) + ' 120 120)');
+    if (kn) { var k = diem((GN.lech || 0) + p / 2); kn.setAttribute('cx', k[0].toFixed(1)); kn.setAttribute('cy', k[1].toFixed(1)); }
   }
-  // tu bo do trong ruong cho du ti le muon: uu tien RAC truoc, roi tu mon gia cao xuong (khong vuot), cuoi cung them 1 mon nho nhat cho du
   function tuBo(pMuon) {
     var s = S(), d = dichObj(); if (!d) return;
     var can = pMuon / (100 - s.phi) * d.gia - (GN.knb || 0), vao = {}, con = s.monMax, dung = 0;
@@ -82,6 +85,8 @@
     ds.forEach(function (x) { if (dung >= can || con <= 0) return; var n = Math.min(x.qty, con, Math.floor((can - dung) / x.gia)); if (n > 0) { vao[x.id] = n; dung += n * x.gia; con -= n; } });
     if (dung < can && con > 0) { var nho = null; ds.forEach(function (x) { if ((vao[x.id] || 0) < x.qty && (!nho || x.gia < nho.gia)) nho = x; }); if (nho) { vao[nho.id] = (vao[nho.id] || 0) + 1; dung += nho.gia; } }
     GN.vao = vao;
+    var ids = Object.keys(vao).sort(function (a, b) { return giaVao(b) - giaVao(a); });
+    ids.forEach(function (id) { while (GN.vao[id] && thua()) { GN.vao[id]--; if (!GN.vao[id]) delete GN.vao[id]; } });
   }
   function gocToP(ev) {
     var sv = document.getElementById('gnSvg'); if (!sv) return 0;
@@ -89,23 +94,14 @@
     var g = Math.atan2(y, x) + Math.PI / 2; if (g < 0) g += 2 * Math.PI;
     return g / (2 * Math.PI) * 100;
   }
+  // keo bat cu cho nao tren vong -> xoay vung trung theo tay
   function ganKeo() {
     var sv = document.getElementById('gnSvg'); if (!sv || GN.busy) return;
-    var keo = false, last = 0;
-    var mv = function (ev) {
-      if (!keo) return;
-      var p = gocToP(ev);
-      if (last > 80 && p < 20) p = 100; else if (last < 20 && p > 80) p = 0;   // khong cho nhay qua dinh
-      last = p;
-      var s = S(); p = Math.max(s.tiMin, Math.min(s.tiMax, p));
-      tuBo(p); GN.kq = null; capNhatVong(tiLe());
-    };
-    sv.addEventListener('pointerdown', function (ev) {
-      if (!dichObj()) { toast('⚠️ Chọn món đích trước rồi kéo vòng'); return; }
-      keo = true; last = tiLe(); sv.setPointerCapture(ev.pointerId); sv.style.cursor = 'grabbing'; mv(ev);
-    });
+    var keo = false, a0 = 0, l0 = 0;
+    var mv = function (ev) { if (!keo) return; GN.lech = ((l0 + gocToP(ev) - a0) % 100 + 100) % 100; capNhatVong(tiLe()); };
+    sv.addEventListener('pointerdown', function (ev) { keo = true; a0 = gocToP(ev); l0 = GN.lech || 0; sv.setPointerCapture(ev.pointerId); sv.style.cursor = 'grabbing'; GN.kq = null; });
     sv.addEventListener('pointermove', mv);
-    var het = function () { if (!keo) return; keo = false; sv.style.cursor = 'grab'; ve(); };
+    var het = function () { if (!keo) return; keo = false; sv.style.cursor = 'grab'; };
     sv.addEventListener('pointerup', het); sv.addEventListener('pointercancel', het);
   }
   function ve() {
@@ -140,7 +136,7 @@
     else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở tab 🎯 Món đích bên dưới</div>';
     h += '<div class="gnMul">' + [1.5, 2, 5, 10, 20].map(function (m) { return '<button onclick="gnNhan(' + m + ')" title="Chọn món đích có giá trị gần ' + m + ' lần đồ đang bỏ vào">' + m + 'x</button>'; }).join('') + '</div>'
       + '<div class="gnMul">' + [35, 55, 75].filter(function (v) { return v <= s.tiMax; }).map(function (v) { return '<button onclick="gnPct(' + v + ')" title="Tự bỏ đồ trong rương cho đủ ' + v + '%">' + v + '%</button>'; }).join('') + '</div>'
-      + '<div class="muted" style="font-size:11px;text-align:center;margin-top:4px">Kéo tay nắm trên vòng để chọn % - tự bỏ đồ (rác trước)</div></div>';
+      + '<div class="muted" style="font-size:11px;text-align:center;margin-top:4px">Kéo vòng để xoay vùng trúng tới chỗ ưng ý · 35/55/75% = tự bỏ đồ (rác trước)</div></div>';
     h += '</div>';
     // ---- chọn
     var tab = GN.chon || 'ruong';
@@ -150,8 +146,9 @@
       + '<input placeholder="🔎 lọc tên..." value="' + esc(GN.loc) + '" oninput="gnLoc(this.value)" style="flex:1;min-width:140px"></div>';
     var loc = (GN.loc || '').toLowerCase(), khop = function (x) { return !loc || x.ten.toLowerCase().indexOf(loc) >= 0 || x.id.indexOf(loc) >= 0; };
     if (tab === 'ruong') {
-      var r = (s.ruong || []).filter(khop);
-      h += r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + '" onclick="gnThem(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + '</b><small>' + vnd(x.gia) + '/cái · ' + esc(x.tu) + '<br>có ' + x.qty + (dung ? ' · đã bỏ ' + dung : '') + '</small></div></div>'; }).join('') + '</div>'
+      var r = (s.ruong || []).filter(khop), dObj = dichObj();
+      var phanTram = function (g) { var v = g / dObj.gia * (100 - s.phi); return v >= 1 ? (Math.round(v * 10) / 10) : (Math.round(v * 1000) / 1000); };
+      h += r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + '</b><small>' + vnd(x.gia) + '/cái · ' + esc(x.tu) + (dObj ? ' · <b style="color:#3ddc84">+' + phanTram(x.gia) + '%</b>/cái' : '') + '<br>có ' + x.qty + (dung ? ' · đã bỏ ' + dung : '') + '</small></div></div>'; }).join('') + '</div>'
         : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>';
     } else if (tab === 'dich') {
       var dd = (s.dich || []).filter(khop);
@@ -169,8 +166,8 @@
   window.gnSync = function () { api('/api/gn/state', {}).then(function (j) { GN.s = j; GN.kq = null; chuanHoa(); ve(); }).catch(function (e) { toast('❌ ' + e.message); }); };
   window.gnTab = function (t) { GN.chon = t; ve(); };
   window.gnLoc = function (v) { GN.loc = v; ve(); var i = document.querySelector('#gnApp .gnTabs input'); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } };
-  window.gnThem = function (id) { var r = S().ruong.find(function (x) { return x.id === id; }); if (!r) return; var c = GN.vao[id] || 0; if (c >= r.qty) return toast('⚠️ Rương chỉ có ' + r.qty); GN.vao[id] = c + 1; GN.kq = null; ve(); };
-  window.gnSl = function (id, v) { v = Math.floor(Number(v) || 0); if (v <= 0) delete GN.vao[id]; else GN.vao[id] = v; chuanHoa(); GN.kq = null; ve(); };
+  window.gnThem = function (id) { var r = S().ruong.find(function (x) { return x.id === id; }); if (!r) return; var c = GN.vao[id] || 0; if (c >= r.qty) return toast('⚠️ Rương chỉ có ' + r.qty); if (dichObj() && duRoi()) return toast('⚠️ Đã đủ ' + S().tiMax + '% - không bỏ thêm được'); GN.vao[id] = c + 1; if (thua()) { if (c) GN.vao[id] = c; else delete GN.vao[id]; return toast('⚠️ Món này làm thừa (đã đủ ' + S().tiMax + '% khi bỏ món rẻ hơn) - chọn món nhỏ hơn'); } GN.kq = null; ve(); };
+  window.gnSl = function (id, v) { v = Math.floor(Number(v) || 0); if (v <= 0) delete GN.vao[id]; else GN.vao[id] = v; chuanHoa(); while (GN.vao[id] > 1 && thua()) GN.vao[id]--; if (GN.vao[id] === 1 && thua()) delete GN.vao[id]; GN.kq = null; ve(); };
   window.gnBo = function (id) { delete GN.vao[id]; GN.kq = null; ve(); };
   window.gnXoaHet = function () { GN.vao = {}; GN.kq = null; ve(); };
   window.gnKnb = function (v) { GN.knb = Math.max(0, Math.min(S().knbMax, Math.floor(Number(v) || 0))); GN.kq = null; ve(); };
@@ -186,7 +183,7 @@
     if (GN.busy || hopLe() !== 'ok') return;
     var d = dichObj(), vao = Object.keys(GN.vao).map(function (id) { return { id: id, sl: GN.vao[id] }; });
     GN.busy = true; GN.kq = null; ve();
-    api('/api/gn/quay', { dich: GN.dich, vao: vao, knb: GN.knb || 0 }).then(function (j) {
+    api('/api/gn/quay', { dich: GN.dich, vao: vao, knb: GN.knb || 0, lech: GN.lech || 0 }).then(function (j) {
       var base = Math.ceil((GN.goc || 0) / 360) * 360 + 360 * 9;
       GN.goc = base + j.roll * 3.6;
       var n = document.getElementById('gnNeedle'); if (n) n.style.transform = 'rotate(' + GN.goc + 'deg)';
