@@ -7746,7 +7746,8 @@ client.once('ready', async (c) => {
                     const tui = guid ? tuiBoss.list(dbCache, guid) : [];
                     const can = new Set(); for (const x of tui) for (const m of x.mon) can.add(String(m[0]));
                     const ten = {}; for (const it of (tlbb.items ? tlbb.items() : [])) if (can.has(it.id)) ten[it.id] = it.n;
-                    return { linked: !!guid, ingameName: (u.ingameName || '').trim(), tui, ten };
+                    const ic = {}; for (const id of can) { const x = ITEMICON.icon(id); if (x) ic[id] = x; }   // 🖼️ 05/10: hình món đồ (/tb.js)
+                    return { linked: !!guid, ingameName: (u.ingameName || '').trim(), tui, ten, ic };
                 },
                 nhan: async (uid, id) => {
                     const u = getUserData(uid); const guid = String(u.tlbbGuid || '');

@@ -131,6 +131,11 @@ function startWebPlay(ctx) {
             // 🍀 02/10: icon vật phẩm game - stream từ đĩa, không nạp RAM
             if (req.method === 'GET' && path.startsWith('/itemicon/')) return ITEMICON.serve(req, res, path.slice(10));
             // 💎 05/10: script giao diện Ghép Ngọc (tĩnh, không cần đăng nhập - API mới cần)
+            if (req.method === 'GET' && path === '/tb.js') {   // 🎒 05/10: giao diện túi đồ boss
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'tuiboss.client.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/gn.js') {
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'ghepngoc.client.js'));
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -2642,17 +2647,18 @@ const PAGE = [
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
     '</div>',
+    // 🎒 01/10: TÚI ĐỒ GIẾT BOSS - game ghi ai có mặt lúc boss cuối chết, bấm Nhận -> hàng đợi quà + KNB vào ví
+    '<div class="card" id="tbCard">',
+    '<div class="tbHead"><h2 style="margin:0">🎒 Túi đồ boss</h2><div class="tbBadge zero" id="tbStat">-</div></div>',   // 05/10: giao dien o /tb.js (tuiboss.client.js)
+    '<div class="muted tbHint">Hạ boss cuối phó bản / hoạt động là mọi người trong tổ có túi (hiện sau ~10 giây). Bấm <b>Nhận</b>: đồ vào <b>🧰 Rương Ích Kỷ</b>, KNB cộng vào ví. Túi giữ 7 ngày.</div>',
+    '<div id="tbList"><div class="muted" style="margin-top:8px">Đang tải...</div></div>',
+    '<div id="tbDone"></div>',   // túi đã nhận: thu gọn, bấm mới mở
+    '</div>',
     // 🏹 30/09: BOSS ĐÃ HẠ - đọc từ Audit log game (bước 1; bước 2 = nhiệm vụ + quà)
     '<div class="card" id="bossCard">',
     '<div class="row"><h2 style="margin:0">🏹 Boss đã hạ</h2><div class="muted" id="bossStat">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px">Tính theo lượt bạn được chia đồ từ boss (ghi trong Audit log của game, cập nhật ~10 giây sau khi boss chết). Sắp có: nhiệm vụ boss + nhận quà tại đây.</div>',
     '<div id="bossList" style="margin-top:8px;max-height:320px;overflow:auto"><div class="muted">Đang tải...</div></div>',
-    '</div>',
-    // 🎒 01/10: TÚI ĐỒ GIẾT BOSS - game ghi ai có mặt lúc boss cuối chết, bấm Nhận -> hàng đợi quà + KNB vào ví
-    '<div class="card" id="tbCard">',
-    '<div class="row"><h2 style="margin:0">🎒 Túi đồ boss</h2><div class="muted" id="tbStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Hạ boss cuối phó bản / hoạt động là mọi người trong tổ có túi (hiện sau ~10 giây). Bấm <b>Nhận</b>: đồ vào hàng đợi quà, <b>đổi bản đồ</b> trong game để lấy; KNB cộng thẳng vào ví. Túi giữ 7 ngày.</div>',
-    '<div id="tbList" style="margin-top:8px;max-height:420px;overflow:auto"><div class="muted">Đang tải...</div></div>',
     '</div>',
     // 🎮 30/09: tài khoản game + đổi mật khẩu (đổi ở đây = đổi luôn mật khẩu vào game)
     '<div class="card" id="gaccCard">',
@@ -5065,15 +5071,7 @@ const PAGE = [
     'for(var i=0;i<j.kills.length;i++){var k=j.kills[i],d=new Date(k.t);var hh=("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2),dd=("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2);',
     'h+="<tr><td class=\\"muted\\">"+dd+" "+hh+"</td><td><b>"+esc(k.name||k.boss)+"</b> <span class=\\"muted\\">#"+k.boss+"</span></td><td style=\\"text-align:center\\">"+k.team+"</td></tr>"}',
     'box.innerHTML=h+"</table>"}).catch(function(){})}',
-    'function tbSync(){api("/api/tuiboss/list").then(function(j){var st=$("tbStat"),box=$("tbList");if(!st||!box)return;',
-    'if(!j.linked){st.textContent="";box.innerHTML="<div class=\\"muted\\">Chưa liên kết nhân vật trong game - nhắn admin liên kết để nhận túi boss.</div>";return}',
-    'var cho=j.tui.filter(function(x){return !x.nhan});st.textContent=cho.length+" túi chưa nhận";',
-    'if(!j.tui.length){box.innerHTML="<div class=\\"muted\\">Chưa có túi nào ("+esc(j.ingameName)+"). Hạ boss cuối phó bản rồi quay lại sau 10 giây.</div>";return}',
-    'var h="";for(var i=0;i<j.tui.length;i++){var x=j.tui[i],d=new Date(x.t);var tg=("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);',
-    'var m=x.mon.map(function(a){return esc(j.ten[a[0]]||("#"+a[0]))+" ×"+a[1]}).join(", ")+(x.knb?", <b>"+Number(x.knb).toLocaleString()+" KNB</b>":"")+(x.luot?", <b>🍀 "+x.luot+" lượt quay</b>":"");',
-    'h+="<div style=\\"border:1px solid #2a3340;border-radius:9px;padding:8px 10px;margin-bottom:6px\\"><div class=\\"row\\" style=\\"gap:8px\\"><b>"+esc(x.ten)+"</b><span class=\\"muted\\" style=\\"font-size:12px\\">"+tg+"</span>"+(x.nhan?"<span style=\\"margin-left:auto;color:#7ee2a8;font-size:12px\\">✅ Đã nhận</span>":"<button class=\\"tbBtn\\" onclick=\\"tbNhan(\'"+x.id+"\',this)\\">Nhận</button>")+"</div><div style=\\"font-size:13px;margin-top:4px\\">"+m+"</div></div>"}',
-    'box.innerHTML=h}).catch(function(){})}',
-    'function tbNhan(id,b){if(b)b.disabled=true;api("/api/tuiboss/nhan",{id:id}).then(function(){toast("✅ Đã nhận túi - đồ đã vào 🧰 Rương Ích Kỷ (giữ vĩnh viễn). Vào rương bấm NHẬN để đưa vào game lúc nào cũng được");dailySync()}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"));if(b)b.disabled=false})}',
+    'function tbSync(){}function tbNhan(){}',   // 05/10: giao diện túi đồ boss chuyển sang /tb.js (tuiboss.client.js), file đó ghi đè 2 hàm này
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
     // 🔌 15/09: giấu tab của mục admin tắt. Đang đứng trong mục bị tắt thì đá về Tài Xỉu.
     'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",pal:"navPal",pick:"navPick",shop:"navShop",dog:"navDog"};',
@@ -5954,7 +5952,7 @@ const PAGE = [
     'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
     'if(TOKEN){show("")}else{nhoDoVao()}',
     // 30/09: ô PIN đã bỏ - Enter ở ô mật khẩu game đã gắn inline (onkeydown) trên input#gpass
-    '</script><script src="/gn.js"></script></body></html>',
+    '</script><script src="/gn.js"></script><script src="/tb.js"></script></body></html>',
 ].join('\n');
 
 module.exports = { startWebPlay };
