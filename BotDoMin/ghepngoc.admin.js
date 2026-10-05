@@ -12,17 +12,18 @@
     var box = el('gnaApp'); if (!box || !A) return;
     var c = A.cfg, h = '';
     h += '<div class="note">Người chơi bỏ đồ trong 🧰 Rương Ích Kỷ để luyện ra 1 món đích. <b>Tỉ lệ = tổng giá trị bỏ vào ÷ giá món đích × (100 − phí)%</b>, kẹp trong [tối thiểu, tối đa]. Thua là mất hết đồ đã bỏ. '
-      + 'Giá 1 món bỏ vào lấy theo thứ tự: <b>giá riêng ở đây</b> → <b>giá bán Rương Ích Kỷ</b> (tab 📦 Kho đồ) → <b>rác = % giá shop web</b>. Không có giá nào thì không bỏ vào được.' + (c.moi ? ' <b>Đang dùng cấu hình mặc định, chưa lưu lần nào.</b>' : '') + '</div>';
+      + 'Giá 1 món bỏ vào lấy theo thứ tự: <b>giá riêng ở đây</b> → <b>% giá shop web</b> (mặc định 90% = rẻ hơn ngoài 10%) → <b>giá bán Rương Ích Kỷ</b> (tab 📦 Kho đồ, cho món không có ở shop). Không có giá nào thì không bỏ vào được.' + (c.moi ? ' <b>Đang dùng cấu hình mặc định, chưa lưu lần nào.</b>' : '') + '</div>';
     if (A.canhBao && A.canhBao.length) h += '<div class="note" style="border-color:#c0392b"><b>⚠️ Cảnh báo kinh tế:</b>' + A.canhBao.map(function (w) { return '<div>• ' + esc(w) + '</div>'; }).join('') + '</div>';
     h += '<div class="row" style="gap:12px;flex-wrap:wrap;align-items:center;margin-top:8px">' + chk('gnaOn', c.on, '<b>Bật</b> trên web')
       + '<label>Phí % ' + inp('gnaPhi', c.phi, 60) + '</label><label>Tỉ lệ tối thiểu % ' + inp('gnaMin', c.tiMin, 60) + '</label><label>tối đa % ' + inp('gnaMax', c.tiMax, 60) + '</label>'
       + '<label>Lượt/ngày (0 = không giới hạn) ' + inp('gnaLuot', c.luotNgay, 70) + '</label><label>Món tối đa/lần ' + inp('gnaMon', c.monMax, 70) + '</label></div>';
     h += '<div class="row" style="gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px">' + chk('gnaKnb', c.knbOn, 'Cho bỏ thêm KNB web') + '<label>KNB tối đa/lần ' + inp('gnaKnbMax', c.knbMax, 100) + '</label></div>';
-    h += '<h4 style="margin:14px 0 6px">🧰 Giá đồ bỏ vào</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">' + chk('gnaRuong', c.vao.giaRuong, 'Dùng giá bán Rương Ích Kỷ') + chk('gnaRac', c.vao.rac.on, 'Tính <b>rác</b> = ') + inp('gnaRacPct', c.vao.rac.pct, 50) + ' % giá shop web</div>';
+    h += '<h4 style="margin:14px 0 6px">🧰 Giá đồ bỏ vào</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">' + chk('gnaRac', c.vao.shop.on, 'Món có ở shop web tính = ') + inp('gnaRacPct', c.vao.shop.pct, 50) + ' % giá shop' + chk('gnaRuong', c.vao.giaRuong, 'Món không có ở shop: dùng giá bán Rương Ích Kỷ') + '</div>';
     h += '<div class="muted" style="font-size:12px;margin:6px 0">Giá riêng (ghi đè; 0 = cấm bỏ vào):</div><div id="gnaVaoR">' + bangRieng('vao', c.vao.rieng) + '</div>';
     h += '<h4 style="margin:14px 0 6px">🎯 Món đích</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">';
-    Object.keys(A.nhomDich).forEach(function (k) { var g = c.dich.nhom[k] || { on: false, gia: 0 }; h += chk('gnaN_' + k, g.on, esc(A.nhomDich[k])) + ' giá trị ' + inp('gnaNG_' + k, g.gia, 100); });
-    h += '</div><div class="muted" style="font-size:12px;margin:6px 0">Món đích riêng / phiếu KNB (giá trị; 0 = gỡ khỏi danh sách đích):</div><div id="gnaDichR">' + bangRieng('dich', c.dich.rieng) + '</div>';
+    h += '</div>';
+    Object.keys(A.nhomDich).forEach(function (k) { var g = c.dich.nhom[k] || { on: false, gia: 0, ids: [] }; h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0">' + chk('gnaN_' + k, g.on, '<b>' + esc(A.nhomDich[k]) + '</b>') + ' giá trị ' + inp('gnaNG_' + k, g.gia, 90) + ' ID: ' + inp('gnaNI_' + k, (g.ids || []).join(' '), 380) + '<span class="muted" style="font-size:12px">' + (g.ids || []).map(function (id) { var x = (A.dich || []).find(function (y) { return y.id === id; }); return x ? esc(x.ten) : '#' + id; }).join(', ') + '</span></div>'; });
+    h += '<div><div class="muted" style="font-size:12px;margin:6px 0">Món đích riêng / phiếu KNB (giá trị; 0 = gỡ khỏi danh sách đích):</div><div id="gnaDichR">' + bangRieng('dich', c.dich.rieng) + '</div>';
     h += '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input id="gnaQ" placeholder="🔎 Tìm vật phẩm (tên không dấu hoặc ID) để thêm giá riêng" style="flex:1;min-width:220px" onkeydown="if(event.key===\'Enter\')gnaTim()"><button onclick="gnaTim()">Tìm</button></div><div id="gnaKq" style="margin-top:6px">' + kq() + '</div>';
     h += '<div class="row" style="gap:8px;margin-top:12px"><button class="btn-green" onclick="gnaSave()">💾 Lưu Ghép Ngọc</button><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại</button></div>';
     h += '<h4 style="margin:16px 0 6px">💰 Bảng giá đang tính (' + A.bangGia.length + ' món bỏ vào được) · ' + A.dich.length + ' món đích</h4>'
@@ -43,8 +44,8 @@
   function doc() {
     var c = A.cfg, v = function (id) { return el(id).value; }, b = function (id) { return el(id).checked; };
     var o = { on: b('gnaOn'), phi: v('gnaPhi'), tiMin: v('gnaMin'), tiMax: v('gnaMax'), luotNgay: v('gnaLuot'), monMax: v('gnaMon'), knbOn: b('gnaKnb'), knbMax: v('gnaKnbMax'),
-      vao: { giaRuong: b('gnaRuong'), rac: { on: b('gnaRac'), pct: v('gnaRacPct') }, rieng: {} }, dich: { nhom: {}, rieng: {} } };
-    Object.keys(A.nhomDich).forEach(function (k) { o.dich.nhom[k] = { on: b('gnaN_' + k), gia: v('gnaNG_' + k) }; });
+      vao: { giaRuong: b('gnaRuong'), shop: { on: b('gnaRac'), pct: v('gnaRacPct') }, rieng: {} }, dich: { nhom: {}, rieng: {} } };
+    Object.keys(A.nhomDich).forEach(function (k) { o.dich.nhom[k] = { on: b('gnaN_' + k), gia: v('gnaNG_' + k), ids: v('gnaNI_' + k) }; });
     [].slice.call(document.querySelectorAll('#gnaApp input[data-loai]')).forEach(function (x) { o[x.getAttribute('data-loai')].rieng[x.getAttribute('data-id')] = x.value; });
     return o;
   }
@@ -52,7 +53,7 @@
   window.gnaTim = function () { var q = el('gnaQ').value.trim(); if (!q) return; api('/api/gn/tim', { q: q }).then(function (j) { TIM = j.items || []; el('gnaKq').innerHTML = TIM.length ? kq() : '<span class="muted">Không thấy.</span>'; }).catch(function (e) { toast('❌ ' + e.message); }); };
   window.gnaThem = function (loai, k) {
     var it = TIM[k]; if (!it) return; var o = doc();
-    var md = loai === 'vao' ? Math.floor((it.shop || 0) * 0.25) : (it.shop || 0);
+    var md = loai === 'vao' ? Math.floor((it.shop || 0) * (Number(A.cfg.vao.shop.pct) || 90) / 100) : (it.shop || 0);
     var g = prompt((loai === 'vao' ? 'Giá trị 1 cái khi BỎ VÀO' : 'Giá trị món ĐÍCH') + ' cho ' + it.ten + ' (#' + it.id + ')' + (it.shop ? ' - giá shop web ' + it.shop : ''), String(md || ''));
     if (g === null) return; o[loai].rieng[it.id] = g; A.cfg = Object.assign({}, A.cfg, o); A.cfg[loai] = o[loai];
     if (!A.bangGia.find(function (y) { return y.id === it.id; })) A.bangGia.push({ id: it.id, ten: it.ten, shop: it.shop, gia: 0, tu: '(chưa lưu)' });

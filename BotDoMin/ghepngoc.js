@@ -4,9 +4,14 @@
 //   Server tung số 0..100 (crypto): < tỉ lệ = THẮNG -> món đích vào rương; thua = mất hết đồ đã bỏ.
 // GIÁ TRỊ 1 món bỏ vào (theo thứ tự, cái nào có trước dùng cái đó):
 //   1. giá riêng admin đặt ở Ghép Ngọc (vao.rieng[id]; 0 = cấm bỏ vào)
-//   2. giá BÁN trong Rương Ích Kỷ (ngọc 6, Yếu Quyết... - cùng bảng giá, không lệch nhau -> không in tiền)
-//   3. "rác": giá shop web x vao.rac.pct % (món có bán ở shop)
+//   2. giá shop web x vao.shop.pct % (mặc định 90% = rẻ hơn ngoài shop 10%) - món có bán ở shop web
+//   3. giá BÁN trong Rương Ích Kỷ (món không có ở shop mà admin cho bán, vd ngọc 6 ngoài shop)
 //   không có giá nào -> không bỏ vào được.
+// MÓN ĐÍCH (05/10 chủ server chốt): CHỈ ngọc 7 thuộc tính, KHÔNG ngọc kép 7-x (Minh Tinh Thạch công + giảm kháng)
+//   - Thuộc tính (Tinh Thạch thuần tịnh: công băng/hỏa/huyền/độc 230) 50.000
+//   - Kháng thuộc tính (ngọc kháng thuần tịnh 90) 40.000
+//   - Thể lực / né (Hồng Bảo Thạch thể lực, Tổ Mẫu Lục né tránh) 50.000
+//   - Phiếu KNB 1.000 - 50.000 = mệnh giá. Nhóm nào có món gì, bật/tắt, giá - admin sửa.
 // MỌI con số ở dbCache._gnCfg, admin sửa ở panel (cổng SUPER). MAC_DINH chỉ dùng khi chưa từng lưu.
 // Người chơi: userData.gn = { day, luot, lich: [...] }. Nhật ký chung: dbCache._gnLog.
 const crypto = require('crypto');
@@ -15,14 +20,19 @@ const LICH_MAX = 30, LOG_MAX = 400;
 const MAC_DINH = {
     on: false, phi: 10, tiMin: 1, tiMax: 75, luotNgay: 30, monMax: 50,
     knbOn: false, knbMax: 100000,
-    vao: { giaRuong: true, rac: { on: true, pct: 25 }, rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000 } },   // phiếu KNB bỏ vào = mệnh giá
+    vao: { giaRuong: true, shop: { on: true, pct: 90 }, rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 } },   // phiếu KNB bỏ vào = mệnh giá
     dich: {
-        nhom: { ngoc7: { on: true, gia: 30000 } },
-        rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000 },
+        nhom: {
+            thuocTinh: { on: true, gia: 50000, ids: ['50702005', '50702006', '50702007', '50702008'] },
+            khang: { on: true, gia: 40000, ids: ['50712005', '50712006', '50712007', '50712008'] },
+            theLucNe: { on: true, gia: 50000, ids: ['50713004', '50714001'] },
+        },
+        rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 },
     },
 };
-// Nhóm món đích (chỉ là cách nhận ID; bật/tắt + giá do admin)
-const NHOM_DICH = { ngoc7: { ten: '💎 Ngọc cấp 7', khop: (id) => /^507\d{5}$/.test(id) } };
+// Tên nhóm món đích (danh sách ID + giá + bật/tắt nằm trong cấu hình, admin sửa)
+const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7' };
+const idDs = (a) => (Array.isArray(a) ? a : String(a || '').split(/[\s,;]+/)).map((x) => String(x).trim()).filter((x) => /^\d{5,9}$/.test(x));
 
 module.exports = function ghepNgoc(d) {
     // d: { db(), getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, icon(id), items() -> [{id,n}],
@@ -40,16 +50,16 @@ module.exports = function ghepNgoc(d) {
         const rieng = (o, md) => { const r = {}; for (const [id, g] of Object.entries(o && typeof o === 'object' ? o : md)) if (/^\d{5,9}$/.test(id)) r[id] = Math.floor(so(g, 0, 1e9, 0)); return r; };
         const nhom = {};
         for (const k of Object.keys(NHOM_DICH)) {
-            const md = M.dich.nhom[k] || { on: false, gia: 0 }, g = (di.nhom && di.nhom[k]) || md;
-            nhom[k] = { on: g.on === undefined ? !!md.on : !!g.on, gia: Math.floor(so(g.gia, 0, 1e9, md.gia)) };
+            const md = M.dich.nhom[k] || { on: false, gia: 0, ids: [] }, g = (di.nhom && di.nhom[k]) || md;
+            nhom[k] = { on: g.on === undefined ? !!md.on : !!g.on, gia: Math.floor(so(g.gia, 0, 1e9, md.gia)), ids: idDs(g.ids === undefined ? md.ids : g.ids) };
         }
-        const rac = v.rac || M.vao.rac;
+        const sh = v.shop || M.vao.shop;
         return {
             on: c.on === undefined ? M.on : !!c.on,
             phi: so(c.phi, 0, 90, M.phi), tiMin: so(c.tiMin, 0.01, 100, M.tiMin), tiMax: so(c.tiMax, 1, 100, M.tiMax),
             luotNgay: Math.floor(so(c.luotNgay, 0, 100000, M.luotNgay)), monMax: Math.floor(so(c.monMax, 1, 10000, M.monMax)),
             knbOn: c.knbOn === undefined ? M.knbOn : !!c.knbOn, knbMax: Math.floor(so(c.knbMax, 0, 1e9, M.knbMax)),
-            vao: { giaRuong: v.giaRuong === undefined ? M.vao.giaRuong : !!v.giaRuong, rac: { on: rac.on === undefined ? true : !!rac.on, pct: so(rac.pct, 0, 90, M.vao.rac.pct) }, rieng: rieng(v.rieng, M.vao.rieng) },
+            vao: { giaRuong: v.giaRuong === undefined ? M.vao.giaRuong : !!v.giaRuong, shop: { on: sh.on === undefined ? true : !!sh.on, pct: so(sh.pct, 0, 100, M.vao.shop.pct) }, rieng: rieng(v.rieng, M.vao.rieng) },
             dich: { nhom, rieng: rieng(di.rieng, M.dich.rieng) },
             moi: !d.db()._gnCfg,
         };
@@ -59,15 +69,15 @@ module.exports = function ghepNgoc(d) {
     function giaVao(id, c) {
         c = c || cfg(); id = String(id);
         if (c.vao.rieng[id] !== undefined) return { gia: c.vao.rieng[id], tu: 'riêng' };
-        if (c.vao.giaRuong) { const g = Math.floor(Number(d.giaRuong(id)) || 0); if (g > 0) return { gia: g, tu: 'giá rương' }; }
-        if (c.vao.rac.on) { const s = shopGia(id); if (s > 0) { const g = Math.floor(s * c.vao.rac.pct / 100); if (g > 0) return { gia: g, tu: 'rác ' + c.vao.rac.pct + '% shop' }; } }
+        if (c.vao.shop.on) { const s = shopGia(id); if (s > 0) { const g = Math.floor(s * c.vao.shop.pct / 100); if (g > 0) return { gia: g, tu: c.vao.shop.pct === 100 ? 'giá shop' : 'shop −' + (100 - c.vao.shop.pct) + '%' }; } }
+        if (c.vao.giaRuong) { const g = Math.floor(Number(d.giaRuong(id)) || 0); if (g > 0) return { gia: g, tu: 'giá bán rương' }; }
         return { gia: 0, tu: '' };
     }
     // danh sách món ĐÍCH + giá
     function dsDich(c) {
         c = c || cfg();
         const m = new Map();
-        for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const it of d.items()) { const id = String(it.id); if (NHOM_DICH[k].khop(id)) m.set(id, { gia: g.gia, nhom: k }); }
+        for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const id of g.ids) m.set(id, { gia: g.gia, nhom: k });
         for (const [id, g] of Object.entries(c.dich.rieng)) { if (g > 0) m.set(id, { gia: g, nhom: 'rieng' }); else m.delete(id); }
         return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, nhom: x.nhom })).sort((a, b) => a.gia - b.gia || a.ten.localeCompare(b.ten));
     }
@@ -158,9 +168,9 @@ module.exports = function ghepNgoc(d) {
             const ban = Math.floor(Number(d.giaRuong(x.id)) || 0);
             if (ban > x.gia * (100 - c.phi) / 100) w.push(`${x.ten} #${x.id}: giá bán rương ${ban} > giá đích ${x.gia} trừ phí → luyện rồi bán lại có lời`);
             const s = shopGia(x.id);
-            if (s > 0 && x.gia * 100 / (100 - c.phi) < s * 0.5) w.push(`${x.ten} #${x.id}: giá đích ${x.gia} rẻ hơn nhiều so với shop ${s} → luyện rẻ hơn mua`);
+            if (s > 0 && x.gia * 100 / (100 - c.phi) < s * c.vao.shop.pct / 100) w.push(`${x.ten} #${x.id}: giá đích ${x.gia} rẻ hơn nhiều so với shop ${s} → mua shop bỏ vào luyện ra chính nó là lời`);
         }
-        for (const [id, g] of Object.entries(c.vao.rieng)) { const s = shopGia(id); if (g > 0 && s > 0 && g > s * 0.9) w.push(`${ten(id)} #${id}: giá bỏ vào ${g} > 90% giá shop ${s} → mua shop bỏ vào là lời`); }
+        for (const [id, g] of Object.entries(c.vao.rieng)) { const s = shopGia(id); if (g > 0 && s > 0 && g > s) w.push(`${ten(id)} #${id}: giá bỏ vào ${g} > giá shop ${s} → mua shop bỏ vào là lời`); }
         if (c.knbOn && dsDich(c).some((x) => /^3991/.test(x.id))) w.push('Đang cho bỏ KNB web và có phiếu KNB làm đích → người chơi đổi KNB web sang phiếu game, lách giới hạn rút');
         return w;
     }
@@ -173,7 +183,7 @@ module.exports = function ghepNgoc(d) {
     }
     function adminState() {
         const c = cfg(), db = d.db();
-        return { cfg: c, nhomDich: Object.fromEntries(Object.entries(NHOM_DICH).map(([k, v]) => [k, v.ten])),
+        return { cfg: c, nhomDich: NHOM_DICH,
             dich: dsDich(c), bangGia: bangGia(c), canhBao: canhBao(c),
             log: (db._gnLog || []).slice(-100).reverse().map((x) => ({ ...x, tenDich: ten(x.dich) })) };
     }
@@ -186,16 +196,16 @@ module.exports = function ghepNgoc(d) {
                 on: !!x.on, phi: num(x.phi, 0, 90, 'Phí'), tiMin: num(x.tiMin, 0.01, 100, 'Tỉ lệ tối thiểu'), tiMax: num(x.tiMax, 1, 100, 'Tỉ lệ tối đa'),
                 luotNgay: Math.floor(num(x.luotNgay, 0, 100000, 'Lượt/ngày')), monMax: Math.floor(num(x.monMax, 1, 10000, 'Món tối đa/lần')),
                 knbOn: !!x.knbOn, knbMax: Math.floor(num(x.knbMax, 0, 1e9, 'KNB tối đa')),
-                vao: { giaRuong: !!(x.vao && x.vao.giaRuong), rac: { on: !!(x.vao && x.vao.rac && x.vao.rac.on), pct: num(x.vao && x.vao.rac && x.vao.rac.pct, 0, 90, '% rác') }, rieng: ds(x.vao && x.vao.rieng, 'Giá bỏ vào') },
+                vao: { giaRuong: !!(x.vao && x.vao.giaRuong), shop: { on: !!(x.vao && x.vao.shop && x.vao.shop.on), pct: num(x.vao && x.vao.shop && x.vao.shop.pct, 0, 100, '% giá shop') }, rieng: ds(x.vao && x.vao.rieng, 'Giá bỏ vào') },
                 dich: { nhom: {}, rieng: ds(x.dich && x.dich.rieng, 'Món đích') },
             };
             if (c.tiMin > c.tiMax) throw new Error('Tỉ lệ tối thiểu lớn hơn tối đa');
-            for (const k of Object.keys(NHOM_DICH)) { const g = (x.dich && x.dich.nhom && x.dich.nhom[k]) || {}; c.dich.nhom[k] = { on: !!g.on, gia: Math.floor(num(g.gia || 0, 0, 1e9, 'Giá ' + NHOM_DICH[k].ten)) }; }
+            for (const k of Object.keys(NHOM_DICH)) { const g = (x.dich && x.dich.nhom && x.dich.nhom[k]) || {}; c.dich.nhom[k] = { on: !!g.on, gia: Math.floor(num(g.gia || 0, 0, 1e9, 'Giá ' + NHOM_DICH[k])), ids: idDs(g.ids) }; }
             d.db()._gnCfg = c;
         } catch (e) { return { error: e.message }; }
         d.saveDbNow();
         const c = cfg();
-        d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} lưu cấu hình: ${c.on ? 'BẬT' : 'tắt'}, phí ${c.phi}%, tỉ lệ ${c.tiMin}-${c.tiMax}%, ${c.luotNgay} lượt/ngày, rác ${c.vao.rac.on ? c.vao.rac.pct + '%' : 'tắt'}, ${dsDich(c).length} món đích`);
+        d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} lưu cấu hình: ${c.on ? 'BẬT' : 'tắt'}, phí ${c.phi}%, tỉ lệ ${c.tiMin}-${c.tiMax}%, ${c.luotNgay} lượt/ngày, giá bỏ vào ${c.vao.shop.on ? c.vao.shop.pct + '% shop' : 'không theo shop'}, ${dsDich(c).length} món đích`);
         return { ok: true, ...adminState() };
     }
     function tim(q) {

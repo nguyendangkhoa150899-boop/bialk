@@ -81,7 +81,7 @@
   function tuBo(pMuon) {
     var s = S(), d = dichObj(); if (!d) return;
     var can = pMuon / (100 - s.phi) * d.gia - (GN.knb || 0), vao = {}, con = s.monMax, dung = 0;
-    var ds = (s.ruong || []).filter(function (x) { return x.id !== d.id; }).slice().sort(function (a, b) { var ra = /^rác/.test(a.tu) ? 0 : 1, rb = /^rác/.test(b.tu) ? 0 : 1; return ra - rb || b.gia - a.gia; });
+    var ds = (s.ruong || []).filter(function (x) { return x.id !== d.id; }).slice().sort(function (a, b) { var ra = /^50\d/.test(a.id) ? 1 : 0, rb = /^50\d/.test(b.id) ? 1 : 0; return ra - rb || b.gia - a.gia; });
     ds.forEach(function (x) { if (dung >= can || con <= 0) return; var n = Math.min(x.qty, con, Math.floor((can - dung) / x.gia)); if (n > 0) { vao[x.id] = n; dung += n * x.gia; con -= n; } });
     if (dung < can && con > 0) { var nho = null; ds.forEach(function (x) { if ((vao[x.id] || 0) < x.qty && (!nho || x.gia < nho.gia)) nho = x; }); if (nho) { vao[nho.id] = (vao[nho.id] || 0) + 1; dung += nho.gia; } }
     GN.vao = vao;
@@ -136,7 +136,7 @@
     else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở tab 🎯 Món đích bên dưới</div>';
     h += '<div class="gnMul">' + [1.5, 2, 5, 10, 20].map(function (m) { return '<button onclick="gnNhan(' + m + ')" title="Chọn món đích có giá trị gần ' + m + ' lần đồ đang bỏ vào">' + m + 'x</button>'; }).join('') + '</div>'
       + '<div class="gnMul">' + [35, 55, 75].filter(function (v) { return v <= s.tiMax; }).map(function (v) { return '<button onclick="gnPct(' + v + ')" title="Tự bỏ đồ trong rương cho đủ ' + v + '%">' + v + '%</button>'; }).join('') + '</div>'
-      + '<div class="muted" style="font-size:11px;text-align:center;margin-top:4px">Kéo vòng để xoay vùng trúng tới chỗ ưng ý · 35/55/75% = tự bỏ đồ (rác trước)</div></div>';
+      + '<div class="muted" style="font-size:11px;text-align:center;margin-top:4px">Kéo vòng để xoay vùng trúng tới chỗ ưng ý · 35/55/75% = tự bỏ đồ (đồ không phải ngọc trước)</div></div>';
     h += '</div>';
     // ---- chọn
     var tab = GN.chon || 'ruong';
