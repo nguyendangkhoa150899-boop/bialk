@@ -12,7 +12,7 @@
     var box = el('gnaApp'); if (!box || !A) return;
     var c = A.cfg, h = '';
     h += '<div class="note">Người chơi bỏ đồ trong 🧰 Rương Ích Kỷ để luyện ra 1 món đích. <b>Tỉ lệ = tổng giá trị bỏ vào ÷ giá món đích × (100 − phí)%</b>, kẹp trong [tối thiểu, tối đa]. Thua là mất hết đồ đã bỏ. '
-      + 'Giá 1 món bỏ vào lấy theo thứ tự: <b>giá riêng ở đây</b> → <b>% giá shop web</b> (mặc định 90% = rẻ hơn ngoài 10%) → <b>giá bán Rương Ích Kỷ</b> (tab 📦 Kho đồ, cho món không có ở shop). Không có giá nào thì không bỏ vào được.' + (c.moi ? ' <b>Đang dùng cấu hình mặc định, chưa lưu lần nào.</b>' : '') + '</div>';
+      + 'Giá 1 món bỏ vào lấy theo thứ tự: <b>giá riêng ở đây</b> (ngoại lệ admin tự đặt) → <b>% giá chợ</b> (shop web, chỉ món ĐANG BÁN; mặc định 90% = rẻ hơn ngoài 10%) → <b>giá bán Rương Ích Kỷ</b> (mặc định tắt). Món không có giá chợ thì KHÔNG hiện ở mục bỏ vào của người chơi.' + (c.moi ? ' <b>Đang dùng cấu hình mặc định, chưa lưu lần nào.</b>' : '') + '</div>';
     if (A.canhBao && A.canhBao.length) h += '<div class="note" style="border-color:#c0392b"><b>⚠️ Cảnh báo kinh tế:</b>' + A.canhBao.map(function (w) { return '<div>• ' + esc(w) + '</div>'; }).join('') + '</div>';
     h += '<div class="row" style="gap:12px;flex-wrap:wrap;align-items:center;margin-top:8px">' + chk('gnaOn', c.on, '<b>Bật</b> trên web')
       + '<label>Phí % ' + inp('gnaPhi', c.phi, 60) + '</label><label>Tỉ lệ tối thiểu % ' + inp('gnaMin', c.tiMin, 60) + '</label><label>tối đa % ' + inp('gnaMax', c.tiMax, 60) + '</label>'

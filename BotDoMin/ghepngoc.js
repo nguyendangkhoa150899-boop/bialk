@@ -5,7 +5,7 @@
 // GIÁ TRỊ 1 món bỏ vào (theo thứ tự, cái nào có trước dùng cái đó):
 //   1. giá riêng admin đặt ở Ghép Ngọc (vao.rieng[id]; 0 = cấm bỏ vào)
 //   2. giá shop web x vao.shop.pct % (mặc định 90% = rẻ hơn ngoài shop 10%) - món có bán ở shop web
-//   3. giá BÁN trong Rương Ích Kỷ (món không có ở shop mà admin cho bán, vd ngọc 6 ngoài shop)
+//   3. giá BÁN trong Rương Ích Kỷ (mặc định TẮT - chủ server: món không có giá chợ thì không hiện)
 //   không có giá nào -> không bỏ vào được.
 //   NHÓM CẤM (vao.cam, kiểm TRƯỚC mọi giá, kể cả giá riêng): mặc định cấm Yếu Quyết - chỉ bán ở Rương Ích Kỷ.
 // MÓN ĐÍCH (05/10 chủ server chốt): CHỈ ngọc 7 thuộc tính, KHÔNG ngọc kép 7-x (Minh Tinh Thạch công + giảm kháng)
@@ -23,7 +23,8 @@ const LICH_MAX = 30, LOG_MAX = 400;
 const MAC_DINH = {
     on: false, phi: 10, tiMin: 1, tiMax: 75, luotNgay: 30, monMax: 50,
     knbOn: false, knbMax: 100000,
-    vao: { cam: { yq: true }, giaRuong: true, shop: { on: true, pct: 90 }, rieng: { 39910001: 1000, 39910002: 2000, 39910003: 5000, 39910004: 10000, 39910005: 50000 } },   // phiếu KNB bỏ vào = mệnh giá
+    // 05/10 chủ server: món KHÔNG có giá trên chợ (shop web) thì KHÔNG hiện ở mục bỏ vào -> tắt giá bán rương, không giá riêng mặc định
+    vao: { cam: { yq: true }, giaRuong: false, shop: { on: true, pct: 90 }, rieng: {} },
     dich: {
         nhom: {
             thuocTinh: { on: true, gia: 120000, sl: 1, ids: ['50702005', '50702006', '50702007', '50702008'] },
@@ -72,7 +73,8 @@ module.exports = function ghepNgoc(d) {
             moi: !d.db()._gnCfg,
         };
     }
-    function shopGia(id) { const s = d.shop().find((x) => String(x.id) === String(id) && Number(x.price) > 0); return s ? Number(s.price) : 0; }
+    // giá CHỢ (shop web) - chỉ món ĐANG BÁN (không tắt), giá > 0
+    function shopGia(id) { const s = d.shop().find((x) => String(x.id) === String(id) && !x.off && Number(x.price) > 0); return s ? Number(s.price) : 0; }
     // giá trị 1 món BỎ VÀO + nguồn giá
     function giaVao(id, c) {
         c = c || cfg(); id = String(id);
