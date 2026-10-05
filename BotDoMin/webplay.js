@@ -651,11 +651,11 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
-                // 💰 bán ngọc 6 / Yếu Quyết lấy KNB · 🗑️ xoá đồ khỏi rương (05/10)
-                if (ctx.ichKy && ctx.ichKy.ban && req.method === 'POST' && (path === '/api/ichky/ban' || path === '/api/ichky/xoa')) {
+                // 💰 bán ngọc 6 / Yếu Quyết lấy KNB · 🗑️ xoá đồ khỏi rương · 🎫 dùng phiếu KNB (05/10)
+                if (ctx.ichKy && ctx.ichKy.ban && req.method === 'POST' && (path === '/api/ichky/ban' || path === '/api/ichky/xoa' || (path === '/api/ichky/dung' && ctx.ichKy.dung))) {
                     const body = await readBody(req);
                     const me2 = ctx.getUserData(userId);
-                    const fn = path === '/api/ichky/ban' ? ctx.ichKy.ban : ctx.ichKy.xoa;
+                    const fn = path === '/api/ichky/ban' ? ctx.ichKy.ban : path === '/api/ichky/dung' ? ctx.ichKy.dung : ctx.ichKy.xoa;
                     const r = fn(userId, String(body.itemId || ''), body.qty, me2.name || userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
@@ -2085,6 +2085,7 @@ const PAGE = [
     '.ikAct .bn{background:var(--green);color:#0c2417}',
     '.ikAct .bt{background:linear-gradient(180deg,#7a5c14,#4a3a10);color:#fff3c4;border:1px solid #ffd76a}',
     '.ikAct .bb{background:linear-gradient(180deg,#1d6b4a,#124632);color:#d8ffe9;border:1px solid #4fd39a}',   // 💰 bán
+    '.ikAct .bd{background:linear-gradient(180deg,#5b3fa8,#36256a);color:#efe6ff;border:1px solid #b79bff}',   // 🎫 dùng phiếu KNB
     '.ikAct .bx{min-width:0;background:#3a1a1a;color:#ffb4b4;border:1px solid #7a3434}',   // 🗑️ xoá
     '.ikGia{font-size:13px;color:#7ee0b0;font-weight:800}',
     '.ikId{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}',
@@ -5432,12 +5433,12 @@ const PAGE = [
     'L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
     '+"<div class=\\"ikNm\\">"+esc(x.name)+"<div class=\\"ikId\\">ID "+esc(x.id)+"</div></div>"',
     '+"<div class=\\"ikCo\\">"+vnd(x.qty)+"</div>"',
-    '+"<div class=\\"ikGia\\">"+(x.ban>0?"💰 "+vnd(x.ban)+" KNB":"<span class=\\"muted\\">không bán</span>")+"</div>"',
+    '+"<div class=\\"ikGia\\">"+(x.doi>0?"🎫 = "+vnd(x.doi)+" KNB":x.ban>0?"💰 "+vnd(x.ban)+" KNB":"<span class=\\"muted\\">không bán</span>")+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+(x.rutMax?Math.min(x.qty,x.rutMax):x.qty)+"\\">"',
     '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
     '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button>"',
     // 💰 bán (chỉ món admin cho bán) + 🗑️ xoá (05/10) - cùng 1 hàng ngang
-    '+(x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"<span class=\\"ikNoBan\\"></span>")',   // ô trống giữ thẳng cột trên PC
+    '+(x.doi>0?"<button class=\\"bd\\" title=\\"Đổi phiếu thành KNB web\\" onclick=\\"ikDung(\'"+x.id+"\',this)\\">🎫 Sử dụng</button>":x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"<span class=\\"ikNoBan\\"></span>")',   // ô trống giữ thẳng cột trên PC
     '+"<button class=\\"bx\\" title=\\"Xoá khỏi rương - không hoàn gì\\" onclick=\\"ikXoa(\'"+x.id+"\',this)\\">🗑️</button></div></div>"});',
     'box.innerHTML=h}',
     'function ikGio(ts){var d=new Date(ts);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}',
@@ -5470,6 +5471,13 @@ const PAGE = [
     'if(!(await gConfirm("Bán <b>"+q+" "+esc(it.name)+"</b> lấy <b>"+vnd(it.ban*q)+"</b> KNB vào ví web? Bán rồi là <b>mất món</b>.","💰 Bán")))return;',
     'IKBUSY=true;if(btn)btn.disabled=true;',
     'api("/api/ichky/ban",{itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn)btn.disabled=false;toast(j.message||"💰 Đã bán");if(typeof j.balance==="number")setBal(j.balance);if(j.state){IK=j.state;ikDraw()}else ikSync()})',
+    '.catch(function(e){IKBUSY=false;if(btn)btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
+    // 🎫 05/10: phiếu KNB -> KNB web theo mệnh giá
+    'async function ikDung(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it||!(it.doi>0))return;',
+    'var q=ikSoLuong(id,it);if(!q)return;',
+    'if(!(await gConfirm("Dùng <b>"+q+" "+esc(it.name)+"</b> lấy <b>"+vnd(it.doi*q)+"</b> KNB vào ví web?","🎫 Sử dụng")))return;',
+    'IKBUSY=true;if(btn)btn.disabled=true;',
+    'api("/api/ichky/dung",{itemId:id,qty:q}).then(function(j){IKBUSY=false;if(btn)btn.disabled=false;toast(j.message||"🎫 Đã dùng");if(typeof j.balance==="number")setBal(j.balance);if(j.state){IK=j.state;ikDraw()}else ikSync()})',
     '.catch(function(e){IKBUSY=false;if(btn)btn.disabled=false;toast("❌ "+e.message);ikSync()})}',
     'async function ikXoa(id,btn){if(IKBUSY)return toast("⏳ Đang xử lý - chờ chút");var it=ikMon(id);if(!it)return;',
     'var q=ikSoLuong(id,it);if(!q)return;',

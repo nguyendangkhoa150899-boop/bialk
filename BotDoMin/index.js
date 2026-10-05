@@ -2414,6 +2414,11 @@ const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
 const ICHKY_GIU = ['10157001', '10157002', '10157003'];
 const ICHKY_GIU_RUT_MAX = 10;   // 03/10: Long Văn rút về game tối đa 10 cái/lần (mỗi cái 1 ô túi, rút nhiều dễ tràn túi -> mất đồ)
 // 05/10: NGỌC cũng không chồng trong game (mỗi viên 1 ô) -> mọi ngọc 501xxxxx-507xxxxx rút tối đa 10/lần
+// 🎫 05/10 chủ server: PHIẾU KNB trong rương bấm "Sử dụng" -> KNB web đúng mệnh giá. Không in thêm tiền:
+// y như rút phiếu về game, dùng ra KNB game rồi chuyển qua NPC Ví Web (1:1). Mệnh giá lấy theo tên phiếu
+// (game dùng phiếu qua hiệu ứng vật phẩm, không có Lua); Ghép Ngọc cũng tính phiếu đúng mệnh giá này.
+// ⚠️ Shop web bán phiếu nào RẺ HƠN mệnh giá thì thành máy in tiền - 05/10 shop chỉ có 39910003 giá 0, nhóm ⭐ mua 1 lần.
+const ICHKY_PHIEU_KNB = { '39910001': 1000, '39910002': 2000, '39910003': 5000, '39910004': 10000, '39910005': 50000, '39910006': 100000, '39900000': 200000 };
 const ichKyRutMax = (id) => (ICHKY_GIU.includes(String(id)) || /^50[1-7]\d{5}$/.test(String(id))) ? ICHKY_GIU_RUT_MAX : 0;
 function ichKyOf(user) {
     const hnay = vnDayStr(Date.now());
@@ -2460,7 +2465,8 @@ function ichKyState(userId) {
         return { id, qty: Number(qty) || 0, name: (it && it.name) || (gi && gi.n) || id, img: (it && it.img) || '', cat: (it && it.cat) || '', giu: ICHKY_GIU.includes(id),
             ic: (it && it.img) ? null : ITEMICON.icon(id),   // 🖼️ 03/10: món không có ảnh shop (vd Long Văn từ game) -> icon game (itemicon.js)
             rutMax: ichKyRutMax(id),   // 0 = không giới hạn riêng (Long Văn + ngọc: 10)
-            ban: ichKyBanGia(id) };   // 💰 05/10: giá bán 1 cái (0 = không bán được)
+            ban: ichKyBanGia(id),   // 💰 05/10: giá bán 1 cái (0 = không bán được)
+            doi: ICHKY_PHIEU_KNB[id] || 0 };   // 🎫 05/10: phiếu KNB - KNB web nhận được mỗi phiếu khi bấm Sử dụng
     }).filter(x => x.qty > 0).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
     return {
         items, total: ichKyTotal(k),
@@ -2598,6 +2604,25 @@ function ichKyBan(userId, itemId, qty, username) {
     saveDbNow();
     writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} BÁN ${ten} x${qty} = ${tien.toLocaleString()} KNB | Số dư: ${(user.points || 0).toLocaleString()}`);
     return { ok: true, message: `💰 Đã bán ${qty.toLocaleString()} ${ten} = +${tien.toLocaleString('vi-VN')} KNB`, balance: user.points || 0, state: ichKyState(userId) };
+}
+// 🎫 05/10: SỬ DỤNG phiếu KNB trong rương -> cộng KNB web theo mệnh giá (không tính vào hạn bán/ngày)
+function ichKyDung(userId, itemId, qty, username) {
+    const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
+    itemId = String(itemId || '');
+    const gia = ICHKY_PHIEU_KNB[itemId] || 0;
+    if (gia <= 0) return { error: 'Món này không phải phiếu KNB' };
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    const user = getUserData(userId);
+    if (!ichKyTake(user, itemId, qty)) return { error: 'Rương không đủ phiếu' };
+    const tien = gia * qty;
+    updatePoints(userId, tien);
+    const gi = gameItems().find(x => String(x.id) === itemId);
+    const ten = (gi && gi.n) || itemId;
+    logDog('ichkydung', userId, user.name || username || userId, tien, `🎫 Dùng ${ten} x${qty}`);
+    saveDbNow();
+    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} DÙNG ${ten} x${qty} = +${tien.toLocaleString()} KNB | Số dư: ${(user.points || 0).toLocaleString()}`);
+    return { ok: true, message: `🎫 Đã dùng ${qty.toLocaleString()} ${ten} = +${tien.toLocaleString('vi-VN')} KNB`, balance: user.points || 0, state: ichKyState(userId) };
 }
 // 🗑️ 05/10: người chơi tự XOÁ đồ trong rương (bỏ hẳn, không hoàn gì)
 function ichKyXoa(userId, itemId, qty, username) {
@@ -7516,6 +7541,7 @@ client.once('ready', async (c) => {
                 give: (uid, to, id, qty, name) => ichKyGive(uid, to, id, qty, name),
                 ban: (uid, id, qty, name) => ichKyBan(uid, id, qty, name),   // 💰 05/10
                 xoa: (uid, id, qty, name) => ichKyXoa(uid, id, qty, name),   // 🗑️ 05/10
+                dung: (uid, id, qty, name) => ichKyDung(uid, id, qty, name),   // 🎫 05/10 phiếu KNB -> KNB web
             },
             lienKetMsg: () => LIENKET_MSG,
             // 🎮 30/09: đăng nhập web bằng tài khoản game + đổi mật khẩu (qua panel GM, repo tlbbnetco4 panel/panel.py)
