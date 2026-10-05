@@ -120,8 +120,8 @@ function readLvReceipts() {
         let ok = true;
         for (const l of lines.slice(0, -1)) {
             const m = l.match(/^(\d+) (\d+) (\d+)$/);
-            // 05/10: + ngọc 501xxxxx-507xxxxx (NPC Ví Web chỉ gửi ngọc KHÔNG cố định)
-            if (!m || m[1] !== guid || !(LONGVAN.includes(m[2]) || /^50[1-7]\d{5}$/.test(m[2])) || !(Number(m[3]) > 0 && Number(m[3]) <= 1000)) { ok = false; break; }
+            // 05/10: + ngọc CẤP 6 506xxxxx (NPC Ví Web chỉ gửi ngọc 6 KHÔNG cố định)
+            if (!m || m[1] !== guid || !(LONGVAN.includes(m[2]) || /^506\d{5}$/.test(m[2])) || !(Number(m[3]) > 0 && Number(m[3]) <= 1000)) { ok = false; break; }
             items.push({ id: m[2], n: Number(m[3]) });
         }
         if (ok && items.length) out.push({ file: f, guid, items });
