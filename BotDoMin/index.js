@@ -1983,6 +1983,7 @@ const VQ = require('./vongquay')({
 });
 // 💎 05/10: GHÉP NGỌC (ghepngoc.js) - bỏ đồ trong 🧰 Rương Ích Kỷ luyện ra ngọc 7 / Trùng Lâu..., thắng vào lại rương.
 // Mọi số liệu ở dbCache._gnCfg (panel SUPER, tab 🎁 Quà tặng). Mặc định TẮT.
+const GN_ANH = require('./ghepngoc.anh');
 const GN = require('./ghepngoc')({
     db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
     items: () => gameItems(), shop: () => itemShopList(), giaRuong: (id) => ichKyBanGiaTho(id),
@@ -1991,6 +1992,9 @@ const GN = require('./ghepngoc')({
     // 📣 05/10 thông báo Discord: chỉ ping đúng người chơi được tag
     guiKenh: async (kenh, noiDung, ping) => { const ch = await client.channels.fetch(kenh); if (!ch || typeof ch.send !== 'function') throw new Error('kênh không gửi được'); return ch.send({ content: noiDung, allowedMentions: { users: ping || [] } }); },
     dsKenh: () => { const out = []; try { for (const g of client.guilds.cache.values()) for (const ch of g.channels.cache.values()) if (ch.type === 0) out.push({ id: ch.id, ten: ch.name, guild: g.name }); } catch (e) { } return out; },
+    // 📸 05/10 ảnh kết quả: server vẽ (ghepngoc.anh.js, icon game từ itemicon.js) rồi gửi kèm file
+    veAnh: (o) => GN_ANH.ve(o, ITEMICON.icon, ITEMICON.ICON_DIR),
+    guiKenhAnh: async (kenh, noiDung, ping, png) => { const ch = await client.channels.fetch(kenh); if (!ch || typeof ch.send !== 'function') throw new Error('kênh không gửi được'); return ch.send({ content: noiDung || undefined, files: [{ attachment: png, name: 'ghep-ngoc.png' }], allowedMentions: { users: ping || [] } }); },
 });
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ

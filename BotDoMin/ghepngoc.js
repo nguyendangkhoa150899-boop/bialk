@@ -24,7 +24,8 @@ const MAC_DINH = {
     on: false, phi: 10, tiMin: 1, tiMax: 75, luotNgay: 30, monMax: 50,
     knbOn: false, knbMax: 100000,
     // 📣 thông báo Discord mỗi lần luyện: thắng = chúc mừng, thua = châm biếm (câu bốc ngẫu nhiên)
-    thongBao: { on: false, kenh: '', thang: true, thua: true, minGia: 0, tag: true, tre: 8 },   // tre = giây chờ kim web quay xong (7,6s) rồi mới đăng
+    thongBao: { on: false, kenh: '', thang: true, thua: true, minGia: 0, tag: true, tre: 8, anh: true, anhChu: false },   // tre = giây chờ kim web quay xong (7,6s) rồi mới đăng
+    // 📸 05/10 anh = gửi ẢNH kết quả (server vẽ, ghepngoc.anh.js) thay câu chữ; anhChu = kèm câu chúc mừng/châm biếm dưới ảnh
     // 05/10 chủ server: món KHÔNG có giá trên chợ (shop web) thì KHÔNG hiện ở mục bỏ vào -> tắt giá bán rương, không giá riêng mặc định
     vao: { cam: { yq: true }, giaRuong: false, shop: { on: true, pct: 90 }, rieng: {} },
     dich: {
@@ -89,7 +90,7 @@ module.exports = function ghepNgoc(d) {
             knbOn: c.knbOn === undefined ? M.knbOn : !!c.knbOn, knbMax: Math.floor(so(c.knbMax, 0, 1e9, M.knbMax)),
             vao: { cam, giaRuong: v.giaRuong === undefined ? M.vao.giaRuong : !!v.giaRuong, shop: { on: sh.on === undefined ? true : !!sh.on, pct: so(sh.pct, 0, 100, M.vao.shop.pct) }, rieng: rieng(v.rieng, M.vao.rieng) },
             dich: { nhom, rieng: rieng(di.rieng, M.dich.rieng) },
-            thongBao: { on: !!tb.on, kenh: /^\d{15,20}$/.test(String(tb.kenh || '')) ? String(tb.kenh) : '', thang: !!tb.thang, thua: !!tb.thua, minGia: Math.floor(so(tb.minGia, 0, 1e9, 0)), tag: !!tb.tag, tre: so(tb.tre, 0, 120, 8) },
+            thongBao: { on: !!tb.on, kenh: /^\d{15,20}$/.test(String(tb.kenh || '')) ? String(tb.kenh) : '', thang: !!tb.thang, thua: !!tb.thua, minGia: Math.floor(so(tb.minGia, 0, 1e9, 0)), tag: !!tb.tag, tre: so(tb.tre, 0, 120, 8), anh: tb.anh === undefined ? true : !!tb.anh, anhChu: !!tb.anhChu },
             moi: !d.db()._gnCfg,
         };
     }
@@ -200,7 +201,7 @@ module.exports = function ghepNgoc(d) {
         if (db._gnLog.length > LOG_MAX) db._gnLog.splice(0, db._gnLog.length - LOG_MAX);
         if (knb && d.logDog) d.logDog('ghepngoc', uid, u.name || who || uid, -knb, `💎 Ghép ngọc: bỏ ${knb.toLocaleString('vi-VN')} KNB`);
         d.saveDbNow();
-        thongBao(c, uid, u, thang, dich, tiLe, roll, tong);
+        thongBao(c, uid, u, thang, dich, tiLe, roll, tong, { t, lech, knb, vao: ds.map((x) => ({ id: x.id, ten: ten(x.id), sl: x.sl, gia: x.gia })) });
         d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} x${dich.sl} (${tiLe}%, tung ${roll}) - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
         return { ok: true, thang, tiLe, lech, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia, sl: dich.sl }, ...state(uid) };
     }
@@ -208,14 +209,27 @@ module.exports = function ghepNgoc(d) {
     // 📣 gửi Discord (không await - gửi hỏng không ảnh hưởng lượt luyện)
     const vnd = (n) => Math.floor(n).toLocaleString('vi-VN');
     function cauTb(ds, o) { return ds[rnd(ds.length)].replace(/\{(\w+)\}/g, (_, k) => (o[k] !== undefined ? o[k] : '')); }
-    function thongBao(c, uid, u, thang, dich, tiLe, roll, tong) {
+    function thongBao(c, uid, u, thang, dich, tiLe, roll, tong, them) {
         const tb = c.thongBao;
         if (!tb.on || !tb.kenh || !d.guiKenh || dich.gia < tb.minGia || (thang ? !tb.thang : !tb.thua)) return;
-        const ten = (tb.tag && /^\d{15,20}$/.test(String(uid)) ? '<@' + uid + '> ' : '') + (u.ingameName || u.name || uid);
+        const tag = tb.tag && /^\d{15,20}$/.test(String(uid)) ? '<@' + uid + '>' : '';
+        const ten = (tag ? tag + ' ' : '') + (u.ingameName || u.name || uid);
         const mon = ten_(dich);
         const msg = cauTb(thang ? CAU_THANG : CAU_THUA, { ten, mon, tl: tiLe, tung: roll, gt: vnd(tong) });
+        const ping = tb.tag ? [String(uid)] : [];
         // chờ kim trên web quay xong mới đăng - đăng ngay thì kênh Discord lộ kết quả trước cả người chơi
-        setTimeout(() => { Promise.resolve(d.guiKenh(tb.kenh, msg, tb.tag ? [String(uid)] : [])).catch(() => {}); }, tb.tre * 1000);
+        setTimeout(() => {
+            // 📸 05/10: ảnh kết quả (vẽ lỗi / chưa cài thư viện -> câu chữ như cũ)
+            let png = null;
+            if (tb.anh && d.veAnh && d.guiKenhAnh && them) {
+                try {
+                    png = d.veAnh({ ten: u.ingameName || u.name || uid, t: them.t, thang, tiLe, roll, lech: them.lech, tong, knb: them.knb,
+                        dich: { id: dich.id, ten: dich.ten, sl: dich.sl, gia: dich.gia }, vao: them.vao });
+                } catch (e) { png = null; d.writeLog && d.writeLog('ADMIN', '[GHÉP NGỌC] vẽ ảnh lỗi: ' + e.message); }
+            }
+            const gui = png ? d.guiKenhAnh(tb.kenh, tb.anhChu ? msg : tag, ping, png) : d.guiKenh(tb.kenh, msg, ping);
+            Promise.resolve(gui).catch(() => {});
+        }, tb.tre * 1000);
     }
     const ten_ = (dich) => dich.ten + (dich.sl > 1 ? ' ×' + dich.sl : '');
     async function guiThu() {
@@ -224,6 +238,16 @@ module.exports = function ghepNgoc(d) {
         if (!d.guiKenh) return { error: 'Bot chưa nối hàm gửi Discord' };
         const vd = dsDich(c)[0] || { ten: 'Ngọc thử', sl: 1 };
         try {
+            if (tb.anh && d.veAnh && d.guiKenhAnh) {
+                // 📸 ảnh thử: vài món trong danh sách đích làm mẫu cột "bỏ vào" (có sẵn tên + icon + giá)
+                const vao = dsDich(c).slice(1, 4).map((x) => ({ id: x.id, ten: x.ten, sl: 1, gia: x.gia }));
+                const mau = (thang, roll) => ({ ten: 'Admin (THỬ)', t: Date.now(), thang, tiLe: 42, roll, lech: 0, tong: 50000, knb: 0, dich: { id: vd.id, ten: vd.ten, sl: vd.sl || 1, gia: vd.gia || 0 }, vao });
+                const a = d.veAnh(mau(true, 12.345)), b = d.veAnh(mau(false, 88.8));
+                if (!a || !b) return { error: 'Bot chưa vẽ được ảnh (thiếu thư viện @resvg/resvg-js?)' };
+                await d.guiKenhAnh(tb.kenh, '🧪 [THỬ] ảnh kết quả' + (tb.anhChu ? '\n' + cauTb(CAU_THANG, { ten: 'Admin', mon: ten_(vd), tl: 42, tung: 12.345, gt: vnd(50000) }) : ''), [], a);
+                await d.guiKenhAnh(tb.kenh, '🧪 [THỬ] ảnh kết quả' + (tb.anhChu ? '\n' + cauTb(CAU_THUA, { ten: 'Admin', mon: ten_(vd), tl: 42, tung: 88.8, gt: vnd(50000) }) : ''), [], b);
+                return { ok: true, message: '📸 Đã gửi 2 ảnh thử vào kênh' };
+            }
             await d.guiKenh(tb.kenh, '🧪 [THỬ] ' + cauTb(CAU_THANG, { ten: 'Admin', mon: ten_(vd), tl: 42, tung: 12.345, gt: vnd(50000) }), []);
             await d.guiKenh(tb.kenh, '🧪 [THỬ] ' + cauTb(CAU_THUA, { ten: 'Admin', mon: ten_(vd), tl: 42, tung: 88.8, gt: vnd(50000) }), []);
         } catch (e) { return { error: 'Gửi lỗi: ' + e.message }; }
@@ -268,7 +292,7 @@ module.exports = function ghepNgoc(d) {
                 vao: { cam: Object.fromEntries(Object.keys(NHOM_CAM).map((k) => [k, !!(x.vao && x.vao.cam && x.vao.cam[k])])), giaRuong: !!(x.vao && x.vao.giaRuong), shop: { on: !!(x.vao && x.vao.shop && x.vao.shop.on), pct: num(x.vao && x.vao.shop && x.vao.shop.pct, 0, 100, '% giá shop') }, rieng: ds(x.vao && x.vao.rieng, 'Giá bỏ vào') },
                 dich: { nhom: {}, rieng: ds(x.dich && x.dich.rieng, 'Món đích') },
                 thongBao: (() => { const t0 = x.thongBao || {}; const k = String(t0.kenh || '').trim(); if (k && !/^\d{15,20}$/.test(k)) throw new Error('ID kênh Discord phải là 15-20 chữ số');
-                    return { on: !!t0.on, kenh: k, thang: !!t0.thang, thua: !!t0.thua, minGia: Math.floor(num(t0.minGia || 0, 0, 1e9, 'Mức giá báo')), tag: !!t0.tag, tre: num(t0.tre === undefined || t0.tre === '' ? 8 : t0.tre, 0, 120, 'Giây chờ đăng') }; })(),
+                    return { on: !!t0.on, kenh: k, thang: !!t0.thang, thua: !!t0.thua, minGia: Math.floor(num(t0.minGia || 0, 0, 1e9, 'Mức giá báo')), tag: !!t0.tag, tre: num(t0.tre === undefined || t0.tre === '' ? 8 : t0.tre, 0, 120, 'Giây chờ đăng'), anh: t0.anh === undefined ? true : !!t0.anh, anhChu: !!t0.anhChu }; })(),
             };
             if (c.tiMin > c.tiMax) throw new Error('Tỉ lệ tối thiểu lớn hơn tối đa');
             for (const k of Object.keys(NHOM_DICH)) { const g = (x.dich && x.dich.nhom && x.dich.nhom[k]) || {}; c.dich.nhom[k] = { on: !!g.on, gia: Math.floor(num(g.gia || 0, 0, 1e9, 'Giá ' + NHOM_DICH[k])), sl: Math.floor(num(g.sl || 1, 1, 9999, 'Số lượng ' + NHOM_DICH[k])), ids: idDs(g.ids) }; }

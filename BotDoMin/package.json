@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "discord.js": "^14.25.1",
     "dotenv": "^17.4.2"
   }
