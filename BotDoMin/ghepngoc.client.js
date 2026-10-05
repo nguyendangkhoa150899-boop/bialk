@@ -207,4 +207,7 @@
       }, QUAY_MS + 200);
     }).catch(function (e) { GN.busy = false; ve(); toast('❌ ' + e.message); gnSync(); });
   };
+  // 05/10: F5 khi dang o trang Ghep Ngoc - trang choi mo lai trang gn TRUOC khi file nay tai xong (gnSync chua co) -> tu tai
+  var pg = document.getElementById('pageGn');
+  if (pg && !pg.classList.contains('hidden')) window.gnSync();
 })();
