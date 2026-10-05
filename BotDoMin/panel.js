@@ -624,7 +624,7 @@ function startPanel(ctx) {
                 }
                 if (path === '/api/tx/clear') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
-                    ctx.getTX().forcedResult = null;
+                    ctx.getTX().forcedResult = null; ctx.getTX().epNhaCai = null;   // 05/10: hủy luôn 'nhà cái ăn nhiều nhất' bật từ nút Discord
                     ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Big Small`);
                     return sendJSON(res, 200, { ok: true });
                 }

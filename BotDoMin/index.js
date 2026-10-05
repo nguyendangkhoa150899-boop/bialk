@@ -4016,24 +4016,32 @@ function txTimEpReNhat() {
     const bets = txState.bets || [];
     const nhan = (txState.nhan && txState.nhan.gameId === txState.gameId) ? (txState.nhan.o || null) : null;
     const tongDat = bets.reduce((s, b) => s + (b.amount || 0), 0);
-    let re = null;
+    // 05/10: tính ĐÚNG như txPlanPayout lúc chia tiền. Bản trước dùng luật bàn 52 cửa cho cả bàn ĐƠN GIẢN
+    // (đơn giản: thắng theo TỔNG điểm kể cả bão, 1 ăn 1, không hoàn bão) -> có thể chọn bão tưởng không phải trả.
+    const don = txSimple();
+    let min = Infinity, ung = [];
     for (const x of TX_CUA.MOI_KET_QUA) {
+        const sum = x[0] + x[1] + x[2], bao = x[0] === x[1] && x[1] === x[2];
+        const ben = sum >= 11 ? 'tai' : 'xiu', cl = sum % 2 === 0 ? 'chan' : 'le';
         let tra = 0;
         for (const b of bets) {
             const cua = b.choice === 'bao' ? 'baoany' : b.choice;
-            if (!TX_CUA.THEO_ID[cua]) continue;
-            let w = TX_CUA.tinhTra(cua, b.amount, x, nhan);
-            // hoàn 30% khi ra bão mà đặt đúng bên (luật riêng của server này)
-            if (w === 0 && x[0] === x[1] && x[1] === x[2]) {
-                const sum = x[0] + x[1] + x[2];
-                const ben = sum >= 11 ? 'tai' : 'xiu', cl = sum % 2 === 0 ? 'chan' : 'le';
-                if (cua === ben || cua === cl) w = Math.floor(b.amount * TX_STORM_REFUND);
+            let w = 0;
+            if (don && TX_SIMPLE_CUA.has(cua)) w = (cua === ben || cua === cl) ? b.amount * 2 : 0;
+            else if (TX_CUA.THEO_ID[cua]) {
+                w = TX_CUA.tinhTra(cua, b.amount, x, nhan);
+                // hoàn 30% khi ra bão mà đặt đúng bên (luật riêng bàn 52 cửa)
+                if (!don && w === 0 && bao && (cua === ben || cua === cl)) w = Math.floor(b.amount * TX_STORM_REFUND);
             }
             tra += w;
         }
-        if (!re || tra < re.tra) re = { dice: x.slice(), tra };
+        if (tra < min) { min = tra; ung = []; }
+        if (tra === min) ung.push({ dice: x.slice(), tra, bao });
     }
-    return re ? { ...re, tongDat, soCuoc: bets.length } : { dice: [1, 2, 3], tra: 0, tongDat: 0, soCuoc: 0 };
+    // cùng mức trả thấp nhất: ưu tiên KHÔNG bão (bão lộ liễu), bốc ngẫu nhiên cho khỏi lặp 1 bộ
+    const khongBao = ung.filter((u) => !u.bao), ds = khongBao.length ? khongBao : ung;
+    const re = ds.length ? ds[Math.floor(Math.random() * ds.length)] : null;
+    return re ? { dice: re.dice, tra: re.tra, tongDat, soCuoc: bets.length } : { dice: [1, 2, 3], tra: 0, tongDat: 0, soCuoc: 0 };
 }
 
 function txMaxBet() {
@@ -4693,7 +4701,28 @@ async function txNotiTest() {
     return r.ok ? { ok: true, kieu: r.kieu } : { error: r.error || 'Không gửi được - kiểm lại ID' };
 }
 // Gửi tới id: thử người trước, rồi tới kênh. Trả {ok,kieu} hoặc {error}.
-async function txNotiSend(noiDung) {
+// 🏦 05/10: hàng nút ép kết quả gắn dưới tin báo cược Tài Xỉu (chỉ người nhận báo bấm được, chỉ khi ván chưa lắc)
+function txEpNut(gameId) {
+    return [
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('txep_best_' + gameId).setLabel('Nhà cái ăn nhiều nhất').setEmoji('🏦').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('txep_huy_' + gameId).setLabel('Hủy ép').setEmoji('❌').setStyle(ButtonStyle.Secondary),
+        ),
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('txep_tc_' + gameId).setLabel('Ép Tài·Chẵn').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('txep_tl_' + gameId).setLabel('Ép Tài·Lẻ').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('txep_xc_' + gameId).setLabel('Ép Xỉu·Chẵn').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('txep_xl_' + gameId).setLabel('Ép Xỉu·Lẻ').setStyle(ButtonStyle.Primary),
+        ),
+    ];
+}
+// bộ xúc xắc ngẫu nhiên đúng Tài/Xỉu + Chẵn/Lẻ, KHÔNG bão
+function txXucXacTheo(tai, chan) {
+    const ds = TX_CUA.MOI_KET_QUA.filter((x) => { const s = x[0] + x[1] + x[2]; return !(x[0] === x[1] && x[1] === x[2]) && (s >= 11) === tai && (s % 2 === 0) === chan; });
+    return ds[Math.floor(Math.random() * ds.length)].slice();
+}
+async function txNotiSend(noiDung, components) {
+    if (components) noiDung = { content: noiDung, components };
     const c = txNotiCfg();
     if (!c.id) return { error: 'chưa có ID' };
     const thu = txNotiKieu ? [txNotiKieu] : ['user', 'channel'];
@@ -4726,7 +4755,8 @@ function txNotifyBet(userId, ten, cua, soTien) {
     const viCon = (getUserData(userId).points || 0);
     txNotiSend(
         `🎲 **${ten}** đặt **${Number(soTien).toLocaleString('vi-VN')}** vào **${tenCua}** · ván #${txState.gameId}\n` +
-        `ván này người đó đã đặt ${cuaNguoi.toLocaleString('vi-VN')} · ví còn ${viCon.toLocaleString('vi-VN')} · tổng bàn ${tong.toLocaleString('vi-VN')}`
+        `ván này người đó đã đặt ${cuaNguoi.toLocaleString('vi-VN')} · ví còn ${viCon.toLocaleString('vi-VN')} · tổng bàn ${tong.toLocaleString('vi-VN')}`,
+        txEpNut(txState.gameId)
     ).catch(() => { });
 }
 /** 🔔 Báo cược bàn SIÊU. Cùng cấu hình _txNoti với bàn thường, chỉ khác dòng chữ (ghi rõ ⚡ SIÊU + phí). */
@@ -8459,6 +8489,14 @@ function runTaiXiuLoop() {
 
 function rollTXDice() {
     let d1, d2, d3;
+    // 🏦 05/10: nút "Nhà cái ăn nhiều nhất" (tin báo cược) - tính ĐÚNG LÚC LẮC theo sổ cược cuối cùng của ván
+    if (txState.epNhaCai && txState.epNhaCai === txState.gameId) {
+        const r = txTimEpReNhat();
+        txState.epNhaCai = null; txState.forcedResult = null;
+        writeLog('ADMIN', `[ÉP TX] Ván #${txState.gameId} nhà cái ăn nhiều nhất: ${r.dice.join('-')} - trả ${r.tra.toLocaleString()} / tổng đặt ${r.tongDat.toLocaleString()} (${r.soCuoc} lệnh)`);
+        return r.dice.slice();
+    }
+    txState.epNhaCai = null;
     if (txState.forcedResult) {
         [d1, d2, d3] = txState.forcedResult.split(',').map(Number);
         txState.forcedResult = null;
@@ -9624,6 +9662,32 @@ client.on('interactionCreate', async interaction => {
     }
 
     // ======== NÚT BIG SMALL ========
+    // 🏦 05/10: nút ép kết quả dưới tin báo cược Tài Xỉu
+    if (interaction.customId.startsWith('txep_')) {
+        const nc = txNotiCfg();
+        if (!nc.id || userId !== nc.id) return interaction.reply({ content: '⛔ Chỉ người nhận báo cược mới dùng được nút này', ephemeral: true });
+        const [, loai, gid] = interaction.customId.split('_');
+        if (Number(gid) !== txState.gameId) return interaction.reply({ content: `⌛ Ván #${gid} đã qua (đang ván #${txState.gameId}) - đợi tin báo của ván mới`, ephemeral: true });
+        if (txState.status !== 'betting' && txState.status !== 'nhan') return interaction.reply({ content: `⌛ Ván #${gid} đã lắc xúc xắc rồi, không ép được nữa`, ephemeral: true });
+        const vn = (n) => Number(n).toLocaleString('vi-VN');
+        if (loai === 'huy') {
+            txState.epNhaCai = null; txState.forcedResult = null;
+            writeLog('ADMIN', `[ÉP TX] ${interaction.user.username} hủy ép ván #${gid}`);
+            return interaction.reply({ content: `❌ Đã hủy ép ván #${gid} - xúc xắc ngẫu nhiên như thường` });
+        }
+        if (loai === 'best') {
+            txState.epNhaCai = txState.gameId; txState.forcedResult = null;
+            const r = txTimEpReNhat();
+            writeLog('ADMIN', `[ÉP TX] ${interaction.user.username} bật "nhà cái ăn nhiều nhất" ván #${gid} (lúc bấm: ${r.dice.join('-')}, trả ${r.tra}/${r.tongDat})`);
+            return interaction.reply({ content: `🏦 Ván #${gid}: **nhà cái ăn nhiều nhất** - tính lại đúng lúc lắc theo sổ cược cuối (ai đặt thêm vẫn tính).\nNếu lắc ngay bây giờ: **${r.dice.join('-')}** · nhà cái trả ${vn(r.tra)} / tổng đặt ${vn(r.tongDat)} (${r.soCuoc} lệnh) → ăn **${vn(r.tongDat - r.tra)}**` });
+        }
+        const MAP = { tc: [true, true, 'Tài·Chẵn'], tl: [true, false, 'Tài·Lẻ'], xc: [false, true, 'Xỉu·Chẵn'], xl: [false, false, 'Xỉu·Lẻ'] };
+        const m = MAP[loai]; if (!m) return interaction.reply({ content: 'Nút lạ', ephemeral: true });
+        const dice = txXucXacTheo(m[0], m[1]);
+        txState.epNhaCai = null; txState.forcedResult = dice.join(',');
+        writeLog('ADMIN', `[ÉP TX] ${interaction.user.username} ép ván #${gid} ra ${m[2]}: ${dice.join('-')}`);
+        return interaction.reply({ content: `🎯 Ván #${gid} sẽ ra **${m[2]}** (${dice.join('-')}). Bấm ❌ Hủy ép nếu đổi ý.` });
+    }
     if (interaction.customId.startsWith('tx_c_')) {
         const choice = interaction.customId.split('_')[2];
         userTXSelections[userId] = { choice };
