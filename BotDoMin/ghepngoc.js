@@ -266,6 +266,14 @@ module.exports = function ghepNgoc(d) {
         d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} lưu cấu hình: ${c.on ? 'BẬT' : 'tắt'}, phí ${c.phi}%, tỉ lệ ${c.tiMin}-${c.tiMax}%, ${c.luotNgay} lượt/ngày, giá bỏ vào ${c.vao.shop.on ? c.vao.shop.pct + '% shop' : 'không theo shop'}, ${dsDich(c).length} món đích`);
         return { ok: true, ...adminState() };
     }
+    // 👀 05/10: nhật ký CHỈ XEM cho cổng mod - không uid, không cấu hình
+    function logXem() {
+        const c = cfg();
+        return { on: c.on, phi: c.phi, tiMax: c.tiMax,
+            log: (d.db()._gnLog || []).slice(-200).reverse().map((x) => ({ t: x.t, ten: x.ten, thang: x.thang, tiLe: x.tiLe, roll: x.roll, tong: x.tong, gia: x.gia, sl: x.sl || 1, knb: x.knb || 0,
+                tenDich: ten(x.dich), icDich: d.icon(x.dich), hoan: x.hoan ? { t: x.hoan.t } : null,
+                vaoCt: (x.vao || []).map(([id, n]) => ({ sl: n, ten: ten(id), ic: d.icon(id) })) })) };
+    }
     // ↩ 05/10: admin HOÀN đồ đã bỏ vào 1 lượt (bấm nhầm...) - trả về Rương Ích Kỷ (+ KNB nếu có), món đã thắng giữ nguyên. 1 lần/lượt.
     function hoan(k, who) {
         const db = d.db(), x = (db._gnLog || []).find((y) => y.t + '_' + y.uid === String(k || ''));
@@ -289,5 +297,5 @@ module.exports = function ghepNgoc(d) {
         for (const it of d.items()) { const id = String(it.id); if (id === q || kd(String(it.n)).includes(qk)) { out.push({ id, ten: gon(it.n), ic: d.icon(id), shop: shopGia(id) }); if (out.length >= 60) break; } }
         return out;
     }
-    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, hoan, MAC_DINH };
+    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, hoan, logXem, MAC_DINH };
 };

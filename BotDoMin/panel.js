@@ -284,6 +284,10 @@ function startPanel(ctx) {
                 }
                 // 🍀 05/10: XEM vòng quay may mắn (cả 2 cổng, CHỈ ĐỌC): bật/tắt, giá, số lần/vòng, bộ quà đang bật + trọng số,
                 // 80 lượt quay gần nhất. KHÔNG trả danh sách ví / uid / IP; sửa vẫn chỉ ở tab 🎁 Quà tặng cổng SUPER.
+                // 💎 05/10: XEM nhật ký Ghép Ngọc (cả 2 cổng, CHỈ ĐỌC, không uid/cấu hình) - đặt TRƯỚC chốt chặn mod + khối /api/gn/ chỉ SUPER
+                if (path === '/api/gn/xem' && ctx.ghepNgoc && ctx.ghepNgoc.xem) {
+                    return sendJSON(res, 200, { ok: true, ...ctx.ghepNgoc.xem() });
+                }
                 if (path === '/api/vq/xem' && ctx.vongQuay) {
                     const st = ctx.vongQuay.state();
                     const pool = st.pool.filter((x) => !x.off).map((x) => ({ id: x.id, ten: x.ten, sl: x.sl, w: x.w, ic: x.ic }));
@@ -1627,7 +1631,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
+        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
         <button data-tab="give" class="epOnly pwOff" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
@@ -2448,6 +2452,12 @@ const HTML = `<!DOCTYPE html>
         <details style="margin-top:8px"><summary>📋 Giá thật từng món (sau khi kẹp theo shop)</summary><div id="ikbDs" style="max-height:320px;overflow:auto;font-size:13px;margin-top:6px"></div></details>
       </div>
     </div>
+    <div id="tab-gnx" class="hidden"><!-- 💎 05/10: nhật ký Ghép Ngọc - bản CHỈ XEM cho cổng mod (hoàn đồ / cấu hình ở tab 💎 cổng SUPER) -->
+      <div class="card">
+        <h2>💎 Ghép Ngọc <span class="muted" style="font-size:13px;font-weight:400">nhật ký luyện · chỉ xem</span></h2>
+        <div id="gnxApp" class="muted">đang tải...</div>
+      </div>
+    </div>
     <div id="tab-vqx" class="hidden"><!-- 🍀 05/10: Vòng quay may mắn - bản CHỈ XEM cho cổng mod (sửa ở 🎁 Quà tặng cổng SUPER) -->
       <div class="card">
         <h2>🍀 Vòng quay may mắn <span class="muted" style="font-size:13px;font-weight:400">giống trang người chơi (🪪 Cá nhân → 🍀 Vòng Quay) · chỉ xem</span></h2>
@@ -3131,8 +3141,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','gn','vqx','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','gn','gnx','vqx','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -4806,7 +4816,7 @@ function nkBatDau(){if(NK.chay)return;NK.chay=true;setInterval(()=>{
 // Cổng mod: giấu mọi tab trừ 📜 Log, giấu bảng chọn mục log cũ (cần /api/state), không chạy refresh()
 function modApp(){
   document.body.classList.add('congmod');epApply(false);
-  const DUOC=['log','tb','vqx'];   // 04/10: cổng mod thấy 📜 Log + 🎒 Túi Boss (bản chỉ xem); 05/10 + 🍀 Vòng quay (chỉ xem)
+  const DUOC=['log','tb','vqx','gnx'];   // 04/10: cổng mod thấy 📜 Log + 🎒 Túi Boss (bản chỉ xem); 05/10 + 🍀 Vòng quay (chỉ xem)
   document.querySelectorAll('.tabs .grp').forEach(g=>{const bs=[...g.querySelectorAll('button')],co=bs.some(b=>DUOC.includes(b.dataset.tab));g.style.display=co?'':'none';
     bs.forEach(b=>{b.style.display=DUOC.includes(b.dataset.tab)?'':'none';});});
   document.getElementById('tbSuaCard').classList.add('hidden');document.getElementById('tbXemCard').classList.remove('hidden');

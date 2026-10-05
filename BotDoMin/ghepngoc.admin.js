@@ -39,20 +39,29 @@
     box.innerHTML = h;
   }
   // 📜 05/10: mỗi lượt = 1 dòng: giờ · người · [hình đồ bỏ vào ×SL] → [hình món đích ×SL] · tỉ lệ/tung · kết quả · nút Hoàn
-  function nhatKy() {
+  function nhatKy(ds0, chiXem) {
     var l = LLOC.toLowerCase();
-    var ds = A.log.filter(function (x) { return !l || String(x.ten || '').toLowerCase().indexOf(l) >= 0 || String(x.tenDich || '').toLowerCase().indexOf(l) >= 0 || (x.vaoCt || []).some(function (v) { return v.ten.toLowerCase().indexOf(l) >= 0; }); });
+    var ds = (ds0 || A.log).filter(function (x) { return !l || String(x.ten || '').toLowerCase().indexOf(l) >= 0 || String(x.tenDich || '').toLowerCase().indexOf(l) >= 0 || (x.vaoCt || []).some(function (v) { return v.ten.toLowerCase().indexOf(l) >= 0; }); });
     if (!ds.length) return '<span class="muted">Chưa có lượt nào.</span>';
     return ds.map(function (x) {
       var vao = (x.vaoCt || []).map(function (v) { return '<span title="' + esc(v.ten) + '" style="display:inline-flex;align-items:center;gap:3px;margin:2px 6px 2px 0">' + ic(v) + '<span style="font-size:12px">' + esc(v.ten) + ' <b>×' + v.sl + '</b></span></span>'; }).join('') + (x.knb ? '<span style="font-size:12px;margin-right:6px">💰 ' + so(x.knb) + ' KNB</span>' : '');
       var dich = '<span title="' + esc(x.tenDich) + '" style="display:inline-flex;align-items:center;gap:3px">' + ic({ ic: x.icDich }) + '<span style="font-size:12px">' + esc(x.tenDich) + ((x.sl || 1) > 1 ? ' <b>×' + x.sl + '</b>' : '') + '</span></span>';
       var kq = x.thang ? '<b style="color:#3ddc84">🎉 THẮNG</b>' : '<b style="color:#ff7b7b">💥 thua</b>';
-      var nut = x.hoan ? '<span class="muted" style="font-size:12px">↩ đã hoàn ' + new Date(x.hoan.t).toLocaleString('vi-VN') + '</span>' : '<button class="btn-grey" style="padding:3px 8px;font-size:12px" onclick="gnaHoan(\'' + x.k + '\')">↩ Hoàn đồ</button>';
+      var nut = chiXem ? (x.hoan ? '<span class="muted" style="font-size:12px">↩ admin đã hoàn</span>' : '') : x.hoan ? '<span class="muted" style="font-size:12px">↩ đã hoàn ' + new Date(x.hoan.t).toLocaleString('vi-VN') + '</span>' : '<button class="btn-grey" style="padding:3px 8px;font-size:12px" onclick="gnaHoan(\'' + x.k + '\')">↩ Hoàn đồ</button>';
       return '<div style="border-bottom:1px solid #2a2e3b;padding:6px 0;' + (x.hoan ? 'opacity:.55' : '') + '"><div style="font-size:12px;margin-bottom:3px"><span class="muted">' + new Date(x.t).toLocaleString('vi-VN') + '</span> · <b>' + esc(x.ten || x.uid) + '</b> · ' + kq + ' · ' + x.tiLe + '% (tung ' + x.roll + ') · bỏ ' + so(x.tong) + ' → giá trị đích ' + so(x.gia) + ' ' + nut + '</div>'
         + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + vao + '<b style="margin:0 8px;font-size:16px">→</b>' + dich + '</div></div>';
     }).join('');
   }
   window.gnaLLoc = function (s) { LLOC = s; var e = el('gnaLog'); if (e) e.innerHTML = nhatKy(); };
+  // 👀 cổng mod: tab 💎 Ghép Ngọc chỉ xem (/api/gn/xem)
+  var X = null;
+  window.gnxLoad = function () { api('/api/gn/xem', {}).then(function (j) { X = j; gnxVe(); }).catch(function (e) { var b = el('gnxApp'); if (b) b.textContent = '❌ ' + e.message; }); };
+  function gnxVe() {
+    var b = el('gnxApp'); if (!b || !X) return;
+    b.innerHTML = '<div class="muted" style="font-size:13px;margin-bottom:6px">' + (X.on ? '<b style="color:var(--green)">ĐANG BẬT</b>' : '<b style="color:var(--red)">ĐANG TẮT</b>') + ' · phí ' + X.phi + '% · tỉ lệ tối đa ' + X.tiMax + '% · ' + X.log.length + ' lượt gần nhất · ' + X.log.filter(function (x) { return x.thang; }).length + ' thắng</div>'
+      + '<input placeholder="Lọc theo tên người chơi / món..." value="' + esc(LLOC) + '" oninput="gnxLoc(this.value)" style="width:280px"><div id="gnxLog" style="max-height:620px;overflow:auto;margin-top:6px">' + nhatKy(X.log, true) + '</div>';
+  }
+  window.gnxLoc = function (s) { LLOC = s; var e = el('gnxLog'); if (e) e.innerHTML = nhatKy(X.log, true); };
   window.gnaHoan = function (k) {
     var x = A.log.find(function (y) { return y.k === k; }); if (!x) return;
     var ds = (x.vaoCt || []).map(function (v) { return v.ten + ' ×' + v.sl; }).join(', ') + (x.knb ? ' + ' + so(x.knb) + ' KNB' : '');
