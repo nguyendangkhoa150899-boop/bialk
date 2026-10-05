@@ -1632,7 +1632,7 @@ const HTML = `<!DOCTYPE html>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
         <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
-        <button data-tab="give" class="epOnly pwOff" style="display:none" onclick="tab('give')">📦 Kho đồ</button>
+        <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button><!-- 05/10: bỏ pwOff - tab này là đồ THIÊN LONG (Giao vào game / 🧰 bỏ vào Rương Ích Kỷ), không phải Palworld -->
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
         <button data-tab="gm" onclick="tab('gm')">🛠️ GM Thiên Long</button>
