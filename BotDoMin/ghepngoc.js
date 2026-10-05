@@ -104,13 +104,25 @@ module.exports = function ghepNgoc(d) {
         if (c.vao.giaRuong) { const g = Math.floor(Number(d.giaRuong(id)) || 0); if (g > 0) return { gia: g, tu: 'giá bán rương' }; }
         return { gia: 0, tu: '' };
     }
+    // 05/10 (chủ server): thứ tự hiện ở 🎯 Món đích + 🧰 Rương - phiếu KNB nhỏ -> lớn, nguyên liệu Trùng Lâu, ngọc công
+    // Băng/Hỏa/Huyền/Độc, ngọc kháng Băng/Hỏa/Huyền/Độc, Thể lực (Hồng Bảo Thạch), Né tránh (Tổ Mẫu Lục), Chính xác (Tử Ngọc), còn lại.
+    // Ngọc so theo 5 số cuối ID (bỏ số cấp, GemInfo.txt: 02006 = Lam Tinh Thạch = Băng công ...) nên ngọc 6 / 7 cùng loại đứng cùng chỗ, cấp cao trước.
+    const THU_NGOC = ['02006', '02007', '02005', '02008', '12006', '12007', '12005', '12008', '13004', '14001', '03001'];
+    function hang(id) {
+        id = String(id);
+        if (/^3991000\d$/.test(id)) return [0, +id];
+        if (/^2031018[5-8]$/.test(id)) return [1, +id];
+        if (/^50\d{6}$/.test(id)) { const i = THU_NGOC.indexOf(id.slice(3)); if (i >= 0) return [2 + i, -Number(id[2])]; }
+        return [99, 0];
+    }
+    const soHang = (a, b) => { const x = hang(a.id), y = hang(b.id); return x[0] - y[0] || x[1] - y[1]; };
     // danh sách món ĐÍCH + giá
     function dsDich(c) {
         c = c || cfg();
         const m = new Map();
         for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const id of g.ids) m.set(id, { gia: g.gia, sl: g.sl, nhom: k });
         for (const [id, g] of Object.entries(c.dich.rieng)) { if (g > 0) m.set(id, { gia: g, sl: 1, nhom: 'rieng' }); else m.delete(id); }
-        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom })).sort((a, b) => a.gia - b.gia || a.ten.localeCompare(b.ten));
+        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom })).sort((a, b) => soHang(a, b) || a.gia - b.gia || a.ten.localeCompare(b.ten));
     }
     function gnOf(u) {
         const hn = d.dayStr();
@@ -125,7 +137,7 @@ module.exports = function ghepNgoc(d) {
         const c = cfg(), u = d.getUserData(uid), g = gnOf(u), k = d.ichKy.of(u);
         const ruong = Object.entries(k.items || {}).map(([id, qty]) => ({ id, qty: Number(qty) || 0, ...giaVao(id, c) }))
             .filter((x) => x.qty > 0 && x.gia > 0).map((x) => ({ id: x.id, qty: x.qty, gia: x.gia, tu: x.tu, ten: ten(x.id), ic: d.icon(x.id) }))
-            .sort((a, b) => b.gia - a.gia || a.ten.localeCompare(b.ten));
+            .sort((a, b) => soHang(a, b) || b.gia - a.gia || a.ten.localeCompare(b.ten));
         return {
             on: c.on, phi: c.phi, tiMin: c.tiMin, tiMax: c.tiMax, luotNgay: c.luotNgay, luotHomNay: g.luot, monMax: c.monMax,
             knbOn: c.knbOn, knbMax: c.knbMax, balance: u.points || 0,
