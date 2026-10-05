@@ -2,7 +2,7 @@
 //   node thu/ghepngoc-local.js       -> mở http://localhost:3999
 // Dùng ĐÚNG ghepngoc.js + ghepngoc.client.js + ghepngoc.admin.js như bản thật. Dữ liệu:
 //   thu/du-lieu-mau.json  = ảnh chụp từ server thật (danh mục vật phẩm, giá shop web, bảng giá Rương Ích Kỷ,
-//                           TỔNG đồ trong rương mọi người - không có ví/tên ai). Không commit (gitignore).
+//                           rương + ví TỪNG người chơi để đóng vai). CÓ dữ liệu người chơi -> KHÔNG commit (gitignore).
 //   thu/db-thu.json       = DB thử (cấu hình admin, rương người chơi giả). Xoá file = về ban đầu.
 // Icon lấy qua proxy từ https://play.netco4.click/itemicon/ (ảnh công khai).
 const http = require('http'), https = require('https'), fs = require('fs'), path = require('path');
@@ -20,9 +20,14 @@ function ruongMau() {
 }
 let db;
 try { db = JSON.parse(fs.readFileSync(DBF, 'utf8')); } catch { db = null; }
-if (!db) db = { _ichKyBan: MAU.ichKyBan, test: { name: 'Người chơi thử', points: 1000000, ichKy: { items: ruongMau() } } };
+const NGUOI = MAU.nguoi || [];   // vi that tren server (uid, ten, game, points, ruong)
+function goc(uid) {
+    if (uid === 'test') return { name: 'Người chơi thử (tổng rương cả server)', points: 1000000, ichKy: { items: ruongMau() } };
+    const p = NGUOI.find((x) => x.uid === uid); return p ? { name: p.ten + (p.game ? ' · ' + p.game : ''), points: p.points, ichKy: { items: { ...p.ruong } } } : null;
+}
+if (!db) { db = { _ichKyBan: MAU.ichKyBan, test: goc('test') }; for (const p of NGUOI) db[p.uid] = goc(p.uid); }
 const luu = () => fs.writeFileSync(DBF, JSON.stringify(db, null, 1));
-const UID = 'test';
+let UID = NGUOI.length ? NGUOI[0].uid : 'test';
 
 // --- giá bán Rương Ích Kỷ: chép logic ichKyBanGia của index.js (bỏ qua công tắc bán, vẫn kẹp 90% giá shop)
 const nameOf = new Map(MAU.items.map((x) => [x.id, x.n]));
@@ -78,7 +83,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--li
 <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><h2 style="margin:0">💎 Ghép Ngọc <span class="muted" style="font-size:13px">chạy thử local</span></h2>
 <span style="flex:1"></span><span>Ví: <b id="bal">-</b> KNB</span>
 <span class="tabs"><button id="tP" class="on" onclick="tab('p')">🎮 Người chơi</button> <button id="tA" onclick="tab('a')">⚙️ Admin</button></span>
-<button onclick="thu('reset')" title="Đặt lại rương người chơi thử như ban đầu (giữ cấu hình admin)">🔄 Rương mẫu</button><button onclick="thu('knb')">💰 +100k KNB</button></div>
+<select id="vai" onchange="api('/api/thu/vai',{uid:this.value}).then(function(j){toast(j.msg);gnSync()})"></select><button onclick="thu('reset')" title="Trả rương + ví người đang chọn về như ảnh chụp server (giữ cấu hình admin)">🔄 Rương thật</button><button onclick="thu('knb')">💰 +100k KNB</button></div>
 <div class="card" id="pP"><div id="gnApp">Đang tải...</div></div>
 <div class="card" id="pA" style="display:none"><div id="gnaApp">Đang tải...</div></div>
 </main><div id="toast"></div>
@@ -93,7 +98,8 @@ ${'function vqIcon(ic,cls){if(!ic)return "<i class=\\""+(cls||"vqIc")+" vqNo\\">
 ${"function vqaIc(ic){if(!ic)return '<span style=\"display:inline-block;width:32px;height:32px;line-height:32px;text-align:center\">📦</span>';var sx=ic.w/64*100,sy=ic.h/64*100,px=ic.w>64?ic.x/(ic.w-64)*100:0,py=ic.h>64?ic.y/(ic.h-64)*100:0;return '<i style=\"display:inline-block;width:32px;height:32px;vertical-align:middle;border-radius:5px;background-repeat:no-repeat;background-image:url(/itemicon/'+encodeURIComponent(ic.f)+');background-size:'+sx+'% '+sy+'%;background-position:'+px.toFixed(3)+'% '+py.toFixed(3)+'%\"></i>';}"}
 function tab(t){$("tP").classList.toggle("on",t==="p");$("tA").classList.toggle("on",t==="a");$("pP").style.display=t==="p"?"":"none";$("pA").style.display=t==="a"?"":"none";if(t==="p")gnSync();else gnaLoad()}
 function thu(a){api("/api/thu/"+a,{}).then(function(j){toast(j.msg);gnSync()}).catch(function(e){toast("❌ "+e.message)})}
-</script><script src="/gn.js"></script><script src="/gn-admin.js"></script><script>gnSync()</script></body></html>`;
+function dsVai(){api('/api/thu/ds',{}).then(function(j){$("vai").innerHTML=j.ds.map(function(x){return '<option value="'+x.uid+'"'+(x.uid===j.uid?' selected':'')+'>👤 '+esc(x.ten)+'</option>'}).join('');$("vai").title='Ảnh chụp server lúc '+new Date(j.tao).toLocaleString('vi-VN')})}
+</script><script src="/gn.js"></script><script src="/gn-admin.js"></script><script>dsVai();gnSync()</script></body></html>`;
 
 function body(req) { return new Promise((ok) => { let s = ''; req.on('data', (c) => { s += c; if (s.length > 1e6) req.destroy(); }); req.on('end', () => { try { ok(JSON.parse(s || '{}')); } catch { ok({}); } }); }); }
 const send = (res, code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Length': b.length }); res.end(b); };
@@ -114,7 +120,9 @@ http.createServer(async (req, res) => {
         else if (p === '/api/gn/cfg') r = GN.adminState();
         else if (p === '/api/gn/save') r = GN.saveCfg(b, 'admin thử');
         else if (p === '/api/gn/tim') r = { items: GN.tim(b.q) };
-        else if (p === '/api/thu/reset') { db[UID].ichKy = { items: ruongMau() }; db[UID].gn = undefined; luu(); r = { msg: '🔄 Đã đặt lại rương mẫu + lượt hôm nay' }; }
+        else if (p === '/api/thu/reset') { db[UID] = goc(UID); luu(); r = { msg: '🔄 Đã trả rương + ví của ' + db[UID].name + ' về như server thật' }; }
+        else if (p === '/api/thu/ds') r = { ds: [...NGUOI.map((x) => ({ uid: x.uid, ten: db[x.uid] ? db[x.uid].name : x.ten })), { uid: 'test', ten: db.test.name }], uid: UID, tao: MAU.tao };
+        else if (p === '/api/thu/vai') { if (!db[String(b.uid)]) return send(res, 400, { ok: false, error: 'không có người này' }); UID = String(b.uid); r = { msg: '👤 Đang đóng vai ' + db[UID].name }; }
         else if (p === '/api/thu/knb') { db[UID].points += 100000; luu(); r = { msg: '💰 +100.000 KNB' }; }
         else return send(res, 404, { ok: false, error: 'không có API này' });
         if (r && r.error) return send(res, 400, { ok: false, error: r.error });
