@@ -35,7 +35,7 @@ const TAT_FILE = path.join(DIR, 'thuongpho-tat');
 
 const RUT_DONG_MAX = 60;      // 1 lần xác nhận tối đa 60 loại món
 const RUT_O_MOI_DONG = 5;     // chia lệnh rút thành dòng <= 5 ô túi -> túi gần đầy vẫn nhận được từng phần
-const NK_MAX = 40;            // nhật ký mỗi nhân vật giữ 40 dòng cuối
+const NK_MAX = 100;           // lịch sử mỗi nhân vật giữ 100 lần cuối
 const guidOk = (g) => /^\d{6,12}$/.test(String(g));
 
 module.exports = function (ctx) {
@@ -65,7 +65,17 @@ module.exports = function (ctx) {
         if (!Array.isArray(k.nk)) k.nk = [];
         return k;
     }
-    function ghiNk(k, loai, moTa) { k.nk.push({ at: Date.now(), loai, moTa }); if (k.nk.length > NK_MAX) k.nk = k.nk.slice(-NK_MAX); }
+    // 📜 lịch sử: ds = món ĐÃ GỘP theo ID + khoá [{id,k,n}]; tx = mã lệnh (lần rút) để web biết đã vào game chưa (.tpdone)
+    function ghiNk(k, loai, moTa, ds, tx) {
+        const e = { at: Date.now(), loai, moTa, ds: ds || [] };
+        if (tx && tx.length) e.tx = tx;
+        k.nk.push(e); if (k.nk.length > NK_MAX) k.nk = k.nk.slice(-NK_MAX);
+    }
+    function gopDs(L) {
+        const m = new Map();
+        for (const x of L) { const key = x.id + '|' + (x.k ? 1 : 0); m.set(key, (m.get(key) || 0) + Number(x.n)); }
+        return [...m].map(([key, n]) => { const [id, k] = key.split('|'); return { id, k: +k, n }; });
+    }
 
     const tat = () => !!cfg().tat || fs.existsSync(TAT_FILE);
     let _tatDung = null;   // trạng thái tắt lúc ghi file danh sách gần nhất
@@ -164,8 +174,9 @@ module.exports = function (ctx) {
                 k.t[key] = Date.now();
                 k.tui[x.id] = x.tui;
             }
-            const moTa = rc.ds.map(x => `${tenMon(x.id)} x${x.n}${x.k ? ' (cố định)' : ''}`).join(', ');
-            ghiNk(k, rc.hoan ? 'hoan' : 'gui', moTa);
+            const dsGop = gopDs(rc.ds);   // phiếu ghi TỪNG Ô -> gộp số lượng cùng món
+            const moTa = dsGop.map(x => `${tenMon(x.id)} x${x.n}${x.k ? ' (cố định)' : ''}`).join(', ');
+            ghiNk(k, rc.hoan ? 'hoan' : 'gui', moTa, dsGop);
             seen[rc.file] = Date.now();
             ctx.saveDbNow();
             ctx.writeLog('ADMIN', `[THƯƠNG PHỐ] GUID ${rc.guid} ${rc.hoan ? 'game HOÀN về kho' : 'gửi ra kho'}: ${moTa} (${rc.file})`);
@@ -214,7 +225,18 @@ module.exports = function (ctx) {
                 chong: c ? c.chong : 1, rut: !!c, t: Number(k.t[key]) || 0 };
         });
         const cho = choGame(guid).map(x => ({ ...x, ten: tenMap.get(x.id) || ('#' + x.id), ic: ctx.icon(x.id) }));
-        return { ...base, guid, nhanVat: u.ingameName || '', kho: ds, cho, nk: k.nk.slice(-15).reverse() };
+        // lịch sử: trạng thái lần rút đọc từ .tpdone (game ghi mã lệnh trước khi phát) - khớp thực tế, không đoán
+        const done = new Set(readLines(tpdone(guid)));
+        const nk = k.nk.slice().reverse().map(e => {
+            const o = { at: e.at, loai: e.loai, moTa: e.moTa,
+                ds: (e.ds || []).map(x => ({ id: x.id, k: x.k, n: x.n, ten: tenMap.get(x.id) || ('#' + x.id), ic: ctx.icon(x.id) })) };
+            if (e.loai === 'rut' && Array.isArray(e.tx) && e.tx.length) {
+                const xong = e.tx.filter(t => done.has(t)).length;
+                o.tt = xong === e.tx.length ? 'xong' : xong ? 'motphan' : 'cho';
+            }
+            return o;
+        });
+        return { ...base, guid, nhanVat: u.ingameName || '', kho: ds, cho, nk };
     }
 
     // ds = [{ id, k, n }] -> trừ kho, xếp lệnh vào game. Đồng bộ hoàn toàn (không await) = không 2 lệnh chen nhau.
@@ -259,7 +281,7 @@ module.exports = function (ctx) {
             for (const key of Object.keys(truoc)) { if (truoc[key] > 0) k.it[key] = truoc[key]; }
             return { error: 'Lỗi ghi lệnh vào game, đồ vẫn nằm trong kho: ' + e.message };
         }
-        ghiNk(k, 'rut', moTa.join(', '));
+        ghiNk(k, 'rut', moTa.join(', '), [...gop].map(([key, n]) => { const [id, kk] = key.split('|'); return { id, k: +kk, n }; }), dong.map(l => l.split(' ')[0]));
         ctx.saveDbNow();
         ctx.writeLog('ADMIN', `[THƯƠNG PHỐ] ${who || u.name || userId} rút về game (GUID ${guid}): ${moTa.join(', ')}`);
         return { message: `📦 Đã xếp ${dong.length} lệnh vào game - nhận khi đăng nhập / đổi bản đồ, hoặc bấm NPC Ví Web → Nhận đồ Thương Phố`, state: state(userId) };

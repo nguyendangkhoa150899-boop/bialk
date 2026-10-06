@@ -43,8 +43,17 @@
     '#tpCard .tpRow:last-child{border-bottom:0}#tpCard .tpRow .tpIc{position:static;display:block;width:30px;height:30px;flex:0 0 30px;border-radius:6px;background-repeat:no-repeat}',
     '#tpCard .tpRow .tpIc.vqNo{display:flex;align-items:center;justify-content:center;font-style:normal;background:#1a1f2d}',
     '#tpCard .tpRow .t{flex:1;min-width:0}#tpCard .tpRow .m{color:var(--muted);white-space:nowrap}',
-    '#tpCard .tpNk{font-size:12px;padding:4px 0;border-bottom:1px dashed #20263a}#tpCard .tpNk:last-child{border-bottom:0}',
-    '#tpCard .tpNk .g{color:var(--muted);margin-right:6px}',
+    '#tpCard .tpLs{padding:8px 0;border-bottom:1px dashed #20263a}#tpCard .tpLs:last-of-type{border-bottom:0}',
+    '#tpCard .tpLsT{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}',
+    '#tpCard .tpLsT .g{margin-left:auto;color:var(--muted);font-size:12px}',
+    '#tpCard .l-rut{color:#7ee2a8}#tpCard .l-gui{color:#ffd76a}#tpCard .l-hoan{color:#ffb070}',
+    '#tpCard .tpTt{font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;border:1px solid}',
+    '#tpCard .tpTt.xong{background:#13261b;color:#7ee2a8;border-color:#2f6b46}#tpCard .tpTt.cho{background:#2a2410;color:#ffd76a;border-color:#6b5420}',
+    '#tpCard .tpMons{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}',
+    '#tpCard .tpMon{display:inline-flex;align-items:center;gap:6px;background:#0e1118;border:1px solid #262c3d;border-radius:8px;padding:3px 8px 3px 3px;font-size:12px}',
+    '#tpCard .tpMon .tpIc{position:static;display:block;width:26px;height:26px;flex:0 0 26px;border-radius:5px;background-repeat:no-repeat}',
+    '#tpCard .tpMon .tpIc.vqNo{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:14px;background:#1a1f2d}',
+    '#tpCard .tpMon b{color:#ffd76a}',
     '#tpTip{position:fixed;z-index:9999;pointer-events:none;max-width:280px;background:rgba(8,10,16,.96);border:1px solid #8a6a2a;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.5;color:#e8e8e8;box-shadow:0 6px 18px rgba(0,0,0,.6);display:none}',
     '#tpTip .n{font-size:14px;font-weight:900;color:#ffd76a;margin-bottom:2px}',
     '#tpTip .cd{color:#ff5a5a;font-weight:900}#tpTip .kcd{color:#7ee2a8}#tpTip .x{color:#9aa3b8}'
@@ -52,7 +61,7 @@
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var tip = document.createElement('div'); tip.id = 'tpTip'; document.body.appendChild(tip);
 
-  var TP = { s: null, chon: {}, loc: 'dc', q: '', sx: 'game', busy: false };
+  var TP = { s: null, chon: {}, loc: 'dc', q: '', sx: 'game', busy: false, ls: 'rut', lsN: 10 };
   try { var c0 = JSON.parse(localStorage.getItem('tp_cfg2') || '{}'); if (c0.loc === 'dc' || c0.loc === 'nl') TP.loc = c0.loc; if (c0.sx) TP.sx = c0.sx; } catch (e) { }
   function luuCfg() { try { localStorage.setItem('tp_cfg2', JSON.stringify({ loc: TP.loc, sx: TP.sx })); } catch (e) { } }
   var O_MAX = 100;   // 1 mon toi da 100 o tren luoi (o cuoi gom phan con lai) - tranh 5.000 ngoc = 5.000 o
@@ -182,12 +191,23 @@
       h += s.cho.map(function (x) { return '<div class="tpRow">' + ic(x) + '<div class="t">' + e(x.ten) + (x.k ? ' <span style="color:#ff5a5a">🔒</span>' : '') + '</div><div class="m">×' + fmt(x.n) + '</div></div>'; }).join('');
       h += '</div>';
     }
-    // nhat ky
+    // lich su: moi lan 1 dong, mon cung loai da gop so luong (bot gop), trang thai lan rut doc tu .tpdone cua game
     if (s.nk && s.nk.length) {
       var NK = { gui: '📥 Gửi từ game', rut: '📤 Rút vào game', hoan: '🔁 Game hoàn về' };
-      h += '<div class="tpSec"><h3>📜 Nhật ký</h3>' + s.nk.map(function (x) {
-        var d = new Date(x.at); return '<div class="tpNk"><span class="g">' + d.toLocaleString('vi-VN', { hour12: false }) + '</span><b>' + (NK[x.loai] || x.loai) + '</b>: ' + e(x.moTa) + '</div>';
-      }).join('') + '</div>';
+      var TT = { xong: '<span class="tpTt xong">✅ Đã vào game</span>', cho: '<span class="tpTt cho">⏳ Đang chờ</span>', motphan: '<span class="tpTt cho">◐ Nhận một phần</span>' };
+      var Ls = s.nk.filter(function (x) { return TP.ls === 'all' || x.loai === TP.ls; });
+      var chip = function (v, t) { var n = v === 'all' ? s.nk.length : s.nk.filter(function (x) { return x.loai === v; }).length; return '<button class="tpTab' + (TP.ls === v ? ' on' : '') + '" onclick="tpLs(\'' + v + '\')">' + t + ' <span style="opacity:.7">' + n + '</span></button>'; };
+      h += '<div class="tpSec"><h3>📜 Lịch sử</h3><div class="tpBar" style="margin:0 0 8px">' + chip('rut', '📤 Rút vào game') + chip('gui', '📥 Gửi từ game') + chip('hoan', '🔁 Hoàn về') + chip('all', 'Tất cả') + '</div>';
+      h += Ls.length ? Ls.slice(0, TP.lsN).map(function (x) {
+        var d = new Date(x.at), tong = (x.ds || []).reduce(function (t, y) { return t + y.n; }, 0);
+        var mon = (x.ds && x.ds.length) ? x.ds.map(function (y) {
+          return '<span class="tpMon" title="' + e(y.ten) + (y.k ? ' (cố định)' : '') + ' - ID ' + y.id + '">' + ic(y) + '<span>' + e(y.ten) + (y.k ? ' <span style="color:#ff5a5a">🔒</span>' : '') + '</span><b>×' + fmt(y.n) + '</b></span>';
+        }).join('') : '<span class="muted">' + e(x.moTa || '') + '</span>';
+        return '<div class="tpLs"><div class="tpLsT"><b class="l-' + x.loai + '">' + (NK[x.loai] || x.loai) + '</b>' + (x.tt ? TT[x.tt] : '') +
+          '<span class="g">' + (tong ? fmt(tong) + ' món · ' : '') + d.toLocaleString('vi-VN', { hour12: false }) + '</span></div><div class="tpMons">' + mon + '</div></div>';
+      }).join('') : '<div class="tpEmpty">Chưa có lần nào</div>';
+      if (Ls.length > TP.lsN) h += '<button class="tpBo" style="width:100%;margin-top:6px" onclick="tpLsThem()">Xem thêm (' + (Ls.length - TP.lsN) + ')</button>';
+      h += '</div>';
     }
     var foc = document.activeElement && document.activeElement.id === 'tpQ', pos = foc ? document.activeElement.selectionStart : 0;
     c.innerHTML = h;
@@ -215,6 +235,8 @@
   window.tpLoc = function (v) { TP.loc = v; luuCfg(); ve(); };
   window.tpSx = function (v) { TP.sx = v; luuCfg(); ve(); };
   window.tpTim = function (v) { TP.q = v; ve(); };
+  window.tpLs = function (v) { TP.ls = v; TP.lsN = 10; ve(); };
+  window.tpLsThem = function () { TP.lsN += 20; ve(); };
   window.tpXacNhan = function (btn) {
     if (TP.busy) return;
     var ds = Object.keys(TP.chon).filter(function (k) { return TP.chon[k] > 0 && tim(k); }).map(function (k) { var x = tim(k); return { id: x.id, k: x.k, n: TP.chon[k] }; });
