@@ -263,8 +263,6 @@ function startWebPlay(ctx) {
                             ['wheel', ['/api/wheel/ready', '/api/wheel/spin']],
                             ['stock', ['/api/stock/open', '/api/stock/auto']],
                             ['spm', ['/api/spm/bet']],
-                            ['pal', ['/api/palwheel/spin', '/api/palwheel/raidspin']],
-                            ['pick', ['/api/palpick/buy']],
                             ['shop', ['/api/itemshop/buy', '/api/petboss/pick']],
                             ['dog', ['/api/dogbridge/rut', '/api/dogbridge/nap', '/api/dogbridge/napgold']],
                         ];
@@ -582,49 +580,6 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, r);
                 }
 
-                // ===== 🎁 QUAY PAL kiểu CSGO + RƯƠNG/HỒ SƠ (logic + tiền ở index.js) =====
-                if (ctx.palwheel && path === '/api/palwheel/state') {
-                    return sendJSON(res, 200, { ok: true, ...ctx.palwheel.state(userId) });
-                }
-                if (ctx.palwheel && req.method === 'POST' && path === '/api/palwheel/spin') {
-                    // ⚡ 25/09: body.nhanh = người chơi đang TÍCH "bỏ hiệu ứng".
-                    // === true mới tính, mọi giá trị khác đều coi là quay thường.
-                    const body = await readBody(req);
-                    const r = ctx.palwheel.spin(userId, body.nhanh === true);
-                    // 🎒 16/09: kèm cờ chestFull xuống client để nút 🔁 tự động quay biết vì sao dừng
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error, chestFull: !!r.chestFull });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // 🍀 quay vòng RAID (tốn 1 vé đầy thanh may mắn) - 27/08
-                if (ctx.palwheel && ctx.palwheel.raidSpin && req.method === 'POST' && path === '/api/palwheel/raidspin') {
-                    const body = await readBody(req);
-                    const r = ctx.palwheel.raidSpin(userId, body.nhanh === true);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // 🎯 chọn pal đích danh (25/08, thay shop Discord)
-                if (ctx.palwheel && ctx.palwheel.pickState && path === '/api/palpick/state') {
-                    return sendJSON(res, 200, { ok: true, ...ctx.palwheel.pickState(userId) });
-                }
-                if (ctx.palwheel && ctx.palwheel.pick && req.method === 'POST' && path === '/api/palpick/buy') {
-                    const body = await readBody(req);
-                    const r = ctx.palwheel.pick(userId, body.code);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.profile && path === '/api/profile') {
-                    return sendJSON(res, 200, { ok: true, ...ctx.profile.state(userId) });
-                }
-                // ⏳ đồng hồ cooldown nhận pal (nhẹ, client poll khi mở trang Hồ sơ)
-                if (ctx.profile && ctx.profile.claimCdInfo && path === '/api/pal/cd') {
-                    return sendJSON(res, 200, { ok: true, ...ctx.profile.claimCdInfo() });
-                }
-                // 🆘 tẩu thoát khẩn cấp (09/09)
-                if (ctx.profile && ctx.profile.rescue && req.method === 'POST' && path === '/api/pal/rescue') {
-                    const r = await ctx.profile.rescue(userId);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, r);
-                }
                 // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 if (ctx.gift && path === '/api/gift/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.gift.state(userId) });
@@ -698,65 +653,6 @@ function startWebPlay(ctx) {
                 }
                 if (ctx.spm && ctx.spm.cancelNext && req.method === 'POST' && path === '/api/spm/cancelnext') {
                     const r = ctx.spm.cancelNext(userId);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // 🤝 11/09: bán/tặng pal cho người chơi khác
-                if (ctx.profile && ctx.profile.tradeOffer && req.method === 'POST' && path === '/api/pal/trade/offer') {
-                    const body = await readBody(req);
-                    const r = ctx.profile.tradeOffer(userId, body.id, body.toId, body.price);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.profile && ctx.profile.tradeCancel && req.method === 'POST' && path === '/api/pal/trade/cancel') {
-                    const body = await readBody(req);
-                    const r = ctx.profile.tradeCancel(userId, body.tradeId);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.profile && ctx.profile.tradeAccept && req.method === 'POST' && path === '/api/pal/trade/accept') {
-                    const body = await readBody(req);
-                    const r = ctx.profile.tradeAccept(userId, body.tradeId);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.profile && req.method === 'POST' && path === '/api/pal/sell') {
-                    const body = await readBody(req);
-                    const r = ctx.profile.sell(userId, body.id);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // 🧺 16/09: bán HÀNG LOẠT - web tick checkbox rồi gửi mảng id
-                if (ctx.profile && ctx.profile.sellMany && req.method === 'POST' && path === '/api/pal/sell-many') {
-                    const body = await readBody(req);
-                    const r = ctx.profile.sellMany(userId, body.ids);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // Nhận pal vào game: kiểm online qua mod nên CHẬM (vài giây tới ~90s khi
-                // dashboard/mod kẹt) - client phải khóa nút trong lúc chờ.
-                if (ctx.profile && req.method === 'POST' && path === '/api/pal/claim') {
-                    const body = await readBody(req);
-                    // 💎 26/08: kèm mức nâng cấp người chơi mua (soulPct/iv) - server tự tính phí
-                    const r = await ctx.profile.claim(userId, body.id, body.souls, body.passives, {
-                        soulHpPct: body.soulHpPct, soulAtkPct: body.soulAtkPct, soulDefPct: body.soulDefPct, soulWorkPct: body.soulWorkPct,
-                        ivHp: body.ivHp, ivAtk: body.ivAtk, ivDef: body.ivDef,
-                        gender: body.gender,   // 🚻 27/08: bắt buộc chọn 1=Đực / 2=Cái
-                        boss: body.boss,       // 👑 07/09: bản PAL BOSS tuỳ chọn trả phí
-                    });
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // ⭐ build passive riêng: lưu / xoá (danh sách trả về trong cùng phản hồi)
-                if (ctx.profile && ctx.profile.saveBuild && req.method === 'POST' && path === '/api/pal/build/save') {
-                    const body = await readBody(req);
-                    const r = ctx.profile.saveBuild(userId, body.name, body.ids);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.profile && ctx.profile.delBuild && req.method === 'POST' && path === '/api/pal/build/del') {
-                    const body = await readBody(req);
-                    const r = ctx.profile.delBuild(userId, body.name);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -1164,13 +1060,6 @@ const PAGE = [
     // popup +/- tiền sau mỗi ván mình có đặt
     '#winpop{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font-size:46px;font-weight:900;pointer-events:none;opacity:0;z-index:98;text-shadow:0 2px 14px #000c}',
     '#winpop.show{animation:winfloat 3.4s ease-out forwards}',
-    // 💥🏆 11/09: NỔ HŨ QUAY PAL - lóe vàng 3 nhịp + chữ to vàng 5s + khung kết quả nhấp nháy (dùng lại mưa emoji .fx + rung .storm)
-    '#jpFlash{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%,#ffd76a99,#ffcf5c22 45%,#ffcf5c00 75%);pointer-events:none;opacity:0;z-index:96}',
-    '#jpFlash.on{animation:jpFlash 1.1s ease-out 3}',
-    '@keyframes jpFlash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}',
-    '#winpop.jp{color:#ffcf5c;font-size:40px;text-align:center;line-height:1.15;text-shadow:0 0 18px #ff9f1c,0 2px 14px #000}',
-    '#winpop.jp.show{animation:winfloat 5.2s ease-out forwards}',
-    '.jpwin{border:2px solid #ffcf5c!important;animation:baoPulse .9s ease-in-out 8}',
     '@keyframes winfloat{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}25%{transform:translate(-50%,-52%) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) scale(.9)}}',
     // hiệu ứng BÃO: rung màn hình + mưa emoji
     '@keyframes shakeX{0%,100%{transform:translate(0,0)}20%{transform:translate(-9px,4px)}40%{transform:translate(8px,-5px)}60%{transform:translate(-7px,3px)}80%{transform:translate(6px,-2px)}}',
@@ -1267,8 +1156,6 @@ const PAGE = [
     // 28/08: popup xác nhận đồng bộ giống admin portal (thay confirm() mặc định nhảy lung tung)
     // 🔒 16/09: thân trang lúc có popup - fixed để iOS cũng đứng yên, top âm giữ đúng chỗ đang xem
     'body.noscroll{position:fixed;left:0;right:0;width:100%;overflow:hidden}',
-    // cuộn trong hộp popup không "lây" ra trang phía sau
-    '#pcBox{overscroll-behavior:contain}',
     '#gmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:120;padding:16px}',
     '#gmodal.hidden{display:none}',
     '#gmBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;width:370px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:gmpop .15s ease}',
@@ -1388,79 +1275,6 @@ const PAGE = [
     '#navGrp{display:flex;gap:6px;margin-bottom:6px}',
     '#navGrp button{flex:1;background:#1a1f2d;border:1px solid var(--line);color:var(--muted);font-size:14px;font-weight:800;padding:11px 2px;letter-spacing:.5px}',
     '#navGrp button.on{background:linear-gradient(180deg,#33405c,#252c40);color:var(--tx);border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c55}',
-    // 🎁 Quay Pal: reel kiểu CSGO (dải thẻ chạy ngang, vạch giữa là kim)
-    '#pwWrap{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#141824;height:126px;margin-top:10px;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}',
-    '#pwWrap.grabbing{cursor:grabbing}',
-    '#pwWrap.nodrag{cursor:default}',   // đã quay 1 lượt -> hết kéo (F5 mới kéo lại)
-    '#pwWrap img{-webkit-user-drag:none;pointer-events:none}',   // kéo dải không kéo nhầm ảnh
-    '#pwMark{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--gold);z-index:2;box-shadow:0 0 8px #ffcf5c}',
-    '#pwStrip{display:flex;gap:6px;position:absolute;left:0;top:8px;will-change:transform}',
-    // 27/08: thẻ có HÌNH pal (icon 60px) + tên dưới. Con thiếu hình thì onerror ẩn <img>, chừa tên.
-    '.pwCard{flex:0 0 110px;height:110px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,#232839,#1b2030);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;text-align:center;overflow:hidden}',
-    '.pwCard img{width:62px;height:62px;object-fit:contain;image-rendering:auto;margin-bottom:2px;filter:drop-shadow(0 2px 3px #0007)}',
-    '.pwCard .nm{font-size:12px;font-weight:700;line-height:1.1;word-break:break-word}',
-    '.pwCard .dx{font-size:10px;color:var(--muted);margin-top:2px}',
-    '.pwCard.raid{border-color:#ff6b6b;background:linear-gradient(180deg,#3a2330,#241a22)}',
-    '.pwCard.raid .nm{color:#ff8f8f}',
-    // 🔥 thẻ raid ở ô trúng: viền lửa nhấp nháy + hào quang (chỉ gắn vào thẻ kết quả)
-    '.pwCard.raidhit{border-color:#ffcf5c;box-shadow:0 0 14px #ff8f3c,0 0 4px #ffcf5c inset;animation:raidGlow .7s ease-in-out infinite alternate}',
-    // 👑 10/09: pal huyền thoại tô VÀNG (viền + tên); trúng thì phát sáng vàng
-    '.pwCard.legend{border-color:#e7b53c;background:linear-gradient(180deg,#332b14,#221d10)}',
-    '.pwCard.legend .nm{color:#ffd76a}',
-    '.pwCard.legendhit{border-color:#ffe9a0;box-shadow:0 0 16px #ffd24a,0 0 5px #ffe9a0 inset;animation:raidGlow .7s ease-in-out infinite alternate}',
-    // 💜 11/09: 16 pal TÍM (epic) - viền + tên tím; trúng thì phát sáng tím
-    '.pwCard.epic{border-color:#9b6cff;background:linear-gradient(180deg,#2a1f45,#1c1530)}',
-    '.pwCard.epic .nm{color:#c9a2ff}',
-    '.pwCard.epichit{border-color:#e0ccff;box-shadow:0 0 16px #a97cff,0 0 5px #e0ccff inset;animation:epicGlow .7s ease-in-out infinite alternate}',
-    '@keyframes epicGlow{from{box-shadow:0 0 8px #8a5cff,0 0 3px #c9a2ff inset}to{box-shadow:0 0 22px #b48cff,0 0 8px #d9c2ff inset}}',
-    // 💰 15/09: Ô NỔ HŨ (Mimog) - vàng kho báu, luôn nhấp nháy để người chơi nhắm mà ngóng.
-    // Không lộ kết quả: thẻ mồi trên dải cũng bốc trúng Mimog như mọi con khác.
-    '.pwCard.jack{border-color:#ffd24a;background:linear-gradient(180deg,#3b2f0d,#1e2a15);animation:jackIdle 1.2s ease-in-out infinite alternate}',
-    '.pwCard.jack .nm{color:#ffe98a}',
-    '.pwCard.jack .dx{color:#7cff9c;font-weight:900}',
-    '.pcItem.jack{border-color:#ffd24a;background:linear-gradient(180deg,#2e2510,#1a2213)}',
-    '@keyframes jackIdle{from{box-shadow:0 0 6px #ffd24a77,0 0 2px #7cff9c44 inset}to{box-shadow:0 0 18px #ffd24a,0 0 7px #7cff9c66 inset}}',
-    '.pwCard.jackhit{border-color:#fff3b0;z-index:3;animation:jackHit .45s ease-in-out infinite alternate}',
-    '@keyframes jackHit{from{box-shadow:0 0 14px #ffd24a,0 0 5px #7cff9c inset;transform:scale(1)}to{box-shadow:0 0 34px #ffe98a,0 0 14px #7cff9c inset;transform:scale(1.07)}}',
-    '@keyframes raidGlow{from{box-shadow:0 0 8px #ff6b3c,0 0 3px #ffcf5c inset}to{box-shadow:0 0 22px #ffb03c,0 0 8px #ff8f5c inset}}',
-    '#pwRes{margin-top:10px;border:1px solid var(--gold);border-radius:10px;padding:10px;text-align:center;background:#1d2130}',
-    '#pwRes.raidwin{border-color:#ff8f3c;background:linear-gradient(180deg,#2a1c1a,#1d1518);box-shadow:0 0 18px #ff6b3c55}',
-    // 🍀 THANH MAY MẮN (27/08)
-    '#pwLuckWrap{margin-top:12px;background:#141824;border:1px solid var(--line);border-radius:10px;padding:10px}',
-    '#pwLuckHead{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;margin-bottom:6px}',
-    '#pwLuckBar{position:relative;height:16px;border-radius:9px;background:#0e1220;border:1px solid var(--line);overflow:hidden}',
-    '#pwLuckFill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:9px;background:linear-gradient(90deg,#3fe0a0,#7cff5c,#ffe45c);transition:width .5s ease}',
-    '#pwLuckPct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;text-shadow:0 0 2px #000,0 0 4px #000,0 1px 2px #000;letter-spacing:.3px}',
-    '#pwLuckNote{font-size:11px;color:var(--muted);margin-top:5px}',
-    // 🔥 VÒNG QUAY RAID (hiện khi có vé) - reel giống trên nhưng đỏ lửa
-    '#pwRaidBox{margin-top:12px;border:1px solid #ff6b6b;border-radius:12px;padding:12px;background:linear-gradient(180deg,#241820,#191114);box-shadow:0 0 18px #ff5b3c33}',
-    '#pwRaidBox.hidden{display:none}',
-    '#pwRaidWrap{position:relative;overflow:hidden;border:1px solid #7a3540;border-radius:10px;background:#160f13;height:126px;margin-top:8px}',
-    '#pwRaidMark{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#ffcf5c;z-index:2;box-shadow:0 0 8px #ff8f3c}',
-    '#pwRaidStrip{display:flex;gap:6px;position:absolute;left:0;top:8px;will-change:transform}',
-    '#pwRaidRes{margin-top:10px;border:1px solid #ff8f3c;border-radius:10px;padding:10px;text-align:center;background:#231619}',
-    // 🤝 11/09: thẻ giao dịch pal
-    '.pcItem.trIn{border-color:#3ddc84;box-shadow:0 0 0 1px #3ddc8444 inset}.pcItem.trOut{border-color:#ffd76a;opacity:.95}',
-    '#tmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:120;padding:16px}#tmodal.hidden{display:none}',
-    '.tmBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;width:420px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:gmpop .15s ease}',
-    '.tmActs{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}.tmActs button{min-width:100px;padding:10px 14px;font-weight:700;border-radius:9px}',
-    // 🎒 Rương pal + hộp nhận
-    // 27/08: thẻ Rương gọn - trên: hình pal + tên/tag/giờ · dưới: nút Bán/Nhận full ngang
-    '.pcItem{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px;background:#141824}',
-    '.pcItem.raid{border-color:#ff6b6b;background:linear-gradient(180deg,#241820,#191114)}',
-    '.pcItem .pcTop{display:flex;align-items:center;gap:10px}',
-    '.pcItem .pcTop img{width:54px;height:54px;flex:0 0 54px;object-fit:contain;background:#1b2030;border:1px solid var(--line);border-radius:9px;padding:3px}',
-    '.pcItem.raid .pcTop img{border-color:#ff8f5c;box-shadow:0 0 8px #ff6b3c55}',
-    '.pcItem .pcMeta{min-width:0;flex:1}',
-    '.pcItem .nm{font-weight:800;font-size:15px}',
-    '.pcItem.raid .nm{color:#ff9f5c}',
-    '.pcItem .tag{font-size:10px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted);vertical-align:middle}',
-    '.pcItem .tag.raid{color:#ff8f8f;border-color:#ff6b6b}',
-    '.pcItem .tag.wait{color:#ffd27a;border-color:#ffcf5c}',
-    '.pcItem .tm{font-size:11px;color:var(--muted);margin-top:2px}',
-    '.pcActs{display:flex;gap:8px;margin-top:10px}',
-    '.pcActs button{flex:1;padding:10px;font-size:13px;font-weight:700}',
-    '.pcActs .tag{flex:1;text-align:center;padding:9px;font-size:12px;border-radius:8px}',
     // 🛒 shop item
     // 🛒 16/09: danh sách item = LƯỚI thẻ. Điện thoại hẹp -> 1 cột như cũ; máy tính -> 3-4 thẻ/hàng,
     // đỡ phải cuộn dài. Đề mục nhóm + dòng "không thấy món nào" chiếm trọn hàng (grid-column:1/-1).
@@ -1521,17 +1335,6 @@ const PAGE = [
     '#spmFloats{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}',
     '.spmFloat{position:absolute;bottom:32%;font-size:13px;font-weight:800;color:#8fffca;white-space:nowrap;text-shadow:0 2px 6px #000;animation:spmJump 1.9s ease-out forwards}',
     '@keyframes spmJump{0%{opacity:0;transform:translateY(14px) scale(.7)}18%{opacity:1;transform:translateY(-8px) scale(1.15)}100%{opacity:0;transform:translateY(-130px) scale(1) rotate(-18deg)}}',
-    // 🎒 đề mục 2 phần rương pal (bấm cả dòng để đóng/mở)
-    '.pcSecH{display:flex;align-items:center;justify-content:space-between;margin:12px 0 6px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:#181c28;cursor:pointer;user-select:none;font-size:13px}',
-    '.pcSecH span{color:var(--muted);font-size:12px}',
-    '.pcSecH:hover{border-color:#3a4155}',
-    // 🧺 16/09: thanh bán hàng loạt + ô tick trên từng thẻ pal
-    '#pcBulk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 4px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#161b26}',
-    '#pcBulk label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;user-select:none}',
-    '#pcBulk button{padding:7px 12px;font-size:13px;background:linear-gradient(180deg,#ffd76a,#e0ac3f);color:#241d0a;border:0;border-radius:8px;font-weight:800;cursor:pointer}',
-    '#pcBulk button:disabled{opacity:.45;cursor:not-allowed}',
-    '#pcBulk.hidden{display:none}',
-    'input.pcCk{width:20px;height:20px;flex:0 0 auto;accent-color:#ffd76a;cursor:pointer;margin-right:2px}',
     // ⏭️ hộp "đặt trước chuyến sau" của Phi Thuyền
     '.spmNxT{font-size:11px;font-weight:800;letter-spacing:.5px;color:#7aa2ff;margin-bottom:4px}',
     '.spmNx{display:flex;align-items:center;gap:8px;padding:6px 10px;margin-top:4px;border-radius:9px;background:#131a2b;border:1px solid #23304f;font-size:13px}',
@@ -1573,63 +1376,6 @@ const PAGE = [
     '.spmH .rs{font-weight:800;white-space:nowrap}',
     '.spmH.win .rs{color:#3ddc84}',
     '.spmH.lose .rs{color:#ff8f8f}',
-    '#pcModal{position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center;padding:12px}',
-    '#pcModal.hidden{display:none}',
-    '#pcBox{background:var(--card);border:1px solid var(--gold);border-radius:12px;padding:14px;max-width:460px;width:100%;max-height:92vh;overflow-y:auto}',
-    // máy tính (>=920px): hộp nhận nở rộng 2 cột - trái linh hồn+IV, phải passive cao hơn
-    '@media(min-width:920px){',
-    '#pcBox{max-width:940px;padding:18px 20px}',
-    '#pcmGenderWrap{margin:10px 0 2px}',
-    '.pcmGbtn{flex:1;border-radius:8px;padding:11px;font-weight:800;font-size:15px;cursor:pointer;transition:all .12s}',
-    // luôn có màu rõ: Đực xanh dương, Cái hồng (dễ nhìn ngay cả khi chưa chọn)
-    '.pcmGbtn.male{border:2px solid #4f9dff;background:#17253c;color:#9fcaff}',
-    '.pcmGbtn.female{border:2px solid #ff7ab6;background:#351826;color:#ffb2d6}',
-    // đang chọn: tô nền đặc + chữ trắng + viền sáng
-    '.pcmGbtn.male.on{background:#2f7dff;color:#fff;box-shadow:0 0 0 3px rgba(79,157,255,.35)}',
-    '.pcmGbtn.female.on{background:#ff5fa8;color:#fff;box-shadow:0 0 0 3px rgba(255,122,182,.35)}',
-    // hover: nhấc nhẹ + sáng thêm (cả lúc chưa chọn lẫn đang chọn)',
-    '.pcmGbtn:hover{transform:translateY(-1px)}',
-    '.pcmGbtn.male:hover{background:#213a63;color:#c9e0ff;border-color:#7ab6ff}',
-    '.pcmGbtn.female:hover{background:#4a2236;color:#ffd0e7;border-color:#ff9ccb}',
-    // 👑 nút bản PAL BOSS: cùng khuôn nút giới tính - bấm là TÔ VÀNG cả ô, chữ đổi màu tối cho tương phản
-    '.pcmGbtn.boss{border:2px solid #ffcf5c;background:#2b2312;color:#ffd76a;display:flex;align-items:center;justify-content:center;gap:8px}',
-    '.pcmGbtn.boss:hover{background:#3d331b;color:#ffe49a;border-color:#ffe08a}',
-    '.pcmGbtn.boss.on{background:linear-gradient(180deg,#ffd76a,#e0ac3f);color:#241d0a;box-shadow:0 0 0 3px rgba(255,207,92,.35)}',
-    '.pcmGbtn.boss.on:hover{background:linear-gradient(180deg,#ffe08a,#e8b54a);color:#241d0a}',
-    '.pcmGbtn.male.on:hover{background:#4a8dff}',
-    '.pcmGbtn.female.on:hover{background:#ff74b6}',
-    // chip passive đã chọn (luôn thấy dù cuộn list) - bấm ✕ để bỏ
-    '#pcmChips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 7px;min-height:22px}',
-    '.pchip{display:inline-flex;align-items:center;gap:6px;background:#1b1f2c;border:1px solid var(--line);border-radius:13px;padding:3px 6px 3px 10px;font-size:12px}',
-    '.pchip .x{cursor:pointer;background:#3a4155;color:#fff;border-radius:50%;width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;line-height:1}',
-    '.pchip .x:hover{background:var(--red)}',
-    '#pcmCols{display:flex;gap:20px;align-items:flex-start}',
-    '#pcmColL{flex:1;min-width:0}',
-    '#pcmColR{flex:1.15;min-width:0}',
-    '#pcmColR>div:first-child{margin-top:10px}',
-    '#pcmPass{max-height:380px}',
-    '}',
-    '#pcmSummary{border:1px solid var(--line);border-radius:10px;background:#141824;padding:10px 12px;margin-top:10px}',
-    '#pcmSummary .sline{display:flex;justify-content:space-between;gap:10px;padding:2px 0}',
-    '#pcmSummary .sline .muted{flex:1}',
-    '.pcmSoul{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin-top:5px;cursor:pointer;font-size:13px}',
-    '.pcmSoul input{width:16px;height:16px}',
-    // danh sách passive: cuộn dọc, mỗi dòng tên MÀU THEO BẬC + chú thích kế bên, bấm để chọn
-    '#pcmPass{max-height:240px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;background:#141824}',
-    '.pcmP{padding:7px 10px;border-bottom:1px solid #1e2434;cursor:pointer;font-size:13px;line-height:1.35}',
-    '.pcmP:last-child{border-bottom:0}',
-    '.pcmP .pd{color:var(--muted);font-size:11px}',
-    '.pcmP.sel{background:#233049;box-shadow:inset 3px 0 0 var(--gold)}',
-    // checkbox trong dòng passive: chỉ hiển thị cho dễ bấm/dễ thấy, click do cả dòng xử lý
-    '.ppcb{pointer-events:none;width:15px;height:15px;margin-right:7px;vertical-align:middle;accent-color:#ffcf5c}',
-    // 🌈 tên passive Cây Thế Giới màu cầu vồng
-    '.pwt{background:linear-gradient(90deg,#ff6b6b,#ffd76a,#7fd98a,#3fe0cf,#8ab6ff,#c69cff);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}',
-    // nút build: đang chọn sáng viền vàng; build riêng viền xanh ngọc; ✕ đỏ; ➕ nét đứt
-    '.pcb{padding:5px 9px;font-size:11px;background:#232b3f;border:1px solid var(--line)}',
-    '.pcb.on{border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5c66;background:#2f3854;color:#ffe9b0}',
-    '.pcb.my{border-color:#3fe0cf66}',
-    '.pcb.x{padding:5px 7px;color:#ff7a7a;margin-left:-3px}',
-    '.pcb.add{border-style:dashed;color:var(--muted)}',
     // 🏆 số hũ cạnh tên game: chữ vàng, viền vàng mờ cho nổi
     '.hdrpot{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:8px;font-size:13px;font-weight:bold;color:var(--gold);background:#3a2f0e;border:1px solid #ffcf5c55;vertical-align:middle}',
     '.hdrpot:empty{display:none}',
@@ -2257,7 +2003,7 @@ const PAGE = [
     'không chuyển tiền, không mua bán, không nạp/rút. Chỉ xem số dư và trạng thái được.</div>',
 
     // 25/08: điều hướng 2 TẦNG cho đỡ chồng chéo - tầng 1 chọn NHÓM (Hồ sơ / Mini game),
-    // tầng 2 chỉ hiện các trang thuộc nhóm đó. Quay Pal nằm bên nhóm Hồ sơ.
+    // tầng 2 chỉ hiện các trang thuộc nhóm đó.
     '<div id="navGrp">',
     '<button id="ngProfile" onclick="grpGo(\'profile\')">👤 HỒ SƠ</button>',
     '<button id="ngGames" class="on" onclick="grpGo(\'games\')">🎮 MINI GAME</button>',
@@ -2282,8 +2028,6 @@ const PAGE = [
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
     '<button id="navIk" onclick="go(\'ik\')">🧰 Rương Ích Kỷ <span class="n" id="pdIkN">0</span></button>',   // 05/10: trang riêng
     '<button id="navTp" onclick="go(\'tp\')">🏪 Thương Phố</button>',   // 06/10: kho đồ theo nhân vật (thuongpho.client.js)
-    '<button id="navPal" class="hidden" onclick="go(\'pal\')">🎁 Quay Pal</button>',
-    '<button id="navPick" class="hidden" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
     '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
     '<button id="navDog" onclick="go(\'dog\')">💸 Chuyển/Rút</button>',
     '</div>',
@@ -2505,49 +2249,6 @@ const PAGE = [
     '<div class="card"><h2>🕘 10 vòng gần nhất</h2><div id="whHist" class="muted" style="font-size:13px">Chưa có vòng nào.</div></div>',
     '</div>', // hết #pageWheel
 
-    // ================= TRANG 🎁 QUAY PAL (kiểu CSGO, 25/08) =================
-    // Server quyết định kết quả TRƯỚC khi client chạy hoạt hình (không gian lận được).
-    // Trước mắt reel chạy theo TÊN pal (ảnh bổ sung sau khi gom đủ bộ ảnh).
-    // Trúng ô 🔥 PAL RAID thì chạy tiếp reel thứ 2 chia đều các pal raid - như mở rương CSGO.
-    '<div id="pagePal" class="hidden">',
-    '<div class="card">',
-    '<div class="row"><h2 style="margin:0">🎁 Quay Pal</h2><div class="muted" id="pwStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="pwInfo">Quay TẤT CẢ pal thường + huyền thoại, mọi ô <b>chia đều</b> (không có boss raid ở vòng này). Mỗi lượt quay còn nạp <b>🍀 thanh may mắn</b> phía dưới - đầy 100% được quay <b>vòng may mắn</b>: huyền thoại hoặc ô RAID + thưởng KNB. Pal trúng nằm trong <b>RƯƠNG</b> ở tab 🪪 Cá nhân.</div>',
-    '<div id="pwWrap"><div id="pwMark"></div><div id="pwStrip"></div></div>',
-    '<div id="pwRes" class="hidden"></div>',
-    '<button class="btn-full" id="pwGo" onclick="pwSpin()">🎁 QUAY</button>',
-    '<label class="nhoRow" style="margin-top:8px"><input type="checkbox" id="pwSkip" onchange="pwSkipTog(this.checked)"><span>⚡ <b>Bỏ qua hiệu ứng quay</b>, hiện pal trúng ngay và <b>không phải chờ 10 giây</b> mới quay tiếp</span></label>',
-    '<button class="btn-full" id="pwAuto" onclick="pwAutoTog()" style="margin-top:6px;background:linear-gradient(180deg,#5a6ad0,#3f4ca3)">🔁 TỰ ĐỘNG QUAY</button>',
-    '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center" id="pwPot">-</div>',
-    // 🍀 THANH MAY MẮN
-    '<div id="pwLuckWrap">',
-    '<div id="pwLuckHead"><span>🍀 Thanh may mắn</span><span id="pwLuckTix"></span></div>',
-    '<div id="pwLuckBar"><div id="pwLuckFill"></div><div id="pwLuckPct">0%</div></div>',
-    '<div id="pwLuckNote">Mỗi lượt quay tích thêm may mắn. Đầy 100% được 1 vé quay 🍀 vòng may mắn bên dưới.</div>',
-    '</div>',
-    '</div>',
-    // 🔥 VÒNG QUAY RAID (chỉ hiện khi có vé)
-    '<div class="card" id="pwRaidBox">',
-    '<div class="row"><h2 style="margin:0">🍀 Vòng quay may mắn</h2><div class="muted" id="pwRaidStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="pwRaidInfo">-</div>',
-    '<div id="pwRaidWrap"><div id="pwRaidMark"></div><div id="pwRaidStrip"></div></div>',
-    '<div id="pwRaidRes" class="hidden"></div>',
-    '<button class="btn-full" id="pwRaidGo" onclick="pwRaidSpin()">🍀 QUAY MAY MẮN (dùng 1 vé)</button>',
-    '</div>',
-    '</div>', // hết #pagePal
-
-    // ================= TRANG 🎯 CHỌN PAL (25/08, thay nút Pal tùy chọn Discord) =================
-    // Chọn ĐÍCH DANH 1 pal thường (không raid) - trả tiền là vào 🎒 RƯƠNG, nhận/bán như quay trúng.
-    '<div id="pagePick" class="hidden">',
-    '<div class="card">',
-    '<div class="row"><h2 style="margin:0">🎯 Chọn Pal</h2><div class="muted" id="pkStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="pkInfo">Chọn đúng con mình thích. 🔥 4 BOSS RAID (Bellanoir Libero, Blazamut Ryu, Xenolord, Hartalis) bán giá riêng ngay đầu danh sách. Mua xong pal nằm trong 🎒 RƯƠNG ở tab 🪪 Cá nhân - chọn linh hồn + passive rồi nhận vào game.</div>',
-    '<input id="pkFind" placeholder="🔎 Tìm pal theo tên hoặc số paldex..." oninput="pkRender()" style="width:100%;margin-top:8px">',
-    '<div id="pkList" style="margin-top:6px;max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;background:#141824"><div class="muted" style="padding:10px">Đang tải...</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center" id="pkPot">-</div>',
-    '</div>',
-    '</div>', // hết #pagePick
-
     // ================= TRANG 🛒 SHOP ITEM (28/08) =================
     // Mua item game + số lượng -> giao thẳng vào túi qua mod (phải đang ONLINE trong game).
     '<div id="pageShop" class="hidden">',
@@ -2687,21 +2388,6 @@ const PAGE = [
     '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><input id="mkCu" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" style="flex:1;min-width:150px;margin-top:0"><input id="mkMoi" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (6-32 ký tự)" style="flex:1;min-width:150px;margin-top:0"><button class="btn-full" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px" onclick="doiMk()">🔐 Đổi mật khẩu</button></div>',
     '</div>',
     '</div>',
-    // 🎒 RƯƠNG PAL (25/08): pal quay trúng nằm ở đây - bán lấy KNB hoặc NHẬN vào game
-    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt
-    '<div class="row"><h2 style="margin:0">🎒 Rương Pal</h2><div class="muted" id="pcStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="pcLink">-</div>',
-    // ⏳ cooldown nhận pal CHUNG toàn server (28/08)
-    '<div id="pcCdBanner" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px;font-weight:700"></div>',
-    '<div id="pcDayNote" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #3a4155;border-radius:9px;background:#1b1f2c;color:#aab3c5;font-size:13px"></div>',
-    // 🆘 tẩu thoát khẩn cấp: kẹt đất/kẹt đá trong game thì bấm - 1 tiếng/lần (có popup xác nhận)
-    '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">',
-    '<button class="mini" id="pcRescueBtn" onclick="pcRescue()" style="background:#7e2a2a;color:#fff;font-weight:700;padding:8px 12px">🆘 TẨU THOÁT KHẨN CẤP</button>',
-    '<span class="muted" style="font-size:12px">kẹt đất/kẹt đá? Dịch chuyển về điểm an toàn (phải đang ONLINE trong game) - 1 tiếng/lần</span>',
-    '</div>',
-    '<div id="pcBulk" class="hidden"><label><input type="checkbox" id="pcAll" onchange="pcCkAll(this)"><b>Chọn tất cả</b></label><span class="muted" id="pcSelN" style="font-size:12px">Chưa chọn con nào</span><span style="flex:1"></span><button id="pcSellN" onclick="pcSellMany()" disabled>🧺 Bán đã chọn</button></div>',
-    '<div id="pcList" style="margin-top:8px"><div class="muted">Đang tải...</div></div>',
-    '</div>',
     '</div>', // hết #pageDaily
     // 🧰 RƯƠNG ÍCH KỶ - 05/10: TRANG RIÊNG trên thanh menu (chủ server: không nhét chung 🪪 Cá nhân),
     // dạng bảng ngang cho PC. 17/09 -> 04/10 là popup #ikModal; id bên trong giữ nguyên.
@@ -2721,62 +2407,6 @@ const PAGE = [
     '<div id="ikList"></div>',
     '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Lúc bấm <b>📦 Nhận</b> mới cần nhân vật online để bot giao vào túi.</div>',
     '</div></div>', // hết #pageIk
-
-    // Hộp chọn linh hồn + passive khi NHẬN pal (overlay cố định, dùng chung mọi trang)
-    // 26/08: bố cục lại theo góp ý chủ server - máy tính rộng thì chia 2 CỘT (trái:
-    // linh hồn + IV, phải: passive), thêm khung 🧾 TỔNG KẾT trước nút nhận.
-
-    '<div id="pcModal" class="hidden">',
-    '<div id="pcBox">',
-    '<div class="row"><h2 style="margin:0" id="pcmTitle">Nhận pal</h2><button onclick="pcClose()" style="background:#232735;padding:4px 12px">✕</button></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="pcmBase">-</div>',
-    // 🚻 GIỚI TÍNH (27/08): bắt buộc chọn, không có mặc định - server chặn nếu bỏ trống
-    '<div id="pcmGenderWrap">',
-    '<div style="font-weight:700">🚻 Giới tính <span style="color:var(--red);font-weight:400;font-size:12px">* bắt buộc chọn</span></div>',
-    '<div class="row" style="gap:8px;margin-top:5px">',
-    '<button type="button" id="pcmGM" class="pcmGbtn male" onclick="pcGenderPick(1)">♂ Đực</button>',
-    '<button type="button" id="pcmGF" class="pcmGbtn female" onclick="pcGenderPick(2)">♀ Cái</button>',
-    '</div></div>',
-    // 👑 07/09: bản PAL BOSS thành TUỲ CHỌN trả phí (mặc định bản thường) - nút full-width
-    // cùng khuôn nút giới tính, bấm là tô vàng cả ô (class on)
-    '<div id="pcmBossRow" style="display:none;margin-top:8px">',
-    '<button type="button" id="pcmBossBtn" class="pcmGbtn boss" onclick="pcBossTog()" style="width:100%">',
-    '<img src="/palboss.png" alt="" style="width:24px;height:24px;border-radius:6px" onerror="this.outerHTML=\'👑\'">',
-    '<span>Bản PAL BOSS <span style="font-weight:400;font-size:12.5px;opacity:.85">· to đẹp trai hơn · +<span id="pcmBossPrice">10.000</span> KNB</span></span>',
-    '</button></div>',
-    '<div id="pcmCols">',
-    '<div id="pcmColL">',
-    '<div style="font-weight:700;margin:10px 0 4px">💠 Linh hồn <span class="muted" style="font-weight:400">(ít nhất 1, tối đa 4 dòng · <span id="pcmSoulMax">1</span> dòng đầu MIỄN PHÍ, dòng thêm tính phí · tick rồi kéo % riêng từng dòng)</span></div>',
-    '<div id="pcmSouls"></div>',
-    '<div class="muted" style="font-size:11px;margin-top:3px" id="pcmLineCost"></div>',
-    '<div style="font-weight:700;margin:12px 0 2px">🧬 IV <span class="muted" style="font-weight:400">(gốc <span id="pcmIvBase">100</span> miễn phí, kéo thêm tính phí từng điểm)</span></div>',
-    '<div class="row" style="margin-top:4px;gap:10px;align-items:flex-start">',
-    '<div style="flex:1"><div style="font-weight:700;font-size:13px">❤️ Máu: <span id="pcmIvHShow">100</span></div>',
-    '<input id="pcmIvH" type="range" min="100" max="255" step="1" value="100" oninput="pcUpCalc()" style="width:100%"></div>',
-    '<div style="flex:1"><div style="font-weight:700;font-size:13px">⚔️ Công: <span id="pcmIvAShow">100</span></div>',
-    '<input id="pcmIvA" type="range" min="100" max="255" step="1" value="100" oninput="pcUpCalc()" style="width:100%"></div>',
-    '<div style="flex:1"><div style="font-weight:700;font-size:13px">🛡️ Thủ: <span id="pcmIvDShow">100</span></div>',
-    '<input id="pcmIvD" type="range" min="100" max="255" step="1" value="100" oninput="pcUpCalc()" style="width:100%"></div>',
-    '</div>',
-    '<div class="muted" style="font-size:11px" id="pcmIvCost">gốc miễn phí</div>',
-    '</div>', // hết cột trái
-    '<div id="pcmColR">',
-    '<div style="font-weight:700;margin:12px 0 4px">✨ Passive <span class="muted" style="font-weight:400">(<span id="pcmPassMax">4</span> ô đầu MIỄN PHÍ, mở tới 8 ô tính phí · đã chọn <span id="pcmPk">0</span>/<span id="pcmPkMax">8</span>)</span> <span id="pcmPassCost" style="color:var(--gold);font-size:11px"></span></div>',
-    // hàng chip passive ĐÃ CHỌN - luôn thấy dù cuộn list, bấm ✕ bỏ nhanh
-    '<div id="pcmChips"></div>',
-    '<div class="muted" style="font-size:11px;margin-bottom:4px">Màu như trong game: <b style="color:#e8ecf5">■ thường</b> · <b style="color:#ffd76a">■ bậc 3</b> · <b style="color:#3fe0cf">■ bậc 4</b> · <b style="color:#ff7a7a">■ có mặt trái</b>. Con nào có ⚠ là đang chờ kiểm mã trong game.</div>',
-    '<div id="pcmBuilds" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>',
-    '<input id="pcmFind" placeholder="🔎 Tìm passive..." oninput="pcPassFilter()" style="width:100%;margin-bottom:5px">',
-    '<div id="pcmFull" class="hidden muted" style="font-size:11px;margin-bottom:5px">✅ Đã chọn đủ số passive. Bấm vào 1 con để bỏ chọn và hiện lại danh sách.</div>',
-    '<div id="pcmPass"></div>',
-    '</div>', // hết cột phải
-    '</div>', // hết pcmCols
-    // 🧾 tổng kết đơn: mua gì, tốn bao nhiêu - người mua nhìn 1 phát là biết
-    '<div id="pcmSummary"><div style="font-weight:700;margin-bottom:4px">🧾 TỔNG KẾT ĐƠN</div><div id="pcmSumBody" style="font-size:12.5px">-</div><div id="pcmUpTotal" style="margin-top:6px;font-size:13px">-</div></div>',
-    '<button class="btn-full" id="pcmOk" onclick="pcClaimGo()">✅ NHẬN VÀO GAME</button>',
-    '<div class="muted" style="font-size:11px;margin-top:6px">Phải đang <b>ONLINE trong game</b>. Pal vào hộp ngay nhưng <b>DÙNG ĐƯỢC sau đợt khởi động lại server kế tiếp</b>.</div>',
-    '</div>',
-    '</div>',
 
     // ================= TRANG 📈 CỔ PHIẾU DOG =================
     // Sàn thuần web: nến 30s, vào lệnh HAI CHIỀU (MUA ăn khi lên · BÁN ăn khi xuống),
@@ -2972,7 +2602,6 @@ const PAGE = [
     '<div id="hist20" class="muted" style="font-size:13px">Chưa có ván nào.</div></div>',
 
     '<div id="winpop"></div>',
-    '<div id="jpFlash"></div>',
     // 🍀 CỎ 4 LÁ: chọn 1 trong 4 hộp quà (phần thưởng do server quay lúc bấm)
     // 🏆 09/09 v2: hộp NỔ HŨ - N nút sinh động theo danh sách bội số
     '<div id="jpPick"><div class="box">',
@@ -3008,19 +2637,6 @@ const PAGE = [
     '</div></div></div>',
     '<div id="toast"></div>',
     // 28/08: popup xác nhận đồng bộ giống admin portal (gConfirm thay confirm mặc định)
-    // 🤝 11/09: popup BÁN PAL - 2 lựa chọn: shop giá cố định | người chơi khác (nhập giá, 0 = tặng)
-    '<div id="tmodal" class="hidden" onclick="if(event.target===this)tmClose()">',
-    '<div class="tmBox">',
-    '<div id="tmTitle" style="font-weight:800;font-size:16px;margin-bottom:8px"></div>',
-    '<button class="btn-full" id="tmShop" onclick="tmSellShop()" style="background:linear-gradient(180deg,#ffd76a,#e0ac3f);color:#241d0a;margin-bottom:10px"></button>',
-    '<div style="border-top:1px dashed var(--line);padding-top:10px"><b>🤝 Bán / tặng cho người chơi khác</b>',
-    '<div class="muted" style="font-size:12px;margin:4px 0 6px">Pal rời rương của bạn và chờ bên kia bấm <b>Xác nhận mua</b>. Bên kia câu giờ thì bạn <b>Thu hồi</b> lấy lại. Giá <b>0</b> = tặng.</div>',
-    '<input id="tmFind" placeholder="🔎 Gõ tên người nhận..." oninput="tmRenderPick()" style="width:100%;margin-bottom:6px">',
-    '<div id="tmPick" style="display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow:auto;margin-bottom:8px"></div>',
-    '<div class="muted" id="tmToLbl" style="font-size:12px;margin-bottom:6px">Chưa chọn người nhận</div>',
-    '<div class="row" style="gap:8px"><input id="tmPrice" type="number" inputmode="numeric" min="0" placeholder="Giá KNB (0 = tặng)" style="flex:1"><button onclick="tmOffer()" style="flex:0 0 auto;background:linear-gradient(180deg,#4da3ff,#2b74c9)">📤 Gửi lời bán</button></div></div>',
-    '<div class="tmActs"><button onclick="tmClose()" style="background:#3a4155;color:#fff">Đóng</button></div>',
-    '</div></div>',
     // 🐾 01/10: popup Chọn Pet Boss (z-index DƯỚI gmodal để hộp xác nhận hiện đè lên)
     '<div id="pbModal" class="hidden" onclick="if(event.target===this)pbClose()"><div id="pbBox"></div></div>',
     '<div id="gmodal" class="hidden" onclick="if(event.target===this)gmClose(false)">',
@@ -3043,8 +2659,8 @@ const PAGE = [
     // 28/08: popup xác nhận giống admin portal - trả Promise(true/false), thay confirm() mặc định
     // 🔒 16/09 KHOÁ CUỘN KHI CÓ POPUP (chủ server: "mở popup thì phần còn lại không được scroll").
     // 6 lớp phủ toàn màn hình - 3 cái bật/tắt bằng class hidden, 3 cái bằng class show.
-    // KHÔNG gồm #winpop / #jpFlash / #toast: mấy cái đó pointer-events:none, chỉ là hiệu ứng.
-    'var POPIDS=["gmodal","tmodal","pcModal","jpPick","luckyPick","lolaPop","pbModal","ikGv"],POPY=0;',
+    // KHÔNG gồm #winpop / #toast: mấy cái đó pointer-events:none, chỉ là hiệu ứng.
+    'var POPIDS=["gmodal","jpPick","luckyPick","lolaPop","pbModal","ikGv"],POPY=0;',
     'function popAnyOpen(){for(var i=0;i<POPIDS.length;i++){var e=$(POPIDS[i]);',
     'if(e&&getComputedStyle(e).display!=="none")return true}return false}',
     'function popScrollSync(){var b=document.body,on=popAnyOpen(),dang=b.classList.contains("noscroll");',
@@ -4170,7 +3786,7 @@ const PAGE = [
     'else{el.textContent="--";el.style.color=""}},1000);',
     'setInterval(rlLoad,2000);',
 
-    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",tp:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"games",gn:"games",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",tp:"profile",shop:"profile",vq:"games",gn:"games",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
@@ -4185,8 +3801,6 @@ const PAGE = [
     '$("pageMine").classList.toggle("hidden",p!=="mine");',
     '$("pageStair").classList.toggle("hidden",p!=="stair");',
     '$("pageWheel").classList.toggle("hidden",p!=="wheel");',
-    '$("pagePal").classList.toggle("hidden",p!=="pal");',
-    '$("pagePick").classList.toggle("hidden",p!=="pick");',
     '$("pageShop").classList.toggle("hidden",p!=="shop");',
     '$("pageVq").classList.toggle("hidden",p!=="vq");',
     '$("pageGn").classList.toggle("hidden",p!=="gn");document.body.classList.toggle("gnWide",p==="gn");',
@@ -4206,8 +3820,6 @@ const PAGE = [
     '$("navMine").classList.toggle("on",p==="mine");',
     '$("navStair").classList.toggle("on",p==="stair");',
     '$("navWheel").classList.toggle("on",p==="wheel");',
-    '$("navPal").classList.toggle("on",p==="pal");',
-    '$("navPick").classList.toggle("on",p==="pick");',
     '$("navShop").classList.toggle("on",p==="shop");',
     '$("navVq").classList.toggle("on",p==="vq");',
     '$("navGn").classList.toggle("on",p==="gn");',
@@ -4227,11 +3839,11 @@ const PAGE = [
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
     '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm","navVq","navGn"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
-    '["navDaily","navIk","navTp","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navDaily","navIk","navTp","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
     'if(p==="tienlen"){var tf=$("tlFrame");if(tf&&!/\\/tienlen\\/$/.test(tf.src))tf.src="/tienlen/"}',   // 🀄
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="vq")vqSync();else if(p==="gn"&&typeof gnSync==="function")gnSync();else if(p==="tp"){if(typeof tpSync==="function")tpSync()}else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily")dailySync();else if(p==="wheel")wheelSync();else if(p==="shop")isSync();else if(p==="vq")vqSync();else if(p==="gn"&&typeof gnSync==="function")gnSync();else if(p==="tp"){if(typeof tpSync==="function")tpSync()}else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
@@ -4607,14 +4219,6 @@ const PAGE = [
     // Lên đỉnh thì ăn mừng; thông báo tiền vẫn là showNet + dòng sStat như cũ.
     'SG=null;SOVER=true;sTower();sPaintLast();showNet(net);sBand();',
     'if(res==="Lên đỉnh")celebrate()}',
-    // 💥🏆 11/09: NỔ HŨ QUAY PAL - dấu hiệu KHÔNG THỂ BỎ LỠ: lóe vàng + rung + mưa 🏆🪙 + chữ to giữa màn 5s + toast
-    'function palJackpotFx(amount){var f=$("jpFlash");if(f){f.classList.remove("on");void f.offsetWidth;f.classList.add("on")}',
-    'document.body.classList.remove("storm");void document.body.offsetWidth;document.body.classList.add("storm");',
-    'var EM=["🏆","💥","🪙","💰","✨","🐶"];for(var i=0;i<44;i++){var s=document.createElement("div");s.className="fx";s.textContent=EM[i%EM.length];',
-    's.style.left=(Math.random()*96)+"vw";s.style.fontSize=(20+Math.random()*32)+"px";s.style.animationDuration=(1.4+Math.random()*2)+"s";s.style.animationDelay=(Math.random()*1.2)+"s";',
-    'document.body.appendChild(s);(function(el){setTimeout(function(){el.remove()},4800)})(s)}',
-    'var el=$("winpop");if(el){el.className="jp";el.innerHTML="💥🏆 NỔ HŨ QUAY PAL 🏆💥<br>+"+vnd(amount)+" KNB";void el.offsetWidth;el.classList.add("show");setTimeout(function(){el.className=""},5300)}',
-    'setTimeout(function(){document.body.classList.remove("storm")},1600);toast("💥🏆 NỔ HŨ QUAY PAL +"+vnd(amount)+" KNB!")}',
     // mưa emoji ăn mừng (dùng lại .fx của hiệu ứng Bão bên Big Small)
     'function celebrate(){',
     'document.body.classList.remove("storm");void document.body.offsetWidth;document.body.classList.add("storm");',
@@ -5093,7 +4697,7 @@ const PAGE = [
     'function tbSync(){}function tbNhan(){}',   // 05/10: giao diện túi đồ boss chuyển sang /tb.js (tuiboss.client.js), file đó ghi đè 2 hàm này
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
     // 🔌 15/09: giấu tab của mục admin tắt. Đang đứng trong mục bị tắt thì đá về Tài Xỉu.
-    'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",pal:"navPal",pick:"navPick",shop:"navShop",dog:"navDog"};',
+    'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",shop:"navShop",dog:"navDog"};',
     'var FEATOFF=[];',
     'function featDraw(off){FEATOFF=off||[];',
     'for(var k in FEATNAV){var b=$(FEATNAV[k]);if(b)b.classList.toggle("hidden",FEATOFF.indexOf(k)>=0)}',
@@ -5186,150 +4790,6 @@ const PAGE = [
     'b.disabled=true;var mm=Math.floor(left/60000),ss=Math.floor(left%60000/1000);',
     'b.textContent="⏳ CÒN "+(mm<10?"0":"")+mm+":"+(ss<10?"0":"")+ss+" NỮA MỚI LỤM ĐƯỢC"}',
     'setInterval(ngTick,1000);',
-    '',
-    // ===== 🎁 QUAY PAL kiểu CSGO =====
-    // Server chốt kết quả TRƯỚC (trong /spin), client chỉ diễn hoạt hình dải thẻ
-    // chạy ngang rồi dừng đúng thẻ kết quả. Thẻ 128px + khe 6px = bước 134px.
-    'var PW=null,PWBUSY=false,PWRBUSY=false,PWLOCK=0,PWTICKING=false;',
-    // ⚡ 25/09: bỏ qua hiệu ứng cuộn reel - nhớ lựa chọn qua F5
-    'var PWSKIP=false;try{PWSKIP=localStorage.getItem("pw_skip")==="1"}catch(e){}',
-    'function pwSkipTog(bat){PWSKIP=!!bat;try{localStorage.setItem("pw_skip",bat?"1":"0")}catch(e){}',
-    'toast(bat?"⚡ Đã bỏ hiệu ứng - bấm QUAY là ra pal ngay":"🎞️ Đã bật lại hiệu ứng vòng quay")}',
-    // keepMain/keepRaid: sau khi quay xong GIỮ NGUYÊN dải ở ô trúng (không chạy lại idle),
-    // để pal trúng đứng yên tại chỗ cho người chơi nhìn - quay lượt mới mới dựng dải mới.
-    'function pwSync(keepMain,keepRaid){api("/api/palwheel/state").then(function(j){PW=j;',
-    '$("pwStat").textContent=(j.pals.length+(j.raids.length?1:0))+" ô ("+(j.jackSlots||1)+" ô 💰 "+(j.jackName||"Mimog")+") · rương có "+j.chestCount+" pal"+(PWSPUN?" · đã quay - F5 để kéo dải xem lại":" · 🖐️ kéo dải để xem hết các ô");',
-    '$("pwPot").innerHTML="💰 Quay trúng ô <b style=\\"color:#ffe98a\\">💰 "+esc(j.jackName||"Mimog")+"</b> = NỔ HŨ <b>"+vnd(j.pot)+"</b> + thưởng <b>"+vnd(j.jackBonus||0)+"</b> = <b style=\\"color:#ffe98a\\">"+vnd((j.pot||0)+(j.jackBonus||0))+"</b> KNB · Bán lại pal: "+vnd(j.sellPrice)+" · Ô 🔥 RAID: "+j.raids.length+" boss, ra thẳng ngay vòng này (ô trúng bốc lửa)";',
-    // ⏳ dựng lại đếm ngược sau F5: server báo còn bao nhiêu ms -> đặt PWLOCK, chạy ticker
-    'if(j.spinRemain>0){var uu=Date.now()+j.spinRemain+300;if(uu>PWLOCK)PWLOCK=uu}',
-    'pwRenderLuck();pwLockKick();',
-    'if(j.chestMax&&j.chestWait>=j.chestMax)pwAutoStop("rương đã đủ "+j.chestMax+" pal chưa nhận");pwAutoLabel();',
-    'if(!PWBUSY&&!keepMain)pwIdle();if(!PWRBUSY&&!keepRaid)pwRaidIdle()}).catch(function(e){toast("❌ "+e.message)})}',
-    // ⏳ nút quay + nút raid: hiện đếm ngược khoá (~10,5s/lượt) rồi mới bấm lại được -
-    // khớp khoá chống-spam ở server. F5 xong pwSync đọc spinRemain dựng lại đếm ngược này.
-    'function pwGoLabel(){var sk=$("pwSkip");if(sk&&sk.checked!==PWSKIP)sk.checked=PWSKIP;',
-    'if(!PW)return;var now=Date.now(),lk=PWLOCK>now,w=Math.ceil((PWLOCK-now)/1000);var g=$("pwGo");',
-    'if(!PW.open){g.textContent="⛔ ĐANG ĐÓNG BẢO TRÌ";g.disabled=true}',
-    'else if(lk){g.textContent="⏳ Chờ "+w+"s để quay tiếp";g.disabled=true}',
-    'else if(PWBUSY){g.textContent="⏳ Đang quay...";g.disabled=true}',
-    'else{g.textContent="🎁 QUAY ("+vnd(PW.price)+" KNB)";g.disabled=false}',
-    'var rg=$("pwRaidGo");if(rg){if(lk){rg.textContent="⏳ Chờ "+w+"s";rg.disabled=true}',
-    'else if(PWRBUSY){rg.textContent="⏳ Đang quay...";rg.disabled=true}',
-    'else if(PW.raidReady){rg.textContent="🍀 QUAY MAY MẮN (đầy 100%)";rg.disabled=false}',
-    'else{rg.textContent="🔒 Đầy 100% may mắn mới quay được";rg.disabled=true}}}',
-    // khớp máy chủ: 10,5s + 0,3s đệm mạng · bỏ hiệu ứng thì 1s + 0,2s
-    'function pwLockStart(){PWLOCK=Date.now()+(PWSKIP?1200:10800);pwLockKick()}',
-    // kick: cập nhật nút + chạy ticker nếu đang khoá mà chưa chạy (tránh 2 ticker chồng nhau)
-    'function pwLockKick(){pwGoLabel();if(PWLOCK>Date.now()&&!PWTICKING){PWTICKING=true;pwLockTick()}}',
-    'function pwLockTick(){pwGoLabel();if(Date.now()<PWLOCK){setTimeout(pwLockTick,300)}else{PWTICKING=false;pwGoLabel()}}',
-    'function pwPick(a){return a[Math.floor(Math.random()*a.length)]}',
-    // 🖼️ gắn hình pal (assets/palimage/T_<code>_icon_normal.png) - con thiếu hình thì ẩn <img>, chừa tên
-    'function pwImg(code,lazy){return code?("<img src=\\"/palimage/T_"+code+"_icon_normal.png\\" alt=\\""+(lazy?" loading=\\"lazy\\"":"")+" onerror=\\"this.style.display=\'none\'\\">"):""}',
-    'function pwCardHtml(p,raid,hit,lazy){var nm=(p&&p.name!==undefined)?p.name:(p||"");var code=(p&&p.code)||"";',
-    'var lg=!raid&&p&&p.legend,ep=!raid&&!lg&&p&&p.epic;',
-    'var jk=!raid&&p&&(p.jack||(PW&&PW.jackCode&&p.code===PW.jackCode));',   // 💰 15/09: ô NỔ HŨ (Mimog) - cờ từ server, thiếu thì suy từ code
-    'return "<div class=\\"pwCard"+(raid?" raid":"")+(jk?" jack":"")+(lg?" legend":"")+(ep?" epic":"")+(hit?(jk?" jackhit":(raid?" raidhit":(lg?" legendhit":(ep?" epichit":"")))):"")+"\\">"+pwImg(code,lazy)+"<div class=\\"nm\\">"+(jk?"💰 ":(raid?"🔥 ":(lg?"👑 ":(ep?"💜 ":""))))+esc(nm)+"</div><div class=\\"dx\\">"+(jk?"&nbsp;":(raid?"PAL RAID":(lg?"HUYỀN THOẠI":(ep?"PAL MẠNH":(p&&p.dex?"#"+p.dex:"&nbsp;")))))+"</div></div>"}',
-    // 15/09: dải lúc RẢNH hiện ĐỦ mọi ô, thứ tự XÁO NGẪU NHIÊN mỗi lần dựng (chủ server: không xếp theo ID),
-    // người chơi kéo xem. Chỉ là trưng bày - lúc quay dải dựng lại 60 thẻ như cũ, kết quả server đã chốt.
-    'function pwIdleList(){var L=PW.pals.slice();for(var i=L.length-1;i>0;i--){var k=Math.floor(Math.random()*(i+1)),t=L[i];L[i]=L[k];L[k]=t}return L}',
-    'function pwIdle(){if(!PW||!PW.pals||!PW.pals.length)return;var h="";pwIdleList().forEach(function(p){h+=pwCardHtml(p,false,false,true)});',
-    'var s=$("pwStrip");s.style.transition="none";PWDX=0;s.style.transform="translateX(0px)";s.innerHTML=h;pwDragInit()}',
-    // 🖐️ kéo dải: chuột / ngón tay (pointer events) + cuộn ngang. Khoá khi đang quay. Chỉ dịch chuyển hiển thị.
-    'var PWDX=0,PWDRAG=null,PWSPUN=false;',   // PWSPUN: đã bấm quay trong phiên trang này -> hết kéo tới khi F5
-    'function pwDragTo(x){var w=$("pwWrap"),s=$("pwStrip");if(!w||!s)return;var min=Math.min(0,w.clientWidth-s.offsetWidth);PWDX=Math.max(min,Math.min(0,x));s.style.transform="translateX("+PWDX+"px)"}',
-    'function pwDragInit(){var w=$("pwWrap"),s=$("pwStrip");if(!w||!s||w.dataset.drag)return;w.dataset.drag="1";',
-    'w.addEventListener("pointerdown",function(e){if(PWBUSY||PWSPUN)return;PWDRAG={x0:e.clientX,st:PWDX};try{w.setPointerCapture(e.pointerId)}catch(x){}w.classList.add("grabbing");s.style.transition="none"});',
-    'w.addEventListener("pointermove",function(e){if(!PWDRAG)return;pwDragTo(PWDRAG.st+(e.clientX-PWDRAG.x0))});',
-    'function pwDragEnd(){PWDRAG=null;w.classList.remove("grabbing")}w.addEventListener("pointerup",pwDragEnd);w.addEventListener("pointercancel",pwDragEnd);w.addEventListener("pointerleave",pwDragEnd);',
-    'w.addEventListener("wheel",function(e){if(PWBUSY||PWSPUN)return;var d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;if(!d)return;e.preventDefault();s.style.transition="none";pwDragTo(PWDX-d)},{passive:false})}',
-    // dải quay dùng chung cho cả 2 vòng: 60 thẻ, kết quả ở thẻ 52; jitter ±35px. Thẻ 110px + khe 6px = bước 116px.
-    'function pwRollEl(strip,wrap,cards,cb){var s=$(strip),W=$(wrap).clientWidth;',
-    's.innerHTML=cards.join("");s.style.transition="none";s.style.transform="translateX(0px)";void s.offsetWidth;',
-    'var STEP=116,HALF=55;var jit=Math.floor(Math.random()*70)-35;var target=52*STEP+HALF-W/2+jit;',
-    // ⚡ tích "bỏ hiệu ứng" -> KHÔNG chuyển động, nhảy thẳng tới ô trúng
-    's.style.transition=PWSKIP?"none":"transform 10s cubic-bezier(.06,.72,.05,1)";',
-    // 11/09: viền sáng ô trúng gắn SAU khi dừng (raid/legend/epic) - lúc quay mọi thẻ trông như nhau, không lộ kết quả
-    's.style.transform="translateX("+(-target)+"px)";if(strip==="pwStrip")PWDX=-target;setTimeout(function(){var c=s.children[52];if(c){if(c.classList.contains("jack"))c.classList.add("jackhit");else if(c.classList.contains("raid"))c.classList.add("raidhit");else if(c.classList.contains("legend"))c.classList.add("legendhit");else if(c.classList.contains("epic"))c.classList.add("epichit")}cb()},PWSKIP?60:10300)}',
-    // 27/08: GỘP 1 reel - raid ra thẳng ở vòng thường, ô trúng (thẻ 52) gắn hiệu ứng lửa nếu là raid
-    'function pwStrip1(it){var out=[];for(var i=0;i<60;i++){',
-    'if(i===52)out.push(pwCardHtml(it,!!it.raid,false));',   // hit=false: viền sáng gắn lúc dừng (pwRollEl)
-    'else{var r=PW.raids.length&&Math.random()<0.06;out.push(r?pwCardHtml(pwPick(PW.raids),true,false):pwCardHtml(pwPick(PW.pals),false,false))}}return out}',
-    // 🔁 16/09 TỰ ĐỘNG QUAY: bấm 1 lần rồi tự quay tiếp cho tới khi rương đầy 100 con chưa nhận,
-    // hết tiền, hoặc người chơi bấm dừng. Vẫn quay từng lượt qua /spin như bấm tay (server chốt kết
-    // quả + khoá 10,5s mỗi lượt) - đây chỉ là bấm hộ, KHÔNG nhanh hơn và không đổi tỉ lệ.
-    'var PWAUTO=false;',
-    'function pwAutoLabel(){var a=$("pwAuto");if(!a||!PW)return;',
-    'var room=(PW.chestMax&&PW.chestWait!==undefined)?Math.max(0,PW.chestMax-PW.chestWait):null;',
-    'a.textContent=PWAUTO?"⏹️ DỪNG TỰ ĐỘNG":("🔁 TỰ ĐỘNG QUAY"+(room!==null?" (còn "+room+" chỗ)":""));',
-    'a.disabled=!PW.open||(room!==null&&room<=0)}',
-    'function pwAutoStop(lydo){if(!PWAUTO)return;PWAUTO=false;pwAutoLabel();if(lydo)toast("⏹️ Dừng tự động quay: "+lydo)}',
-    'function pwAutoTog(){if(PWAUTO)return pwAutoStop("bạn bấm dừng");',
-    'if(!PW||!PW.open)return;PWAUTO=true;pwAutoLabel();toast("🔁 Tự động quay - bấm lại để dừng");pwAutoTick()}',
-    'function pwAutoTick(){if(!PWAUTO)return;if(PWBUSY)return;',
-    'if(PWLOCK>Date.now()){setTimeout(pwAutoTick,400);return}pwSpin()}',
-    'function pwSpin(){if(PWBUSY||!PW||!PW.open||PWLOCK>Date.now())return;PWBUSY=true;PWSPUN=true;var pww=$("pwWrap");if(pww)pww.classList.add("nodrag");pwGoLabel();$("pwRes").classList.add("hidden");',
-    'api("/api/palwheel/spin",{nhanh:PWSKIP}).then(function(j){setBal(j.balance);pwLockStart();',
-    'pwRollEl("pwStrip","pwWrap",pwStrip1(j.item),function(){pwDone(j)})',
-    '}).catch(function(e){PWBUSY=false;pwGoLabel();pwAutoStop(e.message);toast("❌ "+e.message)})}',
-    'function pwDone(j){PWBUSY=false;pwGoLabel();var it=j.item;var res=$("pwRes");',
-    'res.classList.remove("hidden");if(it.raid)res.classList.add("raidwin");else res.classList.remove("raidwin");',
-    'res.innerHTML=(it.raid?"🔥 TRÚNG BOSS RAID! ":"🎉 Trúng ")+"<b style=\\"font-size:17px\\">"+esc(it.name)+"</b>"+(it.raid?" <span style=\\"color:#ff9f5c;font-weight:700\\">PAL RAID</span>":"")+(it.dex?" <span class=\\"muted\\">#"+it.dex+"</span>":"")+"<div class=\\"muted\\" style=\\"font-size:12px;margin-top:4px\\">Đã vào 🎒 RƯƠNG - qua tab 🪪 Cá nhân để 💰 bán hoặc 🎁 nhận vào game</div>";',
-    'if(it.raid)toast("🔥🔥 CỰC HIẾM! Bạn quay trúng BOSS RAID "+it.name+" - khác hẳn pal thường!");',
-    'if(j.jackpot){var tong=(j.potWin||0)+(j.palBonus||0);palJackpotFx(tong);res.classList.add("jpwin");res.innerHTML+="<div style=\\"color:#ffcf5c;font-weight:900;font-size:16px;margin-top:6px\\">💰💥 Ô NỔ HŨ! Nguyên hũ "+vnd(j.potWin||0)+" + thưởng "+vnd(j.palBonus||0)+" = <span style=\\"font-size:19px\\">+"+vnd(tong)+"</span> KNB 💥💰</div>";setTimeout(function(){res.classList.remove("jpwin")},8000)}else res.classList.remove("jpwin");',
-    'if(j.luckJustFull)toast("🍀 ĐẦY THANH MAY MẮN! Kéo xuống quay VÒNG MAY MẮN: huyền thoại hoặc boss RAID + thưởng KNB!");',
-    'pwSync(true,false);pwAutoLabel();setTimeout(pwAutoTick,600)}',
-    '',
-    // ===== 🍀 THANH MAY MẮN + 🔥 VÒNG QUAY RAID (27/08) =====
-    'function pwRenderLuck(){if(!PW)return;var l=Math.max(0,Math.min(100,PW.luck||0));',
-    '$("pwLuckFill").style.width=l+"%";$("pwLuckPct").textContent=l+"%";',
-    '$("pwLuckTix").innerHTML=PW.raidReady?"<span style=\\"color:#ffcf5c;font-weight:800\\">🍀 ĐỦ 100%! quay vòng may mắn</span>":(PW.raidWheelOn?("<span class=\\"muted\\">còn "+(100-l)+"% nữa</span>"):"<span class=\\"muted\\">vòng may mắn đang tắt</span>");',
-    'var box=$("pwRaidBox");if(PW.raidWheelOn)box.classList.remove("hidden");else box.classList.add("hidden");',
-    'if(PW.raidWheelOn){var rp=PW.raidWheelPals||[];',
-    'var lgs=PW.luckyLegends||[],rpct=PW.luckyRaidPct===undefined?40:PW.luckyRaidPct;',
-    '$("pwRaidStat").textContent=lgs.length+" huyền thoại + ô RAID "+rpct+"% · thưởng "+vnd(PW.raidBonus)+" KNB";',
-    '$("pwRaidInfo").innerHTML="Đầy <b>100%</b> may mắn mới quay được. Vòng gồm <b style=\\"color:#ffd76a\\">👑 "+lgs.map(function(p){return esc(p.name)}).join(", ")+"</b> và <b style=\\"color:#ff8f8f\\">🔥 Ô RAID ("+rpct+"%)</b> - trúng ô RAID thì <b>quay thêm 1 vòng boss</b>: "+rp.map(function(p){return esc(p.name)}).join(", ")+". Kèm <b style=\\"color:#7cff9c\\">+"+vnd(PW.raidBonus)+"</b> KNB. Quay xong thanh may mắn <b>về 0</b>.";}',
-    'pwGoLabel()}',
-    // 🍀 11/09: vòng may mắn = thẻ huyền thoại (vàng) + thẻ "Ô RAID" chung (đỏ) theo % - trúng ô RAID thì reel 2 toàn boss
-    // 🖼️ 11/09: icon Ô RAID = hình Lamball (palimage) tô ĐỎ bằng CSS filter (chủ server: hình tự tải xấu, bỏ raid_slot.jpg)
-    'function pwRaidSlotHtml(hit){return "<div class=\\"pwCard raid"+(hit?" raidhit":"")+"\\"><img src=\\"/palimage/T_SheepBall_icon_normal.png\\" alt=\\"\\" style=\\"filter:sepia(1) saturate(9) hue-rotate(-45deg) brightness(.9) drop-shadow(0 0 6px #ff3b3b)\\" onerror=\\"this.style.display=\'none\'\\"><div class=\\"nm\\">🔥 Ô RAID</div><div class=\\"dx\\">quay thêm boss</div></div>"}',
-    'function pwLuckyCard(){var pct=PW.luckyRaidPct===undefined?40:PW.luckyRaidPct;var lgs=PW.luckyLegends||[];return (Math.random()*100<pct||!lgs.length)?pwRaidSlotHtml(false):pwCardHtml(pwPick(lgs),false,false)}',
-    'function pwRaidIdle(){if(!PW||!PW.raidWheelOn)return;var h="";for(var i=0;i<14;i++)h+=pwLuckyCard();',
-    'var s=$("pwRaidStrip");if(!s)return;s.style.transition="none";s.style.transform="translateX(0px)";s.innerHTML=h}',
-    'function pwRaidStrip1(j){var out=[];for(var i=0;i<60;i++)out.push(i===52?(j.raidHit?pwRaidSlotHtml(false):pwCardHtml(j.item,false,false)):pwLuckyCard());return out}',
-    'function pwRaidStrip2(it){var out=[];for(var i=0;i<60;i++)out.push(pwCardHtml(i===52?it:pwPick(PW.raidWheelPals),true,false));return out}',
-    'function pwRaidSpin(){if(PWRBUSY||!PW||!PW.raidReady||PWLOCK>Date.now())return;PWRBUSY=true;pwGoLabel();$("pwRaidRes").classList.add("hidden");',
-    'api("/api/palwheel/raidspin",{nhanh:PWSKIP}).then(function(j){setBal(j.balance);pwLockStart();',
-    'pwRollEl("pwRaidStrip","pwRaidWrap",pwRaidStrip1(j),function(){pwRaidDone(j)})',
-    '}).catch(function(e){PWRBUSY=false;pwGoLabel();toast("❌ "+e.message)})}',
-    // reel 1 dừng: trúng Ô RAID -> báo rồi quay reel 2 (toàn boss, dừng đúng con server đã chọn); huyền thoại -> kết quả luôn
-    'function pwRaidDone(j){if(j.raidHit){toast("🔥🔥 TRÚNG Ô RAID! Quay tiếp xem ra boss nào...");$("pwRaidRes").classList.remove("hidden");$("pwRaidRes").innerHTML="🔥 <b>TRÚNG Ô RAID!</b> Đang quay vòng boss...";',
-    'setTimeout(function(){pwRollEl("pwRaidStrip","pwRaidWrap",pwRaidStrip2(j.item),function(){pwRaidFinal(j)})},900);return}pwRaidFinal(j)}',
-    'function pwRaidFinal(j){PWRBUSY=false;pwGoLabel();var it=j.item;var isR=!!j.raidHit;',
-    '$("pwRaidRes").classList.remove("hidden");',
-    '$("pwRaidRes").innerHTML=(isR?"🔥🍀 TRÚNG BOSS RAID ":"👑🍀 TRÚNG HUYỀN THOẠI ")+"<b style=\\"font-size:18px;color:"+(isR?"#ff9f5c":"#ffd76a")+"\\">"+esc(it.name)+"</b>"+(it.dex?" <span class=\\"muted\\">#"+it.dex+"</span>":"")+(j.bonus?" <span style=\\"color:#7cff9c;font-weight:800\\">+"+vnd(j.bonus)+" KNB</span>":"")+"<div class=\\"muted\\" style=\\"font-size:12px;margin-top:4px\\">Pal vào 🎒 RƯƠNG - qua tab 🪪 Cá nhân để nhận vào game. Thanh may mắn đã về 0.</div>";',
-    'toast((isR?"🔥 Trúng boss RAID ":"👑 Trúng huyền thoại ")+it.name+(j.bonus?" + "+vnd(j.bonus)+" KNB":"")+"!");',
-    'pwSync(false,true)}',
-    '',
-    // ===== 🎯 CHỌN PAL ĐÍCH DANH =====
-    'var PK=null,PKBUSY=false;',
-    'function pkSync(){api("/api/palpick/state").then(function(j){PK=j;',
-    '$("pkStat").textContent=vnd(j.price)+" KNB/con · rương có "+j.chestCount+" pal";',
-    '$("pkPot").innerHTML="🏆 Hũ quay pal: <b>"+vnd(j.pot)+"</b> KNB - mua đích danh cũng nuôi hũ 5% và có 1% nổ";',
-    'pkRender()}).catch(function(e){toast("❌ "+e.message)})}',
-    'function pkRender(){if(!PK)return;var q=($("pkFind").value||"").toLowerCase();',
-    'var h="";PK.list.forEach(function(p){',
-    'if(q&&(p.name+" #"+p.dex).toLowerCase().indexOf(q)<0)return;',
-    // boss raid: viền đỏ nổi bật + giá riêng từng con (26/08)
-    'var st=p.raid?"border:1px solid var(--red);border-radius:8px;margin:4px;background:#1d1420":"";',
-    // 07/09: gắn hình pal đầu dòng (loading lazy - 286 hình chỉ tải khi cuộn tới; thiếu hình tự ẩn)
-    'h+="<div class=\\"pcmP\\" style=\\"display:flex;align-items:center;gap:8px;cursor:default;"+st+"\\"><img src=\\"/palimage/T_"+p.code+"_icon_normal.png\\" loading=\\"lazy\\" alt=\\"\\" style=\\"width:34px;height:34px;border-radius:8px;flex:0 0 auto\\" onerror=\\"this.style.display=\'none\'\\"><b>"+esc(p.name)+"</b>"+(p.raid?" <span style=\\"color:#ff8f8f;font-size:11px;font-weight:700\\">🔥 BOSS RAID</span>":"")+(p.dex?"<span class=\\"muted\\" style=\\"font-size:11px\\">#"+p.dex+"</span>":"")+"<span style=\\"flex:1\\"></span><button style=\\"padding:5px 10px;font-size:12px;background:linear-gradient(180deg,#2f8f4f,#256e3e)\\" onclick=\\"pkBuy(\'"+p.code+"\')\\">🎯 Mua "+vnd(p.price||PK.price)+"</button></div>"});',
-    '$("pkList").innerHTML=h||"<div class=\\"muted\\" style=\\"padding:10px\\">Không thấy pal nào khớp.</div>"}',
-    'async function pkBuy(code){if(PKBUSY||!PK)return;var p=null;PK.list.forEach(function(x){if(x.code===code)p=x});if(!p)return;',
-    'if(!(await gConfirm("Mua đích danh <b>"+esc(p.name)+"</b>"+(p.raid?" (BOSS RAID)":"")+" với <b>"+vnd(p.price||PK.price)+"</b> KNB? Pal sẽ vào 🎒 RƯƠNG.","🎯 Mua")))return;',
-    'PKBUSY=true;api("/api/palpick/buy",{code:code}).then(function(j){PKBUSY=false;setBal(j.balance);',
-    // chủ server chốt 25/08: KHÔNG bật bảng chọn ngay - pal về rương, nhắn rõ chỗ nhận là đủ
-    'toast("🎯 Đã mua "+j.item.name+" - pal nằm trong 🎒 RƯƠNG (tab 🪪 Cá nhân), vào đó chọn linh hồn + passive rồi nhận");',
-    'pkSync()}).catch(function(e){PKBUSY=false;toast("❌ "+e.message)})}',
     '',
     // ===== 🛒 SHOP ITEM (28/08): mua item + số lượng -> giao thẳng vào túi trong game =====
     'var IS=null,ISBUSY=false;',
@@ -5691,276 +5151,6 @@ const PAGE = [
     'api("/api/dogbridge/napgold",{gold:g}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent="🪙 Đổi ra KNB";setBal(j.balance);toast(j.message);$("dogGoldAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="🪙 Đổi ra KNB";toast("❌ "+e.message)})}',
     'function dogNap(){if(DOGBUSY)return;var amt=parseInt($("dogNapAmt").value)||0;if(amt<1)return toast("Nhập số KNB");if(DOGRATE!==1)toast("💱 Lấy "+vnd(amt)+" trong game → +"+vnd(Math.floor(amt*DOGRATE))+" KNB web");',
     'DOGBUSY=true;var b=$("dogNapBtn");b.disabled=true;b.textContent="⏳ Đang chuyển...";api("/api/dogbridge/nap",{amount:amt}).then(function(j){DOGBUSY=false;b.innerHTML=DOGNAPLB;setBal(j.balance);toast(j.message||"✅ Đã nạp!");$("dogNapAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.innerHTML=DOGNAPLB;toast("❌ "+e.message);dogSync()})}',
-    '',
-    // ===== 🎒 RƯƠNG PAL (trang Hồ sơ) =====
-    'var PC=null,PCIT=null,PCBUSY=false,PCCDUNTIL=0,PCCDTICKING=false,PCCD=0;',
-    // ⏳ cooldown nhận pal CHUNG toàn server: dựng lại từ claimCdLeft (F5 vẫn đúng)
-    'function pcCdRule(){if(!PCCD)return"";return PCCD%60===0?(PCCD/60)+" phút/lần":PCCD+"s/lần"}',
-    // 📅 hạn mức pal/ngày: server đưa palDayMax/palDayUsed trong state hồ sơ; nhận xong
-    // client tải lại rương -> số tự cập nhật. Hết lượt thì đổi màu vàng cho dễ thấy.
-    // 🆘 tẩu thoát: đồng hồ đếm theo state hồ sơ, chỉ khoá nút - luật thật ở server
-    'var RSCUNTIL=0,RSCCD=14400000,RSCBUSY=false;',
-    'function pcRescueTick(){var b=$("pcRescueBtn");if(!b)return;',
-    'if(RSCBUSY){b.disabled=true;b.textContent="⏳ Đang dịch chuyển...";return}',
-    'var left=RSCUNTIL-Date.now();',
-    'if(left>0){b.disabled=true;b.textContent="🆘 TẨU THOÁT KHẨN CẤP ("+Math.ceil(left/60000)+"p nữa)"}else{b.disabled=false;b.textContent="🆘 TẨU THOÁT KHẨN CẤP"}}',
-    'setInterval(pcRescueTick,30000);',
-    'async function pcRescue(){if(RSCBUSY)return;',
-    'if(!(await gConfirm("Dịch chuyển nhân vật về <b>ĐIỂM XUẤT PHÁT</b> ngay bây giờ? Dùng khi kẹt đất/kẹt đá - không chết, không rớt đồ.<br><b>1 tiếng mới dùng lại được.</b>","🆘 Tẩu thoát",true)))return;',
-    'RSCBUSY=true;pcRescueTick();',
-    'api("/api/pal/rescue",{}).then(function(j){RSCBUSY=false;RSCUNTIL=Date.now()+RSCCD;toast(j.message||"✅ Đã dịch chuyển!");pcRescueTick()})',
-    '.catch(function(e){RSCBUSY=false;pcRescueTick();toast("❌ "+(e.message||"Lỗi"))});}',
-    'var PDMAX=0,PDUSED=0;',
-    'function pcDayNote(){var e=$("pcDayNote");if(!e)return;if(!(PDMAX>0)){e.style.display="none";return}var left=Math.max(0,PDMAX-PDUSED);e.style.display="";',
-    'if(left>0){e.style.color="#aab3c5";e.style.borderColor="#3a4155";e.innerHTML="📅 Hôm nay bạn còn chuyển được <b style=\\"color:#8fffca\\">"+left+"/"+PDMAX+"</b> pal vào game (reset 00:00)"}',
-    'else{e.style.color="#ffd27a";e.style.borderColor="#ffcf5c";e.innerHTML="📅 Hôm nay bạn đã chuyển đủ <b>"+PDMAX+"</b> pal vào game - qua 00:00 lại nhận tiếp được"}}',
-    'function pcCdTick(){var left=Math.ceil((PCCDUNTIL-Date.now())/1000);var b=$("pcCdBanner");if(!b)return;',
-    'if(left>0){b.style.display="";b.textContent="⏳ Kho pal chung đang bận - còn "+left+"s mới nhận được con tiếp ("+(pcCdRule()||"cooldown")+", dùng chung cả server)";if(!PCCDTICKING){PCCDTICKING=true;setTimeout(function tk(){pcCdTick();if(Date.now()<PCCDUNTIL)setTimeout(tk,500);else PCCDTICKING=false},500)}}else{b.style.display="none"}}',
-    // người KHÁC vừa nhận pal thì mình đang ngồi trên trang cũng thấy đồng hồ: poll nhẹ 15s/lần
-    'setInterval(function(){var pg=$("pageDaily");if(!pg||pg.classList.contains("hidden"))return;api("/api/pal/cd").then(function(j){PCCD=j.cd||PCCD;PCCDUNTIL=Date.now()+(j.left||0);pcCdTick()}).catch(function(){})},15000);',
-    // 🎒 2 phần rương đóng/mở riêng - nhớ qua F5 (localStorage). Mặc định: chưa-nhận MỞ, đã-nhận ĐÓNG.
-    'function pcSecState(){try{return JSON.parse(localStorage.getItem("pc_sec"))||{wait:1,done:0}}catch(e){return {wait:1,done:0}}}',
-    'function pcSecOn(k){return !!pcSecState()[k]}',
-    'function pcSecTog(k){var s=pcSecState();s[k]=s[k]?0:1;try{localStorage.setItem("pc_sec",JSON.stringify(s))}catch(e){}pcSync()}',
-    // cb: mua/quay xong gọi pcSync(function(){pcOpen(id)}) để bật ngay bảng chọn linh hồn+passive
-    'function pcSync(cb){api("/api/profile").then(function(j){PC=j;',
-    'PCCD=j.claimCd||0;PCCDUNTIL=Date.now()+(j.claimCdLeft||0);pcCdTick();',
-    'PDMAX=j.palDayMax||0;PDUSED=j.palDayUsed||0;pcDayNote();',
-    'RSCCD=j.rescueCd||RSCCD;if(!RSCBUSY)RSCUNTIL=Date.now()+(j.rescueCdLeft||0);pcRescueTick();',
-    'var inChest=0;j.chest.forEach(function(i){if(i.status==="chest")inChest++});',
-    '$("pcStat").textContent=inChest+" pal trong rương";',
-    '$("pcLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - bấm 🎁 Nhận là giao thẳng vào game (phải đang online trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới NHẬN pal được (bán thì vẫn bán được)";',
-    // 07/09: rương tách 2 PHẦN - "chưa nhận" (chest/đang giao) và "đã nhận" (claimed/sold),
-    // mỗi phần đóng/mở riêng, trạng thái lưu localStorage nên F5 giữ nguyên như đang xem
-    'var row=function(it){var acts;',
-    'if(it.status==="chest")acts="<button style=\\"background:linear-gradient(180deg,#ffd76a,#e0ac3f);color:#241d0a\\" onclick=\\"pcSell("+it.id+")\\">💰 Bán "+vnd(j.sellPrice)+"</button><button style=\\"background:linear-gradient(180deg,#2f8f4f,#256e3e)\\" onclick=\\"pcOpen("+it.id+")\\">🎁 Nhận vào game</button>";',
-    'else if(it.status==="delivering")acts="<span class=\\"tag wait\\">⏳ ĐANG GIAO - admin đang kiểm</span>";',
-    'else if(it.status==="sold")acts="<span class=\\"tag\\">ĐÃ BÁN</span>";',
-    'else acts="<span class=\\"tag\\">✅ ĐÃ NHẬN"+(it.deliveredTo?" → "+esc(it.deliveredTo):"")+"</span>";',
-    'var img=it.code?("<img src=\\"/palimage/T_"+it.code+"_icon_normal.png\\" loading=\\"lazy\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):"";',
-    // 🧺 16/09: con đang CHỜ NHẬN mới có ô tick (đang giao / đã nhận / đã bán thì không bán được)
-    'var ck=it.status==="chest"?("<input type=\\"checkbox\\" class=\\"pcCk\\" data-id=\\""+it.id+"\\" onchange=\\"pcCkSync()\\""+(PCSEL[it.id]?" checked":"")+">"):"";',
-    'var jkc=!it.raid&&(it.jack||(PW&&PW.jackCode&&it.code===PW.jackCode));',
-    'return "<div class=\\"pcItem"+(it.raid?" raid":"")+(jkc?" jack":"")+"\\"><div class=\\"pcTop\\">"+ck+img+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\""+(jkc?" style=\\"color:#ffe98a\\"":"")+">"+(jkc?"💰 ":"")+esc(it.name)+"</span> "+(it.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(jkc?"<span class=\\"tag\\" style=\\"background:#3b2f0d;color:#ffe98a;border:1px solid #ffd24a\\">💰 NỔ HŨ</span> ":"")+(it.dex?"<span class=\\"tag\\">#"+it.dex+"</span>":"")+"</div><div class=\\"tm\\">"+esc(it.wonAt||"")+"</div></div></div><div class=\\"pcActs\\">"+acts+"</div></div>"};',
-    // 🤝 11/09: pal đang giao dịch - của tôi đang rao (thu hồi) + lời bán gửi cho tôi (mua / từ chối)
-    'var TR=j.trades||{out:[],in:[]};var trH="";',
-    'var trImg=function(it){return it.code?("<img src=\\"/palimage/T_"+it.code+"_icon_normal.png\\" alt=\\"\\" onerror=\\"this.style.display=\'none\'\\">"):""};',
-    'TR.in.forEach(function(t){trH+="<div class=\\"pcItem trIn\\"><div class=\\"pcTop\\">"+trImg(t.item)+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\">"+esc(t.item.name)+"</span> "+(t.item.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(t.item.dex?"<span class=\\"tag\\">#"+t.item.dex+"</span>":"")+"</div><div class=\\"tm\\">📥 <b>"+esc(t.fromName)+"</b> muốn "+(t.price>0?"bán cho bạn giá <b style=\\"color:#ffd76a\\">"+vnd(t.price)+" KNB</b>":"<b style=\\"color:#7cff9c\\">TẶNG</b> bạn")+" · "+esc(t.atText||"")+"</div></div></div>"',
-    '+"<div class=\\"pcActs\\"><button style=\\"background:linear-gradient(180deg,#3ddc84,#2aa564);color:#08210f\\" onclick=\\"trAccept("+t.id+","+t.price+")\\">"+(t.price>0?"✅ Xác nhận mua với "+vnd(t.price):"🎁 Nhận tặng")+"</button><button style=\\"background:#4e5058\\" onclick=\\"trCancel("+t.id+",false)\\">❌ Từ chối</button></div></div>"});',
-    'TR.out.forEach(function(t){trH+="<div class=\\"pcItem trOut\\"><div class=\\"pcTop\\">"+trImg(t.item)+"<div class=\\"pcMeta\\"><div><span class=\\"nm\\">"+esc(t.item.name)+"</span> "+(t.item.raid?"<span class=\\"tag raid\\">RAID</span> ":"")+(t.item.dex?"<span class=\\"tag\\">#"+t.item.dex+"</span>":"")+"</div><div class=\\"tm\\">📤 Đang rao cho <b>"+esc(t.toName)+"</b> giá <b style=\\"color:#ffd76a\\">"+(t.price>0?vnd(t.price)+" KNB":"TẶNG (0)")+"</b> · chờ bên kia xác nhận · "+esc(t.atText||"")+"</div></div></div>"',
-    '+"<div class=\\"pcActs\\"><button style=\\"background:linear-gradient(180deg,#e86a6a,#c23c3c)\\" onclick=\\"trCancel("+t.id+",true)\\">↩️ Thu hồi pal</button></div></div>"});',
-    'if(TR.in.length||TR.out.length)trH="<div class=\\"pcSecH\\"><b>🤝 ĐANG GIAO DỊCH ("+(TR.in.length+TR.out.length)+")</b><span class=\\"muted\\">"+(TR.in.length?TR.in.length+" lời bán gửi cho bạn":"")+(TR.in.length&&TR.out.length?" · ":"")+(TR.out.length?TR.out.length+" pal bạn đang rao":"")+"</span></div>"+trH;',
-    'var wait=j.chest.filter(function(i){return i.status==="chest"||i.status==="delivering"});',
-    'var done=j.chest.filter(function(i){return i.status==="claimed"||i.status==="sold"});',
-    'var cmax=j.chestMax||0,cwait=(j.chestWait!==undefined?j.chestWait:wait.length);',
-    'var h="<div class=\\"pcSecH\\" onclick=\\"pcSecTog(\'wait\')\\"><b>🎁 CHƯA NHẬN ("+wait.length+(cmax?"/"+cmax:"")+")</b><span>"+(cmax&&cwait>=cmax?"⚠️ ĐẦY - bán bớt hoặc nhận vào game mới quay tiếp được · ":"")+(pcSecOn("wait")?"▾ thu gọn":"▸ mở ra")+"</span></div>";',
-    'if(pcSecOn("wait"))h+=wait.map(row).join("")||"<div class=\\"muted\\" style=\\"margin:6px 0 10px\\">Không có pal chờ nhận - qua tab 🎁 Quay Pal thử vận may!</div>";',
-    // 📜 16/09: server chỉ gửi 100 con gần nhất nên tiêu đề nói thẳng vậy, không hiện tổng số nữa
-    'h+="<div class=\\"pcSecH\\" onclick=\\"pcSecTog(\'done\')\\"><b>✅ ĐÃ NHẬN / BÁN "+(j.doneShow||100)+" PAL GẦN NHẤT</b><span>"+(pcSecOn("done")?"▾ thu gọn":"▸ mở ra")+"</span></div>";',
-    'if(pcSecOn("done"))h+=done.map(row).join("")||"<div class=\\"muted\\" style=\\"margin:6px 0\\">Chưa nhận/bán con nào.</div>";',
-    '$("pcList").innerHTML=trH+h;',
-    // 🧺 16/09: bỏ khỏi danh sách đã tick những con không còn bán được, rồi cập nhật thanh bán loạt
-    'var live={};wait.forEach(function(i){if(i.status==="chest")live[i.id]=1});',
-    'Object.keys(PCSEL).forEach(function(k){if(!live[k])delete PCSEL[k]});',
-    'var nSell=Object.keys(live).length;',
-    'var bulk=$("pcBulk");if(bulk){if(nSell&&pcSecOn("wait"))bulk.classList.remove("hidden");else bulk.classList.add("hidden")}',
-    'pcCkSync();',
-    'if(cb)cb()',
-    '}).catch(function(e){toast("❌ "+e.message)})}',
-    // 🤝 11/09: nút Bán -> popup 2 lựa chọn (shop | người chơi khác)
-    'var TMID=null,TMTO="";',
-    // 🧺 16/09 BÁN HÀNG LOẠT: PCSEL giữ id đang tick (sống qua mỗi lần vẽ lại danh sách).
-    'var PCSEL={},PCSELBUSY=false;',
-    'function pcCkAll(el){var on=el.checked;document.querySelectorAll("input.pcCk").forEach(function(c){c.checked=on;if(on)PCSEL[c.dataset.id]=1;else delete PCSEL[c.dataset.id]});pcCkSync()}',
-    // đọc thẳng từ DOM để không lệch với cái người chơi đang thấy
-    'function pcCkSync(){var all=document.querySelectorAll("input.pcCk"),n=0;',
-    'all.forEach(function(c){if(c.checked){PCSEL[c.dataset.id]=1;n++}else delete PCSEL[c.dataset.id]});',
-    'var b=$("pcSellN"),t=$("pcSelN"),a=$("pcAll");',
-    'if(a)a.checked=all.length>0&&n===all.length;',
-    'var gia=(PC&&PC.sellPrice)||0;',
-    'if(t)t.textContent=n?("Đã chọn "+n+"/"+all.length+" con → +"+vnd(n*gia)+" KNB"):("Chưa chọn con nào ("+all.length+" con bán được)");',
-    'if(b){b.disabled=!n||PCSELBUSY;b.textContent=PCSELBUSY?"⏳ Đang bán...":(n?"🧺 Bán "+n+" con (+"+vnd(n*gia)+")":"🧺 Bán đã chọn")}}',
-    'function pcSellMany(){if(PCSELBUSY)return;var ids=Object.keys(PCSEL).map(Number).filter(function(x){return x});',
-    'if(!ids.length)return toast("Chưa chọn con nào");',
-    // ⚠️ hộp xác nhận của WEB là gConfirm (uiConfirm là của panel admin - gọi nhầm là nút chết im lặng)
-    'gConfirm("Bán <b>"+ids.length+"</b> pal đã chọn lấy <b>"+vnd(ids.length*((PC&&PC.sellPrice)||0))+"</b> KNB?<br>Bán rồi KHÔNG lấy lại được.","💰 Bán hết").then(function(okk){',
-    'if(!okk)return;PCSELBUSY=true;pcCkSync();',
-    'api("/api/pal/sell-many",{ids:ids}).then(function(j){PCSELBUSY=false;PCSEL={};setBal(j.balance);',
-    'toast("💰 Đã bán "+j.n+" pal, +"+vnd(j.sold)+" KNB"+(j.bo?" ("+j.bo+" con bỏ qua vì đang giao/đang quay)":""));pcSync()',
-    '}).catch(function(e){PCSELBUSY=false;pcCkSync();toast("❌ "+e.message)})})}',
-    'function pcSell(id){if(!PC)return;var it=null;PC.chest.forEach(function(i){if(i.id===id)it=i});if(!it)return;TMID=id;',
-    '$("tmTitle").textContent="💰 Bán "+it.name;$("tmShop").textContent="🏪 Bán cho shop +"+vnd(PC.sellPrice)+" KNB";$("tmPrice").value="";',
-    'TMTO="";$("tmFind").value="";$("tmToLbl").textContent="Chưa chọn người nhận";',
-    'if(DOGTARGETS.length)tmRenderPick();else api("/api/players").then(function(j){DOGTARGETS=j.list||[];tmRenderPick()}).catch(function(){tmRenderPick()});',
-    '$("tmodal").classList.remove("hidden")}',
-    'function tmClose(){$("tmodal").classList.add("hidden");TMID=null}',
-    // chọn người nhận bằng chip (1 người), có ô lọc tên - dùng lại style .dogChip của 🧧 Lộc lá
-    'function tmRenderPick(){var q=(($("tmFind")||{}).value||"").trim().toLowerCase();var box=$("tmPick");if(!box)return;var list=DOGTARGETS.filter(function(p){return !q||(p.name||"").toLowerCase().indexOf(q)>=0});',
-    'box.innerHTML=list.length?list.map(function(p){var on=TMTO===p.id;return "<span class=\\"dogChip"+(on?" sel":"")+"\\" onclick=\\"tmPickTo(\'"+p.id+"\')\\">"+(on?"✅ ":"")+esc(p.name||p.id)+"</span>"}).join(""):"<span class=\\"muted\\" style=\\"font-size:12px\\">"+(DOGTARGETS.length?"Không có ai khớp tên":"Chưa có người chơi khác có ví")+"</span>"}',
-    'function tmPickTo(id){TMTO=(TMTO===id)?"":id;var p=null;DOGTARGETS.forEach(function(x){if(x.id===id)p=x});$("tmToLbl").innerHTML=TMTO?("Người nhận: <b style=\\"color:#7cff9c\\">"+esc(p?p.name:id)+"</b>"):"Chưa chọn người nhận";tmRenderPick()}',
-    'async function tmSellShop(){if(TMID===null||!PC)return;var id=TMID;tmClose();if(!(await gConfirm("Bán pal này cho shop lấy <b>"+vnd(PC.sellPrice)+"</b> KNB? Không hoàn tác được.","💰 Bán")))return;',
-    'api("/api/pal/sell",{id:id}).then(function(j){setBal(j.balance);toast("💰 +"+vnd(j.sold)+" KNB");pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
-    'function tmOffer(){if(TMID===null)return;var to=TMTO;var pr=parseInt($("tmPrice").value)||0;if(!to)return toast("Bấm chọn 1 người nhận trước");if(pr<0)return toast("Giá không hợp lệ");var id=TMID;',
-    'api("/api/pal/trade/offer",{id:id,toId:to,price:pr}).then(function(j){tmClose();toast(pr>0?"📤 Đã gửi lời bán "+j.trade.item.name+" cho "+j.trade.toName+" giá "+vnd(pr)+" - chờ bên kia xác nhận":"🎁 Đã gửi lời tặng "+j.trade.item.name+" cho "+j.trade.toName);pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
-    'async function trCancel(tid,mine){if(!(await gConfirm(mine?"Thu hồi pal về rương của bạn? Lời bán sẽ huỷ.":"Từ chối lời bán này? Pal trả về cho người bán.",mine?"↩️ Thu hồi":"❌ Từ chối",true)))return;',
-    'api("/api/pal/trade/cancel",{tradeId:tid}).then(function(j){toast(j.how==="cancel"?"↩️ Đã thu hồi "+j.item.name+" về rương":"❌ Đã từ chối, "+j.item.name+" trả về người bán");pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
-    'async function trAccept(tid,price){if(!(await gConfirm(price>0?"Xác nhận mua pal này với <b>"+vnd(price)+"</b> KNB? Tiền chuyển thẳng cho người bán, pal vào rương bạn.":"Nhận pal được tặng vào rương?",price>0?"✅ Mua":"🎁 Nhận")))return;',
-    'api("/api/pal/trade/accept",{tradeId:tid}).then(function(j){setBal(j.balance);toast(j.price>0?"✅ Đã mua "+j.item.name+" từ "+j.fromName+" với "+vnd(j.price)+" KNB - pal trong rương":"🎁 Đã nhận "+j.item.name+" từ "+j.fromName);pcSync()}).catch(function(e){toast("❌ "+e.message)})}',
-    'function pcOpen(id){if(!PC)return;',
-    'if(PCCDUNTIL>Date.now())return toast("⏳ Kho pal đang bận (cooldown chung toàn server) - chờ "+Math.ceil((PCCDUNTIL-Date.now())/1000)+"s rồi nhận con tiếp");',
-    'PCIT=null;PC.chest.forEach(function(i){if(i.id===id)PCIT=i});if(!PCIT)return;',
-    'if(!PC.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
-    '$("pcmTitle").textContent="🎁 Nhận "+PCIT.name;',
-    '$("pcmBase").innerHTML=PC.raw?"🔒 <b>CHẾ ĐỘ PAL GỐC</b> (admin tắt chỉ số): giao <b>Lv 1</b> · <b>0 sao</b> · <b>IV "+(PC.rawIv||0)+"</b> cả 3 · <b>linh hồn "+(PC.rawSoulPct||0)+"%</b> cả 4 dòng · <b>không passive</b> · bản <b>THƯỜNG</b> - chỉ chọn giới tính":"Mặc định: <b>Lv "+PC.level+"</b> · <b>"+PC.stars+" sao</b> · <b>IV 100</b> cả 3 chỉ số · bản <b>THƯỜNG</b>";',
-    // 🔒 09/09: PAL GỐC -> ẩn cột linh hồn + IV và nút BOSS (server bỏ qua dù gửi lên)
-    'var colL=$("pcmColL");if(colL)colL.style.display=PC.raw?"none":"";var colR=$("pcmColR");if(colR)colR.style.display=PC.raw?"none":"";if(PC.raw)PCSEL={};',   // 🔒 v2: ẩn luôn passive
-    // 👑 reset lựa chọn boss mỗi lần mở bảng + chỉ hiện khi đang mở bán và pal CÓ bản boss
-    'PCBOSS=0;var bbt=$("pcmBossBtn");if(bbt)bbt.classList.remove("on");',
-    'var bRow=$("pcmBossRow");if(bRow)bRow.style.display=(!PC.raw&&PC.boss&&!/^Yakushima/i.test(PCIT.code||"")&&(PC.noBoss||[]).indexOf(PCIT.code)<0)?"":"none";',
-    'var bpr=$("pcmBossPrice");if(bpr)bpr.textContent=vnd((PC.up&&PC.up.boss)||10000);',
-    '$("pcmSoulMax").textContent=PC.soulMax;',
-    // mỗi dòng linh hồn: tick chọn + THANH KÉO % RIÊNG (26/08 - mua Công 201% mà Máu 102% được)
-    'var souls=[["atk","💥 Damage (Tấn công)"],["def","🛡️ Thủ (Phòng thủ)"],["hp","❤️ Máu"],["work","⚒️ Tốc độ làm việc"]];',
-    'var sb0=PC.soulPct||60;',
-    '$("pcmSouls").innerHTML=souls.map(function(s){return "<div class=\\"pcmSoul\\" style=\\"flex-wrap:wrap\\">"',
-    '+"<label style=\\"display:flex;align-items:center;gap:8px;flex:1;cursor:pointer\\"><input type=\\"checkbox\\" value=\\""+s[0]+"\\" onchange=\\"pcSoulLim(this)\\"> "+s[1]+"</label>"',
-    '+"<b style=\\"margin-left:auto\\"><span id=\\"ss_"+s[0]+"\\">"+sb0+"</span>%</b>"',
-    '+"<input type=\\"range\\" id=\\"sr_"+s[0]+"\\" min=\\""+sb0+"\\" max=\\"201\\" step=\\"3\\" value=\\""+sb0+"\\" oninput=\\"pcUpCalc()\\" disabled style=\\"width:100%;margin-top:4px\\">"',
-    '+"<span class=\\"muted\\" id=\\"sc_"+s[0]+"\\" style=\\"font-size:11px;width:100%\\"></span>"',
-    '+"</div>"}).join("");',
-    '$("pcmPassMax").textContent=(PC.passiveMax||4);$("pcmPkMax").textContent=8;',
-    '$("pcmSoulMax").textContent=PC.soulMax||4;',
-    // thanh IV: min = mức gốc miễn phí admin đặt, reset về gốc mỗi lần mở
-    '["pcmIvH","pcmIvA","pcmIvD"].forEach(function(id){var e=$(id);e.min=PC.ivs||100;e.value=PC.ivs||100});',
-    'pcUpCalc();',
-    // danh sách passive: xếp bậc cao trước, tên tô MÀU THEO BẬC, chú thích kế bên, bấm chọn
-    'PCSEL={};$("pcmPk").textContent="0";',
-    'PCGENDER=0;$("pcmGM").classList.remove("on");$("pcmGF").classList.remove("on");',
-    // màu giống trong game: trắng (bậc 1-2) · vàng (bậc 3) · xanh ngọc (bậc 4) · đỏ (có mặt trái)
-    'var rows=PC.passives.slice().sort(function(a,b){return (b.tier||1)-(a.tier||1)});',
-    '$("pcmPass").innerHTML=rows.map(function(p){var c=p.bad?"#ff7a7a":(p.tier===4?"#3fe0cf":(p.tier===3?"#ffd76a":"#e8ecf5"));',
-    // 🌈 passive Cây Thế Giới: tên màu cầu vồng + giá bán ngay cạnh
-    'var nameHtml=p.wt?("<b class=\\"pwt\\">"+esc(p.name)+"</b> <span style=\\"color:var(--gold);font-size:10px\\">💎 "+vnd((PC.up&&PC.up.wt)||1000)+"</span>"):("<b style=\\"color:"+c+"\\">"+esc(p.name)+"</b>"+((p.tier===4&&PC.up&&PC.up.t4>0)?" <span style=\\"color:var(--gold);font-size:10px\\">💎 "+vnd(PC.up.t4)+"</span>":""));',   // 09/09: hạng 4 thường có giá riêng
-    'return "<div class=\\"pcmP\\" id=\\"pp_"+p.id+"\\" data-t=\\""+esc((p.name+" "+p.desc).toLowerCase())+"\\" onclick=\\"pcPassTog(\'"+p.id+"\')\\"><input type=\\"checkbox\\" class=\\"ppcb\\" tabindex=\\"-1\\">"+nameHtml+(p.unsure?" <span style=\\"color:#ffcf5c;font-size:10px\\">⚠</span>":"")+" <span class=\\"pd\\">"+esc(p.desc)+"</span></div>"}).join("");',
-    'var ff=$("pcmFind");if(ff){ff.value="";pcPassFilter()}',
-    'PCBK="";pcBuildsRender();pcChipsRender();',
-    '$("pcModal").classList.remove("hidden")}',
-    // Hàng nút build: bộ của SERVER + bộ RIÊNG (⭐, có nút ✕ xoá) + nút lưu bộ mới.
-    // Bộ đang chọn sáng viền vàng (PCBK); tự tay đổi passive thì tắt sáng (đã lệch bộ).
-    'var PCBK="";',
-    'function pcBuildsRender(){if(!PC)return;var h="";',
-    '(PC.builds||[]).forEach(function(b,i){h+="<button class=\\"pcb"+(PCBK==="s"+i?" on":"")+"\\" onclick=\\"pcBuild(\'s\',"+i+")\\">"+esc(b.name)+"</button>"});',
-    '(PC.myBuilds||[]).forEach(function(b,i){h+="<button class=\\"pcb my"+(PCBK==="m"+i?" on":"")+"\\" onclick=\\"pcBuild(\'m\',"+i+")\\">⭐ "+esc(b.name)+"</button><button class=\\"pcb x\\" title=\\"Xoá build này\\" onclick=\\"pcBuildDel("+i+")\\">✕</button>"});',
-    'h+="<button class=\\"pcb add\\" onclick=\\"pcBuildSave()\\">➕ Lưu build của tôi</button>";',
-    '$("pcmBuilds").innerHTML=h}',
-    // bấm build: xoá lựa chọn cũ, tick đủ passive của bộ (id lạ tự bỏ qua), nút sáng lên
-    'function pcBuild(k,i){var arr=k==="m"?(PC.myBuilds||[]):(PC.builds||[]);var b=arr[i];if(!b)return;',
-    'PCSEL={};PCBK=k+i;',
-    '[].slice.call($("pcmPass").children).forEach(function(el){el.classList.remove("sel")});',
-    'b.ids.forEach(function(id){if(Object.keys(PCSEL).length>=8)return;var el=$("pp_"+id);if(el){PCSEL[id]=1;el.classList.add("sel")}});',
-    '[].slice.call($("pcmPass").children).forEach(function(el2){var cb2=el2.querySelector(".ppcb");if(cb2)cb2.checked=el2.classList.contains("sel")});',
-    '$("pcmPk").textContent=Object.keys(PCSEL).length;pcBuildsRender();pcPassFilter();pcChipsRender();pcUpCalc();',
-    'toast("⚡ Đã chọn bộ "+b.name+" ("+Object.keys(PCSEL).length+" passive) - nhớ tick thêm linh hồn")}',
-    // lưu bộ đang chọn thành build riêng (đặt tên qua hộp thoại), trùng tên = ghi đè
-    'function pcBuildSave(){var ids=Object.keys(PCSEL);if(!ids.length)return toast("Chọn passive trước rồi hãy lưu");',
-    'var nm=prompt("Đặt tên cho build này (tối đa 24 ký tự):");if(!nm||!nm.trim())return;',
-    'api("/api/pal/build/save",{name:nm.trim(),ids:ids}).then(function(j){PC.myBuilds=j.myBuilds;pcBuildsRender();toast("⭐ Đã lưu build "+nm.trim())}).catch(function(e){toast("❌ "+e.message)})}',
-    'async function pcBuildDel(i){var b=(PC.myBuilds||[])[i];if(!b)return;',
-    'if(!(await gConfirm("Xoá build ⭐ <b>"+esc(b.name)+"</b>?","🗑️ Xoá",true)))return;',
-    'api("/api/pal/build/del",{name:b.name}).then(function(j){PC.myBuilds=j.myBuilds;if(PCBK==="m"+i)PCBK="";pcBuildsRender();toast("🗑️ Đã xoá build "+b.name)}).catch(function(e){toast("❌ "+e.message)})}',
-    // Hiển thị danh sách passive theo trạng thái (25/08, góp ý chủ server):
-    // - ĐỦ 4 con đã chọn -> CHỈ hiện 4 con đó (dễ soát, khỏi cuộn tìm), ẩn ô tìm kiếm
-    // - chưa đủ 4 -> hiện đầy đủ + lọc theo ô 🔎 như thường
-    'function pcPassFilter(){var full=Object.keys(PCSEL).length>=8;',
-    'var q=($("pcmFind").value||"").toLowerCase();',
-    '[].slice.call($("pcmPass").children).forEach(function(el){',
-    'if(full){el.style.display=el.classList.contains("sel")?"":"none"}',
-    'else{el.style.display=(!q||(el.getAttribute("data-t")||"").indexOf(q)>=0)?"":"none"}});',
-    'var ff=$("pcmFind");if(ff)ff.style.display=full?"none":"";',
-    'var fh=$("pcmFull");if(fh)fh.classList.toggle("hidden",!full)}',
-    // 💎 tính phụ phí nâng cấp - GƯƠNG của công thức server (palUpSoulCost/palUpIvCost/palUpPassiveCost)
-    'var PCUP=0;',
-    'function pcUpSoulStep(p){var s=(PC&&PC.up&&PC.up.soul)||[1000,1500,2500,3500,6000];return p<=72?s[0]:p<=81?s[1]:p<=90?s[2]:p<=102?s[3]:s[4]}',
-    // GƯƠNG công thức server: %linh hồn tính MỖI 1% (1 nấc 3% = x3 giá), TỪNG DÒNG riêng;
-    // thêm dòng cấp số nhân (dòng 2 = soulLine, dòng 3 = x2, dòng 4 = x4); IV 3 chỉ số riêng.
-    'function pcSoulLineCost(sp,base){var c=0;for(var p=base+3;p<=sp;p+=3)c+=3*pcUpSoulStep(p);return c}',
-    'var SOUL_LBL={atk:"💥 Tấn công",def:"🛡️ Phòng thủ",hp:"❤️ Máu",work:"⚒️ Làm việc"};',
-    'function pcUpCalc(){if(!PC)return;var base=PC.soulPct||60,bi=PC.ivs||100,up=PC.up||{};',
-    '$("pcmIvBase").textContent=bi;',
-    'var ih=parseInt($("pcmIvH").value)||bi,ia=parseInt($("pcmIvA").value)||bi,idf=parseInt($("pcmIvD").value)||bi;',
-    '$("pcmIvHShow").textContent=ih;$("pcmIvAShow").textContent=ia;$("pcmIvDShow").textContent=idf;',
-    'var sc=0,lines=0,soulRows=[];',
-    '["atk","def","hp","work"].forEach(function(k){',
-    'var cb=$("pcmSouls").querySelector("input[value="+k+"]"),r=$("sr_"+k);if(!cb||!r)return;',
-    'var on=cb.checked;r.disabled=!on;if(!on){r.value=base}',
-    'var sp=parseInt(r.value)||base;$("ss_"+k).textContent=sp;',
-    // 09/09: phí THÊM DÒNG ghi ngay cạnh dòng (dòng vượt số dòng gốc miễn phí), tách với phí kéo %
-    'var c1=on?pcSoulLineCost(sp,base):0;var lf=0;if(on){lines++;if(lines>(PC.soulMax||1))lf=(up.soulLine||0)}',
-    '$("sc_"+k).textContent=on?((lf?("💎 +"+vnd(lf)+" thêm dòng"):"dòng gốc miễn phí")+(c1?(" · 💎 +"+vnd(c1)+" kéo %"):"")):"";',
-    'if(on){sc+=c1;soulRows.push({k:k,sp:sp,c:c1,lf:lf})}});',
-    'var lc=Math.max(0,lines-(PC.soulMax||1))*(up.soulLine||0);',   // 09/09: giá PHẲNG mỗi dòng vượt số dòng gốc miễn phí (PC.soulMax)
-    'var ivc=(Math.max(0,ih-bi)+Math.max(0,ia-bi)+Math.max(0,idf-bi))*(up.iv||0);',
-    'var pk=Object.keys(PCSEL).length,pc=0,pr={5:up.slot5||0,6:up.slot6||0,7:up.slot7||0,8:up.slot8||0};',
-    'for(var i=(PC.passiveMax||4)+1;i<=pk;i++)pc+=(i>=5?(pr[i]||0):(up.slotLow||0));',   // 09/09: ô 2-4 vượt gốc miễn phí cũng tính (giá slotLow)
-    'var wtn=0;(PC.passives||[]).forEach(function(pp){if(pp.wt&&PCSEL[pp.id])wtn++});',
-    'var wtc=wtn*(up.wt||0);',
-    'var t4n=0;(PC.passives||[]).forEach(function(pp){if(pp.tier===4&&!pp.wt&&PCSEL[pp.id])t4n++});var t4c=t4n*(up.t4||0);',   // 💎 09/09: passive hạng 4 thường
-    'var bc=PCBOSS?((up.boss)||0):0;',   // 👑 phí bản PAL BOSS
-    '$("pcmLineCost").textContent=lc?("💎 "+(lines-(PC.soulMax||1))+" dòng vượt "+(PC.soulMax||1)+" dòng gốc miễn phí × "+vnd(up.soulLine||0)+" = +"+vnd(lc)):"";',
-    '$("pcmIvCost").textContent=ivc?("💎 phụ phí IV: +"+vnd(ivc)+" ("+vnd(up.iv||0)+"/điểm mỗi chỉ số)"):"gốc miễn phí";',
-    '$("pcmPassCost").textContent=pc?("💎 +"+vnd(pc)):"";',
-    'if(PC.raw){sc=0;lc=0;ivc=0;bc=0;pc=0;wtc=0;t4c=0;PCSEL={}}',   // 🔒 PAL GỐC v2: không phí gì cả (không passive)
-    'PCUP=sc+lc+ivc+pc+wtc+t4c+bc;',
-    // 🧾 tổng kết: mua gì, tốn gì - từng dòng một, phí bên phải
-    'var line=function(l,v){return "<div class=\\"sline\\"><span class=\\"muted\\">"+l+"</span><b>"+v+"</b></div>"};',
-    'var bIco="<img src=\\"/palboss.png\\" alt=\\"👑\\" style=\\"width:15px;height:15px;vertical-align:-3px;border-radius:3px\\" onerror=\\"this.outerHTML=\'👑\'\\"> ";',
-    'var sum=PC.raw?line("Pal",esc(PCIT?PCIT.name:"?")+" · thường · <b>Lv1 · 0⭐ · IV "+(PC.rawIv||0)+" · linh hồn "+(PC.rawSoulPct||0)+"% x4 dòng · không passive</b> (🔒 admin tắt chỉ số)"):line("Pal",esc(PCIT?PCIT.name:"?")+(PCBOSS?" · "+bIco+"BOSS":" · thường")+" · Lv"+(PC.level||80)+" · "+(PC.stars||4)+"⭐");',
-    'if(PCBOSS)sum+=line(bIco+"Bản PAL BOSS","+"+vnd(bc));',
-    // 09/09: mỗi dòng linh hồn ghi đủ phí của chính nó (thêm dòng + kéo %), không gộp cục "phí thêm dòng" ở dưới nữa
-    'if(!PC.raw){soulRows.forEach(function(s){var f=s.lf+s.c;sum+=line("💠 Linh hồn "+SOUL_LBL[s.k]+" +"+s.sp+"%"+(s.lf?" · thêm dòng":" · dòng gốc"),f?"+"+vnd(f):"miễn phí")});',
-    'if(!soulRows.length)sum+=line("💠 Linh hồn","<span style=\\"color:var(--red)\\">chưa chọn dòng nào</span>");}',
-    'if(!PC.raw)sum+=line("🧬 IV Máu/Công/Thủ",ih+" / "+ia+" / "+idf+(ivc?" · +"+vnd(ivc):" · miễn phí"));',
-    // 09/09: từng passive một dòng, phí ô (ô vượt gốc: 2-4 giá slotLow, 5-8 giá riêng) + phí 🌈 Cây Thế Giới ngay cạnh
-    'var pIdx=0,pfree=(PC.passiveMax||4),pr2={5:up.slot5||0,6:up.slot6||0,7:up.slot7||0,8:up.slot8||0};',
-    'Object.keys(PCSEL).forEach(function(id){pIdx++;var pp=(PC.passives||[]).filter(function(x){return x.id===id})[0];var sf=pIdx>pfree?(pIdx>=5?(pr2[pIdx]||0):(up.slotLow||0)):0;var wf=(pp&&pp.wt)?(up.wt||0):((pp&&pp.tier===4)?(up.t4||0):0);',
-    'sum+=line("✨ Passive #"+pIdx+" "+esc(pp?pp.name:id)+(pp&&pp.wt?" 🌈":(pp&&pp.tier===4&&wf?" 💎":""))+(sf?" · ô vượt gốc":""),(sf+wf)?"+"+vnd(sf+wf)+(sf&&wf?" (ô "+vnd(sf)+" + passive "+vnd(wf)+")":""):"miễn phí")});',
-    'if(!pIdx)sum+=line("✨ Passive",PC.raw?"🔒 tắt chỉ số - không chọn, game tự random":"game tự random");',
-    '$("pcmSumBody").innerHTML=sum;',
-    '$("pcmUpTotal").innerHTML=PCUP?("💎 Tổng phụ phí: <b style=\\"color:var(--gold)\\">"+vnd(PCUP)+"</b> KNB (trừ ví khi nhận, giao hụt tự hoàn) · Ví: "+vnd(BAL)):"✅ Đang ở mức gốc, không tốn phụ phí · Ví: "+vnd(BAL)}',
-    'function pcSoulLim(cb){var n=$("pcmSouls").querySelectorAll("input:checked").length;',
-    'if(n>4){cb.checked=false;toast("Chỉ có 4 dòng linh hồn")}pcUpCalc()}',   // 09/09: soulMax = số dòng miễn phí, không chặn chọn nữa
-    'var PCSEL={};',
-    'function pcPassTog(id){var el=$("pp_"+id);if(!el)return;',
-    'if(PCSEL[id]){delete PCSEL[id];el.classList.remove("sel")}',
-    'else{if(Object.keys(PCSEL).length>=8)return toast("Tối đa 8 ô passive - bỏ bớt rồi chọn tiếp");PCSEL[id]=1;el.classList.add("sel")}',
-    'var cb0=el.querySelector(".ppcb");if(cb0)cb0.checked=!!PCSEL[id];',
-    'if(PCBK){PCBK="";pcBuildsRender()}', // tự tay đổi passive -> đã lệch bộ, tắt nút sáng
-    '$("pcmPk").textContent=Object.keys(PCSEL).length;pcPassFilter();pcChipsRender();pcUpCalc()}',
-    // hàng chip passive đã chọn - luôn hiện dù cuộn list, ✕ để bỏ (màu theo bậc/Cây Thế Giới)
-    'function pcChipsRender(){var box=$("pcmChips");if(!box||!PC)return;var ids=Object.keys(PCSEL);',
-    'if(!ids.length){box.innerHTML="<span class=\\"muted\\" style=\\"font-size:11.5px\\">Chưa chọn passive nào - bấm trong danh sách bên dưới</span>";return}',
-    'var map={};(PC.passives||[]).forEach(function(p){map[p.id]=p});',
-    'box.innerHTML=ids.map(function(id){var p=map[id]||{name:id};var c=p.wt?"#c9a2ff":(p.tier===4?"#3fe0cf":(p.tier===3?"#ffd76a":(p.bad?"#ff7a7a":"#e8ecf5")));',
-    'return "<span class=\\"pchip\\" style=\\"border-color:"+c+"\\"><b style=\\"color:"+c+"\\">"+esc(p.name||id)+"</b><span class=\\"x\\" title=\\"bỏ chọn\\" onclick=\\"pcPassTog(\'"+id+"\')\\">✕</span></span>"}).join("")}',
-    'function pcClose(){$("pcModal").classList.add("hidden");PCIT=null}',
-    // 🚻 giới tính: 0=chưa chọn, 1=Đực, 2=Cái. Bắt buộc chọn mới nhận được.
-    'var PCGENDER=0;',
-    'function pcGenderPick(g){PCGENDER=g;$("pcmGM").classList.toggle("on",g===1);$("pcmGF").classList.toggle("on",g===2)}',
-    // 👑 chọn bản PAL BOSS: bấm nút toggle - class "on" tô vàng cả ô
-    'var PCBOSS=0;',
-    'function pcBossTog(){PCBOSS=PCBOSS?0:1;var b=$("pcmBossBtn");if(b)b.classList.toggle("on",!!PCBOSS);pcUpCalc()}',
-    'async function pcClaimGo(){if(!PCIT||PCBUSY)return;',
-    'var souls=[].slice.call($("pcmSouls").querySelectorAll("input:checked")).map(function(c){return c.value});',
-    'if(souls.length<1&&!(PC&&PC.raw))return toast("💠 Chọn ít nhất 1 dòng linh hồn trước đã (dòng đầu miễn phí)");',   // 🔒 09/09: chế độ PAL GỐC không có linh hồn -> bỏ kiểm
-    'if(PCGENDER!==1&&PCGENDER!==2)return toast("🚻 Chọn giới tính ♂ Đực hoặc ♀ Cái trước đã");',
-    'var passives=Object.keys(PCSEL);',
-    'if(PCUP>0&&!(await gConfirm("💎 Nâng cấp vượt giới hạn tốn <b>"+vnd(PCUP)+"</b> KNB, trừ ví ngay khi nhận (giao hụt tự hoàn). Đồng ý?","✅ Nhận & trừ phí")))return;',
-    'PCBUSY=true;var b=$("pcmOk");b.disabled=true;b.textContent="⏳ Đang giao... (có thể mất 1-2 phút, ĐỪNG tắt trang)";',
-    'api("/api/pal/claim",{id:PCIT.id,souls:souls,passives:passives,gender:PCGENDER,boss:PCBOSS,',
-    'soulHpPct:parseInt($("sr_hp").value)||0,soulAtkPct:parseInt($("sr_atk").value)||0,soulDefPct:parseInt($("sr_def").value)||0,soulWorkPct:parseInt($("sr_work").value)||0,',
-    'ivHp:parseInt($("pcmIvH").value)||0,ivAtk:parseInt($("pcmIvA").value)||0,ivDef:parseInt($("pcmIvD").value)||0}).then(function(j){',
-    'PCBUSY=false;b.disabled=false;b.textContent="✅ NHẬN VÀO GAME";pcClose();toast(j.message||"✅ Đã giao!");pcSync()',
-    '}).catch(function(e){PCBUSY=false;b.disabled=false;b.textContent="✅ NHẬN VÀO GAME";toast("❌ "+e.message);pcSync()})}',
     '',
     // Safari trên iPhone vẫn cho chụm 2 ngón dù CSS đã cấm - nó dùng sự kiện riêng
     // (gesture*), phải chặn thêm ở đây. Không đụng tới touchend/click nên bấm nhanh

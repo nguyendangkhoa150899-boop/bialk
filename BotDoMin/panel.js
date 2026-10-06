@@ -102,9 +102,6 @@ function startPanel(ctx) {
                 id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '', tlbbGuid: db[id].tlbbGuid || '',
                 // 📒 nợ: hiện thẳng số trong db (index.js có vòng quét cộng lãi mỗi giờ)
                 debt: db[id].debt ? ((db[id].debt.loan || 0) + (db[id].debt.admin || 0)) : 0,
-                // 🍀 %/quay may mắn RIÊNG (null = theo mặc định toàn sàn) + thanh hiện tại
-                luckRate: Number.isFinite(db[id].palLuckRate) ? db[id].palLuckRate : null,
-                luck: Number.isFinite(db[id].palLuck) ? db[id].palLuck : 0,
             }))
             .sort((a, b) => b.points - a.points);
     };
@@ -178,9 +175,7 @@ function startPanel(ctx) {
                 channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
             },
             vay: ctx.getVay ? ctx.getVay() : { live: false, channelId: '' },
-            gachaChannelId: db._gachaChannelId || '',
             itemCats: ctx.getItemCats ? ctx.getItemCats() : [],   // 🏷️ 16/09
-            palForced: ctx.palWheelForcedInfo ? ctx.palWheelForcedInfo() : null,   // ⚡ 15/09
             giveaway: { channelId: db._giveawayChannelId || '', roleId: db._giveawayRoleId || '' },
             withdrawRequests: ctx.getWithdrawRequests ? ctx.getWithdrawRequests() : [],
             players: buildPlayers(),
@@ -198,12 +193,6 @@ function startPanel(ctx) {
             stairsHistory: ctx.getStairsHistory ? ctx.getStairsHistory() : [],
             savedChannels: db._savedChannels || [],
             dogLedger: (ctx.getDogLedger ? ctx.getDogLedger() : []).slice(0, 80),
-            palOrders: (ctx.getPalOrders ? ctx.getPalOrders() : []).slice(0, 30),
-            // 🎁 vòng quay pal web + rương (25/08)
-            palWheelCfg: ctx.getPalWheelCfg ? ctx.getPalWheelCfg() : null,
-            // 🆘 10/09: điểm tẩu thoát admin đặt - đi theo state để F5 / cổng thường vẫn thấy
-            // (trước chỉ tải bằng POST riêng lúc mở trang, chưa đăng nhập -> 401 -> ô trống)
-            rescuePoint: ctx.getRescuePoint ? ctx.getRescuePoint() : null,
             spmCfg: ctx.getSpmCfg ? ctx.getSpmCfg() : null,
             spmState: ctx.getSpmState ? ctx.getSpmState() : null,
             spmBoard: ctx.getSpmBoard ? ctx.getSpmBoard() : { on: false, channelId: '' },
@@ -218,7 +207,6 @@ function startPanel(ctx) {
             itemShopImplantMax: ctx.getItemShopImplantMax ? ctx.getItemShopImplantMax() : null,   // 🧬
             itemShopGroupQuota: ctx.getItemShopGroupQuota ? ctx.getItemShopGroupQuota() : null,   // 🗂️ 12/09 v2
             itemShopWtMax: ctx.getItemShopWtMax ? ctx.getItemShopWtMax() : null,   // 🌳
-            palChests: ctx.palChestOverview ? ctx.palChestOverview().slice(0, 60) : [],
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
         };
     };
@@ -339,11 +327,10 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/order-done', '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */ '/api/gacha/channel', '/api/palwheel/cfg',
+                    '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
-                    '/api/palchest/grant', '/api/palchest/resolve', '/api/palchest/clearall',
-                    '/api/palwheel/luckrate', '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set', '/api/rescue/point', '/api/rescue/whereis', '/api/rescue/test',
+                    '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
                     // 🃏 admin poker: ai mở được giải - chỉ SUPER (đây là danh sách CHẶN trên cổng thường,
                     // quên thêm route mới vào đây là cổng thường gọi được luôn)
                     // 🎲 trần cược từng cửa Sic Bo: đây là cài đặt TIỀN, cổng thường không được sửa
@@ -381,10 +368,6 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true, ...ctx.stockPush(pct, Number(body.secs) || 150) });
                 }
 
-                // ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
-                if (ctx.setPalWheelCfg && req.method === 'POST' && path === '/api/palwheel/cfg') {
-                    return sendJSON(res, 200, { ok: true, cfg: ctx.setPalWheelCfg(body) });
-                }
                 // 🚀 PHI THUYỀN: cấu hình + ép điểm nổ (ép chỉ ở cổng SUPER)
                 if (ctx.setSpmCfg && req.method === 'POST' && path === '/api/spm/cfg') {
                     return sendJSON(res, 200, { ok: true, cfg: ctx.setSpmCfg(body) });
@@ -597,56 +580,11 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Xu đi taxi về: ${r.cfg.on ? 'BẬT' : 'TẮT'} · phát ${r.cfg.tien} · cần thua ${r.cfg.loMin}/ngày · ví còn ≤ ${r.cfg.viMax} · cách ${r.cfg.gioCho}h`);
                     return sendJSON(res, 200, { ok: true, cfg: r.cfg });
                 }
-                // 🍀 đặt %/quay may mắn RIÊNG cho 1 người (UI đã gỡ 04/09 - route giữ cho tương lai)
-                if (ctx.setPalLuckRate && req.method === 'POST' && path === '/api/palwheel/luckrate') {
-                    const uid = String(body.userId || '').trim();
-                    if (!uid) return sendJSON(res, 400, { ok: false, error: 'Thiếu người chơi' });
-                    const r = ctx.setPalLuckRate(uid, body.rate);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    ctx.writeLog('ADMIN', `[PANEL MAY MẮN] ${uid} -> %/quay = ${r.rate === null ? 'mặc định toàn sàn' : r.rate + '%'}`);
-                    return sendJSON(res, 200, { ok: true, rate: r.rate });
-                }
-                // 🗑️ 09/09: xoá sạch rương pal mọi người (SUPER)
-                if (ctx.palChestClearAll && req.method === 'POST' && path === '/api/palchest/clearall') {
-                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
-                    const r = ctx.palChestClearAll();
-                    ctx.writeLog('ADMIN', `[PANEL] Xoá sạch rương pal: -${r.removed} pal, giữ ${r.kept} đang giao`);
-                    return sendJSON(res, 200, r);
-                }
-                // 🔎 15/09: danh sách để CHỌN người nhận (đã liên kết tên game, kèm 🟢 online) + CHỌN pal
-                if (req.method === 'POST' && path === '/api/palchest/pickers') {
-                    const pals = ctx.getPalPickList ? ctx.getPalPickList() : [];
-                    let onlineSet = null, onlineErr = '';
-                    if (ctx.getOnlinePlayers) {
-                        try {
-                            const on = await ctx.getOnlinePlayers();
-                            onlineSet = new Set(on.flatMap(p => [p.name, p.cleanName]).filter(Boolean).map(s => String(s).trim().toLowerCase()));
-                        } catch (e) { onlineErr = e.message || 'không hỏi được cầu dashboard'; }
-                    }
-                    const players = buildPlayers()
-                        .filter(p => p.ingameName)
-                        .map(p => ({ id: p.id, name: p.name, ingameName: p.ingameName, online: onlineSet ? onlineSet.has(p.ingameName.trim().toLowerCase()) : null }))
-                        .sort((a, b) => ((b.online === true) - (a.online === true)) || a.ingameName.localeCompare(b.ingameName));
-                    return sendJSON(res, 200, { ok: true, pals, players, onlineErr, onlineCount: onlineSet ? onlineSet.size / 2 : null });
-                }
                 // 🏷️ 16/09: lưu danh sách nhóm hàng (đổi tên / thêm / bớt)
                 if (ctx.setItemCats && req.method === 'POST' && path === '/api/itemcats/save') {
                     const r = ctx.setItemCats(body.cats);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.palChestGrant && req.method === 'POST' && path === '/api/palchest/grant') {
-                    const uid = String(body.userId || '').trim();
-                    if (!/^\d{15,20}$/.test(uid)) return sendJSON(res, 400, { ok: false, error: 'Discord ID không hợp lệ' });
-                    const r = ctx.palChestGrant(uid, body.palName, body.palCode);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // Chốt đơn đang giao dở: delivered=true (mod đã giao thật) / false (trả về rương)
-                if (ctx.palChestResolve && req.method === 'POST' && path === '/api/palchest/resolve') {
-                    const r = ctx.palChestResolve(String(body.ownerId || ''), body.id, !!body.delivered);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true });
                 }
 
 
@@ -676,14 +614,6 @@ function startPanel(ctx) {
                     ctx.getTX().forcedResult = null; ctx.getTX().epNhaCai = null;   // 05/10: hủy luôn 'nhà cái ăn nhiều nhất' bật từ nút Discord
                     ctx.writeLog('ADMIN', `[PANEL ÉP TX] Hủy ép kết quả Big Small`);
                     return sendJSON(res, 200, { ok: true });
-                }
-                // ⚡ 15/09: ép LƯỢT QUAY PAL kế tiếp ra 1 con (SUPER) - code rỗng = hủy ép
-                if (path === '/api/palwheel/force') {
-                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền' });
-                    if (!ctx.palWheelForce) return sendJSON(res, 500, { ok: false, error: 'Bot chưa nối hàm ép' });
-                    const r = ctx.palWheelForce(body.code);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, r);
                 }
 
                 // ---- ĐIỀU KHIỂN BÀN CHƠI ----
@@ -1163,16 +1093,6 @@ function startPanel(ctx) {
                     const r = ctx.debtClear(uid);
                     return sendJSON(res, 200, { ok: true, cleared: r.cleared });
                 }
-                // Kênh khoe kết quả quay pal ngẫu nhiên (channelId rỗng = tắt)
-                if (path === '/api/gacha/channel') {
-                    const channelId = String(body.channelId || '').trim();
-                    if (!ctx.setGachaChannel) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
-                    try {
-                        const name = await ctx.setGachaChannel(channelId);
-                        ctx.writeLog('ADMIN', channelId ? `[PANEL] Kênh khoe quay pal: #${name}` : '[PANEL] Tắt kênh khoe quay pal');
-                        return sendJSON(res, 200, { ok: true, name });
-                    } catch (e) { return sendJSON(res, 400, { ok: false, error: 'Không gửi được vào kênh này (sai ID hoặc bot thiếu quyền)' }); }
-                }
                 // Kênh + role thông báo khi phát KNB toàn server (đổi Discord mới
                 // chỉ cần lưu lại ở đây, không phải sửa code)
                 if (path === '/api/giveaway/config') {
@@ -1205,46 +1125,11 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
 
-                // Admin đã tạo pal trong game xong -> đóng đơn + nhắn cho người mua
-                if (path === '/api/pal/order-done') {
-                    const id = parseInt(body.id);
-                    if (!ctx.completePalOrder) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
-                    const r = await ctx.completePalOrder(id);
-                    return sendJSON(res, r.ok ? 200 : 400, r);
-                }
-
                 // Liên kết Discord ↔ tên nhân vật trong game. Cầu KNB TỰ ĐỘNG
                 // give/take theo ingameName này - CHỈ admin đặt được (người chơi tự
                 // đặt là lỗ hổng: đặt tên nhân vật người khác rồi rút túi họ về ví mình).
                 // Tên rỗng = hủy liên kết. Lọc về ASCII in được cho khớp normalizeName
                 // của mod trong game.
-                // 🆘 điểm tẩu thoát (10/09): body {get:1} đọc · {x,y,z} lưu · {clear:1} về mặc định
-                if (path === '/api/rescue/point') {
-                    if (!ctx.setRescuePoint) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
-                    if (body.get) return sendJSON(res, 200, { ok: true, point: ctx.getRescuePoint() });
-                    const p = body.clear ? ctx.setRescuePoint(null)
-                        : ctx.setRescuePoint({ x: Number(body.x), y: Number(body.y), z: Number(body.z) });
-                    if (!body.clear && !p) return sendJSON(res, 400, { ok: false, error: 'Toạ độ không hợp lệ - bấm 📍 cho nhanh' });
-                    ctx.writeLog('ADMIN', p ? `[PANEL] Điểm tẩu thoát: ${p.x}, ${p.y}, ${p.z}` : '[PANEL] Điểm tẩu thoát: về mặc định (PlayerStart)');
-                    return sendJSON(res, 200, { ok: true, point: p });
-                }
-                if (path === '/api/rescue/test') {
-                    if (!ctx.palRescueTest) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
-                    const tname = String(body.name || '').trim();
-                    if (!tname) return sendJSON(res, 400, { ok: false, error: 'Nhập tên nhân vật đang online' });
-                    const tr = await ctx.palRescueTest(tname);
-                    if (tr.error) return sendJSON(res, 400, { ok: false, error: tr.error });
-                    ctx.writeLog('ADMIN', `[PANEL] 🧪 Thử tẩu thoát cho ${tname} -> ${tr.point ? tr.point.x + ', ' + tr.point.y + ', ' + tr.point.z : 'PlayerStart mặc định'}`);
-                    return sendJSON(res, 200, { ok: true, point: tr.point });
-                }
-                if (path === '/api/rescue/whereis') {
-                    if (!ctx.palWhereIs) return sendJSON(res, 400, { ok: false, error: 'Bot chưa hỗ trợ (bản cũ)' });
-                    const wname = String(body.name || '').trim();
-                    if (!wname) return sendJSON(res, 400, { ok: false, error: 'Nhập tên nhân vật đang online' });
-                    const wr = await ctx.palWhereIs(wname);
-                    if (!wr.ok) return sendJSON(res, 400, { ok: false, error: 'Không lấy được toạ độ: ' + String(wr.message || 'không rõ').slice(0, 120) });
-                    return sendJSON(res, 200, { ok: true, x: wr.x, y: wr.y, z: wr.z });
-                }
                 // 🛠️ GM Thiên Long (29/09): chuyển tiếp sang panel GM nội bộ
                 if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act' || path === '/api/gm/doche' || path === '/api/gm/amkhi') {
                     try {
@@ -1783,7 +1668,7 @@ const HTML = `<!DOCTYPE html>
         <h3>🏆 Bội số nổ hũ 🍀 (Dò Mìn · Leo Thang)</h3>
         <div class="stat" id="potInfo"></div>
         <div id="potRows"></div>
-        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới. <b>Quay Pal (15/09) cũng KHÔNG còn hũ nuôi</b>: quay trúng đích danh <b>Mimog (#144)</b> là ăn giải cố định 25.000 + thưởng 10.000 = 35.000, nhà cái trả thẳng (2 ô Mimog trên vòng).</div>
+        <div class="note">Nổ ở trò nào ăn hũ trò đó, 2 hũ kia không suy suyển. Mỗi ván/lượt quay tự trích 5% tiền cược vào hũ của trò đó (<b>nhà cái bao, không thu thêm của người chơi</b>), <b>Dò Mìn/Leo Thang (09/09) KHÔNG còn hũ nuôi</b>: trúng 🏆 trong hộp 🍀 là bốc ngẫu nhiên 1 bội số trong danh sách (mặc định x10 / x15 / x20) NHÂN tiền cược, cộng trần ván như cũ, ván dừng ngay - nhà cái trả thẳng. Sửa danh sách ở ô bên dưới.</div>
       </div>
       <div class="card">
         <h3>🎛️ Bảng mời chơi Dò Mìn trên Discord</h3>
@@ -2163,47 +2048,6 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Gắn ví mini game với <b>nhân vật Thiên Long</b>: gõ <b>tên nhân vật</b> (hoặc <b>GUID</b>) rồi Lưu, bot tra database game và điền GUID. Cầu KNB chỉ chạy cho ví đã gắn. 1 nhân vật chỉ gắn 1 ví; người chơi không tự gắn được (chống rút trộm). Để trống + Lưu = hủy liên kết.</div>
         <div id="palLinks"></div>
       </div>
-      <div class="card pwOff">
-        <h3>🆘 Điểm tẩu thoát khẩn cấp</h3>
-        <div class="note">Nút 🆘 trên Hồ sơ web dịch chuyển người chơi về điểm này (1 tiếng/lần). <b>Chưa đặt = game tự chọn PlayerStart - đo ra đang rơi ở World Tree!</b> Cách đặt: đứng nhân vật của bạn ở chỗ muốn làm điểm về (vd bãi tân thủ), gõ tên nhân vật, bấm 📍 rồi 💾 Lưu. Đổi điểm KHÔNG cần restart gì.</div>
-        <div class="row" style="gap:6px">
-          <input id="rpName" placeholder="tên nhân vật ĐANG online" style="flex:2">
-          <button class="btn-grey" onclick="rpGrab()" style="flex:1">📍 Lấy toạ độ người này</button>
-        </div>
-        <div class="row" style="gap:6px;margin-top:8px">
-          <input id="rpX" type="number" placeholder="X" style="flex:1">
-          <input id="rpY" type="number" placeholder="Y" style="flex:1">
-          <input id="rpZ" type="number" placeholder="Z" style="flex:1">
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn-green" onclick="rpSave()">💾 Lưu điểm</button>
-          <button class="btn-grey" onclick="rpTest()">🧪 Thử dịch chuyển ngay</button>
-          <button class="btn-red" onclick="rpClear()">🗑️ Về mặc định</button>
-        </div>
-        <div class="note" id="rpNow">-</div>
-      </div>
-      <div class="card pwOff">
-        <h3>🎲 Kênh khoe kết quả quay Pal</h3>
-        <div class="muted" id="gachaInfo" style="font-size:13px;margin-bottom:8px"></div>
-        <label>Channel ID (kênh đăng công khai ai quay trúng con gì)</label>
-        <input id="gachaChannel" placeholder="vd: 123456789012345678">
-        <div class="row" style="margin-top:12px">
-          <button class="btn-green" onclick="gachaSave()">💾 Lưu kênh</button>
-          <button class="btn-red" onclick="gachaOff()">⏹️ Tắt khoe</button>
-        </div>
-        <div class="note">Lưu xong bot gửi 1 tin xác nhận vào kênh đó. Từ đó mỗi lượt quay Pal ngẫu nhiên 2.000 sẽ đăng công khai: <b>ai quay, trúng con gì</b> (tag người quay). Tắt = chỉ người quay tự thấy như cũ.</div>
-      </div>
-      <div class="card epOnly pwOff">
-        <h3>⚡ Ép lượt quay Pal kế tiếp (thử nổ hũ)</h3>
-        <div id="pwForceNow" style="font-size:13px;margin-bottom:8px">-</div>
-        <label>Code hoặc tên pal (mặc định Mimog = ô nổ hũ)</label>
-        <input id="pwForceCode" placeholder="MimicDog" value="MimicDog">
-        <div class="row" style="margin-top:12px">
-          <button class="btn-red" onclick="pwForce()">⚡ Ép lượt kế tiếp</button>
-          <button class="btn-grey" onclick="pwForceClear()">Hủy ép</button>
-        </div>
-        <div class="note">Chỉ SUPER. Lượt quay ngẫu nhiên <b>kế tiếp của BẤT KỲ ai</b> sẽ ra đúng con này, dùng <b>1 lần</b> rồi tự hủy; restart bot cũng hết. Ra Mimog thì trả nổ hũ thật (25.000 + 10.000) và đăng kênh khoe như thật - <b>thử xong nhớ Hủy ép nếu chưa ai quay</b>. 🎯 Chọn Pal mua đích danh không bị ảnh hưởng.</div>
-      </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
       <div class="card hidden pwOff" id="wdPendingCard">
@@ -2212,120 +2056,6 @@ const HTML = `<!DOCTYPE html>
         <div id="wdPending"></div>
       </div>
       <div id="wdDone" class="hidden"></div>
-      <!-- 🐾 Đơn mua Pal ĐÃ GỠ (27/08): mua pal giờ TỰ ĐỘNG qua web → dashboard → mod,
-           không còn đơn tay cho admin. Backend getPalOrders/completePalOrder giữ nguyên
-           (vô hại, không gọi tới) để lịch sử đơn cũ không mất nếu cần tra. -->
-
-      <!-- 🎁 Vòng quay pal WEB (25/08): quay ở tab Quay Pal trên web chơi, trúng vào
-           RƯƠNG trang Hồ sơ. NHẬN = bot tự giao qua dashboard (lệnh PAL2 của mod) -
-           KHÔNG cần admin đưa tay nữa. Pal dùng được sau restart server. -->
-      <div class="card pwOff">
-        <h3>🎁 Vòng quay Pal web + Rương</h3>
-        <div class="note">Vé quay trừ thẳng ví. <b>Nổ hũ (15/09)</b>: quay trúng đích danh <b>Mimog (#144)</b> = 25.000 + thưởng 10.000 = 35.000 cố định (2 ô Mimog trên vòng), không nuôi hũ nữa. Đơn kẹt <b>ĐANG GIAO</b> = gửi lệnh xong không rõ kết quả: mở results.log của mod kiểm - mod ĐÃ giao thì bấm ✅, chưa thì ↩️ trả về rương.</div>
-        <div class="row" style="margin-top:8px">
-          <div style="flex:1"><label>Vé mỗi lượt quay (KNB)</label><input id="pwPrice" type="number" placeholder="vd: 2000"></div>
-          <div style="flex:1"><label>🎯 Chọn pal đích danh (KNB)</label><input id="pwCustom" type="number" placeholder="vd: 6000"></div>
-          <div style="flex:1"><label>Bán lại pal (KNB)</label><input id="pwSell" type="number" placeholder="vd: 1000"></div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <div style="flex:1"><label>Dòng linh hồn GỐC miễn phí (1–4, dòng vượt bán theo giá bên dưới)</label><input id="pwSoul" type="number" placeholder="vd: 1"></div>
-          <div style="flex:1"><label>Level pal giao (1–100)</label><input id="pwLevel" type="number" placeholder="vd: 80"></div>
-          <div style="flex:1"><label>Sao (0–4, sao THẬT trên pal)</label><input id="pwStars" type="number" placeholder="vd: 4"></div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <div style="flex:1"><label>% linh hồn GỐC miễn phí (bội của 3)</label><input id="pwSoulPct" type="number" placeholder="vd: 60"></div>
-          <div style="flex:1"><label>IV GỐC miễn phí (1–255)</label><input id="pwIvs" type="number" placeholder="vd: 100"></div>
-          <div style="flex:1"><label>Ô passive GỐC miễn phí (1–8)</label><input id="pwPassMax" type="number" placeholder="vd: 4"></div>
-        </div>
-        <div class="note" style="margin-top:8px">💎 <b>GIÁ NÂNG CẤP VƯỢT TRẦN</b> - người chơi tự mua trong bảng nhận, trừ ví ngay (giao hụt tự hoàn). Trần cứng: 8 passive · 201% linh hồn · 255 IV.</div>
-        <div class="row" style="margin-top:4px">
-          <div style="flex:1"><label>Ô passive thứ 5</label><input id="pwUp5" type="number" placeholder="vd: 8000"></div>
-          <div style="flex:1"><label>Ô thứ 6</label><input id="pwUp6" type="number" placeholder="vd: 16000"></div>
-          <div style="flex:1"><label>Ô thứ 7</label><input id="pwUp7" type="number" placeholder="vd: 32000"></div>
-          <div style="flex:1"><label>Ô thứ 8</label><input id="pwUp8" type="number" placeholder="vd: 64000"></div>
-          <div style="flex:1"><label>IV: giá mỗi ĐIỂM (từng chỉ số Máu/Công/Thủ)</label><input id="pwUpIv" type="number" placeholder="vd: 500"></div>
-          <div style="flex:1"><label>Thêm DÒNG linh hồn (giá MỖI dòng thêm, dòng 1 miễn phí)</label><input id="pwUpLine" type="number" placeholder="vd: 5000"></div>
-          <div style="flex:1"><label>💎 Ô passive 2–4 (giá MỖI ô khi hạ ô gốc miễn phí)</label><input id="pwUpLow" type="number" placeholder="vd: 5000"></div>
-        </div>
-        <div class="row" style="margin-top:4px">
-          <div style="flex:1"><label>🌈 Passive Cây Thế Giới (giá/con)</label><input id="pwUpWt" type="number" placeholder="vd: 1000"></div>
-          <div style="flex:1"><label>💎 Passive HẠNG 4 thường (Huyền Thoại, May Mắn, Thần Tốc... giá/con, 0 = miễn phí)</label><input id="pwUpT4" type="number" placeholder="vd: 3000"></div>
-          <div style="flex:1"><label>👑 Bản PAL BOSS (giá/con - 07/09 thành tuỳ chọn)</label><input id="pwUpBoss" type="number" placeholder="vd: 10000"></div>
-          <div style="flex:1"><label>🔥 Bellanoir Libero (0 = ngừng bán)</label><input id="pwPkBL" type="number" placeholder="vd: 9000"></div>
-          <div style="flex:1"><label>🔥 Blazamut Ryu</label><input id="pwPkBR" type="number" placeholder="vd: 20000"></div>
-          <div style="flex:1"><label>🔥 Xenolord</label><input id="pwPkXe" type="number" placeholder="vd: 20000"></div>
-          <div style="flex:1"><label>🔥 Hartalis</label><input id="pwPkHa" type="number" placeholder="vd: 20000"></div>
-        </div>
-        <div class="row" style="margin-top:4px">
-          <div style="flex:1"><label>Linh hồn →72% (giá MỖI 1%)</label><input id="pwUpS1" type="number" placeholder="vd: 1000"></div>
-          <div style="flex:1"><label>→81% (mỗi 1%)</label><input id="pwUpS2" type="number" placeholder="vd: 1500"></div>
-          <div style="flex:1"><label>→90% (mỗi 1%)</label><input id="pwUpS3" type="number" placeholder="vd: 2500"></div>
-          <div style="flex:1"><label>→102% (mỗi 1%)</label><input id="pwUpS4" type="number" placeholder="vd: 3500"></div>
-          <div style="flex:1"><label>→201% (mỗi 1%)</label><input id="pwUpS5" type="number" placeholder="vd: 6000"></div>
-        </div>
-        <div class="note" style="margin-top:8px">🍀 <b>THANH MAY MẮN + VÒNG RAID</b> - mỗi lượt quay thường nạp % may mắn (random trong khoảng dưới). Đầy 100% người chơi được quay <b>vòng RAID</b>: trúng 1/4 boss (Hartalis, Bellanoir, Blazamut Ryu, Xenolord) + thưởng KNB, xong thanh về 0. Muốn <b>cài sẵn cho bạn bè</b>: đặt %/quay riêng ở cột 🍀 bảng ví người chơi bên tab 👥.</div>
-        <div class="row" style="margin-top:4px">
-          <div style="flex:1"><label>🍀 May mắn/quay TỐI THIỂU (%)</label><input id="pwLuckMin" type="number" placeholder="vd: 1"></div>
-          <div style="flex:1"><label>🍀 May mắn/quay TỐI ĐA (%)</label><input id="pwLuckMax" type="number" placeholder="vd: 3"></div>
-          <div style="flex:1"><label>🔥 Thưởng trúng vòng may mắn (KNB)</label><input id="pwRaidBonus" type="number" placeholder="vd: 18000"></div>
-          <div style="flex:1"><label title="Vòng may mắn = 6 huyền thoại + ô RAID. % này là xác suất rơi vào ô RAID (trúng thì quay thêm vòng boss). 40 = '10 ô huyền thoại thì 4 ô raid'">🔥 % ô RAID trên vòng may mắn (0–100)</label><input id="pwLuckyRaidPct" type="number" min="0" max="100" placeholder="vd: 40"></div>
-          <label style="display:flex;align-items:center;gap:6px;flex:1"><input type="checkbox" id="pwRaidOn" style="width:auto"> Mở vòng RAID</label>
-        </div>
-        <div class="note" style="margin-top:8px">⏳ <b>COOLDOWN NHẬN PAL CHUNG</b> - ai nhận 1 con thì CẢ SERVER phải chờ ngần này giây mới nhận con tiếp (0 = tắt). 📅 <b>Pal/người/NGÀY</b> - mỗi người chỉ chuyển được ngần này pal vào game mỗi ngày, reset 00:00 giờ VN, chỉ tính lượt giao THÀNH CÔNG (0 = tắt). Sao pal = "Sao (0–4)" ở trên (Palworld chốt cứng 4 sao, không có sao 5+).</div>
-        <div class="row" style="margin-top:4px">
-          <div style="flex:1"><label>⏳ Cooldown nhận pal (giây)</label><input id="pwClaimCd" type="number" placeholder="vd: 120"></div>
-          <div style="flex:1"><label>📅 Pal/người/NGÀY (0 = tắt)</label><input id="pwDayMax" type="number" placeholder="vd: 5"></div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwBoss" style="width:auto"> 👑 Mở bán bản PAL BOSS (mặc định giao bản thường, chọn BOSS trả thêm giá ở ô 👑)</label>
-          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwOpen" style="width:auto"> Mở vòng quay</label>
-          <button class="btn-green" onclick="pwCfgSave()">💾 Lưu vòng quay</button>
-          <span class="muted" style="font-size:12px">(chế độ 🔒 PAL GỐC có card riêng bên dưới)</span>
-        </div>
-        <div class="note" id="pwCfgNow">-</div>
-      </div>
-      <div class="card pwOff">
-        <h3>🔒 PAL GỐC (tắt chỉ số pal)</h3>
-        <div class="note">Bật là MỌI pal giao ra <b>cấp đặt ở ô 🆙 · sao đặt ở ô ⭐ · không passive · bản thường</b> (chỉ chọn giới tính, khoá mua raid đích danh) - nhưng vẫn kèm <b>nền chỉ số</b> đặt ở 2 ô dưới. Vòng quay vẫn đủ 6 huyền thoại (tô vàng) + pal tím; pal raid chỉ ra qua ô RAID vòng may mắn. Đặt 0/0 = trần trụi tuyệt đối. Linh hồn đi bước 3% (20 không chia hết nên mặc định 21). Đổi số chỉ áp cho pal nhận TỪ GIỜ - pal đã giao không đổi.</div>
-        <label style="display:flex;align-items:center;gap:6px;color:var(--red);font-weight:700;margin-top:6px"><input type="checkbox" id="pwRaw" style="width:auto"> BẬT chế độ PAL GỐC</label>
-        <div class="row" style="margin-top:8px;align-items:center;gap:8px">
-          <span>💠 Linh hồn</span>
-          <input class="mini-in" id="pwRawSoul" type="number" min="0" max="201" step="3" placeholder="21" style="width:70px">
-          <span>%/dòng (cả 4 dòng, bước 3%)</span>
-          <span>· 🎯 IV</span>
-          <input class="mini-in" id="pwRawIv" type="number" min="0" max="255" placeholder="40" style="width:70px">
-          <span>cả 3 chỉ số</span>
-          <span>· 🆙 Cấp</span>
-          <input class="mini-in" id="pwRawLevel" type="number" min="1" max="100" placeholder="1" style="width:70px">
-          <span>· ⭐ Sao</span>
-          <input class="mini-in" id="pwRawStars" type="number" min="0" max="4" placeholder="0" style="width:70px">
-          <span>pal giao ra (0-4)</span>
-          <button class="btn-green" onclick="pwRawSave(this)">💾 Lưu PAL GỐC</button>
-        </div>
-        <div class="note" id="pwRawNow">-</div>
-        <div class="row" style="margin-top:10px;align-items:flex-start">
-          <div style="flex:2;min-width:220px">
-            <input id="pgUidQ" placeholder="🔎 Tìm người nhận: tên game / tên Discord / ID" oninput="pgPickDraw()">
-            <select id="pgUid" size="6" style="margin-top:6px;font-size:13px"></select>
-            <div class="muted" id="pgUidNote" style="font-size:12px;margin-top:4px">-</div>
-          </div>
-          <div style="flex:2;min-width:220px">
-            <input id="pgPalQ" placeholder="🔎 Tìm pal: tên / #số paldex / code" oninput="pgPickDraw()">
-            <select id="pgPal" size="6" style="margin-top:6px;font-size:13px"></select>
-            <div class="muted" id="pgPalNote" style="font-size:12px;margin-top:4px">-</div>
-          </div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <button class="btn-grey" onclick="pgPickLoad(true)">🔄 Cập nhật ai đang online</button>
-          <button class="btn-green" onclick="pgGrant()">🎁 Tặng vào rương</button>
-        </div>
-        <div class="note">Người nhận chỉ hiện <b>người đã liên kết tên game</b>: 🟢 đang trong game · ⚪ offline · ❔ không hỏi được dashboard. Pal chọn từ danh sách thật (🔥 = boss raid), gửi theo <b>code</b> nên không còn tặng nhầm con vì gõ sai tên. Danh sách online lấy lúc mở panel, bấm 🔄 để hỏi lại.</div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn-grey" id="pcToggleBtn" style="flex:1" onclick="pcToggle()">🎒 Xem rương pal</button>
-          <button class="btn-red epOnly" style="display:none" onclick="pcClearAll(this)">🗑️ Xóa TẤT CẢ pal trong rương</button>
-        </div>
-        <div id="palChests" class="hist" style="display:none"></div>
-      </div>
       <div class="card" id="shopCard">
         <h3>🛒 Shop Item - đồ vào túi khi nhân vật đăng nhập / đổi bản đồ</h3>
         <div class="card">
@@ -2889,7 +2619,6 @@ const HTML = `<!DOCTYPE html>
           <label id="gs_mines_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_mines" style="width:auto;margin:0" onchange="gameSwitch('mines',this)"> 💣 Dò Mìn</label>
           <label id="gs_stairs_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_stairs" style="width:auto;margin:0" onchange="gameSwitch('stairs',this)"> 🪜 Leo Thang</label>
           <label id="gs_spm_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_spm" style="width:auto;margin:0" onchange="gameSwitch('spm',this)"> 🚀 Phi Thuyền</label>
-          <label id="gs_pal_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_pal" style="width:auto;margin:0" onchange="gameSwitch('pal',this)"> 🎁 Vòng quay Pal + Chọn Pal</label>
           <label id="gs_stock_lb" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700"><input type="checkbox" id="gs_stock" style="width:auto;margin:0" onchange="gameSwitch('stock',this)"> 📈 Sàn cổ phiếu</label>
           <span id="gs_tx" class="muted" style="font-size:13px"></span>
         </div>
@@ -3179,9 +2908,6 @@ function tab(t){
   localStorage.setItem('panel_tab',t);
 }
 
-// ===== KÊNH KHOE QUAY PAL =====
-function pwForce(){const c=(document.getElementById('pwForceCode').value||'').trim();if(!c)return toast('Nhập code hoặc tên pal');api('/api/palwheel/force',{code:c}).then(j=>{toast('⚡ Lượt quay kế tiếp sẽ ra '+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
-function pwForceClear(){api('/api/palwheel/force',{code:''}).then(()=>{toast('Đã hủy ép');refresh();}).catch(e=>toast('❌ '+e.message));}
 // 🏷️ 16/09: danh sách nhóm hàng - vẽ 1 lần rồi giữ nguyên (poll 3s không cuốn chữ admin đang gõ)
 let ICROWS=null;
 // force=true khi THÊM/XOÁ/LƯU. Nhịp làm mới 3 giây gọi icDraw() không force -> chỉ dựng lần đầu,
@@ -3223,8 +2949,6 @@ async function icSave(btn){
     .then(j=>{ICROWS=(j.cats||[]).map(c=>({key:c.key,label:c.label,lock:!!c.lock}));toast('💾 Đã lưu '+ICROWS.length+' nhóm');icDraw(true);refresh();})
     .catch(e=>{toast('❌ '+e.message);}));
 }
-function gachaSave(){const id=document.getElementById('gachaChannel').value.trim();if(!id)return toast('Nhập Channel ID');api('/api/gacha/channel',{channelId:id}).then(j=>{toast('✅ Đã bật khoe tại #'+j.name);refresh();}).catch(e=>toast('❌ '+e.message));}
-async function gachaOff(){if(!await uiConfirm('Tắt đăng công khai kết quả quay Pal?','Tắt','btn-red'))return;api('/api/gacha/channel',{channelId:''}).then(()=>{toast('⏹️ Đã tắt');document.getElementById('gachaChannel').value='';refresh();});}
 
 // Kênh + role thông báo phát KNB toàn server (đổi Discord mới chỉ cần lưu lại ở đây)
 function gaSave(){
@@ -3241,15 +2965,6 @@ function renderGiveaway(){
 async function resetDaily(){
   if(!await uiConfirm('Reset điểm danh cho CẢ danh sách? Mọi người /diemdanh nhận thưởng lại được ngay hôm nay.','🔄 Reset','btn-red'))return;
   api('/api/points/reset-daily',{}).then(j=>{toast('🔄 Đã reset điểm danh cho '+j.count+' ví');refresh();}).catch(()=>{});
-}
-function renderGacha(){
-  if(!STATE)return;
-  const on=!!STATE.gachaChannelId;
-  const c=document.getElementById('gachaChannel'); if(c&&!c.value&&STATE.gachaChannelId) c.value=STATE.gachaChannelId;
-  document.getElementById('gachaInfo').innerHTML='<span class="run '+(on?'on':'off')+'">'+(on?'🟢 ĐANG KHOE công khai':'🔴 ĐANG TẮT (chỉ người quay tự thấy)')+'</span>';
-  icDraw(); icFillFilter();
-  if(!PGP&&!PGLOADING&&document.getElementById('pgUid'))pgPickLoad(false);
-  const pf=document.getElementById('pwForceNow');if(pf)pf.innerHTML=STATE.palForced?'<span class="badge on">⚡ ĐANG ÉP: lượt quay kế tiếp ra '+esc(STATE.palForced)+'</span>':'<span class="muted">Không ép - quay ngẫu nhiên bình thường</span>';
 }
 
 // ===== TAB PALWORLD =====
@@ -3277,48 +2992,6 @@ function renderDogLedger(){
       '<br><span class="muted" style="font-size:12px">'+esc(r.time||'')+' · còn '+Number(r.balance||0).toLocaleString()+
       (r.note?' · '+esc(r.note):'')+'</span></div>';
   }).join('');
-}
-
-function renderPalOrders(){
-  const box=document.getElementById('palOrders');
-  if(!box||!STATE) return;
-  const rows=STATE.palOrders||[];
-  // Đơn chưa làm lên trước - đó là việc cần làm; đơn xong hiện mờ bên dưới.
-  const todo=rows.filter(o=>o.status!=='done');
-  const done=rows.filter(o=>o.status==='done');
-
-  const badge=document.getElementById('palOrderBadge');
-  if(badge){
-    if(todo.length){ badge.textContent=' 🔴'+todo.length; badge.classList.remove('hidden'); }
-    else badge.classList.add('hidden');
-  }
-
-  if(rows.length===0){ box.innerHTML='<div class="muted">Chưa có đơn nào.</div>'; return; }
-
-  const line=(o,isDone)=>
-    '<div style="padding:8px 0;border-bottom:1px solid var(--line)'+(isDone?';opacity:.55':'')+'">'+
-      '<div class="row" style="justify-content:space-between;align-items:flex-start">'+
-        '<div>'+
-          '<b>#'+o.id+' '+esc(o.palName)+'</b>'+
-          ' · '+(o.kind==='random'?'🎲':'🎯')+' '+Number(o.price||0).toLocaleString()+
-          '<br><span class="muted" style="font-size:12px">'+esc(o.username||o.userId)+' · '+esc(o.time||'')+
-            (isDone&&o.doneAt?' · xong '+esc(o.doneAt):'')+'</span>'+
-          '<br><span style="font-size:12px">Linh hồn: <b>'+esc(o.souls||'-')+'</b> | Passive: <b>'+esc(o.passives||'-')+'</b></span>'+
-        '</div>'+
-        (isDone
-          ? '<span class="win" style="font-size:12px;white-space:nowrap">'+(o.resold?'💰 Bán lại':'✅ Đã giao')+'</span>'
-          : '<button class="btn-green" style="padding:4px 10px;font-size:12px;white-space:nowrap" onclick="palOrderDone('+o.id+')">✅ Hoàn thành</button>')+
-      '</div>'+
-    '</div>';
-
-  box.innerHTML =
-    (todo.length? todo.map(o=>line(o,false)).join('') : '<div class="muted">Không có đơn nào đang chờ.</div>') +
-    (done.length? '<div class="muted" style="margin-top:10px;font-size:12px">Đã giao ('+done.length+'):</div>'+done.slice(0,15).map(o=>line(o,true)).join('') : '');
-}
-
-async function palOrderDone(id){
-  if(!await uiConfirm('Xác nhận ĐÃ tạo pal và giao cho người này trong game?','✅ Hoàn thành','btn-green'))return;
-  try{ await api('/api/pal/order-done',{id}); toast('✅ Đã đóng đơn #'+id); refresh(); }catch(e){}
 }
 
 // Bảng liên kết Discord ↔ tên nhân vật (cầu KNB tự động đọc ingameName này)
@@ -3690,22 +3363,6 @@ function renderPalLinks(){
       '<td><button class="mini btn-green" onclick="palSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
     '</table>';
 }
-// 🆘 điểm tẩu thoát (10/09)
-function rpFill(p,soft){const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!(soft&&e.value!==''))e.value=(v===0||v)?v:'';};set('rpX',p&&p.x);set('rpY',p&&p.y);set('rpZ',p&&p.z);
-  const n=document.getElementById('rpNow');if(n)n.textContent=p?('Đang dùng điểm: '+p.x+', '+p.y+', '+p.z):'Chưa đặt - đang dùng mặc định PlayerStart (rơi ở World Tree!)';}
-function rpLoad(){api('/api/rescue/point',{get:1}).then(j=>rpFill(j.point)).catch(()=>{});}
-function rpGrab(){const name=document.getElementById('rpName').value.trim();if(!name)return toast('Gõ tên nhân vật ĐANG online trước');
-  toast('📍 Đang hỏi mod trong game (5-20 giây)...');
-  api('/api/rescue/whereis',{name}).then(j=>{document.getElementById('rpX').value=Math.round(j.x);document.getElementById('rpY').value=Math.round(j.y);document.getElementById('rpZ').value=Math.round(j.z);toast('📍 Lấy được toạ độ - bấm 💾 Lưu để chốt');}).catch(e=>toast('❌ '+e.message));}
-function rpSave(){const g=id=>parseFloat(document.getElementById(id).value);const x=g('rpX'),y=g('rpY'),z=g('rpZ');
-  if(![x,y,z].every(Number.isFinite))return toast('Nhập đủ X Y Z (bấm 📍 cho nhanh)');
-  api('/api/rescue/point',{x,y,z}).then(j=>{rpFill(j.point);toast('💾 Đã lưu điểm tẩu thoát');}).catch(e=>toast('❌ '+e.message));}
-function rpClear(){api('/api/rescue/point',{clear:1}).then(()=>{rpFill(null);toast('🗑️ Về mặc định PlayerStart');}).catch(e=>toast('❌ '+e.message));}
-// 10/09: không tải mù sau 800ms nữa (lúc đó chưa đăng nhập -> 401 -> ô trống, F5 là "mất").
-// refresh() điền từ STATE.rescuePoint; rpLoad giữ lại cho nút nào cần hỏi thẳng.
-function rpTest(){const name=document.getElementById('rpName').value.trim();if(!name)return toast('Gõ tên nhân vật ĐANG online (ô trên)');
-  toast('🧪 Đang dịch chuyển '+name+' tới điểm đã LƯU (5-20 giây)... - không tính lượt 1 tiếng');
-  api('/api/rescue/test',{name}).then(j=>toast('✅ Đã dịch chuyển '+name+(j.point?' tới '+j.point.x+', '+j.point.y:' về PlayerStart (chưa đặt điểm - lại World Tree đấy!)'))).catch(e=>toast('❌ '+e.message));}
 function palSetName(id){
   const v=document.getElementById('pn_'+id).value;
   api('/api/pal/set-name',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{});
@@ -4494,10 +4151,6 @@ function skSave(){
   api('/api/stock/cfg',o).then(()=>{toast('💾 Đã lưu cấu hình sàn');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 
-// ===== 🎁 VÒNG QUAY PAL WEB + RƯƠNG (25/08) =====
-// Ô số đổ theo kiểu skFill (chỉ khi trống + không focus). Checkbox đổ đúng 1 LẦN -
-// panel tự refresh 3 giây/lần, đổ lại liên tục sẽ đè tay admin đang bấm.
-let pwCfgTicked=false;
 let skWaveTicked=false;
 // 🚀 Phi Thuyền config + can thiệp
 let spTicked=false;
@@ -4569,135 +4222,6 @@ async function skToggle(){
     toast(real?'▶️ Sàn ĐANG MỞ':'⏸ Sàn ĐÃ ĐÓNG - người chơi chỉ đóng lệnh được');
     refresh();
   }).catch(e=>{if(b)b.disabled=false;toast('❌ '+e.message);});
-}
-function pwCfgFill(k){
-  const set=(id,v)=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&!e.value)e.value=v;};
-  set('pwPrice',k.price);set('pwCustom',k.customPrice);set('pwSell',k.sellPrice);set('pwSoul',k.soulMax);set('pwLevel',k.level);set('pwStars',k.stars);
-  set('pwSoulPct',k.soulPct);set('pwIvs',k.ivs);set('pwPassMax',k.passiveMax);
-  set('pwUp5',k.upSlot5);set('pwUp6',k.upSlot6);set('pwUp7',k.upSlot7);set('pwUp8',k.upSlot8);set('pwUpLow',k.upSlotLow);set('pwUpIv',k.upIv);set('pwUpLine',k.upSoulLine);
-  set('pwUpWt',k.upWtPassive);set('pwUpT4',k.upTier4);set('pwUpBoss',k.upBoss);set('pwPkBL',k.pickBellaLib);set('pwPkBR',k.pickBlaza);set('pwPkXe',k.pickXeno);set('pwPkHa',k.pickHarta);
-  set('pwUpS1',k.upSoul1);set('pwUpS2',k.upSoul2);set('pwUpS3',k.upSoul3);set('pwUpS4',k.upSoul4);set('pwUpS5',k.upSoul5);
-  set('pwLuckMin',k.luckMin);set('pwLuckMax',k.luckMax);set('pwRaidBonus',k.raidBonus);set('pwLuckyRaidPct',k.luckyRaidPct);
-  set('pwClaimCd',k.claimCd);set('pwDayMax',k.dayMax);set('pwRawSoul',k.rawSoulPct);set('pwRawIv',k.rawIv);set('pwRawLevel',k.rawLevel);set('pwRawStars',k.rawStars);pwRawNow(k);
-  if(!pwCfgTicked){pwCfgTicked=true;document.getElementById('pwBoss').checked=!!k.boss;document.getElementById('pwOpen').checked=!!k.open;document.getElementById('pwRaidOn').checked=!!k.raidWheelOn;document.getElementById('pwRaw').checked=!!k.raw;}
-  document.getElementById('pwCfgNow').innerHTML='Đang áp dụng: vé quay <b>'+k.price.toLocaleString()+'</b> · chọn đích danh <b>'+(k.customPrice||0).toLocaleString()+'</b> · bán lại <b>'+k.sellPrice.toLocaleString()+
-    '</b> · linh hồn <b>'+k.soulMax+'</b> dòng miễn phí × <b>'+(k.soulPct||60)+'%</b> · IV <b>'+(k.ivs||100)+'</b> · passive tối đa <b>'+(k.passiveMax||4)+'</b> · Lv <b>'+k.level+'</b> · <b>'+k.stars+'</b> sao · '+
-    (k.boss?'bản <b>PAL BOSS</b>':'bản thường')+' · '+(k.open?'ĐANG MỞ':'<b style="color:var(--red)">ĐANG ĐÓNG</b>')+(k.raw?' · <b style="color:var(--red)">🔒 TẮT CHỈ SỐ: Lv'+(k.rawLevel||1)+' · 0 sao · linh hồn '+(k.rawSoulPct||0)+'%/dòng · IV '+(k.rawIv||0)+' · không passive · khoá mua raid đích danh</b>':'');
-}
-// 🔒 card PAL GỐC riêng (13/09): chỉ gửi 3 trường, server merge - không đụng giá vé/cooldown...
-async function pwRawSave(btn){
-  const sp=parseInt(document.getElementById('pwRawSoul').value);
-  const iv=parseInt(document.getElementById('pwRawIv').value);
-  if(!(sp>=0&&sp<=201))return toast('❌ Linh hồn 0–201%');
-  if(sp%3!==0)return toast('❌ Linh hồn phải chia hết cho 3 (bước 3%: 18, 21, 24...)');
-  if(!(iv>=0&&iv<=255))return toast('❌ IV 0–255');
-  const raw=document.getElementById('pwRaw').checked;
-  const lv=parseInt(document.getElementById('pwRawLevel').value);
-  if(!(lv>=1&&lv<=100))return toast('❌ Cấp pal 1–100');
-  const sao=parseInt(document.getElementById('pwRawStars').value);
-  if(!(sao>=0&&sao<=4))return toast('❌ Sao 0–4');
-  await runBtn(btn,'Lưu...',()=>api('/api/palwheel/cfg',{raw,rawSoulPct:sp,rawIv:iv,rawLevel:lv,rawStars:sao}).then(()=>{toast('💾 PAL GỐC: '+(raw?'BẬT':'TẮT')+' · Lv'+lv+' · linh hồn '+sp+'%/dòng · IV '+iv);refresh();}));
-}
-function pwRawNow(k){const e=document.getElementById('pwRawNow');if(!e||!k)return;
-  e.innerHTML=k.raw?('Đang <b style="color:var(--red)">BẬT</b>: pal giao ra <b>Lv'+(k.rawLevel||1)+'</b> · <b>'+(k.rawStars||0)+' sao</b> · linh hồn <b>'+(k.rawSoulPct||0)+'%</b> cả 4 dòng · IV <b>'+(k.rawIv||0)+'</b> cả 3 · không passive'):('Đang <b style="color:#3dd68c">TẮT</b>: pal giao theo cấu hình thường (Lv'+(k.level||80)+' · '+(k.stars||4)+' sao · IV '+(k.ivs||100)+')');}
-function pwCfgSave(){
-  const o={price:parseInt(document.getElementById('pwPrice').value),
-           customPrice:parseInt(document.getElementById('pwCustom').value),
-           sellPrice:parseInt(document.getElementById('pwSell').value),
-           soulMax:parseInt(document.getElementById('pwSoul').value),
-           soulPct:parseInt(document.getElementById('pwSoulPct').value),
-           ivs:parseInt(document.getElementById('pwIvs').value),
-           passiveMax:parseInt(document.getElementById('pwPassMax').value),
-           upSlot5:parseInt(document.getElementById('pwUp5').value),
-           upSlot6:parseInt(document.getElementById('pwUp6').value),
-           upSlot7:parseInt(document.getElementById('pwUp7').value),
-           upSlot8:parseInt(document.getElementById('pwUp8').value),
-           upSlotLow:parseInt(document.getElementById('pwUpLow').value),
-           upIv:parseInt(document.getElementById('pwUpIv').value),
-           upSoulLine:parseInt(document.getElementById('pwUpLine').value),
-           upWtPassive:parseInt(document.getElementById('pwUpWt').value),
-           upTier4:parseInt(document.getElementById('pwUpT4').value),
-           upBoss:parseInt(document.getElementById('pwUpBoss').value),
-           pickBellaLib:parseInt(document.getElementById('pwPkBL').value),
-           pickBlaza:parseInt(document.getElementById('pwPkBR').value),
-           pickXeno:parseInt(document.getElementById('pwPkXe').value),
-           pickHarta:parseInt(document.getElementById('pwPkHa').value),
-           upSoul1:parseInt(document.getElementById('pwUpS1').value),
-           upSoul2:parseInt(document.getElementById('pwUpS2').value),
-           upSoul3:parseInt(document.getElementById('pwUpS3').value),
-           upSoul4:parseInt(document.getElementById('pwUpS4').value),
-           upSoul5:parseInt(document.getElementById('pwUpS5').value),
-           level:parseInt(document.getElementById('pwLevel').value),
-           stars:parseInt(document.getElementById('pwStars').value),
-           luckMin:parseInt(document.getElementById('pwLuckMin').value),
-           luckMax:parseInt(document.getElementById('pwLuckMax').value),
-           raidBonus:parseInt(document.getElementById('pwRaidBonus').value),
-           luckyRaidPct:parseInt(document.getElementById('pwLuckyRaidPct').value),
-           raidWheelOn:document.getElementById('pwRaidOn').checked,
-           claimCd:parseInt(document.getElementById('pwClaimCd').value),
-           dayMax:parseInt(document.getElementById('pwDayMax').value),
-           boss:document.getElementById('pwBoss').checked,
-           raw:document.getElementById('pwRaw').checked,
-           rawSoulPct:parseInt(document.getElementById('pwRawSoul').value),
-           rawIv:parseInt(document.getElementById('pwRawIv').value),
-           rawLevel:parseInt(document.getElementById('pwRawLevel').value),
-           rawStars:parseInt(document.getElementById('pwRawStars').value),
-           open:document.getElementById('pwOpen').checked};
-  if(!(o.price>=100))return toast('Vé phải từ 100');
-  if(!(o.customPrice>=100))return toast('Giá chọn đích danh phải từ 100');
-  if(!(o.sellPrice>=0))return toast('Giá bán lại phải từ 0');
-  if(!(o.soulMax>=1&&o.soulMax<=4))return toast('Dòng linh hồn gốc miễn phí 1–4');
-  if(!(o.soulPct>=3&&o.soulPct<=201))return toast('% linh hồn gốc trong 3–201');
-  if(o.soulPct%3!==0)return toast('% linh hồn phải là BỘI CỦA 3 (mỗi bậc trong save = 3%) - vd 60, 201');
-  if(!(o.ivs>=1&&o.ivs<=255))return toast('IV gốc trong 1–255');
-  if(!(o.passiveMax>=1&&o.passiveMax<=8))return toast('Ô passive gốc trong 1–8');
-  for(const kk of ['upSlot5','upSlot6','upSlot7','upSlot8','upSlotLow','upIv','upSoulLine','upWtPassive','upTier4','pickBellaLib','pickBlaza','pickXeno','pickHarta','upSoul1','upSoul2','upSoul3','upSoul4','upSoul5'])
-    if(!(o[kk]>=0))return toast('Giá nâng cấp không được âm/trống');
-  if(!(o.level>=1&&o.level<=100))return toast('Level 1–100');
-  if(!(o.stars>=0&&o.stars<=4))return toast('Sao 0–4');
-  if(!(o.luckMin>=0&&o.luckMin<=100)||!(o.luckMax>=0&&o.luckMax<=100))return toast('% may mắn/quay trong 0–100');
-  if(o.luckMin>o.luckMax)return toast('May mắn tối thiểu không được lớn hơn tối đa');
-  if(!(o.raidBonus>=0))return toast('Thưởng vòng RAID không được âm/trống');
-  if(!(o.luckyRaidPct>=0&&o.luckyRaidPct<=100))return toast('% ô RAID vòng may mắn phải 0–100');
-  api('/api/palwheel/cfg',o).then(()=>{toast('💾 Đã lưu vòng quay pal');refresh();}).catch(e=>toast('❌ '+e.message));
-}
-// 🔎 15/09: chọn người nhận + chọn pal từ danh sách (thay gõ tay)
-let PGP=null,PGLOADING=false;
-function pgPickLoad(force){
-  if(PGLOADING)return;if(PGP&&!force)return;PGLOADING=true;
-  const n=document.getElementById('pgUidNote');if(n)n.textContent='⏳ Đang hỏi ai đang online...';
-  api('/api/palchest/pickers',{}).then(j=>{PGP=j;pgPickDraw();}).catch(e=>{if(n)n.textContent='❌ '+e.message;}).finally(()=>{PGLOADING=false;});
-}
-function pgOpt(sel,value,label,keep){const o=document.createElement('option');o.value=value;o.textContent=label;if(keep===value)o.selected=true;sel.appendChild(o);}
-function pgPickDraw(){
-  if(!PGP)return;
-  const su=document.getElementById('pgUid'),sp=document.getElementById('pgPal');if(!su||!sp)return;
-  const qu=(document.getElementById('pgUidQ').value||'').trim().toLowerCase(),qp=(document.getElementById('pgPalQ').value||'').trim().toLowerCase();
-  const ku=su.value,kp=sp.value;su.innerHTML='';sp.innerHTML='';
-  let nu=0;(PGP.players||[]).forEach(p=>{
-    if(qu&&(p.ingameName+' '+p.name+' '+p.id).toLowerCase().indexOf(qu)<0)return;nu++;
-    pgOpt(su,p.id,(p.online===true?'🟢 ':(p.online===false?'⚪ ':'❔ '))+p.ingameName+' · '+p.name+' ('+p.id+')',ku);
-  });
-  let np=0;(PGP.pals||[]).forEach(p=>{
-    if(qp&&(p.name+' #'+p.dex+' '+p.code).toLowerCase().indexOf(qp)<0)return;np++;
-    pgOpt(sp,p.code,(p.raid?'🔥 ':'')+p.name+(p.dex?' #'+p.dex:'')+(p.raid?' (boss raid)':''),kp);
-  });
-  const on=(PGP.players||[]).filter(p=>p.online===true).length;
-  document.getElementById('pgUidNote').textContent=(PGP.onlineErr?'❔ Không hỏi được dashboard ('+PGP.onlineErr+') - chưa rõ ai online · ':('🟢 '+on+' đang trong game · '))+nu+'/'+(PGP.players||[]).length+' người đã liên kết';
-  document.getElementById('pgPalNote').textContent=np+'/'+(PGP.pals||[]).length+' pal'+(sp.value?' · đang chọn: '+sp.options[sp.selectedIndex].textContent:'');
-}
-function pgGrant(){
-  const su=document.getElementById('pgUid'),sp=document.getElementById('pgPal');
-  const uid=su.value,code=sp.value;
-  if(!uid)return toast('Chọn người nhận trong danh sách (gõ ô 🔎 để lọc)');
-  if(!code)return toast('Chọn pal trong danh sách (gõ ô 🔎 để lọc)');
-  const who=su.options[su.selectedIndex].textContent;
-  api('/api/palchest/grant',{userId:uid,palCode:code}).then(j=>{toast('🎁 Đã tặng '+j.item.name+' vào rương của '+who);refresh();}).catch(e=>toast('❌ '+e.message));
-}
-async function pcResolve(ownerId,id,delivered){
-  // 08/09: dùng hộp xác nhận của web (trước là confirm() trình duyệt, lệch theme)
-  if(!await uiConfirm(delivered?'Xác nhận mod ĐÃ GIAO pal này trong game (đã kiểm results.log)?':'Trả pal về rương cho người chơi bấm nhận lại?',delivered?'✅ Đã giao':'↩️ Về rương',delivered?'btn-green':'btn-grey'))return;
-  api('/api/palchest/resolve',{ownerId:ownerId,id:id,delivered:delivered}).then(()=>{toast(delivered?'✅ Đã chốt: đã giao':'↩️ Đã trả về rương');refresh();}).catch(()=>{});
 }
 // 📦 KHO ĐỒ TOÀN GAME (chỉ SUPER) - tải 1 lần khi mở tab, tìm client-side
 let GV=null,GVBUSY=false;
@@ -4857,49 +4381,6 @@ function modApp(){
   const ct=document.getElementById('connText');if(ct){ct.style.color='var(--green)';ct.textContent='Cổng mod · chỉ xem';}
   const sv=localStorage.getItem('panel_tab');   // 05/10: F5 giữ nguyên tab đang xem
   tab(DUOC.includes(sv)?sv:'log');logPick('nk');
-}
-// 🎒 04/09: rương pal ĐÓNG mặc định cho tab gọn - nút hiện số pal + số đơn đang giao
-let PCOPEN=false;
-function pcToggle(){PCOPEN=!PCOPEN;pcToggleApply();}
-// 🗑️ 09/09: xoá sạch rương pal MỌI người chơi (giữ đơn đang giao) - gõ XOA để xác nhận, không hoàn tiền
-async function pcClearAll(btn){
-  const rows=(STATE&&STATE.palChests)||[];
-  const n=rows.filter(r=>r.status!=='delivering').length, d=rows.filter(r=>r.status==='delivering').length;
-  if(!await uiConfirm('XÓA SẠCH rương pal của TẤT CẢ người chơi ('+n+' pal đang thấy'+(d?', giữ lại '+d+' đơn ĐANG GIAO':'')+')? KHÔNG hoàn KNB, không khôi phục được.','🗑️ Xóa hết','btn-red','XOA'))return;
-  await runBtn(btn,'Đang xóa...',()=>api('/api/palchest/clearall',{}).then(j=>{toast('🗑️ Đã xóa '+j.removed+' pal của '+j.users+' người'+(j.kept?' · giữ '+j.kept+' đơn đang giao':''));refresh();}));
-}
-function pcToggleApply(){
-  const box=document.getElementById('palChests');if(box)box.style.display=PCOPEN?'':'none';
-  const rows=(STATE&&STATE.palChests)||[];
-  const deliver=rows.filter(r=>r.status==='delivering').length;
-  const btn=document.getElementById('pcToggleBtn');
-  if(btn)btn.textContent=(PCOPEN?'🎒 Đóng rương pal':'🎒 Xem rương pal')+' ('+rows.length+' pal'+(deliver?' · ⏳ '+deliver+' ĐANG GIAO cần kiểm':'')+')';
-}
-function renderPalChests(){
-  const box=document.getElementById('palChests');
-  if(!box||!STATE)return;
-  const rows=STATE.palChests||[];
-  if(!rows.length){box.innerHTML='<div class="muted">Chưa ai có pal trong rương.</div>';return;}
-  // 25/08: làm lại cho dễ đọc (góp ý chủ server) - mỗi đơn 1 khung, ĐANG GIAO viền đỏ,
-  // trạng thái là nhãn màu, nút gọn nằm phải, đơn đã xong mờ đi.
-  const chipCss='font-size:11px;border-radius:6px;padding:2px 8px;white-space:nowrap;';
-  box.innerHTML=rows.map(r=>{
-    const dim=(r.status==='sold'||r.status==='claimed');
-    const chip=r.status==='chest'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#aab3c5">🎒 trong rương</span>'
-      :r.status==='sold'?'<span style="'+chipCss+'border:1px solid #4b5568;color:#8f97a8">💰 đã bán</span>'
-      :r.status==='claimed'?'<span style="'+chipCss+'border:1px solid #2f8f4f;color:#7fd98a">✅ đã nhận'+(r.deliveredTo?' → '+esc(r.deliveredTo):'')+'</span>'
-      :'<span style="'+chipCss+'border:1px solid var(--red);color:var(--red);font-weight:700">⏳ ĐANG GIAO</span>';
-    const btn=r.status==='delivering'
-      ?('<button style="padding:5px 10px;font-size:12px" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',true)">✅ đã giao</button>'
-       +'<button style="padding:5px 10px;font-size:12px;background:#3a4155" onclick="pcResolve(\\''+r.ownerId+'\\','+r.id+',false)">↩️ về rương</button>')
-      :'';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid '+(r.status==='delivering'?'var(--red)':'var(--line)')+';border-radius:10px;margin-top:6px'+(dim?';opacity:.55':'')+'">'
-      +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:14px"><b>'+esc(r.name)+'</b>'+(r.raid?' <span style="color:#ff8f8f;font-size:11px;font-weight:700">🔥 RAID</span>':'')
-      +' <span class="muted" style="font-size:11px">rương #'+r.id+(r.dex?' · paldex #'+r.dex:'')+'</span></div>'
-      +'<div class="muted" style="font-size:11.5px;margin-top:2px">'+esc(r.ownerName)+(r.ingameName?' - nhân vật <b>'+esc(r.ingameName)+'</b>':'')+' · '+esc(r.wonAt||'')+'</div>'
-      +'</div>'+chip+btn+'</div>';
-  }).join('');
 }
 // 🛒 SHOP ITEM (28/08): admin sửa bảng item (id/tên/giá/max/hình) rồi 💾 Lưu shop
 function itemShopFill(){
@@ -5207,14 +4688,13 @@ function renderMineTarget(){
 }
 // 🍀 09/09: ép quà hộp may mắn kế tiếp (dùng 1 lần) - cùng ô chọn người chơi của ép mìn
 // ⏸️ 09/09: công tắc GOM 5 trò (tab 👥) - mỗi trò gọi đúng API sẵn có của nó
-const GS_LB={mines:'💣 Dò Mìn',stairs:'🪜 Leo Thang',spm:'🚀 Phi Thuyền',pal:'🎁 Vòng quay Pal',stock:'📈 Sàn cổ phiếu',rut:'🎮 Rút KNB web → game',nap:'💬 Nạp KNB game → web'};
-function gsState(){const S=STATE||{};return {mines:(S.gameOpen||{}).mines!==false,stairs:(S.gameOpen||{}).stairs!==false,spm:!S.spmCfg||S.spmCfg.open!==false,pal:!S.palWheelCfg||S.palWheelCfg.open!==false,stock:!S.stock||S.stock.open!==false,rut:!S.dogBridge||S.dogBridge.rut!==false,nap:!S.dogBridge||S.dogBridge.nap!==false};}
+const GS_LB={mines:'💣 Dò Mìn',stairs:'🪜 Leo Thang',spm:'🚀 Phi Thuyền',stock:'📈 Sàn cổ phiếu',rut:'🎮 Rút KNB web → game',nap:'💬 Nạp KNB game → web'};
+function gsState(){const S=STATE||{};return {mines:(S.gameOpen||{}).mines!==false,stairs:(S.gameOpen||{}).stairs!==false,spm:!S.spmCfg||S.spmCfg.open!==false,stock:!S.stock||S.stock.open!==false,rut:!S.dogBridge||S.dogBridge.rut!==false,nap:!S.dogBridge||S.dogBridge.nap!==false};}
 async function gameSwitch(key,cb){
   const on=cb.checked, lb=GS_LB[key]||key;
   if(!on&&!await uiConfirm('ĐÓNG '+lb+'? Không nhận ván/cược/quay mới, ván đang chơi vẫn xong bình thường.','⏸ Đóng','btn-red')){cb.checked=true;return;}
   const call=key==='mines'||key==='stairs'?api('/api/games/open',{key:key,open:on})
     :key==='spm'?api('/api/spm/cfg',{open:on})
-    :key==='pal'?api('/api/palwheel/cfg',{open:on})
     :(key==='rut'||key==='nap')?api('/api/dogbridge/open',{key:key,open:on})
     :api('/api/stock/cfg',{open:on});
   call.then(()=>{toast(on?'▶️ Đã MỞ '+lb:'⏸ Đã ĐÓNG '+lb);refresh();}).catch(()=>{cb.checked=!on;});
@@ -5468,8 +4948,6 @@ function pClear(id){const i=document.getElementById('amt_'+id);if(i)i.value='';}
 function pSet(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/set',{userId:id,amount:+v}).then(()=>{toast('✅ Đã set');pClear(id);refresh();});}
 function pAdd(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/add',{userId:id,amount:+v}).then(()=>{toast('✅ Đã cộng');pClear(id);refresh();});}
 function pSub(id){const v=document.getElementById('amt_'+id).value;if(v==='')return toast('Nhập số');api('/api/points/subtract',{userId:id,amount:+v}).then(()=>{toast('✅ Đã trừ (đã rút KNB)');pClear(id);refresh();}).catch(()=>{});}
-// 🍀 đặt %/quay may mắn RIÊNG cho 1 người (cài sẵn cho bạn bè) - trống = báo lỗi, dùng nút ↺ để về mặc định
-// (pLuck/pLuckClear đã gỡ 04/09 cùng cột 🍀 - route /api/palwheel/luckrate vẫn còn nếu cần dựng lại)
 // 🪪 mức điểm danh / nghiện / thưởng chuỗi
 function txSave(){
   const g=id=>{const v=document.getElementById(id).value.trim();return v===''?null:Math.floor(Number(v))};
@@ -5752,11 +5230,9 @@ async function refresh(force){
   // không (potFeed luôn nạp 0 · potTake không ai gọi · txPotPaid hằng số 0).
   const pt=STATE.pot;
   if(pt){
-    const pj=pt.palJack||{};
     const mu=pt.mults||{}, muTxt=(k)=>'x'+((mu[k]&&mu[k].length)?mu[k]:[10,15,20]).join(' / x');
     document.getElementById('potInfo').innerHTML='Trúng 🏆 trong hộp 🍀 bốc ngẫu nhiên <b>'+muTxt('mines')
       +'</b> (Dò Mìn) · <b>'+muTxt('stairs')+'</b> (Leo Thang) nhân tiền cược'
-      +' · quay trúng <b>'+esc(pj.name||'Mimog')+'</b> = '+Number(pj.pot||0).toLocaleString('vi-VN')+' 🐕'
       +' · sàn cược 2 minigame '+Number(pt.minBet||0).toLocaleString('vi-VN')+'/ván';
     // Panel tự làm mới 3 giây/lần: CHỈ dựng khung 1 lần rồi cập nhật con số,
     // không vẽ lại cả khối - vẽ lại là cuốn mất số admin đang gõ dở (bug 20/08).
@@ -5795,11 +5271,7 @@ async function refresh(force){
   if(STATE.stock)skFill(STATE.stock);
   if(STATE.spmCfg)spFill(STATE.spmCfg);
   spLiveRender();
-  if(STATE.palWheelCfg)pwCfgFill(STATE.palWheelCfg);
-  if('rescuePoint' in STATE)rpFill(STATE.rescuePoint,true); // 🆘 soft: chỉ điền ô TRỐNG + dòng "Đang dùng điểm" (không đè số admin đang gõ/chưa lưu)
   if(STATE.loanCfg)loanCfgFill(STATE.loanCfg);
-  renderPalChests();
-  pcToggleApply();
   itemShopFill();giftFill();featRender();tlFill();if(!PBA)pbaLoad();   // 🐾 Pet Boss: tải 1 lần
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
@@ -5837,8 +5309,8 @@ async function refresh(force){
         item.innerHTML='<span>'+esc(name)+' → hộp kế tiếp ra '+(PZ[fl2[k]]||fl2[k])+'</span><button class="mini btn-red" onclick="luckyClear(\\''+k+'\\')">Xóa</button>';
         ll.appendChild(item);});}}
   // xổ số
-  // kênh khoe quay pal
-  renderGacha();
+  // 🏷️ nhóm hàng shop (trước gọi kèm trong renderGacha - đã gỡ cùng card khoe quay Pal)
+  icDraw(); icFillFilter();
   // kênh + role thông báo phát KNB
   renderGiveaway();
   // players table
@@ -5851,7 +5323,6 @@ async function refresh(force){
   // yêu cầu rút KNB
   renderWithdraw();
   renderDogLedger();
-  renderPalOrders();
   renderPalLinks();
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
