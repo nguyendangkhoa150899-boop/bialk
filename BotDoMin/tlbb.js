@@ -143,6 +143,13 @@ function viscii(buf) {
             for (const [ch, b] of Object.entries(m)) _rev[b] = ch;
         } catch { /* không có bảng: hiện byte thô */ }
     }
+    // 06/10: tên trong DB bị MySQL mã hoá 2 lần (byte VISCII -> UTF-8, vd "HuyềnSát" = 48 75 79 C2 AB 6E ...). Game đọc ngược
+    // lại nên trong game hiện đúng; mysql CLI trả byte UTF-8 -> bóc lớp UTF-8 trước rồi mới giải VISCII. Tên lưu đúng
+    // (VISCII thuần) không phải UTF-8 hợp lệ hoặc có ký tự > U+00FF -> giữ nguyên.
+    if (buf.some((b) => b >= 0x80)) {
+        const u = buf.toString('utf8');
+        if (!u.includes('�') && [...u].every((c) => c.charCodeAt(0) <= 0xff)) buf = Buffer.from(u, 'latin1');
+    }
     let s = '';
     for (const b of buf) s += _rev[b] || String.fromCharCode(b);
     return s;

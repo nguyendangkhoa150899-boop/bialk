@@ -710,6 +710,21 @@ function tlbbPollReceipts() {
     const cut = Date.now() - 30 * 86400000;
     for (const [f, t] of Object.entries(seen)) if (t < cut) delete seen[f];
 }
+// 🔤 06/10: đồng bộ tên nhân vật đã liên kết (userData.ingameName) theo GUID từ DB game - sửa tên lưu lỗi mã hoá
+// ("HuyÂềnSÃắt" -> "HuyềnSát", xem viscii() trong tlbb.js) và tự theo khi nhân vật đổi tên trong game.
+async function tlbbDongBoTen() {
+    let L; try { L = await tlbb.listChars(); } catch (e) { return writeLog('SYSTEM', `[TÊN NV] Không đọc được danh sách nhân vật: ${e.message}`); }
+    const ten = new Map(L.map((c) => [String(c.guid), c.name]));
+    let n = 0;
+    for (const [k, v] of Object.entries(dbCache)) {
+        if (k.startsWith('_') || !v || !v.tlbbGuid) continue;
+        const moi = ten.get(String(v.tlbbGuid));
+        if (!moi || moi === (v.ingameName || '').trim()) continue;
+        writeLog('ADMIN', `[TÊN NV] ${v.name || k} (GUID ${v.tlbbGuid}): "${v.ingameName || ''}" -> "${moi}"`);
+        v.ingameName = moi; n++;
+    }
+    if (n) saveDbNow();
+}
 // WEB -> GAME: dọn dòng game đã nhận khỏi hàng đợi .in
 function tlbbCleanupIn() {
     for (const [k, v] of Object.entries(dbCache)) {
@@ -7426,6 +7441,7 @@ client.once('ready', async (c) => {
     setInterval(tlbbPollReceipts, 5000);
     setInterval(tlbbPollLvReceipts, 5000);   // 02/10: Long Văn từ game -> Rương Ích Kỷ
     setInterval(tlbbCleanupIn, 30000);
+    setTimeout(tlbbDongBoTen, 15000); setInterval(tlbbDongBoTen, 6 * 3600 * 1000);   // 🔤 06/10 tên nhân vật theo GUID
     // 🏪 06/10 Thương Phố: dựng danh sách món được chuyển (file cho NPC) lúc khởi động + mỗi 6 giờ; phiếu 5 giây; dọn lệnh đã nhận 30 giây
     setTimeout(() => { const n = TP.napCho(); writeLog('SYSTEM', `[THƯƠNG PHỐ] ${n} loại món được chuyển`); }, 3000);
     setInterval(() => TP.napCho(), 6 * 3600 * 1000);
