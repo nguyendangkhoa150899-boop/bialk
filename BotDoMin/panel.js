@@ -168,8 +168,8 @@ function startPanel(ctx) {
             gameOpen: ctx.getGameOpen ? ctx.getGameOpen() : { mines: true, stairs: true },
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
             dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,
-            txSimple: ctx.getTxSimple ? ctx.getTxSimple() : null, minesCfg: ctx.getMinesCfg ? ctx.getMinesCfg() : null,   // 30/09 dogVangDayMax: ctx.getDogVangDayMax ? ctx.getDogVangDayMax() : null,   // 📅 11/09
-            dogNapRate: ctx.getDogNapRate ? ctx.getDogNapRate() : null,   // 💱 11/09
+            txSimple: ctx.getTxSimple ? ctx.getTxSimple() : null, minesCfg: ctx.getMinesCfg ? ctx.getMinesCfg() : null,   // 30/09
+            dogVangDayMax: ctx.getDogVangDayMax ? ctx.getDogVangDayMax() : null,   // 📅 11/09 (06/10: trước bị kẹt trong comment dòng trên -> ô "đổi vàng/ngày" không hiện số đang lưu)
             withdraw: {
                 live: !!wd.message,
                 channelId: (wd.channel && wd.channel.id) || db._withdrawChannelId || '',
@@ -206,7 +206,6 @@ function startPanel(ctx) {
             itemShopDayMode: ctx.getItemShopDayMode ? ctx.getItemShopDayMode() : null,   // 📅 'server' | 'user'
             itemShopImplantMax: ctx.getItemShopImplantMax ? ctx.getItemShopImplantMax() : null,   // 🧬
             itemShopGroupQuota: ctx.getItemShopGroupQuota ? ctx.getItemShopGroupQuota() : null,   // 🗂️ 12/09 v2
-            itemShopWtMax: ctx.getItemShopWtMax ? ctx.getItemShopWtMax() : null,   // 🌳
             loanCfg: ctx.getLoanCfg ? ctx.getLoanCfg() : null,
         };
     };
@@ -317,7 +316,7 @@ function startPanel(ctx) {
 
                 const body = req.method === 'POST' ? await readBody(req) : {};
 
-                // 04/09: cổng ADMIN THƯỜNG chỉ được XEM 2 tab 👥 Người chơi + 🎮 Palworld
+                // 04/09: cổng ADMIN THƯỜNG chỉ được XEM 2 tab 👥 Người chơi + 🐉 Thiên Long
                 // & KNB - mọi route GHI của 2 tab đó phải vào từ cổng SUPER. Chặn ở
                 // MỘT chỗ này (kèm ẩn/khoá nút phía client) cho khỏi sót route lẻ.
                 const VIEWONLY_PATHS = [
@@ -325,9 +324,9 @@ function startPanel(ctx) {
                     '/api/points/set', '/api/points/add', '/api/points/subtract', '/api/points/delete',
                     '/api/points/resetall', '/api/points/setall', '/api/points/reset-daily', '/api/points/addall',
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
-                    // tab 🎮: bảng rút/duyệt đơn/cấu hình pal/shop item
+                    // tab 🐉: bảng KNB/duyệt đơn/liên kết nhân vật/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/pal/set-name', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
+                    '/api/tlbb/lienket', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
@@ -351,7 +350,7 @@ function startPanel(ctx) {
                     '/api/drop/log', '/api/drop/rollback',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
-                    return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🎮 - muốn chỉnh phải vào cổng SUPER' });
+                    return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🐉 - muốn chỉnh phải vào cổng SUPER' });
                 }
                 // ===== 📈 SÀN CỔ PHIẾU: chỉnh thông số + thả tin =====
                 if (ctx.setStockCfg && req.method === 'POST' && path === '/api/stock/cfg') {
@@ -392,11 +391,6 @@ function startPanel(ctx) {
                         const im = ctx.setItemShopImplantMax(body.implantMax);
                         if (im.error) return sendJSON(res, 400, { ok: false, error: im.error });
                         r.implantMax = im.implantMax;
-                    }
-                    if (body.wtMax !== undefined && ctx.setItemShopWtMax) {
-                        const w = ctx.setItemShopWtMax(body.wtMax);
-                        if (w.error) return sendJSON(res, 400, { ok: false, error: w.error });
-                        r.wtMax = w.wtMax;
                     }
                     if (body.groupQuota !== undefined && ctx.setItemShopGroupQuota) {
                         const gg = ctx.setItemShopGroupQuota(body.groupQuota);
@@ -986,11 +980,6 @@ function startPanel(ctx) {
                         if (vr.error) return sendJSON(res, 400, { ok: false, error: vr.error });
                         r.vangDayMax = vr.vangDayMax;
                     }
-                    if (body.napRate !== undefined && ctx.setDogNapRate) {   // 💱 lưu chung 1 nút
-                        const nr = ctx.setDogNapRate(body.napRate);
-                        if (nr.error) return sendJSON(res, 400, { ok: false, error: nr.error });
-                        r.napRate = nr.napRate;
-                    }
                     return sendJSON(res, 200, r);
                 }
                 if (path === '/api/dogbridge/open') {
@@ -1113,7 +1102,6 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PANEL] Reset điểm danh cho ${count} ví`);
                     return sendJSON(res, 200, { ok: true, count });
                 }
-                // (Bảng Shop Pal riêng đã gộp vào bảng Rút KNB - không còn API riêng.)
                 if (path === '/api/withdraw/approve') {
                     const id = parseInt(body.id);
                     if (!ctx.approveWithdraw(id)) return sendJSON(res, 400, { ok: false, error: 'Yêu cầu không tồn tại hoặc đã xử lý' });
@@ -1125,11 +1113,6 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
 
-                // Liên kết Discord ↔ tên nhân vật trong game. Cầu KNB TỰ ĐỘNG
-                // give/take theo ingameName này - CHỈ admin đặt được (người chơi tự
-                // đặt là lỗ hổng: đặt tên nhân vật người khác rồi rút túi họ về ví mình).
-                // Tên rỗng = hủy liên kết. Lọc về ASCII in được cho khớp normalizeName
-                // của mod trong game.
                 // 🛠️ GM Thiên Long (29/09): chuyển tiếp sang panel GM nội bộ
                 if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act' || path === '/api/gm/doche' || path === '/api/gm/amkhi') {
                     try {
@@ -1189,7 +1172,10 @@ function startPanel(ctx) {
                         return sendJSON(res, 200, { ok: true, ...r });
                     } catch (e) { return sendJSON(res, 500, { ok: false, error: String(e.message).slice(0, 200) }); }
                 }
-                if (path === '/api/pal/set-name') {
+                // 🔗 Liên kết ví ↔ nhân vật Thiên Long (tên hoặc GUID). Cầu KNB chỉ chạy cho ví đã gắn.
+                // CHỈ admin đặt được (người chơi tự đặt là lỗ hổng: gắn nhân vật người khác rồi rút về ví mình).
+                // Tên rỗng = hủy liên kết. (06/10: đổi tên route cũ của bản Palworld)
+                if (path === '/api/tlbb/lienket') {
                     const uid = String(body.userId || '').trim();
                     if (!uid || !ctx.getDb()[uid]) return sendJSON(res, 400, { ok: false, error: 'Không tìm thấy ví này' });
                     // 29/09 NetCo4: nhập TÊN nhân vật Thiên Long (hoặc GUID) -> tra MySQL của game -> lưu tên + GUID
@@ -1459,13 +1445,13 @@ const HTML = `<!DOCTYPE html>
   .card.danger{border:1px solid #6b2326}
   .card.danger h3{color:#ff7a7a}
   #modalInput{margin-top:0;margin-bottom:18px}
-  /* 04/09: cổng admin thường - 2 tab 👥/🎮 CHỈ XEM: khoá mọi ô nhập/nút (kể cả hàng
+  /* 04/09: cổng admin thường - 2 tab 👥/🐉 CHỈ XEM: khoá mọi ô nhập/nút (kể cả hàng
      render động sau này vì là CSS), chừa ô 🔍 tìm kiếm. Server cũng chặn 403 song song. */
   body.viewonly #tab-user input,body.viewonly #tab-user button,body.viewonly #tab-user select,
-  body.viewonly #tab-pal input,body.viewonly #tab-pal button,body.viewonly #tab-pal select{pointer-events:none;opacity:.4}
+  body.viewonly #tab-tlbb input,body.viewonly #tab-tlbb button,body.viewonly #tab-tlbb select{pointer-events:none;opacity:.4}
   body.viewonly #tab-user #search{pointer-events:auto;opacity:1}
   /* 29/09 NetCo4: cổng admin THƯỜNG được sửa SHOP (server đã mở 4 route shop) - chỉ thẻ này mở khoá */
-  body.viewonly #tab-pal #shopCard input,body.viewonly #tab-pal #shopCard button,body.viewonly #tab-pal #shopCard select,body.viewonly #tab-pal #shopCard label{pointer-events:auto;opacity:1}
+  body.viewonly #tab-tlbb #shopCard input,body.viewonly #tab-tlbb #shopCard button,body.viewonly #tab-tlbb #shopCard select,body.viewonly #tab-tlbb #shopCard label{pointer-events:auto;opacity:1}
 .pwOff{display:none!important} /* 29/09 NetCo4: muc Palworld da tat */
 /* 📒 04/10: nhật ký - mỗi dòng 1 hàng gọn: giờ · icon · tên + chi tiết (cắt ...) · số tiền; bấm dòng = mở log gốc */
 .nkRow{display:grid;grid-template-columns:64px 24px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 10px 7px 8px;border-bottom:1px solid var(--line);border-left:3px solid transparent;font-size:13.5px;line-height:1.4;cursor:pointer}
@@ -1547,7 +1533,7 @@ const HTML = `<!DOCTYPE html>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
         <button data-tab="gm" onclick="tab('gm')">🛠️ GM Thiên Long</button>
         <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
-        <button data-tab="pal" onclick="tab('pal')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
+        <button data-tab="tlbb" onclick="tab('tlbb')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
         <button data-tab="log" onclick="tab('log')">📜 Log</button>
@@ -1906,8 +1892,7 @@ const HTML = `<!DOCTYPE html>
     <!-- (tab 📊 THỐNG KÊ đã bỏ 19/08) -->
 
     <!-- NGƯỜI CHƠI -->
-    <!-- RÚT KNB -->
-    <!-- PALWORLD -->
+    <!-- 💥 DROP BOSS -->
     <div id="tab-drop" class="hidden">
       <div class="card" id="dropCard">
         <h3>💥 Drop Boss - sửa đồ rơi của boss</h3>
@@ -2032,7 +2017,7 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Bấm vào ID để chép, rồi dán vào ô phát quà.</div>
       </div>
     </div>
-    <div id="tab-pal" class="hidden">
+    <div id="tab-tlbb" class="hidden">
       <div class="card">
         <h3>🎛️ Kênh KNB (bảng Discord)</h3>
         <label>Channel ID (kênh đăng bảng)</label>
@@ -2046,7 +2031,7 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h3>🔗 Liên kết tên trong game</h3>
         <div class="note">Gắn ví mini game với <b>nhân vật Thiên Long</b>: gõ <b>tên nhân vật</b> (hoặc <b>GUID</b>) rồi Lưu, bot tra database game và điền GUID. Cầu KNB chỉ chạy cho ví đã gắn. 1 nhân vật chỉ gắn 1 ví; người chơi không tự gắn được (chống rút trộm). Để trống + Lưu = hủy liên kết.</div>
-        <div id="palLinks"></div>
+        <div id="lienKetList"></div>
       </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
@@ -2066,9 +2051,9 @@ const HTML = `<!DOCTYPE html>
             <button class="btn-grey" onclick="icAdd()">➕ Thêm nhóm</button>
             <button class="btn-green" onclick="icSave(this)">💾 Lưu nhóm</button>
           </div>
-          <div class="note">🔒 = nhóm có luật riêng trong code (⭐ mua 1 lần · 🧬 hạn implant · 🏪 nhóm mặc định khi món chưa rõ nhóm) - đổi tên được, <b>xoá thì không</b>. Nhóm đang có món cũng không xoá được: đổi nhóm cho mấy món đó trước đã. <b>Mã nhóm</b> (chữ xám) là thứ lưu trong từng món - server tự đặt, không sửa được, đổi là món mất nhóm.</div>
+          <div class="note">🔒 = nhóm có luật riêng trong code (⭐ mua 1 lần · 🔥 Hàng giới hạn · 🏪 nhóm mặc định khi món chưa rõ nhóm) - đổi tên được, <b>xoá thì không</b>. Nhóm đang có món cũng không xoá được: đổi nhóm cho mấy món đó trước đã. <b>Mã nhóm</b> (chữ xám) là thứ lưu trong từng món - server tự đặt, không sửa được, đổi là món mất nhóm.</div>
         </div>
-        <div class="note">🎁 Quà admin tặng đã chuyển sang tab riêng <b>🎁 Quà tặng</b> cạnh Kho đồ (danh sách riêng, không dính shop) - đừng tạo quà ở đây nữa. Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot giao vào túi qua mod (phải đang online). <b>StaticItemId</b> = mã item trong game (chỉ chữ/số/_, tra "Code" trên paldb.cc - KHÔNG phải tên icon). <b>Nhóm</b> quyết định món nằm mục nào trên web (🗡️ Vũ khí / 🛡️ Giáp / 🧪 Tiêu hao). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
+        <div class="note">🎁 Quà admin tặng đã chuyển sang tab riêng <b>🎁 Quà tặng</b> cạnh Kho đồ (danh sách riêng, không dính shop) - đừng tạo quà ở đây nữa. Người chơi mua ở web (👤 HỒ SƠ → 🛒 Shop Item) + số lượng → bot đưa vào túi khi nhân vật đăng nhập / đổi bản đồ. <b>Mã item</b> = ID vật phẩm Thiên Long (tra ở tab 🛠️ GM Thiên Long, bấm ID để chép). <b>Nhóm</b> quyết định món nằm mục nào trên web (sửa tên nhóm ở bảng 🏷️ phía trên). <b>Hình</b>: bấm <b>📷 Up</b> chọn ảnh từ máy là xong - ảnh lưu vào <code>assets/itemimage/</code> và dùng được NGAY, không cần restart (trống = ô 📦). Sửa xong bấm 💾 Lưu shop.</div>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
           <span>📅 Giới hạn mua <b>mỗi món / ngày</b>:</span>
           <input class="mini-in" id="isDayMax" type="number" min="0" max="100000" placeholder="99" style="width:90px">
@@ -2082,18 +2067,12 @@ const HTML = `<!DOCTYPE html>
           <span>cái/ngày</span>
           <span class="muted" style="font-size:12px">(hạn riêng nhóm 🔥 Hàng giới hạn, luôn đếm theo người · lưu bằng nút 💾 ở trên · 0 = không giới hạn)</span>
         </div>
-        <div class="row pwOff" style="margin-top:6px;align-items:center;gap:8px">
-          <span>🌳 Implant <b>Cây Thế Giới</b>: <b>mỗi người</b> tối đa</span>
-          <input class="mini-in" id="isWtMax" type="number" min="0" max="1000" placeholder="1" style="width:70px">
-          <span>cái/ngày</span>
-          <span class="muted" style="font-size:12px">(riêng, không ăn vào hạn 🧬 ở trên · nhóm implant MIỄN hạn 📅 chung · lưu bằng nút 💾)</span>
-        </div>
         <div style="margin-top:8px">
           <b>🗂️ Hạn theo NHÓM</b> <span class="muted" style="font-size:12px">- mỗi nhóm chọn <b>🌐 toàn server</b> (cả server chia nhau, ai mua trước được trước) hoặc <b>👤 cá nhân</b> (mỗi người riêng) + số lượng/ngày · 0 = không giới hạn · nhóm có hạn thì MIỄN hạn 📅 chung · reset 00:00 giờ VN · lưu bằng nút 💾 ở trên</span>
           <div id="isGroupQuota" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap"></div>
         </div>
         <div class="row" style="margin-top:8px;align-items:center;gap:8px">
-          <input class="mini-in" id="isfFilter" placeholder="🔍 Lọc: gõ id, tên hoặc nhóm (vd: gift, thịt, Ammo_)" style="flex:1;min-width:200px" oninput="itemShopFilter()">
+          <input class="mini-in" id="isfFilter" placeholder="🔍 Lọc: gõ id, tên món hoặc tên nhóm" style="flex:1;min-width:200px" oninput="itemShopFilter()">
           <select class="mini-in" id="isfFilterCat" style="width:170px" onchange="itemShopFilter()">
             <option value="">Mọi nhóm</option>
           </select>
@@ -2141,7 +2120,7 @@ const HTML = `<!DOCTYPE html>
     <div id="tab-gift" class="hidden">
       <div class="card">
         <h2>🎁 Quà admin tặng <span class="muted" style="font-size:13px;font-weight:400">(admin + mod)</span></h2>
-        <div class="note">Danh sách <b>riêng</b>, không dính shop item - nên cùng một StaticItemId vừa bán ở shop vừa làm quà cũng không lẫn nhau nữa. Mỗi người <b>mỗi ngày nhận 1 lần</b> một quà (qua 00:00 nhận lại), số cái mỗi lần ở cột <b>Số cái/lần</b>. Bỏ tick <b>Phát</b> là quà biến mất với mọi người (dòng vẫn giữ). Người chơi nhận ở web: tab vàng <b>🎁 Quà</b> trong Hồ sơ, chỉ hiện khi còn quà chưa nhận hôm nay. Phải <b>online trong game</b> mới nhận được. Không dính tiền, không dính hạn ngày hay nợ.</div>
+        <div class="note">Danh sách <b>riêng</b>, không dính shop item - nên cùng một mã item vừa bán ở shop vừa làm quà cũng không lẫn nhau nữa. Mỗi người <b>mỗi ngày nhận 1 lần</b> một quà (qua 00:00 nhận lại), số cái mỗi lần ở cột <b>Số cái/lần</b>. Bỏ tick <b>Phát</b> là quà biến mất với mọi người (dòng vẫn giữ). Người chơi nhận ở web: tab vàng <b>🎁 Quà</b> trong Hồ sơ, chỉ hiện khi còn quà chưa nhận hôm nay. Phải <b>online trong game</b> mới nhận được. Không dính tiền, không dính hạn ngày hay nợ.</div>
         <div class="row" style="margin-top:8px;gap:8px">
           <button class="btn-green" onclick="giftAddRow();giftDirty(true)">➕ Thêm quà</button>
           <button class="btn-green" id="giftSaveBtn" onclick="giftSave()">💾 Lưu quà</button>
@@ -2192,7 +2171,7 @@ const HTML = `<!DOCTYPE html>
     <div id="tab-ikb" class="hidden"><!-- 🧰 05/10: tab riêng - để trong 📦 Kho đồ thì không thấy (nút đó dính pwOff = ẩn từ 29/09) -->
       <div class="card"><!-- 💰 05/10: người chơi bán ngọc 6 / Yếu Quyết trong Rương Ích Kỷ lấy KNB web -->
         <h2>💰 Rương Ích Kỷ: cho bán lấy KNB <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
-        <div class="note">Người chơi mở 🧰 Rương Ích Kỷ trên web, món thuộc nhóm đang bật có nút <b>💰 Bán</b> (KNB vào ví web ngay). Mọi món đều có nút <b>🗑️ Xoá</b>. Rương không ghi món đến từ đâu (shop, túi boss, quà), nên <b>giá bán tự kẹp ≤ <span id="ikbTran">90</span>% giá shop</b> nếu shop đang bán đúng món đó, chặn mua shop rồi bán lại. Áp ngay, không cần restart.</div>
+        <div class="note"><b style="color:#ff8a8a">⛔ 06/10: ĐÃ BỎ BÁN đồ trong rương</b> (chủ server chốt, ép người chơi đi 💎 Ghép Ngọc) - web không còn nút 💰 Bán, server từ chối mọi lệnh bán; cấu hình dưới đây giữ lại nhưng KHÔNG còn tác dụng. (Trước đây: người chơi mở 🧰 Rương Ích Kỷ, món thuộc nhóm đang bật có nút 💰 Bán, KNB vào ví web ngay.) Mọi món đều có nút <b>🗑️ Xoá</b>. Rương không ghi món đến từ đâu (shop, túi boss, quà), nên <b>giá bán tự kẹp ≤ <span id="ikbTran">90</span>% giá shop</b> nếu shop đang bán đúng món đó, chặn mua shop rồi bán lại. Áp ngay, không cần restart.</div>
         <div class="row blk" style="margin-top:8px">
           <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px"><label style="display:inline-flex;align-items:center;gap:7px;margin:0"><input id="ikbOn" type="checkbox" style="margin:0"> <b>Bật bán</b></label></div>
           <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px"><label style="display:inline-flex;align-items:center;gap:7px;margin:0"><input id="ikbOn_ngoc6" type="checkbox" style="margin:0"> 💎 Ngọc cấp 6</label></div>
@@ -2234,7 +2213,7 @@ const HTML = `<!DOCTYPE html>
     <div id="tab-give" class="hidden">
       <div class="card">
         <h2>📦 Kho đồ toàn game <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
-        <div class="note">Mỗi món có 2 nút. <b>🎁 Giao</b>: vào túi trong game ngay - họ phải <b>liên kết + đang ONLINE</b>. <b>🧰 Rương</b> (18/09): bỏ thẳng vào <b>Rương Ích Kỷ</b> của họ - <b>không</b> tính hạn mua 100/ngày, <b>không</b> tính sức chứa 100, <b>không</b> cần online, <b>không</b> cần liên kết; họ tự NHẬN vào game hoặc tặng tiếp, <b>00:00 không nhận là mất</b> như mọi món trong rương. Ghi chú hiện ở sổ "ai tặng" trong rương của họ. Dữ liệu 2.299 món kèm tên + mô tả tiếng Việt; icon lấy thẳng từ paldb. Mọi lượt đều ghi log. ⚠️ Dùng cho <b>đền bù / sự kiện</b> - spawn bừa là tự phá giá shop item của chính mình.</div>
+        <div class="note">Mỗi món có 2 nút. <b>🎁 Giao</b>: vào túi trong game ngay - họ phải <b>liên kết + đang ONLINE</b>. <b>🧰 Rương</b> (18/09): bỏ thẳng vào <b>Rương Ích Kỷ</b> của họ - <b>không</b> tính hạn mua 100/ngày, <b>không</b> tính sức chứa 100, <b>không</b> cần online, <b>không</b> cần liên kết; họ tự NHẬN vào game hoặc tặng tiếp, <b>00:00 không nhận là mất</b> như mọi món trong rương. Ghi chú hiện ở sổ "ai tặng" trong rương của họ. Danh mục vật phẩm Thiên Long (tên tiếng Việt) bot đọc từ panel GM lúc khởi động. Mọi lượt đều ghi log. ⚠️ Dùng cho <b>đền bù / sự kiện</b> - spawn bừa là tự phá giá shop item của chính mình.</div>
         <div class="row" style="margin-top:8px">
           <div style="flex:2"><label>Người nhận (mọi ví · 🎮 = đã liên kết · 🧰 = số món đang trong rương)</label><select id="gvTarget"></select></div>
           <div style="flex:2"><label>Hoặc gõ tên nhân vật khác (chỉ 🎁 Giao vào game)</label><input id="gvTargetFree" placeholder="trống = dùng ô bên trái"></div>
@@ -2605,7 +2584,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="card logSec hidden" id="logSec-dog">
         <h3>💰 Sổ biến động KNB</h3>
-        <div class="note">Chỉ ghi: <b>chuyển</b> giữa người chơi · <b>nạp / rút</b> KNB (vào/ra game) · <b>admin cộng/trừ</b> · mua pal, vay/trả nợ, hoàn tiền. <b>Không</b> ghi bất cứ gì của mini game (Tài Xỉu, Siêu Tài Xỉu, Phi Thuyền, Tiến Lên, Cổ phiếu, hũ) - từng ván tra ở mục riêng bên trên (22/09).</div>
+        <div class="note">Chỉ ghi: <b>chuyển</b> giữa người chơi · <b>nạp / rút</b> KNB (vào/ra game) · <b>admin cộng/trừ</b> · mua shop, vay/trả nợ, hoàn tiền. <b>Không</b> ghi bất cứ gì của mini game (Tài Xỉu, Siêu Tài Xỉu, Phi Thuyền, Tiến Lên, Cổ phiếu, hũ) - từng ván tra ở mục riêng bên trên (22/09).</div>
         <div id="dogLedger" class="hist"></div>
       </div>
     </div>
@@ -2687,7 +2666,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-green" onclick="txSave()">💾 Lưu vé taxi</button>
         </div>
         <div class="note">🚕 Người chơi <b>cháy ví</b> (còn ≤ "ví còn tối đa") và hôm nay đã <b>thua từ mức trên trở lên</b> thì thấy nút <b>🚕 Xu đi taxi về</b> cạnh số dư, bấm là nhận. Nhận xong phải chờ đủ số giờ đặt ở đây mới nhận lại được (mặc định 24h = mỗi ngày một lần).<br>
-          <b>Tiền thua đếm theo ví thật</b>: tổng mọi đồng ra vào ví trong ngày, trừ đi nạp/rút/chuyển/admin cộng/mua pal/vay/hoàn, nên đúng với mọi trò, kể cả trò thêm sau này. Sổ về 0 lúc <b>00:00 giờ VN</b>.</div>
+          <b>Tiền thua đếm theo ví thật</b>: tổng mọi đồng ra vào ví trong ngày, trừ đi nạp/rút/chuyển/admin cộng/mua shop/vay/hoàn, nên đúng với mọi trò, kể cả trò thêm sau này. Sổ về 0 lúc <b>00:00 giờ VN</b>.</div>
         <div class="note">Áp NGAY cho lượt nhận kế tiếp (cả Discord lẫn web), không cần restart. <b>Đủ chuỗi</b>: điểm danh đủ ngần này ngày LIÊN TIẾP là được ghi 1 gói thưởng chuỗi chờ nhận trên web. Số hiện trong mô tả lệnh /diemdanh, /nghien chỉ cập nhật sau restart bot (không ảnh hưởng số tiền thật).</div>
         <input id="search" placeholder="🔍 Tìm theo tên hoặc ID..." oninput="renderPlayers()" style="margin-top:12px">
         <div style="overflow-x:auto">
@@ -2701,7 +2680,7 @@ const HTML = `<!DOCTYPE html>
           <div class="note">Tắt mục nào thì mục đó <b>biến mất khỏi web</b> của người chơi và <b>mọi thao tác của mục đó bị server từ chối</b> - sửa trình duyệt cũng không lách được. Ván đang chơi dở vẫn rút tiền ra được bình thường. Không đụng tới 🪪 Cá nhân, 📒 Nợ, 🎁 Quà.</div>
           <div id="featBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
         </div>
-        <div class="note">Cột <b>📒 Nợ</b>: còn nợ là người chơi KHÔNG mua được đồ ở shop item và KHÔNG chuyển được pal vào game (14/09 bỏ hẳn nhãn nợ xấu). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
+        <div class="note">Cột <b>📒 Nợ</b>: còn nợ là người chơi KHÔNG mua được đồ ở shop item, KHÔNG nhận quà admin tặng, KHÔNG tặng đồ trong rương, KHÔNG ghép ngọc / mở vòng quay / nhận pet boss (rút KNB và đồ vào game vẫn được; 14/09 bỏ hẳn nhãn nợ xấu). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
       </div>
 
       <div class="card">
@@ -2718,7 +2697,7 @@ const HTML = `<!DOCTYPE html>
           <div style="flex:1"><label>🩸 Phí vay + lãi mỗi ngày (%)</label><input id="loanFee" type="number" step="1" placeholder="vd: 20"></div>
           <button class="btn-green" onclick="loanCfgSave()">💾 Lưu cấu hình vay</button>
         </div>
-        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. <b>14/09 bỏ hẳn nhãn NỢ XẤU</b>: giờ cứ CÒN NỢ MỘT ĐỒNG là bị khoá đúng 2 việc - không mua đồ ở <b>shop item</b> và không chuyển <b>pal vào game</b>. Chuyển tiền, chuyển KNB vào game, minigame, quay pal, cổ phiếu, vay thêm đều KHÔNG bị đụng. Trả sạch nợ là mở khoá ngay.</div>
+        <div class="note">Bảng có 3 nút: <b>💰 Vay</b> · <b>💳 Trả nợ</b> · <b>📄 Nợ của tôi</b>. % ở trên dùng cho CẢ HAI lớp: <b>phí cộng NGAY lúc vay</b> (20%: vay 10.000 ghi sổ 12.000) và <b>LÃI KÉP mỗi ngày qua mốc 00:00</b> trên CẢ CỤC NỢ - kể cả nợ admin ghi tay (12.000 qua 1 ngày = 14.400, lì 3 ngày = 20.736), có thông báo réo tên ở kênh bảng vay. Sửa 3 ô trên rồi <b>Lưu</b> + <b>Đăng lại bảng</b> để text mới có hiệu lực. <b>14/09 bỏ hẳn nhãn NỢ XẤU</b>: giờ cứ CÒN NỢ MỘT ĐỒNG là bị khoá đúng 3 việc - không mua đồ ở <b>shop item</b>, không nhận <b>quà admin tặng</b>, không <b>tặng đồ trong rương</b>. Chuyển tiền, chuyển KNB vào game, minigame, cổ phiếu, vay thêm đều KHÔNG bị đụng. Trả sạch nợ là mở khoá ngay.</div>
       </div>
 
       <div class="card danger">
@@ -2865,7 +2844,7 @@ async function runBtn(btn,label,fn){
 // Quyền theo CỔNG đang vào (server trả state.superAdmin): cổng SUPER thấy hết,
 // cổng admin thường ẩn + server chặn cứng.
 function epApply(on){document.querySelectorAll('.epOnly').forEach(el=>{el.style.display=on?'':'none';});
-  // 04/09: cổng thường = 2 tab 👥/🎮 chỉ XEM (CSS khoá mọi input/nút, server cũng chặn 403)
+  // 04/09: cổng thường = 2 tab 👥/🐉 chỉ XEM (CSS khoá mọi input/nút, server cũng chặn 403)
   document.body.classList.toggle('viewonly',!on);}
 
 async function login(){
@@ -2886,7 +2865,8 @@ function showApp(){
   if(CONG_MOD){modApp();return;}   // 📒 04/10: cổng mod chỉ có Nhật ký
   initSelects();
   // F5 đứng nguyên tab đang xem (lưu ở localStorage), không nhảy về tab đầu
-  const saved=localStorage.getItem('panel_tab');
+  const saved0=localStorage.getItem('panel_tab');
+  const saved=saved0==='pal'?'tlbb':saved0;   // 06/10: tab 'pal' đổi tên thành 'tlbb'
   // 'bc'/'xs' bỏ khỏi danh sách: ai từng mở 2 tab đó trước khi tắt thì nay về Big Small.
   // 28/08: thêm 'stock' (Cổ phiếu) - trước bị sót nên F5 ở tab đó cũng nhảy về Big Small.
   // 05/10: khôi phục MỌI tab đang có (trước chỉ 1 danh sách cũ -> F5 ở 🧰 Rương / 💎 Ghép Ngọc / 📊 Bảng rơi nhảy về tab đầu)
@@ -2902,7 +2882,7 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','pal','gm','drop','tb','log','gift','ikb','gn','gnx','vqx','br','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','log','gift','ikb','gn','gnx','vqx','br','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
   if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
@@ -2967,14 +2947,10 @@ async function resetDaily(){
   api('/api/points/reset-daily',{}).then(j=>{toast('🔄 Đã reset điểm danh cho '+j.count+' ví');refresh();}).catch(()=>{});
 }
 
-// ===== TAB PALWORLD =====
-// (Liên kết Discord ↔ SteamID đã bỏ: server Linux không còn cầu nối tự động,
-//  mọi giao dịch là ticket admin xử lý tay nên không cần biết SteamID nữa.)
-
 // Sổ biến động KNB - dữ liệu đến từ STATE (poll mỗi 3s) nên không cần gọi riêng.
 const DOG_TYPE_LABEL = {
   'admin+':'➕ Admin cộng', 'admin-':'➖ Admin trừ', 'transfer':'🔁 Chuyển',
-  'to-game':'🎮 Rút vào game', 'from-game':'💬 Nạp ra Discord', 'shop':'🐾 Mua pal', 'refund':'↩️ Hoàn tiền',
+  'to-game':'🎮 Rút vào game', 'from-game':'💬 Nạp ra Discord', 'shop':'🛒 Mua shop', 'refund':'↩️ Hoàn tiền',
   'vay':'🏦 Vay', 'trano':'💳 Trả nợ', 'taxi':'🚕 Xu đi taxi về',
 };
 
@@ -3345,9 +3321,10 @@ document.addEventListener('click',function(ev){
 document.addEventListener('keydown',function(ev){
   if(ev.key==='Enter'&&ev.target&&ev.target.id==='dpItemQ'){ev.preventDefault();dropItemSearch();}
 });
-function renderPalLinks(){
+// ===== TAB 🐉 THIÊN LONG & KNB: liên kết ví ↔ nhân vật =====
+function renderLienKet(){
   if(!STATE)return;
-  const box=document.getElementById('palLinks');
+  const box=document.getElementById('lienKetList');
   if(!box)return;
   // Đang gõ trong ô tên thì đừng vẽ lại (poll 3s sẽ nuốt chữ đang gõ)
   const af=document.activeElement;
@@ -3360,12 +3337,12 @@ function renderPalLinks(){
       '<td>'+Number(p.points||0).toLocaleString()+'</td>'+
       '<td><input class="mini-in" style="width:150px" placeholder="(chưa liên kết)" id="pn_'+p.id+'" value="'+esc(p.ingameName||'').replace(/"/g,'&quot;')+'"></td>'+
       '<td class="muted" style="font-size:12px">'+(p.tlbbGuid?esc(p.tlbbGuid):'-')+'</td>'+
-      '<td><button class="mini btn-green" onclick="palSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
+      '<td><button class="mini btn-green" onclick="lkSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
     '</table>';
 }
-function palSetName(id){
+function lkSetName(id){
   const v=document.getElementById('pn_'+id).value;
-  api('/api/pal/set-name',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{});
+  api('/api/tlbb/lienket',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{});
 }
 
 function initSelects(){
@@ -4225,7 +4202,8 @@ async function skToggle(){
 }
 // 📦 KHO ĐỒ TOÀN GAME (chỉ SUPER) - tải 1 lần khi mở tab, tìm client-side
 let GV=null,GVBUSY=false;
-const GV_TYPES={Weapon:'🗡️ Vũ khí',SpecialWeapon:'☄️ Vũ khí đặc biệt',Armor:'🛡️ Giáp',Accessory:'💍 Phụ kiện',Ammo:'🔫 Đạn',Consume:'🧪 Tiêu hao',Food:'🍖 Đồ ăn',Material:'🧱 Nguyên liệu',Blueprint:'📜 Bản vẽ',Glider:'🪂 Dù lượn',SphereModule:'🔮 Module cầu',Essential:'🔑 Trọng yếu'};
+// 06/10: món = tlbb.items() {id, n, kind}; kind do panel GM đặt theo file nguồn
+const GV_TYPES={'Vat pham':'🧪 Vật phẩm','Ngoc':'💎 Ngọc','Trang bi':'🗡️ Trang bị'};
 async function gvLoad(){
   if(GV)return;
   try{
@@ -4236,8 +4214,8 @@ async function gvLoad(){
     const cur=ts.value;
     ts.innerHTML=(j.wallets||[]).map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+(w.ingame?' · 🎮 '+esc(w.ingame):' · (chưa liên kết)')+(w.ichky?' · 🧰 '+w.ichky:'')+'</option>').join('')||'<option value="">(chưa có ví nào)</option>';
     if(cur)ts.value=cur;
-    const seen=[...new Set((j.items||[]).map(x=>x.t))];
-    document.getElementById('gvType').innerHTML='<option value="">Tất cả nhóm</option>'+seen.map(t=>'<option value="'+t+'">'+(GV_TYPES[t]||t)+'</option>').join('');
+    const seen=[...new Set((j.items||[]).map(x=>x.kind).filter(Boolean))];
+    document.getElementById('gvType').innerHTML='<option value="">Tất cả nhóm</option>'+seen.map(t=>'<option value="'+esc(t)+'">'+esc(GV_TYPES[t]||t)+'</option>').join('');
     gvRender();
   }catch(e){document.getElementById('gvStat').textContent='❌ '+e.message+' (tab này chỉ chạy ở cổng SUPER)';}
 }
@@ -4245,14 +4223,14 @@ function gvRender(){
   if(!GV)return;
   const q=(document.getElementById('gvFind').value||'').trim().toLowerCase();
   const ty=document.getElementById('gvType').value;
-  let rows=(GV.items||[]).filter(x=>(!ty||x.t===ty)&&(!q||x.n.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)||(x.d||'').toLowerCase().includes(q)));
+  let rows=(GV.items||[]).filter(x=>(!ty||x.kind===ty)&&(!q||x.n.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)||(x.d||'').toLowerCase().includes(q)));
   document.getElementById('gvStat').textContent=rows.length.toLocaleString()+' món khớp'+(rows.length>80?' - hiện 80 đầu, gõ thêm để lọc':'');
   rows=rows.slice(0,80);
   document.getElementById('gvList').innerHTML=rows.map(x=>{
-    const ic=x.i?'<img src="https://cdn.paldb.cc/image/Others/InventoryItemIcon/Texture/'+x.i+'.webp" loading="lazy" style="width:38px;height:38px;border-radius:7px;flex:0 0 auto" onerror="this.outerHTML=\\'📦\\'">':'<span style="font-size:24px">📦</span>';
+    const ic='<span style="font-size:24px">📦</span>';
     const rc=x.r>=4?'#ffd76a':(x.r===3?'#c9a2ff':(x.r===2?'#7ab6ff':'var(--tx)'));
     return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-top:5px;border:1px solid var(--line);border-radius:9px;background:var(--card2)">'+ic
-      +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+rc+'">'+esc(x.n)+' <span class="muted" style="font-weight:400;font-size:11px">'+esc(x.id)+' · '+(GV_TYPES[x.t]||x.t)+'</span></div>'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+rc+'">'+esc(x.n)+' <span class="muted" style="font-weight:400;font-size:11px">'+esc(x.id)+(x.kind?' · '+esc(GV_TYPES[x.kind]||x.kind):'')+'</span></div>'
       +(x.d?'<div class="muted" style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.d)+'</div>':'')+'</div>'
       +'<button class="mini btn-green gv-give" data-lbl="🎁 Giao" style="flex:0 0 auto" '+(GVBUSY?'disabled':'')+' onclick="gvGive(\\''+x.id+'\\',this,\\'game\\')">'+(GVBUSY&&GVBUSY.id===x.id&&GVBUSY.where==='game'?'⏳ Đang giao...':'🎁 Giao')+'</button>'
       +'<button class="mini btn-grey gv-give" data-lbl="🧰 Rương" title="Bỏ thẳng vào Rương Ích Kỷ - không tính hạn, không cần online/liên kết" style="flex:0 0 auto" '+(GVBUSY?'disabled':'')+' onclick="gvGive(\\''+x.id+'\\',this,\\'ruong\\')">'+(GVBUSY&&GVBUSY.id===x.id&&GVBUSY.where==='ruong'?'⏳...':'🧰 Rương')+'</button></div>';
@@ -4399,7 +4377,7 @@ function itemShopFill(){
 var ISDIRTY=false,ISSIG='',ISVER='';
 // 📅 10/09: giới hạn mua mỗi món/người/ngày (SUPER)
 // 🗂️ bảng hạn theo nhóm (12/09 v2)
-// 🏷️ 16/09: lấy từ danh sách nhóm admin đặt. Bỏ 2 nhóm có sổ hạn riêng (⭐ mua 1 lần, 🧬 hạn implant).
+// 🏷️ 16/09: lấy từ danh sách nhóm admin đặt. Bỏ 2 nhóm có sổ hạn riêng (⭐ mua 1 lần, 🔥 Hàng giới hạn = key 'implant').
 function GQ_CATS_NOW(){return ((STATE&&STATE.itemCats)||[]).filter(c=>c.key!=='important'&&c.key!=='implant').map(c=>[c.key,c.label]);}
 function gqRender(){const box=document.getElementById('isGroupQuota');if(!box)return;
   const GQ_CATS=GQ_CATS_NOW();const sig=GQ_CATS.map(g=>g[0]+'|'+g[1]).join(',');
@@ -4417,16 +4395,14 @@ async function isDayMaxSave(btn){
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
   const mode=(document.getElementById('isDayMode')||{}).value||'server';
   const imEl=document.getElementById('isImplantMax');const im=imEl&&imEl.value!==''?parseInt(imEl.value):undefined;
-  if(im!==undefined&&!(im>=0))return toast('❌ Hạn implant: nhập số ≥ 0');
-  const wtEl=document.getElementById('isWtMax');const wt=wtEl&&wtEl.value!==''?parseInt(wtEl.value):undefined;
-  if(wt!==undefined&&!(wt>=0))return toast('❌ Hạn Cây Thế Giới: nhập số ≥ 0');
+  if(im!==undefined&&!(im>=0))return toast('❌ Hạn 🔥 Hàng giới hạn: nhập số ≥ 0');
   const gq={};let gqErr=null;
   GQ_CATS_NOW().forEach(g=>{const x=document.getElementById('gqx_'+g[0]);const md=document.getElementById('gqm_'+g[0]);
     if(!x||x.value==='')return;const n=parseInt(x.value);
     if(!(n>=0))gqErr='❌ Hạn nhóm '+g[1]+': nhập số ≥ 0';
     gq[g[0]]={mode:(md||{}).value==='server'?'server':'user',per:(document.getElementById('gqp_'+g[0])||{}).value==='item'?'item':'group',max:n||0};});
   if(gqErr)return toast(gqErr);
-  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,wtMax:wt,groupQuota:gq}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🧬 implant '+(j.implantMax||'không giới hạn')+'/người/ngày':'')+(j.wtMax!==undefined?' · 🌳 '+(j.wtMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
+  await runBtn(btn,'Lưu...',()=>api('/api/itemshop/daymax',{dayMax:v,dayMode:mode,implantMax:im,groupQuota:gq}).then(j=>{toast('📅 Giới hạn mua/ngày: '+(j.dayMax||'không giới hạn')+' · '+(j.dayMode==='user'?'mỗi người':'cả server')+(j.implantMax!==undefined?' · 🔥 Hàng giới hạn '+(j.implantMax||'không giới hạn')+'/người/ngày':''));HOLD_SIG='';refresh();}));
 }
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
@@ -4514,7 +4490,7 @@ function giftDelRow(b){var tr=b.closest('tr');if(tr)tr.remove();giftDirty(true);
 function giftAddRow(g){
   g=g||{};var body=document.getElementById('giftBody');if(!body)return;var tr=document.createElement('tr');
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="gf-on" style="width:auto;margin:0" title="Đang phát / tắt" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45;giftDirty(true)"></td>'
-    +'<td><input class="mini-in gf-id" style="width:170px" placeholder="StaticItemId" oninput="giftDirty(true)" onchange="icRow(this.closest(&quot;tr&quot;),&quot;gf&quot;)"></td>'
+    +'<td><input class="mini-in gf-id" style="width:170px" placeholder="Mã item" oninput="giftDirty(true)" onchange="icRow(this.closest(&quot;tr&quot;),&quot;gf&quot;)"></td>'
     +'<td><input class="mini-in gf-name" style="width:150px" placeholder="Tên hiện" oninput="giftDirty(true)"></td>'
     +'<td><input class="mini-in gf-qty" type="number" min="1" style="width:80px" placeholder="số cái" oninput="giftDirty(true)"></td>'
     +'<td><input class="mini-in gf-note" style="width:200px" placeholder="ghi chú hiện trên web" oninput="giftDirty(true)"></td>'
@@ -4563,7 +4539,7 @@ function itemShopAddRow(it){
   var body=document.getElementById('itemShopBody');if(!body)return;
   var tr=document.createElement('tr');
   tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="isf-on" style="width:auto;margin:0" title="Đang bán / ẩn" onchange="this.parentNode.parentNode.style.opacity=this.checked?1:.45"></td>'
-    +'<td><input class="mini-in isf-id" style="width:170px" placeholder="StaticItemId" onchange="icRow(this.closest(&quot;tr&quot;),&quot;isf&quot;)"></td>'
+    +'<td><input class="mini-in isf-id" style="width:170px" placeholder="Mã item" onchange="icRow(this.closest(&quot;tr&quot;),&quot;isf&quot;)"></td>'
     +'<td><input class="mini-in isf-name" style="width:150px" placeholder="Tên hiện"></td>'
     +'<td><select class="mini-in isf-cat" style="width:110px">'+icOpts()+'</select></td>'
     +'<td><input class="mini-in isf-price" type="number" style="width:90px"></td>'
@@ -4989,7 +4965,7 @@ function dcNghienToggle(el){
 }
 
 function wdStart(){const c=document.getElementById('wdChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/withdraw/start',{channelId:c}).then(j=>{toast('▶️ Đã tạo bảng ở #'+j.name);refresh();});}
-async function wdStop(){if(!await uiConfirm('Tắt bảng KNB & Shop Pal?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
+async function wdStop(){if(!await uiConfirm('Tắt bảng KNB?','Tắt','btn-red'))return;api('/api/withdraw/stop',{}).then(()=>{toast('⏹️ Đã tắt');refresh();});}
 
 // ---- 📒 VAY NỢ ----
 function vayStart(){const c=document.getElementById('vayChannel').value.trim();if(!c)return toast('Nhập Channel ID');api('/api/vay/start',{channelId:c}).then(j=>{toast('▶️ Đã đặt bảng VAY NỢ ở #'+j.name);refresh();});}
@@ -5276,7 +5252,6 @@ async function refresh(force){
   // 📅 hạn mua/ngày: chỉ điền khi ô TRỐNG + không focus (không đè số admin đang gõ)
   const dmx=document.getElementById('isDayMax');if(dmx&&dmx.value===''&&document.activeElement!==dmx&&STATE.itemShopDayMax!==null&&STATE.itemShopDayMax!==undefined)dmx.value=STATE.itemShopDayMax;
   // chế độ đếm: điền theo state khi select chưa được admin đụng (cờ dataset.touched đặt lúc đổi)
-  const wtx=document.getElementById('isWtMax');if(wtx&&wtx.value===''&&document.activeElement!==wtx&&STATE.itemShopWtMax!==null&&STATE.itemShopWtMax!==undefined)wtx.value=STATE.itemShopWtMax;
   const imx=document.getElementById('isImplantMax');if(imx&&imx.value===''&&document.activeElement!==imx&&STATE.itemShopImplantMax!==null&&STATE.itemShopImplantMax!==undefined)imx.value=STATE.itemShopImplantMax;
   gqRender();gqFill(STATE.itemShopGroupQuota);
   const dmo=document.getElementById('isDayMode');if(dmo&&STATE.itemShopDayMode&&!dmo.dataset.touched&&document.activeElement!==dmo){dmo.value=STATE.itemShopDayMode;dmo.onchange=()=>{dmo.dataset.touched='1';};}
@@ -5323,7 +5298,7 @@ async function refresh(force){
   // yêu cầu rút KNB
   renderWithdraw();
   renderDogLedger();
-  renderPalLinks();
+  renderLienKet();
 }
 function mineClear(k){api('/api/mines/clear',{key:k}).then(()=>{toast('Đã xóa ép mìn');refresh();});}
 

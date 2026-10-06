@@ -7,8 +7,6 @@ const {
 const fs = require('fs');
 const { startPanel } = require('./panel');
 const { startWebPlay } = require('./webplay');
-// palworld.js: chỉ còn chuyển tiếp giveItem/countItem sang tlbb.js (Palworld đã tắt 29/09, dọn đợt 1 ngày 06/10).
-const pal = require('./palworld');
 const tlbb = require('./tlbb');
 const tlbbAudit = require('./tlbbaudit');
 const tuiBoss = require('./tuiboss');   // 🎒 01/10: túi đồ giết boss (game ghi Server/txt/NetCo4Web/tuiboss.log)   // 🏹 30/09: đọc Audit log -> ai hạ boss nào        // cau KNB Thien Long NetCo4
@@ -263,7 +261,7 @@ function updatePoints(userId, amount) {
 
 // ===== SỔ GHI BIẾN ĐỘNG KNB =====
 // Chỉ ghi các khoản ĐIỀU CHỈNH và CHUYỂN ĐỔI (admin cộng/trừ, chuyển giữa người chơi,
-// chuyển vào/ra game, mua pal). CỐ TÌNH không ghi tiền cược thắng/thua của mini game -
+// chuyển vào/ra game, mua shop). CỐ TÌNH không ghi tiền cược thắng/thua của mini game -
 // mỗi ván 3 game đều sinh giao dịch, ghi hết thì sổ thành rác không tra được gì.
 // 💰 22/09 chủ server: "Sổ KNB chỉ lưu chuyển / nạp / rút / admin thêm - không lưu log gì của
 // mấy mini game hết". Từng ván thắng thua đã có lịch sử riêng từng trò ở tab 📜 LOG.
@@ -271,7 +269,7 @@ function updatePoints(userId, amount) {
 const DOG_LEDGER_BO_QUA = new Set(['bet', 'jackpot', 'cophieu', 'tienlen', 'sieutx', 'roulette']);
 function logDog(type, userId, username, amount, note) {
     // 🚕 Tới được đây nghĩa là khoản này KHÔNG phải mini game (mini game đã return ở trên) ->
-    // trừ ngược khỏi sổ lãi-lỗ ngày, vì nạp/rút/chuyển/admin/mua pal/vay/hoàn không phải "thua bạc".
+    // trừ ngược khỏi sổ lãi-lỗ ngày, vì nạp/rút/chuyển/admin/mua shop/vay/hoàn không phải "thua bạc".
     // Cố tình để SAU dòng chặn: thêm loại mini game mới vào DOG_LEDGER_BO_QUA là tự động tính đúng.
     if (DOG_LEDGER_BO_QUA.has(type)) return;
     loNgayCong(userId, -amount);
@@ -566,21 +564,6 @@ function setDogVangDayMax(v) {
     writeLog('ADMIN', `[CẦU KNB] Panel đặt hạn đổi KNB -> VÀNG mỗi người/ngày = ${v ? v.toLocaleString() : 'không giới hạn'}`);
     return { ok: true, vangDayMax: v };
 }
-// 💱 11/09: TỈ LỆ NẠP game -> web (chủ server: "1 dog trong game = 2 dog ở ngoài" vì không cho rút, đồ đắt, shop game khoá).
-// dbCache._dogNapRate (mặc định 2, 0.1–100). Ví web cộng floor(took × rate); hạn ngày chiều nạp đếm theo SỐ WEB nhận được.
-const DOG_NAP_RATE_DEF = 2;
-function dogNapRate() {
-    const v = Number(dbCache._dogNapRate);
-    return Number.isFinite(v) && v >= 0.1 && v <= 100 ? v : DOG_NAP_RATE_DEF;
-}
-function setDogNapRate(v) {
-    v = Math.round(Number(v) * 100) / 100;
-    if (!Number.isFinite(v) || v < 0.1 || v > 100) return { error: 'Tỉ lệ nạp phải từ 0.1 đến 100 (1 = ngang giá, 2 = 1 game ăn 2 web)' };
-    dbCache._dogNapRate = v;
-    saveDbNow();
-    writeLog('ADMIN', `[CẦU KNB] Panel đặt tỉ lệ NẠP game→web = 1 : ${v}`);
-    return { ok: true, napRate: v };
-}
 function dogBridgeToday(user) {
     const d = vnDayISO(Date.now());
     if (!user.dogDay || user.dogDay.day !== d) user.dogDay = { day: d, rut: 0, nap: 0, vang: 0 };
@@ -605,9 +588,6 @@ function dogBridgeDayCheck(user, key, amount) {
 //    Đại Lý 154,170), game trừ KNB rồi ghi phiếu; tlbbPollReceipts() cộng ví 1:1. Không giới hạn.
 //  - Liên kết: admin đặt tên nhân vật ở panel -> tlbb.findChar -> lưu user.tlbbGuid.
 const TLBB_NPC_HINT = 'NPC "Ví Web" ở Lạc Dương (203,323) hoặc Đại Lý (154,170)';
-async function webNapGold() {
-    return { error: '⛔ Đổi vàng đã tắt (tính năng cũ, không dùng cho Thiên Long)' };
-}
 
 // 29/09: kind = 'knb' (mặc định, qua NPC Ví Web .in/.done) hoặc 'vang' = VÀNG KHÔNG KHOÁ 1 KNB = 1 vàng
 // (qua hàng đợi quà panel GM -> quatang.lua AddMoney, giống lệnh !!addmoney). 2 loại CHUNG hạn ngày.
@@ -664,10 +644,6 @@ async function webRutGame(userId, amount, kind) {
     saveDbNow();
     writeLog('ADMIN', `[RÚT WEB] ${u.name || userId} chuyển ${amount} KNB vào game "${gameName}" (${r.txid})`);
     return { ok: true, message: `✅ Đã gửi ${amount.toLocaleString()} KNB cho ${gameName}. Vào game hoặc đổi bản đồ để nhận.`, balance: getUserData(userId).points || 0 };
-}
-
-async function webNapGame() {
-    return { error: `💬 Chuyển KNB từ game ra web: vào game gặp ${TLBB_NPC_HINT}, chọn số KNB. Ví web tự cộng trong vài giây.` };
 }
 
 // GAME -> WEB: đọc phiếu NPC Ví Web mỗi 5 giây. Chống cộng trùng: tên phiếu ghi vào
@@ -779,8 +755,9 @@ function tlbbPollLvReceipts() {
 // bảng phong thần, không còn xiết ví về sàn 1.000, không còn cắt tiền điểm danh.
 // LUẬT DUY NHẤT BÂY GIỜ - cứ CÒN NỢ MỘT ĐỒNG (vay hoặc admin ghi) là bị chặn 2 việc:
 //    ① KHÔNG mua được đồ ở 🛒 SHOP ITEM
-//    ② KHÔNG chuyển được PAL từ rương vào game
-// Mọi thứ khác (chuyển tiền, chuyển KNB vào game, minigame, quay/mua pal, cổ
+//    ② KHÔNG nhận quà / quay thưởng trên web: 🎁 quà admin tặng, 🍀 vòng quay, 💎 ghép ngọc,
+//       🐾 pet boss, tặng đồ trong 🧰 Rương Ích Kỷ (mỗi chỗ gọi debtBlock).
+// Mọi thứ khác (chuyển tiền, rút KNB / đồ trong rương vào game, minigame, cổ
 // phiếu, vay thêm trong hạn mức) KHÔNG bị đụng tới. Trả sạch nợ là mở lại ngay lập tức.
 // Lãi vẫn đẻ y như cũ - xem debtAccrue.
 // 04/09 (tối) - chủ server chốt lại lần nữa, cả 2 lớp cùng feePct (mặc định 20):
@@ -848,7 +825,7 @@ function debtAccrue(userId) {
 
 // Trừ một khoản vào sổ nợ (KHÔNG đụng ví - chỗ gọi tự lo tiền). Trừ nợ vay trước,
 // dư mới trừ nợ admin (giờ cả 2 đều có lãi - thứ tự giữ nguyên cho quen sổ sách).
-// Trả sạch nợ là mở lại ngay quyền mua shop item + chuyển pal vào game.
+// Trả sạch nợ là mở lại ngay quyền mua shop item + nhận quà (xem debtBlock).
 function debtReduce(d, amount) {
     let rest = amount;
     const payLoan = Math.min(d.loan || 0, rest);
@@ -925,7 +902,7 @@ function debtPay(userId, username, amount) {
     updatePoints(userId, -want);
     debtReduce(d, want);
     if (debtTotal(u) <= 0) {
-        vayAnnounce(`🎉 <@${userId}> vừa trả SẠCH NỢ - mua shop item và chuyển pal vào game lại thoải mái!`, [userId]);
+        vayAnnounce(`🎉 <@${userId}> vừa trả SẠCH NỢ - mua 🛒 Shop Item, nhận quà, quay vòng quay lại thoải mái!`, [userId]);
     }
     logDog('trano', userId, username, -want, `trả nợ (còn ${debtTotal(u).toLocaleString()})`);
     writeLog('ADMIN', `[VAY NỢ] ${username} trả ${want.toLocaleString()} | còn nợ vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()} | Số dư: ${(u.points || 0).toLocaleString()}`);
@@ -1013,7 +990,7 @@ async function debtSosPost(userId) {
 
 // 🚧 14/09 - CỔNG CHẶN DUY NHẤT CỦA HỆ THỐNG NỢ.
 // Còn nợ một đồng là chặn. Trả null nếu sạch nợ, trả CHUỖI LỖI nếu đang nợ.
-// Chỉ dùng cho đúng 2 chỗ chủ server chốt: mua shop item + chuyển pal vào game.
+// Dùng ở: mua shop item, nhận quà admin, tặng đồ rương, vòng quay, ghép ngọc, pet boss.
 function debtBlock(userId, viec) {
     debtAccrue(userId);
     const total = debtTotal(getUserData(userId));
@@ -1062,7 +1039,7 @@ function debtPayAdmin(userId, username, amount) {
     d.admin -= want;
     if (debtTotal(u) <= 0) { d.loan = 0; d.admin = 0; d.bToday = 0; delete d.bad; }   // sạch nợ = hạn mức ngày mở lại
     if (debtTotal(u) <= 0) {
-        vayAnnounce(`🎉 <@${userId}> vừa trả SẠCH NỢ - mua shop item và chuyển pal vào game lại thoải mái!`, [userId]);
+        vayAnnounce(`🎉 <@${userId}> vừa trả SẠCH NỢ - mua 🛒 Shop Item, nhận quà, quay vòng quay lại thoải mái!`, [userId]);
     }
     logDog('trano', userId, username, -want, `trả nợ admin (còn ${debtTotal(u).toLocaleString()})`);
     writeLog('ADMIN', `[VAY NỢ] ${username} trả ${want.toLocaleString()} nợ admin | còn vay ${d.loan.toLocaleString()} + admin ${d.admin.toLocaleString()}`);
@@ -1072,7 +1049,7 @@ function debtPayAdmin(userId, username, amount) {
 }
 
 // Admin ghi nợ tay (panel tab 👥): cộng vào khoản 'admin' - KHÔNG trần. Số âm =
-// giảm nợ đã ghi. Dùng để ghi "mua pal/lõi trong game còn thiếu tiền".
+// giảm nợ đã ghi. Dùng để ghi "mua đồ trong game còn thiếu tiền".
 // 04/09 (tối): nợ admin giờ CŨNG đẻ lãi ngày như nợ vay (xem debtAccrue) - vì vậy
 // tính lãi phần nợ cũ dồn tới hôm nay TRƯỚC rồi mới cộng khoản mới (khoản mới
 // chỉ bắt đầu chịu lãi từ mốc 00:00 kế tiếp, không bị dính lãi hồi tố).
@@ -1098,7 +1075,7 @@ function adminDebtClear(userId) {
     return { ok: true, cleared: was };
 }
 
-// ---- bảng 📒 VAY NỢ trong kênh Discord (khuôn y bảng KNB & Shop Pal) ----
+// ---- bảng 📒 VAY NỢ trong kênh Discord (khuôn y bảng KNB) ----
 const vayState = { channel: null, message: null };
 function getVayMessageData() {
     const rows = debtList();
@@ -1107,13 +1084,13 @@ function getVayMessageData() {
     const feeEx1 = Math.round(feeEx0 * (1 + lc.feePct / 100));                           // để qua 1 ngày
     const feeEx3 = Math.round(feeEx0 * Math.pow(1 + lc.feePct / 100, 3));                // lì 3 ngày
     const lines = [
-        `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp pal. 🙏`,
+        `Cháy túi giữa ván? Thua con đề sát nút? Vay liền tay - không cần admin duyệt, không cần thế chấp đồ. 🙏`,
         '',
         `**💰 Vay** - bơm tối đa **${lc.dailyMax.toLocaleString()}/ngày** thẳng vào ví, sổ nợ ôm tối đa **${lc.cap.toLocaleString()}**. ` +
             `Phí **${lc.feePct}%** cộng NGAY lúc vay: vay 10.000 là ghi sổ **${feeEx0.toLocaleString()}** 😏`,
-        `Chưa trả thì cứ qua mốc **00:00** là CẢ CỤC NỢ (kể cả nợ admin ghi) **LÃI KÉP ${lc.feePct}%/NGÀY**: ghi sổ ${feeEx0.toLocaleString()} để 1 ngày thành **${feeEx1.toLocaleString()}**, lì 3 ngày thành **${feeEx3.toLocaleString()}** - nợ đẻ nhanh hơn pal, trả sớm đi. 💀`,
-        `⛔ **CÒN NỢ MỘT ĐỒNG là bị khoá 2 việc**: 🚫 không mua được đồ ở **SHOP ITEM** · 🚫 không chuyển được **PAL vào game**. ` +
-            `Mấy thứ khác (chuyển tiền, chuyển KNB vào game, minigame, quay pal, cổ phiếu) vẫn chơi bình thường.`,
+        `Chưa trả thì cứ qua mốc **00:00** là CẢ CỤC NỢ (kể cả nợ admin ghi) **LÃI KÉP ${lc.feePct}%/NGÀY**: ghi sổ ${feeEx0.toLocaleString()} để 1 ngày thành **${feeEx1.toLocaleString()}**, lì 3 ngày thành **${feeEx3.toLocaleString()}** - nợ đẻ nhanh hơn boss rớt đồ, trả sớm đi. 💀`,
+        `⛔ **CÒN NỢ MỘT ĐỒNG là bị khoá 2 việc**: 🚫 không mua được đồ ở **🛒 SHOP ITEM** · 🚫 không nhận **quà tặng / vòng quay / ghép ngọc / pet boss**. ` +
+            `Mấy thứ khác (chuyển tiền, rút KNB / đồ trong rương vào game, minigame, cổ phiếu) vẫn chơi bình thường.`,
         `**💳 Trả nợ** tại đây hoặc trên web - trả sạch là mở khoá NGAY, khỏi chờ ai duyệt. ✨`,
         '',
         rows.length ? `**📋 SỔ NỢ (${rows.length} con nợ):**` : `**📋 SỔ NỢ:** chưa ai nợ đồng nào - cả server sạch nợ, hơi lạ đấy 🤨`,
@@ -1389,336 +1366,18 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null, msg = '') {
 
 // (Shop vật phẩm + đổi vàng đã bỏ khỏi Discord - bán ở sạp trong game.)
 
-// passives.json: chỉ còn dùng để xếp HẠNG implant ở shop item (implantTier) - phần pal đã gỡ 06/10.
-let PASSIVE_DATA = { list: [] };
-try {
-    PASSIVE_DATA = JSON.parse(fs.readFileSync(require('path').join(__dirname, 'passives.json'), 'utf8'));
-} catch (e) {
-    console.error('Khong doc duoc passives.json (hang implant o shop item se ve normal):', e.message);
-}
-function passiveCatalog() { return Array.isArray(PASSIVE_DATA.list) ? PASSIVE_DATA.list : []; }
-
-// ===== 🛒 SHOP ITEM (28/08): mua item game + số lượng -> giao thẳng vào túi qua mod =====
-// Danh mục admin tự quản ở panel (dbCache._itemShop): { id (StaticItemId game), name, price, max }.
-// Bộ mặc định: seed 1 LẦN khi DB chưa từng có _itemShop (deploy mới là có sẵn). Admin sửa/
-// xoá sau thì thôi (kể cả xoá sạch thành [] cũng KHÔNG seed lại - chỉ seed khi undefined).
-// StaticItemId tra từ paldb (mục "Code"); hình ở assets/itemimage/.
-const DEFAULT_ITEM_SHOP = [
-    { cat: 'consume', id: 'ExpBoost_04', name: 'Sách Huấn Luyện (XL)', price: 50, max: 999, img: 'T_itemicon_Consume_ExpBoost_04.webp' },
-    { cat: 'consume', id: 'AffectionFruit_01', name: 'Đào Tâm Giao', price: 2500, max: 999, img: 'T_itemicon_Consume_AffectionFruit_01.webp' },
-    { cat: 'consume', id: 'LvUP_01', name: 'Tinh Thể Bồi Dưỡng', price: 1300, max: 999, img: 'T_itemicon_Consume_LvUP_01.webp' },
-    { cat: 'armor', id: 'AncientArmorWeight_5', name: 'Áo Giáp Cổ Đại Hạng Nhẹ (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientArmorWeight.webp' },
-    { cat: 'armor', id: 'AncientHelmet_5', name: 'Mũ Cổ Đại (Huyền Thoại)', price: 40000, max: 99, img: 'T_itemicon_Armor_AncientHelmet.webp' },
-    { cat: 'consume', id: 'AncientParts2', name: 'Lõi Văn Minh Cổ Đại', price: 500, max: 999, img: 'T_itemicon_Material_AncientParts2.webp' },
-    // 04/09: 12 vũ khí Huyền Thoại - Code chuẩn theo paldb (Legendary = hậu tố _5;
-    // riêng LaserMiningTool chỉ có 1 bản legendary không hậu tố, cần câu Depresso
-    // là FishingRod_03_2 - FishingRod_6 chỉ là TÊN ICON, không phải id). Tên = paldb /vi.
-    { cat: 'weapon', id: 'BeamLauncher_5', name: 'Thiết Bị Phóng Chùm Tia (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_BeamLauncher.webp' },
-    { cat: 'weapon', id: 'ElectricArcAssaultRifle_5', name: 'Súng Trường Plasma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_ElectricArcAssaultRifle.webp' },
-    { cat: 'weapon', id: 'DroneLauncher_5', name: 'Thiết Bị Phóng Drone (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_DroneLauncher.webp' },
-    { cat: 'weapon', id: 'SkyBeamSword_5', name: 'Kiếm Laser (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBeamSword.webp' },
-    { cat: 'weapon', id: 'SkyGrenadeLauncher_5', name: 'Súng Phóng Lựu Chiến Thuật (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyGrenadeLauncher.webp' },
-    { cat: 'weapon', id: 'SkyAssaultRifle_5', name: 'Súng Trường Tấn Công Hạng Nặng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyAssaultRifle.webp' },
-    { cat: 'weapon', id: 'SkyShotgun_5', name: 'Súng Săn Nguyên Mẫu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyShotgun.webp' },
-    { cat: 'weapon', id: 'LaserMiningTool', name: 'Máy Cắt Plasma Đa Năng (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_LaserMiningTool.webp' },
-    { cat: 'weapon', id: 'SkyBow_5', name: 'Cung Cơ Khí (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkyBow.webp' },
-    { cat: 'weapon', id: 'SkySubmachineGun_5', name: 'Súng Tiểu Liên Chiến Đấu (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_SkySubmachineGun.webp' },
-    { cat: 'weapon', id: 'YakushimaBlade003_5', name: 'Terraprisma (Huyền Thoại)', price: 45000, max: 99, img: 'T_itemicon_Weapon_YakushimaBlade003.webp' },
-    { cat: 'weapon', id: 'FishingRod_03_2', name: 'Cần Câu Cao Cấp (Depresso)', price: 70000, max: 99, img: 'T_itemicon_Weapon_FishingRod_6.webp' },
-    // 04/09 (chiều): 9 viên ĐÁ THỨC TỈNH (Awakening Crystal) 10k/viên - code chuẩn paldb
-    // PalAwakening_<Hệ>, tên tiếng Việt theo paldb /vi. Ghép vào DB đang chạy bằng cờ
-    // RIÊNG _migItemShopAwaken0409 (không chạy lại merge tổng).
-    { cat: 'consume', id: 'PalAwakening_Water', name: 'Tinh Thể Thức Tỉnh Hệ Nước', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Water.webp' },
-    { cat: 'consume', id: 'PalAwakening_Electric', name: 'Tinh Thể Thức Tỉnh Hệ Sấm', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Electric.webp' },
-    { cat: 'consume', id: 'PalAwakening_Ground', name: 'Tinh Thể Thức Tỉnh Hệ Đất', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Ground.webp' },
-    { cat: 'consume', id: 'PalAwakening_Grass', name: 'Tinh Thể Thức Tỉnh Hệ Cỏ', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Grass.webp' },
-    { cat: 'consume', id: 'PalAwakening_Fire', name: 'Tinh Thể Thức Tỉnh Hệ Lửa', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Fire.webp' },
-    { cat: 'consume', id: 'PalAwakening_Ice', name: 'Tinh Thể Thức Tỉnh Hệ Băng', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Ice.webp' },
-    { cat: 'consume', id: 'PalAwakening_Dragon', name: 'Tinh Thể Thức Tỉnh Hệ Rồng', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Dragon.webp' },
-    { cat: 'consume', id: 'PalAwakening_Dark', name: 'Tinh Thể Thức Tỉnh Hệ Bóng Tối', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Dark.webp' },
-    { cat: 'consume', id: 'PalAwakening_Neutral', name: 'Tinh Thể Thức Tỉnh Hệ Thường', price: 10000, max: 999, img: 'T_itemicon_Consume_PalAwakening_Neutral.webp' },
-    // 07/09: 💍 PHỤ KIỆN - code + tên VN + tác dụng đối chiếu registry save-editor (icon->code
-    // khớp 38/38, lưu ý game gõ sai "Dargon" trong code nhẫn Elphidran). Không ghi giá = 60k.
-    { cat: 'accessory', id: 'Accessory_AirDash3', name: 'Giày Lướt Gió Ba Bước', price: 20000, max: 99, img: 'T_itemicon_Accessory_AirDash.webp', note: 'Lướt nhanh trên không 3 lần' },
-    { cat: 'accessory', id: 'Otomo_PalExp_Increase_3', name: 'Chuông Thúc Đẩy Tăng Trưởng (Cấp 3)', price: 20000, max: 99, img: 'T_itemicon_Accessory_Otomo_Exp_up.webp', note: 'Tăng kinh nghiệm nhận được cho Pal (cấp 3)' },
-    { cat: 'accessory', id: 'Accessory_PPAT_1', name: 'Huy Hiệu Dogen', price: 50000, max: 99, img: 'T_itemicon_Accessory_PPAT_1.webp', note: 'Tăng Tấn Công người chơi + Tấn Công Pal' },
-    { cat: 'accessory', id: 'Accessory_PPDF_1', name: 'Huy Hiệu Silvegis', price: 50000, max: 99, img: 'T_itemicon_Accessory_PPDF_1.webp', note: 'Tăng Phòng Thủ người chơi + Phòng Thủ Pal' },
-    { cat: 'accessory', id: 'Accessory_HCMW_1', name: 'Bùa Hộ Mệnh Thương Nhân Lang Thang', price: 50000, max: 99, img: 'T_itemicon_Accessory_HCMW_1.webp', note: 'Chịu nhiệt/lạnh tốt + tăng giới hạn sức mang' },
-    { cat: 'accessory', id: 'Accessory_HCHP_1', name: 'Bùa Hộ Mệnh Đội Tiền Trạm', price: 50000, max: 99, img: 'T_itemicon_Accessory_HCHP_1.webp', note: 'Chịu nhiệt/lạnh tốt + tăng đáng kể Máu' },
-    { cat: 'accessory', id: 'Accessory_ExplosionResist', name: 'Trang Phục Chống Cháy Nổ', price: 50000, max: 99, img: 'T_itemicon_Accessory_ExplosionResist.webp', note: 'Miễn nhiễm sát thương cháy nổ' },
-    { cat: 'accessory', id: 'Accessory_DFHP_1', name: 'Đai Warsect Terra', price: 50000, max: 99, img: 'T_itemicon_Accessory_DFHP_1.webp', note: 'Tăng đáng kể Phòng Thủ và Máu' },
-    { cat: 'accessory', id: 'Accessory_WKMC_1', name: 'Đai Dụng Cụ Dân Đảo', price: 50000, max: 99, img: 'T_itemicon_Accessory_WKMC_1.webp', note: 'Tăng sức mang + tốc độ làm việc' },
-    // 9 gậy chỉ huy: tăng TẤN CÔNG Pal cùng chiến đấu + buff sát thương theo hệ
-    { cat: 'accessory', id: 'Otomo_ATNormal_ElementBoost_1', name: 'Gậy Chỉ Huy Thiên Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATNormal_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Thường' },
-    { cat: 'accessory', id: 'Otomo_ATFire_ElementBoost_1', name: 'Gậy Chỉ Huy Viêm Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATFire_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Lửa' },
-    { cat: 'accessory', id: 'Otomo_ATWater_ElementBoost_1', name: 'Gậy Chỉ Huy Hải Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATWater_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Nước' },
-    { cat: 'accessory', id: 'Otomo_ATElectricity_ElementBoost_1', name: 'Gậy Chỉ Huy Lôi Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATElectricity_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Sấm' },
-    { cat: 'accessory', id: 'Otomo_ATLeaf_ElementBoost_1', name: 'Gậy Chỉ Huy Tinh Linh Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATLeaf_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Cỏ' },
-    { cat: 'accessory', id: 'Otomo_ATIce_ElementBoost_1', name: 'Gậy Chỉ Huy Băng Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATIce_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Băng' },
-    { cat: 'accessory', id: 'Otomo_ATEarth_ElementBoost_1', name: 'Gậy Chỉ Huy Địa Đế', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATEarth_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Đất' },
-    { cat: 'accessory', id: 'Otomo_ATDark_ElementBoost_1', name: 'Gậy Chỉ Huy Minh Vương', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATDark_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Bóng Tối' },
-    { cat: 'accessory', id: 'Otomo_ATDragon_ElementBoost_1', name: 'Gậy Chỉ Huy Thần Long', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_ATDragon_ElementBoost_1.webp', note: 'Tăng Tấn Công Pal cùng đánh + buff sát thương hệ Rồng' },
-    // 9 bùa hộ mệnh: tăng PHÒNG THỦ Pal cùng chiến đấu + buff sát thương theo hệ
-    { cat: 'accessory', id: 'Otomo_DFNormal_ElementBoost_1', name: 'Bùa Hộ Mệnh Hartalis', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFNormal_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Thường' },
-    { cat: 'accessory', id: 'Otomo_DFFire_ElementBoost_1', name: 'Bùa Hộ Mệnh Blazamut', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFFire_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Lửa' },
-    { cat: 'accessory', id: 'Otomo_DFWater_ElementBoost_1', name: 'Bùa Hộ Mệnh Neptilius', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFWater_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Nước' },
-    { cat: 'accessory', id: 'Otomo_DFElectricity_ElementBoost_1', name: 'Bùa Hộ Mệnh Orserk', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFElectricity_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Sấm' },
-    { cat: 'accessory', id: 'Otomo_DFLeaf_ElementBoost_1', name: 'Bùa Hộ Mệnh Lyleen', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFLeaf_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Cỏ' },
-    { cat: 'accessory', id: 'Otomo_DFIce_ElementBoost_1', name: 'Bùa Hộ Mệnh Frostallion', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFIce_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Băng' },
-    { cat: 'accessory', id: 'Otomo_DFEarth_ElementBoost_1', name: 'Bùa Hộ Mệnh Anubis', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFEarth_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Đất' },
-    { cat: 'accessory', id: 'Otomo_DFDark_ElementBoost_1', name: 'Bùa Hộ Mệnh Lyleen Noct', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFDark_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Bóng Tối' },
-    { cat: 'accessory', id: 'Otomo_DFDragon_ElementBoost_1', name: 'Bùa Hộ Mệnh Jetragon', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_DFDragon_ElementBoost_1.webp', note: 'Tăng Phòng Thủ Pal cùng đánh + buff sát thương hệ Rồng' },
-    // 9 nhẫn hệ: GIẢM sát thương nhận vào 1 hệ + buff sát thương 1 hệ cho Pal
-    { cat: 'accessory', id: 'Accessory_Otomo_Fire_1', name: 'Nhẫn Blazehowl', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Fire_1.webp', note: 'Giảm sát thương hệ Cỏ nhận vào + buff hệ Lửa cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Fire_2', name: 'Nhẫn Faleris', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Fire_2.webp', note: 'Giảm sát thương hệ Băng nhận vào + buff hệ Lửa cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Water_1', name: 'Nhẫn Faleris Aqua', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Water_1.webp', note: 'Giảm sát thương hệ Lửa nhận vào + buff hệ Nước cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Electricity_1', name: 'Nhẫn Fenglope Lux', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Electricity_1.webp', note: 'Giảm sát thương hệ Nước nhận vào + buff hệ Sấm cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Earth_1', name: 'Nhẫn Menasting Terra', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Earth_1.webp', note: 'Giảm sát thương hệ Sấm nhận vào + buff hệ Đất cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Leaf_1', name: 'Nhẫn Vaelet', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Leaf_1.webp', note: 'Giảm sát thương hệ Đất nhận vào + buff hệ Cỏ cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Dark_1', name: 'Nhẫn Katress', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Dark_1.webp', note: 'Giảm sát thương hệ Thường nhận vào + buff hệ Bóng Tối cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Dargon_1', name: 'Nhẫn Elphidran', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Dargon_1.webp', note: 'Giảm sát thương hệ Bóng Tối nhận vào + buff hệ Rồng cho Pal' },
-    { cat: 'accessory', id: 'Accessory_Otomo_Ice_1', name: 'Nhẫn Cryolinx', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_Ice_1.webp', note: 'Giảm sát thương hệ Rồng nhận vào + buff hệ Băng cho Pal' },
-    // 2 nhẫn lẻ (chủ server tải icon sẵn, giá mặc định 60k)
-    { cat: 'accessory', id: 'Accessory_Avoid_1', name: 'Nhẫn Huyễn Ảnh', price: 60000, max: 99, img: 'T_itemicon_Accessory_Accessory_Avoid_1.webp', note: 'Kéo dài thời gian bất tử khi lăn/nhảy né' },
-    { cat: 'accessory', id: 'Otomo_PalConfidence_Increase_1', name: 'Nhẫn Tin Cậy', price: 60000, max: 99, img: 'T_itemicon_Accessory_Otomo_PalConfidence_Increase_1.webp', note: 'Dễ chiếm lòng tin của Pal hơn' },
-    // 10/09: 🍖 13 thức ăn (thịt sống + mật ong) + 🧱 6 nguyên liệu (nhóm material MỚI) - chủ server
-    // tải icon sẵn. Giá 2 KNB/cái (chủ server chốt 10/09: cần số lượng rất lớn) - bù bằng giới hạn/ngày.
-    { cat: 'food', id: 'Meat_ChickenPal', name: 'Thịt Gà Chikipi', price: 2, max: 999, img: 'T_itemicon_Food_Meat_ChickenPal.webp' },
-    { cat: 'food', id: 'Meat_SheepBall', name: 'Thịt Cừu Lamball', price: 2, max: 999, img: 'T_itemicon_Food_Meat_SheepBall.webp' },
-    { cat: 'food', id: 'Meat_Boar', name: 'Thịt Lợn Rushoar', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Boar.webp' },
-    { cat: 'food', id: 'Meat_CowPal', name: 'Thịt Bò Mozzarina', price: 2, max: 999, img: 'T_itemicon_Food_Meat_CowPal.webp' },
-    { cat: 'food', id: 'Meat_BerryGoat', name: 'Thịt Caprity Thảo Mộc', price: 2, max: 999, img: 'T_itemicon_Food_Meat_BerryGoat.webp' },
-    { cat: 'food', id: 'Meat_Deer', name: 'Thịt Nai Eikthyrdeer', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Deer.webp' },
-    { cat: 'food', id: 'Meat_IceDeer', name: 'Thịt Nai Reindrix', price: 2, max: 999, img: 'T_itemicon_Food_Meat_IceDeer.webp' },
-    { cat: 'food', id: 'Meat_Eagle', name: 'Thịt Gà Galeclaw', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Eagle.webp' },
-    { cat: 'food', id: 'Meat_Kelpie', name: 'Thịt Cá Kelpsea', price: 2, max: 999, img: 'T_itemicon_Food_Meat_Kelpie.webp' },
-    { cat: 'food', id: 'Meat_LazyCatfish', name: 'Thịt Cá Dumud', price: 2, max: 999, img: 'T_itemicon_Food_Meat_LazyCatfish.webp' },
-    { cat: 'food', id: 'Meat_SakuraSaurus', name: 'Thịt Khủng Long Broncherry', price: 2, max: 999, img: 'T_itemicon_Food_Meat_SakuraSaurus.webp' },
-    { cat: 'food', id: 'Meat_GrassMammoth', name: 'Thịt Quái Thú Mammorest', price: 2, max: 999, img: 'T_itemicon_Food_Meat_GrassMammoth.webp' },
-    { cat: 'food', id: 'Honey', name: 'Mật Ong', price: 2, max: 999, img: 'T_itemicon_Food_Honey.webp' },
-    { cat: 'material', id: 'FireOrgan', name: 'Cơ Quan Tạo Lửa', price: 2, max: 999, img: 'T_itemicon_Material_FireOrgan.webp' },
-    { cat: 'material', id: 'IceOrgan', name: 'Cơ Quan Kết Băng', price: 2, max: 999, img: 'T_itemicon_Material_IceOrgan.webp' },
-    { cat: 'material', id: 'ElectricOrgan', name: 'Cơ Quan Sinh Điện', price: 2, max: 999, img: 'T_itemicon_Material_ElectricOrgan.webp' },
-    { cat: 'material', id: 'Venom', name: 'Tuyến Độc', price: 2, max: 999, img: 'T_itemicon_Material_Venom.webp' },
-    { cat: 'material', id: 'PalOil', name: 'Dầu Pal Thượng Hạng', price: 2, max: 999, img: 'T_itemicon_Material_PalOil.webp' },
-    { cat: 'material', id: 'PalItem_RaijinDaughter', name: 'Mây Dazzi', price: 2, max: 999, img: 'T_itemicon_Material_PalItem_RaijinDaughter.webp' },
-    // 10/09: 🔫 32 loại đạn (mọi Ammo trong game trừ Magnum + Súng Máy chưa có), 1 KNB/cái - thương nhân
-    // đã tắt (BialkShopOff) nên đạn chỉ mua được ở đây. Tên = tên tiếng Việt trong game (gameitems.json).
-    { cat: 'ammo', id: 'Arrow', name: 'Mũi Tên', price: 1, max: 999, img: 'T_itemicon_Ammo_Arrow.webp' },
-    { cat: 'ammo', id: 'Arrow_Poison', name: 'Mũi Tên Độc', price: 1, max: 999, img: 'T_itemicon_Ammo_Arrow_Poison.webp' },
-    { cat: 'ammo', id: 'Arrow_Fire', name: 'Mũi Tên Lửa', price: 1, max: 999, img: 'T_itemicon_Ammo_Arrow_Fire.webp' },
-    { cat: 'ammo', id: 'ReinforcedArrow', name: 'Mũi Tên Cường Hóa', price: 1, max: 999, img: 'T_itemicon_Ammo_ReinforcedArrow.webp' },
-    { cat: 'ammo', id: 'SFArrow', name: 'Mũi Tên Nâng Cấp', price: 1, max: 999, img: 'T_itemicon_Ammo_SFArrow.webp' },
-    { cat: 'ammo', id: 'RoughBullet', name: 'Đạn Thô', price: 1, max: 999, img: 'T_itemicon_Ammo_RoughBullet.webp' },
-    { cat: 'ammo', id: 'HandgunBullet', name: 'Đạn Súng Ngắn', price: 1, max: 999, img: 'T_itemicon_Ammo_HandgunBullet.webp' },
-    { cat: 'ammo', id: 'RifleBullet', name: 'Đạn Súng Trường', price: 1, max: 999, img: 'T_itemicon_Ammo_RifleBullet.webp' },
-    { cat: 'ammo', id: 'ShotgunBullet', name: 'Đạn Súng Săn', price: 1, max: 999, img: 'T_itemicon_Ammo_ShotgunBullet.webp' },
-    { cat: 'ammo', id: 'AssaultRifleBullet', name: 'Đạn Súng Trường Tấn Công', price: 1, max: 999, img: 'T_itemicon_Ammo_AssaultRifleBullet.webp' },
-    { cat: 'ammo', id: 'ExplosiveBullet', name: 'Tên Lửa', price: 1, max: 999, img: 'T_itemicon_Ammo_ExplosiveBullet.webp' },
-    { cat: 'ammo', id: 'InkBullet', name: 'Đạn Súng Bắn Decal', price: 1, max: 999, img: 'T_itemicon_Ammo_InkBullet.webp' },
-    { cat: 'ammo', id: 'FlamethrowerBullet', name: 'Nhiên Liệu Súng Phun Lửa', price: 1, max: 999, img: 'T_itemicon_Ammo_FlamethrowerBullet.webp' },
-    { cat: 'ammo', id: 'MissileBullet', name: 'Tên Lửa Điều Khiển', price: 1, max: 999, img: 'T_itemicon_Ammo_MissileBullet.webp' },
-    { cat: 'ammo', id: 'GrenadeBullet', name: 'Lựu Đạn', price: 1, max: 999, img: 'T_itemicon_Ammo_GrenadeBullet.webp' },
-    { cat: 'ammo', id: 'GatlingBullet', name: 'Đạn Súng Nòng Xoay', price: 1, max: 999, img: 'T_itemicon_Ammo_GatlingBullet.webp' },
-    { cat: 'ammo', id: 'MeteorBullet', name: 'Đạn Thiên Thạch', price: 1, max: 999, img: 'T_itemicon_Ammo_MeteorBullet.webp' },
-    { cat: 'ammo', id: 'LaserBullet', name: 'Đạn Năng Lượng', price: 1, max: 999, img: 'T_itemicon_Ammo_LaserBullet.webp' },
-    { cat: 'ammo', id: 'EnergyLauncherBullet', name: 'Đạn Plasma', price: 1, max: 999, img: 'T_itemicon_Ammo_EnergyLauncherBullet.webp' },
-    { cat: 'ammo', id: 'LaserGatlingBullet', name: 'Đạn Súng Nòng Xoay Laser', price: 1, max: 999, img: 'T_itemicon_Ammo_LaserGatlingBullet.webp' },
-    { cat: 'ammo', id: 'ChargeLaserRifleBullet', name: 'Đạn Súng Trường Năng Lượng', price: 1, max: 999, img: 'T_itemicon_Ammo_ChargeLaserRifleBullet.webp' },
-    { cat: 'ammo', id: 'OverheatRifleBullet', name: 'Đạn Súng Trường Quá Nhiệt', price: 1, max: 999, img: 'T_itemicon_Ammo_OverheatRifleBullet.webp' },
-    { cat: 'ammo', id: 'EnergyShotgunBullet', name: 'Đạn Súng Săn Năng Lượng', price: 1, max: 999, img: 'T_itemicon_Ammo_EnergyShotgunBullet.webp' },
-    { cat: 'ammo', id: 'PalDopingShotBullet', name: 'Đạn Súng Cường Lực', price: 1, max: 999, img: 'T_itemicon_Ammo_PalDopingShotBullet.webp' },
-    { cat: 'ammo', id: 'WidePenetrateShotgunBullet', name: 'Đạn Súng Năng Lượng Tán Xạ', price: 1, max: 999, img: 'T_itemicon_Ammo_WidePenetrateShotgunBullet.webp' },
-    { cat: 'ammo', id: 'ElectricArcAssaultRifleBullet', name: 'Đạn Súng Trường Plasma', price: 1, max: 999, img: 'T_itemicon_Ammo_ElectricArcAssaultRifleBullet.webp' },
-    { cat: 'ammo', id: 'BeamLauncherBullet', name: 'Đạn Thiết Bị Phóng Chùm Tia', price: 1, max: 999, img: 'T_itemicon_Ammo_BeamLauncherBullet.webp' },
-    { cat: 'ammo', id: 'SkyBowArrow', name: 'Mũi Tên Cung Cơ Khí', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyBowArrow.webp' },
-    { cat: 'ammo', id: 'SkySubmachineGunBullet', name: 'Đạn Súng Tiểu Liên Chiến Đấu', price: 1, max: 999, img: 'T_itemicon_Ammo_SkySubmachineGunBullet.webp' },
-    { cat: 'ammo', id: 'SkyShotgunBullet', name: 'Đạn Súng Săn Nguyên Mẫu', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyShotgunBullet.webp' },
-    { cat: 'ammo', id: 'SkyAssaultRifleBullet', name: 'Đạn Súng Trường Tấn Công Hạng Nặng', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyAssaultRifleBullet.webp' },
-    { cat: 'ammo', id: 'SkyGrenadeLauncherBullet', name: 'Đạn Súng Phóng Lựu Chiến Thuật', price: 1, max: 999, img: 'T_itemicon_Ammo_SkyGrenadeLauncherBullet.webp' },
-    // 10/09: 🧬 IMPLANT (nhóm implant MỚI) - 14 cấy ghép mở từ Đấu Trường (Arena) + Truy Nã (Bounty) và Chuyển Đổi
-    // giới tính. 6.000/cái, dùng chung 1 icon. Hạn RIÊNG: mỗi người tối đa 2 cái/ngày mọi loại gộp (itemShopImplantMax).
-    // Tên = tên item trong game (gameitems.json), chú thích = mô tả passive (passives.json).
-    // Thứ tự hiện trên web: Chuyển Đổi (icon riêng) → 7 🌳 Cây Thế Giới (12.000, hạn RIÊNG 1/người/ngày, card cầu vồng)
-    // → 14 implant thường (6.000, hạn 2/người/ngày). Cả nhóm implant MIỄN hạn chung 📅 (có hạn riêng rồi).
-    { cat: 'implant', id: 'PalGenderReverse', name: 'Chuyển Đổi Giới Tính Pal', price: 6000, max: 99, img: 'T_itemicon_Material_PalGenderReverse.webp', note: '⚧ Dùng ở Bàn Phẫu Thuật Pal: đổi giới tính đực ↔ cái của 1 pal (dùng 1 lần)' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_ATK', name: 'Thánh Kiếm Hai Lưỡi', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tấn công +50%, Phòng thủ -30%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_DEF', name: 'Thành Trì Thịt Sống', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Phòng thủ +50%, Tấn công -30%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_ATK_DEF', name: 'Thần Hủy Diệt', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tấn công +40%, Phòng thủ +20%, Máu tối đa -50%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_CraftSpeed', name: 'Bàn Tay Ác Quỷ', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ làm việc +90%, Minh Mẫn giảm nhanh +15%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_MoveSpeed', name: 'Cú Nhảy Không Gian', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ di chuyển tăng +50%, Mức Độ No giảm nhanh +15%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_Sanity', name: 'Tiên Nhân', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Minh Mẫn giảm chậm +50%, Tốc độ làm việc -20%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_WorldTree_FullStomach', name: 'Vườn Ươm Cây Thần', price: 12000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Mức Độ No giảm chậm +50%, Máu -20%, cây và đá khu vực Cây Thế Giới không biến mất khi đến gần' },
-    // 10/09 (tối): +14 implant DÙNG MỘT LẦN còn lại (5 Đột biến + 9 Cao cấp) 9.000/cái, gộp quota 🧬 2/người/ngày.
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_Immortal', name: 'Thân Thể Bất Tử', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Hút Sinh Mệnh +5%, hồi Máu tự nhiên của Pal +100%, Tấn công +15%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_Mutant', name: 'Thể Chất Đặc Dị', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Hồi Máu tự nhiên của Pal và người chơi +50%, Phòng thủ +25%, sát thương do trúng độc/thiêu đốt vô hiệu' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_Babysitter', name: 'Bảo Mẫu Trông Trẻ', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Ở căn cứ: tốc độ tạo trứng của Pal tại Trang Trại Phối Giống +30%, tốc độ ấp trứng +30%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MutationPal_ExplosionResist', name: 'Thiết Giáp Hạng Nặng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Sát thương do nổ vô hiệu' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_RideJumpCount_Increase2', name: 'Bước Đi Trên Không', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Số lần nhảy khi đang cưỡi +2' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_CraftSpeed_up3', name: 'Siêu Cấp Kỹ Năng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ làm việc +75%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_Deffence_up3', name: 'Thân Thể Kim Cương', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Phòng thủ +30%, trạng thái choáng bị vô hiệu, thổi bay bị vô hiệu' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_PAL_ALLAttack_up3', name: 'Quỷ Thần', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tấn công +30%, Phòng thủ +5%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_PAL_FullStomach_Down_3', name: 'Nhịn Ăn Thành Thạo', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'No lâu +20,0%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_PAL_Sanity_Down_3', name: 'Bất Động Minh Vương Chi Tâm', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Minh mẫn giảm chậm hơn +20,0%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_MoveSpeed_up_3', name: 'Thần Tốc', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ di chuyển 30%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_Stamina_Up_3', name: 'Động Cơ Vĩnh Cửu', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Thể lực tối đa +75% (*chỉ hiệu lực đối với Pal có thể cưỡi)' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_Vampire', name: 'Ma Cà Rồng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Gây sát thương, hấp thụ một phần sát thương đó và hồi phục Máu. Tiếp tục làm việc mà không ngủ, ngay cả vào ban đêm' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Consumable_SwimSpeed_up_3', name: 'Vua Lướt Sóng', price: 9000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ di chuyển trên mặt nước 50%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_CoolTimeReduction_Up_1', name: 'Điềm Tĩnh', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Thời gian hồi chiêu của kỹ năng chủ động giảm 30%, Tấn công +10%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Stamina_Up_1', name: 'Sức Bền Vô Hạn', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Thể lực tối đa +50% (*chỉ hiệu lực đối với Pal có thể cưỡi)' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_MoveSpeed_up_2', name: 'Cấp Tốc', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ di chuyển 20%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_SwimSpeed_up_2', name: 'Bơi Lội Siêu Phàm', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ di chuyển trên mặt nước 40%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_SalePrice_Up_1', name: 'Cao Quý', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Giá giao dịch tăng +5%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_AutoHPRegeneRate_Passive', name: 'Hỗ Trợ Hồi Phục', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ tự hồi Máu của người chơi +5%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_ReloadSpeedUp_Passive', name: 'Bậc Thầy Nạp Đạn', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tăng tốc độ nạp đạn của người chơi +4%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Noukin', name: 'Cơ Bắp', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tấn công +30% NHƯNG Tốc độ làm việc −50%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_Deffence_up2', name: 'Cường Tráng', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Phòng thủ +20%, trạng thái choáng bị vô hiệu' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_CraftSpeed_up2', name: 'Nghệ Nhân Đích Thực', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ làm việc +50%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_TrainerATK_UP_1', name: 'Kẻ Tiên Phong', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tấn công của người chơi tăng 10%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_TrainerDEF_UP_1', name: 'Quân Sư Phòng Thủ', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Phòng thủ của người chơi tăng 10%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_TrainerWorkSpeed_UP_1', name: 'Thúc Đẩy Động Lực', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Tốc độ làm việc của người chơi tăng 25%' },
-    { cat: 'implant', id: 'PalPassiveSkillChange_PlayerSP_DecreaseRate_Passive', name: 'Chống Kiệt Sức', price: 6000, max: 99, img: 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp', note: 'Giảm tiêu hao thể lực của người chơi +5,0%' },
-    // 11/09: ⭐ QUAN TRỌNG (nhóm important MỚI) - mỗi người chỉ mua ĐÚNG 1 LẦN (vĩnh viễn, không theo ngày).
-    // Chủ server tải icon; 2 Hộp Phụ Kiện mở ô phụ kiện. Giá chủ server chốt: Kỳ Lạ 3.000 (tím), Bí Ẩn 10.000 (vàng).
-    { cat: 'important', id: 'UnlockEquipmentSlot_Accessory_01', name: 'Hộp Phụ Kiện Kỳ Lạ', price: 3000, max: 1, img: 'T_itemicon_Essential_UnlockEquipmentSlot_Accessory.webp', note: 'Chiếc hộp bí ẩn có phần bên trong đồng bộ với cơ thể người sở hữu. Sở hữu vật phẩm sẽ mở 1 ô trang bị phụ kiện' },
-    { cat: 'important', id: 'UnlockEquipmentSlot_Accessory_02', name: 'Hộp Phụ Kiện Bí Ẩn', price: 10000, max: 1, img: 'T_itemicon_Essential_UnlockEquipmentSlot_Accessory_1.webp', note: 'Chiếc hộp bí ẩn có phần bên trong đồng bộ với cơ thể người sở hữu. Sở hữu vật phẩm sẽ mở thêm 1 ô trang bị phụ' },
-];
-function seedItemShopIfEmpty() {
-    if (dbCache._itemShop === undefined) { setItemShop([]); return; }   // 29/09 NetCo4: KHONG seed 154 mon Palworld (shop da tat)
-    // 04/09: shop ĐÃ có danh mục trong DB -> GHÉP THÊM món mặc định còn thiếu (so theo
-    // id, không đè món admin đã sửa). Chạy ĐÚNG 1 LẦN theo cờ - sau đợt này admin xoá
-    // món nào thì nó không tự mọc lại; đợt bổ sung sau thì THÊM CỜ MỚI + lọc đúng nhóm
-    // id mới (đừng chạy lại merge tổng kẻo hồi sinh món admin đã xoá).
-    if (!dbCache._migItemShopWeapons0409) {
-        dbCache._migItemShopWeapons0409 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const missing = DEFAULT_ITEM_SHOP.filter(x => !have.has(x.id));
-        if (missing.length) {
-            setItemShop(cur.concat(missing));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${missing.length} món mặc định còn thiếu: ${missing.map(x => x.id).join(', ')}`);
-        } else saveDbNow();
-    }
-    // 04/09 (chiều): đợt 2 - CHỈ ghép 9 viên đá thức tỉnh (PalAwakening_*), cờ riêng
-    if (!dbCache._migItemShopAwaken0409) {
-        dbCache._migItemShopAwaken0409 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => x.id.startsWith('PalAwakening_') && !have.has(x.id));
-        if (add.length) {
-            setItemShop(cur.concat(add));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} viên đá thức tỉnh: ${add.map(x => x.id).join(', ')}`);
-        } else saveDbNow();
-    }
-    // 07/09: đợt 3 - CHỈ ghép 38 món 💍 phụ kiện (cat accessory), cờ riêng
-    if (!dbCache._migItemShopAcc0709) {
-        dbCache._migItemShopAcc0709 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'accessory' && !have.has(x.id));
-        if (add.length) {
-            setItemShop(cur.concat(add));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món phụ kiện`);
-        } else saveDbNow();
-    }
-    // 10/09: đợt 4 - CHỈ ghép 13 🍖 thức ăn + 6 🧱 nguyên liệu mới (cat food/material), cờ riêng
-    if (!dbCache._migItemShopFood1009) {
-        dbCache._migItemShopFood1009 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => (x.cat === 'food' || x.cat === 'material') && !have.has(x.id));
-        if (add.length) {
-            setItemShop(cur.concat(add));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món thức ăn + nguyên liệu: ${add.map(x => x.id).join(', ')}`);
-        } else saveDbNow();
-    }
-    // 10/09: đợt 5 - CHỈ ghép 32 🔫 đạn (cat ammo), cờ riêng
-    if (!dbCache._migItemShopAmmo1009) {
-        dbCache._migItemShopAmmo1009 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'ammo' && !have.has(x.id));
-        if (add.length) {
-            setItemShop(cur.concat(add));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} loại đạn (1 KNB/cái)`);
-        } else saveDbNow();
-    }
-    // 10/09: đợt 6 - CHỈ ghép 15 🧬 implant (cat implant), cờ riêng
-    if (!dbCache._migItemShopImplant1009) {
-        dbCache._migItemShopImplant1009 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'implant' && !have.has(x.id));
-        if (add.length) {
-            setItemShop(cur.concat(add));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} implant (6.000/cái, mỗi người 2/ngày)`);
-        } else saveDbNow();
-    }
-    // 10/09: đợt 7 - ghép 7 🌳 implant Cây Thế Giới + đổi icon Chuyển Đổi sang icon riêng, cờ riêng
-    if (!dbCache._migItemShopWT1009) {
-        dbCache._migItemShopWT1009 = 1;
-        const cur = itemShopList().map(x => {
-            const y = (x.id === 'PalGenderReverse' && x.img === 'T_itemicon_Material_PalPassiveSkillChange_Consumable.webp') ? { ...x, img: 'T_itemicon_Material_PalGenderReverse.webp' } : { ...x };
-            if (y.cat === 'implant') y.note = String(y.note || '').replace(/^(🏟️ Đấu Trường|🎯 Truy Nã|🌳 Cây Thế Giới( \(dùng 1 lần\))?) · /, '');   // chú thích chỉ còn tác dụng
-            return y;
-        });
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'implant' && !have.has(x.id));
-        setItemShop(cur.concat(add));
-        writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} implant Cây Thế Giới (12.000/cái, 1/người/ngày) + icon Chuyển Đổi riêng`);
-    }
-    // 10/09: đợt 9 - tên implant chỉ còn tiếng Việt (bỏ "Cấy ghép dùng một lần: " / "Cấy ghép: " / " (English)"), cờ riêng
-    // (b: tên từng bị cắt 60 ký tự nên có đuôi " (Twin-Edged Holy" mất ngoặc đóng -> gọt cả đuôi hở)
-    if (!dbCache._migItemShopImplantName1009b) {
-        dbCache._migItemShopImplantName1009b = 1;
-        const strip = (v) => String(v || '').replace(/^Cấy ghép( dùng một lần)?: /, '').replace(/ \([^()]*\)?$/, '').trim();
-        const cur = itemShopList();
-        let n = 0;
-        const fixed = cur.map(x => { if (x.cat !== 'implant') return x; const v = strip(x.name); if (v !== x.name) n++; return { ...x, name: v }; });
-        if (n) setItemShop(fixed); else saveDbNow();
-        writeLog('SYSTEM', `[SHOP ITEM] Gọt tên ${n} implant về tiếng Việt thuần`);
-    }
-    // 10/09: đợt 10 - ghép 14 implant dùng một lần còn lại (cat implant còn thiếu), cờ riêng
-    if (!dbCache._migItemShopImplant14_1009) {
-        dbCache._migItemShopImplant14_1009 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'implant' && !have.has(x.id));
-        if (add.length) {
-            setItemShop(cur.concat(add));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} implant dùng một lần (9.000/cái)`);
-        } else saveDbNow();
-    }
-    // 11/09: đợt 11 - ghép nhóm ⭐ QUAN TRỌNG (cat important) còn thiếu, cờ riêng
-    if (!dbCache._migItemShopImportant1109) {
-        dbCache._migItemShopImportant1109 = 1;
-        const cur = itemShopList();
-        const have = new Set(cur.map(x => x.id));
-        const add = DEFAULT_ITEM_SHOP.filter(x => x.cat === 'important' && !have.has(x.id));
-        if (add.length) {
-            setItemShop(cur.concat(add));
-            writeLog('SYSTEM', `[SHOP ITEM] Ghép thêm ${add.length} món ⭐ QUAN TRỌNG (mỗi người mua 1 lần)`);
-        } else saveDbNow();
-    }
-    // 07/09: điền GHI CHÚ tác dụng cho món cũ còn thiếu (tra id trong DEFAULT) - idempotent
-    const rawN = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
-    let noted = 0;
-    for (const x of rawN) {
-        if (!x || x.note) continue;
-        const def = DEFAULT_ITEM_SHOP.find(d => d.id === x.id && d.note);
-        if (def) { x.note = def.note; noted++; }
-    }
-    if (noted) { saveDbNow(); writeLog('SYSTEM', `[SHOP ITEM] Điền ghi chú cho ${noted} món cũ`); }
-}
-// 04/09: điền nhóm (cat) cho món CŨ trong DB còn thiếu - tra theo id trong DEFAULT,
-// lạ thì về 'consume'. Idempotent (chỉ đụng món thiếu cat), chạy mỗi boot, không cần cờ.
+// ===== 🛒 SHOP ITEM (28/08): mua item game + số lượng -> giao thẳng vào túi (hàng đợi quà Thiên Long) =====
+// Danh mục admin tự quản ở panel (dbCache._itemShop): { id (mã vật phẩm Thiên Long 8 số), name, price, max, ... }.
+// 06/10: bỏ bộ mặc định Palworld (DEFAULT_ITEM_SHOP + seed + các đợt ghép _migItemShop*) - DB mới bắt đầu
+// với shop RỖNG (itemShopList() coi _itemShop chưa có = []), admin tự thêm món ở panel. Hình ở assets/itemimage/.
+// 04/09: món CŨ trong DB thiếu nhóm (cat) / nhóm không còn trong danh sách -> về 'consume'.
+// Idempotent (chỉ đụng món thiếu cat), chạy mỗi boot, không cần cờ.
 function backfillItemShopCat() {
     const raw = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     let fixed = 0;
     for (const x of raw) {
         if (!x || itemCatHas(x.cat)) continue;
-        const def = DEFAULT_ITEM_SHOP.find(d => d.id === x.id);
-        x.cat = def ? def.cat : 'consume';
+        x.cat = 'consume';
         fixed++;
     }
     if (fixed) { saveDbNow(); writeLog('SYSTEM', `[SHOP ITEM] Điền nhóm cho ${fixed} món cũ trong DB`); }
@@ -1746,7 +1405,7 @@ function uploadItemImage(fileName, dataB64) {
     writeLog('ADMIN', `[SHOP ITEM] Panel up hình itemimage/${name} (${(buf.length / 1024).toFixed(1)}KB)`);
     return { ok: true, file: name };
 }
-// Giao dùng pal.giveItem (đã có sẵn, cùng đường DogCoin). Trừ tiền TRƯỚC, giao hụt CHẮC
+// Giao dùng tlbb.giveItem (hàng đợi quà Thiên Long). Trừ tiền TRƯỚC, giao hụt CHẮC
 // CHẮN thì hoàn; mơ hồ (timeout) thì giữ tiền + báo admin (chống double-give).
 // 🛒 nhóm shop item (1 nguồn cho server; panel/web có bản sao cùng thứ tự). 09/09 thêm food + ammo theo yêu cầu chủ server.
 // 16/09: BỎ whitelist nhóm cứng ở đây - danh sách nhóm giờ do admin đặt (itemCatList/itemCatHas).
@@ -1873,8 +1532,8 @@ function giftWebList(user) {
         ic: g.img ? null : ITEMICON.icon(g.id) }));   // 🖼️ 02/10: chưa up ảnh -> hình game
 }
 async function giftClaim(userId, gid, username) {
-    // 📒 15/09: CÒN NỢ thì không nhận quà (chủ server chốt) - cùng luật với mua shop item và
-    // chuyển pal vào game. Chặn ở ĐẦU hàm, trước cả kiểm "đã nhận hôm nay", để người đang nợ
+    // 📒 15/09: CÒN NỢ thì không nhận quà (chủ server chốt) - cùng luật với mua shop item
+    // (xem debtBlock). Chặn ở ĐẦU hàm, trước cả kiểm "đã nhận hôm nay", để người đang nợ
     // không bị đánh dấu nhầm là đã nhận.
     const dbErr = debtBlock(userId, 'nhận quà admin tặng');
     if (dbErr) return { error: dbErr };
@@ -1892,7 +1551,7 @@ async function giftClaim(userId, gid, username) {
     giftMark(user, g.gid, true);   // đánh dấu TRƯỚC khi giao (chặn bấm đúp); giao hỏng thì gỡ
     saveDbNow();
     let r = null, err = null;
-    try { r = await pal.giveItem(gameName, g.id, g.qty); } catch (e) { err = e; }
+    try { r = await tlbb.giveItem(gameName, g.id, g.qty); } catch (e) { err = e; }
     deliverUnlock();
     if (r && r.ok) {
         writeLog('ADMIN', `[QUÀ TẶNG] ${username || userId} nhận ${g.name} x${g.qty} (${g.id}) -> ${gameName}`);
@@ -1957,7 +1616,7 @@ async function adminGiveItem(gameName, itemId, qty) {
     if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được online (${on.msg || 'timeout'}) - thử lại sau` }; }
     if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game` }; }
     let r = null, err = null;
-    try { r = await pal.giveItem(gameName, itemId, qty); } catch (e) { err = e; }
+    try { r = await tlbb.giveItem(gameName, itemId, qty); } catch (e) { err = e; }
     deliverUnlock();
     if (r && r.ok) {
         writeLog('ADMIN', `[KHO ĐỒ] SUPER giao ${it.n} x${qty} (${itemId}) -> ${gameName}`);
@@ -1993,8 +1652,9 @@ function setItemShopDayMode(m) {
     saveDbNow();
     return { ok: true, dayMode: m };
 }
-// 🧬 10/09: hạn RIÊNG cho nhóm implant - MỖI NGƯỜI tối đa N cái/ngày, MỌI LOẠI GỘP (mặc định 2, 0 = không),
-// luôn đếm theo người bất kể chế độ server/user ở trên. Bộ đếm user.implantDay { day, n }.
+// 🔥 10/09: hạn RIÊNG cho nhóm 🔥 HÀNG GIỚI HẠN (mã nhóm 'implant' giữ từ đời Palworld) - MỖI NGƯỜI tối đa
+// N cái/ngày, MỌI LOẠI GỘP (mặc định 2, 0 = không), luôn đếm theo người bất kể chế độ server/user ở trên.
+// Bộ đếm user.implantDay { day, n }. ĐANG DÙNG cho Thiên Long (panel: "🔥 Hàng giới hạn").
 const ITEM_SHOP_IMPLANT_MAX_DEF = 2;
 function itemShopImplantMax() {
     const v = Number(dbCache._itemShopImplantMax);
@@ -2006,25 +1666,6 @@ function setItemShopImplantMax(v) {
     dbCache._itemShopImplantMax = v;
     saveDbNow();
     return { ok: true, implantMax: v };
-}
-// 🌳 implant CÂY THẾ GIỚI (PalPassiveSkillChange_Consumable_WorldTree_*): hạn riêng nữa - mặc định 1/người/ngày
-const ITEM_SHOP_WT_MAX_DEF = 1;
-function isWtImplant(id) { return /^PalPassiveSkillChange_Consumable_WorldTree_/.test(String(id)); }
-function itemShopWtMax() {
-    const v = Number(dbCache._itemShopWtMax);
-    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : ITEM_SHOP_WT_MAX_DEF;
-}
-function setItemShopWtMax(v) {
-    v = Math.floor(Number(v));
-    if (!Number.isFinite(v) || v < 0 || v > 1000) return { error: 'Hạn implant Cây Thế Giới/ngày phải là số 0–1000 (0 = không giới hạn)' };
-    dbCache._itemShopWtMax = v;
-    saveDbNow();
-    return { ok: true, wtMax: v };
-}
-function wtToday(user) {
-    const d = vnDayISO(Date.now());
-    if (!user.wtDay || user.wtDay.day !== d) user.wtDay = { day: d, n: 0 };
-    return user.wtDay;
 }
 // 🗂️ 12/09 v2 (chủ server chốt UI dễ): HẠN THEO NHÓM - mỗi nhóm chọn chế độ
 // 🌐 toàn server (cả server chia nhau, ai mua trước được trước) / 👤 cá nhân
@@ -2135,46 +1776,32 @@ function groupDaySrv() {
     if (!dbCache._itemShopGroupDay || dbCache._itemShopGroupDay.day !== d) dbCache._itemShopGroupDay = { day: d, n: {} };
     return dbCache._itemShopGroupDay;
 }
-// thứ tự cho web: trong nhóm implant -> Chuyển Đổi, rồi Cây Thế Giới, rồi implant thường; nhóm khác giữ nguyên
-// 💎 10/09: HẠNG implant theo passive (passives.json: tier 4 = kim cương/xanh ngọc, 3 = vàng, 1-2 = thường; Cây Thế Giới
-// riêng 'wt'). Chủ server: "cái nào kim cương xếp kim cương, cái nào vàng xếp vàng" -> web tô màu card + xếp thứ tự.
-function implantTier(id) {
-    id = String(id || '');
-    if (id === 'PalGenderReverse') return 'gender';
-    if (isWtImplant(id)) return 'wt';
-    const pid = id.replace(/^PalPassiveSkillChange_(Consumable_)?/, '');
-    const pv = passiveCatalog().find(p => p && p.id === pid) || (Array.isArray(PASSIVE_DATA.builds) ? PASSIVE_DATA.builds : []).find(p => p && p.id === pid);
-    const t = pv ? Number(pv.tier) : 0;
-    return t >= 4 ? 'diamond' : (t === 3 ? 'gold' : 'normal');
-}
-const IMPLANT_TIER_RANK = { gender: 0, wt: 0.2, diamond: 0.4, gold: 0.6, normal: 0.8 };
+// thứ tự cho web: nhóm 🔥 Hàng giới hạn (cat 'implant') lên đầu, trong nhóm giá cao xếp trước (chủ server 10/09:
+// "12000 xếp trước 8000"); nhóm khác giữ thứ tự admin. 06/10: bỏ xếp hạng implant Palworld theo passives.json
+// (implantTier - mã Thiên Long 8 số luôn ra 'normal', nên giữ tier 'normal' cho web như cũ).
 function itemShopWebList() {
-    const rank = (x) => x.cat !== 'implant' ? 1 : IMPLANT_TIER_RANK[implantTier(x.id)];
-    // trong CÙNG bậc implant: giá cao xếp trước (chủ server 10/09: "12000 xếp trước 8000"); nhóm khác giữ thứ tự admin
+    const rank = (x) => x.cat === 'implant' ? 0 : 1;
     const priceKey = (x) => x.cat === 'implant' ? -(Number(x.price) || 0) : 0;
     return itemShopList().filter(x => !x.off).map((x, i) => [x, i]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (priceKey(a[0]) - priceKey(b[0])) || (a[1] - b[1]))
-        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: implantTier(a[0].id) } : (a[0].cat === 'important' ? { ...a[0], tier: importantTier(a[0].id) } : a[0]))   // web tô màu theo tier
+        .map(a => a[0].cat === 'implant' ? { ...a[0], tier: 'normal' } : (a[0].cat === 'important' ? { ...a[0], tier: importantTier(a[0].id) } : a[0]))   // web tô màu theo tier
         .map(x => (x.img ? x : { ...x, ic: ITEMICON.icon(x.id) }));   // 🖼️ 02/10: chưa up ảnh -> icon game (itemicon.js)
 }
 // ⭐ 11/09: nhóm QUAN TRỌNG - mỗi người mua ĐÚNG 1 lần, vĩnh viễn. user.shopOnce = { itemId: timestamp }.
 // 🩹 15/09 - TỰ CHỮA TÊN MÓN BỊ MẤT DẤU. Dấu hiệu hỏng: có ký tự thay thế "\uFFFD" hoặc có dấu "?"
-// (tên món tiếng Việt không bao giờ có "?"). Tên chuẩn lấy theo id: ưu tiên DEFAULT_ITEM_SHOP
-// (tên chủ server đã đặt), không có thì lấy gameitems.json. Không tìm được tên chuẩn thì để yên.
+// (tên món tiếng Việt không bao giờ có "?"). Tên chuẩn lấy theo id trong danh mục vật phẩm game
+// (gameItems). Không tìm được tên chuẩn thì để yên.
 // Trả về số món đã sửa. Gọi 1 lần lúc boot; gọi lại cũng vô hại (tên đã sạch thì bỏ qua).
 function itemShopNameLooksBroken(name) { return /\uFFFD|\?/.test(String(name || '')); }
 function itemShopRepairNames() {
     const L = Array.isArray(dbCache._itemShop) ? dbCache._itemShop : [];
     const gi = (typeof gameItems === 'function' ? gameItems() : []) || [];
-    const DEF = (typeof DEFAULT_ITEM_SHOP !== 'undefined' ? DEFAULT_ITEM_SHOP : []);
     let n = 0;
     for (const it of L) {
         if (!it) continue;
-        const def = DEF.find(x => x && x.id === it.id);
         const g = gi.find(x => x && x.id === it.id);
         // TÊN
         if (itemShopNameLooksBroken(it.name)) {
-            const good = (def && def.name && !itemShopNameLooksBroken(def.name)) ? def.name
-                : (g && g.n && !itemShopNameLooksBroken(g.n) ? g.n : null);
+            const good = g && g.n && !itemShopNameLooksBroken(g.n) ? g.n : null;
             if (good) {
                 writeLog('SYSTEM', `[SHOP ITEM] Sửa tên mất dấu: ${it.id} "${it.name}" -> "${good}"`);
                 it.name = good; n++;
@@ -2182,8 +1809,7 @@ function itemShopRepairNames() {
         }
         // GHI CHÚ (15/09: prod dính 23 chỗ ở cột này, hàm cũ bỏ sót)
         if (itemShopNameLooksBroken(it.note)) {
-            const goodNote = (def && def.note && !itemShopNameLooksBroken(def.note)) ? def.note
-                : (g && g.d && !itemShopNameLooksBroken(g.d) ? g.d : null);
+            const goodNote = g && g.d && !itemShopNameLooksBroken(g.d) ? g.d : null;
             if (goodNote) {
                 writeLog('SYSTEM', `[SHOP ITEM] Sửa ghi chú mất dấu: ${it.id} "${it.note}" -> "${goodNote}"`);
                 it.note = goodNote; n++;
@@ -2519,7 +2145,7 @@ async function ichKyClaim(userId, itemId, qty, username) {
     const it = itemShopList().find(x => x.id === itemId);
     const ten = (it && it.name) || itemId;
     let r = null, err = null;
-    try { r = await pal.giveItem(gameName, itemId, qty); } catch (e) { err = e; }
+    try { r = await tlbb.giveItem(gameName, itemId, qty); } catch (e) { err = e; }
     deliverUnlock();
     if (r && r.ok) {
         writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} nhận ${ten} x${qty} vào game (${gameName})`);
@@ -2536,7 +2162,7 @@ async function ichKyClaim(userId, itemId, qty, username) {
 }
 
 // ⚠️ vaoRuong = true: KHÔNG kiểm online, KHÔNG giao SFTP - bỏ thẳng vào 🧰 Rương Ích Kỷ.
-// Mọi luật còn lại (công tắc, nợ, giá, ⭐1-lần, implant, hạn nhóm, hạn ngày) dùng CHUNG đoạn
+// Mọi luật còn lại (công tắc, nợ, giá, ⭐1-lần, 🔥 hàng giới hạn, hạn nhóm, hạn ngày) dùng CHUNG đoạn
 // dưới, đừng tách ra đường riêng kẻo lệch luật.
 async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };   // 🔌 15/09
@@ -2548,8 +2174,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     if (qty < 1 || qty > it.max) return { error: `Số lượng phải trong 1–${it.max}` };
     let cost = it.price * qty;
     const user = getUserData(userId);
-    // 📅 giới hạn/ngày (kiểm TRƯỚC khi trừ tiền / mở SFTP)
-    // 🧬 implant: hạn riêng theo người, mọi loại gộp
+    // 📅 giới hạn/ngày (kiểm TRƯỚC khi trừ tiền / giao đồ)
     // ⭐ QUAN TRỌNG: mỗi người 1 lần, số lượng luôn 1, miễn hạn ngày chung
     // ⭐ QUAN TRỌNG: mỗi người 1 lần vĩnh viễn. (🎁 quà admin đã TÁCH sang giftClaim - không đi đường này nữa)
     const isOnce = it.cat === 'important';
@@ -2557,21 +2182,13 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
         if (shopOnceBought(user, it.id)) return { error: `⭐ ${it.name}: mỗi người chỉ mua được 1 LẦN - bạn đã mua rồi` };
         if (qty !== 1) return { error: `⭐ ${it.name} mỗi người chỉ mua 1 cái duy nhất - đặt số lượng 1` };
     }
+    // 🔥 Hàng giới hạn (cat 'implant'): hạn riêng theo người, mọi món trong nhóm gộp
     const isImplantCat = it.cat === 'implant';
-    const isWt = isImplantCat && isWtImplant(it.id);
-    const isImplant = isImplantCat && !isWt;
-    const impMax = isImplant ? itemShopImplantMax() : 0;
-    const imp = isImplant ? implantToday(user) : null;
-    if (isImplant && impMax > 0 && imp.n + qty > impMax) {
+    const impMax = isImplantCat ? itemShopImplantMax() : 0;
+    const imp = isImplantCat ? implantToday(user) : null;
+    if (isImplantCat && impMax > 0 && imp.n + qty > impMax) {
         const left = Math.max(0, impMax - imp.n);
-        return { error: left ? `🧬 Implant mỗi người chỉ mua tối đa ${impMax} cái/ngày - hôm nay bạn còn ${left}` : `🧬 Hôm nay bạn đã mua đủ ${impMax} implant - mai 00:00 mua tiếp` };
-    }
-    // 🌳 Cây Thế Giới: hạn riêng nữa (mặc định 1/người/ngày), không ăn vào quota implant thường
-    const wtMax = isWt ? itemShopWtMax() : 0;
-    const wt = isWt ? wtToday(user) : null;
-    if (isWt && wtMax > 0 && wt.n + qty > wtMax) {
-        const left = Math.max(0, wtMax - wt.n);
-        return { error: left ? `🌳 Implant Cây Thế Giới mỗi người chỉ mua tối đa ${wtMax} cái/ngày - hôm nay bạn còn ${left}` : `🌳 Hôm nay bạn đã mua đủ ${wtMax} implant Cây Thế Giới - mai 00:00 mua tiếp` };
+        return { error: left ? `🔥 Hàng giới hạn mỗi người chỉ mua tối đa ${impMax} cái/ngày - hôm nay bạn còn ${left}` : `🔥 Hôm nay bạn đã mua đủ ${impMax} món Hàng giới hạn - mai 00:00 mua tiếp` };
     }
     // 🗂️ HẠN THEO NHÓM (12/09 v2): admin đặt chế độ 🌐/👤 + số/ngày cho từng nhóm
     const gq = (!isImplantCat && !isOnce) ? itemShopGroupQuota()[it.cat] : null;
@@ -2592,7 +2209,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     }
     const dayMax = itemShopDayMax();
     const today = itemShopToday(user);
-    // implant MIỄN hạn chung 📅; nhóm nào có hạn 🗂️ cũng MIỄN (một tầng hạn thôi)
+    // 🔥 Hàng giới hạn MIỄN hạn chung 📅; nhóm nào có hạn 🗂️ cũng MIỄN (một tầng hạn thôi)
     if (!isImplantCat && !isOnce && !gqOn && dayMax > 0 && (today[it.id] || 0) + qty > dayMax) {
         const left = Math.max(0, dayMax - (today[it.id] || 0));
         const srv = itemShopDayMode() === 'server';
@@ -2606,17 +2223,17 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     // 🧰 mua VÀO RƯƠNG: kiểm TRƯỚC khi trừ tiền
     const ruong = vaoRuong ? ichKyOf(user) : null;
     if (ruong) {
-        // 🧰 21/09 (chủ server): MỞ RƯƠNG CHO MỌI NHÓM, implant, nguyên liệu cho pal, đạn...
+        // 🧰 21/09 (chủ server): MỞ RƯƠNG CHO MỌI NHÓM, kể cả 🔥 Hàng giới hạn...
         //
         // Luật cũ (17/09) chỉ cho món có hạn TOÀN SERVER vào rương. Gỡ được vì hạn theo NGƯỜI
         // VẪN BỊ TRỪ NGAY LÚC MUA, dù vào rương hay giao thẳng, xem ngay dưới lệnh trừ tiền:
-        //     today[it.id] += qty · imp.n += qty · wt.n += qty · gCnt.n[gqKey] += qty
+        //     today[it.id] += qty · imp.n += qty · gCnt.n[gqKey] += qty
         // Nên vào rương KHÔNG lách được hạn nào. Chặn cũ là quyết định sản phẩm, không phải
         // chốt an toàn. Rương vẫn giữ hạn riêng của nó ở mấy dòng dưới.
         //
         // ⚠️ RIÊNG ⭐ MÓN 1-LẦN-VĨNH-VIỄN THÌ VẪN CHẶN. Mỗi người mua đúng một lần cả đời; bỏ
         // vào rương mà quên nhận trước 00:00 là mất CẢ TIỀN LẪN SUẤT MUA, không lấy lại được.
-        // Implant / nguyên liệu mai mua lại được nên mở thoải mái.
+        // Hàng giới hạn / món thường mai mua lại được nên mở thoải mái.
         if (isOnce) {
             return { error: '⭐ Món này mỗi người chỉ mua 1 LẦN cả đời - để trong rương quên nhận là mất trắng cả suất. Vào game rồi bấm 🛒 Mua để nhận thẳng vào túi.' };
         }
@@ -2633,7 +2250,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
                 : '🧰 Rương đang đầy 100 món - nhận vào game hoặc tặng bớt đã' };
         }
     }
-    // 🚦 đang giao đơn khác (pal/item) -> chặn (khỏi mở nhiều phiên SFTP cùng lúc)
+    // 🚦 đang giao đơn khác (item/quà/pet) -> chặn (khỏi dồn nhiều lệnh giao cùng lúc)
     // 🧰 mua vào rương KHÔNG đụng game -> khỏi khoá, khỏi đòi online (đúng ý chủ server)
     if (!vaoRuong) {
         if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi mua nhé (chưa trừ đồng nào)' };
@@ -2645,8 +2262,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
 
     updatePoints(userId, -cost);   // trừ TRƯỚC (giữ chỗ)
     today[it.id] = (today[it.id] || 0) + qty;   // 📅 tính vào hạn ngày ngay lúc trừ tiền
-    if (imp) imp.n += qty;                       // 🧬 hạn implant/người
-    if (wt) wt.n += qty;                         // 🌳 hạn Cây Thế Giới/người
+    if (imp) imp.n += qty;                       // 🔥 hạn Hàng giới hạn/người
     if (gCnt) gCnt.n[gqKey] = (gCnt.n[gqKey] || 0) + qty;   // 🗂️ hạn nhóm (key theo per)
     if (isOnce) shopOnceMark(user, it.id, true);  // ⭐ đánh dấu đã mua (vĩnh viễn)
     logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> ${vaoRuong ? '🧰 rương ích kỷ' : gameName}`);
@@ -2659,7 +2275,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     }
     saveDbNow();
     let r = null, err = null;
-    try { r = await pal.giveItem(gameName, it.id, qty); } catch (e) { err = e; }
+    try { r = await tlbb.giveItem(gameName, it.id, qty); } catch (e) { err = e; }
     deliverUnlock();   // 🚦 SFTP xong -> mở khoá
     if (r && r.ok) {
         writeLog('ADMIN', `[SHOP ITEM] ${username || userId} mua ${it.name} x${qty} (${it.id}) -> ${gameName} (-${cost})`);
@@ -2671,7 +2287,6 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
         updatePoints(userId, cost);
         today[it.id] = Math.max(0, (today[it.id] || 0) - qty);   // 📅 chưa giao -> trả lại hạn ngày
         if (imp) imp.n = Math.max(0, imp.n - qty);
-        if (wt) wt.n = Math.max(0, wt.n - qty);
         if (gCnt) gCnt.n[gqKey] = Math.max(0, (gCnt.n[gqKey] || 0) - qty);   // 🗂️ chưa giao -> trả lượt
         if (isOnce) shopOnceMark(user, it.id, false);   // ⭐ chưa giao -> cho mua lại
         logDog('refund', userId, username || userId, cost, `hoàn mua item ${it.name} x${qty} (chưa giao: ${msg})`);
@@ -2983,8 +2598,8 @@ function runSpmBoardLoop() {
     setInterval(() => { repostBoard(spmBoard, getSpmBoardData, '_spmMsgId', 'BẢNG PHI THUYỀN', 'PHI THUYỀN').catch(() => { }); }, 5000);
 }
 
-// 🚦 KHOÁ GIAO ĐƠN CHUNG (28/08): đang giao 1 đơn (nhận pal / mua item - đều mở phiên
-// SFTP) thì CHẶN mọi đơn khác (pal lẫn item) tới khi xong. Tránh mở nhiều phiên SFTP
+// 🚦 KHOÁ GIAO ĐƠN CHUNG (28/08): đang giao 1 đơn (mua item / nhận quà / rút rương / pet boss
+// - đều gọi giao đồ vào game) thì CHẶN mọi đơn khác tới khi xong. Tránh mở nhiều phiên SFTP
 // cùng lúc (Shockbyte khoá brute-force ~10 phút nếu dồn dập). Tự hết sau 2 phút phòng kẹt.
 let _deliverBusyUntil = 0;
 function deliverBusy() { return Date.now() < _deliverBusyUntil; }
@@ -6410,7 +6025,6 @@ client.once('ready', async (c) => {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
     } catch (e) { writeLog('SYSTEM', `[LỖI ĐĂNG KÝ LỆNH] ${e.message}`); }
     // (Bầu Cua đã gỡ hẳn; Xổ số tạm tắt)
-    seedItemShopIfEmpty();   // 🛒 seed món mặc định nếu DB chưa có danh mục item
     backfillItemShopCat();   // 🛒 điền nhóm (vũ khí/giáp/tiêu hao) cho món cũ thiếu cat
     runSpmLoop();    // 🚀 Phi Thuyền (crash game) - vòng chơi chung
     runTaiXiuLoop(); // BIG SMALL vẫn chạy
@@ -6543,14 +6157,11 @@ client.once('ready', async (c) => {
             transfer: webTransfer,
             transferMulti: webTransferMulti,
             transferTargets: listTransferTargets,
-            // 🎮 nạp/rút KNB ↔ game qua web (28/08)
+            // 🎮 rút KNB / vàng web -> game (28/08). Nạp game -> web làm ở NPC Ví Web trong game (tlbbPollReceipts).
             dogbridge: {
                 rut: (uid, amount, kind) => webRutGame(uid, amount, kind),
-                nap: (uid, amount) => webNapGame(uid, amount),
-                napGold: (uid, gold) => webNapGold(uid, gold),   // 🪙 14/09
-                state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut, napOpen: dogBridgeCfg().nap,
-                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangToday: dogBridgeToday(getUserData(uid)).vang || 0, napToday: dogBridgeToday(getUserData(uid)).nap,
-                    napRate: 1, goldPerDog: 100, goldStep: 10000, napNpc: TLBB_NPC_HINT }),   // 💱 11/09 · 🪙 14/09 đổi vàng   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày
+                state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut,
+                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangToday: dogBridgeToday(getUserData(uid)).vang || 0 }),   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
             },
             // 📅 điểm danh tháng + 💉 nghiện - cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)
@@ -6620,14 +6231,12 @@ client.once('ready', async (c) => {
             },
             itemshop: {
                 state: (uid) => ({
-                    items: itemShopWebList(),                        // 09/09 bỏ món tắt · 10/09 implant: Chuyển Đổi → 🌳 → thường
+                    items: itemShopWebList(),                        // 09/09 bỏ món tắt · 🔥 Hàng giới hạn lên đầu
                     dayMax: itemShopDayMax(),                        // 📅 10/09: hạn mua mỗi món/ngày (0 = không)
                     dayMode: itemShopDayMode(),                      // 📅 'server' (gộp cả server) | 'user' (mỗi người)
-                    implantMax: itemShopImplantMax(),                // 🧬 mỗi người tối đa N implant/ngày (0 = không)
-                    implantToday: implantToday(getUserData(uid)).n,  // 🧬 đã mua hôm nay
+                    implantMax: itemShopImplantMax(),                // 🔥 Hàng giới hạn: mỗi người tối đa N/ngày (0 = không)
+                    implantToday: implantToday(getUserData(uid)).n,  // 🔥 đã mua hôm nay
                     once: Object.keys((getUserData(uid).shopOnce) || {}),   // ⭐ id đã mua 1 lần
-                    wtMax: itemShopWtMax(),                          // 🌳 Cây Thế Giới: mỗi người tối đa N/ngày
-                    wtToday: wtToday(getUserData(uid)).n,
                     groupQuota: itemShopGroupQuota(),                // 🗂️ {cat:{mode:'server'|'user',max}}
                     cats: itemCatList().map(c => [c.key, c.label]),   // 🏷️ 16/09: nhóm hàng admin tự đặt
                     groupToday: groupDayUser(getUserData(uid)).n,    // 👤 tôi đã mua hôm nay {cat:n}
@@ -6746,7 +6355,6 @@ client.once('ready', async (c) => {
             getDogBridge: () => dogBridgeCfg(),
             getDogBridgeDayMax: dogBridgeDayMax, setDogBridgeDayMax, getDogVangDayMax: dogVangDayMax, setDogVangDayMax,
             getTxSimple: txSimple, setTxSimple, getMinesCfg: minesCfg, setMinesCfg,   // 30/09   // 📅 11/09 hạn chuyển/ngày
-            getDogNapRate: dogNapRate, setDogNapRate,   // 💱 11/09 tỉ lệ nạp game→web
             // 🎚️ 09/09: sàn cược 2 minigame
             setMinBet: (v) => setMinBet(v),
             setDogBridge: (key, on) => setDogBridge(key, on),
@@ -6775,8 +6383,7 @@ client.once('ready', async (c) => {
             featList: () => PLAYER_FEATURES.map(f => ({ ...f, off: featOff(f.key) })), setFeatOff,   // 🔌 15/09: công tắc chức năng
             getItemShopDayMax: itemShopDayMax, setItemShopDayMax,   // 📅 10/09 hạn mua/ngày
             getItemShopDayMode: itemShopDayMode, setItemShopDayMode,   // 📅 chế độ đếm server/user
-            getItemShopImplantMax: itemShopImplantMax, setItemShopImplantMax,   // 🧬 hạn implant/người/ngày
-            getItemShopWtMax: itemShopWtMax, setItemShopWtMax,   // 🌳 hạn implant Cây Thế Giới/người/ngày
+            getItemShopImplantMax: itemShopImplantMax, setItemShopImplantMax,   // 🔥 hạn Hàng giới hạn/người/ngày
             getItemShopGroupQuota: itemShopGroupQuota, setItemShopGroupQuota,   // 🗂️ hạn theo nhóm (12/09 v2)
             setItemShop,
             petBoss: { state: () => PB.adminState(), save: (x) => PB.setCfg(x), reset: (uid) => PB.resetPick(uid), refresh: () => PB.refresh() },   // 🐾 01/10
@@ -7667,8 +7274,7 @@ function stopLonnho() {
 // Không dùng hệ liên kết SteamID/REST cũ nữa (REST đã tắt, chỉ còn SFTP).
 
 function getWithdrawMessageData() {
-    // 25/08: SHOP PAL đã DỜI HẾT LÊN WEB (Quay Pal + Chọn Pal ở nhóm 👤 HỒ SƠ).
-    // Bảng Discord này giờ CHỈ còn chuyển KNB hai chiều - không nút pal nữa.
+    // Bảng Discord này CHỈ còn chuyển KNB hai chiều.
     // 29/09 NetCo4: cau KNB Thien Long (tlbb.js). Chieu ra web lam o NPC trong game, khong lam tu Discord.
     const lines = [
         `Chuyển **Kim Nguyên Bảo (KNB)** giữa ví mini game và nhân vật Thiên Long, tỉ giá **1:1**.`,
@@ -7727,13 +7333,13 @@ function stopWithdraw() {
 //   lỗi khác / cầu SFTP chết         -> KHÔNG RÕ -> cũng chặn: chưa chắc online thì
 //        không cho thao tác, chưa đụng đồng nào của ai.
 // Chậm hơn (~5-20s cho lượt đếm) - đó là giá của việc kiểm chắc trước khi chuyển.
-async function requireOnline(gameName, itemId) {
+async function requireOnline(gameName) {
     // 08/09: COUNT là thao tác CHỈ ĐỌC nên đứt giữa chừng (abort/timeout - hay gặp
     // ngay sau khi game server restart, SFTP còn ì) thì THỬ LẠI 1 lần sau 3s.
     // An toàn tuyệt đối: không giao gì ở bước này, không có cửa giao trùng.
     for (let attempt = 0; attempt < 2; attempt++) {
         let c = null, err = null;
-        try { c = await pal.countItem(gameName, itemId || 'DogCoin'); } catch (e) { err = e; }   // 14/09: 'Money' cho luồng đổi vàng
+        try { c = await tlbb.countItem(gameName); } catch (e) { err = e; }   // Thiên Long: chỉ kiểm nhân vật có trong DB game
         const msg = (c && c.message) || (err && err.message) || '';
         if (c && c.ok && typeof c.count === 'number') return { online: true, count: c.count };
         if (/player not found/i.test(msg) || /Tried calling a member function/i.test(msg)) {
@@ -7935,7 +7541,7 @@ client.on('interactionCreate', async interaction => {
                 `Số dư hiện tại: **${points.toLocaleString()}** ${DOGCOIN_EMOJI}`,
                 ...(st.loan > 0 ? [`📒 Nợ vay: **${st.loan.toLocaleString()}** (đã gồm phí ${st.feePct}%; chưa trả là +${st.feePct}%/ngày)`] : []),
                 ...(st.admin > 0 ? [`🧾 Nợ admin: **${st.admin.toLocaleString()}** (mua đồ ghi sổ - cũng đẻ lãi ${st.feePct}%/ngày)`] : []),
-                ...(st.total > 0 ? [`⛔ Đang nợ nên **không mua được đồ ở shop item** và **không chuyển được pal vào game** - trả sạch là mở khoá ngay`] : []),
+                ...(st.total > 0 ? [`⛔ Đang nợ nên **không mua được đồ ở 🛒 Shop Item** và **không nhận được quà tặng / vòng quay / ghép ngọc / pet boss** - trả sạch là mở khoá ngay`] : []),
             ].join('\n');
             const embed = new EmbedBuilder()
                 .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
@@ -8047,7 +7653,7 @@ client.on('interactionCreate', async interaction => {
                 content:
                     `💰 Bơm **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI} vào ví thành công - ví hiện có **${r.balance.toLocaleString()}**. Gỡ đẹp nha! 🙏\n` +
                     `Ghi sổ **${r.owed.toLocaleString()}** (vay + phí ${r.debt.feePct}%) - đang ôm nợ tổng: **${r.debt.total.toLocaleString()}**.\n` +
-                    `⏰ Qua mỗi mốc **00:00** chưa trả là CẢ CỤC NỢ đẻ thêm **${r.debt.feePct}%** (kể cả nợ admin). Còn nợ là còn bị khoá mua shop item + chuyển pal vào game!`,
+                    `⏰ Qua mỗi mốc **00:00** chưa trả là CẢ CỤC NỢ đẻ thêm **${r.debt.feePct}%** (kể cả nợ admin). Còn nợ là còn bị khoá mua 🛒 Shop Item + nhận quà / vòng quay / ghép ngọc / pet boss!`,
                 ephemeral: true,
             });
         }
@@ -8075,12 +7681,11 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
-        // 29/09 NetCo4: 2 modal Discord dùng chung logic web (webNapGame / webRutGame, cầu KNB Thiên Long)
-        if (interaction.customId === 'nap_modal' || interaction.customId === 'rut_modal') {
-            const isNap = interaction.customId === 'nap_modal';
-            const amt = parseInt(interaction.fields.getTextInputValue(isNap ? 'nap_input_amount' : 'rut_input_amount'));
-            if (!isNap && (isNaN(amt) || amt <= 0)) return interaction.reply({ content: '❌ Số KNB không hợp lệ!', ephemeral: true });
-            const r = isNap ? await webNapGame(userId, amt) : await webRutGame(userId, amt);
+        // 29/09 NetCo4: modal Discord rút KNB dùng chung logic web (webRutGame, cầu KNB Thiên Long)
+        if (interaction.customId === 'rut_modal') {
+            const amt = parseInt(interaction.fields.getTextInputValue('rut_input_amount'));
+            if (isNaN(amt) || amt <= 0) return interaction.reply({ content: '❌ Số KNB không hợp lệ!', ephemeral: true });
+            const r = await webRutGame(userId, amt);
             return interaction.reply({ content: r.ok ? r.message : `❌ ${r.error}`, ephemeral: true });
         }
     }
@@ -8171,7 +7776,7 @@ client.on('interactionCreate', async interaction => {
                 `📄 **Đang ôm nợ: ${st.total.toLocaleString()}** ${DOGCOIN_EMOJI}` +
                 (st.admin > 0 ? `\n• Vay: **${st.loan.toLocaleString()}** · Admin ghi sổ: **${st.admin.toLocaleString()}** (giờ khoản này cũng đẻ lãi)` : '') +
                 `\n• Lãi kép **${st.ratePct}%/ngày** trên CẢ CỤC NỢ - qua 00:00 đêm nay là nó lại đẻ. Hôm nay còn vay được **${st.canBorrowToday.toLocaleString()}**` +
-                (st.total > 0 ? `\n• ⛔ **ĐANG NỢ**: không mua được đồ ở shop item, không chuyển được pal vào game. Trả SẠCH là mở khoá ngay!` : ''),
+                (st.total > 0 ? `\n• ⛔ **ĐANG NỢ**: không mua được đồ ở 🛒 Shop Item, không nhận được quà tặng / vòng quay / ghép ngọc / pet boss. Trả SẠCH là mở khoá ngay!` : ''),
             ephemeral: true,
         });
     }
@@ -8197,25 +7802,9 @@ client.on('interactionCreate', async interaction => {
     }
 
     // ======== NÚT CHUYỂN KNB TỪ GAME RA DISCORD ========
+    // 29/09 NetCo4: chiều game -> ví làm ở NPC Ví Web trong game (tlbbPollReceipts cộng ví), nút này chỉ chỉ đường.
     if (interaction.customId === 'nap_open') {
-        // 29/09 NetCo4: chiều game -> ví làm ở NPC trong game, không hỏi số ở Discord
-        const r = await webNapGame(userId);
-        return interaction.reply({ content: r.error || r.message, ephemeral: true });
-        // KHÔNG gọi API nào trước showModal (Discord chỉ cho 3 giây, SFTP mất ~6s).
-        if (!(getUserData(userId).ingameName || '').trim()) {
-            return interaction.reply({ content: '🔗 Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn **admin** liên kết giúp (chỉ cần 1 lần).', ephemeral: true });
-        }
-        const modal = new ModalBuilder().setCustomId('nap_modal').setTitle('Chuyển KNB ra Discord');
-        modal.addComponents(new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-                .setCustomId('nap_input_amount')
-                .setLabel('Số KNB muốn chuyển ra Discord')
-                .setPlaceholder('Ví dụ: 20')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-        ));
-        await interaction.showModal(modal);
-        return;
+        return interaction.reply({ content: `💬 Chuyển KNB từ game ra web: vào game gặp ${TLBB_NPC_HINT}, chọn số KNB. Ví web tự cộng trong vài giây.`, ephemeral: true });
     }
 
     // ======== NÚT BIG SMALL ========

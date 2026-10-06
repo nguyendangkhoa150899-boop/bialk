@@ -264,7 +264,7 @@ function startWebPlay(ctx) {
                             ['stock', ['/api/stock/open', '/api/stock/auto']],
                             ['spm', ['/api/spm/bet']],
                             ['shop', ['/api/itemshop/buy', '/api/petboss/pick']],
-                            ['dog', ['/api/dogbridge/rut', '/api/dogbridge/nap', '/api/dogbridge/napgold']],
+                            ['dog', ['/api/dogbridge/rut']],
                         ];
                         for (const [key, paths] of HANH_DONG) {
                             if (off.includes(key) && paths.includes(path)) {
@@ -275,7 +275,7 @@ function startWebPlay(ctx) {
                 }
 
                 // 🔗 18/09: CHƯA ĐƯỢC ADMIN LIÊN KẾT = KHÔNG HÀNH ĐỘNG GÌ (chủ server chốt: kể cả
-                // chuyển tiền, mua shop, nạp/rút, chat, tặng rương, đổi pal...). Luật là DANH SÁCH CHỪA,
+                // chuyển tiền, mua shop, nạp/rút, chat, tặng rương...). Luật là DANH SÁCH CHỪA,
                 // không phải danh sách chặn - đường mới thêm sau tự động bị chặn, khỏi quên.
                 // Chừa đúng 2 loại: (1) XEM - .../state, /table, /hist, /cd, /api/state, /api/profile,
                 // /api/players (trang đang mở không vỡ, admin thấy ID mà liên kết); (2) LẤY TIỀN VỀ của
@@ -480,26 +480,13 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, balance: r.balance, names: r.names, total: r.total });
                 }
-                // ===== 🎮 NẠP/RÚT KNB ↔ game qua web (28/08) =====
+                // ===== 🎮 RÚT KNB / Vàng vào game qua web (28/08; nạp game → web bỏ 06/10, dùng NPC Ví Web) =====
                 if (ctx.dogbridge && path === '/api/dogbridge/state') {
                     return sendJSON(res, 200, { ok: true, ...ctx.dogbridge.state(userId) });
                 }
                 if (ctx.dogbridge && req.method === 'POST' && path === '/api/dogbridge/rut') {
                     const body = await readBody(req);
                     const r = await ctx.dogbridge.rut(userId, body.amount, body.kind === 'vang' ? 'vang' : 'knb');
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                // 🪙 14/09: đổi VÀNG trong game -> KNB web (chung giới hạn với /nap)
-                if (ctx.dogbridge && ctx.dogbridge.napGold && req.method === 'POST' && path === '/api/dogbridge/napgold') {
-                    const body = await readBody(req);
-                    const r = await ctx.dogbridge.napGold(userId, body.gold);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, { ok: true, ...r });
-                }
-                if (ctx.dogbridge && req.method === 'POST' && path === '/api/dogbridge/nap') {
-                    const body = await readBody(req);
-                    const r = await ctx.dogbridge.nap(userId, body.amount);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -1286,16 +1273,10 @@ const PAGE = [
     '.isItem .isPh{width:62px;height:62px;flex:0 0 62px;display:flex;align-items:center;justify-content:center;font-size:30px;background:#1b2030;border:1px solid var(--line);border-radius:11px}',
     '.isItem .isMeta{flex:1;min-width:110px}',
     '.isItem .isNm{font-weight:800;font-size:15px;line-height:1.25}',
-    // 🌳 10/09: implant Cây Thế Giới - viền + tên cầu vồng cho dễ nhận
-    '.isItem.isWT{border:2px solid transparent;background:linear-gradient(#141824,#141824) padding-box,linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff) border-box}',
-    '.isItem.isWT .isNm{background:linear-gradient(90deg,#ff5f6d,#ffc371,#c6ff5f,#5fffd1,#5f9fff,#c85fff);-webkit-background-clip:text;background-clip:text;color:transparent}',
-    // 💎 10/09: hạng implant - kim cương (tier 4) xanh ngọc, vàng (tier 3) - cùng màu với bảng passive lúc nhận pal
-    '.isItem.isT4{border-color:#3fe0cf;box-shadow:0 0 0 1px #3fe0cf55 inset}.isItem.isT4 .isNm{color:#3fe0cf}',
+    // ⭐ màu theo độ hiếm món game (server gửi it.tier cho nhóm QUAN TRỌNG): gold = vàng, purple = tím
     '.isItem.isT3{border-color:#ffd76a;box-shadow:0 0 0 1px #ffd76a55 inset}.isItem.isT3 .isNm{color:#ffd76a}',
     '.isItem.isPur{border-color:#c9a2ff;box-shadow:0 0 0 1px #c9a2ff55 inset}.isItem.isPur .isNm{color:#c9a2ff}',
     '.isItem.isDone{opacity:.72}.isItem.isDone .isBuyRow button{background:#2e7d4f;cursor:default}',
-    '.isTier{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle}',
-    '.isTier.t4{background:#3fe0cf22;color:#3fe0cf}.isTier.t3{background:#ffd76a22;color:#ffd76a}.isTier.twt{background:#c85fff22;color:#e0b3ff}',
     // giá: huy hiệu vàng cho nổi hẳn khỏi tên
     '.isItem .isPr{display:inline-block;color:var(--gold);font-size:13px;font-weight:800;margin-top:5px;background:#3a2f0d;border:1px solid #6b5613;border-radius:7px;padding:2px 8px}',
     // hàng mua nằm TRỌN đáy thẻ (width:100% ép xuống dòng riêng), nút chiếm hết chỗ còn lại
@@ -1362,9 +1343,6 @@ const PAGE = [
     '.tic{width:22px;height:22px;object-fit:contain;vertical-align:-5px;margin-right:4px}',
     '.bic{width:18px;height:18px;object-fit:contain;vertical-align:-4px;margin-right:4px}',
 
-    '.dogRate{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding:8px 10px;border:1px solid #e0ac3f66;border-radius:10px;background:#241d10;font-weight:800}',
-    '.dogRate img{width:24px;height:24px;object-fit:contain;vertical-align:middle}',
-    '.dogRate .ar{color:var(--muted);margin:0 2px;font-weight:400}',
     '.dogChip{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:999px;background:#141824;border:1px solid var(--line);font-size:13px;font-weight:700;cursor:pointer;user-select:none}',
     '.dogChip.sel{background:#12351f;border-color:#3ddc84;color:#7cff9c}',
     // 📜 lịch sử cược
@@ -2287,6 +2265,7 @@ const PAGE = [
     '<div class="card">',
     '<div class="row"><h2 style="margin:0">🎮 Rút vào game</h2><div class="muted" id="dogLink">-</div></div>',
     '<div class="muted" style="font-size:12px;margin-top:4px" id="dogRutInfo">Trừ ví web, KNB vào túi khi <b>đăng nhập / đổi bản đồ</b>. Tối đa <span id="dogMax1">-</span>/lần.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Muốn nạp KNB từ game ra web: gặp NPC <b>Ví Web</b> trong game.</div>',   // 06/10: bỏ thẻ nạp game → web trên web
     // 📅 11/09: hạn ngày mỗi chiều (server đếm) - hiện còn bao nhiêu hôm nay
     '<div class="muted" id="dogDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
     '<div id="dogRutPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
@@ -2298,23 +2277,6 @@ const PAGE = [
     '<div class="muted" style="font-size:12px;margin-top:4px"><b>1 KNB = 1 vàng</b> không khoá. Trừ ví web, vàng vào túi khi <b>đăng nhập / đổi bản đồ</b>.</div>',
     '<div class="muted" id="dogVangDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
     '<div class="row" style="gap:8px;margin-top:8px"><input id="dogVangAmt" type="number" inputmode="numeric" placeholder="Số KNB đổi ra vàng" style="flex:1"><button class="btn-full" id="dogVangBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#b8860b,#8a6508)" onclick="dogRut(\'vang\')">🪙 Đổi ra vàng</button></div>',
-    '</div>',
-    // Nạp từ game - 29/09: ẨN, người chơi dùng NPC Ví Web trong game (giữ phần tử cho JS cũ)
-    '<div class="card" style="display:none">',
-    '<div class="row"><h2 style="margin:0"><img src="/knb.png" class="tic" alt="">Chuyển KNB từ game ra web</h2></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Trừ KNB <b>trong túi game</b> (không tính đồ trong hòm), cộng thẳng vào ví web. Phải đang ONLINE. Tối đa <span id="dogMax2">-</span>/lần. <span id="dogNapRateInfo" style="color:#7cff9c;font-weight:700"></span></div>',
-    '<div class="muted" id="dogNapDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
-    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogNapAmt" type="number" inputmode="numeric" placeholder="Số KNB" style="flex:1" oninput="dogPreview()"><button class="btn-full" id="dogNapBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#4a7fbf,#356197)" onclick="dogNap()"><img src="/knb.png" class="bic" alt="">Chuyển ra web</button></div>',
-    '<div id="dogNapPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
-    '</div>',
-    // 🪙 14/09: ĐỔI VÀNG trong game -> KNB web. UI riêng nhưng DÙNG CHUNG giới hạn ngày với Chuyển KNB ra web.
-    '<div class="card" style="display:none">',   // 29/09 NetCo4: tắt (Palworld)
-    '<div class="row"><h2 style="margin:0">🪙 Đổi Vàng ra KNB</h2><div class="muted" id="dogGoldStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Trừ <b>Đồng Vàng</b> trong túi game (không tính trong hòm), cộng KNB vào ví web. Phải đang ONLINE. Chỉ nhập <b>bội số 10.000</b> vàng.</div>',
-    '<div class="dogRate"><img src="/knb.png" alt=""><span id="dogGoldUnitG">-</span> Đồng Vàng <span class="ar">→</span> <img src="/knb.png" alt=""><span id="dogGoldUnitD" style="color:#ffd76a">-</span> KNB</div>',
-    '<div class="muted" id="dogGoldDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
-    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogGoldAmt" type="text" inputmode="numeric" placeholder="Số vàng (vd 10.000)" style="flex:1" oninput="dogGoldFmt(this)"><button class="btn-full" id="dogGoldBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#e0ac3f,#b8862a);color:#241d0a" onclick="dogGold()">🪙 Đổi ra KNB</button></div>',
-    '<div id="dogGoldPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
     '</div>',
     '</div>', // hết #pageDog
 
@@ -2339,7 +2301,7 @@ const PAGE = [
     '<input id="debtAmt" type="number" min="1" placeholder="Số muốn trả (trống = trả hết)" style="flex:1">',
     '<button class="btn-full" id="debtPayBtn" style="flex:1;margin-top:0" onclick="debtPay()">💳 TRẢ NỢ</button>',
     '</div>',
-    '<div class="muted" style="font-size:12px;margin-top:6px">Còn nợ một đồng là <b>không mua được đồ ở shop item</b> và <b>không chuyển được pal vào game</b>. Mấy thứ khác vẫn chơi bình thường, trả sạch nợ là mở khoá ngay. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
+    '<div class="muted" style="font-size:12px;margin-top:6px">Còn nợ một đồng là <b>không mua được 🛒 Shop Item</b>, <b>không nhận quà admin</b>, <b>không tặng đồ trong rương</b>, <b>không ghép ngọc / mở vòng quay / nhận pet boss</b>. Rút KNB và đồ vào game vẫn được, mấy thứ khác vẫn chơi bình thường, trả sạch nợ là mở khoá ngay. Muốn vay: bảng <b>📒 VAY NỢ</b> trong Discord.</div>',
     // 🆘 14/09: réo anh em ra kênh chat trả giùm
     '<button class="btn-full" id="sosBtn" style="background:linear-gradient(180deg,#b5352f,#8a201b)" onclick="debtSos()">🆘 CẦU CỨU ANH EM</button>',
     '<div class="muted" style="font-size:12px;margin-top:6px">Đăng thẻ số dư + số nợ của bạn ra kênh chat, kèm nút để anh em bấm <b>trả nợ giùm</b>. Mỗi 1 phút réo được một lần thôi nha.</div>',
@@ -4723,7 +4685,7 @@ const PAGE = [
     'var c=$("debtCard");if(!c)return;',
     'if(!(j.total>0)){c.style.display="none";return}',
     'c.style.display="";',
-    '$("debtBad").textContent=(j.total>0)?"⛔ Đang nợ - khoá mua shop item + chuyển pal vào game":"";',
+    '$("debtBad").textContent=(j.total>0)?"⛔ Đang nợ - khoá Shop Item, quà, tặng rương, ghép ngọc, vòng quay, pet boss":"";',
     '$("debtInfo").innerHTML="Đang nợ <b>"+j.total.toLocaleString("vi-VN")+"</b> 🐕"+(j.admin>0?" (vay "+j.loan.toLocaleString("vi-VN")+" + admin ghi "+j.admin.toLocaleString("vi-VN")+")":"")+" · qua 00:00 chưa trả là CẢ CỤC NỢ +"+j.ratePct+"%/ngày (lãi kép, cả nợ admin)";',
     '}).catch(function(){})}',
     // 📒 14/09: một hàm trả nợ dùng chung cho thẻ nợ trong Hồ sơ LẪN ô nhanh trên thanh
@@ -4825,20 +4787,18 @@ const PAGE = [
     '$("isLink").innerHTML=j.ingameName?("Nhân vật liên kết: <b>"+esc(j.ingameName)+"</b> - item giao thẳng vào túi (phải đang ONLINE trong game)"):"⚠️ Chưa liên kết tên nhân vật - nhắn <b>admin</b> liên kết rồi mới mua được";',
     'if(j.petBoss&&j.petBoss.picked)$("isLink").innerHTML+=" · 🐾 Đã nhận pet boss: <b>"+esc(j.petBoss.picked.name)+"</b>";',
     'isRender()}).catch(function(e){toast("❌ "+e.message)})}',
-    // hình item: file trong assets/itemimage/ (thả file + restart như palimage); thiếu -> ô 📦
+    // hình item: file trong assets/itemimage/ (thả file + restart); thiếu -> ô 📦 (món chưa có ảnh thì isCard dùng icon game vqIcon)
     'function isImg(f){return f?("<img src=\\"/itemimage/"+encodeURIComponent(f)+"\\" alt=\\"\\" onerror=\\"this.outerHTML=\'<div class=&quot;isPh&quot;>📦</div>\'\\">"):"<div class=\\"isPh\\">📦</div>"}',
     // 07/09: shop kiểu 4 NÚT NHÓM - bấm nhóm nào hiện đồ nhóm đó (nhớ qua F5);
     // gõ ô tìm là quét TÊN + GHI CHÚ trên mọi nhóm (kèm đề mục nhóm cho khỏi lạc)
     // 🏷️ 16/09: nhóm hàng do ADMIN đặt ở panel, server gửi kèm state. Dưới đây chỉ là bản dự phòng
     // lúc chưa tải xong state (isSync ghi đè ngay khi có dữ liệu).
-    'var ISG=[["important","⭐ QUAN TRỌNG"],["admin","🧺 LINH TINH"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ GIÁP"],["consume","🏪 THƯƠNG NHÂN"],["accessory","💍 PHỤ KIỆN"],["food","🍖 THỨC ĂN"],["ammo","🔫 ĐẠN"],["material","🐾 NGUYÊN LIỆU CHO PAL"],["implant","🧬 IMPLANT"]];',   // 15/09 +gift · đổi tên consume/material   // 09/09 +2 nhóm · 10/09 +material +implant
+    'var ISG=[["important","⭐ QUAN TRỌNG"],["admin","🧺 LINH TINH"],["weapon","🗡️ VŨ KHÍ"],["armor","🛡️ TRANG BỊ"],["consume","🏪 TẠP HÓA"],["accessory","💍 TRANG SỨC"],["food","💊 DƯỢC PHẨM"],["ammo","💎 BẢO THẠCH"],["material","📜 NGUYÊN LIỆU"],["implant","🔥 HÀNG GIỚI HẠN"]];',   // 06/10: khớp ITEM_CAT_DEF bên index.js (nhóm "implant" = 🔥 HÀNG GIỚI HẠN, có hạn riêng/người/ngày)
     'function isCatGet(){var c=localStorage.getItem("is_cat");return ISG.some(function(g){return g[0]===c})?c:"weapon"}',
     'function isCatPick(c){try{localStorage.setItem("is_cat",c)}catch(e){}var f=$("isFind");if(f)f.value="";isRender()}',
-    'function isWT(it){return it.cat==="implant"&&/Consumable_WorldTree_/.test(it.id)}',
     'function isOnceCat(c){return c==="important"}',   // 15/09: quà 🎁 đã tách khỏi shop, chỉ còn ⭐
     'function isOnceBought(it){return !!(IS&&isOnceCat(it.cat)&&(IS.once||[]).indexOf(it.id)>=0)}',
-    'function isTierCls(it){return (isWT(it)?" isWT":(it.tier==="diamond"?" isT4":(it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))))+(it.cat==="admin"?" isMisc":"")+(isOnceBought(it)?" isDone":"")}',
-    'function isTierTag(it){return isWT(it)?"<span class=\\"isTier twt\\">🌈 CÂY THẾ GIỚI</span>":(it.tier==="diamond"?"<span class=\\"isTier t4\\">💎 KIM CƯƠNG</span>":(it.tier==="gold"?"<span class=\\"isTier t3\\">🥇 VÀNG</span>":""))}',
+    'function isTierCls(it){return (it.tier==="gold"?" isT3":(it.tier==="purple"?" isPur":""))+(it.cat==="admin"?" isMisc":"")+(isOnceBought(it)?" isDone":"")}',
     'function isCard(it){return "<div class=\\"isItem"+isTierCls(it)+"\\">"+(!it.img&&it.ic?vqIcon(it.ic,"isIcG"):isImg(it.img))+"<div class=\\"isMeta\\"><div class=\\"isNm\\">"+esc(it.name)+"</div><div class=\\"isPr\\">"+(it.price>0?vnd(it.price)+" KNB / cái":"🎁 Miễn phí")+"</div>"+(it.note?"<div class=\\"isNote\\">"+esc(it.note)+"</div>":"")+isDayLine(it)+"</div>"',
     '+isBuyRow(it)+"</div>"}',
     // ⭐ 11/09: nhóm QUAN TRỌNG mua 1 lần/người -> không ô số lượng; đã mua -> nút "✅ ĐÃ MUA" khoá
@@ -4850,7 +4810,7 @@ const PAGE = [
     'function isImpLeft(){return IS&&IS.implantMax>0?Math.max(0,IS.implantMax-(IS.implantToday||0)):-1}',
     // 🗂️ 12/09 v2: hạn theo nhóm - server đưa groupQuota {cat:{mode,max}} + 2 sổ đếm
     // 🧰 MÓN NÀY CÓ BỎ VÀO RƯƠNG ĐƯỢC KHÔNG?
-    // 21/09 (chủ server): MỌI NHÓM đều được, implant, nguyên liệu cho pal, đạn...
+    // 21/09 (chủ server): MỌI NHÓM đều được, hàng giới hạn, nguyên liệu, bảo thạch...
     // Trước chỉ cho món có hạn TOÀN SERVER; gỡ được vì hạn theo NGƯỜI vẫn bị trừ ngay lúc
     // mua nên vào rương không lách được hạn nào (xem itemShopBuy ở index.js).
     // ⚠️ Chừa đúng ⭐ món 1-LẦN-VĨNH-VIỄN: quên nhận trước 00:00 là mất cả tiền lẫn suất mua.
@@ -4859,9 +4819,8 @@ const PAGE = [
     'function ikDuoc(it){if(!IS||!it)return false;return !isOnceCat(it.cat)}',
     'function isGrpQ(it){var g=IS&&IS.groupQuota?IS.groupQuota[it.cat]:null;return g&&g.max>0?g:null}',
     'function isGrpLeft(it){var g=isGrpQ(it);if(!g)return -1;var key=g.per==="item"?("i:"+it.id):it.cat;var used=((g.mode==="server"?IS.groupSrvToday:IS.groupToday)||{})[key]||0;return Math.max(0,g.max-used)}',
-    'function isWtLeft(){return IS&&IS.wtMax>0?Math.max(0,IS.wtMax-(IS.wtToday||0)):-1}',
     'function isOnceLine(it){if(!IS||!isOnceCat(it.cat))return "";return isOnceBought(it)?"<div class=\\"isNote\\" style=\\"color:#8fd18f\\">✅ Bạn đã mua món này - mỗi người chỉ 1 lần</div>":"<div class=\\"isNote\\" style=\\"color:#ffd76a\\">⭐ Mỗi người chỉ mua được 1 lần duy nhất</div>"}',
-    'function isImpLine(it){var gg=isGrpQ(it);if(gg&&it.cat!=="implant"&&!isOnceCat(it.cat)){var gl=isGrpLeft(it),sv=gg.mode==="server";var un=gg.per==="item"?("món "+esc(it.name)):"món nhóm này";return "<div class=\\"isNote\\" style=\\"color:"+(gl?"#8fd18f":"#ff8a80")+"\\">🗂️ "+(gl?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+gl.toLocaleString()+"/"+gg.max.toLocaleString()+" "+un+(sv?" - ai nhanh thì được":""):(sv?"cả server":"bạn")+" đã mua đủ "+gg.max.toLocaleString()+" "+un+" hôm nay - mai quay lại")+"</div>"}if(!IS||it.cat!=="implant")return isOnceLine(it);if(isWT(it)){if(!(IS.wtMax>0))return "";var w=isWtLeft();return "<div class=\\"isNote\\" style=\\"color:"+(w?"#8fd18f":"#ff8a80")+"\\">🌳 "+(w?"hôm nay bạn còn mua được "+w+"/"+IS.wtMax+" implant Cây Thế Giới":"hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")+"</div>"}if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🧬 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" implant":"hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")+"</div>"}',
+    'function isImpLine(it){var gg=isGrpQ(it);if(gg&&it.cat!=="implant"&&!isOnceCat(it.cat)){var gl=isGrpLeft(it),sv=gg.mode==="server";var un=gg.per==="item"?("món "+esc(it.name)):"món nhóm này";return "<div class=\\"isNote\\" style=\\"color:"+(gl?"#8fd18f":"#ff8a80")+"\\">🗂️ "+(gl?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+gl.toLocaleString()+"/"+gg.max.toLocaleString()+" "+un+(sv?" - ai nhanh thì được":""):(sv?"cả server":"bạn")+" đã mua đủ "+gg.max.toLocaleString()+" "+un+" hôm nay - mai quay lại")+"</div>"}if(!IS||it.cat!=="implant")return isOnceLine(it);if(!(IS.implantMax>0))return "";var l=isImpLeft();return "<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">🔥 "+(l?"hôm nay bạn còn mua được "+l+"/"+IS.implantMax+" món hàng giới hạn":"hôm nay bạn đã mua đủ "+IS.implantMax+" món hàng giới hạn - mai quay lại")+"</div>"}',
     'function isDayLine(it){var imp=isImpLine(it);if(!IS||!(IS.dayMax>0)||it.cat==="implant"||isOnceCat(it.cat)||isGrpQ(it))return imp;var l=isDayLeft(it.id),sv=IS.dayMode!=="user";return imp+"<div class=\\"isNote\\" style=\\"color:"+(l?"#8fd18f":"#ff8a80")+"\\">📅 "+(l?(sv?"cả server hôm nay còn ":"hôm nay bạn còn mua được ")+l+"/"+IS.dayMax:(sv?"cả server đã mua hết "+IS.dayMax+" hôm nay":"hôm nay bạn đã mua đủ "+IS.dayMax)+" - mai quay lại")+"</div>"}',
     'function isRender(){if(!IS||ISBUSY)return;var cat=isCatGet();',
     // nhóm đang chọn hết món (mua sạch nhóm ⭐, hoặc admin dọn hết nhóm) -> tự sang nhóm còn hàng
@@ -4964,7 +4923,7 @@ const PAGE = [
     '',
     'async function isBuy(id,btn,vaoRuong){if(ISBUSY){toast("⏳ Đang giao đơn trước - chờ chút nhé");return}if(!IS)return;var it=null;IS.items.forEach(function(x){if(x.id===id)it=x});if(!it)return;',
     'if(isOnceCat(it.cat)&&isOnceBought(it))return toast("⭐ Bạn đã mua món này rồi - mỗi người chỉ 1 lần");',
-    'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(isWT(it)){var wl=isWtLeft();if(wl>=0&&q>wl)return toast(wl?"🌳 Hôm nay bạn còn mua được "+wl+" implant Cây Thế Giới":"🌳 Hôm nay bạn đã mua đủ "+IS.wtMax+" implant Cây Thế Giới - mai quay lại")}else if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🧬 Hôm nay bạn còn mua được "+il+" implant":"🧬 Hôm nay bạn đã mua đủ "+IS.implantMax+" implant - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
+    'var q=it.cat==="important"?1:(parseInt(($("isq_"+id)||{}).value)||0);if(q<1)return toast("Nhập số lượng");if(q>it.max)return toast("Tối đa "+it.max+"/lần");if(it.cat==="implant"){var il=isImpLeft();if(il>=0&&q>il)return toast(il?"🔥 Hôm nay bạn còn mua được "+il+" món hàng giới hạn":"🔥 Hôm nay bạn đã mua đủ "+IS.implantMax+" món hàng giới hạn - mai quay lại")}else{var gq2=isGrpQ(it);if(gq2){var gl2=isGrpLeft(it);var un2=gq2.per==="item"?("món "+it.name):"món nhóm này";if(gl2>=0&&q>gl2)return toast(gl2?"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" còn mua được "+gl2.toLocaleString()+" "+un2:"🗂️ Hôm nay "+(gq2.mode==="server"?"cả server":"bạn")+" đã mua đủ "+gq2.max.toLocaleString()+" "+un2+" - mai quay lại")}}var dl=(it.cat==="implant"||isGrpQ(it))?-1:isDayLeft(id);if(dl>=0&&q>dl)return toast(dl?"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" còn mua được "+dl+" "+it.name:"📅 Hôm nay "+(IS.dayMode!=="user"?"cả server":"bạn")+" đã mua đủ "+IS.dayMax+" "+it.name+" - mai quay lại");',
     'if(!IS.ingameName)return toast("⚠️ Chưa liên kết tên nhân vật - nhắn admin trước đã");',
     'if(!(await gConfirm(vaoRuong?("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> KNB bỏ vào <b>🧰 Rương Ích Kỷ</b>?<br>Không cần đang online. Rương giữ vĩnh viễn."):("Mua <b>"+q+" "+esc(it.name)+"</b> = <b>"+vnd(it.price*q)+"</b> KNB? Giao thẳng vào túi trong game (phải đang ONLINE)."),vaoRuong?"🧰 Mua vào rương":"🛒 Mua")))return;',
     'ISBUSY=true;isBtnLock(true,btn);var chu=btn?btn.textContent:"";if(btn)btn.textContent=vaoRuong?"⏳ Đang bỏ vào rương...":"⏳ Đang giao vào game...";',
@@ -5094,23 +5053,15 @@ const PAGE = [
     'var DOGBUSY=false,DOGTARGETS=[],DOGSEL={};',
     'function dogSync(){api("/api/dogbridge/state").then(function(j){setBal(j.balance);',
     '$("dogLink").innerHTML=j.ingameName?("Nhân vật: <b>"+esc(j.ingameName)+"</b>"):"⚠️ Chưa liên kết tên nhân vật - nhắn admin";',
-    '$("dogMax1").textContent=vnd(j.max);$("dogMax2").textContent=vnd(j.max);',
-    // 💱 11/09: tỉ lệ nạp game->web (server quyết) - hiện rõ 1 game = N web
-    'DOGRATE=j.napRate>0?j.napRate:1;var nri=$("dogNapRateInfo");if(nri)nri.textContent=DOGRATE!==1?("💱 Tỉ lệ 1 : "+DOGRATE+" - lấy 1 KNB trong game được "+DOGRATE+" KNB web!"):"";',
-    // 📅 11/09: mỗi chiều 1 dòng hạn riêng + xem trước khi gõ (chủ server: "nạp ra web không có cảnh báo vượt")
+    '$("dogMax1").textContent=vnd(j.max);',
+    // 📅 11/09: hạn ngày rút / đổi vàng + xem trước khi gõ
     'DOGST=j;var ddm=j.dayMax>0?j.dayMax:0,ddi=$("dogDayInfo");if(ddi)ddi.innerHTML=ddm?("📅 Hạn rút vào game <b>"+vnd(ddm)+"</b>/ngày · hôm nay còn <b>"+vnd(Math.max(0,ddm-(j.rutToday||0)))+"</b>"):"";',
     'var vdm=j.vangDayMax>0?j.vangDayMax:0,vdi=$("dogVangDayInfo");if(vdi)vdi.innerHTML=vdm?("📅 Hạn đổi vàng <b>"+vnd(vdm)+"</b>/ngày · hôm nay còn <b>"+vnd(Math.max(0,vdm-(j.vangToday||0)))+"</b>"):"";',
-    'var ndi=$("dogNapDayInfo");if(ndi){var nl=Math.max(0,ddm-(j.napToday||0));ndi.innerHTML=ddm?("📅 Hạn nạp ra web <b>"+vnd(ddm)+"</b> KNB TRONG GAME/ngày · hôm nay còn lấy được <b>"+vnd(nl)+"</b> trong game"+(DOGRATE!==1?" (= nhận <b>"+vnd(Math.floor(nl*DOGRATE))+"</b> web)":"")):""}dogPreview();',
-    // 🪙 14/09: khung tỉ lệ + dòng giới hạn CHUNG quy ra vàng (per = 100 vàng/1 KNB game, st = bội số nhập)
-    'var per=j.goldPerDog||100,st=j.goldStep||10000;',
-    'var gs=$("dogGoldStat");if(gs)gs.textContent="tỉ lệ 1 : "+DOGRATE+" · dùng chung giới hạn với Chuyển KNB ra web";',
-    'var gg=$("dogGoldUnitG"),gd=$("dogGoldUnitD");if(gg)gg.textContent=vnd(st);if(gd)gd.textContent=vnd(Math.floor(st*DOGRATE/per));',
-    'var gdi=$("dogGoldDayInfo");if(gdi){var lg=Math.floor(Math.max(0,ddm-(j.napToday||0))*per/st)*st;gdi.innerHTML=ddm?("📅 Dùng CHUNG giới hạn với Chuyển KNB ra web · hôm nay còn đổi được <b>"+vnd(lg)+"</b> vàng (= nhận <b>"+vnd(Math.floor(lg*DOGRATE/per))+"</b> KNB)"):""}',
-    'dogGoldPreview();',
-    // 🔁 09/09: admin đóng chiều nào thì nút chiều đó khoá + đổi chữ (không mất nút, người chơi biết lý do)
-    'var rb=$("dogRutBtn"),nb=$("dogNapBtn");var rOn=j.rutOpen!==false,nOn=j.napOpen!==false;',
-    'rb.disabled=!j.ingameName||!rOn;nb.disabled=!j.ingameName||!nOn;var vb=$("dogVangBtn");if(vb){vb.disabled=rb.disabled;vb.style.display=rOn?"":"none";}',
-    'rb.textContent=rOn?"🎮 Rút vào game":"⛔ RÚT VÀO GAME ĐANG ĐÓNG";nb.innerHTML=nOn?DOGNAPLB:"⛔ CHUYỂN RA WEB ĐANG ĐÓNG";',
+    'dogPreview();',
+    // 🔁 09/09: admin đóng rút thì nút khoá + đổi chữ (không mất nút, người chơi biết lý do)
+    'var rb=$("dogRutBtn");var rOn=j.rutOpen!==false;',
+    'rb.disabled=!j.ingameName||!rOn;var vb=$("dogVangBtn");if(vb){vb.disabled=rb.disabled;vb.style.display=rOn?"":"none";}',
+    'rb.textContent=rOn?"🎮 Rút vào game":"⛔ RÚT VÀO GAME ĐANG ĐÓNG";',
     '}).catch(function(e){toast("❌ "+e.message)});',
     'api("/api/players").then(function(j){DOGTARGETS=j.list||[];',
     // người rời list (đổi ví...) thì bỏ khỏi lựa chọn cho khỏi gửi nhầm
@@ -5128,29 +5079,11 @@ const PAGE = [
     'async function dogRut(k){if(DOGBUSY)return;k=k==="vang"?"vang":"knb";var ai=$(k==="vang"?"dogVangAmt":"dogRutAmt"),amt=parseInt(ai.value)||0;if(amt<1)return toast("Nhập số KNB");',
     'if(k==="vang"&&!(await gConfirm("Đổi <b>"+vnd(amt)+"</b> KNB web thành <b>"+vnd(amt)+"</b> VÀNG không khoá trong game?","🪙 Đổi vàng")))return;',   // 06/10: popup đồng bộ, không dùng confirm() của trình duyệt
     'DOGBUSY=true;var b=$(k==="vang"?"dogVangBtn":"dogRutBtn"),L=b.textContent;b.disabled=true;b.textContent="⏳ Đang giao...";api("/api/dogbridge/rut",{amount:amt,kind:k}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent=L;setBal(j.balance);toast(j.message||"✅ Đã gửi!");ai.value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent=L;toast("❌ "+e.message);dogSync()})}',
-    'var DOGRATE=1,DOGST=null;',
-    'var DOGNAPLB="<img src=\\"/knb.png\\" class=\\"bic\\" alt=\\"\\">Chuyển ra web";',
+    'var DOGST=null;',
 
-    // xem trước khi gõ số: rút -> còn/vượt hạn + trần/lần; nạp -> đổi ra web + còn/vượt hạn
+    // xem trước khi gõ số: rút -> còn/vượt hạn + trần/lần
     'function dogPreview(){if(!DOGST)return;var mx=DOGST.max||0,dm=DOGST.dayMax>0?DOGST.dayMax:0;',
-    'var ra=parseInt(($("dogRutAmt")||{}).value)||0,rp=$("dogRutPrev");if(rp){if(!ra)rp.textContent="";else{var rl=dm?Math.max(0,dm-(DOGST.rutToday||0)):Infinity;if(mx&&ra>mx){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt giới hạn "+vnd(mx)+"/lần"}else if(ra>rl){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt hạn ngày - hôm nay chỉ còn rút được "+vnd(rl)+" KNB"}else{rp.style.color="#8fd18f";rp.textContent="→ Túi game +"+vnd(ra)+" KNB, ví web -"+vnd(ra)}}}',
-    'var na=parseInt(($("dogNapAmt")||{}).value)||0,np=$("dogNapPrev");if(np){if(!na)np.textContent="";else{var web=Math.floor(na*DOGRATE),nlft=dm?Math.max(0,dm-(DOGST.napToday||0)):Infinity;if(mx&&na>mx){np.style.color="#ff8a80";np.textContent="⚠️ Vượt giới hạn "+vnd(mx)+"/lần"}else if(na>nlft){np.style.color="#ff8a80";np.textContent="⚠️ Vượt hạn ngày: hôm nay chỉ còn lấy được "+vnd(nlft)+" KNB trong game (= nhận "+vnd(Math.floor(nlft*DOGRATE))+" web)"}else{np.style.color="#8fd18f";np.textContent="→ Lấy "+vnd(na)+" KNB trong game, ví web +"+vnd(web)+(DOGRATE!==1?" (tỉ lệ 1 : "+DOGRATE+")":"")}}}}',
-// 🪙 14/09: ô nhập vàng tự chèn dấu ngăn nghìn, chỉ nhận bội số 10.000, xem trước ra bao nhiêu KNB
-    'function dogGoldNum(){return parseInt(((($("dogGoldAmt")||{}).value)||"").replace(/[^0-9]/g,""))||0}',
-    'function dogGoldFmt(el){var d=(el.value||"").replace(/[^0-9]/g,"");el.value=d?Number(d).toLocaleString("vi-VN"):"";dogGoldPreview()}',
-    'function dogGoldPreview(){if(!DOGST)return;var p=$("dogGoldPrev");if(!p)return;var g=dogGoldNum();if(!g){p.textContent="";return}',
-    'var per=DOGST.goldPerDog||100,st=DOGST.goldStep||10000,dm=DOGST.dayMax>0?DOGST.dayMax:0,mx=DOGST.max||0;',
-    'if(g%st){p.style.color="#ff8a80";p.textContent="⚠️ Chỉ đổi theo bội số "+vnd(st)+" vàng ("+vnd(st)+" · "+vnd(st*2)+" · "+vnd(st*5)+"…)";return}',
-    'if(mx&&g>mx){p.style.color="#ff8a80";p.textContent="⚠️ Vượt giới hạn "+vnd(mx)+" vàng/lần";return}',
-    'var lg=dm?Math.floor(Math.max(0,dm-(DOGST.napToday||0))*per/st)*st:Infinity;',
-    'if(g>lg){p.style.color="#ff8a80";p.textContent="⚠️ Vượt giới hạn ngày (chung với Chuyển KNB ra web) - hôm nay chỉ còn đổi được "+vnd(lg)+" vàng";return}',
-    'p.style.color="#8fd18f";p.textContent="→ Trừ "+vnd(g)+" vàng trong game, ví web +"+vnd(Math.floor(g*DOGRATE/per))+" KNB"}',
-    'function dogGold(){if(DOGBUSY)return;var g=dogGoldNum();if(!g)return toast("Nhập số vàng");',
-    'var st=(DOGST&&DOGST.goldStep)||10000;if(g%st)return toast("⚠️ Chỉ đổi theo bội số "+vnd(st)+" vàng");',
-    'DOGBUSY=true;var b=$("dogGoldBtn");b.disabled=true;b.textContent="⏳ Đang đổi...";',
-    'api("/api/dogbridge/napgold",{gold:g}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent="🪙 Đổi ra KNB";setBal(j.balance);toast(j.message);$("dogGoldAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent="🪙 Đổi ra KNB";toast("❌ "+e.message)})}',
-    'function dogNap(){if(DOGBUSY)return;var amt=parseInt($("dogNapAmt").value)||0;if(amt<1)return toast("Nhập số KNB");if(DOGRATE!==1)toast("💱 Lấy "+vnd(amt)+" trong game → +"+vnd(Math.floor(amt*DOGRATE))+" KNB web");',
-    'DOGBUSY=true;var b=$("dogNapBtn");b.disabled=true;b.textContent="⏳ Đang chuyển...";api("/api/dogbridge/nap",{amount:amt}).then(function(j){DOGBUSY=false;b.innerHTML=DOGNAPLB;setBal(j.balance);toast(j.message||"✅ Đã nạp!");$("dogNapAmt").value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.innerHTML=DOGNAPLB;toast("❌ "+e.message);dogSync()})}',
+    'var ra=parseInt(($("dogRutAmt")||{}).value)||0,rp=$("dogRutPrev");if(rp){if(!ra)rp.textContent="";else{var rl=dm?Math.max(0,dm-(DOGST.rutToday||0)):Infinity;if(mx&&ra>mx){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt giới hạn "+vnd(mx)+"/lần"}else if(ra>rl){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt hạn ngày - hôm nay chỉ còn rút được "+vnd(rl)+" KNB"}else{rp.style.color="#8fd18f";rp.textContent="→ Túi game +"+vnd(ra)+" KNB, ví web -"+vnd(ra)}}}}',
     '',
     // Safari trên iPhone vẫn cho chụm 2 ngón dù CSS đã cấm - nó dùng sự kiện riêng
     // (gesture*), phải chặn thêm ở đây. Không đụng tới touchend/click nên bấm nhanh

@@ -65,7 +65,7 @@ muc('🔒 vào rương KHÔNG được lách hạn mua');
     ok('tìm được đoạn ngay sau khi trừ tiền', !!sau);
     ok('⭐ hạn NGÀY vẫn bị trừ', /today\[it\.id\] = \(today\[it\.id\] \|\| 0\) \+ qty;/.test(sau));
     ok('⭐ hạn IMPLANT/người vẫn bị trừ', /if \(imp\) imp\.n \+= qty;/.test(sau));
-    ok('⭐ hạn Cây Thế Giới vẫn bị trừ', /if \(wt\) wt\.n \+= qty;/.test(sau));
+    // 06/10: bỏ phép kiểm "hạn Cây Thế Giới" - hạn này chỉ khớp mã Palworld, đã gỡ ở dọn Palworld đợt 2.
     ok('⭐ hạn NHÓM vẫn bị trừ', /if \(gCnt\) gCnt\.n\[gqKey\] = \(gCnt\.n\[gqKey\] \|\| 0\) \+ qty;/.test(sau));
     ok('...và mấy dòng đó nằm TRƯỚC nhánh bỏ vào rương (không phải chỉ cho đường giao game)',
         sau.indexOf('if (gCnt)') < sau.indexOf('if (vaoRuong) {'));
