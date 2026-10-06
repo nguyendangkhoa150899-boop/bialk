@@ -137,11 +137,11 @@
     h += '<div class="gnBox"><h4>🧰 BỎ VÀO (' + soMon() + '/' + s.monMax + ' món)</h4>';
     // 💰 05/10 (chủ server): KNB web thành khung riêng nổi bật ở đầu ô Bỏ vào, có nút bấm nhanh
     if (s.knbOn) {
-      var kMax = Math.max(0, Math.min(s.knbMax, s.balance || 0));
+      var kMax = Math.max(0, Math.min(s.knbMax, s.balance || 0)), dz = GN.busy ? ' disabled' : '';   // 07/10: khóa lúc kim đang quay
       h += '<div class="gnKnb"><div class="gnKnbT">💰 Thêm KNB web <small>tối đa ' + vnd(s.knbMax) + ' / lần · ví <b>' + vnd(s.balance) + '</b></small></div>'
-        + '<div class="gnKnbR"><input type="number" min="0" max="' + kMax + '" value="' + (GN.knb || 0) + '" onchange="gnKnb(this.value)">'
-        + '<button onclick="gnKnb(' + ((GN.knb || 0) + 1000) + ')">+1.000</button><button onclick="gnKnb(' + ((GN.knb || 0) + 5000) + ')">+5.000</button>'
-        + '<button onclick="gnKnb(' + kMax + ')">Tối đa</button><button onclick="gnKnb(0)">✕</button></div></div>';
+        + '<div class="gnKnbR"><input type="number" min="0" max="' + kMax + '" value="' + (GN.knb || 0) + '" onchange="gnKnb(this.value)"' + dz + '>'
+        + '<button onclick="gnKnb(' + ((GN.knb || 0) + 1000) + ')"' + dz + '>+1.000</button><button onclick="gnKnb(' + ((GN.knb || 0) + 5000) + ')"' + dz + '>+5.000</button>'
+        + '<button onclick="gnKnb(' + kMax + ')"' + dz + '>Tối đa</button><button onclick="gnKnb(0)"' + dz + '>✕</button></div></div>';
     }
     var ids = Object.keys(GN.vao);
     var kq = GN.kq && GN.kq.vao ? GN.kq : null;   // 05/10: kết quả lượt vừa luyện (giữ tới khi người chơi đổi)
@@ -206,22 +206,26 @@
     ganKeo();
   }
   function chuanHoa() { var s = S(); Object.keys(GN.vao).forEach(function (id) { var r = (s.ruong || []).find(function (x) { return x.id === id; }); if (!r) delete GN.vao[id]; else GN.vao[id] = Math.max(1, Math.min(r.qty, GN.vao[id])); }); if (GN.dich && !dichObj()) GN.dich = ''; }
-  window.gnSync = function () { api('/api/gn/state', {}).then(function (j) { GN.s = j; GN.kq = null; chuanHoa(); ve(); }).catch(function (e) { toast('❌ ' + e.message); }); };
-  window.gnTab = function (t) { GN.chon = t; ve(); };
-  window.gnLoc = function (v) { GN.loc = v; ve(); var i = document.querySelector('#gnApp .gnTabs input'); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } };
-  window.gnThem = function (id) { var r = S().ruong.find(function (x) { return x.id === id; }); if (!r) return; var c = GN.vao[id] || 0; if (c >= r.qty) return toast('⚠️ Rương chỉ có ' + r.qty); if (dichObj() && duRoi()) return toast('⚠️ Đã đủ ' + S().tiMax + '% - không bỏ thêm được'); GN.vao[id] = c + 1; if (thua()) { if (c) GN.vao[id] = c; else delete GN.vao[id]; return toast('⚠️ Món này làm thừa (đã đủ ' + S().tiMax + '% khi bỏ món rẻ hơn) - chọn món nhỏ hơn'); } GN.kq = null; ve(); };
-  window.gnSl = function (id, v) { v = Math.floor(Number(v) || 0); if (v <= 0) delete GN.vao[id]; else GN.vao[id] = v; chuanHoa(); while (GN.vao[id] > 1 && thua()) GN.vao[id]--; if (GN.vao[id] === 1 && thua()) delete GN.vao[id]; GN.kq = null; ve(); };
-  window.gnBo = function (id) { delete GN.vao[id]; GN.kq = null; ve(); };
-  window.gnXoaHet = function () { GN.vao = {}; GN.kq = null; ve(); };
-  window.gnKnb = function (v) { GN.knb = Math.max(0, Math.min(S().knbMax, S().balance || 0, Math.floor(Number(v) || 0))); GN.kq = null; ve(); };   // 05/10: kẹp cả theo số dư ví
-  window.gnDich = function (id) { GN.dich = id; GN.kq = null; ve(); };
+  // 07/10: lúc kim đang quay (GN.busy) mọi nút đổi đồ / KNB / đích / tab bị chặn. Trước đó bấm vẫn được -> ve() vẽ lại cả bảng:
+  // kim mới nhảy thẳng tới kết quả + vòng tỉ lệ vẽ theo số KNB / đồ mới -> kim dừng lệch vùng, trông như lỗi.
+  function ban(im) { if (!GN.busy) return false; if (!im) toast('⏳ Đang luyện - chờ kim dừng đã'); return true; }
+  window.gnSync = function () { if (ban(1)) return; api('/api/gn/state', {}).then(function (j) { if (GN.busy) return; GN.s = j; GN.kq = null; chuanHoa(); ve(); }).catch(function (e) { toast('❌ ' + e.message); }); };
+  window.gnTab = function (t) { if (ban()) return; GN.chon = t; ve(); };
+  window.gnLoc = function (v) { if (ban(1)) return; GN.loc = v; ve(); var i = document.querySelector('#gnApp .gnTabs input'); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } };
+  window.gnThem = function (id) { if (ban()) return; var r = S().ruong.find(function (x) { return x.id === id; }); if (!r) return; var c = GN.vao[id] || 0; if (c >= r.qty) return toast('⚠️ Rương chỉ có ' + r.qty); if (dichObj() && duRoi()) return toast('⚠️ Đã đủ ' + S().tiMax + '% - không bỏ thêm được'); GN.vao[id] = c + 1; if (thua()) { if (c) GN.vao[id] = c; else delete GN.vao[id]; return toast('⚠️ Món này làm thừa (đã đủ ' + S().tiMax + '% khi bỏ món rẻ hơn) - chọn món nhỏ hơn'); } GN.kq = null; ve(); };
+  window.gnSl = function (id, v) { if (ban()) return; v = Math.floor(Number(v) || 0); if (v <= 0) delete GN.vao[id]; else GN.vao[id] = v; chuanHoa(); while (GN.vao[id] > 1 && thua()) GN.vao[id]--; if (GN.vao[id] === 1 && thua()) delete GN.vao[id]; GN.kq = null; ve(); };
+  window.gnBo = function (id) { if (ban()) return; delete GN.vao[id]; GN.kq = null; ve(); };
+  window.gnXoaHet = function () { if (ban()) return; GN.vao = {}; GN.kq = null; ve(); };
+  window.gnKnb = function (v) { if (ban()) return; GN.knb = Math.max(0, Math.min(S().knbMax, S().balance || 0, Math.floor(Number(v) || 0))); GN.kq = null; ve(); };   // 05/10: kẹp cả theo số dư ví
+  window.gnDich = function (id) { if (ban()) return; GN.dich = id; GN.kq = null; ve(); };
   window.gnNhan = function (m) {
+    if (ban()) return;
     var t = tong(); if (!t) return toast('⚠️ Bỏ đồ vào trước rồi chọn mức nhân');
     var muc = t * m, best = null;
     (S().dich || []).forEach(function (x) { if (!best || Math.abs(x.gia - muc) < Math.abs(best.gia - muc)) best = x; });
     if (best) { GN.dich = best.id; GN.kq = null; ve(); }
   };
-  window.gnPct = function (v) { if (!dichObj()) return toast('⚠️ Chọn món đích trước'); tuBo(v); GN.kq = null; ve(); };
+  window.gnPct = function (v) { if (ban()) return; if (!dichObj()) return toast('⚠️ Chọn món đích trước'); tuBo(v); GN.kq = null; ve(); };
   window.gnQuay = function () {
     if (GN.busy || hopLe() !== 'ok') return;
     var d = dichObj(), vao = Object.keys(GN.vao).map(function (id) { return { id: id, sl: GN.vao[id] }; });
