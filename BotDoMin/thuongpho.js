@@ -106,7 +106,9 @@ module.exports = function (ctx) {
         for (const l of ci) {
             const c = l.split('\t'); if (!/^\d{8}$/.test(c[0] || '')) continue;
             const r = rule[c[11]]; if (!r || !r.bank || r.uniq) continue;
-            if (+c[18] > 0) continue;                       // giới hạn số lượng sở hữu -> rút về dễ kẹt
+            // cột 18 "最大持有数量" KHÔNG phải giới hạn thật với đồ thường (06/10: Yến Huyền Ngọc ghi 1 mà chồng 30, người chơi
+            // giữ 2 ô, mô tả bảo gom 60 cái). Chỉ còn chặn đồ nhiệm vụ (4xxxxxxx, vốn ở túi Nhiệm vụ). Game từ chối nhận thì HOÀN về kho.
+            if (+c[18] > 0 && /^4/.test(c[0])) continue;
             if (coThamSo.has(+c[13])) continue;
             if (chan.has(c[0])) continue;
             // số chồng = cột "叠放数量" của bảng (195 món cờ ItemRule "chồng" = 0 mà cột > 1: game kiểm "chồng không cố định chưa đầy"
