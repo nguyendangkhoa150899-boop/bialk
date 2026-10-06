@@ -5439,23 +5439,22 @@ const PAGE = [
     'var sel=$("ikTo");if(!sel)return;var h="<option value=\\"\\">-- chọn người nhận --</option>";',
     'IKNG.forEach(function(p){h+="<option value=\\""+p.id+"\\">"+esc(p.name||p.id)+"</option>"});sel.innerHTML=h}).catch(function(){})}',
     'function ikDraw(){if(!IK)return;ikBadge(IK.total);ikTick();',
-    '$("ikStat").innerHTML="Đang giữ <b>"+IK.total+"</b> món · hôm nay đã mua vào rương <b>"+IK.boughtToday+"/"+IK.dayMax+"</b> (còn "+IK.leftToday+")"+(IK.banOn?" · đã bán hôm nay <b>"+IK.banHomNay+(IK.banNgayMax>0?"/"+IK.banNgayMax:"")+"</b>":"");',
+    '$("ikStat").innerHTML="Đang giữ <b>"+IK.total+"</b> món · hôm nay đã mua vào rương <b>"+IK.boughtToday+"/"+IK.dayMax+"</b> (còn "+IK.leftToday+")";',   // 06/10: bỏ bán -> bỏ "đã bán hôm nay"
     // 🎁 ai tặng mình hôm nay - gọn trong 1 khung, khỏi đẻ thêm màn hình
     'var nh=$("ikNhan"),NL=IK.nhan||[];nh.classList.toggle("hidden",!NL.length);',
     'if(NL.length){nh.innerHTML="🎁 <b>Hôm nay bạn được tặng:</b><br>"+NL.map(function(g){return "• <b>"+esc(g.tu)+"</b> tặng "+g.qty+" "+esc(g.ten)+" <span class=\\"muted\\">("+ikGio(g.at)+")</span>"}).join("<br>")}',
     'var L=IK.items||[];var box=$("ikList");',
     'if(!L.length){box.innerHTML="<div class=\\"muted\\" style=\\"text-align:center;padding:18px;grid-column:1/-1\\">Rương trống. Qua 🏪 Shop Item bấm <b>🧰 Vào rương</b> để mua đồ vào đây.</div>";return}',
     // 05/10: dạng BẢNG cho PC - cột Vật phẩm | Đang có | Giá bán | Số lượng + nút (điện thoại: tiêu đề ẩn, ô tự xuống hàng)
-    'var h="<div class=\\"ikHdr\\"><span></span><span>Vật phẩm</span><span>Đang có</span><span>Giá bán / cái</span><span>Số lượng · thao tác</span></div>";',
+    'var h="<div class=\\"ikHdr\\"><span></span><span>Vật phẩm</span><span>Đang có</span><span>Quy đổi</span><span>Số lượng · thao tác</span></div>";',
     'L.forEach(function(x){h+="<div class=\\"ikCard\\"><div class=\\"ikPic\\">"+(!x.img&&x.ic?vqIcon(x.ic,"ikIcG"):isImg(x.img))+"<span class=\\"ikQ\\">x"+x.qty+"</span></div>"',
     '+"<div class=\\"ikNm\\">"+esc(x.name)+"<div class=\\"ikId\\">ID "+esc(x.id)+"</div></div>"',
     '+"<div class=\\"ikCo\\">"+vnd(x.qty)+"</div>"',
-    '+"<div class=\\"ikGia\\">"+(x.doi>0?"🎫 = "+vnd(x.doi)+" KNB":x.ban>0?"💰 "+vnd(x.ban)+" KNB":"<span class=\\"muted\\">không bán</span>")+"</div>"',
+    '+"<div class=\\"ikGia\\">"+(x.doi>0?"🎫 = "+vnd(x.doi)+" KNB web":"<span class=\\"muted\\">—</span>")+"</div>"',
     '+"<div class=\\"ikAct\\"><input id=\\"ikq_"+x.id+"\\" type=\\"number\\" min=\\"1\\" max=\\""+x.qty+"\\" value=\\""+(x.rutMax?Math.min(x.qty,x.rutMax):x.qty)+"\\">"',
-    '+"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>"',
+    '+(x.doi>0?"<button class=\\"bd\\" title=\\"Cộng thẳng KNB vào số dư web\\" onclick=\\"ikDung(\'"+x.id+"\',this)\\">🎫 Sử dụng</button>":"<button class=\\"bn\\" onclick=\\"ikClaim(\'"+x.id+"\',this)\\">📦 Nhận</button>")',   // 06/10: phiếu KNB = Sử dụng (KNB web), không rút vào game
     '+"<button class=\\"bt\\" onclick=\\"ikGive(\'"+x.id+"\',this)\\">🎁 Tặng</button>"',
-    // 💰 bán (chỉ món admin cho bán) + 🗑️ xoá (05/10) - cùng 1 hàng ngang
-    '+(x.doi>0?"<button class=\\"bd\\" title=\\"Đổi phiếu thành KNB web\\" onclick=\\"ikDung(\'"+x.id+"\',this)\\">🎫 Sử dụng</button>":x.ban>0?"<button class=\\"bb\\" onclick=\\"ikBan(\'"+x.id+"\',this)\\">💰 Bán</button>":"<span class=\\"ikNoBan\\"></span>")',   // ô trống giữ thẳng cột trên PC
+    // 06/10: bỏ 💰 Bán (ép đi 💎 Ghép Ngọc); 🎫 Sử dụng đã lên chỗ nút Nhận
     '+"<button class=\\"bx\\" title=\\"Xoá khỏi rương - không hoàn gì\\" onclick=\\"ikXoa(\'"+x.id+"\',this)\\">🗑️</button></div></div>"});',
     'box.innerHTML=h}',
     'function ikGio(ts){var d=new Date(ts);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}',

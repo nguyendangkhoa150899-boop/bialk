@@ -2605,7 +2605,9 @@ function ichKyBanDs() {
     }).sort((a, b) => a.nhom.localeCompare(b.nhom) || a.id.localeCompare(b.id));
 }
 function ichKyBan(userId, itemId, qty, username) {
-    const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
+    // 06/10 chủ server: BỎ BÁN đồ trong rương - ép người chơi đi 💎 Ghép Ngọc. Chặn ở server (web đã bỏ nút), cấu hình bán cũ để nguyên.
+    return { error: '💰 Rương Ích Kỷ không còn bán đồ - dùng 💎 Ghép Ngọc để gộp lên món xịn hơn' };
+    const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };   // eslint-disable-line no-unreachable
     const c = ichKyBanCfg();
     if (!c.on) return { error: '💰 Bán đồ trong rương đang tắt' };
     itemId = String(itemId || '');
@@ -2702,6 +2704,8 @@ async function ichKyClaim(userId, itemId, qty, username) {
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    // 06/10 chủ server: phiếu KNB không rút vào game nữa - nút Nhận đổi thành 🎫 Sử dụng (cộng thẳng KNB web)
+    if (ICHKY_PHIEU_KNB[String(itemId)]) return { error: '🎫 Phiếu KNB bấm Sử dụng để cộng thẳng vào số dư web' };
     if (ichKyRutMax(itemId) && qty > ichKyRutMax(itemId)) {
         return { error: `Món này rút tối đa ${ichKyRutMax(itemId)} cái mỗi lần (mỗi cái chiếm 1 ô túi) - rút nhiều lần nhé` };
     }
