@@ -134,13 +134,18 @@
   // ---- ve ----
   // 1 mon -> nhieu o nhu trong game: chong day truoc, o le cuoi (phan da chon rut khong hien nua)
   function oKho(x) {
-    // 06/10 chu server chot: GOP SO LUONG - moi mon (ID + khoa) 1 o ghi tong so, khong tach chong nhu game cho de nhin.
-    // So o tui game can trong van tinh theo so chong (tooltip, tong ket tui rut, popup xac nhan).
+    // 06/10 chu server chot: NGOC (5xxxxxxx) cong don 1 o / loai (trong game moi vien 1 o); do khac tach chong nhu game.
+    // So o tui game can trong luon tinh theo so chong that (tooltip, tong ket tui rut, popup xac nhan).
     var con = x.n - (TP.chon[key(x)] || 0);
     if (con <= 0) return '';
+    var c = /^5/.test(x.id) ? con : Math.max(1, x.chong), ds = [];
+    while (con > 0 && ds.length < 99) { var q = Math.min(c, con); ds.push(q); con -= q; }
+    if (con > 0) ds.push(con);   // toi da 100 o / mon, o cuoi gom phan con lai
     var cls = 'tpO' + (x.k ? ' cd' : '') + (x.rut ? '' : ' khoa');
-    return '<button class="' + cls + '" data-tpk="' + key(x) + '" onclick="tpVao(\'' + key(x) + '\')">' +
-      ic(x) + (x.k ? '<span class="lk">🔒</span>' : '') + '<span class="q">' + (con > 1 ? fmt(con) : '') + '</span></button>';
+    return ds.map(function (q) {
+      return '<button class="' + cls + '" data-tpk="' + key(x) + '" data-tpq="' + q + '" onclick="tpVao(\'' + key(x) + '\',' + q + ')">' +
+        ic(x) + (x.k ? '<span class="lk">🔒</span>' : '') + '<span class="q">' + (q > 1 ? fmt(q) : '') + '</span></button>';
+    }).join('');
   }
   function oRa(x, n) {
     return '<div class="tpRa"><button class="tpO" data-tpk="' + key(x) + '" onclick="tpRa(\'' + key(x) + '\')" title="Bấm để trả về kho">' +
