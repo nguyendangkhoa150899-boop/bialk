@@ -1449,6 +1449,7 @@ const PB = require('./petboss')({
 const ITEMICON = require('./itemicon');
 const VQ = require('./vongquay')({
     db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, tlbb, icon: ITEMICON.icon,
+    ichKy: { add: (u, id, n) => ichKyAdd(u, String(id), n) },   // 06/10: quà quay trúng vào thẳng 🧰 Rương Ích Kỷ
 });
 // 💎 05/10: GHÉP NGỌC (ghepngoc.js) - bỏ đồ trong 🧰 Rương Ích Kỷ luyện ra ngọc 7 / Trùng Lâu..., thắng vào lại rương.
 // Mọi số liệu ở dbCache._gnCfg (panel SUPER, tab 🎁 Quà tặng). Mặc định TẮT.

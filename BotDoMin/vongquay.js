@@ -50,6 +50,13 @@ module.exports = function vongQuay(d) {
             for (const x of v.ruong) { const y = m.get(x.id); if (y) { y.sl += x.sl; y.t = Math.max(y.t, x.t); } else m.set(x.id, { ...x }); }
             v.ruong = [...m.values()]; v.gop = 1;
         }
+        // 06/10: quà vòng quay vào thẳng 🧰 Rương Ích Kỷ -> đồ còn tồn trong rương vòng quay cũ chuyển sang 1 lần (không mất món nào)
+        if (d.ichKy && v.ruong.length) {
+            const ds = v.ruong.splice(0);
+            for (const x of ds) d.ichKy.add(u, x.id, x.sl);
+            d.writeLog('SYSTEM', `[VÒNG QUAY] chuyển ${ds.length} món rương vòng quay cũ -> Rương Ích Kỷ: ${ds.map((x) => x.id + ' x' + x.sl).join(', ').slice(0, 300)}`);
+            d.saveDbNow();
+        }
         return v;
     }
     const ra = (x) => ({ id: x.id, sl: x.sl, ten: ten(x.id), ic: d.icon(x.id) });
@@ -106,7 +113,7 @@ module.exports = function vongQuay(d) {
         if (!v.board || !v.board.length) return { error: `Chưa có vòng - bấm Mở vòng (${c.gia.toLocaleString()} KNB) trước` };
         if ((v.boardN || 0) >= c.max) return { error: `Vòng này đã quay đủ ${c.max} lần - bấm 🔄 Làm mới (${c.gia.toLocaleString()} KNB) để quay tiếp` };
         if (v.luot < 1) return { error: 'Hết lượt quay - đánh boss nhận Túi đồ boss để có thêm lượt' };
-        if (v.ruong.length >= RUONG_MAX) return { error: `Rương đầy ${RUONG_MAX} món - nhận bớt vào game hoặc xóa bớt đã` };
+        if (!d.ichKy && v.ruong.length >= RUONG_MAX) return { error: `Rương đầy ${RUONG_MAX} món - nhận bớt vào game hoặc xóa bớt đã` };
         const tong = v.board.reduce((s, x) => s + (x.w > 0 ? x.w : 0), 0);
         if (tong <= 0) return { error: 'Vòng lỗi trọng số - bấm Làm mới' };
         let r = rnd(tong), o = 0;
@@ -114,8 +121,8 @@ module.exports = function vongQuay(d) {
         const x = v.board[o];
         v.luot -= 1; v.boardN = (v.boardN || 0) + 1;
         const q = { k: Date.now().toString(36) + '-' + rnd(1e6).toString(36), id: x.id, sl: x.sl, t: Date.now() };
-        const cu = v.ruong.find((y) => y.id === x.id);   // trúng món đã có -> cộng dồn
-        if (cu) { cu.sl += x.sl; cu.t = q.t; } else v.ruong.push(q);
+        if (d.ichKy) d.ichKy.add(u, x.id, x.sl);   // 06/10: vào thẳng 🧰 Rương Ích Kỷ (Ghép Ngọc dùng được nếu món có giá)
+        else { const cu = v.ruong.find((y) => y.id === x.id); if (cu) { cu.sl += x.sl; cu.t = q.t; } else v.ruong.push(q); }   // trúng món đã có -> cộng dồn
         v.lich.push({ id: x.id, sl: x.sl, t: q.t }); if (v.lich.length > LICH_MAX) v.lich.splice(0, v.lich.length - LICH_MAX);
         const db = d.db(); if (!Array.isArray(db._vqLog)) db._vqLog = [];
         db._vqLog.push({ t: q.t, uid, ten: u.name || uid, id: x.id, sl: x.sl });
