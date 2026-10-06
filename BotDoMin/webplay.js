@@ -146,6 +146,12 @@ function startWebPlay(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            // 🧰 07/10: giao diện Rương Ích Kỷ kiểu Thương Phố (ghi đè ikDraw) - đọc lại mỗi lần, sửa không cần restart
+            if (req.method === 'GET' && path === '/ik.js') {
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'ichky.client.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (ASSETS.serve(req, res, path)) return;
 
             // 🃏 trang poker + ảnh lá bài. CHỈ 2 dạng đường dẫn, chặn mọi thứ khác (../ vân vân).
@@ -5093,7 +5099,7 @@ const PAGE = [
     'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
     'if(TOKEN){show("")}else{nhoDoVao()}',
     // 30/09: ô PIN đã bỏ - Enter ở ô mật khẩu game đã gắn inline (onkeydown) trên input#gpass
-    '</script><script src="/gn.js"></script><script src="/tb.js"></script><script src="/tp.js"></script></body></html>',
+    '</script><script src="/gn.js"></script><script src="/tb.js"></script><script src="/tp.js"></script><script src="/ik.js"></script></body></html>',
 ].join('\n');
 
 module.exports = { startWebPlay };
