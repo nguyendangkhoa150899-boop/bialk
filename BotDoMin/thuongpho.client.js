@@ -31,8 +31,6 @@
     // o CO DINH: vien do + o khoa to hon -> 2 vien cung ID nhin la biet
     '#tpCard .tpO.cd{border-color:#a33a3a;box-shadow:0 0 0 1px #5a1e1e inset}#tpCard .tpO.cd:hover{border-color:#ff5a5a;box-shadow:0 0 0 1px #ff5a5a inset}',
     '#tpCard .tpO .lk{font-size:13px}',
-    '#tpCard .tpSub{grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#c9a95a;padding:4px 2px 3px;border-bottom:1px dashed #3b3220}',
-    '#tpCard .tpSub span{color:var(--muted);font-weight:600}#tpCard .tpSub.cd{color:#ff7a7a;border-color:#5a1e1e;margin-top:6px}',
     '#tpCard .tpRa{display:flex;flex-direction:column;align-items:center;gap:3px}',
     '#tpCard .tpRa .tpO{width:100%}',
     '#tpCard .tpRa input{width:100%;box-sizing:border-box;background:#11141e;border:1px solid #2a3340;color:#7ee2a8;border-radius:6px;padding:2px 3px;font-size:12px;font-weight:800;text-align:center}',
@@ -144,14 +142,6 @@
     return '<button class="' + cls + '" data-tpk="' + key(x) + '" onclick="tpVao(\'' + key(x) + '\')">' +
       ic(x) + (x.k ? '<span class="lk">🔒</span>' : '') + '<span class="q">' + (con > 1 ? fmt(con) : '') + '</span></button>';
   }
-  // 2 nhom: khong co dinh truoc, co dinh sau (moi nhom co tieu de khi ca 2 deu co)
-  function luoiKho(L) {
-    var thuong = L.filter(function (x) { return !x.k; }).map(oKho).join(''), cd = L.filter(function (x) { return x.k; }).map(oKho).join('');
-    if (!thuong || !cd) return thuong + cd;
-    var dem = function (k) { return L.filter(function (x) { return !!x.k === k && x.n - (TP.chon[key(x)] || 0) > 0; }).length; };
-    return '<div class="tpSub">Không cố định <span>' + dem(false) + ' loại</span></div>' + thuong +
-      '<div class="tpSub cd">🔒 Cố định <span>' + dem(true) + ' loại</span></div>' + cd;
-  }
   function oRa(x, n) {
     return '<div class="tpRa"><button class="tpO" data-tpk="' + key(x) + '" onclick="tpRa(\'' + key(x) + '\')" title="Bấm để trả về kho">' +
       ic(x) + (x.k ? '<span class="lk">🔒</span>' : '') + '<span class="q">' + fmt(n) + '</span></button>' +
@@ -191,7 +181,7 @@
 
     // tui trai
     h += '<div class="tpTwo"><div class="tpBag"><div class="tpBagT">📦 Kho web <span>' + kho().length + ' loại · ' + fmt(tong) + ' món</span></div><div class="tpGrid">';
-    var luoi = luoiKho(L);
+    var luoi = L.map(oKho).join('');   // 06/10: khong tach nhom - o co dinh (vien do) nam sat o thuong cung loai
     h += luoi || '<div class="tpEmpty">' + (kho().length ? (L.length ? 'Đã chọn rút hết các món đang lọc' : 'Không có món khớp bộ lọc') : 'Kho trống - chuyển đồ ra từ NPC Ví Web trong game') + '</div>';
     h += '</div></div>';
     // tui phai
