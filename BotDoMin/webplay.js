@@ -5666,8 +5666,8 @@ const PAGE = [
     'function dogTransfer(){if(DOGBUSY)return;var ids=Object.keys(DOGSEL);if(!ids.length)return toast("Bấm chọn ít nhất 1 người nhận đã");',
     'var amt=parseInt($("dogTfAmt").value)||0;if(amt<1)return toast("Nhập số KNB mỗi người");',
     'DOGBUSY=true;api("/api/transfer/multi",{toIds:ids,amount:amt}).then(function(j){DOGBUSY=false;setBal(j.balance);toast("💸 Đã chuyển "+vnd(amt)+"/người cho "+(j.names||[]).join(", ")+(ids.length>1?" - tổng "+vnd(j.total||amt*ids.length):""));$("dogTfAmt").value="";DOGSEL={};dogRenderPick()}).catch(function(e){DOGBUSY=false;toast("❌ "+e.message)})}',
-    'function dogRut(k){if(DOGBUSY)return;k=k==="vang"?"vang":"knb";var ai=$(k==="vang"?"dogVangAmt":"dogRutAmt"),amt=parseInt(ai.value)||0;if(amt<1)return toast("Nhập số KNB");',
-    'if(k==="vang"&&!confirm("Đổi "+amt.toLocaleString("vi-VN")+" KNB web thành "+amt.toLocaleString("vi-VN")+" VÀNG không khoá trong game?"))return;',
+    'async function dogRut(k){if(DOGBUSY)return;k=k==="vang"?"vang":"knb";var ai=$(k==="vang"?"dogVangAmt":"dogRutAmt"),amt=parseInt(ai.value)||0;if(amt<1)return toast("Nhập số KNB");',
+    'if(k==="vang"&&!(await gConfirm("Đổi <b>"+vnd(amt)+"</b> KNB web thành <b>"+vnd(amt)+"</b> VÀNG không khoá trong game?","🪙 Đổi vàng")))return;',   // 06/10: popup đồng bộ, không dùng confirm() của trình duyệt
     'DOGBUSY=true;var b=$(k==="vang"?"dogVangBtn":"dogRutBtn"),L=b.textContent;b.disabled=true;b.textContent="⏳ Đang giao...";api("/api/dogbridge/rut",{amount:amt,kind:k}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent=L;setBal(j.balance);toast(j.message||"✅ Đã gửi!");ai.value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent=L;toast("❌ "+e.message);dogSync()})}',
     'var DOGRATE=1,DOGST=null;',
     'var DOGNAPLB="<img src=\\"/knb.png\\" class=\\"bic\\" alt=\\"\\">Chuyển ra web";',

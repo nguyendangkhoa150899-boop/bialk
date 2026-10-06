@@ -54,6 +54,12 @@
     '#tpCard .tpMon .tpIc{position:static;display:block;width:26px;height:26px;flex:0 0 26px;border-radius:5px;background-repeat:no-repeat}',
     '#tpCard .tpMon .tpIc.vqNo{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:14px;background:#1a1f2d}',
     '#tpCard .tpMon b{color:#ffd76a}',
+    // danh sach mon trong popup xac nhan (#gmBox cua trang, ngoai #tpCard)
+    '.tpCfL{margin:10px 0;display:flex;flex-direction:column;gap:4px;max-height:300px;overflow:auto}',
+    '.tpCf{display:flex;align-items:center;gap:8px;background:#0e1118;border:1px solid #262c3d;border-radius:8px;padding:3px 8px 3px 3px;font-size:13px;text-align:left}',
+    '.tpCf>span{flex:1;min-width:0}.tpCf b{color:#ffd76a;white-space:nowrap}',
+    '.tpCf .tpIc{display:block;width:28px;height:28px;flex:0 0 28px;border-radius:5px;background-repeat:no-repeat}',
+    '.tpCf .tpIc.vqNo{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:15px;background:#1a1f2d}',
     '#tpTip{position:fixed;z-index:9999;pointer-events:none;max-width:280px;background:rgba(8,10,16,.96);border:1px solid #8a6a2a;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.5;color:#e8e8e8;box-shadow:0 6px 18px rgba(0,0,0,.6);display:none}',
     '#tpTip .n{font-size:14px;font-weight:900;color:#ffd76a;margin-bottom:2px}',
     '#tpTip .cd{color:#ff5a5a;font-weight:900}#tpTip .kcd{color:#7ee2a8}#tpTip .x{color:#9aa3b8}'
@@ -242,12 +248,23 @@
     var ds = Object.keys(TP.chon).filter(function (k) { return TP.chon[k] > 0 && tim(k); }).map(function (k) { var x = tim(k); return { id: x.id, k: x.k, n: TP.chon[k] }; });
     if (!ds.length) return;
     var t = tinhO();
-    if (!confirm('Rút ' + t.loai + ' loại (' + fmt(t.mon) + ' món) về nhân vật ' + (TP.s.nhanVat || '') + '?\n\nCần trống khoảng ' + t.o[1] + ' ô Đạo cụ, ' + t.o[2] + ' ô Nguyên liệu.\nĐã xác nhận thì KHÔNG huỷ được.')) return;
+    // 06/10 chu server: KHONG dung confirm() cua trinh duyet - dung popup giua man hinh cua trang (gConfirm, webplay.js)
+    if (typeof gConfirm !== 'function') return toast('❌ Trang chưa tải xong, F5 rồi thử lại');
+    var ds8 = ds.slice(0, 8).map(function (y) { var x = tim(y.id + '|' + y.k);
+      return '<div class="tpCf">' + ic(x) + '<span>' + e(x.ten) + (y.k ? ' <span style="color:#ff5a5a">🔒</span>' : '') + '</span><b>×' + fmt(y.n) + '</b></div>'; }).join('');
+    var msg = 'Rút <b>' + t.loai + ' loại (' + fmt(t.mon) + ' món)</b> về nhân vật <b style="color:#ffd76a">' + e(TP.s.nhanVat || '') + '</b>?' +
+      '<div class="tpCfL">' + ds8 + (ds.length > 8 ? '<div class="muted" style="font-size:12px">+ ' + (ds.length - 8) + ' loại khác</div>' : '') + '</div>' +
+      '<div style="font-size:13px">Cần trống khoảng <b>' + t.o[1] + '</b> ô Đạo cụ, <b>' + t.o[2] + '</b> ô Nguyên liệu.</div>' +
+      '<div style="font-size:13px;color:#ffb4b4;margin-top:4px">Đã xác nhận thì <b>không huỷ được</b>.</div>';
+    tip.style.display = 'none';
+    gConfirm(msg, '📦 Rút vào game').then(function (dongY) {
+    if (!dongY) return;
     TP.busy = true; if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang chuyển...'; }
     api('/api/tp/rut', { ds: ds }).then(function (j) {
       TP.busy = false; TP.chon = {}; toast(j.message || '✅ Đã xếp lệnh vào game');
       if (j.state) { TP.s = j.state; ve(); } else tpSync();
     }).catch(function (er) { TP.busy = false; toast('❌ ' + er.message); tpSync(); });
+    });
   };
 
   // trang dang mo san (F5 o tab Thuong Pho, script tai sau go()) -> tu tai
