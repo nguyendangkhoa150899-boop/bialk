@@ -14,7 +14,7 @@
     '#tpCard .tpTab{background:#151826;border:1px solid #2a3340;color:var(--tx);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer}',
     '#tpCard .tpTab.on{background:#3a2a0c;border-color:#f5c542;color:#ffd76a}',
     '#tpCard .tpTwo{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}',
-    '@media(min-width:900px){#tpCard .tpTwo{grid-template-columns:1fr 1fr}}',
+    '@media(min-width:900px){#tpCard .tpTwo{grid-template-columns:1fr 1fr}#tpCard .tpBag.ra{position:sticky;top:10px;align-self:start}}',   // kho dai: tui rut + nut Xac nhan bam theo man hinh
     '#tpCard .tpBag{border:1px solid #6b5420;border-radius:13px;padding:10px;background:linear-gradient(180deg,#1f1a10,#141824 60%);min-width:0}',
     '#tpCard .tpBag.ra{border-color:#2f6b46;background:linear-gradient(180deg,#10201a,#141824 60%)}',
     '#tpCard .tpBagT{display:flex;align-items:center;gap:6px;font-weight:900;color:#ffe08a;margin-bottom:8px}',
@@ -28,6 +28,11 @@
     '#tpCard .tpO .q{position:absolute;right:3px;bottom:1px;font-size:12px;font-weight:900;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 0 2px #000}',
     '#tpCard .tpO .lk{position:absolute;left:2px;top:1px;font-size:11px;filter:drop-shadow(0 0 2px #000)}',
     '#tpCard .tpO.khoa{cursor:not-allowed;opacity:.45}',
+    // o CO DINH: vien do + o khoa to hon -> 2 vien cung ID nhin la biet
+    '#tpCard .tpO.cd{border-color:#a33a3a;box-shadow:0 0 0 1px #5a1e1e inset}#tpCard .tpO.cd:hover{border-color:#ff5a5a;box-shadow:0 0 0 1px #ff5a5a inset}',
+    '#tpCard .tpO .lk{font-size:13px}',
+    '#tpCard .tpSub{grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#c9a95a;padding:4px 2px 3px;border-bottom:1px dashed #3b3220}',
+    '#tpCard .tpSub span{color:var(--muted);font-weight:600}#tpCard .tpSub.cd{color:#ff7a7a;border-color:#5a1e1e;margin-top:6px}',
     '#tpCard .tpRa{display:flex;flex-direction:column;align-items:center;gap:3px}',
     '#tpCard .tpRa .tpO{width:100%}',
     '#tpCard .tpRa input{width:100%;box-sizing:border-box;background:#11141e;border:1px solid #2a3340;color:#7ee2a8;border-radius:6px;padding:2px 3px;font-size:12px;font-weight:800;text-align:center}',
@@ -68,9 +73,8 @@
   var tip = document.createElement('div'); tip.id = 'tpTip'; document.body.appendChild(tip);
 
   var TP = { s: null, chon: {}, loc: 'dc', q: '', sx: 'game', busy: false, ls: 'rut', lsN: 10 };
-  try { var c0 = JSON.parse(localStorage.getItem('tp_cfg2') || '{}'); if (c0.loc === 'dc' || c0.loc === 'nl') TP.loc = c0.loc; if (c0.sx) TP.sx = c0.sx; } catch (e) { }
+  try { var c0 = JSON.parse(localStorage.getItem('tp_cfg2') || '{}'); if (c0.loc === 'dc' || c0.loc === 'nl') TP.loc = c0.loc; if (c0.sx && c0.sx !== 'cd' && c0.sx !== 'loai') TP.sx = c0.sx; } catch (e) { }
   function luuCfg() { try { localStorage.setItem('tp_cfg2', JSON.stringify({ loc: TP.loc, sx: TP.sx })); } catch (e) { } }
-  var O_MAX = 100;   // 1 mon toi da 100 o tren luoi (o cuoi gom phan con lai) - tranh 5.000 ngoc = 5.000 o
   var $c = function () { return document.getElementById('tpCard'); };
   var key = function (x) { return x.id + '|' + x.k; };
   var TUI = { 1: 'Đạo cụ', 2: 'Nguyên liệu' };
@@ -103,15 +107,17 @@
 
   // ---- loc + sap xep ----
   function boLoc(L) {
-    var q = TP.q.trim().toLowerCase();
-    var ids = q ? q.split(/[\s,]+/).filter(Boolean) : [];
+    // tu khoa tach bang DAU PHAY, moi tu khoa giu ca cum ("hắc diệu thạch" khong thanh hắc | diệu | thạch);
+    // cum chi toan so (cach nhau dau cach) = danh sach ID. Khop 1 tu khoa la hien.
+    var q = TP.q.trim().toLowerCase(), tk = [];
+    q.split(',').forEach(function (p) { p = p.trim(); if (!p) return; if (/^\d+(\s+\d+)*$/.test(p)) tk = tk.concat(p.split(/\s+/)); else tk.push(p); });
     return L.filter(function (x) {
-      if (!ids.length && TP.loc === 'dc' && x.tui !== 1) return false;   // dang tim thi tim ca 2 tui
-      if (!ids.length && TP.loc === 'nl' && x.tui !== 2) return false;
-      if (!ids.length) return true;
+      if (!tk.length && TP.loc === 'dc' && x.tui !== 1) return false;   // dang tim thi tim ca 2 tui
+      if (!tk.length && TP.loc === 'nl' && x.tui !== 2) return false;
+      if (!tk.length) return true;
       var ten = String(x.ten).toLowerCase();
-      for (var i = 0; i < ids.length; i++) if (ten.indexOf(ids[i]) >= 0 || x.id === ids[i]) return true;
-      return ten.indexOf(q) >= 0;
+      for (var i = 0; i < tk.length; i++) if (x.id === tk[i] || ten.indexOf(tk[i]) >= 0) return true;
+      return false;
     });
   }
   function xep(L) {
@@ -130,16 +136,21 @@
   // ---- ve ----
   // 1 mon -> nhieu o nhu trong game: chong day truoc, o le cuoi (phan da chon rut khong hien nua)
   function oKho(x) {
+    // 06/10 chu server chot: GOP SO LUONG - moi mon (ID + khoa) 1 o ghi tong so, khong tach chong nhu game cho de nhin.
+    // So o tui game can trong van tinh theo so chong (tooltip, tong ket tui rut, popup xac nhan).
     var con = x.n - (TP.chon[key(x)] || 0);
     if (con <= 0) return '';
-    var c = Math.max(1, x.chong), ds = [];
-    while (con > 0 && ds.length < O_MAX - 1) { var q = Math.min(c, con); ds.push(q); con -= q; }
-    if (con > 0) ds.push(con);
-    var cls = 'tpO' + (x.rut ? '' : ' khoa');
-    return ds.map(function (q) {
-      return '<button class="' + cls + '" data-tpk="' + key(x) + '" data-tpq="' + q + '" onclick="tpVao(\'' + key(x) + '\',' + q + ')">' +
-        ic(x) + (x.k ? '<span class="lk">🔒</span>' : '') + '<span class="q">' + (q > 1 ? fmt(q) : '') + '</span></button>';
-    }).join('');
+    var cls = 'tpO' + (x.k ? ' cd' : '') + (x.rut ? '' : ' khoa');
+    return '<button class="' + cls + '" data-tpk="' + key(x) + '" onclick="tpVao(\'' + key(x) + '\')">' +
+      ic(x) + (x.k ? '<span class="lk">🔒</span>' : '') + '<span class="q">' + (con > 1 ? fmt(con) : '') + '</span></button>';
+  }
+  // 2 nhom: khong co dinh truoc, co dinh sau (moi nhom co tieu de khi ca 2 deu co)
+  function luoiKho(L) {
+    var thuong = L.filter(function (x) { return !x.k; }).map(oKho).join(''), cd = L.filter(function (x) { return x.k; }).map(oKho).join('');
+    if (!thuong || !cd) return thuong + cd;
+    var dem = function (k) { return L.filter(function (x) { return !!x.k === k && x.n - (TP.chon[key(x)] || 0) > 0; }).length; };
+    return '<div class="tpSub">Không cố định <span>' + dem(false) + ' loại</span></div>' + thuong +
+      '<div class="tpSub cd">🔒 Cố định <span>' + dem(true) + ' loại</span></div>' + cd;
   }
   function oRa(x, n) {
     return '<div class="tpRa"><button class="tpO" data-tpk="' + key(x) + '" onclick="tpRa(\'' + key(x) + '\')" title="Bấm để trả về kho">' +
@@ -163,6 +174,9 @@
     if (s.tat) h += '<div class="tpSec" style="border-color:#7a3434;color:#ffb4b4">⛔ Thương Phố đang tạm khoá để bảo trì - đồ trong kho vẫn an toàn.</div>';
     if (!s.guid) { c.innerHTML = h + '<div class="tpSec">🔗 Ví của bạn chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã.</div>'; return; }
 
+    // tab dang chon trong ma tab kia co do -> tu sang tab co do (khong luu lua chon), khoi tuong kho rong
+    var soDc = kho().filter(function (x) { return x.tui === 1; }).length, soNl = kho().length - soDc;
+    if (TP.loc === 'dc' && !soDc && soNl) TP.loc = 'nl'; else if (TP.loc === 'nl' && !soNl && soDc) TP.loc = 'dc';
     var L = xep(boLoc(kho()));
     var tong = kho().reduce(function (t, x) { return t + x.n; }, 0);
     // 2 tab y nhu tui game; so tren tab = so loai mon trong tui do
@@ -171,13 +185,13 @@
     h += '<div class="tpBar">' + tab('dc', '🎒 Đạo cụ', demTui(1)) + tab('nl', '🧪 Nguyên liệu', demTui(2)) +
       '<input id="tpQ" placeholder="Tìm tên hoặc ID (nhiều ID cách dấu phẩy)" value="' + e(TP.q) + '" oninput="tpTim(this.value)">' +
       '<select onchange="tpSx(this.value)">' +
-      [['game', 'Giống trong game'], ['moi', 'Mới gửi trước'],['ten', 'Tên A→Z'], ['sl', 'Số lượng nhiều'], ['cd', 'Cố định trước']].map(function (o) {
+      [['game', 'Theo loại'], ['moi', 'Mới gửi trước'], ['ten', 'Tên A→Z'], ['sl', 'Số lượng nhiều']].map(function (o) {
         return '<option value="' + o[0] + '"' + (TP.sx === o[0] ? ' selected' : '') + '>↕ ' + o[1] + '</option>';
       }).join('') + '</select></div>';
 
     // tui trai
     h += '<div class="tpTwo"><div class="tpBag"><div class="tpBagT">📦 Kho web <span>' + kho().length + ' loại · ' + fmt(tong) + ' món</span></div><div class="tpGrid">';
-    var luoi = L.map(oKho).join('');
+    var luoi = luoiKho(L);
     h += luoi || '<div class="tpEmpty">' + (kho().length ? (L.length ? 'Đã chọn rút hết các món đang lọc' : 'Không có món khớp bộ lọc') : 'Kho trống - chuyển đồ ra từ NPC Ví Web trong game') + '</div>';
     h += '</div></div>';
     // tui phai
