@@ -11,3 +11,6 @@ log_*.txt
 # 05/10 chay thu Ghep Ngoc: anh chup du lieu server + DB thu
 thu/du-lieu-mau.json
 thu/db-thu.json
+
+# 06/10: nhat ky bot tu tao khi chay (nhatky.js)
+nhatky/
