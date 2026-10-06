@@ -136,6 +136,11 @@ function startWebPlay(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/tp.js') {   // 🏪 06/10: giao diện Thương Phố (thuongpho.client.js, đọc lại mỗi lần tải)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'thuongpho.client.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/gn.js') {
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'ghepngoc.client.js'));
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -527,6 +532,17 @@ function startWebPlay(ctx) {
                     const r = await ctx.tuiBoss.nhan(userId, body.id);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true });
+                }
+                // 🏪 06/10: Thương Phố - xem kho / rút về đúng nhân vật (rút bị chặn nếu chưa liên kết, luật DANH SÁCH CHỪA ở trên)
+                if (ctx.thuongPho && path === '/api/tp/state') {
+                    return sendJSON(res, 200, { ok: true, ...ctx.thuongPho.state(userId) });
+                }
+                if (ctx.thuongPho && req.method === 'POST' && path === '/api/tp/rut') {
+                    const body = await readBody(req);
+                    const me2 = ctx.getUserData(userId);
+                    const r = ctx.thuongPho.rut(userId, body && body.ds, me2.name || userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
                 }
                 // 💎 05/10: Ghép Ngọc
                 if (ctx.ghepNgoc && (path === '/api/gn/state' || path === '/api/gn/quay')) {
@@ -2265,6 +2281,7 @@ const PAGE = [
     '<button id="navGift" class="hidden" onclick="go(\'gift\')">🎁 Quà</button>',
     '<button id="navDaily" onclick="go(\'daily\')">🪪 Cá nhân</button>',
     '<button id="navIk" onclick="go(\'ik\')">🧰 Rương Ích Kỷ <span class="n" id="pdIkN">0</span></button>',   // 05/10: trang riêng
+    '<button id="navTp" onclick="go(\'tp\')">🏪 Thương Phố</button>',   // 06/10: kho đồ theo nhân vật (thuongpho.client.js)
     '<button id="navPal" class="hidden" onclick="go(\'pal\')">🎁 Quay Pal</button>',
     '<button id="navPick" class="hidden" onclick="go(\'pick\')">🎯 Chọn Pal</button>',
     '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
@@ -2547,6 +2564,7 @@ const PAGE = [
 
     // ================= TRANG 💸 CHUYỂN / RÚT KNB (28/08) =================
     // 🍀 02/10: Vòng Quay May Mắn (vòng 24 ô kiểu game + rương quà)
+    '<div id="pageTp" class="hidden"><div class="card" id="tpCard"><div class="muted">Đang tải Thương Phố...</div></div></div>',   // 🏪 06/10: /tp.js vẽ vào đây
     '<div id="pageGn" class="hidden"><div class="card"><div class="row"><h2 style="margin:0">💎 Ghép Ngọc</h2><div class="muted" style="font-size:12px">bỏ đồ trong 🧰 Rương Ích Kỷ → luyện ra ngọc 7 · thắng vào lại rương</div></div><div style="height:8px"></div><div id="gnApp"><div class="muted">Đang tải...</div></div></div></div>',   // 💎 05/10
     '<div id="pageVq" class="hidden">',
     '<div class="card">',
@@ -4152,7 +4170,7 @@ const PAGE = [
     'else{el.textContent="--";el.style.color=""}},1000);',
     'setInterval(rlLoad,2000);',
 
-    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"games",gn:"games",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",tp:"profile",pal:"profile",pick:"profile",shop:"profile",vq:"games",gn:"games",dog:"profile",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
@@ -4172,6 +4190,7 @@ const PAGE = [
     '$("pageShop").classList.toggle("hidden",p!=="shop");',
     '$("pageVq").classList.toggle("hidden",p!=="vq");',
     '$("pageGn").classList.toggle("hidden",p!=="gn");document.body.classList.toggle("gnWide",p==="gn");',
+    '$("pageTp").classList.toggle("hidden",p!=="tp");document.body.classList.toggle("tpWide",p==="tp");$("navTp").classList.toggle("on",p==="tp");',   // 🏪 06/10
     '$("pageDog").classList.toggle("hidden",p!=="dog");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("pageDebt").classList.toggle("hidden",p!=="debt");',
@@ -4208,11 +4227,11 @@ const PAGE = [
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
     '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm","navVq","navGn"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
-    '["navDaily","navIk","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navDaily","navIk","navTp","navPal","navPick","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
     'if(p==="tienlen"){var tf=$("tlFrame");if(tf&&!/\\/tienlen\\/$/.test(tf.src))tf.src="/tienlen/"}',   // 🀄
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="vq")vqSync();else if(p==="gn"&&typeof gnSync==="function")gnSync();else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();pcSync()}else if(p==="wheel")wheelSync();else if(p==="pal")pwSync();else if(p==="pick")pkSync();else if(p==="shop")isSync();else if(p==="vq")vqSync();else if(p==="gn"&&typeof gnSync==="function")gnSync();else if(p==="tp"){if(typeof tpSync==="function")tpSync()}else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
@@ -5952,7 +5971,7 @@ const PAGE = [
     'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
     'if(TOKEN){show("")}else{nhoDoVao()}',
     // 30/09: ô PIN đã bỏ - Enter ở ô mật khẩu game đã gắn inline (onkeydown) trên input#gpass
-    '</script><script src="/gn.js"></script><script src="/tb.js"></script></body></html>',
+    '</script><script src="/gn.js"></script><script src="/tb.js"></script><script src="/tp.js"></script></body></html>',
 ].join('\n');
 
 module.exports = { startWebPlay };

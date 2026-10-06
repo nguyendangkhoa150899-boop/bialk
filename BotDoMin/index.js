@@ -1996,6 +1996,9 @@ const GN = require('./ghepngoc')({
     veAnh: (o) => GN_ANH.ve(o, ITEMICON.icon, ITEMICON.ICON_DIR),
     guiKenhAnh: async (kenh, noiDung, ping, png) => { const ch = await client.channels.fetch(kenh); if (!ch || typeof ch.send !== 'function') throw new Error('kênh không gửi được'); return ch.send({ content: noiDung || undefined, files: [{ attachment: png, name: 'ghep-ngoc.png' }], allowedMentions: { users: ping || [] } }); },
 });
+// 🏪 06/10: THƯƠNG PHỐ (thuongpho.js) - kho đồ web theo TỪNG NHÂN VẬT: NPC Ví Web chuyển túi Đạo cụ / Nguyên liệu ra,
+// web chọn món rút về đúng nhân vật đó. Không tặng / bán. Dữ liệu dbCache._tp[GUID], cấu hình dbCache._tpCfg.
+const TP = require('./thuongpho')({ db: () => dbCache, getUserData, saveDbNow, writeLog, icon: ITEMICON.icon, items: () => gameItems() });
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
 // chối - người chơi sửa client cũng không lách được. Lưu ở dbCache._featOff (chỉ lưu mục ĐANG TẮT,
@@ -7423,6 +7426,11 @@ client.once('ready', async (c) => {
     setInterval(tlbbPollReceipts, 5000);
     setInterval(tlbbPollLvReceipts, 5000);   // 02/10: Long Văn từ game -> Rương Ích Kỷ
     setInterval(tlbbCleanupIn, 30000);
+    // 🏪 06/10 Thương Phố: dựng danh sách món được chuyển (file cho NPC) lúc khởi động + mỗi 6 giờ; phiếu 5 giây; dọn lệnh đã nhận 30 giây
+    setTimeout(() => { const n = TP.napCho(); writeLog('SYSTEM', `[THƯƠNG PHỐ] ${n} loại món được chuyển`); }, 3000);
+    setInterval(() => TP.napCho(), 6 * 3600 * 1000);
+    setInterval(() => { try { TP.pollPhieu(); } catch (e) { writeLog('SYSTEM', `[THƯƠNG PHỐ] Lỗi đọc phiếu: ${e.message}`); } }, 5000);
+    setInterval(() => { try { TP.donTpin(); } catch { } }, 30000);
     // 🏹 30/09: đọc Audit log game 10 giây/lần -> dbCache._bossKills (lượt giết boss theo GUID)
     setInterval(() => {
         try { const s = tlbbAudit.poll(dbCache); if (s && s.kills) { saveDbNow(); writeLog('SYSTEM', `[BOSS] +${s.kills} lượt giết boss (${s.lines} dòng Audit)`); } }
@@ -7768,6 +7776,7 @@ client.once('ready', async (c) => {
             // 🍀 02/10: vòng quay may mắn (mở/làm mới bằng KNB, quay bằng lượt từ túi boss, quà vào rương web)
             vongQuay: { state: (uid) => VQ.webState(uid), mo: (uid) => VQ.mo(uid), quay: (uid) => VQ.quay(uid), nhan: (uid, k) => VQ.nhan(uid, k), xoa: (uid, k) => VQ.xoa(uid, k) },
             ghepNgoc: { state: (uid) => GN.state(uid), quay: (uid, b, who) => GN.quay(uid, b, who) },   // 💎 05/10
+            thuongPho: { state: (uid) => TP.state(uid), rut: (uid, ds, who) => TP.rut(uid, ds, who) },   // 🏪 06/10
             gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),
