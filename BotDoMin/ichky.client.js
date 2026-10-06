@@ -1,12 +1,13 @@
 // 🧰 07/10: giao dien RUONG ICH KY kieu Thuong Pho - phuc vu o /ik.js, doc lai moi lan tai -> sua khong can restart bot.
-// PHAI = toan bo ruong (chia nhom theo loai). TRAI = 3 nut 📦 Nhan / 🎁 Tang / 🗑️ Xoa: chon 1 nut, bam mon ben phai de dua sang,
+// (PC) TRAI = toan bo ruong (chia nhom theo loai). PHAI = 3 nut 📦 Nhan / 🎁 Tang / 🗑️ Xoa: chon 1 nut, bam mon ben ruong de dua sang,
 // sua so luong duoi o, bam Xac nhan -> goi API cu (/api/ichky/claim | give | xoa) LAN LUOT tung mon, dung o loi dau tien.
 // Phieu KNB (doi > 0): bam vao chinh no -> hop nho co nut 🎫 Su dung (/api/ichky/dung).
 // Ghi de ikDraw() cua trang choi (webplay.js); dung chung: IK, api, esc, toast, vqIcon, isImg, vnd, gConfirm, setBal, ikBadge, ikTick, ikGio.
 (function () {
   var css = [
     '#ikList .ikTwo{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}',
-    '@media(min-width:900px){#ikList .ikTwo{grid-template-columns:minmax(300px,5fr) 7fr}#ikList .ikAc{position:sticky;top:10px;align-self:start}}',
+    // 07/10 chu server: PC trai = ruong (vat pham), phai = khung thao tac (giong Thuong Pho); dien thoai giu khung thao tac o tren cho de bam
+    '@media(min-width:900px){#ikList .ikTwo{grid-template-columns:7fr minmax(300px,5fr)}#ikList .ikAc{order:2;position:sticky;top:10px;align-self:start}}',
     '#ikList .ikBag{border:1px solid #6b5420;border-radius:13px;padding:10px;background:linear-gradient(180deg,#1f1a10,#141824 60%);min-width:0}',
     '#ikList .ikAc{border-color:#2f6b46;background:linear-gradient(180deg,#10201a,#141824 60%)}',
     '#ikList .ikAc.m-tang{border-color:#2f5a8a;background:linear-gradient(180deg,#101a2a,#141824 60%)}',
@@ -222,7 +223,7 @@
     var stt = document.getElementById('ikStat'); if (stt) stt.innerHTML = 'Đang giữ <b>' + IK.total + '</b> món · hôm nay đã mua vào rương <b>' + IK.boughtToday + '/' + IK.dayMax + '</b> (còn ' + IK.leftToday + ')';
     var nh = document.getElementById('ikNhan'), NL = IK.nhan || [];
     if (nh) { nh.classList.toggle('hidden', !NL.length); if (NL.length) nh.innerHTML = '🎁 <b>Hôm nay bạn được tặng:</b><br>' + NL.map(function (g) { return '• <b>' + e(g.tu) + '</b> tặng ' + g.qty + ' ' + e(g.ten) + ' <span class="muted">(' + (typeof ikGio === 'function' ? ikGio(g.at) : '') + ')</span>'; }).join('<br>'); }
-    var w = document.getElementById('ikWarn'); if (w) w.innerHTML = '♾️ Rương giữ <b>vĩnh viễn</b>. Chọn <b>📦 Nhận</b> / <b>🎁 Tặng</b> / <b>🗑️ Xoá</b> ở khung bên trái, bấm món trong rương để chọn nhiều món, rồi xác nhận một lần. <b>🎫 Phiếu KNB</b>: bấm vào phiếu để Sử dụng.';
+    var w = document.getElementById('ikWarn'); if (w) w.innerHTML = '♾️ Rương giữ <b>vĩnh viễn</b>. Chọn <b>📦 Nhận</b> / <b>🎁 Tặng</b> / <b>🗑️ Xoá</b> ở khung thao tác, bấm món trong rương để chọn nhiều món, rồi xác nhận một lần. <b>🎫 Phiếu KNB</b>: bấm vào phiếu để Sử dụng.';
     var gv = document.getElementById('ikGv'); if (gv) gv.classList.add('hidden');
     ve();
   };
@@ -297,7 +298,7 @@
     var so = 0, knb = 0; PH.forEach(function (x) { so += x.qty; knb += x.qty * x.doi; });
     var msg = 'Dùng <b>toàn bộ ' + fmt(so) + ' phiếu</b> lấy <b style="color:#ffe08a">+' + fmt(knb) + ' KNB</b> vào ví web?' +
       '<div class="ikCfL">' + PH.map(function (x) { return dongMon(x, x.qty); }).join('') + '</div>' +
-      (Object.keys(C.chon).some(function (id) { var x = tim(id); return x && x.doi > 0; }) ? '<div style="font-size:13px;color:#ffb4b4">Phiếu đang chọn ở khung trái cũng được dùng luôn.</div>' : '');
+      (Object.keys(C.chon).some(function (id) { var x = tim(id); return x && x.doi > 0; }) ? '<div style="font-size:13px;color:#ffb4b4">Phiếu đang chọn ở khung thao tác cũng được dùng luôn.</div>' : '');
     if (typeof gConfirm !== 'function') return toast('❌ Trang chưa tải xong, F5 rồi thử lại');
     tip.style.display = 'none';
     gConfirm(msg, '🎫 Sử dụng toàn bộ').then(function (ok) {
@@ -328,8 +329,8 @@
   function popPhieu(x) {
     PK = x.id; var co = x.qty - (C.chon[x.id] || 0);
     // 07/10 chu server: phieu van TANG duoc - nut Tang luon hien (dang o che do khac thi tu chuyen sang 🎁 Tang)
-    var them = '<button class="add" onclick="ikcPkChon(\'tang\')">🎁 Tặng phiếu này (chọn vào khung trái)</button>' +
-      (C.md === 'xoa' ? '<button class="add" onclick="ikcPkChon(\'xoa\')">🗑️ Xoá phiếu này (chọn vào khung trái)</button>' : '');
+    var them = '<button class="add" onclick="ikcPkChon(\'tang\')">🎁 Tặng phiếu này (chọn vào khung thao tác)</button>' +
+      (C.md === 'xoa' ? '<button class="add" onclick="ikcPkChon(\'xoa\')">🗑️ Xoá phiếu này (chọn vào khung thao tác)</button>' : '');
     pop.innerHTML = '<div class="bx"><div class="hd"><span class="pic">' + ic(x) + '</span><div><b>' + e(x.name) + '</b><div class="muted" style="font-size:12px">Đang có ' + fmt(x.qty) + ' · mỗi phiếu = <b style="color:#ffe08a">' + fmt(x.doi) + '</b> KNB web</div></div></div>' +
       '<label>Số lượng</label><input id="ikcPkQ" type="number" min="1" max="' + x.qty + '" value="' + Math.max(1, co) + '" oninput="ikcPkTinh()" onclick="this.select()">' +
       '<div class="sl"><button onclick="ikcPkSo(1)">1</button><button onclick="ikcPkSo(10)">10</button><button onclick="ikcPkSo(' + x.qty + ')">Tất cả</button></div>' +
