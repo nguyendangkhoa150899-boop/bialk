@@ -221,6 +221,11 @@ function startPanel(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/tl.js') {   // 🐉 08/10 giao diện Custom Trùng Lâu (tab GM, chỉ SUPER thao tác; đọc lại mỗi lần, sửa không cần restart)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'trunglau.panel.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/br-data.json') {   // 📊 05/10 data.json của tools/bang-roi (deploy lên /var/www/netco4/) + icon từng món, cache theo mtime
                 const f = process.env.BANGROI_DATA || '/var/www/netco4/data.json';
                 try {
@@ -327,7 +332,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🐉: bảng KNB/duyệt đơn/liên kết nhân vật/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/tpik/sync', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
+                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/tpik/sync', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', '/api/gm/trunglau', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
@@ -1115,6 +1120,24 @@ function startPanel(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
 
+                // 🐉 08/10: Custom Trùng Lâu dòng mới -> panel GM /api/trunglau (đọc: xem / giu; ghi: mon / xoa / hu / tra / restart - chỉ SUPER)
+                if (path === '/api/gm/trunglau') {
+                    try {
+                        const op = String(body.op || 'xem');
+                        let j;
+                        if (op === 'xem') j = await gmCall('GET', '/api/trunglau');
+                        else if (op === 'giu') j = await gmCall('GET', '/api/trunglau/giu');
+                        else if (['mon', 'xoa', 'hu', 'tra', 'restart'].includes(op)) {
+                            if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Chỉ cổng SUPER được chỉnh Trùng Lâu' });
+                            const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                            j = await gmCall('POST', '/api/trunglau', { op, id: String(body.id || ''), dong: body.dong, diem: body.diem, hu: body.hu, ai: who });
+                            if (j && j.ok) ctx.writeLog('ADMIN', `[TRÙNG LÂU] ${who} ${op} ${body.id || ''}: ${String(j.msg || '').slice(0, 220)}`);
+                        } else return sendJSON(res, 400, { ok: false, error: 'op không hợp lệ' });
+                        return sendJSON(res, j && j.ok ? 200 : 502, j || { ok: false, error: 'panel GM không trả lời' });
+                    } catch (e) {
+                        return sendJSON(res, 502, { ok: false, error: String(e.message).slice(0, 200) });
+                    }
+                }
                 // 🛠️ GM Thiên Long (29/09): chuyển tiếp sang panel GM nội bộ
                 if (path === '/api/gm/state' || path === '/api/gm/items' || path === '/api/gm/pets' || path === '/api/gm/act' || path === '/api/gm/doche' || path === '/api/gm/amkhi') {
                     try {
@@ -2092,6 +2115,12 @@ const HTML = `<!DOCTYPE html>
           <span class="muted">Ám khí có 3 dòng kỹ năng học ở mốc cấp <b>40 / 70 / 90</b>. Khi người chơi tẩy kỹ năng (vật phẩm <b>30503118</b> + 50.000 tiền), game bốc lại theo <b>trọng số</b> dưới đây: tỉ lệ = trọng số ÷ tổng trọng số của dòng. Đổi trọng số → <b>restart</b> mới có hiệu lực, áp cho mọi lần tẩy / học kỹ năng sau đó (ám khí đã có giữ nguyên).</span>
         </div>
         <div id="akBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem 3 dòng ám khí.</div>
+        <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
+          <b>🐉 Custom Trùng Lâu (dòng mới 10553100-10553114)</b>
+          <button class="btn-grey" onclick="tlLoad()">🔄 Tải</button>
+          <span class="muted">Chỉnh dòng thuộc tính + điểm từng mã, tỉ lệ dính / thời gian hiệu ứng toàn server, xem ai đang giữ / đang mặc. Có hiệu lực sau restart game.</span>
+        </div>
+        <div id="tlBox" class="epOnly" style="display:none;container-type:inline-size"></div>
         <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
         <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
       </div>
@@ -5418,7 +5447,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
-<script src="/gn-admin.js"></script><script src="/br.js"></script>
+<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script>
 </body>
 </html>`;
 
