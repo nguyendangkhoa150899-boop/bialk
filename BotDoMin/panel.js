@@ -1528,7 +1528,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="ikb" class="epOnly" style="display:none" onclick="tab('ikb')">🧰 Rương Ích Kỷ</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button><button data-tab="br" onclick="tab('br')">📊 Bảng rơi</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
+        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button><button data-tab="br" onclick="tab('br')">📊 Bảng rơi</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
         <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button><!-- 05/10: bỏ pwOff - tab này là đồ THIÊN LONG (Giao vào game / 🧰 bỏ vào Rương Ích Kỷ), không phải Palworld -->
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
@@ -2167,24 +2167,6 @@ const HTML = `<!DOCTYPE html>
         <h2>💎 Ghép Ngọc <span class="muted" style="font-size:13px;font-weight:400">(web người chơi → 🎮 Mini game → 💎 Ghép Ngọc · chỉ cổng SUPER)</span></h2>
         <div class="row" style="gap:8px"><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại</button></div>
         <div id="gnaApp" class="muted" style="margin-top:8px">Đang tải...</div>
-      </div>
-    </div>
-    <div id="tab-ikb" class="hidden"><!-- 🧰 05/10: tab riêng - để trong 📦 Kho đồ thì không thấy (nút đó dính pwOff = ẩn từ 29/09) -->
-      <div class="card"><!-- 💰 05/10: người chơi bán ngọc 6 / Yếu Quyết trong Rương Ích Kỷ lấy KNB web -->
-        <h2>💰 Rương Ích Kỷ: cho bán lấy KNB <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
-        <div class="note"><b style="color:#ff8a8a">⛔ 06/10: ĐÃ BỎ BÁN đồ trong rương</b> (chủ server chốt, ép người chơi đi 💎 Ghép Ngọc) - web không còn nút 💰 Bán, server từ chối mọi lệnh bán; cấu hình dưới đây giữ lại nhưng KHÔNG còn tác dụng. (Trước đây: người chơi mở 🧰 Rương Ích Kỷ, món thuộc nhóm đang bật có nút 💰 Bán, KNB vào ví web ngay.) Mọi món đều có nút <b>🗑️ Xoá</b>. Rương không ghi món đến từ đâu (shop, túi boss, quà), nên <b>giá bán tự kẹp ≤ <span id="ikbTran">90</span>% giá shop</b> nếu shop đang bán đúng món đó, chặn mua shop rồi bán lại. Áp ngay, không cần restart.</div>
-        <div class="row blk" style="margin-top:8px">
-          <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px"><label style="display:inline-flex;align-items:center;gap:7px;margin:0"><input id="ikbOn" type="checkbox" style="margin:0"> <b>Bật bán</b></label></div>
-          <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px"><label style="display:inline-flex;align-items:center;gap:7px;margin:0"><input id="ikbOn_ngoc6" type="checkbox" style="margin:0"> 💎 Ngọc cấp 6</label></div>
-          <div style="flex:1"><label>Giá 1 viên ngọc 6</label><input id="ikbGia_ngoc6" type="number" min="0" placeholder="vd: 20000"></div>
-          <div style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:6px"><label style="display:inline-flex;align-items:center;gap:7px;margin:0"><input id="ikbOn_yq" type="checkbox" style="margin:0"> 📜 Yếu Quyết</label></div>
-          <div style="flex:1"><label>Giá 1 cuốn Yếu Quyết</label><input id="ikbGia_yq" type="number" min="0" placeholder="vd: 30000"></div>
-          <div style="flex:1"><label>Tối đa bán / người / ngày (món, 0 = không giới hạn)</label><input id="ikbNgay" type="number" min="0" placeholder="vd: 20"></div>
-        </div>
-        <label style="margin-top:6px">Giá riêng từng món (mỗi dòng <code>ID=giá</code>, đè giá nhóm · món <b>ngoài 2 nhóm</b> ghi ở đây cũng bán được · <code>0</code> = không cho bán món đó)</label>
-        <textarea id="ikbRieng" rows="3" style="width:100%;font-family:monospace" placeholder="50601001=25000&#10;30308135=50000"></textarea>
-        <div class="row" style="margin-top:6px"><button class="btn-green" onclick="ikbSave()">💾 Lưu cấu hình bán</button><span class="muted" id="ikbNow" style="align-self:center;font-size:13px"></span></div>
-        <details style="margin-top:8px"><summary>📋 Giá thật từng món (sau khi kẹp theo shop)</summary><div id="ikbDs" style="max-height:320px;overflow:auto;font-size:13px;margin-top:6px"></div></details>
       </div>
     </div>
     <div id="tab-br" class="hidden"><!-- 📊 05/10: bảng rơi + đề xuất farm = nhúng https://netco4.click/#farm (1 bản duy nhất, đổi tỉ lệ thì dựng lại trang đó) -->
@@ -2883,8 +2865,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','log','gift','ikb','gn','gnx','vqx','br','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='ikb')ikbLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','log','gift','gn','gnx','vqx','br','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -4938,26 +4920,7 @@ function dcSave(){
   if(!(o.daily>=0&&o.nghien>=0&&o.streakBonus>=0&&o.streakEvery>=1))return toast('Điền đủ 4 ô (chuỗi ≥ 1 ngày, còn lại ≥ 0)');
   api('/api/daily/cfg',o).then(j=>{toast('💾 Điểm danh '+j.cfg.daily.toLocaleString('vi-VN')+' · nghiện '+j.cfg.nghien.toLocaleString('vi-VN')+' · đủ '+j.cfg.streakEvery+' ngày thưởng '+j.cfg.streakBonus.toLocaleString('vi-VN'));refresh();}).catch(e=>toast('❌ '+e.message));
 }
-// 💰 05/10: bán ngọc 6 / Yếu Quyết trong Rương Ích Kỷ (tab 📦 Kho đồ)
-let IKB=null;
-function ikbLoad(){api('/api/ichkyban/cfg').then(j=>{IKB=j;ikbDraw(true);}).catch(e=>toast('❌ '+e.message));}
-function ikbDraw(dien){
-  if(!IKB)return;const c=IKB.cfg,el=id=>document.getElementById(id);
-  el('ikbTran').textContent=Math.round(IKB.tranShop*100);
-  if(dien){el('ikbOn').checked=!!c.on;['ngoc6','yq'].forEach(k=>{el('ikbOn_'+k).checked=!!c.nhom[k].on;el('ikbGia_'+k).value=c.nhom[k].gia;});
-    el('ikbNgay').value=c.ngayMax;el('ikbRieng').value=Object.entries(c.rieng).map(([id,g])=>id+'='+g).join('\\n');}
-  el('ikbNow').innerHTML=c.on?'<b style="color:var(--green)">ĐANG BẬT</b>':'<b style="color:var(--red)">ĐANG TẮT</b> - người chơi không thấy nút 💰 Bán';
-  const ds=IKB.ds||[];
-  el('ikbDs').innerHTML=!ds.length?'<span class="muted">Chưa tải danh mục vật phẩm game (bot vừa khởi động?) - mở lại tab sau ít phút.</span>'
-    :'<table><thead><tr><th>Nhóm</th><th>ID</th><th>Tên</th><th>Giá shop</th><th>Giá bán thật</th></tr></thead><tbody>'
-    +ds.map(x=>'<tr><td>'+esc(IKB.nhom[x.nhom]||(x.nhom==='rieng'?'⭐ Món riêng':x.nhom))+'</td><td>'+x.id+'</td><td>'+esc(x.n)+(x.rieng!==undefined?' <span class="muted">(giá riêng)</span>':'')+'</td><td>'+(x.shop?x.shop.toLocaleString('vi-VN'):'-')+'</td><td><b>'+(x.gia>0?x.gia.toLocaleString('vi-VN'):'<span class="muted">không bán</span>')+'</b></td></tr>').join('')+'</tbody></table>';
-}
-function ikbSave(){
-  const el=id=>document.getElementById(id),g=id=>parseInt(el(id).value);
-  const o={on:el('ikbOn').checked,nhom:{},rieng:el('ikbRieng').value,ngayMax:g('ikbNgay')||0};
-  for(const k of ['ngoc6','yq']){const gia=g('ikbGia_'+k);if(!(gia>=0))return toast('Điền giá cho cả 2 nhóm (0 nếu chưa bán)');o.nhom[k]={on:el('ikbOn_'+k).checked,gia:gia};}
-  api('/api/ichkyban/save',o).then(j=>{IKB=j;ikbDraw(true);toast('💾 Bán rương: '+(j.cfg.on?'BẬT':'TẮT'));}).catch(e=>toast('❌ '+e.message));
-}
+// 💰 05/10 -> 07/10: bỏ tab 🧰 Rương Ích Kỷ (bán ngọc 6 / Yếu Quyết lấy KNB) - đã tắt bán từ 06/10, chủ server bỏ cho đỡ rối; API /api/ichkyban/* vẫn còn (server từ chối bán)
 // 💉 04/10: bật/tắt /nghien (Discord + nút web) - lưu ngay khi tick, không cần bấm Lưu
 function dcNghienToggle(el){
   const on=el.checked;el.disabled=true;
