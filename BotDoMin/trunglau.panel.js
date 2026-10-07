@@ -7,7 +7,8 @@
   var TL = { them: false, d: null, sel: '10553102', hu: {}, sua: {}, giu: null, chiMa: false, xnRs: 0, xnTra: 0 };
   var NHOM = [['Liên (dây chuyền)', ['10553100', '10553112'], '10553103'], ['Giới (nhẫn)', ['10553101', '10553113'], '10553104'],
     ['Ngọc (hộ phù)', ['10553102', '10553114'], '10553105'], ['Đai (thắt lưng)', ['10553106'], '10553107'],
-    ['Vai (hộ kiên)', ['10553108'], '10553109'], ['Giáp (áo)', ['10553110'], '10553111']];
+    ['Vai (hộ kiên)', ['10553108'], '10553109'], ['Giáp (áo)', ['10553110'], '10553111'],
+    ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null]];
   function e(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function loi(er) { if (!er || !er.toasted) toast('❌ ' + ((er && er.message) || er)); }
   function so(n) { return Number(n || 0).toLocaleString('vi-VN'); }
@@ -75,7 +76,7 @@
     h += '<div class="tlWrap"><div class="tlList">';
     NHOM.forEach(function (g) {
       h += '<div class="tlGrp"><b>' + e(g[0]) + '</b>';
-      g[1].concat([g[2]]).forEach(function (id) {
+      g[1].concat(g[2] ? [g[2]] : []).forEach(function (id) {
         var m = mon(id); if (!m) return;
         h += '<button class="tlIt' + (TL.sel === id ? ' on' : '') + '" onclick="tlChon(\'' + id + '\')"><span>' + (m.chan ? '✦ Chân' : 'Thường') + ' <small>' + id + '</small></span><span><small>' + e(m.gd) + '</small>' +
           ((cfg.mon || {})[id] ? ' <span class="tlDot" title="đã chỉnh">●</span>' : '') + '</span></button>';
@@ -90,7 +91,7 @@
   function veMon(id) {
     var m = mon(id); if (!m) return '';
     var s = nhap(id), cfgMon = ((TL.d.cfg || {}).mon || {})[id];
-    var cung = TL.d.mon.filter(function (x) { return x.hu && m.hu && x.hu.id === m.hu.id; }).map(function (x) { return x.id; });
+    var cung = m.huCung || TL.d.mon.filter(function (x) { return x.hu && m.hu && x.hu.id === m.hu.id; }).map(function (x) { return x.id; });
     var h = '<div class="tlCard"><h4>' + e(m.ten) + ' <span class="tlPill">' + id + '</span> <span class="tlPill">' + e(m.gd) + '</span></h4>' +
       '<div class="tlKv"><span>Cấp phẩm chất cố định: <b>' + m.cap + '</b></span><span>Đoạn điểm: <b>' + m.seg + '</b>' + (m.seg !== m.segGoc ? ' (gốc ' + m.segGoc + ')' : '') + '</span>' +
       '<span>Số dòng: <b>' + m.soDong[0] + '</b>' + (m.soDong[0] !== m.soDongGoc[0] ? ' (gốc ' + m.soDongGoc[0] + ')' : '') + '</span>' +
