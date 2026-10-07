@@ -68,6 +68,8 @@
   function capNote(x, dai) {
     if (!x || !x.kieu) return '';
     var t = (x.kieu === 'Ngoại công' ? '⚔️ ' : x.kieu === 'Nội công' ? '🔮 ' : '⚖️ ') + x.kieu;
+    // 07/10 tối: số đời biến dị (mỗi đời +500 cả 5 tư chất, tối đa +3500)
+    if (x.doi) t += ' · 🧬 ' + x.doi + ' đời biến dị' + (dai ? ' (mỗi đời +500 cả 5 tư chất, tối đa +' + Math.min(500 * x.doi, 3500) + ')' : '');
     return dai ? '<span class="gnCap ok">' + t + '</span>' : '<small class="gnCap ok">' + t + '</small>';
   }
   function S() { return GN.s; }

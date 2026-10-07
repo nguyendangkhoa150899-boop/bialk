@@ -59,11 +59,20 @@ const KIEU = { 30309780: 'Nội công', 30309799: 'Nội công', 30309800: 'Nộ
     30309822: 'Ngoại công', 30309849: 'Ngoại công',
     30309840: 'Cân bằng', 30309847: 'Cân bằng', 30309851: 'Cân bằng', 30309857: 'Cân bằng', 30309858: 'Cân bằng', 30309855: 'Cân bằng',
     // 07/10 tối: 41 trứng Trân Thú Cao Cấp (shop 219) - kiểu theo pet trứng ra (docs/pet-danh-sach.tsv)
-    30309807: 'Ngoại công', 30309809: 'Ngoại công', 30309812: 'Ngoại công', 30309816: 'Ngoại công', 30309817: 'Ngoại công', 30309818: 'Ngoại công', 30309820: 'Ngoại công', 30309823: 'Ngoại công', 30309827: 'Ngoại công', 30309828: 'Ngoại công', 30309836: 'Ngoại công', 30309837: 'Ngoại công',
+    30309807: 'Ngoại công', 30309809: 'Ngoại công', 30309816: 'Ngoại công', 30309818: 'Ngoại công', 30309820: 'Ngoại công', 30309823: 'Ngoại công', 30309827: 'Ngoại công', 30309828: 'Ngoại công', 30309837: 'Ngoại công',
     30309839: 'Ngoại công', 30309845: 'Ngoại công', 30309850: 'Ngoại công', 30309859: 'Ngoại công',
-    30309813: 'Nội công', 30309814: 'Nội công', 30309821: 'Nội công', 30309825: 'Nội công', 30309831: 'Nội công', 30309832: 'Nội công', 30309841: 'Nội công', 30309843: 'Nội công', 30309848: 'Nội công', 30309852: 'Nội công', 30309853: 'Nội công', 30309856: 'Nội công',
+    30309813: 'Nội công', 30309814: 'Nội công', 30309821: 'Nội công', 30309825: 'Nội công', 30309831: 'Nội công', 30309832: 'Nội công', 30309841: 'Nội công', 30309848: 'Nội công', 30309852: 'Nội công', 30309853: 'Nội công', 30309856: 'Nội công',
     30309810: 'Cân bằng', 30309811: 'Cân bằng', 30309815: 'Cân bằng', 30309819: 'Cân bằng', 30309824: 'Cân bằng', 30309826: 'Cân bằng', 30309829: 'Cân bằng', 30309830: 'Cân bằng', 30309833: 'Cân bằng', 30309834: 'Cân bằng', 30309838: 'Cân bằng', 30309844: 'Cân bằng',
     30309846: 'Cân bằng' };
+// 07/10 tối (chủ server): ghi SỐ ĐỜI BIẾN DỊ của pet trứng ra (bảng PetAttrTable, cùng cấp mang): mỗi đời +500 cả 5 tư chất, tối đa +3500
+// (repo game tools/pet-caocap-07-10.js). Bản 95 có 8 đời; Oa Hoàng Long Đế / Nguyên Nguyên chỉ 1 đời (bảng gốc của game).
+const DOI = {
+    30309780: 8, 30309799: 8, 30309800: 8, 30309807: 8, 30309808: 8, 30309809: 8, 30309810: 8, 30309811: 8, 30309813: 8, 30309814: 2,
+    30309815: 3, 30309816: 2, 30309818: 2, 30309819: 2, 30309820: 8, 30309821: 8, 30309822: 8, 30309823: 8, 30309824: 8, 30309825: 8,
+    30309826: 2, 30309827: 8, 30309828: 8, 30309829: 8, 30309830: 8, 30309831: 8, 30309832: 8, 30309833: 8, 30309834: 1, 30309835: 8,
+    30309837: 8, 30309838: 8, 30309839: 8, 30309840: 8, 30309841: 8, 30309842: 8, 30309844: 8, 30309845: 8, 30309846: 8, 30309847: 8,
+    30309848: 8, 30309849: 8, 30309850: 2, 30309851: 8, 30309852: 8, 30309853: 8, 30309855: 1, 30309856: 8, 30309857: 8, 30309858: 8,
+    30309859: 8 };
 // Nhóm CẤM bỏ vào (chỉ là cách nhận món; bật/tắt ở vao.cam do admin)
 const NHOM_CAM = { yq: { ten: '📜 Yếu Quyết (chỉ bán ở Rương Ích Kỷ)', khop: (id, ten) => /^3030[78]\d{3}$/.test(id) && /Yếu Quyết/i.test(ten) } };
 // Câu thông báo ({ten} người chơi, {mon} món, {tl} tỉ lệ, {tung} số tung, {gt} giá trị đã bỏ)
@@ -148,7 +157,7 @@ module.exports = function ghepNgoc(d) {
         const m = new Map();
         for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const id of g.ids) m.set(id, { gia: g.gia, sl: g.sl, nhom: k });
         for (const [id, g] of Object.entries(c.dich.rieng)) { if (g.gia > 0 && !g.off) m.set(id, { gia: g.gia, sl: g.sl, nhom: 'rieng' }); else m.delete(id); }
-        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom, canCap: CAN_CAP[id] || 0, kieu: KIEU[id] || '' })).sort((a, b) => soHang(a, b) || a.gia - b.gia || a.ten.localeCompare(b.ten));
+        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom, canCap: CAN_CAP[id] || 0, kieu: KIEU[id] || '', doi: DOI[id] || 0 })).sort((a, b) => soHang(a, b) || a.gia - b.gia || a.ten.localeCompare(b.ten));
     }
     function gnOf(u) {
         const hn = d.dayStr();
