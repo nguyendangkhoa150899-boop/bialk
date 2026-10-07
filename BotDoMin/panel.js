@@ -469,6 +469,7 @@ function startPanel(ctx) {
                     let r;
                     if (path === '/api/gn/cfg') r = ctx.ghepNgoc.state();
                     else if (path === '/api/gn/save') r = ctx.ghepNgoc.save(b, who);
+                    else if (path === '/api/gn/chuyen' && ctx.ghepNgoc.chuyen) r = ctx.ghepNgoc.chuyen(who);   // ⤵️ 07/10 shop/nhóm -> 2 danh sách, giữ giá
                     else if (path === '/api/gn/tim') r = { items: ctx.ghepNgoc.tim(b.q) };
                     else if (path === '/api/gn/thu') r = await ctx.ghepNgoc.thu();
                     else if (path === '/api/gn/hoan') r = ctx.ghepNgoc.hoan(b.k, who);

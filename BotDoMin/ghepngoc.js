@@ -44,7 +44,16 @@ const MAC_DINH = {
 const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7', chinhXac: '🎯 Ngọc chính xác 7 (Tử Ngọc)', trungLau: '🧩 Nguyên liệu Trùng Lâu (Chi Lệ/Mang/Thương/Dương)' };
 // 07/10: trứng trân thú ra pet CẤP MANG 95 cố định (obj/item/zhenshoudan.lua type=1 + PetAttrTable) - server khóa cấp 89 nên
 // nhân vật chưa mở được trứng. Làm món đích vẫn được, trang Ghép Ngọc ghi rõ "cần cấp 95" để người chơi biết trước khi trade.
-const CAN_CAP = { 30309035: 95, 30309036: 95, 30309655: 95, 30309662: 95, 30309725: 95, 30309747: 95, 30309756: 95, 30309854: 95, 30309855: 95 };   // Kỳ Lân x2, Giao Long, Áp Chủy Thú, Tuyết Hồ, Niên Thú, Bỉ Dực Điểu, Oa Hoàng Long Quân / Đế
+// Rà ĐỦ 347 vật phẩm script 300027 (gồm cả "Sủng Vật Đản" - bộ 7 quả theo cấp, quả cuối là bản 95): 31 quả ra pet cấp mang 95 cố định.
+const CAN_CAP = Object.fromEntries(['30309035', '30309036', '30309606', '30309613', '30309620', '30309627', '30309634', '30309641', '30309648', '30309655', '30309662', '30309669',
+    '30309676', '30309683', '30309690', '30309697', '30309704', '30309711', '30309718', '30309725', '30309732', '30309747', '30309754', '30309756', '30309854', '30309855',
+    '30504094', '30504125', '30504126', '30504127', '30504128',
+    // 07/10: 13 trứng pet đẹp đổi sang MẶC ĐỊNH bản cấp mang 95 (repo game tools/pet-dep-trung95-07-10.js)
+    '30309780', '30309799', '30309800', '30309808', '30309822', '30309835', '30309840', '30309842', '30309847', '30309849', '30309851', '30309857', '30309858'].map((id) => [id, 95]));
+// 07/10 (chủ server): trang Ghép Ngọc chỉ ghi KIỂU pet của 14 trứng pet đẹp (bản 95, PetAttrTable / docs/pet-danh-sach.tsv)
+const KIEU = { 30309780: 'Nội công', 30309799: 'Nội công', 30309800: 'Nội công', 30309808: 'Nội công', 30309835: 'Nội công', 30309842: 'Nội công',
+    30309822: 'Ngoại công', 30309849: 'Ngoại công',
+    30309840: 'Cân bằng', 30309847: 'Cân bằng', 30309851: 'Cân bằng', 30309857: 'Cân bằng', 30309858: 'Cân bằng', 30309855: 'Cân bằng' };
 // Nhóm CẤM bỏ vào (chỉ là cách nhận món; bật/tắt ở vao.cam do admin)
 const NHOM_CAM = { yq: { ten: '📜 Yếu Quyết (chỉ bán ở Rương Ích Kỷ)', khop: (id, ten) => /^3030[78]\d{3}$/.test(id) && /Yếu Quyết/i.test(ten) } };
 // Câu thông báo ({ten} người chơi, {mon} món, {tl} tỉ lệ, {tung} số tung, {gt} giá trị đã bỏ)
@@ -78,6 +87,9 @@ module.exports = function ghepNgoc(d) {
         const c = d.db()._gnCfg || {};
         const M = MAC_DINH, v = c.vao || {}, di = c.dich || {};
         const rieng = (o, md) => { const r = {}; for (const [id, g] of Object.entries(o && typeof o === 'object' ? o : md)) if (/^\d{5,9}$/.test(id)) r[id] = Math.floor(so(g, 0, 1e9, 0)); return r; };
+        // 07/10: món đích riêng = { gia, sl } (sl = số cái nhận khi thắng, vd Trùng Lâu x10); số trơn (bản cũ) = { gia: số, sl: 1 }
+        // off = admin TẠM TẮT (vd trứng pet chờ người chơi đạt cấp 95): giữ trong danh sách, người chơi không thấy / không luyện được
+        const riengDich = (o, md) => { const r = {}; for (const [id, g] of Object.entries(o && typeof o === 'object' ? o : md)) if (/^\d{5,9}$/.test(id)) r[id] = g && typeof g === 'object' ? { gia: Math.floor(so(g.gia, 0, 1e9, 0)), sl: Math.floor(so(g.sl, 1, 9999, 1)), off: !!g.off } : { gia: Math.floor(so(g, 0, 1e9, 0)), sl: 1, off: false }; return r; };
         const nhom = {};
         for (const k of Object.keys(NHOM_DICH)) {
             const md = M.dich.nhom[k] || { on: false, gia: 0, sl: 1, ids: [] }, g = (di.nhom && di.nhom[k]) || md;
@@ -92,7 +104,7 @@ module.exports = function ghepNgoc(d) {
             luotNgay: Math.floor(so(c.luotNgay, 0, 100000, M.luotNgay)), monMax: Math.floor(so(c.monMax, 1, 10000, M.monMax)),
             knbOn: c.knbOn === undefined ? M.knbOn : !!c.knbOn, knbMax: Math.floor(so(c.knbMax, 0, 1e9, M.knbMax)),
             vao: { cam, giaRuong: v.giaRuong === undefined ? M.vao.giaRuong : !!v.giaRuong, shop: { on: sh.on === undefined ? true : !!sh.on, pct: so(sh.pct, 0, 100, M.vao.shop.pct) }, rieng: rieng(v.rieng, M.vao.rieng) },
-            dich: { nhom, rieng: rieng(di.rieng, M.dich.rieng) },
+            dich: { nhom, rieng: riengDich(di.rieng, M.dich.rieng) },
             thongBao: { on: !!tb.on, kenh: /^\d{15,20}$/.test(String(tb.kenh || '')) ? String(tb.kenh) : '', thang: !!tb.thang, thua: !!tb.thua, minGia: Math.floor(so(tb.minGia, 0, 1e9, 0)), tag: !!tb.tag, tre: so(tb.tre, 0, 120, 8), anh: tb.anh === undefined ? true : !!tb.anh, anhChu: !!tb.anhChu },
             moi: !d.db()._gnCfg,
         };
@@ -125,8 +137,8 @@ module.exports = function ghepNgoc(d) {
         c = c || cfg();
         const m = new Map();
         for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const id of g.ids) m.set(id, { gia: g.gia, sl: g.sl, nhom: k });
-        for (const [id, g] of Object.entries(c.dich.rieng)) { if (g > 0) m.set(id, { gia: g, sl: 1, nhom: 'rieng' }); else m.delete(id); }
-        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom, canCap: CAN_CAP[id] || 0 })).sort((a, b) => soHang(a, b) || a.gia - b.gia || a.ten.localeCompare(b.ten));
+        for (const [id, g] of Object.entries(c.dich.rieng)) { if (g.gia > 0 && !g.off) m.set(id, { gia: g.gia, sl: g.sl, nhom: 'rieng' }); else m.delete(id); }
+        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom, canCap: CAN_CAP[id] || 0, kieu: KIEU[id] || '' })).sort((a, b) => soHang(a, b) || a.gia - b.gia || a.ten.localeCompare(b.ten));
     }
     function gnOf(u) {
         const hn = d.dayStr();
@@ -273,13 +285,14 @@ module.exports = function ghepNgoc(d) {
         c = c || cfg();
         const ids = new Set([...d.shop().map((x) => String(x.id)), ...Object.keys(c.vao.rieng)]);
         for (const it of d.items()) if (/^50[67]\d{5}$/.test(String(it.id))) ids.add(String(it.id));
-        return [...ids].map((id) => ({ id, ten: ten(id), shop: shopGia(id), ...giaVao(id, c) })).filter((x) => x.gia > 0 || c.vao.rieng[x.id] !== undefined || /^cấm/.test(x.tu))
+        return [...ids].map((id) => ({ id, ten: ten(id), ic: d.icon(id), shop: shopGia(id), ...giaVao(id, c) })).filter((x) => x.gia > 0 || c.vao.rieng[x.id] !== undefined || /^cấm/.test(x.tu))
             .sort((a, b) => b.gia - a.gia);
     }
     function adminState() {
         const c = cfg(), db = d.db();
         return { cfg: c, kenh: d.dsKenh ? d.dsKenh() : [], nhomDich: NHOM_DICH, nhomCam: Object.fromEntries(Object.entries(NHOM_CAM).map(([k, v]) => [k, v.ten])),
             dich: dsDich(c), bangGia: bangGia(c), canhBao: canhBao(c),
+            dichTen: Object.keys(c.dich.rieng).map((id) => ({ id, ten: ten(id), ic: d.icon(id) })),   // tên + hình cả món đích đang TẮT (dsDich bỏ qua)
             log: (db._gnLog || []).slice(-200).reverse().map((x) => ({ ...x, k: x.t + '_' + x.uid, tenDich: ten(x.dich), icDich: d.icon(x.dich),
                 vaoCt: (x.vao || []).map(([id, n]) => ({ id, sl: n, ten: ten(id), ic: d.icon(id) })) })) };
     }
@@ -293,7 +306,11 @@ module.exports = function ghepNgoc(d) {
                 luotNgay: Math.floor(num(x.luotNgay, 0, 100000, 'Lượt/ngày')), monMax: Math.floor(num(x.monMax, 1, 10000, 'Món tối đa/lần')),
                 knbOn: !!x.knbOn, knbMax: Math.floor(num(x.knbMax, 0, 1e9, 'KNB tối đa')),
                 vao: { cam: Object.fromEntries(Object.keys(NHOM_CAM).map((k) => [k, !!(x.vao && x.vao.cam && x.vao.cam[k])])), giaRuong: !!(x.vao && x.vao.giaRuong), shop: { on: !!(x.vao && x.vao.shop && x.vao.shop.on), pct: num(x.vao && x.vao.shop && x.vao.shop.pct, 0, 100, '% giá shop') }, rieng: ds(x.vao && x.vao.rieng, 'Giá bỏ vào') },
-                dich: { nhom: {}, rieng: ds(x.dich && x.dich.rieng, 'Món đích') },
+                dich: { nhom: {}, rieng: (() => { const r = {}; for (const [id, g] of Object.entries(x.dich && x.dich.rieng && typeof x.dich.rieng === 'object' ? x.dich.rieng : {})) {
+                    if (!/^\d{5,9}$/.test(id)) throw new Error(`Món đích: ID ${id} sai`);
+                    const o = g && typeof g === 'object' ? g : { gia: g, sl: 1 };
+                    r[id] = { gia: Math.floor(num(o.gia, 0, 1e9, `Giá món đích ${id}`)), sl: Math.floor(num(o.sl === undefined || o.sl === '' ? 1 : o.sl, 1, 9999, `Số lượng nhận ${id}`)), off: !!o.off };
+                } return r; })() },
                 thongBao: (() => { const t0 = x.thongBao || {}; const k = String(t0.kenh || '').trim(); if (k && !/^\d{15,20}$/.test(k)) throw new Error('ID kênh Discord phải là 15-20 chữ số');
                     return { on: !!t0.on, kenh: k, thang: !!t0.thang, thua: !!t0.thua, minGia: Math.floor(num(t0.minGia || 0, 0, 1e9, 'Mức giá báo')), tag: !!t0.tag, tre: num(t0.tre === undefined || t0.tre === '' ? 8 : t0.tre, 0, 120, 'Giây chờ đăng'), anh: t0.anh === undefined ? true : !!t0.anh, anhChu: !!t0.anhChu }; })(),
             };
@@ -337,5 +354,27 @@ module.exports = function ghepNgoc(d) {
         for (const it of d.items()) { const id = String(it.id); if (id === q || kd(String(it.n)).includes(qk)) { out.push({ id, ten: gon(it.n), ic: d.icon(id), shop: shopGia(id) }); if (out.length >= 60) break; } }
         return out;
     }
-    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, hoan, logXem, MAC_DINH };
+    // ⤵️ 07/10 (chủ server): CHUYỂN hết về 2 danh sách tự quản, GIỮ NGUYÊN giá - không đổi, không xoá gì:
+    //   - món bỏ vào đang lấy giá Shop Item (x pct%) / giá bán rương -> ghi cứng vào vao.rieng với ĐÚNG giá đang tính, rồi tắt liên kết shop / rương
+    //   - món đích theo nhóm (ngọc 7, Trùng Lâu x10) -> từng dòng dich.rieng { gia, sl }, rồi tắt nhóm
+    // Lấy thẳng từ bangGia() / dsDich() (cùng hàm người chơi dùng) nên danh sách + giá sau chuyển trùng khớp trước chuyển.
+    // Bản cũ giữ ở dbCache._gnCfgTruocChuyen để quay lại.
+    function chuyen(who) {
+        const c = cfg(), db = d.db();
+        const vao = { ...c.vao.rieng }; let nVao = 0;
+        for (const x of bangGia(c)) if (x.gia > 0 && c.vao.rieng[x.id] === undefined) { vao[x.id] = x.gia; nVao++; }
+        const dich = {}; for (const [id, g] of Object.entries(c.dich.rieng)) if (g.off) dich[id] = { ...g };   // món đang TẮT giữ nguyên (dsDich bỏ qua món tắt)
+        for (const x of dsDich(c)) dich[x.id] = { gia: x.gia, sl: x.sl, off: false };
+        const nDich = dsDich(c).filter((x) => x.nhom !== 'rieng').length;
+        if (!nVao && !nDich && !c.vao.shop.on && !c.vao.giaRuong) return { ok: true, message: 'Không còn gì để chuyển - đã là 2 danh sách tự quản', ...adminState() };
+        db._gnCfgTruocChuyen = { t: Date.now(), who: who || '', cfg: JSON.parse(JSON.stringify(db._gnCfg || {})) };
+        const nhom = {}; for (const [k, g] of Object.entries(c.dich.nhom)) nhom[k] = { ...g, on: false };
+        const moi = { ...c, vao: { ...c.vao, shop: { ...c.vao.shop, on: false }, giaRuong: false, rieng: vao }, dich: { nhom, rieng: dich } };
+        delete moi.moi;
+        db._gnCfg = moi;
+        d.saveDbNow();
+        d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} chuyển về 2 danh sách: +${nVao} món bỏ vào (giá shop/rương ghi cứng), ${nDich} món đích từ nhóm -> từng dòng; tắt liên kết shop + nhóm`);
+        return { ok: true, message: `⤵️ Đã chuyển: +${nVao} món bỏ vào, ${nDich} món đích tách từng dòng (giữ nguyên giá)`, ...adminState() };
+    }
+    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, hoan, logXem, chuyen, MAC_DINH };
 };

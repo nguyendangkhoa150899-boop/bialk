@@ -28,6 +28,7 @@
     '#gnApp .gnRow button{padding:3px 8px;font-size:12px}',
     '.gnTgt{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:6px;text-align:center}',
     '.gnTgt .big{width:72px;height:72px}',
+    '.gnCap.ok{color:#7ee2a8}.gnTgt .gnCap.ok{border-color:#2f6b46;background:#10201a}',
     '.gnCap{display:block;color:#ffb35c;font-weight:700}.gnTgt .gnCap{font-size:12px;padding:3px 8px;border:1px solid #6b4a1a;border-radius:8px;background:#241a0c}',   // 07/10: trứng pet cấp mang 95
     '.gnRing{position:relative;display:flex;align-items:center;justify-content:center}',
     '.gnRing svg{width:240px;height:240px;max-width:100%}',
@@ -60,6 +61,15 @@
     '.gnRow.da{opacity:.75}',
   ].join('');
   function ic(x, cls) { return typeof vqIcon === 'function' ? vqIcon(x && x.ic, cls) : ''; }
+  // 07/10: ghi chú CẤP PET cho trứng trân thú làm món đích: cấp mang cố định (vd 95) hoặc ra pet theo cấp nhân vật
+  // trứng / đản trân thú -> mục 🐾 Trân thú (trade pet)
+  function laPet(x) { return !!(x && (x.canCap || x.kieu || /Thú Đản|Vật Đản|Lân Đản/.test(x.ten || ''))); }
+  // 07/10 (chủ server): chỉ ghi KIỂU pet (Ngoại công / Nội công / Cân bằng) - trứng pet đẹp mặc định ra bản cấp mang 95, khỏi chú thích cấp
+  function capNote(x, dai) {
+    if (!x || !x.kieu) return '';
+    var t = (x.kieu === 'Ngoại công' ? '⚔️ ' : x.kieu === 'Nội công' ? '🔮 ' : '⚖️ ') + x.kieu;
+    return dai ? '<span class="gnCap ok">' + t + '</span>' : '<small class="gnCap ok">' + t + '</small>';
+  }
   function S() { return GN.s; }
   function giaVao(id) { var r = (S().ruong || []).find(function (x) { return x.id === id; }); return r ? r.gia : 0; }
   function tong() { var t = GN.knb || 0; Object.keys(GN.vao).forEach(function (id) { t += giaVao(id) * GN.vao[id]; }); return t; }
@@ -170,7 +180,7 @@
       + (ok && ok !== 'ok' ? '<div style="font-size:12px;color:#ffb4a8;margin-top:6px;text-align:center">' + esc(ok) + '</div>' : '') + '</div>';
     // ---- đích
     h += '<div class="gnBox"><h4>🎯 MÓN MUỐN LUYỆN RA</h4>';
-    if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span>' + (d.canCap ? '<span class="gnCap">🔒 Pet cấp mang ' + d.canCap + ': nhân vật đạt cấp ' + d.canCap + ' mới mở trứng được</span>' : '') + '</div>';
+    if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span>' + capNote(d, true) + '</div>';
     else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở tab 🎯 Món đích bên dưới</div>';
     h += '<div class="gnMul">' + [1.5, 2, 5, 10, 20].map(function (m) { return '<button onclick="gnNhan(' + m + ')" title="Chọn món đích có giá trị gần ' + m + ' lần đồ đang bỏ vào">' + m + 'x</button>'; }).join('') + '</div>'
       + '<div class="gnMul">' + [35, 55, 75].filter(function (v) { return v <= s.tiMax; }).map(function (v) { return '<button onclick="gnPct(' + v + ')" title="Tự bỏ đồ trong rương cho đủ ' + v + '%">' + v + '%</button>'; }).join('') + '</div>'
@@ -179,7 +189,8 @@
     // ---- chọn
     var tab = GN.chon || 'ruong';
     h += '<div class="gnPick"><div class="gnTabs"><button class="' + (tab === 'ruong' ? 'on' : '') + '" onclick="gnTab(\'ruong\')">🧰 Rương (' + (s.ruong || []).length + ' loại dùng được)</button>'
-      + '<button class="' + (tab === 'dich' ? 'on' : '') + '" onclick="gnTab(\'dich\')">🎯 Món đích (' + (s.dich || []).length + ')</button>'
+      + '<button class="' + (tab === 'dich' ? 'on' : '') + '" onclick="gnTab(\'dich\')">💎 Nguyên liệu (' + (s.dich || []).filter(function (x) { return !laPet(x); }).length + ')</button>'
+      + '<button class="' + (tab === 'pet' ? 'on' : '') + '" onclick="gnTab(\'pet\')">🐾 Trân thú (' + (s.dich || []).filter(laPet).length + ')</button>'
       + '<button class="' + (tab === 'lich' ? 'on' : '') + '" onclick="gnTab(\'lich\')">📜 Lịch sử</button>'
       + '<input placeholder="🔎 lọc tên..." value="' + esc(GN.loc) + '" oninput="gnLoc(this.value)" style="flex:1;min-width:140px"></div>';
     var loc = (GN.loc || '').toLowerCase(), khop = function (x) { return !loc || x.ten.toLowerCase().indexOf(loc) >= 0 || x.id.indexOf(loc) >= 0; };
@@ -188,9 +199,9 @@
       var phanTram = function (g) { var v = g / dObj.gia * (100 - s.phi); return v >= 1 ? (Math.round(v * 10) / 10) : (Math.round(v * 1000) / 1000); };
       h += r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + '</b><small>' + vnd(x.gia) + '/cái · ' + esc(x.tu) + (dObj ? ' · <b style="color:#3ddc84">+' + phanTram(x.gia) + '%</b>/cái' : '') + '<br>có ' + x.qty + (dung ? ' · đã bỏ ' + dung : '') + '</small></div></div>'; }).join('') + '</div>'
         : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>';
-    } else if (tab === 'dich') {
-      var dd = (s.dich || []).filter(khop);
-      h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + (x.canCap ? '<small class="gnCap">🔒 cần cấp ' + x.canCap + '</small>' : '') + '</div></div>'; }).join('') + '</div>';
+    } else if (tab === 'dich' || tab === 'pet') {   // 07/10: món đích chia 2 mục - 💎 Nguyên liệu / 🐾 Trân thú
+      var dd = (s.dich || []).filter(khop).filter(function (x) { return (tab === 'pet') === laPet(x); });
+      h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + capNote(x, false) + '</div></div>'; }).join('') + '</div>';
     } else {
       var L = s.lich || [];
       var tenDich = function (id) { var x = (s.dich || []).find(function (y) { return y.id === id; }); return x ? x.ten : '#' + id; };
