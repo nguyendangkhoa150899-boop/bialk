@@ -4,7 +4,7 @@
 //  - ĐIỂM: server tính lại mỗi lần vào game = ceil(V × hệ số cấp / 100) -> áp cho CẢ món đang có (dòng món đó có), sau restart.
 //  - HIỆU ỨNG (tỉ lệ / thời gian / miễn / phản): chung toàn server cho mọi ai cầm mã đó, sau restart.
 (function () {
-  var TL = { d: null, sel: '10553102', hu: {}, sua: {}, giu: null, chiMa: false, xnRs: 0, xnTra: 0 };
+  var TL = { them: false, d: null, sel: '10553102', hu: {}, sua: {}, giu: null, chiMa: false, xnRs: 0, xnTra: 0 };
   var NHOM = [['Liên (dây chuyền)', ['10553100', '10553112'], '10553103'], ['Giới (nhẫn)', ['10553101', '10553113'], '10553104'],
     ['Ngọc (hộ phù)', ['10553102', '10553114'], '10553105'], ['Đai (thắt lưng)', ['10553106'], '10553107'],
     ['Vai (hộ kiên)', ['10553108'], '10553109'], ['Giáp (áo)', ['10553110'], '10553111']];
@@ -116,15 +116,18 @@
     }
     // dòng + điểm
     var nOn = Object.keys(s.on).filter(function (k) { return s.on[k]; }).length, max = TL.d.maxDong;
-    var thu = []; for (var k = 0; k < 58; k++) thu.push(k);
+    // chỉ dòng game CÓ cho mã này (dòng tự ra + dòng có số gốc trong đoạn giá trị) - 08/10 chủ server: bỏ dòng không có số gốc
+    var thu = (TL.them ? (m.dongCo || m.dongGoc) : m.dongGoc).slice();
+    Object.keys(s.on).forEach(function (k) { k = Number(k); if (s.on[k] && thu.indexOf(k) < 0) thu.push(k); });   // dòng đang bật luôn hiện
     thu.sort(function (a, b2) { var ga = m.dongGoc.indexOf(a) >= 0 ? 0 : 1, gb = m.dongGoc.indexOf(b2) >= 0 ? 0 : 1; return (s.on[b2] ? 1 : 0) - (s.on[a] ? 1 : 0) || ga - gb || a - b2; });
     h += '<div class="tlCard"><h4>Dòng thuộc tính và điểm <span class="tlCnt' + (nOn > max || !nOn ? ' bad' : '') + '">' + nOn + ' / ' + max + ' dòng</span></h4>' +
       '<div class="tlNote">Tick dòng muốn có (tối đa ' + max + '). <b>Dòng</b> ghi vào món lúc tạo: chỉ món tạo mới / Chân Trùng Lâu đem tẩy mới ra đúng dòng. ' +
       '<b>Điểm</b> server tính lại mỗi lần vào game: đổi điểm áp cho cả món đang có (ở dòng món đó có) sau restart. Cột "sẽ ra" là số thật engine cho (vài dòng hệ số lớn chỉ ra số chẵn/lẻ nhất định).</div>' +
+      '<label class="tlNote"><input type="checkbox" ' + (TL.them ? 'checked ' : '') + 'onchange="tlThem(this.checked)"> Hiện thêm dòng game có số nhưng món này không tự ra (' + ((m.dongCo || []).length - m.dongGoc.length) + ' dòng)</label>' +
       '<div class="tlTbl"><table><thead><tr><th></th><th>Dòng</th><th>Gốc</th><th>Điểm muốn</th><th>Sẽ ra</th></tr></thead><tbody>';
     thu.forEach(function (k) {
       var r = m.rate[k], on = !!s.on[k], x = s.diem[k], ra = seRa(x, r), lech = on && ra !== x;
-      var goc = m.dongGoc.indexOf(k) >= 0 ? so(m.diemGoc[k]) : '<span class="tlNote">ngoài bộ gốc</span>';
+      var goc = so(m.diemGoc[k]) + (m.dongGoc.indexOf(k) >= 0 ? '' : ' <span class="tlPill" title="món gốc không tự ra dòng này; game có sẵn số trong đoạn giá trị">thêm</span>');
       h += '<tr class="' + (on ? '' : 'off') + '"><td><input type="checkbox" ' + (on ? 'checked ' : '') + (r > 0 ? '' : 'disabled title="dòng này không có hệ số ở cấp ' + m.cap + '" ') + 'onchange="tlDong(' + k + ',this.checked)"></td>' +
         '<td>' + e(TL.d.dongTen[k]) + '</td><td class="n">' + goc + '</td>' +
         '<td><input type="number" min="1" step="1" value="' + (x || '') + '" ' + (on ? '' : 'disabled ') + 'oninput="tlDiem(' + k + ',this.value)" class="' + (on && x !== m.diem[k] ? 'tlCh' : '') + '"></td>' +
@@ -152,6 +155,7 @@
   }
 
   window.tlChon = function (id) { TL.sel = id; ve(); };
+  window.tlThem = function (on) { TL.them = on; ve(); };
   window.tlDong = function (k, on) { var s = nhap(TL.sel); s.on[k] = on; if (on && !s.diem[k]) { var m = mon(TL.sel); s.diem[k] = m.diem[k] || m.diemGoc[k] || 1; } ve(); };
   window.tlDiem = function (k, v) {
     var s = nhap(TL.sel), m = mon(TL.sel), x = Math.max(0, Math.floor(Number(v) || 0)); s.diem[k] = x;
