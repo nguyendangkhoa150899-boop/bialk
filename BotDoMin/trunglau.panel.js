@@ -16,6 +16,9 @@
   // giống panel/trunglau.py v_cho: V cho điểm gần x nhất (bằng nhau lấy bên lớn)
   function vCho(x, r) { if (x <= 0 || r <= 0) return 0; var v = Math.floor((x - 1) * 100 / r) + 1; while (Math.ceil(v * r / 100) < x) v++; if (v > 1 && x - Math.ceil((v - 1) * r / 100) < Math.ceil(v * r / 100) - x) v--; return v; }
   function seRa(x, r) { return r > 0 ? Math.ceil(vCho(x, r) * r / 100) : 0; }
+  // 2 số gần x nhất engine làm được (dòng hệ số > 100, vd 180: muốn 300 chỉ có 299 / 301)
+  function hangXom(x, r) { var vHi = Math.floor((x - 1) * 100 / r) + 1; while (Math.ceil(vHi * r / 100) < x) vHi++; var hi = Math.ceil(vHi * r / 100), lo = vHi > 1 ? Math.ceil((vHi - 1) * r / 100) : hi; return lo === hi ? String(hi) : lo + ' / ' + hi; }
+  function raChu(x, r) { var ra = seRa(x, r); return ra === x ? so(ra) : so(ra) + ' ⚠ chỉ có ' + hangXom(x, r); }
 
   function css() {
     if (document.getElementById('tlCss')) return;
@@ -132,7 +135,7 @@
       h += '<tr class="' + (on ? '' : 'off') + '"><td><input type="checkbox" ' + (on ? 'checked ' : '') + (r > 0 ? '' : 'disabled title="dòng này không có hệ số ở cấp ' + m.cap + '" ') + 'onchange="tlDong(' + k + ',this.checked)"></td>' +
         '<td>' + e(TL.d.dongTen[k]) + '</td><td class="n">' + goc + '</td>' +
         '<td><input type="number" min="1" step="1" value="' + (x || '') + '" ' + (on ? '' : 'disabled ') + 'oninput="tlDiem(' + k + ',this.value)" class="' + (on && x !== m.diem[k] ? 'tlCh' : '') + '"></td>' +
-        '<td class="n' + (lech ? ' tlLech' : '') + '" id="tlRa' + k + '">' + (on ? so(ra) + (lech ? ' ⚠' : '') : '') + '</td></tr>';
+        '<td class="n' + (lech ? ' tlLech' : '') + '" id="tlRa' + k + '">' + (on ? raChu(x, r) : '') + '</td></tr>';
     });
     h += '</tbody></table></div><div class="tlBar"><button class="tlGo" onclick="tlLuuMon()"' + (nOn && nOn <= max ? '' : ' disabled') + '>💾 Lưu mã ' + id + '</button>' +
       (cfgMon ? '<button class="tlDo" onclick="tlBoMon()">↩ Trả mã này về gốc</button>' : '') +
@@ -161,7 +164,7 @@
   window.tlDiem = function (k, v) {
     var s = nhap(TL.sel), m = mon(TL.sel), x = Math.max(0, Math.floor(Number(v) || 0)); s.diem[k] = x;
     var ra = seRa(x, m.rate[k]), td = document.getElementById('tlRa' + k);
-    if (td) { td.textContent = so(ra) + (ra !== x ? ' ⚠' : ''); td.className = 'n' + (ra !== x ? ' tlLech' : ''); }
+    if (td) { td.textContent = raChu(x, m.rate[k]); td.className = 'n' + (ra !== x ? ' tlLech' : ''); }
   };
   window.tlHuSua = function (el) {
     var h = el.dataset.h, k = el.dataset.k, c = Number(el.dataset.c) || 1, v = Math.round(Number(el.value) * c);
