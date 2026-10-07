@@ -42,6 +42,9 @@ const MAC_DINH = {
 };
 // Tên nhóm món đích (danh sách ID + giá + bật/tắt nằm trong cấu hình, admin sửa)
 const NHOM_DICH = { thuocTinh: '💎 Ngọc thuộc tính 7 (công băng/hỏa/huyền/độc)', khang: '🛡️ Ngọc kháng thuộc tính 7', theLucNe: '❤️ Ngọc thể lực / né 7', chinhXac: '🎯 Ngọc chính xác 7 (Tử Ngọc)', trungLau: '🧩 Nguyên liệu Trùng Lâu (Chi Lệ/Mang/Thương/Dương)' };
+// 07/10: trứng trân thú ra pet CẤP MANG 95 cố định (obj/item/zhenshoudan.lua type=1 + PetAttrTable) - server khóa cấp 89 nên
+// nhân vật chưa mở được trứng. Làm món đích vẫn được, trang Ghép Ngọc ghi rõ "cần cấp 95" để người chơi biết trước khi trade.
+const CAN_CAP = { 30309035: 95, 30309036: 95, 30309655: 95, 30309662: 95, 30309725: 95, 30309747: 95, 30309756: 95, 30309854: 95, 30309855: 95 };   // Kỳ Lân x2, Giao Long, Áp Chủy Thú, Tuyết Hồ, Niên Thú, Bỉ Dực Điểu, Oa Hoàng Long Quân / Đế
 // Nhóm CẤM bỏ vào (chỉ là cách nhận món; bật/tắt ở vao.cam do admin)
 const NHOM_CAM = { yq: { ten: '📜 Yếu Quyết (chỉ bán ở Rương Ích Kỷ)', khop: (id, ten) => /^3030[78]\d{3}$/.test(id) && /Yếu Quyết/i.test(ten) } };
 // Câu thông báo ({ten} người chơi, {mon} món, {tl} tỉ lệ, {tung} số tung, {gt} giá trị đã bỏ)
@@ -123,7 +126,7 @@ module.exports = function ghepNgoc(d) {
         const m = new Map();
         for (const [k, g] of Object.entries(c.dich.nhom)) if (g.on && g.gia > 0) for (const id of g.ids) m.set(id, { gia: g.gia, sl: g.sl, nhom: k });
         for (const [id, g] of Object.entries(c.dich.rieng)) { if (g > 0) m.set(id, { gia: g, sl: 1, nhom: 'rieng' }); else m.delete(id); }
-        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom })).sort((a, b) => soHang(a, b) || a.gia - b.gia || a.ten.localeCompare(b.ten));
+        return [...m.entries()].map(([id, x]) => ({ id, ten: ten(id), ic: d.icon(id), gia: x.gia, sl: x.sl, nhom: x.nhom, canCap: CAN_CAP[id] || 0 })).sort((a, b) => soHang(a, b) || a.gia - b.gia || a.ten.localeCompare(b.ten));
     }
     function gnOf(u) {
         const hn = d.dayStr();

@@ -28,6 +28,7 @@
     '#gnApp .gnRow button{padding:3px 8px;font-size:12px}',
     '.gnTgt{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:6px;text-align:center}',
     '.gnTgt .big{width:72px;height:72px}',
+    '.gnCap{display:block;color:#ffb35c;font-weight:700}.gnTgt .gnCap{font-size:12px;padding:3px 8px;border:1px solid #6b4a1a;border-radius:8px;background:#241a0c}',   // 07/10: trứng pet cấp mang 95
     '.gnRing{position:relative;display:flex;align-items:center;justify-content:center}',
     '.gnRing svg{width:240px;height:240px;max-width:100%}',
     '.gnNeedle{transform-origin:120px 120px;transition:transform 7.6s cubic-bezier(.08,.55,.06,1)}',
@@ -169,7 +170,7 @@
       + (ok && ok !== 'ok' ? '<div style="font-size:12px;color:#ffb4a8;margin-top:6px;text-align:center">' + esc(ok) + '</div>' : '') + '</div>';
     // ---- đích
     h += '<div class="gnBox"><h4>🎯 MÓN MUỐN LUYỆN RA</h4>';
-    if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span></div>';
+    if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span>' + (d.canCap ? '<span class="gnCap">🔒 Pet cấp mang ' + d.canCap + ': nhân vật đạt cấp ' + d.canCap + ' mới mở trứng được</span>' : '') + '</div>';
     else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở tab 🎯 Món đích bên dưới</div>';
     h += '<div class="gnMul">' + [1.5, 2, 5, 10, 20].map(function (m) { return '<button onclick="gnNhan(' + m + ')" title="Chọn món đích có giá trị gần ' + m + ' lần đồ đang bỏ vào">' + m + 'x</button>'; }).join('') + '</div>'
       + '<div class="gnMul">' + [35, 55, 75].filter(function (v) { return v <= s.tiMax; }).map(function (v) { return '<button onclick="gnPct(' + v + ')" title="Tự bỏ đồ trong rương cho đủ ' + v + '%">' + v + '%</button>'; }).join('') + '</div>'
@@ -189,7 +190,7 @@
         : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>';
     } else if (tab === 'dich') {
       var dd = (s.dich || []).filter(khop);
-      h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small></div></div>'; }).join('') + '</div>';
+      h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + (x.canCap ? '<small class="gnCap">🔒 cần cấp ' + x.canCap + '</small>' : '') + '</div></div>'; }).join('') + '</div>';
     } else {
       var L = s.lich || [];
       var tenDich = function (id) { var x = (s.dich || []).find(function (y) { return y.id === id; }); return x ? x.ten : '#' + id; };

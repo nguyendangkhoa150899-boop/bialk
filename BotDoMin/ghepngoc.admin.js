@@ -23,7 +23,8 @@
     h += '<div class="muted" style="font-size:12px;margin:6px 0">Giá riêng (ghi đè; 0 = cấm bỏ vào):</div><div id="gnaVaoR">' + bangRieng('vao', c.vao.rieng) + '</div>';
     h += '<h4 style="margin:14px 0 6px">🎯 Món đích</h4><div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">';
     h += '</div>';
-    Object.keys(A.nhomDich).forEach(function (k) { var g = c.dich.nhom[k] || { on: false, gia: 0, ids: [] }; h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0">' + chk('gnaN_' + k, g.on, '<b>' + esc(A.nhomDich[k]) + '</b>') + ' giá trị ' + inp('gnaNG_' + k, g.gia, 90) + ' thắng nhận ' + inp('gnaNS_' + k, g.sl || 1, 50) + ' cái · ID: ' + inp('gnaNI_' + k, (g.ids || []).join(' '), 380) + '<span class="muted" style="font-size:12px">' + (g.ids || []).map(function (id) { var x = (A.dich || []).find(function (y) { return y.id === id; }); return x ? esc(x.ten) : '#' + id; }).join(', ') + '</span></div>'; });
+    // 07/10: ids có thể là CHUỖI (doc() đọc từ ô nhập, sau khi bấm + món / 🗑) -> đổi về mảng, trước đây .join() làm sập cả trang
+    Object.keys(A.nhomDich).forEach(function (k) { var g = c.dich.nhom[k] || { on: false, gia: 0, ids: [] }; g = Object.assign({}, g, { ids: Array.isArray(g.ids) ? g.ids : String(g.ids || '').split(/[\s,;]+/).filter(Boolean) }); h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0">' + chk('gnaN_' + k, g.on, '<b>' + esc(A.nhomDich[k]) + '</b>') + ' giá trị ' + inp('gnaNG_' + k, g.gia, 90) + ' thắng nhận ' + inp('gnaNS_' + k, g.sl || 1, 50) + ' cái · ID: ' + inp('gnaNI_' + k, (g.ids || []).join(' '), 380) + '<span class="muted" style="font-size:12px">' + (g.ids || []).map(function (id) { var x = (A.dich || []).find(function (y) { return y.id === id; }); return x ? esc(x.ten) : '#' + id; }).join(', ') + '</span></div>'; });
     h += '<div><div class="muted" style="font-size:12px;margin:6px 0">Món đích riêng / phiếu KNB (giá trị; 0 = gỡ khỏi danh sách đích):</div><div id="gnaDichR">' + bangRieng('dich', c.dich.rieng) + '</div>';
     h += '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input id="gnaQ" placeholder="🔎 Tìm vật phẩm (tên không dấu hoặc ID) để thêm giá riêng" style="flex:1;min-width:220px" onkeydown="if(event.key===\'Enter\')gnaTim()"><button onclick="gnaTim()">Tìm</button></div><div id="gnaKq" style="margin-top:6px">' + kq() + '</div>';
     var tb = c.thongBao || {}, kenh = A.kenh || [];
@@ -66,8 +67,11 @@
   window.gnaHoan = function (k) {
     var x = A.log.find(function (y) { return y.k === k; }); if (!x) return;
     var ds = (x.vaoCt || []).map(function (v) { return v.ten + ' ×' + v.sl; }).join(', ') + (x.knb ? ' + ' + so(x.knb) + ' KNB' : '');
-    if (!confirm('Hoàn cho ' + (x.ten || x.uid) + ' (lượt ' + new Date(x.t).toLocaleString('vi-VN') + '):\n' + ds + '\n\nĐồ trả về Rương Ích Kỷ của họ. Món đã ' + (x.thang ? 'thắng (' + x.tenDich + ') vẫn giữ.' : 'thua thì thôi.') + ' Mỗi lượt chỉ hoàn 1 lần.')) return;
-    api('/api/gn/hoan', { k: k }).then(function (j) { A = j; ve(); toast(j.message || '↩ Đã hoàn'); }).catch(function (e) { toast('❌ ' + e.message); });
+    // 07/10: hộp xác nhận của panel (uiConfirm) thay confirm() của trình duyệt
+    uiConfirm('Hoàn cho ' + (x.ten || x.uid) + ' (lượt ' + new Date(x.t).toLocaleString('vi-VN') + '): ' + ds + ' · Đồ trả về Rương Ích Kỷ của họ. Món đã ' + (x.thang ? 'thắng (' + x.tenDich + ') vẫn giữ.' : 'thua thì thôi.') + ' Mỗi lượt chỉ hoàn 1 lần.', '↩ Hoàn đồ', 'btn-green').then(function (ok) {
+      if (!ok) return;
+      api('/api/gn/hoan', { k: k }).then(function (j) { A = j; ve(); toast(j.message || '↩ Đã hoàn'); }).catch(function (e) { toast('❌ ' + e.message); });
+    });
   };
   function bangRieng(loai, o) {
     var ids = Object.keys(o || {}); if (!ids.length) return '<span class="muted" style="font-size:12px">(chưa có)</span>';
@@ -78,7 +82,7 @@
     var l = LOC.toLowerCase();
     return A.bangGia.filter(function (x) { return !l || x.ten.toLowerCase().indexOf(l) >= 0 || x.id.indexOf(l) >= 0; }).slice(0, 400).map(function (x) { return '<tr><td>' + esc(x.ten) + ' <span class="muted">#' + x.id + '</span></td><td>' + (x.shop ? so(x.shop) : '-') + '</td><td><b>' + so(x.gia) + '</b></td><td class="muted">' + esc(x.tu || 'cấm') + '</td></tr>'; }).join('');
   }
-  function kq() { return TIM.map(function (it, k) { return '<span style="display:inline-flex;align-items:center;gap:4px;margin:2px;padding:3px 6px;border:1px solid #3a3f4b;border-radius:6px">' + ic(it) + esc(it.ten) + ' <span class="muted">#' + it.id + (it.shop ? ' · shop ' + so(it.shop) : '') + '</span> <button class="btn-grey" onclick="gnaThem(\'vao\',' + k + ')">+ giá bỏ vào</button><button class="btn-grey" onclick="gnaThem(\'dich\',' + k + ')">+ món đích</button></span>'; }).join(''); }
+  function kq() { return TIM.map(function (it, k) { return '<span style="display:inline-flex;align-items:center;gap:4px;margin:2px;padding:3px 6px;border:1px solid #3a3f4b;border-radius:6px">' + ic(it) + esc(it.ten) + ' <span class="muted">#' + it.id + (it.shop ? ' · shop ' + so(it.shop) : '') + '</span> <input id="gnaG' + k + '" type="number" min="0" placeholder="giá trị" title="Để trống = giá mặc định (bỏ vào: % giá shop; món đích: giá shop)" style="width:96px;margin:0;padding:3px 6px"> <button class="btn-grey" onclick="gnaThem(\'vao\',' + k + ')">+ giá bỏ vào</button><button class="btn-grey" onclick="gnaThem(\'dich\',' + k + ')">+ món đích</button></span>'; }).join(''); }
   function doc() {
     var c = A.cfg, v = function (id) { return el(id).value; }, b = function (id) { return el(id).checked; };
     var o = { on: b('gnaOn'), phi: v('gnaPhi'), tiMin: v('gnaMin'), tiMax: v('gnaMax'), luotNgay: v('gnaLuot'), monMax: v('gnaMon'), knbOn: b('gnaKnb'), knbMax: v('gnaKnbMax'),
@@ -93,8 +97,10 @@
   window.gnaThem = function (loai, k) {
     var it = TIM[k]; if (!it) return; var o = doc();
     var md = loai === 'vao' ? Math.floor((it.shop || 0) * (Number(A.cfg.vao.shop.pct) || 90) / 100) : (it.shop || 0);
-    var g = prompt((loai === 'vao' ? 'Giá trị 1 cái khi BỎ VÀO' : 'Giá trị món ĐÍCH') + ' cho ' + it.ten + ' (#' + it.id + ')' + (it.shop ? ' - giá shop web ' + it.shop : ''), String(md || ''));
-    if (g === null) return; o[loai].rieng[it.id] = g; A.cfg = Object.assign({}, A.cfg, o); A.cfg[loai] = o[loai];
+    // 07/10: bỏ prompt() của trình duyệt - giá lấy ở ô nhập cạnh kết quả tìm (trống = giá mặc định)
+    var o2 = el('gnaG' + k), g = o2 && o2.value.trim() !== '' ? o2.value.trim() : String(md || '');
+    if (g === '' || !(Number(g) >= 0)) { toast('❌ Nhập giá trị cho ' + it.ten + ' (món này chưa có giá shop)'); if (o2) o2.focus(); return; }
+    o[loai].rieng[it.id] = g; A.cfg = Object.assign({}, A.cfg, o); A.cfg[loai] = o[loai];
     if (!A.bangGia.find(function (y) { return y.id === it.id; })) A.bangGia.push({ id: it.id, ten: it.ten, shop: it.shop, gia: 0, tu: '(chưa lưu)' });
     ve(); toast('➕ Đã thêm - nhớ bấm 💾 Lưu');
   };
