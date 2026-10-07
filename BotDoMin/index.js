@@ -1473,7 +1473,8 @@ const GN = require('./ghepngoc')({
 });
 // 🏪 06/10: THƯƠNG PHỐ (thuongpho.js) - kho đồ web theo TỪNG NHÂN VẬT: NPC Ví Web chuyển túi Đạo cụ / Nguyên liệu ra,
 // web chọn món rút về đúng nhân vật đó. Không tặng / bán. Dữ liệu dbCache._tp[GUID], cấu hình dbCache._tpCfg.
-const TP = require('./thuongpho')({ db: () => dbCache, getUserData, saveDbNow, writeLog, icon: ITEMICON.icon, items: () => gameItems() });
+const TP = require('./thuongpho')({ db: () => dbCache, getUserData, saveDbNow, writeLog, icon: ITEMICON.icon, items: () => gameItems(),
+    ichKyAdd: (u, id, n) => ichKyAdd(u, String(id), n) });   // 🧰 08/10: rút qua Rương Ích Kỷ (món admin cho phép)
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
 // chối - người chơi sửa client cũng không lách được. Lưu ở dbCache._featOff (chỉ lưu mục ĐANG TẮT,
@@ -6235,7 +6236,7 @@ client.once('ready', async (c) => {
             // 🍀 02/10: vòng quay may mắn (mở/làm mới bằng KNB, quay bằng lượt từ túi boss, quà vào rương web)
             vongQuay: { state: (uid) => VQ.webState(uid), mo: (uid) => VQ.mo(uid), quay: (uid) => VQ.quay(uid), nhan: (uid, k) => VQ.nhan(uid, k), xoa: (uid, k) => VQ.xoa(uid, k) },
             ghepNgoc: { state: (uid) => GN.state(uid), quay: (uid, b, who) => GN.quay(uid, b, who) },   // 💎 05/10
-            thuongPho: { state: (uid) => TP.state(uid), rut: (uid, ds, who) => TP.rut(uid, ds, who) },   // 🏪 06/10
+            thuongPho: { state: (uid) => TP.state(uid), rut: (uid, ds, who) => TP.rut(uid, ds, who), rutIk: (uid, ds, who) => TP.rutIk(uid, ds, who) },   // 🏪 06/10 · 🧰 08/10 rút qua Rương Ích Kỷ
             gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),
@@ -6294,6 +6295,7 @@ client.once('ready', async (c) => {
         startPanel({
             tlbbFindChar: (q) => tlbb.findChar(q),   // 29/09 liên kết nhân vật Thiên Long
             tlbbListChars: () => tlbb.listChars(),   // 🧬 07/10 tạo ví clone: kiểm clone không chung tài khoản game với ví khác
+            tpIk: { get: () => TP.getIk(), set: (ids) => TP.setIk(ids) },   // 🧰 08/10 món Thương Phố được rút qua Rương Ích Kỷ (tab 🛠️ GM Thiên Long)
             port: parseInt(process.env.PANEL_PORT) || 1508,
             publicPort: parseInt(process.env.PANEL_PUBLIC_PORT) || 1234,
             // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.

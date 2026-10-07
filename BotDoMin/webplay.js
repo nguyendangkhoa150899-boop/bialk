@@ -552,6 +552,15 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
+                // 🧰 08/10: rút qua Rương Ích Kỷ - chỉ món admin gắn ID, không đồ cố định. Ví clone bị chặn ở cổng clone phía trên.
+                if (ctx.thuongPho && ctx.thuongPho.rutIk && req.method === 'POST' && path === '/api/tp/ik') {
+                    const body = await readBody(req);
+                    const me2 = ctx.getUserData(userId);
+                    const r = ctx.thuongPho.rutIk(userId, body && body.ds, me2.name || userId);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    if (r.state && ctx.ichKy) r.ichKyTotal = ctx.ichKy.state(userId).total || 0;
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 // 💎 05/10: Ghép Ngọc
                 if (ctx.ghepNgoc && (path === '/api/gn/state' || path === '/api/gn/quay')) {
                     const body = req.method === 'POST' ? await readBody(req) : {};

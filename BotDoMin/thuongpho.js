@@ -54,6 +54,7 @@ module.exports = function (ctx) {
         const db = ctx.db();
         if (!db._tpCfg || typeof db._tpCfg !== 'object') db._tpCfg = { tat: false, chan: [] };
         if (!Array.isArray(db._tpCfg.chan)) db._tpCfg.chan = [];
+        if (!Array.isArray(db._tpCfg.ik)) db._tpCfg.ik = [];   // 🧰 08/10: ID món admin cho RÚT QUA RƯƠNG ÍCH KỶ (trống = không món nào)
         return db._tpCfg;
     }
     function kho(guid) {
@@ -216,7 +217,7 @@ module.exports = function (ctx) {
 
     function state(userId) {
         const { u, guid } = guidCua(userId);
-        const base = { tat: tat(), loi: CHO_LOI, rutMax: RUT_DONG_MAX };
+        const base = { tat: tat(), loi: CHO_LOI, rutMax: RUT_DONG_MAX, ik: cfg().ik.slice() };   // ik = món được rút qua Rương Ích Kỷ
         if (!guid) return { ...base, guid: '', nhanVat: '', kho: [], cho: [], nk: [] };
         const k = kho(guid);
         const tenMap = new Map((ctx.items() || []).map(t => [String(t.id), t.n]));
@@ -289,6 +290,51 @@ module.exports = function (ctx) {
         return { message: `📦 Đã xếp ${dong.length} lệnh vào game - nhận khi đăng nhập / đổi bản đồ, hoặc bấm NPC Ví Web → Nhận đồ Thương Phố`, state: state(userId) };
     }
 
+    // 🧰 08/10 (chủ server): RÚT QUA RƯƠNG ÍCH KỶ - chỉ món có ID trong cfg().ik (admin gắn ở tab 🛠️ GM Thiên Long), CHỈ đồ
+    // KHÔNG cố định (k = 0): rương tặng / Ghép Ngọc được, cho đồ 🔒 qua là thành đường gỡ khoá. Trừ kho rồi cộng thẳng vào rương
+    // (ctx.ichKyAdd) - không qua game, không cần online. Ví clone bị chặn ở cổng webplay (route không nằm trong danh sách chừa).
+    function rutIk(userId, ds, who) {
+        if (tat()) return { error: '🏪 Thương Phố đang tạm khoá - admin đang bảo trì' };
+        if (typeof ctx.ichKyAdd !== 'function') return { error: 'Chưa nối Rương Ích Kỷ' };
+        const { u, guid } = guidCua(userId);
+        if (!guid) return { error: 'Chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã' };
+        if (!Array.isArray(ds) || !ds.length) return { error: 'Chưa chọn món nào' };
+        const cho = new Set(cfg().ik);
+        const k = kho(guid);
+        const gop = new Map();
+        for (const x of ds) {
+            const id = String(x && x.id || ''), kk = Number(x && x.k) === 1 ? 1 : 0, n = Math.floor(Number(x && x.n));
+            if (!/^\d{8}$/.test(id) || !(n > 0)) return { error: 'Dữ liệu món không hợp lệ' };
+            if (kk === 1) return { error: `${tenMon(id)} là đồ 🔒 cố định - chỉ rút về game được` };
+            if (!cho.has(id)) return { error: `${tenMon(id)} không được rút qua Rương Ích Kỷ (admin chưa cho phép)` };
+            gop.set(id, (gop.get(id) || 0) + n);
+        }
+        if (gop.size > RUT_DONG_MAX) return { error: `Mỗi lần tối đa ${RUT_DONG_MAX} loại món` };
+        for (const [id, n] of gop) {
+            const co = Number(k.it[id + '|0']) || 0;
+            if (n > co) return { error: `${tenMon(id)}: kho chỉ còn ${co} (không tính đồ cố định)` };
+        }
+        const moTa = [];
+        for (const [id, n] of gop) {
+            const key = id + '|0';
+            k.it[key] = (Number(k.it[key]) || 0) - n; if (k.it[key] <= 0) delete k.it[key];
+            ctx.ichKyAdd(u, id, n);
+            moTa.push(`${tenMon(id)} x${n}`);
+        }
+        ghiNk(k, 'ik', moTa.join(', '), [...gop].map(([id, n]) => ({ id, k: 0, n })));
+        ctx.saveDbNow();
+        ctx.writeLog('ADMIN', `[THƯƠNG PHỐ → RƯƠNG ÍCH KỶ] ${who || u.name || userId} (GUID ${guid}): ${moTa.join(', ')}`);
+        return { message: `🧰 Đã chuyển ${gop.size} loại sang Rương Ích Kỷ`, state: state(userId) };
+    }
+    // admin: danh sách món được rút qua rương (kèm tên + icon), lưu lại
+    function getIk() { return cfg().ik.map(id => ({ id, ten: tenMon(id), ic: ctx.icon(id), cho: CHO.has(id) })); }
+    function setIk(ids) {
+        const c = cfg();
+        c.ik = [...new Set((Array.isArray(ids) ? ids : []).map(String).filter(x => /^\d{8}$/.test(x)))].slice(0, 500);
+        ctx.saveDbNow();
+        return getIk();
+    }
+
     // Panel SUPER: bật/tắt + chặn thêm ID (vd phát hiện món lỗi). Đổi xong dựng lại danh sách ngay.
     function setCfg(o) {
         const c = cfg();
@@ -306,5 +352,5 @@ module.exports = function (ctx) {
         return { tatFile: fs.existsSync(TAT_FILE), cfg: { tat: !!cfg().tat, chan: cfg().chan }, soMon: CHO.size, loi: CHO_LOI, ds: out };
     }
 
-    return { napCho, pollPhieu, donTpin, state, rut, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
+    return { napCho, pollPhieu, donTpin, state, rut, rutIk, getIk, setIk, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
 };

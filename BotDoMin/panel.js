@@ -327,7 +327,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🐉: bảng KNB/duyệt đơn/liên kết nhân vật/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
+                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
@@ -1174,6 +1174,18 @@ function startPanel(ctx) {
                         return sendJSON(res, 200, { ok: true, ...r });
                     } catch (e) { return sendJSON(res, 500, { ok: false, error: String(e.message).slice(0, 200) }); }
                 }
+                // 🧰 08/10: món Thương Phố được RÚT QUA RƯƠNG ÍCH KỶ (thuongpho.js cfg().ik) - tab 🛠️ GM Thiên Long. Chỉ SUPER (VIEWONLY_PATHS).
+                if (path === '/api/tpik/state') {
+                    if (!ctx.tpIk) return sendJSON(res, 503, { ok: false, error: 'Chưa nối Thương Phố' });
+                    return sendJSON(res, 200, { ok: true, ds: ctx.tpIk.get() });
+                }
+                if (path === '/api/tpik/save') {
+                    if (!ctx.tpIk) return sendJSON(res, 503, { ok: false, error: 'Chưa nối Thương Phố' });
+                    const truoc = ctx.tpIk.get().map(x => x.id);
+                    const ds = ctx.tpIk.set(body.ids);
+                    ctx.writeLog('ADMIN', `[THƯƠNG PHỐ → RƯƠNG ÍCH KỶ] SUPER đổi danh sách món: ${truoc.join(',') || '(trống)'} -> ${ds.map(x => x.id).join(',') || '(trống)'}`);
+                    return sendJSON(res, 200, { ok: true, ds });
+                }
                 // 🧬 07/10: TẠO VÍ CHO CLONE - nhân vật phụ không có Discord nên không có ví để liên kết, đăng nhập web báo
                 // "chưa gắn với ví Discord nào". Tạo ví mới (ID '99' + giờ, 15 số - Discord thật 17-19 số, không đụng), 0 KNB,
                 // gắn nhân vật + cờ clone + gameAcc = tài khoản game của nhân vật -> đăng nhập web bằng tài khoản/mật khẩu game là vào.
@@ -1985,6 +1997,16 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-red" data-gm="restart" data-confirm="RESTART server game? Người đang chơi sẽ bị ngắt khoảng 3 phút.">♻️ Restart server</button>
         </div>
         <div class="note">Gỡ kẹt = bị disconnect mà không vào lại được: chỉ khởi động lại Login, người đang chơi không bị văng. Restart: người online bị ngắt ~3 phút; đổi GM cần restart mới có hiệu lực.</div>
+      </div>
+      <div class="card">
+        <h3>🏪 Thương Phố → 🧰 Rương Ích Kỷ <span class="muted" id="tpikN"></span></h3>
+        <div class="note">Gắn <b>ID món</b> nào thì người chơi được bấm <b>Rút qua Rương Ích Kỷ</b> cho món đó trong Thương Phố (trống = không món nào). Đồ <b>🔒 cố định không bao giờ</b> được rút qua (rương tặng / Ghép Ngọc được). Lưu là có hiệu lực ngay.</div>
+        <div class="row" style="margin-top:8px">
+          <input id="tpikIn" class="mini-in" style="width:320px" placeholder="ID món, nhiều ID cách nhau dấu phẩy / khoảng trắng">
+          <button class="btn-green" onclick="tpikThem()">➕ Thêm</button>
+          <button onclick="tpikLoad()">🔄 Tải lại</button>
+        </div>
+        <div id="tpikDs" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
       <div class="card">
         <h3>👤 Tài khoản game <span class="muted" id="gmAccN"></span></h3>
@@ -3047,8 +3069,26 @@ function gmRender(){
   if(!document.getElementById('gmLall'))document.getElementById('gmAllForm').innerHTML=gmGiveForm('all');
   document.querySelectorAll('#tab-gm select[data-kindfor]').forEach(function(s){gmKind(s.dataset.kindfor);});
 }
+// ===== 🧰 08/10: món Thương Phố được rút qua Rương Ích Kỷ (thuongpho.js cfg().ik) =====
+var TPIK=[];
+function tpikVe(){
+  var b=document.getElementById('tpikDs');if(!b)return;
+  document.getElementById('tpikN').textContent=TPIK.length?('('+TPIK.length+' món)'):'(chưa có món nào)';
+  b.innerHTML=TPIK.length?TPIK.map(function(x){return '<span class="chip" style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid #3a4a66;border-radius:8px;background:#141a26;font-size:12px">'
+    +'<b>'+esc(x.ten)+'</b><span class="muted">'+x.id+'</span>'+(x.cho?'':'<span style="color:#ff8a8a" title="Món này không nằm trong danh sách được chuyển ra Thương Phố">⚠</span>')
+    +'<button class="mini btn-red" data-id="'+x.id+'" onclick="tpikXoa(this.dataset.id)">✕</button></span>';}).join(''):'<span class="muted">Trống - người chơi chưa rút qua Rương Ích Kỷ được món nào.</span>';
+}
+function tpikLoad(){api('/api/tpik/state',{}).then(function(j){TPIK=j.ds||[];tpikVe();}).catch(function(){});}
+function tpikLuu(ids){api('/api/tpik/save',{ids:ids}).then(function(j){TPIK=j.ds||[];tpikVe();toast('🧰 Đã lưu '+TPIK.length+' món rút qua Rương Ích Kỷ');}).catch(function(){tpikLoad();});}
+function tpikThem(){
+  var i=document.getElementById('tpikIn');var moi=(i.value.match(/[0-9]{8}/g)||[]);
+  if(!moi.length){toast('Nhập ID món (8 chữ số)');return;}
+  i.value='';tpikLuu(TPIK.map(function(x){return x.id;}).concat(moi));
+}
+function tpikXoa(id){tpikLuu(TPIK.map(function(x){return x.id;}).filter(function(x){return x!==id;}));}
 function gmLoad(){
   if(typeof TOKEN==='undefined'||!TOKEN)return;
+  tpikLoad();
   api('/api/gm/state',{}).then(function(j){GM.st=j.state;gmRender();}).catch(function(){});
   if(!GM.timer)GM.timer=setInterval(function(){
     var tb=document.getElementById('tab-gm');if(!tb||tb.classList.contains('hidden'))return;

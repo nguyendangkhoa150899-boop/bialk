@@ -65,12 +65,20 @@
     '.tpCf .tpIc.vqNo{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:15px;background:#1a1f2d}',
     '#tpTip{position:fixed;z-index:9999;pointer-events:none;max-width:280px;background:rgba(8,10,16,.96);border:1px solid #8a6a2a;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.5;color:#e8e8e8;box-shadow:0 6px 18px rgba(0,0,0,.6);display:none}',
     '#tpTip .n{font-size:14px;font-weight:900;color:#ffd76a;margin-bottom:2px}',
-    '#tpTip .cd{color:#ff5a5a;font-weight:900}#tpTip .kcd{color:#7ee2a8}#tpTip .x{color:#9aa3b8}'
+    '#tpTip .cd{color:#ff5a5a;font-weight:900}#tpTip .kcd{color:#7ee2a8}#tpTip .x{color:#9aa3b8}',
+    // 🧰 08/10: che do Qua Ruong Ich Ky (tui phai doi mau tim)
+    '#tpCard .tpMd{display:flex;gap:6px;margin-bottom:8px}#tpCard .tpMd button{flex:1;padding:7px 6px;font-size:13px;font-weight:900;border-radius:9px;border:1px solid #2a3340;background:#151826;color:var(--tx);cursor:pointer}',
+    '#tpCard .tpMd button.on{background:#13261b;border-color:#2f6b46;color:#7ee2a8}#tpCard .tpMd button.on.ik{background:#22163a;border-color:#7a5cc9;color:#cdb8ff}',
+    '#tpCard .tpBag.ra.ik{border-color:#7a5cc9;background:linear-gradient(180deg,#1b1430,#141824 60%)}#tpCard .tpBag.ra.ik .tpBagT{color:#cdb8ff}',
+    '#tpCard .tpBag.ra.ik .tpGo{color:#1b0f33;background:linear-gradient(180deg,#cdb8ff,#8f6ff0);box-shadow:0 2px 0 #4b3591}',
+    '#tpCard .l-ik{color:#cdb8ff}'
   ].join('');
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   var tip = document.createElement('div'); tip.id = 'tpTip'; document.body.appendChild(tip);
 
-  var TP = { s: null, chon: {}, loc: 'dc', q: '', sx: 'game', busy: false, ls: 'rut', lsN: 10 };
+  var TP = { s: null, chon: {}, loc: 'dc', q: '', sx: 'game', busy: false, ls: 'rut', lsN: 10, dich: 'game' };   // dich: 'game' | 'ik' (08/10 qua Ruong Ich Ky)
+  function ikSet() { return new Set((TP.s && TP.s.ik) || []); }
+  function duocIk(x) { return !!x && x.k === 0 && ikSet().has(x.id); }   // chi mon admin gan ID, khong do co dinh
   try { var c0 = JSON.parse(localStorage.getItem('tp_cfg2') || '{}'); if (c0.loc === 'dc' || c0.loc === 'nl') TP.loc = c0.loc; if (c0.sx && c0.sx !== 'cd' && c0.sx !== 'loai') TP.sx = c0.sx; } catch (e) { }
   function luuCfg() { try { localStorage.setItem('tp_cfg2', JSON.stringify({ loc: TP.loc, sx: TP.sx })); } catch (e) { } }
   var $c = function () { return document.getElementById('tpCard'); };
@@ -110,6 +118,8 @@
     var q = TP.q.trim().toLowerCase(), tk = [];
     q.split(',').forEach(function (p) { p = p.trim(); if (!p) return; if (/^\d+(\s+\d+)*$/.test(p)) tk = tk.concat(p.split(/\s+/)); else tk.push(p); });
     return L.filter(function (x) {
+      if (TP.dich === 'ik' && !duocIk(x)) return false;
+      if (TP.dich === 'ik' && !tk.length) return true;
       if (!tk.length && TP.loc === 'dc' && x.tui !== 1) return false;   // dang tim thi tim ca 2 tui
       if (!tk.length && TP.loc === 'nl' && x.tui !== 2) return false;
       if (!tk.length) return true;
@@ -192,12 +202,16 @@
     // tui phai
     var ks = Object.keys(TP.chon).filter(function (k) { return TP.chon[k] > 0 && tim(k); });
     var t = tinhO();
-    h += '<div class="tpBag ra"><div class="tpBagT">🎮 Rút vào game <span>' + t.loai + ' loại · ' + fmt(t.mon) + ' món</span></div><div class="tpGrid">';
-    h += ks.length ? ks.map(function (k) { return oRa(tim(k), TP.chon[k]); }).join('') : '<div class="tpEmpty">Bấm món bên kho web để đưa sang đây</div>';
+    var coIk = !!(s.ik && s.ik.length), laIk = coIk && TP.dich === 'ik';
+    if (!coIk) TP.dich = 'game';
+    h += '<div class="tpBag ra' + (laIk ? ' ik' : '') + '">' + (coIk ? '<div class="tpMd"><button class="' + (laIk ? '' : 'on') + '" onclick="tpDich(\'game\')">🎮 Rút vào game</button><button class="ik' + (laIk ? ' on' : '') + '" onclick="tpDich(\'ik\')">🧰 Qua Rương Ích Kỷ</button></div>' : '') +
+      '<div class="tpBagT">' + (laIk ? '🧰 Qua Rương Ích Kỷ' : '🎮 Rút vào game') + ' <span>' + t.loai + ' loại · ' + fmt(t.mon) + ' món</span></div><div class="tpGrid">';
+    h += ks.length ? ks.map(function (k) { return oRa(tim(k), TP.chon[k]); }).join('') : '<div class="tpEmpty">' + (laIk ? 'Kho bên trái chỉ hiện món admin cho phép rút qua Rương Ích Kỷ (không gồm đồ 🔒 cố định). Bấm món để đưa sang đây.' : 'Bấm món bên kho web để đưa sang đây') + '</div>';
     h += '</div>';
-    if (ks.length) h += '<div class="tpSum">Cần trống khoảng <b>' + t.o[1] + '</b> ô túi Đạo cụ, <b>' + t.o[2] + '</b> ô túi Nguyên liệu. Túi không đủ chỗ thì phần còn lại chờ lần sau, không mất.</div>';
+    if (ks.length && laIk) h += '<div class="tpSum">Đồ vào thẳng <b>🧰 Rương Ích Kỷ</b> trên web (không cần online, không cần ô túi). Từ rương có thể nhận vào game, tặng, hoặc đem 💎 Ghép Ngọc.</div>';
+    else if (ks.length) h += '<div class="tpSum">Cần trống khoảng <b>' + t.o[1] + '</b> ô túi Đạo cụ, <b>' + t.o[2] + '</b> ô túi Nguyên liệu. Túi không đủ chỗ thì phần còn lại chờ lần sau, không mất.</div>';
     h += '<div class="tpBtns"><button class="tpBo" onclick="tpBoHet()"' + (ks.length ? '' : ' disabled') + '>↩ Bỏ hết</button>' +
-      '<button class="tpGo" onclick="tpXacNhan(this)"' + (ks.length && !TP.busy && !s.tat ? '' : ' disabled') + '>✅ Xác nhận rút vào game</button></div>';
+      '<button class="tpGo" onclick="tpXacNhan(this)"' + (ks.length && !TP.busy && !s.tat ? '' : ' disabled') + '>' + (laIk ? '🧰 Xác nhận chuyển qua Rương Ích Kỷ' : '✅ Xác nhận rút vào game') + '</button></div>';
     h += '</div></div>';
 
     // dang cho
@@ -208,11 +222,11 @@
     }
     // lich su: moi lan 1 dong, mon cung loai da gop so luong (bot gop), trang thai lan rut doc tu .tpdone cua game
     if (s.nk && s.nk.length) {
-      var NK = { gui: '📥 Gửi từ game', rut: '📤 Rút vào game', hoan: '🔁 Game hoàn về' };
+      var NK = { gui: '📥 Gửi từ game', rut: '📤 Rút vào game', hoan: '🔁 Game hoàn về', ik: '🧰 Qua Rương Ích Kỷ' };
       var TT = { xong: '<span class="tpTt xong">✅ Đã vào game</span>', cho: '<span class="tpTt cho">⏳ Đang chờ</span>', motphan: '<span class="tpTt cho">◐ Nhận một phần</span>' };
       var Ls = s.nk.filter(function (x) { return TP.ls === 'all' || x.loai === TP.ls; });
       var chip = function (v, t) { var n = v === 'all' ? s.nk.length : s.nk.filter(function (x) { return x.loai === v; }).length; return '<button class="tpTab' + (TP.ls === v ? ' on' : '') + '" onclick="tpLs(\'' + v + '\')">' + t + ' <span style="opacity:.7">' + n + '</span></button>'; };
-      h += '<div class="tpSec"><h3>📜 Lịch sử</h3><div class="tpBar" style="margin:0 0 8px">' + chip('rut', '📤 Rút vào game') + chip('gui', '📥 Gửi từ game') + chip('hoan', '🔁 Hoàn về') + chip('all', 'Tất cả') + '</div>';
+      h += '<div class="tpSec"><h3>📜 Lịch sử</h3><div class="tpBar" style="margin:0 0 8px">' + chip('rut', '📤 Rút vào game') + chip('gui', '📥 Gửi từ game') + chip('hoan', '🔁 Hoàn về') + (s.nk.some(function (x) { return x.loai === 'ik'; }) ? chip('ik', '🧰 Qua rương') : '') + chip('all', 'Tất cả') + '</div>';
       h += Ls.length ? Ls.slice(0, TP.lsN).map(function (x) {
         var d = new Date(x.at), tong = (x.ds || []).reduce(function (t, y) { return t + y.n; }, 0);
         var mon = (x.ds && x.ds.length) ? x.ds.map(function (y) {
@@ -235,7 +249,8 @@
   // bam 1 o -> chuyen dung chong cua o do sang tui rut
   window.tpVao = function (k, q) {
     var x = tim(k); if (!x) return;
-    if (!x.rut) return toast('⚠️ Món này đang bị khoá rút - nhắn admin');
+    if (TP.dich === 'ik' && !duocIk(x)) return toast(x.k ? '⚠️ Đồ 🔒 cố định chỉ rút về game được' : '⚠️ Món này admin chưa cho rút qua Rương Ích Kỷ');
+    if (TP.dich !== 'ik' && !x.rut) return toast('⚠️ Món này đang bị khoá rút - nhắn admin');
     var co = TP.chon[k] || 0, con = x.n - co; if (con <= 0) return;
     TP.chon[k] = co + Math.min(con, Math.max(1, Math.floor(Number(q) || con)));
     tip.style.display = 'none'; ve();
@@ -247,6 +262,13 @@
     ve();
   };
   window.tpBoHet = function () { TP.chon = {}; ve(); };
+  // 🧰 08/10: doi che do -> bo cac mon da chon khong hop che do moi
+  window.tpDich = function (v) {
+    if (TP.busy || (v !== 'game' && v !== 'ik') || TP.dich === v) return;
+    TP.dich = v;
+    Object.keys(TP.chon).forEach(function (k) { var x = tim(k); if (!x || (v === 'ik' && !duocIk(x)) || (v === 'game' && !x.rut)) delete TP.chon[k]; });
+    tip.style.display = 'none'; ve();
+  };
   window.tpLoc = function (v) { TP.loc = v; luuCfg(); ve(); };
   window.tpSx = function (v) { TP.sx = v; luuCfg(); ve(); };
   window.tpTim = function (v) { TP.q = v; ve(); };
@@ -261,16 +283,22 @@
     if (typeof gConfirm !== 'function') return toast('❌ Trang chưa tải xong, F5 rồi thử lại');
     var ds8 = ds.slice(0, 8).map(function (y) { var x = tim(y.id + '|' + y.k);
       return '<div class="tpCf">' + ic(x) + '<span>' + e(x.ten) + (y.k ? ' <span style="color:#ff5a5a">🔒</span>' : '') + '</span><b>×' + fmt(y.n) + '</b></div>'; }).join('');
-    var msg = 'Rút <b>' + t.loai + ' loại (' + fmt(t.mon) + ' món)</b> về nhân vật <b style="color:#ffd76a">' + e(TP.s.nhanVat || '') + '</b>?' +
+    var laIk = TP.dich === 'ik';
+    if (laIk && ds.some(function (y) { return !duocIk(tim(y.id + '|' + y.k)); })) return toast('⚠️ Có món không được rút qua Rương Ích Kỷ - bỏ ra trước');
+    var msg = laIk ? ('Chuyển <b>' + t.loai + ' loại (' + fmt(t.mon) + ' món)</b> sang <b style="color:#cdb8ff">🧰 Rương Ích Kỷ</b>?' +
+      '<div class="tpCfL">' + ds8 + (ds.length > 8 ? '<div class="muted" style="font-size:12px">+ ' + (ds.length - 8) + ' loại khác</div>' : '') + '</div>' +
+      '<div style="font-size:13px">Đồ rời Thương Phố, vào rương trên web (nhận vào game / tặng / Ghép Ngọc từ đó).</div>') :
+      'Rút <b>' + t.loai + ' loại (' + fmt(t.mon) + ' món)</b> về nhân vật <b style="color:#ffd76a">' + e(TP.s.nhanVat || '') + '</b>?' +
       '<div class="tpCfL">' + ds8 + (ds.length > 8 ? '<div class="muted" style="font-size:12px">+ ' + (ds.length - 8) + ' loại khác</div>' : '') + '</div>' +
       '<div style="font-size:13px">Cần trống khoảng <b>' + t.o[1] + '</b> ô Đạo cụ, <b>' + t.o[2] + '</b> ô Nguyên liệu.</div>' +
       '<div style="font-size:13px;color:#ffb4b4;margin-top:4px">Đã xác nhận thì <b>không huỷ được</b>.</div>';
     tip.style.display = 'none';
-    gConfirm(msg, '📦 Rút vào game').then(function (dongY) {
+    gConfirm(msg, laIk ? '🧰 Chuyển qua rương' : '📦 Rút vào game').then(function (dongY) {
     if (!dongY) return;
     TP.busy = true; if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang chuyển...'; }
-    api('/api/tp/rut', { ds: ds }).then(function (j) {
-      TP.busy = false; TP.chon = {}; toast(j.message || '✅ Đã xếp lệnh vào game');
+    api(laIk ? '/api/tp/ik' : '/api/tp/rut', { ds: ds }).then(function (j) {
+      TP.busy = false; TP.chon = {}; toast(j.message || (laIk ? '🧰 Đã chuyển qua Rương Ích Kỷ' : '✅ Đã xếp lệnh vào game'));
+      if (laIk && typeof j.ichKyTotal === 'number' && typeof ikBadge === 'function') ikBadge(j.ichKyTotal);
       if (j.state) { TP.s = j.state; ve(); } else tpSync();
     }).catch(function (er) { TP.busy = false; toast('❌ ' + er.message); tpSync(); });
     });
