@@ -327,7 +327,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🐉: bảng KNB/duyệt đơn/liên kết nhân vật/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/tlbb/lienket', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
+                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
@@ -1173,6 +1173,35 @@ function startPanel(ctx) {
                         ctx.writeLog('ADMIN', '[DROP BOSS] ' + path.slice(10) + ' ' + JSON.stringify(body).slice(0, 200));
                         return sendJSON(res, 200, { ok: true, ...r });
                     } catch (e) { return sendJSON(res, 500, { ok: false, error: String(e.message).slice(0, 200) }); }
+                }
+                // 🧬 07/10: TẠO VÍ CHO CLONE - nhân vật phụ không có Discord nên không có ví để liên kết, đăng nhập web báo
+                // "chưa gắn với ví Discord nào". Tạo ví mới (ID '99' + giờ, 15 số - Discord thật 17-19 số, không đụng), 0 KNB,
+                // gắn nhân vật + cờ clone + gameAcc = tài khoản game của nhân vật -> đăng nhập web bằng tài khoản/mật khẩu game là vào.
+                // Từ chối nếu tài khoản game đó đã có nhân vật gắn ví khác: đăng nhập tài khoản đó sẽ không biết vào ví nào.
+                if (path === '/api/tlbb/taoclone') {
+                    const q = String(body.name || '').trim().slice(0, 50);
+                    if (!q) return sendJSON(res, 400, { ok: false, error: 'Nhập tên nhân vật clone (hoặc GUID)' });
+                    let ch = null, rows = [];
+                    try { ch = await ctx.tlbbFindChar(q); rows = ctx.tlbbListChars ? await ctx.tlbbListChars() : []; } catch (e) { return sendJSON(res, 500, { ok: false, error: 'Không đọc được danh sách nhân vật: ' + String(e.message).slice(0, 120) }); }
+                    if (!ch) return sendJSON(res, 400, { ok: false, error: `Không có nhân vật "${q}" trong game (gõ đúng tên hoặc GUID)` });
+                    const acc = String(ch.account || '').toLowerCase();
+                    const guidCungAcc = new Set(rows.filter((r) => String(r.account || '').toLowerCase() === acc).map((r) => String(r.guid)));
+                    const db = ctx.getDb();
+                    for (const [k, v] of Object.entries(db)) {
+                        if (k.startsWith('_') || !v || typeof v !== 'object') continue;
+                        if (String(v.tlbbGuid || '') === ch.guid) return sendJSON(res, 400, { ok: false, error: `Nhân vật ${ch.name} đã gắn ví ${v.name || k} - tích 🧬 Clone ở dòng đó là được` });
+                        if (acc && (String(v.gameAcc || '').toLowerCase() === acc || (v.tlbbGuid && guidCungAcc.has(String(v.tlbbGuid))))) {
+                            return sendJSON(res, 400, { ok: false, error: `Tài khoản game "${ch.account}" đã có ví ${v.name || k} (nhân vật ${v.ingameName || '?'}) - clone phải là tài khoản game riêng` });
+                        }
+                    }
+                    let id = '99' + Date.now();
+                    while (db[id]) id = String(Number(id) + 1);
+                    const u = ctx.getUserData(id);
+                    u.points = 0; u.lastDaily = 0; u.name = ch.name + ' (clone)';
+                    u.ingameName = ch.name; u.tlbbGuid = ch.guid; u.clone = true; u.gameAcc = acc;
+                    ctx.saveDbNow();
+                    ctx.writeLog('ADMIN', `[PANEL TLBB] Tạo ví CLONE ${id} ↔ nhân vật "${ch.name}" (GUID ${ch.guid}, tài khoản ${ch.account}) - chỉ Thương Phố`);
+                    return sendJSON(res, 200, { ok: true, id, name: ch.name, guid: ch.guid, account: ch.account });
                 }
                 // 🔗 Liên kết ví ↔ nhân vật Thiên Long (tên hoặc GUID). Cầu KNB chỉ chạy cho ví đã gắn.
                 // CHỈ admin đặt được (người chơi tự đặt là lỗ hổng: gắn nhân vật người khác rồi rút về ví mình).
@@ -2036,6 +2065,12 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h3>🔗 Liên kết tên trong game</h3>
         <div class="note">Gắn ví mini game với <b>nhân vật Thiên Long</b>: gõ <b>tên nhân vật</b> (hoặc <b>GUID</b>) rồi Lưu, bot tra database game và điền GUID. Cầu KNB chỉ chạy cho ví đã gắn. 1 nhân vật chỉ gắn 1 ví; người chơi không tự gắn được (chống rút trộm). Để trống + Lưu = hủy liên kết.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0 10px;padding:8px;border:1px dashed #3a4a66;border-radius:8px">
+          <b>🧬 Tạo ví cho clone</b>
+          <input class="mini-in" id="lkCloneTen" placeholder="Tên nhân vật clone (hoặc GUID)" style="width:230px">
+          <button class="mini btn-green" onclick="lkTaoClone()">➕ Tạo ví clone</button>
+          <span class="muted" style="font-size:12px">Nhân vật phụ không có Discord: tạo ví 0 KNB, gắn sẵn nhân vật + tích Clone (chỉ dùng Thương Phố, không túi boss). Đăng nhập web bằng <b>tài khoản + mật khẩu game</b> của clone. Clone phải ở tài khoản game riêng.</span>
+        </div>
         <div id="lienKetList"></div>
       </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
@@ -3328,6 +3363,11 @@ function renderLienKet(){
       '<td style="text-align:center"><input type="checkbox" style="width:18px;height:18px" id="pc_'+p.id+'"'+(p.clone?' checked':'')+(p.ingameName?'':' disabled title="Liên kết nhân vật trước"')+' onchange="lkSetName(\\''+p.id+'\\')"></td>'+
       '<td><button class="mini btn-green" onclick="lkSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
     '</table>';
+}
+function lkTaoClone(){
+  const i=document.getElementById('lkCloneTen');const v=(i&&i.value||'').trim();
+  if(!v){toast('Nhập tên nhân vật clone');return;}
+  api('/api/tlbb/taoclone',{name:v}).then(j=>{toast('🧬 Đã tạo ví clone cho '+j.name+' (tài khoản game '+j.account+') - đăng nhập web bằng tài khoản + mật khẩu game đó');i.value='';refresh();}).catch(()=>{});
 }
 function lkSetName(id){
   const v=document.getElementById('pn_'+id).value;

@@ -6293,6 +6293,7 @@ client.once('ready', async (c) => {
     try {
         startPanel({
             tlbbFindChar: (q) => tlbb.findChar(q),   // 29/09 liên kết nhân vật Thiên Long
+            tlbbListChars: () => tlbb.listChars(),   // 🧬 07/10 tạo ví clone: kiểm clone không chung tài khoản game với ví khác
             port: parseInt(process.env.PANEL_PORT) || 1508,
             publicPort: parseInt(process.env.PANEL_PUBLIC_PORT) || 1234,
             // MẶC ĐỊNH KHÔNG CÓ MẬT KHẨU: panel vào thẳng, không hỏi đăng nhập.
