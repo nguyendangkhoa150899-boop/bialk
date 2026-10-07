@@ -327,7 +327,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🐉: bảng KNB/duyệt đơn/liên kết nhân vật/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
+                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/tpik/sync', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
@@ -1179,6 +1179,15 @@ function startPanel(ctx) {
                     if (!ctx.tpIk) return sendJSON(res, 503, { ok: false, error: 'Chưa nối Thương Phố' });
                     return sendJSON(res, 200, { ok: true, ds: ctx.tpIk.get() });
                 }
+                // 🔄 08/10: thêm MỌI món trade được (bảng giá đồ bỏ vào Ghép Ngọc, giá > 0) vào danh sách - giữ món đang có
+                if (path === '/api/tpik/sync') {
+                    if (!ctx.tpIk || !ctx.ghepNgoc) return sendJSON(res, 503, { ok: false, error: 'Chưa nối Thương Phố / Ghép Ngọc' });
+                    const truoc = ctx.tpIk.get().map(x => x.id);
+                    const trade = ((ctx.ghepNgoc.state() || {}).bangGia || []).filter(x => x.gia > 0).map(x => String(x.id));
+                    const ds = ctx.tpIk.set([...truoc, ...trade]);
+                    ctx.writeLog('ADMIN', `[THƯƠNG PHỐ → RƯƠNG ÍCH KỶ] SUPER đồng bộ đồ trade Ghép Ngọc: ${truoc.length} -> ${ds.length} món`);
+                    return sendJSON(res, 200, { ok: true, ds, them: ds.length - truoc.length });
+                }
                 if (path === '/api/tpik/save') {
                     if (!ctx.tpIk) return sendJSON(res, 503, { ok: false, error: 'Chưa nối Thương Phố' });
                     const truoc = ctx.tpIk.get().map(x => x.id);
@@ -2001,12 +2010,36 @@ const HTML = `<!DOCTYPE html>
       <div class="card">
         <h3>🏪 Thương Phố → 🧰 Rương Ích Kỷ <span class="muted" id="tpikN"></span></h3>
         <div class="note">Gắn <b>ID món</b> nào thì người chơi được bấm <b>Rút qua Rương Ích Kỷ</b> cho món đó trong Thương Phố (trống = không món nào). Đồ <b>🔒 cố định không bao giờ</b> được rút qua (rương tặng / Ghép Ngọc được). Lưu là có hiệu lực ngay.</div>
-        <div class="row" style="margin-top:8px">
-          <input id="tpikIn" class="mini-in" style="width:320px" placeholder="ID món, nhiều ID cách nhau dấu phẩy / khoảng trắng">
-          <button class="btn-green" onclick="tpikThem()">➕ Thêm</button>
-          <button onclick="tpikLoad()">🔄 Tải lại</button>
+        <style>
+          #tpikBox .tpkBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+          #tpikBox .tpkBar input{background:#0f131c;border:1px solid #2c3a52;color:#e6ebf5;border-radius:8px;padding:7px 10px;font-size:13px}
+          #tpikBox .tpkBar button{padding:7px 12px;font-size:13px;border-radius:8px}
+          #tpikBox .tpkTabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 8px}
+          #tpikBox .tpkTab{background:#151b28;border:1px solid #2c3a52;color:#c9d3e6;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:700;cursor:pointer}
+          #tpikBox .tpkTab.on{background:#2a2140;border-color:#8f6ff0;color:#e2d6ff}
+          #tpikBox .tpkTab span{opacity:.65;margin-left:3px}
+          #tpikBox .tpkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;max-height:430px;overflow:auto;padding-right:4px}
+          #tpikBox .tpkIt{display:flex;align-items:center;gap:8px;background:#121825;border:1px solid #232d40;border-radius:9px;padding:5px 6px 5px 5px;min-width:0}
+          #tpikBox .tpkIt:hover{border-color:#3a4a66}
+          #tpikBox .tpkNm{flex:1;min-width:0}
+          #tpikBox .tpkNm b{display:block;font-size:12.5px;font-weight:700;color:#e6ebf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #tpikBox .tpkNm small{font-size:11px;color:#8a96ad}
+          #tpikBox .tpkX{flex:0 0 auto;width:24px;height:24px;padding:0;border-radius:6px;border:1px solid transparent;background:transparent;color:#8a96ad;font-size:13px;line-height:22px;cursor:pointer}
+          #tpikBox .tpkX:hover{background:#3a1d24;border-color:#7a3434;color:#ff9a9a}
+          #tpikBox .tpkWarn{color:#ffb070;font-size:11px}
+          #tpikBox .tpkEmpty{grid-column:1/-1;padding:18px;text-align:center;color:#8a96ad;border:1px dashed #2c3a52;border-radius:9px;font-size:12px}
+        </style>
+        <div id="tpikBox">
+          <div class="tpkBar">
+            <input id="tpikQ" style="flex:1 1 200px;min-width:160px" placeholder="🔎 Lọc theo tên hoặc ID" oninput="tpikVe()">
+            <input id="tpikIn" style="flex:1 1 220px;min-width:180px" placeholder="Thêm ID (nhiều ID cách dấu phẩy)">
+            <button class="btn-green" onclick="tpikThem()">➕ Thêm</button>
+            <button onclick="tpikSync()" title="Thêm mọi món đang trade được trong Ghép Ngọc (giá đồ bỏ vào > 0), giữ món đang có">🔄 Đồng bộ đồ trade Ghép Ngọc</button>
+            <button onclick="tpikLoad()">↻ Tải lại</button>
+          </div>
+          <div class="tpkTabs" id="tpikTabs"></div>
+          <div class="tpkGrid" id="tpikDs"></div>
         </div>
-        <div id="tpikDs" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
       <div class="card">
         <h3>👤 Tài khoản game <span class="muted" id="gmAccN"></span></h3>
@@ -3070,22 +3103,41 @@ function gmRender(){
   document.querySelectorAll('#tab-gm select[data-kindfor]').forEach(function(s){gmKind(s.dataset.kindfor);});
 }
 // ===== 🧰 08/10: món Thương Phố được rút qua Rương Ích Kỷ (thuongpho.js cfg().ik) =====
-var TPIK=[];
+var TPIK=[],TPIKTAB='all';
+// nhom theo ten (khong dung regex co dau gach nguoc - panel.js la template literal)
+var TPIKNHOM=[['yq','📜 Yếu Quyết'],['ngoc','💎 Ngọc / Minh Thạch'],['dv','🪡 Điêu Văn'],['nh','🔮 Nhuận Hồn'],['phu','📃 Phù'],['khac','📦 Khác']];
+function tpikLoai(x){var n=String(x.ten||'').toLowerCase(),id=String(x.id);
+  if(n.indexOf('yếu quyết')>=0)return 'yq';if(n.indexOf('nhuận hồn')>=0)return 'nh';if(n.indexOf('điêu văn')>=0)return 'dv';
+  if(id.charAt(0)==='5'||n.indexOf('minh thạch')>=0||n.indexOf('bảo thạch (cấp')>=0)return 'ngoc';if(n.indexOf('phù')>=0)return 'phu';return 'khac';}
 function tpikVe(){
-  var b=document.getElementById('tpikDs');if(!b)return;
+  TPIK.forEach(function(x){x.ten=String(x.ten||'').replace(/#c[0-9A-Fa-f]{6}|#[GYWRBK]/g,'');});
+  var b=document.getElementById('tpikDs'),tb=document.getElementById('tpikTabs');if(!b)return;
   document.getElementById('tpikN').textContent=TPIK.length?('('+TPIK.length+' món)'):'(chưa có món nào)';
-  b.innerHTML=TPIK.length?TPIK.map(function(x){return '<span class="chip" style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid #3a4a66;border-radius:8px;background:#141a26;font-size:12px">'
-    +'<b>'+esc(x.ten)+'</b><span class="muted">'+x.id+'</span>'+(x.cho?'':'<span style="color:#ff8a8a" title="Món này không nằm trong danh sách được chuyển ra Thương Phố">⚠</span>')
-    +'<button class="mini btn-red" data-id="'+x.id+'" onclick="tpikXoa(this.dataset.id)">✕</button></span>';}).join(''):'<span class="muted">Trống - người chơi chưa rút qua Rương Ích Kỷ được món nào.</span>';
+  var dem={};TPIK.forEach(function(x){var l=tpikLoai(x);dem[l]=(dem[l]||0)+1;});
+  if(TPIKTAB!=='all'&&!dem[TPIKTAB])TPIKTAB='all';
+  tb.innerHTML='<button class="tpkTab'+(TPIKTAB==='all'?' on':'')+'" data-k="all" onclick="tpikTab(this.dataset.k)">Tất cả<span>'+TPIK.length+'</span></button>'+
+    TPIKNHOM.filter(function(g){return dem[g[0]];}).map(function(g){return '<button class="tpkTab'+(TPIKTAB===g[0]?' on':'')+'" data-k="'+g[0]+'" onclick="tpikTab(this.dataset.k)">'+g[1]+'<span>'+dem[g[0]]+'</span></button>';}).join('');
+  var q=String((document.getElementById('tpikQ')||{}).value||'').trim().toLowerCase();
+  var TH={};TPIKNHOM.forEach(function(g,i){TH[g[0]]=i;});
+  var L=TPIK.slice().sort(function(x,y){return (TH[tpikLoai(x)]-TH[tpikLoai(y)])||String(x.ten).localeCompare(String(y.ten),'vi');}).filter(function(x){if(TPIKTAB!=='all'&&tpikLoai(x)!==TPIKTAB)return false;if(!q)return true;return String(x.ten).toLowerCase().indexOf(q)>=0||String(x.id).indexOf(q)>=0;});
+  b.innerHTML=!TPIK.length?'<div class="tpkEmpty">Trống - người chơi chưa rút qua Rương Ích Kỷ được món nào. Bấm 🔄 Đồng bộ đồ trade Ghép Ngọc hoặc thêm ID.</div>'
+    :!L.length?'<div class="tpkEmpty">Không có món khớp bộ lọc</div>'
+    :L.map(function(x){return '<div class="tpkIt">'+vqaIc(x.ic)+'<div class="tpkNm"><b title="'+esc(x.ten)+'">'+esc(x.ten)+'</b><small>'+x.id+(x.cho?'':' · <span class="tpkWarn" title="NPC Ví Web không chuyển món này ra Thương Phố">⚠ không ra Thương Phố được</span>')+'</small></div>'
+      +'<button class="tpkX" title="Bỏ khỏi danh sách" data-id="'+x.id+'" onclick="tpikXoa(this.dataset.id)">✕</button></div>';}).join('');
 }
+function tpikTab(k){TPIKTAB=k;tpikVe();}
 function tpikLoad(){api('/api/tpik/state',{}).then(function(j){TPIK=j.ds||[];tpikVe();}).catch(function(){});}
-function tpikLuu(ids){api('/api/tpik/save',{ids:ids}).then(function(j){TPIK=j.ds||[];tpikVe();toast('🧰 Đã lưu '+TPIK.length+' món rút qua Rương Ích Kỷ');}).catch(function(){tpikLoad();});}
+// luu theo ban MOI NHAT tren server (trang mo lau khong ghi de mat thay doi cua nguoi khac / cua script)
+function tpikDoi(them,bo,msg){api('/api/tpik/state',{}).then(function(j){
+  var ids=(j.ds||[]).map(function(x){return x.id;}).filter(function(x){return bo.indexOf(x)<0;}).concat(them);
+  return api('/api/tpik/save',{ids:ids});}).then(function(j){TPIK=j.ds||[];tpikVe();toast(msg+' · còn '+TPIK.length+' món');}).catch(function(){tpikLoad();});}
 function tpikThem(){
   var i=document.getElementById('tpikIn');var moi=(i.value.match(/[0-9]{8}/g)||[]);
   if(!moi.length){toast('Nhập ID món (8 chữ số)');return;}
-  i.value='';tpikLuu(TPIK.map(function(x){return x.id;}).concat(moi));
+  i.value='';tpikDoi(moi,[],'🧰 Đã thêm '+moi.length+' ID');
 }
-function tpikXoa(id){tpikLuu(TPIK.map(function(x){return x.id;}).filter(function(x){return x!==id;}));}
+function tpikXoa(id){tpikDoi([],[id],'🗑️ Đã bỏ '+id);}
+function tpikSync(){api('/api/tpik/sync',{}).then(function(j){TPIK=j.ds||[];tpikVe();toast('🔄 Đồng bộ xong: thêm '+(j.them||0)+' món trade · tổng '+TPIK.length);}).catch(function(){tpikLoad();});}
 function gmLoad(){
   if(typeof TOKEN==='undefined'||!TOKEN)return;
   tpikLoad();
