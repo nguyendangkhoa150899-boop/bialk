@@ -76,6 +76,7 @@
       '<button onclick="tlRestart()">' + (TL.xnRs ? '⚠ Bấm lần nữa để restart (' + TL.online + ' người online)' : '🔁 Restart game (' + TL.online + ' online)') + '</button></div>';
     h += (nMa || nHu) ? '<div class="tlWarn">Đang áp cấu hình riêng cho <b>' + nMa + '</b> mã và <b>' + nHu + '</b> hiệu ứng. Mọi thay đổi chỉ có hiệu lực sau khi <b>restart game</b>.' +
       (cfg.huAi ? ' Lần chỉnh hiệu ứng cuối: ' + e(cfg.huAi) + '.' : '') + '</div>' : '<div class="tlNote">Chưa chỉnh gì: mọi Trùng Lâu đang đúng bản gốc.</div>';
+    h += '<div id="tlGiuBox">' + veGiu() + '</div>';
     h += '<div class="tlWrap"><div class="tlList">';
     NHOM.forEach(function (g) {
       h += '<div class="tlGrp"><b>' + e(g[0]) + '</b>';
@@ -87,7 +88,6 @@
       h += '</div>';
     });
     h += '</div><div class="tlPane">' + veMon(TL.sel) + '</div></div>';
-    h += '<div id="tlGiuBox">' + veGiu() + '</div>';
     b.innerHTML = h;
   }
 
@@ -145,11 +145,12 @@
   }
 
   function veGiu() {
+    if (TL.giuLoi) return '<div class="tlWarn">👥 Không đọc được danh sách người giữ: ' + e(TL.giuLoi) + '. Nếu game đang restart (MySQL tắt theo game) thì đợi 2-3 phút rồi bấm lại.</div>';
     if (!TL.giu) return '';
     var ds = TL.chiMa ? TL.giu.filter(function (g) { return g.id === TL.sel; }) : TL.giu;
-    var h = '<div class="tlCard"><h4>👥 Ai đang giữ Trùng Lâu dòng mới (' + ds.length + ')</h4><div class="tlBar"><label class="tlNote"><input type="checkbox" ' + (TL.chiMa ? 'checked ' : '') +
-      'onchange="tlChiMa(this.checked)"> chỉ mã đang chọn (' + TL.sel + ')</label><span class="tlNote">Đọc từ DB, có thể trễ vài phút so với trong game. Vị trí: túi / đang mặc / kho.</span></div>' +
-      '<div class="tlTbl"><table><thead><tr><th>Nhân vật</th><th>Tài khoản</th><th>Mã</th><th>Món</th><th>Ở đâu</th></tr></thead><tbody>';
+    var h = '<div class="tlCard"><h4>👥 Ai đang giữ Trùng Lâu (' + ds.length + ')</h4><div class="tlBar"><label class="tlNote"><input type="checkbox" ' + (TL.chiMa ? 'checked ' : '') +
+      'onchange="tlChiMa(this.checked)"> chỉ mã đang chọn (' + TL.sel + ')</label><span class="tlNote">Đọc từ DB, có thể trễ vài phút so với trong game. Vị trí: túi / đang mặc / kho.</span>' +
+      '<button onclick="tlGiuAn()">✖ Ẩn</button></div><div class="tlTbl"><table><thead><tr><th>Nhân vật</th><th>Tài khoản</th><th>Mã</th><th>Món</th><th>Ở đâu</th></tr></thead><tbody>';
     ds.forEach(function (g) {
       h += '<tr><td>' + e(g.nv) + ' <span class="tlNote">' + e(g.guid) + '</span></td><td>' + e(g.acc) + '</td><td class="n">' + g.id + '</td><td>' + e(g.ten) + '</td><td>' +
         (g.cho === 'đang mặc' ? '<b>đang mặc</b>' : e(g.cho)) + '</td></tr>';
@@ -195,6 +196,11 @@
     if (!TL.xnRs) { TL.xnRs = 1; ve(); setTimeout(function () { TL.xnRs = 0; ve(); }, 6000); return; }
     TL.xnRs = 0; ghi({ op: 'restart' });
   };
-  window.tlGiu = function () { api('/api/gm/trunglau', { op: 'giu' }).then(function (j) { TL.giu = j.giu || []; ve(); }).catch(function (er) { loi(er); }); };
+  window.tlGiu = function () {
+    api('/api/gm/trunglau', { op: 'giu' }).then(function (j) { TL.giu = j.giu || []; TL.giuLoi = ''; ve(); toast('👥 ' + TL.giu.length + ' món Trùng Lâu đang có người giữ'); cuon(); })
+      .catch(function (er) { TL.giuLoi = (er && er.message) || String(er); TL.giu = null; ve(); cuon(); });
+  };
+  function cuon() { var b = document.getElementById('tlGiuBox'); if (b && b.scrollIntoView) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  window.tlGiuAn = function () { TL.giu = null; TL.giuLoi = ''; ve(); };
   window.tlChiMa = function (on) { TL.chiMa = on; var b = document.getElementById('tlGiuBox'); if (b) b.innerHTML = veGiu(); };
 })();
