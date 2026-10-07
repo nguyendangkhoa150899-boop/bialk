@@ -149,7 +149,7 @@
     if (!TL.giu) return '';
     var ds = TL.chiMa ? TL.giu.filter(function (g) { return g.id === TL.sel; }) : TL.giu;
     var h = '<div class="tlCard"><h4>👥 Ai đang giữ Trùng Lâu (' + ds.length + ')</h4><div class="tlBar"><label class="tlNote"><input type="checkbox" ' + (TL.chiMa ? 'checked ' : '') +
-      'onchange="tlChiMa(this.checked)"> chỉ mã đang chọn (' + TL.sel + ')</label><span class="tlNote">Đọc từ DB, có thể trễ vài phút so với trong game. Vị trí: túi / đang mặc / kho.</span>' +
+      'onchange="tlChiMa(this.checked)"> chỉ mã đang chọn (' + TL.sel + ')</label><span class="tlNote">Đọc từ DB: game chỉ ghi nhân vật xuống DB <b>~15 phút/lần</b> hoặc khi <b>thoát game</b> → vừa mặc / tháo / giao dịch thì tối đa 15 phút sau mới đúng. Vị trí: túi / đang mặc / kho.</span>' +
       '<button onclick="tlGiuAn()">✖ Ẩn</button></div><div class="tlTbl"><table><thead><tr><th>Nhân vật</th><th>Tài khoản</th><th>Mã</th><th>Món</th><th>Ở đâu</th></tr></thead><tbody>';
     ds.forEach(function (g) {
       h += '<tr><td>' + e(g.nv) + ' <span class="tlNote">' + e(g.guid) + '</span></td><td>' + e(g.acc) + '</td><td class="n">' + g.id + '</td><td>' + e(g.ten) + '</td><td>' +
