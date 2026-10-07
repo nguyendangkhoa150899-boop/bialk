@@ -308,6 +308,11 @@ function startWebPlay(ctx) {
                         return sendJSON(res, 403, { ok: false, chuaLienKet: true, error: ctx.lienKetMsg ? ctx.lienKetMsg() : 'Ví của bạn chưa được liên kết tên nhân vật trong game - nhắn admin liên kết giúp.' });
                     }
                 }
+                // 🧬 07/10 (chủ server): ví CLONE chỉ dùng 🏪 Thương Phố của đúng nhân vật đó. DANH SÁCH CHỪA (đường mới tự bị chặn):
+                // /api/state (nhịp trang, có cờ clone để client chỉ hiện trang Thương Phố), /api/tp/state + /api/tp/rut, /api/logout.
+                if (ctx.laClone && ctx.laClone(userId) && !['/api/state', '/api/tp/state', '/api/tp/rut', '/api/logout'].includes(path)) {
+                    return sendJSON(res, 403, { ok: false, clone: true, error: ctx.cloneMsg ? ctx.cloneMsg() : 'Tài khoản clone chỉ dùng được Thương Phố' });
+                }
 
                 // 🃏 POKER: mọi /api/poker/* giao cho mô-đun Poker/web.js. Đặt SAU cổng liên kết nên
                 // người chưa liên kết chỉ qua được /api/poker/state (khớp regex XEM), còn ngồi/đánh
@@ -361,6 +366,7 @@ function startWebPlay(ctx) {
                         balance: me.points || 0,
                         // 🔗 17/09: false = admin chưa liên kết tên nhân vật -> client hiện banner đỏ
                         linked: ctx.daLienKet ? !!ctx.daLienKet(userId) : true,
+                        clone: ctx.laClone ? !!ctx.laClone(userId) : false,   // 🧬 07/10: client chỉ hiện Thương Phố
                         // 🧰 17/09: số món đang nằm trong Rương Ích Kỷ -> nhãn đỏ trên nút 🧰
                         ichKyTotal: ctx.ichKy ? (ctx.ichKy.state(userId).total || 0) : 0,
                         // 🏆 hũ 2 minigame gửi kèm nhịp 2 giây -> nhãn hũ trên tab luôn tươi,
@@ -1249,6 +1255,8 @@ const PAGE = [
     // Header + nav ép mỏng (19/08): mobile đỡ phải kéo - trước đây riêng cụm đầu
     // trang đã ngốn ~150px dọc.
     '#topbar{padding:8px 12px;margin-bottom:8px;flex-wrap:wrap;gap:8px}',
+    // 🧬 07/10: ví clone chỉ thấy thanh số dư (tên + Thoát) và trang 🏪 Thương Phố
+    'body.cloneMode #navGrp,body.cloneMode #nav,body.cloneMode #chatCard,body.cloneMode #histCard,body.cloneMode #debtChip,body.cloneMode #taxiChip,body.cloneMode #mkBtn,body.cloneMode #lkWarn,body.cloneMode #winpop,body.cloneMode #jpPick,body.cloneMode #luckyPick,body.cloneMode #lolaPop,body.cloneMode #pbModal{display:none!important}',
     '#topbar .big{font-size:20px}',
     '#topbar .muted{font-size:11px}',
     '#topbar button{padding:8px 10px}',
@@ -2745,7 +2753,7 @@ const PAGE = [
     'nhoDat(NHO_GA,nho?ga:"");nhoDat(NHO_GP,nho?gp:"");nhoDat(NHO_OK,nho?"1":"");',
     'show(j.name)})',
     '.catch(function(e){done();loginErr("❌ Không gọi được bot ("+((e&&e.message)||"mạng đứt")+") - bot tắt hay mất mạng? Thử lại sau")})}',
-    'function logout(){function xong(){TOKEN="";try{localStorage.removeItem("play_token")}catch(e){}nhoDat(NHO_THOAT,"1");location.reload()}',
+    'function logout(){function xong(){TOKEN="";try{localStorage.removeItem("play_token");localStorage.removeItem("play_clone")}catch(e){}nhoDat(NHO_THOAT,"1");location.reload()}',
     'api("/api/logout",{}).then(xong,xong)}',
     'function show(n){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");',
     'if(n)document.getElementById("myName").textContent=n;initPaper();',
@@ -2826,6 +2834,9 @@ const PAGE = [
     'function refresh(){api("/api/state").then(function(j){',
     'MYID=j.me||MYID;if(j.name&&!$("myName").textContent)$("myName").textContent=j.name;',
     'if(typeof j.linked==="boolean")lkSet(j.linked);',
+    // 🧬 07/10: ví clone - chỉ trang Thương Phố; admin bỏ tích clone thì tải lại trang cho đủ tab
+    'if(j.clone&&!CLONE){CLONE=true;try{localStorage.setItem("play_clone","1")}catch(e){}go("tp")}',
+    'else if(j.clone===false&&CLONE){try{localStorage.removeItem("play_clone")}catch(e){}location.reload()}',
     // 🃏 tab GIẢI POKER: hiện/ẩn theo công tắc admin; đang đứng trong tab mà bị tắt thì về MINI GAME
     '$("ngPoker").style.display=j.pokerOn?"":"none";',
     '$("ngTienlen").style.display=j.tienlenOn?"":"none";',
@@ -3772,7 +3783,8 @@ const PAGE = [
     'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",tp:"profile",shop:"profile",vq:"games",gn:"games",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
-    'function go(p){CURPAGE=p;',
+    'var CLONE=false;try{CLONE=localStorage.getItem("play_clone")==="1"}catch(e){}',   // 🧬 07/10: ví clone -> mọi go() về Thương Phố (nhớ qua F5 để khỏi lóe trang khác)
+    'function go(p){if(CLONE){p="tp";document.body.classList.add("cloneMode")}CURPAGE=p;',
     // 🧰 trang Rương Ích Kỷ (05/10; F5 giữ trang nhờ ik có trong PAGE_GRP -> play_page): khung rộng 1180px trên PC, đếm ngược + tải rương khi vào
     'document.body.classList.toggle("ikWide",p==="ik");$("pageIk").classList.toggle("hidden",p!=="ik");$("navIk").classList.toggle("on",p==="ik");',
     'if(p==="ik"){ikSync();ikLoadNguoi();if(!IKTIMER)IKTIMER=setInterval(ikTick,1000)}else if(IKTIMER){clearInterval(IKTIMER);IKTIMER=null}',

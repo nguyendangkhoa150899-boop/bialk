@@ -143,6 +143,9 @@ function poll(db) {
     // gộp các dòng cùng scene + boss trong GOP_GIAY giây (Ác Bá ghi 1 dòng cho mỗi thành viên có nhiệm vụ)
     if (!db._tuiBossGop) db._tuiBossGop = {};
     const gop = db._tuiBossGop, K = kho(db);
+    // 🧬 07/10 (chủ server): nhân vật CLONE (admin tích ở tab liên kết, userData.clone) KHÔNG có túi boss - không tạo túi luôn
+    const CLONE = new Set();
+    for (const [k, v] of Object.entries(db)) if (!k.startsWith('_') && v && typeof v === 'object' && v.clone && v.tlbbGuid) CLONE.add(String(v.tlbbGuid));
     let tao = 0;
     for (const l of lines) {
         const c = l.trim().split('\t');
@@ -154,6 +157,7 @@ function poll(db) {
         for (const guid of c[3].split(',').map((x) => x.trim()).filter((x) => /^\d{6,}$/.test(x))) {
             if (g.da.includes(guid)) continue;
             g.da.push(guid);
+            if (CLONE.has(guid)) continue;
             const ds = K[guid] || (K[guid] = []);
             const cfg = cfgOf(db, hd);
             if (cfg.on === false) continue;

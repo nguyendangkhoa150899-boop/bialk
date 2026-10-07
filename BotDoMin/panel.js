@@ -100,6 +100,7 @@ function startPanel(ctx) {
             .filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object')
             .map(id => ({
                 id, name: db[id].name || '(chưa rõ tên)', points: db[id].points || 0, ingameName: db[id].ingameName || '', tlbbGuid: db[id].tlbbGuid || '',
+                clone: !!db[id].clone,   // 🧬 07/10: ví clone (chỉ Thương Phố)
                 // 📒 nợ: hiện thẳng số trong db (index.js có vòng quét cộng lãi mỗi giờ)
                 debt: db[id].debt ? ((db[id].debt.loan || 0) + (db[id].debt.admin || 0)) : 0,
             }))
@@ -1182,8 +1183,10 @@ function startPanel(ctx) {
                     // 29/09 NetCo4: nhập TÊN nhân vật Thiên Long (hoặc GUID) -> tra MySQL của game -> lưu tên + GUID
                     const q = String(body.name || '').trim().slice(0, 50);
                     const u = ctx.getUserData(uid);
+                    // 🧬 07/10: body.clone (true/false) = ví CLONE - chỉ dùng Thương Phố, không túi boss. Không gửi = giữ nguyên.
                     if (!q) {
-                        u.ingameName = ''; u.tlbbGuid = '';
+                        if (body.clone === true) return sendJSON(res, 400, { ok: false, error: 'Nhập tên nhân vật rồi mới tích Clone được' });
+                        u.ingameName = ''; u.tlbbGuid = ''; delete u.clone;
                         ctx.saveDbNow();
                         ctx.writeLog('ADMIN', `[PANEL TLBB] Hủy liên kết nhân vật của ${uid}`);
                         return sendJSON(res, 200, { ok: true, name: '' });
@@ -1197,9 +1200,10 @@ function startPanel(ctx) {
                         }
                     }
                     u.ingameName = ch.name; u.tlbbGuid = ch.guid;
+                    if (typeof body.clone === 'boolean') { if (body.clone) u.clone = true; else delete u.clone; }
                     ctx.saveDbNow();
-                    ctx.writeLog('ADMIN', `[PANEL TLBB] Liên kết ${uid} ↔ nhân vật "${ch.name}" (GUID ${ch.guid}, tài khoản ${ch.account})`);
-                    return sendJSON(res, 200, { ok: true, name: ch.name, guid: ch.guid });
+                    ctx.writeLog('ADMIN', `[PANEL TLBB] Liên kết ${uid} ↔ nhân vật "${ch.name}" (GUID ${ch.guid}, tài khoản ${ch.account})${u.clone ? ' [CLONE - chỉ Thương Phố]' : ''}`);
+                    return sendJSON(res, 200, { ok: true, name: ch.name, guid: ch.guid, clone: !!u.clone });
                 }
 
                 if (path === '/api/points/subtract') {
@@ -3315,17 +3319,20 @@ function renderLienKet(){
   // Ví đã liên kết lên trước, trong nhóm thì giàu trước
   const rows=(STATE.players||[]).slice().sort((a,b)=>((b.ingameName?1:0)-(a.ingameName?1:0))||(b.points-a.points));
   if(!rows.length){box.innerHTML='<div class="muted">Chưa có ví nào.</div>';return;}
-  box.innerHTML='<table><tr><th>Discord</th><th>Ví KNB</th><th>Nhân vật Thiên Long</th><th>GUID</th><th></th></tr>'+
+  // 🧬 07/10: cột Clone - tích là lưu ngay (ví clone chỉ dùng 🏪 Thương Phố của nhân vật đó, không nhận túi boss)
+  box.innerHTML='<table><tr><th>Discord</th><th>Ví KNB</th><th>Nhân vật Thiên Long</th><th>GUID</th><th title="Tài khoản clone: chỉ dùng Thương Phố, không túi boss">🧬 Clone</th><th></th></tr>'+
     rows.map(p=>'<tr><td>'+esc(p.name)+'<br><span class="muted" style="font-size:11px">'+p.id+'</span></td>'+
       '<td>'+Number(p.points||0).toLocaleString()+'</td>'+
       '<td><input class="mini-in" style="width:150px" placeholder="(chưa liên kết)" id="pn_'+p.id+'" value="'+esc(p.ingameName||'').replace(/"/g,'&quot;')+'"></td>'+
       '<td class="muted" style="font-size:12px">'+(p.tlbbGuid?esc(p.tlbbGuid):'-')+'</td>'+
+      '<td style="text-align:center"><input type="checkbox" style="width:18px;height:18px" id="pc_'+p.id+'"'+(p.clone?' checked':'')+(p.ingameName?'':' disabled title="Liên kết nhân vật trước"')+' onchange="lkSetName(\\''+p.id+'\\')"></td>'+
       '<td><button class="mini btn-green" onclick="lkSetName(\\''+p.id+'\\')">💾 Lưu</button></td></tr>').join('')+
     '</table>';
 }
 function lkSetName(id){
   const v=document.getElementById('pn_'+id).value;
-  api('/api/tlbb/lienket',{userId:id,name:v}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{});
+  const c=document.getElementById('pc_'+id);
+  api('/api/tlbb/lienket',{userId:id,name:v,clone:!!(c&&c.checked)}).then(j=>{toast(j.name?('🔗 Đã liên kết: '+j.name+(j.clone?' · 🧬 CLONE (chỉ Thương Phố)':'')):'🔓 Đã hủy liên kết');refresh();}).catch(()=>{refresh();});
 }
 
 function initSelects(){

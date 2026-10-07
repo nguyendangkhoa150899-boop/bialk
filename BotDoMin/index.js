@@ -1218,8 +1218,13 @@ function streakTopUp(u) {
 // và lienKetGuard() ngay trong hàm nghiệp vụ (điểm danh, chuyển tiền) - sửa client vô ích.
 const LIENKET_MSG = '🔗 Ví của bạn CHƯA được liên kết tên nhân vật trong game - nhắn admin liên kết giúp (chỉ 1 lần). Chưa liên kết thì không chơi, không điểm danh, không chuyển tiền, không mua bán được.';
 function daLienKet(userId) { return !!((getUserData(userId).ingameName || '')).trim(); }
-// Trả CHUỖI LỖI nếu chưa liên kết, null nếu đã liên kết. Dùng ở mọi cửa hành động.
-function lienKetGuard(userId) { return daLienKet(userId) ? null : LIENKET_MSG; }
+// 🧬 07/10 (chủ server): ví CLONE (admin tích ở tab 🐉 liên kết) chỉ được dùng 🏪 Thương Phố của đúng nhân vật đó.
+// Mọi việc khác chặn ở 3 tầng như chưa liên kết: cổng webplay.js (danh sách CHỪA), interactionCreate (Discord), lienKetGuard.
+// Túi boss không tạo cho GUID clone (tuiboss.js poll).
+const CLONE_MSG = '🧬 Đây là tài khoản CLONE - chỉ dùng được 🏪 Thương Phố (rút đồ của chính nhân vật này). Cần mở thêm thì nhắn admin.';
+function laClone(userId) { return !!getUserData(userId).clone; }
+// Trả CHUỖI LỖI nếu chưa liên kết / là clone, null nếu được làm. Dùng ở mọi cửa hành động.
+function lienKetGuard(userId) { return !daLienKet(userId) ? LIENKET_MSG : (laClone(userId) ? CLONE_MSG : null); }
 
 function dailyState(userId) {
     const u = dailyBookOf(getUserData(userId));
@@ -6108,6 +6113,7 @@ client.once('ready', async (c) => {
             txNotifyBet,     // 🔔 17/09: báo Discord cho chủ server mỗi lần có người đặt
             featOffList,   // 🔌 15/09: danh sách mục admin đang tắt (web giấu tab)
             daLienKet,     // 🔗 17/09: chưa được admin liên kết tên nhân vật thì không thao tác được
+            laClone, cloneMsg: () => CLONE_MSG,   // 🧬 07/10: ví clone chỉ dùng Thương Phố
             // 🧰 17/09 RƯƠNG ÍCH KỶ: mua không cần online, 00:00 xoá sạch
             ichKy: {
                 state: (uid) => ichKyState(uid),
@@ -7509,6 +7515,16 @@ client.on('interactionCreate', async interaction => {
         if (kieu && !LK_MIEN.includes(id)) {
             writeLog('SYSTEM', `[LIÊN KẾT] Chặn ${interaction.user.tag} (chưa liên kết) thao tác "${id}"`);
             return interaction.reply({ content: LIENKET_MSG, ephemeral: true });
+        }
+    }
+    // 🧬 07/10: ví CLONE - trên Discord chỉ xem số dư / lấy PIN web, còn lại chặn (web chỉ mở Thương Phố)
+    if (laClone(userId)) {
+        const kieu = interaction.isChatInputCommand() || interaction.isButton() || interaction.isModalSubmit()
+            || (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu());
+        const id = interaction.isChatInputCommand() ? interaction.commandName : (interaction.customId || '');
+        if (kieu && !['sodu', 'web_pin'].includes(id)) {
+            writeLog('SYSTEM', `[CLONE] Chặn ${interaction.user.tag} (ví clone) thao tác "${id}"`);
+            return interaction.reply({ content: CLONE_MSG, ephemeral: true });
         }
     }
 
