@@ -220,10 +220,12 @@
   window.ikDraw = function () {
     if (!IK) return;
     if (typeof ikBadge === 'function') ikBadge(IK.total); if (typeof ikTick === 'function') ikTick();
-    var stt = document.getElementById('ikStat'); if (stt) stt.innerHTML = 'Đang giữ <b>' + IK.total + '</b> món · hôm nay đã mua vào rương <b>' + IK.boughtToday + '/' + IK.dayMax + '</b> (còn ' + IK.leftToday + ')';
+    // 07/10 chủ server: bỏ dòng "Đang giữ … đã mua vào rương x/2000" (mua vào rương không giới hạn/ngày)
+    var stt = document.getElementById('ikStat'); if (stt) { stt.innerHTML = ''; stt.style.display = 'none'; }
     var nh = document.getElementById('ikNhan'), NL = IK.nhan || [];
     if (nh) { nh.classList.toggle('hidden', !NL.length); if (NL.length) nh.innerHTML = '🎁 <b>Hôm nay bạn được tặng:</b><br>' + NL.map(function (g) { return '• <b>' + e(g.tu) + '</b> tặng ' + g.qty + ' ' + e(g.ten) + ' <span class="muted">(' + (typeof ikGio === 'function' ? ikGio(g.at) : '') + ')</span>'; }).join('<br>'); }
-    var w = document.getElementById('ikWarn'); if (w) w.innerHTML = '♾️ Rương giữ <b>vĩnh viễn</b>. Chọn <b>📦 Nhận</b> / <b>🎁 Tặng</b> / <b>🗑️ Xoá</b> ở khung thao tác, bấm món trong rương để chọn nhiều món, rồi xác nhận một lần. <b>🎫 Phiếu KNB</b>: bấm vào phiếu để Sử dụng.';
+    // 07/10 chủ server: bỏ chú thích "♾️ Rương giữ vĩnh viễn…"
+    var w = document.getElementById('ikWarn'); if (w) { w.innerHTML = ''; w.style.display = 'none'; }
     var gv = document.getElementById('ikGv'); if (gv) gv.classList.add('hidden');
     ve();
   };

@@ -1849,7 +1849,7 @@ function itemShopToday(user) {
 // 03/10 (chủ server chốt): rương GIỮ VĨNH VIỄN, KHÔNG giới hạn số món. Sang ngày mới chỉ đặt lại đếm
 // "đã mua hôm nay" (bought) và sổ "được tặng hôm nay" (nhan) - ĐỒ TRONG RƯƠNG GIỮ NGUYÊN.
 // (17/09 -> 02/10: 00:00 xoá sạch đồ, giữ tối đa 100 món.)
-const ICHKY_DAY_MAX = 2000;   // mua vào rương tối đa 2.000 món/người/NGÀY (04/10 chủ server nâng từ 100)
+const ICHKY_DAY_MAX = Infinity;   // 07/10 chủ server: mua vào rương KHÔNG giới hạn/ngày (trước 2.000, 04/10 nâng từ 100). JSON gửi web là null
 const ICHKY_HOLD_MAX = Infinity;   // 03/10: bỏ giới hạn giữ (trước 100). JSON gửi web là null
 const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
 // Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts, 02/10)
@@ -6162,7 +6162,11 @@ client.once('ready', async (c) => {
             dogbridge: {
                 rut: (uid, amount, kind) => webRutGame(uid, amount, kind),
                 state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut,
-                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangToday: dogBridgeToday(getUserData(uid)).vang || 0 }),   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
+                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
+                    // 💰 07/10 thẻ "Ví KNB ↔ Game" (trang Cá nhân, /vg.js): chỗ nạp + đã nạp hôm nay + 8 lần nạp/rút gần nhất của chính người này
+                    napNpc: TLBB_NPC_HINT, napToday: dogBridgeToday(getUserData(uid)).nap || 0,
+                    hist: (Array.isArray(dbCache._dogLedger) ? dbCache._dogLedger : []).filter((e) => e && e.userId === uid && (e.type === 'to-game' || e.type === 'from-game')).slice(0, 8)
+                        .map((e) => ({ ts: e.ts || 0, loai: e.type === 'from-game' ? 'nap' : (/vàng/.test(e.note || '') ? 'vang' : 'rut'), so: Math.abs(Number(e.amount) || 0) })) }),
             },
             // 📅 điểm danh tháng + 💉 nghiện - cùng logic với /diemdanh, /nghien
             // lụm từ WEB thì mới đăng công khai vào kênh nghiện (xem claimNghien)

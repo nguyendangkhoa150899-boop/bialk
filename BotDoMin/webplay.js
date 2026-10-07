@@ -136,6 +136,16 @@ function startWebPlay(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/sh.js') {   // 🛒 07/10: Shop Item giao diện mới (shop.client.js, ghi đè isRender)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'shop.client.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
+            if (req.method === 'GET' && path === '/vg.js') {   // 💰 07/10: thẻ Ví KNB ↔ Game ở trang Cá nhân (vigame.client.js)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'vigame.client.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/tp.js') {   // 🏪 06/10: giao diện Thương Phố (thuongpho.client.js, đọc lại mỗi lần tải)
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'thuongpho.client.js'));
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -347,6 +357,7 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, {
                         ok: true,
                         me: userId,
+                        name: me.name || '',   // 07/10: F5 (khôi phục phiên) cũng có tên trên header
                         balance: me.points || 0,
                         // 🔗 17/09: false = admin chưa liên kết tên nhân vật -> client hiện banner đỏ
                         linked: ctx.daLienKet ? !!ctx.daLienKet(userId) : true,
@@ -1241,6 +1252,37 @@ const PAGE = [
     '#topbar .big{font-size:20px}',
     '#topbar .muted{font-size:11px}',
     '#topbar button{padding:8px 10px}',
+    // 07/10: thanh đầu mới
+    '#topbar{position:relative;overflow:hidden;align-items:center;background:linear-gradient(120deg,#1d2433,#1b1e27 55%,#221d14);border-color:#33405a}',
+    '#topbar:before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,#4da3ff,#ffcf5c,#3ddc84)}',
+    '#topbar .tbL{min-width:0}#topbar .big{display:flex;align-items:center;gap:6px;color:#ffd76a;font-weight:900;letter-spacing:.3px}',
+    '#topbar .tbU{font-size:12px;color:var(--muted);font-weight:800;margin-left:2px}',
+    '#topbar .tbR{display:flex;gap:6px;align-items:center;margin-left:auto}',
+    '#topbar .tbBtn{width:auto;margin:0;display:inline-flex;align-items:center;gap:5px;padding:8px 12px;font-size:13px;font-weight:800;border-radius:10px;background:#232a3a;border:1px solid #33405a;color:#dfe6f3}',
+    '#topbar .tbBtn:hover{border-color:#4da3ff}#topbar .tbOut{background:#2a1c1f;border-color:#5a2e35;color:#ffb4b4}',
+    '@media(max-width:420px){#topbar .tbBtn span{display:none}#topbar .tbBtn{padding:8px 11px;font-size:15px}#topbar .big{font-size:18px}}',
+    // 🔑 popup đổi mật khẩu
+    '#mkModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:120;padding:16px}',
+    '#mkModal.hidden{display:none}',
+    '#mkBox{position:relative;background:var(--card);border:1px solid #33405a;border-radius:16px;padding:20px;width:400px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6);animation:gmpop .15s ease}',
+    '#mkBox h2{margin:0;font-size:18px}#mkBox .mkX{position:absolute;top:10px;right:10px;width:auto;margin:0;padding:4px 10px;background:#232a3a;font-size:14px}',
+    '#mkBox .mkAcc{margin-top:8px;font-size:13px;color:var(--muted)}#mkBox .mkAcc b{color:#7ee2a8}',
+    '#mkBox .mkF{position:relative;margin-top:10px}#mkBox .mkF input{margin:0;padding-right:44px}',
+    '#mkBox .mkEye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:4px 8px;background:transparent;font-size:15px}',
+    '#mkBox .mkRule{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}',
+    '#mkBox .mkErr{min-height:18px;font-size:13px;font-weight:700;color:#ff8a80;margin-top:6px}',
+    '#mkBox .mkGo{display:block;width:100%;margin-top:8px;padding:12px;font-size:15px;font-weight:900;border:0;border-radius:11px;color:#04203a;background:linear-gradient(180deg,#8cc8ff,#4da3ff)}',
+    '#mkBox .mkGo:disabled{opacity:.5}',
+    '#mkBox .mkWarn{margin-top:10px;padding:9px 11px;border:1px solid #ffcf5c;border-radius:10px;background:#231d10;color:#ffd27a;font-size:13px}',
+    // 💰 07/10: trang Cá nhân rộng 2 cột trên PC (giống Thương Phố / Rương Ích Kỷ) - ví bên phải
+    '@media(min-width:900px){body.vgWide{max-width:1180px}',
+    'body.vgWide #pageDaily{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:auto auto 1fr;gap:12px;align-items:start}',
+    'body.vgWide #pageDaily>.card{margin-bottom:0}',
+    'body.vgWide #pageDaily>.card{grid-column:1}',
+    'body.vgWide #pageDaily>#vgCard{grid-column:2;grid-row:1/span 3}body.vgWide #pageDaily>#tbCard{grid-column:1/-1}}',
+    // 🏹 07/10: Boss đã hạ thu gọn - cả dòng tiêu đề là nút mở/đóng
+    '#bossCard .bossHead{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}#bossCard .bossHead #bossStat{margin-left:auto;font-size:12px}',
+    '#bossCard .bossCv{font-size:12px;font-weight:800;color:var(--muted);padding:3px 9px;border:1px solid #2a3340;border-radius:999px;white-space:nowrap}#bossCard .bossHead:hover .bossCv{color:var(--tx);border-color:#3a4560}',
     // 📒 14/09: ô NỢ nằm ngay cạnh số dư - bấm là xổ ô trả nợ ngay dưới thanh
     '#debtChip{flex:0 0 auto;white-space:nowrap;cursor:pointer;user-select:none;padding:6px 10px;border-radius:10px;border:1px solid #a33;background:linear-gradient(180deg,#3a1c1c,#2a1414);line-height:1.15;text-align:center}',
     '#debtChip .lb{font-size:10px;color:#ffb3b3;letter-spacing:.3px}',
@@ -1810,8 +1852,6 @@ const PAGE = [
     // ---- chat ----
     '#chatBox{height:190px;overflow-y:auto;background:#12141a;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:13px}',
     '.cmsg{padding:3px 0;word-break:break-word}.cmsg b{color:var(--gold)}.cmsg .ct{color:var(--muted);font-size:11px;margin-left:6px}',
-    '#ikBtn{background:linear-gradient(180deg,#4a1616,#2e0f0f);border:2px solid var(--red);color:#ffd9d9;font-weight:900;font-size:15px;padding:9px 10px;display:flex;align-items:center;gap:5px}',
-    '#ikBtn .n{background:var(--red);color:#fff;border-radius:8px;font-size:12px;font-weight:900;padding:1px 6px;line-height:1.5;min-width:20px;text-align:center}',
     // 05/10: 🪪 Cá nhân chia 2 tab; Rương Ích Kỷ thành tab riêng, mỗi món 1 HÀNG NGANG (người chơi PC nhiều)
     '#navIk .n{background:var(--red);color:#fff;border-radius:8px;font-size:11px;font-weight:900;padding:0 5px;line-height:1.5;margin-left:2px}',   // số món trên nút menu
     // 🎁 hộp tặng (05/10)
@@ -1969,18 +2009,29 @@ const PAGE = [
     '</div>',
 
     '<div id="app" class="hidden">',
-    '<div id="topbar" class="card row"><div><div class="muted">Số dư của <b id="myName"></b></div>',
-    '<div class="big"><img class="dc" src="/knb.png" alt=""> <span id="bal">0</span></div></div>',
+    // 07/10: thanh đầu mới - trái: tên + số dư; phải: 🔑 Mật khẩu (popup) + Thoát. Bỏ nút 🧰 Rương Ích Kỷ (đã có trên menu) và nút loa (tắt hẳn tiếng)
+    '<div id="topbar" class="card row"><div class="tbL"><div class="muted">Số dư của <b id="myName"></b></div>',
+    '<div class="big"><img class="dc" src="/knb.png" alt=""> <span id="bal">0</span><span class="tbU">KNB</span></div></div>',
     // 📒 14/09: ô NỢ kế bên số dư - chỉ hiện khi đang nợ, bấm vào là trả được luôn
     '<div id="debtChip" class="hidden" onclick="debtBarToggle()" title="Bấm để trả nợ"><div class="lb">📒 ĐANG NỢ</div><div class="vl" id="debtChipVal">0</div></div>',
     '<div id="taxiChip" class="hidden" onclick="taxiNhan()" title="Cháy ví mà hôm nay thua nhiều - bấm nhận tiền về"><div class="lb">🚕 XU ĐI TAXI VỀ</div><div class="vl" id="taxiChipVal">0</div></div>',
-    '<div style="display:flex;gap:6px;align-items:center">',
-    // (nút Lộc lá gỡ 10/09 - chuyển tiền nằm trong Hồ sơ; nút 🆘 nằm ở card Hồ sơ)
-    // 🧰 17/09: Rương Ích Kỷ - đứng ngay trước nút loa, đúng chỗ chủ server chỉ
-    '<button id="ikBtn" title="Rương Ích Kỷ - giữ vĩnh viễn" onclick="ikOpen()">🧰<span class="n" id="ikNum">0</span></button>',
-    '<button id="sndBtn" title="Tắt/bật tiếng" style="background:#232735;min-width:40px;font-size:15px" onclick="toggleSnd()">🔊</button>',
-    '<button style="background:#232735;font-size:12px" onclick="logout()">Thoát</button></div></div>',
+    '<div class="tbR">',
+    '<button class="tbBtn" id="mkBtn" title="Đổi mật khẩu game + web" onclick="mkOpen()">🔑 <span>Mật khẩu</span></button>',
+    '<button class="tbBtn tbOut" onclick="logout()">⎋ <span>Thoát</span></button></div></div>',
 
+    // 🔑 07/10: popup đổi mật khẩu (trước là thẻ 🎮 Tài khoản game cuối trang Cá nhân). 1 mật khẩu dùng chung game + web.
+    '<div id="mkModal" class="hidden" onclick="if(event.target===this)mkClose()"><div id="mkBox">',
+    '<button class="mkX" onclick="mkClose()" title="Đóng">✕</button><h2>🔑 Đổi mật khẩu</h2>',
+    '<div class="mkAcc" id="mkAcc">Đang tải...</div>',
+    '<div class="mkWarn" id="mkWarn" style="display:none">Chưa gắn tài khoản game. Đăng xuất rồi đăng nhập web bằng <b>tài khoản + mật khẩu game</b> một lần là tự gắn.</div>',
+    '<div id="mkForm" style="display:none">',
+    '<div class="mkF"><input id="mkCu" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại"><button class="mkEye" type="button" onclick="mkEye(\'mkCu\',this)">👁</button></div>',
+    '<div class="mkF"><input id="mkMoi" type="password" autocomplete="new-password" placeholder="Mật khẩu mới" oninput="mkKiem()"><button class="mkEye" type="button" onclick="mkEye(\'mkMoi\',this)">👁</button></div>',
+    '<div class="mkF"><input id="mkMoi2" type="password" autocomplete="new-password" placeholder="Nhập lại mật khẩu mới" oninput="mkKiem()" onkeydown="if(event.key===\'Enter\')doiMk()"><button class="mkEye" type="button" onclick="mkEye(\'mkMoi2\',this)">👁</button></div>',
+    '<div class="mkRule">6–32 ký tự: chữ không dấu, số và <b>_ @ . ! -</b>. Đổi ở đây là đổi luôn mật khẩu <b>vào game</b>.</div>',
+    '<div class="mkErr" id="mkErr"></div>',
+    '<button class="mkGo" id="mkGo" onclick="doiMk()">🔐 Đổi mật khẩu</button>',
+    '</div></div></div>',
     // 🔗 17/09: chưa được admin liên kết thì báo ngay, khỏi bấm rồi mới biết.
     '<div id="lkWarn" class="hidden">🔗 <b>Ví của bạn chưa được liên kết tên nhân vật trong game.</b><br>' +
     'Nhắn <b>admin</b> liên kết giúp (chỉ cần 1 lần). Chưa liên kết thì <b>không làm được gì</b>: không chơi, không điểm danh, ' +
@@ -2013,7 +2064,6 @@ const PAGE = [
     '<button id="navIk" onclick="go(\'ik\')">🧰 Rương Ích Kỷ <span class="n" id="pdIkN">0</span></button>',   // 05/10: trang riêng
     '<button id="navTp" onclick="go(\'tp\')">🏪 Thương Phố</button>',   // 06/10: kho đồ theo nhân vật (thuongpho.client.js)
     '<button id="navShop" onclick="go(\'shop\')">🛒 Shop Item</button>',
-    '<button id="navDog" onclick="go(\'dog\')">💸 Chuyển/Rút</button>',
     '</div>',
 
     // ================= TRANG BIG SMALL =================
@@ -2259,32 +2309,7 @@ const PAGE = [
     '</div>',
     '<div class="card"><h3 style="margin:0 0 8px">🧰 Quà vòng quay</h3><div id="vqRuong"><div class="muted">Đang tải...</div></div></div>',
     '</div>',
-    '<div id="pageDog" class="hidden">',
-    '<div class="card">',
-    '<div class="row"><h2 style="margin:0">💸 Chuyển tiền</h2><div class="muted" id="dogTfStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Chuyển KNB ví ↔ ví. Bấm chọn <b>1 hoặc nhiều người</b> bên dưới - <b>mỗi người</b> nhận cùng số tiền, ví bạn bị trừ tổng. 10 giây/lần.</div>',
-    '<div id="dogTfPick" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><span class="muted">Đang tải danh sách...</span></div>',
-    '<div class="muted" id="dogTfSum" style="font-size:12px;margin-top:6px">Chưa chọn ai.</div>',
-    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogTfAmt" type="number" inputmode="numeric" placeholder="Số KNB mỗi người" style="flex:1" oninput="dogTfSumDraw()"><button class="btn-full" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px" onclick="dogTransfer()">💸 Chuyển</button></div>',
-    '</div>',
-    // Rút vào game
-    '<div class="card">',
-    '<div class="row"><h2 style="margin:0">🎮 Rút vào game</h2><div class="muted" id="dogLink">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px" id="dogRutInfo">Trừ ví web, KNB vào túi khi <b>đăng nhập / đổi bản đồ</b>. Tối đa <span id="dogMax1">-</span>/lần.</div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Muốn nạp KNB từ game ra web: gặp NPC <b>Ví Web</b> trong game.</div>',   // 06/10: bỏ thẻ nạp game → web trên web
-    // 📅 11/09: hạn ngày mỗi chiều (server đếm) - hiện còn bao nhiêu hôm nay
-    '<div class="muted" id="dogDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
-    '<div id="dogRutPrev" style="font-size:12px;margin-top:4px;font-weight:700"></div>',
-    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogRutAmt" type="number" inputmode="numeric" placeholder="Số KNB" style="flex:1" oninput="dogPreview()"><button class="btn-full" id="dogRutBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#2f8f4f,#256e3e)" onclick="dogRut()">🎮 Rút vào game</button></div>',
-    '</div>',
-    // 🪙 29/09: ĐỔI KNB WEB -> VÀNG KHÔNG KHOÁ trong game (1:1, hạn riêng do admin đặt)
-    '<div class="card">',
-    '<div class="row"><h2 style="margin:0">🪙 Đổi KNB → Vàng trong game</h2></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px"><b>1 KNB = 1 vàng</b> không khoá. Trừ ví web, vàng vào túi khi <b>đăng nhập / đổi bản đồ</b>.</div>',
-    '<div class="muted" id="dogVangDayInfo" style="font-size:12px;margin-top:4px;color:#ffd76a"></div>',
-    '<div class="row" style="gap:8px;margin-top:8px"><input id="dogVangAmt" type="number" inputmode="numeric" placeholder="Số KNB đổi ra vàng" style="flex:1"><button class="btn-full" id="dogVangBtn" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px;background:linear-gradient(180deg,#b8860b,#8a6508)" onclick="dogRut(\'vang\')">🪙 Đổi ra vàng</button></div>',
-    '</div>',
-    '</div>', // hết #pageDog
+    // 07/10: bỏ tab 💸 Chuyển KNB (chủ server: không cần; chuyển KNB giữa người chơi vẫn còn lệnh /chuyentien trên Discord)
 
     // ================= TRANG ĐIỂM DANH (dashboard người chơi) =================
     // Lịch tháng kiểu app điểm danh: ngày đã nhận vàng + nhãn CHUỖI, hôm nay viền tím,
@@ -2329,10 +2354,20 @@ const PAGE = [
     '<button class="btn-full" id="dClaim" onclick="dailyClaim()">✨ ĐIỂM DANH NGAY</button>',
     '<div class="muted" style="font-size:12px;margin-top:6px;text-align:center">Điểm danh ở đây hay gõ <b>/diemdanh</b> trong Discord đều tính chung 1 lượt/ngày.</div>',
     '</div>',
+    '<div class="card" id="vgCard"><div class="muted">Đang tải ví...</div></div>',   // 💰 07/10: Ví KNB ↔ Game (rút / đổi vàng / nạp) - vẽ bởi /vg.js
     '<div class="card" id="ngCard" style="display:none">',   // 04/10: hiện/ẩn theo công tắc panel (DST.nghien.on)
     '<div class="row"><h2 style="margin:0">💉 Nghiện</h2><div class="muted" id="ngInfo"></div></div>',
     '<div class="muted" style="font-size:13px;margin-top:4px">Cứ 1 tiếng lụm 1 lần - bấm ở đây hoặc gõ <b>/nghien</b> trong Discord đều tính chung. Ai lụm sẽ bị bêu tên ở kênh nghiện 💉 trong Discord.</div>',
     '<button class="btn-full" id="ngBtn" onclick="nghienClaim()">💉 LỤM NGAY</button>',
+    '</div>',
+    // 🔑 07/10: thẻ 🎮 Tài khoản game (đổi mật khẩu) chuyển thành popup ở thanh đầu (#mkModal)
+    // 🏹 30/09: BOSS ĐÃ HẠ - đọc từ Audit log game (bước 1; bước 2 = nhiệm vụ + quà)
+    '<div class="card" id="bossCard">',
+    '<div class="bossHead" role="button" tabindex="0" onclick="bossMo()"><h2 style="margin:0">🏹 Boss đã hạ</h2><span class="muted" id="bossStat">-</span><span class="bossCv" id="bossCv">▾ xem</span></div>',   // 07/10: thu gọn mặc định
+    '<div id="bossBody" style="display:none">',
+    '<div class="muted" style="font-size:12px;margin-top:4px">Tính theo lượt bạn được chia đồ từ boss (ghi trong Audit log của game, cập nhật ~10 giây sau khi boss chết). Sắp có: nhiệm vụ boss + nhận quà tại đây.</div>',
+    '<div id="bossList" style="margin-top:8px;max-height:320px;overflow:auto"><div class="muted">Đang tải...</div></div>',
+    '</div>',   // hết #bossBody
     '</div>',
     // 🎒 01/10: TÚI ĐỒ GIẾT BOSS - game ghi ai có mặt lúc boss cuối chết, bấm Nhận -> hàng đợi quà + KNB vào ví
     '<div class="card" id="tbCard">',
@@ -2341,27 +2376,12 @@ const PAGE = [
     '<div id="tbList"><div class="muted" style="margin-top:8px">Đang tải...</div></div>',
     '<div id="tbDone"></div>',   // túi đã nhận: thu gọn, bấm mới mở
     '</div>',
-    // 🏹 30/09: BOSS ĐÃ HẠ - đọc từ Audit log game (bước 1; bước 2 = nhiệm vụ + quà)
-    '<div class="card" id="bossCard">',
-    '<div class="row"><h2 style="margin:0">🏹 Boss đã hạ</h2><div class="muted" id="bossStat">-</div></div>',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Tính theo lượt bạn được chia đồ từ boss (ghi trong Audit log của game, cập nhật ~10 giây sau khi boss chết). Sắp có: nhiệm vụ boss + nhận quà tại đây.</div>',
-    '<div id="bossList" style="margin-top:8px;max-height:320px;overflow:auto"><div class="muted">Đang tải...</div></div>',
-    '</div>',
-    // 🎮 30/09: tài khoản game + đổi mật khẩu (đổi ở đây = đổi luôn mật khẩu vào game)
-    '<div class="card" id="gaccCard">',
-    '<div class="row"><h2 style="margin:0">🎮 Tài khoản game</h2><div id="gaccName" style="font-size:13px;font-weight:800;color:#7ee2a8"></div></div>',
-    '<div id="gaccWarn" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid #ffcf5c;border-radius:9px;background:#231d10;color:#ffd27a;font-size:13px">Chưa gắn tài khoản game. Đăng nhập web bằng <b>tài khoản + mật khẩu game</b> một lần là tự gắn, hoặc nhắn admin gắn giúp.</div>',
-    '<div id="gaccForm" style="display:none">',
-    '<div class="muted" style="font-size:12px;margin-top:4px">Một mật khẩu dùng chung cho <b>game</b> và <b>web</b>. Đổi ở đây là đổi cho cả hai.</div>',
-    '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><input id="mkCu" type="password" autocomplete="current-password" placeholder="Mật khẩu hiện tại" style="flex:1;min-width:150px;margin-top:0"><input id="mkMoi" type="password" autocomplete="new-password" placeholder="Mật khẩu mới (6-32 ký tự)" style="flex:1;min-width:150px;margin-top:0"><button class="btn-full" style="flex:0 0 auto;margin-top:0;width:auto;padding:10px 18px" onclick="doiMk()">🔐 Đổi mật khẩu</button></div>',
-    '</div>',
-    '</div>',
     '</div>', // hết #pageDaily
     // 🧰 RƯƠNG ÍCH KỶ - 05/10: TRANG RIÊNG trên thanh menu (chủ server: không nhét chung 🪪 Cá nhân),
     // dạng bảng ngang cho PC. 17/09 -> 04/10 là popup #ikModal; id bên trong giữ nguyên.
     '<div id="pageIk" class="hidden"><div class="card">',
     '<div class="row"><h2 style="margin:0">🧰 RƯƠNG ÍCH KỶ</h2><div class="muted" id="ikStat" style="font-size:12px">-</div></div>',
-    '<div id="ikWarn" style="margin-top:8px">♾️ Rương giữ <b>vĩnh viễn</b>, không giới hạn số món. <b>📦 Nhận</b>: đưa vào game (nhân vật phải online) · <b>🎁 Tặng</b>: chuyển cho người khác · <b>💰 Bán</b>: lấy KNB vào ví web (món admin cho bán) · <b>🗑️ Xoá</b>: bỏ hẳn, không hoàn.</div>',
+    '<div id="ikWarn" style="display:none"></div>',   // 07/10: bỏ chú thích "♾️ Rương giữ vĩnh viễn…"
     '<div id="ikNhan" class="hidden"></div>',
     // 05/10: bấm 🎁 Tặng ở dòng nào thì hộp này hiện ra (chọn người + số lượng tại chỗ, khỏi kéo lên đầu trang)
     '<div id="ikGv" class="hidden"><div class="box">',
@@ -2628,7 +2648,7 @@ const PAGE = [
     // 🔒 16/09 KHOÁ CUỘN KHI CÓ POPUP (chủ server: "mở popup thì phần còn lại không được scroll").
     // 6 lớp phủ toàn màn hình - 3 cái bật/tắt bằng class hidden, 3 cái bằng class show.
     // KHÔNG gồm #winpop / #toast: mấy cái đó pointer-events:none, chỉ là hiệu ứng.
-    'var POPIDS=["gmodal","jpPick","luckyPick","lolaPop","pbModal","ikGv"],POPY=0;',
+    'var POPIDS=["gmodal","jpPick","luckyPick","lolaPop","pbModal","ikGv","mkModal"],POPY=0;',
     'function popAnyOpen(){for(var i=0;i<POPIDS.length;i++){var e=$(POPIDS[i]);',
     'if(e&&getComputedStyle(e).display!=="none")return true}return false}',
     'function popScrollSync(){var b=document.body,on=popAnyOpen(),dang=b.classList.contains("noscroll");',
@@ -2648,7 +2668,7 @@ const PAGE = [
     'function gmClose(ok){document.getElementById("gmodal").classList.add("hidden");if(GMRES){var r=GMRES;GMRES=null;r(!!ok)}}',
     // ===== ÂM THANH: DÙNG CHUNG MỘT FILE assets/dry-fart.mp3 =====
     // Mìn nổ và đạp trúng lửa đều phát cùng tiếng này.
-    'var AC=null;var SND=localStorage.getItem("play_snd")!=="0";var SFX=null;',
+    'var AC=null;var SND=false;var SFX=null;',   // 07/10: chủ server tắt HẲN âm thanh (bỏ nút loa) - playBoom() luôn im, không tải file tiếng
     'function acGet(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}',
     'if(AC.state==="suspended")AC.resume();return AC}',
     // Tải + giải mã SẴN ngay lúc mở trang: tiếng phát trong .then() của fetch, nếu đợi
@@ -2659,17 +2679,13 @@ const PAGE = [
     // Safari đời cũ chỉ có dạng callback, đời mới trả Promise -> đỡ cả hai kiểu
     'var p=c.decodeAudioData(ab,function(b){SFX=b},function(){});',
     'if(p&&p.then)p.then(function(b){SFX=b}).catch(function(){})}).catch(function(){})}',
-    'loadSfx();',
     // Điện thoại chỉ cho phát tiếng SAU khi người dùng chạm màn hình -> mở khoá ở lần
     // chạm ĐẦU TIÊN, vì tiếng nổ phát trong .then() (đã rời khỏi cú chạm).
-    'document.addEventListener("pointerdown",function(){acGet();loadSfx()},{once:true});',
     'function playBoom(){',
     'if(!SND)return;var c=acGet();if(!c)return;',
     'if(!SFX){loadSfx();return}',           // chưa tải xong thì bỏ qua lượt này, không kêu sai
     'var s=c.createBufferSource();s.buffer=SFX;s.connect(c.destination);s.start(0)}',
     // Tắt/bật tiếng - chơi lúc nửa đêm hay trong giờ làm thì cần tắt được.
-    'function toggleSnd(){SND=!SND;localStorage.setItem("play_snd",SND?"1":"0");',
-    'document.getElementById("sndBtn").textContent=SND?"🔊":"🔇";if(SND)playBoom()}',
     // ===== 🧧 LỘC LÁ: chuyển KNB =====
     'var LOLALIST=[],LOLATO=null;',
     'function lolaOpen(){LOLATO=null;$("lolaQ").value="";$("lolaAmt").value="";',
@@ -2733,7 +2749,6 @@ const PAGE = [
     'api("/api/logout",{}).then(xong,xong)}',
     'function show(n){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");',
     'if(n)document.getElementById("myName").textContent=n;initPaper();',
-    'document.getElementById("sndBtn").textContent=SND?"🔊":"🔇";',   // nhớ lựa chọn tắt tiếng lần trước
     // Big Small vẫn tự làm mới ngầm kể cả khi đang ở trang Dò Mìn (số dư luôn đúng,
     // quay lại là thấy ván hiện tại ngay, không phải chờ).
     'refresh();setInterval(refresh,2000);setInterval(tick,250);',
@@ -2809,7 +2824,7 @@ const PAGE = [
     // 🔗 17/09: bật/tắt banner. Dùng classList chứ KHÔNG đặt style.display, để .hidden còn tác dụng.
     'function lkSet(v){LINKED=!!v;var b=$("lkWarn");if(b)b.classList.toggle("hidden",LINKED)}',
     'function refresh(){api("/api/state").then(function(j){',
-    'MYID=j.me||MYID;',
+    'MYID=j.me||MYID;if(j.name&&!$("myName").textContent)$("myName").textContent=j.name;',
     'if(typeof j.linked==="boolean")lkSet(j.linked);',
     // 🃏 tab GIẢI POKER: hiện/ẩn theo công tắc admin; đang đứng trong tab mà bị tắt thì về MINI GAME
     '$("ngPoker").style.display=j.pokerOn?"":"none";',
@@ -3754,7 +3769,7 @@ const PAGE = [
     'else{el.textContent="--";el.style.color=""}},1000);',
     'setInterval(rlLoad,2000);',
 
-    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",tp:"profile",shop:"profile",vq:"games",gn:"games",dog:"profile",poker:"poker",tienlen:"tienlen"};',
+    'var PAGE_GRP={tx:"games",stx:"games",rl:"games",mine:"games",stair:"games",wheel:"games",stock:"games",spm:"games",debt:"profile",gift:"profile",daily:"profile",ik:"profile",tp:"profile",shop:"profile",vq:"games",gn:"games",poker:"poker",tienlen:"tienlen"};',
     'var GRP_LAST={games:"tx",profile:"daily",poker:"poker",tienlen:"tienlen"};',
     'var CURPAGE="tx";',
     'function go(p){CURPAGE=p;',
@@ -3772,8 +3787,9 @@ const PAGE = [
     '$("pageShop").classList.toggle("hidden",p!=="shop");',
     '$("pageVq").classList.toggle("hidden",p!=="vq");',
     '$("pageGn").classList.toggle("hidden",p!=="gn");document.body.classList.toggle("gnWide",p==="gn");',
+    'document.body.classList.toggle("vgWide",p==="daily");document.body.classList.toggle("shWide",p==="shop");',
+    '$("chatCard").classList.toggle("hidden",p==="daily");',   // 💬 07/10: ẩn Chat sòng ở trang Cá nhân   // 💰 07/10 Cá nhân rộng 2 cột trên PC
     '$("pageTp").classList.toggle("hidden",p!=="tp");document.body.classList.toggle("tpWide",p==="tp");$("navTp").classList.toggle("on",p==="tp");',   // 🏪 06/10
-    '$("pageDog").classList.toggle("hidden",p!=="dog");',
     '$("pageDaily").classList.toggle("hidden",p!=="daily");',
     '$("pageDebt").classList.toggle("hidden",p!=="debt");',
     '$("pageGift").classList.toggle("hidden",p!=="gift");if(p==="gift")giftSync();',
@@ -3791,7 +3807,6 @@ const PAGE = [
     '$("navShop").classList.toggle("on",p==="shop");',
     '$("navVq").classList.toggle("on",p==="vq");',
     '$("navGn").classList.toggle("on",p==="gn");',
-    '$("navDog").classList.toggle("on",p==="dog");',
     '$("navDaily").classList.toggle("on",p==="daily");',
     '$("navDebt").classList.toggle("on",p==="debt");',
     '$("navGift").classList.toggle("on",p==="gift");',
@@ -3807,11 +3822,11 @@ const PAGE = [
     '$("nav").style.display=(g==="poker"||g==="tienlen")?"none":"";',
     'document.body.classList.toggle("pokerFull",g==="poker"||g==="tienlen");',   // 🃏🀄 phủ kín màn hình
     '["navTx","navStx","navRl","navMine","navStair","navWheel","navStock","navSpm","navVq","navGn"].forEach(function(id){var e=$(id);if(e)e.style.display=(g==="games")?"":"none"});',
-    '["navDaily","navIk","navTp","navShop","navDog","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
+    '["navDaily","navIk","navTp","navShop","navDebt","navGift"].forEach(function(id){$(id).style.display=(g==="profile")?"":"none"});',
     'localStorage.setItem("play_page",p);',
     'if(p==="poker"){var pf=$("pokerFrame");if(pf&&!/\\/poker\\/$/.test(pf.src))pf.src="/poker/"}',   // 🃏 tải khung lúc vào tab
     'if(p==="tienlen"){var tf=$("tlFrame");if(tf&&!/\\/tienlen\\/$/.test(tf.src))tf.src="/tienlen/"}',   // 🀄
-    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily")dailySync();else if(p==="wheel")wheelSync();else if(p==="shop")isSync();else if(p==="vq")vqSync();else if(p==="gn"&&typeof gnSync==="function")gnSync();else if(p==="tp"){if(typeof tpSync==="function")tpSync()}else if(p==="spm")spmEnter();else if(p==="dog")dogSync();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
+    'if(p==="mine")mSync();else if(p==="stair")sSync();else if(p==="daily"){dailySync();if(typeof vgSync==="function")vgSync()}else if(p==="wheel")wheelSync();else if(p==="shop")isSync();else if(p==="vq")vqSync();else if(p==="gn"&&typeof gnSync==="function")gnSync();else if(p==="tp"){if(typeof tpSync==="function")tpSync()}else if(p==="spm")spmEnter();else if(p==="stock"){skSync();skHist(1)}else refresh()}',
     'function grpGo(g2){go(GRP_LAST[g2]||(g2==="profile"?"daily":"tx"))}',
     'function mNum(id){return parseInt($(id).value)||0}',
     'function mCap(){return Math.min(BAL,MAXBET||BAL)}', // cược không quá số dư và không quá trần
@@ -4650,11 +4665,20 @@ const PAGE = [
     'var DST=null,DOFF=0;',
     'function dailySync(){api("/api/daily/state").then(function(j){DST=j;DOFF=j.nghien.now-Date.now();setBal(j.balance);dRender()}).catch(function(e){toast("❌ "+e.message)});debtSync();bossSync();tbSync()}',
     '// 🏹 30/09: boss đã hạ',
-    'function gaccSync(){api("/api/gacc",{}).then(function(j){var n=$("gaccName"),w=$("gaccWarn"),f=$("gaccForm");if(!n||!w||!f)return;',
-    'if(j.acc){n.textContent="🟢 "+j.acc;w.style.display="none";f.style.display="block"}else{n.textContent="";w.style.display="block";f.style.display="none"}}).catch(function(){})}',
-    'function doiMk(){var c=$("mkCu").value,m=$("mkMoi").value;if(!c||!m)return toast("Nhập mật khẩu hiện tại và mật khẩu mới");',
-    'api("/api/doimk",{old:c,new:m}).then(function(){toast("✅ Đã đổi mật khẩu game - dùng mật khẩu mới cho cả game và web");$("mkCu").value="";$("mkMoi").value="";nhoDat(NHO_GP,"")}).catch(function(e){toast("❌ "+((e&&e.message)||"Lỗi"))})}',
-    'function bossSync(){gaccSync();api("/api/boss/log").then(function(j){var st=$("bossStat"),box=$("bossList");if(!st||!box)return;',
+    'function gaccSync(){api("/api/gacc",{}).then(function(j){var n=$("mkAcc"),w=$("mkWarn"),f=$("mkForm");if(!n||!w||!f)return;',
+    'n.innerHTML=j.acc?("Tài khoản game: <b>"+esc(j.acc)+"</b>"+(j.ingameName?" · nhân vật <b>"+esc(j.ingameName)+"</b>":"")):"";w.style.display=j.acc?"none":"block";f.style.display=j.acc?"block":"none"}).catch(function(e){var n=$("mkAcc");if(n)n.textContent="❌ "+e.message})}',
+    // 🔑 07/10: popup đổi mật khẩu ở thanh đầu
+    'function mkOpen(){["mkCu","mkMoi","mkMoi2"].forEach(function(i){var e=$(i);if(e){e.value="";e.type="password"}});$("mkErr").textContent="";$("mkGo").disabled=false;$("mkModal").classList.remove("hidden");gaccSync();setTimeout(function(){var c=$("mkCu");if(c&&$("mkForm").style.display!=="none")c.focus()},120)}',
+    'function mkClose(){$("mkModal").classList.add("hidden")}',
+    'function mkEye(id,b){var e=$(id);if(!e)return;e.type=e.type==="password"?"text":"password";b.textContent=e.type==="password"?"👁":"🙈"}',
+    'var MK_RE=/^[A-Za-z0-9_@.!-]{6,32}$/;',
+    'function mkKiem(){var m=$("mkMoi").value,m2=$("mkMoi2").value,t="";if(m&&!MK_RE.test(m))t="Mật khẩu mới phải 6–32 ký tự, chỉ chữ không dấu, số và _ @ . ! -";else if(m2&&m!==m2)t="Hai ô mật khẩu mới chưa giống nhau";$("mkErr").textContent=t;return !t}',
+    'function doiMk(){var c=$("mkCu").value,m=$("mkMoi").value,m2=$("mkMoi2").value,er=$("mkErr");if(!c||!m||!m2){er.textContent="Nhập đủ 3 ô";return}if(!mkKiem())return;if(c===m){er.textContent="Mật khẩu mới phải khác mật khẩu hiện tại";return}',
+    'var b=$("mkGo");b.disabled=true;b.textContent="⏳ Đang đổi...";api("/api/doimk",{old:c,new:m}).then(function(){b.disabled=false;b.textContent="🔐 Đổi mật khẩu";mkClose();toast("✅ Đã đổi mật khẩu - dùng mật khẩu mới cho cả game và web");nhoDat(NHO_GP,"")}).catch(function(e){b.disabled=false;b.textContent="🔐 Đổi mật khẩu";er.textContent="❌ "+((e&&e.message)||"Lỗi")})}',
+    'var BOSSMO=false;try{BOSSMO=localStorage.getItem("boss_mo")==="1"}catch(e){}',
+    'function bossVe(){var b=$("bossBody"),c=$("bossCv");if(b)b.style.display=BOSSMO?"":"none";if(c)c.textContent=BOSSMO?"▴ thu gọn":"▾ xem"}',
+    'function bossMo(){BOSSMO=!BOSSMO;try{localStorage.setItem("boss_mo",BOSSMO?"1":"0")}catch(e){}bossVe()}',
+    'function bossSync(){bossVe();gaccSync();api("/api/boss/log").then(function(j){var st=$("bossStat"),box=$("bossList");if(!st||!box)return;',
     'if(!j.linked){st.textContent="";box.innerHTML="<div class=\\"muted\\">Chưa liên kết nhân vật trong game - nhắn admin liên kết để tính lượt giết boss.</div>";return}',
     'st.textContent="Hôm nay "+j.today+" · 7 ngày "+j.week;',
     'if(!j.kills.length){box.innerHTML="<div class=\\"muted\\">Chưa có lượt nào ("+j.ingameName+"). Hạ 1 boss rồi quay lại sau 10 giây.</div>";return}',
@@ -4665,7 +4689,7 @@ const PAGE = [
     'function tbSync(){}function tbNhan(){}',   // 05/10: giao diện túi đồ boss chuyển sang /tb.js (tuiboss.client.js), file đó ghi đè 2 hàm này
     // 📒 nợ: chỉ hiện card khi đang nợ; trả xong card tự ẩn
     // 🔌 15/09: giấu tab của mục admin tắt. Đang đứng trong mục bị tắt thì đá về Tài Xỉu.
-    'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",shop:"navShop",dog:"navDog"};',
+    'var FEATNAV={tx:"navTx",mine:"navMine",stair:"navStair",wheel:"navWheel",stock:"navStock",spm:"navSpm",shop:"navShop"};',
     'var FEATOFF=[];',
     'function featDraw(off){FEATOFF=off||[];',
     'for(var k in FEATNAV){var b=$(FEATNAV[k]);if(b)b.classList.toggle("hidden",FEATOFF.indexOf(k)>=0)}',
@@ -5055,41 +5079,6 @@ const PAGE = [
     'var auto=$("spmAutoOn").checked?(parseFloat($("spmAutoX").value)||0):0;if($("spmAutoOn").checked&&auto<1.01)return toast("Mốc tự rút phải ≥ 1.01x");',
     'SPMBUSY=true;api("/api/spm/bet",{amount:amt,auto:auto}).then(function(j){SPMBUSY=false;setBal(j.balance);toast(j.queued?("🔜 Đã đặt "+vnd(amt)+" cho chuyến sau"):("🛫 Lên chuyến "+vnd(amt)+(auto>=1.01?" · tự rút "+auto+"x":"")));spmSync()}).catch(function(e){SPMBUSY=false;toast("❌ "+e.message);spmSync()});return}',
     '',
-    // ===== 💸 CHUYỂN / RÚT KNB (28/08) - xử lý THẲNG (web -> dashboard/SFTP hoặc ví DB), không qua Discord =====
-    'var DOGBUSY=false,DOGTARGETS=[],DOGSEL={};',
-    'function dogSync(){api("/api/dogbridge/state").then(function(j){setBal(j.balance);',
-    '$("dogLink").innerHTML=j.ingameName?("Nhân vật: <b>"+esc(j.ingameName)+"</b>"):"⚠️ Chưa liên kết tên nhân vật - nhắn admin";',
-    '$("dogMax1").textContent=vnd(j.max);',
-    // 📅 11/09: hạn ngày rút / đổi vàng + xem trước khi gõ
-    'DOGST=j;var ddm=j.dayMax>0?j.dayMax:0,ddi=$("dogDayInfo");if(ddi)ddi.innerHTML=ddm?("📅 Hạn rút vào game <b>"+vnd(ddm)+"</b>/ngày · hôm nay còn <b>"+vnd(Math.max(0,ddm-(j.rutToday||0)))+"</b>"):"";',
-    'var vdm=j.vangDayMax>0?j.vangDayMax:0,vdi=$("dogVangDayInfo");if(vdi)vdi.innerHTML=vdm?("📅 Hạn đổi vàng <b>"+vnd(vdm)+"</b>/ngày · hôm nay còn <b>"+vnd(Math.max(0,vdm-(j.vangToday||0)))+"</b>"):"";',
-    'dogPreview();',
-    // 🔁 09/09: admin đóng rút thì nút khoá + đổi chữ (không mất nút, người chơi biết lý do)
-    'var rb=$("dogRutBtn");var rOn=j.rutOpen!==false;',
-    'rb.disabled=!j.ingameName||!rOn;var vb=$("dogVangBtn");if(vb){vb.disabled=rb.disabled;vb.style.display=rOn?"":"none";}',
-    'rb.textContent=rOn?"🎮 Rút vào game":"⛔ RÚT VÀO GAME ĐANG ĐÓNG";',
-    '}).catch(function(e){toast("❌ "+e.message)});',
-    'api("/api/players").then(function(j){DOGTARGETS=j.list||[];',
-    // người rời list (đổi ví...) thì bỏ khỏi lựa chọn cho khỏi gửi nhầm
-    'var ok={};DOGTARGETS.forEach(function(p){ok[p.id]=1});Object.keys(DOGSEL).forEach(function(id){if(!ok[id])delete DOGSEL[id]});',
-    '$("dogTfStat").textContent=DOGTARGETS.length+" người có ví";dogRenderPick()}).catch(function(){})}',
-    // 💸 chọn NHIỀU người nhận bằng chip: bấm chọn/bỏ, tổng tiền cập nhật sống
-    'function dogRenderPick(){var box=$("dogTfPick");if(!box)return;',
-    'box.innerHTML=DOGTARGETS.length?DOGTARGETS.map(function(p){var on=!!DOGSEL[p.id];return "<span class=\\"dogChip"+(on?" sel":"")+"\\" onclick=\\"dogTogglePick(\'"+p.id+"\')\\">"+(on?"✅ ":"")+esc(p.name||p.id)+"</span>"}).join(""):"<span class=\\"muted\\">Chưa có ai khác có ví.</span>";dogTfSumDraw()}',
-    'function dogTogglePick(id){if(DOGSEL[id])delete DOGSEL[id];else DOGSEL[id]=1;dogRenderPick()}',
-    'function dogTfSumDraw(){var n=Object.keys(DOGSEL).length;var amt=parseInt($("dogTfAmt").value)||0;var el=$("dogTfSum");if(!el)return;',
-    'el.innerHTML=n?("Đã chọn <b>"+n+"</b> người × "+vnd(amt)+" = trừ tổng <b style=\\"color:#ffd76a\\">"+vnd(n*amt)+"</b> KNB"):"Chưa chọn ai."}',
-    'function dogTransfer(){if(DOGBUSY)return;var ids=Object.keys(DOGSEL);if(!ids.length)return toast("Bấm chọn ít nhất 1 người nhận đã");',
-    'var amt=parseInt($("dogTfAmt").value)||0;if(amt<1)return toast("Nhập số KNB mỗi người");',
-    'DOGBUSY=true;api("/api/transfer/multi",{toIds:ids,amount:amt}).then(function(j){DOGBUSY=false;setBal(j.balance);toast("💸 Đã chuyển "+vnd(amt)+"/người cho "+(j.names||[]).join(", ")+(ids.length>1?" - tổng "+vnd(j.total||amt*ids.length):""));$("dogTfAmt").value="";DOGSEL={};dogRenderPick()}).catch(function(e){DOGBUSY=false;toast("❌ "+e.message)})}',
-    'async function dogRut(k){if(DOGBUSY)return;k=k==="vang"?"vang":"knb";var ai=$(k==="vang"?"dogVangAmt":"dogRutAmt"),amt=parseInt(ai.value)||0;if(amt<1)return toast("Nhập số KNB");',
-    'if(k==="vang"&&!(await gConfirm("Đổi <b>"+vnd(amt)+"</b> KNB web thành <b>"+vnd(amt)+"</b> VÀNG không khoá trong game?","🪙 Đổi vàng")))return;',   // 06/10: popup đồng bộ, không dùng confirm() của trình duyệt
-    'DOGBUSY=true;var b=$(k==="vang"?"dogVangBtn":"dogRutBtn"),L=b.textContent;b.disabled=true;b.textContent="⏳ Đang giao...";api("/api/dogbridge/rut",{amount:amt,kind:k}).then(function(j){DOGBUSY=false;b.disabled=false;b.textContent=L;setBal(j.balance);toast(j.message||"✅ Đã gửi!");ai.value="";dogSync()}).catch(function(e){DOGBUSY=false;b.disabled=false;b.textContent=L;toast("❌ "+e.message);dogSync()})}',
-    'var DOGST=null;',
-
-    // xem trước khi gõ số: rút -> còn/vượt hạn + trần/lần
-    'function dogPreview(){if(!DOGST)return;var mx=DOGST.max||0,dm=DOGST.dayMax>0?DOGST.dayMax:0;',
-    'var ra=parseInt(($("dogRutAmt")||{}).value)||0,rp=$("dogRutPrev");if(rp){if(!ra)rp.textContent="";else{var rl=dm?Math.max(0,dm-(DOGST.rutToday||0)):Infinity;if(mx&&ra>mx){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt giới hạn "+vnd(mx)+"/lần"}else if(ra>rl){rp.style.color="#ff8a80";rp.textContent="⚠️ Vượt hạn ngày - hôm nay chỉ còn rút được "+vnd(rl)+" KNB"}else{rp.style.color="#8fd18f";rp.textContent="→ Túi game +"+vnd(ra)+" KNB, ví web -"+vnd(ra)}}}}',
     '',
     // Safari trên iPhone vẫn cho chụm 2 ngón dù CSS đã cấm - nó dùng sự kiện riêng
     // (gesture*), phải chặn thêm ở đây. Không đụng tới touchend/click nên bấm nhanh
@@ -5099,7 +5088,7 @@ const PAGE = [
     'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
     'if(TOKEN){show("")}else{nhoDoVao()}',
     // 30/09: ô PIN đã bỏ - Enter ở ô mật khẩu game đã gắn inline (onkeydown) trên input#gpass
-    '</script><script src="/gn.js"></script><script src="/tb.js"></script><script src="/tp.js"></script><script src="/ik.js"></script></body></html>',
+    '</script><script src="/gn.js"></script><script src="/tb.js"></script><script src="/tp.js"></script><script src="/vg.js"></script><script src="/sh.js"></script><script src="/ik.js"></script></body></html>',
 ].join('\n');
 
 module.exports = { startWebPlay };

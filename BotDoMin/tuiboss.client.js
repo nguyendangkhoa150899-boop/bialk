@@ -25,8 +25,8 @@
     '#tbCard .tbIt .emo{width:36px;height:36px;flex:0 0 36px;display:flex;align-items:center;justify-content:center;font-size:22px}',
     '#tbCard .tbGo{display:block;width:100%;margin-top:10px;padding:10px;font-size:15px;font-weight:900;border:0;border-radius:11px;color:#fff;background:linear-gradient(180deg,#2fbf71,#1f9a57);box-shadow:0 2px 0 #14683a;cursor:pointer}',
     '#tbCard .tbGo:disabled,#tbCard .tbAll:disabled{opacity:.5;cursor:wait}',
-    '#tbCard .tbEmpty{margin-top:10px;padding:16px;border:1px dashed #2a3340;border-radius:12px;text-align:center;color:var(--muted);font-size:13px}',
-    '#tbCard .tbDoneBtn{display:flex;align-items:center;gap:8px;width:100%;margin-top:12px;padding:9px 12px;background:#151826;border:1px solid #2a3340;border-radius:11px;color:var(--tx);font-size:13px;font-weight:800;cursor:pointer;text-align:left}',
+    '#tbCard .tbEmpty{margin-top:10px;padding:10px 12px;border:1px dashed #2a3340;border-radius:11px;color:var(--muted);font-size:13px}',
+    '#tbCard .tbDoneBtn{display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:9px 12px;background:#151826;border:1px solid #2a3340;border-radius:11px;color:var(--tx);font-size:13px;font-weight:800;cursor:pointer;text-align:left}',
     '#tbCard .tbDoneBtn span{margin-left:auto;color:var(--muted)}',
     '#tbCard .tbDoneList{margin-top:6px;max-height:340px;overflow:auto}',
     '#tbCard .tbRow{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #ffffff0d;font-size:12px}',
@@ -61,7 +61,7 @@
       var cho = j.tui.filter(function (x) { return !x.nhan; }), xong = j.tui.filter(function (x) { return x.nhan; });
       st.textContent = cho.length ? cho.length + ' túi chờ nhận' : 'không có túi mới'; st.className = 'tbBadge' + (cho.length ? '' : ' zero');
       var h = '';
-      if (!cho.length) h = '<div class="tbEmpty">🎒 Chưa có túi mới' + (j.ingameName ? ' cho <b>' + esc(j.ingameName) + '</b>' : '') + '.<br>Hạ boss cuối phó bản / hoạt động rồi quay lại sau khoảng 10 giây.</div>';
+      if (!cho.length) h = '<div class="tbEmpty">🎒 Chưa có túi mới' + (j.ingameName ? ' cho <b>' + esc(j.ingameName) + '</b>' : '') + ' · hạ boss cuối phó bản / hoạt động rồi quay lại sau ~10 giây.</div>';
       else { if (cho.length > 1) h += '<button class="tbAll" onclick="tbNhanHet(this)">🎁 NHẬN TẤT CẢ (' + cho.length + ' túi)</button>'; cho.forEach(function (x) { h += veTui(j, x); }); }
       box.innerHTML = h;
       if (da) da.innerHTML = xong.length ? '<button class="tbDoneBtn" onclick="tbMo()">✅ Túi đã nhận (' + xong.length + ')<span>' + (MO ? 'thu gọn ▴' : 'xem ▾') + '</span></button>' + (MO ? '<div class="tbDoneList">' + xong.map(function (x) { return veDa(j, x); }).join('') + '</div>' : '') : '';
