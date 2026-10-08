@@ -49,9 +49,11 @@
     '.gnCard:hover{border-color:var(--gnA)}.gnCard.on{border-color:var(--gnB);box-shadow:0 0 0 1px var(--gnB)}',
     '.gnCard.het{opacity:.4;cursor:not-allowed}.gnCard b{display:block;font-size:12px}.gnCard small{color:var(--muted)}',
     // 08/10 (chủ server): thẻ Rương - số lượng thành nhãn nổi trên góc icon (×44 / đã bỏ 2/44), tên 2 dòng, giá + % tách dòng
+    // 08/10 (lần 2, chủ server "làm giống game"): số lượng trắng viền đen NẰM TRONG góc dưới-phải ô icon như túi đồ TLBB; đang bỏ vào = dấu ✓N xanh góc trên-trái
     '.gnIcW{position:relative;flex:0 0 auto;line-height:0}',
-    '.gnSl{position:absolute;right:-7px;bottom:-7px;min-width:20px;text-align:center;line-height:16px;background:#f0b132;color:#1d1400;font-weight:900;font-size:11px;border-radius:999px;padding:0 5px;border:2px solid #1a1f2d;font-variant-numeric:tabular-nums}',
-    '.gnSl.dung{background:#3ddc84;color:#06210f}',
+    '.gnIcW .vqIcS{width:44px;height:44px;flex-basis:44px}',
+    '.gnSl{position:absolute;right:3px;bottom:2px;color:#fff;font-weight:800;font-size:12.5px;line-height:1;pointer-events:none;font-variant-numeric:tabular-nums;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 3px #000}',
+    '.gnDung{position:absolute;left:-6px;top:-6px;background:#3ddc84;color:#06210f;font-size:10.5px;font-weight:900;line-height:15px;border-radius:999px;padding:0 5px;border:2px solid #1a1f2d;pointer-events:none}',
     '.gnCard .gnTx{min-width:0;display:flex;flex-direction:column;gap:2px}',
     '.gnCard .gnNm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:800;font-size:12.5px;line-height:1.3}',
     '.gnCard .gnGia{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}',
@@ -209,7 +211,7 @@
       var phanTram = function (g) { var v = g / dObj.gia * (100 - s.phi); return v >= 1 ? (Math.round(v * 10) / 10) : (Math.round(v * 1000) / 1000); };
       // 08/10: số lượng = nhãn nổi trên góc icon (×có, đang bỏ vào thì xanh dung/có); "riêng / shop" chỉ còn trong chú thích rê chuột
       h += r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')" title="' + esc(x.ten) + ' · có ' + x.qty + ' · giá ' + esc(x.tu) + '">' +
-        '<span class="gnIcW">' + ic(x, 'vqIcS') + '<span class="gnSl' + (dung ? ' dung' : '') + '">' + (dung ? dung + '/' + x.qty : '×' + x.qty) + '</span></span>' +
+        '<span class="gnIcW">' + ic(x, 'vqIcS') + '<span class="gnSl">' + x.qty + '</span>' + (dung ? '<span class="gnDung" title="đã bỏ vào ' + dung + '">✓' + dung + '</span>' : '') + '</span>' +
         '<div class="gnTx"><span class="gnNm">' + esc(x.ten) + '</span><span class="gnGia">' + vnd(x.gia) + ' / cái</span>' + (dObj ? '<span class="gnPt">+' + phanTram(x.gia) + '% <small>/ cái</small></span>' : '') + '</div></div>'; }).join('') + '</div>'
         : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>';
     } else if (tab === 'dich' || tab === 'pet') {   // 07/10: món đích chia 2 mục - 💎 Nguyên liệu / 🐾 Trân thú
