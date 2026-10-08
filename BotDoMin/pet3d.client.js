@@ -68,15 +68,18 @@
   var VS = 'attribute vec4 mau; varying vec4 vM; varying vec2 vUv; void main(){ vM = mau; vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }';
   var FS = 'uniform sampler2D map; uniform float nhan; uniform float coTex; uniform float rej; uniform vec2 dich; varying vec4 vM; varying vec2 vUv;'
     + 'void main(){ vec4 t = coTex > 0.5 ? texture2D(map, vUv + dich) : vec4(1.0); vec4 c = vec4(t.rgb * vM.rgb * nhan, t.a * vM.a); if (rej > 0.5 && c.a < 0.5) discard; gl_FragColor = c; }';
+  var HE_SO = { one: T.OneFactor, zero: T.ZeroFactor, src_colour: T.SrcColorFactor, one_minus_src_colour: T.OneMinusSrcColorFactor, dest_colour: T.DstColorFactor, one_minus_dest_colour: T.OneMinusDstColorFactor,
+    src_alpha: T.SrcAlphaFactor, one_minus_src_alpha: T.OneMinusSrcAlphaFactor, dest_alpha: T.DstAlphaFactor, one_minus_dest_alpha: T.OneMinusDstAlphaFactor };
   function vatLieuHat(mt, texOf) {
     mt = mt || { blend: 'add', x4: 1 };
     var u = { map: { value: null }, nhan: { value: mt.x4 || 1 }, coTex: { value: 0 }, rej: { value: mt.rej ? 1 : 0 }, dich: { value: new T.Vector2() } };
     if (mt.tex) { var t = texOf(mt.tex); if (t) { u.map.value = t; u.coTex.value = 1; } }
     var m = new T.ShaderMaterial({ uniforms: u, vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false, side: T.DoubleSide });
-    // cộng màu nhưng KHÔNG ghi kênh alpha (canvas trong suốt -> ghi alpha sẽ thành mảng đen trên nền trang)
-    if (mt.blend === 'add') { m.blending = T.CustomBlending; m.blendSrc = T.SrcAlphaFactor; m.blendDst = T.OneFactor; m.blendSrcAlpha = T.ZeroFactor; m.blendDstAlpha = T.OneFactor; }
-    else if (mt.blend === 'mod') { m.blending = T.MultiplyBlending; m.premultipliedAlpha = true; }
-    else if (mt.blend === 'none') { m.transparent = false; m.depthWrite = true; }
+    // hòa trộn đúng 2 hệ số của Ogre (scene_blend): add = one one, alpha_blend, modulate, khói "làm tối" zero one_minus_src_colour...
+    // Nền vẽ ngay trong cảnh (không dùng canvas trong suốt) nên mọi kiểu ra đúng như game.
+    var bf = mt.bf || (mt.blend === 'add' ? ['one', 'one'] : mt.blend === 'mod' ? ['dest_colour', 'zero'] : mt.blend === 'none' ? null : ['src_alpha', 'one_minus_src_alpha']);
+    if (!bf) { m.transparent = false; m.depthWrite = true; }
+    else { m.blending = T.CustomBlending; m.blendSrc = HE_SO[bf[0]] !== undefined ? HE_SO[bf[0]] : T.OneFactor; m.blendDst = HE_SO[bf[1]] !== undefined ? HE_SO[bf[1]] : T.OneFactor; }
     m.userData.cuon = mt.scroll;
     return m;
   }
@@ -263,14 +266,22 @@
   HeHat.prototype.huy = function () { if (this.mesh) { this.mesh.parent.remove(this.mesh); this.mesh.geometry.dispose(); this.mat.dispose(); } if (this.meshNhom) this.meshNhom.parent.remove(this.meshNhom); };
 
   // ---------- bộ xem ----------
-  function tao(cv, goc) {
+  // nền gradient vẽ trong cảnh (đục) -> hòa trộn hạt giống game, không lỗi ô vuông đen như canvas trong suốt
+  function nenGradient() {
+    var c = document.createElement('canvas'); c.width = 4; c.height = 256; var g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+    gr.addColorStop(0, '#272e45'); gr.addColorStop(0.55, '#1a1f2d'); gr.addColorStop(1, '#0f1218'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+    var t = new T.CanvasTexture(c); return t;
+  }
+  // v = mã phiên bản dữ liệu (index.json) -> ?v= vào mọi đường dẫn, dựng lại là trình duyệt tải mới dù file được cache 7 ngày
+  function tao(cv, goc, v) {
     var V = { goc: goc, bin: {}, tex: {}, skel: {}, pm: {}, fx: null, k: 0, raf: 0, nhom: null, he: [], mixers: [], clock: new T.Clock() };
-    V.r = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); V.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    V.sc = new T.Scene(); V.sc.add(new T.AmbientLight(0xffffff, 0.75)); var dl = new T.DirectionalLight(0xffffff, 0.6); dl.position.set(60, 120, 100); V.sc.add(dl);
+    var url = function (f) { return goc + f + (v ? '?v=' + encodeURIComponent(v) : ''); };
+    V.r = new T.WebGLRenderer({ canvas: cv, antialias: true }); V.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    V.sc = new T.Scene(); V.sc.background = nenGradient(); V.sc.add(new T.AmbientLight(0xffffff, 0.75)); var dl = new T.DirectionalLight(0xffffff, 0.6); dl.position.set(60, 120, 100); V.sc.add(dl);
     V.cam = new T.PerspectiveCamera(32, 1, 1, 8000); V.ctl = new T.OrbitControls(V.cam, cv); V.ctl.enableDamping = true; V.ctl.autoRotate = true; V.ctl.autoRotateSpeed = 1.5; V.ctl.enablePan = false;
     V.dds = new T.DDSLoader();
-    function texOf(f) { if (!V.tex[f]) { V.tex[f] = V.dds.load(goc + f); V.tex[f].flipY = false; V.tex[f].wrapS = V.tex[f].wrapT = T.RepeatWrapping; } return V.tex[f]; }
-    function lay(f, json) { var k = f; if (!V.bin[k]) V.bin[k] = fetch(goc + f).then(function (r) { if (!r.ok) throw new Error('thiếu ' + f); return json ? r.json() : r.arrayBuffer(); }); return V.bin[k]; }
+    function texOf(f) { if (!V.tex[f]) { V.tex[f] = V.dds.load(url(f)); V.tex[f].flipY = false; V.tex[f].wrapS = V.tex[f].wrapT = T.RepeatWrapping; } return V.tex[f]; }
+    function lay(f, json) { var k = f; if (!V.bin[k]) V.bin[k] = fetch(url(f)).then(function (r) { if (!r.ok) throw new Error('thiếu ' + f); return json ? r.json() : r.arrayBuffer(); }); return V.bin[k]; }
     V.co = function () { var w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return; V.r.setSize(w, h, false); V.cam.aspect = w / h; V.cam.updateProjectionMatrix(); };
     window.addEventListener('resize', V.co); V.co();
     // dựng 1 bộ mesh (thân hoặc mesh hạt) -> {nhom, xuong}

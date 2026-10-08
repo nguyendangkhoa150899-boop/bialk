@@ -44,7 +44,9 @@
     '.gnTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}',
     '#gnApp .gnTabs button{padding:8px 12px}#gnApp .gnTabs button.on{border-color:var(--gold);background:#2b2f40}',
     '#gnApp .gnTabs input{flex:1;min-width:140px}',
-    '.gnGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:360px;overflow:auto}',
+    '.gnGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:360px;overflow-y:auto;overflow-x:hidden}',
+    // 08/10: cột chữ trong thẻ được co (min-width:0) -> tên dài + nút ✨ không đẩy thẻ tràn ngang
+    '.gnCard>div{min-width:0;flex:1 1 auto}.gnCard>div>b{overflow-wrap:anywhere}',
     '.gnCard{background:#1a1f2d;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;gap:8px;align-items:center;cursor:pointer;font-size:12px}',
     '.gnCard:hover{border-color:var(--gnA)}.gnCard.on{border-color:var(--gnB);box-shadow:0 0 0 1px var(--gnB)}',
     '.gnCard.het{opacity:.4;cursor:not-allowed}.gnCard b{display:block;font-size:12px}.gnCard small{color:var(--muted)}',
@@ -74,7 +76,7 @@
     '.gnRow.da{opacity:.75}',
     // 🐾 08/10: xem mô hình 3D trân thú (bản thường + các đời biến dị)
     // nút ✨ Xem biến dị: vàng tím phát sáng, ánh sáng chạy ngang (chủ server muốn người chơi thấy mà bấm xem)
-    '#gnApp button.gn3d{position:relative;overflow:hidden;white-space:nowrap;margin-top:6px;padding:4px 9px;font-size:11.5px;font-weight:900;letter-spacing:.3px;color:#fff6d6;border:1px solid #f5c542;border-radius:999px;background:linear-gradient(135deg,#6d28d9,#b45309 55%,#f59e0b);box-shadow:0 0 0 1px #f5c54244,0 0 12px #f59e0b88;text-shadow:0 1px 2px #0008;animation:gn3dSang 2.2s ease-in-out infinite}',
+    '#gnApp button.gn3d{position:relative;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;margin-top:6px;padding:4px 9px;font-size:11.5px;font-weight:900;letter-spacing:.3px;color:#fff6d6;border:1px solid #f5c542;border-radius:999px;background:linear-gradient(135deg,#6d28d9,#b45309 55%,#f59e0b);box-shadow:0 0 0 1px #f5c54244,0 0 12px #f59e0b88;text-shadow:0 1px 2px #0008;animation:gn3dSang 2.2s ease-in-out infinite}',
     '#gnApp button.gn3d.dai{padding:8px 16px;font-size:14px}',
     '#gnApp button.gn3d::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,#fff7,transparent);transform:skewX(-20deg);animation:gn3dLuot 2.6s ease-in-out infinite}',
     '#gnApp button.gn3d:hover{filter:brightness(1.15);box-shadow:0 0 0 1px #f5c542,0 0 20px #f5c542}',
@@ -136,7 +138,7 @@
     document.body.appendChild(m); document.addEventListener('keydown', p3Esc);
     napThree().then(function () {
       if (!document.getElementById('gn3dM') || P3.id !== id) return;
-      P3.v = P3V.tao(m.querySelector('canvas'), '/pet3d/' + id + '/');
+      P3.v = P3V.tao(m.querySelector('canvas'), '/pet3d/' + id + '/', x.v);
       p3Chon(x.so);   // mở sẵn đời cao nhất cho đẹp
     }).catch(function (e) { var ld = m.querySelector('.gn3dLd'); if (ld) ld.textContent = '❌ ' + e.message; });
   };
