@@ -141,8 +141,46 @@
       (cfgMon ? '<button class="tlDo" onclick="tlBoMon()">↩ Trả mã này về gốc</button>' : '') +
       '<button onclick="tlHuyMon()">✖ Hủy thay đổi chưa lưu</button>' +
       (cfgMon ? '<span class="tlNote">Lưu lần cuối: ' + new Date(cfgMon.t * 1000).toLocaleString('vi-VN') + ' · ' + e(cfgMon.ai) + '</span>' : '') + '</div></div>';
+    // 📋 08/10 (chủ server): chép dòng sang Chân - nâng ở NPC Tuyết Phi Phi / tẩy Chân ra đúng bộ dòng này; điểm Chân = công thuộc tính +50 (không ra đúng thì +51), còn lại x1,3
+    if (m.chanDich && mon(m.chanDich)) {
+      var c = mon(m.chanDich), dirty = chuaLuu(id), dongC = m.dong.slice().sort(function (a, b2) { return a - b2; });
+      var cungChan = TL.d.mon.filter(function (x) { return x.chanDich === m.chanDich; }).map(function (x) { return x.id; });
+      var thieu = dongC.filter(function (k) { return (c.dongCo || []).indexOf(k) < 0; });
+      h += '<div class="tlCard"><h4>📋 Chép dòng sang Chân <span class="tlPill">' + m.chanDich + '</span> <span class="tlNote">' + e(c.ten) + '</span></h4>' +
+        '<div class="tlNote">Chân ra <b>đúng ' + dongC.length + ' dòng</b> của mã này (nâng ở NPC Tuyết Phi Phi, tẩy Chân bằng Ma Huyết Thạch). Điểm Chân: <b>Băng / Hỏa / Huyền / Độc công +50</b> (engine không ra đúng thì +51), <b>các dòng khác ×1,3</b>. ' +
+        'Đè cấu hình Chân hiện tại. Chân này dùng chung cho <b>' + cungChan.join(', ') + '</b>: chép mã nào thì Chân theo mã đó. Có hiệu lực sau restart.</div>' +
+        '<div class="tlTbl"><table><thead><tr><th>Dòng</th><th>Thường (đang)</th><th>Chân (đang)</th><th>Chân sau khi chép</th></tr></thead><tbody>' +
+        dongC.map(function (k) {
+          var ra = seRa(diemChan(m.diem[k], k, c.rate[k]), c.rate[k]);
+          return '<tr><td>' + e(TL.d.dongTen[k]) + '</td><td class="n">' + so(m.diem[k]) + '</td><td class="n">' + (c.dong.indexOf(k) >= 0 ? so(c.diem[k]) : '<span class="tlNote">không có</span>') + '</td><td class="n"><b>' + so(ra) + '</b></td></tr>';
+        }).join('') +
+        '</tbody></table></div><div class="tlBar">' +
+        (dirty ? '<span class="tlNote">⚠ Mã này đang sửa chưa lưu: bấm 💾 Lưu (hoặc ✖ Hủy) trước rồi mới chép.</span>'
+          : thieu.length ? '<span class="tlNote">⚠ Chân không có số gốc cho: ' + thieu.map(function (k) { return e(TL.d.dongTen[k]); }).join(', ') + '. Bỏ các dòng đó ở mã này rồi chép.</span>'
+            : '<button class="' + (TL.xnChep === id ? 'tlDo' : 'tlGo') + '" onclick="tlChep()">' + (TL.xnChep === id ? '⚠ Bấm lần nữa để chép đè Chân ' + m.chanDich : '📋 Chép dòng sang Chân ' + m.chanDich) + '</button>') +
+        '</div></div>';
+    }
     return h;
   }
+  // 📋 08/10: điểm Chân từ điểm Thường (giống panel/trunglau.py diem_chan)
+  var CONG_TT = [6, 9, 12, 15];
+  function diemChan(x, k, r) {
+    if (!(x > 0)) return 0;
+    if (CONG_TT.indexOf(k) >= 0) { for (var d = 50; d <= 51; d++) if (r > 0 && seRa(x + d, r) === x + d) return x + d; return x + 50; }
+    return Math.max(1, Math.floor(x * 1.3 + 0.5));
+  }
+  function chuaLuu(id) {
+    var s = TL.sua[id], m = mon(id); if (!s || !m) return false;
+    var tang = function (a, b2) { return a - b2; };
+    var on = Object.keys(s.on).filter(function (k) { return s.on[k]; }).map(Number).sort(tang);
+    if (on.join() !== m.dong.slice().sort(tang).join()) return true;
+    return on.some(function (k) { return (s.diem[k] || 0) !== (m.diem[k] || m.diemGoc[k] || 0); });
+  }
+  window.tlChep = function () {
+    var id = TL.sel;
+    if (TL.xnChep !== id) { TL.xnChep = id; ve(); setTimeout(function () { if (TL.xnChep === id) { TL.xnChep = 0; ve(); } }, 6000); return; }
+    TL.xnChep = 0; ghi({ op: 'chep', id: id });
+  };
 
   function veGiu() {
     if (TL.giuLoi) return '<div class="tlWarn">👥 Không đọc được danh sách người giữ: ' + e(TL.giuLoi) + '. Nếu game đang restart (MySQL tắt theo game) thì đợi 2-3 phút rồi bấm lại.</div>';
