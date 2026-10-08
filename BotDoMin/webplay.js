@@ -319,6 +319,10 @@ function startWebPlay(ctx) {
                 // thì bị chặn sẵn, không phải viết chốt riêng. Lỗi luật chơi trả 400 kèm câu tiếng Việt.
                 if (path.startsWith('/api/poker/')) {
                     if (!ctx.poker) return sendJSON(res, 503, { ok: false, error: 'Poker chưa bật' });
+                    // 08/10: admin TẮT Poker -> trước đây chỉ ẩn nút, ai biết link /poker/ vẫn ngồi được. Chặn VÀO bàn / sẵn sàng;
+                    // vẫn cho xem, rời bàn, đánh nốt giải đang chạy (không kẹt chip / tiền).
+                    if (req.method === 'POST' && ctx.pokerOn && !ctx.pokerOn() && (path === '/api/poker/ngoi' || path === '/api/poker/sansang'))
+                        return sendJSON(res, 403, { ok: false, error: '⛔ Poker đang tắt' });
                     const body = req.method === 'POST' ? await readBody(req) : {};
                     return ctx.poker.xuLy({ path: path.slice('/api/poker'.length), method: req.method, body, userId }, res, sendJSON);
                 }
@@ -330,6 +334,9 @@ function startWebPlay(ctx) {
                 // còn /tao · /<ma>/ngoi · /<ma>/vote · /<ma>/danh… bị chặn sẵn, khỏi viết chốt riêng.
                 if (path.startsWith('/api/tienlen/')) {
                     if (!ctx.tienlen) return sendJSON(res, 503, { ok: false, error: 'Tiến Lên chưa bật' });
+                    // 08/10: admin TẮT Tiến Lên (bàn ăn KNB thật) -> chặn tạo phòng / vào bàn / vote mức cược; vẫn cho xem, rời, đánh nốt ván dở.
+                    if (req.method === 'POST' && ctx.tienlenOn && !ctx.tienlenOn() && (path === '/api/tienlen/tao' || /^\/api\/tienlen\/[^/]+\/(ngoi|vote)$/.test(path)))
+                        return sendJSON(res, 403, { ok: false, error: '⛔ Tiến Lên đang tắt' });
                     const body = req.method === 'POST' ? await readBody(req) : {};
                     return ctx.tienlen.xuLy({ path: path.slice('/api/tienlen'.length), method: req.method, body, userId }, res, sendJSON);
                 }

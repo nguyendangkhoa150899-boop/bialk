@@ -1420,6 +1420,46 @@ const HTML = `<!DOCTYPE html>
   .grp .gbt{flex:1;min-width:0;display:flex;gap:6px;flex-wrap:wrap}
   .tabs button{background:var(--card);color:var(--mut)}
   .tabs button.active{background:var(--blue);color:#fff}
+  /* 08/10: chức năng người chơi đang TẮT (khung 🔌) -> tab admin tương ứng ẩn luôn; nhóm trống ẩn cả nhãn */
+  .tabs .featHide{display:none!important}
+  /* 08/10: tab 🎁 Phát quà & GM - 3 mục (Phát quà / Cài đặt server / Công cụ) */
+  .wrap:has(#tab-qua:not(.hidden)){max-width:1400px}
+  .quaTop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .quaTop h2{margin:0}
+  .quaNav{display:flex;gap:6px;flex-wrap:wrap}
+  .quaNav button{background:var(--card2);color:var(--mut);border:1px solid var(--line)}
+  .quaNav button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .quaGrid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+  @media(max-width:1100px){.quaGrid{grid-template-columns:minmax(0,1fr)}}
+  .quaAll{border:1px solid rgba(242,63,67,.45);background:linear-gradient(180deg,rgba(242,63,67,.08),transparent 70%),var(--card)}
+  .quaAll h3{margin-top:0;color:#ff8a8d}
+  .quaBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .quaChk{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:13px;color:var(--mut);white-space:nowrap}
+  .quaChk input{margin:0}
+  .quaTb{width:100%;border-collapse:collapse}
+  .quaTb th{font-size:11.5px;color:var(--mut);text-align:left;font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .quaTb td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .quaTb tr.qOn td:first-child{box-shadow:inset 3px 0 0 var(--green)}
+  .quaTb .qNm b{font-size:14px}
+  .quaTb .qNm small{display:block;color:var(--mut);font-size:11.5px;margin-top:2px}
+  .qDot{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap}
+  .qDot i{width:8px;height:8px;border-radius:50%;background:#5c6070;display:inline-block}
+  .qDot.on i{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .qDot.on{color:var(--green);font-weight:700}
+  .qCho{font-size:12px;line-height:1.5;max-width:220px}
+  .qCho .qChoN{display:inline-block;background:rgba(240,177,50,.15);color:var(--yellow);border-radius:999px;padding:1px 8px;font-weight:700;margin-bottom:3px}
+  .quaSet{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .quaTile{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--card2)}
+  .quaTile .qT{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;margin-bottom:8px}
+  .quaTile .qH{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.5}
+  .qBadge{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+  .qBadge.rs{background:rgba(242,63,67,.15);color:#ff8a8d}
+  .qBadge.ok{background:rgba(35,165,90,.15);color:#5fd38d}
+  .quaSave{position:sticky;bottom:0;background:var(--card);padding:12px 0 2px;margin-top:12px;border-top:1px solid var(--line)}
+  .quaTool{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--card2)}
+  .quaTool .qT{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:800;margin-bottom:6px}
+  .quaTool .qT .muted{flex-basis:100%;font-weight:400;font-size:12.5px;line-height:1.55}
+  .quaFind{position:sticky;top:10px}
   /* màn hẹp: nhãn nhóm xuống dòng riêng cho khỏi bóp mất chỗ của nút */
   @media(max-width:820px){
     .grp{display:block;margin-bottom:12px}
@@ -1610,6 +1650,7 @@ const HTML = `<!DOCTYPE html>
       </div></div>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
         <button data-tab="gm" onclick="tab('gm')">🛠️ GM Thiên Long</button>
+        <button data-tab="qua" onclick="tab('qua')">🎁 Phát quà &amp; GM</button>
         <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
         <button data-tab="tlbb" onclick="tab('tlbb')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
@@ -2074,65 +2115,105 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div id="gmAccs" style="margin-top:10px;overflow-x:auto"></div>
       </div>
+    </div>
+    <div id="tab-qua" class="hidden"><!-- 🎁 08/10: tách khỏi 🛠️ GM Thiên Long thành tab riêng, chia 3 mục cho đỡ rối (chủ server). ID phần tử giữ nguyên: JS gm* dùng chung -->
       <div class="card">
-        <h3>🎁 Phát quà / GM nhân vật <span class="muted" id="gmCharN"></span></h3>
-        <div class="row"><b>Gửi cho TẤT CẢ nhân vật:</b> <span id="gmAllForm"></span></div>
-        <div class="row" style="margin-top:10px">
-          <b>Cấp tối thiểu toàn server:</b>
-          <input id="gmCapmin" class="mini-in" style="width:70px" oninput="gmDanhDau(this)">
-          <span class="muted">0 = tắt. Nhân vật thấp hơn tự lên cấp khi đăng nhập / đổi bản đồ, kể cả nhân vật tạo sau này. Không cần restart.</span>
+        <div class="quaTop">
+          <h2>🎁 Phát quà &amp; GM nhân vật <span class="muted" id="gmCharN"></span></h2>
+          <div class="quaNav" id="quaNav">
+            <button data-qsec="phat" onclick="quaSec('phat')">🎁 Phát quà</button>
+            <button data-qsec="caidat" onclick="quaSec('caidat')">⚙️ Cài đặt server</button>
+            <button data-qsec="congcu" class="epOnly" style="display:none" onclick="quaSec('congcu')">🧰 Công cụ</button>
+          </div>
         </div>
-        <div class="row" style="margin-top:8px">
-          <b>🔒 Cấp tối đa (khóa cấp):</b>
-          <input id="gmCapmax" class="mini-in" style="width:70px" type="number" min="10" max="119" oninput="gmDanhDau(this)">
-          <span class="muted">Người chơi cày exp tối đa tới cấp này (10–119, 119 = mở hết). Nhân vật đã cao hơn giữ nguyên. Cần restart.</span>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <b>⚡ EXP toàn server: x</b>
-          <input id="gmExp" class="mini-in" style="width:70px" type="number" min="0.1" max="50" step="0.1" oninput="gmDanhDau(this)">
-          <button onclick="gmExpMacDinh()">↩ Điền mặc định (x<span id="gmExpDef">?</span>)</button>
-          <span class="muted">Hệ số EXP đánh quái cả server (ConfigInfo.ini ExpParam), 0.1–50. Cần restart. Deploy code sau vẫn giữ số này.</span>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <b>📘 Tâm pháp tối đa:</b>
-          <input id="gmTpmax" class="mini-in" style="width:70px" type="number" min="0" max="159" oninput="gmDanhDau(this)">
-          <span class="muted">Người chơi <b>tự học</b> tâm pháp (tốn vàng + EXP) tới tối đa cấp này, 10–159, không phụ thuộc cấp nhân vật. <b>0 = luật gốc</b>: tối đa cấp nhân vật + 10 (tâm pháp thứ 8 tới 159). Không đặt sẵn cấp cho ai. Không cần restart.<br>📜 <b>Chiêu môn phái mở theo tâm pháp</b>: tâm pháp lên tới đâu thì chiêu hiện ra tới đó, ở các mốc 1, 10, 20, 30, 40, 45, 50, 60. Tới 60 là đủ hết chiêu; trên 60 không thêm chiêu mới nhưng chiêu và thuộc tính mạnh dần theo cấp tâm pháp.</span>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn-red" onclick="gmLuuChung()">💾 Lưu thay đổi</button>
-          <button class="btn-grey" onclick="gmHuySua()">✖ Hủy thay đổi</button>
-          <span id="gmSuaNote" class="muted"></span>
-        </div>
-        <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
-          <b>🧵 Mẫu đồ chế 8x/9x + Thái Cổ Thần Khí</b>
-          <button class="btn-grey" onclick="mdLoad()">🔄 Tải</button>
-          <span class="muted">Chọn dòng, số dòng, cấp phẩm chất cho 1 món chế (chỉ trong những gì món đó tự ra được). Áp mẫu → restart → chế + giám định (đồ chế) hoặc tẩy bằng <b>Ma Huyết Thạch 30505813</b> (Thái Cổ Thần Khí 9 sao) → <b>Trả mẫu</b> → restart. Đồ chế: số mỗi dòng ngẫu nhiên trong khoảng của cấp đã chọn. Thái Cổ: số cố định. Chốt lúc chế/tẩy, trả mẫu không đổi. Vũ khí chế không có trong danh sách (vũ khí đi đường thần khí). Trong lúc mẫu đang áp, <b>ai chế / tẩy món đó cũng ra y hệt</b>.</span>
-        </div>
-        <div id="mdBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem đồ chế 8x/9x (trừ vũ khí) và 108 Thái Cổ Thần Khí.</div>
-        <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
-          <b>🗡️ Tẩy 3 dòng ám khí (Pháp bảo)</b>
-          <button class="btn-grey" onclick="akLoad()">🔄 Tải</button>
-          <span class="muted">Ám khí có 3 dòng kỹ năng học ở mốc cấp <b>40 / 70 / 90</b>. Khi người chơi tẩy kỹ năng (vật phẩm <b>30503118</b> + 50.000 tiền), game bốc lại theo <b>trọng số</b> dưới đây: tỉ lệ = trọng số ÷ tổng trọng số của dòng. Đổi trọng số → <b>restart</b> mới có hiệu lực, áp cho mọi lần tẩy / học kỹ năng sau đó (ám khí đã có giữ nguyên).</span>
-        </div>
-        <div id="akBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem 3 dòng ám khí.</div>
-        <div class="row epOnly" style="display:none;margin-top:12px;border-top:1px solid #3a3f4b;padding-top:10px;flex-wrap:wrap;gap:8px">
-          <b>🐉 Custom Trùng Lâu (dòng mới 10553100-10553114)</b>
-          <button class="btn-grey" onclick="tlLoad()">🔄 Tải</button>
-          <span class="muted">Chỉnh dòng thuộc tính + điểm từng mã, tỉ lệ dính / thời gian hiệu ứng toàn server, xem ai đang giữ / đang mặc. Có hiệu lực sau restart game.</span>
-        </div>
-        <div id="tlBox" class="epOnly" style="display:none;container-type:inline-size"></div>
-        <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
-        <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
       </div>
-      <div class="card">
-        <h3>🔎 Tìm ID vật phẩm</h3>
-        <div class="row">
-          <input id="gmQ" class="mini-in" style="width:320px" placeholder="vd: trung lau giap, nhan thach, 10553110 (không cần dấu)" onkeydown="if(event.key==='Enter')gmSearch()">
-          <button onclick="gmSearch()">Tìm</button>
-          <span class="muted" id="gmItemN"></span>
+      <div id="qsec-phat" class="qsec">
+        <div class="quaGrid">
+          <div>
+            <div class="card quaAll">
+              <h3>📣 Gửi cho TẤT CẢ nhân vật</h3>
+              <div class="muted" style="font-size:13px;margin-bottom:8px">Mọi nhân vật đều nhận, kể cả đang offline (nhận khi đăng nhập). Kiểm kỹ loại + số lượng trước khi bấm.</div>
+              <div id="gmAllForm"></div>
+            </div>
+            <div class="card">
+              <div class="quaBar">
+                <h3 style="margin:0">👤 Từng nhân vật</h3>
+                <input id="gmLocQ" class="mini-in" style="width:230px" placeholder="🔎 Lọc tên / tài khoản / GUID" oninput="gmLoc()">
+                <label class="quaChk"><input id="gmLocOn" type="checkbox" onchange="gmLoc()"> chỉ online</label>
+                <label class="quaChk"><input id="gmLocCho" type="checkbox" onchange="gmLoc()"> có quà đang chờ</label>
+                <span class="muted" id="gmLocN" style="font-size:12.5px"></span>
+              </div>
+              <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
+              <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
+            </div>
+          </div>
+          <div>
+            <div class="card quaFind">
+              <h3 style="margin-top:0">🔎 Tìm ID vật phẩm</h3>
+              <div class="row" style="flex-wrap:nowrap">
+                <input id="gmQ" class="mini-in" style="flex:1;min-width:0" placeholder="vd: trung lau giap, nhan thach, 10553110" onkeydown="if(event.key==='Enter')gmSearch()">
+                <button onclick="gmSearch()">Tìm</button>
+              </div>
+              <div class="muted" id="gmItemN" style="font-size:12px;margin-top:4px"></div>
+              <div id="gmItems" style="margin-top:10px;max-height:62vh;overflow:auto"></div>
+              <div class="note">Bấm vào ID để chép, rồi dán vào ô phát quà (không cần dấu khi tìm).</div>
+            </div>
+          </div>
         </div>
-        <div id="gmItems" style="margin-top:10px;overflow-x:auto"></div>
-        <div class="note">Bấm vào ID để chép, rồi dán vào ô phát quà.</div>
+      </div>
+      <div id="qsec-caidat" class="qsec hidden">
+        <div class="card">
+          <h3 style="margin-top:0">⚙️ Cài đặt toàn server</h3>
+          <div class="quaSet">
+            <div class="quaTile"><div class="qT">⬆️ Cấp tối thiểu <span class="qBadge ok">không cần restart</span></div>
+              <input id="gmCapmin" class="mini-in" style="width:90px" oninput="gmDanhDau(this)">
+              <div class="qH"><b>0 = tắt.</b> Nhân vật thấp hơn tự lên cấp khi đăng nhập / đổi bản đồ, kể cả nhân vật tạo sau này.</div></div>
+            <div class="quaTile"><div class="qT">🔒 Cấp tối đa (khóa cấp) <span class="qBadge rs">cần restart</span></div>
+              <input id="gmCapmax" class="mini-in" style="width:90px" type="number" min="10" max="119" oninput="gmDanhDau(this)">
+              <div class="qH">Người chơi cày exp tối đa tới cấp này (10–119, 119 = mở hết). Nhân vật đã cao hơn giữ nguyên.</div></div>
+            <div class="quaTile"><div class="qT">⚡ EXP toàn server <span class="qBadge rs">cần restart</span></div>
+              <div class="row" style="flex-wrap:nowrap;gap:6px"><b>x</b><input id="gmExp" class="mini-in" style="width:90px" type="number" min="0.1" max="50" step="0.1" oninput="gmDanhDau(this)">
+              <button onclick="gmExpMacDinh()">↩ Mặc định (x<span id="gmExpDef">?</span>)</button></div>
+              <div class="qH">Hệ số EXP đánh quái cả server (ConfigInfo.ini ExpParam), 0.1–50. Deploy code sau vẫn giữ số này.</div></div>
+            <div class="quaTile"><div class="qT">📘 Tâm pháp tối đa <span class="qBadge ok">không cần restart</span></div>
+              <input id="gmTpmax" class="mini-in" style="width:90px" type="number" min="0" max="159" oninput="gmDanhDau(this)">
+              <div class="qH">Người chơi <b>tự học</b> tâm pháp (tốn vàng + EXP) tới tối đa cấp này, 10–159, không phụ thuộc cấp nhân vật. <b>0 = luật gốc</b>: tối đa cấp nhân vật + 10 (tâm pháp thứ 8 tới 159). Không đặt sẵn cấp cho ai.<br>📜 <b>Chiêu môn phái mở theo tâm pháp</b>: tâm pháp lên tới đâu thì chiêu hiện ra tới đó, ở các mốc 1, 10, 20, 30, 40, 45, 50, 60. Tới 60 là đủ hết chiêu; trên 60 không thêm chiêu mới nhưng chiêu và thuộc tính mạnh dần theo cấp tâm pháp.</div></div>
+          </div>
+          <div class="row quaSave">
+            <button class="btn-red" onclick="gmLuuChung()">💾 Lưu thay đổi</button>
+            <button class="btn-grey" onclick="gmHuySua()">✖ Hủy thay đổi</button>
+            <span id="gmSuaNote" class="muted"></span>
+          </div>
+        </div>
+      </div>
+      <div id="qsec-congcu" class="qsec hidden">
+        <div class="card">
+          <h3 style="margin-top:0">🧰 Công cụ <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h3>
+          <div class="quaTool">
+            <div class="qT">
+              <b>🧵 Mẫu đồ chế 8x/9x + Thái Cổ Thần Khí</b>
+              <button class="btn-grey" onclick="mdLoad()">🔄 Tải</button>
+              <span class="muted">Chọn dòng, số dòng, cấp phẩm chất cho 1 món chế (chỉ trong những gì món đó tự ra được). Áp mẫu → restart → chế + giám định (đồ chế) hoặc tẩy bằng <b>Ma Huyết Thạch 30505813</b> (Thái Cổ Thần Khí 9 sao) → <b>Trả mẫu</b> → restart. Đồ chế: số mỗi dòng ngẫu nhiên trong khoảng của cấp đã chọn. Thái Cổ: số cố định. Chốt lúc chế/tẩy, trả mẫu không đổi. Vũ khí chế không có trong danh sách (vũ khí đi đường thần khí). Trong lúc mẫu đang áp, <b>ai chế / tẩy món đó cũng ra y hệt</b>.</span>
+            </div>
+            <div id="mdBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem đồ chế 8x/9x (trừ vũ khí) và 108 Thái Cổ Thần Khí.</div>
+          </div>
+          <div class="quaTool">
+            <div class="qT">
+              <b>🗡️ Tẩy 3 dòng ám khí (Pháp bảo)</b>
+              <button class="btn-grey" onclick="akLoad()">🔄 Tải</button>
+              <span class="muted">Ám khí có 3 dòng kỹ năng học ở mốc cấp <b>40 / 70 / 90</b>. Khi người chơi tẩy kỹ năng (vật phẩm <b>30503118</b> + 50.000 tiền), game bốc lại theo <b>trọng số</b> dưới đây: tỉ lệ = trọng số ÷ tổng trọng số của dòng. Đổi trọng số → <b>restart</b> mới có hiệu lực, áp cho mọi lần tẩy / học kỹ năng sau đó (ám khí đã có giữ nguyên).</span>
+            </div>
+            <div id="akBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem 3 dòng ám khí.</div>
+          </div>
+          <div class="quaTool">
+            <div class="qT">
+              <b>🐉 Custom Trùng Lâu (dòng mới 10553100-10553114)</b>
+              <button class="btn-grey" onclick="tlLoad()">🔄 Tải</button>
+              <span class="muted">Chỉnh dòng thuộc tính + điểm từng mã, tỉ lệ dính / thời gian hiệu ứng toàn server, xem ai đang giữ / đang mặc. Có hiệu lực sau restart game.</span>
+            </div>
+            <div id="tlBox" class="epOnly" style="display:none;container-type:inline-size"></div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="tab-tlbb" class="hidden">
@@ -2783,7 +2864,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="card epOnly" style="display:none">
           <h2>🔌 Bật / tắt chức năng người chơi <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
-          <div class="note">Tắt mục nào thì mục đó <b>biến mất khỏi web</b> của người chơi và <b>mọi thao tác của mục đó bị server từ chối</b> - sửa trình duyệt cũng không lách được. Ván đang chơi dở vẫn rút tiền ra được bình thường. Không đụng tới 🪪 Cá nhân, 📒 Nợ, 🎁 Quà.</div>
+          <div class="note">Tắt mục nào thì mục đó <b>biến mất khỏi web</b> của người chơi <b>và tab tương ứng trong header admin ẩn luôn</b> và <b>mọi thao tác của mục đó bị server từ chối</b> - sửa trình duyệt cũng không lách được. Ván đang chơi dở vẫn rút tiền ra được bình thường. Không đụng tới 🪪 Cá nhân, 📒 Nợ, 🎁 Quà.</div>
           <div id="featBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
         </div>
         <div class="note">Cột <b>📒 Nợ</b>: còn nợ là người chơi KHÔNG mua được đồ ở shop item, KHÔNG nhận quà admin tặng, KHÔNG tặng đồ trong rương, KHÔNG ghép ngọc / mở vòng quay / nhận pet boss (rút KNB và đồ vào game vẫn được; 14/09 bỏ hẳn nhãn nợ xấu). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
@@ -2988,8 +3069,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','log','gift','gn','gnx','vqx','br','give','poker','tienlen'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -3083,7 +3164,7 @@ var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['kn
 var GM_PH={item:'ID vật phẩm',xoa:'ID cần xoá',knb:'Số KNB (1-10.000.000)',vang:'Số vàng (1-100.000)',diemtang:'Số Điểm Tặng',level:'Cấp (1-119)',vip:'Cấp VIP 0-10',popup:'ID vật phẩm',pet12:'',petv2:'',petall:'',pettt:'',pet:'ID pet (vd 25351 Tần Vương - docs/pet-huyen-hoa.md)'};
 function gmGiveForm(g){
   var o=GM_KINDS.map(function(k){return '<option value="'+k[0]+'">'+k[1]+'</option>';}).join('');
-  return '<span class="row" style="gap:6px;flex-wrap:wrap;min-width:300px"><select class="mini-in" id="gmL'+g+'" data-kindfor="'+g+'" style="max-width:190px">'+o+'</select>'+
+  return '<span class="row" style="gap:6px;flex-wrap:wrap;min-width:300px"><select class="mini-in" id="gmL'+g+'" data-kindfor="'+g+'" style="min-width:165px;max-width:230px">'+o+'</select>'+
     '<input class="mini-in" style="width:130px" id="gmV'+g+'" placeholder="ID vật phẩm">'+
     '<select class="mini-in" id="gmP'+g+'" style="display:none;max-width:300px"></select>'+   // 🐾 30/09: chọn pet V2 theo tên (từ st.pets)
     '<input class="mini-in" style="width:52px" id="gmS'+g+'" value="1" placeholder="SL">'+
@@ -3121,15 +3202,20 @@ function gmRender(){
         '<button class="mini" data-gm="go_ket" data-ten="'+esc(a.name)+'">🩹 Gỡ kẹt</button>'+
         (a.name!=='admin'?'<button class="mini btn-red" data-gm="xoa_tk" data-ten="'+esc(a.name)+'" data-confirm="Xoá tài khoản '+esc(a.name)+'?">Xoá</button>':'')+'</span></td></tr>';
     }).join('')+'</table>';
-  document.getElementById('gmChars').innerHTML='<table><tr><th>GUID</th><th>Tài khoản</th><th>Nhân vật</th><th>Cấp</th><th>Online</th><th>GM</th><th>Quà đang chờ</th><th>Phát quà</th></tr>'+
-    st.chars.map(function(c){
-      var pend=c.pending.length?c.pending.map(esc).join('<br>')+'<br><button class="mini" data-gm="huy_qua" data-guid="'+c.guid+'" data-confirm="Huỷ toàn bộ quà đang chờ của '+esc(c.name)+'?">Huỷ</button>':'<span class="muted">-</span>';
-      var gm=c.gm?'<b style="color:#f1c40f">GM</b> <button class="mini btn-red" data-gm="gm_tat" data-guid="'+c.guid+'">Tắt GM</button>':'<button class="mini" data-gm="gm_bat" data-guid="'+c.guid+'">Cấp GM</button>';
-      return '<tr><td class="muted">'+c.guid+'</td><td>'+esc(c.account)+'</td><td><b>'+esc(c.name)+'</b></td><td>'+esc(c.level)+'</td><td>'+(c.online?'<b style="color:#35c46a">online</b>':'<span class="muted">-</span>')+'</td>'+
-        '<td>'+gm+'</td><td style="font-size:12px">'+pend+'</td><td>'+gmGiveForm(c.guid)+'</td></tr>';
+  // 08/10: bảng nhân vật gọn - online lên đầu, GUID + tài khoản dưới tên, lọc tại chỗ (gmLoc) không gọi lại server
+  var dsNv=st.chars.slice().sort(function(x,y){return (y.online?1:0)-(x.online?1:0)||String(x.name).localeCompare(String(y.name),'vi');});
+  document.getElementById('gmChars').innerHTML='<table class="quaTb"><tr><th>Nhân vật</th><th>Cấp</th><th>Trạng thái</th><th>GM</th><th>Quà đang chờ</th><th>Phát quà</th></tr>'+
+    dsNv.map(function(c){
+      var pend=c.pending.length?'<span class="qChoN">'+c.pending.length+' món</span><br>'+c.pending.map(esc).join('<br>')+'<br><button class="mini" data-gm="huy_qua" data-guid="'+c.guid+'" data-confirm="Huỷ toàn bộ quà đang chờ của '+esc(c.name)+'?">Huỷ</button>':'<span class="muted">-</span>';
+      var gm=c.gm?'<b style="color:#f1c40f">GM</b> <button class="mini btn-red" data-gm="gm_tat" data-guid="'+c.guid+'">Tắt</button>':'<button class="mini" data-gm="gm_bat" data-guid="'+c.guid+'">Cấp GM</button>';
+      return '<tr class="'+(c.online?'qOn':'')+'" data-q="'+esc(String(c.name+' '+c.account+' '+c.guid).toLowerCase())+'" data-on="'+(c.online?1:0)+'" data-cho="'+(c.pending.length?1:0)+'">'+
+        '<td class="qNm"><b>'+esc(c.name)+'</b><small>'+esc(c.account)+' · '+c.guid+'</small></td><td>'+esc(c.level)+'</td>'+
+        '<td><span class="qDot'+(c.online?' on':'')+'"><i></i>'+(c.online?'online':'offline')+'</span></td>'+
+        '<td>'+gm+'</td><td class="qCho">'+pend+'</td><td>'+gmGiveForm(c.guid)+'</td></tr>';
     }).join('')+'</table>';
   if(!document.getElementById('gmLall'))document.getElementById('gmAllForm').innerHTML=gmGiveForm('all');
-  document.querySelectorAll('#tab-gm select[data-kindfor]').forEach(function(s){gmKind(s.dataset.kindfor);});
+  gmLoc();
+  document.querySelectorAll('#tab-gm select[data-kindfor], #tab-qua select[data-kindfor]').forEach(function(s){gmKind(s.dataset.kindfor);});
 }
 // ===== 🧰 08/10: món Thương Phố được rút qua Rương Ích Kỷ (thuongpho.js cfg().ik) =====
 var TPIK=[],TPIKTAB='all';
@@ -3167,12 +3253,27 @@ function tpikThem(){
 }
 function tpikXoa(id){tpikDoi([],[id],'🗑️ Đã bỏ '+id);}
 function tpikSync(){api('/api/tpik/sync',{}).then(function(j){TPIK=j.ds||[];tpikVe();toast('🔄 Đồng bộ xong: thêm '+(j.them||0)+' món trade · tổng '+TPIK.length);}).catch(function(){tpikLoad();});}
+// 08/10: lọc bảng nhân vật tại chỗ (tên / tài khoản / GUID, chỉ online, có quà chờ)
+function gmLoc(){
+  var q=String((document.getElementById('gmLocQ')||{}).value||'').trim().toLowerCase(),on=(document.getElementById('gmLocOn')||{}).checked,cho=(document.getElementById('gmLocCho')||{}).checked;
+  var rs=document.querySelectorAll('#gmChars tr[data-q]'),n=0;
+  rs.forEach(function(r){var ok=(!q||r.dataset.q.indexOf(q)>=0)&&(!on||r.dataset.on==='1')&&(!cho||r.dataset.cho==='1');r.style.display=ok?'':'none';if(ok)n++;});
+  var el=document.getElementById('gmLocN');if(el)el.textContent=rs.length?('hiện '+n+'/'+rs.length):'';
+}
+// 08/10: 3 mục của tab 🎁 Phát quà & GM, nhớ mục đang mở
+function quaSec(k){
+  if(!k){try{k=localStorage.getItem('qua_sec')||'phat';}catch(e){k='phat';}}
+  if(k==='congcu'&&typeof CONG_MOD!=='undefined'&&CONG_MOD)k='phat';
+  ['phat','caidat','congcu'].forEach(function(x){var el=document.getElementById('qsec-'+x);if(el)el.classList.toggle('hidden',x!==k);});
+  document.querySelectorAll('#quaNav button').forEach(function(b){b.classList.toggle('on',b.dataset.qsec===k);});
+  try{localStorage.setItem('qua_sec',k);}catch(e){}
+}
 function gmLoad(){
   if(typeof TOKEN==='undefined'||!TOKEN)return;
   tpikLoad();
   api('/api/gm/state',{}).then(function(j){GM.st=j.state;gmRender();}).catch(function(){});
   if(!GM.timer)GM.timer=setInterval(function(){
-    var tb=document.getElementById('tab-gm');if(!tb||tb.classList.contains('hidden'))return;
+    var tb=['tab-gm','tab-qua'].map(function(x){return document.getElementById(x);}).filter(function(x){return x&&!x.classList.contains('hidden');})[0];if(!tb)return;
     var ae=document.activeElement;if(ae&&tb.contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='SELECT'))return;
     api('/api/gm/state',{}).then(function(j){GM.st=j.state;gmRender();}).catch(function(){});
   },15000);
@@ -3310,14 +3411,14 @@ function gmSearch(){
   }).catch(function(){});
 }
 document.addEventListener('click',function(ev){
-  var b=ev.target.closest&&ev.target.closest('#tab-gm [data-gm], #tab-gm [data-give], #tab-gm [data-copy]');if(!b)return;
+  var b=ev.target.closest&&ev.target.closest('#tab-gm [data-gm], #tab-gm [data-give], #tab-gm [data-copy], #tab-qua [data-gm], #tab-qua [data-give], #tab-qua [data-copy]');if(!b)return;
   if(b.dataset.copy){navigator.clipboard.writeText(b.dataset.copy).then(function(){toast('📋 Đã chép ID '+b.dataset.copy);});return;}
   if(b.dataset.give){gmGive(b.dataset.give);return;}
   var f={a:b.dataset.gm};if(b.dataset.ten)f.ten=b.dataset.ten;if(b.dataset.guid)f.guid=b.dataset.guid;
   if(f.a==='doi_mk'){var pw=document.getElementById('gmPw_'+f.ten);f.mk=pw?pw.value.trim():'';if(!f.mk)return toast('Nhập mật khẩu mới');}
   gmDo(f,b.dataset.confirm||null);
 });
-document.addEventListener('change',function(ev){var s=ev.target;if(s&&s.dataset&&s.dataset.kindfor&&s.closest('#tab-gm'))gmKind(s.dataset.kindfor);});
+document.addEventListener('change',function(ev){var s=ev.target;if(s&&s.dataset&&s.dataset.kindfor&&s.closest('#tab-gm,#tab-qua'))gmKind(s.dataset.kindfor);});
 // ===== 💥 DROP BOSS (29/09): sua bang roi do, ghi thang file game qua /api/drop/* =====
 var DP={st:null,open:null,box:null,found:[]};
 function dropLoad(){
@@ -4558,12 +4659,30 @@ async function isDayMaxSave(btn){
 function itemShopDirty(on){ISDIRTY=!!on;var b=document.getElementById('itemShopSaveBtn');if(b){b.textContent=on?'💾 Lưu shop ● CHƯA LƯU':'💾 Lưu shop';b.classList.toggle('btn-red',!!on);b.classList.toggle('btn-green',!on);}}
 (function(){var b=document.getElementById('itemShopBody');if(b){b.addEventListener('input',function(){itemShopDirty(true)});b.addEventListener('change',function(){itemShopDirty(true)});}})();
 // 🔌 15/09: công tắc chức năng người chơi - mỗi mục 1 nút, xanh = đang mở, đỏ = đang tắt
+// 08/10: mục nào đang TẮT cho người chơi -> tab admin tương ứng ẩn luôn (đỡ rối). Shop Item / Chuyển-Rút không có tab riêng.
+var FEAT_TAB={tx:['tx'],mine:['mine'],stair:['stair'],wheel:['bj'],stock:['stock'],spm:['spm']};
+function featTabs(){
+  if(!STATE)return;var off={};
+  (STATE.feats||[]).forEach(function(f){if(f.off)(FEAT_TAB[f.key]||[]).forEach(function(t){off[t]=1;});});
+  if(STATE.pokerOn===false)off.poker=1;if(STATE.tienlenOn===false)off.tienlen=1;
+  document.querySelectorAll('.tabs button[data-tab]').forEach(function(b){b.classList.toggle('featHide',!!off[b.dataset.tab]);});
+  document.querySelectorAll('.tabs .grp').forEach(function(g){var co=[].some.call(g.querySelectorAll('button[data-tab]'),function(b){return !b.classList.contains('featHide')&&b.style.display!=='none';});g.classList.toggle('featHide',!co);});
+  var cur=document.querySelector('.tabs button.active');if(cur&&cur.classList.contains('featHide'))tab('user');
+}
 function featRender(){
+  featTabs();
   var box=document.getElementById('featBox');if(!box||!STATE||!STATE.feats)return;
-  var sig=JSON.stringify(STATE.feats);if(box.dataset.sig===sig)return;box.dataset.sig=sig;
-  box.innerHTML=STATE.feats.map(function(f){
-    return '<button class="'+(f.off?'btn-red':'btn-green')+'" style="min-width:150px" onclick="featSet(&quot;'+f.key+'&quot;,'+(f.off?'false':'true')+')">'+(f.off?'⛔ ':'✅ ')+f.label+'</button>';
-  }).join('');
+  var sig=JSON.stringify([STATE.feats,STATE.pokerOn,STATE.tienlenOn]);if(box.dataset.sig===sig)return;box.dataset.sig=sig;
+  var nut=function(onclick,off,label){return '<button class="'+(off?'btn-red':'btn-green')+'" style="min-width:150px" onclick="'+onclick+'">'+(off?'⛔ ':'✅ ')+label+'</button>';};
+  box.innerHTML=STATE.feats.map(function(f){return nut('featSet(&quot;'+f.key+'&quot;,'+(f.off?'false':'true')+')',f.off,f.label);}).join('')+
+    nut('featBai(&quot;poker&quot;,'+(STATE.pokerOn?'true':'false')+')',!STATE.pokerOn,'🃏 Poker')+
+    nut('featBai(&quot;tienlen&quot;,'+(STATE.tienlenOn?'true':'false')+')',!STATE.tienlenOn,'🀄 Tiến Lên');
+}
+// 08/10: Poker / Tiến Lên bật-tắt ngay trong khung 🔌 (công tắc cũ nằm trong tab của chính nó - tab ẩn khi tắt thì hết chỗ bật lại)
+async function featBai(k,off){
+  var ten=k==='poker'?'🃏 Poker':'🀄 Tiến Lên';
+  if(!await uiConfirm(off?('TẮT '+ten+'? Tab biến mất khỏi web người chơi + header admin; không ai vào bàn / tạo phòng được (ván đang dở vẫn đánh nốt).'):('MỞ lại '+ten+' cho người chơi?'),off?'⛔ Tắt':'✅ Mở',off?'btn-red':'btn-green'))return;
+  if(k==='poker')pokerOn(!off);else tlBat(!off);
 }
 async function featSet(key,off){
   var f=(STATE.feats||[]).find(function(x){return x.key===key})||{label:key};
