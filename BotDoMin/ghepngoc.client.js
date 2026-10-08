@@ -73,7 +73,14 @@
     '.gnKq small{color:var(--muted)}',
     '.gnRow.da{opacity:.75}',
     // 🐾 08/10: xem mô hình 3D trân thú (bản thường + các đời biến dị)
-    '#gnApp button.gn3d{margin-top:4px;padding:3px 8px;font-size:12px;border-color:#7c5cff;background:#241d45;color:#e3dbff}',
+    // nút ✨ Xem biến dị: vàng tím phát sáng, ánh sáng chạy ngang (chủ server muốn người chơi thấy mà bấm xem)
+    '#gnApp button.gn3d{position:relative;overflow:hidden;white-space:nowrap;margin-top:6px;padding:4px 9px;font-size:11.5px;font-weight:900;letter-spacing:.3px;color:#fff6d6;border:1px solid #f5c542;border-radius:999px;background:linear-gradient(135deg,#6d28d9,#b45309 55%,#f59e0b);box-shadow:0 0 0 1px #f5c54244,0 0 12px #f59e0b88;text-shadow:0 1px 2px #0008;animation:gn3dSang 2.2s ease-in-out infinite}',
+    '#gnApp button.gn3d.dai{padding:8px 16px;font-size:14px}',
+    '#gnApp button.gn3d::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,#fff7,transparent);transform:skewX(-20deg);animation:gn3dLuot 2.6s ease-in-out infinite}',
+    '#gnApp button.gn3d:hover{filter:brightness(1.15);box-shadow:0 0 0 1px #f5c542,0 0 20px #f5c542}',
+    '@keyframes gn3dSang{0%,100%{box-shadow:0 0 0 1px #f5c54244,0 0 8px #f59e0b66}50%{box-shadow:0 0 0 1px #f5c542aa,0 0 18px #f5c542cc}}',
+    '@keyframes gn3dLuot{0%{left:-60%}60%,100%{left:130%}}',
+    '@media (prefers-reduced-motion:reduce){#gnApp button.gn3d,#gnApp button.gn3d::after{animation:none}}',
     '.gn3dM{position:fixed;inset:0;z-index:9999;background:#000b;display:flex;align-items:center;justify-content:center;padding:16px}',
     '.gn3dBox{width:min(760px,100%);max-height:100%;display:flex;flex-direction:column;background:#151826;border:1px solid var(--line);border-radius:14px;overflow:hidden}',
     '.gn3dHd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}.gn3dHd b{flex:1;font-size:15px;color:var(--tx)}',
@@ -87,11 +94,12 @@
     '.gn3dNote{padding:0 12px 10px;color:var(--muted);font-size:11px}',
   ].join('');
   function ic(x, cls) { return typeof vqIcon === 'function' ? vqIcon(x && x.ic, cls) : ''; }
-  // ===== 🐾 08/10: XEM 3D TRÂN THÚ - chỉ mục /pet3d/index.json (bot pet3d.js), three.js r128 tải lúc mở lần đầu =====
-  // 1 cửa sổ WebGL + chip chọn bản (Thường / Đời 1..N) -> mỗi lần chỉ tải 1 bản (~100-300 KB), điện thoại nhẹ.
-  var P3 = { idx: null, dang: false, v: null };
+  // ===== 🐾 08/10: XEM BIẾN DỊ TRÂN THÚ - chỉ mục /pet3d/index.json (bot pet3d.js), bộ xem /p3.js (pet3d.client.js) =====
+  // three.js r128 + bộ xem chỉ tải khi mở lần đầu. Mô hình đứng đúng động tác game (站立) + hiệu ứng hạt (lửa, hào quang...) như trong game.
+  // 1 cửa sổ WebGL + chip chọn bản (Thường / Đời 1..N), mở sẵn ở đời cao nhất; mỗi lần chỉ tải 1 bản.
+  var P3 = { idx: null, dang: false, v: null, id: '' };
   function p3(id) { return P3.idx && P3.idx[id]; }
-  function p3Nut(id, dai) { return p3(id) ? '<button class="gn3d" onclick="event.stopPropagation();gn3d(\'' + id + '\')">👁 ' + (dai ? 'Xem 3D ' + p3(id).so + ' bản' : '3D') + '</button>' : ''; }
+  function p3Nut(id, dai) { return p3(id) ? '<button class="gn3d' + (dai ? ' dai' : '') + '" onclick="event.stopPropagation();gn3d(\'' + id + '\')">✨ Xem biến dị' + (dai ? ' · ' + p3(id).so + ' bản' : '') + '</button>' : ''; }
   function p3Idx() {
     if (P3.idx || P3.dang) return; P3.dang = true;
     fetch('/pet3d/index.json').then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { P3.idx = j || {}; if (Object.keys(P3.idx).length && S()) ve(); }).catch(function () { P3.idx = {}; });
@@ -99,74 +107,37 @@
   function nap(src) { return new Promise(function (ok, loi) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { loi(new Error('không tải được thư viện 3D')); }; document.head.appendChild(s); }); }
   var CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0/';
   function napThree() {
-    if (window.THREE && THREE.DDSLoader && THREE.OrbitControls) return Promise.resolve();
-    return (window.THREE ? Promise.resolve() : nap(CDN + 'build/three.min.js')).then(function () { return Promise.all([nap(CDN + 'examples/js/loaders/DDSLoader.js'), nap(CDN + 'examples/js/controls/OrbitControls.js')]); });
-  }
-  // m<k>.bin = [u32 dài JSON][JSON {parts:[{nv,ni,i32,tex,alpha,o:{pos,nor,uv,idx}}]}][đệm 4][Float32/Uint16/Uint32]
-  function docBin(ab) {
-    var n = new DataView(ab).getUint32(0, true), js = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, n))), d0 = 4 + n + ((4 - ((4 + n) % 4)) % 4);
-    js.parts.forEach(function (p) {
-      p.pos = new Float32Array(ab, d0 + p.o.pos, p.nv * 3); p.nor = p.o.nor < 0 ? null : new Float32Array(ab, d0 + p.o.nor, p.nv * 3);
-      p.uv = p.o.uv < 0 ? null : new Float32Array(ab, d0 + p.o.uv, p.nv * 2); p.idx = p.i32 ? new Uint32Array(ab, d0 + p.o.idx, p.ni) : new Uint16Array(ab, d0 + p.o.idx, p.ni);
-    });
-    return js;
+    if (window.P3V) return Promise.resolve();
+    return (window.THREE ? Promise.resolve() : nap(CDN + 'build/three.min.js'))
+      .then(function () { return Promise.all([THREE.DDSLoader ? 0 : nap(CDN + 'examples/js/loaders/DDSLoader.js'), THREE.OrbitControls ? 0 : nap(CDN + 'examples/js/controls/OrbitControls.js')]); })
+      .then(function () { return nap('/p3.js'); });
   }
   function p3Dong() {
     var V = P3.v; P3.v = null; document.removeEventListener('keydown', p3Esc);
-    if (V) {
-      cancelAnimationFrame(V.raf); window.removeEventListener('resize', V.co);
-      if (V.grp) V.grp.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
-      Object.keys(V.tex).forEach(function (k) { V.tex[k].dispose(); });
-      if (V.ctl) V.ctl.dispose(); if (V.r) { V.r.dispose(); V.r.forceContextLoss(); }
-    }
+    if (V) V.dongLai();
     var m = document.getElementById('gn3dM'); if (m) m.remove();
   }
   function p3Esc(e) { if (e.key === 'Escape') p3Dong(); }
   function p3Chon(k) {
-    var V = P3.v; k = Math.floor(Number(k) || 0); if (!V || k < 1 || k > (p3(V.id) || {}).so) return; V.k = k;
+    var V = P3.v; k = Math.floor(Number(k) || 0); if (!V || k < 1 || k > (p3(P3.id) || {}).so) return;
     [].forEach.call(document.querySelectorAll('#gn3dM .gn3dChips button'), function (b, i) { b.classList.toggle('on', i + 1 === k); });
-    var ld = document.querySelector('#gn3dM .gn3dLd'); ld.textContent = '⏳ Đang tải mô hình...'; ld.style.display = '';
-    var lay = V.bin[k] ? Promise.resolve(V.bin[k]) : fetch('/pet3d/' + V.id + '/m' + k + '.bin').then(function (r) { if (!r.ok) throw new Error('thiếu mô hình'); return r.arrayBuffer(); });
-    lay.then(function (ab) {
-      if (P3.v !== V || V.k !== k) return; V.bin[k] = ab;
-      var m = docBin(ab), grp = new THREE.Group(), box = new THREE.Box3();
-      m.parts.forEach(function (p) {
-        var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p.pos, 3));
-        if (p.nor) g.setAttribute('normal', new THREE.BufferAttribute(p.nor, 3)); if (p.uv) g.setAttribute('uv', new THREE.BufferAttribute(p.uv, 2));
-        g.setIndex(new THREE.BufferAttribute(p.idx, 1)); if (!p.nor) g.computeVertexNormals();
-        var opt = { side: THREE.DoubleSide, alphaTest: p.alpha ? 0.4 : 0 };
-        if (p.tex) { if (!V.tex[p.tex]) { V.tex[p.tex] = V.dds.load('/pet3d/' + V.id + '/' + p.tex); V.tex[p.tex].flipY = false; } opt.map = V.tex[p.tex]; }
-        grp.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial(opt))); g.computeBoundingBox(); box.union(g.boundingBox);
-      });
-      if (V.grp) { V.sc.remove(V.grp); V.grp.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
-      V.grp = grp; V.sc.add(grp);
-      var c = new THREE.Vector3(); box.getCenter(c); var h = Math.max(box.max.y - box.min.y, (box.max.x - box.min.x) * 0.75, (box.max.z - box.min.z) * 0.75);
-      V.ctl.target.copy(c); V.cam.position.set(c.x + h * 0.9, c.y + h * 0.3, c.z + h * 1.9); V.cam.near = h / 100; V.cam.far = h * 50; V.cam.updateProjectionMatrix(); V.ctl.update();
-      ld.style.display = 'none';
-    }).catch(function (e) { if (P3.v === V) ld.textContent = '❌ ' + e.message; });
+    var ld = document.querySelector('#gn3dM .gn3dLd'); ld.textContent = '⏳ Đang tải mô hình + hiệu ứng...'; ld.style.display = '';
+    V.chon(k).then(function () { if (P3.v === V && V.k === k) ld.style.display = 'none'; }).catch(function (e) { if (P3.v === V) ld.textContent = '❌ ' + e.message; });
   }
   window.gn3d = function (id) {
-    var x = p3(id); if (!x) return; p3Dong();
+    var x = p3(id); if (!x) return; p3Dong(); P3.id = id;
     var d = (S().dich || []).find(function (y) { return y.id === id; }), ten = x.ten || (d && d.ten) || ('#' + id);
     var chips = ''; for (var k = 1; k <= x.so; k++) chips += '<button onclick="gn3dChon(' + k + ')">' + (k === 1 ? 'Bản thường' : '🧬 Đời ' + (k - 1)) + '</button>';
     var m = document.createElement('div'); m.id = 'gn3dM'; m.className = 'gn3dM';
-    m.innerHTML = '<div class="gn3dBox"><div class="gn3dHd"><b>🐾 ' + esc(ten) + ' <small>· ' + x.so + ' bản ngoại hình</small></b><button onclick="gn3dDong()">✕</button></div>'
+    m.innerHTML = '<div class="gn3dBox"><div class="gn3dHd"><b>✨ ' + esc(ten) + ' <small>· ' + x.so + ' bản ngoại hình</small></b><button onclick="gn3dDong()">✕</button></div>'
       + '<div class="gn3dCv"><canvas></canvas><div class="gn3dLd">⏳ Đang tải thư viện 3D...</div></div><div class="gn3dChips">' + chips + '</div>'
-      + '<div class="gn3dNote">Kéo để xoay · lăn chuột / chụm 2 ngón để phóng to · mô hình gốc của game (tư thế đứng mặc định)</div></div>';
+      + '<div class="gn3dNote">Kéo để xoay · lăn chuột / chụm 2 ngón để phóng to · mô hình, động tác đứng và hiệu ứng lấy từ chính client game</div></div>';
     m.addEventListener('click', function (e) { if (e.target === m) p3Dong(); });
     document.body.appendChild(m); document.addEventListener('keydown', p3Esc);
     napThree().then(function () {
-      if (!document.getElementById('gn3dM')) return;
-      var cv = m.querySelector('canvas'), V = { id: id, k: 1, bin: {}, tex: {}, grp: null };
-      V.r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); V.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-      V.sc = new THREE.Scene(); V.sc.add(new THREE.AmbientLight(0xffffff, 0.75)); var dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(60, 120, 100); V.sc.add(dl);
-      V.cam = new THREE.PerspectiveCamera(32, 1, 1, 4000); V.ctl = new THREE.OrbitControls(V.cam, cv);
-      V.ctl.enableDamping = true; V.ctl.autoRotate = true; V.ctl.autoRotateSpeed = 1.5; V.ctl.enablePan = false;
-      V.dds = new THREE.DDSLoader();
-      V.co = function () { var w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return; V.r.setSize(w, h, false); V.cam.aspect = w / h; V.cam.updateProjectionMatrix(); };
-      window.addEventListener('resize', V.co); V.co();
-      P3.v = V; V.raf = requestAnimationFrame(function f() { if (P3.v !== V) return; V.ctl.update(); V.r.render(V.sc, V.cam); V.raf = requestAnimationFrame(f); });
-      p3Chon(1);
+      if (!document.getElementById('gn3dM') || P3.id !== id) return;
+      P3.v = P3V.tao(m.querySelector('canvas'), '/pet3d/' + id + '/');
+      p3Chon(x.so);   // mở sẵn đời cao nhất cho đẹp
     }).catch(function (e) { var ld = m.querySelector('.gn3dLd'); if (ld) ld.textContent = '❌ ' + e.message; });
   };
   window.gn3dChon = p3Chon;
@@ -294,9 +265,8 @@
     h += '<div class="gnBox"><h4>🎯 MÓN MUỐN LUYỆN RA</h4>';
     if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span>' + capNote(d, true) + p3Nut(d.id, true) + '</div>';
     else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở tab 🎯 Món đích bên dưới</div>';
-    h += '<div class="gnMul">' + [1.5, 2, 5, 10, 20].map(function (m) { return '<button onclick="gnNhan(' + m + ')" title="Chọn món đích có giá trị gần ' + m + ' lần đồ đang bỏ vào">' + m + 'x</button>'; }).join('') + '</div>'
-      + '<div class="gnMul">' + [35, 55, 75].filter(function (v) { return v <= s.tiMax; }).map(function (v) { return '<button onclick="gnPct(' + v + ')" title="Tự bỏ đồ trong rương cho đủ ' + v + '%">' + v + '%</button>'; }).join('') + '</div>'
-      + '<div class="muted" style="font-size:11px;text-align:center;margin-top:4px">Kéo vòng để xoay vùng trúng tới chỗ ưng ý · 35/55/75% = tự bỏ đồ (đồ không phải ngọc trước)</div></div>';
+    // 08/10 (chủ server): bỏ hàng nút 1.5x..20x / 35-55-75% + dòng hướng dẫn cho gọn - người chơi đã quen
+    h += '</div>';
     h += '</div>';
     // ---- chọn
     var tab = GN.chon || 'ruong';

@@ -22,7 +22,7 @@ function serve(req, res, rest) {
         if (err) { res.writeHead(404); return res.end(); }
         const etag = '"' + st.size.toString(36) + '-' + Math.floor(st.mtimeMs).toString(36) + '"';
         if (req.headers['if-none-match'] === etag) { res.writeHead(304); return res.end(); }
-        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': 'public, max-age=604800', ETag: etag });
+        res.writeHead(200, { 'Content-Type': /\.json$/.test(rest) ? 'application/json; charset=utf-8' : 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': 'public, max-age=604800', ETag: etag });
         fs.createReadStream(p).pipe(res);
     });
 }

@@ -133,6 +133,11 @@ function startWebPlay(ctx) {
             if (req.method === 'GET' && path.startsWith('/itemicon/')) return ITEMICON.serve(req, res, path.slice(10));
             // 🐾 08/10: mô hình 3D trân thú (Ghép Ngọc) - chỉ file trong chỉ mục, stream từ đĩa
             if (req.method === 'GET' && path.startsWith('/pet3d/')) return PET3D.serve(req, res, path.slice(7));
+            if (req.method === 'GET' && path === '/p3.js') {   // 🐾 08/10: bộ xem 3D (động tác + hiệu ứng hạt) - pet3d.client.js, đọc lại mỗi lần
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'pet3d.client.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             // 💎 05/10: script giao diện Ghép Ngọc (tĩnh, không cần đăng nhập - API mới cần)
             if (req.method === 'GET' && path === '/tb.js') {   // 🎒 05/10: giao diện túi đồ boss
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'tuiboss.client.js'));
