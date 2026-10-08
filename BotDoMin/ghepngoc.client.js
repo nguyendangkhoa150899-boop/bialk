@@ -48,6 +48,14 @@
     '.gnCard{background:#1a1f2d;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;gap:8px;align-items:center;cursor:pointer;font-size:12px}',
     '.gnCard:hover{border-color:var(--gnA)}.gnCard.on{border-color:var(--gnB);box-shadow:0 0 0 1px var(--gnB)}',
     '.gnCard.het{opacity:.4;cursor:not-allowed}.gnCard b{display:block;font-size:12px}.gnCard small{color:var(--muted)}',
+    // 08/10 (chủ server): thẻ Rương - số lượng thành nhãn nổi trên góc icon (×44 / đã bỏ 2/44), tên 2 dòng, giá + % tách dòng
+    '.gnIcW{position:relative;flex:0 0 auto;line-height:0}',
+    '.gnSl{position:absolute;right:-7px;bottom:-7px;min-width:20px;text-align:center;line-height:16px;background:#f0b132;color:#1d1400;font-weight:900;font-size:11px;border-radius:999px;padding:0 5px;border:2px solid #1a1f2d;font-variant-numeric:tabular-nums}',
+    '.gnSl.dung{background:#3ddc84;color:#06210f}',
+    '.gnCard .gnTx{min-width:0;display:flex;flex-direction:column;gap:2px}',
+    '.gnCard .gnNm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:800;font-size:12.5px;line-height:1.3}',
+    '.gnCard .gnGia{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}',
+    '.gnCard .gnPt{color:#3ddc84;font-weight:900;font-size:13px;font-variant-numeric:tabular-nums}.gnCard .gnPt small{font-weight:600;font-size:11px}',
     '.gnMul{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:center}#gnApp .gnMul button{padding:4px 10px;font-size:12px}',
     '.gnLich div{font-size:12px;padding:3px 0;border-bottom:1px solid #ffffff0d}',
     '.gnW{color:#3ddc84;font-weight:800}.gnL{color:#ff5d5d;font-weight:800}',
@@ -199,7 +207,10 @@
     if (tab === 'ruong') {
       var r = (s.ruong || []).filter(khop), dObj = dichObj();
       var phanTram = function (g) { var v = g / dObj.gia * (100 - s.phi); return v >= 1 ? (Math.round(v * 10) / 10) : (Math.round(v * 1000) / 1000); };
-      h += r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + '</b><small>' + vnd(x.gia) + '/cái · ' + esc(x.tu) + (dObj ? ' · <b style="color:#3ddc84">+' + phanTram(x.gia) + '%</b>/cái' : '') + '<br>có ' + x.qty + (dung ? ' · đã bỏ ' + dung : '') + '</small></div></div>'; }).join('') + '</div>'
+      // 08/10: số lượng = nhãn nổi trên góc icon (×có, đang bỏ vào thì xanh dung/có); "riêng / shop" chỉ còn trong chú thích rê chuột
+      h += r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')" title="' + esc(x.ten) + ' · có ' + x.qty + ' · giá ' + esc(x.tu) + '">' +
+        '<span class="gnIcW">' + ic(x, 'vqIcS') + '<span class="gnSl' + (dung ? ' dung' : '') + '">' + (dung ? dung + '/' + x.qty : '×' + x.qty) + '</span></span>' +
+        '<div class="gnTx"><span class="gnNm">' + esc(x.ten) + '</span><span class="gnGia">' + vnd(x.gia) + ' / cái</span>' + (dObj ? '<span class="gnPt">+' + phanTram(x.gia) + '% <small>/ cái</small></span>' : '') + '</div></div>'; }).join('') + '</div>'
         : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>';
     } else if (tab === 'dich' || tab === 'pet') {   // 07/10: món đích chia 2 mục - 💎 Nguyên liệu / 🐾 Trân thú
       var dd = (s.dich || []).filter(khop).filter(function (x) { return (tab === 'pet') === laPet(x); });
