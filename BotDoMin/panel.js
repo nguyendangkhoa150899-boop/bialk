@@ -226,6 +226,11 @@ function startPanel(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/vh.js') {   // 🔮 09/10 giao diện Custom Võ Hồn (khu Công cụ, chỉ SUPER thao tác; đọc lại mỗi lần, sửa không cần restart)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'vohon.panel.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/br-data.json') {   // 📊 05/10 data.json của tools/bang-roi (deploy lên /var/www/netco4/) + icon từng món, cache theo mtime
                 const f = process.env.BANGROI_DATA || '/var/www/netco4/data.json';
                 try {
@@ -332,7 +337,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🐉: bảng KNB/duyệt đơn/liên kết nhân vật/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/tpik/sync', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', '/api/gm/trunglau', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
+                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/tpik/sync', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', '/api/gm/trunglau', '/api/gm/vohon', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
@@ -1130,8 +1135,25 @@ function startPanel(ctx) {
                         else if (['mon', 'xoa', 'chep', 'hu', 'tra', 'restart'].includes(op)) {   // 08/10: chep = 📋 chép dòng Thường sang Chân
                             if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Chỉ cổng SUPER được chỉnh Trùng Lâu' });
                             const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
-                            j = await gmCall('POST', '/api/trunglau', { op, id: String(body.id || ''), dong: body.dong, diem: body.diem, hu: body.hu, ai: who });
+                            j = await gmCall('POST', '/api/trunglau', { op, id: String(body.id || ''), dong: body.dong, diem: body.diem, so: body.so, hu: body.hu, ai: who });   // 09/10: so = số dòng ra mỗi lần tạo
                             if (j && j.ok) ctx.writeLog('ADMIN', `[TRÙNG LÂU] ${who} ${op} ${body.id || ''}: ${String(j.msg || '').slice(0, 220)}`);
+                        } else return sendJSON(res, 400, { ok: false, error: 'op không hợp lệ' });
+                        return sendJSON(res, j && j.ok ? 200 : 502, j || { ok: false, error: 'panel GM không trả lời' });
+                    } catch (e) {
+                        return sendJSON(res, 502, { ok: false, error: String(e.message).slice(0, 200) });
+                    }
+                }
+                // 🔮 09/10: Custom Võ Hồn -> panel GM /api/vohon (đọc: xem; ghi: luu / tra - chỉ SUPER). Ghi vohon.txt, hiệu lực ngay, không restart.
+                if (path === '/api/gm/vohon') {
+                    try {
+                        const op = String(body.op || 'xem');
+                        let j;
+                        if (op === 'xem') j = await gmCall('GET', '/api/vohon');
+                        else if (op === 'luu' || op === 'tra') {
+                            if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Chỉ cổng SUPER được chỉnh Võ Hồn' });
+                            const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                            j = await gmCall('POST', '/api/vohon', { op, w: body.w, giucap: body.giucap, ai: who });
+                            if (j && j.ok) ctx.writeLog('ADMIN', `[VÕ HỒN] ${who} ${op}: ${String(j.msg || '').slice(0, 220)} ${op === 'luu' ? JSON.stringify(body.w || {}).slice(0, 400) + ' giucap=' + body.giucap : ''}`);
                         } else return sendJSON(res, 400, { ok: false, error: 'op không hợp lệ' });
                         return sendJSON(res, j && j.ok ? 200 : 502, j || { ok: false, error: 'panel GM không trả lời' });
                     } catch (e) {
@@ -2212,6 +2234,14 @@ const HTML = `<!DOCTYPE html>
               <span class="muted">Chỉnh dòng thuộc tính + điểm từng mã, tỉ lệ dính / thời gian hiệu ứng toàn server, xem ai đang giữ / đang mặc. Có hiệu lực sau restart game.</span>
             </div>
             <div id="tlBox" class="epOnly" style="display:none;container-type:inline-size"></div>
+          </div>
+          <div class="quaTool">
+            <div class="qT">
+              <b>🔮 Custom Võ Hồn (tỉ lệ chiêu lĩnh ngộ / tẩy)</b>
+              <button class="btn-grey" onclick="vhLoad()">🔄 Tải</button>
+              <span class="muted">Trọng số từng chiêu ở từng ô, có ghi chú chiêu làm gì; tẩy giữ cấp hay về cấp 1. Hiệu lực ngay lần lĩnh ngộ / tẩy kế tiếp, không cần restart.</span>
+            </div>
+            <div id="vhBox" class="epOnly" style="display:none"></div>
           </div>
         </div>
       </div>
@@ -5566,7 +5596,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
-<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script>
+<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script>
 </body>
 </html>`;
 

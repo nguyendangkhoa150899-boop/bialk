@@ -48,7 +48,8 @@
       '.tlKhung th,.tlKhung td{padding:5px 8px;border-bottom:1px solid #2a3346;text-align:left;vertical-align:middle}.tlKhung th{color:#93a0b8;font-weight:600;font-size:11.5px}' +
       '.tlKhung td.n{font-variant-numeric:tabular-nums}.tlKhung tr.off td{color:#6c7891}.tlKhung .tlGoc{font-size:11px;color:#c9a45c}.tlKhung .tlLech{color:#f3cf8a}' +
       '.tlKhung .tlCnt{font-weight:700}.tlKhung .tlCnt.bad{color:#ff8a8a}.tlKhung input[type=checkbox]{width:16px;height:16px}' +
-      '.tlKhung .tlPill{display:inline-block;font-size:11px;border:1px solid #3a4560;border-radius:999px;padding:0 6px;color:#b9c3d6}';
+      '.tlKhung .tlPill{display:inline-block;font-size:11px;border:1px solid #3a4560;border-radius:999px;padding:0 6px;color:#b9c3d6}' +
+      '.tlKhung .tlSo{font-size:12.5px;color:#b9c3d6;display:grid;gap:4px}.tlKhung .tlSo input[type=number]{width:64px;display:inline-block}';
     document.head.appendChild(s);
   }
 
@@ -69,9 +70,17 @@
       var m = mon(id), on = {}, diem = {};
       m.dong.forEach(function (k) { on[k] = true; });
       for (var k = 0; k < 58; k++) diem[k] = m.diem[k] || m.diemGoc[k] || 0;
-      TL.sua[id] = { on: on, diem: diem };
+      var cm = ((TL.d.cfg || {}).mon || {})[id];
+      TL.sua[id] = { on: on, diem: diem, so: cm && cm.so ? cm.so.slice() : null };   // 09/10: so = [min,max] dong ra moi lan tao; null = du moi dong tick
     }
     return TL.sua[id];
+  }
+  // 09/10: xac suat ra DU k dong goc khi moi lan tao boc n dong (n deu trong [a,b]) tu C dong bat - gia dinh engine chon deu, chua do
+  function khoang(a) { return a[0] === a[1] ? String(a[0]) : a[0] + '–' + a[1]; }
+  function tohop(n, r) { if (r < 0 || r > n) return 0; var x = 1; for (var i = 1; i <= r; i++) x = x * (n - r + i) / i; return x; }
+  function xsDu(C, k, a, b) {
+    var t = 0; for (var n = a; n <= b; n++) t += n < k ? 0 : tohop(C - k, n - k) / tohop(C, n);
+    return t / (b - a + 1);
   }
 
   function ve() {
@@ -103,9 +112,9 @@
     var cung = m.huCung || TL.d.mon.filter(function (x) { return x.hu && m.hu && x.hu.id === m.hu.id; }).map(function (x) { return x.id; });
     var h = '<div class="tlCard"><h4>' + e(m.ten) + ' <span class="tlPill">' + id + '</span> <span class="tlPill">' + e(m.gd) + '</span></h4>' +
       '<div class="tlKv"><span>Cấp phẩm chất cố định: <b>' + m.cap + '</b></span><span>Đoạn điểm: <b>' + m.seg + '</b>' + (m.seg !== m.segGoc ? ' (gốc ' + m.segGoc + ')' : '') + '</span>' +
-      '<span>Số dòng: <b>' + m.soDong[0] + '</b>' + (m.soDong[0] !== m.soDongGoc[0] ? ' (gốc ' + m.soDongGoc[0] + ')' : '') + '</span>' +
+      '<span>Số dòng ra: <b>' + khoang(m.soDong) + '</b>' + (khoang(m.soDong) !== khoang(m.soDongGoc) ? ' (gốc ' + khoang(m.soDongGoc) + ')' : '') + '</span>' +
       '<span>Dòng bật: <b>' + m.dong.length + '</b> (gốc ' + m.dongGoc.length + ')</span></div>' +
-      (m.soDong[0] < m.dong.length ? '<div class="tlNote">Hiện tại mỗi món <b>bốc ngẫu nhiên ' + m.soDong[0] + ' trong ' + m.dong.length + '</b> dòng bật. Lưu ở đây thì món ra <b>đúng các dòng đã tick</b> (bỏ tick bớt nếu muốn ít dòng hơn).</div>' : '') +
+      (m.soDong[0] < m.dong.length ? '<div class="tlNote">Hiện tại mỗi món <b>bốc ngẫu nhiên ' + khoang(m.soDong) + ' trong ' + m.dong.length + '</b> dòng bật' + (m.soDong[1] > m.dong.length ? ' (tối đa ' + m.soDong[1] + ' &gt; ' + m.dong.length + ' dòng có → thường ra đủ)' : '') + '. Chỉnh ở ô <b>Số dòng ra mỗi lần tạo</b> dưới bảng dòng.</div>' : '') +
       '</div>';
     // hiệu ứng
     if (m.hu) {
@@ -143,7 +152,19 @@
         '<td><input type="number" min="1" step="1" value="' + (x || '') + '" ' + (on ? '' : 'disabled ') + 'oninput="' + NS + 'Diem(' + k + ',this.value)" class="' + (on && x !== m.diem[k] ? 'tlCh' : '') + '"></td>' +
         '<td class="n' + (lech ? ' tlLech' : '') + '" id="' + NS + 'Ra' + k + '">' + (on ? raChu(x, r) : '') + '</td></tr>';
     });
-    h += '</tbody></table></div><div class="tlBar"><button class="tlGo" onclick="' + NS + 'LuuMon()"' + (nOn && nOn <= max ? '' : ' disabled') + '>💾 Lưu mã ' + id + '</button>' +
+    h += '</tbody></table></div>';
+    // 09/10 (chủ server): số dòng ra mỗi lần tạo < số dòng tick -> bốc ngẫu nhiên (vd Long Văn +9: 13 trong 15 -> đủ 11 dòng gốc ~5,7%)
+    var so = s.so || [nOn, nOn], kGoc = m.dongGoc.filter(function (k) { return s.on[k]; }).length;
+    var soOk = so[0] >= 1 && so[0] <= so[1] && so[1] <= nOn;
+    h += '<div class="tlSo"><b>Số dòng ra mỗi lần tạo:</b> từ <input type="number" min="1" max="' + nOn + '" step="1" value="' + so[0] + '" oninput="' + NS + 'So(0,this.value)" class="' + (s.so ? 'tlCh' : '') + '">' +
+      ' đến <input type="number" min="1" max="' + nOn + '" step="1" value="' + so[1] + '" oninput="' + NS + 'So(1,this.value)" class="' + (s.so ? 'tlCh' : '') + '"> trong <b>' + nOn + '</b> dòng tick' +
+      (s.so ? ' <button onclick="' + NS + 'So(-1)">↺ ra đủ mọi dòng tick</button>' : '') + '<div class="tlNote">' +
+      (!soOk ? '⚠ Phải 1 ≤ từ ≤ đến ≤ ' + nOn + '.' :
+        so[1] >= nOn && so[0] >= nOn ? 'Mỗi món ra <b>đủ ' + nOn + ' dòng</b> đã tick (không ngẫu nhiên).' :
+          'Mỗi món bốc ngẫu nhiên ' + (so[0] === so[1] ? so[0] : so[0] + '–' + so[1]) + ' dòng trong ' + nOn + ' dòng tick. ' +
+          (kGoc ? 'Xác suất ra <b>đủ ' + kGoc + ' dòng gốc</b>: <b>' + (xsDu(nOn, kGoc, so[0], so[1]) * 100).toFixed(1) + '%</b>' : '') +
+          ' <i>(giả định engine chọn đều - chưa đo; đo lại bằng DB sau khi người chơi tẩy)</i>') + '</div></div>';
+    h += '<div class="tlBar"><button class="tlGo" onclick="' + NS + 'LuuMon()"' + (nOn && nOn <= max && soOk ? '' : ' disabled') + '>💾 Lưu mã ' + id + '</button>' +
       (cfgMon ? '<button class="tlDo" onclick="' + NS + 'BoMon()">↩ Trả mã này về gốc</button>' : '') +
       '<button onclick="' + NS + 'HuyMon()">✖ Hủy thay đổi chưa lưu</button>' +
       (cfgMon ? '<span class="tlNote">Lưu lần cuối: ' + new Date(cfgMon.t * 1000).toLocaleString('vi-VN') + ' · ' + e(cfgMon.ai) + '</span>' : '') + '</div></div>';
@@ -180,6 +201,8 @@
     var tang = function (a, b2) { return a - b2; };
     var on = Object.keys(s.on).filter(function (k) { return s.on[k]; }).map(Number).sort(tang);
     if (on.join() !== m.dong.slice().sort(tang).join()) return true;
+    var cm = ((TL.d.cfg || {}).mon || {})[id];
+    if (String(s.so || '') !== String((cm && cm.so) || '')) return true;   // 09/10: so dong ra
     return on.some(function (k) { return (s.diem[k] || 0) !== (m.diem[k] || m.diemGoc[k] || 0); });
   }
   window[NS + 'Chep'] = function () {
@@ -225,7 +248,17 @@
     var s = nhap(TL.sel), dong = [], diem = {};
     Object.keys(s.on).forEach(function (k) { if (s.on[k]) { dong.push(Number(k)); if (s.diem[k] > 0) diem[k] = s.diem[k]; } });
     if (!dong.length) return toast('Chưa chọn dòng nào');
-    var id = TL.sel; ghi({ op: 'mon', id: id, dong: dong, diem: diem }, function () { delete TL.sua[id]; });
+    var id = TL.sel, body = { op: 'mon', id: id, dong: dong, diem: diem };
+    if (s.so && !(s.so[0] === dong.length && s.so[1] === dong.length)) body.so = s.so;   // 09/10: so dong ra moi lan tao
+    ghi(body, function () { delete TL.sua[id]; });
+  };
+  // 09/10: o "so dong ra" (i = 0 tu / 1 den; -1 = bo, ra du moi dong tick)
+  window[NS + 'So'] = function (i, v) {
+    var s = nhap(TL.sel);
+    if (i < 0) { s.so = null; return ve(); }
+    var nOn = Object.keys(s.on).filter(function (k) { return s.on[k]; }).length;
+    var so = s.so || [nOn, nOn]; so[i] = Math.max(0, Math.floor(Number(v) || 0)); s.so = so;
+    clearTimeout(TL.soT); TL.soT = setTimeout(ve, 600);   // ve lai sau khi ngung go (giu o nhap)
   };
   window[NS + 'BoMon'] = function () { var id = TL.sel; ghi({ op: 'xoa', id: id }, function () { delete TL.sua[id]; }); };
   window[NS + 'LuuHu'] = function () {
