@@ -24,6 +24,7 @@ const TIENLEN_DIR = process.env.TIENLEN_DIR || nodePath.join(__dirname, '..', 'T
 // chỉ cần thả vào thư mục đó, không phải đụng vào file này nữa.
 const ASSETS = require('./assets');
 const ITEMICON = require('./itemicon');   // 🍀 02/10: icon vật phẩm game (tấm ảnh ở /opt/minigame/itemicon)
+const PET3D = require('./pet3d');   // 🐾 08/10: mô hình 3D trân thú trade (dữ liệu ở /opt/minigame/pet3d)
 
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
@@ -130,6 +131,8 @@ function startWebPlay(ctx) {
 
             // 🍀 02/10: icon vật phẩm game - stream từ đĩa, không nạp RAM
             if (req.method === 'GET' && path.startsWith('/itemicon/')) return ITEMICON.serve(req, res, path.slice(10));
+            // 🐾 08/10: mô hình 3D trân thú (Ghép Ngọc) - chỉ file trong chỉ mục, stream từ đĩa
+            if (req.method === 'GET' && path.startsWith('/pet3d/')) return PET3D.serve(req, res, path.slice(7));
             // 💎 05/10: script giao diện Ghép Ngọc (tĩnh, không cần đăng nhập - API mới cần)
             if (req.method === 'GET' && path === '/tb.js') {   // 🎒 05/10: giao diện túi đồ boss
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'tuiboss.client.js'));

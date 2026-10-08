@@ -72,8 +72,105 @@
     '.gnKq .m{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0;font-weight:800}',
     '.gnKq small{color:var(--muted)}',
     '.gnRow.da{opacity:.75}',
+    // 🐾 08/10: xem mô hình 3D trân thú (bản thường + các đời biến dị)
+    '#gnApp button.gn3d{margin-top:4px;padding:3px 8px;font-size:12px;border-color:#7c5cff;background:#241d45;color:#e3dbff}',
+    '.gn3dM{position:fixed;inset:0;z-index:9999;background:#000b;display:flex;align-items:center;justify-content:center;padding:16px}',
+    '.gn3dBox{width:min(760px,100%);max-height:100%;display:flex;flex-direction:column;background:#151826;border:1px solid var(--line);border-radius:14px;overflow:hidden}',
+    '.gn3dHd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}.gn3dHd b{flex:1;font-size:15px;color:var(--tx)}',
+    '.gn3dHd small{color:var(--muted);font-weight:600}',
+    '.gn3dM button{background:#232838;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:700;cursor:pointer}',
+    '.gn3dCv{position:relative;height:min(62vh,500px);background:radial-gradient(circle at 50% 40%,#252c42,#10131b)}',
+    '.gn3dCv canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}',
+    '.gn3dLd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;pointer-events:none}',
+    '.gn3dChips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px}',
+    '.gn3dM .gn3dChips button{padding:5px 10px;font-size:12px}.gn3dM .gn3dChips button.on{border-color:#f5c542;background:#3a2e0e;color:#ffe08a}',
+    '.gn3dNote{padding:0 12px 10px;color:var(--muted);font-size:11px}',
   ].join('');
   function ic(x, cls) { return typeof vqIcon === 'function' ? vqIcon(x && x.ic, cls) : ''; }
+  // ===== 🐾 08/10: XEM 3D TRÂN THÚ - chỉ mục /pet3d/index.json (bot pet3d.js), three.js r128 tải lúc mở lần đầu =====
+  // 1 cửa sổ WebGL + chip chọn bản (Thường / Đời 1..N) -> mỗi lần chỉ tải 1 bản (~100-300 KB), điện thoại nhẹ.
+  var P3 = { idx: null, dang: false, v: null };
+  function p3(id) { return P3.idx && P3.idx[id]; }
+  function p3Nut(id, dai) { return p3(id) ? '<button class="gn3d" onclick="event.stopPropagation();gn3d(\'' + id + '\')">👁 ' + (dai ? 'Xem 3D ' + p3(id).so + ' bản' : '3D') + '</button>' : ''; }
+  function p3Idx() {
+    if (P3.idx || P3.dang) return; P3.dang = true;
+    fetch('/pet3d/index.json').then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { P3.idx = j || {}; if (Object.keys(P3.idx).length && S()) ve(); }).catch(function () { P3.idx = {}; });
+  }
+  function nap(src) { return new Promise(function (ok, loi) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { loi(new Error('không tải được thư viện 3D')); }; document.head.appendChild(s); }); }
+  var CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0/';
+  function napThree() {
+    if (window.THREE && THREE.DDSLoader && THREE.OrbitControls) return Promise.resolve();
+    return (window.THREE ? Promise.resolve() : nap(CDN + 'build/three.min.js')).then(function () { return Promise.all([nap(CDN + 'examples/js/loaders/DDSLoader.js'), nap(CDN + 'examples/js/controls/OrbitControls.js')]); });
+  }
+  // m<k>.bin = [u32 dài JSON][JSON {parts:[{nv,ni,i32,tex,alpha,o:{pos,nor,uv,idx}}]}][đệm 4][Float32/Uint16/Uint32]
+  function docBin(ab) {
+    var n = new DataView(ab).getUint32(0, true), js = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, n))), d0 = 4 + n + ((4 - ((4 + n) % 4)) % 4);
+    js.parts.forEach(function (p) {
+      p.pos = new Float32Array(ab, d0 + p.o.pos, p.nv * 3); p.nor = p.o.nor < 0 ? null : new Float32Array(ab, d0 + p.o.nor, p.nv * 3);
+      p.uv = p.o.uv < 0 ? null : new Float32Array(ab, d0 + p.o.uv, p.nv * 2); p.idx = p.i32 ? new Uint32Array(ab, d0 + p.o.idx, p.ni) : new Uint16Array(ab, d0 + p.o.idx, p.ni);
+    });
+    return js;
+  }
+  function p3Dong() {
+    var V = P3.v; P3.v = null; document.removeEventListener('keydown', p3Esc);
+    if (V) {
+      cancelAnimationFrame(V.raf); window.removeEventListener('resize', V.co);
+      if (V.grp) V.grp.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      Object.keys(V.tex).forEach(function (k) { V.tex[k].dispose(); });
+      if (V.ctl) V.ctl.dispose(); if (V.r) { V.r.dispose(); V.r.forceContextLoss(); }
+    }
+    var m = document.getElementById('gn3dM'); if (m) m.remove();
+  }
+  function p3Esc(e) { if (e.key === 'Escape') p3Dong(); }
+  function p3Chon(k) {
+    var V = P3.v; k = Math.floor(Number(k) || 0); if (!V || k < 1 || k > (p3(V.id) || {}).so) return; V.k = k;
+    [].forEach.call(document.querySelectorAll('#gn3dM .gn3dChips button'), function (b, i) { b.classList.toggle('on', i + 1 === k); });
+    var ld = document.querySelector('#gn3dM .gn3dLd'); ld.textContent = '⏳ Đang tải mô hình...'; ld.style.display = '';
+    var lay = V.bin[k] ? Promise.resolve(V.bin[k]) : fetch('/pet3d/' + V.id + '/m' + k + '.bin').then(function (r) { if (!r.ok) throw new Error('thiếu mô hình'); return r.arrayBuffer(); });
+    lay.then(function (ab) {
+      if (P3.v !== V || V.k !== k) return; V.bin[k] = ab;
+      var m = docBin(ab), grp = new THREE.Group(), box = new THREE.Box3();
+      m.parts.forEach(function (p) {
+        var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p.pos, 3));
+        if (p.nor) g.setAttribute('normal', new THREE.BufferAttribute(p.nor, 3)); if (p.uv) g.setAttribute('uv', new THREE.BufferAttribute(p.uv, 2));
+        g.setIndex(new THREE.BufferAttribute(p.idx, 1)); if (!p.nor) g.computeVertexNormals();
+        var opt = { side: THREE.DoubleSide, alphaTest: p.alpha ? 0.4 : 0 };
+        if (p.tex) { if (!V.tex[p.tex]) { V.tex[p.tex] = V.dds.load('/pet3d/' + V.id + '/' + p.tex); V.tex[p.tex].flipY = false; } opt.map = V.tex[p.tex]; }
+        grp.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial(opt))); g.computeBoundingBox(); box.union(g.boundingBox);
+      });
+      if (V.grp) { V.sc.remove(V.grp); V.grp.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
+      V.grp = grp; V.sc.add(grp);
+      var c = new THREE.Vector3(); box.getCenter(c); var h = Math.max(box.max.y - box.min.y, (box.max.x - box.min.x) * 0.75, (box.max.z - box.min.z) * 0.75);
+      V.ctl.target.copy(c); V.cam.position.set(c.x + h * 0.9, c.y + h * 0.3, c.z + h * 1.9); V.cam.near = h / 100; V.cam.far = h * 50; V.cam.updateProjectionMatrix(); V.ctl.update();
+      ld.style.display = 'none';
+    }).catch(function (e) { if (P3.v === V) ld.textContent = '❌ ' + e.message; });
+  }
+  window.gn3d = function (id) {
+    var x = p3(id); if (!x) return; p3Dong();
+    var d = (S().dich || []).find(function (y) { return y.id === id; }), ten = x.ten || (d && d.ten) || ('#' + id);
+    var chips = ''; for (var k = 1; k <= x.so; k++) chips += '<button onclick="gn3dChon(' + k + ')">' + (k === 1 ? 'Bản thường' : '🧬 Đời ' + (k - 1)) + '</button>';
+    var m = document.createElement('div'); m.id = 'gn3dM'; m.className = 'gn3dM';
+    m.innerHTML = '<div class="gn3dBox"><div class="gn3dHd"><b>🐾 ' + esc(ten) + ' <small>· ' + x.so + ' bản ngoại hình</small></b><button onclick="gn3dDong()">✕</button></div>'
+      + '<div class="gn3dCv"><canvas></canvas><div class="gn3dLd">⏳ Đang tải thư viện 3D...</div></div><div class="gn3dChips">' + chips + '</div>'
+      + '<div class="gn3dNote">Kéo để xoay · lăn chuột / chụm 2 ngón để phóng to · mô hình gốc của game (tư thế đứng mặc định)</div></div>';
+    m.addEventListener('click', function (e) { if (e.target === m) p3Dong(); });
+    document.body.appendChild(m); document.addEventListener('keydown', p3Esc);
+    napThree().then(function () {
+      if (!document.getElementById('gn3dM')) return;
+      var cv = m.querySelector('canvas'), V = { id: id, k: 1, bin: {}, tex: {}, grp: null };
+      V.r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); V.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      V.sc = new THREE.Scene(); V.sc.add(new THREE.AmbientLight(0xffffff, 0.75)); var dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(60, 120, 100); V.sc.add(dl);
+      V.cam = new THREE.PerspectiveCamera(32, 1, 1, 4000); V.ctl = new THREE.OrbitControls(V.cam, cv);
+      V.ctl.enableDamping = true; V.ctl.autoRotate = true; V.ctl.autoRotateSpeed = 1.5; V.ctl.enablePan = false;
+      V.dds = new THREE.DDSLoader();
+      V.co = function () { var w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return; V.r.setSize(w, h, false); V.cam.aspect = w / h; V.cam.updateProjectionMatrix(); };
+      window.addEventListener('resize', V.co); V.co();
+      P3.v = V; V.raf = requestAnimationFrame(function f() { if (P3.v !== V) return; V.ctl.update(); V.r.render(V.sc, V.cam); V.raf = requestAnimationFrame(f); });
+      p3Chon(1);
+    }).catch(function (e) { var ld = m.querySelector('.gn3dLd'); if (ld) ld.textContent = '❌ ' + e.message; });
+  };
+  window.gn3dChon = p3Chon;
+  window.gn3dDong = p3Dong;
   // 07/10: ghi chú CẤP PET cho trứng trân thú làm món đích: cấp mang cố định (vd 95) hoặc ra pet theo cấp nhân vật
   // trứng / đản trân thú -> mục 🐾 Trân thú (trade pet)
   function laPet(x) { return !!(x && (x.canCap || x.kieu || /Thú Đản|Vật Đản|Lân Đản/.test(x.ten || ''))); }
@@ -195,7 +292,7 @@
       + (ok && ok !== 'ok' ? '<div style="font-size:12px;color:#ffb4a8;margin-top:6px;text-align:center">' + esc(ok) + '</div>' : '') + '</div>';
     // ---- đích
     h += '<div class="gnBox"><h4>🎯 MÓN MUỐN LUYỆN RA</h4>';
-    if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span>' + capNote(d, true) + '</div>';
+    if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span>' + capNote(d, true) + p3Nut(d.id, true) + '</div>';
     else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở tab 🎯 Món đích bên dưới</div>';
     h += '<div class="gnMul">' + [1.5, 2, 5, 10, 20].map(function (m) { return '<button onclick="gnNhan(' + m + ')" title="Chọn món đích có giá trị gần ' + m + ' lần đồ đang bỏ vào">' + m + 'x</button>'; }).join('') + '</div>'
       + '<div class="gnMul">' + [35, 55, 75].filter(function (v) { return v <= s.tiMax; }).map(function (v) { return '<button onclick="gnPct(' + v + ')" title="Tự bỏ đồ trong rương cho đủ ' + v + '%">' + v + '%</button>'; }).join('') + '</div>'
@@ -220,7 +317,7 @@
         : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>');
     } else if (tab === 'dich' || tab === 'pet') {   // 07/10: món đích chia 2 mục - 💎 Nguyên liệu / 🐾 Trân thú
       var dd = (s.dich || []).filter(khop).filter(function (x) { return (tab === 'pet') === laPet(x); });
-      h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + capNote(x, false) + '</div></div>'; }).join('') + '</div>';
+      h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + capNote(x, false) + p3Nut(x.id) + '</div></div>'; }).join('') + '</div>';
     } else {
       var L = s.lich || [];
       var tenDich = function (id) { var x = (s.dich || []).find(function (y) { return y.id === id; }); return x ? x.ten : '#' + id; };
@@ -240,7 +337,7 @@
   // 07/10: lúc kim đang quay (GN.busy) mọi nút đổi đồ / KNB / đích / tab bị chặn. Trước đó bấm vẫn được -> ve() vẽ lại cả bảng:
   // kim mới nhảy thẳng tới kết quả + vòng tỉ lệ vẽ theo số KNB / đồ mới -> kim dừng lệch vùng, trông như lỗi.
   function ban(im) { if (!GN.busy) return false; if (!im) toast('⏳ Đang luyện - chờ kim dừng đã'); return true; }
-  window.gnSync = function () { if (ban(1)) return; api('/api/gn/state', {}).then(function (j) { if (GN.busy) return; GN.s = j; GN.kq = null; chuanHoa(); ve(); }).catch(function (e) { toast('❌ ' + e.message); }); };
+  window.gnSync = function () { if (ban(1)) return; api('/api/gn/state', {}).then(function (j) { if (GN.busy) return; GN.s = j; GN.kq = null; chuanHoa(); ve(); p3Idx(); }).catch(function (e) { toast('❌ ' + e.message); }); };
   window.gnTab = function (t) { if (ban()) return; GN.chon = t; ve(); };
   window.gnLoc = function (v) { if (ban(1)) return; GN.loc = v; ve(); var i = document.querySelector('#gnApp .gnTabs input'); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } };
   window.gnThem = function (id) { if (ban()) return; var r = S().ruong.find(function (x) { return x.id === id; }); if (!r) return; var c = GN.vao[id] || 0; if (c >= r.qty) return toast('⚠️ Rương chỉ có ' + r.qty); if (dichObj() && duRoi()) return toast('⚠️ Đã đủ ' + S().tiMax + '% - không bỏ thêm được'); GN.vao[id] = c + 1; if (thua()) { if (c) GN.vao[id] = c; else delete GN.vao[id]; return toast('⚠️ Món này làm thừa (đã đủ ' + S().tiMax + '% khi bỏ món rẻ hơn) - chọn món nhỏ hơn'); } GN.kq = null; ve(); };
