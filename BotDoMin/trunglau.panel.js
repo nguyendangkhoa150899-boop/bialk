@@ -35,7 +35,7 @@
       '#tlBox .tlGrp b{display:block;font-size:12px;color:#c9a45c;margin:0 0 4px 2px}' +
       '#tlBox .tlIt{display:flex;justify-content:space-between;gap:6px;width:100%;text-align:left;margin:2px 0;padding:5px 8px;font-size:12.5px;background:transparent;border-color:transparent}' +
       '#tlBox .tlIt.on{background:#243049;border-color:#4a5a80}#tlBox .tlIt small{color:#93a0b8}#tlBox .tlIt .tlDot{color:#5fae84;font-weight:700}' +
-      '#tlBox .tlPane{display:grid;gap:12px;min-width:0}#tlBox .tlCard{background:#161c28;border:1px solid #2a3346;border-radius:10px;padding:12px;display:grid;gap:10px;min-width:0}' +
+      '#tlBox .tlPane{display:grid;gap:12px;min-width:0;align-content:start}#tlBox .tlCard{background:#161c28;border:1px solid #2a3346;border-radius:10px;padding:12px;display:grid;gap:10px;min-width:0}' +
       '#tlBox h4{margin:0;font-size:15px}#tlBox .tlKv{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:#b9c3d6}' +
       '#tlBox .tlHu{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}#tlBox .tlHu label{display:grid;gap:3px;font-size:12px;color:#93a0b8}' +
       '#tlBox input[type=number]{width:100%;padding:5px 7px;border-radius:6px;border:1px solid #3a4560;background:#0f141d;color:#e6ebf5;font-variant-numeric:tabular-nums}' +
