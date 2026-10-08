@@ -8,7 +8,8 @@
   var NHOM = [['Liên (dây chuyền)', ['10553100', '10553112'], '10553103'], ['Giới (nhẫn)', ['10553101', '10553113'], '10553104'],
     ['Ngọc (hộ phù)', ['10553102', '10553114'], '10553105'], ['Đai (thắt lưng)', ['10553106'], '10553107'],
     ['Vai (hộ kiên)', ['10553108'], '10553109'], ['Giáp (áo)', ['10553110'], '10553111'],
-    ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null]];
+    ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null],
+    ['Long Văn (tẩy ở NPC Long Văn ra đúng mẫu)', ['10157001', '10157002', '10157003', '10157004', '10157005', '10157006', '10157007', '10157008', '10157009'], null]];
   function e(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function loi(er) { if (!er || !er.toasted) toast('❌ ' + ((er && er.message) || er)); }
   function so(n) { return Number(n || 0).toLocaleString('vi-VN'); }
@@ -82,7 +83,7 @@
       h += '<div class="tlGrp"><b>' + e(g[0]) + '</b>';
       g[1].concat(g[2] ? [g[2]] : []).forEach(function (id) {
         var m = mon(id); if (!m) return;
-        h += '<button class="tlIt' + (TL.sel === id ? ' on' : '') + '" onclick="tlChon(\'' + id + '\')"><span>' + (m.chan ? '✦ Chân' : 'Thường') + ' <small>' + id + '</small></span><span><small>' + e(m.gd) + '</small>' +
+        h += '<button class="tlIt' + (TL.sel === id ? ' on' : '') + '" onclick="tlChon(\'' + id + '\')"><span>' + (m.chan ? '✦ Chân' : (/^Long V/.test(m.ten) ? m.ten.replace(/^Long Văn /, '') : 'Thường')) + ' <small>' + id + '</small></span><span><small>' + e(m.gd) + '</small>' +
           ((cfg.mon || {})[id] ? ' <span class="tlDot" title="đã chỉnh">●</span>' : '') + '</span></button>';
       });
       h += '</div>';
