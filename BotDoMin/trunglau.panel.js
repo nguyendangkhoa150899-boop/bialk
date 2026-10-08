@@ -154,15 +154,15 @@
     });
     h += '</tbody></table></div>';
     // 09/10 (chủ server): số dòng ra mỗi lần tạo < số dòng tick -> bốc ngẫu nhiên (vd Long Văn +9: 13 trong 15 -> đủ 11 dòng gốc ~5,7%)
-    var so = s.so || [nOn, nOn], kGoc = m.dongGoc.filter(function (k) { return s.on[k]; }).length;
-    var soOk = so[0] >= 1 && so[0] <= so[1] && so[1] <= nOn;
-    h += '<div class="tlSo"><b>Số dòng ra mỗi lần tạo:</b> từ <input type="number" min="1" max="' + nOn + '" step="1" value="' + so[0] + '" oninput="' + NS + 'So(0,this.value)" class="' + (s.so ? 'tlCh' : '') + '">' +
-      ' đến <input type="number" min="1" max="' + nOn + '" step="1" value="' + so[1] + '" oninput="' + NS + 'So(1,this.value)" class="' + (s.so ? 'tlCh' : '') + '"> trong <b>' + nOn + '</b> dòng tick' +
-      (s.so ? ' <button onclick="' + NS + 'So(-1)">↺ ra đủ mọi dòng tick</button>' : '') + '<div class="tlNote">' +
+    var sr = s.so || [nOn, nOn], kGoc = m.dongGoc.filter(function (k) { return s.on[k]; }).length;
+    var soOk = sr[0] >= 1 && sr[0] <= sr[1] && sr[1] <= nOn;
+    h += '<div class="tlSo"><div><b>Số dòng ra mỗi lần tạo:</b> từ <input type="number" min="1" max="' + nOn + '" step="1" value="' + sr[0] + '" oninput="' + NS + 'So(0,this.value)" class="' + (s.so ? 'tlCh' : '') + '">' +
+      ' đến <input type="number" min="1" max="' + nOn + '" step="1" value="' + sr[1] + '" oninput="' + NS + 'So(1,this.value)" class="' + (s.so ? 'tlCh' : '') + '"> trong <b>' + nOn + '</b> dòng tick' +
+      (s.so ? ' <button onclick="' + NS + 'So(-1)">↺ ra đủ mọi dòng tick</button>' : '') + '</div><div class="tlNote">' +
       (!soOk ? '⚠ Phải 1 ≤ từ ≤ đến ≤ ' + nOn + '.' :
-        so[1] >= nOn && so[0] >= nOn ? 'Mỗi món ra <b>đủ ' + nOn + ' dòng</b> đã tick (không ngẫu nhiên).' :
-          'Mỗi món bốc ngẫu nhiên ' + (so[0] === so[1] ? so[0] : so[0] + '–' + so[1]) + ' dòng trong ' + nOn + ' dòng tick. ' +
-          (kGoc ? 'Xác suất ra <b>đủ ' + kGoc + ' dòng gốc</b>: <b>' + (xsDu(nOn, kGoc, so[0], so[1]) * 100).toFixed(1) + '%</b>' : '') +
+        sr[1] >= nOn && sr[0] >= nOn ? 'Mỗi món ra <b>đủ ' + nOn + ' dòng</b> đã tick (không ngẫu nhiên).' :
+          'Mỗi món bốc ngẫu nhiên ' + (sr[0] === sr[1] ? sr[0] : sr[0] + '–' + sr[1]) + ' dòng trong ' + nOn + ' dòng tick. ' +
+          (kGoc ? 'Xác suất ra <b>đủ ' + kGoc + ' dòng gốc</b>: <b>' + (xsDu(nOn, kGoc, sr[0], sr[1]) * 100).toFixed(1) + '%</b>' : '') +
           ' <i>(giả định engine chọn đều - chưa đo; đo lại bằng DB sau khi người chơi tẩy)</i>') + '</div></div>';
     h += '<div class="tlBar"><button class="tlGo" onclick="' + NS + 'LuuMon()"' + (nOn && nOn <= max && soOk ? '' : ' disabled') + '>💾 Lưu mã ' + id + '</button>' +
       (cfgMon ? '<button class="tlDo" onclick="' + NS + 'BoMon()">↩ Trả mã này về gốc</button>' : '') +
@@ -257,7 +257,7 @@
     var s = nhap(TL.sel);
     if (i < 0) { s.so = null; return ve(); }
     var nOn = Object.keys(s.on).filter(function (k) { return s.on[k]; }).length;
-    var so = s.so || [nOn, nOn]; so[i] = Math.max(0, Math.floor(Number(v) || 0)); s.so = so;
+    var sr = s.so || [nOn, nOn]; sr[i] = Math.max(0, Math.floor(Number(v) || 0)); s.so = sr;
     clearTimeout(TL.soT); TL.soT = setTimeout(ve, 600);   // ve lai sau khi ngung go (giu o nhap)
   };
   window[NS + 'BoMon'] = function () { var id = TL.sel; ghi({ op: 'xoa', id: id }, function () { delete TL.sua[id]; }); };
