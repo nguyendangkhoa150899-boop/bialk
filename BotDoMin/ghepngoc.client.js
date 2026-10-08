@@ -58,6 +58,9 @@
     '.gnCard .gnNm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:800;font-size:12.5px;line-height:1.3}',
     '.gnCard .gnGia{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}',
     '.gnCard .gnPt{color:#3ddc84;font-weight:900;font-size:13px;font-variant-numeric:tabular-nums}.gnCard .gnPt small{font-weight:600;font-size:11px}',
+    // 08/10: chưa chọn món đích -> nhắc chọn để thấy % (mỗi thẻ hiện +?% mờ)
+    '.gnHint{font-size:12.5px;color:#f0c35a;background:#2a2412;border:1px dashed #6b5a2e;border-radius:8px;padding:7px 10px;margin-bottom:8px}',
+    '.gnCard .gnPt0{color:#6b7385;font-size:11.5px;font-weight:700}',
     '.gnMul{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:center}#gnApp .gnMul button{padding:4px 10px;font-size:12px}',
     '.gnLich div{font-size:12px;padding:3px 0;border-bottom:1px solid #ffffff0d}',
     '.gnW{color:#3ddc84;font-weight:800}.gnL{color:#ff5d5d;font-weight:800}',
@@ -210,10 +213,11 @@
       var r = (s.ruong || []).filter(khop), dObj = dichObj();
       var phanTram = function (g) { var v = g / dObj.gia * (100 - s.phi); return v >= 1 ? (Math.round(v * 10) / 10) : (Math.round(v * 1000) / 1000); };
       // 08/10: số lượng = nhãn nổi trên góc icon (×có, đang bỏ vào thì xanh dung/có); "riêng / shop" chỉ còn trong chú thích rê chuột
-      h += r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')" title="' + esc(x.ten) + ' · có ' + x.qty + ' · giá ' + esc(x.tu) + '">' +
+      h += (r.length && !dObj ? '<div class="gnHint">👉 Chọn <b>món muốn luyện ra</b> (tab 💎 Nguyên liệu / 🐾 Trân thú) để thấy mỗi món trong rương cộng bao nhiêu <b>%</b> tỉ lệ.</div>' : '') +
+        (r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')" title="' + esc(x.ten) + ' · có ' + x.qty + ' · giá ' + esc(x.tu) + '">' +
         '<span class="gnIcW">' + ic(x, 'vqIcS') + '<span class="gnSl">' + x.qty + '</span>' + (dung ? '<span class="gnDung" title="đã bỏ vào ' + dung + '">✓' + dung + '</span>' : '') + '</span>' +
-        '<div class="gnTx"><span class="gnNm">' + esc(x.ten) + '</span><span class="gnGia">' + vnd(x.gia) + ' / cái</span>' + (dObj ? '<span class="gnPt">+' + phanTram(x.gia) + '% <small>/ cái</small></span>' : '') + '</div></div>'; }).join('') + '</div>'
-        : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>';
+        '<div class="gnTx"><span class="gnNm">' + esc(x.ten) + '</span><span class="gnGia">' + vnd(x.gia) + ' / cái</span>' + (dObj ? '<span class="gnPt">+' + phanTram(x.gia) + '% <small>/ cái</small></span>' : '<span class="gnPt0">+?% / cái</span>') + '</div></div>'; }).join('') + '</div>'
+        : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>');
     } else if (tab === 'dich' || tab === 'pet') {   // 07/10: món đích chia 2 mục - 💎 Nguyên liệu / 🐾 Trân thú
       var dd = (s.dich || []).filter(khop).filter(function (x) { return (tab === 'pet') === laPet(x); });
       h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + capNote(x, false) + '</div></div>'; }).join('') + '</div>';
