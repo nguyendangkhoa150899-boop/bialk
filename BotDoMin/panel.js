@@ -231,6 +231,11 @@ function startPanel(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/tc.js') {   // 💎 10/10 giao diện Custom % tẩy tư chất (khu Công cụ, chỉ SUPER thao tác; đọc lại mỗi lần, sửa không cần restart)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'tuchat.panel.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/br-data.json') {   // 📊 05/10 data.json của tools/bang-roi (deploy lên /var/www/netco4/) + icon từng món, cache theo mtime
                 const f = process.env.BANGROI_DATA || '/var/www/netco4/data.json';
                 try {
@@ -337,7 +342,7 @@ function startPanel(ctx) {
                     '/api/giveaway/config', '/api/debt/add', '/api/debt/clear', '/api/daily/cfg',
                     // tab 🐉: bảng KNB/duyệt đơn/liên kết nhân vật/shop item
                     '/api/withdraw/start', '/api/withdraw/stop', '/api/withdraw/approve', '/api/withdraw/reject',
-                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/tpik/sync', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', '/api/gm/trunglau', '/api/gm/vohon', /* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
+                    '/api/tlbb/lienket', '/api/tlbb/taoclone', '/api/tpik/save', '/api/tpik/sync', '/api/gm/act', '/api/gm/doche', '/api/gm/amkhi', '/api/gm/trunglau', '/api/gm/vohon', '/api/gm/tuchat',/* 04/10: cổng mod giờ bị chặn MỌI route (trừ /api/nhatky, /api/whoami) ngay sau isAuthed - danh sách này chỉ còn là lớp phụ */
                     // 29/09 NetCo4: admin THƯỜNG được sửa SHOP (giá, nhóm, hạn, hình) để bạn bè giúp đặt giá:
                     // bỏ '/api/itemshop/save', '/api/itemcats/save', '/api/itemshop/daymax', '/api/itemshop/upload' khỏi danh sách chặn.
                     '/api/pot/cfg', /* 02/10: '/api/gift/save' mở cho mod (tab 🎁 Quà tặng) */ '/api/gift/grant', '/api/ichkyban/cfg', '/api/ichkyban/save', '/api/feat/set',
@@ -1154,6 +1159,23 @@ function startPanel(ctx) {
                             const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
                             j = await gmCall('POST', '/api/vohon', { op, w: body.w, giucap: body.giucap, ai: who });
                             if (j && j.ok) ctx.writeLog('ADMIN', `[VÕ HỒN] ${who} ${op}: ${String(j.msg || '').slice(0, 220)} ${op === 'luu' ? JSON.stringify(body.w || {}).slice(0, 400) + ' giucap=' + body.giucap : ''}`);
+                        } else return sendJSON(res, 400, { ok: false, error: 'op không hợp lệ' });
+                        return sendJSON(res, j && j.ok ? 200 : 502, j || { ok: false, error: 'panel GM không trả lời' });
+                    } catch (e) {
+                        return sendJSON(res, 502, { ok: false, error: String(e.message).slice(0, 200) });
+                    }
+                }
+                // 💎 10/10: Custom % tẩy tư chất -> panel GM /api/tuchat (đọc: xem; ghi: luu / tra - chỉ SUPER). Ghi tuchat.txt, hiệu lực ngay, không restart.
+                if (path === '/api/gm/tuchat') {
+                    try {
+                        const op = String(body.op || 'xem');
+                        let j;
+                        if (op === 'xem') j = await gmCall('GET', '/api/tuchat');
+                        else if (op === 'luu' || op === 'tra') {
+                            if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Chỉ cổng SUPER được chỉnh tẩy tư chất' });
+                            const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                            j = await gmCall('POST', '/api/tuchat', { op, p: body.p, bat: body.bat, ai: who });
+                            if (j && j.ok) ctx.writeLog('ADMIN', `[TƯ CHẤT] ${who} ${op}: ${String(j.msg || '').slice(0, 260)}`);
                         } else return sendJSON(res, 400, { ok: false, error: 'op không hợp lệ' });
                         return sendJSON(res, j && j.ok ? 200 : 502, j || { ok: false, error: 'panel GM không trả lời' });
                     } catch (e) {
@@ -2242,6 +2264,14 @@ const HTML = `<!DOCTYPE html>
               <span class="muted">Trọng số từng chiêu ở từng ô, có ghi chú chiêu làm gì; tẩy giữ cấp hay về cấp 1. Hiệu lực ngay lần lĩnh ngộ / tẩy kế tiếp, không cần restart.</span>
             </div>
             <div id="vhBox" class="epOnly" style="display:none"></div>
+          </div>
+          <div class="quaTool">
+            <div class="qT">
+              <b>💎 Custom % tẩy tư chất (giám định lại ở Triệu Tiết)</b>
+              <button class="btn-grey" onclick="tcLoad()">🔄 Tải</button>
+              <span class="muted">Tỉ lệ mỗi lần tẩy ra đúng mốc 60 / 45 / 35 / 30 / 25 / 20%, so với engine gốc; có nút về mặc định. Hiệu lực ngay lần tẩy kế tiếp, không cần restart.</span>
+            </div>
+            <div id="tcBox" class="epOnly" style="display:none"></div>
           </div>
         </div>
       </div>
@@ -5596,7 +5626,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
-<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script>
+<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script><script src="/tc.js"></script>
 </body>
 </html>`;
 
