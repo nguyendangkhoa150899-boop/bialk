@@ -2425,7 +2425,7 @@ const PAGE = [
     '<div class="ikAct"><button onclick="ikGvHuy()" style="background:#232735;color:var(--tx)">Huỷ</button><button class="bt" id="ikGvOk" onclick="ikGvOk()">🎁 Tặng</button></div>',
     '</div></div>',
     '<div id="ikList"></div>',
-    '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Lúc bấm <b>📦 Nhận</b> mới cần nhân vật online để bot giao vào túi.</div>',
+    '<div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">Mua đồ ở <b>🏪 Shop Item</b> rồi bấm <b>🧰 Vào rương</b> - mua kiểu này <b>không cần đang online</b>. Bấm <b>📦 Nhận</b> (không cần online) rồi vào game tới <b>NPC Ví Web</b> bấm <b>Nhận đồ Thương Phố</b> - hoặc đổi bản đồ là tự vào túi.</div>',
     '</div></div>', // hết #pageIk
 
     // ================= TRANG 📈 CỔ PHIẾU DOG =================

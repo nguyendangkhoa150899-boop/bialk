@@ -42,6 +42,7 @@ module.exports = function (ctx) {
     // ctx: db(), getUserData, saveDbNow, writeLog, icon(id), items() [{id,n}]
     let CHO = new Map();   // id -> { chong, tui? } món được phép (dựng từ bảng game)
     let CHO_LOI = '';
+    let CHONG_ALL = new Map();   // 🧰 10/10: id -> số chồng của MỌI món CommonItem (rút từ Rương Ích Kỷ: món ngoài danh sách Thương Phố)
 
     function ensureDirs() { for (const d of [DIR, OUTTP, OUTTP_DONE]) fs.mkdirSync(d, { recursive: true }); }
     function readLines(file) { try { return fs.readFileSync(file, 'latin1').split(/\r?\n/).filter(Boolean); } catch { return []; } }
@@ -104,6 +105,12 @@ module.exports = function (ctx) {
         const out = new Map();
         const ci = readLines(path.join(CFG_DIR, 'CommonItem.txt')).slice(2);
         if (!ci.length) throw new Error('không đọc được CommonItem.txt');
+        const chongAll = new Map();
+        for (const l of ci) {
+            const c = l.split('\t'); if (!/^\d{8}$/.test(c[0] || '')) continue;
+            chongAll.set(c[0], Math.max(1, +c[12] || 1));
+        }
+        CHONG_ALL = chongAll;
         for (const l of ci) {
             const c = l.split('\t'); if (!/^\d{8}$/.test(c[0] || '')) continue;
             const r = rule[c[11]]; if (!r || !r.bank || r.uniq) continue;
@@ -171,7 +178,13 @@ module.exports = function (ctx) {
                 continue;
             }
             const k = kho(rc.guid);
-            for (const x of rc.ds) {
+            // 🧰 10/10: phiếu HOÀN của món KHÔNG thuộc Thương Phố (chỉ có thể đến từ lệnh rút Rương Ích Kỷ, vd trang bị) -> trả về
+            // rương của ví liên kết GUID đó; để trong kho Thương Phố thì kẹt (rut() chặn món ngoài danh sách). Không tìm được ví -> kho.
+            const veRuong = [], vaoKho = [];
+            const chuRuong = rc.hoan && typeof ctx.ichKyAdd === 'function' ? userCuaGuid(rc.guid) : null;
+            for (const x of rc.ds) (chuRuong && !x.k && !CHO.has(x.id) ? veRuong : vaoKho).push(x);
+            for (const x of veRuong) ctx.ichKyAdd(chuRuong, x.id, x.n);
+            for (const x of vaoKho) {
                 const key = x.id + '|' + x.k;
                 k.it[key] = (Number(k.it[key]) || 0) + x.n;
                 k.t[key] = Date.now();
@@ -179,7 +192,8 @@ module.exports = function (ctx) {
             }
             const dsGop = gopDs(rc.ds);   // phiếu ghi TỪNG Ô -> gộp số lượng cùng món
             const moTa = dsGop.map(x => `${tenMon(x.id)} x${x.n}${x.k ? ' (cố định)' : ''}`).join(', ');
-            ghiNk(k, rc.hoan ? 'hoan' : 'gui', moTa, dsGop);
+            if (veRuong.length) ctx.writeLog('ADMIN', `[THƯƠNG PHỐ] GUID ${rc.guid} hoàn về 🧰 Rương Ích Kỷ: ${gopDs(veRuong).map(x => `${tenMon(x.id)} x${x.n}`).join(', ')} (${rc.file})`);
+            ghiNk(k, rc.hoan ? 'hoan' : 'gui', moTa + (veRuong.length ? ' (món ngoài Thương Phố về 🧰 Rương Ích Kỷ)' : ''), dsGop);
             seen[rc.file] = Date.now();
             ctx.saveDbNow();
             ctx.writeLog('ADMIN', `[THƯƠNG PHỐ] GUID ${rc.guid} ${rc.hoan ? 'game HOÀN về kho' : 'gửi ra kho'}: ${moTa} (${rc.file})`);
@@ -213,6 +227,16 @@ module.exports = function (ctx) {
         const u = ctx.getUserData(userId);
         const g = String(u.tlbbGuid || '');
         return guidOk(g) ? { u, guid: g } : { u, guid: '' };
+    }
+    // ví đang liên kết GUID (không tạo ví mới); nhiều ví cùng GUID -> null (không đoán)
+    function userCuaGuid(guid) {
+        const db = ctx.db(); let ra = null;
+        for (const [key, v] of Object.entries(db)) {
+            if (key.startsWith('_') || !v || typeof v !== 'object' || String(v.tlbbGuid || '') !== String(guid)) continue;
+            if (ra) return null;
+            ra = v;
+        }
+        return ra;
     }
 
     function state(userId) {
@@ -326,6 +350,40 @@ module.exports = function (ctx) {
         ctx.writeLog('ADMIN', `[THƯƠNG PHỐ → RƯƠNG ÍCH KỶ] ${who || u.name || userId} (GUID ${guid}): ${moTa.join(', ')}`);
         return { message: `🧰 Đã chuyển ${gop.size} loại sang Rương Ích Kỷ`, state: state(userId) };
     }
+    // 🧰 10/10 (chủ server): NHẬN đồ Rương Ích Kỷ vào game QUA KÊNH THƯƠNG PHỐ (.tpin / .tpdone) thay cho hàng quà:
+    // không cần online, game kiểm đủ ô túi mới phát, ghi mã lệnh trước khi phát (không phát trùng), túi đầy thì chờ,
+    // nhận ở NPC Ví Web (Nhận đồ Thương Phố) hoặc khi đăng nhập / đổi bản đồ. Phát lỗi giữa chừng -> phiếu HOAN:
+    // món ngoài danh sách Thương Phố quay về rương (pollPhieu), món trong danh sách vào kho Thương Phố (rút lại được).
+    // Hàm này CHỈ ghi lệnh; trừ rương / trả rương do ichKyClaim (index.js) làm. Đồ rương luôn KHÔNG cố định (k = 0).
+    function rutTuRuong(userId, itemId, n, who) {
+        if (tat()) return { error: '🏪 Kênh nhận đồ (Thương Phố) đang tạm khoá - admin đang bảo trì, đồ vẫn nằm trong rương' };
+        const { u, guid } = guidCua(userId);
+        if (!guid) return { error: 'Chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã' };
+        const id = String(itemId || ''); n = Math.floor(Number(n));
+        if (!/^\d{8}$/.test(id) || !(n > 0)) return { error: 'Dữ liệu món không hợp lệ' };
+        const c = CHO.get(id);
+        const chong = c ? c.chong : (CHONG_ALL.get(id) || 1);
+        const tui = /^[25]/.test(id) ? 2 : 1;   // dữ liệu thật: 2xxxxxxx / 5xxxxxxx túi Nguyên liệu, còn lại (3x, trang bị 1x) túi Đạo cụ
+        const moiDong = Math.max(1, chong * RUT_O_MOI_DONG);
+        const dong = [];
+        for (let con = n; con > 0; con -= moiDong) {
+            const tx = 'r' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
+            dong.push(`${tx} ${id} ${Math.min(con, moiDong)} 0 ${tui} ${chong}`);
+        }
+        try {
+            ensureDirs();
+            const cu = readLines(tpin(guid));
+            writeAtomic(tpin(guid), cu.concat(dong).join('\n') + '\n');
+        } catch (e) {
+            return { error: 'Lỗi ghi lệnh vào game: ' + e.message };
+        }
+        const moTa = `🧰 ${tenMon(id)} x${n} (từ Rương Ích Kỷ)`;
+        const k = kho(guid);
+        ghiNk(k, 'rut', moTa, [{ id, k: 0, n }], dong.map(l => l.split(' ')[0]));
+        ctx.saveDbNow();
+        ctx.writeLog('ADMIN', `[RƯƠNG ÍCH KỶ → GAME] ${who || u.name || userId} (GUID ${guid}): ${tenMon(id)} x${n}, ${dong.length} lệnh`);
+        return { ok: true, guid, soLenh: dong.length, nhanVat: u.ingameName || '' };
+    }
     // admin: danh sách món được rút qua rương (kèm tên + icon), lưu lại
     function getIk() { return cfg().ik.map(id => ({ id, ten: tenMon(id), ic: ctx.icon(id), cho: CHO.has(id) })); }
     function setIk(ids) {
@@ -352,5 +410,5 @@ module.exports = function (ctx) {
         return { tatFile: fs.existsSync(TAT_FILE), cfg: { tat: !!cfg().tat, chan: cfg().chan }, soMon: CHO.size, loi: CHO_LOI, ds: out };
     }
 
-    return { napCho, pollPhieu, donTpin, state, rut, rutIk, getIk, setIk, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
+    return { napCho, pollPhieu, donTpin, state, rut, rutIk, rutTuRuong, getIk, setIk, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
 };

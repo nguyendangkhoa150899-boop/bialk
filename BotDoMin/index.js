@@ -2135,37 +2135,27 @@ async function ichKyClaim(userId, itemId, qty, username) {
     if (ichKyRutMax(itemId) && qty > ichKyRutMax(itemId)) {
         return { error: `Món này rút tối đa ${ichKyRutMax(itemId)} cái mỗi lần (mỗi cái chiếm 1 ô túi) - rút nhiều lần nhé` };
     }
+    if (qty > 1000) return { error: 'Mỗi lần nhận tối đa 1.000 cái' };
     const user = getUserData(userId);
     const k = ichKyOf(user);
     const co = Number(k.items[itemId]) || 0;
     if (co < 1) return { error: 'Trong rương không có món này' };
     if (co < qty) return { error: `Rương chỉ còn ${co} cái` };
-    const gameName = (user.ingameName || '').trim();
-    if (!gameName) return { error: 'Chưa liên kết tên nhân vật trong game - nhắn admin liên kết trước đã' };
-    if (deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi nhận nhé (chưa mất gì)' };
-    deliverLock();
-    const on = await requireOnline(gameName);
-    if (on.unknown) { deliverUnlock(); return { error: `Không kiểm tra được trạng thái online (${on.msg || 'timeout'}) - thử lại sau (chưa mất gì)` }; }
-    if (!on.online) { deliverUnlock(); return { error: `Nhân vật ${gameName} chưa online trong game - vào game rồi bấm NHẬN (chưa mất gì)` }; }
-    if (!ichKyTake(user, itemId, qty)) { deliverUnlock(); return { error: 'Rương không đủ món' }; }
+    // 🧰 10/10 (chủ server): nhận QUA KÊNH THƯƠNG PHỐ (.tpin) thay cho hàng quà - KHÔNG cần online, game kiểm đủ ô túi mới phát,
+    // không phát trùng, túi đầy thì chờ; nhận ở NPC Ví Web nút "Nhận đồ Thương Phố" (dùng chung) hoặc khi đăng nhập / đổi bản đồ.
+    // Đồng bộ hoàn toàn (không await) -> 2 lần bấm không chen nhau. Trừ rương trước, ghi lệnh lỗi thì trả lại ngay.
+    if (!ichKyTake(user, itemId, qty)) return { error: 'Rương không đủ món' };
+    const r = TP.rutTuRuong(userId, itemId, qty, username);
+    if (!r || !r.ok) {
+        ichKyAdd(user, itemId, qty);
+        saveDbNow();
+        return { error: '↩️ ' + ((r && r.error) || 'Chưa xếp được lệnh') + ' - đồ vẫn trong rương', state: ichKyState(userId) };
+    }
     saveDbNow();
     const it = itemShopList().find(x => x.id === itemId);
-    const ten = (it && it.name) || itemId;
-    let r = null, err = null;
-    try { r = await tlbb.giveItem(gameName, itemId, qty); } catch (e) { err = e; }
-    deliverUnlock();
-    if (r && r.ok) {
-        writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} nhận ${ten} x${qty} vào game (${gameName})`);
-        return { ok: true, message: `✅ Đã gửi ${qty.toLocaleString()} ${ten} cho ${gameName} - vào túi khi đăng nhập hoặc đổi bản đồ`, state: ichKyState(userId) };
-    }
-    const msg = (r && r.message) || (err && err.message) || 'không nhận được phản hồi';
-    if (/lỗi 404|lỗi 401|fetch failed|ECONNREFUSED|aborted|player not found/i.test(msg)) {
-        ichKyAdd(user, itemId, qty);   // CHẮC CHẮN chưa giao -> trả lại rương
-        saveDbNow();
-        return { error: `↩️ Chưa giao được (${/player not found/i.test(msg) ? 'không thấy nhân vật / sai ID vật phẩm' : 'hệ thống bảo trì'}) - đã trả lại vào rương`, state: ichKyState(userId) };
-    }
-    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ LỖI] ${username || userId} nhận ${ten} x${qty} -> ${gameName} | ${msg} - kiểm results.log, chưa nhận thì trả tay`);
-    return { error: '⏳ Chưa xác nhận được với game - đồ đã trừ khỏi rương, admin sẽ kiểm. Đừng bấm lại kẻo trùng.', state: ichKyState(userId) };
+    const ten = (it && it.name) || (gameItems().find(x => x.id === itemId) || {}).n || itemId;
+    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} nhận ${ten} x${qty} vào game (GUID ${r.guid}${r.nhanVat ? ' ' + r.nhanVat : ''}, ${r.soLenh} lệnh)`);
+    return { ok: true, message: `📦 Đã chuyển ${qty.toLocaleString()} ${ten} sang hàng chờ nhận của ${r.nhanVat || 'nhân vật'} - vào game tới NPC Ví Web bấm "Nhận đồ Thương Phố" (hoặc đổi bản đồ). Túi phải đủ chỗ; thiếu chỗ thì đồ chờ tới khi dọn túi`, state: ichKyState(userId) };
 }
 
 // ⚠️ vaoRuong = true: KHÔNG kiểm online, KHÔNG giao SFTP - bỏ thẳng vào 🧰 Rương Ích Kỷ.

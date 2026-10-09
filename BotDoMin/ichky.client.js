@@ -83,7 +83,7 @@
   pop.addEventListener('click', function (ev) { if (ev.target === pop) ikcPopDong(); });
 
   var MD = {
-    nhan: { t: '📦 Nhận', go: '📦 Nhận vào game', note: 'Đưa đồ vào túi trong game - nhân vật phải đang <b>ONLINE</b>. Bot giao lần lượt từng món.' },
+    nhan: { t: '📦 Nhận', go: '📦 Nhận vào game', note: 'Không cần online. Đồ vào hàng chờ của nhân vật - vào game tới <b>NPC Ví Web</b> bấm <b>Nhận đồ Thương Phố</b> (hoặc đổi bản đồ). Túi phải đủ chỗ, thiếu chỗ thì đồ chờ.' },
     tang: { t: '🎁 Tặng', go: '🎁 Tặng', note: 'Chuyển thẳng sang rương người nhận, họ <b>không cần online</b>. Tặng rồi là <b>không lấy lại được</b>.' },
     xoa: { t: '🗑️ Xoá', go: '🗑️ Xoá vĩnh viễn', note: 'Bỏ hẳn khỏi rương, <b>không hoàn gì, không lấy lại được</b>.' }
   };
@@ -277,7 +277,7 @@
       var ket = function (loi) {
         C.busy = false;
         if (loi) toast('❌ ' + (xong ? 'Đã xong ' + xong + '/' + viec.length + ' món. Dừng ở ' + (tim(viec[i].id) || { name: viec[i].id }).name + ': ' : '') + loi);
-        else toast((md === 'nhan' ? '✅ Đã gửi ' : md === 'tang' ? '🎁 Đã tặng ' : '🗑️ Đã xoá ') + viec.length + ' loại (' + fmt(mon) + ' món)' + (md === 'nhan' ? ' - vào túi khi đăng nhập hoặc đổi bản đồ' : ''));
+        else toast((md === 'nhan' ? '✅ Đã gửi ' : md === 'tang' ? '🎁 Đã tặng ' : '🗑️ Đã xoá ') + viec.length + ' loại (' + fmt(mon) + ' món)' + (md === 'nhan' ? ' - vào game tới NPC Ví Web bấm Nhận đồ Thương Phố (hoặc đổi bản đồ)' : ''));
         donChon(); window.ikDraw();
         if (loi && typeof ikSync === 'function') ikSync();
       };
