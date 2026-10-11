@@ -224,8 +224,25 @@ let ITEMS = [];
 async function loadItems() {
     const j = await gmCall('GET', '/api/items?all=1');
     if (!j || !j.ok || !Array.isArray(j.items)) throw new Error((j && j.error) || 'không đọc được danh mục vật phẩm');
-    ITEMS = j.items.map((x) => ({ id: String(x.id), n: String(x.name || x.id), kind: String(x.kind || '') }));
+    ITEMS = j.items.map((x) => ({ id: String(x.id), n: String(x.name || x.id) + ltdNote(Number(x.id)), kind: String(x.kind || '') }));
     return ITEMS.length;
+}
+// 🐾 11/10 (chủ server): 62 Linh Thú Đan DÙNG ĐƯỢC (bảng PetSkillLevelup.txt của server, nâng ở Vân Diêu Diêu Lạc Dương 275,295)
+// -> gắn "nâng chiêu gì" vào tên hiện trên web (túi boss, Rương Ích Kỷ, vòng quay, shop...). Tooltip trong game của Khí / Nhận / Hoặc / Mộc
+// ghi sai "Tạm chưa sử dụng" (client khóa, không sửa được). Mỗi nhóm: [mã cấp 1, cấp đầu dùng được, cấp cuối, chiêu được nâng].
+const LTD = [
+    [30503034, 1, 9, 'Hàn Băng / Liệt Hỏa / Huyết Độc / Huyền Lôi Chú, Thống Kích, Mãnh Kích'],
+    [30503043, 1, 9, 'Trì Độn, Giảo Hoạt, Hàm Hậu, Liều Mạng, Pháp Hồn, Man Lực'],
+    [30503052, 1, 9, 'Mượn Lực, Di Hồn, Thuấn Ảnh, Cường Thân, Ngưng Thần (siêu cấp)'],
+    [30503061, 1, 9, 'Băng / Hỏa / Độc / Huyền Hồn (thành Cương)'],
+    [30503070, 2, 9, 'Siêu cấp Phản Kích / Hấp Huyết / Phản Chấn / Linh Động'],
+    [30503079, 1, 3, 'Cực Băng / Kiếp Hỏa / Hủ Độc / Huyền Lôi Sát (siêu cấp)'],
+    [30503088, 4, 9, 'Siêu cấp Cực Băng / Kiếp Hỏa / Hủ Độc / Huyền Lôi Sát'],
+    [30503097, 1, 9, 'Ngưng Băng, Phần Diễm, Thích Huyền, Tụ Độc, Thiết Cốt, Nhận Cân (siêu cấp)'],
+];
+function ltdNote(id) {
+    for (const [goc, a, b, chieu] of LTD) { const cap = id - goc + 1; if (cap >= a && cap <= b) return ' — nâng ' + chieu + ' lên cấp ' + cap; }
+    return '';
 }
 function items() { return ITEMS; }
 
