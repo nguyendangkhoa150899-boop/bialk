@@ -224,7 +224,7 @@ let ITEMS = [];
 async function loadItems() {
     const j = await gmCall('GET', '/api/items?all=1');
     if (!j || !j.ok || !Array.isArray(j.items)) throw new Error((j && j.error) || 'không đọc được danh mục vật phẩm');
-    ITEMS = j.items.map((x) => ({ id: String(x.id), n: String(x.name || x.id) + ltdNote(Number(x.id)), kind: String(x.kind || '') }));
+    ITEMS = j.items.map((x) => ({ id: String(x.id), n: ganNote(String(x.name || x.id), ltdNote(Number(x.id))), kind: String(x.kind || '') }));
     return ITEMS.length;
 }
 // 🐾 11/10 (chủ server): 62 Linh Thú Đan DÙNG ĐƯỢC (bảng PetSkillLevelup.txt của server, nâng ở Vân Diêu Diêu Lạc Dương 275,295)
@@ -240,6 +240,12 @@ const LTD = [
     [30503088, 4, 9, 'Siêu cấp Cực Băng / Kiếp Hỏa / Hủ Độc / Huyền Lôi Sát'],
     [30503097, 1, 9, 'Ngưng Băng, Phần Diễm, Thích Huyền, Tụ Độc, Thiết Cốt, Nhận Cân (siêu cấp)'],
 ];
+// chen chu thich TRUOC " [N cap]": vong quay / Ruong Ich Ky rut gon ten bang cach cat tu " [" (vongquay.js gon) -> dat sau se mat
+function ganNote(ten, note) {
+    if (!note) return ten;
+    const i = ten.indexOf(' [');
+    return i >= 0 ? ten.slice(0, i) + note + ten.slice(i) : ten + note;
+}
 function ltdNote(id) {
     for (const [goc, a, b, chieu] of LTD) { const cap = id - goc + 1; if (cap >= a && cap <= b) return ' — nâng ' + chieu + ' lên cấp ' + cap; }
     return '';
