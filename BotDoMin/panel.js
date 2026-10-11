@@ -327,6 +327,20 @@ function startPanel(ctx) {
                     const log = (st.log || []).slice(0, 80).map((x) => ({ t: x.t, ten: x.ten, tenMon: x.tenMon, sl: x.sl }));
                     return sendJSON(res, 200, { ok: true, cfg: { on: st.cfg.on, gia: st.cfg.gia, max: st.cfg.max, macDinh: st.cfg.macDinh }, pool, log });
                 }
+                // 🍀 11/10 (chủ server): MOD SỬA ĐƯỢC BỘ QUÀ vòng quay (món / SL / trọng số / bật-tắt từng món) - đặt TRƯỚC chốt chặn mod.
+                // Giá mở vòng, số lần quay / vòng, BẬT-TẮT vòng quay và cấp lượt vẫn CHỈ SUPER: khi mod lưu giữ nguyên giá trị đang có.
+                // Không trả danh sách ví / uid / IP. Mỗi lần lưu ghi nhật ký ADMIN "[VÒNG QUAY] mod <IP> (sửa bộ quà)".
+                if (ctx.vongQuay && (path === '/api/vq/modcfg' || path === '/api/vq/modsave' || path === '/api/vq/modtim')) {
+                    const b = (req.method === 'POST' ? await readBody(req) : {}) || {};
+                    const gon = (st) => ({ cfg: st.cfg, pool: st.pool });
+                    if (path === '/api/vq/modtim') return sendJSON(res, 200, { ok: true, items: ctx.vongQuay.tim(b.q) });
+                    if (path === '/api/vq/modcfg') return sendJSON(res, 200, { ok: true, ...gon(ctx.vongQuay.state()) });
+                    const cur = ctx.vongQuay.state().cfg;
+                    const who = (epOk(req) ? 'SUPER ' : 'mod ') + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '') + ' (sửa bộ quà)';
+                    const r = ctx.vongQuay.save({ on: cur.on, gia: cur.gia, max: cur.max, pool: b.pool }, who);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...gon(r) });
+                }
                 if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Cổng mod chỉ xem 📒 Nhật ký, 🎒 Túi đồ boss và 🍀 Vòng quay' });
 
                 if (path === '/api/state') {
@@ -2477,12 +2491,19 @@ const HTML = `<!DOCTYPE html>
     </div>
     <div id="tab-vqx" class="hidden"><!-- 🍀 05/10: Vòng quay may mắn - bản CHỈ XEM cho cổng mod (sửa ở 🎁 Quà tặng cổng SUPER) -->
       <div class="card">
-        <h2>🍀 Vòng quay may mắn <span class="muted" style="font-size:13px;font-weight:400">giống trang người chơi (🪪 Cá nhân → 🍀 Vòng Quay) · chỉ xem</span></h2>
+        <h2>🍀 Vòng quay may mắn <span class="muted" style="font-size:13px;font-weight:400">giống trang người chơi (🪪 Cá nhân → 🍀 Vòng Quay) · sửa được bộ quà (giá / số lần quay / bật-tắt vòng quay chỉ SUPER)</span></h2>
         <div class="note">Mở hoặc làm mới vòng: game bốc <b>24 ô</b> theo trọng số từ bộ quà dưới đây; mỗi lần quay trúng 1 ô. Tỉ lệ ghi ở bảng là ước tính mỗi lần quay (trọng số ÷ tổng trọng số trung bình của 24 ô), cùng cách tính với tab sửa của admin.</div>
         <div id="vqxSum" class="muted" style="font-size:13px;margin-top:6px">đang tải...</div>
-        <input id="vqxLoc" placeholder="🔎 Lọc theo tên hoặc ID..." oninput="vqxDraw()" style="margin-top:8px;max-width:340px">
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <input id="vqxQ" placeholder="🔎 Tìm vật phẩm trong game để thêm (tên không dấu hoặc ID)" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')vqxTim()">
+          <button class="btn-grey" onclick="vqxTim()">Tìm</button>
+          <button class="btn-green" id="vqxLuuBtn" onclick="vqxLuu()">💾 Lưu bộ quà</button>
+          <button class="btn-grey" onclick="vqxLoad()">🔄 Tải lại</button>
+        </div>
+        <div id="vqxKq" style="margin-top:6px"></div>
+        <input id="vqxLoc" placeholder="🔎 Lọc bộ quà đang có theo tên hoặc ID..." oninput="vqxDraw()" style="margin-top:8px;max-width:340px">
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:8px">
-          <div style="flex:2;min-width:320px;max-height:560px;overflow:auto"><table><thead><tr><th></th><th>Vật phẩm</th><th>SL</th><th>Trọng số</th><th>Tỉ lệ / lần quay</th></tr></thead><tbody id="vqxPool"></tbody></table></div>
+          <div style="flex:2;min-width:320px;max-height:560px;overflow:auto"><table><thead><tr><th title="Bỏ tick = không bốc vào vòng (giữ dòng)">Bật</th><th></th><th>Vật phẩm</th><th>SL</th><th>Trọng số</th><th>Tỉ lệ / lần quay</th><th></th></tr></thead><tbody id="vqxPool"></tbody></table></div>
           <div style="flex:1;min-width:260px"><h3 style="margin-top:0">📜 Lượt quay gần đây</h3><div id="vqxLog" class="muted" style="font-size:13px;max-height:520px;overflow:auto"></div></div>
         </div>
       </div>
@@ -4792,15 +4813,26 @@ function vqaFill(){var c=VQA.cfg;vqaEl('vqOn').checked=!!c.on;vqaEl('vqGia').val
   vqaEl('vqaVi').innerHTML=VQA.vi.map(function(v){return '<option value="'+v.uid+'">'+esc(v.ten)+(v.game?' · 🎮 '+esc(v.game):'')+'</option>';}).join('');
   vqaDraw();vqaNguoi();vqaLogDraw();}
 // 🍀 05/10: bản CHỈ XEM vòng quay cho cổng mod (/api/vq/xem)
-var VQX=null;
-function vqxLoad(){api('/api/vq/xem').then(function(j){VQX=j;VQX.pool.sort(function(a,b){return b.w-a.w;});vqxDraw();}).catch(function(e){vqaEl('vqxSum').textContent='❌ '+e.message;});}
+// 11/10 (chủ server): mod SỬA ĐƯỢC bộ quà ở đây (/api/vq/modcfg | modsave | modtim) - giá / số lần quay / bật-tắt vòng quay vẫn chỉ SUPER
+var VQX=null,VQXKQ=[],VQXDIRTY=false;
+function vqxDirty(on){VQXDIRTY=!!on;var b=vqaEl('vqxLuuBtn');if(b)b.textContent=on?'💾 Lưu bộ quà (CHƯA LƯU)':'💾 Lưu bộ quà';}
+function vqxLoad(){Promise.all([api('/api/vq/xem'),api('/api/vq/modcfg')]).then(function(a){VQX=a[0];VQX.pool=a[1].pool;VQX.cfg=a[1].cfg;vqxDirty(false);vqxDraw();}).catch(function(e){vqaEl('vqxSum').textContent='❌ '+e.message;});}
 function vqxDraw(){if(!VQX)return;var P=VQX.pool,c=VQX.cfg,loc=(vqaEl('vqxLoc').value||'').toLowerCase();
-  var at=P.length?P.reduce(function(s,x){return s+x.w;},0)/P.length:0,E=Math.min(24,P.length||24)*at;
-  vqaEl('vqxSum').innerHTML=(c.on?'<b style="color:var(--green)">ĐANG BẬT</b>':'<b style="color:var(--red)">ĐANG TẮT</b>')+' · mở / làm mới vòng: <b>'+Number(c.gia||0).toLocaleString('vi-VN')+'</b> KNB · tối đa <b>'+c.max+'</b> lần quay mỗi vòng · bộ quà <b>'+P.length+'</b> món'+(c.macDinh?' (bộ mặc định của server)':'');
-  vqaEl('vqxPool').innerHTML=P.map(function(x){if(loc&&String(x.id).indexOf(loc)<0&&String(x.ten).toLowerCase().indexOf(loc)<0)return '';var p=E>0?x.w/E*100:0;
-    return '<tr><td>'+vqaIc(x.ic)+'</td><td>'+esc(x.ten)+' <span class="muted">#'+x.id+'</span></td><td>'+x.sl+'</td><td>'+x.w+'</td><td><b>'+(p>=1?p.toFixed(1):p.toFixed(3))+'%</b></td></tr>';}).join('')||'<tr><td colspan="5" class="muted">Không có món nào.</td></tr>';
+  var on=P.filter(function(x){return !x.off;}),at=on.length?on.reduce(function(s,x){return s+x.w;},0)/on.length:0,E=Math.min(24,on.length||24)*at;
+  vqaEl('vqxSum').innerHTML=(c.on?'<b style="color:var(--green)">ĐANG BẬT</b>':'<b style="color:var(--red)">ĐANG TẮT</b>')+' · mở / làm mới vòng: <b>'+Number(c.gia||0).toLocaleString('vi-VN')+'</b> KNB · tối đa <b>'+c.max+'</b> lần quay mỗi vòng · bộ quà <b>'+P.length+'</b> món (đang bật '+on.length+')'+(c.macDinh?' (bộ mặc định của server)':'');
+  vqaEl('vqxPool').innerHTML=P.map(function(x,i){if(loc&&String(x.id).indexOf(loc)<0&&String(x.ten).toLowerCase().indexOf(loc)<0)return '';var p=(!x.off&&E>0)?x.w/E*100:0;
+    return '<tr style="'+(x.off?'opacity:.45;':'')+'"><td><input type="checkbox" style="width:auto" '+(x.off?'':'checked')+' onchange="VQX.pool['+i+'].off=!this.checked;vqxDirty(true);vqxDraw()"></td><td>'+vqaIc(x.ic)+'</td><td>'+esc(x.ten)+' <span class="muted">#'+x.id+'</span></td>'
+    +'<td><input class="mini-in" style="width:64px" type="number" min="1" max="999" value="'+x.sl+'" onchange="VQX.pool['+i+'].sl=Number(this.value);vqxDirty(true)"></td>'
+    +'<td><input class="mini-in" style="width:84px" type="number" min="1" max="100000" value="'+x.w+'" onchange="VQX.pool['+i+'].w=Number(this.value);vqxDirty(true);vqxDraw()"></td>'
+    +'<td><b>'+(p>=1?p.toFixed(1):p.toFixed(3))+'%</b></td><td><button class="btn-red" onclick="VQX.pool.splice('+i+',1);vqxDirty(true);vqxDraw()">🗑</button></td></tr>';}).join('')||'<tr><td colspan="7" class="muted">Không có món nào.</td></tr>';
   var gio=function(t){var d=new Date(t);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+' '+d.getDate()+'/'+(d.getMonth()+1);};
   vqaEl('vqxLog').innerHTML=(VQX.log||[]).map(function(x){return '<div style="padding:3px 0;border-bottom:1px solid var(--line)"><span class="muted">'+gio(x.t)+'</span> <b>'+esc(x.ten)+'</b> trúng '+esc(x.tenMon)+' ×'+x.sl+'</div>';}).join('')||'Chưa có lượt quay nào.';}
+function vqxTim(){var q=vqaEl('vqxQ').value.trim();if(!q)return;api('/api/vq/modtim',{q:q}).then(function(j){VQXKQ=j.items;var b=vqaEl('vqxKq');
+  if(!j.items.length){b.innerHTML='<span class="muted">Không thấy vật phẩm nào.</span>';return;}
+  b.innerHTML=j.items.map(function(it,k){return '<button class="btn-grey" style="margin:2px;padding:3px 8px;display:inline-flex;align-items:center;gap:6px" onclick="vqxThem('+k+')">'+vqaIc(it.ic)+esc(it.ten)+' <span class="muted">#'+it.id+'</span> ➕</button>';}).join('');}).catch(function(e){toast('❌ '+e.message);});}
+function vqxThem(k){var it=VQXKQ[k];if(!it||!VQX)return;VQX.pool.unshift({id:it.id,sl:1,w:100,off:false,ten:it.ten,ic:it.ic});vqxDirty(true);vqxDraw();toast('➕ Đã thêm '+it.ten+' (trọng số 100) - nhớ bấm 💾 Lưu bộ quà');}
+function vqxLuu(){if(!VQX)return;api('/api/vq/modsave',{pool:VQX.pool.map(function(p){return {id:p.id,sl:p.sl,w:p.w,off:p.off};})})
+  .then(function(){toast('💾 Đã lưu bộ quà vòng quay');vqxLoad();}).catch(function(e){if(!e.toasted)toast('❌ '+e.message);});}
 function vqaTong(){var on=VQA.pool.filter(function(x){return !x.off;});
   var at=on.length?on.reduce(function(s,x){return s+x.w;},0)/on.length:0;return {n:on.length,E:Math.min(24,on.length||24)*at};}
 function vqaDraw(){if(!VQA)return;var loc=(vqaEl('vqaLoc').value||'').toLowerCase();var s=vqaTong();
