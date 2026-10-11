@@ -1156,7 +1156,7 @@ function startPanel(ctx) {
                         let j;
                         if (op === 'xem') j = await gmCall('GET', '/api/trunglau');
                         else if (op === 'giu') j = await gmCall('GET', '/api/trunglau/giu');
-                        else if (['mon', 'xoa', 'chep', 'hu', 'tra', 'restart'].includes(op)) {   // 08/10: chep = 📋 chép dòng Thường sang Chân
+                        else if (['mon', 'xoa', 'chep', 'giong', 'hu', 'tra', 'restart'].includes(op)) {   // 08/10: chep = 📋 chép dòng Thường sang Chân; 11/10: giong = Chân Giới <-> Chân Ngọc giống hệt
                             if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Chỉ cổng SUPER được chỉnh Trùng Lâu' });
                             const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
                             j = await gmCall('POST', '/api/trunglau', { op, id: String(body.id || ''), dong: body.dong, diem: body.diem, so: body.so, hu: body.hu, ai: who });   // 09/10: so = số dòng ra mỗi lần tạo

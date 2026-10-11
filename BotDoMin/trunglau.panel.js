@@ -187,8 +187,30 @@
             : '<button class="' + (TL.xnChep === id ? 'tlDo' : 'tlGo') + '" onclick="' + NS + 'Chep()">' + (TL.xnChep === id ? '⚠ Bấm lần nữa để chép đè Chân ' + m.chanDich : '📋 Chép dòng sang Chân ' + m.chanDich) + '</button>') +
         '</div></div>';
     }
+    // 📋 11/10 (chủ server): Chân Giới <-> Chân Ngọc giống hệt - chép dòng + điểm + số dòng ra; hiệu ứng thần khí giữ riêng
+    if (m.giong && mon(m.giong)) {
+      var g = mon(m.giong), dirtyG = chuaLuu(id), dongG = m.dong.slice().sort(function (a, b2) { return a - b2; });
+      var thieuG = dongG.filter(function (k) { return (g.dongCo || []).indexOf(k) < 0; });
+      h += '<div class="tlCard"><h4>📋 Chép giống hệt sang <span class="tlPill">' + m.giong + '</span> <span class="tlNote">' + e(g.ten) + '</span></h4>' +
+        '<div class="tlNote">' + e(g.ten) + ' sẽ có <b>đúng ' + dongG.length + ' dòng, cùng điểm, cùng số dòng ra (' + m.soDong[0] + '-' + m.soDong[1] + ')</b> như mã này. Đè cấu hình hiện tại của ' + m.giong + '. ' +
+        '<b>Hiệu ứng thần khí không chép</b> (mỗi món giữ hiệu ứng riêng). Có hiệu lực sau restart.</div>' +
+        '<div class="tlTbl"><table><thead><tr><th>Dòng</th><th>' + id + ' (đang)</th><th>' + m.giong + ' (đang)</th><th>' + m.giong + ' sau khi chép</th></tr></thead><tbody>' +
+        dongG.map(function (k) {
+          return '<tr><td>' + e(TL.d.dongTen[k]) + '</td><td class="n">' + so(m.diem[k]) + '</td><td class="n">' + (g.dong.indexOf(k) >= 0 ? so(g.diem[k]) : '<span class="tlNote">không có</span>') + '</td><td class="n"><b>' + so(seRa(m.diem[k], g.rate[k])) + '</b></td></tr>';
+        }).join('') +
+        '</tbody></table></div><div class="tlBar">' +
+        (dirtyG ? '<span class="tlNote">⚠ Mã này đang sửa chưa lưu: bấm 💾 Lưu (hoặc ✖ Hủy) trước rồi mới chép.</span>'
+          : thieuG.length ? '<span class="tlNote">⚠ ' + m.giong + ' không có số gốc cho: ' + thieuG.map(function (k) { return e(TL.d.dongTen[k]); }).join(', ') + '. Bỏ các dòng đó ở mã này rồi chép.</span>'
+            : '<button class="' + (TL.xnGiong === id ? 'tlDo' : 'tlGo') + '" onclick="' + NS + 'Giong()">' + (TL.xnGiong === id ? '⚠ Bấm lần nữa để chép đè ' + m.giong : '📋 Chép giống hệt sang ' + m.giong) + '</button>') +
+        '</div></div>';
+    }
     return h;
   }
+  window[NS + 'Giong'] = function () {
+    var id = TL.sel;
+    if (TL.xnGiong !== id) { TL.xnGiong = id; ve(); setTimeout(function () { if (TL.xnGiong === id) { TL.xnGiong = 0; ve(); } }, 6000); return; }
+    TL.xnGiong = 0; ghi({ op: 'giong', id: id });
+  };
   // 📋 08/10: điểm Chân từ điểm Thường (giống panel/trunglau.py diem_chan)
   var CONG_TT = [6, 9, 12, 15];
   function diemChan(x, k, r) {
