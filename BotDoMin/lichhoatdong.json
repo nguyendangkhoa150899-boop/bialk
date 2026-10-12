@@ -1,0 +1,377 @@
+{
+ "taoLuc": "2026-10-12T03:00:20.049Z",
+ "nguon": "tools/lich-hoat-dong.js (Public/Config/ActivityNotice.txt)",
+ "hd": [
+  {
+   "ten": "Bảo Hộ Bang Phái",
+   "nhom": "bang",
+   "ghi": "",
+   "script": 805041,
+   "scene": null,
+   "banDo": "",
+   "ngay": [
+    "19:15"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "BOSS Ác Cẩm",
+   "nhom": "boss",
+   "ghi": "",
+   "script": 810000,
+   "scene": 39,
+   "banDo": "Huyền Vũ Đảo",
+   "ngay": [
+    "03:30",
+    "12:30",
+    "19:30",
+    "21:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "BOSS Kim Cương",
+   "nhom": "boss",
+   "ghi": "",
+   "script": 810001,
+   "scene": 25,
+   "banDo": "Thương Sơn",
+   "ngay": [
+    "02:30",
+    "11:30",
+    "18:00",
+    "23:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "BOSS Long Quy",
+   "nhom": "boss",
+   "ghi": "Có túi boss web",
+   "script": 810110,
+   "scene": 158,
+   "banDo": "Thánh Thú Sơn",
+   "ngay": [
+    "11:00",
+    "15:45",
+    "19:30",
+    "23:00"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "BOSS Môn Phái",
+   "nhom": "boss",
+   "ghi": "",
+   "script": 808001,
+   "scene": null,
+   "banDo": "",
+   "ngay": [
+    "00:00",
+    "02:30",
+    "05:00",
+    "08:00",
+    "10:30",
+    "13:00",
+    "16:00",
+    "18:30",
+    "21:00"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "BOSS Nga My",
+   "nhom": "boss",
+   "ghi": "",
+   "script": 810002,
+   "scene": 32,
+   "banDo": "Võ Di",
+   "ngay": [
+    "00:30",
+    "10:30",
+    "15:30",
+    "19:45"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "BOSS Thảo Nguyên",
+   "nhom": "boss",
+   "ghi": "",
+   "script": 810003,
+   "scene": 20,
+   "banDo": "Thảo Nguyên",
+   "ngay": [
+    "01:30",
+    "13:30",
+    "18:30",
+    "22:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "BOSS Xuân Vãn",
+   "nhom": "boss",
+   "ghi": "",
+   "script": 50030,
+   "scene": null,
+   "banDo": "",
+   "ngay": [
+    "21:15"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Huyền Vũ Đảo - Lôi Lân Sứ Phụng",
+   "nhom": "boss",
+   "ghi": "",
+   "script": 808120,
+   "scene": 186,
+   "banDo": "Lâu Lan",
+   "ngay": [
+    "13:30",
+    "18:30",
+    "19:00",
+    "21:45"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Kẻ Thù Xâm Lược (Ác Tặc / Ác Bá)",
+   "nhom": "boss",
+   "ghi": "Tặc binh xuất hiện ở bản đồ → nhận nhiệm vụ, vào phó bản đánh Ác Tặc / Ác Bá (có túi boss web)",
+   "script": 50016,
+   "scene": 3,
+   "banDo": "Tung Sơn",
+   "ngay": [
+    "02:00",
+    "13:00",
+    "15:00",
+    "17:00",
+    "19:00",
+    "21:00"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Phượng Hoàng Lăng Mộ (tặc binh)",
+   "nhom": "boss",
+   "ghi": "Bản tặc binh ở Phượng Hoàng",
+   "script": 900020,
+   "scene": 443,
+   "banDo": "Lôi đài",
+   "ngay": [
+    "13:00",
+    "22:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Đánh Lén Môn Phái",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808015,
+   "scene": 9,
+   "banDo": "Thiếu Lâm Tự",
+   "ngay": [
+    "00:00",
+    "04:00",
+    "10:00",
+    "12:00",
+    "16:00",
+    "20:00",
+    "22:00"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Hoạt động Thánh Thú Sơn",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 402100,
+   "scene": 158,
+   "banDo": "Thánh Thú Sơn",
+   "ngay": [
+    "14:00",
+    "21:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Khoa Cử",
+   "nhom": "hoatdong",
+   "ghi": "Đại Lý (51,149) Chủ Khảo Quan - LV10 trở lên",
+   "script": 801016,
+   "scene": 2,
+   "banDo": "Đại Lý",
+   "ngay": [
+    "17:30",
+    "20:30",
+    "21:00",
+    "21:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Lâu Lan Tầm Bảo",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808000,
+   "scene": null,
+   "banDo": "",
+   "ngay": [
+    "08:30",
+    "16:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Linh Dược (Kính Hồ)",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808037,
+   "scene": 5,
+   "banDo": "Kính Hồ",
+   "ngay": [
+    "18:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Phụng Hoàng Cổ Thành",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808000,
+   "scene": null,
+   "banDo": "",
+   "ngay": [],
+   "tuan": [
+    "T4 19:00",
+    "T7 19:00"
+   ]
+  },
+  {
+   "ten": "Quái tuần tra Huyền Vũ Đảo",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808068,
+   "scene": 39,
+   "banDo": "Huyền Vũ Đảo",
+   "ngay": [
+    "00:00"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Sự kiện Dã Trư (Thánh Thú Sơn)",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 402103,
+   "scene": 158,
+   "banDo": "Thánh Thú Sơn",
+   "ngay": [
+    "14:45",
+    "22:15"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Tàng Kinh Các",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 810112,
+   "scene": 18,
+   "banDo": "Nhạn Nam",
+   "ngay": [
+    "10:45",
+    "16:30",
+    "21:30",
+    "23:00"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Thánh Thú Sơn - cải tiến bảo sương",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808066,
+   "scene": 158,
+   "banDo": "Thánh Thú Sơn",
+   "ngay": [
+    "03:15",
+    "10:15",
+    "13:15",
+    "18:15",
+    "23:30"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Thông Thiên Tháp",
+   "nhom": "hoatdong",
+   "ghi": "Mở 20:00 - đóng 22:00 mỗi ngày, các tầng có Boss",
+   "script": 100121,
+   "scene": null,
+   "banDo": "",
+   "ngay": [
+    "20:00"
+   ],
+   "tuan": [],
+   "den": "22:00"
+  },
+  {
+   "ten": "Thử Tài Vận May",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808000,
+   "scene": 1,
+   "banDo": "Tô Châu",
+   "ngay": [
+    "00:45"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Trân Thú Cổ Mộ",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 808000,
+   "scene": null,
+   "banDo": "",
+   "ngay": [
+    "10:15",
+    "12:15",
+    "16:15",
+    "19:15",
+    "21:15",
+    "23:15"
+   ],
+   "tuan": []
+  },
+  {
+   "ten": "Túc Cầu",
+   "nhom": "hoatdong",
+   "ghi": "",
+   "script": 402042,
+   "scene": null,
+   "banDo": "",
+   "ngay": [],
+   "tuan": [
+    "T7 19:00"
+   ]
+  },
+  {
+   "ten": "Đại Đào Sát",
+   "nhom": "pk",
+   "ghi": "",
+   "script": 808003,
+   "scene": 1,
+   "banDo": "Tô Châu",
+   "ngay": [],
+   "tuan": [
+    "T4 14:30",
+    "T7 14:30"
+   ]
+  }
+ ]
+}

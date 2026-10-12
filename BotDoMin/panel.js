@@ -323,8 +323,11 @@ function startPanel(ctx) {
                 }
                 // 📅 12/10: LỊCH BOSS (cả 2 cổng, CHỈ ĐỌC) - thông báo boss trong game đã tắt; dữ liệu sinh từ repo game tools/lich-boss.js -> lichboss.json
                 if (path === '/api/lichboss') {
-                    try { return sendJSON(res, 200, { ok: true, ...JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'lichboss.json'), 'utf8')), now: Date.now() }); }
-                    catch (e) { return sendJSON(res, 200, { ok: false, error: 'Chưa có lichboss.json' }); }
+                    // 12/10 tối: + lichhoatdong.json (repo game tools/lich-hoat-dong.js, bảng ActivityNotice: Ác Tặc / Ác Bá, Khoa Cử, boss theo lịch...)
+                    const doc = (f) => { try { return JSON.parse(require('fs').readFileSync(require('path').join(__dirname, f), 'utf8')); } catch (e) { return null; } };
+                    const b = doc('lichboss.json'), h = doc('lichhoatdong.json');
+                    if (!b && !h) return sendJSON(res, 200, { ok: false, error: 'Chưa có lichboss.json / lichhoatdong.json' });
+                    return sendJSON(res, 200, { ok: true, ds: (b && b.ds) || [], hd: (h && h.hd) || [], taoLuc: (h && h.taoLuc) || (b && b.taoLuc), now: Date.now() });
                 }
                 if (path === '/api/vq/xem' && ctx.vongQuay) {
                     const st = ctx.vongQuay.state();
@@ -2123,10 +2126,15 @@ const HTML = `<!DOCTYPE html>
     </div>
     <div id="tab-lb" class="hidden"><!-- 📅 12/10: Lịch Boss (chỉ xem, cả 2 cổng) - thông báo boss trong game đã tắt -->
       <div class="card">
-        <h2>📅 Lịch Boss <span class="muted" style="font-size:13px;font-weight:400">boss thế giới ra theo giờ (giờ server) · thông báo trong game đã tắt nên xem ở đây</span></h2>
-        <div class="note">Đến giờ, boss cũ (nếu còn) bị xóa và ra lại đủ ở các tọa độ bên dưới. Tọa độ dùng để chạy tới trong game (bản đồ + [x, y]).</div>
-        <div id="lbSum" class="muted" style="font-size:13px;margin-top:6px">đang tải...</div>
-        <div id="lbList" style="margin-top:8px"></div>
+        <h2>📅 Lịch Boss &amp; Hoạt động <span class="muted" style="font-size:13px;font-weight:400">giờ server · tự cập nhật mỗi phút · thông báo boss trong game đã tắt nên xem ở đây</span></h2>
+        <div id="lbSum" class="muted" style="font-size:13px;margin-top:4px">đang tải...</div>
+        <div id="lbSap" style="margin-top:10px"></div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px">
+          <span id="lbLoc"></span>
+          <input id="lbQ" placeholder="🔎 Tìm tên boss / hoạt động / bản đồ" style="flex:1;min-width:200px" oninput="lbVe()">
+        </div>
+        <div id="lbList" style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px"></div>
+        <div class="note" style="margin-top:10px">Boss thế giới: đến giờ boss cũ (nếu còn) bị xóa và ra lại đủ ở các tọa độ ghi trong thẻ (bấm "Xem vị trí boss"). Giờ lấy từ cấu hình server (bảng lịch ActivityNotice + script boss); nếu thấy lệch giờ thực tế trong game thì báo admin.</div>
       </div>
     </div>
     <div id="tab-tb" class="hidden"><!-- 🎒 01/10: Túi đồ boss -->
@@ -4829,20 +4837,53 @@ function vqaFill(){var c=VQA.cfg;vqaEl('vqOn').checked=!!c.on;vqaEl('vqGia').val
 // 11/10 (chủ server): mod SỬA ĐƯỢC bộ quà ở đây (/api/vq/modcfg | modsave | modtim) - giá / số lần quay / bật-tắt vòng quay vẫn chỉ SUPER
 var VQX=null,VQXKQ=[],VQXDIRTY=false;
 function vqxDirty(on){VQXDIRTY=!!on;var b=vqaEl('vqxLuuBtn');if(b)b.textContent=on?'💾 Lưu bộ quà (CHƯA LƯU)':'💾 Lưu bộ quà';}
-// 📅 12/10: Lịch Boss (chỉ xem) - giờ tính theo giờ server UTC+7, sắp theo boss ra sớm nhất
-function lbLoad(){api('/api/lichboss').then(function(j){if(!j.ok){document.getElementById('lbSum').textContent='❌ '+(j.error||'lỗi');return;}lbDraw(j);}).catch(function(e){document.getElementById('lbSum').textContent='❌ '+e.message;});}
-function lbDraw(j){
-  var d=new Date(j.now+7*3600e3),bay=d.getUTCHours()*60+d.getUTCMinutes(),hh=function(m){m=((m%1440)+1440)%1440;return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+m%60).slice(-2);};
-  var ds=(j.ds||[]).filter(function(g){return g.dangChay&&g.gio&&g.gio.length;}).map(function(g){
-    var ph=g.gio.map(function(t){var a=t.split(':');return +a[0]*60+(+a[1]);}).sort(function(a,b){return a-b;});
-    var sau=ph.filter(function(m){return m>=bay;});var toi=sau.length?sau[0]:ph[0]+1440;return {g:g,ph:ph,toi:toi};}).sort(function(a,b){return a.toi-b.toi;});
-  document.getElementById('lbSum').innerHTML='Giờ server: <b>'+hh(bay)+'</b> · '+ds.length+' nhóm boss · dữ liệu lúc '+new Date(j.taoLuc).toLocaleString('vi-VN');
-  document.getElementById('lbList').innerHTML=ds.map(function(o){var g=o.g,con=o.toi-bay;
-    var gio=o.ph.map(function(m){var la=(m===o.toi%1440);return '<span style="display:inline-block;padding:1px 6px;margin:2px;border-radius:6px;'+(la?'background:var(--green);color:#000;font-weight:700':'border:1px solid var(--line)')+'">'+hh(m)+'</span>';}).join('');
-    var bo=g.boss.map(function(b){return '<tr><td>'+esc(b.ten)+'</td><td class="muted">'+(b.cap?'cấp '+b.cap:'')+'</td><td><b>['+b.x+', '+b.y+']</b></td></tr>';}).join('');
-    return '<div class="card" style="margin:8px 0;padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><b style="font-size:15px">🗺️ '+esc(g.banDo)+' <span class="muted" style="font-weight:400">(bản đồ '+g.scene+')</span></b>'
-      +'<span>⏰ sắp ra <b>'+hh(o.toi)+'</b> · còn <b>'+(con>=60?Math.floor(con/60)+' giờ ':'')+(con%60)+' phút</b></span></div>'
-      +'<div style="margin:6px 0">'+gio+'</div><div class="tbl"><table><thead><tr><th>Boss</th><th>Cấp</th><th>Tọa độ</th></tr></thead><tbody>'+bo+'</tbody></table></div></div>';}).join('')||'<div class="muted">Không có boss nào.</div>';
+// 📅 12/10: Lịch Boss & Hoạt động (chỉ xem, cả 2 cổng) - giờ server UTC+7, tự vẽ lại mỗi phút khi đang mở tab
+var LB=null,LBLOC='tat',LBT=null,LB_THU=['CN','T2','T3','T4','T5','T6','T7'];
+function lbLoad(){api('/api/lichboss').then(function(j){if(!j.ok){document.getElementById('lbSum').textContent='❌ '+(j.error||'lỗi');return;}LB=j;LB.lech=j.now-Date.now();lbVe();
+  if(LBT)clearInterval(LBT);LBT=setInterval(function(){var t=document.getElementById('tab-lb');if(t&&!t.classList.contains('hidden'))lbVe();},60000);}).catch(function(e){document.getElementById('lbSum').textContent='❌ '+e.message;});}
+function lbPhut(t){var a=String(t).split(':');return (+a[0])*60+(+a[1]);}
+function lbHH(m){m=((m%1440)+1440)%1440;return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+m%60).slice(-2);}
+function lbCon(p){if(p<=0)return 'ngay bây giờ';var h=Math.floor(p/60),m=p%60;return (h>=24?Math.floor(h/24)+' ngày '+(h%24)+' giờ':(h?h+' giờ ':'')+(m||!h?m+' phút':''));}
+function lbLocBam(el){LBLOC=el.getAttribute('data-k');lbVe();}
+function lbSuKien(){var out=[];
+  (LB.ds||[]).forEach(function(g){if(!g.dangChay||!g.gio||!g.gio.length)return;var ten=[];g.boss.forEach(function(b){if(ten.indexOf(b.ten)<0)ten.push(b.ten);});
+    out.push({ten:'Boss thế giới · '+g.banDo,phu:ten.slice(0,5).join(', ')+(ten.length>5?' +'+(ten.length-5)+' loại':''),loai:'boss',banDo:g.banDo+' (bản đồ '+g.scene+')',ngay:g.gio.map(lbPhut),tuan:[],boss:g.boss,ghi:''});});
+  (LB.hd||[]).forEach(function(h){out.push({ten:h.ten,phu:'',loai:h.nhom==='boss'?'boss':'hd',banDo:h.banDo||'',ngay:(h.ngay||[]).map(lbPhut),
+    tuan:(h.tuan||[]).map(function(x){var a=x.split(' ');return {thu:LB_THU.indexOf(a[0]),m:lbPhut(a[1]),nhan:x};}),den:h.den?lbPhut(h.den):null,ghi:h.ghi||''});});
+  return out;}
+function lbVe(){if(!LB)return;
+  var d=new Date(Date.now()+LB.lech+7*3600e3),bay=d.getUTCHours()*60+d.getUTCMinutes(),thu=d.getUTCDay(),tuanBay=thu*1440+bay;
+  var ev=lbSuKien().map(function(e){var toi=null,dang=false,s=e.ngay.slice().sort(function(a,b){return a-b;});
+    if(s.length){var sau=s.filter(function(m){return m>=bay;});toi=(sau.length?sau[0]:s[0]+1440)-bay;if(e.den!=null)s.forEach(function(m){if(bay>=m&&bay<e.den)dang=true;});}
+    if(e.tuan.length){var w=e.tuan.map(function(x){return x.thu*1440+x.m;}).sort(function(a,b){return a-b;});var sw=w.filter(function(m){return m>=tuanBay;});var t2=(sw.length?sw[0]:w[0]+10080)-tuanBay;if(toi==null||t2<toi)toi=t2;}
+    e.ngaySx=s;e.toi=dang?0:toi;e.dang=dang;return e;}).sort(function(a,b){return a.toi-b.toi;});
+  var mau=function(p){return p<=15?'#2ecc71':p<=60?'#f39c12':'var(--line)';};
+  document.getElementById('lbSum').innerHTML='🕒 Giờ server: <b style="font-size:16px">'+lbHH(bay)+'</b> · '+LB_THU[thu]+' · '+ev.length+' boss / hoạt động có lịch';
+  var sap=ev.filter(function(e){return e.toi<=180;}).slice(0,8);
+  document.getElementById('lbSap').innerHTML='<div style="font-weight:700;margin-bottom:6px">⏰ Sắp diễn ra (3 giờ tới)</div>'+(sap.length?sap.map(function(e){
+    return '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;margin:4px 0;border-radius:8px;border:1px solid '+mau(e.toi)+';'+(e.toi<=15?'background:rgba(46,204,113,.12)':'')+'">'
+      +'<b style="min-width:56px;font-size:17px">'+(e.dang?'🔴':lbHH(bay+e.toi))+'</b>'
+      +'<span style="min-width:120px;font-weight:600;color:'+(e.toi<=60?mau(e.toi):'inherit')+'">'+(e.dang?'đang diễn ra':'còn '+lbCon(e.toi))+'</span>'
+      +'<span>'+(e.loai==='boss'?'👹 ':'🎯 ')+'<b>'+esc(e.ten)+'</b>'+(e.banDo?' <span class="muted">📍 '+esc(e.banDo)+'</span>':'')+'</span></div>';}).join(''):'<div class="muted">Không có boss / hoạt động nào trong 3 giờ tới.</div>');
+  var LOC=[['tat','Tất cả'],['boss','👹 Boss'],['hd','🎯 Hoạt động'],['tuan','📆 Hằng tuần']];
+  document.getElementById('lbLoc').innerHTML=LOC.map(function(x){return '<button data-k="'+x[0]+'" class="'+(LBLOC===x[0]?'btn-green':'btn-grey')+'" style="margin:2px" onclick="lbLocBam(this)">'+x[1]+'</button>';}).join('');
+  var q=(document.getElementById('lbQ').value||'').toLowerCase().trim();
+  var ds=ev.filter(function(e){if(LBLOC==='boss'&&e.loai!=='boss')return false;if(LBLOC==='hd'&&e.loai==='boss')return false;if(LBLOC==='tuan'&&!e.tuan.length)return false;
+    if(q&&(e.ten+' '+e.phu+' '+e.banDo+' '+(e.boss||[]).map(function(b){return b.ten;}).join(' ')).toLowerCase().indexOf(q)<0)return false;return true;});
+  document.getElementById('lbList').innerHTML=ds.map(function(e){
+    var chip=function(nhan,qua,ke){return '<span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:6px;font-size:12px;'+(ke?'background:#2ecc71;color:#000;font-weight:700':qua?'opacity:.4;border:1px solid var(--line)':'border:1px solid var(--line)')+'">'+nhan+'</span>';};
+    var keTiep=e.dang?-1:(bay+e.toi)%1440,coKe=false;
+    var gio=e.ngaySx.map(function(m){var ke=!coKe&&m===keTiep&&e.toi<1440;if(ke)coKe=true;return chip(lbHH(m)+(e.den!=null?'–'+lbHH(e.den):''),m<bay&&!ke,ke);}).join('');
+    var tuan=e.tuan.map(function(x){return chip('📆 '+x.nhan,false,false);}).join('');
+    var bo=e.boss?'<details style="margin-top:6px"><summary style="cursor:pointer">📍 Xem vị trí boss ('+e.boss.length+')</summary><table style="width:100%;margin-top:4px;font-size:13px"><tbody>'
+      +e.boss.map(function(b){return '<tr><td>'+esc(b.ten)+'</td><td class="muted">'+(b.cap?'cấp '+b.cap:'')+'</td><td style="text-align:right"><b>['+b.x+', '+b.y+']</b></td></tr>';}).join('')+'</tbody></table></details>':'';
+    return '<div class="card" style="margin:0;padding:12px;border-left:4px solid '+(e.loai==='boss'?'#e74c3c':'#3498db')+'">'
+      +'<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b style="font-size:15px">'+(e.loai==='boss'?'👹 ':'🎯 ')+esc(e.ten)+'</b>'
+      +'<span style="white-space:nowrap;font-size:12px;padding:2px 8px;border-radius:10px;border:1px solid '+mau(e.toi)+'">'+(e.dang?'🔴 đang diễn ra':'⏰ '+lbHH(bay+e.toi)+' · còn '+lbCon(e.toi))+'</span></div>'
+      +(e.phu?'<div class="muted" style="font-size:12px;margin-top:2px">'+esc(e.phu)+'</div>':'')
+      +(e.banDo?'<div style="font-size:13px;margin-top:4px">📍 '+esc(e.banDo)+'</div>':'')
+      +'<div style="margin-top:6px">'+gio+tuan+'</div>'
+      +(e.ghi?'<div class="muted" style="font-size:12px;margin-top:4px">ℹ️ '+esc(e.ghi)+'</div>':'')+bo+'</div>';}).join('')||'<div class="muted">Không có mục nào khớp.</div>';
 }
 function vqxLoad(){Promise.all([api('/api/vq/xem'),api('/api/vq/modcfg')]).then(function(a){VQX=a[0];VQX.pool=a[1].pool;VQX.cfg=a[1].cfg;vqxDirty(false);vqxDraw();}).catch(function(e){vqaEl('vqxSum').textContent='❌ '+e.message;});}
 function vqxDraw(){if(!VQX)return;var P=VQX.pool,c=VQX.cfg,loc=(vqaEl('vqxLoc').value||'').toLowerCase();
