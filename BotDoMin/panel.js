@@ -321,6 +321,11 @@ function startPanel(ctx) {
                 if (path === '/api/gn/xem' && ctx.ghepNgoc && ctx.ghepNgoc.xem) {
                     return sendJSON(res, 200, { ok: true, ...ctx.ghepNgoc.xem() });
                 }
+                // 📅 12/10: LỊCH BOSS (cả 2 cổng, CHỈ ĐỌC) - thông báo boss trong game đã tắt; dữ liệu sinh từ repo game tools/lich-boss.js -> lichboss.json
+                if (path === '/api/lichboss') {
+                    try { return sendJSON(res, 200, { ok: true, ...JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'lichboss.json'), 'utf8')), now: Date.now() }); }
+                    catch (e) { return sendJSON(res, 200, { ok: false, error: 'Chưa có lichboss.json' }); }
+                }
                 if (path === '/api/vq/xem' && ctx.vongQuay) {
                     const st = ctx.vongQuay.state();
                     const pool = st.pool.filter((x) => !x.off).map((x) => ({ id: x.id, ten: x.ten, sl: x.sl, w: x.w, ic: x.ic }));
@@ -1731,7 +1736,7 @@ const HTML = `<!DOCTYPE html>
       <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
         <button data-tab="gm" onclick="tab('gm')">🛠️ GM Thiên Long</button>
         <button data-tab="qua" onclick="tab('qua')">🎁 Phát quà &amp; GM</button>
-        <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
+        <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><button data-tab="lb" onclick="tab('lb')">📅 Lịch Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
         <button data-tab="tlbb" onclick="tab('tlbb')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
@@ -2114,6 +2119,14 @@ const HTML = `<!DOCTYPE html>
           <div id="dpLog" style="margin-top:8px;max-height:480px;overflow:auto"></div>
         </div>
         <div id="dpList" style="margin-top:10px;overflow-x:auto"></div>
+      </div>
+    </div>
+    <div id="tab-lb" class="hidden"><!-- 📅 12/10: Lịch Boss (chỉ xem, cả 2 cổng) - thông báo boss trong game đã tắt -->
+      <div class="card">
+        <h2>📅 Lịch Boss <span class="muted" style="font-size:13px;font-weight:400">boss thế giới ra theo giờ (giờ server) · thông báo trong game đã tắt nên xem ở đây</span></h2>
+        <div class="note">Đến giờ, boss cũ (nếu còn) bị xóa và ra lại đủ ở các tọa độ bên dưới. Tọa độ dùng để chạy tới trong game (bản đồ + [x, y]).</div>
+        <div id="lbSum" class="muted" style="font-size:13px;margin-top:6px">đang tải...</div>
+        <div id="lbList" style="margin-top:8px"></div>
       </div>
     </div>
     <div id="tab-tb" class="hidden"><!-- 🎒 01/10: Túi đồ boss -->
@@ -3180,8 +3193,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','lb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='lb')lbLoad();if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -4713,7 +4726,7 @@ function nkBatDau(){if(NK.chay)return;NK.chay=true;setInterval(()=>{
 // Cổng mod: giấu mọi tab trừ 📜 Log, giấu bảng chọn mục log cũ (cần /api/state), không chạy refresh()
 function modApp(){
   document.body.classList.add('congmod');epApply(false);
-  const DUOC=['log','tb','vqx','gnx','br'];   // 05/10 + 📊 Bảng rơi (nhúng netco4.click)   // 04/10: cổng mod thấy 📜 Log + 🎒 Túi Boss (bản chỉ xem); 05/10 + 🍀 Vòng quay (chỉ xem)
+  const DUOC=['log','tb','lb','vqx','gnx','br'];   // 12/10 + 📅 Lịch Boss   // 05/10 + 📊 Bảng rơi (nhúng netco4.click)   // 04/10: cổng mod thấy 📜 Log + 🎒 Túi Boss (bản chỉ xem); 05/10 + 🍀 Vòng quay (chỉ xem)
   document.querySelectorAll('.tabs .grp').forEach(g=>{const bs=[...g.querySelectorAll('button')],co=bs.some(b=>DUOC.includes(b.dataset.tab));g.style.display=co?'':'none';
     bs.forEach(b=>{b.style.display=DUOC.includes(b.dataset.tab)?'':'none';});});
   document.getElementById('tbSuaCard').classList.add('hidden');document.getElementById('tbXemCard').classList.remove('hidden');
@@ -4816,6 +4829,21 @@ function vqaFill(){var c=VQA.cfg;vqaEl('vqOn').checked=!!c.on;vqaEl('vqGia').val
 // 11/10 (chủ server): mod SỬA ĐƯỢC bộ quà ở đây (/api/vq/modcfg | modsave | modtim) - giá / số lần quay / bật-tắt vòng quay vẫn chỉ SUPER
 var VQX=null,VQXKQ=[],VQXDIRTY=false;
 function vqxDirty(on){VQXDIRTY=!!on;var b=vqaEl('vqxLuuBtn');if(b)b.textContent=on?'💾 Lưu bộ quà (CHƯA LƯU)':'💾 Lưu bộ quà';}
+// 📅 12/10: Lịch Boss (chỉ xem) - giờ tính theo giờ server UTC+7, sắp theo boss ra sớm nhất
+function lbLoad(){api('/api/lichboss').then(function(j){if(!j.ok){document.getElementById('lbSum').textContent='❌ '+(j.error||'lỗi');return;}lbDraw(j);}).catch(function(e){document.getElementById('lbSum').textContent='❌ '+e.message;});}
+function lbDraw(j){
+  var d=new Date(j.now+7*3600e3),bay=d.getUTCHours()*60+d.getUTCMinutes(),hh=function(m){m=((m%1440)+1440)%1440;return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+m%60).slice(-2);};
+  var ds=(j.ds||[]).filter(function(g){return g.dangChay&&g.gio&&g.gio.length;}).map(function(g){
+    var ph=g.gio.map(function(t){var a=t.split(':');return +a[0]*60+(+a[1]);}).sort(function(a,b){return a-b;});
+    var sau=ph.filter(function(m){return m>=bay;});var toi=sau.length?sau[0]:ph[0]+1440;return {g:g,ph:ph,toi:toi};}).sort(function(a,b){return a.toi-b.toi;});
+  document.getElementById('lbSum').innerHTML='Giờ server: <b>'+hh(bay)+'</b> · '+ds.length+' nhóm boss · dữ liệu lúc '+new Date(j.taoLuc).toLocaleString('vi-VN');
+  document.getElementById('lbList').innerHTML=ds.map(function(o){var g=o.g,con=o.toi-bay;
+    var gio=o.ph.map(function(m){var la=(m===o.toi%1440);return '<span style="display:inline-block;padding:1px 6px;margin:2px;border-radius:6px;'+(la?'background:var(--green);color:#000;font-weight:700':'border:1px solid var(--line)')+'">'+hh(m)+'</span>';}).join('');
+    var bo=g.boss.map(function(b){return '<tr><td>'+esc(b.ten)+'</td><td class="muted">'+(b.cap?'cấp '+b.cap:'')+'</td><td><b>['+b.x+', '+b.y+']</b></td></tr>';}).join('');
+    return '<div class="card" style="margin:8px 0;padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><b style="font-size:15px">🗺️ '+esc(g.banDo)+' <span class="muted" style="font-weight:400">(bản đồ '+g.scene+')</span></b>'
+      +'<span>⏰ sắp ra <b>'+hh(o.toi)+'</b> · còn <b>'+(con>=60?Math.floor(con/60)+' giờ ':'')+(con%60)+' phút</b></span></div>'
+      +'<div style="margin:6px 0">'+gio+'</div><div class="tbl"><table><thead><tr><th>Boss</th><th>Cấp</th><th>Tọa độ</th></tr></thead><tbody>'+bo+'</tbody></table></div></div>';}).join('')||'<div class="muted">Không có boss nào.</div>';
+}
 function vqxLoad(){Promise.all([api('/api/vq/xem'),api('/api/vq/modcfg')]).then(function(a){VQX=a[0];VQX.pool=a[1].pool;VQX.cfg=a[1].cfg;vqxDirty(false);vqxDraw();}).catch(function(e){vqaEl('vqxSum').textContent='❌ '+e.message;});}
 function vqxDraw(){if(!VQX)return;var P=VQX.pool,c=VQX.cfg,loc=(vqaEl('vqxLoc').value||'').toLowerCase();
   var on=P.filter(function(x){return !x.off;}),at=on.length?on.reduce(function(s,x){return s+x.w;},0)/on.length:0,E=Math.min(24,on.length||24)*at;

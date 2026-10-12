@@ -1,0 +1,627 @@
+{
+ "taoLuc": "2026-10-12T02:54:57.821Z",
+ "nguon": "tools/lich-boss.js (repo game)",
+ "ds": [
+  {
+   "script": 100121,
+   "file": "MyNew/zhaohuan/yannan.lua",
+   "scene": 18,
+   "banDo": "Nhạn Nam",
+   "gio": [
+    "02:00",
+    "06:00",
+    "10:00",
+    "14:00",
+    "18:00",
+    "22:00"
+   ],
+   "dangChay": true,
+   "ini": [
+    "yannan_monster.ini"
+   ],
+   "boss": [
+    {
+     "id": 3829,
+     "ten": "Cuồng Bạo Long",
+     "cap": 100,
+     "danhHieu": "BOSS",
+     "x": 155,
+     "y": 159
+    },
+    {
+     "id": 3829,
+     "ten": "Cuồng Bạo Long",
+     "cap": 100,
+     "danhHieu": "BOSS",
+     "x": 127,
+     "y": 198
+    },
+    {
+     "id": 3829,
+     "ten": "Cuồng Bạo Long",
+     "cap": 100,
+     "danhHieu": "BOSS",
+     "x": 227,
+     "y": 161
+    }
+   ]
+  },
+  {
+   "script": 100131,
+   "file": "MyNew/zhaohuan/shuhe.lua",
+   "scene": 420,
+   "banDo": "Thúc Hà Cổ Trấn",
+   "gio": [
+    "00:00",
+    "04:00",
+    "08:00",
+    "12:00",
+    "16:00",
+    "20:00"
+   ],
+   "dangChay": true,
+   "ini": [
+    "shuhe_monster.ini"
+   ],
+   "boss": [
+    {
+     "id": 44000,
+     "ten": "Tố nhuộm",
+     "cap": 40,
+     "danhHieu": "Trong lâu sứ giả",
+     "x": 34,
+     "y": 37
+    },
+    {
+     "id": 44000,
+     "ten": "Tố nhuộm",
+     "cap": 40,
+     "danhHieu": "Trong lâu sứ giả",
+     "x": 29,
+     "y": 147
+    },
+    {
+     "id": 44000,
+     "ten": "Tố nhuộm",
+     "cap": 40,
+     "danhHieu": "Trong lâu sứ giả",
+     "x": 33,
+     "y": 257
+    },
+    {
+     "id": 44000,
+     "ten": "Tố nhuộm",
+     "cap": 40,
+     "danhHieu": "Trong lâu sứ giả",
+     "x": 282,
+     "y": 120
+    }
+   ]
+  },
+  {
+   "script": 891024,
+   "file": "New/BossHHL.lua",
+   "scene": 432,
+   "banDo": "Hạn huyết lĩnh",
+   "gio": [
+    "19:45",
+    "20:00",
+    "20:15",
+    "20:30",
+    "20:45",
+    "21:00",
+    "21:15",
+    "21:30",
+    "21:45",
+    "22:00",
+    "22:15",
+    "22:30"
+   ],
+   "dangChay": true,
+   "ini": [
+    "hanxieling_monster.ini"
+   ],
+   "boss": [
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "BOSS time",
+     "x": 44,
+     "y": 84
+    },
+    {
+     "id": 33519,
+     "ten": "Đoạt bảo mã tặc",
+     "cap": 201,
+     "danhHieu": "BOSS time",
+     "x": 45,
+     "y": 84
+    },
+    {
+     "id": 33810,
+     "ten": "Răng nanh Dã Trư Vương",
+     "cap": 110,
+     "danhHieu": "BOSS time",
+     "x": 46,
+     "y": 85
+    },
+    {
+     "id": 34130,
+     "ten": "Sơn trại Đại Vương",
+     "cap": 113,
+     "danhHieu": "BOSS time",
+     "x": 45,
+     "y": 51
+    },
+    {
+     "id": 42100,
+     "ten": "Lục Hợp Lệnh Bài ( Đông )",
+     "cap": 150,
+     "danhHieu": "BOSS time",
+     "x": 40,
+     "y": 50
+    },
+    {
+     "id": 42106,
+     "ten": "Ngũ Hành Tôn Giả ( Thủy )",
+     "cap": 150,
+     "danhHieu": "BOSS time",
+     "x": 45,
+     "y": 55
+    },
+    {
+     "id": 42966,
+     "ten": "Nứt hải huyền tích",
+     "cap": 100,
+     "danhHieu": "BOSS time",
+     "x": 81,
+     "y": 58
+    },
+    {
+     "id": 43970,
+     "ten": "Lý Thu Thủy",
+     "cap": 90,
+     "danhHieu": "BOSS time",
+     "x": 85,
+     "y": 55
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "BOSS time",
+     "x": 83,
+     "y": 59
+    }
+   ]
+  },
+  {
+   "script": 100123,
+   "file": "MyNew/zhaohuan/taihuangshenyu.lua",
+   "scene": 508,
+   "banDo": "Thái Hoàng Thần Vực",
+   "gio": [
+    "01:45",
+    "05:45",
+    "09:45",
+    "13:45",
+    "17:45",
+    "21:45"
+   ],
+   "dangChay": true,
+   "ini": [
+    "zhengding8_monster.ini"
+   ],
+   "boss": [
+    {
+     "id": 42106,
+     "ten": "Ngũ Hành Tôn Giả ( Thủy )",
+     "cap": 150,
+     "danhHieu": "ĨăĐĐừđạư",
+     "x": 91,
+     "y": 193
+    },
+    {
+     "id": 42107,
+     "ten": "Ngũ Hành Tôn Giả ( Thổ )",
+     "cap": 150,
+     "danhHieu": "ĨăĐĐừđạư",
+     "x": 120,
+     "y": 218
+    },
+    {
+     "id": 42110,
+     "ten": "Ngũ Hành Tôn Giả ( Hỏa )",
+     "cap": 150,
+     "danhHieu": "ĨăĐĐừđạư",
+     "x": 229,
+     "y": 127
+    },
+    {
+     "id": 42109,
+     "ten": "Ngũ Hành Tôn Giả ( Mộc )",
+     "cap": 150,
+     "danhHieu": "ĨăĐĐừđạư",
+     "x": 206,
+     "y": 92
+    },
+    {
+     "id": 42108,
+     "ten": "Ngũ Hành Tôn Giả ( Kim )",
+     "cap": 150,
+     "danhHieu": "ĨăĐĐừđạư",
+     "x": 160,
+     "y": 160
+    }
+   ]
+  },
+  {
+   "script": 100124,
+   "file": "MyNew/zhaohuan/taihuangshenyu2.lua",
+   "scene": 508,
+   "banDo": "Thái Hoàng Thần Vực",
+   "gio": [
+    "02:45",
+    "06:45",
+    "10:45",
+    "14:45",
+    "18:45",
+    "22:45"
+   ],
+   "dangChay": true,
+   "ini": [
+    "zhengding8_monster.ini"
+   ],
+   "boss": [
+    {
+     "id": 42100,
+     "ten": "Lục Hợp Lệnh Bài ( Đông )",
+     "cap": 150,
+     "danhHieu": "Lục hợp đồng tử",
+     "x": 100,
+     "y": 74
+    },
+    {
+     "id": 42101,
+     "ten": "Lục Hợp Lệnh Bài ( Bắc )",
+     "cap": 150,
+     "danhHieu": "Lục hợp đồng tử",
+     "x": 250,
+     "y": 164
+    },
+    {
+     "id": 42102,
+     "ten": "Lục Hợp Lệnh Bài ( Tây )",
+     "cap": 150,
+     "danhHieu": "Lục hợp đồng tử",
+     "x": 216,
+     "y": 246
+    },
+    {
+     "id": 42103,
+     "ten": "Lục Hợp Lệnh Bài ( Nam )",
+     "cap": 150,
+     "danhHieu": "Lục hợp đồng tử",
+     "x": 135,
+     "y": 268
+    },
+    {
+     "id": 42104,
+     "ten": "Lục Hợp Lệnh Bài ( Thiên )",
+     "cap": 150,
+     "danhHieu": "Lục hợp đồng tử",
+     "x": 68,
+     "y": 154
+    },
+    {
+     "id": 42105,
+     "ten": "Lục Hợp Lệnh Bài ( Địa )",
+     "cap": 150,
+     "danhHieu": "Lục hợp đồng tử",
+     "x": 180,
+     "y": 46
+    }
+   ]
+  },
+  {
+   "script": 891025,
+   "file": "New/BossMND.lua",
+   "scene": 708,
+   "banDo": "Mai Nha Đảo",
+   "gio": [
+    "02:00",
+    "04:00",
+    "06:00",
+    "08:00",
+    "10:00",
+    "12:00",
+    "14:00",
+    "16:00",
+    "18:00",
+    "20:00",
+    "22:00"
+   ],
+   "dangChay": true,
+   "ini": [
+    "yayuland_monster.ini"
+   ],
+   "boss": [
+    {
+     "id": 42340,
+     "ten": "Thao Thiết",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 168,
+     "y": 99
+    },
+    {
+     "id": 42344,
+     "ten": "Anh Chiêu",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 159,
+     "y": 96
+    },
+    {
+     "id": 42348,
+     "ten": "Tương Liễu",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 168,
+     "y": 86
+    },
+    {
+     "id": 42352,
+     "ten": "Văn minh",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 186,
+     "y": 84
+    },
+    {
+     "id": 42356,
+     "ten": "Lục Ngô",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 181,
+     "y": 97
+    },
+    {
+     "id": 42360,
+     "ten": "Cổ Điêu",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 174,
+     "y": 101
+    },
+    {
+     "id": 42364,
+     "ten": "Trường phải",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 169,
+     "y": 105
+    },
+    {
+     "id": 42368,
+     "ten": "Tất Phương ảo giác",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 169,
+     "y": 93
+    },
+    {
+     "id": 42372,
+     "ten": "Cùng Kỳ",
+     "cap": 105,
+     "danhHieu": "Mai Nha Hộ Vệ",
+     "x": 174,
+     "y": 89
+    }
+   ]
+  },
+  {
+   "script": 891026,
+   "file": "New/BossVanPhu.lua",
+   "scene": 710,
+   "banDo": "Vân Phù",
+   "gio": [
+    "01:00",
+    "03:00",
+    "05:00",
+    "07:00",
+    "09:00",
+    "11:00",
+    "13:00",
+    "15:00",
+    "17:00",
+    "19:00",
+    "21:00",
+    "23:00"
+   ],
+   "dangChay": true,
+   "ini": [
+    "yunfu_monster.ini"
+   ],
+   "boss": [
+    {
+     "id": 43960,
+     "ten": "Vô Nhai tử",
+     "cap": 100,
+     "danhHieu": "Bos Vân Phù",
+     "x": 127,
+     "y": 154
+    },
+    {
+     "id": 43961,
+     "ten": "Hư Trúc",
+     "cap": 100,
+     "danhHieu": "Bos Vân Phù",
+     "x": 130,
+     "y": 159
+    },
+    {
+     "id": 43962,
+     "ten": "Hư Trúc",
+     "cap": 100,
+     "danhHieu": "Bos Vân Phù",
+     "x": 135,
+     "y": 161
+    },
+    {
+     "id": 43963,
+     "ten": "Lý Thu Thủy",
+     "cap": 100,
+     "danhHieu": "Bos Vân Phù",
+     "x": 140,
+     "y": 159
+    },
+    {
+     "id": 43965,
+     "ten": "Thiên Sơn Đồng Mỗ",
+     "cap": 90,
+     "danhHieu": "Bos Vân Phù",
+     "x": 142,
+     "y": 153
+    },
+    {
+     "id": 43966,
+     "ten": "Thiên Sơn Đồng Mỗ",
+     "cap": 90,
+     "danhHieu": "Bos Vân Phù",
+     "x": 135,
+     "y": 146
+    },
+    {
+     "id": 43968,
+     "ten": "Hư Trúc",
+     "cap": 90,
+     "danhHieu": "Bos Vân Phù",
+     "x": 130,
+     "y": 148
+    },
+    {
+     "id": 43969,
+     "ten": "Hư Trúc",
+     "cap": 90,
+     "danhHieu": "Bos Vân Phù",
+     "x": 128,
+     "y": 154
+    },
+    {
+     "id": 43970,
+     "ten": "Lý Thu Thủy",
+     "cap": 90,
+     "danhHieu": "Bos Vân Phù",
+     "x": 135,
+     "y": 154
+    }
+   ]
+  },
+  {
+   "script": 100122,
+   "file": "MyNew/zhaohuan/jinghu.lua",
+   "scene": 5,
+   "banDo": "Kính Hồ",
+   "gio": [
+    "00:30",
+    "02:30",
+    "04:30",
+    "06:30",
+    "08:30",
+    "10:30",
+    "12:30",
+    "14:30",
+    "16:30",
+    "18:30",
+    "20:30",
+    "22:30"
+   ],
+   "dangChay": false,
+   "ini": [],
+   "boss": [
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 123,
+     "y": 128
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 108,
+     "y": 140
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 130,
+     "y": 140
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 108,
+     "y": 155
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 135,
+     "y": 164
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 132,
+     "y": 151
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 117,
+     "y": 186
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 139,
+     "y": 116
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 121,
+     "y": 116
+    },
+    {
+     "id": 14199,
+     "ten": "Thứ cho Hàn Băng hồ",
+     "cap": 120,
+     "danhHieu": "Kính Hồ hộ đảo",
+     "x": 83,
+     "y": 127
+    }
+   ]
+  }
+ ]
+}
