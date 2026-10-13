@@ -12,7 +12,8 @@
   var NHOM_TL = [['Liên (dây chuyền)', ['10553100', '10553112'], '10553103'], ['Giới (nhẫn)', ['10553101', '10553113'], '10553104'],
     ['Ngọc (hộ phù)', ['10553102', '10553114'], '10553105'], ['Đai (thắt lưng)', ['10553106'], '10553107'],
     ['Vai (hộ kiên)', ['10553108'], '10553109'], ['Giáp (áo)', ['10553110'], '10553111'],
-    ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null]];
+    ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null],
+    ['Mũ "Trùng Lâu Khôi" (mũ Giáng Sinh, +10% sát thương)', ['10410121'], null]];   // 13/10: doan rieng 4527 (goc doan 100 dung chung 351 mon)
   NHOM = CFG.nhom.length ? CFG.nhom : NHOM_TL;
   IDS = []; NHOM.forEach(function (g) { IDS = IDS.concat(g[1]).concat(g[2] ? [g[2]] : []); });
   function e(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
