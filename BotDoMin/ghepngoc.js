@@ -238,7 +238,7 @@ module.exports = function ghepNgoc(d) {
         if (db._gnLog.length > LOG_MAX) db._gnLog.splice(0, db._gnLog.length - LOG_MAX);
         if (knb && d.logDog) d.logDog('ghepngoc', uid, u.name || who || uid, -knb, `💎 Ghép ngọc: bỏ ${knb.toLocaleString('vi-VN')} KNB`);
         d.saveDbNow();
-        if (!ep) thongBao(c, uid, u, thang, dich, tiLe, roll, tong, { t, lech, knb, vao: ds.map((x) => ({ id: x.id, ten: ten(x.id), sl: x.sl, gia: x.gia })) });   // lượt ép KHÔNG đăng Discord
+        thongBao(c, uid, u, thang, dich, tiLe, roll, tong, { t, lech, knb, vao: ds.map((x) => ({ id: x.id, ten: ten(x.id), sl: x.sl, gia: x.gia })) });   // 14/10 chủ server: lượt ép CŨNG đăng Discord như thường (nội dung y hệt, không đánh dấu ép)
         d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} x${dich.sl} (${tiLe}%, tung ${roll})${ep ? ' [ÉP THẮNG bởi ' + (ep.who || 'admin') + ']' : ''} - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
         return { ok: true, thang, tiLe, lech, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia, sl: dich.sl }, ...state(uid) };
     }

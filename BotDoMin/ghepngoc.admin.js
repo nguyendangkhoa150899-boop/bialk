@@ -50,7 +50,7 @@
   function epHtml() {
     var epDs = A.ep || [];
     return '<details' + (epDs.length ? ' open' : '') + '><summary>⚡ Ép thắng ' + (epDs.length ? '<span style="color:#f3cf8a">(' + epDs.length + ' ví đang chờ)</span>' : '<span class="muted">(không có)</span>') + '</summary>'
-      + '<div class="note" style="font-size:12px;margin-top:6px">Chọn ví → <b>N lượt luyện kế tiếp</b> của ví đó <b>THẮNG</b> dù tỉ lệ chỉ 1% (server tung số trong cung trúng, kim trên web dừng đúng trong cung). Lượt ép <b>không đăng Discord</b>; nhật ký bên dưới đánh dấu ⚡ ép (cổng mod không thấy). Không có ép thua.</div>'
+      + '<div class="note" style="font-size:12px;margin-top:6px">Chọn ví → <b>N lượt luyện kế tiếp</b> của ví đó <b>THẮNG</b> dù tỉ lệ chỉ 1% (server tung số trong cung trúng, kim trên web dừng đúng trong cung). Lượt ép đăng Discord như thường (nội dung y hệt lượt thật); nhật ký bên dưới đánh dấu ⚡ ép (cổng mod không thấy). Không có ép thua.</div>'
       + '<div class="gnaTop"><select id="gnaEpVi" style="min-width:240px">' + (A.vi || []).map(function (v) { return '<option value="' + v.uid + '">' + esc(v.ten) + (v.game ? ' · 🎮 ' + esc(v.game) : '') + '</option>'; }).join('') + '</select>'
       + '<label>Số lượt ' + inp('gnaEpN', 1, 55, 'type="number" min="1" max="20"') + '</label><button class="btn-green" onclick="gnaEp()">⚡ Ép thắng</button></div>'
       + (epDs.length ? epDs.map(function (x) { return '<div style="font-size:13px;margin-top:4px">' + esc(x.ten) + ' · còn <b>' + x.n + '</b> lượt ép <span class="muted">(' + esc(x.who || '') + ', ' + new Date(x.t).toLocaleString('vi-VN') + ')</span> <button class="btn-grey" style="padding:2px 8px;font-size:12px" onclick="gnaEpXoa(\'' + x.uid + '\')">✕ Bỏ</button></div>'; }).join('') : '')
