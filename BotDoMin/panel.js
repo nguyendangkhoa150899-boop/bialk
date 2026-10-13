@@ -2280,10 +2280,12 @@ const HTML = `<!DOCTYPE html>
               <input id="gmTpmax" class="mini-in" style="width:90px" type="number" min="0" max="159" oninput="gmDanhDau(this)">
               <div class="qH">Người chơi <b>tự học</b> tâm pháp (tốn vàng + EXP) tới tối đa cấp này, 10–159, không phụ thuộc cấp nhân vật. <b>0 = luật gốc</b>: tối đa cấp nhân vật + 10 (tâm pháp thứ 8 tới 159). Không đặt sẵn cấp cho ai.<br>📜 <b>Chiêu môn phái mở theo tâm pháp</b>: tâm pháp lên tới đâu thì chiêu hiện ra tới đó, ở các mốc 1, 10, 20, 30, 40, 45, 50, 60. Tới 60 là đủ hết chiêu; trên 60 không thêm chiêu mới nhưng chiêu và thuộc tính mạnh dần theo cấp tâm pháp.</div></div>
             <div class="quaTile"><div class="qT">⚔️ Võ Ý (nội tức mỗi quái) <span class="qBadge ok">không cần restart</span></div>
-              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">Mọi nơi <b>x</b><input id="gmVoy" class="mini-in" style="width:70px" type="number" min="1" max="100" oninput="gmDanhDau(this);gmVoyTong()">
-              Bản đồ train <b>x</b><input id="gmVoyT" class="mini-in" style="width:70px" type="number" min="1" max="100" oninput="gmDanhDau(this);gmVoyTong()">
-              <button onclick="gmVoyMacDinh()">↩ Mặc định (x4 · x12)</button></div>
-              <div class="qH">Nội tức mỗi con = (770 + cấp quái × 10) × <b>mọi nơi</b>; ở <b>Vô Lượng Sơn + Tháp Khắc Lạp Mã Can</b> nhân thêm <b>bản đồ train</b>. Đang: <b id="gmVoyTong">?</b>. Trần 3.000 quái / ngày giữ nguyên. Có hiệu lực ngay con quái kế tiếp.</div></div>
+              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">Mọi nơi <b>x</b><input id="gmVoy" class="mini-in" style="width:64px" type="number" min="1" max="100" oninput="gmDanhDau(this);gmVoyTong()">
+                <span id="gmVoyTxtA" style="color:#f1c40f;font-weight:600"></span></div>
+              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">Bản đồ train <b>x</b><input id="gmVoyT" class="mini-in" style="width:64px" type="number" min="1" max="100" oninput="gmDanhDau(this);gmVoyTong()">
+                <span id="gmVoyTxtB" style="color:#f1c40f;font-weight:600"></span></div>
+              <button onclick="gmVoyMacDinh()">↩ Mặc định (x4 · x12)</button>
+              <div class="qH">Nội tức mỗi con = (770 + cấp quái × 10) × <b>mọi nơi</b>; ở <b>Vô Lượng Sơn + Tháp Khắc Lạp Mã Can</b> nhân thêm <b>bản đồ train</b>. Số vàng bên cạnh tự tính lại khi gõ. Trần 3.000 quái / ngày giữ nguyên. Có hiệu lực ngay con quái kế tiếp.</div></div>
           </div>
           <div class="row quaSave">
             <button class="btn-red" onclick="gmLuuChung()">💾 Lưu thay đổi</button>
@@ -3506,9 +3508,15 @@ function gmCreateAcc(){
 // 🎲 04/10: GỠ khung "Rơi thêm qua script" (chỉ có 2 khóa Kỳ Cuộc, không thêm quái được). File Server/txt/NetCo4Cfg/roithem.txt + Lua roimap x950001_RoiCfg + panel game roi_them/roi_xoa VẪN CHẠY (ngọc 6 1.75% + Tử Vi 20% mỗi quân cờ) - sửa tỉ lệ qua SSH
 // ⚙️ 03/10: cấp tối thiểu / khóa cấp / EXP - sửa bao nhiêu ô cũng được, 1 nút Lưu chung (panel game act luu_chung), restart 1 lần nếu có ô cần restart
 var GM_O=[['gmCapmin','capmin','Cấp tối thiểu',''],['gmCapmax','capmax','Cấp tối đa',''],['gmExp','expparam','EXP','x'],['gmTpmax','tpmax','Tâm pháp tối đa',''],['gmVoy','voy','Võ Ý mọi nơi','x'],['gmVoyT','voytrain','Võ Ý bản đồ train','x']];   // tpmax: script đọc mỗi lần học, không restart; 13/10 voy / voytrain: script đọc mỗi lần quái chết
-function gmVoyTong(){var a=+((document.getElementById('gmVoy')||{}).value||0),b=+((document.getElementById('gmVoyT')||{}).value||0),el=document.getElementById('gmVoyTong');
-  if(!el)return;if(!a||!b){el.textContent='?';return;}var v=function(lv,k){return ((770+lv*10)*k).toLocaleString('vi-VN');};
-  el.textContent='x'+a+' mọi nơi (quái cấp 100: '+v(100,a)+'), x'+(a*b)+' ở bản đồ train (Vô Lượng Sơn cấp 1: '+v(1,a*b)+', Tháp Mã Can cấp 105: '+v(105,a*b)+')';}
+// 13/10: số nội tức / con hiện NGAY CẠNH từng ô (chủ server: "ghi chú exp ra kế bên cho dễ nhìn"). Cấp quái: Vô Lượng Sơn 1-10, Tháp Mã Can 101-105
+function gmVoyTong(){var a=+((document.getElementById('gmVoy')||{}).value||0),b=+((document.getElementById('gmVoyT')||{}).value||0),
+  ea=document.getElementById('gmVoyTxtA'),eb=document.getElementById('gmVoyTxtB');if(!ea||!eb)return;
+  var n=function(lv,k){return (770+lv*10)*k;},s=function(x){return x.toLocaleString('vi-VN');},
+    k=function(lo,hi){var a1=Math.round(lo/1000),b1=Math.round(hi/1000);return lo>=10000?' (~'+(a1===b1?a1:a1+'–'+b1)+'k)':'';},
+    kh=function(lv1,lv2,h){var lo=n(lv1,h),hi=n(lv2,h);return s(lo)+'–'+s(hi)+k(lo,hi);};
+  if(!a){ea.textContent='';eb.textContent='';return;}
+  ea.textContent='= '+s(n(50,a))+' (quái cấp 50) · '+s(n(100,a))+' (cấp 100) / con';
+  eb.textContent=b?'= x'+(a*b)+' tổng: Tháp Mã Can '+kh(101,105,a*b)+' · Vô Lượng Sơn '+kh(1,10,a*b)+' / con':'';}
 function gmVoyMacDinh(){var d=(GM.st&&GM.st.voyDefault)||[4,12];[['gmVoy',d[0]],['gmVoyT',d[1]]].forEach(function(p){var el=document.getElementById(p[0]);if(el){el.value=p[1];el.dataset.sua='1';}});gmVoyTong();gmSuaNote();}
 function gmDanhDau(el){el.dataset.sua='1';delete el.dataset.macdinh;gmSuaNote();}
 function gmDoi(){var st=GM.st||{},out=[];
