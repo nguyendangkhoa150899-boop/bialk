@@ -13,7 +13,9 @@
     ['Ngọc (hộ phù)', ['10553102', '10553114'], '10553105'], ['Đai (thắt lưng)', ['10553106'], '10553107'],
     ['Vai (hộ kiên)', ['10553108'], '10553109'], ['Giáp (áo)', ['10553110'], '10553111'],
     ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null],
-    ['Mũ "Trùng Lâu Khôi" (mũ Giáng Sinh, +10% sát thương)', ['10410121'], null]];   // 13/10: doan rieng 4527 (goc doan 100 dung chung 351 mon)
+    ['Mũ "Trùng Lâu Khôi" (mũ Giáng Sinh, +10% sát thương)', ['10410121'], null],   // 13/10: doan rieng 4527 (goc doan 100 dung chung 351 mon)
+    ['Mũ top 2 (mũ Giáng Sinh cấp 92, +9% sát thương)', ['10410127'], null],   // 13/10: doan rieng 4528, hieu ung 7581
+    ['Mũ top 3 (mũ Giáng Sinh cấp 82, +7% sát thương)', ['10410126'], null]];   // 13/10: doan rieng 4529, hieu ung 7582
   NHOM = CFG.nhom.length ? CFG.nhom : NHOM_TL;
   IDS = []; NHOM.forEach(function (g) { IDS = IDS.concat(g[1]).concat(g[2] ? [g[2]] : []); });
   function e(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -128,6 +130,7 @@
           '<span class="tlGoc">đang ' + so(cur / (chia || 1)) + donvi + ' · gốc ' + so(goc / (chia || 1)) + donvi + '</span></label>';
       };
       if (hu.tham.rate != null) h += o('Tỉ lệ dính (% mỗi đòn trúng)', hu.id, 'rate', hu.tham.rate, hg.tham.rate, '%');
+      if (hu.tham.hs != null) h += o('Sát thương thêm (%) khi dính', hu.id, 'hs', hu.tham.hs, hg.tham.hs, '%');   // 13/10: 伤害修正率 (100 = x2); mu 7580 / 7581 / 7582 = 10 / 9 / 7
       if (hu.dur != null) h += o('Thời gian hiệu ứng (giây)', hu.sub, 'dur', hu.dur, hg.dur, ' giây', 1000);
       if (hu.tham.mien != null) h += o('Miễn (%)', hu.id, 'mien', hu.tham.mien, hg.tham.mien, '%');
       if (hu.tham.phan != null) h += o('Phản đòn (%)', hu.id, 'phan', hu.tham.phan, hg.tham.phan, '%');
