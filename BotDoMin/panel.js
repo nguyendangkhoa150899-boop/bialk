@@ -2279,6 +2279,11 @@ const HTML = `<!DOCTYPE html>
             <div class="quaTile"><div class="qT">📘 Tâm pháp tối đa <span class="qBadge ok">không cần restart</span></div>
               <input id="gmTpmax" class="mini-in" style="width:90px" type="number" min="0" max="159" oninput="gmDanhDau(this)">
               <div class="qH">Người chơi <b>tự học</b> tâm pháp (tốn vàng + EXP) tới tối đa cấp này, 10–159, không phụ thuộc cấp nhân vật. <b>0 = luật gốc</b>: tối đa cấp nhân vật + 10 (tâm pháp thứ 8 tới 159). Không đặt sẵn cấp cho ai.<br>📜 <b>Chiêu môn phái mở theo tâm pháp</b>: tâm pháp lên tới đâu thì chiêu hiện ra tới đó, ở các mốc 1, 10, 20, 30, 40, 45, 50, 60. Tới 60 là đủ hết chiêu; trên 60 không thêm chiêu mới nhưng chiêu và thuộc tính mạnh dần theo cấp tâm pháp.</div></div>
+            <div class="quaTile"><div class="qT">⚔️ Võ Ý (nội tức mỗi quái) <span class="qBadge ok">không cần restart</span></div>
+              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">Mọi nơi <b>x</b><input id="gmVoy" class="mini-in" style="width:70px" type="number" min="1" max="100" oninput="gmDanhDau(this);gmVoyTong()">
+              Bản đồ train <b>x</b><input id="gmVoyT" class="mini-in" style="width:70px" type="number" min="1" max="100" oninput="gmDanhDau(this);gmVoyTong()">
+              <button onclick="gmVoyMacDinh()">↩ Mặc định (x4 · x12)</button></div>
+              <div class="qH">Nội tức mỗi con = (770 + cấp quái × 10) × <b>mọi nơi</b>; ở <b>Vô Lượng Sơn + Tháp Khắc Lạp Mã Can</b> nhân thêm <b>bản đồ train</b>. Đang: <b id="gmVoyTong">?</b>. Trần 3.000 quái / ngày giữ nguyên. Có hiệu lực ngay con quái kế tiếp.</div></div>
           </div>
           <div class="row quaSave">
             <button class="btn-red" onclick="gmLuuChung()">💾 Lưu thay đổi</button>
@@ -3325,6 +3330,7 @@ function gmRender(){
   // 03/10: ô đã sửa mà chưa lưu (data-sua) KHÔNG bị lần tải lại 15 giây ghi đè - trước đây gõ ô này, bấm sang ô khác là ô trước bị trả về số cũ
   GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el&&el.dataset.sua!=='1'&&document.activeElement!==el&&st[o[1]]!==undefined)el.value=st[o[1]];});
   var ed=document.getElementById('gmExpDef');if(ed&&st.expDefault!==undefined)ed.textContent=st.expDefault;
+  gmVoyTong();
   gmSuaNote();
   document.getElementById('gmAccs').innerHTML='<table><tr><th>ID</th><th>Tài khoản</th><th>Online</th><th></th></tr>'+
     st.accounts.map(function(a){
@@ -3499,7 +3505,11 @@ function gmCreateAcc(){
 }
 // 🎲 04/10: GỠ khung "Rơi thêm qua script" (chỉ có 2 khóa Kỳ Cuộc, không thêm quái được). File Server/txt/NetCo4Cfg/roithem.txt + Lua roimap x950001_RoiCfg + panel game roi_them/roi_xoa VẪN CHẠY (ngọc 6 1.75% + Tử Vi 20% mỗi quân cờ) - sửa tỉ lệ qua SSH
 // ⚙️ 03/10: cấp tối thiểu / khóa cấp / EXP - sửa bao nhiêu ô cũng được, 1 nút Lưu chung (panel game act luu_chung), restart 1 lần nếu có ô cần restart
-var GM_O=[['gmCapmin','capmin','Cấp tối thiểu',''],['gmCapmax','capmax','Cấp tối đa',''],['gmExp','expparam','EXP','x'],['gmTpmax','tpmax','Tâm pháp tối đa','']];   // tpmax: script đọc mỗi lần học, không restart
+var GM_O=[['gmCapmin','capmin','Cấp tối thiểu',''],['gmCapmax','capmax','Cấp tối đa',''],['gmExp','expparam','EXP','x'],['gmTpmax','tpmax','Tâm pháp tối đa',''],['gmVoy','voy','Võ Ý mọi nơi','x'],['gmVoyT','voytrain','Võ Ý bản đồ train','x']];   // tpmax: script đọc mỗi lần học, không restart; 13/10 voy / voytrain: script đọc mỗi lần quái chết
+function gmVoyTong(){var a=+((document.getElementById('gmVoy')||{}).value||0),b=+((document.getElementById('gmVoyT')||{}).value||0),el=document.getElementById('gmVoyTong');
+  if(!el)return;if(!a||!b){el.textContent='?';return;}var v=function(lv,k){return ((770+lv*10)*k).toLocaleString('vi-VN');};
+  el.textContent='x'+a+' mọi nơi (quái cấp 100: '+v(100,a)+'), x'+(a*b)+' ở bản đồ train (Vô Lượng Sơn cấp 1: '+v(1,a*b)+', Tháp Mã Can cấp 105: '+v(105,a*b)+')';}
+function gmVoyMacDinh(){var d=(GM.st&&GM.st.voyDefault)||[4,12];[['gmVoy',d[0]],['gmVoyT',d[1]]].forEach(function(p){var el=document.getElementById(p[0]);if(el){el.value=p[1];el.dataset.sua='1';}});gmVoyTong();gmSuaNote();}
 function gmDanhDau(el){el.dataset.sua='1';delete el.dataset.macdinh;gmSuaNote();}
 function gmDoi(){var st=GM.st||{},out=[];
   GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(!el||el.dataset.sua!=='1')return;var v=String(el.value).trim(),c=st[o[1]];
@@ -3508,7 +3518,7 @@ function gmDoi(){var st=GM.st||{},out=[];
 function gmSuaNote(){var n=document.getElementById('gmSuaNote');if(!n)return;var d=gmDoi(),k={};d.forEach(function(x){k[x.k]=1;});
   GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el)el.style.outline=k[o[1]]?'2px solid #f1c40f':'';});
   n.innerHTML=d.length?'<b style="color:#f1c40f">Chưa lưu: '+d.map(function(x){return esc(x.ten)+' '+esc(x.cu)+' → '+esc(x.hien);}).join(' · ')+'</b>'
-    :'Sửa 1 hoặc nhiều ô rồi bấm Lưu 1 lần. Cấp tối thiểu và Tâm pháp tối đa có hiệu lực ngay; có đổi Cấp tối đa / EXP thì server restart 1 lần (~3 phút, người online bị ngắt).';}
+    :'Sửa 1 hoặc nhiều ô rồi bấm Lưu 1 lần. Cấp tối thiểu, Tâm pháp tối đa và Võ Ý có hiệu lực ngay; có đổi Cấp tối đa / EXP thì server restart 1 lần (~3 phút, người online bị ngắt).';}
 function gmBoDanhDau(){GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el){delete el.dataset.sua;delete el.dataset.macdinh;}});}
 function gmHuySua(){gmBoDanhDau();gmRender();}
 function gmExpMacDinh(){var el=document.getElementById('gmExp'),d=GM.st&&GM.st.expDefault;if(!el||d===undefined)return;el.value=d;el.dataset.sua='1';el.dataset.macdinh='1';gmSuaNote();}
@@ -3519,11 +3529,17 @@ function gmLuuChung(){
     if(x.k==='capmin'){if(!/^[0-9]{1,3}$/.test(v)||+v>119)return toast('Cấp tối thiểu 0–119 (0 = tắt)');f.capmin=v;}
     if(x.k==='capmax'){if(!/^[0-9]{2,3}$/.test(v)||+v<10||+v>119)return toast('Cấp tối đa 10–119');f.capmax=v;rs=true;}
     if(x.k==='tpmax'){if(!/^[0-9]{1,3}$/.test(v)||!(+v===0||(+v>=10&&+v<=159)))return toast('Tâm pháp tối đa 10–159 (0 = luật gốc: cấp nhân vật + 10)');f.tpmax=String(+v);}
+    if(x.k==='voy'||x.k==='voytrain'){if(!/^[0-9]{1,3}$/.test(v)||+v<1||+v>100)return toast(x.ten+': hệ số 1–100');f[x.k]=String(+v);}   // 13/10: không restart
     if(x.k==='expparam'){if(x.md)f.exp='macdinh';else{if(!/^[0-9]{1,2}([.][0-9])?$/.test(v)||+v<0.1||+v>50)return toast('EXP 0.1–50, tối đa 1 số lẻ (vd 3 hoặc 2.5)');f.exp=v;}rs=true;}
   }
-  var NL=String.fromCharCode(10),on=GM.st&&GM.st.online!==undefined?GM.st.online:'?';
-  if(!confirm('Lưu '+d.length+' thay đổi?'+NL+NL+d.map(function(x){return '• '+x.ten+': '+x.cu+' → '+x.hien+(x.md?' (mặc định)':'');}).join(NL)+NL+NL+
-    (rs?'Server sẽ RESTART ngay 1 lần (~3 phút), '+on+' người đang online bị ngắt.':'Không cần restart.')))return;
+  // 13/10: bỏ confirm() của trình duyệt (quy tắc NetCo4) -> bấm Lưu 2 lần trong 6 giây, lần 1 hiện tóm tắt ở dòng ghi chú
+  var on=GM.st&&GM.st.online!==undefined?GM.st.online:'?',khoa=JSON.stringify(f);
+  if(!(GM.xnLuu&&GM.xnLuu.k===khoa&&Date.now()-GM.xnLuu.t<6000)){
+    GM.xnLuu={k:khoa,t:Date.now()};var n=document.getElementById('gmSuaNote');
+    if(n)n.innerHTML='<b style="color:#e0566b">Bấm 💾 Lưu lần nữa (trong 6 giây) để xác nhận '+d.length+' thay đổi: '+d.map(function(x){return esc(x.ten)+' '+esc(x.cu)+' → '+esc(x.hien)+(x.md?' (mặc định)':'');}).join(' · ')+'. '+
+      (rs?'Server sẽ RESTART ngay 1 lần (~3 phút), '+on+' người đang online bị ngắt.':'Không cần restart.')+'</b>';
+    return;}
+  GM.xnLuu=null;
   api('/api/gm/act',f).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);if(j.done)gmBoDanhDau();gmLoad();}).catch(function(){});
 }
 function gmGive(g){
