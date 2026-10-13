@@ -223,20 +223,23 @@ module.exports = function ghepNgoc(d) {
         if (knb) d.updatePoints(uid, -knb);
         // vung trung = cung [lech, lech + tiLe) tren vong 0..100 (nguoi choi keo xoay). So tung deu nen ti le khong doi.
         const lech = Math.round(((Number(body.lech) || 0) % 100 + 100) % 100 * 1000) / 1000;
-        const roll = rnd(100000) / 1000;   // 0.000 .. 99.999
+        // ⚡ 14/10 (chủ server): ví đang bị admin ÉP THẮNG -> tung số NGẪU NHIÊN TRONG cung trúng [lech, lech + tiLe) -> kim web dừng đúng trong cung
+        const epq = epDs(uid), ep = epq.length ? epq[0] : null;
+        const roll = ep ? ((Math.round(lech * 1000) + rnd(Math.max(1, Math.floor(tiLe * 1000)))) % 100000) / 1000 : rnd(100000) / 1000;   // 0.000 .. 99.999
         const thang = ((roll - lech) % 100 + 100) % 100 < tiLe;
+        if (ep) { epq.shift(); const dbe = d.db(); if (epq.length) dbe._gnEp[uid] = epq; else delete dbe._gnEp[uid]; }
         if (thang) d.ichKy.add(u, dich.id, dich.sl);
         g.luot += 1;
         const t = Date.now();
         const rec = { t, dich: dich.id, sl: dich.sl, gia: dich.gia, tong, tiLe, lech, roll, thang, vao: ds.map((x) => [x.id, x.sl]), knb };
         g.lich.push(rec); if (g.lich.length > LICH_MAX) g.lich.splice(0, g.lich.length - LICH_MAX);
         const db = d.db(); if (!Array.isArray(db._gnLog)) db._gnLog = [];
-        db._gnLog.push({ ...rec, uid, ten: u.name || who || uid });
+        db._gnLog.push(ep ? { ...rec, uid, ten: u.name || who || uid, ep: ep.who || 1 } : { ...rec, uid, ten: u.name || who || uid });   // ep: chỉ admin SUPER thấy (logXem cho mod lọc trường)
         if (db._gnLog.length > LOG_MAX) db._gnLog.splice(0, db._gnLog.length - LOG_MAX);
         if (knb && d.logDog) d.logDog('ghepngoc', uid, u.name || who || uid, -knb, `💎 Ghép ngọc: bỏ ${knb.toLocaleString('vi-VN')} KNB`);
         d.saveDbNow();
-        thongBao(c, uid, u, thang, dich, tiLe, roll, tong, { t, lech, knb, vao: ds.map((x) => ({ id: x.id, ten: ten(x.id), sl: x.sl, gia: x.gia })) });
-        d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} x${dich.sl} (${tiLe}%, tung ${roll}) - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
+        if (!ep) thongBao(c, uid, u, thang, dich, tiLe, roll, tong, { t, lech, knb, vao: ds.map((x) => ({ id: x.id, ten: ten(x.id), sl: x.sl, gia: x.gia })) });   // lượt ép KHÔNG đăng Discord
+        d.writeLog('ADMIN', `[GHÉP NGỌC] ${u.name || who || uid} ${thang ? 'THẮNG' : 'thua'} ${ten(dich.id)} x${dich.sl} (${tiLe}%, tung ${roll})${ep ? ' [ÉP THẮNG bởi ' + (ep.who || 'admin') + ']' : ''} - bỏ ${ds.map((x) => ten(x.id) + ' x' + x.sl).join(', ')}${knb ? ' + ' + knb + ' KNB' : ''} = ${tong}`);
         return { ok: true, thang, tiLe, lech, roll, dich: { id: dich.id, ten: dich.ten, ic: dich.ic, gia: dich.gia, sl: dich.sl }, ...state(uid) };
     }
 
@@ -287,6 +290,31 @@ module.exports = function ghepNgoc(d) {
         } catch (e) { return { error: 'Gửi lỗi: ' + e.message }; }
         return { ok: true, message: '📣 Đã gửi 2 tin thử vào kênh' };
     }
+    // ⚡ 14/10 (chủ server): ÉP THẮNG - admin SUPER chọn ví, N lượt luyện kế tiếp của ví đó THẮNG dù tỉ lệ bao nhiêu (kim dừng trong cung trúng).
+    // Chỉ ép THẮNG (không có ép thua: người chơi bỏ đồ của họ vào). Lượt ép không đăng Discord; _gnLog đánh dấu ep (chỉ SUPER thấy).
+    // db._gnEp = { uid: [{ who, t }] }
+    const EP_MAX = 20;
+    function epDs(uid) { const db = d.db(); if (!db._gnEp || typeof db._gnEp !== 'object') db._gnEp = {}; return db._gnEp[String(uid)] || []; }
+    function epDat(uid, n, who) {
+        uid = String(uid || ''); n = Math.floor(Number(n) || 1);
+        const db = d.db();
+        if (!db[uid] || typeof db[uid] !== 'object') return { error: 'Không thấy ví này' };
+        if (!(n >= 1 && n <= EP_MAX)) return { error: `Số lượt ép 1 - ${EP_MAX}` };
+        const ds = epDs(uid);
+        if (ds.length + n > EP_MAX) return { error: `Ví này đã có ${ds.length} lượt ép đang chờ (tối đa ${EP_MAX})` };
+        for (let i = 0; i < n; i++) ds.push({ who: String(who || ''), t: Date.now() });
+        db._gnEp[uid] = ds; d.saveDbNow();
+        d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} ÉP THẮNG ${n} lượt luyện kế tiếp của ${db[uid].name || uid} (đang chờ ${ds.length})`);
+        return { ok: true, message: `⚡ ${db[uid].name || uid}: ${ds.length} lượt luyện kế tiếp sẽ THẮNG`, ...adminState() };
+    }
+    function epXoa(uid, who) {
+        uid = String(uid || ''); const db = d.db();
+        const n = epDs(uid).length; if (!n) return { error: 'Ví này không có lượt ép nào' };
+        delete db._gnEp[uid]; d.saveDbNow();
+        d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} bỏ ${n} lượt ép thắng của ${(db[uid] && db[uid].name) || uid}`);
+        return { ok: true, message: `Đã bỏ ${n} lượt ép của ${(db[uid] && db[uid].name) || uid}`, ...adminState() };
+    }
+
     // ===== ADMIN =====
     function canhBao(c) {
         const w = [];
@@ -312,6 +340,9 @@ module.exports = function ghepNgoc(d) {
         return { cfg: c, kenh: d.dsKenh ? d.dsKenh() : [], nhomDich: NHOM_DICH, nhomCam: Object.fromEntries(Object.entries(NHOM_CAM).map(([k, v]) => [k, v.ten])),
             dich: dsDich(c), bangGia: bangGia(c), canhBao: canhBao(c),
             dichTen: Object.keys(c.dich.rieng).map((id) => ({ id, ten: ten(id), ic: d.icon(id) })),   // tên + hình cả món đích đang TẮT (dsDich bỏ qua)
+            // ⚡ 14/10: ví để chọn ép + lượt ép đang chờ (cấu hình Ghép Ngọc chỉ cổng SUPER đọc được)
+            vi: Object.entries(db).filter(([k, x]) => /^\d{5,20}$/.test(k) && x && typeof x === 'object').map(([k, x]) => ({ uid: k, ten: x.name || k, game: x.ingameName || '' })),
+            ep: Object.entries(db._gnEp || {}).filter(([, ds]) => ds && ds.length).map(([uid, ds]) => ({ uid, ten: (db[uid] && db[uid].name) || uid, n: ds.length, who: ds[0].who, t: ds[0].t })),
             log: (db._gnLog || []).slice(-200).reverse().map((x) => ({ ...x, k: x.t + '_' + x.uid, tenDich: ten(x.dich), icDich: d.icon(x.dich),
                 vaoCt: (x.vao || []).map(([id, n]) => ({ id, sl: n, ten: ten(id), ic: d.icon(id) })) })) };
     }
@@ -395,5 +426,5 @@ module.exports = function ghepNgoc(d) {
         d.writeLog('ADMIN', `[GHÉP NGỌC] ${who || 'admin'} chuyển về 2 danh sách: +${nVao} món bỏ vào (giá shop/rương ghi cứng), ${nDich} món đích từ nhóm -> từng dòng; tắt liên kết shop + nhóm`);
         return { ok: true, message: `⤵️ Đã chuyển: +${nVao} món bỏ vào, ${nDich} món đích tách từng dòng (giữ nguyên giá)`, ...adminState() };
     }
-    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, hoan, logXem, chuyen, MAC_DINH };
+    return { state, quay, adminState, saveCfg, tim, giaVao, cfg, guiThu, hoan, logXem, chuyen, epDat, epXoa, MAC_DINH };
 };

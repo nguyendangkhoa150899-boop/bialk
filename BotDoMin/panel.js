@@ -516,6 +516,8 @@ function startPanel(ctx) {
                     else if (path === '/api/gn/tim') r = { items: ctx.ghepNgoc.tim(b.q) };
                     else if (path === '/api/gn/thu') r = await ctx.ghepNgoc.thu();
                     else if (path === '/api/gn/hoan') r = ctx.ghepNgoc.hoan(b.k, who);
+                    else if (path === '/api/gn/ep' && ctx.ghepNgoc.ep) r = ctx.ghepNgoc.ep(b.uid, b.n, who);   // ⚡ 14/10 ép thắng
+                    else if (path === '/api/gn/epxoa' && ctx.ghepNgoc.epXoa) r = ctx.ghepNgoc.epXoa(b.uid, who);
                     else return sendJSON(res, 404, { ok: false, error: 'Không có API này' });
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });

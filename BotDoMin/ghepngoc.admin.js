@@ -47,6 +47,15 @@
   }
   window.gnaLoad = function () { api('/api/gn/cfg', {}).then(function (j) { moi(j); ve(); }).catch(function (e) { toast('❌ ' + e.message); }); };
   function danhDau() { BAN = true; var d = el('gnaDirty'); if (d) d.textContent = '● có thay đổi chưa lưu'; }
+  function epHtml() {
+    var epDs = A.ep || [];
+    return '<details' + (epDs.length ? ' open' : '') + '><summary>⚡ Ép thắng ' + (epDs.length ? '<span style="color:#f3cf8a">(' + epDs.length + ' ví đang chờ)</span>' : '<span class="muted">(không có)</span>') + '</summary>'
+      + '<div class="note" style="font-size:12px;margin-top:6px">Chọn ví → <b>N lượt luyện kế tiếp</b> của ví đó <b>THẮNG</b> dù tỉ lệ chỉ 1% (server tung số trong cung trúng, kim trên web dừng đúng trong cung). Lượt ép <b>không đăng Discord</b>; nhật ký bên dưới đánh dấu ⚡ ép (cổng mod không thấy). Không có ép thua.</div>'
+      + '<div class="gnaTop"><select id="gnaEpVi" style="min-width:240px">' + (A.vi || []).map(function (v) { return '<option value="' + v.uid + '">' + esc(v.ten) + (v.game ? ' · 🎮 ' + esc(v.game) : '') + '</option>'; }).join('') + '</select>'
+      + '<label>Số lượt ' + inp('gnaEpN', 1, 55, 'type="number" min="1" max="20"') + '</label><button class="btn-green" onclick="gnaEp()">⚡ Ép thắng</button></div>'
+      + (epDs.length ? epDs.map(function (x) { return '<div style="font-size:13px;margin-top:4px">' + esc(x.ten) + ' · còn <b>' + x.n + '</b> lượt ép <span class="muted">(' + esc(x.who || '') + ', ' + new Date(x.t).toLocaleString('vi-VN') + ')</span> <button class="btn-grey" style="padding:2px 8px;font-size:12px" onclick="gnaEpXoa(\'' + x.uid + '\')">✕ Bỏ</button></div>'; }).join('') : '')
+      + '</details>';
+  }
   function ve() {
     var box = el('gnaApp'); if (!box || !A) return; cssOn();
     var c = A.cfg, h = '';
@@ -70,6 +79,8 @@
     h += '<div class="gnaTop" style="margin-top:10px"><button class="btn-green" onclick="gnaSave()">💾 Lưu Ghép Ngọc</button><button class="btn-grey" onclick="gnaLoad()">🔄 Tải lại (bỏ thay đổi)</button><span id="gnaDirty" class="gnaDirty">' + (BAN ? '● có thay đổi chưa lưu' : '') + '</span></div>';
     // --- 2 cột
     h += '<div class="gnaCols">' + cot('vao') + cot('dich') + '</div>';
+    // ⚡ 14/10 (chủ server): ép thắng - chọn ví, N lượt luyện kế tiếp THẮNG dù tỉ lệ bao nhiêu (kim dừng trong cung trúng); lượt ép không đăng Discord
+    h += '<div id="gnaEpBox">' + epHtml() + '</div>';
     h += '<details><summary>📜 Nhật ký luyện (' + A.log.length + ' lượt gần nhất)</summary><input placeholder="Lọc theo tên người chơi / món..." value="' + esc(LLOC) + '" oninput="gnaLLoc(this.value)" style="width:280px;margin-top:8px"><div id="gnaLog" style="max-height:520px;overflow:auto;margin-top:6px">' + nhatKy() + '</div></details>';
     box.innerHTML = h;
   }
@@ -166,13 +177,17 @@
     return ds.map(function (x) {
       var vao = (x.vaoCt || []).map(function (v) { return '<span title="' + esc(v.ten) + '" style="display:inline-flex;align-items:center;gap:3px;margin:2px 6px 2px 0">' + ic(v) + '<span style="font-size:12px">' + esc(v.ten) + ' <b>×' + v.sl + '</b></span></span>'; }).join('') + (x.knb ? '<span style="font-size:12px;margin-right:6px">💰 ' + so(x.knb) + ' KNB</span>' : '');
       var dich = '<span title="' + esc(x.tenDich) + '" style="display:inline-flex;align-items:center;gap:3px">' + ic({ ic: x.icDich }) + '<span style="font-size:12px">' + esc(x.tenDich) + ((x.sl || 1) > 1 ? ' <b>×' + x.sl + '</b>' : '') + '</span></span>';
-      var kq = x.thang ? '<b style="color:#3ddc84">🎉 THẮNG</b>' : '<b style="color:#ff7b7b">💥 thua</b>';
+      var kq = (x.thang ? '<b style="color:#3ddc84">🎉 THẮNG</b>' : '<b style="color:#ff7b7b">💥 thua</b>') + (x.ep ? ' <span style="color:#f3cf8a" title="ép bởi ' + esc(String(x.ep)) + '">⚡ ép</span>' : '');
       var nut = chiXem ? (x.hoan ? '<span class="muted" style="font-size:12px">↩ admin đã hoàn</span>' : '') : x.hoan ? '<span class="muted" style="font-size:12px">↩ đã hoàn ' + new Date(x.hoan.t).toLocaleString('vi-VN') + '</span>' : '<button class="btn-grey" style="padding:3px 8px;font-size:12px" onclick="gnaHoan(\'' + x.k + '\')">↩ Hoàn đồ</button>';
       return '<div style="border-bottom:1px solid #2a2e3b;padding:6px 0;' + (x.hoan ? 'opacity:.55' : '') + '"><div style="font-size:12px;margin-bottom:3px"><span class="muted">' + new Date(x.t).toLocaleString('vi-VN') + '</span> · <b>' + esc(x.ten || x.uid) + '</b> · ' + kq + ' · ' + x.tiLe + '% (tung ' + x.roll + ') · bỏ ' + so(x.tong) + ' → giá trị đích ' + so(x.gia) + ' ' + nut + '</div>'
         + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">' + vao + '<b style="margin:0 8px;font-size:16px">→</b>' + dich + '</div></div>';
     }).join('');
   }
   window.gnaLLoc = function (s) { LLOC = s; var e = el('gnaLog'); if (e) e.innerHTML = nhatKy(); };
+  // ⚡ 14/10: ép thắng (giữ thay đổi cấu hình chưa lưu: chỉ cập nhật A.ep / A.log rồi vẽ lại)
+  function epXong(j) { var vi = el('gnaEpVi'), chon = vi ? vi.value : ''; A.ep = j.ep; A.log = j.log || A.log; var b = el('gnaEpBox'); if (b) b.innerHTML = epHtml(); if (chon && el('gnaEpVi')) el('gnaEpVi').value = chon; var e = el('gnaLog'); if (e) e.innerHTML = nhatKy(); toast(j.message); }
+  window.gnaEp = function () { var uid = el('gnaEpVi').value, n = Number(el('gnaEpN').value) || 1; if (!uid) return toast('Chọn ví'); api('/api/gn/ep', { uid: uid, n: n }).then(epXong).catch(function (e) { toast('❌ ' + e.message); }); };
+  window.gnaEpXoa = function (uid) { api('/api/gn/epxoa', { uid: uid }).then(epXong).catch(function (e) { toast('❌ ' + e.message); }); };
   // 👀 cổng mod: tab 💎 Ghép Ngọc chỉ xem (/api/gn/xem)
   var X = null;
   window.gnxLoad = function () { api('/api/gn/xem', {}).then(function (j) { X = j; gnxVe(); }).catch(function (e) { var b = el('gnxApp'); if (b) b.textContent = '❌ ' + e.message; }); };
