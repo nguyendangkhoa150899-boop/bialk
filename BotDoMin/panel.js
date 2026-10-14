@@ -3481,7 +3481,40 @@ function akDraw(){if(!AK)return;var box=document.getElementById('akBox'),h='';
   h+='<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button onclick="akGoiY()">✨ Gợi ý: dòng 2 hiệu ứng, dòng 3 % máu / mana</button><button class="btn-grey" onclick="akGoc()">↺ Điền trọng số gốc</button>'
     +'<button class="btn-green" onclick="akAp(0)">💾 Áp</button><button class="btn-red" onclick="akAp(1)">💾 Áp + Restart</button>'
     +(AK.dangAp?'<button class="btn-grey" onclick="akTra(0)">↩ Trả về gốc</button>':'')+'</div>';
-  box.className='epOnly';box.innerHTML=h;akSum();}
+  h+=akPcHtml();
+  box.className='epOnly';box.innerHTML=h;akSum();akPcSum();}
+// 💠 14/10: TỈ LỆ PHẨM CHẤT ÁM KHÍ (panel game amkhi.py pc_*, DarkConfigTable.ini): 3 cột Bách Thối / Thiên Thối / ám khí mới tạo × 5 bậc, phần nghìn, tổng 1000.
+// Áp = bấm 2 lần trong 6 giây (không dùng confirm() - quy tắc NetCo4). Cần restart game mới có hiệu lực.
+var AK_PC_XN=null;
+function akPcHtml(){var P=AK&&AK.pc;if(!P)return '';
+  var h='<div style="margin-top:16px;border-top:1px solid #444;padding-top:10px"><b>💠 Tỉ lệ phẩm chất ám khí (tẩy bằng Bách Thối / Thiên Thối)</b>'
+    +'<div class="muted" style="margin:4px 0 6px">Phẩm chất = 2000 (ám khí cấp 90) + bậc × 40 + ngẫu nhiên 0–39 → bậc 4 = 2160–2199. Số là <b>phần nghìn</b>, mỗi cột tổng đúng <b>1000</b>. Phẩm chất / 1000 = hệ số nhân 5 dòng chỉ số gốc. <b>Cần restart</b> mới có hiệu lực; ám khí đang có giữ phẩm chất tới lần tẩy sau.</div>'
+    +(P.dangAp?'<div class="note" style="margin:0 0 6px;border-color:#c0392b"><b>⚠️ Đang dùng tỉ lệ riêng</b> (áp lúc '+new Date(P.t*1000).toLocaleString('vi-VN')+'). Vừa áp thì restart mới có hiệu lực.</div>':'<div class="muted" style="margin-bottom:6px">Đang dùng bảng trong repo (đã cân bằng 14/10: Thiên Thối bậc 4 = 10%).</div>');
+  h+='<table style="width:100%"><thead><tr><th style="text-align:left">Bậc</th>'+P.nhom.map(function(n){return '<th>'+esc(n.ten)+'</th>';}).join('')+'</tr></thead><tbody>';
+  for(var b=0;b<5;b++){h+='<tr><td>Bậc '+b+' <span class="muted">('+(2000+b*40)+'–'+(2039+b*40)+')</span></td>'+P.nhom.map(function(n){
+    return '<td style="text-align:center;white-space:nowrap"><input class="mini-in akpc" data-k="'+n.k+'" data-b="'+b+'" type="number" min="0" max="1000" style="width:70px" value="'+n.hien[b]+'" oninput="akPcSum()"> <span class="akpc-p" data-k="'+n.k+'" data-b="'+b+'"></span></td>';}).join('')+'</tr>';}
+  h+='<tr><td><b>Tổng</b> · ra đúng 2199</td>'+P.nhom.map(function(n){return '<td style="text-align:center" class="akpc-t" data-k="'+n.k+'"></td>';}).join('')+'</tr></tbody></table>';
+  h+='<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn-grey" onclick="akPcDienRepo()">↺ Điền bảng repo (cân bằng 14/10)</button><button class="btn-grey" onclick="akPcDienGoc()">↺ Điền gốc game cũ</button>'
+    +'<button class="btn-green" onclick="akPcAp(0)">💾 Áp</button><button class="btn-red" onclick="akPcAp(1)">💾 Áp + Restart</button>'
+    +(P.dangAp?'<button class="btn-grey" onclick="akPcTra()">↩ Về bảng repo</button>':'')+'</div></div>';
+  return h;}
+function akPcO(k,b){return document.querySelector('#akBox .akpc[data-k="'+k+'"][data-b="'+b+'"]');}
+function akPcCot(k){var a=[];for(var b=0;b<5;b++){var el=akPcO(k,b);a.push(Math.max(0,Math.min(1000,Math.round(Number(el&&el.value)||0))));}return a;}
+function akPcSum(){if(!AK||!AK.pc)return;AK.pc.nhom.forEach(function(n){var a=akPcCot(n.k),t=a.reduce(function(x,y){return x+y;},0);
+  for(var b=0;b<5;b++){var p=document.querySelector('#akBox .akpc-p[data-k="'+n.k+'"][data-b="'+b+'"]');if(p)p.innerHTML='<b>'+(a[b]/10).toLocaleString('vi-VN')+'%</b>';}
+  var td=document.querySelector('#akBox .akpc-t[data-k="'+n.k+'"]');if(td)td.innerHTML=(t===1000?'<b style="color:#35c46a">1000 ✓</b>':'<b style="color:#ff7b7b">'+t+' (phải 1000)</b>')
+    +' · '+(a[4]>0?'1/'+Math.round(40000/a[4]).toLocaleString('vi-VN')+' lần':'không bao giờ');});}
+function akPcDien(f){if(!AK||!AK.pc)return;AK.pc.nhom.forEach(function(n){for(var b=0;b<5;b++){var el=akPcO(n.k,b);if(el)el.value=n[f][b];}});akPcSum();}
+function akPcDienRepo(){akPcDien('repo');toast('Đã điền bảng repo - bấm Áp để lưu');}
+function akPcDienGoc(){akPcDien('gameGoc');toast('Đã điền gốc game cũ (Thiên Thối bậc 4 = 0,5%) - bấm Áp để lưu');}
+function akPcAp(rs){var f={a:'amkhipc_ap',restart:rs?'1':''},ten={low:'pl',high:'ph',def:'pd'},loi='';
+  AK.pc.nhom.forEach(function(n){var a=akPcCot(n.k);if(a.reduce(function(x,y){return x+y;},0)!==1000)loi=n.ten+': tổng phải đúng 1000';f[ten[n.k]]=a.join(',');});
+  if(loi)return toast(loi);
+  var k=JSON.stringify(f);if(!(AK_PC_XN&&AK_PC_XN.k===k&&Date.now()-AK_PC_XN.t<6000)){AK_PC_XN={k:k,t:Date.now()};
+    return toast('Bấm '+(rs?'💾 Áp + Restart':'💾 Áp')+' lần nữa trong 6 giây để xác nhận'+(rs?' - server sẽ RESTART ngay (~3 phút)':' - có hiệu lực sau lần restart tới'));}
+  AK_PC_XN=null;api('/api/gm/act',f).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
+function akPcTra(){var k='tra';if(!(AK_PC_XN&&AK_PC_XN.k===k&&Date.now()-AK_PC_XN.t<6000)){AK_PC_XN={k:k,t:Date.now()};return toast('Bấm ↩ Về bảng repo lần nữa trong 6 giây để xác nhận');}
+  AK_PC_XN=null;api('/api/gm/act',{a:'amkhipc_tra'}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
 function akW(cap){return [].slice.call(document.querySelectorAll('#akBox .ak-w[data-cap="'+cap+'"]'));}
 function akSum(){[40,70,90].forEach(function(cap){var ws=akW(cap),t=ws.reduce(function(a,x){return a+(Number(x.value)||0);},0);
   ws.forEach(function(x){var td=document.querySelector('#akBox .ak-p[data-cap="'+cap+'"][data-id="'+x.getAttribute('data-id')+'"]');
