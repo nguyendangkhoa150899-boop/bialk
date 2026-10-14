@@ -3301,7 +3301,7 @@ function renderDogLedger(){
 // Bảng liên kết Discord ↔ tên nhân vật (cầu KNB tự động đọc ingameName này)
 // ===== 🛠️ GM THIÊN LONG (29/09): dùng chung logic panel GM qua /api/gm/* =====
 var GM={st:null,timer:null};
-var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet12','🐾 Pet Huyễn Hóa 12000 (admin cấp)'],['petv2','🐾 Pet Huyễn Hóa V2 (chỉ số bình thường)'],['pettt','🐾 Pet Huyễn Hóa Tân Thủ (cấp mang 5)'],['petall','🐾 Pet khác (tất cả)']];
+var GM_KINDS=[['item','Vật phẩm (ID)'],['xoa','XOÁ vật phẩm (ID)'],['knb','KNB'],['vang','Vàng'],['diemtang','Điểm Tặng'],['level','Lên cấp (1-119)'],['exp','EXP kinh nghiệm (1 - 2 tỉ)'],['vip','Cấp VIP (0-10)'],['popup','Quà popup (cửa sổ, chọn người)'],['pet12','🐾 Pet Huyễn Hóa 12000 (admin cấp)'],['petv2','🐾 Pet Huyễn Hóa V2 (chỉ số bình thường)'],['pettt','🐾 Pet Huyễn Hóa Tân Thủ (cấp mang 5)'],['petall','🐾 Pet khác (tất cả)']];
 var GM_PH={item:'ID vật phẩm',xoa:'ID cần xoá',knb:'Số KNB (1-10.000.000)',vang:'Số vàng (1-100.000)',diemtang:'Số Điểm Tặng',level:'Cấp (1-119)',vip:'Cấp VIP 0-10',popup:'ID vật phẩm',pet12:'',petv2:'',petall:'',pettt:'',pet:'ID pet (vd 25351 Tần Vương - docs/pet-huyen-hoa.md)'};
 function gmGiveForm(g){
   var o=GM_KINDS.map(function(k){return '<option value="'+k[0]+'">'+k[1]+'</option>';}).join('');
