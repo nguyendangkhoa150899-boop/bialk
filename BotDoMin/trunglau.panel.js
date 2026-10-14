@@ -15,7 +15,8 @@
     ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null],
     ['Mũ "Trùng Lâu Khôi" (mũ Giáng Sinh, +10% sát thương)', ['10410121'], null],   // 13/10: doan rieng 4527 (goc doan 100 dung chung 351 mon)
     ['Mũ top 2 (mũ Giáng Sinh cấp 92, +9% sát thương)', ['10410127'], null],   // 13/10: doan rieng 4528, hieu ung 7581
-    ['Mũ top 3 (mũ Giáng Sinh cấp 82, +7% sát thương)', ['10410126'], null]];   // 13/10: doan rieng 4529, hieu ung 7582
+    ['Mũ top 3 (mũ Giáng Sinh cấp 82, +7% sát thương)', ['10410126'], null],   // 13/10: doan rieng 4529, hieu ung 7582
+    ['Chân-Trùng Lâu Ngọc bản cũ (chỉ admin phát, không nâng, chỉnh riêng)', ['10423025'], null]];   // 14/10: doan rieng 4530, hieu ung rieng 5965
   NHOM = CFG.nhom.length ? CFG.nhom : NHOM_TL;
   IDS = []; NHOM.forEach(function (g) { IDS = IDS.concat(g[1]).concat(g[2] ? [g[2]] : []); });
   function e(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
