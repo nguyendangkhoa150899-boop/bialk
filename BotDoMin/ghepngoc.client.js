@@ -94,6 +94,25 @@
     '.gn3dChips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px}',
     '.gn3dM .gn3dChips button{padding:5px 10px;font-size:12px}.gn3dM .gn3dChips button.on{border-color:#f5c542;background:#3a2e0e;color:#ffe08a}',
     '.gn3dNote{padding:0 12px 10px;color:var(--muted);font-size:11px}',
+    // 14/10 (chủ server: "nằm chung với nguyên liệu rất khó nhìn, ngọc + nguyên liệu trùng lẫn lộn"): khu chọn đồ = 2 BƯỚC + chia NHÓM
+    '.gnSteps{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}',
+    '#gnApp .gnSteps button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;border-radius:12px;text-align:left;min-width:0}',
+    '#gnApp .gnSteps button b{font-size:14px}#gnApp .gnSteps button small{color:var(--muted);font-weight:600;font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '#gnApp .gnSteps button.on{border-color:var(--gnB);background:#2b2f40;box-shadow:0 0 0 1px var(--gnB)}',
+    '#gnApp .gnSteps button.xong small{color:#3ddc84}',
+    '@container (max-width:560px){.gnSteps{grid-template-columns:1fr 1fr}#gnApp .gnSteps button.lich{grid-column:1 / -1;align-items:center}}',
+    '.gnTool{display:flex;gap:6px;margin-bottom:8px}#gnApp .gnTool input{flex:1;min-width:120px}',
+    '.gnChips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}',
+    '#gnApp .gnChips button{padding:5px 11px;font-size:12.5px;border-radius:999px}#gnApp .gnChips button small{color:var(--muted);font-weight:600;margin-left:2px}',
+    '#gnApp .gnChips button.on{border-color:var(--gnB);background:#3a2e0e;color:#ffe08a}',
+    '#gnApp .gnChips.sub button{padding:3px 9px;font-size:11.5px}',
+    '.gnScroll{max-height:440px;overflow-y:auto;overflow-x:hidden;padding-right:2px}.gnScroll .gnGrid{max-height:none;overflow:visible}',
+    '.gnSec+.gnSec{margin-top:12px}',
+    '.gnSecH{position:sticky;top:0;z-index:2;background:#10131b;padding:6px 4px;margin-bottom:6px;border-bottom:1px solid var(--line);font-weight:800;font-size:13px;color:#ffe08a}.gnSecH small{color:var(--muted);font-weight:600}',
+    // 14/10: "bấm cứ bị đẩy": khung Bỏ vào / vòng / Món đích cao cố định ở màn rộng, danh sách đã bỏ vào cuộn bên trong
+    '.gnVaoL{flex:1 1 auto;min-height:0;max-height:210px;overflow-y:auto;overflow-x:hidden}',
+    '@container (min-width:781px){.gnTop>.gnBox{height:460px;overflow:hidden}.gnRingBox{overflow-y:auto!important}.gnTop .gnVaoL{max-height:none}}',
+    '.gnCapB{position:absolute;left:-5px;bottom:-4px;background:#8b5cf6;color:#fff;font-size:10px;font-weight:900;line-height:14px;border-radius:999px;padding:0 5px;border:2px solid #1a1f2d;pointer-events:none}',
   ].join('');
   function ic(x, cls) { return typeof vqIcon === 'function' ? vqIcon(x && x.ic, cls) : ''; }
   // ===== 🐾 08/10: XEM BIẾN DỊ TRÂN THÚ - chỉ mục /pet3d/index.json (bot pet3d.js), bộ xem /p3.js (pet3d.client.js) =====
@@ -154,6 +173,27 @@
     // 07/10 tối: số đời biến dị (mỗi đời +500 cả 5 tư chất, tối đa +3500)
     if (x.doi) t += ' · 🧬 ' + x.doi + ' đời biến dị' + (dai ? ' (mỗi đời +500 cả 5 tư chất, tối đa +' + Math.min(500 * x.doi, 3500) + ')' : '');
     return dai ? '<span class="gnCap ok">' + t + '</span>' : '<small class="gnCap ok">' + t + '</small>';
+  }
+  // 14/10: NHÓM món cho khu chọn đồ (bước ① món đích + bước ② rương). Ngọc khảm = ID 50 L TT NNN (L = cấp).
+  var NHOM = [['ngoc', '💎 Ngọc'], ['trunglau', '🐉 NL Trùng Lâu'], ['mbbn', '🧵 Miên Bố · Bí Ngân'], ['dieuvan', '📜 Điêu văn'],
+    ['phu', '🔱 Phù · đá'], ['khac', '📦 Khác'], ['pet', '🐾 Trân thú']];
+  function capNgoc(x) { return x && /^50\d{6}$/.test(x.id) ? +x.id.charAt(2) : 0; }
+  function nhomCua(x) {
+    if (laPet(x)) return 'pet';
+    if (capNgoc(x)) return 'ngoc';
+    if (/^20310(18[5-9]|190)$/.test(x.id)) return 'trunglau';   // Trùng Lâu Chi Lệ / Mang / Thương / Dương + Thiên Địa / Lưu Ly Minh Châu
+    if (/^2050[12]\d{3}$/.test(x.id) || /Miên Bố|Bí Ngân/i.test(x.ten || '')) return 'mbbn';
+    if (/Điêu Văn/i.test(x.ten || '')) return 'dieuvan';
+    if (/Phù|Thạch|Tinh Hoa/i.test(x.ten || '')) return 'phu';
+    return 'khac';
+  }
+  function chiaNhom(list) {
+    var o = {}; list.forEach(function (x) { var k = nhomCua(x); (o[k] = o[k] || []).push(x); });
+    if (o.ngoc) o.ngoc.sort(function (a, b) { return capNgoc(b) - capNgoc(a) || b.gia - a.gia; });
+    return o;
+  }
+  function chips(ds, cur, fn, cls) {
+    return '<div class="gnChips' + (cls ? ' ' + cls : '') + '">' + ds.map(function (c) { return '<button class="' + (String(c[0]) === String(cur) ? 'on' : '') + '" onclick="' + fn + '(\'' + c[0] + '\')">' + c[1] + ' <small>' + c[2] + '</small></button>'; }).join('') + '</div>';
   }
   function S() { return GN.s; }
   function giaVao(id) { var r = (S().ruong || []).find(function (x) { return x.id === id; }); return r ? r.gia : 0; }
@@ -241,15 +281,17 @@
     }
     var ids = Object.keys(GN.vao);
     var kq = GN.kq && GN.kq.vao ? GN.kq : null;   // 05/10: kết quả lượt vừa luyện (giữ tới khi người chơi đổi)
+    h += '<div class="gnVaoL">';   // 14/10: danh sách đã bỏ vào cuộn TRONG khung cao cố định -> thêm món không đẩy khu chọn đồ bên dưới
     if (kq && !ids.length && !GN.knb) {
       kq.vao.forEach(function (x) { h += '<div class="gnRow da">' + ic(x, 'vqIcS') + '<div class="n">' + esc(x.ten) + '<br><small>' + vnd(x.gia) + ' / cái · đã dùng</small></div><b>×' + x.sl + '</b></div>'; });
       if (kq.knb) h += '<div class="gnRow da"><div class="n">💰 KNB web</div><b>' + vnd(kq.knb) + '</b></div>';
-    } else if (!ids.length && !GN.knb) h += '<div class="muted" style="font-size:13px">Chọn đồ trong rương ở bên dưới (tab 🧰 Rương). Đồ bỏ vào sẽ <b>mất</b> dù thắng hay thua.</div>';
+    } else if (!ids.length && !GN.knb) h += '<div class="muted" style="font-size:13px">Chọn đồ ở <b>bước ② 🧰 Bỏ đồ từ rương</b> bên dưới. Đồ bỏ vào sẽ <b>mất</b> dù thắng hay thua.</div>';
     ids.forEach(function (id) {
       var r = (s.ruong || []).find(function (x) { return x.id === id; }); if (!r) return;
       h += '<div class="gnRow">' + ic(r, 'vqIcS') + '<div class="n">' + esc(r.ten) + '<br><small>' + vnd(r.gia) + ' / cái · có ' + r.qty + '</small></div>'
         + '<input type="number" min="1" max="' + r.qty + '" value="' + GN.vao[id] + '" onchange="gnSl(\'' + id + '\',this.value)"><button onclick="gnBo(\'' + id + '\')">✕</button></div>';
     });
+    h += '</div>';
     h += '<div class="gnSum"><span>Tổng giá trị</span><span>' + vnd(kq && !ids.length && !GN.knb ? kq.tong : tong()) + '</span></div>';
     if (ids.length) h += '<button style="margin-top:6px" onclick="gnXoaHet()">🗑 Bỏ hết ra</button>';
     h += '</div>';
@@ -266,30 +308,52 @@
     // ---- đích
     h += '<div class="gnBox"><h4>🎯 MÓN MUỐN LUYỆN RA</h4>';
     if (d) h += '<div class="gnTgt">' + ic(d, 'vqIc big') + '<b>' + esc(d.ten) + (d.sl > 1 ? ' <span style="color:var(--gold)">×' + d.sl + '</span>' : '') + '</b><span class="muted">giá trị ' + vnd(d.gia) + '</span>' + capNote(d, true) + p3Nut(d.id, true) + '</div>';
-    else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở tab 🎯 Món đích bên dưới</div>';
+    else h += '<div class="gnTgt muted" style="font-size:13px">Chọn món ở <b>bước ① 🎯</b> bên dưới</div>';
     // 08/10 (chủ server): bỏ hàng nút 1.5x..20x / 35-55-75% + dòng hướng dẫn cho gọn - người chơi đã quen
     h += '</div>';
     h += '</div>';
-    // ---- chọn
-    var tab = GN.chon || 'ruong';
-    h += '<div class="gnPick"><div class="gnTabs"><button class="' + (tab === 'ruong' ? 'on' : '') + '" onclick="gnTab(\'ruong\')">🧰 Rương (' + (s.ruong || []).length + ' loại dùng được)</button>'
-      + '<button class="' + (tab === 'dich' ? 'on' : '') + '" onclick="gnTab(\'dich\')">💎 Nguyên liệu (' + (s.dich || []).filter(function (x) { return !laPet(x); }).length + ')</button>'
-      + '<button class="' + (tab === 'pet' ? 'on' : '') + '" onclick="gnTab(\'pet\')">🐾 Trân thú (' + (s.dich || []).filter(laPet).length + ')</button>'
-      + '<button class="' + (tab === 'lich' ? 'on' : '') + '" onclick="gnTab(\'lich\')">📜 Lịch sử</button>'
-      + '<input placeholder="🔎 lọc tên..." value="' + esc(GN.loc) + '" oninput="gnLoc(this.value)" style="flex:1;min-width:140px"></div>';
+    // ---- chọn. 14/10 (chủ server): 2 BƯỚC rõ ràng (① món muốn luyện ra -> ② bỏ đồ từ rương) thay 4 tab ngang hàng;
+    // mỗi bước chia NHÓM (chip lọc + khu có tiêu đề dính) -> ngọc / nguyên liệu Trùng Lâu / Miên Bố… không còn nằm lẫn.
+    var tab = GN.chon || (GN.dich ? 'ruong' : 'dich');
+    if (tab === 'pet') { tab = 'dich'; GN.nhomD = 'pet'; }   // tab cũ
+    var nRuong = (s.ruong || []).length;
+    h += '<div class="gnPick"><div class="gnSteps">'
+      + '<button class="' + (tab === 'dich' ? 'on' : '') + (d ? ' xong' : '') + '" onclick="gnTab(\'dich\')"><b>🎯 ① Món muốn luyện ra</b><small>' + (d ? '✓ ' + esc(d.ten) + (d.sl > 1 ? ' ×' + d.sl : '') : 'chưa chọn · ' + (s.dich || []).length + ' món') + '</small></button>'
+      + '<button class="' + (tab === 'ruong' ? 'on' : '') + (soMon() || GN.knb ? ' xong' : '') + '" onclick="gnTab(\'ruong\')"><b>🧰 ② Bỏ đồ từ rương</b><small>' + (soMon() ? '✓ đã bỏ ' + soMon() + ' món' + (GN.knb ? ' + KNB' : '') : GN.knb ? '✓ KNB web' : nRuong + ' loại dùng được') + '</small></button>'
+      + '<button class="lich' + (tab === 'lich' ? ' on' : '') + '" onclick="gnTab(\'lich\')"><b>📜 Lịch sử</b></button></div>';
     var loc = (GN.loc || '').toLowerCase(), khop = function (x) { return !loc || x.ten.toLowerCase().indexOf(loc) >= 0 || x.id.indexOf(loc) >= 0; };
+    if (tab !== 'lich') h += '<div class="gnTool"><input placeholder="🔎 lọc tên / ID..." value="' + esc(GN.loc) + '" oninput="gnLoc(this.value)"></div>';
+    // khu có tiêu đề theo nhóm; chip "Tất cả" + từng nhóm có món; nhóm ngọc thêm chip cấp
+    var khuVe = function (list, khoaNhom, fnNhom, the, rong) {
+      var g = chiaNhom(list), cur = GN[khoaNhom] || 'all';
+      if (cur !== 'all' && !g[cur]) cur = 'all';
+      var co = NHOM.filter(function (n) { return g[n[0]]; });
+      var o = co.length > 1 ? chips([['all', 'Tất cả', list.length]].concat(co.map(function (n) { return [n[0], n[1], g[n[0]].length]; })), cur, fnNhom) : '';
+      var capS = khoaNhom === 'nhomD' ? 'capD' : 'capR';
+      if (cur === 'ngoc') {
+        var caps = []; g.ngoc.forEach(function (x) { var c = capNgoc(x); if (caps.indexOf(c) < 0) caps.push(c); }); caps.sort(function (a, b) { return b - a; });
+        if (caps.length > 1) o += chips([['0', 'Mọi cấp', g.ngoc.length]].concat(caps.map(function (c) { return [String(c), 'Cấp ' + c, g.ngoc.filter(function (x) { return capNgoc(x) === c; }).length]; })), String(GN[capS] || 0), capS === 'capD' ? 'gnCapD' : 'gnCapR', 'sub');
+        if (GN[capS]) g.ngoc = g.ngoc.filter(function (x) { return capNgoc(x) === GN[capS]; });
+      }
+      if (!list.length) return o + '<div class="muted" style="font-size:13px">' + rong + '</div>';
+      var hien = cur === 'all' ? co : co.filter(function (n) { return n[0] === cur; });
+      return o + '<div class="gnScroll">' + hien.map(function (n) {
+        return '<div class="gnSec"><div class="gnSecH">' + n[1] + ' <small>· ' + g[n[0]].length + '</small></div><div class="gnGrid">' + g[n[0]].map(the).join('') + '</div></div>';
+      }).join('') + '</div>';
+    };
     if (tab === 'ruong') {
-      var r = (s.ruong || []).filter(khop), dObj = dichObj();
+      var dObj = dichObj();
       var phanTram = function (g) { var v = g / dObj.gia * (100 - s.phi); return v >= 1 ? (Math.round(v * 10) / 10) : (Math.round(v * 1000) / 1000); };
       // 08/10: số lượng = nhãn nổi trên góc icon (×có, đang bỏ vào thì xanh dung/có); "riêng / shop" chỉ còn trong chú thích rê chuột
-      h += (r.length && !dObj ? '<div class="gnHint">👉 Chọn <b>món muốn luyện ra</b> (tab 💎 Nguyên liệu / 🐾 Trân thú) để thấy mỗi món trong rương cộng bao nhiêu <b>%</b> tỉ lệ.</div>' : '') +
-        (r.length ? '<div class="gnGrid">' + r.map(function (x) { var dung = GN.vao[x.id] || 0; return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')" title="' + esc(x.ten) + ' · có ' + x.qty + ' · giá ' + esc(x.tu) + '">' +
-        '<span class="gnIcW">' + ic(x, 'vqIcS') + '<span class="gnSl">' + x.qty + '</span>' + (dung ? '<span class="gnDung" title="đã bỏ vào ' + dung + '">✓' + dung + '</span>' : '') + '</span>' +
-        '<div class="gnTx"><span class="gnNm">' + esc(x.ten) + '</span><span class="gnGia">' + vnd(x.gia) + ' / cái</span>' + (dObj ? '<span class="gnPt">+' + phanTram(x.gia) + '% <small>/ cái</small></span>' : '<span class="gnPt0">+?% / cái</span>') + '</div></div>'; }).join('') + '</div>'
-        : '<div class="muted" style="font-size:13px">Rương không có món nào dùng để ghép được.</div>');
-    } else if (tab === 'dich' || tab === 'pet') {   // 07/10: món đích chia 2 mục - 💎 Nguyên liệu / 🐾 Trân thú
-      var dd = (s.dich || []).filter(khop).filter(function (x) { return (tab === 'pet') === laPet(x); });
-      h += '<div class="gnGrid">' + dd.map(function (x) { return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' + ic(x, 'vqIcS') + '<div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + capNote(x, false) + p3Nut(x.id) + '</div></div>'; }).join('') + '</div>';
+      if (nRuong && !dObj) h += '<div class="gnHint">👉 Làm <b>bước ① 🎯 Món muốn luyện ra</b> trước để thấy mỗi món trong rương cộng bao nhiêu <b>%</b> tỉ lệ.</div>';
+      h += khuVe((s.ruong || []).filter(khop), 'nhomR', 'gnNhomR', function (x) { var dung = GN.vao[x.id] || 0, c = capNgoc(x); return '<div class="gnCard' + (dung ? ' on' : '') + (dObj && duRoi() ? ' het' : '') + '" onclick="gnThem(\'' + x.id + '\')" title="' + esc(x.ten) + ' · có ' + x.qty + ' · giá ' + esc(x.tu) + '">' +
+        '<span class="gnIcW">' + ic(x, 'vqIcS') + '<span class="gnSl">' + x.qty + '</span>' + (dung ? '<span class="gnDung" title="đã bỏ vào ' + dung + '">✓' + dung + '</span>' : '') + (c ? '<span class="gnCapB">C' + c + '</span>' : '') + '</span>' +
+        '<div class="gnTx"><span class="gnNm">' + esc(x.ten) + '</span><span class="gnGia">' + vnd(x.gia) + ' / cái</span>' + (dObj ? '<span class="gnPt">+' + phanTram(x.gia) + '% <small>/ cái</small></span>' : '<span class="gnPt0">+?% / cái</span>') + '</div></div>'; },
+        loc ? 'Không có món nào khớp "' + esc(GN.loc) + '".' : 'Rương không có món nào dùng để ghép được.');
+    } else if (tab === 'dich') {   // 07/10: món đích + 14/10: Trân thú thành 1 nhóm trong bước ①
+      h += khuVe((s.dich || []).filter(khop), 'nhomD', 'gnNhomD', function (x) { var c = capNgoc(x); return '<div class="gnCard' + (x.id === GN.dich ? ' on' : '') + '" onclick="gnDich(\'' + x.id + '\')">' +
+        '<span class="gnIcW">' + ic(x, 'vqIcS') + (c ? '<span class="gnCapB">C' + c + '</span>' : '') + '</span><div><b>' + esc(x.ten) + (x.sl > 1 ? ' ×' + x.sl : '') + '</b><small>giá trị ' + vnd(x.gia) + '</small>' + capNote(x, false) + p3Nut(x.id) + '</div></div>'; },
+        loc ? 'Không có món nào khớp "' + esc(GN.loc) + '".' : 'Chưa có món nào.');
     } else {
       var L = s.lich || [];
       var tenDich = function (id) { var x = (s.dich || []).find(function (y) { return y.id === id; }); return x ? x.ten : '#' + id; };
@@ -297,10 +361,13 @@
     }
     h += '</div>';
     // 05/10: vẽ lại cả khung làm điện thoại nhảy về đầu -> giữ chỗ cuộn của trang + danh sách món + ô lịch sử
-    var sx = window.scrollX, sy = window.scrollY, cu = el.querySelector('.gnGrid, .gnLich'), st = cu ? cu.scrollTop : 0, tabCu = GN.chon || 'ruong';
+    // 14/10: + khung cuộn danh sách đã bỏ vào (.gnVaoL) và khung nhóm (.gnScroll); khóa chọn theo tab + nhóm đang xem
+    var sx = window.scrollX, sy = window.scrollY, cu = el.querySelector('.gnScroll, .gnLich'), st = cu ? cu.scrollTop : 0, cuV = el.querySelector('.gnVaoL'), stV = cuV ? cuV.scrollTop : 0;
+    var tabCu = (GN.chon || '') + '|' + (GN.nhomD || '') + '|' + (GN.nhomR || '') + '|' + (GN.capD || 0) + '|' + (GN.capR || 0) + '|' + (GN.loc || '');
     el.style.minHeight = el.offsetHeight + 'px';   // giữ chiều cao lúc thay nội dung -> trang không co lại rồi bật lên
     el.innerHTML = h;
-    var moi = el.querySelector('.gnGrid, .gnLich'); if (moi && tabCu === GN.daTab) moi.scrollTop = st;
+    var moi = el.querySelector('.gnScroll, .gnLich'); if (moi && tabCu === GN.daTab) moi.scrollTop = st;
+    var moiV = el.querySelector('.gnVaoL'); if (moiV) moiV.scrollTop = stV;
     GN.daTab = tabCu; el.style.minHeight = '';
     if (window.scrollY !== sy) window.scrollTo(sx, sy);
     ganKeo();
@@ -317,7 +384,12 @@
   window.gnBo = function (id) { if (ban()) return; delete GN.vao[id]; GN.kq = null; ve(); };
   window.gnXoaHet = function () { if (ban()) return; GN.vao = {}; GN.kq = null; ve(); };
   window.gnKnb = function (v) { if (ban()) return; GN.knb = Math.max(0, Math.min(S().knbMax, S().balance || 0, Math.floor(Number(v) || 0))); GN.kq = null; ve(); };   // 05/10: kẹp cả theo số dư ví
-  window.gnDich = function (id) { if (ban()) return; GN.dich = id; GN.kq = null; ve(); };
+  // 14/10: chọn món đích xong tự sang bước ② (rương) - nếu rương có đồ
+  window.gnDich = function (id) { if (ban()) return; GN.dich = id; GN.kq = null; if ((S().ruong || []).length) GN.chon = 'ruong'; ve(); };
+  window.gnNhomD = function (k) { if (ban()) return; GN.nhomD = k; GN.capD = 0; ve(); };
+  window.gnNhomR = function (k) { if (ban()) return; GN.nhomR = k; GN.capR = 0; ve(); };
+  window.gnCapD = function (c) { if (ban()) return; GN.capD = +c || 0; ve(); };
+  window.gnCapR = function (c) { if (ban()) return; GN.capR = +c || 0; ve(); };
   window.gnNhan = function (m) {
     if (ban()) return;
     var t = tong(); if (!t) return toast('⚠️ Bỏ đồ vào trước rồi chọn mức nhân');
