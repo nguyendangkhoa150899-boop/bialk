@@ -2288,6 +2288,13 @@ const HTML = `<!DOCTYPE html>
                 <span id="gmVoyTxtB" style="color:#f1c40f;font-weight:600"></span></div>
               <button onclick="gmVoyMacDinh()">↩ Mặc định (x4 · x12)</button>
               <div class="qH">Nội tức mỗi con = (770 + cấp quái × 10) × <b>mọi nơi</b>; ở <b>Vô Lượng Sơn + Tháp Khắc Lạp Mã Can</b> nhân thêm <b>bản đồ train</b>. Số vàng bên cạnh tự tính lại khi gõ. Trần 3.000 quái / ngày giữ nguyên. Có hiệu lực ngay con quái kế tiếp.</div></div>
+            <div class="quaTile"><div class="qT">💊 Công Lực Đan <span class="qBadge ok">không cần restart</span></div>
+              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">Mỗi viên <b>+</b><input id="gmClDan" class="mini-in" style="width:110px" type="number" min="1" max="10000000" oninput="gmDanhDau(this);gmClTong()">
+                <span id="gmClTxtA" style="color:#f1c40f;font-weight:600"></span></div>
+              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">Trần công lực <input id="gmClTran" class="mini-in" style="width:110px" type="number" min="100" max="99999999" oninput="gmDanhDau(this);gmClTong()">
+                <span id="gmClTxtB" style="color:#f1c40f;font-weight:600"></span></div>
+              <button onclick="gmClMacDinh()">↩ Gốc (+100 · trần 99.999)</button>
+              <div class="qH">Đan <code>39999901</code>: mỗi viên cộng số này vào công lực, tối đa tới <b>trần</b>. Đã chạm trần thì game không cho cắn (không mất viên). Hạ trần thấp hơn công lực người chơi đang có thì họ <b>giữ nguyên</b>, chỉ không cắn thêm được. Full 15 sách tu luyện (0 → 150) tốn tổng <b>172.350</b> công lực. Mô tả đan trong game vẫn ghi "100" (chữ nằm ở client, server không đổi được). Có hiệu lực ngay viên kế tiếp.</div></div>
           </div>
           <div class="row quaSave">
             <button class="btn-red" onclick="gmLuuChung()">💾 Lưu thay đổi</button>
@@ -3334,7 +3341,7 @@ function gmRender(){
   // 03/10: ô đã sửa mà chưa lưu (data-sua) KHÔNG bị lần tải lại 15 giây ghi đè - trước đây gõ ô này, bấm sang ô khác là ô trước bị trả về số cũ
   GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el&&el.dataset.sua!=='1'&&document.activeElement!==el&&st[o[1]]!==undefined)el.value=st[o[1]];});
   var ed=document.getElementById('gmExpDef');if(ed&&st.expDefault!==undefined)ed.textContent=st.expDefault;
-  gmVoyTong();
+  gmVoyTong();gmClTong();
   gmSuaNote();
   document.getElementById('gmAccs').innerHTML='<table><tr><th>ID</th><th>Tài khoản</th><th>Online</th><th></th></tr>'+
     st.accounts.map(function(a){
@@ -3542,7 +3549,7 @@ function gmCreateAcc(){
 }
 // 🎲 04/10: GỠ khung "Rơi thêm qua script" (chỉ có 2 khóa Kỳ Cuộc, không thêm quái được). File Server/txt/NetCo4Cfg/roithem.txt + Lua roimap x950001_RoiCfg + panel game roi_them/roi_xoa VẪN CHẠY (ngọc 6 1.75% + Tử Vi 20% mỗi quân cờ) - sửa tỉ lệ qua SSH
 // ⚙️ 03/10: cấp tối thiểu / khóa cấp / EXP - sửa bao nhiêu ô cũng được, 1 nút Lưu chung (panel game act luu_chung), restart 1 lần nếu có ô cần restart
-var GM_O=[['gmCapmin','capmin','Cấp tối thiểu',''],['gmCapmax','capmax','Cấp tối đa',''],['gmExp','expparam','EXP','x'],['gmTpmax','tpmax','Tâm pháp tối đa',''],['gmVoy','voy','Võ Ý mọi nơi','x'],['gmVoyT','voytrain','Võ Ý bản đồ train','x']];   // tpmax: script đọc mỗi lần học, không restart; 13/10 voy / voytrain: script đọc mỗi lần quái chết
+var GM_O=[['gmCapmin','capmin','Cấp tối thiểu',''],['gmCapmax','capmax','Cấp tối đa',''],['gmExp','expparam','EXP','x'],['gmTpmax','tpmax','Tâm pháp tối đa',''],['gmVoy','voy','Võ Ý mọi nơi','x'],['gmVoyT','voytrain','Võ Ý bản đồ train','x'],['gmClDan','cldan','Công Lực Đan mỗi viên','+'],['gmClTran','cltran','Trần công lực','']];   // tpmax: script đọc mỗi lần học, không restart; 13/10 voy / voytrain: script đọc mỗi lần quái chết; 15/10 cldan / cltran: Gonglidan.lua đọc mỗi lần cắn
 // 13/10: số nội tức / con hiện NGAY CẠNH từng ô (chủ server: "ghi chú exp ra kế bên cho dễ nhìn"). Cấp quái: Vô Lượng Sơn 1-10, Tháp Mã Can 101-105
 function gmVoyTong(){var a=+((document.getElementById('gmVoy')||{}).value||0),b=+((document.getElementById('gmVoyT')||{}).value||0),
   ea=document.getElementById('gmVoyTxtA'),eb=document.getElementById('gmVoyTxtB');if(!ea||!eb)return;
@@ -3552,6 +3559,13 @@ function gmVoyTong(){var a=+((document.getElementById('gmVoy')||{}).value||0),b=
   if(!a){ea.textContent='';eb.textContent='';return;}
   ea.textContent='= '+s(n(50,a))+' (quái cấp 50) · '+s(n(100,a))+' (cấp 100) / con';
   eb.textContent=b?'= x'+(a*b)+' tổng: Tháp Mã Can '+kh(101,105,a*b)+' · Vô Lượng Sơn '+kh(1,10,a*b)+' / con':'';}
+// 15/10: Công Lực Đan - số viên tương đương bản gốc (+100) và số viên cần để full 15 sách (172.350 công lực) / chạm trần
+function gmClTong(){var a=+((document.getElementById('gmClDan')||{}).value||0),b=+((document.getElementById('gmClTran')||{}).value||0),
+  ea=document.getElementById('gmClTxtA'),eb=document.getElementById('gmClTxtB');if(!ea||!eb)return;
+  var s=function(x){return x.toLocaleString('vi-VN');};
+  ea.textContent=a>0?'= '+s(a/100)+' viên gốc · full 15 sách cần '+s(Math.ceil(172350/a))+' viên':'';
+  eb.textContent=a>0&&b>0?'= '+s(Math.ceil(b/a))+' viên từ 0 lên trần'+(b<172350?' · thấp hơn 172.350, phải cắn - tiêu nhiều đợt':''):'';}
+function gmClMacDinh(){var d=(GM.st&&GM.st.clDefault)||[100,99999];[['gmClDan',d[0]],['gmClTran',d[1]]].forEach(function(p){var el=document.getElementById(p[0]);if(el){el.value=p[1];el.dataset.sua='1';}});gmClTong();gmSuaNote();}
 function gmVoyMacDinh(){var d=(GM.st&&GM.st.voyDefault)||[4,12];[['gmVoy',d[0]],['gmVoyT',d[1]]].forEach(function(p){var el=document.getElementById(p[0]);if(el){el.value=p[1];el.dataset.sua='1';}});gmVoyTong();gmSuaNote();}
 function gmDanhDau(el){el.dataset.sua='1';delete el.dataset.macdinh;gmSuaNote();}
 function gmDoi(){var st=GM.st||{},out=[];
@@ -3561,7 +3575,7 @@ function gmDoi(){var st=GM.st||{},out=[];
 function gmSuaNote(){var n=document.getElementById('gmSuaNote');if(!n)return;var d=gmDoi(),k={};d.forEach(function(x){k[x.k]=1;});
   GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el)el.style.outline=k[o[1]]?'2px solid #f1c40f':'';});
   n.innerHTML=d.length?'<b style="color:#f1c40f">Chưa lưu: '+d.map(function(x){return esc(x.ten)+' '+esc(x.cu)+' → '+esc(x.hien);}).join(' · ')+'</b>'
-    :'Sửa 1 hoặc nhiều ô rồi bấm Lưu 1 lần. Cấp tối thiểu, Tâm pháp tối đa và Võ Ý có hiệu lực ngay; có đổi Cấp tối đa / EXP thì server restart 1 lần (~3 phút, người online bị ngắt).';}
+    :'Sửa 1 hoặc nhiều ô rồi bấm Lưu 1 lần. Cấp tối thiểu, Tâm pháp tối đa, Võ Ý và Công Lực Đan có hiệu lực ngay; có đổi Cấp tối đa / EXP thì server restart 1 lần (~3 phút, người online bị ngắt).';}
 function gmBoDanhDau(){GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el){delete el.dataset.sua;delete el.dataset.macdinh;}});}
 function gmHuySua(){gmBoDanhDau();gmRender();}
 function gmExpMacDinh(){var el=document.getElementById('gmExp'),d=GM.st&&GM.st.expDefault;if(!el||d===undefined)return;el.value=d;el.dataset.sua='1';el.dataset.macdinh='1';gmSuaNote();}
@@ -3573,6 +3587,8 @@ function gmLuuChung(){
     if(x.k==='capmax'){if(!/^[0-9]{2,3}$/.test(v)||+v<10||+v>119)return toast('Cấp tối đa 10–119');f.capmax=v;rs=true;}
     if(x.k==='tpmax'){if(!/^[0-9]{1,3}$/.test(v)||!(+v===0||(+v>=10&&+v<=159)))return toast('Tâm pháp tối đa 10–159 (0 = luật gốc: cấp nhân vật + 10)');f.tpmax=String(+v);}
     if(x.k==='voy'||x.k==='voytrain'){if(!/^[0-9]{1,3}$/.test(v)||+v<1||+v>100)return toast(x.ten+': hệ số 1–100');f[x.k]=String(+v);}   // 13/10: không restart
+    if(x.k==='cldan'){if(!/^[0-9]{1,8}$/.test(v)||+v<1||+v>10000000)return toast('Công Lực Đan mỗi viên 1–10.000.000');f.cldan=String(+v);}   // 15/10: không restart
+    if(x.k==='cltran'){if(!/^[0-9]{3,8}$/.test(v)||+v<100||+v>99999999)return toast('Trần công lực 100–99.999.999');f.cltran=String(+v);}
     if(x.k==='expparam'){if(x.md)f.exp='macdinh';else{if(!/^[0-9]{1,2}([.][0-9])?$/.test(v)||+v<0.1||+v>50)return toast('EXP 0.1–50, tối đa 1 số lẻ (vd 3 hoặc 2.5)');f.exp=v;}rs=true;}
   }
   // 13/10: bỏ confirm() của trình duyệt (quy tắc NetCo4) -> bấm Lưu 2 lần trong 6 giây, lần 1 hiện tóm tắt ở dòng ghi chú
