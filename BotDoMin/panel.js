@@ -170,6 +170,7 @@ function startPanel(ctx) {
             dogBridge: ctx.getDogBridge ? ctx.getDogBridge() : { rut: true, nap: true },
             dogBridgeDayMax: ctx.getDogBridgeDayMax ? ctx.getDogBridgeDayMax() : null,
             txSimple: ctx.getTxSimple ? ctx.getTxSimple() : null, minesCfg: ctx.getMinesCfg ? ctx.getMinesCfg() : null,   // 30/09
+            dogVangRate: ctx.getDogVangRate ? ctx.getDogVangRate() : null,   // 🪙 16/10
             dogVangDayMax: ctx.getDogVangDayMax ? ctx.getDogVangDayMax() : null,   // 📅 11/09 (06/10: trước bị kẹt trong comment dòng trên -> ô "đổi vàng/ngày" không hiện số đang lưu)
             withdraw: {
                 live: !!wd.message,
@@ -1025,6 +1026,11 @@ function startPanel(ctx) {
                         const vr = ctx.setDogVangDayMax(body.vangDayMax);
                         if (vr.error) return sendJSON(res, 400, { ok: false, error: vr.error });
                         r.vangDayMax = vr.vangDayMax;
+                    }
+                    if (body.vangRate !== undefined && ctx.setDogVangRate) {   // 🪙 16/10 tỉ lệ 1 KNB = ? vàng
+                        const rr = ctx.setDogVangRate(body.vangRate);
+                        if (rr.error) return sendJSON(res, 400, { ok: false, error: rr.error });
+                        r.vangRate = rr.vangRate;
                     }
                     return sendJSON(res, 200, r);
                 }
@@ -2946,9 +2952,12 @@ const HTML = `<!DOCTYPE html>
           <span>KNB/ngày</span>
           <span style="margin-left:10px">🪙 Đổi KNB → <b>vàng không khoá</b> tối đa</span>
           <input class="mini-in" id="gsVangDay" type="number" min="0" placeholder="30000" style="width:110px">
-          <span>vàng/ngày</span>
+          <span>KNB/ngày</span>
+          <span style="margin-left:10px">· Tỉ lệ <b>1 KNB =</b></span>
+          <input class="mini-in" id="gsVangRate" type="number" min="0.01" max="100" step="0.01" placeholder="2" style="width:70px">
+          <span>vàng</span>
           <button class="btn-green mini" onclick="dogDaySave(this)">💾 Lưu hạn</button>
-          <span class="muted" style="font-size:12px">1 KNB = 1 vàng · 2 hạn đếm RIÊNG · 0 = không giới hạn · reset 00:00 giờ VN · game → web (NPC Ví Web) không giới hạn</span>
+          <span class="muted" style="font-size:12px">2 hạn đếm RIÊNG theo KNB web · 0 = không giới hạn · reset 00:00 giờ VN · mỗi lần nhận tối đa 100.000 vàng · game → web (NPC Ví Web) không giới hạn</span>
         </div>
         <div class="row" style="gap:10px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
           <div style="flex:2"><label>🎚️ Cược tối thiểu Dò Mìn + Leo Thang (KNB/ván)</label><input id="gsMinBet" type="number" min="1" placeholder="vd: 400"></div>
@@ -5223,8 +5232,10 @@ async function dogDaySave(btn){
   if(!(v>=0))return toast('❌ Nhập số ≥ 0 (0 = không giới hạn)');
   const vv=parseInt(document.getElementById('gsVangDay').value);
   if(!(vv>=0))return toast('❌ Hạn vàng: nhập số ≥ 0 (0 = không giới hạn)');
+  const vr=parseFloat(document.getElementById('gsVangRate').value);
+  if(!(vr>=0.01&&vr<=100))return toast('❌ Tỉ lệ đổi vàng: 0,01–100 vàng cho 1 KNB');
   const kg=n=>n?n.toLocaleString('vi-VN'):'không giới hạn';
-  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,vangDayMax:vv}).then(j=>{toast('📅 Rút KNB '+kg(j.dayMax)+'/ngày · 🪙 đổi vàng '+kg(j.vangDayMax)+'/ngày');HOLD_SIG='';refresh();}));
+  await runBtn(btn,'Lưu...',()=>api('/api/dogbridge/daymax',{dayMax:v,vangDayMax:vv,vangRate:vr}).then(j=>{toast('📅 Rút KNB '+kg(j.dayMax)+'/ngày · 🪙 đổi vàng '+kg(j.vangDayMax)+' KNB/ngày · 1 KNB = '+j.vangRate+' vàng');HOLD_SIG='';refresh();}));
 }
 function mnFill(){if(!STATE)return;var s=document.getElementById('txSimpleOn');if(s&&document.activeElement!==s&&STATE.txSimple!==null&&STATE.txSimple!==undefined)s.checked=!!STATE.txSimple;
   var c=STATE.minesCfg;if(!c)return;var f=function(id,v){var e=document.getElementById(id);if(e&&e.value===''&&document.activeElement!==e)e.value=v};
@@ -5235,6 +5246,7 @@ async function minesCfgSave(btn){var rtp=parseFloat(document.getElementById('mnR
   await runBtn(btn,'Lưu...',()=>api('/api/mines/cfg',{rtp:rtp,maxMult:mm,maxBet:mb,luckyOn:lk}).then(function(j){toast('💣 Dò Mìn: RTP '+Math.round(j.cfg.rtp*100)+'% · trần x'+(j.cfg.maxMult||'∞')+' · cược tối đa '+(j.cfg.maxBet||'∞')+' · cỏ '+(j.cfg.luckyOn?'bật':'tắt'));refresh();}));}
 function gsFill(){mnFill();
   const vgx=document.getElementById('gsVangDay');if(vgx&&vgx.value===''&&document.activeElement!==vgx&&STATE&&STATE.dogVangDayMax!==null&&STATE.dogVangDayMax!==undefined)vgx.value=STATE.dogVangDayMax;
+  const vrx=document.getElementById('gsVangRate');if(vrx&&vrx.value===''&&document.activeElement!==vrx&&STATE&&STATE.dogVangRate!==null&&STATE.dogVangRate!==undefined)vrx.value=STATE.dogVangRate;
   const dd=document.getElementById('gsDogDay');if(dd&&dd.value===''&&document.activeElement!==dd&&STATE&&STATE.dogBridgeDayMax!==null&&STATE.dogBridgeDayMax!==undefined)dd.value=STATE.dogBridgeDayMax;
   const mb=document.getElementById('gsMinBet');if(mb&&mb.value===''&&document.activeElement!==mb&&STATE&&STATE.pot&&STATE.pot.minBet)mb.value=STATE.pot.minBet;
   const st=gsState();

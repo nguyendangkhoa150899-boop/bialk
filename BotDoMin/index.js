@@ -564,6 +564,23 @@ function setDogVangDayMax(v) {
     writeLog('ADMIN', `[CẦU KNB] Panel đặt hạn đổi KNB -> VÀNG mỗi người/ngày = ${v ? v.toLocaleString() : 'không giới hạn'}`);
     return { ok: true, vangDayMax: v };
 }
+// 🪙 16/10: tỉ lệ đổi KNB web -> vàng không khoá: 1 KNB = dogVangRate() vàng (admin đặt ở panel, mặc định 2).
+// Panel GM nhận tối đa 100.000 vàng / lần (quatang.lua AddMoney int32) -> mỗi lần tối đa floor(100.000 / tỉ lệ) KNB.
+// Đã kiểm 16/10: đường vàng -> KNB duy nhất trong game (Kim Ngũ Gia 002059, 1 vàng = 14 KNB) là handler ẩn, đã chặn (game 96658ac).
+const DOG_VANG_RATE_DEF = 2;
+const DOG_VANG_MOI_LAN = 100000;
+function dogVangRate() {
+    const v = Number(dbCache._dogVangRate);
+    return Number.isFinite(v) && v >= 0.01 && v <= 100 ? v : DOG_VANG_RATE_DEF;
+}
+function setDogVangRate(v) {
+    v = Math.round(Number(v) * 100) / 100;
+    if (!Number.isFinite(v) || v < 0.01 || v > 100) return { error: 'Tỉ lệ đổi vàng phải 0,01–100 (vàng nhận cho 1 KNB)' };
+    dbCache._dogVangRate = v;
+    saveDbNow();
+    writeLog('ADMIN', `[CẦU KNB] Panel đặt tỉ lệ đổi 1 KNB web = ${v} vàng không khoá`);
+    return { ok: true, vangRate: v };
+}
 function dogBridgeToday(user) {
     const d = vnDayISO(Date.now());
     if (!user.dogDay || user.dogDay.day !== d) user.dogDay = { day: d, rut: 0, nap: 0, vang: 0 };
@@ -589,7 +606,7 @@ function dogBridgeDayCheck(user, key, amount) {
 //  - Liên kết: admin đặt tên nhân vật ở panel -> tlbb.findChar -> lưu user.tlbbGuid.
 const TLBB_NPC_HINT = 'NPC "Ví Web" ở Lạc Dương (203,323) hoặc Đại Lý (154,170)';
 
-// 29/09: kind = 'knb' (mặc định, qua NPC Ví Web .in/.done) hoặc 'vang' = VÀNG KHÔNG KHOÁ 1 KNB = 1 vàng
+// 29/09: kind = 'knb' (mặc định, qua NPC Ví Web .in/.done) hoặc 'vang' = VÀNG KHÔNG KHOÁ 1 KNB = dogVangRate() vàng (16/10, trước 1:1)
 // (qua hàng đợi quà panel GM -> quatang.lua AddMoney, giống lệnh !!addmoney). 2 loại CHUNG hạn ngày.
 async function webRutGame(userId, amount, kind) {
     const vang = kind === 'vang';
@@ -597,6 +614,10 @@ async function webRutGame(userId, amount, kind) {
     amount = Math.floor(Number(amount) || 0);
     if (amount < 1) return { error: 'Số KNB không hợp lệ' };
     if (amount > 99999) return { error: 'Mỗi lần tối đa 99.999 KNB' };
+    const rate = vang ? dogVangRate() : 1;   // 🪙 16/10
+    const vangOut = vang ? Math.floor(amount * rate) : 0;
+    if (vang && vangOut < 1) return { error: `Tỉ lệ 1 KNB = ${rate} vàng: đổi ít nhất ${Math.ceil(1 / rate)} KNB` };
+    if (vang && vangOut > DOG_VANG_MOI_LAN) return { error: `Mỗi lần nhận tối đa ${DOG_VANG_MOI_LAN.toLocaleString()} vàng = ${Math.floor(DOG_VANG_MOI_LAN / rate).toLocaleString()} KNB (tỉ lệ 1 KNB = ${rate} vàng)` };
     const u = getUserData(userId);
     const dk = vang ? 'vang' : 'rut';   // 🪙 vàng có hạn riêng
     const dayErr = dogBridgeDayCheck(u, dk, amount);   // 📅 hạn ngày
@@ -611,18 +632,18 @@ async function webRutGame(userId, amount, kind) {
     let r;
     if (vang) {
         let j = null, err = null;
-        try { j = await tlbb.gmCall('POST', '/api/act', { a: 'qua', guid: String(u.tlbbGuid), loai: 'vang', gt: String(amount) }); } catch (e) { err = e; }
+        try { j = await tlbb.gmCall('POST', '/api/act', { a: 'qua', guid: String(u.tlbbGuid), loai: 'vang', gt: String(vangOut) }); } catch (e) { err = e; }
         if (j && j.ok && j.done) {
-            logDog('to-game', userId, u.name || userId, -amount, `đổi ${amount} KNB -> ${amount} vàng không khoá vào game (${gameName} GUID ${u.tlbbGuid})`);
+            logDog('to-game', userId, u.name || userId, -amount, `đổi ${amount} KNB -> ${vangOut} vàng không khoá (1 KNB = ${rate} vàng) vào game (${gameName} GUID ${u.tlbbGuid})`);
             saveDbNow();
-            writeLog('ADMIN', `[RÚT WEB VÀNG] ${u.name || userId} đổi ${amount} KNB -> ${amount} vàng vào game "${gameName}"`);
-            return { ok: true, message: `✅ Đã gửi ${amount.toLocaleString()} vàng (không khoá) cho ${gameName}. Vào game hoặc đổi bản đồ để nhận.`, balance: getUserData(userId).points || 0 };
+            writeLog('ADMIN', `[RÚT WEB VÀNG] ${u.name || userId} đổi ${amount} KNB -> ${vangOut} vàng (x${rate}) vào game "${gameName}"`);
+            return { ok: true, message: `✅ Đã gửi ${vangOut.toLocaleString()} vàng (không khoá) cho ${gameName}. Vào game hoặc đổi bản đồ để nhận.`, balance: getUserData(userId).points || 0 };
         }
         const msg = (err && err.message) || (j && (j.msg || j.error)) || 'không rõ';
         // hết giờ chờ = panel GM CÓ THỂ đã ghi hàng đợi -> không hoàn kẻo nhận đôi, báo admin kiểm
         if (err && /không trả lời/.test(msg)) {
             saveDbNow();
-            writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${msg} - KIỂM hàng đợi quà GUID ${u.tlbbGuid}, chưa có thì hoàn tay`);
+            writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} KNB (${vangOut} vàng) -> "${gameName}" | ${msg} - KIỂM hàng đợi quà GUID ${u.tlbbGuid}, chưa có thì hoàn tay`);
             return { error: '⏳ Chưa xác nhận được với game - ví đã trừ, admin sẽ kiểm (không nhận được sẽ hoàn). Đừng bấm lại kẻo trùng.' };
         }
         updatePoints(userId, amount);
@@ -6159,7 +6180,7 @@ client.once('ready', async (c) => {
             dogbridge: {
                 rut: (uid, amount, kind) => webRutGame(uid, amount, kind),
                 state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut,
-                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
+                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangRate: dogVangRate(), vangMoiLan: DOG_VANG_MOI_LAN, vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
                     // 💰 07/10 thẻ "Ví KNB ↔ Game" (trang Cá nhân, /vg.js): chỗ nạp + đã nạp hôm nay + 8 lần nạp/rút gần nhất của chính người này
                     napNpc: TLBB_NPC_HINT, napToday: dogBridgeToday(getUserData(uid)).nap || 0,
                     hist: (Array.isArray(dbCache._dogLedger) ? dbCache._dogLedger : []).filter((e) => e && e.userId === uid && (e.type === 'to-game' || e.type === 'from-game')).slice(0, 8)
@@ -6357,7 +6378,7 @@ client.once('ready', async (c) => {
             getGameOpen: () => ({ mines: gameOpen('mines'), stairs: gameOpen('stairs') }),
             // 🔁 09/09: cầu KNB web ↔ game
             getDogBridge: () => dogBridgeCfg(),
-            getDogBridgeDayMax: dogBridgeDayMax, setDogBridgeDayMax, getDogVangDayMax: dogVangDayMax, setDogVangDayMax,
+            getDogBridgeDayMax: dogBridgeDayMax, setDogBridgeDayMax, getDogVangDayMax: dogVangDayMax, setDogVangDayMax, getDogVangRate: dogVangRate, setDogVangRate,
             getTxSimple: txSimple, setTxSimple, getMinesCfg: minesCfg, setMinesCfg,   // 30/09   // 📅 11/09 hạn chuyển/ngày
             // 🎚️ 09/09: sàn cược 2 minigame
             setMinBet: (v) => setMinBet(v),

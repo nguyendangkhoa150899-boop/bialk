@@ -62,8 +62,12 @@
   var NPC_MAC_DINH = 'NPC "Ví Web" ở Lạc Dương (203,323) hoặc Đại Lý (154,170)';
 
   // con duoc rut / doi bao nhieu ngay luc nay (ca 3 tran: so du, tran 1 lan, han ngay con lai)
+  // 16/10: ti le doi vang (1 KNB = ? vang) do admin dat; moi lan nhan toi da vangMoiLan vang
+  function tiLe() { var r = VG.s && Number(VG.s.vangRate); return r > 0 ? r : 1; }
+  function raVang(a) { return Math.floor(a * tiLe()); }
   function conDuoc(k) {
     var s = VG.s || {}, bal = s.balance || 0, mx = s.max || 0;
+    if (k === 'vang' && s.vangMoiLan) { var mv = Math.floor(s.vangMoiLan / tiLe()); mx = mx ? Math.min(mx, mv) : mv; }
     var dm = k === 'vang' ? (s.vangDayMax || 0) : (s.dayMax || 0), da = k === 'vang' ? (s.vangToday || 0) : (s.rutToday || 0);
     var conNgay = dm > 0 ? Math.max(0, dm - da) : Infinity;
     return { bal: bal, mx: mx, dm: dm, da: da, conNgay: conNgay, toiDa: Math.max(0, Math.min(bal, mx || Infinity, conNgay)) };
@@ -82,7 +86,7 @@
       h += '<div class="row2"><span>📅 Hôm nay đã ' + (vang ? 'đổi' : 'rút') + ' <b>' + f(c.da) + '</b> / ' + f(c.dm) + '</span><span>còn <b style="color:#ffd76a">' + f(c.conNgay) + '</b></span></div>' +
         '<div class="vgBar"><i class="' + (pc >= 100 ? 'het' : '') + '" style="width:' + pc + '%"></i></div>';
     }
-    h += '<div class="row2" style="margin-top:6px"><span>Tối đa <b>' + f(c.mx) + '</b> / lần</span><span>' + (vang ? '<b>1 KNB = 1 vàng</b> không khoá' : 'Vào túi KNB trong game') + '</span></div></div>';
+    h += '<div class="row2" style="margin-top:6px"><span>Tối đa <b>' + f(c.mx) + '</b> / lần</span><span>' + (vang ? '<b>1 KNB = ' + f(tiLe()) + ' vàng</b> không khoá' : 'Vào túi KNB trong game') + '</span></div></div>';
     h += '<div class="vgPrev" id="vgPrev"></div>';
     h += '<button class="vgGo' + (vang ? ' vang' : '') + '" id="vgGo" onclick="vgGo()"' + (mo && !VG.busy ? '' : ' disabled') + '>' +
       (!s.ingameName ? '🔗 Chưa liên kết nhân vật' : s.rutOpen === false ? '⛔ Rút vào game đang đóng' : VG.busy ? '⏳ Đang gửi...' : vang ? '🪙 Đổi ra Vàng trong game' : '🎮 Rút vào game') + '</button>';
@@ -137,7 +141,7 @@
     if (!a) { p.className = 'vgPrev'; p.textContent = ''; return; }
     var loi = a > c.bal ? 'Số dư web chỉ có ' + f(c.bal) + ' KNB' : (c.mx && a > c.mx) ? 'Vượt giới hạn ' + f(c.mx) + ' / lần' : a > c.conNgay ? 'Vượt hạn hôm nay - chỉ còn ' + f(c.conNgay) : '';
     p.className = 'vgPrev ' + (loi ? 'bad' : 'ok');
-    p.textContent = loi ? '⚠️ ' + loi : '✓ Nhận ' + f(a) + (vang ? ' vàng' : ' KNB') + ' trong game · ví web còn ' + f(c.bal - a);
+    p.textContent = loi ? '⚠️ ' + loi : '✓ Nhận ' + f(vang ? raVang(a) : a) + (vang ? ' vàng' : ' KNB') + ' trong game · ví web còn ' + f(c.bal - a);
   };
   window.vgGo = function () {
     if (VG.busy || !VG.s || VG.tab === 'nap') return;
@@ -145,7 +149,7 @@
     if (a < 1) return toast('⚠️ Nhập số KNB');
     if (a > c.bal || (c.mx && a > c.mx) || a > c.conNgay) { vgPrev(); return toast('⚠️ ' + document.getElementById('vgPrev').textContent.replace('⚠️ ', '')); }
     if (typeof gConfirm !== 'function') return toast('❌ Trang chưa tải xong, F5 rồi thử lại');
-    var msg = (vang ? 'Đổi <b>' + f(a) + '</b> KNB web thành <b style="color:#ffd76a">' + f(a) + ' vàng</b> không khoá' : 'Rút <b style="color:#7ee2a8">' + f(a) + ' KNB</b>') +
+    var msg = (vang ? 'Đổi <b>' + f(a) + '</b> KNB web thành <b style="color:#ffd76a">' + f(raVang(a)) + ' vàng</b> không khoá' : 'Rút <b style="color:#7ee2a8">' + f(a) + ' KNB</b>') +
       ' vào nhân vật <b>' + e(VG.s.ingameName) + '</b>?<div style="font-size:13px;margin-top:8px;color:var(--muted)">Ví web còn <b>' + f(c.bal - a) + '</b> KNB. Nhận khi đăng nhập / đổi bản đồ.</div>';
     gConfirm(msg, vang ? '🪙 Đổi vàng' : '🎮 Rút vào game').then(function (dongY) {
       if (!dongY) return;
