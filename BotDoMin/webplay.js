@@ -102,12 +102,24 @@ function startWebPlay(ctx) {
         const h = req.headers['authorization'] || '';
         return h.startsWith('Bearer ') ? h.slice(7) : '';
     };
+    // 🔒 16/10: tài khoản game bị admin khoá (tab GM) -> chặn đăng nhập web + đá phiên đang mở (ví gắn tài khoản đó
+    // hoặc gắn nhân vật thuộc tài khoản đó, kể cả ví clone). Danh sách lấy từ panel game, làm mới 30 giây/lần; lỗi thì giữ danh sách cũ.
+    const KHOA = { acc: new Set(), guid: new Set() };
+    const khoaLamMoi = async () => {
+        if (!ctx.tlbbKhoa) return;
+        try { const k = await ctx.tlbbKhoa(); KHOA.acc = k.acc; KHOA.guid = k.guid; } catch { }
+    };
+    khoaLamMoi();
+    { const tm = setInterval(khoaLamMoi, 30000); if (tm.unref) tm.unref(); }
+    const viBiKhoa = (u) => !!u && typeof u === 'object' &&
+        ((u.gameAcc && KHOA.acc.has(String(u.gameAcc).toLowerCase())) || (u.tlbbGuid && KHOA.guid.has(String(u.tlbbGuid))));
     const getSessionUser = (req) => {
         const t = layToken(req);
         if (!t) return null;
         const ss = sessions();
         const s = ss[t];
         if (!s) return null;
+        if (viBiKhoa(ctx.getDb()[s.u])) { delete ss[t]; return null; }   // 🔒 16/10
         const cuoi = s.lanCuoi || s.ts || 0;
         if (Date.now() - cuoi > SESSION_TTL) { delete ss[t]; return null; }
         // Hạn TRƯỢT theo lần dùng cuối: ai còn chơi thì phiên còn sống, khỏi đăng nhập lại
@@ -234,6 +246,8 @@ function startWebPlay(ctx) {
                     let okMk = false;
                     try { okMk = await ctx.tlbbKiemMk(gacc, gpass); } catch (e) { return sendJSON(res, 502, { ok: false, error: 'Không kiểm được với server game: ' + String(e.message).slice(0, 120) }); }
                     if (!okMk) { recordFail(ip); return sendJSON(res, 401, { ok: false, error: 'Sai tài khoản hoặc mật khẩu game' }); }
+                    await khoaLamMoi();   // 🔒 16/10: lấy danh sách khoá mới nhất rồi mới cho vào
+                    if (KHOA.acc.has(gacc)) return sendJSON(res, 403, { ok: false, error: '🔒 Tài khoản game này đã bị khoá - liên hệ admin' });
                     const laVi = (k) => /^\d{15,20}$/.test(k) && db[k] && typeof db[k] === 'object';
                     let uid = Object.keys(db).find((k) => laVi(k) && String(db[k].gameAcc || '').toLowerCase() === gacc) || '';
                     if (!uid && ctx.tlbbGuidsOfAcc) {
@@ -242,6 +256,7 @@ function startWebPlay(ctx) {
                         uid = Object.keys(db).find((k) => laVi(k) && db[k].tlbbGuid && guids.includes(String(db[k].tlbbGuid))) || '';
                     }
                     if (!uid) return sendJSON(res, 401, { ok: false, error: 'Tài khoản game này chưa gắn với ví Discord nào - nhắn admin liên kết nhân vật trước, hoặc vào bằng Discord ID + PIN' });
+                    if (viBiKhoa(db[uid])) return sendJSON(res, 403, { ok: false, error: '🔒 Ví này gắn nhân vật của tài khoản game đã bị khoá - liên hệ admin' });
                     userId = uid; rec = db[uid];
                     if (rec.gameAcc !== gacc || rec.gamePass !== gpass) { rec.gameAcc = gacc; rec.gamePass = gpass; }
                 } else {

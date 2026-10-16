@@ -6138,6 +6138,7 @@ client.once('ready', async (c) => {
             lienKetMsg: () => LIENKET_MSG,
             // 🎮 30/09: đăng nhập web bằng tài khoản game + đổi mật khẩu (qua panel GM, repo tlbbnetco4 panel/panel.py)
             tlbbKiemMk: (a, p) => tlbb.kiemMk(a, p),
+            tlbbKhoa: () => tlbb.khoaState(),   // 🔒 16/10 tài khoản game bị khoá -> chặn web
             tlbbDoiMk: (a, p) => tlbb.doiMk(a, p),
             tlbbGuidsOfAcc: (a) => tlbb.guidsOfAcc(a),
             poker: pokerMod,                 // 🃏 /api/poker/* + /poker/ (Poker/web.js, cùng phiên đăng nhập)

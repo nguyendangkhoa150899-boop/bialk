@@ -319,4 +319,14 @@ async function guidsOfAcc(acc) {
     return chars.filter((c) => String(c.account || '').toLowerCase() === acc).map((c) => String(c.guid));
 }
 
-module.exports = { sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, readLvReceipts, finishLvReceipt, LONGVAN, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem, givePet, kiemMk, doiMk, guidsOfAcc, RE_GACC, RE_GPASS };
+// 🔒 16/10: tài khoản game bị admin khoá (panel game act khoa_tk -> state.accounts[].khoa) + GUID nhân vật thuộc các tài khoản đó.
+// webplay dùng để chặn đăng nhập web và đá phiên web đang mở.
+async function khoaState() {
+    const j = await gmCall('GET', '/api/state');
+    const st = (j && j.ok && j.state) || {};
+    const acc = new Set((st.accounts || []).filter((a) => a && a.khoa).map((a) => String(a.name).toLowerCase()));
+    const guid = new Set((st.chars || []).filter((c) => acc.has(String(c.account || '').toLowerCase())).map((c) => String(c.guid)));
+    return { acc, guid };
+}
+
+module.exports = { khoaState, sendKnb, pendingIn, cleanupIn, readReceipts, finishReceipt, readLvReceipts, finishLvReceipt, LONGVAN, listChars, findChar, ensureDirs, DIR, gmCall, loadItems, items, countItem, giveItem, givePet, kiemMk, doiMk, guidsOfAcc, RE_GACC, RE_GPASS };
