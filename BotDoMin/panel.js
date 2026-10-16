@@ -3354,10 +3354,11 @@ function gmRender(){
   gmSuaNote();
   document.getElementById('gmAccs').innerHTML='<table><tr><th>ID</th><th>Tài khoản</th><th>Online</th><th></th></tr>'+
     st.accounts.map(function(a){
-      return '<tr><td>'+esc(a.id)+'</td><td><b>'+esc(a.name)+'</b></td><td>'+(a.online?'<b style="color:#35c46a">online</b>':'<span class="muted">-</span>')+'</td>'+
+      return '<tr><td>'+esc(a.id)+'</td><td><b>'+esc(a.name)+'</b>'+(a.khoa?' <b style="color:#e0566b" title="Bị khoá: không đăng nhập được">🔒 khoá</b>':'')+'</td><td>'+(a.online?'<b style="color:#35c46a">online</b>':'<span class="muted">-</span>')+'</td>'+
         '<td><span class="row" style="gap:6px;flex-wrap:nowrap"><input class="mini-in" style="width:120px" id="gmPw_'+esc(a.name)+'" placeholder="mật khẩu mới">'+
         '<button class="mini" data-gm="doi_mk" data-ten="'+esc(a.name)+'">Đổi MK</button>'+
         '<button class="mini" data-gm="go_ket" data-ten="'+esc(a.name)+'">🩹 Gỡ kẹt</button>'+
+        (a.name!=='admin'?(a.khoa?'<button class="mini btn-green" data-gm="khoa_tk" data-khoa="0" data-ten="'+esc(a.name)+'" data-confirm="Mở khoá tài khoản '+esc(a.name)+'?">🔓 Mở khoá</button>':'<button class="mini" data-gm="khoa_tk" data-khoa="1" data-ten="'+esc(a.name)+'" data-confirm="Khoá tài khoản '+esc(a.name)+'? Chặn từ lần đăng nhập sau (đang trong game thì không bị đá).">🔒 Khoá</button>'):'')+
         (a.name!=='admin'?'<button class="mini btn-red" data-gm="xoa_tk" data-ten="'+esc(a.name)+'" data-confirm="Xoá tài khoản '+esc(a.name)+'?">Xoá</button>':'')+'</span></td></tr>';
     }).join('')+'</table>';
   // 08/10: bảng nhân vật gọn - online lên đầu, GUID + tài khoản dưới tên, lọc tại chỗ (gmLoc) không gọi lại server
@@ -3630,7 +3631,7 @@ document.addEventListener('click',function(ev){
   var b=ev.target.closest&&ev.target.closest('#tab-gm [data-gm], #tab-gm [data-give], #tab-gm [data-copy], #tab-qua [data-gm], #tab-qua [data-give], #tab-qua [data-copy]');if(!b)return;
   if(b.dataset.copy){navigator.clipboard.writeText(b.dataset.copy).then(function(){toast('📋 Đã chép ID '+b.dataset.copy);});return;}
   if(b.dataset.give){gmGive(b.dataset.give);return;}
-  var f={a:b.dataset.gm};if(b.dataset.ten)f.ten=b.dataset.ten;if(b.dataset.guid)f.guid=b.dataset.guid;
+  var f={a:b.dataset.gm};if(b.dataset.ten)f.ten=b.dataset.ten;if(b.dataset.guid)f.guid=b.dataset.guid;if(b.dataset.khoa)f.khoa=b.dataset.khoa;
   if(f.a==='doi_mk'){var pw=document.getElementById('gmPw_'+f.ten);f.mk=pw?pw.value.trim():'';if(!f.mk)return toast('Nhập mật khẩu mới');}
   gmDo(f,b.dataset.confirm||null);
 });
