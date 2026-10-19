@@ -1544,6 +1544,8 @@ function startPanel(ctx) {
                     const ids = Object.keys(db).filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object');
                     let skipped = 0;
                     ids.forEach(id => {
+                        // 👪 20/10: ví thành viên family (bị ẩn, KNB nằm ở ví trưởng) -> bỏ qua; family tính 1 lần ở ví trưởng
+                        if (db[id].famOf && db[db[id].famOf] && typeof db[db[id].famOf] === 'object') { skipped++; return; }
                         // Không mở khóa #: phần TĂNG so với số dư hiện tại tính vào trần ngày,
                         // ai hết hạn mức thì BỎ QUA người đó (không set), không chặn cả lệnh.
                         if (!epOk(req)) {

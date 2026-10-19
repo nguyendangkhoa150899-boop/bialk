@@ -1418,9 +1418,11 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null, msg = '') {
     // onlyIds: panel truyền danh sách còn hạn mức trần/ngày (null = phát tất cả).
     const allow = onlyIds ? new Set(onlyIds) : null;
     const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_') && (!allow || allow.has(k)));
-    userIds.forEach(id => updatePoints(gocVi(id), amount));   // 👪 20/10: ví thành viên family -> cộng vào ví gốc
+    // 👪 20/10 chủ server: admin phát / tặng KNB -> family nhận ĐÚNG 1 phần (không × số tài khoản): gom về ví gốc rồi bỏ trùng
+    const viNhan = [...new Set(userIds.map(id => gocVi(id)))];
+    viNhan.forEach(id => updatePoints(id, amount));
     saveDbNow();
-    writeLog('ADMIN', `[CỘNG TIỀN ALL] Dashboard cộng ${amount.toLocaleString()} KNB cho ${userIds.length} người chơi`);
+    writeLog('ADMIN', `[CỘNG TIỀN ALL] Dashboard cộng ${amount.toLocaleString()} KNB cho ${viNhan.length} ví (${userIds.length} tài khoản, family tính 1 phần)`);
 
     // Kênh + role đặt ở panel (tab 👥, lưu database) - đổi Discord server không phải
     // sửa code. Chưa đặt thì rơi về ID hardcode của server cũ.
