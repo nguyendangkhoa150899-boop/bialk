@@ -2468,7 +2468,7 @@ td{font-variant-numeric:tabular-nums}
           </div>
           <div class="quaTool">
             <div class="qT">
-              <b>🗡️ Tẩy 3 dòng ám khí (Pháp bảo)</b>
+              <b>🗡️ Ám khí: tẩy điểm (Yến Thanh) + tẩy 3 dòng (Pháp bảo)</b>
               <button class="btn-grey" onclick="akLoad()">🔄 Tải</button>
               <span class="muted">Ám khí có 3 dòng kỹ năng học ở mốc cấp <b>40 / 70 / 90</b>. Khi người chơi tẩy kỹ năng (vật phẩm <b>30503118</b> + 50.000 tiền), game bốc lại theo <b>trọng số</b> dưới đây: tỉ lệ = trọng số ÷ tổng trọng số của dòng. Đổi trọng số → <b>restart</b> mới có hiệu lực, áp cho mọi lần tẩy / học kỹ năng sau đó (ám khí đã có giữ nguyên).</span>
             </div>
@@ -3658,7 +3658,19 @@ var AK_TEN_DONG={40:'Dòng 1 · cấp 40 (cộng công)',70:'Dòng 2 · cấp 70
 var AK_GOIY={70:{32150:20,32166:20,32182:60,32198:100,32214:100,32230:100,32262:100,32278:100,32294:100,32310:100},
   90:{32328:25,32344:25,32360:25,32376:25,32392:25,32400:400,32401:400,32402:25,32403:25,32404:25,32405:25}};
 function akLoad(){api('/api/gm/amkhi',{}).then(function(j){AK=j.data;akDraw();}).catch(function(e){toast('❌ '+e.message);});}
-function akDraw(){if(!AK)return;var box=document.getElementById('akBox'),h='';
+// 🎯 20/10: TẨY ĐIỂM ÁM KHÍ ở Yến Thanh - chọn thuộc tính được nhận điểm (panel game act amkhitay -> NetCo4Cfg/amkhitay.txt, Lua darkitem.lua đọc mỗi lần tẩy). Hiệu lực ngay, không restart.
+var AK_TAY_TEN=['Lực','Linh khí','Thể lực','Định lực','Thân pháp'];
+function akTayHtml(){var t=(AK&&AK.tay)||[1,1,1,1,1],gioiHan=t.indexOf(0)>=0;
+  var h='<div style="margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid #444"><b>🎯 Tẩy điểm ám khí (NPC Yến Thanh) - thuộc tính được nhận điểm</b>'
+    +'<div class="muted" style="margin:4px 0 6px">Mỗi lần tẩy rút 1 điểm từ thuộc tính người chơi chọn rồi cộng vào 1 thuộc tính khác. Bỏ tick = thuộc tính đó không bao giờ nhận điểm khi tẩy. Tick cả 5 = ngẫu nhiên như gốc. <b>Hiệu lực ngay, không cần restart.</b></div>'
+    +(gioiHan?'<div class="note" style="margin:0 0 6px;border-color:#c0392b"><b>⚠️ Đang giới hạn:</b> tẩy chỉ dồn điểm vào '+esc(AK_TAY_TEN.filter(function(x,i){return t[i];}).join(', '))+'</div>':'<div class="muted" style="margin-bottom:6px">Đang ngẫu nhiên như gốc (cả 5 thuộc tính).</div>')
+    +'<div class="row" style="gap:14px;flex-wrap:wrap;align-items:center">';
+  AK_TAY_TEN.forEach(function(n,i){h+='<label style="white-space:nowrap;cursor:pointer"><input type="checkbox" class="ak-tay" style="width:auto;margin-right:4px"'+(t[i]?' checked':'')+'>'+esc(n)+'</label>';});
+  return h+'<button class="btn-green" onclick="akTayLuu()">💾 Lưu</button></div></div>';}
+function akTayLuu(){var a=[].slice.call(document.querySelectorAll('#akBox .ak-tay')).map(function(x){return x.checked?1:0;});
+  if(a.length!==5)return;if(a.indexOf(1)<0)return toast('Phải bật ít nhất 1 thuộc tính');
+  api('/api/gm/act',{a:'amkhitay',bat:a.join(',')}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
+function akDraw(){if(!AK)return;var box=document.getElementById('akBox'),h=akTayHtml();
   h+=AK.dangAp?'<div class="note" style="margin:0 0 8px;border-color:#c0392b"><b>⚠️ Đang dùng trọng số riêng</b> (áp lúc '+new Date(AK.t*1000).toLocaleString('vi-VN')+'). Restart rồi mới có hiệu lực nếu vừa áp.</div>'
     :'<div class="muted" style="margin-bottom:6px">Đang dùng trọng số gốc của game.</div>';
   AK.dong.forEach(function(d){
