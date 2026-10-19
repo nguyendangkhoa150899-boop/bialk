@@ -35,7 +35,7 @@
   function $f(id) { return document.getElementById(id); }
   function ve() {
     var b = $f('famBody'); if (!F) { b.innerHTML = 'Đang tải...'; return; }
-    var h = '<div class="fmNote">Bạn (👑 trưởng) quản lý <b>KNB</b>, <b>Rương Ích Kỷ</b>, <b>Thương Phố</b> của cả family. Điểm danh / Nghiện nhận hộ mọi tài khoản; rút vào game thì chọn tài khoản nhận.</div>';
+    var h = '<div class="fmNote">Bạn (👑 trưởng) quản lý <b>KNB</b> + <b>Rương Ích Kỷ</b> chung và <b>Thương Phố</b> từng tài khoản (chọn tài khoản ở Thương Phố). Điểm danh / Nghiện nhận hộ mọi tài khoản; rút vào game thì chọn tài khoản nhận.</div>';
     if (F.coFam) {
       h += '<div class="fmList">' + F.tv.map(function (x) {
         return '<div class="fmRow' + (x.toi ? ' toi' : '') + '"><div class="n"><b>' + e(x.ten || x.acc) + '</b><span>Tài khoản ' + e(x.acc || '?') + '</span></div>' +
@@ -51,7 +51,7 @@
       '<div class="fmErr" id="famErr"></div>' +
       '<button class="fmGo" id="famGo" onclick="famLink()"' + (BUSY ? ' disabled' : '') + '>🔗 Liên kết</button></div>' +
       '<div class="fmWarn">⚠️ Khi liên kết: KNB + Rương Ích Kỷ của tài khoản đó <b>gộp vào ví chung</b>, và tài khoản đó <b>không đăng nhập web riêng được nữa</b> (chỉ trưởng quản lý).<br>' +
-      'Rời hoặc bị đuổi: tài khoản đó <b>mất hết</b> KNB, Rương Ích Kỷ, Thương Phố (ở lại family). Chỉ trưởng đuổi được.</div>';
+      'Bị đuổi: tài khoản đó <b>mất hết</b> KNB + Rương Ích Kỷ (ở lại family). Thương Phố không gộp - kho từng nhân vật giữ nguyên. Chỉ trưởng đuổi được.</div>';
     if (F.coFam && !F.laTruong) h += '<button class="fmRoi" onclick="famRoi()">🚪 Rời family (mất hết)</button>';
     b.innerHTML = h;
   }
@@ -78,7 +78,7 @@
   };
   window.famDuoi = function (vi) {
     var x = (F && F.tv || []).filter(function (t) { return t.vi === vi; })[0]; if (!x) return;
-    if (!xacNhan('duoi' + vi, 'Bấm Đuổi lần nữa trong 6 giây - ' + (x.acc || x.ten) + ' sẽ MẤT HẾT KNB, Rương Ích Kỷ, Thương Phố')) return;
+    if (!xacNhan('duoi' + vi, 'Bấm Đuổi lần nữa trong 6 giây - ' + (x.acc || x.ten) + ' sẽ MẤT HẾT KNB + Rương Ích Kỷ (Thương Phố giữ nguyên)')) return;
     api('/api/fam/duoi', { vi: vi }).then(function (j) { toast('✅ Đã đuổi ' + (x.acc || x.ten)); F = j.fam; DS = null; ve(); xongDoi(); })
       .catch(function (e) { toast('❌ ' + ((e && e.message) || 'Không đuổi được')); });
   };
@@ -144,7 +144,7 @@
     window.dRender._fam = 1;
   }
   window.famRoi = function () {
-    if (!xacNhan('roi', 'Bấm Rời lần nữa trong 6 giây - tài khoản này sẽ MẤT HẾT KNB, Rương Ích Kỷ, Thương Phố')) return;
+    if (!xacNhan('roi', 'Bấm Rời lần nữa trong 6 giây - tài khoản này sẽ MẤT HẾT KNB + Rương Ích Kỷ (Thương Phố giữ nguyên)')) return;
     api('/api/fam/roi', {}).then(function () { toast('✅ Đã rời family'); DS = null; tai(); xongDoi(); })
       .catch(function (e) { toast('❌ ' + ((e && e.message) || 'Không rời được')); });
   };
