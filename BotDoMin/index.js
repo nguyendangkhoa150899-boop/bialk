@@ -1267,7 +1267,9 @@ function dailyState(userId) {
         balance: u.points || 0,
     };
 }
-function claimDaily(userId) {
+// 👪 20/10 family: creditTo = ví nhận tiền (ví gốc family). Sổ điểm danh / chuỗi vẫn theo userId (mỗi tài khoản 1 lần / ngày).
+function claimDaily(userId, creditTo) {
+    const vi = creditTo || userId;
     const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
     const u = dailyBookOf(getUserData(userId));
     const { y, m, d } = vnParts();
@@ -1289,8 +1291,8 @@ function claimDaily(userId) {
     u.dailyDays.push(d);
     u.lastDaily = Date.now();
     // Đang nợ thì một phần tiền điểm danh tự trừ vào nợ (xem khối VAY NỢ)
-    const inc = debtCutIncome(userId, dailyCfg().daily);
-    updatePoints(userId, inc.keep);
+    const inc = debtCutIncome(vi, dailyCfg().daily);
+    updatePoints(vi, inc.keep);
 
     // Đủ mốc chuỗi -> GHI gói vào sổ, chưa cộng tiền. Người chơi tự bấm nhận;
     // gói đã ghi thì chuỗi đứt sau đó cũng không mất.
@@ -1302,13 +1304,14 @@ function claimDaily(userId) {
     return {
         ok: true, amount: dailyCfg().daily, streakEarned,
         debtCut: inc.cut, debtLeft: inc.left,
-        state: dailyState(userId), balance: u.points || 0,
+        state: dailyState(userId), balance: getUserData(vi).points || 0,
     };
 }
 
 // Bấm nhận thưởng chuỗi: MỖI LẦN BẤM lấy 1 gói 800. Gói dồn lại được - điểm danh 4
 // ngày liên tiếp là 2 gói, bấm 2 lần; hết gói thì ô tắt, không nhận nữa.
-function claimStreak(userId) {
+function claimStreak(userId, creditTo) {   // 👪 20/10: creditTo như claimDaily
+    const vi = creditTo || userId;
     const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
     const u = dailyBookOf(getUserData(userId));
     streakTopUp(u);
@@ -1317,14 +1320,14 @@ function claimStreak(userId) {
         return { error: `Hết gói thưởng chuỗi - điểm danh thêm ${dailyCfg().streakEvery} ngày LIÊN TIẾP là có gói mới (${dailyCfg().streakBonus.toLocaleString()} KNB).` };
     }
     u.streakPacks = packs - 1;
-    const inc = debtCutIncome(userId, dailyCfg().streakBonus);
-    updatePoints(userId, inc.keep);
+    const inc = debtCutIncome(vi, dailyCfg().streakBonus);
+    updatePoints(vi, inc.keep);
     saveDbNow();
     writeLog('ADMIN', `[ĐIỂM DANH] ${u.name || userId} nhận 1 gói thưởng chuỗi ${dailyCfg().streakBonus.toLocaleString()} KNB (còn ${u.streakPacks} gói)${inc.cut ? ` | trừ nợ ${inc.cut}` : ''} | Số dư: ${(u.points || 0).toLocaleString()}`);
     return {
         ok: true, amount: dailyCfg().streakBonus, left: u.streakPacks,
         debtCut: inc.cut, debtLeft: inc.left,
-        state: dailyState(userId), balance: u.points || 0,
+        state: dailyState(userId), balance: getUserData(vi).points || 0,
     };
 }
 // announce: CHỈ bật khi lụm từ WEB. Gõ /nghien trong Discord thì lời đáp đã hiện

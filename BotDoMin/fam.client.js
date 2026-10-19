@@ -81,6 +81,21 @@
     if (!xacNhan('duoi' + vi, 'Bấm Đuổi lần nữa trong 6 giây - ' + (x.acc || x.ten) + ' sẽ MẤT HẾT KNB, Rương Ích Kỷ, Thương Phố')) return;
     api('/api/fam/duoi', { vi: vi }).then(function (j) { if (!j || !j.ok) return toast('❌ ' + ((j && j.error) || 'Không đuổi được')); toast('✅ Đã đuổi ' + (x.acc || x.ten)); F = j.fam; ve(); xongDoi(); });
   };
+  // Điểm danh dùng chung: server trả DST.fam {tong, chua, tv} -> ghi rõ trên nút đang nhận cho mấy tài khoản
+  if (typeof window.dRender === 'function' && !window.dRender._fam) {
+    var goc = window.dRender;
+    window.dRender = function () {
+      goc.apply(this, arguments);
+      try {
+        if (typeof DST === 'undefined' || !DST || !DST.fam) return;
+        var b = document.getElementById('dClaim'), f = DST.fam;
+        if (b) b.textContent = DST.checkedToday ? '✅ CẢ FAMILY (' + f.tong + ' TÀI KHOẢN) ĐÃ ĐIỂM DANH - MAI QUAY LẠI'
+          : '✨ ĐIỂM DANH ' + f.chua + '/' + f.tong + ' TÀI KHOẢN (+' + DST.amount.toLocaleString('vi-VN') + ')';
+        if (b) b.title = f.tv.map(function (x) { return (x.da ? '✅ ' : '⬜ ') + (x.ten || x.acc) + ' (' + x.acc + ')'; }).join('\n');
+      } catch (x) { }
+    };
+    window.dRender._fam = 1;
+  }
   window.famRoi = function () {
     if (!xacNhan('roi', 'Bấm Rời lần nữa trong 6 giây - tài khoản này sẽ MẤT HẾT KNB, Rương Ích Kỷ, Thương Phố')) return;
     api('/api/fam/roi', {}).then(function (j) { if (!j || !j.ok) return toast('❌ ' + ((j && j.error) || 'Không rời được')); toast('✅ Đã rời family'); tai(); xongDoi(); });

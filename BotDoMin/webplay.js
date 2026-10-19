@@ -631,19 +631,49 @@ function startWebPlay(ctx) {
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
+                // 👪 20/10 FAMILY: điểm danh DÙNG CHUNG - 1 lần bấm điểm danh hộ mọi tài khoản trong family chưa điểm danh
+                // (mỗi tài khoản vẫn 1 lần / ngày, sổ + chuỗi riêng), tiền vào ví gốc. Lịch hiện của tài khoản đang đăng nhập.
+                const famDS = ctx.daily ? FAM.thanhVien(userId) : [];
+                const famDState = () => {
+                    const st = ctx.daily.state(viToi);
+                    if (famDS.length < 2) return st;
+                    let chua = 0, goi = 0;
+                    const tv = famDS.map((id) => {
+                        const s = ctx.daily.state(id), u = ctx.getUserData(id);
+                        if (!s.checkedToday) chua++;
+                        goi += s.streakPacks || 0;
+                        return { acc: u.gameAcc || '', ten: u.ingameName || '', da: !!s.checkedToday, goi: s.streakPacks || 0 };
+                    });
+                    return { ...st, checkedToday: chua === 0, amount: st.amount * Math.max(1, chua), streakPacks: goi,
+                        balance: ctx.getUserData(userId).points || 0, fam: { tong: famDS.length, chua, tv } };
+                };
                 if (ctx.daily && path === '/api/daily/state') {
-                    return sendJSON(res, 200, { ok: true, ...ctx.daily.state(userId) });
+                    return sendJSON(res, 200, { ok: true, ...famDState() });
                 }
                 if (ctx.daily && req.method === 'POST' && path === '/api/daily/claim') {
-                    const r = ctx.daily.claim(userId);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, r);
+                    if (famDS.length < 2) {
+                        const r = ctx.daily.claim(userId);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+                    let tong = 0, cut = 0, so = 0, chuoi = false, loi = null, conNo = 0;
+                    for (const id of famDS) {
+                        const r = ctx.daily.claim(id, userId);
+                        if (r.error) { if (!loi) loi = r.error; continue; }
+                        tong += r.amount || 0; cut += r.debtCut || 0; conNo = r.debtLeft || 0; chuoi = chuoi || !!r.streakEarned; so++;
+                    }
+                    if (!so) return sendJSON(res, 400, { ok: false, error: loi || 'Cả family hôm nay điểm danh rồi' });
+                    return sendJSON(res, 200, { ok: true, amount: tong, so, streakEarned: chuoi, debtCut: cut, debtLeft: conNo,
+                        state: famDState(), balance: ctx.getUserData(userId).points || 0 });
                 }
-                // bấm nhận thưởng chuỗi (2 ngày liên tiếp = 1 gói, lấy hết 1 lần)
+                // bấm nhận thưởng chuỗi (2 ngày liên tiếp = 1 gói, lấy hết 1 lần) - family: lấy 1 gói của tài khoản nào đang có gói
                 if (ctx.daily && ctx.daily.streak && req.method === 'POST' && path === '/api/daily/streak') {
-                    const r = ctx.daily.streak(userId);
+                    const coGoi = famDS.length < 2 ? userId : (famDS.find((id) => (ctx.daily.state(id).streakPacks || 0) > 0) || viToi);
+                    const r = famDS.length < 2 ? ctx.daily.streak(userId) : ctx.daily.streak(coGoi, userId);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, r);
+                    if (famDS.length < 2) return sendJSON(res, 200, r);
+                    const st = famDState();
+                    return sendJSON(res, 200, { ...r, left: st.streakPacks, state: st, balance: ctx.getUserData(userId).points || 0 });
                 }
                 if (ctx.daily && req.method === 'POST' && path === '/api/daily/nghien') {
                     const r = ctx.daily.nghien(userId);
