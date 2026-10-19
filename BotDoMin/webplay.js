@@ -2177,8 +2177,8 @@ const PAGE = [
     '<div id="debtChip" class="hidden" onclick="debtBarToggle()" title="Bấm để trả nợ"><div class="lb">📒 ĐANG NỢ</div><div class="vl" id="debtChipVal">0</div></div>',
     '<div id="taxiChip" class="hidden" onclick="taxiNhan()" title="Cháy ví mà hôm nay thua nhiều - bấm nhận tiền về"><div class="lb">🚕 XU ĐI TAXI VỀ</div><div class="vl" id="taxiChipVal">0</div></div>',
     '<div class="tbR">',
-    '<button class="tbBtn" id="mkBtn" title="Đổi mật khẩu game + web" onclick="mkOpen()">🔑 <span>Mật khẩu</span></button>',
     '<button class="tbBtn" id="famBtn" title="Liên kết nhiều tài khoản game dùng chung ví (family)" onclick="famOpen()">🔗 <span>Liên kết</span></button>',
+    '<button class="tbBtn" id="mkBtn" title="Đổi mật khẩu game + web" onclick="mkOpen()">🔑 <span>Mật khẩu</span></button>',
     '<button class="tbBtn tbOut" onclick="logout()">⎋ <span>Thoát</span></button></div></div>',
 
     // 🔑 07/10: popup đổi mật khẩu (trước là thẻ 🎮 Tài khoản game cuối trang Cá nhân). 1 mật khẩu dùng chung game + web.
