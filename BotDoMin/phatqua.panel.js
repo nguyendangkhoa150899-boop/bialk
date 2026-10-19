@@ -12,6 +12,7 @@
   function e(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function loi(er) { if (!er || !er.toasted) toast('❌ ' + ((er && er.message) || er)); }
   function $(id) { return document.getElementById(id); }
+  function icOf(id) { var v = ICMAP[id]; return v && v.ic ? v.ic : null; }   // ICMAP[id] = { ic: {f,x,y,w,h}, ten }
   function so(x) { return Number(x || 0).toLocaleString('vi-VN'); }
   function boDau(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd'); }
 
@@ -151,14 +152,14 @@
     var hien = L.slice(0, 60);
     var ve = function () {
       el.innerHTML = hien.map(function (x) {
-        return '<div class="pqIt' + (PQ.item && PQ.item.id === x.id ? ' on' : '') + '" data-pqit="' + x.id + '">' + vqaIc(ICMAP[x.id]) + '<div>' + e(x.n) + '<small>' + x.id + '</small></div></div>';
+        return '<div class="pqIt' + (PQ.item && PQ.item.id === x.id ? ' on' : '') + '" data-pqit="' + x.id + '">' + vqaIc(icOf(x.id)) + '<div>' + e(x.n) + '<small>' + x.id + '</small></div></div>';
       }).join('') + (L.length > 60 ? '<div class="empty">' + so(L.length) + ' món khớp, đang hiện 60 - gõ thêm để lọc</div>' : '') || '<div class="empty">Không món nào khớp.</div>';
     };
     ve(); icTra(hien.map(function (x) { return x.id; }), ve);
   }
   function vePicked() {
     var el = $('pqPicked'); if (!el) return;
-    el.innerHTML = PQ.item ? '<div class="pqPick">' + vqaIc(ICMAP[PQ.item.id]) + '<div><b>' + e(PQ.item.n) + '</b> <small class="muted">' + PQ.item.id + '</small></div></div>' : '<div class="muted" style="font-size:12.5px">Chưa chọn vật phẩm.</div>';
+    el.innerHTML = PQ.item ? '<div class="pqPick">' + vqaIc(icOf(PQ.item.id)) + '<div><b>' + e(PQ.item.n) + '</b> <small class="muted">' + PQ.item.id + '</small></div></div>' : '<div class="muted" style="font-size:12.5px">Chưa chọn vật phẩm.</div>';
   }
   function vePets() {
     var sel = $('pqPet'); if (!sel) return;

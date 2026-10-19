@@ -16,7 +16,7 @@ const CHARS = [
 ];
 const tlbbPath = require.resolve(D + 'tlbb.js');
 require.cache[tlbbPath] = { id: tlbbPath, filename: tlbbPath, loaded: true, exports: { gmCall: async (m, p, f) => {
-  if (m === 'GET' && p === '/api/state') return { ok: true, online: 2, chars: CHARS };
+  if (m === 'GET' && p === '/api/state') return { ok: true, state: { online: 2, chars: CHARS } };   // dung dang that: boc trong state
   if (m === 'POST' && p === '/api/act') { ACT.push(f); return { ok: true, msg: 'Da xep hang qua cho GUID ' + f.guid + ': ' + f.loai + ' ' + f.gt, done: true }; }
   if (m === 'GET' && p === '/api/pets') return { ok: true, groups: [{ pets: [{ id: 25351, name: 'Tần Vương' }] }] };
   return { ok: false, error: 'gia: ' + p };

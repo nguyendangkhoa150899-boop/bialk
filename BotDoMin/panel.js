@@ -1285,9 +1285,10 @@ function startPanel(ctx) {
                     }
                     let st;
                     try { st = await gmCall('GET', '/api/state'); } catch (e) { return sendJSON(res, 502, { ok: false, error: 'Panel GM không trả lời: ' + String(e.message).slice(0, 120) }); }
-                    const chars = (st && st.chars) || [];
+                    const gs = (st && st.state) || st || {};   // panel GM trả { ok, state: { chars, online, ... } }
+                    const chars = gs.chars || [];
                     if (path === '/api/pq/data') {
-                        return sendJSON(res, 200, { ok: true, online: st.online, chars: chars.map(c => ({ guid: String(c.guid), ten: c.name, tk: c.account, cap: c.level, on: !!c.online, cho: c.pending || [], vi: viCua[String(c.guid)] || [] })) });
+                        return sendJSON(res, 200, { ok: true, online: gs.online, chars: chars.map(c => ({ guid: String(c.guid), ten: c.name, tk: c.account, cap: c.level, on: !!c.online, cho: c.pending || [], vi: viCua[String(c.guid)] || [] })) });
                     }
                     const LOAI = { item: 1, itemsao: 1, pet: 1, knb: 1, vang: 1, diemtang: 1, level: 1, exp: 1, vip: 1, tamphap: 1, popup: 1, knbweb: 1 };
                     const loai = String(body.loai || ''), kenh = String(body.kenh || 'map');
