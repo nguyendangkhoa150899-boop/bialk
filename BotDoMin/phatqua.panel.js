@@ -7,7 +7,7 @@
 // API: /api/pq/data (nhân vật + quà chờ + ví liên kết), /api/pq/gui (gửi, trả kết quả từng nhân vật), /api/gm/pets, /api/gameitems,
 // /api/gm/act a=huy_qua. Dùng hàm chung của panel: api, toast, uiConfirm, tab, icTra, ICMAP, vqaIc.
 (function () {
-  var PQ = { d: null, sel: {}, q: '', chiOn: false, loai: 'item', tien: 'knb', tien2: 'level', kenh: 'map', item: null, sl: 1, gt: '',
+  var PQ = { d: null, sel: {}, q: '', chiOn: false, loai: 'item', tien: 'knb', tien2: 'level', kenh: 'map', item: null, sl: 1, sao: 9, gt: '',
     items: null, itemsLoading: false, iq: '', pets: null, petGi: 0, petId: '', kq: null, busy: false, built: false };
   function e(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function loi(er) { if (!er || !er.toasted) toast('❌ ' + ((er && er.message) || er)); }
@@ -21,7 +21,8 @@
     diemtang: ['diemtang', 'Điểm Tặng', 'Số Điểm Tặng', 1, 10000000], knbweb: ['knbweb', 'KNB ví web', 'Số KNB web', 1, 100000000] };
   var TIEN2 = { level: ['level', 'Lên cấp', 'Cấp 1 - 119', 1, 119], exp: ['exp', 'EXP', 'EXP 1 - 2 tỉ', 1, 2000000000],
     vip: ['vip', 'Cấp VIP', 'VIP 0 - 10', 0, 10], tamphap: ['tamphap', 'Tâm pháp môn phái', 'Cấp 1 - 159', 1, 159] };
-  var LOAI = [['item', '📦 Vật phẩm'], ['itemsao', '⭐ Trang bị có sao'], ['pet', '🐾 Pet'], ['tien', '💰 Tiền'], ['tien2', '📈 Cấp / EXP / VIP'], ['popup', '🪟 Cửa sổ quà']];
+  var LOAI = [['item', '📦 Vật phẩm'], ['itemsao', '⭐ Trang bị có sao'], ['pet', '🐾 Pet'], ['tien', '💰 Tiền'], ['tien2', '📈 Cấp / EXP / VIP'], ['popup', '🪟 Cửa sổ quà'], ['xoa', '🗑️ Xoá vật phẩm']];
+  function laTimMon() { return PQ.loai === 'item' || PQ.loai === 'itemsao' || PQ.loai === 'popup' || PQ.loai === 'xoa'; }
   var PETG = [[0, 'Huyễn Hóa V2'], [1, 'Huyễn Hóa 12000'], [3, 'Huyễn Hóa Tân Thủ'], [2, 'Tất cả pet']];
   var KENH = [
     ['map', '🗺️ Đổi bản đồ', 'Vào túi khi đăng nhập hoặc đổi bản đồ (đang online: qua cổng / truyền tống). Túi đầy thì phần còn lại nhận lần sau.'],
@@ -100,11 +101,13 @@
       return '<div class="pqNv' + (on ? ' on' : '') + '" data-pqnv="' + e(c.guid) + '"><input type="checkbox"' + (on ? ' checked' : '') + ' tabindex="-1">' +
         '<div><b>' + e(c.ten) + '</b><small>' + e(c.tk) + ' · ' + e(c.guid) + ' · cấp ' + e(c.cap) + '</small></div>' +
         '<div class="pqR"><span class="pqDot' + (c.on ? ' on' : '') + '"></span>' + (c.on ? 'online' : 'offline') +
-        (c.vi.length ? '<span class="pqTag vi" title="Ví web liên kết">🔗 ' + e(c.vi.map(function (v) { return v.ten; }).join(', ')) + '</span>' : '<span class="pqTag" title="Chưa liên kết ví web: không gửi được Rương Ích Kỷ / KNB ví">chưa có ví</span>') +
+        (c.vi.length ? c.vi.map(function (v) { return v.clone ? '<span class="pqTag" title="Ví clone: chỉ mở được Thương Phố, không nhận Rương Ích Kỷ / KNB web">🧬 ' + e(v.ten) + '</span>' : '<span class="pqTag vi" title="Ví web liên kết">🔗 ' + e(v.ten) + '</span>'; }).join('') : '<span class="pqTag" title="Chưa liên kết ví web: không gửi được Rương Ích Kỷ / KNB ví">chưa có ví</span>') +
         (c.cho.length ? '<span class="pqTag cho">⏳ ' + c.cho.length + ' chờ</span>' : '') + '</div></div>';
     }).join('') || '<div class="empty">Không nhân vật nào khớp.</div>';
     var n = dsChon().length, tong = PQ.d.chars.length;
-    $('pqSelN').textContent = 'đã chọn ' + n + ' / ' + tong + ' nhân vật · ' + (PQ.d.online || 0) + ' online';
+    var thay = {}; L.forEach(function (c) { thay[c.guid] = 1; });
+    var an = dsChon().filter(function (g) { return !thay[g]; }).length;   // đã chọn nhưng đang bị bộ lọc che -> vẫn được gửi
+    $('pqSelN').textContent = 'đã chọn ' + n + ' / ' + tong + ' nhân vật · ' + (PQ.d.online || 0) + ' online' + (an ? ' · ⚠️ ' + an + ' người đã chọn đang bị lọc ẩn (vẫn được gửi)' : '');
     veSum();
   }
 
@@ -112,11 +115,12 @@
   function veLoai() {
     $('pqLoai').innerHTML = LOAI.map(function (x) { return '<button data-pqloai="' + x[0] + '" class="' + (PQ.loai === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('');
     var f = $('pqForm'), h = '';
-    if (PQ.loai === 'item' || PQ.loai === 'popup' || PQ.loai === 'itemsao') {
-      h += '<label>Tìm vật phẩm (tên hoặc ID) rồi bấm để chọn</label><div class="pqRow"><input type="text" id="pqIq" placeholder="vd: Hồn Băng Châu, 20309101" value="' + e(PQ.iq) + '"></div>' +
+    if (laTimMon()) {
+      h += '<label>' + (PQ.loai === 'itemsao' ? 'Tìm TRANG BỊ (tên hoặc ID) rồi bấm để chọn' : 'Tìm vật phẩm (tên hoặc ID) rồi bấm để chọn') + '</label><div class="pqRow"><input type="text" id="pqIq" placeholder="vd: Hồn Băng Châu, 20309101" value="' + e(PQ.iq) + '"></div>' +
         '<div class="pqItems" id="pqItems"></div><div id="pqPicked"></div>';
-      if (PQ.loai === 'item') h += '<div class="pqRow"><label style="flex:0 0 auto">Số lượng</label><input type="number" id="pqSl" min="1" value="' + e(PQ.sl) + '"></div>';
-      if (PQ.loai === 'itemsao') h += '<div class="pqRow"><label style="flex:0 0 auto">Số sao (1 - 9)</label><input type="number" id="pqSl" min="1" max="9" value="' + e(Math.min(9, PQ.sl || 9)) + '"></div>';
+      if (PQ.loai === 'item' || PQ.loai === 'xoa') h += '<div class="pqRow"><label style="flex:0 0 auto">Số lượng</label><input type="number" id="pqSl" min="1" value="' + e(PQ.sl) + '"></div>';
+      if (PQ.loai === 'itemsao') h += '<div class="pqRow"><label style="flex:0 0 auto">Số sao (1 - 9)</label><input type="number" id="pqSao" min="1" max="9" value="' + e(PQ.sao) + '"></div>';
+      if (PQ.loai === 'xoa') h += '<div class="note" style="margin-top:0;color:#ffb0b0">🗑️ <b>XOÁ</b> món này khỏi túi nhân vật (không phải tặng). Xoá khi nhân vật đăng nhập / đổi bản đồ.</div>';
       if (PQ.loai === 'popup') h += '<div class="note" style="margin-top:0">Cửa sổ "Quà ngày lễ" hiện khi người chơi vào game, bấm Nhận. Mỗi nhân vật chỉ giữ <b>1 món</b>: gửi món mới sẽ <b>thay</b> món cũ chưa nhận.</div>';
     } else if (PQ.loai === 'pet') {
       h += '<div class="pqRow"><select id="pqPetG">' + PETG.map(function (g) { return '<option value="' + g[0] + '"' + (PQ.petGi === g[0] ? ' selected' : '') + '>' + g[1] + '</option>'; }).join('') + '</select></div>' +
@@ -130,6 +134,7 @@
     f.innerHTML = h;
     if ($('pqIq')) { $('pqIq').addEventListener('input', function () { PQ.iq = this.value; veItems(); }); veItems(); vePicked(); }
     if ($('pqSl')) $('pqSl').addEventListener('input', function () { PQ.sl = this.value; veSum(); });
+    if ($('pqSao')) $('pqSao').addEventListener('input', function () { PQ.sao = this.value; veSum(); });
     if ($('pqGt')) $('pqGt').addEventListener('input', function () { PQ.gt = this.value; veSum(); });
     if ($('pqTien')) $('pqTien').addEventListener('change', function () { if (PQ.loai === 'tien') PQ.tien = this.value; else PQ.tien2 = this.value; PQ.gt = ''; veLoai(); });
     if ($('pqPetG')) { $('pqPetG').addEventListener('change', function () { PQ.petGi = Number(this.value); PQ.petId = ''; vePets(); }); vePets(); }
@@ -139,7 +144,7 @@
     if (PQ.items || PQ.itemsLoading) return;
     PQ.itemsLoading = true;
     api('/api/gameitems').then(function (j) {
-      PQ.items = (j.items || []).map(function (x) { return { id: String(x.id), n: x.n, k: boDau(x.n + ' ' + x.id) }; });
+      PQ.items = (j.items || []).map(function (x) { return { id: String(x.id), n: x.n, tb: x.kind === 'Trang bi', k: boDau(x.n + ' ' + x.id) }; });
       PQ.itemsLoading = false; veItems();
     }).catch(function (er) { PQ.itemsLoading = false; loi(er); });
   }
@@ -148,14 +153,15 @@
     if (!PQ.items) { taiItems(); el.innerHTML = '<div class="empty">Đang tải danh mục vật phẩm...</div>'; return; }
     var q = boDau(PQ.iq.trim());
     if (!q) { el.innerHTML = '<div class="empty">Gõ tên hoặc ID để tìm (' + so(PQ.items.length) + ' vật phẩm).</div>'; return; }
-    var L = PQ.items.filter(function (x) { return x.k.indexOf(q) >= 0; });
+    var chiTb = PQ.loai === 'itemsao', q0 = PQ.iq;
+    var L = PQ.items.filter(function (x) { return (!chiTb || x.tb) && x.k.indexOf(q) >= 0; });
     var hien = L.slice(0, 60);
     var ve = function () {
       el.innerHTML = hien.map(function (x) {
         return '<div class="pqIt' + (PQ.item && PQ.item.id === x.id ? ' on' : '') + '" data-pqit="' + x.id + '">' + vqaIc(icOf(x.id)) + '<div>' + e(x.n) + '<small>' + x.id + '</small></div></div>';
       }).join('') + (L.length > 60 ? '<div class="empty">' + so(L.length) + ' món khớp, đang hiện 60 - gõ thêm để lọc</div>' : '') || '<div class="empty">Không món nào khớp.</div>';
     };
-    ve(); icTra(hien.map(function (x) { return x.id; }), ve);
+    ve(); icTra(hien.map(function (x) { return x.id; }), function () { if (PQ.iq === q0 && $('pqItems') === el) ve(); });   // icon về muộn: chỉ vẽ lại nếu ô tìm chưa đổi
   }
   function vePicked() {
     var el = $('pqPicked'); if (!el) return;
@@ -169,11 +175,17 @@
       sel.onchange = function () { PQ.petId = this.value; veSum(); };
     };
     if (PQ.pets) return fill();
-    api('/api/gm/pets', {}).then(function (j) { PQ.pets = j.groups || []; fill(); }).catch(loi);
+    api('/api/gm/pets', {}).then(function (j) { PQ.pets = j.groups || []; fill(); })
+      .catch(function (er) { sel.innerHTML = '<option value="">lỗi tải danh sách pet - chọn lại nhóm để thử lại</option>'; loi(er); });
   }
   function veKenh() {
     var it = laItem();
     if (!it) PQ.kenh = 'map';
+    if (!it) {   // chỉ vật phẩm mới chọn cách nhận; loại khác chỉ ghi chú cách đi (không hiện thẻ "đã chọn" gây hiểu nhầm)
+      $('pqKenh').innerHTML = '<div class="pqK on" style="cursor:default"><div><b>' + (PQ.loai === 'tien' && PQ.tien === 'knbweb' ? '💰 Ví web' : PQ.loai === 'popup' ? '🪟 Cửa sổ quà' : PQ.loai === 'xoa' ? '🗑️ Xoá khi đổi bản đồ' : '🗺️ Đổi bản đồ') + '</b><span>' +
+        (PQ.loai === 'tien' && PQ.tien === 'knbweb' ? 'Cộng thẳng vào ví web liên kết, không qua game.' : PQ.loai === 'popup' ? 'Cửa sổ "Quà ngày lễ" hiện khi vào game, người chơi bấm Nhận.' : 'Loại này chỉ đi qua hàng quà game: có hiệu lực khi nhân vật đăng nhập / đổi bản đồ.') + '</span></div></div>';
+      return;
+    }
     $('pqKenh').innerHTML = KENH.map(function (k) {
       var off = !it && k[0] !== 'map', on = PQ.kenh === k[0];
       return '<label class="pqK' + (on ? ' on' : '') + (off ? ' off' : '') + '" data-pqkenh="' + k[0] + '"><input type="radio" name="pqKenh"' + (on ? ' checked' : '') + (off ? ' disabled' : '') + '><div><b>' + k[1] + '</b><span>' + k[2] + '</span></div></label>';
@@ -182,12 +194,13 @@
 
   // gom dữ liệu gửi: { loai, gt, sl, mo } hoặc { loi }
   function goi() {
-    if (PQ.loai === 'item' || PQ.loai === 'itemsao' || PQ.loai === 'popup') {
+    if (laTimMon()) {
       if (!PQ.item) return { loi: 'Chưa chọn vật phẩm' };
-      var sl = Math.floor(Number(PQ.loai === 'popup' ? 1 : PQ.sl));
-      if (PQ.loai === 'item' && !(sl >= 1 && sl <= (PQ.kenh === 'npc' ? 9999 : 999))) return { loi: 'Số lượng 1 - ' + (PQ.kenh === 'npc' ? '9.999' : '999') };
+      var sl = Math.floor(Number(PQ.loai === 'popup' ? 1 : PQ.loai === 'itemsao' ? PQ.sao : PQ.sl));
+      // Đổi bản đồ / Rương: 1 - 999 (panel GM); NPC: server tự giới hạn theo ô túi (tối đa 100 ô)
+      if ((PQ.loai === 'item' || PQ.loai === 'xoa') && !(sl >= 1 && sl <= (PQ.loai === 'item' && PQ.kenh === 'npc' ? 99999 : 999))) return { loi: 'Số lượng 1 - ' + (PQ.loai === 'item' && PQ.kenh === 'npc' ? '99.999 (tối đa 100 ô túi)' : '999') };
       if (PQ.loai === 'itemsao' && !(sl >= 1 && sl <= 9)) return { loi: 'Số sao 1 - 9' };
-      return { loai: PQ.loai, gt: PQ.item.id, sl: sl, mo: PQ.item.n + (PQ.loai === 'item' ? ' x' + so(sl) : PQ.loai === 'itemsao' ? ' (' + sl + ' sao)' : ' (cửa sổ quà)') };
+      return { loai: PQ.loai, gt: PQ.item.id, sl: sl, mo: (PQ.loai === 'xoa' ? 'XOÁ ' : '') + PQ.item.n + (PQ.loai === 'item' || PQ.loai === 'xoa' ? ' x' + so(sl) : PQ.loai === 'itemsao' ? ' (' + sl + ' sao)' : ' (cửa sổ quà)') };
     }
     if (PQ.loai === 'pet') { if (!PQ.petId) return { loi: 'Chưa chọn pet' }; return { loai: 'pet', gt: PQ.petId, sl: 1, mo: 'pet ' + (($('pqPet') || {}).selectedOptions ? $('pqPet').selectedOptions[0].textContent : PQ.petId) }; }
     var M = PQ.loai === 'tien' ? TIEN : TIEN2, m = M[PQ.loai === 'tien' ? PQ.tien : PQ.tien2], v = Math.floor(Number(PQ.gt));
@@ -199,8 +212,14 @@
     var n = dsChon().length, g = goi(), k = KENH.filter(function (x) { return x[0] === PQ.kenh; })[0];
     el.innerHTML = '<div>Người nhận: <b>' + (n ? n + ' nhân vật' : '<span class="bad">chưa chọn</span>') + '</b></div>' +
       '<div>Quà: <b>' + (g.loi ? '<span class="bad">' + e(g.loi) + '</span>' : e(g.mo)) + '</b></div>' +
-      '<div>Cách nhận: <b>' + (PQ.loai === 'tien' && PQ.tien === 'knbweb' ? '💰 Ví web' : PQ.loai === 'popup' ? '🪟 Cửa sổ quà' : k[1]) + '</b></div>';
-    var b = $('pqGo'); if (b) { b.disabled = PQ.busy || !n || !!g.loi; b.textContent = PQ.busy ? '⏳ Đang gửi...' : 'Gửi quà' + (n ? ' cho ' + n + ' nhân vật' : ''); b.className = 'pqGo ' + (n >= 5 ? 'btn-red' : 'btn-green'); }
+      '<div>Cách nhận: <b>' + kenhTen() + '</b></div>';
+    var b = $('pqGo'); if (b) { b.disabled = PQ.busy || !n || !!g.loi; b.textContent = PQ.busy ? '⏳ Đang gửi...' : (PQ.loai === 'xoa' ? '🗑️ Xoá vật phẩm' : 'Gửi quà') + (n ? ' cho ' + n + ' nhân vật' : ''); b.className = 'pqGo ' + (n >= 5 || PQ.loai === 'xoa' ? 'btn-red' : 'btn-green'); }
+  }
+  function kenhTen() {
+    if (PQ.loai === 'tien' && PQ.tien === 'knbweb') return '💰 Ví web';
+    if (PQ.loai === 'popup') return '🪟 Cửa sổ quà';
+    if (PQ.loai === 'xoa') return '🗑️ Xoá khi đổi bản đồ';
+    return laItem() ? KENH.filter(function (x) { return x[0] === PQ.kenh; })[0][1] : '🗺️ Đổi bản đồ';
   }
 
   function veCho() {
@@ -240,16 +259,17 @@
   function gui() {
     var ds = dsChon(), g = goi();
     if (!ds.length || g.loi || PQ.busy) return;
-    var kenhTen = PQ.loai === 'tien' && PQ.tien === 'knbweb' ? 'ví web' : PQ.loai === 'popup' ? 'cửa sổ quà' : KENH.filter(function (x) { return x[0] === PQ.kenh; })[0][1];
-    var msg = 'Gửi ' + g.mo + ' cho ' + ds.length + ' nhân vật, nhận qua ' + kenhTen + '?' + (ds.length >= 5 ? ' Gửi nhiều người: gõ GUI để xác nhận.' : '');
-    uiConfirm(msg, 'Gửi', ds.length >= 5 ? 'btn-red' : 'btn-green', ds.length >= 5 ? 'GUI' : '').then(function (ok) {
+    var xoa = PQ.loai === 'xoa', nhieu = ds.length >= 5;
+    var msg = (xoa ? 'XOÁ ' + g.mo.replace(/^XOÁ /, '') + ' khỏi túi ' : 'Gửi ' + g.mo + ' cho ') + ds.length + ' nhân vật (' + kenhTen() + ')?' +
+      (xoa ? ' Gõ XOA để xác nhận.' : nhieu ? ' Gửi nhiều người: gõ GUI để xác nhận.' : '');
+    uiConfirm(msg, xoa ? 'Xoá' : 'Gửi', xoa || nhieu ? 'btn-red' : 'btn-green', xoa ? 'XOA' : nhieu ? 'GUI' : '').then(function (ok) {
       if (!ok) return;
       PQ.busy = true; veSum();
-      var nguoi = (PQ.d && ds.length === PQ.d.chars.length) ? 'all' : ds;
-      api('/api/pq/gui', { nguoi: nguoi, loai: g.loai, gt: g.gt, sl: g.sl, kenh: laItem() ? PQ.kenh : 'map' }).then(function (j) {
+      // luôn gửi đúng danh sách GUID đã xác nhận (không gửi 'all': nhân vật mới tạo sau khi tải tab sẽ bị gửi thêm ngoài ý)
+      api('/api/pq/gui', { nguoi: ds, loai: g.loai, gt: g.gt, sl: g.sl, kenh: laItem() ? PQ.kenh : 'map' }).then(function (j) {
         PQ.kq = { mo: g.mo, kq: j.kq || [] }; veKq();
-        toast((j.okN === (j.kq || []).length ? '✅ ' : '⚠️ ') + 'Đã gửi ' + j.okN + ' / ' + (j.kq || []).length + ' nhân vật');
-        PQ.busy = false; tai();
+        toast((j.okN === (j.kq || []).length ? '✅ ' : '⚠️ ') + (xoa ? 'Đã xếp lệnh xoá ' : 'Đã gửi ') + j.okN + ' / ' + (j.kq || []).length + ' nhân vật');
+        PQ.busy = false; veSum(); tai();
       }).catch(function (er) { PQ.busy = false; veSum(); loi(er); });
     });
   }
@@ -259,12 +279,14 @@
     var mo = t.closest && t.closest('[data-pqmo]'); if (mo) { pqMo(mo.getAttribute('data-pqmo')); return; }
     if (!t.closest || !t.closest('#pqRoot')) return;
     var nv = t.closest('[data-pqnv]'); if (nv) { var g = nv.getAttribute('data-pqnv'); PQ.sel[g] = !PQ.sel[g]; veNv(); return; }
-    var lo = t.closest('[data-pqloai]'); if (lo) { PQ.loai = lo.getAttribute('data-pqloai'); PQ.gt = ''; if (PQ.loai === 'itemsao') PQ.sl = 9; else if (PQ.loai === 'item' && PQ.sl > 999) PQ.sl = 1; veLoai(); return; }
+    var lo = t.closest('[data-pqloai]'); if (lo) { var cu = PQ.loai; PQ.loai = lo.getAttribute('data-pqloai'); PQ.gt = '';
+      if ((cu === 'itemsao') !== (PQ.loai === 'itemsao')) PQ.item = null;   // trang bị có sao chỉ chọn trang bị -> đổi qua lại thì bỏ món đang chọn
+      veLoai(); return; }
     var it = t.closest('[data-pqit]'); if (it) { var id = it.getAttribute('data-pqit'); PQ.item = (PQ.items || []).filter(function (x) { return x.id === id; })[0] || null; veItems(); vePicked(); veSum(); return; }
     var ke = t.closest('[data-pqkenh]'); if (ke) { ev.preventDefault(); if (!laItem() && ke.getAttribute('data-pqkenh') !== 'map') return; PQ.kenh = ke.getAttribute('data-pqkenh'); veKenh(); veSum(); return; }
     var hu = t.closest('[data-pqhuy]'); if (hu) {
       var gu = hu.getAttribute('data-pqhuy'), ten = hu.getAttribute('data-ten');
-      uiConfirm('Huỷ toàn bộ quà đang chờ (cách Đổi bản đồ) của ' + ten + '?', 'Huỷ quà', 'btn-red').then(function (ok) {
+      uiConfirm('Huỷ toàn bộ quà đang chờ (cách Đổi bản đồ) của ' + ten + '? Cửa sổ quà chưa nhận (nếu có) cũng bị huỷ.', 'Huỷ quà', 'btn-red').then(function (ok) {
         if (!ok) return;
         api('/api/gm/act', { a: 'huy_qua', guid: gu }).then(function (j) { toast((j.done ? '✅ ' : '⚠️ ') + j.msg); tai(); }).catch(loi);
       });

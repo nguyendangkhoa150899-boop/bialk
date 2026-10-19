@@ -233,6 +233,7 @@ module.exports = function (ctx) {
         const db = ctx.db(); let ra = null;
         for (const [key, v] of Object.entries(db)) {
             if (key.startsWith('_') || !v || typeof v !== 'object' || String(v.tlbbGuid || '') !== String(guid)) continue;
+            if (v.clone) continue;   // 19/10: ví clone không mở được Rương Ích Kỷ (web chỉ cho Thương Phố) -> đồ hoàn không đưa vào rương clone
             if (ra) return null;
             ra = v;
         }
@@ -387,14 +388,19 @@ module.exports = function (ctx) {
     // 🎁 19/10 (chủ server): tab Phát quà - admin gửi đồ thẳng cho 1 NHÂN VẬT (theo GUID, không cần ví web) qua kênh .tpin,
     // giống Rương Ích Kỷ -> game: nhận ở NPC Ví Web (Nhận đồ Thương Phố) hoặc khi đăng nhập / đổi bản đồ, game kiểm đủ ô túi
     // mới phát, không phát trùng, túi đầy thì chờ. Mã lệnh bắt đầu bằng "a" (admin). Phát lỗi -> phiếu HOAN như rutTuRuong.
-    function adminGui(guid, itemId, n, who) {
+    // khongLuu = true: nơi gọi gửi nhiều nhân vật, tự saveDbNow 1 lần ở cuối (đỡ ghi cả database mỗi người)
+    function adminGui(guid, itemId, n, who, khongLuu) {
         if (tat()) return { error: '🏪 Kênh nhận đồ (Thương Phố) đang tạm khoá - bật lại ở tab GM trước' };
         guid = String(guid || '');
         if (!guidOk(guid)) return { error: 'GUID nhân vật không hợp lệ' };
         const id = String(itemId || ''); n = Math.floor(Number(n));
-        if (!/^\d{8}$/.test(id) || !(n > 0 && n <= 9999)) return { error: 'ID món (8 số) hoặc số lượng (1 - 9.999) không hợp lệ' };
+        if (!/^\d{8}$/.test(id) || !(n > 0)) return { error: 'ID món (8 số) hoặc số lượng không hợp lệ' };
         const c = CHO.get(id);
+        // 19/10: chỉ món an toàn của Thương Phố (CHO) hoặc trang bị (1xxxxxxx). Đồ nhiệm vụ / duy nhất / có tham số riêng hay bị game
+        // HOÀN rồi kẹt ở kho Thương Phố (khoá rút) -> bắt dùng cách Đổi bản đồ.
+        if (!c && !/^1/.test(id)) return { error: tenMon(id) + ' không đi kênh NPC được (đồ nhiệm vụ / duy nhất / có tham số riêng) - dùng 🗺️ Đổi bản đồ' };
         const chong = c ? c.chong : (CHONG_ALL.get(id) || 1);
+        if (Math.ceil(n / chong) > 100) return { error: 'Tối đa 100 ô túi mỗi lần (' + tenMon(id) + ' chồng ' + chong + '/ô → tối đa ' + (chong * 100).toLocaleString('vi-VN') + ' cái)' };
         const tui = /^[25]/.test(id) ? 2 : 1;
         const moiDong = Math.max(1, chong * RUT_O_MOI_DONG);
         const dong = [];
@@ -411,7 +417,7 @@ module.exports = function (ctx) {
         }
         const k = kho(guid);
         ghiNk(k, 'rut', `🎁 ${tenMon(id)} x${n} (admin phát)`, [{ id, k: 0, n }], dong.map(l => l.split(' ')[0]));
-        ctx.saveDbNow();
+        if (!khongLuu) ctx.saveDbNow();
         ctx.writeLog('ADMIN', `[PHÁT QUÀ → NPC] ${who || 'admin'} (GUID ${guid}): ${tenMon(id)} x${n}, ${dong.length} lệnh`);
         return { ok: true, soLenh: dong.length, ten: tenMon(id) };
     }

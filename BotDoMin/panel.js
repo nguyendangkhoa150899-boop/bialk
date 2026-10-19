@@ -1278,19 +1278,20 @@ function startPanel(ctx) {
                 if (path === '/api/pq/data' || path === '/api/pq/gui') {
                     if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
                     const db = ctx.getDb();
-                    const viCua = {};   // guid -> [{ uid, ten }]
+                    const viCua = {};   // guid -> [{ uid, ten, clone }]  (ví Discord 15-20 số)
                     for (const [uid, u] of Object.entries(db)) {
-                        if (!/^\d{5,20}$/.test(uid) || !u || typeof u !== 'object' || !u.tlbbGuid) continue;
-                        (viCua[String(u.tlbbGuid)] = viCua[String(u.tlbbGuid)] || []).push({ uid, ten: u.name || uid });
+                        if (!/^\d{15,20}$/.test(uid) || !u || typeof u !== 'object' || !u.tlbbGuid) continue;
+                        (viCua[String(u.tlbbGuid)] = viCua[String(u.tlbbGuid)] || []).push({ uid, ten: u.name || uid, clone: !!u.clone });
                     }
                     let st;
                     try { st = await gmCall('GET', '/api/state'); } catch (e) { return sendJSON(res, 502, { ok: false, error: 'Panel GM không trả lời: ' + String(e.message).slice(0, 120) }); }
                     const gs = (st && st.state) || st || {};   // panel GM trả { ok, state: { chars, online, ... } }
                     const chars = gs.chars || [];
                     if (path === '/api/pq/data') {
-                        return sendJSON(res, 200, { ok: true, online: gs.online, chars: chars.map(c => ({ guid: String(c.guid), ten: c.name, tk: c.account, cap: c.level, on: !!c.online, cho: c.pending || [], vi: viCua[String(c.guid)] || [] })) });
+                        return sendJSON(res, 200, { ok: true, online: gs.online, dangGui: !!ctx._pqDangGui, chars: chars.map(c => ({ guid: String(c.guid), ten: c.name, tk: c.account, cap: c.level, on: !!c.online, cho: c.pending || [], vi: viCua[String(c.guid)] || [] })) });
                     }
-                    const LOAI = { item: 1, itemsao: 1, pet: 1, knb: 1, vang: 1, diemtang: 1, level: 1, exp: 1, vip: 1, tamphap: 1, popup: 1, knbweb: 1 };
+                    // 19/10: xoa = XOÁ vật phẩm khỏi nhân vật (trước nằm ở form GM cũ), chỉ cách Đổi bản đồ
+                    const LOAI = { item: 1, xoa: 1, itemsao: 1, pet: 1, knb: 1, vang: 1, diemtang: 1, level: 1, exp: 1, vip: 1, tamphap: 1, popup: 1, knbweb: 1 };
                     const loai = String(body.loai || ''), kenh = String(body.kenh || 'map');
                     if (!LOAI[loai]) return sendJSON(res, 400, { ok: false, error: 'Loại quà không hợp lệ' });
                     if (!['map', 'npc', 'ruong'].includes(kenh)) return sendJSON(res, 400, { ok: false, error: 'Cách nhận không hợp lệ' });
@@ -1306,38 +1307,50 @@ function startPanel(ctx) {
                     ds = ds.filter(g => theoGuid.has(g));
                     if (!ds.length) return sendJSON(res, 400, { ok: false, error: 'Chưa chọn nhân vật nào (hoặc không ai đang online)' });
                     if (ds.length > 300) return sendJSON(res, 400, { ok: false, error: 'Tối đa 300 nhân vật mỗi lần' });
+                    // 19/10: 1 lần gửi tại 1 thời điểm (kênh Đổi bản đồ gọi panel GM lần lượt, có thể lâu) - chống bấm Gửi 2 lần khi mạng chậm
+                    if (ctx._pqDangGui) return sendJSON(res, 409, { ok: false, error: 'Đang có 1 lần gửi chưa xong (bắt đầu ' + Math.round((Date.now() - ctx._pqDangGui) / 1000) + ' giây trước) - chờ xong rồi tải lại' });
+                    ctx._pqDangGui = Date.now();
                     const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
-                    const viMot = (g) => { const v = viCua[g] || []; return v.length === 1 ? v[0] : { loi: v.length ? 'Nhân vật gắn ' + v.length + ' ví - làm tay ở tab Người chơi' : 'Chưa liên kết ví web' }; };
-                    const kq = [];
-                    for (const g of ds) {
-                        const c = theoGuid.get(g); let r;
-                        try {
-                            if (loai === 'knbweb') {
-                                const v = viMot(g), n = Number(gt);
-                                if (v.loi) r = { ok: false, msg: v.loi };
-                                else if (!(n >= 1 && n <= 100000000)) r = { ok: false, msg: 'KNB web 1 - 100.000.000' };
-                                else {
-                                    ctx.updatePoints(v.uid, n);
-                                    if (ctx.logDog) ctx.logDog('admin+', v.uid, v.ten, n, 'Phát quà');
-                                    r = { ok: true, msg: '+' + n.toLocaleString('vi-VN') + ' KNB vào ví ' + v.ten };
+                    // ví nhận Rương Ích Kỷ / KNB web: đúng 1 ví thường (ví clone chỉ mở được Thương Phố -> đồ / KNB vào đó là mất)
+                    const viMot = (g) => {
+                        const v = (viCua[g] || []).filter(x => !x.clone), co = (viCua[g] || []).length;
+                        if (v.length === 1) return v[0];
+                        return { loi: v.length ? 'Nhân vật gắn ' + v.length + ' ví - làm tay ở tab Người chơi' : co ? 'Chỉ có ví clone (không mở được Rương / KNB web) - dùng 🗺️ Đổi bản đồ hoặc 🧙 NPC' : 'Chưa liên kết ví web' };
+                    };
+                    const kq = []; let canLuu = false;
+                    try {
+                        for (const g of ds) {
+                            const c = theoGuid.get(g); let r;
+                            try {
+                                if (loai === 'knbweb') {
+                                    const v = viMot(g), n = Number(gt);
+                                    if (v.loi) r = { ok: false, msg: v.loi };
+                                    else if (!(n >= 1 && n <= 100000000)) r = { ok: false, msg: 'KNB web 1 - 100.000.000' };
+                                    else {
+                                        ctx.updatePoints(v.uid, n); canLuu = true;
+                                        if (ctx.logDog) ctx.logDog('admin+', v.uid, v.ten, n, 'Phát quà');
+                                        r = { ok: true, msg: '+' + n.toLocaleString('vi-VN') + ' KNB vào ví ' + v.ten };
+                                    }
+                                } else if (kenh === 'npc') {
+                                    if (!ctx.tpAdminGui) r = { ok: false, msg: 'Bot chưa nối kênh Thương Phố' };
+                                    else { const x = ctx.tpAdminGui(g, gt, Number(sl), who, true); if (!x.error) canLuu = true; r = x.error ? { ok: false, msg: x.error } : { ok: true, msg: x.ten + ' x' + sl + ' chờ nhận (NPC Ví Web / đổi bản đồ)' }; }
+                                } else if (kenh === 'ruong') {
+                                    const v = viMot(g);
+                                    if (v.loi) r = { ok: false, msg: v.loi };
+                                    else { const x = ctx.adminIchKyGrant(v.uid, gt, Number(sl), 'Phát quà', true); if (!x.error) canLuu = true; r = x.error ? { ok: false, msg: x.error } : { ok: true, msg: 'Vào Rương Ích Kỷ của ví ' + v.ten }; }
+                                } else {
+                                    const j = await gmCall('POST', '/api/act', { a: 'qua', guid: g, loai, gt, sl });
+                                    r = { ok: !!(j && j.ok && j.done), msg: String((j && (j.msg || j.error)) || 'Panel GM không trả lời').slice(0, 200) };
                                 }
-                            } else if (kenh === 'npc') {
-                                if (!ctx.tpAdminGui) r = { ok: false, msg: 'Bot chưa nối kênh Thương Phố' };
-                                else { const x = ctx.tpAdminGui(g, gt, Number(sl), who); r = x.error ? { ok: false, msg: x.error } : { ok: true, msg: x.ten + ' x' + sl + ' chờ nhận (NPC Ví Web / đổi bản đồ)' }; }
-                            } else if (kenh === 'ruong') {
-                                const v = viMot(g);
-                                if (v.loi) r = { ok: false, msg: v.loi };
-                                else { const x = ctx.adminIchKyGrant(v.uid, gt, Number(sl), 'Phát quà'); r = x.error ? { ok: false, msg: x.error } : { ok: true, msg: 'Vào Rương Ích Kỷ của ví ' + v.ten }; }
-                            } else {
-                                const j = await gmCall('POST', '/api/act', { a: 'qua', guid: g, loai, gt, sl });
-                                r = { ok: !!(j && j.ok && j.done), msg: String((j && (j.msg || j.error)) || 'Panel GM không trả lời').slice(0, 200) };
-                            }
-                        } catch (e) { r = { ok: false, msg: String(e.message).slice(0, 150) }; }
-                        kq.push({ guid: g, ten: c.name, ok: r.ok, msg: r.msg });
+                            } catch (e) { r = { ok: false, msg: String(e.message).slice(0, 150) }; }
+                            kq.push({ guid: g, ten: c.name, ok: r.ok, msg: r.msg });
+                        }
+                    } finally {
+                        ctx._pqDangGui = 0;
+                        if (canLuu) ctx.saveDbNow();   // ghi database 1 lần cho cả lượt (trước: mỗi nhân vật 1 lần -> bot đứng khi gửi nhiều)
                     }
-                    if (loai === 'knbweb') ctx.saveDbNow();
                     const okN = kq.filter(x => x.ok).length, loi = kq.filter(x => !x.ok);
-                    ctx.writeLog('ADMIN', `[PHÁT QUÀ] ${who} ${loai} ${gt}${/^(item|itemsao)$/.test(loai) ? ' x' + sl : ''} cách nhận ${kenh} -> ${okN}/${kq.length} nhân vật OK` + (loi.length ? ' | lỗi: ' + loi.slice(0, 5).map(x => x.ten + ': ' + x.msg).join('; ') : ''));
+                    ctx.writeLog('ADMIN', `[PHÁT QUÀ] ${who} ${loai} ${gt}${/^(item|itemsao|xoa)$/.test(loai) ? ' x' + sl : ''} cách nhận ${kenh} -> ${okN}/${kq.length} nhân vật OK: ${kq.filter(x => x.ok).slice(0, 30).map(x => x.ten).join(', ')}` + (loi.length ? ' | lỗi: ' + loi.slice(0, 5).map(x => x.ten + ': ' + x.msg).join('; ') : ''));
                     return sendJSON(res, 200, { ok: true, kq, okN });
                 }
                 // 💥 29/09: Drop Boss - sua bang roi do cua game (ghi thang file VPS, hieu luc sau restart)

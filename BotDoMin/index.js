@@ -2113,7 +2113,7 @@ function ichKyXoa(userId, itemId, qty, username) {
 // 100/ngày, KHÔNG tính sức chứa 100, KHÔNG cần online, KHÔNG kiểm nợ/liên kết/công tắc - đền bù
 // hay thưởng thì phải tới tay. Vẫn theo luật rương: 00:00 không NHẬN là mất (người nhận phải
 // liên kết + online mới NHẬN được, đó là việc của họ). Ghi sổ "ai tặng" = 👑 Admin để họ biết nguồn.
-function adminIchKyGrant(toUserId, itemId, qty, note) {
+function adminIchKyGrant(toUserId, itemId, qty, note, khongLuu) {   // khongLuu (19/10 tab Phát quà): nơi gọi tự saveDbNow 1 lần
     toUserId = String(toUserId || '').trim();
     itemId = String(itemId || '').trim().replace(/[^A-Za-z0-9_]/g, '');
     qty = Math.floor(Number(qty) || 0);
@@ -2128,7 +2128,7 @@ function adminIchKyGrant(toUserId, itemId, qty, note) {
     note = String(note || '').trim().slice(0, 60);
     so.nhan.push({ tu: '👑 Admin' + (note ? ' - ' + note : ''), ten: gi.n, qty, at: Date.now() });
     if (so.nhan.length > 20) so.nhan = so.nhan.slice(-20);
-    saveDbNow();
+    if (!khongLuu) saveDbNow();
     writeLog('ADMIN', `[QUÀ RIÊNG] SUPER bỏ ${gi.n} x${qty} (${itemId}) vào rương của ${ban.name || toUserId}${note ? ' | ' + note : ''}`);
     return { ok: true, message: `🧰 Đã bỏ ${qty.toLocaleString()} × ${gi.n} vào Rương Ích Kỷ của ${ban.name || toUserId} - họ phải NHẬN trước 00:00`, total: ichKyTotal(so) };
 }
@@ -6441,7 +6441,7 @@ client.once('ready', async (c) => {
             gameItems,
             giveTargets,
             adminGiveItem,
-            giftTargets, adminIchKyGrant, tpAdminGui: (g, id, n, who) => TP.adminGui(g, id, n, who),   // 🎁 19/10 tab Phát quà cách 🧙 NPC   // 🎯 18/09: tab 🎁 tặng riêng 1 người (vào rương / vào game)
+            giftTargets, adminIchKyGrant, tpAdminGui: (g, id, n, who, khongLuu) => TP.adminGui(g, id, n, who, khongLuu),   // 🎁 19/10 tab Phát quà cách 🧙 NPC   // 🎯 18/09: tab 🎁 tặng riêng 1 người (vào rương / vào game)
             // 🚀 Phi Thuyền (crash game): config + xem vòng + ép điểm nổ (SUPER)
             getSpmCfg: spmCfg,
             setSpmCfg,
