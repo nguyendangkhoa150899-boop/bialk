@@ -657,8 +657,12 @@ function startWebPlay(ctx) {
                     });
                     // Nghiện: nút sáng khi có ÍT NHẤT 1 tài khoản tới giờ; số hiện = mỗi tài khoản × số tài khoản đang lụm được
                     const nghien = { ...st.nghien, nextAt: hen === Infinity ? 0 : hen, amount: st.nghien.amount * Math.max(1, sanNg || famDS.length), now };
-                    return { ...st, checkedToday: chua === 0, amount: st.amount * Math.max(1, chua), streakPacks: goi, nghien,
-                        balance: ctx.getUserData(userId).points || 0, fam: { tong: famDS.length, chua, sanNg, tv } };
+                    // Thưởng chuỗi: mỗi tài khoản có chuỗi + gói riêng; 1 lần bấm lấy 1 gói của MỌI tài khoản đang có gói
+                    // -> số hiện = thưởng 1 gói × số tài khoản có gói, "còn N lần bấm" = gói nhiều nhất của 1 tài khoản
+                    const coGoi = tv.filter((x) => x.goi > 0).length, lanBam = tv.reduce((m, x) => Math.max(m, x.goi), 0);
+                    return { ...st, checkedToday: chua === 0, amount: st.amount * Math.max(1, chua), streakPacks: lanBam, goiTong: goi,
+                        streakBonus: st.streakBonus * Math.max(1, coGoi || famDS.length), nghien,
+                        balance: ctx.getUserData(userId).points || 0, fam: { tong: famDS.length, chua, sanNg, coGoi, tv } };
                 };
                 if (ctx.daily && path === '/api/daily/state') {
                     return sendJSON(res, 200, { ok: true, ...famDState() });
@@ -681,12 +685,22 @@ function startWebPlay(ctx) {
                 }
                 // bấm nhận thưởng chuỗi (2 ngày liên tiếp = 1 gói, lấy hết 1 lần) - family: lấy 1 gói của tài khoản nào đang có gói
                 if (ctx.daily && ctx.daily.streak && req.method === 'POST' && path === '/api/daily/streak') {
-                    const coGoi = famDS.length < 2 ? userId : (famDS.find((id) => (ctx.daily.state(id).streakPacks || 0) > 0) || viToi);
-                    const r = famDS.length < 2 ? ctx.daily.streak(userId) : ctx.daily.streak(coGoi, userId);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    if (famDS.length < 2) return sendJSON(res, 200, r);
+                    if (famDS.length < 2) {
+                        const r = ctx.daily.streak(userId);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+                    // 👪 family: 1 gói của MỌI tài khoản đang có gói (nhân theo số tài khoản), tiền vào ví gốc
+                    let tong = 0, cut = 0, so = 0, loi = null, conNo = 0;
+                    for (const id of famDS) {
+                        if (!((ctx.daily.state(id).streakPacks || 0) > 0)) continue;
+                        const r = ctx.daily.streak(id, userId);
+                        if (r.error) { if (!loi) loi = r.error; continue; }
+                        tong += r.amount || 0; cut += r.debtCut || 0; conNo = r.debtLeft || 0; so++;
+                    }
+                    if (!so) return sendJSON(res, 400, { ok: false, error: loi || 'Hết gói thưởng chuỗi - điểm danh tiếp các ngày liên tiếp là có gói mới' });
                     const st = famDState();
-                    return sendJSON(res, 200, { ...r, left: st.streakPacks, state: st, balance: ctx.getUserData(userId).points || 0 });
+                    return sendJSON(res, 200, { ok: true, amount: tong, so, debtCut: cut, debtLeft: conNo, left: st.streakPacks, state: st, balance: ctx.getUserData(userId).points || 0 });
                 }
                 if (ctx.daily && req.method === 'POST' && path === '/api/daily/nghien') {
                     if (famDS.length < 2) {

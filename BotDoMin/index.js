@@ -591,16 +591,18 @@ function dogBridgeToday(user) {
     if (!user.dogDay || user.dogDay.day !== d) user.dogDay = { day: d, rut: 0, nap: 0, vang: 0 };
     return user.dogDay;
 }
-function dogBridgeDayCheck(user, key, amount) {
+// 👪 20/10: soTk = số tài khoản family (hạn = hạn 1 người × soTk, đếm chung ở ví gốc)
+function dogBridgeDayCheck(user, key, amount, soTk) {
     if (key === 'nap') return null;   // 29/09 NetCo4: game -> web KHÔNG giới hạn
-    const dayMax = key === 'vang' ? dogVangDayMax() : dogBridgeDayMax();
+    const nhan = Math.max(1, Math.floor(Number(soTk) || 1));
+    const dayMax = (key === 'vang' ? dogVangDayMax() : dogBridgeDayMax()) * nhan;
     if (dayMax <= 0) return null;
     const used = dogBridgeToday(user)[key] || 0;
     if (used + amount <= dayMax) return null;
     const left = Math.max(0, dayMax - used);
     const lb = key === 'rut' ? 'rút vào game' : key === 'vang' ? 'đổi ra vàng' : 'nạp ra web';
     return left
-        ? `📅 Mỗi người ${lb} tối đa ${dayMax.toLocaleString()} KNB/ngày - hôm nay bạn còn ${left.toLocaleString()}`
+        ? `📅 ${nhan > 1 ? `Family ${nhan} tài khoản` : 'Mỗi người'} ${lb} tối đa ${dayMax.toLocaleString()} KNB/ngày - hôm nay còn ${left.toLocaleString()}`
         : `📅 Hôm nay bạn đã ${lb} đủ ${dayMax.toLocaleString()} KNB - mai 00:00 chuyển tiếp`;
 }
 // 🐉 29/09: CẦU KNB THIÊN LONG NETCO4 (thay cầu Palworld). Xem tlbb.js.
@@ -628,7 +630,8 @@ async function webRutGame(userId, amount, kind, viNhan) {   // 👪 20/10: viNha
     const vt = viNhan && famTv(userId).includes(String(viNhan)) ? String(viNhan) : userId;
     const ut = getUserData(vt);
     const dk = vang ? 'vang' : 'rut';   // 🪙 vàng có hạn riêng
-    const dayErr = dogBridgeDayCheck(ut, dk, amount);   // 📅 hạn ngày
+    const soTk = famTv(userId).length;   // 👪 family: hạn × số tài khoản, đếm chung ở ví gốc
+    const dayErr = dogBridgeDayCheck(u, dk, amount, soTk);   // 📅 hạn ngày
     if (dayErr) return { error: dayErr };
     debtAccrue(userId);
     if ((u.points || 0) < amount) return { error: `Không đủ KNB (bạn có ${(u.points || 0).toLocaleString()})` };
@@ -636,7 +639,7 @@ async function webRutGame(userId, amount, kind, viNhan) {   // 👪 20/10: viNha
     if (!gameName || !ut.tlbbGuid) return { error: 'Chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã' };
     // Kiểm + trừ + xếp hàng liền nhau, không có await ở giữa => không chen được lệnh khác
     updatePoints(userId, -amount);
-    dogBridgeToday(ut)[dk] = (dogBridgeToday(ut)[dk] || 0) + amount;
+    dogBridgeToday(u)[dk] = (dogBridgeToday(u)[dk] || 0) + amount;
     let r;
     if (vang) {
         let j = null, err = null;
@@ -655,7 +658,7 @@ async function webRutGame(userId, amount, kind, viNhan) {   // 👪 20/10: viNha
             return { error: '⏳ Chưa xác nhận được với game - ví đã trừ, admin sẽ kiểm (không nhận được sẽ hoàn). Đừng bấm lại kẻo trùng.' };
         }
         updatePoints(userId, amount);
-        dogBridgeToday(ut).vang = Math.max(0, (dogBridgeToday(ut).vang || 0) - amount);
+        dogBridgeToday(u).vang = Math.max(0, (dogBridgeToday(u).vang || 0) - amount);
         saveDbNow();
         writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${msg} - đã hoàn`);
         return { error: `↩️ Chưa gửi được (${msg}) - đã hoàn ${amount.toLocaleString()} KNB` };
@@ -664,7 +667,7 @@ async function webRutGame(userId, amount, kind, viNhan) {   // 👪 20/10: viNha
         r = tlbb.sendKnb(ut.tlbbGuid, amount);
     } catch (e) {
         updatePoints(userId, amount);
-        dogBridgeToday(ut).rut = Math.max(0, dogBridgeToday(ut).rut - amount);
+        dogBridgeToday(u).rut = Math.max(0, dogBridgeToday(u).rut - amount);
         saveDbNow();
         writeLog('ADMIN', `[RÚT WEB LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${e.message} - đã hoàn`);
         return { error: `↩️ Chưa gửi được (${e.message}) - đã hoàn ${amount.toLocaleString()} KNB` };
@@ -6239,7 +6242,7 @@ client.once('ready', async (c) => {
             dogbridge: {
                 rut: (uid, amount, kind, vi) => webRutGame(uid, amount, kind, vi),   // 👪 vi = nhân vật nhận
                 state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut,
-                    dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangRate: dogVangRate(), vangMoiLan: DOG_VANG_MOI_LAN, vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
+                    dayMax: dogBridgeDayMax() * famTv(uid).length, rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax() * famTv(uid).length,   /* 👪 family × số tài khoản */ vangRate: dogVangRate(), vangMoiLan: DOG_VANG_MOI_LAN, vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
                     // 💰 07/10 thẻ "Ví KNB ↔ Game" (trang Cá nhân, /vg.js): chỗ nạp + đã nạp hôm nay + 8 lần nạp/rút gần nhất của chính người này
                     napNpc: TLBB_NPC_HINT, napToday: dogBridgeToday(getUserData(uid)).nap || 0,
                     hist: (Array.isArray(dbCache._dogLedger) ? dbCache._dogLedger : []).filter((e) => e && e.userId === uid && (e.type === 'to-game' || e.type === 'from-game')).slice(0, 8)
