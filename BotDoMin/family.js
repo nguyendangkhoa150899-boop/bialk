@@ -29,7 +29,7 @@ module.exports = function taoFamily(ctx) {
     }
     function moTa(id, g, toi) {
         const u = db()[id] || {};
-        return { vi: id, acc: u.gameAcc || '', ten: u.ingameName || u.name || '', guid: u.tlbbGuid || '', truong: id === g, toi: id === toi };
+        return { vi: id, acc: u.gameAcc || '', ten: u.ingameName || u.name || '', guid: u.tlbbGuid || '', truong: id === g, toi: id === toi, pet: !!u.petBoss };
     }
     function state(toi) {
         const g = goc(toi), ds = thanhVien(g);
@@ -59,6 +59,12 @@ module.exports = function taoFamily(ctx) {
             const da = a.dogDay, dbb = b.dogDay;
             if (!dbb || !dbb.day || String(da.day) > String(dbb.day)) b.dogDay = { ...da };
             else if (String(da.day) === String(dbb.day)) for (const k of ['rut', 'vang']) dbb[k] = (Number(dbb[k]) || 0) + (Number(da[k]) || 0);
+        }
+        // lượt Ghép Ngọc đã luyện HÔM NAY (u.gn {day, luot}, ghepngoc.js) cộng sang ví gốc - không lách bằng luyện riêng rồi vào family
+        if (a.gn && a.gn.day && Number(a.gn.luot) > 0) {
+            if (!b.gn || typeof b.gn !== 'object') b.gn = {};
+            if (b.gn.day === a.gn.day) b.gn.luot = (Number(b.gn.luot) || 0) + Number(a.gn.luot);
+            else if (!b.gn.day || String(a.gn.day) > String(b.gn.day)) { b.gn.day = a.gn.day; b.gn.luot = Number(a.gn.luot); }
         }
         return { knb, loai, mon, luot };
     }

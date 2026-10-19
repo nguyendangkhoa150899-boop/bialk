@@ -759,7 +759,8 @@ function startWebPlay(ctx) {
                 // 🐾 01/10: Chọn Pet Boss (1 con/ví) - danh mục đi kèm /api/itemshop/state (petBoss)
                 if (ctx.petboss && req.method === 'POST' && path === '/api/petboss/pick') {
                     const body = await readBody(req);
-                    const r = await ctx.petboss.pick(userId, body.skin, body.cap, body.kieu);
+                    const loiVi = kiemViFam(body.vi); if (loiVi) return sendJSON(res, 400, { ok: false, error: loiVi });
+                    const r = await ctx.petboss.pick(userId, body.skin, body.cap, body.kieu, String(body.vi || ''));   // 👪 vi = tài khoản nhận pet
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error, balance: r.balance });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }

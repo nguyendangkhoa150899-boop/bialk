@@ -168,13 +168,15 @@ module.exports = function ghepNgoc(d) {
     }
     const tiLeTho = (tong, giaDich, c) => (giaDich > 0 ? tong / giaDich * (100 - c.phi) : 0);
 
+    // 👪 20/10: số tài khoản family (index.js famShopTk) - lượt Ghép Ngọc/ngày nhân lên
+    const soTk = (uid) => Math.max(1, typeof d.famSo === 'function' ? d.famSo(uid) : 1);
     function state(uid) {
         const c = cfg(), u = d.getUserData(uid), g = gnOf(u), k = d.ichKy.of(u);
         const ruong = Object.entries(k.items || {}).map(([id, qty]) => ({ id, qty: Number(qty) || 0, ...giaVao(id, c) }))
             .filter((x) => x.qty > 0 && x.gia > 0).map((x) => ({ id: x.id, qty: x.qty, gia: x.gia, tu: x.tu, ten: ten(x.id), ic: d.icon(x.id) }))
             .sort((a, b) => soHang(a, b) || b.gia - a.gia || a.ten.localeCompare(b.ten));
         return {
-            on: c.on, phi: c.phi, tiMin: c.tiMin, tiMax: c.tiMax, luotNgay: c.luotNgay, luotHomNay: g.luot, monMax: c.monMax,
+            on: c.on, phi: c.phi, tiMin: c.tiMin, tiMax: c.tiMax, luotNgay: c.luotNgay * soTk(uid), luotHomNay: g.luot, monMax: c.monMax,   // 👪 family × số tài khoản
             knbOn: c.knbOn, knbMax: c.knbMax, balance: u.points || 0,
             dich: dsDich(c), ruong, lich: g.lich.slice().reverse(),
         };
@@ -185,7 +187,8 @@ module.exports = function ghepNgoc(d) {
         if (!c.on) return { error: '💎 Ghép Ngọc đang tắt' };
         const debt = d.debtBlock && d.debtBlock(uid, 'ghép ngọc'); if (debt) return { error: debt };
         const u = d.getUserData(uid), g = gnOf(u);
-        if (c.luotNgay > 0 && g.luot >= c.luotNgay) return { error: `Hôm nay đã luyện đủ ${c.luotNgay} lần - mai quay lại` };
+        const maxL = c.luotNgay * soTk(uid);   // 👪 20/10 family: lượt/ngày × số tài khoản (đếm chung ở ví gốc)
+        if (c.luotNgay > 0 && g.luot >= maxL) return { error: `Hôm nay đã luyện đủ ${maxL} lần - mai quay lại` };
         body = body || {};
         const dich = dsDich(c).find((x) => x.id === String(body.dich || ''));
         if (!dich) return { error: 'Chọn món muốn luyện ra' };

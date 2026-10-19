@@ -1542,7 +1542,8 @@ function setItemShop(list) {
 // 🐾 01/10: shop "Chọn Pet Boss" (1 con/ví, chọn skin + kiểu) - xem petboss.js. Hàm truyền vào đều là
 // function khai báo (hoisted) nên gọi ở đây được dù định nghĩa ở dưới.
 const PB = require('./petboss')({
-    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc saveDbNow, logDog, writeLog, featGuard, debtBlock,
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc
+    famTv: (id) => famShopTk(id),   // 👪 20/10: mỗi tài khoản family 1 pet, giao vào nhân vật tài khoản đó saveDbNow, logDog, writeLog, featGuard, debtBlock,
     deliverBusy, deliverLock, deliverUnlock, tlbb,
 });
 // 🍀 02/10: vòng quay may mắn trên web (vongquay.js) + icon vật phẩm game (itemicon.js, tấm ảnh ở /opt/minigame/itemicon)
@@ -1555,7 +1556,8 @@ const VQ = require('./vongquay')({
 // Mọi số liệu ở dbCache._gnCfg (panel SUPER, tab 🎁 Quà tặng). Mặc định TẮT.
 const GN_ANH = require('./ghepngoc.anh');
 const GN = require('./ghepngoc')({
-    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc
+    famSo: (id) => famShopTk(id).length,   // 👪 20/10: lượt Ghép Ngọc/ngày × số tài khoản saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
     items: () => gameItems(), shop: () => itemShopList(), giaRuong: (id) => ichKyBanGiaTho(id),
     ichKy: { of: (u) => ichKyOf(u), add: (u, id, n) => ichKyAdd(u, id, n), take: (u, id, n) => ichKyTake(u, id, n) },
     dayStr: () => vnDayStr(Date.now()),
@@ -2266,12 +2268,77 @@ async function ichKyClaim(userId, itemId, qty, username, viNhan) {   // 👪 20/
 // ⚠️ vaoRuong = true: KHÔNG kiểm online, KHÔNG giao SFTP - bỏ thẳng vào 🧰 Rương Ích Kỷ.
 // Mọi luật còn lại (công tắc, nợ, giá, ⭐1-lần, 🔥 hàng giới hạn, hạn nhóm, hạn ngày) dùng CHUNG đoạn
 // dưới, đừng tách ra đường riêng kẻo lệch luật.
+// 👪 20/10 FAMILY (chủ server): ⭐ món mua 1 lần + 🔥 Hàng giới hạn tính theo TỪNG TÀI KHOẢN trong family.
+// Tài khoản nào đã mua (trước khi vào family) thì hết suất; tài khoản nào còn suất thì trưởng mua thay -> vào 🧰 Rương Ích Kỷ
+// CHUNG (trưởng tự chia / rút cho tài khoản nào). Luôn vào rương: không cần online, đồng bộ (không await) -> không chen lệnh.
+function famShopTk(userId) { return famTv(userId).filter((id) => daLienKet(id) && !laClone(id)); }
+// shop state cho family: ⭐ chỉ báo "đã mua" khi MỌI tài khoản đã mua, ghi số suất còn; 🔥 hạn ngày = tổng các tài khoản
+function famShopState(uid, s) {
+    const ds = famShopTk(uid);
+    if (ds.length < 2) return s;
+    const us = ds.map((id) => getUserData(id));
+    const conSuat = (id) => us.filter((u) => !shopOnceBought(u, id)).length;
+    s.items = s.items.map((it) => {
+        if (it.cat !== 'important') return it;
+        const n = conSuat(it.id);
+        return n > 0 ? { ...it, note: (it.note ? it.note + ' · ' : '') + `👪 family còn ${n}/${ds.length} suất (mỗi lần mua 1 suất, vào Rương Ích Kỷ chung)` } : it;
+    });
+    s.once = s.items.filter((it) => it.cat === 'important' && conSuat(it.id) === 0).map((it) => it.id);
+    if (s.implantMax > 0) {
+        s.implantToday = us.reduce((a, u) => a + (implantToday(u).n || 0), 0);
+        s.implantMax = s.implantMax * ds.length;
+    }
+    s.fam = { tong: ds.length };
+    return s;
+}
+function itemShopBuyFam(userId, it, qty, username) {
+    const ds = famShopTk(userId), user = getUserData(userId);
+    const isOnce = it.cat === 'important';
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
+    const phan = [];   // [{ id ví tài khoản, n, im }]
+    if (isOnce) {
+        const chua = ds.filter((id) => !shopOnceBought(getUserData(id), it.id));
+        if (!chua.length) return { error: `⭐ ${it.name}: mọi tài khoản trong family đã mua rồi (mỗi tài khoản 1 lần)` };
+        if (qty > chua.length) return { error: `⭐ ${it.name}: family còn ${chua.length} tài khoản chưa mua - tối đa ${chua.length} cái` };
+        for (const id of chua.slice(0, qty)) phan.push({ id, n: 1 });
+    } else {
+        if (qty > it.max * ds.length) return { error: `Số lượng phải trong 1–${(it.max * ds.length).toLocaleString()}` };
+        const impMax = itemShopImplantMax();
+        if (impMax > 0) {
+            let con = qty, tong = 0;
+            for (const id of ds) {
+                const im = implantToday(getUserData(id)), left = Math.max(0, impMax - im.n);
+                tong += left;
+                if (left <= 0 || con <= 0) continue;
+                const n = Math.min(left, con); phan.push({ id, n, im }); con -= n;
+            }
+            if (con > 0) return { error: tong ? `🔥 Hàng giới hạn: family ${ds.length} tài khoản hôm nay còn ${tong} cái (mỗi tài khoản ${impMax}/ngày)` : `🔥 Hôm nay cả family (${ds.length} tài khoản) đã mua đủ Hàng giới hạn - mai 00:00 mua tiếp` };
+        } else phan.push({ id: userId, n: qty });
+    }
+    const cost = it.price * qty;
+    if ((user.points || 0) < cost) return { error: `Cần ${cost.toLocaleString()} KNB (ví chung có ${(user.points || 0).toLocaleString()})` };
+    const ruong = ichKyOf(user);
+    const conNgay = ICHKY_DAY_MAX - (ruong.bought || 0);
+    if (qty > conNgay) return { error: `🧰 Mỗi ngày chỉ mua được ${ICHKY_DAY_MAX} món vào rương - hôm nay còn ${Math.max(0, conNgay)}` };
+    updatePoints(userId, -cost);
+    const today = itemShopToday(user); today[it.id] = (today[it.id] || 0) + qty;
+    for (const p of phan) { if (isOnce) shopOnceMark(getUserData(p.id), it.id, true); else if (p.im) p.im.n += p.n; }
+    ruong.bought = (ruong.bought || 0) + qty;
+    ichKyAdd(user, it.id, qty);
+    const ai = phan.map((p) => (getUserData(p.id).gameAcc || p.id) + (p.n > 1 ? ` x${p.n}` : '')).join(', ');
+    logDog('shop', userId, username || userId, -cost, `mua item ${it.name} x${qty} (${it.id}) -> 🧰 rương chung family (suất: ${ai})`);
+    saveDbNow();
+    writeLog('ADMIN', `[RƯƠNG ÍCH KỶ] ${username || userId} (family) mua ${it.name} x${qty} vào rương chung (-${cost}) - suất của ${ai}`);
+    return { ok: true, vaoRuong: true, message: `🧰 Đã bỏ ${qty.toLocaleString()} ${it.name} vào Rương Ích Kỷ chung (suất của ${ai}) - vào rương bấm NHẬN, chọn tài khoản nhận`, balance: getUserData(userId).points || 0 };
+}
 async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };   // 🔌 15/09
     const dbErr = debtBlock(userId, 'mua đồ ở shop');   // 📒 14/09: còn nợ là không mua được
     if (dbErr) return { error: dbErr };
     const it = itemShopList().find(x => x.id === String(itemId));
     if (!it || it.off) return { error: 'Không thấy món này trong shop' };   // 09/09: món đang tắt bán coi như không có
+    if ((it.cat === 'important' || it.cat === 'implant') && famShopTk(userId).length > 1) return itemShopBuyFam(userId, it, qty, username);   // 👪 20/10
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1 || qty > it.max) return { error: `Số lượng phải trong 1–${it.max}` };
     let cost = it.price * qty;
@@ -6353,7 +6420,7 @@ client.once('ready', async (c) => {
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),
             },
             itemshop: {
-                state: (uid) => ({
+                state: (uid) => famShopState(uid, {
                     items: itemShopWebList(),                        // 09/09 bỏ món tắt · 🔥 Hàng giới hạn lên đầu
                     dayMax: itemShopDayMax(),                        // 📅 10/09: hạn mua mỗi món/ngày (0 = không)
                     dayMode: itemShopDayMode(),                      // 📅 'server' (gộp cả server) | 'user' (mỗi người)
@@ -6368,13 +6435,13 @@ client.once('ready', async (c) => {
                     ingameName: (getUserData(uid).ingameName || '').trim(),
                     balance: getUserData(uid).points || 0,
                     petBoss: PB.webState(uid),                       // 🐾 01/10: thẻ "Chọn Pet Boss" trong nhóm ⭐
-                }),
+                }),   // 👪 famShopState: family tính theo từng tài khoản
                 // ⚠️ 17/09: hàm bọc này TỪNG NUỐT tham số thứ 4 (vaoRuong) vì chỉ khai 3 tham số ->
                 // route gửi cờ mà itemShopBuy không nhận được, mua vào rương vẫn đòi online. Thêm
                 // tham số mới ở itemShopBuy thì PHẢI sửa cả dòng này (ichkytest canh đúng chỗ đó).
                 buy: (uid, itemId, qty, vaoRuong) => itemShopBuy(uid, itemId, qty, getUserData(uid).name || uid, vaoRuong === true),
             },
-            petboss: { pick: (uid, skin, cap, kieu) => PB.pick(uid, skin, cap, kieu) },   // 🐾 01/10 Chọn Pet Boss
+            petboss: { pick: (uid, skin, cap, kieu, vi) => PB.pick(uid, skin, cap, kieu, vi) },   // 👪 vi = tài khoản nhận |   // 🐾 01/10 Chọn Pet Boss
             // 🚀 Phi Thuyền (crash game, 28/08) - vòng chơi chung
             spm: {
                 state: (uid) => spmWebState(uid),

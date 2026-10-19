@@ -76,10 +76,19 @@ module.exports = function petBoss(d) {
         return [...by.values()];
     }
 
+    // 👪 20/10 family: các ví tài khoản (d.famTv, index.js) - mỗi tài khoản 1 con; d.getUserData đã đổi về ví gốc nên đọc ví thành viên bằng d.db()
+    const famDs = (uid) => (typeof d.famTv === 'function' ? d.famTv(uid) : [uid]);
+    const viTho = (id) => { const x = d.db()[id]; return x && typeof x === 'object' ? x : null; };
     function webState(uid) {
         const c = cfg();
         if (!c.on) return { on: false };
         const u = d.getUserData(uid);
+        const ds = famDs(uid);
+        if (ds.length > 1) {
+            const chua = ds.filter((id) => viTho(id) && !viTho(id).petBoss).length;
+            return { on: true, name: c.name, price: c.price, note: (c.note ? c.note + ' · ' : '') + `👪 family còn ${chua}/${ds.length} tài khoản chưa nhận`, img: c.img, ban: c.ban, banLabel: BAN[c.ban], tcTen: TC_TEN,
+                skins: catalog(c, true), picked: chua ? null : { name: 'đủ cho mọi tài khoản', ts: 0 }, famCon: chua };
+        }
         return {
             on: true, name: c.name, price: c.price, note: c.note, img: c.img, ban: c.ban, banLabel: BAN[c.ban], tcTen: TC_TEN,
             skins: catalog(c, true),
@@ -87,17 +96,26 @@ module.exports = function petBoss(d) {
         };
     }
 
-    async function pick(uid, skin, cap, kieu) {
+    async function pick(uid, skin, cap, kieu, nhan) {   // 👪 nhan = ví tài khoản nhận (family)
         const ft = d.featGuard('shop'); if (ft) return { error: ft };
         const debt = d.debtBlock(uid, 'nhận pet boss'); if (debt) return { error: debt };
         const c = cfg();
         if (!c.on) return { error: '🐾 Chọn Pet Boss đang tắt' };
-        const u = d.getUserData(uid);
+        const goc = d.getUserData(uid);   // ví gốc: trả KNB
+        let u = goc;
+        const ds = famDs(uid);
+        if (ds.length > 1) {   // 👪 chọn tài khoản chưa nhận (gửi kèm hoặc tự lấy tài khoản đầu tiên chưa nhận)
+            const chua = ds.filter((id) => viTho(id) && !viTho(id).petBoss), muon = String(nhan || '');
+            if (muon && !chua.includes(muon)) return { error: ds.includes(muon) ? '🐾 Tài khoản này đã nhận pet boss rồi - chọn tài khoản khác' : 'Tài khoản không thuộc family' };
+            const vi = muon || chua[0];
+            if (!vi) return { error: '🐾 Mọi tài khoản trong family đã nhận pet boss rồi (mỗi tài khoản 1 con)' };
+            u = viTho(vi);
+        }
         if (u.petBoss) return { error: `🐾 Bạn đã nhận ${u.petBoss.name} rồi - mỗi người chỉ 1 con` };
         skin = String(skin || ''); cap = String(cap || ''); kieu = String(kieu || '');
         const r = CAT.find((x) => x.ban === c.ban && x.skin === skin && x.cap === cap && x.kieu === kieu);
         if (!r || (c.skins[skin] && c.skins[skin].off)) return { error: 'Pet này không có trong danh sách - tải lại trang rồi chọn lại' };
-        if ((u.points || 0) < c.price) return { error: `Cần ${c.price.toLocaleString()} KNB (bạn có ${(u.points || 0).toLocaleString()})` };
+        if ((goc.points || 0) < c.price) return { error: `Cần ${c.price.toLocaleString()} KNB (bạn có ${(goc.points || 0).toLocaleString()})` };
         const target = String(u.tlbbGuid || '').trim() || String(u.ingameName || '').trim();
         if (!target) return { error: 'Chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã' };
         if (d.deliverBusy()) return { error: '⏳ Đang giao một đơn khác - chờ vài giây rồi bấm lại (chưa trừ đồng nào)' };

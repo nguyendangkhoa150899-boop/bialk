@@ -96,7 +96,7 @@
   }
   var pk = document.createElement('div');
   pk.id = 'famPick'; pk.className = 'hidden';
-  pk.innerHTML = '<div id="famPickBox"><h2>🎮 Rút cho nhân vật nào?</h2><div class="fmNote">Đồ / KNB trừ từ ví chung, gửi vào nhân vật bạn chọn.</div><div id="famPickDs" class="fmList"></div>' +
+  pk.innerHTML = '<div id="famPickBox"><h2>🎮 Gửi cho nhân vật nào?</h2><div class="fmNote">Đồ / KNB trừ từ ví chung, gửi vào nhân vật bạn chọn.</div><div id="famPickDs" class="fmList"></div>' +
     '<button class="fmRoi" style="background:#232a3a;color:#ccd;border-color:#33405a" onclick="famPickHuy()">Huỷ - chưa rút</button></div>';
   document.body.appendChild(pk);
   css.textContent += '#famPick{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:130;padding:16px}#famPick.hidden{display:none}' +
@@ -121,8 +121,11 @@
   var apiGoc = window.api;
   if (typeof apiGoc === 'function' && !apiGoc._fam) {
     window.api = function (p, body) {
-      if (body && body.vi === undefined && (p === '/api/ichky/claim' || p === '/api/dogbridge/rut')) {
+      if (body && body.vi === undefined && (p === '/api/ichky/claim' || p === '/api/dogbridge/rut' || p === '/api/petboss/pick')) {
+        if (p === '/api/petboss/pick') DS = null;   // cờ đã nhận pet phải mới nhất
         return dsNv().then(function (ds) {
+          if (p === '/api/petboss/pick') ds = ds.filter(function (x) { return !x.pet; });   // 🐾 chỉ tài khoản chưa nhận pet
+          if (p === '/api/petboss/pick' && ds.length === 1) return apiGoc(p, Object.assign({}, body, { vi: ds[0].vi }));
           if (ds.length < 2) return apiGoc(p, body);
           // nhớ lựa chọn 15 giây CHỈ trong cùng 1 loại rút (rương nhiều món liên tiếp); rút KNB / vàng luôn hỏi lại
           if (p === '/api/ichky/claim' && CHON.p === p && CHON.vi && Date.now() - CHON.t < 15000) { CHON.t = Date.now(); return apiGoc(p, Object.assign({}, body, { vi: CHON.vi })); }
