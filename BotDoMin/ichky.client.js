@@ -187,8 +187,9 @@
     h += ks.length ? ks.map(function (id) { return oRa(tim(id), C.chon[id]); }).join('') : '<div class="ikEmpty">Bấm món bên rương để đưa sang đây</div>';
     h += '</div>';
     if (C.md === 'nhan' && ks.length) h += '<div class="ikSum">Cần trống khoảng <b>' + fmt(mon) + '</b> ô túi nếu món không chồng được. Mỗi món giao 1 lượt.</div>';
-    if (C.md === 'tang' && ks.length && IK.giveMax) h += '<div class="ikSum">Mỗi món tặng tối đa <b>' + fmt(IK.giveMax) + '</b> / lần.</div>';
-    h += '<div class="ikBtns"><button class="ikBo" onclick="ikcBoHet()"' + (ks.length && !C.busy ? '' : ' disabled') + '>↩ Bỏ hết</button>' +
+    if (C.md === 'tang' && ks.length && IK.giveMax && IK.giveMax < 1e9) h +='<div class="ikSum">Mỗi món tặng tối đa <b>' + fmt(IK.giveMax) + '</b> / lần.</div>';
+    h += '<div class="ikBtns">' + (C.md === 'tang' ? '<button class="ikBo" onclick="ikcChonHet()"' + (C.busy ? ' disabled' : '') + ' title="Chọn mọi món đang lọc bên rương, đủ số lượng">🎁 Chọn hết</button>' : '') +
+      '<button class="ikBo" onclick="ikcBoHet()"' + (ks.length && !C.busy ? '' : ' disabled') + '>↩ Bỏ hết</button>' +
       '<button class="ikGo" id="ikcGo" onclick="ikcGo()"' + (ks.length && !C.busy && (C.md !== 'tang' || C.to) ? '' : ' disabled') + '>' + (C.busy ? '⏳ Đang xử lý...' : md.go) + '</button></div></div>';
     // ---- phai: ruong ----
     var tong = L.reduce(function (t, x) { return t + x.qty; }, 0), dem = {};
@@ -252,6 +253,12 @@
     ve();
   };
   window.ikcBoHet = function () { if (ban()) return; C.chon = {}; ve(); };
+  // 20/10 chu server: Tang - chon het moi mon dang loc ben ruong (du so luong; tran() = 0 thi bo qua)
+  window.ikcChonHet = function () {
+    if (ban() || C.md !== 'tang') return; var n = 0;
+    boLoc(ds()).forEach(function (x) { var t = tran(x); if (t > 0) { C.chon[x.id] = t; n++; } });
+    toast(n ? '🎁 Đã chọn ' + n + ' loại - chọn người nhận rồi bấm xác nhận' : 'Không có món nào để chọn'); ve();
+  };
   function dongMon(x, n) { return '<div class="ikCf"><span class="pic">' + ic(x) + '</span><span>' + e(x.name) + '</span><b>×' + fmt(n) + '</b></div>'; }
   window.ikcGo = function () {
     if (ban()) return;

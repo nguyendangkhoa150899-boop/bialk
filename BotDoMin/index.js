@@ -1878,7 +1878,7 @@ function itemShopToday(user) {
 // (17/09 -> 02/10: 00:00 xoá sạch đồ, giữ tối đa 100 món.)
 const ICHKY_DAY_MAX = Infinity;   // 07/10 chủ server: mua vào rương KHÔNG giới hạn/ngày (trước 2.000, 04/10 nâng từ 100). JSON gửi web là null
 const ICHKY_HOLD_MAX = Infinity;   // 03/10: bỏ giới hạn giữ (trước 100). JSON gửi web là null
-const ICHKY_GIVE_MAX = 100;   // 1 lần tặng tối đa 100 món
+const ICHKY_GIVE_MAX = Infinity;   // 20/10 chủ server: bỏ giới hạn tặng (trước 100 / món / lần). JSON gửi web là null -> client tặng đủ số lượng
 // Long Văn +1/+2/+3 mang TỪ GAME ra (NPC Ví Web, tlbbPollLvReceipts, 02/10)
 const ICHKY_GIU = ['10157001', '10157002', '10157003'];
 const ICHKY_GIU_RUT_MAX = 10;   // 03/10: Long Văn rút về game tối đa 10 cái/lần (mỗi cái 1 ô túi, rút nhiều dễ tràn túi -> mất đồ)
@@ -1970,7 +1970,7 @@ function ichKyGive(userId, toUserId, itemId, qty, username) {
     if (co < 1) return { error: 'Trong rương không có món này' };
     if (co < qty) return { error: `Rương chỉ còn ${co} cái` };
     const room = ichKyRoom(toUserId);
-    if (room <= 0) return { error: 'Rương người nhận đang đầy 100 món - bảo họ xài bớt đã' };
+    if (room <= 0) return { error: 'Rương người nhận đang đầy - bảo họ xài bớt đã' };
     if (qty > room) return { error: `Rương người nhận chỉ còn chỗ cho ${room} món` };
     if (!ichKyTake(me, itemId, qty)) return { error: 'Rương không đủ món' };
     const ban = getUserData(toUserId);
@@ -2265,7 +2265,7 @@ async function itemShopBuy(userId, itemId, qty, username, vaoRuong) {
         if (qty > conCho) {
             return { error: conCho > 0
                 ? `🧰 Rương chỉ còn chỗ cho ${conCho} món - nhận vào game hoặc tặng bớt đã`
-                : '🧰 Rương đang đầy 100 món - nhận vào game hoặc tặng bớt đã' };
+                : '🧰 Rương đang đầy - nhận vào game hoặc tặng bớt đã' };
         }
     }
     // 🚦 đang giao đơn khác (item/quà/pet) -> chặn (khỏi dồn nhiều lệnh giao cùng lúc)
