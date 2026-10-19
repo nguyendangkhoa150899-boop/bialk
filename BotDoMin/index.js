@@ -1546,7 +1546,9 @@ const GN = require('./ghepngoc')({
 // 🏪 06/10: THƯƠNG PHỐ (thuongpho.js) - kho đồ web theo TỪNG NHÂN VẬT: NPC Ví Web chuyển túi Đạo cụ / Nguyên liệu ra,
 // web chọn món rút về đúng nhân vật đó. Không tặng / bán. Dữ liệu dbCache._tp[GUID], cấu hình dbCache._tpCfg.
 const TP = require('./thuongpho')({ db: () => dbCache, getUserData, saveDbNow, writeLog, icon: ITEMICON.icon, items: () => gameItems(),
-    ichKyAdd: (u, id, n) => ichKyAdd(u, String(id), n) });   // 🧰 08/10: rút qua Rương Ích Kỷ (món admin cho phép)
+    // 👪 20/10 family: famTv = các ví trong family (Thương Phố chọn tài khoản); đồ chuyển qua rương của ví thành viên -> rương CHUNG ở ví gốc
+    famTv: (id) => famTv(id),
+    ichKyAdd: (u, id, n) => ichKyAdd(u && u.famOf && dbCache[u.famOf] && typeof dbCache[u.famOf] === 'object' ? dbCache[u.famOf] : u, String(id), n) });   // 🧰 08/10: rút qua Rương Ích Kỷ (món admin cho phép)
 // ===== 🔌 15/09 - CÔNG TẮC CHỨC NĂNG NGƯỜI CHƠI =====
 // Admin tắt mục nào thì mục đó biến mất khỏi web VÀ mọi đường hành động của nó bị server từ
 // chối - người chơi sửa client cũng không lách được. Lưu ở dbCache._featOff (chỉ lưu mục ĐANG TẮT,
@@ -6191,7 +6193,7 @@ client.once('ready', async (c) => {
                 dung: (uid, id, qty, name) => ichKyDung(uid, id, qty, name),   // 🎫 05/10 phiếu KNB -> KNB web
             },
             lienKetMsg: () => LIENKET_MSG,
-            fam: { ichKyOf: (u) => ichKyOf(u), noCua: (uid) => debtTotal(getUserData(uid)) },   // 👪 20/10 family.js (webplay)
+            fam: { ichKyOf: (u) => ichKyOf(u), noCua: (uid) => debtTotal(getUserData(uid)), tpGom: (tu, ve) => TP.famGomVe(tu, ve) },   // 👪 20/10 family.js (webplay)
             // 🎮 30/09: đăng nhập web bằng tài khoản game + đổi mật khẩu (qua panel GM, repo tlbbnetco4 panel/panel.py)
             tlbbKiemMk: (a, p) => tlbb.kiemMk(a, p),
             tlbbKhoa: () => tlbb.khoaState(),   // 🔒 16/10 tài khoản game bị khoá -> chặn web
@@ -7600,6 +7602,17 @@ client.on('interactionCreate', async interaction => {
         if (kieu && !LK_MIEN.includes(id)) {
             writeLog('SYSTEM', `[LIÊN KẾT] Chặn ${interaction.user.tag} (chưa liên kết) thao tác "${id}"`);
             return interaction.reply({ content: LIENKET_MSG, ephemeral: true });
+        }
+    }
+    // 👪 20/10 FAMILY (chủ server chốt): tài khoản đã liên kết vào family -> TRƯỞNG quản lý ví + kho, thành viên không tự thao tác.
+    // Discord chỉ còn /diemdanh, /nghien (làm hộ cả family, tiền vào ví chung - claimDailyFam / claimNghienFam).
+    if (gocVi(userId) !== userId) {
+        const kieu = interaction.isChatInputCommand() || interaction.isButton() || interaction.isModalSubmit()
+            || (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu());
+        const id = interaction.isChatInputCommand() ? interaction.commandName : (interaction.customId || '');
+        if (kieu && !['diemdanh', 'nghien'].includes(id)) {
+            const tr = getUserData(gocVi(userId));
+            return interaction.reply({ content: `👪 Tài khoản này đã liên kết vào family của **${tr.ingameName || tr.gameAcc || 'trưởng'}** - ví và kho đồ do trưởng quản lý (đăng nhập web bằng tài khoản ${tr.gameAcc || 'trưởng'}). Ở đây chỉ còn /diemdanh và /nghien.`, ephemeral: true });
         }
     }
     // 🧬 07/10: ví CLONE - trên Discord chỉ xem số dư / lấy PIN web, còn lại chặn (web chỉ mở Thương Phố)

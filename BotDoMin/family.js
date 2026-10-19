@@ -83,11 +83,13 @@ module.exports = function taoFamily(ctx) {
     }
     function boRa(id, g, ai) {   // id ra khỏi family g: mất hết - gom phần còn sót trên ví nó về gốc
         const gp = gop(id, g);
+        // Thương Phố: đồ THƯỜNG của nhân vật đó ở lại family (về kho nhân vật trưởng); đồ 🔒 cố định dính nhân vật, để nguyên
+        gp.tp = typeof ctx.fam.tpGom === 'function' ? ctx.fam.tpGom(id, g) : 0;
         delete ctx.getUserData(id).famOf;
         const f = bang()[g];
         if (f) { f.tv = thanhVien(g).filter((x) => x !== id); if (f.tv.length <= 1) delete bang()[g]; }
         ctx.saveDbNow();
-        ctx.writeLog('ADMIN', `[FAMILY] ${tenVi(id)} ${ai} family của ${tenVi(g)}` + (gp.knb || gp.mon ? ` (gom thêm ${gp.knb} KNB + ${gp.mon} món về family)` : ''));
+        ctx.writeLog('ADMIN', `[FAMILY] ${tenVi(id)} ${ai} family của ${tenVi(g)}` + (gp.knb || gp.mon || gp.tp ? ` (gom thêm ${gp.knb} KNB + ${gp.mon} món rương + ${gp.tp} món Thương Phố về family)` : ''));
     }
     function roi(toi) {
         const g = goc(toi);

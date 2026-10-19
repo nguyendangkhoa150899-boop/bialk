@@ -35,7 +35,7 @@
   function $f(id) { return document.getElementById(id); }
   function ve() {
     var b = $f('famBody'); if (!F) { b.innerHTML = 'Đang tải...'; return; }
-    var h = '<div class="fmNote">Đăng nhập <b>tài khoản nào</b> trong family cũng vào chung 1 ví: dùng chung <b>KNB</b>, <b>Rương Ích Kỷ</b>, <b>Thương Phố</b>.</div>';
+    var h = '<div class="fmNote">Bạn (👑 trưởng) quản lý <b>KNB</b>, <b>Rương Ích Kỷ</b>, <b>Thương Phố</b> của cả family. Điểm danh / Nghiện nhận hộ mọi tài khoản; rút vào game thì chọn tài khoản nhận.</div>';
     if (F.coFam) {
       h += '<div class="fmList">' + F.tv.map(function (x) {
         return '<div class="fmRow' + (x.toi ? ' toi' : '') + '"><div class="n"><b>' + e(x.ten || x.acc) + '</b><span>Tài khoản ' + e(x.acc || '?') + '</span></div>' +
@@ -50,7 +50,7 @@
       '<input id="famPass" type="password" placeholder="Mật khẩu của tài khoản đó" autocomplete="new-password" maxlength="32" onkeydown="if(event.key===\'Enter\')famLink()">' +
       '<div class="fmErr" id="famErr"></div>' +
       '<button class="fmGo" id="famGo" onclick="famLink()"' + (BUSY ? ' disabled' : '') + '>🔗 Liên kết</button></div>' +
-      '<div class="fmWarn">⚠️ Khi liên kết: KNB + Rương Ích Kỷ của tài khoản đó <b>gộp vào ví chung</b>.<br>' +
+      '<div class="fmWarn">⚠️ Khi liên kết: KNB + Rương Ích Kỷ của tài khoản đó <b>gộp vào ví chung</b>, và tài khoản đó <b>không đăng nhập web riêng được nữa</b> (chỉ trưởng quản lý).<br>' +
       'Rời hoặc bị đuổi: tài khoản đó <b>mất hết</b> KNB, Rương Ích Kỷ, Thương Phố (ở lại family). Chỉ trưởng đuổi được.</div>';
     if (F.coFam && !F.laTruong) h += '<button class="fmRoi" onclick="famRoi()">🚪 Rời family (mất hết)</button>';
     b.innerHTML = h;

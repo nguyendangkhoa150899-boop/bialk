@@ -241,7 +241,7 @@ module.exports = function (ctx) {
         return ra;
     }
 
-    function state(userId) {
+    function state1(userId) {   // kho 1 nhân vật (bản gốc) - family dùng state() bên dưới
         const { u, guid } = guidCua(userId);
         const base = { tat: tat(), loi: CHO_LOI, rutMax: RUT_DONG_MAX, ik: cfg().ik.slice() };   // ik = món được rút qua Rương Ích Kỷ
         if (!guid) return { ...base, guid: '', nhanVat: '', kho: [], cho: [], nk: [] };
@@ -269,7 +269,7 @@ module.exports = function (ctx) {
     }
 
     // ds = [{ id, k, n }] -> trừ kho, xếp lệnh vào game. Đồng bộ hoàn toàn (không await) = không 2 lệnh chen nhau.
-    function rut(userId, ds, who) {
+    function rut1(userId, ds, who) {   // bản gốc 1 nhân vật - family dùng rut() bên dưới
         if (tat()) return { error: '🏪 Thương Phố đang tạm khoá - admin đang bảo trì' };
         const { u, guid } = guidCua(userId);
         if (!guid) return { error: 'Chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã' };
@@ -319,7 +319,7 @@ module.exports = function (ctx) {
     // 🧰 08/10 (chủ server): RÚT QUA RƯƠNG ÍCH KỶ - chỉ món có ID trong cfg().ik (admin gắn ở tab 🛠️ GM Thiên Long), CHỈ đồ
     // KHÔNG cố định (k = 0): rương tặng / Ghép Ngọc được, cho đồ 🔒 qua là thành đường gỡ khoá. Trừ kho rồi cộng thẳng vào rương
     // (ctx.ichKyAdd) - không qua game, không cần online. Ví clone bị chặn ở cổng webplay (route không nằm trong danh sách chừa).
-    function rutIk(userId, ds, who) {
+    function rutIk1(userId, ds, who) {   // bản gốc 1 nhân vật - family dùng rutIk() bên dưới
         if (tat()) return { error: '🏪 Thương Phố đang tạm khoá - admin đang bảo trì' };
         if (typeof ctx.ichKyAdd !== 'function') return { error: 'Chưa nối Rương Ích Kỷ' };
         const { u, guid } = guidCua(userId);
@@ -351,6 +351,51 @@ module.exports = function (ctx) {
         ctx.saveDbNow();
         ctx.writeLog('ADMIN', `[THƯƠNG PHỐ → RƯƠNG ÍCH KỶ] ${who || u.name || userId} (GUID ${guid}): ${moTa.join(', ')}`);
         return { message: `🧰 Đã chuyển ${gop.size} loại sang Rương Ích Kỷ`, state: state(userId) };
+    }
+    // 👪 20/10 FAMILY (chủ server chốt): Thương Phố có mục CHỌN TÀI KHOẢN - hiện đúng kho của tài khoản đó, rút về đúng tài khoản đó
+    // (luật cũ: đồ chỉ về nhân vật đã gửi, đồ 🔒 cố định vẫn cố định). Chuyển qua Rương Ích Kỷ -> rương CHUNG (ví gốc, ctx.ichKyAdd).
+    // xem = ví thành viên family đang chọn; sai / không có -> tài khoản trưởng. Không trong family -> y như cũ.
+    function famNv(userId) {
+        const ds = typeof ctx.famTv === 'function' ? ctx.famTv(userId) : [userId];
+        return ds.map((vi) => { const u = ctx.getUserData(vi), g = String(u.tlbbGuid || ''); return { vi: String(vi), guid: guidOk(g) ? g : '', ten: u.ingameName || '', acc: u.gameAcc || '' }; })
+            .filter((x) => x.guid);
+    }
+    function chonNv(nv, xem) { return nv.find((x) => x.vi === String(xem || '')) || nv[0]; }
+    function state(userId, xem) {
+        const nv = famNv(userId);
+        if (nv.length < 2) return state1(userId);
+        const x = chonNv(nv, xem);
+        return { ...state1(x.vi), fam: { tv: nv.map((y) => ({ vi: y.vi, ten: y.ten, acc: y.acc })), xem: x.vi } };
+    }
+    function rut(userId, ds, who, xem) {
+        const nv = famNv(userId);
+        if (nv.length < 2) return rut1(userId, ds, who);
+        const x = chonNv(nv, xem);
+        const r = rut1(x.vi, ds, who);
+        if (r && !r.error) r.state = state(userId, x.vi);
+        return r;
+    }
+    function rutIk(userId, ds, who, xem) {
+        const nv = famNv(userId);
+        if (nv.length < 2) return rutIk1(userId, ds, who);
+        const x = chonNv(nv, xem);
+        const r = rutIk1(x.vi, ds, who);   // đồ vào rương: ctx.ichKyAdd đưa ví thành viên về ví gốc (index.js)
+        if (r && !r.error) r.state = state(userId, x.vi);
+        return r;
+    }
+    // rời / bị đuổi khỏi family: đồ THƯỜNG trong kho nhân vật đó ở lại family (về kho nhân vật trưởng); đồ 🔒 cố định dính nhân vật, để nguyên
+    function famGomVe(tuVi, veVi) {
+        const a = String(ctx.getUserData(tuVi).tlbbGuid || ''), b = String(ctx.getUserData(veVi).tlbbGuid || '');
+        if (!guidOk(a) || !guidOk(b) || a === b) return 0;
+        const ka = kho(a), kb = kho(b); let mon = 0;
+        for (const key of Object.keys(ka.it)) {
+            if (!key.endsWith('|0')) continue;
+            const n = Number(ka.it[key]) || 0; if (n <= 0) continue;
+            const id = key.split('|')[0];
+            kb.it[key] = (Number(kb.it[key]) || 0) + n; kb.t[key] = Date.now(); if (!kb.tui[id] && ka.tui[id]) kb.tui[id] = ka.tui[id];
+            delete ka.it[key]; mon += n;
+        }
+        return mon;
     }
     // 🧰 10/10 (chủ server): NHẬN đồ Rương Ích Kỷ vào game QUA KÊNH THƯƠNG PHỐ (.tpin / .tpdone) thay cho hàng quà:
     // không cần online, game kiểm đủ ô túi mới phát, ghi mã lệnh trước khi phát (không phát trùng), túi đầy thì chờ,
@@ -448,5 +493,5 @@ module.exports = function (ctx) {
         return { tatFile: fs.existsSync(TAT_FILE), cfg: { tat: !!cfg().tat, chan: cfg().chan }, soMon: CHO.size, loi: CHO_LOI, ds: out };
     }
 
-    return { napCho, pollPhieu, donTpin, state, rut, rutIk, rutTuRuong, adminGui, getIk, setIk, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
+    return { napCho, pollPhieu, donTpin, state, rut, rutIk, rutTuRuong, famGomVe, adminGui, getIk, setIk, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
 };

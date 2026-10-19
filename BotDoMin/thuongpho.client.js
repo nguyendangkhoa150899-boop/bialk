@@ -172,7 +172,9 @@
     var s = TP.s;
     if (!s) { c.innerHTML = '<div class="muted">Đang tải Thương Phố...</div>'; return; }
     var h = '<div class="tpHead"><h2 style="margin:0">🏪 Thương Phố</h2>' +
-      (s.nhanVat ? '<div class="tpWho">Kho của nhân vật <b>' + e(s.nhanVat) + '</b></div>' : '') + '</div>' +
+      (s.fam && s.fam.tv && s.fam.tv.length > 1 ? '<div class="tpWho">👤 Kho của tài khoản <select onchange="tpXem(this.value)" style="width:auto;display:inline-block;margin:0 0 0 4px;padding:4px 8px">' +
+        s.fam.tv.map(function (x) { return '<option value="' + e(x.vi) + '"' + (x.vi === s.fam.xem ? ' selected' : '') + '>' + e(x.ten || x.acc) + ' (' + e(x.acc) + ')</option>'; }).join('') + '</select></div>'
+        : (s.nhanVat ? '<div class="tpWho">Kho của nhân vật <b>' + e(s.nhanVat) + '</b></div>' : '')) + '</div>' +
       '<div class="tpNote">Ra NPC <b>Ví Web</b> trong game, bấm <b>Chuyển Đạo cụ</b> hoặc <b>Chuyển Nguyên liệu</b> để chuyển đồ ra đây. ' +
       'Đồ chỉ rút về <b>đúng nhân vật này</b>, không tặng / bán được. Đồ <span style="color:#ff5a5a;font-weight:800">🔒 cố định</span> rút về vẫn cố định. ' +
       'Bấm 1 ô bên trái là chuyển chồng đó sang túi rút (bấm tiếp để lấy thêm), sửa số lượng dưới ô, bấm <b>Xác nhận</b> để chuyển một lần.</div>';
@@ -245,7 +247,9 @@
 
   // ---- hanh dong ----
   function donChon() { Object.keys(TP.chon).forEach(function (k) { var x = tim(k); if (!x) delete TP.chon[k]; else if (TP.chon[k] > x.n) TP.chon[k] = x.n; }); }
-  window.tpSync = function () { api('/api/tp/state').then(function (j) { TP.s = j; donChon(); ve(); }).catch(function (er) { toast('❌ ' + er.message); }); };
+  // 👪 20/10 family: TP.xem = tài khoản đang chọn (server trả s.fam = {tv, xem}); không trong family thì không có ô chọn
+  window.tpXem = function (v) { TP.xem = String(v || ''); TP.chon = {}; tpSync(); };
+  window.tpSync = function () { api('/api/tp/state' + (TP.xem ? '?xem=' + encodeURIComponent(TP.xem) : '')).then(function (j) { TP.s = j; donChon(); ve(); }).catch(function (er) { toast('❌ ' + er.message); }); };
   // bam 1 o -> chuyen dung chong cua o do sang tui rut
   window.tpVao = function (k, q) {
     var x = tim(k); if (!x) return;
@@ -296,7 +300,7 @@
     gConfirm(msg, laIk ? '🧰 Chuyển qua rương' : '📦 Rút vào game').then(function (dongY) {
     if (!dongY) return;
     TP.busy = true; if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang chuyển...'; }
-    api(laIk ? '/api/tp/ik' : '/api/tp/rut', { ds: ds }).then(function (j) {
+    api(laIk ? '/api/tp/ik' : '/api/tp/rut', { ds: ds, xem: TP.xem || (TP.s && TP.s.fam && TP.s.fam.xem) || '' }).then(function (j) {
       TP.busy = false; TP.chon = {}; toast(j.message || (laIk ? '🧰 Đã chuyển qua Rương Ích Kỷ' : '✅ Đã xếp lệnh vào game'));
       if (laIk && typeof j.ichKyTotal === 'number' && typeof ikBadge === 'function') ikBadge(j.ichKyTotal);
       if (j.state) { TP.s = j.state; ve(); } else tpSync();

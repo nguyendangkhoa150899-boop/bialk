@@ -121,6 +121,8 @@ function startWebPlay(ctx) {
         const s = ss[t];
         if (!s) return null;
         if (viBiKhoa(ctx.getDb()[s.u])) { delete ss[t]; return null; }   // 🔒 16/10
+        // 👪 20/10 (chủ server chốt): tài khoản đã vào family KHÔNG đăng nhập riêng nữa - trưởng quản lý. Phiên cũ của nó bị đá.
+        if (FAM.goc(s.u) !== s.u) { delete ss[t]; return null; }
         const cuoi = s.lanCuoi || s.ts || 0;
         if (Date.now() - cuoi > SESSION_TTL) { delete ss[t]; return null; }
         // Hạn TRƯỢT theo lần dùng cuối: ai còn chơi thì phiên còn sống, khỏi đăng nhập lại
@@ -278,6 +280,11 @@ function startWebPlay(ctx) {
                     }
                     if (!uid) return sendJSON(res, 401, { ok: false, error: 'Tài khoản game này chưa gắn với ví Discord nào - nhắn admin liên kết nhân vật trước, hoặc vào bằng Discord ID + PIN' });
                     if (viBiKhoa(db[uid])) return sendJSON(res, 403, { ok: false, error: '🔒 Ví này gắn nhân vật của tài khoản game đã bị khoá - liên hệ admin' });
+                    // 👪 20/10: tài khoản đã liên kết vào family -> chỉ trưởng đăng nhập web (quản lý ví + kho cho cả family)
+                    if (FAM.goc(uid) !== uid) {
+                        const tr = db[FAM.goc(uid)] || {};
+                        return sendJSON(res, 403, { ok: false, error: `👪 Tài khoản này đã liên kết vào family của ${tr.ingameName || tr.gameAcc || 'trưởng'} - đăng nhập bằng tài khoản trưởng (${tr.gameAcc || '?'}) để quản lý ví và kho đồ` });
+                    }
                     userId = uid; rec = db[uid];
                     if (rec.gameAcc !== gacc || rec.gamePass !== gpass) { rec.gameAcc = gacc; rec.gamePass = gpass; }
                 } else {
@@ -595,12 +602,12 @@ function startWebPlay(ctx) {
                 }
                 // 🏪 06/10: Thương Phố - xem kho / rút về đúng nhân vật (rút bị chặn nếu chưa liên kết, luật DANH SÁCH CHỪA ở trên)
                 if (ctx.thuongPho && path === '/api/tp/state') {
-                    return sendJSON(res, 200, { ok: true, ...ctx.thuongPho.state(userId) });
+                    return sendJSON(res, 200, { ok: true, ...ctx.thuongPho.state(userId, url.searchParams.get('xem') || '') });   // 👪 xem = tài khoản family đang chọn
                 }
                 if (ctx.thuongPho && req.method === 'POST' && path === '/api/tp/rut') {
                     const body = await readBody(req);
                     const me2 = ctx.getUserData(userId);
-                    const r = ctx.thuongPho.rut(userId, body && body.ds, me2.name || userId);
+                    const r = ctx.thuongPho.rut(userId, body && body.ds, me2.name || userId, String(body && body.xem || ''));   // 👪 rút về đúng tài khoản đang chọn
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -608,7 +615,7 @@ function startWebPlay(ctx) {
                 if (ctx.thuongPho && ctx.thuongPho.rutIk && req.method === 'POST' && path === '/api/tp/ik') {
                     const body = await readBody(req);
                     const me2 = ctx.getUserData(userId);
-                    const r = ctx.thuongPho.rutIk(userId, body && body.ds, me2.name || userId);
+                    const r = ctx.thuongPho.rutIk(userId, body && body.ds, me2.name || userId, String(body && body.xem || ''));   // 👪 kho tài khoản đang chọn -> rương chung
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     if (r.state && ctx.ichKy) r.ichKyTotal = ctx.ichKy.state(userId).total || 0;
                     return sendJSON(res, 200, { ok: true, ...r });
