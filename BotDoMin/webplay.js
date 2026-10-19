@@ -280,6 +280,8 @@ function startWebPlay(ctx) {
                     }
                     if (!uid) return sendJSON(res, 401, { ok: false, error: 'Tài khoản game này chưa gắn với ví Discord nào - nhắn admin liên kết nhân vật trước, hoặc vào bằng Discord ID + PIN' });
                     if (viBiKhoa(db[uid])) return sendJSON(res, 403, { ok: false, error: '🔒 Ví này gắn nhân vật của tài khoản game đã bị khoá - liên hệ admin' });
+                    // 👪 20/10: bị đuổi khỏi family hôm nay -> khoá tới 00:00 VN (ví đã về trắng)
+                    if (db[uid].famBan && db[uid].famBan === FAM.ngayVN()) return sendJSON(res, 403, { ok: false, error: '👪 Tài khoản này vừa bị đuổi / rời khỏi family hôm nay - qua 00:00 (giờ VN) mới đăng nhập lại được' });
                     // 👪 20/10: tài khoản đã liên kết vào family -> chỉ trưởng đăng nhập web (quản lý ví + kho cho cả family)
                     if (FAM.goc(uid) !== uid) {
                         const tr = db[FAM.goc(uid)] || {};
@@ -317,6 +319,14 @@ function startWebPlay(ctx) {
                 const userId = getSessionUser(req);
                 if (!userId) return sendJSON(res, 401, { ok: false, error: 'unauth' });
                 const viToi = viPhien(req) || userId;   // 👪 20/10: ví của tài khoản đang đăng nhập (userId = ví gốc family)
+                // 👪 tài khoản nhận / xem do client gửi: phải thuộc family + không bị khoá (rỗng = trưởng)
+                const kiemViFam = (v) => {
+                    v = String(v || '');
+                    if (!v) return null;
+                    if (!FAM.thanhVien(userId).includes(v)) return 'Tài khoản này không thuộc family - F5 trang rồi chọn lại';
+                    if (viBiKhoa(ctx.getDb()[v])) return '🔒 Tài khoản này đã bị khoá - không nhận / rút được';
+                    return null;
+                };
 
                 // 🔌 15/09: mục admin TẮT thì chặn thẳng ở đây - client sửa gì cũng vô ích.
                 // Chỉ chặn đường HÀNH ĐỘNG (đặt cược/mua/quay/rút), KHÔNG chặn đường xem trạng
@@ -568,6 +578,7 @@ function startWebPlay(ctx) {
                 }
                 if (ctx.dogbridge && req.method === 'POST' && path === '/api/dogbridge/rut') {
                     const body = await readBody(req);
+                    const loiVi = kiemViFam(body.vi); if (loiVi) return sendJSON(res, 400, { ok: false, error: loiVi });
                     const r = await ctx.dogbridge.rut(userId, body.amount, body.kind === 'vang' ? 'vang' : 'knb', String(body.vi || ''));   // 👪 vi = nhân vật nhận (index.js kiểm thuộc family)
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
@@ -607,6 +618,7 @@ function startWebPlay(ctx) {
                 if (ctx.thuongPho && req.method === 'POST' && path === '/api/tp/rut') {
                     const body = await readBody(req);
                     const me2 = ctx.getUserData(userId);
+                    const loiVi = kiemViFam(body && body.xem); if (loiVi) return sendJSON(res, 400, { ok: false, error: loiVi });
                     const r = ctx.thuongPho.rut(userId, body && body.ds, me2.name || userId, String(body && body.xem || ''));   // 👪 rút về đúng tài khoản đang chọn
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
@@ -615,6 +627,7 @@ function startWebPlay(ctx) {
                 if (ctx.thuongPho && ctx.thuongPho.rutIk && req.method === 'POST' && path === '/api/tp/ik') {
                     const body = await readBody(req);
                     const me2 = ctx.getUserData(userId);
+                    const loiVi = kiemViFam(body && body.xem); if (loiVi) return sendJSON(res, 400, { ok: false, error: loiVi });
                     const r = ctx.thuongPho.rutIk(userId, body && body.ds, me2.name || userId, String(body && body.xem || ''));   // 👪 kho tài khoản đang chọn -> rương chung
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     if (r.state && ctx.ichKy) r.ichKyTotal = ctx.ichKy.state(userId).total || 0;
@@ -640,7 +653,8 @@ function startWebPlay(ctx) {
                 }
                 // 👪 20/10 FAMILY: điểm danh DÙNG CHUNG - 1 lần bấm điểm danh hộ mọi tài khoản trong family chưa điểm danh
                 // (mỗi tài khoản vẫn 1 lần / ngày, sổ + chuỗi riêng), tiền vào ví gốc. Lịch hiện của tài khoản đang đăng nhập.
-                const famDS = ctx.daily ? FAM.thanhVien(userId) : [];
+                // 👪 bỏ tài khoản bị KHOÁ / chưa gắn nhân vật (không làm hộ điểm danh / nghiện / chuỗi cho chúng)
+                const famDS = ctx.daily ? FAM.thanhVien(userId).filter((id) => id === userId || (!viBiKhoa(ctx.getDb()[id]) && String((ctx.getDb()[id] || {}).ingameName || '').trim())) : [];
                 const famDState = () => {
                     const st = ctx.daily.state(viToi);
                     if (famDS.length < 2) return st;
@@ -757,6 +771,7 @@ function startWebPlay(ctx) {
                 if (ctx.ichKy && req.method === 'POST' && path === '/api/ichky/claim') {
                     const body = await readBody(req);
                     const me2 = ctx.getUserData(userId);
+                    const loiVi = kiemViFam(body.vi); if (loiVi) return sendJSON(res, 400, { ok: false, error: loiVi });
                     const r = await ctx.ichKy.claim(userId, String(body.itemId || ''), body.qty, me2.name || userId, String(body.vi || ''));   // 👪 vi = nhân vật nhận
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
@@ -905,11 +920,13 @@ function startWebPlay(ctx) {
                 // 👪 20/10 FAMILY (family.js): xem / liên kết (tài khoản + mật khẩu acc kia) / rời / đuổi (chỉ trưởng)
                 if (req.method === 'GET' && path === '/api/fam/state') return sendJSON(res, 200, FAM.state(viToi));
                 if (req.method === 'POST' && path === '/api/fam/lienket') {
-                    const ip = req.socket.remoteAddress || '';
+                    // IP thật sau nginx (giống đăng nhập) - không thì cả server chung 1 bộ đếm 127.0.0.1
+                    const _ra2 = req.socket.remoteAddress || '';
+                    const ip = (/^(::ffff:)?127.0.0.1$|^::1$/.test(_ra2) && req.headers['x-real-ip']) ? String(req.headers['x-real-ip']) : _ra2;
                     if (tooManyFails(ip)) return sendJSON(res, 429, { ok: false, error: 'Sai quá nhiều lần - đợi 10 phút' });
                     const body = await readBody(req);
                     await khoaLamMoi();
-                    const r = await FAM.lienKet(viToi, body.acc, body.pass, timViAcc, (a) => KHOA.acc.has(a));
+                    const r = await FAM.lienKet(viToi, body.acc, body.pass, timViAcc, (a, kia) => KHOA.acc.has(a) || viBiKhoa(ctx.getDb()[kia]));
                     if (r.sai) recordFail(ip);
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, gop: r.gop, fam: FAM.state(viToi) });

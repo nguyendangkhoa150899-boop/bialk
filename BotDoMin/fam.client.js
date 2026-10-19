@@ -76,13 +76,13 @@
       BUSY = false;
       var g = j.gop || {};
       toast('✅ Đã liên kết ' + acc + (g.knb || g.mon || g.luot ? ' - gộp ' + Number(g.knb || 0).toLocaleString('vi-VN') + ' KNB + ' + Number(g.mon || 0).toLocaleString('vi-VN') + ' món rương' + (g.luot ? ' + ' + g.luot + ' lượt quay' : '') : ''));
-      F = j.fam; DS = null; ve(); xongDoi();
+      F = j.fam; DS = null; if (typeof window.ikcFamReset === 'function') window.ikcFamReset(); ve(); xongDoi();
     }).catch(function (x) { BUSY = false; ve(); $f('famAcc').value = acc; $f('famErr').textContent = '❌ ' + ((x && x.message) || 'Không liên kết được'); });
   };
   window.famDuoi = function (vi) {
     var x = (F && F.tv || []).filter(function (t) { return t.vi === vi; })[0]; if (!x) return;
     if (!xacNhan('duoi' + vi, 'Bấm Đuổi lần nữa trong 6 giây - ' + (x.acc || x.ten) + ' sẽ MẤT HẾT KNB + Rương Ích Kỷ (Thương Phố giữ nguyên)')) return;
-    api('/api/fam/duoi', { vi: vi }).then(function (j) { toast('✅ Đã đuổi ' + (x.acc || x.ten)); F = j.fam; DS = null; ve(); xongDoi(); })
+    api('/api/fam/duoi', { vi: vi }).then(function (j) { toast('✅ Đã đuổi ' + (x.acc || x.ten)); F = j.fam; DS = null; if (typeof window.ikcFamReset === 'function') window.ikcFamReset(); ve(); xongDoi(); })
       .catch(function (e) { toast('❌ ' + ((e && e.message) || 'Không đuổi được')); });
   };
 
@@ -108,6 +108,7 @@
   var PK = null;
   function chonNv(ds) {
     return new Promise(function (ok, loi) {
+      if (PK) { var cu = PK; PK = null; cu.loi(new Error('Đã huỷ - chưa rút')); }   // lần hỏi trước chưa trả lời -> huỷ, không treo nút
       PK = { ok: ok, loi: loi };
       $f('famPickDs').innerHTML = ds.map(function (x) {
         return '<button class="fmPk" onclick="famPickChon(\'' + x.vi + '\')"><b>' + e(x.ten || x.acc) + (x.toi ? ' (bạn)' : '') + '</b><span>' + e(x.acc) + (x.truong ? ' · 👑' : '') + '</span></button>';
@@ -123,8 +124,9 @@
       if (body && body.vi === undefined && (p === '/api/ichky/claim' || p === '/api/dogbridge/rut')) {
         return dsNv().then(function (ds) {
           if (ds.length < 2) return apiGoc(p, body);
-          if (CHON.vi && Date.now() - CHON.t < 15000) { CHON.t = Date.now(); return apiGoc(p, Object.assign({}, body, { vi: CHON.vi })); }
-          return chonNv(ds).then(function (vi) { CHON = { vi: vi, t: Date.now() }; return apiGoc(p, Object.assign({}, body, { vi: vi })); });
+          // nhớ lựa chọn 15 giây CHỈ trong cùng 1 loại rút (rương nhiều món liên tiếp); rút KNB / vàng luôn hỏi lại
+          if (p === '/api/ichky/claim' && CHON.p === p && CHON.vi && Date.now() - CHON.t < 15000) { CHON.t = Date.now(); return apiGoc(p, Object.assign({}, body, { vi: CHON.vi })); }
+          return chonNv(ds).then(function (vi) { CHON = { p: p, vi: vi, t: Date.now() }; return apiGoc(p, Object.assign({}, body, { vi: vi })); });
         });
       }
       return apiGoc(p, body);

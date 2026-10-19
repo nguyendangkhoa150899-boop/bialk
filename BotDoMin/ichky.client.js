@@ -250,9 +250,10 @@
   window.ikcTim = function (v) { C.q = v; ve(); };
   window.ikcTo = function (v) { C.to = String(v || ''); ve(); };
   // 👪 20/10 family: danh sách tài khoản (có nhân vật) để chọn người NHẬN khi rút rương vào game. Không trong family -> không hiện.
-  var FAMNV = null;
+  var FAMNV = null, FAMNV_T = 0;
+  window.ikcFamReset = function () { FAMNV = null; FAMNV_T = 0; };   // fam.client gọi sau khi liên kết / đuổi
   function taiFam() {
-    if (FAMNV) return; FAMNV = [];
+    if (FAMNV && Date.now() - FAMNV_T < 30000) return; FAMNV = FAMNV || []; FAMNV_T = Date.now();
     api('/api/fam/state').then(function (j) {
       FAMNV = (j.tv || []).filter(function (x) { return x.guid; });
       if (FAMNV.length > 1 && !FAMNV.some(function (x) { return x.vi === C.nhanVi; })) C.nhanVi = FAMNV[0].vi;

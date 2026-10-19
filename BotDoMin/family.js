@@ -10,18 +10,22 @@
 module.exports = function taoFamily(ctx) {
     const db = () => ctx.getDb();
     const bang = () => { const d = db(); if (!d._fam || typeof d._fam !== 'object') d._fam = {}; return d._fam; };
+    // ngày giờ VN 'YYYY-MM-DD' - bị đuổi ngày nào thì cả ngày đó khoá (famBan), 00:00 VN mở lại
+    const ngayVN = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
     const laVi = (id) => { const u = db()[id]; return /^\d{15,20}$/.test(String(id)) && !!u && typeof u === 'object'; };
 
     // id ví gốc của 1 ví (không trong family thì là chính nó)
-    function goc(id) {
+    function goc(id) {   // chỉ 1 tầng: ví gốc mà bản thân lại có famOf (dữ liệu hỏng) thì coi như không trong family
         const u = db()[id];
-        return u && u.famOf && laVi(u.famOf) ? String(u.famOf) : id;
+        return u && u.famOf && laVi(u.famOf) && !db()[u.famOf].famOf ? String(u.famOf) : id;
     }
     // [gốc, thành viên...] - chỉ tính ví còn trỏ đúng về gốc
+    // 1 NGUỒN duy nhất = trường famOf trên ví (giống famTv ở index.js); _fam[g].tv chỉ để giữ thứ tự hiển thị
     function thanhVien(g) {
-        const f = bang()[g];
-        if (!f || !Array.isArray(f.tv)) return [g];
-        return [g].concat(f.tv.filter((x) => x !== g && laVi(x) && String(db()[x].famOf || '') === g));
+        const d = db(), f = bang()[g], thuTu = f && Array.isArray(f.tv) ? f.tv : [];
+        const ds = Object.keys(d).filter((k) => k !== g && !k.startsWith('_') && laVi(k) && String(d[k].famOf || '') === g);
+        ds.sort((a, b) => { const ia = thuTu.indexOf(a), ib = thuTu.indexOf(b); return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib); });
+        return [g].concat(ds);
     }
     function moTa(id, g, toi) {
         const u = db()[id] || {};
@@ -50,6 +54,12 @@ module.exports = function taoFamily(ctx) {
             if (!b.vq || typeof b.vq !== 'object') b.vq = {};
             b.vq.luot = (Number.isInteger(b.vq.luot) ? b.vq.luot : 0) + luot;
         }
+        // hạn rút KNB / vàng đã dùng HÔM NAY (dogDay, index.js) cộng sang ví gốc - không lách được bằng rút riêng rồi vào family
+        if (a.dogDay && a.dogDay.day) {
+            const da = a.dogDay, dbb = b.dogDay;
+            if (!dbb || !dbb.day || String(da.day) > String(dbb.day)) b.dogDay = { ...da };
+            else if (String(da.day) === String(dbb.day)) for (const k of ['rut', 'vang']) dbb[k] = (Number(dbb[k]) || 0) + (Number(da[k]) || 0);
+        }
         return { knb, loai, mon, luot };
     }
     function tenVi(id) { const u = db()[id] || {}; return (u.gameAcc || u.name || id) + (u.ingameName ? ' (' + u.ingameName + ')' : ''); }
@@ -62,14 +72,18 @@ module.exports = function taoFamily(ctx) {
         let ok = false;
         try { ok = await ctx.tlbbKiemMk(acc, pass); } catch (e) { return { error: 'Không kiểm được với server game: ' + String(e.message).slice(0, 120) }; }
         if (!ok) return { error: 'Sai tài khoản hoặc mật khẩu game', sai: true };
-        if (biKhoa(acc)) return { error: '🔒 Tài khoản game này đã bị khoá' };
         const kia = await tim(acc);
         // ⚠️ từ đây tới lúc ghi KHÔNG await - 2 lần bấm không chen nhau được
         if (!kia || !laVi(kia)) return { error: 'Tài khoản "' + acc + '" chưa có ví web - nhắn admin gắn nhân vật trước' };
+        if (biKhoa(acc, kia)) return { error: '🔒 Tài khoản game này đã bị khoá' };
+        if (goc(toi) !== toi) return { error: 'Chỉ trưởng family mới liên kết thêm được' };   // người gọi vừa bị gộp vào family khác trong lúc chờ
         const g = goc(toi), uk = db()[kia];
+        if (!String(uk.ingameName || '').trim() || !uk.tlbbGuid) return { error: 'Ví của "' + acc + '" chưa gắn nhân vật trong game - nhắn admin gắn trước' };
         if (kia === toi || goc(kia) === g) return { error: 'Tài khoản này đã ở trong family của bạn' };
+        if (uk.famBan === ngayVN()) return { error: '"' + acc + '" vừa rời / bị đuổi khỏi family hôm nay - qua 00:00 mới liên kết được' };
         if (uk.clone) return { error: 'Ví của "' + acc + '" là ví clone (chỉ Thương Phố) - nhắn admin đổi thành ví thường trước' };
-        if (uk.famOf) return { error: '"' + acc + '" đang ở family khác - rời family đó trước' };
+        if (uk.famOf && laVi(uk.famOf)) return { error: '"' + acc + '" đang ở family khác - rời family đó trước' };
+        if (uk.famOf) delete uk.famOf;   // famOf trỏ ví đã xoá -> dọn
         if (thanhVien(kia).length > 1) return { error: '"' + acc + '" đang là trưởng family khác (còn thành viên)' };
         if (ctx.fam.noCua(kia) > 0) return { error: '"' + acc + '" đang nợ KNB - trả sạch nợ rồi mới liên kết' };
         const gp = gop(kia, g);
@@ -85,6 +99,9 @@ module.exports = function taoFamily(ctx) {
         const gp = gop(id, g);
         // Thương Phố KHÔNG gộp (chủ server chốt 20/10): kho theo từng nhân vật, vào / rời family không đụng tới
         delete ctx.getUserData(id).famOf;
+        // 20/10 chủ server: bị đuổi / rời -> KHOÁ tới hết ngày (không đăng nhập web, không Discord, không vào family khác) - chống khai thác.
+        // Ví đã về trắng (gop ở trên đã gom KNB + rương + lượt quay về family). Qua 00:00 VN dùng lại bình thường.
+        ctx.getUserData(id).famBan = ngayVN();
         const f = bang()[g];
         if (f) { f.tv = thanhVien(g).filter((x) => x !== id); if (f.tv.length <= 1) delete bang()[g]; }
         ctx.saveDbNow();
@@ -104,5 +121,5 @@ module.exports = function taoFamily(ctx) {
         boRa(vi, g, 'bị đuổi khỏi');
         return { ok: true };
     }
-    return { goc, thanhVien, state, lienKet, roi, duoi };
+    return { goc, thanhVien, state, lienKet, roi, duoi, ngayVN };
 };

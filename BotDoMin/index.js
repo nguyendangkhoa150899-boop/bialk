@@ -250,7 +250,9 @@ function getUserData(userId) {
     return dbCache[userId];
 }
 
+// 👪 20/10 family: ví thành viên (famOf) bị ẩn -> MỌI đường cộng / trừ KNB (admin, game đang dở, chuyển tiền, Phát quà...) đi vào ví gốc
 function updatePoints(userId, amount) {
+    userId = gocVi(userId);
     const data = getUserData(userId);
     data.points += amount;
     // 🚕 24/09: mọi đồng ra/vào ví đều cộng vào sổ lãi-lỗ NGÀY (cho nút "Xu đi taxi về").
@@ -268,6 +270,7 @@ function updatePoints(userId, amount) {
 // Giữ: transfer · to-game/from-game (nạp/rút) · admin+/- · shop/vay/trano/refund (không phải mini game).
 const DOG_LEDGER_BO_QUA = new Set(['bet', 'jackpot', 'cophieu', 'tienlen', 'sieutx', 'roulette']);
 function logDog(type, userId, username, amount, note) {
+    userId = gocVi(userId);   // 👪 20/10: khớp với updatePoints (sổ + lãi/lỗ ngày ghi ở ví gốc)
     // 🚕 Tới được đây nghĩa là khoản này KHÔNG phải mini game (mini game đã return ở trên) ->
     // trừ ngược khỏi sổ lãi-lỗ ngày, vì nạp/rút/chuyển/admin/mua shop/vay/hoàn không phải "thua bạc".
     // Cố tình để SAU dòng chặn: thêm loại mini game mới vào DOG_LEDGER_BO_QUA là tự động tính đúng.
@@ -630,7 +633,7 @@ async function webRutGame(userId, amount, kind, viNhan) {   // 👪 20/10: viNha
     const vt = viNhan && famTv(userId).includes(String(viNhan)) ? String(viNhan) : userId;
     const ut = getUserData(vt);
     const dk = vang ? 'vang' : 'rut';   // 🪙 vàng có hạn riêng
-    const soTk = famTv(userId).length;   // 👪 family: hạn × số tài khoản, đếm chung ở ví gốc
+    const soTk = famTv(userId).filter((id) => daLienKet(id) && !laClone(id)).length;   // 👪 family: hạn × số tài khoản (đã gắn nhân vật), đếm chung ở ví gốc
     const dayErr = dogBridgeDayCheck(u, dk, amount, soTk);   // 📅 hạn ngày
     if (dayErr) return { error: dayErr };
     debtAccrue(userId);
@@ -691,7 +694,7 @@ function tlbbUserByGuid(guid) {
 // (nạp từ game, Discord, admin phát) phải đi vào ví gốc - ví thành viên bị ẩn khi ở trong family.
 function gocVi(id) {
     const u = id && dbCache[id];
-    return u && typeof u === 'object' && u.famOf && dbCache[u.famOf] && typeof dbCache[u.famOf] === 'object' ? String(u.famOf) : id;
+    return u && typeof u === 'object' && u.famOf && dbCache[u.famOf] && typeof dbCache[u.famOf] === 'object' && !dbCache[u.famOf].famOf ? String(u.famOf) : id;   // 1 tầng, không chuỗi
 }
 // [gốc, thành viên...] của family chứa ví id (không trong family -> [id])
 function famTv(id) {
@@ -1522,20 +1525,20 @@ function setItemShop(list) {
 // 🐾 01/10: shop "Chọn Pet Boss" (1 con/ví, chọn skin + kiểu) - xem petboss.js. Hàm truyền vào đều là
 // function khai báo (hoisted) nên gọi ở đây được dù định nghĩa ở dưới.
 const PB = require('./petboss')({
-    db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, featGuard, debtBlock,
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc saveDbNow, logDog, writeLog, featGuard, debtBlock,
     deliverBusy, deliverLock, deliverUnlock, tlbb,
 });
 // 🍀 02/10: vòng quay may mắn trên web (vongquay.js) + icon vật phẩm game (itemicon.js, tấm ảnh ở /opt/minigame/itemicon)
 const ITEMICON = require('./itemicon');
 const VQ = require('./vongquay')({
-    db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, tlbb, icon: ITEMICON.icon,
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: lượt quay / quà của thành viên -> ví gốc saveDbNow, logDog, writeLog, debtBlock, tlbb, icon: ITEMICON.icon,
     ichKy: { add: (u, id, n) => ichKyAdd(u, String(id), n) },   // 06/10: quà quay trúng vào thẳng 🧰 Rương Ích Kỷ
 });
 // 💎 05/10: GHÉP NGỌC (ghepngoc.js) - bỏ đồ trong 🧰 Rương Ích Kỷ luyện ra ngọc 7 / Trùng Lâu..., thắng vào lại rương.
 // Mọi số liệu ở dbCache._gnCfg (panel SUPER, tab 🎁 Quà tặng). Mặc định TẮT.
 const GN_ANH = require('./ghepngoc.anh');
 const GN = require('./ghepngoc')({
-    db: () => dbCache, getUserData, updatePoints, saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
     items: () => gameItems(), shop: () => itemShopList(), giaRuong: (id) => ichKyBanGiaTho(id),
     ichKy: { of: (u) => ichKyOf(u), add: (u, id, n) => ichKyAdd(u, id, n), take: (u, id, n) => ichKyTake(u, id, n) },
     dayStr: () => vnDayStr(Date.now()),
@@ -1960,12 +1963,16 @@ function ichKyOf(user) {
     return k;
 }
 function ichKyTotal(k) { return Object.values(k.items).reduce((t, n) => t + (Number(n) || 0), 0); }
+// 👪 20/10 family: rương của ví thành viên bị ẩn -> thêm / lấy đồ luôn ở rương CHUNG (ví gốc)
+function famUser(u) { return u && typeof u === 'object' && u.famOf && dbCache[u.famOf] && typeof dbCache[u.famOf] === 'object' && !dbCache[u.famOf].famOf ? dbCache[u.famOf] : u; }
 function ichKyAdd(user, itemId, qty) {
+    user = famUser(user);
     const k = ichKyOf(user);
     k.items[itemId] = (Number(k.items[itemId]) || 0) + qty;
     return k;
 }
 function ichKyTake(user, itemId, qty) {
+    user = famUser(user);
     const k = ichKyOf(user);
     const co = Number(k.items[itemId]) || 0;
     if (co < qty) return false;
@@ -6242,7 +6249,7 @@ client.once('ready', async (c) => {
             dogbridge: {
                 rut: (uid, amount, kind, vi) => webRutGame(uid, amount, kind, vi),   // 👪 vi = nhân vật nhận
                 state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut,
-                    dayMax: dogBridgeDayMax() * famTv(uid).length, rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax() * famTv(uid).length,   /* 👪 family × số tài khoản */ vangRate: dogVangRate(), vangMoiLan: DOG_VANG_MOI_LAN, vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
+                    dayMax: dogBridgeDayMax() * Math.max(1, famTv(uid).filter((id) => daLienKet(id) && !laClone(id)).length), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax() * Math.max(1, famTv(uid).filter((id) => daLienKet(id) && !laClone(id)).length),   /* 👪 family × số tài khoản */ vangRate: dogVangRate(), vangMoiLan: DOG_VANG_MOI_LAN, vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
                     // 💰 07/10 thẻ "Ví KNB ↔ Game" (trang Cá nhân, /vg.js): chỗ nạp + đã nạp hôm nay + 8 lần nạp/rút gần nhất của chính người này
                     napNpc: TLBB_NPC_HINT, napToday: dogBridgeToday(getUserData(uid)).nap || 0,
                     hist: (Array.isArray(dbCache._dogLedger) ? dbCache._dogLedger : []).filter((e) => e && e.userId === uid && (e.type === 'to-game' || e.type === 'from-game')).slice(0, 8)
@@ -6308,7 +6315,7 @@ client.once('ready', async (c) => {
                     let guid = String(u.tlbbGuid || '');
                     for (const vid of famTv(uid)) {
                         const g = String(getUserData(vid).tlbbGuid || '');
-                        if (g && tuiBoss.list(dbCache, g).some((x) => String(x.id) === String(id || ''))) { guid = g; break; }
+                        if (g && tuiBoss.list(dbCache, g).some((x) => String(x.id) === String(id || '') && !x.nhan)) { guid = g; break; }   // túi CHƯA nhận (mã túi chỉ có 4 số cuối GUID - 2 nhân vật trùng đuôi không kẹt)
                     }
                     if (!guid) return { error: 'Chưa liên kết nhân vật trong game' };
                     // 04/10 (chủ server): đồ trong túi KHÔNG đẩy thẳng vào game nữa - bỏ hết vào 🧰 Rương Ích Kỷ, người chơi tự rút vào game dần (ichKyClaim)
@@ -7545,6 +7552,17 @@ function deletePlayer(userId) {
     if (!userId || userId.startsWith('_')) return false;
     if (!dbCache[userId] || typeof dbCache[userId] !== 'object') return false;
     const name = dbCache[userId].name || userId;
+    // 👪 20/10: ví TRƯỞNG family còn thành viên -> không xoá (ví tự tạo lại là kéo cả family vào lại). Đuổi hết thành viên trước.
+    if (gocVi(userId) === userId && famTv(userId).length > 1) {
+        writeLog('ADMIN', `[PANEL VÍ] KHÔNG xoá ví ${name} (${userId}): đang là trưởng family ${famTv(userId).length} tài khoản - đuổi hết thành viên trước`);
+        return false;
+    }
+    // ví THÀNH VIÊN: gỡ khỏi danh sách family của trưởng
+    const famG = dbCache[userId].famOf;
+    if (famG && dbCache._fam && dbCache._fam[famG] && Array.isArray(dbCache._fam[famG].tv)) {
+        dbCache._fam[famG].tv = dbCache._fam[famG].tv.filter((x) => x !== userId);
+        if (dbCache._fam[famG].tv.length <= 1) delete dbCache._fam[famG];
+    }
     delete dbCache[userId];
     delete forcedMines[userId];
     withdrawRequests = withdrawRequests.filter(r => !(r.userId === userId && r.status === 'pending'));
@@ -7609,6 +7627,12 @@ client.on('interactionCreate', async interaction => {
     }
     // 👪 20/10 FAMILY (chủ server chốt): tài khoản đã liên kết vào family -> TRƯỞNG quản lý ví + kho, thành viên không tự thao tác.
     // Discord chỉ còn /diemdanh, /nghien (làm hộ cả family, tiền vào ví chung - claimDailyFam / claimNghienFam).
+    // 👪 20/10: vừa bị đuổi khỏi family hôm nay -> khoá Discord tới 00:00 VN (giống web)
+    if (getUserData(userId).famBan && getUserData(userId).famBan === new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })) {
+        const kieu0 = interaction.isChatInputCommand() || interaction.isButton() || interaction.isModalSubmit()
+            || (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu());
+        if (kieu0) return interaction.reply({ content: '👪 Tài khoản này vừa bị đuổi / rời khỏi family hôm nay - qua 00:00 (giờ VN) mới dùng lại được.', ephemeral: true });
+    }
     if (gocVi(userId) !== userId) {
         const kieu = interaction.isChatInputCommand() || interaction.isButton() || interaction.isModalSubmit()
             || (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu());
@@ -7687,6 +7711,8 @@ client.on('interactionCreate', async interaction => {
             const receiver = interaction.options.getUser('nguoi');
             const amount = interaction.options.getInteger('sotien');
             if (receiver.id === userId) return interaction.reply({ content: "❌ Không thể tự chuyển cho mình!", ephemeral: true });
+            // 👪 20/10: cùng family = dùng chung ví (updatePoints tự đưa tiền của thành viên về ví gốc)
+            if (gocVi(receiver.id) === gocVi(userId)) return interaction.reply({ content: "❌ Người này cùng family với bạn - dùng chung ví rồi!", ephemeral: true });
             if (amount <= 0) return interaction.reply({ content: "❌ Số KNB không hợp lệ!", ephemeral: true });
             
             const senderData = getUserData(userId);
