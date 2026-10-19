@@ -1542,22 +1542,25 @@ function setItemShop(list) {
 // 🐾 01/10: shop "Chọn Pet Boss" (1 con/ví, chọn skin + kiểu) - xem petboss.js. Hàm truyền vào đều là
 // function khai báo (hoisted) nên gọi ở đây được dù định nghĩa ở dưới.
 const PB = require('./petboss')({
-    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc
-    famTv: (id) => famShopTk(id),   // 👪 20/10: mỗi tài khoản family 1 pet, giao vào nhân vật tài khoản đó saveDbNow, logDog, writeLog, featGuard, debtBlock,
+    // 👪 20/10: getUserData đổi ví thành viên family -> ví gốc; famTv = mỗi tài khoản family 1 pet, giao vào nhân vật tài khoản đó
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints, saveDbNow, logDog, writeLog, featGuard, debtBlock,
+    famTv: (id) => famShopTk(id),
     deliverBusy, deliverLock, deliverUnlock, tlbb,
 });
 // 🍀 02/10: vòng quay may mắn trên web (vongquay.js) + icon vật phẩm game (itemicon.js, tấm ảnh ở /opt/minigame/itemicon)
 const ITEMICON = require('./itemicon');
 const VQ = require('./vongquay')({
-    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: lượt quay / quà của thành viên -> ví gốc saveDbNow, logDog, writeLog, debtBlock, tlbb, icon: ITEMICON.icon,
+    // 👪 20/10: getUserData đổi ví thành viên family -> ví gốc (lượt quay / quà của thành viên vào ví gốc)
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints, saveDbNow, logDog, writeLog, debtBlock, tlbb, icon: ITEMICON.icon,
     ichKy: { add: (u, id, n) => ichKyAdd(u, String(id), n) },   // 06/10: quà quay trúng vào thẳng 🧰 Rương Ích Kỷ
 });
 // 💎 05/10: GHÉP NGỌC (ghepngoc.js) - bỏ đồ trong 🧰 Rương Ích Kỷ luyện ra ngọc 7 / Trùng Lâu..., thắng vào lại rương.
 // Mọi số liệu ở dbCache._gnCfg (panel SUPER, tab 🎁 Quà tặng). Mặc định TẮT.
 const GN_ANH = require('./ghepngoc.anh');
 const GN = require('./ghepngoc')({
-    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints,   // 👪 20/10: thành viên family -> ví gốc
-    famSo: (id) => famShopTk(id).length,   // 👪 20/10: lượt Ghép Ngọc/ngày × số tài khoản saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
+    // 👪 20/10: getUserData đổi ví thành viên family -> ví gốc; famSo = số tài khoản (lượt Ghép Ngọc/ngày × số tài khoản)
+    db: () => dbCache, getUserData: (id) => getUserData(gocVi(id)), updatePoints, saveDbNow, logDog, writeLog, debtBlock, icon: ITEMICON.icon,
+    famSo: (id) => famShopTk(id).length,
     items: () => gameItems(), shop: () => itemShopList(), giaRuong: (id) => ichKyBanGiaTho(id),
     ichKy: { of: (u) => ichKyOf(u), add: (u, id, n) => ichKyAdd(u, id, n), take: (u, id, n) => ichKyTake(u, id, n) },
     dayStr: () => vnDayStr(Date.now()),
