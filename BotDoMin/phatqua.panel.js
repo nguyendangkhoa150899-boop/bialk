@@ -39,10 +39,13 @@
       '#pqRoot button{padding:7px 12px;font-size:13px;border-radius:8px}#pqRoot input,#pqRoot select{margin:0}' +
       '#pqRoot .pqBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}#pqRoot .pqBar input[type=text]{flex:1;min-width:160px;width:auto}' +
       '#pqRoot .pqChk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);white-space:nowrap}#pqRoot .pqChk input{width:16px;height:16px}' +
-      '#pqRoot .pqList{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px}' +
-      '#pqRoot .pqNv{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}#pqRoot .pqNv:last-child{border-bottom:0}' +
-      '#pqRoot .pqNv:hover{background:var(--card2)}#pqRoot .pqNv.on{background:rgba(53,196,106,.12)}#pqRoot .pqNv input{width:17px;height:17px;flex:0 0 auto}' +
-      '#pqRoot .pqNv b{font-size:14px}#pqRoot .pqNv small{display:block;color:var(--mut);font-size:11.5px}#pqRoot .pqNv .pqR{margin-left:auto;text-align:right;font-size:12px;color:var(--mut);white-space:nowrap}' +
+      '#pqRoot .pqList{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px;scrollbar-gutter:stable}' +
+      // 19/10: mỗi dòng là lưới 3 cột: ô tick | tên + tài khoản/GUID/cấp (1 dòng, cắt ...) | trạng thái + nhãn (không xuống dòng)
+      '#pqRoot .pqNv{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 12px 8px 10px;border-bottom:1px solid var(--line);cursor:pointer}#pqRoot .pqNv:last-child{border-bottom:0}' +
+      '#pqRoot .pqNv:hover{background:var(--card2)}#pqRoot .pqNv.on{background:rgba(53,196,106,.12)}#pqRoot .pqNv input{width:17px;height:17px;margin:0}' +
+      '#pqRoot .pqNvT{min-width:0}#pqRoot .pqNv b,#pqRoot .pqNv small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#pqRoot .pqNv b{font-size:14px}#pqRoot .pqNv small{color:var(--mut);font-size:11.5px}' +
+      '#pqRoot .pqNv .pqR{text-align:right;font-size:12px;color:var(--mut);white-space:nowrap;max-width:min(300px,42vw);overflow:hidden;text-overflow:ellipsis}#pqRoot .pqR .pqTags{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis}' +
       '#pqRoot .pqDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#59606e;margin-right:5px}#pqRoot .pqDot.on{background:#35c46a}' +
       '#pqRoot .pqTag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;background:var(--card2);border:1px solid var(--line);margin-left:4px}' +
       '#pqRoot .pqTag.vi{color:#8fd3a8;border-color:#2f6b4a}#pqRoot .pqTag.cho{color:#f3cf8a;border-color:#5a4a22}' +
@@ -50,14 +53,19 @@
       '#pqRoot .pqSeg button.on{background:#2f6b4a;border-color:#3f8a60;color:#fff;font-weight:700}' +
       '#pqRoot .pqF{display:grid;gap:8px}#pqRoot .pqF label{font-size:12.5px;color:var(--mut)}#pqRoot .pqRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}' +
       '#pqRoot .pqRow input,#pqRoot .pqRow select{flex:1;min-width:120px;width:auto;padding:8px 10px}' +
-      '#pqRoot .pqItems{max-height:250px;overflow:auto;border:1px solid var(--line);border-radius:10px}' +
-      '#pqRoot .pqIt{display:flex;align-items:center;gap:9px;padding:6px 9px;border-bottom:1px solid var(--line);cursor:pointer}#pqRoot .pqIt:hover{background:var(--card2)}' +
-      '#pqRoot .pqIt.on{background:rgba(53,196,106,.14)}#pqRoot .pqIt small{color:var(--mut);font-size:11px;margin-left:4px}' +
+      '#pqRoot .pqItems{max-height:250px;overflow:auto;border:1px solid var(--line);border-radius:10px;scrollbar-gutter:stable}' +
+      '#pqRoot .pqIt{display:flex;align-items:center;gap:9px;padding:6px 12px 6px 9px;border-bottom:1px solid var(--line);cursor:pointer}#pqRoot .pqIt:hover{background:var(--card2)}' +
+      '#pqRoot .pqIt.on{background:rgba(53,196,106,.14)}#pqRoot .pqItT{flex:1;min-width:0}' +
+      '#pqRoot .pqItN{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#pqRoot .pqIt small{display:block;color:var(--mut);font-size:11px}' +
+      '@media(min-width:1024px){#pqRoot .pqList{max-height:60vh}#pqRoot .pqItems{max-height:42vh}}#pqRoot .empty{padding:10px 12px;color:var(--mut);font-size:13px}' +
       '#pqRoot .pqPick{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;background:var(--card2);border:1px solid #3f8a60}' +
       '#pqRoot .pqKenh{display:grid;gap:8px}#pqRoot .pqK{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--card2)}' +
       '#pqRoot .pqK.on{border-color:#3f8a60;background:rgba(53,196,106,.12)}#pqRoot .pqK.off{opacity:.45;cursor:not-allowed}#pqRoot .pqK input{width:17px;height:17px;margin-top:2px}' +
       '#pqRoot .pqK b{display:block;font-size:14px}#pqRoot .pqK span{font-size:12.5px;color:var(--mut);line-height:1.45}' +
       '#pqRoot .pqSum{padding:12px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font-size:13.5px;line-height:1.6}' +
+      '#pqRoot .pqChips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 6px}#pqRoot .pqChip{display:inline-flex;align-items:center;gap:4px;max-width:220px;padding:2px 3px 2px 9px;border-radius:999px;background:#23402f;border:1px solid #3f8a60;color:#e3f5ea;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#pqRoot .pqChip button{flex:0 0 auto;width:20px;height:20px;padding:0;border-radius:50%;background:#4e5058;color:#fff;font-size:11px;line-height:20px}#pqRoot .pqChip button:hover{background:var(--red)}' +
+      '#pqRoot .pqChip>span{overflow:hidden;text-overflow:ellipsis}#pqRoot .pqChipMore{padding:2px 9px;background:var(--card);border-color:var(--line);color:var(--mut)}' +
       '#pqRoot .pqGo{width:100%;padding:12px;font-size:15px;font-weight:800;margin-top:10px}' +
       '#pqRoot table{border-collapse:collapse;width:100%;font-size:13px}#pqRoot td,#pqRoot th{padding:6px 7px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}' +
       '#pqRoot th{color:var(--mut);font-weight:600;font-size:12px}#pqRoot .ok{color:#35c46a}#pqRoot .bad{color:#ff7b7b}';
@@ -99,10 +107,11 @@
     el.innerHTML = L.map(function (c) {
       var on = !!PQ.sel[c.guid];
       return '<div class="pqNv' + (on ? ' on' : '') + '" data-pqnv="' + e(c.guid) + '"><input type="checkbox"' + (on ? ' checked' : '') + ' tabindex="-1">' +
-        '<div><b>' + e(c.ten) + '</b><small>' + e(c.tk) + ' · ' + e(c.guid) + ' · cấp ' + e(c.cap) + '</small></div>' +
+        '<div class="pqNvT"><b title="' + e(c.ten) + '">' + e(c.ten) + '</b><small title="' + e(c.tk + ' · ' + c.guid + ' · cấp ' + c.cap) + '">' + e(c.tk) + ' · ' + e(c.guid) + ' · cấp ' + e(c.cap) + '</small></div>' +
         '<div class="pqR"><span class="pqDot' + (c.on ? ' on' : '') + '"></span>' + (c.on ? 'online' : 'offline') +
+        (c.cho.length ? '<span class="pqTag cho">⏳ ' + c.cho.length + ' chờ</span>' : '') + '<span class="pqTags">' +
         (c.vi.length ? c.vi.map(function (v) { return v.clone ? '<span class="pqTag" title="Ví clone: chỉ mở được Thương Phố, không nhận Rương Ích Kỷ / KNB web">🧬 ' + e(v.ten) + '</span>' : '<span class="pqTag vi" title="Ví web liên kết">🔗 ' + e(v.ten) + '</span>'; }).join('') : '<span class="pqTag" title="Chưa liên kết ví web: không gửi được Rương Ích Kỷ / KNB ví">chưa có ví</span>') +
-        (c.cho.length ? '<span class="pqTag cho">⏳ ' + c.cho.length + ' chờ</span>' : '') + '</div></div>';
+        '</span></div></div>';
     }).join('') || '<div class="empty">Không nhân vật nào khớp.</div>';
     var n = dsChon().length, tong = PQ.d.chars.length;
     var thay = {}; L.forEach(function (c) { thay[c.guid] = 1; });
@@ -158,7 +167,7 @@
     var hien = L.slice(0, 60);
     var ve = function () {
       el.innerHTML = hien.map(function (x) {
-        return '<div class="pqIt' + (PQ.item && PQ.item.id === x.id ? ' on' : '') + '" data-pqit="' + x.id + '">' + vqaIc(icOf(x.id)) + '<div>' + e(x.n) + '<small>' + x.id + '</small></div></div>';
+        return '<div class="pqIt' + (PQ.item && PQ.item.id === x.id ? ' on' : '') + '" data-pqit="' + x.id + '">' + vqaIc(icOf(x.id)) + '<div class="pqItT"><span class="pqItN" title="' + e(x.n) + '">' + e(x.n) + '</span><small>' + x.id + '</small></div></div>';
       }).join('') + (L.length > 60 ? '<div class="empty">' + so(L.length) + ' món khớp, đang hiện 60 - gõ thêm để lọc</div>' : '') || '<div class="empty">Không món nào khớp.</div>';
     };
     ve(); icTra(hien.map(function (x) { return x.id; }), function () { if (PQ.iq === q0 && $('pqItems') === el) ve(); });   // icon về muộn: chỉ vẽ lại nếu ô tìm chưa đổi
@@ -207,10 +216,19 @@
     if (String(PQ.gt).trim() === '' || !(v >= m[3] && v <= m[4])) return { loi: m[1] + ': ' + so(m[3]) + ' - ' + so(m[4]) };
     return { loai: m[0], gt: v, sl: 1, mo: m[1] + ' ' + so(v) };
   }
+  // 19/10: tên nhân vật đã chọn (tối đa 8, còn lại "+N người nữa") - dùng ở ô tóm tắt (có ✕ bỏ từng người) và hộp xác nhận
+  var TEN_MAX = 8;
+  function tenChon() {
+    var ten = {}; (PQ.d ? PQ.d.chars : []).forEach(function (c) { ten[c.guid] = c.ten; });
+    return dsChon().map(function (g) { return { guid: g, ten: ten[g] || g }; });
+  }
+  function tenNgan() { var L = tenChon(); return L.slice(0, TEN_MAX).map(function (x) { return x.ten; }).join(', ') + (L.length > TEN_MAX ? ' và ' + (L.length - TEN_MAX) + ' người khác' : ''); }
   function veSum() {
     var el = $('pqSum'); if (!el) return;
-    var n = dsChon().length, g = goi(), k = KENH.filter(function (x) { return x[0] === PQ.kenh; })[0];
+    var n = dsChon().length, g = goi(), k = KENH.filter(function (x) { return x[0] === PQ.kenh; })[0], L = tenChon();
     el.innerHTML = '<div>Người nhận: <b>' + (n ? n + ' nhân vật' : '<span class="bad">chưa chọn</span>') + '</b></div>' +
+      (n ? '<div class="pqChips">' + L.slice(0, TEN_MAX).map(function (x) { return '<span class="pqChip"><span>' + e(x.ten) + '</span><button type="button" data-pqbo="' + e(x.guid) + '" title="Bỏ ' + e(x.ten) + '">✕</button></span>'; }).join('') +
+        (L.length > TEN_MAX ? '<span class="pqChip pqChipMore">+' + (L.length - TEN_MAX) + ' người nữa</span>' : '') + '</div>' : '') +
       '<div>Quà: <b>' + (g.loi ? '<span class="bad">' + e(g.loi) + '</span>' : e(g.mo)) + '</b></div>' +
       '<div>Cách nhận: <b>' + kenhTen() + '</b></div>';
     var b = $('pqGo'); if (b) { b.disabled = PQ.busy || !n || !!g.loi; b.textContent = PQ.busy ? '⏳ Đang gửi...' : (PQ.loai === 'xoa' ? '🗑️ Xoá vật phẩm' : 'Gửi quà') + (n ? ' cho ' + n + ' nhân vật' : ''); b.className = 'pqGo ' + (n >= 5 || PQ.loai === 'xoa' ? 'btn-red' : 'btn-green'); }
@@ -253,14 +271,14 @@
     if (!PQ.built) { khung(); veLoai(); }
     tai();
   };
-  // nút "🎁 Gửi quà" ở bảng nhân vật (tab ⚙️) -> mở tab này, chọn sẵn đúng nhân vật đó
+  // nút "🎁 Gửi quà" ở tab 👤 Tài khoản (taikhoan.panel.js gọi pqMo) -> mở tab này, chọn sẵn đúng nhân vật đó
   window.pqMo = function (guid) { PQ.sel = {}; PQ.sel[String(guid)] = true; tab('pq'); };
 
   function gui() {
     var ds = dsChon(), g = goi();
     if (!ds.length || g.loi || PQ.busy) return;
     var xoa = PQ.loai === 'xoa', nhieu = ds.length >= 5;
-    var msg = (xoa ? 'XOÁ ' + g.mo.replace(/^XOÁ /, '') + ' khỏi túi ' : 'Gửi ' + g.mo + ' cho ') + ds.length + ' nhân vật (' + kenhTen() + ')?' +
+    var msg = (xoa ? 'XOÁ ' + g.mo.replace(/^XOÁ /, '') + ' khỏi túi ' : 'Gửi ' + g.mo + ' cho ') + ds.length + ' nhân vật (' + kenhTen() + '): ' + tenNgan() + '.' +
       (xoa ? ' Gõ XOA để xác nhận.' : nhieu ? ' Gửi nhiều người: gõ GUI để xác nhận.' : '');
     uiConfirm(msg, xoa ? 'Xoá' : 'Gửi', xoa || nhieu ? 'btn-red' : 'btn-green', xoa ? 'XOA' : nhieu ? 'GUI' : '').then(function (ok) {
       if (!ok) return;
@@ -278,6 +296,7 @@
     var t = ev.target;
     var mo = t.closest && t.closest('[data-pqmo]'); if (mo) { pqMo(mo.getAttribute('data-pqmo')); return; }
     if (!t.closest || !t.closest('#pqRoot')) return;
+    var bo = t.closest('[data-pqbo]'); if (bo) { delete PQ.sel[bo.getAttribute('data-pqbo')]; veNv(); return; }
     var nv = t.closest('[data-pqnv]'); if (nv) { var g = nv.getAttribute('data-pqnv'); PQ.sel[g] = !PQ.sel[g]; veNv(); return; }
     var lo = t.closest('[data-pqloai]'); if (lo) { var cu = PQ.loai; PQ.loai = lo.getAttribute('data-pqloai'); PQ.gt = '';
       if ((cu === 'itemsao') !== (PQ.loai === 'itemsao')) PQ.item = null;   // trang bị có sao chỉ chọn trang bị -> đổi qua lại thì bỏ món đang chọn

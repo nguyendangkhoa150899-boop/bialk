@@ -247,6 +247,11 @@ function startPanel(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/tk.js') {   // 👤 19/10 giao diện tab Tài khoản (gộp tài khoản game + nhân vật + ví web theo NGƯỜI; chỉ SUPER thao tác; đọc lại mỗi lần, sửa không cần restart)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'taikhoan.panel.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/br-data.json') {   // 📊 05/10 data.json của tools/bang-roi (deploy lên /var/www/netco4/) + icon từng món, cache theo mtime
                 const f = process.env.BANGROI_DATA || '/var/www/netco4/data.json';
                 try {
@@ -1253,7 +1258,25 @@ function startPanel(ctx) {
                             for (const [k, v] of Object.entries(body || {})) if (/^[a-z_]{1,12}$/.test(k)) form[k] = String(v).slice(0, 80);
                             const ganUid = /^\d{15,20}$/.test(String(form.uid || '')) ? String(form.uid) : '';
                             delete form.uid;
+                            const tenTk = String(form.ten || '').trim().toLowerCase();
+                            // 👤 19/10: không khoá / xoá tài khoản admin (trước chỉ ẩn nút ở client)
+                            if ((form.a === 'khoa_tk' || form.a === 'xoa_tk') && tenTk === 'admin') return sendJSON(res, 400, { ok: false, error: 'Không được khoá / xoá tài khoản admin' });
                             j = await gmCall('POST', '/api/act', form);
+                            // 👤 19/10: đổi mật khẩu / xoá tài khoản game -> đồng bộ ví web đang gắn tài khoản đó (gameAcc), nếu không
+                            // lệnh /taikhoan trên Discord vẫn hiện mật khẩu cũ / tài khoản đã xoá. Không ghi mật khẩu vào nhật ký.
+                            if (j && j.ok && j.done && tenTk && (form.a === 'doi_mk' || form.a === 'xoa_tk')) {
+                                const db = ctx.getDb(), doi = [];
+                                for (const [k, v] of Object.entries(db)) {
+                                    if (k.startsWith('_') || !v || typeof v !== 'object' || String(v.gameAcc || '').toLowerCase() !== tenTk) continue;
+                                    if (form.a === 'doi_mk') v.gamePass = String(form.mk || '');
+                                    else { delete v.gameAcc; delete v.gamePass; }
+                                    doi.push(v.name || k);
+                                }
+                                if (doi.length) {
+                                    ctx.saveDbNow();
+                                    ctx.writeLog('ADMIN', form.a === 'doi_mk' ? `[GM] đổi mật khẩu tài khoản game ${tenTk} -> cập nhật mật khẩu lưu ở ví ${doi.join(', ')}` : `[GM] xoá tài khoản game ${tenTk} -> gỡ tài khoản game khỏi ví ${doi.join(', ')}`);
+                                }
+                            }
                             // 🎮 30/09: tạo tài khoản game kèm Discord ID -> gắn ví luôn (đăng nhập web bằng tài khoản game + Discord hiện lại mật khẩu)
                             if (j && j.ok && j.done && form.a === 'tao_tk' && ganUid && ctx.getDb()[ganUid]) {
                                 const u = ctx.getUserData(ganUid);
@@ -1353,6 +1376,18 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PHÁT QUÀ] ${who} ${loai} ${gt}${/^(item|itemsao|xoa)$/.test(loai) ? ' x' + sl : ''} cách nhận ${kenh} -> ${okN}/${kq.length} nhân vật OK: ${kq.filter(x => x.ok).slice(0, 30).map(x => x.ten).join(', ')}` + (loi.length ? ' | lỗi: ' + loi.slice(0, 5).map(x => x.ten + ': ' + x.msg).join('; ') : ''));
                     return sendJSON(res, 200, { ok: true, kq, okN });
                 }
+                // 👤 19/10 TAB TÀI KHOẢN: danh sách ví web để trình duyệt ghép với tài khoản game + nhân vật (/api/gm/state).
+                // Chỉ SUPER. KHÔNG trả gamePass (mật khẩu game lưu trong ví).
+                if (path === '/api/tk/data') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    const db = ctx.getDb();
+                    const wallets = Object.keys(db).filter(k => !k.startsWith('_') && db[k] && typeof db[k] === 'object').map((id) => {
+                        const u = db[id], d = u.debt || {}, loan = Number(d.loan) || 0, admin = Number(d.admin) || 0;
+                        return { id, name: u.name || '', points: Number(u.points) || 0, ingameName: u.ingameName || '', tlbbGuid: String(u.tlbbGuid || ''),
+                            gameAcc: String(u.gameAcc || '').toLowerCase(), clone: !!u.clone, debt: { loan, admin, total: loan + admin } };
+                    });
+                    return sendJSON(res, 200, { ok: true, wallets });
+                }
                 // 💥 29/09: Drop Boss - sua bang roi do cua game (ghi thang file VPS, hieu luc sau restart)
                 if (path === '/api/drop/state' || path === '/api/drop/box' || path === '/api/drop/boss' || path === '/api/drop/clone' || path === '/api/drop/log' || path === '/api/drop/rollback') {
                     let drop;
@@ -1445,6 +1480,7 @@ function startPanel(ctx) {
                     if (!q) {
                         if (body.clone === true) return sendJSON(res, 400, { ok: false, error: 'Nhập tên nhân vật rồi mới tích Clone được' });
                         u.ingameName = ''; u.tlbbGuid = ''; delete u.clone;
+                        delete u.gameAcc; delete u.gamePass;   // 👤 19/10: bỏ liên kết = bỏ luôn tài khoản game gắn ví
                         ctx.saveDbNow();
                         ctx.writeLog('ADMIN', `[PANEL TLBB] Hủy liên kết nhân vật của ${uid}`);
                         return sendJSON(res, 200, { ok: true, name: '' });
@@ -1452,12 +1488,25 @@ function startPanel(ctx) {
                     let ch = null;
                     try { ch = await ctx.tlbbFindChar(q); } catch (e) { return sendJSON(res, 500, { ok: false, error: 'Không đọc được danh sách nhân vật: ' + String(e.message).slice(0, 120) }); }
                     if (!ch) return sendJSON(res, 400, { ok: false, error: `Không có nhân vật "${q}" trong game (gõ đúng tên hoặc GUID)` });
+                    // 👤 19/10: ví gắn luôn TÀI KHOẢN GAME của nhân vật (gameAcc) - đăng nhập web bằng tài khoản game vào đúng ví này.
+                    // 1 tài khoản game chỉ 1 ví (giống tạo ví clone): ví khác đã gắn tài khoản đó / đã liên kết nhân vật cùng tài khoản -> từ chối.
+                    const acc = String(ch.account || '').toLowerCase();
+                    let guidCungAcc = new Set();
+                    if (acc && ctx.tlbbListChars) {
+                        try { guidCungAcc = new Set((await ctx.tlbbListChars()).filter((r) => String(r.account || '').toLowerCase() === acc).map((r) => String(r.guid))); }
+                        catch (e) { return sendJSON(res, 500, { ok: false, error: 'Không đọc được danh sách nhân vật: ' + String(e.message).slice(0, 120) }); }
+                    }
                     for (const [k, v] of Object.entries(ctx.getDb())) {
-                        if (k !== uid && v && typeof v === 'object' && String(v.tlbbGuid || '') === ch.guid) {
+                        if (k === uid || k.startsWith('_') || !v || typeof v !== 'object') continue;
+                        if (String(v.tlbbGuid || '') === ch.guid) {
                             return sendJSON(res, 400, { ok: false, error: `Nhân vật ${ch.name} đã liên kết với ví ${v.name || k}` });
+                        }
+                        if (acc && (String(v.gameAcc || '').toLowerCase() === acc || (v.tlbbGuid && guidCungAcc.has(String(v.tlbbGuid))))) {
+                            return sendJSON(res, 400, { ok: false, error: `Tài khoản game "${ch.account}" đã gắn với ví ${v.name || k} (nhân vật ${v.ingameName || '?'}) - 1 tài khoản game chỉ gắn 1 ví, bỏ liên kết ví kia trước` });
                         }
                     }
                     u.ingameName = ch.name; u.tlbbGuid = ch.guid;
+                    if (acc) { if (String(u.gameAcc || '').toLowerCase() !== acc) delete u.gamePass; u.gameAcc = acc; }   // đổi tài khoản -> mật khẩu lưu cũ không còn đúng
                     if (typeof body.clone === 'boolean') { if (body.clone) u.clone = true; else delete u.clone; }
                     ctx.saveDbNow();
                     ctx.writeLog('ADMIN', `[PANEL TLBB] Liên kết ${uid} ↔ nhân vật "${ch.name}" (GUID ${ch.guid}, tài khoản ${ch.account})${u.clone ? ' [CLONE - chỉ Thương Phố]' : ''}`);
@@ -1787,6 +1836,51 @@ const HTML = `<!DOCTYPE html>
   .nkL1,.nkL2{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nkL2{font-size:12px;margin-top:1px}.nkL2 .nkMuiTen{display:none}}
 .nkOn{outline:2px solid var(--green)}
 #nkNgays button,#nkMucs button{padding:6px 10px;font-size:13px}
+/* 🖥️ 19/10 (chủ server: "trên PC bị co lại như mobile, chữ dễ xuống dòng, thanh scroll đè lên text") */
+/* thanh cuộn mảnh tối, không đè chữ: khung cuộn chừa sẵn chỗ cho thanh cuộn */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:#5a5e68}
+::-webkit-scrollbar-corner{background:transparent}
+@supports not selector(::-webkit-scrollbar){*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}}
+[style*="overflow:auto"],[style*="overflow-y:auto"],#gmItems,#tbLog,#tpikBox .tpkGrid,#pqRoot .pqList,#pqRoot .pqItems{scrollbar-gutter:stable}
+/* ô ngắn (tên, số, nút, nhãn) không xuống dòng; mô tả dài vẫn tự xuống dòng */
+th,td b,td code,td button,td .mini,.badge,.qBadge,.qDot{white-space:nowrap}
+td{font-variant-numeric:tabular-nums}
+.row label[style*="inline-flex"]{white-space:nowrap}.row label[style*="inline-flex"] input[type=checkbox]{width:auto;flex:0 0 auto}
+/* ô nhập trong hàng cài đặt (tab 💰, 🛒 Pet Boss) không bị bóp tới mức cụt chữ: hẹp quá thì xuống hàng */
+#tab-user .row>div:not([style*="flex:0"]){min-width:200px}
+#petBossCard .row>input,#petBossCard .row>select{flex:1 1 auto;min-width:190px}
+/* điện thoại: bảng rộng tự cuộn ngang TRONG thẻ, không đẩy trang tràn ngang */
+@media(max-width:820px){.card table{display:block;max-width:100%;overflow-x:auto}}
+/* tab cần chỗ rộng ở màn vừa (dưới 1024px vẫn thanh tab trên cùng) */
+.wrap:has(#tab-tk:not(.hidden)),.wrap:has(#tab-pq:not(.hidden)){max-width:1400px}
+/* màn vừa (821-1023px): thanh tab trên cùng gọn hơn cho nội dung lên sớm */
+@media(min-width:821px) and (max-width:1023px){.tabs{margin-bottom:12px}.grp{margin-bottom:4px}.grp .glb{padding-top:9px}.tabs button{padding:6px 10px;font-size:13.5px}}
+/* PC từ 1024px: thanh tab thành CỘT TRÁI cố định (tự cuộn riêng), nội dung dùng hết phần còn lại */
+@media(min-width:1024px){
+  .wrap,.wrap:has(#tab-qua:not(.hidden)),.wrap:has(#tab-tk:not(.hidden)),.wrap:has(#tab-pq:not(.hidden)){max-width:1940px;display:grid;grid-template-columns:232px minmax(0,1fr);column-gap:20px;row-gap:0;align-items:start;padding:16px 20px}
+  .wrap>.tabs{grid-column:1;grid-row:1;position:sticky;top:calc(var(--hdrH,58px) + 12px);max-height:calc(100vh - var(--hdrH,58px) - 24px);overflow-y:auto;overflow-x:hidden;margin:0;padding:10px 6px 10px 8px;background:var(--card);border:1px solid var(--line);border-radius:14px;scrollbar-gutter:stable}
+  .wrap>div:not(.tabs){grid-column:2;grid-row:1;min-width:0;max-width:1680px}
+  .tabs .grp{display:block;margin:0 0 10px}
+  .tabs .grp:last-child{margin-bottom:0}
+  .tabs .grp .glb{display:block;flex:none;text-align:left;padding:2px 8px 4px;font-size:10.5px}
+  .tabs .grp .gbt{display:flex;flex-direction:column;gap:2px}
+  .tabs button{width:100%;text-align:left;padding:7px 10px;font-size:13.5px;font-weight:600;line-height:1.3;background:transparent;white-space:normal;overflow-wrap:anywhere}
+  .tabs button:hover{background:var(--card2);color:var(--txt)}
+  .tabs button.active,.tabs button.active:hover{background:var(--blue);color:#fff}
+  /* bỏ mẹo "nở thẻ ra giữa màn hình" cũ (khung giờ đã rộng) */
+  #shopCard,#dropCard{left:auto;transform:none;width:auto}
+  /* màn đủ rộng: thẻ cài đặt xếp nhiều cột kiểu báo (mỗi cột >= 740px, thẻ ngắn nối tiếp ngay dưới, không chừa lỗ) */
+  #tab-user:not(.hidden),#tab-mine:not(.hidden),#tab-tx:not(.hidden){column-width:740px;column-gap:16px}
+  #tab-user>.card,#tab-mine>.card,#tab-tx>.card{break-inside:avoid;margin:0 0 16px}
+}
+/* tab 🛠️ Server game: ô số liệu + dải "đã chuyển" gọn */
+.gmTiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
+.gmTiles .sktile .v{font-size:19px}
+.gmMoved{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:14px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13px;color:var(--mut)}
+.gmMoved button{padding:6px 12px;font-size:13px}
 </style>
 </head>
 <body>
@@ -1820,8 +1914,9 @@ const HTML = `<!DOCTYPE html>
         <button data-tab="pq" class="epOnly" style="display:none" onclick="tab('pq')">🎁 Phát quà</button>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
-        <button data-tab="user" onclick="tab('user')">👥 Người chơi &amp; Ví</button>
-        <button data-tab="tlbb" onclick="tab('tlbb')">🛒 Shop &amp; KNB<span id="wdBadge" class="hidden"></span></button>
+        <button data-tab="tk" class="epOnly" style="display:none" onclick="tab('tk')">👤 Tài khoản</button>
+        <button data-tab="user" onclick="tab('user')">💰 Kinh tế &amp; Ví chung</button>
+        <button data-tab="tlbb" onclick="tab('tlbb')">🛒 Shop · KNB · Thương Phố<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">SỰ KIỆN</span><div class="gbt">
         <button data-tab="gift" onclick="tab('gift')">🗓️ Quà ngày &amp; 🍀 Vòng quay</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button>
@@ -1829,8 +1924,8 @@ const HTML = `<!DOCTYPE html>
         <button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><button data-tab="lb" onclick="tab('lb')">📅 Lịch Boss</button>
       </div></div>
       <div class="grp"><span class="glb">SERVER GAME</span><div class="gbt">
-        <button data-tab="gm" onclick="tab('gm')">🛠️ Server &amp; Tài khoản</button>
-        <button data-tab="qua" onclick="tab('qua')">⚙️ Nhân vật · Cài đặt · Công cụ</button>
+        <button data-tab="gm" onclick="tab('gm')">🛠️ Server game</button>
+        <button data-tab="qua" onclick="tab('qua')">⚙️ Cài đặt · Công cụ</button>
         <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="br" onclick="tab('br')">📊 Bảng rơi</button>
       </div></div>
       <div class="grp"><span class="glb">MINI GAME</span><div class="gbt">
@@ -2266,69 +2361,30 @@ const HTML = `<!DOCTYPE html>
     </div>
     <div id="tab-gm" class="hidden">
       <div class="card">
-        <h3>🛠️ GM Thiên Long - Server</h3>
+        <h3>🛠️ Server game Thiên Long</h3>
         <div id="gmStatus" class="note">Đang tải...</div>
-        <div class="row" style="margin-top:10px">
+        <div class="gmTiles" id="gmTiles"></div>
+        <div class="row" style="margin-top:14px">
           <button onclick="gmLoad()">🔄 Tải lại</button>
           <button data-gm="go_ket" data-confirm="Gỡ kẹt đăng nhập cho TẤT CẢ tài khoản? (chỉ khởi động lại Login, người đang chơi không bị văng)">🩹 Gỡ kẹt đăng nhập (tất cả)</button>
           <button class="btn-red" data-gm="restart" data-confirm="RESTART server game? Người đang chơi sẽ bị ngắt khoảng 3 phút.">♻️ Restart server</button>
         </div>
         <div class="note">Gỡ kẹt = bị disconnect mà không vào lại được: chỉ khởi động lại Login, người đang chơi không bị văng. Restart: người online bị ngắt ~3 phút; đổi GM cần restart mới có hiệu lực.</div>
-      </div>
-      <div class="card">
-        <h3>🏪 Thương Phố → 🧰 Rương Ích Kỷ <span class="muted" id="tpikN"></span></h3>
-        <div class="note">Gắn <b>ID món</b> nào thì người chơi được bấm <b>Rút qua Rương Ích Kỷ</b> cho món đó trong Thương Phố (trống = không món nào). Đồ <b>🔒 cố định không bao giờ</b> được rút qua (rương tặng / Ghép Ngọc được). Lưu là có hiệu lực ngay.</div>
-        <style>
-          #tpikBox .tpkBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
-          #tpikBox .tpkBar input{background:#0f131c;border:1px solid #2c3a52;color:#e6ebf5;border-radius:8px;padding:7px 10px;font-size:13px}
-          #tpikBox .tpkBar button{padding:7px 12px;font-size:13px;border-radius:8px}
-          #tpikBox .tpkTabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 8px}
-          #tpikBox .tpkTab{background:#151b28;border:1px solid #2c3a52;color:#c9d3e6;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:700;cursor:pointer}
-          #tpikBox .tpkTab.on{background:#2a2140;border-color:#8f6ff0;color:#e2d6ff}
-          #tpikBox .tpkTab span{opacity:.65;margin-left:3px}
-          #tpikBox .tpkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;max-height:430px;overflow:auto;padding-right:4px}
-          #tpikBox .tpkIt{display:flex;align-items:center;gap:8px;background:#121825;border:1px solid #232d40;border-radius:9px;padding:5px 6px 5px 5px;min-width:0}
-          #tpikBox .tpkIt:hover{border-color:#3a4a66}
-          #tpikBox .tpkNm{flex:1;min-width:0}
-          #tpikBox .tpkNm b{display:block;font-size:12.5px;font-weight:700;color:#e6ebf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-          #tpikBox .tpkNm small{font-size:11px;color:#8a96ad}
-          #tpikBox .tpkX{flex:0 0 auto;width:24px;height:24px;padding:0;border-radius:6px;border:1px solid transparent;background:transparent;color:#8a96ad;font-size:13px;line-height:22px;cursor:pointer}
-          #tpikBox .tpkX:hover{background:#3a1d24;border-color:#7a3434;color:#ff9a9a}
-          #tpikBox .tpkWarn{color:#ffb070;font-size:11px}
-          #tpikBox .tpkEmpty{grid-column:1/-1;padding:18px;text-align:center;color:#8a96ad;border:1px dashed #2c3a52;border-radius:9px;font-size:12px}
-        </style>
-        <div id="tpikBox">
-          <div class="tpkBar">
-            <input id="tpikQ" style="flex:1 1 200px;min-width:160px" placeholder="🔎 Lọc theo tên hoặc ID" oninput="tpikVe()">
-            <input id="tpikIn" style="flex:1 1 220px;min-width:180px" placeholder="Thêm ID (nhiều ID cách dấu phẩy)">
-            <button class="btn-green" onclick="tpikThem()">➕ Thêm</button>
-            <button onclick="tpikSync()" title="Thêm mọi món đang trade được trong Ghép Ngọc (giá đồ bỏ vào > 0), giữ món đang có">🔄 Đồng bộ đồ trade Ghép Ngọc</button>
-            <button onclick="tpikLoad()">↻ Tải lại</button>
-          </div>
-          <div class="tpkTabs" id="tpikTabs"></div>
-          <div class="tpkGrid" id="tpikDs"></div>
-        </div>
-      </div>
-      <div class="card">
-        <h3>👤 Tài khoản game <span class="muted" id="gmAccN"></span></h3>
-        <div class="row">
-          <input id="gmNewAcc" class="mini-in" style="width:170px" placeholder="tên đăng nhập (a-z 0-9 _)">
-          <input id="gmNewPw" class="mini-in" style="width:170px" placeholder="mật khẩu (6-32 ký tự)">
-          <input id="gmNewUid" class="mini-in" style="width:190px" placeholder="Discord ID gắn ví (tuỳ chọn)">
-          <button class="btn-green" onclick="gmCreateAcc()">➕ Tạo tài khoản</button>
-        </div>
-        <div id="gmAccs" style="margin-top:10px;overflow-x:auto"></div>
+        <div class="gmMoved epOnly" style="display:none"><span>📦 Đã chuyển:</span>
+          <span>tài khoản game, nhân vật, cấp GM, ví web</span><button class="btn-green" onclick="tab('tk')">Mở tab 👤 Tài khoản</button>
+          <span>· 🧰 Thương Phố → Rương Ích Kỷ</span><button class="btn-grey" onclick="tab('tlbb')">Mở tab 🛒 Shop · KNB · Thương Phố</button></div>
       </div>
     </div>
+    <div id="tab-tk" class="hidden"><div id="tkRoot"></div></div><!-- 👤 19/10 tab Tài khoản: giao diện ở taikhoan.panel.js (/tk.js) -->
     <div id="tab-pq" class="hidden"><div id="pqRoot"></div></div><!-- 🎁 19/10 tab Phát quà: giao diện ở phatqua.panel.js (/pq.js) -->
     <div id="tab-qua" class="hidden"><!-- 🎁 08/10: tách khỏi 🛠️ GM Thiên Long thành tab riêng, chia 3 mục cho đỡ rối (chủ server). ID phần tử giữ nguyên: JS gm* dùng chung -->
       <div class="card">
         <div class="quaTop">
-          <h2>⚙️ Nhân vật · Cài đặt · Công cụ <span class="muted" id="gmCharN"></span></h2>
+          <h2>⚙️ Cài đặt · Công cụ</h2>
           <div class="quaNav" id="quaNav">
-            <button data-qsec="phat" onclick="quaSec('phat')">👤 Nhân vật</button>
             <button data-qsec="caidat" onclick="quaSec('caidat')">⚙️ Cài đặt server</button>
             <button data-qsec="congcu" class="epOnly" style="display:none" onclick="quaSec('congcu')">🧰 Công cụ</button>
+            <button data-qsec="phat" onclick="quaSec('phat')">🔎 Tra vật phẩm</button>
           </div>
         </div>
       </div>
@@ -2340,16 +2396,10 @@ const HTML = `<!DOCTYPE html>
               <div class="muted" style="font-size:13px;margin-bottom:8px">Gửi vật phẩm / pet / KNB / vàng / cấp... cho 1, nhiều hoặc tất cả nhân vật, chọn cách nhận: 🗺️ đổi bản đồ · 🧙 NPC Ví Web · 🧰 Rương Ích Kỷ.</div>
               <button class="btn-green" onclick="tab('pq')">Mở tab 🎁 Phát quà</button>
             </div>
-            <div class="card">
-              <div class="quaBar">
-                <h3 style="margin:0">👤 Từng nhân vật</h3>
-                <input id="gmLocQ" class="mini-in" style="width:230px" placeholder="🔎 Lọc tên / tài khoản / GUID" oninput="gmLoc()">
-                <label class="quaChk"><input id="gmLocOn" type="checkbox" onchange="gmLoc()"> chỉ online</label>
-                <label class="quaChk"><input id="gmLocCho" type="checkbox" onchange="gmLoc()"> có quà đang chờ</label>
-                <span class="muted" id="gmLocN" style="font-size:12.5px"></span>
-              </div>
-              <div id="gmChars" style="margin-top:10px;overflow-x:auto"></div>
-              <div class="note">Quà vào túi khi nhân vật <b>đăng nhập hoặc đổi bản đồ</b> (đang online: dùng truyền tống / qua cổng). Túi đầy thì phần còn lại nhận lần sau. KNB tới 10 triệu/lần (tự chia dòng), Vàng tính theo vàng. Đổi GM cần restart.</div>
+            <div class="card epOnly" style="display:none">
+              <h3>👤 Nhân vật đã chuyển sang tab 👤 Tài khoản</h3>
+              <div class="muted" style="font-size:13px;margin-bottom:8px">Danh sách nhân vật theo từng tài khoản game: cấp / tắt GM, huỷ quà đang chờ, gửi quà, liên kết ví.</div>
+              <button class="btn-green" onclick="tab('tk')">Mở tab 👤 Tài khoản</button>
             </div>
           </div>
           <div>
@@ -2470,17 +2520,6 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="note">Đăng 1 bảng vào kênh Discord với 2 nút: <b>🎮 Chuyển vào game</b> (trừ ví, KNB vào túi khi nhân vật đăng nhập / đổi bản đồ, tối đa 30.000/ngày) và <b>💬 Chuyển ra ví</b> (hướng dẫn tới NPC Ví Web trong game, không giới hạn). Sửa code xong bấm <b>Đăng lại</b>.</div>
       </div>
-      <div class="card">
-        <h3>🔗 Liên kết tên trong game</h3>
-        <div class="note">Gắn ví mini game với <b>nhân vật Thiên Long</b>: gõ <b>tên nhân vật</b> (hoặc <b>GUID</b>) rồi Lưu, bot tra database game và điền GUID. Cầu KNB chỉ chạy cho ví đã gắn. 1 nhân vật chỉ gắn 1 ví; người chơi không tự gắn được (chống rút trộm). Để trống + Lưu = hủy liên kết.</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0 10px;padding:8px;border:1px dashed #3a4a66;border-radius:8px">
-          <b>🧬 Tạo ví cho clone</b>
-          <input class="mini-in" id="lkCloneTen" placeholder="Tên nhân vật clone (hoặc GUID)" style="width:230px">
-          <button class="mini btn-green" onclick="lkTaoClone()">➕ Tạo ví clone</button>
-          <span class="muted" style="font-size:12px">Nhân vật phụ không có Discord: tạo ví 0 KNB, gắn sẵn nhân vật + tích Clone (chỉ dùng Thương Phố, không túi boss). Đăng nhập web bằng <b>tài khoản + mật khẩu game</b> của clone. Clone phải ở tài khoản game riêng.</span>
-        </div>
-        <div id="lienKetList"></div>
-      </div>
       <!-- Hàng đợi đơn: từ khi bỏ cầu nối tự động (server Linux không có UE4SS),
            MỌI giao dịch với game đều nằm ở đây chờ admin xử lý tay trong game. -->
       <div class="card hidden pwOff" id="wdPendingCard">
@@ -2536,6 +2575,40 @@ const HTML = `<!DOCTYPE html>
         <div class="row" style="margin-top:10px">
           <button class="btn-green" onclick="itemShopAddRow();itemShopDirty(true)">➕ Thêm món</button>
           <button class="btn-green" id="itemShopSaveBtn" onclick="itemShopSave()">💾 Lưu shop</button>
+        </div>
+      </div>
+      <div class="card" id="tpikCard">
+        <h3>🏪 Thương Phố → 🧰 Rương Ích Kỷ <span class="muted" id="tpikN"></span></h3>
+        <div class="note">Gắn <b>ID món</b> nào thì người chơi được bấm <b>Rút qua Rương Ích Kỷ</b> cho món đó trong Thương Phố (trống = không món nào). Đồ <b>🔒 cố định không bao giờ</b> được rút qua (rương tặng / Ghép Ngọc được). Lưu là có hiệu lực ngay.</div>
+        <style>
+          #tpikBox .tpkBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+          #tpikBox .tpkBar input{background:#0f131c;border:1px solid #2c3a52;color:#e6ebf5;border-radius:8px;padding:7px 10px;font-size:13px}
+          #tpikBox .tpkBar button{padding:7px 12px;font-size:13px;border-radius:8px}
+          #tpikBox .tpkTabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 8px}
+          #tpikBox .tpkTab{background:#151b28;border:1px solid #2c3a52;color:#c9d3e6;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:700;cursor:pointer}
+          #tpikBox .tpkTab.on{background:#2a2140;border-color:#8f6ff0;color:#e2d6ff}
+          #tpikBox .tpkTab span{opacity:.65;margin-left:3px}
+          #tpikBox .tpkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;max-height:430px;overflow:auto;padding-right:4px}
+          #tpikBox .tpkIt{display:flex;align-items:center;gap:8px;background:#121825;border:1px solid #232d40;border-radius:9px;padding:5px 6px 5px 5px;min-width:0}
+          #tpikBox .tpkIt:hover{border-color:#3a4a66}
+          #tpikBox .tpkNm{flex:1;min-width:0}
+          #tpikBox .tpkNm b{display:block;font-size:12.5px;font-weight:700;color:#e6ebf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          #tpikBox .tpkNm small{font-size:11px;color:#8a96ad}
+          #tpikBox .tpkX{flex:0 0 auto;width:24px;height:24px;padding:0;border-radius:6px;border:1px solid transparent;background:transparent;color:#8a96ad;font-size:13px;line-height:22px;cursor:pointer}
+          #tpikBox .tpkX:hover{background:#3a1d24;border-color:#7a3434;color:#ff9a9a}
+          #tpikBox .tpkWarn{color:#ffb070;font-size:11px}
+          #tpikBox .tpkEmpty{grid-column:1/-1;padding:18px;text-align:center;color:#8a96ad;border:1px dashed #2c3a52;border-radius:9px;font-size:12px}
+        </style>
+        <div id="tpikBox">
+          <div class="tpkBar">
+            <input id="tpikQ" style="flex:1 1 200px;min-width:160px" placeholder="🔎 Lọc theo tên hoặc ID" oninput="tpikVe()">
+            <input id="tpikIn" style="flex:1 1 220px;min-width:180px" placeholder="Thêm ID (nhiều ID cách dấu phẩy)">
+            <button class="btn-green" onclick="tpikThem()">➕ Thêm</button>
+            <button onclick="tpikSync()" title="Thêm mọi món đang trade được trong Ghép Ngọc (giá đồ bỏ vào > 0), giữ món đang có">🔄 Đồng bộ đồ trade Ghép Ngọc</button>
+            <button onclick="tpikLoad()">↻ Tải lại</button>
+          </div>
+          <div class="tpkTabs" id="tpikTabs"></div>
+          <div class="tpkGrid" id="tpikDs"></div>
         </div>
       </div>
       <div class="card" id="petBossCard">
@@ -3063,7 +3136,8 @@ const HTML = `<!DOCTYPE html>
         <div class="note">Bỏ tick = ĐÓNG ngay, không cần Lưu: người chơi không vào ván/đặt cược/quay MỚI (web hiện ⛔ ĐÓNG), ván đang chơi vẫn xong bình thường, không ai mất tiền. Tick lại là mở. Big Small: dùng ▶️ Tạo bàn / ⏹ Tắt bàn ở tab 🎲. Hàng dưới: 2 chiều cầu KNB ↔ game trên web (đóng chiều nào thì nút chiều đó trên web thành ⛔, chống hack trong game rồi chuyển ra).</div>
       </div>
       <div class="card">
-        <h2>👥 Ví điểm người chơi</h2>
+        <h2>💰 Kinh tế &amp; Ví chung</h2>
+        <div class="note epOnly" style="display:none;margin:0 0 10px">Cộng / trừ / ghi nợ / xoá <b>từng ví</b>, liên kết nhân vật: tab <a href="#" onclick="tab('tk');return false" style="color:#8ab4ff">👤 Tài khoản</a>. Ở đây là việc chung cho cả server.</div>
         <div class="row">
           <div style="flex:1"><label>🎁 Phát KNB cho TẤT CẢ (bot tag role + thông báo)</label><input id="addAllAmount" type="number" placeholder="vd: 500"></div>
           <div style="flex:2"><label>💬 Lời nhắn (trống = câu mặc định)</label><input id="addAllMsg" placeholder="vd: 🎉 Quà 2/9! · Ăn mừng VN vô địch cúp!"></div>
@@ -3108,21 +3182,13 @@ const HTML = `<!DOCTYPE html>
         <div class="note">🚕 Người chơi <b>cháy ví</b> (còn ≤ "ví còn tối đa") và hôm nay đã <b>thua từ mức trên trở lên</b> thì thấy nút <b>🚕 Xu đi taxi về</b> cạnh số dư, bấm là nhận. Nhận xong phải chờ đủ số giờ đặt ở đây mới nhận lại được (mặc định 24h = mỗi ngày một lần).<br>
           <b>Tiền thua đếm theo ví thật</b>: tổng mọi đồng ra vào ví trong ngày, trừ đi nạp/rút/chuyển/admin cộng/mua shop/vay/hoàn, nên đúng với mọi trò, kể cả trò thêm sau này. Sổ về 0 lúc <b>00:00 giờ VN</b>.</div>
         <div class="note">Áp NGAY cho lượt nhận kế tiếp (cả Discord lẫn web), không cần restart. <b>Đủ chuỗi</b>: điểm danh đủ ngần này ngày LIÊN TIẾP là được ghi 1 gói thưởng chuỗi chờ nhận trên web. Số hiện trong mô tả lệnh /diemdanh, /nghien chỉ cập nhật sau restart bot (không ảnh hưởng số tiền thật).</div>
-        <input id="search" placeholder="🔍 Tìm theo tên hoặc ID..." oninput="renderPlayers()" style="margin-top:12px">
-        <div style="overflow-x:auto">
-          <table id="playerTable">
-            <thead><tr><th>Tên</th><th>ID</th><th>Điểm</th><th>📒 Nợ</th><th>Thao tác</th></tr></thead>
-            <tbody id="playerBody"></tbody>
-          </table>
-        </div>
-        <div class="card epOnly" style="display:none">
-          <h2>🔌 Bật / tắt chức năng người chơi <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
-          <div class="note">Tắt mục nào thì mục đó <b>biến mất khỏi web</b> của người chơi <b>và tab tương ứng trong header admin ẩn luôn</b> và <b>mọi thao tác của mục đó bị server từ chối</b> - sửa trình duyệt cũng không lách được. Ván đang chơi dở vẫn rút tiền ra được bình thường. Không đụng tới 🪪 Cá nhân, 📒 Nợ, 🎁 Quà.</div>
-          <div id="featBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
-        </div>
-        <div class="note">Cột <b>📒 Nợ</b>: còn nợ là người chơi KHÔNG mua được đồ ở shop item, KHÔNG nhận quà admin tặng, KHÔNG tặng đồ trong rương, KHÔNG ghép ngọc / mở vòng quay / nhận pet boss (rút KNB và đồ vào game vẫn được; 14/09 bỏ hẳn nhãn nợ xấu). Nút <b>Ghi nợ</b> dùng ô số bên cạnh - cộng vào khoản nợ ADMIN (không trần, số âm = giảm; từ 04/09 khoản này CŨNG đẻ lãi ngày như nợ vay); <b>Xóa nợ</b> xóa sạch cả nợ vay lẫn nợ ghi.</div>
       </div>
 
+      <div class="card epOnly" style="display:none">
+        <h2>🔌 Bật / tắt chức năng người chơi <span class="muted" style="font-size:13px;font-weight:400">(chỉ cổng SUPER)</span></h2>
+        <div class="note">Tắt mục nào thì mục đó <b>biến mất khỏi web</b> của người chơi <b>và tab tương ứng trong header admin ẩn luôn</b> và <b>mọi thao tác của mục đó bị server từ chối</b> - sửa trình duyệt cũng không lách được. Ván đang chơi dở vẫn rút tiền ra được bình thường. Không đụng tới 🪪 Cá nhân, 📒 Nợ, 🎁 Quà.</div>
+        <div id="featBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+      </div>
       <div class="card">
         <h3>📒 Bảng VAY NỢ trong Discord</h3>
         <label>Channel ID (kênh đăng bảng - trạng thái: <span id="vayLive">?</span>)</label>
@@ -3298,9 +3364,13 @@ async function login(){
 }
 function logout(){TOKEN='';localStorage.removeItem('panel_token');document.getElementById('login').classList.remove('hidden');document.getElementById('app').classList.add('hidden');}
 
+// 🖥️ 19/10: chiều cao thanh trạng thái trên cùng -> cột tab trái (PC) dính ngay dưới nó
+function hdrH(){var h=document.querySelector('#app header');if(h&&h.offsetHeight)document.documentElement.style.setProperty('--hdrH',h.offsetHeight+'px');}
+window.addEventListener('resize',hdrH);
 function showApp(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  hdrH();
   nkBatDau();
   if(CONG_MOD){modApp();return;}   // 📒 04/10: cổng mod chỉ có Nhật ký
   initSelects();
@@ -3322,8 +3392,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','lb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua','pq'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='lb')lbLoad();if(t==='pq'&&typeof pqLoad==='function')pqLoad();if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','lb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua','pq','tk'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='lb')lbLoad();if(t==='pq'&&typeof pqLoad==='function')pqLoad();if(t==='tk'&&typeof tkLoad==='function')tkLoad();if(t==='tlbb')tpikLoad();if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -3439,16 +3509,22 @@ function gmKind(g){
 function gmRender(){
   var st=GM.st;if(!st)return;
   var procs=Object.keys(st.procs).map(function(p){return '<span style="color:'+(st.procs[p]?'#35c46a':'#e0566b')+'">'+p+'</span>';}).join(' · ');
-  document.getElementById('gmStatus').innerHTML=procs+' &nbsp;|&nbsp; Online: <b>'+st.online+'</b> &nbsp;|&nbsp; RAM: '+st.ram[0]+'/'+st.ram[1]+' MB'+(st.dbError?'<br><b style="color:#e0566b">Không đọc được database: '+esc(st.dbError)+'</b>':'');
-  document.getElementById('gmAccN').textContent='('+st.accounts.length+')';
-  document.getElementById('gmCharN').textContent='('+st.chars.length+')';
-  document.getElementById('gmItemN').textContent=st.itemCount.toLocaleString('vi-VN')+' vật phẩm trong danh mục';
+  // 19/10: bảng tài khoản / nhân vật chuyển sang tab 👤 Tài khoản (taikhoan.panel.js) - mọi chỗ ghi phần tử cũ đều có chốt, thiếu thì bỏ qua
+  var gEl=function(id){return document.getElementById(id);};
+  if(gEl('gmStatus'))gEl('gmStatus').innerHTML=procs+' &nbsp;|&nbsp; Online: <b>'+st.online+'</b> &nbsp;|&nbsp; RAM: '+st.ram[0]+'/'+st.ram[1]+' MB'+(st.dbError?'<br><b style="color:#e0566b">Không đọc được database: '+esc(st.dbError)+'</b>':'');
+  if(gEl('gmTiles')){var nPr=Object.keys(st.procs||{}),nChay=nPr.filter(function(p){return st.procs[p];}).length,nCho=(st.chars||[]).filter(function(c){return c.pending&&c.pending.length;}).length,
+    tile=function(t,v,c){return '<div class="sktile"><div class="t">'+t+'</div><div class="v"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div></div>';};
+    gEl('gmTiles').innerHTML=tile('ĐANG ONLINE',Number(st.online||0).toLocaleString('vi-VN'),'#35c46a')+tile('TÀI KHOẢN',(st.accounts||[]).length.toLocaleString('vi-VN'))+tile('NHÂN VẬT',(st.chars||[]).length.toLocaleString('vi-VN'))+
+      tile('NHÂN VẬT CÓ QUÀ CHỜ',nCho.toLocaleString('vi-VN'),nCho?'#f0b132':'')+tile('RAM (MB)',st.ram?esc(st.ram[0]+' / '+st.ram[1]):'?')+tile('TIẾN TRÌNH CHẠY',nChay+' / '+nPr.length,nChay<nPr.length?'#f23f43':'#35c46a');}
+  if(gEl('gmAccN'))gEl('gmAccN').textContent='('+st.accounts.length+')';
+  if(gEl('gmCharN'))gEl('gmCharN').textContent='('+st.chars.length+')';
+  if(gEl('gmItemN'))gEl('gmItemN').textContent=st.itemCount.toLocaleString('vi-VN')+' vật phẩm trong danh mục';
   // 03/10: ô đã sửa mà chưa lưu (data-sua) KHÔNG bị lần tải lại 15 giây ghi đè - trước đây gõ ô này, bấm sang ô khác là ô trước bị trả về số cũ
   GM_O.forEach(function(o){var el=document.getElementById(o[0]);if(el&&el.dataset.sua!=='1'&&document.activeElement!==el&&st[o[1]]!==undefined)el.value=st[o[1]];});
   var ed=document.getElementById('gmExpDef');if(ed&&st.expDefault!==undefined)ed.textContent=st.expDefault;
   gmVoyTong();gmClTong();
   gmSuaNote();
-  document.getElementById('gmAccs').innerHTML='<table><tr><th>ID</th><th>Tài khoản</th><th>Online</th><th></th></tr>'+
+  if(gEl('gmAccs'))gEl('gmAccs').innerHTML='<table><tr><th>ID</th><th>Tài khoản</th><th>Online</th><th></th></tr>'+
     st.accounts.map(function(a){
       return '<tr><td>'+esc(a.id)+'</td><td><b>'+esc(a.name)+'</b>'+(a.khoa?' <b style="color:#e0566b" title="Bị khoá: không đăng nhập được">🔒 khoá</b>':'')+'</td><td>'+(a.online?'<b style="color:#35c46a">online</b>':'<span class="muted">-</span>')+'</td>'+
         '<td><span class="row" style="gap:6px;flex-wrap:nowrap"><input class="mini-in" style="width:120px" id="gmPw_'+esc(a.name)+'" placeholder="mật khẩu mới">'+
@@ -3459,7 +3535,7 @@ function gmRender(){
     }).join('')+'</table>';
   // 08/10: bảng nhân vật gọn - online lên đầu, GUID + tài khoản dưới tên, lọc tại chỗ (gmLoc) không gọi lại server
   var dsNv=st.chars.slice().sort(function(x,y){return (y.online?1:0)-(x.online?1:0)||String(x.name).localeCompare(String(y.name),'vi');});
-  document.getElementById('gmChars').innerHTML='<table class="quaTb"><tr><th>Nhân vật</th><th>Cấp</th><th>Trạng thái</th><th>GM</th><th>Quà đang chờ</th><th>Quà</th></tr>'+
+  if(gEl('gmChars'))gEl('gmChars').innerHTML='<table class="quaTb"><tr><th>Nhân vật</th><th>Cấp</th><th>Trạng thái</th><th>GM</th><th>Quà đang chờ</th><th>Quà</th></tr>'+
     dsNv.map(function(c){
       var pend=c.pending.length?'<span class="qChoN">'+c.pending.length+' món</span><br>'+c.pending.map(esc).join('<br>')+'<br><button class="mini" data-gm="huy_qua" data-guid="'+c.guid+'" data-confirm="Huỷ toàn bộ quà đang chờ của '+esc(c.name)+'?">Huỷ</button>':'<span class="muted">-</span>';
       var gm=c.gm?'<b style="color:#f1c40f">GM</b> <button class="mini btn-red" data-gm="gm_tat" data-guid="'+c.guid+'">Tắt</button>':'<button class="mini" data-gm="gm_bat" data-guid="'+c.guid+'">Cấp GM</button>';
@@ -3517,15 +3593,16 @@ function gmLoc(){
 }
 // 08/10: 3 mục của tab 🎁 Phát quà & GM, nhớ mục đang mở
 function quaSec(k){
-  if(!k){try{k=localStorage.getItem('qua_sec')||'phat';}catch(e){k='phat';}}
-  if(k==='congcu'&&typeof CONG_MOD!=='undefined'&&CONG_MOD)k='phat';
+  // 19/10: mặc định ⚙️ Cài đặt server (mục 🔎 Tra vật phẩm chỉ còn tìm ID + lối sang tab mới, không mở sẵn nữa kể cả đã nhớ)
+  if(!k){try{k=localStorage.getItem('qua_sec')||'caidat';}catch(e){k='caidat';}if(k==='phat')k='caidat';}
+  if(k==='congcu'&&typeof CONG_MOD!=='undefined'&&CONG_MOD)k='caidat';
   ['phat','caidat','congcu'].forEach(function(x){var el=document.getElementById('qsec-'+x);if(el)el.classList.toggle('hidden',x!==k);});
   document.querySelectorAll('#quaNav button').forEach(function(b){b.classList.toggle('on',b.dataset.qsec===k);});
   try{localStorage.setItem('qua_sec',k);}catch(e){}
 }
 function gmLoad(){
   if(typeof TOKEN==='undefined'||!TOKEN)return;
-  tpikLoad();
+  // 19/10: khung 🧰 Thương Phố → Rương Ích Kỷ chuyển sang tab 🛒 (tab() gọi tpikLoad khi mở tab đó)
   api('/api/gm/state',{}).then(function(j){GM.st=j.state;gmRender();}).catch(function(){});
   if(!GM.timer)GM.timer=setInterval(function(){
     var tb=['tab-gm','tab-qua'].map(function(x){return document.getElementById(x);}).filter(function(x){return x&&!x.classList.contains('hidden');})[0];if(!tb)return;
@@ -3646,7 +3723,8 @@ async function gmDo(form,confirmMsg){
   if(confirmMsg&&!await uiConfirm(confirmMsg))return;
   api('/api/gm/act',form).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);gmLoad();}).catch(function(){});
 }
-function gmCreateAcc(){
+function gmCreateAcc(){   // 19/10: form cũ đã gỡ (tạo tài khoản ở tab 👤 Tài khoản) - giữ hàm, thiếu ô thì bỏ qua
+  if(!document.getElementById('gmNewAcc')||!document.getElementById('gmNewPw'))return tab('tk');
   var n=document.getElementById('gmNewAcc').value.trim(),p=document.getElementById('gmNewPw').value.trim();
   if(!n||!p)return toast('Nhập tên đăng nhập và mật khẩu');
   var uid=(document.getElementById('gmNewUid')||{}).value||'';uid=uid.trim();
@@ -3901,7 +3979,7 @@ function renderLienKet(){
 function lkTaoClone(){
   const i=document.getElementById('lkCloneTen');const v=(i&&i.value||'').trim();
   if(!v){toast('Nhập tên nhân vật clone');return;}
-  api('/api/tlbb/taoclone',{name:v}).then(j=>{toast('🧬 Đã tạo ví clone cho '+j.name+' (tài khoản game '+j.account+') - đăng nhập web bằng tài khoản + mật khẩu game đó');i.value='';refresh();}).catch(()=>{});
+  api('/api/tlbb/taoclone',{name:v}).then(j=>{toast('🧬 Đã tạo ví clone cho '+j.name+' (tài khoản game '+j.account+') - đăng nhập web bằng tài khoản + mật khẩu game đó');if(i)i.value='';refresh();}).catch(()=>{});
 }
 function lkSetName(id){
   const v=document.getElementById('pn_'+id).value;
@@ -5367,6 +5445,8 @@ function mineForce(){
 
 function renderPlayers(){
   if(!STATE)return;
+  // 19/10: bảng ví từng người chuyển sang tab 👤 Tài khoản - thiếu ô tìm / bảng thì bỏ qua (refresh() vẫn chạy tiếp phần dưới)
+  if(!document.getElementById('search')||!document.getElementById('playerBody'))return;
   // Đừng vẽ lại bảng khi admin đang gõ vào ô nhập số (tránh mất focus + reset số)
   const af=document.activeElement;
   if(af&&af.id&&af.id.indexOf('amt_')===0)return;
@@ -5940,7 +6020,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
-<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script><script src="/tc.js"></script><script src="/tt.js"></script><script src="/pq.js"></script>
+<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script><script src="/tc.js"></script><script src="/tt.js"></script><script src="/pq.js"></script><script src="/tk.js"></script>
 </body>
 </html>`;
 
