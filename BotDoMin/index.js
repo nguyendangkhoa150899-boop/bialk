@@ -1349,11 +1349,11 @@ function claimNghien(userId, announce = false, creditTo) {   // 👪 20/10 famil
     u.lastNghien = Date.now();
     writeLog('ADMIN', `[NGHIỆN] ${u.name || userId} nhận ${dailyCfg().nghien.toLocaleString()} KNB | Số dư: ${(u.points || 0).toLocaleString()}`);
     // Đăng công khai vào kênh nghiện - lỗi kênh không được chặn việc nhận tiền
-    if (announce) {
+    if (announce) try {   // 👪 20/10: đăng kênh lỗi đồng bộ (bot giả / client chưa sẵn) cũng không được làm hỏng lần nhận tiền
         client.channels.fetch(NGHIEN_ANNOUNCE_CHANNEL_ID)
             .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${dailyCfg().nghien.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện - gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
             .catch(() => { });
-    }
+    } catch { }
     return { ok: true, amount: dailyCfg().nghien, debtCut: inc.cut, debtLeft: inc.left, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: getUserData(vi).points || 0 };
 }
 
