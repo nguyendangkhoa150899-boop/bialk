@@ -28,6 +28,7 @@ const PET3D = require('./pet3d');   // 🐾 08/10: mô hình 3D trân thú trade
 
 function startWebPlay(ctx) {
     const PORT = ctx.port || 3002;
+    const FAM = require('./family')(ctx);   // 👪 20/10 family: nhiều tài khoản game chung 1 ví (family.js)
     // 17/09: admin chỉnh giây NẶN ở panel -> phải đọc lại mỗi lần, không chốt lúc khởi động.
     // index.js nay truyền HÀM; vẫn nhận số để bản cũ không vỡ.
     const LOCK_S = () => (typeof ctx.lockSeconds === 'function' ? ctx.lockSeconds() : (ctx.lockSeconds || 15));
@@ -126,7 +127,21 @@ function startWebPlay(ctx) {
         // mỗi tháng. Chỉ ghi lại tối đa 1 giờ/lần, trang tự làm mới 2 giây/lần, ghi mỗi
         // nhịp là bẩn database vô ích.
         if (Date.now() - cuoi > 3600 * 1000) s.lanCuoi = Date.now();
-        return s.u;
+        return FAM.goc(s.u);   // 👪 20/10: s.u = ví của tài khoản đăng nhập; mọi API dùng ví GỐC family
+    };
+    // 👪 20/10: ví của chính tài khoản đang đăng nhập (đổi mật khẩu / thiết bị / family) - khác ví gốc khi ở trong family
+    const viPhien = (req) => { const s = sessions()[layToken(req)]; return s ? s.u : null; };
+    // tài khoản game -> ví (giống đăng nhập: gameAcc trước, rồi nhân vật thuộc tài khoản)
+    const timViAcc = async (gacc) => {
+        const db = ctx.getDb();
+        const laVi = (k) => /^\d{15,20}$/.test(k) && db[k] && typeof db[k] === 'object';
+        let uid = Object.keys(db).find((k) => laVi(k) && String(db[k].gameAcc || '').toLowerCase() === gacc) || '';
+        if (!uid && ctx.tlbbGuidsOfAcc) {
+            let guids = [];
+            try { guids = await ctx.tlbbGuidsOfAcc(gacc); } catch { guids = []; }
+            uid = Object.keys(ctx.getDb()).find((k) => laVi(k) && ctx.getDb()[k].tlbbGuid && guids.includes(String(ctx.getDb()[k].tlbbGuid))) || '';
+        }
+        return uid;
     };
 
     const server = http.createServer(async (req, res) => {
@@ -177,6 +192,12 @@ function startWebPlay(ctx) {
                 return res.end(s);
             }
             // 🧰 07/10: giao diện Rương Ích Kỷ kiểu Thương Phố (ghi đè ikDraw) - đọc lại mỗi lần, sửa không cần restart
+            // 👪 20/10: giao diện Family (nút 🔗 Liên kết cạnh 🔑 Mật khẩu) - đọc lại mỗi lần, sửa không cần restart
+            if (req.method === 'GET' && path === '/fam.js') {
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'fam.client.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/ik.js') {
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'ichky.client.js'));
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -281,13 +302,14 @@ function startWebPlay(ctx) {
                 // đăng nhập là chặn đứng cả bot. Phiên nằm trong dbCache nên vòng lưu tự động
                 // (10 giây/lần) vẫn giữ được qua restart.
                 ctx.writeLog('ADMIN', `[WEB CƯỢC] ${rec.name || userId} đăng nhập web`);
-                return sendJSON(res, 200, { ok: true, token, name: rec.name || '', balance: rec.points || 0, gacc: rec.gameAcc || '' });
+                return sendJSON(res, 200, { ok: true, token, name: rec.name || '', balance: ctx.getUserData(FAM.goc(userId)).points || 0, gacc: rec.gameAcc || '' });   // 👪 số dư ví gốc
             }
 
             // Các API dưới cần đăng nhập
             if (path.startsWith('/api/')) {
                 const userId = getSessionUser(req);
                 if (!userId) return sendJSON(res, 401, { ok: false, error: 'unauth' });
+                const viToi = viPhien(req) || userId;   // 👪 20/10: ví của tài khoản đang đăng nhập (userId = ví gốc family)
 
                 // 🔌 15/09: mục admin TẮT thì chặn thẳng ở đây - client sửa gì cũng vô ích.
                 // Chỉ chặn đường HÀNH ĐỘNG (đặt cược/mua/quay/rút), KHÔNG chặn đường xem trạng
@@ -791,11 +813,11 @@ function startWebPlay(ctx) {
 
                 // 🎮 30/09: tài khoản game gắn với ví này + đổi mật khẩu game ngay trên web (đổi luôn cho game)
                 if (req.method === 'POST' && path === '/api/gacc') {
-                    const u = ctx.getUserData(userId);
+                    const u = ctx.getUserData(viToi);   // 👪 tài khoản đang đăng nhập
                     return sendJSON(res, 200, { ok: true, acc: u.gameAcc || '', ingameName: u.ingameName || '' });
                 }
                 if (req.method === 'POST' && path === '/api/doimk') {
-                    const u = ctx.getUserData(userId);
+                    const u = ctx.getUserData(viToi);   // 👪 đổi đúng tài khoản đang đăng nhập, không phải tài khoản trưởng family
                     if (!u.gameAcc) return sendJSON(res, 400, { ok: false, error: 'Ví này chưa gắn tài khoản game - đăng nhập web bằng tài khoản game một lần (hoặc nhắn admin gắn)' });
                     if (!ctx.tlbbKiemMk || !ctx.tlbbDoiMk) return sendJSON(res, 503, { ok: false, error: 'Bot chưa nối panel GM' });
                     const body = await readBody(req);
@@ -810,6 +832,28 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, { ok: true });
                 }
 
+                // 👪 20/10 FAMILY (family.js): xem / liên kết (tài khoản + mật khẩu acc kia) / rời / đuổi (chỉ trưởng)
+                if (req.method === 'GET' && path === '/api/fam/state') return sendJSON(res, 200, FAM.state(viToi));
+                if (req.method === 'POST' && path === '/api/fam/lienket') {
+                    const ip = req.socket.remoteAddress || '';
+                    if (tooManyFails(ip)) return sendJSON(res, 429, { ok: false, error: 'Sai quá nhiều lần - đợi 10 phút' });
+                    const body = await readBody(req);
+                    await khoaLamMoi();
+                    const r = await FAM.lienKet(viToi, body.acc, body.pass, timViAcc, (a) => KHOA.acc.has(a));
+                    if (r.sai) recordFail(ip);
+                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, gop: r.gop, fam: FAM.state(viToi) });
+                }
+                if (req.method === 'POST' && path === '/api/fam/roi') {
+                    const r = FAM.roi(viToi);
+                    return r.error ? sendJSON(res, 400, { ok: false, error: r.error }) : sendJSON(res, 200, { ok: true });
+                }
+                if (req.method === 'POST' && path === '/api/fam/duoi') {
+                    const body = await readBody(req);
+                    const r = FAM.duoi(viToi, body.vi);
+                    return r.error ? sendJSON(res, 400, { ok: false, error: r.error }) : sendJSON(res, 200, { ok: true, fam: FAM.state(viToi) });
+                }
+
                 // 🔐 23/09: ĐĂNG XUẤT. Vì đăng nhập không còn tự đá máy cũ, phải có đường
                 // thu hồi bằng tay, mất điện thoại thì bấm "máy khác" là xong, khỏi đổi PIN.
                 if (req.method === 'POST' && path === '/api/logout') {
@@ -822,13 +866,13 @@ function startWebPlay(ctx) {
                     const t = layToken(req);
                     const ss = sessions();
                     let so = 0;
-                    for (const [k, s] of Object.entries(ss)) if (s.u === userId && k !== t) { delete ss[k]; so++; }
+                    for (const [k, s] of Object.entries(ss)) if (s.u === viToi && k !== t) { delete ss[k]; so++; }
                     if (so) ctx.writeLog('ADMIN', `[WEB] ${ctx.getUserData(userId).name || userId} đăng xuất ${so} thiết bị khác`);
                     return sendJSON(res, 200, { ok: true, so });
                 }
                 if (req.method === 'GET' && path === '/api/thietbi') {
                     const ss = sessions();
-                    const ds = Object.values(ss).filter(s => s.u === userId);
+                    const ds = Object.values(ss).filter(s => s.u === viToi);
                     return sendJSON(res, 200, {
                         ok: true, so: ds.length, max: MAX_THIET_BI,
                         may: ds.map(s => ({ vao: s.ts || 0, dung: s.lanCuoi || s.ts || 0 })).sort((a, b) => b.dung - a.dung),
@@ -1295,7 +1339,7 @@ const PAGE = [
     // trang đã ngốn ~150px dọc.
     '#topbar{padding:8px 12px;margin-bottom:8px;flex-wrap:wrap;gap:8px}',
     // 🧬 07/10: ví clone chỉ thấy thanh số dư (tên + Thoát) và trang 🏪 Thương Phố
-    'body.cloneMode #navGrp,body.cloneMode #nav,body.cloneMode #chatCard,body.cloneMode #histCard,body.cloneMode #debtChip,body.cloneMode #taxiChip,body.cloneMode #mkBtn,body.cloneMode #lkWarn,body.cloneMode #winpop,body.cloneMode #jpPick,body.cloneMode #luckyPick,body.cloneMode #lolaPop,body.cloneMode #pbModal{display:none!important}',
+    'body.cloneMode #navGrp,body.cloneMode #nav,body.cloneMode #chatCard,body.cloneMode #histCard,body.cloneMode #debtChip,body.cloneMode #taxiChip,body.cloneMode #mkBtn,body.cloneMode #famBtn,body.cloneMode #lkWarn,body.cloneMode #winpop,body.cloneMode #jpPick,body.cloneMode #luckyPick,body.cloneMode #lolaPop,body.cloneMode #pbModal{display:none!important}',
     '#topbar .big{font-size:20px}',
     '#topbar .muted{font-size:11px}',
     '#topbar button{padding:8px 10px}',
@@ -2064,6 +2108,7 @@ const PAGE = [
     '<div id="taxiChip" class="hidden" onclick="taxiNhan()" title="Cháy ví mà hôm nay thua nhiều - bấm nhận tiền về"><div class="lb">🚕 XU ĐI TAXI VỀ</div><div class="vl" id="taxiChipVal">0</div></div>',
     '<div class="tbR">',
     '<button class="tbBtn" id="mkBtn" title="Đổi mật khẩu game + web" onclick="mkOpen()">🔑 <span>Mật khẩu</span></button>',
+    '<button class="tbBtn" id="famBtn" title="Liên kết nhiều tài khoản game dùng chung ví (family)" onclick="famOpen()">🔗 <span>Liên kết</span></button>',
     '<button class="tbBtn tbOut" onclick="logout()">⎋ <span>Thoát</span></button></div></div>',
 
     // 🔑 07/10: popup đổi mật khẩu (trước là thẻ 🎮 Tài khoản game cuối trang Cá nhân). 1 mật khẩu dùng chung game + web.
@@ -5139,7 +5184,7 @@ const PAGE = [
     'document.addEventListener("dblclick",function(e){e.preventDefault()},{passive:false});',
     'if(TOKEN){show("")}else{nhoDoVao()}',
     // 30/09: ô PIN đã bỏ - Enter ở ô mật khẩu game đã gắn inline (onkeydown) trên input#gpass
-    '</script><script src="/gn.js"></script><script src="/tb.js"></script><script src="/tp.js"></script><script src="/vg.js"></script><script src="/sh.js"></script><script src="/ik.js"></script></body></html>',
+    '</script><script src="/gn.js"></script><script src="/tb.js"></script><script src="/tp.js"></script><script src="/vg.js"></script><script src="/sh.js"></script><script src="/ik.js"></script><script src="/fam.js"></script></body></html>',
 ].join('\n');
 
 module.exports = { startWebPlay };

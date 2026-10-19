@@ -6136,6 +6136,7 @@ client.once('ready', async (c) => {
                 dung: (uid, id, qty, name) => ichKyDung(uid, id, qty, name),   // 🎫 05/10 phiếu KNB -> KNB web
             },
             lienKetMsg: () => LIENKET_MSG,
+            fam: { ichKyOf: (u) => ichKyOf(u), noCua: (uid) => debtTotal(getUserData(uid)) },   // 👪 20/10 family.js (webplay)
             // 🎮 30/09: đăng nhập web bằng tài khoản game + đổi mật khẩu (qua panel GM, repo tlbbnetco4 panel/panel.py)
             tlbbKiemMk: (a, p) => tlbb.kiemMk(a, p),
             tlbbKhoa: () => tlbb.khoaState(),   // 🔒 16/10 tài khoản game bị khoá -> chặn web
