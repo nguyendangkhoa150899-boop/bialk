@@ -1333,7 +1333,8 @@ function claimStreak(userId, creditTo) {   // 👪 20/10: creditTo như claimDai
 // announce: CHỈ bật khi lụm từ WEB. Gõ /nghien trong Discord thì lời đáp đã hiện
 // ngay tại kênh rồi, đăng thêm là ra 2 tin trùng nội dung. Mặc định TẮT để chỗ gọi
 // mới sau này có quên cũng không tự dưng spam kênh.
-function claimNghien(userId, announce = false) {
+function claimNghien(userId, announce = false, creditTo) {   // 👪 20/10 family: creditTo = ví nhận tiền (ví gốc), hẹn giờ theo userId
+    const vi = creditTo || userId;
     // 29/09 chủ server tắt cứng; 04/10 thành công tắc ở panel (tab 👥, dailyCfg().nghienOn)
     if (!dailyCfg().nghienOn) return { error: '💉 Nghiện đang tắt trên server NetCo4' };
     const chuaLK = lienKetGuard(userId); if (chuaLK) return { error: chuaLK };
@@ -1343,8 +1344,8 @@ function claimNghien(userId, announce = false) {
         const msLeft = NGHIEN_COOLDOWN_MS - passed;
         return { error: `Nghiện vừa thôi! Còn ${Math.ceil(msLeft / 60000)} phút nữa mới lụm tiếp được.`, msLeft };
     }
-    const inc = debtCutIncome(userId, dailyCfg().nghien);
-    updatePoints(userId, inc.keep);
+    const inc = debtCutIncome(vi, dailyCfg().nghien);
+    updatePoints(vi, inc.keep);
     u.lastNghien = Date.now();
     writeLog('ADMIN', `[NGHIỆN] ${u.name || userId} nhận ${dailyCfg().nghien.toLocaleString()} KNB | Số dư: ${(u.points || 0).toLocaleString()}`);
     // Đăng công khai vào kênh nghiện - lỗi kênh không được chặn việc nhận tiền
@@ -1353,7 +1354,7 @@ function claimNghien(userId, announce = false) {
             .then(ch => ch.send({ content: `💉 **${u.name || userId}** vừa lụm **${dailyCfg().nghien.toLocaleString()}** ${DOGCOIN_EMOJI} nghiện - gõ \`/nghien\` hoặc vào web lụm theo!`, allowedMentions: { parse: [] } }))
             .catch(() => { });
     }
-    return { ok: true, amount: dailyCfg().nghien, debtCut: inc.cut, debtLeft: inc.left, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: u.points || 0 };
+    return { ok: true, amount: dailyCfg().nghien, debtCut: inc.cut, debtLeft: inc.left, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: getUserData(vi).points || 0 };
 }
 
 // ===== PHÁT KNB TOÀN SERVER (gọi từ dashboard) =====
@@ -6207,7 +6208,7 @@ client.once('ready', async (c) => {
             },
             daily: {
                 state: dailyState, claim: claimDaily, streak: claimStreak,
-                nghien: (uid) => claimNghien(uid, true),   // lụm từ WEB thì đăng công khai
+                nghien: (uid, to, im) => claimNghien(uid, !im, to),   // lụm từ WEB thì đăng công khai (👪 family: chỉ đăng 1 lần)
             },
             // 🎡 vòng quay may mắn nhóm (thay blackjack)
             wheel: { state: wheelState, ready: wheelReady, unready: wheelUnready, spin: wheelSpin, spin1: wheelSpin1 },

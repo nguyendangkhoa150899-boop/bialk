@@ -637,15 +637,21 @@ function startWebPlay(ctx) {
                 const famDState = () => {
                     const st = ctx.daily.state(viToi);
                     if (famDS.length < 2) return st;
-                    let chua = 0, goi = 0;
+                    let chua = 0, goi = 0, sanNg = 0, hen = Infinity;
+                    const now = Date.now();
                     const tv = famDS.map((id) => {
                         const s = ctx.daily.state(id), u = ctx.getUserData(id);
                         if (!s.checkedToday) chua++;
                         goi += s.streakPacks || 0;
-                        return { acc: u.gameAcc || '', ten: u.ingameName || '', da: !!s.checkedToday, goi: s.streakPacks || 0 };
+                        const ng = (s.nghien && s.nghien.nextAt) || 0;
+                        if (ng <= now) sanNg++;
+                        hen = Math.min(hen, ng);
+                        return { acc: u.gameAcc || '', ten: u.ingameName || '', da: !!s.checkedToday, goi: s.streakPacks || 0, nghien: ng };
                     });
-                    return { ...st, checkedToday: chua === 0, amount: st.amount * Math.max(1, chua), streakPacks: goi,
-                        balance: ctx.getUserData(userId).points || 0, fam: { tong: famDS.length, chua, tv } };
+                    // Nghiện: nút sáng khi có ÍT NHẤT 1 tài khoản tới giờ; số hiện = mỗi tài khoản × số tài khoản đang lụm được
+                    const nghien = { ...st.nghien, nextAt: hen === Infinity ? 0 : hen, amount: st.nghien.amount * Math.max(1, sanNg || famDS.length), now };
+                    return { ...st, checkedToday: chua === 0, amount: st.amount * Math.max(1, chua), streakPacks: goi, nghien,
+                        balance: ctx.getUserData(userId).points || 0, fam: { tong: famDS.length, chua, sanNg, tv } };
                 };
                 if (ctx.daily && path === '/api/daily/state') {
                     return sendJSON(res, 200, { ok: true, ...famDState() });
@@ -676,9 +682,22 @@ function startWebPlay(ctx) {
                     return sendJSON(res, 200, { ...r, left: st.streakPacks, state: st, balance: ctx.getUserData(userId).points || 0 });
                 }
                 if (ctx.daily && req.method === 'POST' && path === '/api/daily/nghien') {
-                    const r = ctx.daily.nghien(userId);
-                    if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
-                    return sendJSON(res, 200, r);
+                    if (famDS.length < 2) {
+                        const r = ctx.daily.nghien(userId);
+                        if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
+                        return sendJSON(res, 200, r);
+                    }
+                    // 👪 family: lụm hộ mọi tài khoản đã hết hẹn 1 tiếng, tiền vào ví gốc; đăng kênh 1 lần
+                    let tong = 0, cut = 0, so = 0, loi = null, conNo = 0;
+                    for (const id of famDS) {
+                        const r = ctx.daily.nghien(id, userId, so > 0);
+                        if (r.error) { if (!loi) loi = r.error; continue; }
+                        tong += r.amount || 0; cut += r.debtCut || 0; conNo = r.debtLeft || 0; so++;
+                    }
+                    if (!so) return sendJSON(res, 400, { ok: false, error: loi || 'Chưa tới giờ lụm' });
+                    const st = famDState();
+                    return sendJSON(res, 200, { ok: true, amount: tong, so, debtCut: cut, debtLeft: conNo, nextAt: st.nghien.nextAt, now: Date.now(),
+                        balance: ctx.getUserData(userId).points || 0 });
                 }
 
                 // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
