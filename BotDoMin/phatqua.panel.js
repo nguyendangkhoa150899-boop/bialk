@@ -319,4 +319,6 @@
     else if (a === 'chonon') { PQ.sel = {}; (PQ.d ? PQ.d.chars : []).forEach(function (c) { if (c.on) PQ.sel[c.guid] = true; }); veNv(); }
     else if (a === 'gui') gui();
   });
+  // F5 đúng tab này: tab() đã chạy trước khi file này tải xong (lúc đó pqLoad chưa có) -> tự tải
+  if ($('tab-pq') && !$('tab-pq').classList.contains('hidden')) window.pqLoad();
 })();
