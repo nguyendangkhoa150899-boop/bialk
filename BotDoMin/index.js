@@ -6320,7 +6320,7 @@ client.once('ready', async (c) => {
             // 🍀 02/10: vòng quay may mắn (mở/làm mới bằng KNB, quay bằng lượt từ túi boss, quà vào rương web)
             vongQuay: { state: (uid) => VQ.webState(uid), mo: (uid) => VQ.mo(uid), quay: (uid) => VQ.quay(uid), nhan: (uid, k) => VQ.nhan(uid, k), xoa: (uid, k) => VQ.xoa(uid, k) },
             ghepNgoc: { state: (uid) => GN.state(uid), quay: (uid, b, who) => GN.quay(uid, b, who) },   // 💎 05/10
-            thuongPho: { state: (uid) => TP.state(uid), rut: (uid, ds, who) => TP.rut(uid, ds, who), rutIk: (uid, ds, who) => TP.rutIk(uid, ds, who) },   // 🏪 06/10 · 🧰 08/10 rút qua Rương Ích Kỷ
+            thuongPho: { state: (uid, xem) => TP.state(uid, xem), rut: (uid, ds, who, xem) => TP.rut(uid, ds, who, xem), rutIk: (uid, ds, who, xem) => TP.rutIk(uid, ds, who, xem) },   // 👪 20/10 xem = tài khoản family đang chọn |   // 🏪 06/10 · 🧰 08/10 rút qua Rương Ích Kỷ
             gift: {   // 🎁 15/09: quà admin tặng - danh sách riêng, không đi qua shop
                 state: (uid) => ({ items: giftWebList(getUserData(uid)) }),
                 claim: (uid, gid) => giftClaim(uid, gid, getUserData(uid).name || uid),

@@ -172,9 +172,15 @@
     var s = TP.s;
     if (!s) { c.innerHTML = '<div class="muted">Đang tải Thương Phố...</div>'; return; }
     var h = '<div class="tpHead"><h2 style="margin:0">🏪 Thương Phố</h2>' +
-      (s.fam && s.fam.tv && s.fam.tv.length > 1 ? '<div class="tpWho">👤 Kho của tài khoản <select onchange="tpXem(this.value)" style="width:auto;display:inline-block;margin:0 0 0 4px;padding:4px 8px">' +
-        s.fam.tv.map(function (x) { return '<option value="' + e(x.vi) + '"' + (x.vi === s.fam.xem ? ' selected' : '') + '>' + e(x.ten || x.acc) + ' (' + e(x.acc) + ')</option>'; }).join('') + '</select></div>'
-        : (s.nhanVat ? '<div class="tpWho">Kho của nhân vật <b>' + e(s.nhanVat) + '</b></div>' : '')) + '</div>' +
+      (s.nhanVat ? '<div class="tpWho">Kho của nhân vật <b>' + e(s.nhanVat) + '</b></div>' : '') + '</div>' +
+      // 👪 20/10 family: Ô TÀI KHOẢN bấm chọn (không dropdown) - mỗi tài khoản 1 kho riêng, rút về đúng tài khoản đó
+      (s.fam && s.fam.tv && s.fam.tv.length > 1 ? '<div class="tpAccs" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px"><div style="width:100%;font-size:13px;color:var(--muted)">👤 Kho của tài khoản</div>' +
+        s.fam.tv.map(function (x, i) {
+          var on = x.vi === s.fam.xem;
+          return '<button onclick="tpXem(\'' + e(x.vi) + '\')" style="width:auto;margin:0;padding:8px 14px;border-radius:10px;text-align:left;line-height:1.25;cursor:pointer;' +
+            (on ? 'background:#10263a;border:2px solid #4da3ff;color:#e9f3ff' : 'background:#161c2b;border:1px solid #2b3550;color:#c9d2e6') + '">' +
+            '<b style="display:block;font-size:14px">' + (i === 0 ? '👑 ' : '') + e(x.ten || x.acc) + '</b><span style="font-size:11px;opacity:.75">' + e(x.acc) + '</span></button>';
+        }).join('') + '</div>' : '') +
       '<div class="tpNote">Ra NPC <b>Ví Web</b> trong game, bấm <b>Chuyển Đạo cụ</b> hoặc <b>Chuyển Nguyên liệu</b> để chuyển đồ ra đây. ' +
       'Đồ chỉ rút về <b>đúng nhân vật này</b>, không tặng / bán được. Đồ <span style="color:#ff5a5a;font-weight:800">🔒 cố định</span> rút về vẫn cố định. ' +
       'Bấm 1 ô bên trái là chuyển chồng đó sang túi rút (bấm tiếp để lấy thêm), sửa số lượng dưới ô, bấm <b>Xác nhận</b> để chuyển một lần.</div>';
