@@ -81,7 +81,7 @@
   };
   window.famDuoi = function (vi) {
     var x = (F && F.tv || []).filter(function (t) { return t.vi === vi; })[0]; if (!x) return;
-    if (!xacNhan('duoi' + vi, 'Bấm Đuổi lần nữa trong 6 giây - ' + (x.acc || x.ten) + ' sẽ MẤT HẾT KNB + Rương Ích Kỷ (Thương Phố giữ nguyên)')) return;
+    if (!xacNhan('duoi' + vi, 'Bấm Đuổi lần nữa trong 6 giây - ' + (x.acc || x.ten) + ' về TRẮNG (coi như đã nhận hết hôm nay; túi boss chưa nhận của acc đó bị thu hồi - nhận túi trước khi đuổi), khoá tới 00:00')) return;
     api('/api/fam/duoi', { vi: vi }).then(function (j) { toast('✅ Đã đuổi ' + (x.acc || x.ten)); F = j.fam; DS = null; if (typeof window.ikcFamReset === 'function') window.ikcFamReset(); ve(); xongDoi(); })
       .catch(function (e) { toast('❌ ' + ((e && e.message) || 'Không đuổi được')); });
   };
