@@ -235,7 +235,8 @@ module.exports = function (ctx) {
             if (key.startsWith('_') || !v || typeof v !== 'object' || String(v.tlbbGuid || '') !== String(guid)) continue;
             if (v.clone) continue;   // 19/10: ví clone không mở được Rương Ích Kỷ (web chỉ cho Thương Phố) -> đồ hoàn không đưa vào rương clone
             if (ra) return null;
-            ra = v;
+            // 👪 20/10 family: ví thành viên (famOf) -> rương CHUNG ở ví gốc
+            ra = v.famOf && db[v.famOf] && typeof db[v.famOf] === 'object' ? db[v.famOf] : v;
         }
         return ra;
     }

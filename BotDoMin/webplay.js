@@ -561,7 +561,7 @@ function startWebPlay(ctx) {
                 }
                 if (ctx.dogbridge && req.method === 'POST' && path === '/api/dogbridge/rut') {
                     const body = await readBody(req);
-                    const r = await ctx.dogbridge.rut(userId, body.amount, body.kind === 'vang' ? 'vang' : 'knb');
+                    const r = await ctx.dogbridge.rut(userId, body.amount, body.kind === 'vang' ? 'vang' : 'knb', String(body.vi || ''));   // 👪 vi = nhân vật nhận (index.js kiểm thuộc family)
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }
@@ -736,7 +736,7 @@ function startWebPlay(ctx) {
                 if (ctx.ichKy && req.method === 'POST' && path === '/api/ichky/claim') {
                     const body = await readBody(req);
                     const me2 = ctx.getUserData(userId);
-                    const r = await ctx.ichKy.claim(userId, String(body.itemId || ''), body.qty, me2.name || userId);
+                    const r = await ctx.ichKy.claim(userId, String(body.itemId || ''), body.qty, me2.name || userId, String(body.vi || ''));   // 👪 vi = nhân vật nhận
                     if (r.error) return sendJSON(res, 400, { ok: false, error: r.error });
                     return sendJSON(res, 200, { ok: true, ...r });
                 }

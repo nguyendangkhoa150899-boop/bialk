@@ -55,7 +55,7 @@
     if (F.coFam && !F.laTruong) h += '<button class="fmRoi" onclick="famRoi()">🚪 Rời family (mất hết)</button>';
     b.innerHTML = h;
   }
-  function tai() { return api('/api/fam/state').then(function (j) { if (j && j.ok) { F = j; ve(); } else { $f('famBody').textContent = (j && j.error) || 'Không tải được'; } }); }
+  function tai() { return api('/api/fam/state').then(function (j) { F = j; ve(); }).catch(function (x) { $f('famBody').textContent = (x && x.message) || 'Không tải được'; }); }
   function xongDoi() { if (typeof refresh === 'function') try { refresh(); } catch (x) { } }
   // Bấm 2 lần trong 6 giây để xác nhận (không dùng confirm())
   function xacNhan(k, msg) { if (XN && XN.k === k && Date.now() - XN.t < 6000) { XN = null; return true; } XN = { k: k, t: Date.now() }; toast(msg); return false; }
@@ -68,24 +68,71 @@
     if (!/^[a-z0-9_]{3,20}$/.test(acc)) { er.textContent = 'Nhập tài khoản game (3-20 ký tự: chữ thường, số, _)'; return; }
     if (!pass) { er.textContent = 'Nhập mật khẩu của tài khoản đó'; return; }
     er.textContent = ''; BUSY = true; $f('famGo').disabled = true; $f('famGo').textContent = '⏳ Đang kiểm...';
+    // api() của trang NÉM lỗi khi server trả ok:false -> câu lỗi nằm ở .catch
     api('/api/fam/lienket', { acc: acc, pass: pass }).then(function (j) {
       BUSY = false;
-      if (!j || !j.ok) { ve(); $f('famAcc').value = acc; $f('famErr').textContent = '❌ ' + ((j && j.error) || 'Không liên kết được'); return; }
       var g = j.gop || {};
-      toast('✅ Đã liên kết ' + acc + (g.knb || g.mon ? ' - gộp ' + Number(g.knb || 0).toLocaleString('vi-VN') + ' KNB + ' + Number(g.mon || 0).toLocaleString('vi-VN') + ' món rương' : ''));
-      F = j.fam; ve(); xongDoi();
-    }).catch(function () { BUSY = false; ve(); });
+      toast('✅ Đã liên kết ' + acc + (g.knb || g.mon || g.luot ? ' - gộp ' + Number(g.knb || 0).toLocaleString('vi-VN') + ' KNB + ' + Number(g.mon || 0).toLocaleString('vi-VN') + ' món rương' + (g.luot ? ' + ' + g.luot + ' lượt quay' : '') : ''));
+      F = j.fam; DS = null; ve(); xongDoi();
+    }).catch(function (x) { BUSY = false; ve(); $f('famAcc').value = acc; $f('famErr').textContent = '❌ ' + ((x && x.message) || 'Không liên kết được'); });
   };
   window.famDuoi = function (vi) {
     var x = (F && F.tv || []).filter(function (t) { return t.vi === vi; })[0]; if (!x) return;
     if (!xacNhan('duoi' + vi, 'Bấm Đuổi lần nữa trong 6 giây - ' + (x.acc || x.ten) + ' sẽ MẤT HẾT KNB, Rương Ích Kỷ, Thương Phố')) return;
-    api('/api/fam/duoi', { vi: vi }).then(function (j) { if (!j || !j.ok) return toast('❌ ' + ((j && j.error) || 'Không đuổi được')); toast('✅ Đã đuổi ' + (x.acc || x.ten)); F = j.fam; ve(); xongDoi(); });
+    api('/api/fam/duoi', { vi: vi }).then(function (j) { toast('✅ Đã đuổi ' + (x.acc || x.ten)); F = j.fam; DS = null; ve(); xongDoi(); })
+      .catch(function (e) { toast('❌ ' + ((e && e.message) || 'Không đuổi được')); });
   };
+
+  // ---- 👪 CHỌN NHÂN VẬT NHẬN khi rút vào game (Rương Ích Kỷ /api/ichky/claim, KNB / vàng /api/dogbridge/rut) ----
+  // Bọc api() của trang: family >= 2 tài khoản thì hỏi nhân vật trước khi gửi; chọn rồi giữ 15 giây (rút nhiều món liên tiếp không hỏi lại).
+  var DS = null, DS_T = 0, CHON = { vi: '', t: 0 };
+  function dsNv() {
+    if (DS && Date.now() - DS_T < 30000) return Promise.resolve(DS);
+    return apiGoc('/api/fam/state').then(function (j) { DS = (j.tv || []).filter(function (x) { return x.guid; }); DS_T = Date.now(); return DS; })
+      .catch(function () { return []; });
+  }
+  var pk = document.createElement('div');
+  pk.id = 'famPick'; pk.className = 'hidden';
+  pk.innerHTML = '<div id="famPickBox"><h2>🎮 Rút cho nhân vật nào?</h2><div class="fmNote">Đồ / KNB trừ từ ví chung, gửi vào nhân vật bạn chọn.</div><div id="famPickDs" class="fmList"></div>' +
+    '<button class="fmRoi" style="background:#232a3a;color:#ccd;border-color:#33405a" onclick="famPickHuy()">Huỷ - chưa rút</button></div>';
+  document.body.appendChild(pk);
+  css.textContent += '#famPick{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:130;padding:16px}#famPick.hidden{display:none}' +
+    '#famPickBox{background:var(--card);border:1px solid #33405a;border-radius:16px;padding:20px;width:400px;max-width:100%;box-shadow:0 12px 48px rgba(0,0,0,.6)}#famPickBox h2{margin:0;font-size:18px}' +
+    '#famPickBox .fmNote{margin-top:6px;font-size:12px;color:var(--muted)}#famPickBox .fmList{margin-top:12px;display:flex;flex-direction:column;gap:6px}' +
+    '#famPickBox .fmPk{display:flex;justify-content:space-between;align-items:center;width:100%;margin:0;padding:11px 12px;border:1px solid #2b3550;border-radius:10px;background:#161c2b;color:#e9eefc;font-size:14px;text-align:left}' +
+    '#famPickBox .fmPk span{font-size:12px;color:var(--muted)}#famPickBox .fmPk:hover{border-color:#4da3ff}' +
+    '#famPickBox .fmRoi{display:block;width:100%;margin-top:12px;padding:10px;font-size:13px;border:1px solid;border-radius:10px}';
+  var PK = null;
+  function chonNv(ds) {
+    return new Promise(function (ok, loi) {
+      PK = { ok: ok, loi: loi };
+      $f('famPickDs').innerHTML = ds.map(function (x) {
+        return '<button class="fmPk" onclick="famPickChon(\'' + x.vi + '\')"><b>' + e(x.ten || x.acc) + (x.toi ? ' (bạn)' : '') + '</b><span>' + e(x.acc) + (x.truong ? ' · 👑' : '') + '</span></button>';
+      }).join('');
+      pk.classList.remove('hidden');
+    });
+  }
+  window.famPickChon = function (vi) { pk.classList.add('hidden'); var p = PK; PK = null; if (p) p.ok(vi); };
+  window.famPickHuy = function () { pk.classList.add('hidden'); var p = PK; PK = null; if (p) p.loi(new Error('Đã huỷ - chưa rút')); };
+  var apiGoc = window.api;
+  if (typeof apiGoc === 'function' && !apiGoc._fam) {
+    window.api = function (p, body) {
+      if (body && body.vi === undefined && (p === '/api/ichky/claim' || p === '/api/dogbridge/rut')) {
+        return dsNv().then(function (ds) {
+          if (ds.length < 2) return apiGoc(p, body);
+          if (CHON.vi && Date.now() - CHON.t < 15000) { CHON.t = Date.now(); return apiGoc(p, Object.assign({}, body, { vi: CHON.vi })); }
+          return chonNv(ds).then(function (vi) { CHON = { vi: vi, t: Date.now() }; return apiGoc(p, Object.assign({}, body, { vi: vi })); });
+        });
+      }
+      return apiGoc(p, body);
+    };
+    window.api._fam = 1;
+  }
   // Điểm danh dùng chung: server trả DST.fam {tong, chua, tv} -> ghi rõ trên nút đang nhận cho mấy tài khoản
   if (typeof window.dRender === 'function' && !window.dRender._fam) {
-    var goc = window.dRender;
+    var dRenderGoc = window.dRender;
     window.dRender = function () {
-      goc.apply(this, arguments);
+      dRenderGoc.apply(this, arguments);
       try {
         if (typeof DST === 'undefined' || !DST || !DST.fam) return;
         var b = document.getElementById('dClaim'), f = DST.fam;
@@ -98,6 +145,7 @@
   }
   window.famRoi = function () {
     if (!xacNhan('roi', 'Bấm Rời lần nữa trong 6 giây - tài khoản này sẽ MẤT HẾT KNB, Rương Ích Kỷ, Thương Phố')) return;
-    api('/api/fam/roi', {}).then(function (j) { if (!j || !j.ok) return toast('❌ ' + ((j && j.error) || 'Không rời được')); toast('✅ Đã rời family'); tai(); xongDoi(); });
+    api('/api/fam/roi', {}).then(function () { toast('✅ Đã rời family'); DS = null; tai(); xongDoi(); })
+      .catch(function (e) { toast('❌ ' + ((e && e.message) || 'Không rời được')); });
   };
 })();

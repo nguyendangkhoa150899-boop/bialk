@@ -422,11 +422,13 @@ const TRANSFER_ANNOUNCE_CHANNEL = '1538752789499347037';
 const transferLastAt = new Map(); // userId -> lần chuyển gần nhất (ms)
 
 function webTransfer(fromId, toId, amount) {
+    fromId = gocVi(fromId);   // 👪 20/10 family: chuyển từ / tới ví GỐC
     const chuaLK = lienKetGuard(fromId); if (chuaLK) return { error: chuaLK };   // 🔗 18/09
     toId = String(toId || '').trim();
     amount = Math.floor(Number(amount));
     if (!/^\d{15,20}$/.test(toId)) return { error: 'ID người nhận không hợp lệ' };
-    if (toId === fromId) return { error: 'Không thể tự chuyển cho mình!' };
+    toId = gocVi(toId);
+    if (toId === fromId) return { error: 'Không thể tự chuyển cho mình (cùng family là dùng chung ví rồi)!' };
     if (!Number.isInteger(amount) || amount < 1) return { error: 'Số KNB không hợp lệ' };
     if (!dbCache[toId] || typeof dbCache[toId] !== 'object') return { error: 'Người này chưa có ví (chưa từng chơi)' };
     const last = transferLastAt.get(fromId) || 0;
@@ -464,8 +466,9 @@ function webTransfer(fromId, toId, amount) {
 // số tiền, trừ tổng = tiền × số người). Vẫn 10s/lần dùng chung đồng hồ với chuyển đơn;
 // gộp 1 thông báo Discord + 1 dòng chat sòng cho đỡ rác kênh.
 function webTransferMulti(fromId, toIds, amount) {
+    fromId = gocVi(fromId);   // 👪 20/10 family: chuyển từ / tới ví GỐC (gộp trùng family)
     const chuaLK = lienKetGuard(fromId); if (chuaLK) return { error: chuaLK };   // 🔗 18/09
-    const ids = [...new Set((Array.isArray(toIds) ? toIds : []).map(x => String(x || '').trim()))];
+    const ids = [...new Set((Array.isArray(toIds) ? toIds : []).map(x => String(x || '').trim()).map(x => (/^\d{15,20}$/.test(x) ? gocVi(x) : x)))];
     amount = Math.floor(Number(amount));
     if (!ids.length) return { error: 'Chọn ít nhất 1 người nhận' };
     if (ids.length > 20) return { error: 'Tối đa 20 người/lần' };
@@ -514,6 +517,8 @@ function listTransferTargets(excludeId) {
         if (k.startsWith('_') || !/^\d{15,20}$/.test(k)) continue;
         if (!v || typeof v !== 'object') continue;
         if (excludeId && k === excludeId) continue;
+        if (v.famOf && dbCache[v.famOf]) continue;   // 👪 20/10: thành viên family -> chỉ hiện ví gốc
+        if (excludeId && gocVi(excludeId) === k) continue;
         out.push({ id: k, name: NAME_OVERRIDE[k] || v.name || '' });
     }
     return out;
@@ -608,7 +613,7 @@ const TLBB_NPC_HINT = 'NPC "Ví Web" ở Lạc Dương (203,323) hoặc Đại L
 
 // 29/09: kind = 'knb' (mặc định, qua NPC Ví Web .in/.done) hoặc 'vang' = VÀNG KHÔNG KHOÁ 1 KNB = dogVangRate() vàng (16/10, trước 1:1)
 // (qua hàng đợi quà panel GM -> quatang.lua AddMoney, giống lệnh !!addmoney). 2 loại CHUNG hạn ngày.
-async function webRutGame(userId, amount, kind) {
+async function webRutGame(userId, amount, kind, viNhan) {   // 👪 20/10: viNhan = ví thành viên family nhận (chọn nhân vật)
     const vang = kind === 'vang';
     if (!dogBridgeCfg().rut) return { error: '⛔ Chuyển KNB vào game đang ĐÓNG - admin tạm khoá chiều này' };
     amount = Math.floor(Number(amount) || 0);
@@ -619,22 +624,25 @@ async function webRutGame(userId, amount, kind) {
     if (vang && vangOut < 1) return { error: `Tỉ lệ 1 KNB = ${rate} vàng: đổi ít nhất ${Math.ceil(1 / rate)} KNB` };
     if (vang && vangOut > DOG_VANG_MOI_LAN) return { error: `Mỗi lần nhận tối đa ${DOG_VANG_MOI_LAN.toLocaleString()} vàng = ${Math.floor(DOG_VANG_MOI_LAN / rate).toLocaleString()} KNB (tỉ lệ 1 KNB = ${rate} vàng)` };
     const u = getUserData(userId);
+    // 👪 20/10 family: trừ ví GỐC (userId), gửi cho nhân vật được chọn; hạn ngày tính theo NHÂN VẬT nhận (family = nhân lên theo số tài khoản)
+    const vt = viNhan && famTv(userId).includes(String(viNhan)) ? String(viNhan) : userId;
+    const ut = getUserData(vt);
     const dk = vang ? 'vang' : 'rut';   // 🪙 vàng có hạn riêng
-    const dayErr = dogBridgeDayCheck(u, dk, amount);   // 📅 hạn ngày
+    const dayErr = dogBridgeDayCheck(ut, dk, amount);   // 📅 hạn ngày
     if (dayErr) return { error: dayErr };
     debtAccrue(userId);
     if ((u.points || 0) < amount) return { error: `Không đủ KNB (bạn có ${(u.points || 0).toLocaleString()})` };
-    const gameName = (u.ingameName || '').trim();
-    if (!gameName || !u.tlbbGuid) return { error: 'Chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã' };
+    const gameName = (ut.ingameName || '').trim();
+    if (!gameName || !ut.tlbbGuid) return { error: 'Chưa liên kết nhân vật trong game - nhắn admin liên kết trước đã' };
     // Kiểm + trừ + xếp hàng liền nhau, không có await ở giữa => không chen được lệnh khác
     updatePoints(userId, -amount);
-    dogBridgeToday(u)[dk] = (dogBridgeToday(u)[dk] || 0) + amount;
+    dogBridgeToday(ut)[dk] = (dogBridgeToday(ut)[dk] || 0) + amount;
     let r;
     if (vang) {
         let j = null, err = null;
-        try { j = await tlbb.gmCall('POST', '/api/act', { a: 'qua', guid: String(u.tlbbGuid), loai: 'vang', gt: String(vangOut) }); } catch (e) { err = e; }
+        try { j = await tlbb.gmCall('POST', '/api/act', { a: 'qua', guid: String(ut.tlbbGuid), loai: 'vang', gt: String(vangOut) }); } catch (e) { err = e; }
         if (j && j.ok && j.done) {
-            logDog('to-game', userId, u.name || userId, -amount, `đổi ${amount} KNB -> ${vangOut} vàng không khoá (1 KNB = ${rate} vàng) vào game (${gameName} GUID ${u.tlbbGuid})`);
+            logDog('to-game', userId, u.name || userId, -amount, `đổi ${amount} KNB -> ${vangOut} vàng không khoá (1 KNB = ${rate} vàng) vào game (${gameName} GUID ${ut.tlbbGuid})`);
             saveDbNow();
             writeLog('ADMIN', `[RÚT WEB VÀNG] ${u.name || userId} đổi ${amount} KNB -> ${vangOut} vàng (x${rate}) vào game "${gameName}"`);
             return { ok: true, message: `✅ Đã gửi ${vangOut.toLocaleString()} vàng (không khoá) cho ${gameName}. Vào game hoặc đổi bản đồ để nhận.`, balance: getUserData(userId).points || 0 };
@@ -643,25 +651,25 @@ async function webRutGame(userId, amount, kind) {
         // hết giờ chờ = panel GM CÓ THỂ đã ghi hàng đợi -> không hoàn kẻo nhận đôi, báo admin kiểm
         if (err && /không trả lời/.test(msg)) {
             saveDbNow();
-            writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} KNB (${vangOut} vàng) -> "${gameName}" | ${msg} - KIỂM hàng đợi quà GUID ${u.tlbbGuid}, chưa có thì hoàn tay`);
+            writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} KNB (${vangOut} vàng) -> "${gameName}" | ${msg} - KIỂM hàng đợi quà GUID ${ut.tlbbGuid}, chưa có thì hoàn tay`);
             return { error: '⏳ Chưa xác nhận được với game - ví đã trừ, admin sẽ kiểm (không nhận được sẽ hoàn). Đừng bấm lại kẻo trùng.' };
         }
         updatePoints(userId, amount);
-        dogBridgeToday(u).vang = Math.max(0, (dogBridgeToday(u).vang || 0) - amount);
+        dogBridgeToday(ut).vang = Math.max(0, (dogBridgeToday(ut).vang || 0) - amount);
         saveDbNow();
         writeLog('ADMIN', `[RÚT WEB VÀNG LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${msg} - đã hoàn`);
         return { error: `↩️ Chưa gửi được (${msg}) - đã hoàn ${amount.toLocaleString()} KNB` };
     }
     try {
-        r = tlbb.sendKnb(u.tlbbGuid, amount);
+        r = tlbb.sendKnb(ut.tlbbGuid, amount);
     } catch (e) {
         updatePoints(userId, amount);
-        dogBridgeToday(u).rut = Math.max(0, dogBridgeToday(u).rut - amount);
+        dogBridgeToday(ut).rut = Math.max(0, dogBridgeToday(ut).rut - amount);
         saveDbNow();
         writeLog('ADMIN', `[RÚT WEB LỖI] ${u.name || userId} ${amount} -> "${gameName}" | ${e.message} - đã hoàn`);
         return { error: `↩️ Chưa gửi được (${e.message}) - đã hoàn ${amount.toLocaleString()} KNB` };
     }
-    logDog('to-game', userId, u.name || userId, -amount, `chuyển vào game (web, ${gameName} GUID ${u.tlbbGuid}, mã ${r.txid})`);
+    logDog('to-game', userId, u.name || userId, -amount, `chuyển vào game (web, ${gameName} GUID ${ut.tlbbGuid}, mã ${r.txid})`);
     saveDbNow();
     writeLog('ADMIN', `[RÚT WEB] ${u.name || userId} chuyển ${amount} KNB vào game "${gameName}" (${r.txid})`);
     return { ok: true, message: `✅ Đã gửi ${amount.toLocaleString()} KNB cho ${gameName}. Vào game hoặc đổi bản đồ để nhận.`, balance: getUserData(userId).points || 0 };
@@ -676,6 +684,18 @@ function tlbbUserByGuid(guid) {
     }
     return null;
 }
+// 👪 20/10 FAMILY (family.js / docs/FAMILY.md): ví thành viên mang famOf = ví gốc. Mọi chỗ CỘNG tiền / đồ theo ví
+// (nạp từ game, Discord, admin phát) phải đi vào ví gốc - ví thành viên bị ẩn khi ở trong family.
+function gocVi(id) {
+    const u = id && dbCache[id];
+    return u && typeof u === 'object' && u.famOf && dbCache[u.famOf] && typeof dbCache[u.famOf] === 'object' ? String(u.famOf) : id;
+}
+// [gốc, thành viên...] của family chứa ví id (không trong family -> [id])
+function famTv(id) {
+    const g = gocVi(id), ds = [g];
+    for (const [k, v] of Object.entries(dbCache)) if (k !== g && !k.startsWith('_') && v && typeof v === 'object' && String(v.famOf || '') === g) ds.push(k);
+    return ds;
+}
 const _tlbbWarned = new Set();
 function tlbbPollReceipts() {
     let list;
@@ -685,7 +705,7 @@ function tlbbPollReceipts() {
     const seen = dbCache._tlbbSeen;
     for (const rc of list) {
         if (seen[rc.file]) { try { tlbb.finishReceipt(rc.file); } catch { /* thử lại lần sau */ } continue; }
-        const uid = tlbbUserByGuid(rc.guid);
+        const uid = gocVi(tlbbUserByGuid(rc.guid));   // 👪 nhân vật thuộc family -> ví gốc
         if (!uid) {
             if (!_tlbbWarned.has(rc.file)) {
                 _tlbbWarned.add(rc.file);
@@ -741,7 +761,7 @@ function tlbbPollLvReceipts() {
     const seen = dbCache._tlbbLvSeen;
     for (const rc of list) {
         if (seen[rc.file]) { try { tlbb.finishLvReceipt(rc.file); } catch { /* thử lại lần sau */ } continue; }
-        const uid = tlbbUserByGuid(rc.guid);
+        const uid = gocVi(tlbbUserByGuid(rc.guid));   // 👪 nhân vật thuộc family -> ví gốc
         const moTa = rc.items.map(x => `${x.id} x${x.n}`).join(', ');
         if (!uid) {
             if (!_tlbbLvWarned.has(rc.file)) {
@@ -1357,6 +1377,33 @@ function claimNghien(userId, announce = false, creditTo) {   // 👪 20/10 famil
     return { ok: true, amount: dailyCfg().nghien, debtCut: inc.cut, debtLeft: inc.left, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: getUserData(vi).points || 0 };
 }
 
+// 👪 20/10 family cho lệnh DISCORD (web làm trong webplay.js): làm hộ mọi tài khoản trong family, tiền vào ví gốc.
+function claimDailyFam(userId) {
+    const ds = famTv(userId), g = ds[0];
+    if (ds.length < 2) return claimDaily(userId);
+    let tong = 0, cut = 0, so = 0, chuoi = false, loi = null, conNo = 0;
+    for (const id of ds) {
+        const r = claimDaily(id, g);
+        if (r.error) { if (!loi) loi = r.error; continue; }
+        tong += r.amount || 0; cut += r.debtCut || 0; conNo = r.debtLeft || 0; chuoi = chuoi || !!r.streakEarned; so++;
+    }
+    if (!so) return { error: loi || 'Cả family hôm nay điểm danh rồi' };
+    const st = dailyState(userId);
+    return { ok: true, amount: tong, so, streakEarned: chuoi, debtCut: cut, debtLeft: conNo, state: { ...st, streakPacks: ds.reduce((a, id) => a + (dailyState(id).streakPacks || 0), 0) }, balance: getUserData(g).points || 0 };
+}
+function claimNghienFam(userId) {
+    const ds = famTv(userId), g = ds[0];
+    if (ds.length < 2) return claimNghien(userId);
+    let tong = 0, cut = 0, so = 0, loi = null, conNo = 0;
+    for (const id of ds) {
+        const r = claimNghien(id, false, g);
+        if (r.error) { if (!loi) loi = r.error; continue; }
+        tong += r.amount || 0; cut += r.debtCut || 0; conNo = r.debtLeft || 0; so++;
+    }
+    if (!so) return { error: loi || 'Chưa tới giờ lụm' };
+    return { ok: true, amount: tong, so, debtCut: cut, debtLeft: conNo, balance: getUserData(g).points || 0 };
+}
+
 // ===== PHÁT KNB TOÀN SERVER (gọi từ dashboard) =====
 // Cộng `amount` cho MỌI ví đang tồn tại rồi đăng thông báo tag role vào kênh thông báo.
 // Chỉ cộng ví đã có (ai từng chơi); người mới vào sau vẫn nhận STARTING_KNB như thường.
@@ -1365,7 +1412,7 @@ async function addAllPlayersAndAnnounce(amount, onlyIds = null, msg = '') {
     // onlyIds: panel truyền danh sách còn hạn mức trần/ngày (null = phát tất cả).
     const allow = onlyIds ? new Set(onlyIds) : null;
     const userIds = Object.keys(dbCache).filter(k => !k.startsWith('_') && (!allow || allow.has(k)));
-    userIds.forEach(id => updatePoints(id, amount));
+    userIds.forEach(id => updatePoints(gocVi(id), amount));   // 👪 20/10: ví thành viên family -> cộng vào ví gốc
     saveDbNow();
     writeLog('ADMIN', `[CỘNG TIỀN ALL] Dashboard cộng ${amount.toLocaleString()} KNB cho ${userIds.length} người chơi`);
 
@@ -1959,11 +2006,13 @@ function ichKyRoom(userId) { return Math.max(0, ICHKY_HOLD_MAX - ichKyTotal(ichK
 // KHÔNG qua game, nên không cần ai online. Không tính vào hạn mua 100/ngày của người nhận
 // (đó là hạn MUA), nhưng vẫn phải lọt sức chứa rương họ.
 function ichKyGive(userId, toUserId, itemId, qty, username) {
+    userId = gocVi(userId);   // 👪 20/10 family: tặng từ / tới rương CHUNG ở ví gốc
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
     const dbErr = debtBlock(userId, 'tặng đồ trong rương'); if (dbErr) return { error: dbErr };
     toUserId = String(toUserId || '').trim();
     if (!/^\d{15,20}$/.test(toUserId)) return { error: 'Chưa chọn người nhận' };
-    if (toUserId === String(userId)) return { error: 'Tặng cho chính mình thì tặng làm gì 😄' };
+    toUserId = gocVi(toUserId);
+    if (toUserId === String(userId)) return { error: 'Tặng cho chính mình thì tặng làm gì 😄 (cùng family là dùng chung rương rồi)' };
     if (!dbCache[toUserId] || typeof dbCache[toUserId] !== 'object') return { error: 'Người này chưa có ví trong hệ thống' };
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
@@ -2122,6 +2171,7 @@ function adminIchKyGrant(toUserId, itemId, qty, note, khongLuu) {   // khongLuu 
     itemId = String(itemId || '').trim().replace(/[^A-Za-z0-9_]/g, '');
     qty = Math.floor(Number(qty) || 0);
     if (!/^\d{15,20}$/.test(toUserId) || !dbCache[toUserId] || typeof dbCache[toUserId] !== 'object') return { error: 'Người này chưa có ví trong hệ thống' };
+    toUserId = gocVi(toUserId);   // 👪 20/10: admin tặng thành viên family -> rương chung
     if (!itemId) return { error: 'Thiếu item id' };
     if (qty < 1 || qty > 1000000) return { error: 'Số lượng phải từ 1 đến 1.000.000' };
     const gi = gameItems().find(x => x.id === itemId);
@@ -2151,7 +2201,7 @@ function giftTargets() {
 
 // 📦 NHẬN đồ từ rương vào túi trong game. Đây mới là chỗ BẮT BUỘC online (bot phải giao qua SFTP).
 // Trừ khỏi rương TRƯỚC, giao hụt thì trả lại - y hệt luật hoàn tiền của shop.
-async function ichKyClaim(userId, itemId, qty, username) {
+async function ichKyClaim(userId, itemId, qty, username, viNhan) {   // 👪 20/10: viNhan = ví thành viên family nhận (chọn nhân vật)
     const ftErr = featGuard('shop'); if (ftErr) return { error: ftErr };
     qty = Math.floor(Number(qty) || 0);
     if (qty < 1) return { error: 'Số lượng phải từ 1 trở lên' };
@@ -2170,7 +2220,8 @@ async function ichKyClaim(userId, itemId, qty, username) {
     // không phát trùng, túi đầy thì chờ; nhận ở NPC Ví Web nút "Nhận đồ Thương Phố" (dùng chung) hoặc khi đăng nhập / đổi bản đồ.
     // Đồng bộ hoàn toàn (không await) -> 2 lần bấm không chen nhau. Trừ rương trước, ghi lệnh lỗi thì trả lại ngay.
     if (!ichKyTake(user, itemId, qty)) return { error: 'Rương không đủ món' };
-    const r = TP.rutTuRuong(userId, itemId, qty, username);
+    const vt = viNhan && famTv(userId).includes(String(viNhan)) ? String(viNhan) : userId;   // 👪 rương chung -> nhân vật được chọn
+    const r = TP.rutTuRuong(vt, itemId, qty, username);
     if (!r || !r.ok) {
         ichKyAdd(user, itemId, qty);
         saveDbNow();
@@ -6133,7 +6184,7 @@ client.once('ready', async (c) => {
             // 🧰 17/09 RƯƠNG ÍCH KỶ: mua không cần online, 00:00 xoá sạch
             ichKy: {
                 state: (uid) => ichKyState(uid),
-                claim: (uid, id, qty, name) => ichKyClaim(uid, id, qty, name),
+                claim: (uid, id, qty, name, vi) => ichKyClaim(uid, id, qty, name, vi),   // 👪 vi = nhân vật nhận
                 give: (uid, to, id, qty, name) => ichKyGive(uid, to, id, qty, name),
                 ban: (uid, id, qty, name) => ichKyBan(uid, id, qty, name),   // 💰 05/10
                 xoa: (uid, id, qty, name) => ichKyXoa(uid, id, qty, name),   // 🗑️ 05/10
@@ -6184,7 +6235,7 @@ client.once('ready', async (c) => {
             transferTargets: listTransferTargets,
             // 🎮 rút KNB / vàng web -> game (28/08). Nạp game -> web làm ở NPC Ví Web trong game (tlbbPollReceipts).
             dogbridge: {
-                rut: (uid, amount, kind) => webRutGame(uid, amount, kind),
+                rut: (uid, amount, kind, vi) => webRutGame(uid, amount, kind, vi),   // 👪 vi = nhân vật nhận
                 state: (uid) => ({ ingameName: (getUserData(uid).ingameName || '').trim(), balance: getUserData(uid).points || 0, max: WITHDRAW_MAX_PER_REQUEST, rutOpen: dogBridgeCfg().rut,
                     dayMax: dogBridgeDayMax(), rutToday: dogBridgeToday(getUserData(uid)).rut, vangDayMax: dogVangDayMax(), vangRate: dogVangRate(), vangMoiLan: DOG_VANG_MOI_LAN, vangToday: dogBridgeToday(getUserData(uid)).vang || 0,   // 🔁 09/09 công tắc · 📅 11/09 hạn ngày · 🪙 29/09 đổi vàng
                     // 💰 07/10 thẻ "Ví KNB ↔ Game" (trang Cá nhân, /vg.js): chỗ nạp + đã nạp hôm nay + 8 lần nạp/rút gần nhất của chính người này
@@ -6232,14 +6283,28 @@ client.once('ready', async (c) => {
             tuiBoss: {
                 list: (uid) => {
                     const u = getUserData(uid); const guid = String(u.tlbbGuid || '');
-                    const tui = guid ? tuiBoss.list(dbCache, guid) : [];
+                    // 👪 20/10 family: túi của MỌI nhân vật trong family (túi vẫn theo ai có mặt lúc giết boss), ghi tên chủ túi
+                    const ds = famTv(uid), nhieu = ds.length > 1;
+                    const tui = [];
+                    for (const id of ds) {
+                        const m = getUserData(id), g = String(m.tlbbGuid || '');
+                        if (!g) continue;
+                        for (const x of tuiBoss.list(dbCache, g)) tui.push(nhieu ? { ...x, chu: (m.ingameName || '').trim() || m.gameAcc || '' } : x);
+                    }
+                    if (nhieu) tui.sort((a, b) => (b.t || 0) - (a.t || 0));
                     const can = new Set(); for (const x of tui) for (const m of x.mon) can.add(String(m[0]));
                     const ten = {}; for (const it of (tlbb.items ? tlbb.items() : [])) if (can.has(it.id)) ten[it.id] = it.n;
                     const ic = {}; for (const id of can) { const x = ITEMICON.icon(id); if (x) ic[id] = x; }   // 🖼️ 05/10: hình món đồ (/tb.js)
                     return { linked: !!guid, ingameName: (u.ingameName || '').trim(), tui, ten, ic };
                 },
                 nhan: async (uid, id) => {
-                    const u = getUserData(uid); const guid = String(u.tlbbGuid || '');
+                    const u = getUserData(uid);
+                    // 👪 20/10 family: túi có thể của nhân vật thành viên -> lấy GUID chủ túi, đồ / KNB / lượt vẫn vào ví gốc (uid)
+                    let guid = String(u.tlbbGuid || '');
+                    for (const vid of famTv(uid)) {
+                        const g = String(getUserData(vid).tlbbGuid || '');
+                        if (g && tuiBoss.list(dbCache, g).some((x) => String(x.id) === String(id || ''))) { guid = g; break; }
+                    }
                     if (!guid) return { error: 'Chưa liên kết nhân vật trong game' };
                     // 04/10 (chủ server): đồ trong túi KHÔNG đẩy thẳng vào game nữa - bỏ hết vào 🧰 Rương Ích Kỷ, người chơi tự rút vào game dần (ichKyClaim)
                     const r = await tuiBoss.nhan(dbCache, guid, String(id || ''), async (g, itemId, n) => { ichKyAdd(u, String(itemId), Number(n) || 0); return { ok: true }; }, (knb, tui) => {
@@ -7552,7 +7617,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.commandName === 'diemdanh') {
             // Logic chung với web (claimDaily): reset theo NGÀY LỊCH giờ VN, ghi sổ
             // tháng cho lịch điểm danh trên web, đủ tháng nhận thêm bonus.
-            const r = claimDaily(userId);
+            const r = claimDailyFam(userId);   // 👪 20/10: family -> điểm danh hộ mọi tài khoản, tiền vào ví gốc
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
             return interaction.reply(
                 `🎁 **Điểm danh thành công!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}` +
@@ -7568,7 +7633,7 @@ client.on('interactionCreate', async interaction => {
             // Cooldown LĂN 60 phút từ lần nhận trước - logic chung với web (claimNghien).
             // KHÔNG đăng công khai: lời đáp dưới đây đã hiện ngay tại kênh, đăng thêm
             // là ra 2 tin trùng nội dung.
-            const r = claimNghien(userId);
+            const r = claimNghienFam(userId);   // 👪 20/10 family
             if (r.error) return interaction.reply({ content: `⏳ ${r.error}`, ephemeral: true });
             return interaction.reply(`💉 **Điểm danh con nghiện!** Bạn nhận được **${r.amount.toLocaleString()}** ${DOGCOIN_EMOJI}` +
                 (r.debtCut ? ` (📒 trừ **${r.debtCut.toLocaleString()}** trả nợ, còn nợ ${r.debtLeft.toLocaleString()})` : '') +
@@ -7726,7 +7791,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'rut_modal') {
             const amt = parseInt(interaction.fields.getTextInputValue('rut_input_amount'));
             if (isNaN(amt) || amt <= 0) return interaction.reply({ content: '❌ Số KNB không hợp lệ!', ephemeral: true });
-            const r = await webRutGame(userId, amt);
+            const r = await webRutGame(gocVi(userId), amt, 'knb', userId);   // 👪 Discord: trừ ví gốc family, gửi nhân vật của chính tài khoản này
             return interaction.reply({ content: r.ok ? r.message : `❌ ${r.error}`, ephemeral: true });
         }
     }

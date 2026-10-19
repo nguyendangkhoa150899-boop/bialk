@@ -42,7 +42,7 @@
   function han(t) { var ms = t - Date.now(); if (!(ms > 0)) return '<span class="tbHan gap">sắp hết hạn</span>'; var ng = Math.floor(ms / 86400000), gio = Math.floor(ms % 86400000 / 3600000); return '<span class="tbHan' + (ms < 86400000 ? ' gap' : '') + '">⏳ còn ' + (ng ? ng + ' ngày ' : '') + gio + ' giờ</span>'; }
   function tenMon(j, id) { return (j.ten || {})[id] || ('#' + id); }
   function veTui(j, x) {
-    var h = '<div class="tbBag"><div class="tbTop"><span class="tbTen">🎒 ' + esc(x.ten) + '</span><span class="tbTg">' + tg(x.t) + '</span>' + han(x.han) + '</div><div class="tbGrid">';
+    var h = '<div class="tbBag"><div class="tbTop"><span class="tbTen">🎒 ' + esc(x.ten) + (x.chu ? ' <span class="muted" style="font-weight:400">· 👤 ' + esc(x.chu) + '</span>' : '') + '</span><span class="tbTg">' + tg(x.t) + '</span>' + han(x.han) + '</div><div class="tbGrid">';
     x.mon.forEach(function (m) { h += '<div class="tbIt" title="' + esc(tenMon(j, m[0])) + '">' + ic(j, m[0]) + '<div class="n">' + esc(tenMon(j, m[0])) + '</div><div class="q">×' + m[1] + '</div></div>'; });
     if (x.knb) h += '<div class="tbIt knb"><div class="emo">💰</div><div class="n">KNB vào ví</div><div class="q">' + Number(x.knb).toLocaleString('vi-VN') + '</div></div>';
     if (x.luot) h += '<div class="tbIt luot"><div class="emo">🍀</div><div class="n">Lượt Vòng May Mắn</div><div class="q">×' + x.luot + '</div></div>';
@@ -50,7 +50,7 @@
   }
   function veDa(j, x) {
     var tom = x.mon.slice(0, 8).map(function (m) { return ic(j, m[0]); }).join('');
-    return '<div class="tbRow"><div class="t">✅ <b>' + esc(x.ten) + '</b> <span class="muted">' + tg(x.t) + '</span><br><span class="muted">' + x.mon.length + ' món' + (x.knb ? ' · ' + Number(x.knb).toLocaleString('vi-VN') + ' KNB' : '') + (x.luot ? ' · 🍀 ' + x.luot : '') + '</span></div><div class="tbMini">' + tom + '</div></div>';
+    return '<div class="tbRow"><div class="t">✅ <b>' + esc(x.ten) + '</b>' + (x.chu ? ' <span class="muted">· 👤 ' + esc(x.chu) + '</span>' : '') + ' <span class="muted">' + tg(x.t) + '</span><br><span class="muted">' + x.mon.length + ' món' + (x.knb ? ' · ' + Number(x.knb).toLocaleString('vi-VN') + ' KNB' : '') + (x.luot ? ' · 🍀 ' + x.luot : '') + '</span></div><div class="tbMini">' + tom + '</div></div>';
   }
   window.tbSync = function () {
     api('/api/tuiboss/list').then(function (j) {

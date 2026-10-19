@@ -43,7 +43,14 @@ module.exports = function taoFamily(ctx) {
             if (n > 0) { kb.items[id] = (Number(kb.items[id]) || 0) + n; loai++; mon += n; }
         }
         ka.items = {};
-        return { knb, loai, mon };
+        // lượt Vòng quay (u.vq.luot, vongquay.js) cũng là của chung
+        let luot = 0;
+        if (a.vq && Number.isInteger(a.vq.luot) && a.vq.luot > 0) {
+            luot = a.vq.luot; a.vq.luot = 0;
+            if (!b.vq || typeof b.vq !== 'object') b.vq = {};
+            b.vq.luot = (Number.isInteger(b.vq.luot) ? b.vq.luot : 0) + luot;
+        }
+        return { knb, loai, mon, luot };
     }
     function tenVi(id) { const u = db()[id] || {}; return (u.gameAcc || u.name || id) + (u.ingameName ? ' (' + u.ingameName + ')' : ''); }
 
