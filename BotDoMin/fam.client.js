@@ -54,7 +54,7 @@
       '<div class="fmErr" id="famErr"></div>' +
       '<button class="fmGo" id="famGo" onclick="famLink()"' + (BUSY ? ' disabled' : '') + '>🔗 Liên kết</button></div>' +
       '<div class="fmWarn">⚠️ Khi liên kết: KNB + Rương Ích Kỷ của tài khoản đó <b>gộp vào ví chung</b>, và tài khoản đó <b>không đăng nhập web riêng được nữa</b> (chỉ trưởng quản lý).<br>' +
-      'Bị đuổi: tài khoản đó <b>mất hết</b> KNB + Rương Ích Kỷ (ở lại family). Thương Phố không gộp - kho từng nhân vật giữ nguyên. Chỉ trưởng đuổi được.</div>';
+      'Bị đuổi: tài khoản đó <b>về trắng</b> (KNB + Rương Ích Kỷ ở lại family, coi như đã điểm danh / nghiện / chuỗi hôm nay, <b>túi boss chưa nhận bị thu hồi</b>) và <b>khoá tới 00:00</b>. Thương Phố không gộp - kho từng nhân vật giữ nguyên. Chỉ trưởng đuổi được.</div>';
     if (F.coFam && !F.laTruong) h += '<button class="fmRoi" onclick="famRoi()">🚪 Rời family (mất hết)</button>';
     b.innerHTML = h;
   }

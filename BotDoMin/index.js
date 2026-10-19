@@ -1383,6 +1383,21 @@ function claimNghien(userId, announce = false, creditTo) {   // 👪 20/10 famil
     return { ok: true, amount: dailyCfg().nghien, debtCut: inc.cut, debtLeft: inc.left, nextAt: u.lastNghien + NGHIEN_COOLDOWN_MS, now: Date.now(), balance: getUserData(vi).points || 0 };
 }
 
+// 👪 20/10 chủ server: tài khoản bị ĐUỔI khỏi family -> về TRẮNG và coi như đã nhận HẾT hôm nay, không khai thác thêm được:
+// điểm danh hôm nay = đã điểm danh, Nghiện đếm lại 1 tiếng từ lúc đuổi, chuỗi về 0 + xoá gói chờ, túi boss chưa nhận của nhân vật bị thu hồi.
+// (KNB + rương + lượt quay đã gom về family trong family.js gop; khoá đăng nhập tới 00:00 VN = famBan.)
+function famLamTrang(uid) {
+    const u = getUserData(uid);
+    const b = dailyBookOf(u), { d } = vnParts();
+    if (!b.dailyDays.includes(d)) b.dailyDays.push(d);
+    u.lastDaily = Date.now();
+    u.streakRun = 0; u.streakRunPaid = 0; u.streakPacks = 0;
+    u.lastNghien = Date.now();
+    let tui = 0;
+    const g = String(u.tlbbGuid || ''), K = dbCache._tuiBoss && dbCache._tuiBoss[g];
+    if (g && Array.isArray(K)) for (const x of K) if (!x.nhan) { x.nhan = Date.now(); x.thuHoi = 'family'; tui++; }
+    return { tui };
+}
 // 👪 20/10 family cho lệnh DISCORD (web làm trong webplay.js): làm hộ mọi tài khoản trong family, tiền vào ví gốc.
 function claimDailyFam(userId) {
     const ds = famTv(userId), g = ds[0];
@@ -6205,7 +6220,7 @@ client.once('ready', async (c) => {
                 dung: (uid, id, qty, name) => ichKyDung(uid, id, qty, name),   // 🎫 05/10 phiếu KNB -> KNB web
             },
             lienKetMsg: () => LIENKET_MSG,
-            fam: { ichKyOf: (u) => ichKyOf(u), noCua: (uid) => debtTotal(getUserData(uid)), tpGom: (tu, ve) => TP.famGomVe(tu, ve) },   // 👪 20/10 family.js (webplay)
+            fam: { ichKyOf: (u) => ichKyOf(u), noCua: (uid) => debtTotal(getUserData(uid)), tpGom: (tu, ve) => TP.famGomVe(tu, ve), lamTrang: (uid) => famLamTrang(uid) },   // 👪 20/10 family.js (webplay)
             // 🎮 30/09: đăng nhập web bằng tài khoản game + đổi mật khẩu (qua panel GM, repo tlbbnetco4 panel/panel.py)
             tlbbKiemMk: (a, p) => tlbb.kiemMk(a, p),
             tlbbKhoa: () => tlbb.khoaState(),   // 🔒 16/10 tài khoản game bị khoá -> chặn web

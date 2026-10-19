@@ -102,10 +102,12 @@ module.exports = function taoFamily(ctx) {
         // 20/10 chủ server: bị đuổi / rời -> KHOÁ tới hết ngày (không đăng nhập web, không Discord, không vào family khác) - chống khai thác.
         // Ví đã về trắng (gop ở trên đã gom KNB + rương + lượt quay về family). Qua 00:00 VN dùng lại bình thường.
         ctx.getUserData(id).famBan = ngayVN();
+        // về trắng + coi như đã nhận hết hôm nay (điểm danh / nghiện / chuỗi / túi boss) - index.js famLamTrang
+        gp.trang = typeof ctx.fam.lamTrang === 'function' ? ctx.fam.lamTrang(id) : null;
         const f = bang()[g];
         if (f) { f.tv = thanhVien(g).filter((x) => x !== id); if (f.tv.length <= 1) delete bang()[g]; }
         ctx.saveDbNow();
-        ctx.writeLog('ADMIN', `[FAMILY] ${tenVi(id)} ${ai} family của ${tenVi(g)}` + (gp.knb || gp.mon ? ` (gom thêm ${gp.knb} KNB + ${gp.mon} món rương về family)` : ''));
+        ctx.writeLog('ADMIN', `[FAMILY] ${tenVi(id)} ${ai} family của ${tenVi(g)}` + (gp.knb || gp.mon ? ` (gom thêm ${gp.knb} KNB + ${gp.mon} món rương về family)` : '') + ` - về trắng, khoá tới 00:00${gp.trang && gp.trang.tui ? `, thu hồi ${gp.trang.tui} túi boss chưa nhận` : ''}`);
     }
     function roi(toi) {
         const g = goc(toi);
