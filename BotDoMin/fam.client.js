@@ -24,8 +24,8 @@
     '#famBox .fmWarn{margin-top:10px;padding:9px 11px;border:1px solid #ffcf5c;border-radius:10px;background:#231d10;color:#ffd27a;font-size:12px;line-height:1.5}' +
     '#famBox h3{margin:16px 0 0;font-size:15px}' +
     // nút 🔗 Liên kết trên thanh trên cùng: màu vàng cam nổi bật (đứng trước 🔑 Mật khẩu)
-    '#topbar #famBtn{background:linear-gradient(180deg,#ffd76a,#f5a623);border:1px solid #c98a12;color:#3a2600;box-shadow:0 2px 0 #9a6a0c,0 0 12px rgba(245,166,35,.35)}' +
-    '#topbar #famBtn:hover{filter:brightness(1.08)}#topbar #famBtn:active{transform:translateY(1px);box-shadow:0 1px 0 #9a6a0c}';
+    '#topbar #famBtn{background:linear-gradient(180deg,#ff9a3c,#ff6a00);border:1px solid #c44f00;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.25);box-shadow:0 2px 0 #9c3f00,0 0 12px rgba(255,106,0,.4)}' +
+    '#topbar #famBtn:hover{filter:brightness(1.08)}#topbar #famBtn:active{transform:translateY(1px);box-shadow:0 1px 0 #9c3f00}';
   document.head.appendChild(css);
   var m = document.createElement('div');
   m.id = 'famModal'; m.className = 'hidden';
