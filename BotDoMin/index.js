@@ -6441,7 +6441,7 @@ client.once('ready', async (c) => {
             gameItems,
             giveTargets,
             adminGiveItem,
-            giftTargets, adminIchKyGrant,   // 🎯 18/09: tab 🎁 tặng riêng 1 người (vào rương / vào game)
+            giftTargets, adminIchKyGrant, tpAdminGui: (g, id, n, who) => TP.adminGui(g, id, n, who),   // 🎁 19/10 tab Phát quà cách 🧙 NPC   // 🎯 18/09: tab 🎁 tặng riêng 1 người (vào rương / vào game)
             // 🚀 Phi Thuyền (crash game): config + xem vòng + ép điểm nổ (SUPER)
             getSpmCfg: spmCfg,
             setSpmCfg,

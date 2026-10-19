@@ -242,6 +242,11 @@ function startPanel(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/pq.js') {   // 🎁 19/10 giao diện tab Phát quà (chỉ SUPER thao tác; đọc lại mỗi lần, sửa không cần restart)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'phatqua.panel.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/br-data.json') {   // 📊 05/10 data.json của tools/bang-roi (deploy lên /var/www/netco4/) + icon từng món, cache theo mtime
                 const f = process.env.BANGROI_DATA || '/var/www/netco4/data.json';
                 try {
@@ -1264,6 +1269,76 @@ function startPanel(ctx) {
                         return sendJSON(res, 502, { ok: false, error: String(e.message).slice(0, 200) });
                     }
                 }
+                // 🎁 19/10 TAB PHÁT QUÀ (chủ server): 1 chỗ gửi quà cho nhân vật thay cho 5 tab cũ. 3 cách nhận (chỉ vật phẩm chọn được):
+                //   map   = hàng quà game NetCo4Qua (panel GM /api/act a=qua) - vào túi khi đăng nhập / đổi bản đồ (mọi loại quà)
+                //   npc   = kênh Thương Phố .tpin (thuongpho.adminGui) - giống Rương Ích Kỷ -> game: nhận ở NPC Ví Web hoặc khi
+                //           đăng nhập / đổi bản đồ, game kiểm đủ ô túi mới phát, không phát trùng
+                //   ruong = Rương Ích Kỷ trên web (adminIchKyGrant) - cần nhân vật liên kết đúng 1 ví
+                // Riêng knbweb cộng thẳng ví web liên kết. Gửi lần lượt từng nhân vật, trả kết quả từng người. API cũ giữ nguyên.
+                if (path === '/api/pq/data' || path === '/api/pq/gui') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    const db = ctx.getDb();
+                    const viCua = {};   // guid -> [{ uid, ten }]
+                    for (const [uid, u] of Object.entries(db)) {
+                        if (!/^\d{5,20}$/.test(uid) || !u || typeof u !== 'object' || !u.tlbbGuid) continue;
+                        (viCua[String(u.tlbbGuid)] = viCua[String(u.tlbbGuid)] || []).push({ uid, ten: u.name || uid });
+                    }
+                    let st;
+                    try { st = await gmCall('GET', '/api/state'); } catch (e) { return sendJSON(res, 502, { ok: false, error: 'Panel GM không trả lời: ' + String(e.message).slice(0, 120) }); }
+                    const chars = (st && st.chars) || [];
+                    if (path === '/api/pq/data') {
+                        return sendJSON(res, 200, { ok: true, online: st.online, chars: chars.map(c => ({ guid: String(c.guid), ten: c.name, tk: c.account, cap: c.level, on: !!c.online, cho: c.pending || [], vi: viCua[String(c.guid)] || [] })) });
+                    }
+                    const LOAI = { item: 1, itemsao: 1, pet: 1, knb: 1, vang: 1, diemtang: 1, level: 1, exp: 1, vip: 1, tamphap: 1, popup: 1, knbweb: 1 };
+                    const loai = String(body.loai || ''), kenh = String(body.kenh || 'map');
+                    if (!LOAI[loai]) return sendJSON(res, 400, { ok: false, error: 'Loại quà không hợp lệ' });
+                    if (!['map', 'npc', 'ruong'].includes(kenh)) return sendJSON(res, 400, { ok: false, error: 'Cách nhận không hợp lệ' });
+                    if (kenh !== 'map' && loai !== 'item') return sendJSON(res, 400, { ok: false, error: 'Nhận qua NPC / Rương Ích Kỷ chỉ dùng cho vật phẩm' });
+                    const gt = String(body.gt == null ? '' : body.gt).trim(), sl = String(body.sl == null ? '1' : body.sl).trim() || '1';
+                    if (!/^\d{1,10}$/.test(gt) || !/^\d{1,6}$/.test(sl)) return sendJSON(res, 400, { ok: false, error: 'Giá trị / số lượng phải là số' });
+                    if (kenh !== 'map' && !(ctx.gameItems ? ctx.gameItems() : []).some(x => String(x.id) === gt)) return sendJSON(res, 400, { ok: false, error: 'ID ' + gt + ' không có trong danh mục vật phẩm game' });
+                    const theoGuid = new Map(chars.map(c => [String(c.guid), c]));
+                    let ds;
+                    if (body.nguoi === 'all') ds = chars.map(c => String(c.guid));
+                    else if (body.nguoi === 'online') ds = chars.filter(c => c.online).map(c => String(c.guid));
+                    else ds = [...new Set((Array.isArray(body.nguoi) ? body.nguoi : []).map(String))];
+                    ds = ds.filter(g => theoGuid.has(g));
+                    if (!ds.length) return sendJSON(res, 400, { ok: false, error: 'Chưa chọn nhân vật nào (hoặc không ai đang online)' });
+                    if (ds.length > 300) return sendJSON(res, 400, { ok: false, error: 'Tối đa 300 nhân vật mỗi lần' });
+                    const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                    const viMot = (g) => { const v = viCua[g] || []; return v.length === 1 ? v[0] : { loi: v.length ? 'Nhân vật gắn ' + v.length + ' ví - làm tay ở tab Người chơi' : 'Chưa liên kết ví web' }; };
+                    const kq = [];
+                    for (const g of ds) {
+                        const c = theoGuid.get(g); let r;
+                        try {
+                            if (loai === 'knbweb') {
+                                const v = viMot(g), n = Number(gt);
+                                if (v.loi) r = { ok: false, msg: v.loi };
+                                else if (!(n >= 1 && n <= 100000000)) r = { ok: false, msg: 'KNB web 1 - 100.000.000' };
+                                else {
+                                    ctx.updatePoints(v.uid, n);
+                                    if (ctx.logDog) ctx.logDog('admin+', v.uid, v.ten, n, 'Phát quà');
+                                    r = { ok: true, msg: '+' + n.toLocaleString('vi-VN') + ' KNB vào ví ' + v.ten };
+                                }
+                            } else if (kenh === 'npc') {
+                                if (!ctx.tpAdminGui) r = { ok: false, msg: 'Bot chưa nối kênh Thương Phố' };
+                                else { const x = ctx.tpAdminGui(g, gt, Number(sl), who); r = x.error ? { ok: false, msg: x.error } : { ok: true, msg: x.ten + ' x' + sl + ' chờ nhận (NPC Ví Web / đổi bản đồ)' }; }
+                            } else if (kenh === 'ruong') {
+                                const v = viMot(g);
+                                if (v.loi) r = { ok: false, msg: v.loi };
+                                else { const x = ctx.adminIchKyGrant(v.uid, gt, Number(sl), 'Phát quà'); r = x.error ? { ok: false, msg: x.error } : { ok: true, msg: 'Vào Rương Ích Kỷ của ví ' + v.ten }; }
+                            } else {
+                                const j = await gmCall('POST', '/api/act', { a: 'qua', guid: g, loai, gt, sl });
+                                r = { ok: !!(j && j.ok && j.done), msg: String((j && (j.msg || j.error)) || 'Panel GM không trả lời').slice(0, 200) };
+                            }
+                        } catch (e) { r = { ok: false, msg: String(e.message).slice(0, 150) }; }
+                        kq.push({ guid: g, ten: c.name, ok: r.ok, msg: r.msg });
+                    }
+                    if (loai === 'knbweb') ctx.saveDbNow();
+                    const okN = kq.filter(x => x.ok).length, loi = kq.filter(x => !x.ok);
+                    ctx.writeLog('ADMIN', `[PHÁT QUÀ] ${who} ${loai} ${gt}${/^(item|itemsao)$/.test(loai) ? ' x' + sl : ''} cách nhận ${kenh} -> ${okN}/${kq.length} nhân vật OK` + (loi.length ? ' | lỗi: ' + loi.slice(0, 5).map(x => x.ten + ': ' + x.msg).join('; ') : ''));
+                    return sendJSON(res, 200, { ok: true, kq, okN });
+                }
                 // 💥 29/09: Drop Boss - sua bang roi do cua game (ghi thang file VPS, hieu luc sau restart)
                 if (path === '/api/drop/state' || path === '/api/drop/box' || path === '/api/drop/boss' || path === '/api/drop/clone' || path === '/api/drop/log' || path === '/api/drop/rollback') {
                     let drop;
@@ -1724,31 +1799,37 @@ const HTML = `<!DOCTYPE html>
 
   <div class="wrap">
     <div class="tabs">
-      <!-- Xếp theo NHÓM VIỆC. Hai bàn Sic Bo đứng cạnh nhau (trước Siêu bị đẩy xuống
-           cuối chỉ vì là tab SUPER). Nhóm nào cũng có ít nhất 1 nút luôn hiện, nên
-           cổng thường không bao giờ thấy hàng trống. -->
-      <div class="grp"><span class="glb">TRÒ CHƠI</span><div class="gbt">
+      <!-- 19/10 (chủ server): xếp lại theo NHÓM VIỆC cho dễ tìm; data-tab / id pane giữ nguyên.
+           Gửi quà cho nhân vật CHỈ còn ở 🎁 Phát quà (tab cũ 📦 Kho đồ gỡ khỏi thanh tab, form gửi ở ⚙️ Nhân vật đổi thành nút mở tab mới).
+           Cổng mod: modApp() tự ẩn nhóm không có nút mod được xem. -->
+      <div class="grp"><span class="glb">PHÁT QUÀ</span><div class="gbt">
+        <button data-tab="pq" class="epOnly" style="display:none" onclick="tab('pq')">🎁 Phát quà</button>
+      </div></div>
+      <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
+        <button data-tab="user" onclick="tab('user')">👥 Người chơi &amp; Ví</button>
+        <button data-tab="tlbb" onclick="tab('tlbb')">🛒 Shop &amp; KNB<span id="wdBadge" class="hidden"></span></button>
+      </div></div>
+      <div class="grp"><span class="glb">SỰ KIỆN</span><div class="gbt">
+        <button data-tab="gift" onclick="tab('gift')">🗓️ Quà ngày &amp; 🍀 Vòng quay</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button>
+        <button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button>
+        <button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><button data-tab="lb" onclick="tab('lb')">📅 Lịch Boss</button>
+      </div></div>
+      <div class="grp"><span class="glb">SERVER GAME</span><div class="gbt">
+        <button data-tab="gm" onclick="tab('gm')">🛠️ Server &amp; Tài khoản</button>
+        <button data-tab="qua" onclick="tab('qua')">⚙️ Nhân vật · Cài đặt · Công cụ</button>
+        <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="br" onclick="tab('br')">📊 Bảng rơi</button>
+      </div></div>
+      <div class="grp"><span class="glb">MINI GAME</span><div class="gbt">
         <button data-tab="tx" class="active" onclick="tab('tx')">🎲 Tài Xỉu</button>
         <button data-tab="stx" class="epOnly" style="display:none" onclick="tab('stx')">⚡ Siêu Tài Xỉu</button>
         <button data-tab="rl" class="epOnly" style="display:none" onclick="tab('rl')">🎡 Roulette</button>
         <button data-tab="mine" onclick="tab('mine')">💣 Dò Mìn</button>
         <button data-tab="stair" onclick="tab('stair')">🪜 Leo Thang</button>
-        <button data-tab="bj" onclick="tab('bj')">🎡 Vòng Quay</button>
+        <button data-tab="bj" onclick="tab('bj')">🎰 Vòng Quay KNB</button>
         <button data-tab="spm" onclick="tab('spm')">🚀 Phi Thuyền</button>
         <button data-tab="stock" onclick="tab('stock')">📈 Cổ phiếu</button>
         <button data-tab="poker" class="epOnly" style="display:none" onclick="tab('poker')">🃏 Poker</button>
         <button data-tab="tienlen" class="epOnly" style="display:none" onclick="tab('tienlen')">🀄 Tiến Lên</button>
-      </div></div>
-      <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
-        <button data-tab="user" onclick="tab('user')">👥 Người chơi</button>
-        <button data-tab="gift" onclick="tab('gift')">🎁 Quà tặng</button><button data-tab="gn" class="epOnly" style="display:none" onclick="tab('gn')">💎 Ghép Ngọc</button><button data-tab="vqx" style="display:none" onclick="tab('vqx')">🍀 Vòng quay</button><button data-tab="gnx" style="display:none" onclick="tab('gnx')">💎 Ghép Ngọc</button><button data-tab="br" onclick="tab('br')">📊 Bảng rơi</button><!-- 05/10: bản chỉ xem, chỉ cổng mod (modApp hiện) --><!-- 05/10: giá bán rương, chỉ SUPER --><!-- 02/10: mở cho mod (sửa quà + vòng quay; cấp lượt quay vẫn chỉ SUPER) -->
-        <button data-tab="give" class="epOnly" style="display:none" onclick="tab('give')">📦 Kho đồ</button><!-- 05/10: bỏ pwOff - tab này là đồ THIÊN LONG (Giao vào game / 🧰 bỏ vào Rương Ích Kỷ), không phải Palworld -->
-      </div></div>
-      <div class="grp"><span class="glb">THIÊN LONG</span><div class="gbt">
-        <button data-tab="gm" onclick="tab('gm')">🛠️ GM Thiên Long</button>
-        <button data-tab="qua" onclick="tab('qua')">🎁 Phát quà &amp; GM</button>
-        <button data-tab="drop" onclick="tab('drop')">💥 Drop Boss</button><button data-tab="tb" onclick="tab('tb')">🎒 Túi Boss</button><button data-tab="lb" onclick="tab('lb')">📅 Lịch Boss</button><!-- 29/09: tạm mở cho mod cùng test; đóng lại = thêm class="epOnly" style="display:none" -->
-        <button data-tab="tlbb" onclick="tab('tlbb')">🐉 Thiên Long &amp; KNB<span id="wdBadge" class="hidden"></span></button>
       </div></div>
       <div class="grp"><span class="glb">HỆ THỐNG</span><div class="gbt">
         <button data-tab="log" onclick="tab('log')">📜 Log</button>
@@ -2225,12 +2306,13 @@ const HTML = `<!DOCTYPE html>
         <div id="gmAccs" style="margin-top:10px;overflow-x:auto"></div>
       </div>
     </div>
+    <div id="tab-pq" class="hidden"><div id="pqRoot"></div></div><!-- 🎁 19/10 tab Phát quà: giao diện ở phatqua.panel.js (/pq.js) -->
     <div id="tab-qua" class="hidden"><!-- 🎁 08/10: tách khỏi 🛠️ GM Thiên Long thành tab riêng, chia 3 mục cho đỡ rối (chủ server). ID phần tử giữ nguyên: JS gm* dùng chung -->
       <div class="card">
         <div class="quaTop">
-          <h2>🎁 Phát quà &amp; GM nhân vật <span class="muted" id="gmCharN"></span></h2>
+          <h2>⚙️ Nhân vật · Cài đặt · Công cụ <span class="muted" id="gmCharN"></span></h2>
           <div class="quaNav" id="quaNav">
-            <button data-qsec="phat" onclick="quaSec('phat')">🎁 Phát quà</button>
+            <button data-qsec="phat" onclick="quaSec('phat')">👤 Nhân vật</button>
             <button data-qsec="caidat" onclick="quaSec('caidat')">⚙️ Cài đặt server</button>
             <button data-qsec="congcu" class="epOnly" style="display:none" onclick="quaSec('congcu')">🧰 Công cụ</button>
           </div>
@@ -2239,10 +2321,10 @@ const HTML = `<!DOCTYPE html>
       <div id="qsec-phat" class="qsec">
         <div class="quaGrid">
           <div>
-            <div class="card quaAll">
-              <h3>📣 Gửi cho TẤT CẢ nhân vật</h3>
-              <div class="muted" style="font-size:13px;margin-bottom:8px">Mọi nhân vật đều nhận, kể cả đang offline (nhận khi đăng nhập). Kiểm kỹ loại + số lượng trước khi bấm.</div>
-              <div id="gmAllForm"></div>
+            <div class="card quaAll"><!-- 19/10: form "Gửi cho TẤT CẢ" chuyển sang tab 🎁 Phát quà -->
+              <h3>🎁 Phát quà đã gom về 1 tab riêng</h3>
+              <div class="muted" style="font-size:13px;margin-bottom:8px">Gửi vật phẩm / pet / KNB / vàng / cấp... cho 1, nhiều hoặc tất cả nhân vật, chọn cách nhận: 🗺️ đổi bản đồ · 🧙 NPC Ví Web · 🧰 Rương Ích Kỷ.</div>
+              <button class="btn-green" onclick="tab('pq')">Mở tab 🎁 Phát quà</button>
             </div>
             <div class="card">
               <div class="quaBar">
@@ -3226,8 +3308,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','lb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='lb')lbLoad();if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','lb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua','pq'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='lb')lbLoad();if(t==='pq'&&typeof pqLoad==='function')pqLoad();if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -3363,16 +3445,16 @@ function gmRender(){
     }).join('')+'</table>';
   // 08/10: bảng nhân vật gọn - online lên đầu, GUID + tài khoản dưới tên, lọc tại chỗ (gmLoc) không gọi lại server
   var dsNv=st.chars.slice().sort(function(x,y){return (y.online?1:0)-(x.online?1:0)||String(x.name).localeCompare(String(y.name),'vi');});
-  document.getElementById('gmChars').innerHTML='<table class="quaTb"><tr><th>Nhân vật</th><th>Cấp</th><th>Trạng thái</th><th>GM</th><th>Quà đang chờ</th><th>Phát quà</th></tr>'+
+  document.getElementById('gmChars').innerHTML='<table class="quaTb"><tr><th>Nhân vật</th><th>Cấp</th><th>Trạng thái</th><th>GM</th><th>Quà đang chờ</th><th>Quà</th></tr>'+
     dsNv.map(function(c){
       var pend=c.pending.length?'<span class="qChoN">'+c.pending.length+' món</span><br>'+c.pending.map(esc).join('<br>')+'<br><button class="mini" data-gm="huy_qua" data-guid="'+c.guid+'" data-confirm="Huỷ toàn bộ quà đang chờ của '+esc(c.name)+'?">Huỷ</button>':'<span class="muted">-</span>';
       var gm=c.gm?'<b style="color:#f1c40f">GM</b> <button class="mini btn-red" data-gm="gm_tat" data-guid="'+c.guid+'">Tắt</button>':'<button class="mini" data-gm="gm_bat" data-guid="'+c.guid+'">Cấp GM</button>';
       return '<tr class="'+(c.online?'qOn':'')+'" data-q="'+esc(String(c.name+' '+c.account+' '+c.guid).toLowerCase())+'" data-on="'+(c.online?1:0)+'" data-cho="'+(c.pending.length?1:0)+'">'+
         '<td class="qNm"><b>'+esc(c.name)+'</b><small>'+esc(c.account)+' · '+c.guid+'</small></td><td>'+esc(c.level)+'</td>'+
         '<td><span class="qDot'+(c.online?' on':'')+'"><i></i>'+(c.online?'online':'offline')+'</span></td>'+
-        '<td>'+gm+'</td><td class="qCho">'+pend+'</td><td>'+gmGiveForm(c.guid)+'</td></tr>';
+        '<td>'+gm+'</td><td class="qCho">'+pend+'</td><td><button class="mini btn-green" data-pqmo="'+c.guid+'">🎁 Gửi quà</button></td></tr>';
     }).join('')+'</table>';
-  if(!document.getElementById('gmLall'))document.getElementById('gmAllForm').innerHTML=gmGiveForm('all');
+  /* 19/10: form gửi tất cả chuyển sang tab 🎁 Phát quà */
   gmLoc();
   document.querySelectorAll('#tab-gm select[data-kindfor], #tab-qua select[data-kindfor]').forEach(function(s){gmKind(s.dataset.kindfor);});
 }
@@ -3471,12 +3553,12 @@ function mdRange(){var m=mdMon(MDSEL);if(!m)return;var cap=Number(document.getEl
   [].slice.call(document.querySelectorAll('#mdForm .md-r')).forEach(function(td){td.textContent=mdKhoang(m,Number(td.getAttribute('data-k')),cap);});
   var n=document.querySelectorAll('#mdForm .md-k:checked').length,d=document.getElementById('mdDem');
   d.innerHTML='Đã chọn <b>'+n+'</b> / tối đa '+m.max+' dòng'+(n>m.max?' <b style="color:#ff7b7b">quá số dòng</b>':'');}
-function mdAp(rs){var m=mdMon(MDSEL);if(!m)return;var ks=[].slice.call(document.querySelectorAll('#mdForm .md-k:checked')).map(function(x){return x.value;});
+async function mdAp(rs){var m=mdMon(MDSEL);if(!m)return;var ks=[].slice.call(document.querySelectorAll('#mdForm .md-k:checked')).map(function(x){return x.value;});
   if(!ks.length)return toast('Chọn ít nhất 1 dòng');if(ks.length>m.max)return toast('Món này tối đa '+m.max+' dòng');
   var cap=document.getElementById('mdCap').value,tc=document.getElementById('mdTc')?document.getElementById('mdTc').value:'';
-  if(!confirm('Áp mẫu '+m.ten+': '+ks.length+' dòng ('+ks.map(function(k){return mdTen(Number(k));}).join(', ')+'), cấp phẩm chất '+cap+(tc?', tư chất '+tc:'')+'?'+(rs?' Server sẽ RESTART ngay (~3 phút, người online bị ngắt).':' Có hiệu lực sau lần restart tới.')+' Trong lúc áp, ai chế / tẩy món này cũng ra y hệt.'))return;
+  if(!await uiConfirm('Áp mẫu '+m.ten+': '+ks.length+' dòng ('+ks.map(function(k){return mdTen(Number(k));}).join(', ')+'), cấp phẩm chất '+cap+(tc?', tư chất '+tc:'')+'?'+(rs?' Server sẽ RESTART ngay (~3 phút, người online bị ngắt).':' Có hiệu lực sau lần restart tới.')+' Trong lúc áp, ai chế / tẩy món này cũng ra y hệt.'))return;
   api('/api/gm/act',{a:'doche_ap',id:m.id,dong:ks.join(','),cap:cap,tc:tc,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
-function mdTra(id,rs){var m=mdMon(id);if(!confirm('Trả mẫu '+(m?m.ten:id)+' về gốc?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')+' Đồ đã chế giữ nguyên dòng và số.'))return;
+async function mdTra(id,rs){var m=mdMon(id);if(!await uiConfirm('Trả mẫu '+(m?m.ten:id)+' về gốc?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')+' Đồ đã chế giữ nguyên dòng và số.'))return;
   api('/api/gm/act',{a:'doche_tra',id:id,restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);mdLoad();}).catch(function(){});}
 // 🗡️ 04/10: Tẩy 3 dòng ám khí (panel GM amkhi.py). AK = {dong:[{cap, ds:[{id,ten,goc,hien}]}], dangAp, t}
 var AK=null;
@@ -3539,15 +3621,15 @@ function akSum(){[40,70,90].forEach(function(cap){var ws=akW(cap),t=ws.reduce(fu
 function akGoiY(){[70,90].forEach(function(cap){akW(cap).forEach(function(x){var v=AK_GOIY[cap][x.getAttribute('data-id')];if(v!==undefined)x.value=v;});});
   akW(40).forEach(function(x){var o=null;AK.dong[0].ds.forEach(function(y){if(String(y.id)===x.getAttribute('data-id'))o=y;});if(o)x.value=o.goc;});akSum();toast('Đã điền gợi ý - xem % rồi bấm Áp');}
 function akGoc(){AK.dong.forEach(function(d){akW(d.cap).forEach(function(x){var o=null;d.ds.forEach(function(y){if(String(y.id)===x.getAttribute('data-id'))o=y;});if(o)x.value=o.goc;});});akSum();}
-function akAp(rs){var f={a:'amkhi_ap',restart:rs?'1':''},ten={40:'wa',70:'wb',90:'wc'},loi='';
+async function akAp(rs){var f={a:'amkhi_ap',restart:rs?'1':''},ten={40:'wa',70:'wb',90:'wc'},loi='';
   [40,70,90].forEach(function(cap){var ws=akW(cap).map(function(x){return Math.max(0,Math.min(9999,Math.round(Number(x.value)||0)));});if(!ws.reduce(function(a,b){return a+b;},0))loi='Dòng cấp '+cap+' tổng trọng số = 0';f[ten[cap]]=ws.join(',');});
   if(loi)return toast(loi);
-  if(!confirm('Áp trọng số tẩy 3 dòng ám khí?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')))return;
+  if(!await uiConfirm('Áp trọng số tẩy 3 dòng ám khí?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')))return;
   api('/api/gm/act',f).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
-function akTra(rs){if(!confirm('Trả trọng số tẩy ám khí về gốc của game?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')))return;
+async function akTra(rs){if(!await uiConfirm('Trả trọng số tẩy ám khí về gốc của game?'+(rs?' Server sẽ RESTART ngay.':' Có hiệu lực sau lần restart tới.')))return;
   api('/api/gm/act',{a:'amkhi_tra',restart:rs?'1':''}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
-function gmDo(form,confirmMsg){
-  if(confirmMsg&&!confirm(confirmMsg))return;
+async function gmDo(form,confirmMsg){
+  if(confirmMsg&&!await uiConfirm(confirmMsg))return;
   api('/api/gm/act',form).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);gmLoad();}).catch(function(){});
 }
 function gmCreateAcc(){
@@ -3749,8 +3831,7 @@ document.addEventListener('click',function(ev){
   if(d.dpbox){var src=DP.st.boxes[d.dpbox];if(!src||src.missing)return toast('Hộp '+d.dpbox+' không có trong DropBoxContent');
     DP.open=d.dpboss;DP.box={id:d.dpbox,val:src.val,nBoss:src.nBoss,nOther:src.nOther,items:src.items.map(function(x){return {id:x.id,name:x.name};})};dropDraw();return;}
   if(d.dprm){var b=dropBossRow(d.dpboss);if(!b)return;
-    if(!confirm('Gỡ hộp '+d.dprm+' khỏi boss '+b.name+'? (hộp vẫn còn cho quái khác)'))return;
-    dropSaveBoss(b.id,b.boxes.filter(function(x){return x!==d.dprm;}));return;}
+    uiConfirm('Gỡ hộp '+d.dprm+' khỏi boss '+b.name+'? (hộp vẫn còn cho quái khác)','Gỡ hộp','btn-red').then(function(ok){if(ok)dropSaveBoss(b.id,b.boxes.filter(function(x){return x!==d.dprm;}));});return;}
   if(d.dpadd){DP.open=d.dpadd;DP.box={addMode:true};dropDraw();return;}
   if(d.dpaddgo){var v=(document.getElementById('dpNewBox').value||'').trim();var bb=dropBossRow(DP.open);if(!bb)return;
     if(!DP.st.boxes[v]||DP.st.boxes[v].missing)return toast('Không có hộp '+v+' - xem ID ở cột Hộp rơi của boss khác');
@@ -3992,8 +4073,8 @@ function txSaveThang(){
     refresh();
   }).catch(e=>toast('❌ '+e.message));
 }
-function txThangMacDinh(){
-  if(!confirm('Trả thang hệ số nhân về mặc định?'))return;
+async function txThangMacDinh(){
+  if(!await uiConfirm('Trả thang hệ số nhân về mặc định?'))return;
   api('/api/tx/thang',{macDinh:true}).then(j=>{
     const t=document.getElementById('txThang'); if(t){t.dataset.dirty='';t.value='';}
     toast('↩️ Đã về thang mặc định');refresh();
@@ -4027,8 +4108,8 @@ function rlSaveThang(){
   let bang;try{bang=txDocThangO('rlThang');}catch(e){return toast('❌ '+e.message);}
   api('/api/rl/thang',{thang:bang}).then(j=>{txClean(['rlThang']);toast('🎰 Đã lưu thang · '+j.oSangMoiVan.toFixed(1)+' số sét/ván · nhà cái vẫn ăn '+(j.anThuc*100).toFixed(2)+'%');refresh();}).catch(e=>toast('❌ '+e.message));
 }
-function rlThangMacDinh(){
-  if(!confirm('Trả thang hệ số nhân của bàn ROULETTE về mặc định?'))return;
+async function rlThangMacDinh(){
+  if(!await uiConfirm('Trả thang hệ số nhân của bàn ROULETTE về mặc định?'))return;
   api('/api/rl/thang',{macDinh:true}).then(()=>{const t=document.getElementById('rlThang');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 function rlEp(){
@@ -4088,8 +4169,8 @@ function rlSaveSet(){
   let bang;try{bang=rlDocSetO();}catch(e){return toast('❌ '+e.message);}
   api('/api/rl/set',{set:bang}).then(j=>{txClean(['rlSet']);toast('🔢 Đã lưu · trung bình '+j.oSangMoiVan.toFixed(1)+' ô sét/ván · nhà cái vẫn ăn '+(j.anThuc*100).toFixed(2)+'%');refresh();}).catch(e=>toast('❌ '+e.message));
 }
-function rlSetMacDinh(){
-  if(!confirm('Trả bảng số ô sét về mặc định (2×30, 3×26, 4×20, 5×13, 6×7, 7×4)?'))return;
+async function rlSetMacDinh(){
+  if(!await uiConfirm('Trả bảng số ô sét về mặc định (2×30, 3×26, 4×20, 5×13, 6×7, 7×4)?'))return;
   api('/api/rl/set',{macDinh:true}).then(()=>{const t=document.getElementById('rlSet');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 // đổ trạng thái bàn Roulette vào tab (chỉ điền ô nào admin chưa gõ dở)
@@ -4190,8 +4271,8 @@ function stxSaveThang(){
   let bang;try{bang=txDocThangO('stxThang');}catch(e){return toast('❌ '+e.message);}
   api('/api/stx/thang',{thang:bang}).then(j=>{txClean(['stxThang']);toast('🎰 Đã lưu thang · nhà cái ăn ~'+(j.anThuc*100).toFixed(2)+'%');refresh();}).catch(e=>toast('❌ '+e.message));
 }
-function stxThangMacDinh(){
-  if(!confirm('Trả thang hệ số nhân của bàn SIÊU về mặc định?'))return;
+async function stxThangMacDinh(){
+  if(!await uiConfirm('Trả thang hệ số nhân của bàn SIÊU về mặc định?'))return;
   api('/api/stx/thang',{macDinh:true}).then(()=>{const t=document.getElementById('stxThang');if(t){t.dataset.dirty='';t.value='';}toast('↩️ Đã về mặc định');refresh();}).catch(e=>toast('❌ '+e.message));
 }
 // ---------------------------------------------------------------- ✋ ÉP HỆ SỐ NHÂN (22/09)
@@ -4419,7 +4500,7 @@ function pokerFill(){
 function pokerOn(on){ api('/api/poker/on',{on:on}).then(j=>{toast(j.on?'🃏 Đã HIỆN tab poker':'🃏 Đã ẨN tab poker');refresh();}).catch(e=>toast('❌ '+e.message)); }
 function pokerChip(){ api('/api/poker/chip',{chipDau:Number(document.getElementById('pkChip').value)}).then(j=>{toast('🃏 Chip khởi điểm: '+j.chipDau.toLocaleString('vi-VN'));refresh();}).catch(e=>toast('❌ '+e.message)); }
 function pokerBatDau(){ api('/api/poker/batdau',{}).then(j=>{toast('▶️ Đã mở giải '+j.soNguoi+' người');refresh();}).catch(e=>toast('❌ '+e.message)); }
-function pokerGiaiTan(){ if(!confirm('Giải tán: dọn sạch bàn, ai muốn thì ngồi lại từ đầu?'))return; api('/api/poker/giaitan',{}).then(()=>{toast('🧹 Đã giải tán');refresh();}).catch(e=>toast('❌ '+e.message)); }
+async function pokerGiaiTan(){ if(!await uiConfirm('Giải tán: dọn sạch bàn, ai muốn thì ngồi lại từ đầu?'))return; api('/api/poker/giaitan',{}).then(()=>{toast('🧹 Đã giải tán');refresh();}).catch(e=>toast('❌ '+e.message)); }
 function pokerNghi(){ api('/api/poker/nghi',{}).then(()=>{toast('⏸️ Cả bàn tạm nghỉ');refresh();}).catch(e=>toast('❌ '+e.message)); }
 function pokerTiep(){ api('/api/poker/tiep',{}).then(()=>{toast('▶️ Chơi tiếp');refresh();}).catch(e=>toast('❌ '+e.message)); }
 setInterval(function(){ if(localStorage.getItem('panel_tab')==='poker'&&STATE&&STATE.poker!==undefined) pokerFill(); },3000);
@@ -5330,8 +5411,8 @@ function tbHdDraw(){
   document.getElementById('tbHd').innerHTML=TB.st.ds.map(h=>'<button style="text-align:left;padding:7px 10px;'+(h.hd===TB.hd?'outline:2px solid #ffcf5c;':'')+(h.on?'':'opacity:.55;')+'" onclick="tbPick(\\''+h.hd+'\\')">'+(h.on?'🟢':'⚫')+' '+esc(h.ten)+(h.sua?' <span style="color:#ffcf5c">✎</span>':'')+'</button>').join('')
     +'<div class="muted" style="font-size:12px">✎ = đã sửa khác mặc định · ⚫ = đang tắt</div>';
 }
-function tbPick(hd,force){
-  if(!force&&TB.dirty&&!confirm('Hoạt động này đang sửa dở chưa Lưu - bỏ thay đổi?'))return;
+async function tbPick(hd,force){
+  if(!force&&TB.dirty&&!await uiConfirm('Hoạt động này đang sửa dở chưa Lưu - bỏ thay đổi?'))return;
   TB.hd=hd;const h=tbCur();
   TB.ed=JSON.parse(JSON.stringify({on:h.on,knb:h.knb,ngay:h.ngay,luot:h.luot||0,mon:h.mon}));
   TB.dirty=false;TB.row=0;tbHdDraw();tbEdDraw();tbLogDraw();
@@ -5379,8 +5460,8 @@ function tbSave(){
     .then(j=>{TB.st=j;TB.dirty=false;tbPick(TB.hd,true);toast('💾 Đã lưu túi '+tbCur().ten+' - áp cho túi tạo từ giờ');})
     .catch(e=>toast('❌ '+e.message));
 }
-function tbReset(){
-  if(!confirm('Đưa túi "'+tbCur().ten+'" về mặc định?'))return;
+async function tbReset(){
+  if(!await uiConfirm('Đưa túi "'+tbCur().ten+'" về mặc định?'))return;
   api('/api/tuiboss/reset',{hd:TB.hd}).then(j=>{TB.st=j;TB.dirty=false;tbPick(TB.hd,true);toast('↩ Đã về mặc định');}).catch(e=>toast('❌ '+e.message));
 }
 function tbFind(){
@@ -5845,7 +5926,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
-<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script><script src="/tc.js"></script><script src="/tt.js"></script>
+<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script><script src="/tc.js"></script><script src="/tt.js"></script><script src="/pq.js"></script>
 </body>
 </html>`;
 

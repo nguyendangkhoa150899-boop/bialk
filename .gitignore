@@ -20,3 +20,6 @@ BotDoMin/assets/itemimage/*.webp
 .env.*
 *.env.bak*
 TienLen/kiemtra/anh/
+
+# 19/10 thu muc tam cua BotDoMin/thu/phatqua-test.js
+BotDoMin/thu/.pqtest-root/

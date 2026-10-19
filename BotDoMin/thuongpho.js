@@ -384,6 +384,37 @@ module.exports = function (ctx) {
         ctx.writeLog('ADMIN', `[RƯƠNG ÍCH KỶ → GAME] ${who || u.name || userId} (GUID ${guid}): ${tenMon(id)} x${n}, ${dong.length} lệnh`);
         return { ok: true, guid, soLenh: dong.length, nhanVat: u.ingameName || '' };
     }
+    // 🎁 19/10 (chủ server): tab Phát quà - admin gửi đồ thẳng cho 1 NHÂN VẬT (theo GUID, không cần ví web) qua kênh .tpin,
+    // giống Rương Ích Kỷ -> game: nhận ở NPC Ví Web (Nhận đồ Thương Phố) hoặc khi đăng nhập / đổi bản đồ, game kiểm đủ ô túi
+    // mới phát, không phát trùng, túi đầy thì chờ. Mã lệnh bắt đầu bằng "a" (admin). Phát lỗi -> phiếu HOAN như rutTuRuong.
+    function adminGui(guid, itemId, n, who) {
+        if (tat()) return { error: '🏪 Kênh nhận đồ (Thương Phố) đang tạm khoá - bật lại ở tab GM trước' };
+        guid = String(guid || '');
+        if (!guidOk(guid)) return { error: 'GUID nhân vật không hợp lệ' };
+        const id = String(itemId || ''); n = Math.floor(Number(n));
+        if (!/^\d{8}$/.test(id) || !(n > 0 && n <= 9999)) return { error: 'ID món (8 số) hoặc số lượng (1 - 9.999) không hợp lệ' };
+        const c = CHO.get(id);
+        const chong = c ? c.chong : (CHONG_ALL.get(id) || 1);
+        const tui = /^[25]/.test(id) ? 2 : 1;
+        const moiDong = Math.max(1, chong * RUT_O_MOI_DONG);
+        const dong = [];
+        for (let con = n; con > 0; con -= moiDong) {
+            const tx = 'a' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
+            dong.push(`${tx} ${id} ${Math.min(con, moiDong)} 0 ${tui} ${chong}`);
+        }
+        try {
+            ensureDirs();
+            const cu = readLines(tpin(guid));
+            writeAtomic(tpin(guid), cu.concat(dong).join('\n') + '\n');
+        } catch (e) {
+            return { error: 'Lỗi ghi lệnh vào game: ' + e.message };
+        }
+        const k = kho(guid);
+        ghiNk(k, 'rut', `🎁 ${tenMon(id)} x${n} (admin phát)`, [{ id, k: 0, n }], dong.map(l => l.split(' ')[0]));
+        ctx.saveDbNow();
+        ctx.writeLog('ADMIN', `[PHÁT QUÀ → NPC] ${who || 'admin'} (GUID ${guid}): ${tenMon(id)} x${n}, ${dong.length} lệnh`);
+        return { ok: true, soLenh: dong.length, ten: tenMon(id) };
+    }
     // admin: danh sách món được rút qua rương (kèm tên + icon), lưu lại
     function getIk() { return cfg().ik.map(id => ({ id, ten: tenMon(id), ic: ctx.icon(id), cho: CHO.has(id) })); }
     function setIk(ids) {
@@ -410,5 +441,5 @@ module.exports = function (ctx) {
         return { tatFile: fs.existsSync(TAT_FILE), cfg: { tat: !!cfg().tat, chan: cfg().chan }, soMon: CHO.size, loi: CHO_LOI, ds: out };
     }
 
-    return { napCho, pollPhieu, donTpin, state, rut, rutIk, rutTuRuong, getIk, setIk, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
+    return { napCho, pollPhieu, donTpin, state, rut, rutIk, rutTuRuong, adminGui, getIk, setIk, setCfg, adminDs, laCho: (id) => CHO.has(String(id)) };
 };

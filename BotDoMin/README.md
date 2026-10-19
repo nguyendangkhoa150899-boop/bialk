@@ -145,8 +145,18 @@ Chặn ở server, không phải ở giao diện:
 
 ## 5. Panel admin (`panel.js`)
 
+**19/10 (đợt 1 làm lại portal):** thanh tab xếp thành 6 nhóm: PHÁT QUÀ · NGƯỜI CHƠI · SỰ KIỆN · SERVER GAME · MINI GAME · HỆ THỐNG (`data-tab` và id pane giữ nguyên, chỉ đổi nhãn và chỗ đứng). Mọi `confirm()` của trình duyệt đã đổi sang `uiConfirm` (hộp tự vẽ).
+
+**🎁 Phát quà** (`phatqua.panel.js` phục vụ ở `/pq.js`, API `/api/pq/data`, `/api/pq/gui`, chỉ SUPER) là **chỗ duy nhất** admin gửi quà cho nhân vật: chọn người nhận (1 / nhiều / tất cả / đang online) → chọn quà (vật phẩm, trang bị có sao, pet, KNB game / vàng / Điểm Tặng / KNB ví web, cấp / EXP / VIP / tâm pháp, cửa sổ quà) → chọn **cách nhận** (chỉ vật phẩm có 3 cách):
+- 🗺️ **Đổi bản đồ**: hàng quà game `NetCo4Qua` qua panel GM `/api/act a=qua` (mọi loại quà).
+- 🧙 **NPC Ví Web**: kênh Thương Phố `.tpin` (`thuongpho.js` `adminGui`, mã lệnh đầu `a`), giống Rương Ích Kỷ chuyển vào game: nhận ở NPC Ví Web "Nhận đồ Thương Phố" hoặc khi đăng nhập / đổi bản đồ, game kiểm đủ ô túi mới phát. Theo GUID, không cần ví web.
+- 🧰 **Rương Ích Kỷ**: `adminIchKyGrant` vào rương web của ví liên kết (nhân vật phải gắn đúng 1 ví).
+
+Gửi lần lượt từng nhân vật, trả kết quả từng người, ghi nhật ký `[PHÁT QUÀ]`. Gửi từ 5 người trở lên phải gõ `GUI` để xác nhận. Tab ⚙️ (cũ "Phát quà & GM") bỏ form gửi, cột Quà là nút mở tab Phát quà chọn sẵn nhân vật. Tab 📦 Kho đồ gỡ khỏi thanh tab (code giữ). Test: `node thu/phatqua-test.js` (panel thật + panel GM giả, 15 bài).
+
 | Tab | Việc | Cổng |
 |---|---|---|
+| 🎁 Phát quà | Gửi quà cho nhân vật, 3 cách nhận (xem trên), quà đang chờ + Huỷ | SUPER |
 | 🎲 Tài Xỉu · ⚡ Siêu TX · 🎡 Roulette · 💣 Dò Mìn · 🪜 Leo Thang · 🎡 Vòng Quay · 🚀 Phi Thuyền · 📈 Cổ phiếu · 🃏 Poker · 🀄 Tiến Lên | Bật/tắt, nhịp ván, RTP, trần cược, ép kết quả, bảng Discord | SUPER |
 | 👥 Người chơi | Ví (cộng/trừ/đặt), vay nợ, mức điểm danh, công tắc chức năng, sàn cược | SUPER |
 | 🎁 Quà tặng | Quà mỗi ngày + cấu hình Vòng May Mắn, cấp lượt quay | SUPER |
