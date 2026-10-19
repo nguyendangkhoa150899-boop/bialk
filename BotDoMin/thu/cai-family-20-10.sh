@@ -7,8 +7,8 @@
 # sao luu ban cu vao /opt/tlbb-backup; tr -d '\r' + node --check; chi restart minigame khi game KHONG dang restart.
 set -u
 SRC=/tmp/bialk-moi/BotDoMin
-DST=/opt/minigame/BotDoMin
-BK=/opt/tlbb-backup/bot-truoc-family-20-10
+DST=${DST:-/opt/minigame/BotDoMin}   # DST / BK / KHONG_RESTART=1 de chay thu
+BK=${BK:-/opt/tlbb-backup/bot-truoc-family-20-10}
 FILES="fam.client.js family.js ghepngoc.js ichky.client.js index.js panel.js petboss.js thuongpho.client.js thuongpho.js tuiboss.client.js webplay.js"
 # md5 (bo \r) cua ban dang chay tren VPS = commit ce42220 (panel.js co the da la 9de8f17 neu da cai muc tay diem am khi). MOI = file moi.
 declare -A GOC=(
@@ -48,7 +48,8 @@ for f in $FILES; do [ -e "$DST/$f" ] && cp -p "$DST/$f" "$BK/$f"; done
 echo "== 4. Chep ban moi"
 for f in $FILES; do cp "/tmp/bialk-moi-lf/$f" "$DST/$f"; done
 echo "== 5. Restart bot (chi khi game khong dang restart)"
-if [ "$(systemctl list-jobs | grep -c tlbb)" != 0 ]; then
+if [ "${KHONG_RESTART:-}" = 1 ]; then echo "  (chay thu: bo qua restart)"
+elif [ "$(systemctl list-jobs | grep -c tlbb)" != 0 ]; then
   echo "  Game DANG restart - chua restart bot. Doi game len xong roi chay: systemctl restart minigame"
 else
   systemctl restart minigame; sleep 8; echo "  minigame: $(systemctl is-active minigame)"
