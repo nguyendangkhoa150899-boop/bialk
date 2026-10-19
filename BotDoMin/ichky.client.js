@@ -5,6 +5,17 @@
 // Ghi de ikDraw() cua trang choi (webplay.js); dung chung: IK, api, esc, toast, vqIcon, isImg, vnd, gConfirm, setBal, ikBadge, ikTick, ikGio.
 (function () {
   var css = [
+    // 👪 20/10 family: ô chọn TÀI KHOẢN NHẬN (trên = tài khoản, dưới = tên trong game)
+    '.ikAccs{margin:8px 0 4px}.ikAccL{font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}',
+    '.ikAccG{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}',
+    '.ikAccG .ikAcc{position:relative;display:flex;align-items:center;gap:8px;width:100%;margin:0;padding:8px 10px;border:1px solid #2b3550;border-radius:11px;background:#161c2b;color:#c9d2e6;text-align:left;cursor:pointer;font-size:13px}',
+    '.ikAccG .ikAcc:hover{border-color:#4a5d8a;background:#1a2235}',
+    '.ikAccG .ikAcc.on{border:2px solid #4da3ff;padding:7px 9px;background:linear-gradient(135deg,#10263a,#13203a);color:#e9f3ff;box-shadow:0 0 0 3px rgba(77,163,255,.12)}',
+    '.ikAccG .ikAv{flex:0 0 30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#04203a;background:linear-gradient(135deg,#8cc8ff,#4da3ff);text-transform:uppercase}',
+    '.ikAccG .ikAcc:not(.on) .ikAv{background:linear-gradient(135deg,#3a4766,#2b3550);color:#c9d2e6}',
+    '.ikAccG .ikAccT{min-width:0;flex:1;line-height:1.25}.ikAccG .ikAccT b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.ikAccG .ikAccT span{display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ikAccG .ikAcc.on .ikAccT span{color:#9fc9ff}',
+    '.ikAccG .ikAccTag{position:absolute;top:-7px;right:6px;font-size:10px;padding:0 6px;border-radius:999px;background:#3a2f10;color:#ffd27a;border:1px solid #5a4818}',
     '#ikList .ikTwo{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}',
     // 07/10 chu server: PC trai = ruong (vat pham), phai = khung thao tac (giong Thuong Pho); dien thoai giu khung thao tac o tren cho de bam
     '@media(min-width:900px){#ikList .ikTwo{grid-template-columns:7fr minmax(300px,5fr)}#ikList .ikAc{order:2;position:sticky;top:10px;align-self:start}}',
@@ -183,6 +194,7 @@
       Object.keys(MD).map(function (k) { return '<button class="m-' + k + (C.md === k ? ' on' : '') + '" onclick="ikcMd(\'' + k + '\')">' + MD[k].t + '</button>'; }).join('') + '</div>' +
       '<div class="ikNote">' + md.note + ' Bấm món bên <b>rương</b> để đưa sang đây, sửa số dưới ô, rồi bấm xác nhận.</div>';
     if (C.md === 'tang') { taiNguoi(); h += '<select class="ikTo" onchange="ikcTo(this.value)">' + nguoiOpt() + '</select>'; }
+    if (C.md === 'nhan') { taiFam(); if (FAMNV && FAMNV.length > 1) h += famOHtml(); }   // 👪 chọn tài khoản nhận ngay ở đây
     h += '<div class="ikBagT">' + md.t + ' <span>' + ks.length + ' loại · ' + fmt(mon) + ' món</span></div><div class="ikGrid">';
     h += ks.length ? ks.map(function (id) { return oRa(tim(id), C.chon[id]); }).join('') : '<div class="ikEmpty">Bấm món bên rương để đưa sang đây</div>';
     h += '</div>';
@@ -237,6 +249,25 @@
   window.ikcLoc = function (v) { C.loc = v; luuCfg(); ve(); };
   window.ikcTim = function (v) { C.q = v; ve(); };
   window.ikcTo = function (v) { C.to = String(v || ''); ve(); };
+  // 👪 20/10 family: danh sách tài khoản (có nhân vật) để chọn người NHẬN khi rút rương vào game. Không trong family -> không hiện.
+  var FAMNV = null;
+  function taiFam() {
+    if (FAMNV) return; FAMNV = [];
+    api('/api/fam/state').then(function (j) {
+      FAMNV = (j.tv || []).filter(function (x) { return x.guid; });
+      if (FAMNV.length > 1 && !FAMNV.some(function (x) { return x.vi === C.nhanVi; })) C.nhanVi = FAMNV[0].vi;
+      ve();
+    }).catch(function () { });
+  }
+  function famOHtml() {
+    return '<div class="ikAccs"><div class="ikAccL">🎮 NHẬN VÀO TÀI KHOẢN</div><div class="ikAccG">' + FAMNV.map(function (x, i) {
+      var acc = x.acc || x.ten || '?';
+      return '<button class="ikAcc' + (x.vi === C.nhanVi ? ' on' : '') + '" onclick="ikcNhanVi(\'' + e(x.vi) + '\')">' + (i === 0 ? '<span class="ikAccTag">👑</span>' : '') +
+        '<span class="ikAv">' + e(acc.charAt(0)) + '</span><span class="ikAccT"><b>' + e(acc) + '</b><span>🎮 ' + e(x.ten || '—') + '</span></span></button>';
+    }).join('') + '</div></div>';
+  }
+  function tenNhan() { var x = (FAMNV || []).filter(function (y) { return y.vi === C.nhanVi; })[0]; return x ? (x.acc || x.ten) + (x.ten ? ' (' + x.ten + ')' : '') : ''; }
+  window.ikcNhanVi = function (v) { C.nhanVi = String(v || ''); ve(); };
   window.ikcVao = function (id) {
     if (ban()) return; var x = tim(id); if (!x) return; tip.style.display = 'none';
     if (x.doi > 0) return popPhieu(x);
@@ -269,7 +300,8 @@
       ((typeof IKNG !== 'undefined' && IKNG) || []).forEach(function (p) { if (String(p.id) === to) tenTo = p.name || p.id; });
     }
     var viec = ks.map(function (id) { return { id: id, n: C.chon[id] }; }), mon = 0; viec.forEach(function (v) { mon += v.n; });
-    var msg = (md === 'nhan' ? 'Nhận <b>' + viec.length + ' loại (' + fmt(mon) + ' món)</b> vào túi trong game? Nhân vật phải đang <b>ONLINE</b>.'
+    var famN = md === 'nhan' && FAMNV && FAMNV.length > 1 ? tenNhan() : '';
+    var msg = (md === 'nhan' ? 'Nhận <b>' + viec.length + ' loại (' + fmt(mon) + ' món)</b> vào game' + (famN ? ' cho tài khoản <b style="color:#7cc4ff">' + e(famN) + '</b>' : '') + '?'
       : md === 'tang' ? 'Tặng <b>' + viec.length + ' loại (' + fmt(mon) + ' món)</b> cho <b style="color:#7cc4ff">' + e(tenTo || to) + '</b>?'
         : 'XOÁ <b>' + viec.length + ' loại (' + fmt(mon) + ' món)</b> khỏi rương?') +
       '<div class="ikCfL">' + viec.slice(0, 8).map(function (v) { return dongMon(tim(v.id), v.n); }).join('') + (viec.length > 8 ? '<div class="muted" style="font-size:12px">+ ' + (viec.length - 8) + ' loại khác</div>' : '') + '</div>' +
@@ -291,6 +323,7 @@
       var mot = function () {
         if (i >= viec.length) return ket(null);
         nut(); var v = viec[i], body = { itemId: v.id, qty: v.n }; if (md === 'tang') body.toId = to;
+        if (md === 'nhan' && famN) body.vi = C.nhanVi;   // 👪 tài khoản nhận đã chọn ở khung (không hỏi lại bằng popup)
         api(url, body).then(function (j) {
           if (j && j.state) IK = j.state;
           delete C.chon[v.id]; xong++; i++; mot();

@@ -7,6 +7,18 @@
     '@media(min-width:900px){body.tpWide{max-width:1180px}}',
     '#tpCard .tpHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
     '#tpCard .tpWho{margin-left:auto;font-size:12px;color:var(--muted)}#tpCard .tpWho b{color:#ffd76a}',
+    // 👪 20/10 family: ô chọn tài khoản (trên = tài khoản, dưới = tên trong game)
+    '#tpCard .tpAccs{margin:12px 0 6px}#tpCard .tpAccL{font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}',
+    '#tpCard .tpAccG{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}',
+    '#tpCard .tpAcc{position:relative;display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:10px 12px;border:1px solid #2b3550;border-radius:12px;background:#161c2b;color:#c9d2e6;text-align:left;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}',
+    '#tpCard .tpAcc:hover{border-color:#4a5d8a;background:#1a2235}#tpCard .tpAcc:active{transform:scale(.98)}',
+    '#tpCard .tpAcc.on{border:2px solid #4da3ff;padding:9px 11px;background:linear-gradient(135deg,#10263a,#13203a);color:#e9f3ff;box-shadow:0 0 0 3px rgba(77,163,255,.12)}',
+    '#tpCard .tpAv{flex:0 0 36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#04203a;background:linear-gradient(135deg,#8cc8ff,#4da3ff);text-transform:uppercase}',
+    '#tpCard .tpAcc:not(.on) .tpAv{background:linear-gradient(135deg,#3a4766,#2b3550);color:#c9d2e6}',
+    '#tpCard .tpAccT{min-width:0;flex:1;line-height:1.3}#tpCard .tpAccT b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '#tpCard .tpAccT span{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#tpCard .tpAcc.on .tpAccT span{color:#9fc9ff}',
+    '#tpCard .tpAccTag{position:absolute;top:-7px;right:8px;font-size:10px;padding:1px 6px;border-radius:999px;background:#3a2f10;color:#ffd27a;border:1px solid #5a4818}',
+    '#tpCard .tpAccOk{position:absolute;bottom:6px;right:8px;font-size:12px;color:#4da3ff;font-weight:900}',
     '#tpCard .tpNote{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}',
     '#tpCard .tpBar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}',
     '#tpCard .tpBar input,#tpCard .tpBar select{background:#11141e;border:1px solid #2a3340;color:var(--tx);border-radius:9px;padding:7px 9px;font-size:13px}',
@@ -174,13 +186,16 @@
     var h = '<div class="tpHead"><h2 style="margin:0">🏪 Thương Phố</h2>' +
       (s.nhanVat ? '<div class="tpWho">Kho của nhân vật <b>' + e(s.nhanVat) + '</b></div>' : '') + '</div>' +
       // 👪 20/10 family: Ô TÀI KHOẢN bấm chọn (không dropdown) - mỗi tài khoản 1 kho riêng, rút về đúng tài khoản đó
-      (s.fam && s.fam.tv && s.fam.tv.length > 1 ? '<div class="tpAccs" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px"><div style="width:100%;font-size:13px;color:var(--muted)">👤 Kho của tài khoản</div>' +
+      // trên = TÀI KHOẢN, dưới = tên nhân vật trong game; ô đang chọn sáng xanh + ✓, trưởng có nhãn 👑
+      (s.fam && s.fam.tv && s.fam.tv.length > 1 ? '<div class="tpAccs"><div class="tpAccL">👤 CHỌN TÀI KHOẢN ĐỂ XEM KHO</div><div class="tpAccG">' +
         s.fam.tv.map(function (x, i) {
-          var on = x.vi === s.fam.xem;
-          return '<button onclick="tpXem(\'' + e(x.vi) + '\')" style="width:auto;margin:0;padding:8px 14px;border-radius:10px;text-align:left;line-height:1.25;cursor:pointer;' +
-            (on ? 'background:#10263a;border:2px solid #4da3ff;color:#e9f3ff' : 'background:#161c2b;border:1px solid #2b3550;color:#c9d2e6') + '">' +
-            '<b style="display:block;font-size:14px">' + (i === 0 ? '👑 ' : '') + e(x.ten || x.acc) + '</b><span style="font-size:11px;opacity:.75">' + e(x.acc) + '</span></button>';
-        }).join('') + '</div>' : '') +
+          var on = x.vi === s.fam.xem, acc = x.acc || x.ten || '?';
+          return '<button class="tpAcc' + (on ? ' on' : '') + '" onclick="tpXem(\'' + e(x.vi) + '\')" title="Kho Thương Phố của ' + e(acc) + '">' +
+            (i === 0 ? '<span class="tpAccTag">👑 Trưởng</span>' : '') +
+            '<span class="tpAv">' + e(acc.charAt(0)) + '</span>' +
+            '<span class="tpAccT"><b>' + e(acc) + '</b><span>🎮 ' + e(x.ten || '—') + '</span></span>' +
+            (on ? '<span class="tpAccOk">✓</span>' : '') + '</button>';
+        }).join('') + '</div></div>' : '') +
       '<div class="tpNote">Ra NPC <b>Ví Web</b> trong game, bấm <b>Chuyển Đạo cụ</b> hoặc <b>Chuyển Nguyên liệu</b> để chuyển đồ ra đây. ' +
       'Đồ chỉ rút về <b>đúng nhân vật này</b>, không tặng / bán được. Đồ <span style="color:#ff5a5a;font-weight:800">🔒 cố định</span> rút về vẫn cố định. ' +
       'Bấm 1 ô bên trái là chuyển chồng đó sang túi rút (bấm tiếp để lấy thêm), sửa số lượng dưới ô, bấm <b>Xác nhận</b> để chuyển một lần.</div>';
