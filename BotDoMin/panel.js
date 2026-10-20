@@ -2478,9 +2478,9 @@ td{font-variant-numeric:tabular-nums}
           </div>
           <div class="quaTool">
             <div class="qT">
-              <b>🐉 Custom Trùng Lâu (dòng mới 10553100-10553114)</b>
+              <b>🐉 Custom Trùng Lâu</b>
               <button class="btn-grey" onclick="tlLoad()">🔄 Tải</button>
-              <span class="muted">Chỉnh dòng thuộc tính + điểm từng mã, tỉ lệ dính / thời gian hiệu ứng toàn server, xem ai đang giữ / đang mặc. Có hiệu lực sau restart game.</span>
+              <span class="muted">Giới / Ngọc người chơi và admin, Liên, Đai, Vai, Giáp, mũ Giáng Sinh: chỉnh dòng thuộc tính + điểm từng mã, hiệu ứng thần khí toàn server, xem ai đang giữ / đang mặc. Có hiệu lực sau restart game.</span>
             </div>
             <div id="tlBox" class="epOnly" style="display:none;container-type:inline-size"></div>
           </div>
