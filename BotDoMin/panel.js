@@ -2504,6 +2504,14 @@ td{font-variant-numeric:tabular-nums}
           </div>
           <div class="quaTool">
             <div class="qT">
+              <b>👶 Con cái: tẩy kỹ năng (NPC Trưởng Tôn Bà Bà)</b>
+              <button class="btn-grey" onclick="ccLoad()">🔄 Tải</button>
+              <span class="muted">Chọn loại kỹ năng được ra khi người chơi tẩy kỹ năng con (Giác Linh Châu). Bật cả 8 = ngẫu nhiên như gốc. Hiệu lực ngay, không cần restart.</span>
+            </div>
+            <div id="ccBox" class="muted epOnly" style="display:none;margin-top:6px">Bấm 🔄 Tải để xem.</div>
+          </div>
+          <div class="quaTool">
+            <div class="qT">
               <b>🐉 Custom Trùng Lâu</b>
               <button class="btn-grey" onclick="tlLoad()">🔄 Tải</button>
               <span class="muted">Giới / Ngọc người chơi và admin, Liên, Đai, Vai, Giáp, mũ Giáng Sinh: chỉnh dòng thuộc tính + điểm từng mã, hiệu ứng thần khí toàn server, xem ai đang giữ / đang mặc. Có hiệu lực sau restart game.</span>
@@ -3698,6 +3706,17 @@ function akTayHtml(){var t=(AK&&AK.tay)||[1,1,1,1,1],gioiHan=t.indexOf(0)>=0;
 function akTayLuu(){var a=[].slice.call(document.querySelectorAll('#akBox .ak-tay')).map(function(x){return x.checked?1:0;});
   if(a.length!==5)return;if(a.indexOf(1)<0)return toast('Phải bật ít nhất 1 thuộc tính');
   api('/api/gm/act',{a:'amkhitay',bat:a.join(',')}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);akLoad();}).catch(function(){});}
+// 👶 20/10: CON CÁI - loại kỹ năng được ra khi tẩy (panel game concai.py -> NetCo4Cfg/concaikn.txt, Lua zhinv_NPC.lua đọc mỗi lần tẩy)
+var CC_TEN=['Kháng Băng','Kháng Hỏa','Kháng Huyền','Kháng Độc','Giảm kháng Băng','Giảm kháng Hỏa','Giảm kháng Huyền','Giảm kháng Độc'];
+function ccLoad(){api('/api/gm/amkhi',{}).then(function(j){ccDraw((j.data&&j.data.concai)||[1,1,1,1,1,1,1,1]);}).catch(function(e){toast('❌ '+e.message);});}
+function ccDraw(t){var box=document.getElementById('ccBox'),gioiHan=t.indexOf(0)>=0;
+  var h=(gioiHan?'<div class="note" style="margin:0 0 6px;border-color:#c0392b"><b>⚠️ Đang giới hạn:</b> tẩy chỉ ra '+esc(CC_TEN.filter(function(x,i){return t[i];}).join(', '))+'</div>':'<div class="muted" style="margin-bottom:6px">Đang ngẫu nhiên như gốc (cả 8 loại).</div>')
+    +'<div class="row" style="gap:14px;flex-wrap:wrap;align-items:center">';
+  CC_TEN.forEach(function(n,i){h+='<label style="white-space:nowrap;cursor:pointer"><input type="checkbox" class="cc-kn" style="width:auto;margin-right:4px"'+(t[i]?' checked':'')+'>'+esc(n)+'</label>';});
+  box.className='epOnly';box.innerHTML=h+'<button class="btn-green" onclick="ccLuu()">💾 Lưu</button></div>';}
+function ccLuu(){var a=[].slice.call(document.querySelectorAll('#ccBox .cc-kn')).map(function(x){return x.checked?1:0;});
+  if(a.length!==8)return;if(a.indexOf(1)<0)return toast('Phải bật ít nhất 1 loại');
+  api('/api/gm/act',{a:'concaikn',bat:a.join(',')}).then(function(j){toast((j.done?'✅ ':'⚠️ ')+j.msg);ccLoad();}).catch(function(){});}
 function akDraw(){if(!AK)return;var box=document.getElementById('akBox'),h=akTayHtml();
   h+=AK.dangAp?'<div class="note" style="margin:0 0 8px;border-color:#c0392b"><b>⚠️ Đang dùng trọng số riêng</b> (áp lúc '+new Date(AK.t*1000).toLocaleString('vi-VN')+'). Restart rồi mới có hiệu lực nếu vừa áp.</div>'
     :'<div class="muted" style="margin-bottom:6px">Đang dùng trọng số gốc của game.</div>';
