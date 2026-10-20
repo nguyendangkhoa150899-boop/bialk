@@ -48,6 +48,9 @@ function startPanel(ctx) {
     const MO_MOD = process.env.PANEL_MOD_MO !== '0';
     const laCongMod = (req) => req.socket.localPort !== ctx.port;
     let BR_CACHE = null;   // 📊 05/10 /br-data.json
+    // 🎟️ 20/10 Giftcode trong game (giftcode.js): ghi giftcode.txt + giftcode-acc.txt cho eprize.lua, đọc giftcode-dung.txt. Lưu db._giftcode.
+    let GC = null;
+    try { GC = require('./giftcode')(ctx); GC.init(); } catch (e) { ctx.writeLog('SYSTEM', `[GIFTCODE] Không khởi động được: ${e.message}`); }
 
     const isAuthed = (req) => {
         // Cổng SUPER có mật khẩu riêng: bắt buộc token SUPER, kệ AUTH_OFF của cổng thường
@@ -247,6 +250,11 @@ function startPanel(ctx) {
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
                 return res.end(s);
             }
+            if (req.method === 'GET' && path === '/gc.js') {   // 🎟️ 20/10 giao diện tab Giftcode (chỉ SUPER thao tác; đọc lại mỗi lần, sửa không cần restart)
+                const s = require('fs').readFileSync(require('path').join(__dirname, 'giftcode.panel.js'));
+                res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+                return res.end(s);
+            }
             if (req.method === 'GET' && path === '/tk.js') {   // 👤 19/10 giao diện tab Tài khoản (gộp tài khoản game + nhân vật + ví web theo NGƯỜI; chỉ SUPER thao tác; đọc lại mỗi lần, sửa không cần restart)
                 const s = require('fs').readFileSync(require('path').join(__dirname, 'taikhoan.panel.js'));
                 res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -402,6 +410,8 @@ function startPanel(ctx) {
                     '/api/poker/giaitan', '/api/poker/nghi', '/api/poker/tiep',
                     // 📜 lịch sử sửa Drop Boss có IP người sửa -> chỉ SUPER (route cũng tự kiểm epOk)
                     '/api/drop/log', '/api/drop/rollback',
+                    // 🎟️ 20/10 Giftcode: mã phát quà thật trong game -> chỉ SUPER (route cũng tự kiểm epOk)
+                    '/api/gc/list', '/api/gc/tao', '/api/gc/bat', '/api/gc/xoa', '/api/gc/dung',
                 ];
                 if (req.method === 'POST' && VIEWONLY_PATHS.includes(path) && !epOk(req)) {
                     return sendJSON(res, 403, { ok: false, error: 'Cổng admin này CHỈ XEM 2 tab 👥/🐉 - muốn chỉnh phải vào cổng SUPER' });
@@ -1376,6 +1386,20 @@ function startPanel(ctx) {
                     ctx.writeLog('ADMIN', `[PHÁT QUÀ] ${who} ${loai} ${gt}${/^(item|itemsao|xoa)$/.test(loai) ? ' x' + sl : ''} cách nhận ${kenh} -> ${okN}/${kq.length} nhân vật OK: ${kq.filter(x => x.ok).slice(0, 30).map(x => x.ten).join(', ')}` + (loi.length ? ' | lỗi: ' + loi.slice(0, 5).map(x => x.ten + ': ' + x.msg).join('; ') : ''));
                     return sendJSON(res, 200, { ok: true, kq, okN });
                 }
+                // 🎟️ 20/10 TAB GIFTCODE (giftcode.js): tạo / bật-tắt / xoá mã, xem ai đã dùng. Game kiểm mã + phát quà (eprize.lua). Chỉ SUPER.
+                if (path === '/api/gc/list' || path === '/api/gc/tao' || path === '/api/gc/bat' || path === '/api/gc/xoa' || path === '/api/gc/dung') {
+                    if (!epOk(req)) return sendJSON(res, 403, { ok: false, error: 'Không có quyền (cần cổng SUPER)' });
+                    if (!GC) return sendJSON(res, 503, { ok: false, error: 'Giftcode chưa khởi động được (xem nhật ký SYSTEM)' });
+                    const who = 'SUPER ' + String(req.headers['x-real-ip'] || req.socket.remoteAddress || '');
+                    let r;
+                    if (path === '/api/gc/list') r = GC.list();
+                    else if (path === '/api/gc/dung') r = GC.dung(body.ma);
+                    else if (path === '/api/gc/tao') r = await GC.tao(body, who);
+                    else if (path === '/api/gc/bat') r = await GC.bat(body.ma, body.on === true, who);
+                    else r = await GC.xoa(body.ma, who);
+                    if (r.error) return sendJSON(res, r.st || 400, { ok: false, error: r.error });
+                    return sendJSON(res, 200, { ok: true, ...r });
+                }
                 // 👤 19/10 TAB TÀI KHOẢN: danh sách ví web để trình duyệt ghép với tài khoản game + nhân vật (/api/gm/state).
                 // Chỉ SUPER. KHÔNG trả gamePass (mật khẩu game lưu trong ví).
                 if (path === '/api/tk/data') {
@@ -1857,12 +1881,12 @@ td{font-variant-numeric:tabular-nums}
 /* điện thoại: bảng rộng tự cuộn ngang TRONG thẻ, không đẩy trang tràn ngang */
 @media(max-width:820px){.card table{display:block;max-width:100%;overflow-x:auto}}
 /* tab cần chỗ rộng ở màn vừa (dưới 1024px vẫn thanh tab trên cùng) */
-.wrap:has(#tab-tk:not(.hidden)),.wrap:has(#tab-pq:not(.hidden)){max-width:1400px}
+.wrap:has(#tab-tk:not(.hidden)),.wrap:has(#tab-pq:not(.hidden)),.wrap:has(#tab-gc:not(.hidden)){max-width:1400px}
 /* màn vừa (821-1023px): thanh tab trên cùng gọn hơn cho nội dung lên sớm */
 @media(min-width:821px) and (max-width:1023px){.tabs{margin-bottom:12px}.grp{margin-bottom:4px}.grp .glb{padding-top:9px}.tabs button{padding:6px 10px;font-size:13.5px}}
 /* PC từ 1024px: thanh tab thành CỘT TRÁI cố định (tự cuộn riêng), nội dung dùng hết phần còn lại */
 @media(min-width:1024px){
-  .wrap,.wrap:has(#tab-qua:not(.hidden)),.wrap:has(#tab-tk:not(.hidden)),.wrap:has(#tab-pq:not(.hidden)){max-width:1940px;display:grid;grid-template-columns:232px minmax(0,1fr);column-gap:20px;row-gap:0;align-items:start;padding:16px 20px}
+  .wrap,.wrap:has(#tab-qua:not(.hidden)),.wrap:has(#tab-tk:not(.hidden)),.wrap:has(#tab-pq:not(.hidden)),.wrap:has(#tab-gc:not(.hidden)){max-width:1940px;display:grid;grid-template-columns:232px minmax(0,1fr);column-gap:20px;row-gap:0;align-items:start;padding:16px 20px}
   .wrap>.tabs{grid-column:1;grid-row:1;position:sticky;top:calc(var(--hdrH,58px) + 12px);max-height:calc(100vh - var(--hdrH,58px) - 24px);overflow-y:auto;overflow-x:hidden;margin:0;padding:10px 6px 10px 8px;background:var(--card);border:1px solid var(--line);border-radius:14px;scrollbar-gutter:stable}
   .wrap>div:not(.tabs){grid-column:2;grid-row:1;min-width:0;max-width:1680px}
   .tabs .grp{display:block;margin:0 0 10px}
@@ -1914,6 +1938,7 @@ td{font-variant-numeric:tabular-nums}
            Cổng mod: modApp() tự ẩn nhóm không có nút mod được xem. -->
       <div class="grp"><span class="glb">PHÁT QUÀ</span><div class="gbt">
         <button data-tab="pq" class="epOnly" style="display:none" onclick="tab('pq')">🎁 Phát quà</button>
+        <button data-tab="gc" class="epOnly" style="display:none" onclick="tab('gc')">🎟️ Giftcode</button>
       </div></div>
       <div class="grp"><span class="glb">NGƯỜI CHƠI</span><div class="gbt">
         <button data-tab="tk" class="epOnly" style="display:none" onclick="tab('tk')">👤 Tài khoản</button>
@@ -2379,6 +2404,7 @@ td{font-variant-numeric:tabular-nums}
     </div>
     <div id="tab-tk" class="hidden"><div id="tkRoot"></div></div><!-- 👤 19/10 tab Tài khoản: giao diện ở taikhoan.panel.js (/tk.js) -->
     <div id="tab-pq" class="hidden"><div id="pqRoot"></div></div><!-- 🎁 19/10 tab Phát quà: giao diện ở phatqua.panel.js (/pq.js) -->
+    <div id="tab-gc" class="hidden"><div id="gcRoot"></div></div><!-- 🎟️ 20/10 tab Giftcode: giao diện ở giftcode.panel.js (/gc.js) -->
     <div id="tab-qua" class="hidden"><!-- 🎁 08/10: tách khỏi 🛠️ GM Thiên Long thành tab riêng, chia 3 mục cho đỡ rối (chủ server). ID phần tử giữ nguyên: JS gm* dùng chung -->
       <div class="card">
         <div class="quaTop">
@@ -3394,8 +3420,8 @@ function showApp(){
 function tab(t){
   // 17/09: bỏ 'xs' (tab Xổ Số đã xoá 17/09 nhưng còn sót ở đây -> null.classList, bấm tab nào cũng chết).
   // Chốt if(el): sau này gỡ tab khác mà quên sửa danh sách thì tab đó im lặng, KHÔNG làm chết cả panel.
-  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','lb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua','pq','tk'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
-  if(t==='lb')lbLoad();if(t==='pq'&&typeof pqLoad==='function')pqLoad();if(t==='tk'&&typeof tkLoad==='function')tkLoad();if(t==='tlbb')tpikLoad();if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
+  ['tx','stx','rl','mine','stair','bj','stock','spm','user','tlbb','gm','drop','tb','lb','log','gift','gn','gnx','vqx','br','give','poker','tienlen','qua','gc','pq','tk'].forEach(x=>{const el=document.getElementById('tab-'+x);if(el)el.classList.toggle('hidden',x!==t)});
+  if(t==='lb')lbLoad();if(t==='pq'&&typeof pqLoad==='function')pqLoad();if(t==='gc'&&typeof gcLoad==='function')gcLoad();if(t==='tk'&&typeof tkLoad==='function')tkLoad();if(t==='tlbb')tpikLoad();if(t==='give')gvLoad();if(t==='gn'&&typeof gnaLoad==='function')gnaLoad();if(t==='vqx')vqxLoad();if(t==='gnx'&&typeof gnxLoad==='function')gnxLoad();if(t==='br'&&typeof brLoad==='function')brLoad();if(t==='gm')gmLoad();if(t==='qua'){gmLoad();quaSec();}if(t==='drop'&&!DP.st)dropLoad();if(t==='tb'){if(CONG_MOD)tbXemLoad();else if(!TB.st)tbLoad();}if(t==='gift'){giftFill(true);vqaLoad();}if(t==='poker')pokerFill();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   localStorage.setItem('panel_tab',t);
 }
@@ -6034,7 +6060,7 @@ if(AUTH_OFF){
   fetch('/api/whoami',{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>{if(r.ok)showApp();else logout();}).catch(()=>logout());
 }
 </script>
-<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script><script src="/tc.js"></script><script src="/tt.js"></script><script src="/pq.js"></script><script src="/tk.js"></script>
+<script src="/gn-admin.js"></script><script src="/br.js"></script><script src="/tl.js"></script><script src="/vh.js"></script><script src="/tc.js"></script><script src="/tt.js"></script><script src="/pq.js"></script><script src="/tk.js"></script><script src="/gc.js"></script>
 </body>
 </html>`;
 
