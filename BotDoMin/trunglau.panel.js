@@ -9,10 +9,13 @@
   var TL = { them: false, d: null, sel: CFG.sel, hu: {}, sua: {}, giu: null, chiMa: false, xnRs: 0, xnTra: 0 };
   var IDS = []; CFG.nhom.forEach(function (g) { IDS = IDS.concat(g[1]).concat(g[2] ? [g[2]] : []); });
   var NHOM = null;
-  var NHOM_TL = [['Liên (dây chuyền)', ['10553100', '10553112'], '10553103'], ['Giới (nhẫn)', ['10553101', '10553113'], '10553104'],
-    ['Ngọc (hộ phù)', ['10553102', '10553114'], '10553105'], ['Đai (thắt lưng)', ['10553106'], '10553107'],
+  // 20/10 (chu server): Gioi / Ngoc - ma su kien (giao dich duoc) + ma doi NPC (khoa khi mac) chung 1 cau hinh, nang len dung Chan.
+  // Ma admin cap (khoa) de rieng, chu server custom sau. 10422018 / 10423026 (ban cu khoa) chua co trong IDS cua panel/trunglau.py.
+  var NHOM_TL = [['Giới (nhẫn): sự kiện + đổi NPC, nâng lên Chân', ['10422016', '10553101'], '10553104'],
+    ['Ngọc (hộ phù): sự kiện + đổi NPC, nâng lên Chân', ['10423024', '10553102'], '10553105'],
+    ['Giới / Ngọc admin cấp (khóa, custom riêng sau)', ['10553113', '10553114'], null],
+    ['Liên (dây chuyền)', ['10553100', '10553112'], '10553103'], ['Đai (thắt lưng)', ['10553106'], '10553107'],
     ['Vai (hộ kiên)', ['10553108'], '10553109'], ['Giáp (áo)', ['10553110'], '10553111'],
-    ['Bản cũ giao dịch được (nâng → Chân dòng mới)', ['10422016', '10423024'], null],
     ['Mũ "Trùng Lâu Khôi" (mũ Giáng Sinh, +10% sát thương)', ['10410121'], null],   // 13/10: doan rieng 4527 (goc doan 100 dung chung 351 mon)
     ['Mũ top 2 (mũ Giáng Sinh cấp 92, +9% sát thương)', ['10410127'], null],   // 13/10: doan rieng 4528, hieu ung 7581
     ['Mũ top 3 (mũ Giáng Sinh cấp 82, +7% sát thương)', ['10410126'], null],   // 13/10: doan rieng 4529, hieu ung 7582
