@@ -1,6 +1,6 @@
 // Test giao dien Custom Trung Lau (trunglau.panel.js = /tl.js) tren may Windows: chay file THAT trong vm voi DOM gia + api() gia
 // tra du lieu that (tl-xem.json, op 'xem' cua panel GM). Bam qua: chon mon, tick dong, doi diem, so dong ra, loc, lay tu ma khac,
-// hieu ung, chep sang Chan, chep giong, tra goc, restart, ai giu, Long Van. So payload gui server voi ban CU (git HEAD) tung byte.
+// hieu ung, chep sang Chan, chep giong, tra goc, restart, ai giu, Long Van. So payload gui server voi ban CU (9b2a9ef = truoc khi lam lai UI, doi bang TL_CU) tung byte.
 // Chay (tu BotDoMin): node thu/trunglau-test.js   (TL_XEM=duong/dan/tl-xem.json neu de cho khac; khong dung VPS / game)
 const path = require('path'), fs = require('fs'), vm = require('vm'), cp = require('child_process');
 const D = path.join(__dirname, '..') + path.sep;
@@ -96,7 +96,7 @@ function chay(file, src, data, traLoi) {
 }
 const MOI = fs.readFileSync(D + 'trunglau.panel.js', 'utf8');
 let CU = '';
-try { CU = cp.execSync('git show HEAD:BotDoMin/trunglau.panel.js', { cwd: path.join(D, '..'), maxBuffer: 16 << 20 }).toString('utf8'); } catch (e) { CU = ''; }
+try { CU = cp.execSync('git show ' + (process.env.TL_CU || '9b2a9ef') + ':BotDoMin/trunglau.panel.js', { cwd: path.join(D, '..'), maxBuffer: 16 << 20 }).toString('utf8'); } catch (e) { CU = ''; }
 const oNhap = (h, k, v, c) => { const s = new Set(); return { dataset: { h, k, c: String(c || 1) }, value: String(v), classList: { add: (x) => s.add(x), toggle() {}, contains: (x) => s.has(x) } }; };
 
 // kich ban gui lenh giong nhau cho ban CU va ban MOI -> so payload
@@ -136,7 +136,7 @@ async function kichBan(G, moi) {
   const nhomHtml = (ten) => { const a = h.indexOf(ten), b = h.indexOf('class="tlG', a); return h.slice(a, b < 0 ? undefined : b); };
   const gG = nhomHtml('Giới (nhẫn) người chơi'), gA = nhomHtml('Giới admin'), gNA = nhomHtml('Ngọc admin'), gMu = nhomHtml('Mũ Giáng Sinh');
   chk('Gioi nguoi choi: Su kien 10422016 + Doi NPC 10553101 -> Chan 10553104, nhan Nguoi choi', /Sự kiện[\s\S]*10422016[\s\S]*Đổi NPC[\s\S]*10553101[\s\S]*nâng lên Chân[\s\S]*Chân[\s\S]*10553104/.test(gG) && gG.includes('👤 Người chơi'));
-  chk('Gioi admin: Ban thuong 10553113 -> Chan (admin) 10422018, nhan Chi admin', /Bản thường[\s\S]*10553113[\s\S]*bản Chân \(chỉ admin phát\)[\s\S]*Chân \(admin\)[\s\S]*10422018/.test(gA) && gA.includes('🛡️ Chỉ admin'));
+  chk('Gioi admin: Ban thuong 10553113 -> Chan (admin) 10422018, nhan Chi admin', /Bản thường[\s\S]*10553113[\s\S]*nâng lên Chân admin \(NPC\)[\s\S]*Chân \(admin\)[\s\S]*10422018/.test(gA) && gA.includes('🛡️ Chỉ admin'));
   chk('Ngoc admin: 10553114 -> Chan (admin) 10423025', /10553114[\s\S]*Chân \(admin\)[\s\S]*10423025/.test(gNA));
   chk('Mu: 3 mu + % sat thuong lay tu server (khong ghi cung)', /10410121[\s\S]*\+10% sát thương[\s\S]*10410127[\s\S]*\+9% sát thương[\s\S]*10410126[\s\S]*\+8% sát thương/.test(gMu), chu(gMu).slice(0, 200));
   chk('khong con nhom rieng "ban cu" 10423025', !t.includes('bản cũ'));
