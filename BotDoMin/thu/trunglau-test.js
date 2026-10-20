@@ -301,6 +301,26 @@ async function kichBan(G, moi) {
   h = G2.html('tlBox');
   chk('thieu 10422018: luong hien "chua co tren server", chep dung chanDich server (10553104)', h.includes('10422018: chưa có trên server') && h.includes('Chép sang Chân 10553104') && h.includes('server chưa cập nhật'));
 
+  // ===== 10b. 20/10: bang dong xep giong game (chi so tang dan) + ma chi so copy / dan sang Trung Lau khac
+  {
+    const C = chay('trunglau.panel.js', MOI, taoData());
+    C.sb.tlLoad(); await cho(); C.sb.tlChon('10553101');
+    const ks = [...C.html('tlBox').matchAll(/id="tlRow(\d+)"/g)].map((x) => +x[1]);
+    chk('bang dong xep theo chi so tang dan (giong game)', ks.length > 3 && ks.every((k, i) => !i || k > ks[i - 1]), ks.join(','));
+    C.sb.tlCopy(); const ma = (C.el('tlMa') || {}).value || '';
+    const nguon = C.S.data.mon.find((x) => x.id === '10553101');
+    chk('copy ma chi so: TL1|10553101|k:diem,... du ' + nguon.dong.length + ' dong', /^TL1\|10553101\|\d+:\d+(,\d+:\d+)*(\|so:\d+-\d+)?$/.test(ma) && ma.split('|')[2].split(',').length === nguon.dong.length, ma.slice(0, 80));
+    C.sb.tlChon('10553113'); C.sb.tlMaGo(ma); C.sb.tlDan();
+    let n0 = C.S.CALLS.length; C.sb.tlLuuMon(); await cho();
+    const p = JSON.parse(C.S.CALLS[n0] || '{}');
+    const giongDiem = nguon.dong.every((k) => p.diem && p.diem[k] === (nguon.diem[k] || nguon.diemGoc[k]));
+    chk('dan ma vao 10553113 -> luu y chang dong + diem 10553101', p.op === 'mon' && p.id === '10553113' && JSON.stringify(p.dong) === JSON.stringify(nguon.dong.slice().sort((a, b) => a - b)) && giongDiem, C.S.CALLS[n0]);
+    C.sb.tlMaGo('abc|xyz'); n0 = C.TOAST.length; C.sb.tlDan();
+    chk('ma sai dang -> bao loi, khong doi nhap', /Mã không đúng dạng/.test(C.TOAST[n0] || ''), C.TOAST[n0]);
+    C.sb.tlMaGo('TL1|x|0:5,99:1'); n0 = C.TOAST.length; C.sb.tlDan();
+    chk('ma hong (dong 99) -> bao loi', /Mã bị hỏng/.test(C.TOAST[n0] || ''), C.TOAST[n0]);
+  }
+
   // ===== 11. payload ban MOI == ban CU (git HEAD) tung byte, cung kich ban
   if (!CU) chk('lay ban cu tu git HEAD', false, 'khong doc duoc git show');
   else {

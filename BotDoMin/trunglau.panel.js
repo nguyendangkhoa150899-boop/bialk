@@ -222,6 +222,7 @@
       '.tlKhung .tlSeg button.on{background:#5865f2;color:#fff;font-weight:700}' +
       '.tlKhung input[type=number],.tlKhung input[type=search]{padding:5px 8px;border-radius:6px;border:1px solid #4e525b;background:var(--tN);color:var(--tC);font-size:13px;font-family:inherit;font-variant-numeric:tabular-nums}' +
       '.tlKhung input[type=search]{flex:1 1 220px;min-width:160px;max-width:360px}.tlKhung input[type=number]{width:110px}.tlKhung input.tlNho{width:70px}' +
+      '.tlKhung input.tlMa{flex:1 1 320px;min-width:200px;padding:5px 8px;border-radius:6px;border:1px solid #4e525b;background:var(--tN);color:var(--tC);font-size:12.5px;font-family:Consolas,monospace}' +
       '.tlKhung input:disabled{opacity:.4}.tlKhung input.tlCh{border-color:#f0b132;background:rgba(240,177,50,.12)}' +
       '.tlKhung .tlCnt{font-weight:700;margin-left:auto;padding:3px 10px;border-radius:999px;background:var(--tN);border:1px solid var(--tV)}.tlKhung .tlCnt.bad{color:#ff9a9c;border-color:#d0383d}' +
       '.tlKhung details.tlHelp summary{cursor:pointer;color:#a9b4ff;font-size:12.5px}.tlKhung details.tlHelp .tlNote{margin-top:6px}' +
@@ -347,9 +348,8 @@
     if (TL.xem !== 'tick') m.dongGoc.forEach(add);
     m.dong.forEach(add);
     Object.keys(s.on).forEach(function (k) { if (s.on[k]) add(k); });
-    // thu tu CO DINH theo ban dang luu (tick / bo tick khong lam hang nhay): dang bat -> dong goc -> con lai
-    var co = function (a, k) { return a.indexOf(k) >= 0 ? 0 : 1; };
-    thu.sort(function (a, b) { return co(m.dong, a) - co(m.dong, b) || co(m.dongGoc, a) - co(m.dongGoc, b) || a - b; });
+    // 20/10 (chu server): xep GIONG TRONG GAME = thu tu chi so thuoc tinh (engine ghi dong len mon theo thu tu cot EquipBase 32-89); co dinh, tick khong lam hang nhay
+    thu.sort(function (a, b) { return a - b; });
     return thu;
   }
   function lopHang(m, s, k) { var on = !!s.on[k], coD = m.dong.indexOf(k) >= 0; return !on ? (coD ? 'off doi' : 'off') : (!coD || (s.diem[k] || 0) !== diemDang(m, k) ? 'doi' : ''); }
@@ -398,6 +398,9 @@
       (anhEm.length ? '<span class="tlSep"></span><span>📥 Lấy dòng + điểm đang lưu của:</span>' + anhEm.map(function (x) {
         return '<button onclick="' + NS + 'Lay(\'' + x + '\')" title="Chép vào nháp của mã này (chưa lưu)">' + (laChan(x) ? '✦ ' : '') + e(nhanCua(x)) + ' <small>' + x + '</small></button>';
       }).join('') : '') + '</div>' +
+      '<div class="tlTool tlTool2"><button onclick="' + NS + 'Copy()" title="Sinh mã gồm dòng + điểm + số dòng ra của nháp hiện tại">📋 Copy mã chỉ số</button>' +
+      '<input type="text" class="tlMa" id="' + NS + 'Ma" placeholder="Dán mã chỉ số (TL1|...) của Trùng Lâu khác vào đây" value="' + e(TL.ma || '') + '" oninput="' + NS + 'MaGo(this.value)">' +
+      '<button onclick="' + NS + 'Dan()" title="Áp dòng + điểm trong mã vào nháp mã này (chưa lưu)">📥 Áp mã vào nháp</button></div>' +
       '<details class="tlHelp"><summary>ℹ Dòng và điểm có hiệu lực thế nào?</summary><div class="tlNote">Tick dòng muốn có (tối đa ' + max + '). ' +
       '<b>Dòng</b> ghi vào món lúc tạo: chỉ món tạo mới / Chân Trùng Lâu đem tẩy mới ra đúng dòng. <b>Điểm</b> server tính lại mỗi lần vào game: đổi điểm áp cho cả món đang có (ở dòng món đó có) sau restart. ' +
       'Cột <b>Đang</b> là số server đang chạy (xanh = khác gốc). Cột <b>Engine ra</b> là số thật engine cho (vài dòng hệ số lớn chỉ ra số chẵn / lẻ nhất định). Bấm số gạch chân ở cột <b>Gốc</b> để đặt lại điểm bằng gốc.</div></details>' +
@@ -537,6 +540,40 @@
     var cm = cfgMon(src), nOn = Object.keys(on).filter(function (k) { return on[k]; }).length;
     TL.sua[TL.sel] = { on: on, diem: diem, so: cm && cm.so && cm.so[1] <= nOn ? cm.so.slice() : null };
     toast('✅ Đã lấy ' + (n.dong.length - bo.length) + ' dòng + điểm của ' + src + ' vào nháp ' + TL.sel + (bo.length ? ' (bỏ ' + bo.length + ' dòng mã này không có: ' + bo.map(function (k) { return TL.d.dongTen[k]; }).join(', ') + ')' : '') + '. Kiểm tra rồi bấm 💾 Lưu.');
+    TL.tab = 'dong'; ve();
+  };
+  // 20/10 (chu server): MA CHI SO de chep dong + diem + so dong ra sang Trung Lau khac (ke ca khac nhom). Dang: TL1|<ma nguon>|k:diem,k:diem|so:a-b
+  function maCua(id) {
+    var s = nhap(id), ds = [], sh = soHL(s);
+    Object.keys(s.on).filter(function (k) { return s.on[k]; }).map(Number).sort(function (a, b) { return a - b; }).forEach(function (k) { ds.push(k + ':' + (s.diem[k] || 0)); });
+    return 'TL1|' + id + '|' + ds.join(',') + (sh ? '|so:' + sh[0] + '-' + sh[1] : '');
+  }
+  window[NS + 'MaGo'] = function (v) { TL.ma = String(v || ''); };
+  window[NS + 'Copy'] = function () {
+    var ma = maCua(TL.sel), o = el(NS + 'Ma'), tay = function () { toast('📋 Mã đã hiện trong ô: bôi đen rồi Ctrl+C để copy.'); };
+    TL.ma = ma; if (o) { o.value = ma; if (o.select) o.select(); }
+    var cb = typeof navigator !== 'undefined' && navigator.clipboard;
+    if (cb && cb.writeText) cb.writeText(ma).then(function () { toast('📋 Đã copy mã chỉ số ' + TL.sel + ' (' + nOnCua(nhap(TL.sel)) + ' dòng). Mở Trùng Lâu khác, dán vào ô rồi bấm 📥 Áp mã.'); }, tay);
+    else tay();
+  };
+  window[NS + 'Dan'] = function () {
+    var m = mon(TL.sel); if (!m) return;
+    var p = String(TL.ma || '').trim().split('|');
+    if (p[0] !== 'TL1' || p.length < 3) { toast('❌ Mã không đúng dạng: phải bắt đầu bằng TL1| (bấm 📋 Copy mã chỉ số ở món nguồn)'); return; }
+    var s = nhap(TL.sel), co = m.dongCo || m.dongGoc, on = {}, diem = {}, bo = [], hong = [];
+    Object.keys(s.diem).forEach(function (k) { diem[k] = s.diem[k]; });
+    m.dong.forEach(function (k) { on[k] = false; });
+    (p[2] ? p[2].split(',') : []).forEach(function (x) {
+      var a = x.split(':'), k = Number(a[0]), d = Number(a[1]);
+      if (a.length !== 2 || !(k >= 0 && k < 58 && k % 1 === 0) || !(d >= 0 && d <= 10000000 && d % 1 === 0)) { hong.push(x); return; }
+      if (m.rate[k] > 0 && co.indexOf(k) >= 0) { on[k] = true; diem[k] = d > 0 ? d : (diem[k] || m.diemGoc[k] || 1); } else bo.push(k);
+    });
+    if (hong.length) { toast('❌ Mã bị hỏng ở: ' + hong.join(', ')); return; }
+    var nOn = Object.keys(on).filter(function (k) { return on[k]; }).length, so = null, mso = (p[3] || '').match(/^so:(\d+)-(\d+)$/);
+    if (!nOn) { toast('❌ Mã này không có dòng nào ' + TL.sel + ' dùng được'); return; }
+    if (mso && +mso[1] >= 1 && +mso[1] <= +mso[2] && +mso[2] <= nOn) so = [+mso[1], +mso[2]];
+    TL.sua[TL.sel] = { on: on, diem: diem, so: so };
+    toast('✅ Đã áp mã của ' + p[1] + ' vào nháp ' + TL.sel + ': ' + nOn + ' dòng' + (bo.length ? ' (bỏ ' + bo.length + ' dòng mã này không có: ' + bo.map(function (k) { return TL.d.dongTen[k]; }).join(', ') + ')' : '') + '. Xem cột Engine ra rồi bấm 💾 Lưu.');
     TL.tab = 'dong'; ve();
   };
   window[NS + 'HuSua'] = function (inp) {
