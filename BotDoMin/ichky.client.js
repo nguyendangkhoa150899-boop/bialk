@@ -118,10 +118,11 @@
   function ds() { return (typeof IK !== 'undefined' && IK && IK.items) || []; }
   function tim(id) { var L = ds(); for (var i = 0; i < L.length; i++) if (L[i].id === id) return L[i]; return null; }
   function ic(x) { if (!x.img && x.ic && typeof vqIcon === 'function') return vqIcon(x.ic, 'ikIc'); if (typeof isImg === 'function') return isImg(x.img); return '<i class="ikIc vqNo">📦</i>'; }
+  var NHAN_MAX = 1000;   // khớp index.js ichKyClaim: 'Mỗi lần nhận tối đa 1.000 cái'
   // so toi da chon duoc cua 1 mon o che do hien tai (0 = khong chon duoc)
   function tran(x, md) {
     md = md || C.md;
-    if (md === 'nhan') return x.doi > 0 ? 0 : (x.rutMax ? Math.min(x.qty, x.rutMax) : x.qty);
+    if (md === 'nhan') return x.doi > 0 ? 0 : Math.min(x.qty, x.rutMax || NHAN_MAX, NHAN_MAX);   // 21/10: server (index.js ichKyClaim) chặn > 1.000 cái / lần
     if (md === 'tang') return Math.min(x.qty, (IK && IK.giveMax) || x.qty);
     return x.qty;
   }
@@ -150,6 +151,7 @@
       (c ? '<div class="g">Đang chọn ' + MD[C.md].t + ': <b>' + fmt(c) + '</b></div>' : '') +
       (x.doi > 0 ? '<div style="color:#ffe08a">🎫 Mỗi phiếu = ' + fmt(x.doi) + ' KNB web · bấm để Sử dụng</div>' : '') +
       (C.md === 'nhan' && x.rutMax ? '<div class="x">Nhận tối đa ' + x.rutMax + ' cái / lần (mỗi cái 1 ô túi)</div>' : '') +
+      (C.md === 'nhan' && !x.rutMax && !(x.doi > 0) && x.qty > NHAN_MAX ? '<div class="x">Nhận tối đa ' + fmt(NHAN_MAX) + ' cái / lần, phần còn lại nhận lần sau</div>' : '') +
       (C.md === 'tang' && !(x.doi > 0) && t < x.qty ? '<div class="x">Tặng tối đa ' + fmt(t) + ' / lần</div>' : '') +
       '<div class="x">' + TEN_LOAI[loai(x)] + ' · ID ' + e(x.id) + '</div>';
   }
