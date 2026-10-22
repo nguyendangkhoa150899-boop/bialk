@@ -2716,6 +2716,8 @@ td{font-variant-numeric:tabular-nums}
         <div id="vqaNguoi" style="margin-top:8px"></div>
         <h3 style="margin-top:14px">📜 Lượt quay gần đây</h3>
         <div id="vqaLog" class="muted" style="font-size:13px;max-height:260px;overflow:auto"></div>
+        <h3 class="epOnly" style="display:none;margin-top:14px">📜 Lịch sử sửa bộ quà <span class="muted" style="font-size:12px;font-weight:400">(10 ngày gần nhất, chỉ cổng SUPER - mod không thấy)</span></h3>
+        <div id="vqaSua" class="epOnly" style="display:none;font-size:13px;max-height:520px;overflow:auto"></div>
       </div>
     </div>
     <div id="tab-gn" class="hidden"><!-- 💎 05/10: Ghép Ngọc - tab riêng, chỉ cổng SUPER (API /api/gn/* cũng chặn cổng mod) -->
@@ -5149,7 +5151,7 @@ function vqaEl(id){return document.getElementById(id);}
 function vqaLoad(){api('/api/vq/cfg').then(function(j){VQA=j;vqaFill();}).catch(function(e){toast('❌ '+e.message);});}
 function vqaFill(){var c=VQA.cfg;vqaEl('vqOn').checked=!!c.on;vqaEl('vqGia').value=c.gia;vqaEl('vqMax').value=c.max||40;
   vqaEl('vqaVi').innerHTML=VQA.vi.map(function(v){return '<option value="'+v.uid+'">'+esc(v.ten)+(v.game?' · 🎮 '+esc(v.game):'')+'</option>';}).join('');
-  vqaDraw();vqaNguoi();vqaLogDraw();}
+  vqaDraw();vqaNguoi();vqaLogDraw();vqaSuaDraw();}
 // 🍀 05/10: bản CHỈ XEM vòng quay cho cổng mod (/api/vq/xem)
 // 11/10 (chủ server): mod SỬA ĐƯỢC bộ quà ở đây (/api/vq/modcfg | modsave | modtim) - giá / số lần quay / bật-tắt vòng quay vẫn chỉ SUPER
 var VQX=null,VQXKQ=[],VQXDIRTY=false;
@@ -5241,6 +5243,20 @@ function vqaCap(){var uid=vqaEl('vqaVi').value,n=Number(vqaEl('vqaN').value);if(
 function vqaNguoi(){var d=VQA.nguoi;vqaEl('vqaNguoi').innerHTML=d.length?'<table><thead><tr><th>Ví</th><th>Nhân vật</th><th>Lượt quay</th><th>Món trong rương</th><th>Đã mở vòng</th></tr></thead><tbody>'
   +d.map(function(x){return '<tr><td>'+esc(x.ten)+'</td><td>'+esc(x.game)+'</td><td><b>'+x.luot+'</b></td><td>'+x.ruong+'</td><td>'+(x.coVong?'✅':'-')+'</td></tr>';}).join('')+'</tbody></table>'
   :'<span class="muted">Chưa ai có lượt quay.</span>';}
+// 📜 22/10: lịch sử sửa bộ quà (VQA.sua từ /api/vq/cfg - chỉ SUPER). Dòng tonghop = dựng lại từ bản sao lưu: chỉ biết TỔNG thay đổi giữa 2 mốc.
+function vqaSuaFmt(a){return (a||[]).map(function(x){return 'SL '+x[0]+' · TS '+x[1]+(x[2]?' · tắt':'');}).join(' | ');}
+function vqaSuaDraw(){var el=vqaEl('vqaSua');if(!el)return;var l=VQA.sua||[];var tg=function(t){return new Date(t).toLocaleString('vi-VN');};
+  if(!l.length){el.innerHTML='<span class="muted">Chưa có lần sửa nào trong 10 ngày.</span>';return;}
+  el.innerHTML=l.map(function(e){var h='<div style="border:1px solid #3a4150;border-radius:8px;padding:8px 10px;margin:6px 0">';
+    if(e.tonghop){h+='<div><b>🗂 '+tg(e.tu)+' → '+tg(e.den)+'</b> <span class="muted">(dựng lại từ bản sao lưu: tổng thay đổi cả khoảng)</span></div>';
+      h+='<div class="muted">Lần bấm lưu trong khoảng: '+((e.lan||[]).length?(e.lan||[]).map(function(x){return tg(x.t)+' · '+esc(x.who);}).join('; '):'không thấy trong log nginx')+'</div>';}
+    else h+='<div><b>'+tg(e.t)+'</b> · '+esc(e.who)+(e.loai==='macdinh'?' · <b>về bộ mặc định</b>':'')+(e.soMon!=null?' · còn '+e.soMon+' món':'')+'</div>';
+    var c=[];(e.cfg||[]).forEach(function(x){c.push('⚙️ '+esc(x[0])+': '+esc(String(x[1]))+' → '+esc(String(x[2])));});
+    (e.sua||[]).forEach(function(x){var tang=(x.moi[0]&&x.cu[0]&&x.moi[0][0]>x.cu[0][0])||(x.moi[0]&&x.cu[0]&&x.moi[0][1]>x.cu[0][1]);c.push('<span style="color:'+(tang?'#ff9b54':'inherit')+'">✏️ '+esc(x.ten)+' <span class="muted">#'+x.id+'</span>: '+vqaSuaFmt(x.cu)+' → <b>'+vqaSuaFmt(x.moi)+'</b></span>');});
+    (e.them||[]).forEach(function(x){c.push('<span style="color:#7bd88f">➕ '+esc(x.ten)+' <span class="muted">#'+x.id+'</span>: '+vqaSuaFmt(x.ds)+'</span>');});
+    (e.dauVet||[]).forEach(function(x){c.push('<span style="color:#ffd166">⚠️ Sửa tạm rồi trả lại: '+esc(x.ten)+' <span class="muted">#'+x.id+'</span> ra <b>×'+x.sl+'</b> (2 mốc đều ×'+x.slMoc.join('/')+') - '+x.n+' lượt trúng / bảng quay từ '+tg(x.tu)+' đến '+tg(x.den)+' · '+esc((x.ai||[]).join(', '))+'</span>');});
+    (e.bo||[]).forEach(function(x){c.push('<span style="color:#ff6b6b">➖ '+esc(x.ten)+' <span class="muted">#'+x.id+'</span>: '+vqaSuaFmt(x.ds)+'</span>');});
+    h+=c.length?'<div style="margin-top:4px;line-height:1.6">'+c.join('<br>')+'</div>':'<div class="muted">Lưu lại nhưng không đổi gì.</div>';return h+'</div>';}).join('');}
 function vqaLogDraw(){var l=VQA.log;vqaEl('vqaLog').innerHTML=l.length?l.map(function(x){return '<div>'+new Date(x.t).toLocaleString('vi-VN')+' · <b>'+esc(x.ten)+'</b> → '+esc(x.tenMon)+' ×'+x.sl+'</div>';}).join(''):'Chưa có lượt quay nào.';}
 // 🖼️ 02/10: hình game theo ID cho bảng Shop Item + Quà admin tặng. Ảnh up riêng (cột tên file) vẫn ưu tiên.
 // Ô "Tên hiện" đang trống thì tự điền tên game.

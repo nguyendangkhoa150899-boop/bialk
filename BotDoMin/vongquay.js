@@ -13,6 +13,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const vqSua = require('./vqsua');   // 📜 22/10: lịch sử sửa bộ quà (chỉ SUPER xem)
 
 const SO_O = 24, RUONG_MAX = 100, LICH_MAX = 30, LOG_MAX = 400, MAX_MD = 40;
 let MAC_DINH = [];
@@ -194,6 +195,7 @@ module.exports = function vongQuay(d) {
             pool: c.poolAll.map((x) => ({ id: x.id, sl: x.sl, w: x.w, off: !!x.off, ten: ten(x.id), ic: d.icon(x.id) })),
             nguoi, vi,
             log: (db._vqLog || []).slice(-80).reverse().map((x) => ({ ...x, tenMon: ten(x.id) })),
+            sua: vqSua.ds(db, ten),   // 📜 22/10: chỉ đi qua /api/vq/cfg | save | macdinh (cổng SUPER); modsave lọc còn cfg + pool
         };
     }
     function saveCfg(x, who) {
@@ -214,6 +216,8 @@ module.exports = function vongQuay(d) {
             pool.push({ id, sl, w, off: !!p.off });
         }
         const db = d.db();
+        const c0 = cfg();
+        vqSua.ghi(db, { on: c0.on, gia: c0.gia, max: c0.max, pool: c0.poolAll }, { on: !!x.on, gia, max, pool }, who, 'luu');   // 📜 22/10
         db._vqCfg = { on: !!x.on, gia, max, pool };
         d.saveDbNow();
         d.writeLog('ADMIN', `[VÒNG QUAY] ${who || 'admin'} lưu cấu hình: ${x.on ? 'BẬT' : 'tắt'}, giá ${gia}, ${max} lần quay/vòng, ${pool.length} món`);
@@ -221,6 +225,8 @@ module.exports = function vongQuay(d) {
     }
     function macDinh(who) {
         const db = d.db(); const c = db._vqCfg || {};
+        const c0 = cfg();
+        vqSua.ghi(db, { on: c0.on, gia: c0.gia, max: c0.max, pool: c0.poolAll }, { on: c0.on, gia: c0.gia, max: c0.max, pool: MAC_DINH }, who, 'macdinh');   // 📜 22/10
         db._vqCfg = { on: !!c.on, gia: Number.isInteger(c.gia) ? c.gia : 8000, max: Number.isInteger(c.max) && c.max > 0 ? c.max : MAX_MD };
         d.saveDbNow();
         d.writeLog('ADMIN', `[VÒNG QUAY] ${who || 'admin'} đưa bộ quà về mặc định (${MAC_DINH.length} món vòng quay gốc)`);
