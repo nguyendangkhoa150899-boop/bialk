@@ -1,0 +1,8022 @@
+{
+ "_itemShop": [
+  {
+   "id": "50602006",
+   "name": "Băng công 6",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "ammo",
+   "note": "mua di :D",
+   "off": false
+  },
+  {
+   "id": "50602007",
+   "name": "Hỏa công  6",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "ammo",
+   "note": "mua di :D",
+   "off": false
+  },
+  {
+   "id": "50602005",
+   "name": "Huyền công  6",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "ammo",
+   "note": "mua di :D",
+   "off": false
+  },
+  {
+   "id": "50602008",
+   "name": "Độc công  6",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "ammo",
+   "note": "mua di :D",
+   "off": false
+  },
+  {
+   "id": "50621002",
+   "name": "Lam Minh Thạch (cấp 6)",
+   "price": 60000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222352.png",
+   "cat": "ammo",
+   "note": "Giảm 70 kháng Băng của mục tiêu · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn) · trác khắc ở Lâu Lan (219,228)",
+   "off": false
+  },
+  {
+   "id": "50621003",
+   "name": "Hồng Minh Thạch (cấp 6)",
+   "price": 60000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222356.png",
+   "cat": "ammo",
+   "note": "Giảm 70 kháng Hỏa của mục tiêu · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn) · trác khắc ở Lâu Lan (219,228)",
+   "off": false
+  },
+  {
+   "id": "50621001",
+   "name": "Hoàng Minh Thạch (cấp 6)",
+   "price": 60000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222400.png",
+   "cat": "ammo",
+   "note": "Giảm 70 kháng Huyền của mục tiêu · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn) · trác khắc ở Lâu Lan (219,228)",
+   "off": false
+  },
+  {
+   "id": "50621004",
+   "name": "Lục Minh Thạch (cấp 6)",
+   "price": 60000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222405.png",
+   "cat": "ammo",
+   "note": "Giảm 70 kháng Độc của mục tiêu · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn) · trác khắc ở Lâu Lan (219,228)",
+   "off": false
+  },
+  {
+   "id": "50612006",
+   "name": "Thuần Tịnh Hạo Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222416.png",
+   "cat": "ammo",
+   "note": "+70 Kháng Băng · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50612007",
+   "name": "Thuần Tịnh Dạ Quang Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222420.png",
+   "cat": "ammo",
+   "note": "+70 Kháng Hỏa · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50612005",
+   "name": "Thuần Tịnh Hoàng Ngọc (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222425.png",
+   "cat": "ammo",
+   "note": "+70 Kháng Huyền · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50612008",
+   "name": "Thuần Tịnh Bích Tỷ (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222428.png",
+   "cat": "ammo",
+   "note": "+70 Kháng Độc · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50601002",
+   "name": "Hổ Nhãn Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222804.png",
+   "cat": "ammo",
+   "note": "+1.997 Công ngoại (vật lý) · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50601001",
+   "name": "Miêu Nhãn Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222808.png",
+   "cat": "ammo",
+   "note": "+1.997 Công nội (ma pháp) · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50603001",
+   "name": "Tử Ngọc (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222812.png",
+   "cat": "ammo",
+   "note": "+2.223 Chính xác (mệnh trung) · không khảm 2 viên cùng loại · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50604002",
+   "name": "Biến Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222815.png",
+   "cat": "ammo",
+   "note": "+11 Hội tâm (% đánh chí mạng) · khảm trang bị công (vũ khí, hộ uyển, nhẫn, hộ phù, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50611001",
+   "name": "Thạch Lựu Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222952.png",
+   "cat": "ammo",
+   "note": "+1.988 Phòng nội (ma pháp) · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50614001",
+   "name": "Tổ Mẫu Lục (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222839.png",
+   "cat": "ammo",
+   "note": "+741 Né tránh (thiểm tị) · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50613006",
+   "name": "Huyết Tinh Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222835.png",
+   "cat": "ammo",
+   "note": "+22.628 HP tối đa · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50613001",
+   "name": "Hoàng Bảo Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222849.png",
+   "cat": "ammo",
+   "note": "+207 Lực lượng · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50613002",
+   "name": "Lam Bảo Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222830.png",
+   "cat": "ammo",
+   "note": "+207 Linh khí · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50613004",
+   "name": "Hồng Bảo Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222824.png",
+   "cat": "ammo",
+   "note": "+412 Thể chất · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "50613003",
+   "name": "Lục Bảo Thạch (cấp 6)",
+   "price": 20000,
+   "max": 999,
+   "img": "Screenshot2026-09-29222820.png",
+   "cat": "ammo",
+   "note": "+112 Thân pháp · khảm trang bị thủ (y phục, hộ thủ, mũ, hộ khiên, hài, yêu đới, hạng liên, ám khí, võ hồn, long văn)",
+   "off": false
+  },
+  {
+   "id": "30307200",
+   "name": "Yếu Quyết: Dịch Cân Đoán Cốt",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213614.png",
+   "cat": "yq",
+   "note": "Thiếu Lâm · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307201",
+   "name": "Yếu Quyết: Thuần Dương Vô Cực",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211512.png",
+   "cat": "yq",
+   "note": "Minh Giáo · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307202",
+   "name": "Yếu Quyết: Thiên Hạ Vô Cẩu",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29212639.png",
+   "cat": "yq",
+   "note": "Cái Bang · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307203",
+   "name": "Yếu Quyết: Thiên Ngoại Phi Tiên",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214323.png",
+   "cat": "yq",
+   "note": "Võ Đang · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307204",
+   "name": "Yếu Quyết: Cửu Âm Thần Trảo",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214756.png",
+   "cat": "yq",
+   "note": "Nga Mi · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307205",
+   "name": "Yếu Quyết: Hóa Cốt Miên Chưởng",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29210630.png",
+   "cat": "yq",
+   "note": "Tinh Túc · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307206",
+   "name": "Yếu Quyết: Thiểu Trạch Kiếm",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213101.png",
+   "cat": "yq",
+   "note": "Thiên Long · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307207",
+   "name": "Yếu Quyết: Đồng Sinh Cộng Tử",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213341.png",
+   "cat": "yq",
+   "note": "Thiên Sơn · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307208",
+   "name": "Yếu Quyết: Côn Dược Bắc Minh",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214517.png",
+   "cat": "yq",
+   "note": "Tiêu Dao · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307209",
+   "name": "Yếu Quyết: Hóa Khí Thức",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214910.png",
+   "cat": "yq",
+   "note": "Mộ Dung · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307210",
+   "name": "Yếu Quyết: Khôi Lỗi Hương",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215106.png",
+   "cat": "yq",
+   "note": "Đường môn · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307211",
+   "name": "Yếu Quyết: Điều Hổ Li Sơn",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213618.png",
+   "cat": "yq",
+   "note": "Thiếu Lâm · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307212",
+   "name": "Yếu Quyết: Thương Dương Kiếm",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213105.png",
+   "cat": "yq",
+   "note": "Thiên Long · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307213",
+   "name": "Yếu Quyết: Tiên Phong Đạo Cốt",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214327.png",
+   "cat": "yq",
+   "note": "Võ Đang · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307214",
+   "name": "Yếu Quyết: Hàm Tiếu Bán Bộ Điên",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29210911.png",
+   "cat": "yq",
+   "note": "Tinh Túc · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307215",
+   "name": "Yếu Quyết: Bổng Đả Cẩu Đầu",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29212650.png",
+   "cat": "yq",
+   "note": "Cái Bang · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307216",
+   "name": "Yếu Quyết: Định Hải Thần Châm",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214520.png",
+   "cat": "yq",
+   "note": "Tiêu Dao · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307217",
+   "name": "Yếu Quyết: Phong Hỏa Liên Thành",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211602.png",
+   "cat": "yq",
+   "note": "Minh Giáo · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307218",
+   "name": "Yếu Quyết: Thiên Địa Minh Diệt",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213345.png",
+   "cat": "yq",
+   "note": "Thiên Sơn · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307220",
+   "name": "Yếu Quyết: Phá Thiên Thức",
+   "price": 200000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214922.png",
+   "cat": "yq",
+   "note": "Mộ Dung · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307221",
+   "name": "Yếu Quyết: Khổng Tước Linh",
+   "price": 5000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215112.png",
+   "cat": "yq",
+   "note": "Đường môn · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307222",
+   "name": "Yếu Quyết: Từ Hàng Phổ Độ",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213623.png",
+   "cat": "yq",
+   "note": "Thiếu Lâm · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307223",
+   "name": "Yếu Quyết: Trung Trùng Kiếm",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213112.png",
+   "cat": "yq",
+   "note": "Thiên Long · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307224",
+   "name": "Yếu Quyết: Thất Tinh Tụ Thủ",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214331.png",
+   "cat": "yq",
+   "note": "Võ Đang · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307225",
+   "name": "Yếu Quyết: Nhất Nhật Tang Mệnh Tán",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211023.png",
+   "cat": "yq",
+   "note": "Tinh Túc · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307226",
+   "name": "Yếu Quyết: Hoành Tảo Kiền Khôn",
+   "price": 200000,
+   "max": 1,
+   "img": "Screenshot2026-09-29212713.png",
+   "cat": "yq",
+   "note": "Cái Bang · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307227",
+   "name": "Yếu Quyết: Bộ Bộ Sinh Hoa",
+   "price": 20000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214526.png",
+   "cat": "yq",
+   "note": "Tiêu Dao · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307228",
+   "name": "Yếu Quyết: Nộ Hỏa Liên Trảm",
+   "price": 200000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211624.png",
+   "cat": "yq",
+   "note": "Minh Giáo · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307229",
+   "name": "Yếu Quyết: Băng Ngưng Sương Hoa",
+   "price": 15000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213348.png",
+   "cat": "yq",
+   "note": "Thiên Sơn · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307230",
+   "name": "Yếu Quyết: Xuân Hoa Thu Nguyệt",
+   "price": 15000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214801.png",
+   "cat": "yq",
+   "note": "Nga Mi · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307231",
+   "name": "Yếu Quyết: Lăng Thần Thức",
+   "price": 15000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214926.png",
+   "cat": "yq",
+   "note": "Mộ Dung · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30307232",
+   "name": "Yếu Quyết: Thập Phương Câu Diệt",
+   "price": 15000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215116.png",
+   "cat": "yq",
+   "note": "Đường môn · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308135",
+   "name": "Yếu Quyết: Tuyệt Tinh Trận-Thất Sát",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215235.png",
+   "cat": "yq",
+   "note": "Quỷ Cốc · học từ cấp 65 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308136",
+   "name": "Yếu Quyết: Súc Địa Thành Thốn",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215239.png",
+   "cat": "yq",
+   "note": "Quỷ Cốc · học từ cấp 45 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308137",
+   "name": "Yếu Quyết: Tuyệt Tinh Trận-Tham Lang",
+   "price": 15000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215243.png",
+   "cat": "yq",
+   "note": "Quỷ Cốc · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308112",
+   "name": "Yếu Quyết: Huyền Ấn Ngộ Phật",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213626.png",
+   "cat": "yq",
+   "note": "Thiếu Lâm · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308113",
+   "name": "Yếu Quyết: Thiên Hỏa Nhiên Khung",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211710.png",
+   "cat": "yq",
+   "note": "Minh Giáo · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308114",
+   "name": "Yếu Quyết: Địa Trầm Hãm Ngân",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29212729.png",
+   "cat": "yq",
+   "note": "Cái Bang · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308115",
+   "name": "Yếu Quyết: Trụ Diệu Thất Tinh",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214335.png",
+   "cat": "yq",
+   "note": "Võ Đang · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308116",
+   "name": "Yếu Quyết: Hỗn Giang Phá Nhai",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214806.png",
+   "cat": "yq",
+   "note": "Nga Mi · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308117",
+   "name": "Yếu Quyết: Hoang Dã U Hồn",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211105.png",
+   "cat": "yq",
+   "note": "Tinh Túc · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308118",
+   "name": "Yếu Quyết: Hoàng Long Nộ Minh",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213116.png",
+   "cat": "yq",
+   "note": "Thiên Long · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308119",
+   "name": "Yếu Quyết: Hồng Đào Bích Lãng",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213351.png",
+   "cat": "yq",
+   "note": "Thiên Sơn · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308120",
+   "name": "Yếu Quyết: Vũ Việt Tinh Hiện",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214530.png",
+   "cat": "yq",
+   "note": "Tiêu Dao · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308121",
+   "name": "Yếu Quyết: Độn Dị Triều Lạc",
+   "price": 10000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214930.png",
+   "cat": "yq",
+   "note": "Mộ Dung · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308122",
+   "name": "Yếu Quyết: Lạc Nhật Truy Tinh",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215120.png",
+   "cat": "yq",
+   "note": "Đường môn · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308123",
+   "name": "Yếu Quyết: Từ Tâm Bi Mẫn",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213631.png",
+   "cat": "yq",
+   "note": "Thiếu Lâm · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308124",
+   "name": "Yếu Quyết: Phần Diễm Nhiễu Thân",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211723.png",
+   "cat": "yq",
+   "note": "Minh Giáo · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308125",
+   "name": "Yếu Quyết: Liệt Thổ Lao Lung",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29212741.png",
+   "cat": "yq",
+   "note": "Cái Bang · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308126",
+   "name": "Yếu Quyết: Bát Quái Ánh Vi",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214338.png",
+   "cat": "yq",
+   "note": "Võ Đang · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308127",
+   "name": "Yếu Quyết: U Tuyền Trầm Chu",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214811.png",
+   "cat": "yq",
+   "note": "Nga Mi · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308128",
+   "name": "Yếu Quyết: Ảm Phiên Khốn Linh",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29211143.png",
+   "cat": "yq",
+   "note": "Tinh Túc · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308129",
+   "name": "Yếu Quyết: Long Bàn Đấu Lí",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213120.png",
+   "cat": "yq",
+   "note": "Thiên Long · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308130",
+   "name": "Yếu Quyết: Tứ Thủy Vi Thành",
+   "price": 20000,
+   "max": 1,
+   "img": "Screenshot2026-09-29213355.png",
+   "cat": "yq",
+   "note": "Thiên Sơn · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308131",
+   "name": "Yếu Quyết: Tử Vụ Nhiễu Tâm",
+   "price": 20000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214534.png",
+   "cat": "yq",
+   "note": "Tiêu Dao · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308132",
+   "name": "Yếu Quyết: Toái Chu Nhập Uyên",
+   "price": 20000,
+   "max": 1,
+   "img": "Screenshot2026-09-29214935.png",
+   "cat": "yq",
+   "note": "Mộ Dung · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308133",
+   "name": "Yếu Quyết: Lục Hợp Cấm Vực",
+   "price": 20000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215125.png",
+   "cat": "yq",
+   "note": "Đường môn · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308139",
+   "name": "Yếu Quyết: Vạn Túc Thần Quang",
+   "price": 20000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215246.png",
+   "cat": "yq",
+   "note": "Quỷ Cốc · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308140",
+   "name": "Yếu Quyết: Bộ Cương Đạp Đấu",
+   "price": 30000,
+   "max": 1,
+   "img": "Screenshot2026-09-29215254.png",
+   "cat": "yq",
+   "note": "Quỷ Cốc · học từ cấp 80 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308200",
+   "name": "Tiến giai: Phục Hổ Quyền-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221238.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiếu Lâm · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308201",
+   "name": "Tiến giai: Kim Cương Phục Ma Quyển-Chỉ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiếu Lâm · cấp 90 · nhánh Chỉ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308202",
+   "name": "Tiến giai: Lễ Kính Như Lai-Thiên Cương",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiếu Lâm · cấp 90 · nhánh Thiên Cương · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308203",
+   "name": "Tiến giai: Đại Lực Kim Cương Chưởng-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiếu Lâm · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308204",
+   "name": "Tiến giai: Nhất Phách Lưỡng Tán-Phược Thủy",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiếu Lâm · cấp 90 · nhánh Phược Thủy · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308210",
+   "name": "Tiến giai: Tồi Tâm Chưởng-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221314.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Minh Giáo · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308211",
+   "name": "Tiến giai: Viêm Long Vô Song-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221838.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Minh Giáo · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308212",
+   "name": "Tiến giai: Quỳ Hoa Điểm Huyệt Thủ-Tỏa",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221838.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Minh Giáo · cấp 90 · nhánh Tỏa · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308213",
+   "name": "Tiến giai: Hỏa Thiêu Xích Bích-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221838.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Minh Giáo · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308214",
+   "name": "Tiến giai: Nộ Hỏa Liên Trảm-Tuyệt Sát",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221838.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Minh Giáo · cấp 90 · nhánh Tuyệt Sát · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308220",
+   "name": "Tiến giai: Bàn Long Kích-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221322.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Cái Bang · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308221",
+   "name": "Tiến giai: Thiên Hạ Vô Cẩu-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Cái Bang · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308222",
+   "name": "Tiến giai: Tuyết Nê Hồng Trảo-Nghịch Mạch",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Cái Bang · cấp 90 · nhánh Nghịch Mạch · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308223",
+   "name": "Tiến giai: Hoành Tảo Kiền Khôn-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Cái Bang · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308224",
+   "name": "Tiến giai: Bổng Đả Cẩu Đầu-Tỏa",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Cái Bang · cấp 90 · nhánh Tỏa · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308230",
+   "name": "Tiến giai: Bát Quái Chưởng-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221304.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Võ Đang · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308231",
+   "name": "Tiến giai: Thiên Mã Phi Bộc-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221310.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Võ Đang · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308232",
+   "name": "Tiến giai: Tiên Nhân Chỉ Lộ-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221310.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Võ Đang · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308233",
+   "name": "Tiến giai: Thiên Ngoại Phi Tiên-Thất Hồn cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221310.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Võ Đang · cấp 90 · nhánh Th t Hồn cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308234",
+   "name": "Tiến giai: Thất Tinh Tụ Thủ-Thất Hồn",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221310.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Võ Đang · cấp 90 · nhánh Th t Hồn · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308240",
+   "name": "Tiến giai: Điêu Thiền Bái Nguyệt-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220611.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Nga Mi · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308241",
+   "name": "Tiến giai: Tây Tử Phủng Tâm-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Nga Mi · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308242",
+   "name": "Tiến giai: Chướng Nhãn Pháp-Mị Hoặc",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Nga Mi · cấp 90 · nhánh Mị Hoặc · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308243",
+   "name": "Tiến giai: Nguyệt Lạc Tây Sơn-Manh",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Nga Mi · cấp 90 · nhánh Manh · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308244",
+   "name": "Tiến giai: Cửu Âm Thần Trảo-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Nga Mi · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308250",
+   "name": "Tiến giai: Lam Sa Thủ-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220826.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tinh Túc · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308251",
+   "name": "Tiến giai: Liên Châu Hủ Thi Độc-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tinh Túc · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308252",
+   "name": "Tiến giai: Hàm Tiếu Bán Bộ Điên-Đoạn",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tinh Túc · cấp 90 · nhánh Đoạn · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308253",
+   "name": "Tiến giai: Thiên Địa Đồng Thọ-Trọng Kích",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tinh Túc · cấp 90 · nhánh Trọng Kích · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308254",
+   "name": "Tiến giai: Nhất Nhật Tang Mệnh Tán-Manh",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tinh Túc · cấp 90 · nhánh Manh · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308260",
+   "name": "Tiến giai: Chính Dương Thủ-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221255.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Long · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308261",
+   "name": "Tiến giai: Tam Dương Khai Thái-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Long · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308262",
+   "name": "Tiến giai: Trung Trùng Kiếm-Vô Trợ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Long · cấp 90 · nhánh Vô Trợ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308263",
+   "name": "Tiến giai: Bát Môn Kim Tỏa-Cố Bộ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Long · cấp 90 · nhánh Cố Bộ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308264",
+   "name": "Tiến giai: Tuyết Ủng Lam Quan-Xuyên Thứ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Long · cấp 90 · nhánh Xuyên Thứ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308270",
+   "name": "Tiến giai: Nhạn Nam Phi-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221246.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Sơn · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308271",
+   "name": "Tiến giai: Ưng Kích Trường Không-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Sơn · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308272",
+   "name": "Tiến giai: Phượng Vũ Cửu Thiên-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Sơn · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308273",
+   "name": "Tiến giai: Lan Hoa Điểm Huyệt Thủ-Tỏa",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Sơn · cấp 90 · nhánh Tỏa · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308274",
+   "name": "Tiến giai: Đồng Sinh Cộng Tử-Tỏa",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Thiên Sơn · cấp 90 · nhánh Tỏa · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308280",
+   "name": "Tiến giai: Lạc Anh Kiếm-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221006.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tiêu Dao · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308281",
+   "name": "Tiến giai: Đạn Chỉ Thần Công-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tiêu Dao · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308282",
+   "name": "Tiến giai: Bát Trận Đồ-Nghịch Mạch",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tiêu Dao · cấp 90 · nhánh Nghịch Mạch · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308283",
+   "name": "Tiến giai: Khê Sơn Hành Lữ-Tinh Chuẩn",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tiêu Dao · cấp 90 · nhánh Tinh Chuẩn · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308284",
+   "name": "Tiến giai: Tru Tiên Trận-Manh",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Tiêu Dao · cấp 90 · nhánh Manh · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308290",
+   "name": "Tiến giai: Liễu Phất Y-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221329.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Mộ Dung · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308291",
+   "name": "Tiến giai: Hoành Kiếm Cương Trường-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Mộ Dung · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308292",
+   "name": "Tiến giai: Tinh Hà Hợp Hồng-Chỉ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Mộ Dung · cấp 90 · nhánh Chỉ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308293",
+   "name": "Tiến giai: Tham Doanh Thủ Tương-Tỏa",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Mộ Dung · cấp 90 · nhánh Tỏa · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308294",
+   "name": "Tiến giai: Kiếm Tỏa Giang Sơn-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Mộ Dung · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308300",
+   "name": "Tiến giai: Lưu Vân Thỉ-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221337.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Đường môn · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308301",
+   "name": "Tiến giai: Cửu Thiên Lãm Nguyệt-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Đường môn · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308302",
+   "name": "Tiến giai: Vạn Tiễn Tề Phát-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Đường môn · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308303",
+   "name": "Tiến giai: Bạo Vũ Lê Hoa Châm-Cố Bộ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Đường môn · cấp 90 · nhánh Cố Bộ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308304",
+   "name": "Tiến giai: Nhất Hiệp Chướng Mục-Mị Hoặc",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Đường môn · cấp 90 · nhánh Mị Hoặc · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308310",
+   "name": "Tiến giai: Kiền Khôn Dẫn-Phát Kính cấp 1",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221345.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Quỷ Cốc · cấp 90 · nhánh Phát Kính cấp 1 · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308311",
+   "name": "Tiến giai: Thái Thượng Vong Tình-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Quỷ Cốc · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308312",
+   "name": "Tiến giai: Nhất Khí Tam Thanh-Phụ",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Quỷ Cốc · cấp 90 · nhánh Phụ · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308313",
+   "name": "Tiến giai: Đào Nhiên Nhất Túy-Thất Hồn",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Quỷ Cốc · cấp 90 · nhánh Th t Hồn · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308314",
+   "name": "Tiến giai: Phong Vân Phản Phúc-Kĩ Cùng",
+   "price": 300000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "tiencap",
+   "note": "⭐ Tiến cấp · Quỷ Cốc · cấp 90 · nhánh Kĩ Cùng · chuột phải để học",
+   "off": false
+  },
+  {
+   "id": "30308320",
+   "name": "Bí tịch: Đại Lực Kim Cương Chưởng-Tri cấp 1",
+   "price": 120000,
+   "max": 1,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiếu Lâm · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308321",
+   "name": "Bí tịch: Lễ Kính Như Lai-Tật Thiểm cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiếu Lâm · cấp 90 · rót huyệt Đốc mạch · nhánh Tật Thiểm cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308322",
+   "name": "Bí tịch: Viêm Long Vô Song-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220016.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Minh Giáo · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308323",
+   "name": "Bí tịch: Hỏa Thiêu Xích Bích-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221838.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Minh Giáo · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308324",
+   "name": "Bí tịch: Thiên Hạ Vô Cẩu-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Cái Bang · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308325",
+   "name": "Bí tịch: Hoành Tảo Kiền Khôn-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Cái Bang · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308326",
+   "name": "Bí tịch: Tiên Nhân Chỉ Lộ-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220332.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Võ Đang · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308327",
+   "name": "Bí tịch: Thiên Mã Phi Bộc-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221310.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Võ Đang · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308328",
+   "name": "Bí tịch: Tây Tử Phủng Tâm-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Nga Mi · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308329",
+   "name": "Bí tịch: Cửu Âm Thần Trảo-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Nga Mi · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308330",
+   "name": "Bí tịch: Thiên Địa Đồng Thọ-Ý Thủ cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tinh Túc · cấp 90 · rót huyệt Đốc mạch · nhánh Ý Thủ cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308331",
+   "name": "Bí tịch: Liên Châu Hủ Thi Độc-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tinh Túc · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308332",
+   "name": "Bí tịch: Trung Trùng Kiếm-Hộ Bích cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Long · cấp 90 · rót huyệt Đốc mạch · nhánh Hộ Bích cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308333",
+   "name": "Bí tịch: Tam Dương Khai Thái-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Long · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308334",
+   "name": "Bí tịch: Phượng Vũ Cửu Thiên-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Sơn · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308335",
+   "name": "Bí tịch: Ưng Kích Trường Không-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Sơn · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308336",
+   "name": "Bí tịch: Đạn Chỉ Thần Công-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tiêu Dao · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308337",
+   "name": "Bí tịch: Khê Sơn Hành Lữ-Hóa Giải cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tiêu Dao · cấp 90 · rót huyệt Đốc mạch · nhánh Hóa Giải cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308338",
+   "name": "Bí tịch: Tinh Hà Hồng Hợp-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Mộ Dung · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308339",
+   "name": "Bí tịch: Phá Thiên Thức-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Mộ Dung · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308340",
+   "name": "Bí tịch: Cửu Thiên Lãm Nguyệt-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Đường môn · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308341",
+   "name": "Bí tịch: Bạo Vũ Lê Hoa Châm-Phá Trận cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Đường môn · cấp 90 · rót huyệt Đốc mạch · nhánh Phá Trận cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308342",
+   "name": "Bí tịch: Thái Thượng Vong Tình-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Quỷ Cốc · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308343",
+   "name": "Bí tịch: Nhất Khí Tam Thanh-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Quỷ Cốc · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308350",
+   "name": "Bí tịch: Kim Cương Phục Ma Quyển-Tật cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiếu Lâm · cấp 90 · rót huyệt Đốc mạch · nhánh Tật cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308351",
+   "name": "Bí tịch: Nhất Phách Lưỡng Tán-Phong Hành cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221242.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiếu Lâm · cấp 90 · rót huyệt Đốc mạch · nhánh Phong Hành cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308352",
+   "name": "Bí tịch: Quỳ Hoa Điểm Huyệt Thủ-Giải cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221838.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Minh Giáo · cấp 90 · rót huyệt Đốc mạch · nhánh Giải cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308353",
+   "name": "Bí tịch: Phong Hỏa Liên Thành-Cương Thân cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221838.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Minh Giáo · cấp 90 · rót huyệt Đốc mạch · nhánh Cương Thân cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308354",
+   "name": "Bí tịch: Tuyết Nê Hồng Trảo-Điều Tức cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Cái Bang · cấp 90 · rót huyệt Đốc mạch · nhánh Điều Tức cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308355",
+   "name": "Bí tịch: Bổng Đả Cẩu Đầu-Giải cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221325.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Cái Bang · cấp 90 · rót huyệt Đốc mạch · nhánh Giải cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308356",
+   "name": "Bí tịch: Thất Tinh Tụ Thủ-Hộ Thể cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221310.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Võ Đang · cấp 90 · rót huyệt Đốc mạch · nhánh Hộ Thể cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308357",
+   "name": "Bí tịch: Thiên Ngoại Phi Tiên-Hộ Thể cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221310.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Võ Đang · cấp 90 · rót huyệt Đốc mạch · nhánh Hộ Thể cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308358",
+   "name": "Bí tịch: Nguyệt Lạc Tây Sơn-Minh cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Nga Mi · cấp 90 · rót huyệt Đốc mạch · nhánh Minh cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308359",
+   "name": "Bí tịch: Chướng Nhãn Pháp-Quan Tâm cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220607.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Nga Mi · cấp 90 · rót huyệt Đốc mạch · nhánh Quan Tâm cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308360",
+   "name": "Bí tịch: Hàm Tiếu Bán Bộ Điên-Giải cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tinh Túc · cấp 90 · rót huyệt Đốc mạch · nhánh Giải cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308361",
+   "name": "Bí tịch: Nhất Nhật Tang Mệnh Tán-Minh cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29220831.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tinh Túc · cấp 90 · rót huyệt Đốc mạch · nhánh Minh cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308362",
+   "name": "Bí tịch: Bát Môn Kim Tỏa-Phá Trận cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Long · cấp 90 · rót huyệt Đốc mạch · nhánh Phá Trận cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308363",
+   "name": "Bí tịch: Tuyết Ủng Lam Quan-Di Huyệt cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221300.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Long · cấp 90 · rót huyệt Đốc mạch · nhánh Di Huyệt cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308364",
+   "name": "Bí tịch: Đồng Sinh Cộng Tử-Giải cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Sơn · cấp 90 · rót huyệt Đốc mạch · nhánh Giải cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308365",
+   "name": "Bí tịch: Lan Hoa Điểm Huyệt Thủ-Giải cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221250.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Thiên Sơn · cấp 90 · rót huyệt Đốc mạch · nhánh Giải cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308366",
+   "name": "Bí tịch: Bát Trận Đồ-Điều Tức cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tiêu Dao · cấp 90 · rót huyệt Đốc mạch · nhánh Điều Tức cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308367",
+   "name": "Bí tịch: Tru Tiên Trận-Minh cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221010.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Tiêu Dao · cấp 90 · rót huyệt Đốc mạch · nhánh Minh cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308368",
+   "name": "Bí tịch: Tham Doanh Thủ Tương-Giải cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Mộ Dung · cấp 90 · rót huyệt Đốc mạch · nhánh Giải cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308369",
+   "name": "Bí tịch: Hoành Kiếm Cương Trường-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221333.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Mộ Dung · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308370",
+   "name": "Bí tịch: Nhất Hiệp Chướng Mục-Quan Tâm cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Đường môn · cấp 90 · rót huyệt Đốc mạch · nhánh Quan Tâm cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308371",
+   "name": "Bí tịch: Vạn Tiễn Tề Phát-Tri cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221341.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Đường môn · cấp 90 · rót huyệt Đốc mạch · nhánh Tri cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308372",
+   "name": "Bí tịch: Đào Nhiên Nhất Túy-Hộ Thể cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Quỷ Cốc · cấp 90 · rót huyệt Đốc mạch · nhánh Hộ Thể cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30308373",
+   "name": "Bí tịch: Phong Vân Phản Phúc-Cố Bổn cấp 1",
+   "price": 120000,
+   "max": 999,
+   "img": "Screenshot2026-09-29221348.png",
+   "cat": "bitich",
+   "note": "📜 Kinh mạch · Quỷ Cốc · cấp 90 · rót huyệt Đốc mạch · nhánh Cố Bổn cấp 1 · chuột phải để học",
+   "off": true
+  },
+  {
+   "id": "30505906",
+   "name": "Liên Nhung Thần Tiết Cấp 7",
+   "price": 70000,
+   "max": 1,
+   "img": "Screenshot2026-09-29212538.png",
+   "cat": "g2",
+   "note": "Làm thần khí cấp 102",
+   "off": false
+  },
+  {
+   "id": "30900016",
+   "name": "Cao Cấp Hợp Thành Phù",
+   "price": 15000,
+   "max": 999,
+   "img": "Screenshot2026-09-29224301.png",
+   "cat": "consume",
+   "note": "Dùng để hợp ngọc",
+   "off": false
+  },
+  {
+   "id": "20310181",
+   "name": "Xuyết Long Thạch-Nguyên",
+   "price": 200,
+   "max": 999,
+   "img": "Screenshot2026-09-29224314.png",
+   "cat": "consume",
+   "note": "Dùng nâng cấp Long Văn",
+   "off": false
+  },
+  {
+   "id": "20310182",
+   "name": "Xuyết Long Thạch-Bạo",
+   "price": 800,
+   "max": 999,
+   "img": "Screenshot2026-09-29224310.png",
+   "cat": "consume",
+   "note": "Dùng nâng cấp Long Văn",
+   "off": false
+  },
+  {
+   "id": "20310183",
+   "name": "Xuyết Long Thạch-Thương",
+   "price": 1500,
+   "max": 999,
+   "img": "Screenshot2026-09-29224306.png",
+   "cat": "consume",
+   "note": "Dùng nâng cấp Long Văn",
+   "off": false
+  },
+  {
+   "id": "38002049",
+   "name": "Phục Hi Ngọc",
+   "price": 500,
+   "max": 9999,
+   "img": "Screenshot2026-09-29224221.png",
+   "cat": "g2",
+   "note": "Dùng Làm Thần khí",
+   "off": false
+  },
+  {
+   "id": "20310122",
+   "name": "Nhuận Hồn Thạch - Ngự cấp 1",
+   "price": 700,
+   "max": 999,
+   "img": "Screenshot2026-09-29230001.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310124",
+   "name": "Nhuận Hồn Thạch - Ngự cấp 3",
+   "price": 6000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230009.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310126",
+   "name": "Nhuận Hồn Thạch - Ngự cấp 5",
+   "price": 50000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230013.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310131",
+   "name": "Nhuận Hồn Thạch - Kích cấp 1",
+   "price": 700,
+   "max": 999,
+   "img": "Screenshot2026-09-29230017.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310133",
+   "name": "Nhuận Hồn Thạch - Kích cấp 3",
+   "price": 6000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230022.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310135",
+   "name": "Nhuận Hồn Thạch - Kích cấp 5",
+   "price": 50000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230026.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310140",
+   "name": "Nhuận Hồn Thạch- Phá cấp 1",
+   "price": 700,
+   "max": 999,
+   "img": "Screenshot2026-09-29230030.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310142",
+   "name": "Nhuận Hồn Thạch- Phá cấp 3",
+   "price": 6000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230034.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310144",
+   "name": "Nhuận Hồn Thạch- Phá cấp 5",
+   "price": 50000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230040.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310149",
+   "name": "Nhuận Hồn Thạch- Bạo cấp 1",
+   "price": 700,
+   "max": 999,
+   "img": "Screenshot2026-09-29230045.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310151",
+   "name": "Nhuận Hồn Thạch- Bạo cấp 3",
+   "price": 6000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230049.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "20310153",
+   "name": "Nhuận Hồn Thạch- Bạo cấp 5",
+   "price": 50000,
+   "max": 999,
+   "img": "Screenshot2026-09-29230054.png",
+   "cat": "g1",
+   "note": "Học tập kỷ năng võ hồn",
+   "off": false
+  },
+  {
+   "id": "38002041",
+   "name": "Mệnh Hồn Ngọc",
+   "price": 1500,
+   "max": 999,
+   "img": "Screenshot2026-09-29230429.png",
+   "cat": "g2",
+   "note": "Đúc Hồn Thần Khí Thượng Cổ 102",
+   "off": false
+  },
+  {
+   "id": "38002043",
+   "name": "Địa Hồn Ngọc",
+   "price": 1500,
+   "max": 999,
+   "img": "Screenshot2026-09-29230433.png",
+   "cat": "g2",
+   "note": "Đúc Hồn Thần Khí Thượng Cổ 102",
+   "off": false
+  },
+  {
+   "id": "38002045",
+   "name": "Thiên Hồn Ngọc",
+   "price": 1500,
+   "max": 999,
+   "img": "Screenshot2026-09-29230436.png",
+   "cat": "g2",
+   "note": "Đúc Hồn Thần Khí Thượng Cổ 102",
+   "off": false
+  },
+  {
+   "id": "50621106",
+   "name": "Hoàng Minh Tinh Thạch (Cấp 6-6)",
+   "price": 100000,
+   "max": 999,
+   "img": "Screenshot2026-09-29231158.png",
+   "cat": "ammo",
+   "note": "Huyền Công + Giảm Kháng Huyền",
+   "off": true
+  },
+  {
+   "id": "50621206",
+   "name": "Lam Minh Tinh Thạch (Cấp 6-6)",
+   "price": 100000,
+   "max": 999,
+   "img": "Screenshot2026-09-29231201.png",
+   "cat": "ammo",
+   "note": "Băng Công + Giảm Kháng Băng",
+   "off": true
+  },
+  {
+   "id": "50621306",
+   "name": "Hồng Minh Tinh Thạch (Cấp 6-6)",
+   "price": 100000,
+   "max": 999,
+   "img": "Screenshot2026-09-29231205.png",
+   "cat": "ammo",
+   "note": "Hoả Công + Giảm Kháng Hoả",
+   "off": true
+  },
+  {
+   "id": "50621406",
+   "name": "Lục Minh Tinh Thạch (Cấp 6-6)",
+   "price": 100000,
+   "max": 999,
+   "img": "Screenshot2026-09-29231209.png",
+   "cat": "ammo",
+   "note": "Độc Công + Giảm Kháng Độc",
+   "off": true
+  },
+  {
+   "id": "20502008",
+   "name": "Bí Ngân Cấp 8",
+   "price": 3000,
+   "max": 999,
+   "img": "Screenshot2026-09-29232237.png",
+   "cat": "consume",
+   "note": "Dùng chế đồ Công",
+   "off": false
+  },
+  {
+   "id": "20501008",
+   "name": "Vải Bông Cấp 8",
+   "price": 3000,
+   "max": 999,
+   "img": "Screenshot2026-09-29232232.png",
+   "cat": "consume",
+   "note": "Dùng chế đồ Thủ",
+   "off": false
+  },
+  {
+   "id": "30110005",
+   "name": "Điêu Văn Thể Lực cấp 5",
+   "price": 59060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Thể Lực cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110025",
+   "name": "Điêu Văn Nội Lực cấp 5",
+   "price": 44060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Nội Lực cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110035",
+   "name": "Điêu Văn Cường Lực cấp 5",
+   "price": 44060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Cường Lực cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110045",
+   "name": "Điêu Văn Băng Công cấp 5",
+   "price": 59060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Băng Công cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110055",
+   "name": "Điêu Văn Hỏa Công cấp 5",
+   "price": 59060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Hỏa Công cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110065",
+   "name": "Điêu Văn Huyền Công cấp 5",
+   "price": 59060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Huyền Công cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110075",
+   "name": "Điêu Văn Độc Công cấp 5",
+   "price": 59060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Độc Công cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110115",
+   "name": "Điêu Văn Thân Pháp cấp 5",
+   "price": 59060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Thân Pháp cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110125",
+   "name": "Điêu Văn Giảm Kháng Băng cấp 5",
+   "price": 64060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Giảm Kháng Băng cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110135",
+   "name": "Điêu Văn Giảm Kháng Hỏa cấp 5",
+   "price": 64060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Giảm Kháng Hỏa cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110145",
+   "name": "Điêu Văn Giảm Kháng Huyền cấp 5",
+   "price": 64060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Giảm Kháng Huyền cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "30110155",
+   "name": "Điêu Văn Giảm Kháng Độc cấp 5",
+   "price": 64060,
+   "max": 999,
+   "img": "",
+   "cat": "g3",
+   "note": "Điêu Văn Giảm Kháng Độc cấp 1 - tự nâng cấp ở NPC điêu văn",
+   "off": false
+  },
+  {
+   "id": "38000448",
+   "name": "Ngũ Độc Châu",
+   "price": 450,
+   "max": 9999,
+   "img": "",
+   "cat": "consume",
+   "note": "Luyện Độc Kim Sí",
+   "off": false
+  },
+  {
+   "id": "38517009",
+   "name": "CN-Hoả",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001839.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38518009",
+   "name": "CN-Huyền",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001843.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38516009",
+   "name": "CN-Băng",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001846.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38519009",
+   "name": "CN-Độc",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001850.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38503009",
+   "name": "CN-Thể",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001854.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38512009",
+   "name": "CN-Chính Xác",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001858.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38506009",
+   "name": "CN-Huyết",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001901.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38508009",
+   "name": "CN-Nội Công",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001905.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38502009",
+   "name": "CN-Nội Lực",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001911.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38509009",
+   "name": "CN-Ngoại Công",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001916.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38501009",
+   "name": "CN-Cường Lực",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001920.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38513009",
+   "name": "CN-Né Tránh",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001924.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "38514008",
+   "name": "CN-Hội Công",
+   "price": 250000,
+   "max": 999,
+   "img": "Screenshot2026-09-30001929.png",
+   "cat": "g4",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "39999901",
+   "name": "Công Lực Đan",
+   "price": 10,
+   "max": 999,
+   "img": "",
+   "cat": "consume",
+   "note": "Tu Luyện",
+   "off": true
+  },
+  {
+   "id": "20501006",
+   "name": "Vải Bông cấp 6",
+   "price": 250,
+   "max": 9999,
+   "img": "Screenshot2026-10-01114731.png",
+   "cat": "consume",
+   "note": "Vải Bông cấp 6",
+   "off": true
+  },
+  {
+   "id": "20502006",
+   "name": "Bí Ngân cấp 6",
+   "price": 250,
+   "max": 9999,
+   "img": "Screenshot2026-10-01114735.png",
+   "cat": "consume",
+   "note": "Bí Ngân cấp 6",
+   "off": true
+  },
+  {
+   "id": "38000531",
+   "name": "Võ Học Tâm Đắc",
+   "price": 1000,
+   "max": 9999,
+   "img": "Screenshot2026-10-01114710.png",
+   "cat": "consume",
+   "note": "Nâng cấp skill Ngũ Tông",
+   "off": false
+  },
+  {
+   "id": "20800033",
+   "name": "Cửu Thiên Ngọc Toái",
+   "price": 250,
+   "max": 9999,
+   "img": "Screenshot2026-10-01114402.png",
+   "cat": "consume",
+   "note": "Nâng cấp Bảo Giám",
+   "off": false
+  },
+  {
+   "id": "38001087",
+   "name": "Hào Hiệp Huân Chương",
+   "price": 1000,
+   "max": 9999,
+   "img": "Screenshot2026-10-01114450.png",
+   "cat": "consume",
+   "note": "Nâng Cấp Hiệp Ấn",
+   "off": false
+  },
+  {
+   "id": "38001089",
+   "name": "Ngự Tứ Lệnh Thưởng",
+   "price": 250,
+   "max": 9999,
+   "img": "Screenshot2026-10-01114645.png",
+   "cat": "consume",
+   "note": "Tăng Điểm Cống Hiến Hiệp Ấn",
+   "off": false
+  },
+  {
+   "id": "38000571",
+   "name": "Cường Hoá Chí Tôn Tinh Hoa",
+   "price": 1000,
+   "max": 9999,
+   "img": "Screenshot2026-10-01114917.png",
+   "cat": "consume",
+   "note": "Cường Hoá Trang Bị +1",
+   "off": false
+  },
+  {
+   "id": "20310166",
+   "name": "Kim Tàn Ti",
+   "price": 95,
+   "max": 9999,
+   "img": "Screenshot2026-10-01115503.png",
+   "cat": "consume",
+   "note": "Nâng cấp điêu văn",
+   "off": false
+  },
+  {
+   "id": "10553106",
+   "name": "TRÙNG LÂU ĐỚI",
+   "price": 1,
+   "max": 1,
+   "img": "2026-10-01_14-24-32.png",
+   "cat": "important",
+   "note": "Phá Quân vẫn 5 giây, tỉ lệ kích hoạt 6%",
+   "off": false
+  },
+  {
+   "id": "10155002",
+   "name": "Băng Phách Thần Châm",
+   "price": 1,
+   "max": 1,
+   "img": "",
+   "cat": "important",
+   "note": "Ám khí",
+   "off": false
+  },
+  {
+   "id": "30121001",
+   "name": "Điêu Văn Thực Khắc Dong Tề",
+   "price": 3000,
+   "max": 999,
+   "img": "",
+   "cat": "consume",
+   "note": "Khảm Điêu Văn",
+   "off": false
+  },
+  {
+   "id": "38001021",
+   "name": "Phỉ Thúy Tâm Tinh",
+   "price": 700,
+   "max": 999,
+   "img": "",
+   "cat": "consume",
+   "note": "Tăng cấp bảo châu lệnh bài",
+   "off": false
+  },
+  {
+   "id": "38403001",
+   "name": "CN-Thể Lực",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38401001",
+   "name": "CN-Cường Lực",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38402001",
+   "name": "CN-Nội Lực",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38404001",
+   "name": "CN-Trí Lực",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38405001",
+   "name": "CN-Thân Pháp",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38406001",
+   "name": "CN-Huyết",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38407001",
+   "name": "CN-Khí Nộ",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38408001",
+   "name": "CN-Nội Công",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38409001",
+   "name": "CN-Ngoại Công",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38416001",
+   "name": "CN-Băng",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38417001",
+   "name": "CN-Hoả",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38418001",
+   "name": "CN-Huyền",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38419001",
+   "name": "CN-Độc",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38000400",
+   "name": "Thiên Nguyên Túy",
+   "price": 800,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "30008053",
+   "name": "Chưởng Quỹ Yếu Quyết",
+   "price": 49990,
+   "max": 1,
+   "img": "",
+   "cat": "important",
+   "note": "",
+   "off": true
+  },
+  {
+   "id": "30402036",
+   "name": "Cao cấp Cộng Sinh Kĩ Năng Thư",
+   "price": 50000,
+   "max": 10,
+   "img": "",
+   "cat": "consume",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "30900057",
+   "name": "Cao cấp Bảo Thạch Dong Luyện Phù",
+   "price": 10000,
+   "max": 999,
+   "img": "",
+   "cat": "consume",
+   "note": "shop bán 1k mày xoá đi bán 10k web :)))",
+   "off": true
+  },
+  {
+   "id": "38000446",
+   "name": "Bảo Thạch Trác Khắc phù",
+   "price": 600000,
+   "max": 1,
+   "img": "",
+   "cat": "implant",
+   "note": "lưu ý tháo ra = mất ngọc + bùa",
+   "off": false
+  },
+  {
+   "id": "10141040",
+   "name": "Bách Bảo Rương",
+   "price": 0,
+   "max": 1,
+   "img": "",
+   "cat": "important",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "10141030",
+   "name": "Bách Bảo Nang",
+   "price": 0,
+   "max": 1,
+   "img": "",
+   "cat": "important",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38001093",
+   "name": "Long Tuyền Thủy",
+   "price": 4000,
+   "max": 999,
+   "img": "",
+   "cat": "consume",
+   "note": "Dùng tẩy dòng Hiệp Ấn",
+   "off": false
+  },
+  {
+   "id": "39910003",
+   "name": "Nguyên Bảo Phiếu 5000",
+   "price": 0,
+   "max": 1,
+   "img": "",
+   "cat": "important",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38002068",
+   "name": "Ngưng Tức Hoàn",
+   "price": 20000,
+   "max": 999,
+   "img": "",
+   "cat": "consume",
+   "note": "Ngày Chỉ Dùng Được 6 Viên",
+   "off": true
+  },
+  {
+   "id": "30503186",
+   "name": "Truyền Tống Đan",
+   "price": 0,
+   "max": 1,
+   "img": "",
+   "cat": "important",
+   "note": "",
+   "off": false
+  },
+  {
+   "id": "38002067",
+   "name": "Ngưng Tức Hoàn",
+   "price": 99999,
+   "max": 10,
+   "img": "",
+   "cat": "consume",
+   "note": "+500 lượt giết quái x2 nội tức (Võ Ý) · chuột phải để dùng",
+   "off": true
+  },
+  {
+   "id": "38501001",
+   "name": "CN-Cường Lực (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38502001",
+   "name": "CN-Nội Lực (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38503001",
+   "name": "CN-Thể Lực (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38504001",
+   "name": "CN-Trí Lực (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38505001",
+   "name": "CN-Thân Pháp (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38506001",
+   "name": "CN-Huyết (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38507001",
+   "name": "CN-Khí Nộ (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38508001",
+   "name": "CN-Nội Công (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38509001",
+   "name": "CN-Ngoại Công (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38510001",
+   "name": "CN-Nội Thủ (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38511001",
+   "name": "CN-Ngoại Thủ (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38512001",
+   "name": "CN-Chính Xác (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38513001",
+   "name": "CN-Né Tránh (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38514001",
+   "name": "CN-Hội Công (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": true
+  },
+  {
+   "id": "38515001",
+   "name": "CN-Hội Thủ (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38516001",
+   "name": "CN-Băng (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38517001",
+   "name": "CN-Hỏa (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38518001",
+   "name": "CN-Huyền (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  },
+  {
+   "id": "38519001",
+   "name": "CN-Độc (bậc 5, cấp 1)",
+   "price": 60000,
+   "max": 999,
+   "img": "",
+   "cat": "g4",
+   "note": "Chân Nguyên bậc 5 cấp 1",
+   "off": false
+  }
+ ],
+ "_itemCats": [
+  {
+   "key": "important",
+   "label": "⭐ QUAN TRỌNG"
+  },
+  {
+   "key": "admin",
+   "label": "🧺 LINH TINH"
+  },
+  {
+   "key": "weapon",
+   "label": "🗡️ VŨ KHÍ"
+  },
+  {
+   "key": "armor",
+   "label": "🛡️ TRANG BỊ"
+  },
+  {
+   "key": "consume",
+   "label": "🏪 TẠP HÓA"
+  },
+  {
+   "key": "accessory",
+   "label": "💍 TRANG SỨC"
+  },
+  {
+   "key": "food",
+   "label": "💊 DƯỢC PHẨM"
+  },
+  {
+   "key": "ammo",
+   "label": "💎 Ngọc 6"
+  },
+  {
+   "key": "implant",
+   "label": "🔥 HÀNG GIỚI HẠN"
+  },
+  {
+   "key": "yq",
+   "label": "🗡️ YẾU QUYẾT MÔN PHÁI"
+  },
+  {
+   "key": "tiencap",
+   "label": "⚔️ KỸ NĂNG TIẾN CẤP"
+  },
+  {
+   "key": "bitich",
+   "label": "📜 BÍ TỊCH KINH MẠCH"
+  },
+  {
+   "key": "g1",
+   "label": "NL Võ Hồn"
+  },
+  {
+   "key": "g2",
+   "label": "NL Thần Khí"
+  },
+  {
+   "key": "g3",
+   "label": "Điêu Văn cấp 5"
+  },
+  {
+   "key": "g4",
+   "label": "Chân Nguyên"
+  },
+  {
+   "key": "rac",
+   "label": "🗑️ Rác"
+  }
+ ],
+ "_itemShopGroupQuota": {
+  "admin": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "weapon": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "armor": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "consume": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "accessory": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "food": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "ammo": {
+   "mode": "server",
+   "per": "item",
+   "max": 400
+  },
+  "material": {
+   "mode": "server",
+   "per": "item",
+   "max": 400
+  },
+  "yq": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "tiencap": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "bitich": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "g1": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "g2": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "g3": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "g4": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  },
+  "rac": {
+   "mode": "user",
+   "per": "group",
+   "max": 0
+  }
+ },
+ "_itemShopDayMode": "server",
+ "_giftShop": [
+  {
+   "gid": "10553106",
+   "id": "38002068",
+   "name": "Ngưng Tức Hoàn",
+   "qty": 6,
+   "img": "",
+   "note": "x2 ex võ túy farm ở VLS",
+   "off": false
+  }
+ ],
+ "_petBoss": {
+  "on": true,
+  "name": "🐾 Chọn Pet Boss",
+  "price": 0,
+  "note": "",
+  "img": "82845719_176669953396928_8961810173500850176_n_176669950063595.png",
+  "ban": "tanthu",
+  "skins": {
+   "Băng Yêu": {
+    "img": "aohoatranthu1.gif",
+    "off": false
+   },
+   "Công Tôn Thánh": {
+    "img": "congtonthanh.png",
+    "off": false
+   },
+   "Tôn Mỹ Mỹ": {
+    "img": "aohoatranthu2.gif",
+    "off": false
+   },
+   "Lâm Sung": {
+    "img": "lamsung.png",
+    "off": false
+   },
+   "Thủy Phỉ Đầu Lãnh": {
+    "img": "thuyphidaulanh.png",
+    "off": false
+   },
+   "Lộ Quân Dật": {
+    "img": "2026-10-01_16-12-13.png",
+    "off": false
+   },
+   "Viễn Cổ Kỳ Hồn": {
+    "img": "viencokyhon.png",
+    "off": false
+   },
+   "Tống Khương": {
+    "img": "tongkhuong.png",
+    "off": false
+   },
+   "Tần Vương": {
+    "img": "tanvuong.png",
+    "off": false
+   },
+   "Quan Thắng": {
+    "img": "quangthang.png",
+    "off": false
+   },
+   "Cáp Đại Bá": {
+    "img": "1.png",
+    "off": false
+   },
+   "Lỗ Chí Sinh": {
+    "img": "cui1.png",
+    "off": false
+   }
+  }
+ },
+ "_dailyCfg": {
+  "daily": 60000,
+  "nghien": 1000,
+  "streakEvery": 2,
+  "streakBonus": 20000,
+  "nghienOn": true
+ },
+ "_featOff": {
+  "pick": true,
+  "spm": true,
+  "stock": true,
+  "stair": true,
+  "wheel": true,
+  "pal": true,
+  "mine": true,
+  "tx": true
+ },
+ "_tpCfg": {
+  "tat": false,
+  "chan": [],
+  "ik": [
+   "30900016",
+   "30505817",
+   "30505818",
+   "30505819",
+   "30307220",
+   "30307226",
+   "30307228",
+   "30505906",
+   "50621002",
+   "50621003",
+   "50621001",
+   "50621004",
+   "20310126",
+   "20310135",
+   "20310144",
+   "20310153",
+   "30110121",
+   "30110131",
+   "30110141",
+   "30110151",
+   "30402036",
+   "30110001",
+   "30110041",
+   "30110051",
+   "30110061",
+   "30110071",
+   "30110111",
+   "30308112",
+   "30308113",
+   "30308114",
+   "30308115",
+   "30308116",
+   "30308117",
+   "30308118",
+   "30308119",
+   "30308120",
+   "30308122",
+   "30308123",
+   "30308124",
+   "30308125",
+   "30308126",
+   "30308127",
+   "30308128",
+   "30308129",
+   "30308140",
+   "30110021",
+   "30110031",
+   "50602005",
+   "50602006",
+   "50602007",
+   "50602008",
+   "50602002",
+   "50602003",
+   "50602001",
+   "50602004",
+   "50612006",
+   "50612007",
+   "50612005",
+   "50612008",
+   "50601002",
+   "50601001",
+   "50603001",
+   "50604002",
+   "50611001",
+   "50614001",
+   "50613006",
+   "50613001",
+   "50613002",
+   "50613004",
+   "50613003",
+   "30307227",
+   "30308130",
+   "30308131",
+   "30308132",
+   "30308133",
+   "30308139",
+   "38403001",
+   "38401001",
+   "38402001",
+   "38404001",
+   "38405001",
+   "38406001",
+   "38407001",
+   "38408001",
+   "38409001",
+   "38416001",
+   "38417001",
+   "38418001",
+   "38419001",
+   "30307229",
+   "30307230",
+   "30307231",
+   "30307232",
+   "30308137",
+   "50612001",
+   "50612002",
+   "50612003",
+   "50612004",
+   "50611002",
+   "50613005",
+   "30307200",
+   "30307201",
+   "30307202",
+   "30307203",
+   "30307204",
+   "30307205",
+   "30307206",
+   "30307207",
+   "30307208",
+   "30307209",
+   "30307210",
+   "30307222",
+   "30307223",
+   "30307224",
+   "30307225",
+   "30308135",
+   "30308136",
+   "30308121",
+   "30900057",
+   "20310124",
+   "20310133",
+   "20310142",
+   "20310151",
+   "30307211",
+   "30307212",
+   "30307213",
+   "30307214",
+   "30307215",
+   "30307216",
+   "30307217",
+   "30307218",
+   "30307221",
+   "38001093",
+   "20502008",
+   "20501008",
+   "30121001",
+   "20310183",
+   "38002041",
+   "38002043",
+   "38002045",
+   "38000531",
+   "38001087",
+   "38000571",
+   "20310182",
+   "38000400",
+   "20310122",
+   "20310131",
+   "20310140",
+   "20310149",
+   "38001021",
+   "38002049",
+   "38000448",
+   "20501006",
+   "20502006",
+   "20800033",
+   "38001089",
+   "20310181",
+   "20310166",
+   "30120001",
+   "30120002",
+   "30120003",
+   "30120004",
+   "30120005",
+   "30120006",
+   "30120007",
+   "30120008",
+   "30120009",
+   "30120010",
+   "30120011",
+   "30120012",
+   "30120013",
+   "30120014",
+   "30120015",
+   "30120016",
+   "30120017",
+   "30120018",
+   "30120019",
+   "30120020",
+   "50701001",
+   "50701002",
+   "50702001",
+   "50702002",
+   "50702003",
+   "50702004",
+   "50702005",
+   "50702006",
+   "50702007",
+   "50702008",
+   "50703001",
+   "50704002",
+   "50711001",
+   "50711002",
+   "50712001",
+   "50712002",
+   "50712003",
+   "50712004",
+   "50712005",
+   "50712006",
+   "50712007",
+   "50712008",
+   "50713001",
+   "50713002",
+   "50713003",
+   "50713004",
+   "50713005",
+   "50713006",
+   "50714001",
+   "50721001",
+   "50721002",
+   "50721003",
+   "50721004",
+   "50721101",
+   "50721102",
+   "50721103",
+   "50721104",
+   "50721105",
+   "50721106",
+   "50721107",
+   "50721201",
+   "50721202",
+   "50721203",
+   "50721204",
+   "50721205",
+   "50721206",
+   "50721207",
+   "50721301",
+   "50721302",
+   "50721303",
+   "50721304",
+   "50721305",
+   "50721306",
+   "50721307",
+   "50721401",
+   "50721402",
+   "50721403",
+   "50721404",
+   "50721405",
+   "50721406",
+   "50721407"
+  ]
+ },
+ "_gnCfg": {
+  "on": true,
+  "phi": 25,
+  "tiMin": 1,
+  "tiMax": 75,
+  "luotNgay": 20,
+  "monMax": 60,
+  "knbOn": true,
+  "knbMax": 20000,
+  "vao": {
+   "cam": {
+    "yq": false
+   },
+   "giaRuong": false,
+   "shop": {
+    "on": false,
+    "pct": 80
+   },
+   "rieng": {
+    "20310122": 560,
+    "20310124": 4800,
+    "20310126": 40000,
+    "20310131": 560,
+    "20310133": 4800,
+    "20310135": 40000,
+    "20310140": 560,
+    "20310142": 4800,
+    "20310144": 40000,
+    "20310149": 560,
+    "20310151": 4800,
+    "20310153": 40000,
+    "20310166": 76,
+    "20310181": 160,
+    "20310182": 640,
+    "20310183": 1200,
+    "20501006": 200,
+    "20501008": 2400,
+    "20502006": 200,
+    "20502008": 2400,
+    "20800033": 200,
+    "30110001": 36000,
+    "30110005": 50000,
+    "30110021": 24000,
+    "30110025": 38000,
+    "30110031": 24000,
+    "30110035": 38000,
+    "30110041": 36000,
+    "30110045": 50000,
+    "30110051": 36000,
+    "30110055": 50000,
+    "30110061": 36000,
+    "30110065": 50000,
+    "30110071": 36000,
+    "30110075": 50000,
+    "30110111": 36000,
+    "30110115": 50000,
+    "30110121": 40000,
+    "30110125": 54000,
+    "30110131": 40000,
+    "30110135": 54000,
+    "30110141": 40000,
+    "30110145": 54000,
+    "30110151": 40000,
+    "30110155": 54000,
+    "30120001": 1000,
+    "30120002": 1000,
+    "30120003": 1000,
+    "30120004": 1000,
+    "30120005": 1000,
+    "30120006": 1000,
+    "30120007": 1000,
+    "30120008": 1000,
+    "30120009": 1000,
+    "30120010": 1000,
+    "30120011": 1000,
+    "30120012": 1000,
+    "30120013": 1000,
+    "30120014": 1000,
+    "30120015": 1000,
+    "30120016": 1000,
+    "30120017": 1000,
+    "30120018": 1000,
+    "30120019": 1000,
+    "30120020": 1000,
+    "30121001": 2400,
+    "30307200": 8000,
+    "30307201": 8000,
+    "30307202": 8000,
+    "30307203": 8000,
+    "30307204": 8000,
+    "30307205": 8000,
+    "30307206": 8000,
+    "30307207": 8000,
+    "30307208": 8000,
+    "30307209": 8000,
+    "30307210": 8000,
+    "30307211": 4000,
+    "30307212": 4000,
+    "30307213": 4000,
+    "30307214": 4000,
+    "30307215": 4000,
+    "30307216": 4000,
+    "30307217": 4000,
+    "30307218": 4000,
+    "30307220": 160000,
+    "30307221": 4000,
+    "30307222": 8000,
+    "30307223": 8000,
+    "30307224": 8000,
+    "30307225": 8000,
+    "30307226": 160000,
+    "30307227": 16000,
+    "30307228": 160000,
+    "30307229": 12000,
+    "30307230": 12000,
+    "30307231": 12000,
+    "30307232": 12000,
+    "30308112": 24000,
+    "30308113": 24000,
+    "30308114": 24000,
+    "30308115": 24000,
+    "30308116": 24000,
+    "30308117": 24000,
+    "30308118": 24000,
+    "30308119": 24000,
+    "30308120": 24000,
+    "30308121": 8000,
+    "30308122": 24000,
+    "30308123": 24000,
+    "30308124": 24000,
+    "30308125": 24000,
+    "30308126": 24000,
+    "30308127": 24000,
+    "30308128": 24000,
+    "30308129": 24000,
+    "30308130": 16000,
+    "30308131": 16000,
+    "30308132": 16000,
+    "30308133": 16000,
+    "30308135": 8000,
+    "30308136": 8000,
+    "30308137": 12000,
+    "30308139": 16000,
+    "30308140": 24000,
+    "30402036": 40000,
+    "30505817": 300,
+    "30505818": 500,
+    "30505819": 800,
+    "30505906": 56000,
+    "30900016": 12000,
+    "30900057": 8000,
+    "38000400": 640,
+    "38000448": 360,
+    "38000531": 800,
+    "38000571": 800,
+    "38001021": 560,
+    "38001087": 800,
+    "38001089": 200,
+    "38001093": 3200,
+    "38002041": 1200,
+    "38002043": 1200,
+    "38002045": 1200,
+    "38002049": 400,
+    "38401001": 16000,
+    "38402001": 16000,
+    "38403001": 16000,
+    "38404001": 16000,
+    "38405001": 16000,
+    "38406001": 16000,
+    "38407001": 16000,
+    "38408001": 16000,
+    "38409001": 16000,
+    "38416001": 16000,
+    "38417001": 16000,
+    "38418001": 16000,
+    "38419001": 16000,
+    "50601001": 16000,
+    "50601002": 16000,
+    "50602001": 16000,
+    "50602002": 16000,
+    "50602003": 16000,
+    "50602004": 16000,
+    "50602005": 19200,
+    "50602006": 19200,
+    "50602007": 19200,
+    "50602008": 19200,
+    "50603001": 16000,
+    "50604002": 16000,
+    "50611001": 16000,
+    "50611002": 12000,
+    "50612001": 12000,
+    "50612002": 12000,
+    "50612003": 12000,
+    "50612004": 12000,
+    "50612005": 16000,
+    "50612006": 16000,
+    "50612007": 16000,
+    "50612008": 16000,
+    "50613001": 16000,
+    "50613002": 16000,
+    "50613003": 16000,
+    "50613004": 16000,
+    "50613005": 12000,
+    "50613006": 16000,
+    "50614001": 16000,
+    "50621001": 48000,
+    "50621002": 48000,
+    "50621003": 48000,
+    "50621004": 48000,
+    "50701001": 90000,
+    "50701002": 90000,
+    "50702001": 90000,
+    "50702002": 90000,
+    "50702003": 90000,
+    "50702004": 90000,
+    "50702005": 110000,
+    "50702006": 110000,
+    "50702007": 110000,
+    "50702008": 110000,
+    "50703001": 90000,
+    "50704002": 90000,
+    "50711001": 90000,
+    "50711002": 65000,
+    "50712001": 65000,
+    "50712002": 65000,
+    "50712003": 65000,
+    "50712004": 65000,
+    "50712005": 90000,
+    "50712006": 90000,
+    "50712007": 90000,
+    "50712008": 90000,
+    "50713001": 90000,
+    "50713002": 90000,
+    "50713003": 90000,
+    "50713004": 90000,
+    "50713005": 65000,
+    "50713006": 90000,
+    "50714001": 90000,
+    "50721001": 280000,
+    "50721002": 280000,
+    "50721003": 280000,
+    "50721004": 280000
+   }
+  },
+  "dich": {
+   "nhom": {
+    "thuocTinh": {
+     "on": false,
+     "gia": 220000,
+     "sl": 1,
+     "ids": [
+      "50702005",
+      "50702006",
+      "50702007",
+      "50702008"
+     ]
+    },
+    "khang": {
+     "on": false,
+     "gia": 190000,
+     "sl": 1,
+     "ids": [
+      "50712005",
+      "50712006",
+      "50712007",
+      "50712008"
+     ]
+    },
+    "theLucNe": {
+     "on": false,
+     "gia": 220000,
+     "sl": 1,
+     "ids": [
+      "50713004",
+      "50714001"
+     ]
+    },
+    "chinhXac": {
+     "on": false,
+     "gia": 220000,
+     "sl": 1,
+     "ids": [
+      "50703001"
+     ]
+    },
+    "trungLau": {
+     "on": false,
+     "gia": 150000,
+     "sl": 10,
+     "ids": [
+      "20310185",
+      "20310186",
+      "20310187",
+      "20310188"
+     ]
+    }
+   },
+   "rieng": {
+    "10141214": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553108": {
+     "gia": 4000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553236": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553281": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553308": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553326": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553344": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553353": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553362": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553371": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553380": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553389": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553398": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553407": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553416": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553425": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553434": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553443": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553452": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553461": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553470": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "10553479": {
+     "gia": 2000000,
+     "sl": 1,
+     "off": false
+    },
+    "20310185": {
+     "gia": 1700000,
+     "sl": 100,
+     "off": false
+    },
+    "20310186": {
+     "gia": 1700000,
+     "sl": 100,
+     "off": false
+    },
+    "20310187": {
+     "gia": 1700000,
+     "sl": 100,
+     "off": false
+    },
+    "20310188": {
+     "gia": 1700000,
+     "sl": 100,
+     "off": false
+    },
+    "20310189": {
+     "gia": 1700000,
+     "sl": 100,
+     "off": false
+    },
+    "20310190": {
+     "gia": 1700000,
+     "sl": 100,
+     "off": false
+    },
+    "30309780": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309799": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309800": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309807": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309808": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309809": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309810": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309811": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309813": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309814": {
+     "gia": 150000,
+     "sl": 1,
+     "off": false
+    },
+    "30309815": {
+     "gia": 200000,
+     "sl": 1,
+     "off": false
+    },
+    "30309816": {
+     "gia": 150000,
+     "sl": 1,
+     "off": false
+    },
+    "30309818": {
+     "gia": 150000,
+     "sl": 1,
+     "off": false
+    },
+    "30309819": {
+     "gia": 150000,
+     "sl": 1,
+     "off": false
+    },
+    "30309820": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309821": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309822": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309823": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309824": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309825": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309826": {
+     "gia": 150000,
+     "sl": 1,
+     "off": false
+    },
+    "30309827": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309828": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309829": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309830": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309831": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309832": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309833": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309834": {
+     "gia": 100000,
+     "sl": 1,
+     "off": false
+    },
+    "30309835": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309837": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309838": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309839": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309840": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309841": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309842": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309844": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309845": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309846": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309847": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309848": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309849": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309850": {
+     "gia": 150000,
+     "sl": 1,
+     "off": false
+    },
+    "30309851": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309852": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309853": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309855": {
+     "gia": 100000,
+     "sl": 1,
+     "off": false
+    },
+    "30309856": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309857": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309858": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "30309859": {
+     "gia": 500000,
+     "sl": 1,
+     "off": false
+    },
+    "38000446": {
+     "gia": 600000,
+     "sl": 1,
+     "off": false
+    },
+    "39901012": {
+     "gia": 4000000,
+     "sl": 125,
+     "off": false
+    },
+    "39910001": {
+     "gia": 1100,
+     "sl": 1,
+     "off": false
+    },
+    "39910002": {
+     "gia": 2200,
+     "sl": 1,
+     "off": false
+    },
+    "39910003": {
+     "gia": 5500,
+     "sl": 1,
+     "off": true
+    },
+    "50701001": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50701002": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50702001": {
+     "gia": 200000,
+     "sl": 1,
+     "off": false
+    },
+    "50702002": {
+     "gia": 200000,
+     "sl": 1,
+     "off": false
+    },
+    "50702003": {
+     "gia": 200000,
+     "sl": 1,
+     "off": false
+    },
+    "50702004": {
+     "gia": 200000,
+     "sl": 1,
+     "off": false
+    },
+    "50702005": {
+     "gia": 220000,
+     "sl": 1,
+     "off": false
+    },
+    "50702006": {
+     "gia": 220000,
+     "sl": 1,
+     "off": false
+    },
+    "50702007": {
+     "gia": 220000,
+     "sl": 1,
+     "off": false
+    },
+    "50702008": {
+     "gia": 220000,
+     "sl": 1,
+     "off": false
+    },
+    "50703001": {
+     "gia": 220000,
+     "sl": 1,
+     "off": false
+    },
+    "50704002": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50711001": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50711002": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50712001": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50712002": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50712003": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50712004": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50712005": {
+     "gia": 190000,
+     "sl": 1,
+     "off": false
+    },
+    "50712006": {
+     "gia": 190000,
+     "sl": 1,
+     "off": false
+    },
+    "50712007": {
+     "gia": 190000,
+     "sl": 1,
+     "off": false
+    },
+    "50712008": {
+     "gia": 190000,
+     "sl": 1,
+     "off": false
+    },
+    "50713001": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50713002": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50713003": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50713004": {
+     "gia": 220000,
+     "sl": 1,
+     "off": false
+    },
+    "50713005": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50713006": {
+     "gia": 160000,
+     "sl": 1,
+     "off": false
+    },
+    "50714001": {
+     "gia": 220000,
+     "sl": 1,
+     "off": false
+    },
+    "50721001": {
+     "gia": 400000,
+     "sl": 1,
+     "off": false
+    },
+    "50721002": {
+     "gia": 400000,
+     "sl": 1,
+     "off": false
+    },
+    "50721003": {
+     "gia": 400000,
+     "sl": 1,
+     "off": false
+    },
+    "50721004": {
+     "gia": 400000,
+     "sl": 1,
+     "off": false
+    }
+   }
+  },
+  "thongBao": {
+   "on": true,
+   "kenh": "1554355317536460820",
+   "thang": true,
+   "thua": true,
+   "minGia": 0,
+   "tag": true,
+   "tre": 8,
+   "anh": true,
+   "anhChu": false
+  }
+ },
+ "_vqCfg": {
+  "on": true,
+  "gia": 8000,
+  "max": 20,
+  "pool": [
+   {
+    "id": 38001087,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30900016,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20800034,
+    "sl": 100,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30505906,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30307226,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30307220,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30503177,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38002047,
+    "sl": 30,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38001099,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38000398,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 31000004,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30509014,
+    "sl": 100,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30501218,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30501227,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30501236,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30501245,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38000950,
+    "sl": 7,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20700055,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50701001,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50701002,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50702001,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50702002,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50702003,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50702004,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50713002,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50713003,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 50713004,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38000949,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38001021,
+    "sl": 20,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30600084,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20700063,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30900032,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30900133,
+    "sl": 2,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30900132,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310190,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310189,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310188,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310187,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310186,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310185,
+    "sl": 10,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30505078,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38001108,
+    "sl": 1,
+    "w": 30,
+    "off": false
+   },
+   {
+    "id": 38001107,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38000571,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20301009,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310183,
+    "sl": 20,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310182,
+    "sl": 20,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310181,
+    "sl": 20,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38000400,
+    "sl": 50,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38002045,
+    "sl": 60,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38002043,
+    "sl": 60,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38002041,
+    "sl": 60,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310174,
+    "sl": 16,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 10158004,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 38001020,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30505814,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 39910006,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 39910005,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 39910004,
+    "sl": 3,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30900016,
+    "sl": 5,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30402036,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20502008,
+    "sl": 30,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20501008,
+    "sl": 30,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110155,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110145,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110135,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110115,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110075,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110065,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110055,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110005,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110125,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 30110045,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20800047,
+    "sl": 20,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 10156205,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 10156204,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 10156105,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 10156104,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 10157007,
+    "sl": 1,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 10157006,
+    "sl": 1,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 10157005,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310155,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310153,
+    "sl": 3,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310151,
+    "sl": 6,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20310149,
+    "sl": 10,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20310146,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310144,
+    "sl": 3,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310142,
+    "sl": 6,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20310140,
+    "sl": 10,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20310137,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310135,
+    "sl": 3,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310133,
+    "sl": 6,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20310131,
+    "sl": 10,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20310128,
+    "sl": 1,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310126,
+    "sl": 3,
+    "w": 100,
+    "off": false
+   },
+   {
+    "id": 20310124,
+    "sl": 6,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20310122,
+    "sl": 10,
+    "w": 100,
+    "off": true
+   },
+   {
+    "id": 20309101,
+    "sl": 50,
+    "w": 150,
+    "off": true
+   },
+   {
+    "id": 20309102,
+    "sl": 20,
+    "w": 150,
+    "off": true
+   },
+   {
+    "id": 20309103,
+    "sl": 10,
+    "w": 150,
+    "off": true
+   },
+   {
+    "id": 20309104,
+    "sl": 5,
+    "w": 150,
+    "off": false
+   },
+   {
+    "id": 20309105,
+    "sl": 1,
+    "w": 150,
+    "off": false
+   }
+  ]
+ },
+ "_tuiBossCfg": {
+  "qtc": {
+   "on": true,
+   "mon": [
+    [
+     [
+      20310122,
+      20310124,
+      20310126,
+      20310140,
+      20310142,
+      20310144,
+      20310149,
+      20310151,
+      20310153,
+      20310131,
+      20310133,
+      20310135
+     ],
+     [
+      6,
+      12
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     38000448,
+     [
+      30,
+      60
+     ]
+    ],
+    [
+     20800033,
+     45
+    ],
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308139,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308140
+     ],
+     3
+    ],
+    [
+     39999901,
+     3
+    ],
+    [
+     38000950,
+     6
+    ],
+    [
+     20310168,
+     [
+      120,
+      240
+     ]
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      30,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   ],
+   "knb": 12000,
+   "ngay": 1,
+   "luot": 6
+  },
+  "qll": {
+   "on": true,
+   "mon": [
+    [
+     20800034,
+     [
+      30,
+      60
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     38000448,
+     [
+      30,
+      60
+     ]
+    ],
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     3
+    ],
+    [
+     39999901,
+     3
+    ],
+    [
+     38000950,
+     6
+    ],
+    [
+     20310168,
+     [
+      120,
+      240
+     ]
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      30,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   ],
+   "knb": 12000,
+   "ngay": 1,
+   "luot": 6
+  },
+  "yto": {
+   "on": true,
+   "mon": [
+    [
+     30505819,
+     [
+      6,
+      9
+     ]
+    ],
+    [
+     30505813,
+     [
+      6,
+      15
+     ]
+    ],
+    [
+     30505814,
+     [
+      3,
+      9
+     ]
+    ],
+    [
+     30505815,
+     [
+      45,
+      75
+     ]
+    ],
+    [
+     38000949,
+     [
+      24,
+      30
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     38000950,
+     6
+    ],
+    [
+     20310168,
+     [
+      120,
+      240
+     ]
+    ],
+    [
+     39999901,
+     3
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      30,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   ],
+   "knb": 12000,
+   "ngay": 1,
+   "luot": 6
+  },
+  "btkt": {
+   "on": true,
+   "mon": [
+    [
+     [
+      20310181,
+      20310182,
+      20310183
+     ],
+     [
+      10,
+      20
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      10157003,
+      10157002,
+      10157004
+     ],
+     2
+    ],
+    [
+     [
+      20309102,
+      20309103,
+      20309104
+     ],
+     2
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     39999901,
+     2
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 8000,
+   "ngay": 1,
+   "luot": 4
+  },
+  "ttt": {
+   "on": true,
+   "mon": [
+    [
+     [
+      38002045,
+      38002043,
+      38002041
+     ],
+     [
+      40,
+      50
+     ]
+    ],
+    [
+     [
+      10156102,
+      10156202
+     ],
+     2
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     2
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     39999901,
+     2
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 8000,
+   "ngay": 1,
+   "luot": 4
+  },
+  "pmf": {
+   "on": true,
+   "mon": [
+    [
+     38000448,
+     [
+      20,
+      40
+     ]
+    ],
+    [
+     [
+      30110121,
+      30110131,
+      30110141,
+      30110151
+     ],
+     [
+      0,
+      2
+     ]
+    ],
+    [
+     30505815,
+     [
+      20,
+      40
+     ]
+    ],
+    [
+     [
+      38002045,
+      38002043,
+      38002041
+     ],
+     [
+      20,
+      40
+     ]
+    ],
+    [
+     38000949,
+     [
+      10,
+      20
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     39999901,
+     2
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 8000,
+   "ngay": 1,
+   "luot": 4
+  },
+  "pmfkc": {
+   "on": true,
+   "mon": [
+    [
+     38000448,
+     40
+    ],
+    [
+     [
+      30110002,
+      30110042,
+      30110052,
+      30110062,
+      30110072,
+      30110112,
+      30110132,
+      30110142,
+      30110152,
+      30110122,
+      30110022,
+      30110032
+     ],
+     2
+    ],
+    [
+     [
+      38002045,
+      38002043,
+      38002041
+     ],
+     [
+      40,
+      50
+     ]
+    ],
+    [
+     30505815,
+     [
+      40,
+      50
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     39999901,
+     2
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 16000,
+   "ngay": 1,
+   "luot": 4
+  },
+  "sattinh": {
+   "on": true,
+   "mon": [
+    [
+     38000448,
+     40
+    ],
+    [
+     [
+      30505817,
+      30505818,
+      30505819
+     ],
+     [
+      4,
+      10
+     ]
+    ],
+    [
+     30505813,
+     [
+      2,
+      6
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      2,
+      6
+     ]
+    ],
+    [
+     [
+      38000397,
+      38000400
+     ],
+     [
+      40,
+      50
+     ]
+    ],
+    [
+     39999901,
+     [
+      6,
+      10
+     ]
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 8000,
+   "ngay": 1,
+   "luot": 4
+  },
+  "tts": {
+   "on": true,
+   "mon": [
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     2
+    ],
+    [
+     30505815,
+     [
+      40,
+      60
+     ]
+    ],
+    [
+     38002049,
+     [
+      12,
+      30
+     ]
+    ],
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     2
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     39999901,
+     2
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 8000,
+   "ngay": 1,
+   "luot": 4
+  },
+  "longquy": {
+   "on": true,
+   "mon": [
+    [
+     38000571,
+     60
+    ],
+    [
+     39999901,
+     15
+    ],
+    [
+     [
+      30110002,
+      30110042,
+      30110052,
+      30110062,
+      30110072,
+      30110112,
+      30110132,
+      30110142,
+      30110152,
+      30110122,
+      30110022,
+      30110032
+     ],
+     3
+    ],
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     3
+    ],
+    [
+     38000950,
+     6
+    ],
+    [
+     20310168,
+     [
+      120,
+      240
+     ]
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      30,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   ],
+   "knb": 30000,
+   "ngay": 1,
+   "luot": 6
+  },
+  "lltb": {
+   "on": true,
+   "mon": [
+    [
+     38000531,
+     30
+    ],
+    [
+     38000529,
+     20
+    ],
+    [
+     [
+      10156102,
+      10156202
+     ],
+     2
+    ],
+    [
+     [
+      30307200,
+      30307201,
+      30307202,
+      30307203,
+      30307204,
+      30307205,
+      30307206,
+      30307207,
+      30307208,
+      30307209,
+      30307210,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     4
+    ],
+    [
+     [
+      38001089,
+      38001087
+     ],
+     [
+      40,
+      50
+     ]
+    ],
+    [
+     38000949,
+     [
+      10,
+      16
+     ]
+    ],
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     2
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     39999901,
+     2
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 10000,
+   "ngay": 1,
+   "luot": 2
+  },
+  "acba": {
+   "on": true,
+   "mon": [
+    [
+     [
+      30307200,
+      30307201,
+      30307202,
+      30307203,
+      30307204,
+      30307205,
+      30307206,
+      30307207,
+      30307208,
+      30307209,
+      30307210,
+      30308135,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308119,
+      30308120,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308130,
+      30308131,
+      30308133,
+      30308139,
+      30308140,
+      30308118,
+      30308121,
+      30308129,
+      30308132
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      38001089,
+      38001087
+     ],
+     15
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      0,
+      6
+     ]
+    ],
+    [
+     38000950,
+     6
+    ],
+    [
+     20310168,
+     [
+      120,
+      240
+     ]
+    ],
+    [
+     39999901,
+     3
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      30,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   ],
+   "knb": 3000,
+   "ngay": 1,
+   "luot": 3
+  },
+  "actac": {
+   "on": true,
+   "mon": [
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      38001089,
+      38001087
+     ],
+     15
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      0,
+      6
+     ]
+    ],
+    [
+     38000950,
+     6
+    ],
+    [
+     20310168,
+     [
+      120,
+      240
+     ]
+    ],
+    [
+     39999901,
+     3
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      30,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      3,
+      6
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   ],
+   "knb": 3000,
+   "ngay": 1,
+   "luot": 3
+  },
+  "kycuoc": {
+   "on": true,
+   "mon": [
+    [
+     38000531,
+     7
+    ],
+    [
+     38000529,
+     3
+    ],
+    [
+     [
+      10156102,
+      10156103,
+      10156104,
+      10156202,
+      10156203,
+      10156204
+     ],
+     [
+      1,
+      3
+     ]
+    ],
+    [
+     [
+      38001089,
+      38001087
+     ],
+     [
+      10,
+      15
+     ]
+    ],
+    [
+     38000949,
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      0,
+      3
+     ]
+    ],
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     1
+    ],
+    [
+     38000950,
+     2
+    ],
+    [
+     20310168,
+     [
+      40,
+      80
+     ]
+    ],
+    [
+     39999901,
+     1
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      10,
+      50
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      1,
+      2
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      1,
+      2
+     ]
+    ]
+   ],
+   "knb": 5000,
+   "ngay": 1,
+   "luot": 1
+  },
+  "langhuyen": {
+   "on": true,
+   "mon": [
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      0,
+      4
+     ]
+    ],
+    [
+     38000950,
+     4
+    ],
+    [
+     20310168,
+     [
+      80,
+      160
+     ]
+    ],
+    [
+     39999901,
+     2
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      20,
+      100
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "knb": 0,
+   "ngay": 1,
+   "luot": 4
+  },
+  "tuccau": {
+   "on": true,
+   "mon": [
+    [
+     [
+      50601001,
+      50601002,
+      50602004,
+      50602003,
+      50602002,
+      50602001,
+      50603001,
+      50612007,
+      50612006,
+      50612005,
+      50612008,
+      50614001,
+      50621003,
+      50613003
+     ],
+     [
+      0,
+      2
+     ]
+    ],
+    [
+     38000531,
+     [
+      5,
+      7
+     ]
+    ],
+    [
+     38000529,
+     [
+      2,
+      3
+     ]
+    ],
+    [
+     [
+      38001089,
+      38001087
+     ],
+     [
+      10,
+      15
+     ]
+    ],
+    [
+     38000949,
+     [
+      3,
+      5
+     ]
+    ],
+    [
+     [
+      30307211,
+      30307212,
+      30307213,
+      30307214,
+      30307215,
+      30307216,
+      30307217,
+      30307218,
+      30307220,
+      30307221,
+      30308136,
+      30307222,
+      30307223,
+      30307224,
+      30307225,
+      30307226,
+      30307227,
+      30307228,
+      30307229,
+      30307230,
+      30307231,
+      30307232,
+      30308112,
+      30308113,
+      30308114,
+      30308115,
+      30308116,
+      30308117,
+      30308118,
+      30308119,
+      30308120,
+      30308121,
+      30308122,
+      30308123,
+      30308124,
+      30308125,
+      30308126,
+      30308127,
+      30308128,
+      30308129,
+      30308130,
+      30308131,
+      30308132,
+      30308133,
+      30308139,
+      30308140
+     ],
+     1
+    ],
+    [
+     38000950,
+     2
+    ],
+    [
+     20310168,
+     [
+      40,
+      80
+     ]
+    ],
+    [
+     39999901,
+     1
+    ],
+    [
+     [
+      20501008,
+      20502008
+     ],
+     [
+      10,
+      50
+     ]
+    ],
+    [
+     [
+      30503034,
+      30503035,
+      30503036,
+      30503037,
+      30503038,
+      30503039,
+      30503040,
+      30503041,
+      30503042,
+      30503043,
+      30503044,
+      30503045,
+      30503046,
+      30503047,
+      30503048,
+      30503049,
+      30503050,
+      30503051,
+      30503052,
+      30503053,
+      30503054,
+      30503055,
+      30503056,
+      30503057,
+      30503058,
+      30503059,
+      30503060,
+      30503061,
+      30503062,
+      30503063,
+      30503064
+     ],
+     [
+      1,
+      2
+     ]
+    ],
+    [
+     [
+      30503065,
+      30503066,
+      30503067,
+      30503068,
+      30503069,
+      30503071,
+      30503072,
+      30503073,
+      30503074,
+      30503075,
+      30503076,
+      30503077,
+      30503078,
+      30503079,
+      30503080,
+      30503081,
+      30503091,
+      30503092,
+      30503093,
+      30503094,
+      30503095,
+      30503096,
+      30503097,
+      30503098,
+      30503099,
+      30503100,
+      30503101,
+      30503102,
+      30503103,
+      30503104,
+      30503105
+     ],
+     [
+      1,
+      2
+     ]
+    ]
+   ],
+   "knb": 6000,
+   "ngay": 1,
+   "luot": 1
+  }
+ },
+ "_ichKyBan": {
+  "on": true,
+  "nhom": {
+   "ngoc6": {
+    "on": true,
+    "gia": 5000
+   },
+   "yq": {
+    "on": true,
+    "gia": 5000
+   }
+  },
+  "rieng": {},
+  "ngayMax": 0
+ },
+ "_minesCfg": {
+  "rtp": 0.85,
+  "maxMult": 50,
+  "maxBet": 10000,
+  "luckyOn": false
+ },
+ "_taxiCfg": {
+  "on": false,
+  "tien": 100,
+  "loMin": 2000000,
+  "viMax": 0,
+  "gioCho": 24
+ },
+ "_loanCfg": {
+  "dailyMax": 10000,
+  "cap": 30000,
+  "feePct": 20
+ },
+ "_txMaxBet": 60000,
+ "_stxMaxBet": 60000,
+ "_rlMaxBet": 60000,
+ "_minBet": 200,
+ "_stxOn": false,
+ "_rlOn": false,
+ "_pokerOn": false,
+ "_txSimple": true,
+ "_dogBridgeDayMax": 400000,
+ "_dogVangDayMax": 400000,
+ "_txChannelId": "1559039081558573057",
+ "_giveawayChannelId": "1554353726259601469",
+ "_vayChannelId": "1556334573724369018",
+ "_statsChannelId": null,
+ "_minesChannelId": null,
+ "_giveawayRoleId": null
+}
